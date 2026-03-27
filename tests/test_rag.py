@@ -172,7 +172,8 @@ class TestHaloKnowledgeBase:
 
     @pytest.fixture
     def temp_kb(self, tmp_path):
-        """Fixture pour une KB temporaire."""
+        """Fixture pour une KB temporaire. Skippée si lancedb absent."""
+        pytest.importorskip("lancedb", reason="lancedb non installé — skip tests HaloKnowledgeBase")
         from src.ai.rag import HaloKnowledgeBase, RAGConfig
 
         config = RAGConfig(persist_directory=str(tmp_path / "rag"), table_name="test_table")

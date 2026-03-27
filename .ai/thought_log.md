@@ -7,6 +7,18 @@
 
 ## Journal
 
+### [2026-03-27] — Fix TypeError sync indicator (datetime vs str) — Complété
+
+**Statut :** Complété
+
+**Décision technique :** `_get_sync_metadata_smart` retourne `last_sync_at` comme string ISO depuis `get_sync_metadata()`. La fonction `_format_sync_time` attendait un `datetime`, causant `TypeError: unsupported operand type(s) for -: 'datetime.datetime' and 'str'`. Correction dans `_sync_indicator.py` : parsing conditionnel de `last_sync_raw` (str → `datetime.fromisoformat()` avec ajout UTC si naive, datetime → ajout UTC si naive).
+
+**Résultats :** Erreur corrigée sans toucher au repo ni au schéma DB.
+
+**Prochaine étape :** RAS.
+
+---
+
 ### [2026-03-26] — Fixes KDA/Encounters/Media/Squad + tests — Complété
 
 **Statut :** Complété — commits `8fc118d` + suite sur `fix/sync-ui-hardening-plan`
