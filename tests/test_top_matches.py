@@ -15,6 +15,7 @@ import pytest
 from src.data.domain.refdata import Outcome
 from src.ui.pages.career_top_matches_data import (
     _BADGE_PRIORITY_EXPR,
+    _BTB_FILTER_SQL,
     _TOP_MATCHES_SQL,
     MIN_MATCH_DURATION_SECONDS,
 )
@@ -398,6 +399,7 @@ class TestLoadTopMatchesDuckDB:
         xuid: str,
         *,
         best: bool = True,
+        exclude_btb: bool = False,
     ) -> list[dict]:
         """Exécute la requête top matches et retourne les résultats."""
         shared_conn.execute(f"ATTACH '{player_path}' AS player (READ_ONLY)")
@@ -409,6 +411,7 @@ class TestLoadTopMatchesDuckDB:
         target = int(Outcome.WIN) if best else int(Outcome.LOSS)
         sql = _TOP_MATCHES_SQL.format(
             badge_priority=_BADGE_PRIORITY_EXPR[best],
+            btb_filter=_BTB_FILTER_SQL[exclude_btb],
         )
         result = shared_conn.execute(
             sql,

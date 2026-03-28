@@ -119,6 +119,9 @@ class AppSettings(BaseModel):
     # Affichage
     user_timezone: str = "Europe/Paris"  # Timezone pour les dates/heures affichées (IANA)
 
+    # Carrière — top/pire matchs
+    career_top_exclude_btb: bool = False  # Exclure les matchs BTB du top 10 meilleurs/pires
+
     # --- Validators ---
 
     @model_validator(mode="before")

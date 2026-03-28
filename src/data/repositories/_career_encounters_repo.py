@@ -150,6 +150,15 @@ _BADGE_PRIORITY_EXPR: dict[bool, str] = {
     ),
 }
 
+# Filtre BTB optionnel (injecté dans {btb_filter}).
+# True  → exclut les matchs dont mode_category = 'BTB'
+# False → pas de filtre supplémentaire
+_BTB_FILTER_SQL: dict[bool, str] = {
+    True: "AND mv.match_id NOT IN ("
+    "SELECT match_id FROM shared.match_registry WHERE mode_category = 'BTB')",
+    False: "",
+}
+
 _TOP_MATCHES_SQL = """
 WITH enriched AS (
     SELECT
@@ -178,6 +187,7 @@ WITH enriched AS (
       AND COALESCE(mv.time_played_seconds, 0) >= ?
       AND COALESCE(pme.had_bot_teammate, FALSE) = FALSE
       AND COALESCE(mv.is_firefight, FALSE) = FALSE
+      {btb_filter}
 )
 SELECT * FROM enriched
 WHERE outcome = ?
@@ -299,7 +309,7 @@ class EncounterCareerMixin:
             ]
         return results[:limit]
 
-    def load_top_match_list(self, *, best: bool) -> list[dict]:
+    def load_top_match_list(self, *, best: bool, exclude_btb: bool = False) -> list[dict]:
         """Charge le Top 10 meilleurs ou pires matchs.
 
         Utilise shared.mv_player_matches + player_match_enrichment (locale).
@@ -307,6 +317,7 @@ class EncounterCareerMixin:
         Args:
             best: True pour les meilleures perf (victoires dominantes),
                   False pour les pires (défaites humiliantes).
+            exclude_btb: Si True, exclut les matchs BTB (mode_category='BTB').
 
         Returns:
             Liste de dicts avec les colonnes du match.
@@ -317,6 +328,7 @@ class EncounterCareerMixin:
         target_outcome = int(Outcome.WIN) if best else int(Outcome.LOSS)
         sql = _TOP_MATCHES_SQL.format(
             badge_priority=_BADGE_PRIORITY_EXPR[best],
+            btb_filter=_BTB_FILTER_SQL[exclude_btb],
         )
         try:
             result = conn.execute(
