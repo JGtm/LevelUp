@@ -131,6 +131,25 @@ ORDER BY {order_col} DESC
 LIMIT ?
 """  # noqa: S608
 
+# Priorité badge par onglet : les matchs badgés remontent en tête.
+# best=True  → Contre-Remontada(5) > Remontada(3) > Domination(1)
+# best=False → Débandade(4) > Humiliation(2)
+_BADGE_PRIORITY_EXPR: dict[bool, str] = {
+    True: (
+        f"CASE dominance_flag"
+        f" WHEN {int(DominanceFlag.CONTRE_REMONTADA)} THEN 3"
+        f" WHEN {int(DominanceFlag.REMONTADA)} THEN 2"
+        f" WHEN {int(DominanceFlag.DOMINATION)} THEN 1"
+        f" ELSE 0 END"
+    ),
+    False: (
+        f"CASE dominance_flag"
+        f" WHEN {int(DominanceFlag.DEBANDADE)} THEN 2"
+        f" WHEN {int(DominanceFlag.HUMILIATION)} THEN 1"
+        f" ELSE 0 END"
+    ),
+}
+
 _TOP_MATCHES_SQL = """
 WITH enriched AS (
     SELECT
@@ -163,7 +182,7 @@ WITH enriched AS (
 SELECT * FROM enriched
 WHERE outcome = ?
 ORDER BY
-    (dominance_flag = ?) DESC,
+    {badge_priority} DESC,
     time_played_seconds ASC,
     ABS(COALESCE(my_team_score, 0) - COALESCE(enemy_team_score, 0)) DESC
 LIMIT 10
@@ -295,17 +314,16 @@ class EncounterCareerMixin:
             return []
         conn = self._get_connection()
         target_outcome = int(Outcome.WIN) if best else int(Outcome.LOSS)
-        dom_flag = int(DominanceFlag.DOMINATION) if best else int(DominanceFlag.HUMILIATION)
+        sql = _TOP_MATCHES_SQL.format(badge_priority=_BADGE_PRIORITY_EXPR[best])
         try:
             result = conn.execute(
-                _TOP_MATCHES_SQL,
+                sql,
                 [
                     str(self._xuid),
                     int(Outcome.WIN),
                     int(Outcome.LOSS),
                     MIN_MATCH_DURATION_SECONDS,
                     target_outcome,
-                    dom_flag,
                 ],
             )
             columns = [desc[0] for desc in result.description]

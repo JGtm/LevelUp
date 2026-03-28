@@ -150,6 +150,7 @@ STRINGS: dict[str, dict[str, str] | str] = {
     "tm_perfect_kills": {"fr": "Frags parfaits", "en": "Perfect kills"},
     "tm_kills": "col_kills",  # alias → common
     "tm_deaths": "col_deaths",  # alias → common
+    "tm_kills_deaths": {"fr": "Frags ↑ | ↓ Morts", "en": "Kills ↑ | ↓ Deaths"},
     "tm_assists": {"fr": "Assistances", "en": "Assists"},
     # ── Match View Participation ──────────────────────────────────────────────
     "tm_kda": "col_kda",  # alias → common

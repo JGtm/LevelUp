@@ -90,16 +90,16 @@ def _detect_trio_session(  # noqa: PLR0913
 def _render_per_minute_stats(  # noqa: PLR0913
     me_df: DataFrameLike,
     f1_df: DataFrameLike,
-    f2_df: DataFrameLike,
+    f2_df: DataFrameLike | None,
     me_name: str,
     f1_name: str,
-    f2_name: str,
+    f2_name: str | None,
     colors_by_name: dict[str, str],
     *,
     f3_df: DataFrameLike | None = None,
     f3_name: str | None = None,
 ) -> None:
-    """Affiche le graphe barres groupées stats/min pour l'escouade (3 ou 4 joueurs)."""
+    """Affiche le graphe barres groupées stats/min pour l'escouade (2, 3 ou 4 joueurs)."""
     _pm_metrics = [t("tm_metric_frags_min"), t("tm_metric_deaths_min"), t("tm_metric_assists_min")]
     _pm_players = [
         (
@@ -112,12 +112,15 @@ def _render_per_minute_stats(  # noqa: PLR0913
             compute_aggregated_stats(f1_df),
             colors_by_name.get(f1_name, OKABE_ITO_PALETTE[1]),
         ),
-        (
-            f2_name,
-            compute_aggregated_stats(f2_df),
-            colors_by_name.get(f2_name, OKABE_ITO_PALETTE[2]),
-        ),
     ]
+    if f2_name and f2_df is not None:
+        _pm_players.append(
+            (
+                f2_name,
+                compute_aggregated_stats(f2_df),
+                colors_by_name.get(f2_name, OKABE_ITO_PALETTE[2]),
+            )
+        )
     if f3_name and f3_df is not None:
         _pm_players.append(
             (
@@ -170,12 +173,11 @@ def _render_per_minute_stats(  # noqa: PLR0913
 def _merge_trio_dataframes(
     me_df: DataFrameLike,
     f1_df: DataFrameLike,
-    f2_df: DataFrameLike,
+    f2_df: DataFrameLike | None,
 ) -> pl.DataFrame:
-    """Merge les DataFrames des 3 joueurs sur match_id."""
+    """Merge les DataFrames des joueurs sur match_id (f2 optionnel)."""
     me_df = ensure_polars(me_df)
     f1_df = ensure_polars(f1_df)
-    f2_df = ensure_polars(f2_df)
     friend_cols = [
         "match_id",
         "kills",
@@ -197,34 +199,27 @@ def _merge_trio_dataframes(
         "average_life_seconds",
         "time_played_seconds",
     ]
-    # Vérifier que tous les DataFrames ont les colonnes requises
-    # map_name est optionnelle (présente si COLUMNS_COMMON est complet)
     _me_required = [c for c in me_cols if c != "map_name"]
     missing_me = [c for c in _me_required if c not in me_df.columns]
     missing_f1 = [c for c in friend_cols if c not in f1_df.columns]
-    missing_f2 = [c for c in friend_cols if c not in f2_df.columns]
-    if (
-        missing_me
-        or missing_f1
-        or missing_f2
-        or me_df.is_empty()
-        or f1_df.is_empty()
-        or f2_df.is_empty()
-    ):
+    if missing_me or missing_f1 or me_df.is_empty() or f1_df.is_empty():
         return pl.DataFrame()
     _opt = ["performance_score"]
     me_opt = [c for c in _opt if c in me_df.columns]
-    # Sélectionner seulement les colonnes me réellement présentes (map_name peut manquer)
     me_cols_actual = [c for c in me_cols if c in me_df.columns]
     f1_ext = friend_cols + [c for c in _opt if c in f1_df.columns]
-    f2_ext = friend_cols + [c for c in _opt if c in f2_df.columns]
     f1_sel = f1_df.select(f1_ext).rename({c: f"f1_{c}" for c in f1_ext})
-    f2_sel = f2_df.select(f2_ext).rename({c: f"f2_{c}" for c in f2_ext})
-    return (
-        me_df.select(me_cols_actual + me_opt)
-        .join(f1_sel, left_on="match_id", right_on="f1_match_id", how="inner")
-        .join(f2_sel, left_on="match_id", right_on="f2_match_id", how="inner")
+    merged = me_df.select(me_cols_actual + me_opt).join(
+        f1_sel, left_on="match_id", right_on="f1_match_id", how="inner"
     )
+    if f2_df is not None:
+        f2_polars = ensure_polars(f2_df)
+        missing_f2 = [c for c in friend_cols if c not in f2_polars.columns]
+        if not missing_f2 and not f2_polars.is_empty():
+            f2_ext = friend_cols + [c for c in _opt if c in f2_polars.columns]
+            f2_sel = f2_polars.select(f2_ext).rename({c: f"f2_{c}" for c in f2_ext})
+            merged = merged.join(f2_sel, left_on="match_id", right_on="f2_match_id", how="inner")
+    return merged
 
 
 # ---------------------------------------------------------------------------
@@ -301,23 +296,23 @@ def _use_or_compute_performance(df: pl.DataFrame) -> pl.DataFrame:
 def _render_trio_performance_charts(  # noqa: PLR0913
     me_df: DataFrameLike,
     f1_df: DataFrameLike,
-    f2_df: DataFrameLike,
+    f2_df: DataFrameLike | None,
     me_name: str,
     f1_name: str,
-    f2_name: str,
+    f2_name: str | None,
     f1_xuid: str,
-    f2_xuid: str,
+    f2_xuid: str | None,
     *,
     f3_df: DataFrameLike | None = None,
     f3_name: str | None = None,
     f3_xuid: str | None = None,
     colors_by_name: dict[str, str] | None = None,
 ) -> None:
-    """Affiche les graphes de performance escouade.
+    """Affiche les graphes de performance escouade (2, 3 ou 4 joueurs).
 
     Utilise performance_score stocké dans player_match_enrichment si disponible
     (injecté en amont via TeammatesService.enrich_with_performance_score).
-    Sinon recalcule sur le sous-ensemble de matchs trio (fallback).
+    Sinon recalcule sur le sous-ensemble de matchs (fallback).
     """
     merged = _merge_trio_dataframes(me_df, f1_df, f2_df)
     if merged.is_empty():
@@ -326,7 +321,9 @@ def _render_trio_performance_charts(  # noqa: PLR0913
 
     d_self = _use_or_compute_performance(_extract_player_df(merged, None))
     d_f1 = _use_or_compute_performance(_extract_player_df(merged, "f1"))
-    d_f2 = _use_or_compute_performance(_extract_player_df(merged, "f2"))
+    # f2 uniquement si le merge a produit des colonnes f2_* (f2 présent à l'escouade)
+    has_f2_cols = any(c.startswith("f2_") for c in merged.columns)
+    d_f2 = _use_or_compute_performance(_extract_player_df(merged, "f2")) if has_f2_cols else None
 
     d_f3_p = _align_f3_to_merged(f3_df, merged)
     if d_f3_p is not None:
@@ -358,17 +355,17 @@ def _render_trio_medals(  # noqa: PLR0913
     db_path: str,
     xuid: str,
     f1_xuid: str,
-    f2_xuid: str,
+    f2_xuid: str | None,
     me_name: str,
     f1_name: str,
-    f2_name: str,
+    f2_name: str | None,
     db_key: tuple[int, int] | None,
     top_medals_fn,
     *,
     f3_xuid: str | None = None,
     f3_name: str | None = None,
 ) -> None:
-    """Affiche la section médailles de l'escouade (3 ou 4 joueurs)."""
+    """Affiche la section médailles de l'escouade (2, 3 ou 4 joueurs)."""
     st.subheader(t("tm_medals_all"))
     if not match_ids:
         st.info(t("tm_no_medals_aggregate"))
@@ -377,16 +374,16 @@ def _render_trio_medals(  # noqa: PLR0913
     with st.spinner(t("tm_computing_medals_all")):
         top_self = top_medals_fn(db_path, xuid.strip(), match_ids, top_n=12, db_key=db_key)
         top_f1 = top_medals_fn(db_path, f1_xuid, match_ids, top_n=12, db_key=db_key)
-        top_f2 = top_medals_fn(db_path, f2_xuid, match_ids, top_n=12, db_key=db_key)
+        top_f2 = (
+            top_medals_fn(db_path, f2_xuid, match_ids, top_n=12, db_key=db_key) if f2_xuid else None
+        )
         top_f3 = (
             top_medals_fn(db_path, f3_xuid, match_ids, top_n=12, db_key=db_key) if f3_xuid else None
         )
 
-    players_medals = [
-        (me_name, top_self),
-        (f1_name, top_f1),
-        (f2_name, top_f2),
-    ]
+    players_medals = [(me_name, top_self), (f1_name, top_f1)]
+    if f2_xuid and f2_name and top_f2 is not None:
+        players_medals.append((f2_name, top_f2))
     if f3_xuid and f3_name and top_f3 is not None:
         players_medals.append((f3_name, top_f3))
 

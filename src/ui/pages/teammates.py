@@ -20,10 +20,7 @@ from src.app._filters_friends import build_teammates_opts_map
 from src.data.services.teammates_service import TeammatesService
 from src.ui.cache import cached_has_cache_tables
 from src.ui.i18n import t
-from src.ui.pages.teammates_views import (
-    render_multi_teammate_view,
-    render_single_teammate_view,
-)
+from src.ui.pages.teammates_views import render_multi_teammate_view
 from src.ui.perf import perf_section
 from src.visualization._compat import DataFrameLike, ensure_polars
 
@@ -101,14 +98,6 @@ def _render_teammate_views(
 
     if len(picked_xuids) < 1:
         st.info(t("tm_select_teammate"))
-    elif len(picked_xuids) == 1:
-        render_single_teammate_view(
-            df=df,
-            dff=dff,
-            ctx=ctx,
-            filters=filters,
-            callbacks=callbacks,
-        )
     else:
         render_multi_teammate_view(
             df=df,

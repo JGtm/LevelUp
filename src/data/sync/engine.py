@@ -356,6 +356,13 @@ class DuckDBSyncEngine(
                                 self._gamertag,
                                 _latest_db[:8],
                             )
+                            # Toujours enregistrer la date du sync même si aucun nouveau match
+                            # (sinon l'indicateur affiche la date du dernier sync avec insertions)
+                            self._save_sync_metadata(delta_mode=True, matches_inserted=0)
+                            self._get_connection().commit()
+                            # Réparer les PME manquants chez les coéquipiers
+                            # (cas : session jouée ensemble non encore enrichie côté coéquipier)
+                            self.fanout_repair_missing_scores()
                             result.finished_at = datetime.now(timezone.utc)
                             result.duration_seconds = time.time() - start_time
                             return result
@@ -564,6 +571,7 @@ class DuckDBSyncEngine(
             logger.warning("Sessions post-sync : %s", e)
 
         self._compute_dominance_post_sync()
+        self._compute_comeback_post_sync()
 
         cit_result = await cit_future
         elapsed = _time.perf_counter() - _t0
@@ -605,6 +613,29 @@ class DuckDBSyncEngine(
                     )
         except Exception as e:
             logger.warning("Erreur calcul dominance post-sync : %s", e)
+
+    def _compute_comeback_post_sync(self) -> None:
+        """Calcule les badges narrative (Remontada/Débandade/Contre-Remontada) post-sync."""
+        try:
+            import duckdb as _ddb
+
+            from src.data.comeback_backfill import compute_comeback_badges_for_player
+
+            shared_path = self._shared_db_path
+            if shared_path and shared_path.exists():
+                with _ddb.connect(str(shared_path), read_only=True) as _sconn:
+                    result = compute_comeback_badges_for_player(
+                        self._get_connection(), _sconn, self._xuid or ""
+                    )
+                    logger.info(
+                        "Comeback badges post-sync : %d traités (remontada=%d, débandade=%d, contre=%d)",
+                        result["processed"],
+                        result["remontada"],
+                        result["debandade"],
+                        result["contre_remontada"],
+                    )
+        except Exception as e:
+            logger.warning("Erreur calcul comeback badges post-sync : %s", e)
 
     def _verify_enrichment_completeness(self, inserted_ids: list[str]) -> None:
         """Vérification post-pipeline : détecte les matchs sans enrichissement.

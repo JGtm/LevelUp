@@ -6,6 +6,38 @@ Toutes les modifications notables de ce projet sont documentées ici.
 
 Le format est basé sur [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/).
 
+## [6.2.0] - 2026-03-28
+
+### Ajouté
+
+- **`src/analysis/comeback_analysis.py`** — module d'analyse pure pour la détection des badges narrative depuis les kill-events highlight (`event_type='kill'`, `time_ms`). Expose `build_score_snapshot()` et `detect_comeback_badge()`. Aucun accès DB.
+- **`src/data/comeback_backfill.py`** — couche service qui charge les events/participants depuis `shared_matches.duckdb`, appelle `comeback_analysis`, et écrit le résultat dans `player_match_enrichment.dominance_flag`. Même pattern que `dominance_backfill.py`.
+- **`DominanceFlag.REMONTADA = 3`**, **`DominanceFlag.DEBANDADE = 4`**, **`DominanceFlag.CONTRE_REMONTADA = 5`** — nouvelles valeurs dans `src/analysis/_medal_verdicts.py`. Stockées dans la colonne `dominance_flag` TINYINT existante (aucune migration requise). Mutuellement exclusives avec DOMINATION/HUMILIATION.
+- **Constantes de seuil** dans `src/analysis/_medal_verdicts.py` : `COMEBACK_DEFICIT_THRESHOLD`, `COMEBACK_COUNTER_GAP`, `COMEBACK_EARLY_CUTOFF`, `COMEBACK_COLLAPSE_CUTOFF`. Centralisées pour faciliter l'ajustement.
+- **`SyncScope.comeback_badges`** + **`SyncScope.force_comeback_badges`** — activé par `--all-data`.
+- **Arguments CLI `--comeback-badges` / `--force-comeback-badges`** dans `scripts/backfill/cli.py`.
+- **Vue escouade unifiée** — `f2_xuid` est désormais optionnel dans `render_trio_view` ; la vue trio gère 2, 3 ou 4 joueurs. `render_single_teammate_view` supprimé.
+- **Graphe combiné Frags ↑ / Morts ↓** — `plot_trio_kills_deaths()` remplace les deux graphes séparés par un graphe miroir avec axe Y symétrique.
+
+### Modifié
+
+- `render_trio_view` supporte 1 coéquipier (duo) sans changement de chemin de code — `f2_xuid = None` quand un seul ami est sélectionné.
+- `_merge_trio_dataframes`, `render_trio_synergy_radar`, `_render_per_minute_stats`, `_render_trio_performance_charts`, `_render_trio_medals` acceptent tous `f2_name/f2_df = None`.
+- `_TRIO_METRIC_SPECS` ne contient plus les entrées kills/deaths (remplacées par le graphe combiné).
+
+### Supprimé
+
+- `render_single_teammate_view()` et fonctions associées dans `teammates_views.py`.
+- `render_comparison_charts()` (code mort) dans `teammates_charts.py`.
+- Branch de routage `elif len(picked_xuids) == 1` dans `teammates.py`.
+- Classes de test `TestRenderSingleTeammateView`, `TestRenderSingleMapSection`, `test_render_comparison_charts_exists`.
+
+### Tests
+
+- **5 178 tests, 0 échec** (4 ignorés)
+
+---
+
 ## [6.0.0] - 2026-03-15
 
 > ⚠️ **Extraction d'armes toujours en bêta** — la précision de l'attribution n'est pas garantie dans tous les cas (couverture estimée 70–100 % selon les matchs) ; catalogue d'armes en cours de complétion.
