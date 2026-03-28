@@ -1780,10 +1780,11 @@ def backfill_fix_score_inversions(shared_conn: Any, *, dry_run: bool = False) ->
     """Corrige les inversions team_0_score ↔ team_1_score dans match_registry.
 
     Contexte : lors d'anciens syncs, un bug dans l'extracteur de scores
-    swappait team_0_score et team_1_score pour certains matchs Slayer.
-    Détection : matchs Slayer où un joueur avec outcome=WIN a
-    ``team_score < enemy_score`` (le gagnant devrait toujours avoir le score
-    le plus haut en Slayer).
+    swappait team_0_score et team_1_score pour tous les modes (Slayer, CTF,
+    Total Control, Stockpile, KOTH, etc.).
+    Détection universelle : tout match où un joueur avec outcome=WIN a
+    ``team_score < enemy_score`` — le gagnant devrait toujours avoir le score
+    le plus élevé, quel que soit le mode.
     Correction : swap ``team_0_score`` ↔ ``team_1_score`` (uniquement).
     Les ``ps_score`` sont calculés depuis match_participants et sont corrects.
 
@@ -1794,15 +1795,18 @@ def backfill_fix_score_inversions(shared_conn: Any, *, dry_run: bool = False) ->
     Returns:
         Nombre de matchs corrigés (ou à corriger en dry_run).
     """
-    # Détection : joueur gagnant avec score d'équipe inférieur à l'ennemi
+    # Détection universelle : joueur gagnant avec score d'équipe inférieur à l'ennemi
+    # Exclut les cas où un seul score est NULL (modes FFA ou données manquantes).
+    # Exclut les scores > 200 (modes avec ps_score leaké type CASTLE WARS — traitement séparé).
+    # Les TIE (outcome=1) et DNF (outcome=4) ne sont pas concernés.
     detection_sql = """
         SELECT DISTINCT m.match_id
         FROM match_registry m
         JOIN match_participants mp ON m.match_id = mp.match_id
         WHERE mp.outcome = 2
-          AND m.game_variant_name LIKE '%Slayer%'
           AND m.team_0_score IS NOT NULL
           AND m.team_1_score IS NOT NULL
+          AND GREATEST(m.team_0_score, m.team_1_score) <= 200
           AND CASE WHEN mp.team_id = 0 THEN m.team_0_score ELSE m.team_1_score END
             < CASE WHEN mp.team_id = 0 THEN m.team_1_score ELSE m.team_0_score END
     """
