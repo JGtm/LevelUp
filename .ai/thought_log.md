@@ -7,23 +7,44 @@
 
 ## Journal
 
-### [2026-03-28] — Fix scores BTB objectifs anormaux — Complété
+### [2026-03-28] — Réimplémentation scan_0802_loadout + carry-forward NS depuis main — Complété
 
 **Statut** : Complété  
 **Décision technique** :
 
-Root cause : L'API Halo Infinite retourne dans `CoreStats.Score` (par équipe) tantôt le score objectif réel (1-5 captures CTF, 0-3 rounds TC), tantôt la somme des personal scores (~15 000-27 000). Ce comportement touche ~55 % des matchs BTB CTF/Total Control. Résultat : affichage aberrant type "1 – 22 270" (une équipe score objectif, l'autre somme PS).
+Réimplémentation depuis `main` (branche `fix/arcane-sentinel-beam-weapon-id-v2`) des changements du commit `121ebbb` (anciennement sur `fix/arcane-sentinel-beam-weapon-id`) :
 
-**Solution** : normalisation au niveau de la vue SQL `mv_player_matches` + query fallback + teammates_service.
-- Pour les modes objectifs (CTF, Total Control, Stockpile, One Flag) où `GREATEST(team_0_score, team_1_score) > 500` → utiliser `team_0_ps_score`/`team_1_ps_score` (recalculés depuis match_participants, toujours cohérents).
-- Conserver les petits scores corrects ("3 – 1") quand l'API a retourné les vraies captures.
-- Slayer (score = 100 kills) non touché.
+1. `scan_0802_loadout` dans `_weapon_scanners.py` : scanne le pattern `08 02` + 8 octets weapon_id avec guard `WEAPON_ID_MAP`. Player index encodé via `data[pos-2] & 0x07`. Utilisé comme source complémentaire pour les chunks sans Formula A.
+2. `build_weapon_timelines` : merge loadout 0802 dans `timeline_ns` uniquement si le pi n'y est pas déjà (NS prioritaire).
+3. `_fallback_formula_a` : carry-forward sur la NS timeline — remonte les chunks précédents pour trouver le dernier état connu au lieu de regarder uniquement le chunk courant.
 
-**Nouveau module** : `src/data/_score_sql.py` — constantes SQL sans dépendances, importées par migrations.py, _match_queries.py et teammates_service.py (anti-pattern DRY < 3 copies).
+**Résultats** : 5 kills NULL résolus sur match `3e394746` (Arcane Sentinel Beam + CQS48 Bulldog).  
+**Conclusion** : Commit propre, pré-commit hooks passés. `weapon_parser.py` à 511L (exception documentée dans `size_baseline.txt`).
 
-**Résultats** : Fini les "1 – 22 270". Matchs polués affichent maintenant deux PS sums symétriques (ex: "28 085 – 20 620"). Matchs corrects préservés ("2 – 1"). Vue rechargée en live.
+---
 
-**Tests** : 35 tests passent (repository + qualité code). Ruff clean.
+### [2026-03-28] — Fix scores BTB objectifs anormaux v2 — Complété
+
+**Statut** : Complété  
+**Décision technique** :
+
+Root cause (réévaluée) : L'API Halo Infinite stocke dans `CoreStats.Score` par équipe tantôt le score objectif réel (1-3 captures CTF), tantôt la somme des personal scores (~15 000-27 000). Le fix précédent (fallback `ps_score` quand `> 500`) était inadapté : `ps_score` est lui aussi une grande valeur (somme perso), donc le fallback ne résolvait pas l'affichage aberrant.
+
+La vraie source de vérité :
+- **CTF** : `Stats.CaptureTheFlagStats.FlagCaptures` par équipe (toujours = captures réelles)
+- **Total Control/Strongholds** : `Stats.ZonesStats.StrongholdScoringTicks` par équipe (toujours = ticks accumulés)
+
+**Changements** :
+1. `src/data/sync/transformers/_helpers.py` — `_extract_team_score_value` : préférer `CaptureTheFlagStats.FlagCaptures` → `ZonesStats.StrongholdScoringTicks` → `CoreStats.Score` (fallback). Les nouveaux matchs synchés auront les vrais scores.
+2. `src/data/_score_sql.py` — seuil de détection 500 → **100** (Slayer max = 100 kills, donc > 100 dans un mode objectif = clairement corrompu) ; suppression du fallback `ps_score` ; remplacement par **NULL** (score indisponible pour les matchs existants pollués).
+3. `src/data/migration/steps/fix_mv_player_matches_scores.py` — migration qui recrée `mv_player_matches` avec la nouvelle logique SQL.
+
+**Résultats attendus** :
+- Matchs existants avec scores corrompus → affichage `NULL` (honnête)
+- Nouveaux matchs CTF/TC → scores réels (1–3 captures CTF, ticks TC)
+- Matchs Ranked CTF Arena (rarement polués) → inchangés (scores déjà corrects ≤ 3)
+
+**Branche** : `fix/team-scores-ctf-corruption`
 
 ---
 
