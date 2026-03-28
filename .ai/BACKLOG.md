@@ -87,11 +87,20 @@
 - `src/analysis/_performance_session.py:263,362` — KDA session
 - `src/data/domain/models/stats.py:54,103` — propriété calculée sur `MatchRow`
 
-**Question à trancher** : Pour ces métriques agrégées (ex: "KDA moyen sur la session"), doit-on :
-1. Continuer à calculer `sum(K+A/3)/sum(D)` depuis les totaux (cohérent avec les stats de session)
-2. Ou faire la moyenne des `kda` API per-match (plus fidèle à l'API, mais différente sémantique)
+**Décision actée (2026-03-28)** : Séparer explicitement les deux sémantiques.
 
-**Action requise** : Décision utilisateur sur la stratégie, puis adapter le code en conséquence.
+1. **Match / distribution / comparaison match-level** : utiliser exclusivement `p.kda` de l'API, tel quel, même si la valeur est négative.
+2. **Session / période / carte / cumul agrégé** : utiliser un indicateur distinct nommé **`efficiency`** (code) / **`efficacité`** (UI FR) / **`efficiency`** (UI EN), dérivé des totaux, avec la formule `sum(K + A/3) / sum(D)`.
+
+**Justification** : le champ API `kda` ne doit plus être traité implicitement comme un simple ratio mathématique agrégable. S'il peut être négatif, alors la moyenne des `kda` match par match décrit la moyenne d'une métrique API signée, pas un rendement global de session. Pour les agrégats lisibles par l'utilisateur, il faut donc conserver un indicateur séparé et explicitement nommé.
+
+**⛔ Nommage obligatoire** : le terme `efficiency` / `efficacité` est **le seul terme autorisé** pour désigner cet agrégat. Les termes `ratio`, `FDA`, `KDA` ou `performance` sont **interdits** pour cette métrique afin d'éviter toute confusion avec la métrique API (`kda`) et le score de performance existant. Toute variable ou clé i18n doit utiliser `efficiency` (ex. `session_efficiency`, `combat_efficiency`).
+
+**Consigne d'implémentation** :
+- Conserver `kda` comme métrique API brute dans tous les flux per-match et percentiles relatifs.
+- Renommer tous les agrégats dérivés des totaux en `efficiency` / `session_efficiency` (code) et `efficacité` / `efficacité de session` (UI FR).
+- Ajouter les clés i18n `efficiency` EN et `efficacité` FR dans `src/ui/i18n/`.
+- Audit UI/i18n à prévoir pour éviter qu'une moyenne de `kda` API soit affichée comme une efficacité de session.
 
 ---
 
