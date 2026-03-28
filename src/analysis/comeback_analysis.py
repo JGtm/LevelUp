@@ -16,9 +16,8 @@ Concepts
   à un moment quelconque, mais on a gagné.
 - **Débandade** : on était en avance de ≥ COMEBACK_DEFICIT_THRESHOLD frags d'équipe
   à un moment quelconque, mais on a perdu.
-- **Contre-Remontada** : l'adversaire était en avance de ≥ COMEBACK_COUNTER_GAP frags
-  à un moment, ET on était nous-mêmes en avance à un autre moment, mais on a tenu et gagné.
-  (Cas plus rare que Remontada — seuil plus bas volontairement.)
+- **Contre-Remontada** (miroir de Remontada) : on était en avance de ≥ COMEBACK_DEFICIT_THRESHOLD
+  frags à un moment, l'adversaire a failli revenir (a au moins égalisé), mais on a tenu et gagné.
 
 Les seuils sont définis dans :mod:`src.analysis._medal_verdicts`.
 """
@@ -30,7 +29,6 @@ import logging
 import polars as pl
 
 from src.analysis._medal_verdicts import (
-    COMEBACK_COUNTER_GAP,
     COMEBACK_DEFICIT_THRESHOLD,
     DominanceFlag,
 )
@@ -125,9 +123,9 @@ def detect_comeback_badge(
     if not won and max_lead >= COMEBACK_DEFICIT_THRESHOLD:
         return int(DominanceFlag.DEBANDADE)
 
-    # Contre-Remontada : l'ennemi avait rattrapé son retard et était devant,
-    # mais on était aussi devant à un autre moment — on a tenu et gagné.
-    if won and max_deficit >= COMEBACK_COUNTER_GAP and max_lead >= 1:
+    # Contre-Remontada (miroir de Remontada) : on avait 25+ frags d'avance,
+    # l'adversaire a failli revenir (a au moins égalisé/dépassé), mais on a tenu.
+    if won and max_lead >= COMEBACK_DEFICIT_THRESHOLD and max_deficit >= 1:
         return int(DominanceFlag.CONTRE_REMONTADA)
 
     return _FLAG_NONE
