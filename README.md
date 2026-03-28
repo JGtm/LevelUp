@@ -2,7 +2,7 @@
 
 > **Analyze your Halo Infinite performance with advanced visualizations and an ultra-fast DuckDB architecture.**
 
-[![Version](https://img.shields.io/badge/Version-6.1.0-blue.svg)](https://github.com/JGtm/LevelUp/releases/tag/v6.1.0)
+[![Version](https://img.shields.io/badge/Version-6.2.0-blue.svg)](https://github.com/JGtm/LevelUp/releases/tag/v6.2.0)
 [![Python 3.12+](https://img.shields.io/badge/Python-3.12%2B-blue.svg)](https://www.python.org/downloads/)
 [![Streamlit](https://img.shields.io/badge/Streamlit-1.28%2B-FF4B4B.svg)](https://streamlit.io/)
 [![DuckDB](https://img.shields.io/badge/DuckDB-1.4%2B-FEE14E.svg)](https://duckdb.org/)
@@ -12,6 +12,11 @@
 ---
 
 ## What's new
+
+**v6.2 — Comeback badges & unified squad view**
+- **Remontada / Collapse / Contre-Remontada badges** — the app now detects comeback narratives from your match history: *Remontada* (you were losing at the midpoint but came back to win), *Collapse* (you were winning and blew it), *Contre-Remontada* (you stopped the enemy's comeback). Run `--comeback-badges` to compute them
+- **Unified squad view** — the 1-on-1 teammate comparison view has been removed; the squad view now works for 1, 2, or 3 friends, giving you the same rich charts regardless of party size
+- **Kills ↑ / Deaths ↓ chart** — separate kills and deaths charts replaced by a single mirrored chart per squad member, making K/D arcs easier to compare at a glance
 
 **v6.1 — Sync faster, bugs fixed**
 - **Sync ~30–40 % faster** — each sync now completes significantly quicker

@@ -1,7 +1,7 @@
-"""Vues de rendu pour la page Coéquipiers (single, multi).
+"""Vues de rendu pour la page Coéquipiers (multi / escouade).
 
 Extraites de teammates.py (Sprint 16 — refactoring Phase A).
-La vue trio est dans ``_teammates_trio.py``.
+La vue trio (1, 2 ou 3 coéquipiers) est dans ``_teammates_trio.py``.
 """
 
 from __future__ import annotations
@@ -15,16 +15,11 @@ from src.analysis import (
 from src.app._page_context import TeammateCallbacks, TeammateContext, TeammateFilterOptions
 from src.data.services.teammates_service import TeammatesService
 from src.ui import display_name_from_xuid
-from src.ui.cache import (
-    cached_friend_matches_df,
-)
 from src.ui.i18n import get_lang, t
 from src.ui.pages._teammates_trio import render_trio_view
 from src.ui.pages._teammates_trio_helpers import _merge_trio_dataframes
 from src.ui.pages.teammates_charts import (
-    render_comparison_charts,
     render_metric_bar_charts,
-    render_outcome_bar_chart,
 )
 from src.ui.pages.teammates_helpers import (
     render_friends_history_table,
@@ -32,16 +27,11 @@ from src.ui.pages.teammates_helpers import (
 from src.ui.pages.teammates_impact import render_impact_taquinerie
 from src.ui.pages.teammates_map_charts import (
     render_map_charts_section,
-    render_single_map_section,
     render_squad_heatmap,
     render_squad_timeline,
 )
-from src.ui.pages.teammates_synergy import render_synergy_radar
 from src.ui.pages.teammates_views_shared import (
     _collect_friend_match_ids,
-    _render_match_details_expander,
-    _render_shared_medals,
-    _render_shared_stats_metrics,
 )
 from src.ui.pages.teammates_weapons import render_weapon_kills_bar_chart
 from src.ui.tz import get_tz_name
@@ -51,187 +41,8 @@ from src.visualization._compat import DataFrameLike, ensure_polars
 __all__ = [
     "_merge_trio_dataframes",
     "render_multi_teammate_view",
-    "render_single_teammate_view",
     "render_trio_view",
 ]
-
-
-def render_single_teammate_view(
-    df: DataFrameLike,
-    dff: DataFrameLike,
-    ctx: TeammateContext,
-    filters: TeammateFilterOptions,
-    callbacks: TeammateCallbacks,
-) -> None:
-    """Vue pour un seul coéquipier sélectionné."""
-    xuid = ctx["xuid"]
-    db_path = ctx["db_path"]
-    db_key = ctx["db_key"]
-    picked_xuids = ctx["picked_xuids"]
-    apply_current_filters = filters["apply_current_filters"]
-    same_team_only = filters["same_team_only"]
-    show_smooth = filters["show_smooth"]
-    load_teammate_stats_fn = callbacks["load_teammate_stats_fn"]
-
-    df = ensure_polars(df)
-    dff = ensure_polars(dff)
-    friend_xuid = picked_xuids[0]
-    with st.spinner(t("tm_computing_teammate")):
-        dfr = ensure_polars(
-            cached_friend_matches_df(
-                db_path,
-                xuid.strip(),
-                friend_xuid,
-                same_team_only=bool(same_team_only),
-                db_key=db_key,
-                tz_name=get_tz_name(),
-            )
-        )
-        if dfr.is_empty():
-            st.warning(t("tm_no_matches_teammate"))
-            return
-
-        render_outcome_bar_chart(dfr)
-
-        _render_match_details_expander(dfr)
-
-        base_for_friend = dff if apply_current_filters else df
-        shared_ids = set(dfr["match_id"].cast(pl.Utf8).to_list())
-        sub = base_for_friend.filter(pl.col("match_id").cast(pl.Utf8).is_in(shared_ids))
-
-        if sub.is_empty():
-            st.info(t("tm_no_matches_filters"))
-            return
-
-        name = display_name_from_xuid(friend_xuid, db_path=db_path)
-
-        _render_shared_stats_metrics(sub)
-        friend_sub = ensure_polars(load_teammate_stats_fn(name, shared_ids, db_path))
-        _render_single_teammate_details(  # noqa: PLR0913
-            sub=sub,
-            dfr=dfr,
-            friend_sub=friend_sub,
-            shared_ids=shared_ids,
-            name=name,
-            friend_xuid=friend_xuid,
-            xuid=xuid,
-            db_path=db_path,
-            db_key=db_key,
-            show_smooth=show_smooth,
-            callbacks=callbacks,
-        )
-
-
-def _render_single_teammate_details(  # noqa: PLR0913
-    sub: pl.DataFrame,
-    dfr: pl.DataFrame,
-    friend_sub: pl.DataFrame,
-    shared_ids: set[str],
-    name: str,
-    friend_xuid: str,
-    xuid: str,
-    db_path: str,
-    db_key: tuple[int, int] | None,
-    show_smooth: bool,
-    callbacks: TeammateCallbacks,
-) -> None:
-    assign_player_colors_fn = callbacks["assign_player_colors_fn"]
-    plot_multi_metric_bars_fn = callbacks["plot_multi_metric_bars_fn"]
-    top_medals_fn = callbacks["top_medals_fn"]
-    enrich_series_fn = callbacks["enrich_series_fn"]
-    if not friend_sub.is_empty() and "match_id" in friend_sub.columns:
-        filtered_match_ids = sub["match_id"].cast(pl.Utf8).to_list()
-        friend_sub = friend_sub.filter(pl.col("match_id").cast(pl.Utf8).is_in(filtered_match_ids))
-
-    me_name = display_name_from_xuid(xuid.strip(), db_path=db_path)
-    sub = TeammatesService.enrich_with_performance_score(sub, me_name, db_path, is_main=True)
-    if not friend_sub.is_empty():
-        friend_sub = TeammatesService.enrich_with_performance_score(friend_sub, name, db_path)
-
-    render_comparison_charts(
-        sub=sub,
-        friend_sub=friend_sub,
-        me_name=me_name,
-        friend_name=name,
-        friend_xuid=friend_xuid,
-        show_smooth=show_smooth,
-    )
-    series = [(me_name, sub)]
-    if not friend_sub.is_empty():
-        series.append((name, friend_sub))
-    colors_by_name = assign_player_colors_fn([n for n, _ in series])
-    series = enrich_series_fn(series, db_path)
-
-    render_weapon_kills_bar_chart(
-        player_infos=[(me_name, xuid, list(shared_ids)), (name, friend_xuid, list(shared_ids))],
-        colors_by_name=colors_by_name,
-        db_path=db_path,
-        key_suffix=friend_xuid,
-    )
-    render_metric_bar_charts(
-        series=series,
-        colors_by_name=colors_by_name,
-        show_smooth=show_smooth,
-        key_suffix=friend_xuid,
-        plot_fn=plot_multi_metric_bars_fn,
-    )
-    render_synergy_radar(
-        sub=sub,
-        friend_sub=friend_sub,
-        me_name=me_name,
-        friend_name=name,
-        colors_by_name=colors_by_name,
-    )
-    _render_shared_medals(
-        db_path,
-        xuid,
-        friend_xuid,
-        me_name,
-        name,
-        shared_ids,
-        db_key,
-        top_medals_fn,
-    )
-
-    _render_single_teammate_weapon_and_map(
-        sub=sub,
-        dfr=dfr,
-        friend_sub=friend_sub,
-        me_name=me_name,
-        name=name,
-        db_path=db_path,
-        friend_xuid=friend_xuid,
-        shared_ids=shared_ids,
-    )
-
-
-def _render_single_teammate_weapon_and_map(  # noqa: PLR0913
-    sub: pl.DataFrame,
-    dfr: pl.DataFrame,
-    friend_sub: pl.DataFrame,
-    me_name: str,
-    name: str,
-    db_path: str,
-    friend_xuid: str,
-    shared_ids: set[str],
-) -> None:
-    """Rend le tableau d'armes et les graphes par carte en vue single teammate."""
-    from src.ui.pages.teammates_weapons import render_weapon_kills_table
-
-    render_weapon_kills_table(db_path, friend_xuid, list(shared_ids))
-    render_single_map_section(
-        sub=sub,
-        dfr=dfr,
-        series=[(me_name, sub)] + ([(name, friend_sub)] if not friend_sub.is_empty() else []),
-        lang=get_lang(),
-    )
-    render_squad_timeline(
-        db_path=db_path,
-        me_name=me_name,
-        friend_names=[name],
-        all_match_ids=list(shared_ids),
-        lang=get_lang(),
-    )
 
 
 def render_multi_teammate_view(  # noqa: PLR0913
@@ -267,28 +78,27 @@ def render_multi_teammate_view(  # noqa: PLR0913
         callbacks=callbacks,
     )
 
-    if len(picked_xuids) >= 2:
-        rendered_bottom_charts = render_trio_view(
-            df=df,
-            dff=dff,
-            base=base,
-            me_name=ctx["me_name"],
-            xuid=ctx["xuid"],
-            db_path=db_path,
-            db_key=db_key,
-            aliases_key=aliases_key,
-            picked_xuids=picked_xuids,
-            apply_current_filters=filters["apply_current_filters"],
-            include_firefight=include_firefight,
-            series=series,
-            colors_by_name=colors_by_name,
-            show_smooth=show_smooth,
-            assign_player_colors_fn=assign_player_colors_fn,
-            plot_multi_metric_bars_fn=plot_multi_metric_bars_fn,
-            top_medals_fn=top_medals_fn,
-            load_teammate_stats_fn=load_teammate_stats_fn,
-            enrich_series_fn=enrich_series_fn,
-        )
+    rendered_bottom_charts = render_trio_view(
+        df=df,
+        dff=dff,
+        base=base,
+        me_name=ctx["me_name"],
+        xuid=ctx["xuid"],
+        db_path=db_path,
+        db_key=db_key,
+        aliases_key=aliases_key,
+        picked_xuids=picked_xuids,
+        apply_current_filters=filters["apply_current_filters"],
+        include_firefight=include_firefight,
+        series=series,
+        colors_by_name=colors_by_name,
+        show_smooth=show_smooth,
+        assign_player_colors_fn=assign_player_colors_fn,
+        plot_multi_metric_bars_fn=plot_multi_metric_bars_fn,
+        top_medals_fn=top_medals_fn,
+        load_teammate_stats_fn=load_teammate_stats_fn,
+        enrich_series_fn=enrich_series_fn,
+    )
 
     if len(picked_xuids) >= 2:
         impact_match_ids = (

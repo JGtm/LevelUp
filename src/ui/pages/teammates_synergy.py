@@ -271,8 +271,8 @@ def _build_squad_player_list(  # noqa: PLR0913
     me_df: pl.DataFrame,
     f1_name: str,
     f1_df: pl.DataFrame,
-    f2_name: str,
-    f2_df: pl.DataFrame,
+    f2_name: str | None,
+    f2_df: pl.DataFrame | None,
     f3_name: str | None,
     f3_df: pl.DataFrame | None,
     base_dir: Path,
@@ -288,13 +288,16 @@ def _build_squad_player_list(  # noqa: PLR0913
             _resolve_player_db_path(base_dir, f1_name, _extract_player_xuid(f1_df)),
             colors_by_name.get(f1_name, OKABE_ITO_PALETTE[1]),
         ),
-        (
-            f2_name,
-            f2_df,
-            _resolve_player_db_path(base_dir, f2_name, _extract_player_xuid(f2_df)),
-            colors_by_name.get(f2_name, OKABE_ITO_PALETTE[2]),
-        ),
     ]
+    if f2_name and f2_df is not None:
+        players.append(
+            (
+                f2_name,
+                f2_df,
+                _resolve_player_db_path(base_dir, f2_name, _extract_player_xuid(f2_df)),
+                colors_by_name.get(f2_name, OKABE_ITO_PALETTE[2]),
+            )
+        )
     if f3_name and f3_df is not None:
         players.append(
             (
@@ -347,20 +350,19 @@ def _compute_profiles_from_squad(
 def render_trio_synergy_radar(  # noqa: PLR0913
     me_df: DataFrameLike,
     f1_df: DataFrameLike,
-    f2_df: DataFrameLike,
+    f2_df: DataFrameLike | None,
     me_name: str,
     f1_name: str,
-    f2_name: str,
+    f2_name: str | None,
     colors_by_name: dict[str, str],
     *,
     db_path: str | None = None,
     f3_df: DataFrameLike | None = None,
     f3_name: str | None = None,
 ) -> None:
-    """Radar complémentarité escouade (6 axes) : moi + 2 ou 3 coéquipiers."""
+    """Radar complémentarité escouade (6 axes) : moi + 1, 2 ou 3 coéquipiers."""
     me_df = ensure_polars(me_df)
     f1_df = ensure_polars(f1_df)
-    f2_df = ensure_polars(f2_df)
     if me_df.is_empty():
         return
 
@@ -372,7 +374,11 @@ def render_trio_synergy_radar(  # noqa: PLR0913
             return set()
         return set(df["match_id"].cast(pl.Utf8).to_list())
 
-    to_intersect = [me_df, f1_df, f2_df] + ([f3_df] if f3_df is not None else [])
+    to_intersect: list[DataFrameLike] = [me_df, f1_df]
+    if f2_df is not None:
+        to_intersect.append(ensure_polars(f2_df))
+    if f3_df is not None:
+        to_intersect.append(ensure_polars(f3_df))
     shared = _ids(ensure_polars(to_intersect[0]))
     for _df in to_intersect[1:]:
         shared &= _ids(ensure_polars(_df))
@@ -388,7 +394,7 @@ def render_trio_synergy_radar(  # noqa: PLR0913
         f1_name,
         f1_df,
         f2_name,
-        f2_df,
+        ensure_polars(f2_df) if f2_df is not None else None,
         f3_name,
         ensure_polars(f3_df) if f3_df is not None else None,
         base_dir,

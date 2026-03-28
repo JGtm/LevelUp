@@ -14,139 +14,12 @@ import streamlit as st
 logger = logging.getLogger(__name__)
 
 from src.config import OKABE_ITO_PALETTE
+from src.ui.chart_utils import safe_chart_render
 from src.ui.i18n import get_lang, t
 from src.ui.streamlit_modern import PLOTLY_CLEAN_CONFIG, PLOTLY_STATIC_CONFIG, fragment_if_available
-from src.visualization import (
-    plot_average_life,
-    plot_per_minute_timeseries,
-    plot_performance_timeseries,
-    plot_timeseries,
-    plot_trio_metric,
-)
+from src.visualization import plot_trio_metric
 from src.visualization._compat import DataFrameLike, ensure_polars
-
-
-@fragment_if_available
-def render_comparison_charts(  # noqa: PLR0913
-    sub: DataFrameLike,
-    friend_sub: DataFrameLike,
-    me_name: str,
-    friend_name: str,
-    friend_xuid: str,
-    show_smooth: bool = True,
-) -> None:
-    """Affiche les graphes de comparaison côte à côte.
-
-    Args:
-        sub: DataFrame des matchs du joueur principal.
-        friend_sub: DataFrame des matchs du coéquipier.
-        me_name: Nom du joueur principal.
-        friend_name: Nom du coéquipier.
-        friend_xuid: XUID du coéquipier.
-        show_smooth: Afficher les courbes lissées.
-    """
-    sub = ensure_polars(sub)
-    friend_sub = ensure_polars(friend_sub)
-    c1, c2 = st.columns(2)
-    with c1:
-        st.plotly_chart(
-            plot_timeseries(sub, title=f"{me_name} — matchs avec {friend_name}", lang=get_lang()),
-            width="stretch",
-            key=f"friend_ts_me_{friend_xuid}",
-            config=PLOTLY_CLEAN_CONFIG,
-        )
-    with c2:
-        if friend_sub.is_empty():
-            st.warning(t("error_chart", error="charger les stats du coéquipier"))
-        else:
-            st.plotly_chart(
-                plot_timeseries(
-                    friend_sub, title=f"{friend_name} — matchs avec {me_name}", lang=get_lang()
-                ),
-                width="stretch",
-                key=f"friend_ts_fr_{friend_xuid}",
-                config=PLOTLY_CLEAN_CONFIG,
-            )
-
-    c3, c4 = st.columns(2)
-    with c3:
-        st.plotly_chart(
-            plot_per_minute_timeseries(
-                sub, title=f"{me_name} — stats/min (avec {friend_name})", lang=get_lang()
-            ),
-            width="stretch",
-            key=f"friend_pm_me_{friend_xuid}",
-            config=PLOTLY_CLEAN_CONFIG,
-        )
-    with c4:
-        if not friend_sub.is_empty():
-            st.plotly_chart(
-                plot_per_minute_timeseries(
-                    friend_sub,
-                    title=f"{friend_name} — stats/min (avec {me_name})",
-                    lang=get_lang(),
-                ),
-                width="stretch",
-                key=f"friend_pm_fr_{friend_xuid}",
-                config=PLOTLY_CLEAN_CONFIG,
-            )
-
-    c5, c6 = st.columns(2)
-    with c5:
-        if not sub.drop_nulls(subset=["average_life_seconds"]).is_empty():
-            st.plotly_chart(
-                plot_average_life(
-                    sub,
-                    title=t("tm_lifespan_with", player=me_name, partner=friend_name),
-                    lang=get_lang(),
-                ),
-                width="stretch",
-                key=f"friend_life_me_{friend_xuid}",
-                config=PLOTLY_CLEAN_CONFIG,
-            )
-    with c6:
-        if (
-            not friend_sub.is_empty()
-            and not friend_sub.drop_nulls(subset=["average_life_seconds"]).is_empty()
-        ):
-            st.plotly_chart(
-                plot_average_life(
-                    friend_sub,
-                    title=t("tm_lifespan_with", player=friend_name, partner=me_name),
-                    lang=get_lang(),
-                ),
-                width="stretch",
-                key=f"friend_life_fr_{friend_xuid}",
-                config=PLOTLY_CLEAN_CONFIG,
-            )
-
-    # Graphes de performance
-    c7, c8 = st.columns(2)
-    with c7:
-        st.plotly_chart(
-            plot_performance_timeseries(
-                sub,
-                title=f"{me_name} — Performance (avec {friend_name})",
-                show_smooth=show_smooth,
-                lang=get_lang(),
-            ),
-            width="stretch",
-            key=f"friend_perf_me_{friend_xuid}",
-            config=PLOTLY_CLEAN_CONFIG,
-        )
-    with c8:
-        if not friend_sub.is_empty():
-            st.plotly_chart(
-                plot_performance_timeseries(
-                    friend_sub,
-                    title=f"{friend_name} — Performance (avec {me_name})",
-                    show_smooth=show_smooth,
-                    lang=get_lang(),
-                ),
-                width="stretch",
-                key=f"friend_perf_fr_{friend_xuid}",
-                config=PLOTLY_CLEAN_CONFIG,
-            )
+from src.visualization.trio import plot_trio_kills_deaths
 
 
 @fragment_if_available
@@ -240,7 +113,7 @@ def _plot_trio_metric_chart(  # noqa: PLR0913
     *,
     d_self: DataFrameLike,
     d_f1: DataFrameLike,
-    d_f2: DataFrameLike,
+    d_f2: DataFrameLike | None,
     d_f3: DataFrameLike | None,
     names: tuple[str, ...],
     lang: str,
@@ -278,8 +151,6 @@ def _plot_trio_metric_chart(  # noqa: PLR0913
 
 # (metric, title_key, ytitle_key, key_prefix, extra_kwargs)
 _TRIO_METRIC_SPECS: list[tuple[str, str, str, str, dict]] = [
-    ("kills", "tm_kills", "tm_kills", "trio_kills", {}),
-    ("deaths", "tm_deaths", "tm_deaths", "trio_deaths", {"is_inverse": True}),
     ("assists", "tm_assists", "tm_assists", "trio_assists", {}),
     ("ratio", "tm_kda", "tm_kda", "trio_ratio", {"y_format": ".3f"}),
     ("accuracy", "tm_accuracy", None, "trio_accuracy", {"y_suffix": "%", "y_format": ".2f"}),
@@ -292,22 +163,45 @@ _TRIO_METRIC_SPECS: list[tuple[str, str, str, str, dict]] = [
 def render_trio_charts(  # noqa: PLR0913
     d_self: DataFrameLike,
     d_f1: DataFrameLike,
-    d_f2: DataFrameLike,
+    d_f2: DataFrameLike | None,
     me_name: str,
     f1_name: str,
-    f2_name: str,
+    f2_name: str | None,
     f1_xuid: str,
-    f2_xuid: str,
+    f2_xuid: str | None,
     *,
     d_f3: DataFrameLike | None = None,
     f3_name: str | None = None,
     f3_xuid: str | None = None,
     colors_by_name: dict[str, str] | None = None,
 ) -> None:
-    """Affiche les 7 graphes de métriques pour une escouade de 3 ou 4 joueurs."""
-    names: tuple[str, ...] = (me_name, f1_name, f2_name) + ((f3_name,) if f3_name else ())
-    key_suffix = f"{f1_xuid}_{f2_xuid}" + (f"_{f3_xuid}" if f3_xuid else "")
+    """Affiche les graphes de métriques pour une escouade de 2, 3 ou 4 joueurs."""
+    names: tuple[str, ...] = (me_name, f1_name)
+    if f2_name:
+        names += (f2_name,)
+    if f3_name:
+        names += (f3_name,)
+    key_suffix = f1_xuid + (f"_{f2_xuid}" if f2_xuid else "") + (f"_{f3_xuid}" if f3_xuid else "")
     _lang = get_lang()
+
+    # Graphe combiné kills↑/morts↓ (remplace les deux graphes séparés)
+    with safe_chart_render():
+        st.plotly_chart(
+            plot_trio_kills_deaths(
+                d_self,
+                d_f1,
+                d_f2,
+                names=names,
+                title=t("tm_kills_deaths"),
+                lang=_lang,
+                d_f3=d_f3,
+                colors_by_name=colors_by_name,
+            ),
+            width="stretch",
+            key=f"trio_kd_{key_suffix}",
+            config=PLOTLY_CLEAN_CONFIG,
+        )
+
     _shared: dict = {
         "d_self": d_self,
         "d_f1": d_f1,

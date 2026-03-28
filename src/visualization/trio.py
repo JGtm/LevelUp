@@ -38,7 +38,7 @@ def _negative_color(hex_color: str) -> str:
 def plot_trio_metric(  # noqa: PLR0912, PLR0913, PLR0915, C901 — graphe multi-joueurs
     d_self: DataFrameLike,
     d_f1: DataFrameLike,
-    d_f2: DataFrameLike,
+    d_f2: DataFrameLike | None = None,
     *,
     metric: str,
     names: tuple[str, ...],
@@ -73,7 +73,7 @@ def plot_trio_metric(  # noqa: PLR0912, PLR0913, PLR0915, C901 — graphe multi-
     Returns:
         Figure Plotly.
     """
-    all_input_dfs = [d_self, d_f1, d_f2]
+    all_input_dfs = [d_self, d_f1] + ([d_f2] if d_f2 is not None else [])
     if d_f3 is not None:
         all_input_dfs.append(d_f3)
 
@@ -240,5 +240,170 @@ def plot_trio_metric(  # noqa: PLR0912, PLR0913, PLR0915, C901 — graphe multi-
 
     fig = apply_halo_plot_style(fig, title=title, height=PLOT_CONFIG.default_height)
     # Rétablir l'axe zéro en gras blanc (apply_halo_plot_style le désactive via theme.py)
+    fig.update_yaxes(zeroline=True, zerolinecolor="rgba(255,255,255,0.75)", zerolinewidth=2)
+    return fig
+
+
+def _add_kd_player_traces(  # noqa: PLR0913
+    fig: go.Figure,
+    xs: list[int],
+    kills: list,
+    deaths_abs: list,
+    color: str,
+    name: str,
+    smooth_window: int,
+) -> None:
+    """Ajoute les traces kills (positif) + morts (négatif) d'un joueur sur la figure."""
+    neg_color = _negative_color(color)
+    deaths_neg = [-v if v is not None else None for v in deaths_abs]
+
+    fig.add_trace(
+        go.Bar(
+            x=xs,
+            y=kills,
+            name=f"{name} kills",
+            marker_color=color,
+            opacity=0.75,
+            offsetgroup=name,
+            customdata=kills,
+            hovertemplate="%{customdata}<extra></extra>",
+        )
+    )
+    fig.add_trace(
+        go.Bar(
+            x=xs,
+            y=deaths_neg,
+            name=f"{name} morts",
+            marker_color=neg_color,
+            opacity=0.75,
+            offsetgroup=name,
+            customdata=deaths_abs,
+            hovertemplate="%{customdata}<extra></extra>",
+        )
+    )
+    w = max(2, smooth_window)
+    roll_k = pl.Series(kills).cast(pl.Float64).rolling_mean(window_size=w, min_samples=1).to_list()
+    roll_d_neg = [
+        -v
+        for v in pl.Series(deaths_abs)
+        .cast(pl.Float64)
+        .rolling_mean(window_size=w, min_samples=1)
+        .to_list()
+    ]
+    fig.add_trace(
+        go.Scatter(
+            x=xs,
+            y=roll_k,
+            mode="lines",
+            name=f"{name} kills (moy.)",
+            line={"color": color, "width": 2},
+            showlegend=False,
+        )
+    )
+    fig.add_trace(
+        go.Scatter(
+            x=xs,
+            y=roll_d_neg,
+            mode="lines",
+            name=f"{name} morts (moy.)",
+            line={"color": neg_color, "width": 2, "dash": "dot"},
+            showlegend=False,
+        )
+    )
+
+
+def plot_trio_kills_deaths(  # noqa: PLR0913
+    d_self: DataFrameLike,
+    d_f1: DataFrameLike,
+    d_f2: DataFrameLike | None = None,
+    *,
+    names: tuple[str, ...],
+    title: str,
+    lang: str = "fr",
+    d_f3: DataFrameLike | None = None,
+    colors_by_name: dict[str, str] | None = None,
+    smooth_window: int = 7,
+) -> go.Figure:
+    """Graphique combiné kills↑/morts↓ pour l'escouade (2, 3 ou 4 joueurs).
+
+    Kills tracés au-dessus de l'axe (couleur joueur), morts en dessous
+    (teinte négative Okabe-Ito). Les barres kills/morts d'un même joueur
+    partagent le même offsetgroup → alignées au même x.
+    """
+    all_dfs = (
+        [d_self, d_f1] + ([d_f2] if d_f2 is not None else []) + ([d_f3] if d_f3 is not None else [])
+    )
+    if colors_by_name is not None:
+        color_list = [
+            colors_by_name.get(n, OKABE_ITO_PALETTE[i % len(OKABE_ITO_PALETTE)])
+            for i, n in enumerate(names)
+        ]
+    else:
+        color_list = [OKABE_ITO_PALETTE[i % len(OKABE_ITO_PALETTE)] for i in range(len(all_dfs))]
+
+    def _prep(df: DataFrameLike) -> pl.DataFrame:
+        p = ensure_polars(df)
+        if p.is_empty() or "kills" not in p.columns or "deaths" not in p.columns:
+            return pl.DataFrame(
+                schema={"start_time": pl.Datetime, "kills": pl.Float64, "deaths": pl.Float64}
+            )
+        out = p.select(["start_time", "kills", "deaths"])
+        if not out.schema["start_time"].is_temporal():
+            out = out.with_columns(pl.col("start_time").str.to_datetime(strict=False))
+        return out.drop_nulls(subset=["start_time"]).sort("start_time")
+
+    prepped = [_prep(df) for df in all_dfs]
+    aligned = prepped[0]
+    for p_df in prepped[1:]:
+        aligned = aligned.join(p_df.select(["start_time"]), on="start_time", how="inner")
+    xs = list(range(len(aligned)))
+    ref_ts = aligned["start_time"].to_list()
+    ts_to_idx = {ts: i for i, ts in enumerate(ref_ts)}
+
+    fig = go.Figure()
+    for _i, (df_p, name, color) in enumerate(zip(prepped, names, color_list, strict=False)):
+        if df_p.is_empty():
+            continue
+        df_aligned = df_p.filter(pl.col("start_time").is_in(ref_ts))
+        if df_aligned.is_empty():
+            continue
+        ordered_xs = [ts_to_idx[ts] for ts in df_aligned["start_time"].to_list()]
+        kills = [float(v) if v is not None else 0.0 for v in df_aligned["kills"].to_list()]
+        deaths_abs = [float(v) if v is not None else 0.0 for v in df_aligned["deaths"].to_list()]
+        _add_kd_player_traces(fig, ordered_xs, kills, deaths_abs, color, name, smooth_window)
+
+    from src.visualization._permin_helpers import build_symmetric_abs_ticks
+
+    if aligned.is_empty():
+        all_kills = all_deaths = [0.0]
+    else:
+        all_kills = [
+            float(v or 0)
+            for df_p in prepped
+            for v in df_p.filter(pl.col("start_time").is_in(ref_ts))["kills"].to_list()
+        ]
+        all_deaths = [
+            float(v or 0)
+            for df_p in prepped
+            for v in df_p.filter(pl.col("start_time").is_in(ref_ts))["deaths"].to_list()
+        ]
+    tickvals, ticktext = build_symmetric_abs_ticks(
+        max(all_kills, default=1), max(all_deaths, default=1)
+    )
+    ticktext_fr = (
+        aligned["start_time"].dt.strftime("%d/%m").fill_null("").to_list()
+        if not aligned.is_empty()
+        else []
+    )
+
+    fig.update_layout(
+        barmode="group",
+        height=PLOT_CONFIG.default_height,
+        margin={"l": 40, "r": 20, "t": 60, "b": 40},
+        legend=get_legend_horizontal_bottom(),
+    )
+    fig.update_xaxes(tickmode="array", tickvals=xs, ticktext=ticktext_fr or xs, title_text="")
+    fig.update_yaxes(tickvals=tickvals, ticktext=ticktext, title_text=title)
+    fig = apply_halo_plot_style(fig, title=title, height=None)
     fig.update_yaxes(zeroline=True, zerolinecolor="rgba(255,255,255,0.75)", zerolinewidth=2)
     return fig
