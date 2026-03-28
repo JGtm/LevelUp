@@ -1346,6 +1346,7 @@ async def backfill_team_scores(
     btb_only: bool = False,
     arena_only: bool = False,
     requests_per_second: int = 5,
+    **kwargs: Any,
 ) -> int:
     """Peuple team_0_score / team_1_score dans shared.match_registry via l'API.
 
@@ -1370,6 +1371,7 @@ async def backfill_team_scores(
 
     _OBJ_MODES = "(game_variant_name LIKE '%CTF%' OR game_variant_name LIKE '%Total Control%' OR game_variant_name LIKE '%Stronghold%' OR game_variant_name LIKE '%Stockpile%')"
     _BTB_FILTER = "(game_variant_name LIKE '%BTB%' OR playlist_name LIKE '%BTB%')"
+    koth_assault = kwargs.get("koth_assault", False)
     if btb_only:
         # Ciblage précis : BTB objectifs avec score manifestement corrompu (> 100)
         where_clause = (
@@ -1383,6 +1385,13 @@ async def backfill_team_scores(
             f"WHERE NOT {_BTB_FILTER}"
             f" AND {_OBJ_MODES}"
             " AND GREATEST(COALESCE(team_0_score, 0), COALESCE(team_1_score, 0)) > 100"
+        )
+    elif koth_assault:
+        # Ciblage précis : KOTH et Assault/Bomb avec score corrompu (> 10)
+        where_clause = (
+            " WHERE (game_variant_name LIKE '%KOTH%' OR game_variant_name LIKE '%King of the Hill%'"
+            "     OR game_variant_name LIKE '%Assault%' OR game_variant_name LIKE '%Bomb%')"
+            " AND GREATEST(COALESCE(team_0_score, 0), COALESCE(team_1_score, 0)) > 10"
         )
     elif force:
         where_clause = ""
@@ -1760,3 +1769,82 @@ def backfill_avenger_medal(shared_conn: Any, *, force: bool = False) -> int:
 
     logger.info("✅ Vengeur : %d médaille(s) insérée(s)/mise(s) à jour", len(rows))
     return len(rows)
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Fix score inversions (Problème A) — swap SQL pur, sans API
+# ─────────────────────────────────────────────────────────────────────────────
+
+
+def backfill_fix_score_inversions(shared_conn: Any, *, dry_run: bool = False) -> int:
+    """Corrige les inversions team_0_score ↔ team_1_score dans match_registry.
+
+    Contexte : lors d'anciens syncs, un bug dans l'extracteur de scores
+    swappait team_0_score et team_1_score pour certains matchs Slayer.
+    Détection : matchs Slayer où un joueur avec outcome=WIN a
+    ``team_score < enemy_score`` (le gagnant devrait toujours avoir le score
+    le plus haut en Slayer).
+    Correction : swap ``team_0_score`` ↔ ``team_1_score`` (uniquement).
+    Les ``ps_score`` sont calculés depuis match_participants et sont corrects.
+
+    Args:
+        shared_conn: Connexion en écriture vers shared_matches.duckdb.
+        dry_run: Si True, affiche les matchs affectés sans modifier la DB.
+
+    Returns:
+        Nombre de matchs corrigés (ou à corriger en dry_run).
+    """
+    # Détection : joueur gagnant avec score d'équipe inférieur à l'ennemi
+    detection_sql = """
+        SELECT DISTINCT m.match_id
+        FROM match_registry m
+        JOIN match_participants mp ON m.match_id = mp.match_id
+        WHERE mp.outcome = 2
+          AND m.game_variant_name LIKE '%Slayer%'
+          AND m.team_0_score IS NOT NULL
+          AND m.team_1_score IS NOT NULL
+          AND CASE WHEN mp.team_id = 0 THEN m.team_0_score ELSE m.team_1_score END
+            < CASE WHEN mp.team_id = 0 THEN m.team_1_score ELSE m.team_0_score END
+    """
+    match_ids = [r[0] for r in shared_conn.execute(detection_sql).fetchall()]
+
+    if not match_ids:
+        logger.info("Score inversions : aucun match Slayer avec inversion détectée")
+        return 0
+
+    logger.info("Score inversions : %d match(s) avec team_score inversé", len(match_ids))
+
+    if dry_run:
+        logger.info("[DRY-RUN] Matchs qui seraient corrigés (aucune modification) :")
+        rows = shared_conn.execute(
+            f"SELECT match_id, game_variant_name, start_time, team_0_score, team_1_score"
+            f" FROM match_registry WHERE match_id IN ({','.join('?' for _ in match_ids)})"
+            f" ORDER BY start_time",
+            match_ids,
+        ).fetchall()
+        for r in rows:
+            logger.info(
+                "  %s  %s  %s  t0=%s t1=%s → swap → t0=%s t1=%s",
+                r[0][:12],
+                str(r[2])[:10],
+                (r[1] or "")[:30],
+                r[3],
+                r[4],
+                r[4],
+                r[3],
+            )
+        return len(match_ids)
+
+    # Swap team_0_score ↔ team_1_score par batch (DuckDB ne supporte pas le swap atomique)
+    shared_conn.executemany(
+        """
+        UPDATE match_registry
+        SET team_0_score = team_1_score,
+            team_1_score = team_0_score
+        WHERE match_id = ?
+        """,
+        [(mid,) for mid in match_ids],
+    )
+    shared_conn.commit()
+    logger.info("✅ Score inversions : %d match(s) corrigé(s)", len(match_ids))
+    return len(match_ids)

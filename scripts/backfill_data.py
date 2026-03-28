@@ -96,6 +96,7 @@ def main() -> int:  # noqa: C901, PLR0912, PLR0915
     force_team_scores = getattr(args, "force_team_scores", False)
     btb_only = getattr(args, "btb_only", False)
     arena_only = getattr(args, "arena_only", False)
+    koth_assault = getattr(args, "koth_assault", False)
     if team_scores:
         try:
             from scripts.backfill.strategies import backfill_team_scores
@@ -108,11 +109,31 @@ def main() -> int:  # noqa: C901, PLR0912, PLR0915
                     force=force_team_scores,
                     btb_only=btb_only,
                     arena_only=arena_only,
+                    koth_assault=koth_assault,
                 )
             )
             logger.info(f"Team scores : {n} match(s) mis à jour")
         except Exception as e:
             logger.error(f"Erreur --team-scores : {e}")
+            import traceback
+
+            traceback.print_exc()
+        return 0
+
+    # --fix-score-inversions : swap team_0_score ↔ team_1_score (Slayer, sans API)
+    fix_score_inversions = getattr(args, "fix_score_inversions", False)
+    if fix_score_inversions:
+        try:
+            from scripts.backfill.strategies import backfill_fix_score_inversions
+
+            dry_run = getattr(args, "dry_run", False)
+            n = backfill_fix_score_inversions(_open_shared_conn(), dry_run=dry_run)
+            if dry_run:
+                logger.info(f"[DRY-RUN] Score inversions : {n} match(s) seraient corrigé(s)")
+            else:
+                logger.info(f"Score inversions : {n} match(s) corrigé(s)")
+        except Exception as e:
+            logger.error(f"Erreur --fix-score-inversions : {e}")
             import traceback
 
             traceback.print_exc()

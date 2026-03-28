@@ -440,6 +440,22 @@ def create_argument_parser() -> argparse.ArgumentParser:
         action="store_true",
         help="Limite --team-scores aux matchs non-BTB objectifs avec score corrompu (>100)",
     )
+    parser.add_argument(
+        "--koth-assault",
+        action="store_true",
+        help="Limite --team-scores aux matchs KOTH/Assault avec score corrompu (>10)",
+    )
+
+    # ── Fix score inversions (match_registry — Slayer, swap SQL) ──────────
+    parser.add_argument(
+        "--fix-score-inversions",
+        action="store_true",
+        help=(
+            "Corrige les inversions team_0_score ↔ team_1_score dans match_registry "
+            "pour les matchs Slayer où le gagnant a un score inférieur à l'ennemi "
+            "(bug de sync historique). Opération locale, sans appel API."
+        ),
+    )
 
     # ── Mode category (match_registry — local, sans API) ──────────────────
     parser.add_argument(
