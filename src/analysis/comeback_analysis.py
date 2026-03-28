@@ -30,7 +30,8 @@ from dataclasses import dataclass
 import polars as pl
 
 from src.analysis._medal_verdicts import (
-    COMEBACK_DEFICIT_THRESHOLD,
+    COMEBACK_DEFICIT_FALLBACK,
+    COMEBACK_DEFICIT_PCT,
     COMEBACK_MAX_SLAYER_WIN_SCORE,
     DominanceFlag,
 )
@@ -125,7 +126,9 @@ def _resolve_threshold(meta: MatchMeta) -> int | None:
     if meta.win_score is not None and meta.win_score > COMEBACK_MAX_SLAYER_WIN_SCORE:
         return None  # Sécurité : score > 100 même avec "slayer" dans le nom
 
-    return COMEBACK_DEFICIT_THRESHOLD
+    if meta.win_score is not None:
+        return max(3, round(meta.win_score * COMEBACK_DEFICIT_PCT))
+    return COMEBACK_DEFICIT_FALLBACK
 
 
 def detect_comeback_badge(
@@ -166,15 +169,16 @@ def detect_comeback_badge(
 
     won = outcome == 2
 
+    # Contre-Remontada vérifié EN PREMIER : cas le plus spécifique (les deux équipes
+    # ont eu une avance de threshold+ à des moments différents, nous tenons et gagnons).
+    # Doit précéder REMONTADA qui partage la condition `max_deficit >= threshold`.
+    if won and max_lead >= threshold and max_deficit >= threshold:
+        return int(DominanceFlag.CONTRE_REMONTADA)
+
     if won and max_deficit >= threshold:
         return int(DominanceFlag.REMONTADA)
 
     if not won and max_lead >= threshold:
         return int(DominanceFlag.DEBANDADE)
-
-    # Contre-Remontada : on avait threshold+ frags d'avance, l'adversaire a aussi
-    # atteint threshold+ frags d'avance à un autre moment, mais on a tenu.
-    if won and max_lead >= threshold and max_deficit >= threshold:
-        return int(DominanceFlag.CONTRE_REMONTADA)
 
     return _FLAG_NONE

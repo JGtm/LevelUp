@@ -13,8 +13,7 @@ services:
     # Créer .env.local depuis .env.local.example avant le premier `docker compose up`.
     # Si absent, le dashboard fonctionne en lecture seule (pas de sync API).
     env_file:
-      - path: .env.local
-        required: false
+      - .env.local
     volumes:
       # Données v4 (DuckDB/Parquet) en lecture/écriture
       - ./data:/app/data

@@ -1,6 +1,6 @@
 ﻿— Tâches et TODO centralisés
 
-> Mis à jour le 2026-03-27.
+> Mis à jour le 2026-03-28.
 
 ---
 
@@ -73,6 +73,99 @@
 ## 📋 Backlog
 
 
+### 🟠 Normalisation des labels de modes de jeu — suppression des redondances (v6.2.1)
+
+**Noté le** : 2026-03-28
+**Priorité** : Moyenne
+
+#### Problème
+
+Le champ `game_variant_name` (format API Halo : `{prefix}:{mode}`) contient des redondances visibles dans toute l'UI :
+- La **playlist** implique déjà le contexte → `BTB:Slayer` dans "Big Team Battle" = "Slayer" suffit
+- La **`mode_category`** implique déjà le préfixe → `Arena:Slayer` dans Assassin = "Slayer" suffit
+- Le format est parfois **inversé** (`CTF:Arena` vs `Arena:CTF`) selon les variants
+- Quelques variants n'ont **pas de séparateur** (`CASTLE WARS`, `TFF | Survive The Undead`)
+
+#### Mapping des redondances connues
+
+| Préfixe (`game_variant_name`) | `mode_category` impliquée | Redondant si… |
+|-------------------------------|--------------------------|---------------|
+| `Arena` | Assassin | toujours |
+| `BTB` | BTB | toujours |
+| `Ranked` | Ranked | toujours |
+| `Fiesta` | Fiesta | quand le mode est Slayer basique |
+| `Firefight` | Firefight | toujours |
+| `BTB Heavies` | BTB | **non** — "Heavies" est un qualificatif significatif à conserver |
+| `Tactical` | Assassin | oui (sous-variant Arena) |
+| `Community` / `Event` | Other | oui |
+
+#### Architecture cible
+
+**Principe** : normaliser à l'affichage, jamais au stockage. Le `game_variant_name` brut reste intact en DB.
+
+**Couche de résolution** : fonction Python pure dans `src/analysis/` (0 accès DB, 0 Streamlit).
+
+```
+resolve_display_mode(
+    game_variant_name: str,
+    mode_category: str,
+    lang: str,
+    overrides: dict[str, str],          # depuis mode_pair_overrides (metadata)
+    prefix_categories: dict[str, str],  # depuis mode_prefix_names étendu
+    mode_translations: dict[str, str],  # depuis mode_name_tr (metadata)
+) -> str
+```
+
+**Algorithme de résolution (priorité décroissante)** :
+1. Lookup exact dans `mode_pair_overrides` → retourner le label override si trouvé
+2. Si pas de `:` → retourner `game_variant_name` tel quel (variants sans séparateur)
+3. Split sur `:` → `(left, right)`
+4. Détecter le format inversé : si `right` est un préfixe connu (dans `mode_prefix_names`) et `left` ne l'est pas → `prefix=right`, `mode_name=left`
+5. Si `canonical_category(prefix)` == `mode_category` du match → afficher seulement `mode_name` traduit
+6. Sinon → afficher `label(prefix) + sep + label(mode_name)` traduit
+
+#### Extension `mode_prefix_names` requise
+
+Ajouter une colonne `canonical_category` (ou `implied_category`) mappant chaque préfixe vers sa `mode_category` :
+
+| prefix | canonical_category |
+|--------|--------------------|
+| Arena | Assassin |
+| BTB | BTB |
+| BTB Heavies | BTB |
+| Ranked | Ranked |
+| Fiesta | Fiesta |
+| Firefight | Firefight |
+| Gruntpocalypse | Firefight |
+| Tactical | Assassin |
+| Community | Other |
+| Event | Other |
+| Husky Raid | Fiesta |
+| Super Husky Raid | Fiesta |
+| Super Fiesta | Fiesta |
+| Assault | Assassin |
+
+#### Validation humaine obligatoire
+
+Avant de brancher la fonction dans l'UI, générer un **fichier plat de contrôle** (CSV ou tableau console) listant :
+
+```
+game_variant_name | mode_category | playlist_name | nb_matchs | → label_résolu
+```
+
+Le fichier doit être **relu et validé par l'utilisateur** avant toute intégration UI. Des corrections peuvent être apportées via des entrées supplémentaires dans `mode_pair_overrides`.
+
+#### Implémentation
+
+1. Migration `metadata.duckdb` : ajouter colonne `canonical_category` à `mode_prefix_names`
+2. Écrire `resolve_display_mode()` dans `src/analysis/mode_display.py`
+3. Script de génération du fichier plat de contrôle (CLI, sans toucher l'UI)
+4. **Validation utilisateur** du fichier plat
+5. Intégrer `resolve_display_mode()` dans les points d'affichage UI (filtres, top matches, profil, page match…)
+6. Tests unitaires couvrant : format standard, format inversé, override, sans séparateur, qualificatif Heavies
+
+---
+
 ### 🔴 Audit — Calculs KDA locaux dans `src/analysis/` à valider vs valeurs API  (v6.2.1)
 
 **Noté le** : 2026-03-27
@@ -87,11 +180,20 @@
 - `src/analysis/_performance_session.py:263,362` — KDA session
 - `src/data/domain/models/stats.py:54,103` — propriété calculée sur `MatchRow`
 
-**Question à trancher** : Pour ces métriques agrégées (ex: "KDA moyen sur la session"), doit-on :
-1. Continuer à calculer `sum(K+A/3)/sum(D)` depuis les totaux (cohérent avec les stats de session)
-2. Ou faire la moyenne des `kda` API per-match (plus fidèle à l'API, mais différente sémantique)
+**Décision actée (2026-03-28)** : Séparer explicitement les deux sémantiques.
 
-**Action requise** : Décision utilisateur sur la stratégie, puis adapter le code en conséquence.
+1. **Match / distribution / comparaison match-level** : utiliser exclusivement `p.kda` de l'API, tel quel, même si la valeur est négative.
+2. **Session / période / carte / cumul agrégé** : utiliser un indicateur distinct nommé **`efficiency`** (code) / **`efficacité`** (UI FR) / **`efficiency`** (UI EN), dérivé des totaux, avec la formule `sum(K + A/3) / sum(D)`.
+
+**Justification** : le champ API `kda` ne doit plus être traité implicitement comme un simple ratio mathématique agrégable. S'il peut être négatif, alors la moyenne des `kda` match par match décrit la moyenne d'une métrique API signée, pas un rendement global de session. Pour les agrégats lisibles par l'utilisateur, il faut donc conserver un indicateur séparé et explicitement nommé.
+
+**⛔ Nommage obligatoire** : le terme `efficiency` / `efficacité` est **le seul terme autorisé** pour désigner cet agrégat. Les termes `ratio`, `FDA`, `KDA` ou `performance` sont **interdits** pour cette métrique afin d'éviter toute confusion avec la métrique API (`kda`) et le score de performance existant. Toute variable ou clé i18n doit utiliser `efficiency` (ex. `session_efficiency`, `combat_efficiency`).
+
+**Consigne d'implémentation** :
+- Conserver `kda` comme métrique API brute dans tous les flux per-match et percentiles relatifs.
+- Renommer tous les agrégats dérivés des totaux en `efficiency` / `session_efficiency` (code) et `efficacité` / `efficacité de session` (UI FR).
+- Ajouter les clés i18n `efficiency` EN et `efficacité` FR dans `src/ui/i18n/`.
+- Audit UI/i18n à prévoir pour éviter qu'une moyenne de `kda` API soit affichée comme une efficacité de session.
 
 ---
 

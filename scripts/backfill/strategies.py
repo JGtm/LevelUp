@@ -1346,6 +1346,7 @@ async def backfill_team_scores(
     btb_only: bool = False,
     arena_only: bool = False,
     requests_per_second: int = 5,
+    **kwargs: Any,
 ) -> int:
     """Peuple team_0_score / team_1_score dans shared.match_registry via l'API.
 
@@ -1370,6 +1371,7 @@ async def backfill_team_scores(
 
     _OBJ_MODES = "(game_variant_name LIKE '%CTF%' OR game_variant_name LIKE '%Total Control%' OR game_variant_name LIKE '%Stronghold%' OR game_variant_name LIKE '%Stockpile%')"
     _BTB_FILTER = "(game_variant_name LIKE '%BTB%' OR playlist_name LIKE '%BTB%')"
+    koth_assault = kwargs.get("koth_assault", False)
     if btb_only:
         # Ciblage précis : BTB objectifs avec score manifestement corrompu (> 100)
         where_clause = (
@@ -1383,6 +1385,13 @@ async def backfill_team_scores(
             f"WHERE NOT {_BTB_FILTER}"
             f" AND {_OBJ_MODES}"
             " AND GREATEST(COALESCE(team_0_score, 0), COALESCE(team_1_score, 0)) > 100"
+        )
+    elif koth_assault:
+        # Ciblage précis : KOTH et Assault/Bomb avec score corrompu (> 10)
+        where_clause = (
+            " WHERE (game_variant_name LIKE '%KOTH%' OR game_variant_name LIKE '%King of the Hill%'"
+            "     OR game_variant_name LIKE '%Assault%' OR game_variant_name LIKE '%Bomb%')"
+            " AND GREATEST(COALESCE(team_0_score, 0), COALESCE(team_1_score, 0)) > 10"
         )
     elif force:
         where_clause = ""
@@ -1759,4 +1768,162 @@ def backfill_avenger_medal(shared_conn: Any, *, force: bool = False) -> int:
     shared_conn.commit()
 
     logger.info("✅ Vengeur : %d médaille(s) insérée(s)/mise(s) à jour", len(rows))
+    return len(rows)
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Fix score inversions (Problème A) — swap SQL pur, sans API
+# ─────────────────────────────────────────────────────────────────────────────
+
+
+def backfill_fix_score_inversions(shared_conn: Any, *, dry_run: bool = False) -> int:
+    """Corrige les inversions team_0_score ↔ team_1_score dans match_registry.
+
+    Contexte : lors d'anciens syncs, un bug dans l'extracteur de scores
+    swappait team_0_score et team_1_score pour tous les modes (Slayer, CTF,
+    Total Control, Stockpile, KOTH, etc.).
+    Détection universelle : tout match où un joueur avec outcome=WIN a
+    ``team_score < enemy_score`` — le gagnant devrait toujours avoir le score
+    le plus élevé, quel que soit le mode.
+    Correction : swap ``team_0_score`` ↔ ``team_1_score`` (uniquement).
+    Les ``ps_score`` sont calculés depuis match_participants et sont corrects.
+
+    Args:
+        shared_conn: Connexion en écriture vers shared_matches.duckdb.
+        dry_run: Si True, affiche les matchs affectés sans modifier la DB.
+
+    Returns:
+        Nombre de matchs corrigés (ou à corriger en dry_run).
+    """
+    # Détection universelle : joueur gagnant avec score d'équipe inférieur à l'ennemi
+    # Exclut les cas où un seul score est NULL (modes FFA ou données manquantes).
+    # Exclut les scores > 200 (modes avec ps_score leaké type CASTLE WARS — traitement séparé).
+    # Les TIE (outcome=1) et DNF (outcome=4) ne sont pas concernés.
+    detection_sql = """
+        SELECT DISTINCT m.match_id
+        FROM match_registry m
+        JOIN match_participants mp ON m.match_id = mp.match_id
+        WHERE mp.outcome = 2
+          AND m.team_0_score IS NOT NULL
+          AND m.team_1_score IS NOT NULL
+          AND GREATEST(m.team_0_score, m.team_1_score) <= 200
+          AND CASE WHEN mp.team_id = 0 THEN m.team_0_score ELSE m.team_1_score END
+            < CASE WHEN mp.team_id = 0 THEN m.team_1_score ELSE m.team_0_score END
+    """
+    match_ids = [r[0] for r in shared_conn.execute(detection_sql).fetchall()]
+
+    if not match_ids:
+        logger.info("Score inversions : aucun match Slayer avec inversion détectée")
+        return 0
+
+    logger.info("Score inversions : %d match(s) avec team_score inversé", len(match_ids))
+
+    if dry_run:
+        logger.info("[DRY-RUN] Matchs qui seraient corrigés (aucune modification) :")
+        rows = shared_conn.execute(
+            f"SELECT match_id, game_variant_name, start_time, team_0_score, team_1_score"
+            f" FROM match_registry WHERE match_id IN ({','.join('?' for _ in match_ids)})"
+            f" ORDER BY start_time",
+            match_ids,
+        ).fetchall()
+        for r in rows:
+            logger.info(
+                "  %s  %s  %s  t0=%s t1=%s → swap → t0=%s t1=%s",
+                r[0][:12],
+                str(r[2])[:10],
+                (r[1] or "")[:30],
+                r[3],
+                r[4],
+                r[4],
+                r[3],
+            )
+        return len(match_ids)
+
+    # Swap team_0_score ↔ team_1_score par batch (DuckDB ne supporte pas le swap atomique)
+    shared_conn.executemany(
+        """
+        UPDATE match_registry
+        SET team_0_score = team_1_score,
+            team_1_score = team_0_score
+        WHERE match_id = ?
+        """,
+        [(mid,) for mid in match_ids],
+    )
+    shared_conn.commit()
+    logger.info("✅ Score inversions : %d match(s) corrigé(s)", len(match_ids))
+    return len(match_ids)
+
+
+def backfill_fix_pscore_leaks(shared_conn: Any, *, dry_run: bool = False) -> int:
+    """Détecte et nullifie les team_scores contaminés par un ps_score.
+
+    Deux patterns de corruption :
+    - Directe  : ``team_X_score == team_X_ps_score`` (le ps_score de l'équipe X
+      a écrasé son propre score d'équipe — ex : CASTLE WARS).
+    - Croisée  : ``team_X_score == team_Y_ps_score`` (le ps_score de l'équipe
+      adverse a écrasé le score d'équipe — ex : BTB:Sentry Defense).
+
+    Pour les deux cas, les deux colonnes ``team_0_score`` et ``team_1_score``
+    sont mises à NULL (valeur inconnue vaut mieux que valeur fausse).
+    Les ``ps_score`` ne sont pas touchés (calculés depuis match_participants,
+    toujours corrects).
+
+    Seuls les matchs avec scores > 200 sont examinés pour éviter les faux
+    positifs sur les modes objectifs normaux (CTF, KOTH, Stockpile…).
+
+    Args:
+        shared_conn: Connexion en écriture vers shared_matches.duckdb.
+        dry_run: Si True, affiche les matchs affectés sans modifier la DB.
+
+    Returns:
+        Nombre de matchs mis à NULL (ou à l'être en dry_run).
+    """
+    detection_sql = """
+        SELECT DISTINCT match_id, game_variant_name, team_0_score, team_1_score,
+               team_0_ps_score, team_1_ps_score
+        FROM match_registry
+        WHERE GREATEST(COALESCE(team_0_score, 0), COALESCE(team_1_score, 0)) > 200
+          AND (
+              team_0_score IS NOT NULL AND team_0_ps_score IS NOT NULL
+              AND team_1_score IS NOT NULL AND team_1_ps_score IS NOT NULL
+          )
+          AND (
+              -- contamination directe
+              team_0_score = team_0_ps_score
+              OR team_1_score = team_1_ps_score
+              -- contamination croisée
+              OR team_0_score = team_1_ps_score
+              OR team_1_score = team_0_ps_score
+          )
+        ORDER BY match_id
+    """
+    rows = shared_conn.execute(detection_sql).fetchall()
+
+    if not rows:
+        logger.info("Pscore leaks : aucun match corrompu détecté")
+        return 0
+
+    match_ids = [r[0] for r in rows]
+    logger.info("Pscore leaks : %d match(s) avec team_score contaminé par ps_score", len(rows))
+
+    if dry_run:
+        logger.info("[DRY-RUN] Matchs qui seraient nullifiés :")
+        for r in rows:
+            logger.info(
+                "  %s  %-35s  t0=%s t1=%s  ps0=%s ps1=%s → NULL/NULL",
+                r[0][:12],
+                (r[1] or "")[:35],
+                r[2],
+                r[3],
+                r[4],
+                r[5],
+            )
+        return len(rows)
+
+    shared_conn.executemany(
+        "UPDATE match_registry SET team_0_score = NULL, team_1_score = NULL WHERE match_id = ?",
+        [(mid,) for mid in match_ids],
+    )
+    shared_conn.commit()
+    logger.info("✅ Pscore leaks : %d match(s) nullifiés", len(rows))
     return len(rows)

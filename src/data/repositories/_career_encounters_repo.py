@@ -150,6 +150,15 @@ _BADGE_PRIORITY_EXPR: dict[bool, str] = {
     ),
 }
 
+# Filtre BTB optionnel (injecté dans {btb_filter}).
+# True  → exclut les matchs dont mode_category = 'BTB'
+# False → pas de filtre supplémentaire
+_BTB_FILTER_SQL: dict[bool, str] = {
+    True: "AND mv.match_id NOT IN ("
+    "SELECT match_id FROM shared.match_registry WHERE mode_category = 'BTB')",
+    False: "",
+}
+
 _TOP_MATCHES_SQL = """
 WITH enriched AS (
     SELECT
@@ -178,13 +187,17 @@ WITH enriched AS (
       AND COALESCE(mv.time_played_seconds, 0) >= ?
       AND COALESCE(pme.had_bot_teammate, FALSE) = FALSE
       AND COALESCE(mv.is_firefight, FALSE) = FALSE
+      AND mv.my_team_score IS NOT NULL
+      AND mv.enemy_team_score IS NOT NULL
+      {btb_filter}
 )
 SELECT * FROM enriched
 WHERE outcome = ?
 ORDER BY
     {badge_priority} DESC,
     time_played_seconds ASC,
-    ABS(COALESCE(my_team_score, 0) - COALESCE(enemy_team_score, 0)) DESC
+    ABS(COALESCE(my_team_score, 0) - COALESCE(enemy_team_score, 0))
+      / NULLIF(GREATEST(COALESCE(my_team_score, 0), COALESCE(enemy_team_score, 0)), 0) DESC
 LIMIT 10
 """  # noqa: S608
 
@@ -298,7 +311,7 @@ class EncounterCareerMixin:
             ]
         return results[:limit]
 
-    def load_top_match_list(self, *, best: bool) -> list[dict]:
+    def load_top_match_list(self, *, best: bool, exclude_btb: bool = False) -> list[dict]:
         """Charge le Top 10 meilleurs ou pires matchs.
 
         Utilise shared.mv_player_matches + player_match_enrichment (locale).
@@ -306,6 +319,7 @@ class EncounterCareerMixin:
         Args:
             best: True pour les meilleures perf (victoires dominantes),
                   False pour les pires (défaites humiliantes).
+            exclude_btb: Si True, exclut les matchs BTB (mode_category='BTB').
 
         Returns:
             Liste de dicts avec les colonnes du match.
@@ -314,7 +328,10 @@ class EncounterCareerMixin:
             return []
         conn = self._get_connection()
         target_outcome = int(Outcome.WIN) if best else int(Outcome.LOSS)
-        sql = _TOP_MATCHES_SQL.format(badge_priority=_BADGE_PRIORITY_EXPR[best])
+        sql = _TOP_MATCHES_SQL.format(
+            badge_priority=_BADGE_PRIORITY_EXPR[best],
+            btb_filter=_BTB_FILTER_SQL[exclude_btb],
+        )
         try:
             result = conn.execute(
                 sql,

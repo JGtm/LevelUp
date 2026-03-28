@@ -44,11 +44,14 @@ def _format_score(my: int | None, enemy: int | None) -> str:
     return f"{my or 0} — {enemy or 0}"
 
 
-def _match_id_link(match_id: str) -> str:
+def _match_id_link(match_id: str, gamertag: str = "") -> str:
     """Lien HTML tronqué vers la page Explorer pour ce match."""
     if not match_id:
         return "—"
-    href = "/?" + urllib.parse.urlencode({"page": "Explorer", "match_id": match_id})
+    params: dict[str, str] = {"page": "Explorer", "match_id": match_id}
+    if gamertag:
+        params["gamertag"] = gamertag
+    href = "/?" + urllib.parse.urlencode(params)
     short = html.escape(match_id[:8] + "…")
     return (
         f"<a href='{html.escape(href)}' target='_self' "
@@ -169,7 +172,7 @@ def _build_match_badge_legend_html(*, best: bool) -> str:
     )
 
 
-def _build_top_table_html(rows: list[dict], *, best: bool) -> str:
+def _build_top_table_html(rows: list[dict], *, best: bool, gamertag: str = "") -> str:
     """Construit le tableau HTML pour le Top 10."""
     title = t("career_top_best_title") if best else t("career_top_worst_title")
 
@@ -198,7 +201,7 @@ def _build_top_table_html(rows: list[dict], *, best: bool) -> str:
         badge = _badge_html(dom_flag, best=best)
 
         mid = str(row.get("match_id") or "")
-        match_link = _match_id_link(mid)
+        match_link = _match_id_link(mid, gamertag)
         mode = html.escape(str(row.get("game_variant_name") or row.get("playlist_name") or "—"))
 
         score = html.escape(_format_score(row.get("my_team_score"), row.get("enemy_team_score")))
@@ -239,12 +242,20 @@ def _build_top_table_html(rows: list[dict], *, best: bool) -> str:
     )
 
 
-def render_top_matches_section(*, db_path: str, xuid: str) -> None:
+def render_top_matches_section(*, db_path: str, xuid: str, waypoint_player: str = "") -> None:
     """Rend la section Top 10 meilleurs / pires matchs dans la page Carrière."""
-    st.subheader(t("career_top_matches_header"))
+    from src.ui.settings import load_settings
 
-    best = load_top_best_matches(db_path, xuid)
-    worst = load_top_worst_matches(db_path, xuid)
+    settings = load_settings()
+    exclude_btb = settings.career_top_exclude_btb
+
+    header = t("career_top_matches_header")
+    if exclude_btb:
+        header += f" \u2014 {t('career_top_btb_excluded')}"
+    st.subheader(header)
+
+    best = load_top_best_matches(db_path, xuid, exclude_btb=exclude_btb)
+    worst = load_top_worst_matches(db_path, xuid, exclude_btb=exclude_btb)
     logger.debug("Top matches chargés : %d best, %d worst", len(best), len(worst))
 
     if not best and not worst:
@@ -254,7 +265,10 @@ def render_top_matches_section(*, db_path: str, xuid: str) -> None:
     tab_best, tab_worst = st.tabs([t("career_top_best_title"), t("career_top_worst_title")])
     with tab_best:
         if best:
-            st.markdown(_build_top_table_html(best, best=True), unsafe_allow_html=True)
+            st.markdown(
+                _build_top_table_html(best, best=True, gamertag=waypoint_player),
+                unsafe_allow_html=True,
+            )
             has_badge = any(_badge_html(r.get("dominance_flag", 0) or 0, best=True) for r in best)
             if has_badge:
                 st.markdown(_build_match_badge_legend_html(best=True), unsafe_allow_html=True)
@@ -263,7 +277,10 @@ def render_top_matches_section(*, db_path: str, xuid: str) -> None:
 
     with tab_worst:
         if worst:
-            st.markdown(_build_top_table_html(worst, best=False), unsafe_allow_html=True)
+            st.markdown(
+                _build_top_table_html(worst, best=False, gamertag=waypoint_player),
+                unsafe_allow_html=True,
+            )
             has_badge = any(_badge_html(r.get("dominance_flag", 0) or 0, best=False) for r in worst)
             if has_badge:
                 st.markdown(_build_match_badge_legend_html(best=False), unsafe_allow_html=True)
