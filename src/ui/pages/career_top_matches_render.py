@@ -241,10 +241,18 @@ def _build_top_table_html(rows: list[dict], *, best: bool) -> str:
 
 def render_top_matches_section(*, db_path: str, xuid: str) -> None:
     """Rend la section Top 10 meilleurs / pires matchs dans la page Carrière."""
-    st.subheader(t("career_top_matches_header"))
+    from src.ui.settings import load_settings
 
-    best = load_top_best_matches(db_path, xuid)
-    worst = load_top_worst_matches(db_path, xuid)
+    settings = load_settings()
+    exclude_btb = settings.career_top_exclude_btb
+
+    header = t("career_top_matches_header")
+    if exclude_btb:
+        header += f" \u2014 {t('career_top_btb_excluded')}"
+    st.subheader(header)
+
+    best = load_top_best_matches(db_path, xuid, exclude_btb=exclude_btb)
+    worst = load_top_worst_matches(db_path, xuid, exclude_btb=exclude_btb)
     logger.debug("Top matches chargés : %d best, %d worst", len(best), len(worst))
 
     if not best and not worst:
