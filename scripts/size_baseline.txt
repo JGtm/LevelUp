@@ -28,7 +28,7 @@ FUNC:src/data/sync/_aggregates.py:27:refresh_aggregates:82L
 FUNC:src/data/sync/_engine_connections.py:333:_load_existing_match_ids:81L
 FUNC:src/data/sync/_match_processing.py:301:_backfill_known_match_shared:82L
 FUNC:src/data/sync/_match_processing.py:37:_process_matches:120L
-FUNC:src/data/sync/engine.py:310:_sync_internal:95L
+FUNC:src/data/sync/engine.py:310:_sync_internal:102L
 FUNC:src/data/sync/transformers/_match.py:284:extract_participants:141L
 FUNC:src/data/sync/transformers/_match.py:428:extract_match_registry_data:105L
 FUNC:src/data/sync/transformers/_match.py:71:transform_match_stats:170L
@@ -98,7 +98,7 @@ MODULE:src/analysis/weapon_parser.py:502L
 MODULE:src/data/repositories/_weapon_kills_repo.py:567L
 MODULE:src/data/sync/_match_processing.py:554L
 MODULE:src/data/sync/api_client.py:551L
-MODULE:src/data/sync/engine.py:641L
+MODULE:src/data/sync/engine.py:648L
 MODULE:src/data/sync/transformers/_match.py:534L
 MODULE:src/ui/pages/session_compare.py:536L
 MODULE:src/visualization/maps_outcome.py:587L

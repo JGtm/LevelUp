@@ -100,7 +100,7 @@ def render_multi_teammate_view(  # noqa: PLR0913
         enrich_series_fn=enrich_series_fn,
     )
 
-    if len(picked_xuids) >= 2:
+    if len(picked_xuids) >= 1:
         impact_match_ids = (
             sub_all.sort("start_time")["match_id"]
             .cast(pl.Utf8)
