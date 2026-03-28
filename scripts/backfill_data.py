@@ -120,7 +120,7 @@ def main() -> int:  # noqa: C901, PLR0912, PLR0915
             traceback.print_exc()
         return 0
 
-    # --fix-score-inversions : swap team_0_score ↔ team_1_score (Slayer, sans API)
+    # --fix-score-inversions : swap team_0_score ↔ team_1_score (tous modes, sans API)
     fix_score_inversions = getattr(args, "fix_score_inversions", False)
     if fix_score_inversions:
         try:
@@ -134,6 +134,25 @@ def main() -> int:  # noqa: C901, PLR0912, PLR0915
                 logger.info(f"Score inversions : {n} match(s) corrigé(s)")
         except Exception as e:
             logger.error(f"Erreur --fix-score-inversions : {e}")
+            import traceback
+
+            traceback.print_exc()
+        return 0
+
+    # --fix-pscore-leaks : nullifie les team_scores contaminés par un ps_score (sans API)
+    fix_pscore_leaks = getattr(args, "fix_pscore_leaks", False)
+    if fix_pscore_leaks:
+        try:
+            from scripts.backfill.strategies import backfill_fix_pscore_leaks
+
+            dry_run = getattr(args, "dry_run", False)
+            n = backfill_fix_pscore_leaks(_open_shared_conn(), dry_run=dry_run)
+            if dry_run:
+                logger.info(f"[DRY-RUN] Pscore leaks : {n} match(s) seraient nullifiés")
+            else:
+                logger.info(f"Pscore leaks : {n} match(s) nullifiés")
+        except Exception as e:
+            logger.error(f"Erreur --fix-pscore-leaks : {e}")
             import traceback
 
             traceback.print_exc()
