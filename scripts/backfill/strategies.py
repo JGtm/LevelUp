@@ -1343,17 +1343,20 @@ async def backfill_team_scores(
     *,
     max_matches: int | None = None,
     force: bool = False,
+    btb_only: bool = False,
     requests_per_second: int = 5,
 ) -> int:
     """Peuple team_0_score / team_1_score dans shared.match_registry via l'API.
 
-    Ces colonnes sont NULL pour les matchs insérés avant le correctif
-    d'extraction (TotalPoints / Stats.CoreStats.Score).
+    Utile pour corriger les scores corrompus (CoreStats.Score pollué en BTB
+    objectifs 2023) : re-fetche les stats et relit CaptureTheFlagStats /
+    ZonesStats qui sont toujours fiables.
 
     Args:
         shared_conn: Connexion en écriture vers shared_matches.duckdb.
         max_matches: Nombre max de matchs à traiter.
         force: Si True, recalcule même si les scores sont déjà présents.
+        btb_only: Limite aux matchs BTB CTF/Total Control/Stockpile avec score corrompu.
         requests_per_second: Rate limiting API.
 
     Returns:
@@ -1363,7 +1366,20 @@ async def backfill_team_scores(
     from src.data.sync.api_factory import create_api_client
     from src.data.sync.transformers import _extract_team_scores_by_id
 
-    where_clause = "" if force else "WHERE team_0_score IS NULL OR team_1_score IS NULL"
+    if btb_only:
+        # Ciblage précis : BTB objectifs avec score manifestement corrompu (> 100)
+        where_clause = (
+            "WHERE (game_variant_name LIKE '%BTB%' OR playlist_name LIKE '%BTB%')"
+            " AND (game_variant_name LIKE '%CTF%'"
+            "   OR game_variant_name LIKE '%Total Control%'"
+            "   OR game_variant_name LIKE '%Stockpile%')"
+            " AND GREATEST(COALESCE(team_0_score, 0), COALESCE(team_1_score, 0)) > 100"
+        )
+    elif force:
+        where_clause = ""
+    else:
+        where_clause = "WHERE team_0_score IS NULL OR team_1_score IS NULL"
+
     query = f"SELECT match_id FROM match_registry {where_clause} ORDER BY start_time DESC"
     if max_matches:
         query += f" LIMIT {int(max_matches)}"

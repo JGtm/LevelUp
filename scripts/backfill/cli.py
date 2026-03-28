@@ -430,6 +430,11 @@ def create_argument_parser() -> argparse.ArgumentParser:
         action="store_true",
         help="Force le rechargement des team scores même s'ils sont déjà présents",
     )
+    parser.add_argument(
+        "--btb-only",
+        action="store_true",
+        help="Limite --team-scores aux matchs BTB objectifs (CTF/TC/Stockpile) avec score corrompu (>100)",
+    )
 
     # ── Mode category (match_registry — local, sans API) ──────────────────
     parser.add_argument(
