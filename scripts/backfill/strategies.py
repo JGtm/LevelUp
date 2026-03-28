@@ -1344,6 +1344,7 @@ async def backfill_team_scores(
     max_matches: int | None = None,
     force: bool = False,
     btb_only: bool = False,
+    arena_only: bool = False,
     requests_per_second: int = 5,
 ) -> int:
     """Peuple team_0_score / team_1_score dans shared.match_registry via l'API.
@@ -1357,6 +1358,7 @@ async def backfill_team_scores(
         max_matches: Nombre max de matchs à traiter.
         force: Si True, recalcule même si les scores sont déjà présents.
         btb_only: Limite aux matchs BTB CTF/Total Control/Stockpile avec score corrompu.
+        arena_only: Limite aux matchs non-BTB objectifs avec score corrompu (>100).
         requests_per_second: Rate limiting API.
 
     Returns:
@@ -1366,13 +1368,20 @@ async def backfill_team_scores(
     from src.data.sync.api_factory import create_api_client
     from src.data.sync.transformers import _extract_team_scores_by_id
 
+    _OBJ_MODES = "(game_variant_name LIKE '%CTF%' OR game_variant_name LIKE '%Total Control%' OR game_variant_name LIKE '%Stronghold%' OR game_variant_name LIKE '%Stockpile%')"
+    _BTB_FILTER = "(game_variant_name LIKE '%BTB%' OR playlist_name LIKE '%BTB%')"
     if btb_only:
         # Ciblage précis : BTB objectifs avec score manifestement corrompu (> 100)
         where_clause = (
-            "WHERE (game_variant_name LIKE '%BTB%' OR playlist_name LIKE '%BTB%')"
-            " AND (game_variant_name LIKE '%CTF%'"
-            "   OR game_variant_name LIKE '%Total Control%'"
-            "   OR game_variant_name LIKE '%Stockpile%')"
+            f"WHERE {_BTB_FILTER}"
+            f" AND {_OBJ_MODES}"
+            " AND GREATEST(COALESCE(team_0_score, 0), COALESCE(team_1_score, 0)) > 100"
+        )
+    elif arena_only:
+        # Ciblage précis : non-BTB objectifs avec score manifestement corrompu (> 100)
+        where_clause = (
+            f"WHERE NOT {_BTB_FILTER}"
+            f" AND {_OBJ_MODES}"
             " AND GREATEST(COALESCE(team_0_score, 0), COALESCE(team_1_score, 0)) > 100"
         )
     elif force:
