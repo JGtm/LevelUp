@@ -859,6 +859,19 @@ def _run_migrations() -> None:
 
     Exécuté avant le lancement de Streamlit. Non-bloquant en cas d'erreur.
     """
+    # Streamlit réinitialise son logger cache_data_api à INFO lors de son premier import
+    # (écrasant le niveau ERROR positionné par setup_script_logging). On pré-importe
+    # Streamlit et on re-silence avant les imports qui appliquent @st.cache_data.
+    try:
+        import logging as _lg
+
+        import streamlit  # noqa: F401
+
+        _lg.getLogger("streamlit.runtime.caching.cache_data_api").setLevel(_lg.ERROR)
+        _lg.getLogger("streamlit.runtime.caching").setLevel(_lg.ERROR)
+    except Exception:
+        pass
+
     from src.data.migration.runner import apply_pending_migrations
 
     players = _list_players()
