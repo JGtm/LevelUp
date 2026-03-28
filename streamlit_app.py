@@ -882,7 +882,12 @@ def _dispatch_navigation(ctx: PageContext) -> None:  # noqa: C901, PLR0915
     def _page_career() -> None:
         from src.ui.pages import render_career_page
 
-        render_career_page(db_path=ctx.db_path, xuid=ctx.xuid, db_key=ctx.db_key)
+        render_career_page(
+            db_path=ctx.db_path,
+            xuid=ctx.xuid,
+            db_key=ctx.db_key,
+            waypoint_player=ctx.waypoint_player,
+        )
 
     def _page_settings() -> None:
         from src.ui.pages import render_settings_page
