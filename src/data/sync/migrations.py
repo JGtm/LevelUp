@@ -10,6 +10,8 @@ from __future__ import annotations
 import logging
 from typing import TYPE_CHECKING
 
+from src.data._score_sql import NORM_ENEMY_TEAM_SCORE_SQL, NORM_MY_TEAM_SCORE_SQL
+
 if TYPE_CHECKING:
     import duckdb
 
@@ -705,11 +707,12 @@ def ensure_mv_player_matches_view(conn: duckdb.DuckDBPyConnection) -> None:
             ELSE NULL
             END AS accuracy,
 
-            -- Scores d'équipe (depuis match_registry uniquement)
-            CASE WHEN p.team_id = 0 THEN r.team_0_score
-                 ELSE r.team_1_score END AS my_team_score,
-            CASE WHEN p.team_id = 0 THEN r.team_1_score
-                 ELSE r.team_0_score END AS enemy_team_score,
+            -- Scores d'équipe normalisés.
+            -- Pour les modes objectifs (CTF, Total Control, Stockpile, One Flag),
+            -- si le score brut API > 500, c'est une somme PS polluée → utiliser ps_score.
+            -- Pour Slayer (100 kills), le brut est toujours correct.
+            {NORM_MY_TEAM_SCORE_SQL} AS my_team_score,
+            {NORM_ENEMY_TEAM_SCORE_SQL} AS enemy_team_score,
 
             -- Somme des scores personnels par équipe (toujours cohérente entre équipes)
             -- Fiable même quand CoreStats.Score de l'API mélange score objectif et somme perso

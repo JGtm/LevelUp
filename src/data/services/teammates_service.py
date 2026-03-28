@@ -15,6 +15,7 @@ from typing import Any
 
 import polars as pl
 
+from src.data._score_sql import NORM_ENEMY_TEAM_SCORE_SQL, NORM_MY_TEAM_SCORE_SQL
 from src.data.services._teammates_impact_queries import _collect_impact_data
 from src.data.services._teammates_perf_queries import load_perf_enrichment_with_session
 
@@ -122,8 +123,8 @@ def _query_teammate_shared_stats(
                 THEN CAST(p.shots_hit AS FLOAT) * 100.0 / CAST(p.shots_fired AS FLOAT)
                 ELSE NULL
             END AS accuracy,
-            CASE WHEN p.team_id = 0 THEN r.team_0_score ELSE r.team_1_score END AS my_team_score,
-            CASE WHEN p.team_id = 0 THEN r.team_1_score ELSE r.team_0_score END AS enemy_team_score,
+            {NORM_MY_TEAM_SCORE_SQL} AS my_team_score,
+            {NORM_ENEMY_TEAM_SCORE_SQL} AS enemy_team_score,
             p.score AS personal_score,
             COALESCE(r.is_firefight, FALSE) AS is_firefight,
             COALESCE(r.is_ranked, FALSE) AS is_ranked,

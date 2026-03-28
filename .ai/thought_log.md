@@ -7,6 +7,26 @@
 
 ## Journal
 
+### [2026-03-28] — Fix scores BTB objectifs anormaux — Complété
+
+**Statut** : Complété  
+**Décision technique** :
+
+Root cause : L'API Halo Infinite retourne dans `CoreStats.Score` (par équipe) tantôt le score objectif réel (1-5 captures CTF, 0-3 rounds TC), tantôt la somme des personal scores (~15 000-27 000). Ce comportement touche ~55 % des matchs BTB CTF/Total Control. Résultat : affichage aberrant type "1 – 22 270" (une équipe score objectif, l'autre somme PS).
+
+**Solution** : normalisation au niveau de la vue SQL `mv_player_matches` + query fallback + teammates_service.
+- Pour les modes objectifs (CTF, Total Control, Stockpile, One Flag) où `GREATEST(team_0_score, team_1_score) > 500` → utiliser `team_0_ps_score`/`team_1_ps_score` (recalculés depuis match_participants, toujours cohérents).
+- Conserver les petits scores corrects ("3 – 1") quand l'API a retourné les vraies captures.
+- Slayer (score = 100 kills) non touché.
+
+**Nouveau module** : `src/data/_score_sql.py` — constantes SQL sans dépendances, importées par migrations.py, _match_queries.py et teammates_service.py (anti-pattern DRY < 3 copies).
+
+**Résultats** : Fini les "1 – 22 270". Matchs polués affichent maintenant deux PS sums symétriques (ex: "28 085 – 20 620"). Matchs corrects préservés ("2 – 1"). Vue rechargée en live.
+
+**Tests** : 35 tests passent (repository + qualité code). Ruff clean.
+
+---
+
 ### [2026-03-28] — Fix 3 bugs persistants : sync indicator + heatmap PME + impact 2 joueurs — Complété
 
 **Statut** : Complété
