@@ -32,7 +32,6 @@ import polars as pl
 from src.analysis._medal_verdicts import (
     COMEBACK_DEFICIT_THRESHOLD,
     COMEBACK_MAX_SLAYER_WIN_SCORE,
-    COMEBACK_MIN_THRESHOLD,
     DominanceFlag,
 )
 
@@ -123,11 +122,10 @@ def _resolve_threshold(meta: MatchMeta) -> int | None:
     if meta.game_variant_name is not None and "slayer" not in meta.game_variant_name.lower():
         return None
 
-    if meta.win_score is None:
-        return COMEBACK_DEFICIT_THRESHOLD
-    if meta.win_score > COMEBACK_MAX_SLAYER_WIN_SCORE:
+    if meta.win_score is not None and meta.win_score > COMEBACK_MAX_SLAYER_WIN_SCORE:
         return None  # Sécurité : score > 100 même avec "slayer" dans le nom
-    return max(COMEBACK_MIN_THRESHOLD, meta.win_score // 2)
+
+    return COMEBACK_DEFICIT_THRESHOLD
 
 
 def detect_comeback_badge(
@@ -174,9 +172,9 @@ def detect_comeback_badge(
     if not won and max_lead >= threshold:
         return int(DominanceFlag.DEBANDADE)
 
-    # Contre-Remontada : on avait threshold+ frags d'avance, l'adversaire a failli
-    # revenir (a au moins égalisé), mais on a tenu.
-    if won and max_lead >= threshold and max_deficit >= 1:
+    # Contre-Remontada : on avait threshold+ frags d'avance, l'adversaire a aussi
+    # atteint threshold+ frags d'avance à un autre moment, mais on a tenu.
+    if won and max_lead >= threshold and max_deficit >= threshold:
         return int(DominanceFlag.CONTRE_REMONTADA)
 
     return _FLAG_NONE
