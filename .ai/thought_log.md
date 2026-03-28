@@ -7,16 +7,26 @@
 
 ## Journal
 
-### [2026-03-28] — v6.2 : Badges narrative + Unification escouade + Graphe combiné K/D — Complété
+### [2026-03-28] — v6.2 : Badges narrative (correction algo) + intégration page Carrière — Complété
 
 **Statut** : Complété
 
 **Décision technique principale** :
-- **Badges narrative** (Feature 1) : `DominanceFlag` étendu avec `REMONTADA=3`, `DEBANDADE=4`, `CONTRE_REMONTADA=5`. Seuils en constantes nommées (`COMEBACK_DEFICIT_THRESHOLD=3`, `COMEBACK_EARLY_CUTOFF=0.60`). Source de données : `highlight_events.event_type='kill'` avec `time_ms` (approximation — seuls les kills significatifs, pas tous). `build_score_snapshot()` calcule les kills par camp jusqu'au checkpoint. Colonne cible : `dominance_flag` existante (valeurs 3-5, exclusives de 1-2 par construction). CLI : `--comeback-badges` / `--force-comeback-badges`.
-- **Unification escouade** (Feature 2) : `f2_xuid` rendu optionnel dans toute la chaîne (`render_trio_view` → `_merge_trio_dataframes` → helpers → charts → synergy). La vue trio gère maintenant 1, 2 ou 3 amis. `render_single_teammate_view()` supprimé intégralement avec tous ses composants dédiés.
-- **Graphe combiné K/D** (Feature 3) : `plot_trio_kills_deaths()` — barres groupées kills↑/morts↓ miroir, lignes lissées, axe Y symétrique. Remplace les deux graphes séparés. `render_comparison_charts()` (code mort) supprimé.
+- **Algorithme max-deficit** : Remplacement du checkpoint fixe 60% par le calcul du différentiel maximal
+  sur *tout* le match. `_build_kill_differential_series()` reconstruit la timeline des frags par équipe
+  triée par `time_ms`, calcule le différentiel cumulé (enemy - my_team) et expose `max_deficit` et `max_lead`.
+  Aucun "instant T" fixe : le pire moment atteint qualifie à lui seul.
+- **Source confirmée** : `highlight_events.event_type='kill'` contient TOUS les kills (96 events = 96 total
+  confirmé corpus). Déjà utilisée par `team_dominance_timeline.py`.
+- **Seuil** : `COMEBACK_DEFICIT_THRESHOLD=25` (corpus : ~5 remontadas / 931 matchs = ~0.5%). `COMEBACK_COUNTER_GAP=10`.
+  Constantes `COMEBACK_EARLY_CUTOFF` et `COMEBACK_COLLAPSE_CUTOFF` supprimées (devenues inutiles).
+- **Page Carrière** : `_badge_html()` refactorisée avec `_BADGE_CONFIGS` dict. `_build_match_badge_legend_html()`
+  affiche maintenant tous les badges de l'onglet. Badges best=True : 1/3/5 (Domination/Remontada/Contre-Remontada).
+  Badges best=False : 2/4 (Humiliation/Débandade). Couleurs distinctes par badge.
 
-**Résultats** : 5 178 tests, 0 failures. Ruff clean. Baseline taille mise à jour.
+**Résultats** : 5 180 tests, 0 failures. Ruff clean.
+
+**Conclusion** : Feature 1 corrigée et complète. Prochaine étape : backfill `--comeback-badges` sur données réelles.
 
 **Prochaine étape** : Calibrage des seuils après scan corpus (`highlight_events` slayer). Affichage UI des badges dans Match View (v6.3+).
 

@@ -293,5 +293,29 @@ STRINGS: dict[str, dict[str, str] | str] = {
         "fr": 'L\'équipe adverse a reçu la médaille "À table"',
         "en": 'The enemy team received the "Steaktacular" medal',
     },
+    "career_top_badge_remontada": {
+        "fr": "Remontada",
+        "en": "Remontada",
+    },
+    "career_top_badge_debandade": {
+        "fr": "Débandade",
+        "en": "Collapse",
+    },
+    "career_top_badge_contre_remontada": {
+        "fr": "Contre-Remontada",
+        "en": "Held On",
+    },
+    "career_top_legend_remontada": {
+        "fr": "Victoire après avoir été menés de 25+ frags à un moment du match",
+        "en": "Victory after trailing by 25+ kills at some point in the match",
+    },
+    "career_top_legend_debandade": {
+        "fr": "Défaite après avoir mené de 25+ frags à un moment du match",
+        "en": "Loss after leading by 25+ kills at some point in the match",
+    },
+    "career_top_legend_contre_remontada": {
+        "fr": "Victoire alors que l'adversaire revenait fort (10+ frags d'avance)",
+        "en": "Victory while the enemy mounted a comeback (10+ kill lead)",
+    },
     # ── Citations ───────────────────────────────────────────────────────────
 }

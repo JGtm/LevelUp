@@ -1,17 +1,24 @@
 """Détection des badges narrative de comeback (Remontada / Débandade / Contre-Remontada).
 
 Algorithme basé sur les kill-events de ``highlight_events`` (event_type='kill')
-et leur timestamp (``time_ms``).  Le module est 100 % pur (pas d'accès DB) :
+et leur timestamp (``time_ms``). Le module est 100 % pur (pas d'accès DB) :
 toutes les données sont reçues en paramètre sous forme de DataFrames Polars.
+
+Algorithme — max-deficit sur tout le match
+------------------------------------------
+On reconstruit la timeline des frags par équipe (kills cumulés triés par ``time_ms``)
+et on cherche l'écart **maximal** atteint à un quelconque instant du match.
+Aucun "checkpoint" fixe n'est nécessaire : c'est le pire moment qui qualifie.
 
 Concepts
 --------
-- **Remontada** : on était mené de ≥ COMEBACK_DEFICIT_THRESHOLD kills au checkpoint,
-  mais on a gagné.
-- **Débandade** : on était en tête de ≥ COMEBACK_COLLAPSE_CUTOFF kills au checkpoint,
-  mais on a perdu.
-- **Contre-Remontada** : l'adversaire était en tête de ≥ COMEBACK_COUNTER_GAP kills
-  au checkpoint ET remontait (était derrière avant ce checkpoint), mais on a tenu et gagné.
+- **Remontada** : on était derrière de ≥ COMEBACK_DEFICIT_THRESHOLD frags d'équipe
+  à un moment quelconque, mais on a gagné.
+- **Débandade** : on était en avance de ≥ COMEBACK_DEFICIT_THRESHOLD frags d'équipe
+  à un moment quelconque, mais on a perdu.
+- **Contre-Remontada** : l'adversaire était en avance de ≥ COMEBACK_COUNTER_GAP frags
+  à un moment, ET on était nous-mêmes en avance à un autre moment, mais on a tenu et gagné.
+  (Cas plus rare que Remontada — seuil plus bas volontairement.)
 
 Les seuils sont définis dans :mod:`src.analysis._medal_verdicts`.
 """
@@ -25,68 +32,65 @@ import polars as pl
 from src.analysis._medal_verdicts import (
     COMEBACK_COUNTER_GAP,
     COMEBACK_DEFICIT_THRESHOLD,
-    COMEBACK_EARLY_CUTOFF,
     DominanceFlag,
 )
 
 logger = logging.getLogger(__name__)
 
-# Résultat neutre en cas de données insuffisantes
 _FLAG_NONE = int(DominanceFlag.NONE)
 
 
-def build_score_snapshot(
+def _build_kill_differential_series(
     events: pl.DataFrame,
     participants: pl.DataFrame,
     my_xuid: str,
-    duration_ms: int,
-    cutoff: float,
-) -> tuple[int, int] | None:
-    """Compte les kill-events par camp jusqu'au checkpoint.
+) -> list[int] | None:
+    """Construit la série du différentiel kills (enemy - my_team) tri chronologique.
 
     Args:
         events: DataFrame avec colonnes ``event_type``, ``time_ms``, ``xuid``.
         participants: DataFrame avec colonnes ``xuid``, ``team_id``.
-        my_xuid: XUID du joueur analysé (pour déterminer son équipe).
-        duration_ms: Durée totale du match en millisecondes.
-        cutoff: Fraction [0-1] du match utilisée comme checkpoint.
+        my_xuid: XUID du joueur analysé (pour identifier son équipe).
 
     Returns:
-        Tuple ``(my_team_kills, enemy_kills)`` au checkpoint, ou ``None``
-        si les données sont insuffisantes.
+        Liste du différentiel cumulé après chaque kill (positif = ennemi devant),
+        ou ``None`` si les données sont insuffisantes.
     """
-    if events.is_empty() or participants.is_empty() or duration_ms <= 0:
+    if events.is_empty() or participants.is_empty():
         return None
 
-    # Déterminer l'équipe du joueur analysé
     my_rows = participants.filter(pl.col("xuid") == my_xuid)
     if my_rows.is_empty():
         return None
     my_team_id = my_rows["team_id"][0]
 
-    # Joindre les kill-events avec l'équipe de chaque killer
-    kill_events = events.filter(pl.col("event_type") == "kill")
+    kill_events = events.filter(pl.col("event_type") == "kill").sort("time_ms")
     if kill_events.is_empty():
-        return None
-
-    threshold_ms = int(duration_ms * cutoff)
-    early_kills = kill_events.filter(pl.col("time_ms") <= threshold_ms)
-    if early_kills.is_empty():
         return None
 
     xuid_to_team = dict(
         zip(participants["xuid"].to_list(), participants["team_id"].to_list(), strict=False)
     )
-    my_kills = sum(1 for x in early_kills["xuid"].to_list() if xuid_to_team.get(x) == my_team_id)
-    enemy_kills = sum(1 for x in early_kills["xuid"].to_list() if xuid_to_team.get(x) != my_team_id)
-    return my_kills, enemy_kills
+
+    my_count = 0
+    enemy_count = 0
+    diffs: list[int] = []
+
+    for killer_xuid in kill_events["xuid"].to_list():
+        team = xuid_to_team.get(killer_xuid)
+        if team == my_team_id:
+            my_count += 1
+        else:
+            enemy_count += 1
+        diffs.append(enemy_count - my_count)
+
+    return diffs
 
 
 def detect_comeback_badge(
     events: pl.DataFrame,
     participants: pl.DataFrame,
     my_xuid: str,
-    duration_ms: int,
     outcome: int,
 ) -> int:
     """Classifie le badge narrative d'un match pour un joueur.
@@ -95,7 +99,6 @@ def detect_comeback_badge(
         events: DataFrame ``highlight_events`` du match (event_type, time_ms, xuid).
         participants: DataFrame ``match_participants`` du match (xuid, team_id).
         my_xuid: XUID du joueur analysé.
-        duration_ms: Durée du match en millisecondes.
         outcome: Résultat du joueur (2=victoire, 3=défaite, 1=égalité, 4=DNF).
 
     Returns:
@@ -104,23 +107,27 @@ def detect_comeback_badge(
     if outcome not in (2, 3):  # Victoire ou défaite uniquement
         return _FLAG_NONE
 
-    snap = build_score_snapshot(events, participants, my_xuid, duration_ms, COMEBACK_EARLY_CUTOFF)
-    if snap is None:
+    diffs = _build_kill_differential_series(events, participants, my_xuid)
+    if not diffs:
         return _FLAG_NONE
 
-    my_kills, enemy_kills = snap
-    diff = enemy_kills - my_kills  # positif = on était derrière
+    # Différentiel ennemi - nous : positif = ennemi devant, négatif = nous devant
+    max_deficit = max(diffs)  # pire moment où l'ennemi était devant
+    max_lead = -min(diffs)  # meilleur moment où nous étions devant
 
     won = outcome == 2
 
-    if won and diff >= COMEBACK_DEFICIT_THRESHOLD:
+    # Remontada : on était très derrière à un moment mais on a gagné
+    if won and max_deficit >= COMEBACK_DEFICIT_THRESHOLD:
         return int(DominanceFlag.REMONTADA)
 
-    if not won and -diff >= COMEBACK_DEFICIT_THRESHOLD:
+    # Débandade : on avait une grosse avance à un moment mais on a perdu
+    if not won and max_lead >= COMEBACK_DEFICIT_THRESHOLD:
         return int(DominanceFlag.DEBANDADE)
 
-    if won and diff >= COMEBACK_COUNTER_GAP:
-        # L'adversaire était devant au checkpoint mais on a tenu
+    # Contre-Remontada : l'ennemi avait rattrapé son retard et était devant,
+    # mais on était aussi devant à un autre moment — on a tenu et gagné.
+    if won and max_deficit >= COMEBACK_COUNTER_GAP and max_lead >= 1:
         return int(DominanceFlag.CONTRE_REMONTADA)
 
     return _FLAG_NONE
