@@ -30,7 +30,8 @@ from dataclasses import dataclass
 import polars as pl
 
 from src.analysis._medal_verdicts import (
-    COMEBACK_DEFICIT_THRESHOLD,
+    COMEBACK_DEFICIT_FALLBACK,
+    COMEBACK_DEFICIT_PCT,
     COMEBACK_MAX_SLAYER_WIN_SCORE,
     DominanceFlag,
 )
@@ -125,7 +126,9 @@ def _resolve_threshold(meta: MatchMeta) -> int | None:
     if meta.win_score is not None and meta.win_score > COMEBACK_MAX_SLAYER_WIN_SCORE:
         return None  # Sécurité : score > 100 même avec "slayer" dans le nom
 
-    return COMEBACK_DEFICIT_THRESHOLD
+    if meta.win_score is not None:
+        return max(3, round(meta.win_score * COMEBACK_DEFICIT_PCT))
+    return COMEBACK_DEFICIT_FALLBACK
 
 
 def detect_comeback_badge(

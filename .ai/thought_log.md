@@ -7,6 +7,64 @@
 
 ## Journal
 
+### [2026-03-28] — Corrections scores equipe + seuil comeback proportionnel — Complété
+
+**Statut** : Complété  
+**Décision technique** :
+
+Investigation et correction de 3 problèmes de données sur `match_registry` (branche `feat/top-matches-exclude-btb`) :
+
+**Problème A — 225 inversions de scores Slayer** :
+- Root cause : bug de sync historique — `_extract_team_scores_by_id()` inversait `team_0_score`/`team_1_score` à l'écriture.
+- Prouvé par re-fetch API sur 14 matchs témoins : 5/5 matchs inversés confirmés.
+- Fix : SQL swap `team_0_score ↔ team_1_score` via `backfill_fix_score_inversions()` dans `strategies.py`.
+- `ps_score` non affecté (calculé depuis `match_participants.team_id`, toujours correct).
+- Résultat : 0 inversion restante (vérifié en base).
+
+**Problème B — 7 matchs KOTH/Assault avec scores corrompus** :
+- Root cause : évolution API — KOTH retourne maintenant `ZonesStats.StrongholdScoringTicks` (nul à l'époque du sync), l'extracteur fallbackait sur `CoreStats.Score` = personal score de l'équipe.
+- Fix : re-fetch API + flag `--koth-assault` dans `backfill_team_scores()`.
+- Résultat KOTH : ZonesTicks (78-105) au lieu des valeurs corrompues (800-6125). Assault : détonations (0-3).
+
+**Problème D — Seuil comeback proportionnel** :
+- Remplacement de `COMEBACK_DEFICIT_THRESHOLD=20` (flat) par `COMEBACK_DEFICIT_PCT=0.40` (40%).
+- Arena Slayer (50) → seuil 20, BTB Slayer (100) → seuil 40, Escalation (11) → seuil 3 (floor).
+- Ajout de `SLAYER_WIN_SCORES` et `MODE_MAX_SCORES` (référence complète de tous les modes).
+- `COMEBACK_MIN_THRESHOLD` (code mort) supprimé.
+
+**Résultats observés** :
+- 225 + 7 matchs corrigés en base, validés par requête SQL post-backfill.
+- Comeback threshold fonctionnel sur les 3 variantes Slayer.
+
+**Conclusion / prochaine étape** :
+- Problème E : tests manquants `exclude_btb=True` dans `test_top_matches.py` (à écrire).
+- Problème F : audit matchs sans `team_score` → exclusion pure, pas de fallback.
+- Problème G : test d'intégration tri par `badge_priority` dans `get_top_matches()`.
+- Relancer le backfill comeback badges pour prendre en compte les scores corrigés.
+
+---
+
+### [2026-03-28] — Décision produit KDA API vs ratio global agrégé — Complété
+
+**Statut** : Complété  
+**Décision technique** :
+
+Décision actée sur l'item backlog v6.2.1 concernant les calculs KDA locaux encore présents dans `src/analysis/`.
+
+- `kda` reste la **valeur brute API** pour tous les usages match-level, distributions, tableaux par match et comparaisons relatives de matchs.
+- Les agrégats de session/période/carte/cumul ne doivent pas moyenner les `kda` API per-match quand ils prétendent résumer le rendement global.
+- Ces agrégats doivent utiliser une métrique séparée, explicitement nommée `ratio global` ou `FDA global`, calculée depuis les totaux avec la formule `sum(K + A/3) / sum(D)`.
+- La possibilité de valeurs API négatives est la raison principale : elle montre que `kda` ne doit plus être traité implicitement comme un ratio mathématique standard agrégable sans changement de sens.
+
+**Résultats observés** :
+
+- Le backlog `.ai/BACKLOG.md` ne contient plus une question ouverte mais une convention produit explicite.
+- La prochaine étape est un refactor de nommage et d'implémentation dans `src/analysis/` et l'UI pour distinguer proprement métrique API brute et ratio global dérivé.
+
+**Conclusion / prochaine étape** :
+
+Appliquer la décision dans le code en auditant les usages agrégés de `kda`, puis ajuster les libellés UI/i18n pour éviter l'ambiguïté entre `kda` API et `ratio global`.
+
 ### [2026-03-28] — Fix CONTRE_REMONTADA dead code + valeurs stales — Complété
 
 **Statut** : Complété  
