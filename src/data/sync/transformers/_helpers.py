@@ -177,7 +177,9 @@ def _extract_team_score_value(team: dict[str, Any]) -> int | None:
 
     L'API peut stocker le score à plusieurs endroits selon la version :
     - team["Score"] ou team["TotalPoints"] (format simplifié/legacy)
-    - team["Stats"]["CoreStats"]["Score"] (format réel de l'API)
+    - team["Stats"]["CaptureTheFlagStats"]["FlagCaptures"] (CTF — fiable)
+    - team["Stats"]["ZonesStats"]["StrongholdScoringTicks"] (TC — fiable)
+    - team["Stats"]["CoreStats"]["Score"] (fallback — parfois pollué en BTB objectif)
     """
     # Format direct (fixtures de test ou anciennes réponses)
     v = _safe_int(team.get("TotalPoints"))
@@ -186,9 +188,23 @@ def _extract_team_score_value(team: dict[str, Any]) -> int | None:
     v = _safe_int(team.get("Score"))
     if v is not None:
         return v
-    # Format réel : Stats.CoreStats.Score
+    # Format réel : préférer les stats mode-spécifiques à CoreStats.Score
+    # (CoreStats.Score est parfois pollué par la somme des PS en BTB objectifs)
     stats = team.get("Stats")
     if isinstance(stats, dict):
+        # CTF : FlagCaptures = score réel (3 captures = victoire)
+        ctf = stats.get("CaptureTheFlagStats")
+        if isinstance(ctf, dict):
+            v = _safe_int(ctf.get("FlagCaptures"))
+            if v is not None:
+                return v
+        # Total Control / Strongholds : StrongholdScoringTicks = score réel
+        zones = stats.get("ZonesStats")
+        if isinstance(zones, dict):
+            v = _safe_int(zones.get("StrongholdScoringTicks"))
+            if v is not None:
+                return v
+        # Fallback : CoreStats.Score (correct pour Slayer, parfois pollué en objectif BTB)
         core = stats.get("CoreStats")
         if isinstance(core, dict):
             v = _safe_int(core.get("Score"))

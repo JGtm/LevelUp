@@ -707,15 +707,14 @@ def ensure_mv_player_matches_view(conn: duckdb.DuckDBPyConnection) -> None:
             ELSE NULL
             END AS accuracy,
 
-            -- Scores d'équipe normalisés.
+            -- Scores d'équipe.
             -- Pour les modes objectifs (CTF, Total Control, Stockpile, One Flag),
-            -- si le score brut API > 500, c'est une somme PS polluée → utiliser ps_score.
-            -- Pour Slayer (100 kills), le brut est toujours correct.
+            -- si le score brut > 100, l'API a stocké une valeur corrompue → NULL.
+            -- Le transformer lit désormais CaptureTheFlagStats/ZonesStats en priorité.
             {NORM_MY_TEAM_SCORE_SQL} AS my_team_score,
             {NORM_ENEMY_TEAM_SCORE_SQL} AS enemy_team_score,
 
-            -- Somme des scores personnels par équipe (toujours cohérente entre équipes)
-            -- Fiable même quand CoreStats.Score de l'API mélange score objectif et somme perso
+            -- Somme des scores personnels par équipe
             CASE WHEN p.team_id = 0 THEN r.team_0_ps_score
                  ELSE r.team_1_ps_score END AS my_team_ps_score,
             CASE WHEN p.team_id = 0 THEN r.team_1_ps_score
