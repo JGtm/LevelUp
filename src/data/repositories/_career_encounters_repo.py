@@ -187,6 +187,8 @@ WITH enriched AS (
       AND COALESCE(mv.time_played_seconds, 0) >= ?
       AND COALESCE(pme.had_bot_teammate, FALSE) = FALSE
       AND COALESCE(mv.is_firefight, FALSE) = FALSE
+      AND mv.my_team_score IS NOT NULL
+      AND mv.enemy_team_score IS NOT NULL
       {btb_filter}
 )
 SELECT * FROM enriched
