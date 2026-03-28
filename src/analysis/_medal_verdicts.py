@@ -19,13 +19,11 @@ MEDAL_STEAKTACULAR_ID: int = 1169390319  # ID médaille "À table" / "Steaktacul
 # Basés sur une analyse corpus de 931 matchs PvP (highlight_events, equipe entière).
 # Ces constantes permettent d'ajuster la sensibilité sans toucher au code.
 
-# Déficit maximal de kills (équipe) à n'importe quel moment du match pour qualifier.
+# Écart maximal de kills (équipe) à n'importe quel moment du match pour qualifier.
 # Seuil 25 → ~0.5 % des matchs (5 remontadas / 931). Ajuster si trop rare/fréquent.
+# Utilisé à la fois pour Remontada (on était derrière de 25+) et
+# Contre-Remontada (on était devant de 25+, les deux sont symétriques).
 COMEBACK_DEFICIT_THRESHOLD: int = 25
-
-# Écart minimal de l'adversaire (en avance) pour qualifier un Contre-Remontada.
-# Moins exigeant que COMEBACK_DEFICIT_THRESHOLD : l'adversaire remontait sans dépasser.
-COMEBACK_COUNTER_GAP: int = 10
 
 
 class DominanceFlag(IntEnum):
