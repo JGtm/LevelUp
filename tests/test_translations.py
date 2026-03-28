@@ -49,15 +49,15 @@ class TestTranslatePairNameFR:
     # -- _pairs overrides --
 
     def test_pairs_assault_neutral_bomb(self) -> None:
-        """Override _pairs : Assault:Neutral Bomb → Arène (pas Assaut)."""
-        assert translate_pair_name("Assault:Neutral Bomb") == "Arène : Bombe neutre"
+        """Override _pairs : Assault:Neutral Bomb → label simplifié (sans préfixe Arène)."""
+        assert translate_pair_name("Assault:Neutral Bomb") == "Bombe neutre"
 
     def test_pairs_assault_neutral_bomb_squad(self) -> None:
-        assert translate_pair_name("Assault:Neutral Bomb Squad") == "Arène : Escouade bombe neutre"
+        assert translate_pair_name("Assault:Neutral Bomb Squad") == "Bombe neutre"
 
     def test_pairs_assault_one_bomb_on_curfew(self) -> None:
         """Override _pairs exact sur nom avec carte."""
-        assert translate_pair_name("Assault:One Bomb on Curfew") == "Arène : Bombe neutre"
+        assert translate_pair_name("Assault:One Bomb on Curfew") == "Bombe neutre"
 
     def test_pairs_arena_shotty_snipes(self) -> None:
         """Override _pairs : pas de préfixe dans la traduction."""
