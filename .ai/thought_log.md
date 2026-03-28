@@ -23,6 +23,22 @@ Réimplémentation depuis `main` (branche `fix/arcane-sentinel-beam-weapon-id-v2
 
 ---
 
+### [2026-03-28] — Backfill complet scores corrompus BTB+Arena (240 matchs) — Complété
+
+**Statut** : Complété  
+**Décision technique** :
+
+Backfill API des 240 matchs avec scores objectifs corrompus dans `match_registry` :
+- **160 matchs BTB CTF/TC/Stockpile** via `--btb-only` : scores corrigés (ex. 0-3 captures CTF)
+- **80 matchs Arena objectifs** via `--arena-only` (CTF + Strongholds legit > 100) : tous corrigés
+- `_score_sql.py` n'inclut pas Strongholds dans `_OBJECTIVE_MODES` → scores 0-250 ticks légitimes jamais nullifiés
+- Scores finaux : CTF max=5, TC max=3, Strongholds max=250 ✅
+- **Résiduel CTF/TC/Stockpile > 100 : 0**
+
+Mergé `fix/team-scores-ctf-corruption` → `main` (e04cafa) + push origin.
+
+---
+
 ### [2026-03-28] — Fix scores BTB objectifs anormaux v2 — Complété
 
 **Statut** : Complété  
