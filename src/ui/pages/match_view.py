@@ -44,6 +44,9 @@ _DOMINANCE_BADGE_STYLES: dict[int, tuple[str, str, str]] = {
     # flag → (i18n_key, bg_color, text_color)
     1: ("outcome_domination", "#2e7d32", "#e8f5e9"),  # vert foncé
     2: ("outcome_humiliation", "#6a1b9a", "#f3e5f5"),  # violet foncé
+    3: ("career_top_badge_remontada", "#1565c0", "#e3f2fd"),  # bleu
+    4: ("career_top_badge_debandade", "#bf360c", "#fbe9e7"),  # rouge-brique
+    5: ("career_top_badge_contre_remontada", "#00695c", "#e0f2f1"),  # vert-canard
 }
 
 
