@@ -23,7 +23,7 @@ MEDAL_STEAKTACULAR_ID: int = 1169390319  # ID médaille "À table" / "Steaktacul
 # Seuil 25 → ~0.5 % des matchs (5 remontadas / 931). Fallback si win_score inconnu.
 # Utilisé à la fois pour Remontada (on était derrière de X+) et
 # Contre-Remontada (on était devant de X+, les deux sont symétriques).
-COMEBACK_DEFICIT_THRESHOLD: int = 25
+COMEBACK_DEFICIT_THRESHOLD: int = 20
 
 # Seuil de win_score au-delà duquel le mode est considéré objectif (non-Slayer).
 # Les modes objectif (CTF, Strongholds, Oddball, etc.) ont des scores en centaines

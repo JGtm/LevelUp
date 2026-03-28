@@ -94,6 +94,8 @@ def main() -> int:  # noqa: C901, PLR0912, PLR0915
     # --team-scores est global (pas besoin de --player / --all)
     team_scores = getattr(args, "team_scores", False)
     force_team_scores = getattr(args, "force_team_scores", False)
+    btb_only = getattr(args, "btb_only", False)
+    arena_only = getattr(args, "arena_only", False)
     if team_scores:
         try:
             from scripts.backfill.strategies import backfill_team_scores
@@ -104,6 +106,8 @@ def main() -> int:  # noqa: C901, PLR0912, PLR0915
                     _open_shared_conn(),
                     max_matches=max_matches,
                     force=force_team_scores,
+                    btb_only=btb_only,
+                    arena_only=arena_only,
                 )
             )
             logger.info(f"Team scores : {n} match(s) mis à jour")
