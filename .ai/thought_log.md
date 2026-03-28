@@ -7,24 +7,6 @@
 
 ## Journal
 
-### [2026-03-28] — Tri top matchs par performance_score — Complété
-
-**Statut** : Complété  
-**Décision technique** :
-
-Le tri secondaire dans `_TOP_MATCHES_SQL` utilisait `time_played_seconds ASC + ABS(score_diff) DESC`, ce qui favorisait massivement le BTB (win_score=100, écarts jusqu'à ~56) par rapport à l'Arena (win_score=50, écarts jusqu'à ~21).
-
-Remplacé par `performance_score DESC/ASC NULLS LAST` (déjà calculé, normalisé par mode, plage 0-100 — percentile dans l'historique du joueur). Tri primaire sur badge narratif conservé.
-
-Fichiers modifiés :
-- `src/data/repositories/_career_encounters_repo.py` : nouveau paramètre `{performance_sort}` dans SQL + dict `_PERFORMANCE_SORT_EXPR`
-- `src/ui/pages/career_top_matches_data.py` : export de `_PERFORMANCE_SORT_EXPR`
-- `tests/test_top_matches.py` : mock `player_match_enrichment` avec colonne `performance_score` + import + appel `.format()` mis à jour
-
-**Résultats** : 36/36 tests passent. Le top meilleures/pires matchs est maintenant indépendant du format (BTB vs Arena).
-
----
-
 ### [2026-03-28] — Réimplémentation scan_0802_loadout + carry-forward NS depuis main — Complété
 
 **Statut** : Complété  

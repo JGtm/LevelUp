@@ -15,7 +15,6 @@ import pytest
 from src.data.domain.refdata import Outcome
 from src.ui.pages.career_top_matches_data import (
     _BADGE_PRIORITY_EXPR,
-    _PERFORMANCE_SORT_EXPR,
     _TOP_MATCHES_SQL,
     MIN_MATCH_DURATION_SECONDS,
 )
@@ -379,15 +378,14 @@ class TestLoadTopMatchesDuckDB:
             CREATE TABLE player_match_enrichment (
                 match_id VARCHAR PRIMARY KEY,
                 dominance_flag TINYINT DEFAULT 0,
-                had_bot_teammate BOOLEAN DEFAULT FALSE,
-                performance_score FLOAT
+                had_bot_teammate BOOLEAN DEFAULT FALSE
             )
         """)
         bot_ids = bot_ids or set()
         for mid in match_ids:
             has_bot = mid in bot_ids
             player_db.execute(
-                "INSERT INTO player_match_enrichment VALUES (?, 0, ?, NULL)",
+                "INSERT INTO player_match_enrichment VALUES (?, 0, ?)",
                 [mid, has_bot],
             )
         player_db.close()
@@ -409,10 +407,7 @@ class TestLoadTopMatchesDuckDB:
             "SELECT * FROM player.player_match_enrichment"
         )
         target = int(Outcome.WIN) if best else int(Outcome.LOSS)
-        sql = _TOP_MATCHES_SQL.format(
-            badge_priority=_BADGE_PRIORITY_EXPR[best],
-            performance_sort=_PERFORMANCE_SORT_EXPR[best],
-        )
+        sql = _TOP_MATCHES_SQL.format(badge_priority=_BADGE_PRIORITY_EXPR[best])
         result = shared_conn.execute(
             sql,
             [
