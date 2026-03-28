@@ -7,6 +7,29 @@
 
 ## Journal
 
+### [2026-03-28] — Normalisation labels modes de jeu — resolve_display_mode() — Complété
+
+**Statut** : Complété (phase 1/2 — logique pure + fichier plat. Phase 2 : intégration UI après validation)
+**Décision technique** :
+
+- Pas de migration DB : `_PREFIX_RULES` en constante Python pure dans `src/analysis/mode_display.py`
+- Réutilise le dict `tables` de `_load_mode_tables()` (translations.py) comme interface d'injection — aucun couplage DB
+- Détection format inversé (`CTF:Arena` vs `Arena:CTF`) : si `right` est un préfixe connu et `left` ne l'est pas → swap
+- Fix casing acronymes : `prefix.isupper()` → conserver les acronymes tout-caps (CTF, KOTH, BTB) dans `_normalize_case`
+- Qualificatif Heavies : `_PREFIX_RULES["BTB Heavies"].qualifier = "Heavies"` → "Heavies : Capture du drapeau"
+
+**Résultats** : 28/28 tests unitaires. 99 combinaisons traitées, 76 labels modifiés.
+
+**Cas à valider par l'utilisateur (via labels_check.csv)** :
+- `KOTH:Arena` → "KOTH" (pas dans mode_name_tr — à ajouter ou override)
+- `Team Slayer:Arena` → "Team slayer" (casing — à corriger via mode_pair_overrides)
+- `CTF:Arena Neutral Flag` → "CTF : Arena Neutral Flag" (compound, pas inversé détecté)
+- `CTF:BTB Fiesta` → "CTF : BTB Fiesta" (right="BTB Fiesta" pas dans _KNOWN_PREFIXES)
+
+**Conclusion / prochaine étape** : Validation du `labels_check.csv` par l'utilisateur → corrections via `mode_pair_overrides` si nécessaire → Phase 2 : intégration UI (normalize_mode_label, filtres sidebar, top matches).
+
+---
+
 ### [2026-03-28] — Fix switch de DB sur liens match depuis Carrière/Historique — Complété
 
 **Statut** : Complété  
