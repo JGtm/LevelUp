@@ -7,6 +7,74 @@
 
 ## Journal
 
+### [2026-03-28] — Fix scores BTB objectifs anormaux — Complété
+
+**Statut** : Complété  
+**Décision technique** :
+
+Root cause : L'API Halo Infinite retourne dans `CoreStats.Score` (par équipe) tantôt le score objectif réel (1-5 captures CTF, 0-3 rounds TC), tantôt la somme des personal scores (~15 000-27 000). Ce comportement touche ~55 % des matchs BTB CTF/Total Control. Résultat : affichage aberrant type "1 – 22 270" (une équipe score objectif, l'autre somme PS).
+
+**Solution** : normalisation au niveau de la vue SQL `mv_player_matches` + query fallback + teammates_service.
+- Pour les modes objectifs (CTF, Total Control, Stockpile, One Flag) où `GREATEST(team_0_score, team_1_score) > 500` → utiliser `team_0_ps_score`/`team_1_ps_score` (recalculés depuis match_participants, toujours cohérents).
+- Conserver les petits scores corrects ("3 – 1") quand l'API a retourné les vraies captures.
+- Slayer (score = 100 kills) non touché.
+
+**Nouveau module** : `src/data/_score_sql.py` — constantes SQL sans dépendances, importées par migrations.py, _match_queries.py et teammates_service.py (anti-pattern DRY < 3 copies).
+
+**Résultats** : Fini les "1 – 22 270". Matchs polués affichent maintenant deux PS sums symétriques (ex: "28 085 – 20 620"). Matchs corrects préservés ("2 – 1"). Vue rechargée en live.
+
+**Tests** : 35 tests passent (repository + qualité code). Ruff clean.
+
+---
+
+### [2026-03-28] — Fix 3 bugs persistants : sync indicator + heatmap PME + impact 2 joueurs — Complété
+
+**Statut** : Complété
+**Décision technique** :
+
+**Bug 1 — Indicateur sync trompeur ("3 jours")**
+Root cause : `_sync_internal` short-circuit (HEAD-first delta) retournait sans appeler `_run_post_sync_pipeline` → `_save_sync_metadata` jamais appelée en cas de "aucun nouveau match".
+Fix : Appel de `_save_sync_metadata(delta_mode=True, matches_inserted=0)` + `commit()` dans la branche short-circuit avant le `return result`.
+
+**Bug 2 — Heatmap Madina PME manquant (7ème tentative)**
+Root cause : Même short-circuit. `_enrich_other_registered_players` (fanout) est dans `_run_post_sync_pipeline` → skippé → les 7 matchs du 27/03 22:26–23:34 (session JGtm+Madina) absents du PME Madina.
+Fix : Nouvelle méthode `fanout_repair_missing_scores()` dans `FanoutEnrichmentMixin` : vérifie pour chaque joueur enregistré si des `match_participants` manquent dans son PME (`performance_score IS NOT NULL`), et lance `_run_other_player_enrichment` si besoin. Appelée dans le short-circuit. + Backfill immédiat des 7 matchs via `--force-performance-scores --player Madina97294`.
+
+**Bug 3 — Matrice d'impact absente avec 2 joueurs**
+Root cause : `render_impact_taquinerie` avait `if len(friend_xuids) < 2: return` → avec 1 ami sélectionné, la matrice n'apparaissait pas alors qu'elle est parfaitement valide (joueur principal + 1 ami = 2 participants).
+Fix : `if not friend_xuids: return`.
+
+**Résultats** : 5180 tests passent, 0 failures. Baseline taille mis à jour (99 violations existantes, +3 lignes dans `_sync_internal` déjà violant).
+
+**Note** : Le plan SYNC_UI_HARDENING_2026-03-24 décrivait `fanout_pending` et `_save_sync_meta_no_new` mais le merge n'avait pas branché le fanout dans le short-circuit. Ce gap est maintenant comblé.
+
+---
+
+### [2026-03-28] — v6.2 : Badges narrative (correction algo) + intégration page Carrière — Complété
+
+**Statut** : Complété
+
+**Décision technique principale** :
+- **Algorithme max-deficit** : Remplacement du checkpoint fixe 60% par le calcul du différentiel maximal
+  sur *tout* le match. `_build_kill_differential_series()` reconstruit la timeline des frags par équipe
+  triée par `time_ms`, calcule le différentiel cumulé (enemy - my_team) et expose `max_deficit` et `max_lead`.
+  Aucun "instant T" fixe : le pire moment atteint qualifie à lui seul.
+- **Source confirmée** : `highlight_events.event_type='kill'` contient TOUS les kills (96 events = 96 total
+  confirmé corpus). Déjà utilisée par `team_dominance_timeline.py`.
+- **Seuil** : `COMEBACK_DEFICIT_THRESHOLD=25` (corpus : ~5 remontadas / 931 matchs = ~0.5%). `COMEBACK_COUNTER_GAP=10`.
+  Constantes `COMEBACK_EARLY_CUTOFF` et `COMEBACK_COLLAPSE_CUTOFF` supprimées (devenues inutiles).
+- **Page Carrière** : `_badge_html()` refactorisée avec `_BADGE_CONFIGS` dict. `_build_match_badge_legend_html()`
+  affiche maintenant tous les badges de l'onglet. Badges best=True : 1/3/5 (Domination/Remontada/Contre-Remontada).
+  Badges best=False : 2/4 (Humiliation/Débandade). Couleurs distinctes par badge.
+
+**Résultats** : 5 180 tests, 0 failures. Ruff clean.
+
+**Conclusion** : Feature 1 corrigée et complète. Prochaine étape : backfill `--comeback-badges` sur données réelles.
+
+**Prochaine étape** : Calibrage des seuils après scan corpus (`highlight_events` slayer). Affichage UI des badges dans Match View (v6.3+).
+
+---
+
 ### [2026-03-27] — Backlog : spécification badges Remontada / Effondrement / Contre-Remontada — Complété
 
 **Statut** : Complété (spécification uniquement, implémentation en backlog)

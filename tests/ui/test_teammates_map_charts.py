@@ -3,7 +3,6 @@
 Couvre :
 - render_map_charts_section (multi-coéquipiers)
 - render_squad_heatmap (heatmap escouade)
-- render_single_map_section (vue 1 coéquipier)
 """
 
 from __future__ import annotations
@@ -156,56 +155,3 @@ class TestRenderSquadHeatmap:
         ms = mock_st(mod)
         mod.render_squad_heatmap([], lang="fr")
         ms.calls["plotly_chart"].assert_not_called()
-
-
-# =============================================================================
-# render_single_map_section
-# =============================================================================
-
-
-class TestRenderSingleMapSection:
-    def test_ne_rend_rien_si_sub_vide(self, mock_st) -> None:
-        import src.ui.pages.teammates_map_charts as mod
-
-        ms = mock_st(mod)
-        mod.render_single_map_section(
-            sub=pl.DataFrame(),
-            dfr=_make_match_df(),
-            series=[("Alice", pl.DataFrame())],
-            lang="fr",
-        )
-        ms.calls["plotly_chart"].assert_not_called()
-
-    def test_ne_rend_rien_si_breakdown_vide(self, mock_st) -> None:
-        import src.ui.pages.teammates_map_charts as mod
-
-        ms = mock_st(mod)
-        with patch.object(mod, "compute_map_breakdown", return_value=pl.DataFrame()):
-            mod.render_single_map_section(
-                sub=_make_match_df(),
-                dfr=_make_match_df(),
-                series=[("Alice", _make_match_df())],
-                lang="fr",
-            )
-        ms.calls["plotly_chart"].assert_not_called()
-
-    def test_rend_bullet_avec_donnees_valides(self, mock_st) -> None:
-        import src.ui.pages.teammates_map_charts as mod
-
-        ms = mock_st(mod)
-        fig_mock = MagicMock()
-        bd = _make_breakdown()
-
-        with (
-            patch.object(mod, "compute_map_breakdown", return_value=bd),
-            patch.object(mod, "plot_map_winrate_bullet", return_value=fig_mock) as mock_bullet,
-        ):
-            mod.render_single_map_section(
-                sub=_make_match_df(),
-                dfr=_make_match_df(),
-                series=[("Alice", _make_match_df()), ("Bob", _make_match_df())],
-                lang="fr",
-            )
-
-        mock_bullet.assert_called_once()
-        ms.calls["plotly_chart"].assert_called()

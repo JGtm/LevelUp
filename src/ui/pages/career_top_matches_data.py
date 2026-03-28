@@ -5,11 +5,17 @@ from __future__ import annotations
 import logging
 
 from src.data.repositories._career_encounters_repo import (
+    _BADGE_PRIORITY_EXPR,
     _TOP_MATCHES_SQL,
     MIN_MATCH_DURATION_SECONDS,
 )
 
-__all__ = ["MIN_MATCH_DURATION_SECONDS", "_TOP_MATCHES_SQL", "_load_top_matches"]
+__all__ = [
+    "MIN_MATCH_DURATION_SECONDS",
+    "_BADGE_PRIORITY_EXPR",
+    "_TOP_MATCHES_SQL",
+    "_load_top_matches",
+]
 
 logger = logging.getLogger(__name__)
 

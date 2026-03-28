@@ -16,6 +16,7 @@ import logging
 from datetime import datetime
 from typing import Any
 
+from src.data._score_sql import NORM_ENEMY_TEAM_SCORE_SQL, NORM_MY_TEAM_SCORE_SQL
 from src.data.domain.models.stats import MatchRow
 from src.data.repositories._match_queries_helpers import (
     build_match_select,
@@ -41,7 +42,7 @@ FROM shared.mv_player_matches
 WHERE xuid = ?
 ) AS match_stats"""
 
-_DIRECT_JOIN_SOURCE = """(SELECT
+_DIRECT_JOIN_SOURCE = f"""(SELECT
     r.match_id, r.start_time, r.map_id, r.map_name,
     r.playlist_id, r.playlist_name, r.pair_id, r.pair_name,
     r.game_variant_id, r.game_variant_name,
@@ -58,8 +59,8 @@ _DIRECT_JOIN_SOURCE = """(SELECT
         THEN CAST(p.shots_hit AS FLOAT) * 100.0 / CAST(p.shots_fired AS FLOAT)
         ELSE NULL
     END AS accuracy,
-    CASE WHEN p.team_id = 0 THEN r.team_0_score ELSE r.team_1_score END AS my_team_score,
-    CASE WHEN p.team_id = 0 THEN r.team_1_score ELSE r.team_0_score END AS enemy_team_score,
+    {NORM_MY_TEAM_SCORE_SQL} AS my_team_score,
+    {NORM_ENEMY_TEAM_SCORE_SQL} AS enemy_team_score,
     p.team_mmr,
     p.enemy_mmr,
     p.score AS personal_score,

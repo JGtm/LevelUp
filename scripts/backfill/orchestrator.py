@@ -137,6 +137,8 @@ async def backfill_player_data(
     force_participants_enrich = scope.force_participants_enrich
     teammates_sig = getattr(scope, "teammates_sig", False)
     force_teammates_sig = getattr(scope, "force_teammates_sig", False)
+    comeback_badges = getattr(scope, "comeback_badges", False)
+    force_comeback_badges = getattr(scope, "force_comeback_badges", False)
     lusr = scope.lusr
     force_lusr = scope.force_lusr
     csr = scope.csr
@@ -246,6 +248,7 @@ async def backfill_player_data(
             or lusr
             or skill_rank
             or teammates_sig
+            or comeback_badges
         )
         needs_api = bool(match_ids) or fetch_csr or csr or skill_rank
 
@@ -298,6 +301,8 @@ async def backfill_player_data(
                 force_lusr=force_lusr or force_skill_rank,
                 teammates_sig=teammates_sig,
                 force_teammates_sig=force_teammates_sig,
+                comeback_badges=comeback_badges,
+                force_comeback_badges=force_comeback_badges,
                 dry_run=dry_run,
             )
             if participants_enrich:
@@ -533,7 +538,7 @@ def _apply_schema_migrations(
         ensure_weapon_kills_reconciled_as(shared_conn)
 
 
-def _backfill_local_only(
+def _backfill_local_only(  # noqa: PLR0913
     conn: Any,
     db_path: Path,
     xuid: str,
@@ -549,6 +554,8 @@ def _backfill_local_only(
     force_lusr: bool = False,
     teammates_sig: bool = False,
     force_teammates_sig: bool = False,
+    comeback_badges: bool = False,
+    force_comeback_badges: bool = False,
     dry_run: bool = False,
 ) -> dict[str, int]:
     """Backfill local uniquement (pas d'API nécessaire)."""
@@ -617,7 +624,38 @@ def _backfill_local_only(
             else "Aucune signature à mettre à jour"
         )
 
+    if comeback_badges:
+        _run_comeback_badges(conn, xuid, force=force_comeback_badges, result=result)
+
     return result
+
+
+def _run_comeback_badges(
+    conn: Any,
+    xuid: str,
+    *,
+    force: bool,
+    result: dict[str, int],
+) -> None:
+    """Délègue le calcul des badges narrative comeback."""
+    from src.data.comeback_backfill import compute_comeback_badges_for_player
+
+    logger.info("Calcul des badges narrative (Remontada/Débandade/Contre-Remontada)...")
+    shared_conn = _get_shared_connection()
+    try:
+        r = compute_comeback_badges_for_player(conn, shared_conn, xuid, force=force)
+    finally:
+        if shared_conn is not None:
+            shared_conn.close()
+    result["comeback_processed"] = r.get("processed", 0)
+    n = r.get("processed", 0)
+    if n:
+        logger.info(
+            f"✅ {n} match(s) — remontada={r['remontada']}, "
+            f"débandade={r['debandade']}, contre={r['contre_remontada']}"
+        )
+    else:
+        logger.info("Aucun match à traiter pour les badges narrative")
 
 
 def _backfill_sessions(

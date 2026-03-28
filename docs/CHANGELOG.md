@@ -6,6 +6,42 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 > French version: [FR/CHANGELOG.md](FR/CHANGELOG.md)
 
+## [6.2.0] - 2026-03-28
+
+### Added
+
+- **`src/analysis/comeback_analysis.py`** — pure analysis module for comeback badge detection from highlight kill-events (`event_type='kill'`, `time_ms`). Exposes `build_score_snapshot()` and `detect_comeback_badge()`. No DB access.
+- **`src/data/comeback_backfill.py`** — service layer that loads events/participants from `shared_matches.duckdb`, calls `comeback_analysis`, and writes the result into `player_match_enrichment.dominance_flag`. Pattern mirrors `dominance_backfill.py`.
+- **`DominanceFlag.REMONTADA = 3`**, **`DominanceFlag.DEBANDADE = 4`**, **`DominanceFlag.CONTRE_REMONTADA = 5`** — new enum values in `src/analysis/_medal_verdicts.py`. Stored in the existing `dominance_flag` TINYINT column (no migration required). Exclusive with DOMINATION/HUMILIATION by design.
+- **Comeback badge threshold constants** in `src/analysis/_medal_verdicts.py`: `COMEBACK_DEFICIT_THRESHOLD`, `COMEBACK_COUNTER_GAP`, `COMEBACK_EARLY_CUTOFF`, `COMEBACK_COLLAPSE_CUTOFF`. Centralized for easy tuning.
+- **`SyncScope.comeback_badges`** + **`SyncScope.force_comeback_badges`** — new fields; `comeback_badges` added to `_ALL_DATA_FIELDS` so `--all-data` activates it.
+- **`--comeback-badges` / `--force-comeback-badges`** CLI arguments in `scripts/backfill/cli.py`.
+- **Unified squad view** (`src/ui/pages/_teammates_trio.py`) — `f2_xuid` is now optional; `render_trio_view` handles squads of 2, 3, or 4 players. The 1-vs-1 single-teammate view (`render_single_teammate_view`) has been deleted entirely.
+- **Combined Kills ↑ / Deaths ↓ chart** (`src/visualization/trio.py`) — `plot_trio_kills_deaths()` renders a mirrored bar+line chart per squad member using `barmode="group"` and symmetric Y-axis ticks via `build_symmetric_abs_ticks()`. Replaces separate kills and deaths charts.
+
+### Changed
+
+- `render_trio_view` now supports 1 friend (duo) without a code path change — `f2_xuid` is `None` when only one friend is selected.
+- `_merge_trio_dataframes` returns a two-player join when `f2_df` is absent; downstream code detects the schema (`has_f2_cols`) instead of checking the DataFrame reference.
+- `render_trio_synergy_radar`, `_render_per_minute_stats`, `_render_trio_performance_charts`, `_render_trio_medals` all accept `f2_name/f2_df = None`.
+- `_TRIO_METRIC_SPECS` no longer includes kills/deaths entries (replaced by combined chart).
+- Size baseline updated after `render_trio_view` growth (added f2-optional branches).
+
+### Removed
+
+- `render_single_teammate_view()`, `_render_single_teammate_details()`, `_render_single_teammate_weapon_and_map()` from `src/ui/pages/teammates_views.py`.
+- `render_comparison_charts()` (dead code) from `src/ui/pages/teammates_charts.py`.
+- `render_single_teammate_view` import and routing branch in `src/ui/pages/teammates.py`.
+- Test class `TestRenderSingleTeammateView` from `tests/ui/test_teammates_views_page.py`.
+- Test class `TestRenderSingleMapSection` from `tests/ui/test_teammates_map_charts.py`.
+- `test_render_comparison_charts_exists` from `tests/test_phase6_refactoring.py`.
+
+### Tests
+
+- **5 178 tests total, 0 failures** (4 skipped)
+
+---
+
 ## [6.1.0] - 2026-03-21
 
 ### Performance

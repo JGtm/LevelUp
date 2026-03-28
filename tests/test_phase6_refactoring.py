@@ -323,12 +323,6 @@ class TestMatchViewPlayersImports:
 class TestTeammatesChartsImports:
     """Tests d'import pour teammates_charts."""
 
-    def test_render_comparison_charts_exists(self):
-        """Test que la fonction est importable."""
-        from src.ui.pages.teammates_charts import render_comparison_charts
-
-        assert callable(render_comparison_charts)
-
     def test_render_trio_charts_exists(self):
         """Test que la fonction est importable."""
         from src.ui.pages.teammates_charts import render_trio_charts

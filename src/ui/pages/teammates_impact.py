@@ -252,7 +252,7 @@ def render_impact_taquinerie(
     db_key: tuple[int, int] | None = None,
 ) -> None:
     """Affiche l'onglet Impact (Sprint 12)."""
-    if len(friend_xuids) < 2:
+    if not friend_xuids:
         st.info(t("tm_impact_select_two"))
         return
 
