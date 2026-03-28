@@ -332,9 +332,11 @@ def main() -> int:  # noqa: C901, PLR0912, PLR0915
             from src.data.dominance_backfill import compute_dominance_for_player
             from src.ui.multiplayer import list_duckdb_v4_players
 
-            _SHARED_DB_DOM = REPO_ROOT / "data" / "warehouse" / "shared_matches.duckdb"
+            _SHARED_DB_DOM = REPO_ROOT / "data" / "warehouse" / "shared_matches_v2.duckdb"
             if not _SHARED_DB_DOM.exists():
-                logger.error("shared_matches.duckdb introuvable pour --dominance")
+                _SHARED_DB_DOM = REPO_ROOT / "data" / "warehouse" / "shared_matches.duckdb"
+            if not _SHARED_DB_DOM.exists():
+                logger.error("shared_matches(_v2).duckdb introuvable pour --dominance")
                 return 1
 
             shared_conn = duckdb.connect(str(_SHARED_DB_DOM), read_only=True)
