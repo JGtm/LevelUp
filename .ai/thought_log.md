@@ -7,6 +7,32 @@
 
 ## Journal
 
+### [2026-03-28] — Fix CONTRE_REMONTADA dead code + valeurs stales — Complété
+
+**Statut** : Complété  
+**Décision technique** :
+
+Bug signalé : match 1561d357 (score 50-13) affichait "domination totale" dans match_view mais "contre remontada" dans le tableau top performance de la carrière de Madina97294.
+
+Diagnostic :
+- Commit `4c8472c` avait `max_deficit >= 1` dans la condition CONTRE_REMONTADA → faux positifs massifs sur victoires dominantes (le score 50-13 avec max_lead=42 et max_deficit=1 recevait flag=5)
+- La correction en `max_deficit >= threshold` a rendu le bloc CONTRE_REMONTADA **inaccessible** (dead code) : REMONTADA est vérifié en premier avec la même condition `won and max_deficit >= threshold`
+- Les valeurs stales (flag=5 incorrects) restaient en DB car `comeback_backfill` avec force=False ne retouche pas les flags 3-5
+
+Fix appliqué : déplacer le check CONTRE_REMONTADA AVANT REMONTADA (ordre : CONTRE_REMONTADA → REMONTADA → DEBANDADE). Sémantique : CONTRE_REMONTADA = les deux équipes ont eu une avance de threshold+ à des moments différents, nous gagnons.
+
+**Action utilisateur requise** : après arrêt de l'app, lancer :
+```
+python scripts/backfill_data.py --all --comeback-badges --force-comeback-badges
+```
+
+Fichiers modifiés :
+- `src/analysis/comeback_analysis.py` : réordonnancement des 3 conditions IF
+
+**Résultats** : 21 tests passent. Commit `e76f86f` sur branche `feat/top-matches-exclude-btb`.
+
+---
+
 ### [2026-03-28] — Tri top matchs par performance_score — Complété
 
 **Statut** : Complété  
