@@ -66,10 +66,11 @@ def _load_candidate_matches(
     match_ids = [r[0] for r in rows]
     ep = ", ".join(["?"] * len(match_ids))
 
-    # Récupérer les match_ids ayant events_loaded depuis shared
+    # Récupérer les match_ids ayant events_loaded + win_score depuis shared
     meta = shared_conn.execute(
         f"""
-        SELECT match_id
+        SELECT match_id,
+               GREATEST(CAST(team_0_score AS INT), CAST(team_1_score AS INT)) AS win_score
         FROM match_registry
         WHERE match_id IN ({ep})
           AND COALESCE(events_loaded, FALSE) = TRUE
@@ -77,7 +78,7 @@ def _load_candidate_matches(
         match_ids,
     ).fetchall()
 
-    return [{"match_id": r[0]} for r in meta]
+    return [{"match_id": r[0], "win_score": r[1]} for r in meta]
 
 
 def _load_match_events(
@@ -162,7 +163,9 @@ def compute_comeback_badges_for_player(
             continue
         outcome = my_rows["outcome"][0]
 
-        flag = detect_comeback_badge(events, participants, xuid, outcome)
+        flag = detect_comeback_badge(
+            events, participants, xuid, outcome, win_score=item.get("win_score")
+        )
 
         player_conn.execute(
             "UPDATE player_match_enrichment "

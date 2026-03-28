@@ -30,6 +30,8 @@ import polars as pl
 
 from src.analysis._medal_verdicts import (
     COMEBACK_DEFICIT_THRESHOLD,
+    COMEBACK_MAX_SLAYER_WIN_SCORE,
+    COMEBACK_MIN_THRESHOLD,
     DominanceFlag,
 )
 
@@ -85,11 +87,30 @@ def _build_kill_differential_series(
     return diffs
 
 
+def _resolve_threshold(win_score: int | None) -> int | None:
+    """Retourne le seuil kill-diff pour ce match, ou None si mode objectif.
+
+    Args:
+        win_score: Score de l'équipe gagnante (``max(team_0_score, team_1_score)``).
+            ``None`` si inconnu → fallback sur la constante globale.
+
+    Returns:
+        Seuil entier, ou ``None`` si le mode doit être exclu (objectif).
+    """
+    if win_score is None:
+        return COMEBACK_DEFICIT_THRESHOLD
+    if win_score > COMEBACK_MAX_SLAYER_WIN_SCORE:
+        return None  # Mode objectif (CTF, Strongholds, Oddball…) → exclure
+    return max(COMEBACK_MIN_THRESHOLD, win_score // 2)
+
+
 def detect_comeback_badge(
     events: pl.DataFrame,
     participants: pl.DataFrame,
     my_xuid: str,
     outcome: int,
+    *,
+    win_score: int | None = None,
 ) -> int:
     """Classifie le badge narrative d'un match pour un joueur.
 
@@ -98,11 +119,19 @@ def detect_comeback_badge(
         participants: DataFrame ``match_participants`` du match (xuid, team_id).
         my_xuid: XUID du joueur analysé.
         outcome: Résultat du joueur (2=victoire, 3=défaite, 1=égalité, 4=DNF).
+        win_score: Score de l'équipe gagnante du match (``max(team_0_score, team_1_score)``).
+            Si fourni : seuil = ``max(5, win_score // 2)``; si ``win_score > 100``
+            (mode objectif), retourne immédiatement ``NONE``. Si ``None`` : utilise
+            la constante ``COMEBACK_DEFICIT_THRESHOLD`` (fallback rétrocompatible).
 
     Returns:
         Valeur entière de :class:`DominanceFlag` (0-5).
     """
     if outcome not in (2, 3):  # Victoire ou défaite uniquement
+        return _FLAG_NONE
+
+    threshold = _resolve_threshold(win_score)
+    if threshold is None:  # Mode objectif → pas de badge kill-based
         return _FLAG_NONE
 
     diffs = _build_kill_differential_series(events, participants, my_xuid)
@@ -115,17 +144,15 @@ def detect_comeback_badge(
 
     won = outcome == 2
 
-    # Remontada : on était très derrière à un moment mais on a gagné
-    if won and max_deficit >= COMEBACK_DEFICIT_THRESHOLD:
+    if won and max_deficit >= threshold:
         return int(DominanceFlag.REMONTADA)
 
-    # Débandade : on avait une grosse avance à un moment mais on a perdu
-    if not won and max_lead >= COMEBACK_DEFICIT_THRESHOLD:
+    if not won and max_lead >= threshold:
         return int(DominanceFlag.DEBANDADE)
 
-    # Contre-Remontada (miroir de Remontada) : on avait 25+ frags d'avance,
-    # l'adversaire a failli revenir (a au moins égalisé/dépassé), mais on a tenu.
-    if won and max_lead >= COMEBACK_DEFICIT_THRESHOLD and max_deficit >= 1:
+    # Contre-Remontada : on avait threshold+ frags d'avance, l'adversaire a failli
+    # revenir (a au moins égalisé), mais on a tenu.
+    if won and max_lead >= threshold and max_deficit >= 1:
         return int(DominanceFlag.CONTRE_REMONTADA)
 
     return _FLAG_NONE

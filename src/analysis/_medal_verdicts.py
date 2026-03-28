@@ -20,10 +20,19 @@ MEDAL_STEAKTACULAR_ID: int = 1169390319  # ID médaille "À table" / "Steaktacul
 # Ces constantes permettent d'ajuster la sensibilité sans toucher au code.
 
 # Écart maximal de kills (équipe) à n'importe quel moment du match pour qualifier.
-# Seuil 25 → ~0.5 % des matchs (5 remontadas / 931). Ajuster si trop rare/fréquent.
-# Utilisé à la fois pour Remontada (on était derrière de 25+) et
-# Contre-Remontada (on était devant de 25+, les deux sont symétriques).
+# Seuil 25 → ~0.5 % des matchs (5 remontadas / 931). Fallback si win_score inconnu.
+# Utilisé à la fois pour Remontada (on était derrière de X+) et
+# Contre-Remontada (on était devant de X+, les deux sont symétriques).
 COMEBACK_DEFICIT_THRESHOLD: int = 25
+
+# Seuil de win_score au-delà duquel le mode est considéré objectif (non-Slayer).
+# Les modes objectif (CTF, Strongholds, Oddball, etc.) ont des scores en centaines
+# ou milliers ; les modes Slayer ont un win_score ≤ 100 (Arena=50, BTB=100).
+COMEBACK_MAX_SLAYER_WIN_SCORE: int = 100
+
+# Plancher minimal du seuil pour éviter le bruit sur les modes très courts
+# (ex: Escalation Slayer win_score=11 → threshold=5).
+COMEBACK_MIN_THRESHOLD: int = 5
 
 
 class DominanceFlag(IntEnum):
