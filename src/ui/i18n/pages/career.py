@@ -233,6 +233,10 @@ STRINGS: dict[str, dict[str, str] | str] = {
         "fr": "Matchs marquants",
         "en": "Memorable Matches",
     },
+    "career_top_btb_excluded": {
+        "fr": "BTB exclus",
+        "en": "BTB excluded",
+    },
     "career_top_best_title": {
         "fr": "🏆 Meilleures performances",
         "en": "🏆 Best Performances",
@@ -266,11 +270,11 @@ STRINGS: dict[str, dict[str, str] | str] = {
         "en": "Score",
     },
     "career_top_col_kda": {
-        "fr": "FDA",
-        "en": "KDA",
+        "fr": "F/D/A",
+        "en": "K/D/A",
     },
     "career_top_col_kd": {
-        "fr": "K/D",
+        "fr": "Ratio",
         "en": "K/D",
     },
     "career_top_col_duration": {
@@ -306,16 +310,16 @@ STRINGS: dict[str, dict[str, str] | str] = {
         "en": "Held On",
     },
     "career_top_legend_remontada": {
-        "fr": "Victoire après avoir été menés de 25+ frags à un moment du match",
-        "en": "Victory after trailing by 25+ kills at some point in the match",
+        "fr": "Victoire après avoir été menés de manière significative durant un match",
+        "en": "Victory after trailing significantly during a match",
     },
     "career_top_legend_debandade": {
-        "fr": "Défaite après avoir mené de 25+ frags à un moment du match",
-        "en": "Loss after leading by 25+ kills at some point in the match",
+        "fr": "Défaite après avoir mené le match significativement",
+        "en": "Loss after leading significantly during a match",
     },
     "career_top_legend_contre_remontada": {
-        "fr": "Victoire alors que l'adversaire revenait fort (25+ frags d'avance)",
-        "en": "Victory while the enemy mounted a comeback (25+ kill lead)",
+        "fr": "Victoire alors que le score des adversaires remontait fortement",
+        "en": "Victory while the enemy mounted a significant comeback",
     },
     # ── Citations ───────────────────────────────────────────────────────────
 }

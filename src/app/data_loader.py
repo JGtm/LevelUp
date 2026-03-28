@@ -73,38 +73,67 @@ def propagate_identity_env(xuid_or_gt: str, xuid_fallback: str, wp: str) -> None
 # =============================================================================
 
 
+def _resolve_db_path(default_db: str, settings: AppSettings) -> str:
+    """Retourne le db_path à utiliser pour une nouvelle session.
+
+    Priorité :
+    1. ``LEVELUP_DB`` / ``LEVELUP_DB_PATH`` (env) — forcé, immuable
+    2. Deep link match direct (``?gamertag=X&match_id=Y``) — restaure le bon joueur
+       quand on navigue depuis l'historique ou la carrière vers un match spécifique.
+       La présence conjointe de ``match_id`` distingue ce cas des liens d'encounter
+       Explorer (``?gamertag=`` seul) qui ne doivent **pas** switcher de joueur.
+    3. SPNKr DB si ``prefer_spnkr_db_if_available`` est activé dans les settings
+    4. ``default_db`` (premier joueur alphabétique fourni par ``get_default_db_path()``)
+    """
+    forced_env_db = str(
+        os.environ.get("LEVELUP_DB") or os.environ.get("LEVELUP_DB_PATH") or ""
+    ).strip()
+    if forced_env_db:
+        logger.debug("_resolve_db_path: DB forcée via env → %s", forced_env_db)
+        return forced_env_db
+
+    chosen = str(default_db or "")
+
+    # Deep link "match direct" depuis historique / carrière.
+    # ?gamertag=X&match_id=Y → restaurer la DB du joueur X si elle existe.
+    # IMPORTANT : match_id obligatoire pour ne pas switcher sur les liens encounter.
+    try:
+        _url_gt = str((st.query_params or {}).get("gamertag") or "").strip()
+        _url_mid = str((st.query_params or {}).get("match_id") or "").strip()
+        if _url_gt and _url_mid and default_db:
+            from pathlib import Path as _Path
+
+            _candidate = _Path(default_db).parent.parent / _url_gt / "stats.duckdb"
+            if _candidate.exists() and _candidate.stat().st_size > 0:
+                logger.debug(
+                    "_resolve_db_path: DB restaurée via deep link match → %s (gamertag=%s)",
+                    _candidate,
+                    _url_gt,
+                )
+                return str(_candidate)
+    except Exception:
+        pass
+
+    if settings.prefer_spnkr_db_if_available:
+        spnkr = pick_latest_spnkr_db_if_any()
+        if spnkr and os.path.exists(spnkr) and os.path.getsize(spnkr) > 0:
+            logger.debug("_resolve_db_path: SPNKr DB sélectionnée → %s", spnkr)
+            return spnkr
+
+    return chosen
+
+
 def init_source_state(default_db: str, settings: AppSettings) -> None:
     """Initialise l'état source (DB path, xuid, waypoint) en session_state.
 
-    Priorité pour la DB :
-    1. ``LEVELUP_DB`` / ``LEVELUP_DB_PATH`` (env) — forcé, immuable
-    2. SPNKr DB si ``prefer_spnkr_db_if_available`` est activé dans les settings
-    3. ``default_db`` (premier joueur alphabétique fourni par ``get_default_db_path()``)
-
-    Note : ``?gamertag=`` dans l'URL est un paramètre de navigation vers Explorer,
-    PAS un switch de joueur. Il est consommé par ``_parse_query_params()`` →
-    ``PENDING_GAMERTAG``. L'initialisation ne doit jamais en tenir compte.
+    Délègue la sélection du db_path à ``_resolve_db_path()``.
 
     Args:
         default_db: Chemin par défaut de la DB (résultat de ``get_default_db_path()``).
         settings: Paramètres de l'application.
     """
     if "db_path" not in st.session_state:
-        chosen = str(default_db or "")
-
-        forced_env_db = str(
-            os.environ.get("LEVELUP_DB") or os.environ.get("LEVELUP_DB_PATH") or ""
-        ).strip()
-
-        if forced_env_db:
-            chosen = forced_env_db
-            logger.debug("init_source_state: DB forcée via env → %s", forced_env_db)
-        elif settings.prefer_spnkr_db_if_available:
-            spnkr = pick_latest_spnkr_db_if_any()
-            if spnkr and os.path.exists(spnkr) and os.path.getsize(spnkr) > 0:
-                chosen = spnkr
-                logger.debug("init_source_state: SPNKr DB sélectionnée → %s", spnkr)
-
+        chosen = _resolve_db_path(default_db, settings)
         logger.debug("init_source_state: db_path=%s", chosen or "(vide)")
         st.session_state["db_path"] = chosen
 

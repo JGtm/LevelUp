@@ -45,5 +45,6 @@
   "doppler_enabled": false,
   "doppler_project": "levelup",
   "doppler_config": "dev",
-  "user_timezone": "Europe/Paris"
+  "user_timezone": "Europe/Paris",
+  "career_top_exclude_btb": false
 }
