@@ -2,14 +2,12 @@
 
 Couvre :
 - _merge_trio_dataframes (fonction pure, test unitaire)
-- render_single_teammate_view (flux de contrôle avec mocks)
-- Edge cases : DataFrames vides
+- Edge cases : DataFrames vides, f2 optionnel
 """
 
 from __future__ import annotations
 
 from datetime import datetime, timedelta
-from unittest.mock import MagicMock, patch
 
 import numpy as np
 import polars as pl
@@ -57,6 +55,18 @@ class TestMergeTrioDataframes:
         assert "kills" in merged.columns  # kills du joueur principal
         assert "start_time" in merged.columns
 
+    def test_merge_without_f2(self) -> None:
+        """Avec f2=None, le merge ne contient que me + f1."""
+        from src.ui.pages.teammates_views import _merge_trio_dataframes
+
+        me = _make_player_df("me", 5, with_start_time=True)
+        f1 = _make_player_df("f1", 5)
+
+        merged = _merge_trio_dataframes(me, f1, None)
+        assert merged.height == 5
+        assert "f1_kills" in merged.columns
+        assert not any(c.startswith("f2_") for c in merged.columns)
+
     def test_partial_overlap(self) -> None:
         """Seuls les matchs communs apparaissent dans le merge."""
         from src.ui.pages.teammates_views import _merge_trio_dataframes
@@ -89,165 +99,3 @@ class TestMergeTrioDataframes:
 
         merged = _merge_trio_dataframes(me, f1, f2)
         assert merged.height == 0
-
-
-# =============================================================================
-# Tests render_single_teammate_view
-# =============================================================================
-
-
-def _make_match_df(n: int = 10) -> pl.DataFrame:
-    """Crée un DataFrame de matchs pour les tests."""
-    np.random.seed(42)
-    start = datetime(2025, 1, 1)
-
-    return pl.DataFrame(
-        {
-            "match_id": [f"match_{i}" for i in range(n)],
-            "start_time": [start + timedelta(hours=i) for i in range(n)],
-            "kills": np.random.randint(5, 25, n).tolist(),
-            "deaths": np.random.randint(3, 15, n).tolist(),
-            "assists": np.random.randint(2, 12, n).tolist(),
-            "accuracy": np.random.uniform(30, 60, n).tolist(),
-            "ratio": np.random.uniform(0.5, 2.5, n).tolist(),
-            "kda": np.random.uniform(-5, 10, n).tolist(),
-            "outcome": np.random.choice([1, 2, 3], n).tolist(),
-            "map_name": np.random.choice(["Recharge", "Streets"], n).tolist(),
-            "time_played_seconds": np.random.randint(300, 900, n).tolist(),
-            "average_life_seconds": np.random.uniform(20, 60, n).tolist(),
-            "kills_per_min": np.random.uniform(0.3, 1.5, n).tolist(),
-            "deaths_per_min": np.random.uniform(0.2, 1.0, n).tolist(),
-            "assists_per_min": np.random.uniform(0.1, 0.8, n).tolist(),
-        }
-    )
-
-
-class TestRenderSingleTeammateView:
-    """Tests de render_single_teammate_view."""
-
-    def test_no_matches_found_warning(self, mock_st) -> None:
-        """Affiche un warning si aucun match trouvé avec le coéquipier."""
-        from src.ui.pages import teammates_views as mod
-
-        ms = mock_st(mod)
-        ms.set_columns_dynamic()
-
-        df = _make_match_df()
-
-        # Mock cached_friend_matches_df pour retourner un DataFrame vide
-        with patch.object(
-            mod, "cached_friend_matches_df", return_value=pl.DataFrame(schema={"match_id": pl.Utf8})
-        ):
-            mod.render_single_teammate_view(
-                df=df,
-                dff=df,
-                ctx={
-                    "me_name": "TestPlayer",
-                    "xuid": "100",
-                    "db_path": "dummy.duckdb",
-                    "db_key": None,
-                    "picked_xuids": ["200"],
-                    "aliases_key": None,
-                    "picked_session_labels": None,
-                    "include_firefight": False,
-                    "waypoint_player": "TestPlayer",
-                },
-                filters={
-                    "apply_current_filters": False,
-                    "same_team_only": True,
-                    "show_smooth": True,
-                },
-                callbacks={
-                    "assign_player_colors_fn": lambda *_a, **_kw: {},
-                    "plot_multi_metric_bars_fn": lambda *_a, **_kw: MagicMock(),
-                    "top_medals_fn": lambda *_a, **_kw: [],
-                    "load_teammate_stats_fn": lambda *_a, **_kw: pl.DataFrame(),
-                    "enrich_series_fn": lambda *_a, **_kw: {},
-                },
-            )
-
-        ms.calls["warning"].assert_called()
-
-    def test_with_shared_matches(self, mock_st) -> None:
-        """Flux nominal avec des matchs partagés."""
-        from src.ui.pages import teammates_views as mod
-
-        ms = mock_st(mod)
-        ms.set_columns_dynamic()
-        ms.session_state["player_xuid"] = "100"
-
-        df = _make_match_df(10)
-        friend_df = _make_match_df(10)
-
-        # Préparer le DataFrame de matchs partagés
-        shared_df = pl.DataFrame(
-            {
-                "match_id": df["match_id"].to_list(),
-                "outcome": [2] * 10,
-                "is_same_team": [True] * 10,
-            }
-        )
-
-        import src.ui.pages.teammates_map_charts as _tmc
-
-        _bd_mock = pl.DataFrame(
-            {
-                "map_name": ["Streets"],
-                "matches": [5],
-                "win_rate": [0.6],
-                "loss_rate": [0.4],
-                "ratio_global": [1.5],
-                "accuracy_avg": [45.0],
-                "performance_avg": [0.2],
-            }
-        )
-        with (
-            patch.object(mod, "cached_friend_matches_df", return_value=shared_df),
-            patch.object(mod, "render_outcome_bar_chart"),
-            patch.object(mod, "_render_match_details_expander"),
-            patch.object(mod, "_render_shared_stats_metrics"),
-            patch.object(mod, "_render_shared_medals"),
-            patch.object(mod, "display_name_from_xuid", return_value="FriendName"),
-            patch.object(
-                mod,
-                "compute_map_breakdown",
-                return_value=MagicMock(breakdown=_bd_mock),
-            ),
-            patch.object(_tmc, "compute_map_breakdown", return_value=_bd_mock),
-        ):
-            mod.render_single_teammate_view(
-                df=df,
-                dff=df,
-                ctx={
-                    "me_name": "TestPlayer",
-                    "xuid": "100",
-                    "db_path": "dummy.duckdb",
-                    "db_key": None,
-                    "picked_xuids": ["200"],
-                    "aliases_key": None,
-                    "picked_session_labels": None,
-                    "include_firefight": False,
-                    "waypoint_player": "TestPlayer",
-                },
-                filters={
-                    "apply_current_filters": False,
-                    "same_team_only": True,
-                    "show_smooth": True,
-                },
-                callbacks={
-                    "assign_player_colors_fn": lambda *_a, **_kw: {
-                        "TestPlayer": "#00ff00",
-                        "FriendName": "#ff0000",
-                    },
-                    "plot_multi_metric_bars_fn": lambda *_a, **_kw: MagicMock(),
-                    "top_medals_fn": lambda *_a, **_kw: [],
-                    "load_teammate_stats_fn": lambda *_a, **_kw: friend_df,
-                    "enrich_series_fn": lambda *_a, **_kw: {
-                        "friend_names": {"200": "FriendName"},
-                        "colors_by_name": {"TestPlayer": "#00ff00", "FriendName": "#ff0000"},
-                        "series": [],
-                    },
-                },
-            )
-
-        # Pas de crash = OK

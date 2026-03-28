@@ -647,6 +647,24 @@ def create_argument_parser() -> argparse.ArgumentParser:
         ),
     )
 
+    # ── Badges narrative comeback (local, v6.2) ───────────────────────────────
+    parser.add_argument(
+        "--comeback-badges",
+        action="store_true",
+        dest="comeback_badges",
+        help=(
+            "Calcule les badges narrative Remontada / Débandade / Contre-Remontada "
+            "depuis les kill-events (highlight_events). Local, sans API. "
+            "Requiert events_loaded = TRUE pour chaque match."
+        ),
+    )
+    parser.add_argument(
+        "--force-comeback-badges",
+        action="store_true",
+        dest="force_comeback_badges",
+        help="Re-traite les matchs déjà badgés (valeurs 3-5) en plus des non badgés.",
+    )
+
     return parser
 
 

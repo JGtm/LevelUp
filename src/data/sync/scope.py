@@ -67,6 +67,8 @@ _FORCE_MAP: dict[str, str] = {
     "force_lusr": "lusr",
     "force_csr": "csr",
     "force_skill_rank": "skill_rank",
+    # ── Badges narrative comeback v6.2 ──
+    "force_comeback_badges": "comeback_badges",
 }
 
 # Champs activés par ``all_data``.  Listés explicitement pour ne pas
@@ -122,6 +124,8 @@ _ALL_DATA_FIELDS: tuple[str, ...] = (
     "csr",
     "skill_rank",
     # Note : fetch_csr est un snapshot one-shot, non activé par --all-data
+    # ── Badges narrative comeback v6.2 ──
+    "comeback_badges",
 )
 
 # Mapping champ → clé pour ``requested_types`` (bitmask backfill_completed).
@@ -290,6 +294,10 @@ class SyncScope:
     fetch_csr: bool = False  # Snapshot CSR actuel via get_playlist_csr → skill_history
     skill_rank: bool = False  # Alias unifié : lusr=True + csr=True (v5.3)
     force_skill_rank: bool = False  # force_lusr=True + force_csr=True (v5.3)
+
+    # ── Badges narrative comeback — v6.2 ─────────────────────────────
+    comeback_badges: bool = False  # Calcul Remontada / Débandade / Contre-Remontada
+    force_comeback_badges: bool = False  # Re-traiter les matchs déjà badgés (3-5)
 
     # ── Méta-flag ────────────────────────────────────────────────────────
     all_data: bool = False
