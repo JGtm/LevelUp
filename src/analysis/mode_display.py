@@ -4,12 +4,13 @@ Supprime les préfixes redondants de ``game_variant_name`` lorsqu'ils sont
 déjà implicites par ``mode_category`` (contexte playlist).
 
 Exemples :
-    BTB:Slayer       (BTB)       → "Assassin"
-    BTB Heavies:CTF  (BTB)       → "Heavies : Capture du drapeau"
-    Arena:CTF        (Assassin)  → "Capture du drapeau"
-    CTF:Arena        (Assassin)  → "Capture du drapeau"  (format inversé)
-    Ranked:Slayer    (Ranked)    → "Assassin"
-    CASTLE WARS      (Fiesta)    → "CASTLE WARS"          (sans séparateur)
+    BTB:Slayer        (BTB)       → "Assassin"
+    BTB Heavies:CTF   (BTB)       → "Heavies : Capture du drapeau"
+    Arena:CTF         (Assassin)  → "Capture du drapeau"
+    CTF:Arena         (Assassin)  → "Capture du drapeau"  (format inversé)
+    Tactical:Slayer   (Assassin)  → "Assassin Tactique"   (qualifier après mode)
+    Ranked:Slayer     (Ranked)    → "Assassin"
+    CASTLE WARS       (Fiesta)    → "CASTLE WARS"         (sans séparateur)
 
 Ce module est **pur** : zéro accès DB, zéro Streamlit.
 Les tables de traduction (issues de ``metadata.duckdb``) sont injectées
@@ -27,7 +28,8 @@ _MAP_SUFFIX_RE: Final = re.compile(r"^(.*?)(?:\s*[\-–—]\s*[0-9A-Za-z]{8,})$"
 # category  : mode_category DB correspondante (valeur dans match_registry)
 # qualifier : libellé à conserver quand le préfixe est redondant
 #             None  → masquer le préfixe entièrement
-#             str   → afficher ce qualificatif comme nouveau préfixe
+#             str   → clé à résoudre dans mode_prefix_names (ex: "Tactical")
+#                     ou valeur directe si absente de la table (ex: "Heavies")
 
 
 class _PrefixRule(TypedDict):
@@ -37,7 +39,7 @@ class _PrefixRule(TypedDict):
 
 _PREFIX_RULES: Final[dict[str, _PrefixRule]] = {
     "Arena": {"category": "Assassin", "qualifier": None},
-    "Tactical": {"category": "Assassin", "qualifier": None},
+    "Tactical": {"category": "Assassin", "qualifier": "Tactical"},
     "Assault": {"category": "Assassin", "qualifier": None},
     "Community": {"category": "Other", "qualifier": None},
     "Event": {"category": "Other", "qualifier": None},
@@ -54,6 +56,10 @@ _PREFIX_RULES: Final[dict[str, _PrefixRule]] = {
 
 _KNOWN_PREFIXES: Final[frozenset[str]] = frozenset(_PREFIX_RULES)
 
+# Préfixes dont la sémantique est appliquée même quand mode_category == "Other"
+# (playlists non résolues / événementielles qui gardent la sémantique de leur préfixe)
+_STRIP_IN_OTHER: Final[frozenset[str]] = frozenset(_PREFIX_RULES) - {"Community", "Event"}
+
 _CASE_MAP: Final[dict[str, str]] = {
     "btb heavies": "BTB Heavies",
     "btb": "BTB",
@@ -64,15 +70,22 @@ _CASE_MAP: Final[dict[str, str]] = {
 
 
 def _normalize_case(s: str) -> str:
-    """Normalise la casse d'un pair_name (même logique que translations.py)."""
+    """Normalise la casse d'un pair_name (même logique que translations.py).
+
+    Règles :
+    - Préfixes spéciaux → CASE_MAP (BTB, BTB Heavies, etc.)
+    - Tout-majuscules → conservé tel quel (acronymes : CTF, KOTH, BTB)
+    - Sinon → chaque mot est capitalisé (title-case) : "team slayer" → "Team Slayer"
+    """
     if ":" not in s:
         return s
     prefix, rest = s.split(":", 1)
     prefix = prefix.strip()
     rest = rest.strip()
-    prefix = _CASE_MAP.get(
-        prefix.lower(), prefix if prefix.isupper() else prefix[:1].upper() + prefix[1:].lower()
-    )
+    if prefix.lower() in _CASE_MAP:
+        prefix = _CASE_MAP[prefix.lower()]
+    elif not prefix.isupper():
+        prefix = " ".join(w[:1].upper() + w[1:].lower() for w in prefix.split())
     if rest and rest == rest.lower():
         rest = " ".join(w[:1].upper() + w[1:] for w in rest.split())
     return f"{prefix}:{rest}" if prefix else rest
@@ -83,6 +96,13 @@ def _strip_map_suffix(s: str) -> str:
     s = s.split(" on ", 1)[0].strip()
     m = _MAP_SUFFIX_RE.match(s)
     return (m.group(1) or "").strip() if m else s
+
+
+def _is_redundant(rule: _PrefixRule, mode_category: str, prefix_en: str) -> bool:
+    """Indique si le préfixe est redondant dans le contexte ``mode_category``."""
+    if rule["category"] == mode_category:
+        return True
+    return mode_category == "Other" and prefix_en in _STRIP_IN_OTHER
 
 
 def resolve_display_mode(
@@ -140,7 +160,7 @@ def resolve_display_mode(
     mode_label = mode_tr.get(mode_en, mode_en)
 
     # 4) Préfixe redondant → simplifier
-    if rule and rule["category"] == mode_category:
+    if rule and _is_redundant(rule, mode_category, prefix_en):
         qualifier = rule["qualifier"]
         if qualifier is None:
             return mode_label

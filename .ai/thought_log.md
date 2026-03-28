@@ -7,6 +7,24 @@
 
 ## Journal
 
+### [2026-03-29] — Normalisation labels modes — validation CSV + corrections — Complété
+
+**Statut** : Complété (phase 1 corrigée suite à review utilisateur)
+**Décision technique** :
+
+- Fix `_normalize_case` : title-case chaque mot (pas seulement 1er char) → "team slayer" → "Team Slayer" pour que les overrides multi-mots soient trouvés
+- Ajout `_STRIP_IN_OTHER` : BTB/Ranked/Fiesta etc. strippent le préfixe même en mode_category="Other" (playlists UUID non résolues)
+- Tactical garde son qualifier ("Tactique") mais positionné en préfixe standard → l'override DB `Tactical:Slayer` donne "Assassin Tactique" (FR) / "Tactical Slayer" (EN)
+- Suppression `_QUALIFIER_AFTER` (trop complexe pour un seul cas couvert par override)
+- 29 overrides ajoutés/mis à jour dans `mode_pair_overrides` (FR + EN) : Assault, KOTH, Team Slayer, Team Snipers, BTB Fiesta variants, Slayer:Arena Fiesta, Tactical:Slayer, Slayer:Arena Tactical
+- 0 divergence entre CSV validé utilisateur et algo (2 exceptions documentées : typo CSV + inconsistance UUID)
+
+**Résultats** : 35/35 tests unitaires.
+
+**Conclusion** : Phase 1 terminée. Phase 2 = branchement UI dans normalize_mode_label + filtres.
+
+---
+
 ### [2026-03-28] — Normalisation labels modes de jeu — resolve_display_mode() — Complété
 
 **Statut** : Complété (phase 1/2 — logique pure + fichier plat. Phase 2 : intégration UI après validation)

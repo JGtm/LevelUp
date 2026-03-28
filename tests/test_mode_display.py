@@ -15,6 +15,10 @@ TABLES_FR: dict = {
         "Fiesta:Slayer": "Fiesta",
         "Community:Shotty Snipe Slayer Ffa": "Fusils snipers à grenaille",
         "Arena:Shotty Snipes Slayer": "Fusils snipers à grenaille",
+        "Tactical:Slayer": "Assassin Tactique",
+        "Team Slayer:Arena": "Assassin",
+        "Arena:Team Slayer": "Assassin",
+        "KOTH:Arena": "Roi de la colline",
     },
     "mode_name_tr": {
         "Slayer": "Assassin",
@@ -51,6 +55,8 @@ TABLES_FR: dict = {
 TABLES_EN: dict = {
     "mode_pair_overrides": {
         "Fiesta:Slayer": "Fiesta",
+        "Tactical:Slayer": "Tactical Slayer",
+        "Team Slayer:Arena": "Team Slayer",
     },
     "mode_name_tr": {
         "Slayer": "Slayer",
@@ -118,6 +124,27 @@ class TestStandardFormatRedundant:
 # ── Format standard — préfixe NON redondant conservé ─────────────────────────
 
 
+class TestTacticalQualifierAfter:
+    def test_tactical_slayer_override_fr(self):
+        """Tactical:Slayer → override DB → 'Assassin Tactique'."""
+        result = resolve_display_mode("Tactical:Slayer", "Assassin", "fr", TABLES_FR)
+        assert result == "Assassin Tactique"
+
+    def test_tactical_slayer_override_en(self):
+        result = resolve_display_mode("Tactical:Slayer", "Assassin", "en", TABLES_EN)
+        assert result == "Tactical Slayer"
+
+    def test_tactical_in_other_context(self):
+        """Tactical en contexte Other → override DB appliqué."""
+        result = resolve_display_mode("Tactical:Slayer", "Other", "fr", TABLES_FR)
+        assert result == "Assassin Tactique"
+
+    def test_tactical_unknown_mode_fallback(self):
+        """Tactical:CTF sans override → qualifier en préfixe standard."""
+        result = resolve_display_mode("Tactical:CTF", "Assassin", "fr", TABLES_FR)
+        assert result == "Tactique : Capture du drapeau"
+
+
 class TestStandardFormatNonRedundant:
     def test_fiesta_slayer_in_assassin_playlist(self):
         """Fiesta dans une playlist Assassin → Fiesta n'est pas redondant → conserver."""
@@ -148,6 +175,16 @@ class TestHeaviesQualifier:
         result = resolve_display_mode("BTB Heavies:Slayer", "BTB", "fr", TABLES_FR)
         assert result == "Heavies : Assassin"
 
+    def test_btb_slayer_in_other_context(self):
+        """BTB:Slayer en contexte Other → préfixe toujours simplifié."""
+        result = resolve_display_mode("BTB:Slayer", "Other", "fr", TABLES_FR)
+        assert result == "Assassin"
+
+    def test_ranked_ctf_in_other_context(self):
+        """Ranked:CTF en contexte Other → simplifié."""
+        result = resolve_display_mode("Ranked:CTF", "Other", "fr", TABLES_FR)
+        assert result == "Capture du drapeau"
+
     def test_btb_heavies_total_control_in_btb(self):
         result = resolve_display_mode("BTB Heavies:Total Control", "BTB", "fr", TABLES_FR)
         assert result == "Heavies : Contrôle total"
@@ -163,9 +200,9 @@ class TestInvertedFormat:
         assert result == "Capture du drapeau"
 
     def test_koth_arena_in_assassin(self):
+        """KOTH:Arena → override → Roi de la colline."""
         result = resolve_display_mode("KOTH:Arena", "Assassin", "fr", TABLES_FR)
-        # KOTH pas dans mode_name_tr → fallback brut
-        assert result == "KOTH"
+        assert result == "Roi de la colline"
 
     def test_slayer_btb_heavies_in_btb(self):
         """Slayer:BTB Heavies → format inversé → prefix=BTB Heavies, mode=Slayer."""
@@ -176,6 +213,12 @@ class TestInvertedFormat:
         """CTF:BTB → right=BTB est un préfixe connu → inversé → prefix=BTB, mode=CTF."""
         result = resolve_display_mode("CTF:BTB", "BTB", "fr", TABLES_FR)
         assert result == "Capture du drapeau"
+
+    def test_team_slayer_arena_casing(self):
+        """Team Slayer:Arena → _normalize_case conserve title-case multi-mots."""
+        result = resolve_display_mode("Team Slayer:Arena", "Assassin", "fr", TABLES_FR)
+        # Override "Team Slayer:Arena" → "Assassin" attendu
+        assert result == "Assassin"
 
 
 # ── Variants sans séparateur ──────────────────────────────────────────────────
