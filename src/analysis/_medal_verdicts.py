@@ -16,20 +16,16 @@ from enum import IntEnum
 MEDAL_STEAKTACULAR_ID: int = 1169390319  # ID médaille "À table" / "Steaktacular"
 
 # ── Seuils pour la détection des badges narrative comeback ────────────────────
-# Nombre minimal de kill-events d'écart au checkpoint pour qualifier le badge.
+# Basés sur une analyse corpus de 931 matchs PvP (highlight_events, equipe entière).
 # Ces constantes permettent d'ajuster la sensibilité sans toucher au code.
 
-# Déficit minimal de kills (highlight) au checkpoint pour qu'une remontée qualifie.
-COMEBACK_DEFICIT_THRESHOLD: int = 3
+# Déficit maximal de kills (équipe) à n'importe quel moment du match pour qualifier.
+# Seuil 25 → ~0.5 % des matchs (5 remontadas / 931). Ajuster si trop rare/fréquent.
+COMEBACK_DEFICIT_THRESHOLD: int = 25
 
-# Avance minimale de l'adversaire au checkpoint pour qualifier un Contre-Remontada.
-COMEBACK_COUNTER_GAP: int = 2
-
-# Fraction du temps de match utilisée comme checkpoint Remontada/Contre-Remontada.
-COMEBACK_EARLY_CUTOFF: float = 0.60
-
-# Fraction du temps de match utilisée comme checkpoint Débandade.
-COMEBACK_COLLAPSE_CUTOFF: float = 0.60
+# Écart minimal de l'adversaire (en avance) pour qualifier un Contre-Remontada.
+# Moins exigeant que COMEBACK_DEFICIT_THRESHOLD : l'adversaire remontait sans dépasser.
+COMEBACK_COUNTER_GAP: int = 10
 
 
 class DominanceFlag(IntEnum):

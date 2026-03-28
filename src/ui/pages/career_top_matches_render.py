@@ -23,6 +23,12 @@ _BG_DOMINATION = "#2e7d32"
 _FG_DOMINATION = "#e8f5e9"
 _BG_HUMILIATION = "#6a1b9a"
 _FG_HUMILIATION = "#f3e5f5"
+_BG_REMONTADA = "#1565c0"
+_FG_REMONTADA = "#e3f2fd"
+_BG_DEBANDADE = "#bf360c"
+_FG_DEBANDADE = "#fbe9e7"
+_BG_CONTRE_REMONTADA = "#00695c"
+_FG_CONTRE_REMONTADA = "#e0f2f1"
 
 
 def _format_duration(seconds: int | float | None) -> str:
@@ -95,43 +101,71 @@ def _format_date(raw: object) -> str:
     return "—"
 
 
+_BADGE_CONFIGS: dict[int, tuple[str, str, str]] = {
+    # flag → (i18n_key, bg_color, fg_color)
+    1: ("career_top_badge_domination", _BG_DOMINATION, _FG_DOMINATION),
+    2: ("career_top_badge_humiliation", _BG_HUMILIATION, _FG_HUMILIATION),
+    3: ("career_top_badge_remontada", _BG_REMONTADA, _FG_REMONTADA),
+    4: ("career_top_badge_debandade", _BG_DEBANDADE, _FG_DEBANDADE),
+    5: ("career_top_badge_contre_remontada", _BG_CONTRE_REMONTADA, _FG_CONTRE_REMONTADA),
+}
+
+
 def _badge_html(dom_flag: int, *, best: bool) -> str:
-    """HTML d'un badge Domination/Humiliation ou chaîne vide."""
-    if best and dom_flag == 1:
-        label = html.escape(t("career_top_badge_domination"))
-        return (
-            f"<span style='padding:1px 6px;border-radius:3px;font-size:0.75em;"
-            f"font-weight:600;background:{_BG_DOMINATION};color:{_FG_DOMINATION}'>"
-            f"{label}</span>"
-        )
-    if not best and dom_flag == 2:
-        label = html.escape(t("career_top_badge_humiliation"))
-        return (
-            f"<span style='padding:1px 6px;border-radius:3px;font-size:0.75em;"
-            f"font-weight:600;background:{_BG_HUMILIATION};color:{_FG_HUMILIATION}'>"
-            f"{label}</span>"
-        )
-    return ""
+    """HTML du badge de match ou chaîne vide.
+
+    Seuls les badges cohérents avec l'onglet sont affichés :
+    onglet best=True → victoires (1, 3, 5) ; best=False → défaites (2, 4).
+    """
+    allowed = _BEST_FLAGS if best else _WORST_FLAGS
+    if dom_flag not in allowed:
+        return ""
+    cfg = _BADGE_CONFIGS.get(dom_flag)
+    if not cfg:
+        return ""
+    key, bg, fg = cfg
+    label = html.escape(t(key))
+    return (
+        f"<span style='padding:1px 6px;border-radius:3px;font-size:0.75em;"
+        f"font-weight:600;background:{bg};color:{fg}'>"
+        f"{label}</span>"
+    )
+
+
+_LEGEND_KEYS: dict[int, str] = {
+    1: "career_top_legend_domination",
+    2: "career_top_legend_humiliation",
+    3: "career_top_legend_remontada",
+    4: "career_top_legend_debandade",
+    5: "career_top_legend_contre_remontada",
+}
+
+# Badges affichés dans chaque onglet (best=True → victoires, best=False → défaites)
+_BEST_FLAGS = (1, 3, 5)
+_WORST_FLAGS = (2, 4)
 
 
 def _build_match_badge_legend_html(*, best: bool) -> str:
-    """Légende inline pour le badge Domination ou Humiliation."""
-    if best:
-        label = html.escape(t("career_top_badge_domination"))
-        text = html.escape(t("career_top_legend_domination"))
-        bg, fg = _BG_DOMINATION, _FG_DOMINATION
-    else:
-        label = html.escape(t("career_top_badge_humiliation"))
-        text = html.escape(t("career_top_legend_humiliation"))
-        bg, fg = _BG_HUMILIATION, _FG_HUMILIATION
-    badge = (
-        f"<span style='padding:1px 6px;border-radius:3px;font-size:0.75em;"
-        f"font-weight:600;background:{bg};color:{fg}'>{label}</span>"
-    )
+    """Légende inline pour tous les badges possibles dans l'onglet courant."""
+    flags = _BEST_FLAGS if best else _WORST_FLAGS
+    lines = []
+    for flag in flags:
+        cfg = _BADGE_CONFIGS.get(flag)
+        leg_key = _LEGEND_KEYS.get(flag)
+        if not cfg or not leg_key:
+            continue
+        key, bg, fg = cfg
+        badge_span = (
+            f"<span style='padding:1px 6px;border-radius:3px;font-size:0.75em;"
+            f"font-weight:600;background:{bg};color:{fg}'>"
+            f"{html.escape(t(key))}</span>"
+        )
+        lines.append(f"{badge_span} {html.escape(t(leg_key))}")
+    if not lines:
+        return ""
+    body = "<br>".join(lines)
     return (
-        f"<div style='font-size:0.78em;opacity:0.72;margin-top:4px;line-height:1.8;'>"
-        f"{badge} {text}"
-        f"</div>"
+        f"<div style='font-size:0.78em;opacity:0.72;margin-top:4px;line-height:1.8;'>{body}</div>"
     )
 
 
