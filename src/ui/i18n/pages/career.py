@@ -314,8 +314,8 @@ STRINGS: dict[str, dict[str, str] | str] = {
         "en": "Loss after leading by 25+ kills at some point in the match",
     },
     "career_top_legend_contre_remontada": {
-        "fr": "Victoire alors que l'adversaire revenait fort (10+ frags d'avance)",
-        "en": "Victory while the enemy mounted a comeback (10+ kill lead)",
+        "fr": "Victoire alors que l'adversaire revenait fort (25+ frags d'avance)",
+        "en": "Victory while the enemy mounted a comeback (25+ kill lead)",
     },
     # ── Citations ───────────────────────────────────────────────────────────
 }
