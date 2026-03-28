@@ -15,15 +15,12 @@ Usage :
 from __future__ import annotations
 
 import logging
-from typing import TYPE_CHECKING
 
+import duckdb
 import polars as pl
 
 from src.analysis._medal_verdicts import DominanceFlag
-from src.analysis.comeback_analysis import detect_comeback_badge
-
-if TYPE_CHECKING:
-    import duckdb
+from src.analysis.comeback_analysis import MatchMeta, detect_comeback_badge
 
 logger = logging.getLogger(__name__)
 
@@ -66,11 +63,12 @@ def _load_candidate_matches(
     match_ids = [r[0] for r in rows]
     ep = ", ".join(["?"] * len(match_ids))
 
-    # Récupérer les match_ids ayant events_loaded + win_score depuis shared
+    # Récupérer les match_ids ayant events_loaded + win_score + variant depuis shared
     meta = shared_conn.execute(
         f"""
         SELECT match_id,
-               GREATEST(CAST(team_0_score AS INT), CAST(team_1_score AS INT)) AS win_score
+               GREATEST(CAST(team_0_score AS INT), CAST(team_1_score AS INT)) AS win_score,
+               game_variant_name
         FROM match_registry
         WHERE match_id IN ({ep})
           AND COALESCE(events_loaded, FALSE) = TRUE
@@ -78,7 +76,7 @@ def _load_candidate_matches(
         match_ids,
     ).fetchall()
 
-    return [{"match_id": r[0], "win_score": r[1]} for r in meta]
+    return [{"match_id": r[0], "win_score": r[1], "game_variant_name": r[2]} for r in meta]
 
 
 def _load_match_events(
@@ -122,6 +120,35 @@ def _load_match_participants(
     )
 
 
+def _reset_objective_mode_flags(
+    player_conn: duckdb.DuckDBPyConnection,
+    shared_conn: duckdb.DuckDBPyConnection,
+    xuid: str,
+) -> int:
+    """Remet à 0 les badges comeback sur les matchs non-Slayer.
+
+    Couvre les cas où un badge a été posé avant l'introduction du filtre
+    sur game_variant_name, ou sur des matchs sans events_loaded (hors boucle).
+    """
+    rows = shared_conn.execute(
+        "SELECT match_id FROM match_registry WHERE LOWER(game_variant_name) NOT LIKE '%slayer%'"
+    ).fetchall()
+    if not rows:
+        return 0
+    ids = [r[0] for r in rows]
+    ep = ", ".join(["?"] * len(ids))
+    result = player_conn.execute(
+        f"UPDATE player_match_enrichment "
+        f"SET dominance_flag = 0, updated_at = CURRENT_TIMESTAMP "
+        f"WHERE dominance_flag IN (3, 4, 5) AND match_id IN ({ep})",
+        ids,
+    )
+    count = result.rowcount if result else 0
+    if count > 0:
+        logger.info("reset_objective_flags xuid=%s: %d flag(s) remis à 0", xuid, count)
+    return count
+
+
 def compute_comeback_badges_for_player(
     player_conn: duckdb.DuckDBPyConnection,
     shared_conn: duckdb.DuckDBPyConnection,
@@ -140,6 +167,7 @@ def compute_comeback_badges_for_player(
     Returns:
         Dict ``{"processed": n, "remontada": r, "debandade": d, "contre_remontada": c}``.
     """
+    _reset_objective_mode_flags(player_conn, shared_conn, xuid)
     candidates = _load_candidate_matches(player_conn, shared_conn, xuid, force=force)
     if not candidates:
         logger.info("Comeback backfill xuid=%s: aucun match candidat.", xuid)
@@ -164,7 +192,14 @@ def compute_comeback_badges_for_player(
         outcome = my_rows["outcome"][0]
 
         flag = detect_comeback_badge(
-            events, participants, xuid, outcome, win_score=item.get("win_score")
+            events,
+            participants,
+            xuid,
+            outcome,
+            meta=MatchMeta(
+                win_score=item.get("win_score"),
+                game_variant_name=item.get("game_variant_name"),
+            ),
         )
 
         player_conn.execute(

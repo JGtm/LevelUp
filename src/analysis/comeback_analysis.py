@@ -25,6 +25,7 @@ Les seuils sont définis dans :mod:`src.analysis._medal_verdicts`.
 from __future__ import annotations
 
 import logging
+from dataclasses import dataclass
 
 import polars as pl
 
@@ -38,6 +39,25 @@ from src.analysis._medal_verdicts import (
 logger = logging.getLogger(__name__)
 
 _FLAG_NONE = int(DominanceFlag.NONE)
+
+
+@dataclass(frozen=True)
+class MatchMeta:
+    """Métadonnées du match pour la détection de badges narrative.
+
+    Regroupe les informations de ``match_registry`` nécessaires au calcul
+    du seuil et au filtre mode objectif / Slayer.
+    """
+
+    win_score: int | None = None
+    """Score de l'équipe gagnante (``max(team_0_score, team_1_score)``).
+    ``None`` si inconnu → fallback sur COMEBACK_DEFICIT_THRESHOLD.
+    """
+
+    game_variant_name: str | None = None
+    """Nom du variant (ex: ``"BTB:Slayer"``, ``"CTF:Arena"``).
+    Si ne contient pas "slayer" → mode objectif → badge exclu.
+    """
 
 
 def _build_kill_differential_series(
@@ -87,21 +107,27 @@ def _build_kill_differential_series(
     return diffs
 
 
-def _resolve_threshold(win_score: int | None) -> int | None:
+def _resolve_threshold(meta: MatchMeta) -> int | None:
     """Retourne le seuil kill-diff pour ce match, ou None si mode objectif.
 
-    Args:
-        win_score: Score de l'équipe gagnante (``max(team_0_score, team_1_score)``).
-            ``None`` si inconnu → fallback sur la constante globale.
+    Le critère principal d'exclusion est le nom du variant : seuls les modes
+    contenant "slayer" sont des modes à kills. Le win_score sert uniquement
+    à calibrer le seuil entre Arena (50) et BTB (100).
 
     Returns:
         Seuil entier, ou ``None`` si le mode doit être exclu (objectif).
     """
-    if win_score is None:
+    # Filtre primaire : modes non-Slayer (CTF, Strongholds, Oddball, KOTH…)
+    # Les CTF peuvent avoir win_score=3 (captures), d'autres win_score>100 (temps).
+    # Le nom du variant est le seul critère fiable.
+    if meta.game_variant_name is not None and "slayer" not in meta.game_variant_name.lower():
+        return None
+
+    if meta.win_score is None:
         return COMEBACK_DEFICIT_THRESHOLD
-    if win_score > COMEBACK_MAX_SLAYER_WIN_SCORE:
-        return None  # Mode objectif (CTF, Strongholds, Oddball…) → exclure
-    return max(COMEBACK_MIN_THRESHOLD, win_score // 2)
+    if meta.win_score > COMEBACK_MAX_SLAYER_WIN_SCORE:
+        return None  # Sécurité : score > 100 même avec "slayer" dans le nom
+    return max(COMEBACK_MIN_THRESHOLD, meta.win_score // 2)
 
 
 def detect_comeback_badge(
@@ -110,7 +136,7 @@ def detect_comeback_badge(
     my_xuid: str,
     outcome: int,
     *,
-    win_score: int | None = None,
+    meta: MatchMeta | None = None,
 ) -> int:
     """Classifie le badge narrative d'un match pour un joueur.
 
@@ -119,10 +145,8 @@ def detect_comeback_badge(
         participants: DataFrame ``match_participants`` du match (xuid, team_id).
         my_xuid: XUID du joueur analysé.
         outcome: Résultat du joueur (2=victoire, 3=défaite, 1=égalité, 4=DNF).
-        win_score: Score de l'équipe gagnante du match (``max(team_0_score, team_1_score)``).
-            Si fourni : seuil = ``max(5, win_score // 2)``; si ``win_score > 100``
-            (mode objectif), retourne immédiatement ``NONE``. Si ``None`` : utilise
-            la constante ``COMEBACK_DEFICIT_THRESHOLD`` (fallback rétrocompatible).
+        meta: Métadonnées du match (win_score, game_variant_name).
+            Si ``None`` : fallback sur les constantes globales (rétrocompatible).
 
     Returns:
         Valeur entière de :class:`DominanceFlag` (0-5).
@@ -130,7 +154,7 @@ def detect_comeback_badge(
     if outcome not in (2, 3):  # Victoire ou défaite uniquement
         return _FLAG_NONE
 
-    threshold = _resolve_threshold(win_score)
+    threshold = _resolve_threshold(meta or MatchMeta())
     if threshold is None:  # Mode objectif → pas de badge kill-based
         return _FLAG_NONE
 
