@@ -12,6 +12,7 @@ from unittest.mock import patch
 import duckdb
 import pytest
 
+from src.analysis._medal_verdicts import DominanceFlag
 from src.data.domain.refdata import Outcome
 from src.ui.pages.career_top_matches_data import (
     _BADGE_PRIORITY_EXPR,
@@ -270,7 +271,8 @@ class TestLoadTopMatchesDuckDB:
                 is_ranked BOOLEAN DEFAULT FALSE,
                 medals_loaded BOOLEAN DEFAULT TRUE,
                 team_0_ps_score INTEGER,
-                team_1_ps_score INTEGER
+                team_1_ps_score INTEGER,
+                mode_category VARCHAR DEFAULT NULL
             )
         """)
         shared_db.execute("""
@@ -339,14 +341,15 @@ class TestLoadTopMatchesDuckDB:
         deaths: int = 5,
         assists: int = 3,
         time_played: int = 600,
-        my_score: int = 50,
-        enemy_score: int = 30,
+        my_score: int | None = 50,
+        enemy_score: int | None = 30,
         is_firefight: bool = False,
         map_name: str = "Recharge",
+        mode_category: str | None = None,
     ) -> None:
         conn.execute(
-            "INSERT INTO shared.match_registry VALUES (?,CURRENT_TIMESTAMP,?,?,?,?,?,?,NULL,NULL)",
-            [match_id, map_name, "Arena", "Slayer", is_firefight, False, True],
+            "INSERT INTO shared.match_registry VALUES (?,CURRENT_TIMESTAMP,?,?,?,?,?,?,NULL,NULL,?)",
+            [match_id, map_name, "Arena", "Slayer", is_firefight, False, True, mode_category],
         )
         kda = (kills + assists / 3) / max(deaths, 1)
         conn.execute(
@@ -371,6 +374,7 @@ class TestLoadTopMatchesDuckDB:
         match_ids: list[str],
         *,
         bot_ids: set[str] | None = None,
+        badge_flags: dict[str, int] | None = None,
     ) -> str:
         """Crée une player DB sur disque avec les enrichissements."""
         player_path = os.path.join(tmp_dir, "stats.duckdb")
@@ -385,9 +389,10 @@ class TestLoadTopMatchesDuckDB:
         bot_ids = bot_ids or set()
         for mid in match_ids:
             has_bot = mid in bot_ids
+            flag = (badge_flags or {}).get(mid, 0)
             player_db.execute(
-                "INSERT INTO player_match_enrichment VALUES (?, 0, ?)",
-                [mid, has_bot],
+                "INSERT INTO player_match_enrichment VALUES (?, ?, ?)",
+                [mid, flag, has_bot],
             )
         player_db.close()
         return player_path
@@ -522,3 +527,133 @@ class TestLoadTopMatchesDuckDB:
         rows = self._query_top(shared_conn, player_path, xuid, best=True)
         assert len(rows) == 1
         assert rows[0]["match_id"] == "win"
+
+    # ── Problème E : exclude_btb ──────────────────────────────────────────
+
+    def test_btb_excluded_when_flag_true(
+        self,
+        shared_conn: duckdb.DuckDBPyConnection,
+        tmp_dir: str,
+    ) -> None:
+        """Avec exclude_btb=True, les matchs BTB sont absents des résultats."""
+        xuid = "xuid_btb"
+        self._insert_match(shared_conn, "btb_m", xuid, outcome=2, mode_category="BTB")
+        self._insert_match(shared_conn, "arena_m", xuid, outcome=2)
+        player_path = self._create_player_db(tmp_dir, ["btb_m", "arena_m"])
+
+        rows = self._query_top(shared_conn, player_path, xuid, best=True, exclude_btb=True)
+        assert len(rows) == 1
+        assert rows[0]["match_id"] == "arena_m"
+
+    def test_btb_included_when_flag_false(
+        self,
+        shared_conn: duckdb.DuckDBPyConnection,
+        tmp_dir: str,
+    ) -> None:
+        """Avec exclude_btb=False (défaut), les matchs BTB apparaissent."""
+        xuid = "xuid_btb2"
+        self._insert_match(shared_conn, "btb_m2", xuid, outcome=2, mode_category="BTB")
+        self._insert_match(shared_conn, "arena_m2", xuid, outcome=2)
+        player_path = self._create_player_db(tmp_dir, ["btb_m2", "arena_m2"])
+
+        rows = self._query_top(shared_conn, player_path, xuid, best=True, exclude_btb=False)
+        assert len(rows) == 2
+
+    def test_btb_worst_excluded_when_flag_true(
+        self,
+        shared_conn: duckdb.DuckDBPyConnection,
+        tmp_dir: str,
+    ) -> None:
+        """exclude_btb=True fonctionne aussi pour les pires matchs."""
+        xuid = "xuid_btb3"
+        self._insert_match(shared_conn, "btb_loss", xuid, outcome=3, mode_category="BTB")
+        self._insert_match(shared_conn, "arena_loss", xuid, outcome=3)
+        player_path = self._create_player_db(tmp_dir, ["btb_loss", "arena_loss"])
+
+        rows = self._query_top(shared_conn, player_path, xuid, best=False, exclude_btb=True)
+        assert len(rows) == 1
+        assert rows[0]["match_id"] == "arena_loss"
+
+    # ── Problème F : exclusion matchs sans team_score ─────────────────────
+
+    def test_null_team_score_excluded(
+        self,
+        shared_conn: duckdb.DuckDBPyConnection,
+        tmp_dir: str,
+    ) -> None:
+        """Les matchs FFA (team_score NULL) sont exclus des top matches."""
+        xuid = "xuid_ffa"
+        self._insert_match(shared_conn, "ffa_m", xuid, outcome=2, my_score=None, enemy_score=None)
+        self._insert_match(shared_conn, "team_m", xuid, outcome=2, my_score=50, enemy_score=30)
+        player_path = self._create_player_db(tmp_dir, ["ffa_m", "team_m"])
+
+        rows = self._query_top(shared_conn, player_path, xuid, best=True)
+        assert len(rows) == 1
+        assert rows[0]["match_id"] == "team_m"
+
+    def test_partial_null_team_score_excluded(
+        self,
+        shared_conn: duckdb.DuckDBPyConnection,
+        tmp_dir: str,
+    ) -> None:
+        """Un match avec un seul score NULL est aussi exclu."""
+        xuid = "xuid_partial"
+        self._insert_match(shared_conn, "partial_m", xuid, outcome=2, my_score=50, enemy_score=None)
+        self._insert_match(shared_conn, "full_m", xuid, outcome=2, my_score=50, enemy_score=30)
+        player_path = self._create_player_db(tmp_dir, ["partial_m", "full_m"])
+
+        rows = self._query_top(shared_conn, player_path, xuid, best=True)
+        assert len(rows) == 1
+        assert rows[0]["match_id"] == "full_m"
+
+    # ── Problème G : tri par badge_priority ───────────────────────────────
+
+    def test_badge_priority_best_order(
+        self,
+        shared_conn: duckdb.DuckDBPyConnection,
+        tmp_dir: str,
+    ) -> None:
+        """Pour best=True, l'ordre est : CONTRE_REMONTADA > REMONTADA > DOMINATION > sans badge."""
+        xuid = "xuid_badge"
+        for mid in ("b_none", "b_dom", "b_rem", "b_cr"):
+            self._insert_match(shared_conn, mid, xuid, outcome=2)
+        player_path = self._create_player_db(
+            tmp_dir,
+            ["b_none", "b_dom", "b_rem", "b_cr"],
+            badge_flags={
+                "b_dom": int(DominanceFlag.DOMINATION),
+                "b_rem": int(DominanceFlag.REMONTADA),
+                "b_cr": int(DominanceFlag.CONTRE_REMONTADA),
+            },
+        )
+
+        rows = self._query_top(shared_conn, player_path, xuid, best=True)
+        assert len(rows) == 4
+        assert rows[0]["match_id"] == "b_cr"
+        assert rows[1]["match_id"] == "b_rem"
+        assert rows[2]["match_id"] == "b_dom"
+        assert rows[3]["match_id"] == "b_none"
+
+    def test_badge_priority_worst_order(
+        self,
+        shared_conn: duckdb.DuckDBPyConnection,
+        tmp_dir: str,
+    ) -> None:
+        """Pour best=False, l'ordre est : DEBANDADE > HUMILIATION > sans badge."""
+        xuid = "xuid_badge2"
+        for mid in ("w_none", "w_hum", "w_deb"):
+            self._insert_match(shared_conn, mid, xuid, outcome=3)
+        player_path = self._create_player_db(
+            tmp_dir,
+            ["w_none", "w_hum", "w_deb"],
+            badge_flags={
+                "w_hum": int(DominanceFlag.HUMILIATION),
+                "w_deb": int(DominanceFlag.DEBANDADE),
+            },
+        )
+
+        rows = self._query_top(shared_conn, player_path, xuid, best=False)
+        assert len(rows) == 3
+        assert rows[0]["match_id"] == "w_deb"
+        assert rows[1]["match_id"] == "w_hum"
+        assert rows[2]["match_id"] == "w_none"
