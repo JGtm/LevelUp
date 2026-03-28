@@ -7,6 +7,39 @@
 
 ## Journal
 
+### [2026-03-28] — Fix switch de DB sur liens match depuis Carrière/Historique — Complété
+
+**Statut** : Complété  
+**Décision technique** :
+
+**Root cause identifiée :**
+- Les liens HTML bruts (`target='_self'` via `st.markdown(unsafe_allow_html=True)`) sur les pages Carrière et Historique provoquent un **rechargement complet du navigateur** → nouvelle session WebSocket Streamlit.  
+- Dans la nouvelle session : `db_path` absent du `session_state` → `init_source_state` utilise `default_db` (premier joueur alphabétique).  
+- En setup multi-joueurs avec joueur non-default actif → mauvaise DB chargée → `show_single_match` filtre le df du mauvais joueur → "match introuvable".
+
+**Pourquoi le fix 2282cc1 n'était pas suffisant :**
+- Il avait ajouté `gamertag=waypoint_player` aux liens, mais `init_source_state` avait été explicitement modifié pour ignorer `?gamertag=` (suite à la régression #24, commit 3ae77ca).
+
+**Pourquoi la régression #24 pouvait être partiellement réouverte sans risque :**
+- Le vrai coupable de #24 était `_pick_best_duckdb_v4_player()` (heuristique "joueur avec le plus de matchs") — supprimé en 3ae77ca. La lecture de `?gamertag=` en elle-même était correcte.  
+- La condition discriminante `match_id` présent dans l'URL résout l'ambiguïté : `?gamertag=X&match_id=Y` = lien match direct (doit restaurer la DB) vs `?gamertag=X` seul = lien encounter Explorer (ne doit PAS switcher).
+
+**Fix appliqué** (`src/app/data_loader.py`) :
+- Dans `init_source_state`, ajout d'une étape prioritaire entre "env forcé" et "SPNKr" : si `?gamertag=X` ET `?match_id=Y` sont tous les deux présents dans l'URL ET que `data/players/X/stats.duckdb` existe, utiliser cette DB.
+
+**5 nouveaux tests** dans `tests/test_player_nav_no_switch.py` :
+- `test_deep_link_match_restores_correct_player_db` — cas nominal ✓
+- `test_deep_link_match_falls_back_when_db_missing` — DB inexistante → fallback ✓
+- `test_encounter_link_no_match_id_stays_default` — régression #24 renforcée (DB EXISTS mais pas de match_id → pas de switch) ✓
+- `test_env_override_wins_over_deep_link_match` — env LEVELUP_DB prime toujours ✓
+- Ancien `test_nav_gamertag_db_path_stays_default` toujours vert ✓
+
+**Résultat** : 21/21 tests passent sur `test_player_nav_no_switch.py`.
+
+**Conclusion** : Pas de changement aux pages History/Career — elles encodaient déjà `gamertag` dans les URLs. Le fix est dans la couche d'initialisation d'état.
+
+---
+
 ### [2026-03-28] — Corrections scores equipe + seuil comeback proportionnel — Complété
 
 **Statut** : Complété  

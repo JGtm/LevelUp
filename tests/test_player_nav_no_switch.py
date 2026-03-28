@@ -145,6 +145,81 @@ class TestDbPathSelection:
         finally:
             os.unlink(spnkr_path)
 
+    def test_deep_link_match_restores_correct_player_db(self) -> None:
+        """?gamertag=X&match_id=Y → restaure la DB du joueur X (lien depuis historique/carrière)."""
+        with tempfile.TemporaryDirectory() as tmpdir:
+            from pathlib import Path
+
+            players_dir = Path(tmpdir) / "data" / "players"
+            # Joueur B : celui dont on veut voir le match (non-default)
+            player_b_db = players_dir / "JGtm" / "stats.duckdb"
+            player_b_db.parent.mkdir(parents=True)
+            player_b_db.write_bytes(b"x" * 100)
+
+            # default_db pointe vers le joueur A (premier alphabétique, pas JGtm)
+            default_db = str(players_dir / "AaronPlayer" / "stats.duckdb")
+            session: dict = {}
+            _run_init(
+                session,
+                {"gamertag": "JGtm", "match_id": "abc-match-id-1234"},
+                default_db=default_db,
+            )
+            assert session["db_path"] == str(player_b_db)
+
+    def test_deep_link_match_falls_back_when_db_missing(self) -> None:
+        """?gamertag=X&match_id=Y mais DB inexistante → fallback sur default_db."""
+        session: dict = {}
+        _run_init(
+            session,
+            {"gamertag": "UnknownPlayer", "match_id": "abc-match-id-1234"},
+            default_db="data/players/JGtm/stats.duckdb",
+        )
+        assert session["db_path"] == "data/players/JGtm/stats.duckdb"
+
+    def test_encounter_link_no_match_id_stays_default(self) -> None:
+        """Régression #24 renforcé : ?gamertag=X SANS match_id → reste default_db.
+
+        Les liens d'encounter Explorer (?gamertag= seul) ne doivent pas switcher
+        même si la DB du gamertag existe réellement.
+        """
+        with tempfile.TemporaryDirectory() as tmpdir:
+            from pathlib import Path
+
+            players_dir = Path(tmpdir) / "data" / "players"
+            # La DB de Madina EXISTS mais il n'y a PAS de match_id dans l'URL
+            madina_db = players_dir / "Madina97294" / "stats.duckdb"
+            madina_db.parent.mkdir(parents=True)
+            madina_db.write_bytes(b"x" * 100)
+
+            default_db = str(players_dir / "JGtm" / "stats.duckdb")
+            session: dict = {}
+            _run_init(
+                session,
+                {"gamertag": "Madina97294"},  # pas de match_id → encounter link
+                default_db=default_db,
+            )
+            assert session["db_path"] == default_db
+
+    def test_env_override_wins_over_deep_link_match(self) -> None:
+        """LEVELUP_DB env prend priorité même sur un deep link match valide."""
+        with tempfile.TemporaryDirectory() as tmpdir:
+            from pathlib import Path
+
+            players_dir = Path(tmpdir) / "data" / "players"
+            player_db = players_dir / "JGtm" / "stats.duckdb"
+            player_db.parent.mkdir(parents=True)
+            player_db.write_bytes(b"x" * 100)
+
+            default_db = str(players_dir / "AaronPlayer" / "stats.duckdb")
+            session: dict = {}
+            _run_init(
+                session,
+                {"gamertag": "JGtm", "match_id": "abc-match-id-1234"},
+                default_db=default_db,
+                env={"LEVELUP_DB": "/forced/env.duckdb"},
+            )
+            assert session["db_path"] == "/forced/env.duckdb"
+
 
 # ===========================================================================
 # xuid_input — priorité de remplissage
