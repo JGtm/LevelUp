@@ -356,6 +356,13 @@ class DuckDBSyncEngine(
                                 self._gamertag,
                                 _latest_db[:8],
                             )
+                            # Toujours enregistrer la date du sync même si aucun nouveau match
+                            # (sinon l'indicateur affiche la date du dernier sync avec insertions)
+                            self._save_sync_metadata(delta_mode=True, matches_inserted=0)
+                            self._get_connection().commit()
+                            # Réparer les PME manquants chez les coéquipiers
+                            # (cas : session jouée ensemble non encore enrichie côté coéquipier)
+                            self.fanout_repair_missing_scores()
                             result.finished_at = datetime.now(timezone.utc)
                             result.duration_seconds = time.time() - start_time
                             return result

@@ -282,3 +282,62 @@ class FanoutEnrichmentMixin:
                 )
             except Exception as exc:
                 logger.warning("fanout [%s]: erreur non bloquante: %s", player["gamertag"], exc)
+
+    def _has_missing_enrichment(
+        self: _SyncProtocol,
+        xuid: str,
+        player_db_path: Path,
+    ) -> bool:
+        """Retourne True si le joueur a des matchs sans performance_score dans PME."""
+        from src.utils.paths import get_shared_matches_path_from_player
+
+        shared_path = get_shared_matches_path_from_player(player_db_path)
+        if not shared_path or not shared_path.exists():
+            return False
+        try:
+            with duckdb.connect(str(player_db_path), read_only=True) as pconn:
+                pconn.execute(f"ATTACH '{shared_path}' AS shared (READ_ONLY)")
+                row = pconn.execute(
+                    "SELECT COUNT(*) FROM shared.match_participants mp "
+                    "WHERE mp.xuid = ? AND NOT EXISTS ("
+                    "  SELECT 1 FROM player_match_enrichment pme "
+                    "  WHERE pme.match_id = mp.match_id AND pme.performance_score IS NOT NULL"
+                    ")",
+                    [xuid],
+                ).fetchone()
+            return (row[0] if row else 0) > 0
+        except Exception as exc:
+            logger.debug("fanout repair: check PME échoué pour xuid=%s: %s", xuid, exc)
+            return False
+
+    def fanout_repair_missing_scores(self: _SyncProtocol) -> None:
+        """Répare les performance_scores manquants chez les coéquipiers enregistrés.
+
+        Appelé lors du short-circuit delta (aucun nouveau match pour le joueur
+        courant) pour ne pas laisser les coéquipiers avec des PME incomplets.
+        """
+        others = self._get_other_registered_players()
+        if not others:
+            return
+        for player in others:
+            try:
+                if not player["db_path"].exists():
+                    continue
+                if not self._has_missing_enrichment(player["xuid"], player["db_path"]):
+                    continue
+                from src.utils.paths import get_shared_matches_path_from_player
+
+                shared_path = get_shared_matches_path_from_player(player["db_path"])
+                if not shared_path or not shared_path.exists():
+                    continue
+                logger.info(
+                    "fanout repair [%s]: PME incomplet détecté → enrichissement",
+                    player["gamertag"],
+                )
+                self._run_other_player_enrichment(
+                    player["gamertag"], player["xuid"], player["db_path"], shared_path
+                )
+            except Exception as exc:
+                logger.warning(
+                    "fanout repair [%s]: erreur non bloquante: %s", player["gamertag"], exc
+                )

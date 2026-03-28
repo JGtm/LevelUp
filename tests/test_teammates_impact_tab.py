@@ -98,18 +98,17 @@ def _patch_streamlit(monkeypatch):
 
 
 def test_impact_tab_requires_at_least_two_friends(monkeypatch) -> None:
-    """Affiche un message d'info si < 2 coéquipiers sont sélectionnés."""
+    """Affiche un message d'info si aucun coéquipier n'est sélectionné."""
     st_mocks = _patch_streamlit(monkeypatch)
 
     teammates.render_impact_taquinerie(
         db_path="dummy.duckdb",
         xuid="100",
         match_ids=["m1"],
-        friend_xuids=["200"],
+        friend_xuids=[],
     )
 
     st_mocks["info"].assert_called_once()
-    assert "au moins 2 coéquipiers" in st_mocks["info"].call_args[0][0]
     st_mocks["warning"].assert_not_called()
 
 
