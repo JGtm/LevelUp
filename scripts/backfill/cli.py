@@ -446,14 +446,26 @@ def create_argument_parser() -> argparse.ArgumentParser:
         help="Limite --team-scores aux matchs KOTH/Assault avec score corrompu (>10)",
     )
 
-    # ── Fix score inversions (match_registry — Slayer, swap SQL) ──────────
+    # ── Fix score inversions (match_registry — tous modes, swap SQL) ──────
     parser.add_argument(
         "--fix-score-inversions",
         action="store_true",
         help=(
             "Corrige les inversions team_0_score ↔ team_1_score dans match_registry "
-            "pour les matchs Slayer où le gagnant a un score inférieur à l'ennemi "
+            "pour tout mode où le gagnant a un score inférieur à l'ennemi "
             "(bug de sync historique). Opération locale, sans appel API."
+        ),
+    )
+
+    # ── Fix ps_score leaks (match_registry — NULL scores contaminés) ──────
+    parser.add_argument(
+        "--fix-pscore-leaks",
+        action="store_true",
+        help=(
+            "Détecte les team_scores contaminés par un ps_score (team_score == ps_score "
+            "direct ou croisé, pour scores > 200) et les met à NULL. "
+            "Modes concernés : CASTLE WARS, certains BTB:Sentry Defense. "
+            "Opération locale, sans appel API."
         ),
     )
 

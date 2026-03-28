@@ -1852,3 +1852,78 @@ def backfill_fix_score_inversions(shared_conn: Any, *, dry_run: bool = False) ->
     shared_conn.commit()
     logger.info("✅ Score inversions : %d match(s) corrigé(s)", len(match_ids))
     return len(match_ids)
+
+
+def backfill_fix_pscore_leaks(shared_conn: Any, *, dry_run: bool = False) -> int:
+    """Détecte et nullifie les team_scores contaminés par un ps_score.
+
+    Deux patterns de corruption :
+    - Directe  : ``team_X_score == team_X_ps_score`` (le ps_score de l'équipe X
+      a écrasé son propre score d'équipe — ex : CASTLE WARS).
+    - Croisée  : ``team_X_score == team_Y_ps_score`` (le ps_score de l'équipe
+      adverse a écrasé le score d'équipe — ex : BTB:Sentry Defense).
+
+    Pour les deux cas, les deux colonnes ``team_0_score`` et ``team_1_score``
+    sont mises à NULL (valeur inconnue vaut mieux que valeur fausse).
+    Les ``ps_score`` ne sont pas touchés (calculés depuis match_participants,
+    toujours corrects).
+
+    Seuls les matchs avec scores > 200 sont examinés pour éviter les faux
+    positifs sur les modes objectifs normaux (CTF, KOTH, Stockpile…).
+
+    Args:
+        shared_conn: Connexion en écriture vers shared_matches.duckdb.
+        dry_run: Si True, affiche les matchs affectés sans modifier la DB.
+
+    Returns:
+        Nombre de matchs mis à NULL (ou à l'être en dry_run).
+    """
+    detection_sql = """
+        SELECT DISTINCT match_id, game_variant_name, team_0_score, team_1_score,
+               team_0_ps_score, team_1_ps_score
+        FROM match_registry
+        WHERE GREATEST(COALESCE(team_0_score, 0), COALESCE(team_1_score, 0)) > 200
+          AND (
+              team_0_score IS NOT NULL AND team_0_ps_score IS NOT NULL
+              AND team_1_score IS NOT NULL AND team_1_ps_score IS NOT NULL
+          )
+          AND (
+              -- contamination directe
+              team_0_score = team_0_ps_score
+              OR team_1_score = team_1_ps_score
+              -- contamination croisée
+              OR team_0_score = team_1_ps_score
+              OR team_1_score = team_0_ps_score
+          )
+        ORDER BY match_id
+    """
+    rows = shared_conn.execute(detection_sql).fetchall()
+
+    if not rows:
+        logger.info("Pscore leaks : aucun match corrompu détecté")
+        return 0
+
+    match_ids = [r[0] for r in rows]
+    logger.info("Pscore leaks : %d match(s) avec team_score contaminé par ps_score", len(rows))
+
+    if dry_run:
+        logger.info("[DRY-RUN] Matchs qui seraient nullifiés :")
+        for r in rows:
+            logger.info(
+                "  %s  %-35s  t0=%s t1=%s  ps0=%s ps1=%s → NULL/NULL",
+                r[0][:12],
+                (r[1] or "")[:35],
+                r[2],
+                r[3],
+                r[4],
+                r[5],
+            )
+        return len(rows)
+
+    shared_conn.executemany(
+        "UPDATE match_registry SET team_0_score = NULL, team_1_score = NULL WHERE match_id = ?",
+        [(mid,) for mid in match_ids],
+    )
+    shared_conn.commit()
+    logger.info("✅ Pscore leaks : %d match(s) nullifiés", len(rows))
+    return len(rows)
