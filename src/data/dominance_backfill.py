@@ -97,7 +97,7 @@ def compute_dominance_for_player(
         ).fetchall()
     }
 
-    where = "1=1" if force else "dominance_flag IS NULL"
+    where = "1=1" if force else "dominance_flag NOT IN (1, 2)"
     n = 0
 
     for mid in all_match_ids:
