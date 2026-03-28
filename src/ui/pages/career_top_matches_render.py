@@ -172,6 +172,11 @@ def _build_match_badge_legend_html(*, best: bool) -> str:
 def _build_top_table_html(rows: list[dict], *, best: bool) -> str:
     """Construit le tableau HTML pour le Top 10."""
     title = t("career_top_best_title") if best else t("career_top_worst_title")
+
+    # N'afficher la colonne badge que si au moins un match en possède un
+    badges = {_badge_html(row.get("dominance_flag", 0) or 0, best=best) for row in rows}
+    show_badge_col = any(badges)
+
     headers = [
         t("career_top_col_match_id"),
         t("career_top_col_date"),
@@ -181,8 +186,9 @@ def _build_top_table_html(rows: list[dict], *, best: bool) -> str:
         t("career_top_col_kda"),
         t("career_top_col_kd"),
         t("career_top_col_duration"),
-        "",
     ]
+    if show_badge_col:
+        headers.append("")
     col_count = len(headers)
     head_cells = "".join(f"<th class='os-sb-th'>{html.escape(h)}</th>" for h in headers)
 
@@ -205,6 +211,7 @@ def _build_top_table_html(rows: list[dict], *, best: bool) -> str:
         date_str = html.escape(_format_date(row.get("start_time")))
         map_td = map_name_cell_html(row.get("map_name")).replace("<td", "<td class='os-sb-td'", 1)
 
+        badge_td = f"<td class='os-sb-td'>{badge}</td>" if show_badge_col else ""
         body.append(
             f"<tr class='os-sb-row'>"
             f"<td class='os-sb-td'>{match_link}</td>"
@@ -215,7 +222,7 @@ def _build_top_table_html(rows: list[dict], *, best: bool) -> str:
             f"<td class='os-sb-td'>{kda}</td>"
             f"<td class='os-sb-td'{kd_style}>{html.escape(kd)}</td>"
             f"<td class='os-sb-td'>{duration}</td>"
-            f"<td class='os-sb-td'>{badge}</td>"
+            f"{badge_td}"
             f"</tr>"
         )
 
@@ -248,13 +255,17 @@ def render_top_matches_section(*, db_path: str, xuid: str) -> None:
     with tab_best:
         if best:
             st.markdown(_build_top_table_html(best, best=True), unsafe_allow_html=True)
-            st.markdown(_build_match_badge_legend_html(best=True), unsafe_allow_html=True)
+            has_badge = any(_badge_html(r.get("dominance_flag", 0) or 0, best=True) for r in best)
+            if has_badge:
+                st.markdown(_build_match_badge_legend_html(best=True), unsafe_allow_html=True)
         else:
             st.info(t("career_top_no_data"))
 
     with tab_worst:
         if worst:
             st.markdown(_build_top_table_html(worst, best=False), unsafe_allow_html=True)
-            st.markdown(_build_match_badge_legend_html(best=False), unsafe_allow_html=True)
+            has_badge = any(_badge_html(r.get("dominance_flag", 0) or 0, best=False) for r in worst)
+            if has_badge:
+                st.markdown(_build_match_badge_legend_html(best=False), unsafe_allow_html=True)
         else:
             st.info(t("career_top_no_data"))
