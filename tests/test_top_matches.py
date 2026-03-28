@@ -14,6 +14,7 @@ import pytest
 
 from src.data.domain.refdata import Outcome
 from src.ui.pages.career_top_matches_data import (
+    _BADGE_PRIORITY_EXPR,
     _TOP_MATCHES_SQL,
     MIN_MATCH_DURATION_SECONDS,
 )
@@ -406,16 +407,15 @@ class TestLoadTopMatchesDuckDB:
             "SELECT * FROM player.player_match_enrichment"
         )
         target = int(Outcome.WIN) if best else int(Outcome.LOSS)
-        dom_flag = 1 if best else 2
+        sql = _TOP_MATCHES_SQL.format(badge_priority=_BADGE_PRIORITY_EXPR[best])
         result = shared_conn.execute(
-            _TOP_MATCHES_SQL,
+            sql,
             [
                 xuid,
                 int(Outcome.WIN),
                 int(Outcome.LOSS),
                 MIN_MATCH_DURATION_SECONDS,
                 target,
-                dom_flag,
             ],
         )
         columns = [desc[0] for desc in result.description]
