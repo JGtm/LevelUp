@@ -150,6 +150,14 @@ _BADGE_PRIORITY_EXPR: dict[bool, str] = {
     ),
 }
 
+# Tri secondaire par performance_score (normalisé par mode, 0-100).
+# best=True  → score élevé en tête (meilleures victoires)
+# best=False → score faible en tête (pires défaites)
+_PERFORMANCE_SORT_EXPR: dict[bool, str] = {
+    True: "performance_score DESC NULLS LAST",
+    False: "performance_score ASC NULLS LAST",
+}
+
 _TOP_MATCHES_SQL = """
 WITH enriched AS (
     SELECT
@@ -169,7 +177,8 @@ WITH enriched AS (
         mv.my_team_ps_score,
         mv.enemy_team_ps_score,
         COALESCE(pme.dominance_flag, 0) AS dominance_flag,
-        COALESCE(pme.had_bot_teammate, FALSE) AS had_bot_teammate
+        COALESCE(pme.had_bot_teammate, FALSE) AS had_bot_teammate,
+        pme.performance_score
     FROM shared.mv_player_matches mv
     LEFT JOIN player_match_enrichment pme
         ON pme.match_id = mv.match_id
@@ -183,8 +192,7 @@ SELECT * FROM enriched
 WHERE outcome = ?
 ORDER BY
     {badge_priority} DESC,
-    time_played_seconds ASC,
-    ABS(COALESCE(my_team_score, 0) - COALESCE(enemy_team_score, 0)) DESC
+    {performance_sort}
 LIMIT 10
 """  # noqa: S608
 
@@ -314,7 +322,10 @@ class EncounterCareerMixin:
             return []
         conn = self._get_connection()
         target_outcome = int(Outcome.WIN) if best else int(Outcome.LOSS)
-        sql = _TOP_MATCHES_SQL.format(badge_priority=_BADGE_PRIORITY_EXPR[best])
+        sql = _TOP_MATCHES_SQL.format(
+            badge_priority=_BADGE_PRIORITY_EXPR[best],
+            performance_sort=_PERFORMANCE_SORT_EXPR[best],
+        )
         try:
             result = conn.execute(
                 sql,
