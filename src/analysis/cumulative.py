@@ -5,9 +5,12 @@ Sprint 6: Fonctions pour calculer les séries cumulées (net score, K/D, objecti
 
 from __future__ import annotations
 
+import logging
 from typing import Any
 
 import polars as pl
+
+logger = logging.getLogger(__name__)
 
 # Re-exports pour compatibilité descendante
 from src.analysis._cumulative_results import CumulativeMetricsResult, CumulativeSeriesResult
@@ -135,5 +138,6 @@ def cumulative_series_to_dicts(
 ) -> list[dict[str, Any]]:
     """Convertit un DataFrame Polars en liste de dicts pour Plotly."""
     if df.is_empty():
+        logger.debug("cumulative_series_to_dicts: df vide, retour []")
         return []
     return df.to_dicts()

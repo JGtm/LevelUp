@@ -501,3 +501,92 @@ class TestUtilities:
         assert "positive" in colors
         assert "negative" in colors
         assert "kd_line" in colors
+
+
+class TestEdgeCases:
+    """Tests pour les cas limites non couverts (branches coverage)."""
+
+    def test_average_properties_zero_matches(self) -> None:
+        """average_kills_per_match et average_deaths_per_match retournent 0.0 si matches_count==0."""
+        from src.analysis._cumulative_results import CumulativeMetricsResult
+
+        result = CumulativeMetricsResult(
+            total_kills=0,
+            total_deaths=0,
+            total_assists=0,
+            cumulative_net_score=0,
+            cumulative_kd=0.0,
+            cumulative_efficiency=0.0,
+            matches_count=0,
+        )
+        assert result.average_kills_per_match == 0.0
+        assert result.average_deaths_per_match == 0.0
+
+    def test_cumulative_series_to_dicts_empty(self) -> None:
+        """DataFrame vide retourne liste vide."""
+        from src.analysis.cumulative import cumulative_series_to_dicts
+
+        assert cumulative_series_to_dicts(pl.DataFrame()) == []
+
+    def test_net_score_series_missing_columns_raises(self) -> None:
+        """Colonnes manquantes lèvent ValueError."""
+        from src.analysis.cumulative import compute_cumulative_net_score_series_polars
+
+        df = pl.DataFrame({"foo": [1, 2, 3]})
+        with pytest.raises(ValueError, match="Colonnes manquantes"):
+            compute_cumulative_net_score_series_polars(df)
+
+    def test_kda_series_empty_df_has_efficiency_columns(self) -> None:
+        """DataFrame vide retourne le bon schéma avec colonnes efficiency."""
+        from src.analysis.cumulative import compute_cumulative_kda_series_polars
+
+        result = compute_cumulative_kda_series_polars(
+            pl.DataFrame(
+                schema={
+                    "match_id": pl.Utf8,
+                    "start_time": pl.Utf8,
+                    "kills": pl.Int64,
+                    "deaths": pl.Int64,
+                    "assists": pl.Int64,
+                }
+            )
+        )
+        assert result.is_empty()
+        assert "efficiency" in result.columns
+        assert "cumulative_efficiency" in result.columns
+
+    def test_objective_series_empty_awards_df(self) -> None:
+        """awards_df vide retourne DataFrame vide avec bon schéma."""
+        from src.analysis.cumulative import compute_cumulative_objective_score_series_polars
+
+        empty_awards = pl.DataFrame(
+            schema={
+                "match_id": pl.Utf8,
+                "xuid": pl.Utf8,
+                "score_category": pl.Utf8,
+                "points": pl.Int64,
+            }
+        )
+        empty_matches = pl.DataFrame(
+            schema={"match_id": pl.Utf8, "start_time": pl.Utf8, "kills": pl.Int64}
+        )
+        result = compute_cumulative_objective_score_series_polars(empty_awards, empty_matches)
+        assert result.is_empty()
+        assert "cumulative_objective" in result.columns
+
+    def test_rolling_kd_empty_df_schema(self) -> None:
+        """DataFrame vide retourne le bon schéma (colonne rolling_kd présente)."""
+        from src.analysis.cumulative import compute_rolling_kd_polars
+
+        result = compute_rolling_kd_polars(
+            pl.DataFrame(
+                schema={
+                    "match_id": pl.Utf8,
+                    "start_time": pl.Utf8,
+                    "kills": pl.Int64,
+                    "deaths": pl.Int64,
+                }
+            )
+        )
+        assert result.is_empty()
+        assert "rolling_kd" in result.columns
