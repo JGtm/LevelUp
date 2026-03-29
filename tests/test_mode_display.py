@@ -6,7 +6,7 @@ Les tables de traduction sont injectées comme fixtures.
 
 from __future__ import annotations
 
-from src.analysis.mode_display import resolve_display_mode
+from src.analysis.mode_display import infer_mode_category_from_pair_name, resolve_display_mode
 
 # ── Fixtures tables ───────────────────────────────────────────────────────────
 
@@ -278,3 +278,69 @@ class TestEnglishLang:
     def test_btb_heavies_en(self):
         result = resolve_display_mode("BTB Heavies:CTF", "BTB", "en", TABLES_EN)
         assert result == "Heavies: CTF"
+
+
+# ── infer_mode_category_from_pair_name ───────────────────────────────────────
+
+
+class TestInferModeCategoryFromPairName:
+    """Tests unitaires pour infer_mode_category_from_pair_name (pur, sans DB)."""
+
+    def test_arena_returns_assassin(self):
+        assert infer_mode_category_from_pair_name("Arena:Slayer") == "Assassin"
+
+    def test_arena_with_map_returns_assassin(self):
+        assert infer_mode_category_from_pair_name("Arena:CTF on Aquarius") == "Assassin"
+
+    def test_btb_returns_btb(self):
+        assert infer_mode_category_from_pair_name("BTB:Slayer") == "BTB"
+
+    def test_btb_heavies_returns_btb(self):
+        assert infer_mode_category_from_pair_name("BTB Heavies:CTF") == "BTB"
+
+    def test_ranked_returns_ranked(self):
+        assert infer_mode_category_from_pair_name("Ranked:Slayer on Aquarius") == "Ranked"
+
+    def test_fiesta_returns_fiesta(self):
+        assert infer_mode_category_from_pair_name("Fiesta:Slayer") == "Fiesta"
+
+    def test_husky_raid_returns_fiesta(self):
+        assert infer_mode_category_from_pair_name("Husky Raid:Assault on Urban Raid") == "Fiesta"
+
+    def test_firefight_returns_firefight(self):
+        assert infer_mode_category_from_pair_name("Firefight:King Of The Hill") == "Firefight"
+
+    def test_gruntpocalypse_returns_firefight(self):
+        assert infer_mode_category_from_pair_name("Gruntpocalypse:Slayer") == "Firefight"
+
+    def test_community_returns_other(self):
+        """Community → Other (sidebar regroupe Community en Assassin via PREFIX_TO_CATEGORY)."""
+        assert infer_mode_category_from_pair_name("Community:Fiesta Slayer") == "Other"
+
+    def test_tactical_returns_assassin(self):
+        assert infer_mode_category_from_pair_name("Tactical:Slayer") == "Assassin"
+
+    def test_assault_returns_assassin(self):
+        assert infer_mode_category_from_pair_name("Assault:Neutral Bomb") == "Assassin"
+
+    def test_inverted_format_ctf_arena(self):
+        """Format inversé : CTF:Arena → préfixe Arena → Assassin."""
+        assert infer_mode_category_from_pair_name("CTF:Arena") == "Assassin"
+
+    def test_inverted_format_ctf_btb(self):
+        """Format inversé : CTF:BTB → préfixe BTB → BTB."""
+        assert infer_mode_category_from_pair_name("CTF:BTB") == "BTB"
+
+    def test_no_separator_returns_other(self):
+        """Pas de ':' → Other."""
+        assert infer_mode_category_from_pair_name("CASTLE WARS") == "Other"
+
+    def test_empty_returns_other(self):
+        assert infer_mode_category_from_pair_name("") == "Other"
+
+    def test_unknown_prefix_returns_other(self):
+        assert infer_mode_category_from_pair_name("XYZ:Slayer") == "Other"
+
+    def test_case_insensitive_prefix(self):
+        """Normalisation de casse : 'arena:slayer' → Arena → Assassin."""
+        assert infer_mode_category_from_pair_name("arena:slayer") == "Assassin"

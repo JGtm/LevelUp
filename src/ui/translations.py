@@ -63,41 +63,14 @@ def translate_playlist_name(name: str | None, lang: str = "fr") -> str | None:
     return s
 
 
-def _normalize_pair_case(s: str) -> str:
-    """Normalise la casse d'un pair_name (préfixe canonique + mode titlecase).
-
-    Exemples : ``"arena:slayer"`` → ``"Arena:Slayer"``
-    """
-    if ":" not in s:
-        return s
-    prefix, rest = s.split(":", 1)
-    prefix = prefix.strip()
-    rest = rest.strip()
-    prefix_lower = prefix.lower()
-    if prefix_lower == "btb heavies":
-        prefix = "BTB Heavies"
-    elif prefix_lower == "btb":
-        prefix = "BTB"
-    elif prefix_lower == "super fiesta":
-        prefix = "Super Fiesta"
-    elif prefix_lower == "super husky raid":
-        prefix = "Super Husky Raid"
-    elif prefix_lower == "husky raid":
-        prefix = "Husky Raid"
-    else:
-        prefix = prefix[:1].upper() + prefix[1:].lower()
-    if rest and rest == rest.lower():
-        rest = " ".join(w[:1].upper() + w[1:] for w in rest.split())
-    return f"{prefix}:{rest}" if prefix else rest
-
-
 def translate_pair_name(name: str | None, lang: str = "fr") -> str | None:
     """Traduit un pair_name depuis metadata.duckdb.
 
-    Résolution en 3 étapes :
-    1. Override exact (``mode_pair_overrides``) pour les cas non combinatoires
-    2. Combinatoire générique : préfixe localisé + séparateur + mode localisé
-    3. Mode seul (sans catégorie)
+    Délègue à ``resolve_display_mode`` (``src.analysis.mode_display``) qui gère :
+    1. Override exact (``mode_pair_overrides``)
+    2. Format inversé (CTF:Arena → préfixe Arena, mode CTF)
+    3. Suppression du préfixe redondant selon mode_category inféré
+    4. Combinatoire générique préfixe localisé + séparateur + mode localisé
 
     Args:
         name: Nom de pair brut (peut être ``None``).
@@ -112,25 +85,13 @@ def translate_pair_name(name: str | None, lang: str = "fr") -> str | None:
         logger.warning("pair_name UUID non résolu : %s", s)
         return _UNKNOWN_MODE.get(lang, "Unknown mode")
 
-    no_map = s.split(" on ", 1)[0].strip()
-    candidate = _normalize_pair_case(no_map)
+    from src.analysis.mode_display import (
+        infer_mode_category_from_pair_name,
+        resolve_display_mode,
+    )
 
-    # 1) Override exact
-    if result := _mode_db_lookup("mode_pair_overrides", candidate, lang):
-        return result
-
-    # 2) Combinatoire préfixe + mode
-    if ":" in candidate:
-        prefix_en, mode_en = candidate.split(":", 1)
-        sep = _mode_sep(lang)
-        prefix_loc = (
-            _mode_db_lookup("mode_prefix_names", prefix_en.strip(), lang) or prefix_en.strip()
-        )
-        mode_loc = _mode_db_lookup("mode_name_tr", mode_en.strip(), lang) or mode_en.strip()
-        return f"{prefix_loc}{sep}{mode_loc}"
-
-    # 3) Mode seul
-    return _mode_db_lookup("mode_name_tr", candidate, lang) or candidate
+    mode_category = infer_mode_category_from_pair_name(s)
+    return resolve_display_mode(s, mode_category, lang, _load_mode_tables(lang))
 
 
 @lru_cache(maxsize=8)
@@ -177,13 +138,3 @@ def _load_mode_tables(lang: str) -> dict[str, object]:
     except Exception as exc:
         logger.warning("Erreur chargement mode tables (%s): %s", lang, exc)
         return _empty
-
-
-def _mode_db_lookup(table: str, key: str, lang: str) -> str | None:
-    """Recherche une clé dans les tables modes cachées."""
-    return _load_mode_tables(lang).get(table, {}).get(key)  # type: ignore[union-attr]
-
-
-def _mode_sep(lang: str) -> str:
-    """Retourne le séparateur préfixe+mode selon la langue."""
-    return _load_mode_tables(lang).get("separator", ": ")  # type: ignore[return-value]

@@ -19,6 +19,7 @@ from src.ui.i18n import get_lang, t
 from src.ui.streamlit_modern import PLOTLY_CLEAN_CONFIG, PLOTLY_STATIC_CONFIG, fragment_if_available
 from src.visualization import plot_trio_metric
 from src.visualization._compat import DataFrameLike, ensure_polars
+from src.visualization.teammates_hs_pk import plot_hs_pk_stacked
 from src.visualization.trio import plot_trio_kills_deaths
 
 
@@ -42,8 +43,6 @@ def render_metric_bar_charts(
     _lang = get_lang()
     for metric_col, label, key_prefix in [
         ("max_killing_spree", t("tm_killing_spree"), "friend_spree_multi"),
-        ("headshot_kills", t("tm_headshots"), "friend_hs_multi"),
-        ("perfect_kills", t("tm_perfect_kills"), "friend_pk_multi"),
     ]:
         fig = plot_fn(
             series,
@@ -65,6 +64,22 @@ def render_metric_bar_charts(
                 key=f"{key_prefix}_{key_suffix}",
                 config=PLOTLY_CLEAN_CONFIG,
             )
+
+    # ── Graphe combiné HS + PK ──────────────────────────────────────────────
+    fig_combined = plot_hs_pk_stacked(
+        series,
+        colors=colors_by_name,
+        lang=_lang,
+    )
+    if fig_combined is None:
+        st.info(t("insufficient_data_chart"))
+    else:
+        st.plotly_chart(
+            fig_combined,
+            width="stretch",
+            key=f"friend_hs_pk_stacked_{key_suffix}",
+            config=PLOTLY_CLEAN_CONFIG,
+        )
 
 
 def render_outcome_bar_chart(dfr: DataFrameLike) -> None:

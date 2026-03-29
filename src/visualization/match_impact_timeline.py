@@ -131,7 +131,11 @@ def plot_match_kill_death_timeline(  # noqa: C901, PLR0912, PLR0915
 
     # --- Annotations d'impact ---
     # Préparer les données d'annotations, triées par temps pour éviter superposition
-    sorted_impacts = sorted(impact_events, key=lambda e: e.time_ms)
+    # Les events stats-only (time_ms < 0) n'ont pas de position sur la timeline : on les exclut.
+    sorted_impacts = sorted(
+        [e for e in impact_events if e.time_ms >= 0],
+        key=lambda e: e.time_ms,
+    )
 
     # Calcul des décalages verticaux pour éviter superposition
     # Seuil de proximité temporelle (30 secondes)

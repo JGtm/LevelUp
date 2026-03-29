@@ -19,8 +19,11 @@ via le paramètre ``tables`` pour rester testable sans infrastructure.
 
 from __future__ import annotations
 
+import logging
 import re
 from typing import Final, TypedDict
+
+logger = logging.getLogger(__name__)
 
 _MAP_SUFFIX_RE: Final = re.compile(r"^(.*?)(?:\s*[\-–—]\s*[0-9A-Za-z]{8,})$", re.IGNORECASE)
 
@@ -158,6 +161,10 @@ def resolve_display_mode(
 
     rule = _PREFIX_RULES.get(prefix_en)
     mode_label = mode_tr.get(mode_en, mode_en)
+    if mode_en not in mode_tr:
+        logger.debug(
+            "mode_en absent de mode_name_tr : %r (pair_name=%r)", mode_en, game_variant_name
+        )
 
     # 4) Préfixe redondant → simplifier
     if rule and _is_redundant(rule, mode_category, prefix_en):
@@ -172,4 +179,30 @@ def resolve_display_mode(
     return f"{prefix_label}{sep}{mode_label}"
 
 
-__all__ = ["resolve_display_mode"]
+def infer_mode_category_from_pair_name(pair_name: str) -> str:
+    """Infère la mode_category depuis le pair_name sans accès DB.
+
+    Extrait le préfixe (gauche du ":"), résout le format inversé si besoin,
+    puis renvoie la catégorie canonique depuis ``_PREFIX_RULES``.
+
+    Returns:
+        Catégorie DB correspondante (BTB, Assassin, Fiesta, Ranked, Firefight)
+        ou ``"Other"`` si le préfixe est inconnu.
+    """
+    if not pair_name or ":" not in pair_name:
+        return "Other"
+    raw = _strip_map_suffix(str(pair_name).strip())
+    candidate = _normalize_case(raw or str(pair_name))
+    if ":" not in candidate:
+        return "Other"
+    left, right = candidate.split(":", 1)
+    left, right = left.strip(), right.strip()
+    # Détection format inversé
+    left_is_prefix = left in _KNOWN_PREFIXES
+    right_is_prefix = right in _KNOWN_PREFIXES
+    prefix_en = right if right_is_prefix and not left_is_prefix else left
+    rule = _PREFIX_RULES.get(prefix_en)
+    return rule["category"] if rule else "Other"
+
+
+__all__ = ["resolve_display_mode", "infer_mode_category_from_pair_name"]

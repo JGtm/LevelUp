@@ -7,6 +7,52 @@
 
 ## Journal
 
+### [2026-03-29] — Tableau HTML fusionné Impact (comparaison A/B) — Complété
+
+**Décision** : Ajout d'un tableau HTML `_render_impact_ranking_html` affiché *sous* la section existante (scatter + `st.dataframe`) pour permettre la comparaison visuelle avant de décider lequel garder. Aucune suppression de l'existant.
+
+**Résultats** : Tableau avec 7 colonnes événements (⚡🎯💀🐌🪦🛡️🗡️), bordure verte sur le champion (`os-sb-row--mvp`), rouge sur le boulet (`os-sb-row--lvp`). `friends_impact_heatmap.py` (497L) non modifié. 40 tests passent.
+
+**Prochaine étape** : Validation visuelle → décider si on remplace le `st.dataframe` + `st.success/st.error` par ce tableau ou si on garde les deux.
+
+### [2026-03-29] — Badges impact : Héros silencieux + Faux-frère — Complété
+
+**Statut** : Complété
+
+**Décision technique** :  
+Deux nouveaux badges stats-only dans la section "impact du match", conditionnés à l'outcome :
+- **Héros silencieux 🛡️** (victoire) : `max(assists - deaths)` parmi l'équipe, ≥1 assist requis
+- **Faux-frère 🗡️** (défaite) : `max(deaths - assists)` parmi l'équipe, ≥1 death requis
+
+Ces badges n'ont pas de position temporelle → nouveau champ `extra_label: str = ""` dans `MatchImpactEvent`, et `time_ms = _STATS_SENTINEL (-1)`. La timeline ignore les events avec `time_ms < 0`.
+
+**Résultats** :  
+- 17/17 tests passent sur `tests/test_match_impact_events.py`  
+- Commit sur `feat/impact-silent-hero-false-brother` depuis `feat/v6.2.1-mode-labels-kda-audit`  
+- Baseline taille mis à jour (100 violations → contre 96 précédemment, +4 croissance intentionnelle documentée)
+
+**Conclusion** : Feature complète, prête à merger après review.
+
+---
+
+### [2026-03-29] — Normalisation labels modes — Phase 2 intégration UI — Complété
+
+**Statut** : Complété
+
+**Décision technique** :
+
+- `translate_pair_name()` (translations.py) délègue désormais à `resolve_display_mode` + `infer_mode_category_from_pair_name` (mode_display.py). Toute la chaîne UI passe par la logique centralisée — aucun caller modifié.
+- `_normalize_pair_case()` et `_mode_db_lookup()` / `_mode_sep()` supprimés de translations.py (dead code post-refactoring).
+- `infer_mode_category_from_pair_name()` ajoutée à mode_display.py : extrait le préfixe anglais du pair_name, résout le format inversé, retourne la catégorie depuis `_PREFIX_RULES`.
+- `infer_custom_category_from_pair_name()` (mode_categories.py) corrigée : ne passe plus par le label UI (qui supprime maintenant le préfixe), mais extrait directement le préfixe et consulte `PREFIX_TO_CATEGORY` (table sidebar, distincte de `_PREFIX_RULES`).
+- 10 fichiers de tests mis à jour : assertions "Arène : Assassin" → "Assassin" (comportement correct, préfixe redondant supprimé).
+
+**Résultats** : 5243/5243 tests passent (+ 4 skipped), 0 failure.
+
+**Conclusion** : Phase 2 terminée. Toute la chaîne de rendu UI (normalize_mode_label → filtres → cache → pages) utilise désormais resolve_display_mode avec détection catégorie + suppression préfixe redondant.
+
+---
+
 ### [2026-03-29] — Normalisation labels modes — validation CSV + corrections — Complété
 
 **Statut** : Complété (phase 1 corrigée suite à review utilisateur)
@@ -7875,3 +7921,23 @@ Installé dans `main()` du launcher via `suppress_asyncio_proactor_connection_re
 
 **Résultat** : Élimination du spam WinError 10054 dans les logs launcher sans impacter
 les vraies erreurs asyncio.
+
+### [2025-07-21] — Formule B pour badges Héros silencieux / Faux-frère — Complété
+
+**Contexte** : Badges impact "Héros silencieux ���️" (victoire) et "Faux-frère ���️" (défaite)
+implantés sur 2 sessions précédentes. L'utilisateur a choisi la **formule B** : badge attribué
+uniquement si le MÊME joueur détient simultanément les deux critères (max assists ET min deaths,
+ou max deaths ET min assists). Emoji ���️ pour faux-frère.
+
+**Décision technique** : Abandon du ratio composite `assists - deaths` (formule A) → passage
+à une vérification stricte "même joueur". Pour les fonctions multi-match (Polars), conversion
+vers une boucle Python par match (plus lisible et sans complexité de `group_by + join`).
+
+**Fichiers modifiés** :
+- `src/visualization/_match_impact_events.py` — `_find_silent_hero_event` + `_find_false_brother_event` (formule B) + emoji ���️
+- `src/analysis/friends_impact.py` — `identify_silent_hero_multi` + `identify_false_brother_multi` (formule B, boucle Python)
+- `scripts/size_baseline.txt` — mise à jour ratchet (friends_impact.py 591L)
+
+**Résultats** : 37 tests passent (17 match_impact + 20 friends_impact). Commit `6ff1805`.
+
+**Conclusion** : Implémentation formule B complète sur les deux niveaux (match unique + multi-match). 

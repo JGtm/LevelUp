@@ -15,6 +15,9 @@ from src.ui.i18n.viz import viz_t
 # Seuil de kills pour le badge Top Gun
 TOP_GUN_KILL_THRESHOLD = 10
 
+# Sentinel time_ms pour les événements basés sur des stats (pas de timestamp)
+_STATS_SENTINEL: int = -1
+
 
 @dataclass(frozen=True)
 class MatchImpactEvent:
@@ -22,11 +25,13 @@ class MatchImpactEvent:
 
     event_type: (
         str  # "first_blood", "clutch_finisher", "last_group_kill", "first_group_death", "top_gun"
+        # "silent_hero", "false_brother"
     )
     xuid: str
     gamertag: str
-    time_ms: int
+    time_ms: int  # _STATS_SENTINEL (-1) si pas de timestamp (badge basé sur stats)
     is_me: bool  # True si c'est le joueur principal
+    extra_label: str = ""  # Légende stats à afficher à la place du temps (si rempli)
 
 
 def get_impact_labels(lang: str = "fr") -> dict[str, tuple[str, str]]:
@@ -38,7 +43,87 @@ def get_impact_labels(lang: str = "fr") -> dict[str, tuple[str, str]]:
         "last_group_kill": ("🐌", viz_t("impact_last_group_kill", lang)),
         "first_group_death": ("🪦", viz_t("impact_first_group_death", lang)),
         "top_gun": ("🔫", viz_t("impact_top_gun", lang)),
+        "silent_hero": ("🛡️", viz_t("impact_silent_hero", lang)),
+        "false_brother": ("🗡️", viz_t("impact_false_brother", lang)),
     }
+
+
+def _find_silent_hero_event(
+    participants: list[dict[str, Any]],
+    team_xuids: set[str],
+    me_xuid: str,
+    lang: str = "fr",
+) -> MatchImpactEvent | None:
+    """Victoire : joueur de l'équipe avec le plus d'assists ET le moins de morts (même joueur)."""
+    team = [p for p in participants if str(p.get("xuid", "")).strip() in team_xuids]
+    if len(team) < 2:
+        return None
+    max_assists = max((int(p.get("assists", 0)) for p in team), default=0)
+    if max_assists == 0:
+        return None
+    min_deaths = min(int(p.get("deaths", 0)) for p in team)
+    candidates = [
+        p
+        for p in team
+        if int(p.get("assists", 0)) == max_assists and int(p.get("deaths", 0)) == min_deaths
+    ]
+    if not candidates:
+        return None
+    best = candidates[0]
+    xu = str(best.get("xuid", "")).strip()
+    assists = int(best.get("assists", 0))
+    deaths = int(best.get("deaths", 0))
+    if lang == "en":
+        extra = f"{assists} ast · {deaths} death" + ("s" if deaths != 1 else "")
+    else:
+        extra = f"{assists} assists. · {deaths} mort" + ("s" if deaths != 1 else "")
+    return MatchImpactEvent(
+        event_type="silent_hero",
+        xuid=xu,
+        gamertag=best.get("gamertag") or "?",
+        time_ms=_STATS_SENTINEL,
+        is_me=(xu == me_xuid),
+        extra_label=extra,
+    )
+
+
+def _find_false_brother_event(
+    participants: list[dict[str, Any]],
+    team_xuids: set[str],
+    me_xuid: str,
+    lang: str = "fr",
+) -> MatchImpactEvent | None:
+    """Défaite : joueur de l'équipe avec le plus de morts ET le moins d'assists (même joueur)."""
+    team = [p for p in participants if str(p.get("xuid", "")).strip() in team_xuids]
+    if len(team) < 2:
+        return None
+    max_deaths = max((int(p.get("deaths", 0)) for p in team), default=0)
+    if max_deaths == 0:
+        return None
+    min_assists = min(int(p.get("assists", 0)) for p in team)
+    candidates = [
+        p
+        for p in team
+        if int(p.get("deaths", 0)) == max_deaths and int(p.get("assists", 0)) == min_assists
+    ]
+    if not candidates:
+        return None
+    worst = candidates[0]
+    xu = str(worst.get("xuid", "")).strip()
+    deaths = int(worst.get("deaths", 0))
+    assists = int(worst.get("assists", 0))
+    if lang == "en":
+        extra = f"{deaths} death" + ("s" if deaths != 1 else "") + f" · {assists} ast"
+    else:
+        extra = f"{deaths} mort" + ("s" if deaths != 1 else "") + f" · {assists} pass."
+    return MatchImpactEvent(
+        event_type="false_brother",
+        xuid=xu,
+        gamertag=worst.get("gamertag") or "?",
+        time_ms=_STATS_SENTINEL,
+        is_me=(xu == me_xuid),
+        extra_label=extra,
+    )
 
 
 def _find_top_gun_event(
@@ -69,19 +154,24 @@ def _find_top_gun_event(
     )
 
 
-def compute_single_match_impact(  # noqa: C901, PLR0912 — complexité inhérente au scoring
+def compute_single_match_impact(  # noqa: C901, PLR0912, PLR0913 — complexité inhérente au scoring
     highlight_events: list[dict[str, Any]],
     me_xuid: str,
     outcome: int | None = None,
     team_xuids: set[str] | None = None,
+    participants_stats: list[dict[str, Any]] | None = None,
+    lang: str = "fr",
 ) -> list[MatchImpactEvent]:
     """Identifie les événements d'impact pour un match unique.
 
     Args:
         highlight_events: Liste de dicts {event_type, time_ms, xuid, gamertag, ...}.
         me_xuid: XUID du joueur principal.
-        outcome: Code outcome (2=win, 3=loss) pour le clutch_finisher.
+        outcome: Code outcome (2=win, 3=loss) pour le clutch_finisher / badges stats.
         team_xuids: Si fourni, filtre les events pour ne garder que l'équipe alliée.
+        participants_stats: Stats de tous les joueurs du match (kills, deaths, assists, team_id).
+            Nécessaire pour les badges «Héros silencieux» et «Faux-frère».
+        lang: Code langue pour les labels stats ("fr" ou "en").
 
     Returns:
         Liste de MatchImpactEvent identifiés.
@@ -201,5 +291,16 @@ def compute_single_match_impact(  # noqa: C901, PLR0912 — complexité inhéren
         top_gun = _find_top_gun_event(kills, me_xuid)
         if top_gun is not None:
             events.append(top_gun)
+
+    # --- Héros silencieux (victoire) / Faux-frère (défaite) ---
+    if participants_stats and team_xuids:
+        if outcome == Outcome.WIN:
+            hero = _find_silent_hero_event(participants_stats, team_xuids, me_xuid, lang)
+            if hero is not None:
+                events.append(hero)
+        elif outcome == Outcome.LOSS:
+            traitor = _find_false_brother_event(participants_stats, team_xuids, me_xuid, lang)
+            if traitor is not None:
+                events.append(traitor)
 
     return events

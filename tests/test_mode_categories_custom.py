@@ -26,13 +26,13 @@ class TestModeCategoriesCustom:
         assert infer_mode_super_category("Événement : Escalade") == "Other"
 
     def test_normalize_pair_name_to_mode_ui(self) -> None:
-        """Normalisation pair_name -> mode_ui (doit enlever la carte / suffixes)."""
-        assert normalize_pair_name_to_mode_ui("Arena:Slayer on Aquarius") == "Arène : Assassin"
-        assert (
-            normalize_pair_name_to_mode_ui("Community:Slayer on Aquarius")
-            == "Communauté : Assassin"
-        )
-        assert normalize_pair_name_to_mode_ui("Ranked:Slayer on Aquarius") == "Classé : Assassin"
+        """Normalisation pair_name -> mode_ui (carte + préfixe redondant supprimés)."""
+        # Préfixe Arena redondant (catég. Assassin) → mode seul
+        assert normalize_pair_name_to_mode_ui("Arena:Slayer on Aquarius") == "Assassin"
+        # Préfixe Community redondant (catég. Other) → mode seul
+        assert normalize_pair_name_to_mode_ui("Community:Slayer on Aquarius") == "Assassin"
+        # Préfixe Ranked redondant (catég. Ranked) → mode seul
+        assert normalize_pair_name_to_mode_ui("Ranked:Slayer on Aquarius") == "Assassin"
         assert normalize_pair_name_to_mode_ui(None) is None
 
     def test_infer_custom_category_from_pair_name(self) -> None:
@@ -52,3 +52,9 @@ class TestModeCategoriesCustom:
             == "Firefight"
         )
         assert infer_custom_category_from_pair_name(None) == "Other"
+        # Format inversé (CTF:Arena → préfixe Arena → Assassin)
+        assert infer_custom_category_from_pair_name("CTF:Arena") == "Assassin"
+        # Format inversé BTB
+        assert infer_custom_category_from_pair_name("CTF:BTB") == "BTB"
+        # Mode sans ':' → Other
+        assert infer_custom_category_from_pair_name("CASTLE WARS") == "Other"

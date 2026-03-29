@@ -111,6 +111,8 @@ STRINGS: dict[str, dict[str, str] | str] = {
     "impact_first_group_death": {"fr": "Première victime", "en": "First Casualty"},
     "impact_last_casualty": {"fr": "Boulet", "en": "Weakest Link"},
     "impact_top_gun": {"fr": "As de la gâchette", "en": "Top Gun"},
+    "impact_silent_hero": {"fr": "Héros silencieux", "en": "Silent Hero"},
+    "impact_false_brother": {"fr": "Faux-frère", "en": "False Brother"},
     # ── Messages vides ────────────────────────────────────────────────────────
     "empty_no_data": "no_data",
     "empty_no_duel": {"fr": "Aucun duel trouvé.", "en": "No duel found."},
@@ -162,7 +164,10 @@ STRINGS: dict[str, dict[str, str] | str] = {
     "suffix_per_10_matches": {"fr": "/10 matchs", "en": "/10 matches"},
     # ── Régression ────────────────────────────────────────────────────────────
     "label_kd_slope": {"fr": "Progression F/D (session)", "en": "K/D Progression (session)"},
-    "label_win_rate_slope": {"fr": "Progression taux de victoires (session)", "en": "Win Rate Progression (session)"},
+    "label_win_rate_slope": {
+        "fr": "Progression taux de victoires (session)",
+        "en": "Win Rate Progression (session)",
+    },
     "label_r_squared": {"fr": "Confirmation de la tendance", "en": "Trend confirmation"},
     "label_not_significant": {"fr": "⚠ trop variable", "en": "⚠ too variable"},
     # ── Texte divers ──────────────────────────────────────────────────────────
