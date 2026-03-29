@@ -96,4 +96,13 @@ STRINGS: dict[str, dict[str, str] | str] = {
         "fr": "Évolution de la performance d'escouade",
         "en": "Squad performance evolution",
     },
+    # ── Graphe combiné HS + PK ────────────────────────────────────────────────
+    "hs_pk_combined_title": {
+        "fr": "Tirs à la tête & Frags parfaits",
+        "en": "Headshots & Perfect Kills",
+    },
+    "hs_pk_y_axis": {
+        "fr": "Nombre de kills",
+        "en": "Kill count",
+    },
 }

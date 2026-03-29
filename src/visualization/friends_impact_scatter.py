@@ -28,6 +28,8 @@ _EVENT_SCATTER_CONFIG: list[tuple[str, str, str, str]] = [
     ("last_casualty", "Boulet", "#D55E00", "💀"),
     ("last_group_kill", "Touriste", "#56B4E9", "🐌"),
     ("first_group_death", "1ère victime", "#CC79A7", "🪦"),
+    ("silent_hero", "Héros silencieux", "#3DFFB5", "🛡️"),
+    ("false_brother", "Faux-frère", "#FF4B4B", "🗡️"),
 ]
 
 _EVENT_TYPE_SET: frozenset[str] = frozenset(et for et, *_ in _EVENT_SCATTER_CONFIG)
