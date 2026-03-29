@@ -30,7 +30,8 @@ def normalize_pair_name_to_mode_ui(pair_name: str | None, lang: str = "fr") -> s
         lang:      ``"fr"`` (défaut) ou ``"en"``.
 
     Returns:
-        Libellé UI, ex: "Arène : Assassin" (FR) / "Arena: Slayer" (EN), ou None.
+        Libellé UI avec préfixes redondants supprimés, ex: "Assassin" (FR/EN),
+        ou "Heavies : Capture du drapeau" si le qualificatif est pertinent, ou None.
     """
     if pair_name is None:
         return None
@@ -139,6 +140,9 @@ def infer_custom_category_from_pair_name(pair_name: str | None) -> str:
     (qui définit le regroupement sidebar, distinct de ``_PREFIX_RULES`` qui régit
     la suppression du préfixe dans les libellés d'affichage).
 
+    Gère le format inversé (ex: ``CTF:Arena`` → préfixe Arena → Assassin) en
+    détectant si le terme droite est un préfixe connu et le gauche ne l'est pas.
+
     Args:
         pair_name: Valeur MatchStats.pair_name, ex: "Ranked:Slayer on Aquarius".
 
@@ -156,7 +160,12 @@ def infer_custom_category_from_pair_name(pair_name: str | None) -> str:
         return "Other"
     if ":" not in raw:
         return PREFIX_TO_CATEGORY.get(raw, "Other")
-    prefix = raw.split(":", 1)[0].strip()
+    left, right = raw.split(":", 1)
+    left, right = left.strip(), right.strip()
+    # Détection format inversé : right est un préfixe connu, left ne l'est pas
+    left_is_prefix = left in PREFIX_TO_CATEGORY
+    right_is_prefix = right in PREFIX_TO_CATEGORY
+    prefix = right if right_is_prefix and not left_is_prefix else left
     return PREFIX_TO_CATEGORY.get(prefix, "Other")
 
 

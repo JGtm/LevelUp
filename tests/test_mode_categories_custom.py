@@ -52,3 +52,9 @@ class TestModeCategoriesCustom:
             == "Firefight"
         )
         assert infer_custom_category_from_pair_name(None) == "Other"
+        # Format inversé (CTF:Arena → préfixe Arena → Assassin)
+        assert infer_custom_category_from_pair_name("CTF:Arena") == "Assassin"
+        # Format inversé BTB
+        assert infer_custom_category_from_pair_name("CTF:BTB") == "BTB"
+        # Mode sans ':' → Other
+        assert infer_custom_category_from_pair_name("CASTLE WARS") == "Other"
