@@ -19,8 +19,11 @@ via le paramètre ``tables`` pour rester testable sans infrastructure.
 
 from __future__ import annotations
 
+import logging
 import re
 from typing import Final, TypedDict
+
+logger = logging.getLogger(__name__)
 
 _MAP_SUFFIX_RE: Final = re.compile(r"^(.*?)(?:\s*[\-–—]\s*[0-9A-Za-z]{8,})$", re.IGNORECASE)
 
@@ -158,6 +161,10 @@ def resolve_display_mode(
 
     rule = _PREFIX_RULES.get(prefix_en)
     mode_label = mode_tr.get(mode_en, mode_en)
+    if mode_en not in mode_tr:
+        logger.debug(
+            "mode_en absent de mode_name_tr : %r (pair_name=%r)", mode_en, game_variant_name
+        )
 
     # 4) Préfixe redondant → simplifier
     if rule and _is_redundant(rule, mode_category, prefix_en):
