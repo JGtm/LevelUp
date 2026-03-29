@@ -11,12 +11,12 @@ logger = logging.getLogger(__name__)
 
 # Constantes de scoring
 SCORE_CLUTCH_FINISHER = 2  # Finisseur : +2 points
-SCORE_FIRST_BLOOD = 1  # Premier sang : +1 point
+SCORE_FIRST_BLOOD = 2  # Premier sang : +2 points
 SCORE_LAST_CASUALTY = -2  # Boulet : -2 points
 SCORE_SILENT_HERO = 1.5  # Héros silencieux : +1.5 points
-SCORE_FALSE_BROTHER = -1  # Faux-frère : -1 point
+SCORE_FALSE_BROTHER = -1.5  # Faux-frère : -1.5 points
 SCORE_LAST_GROUP_KILL = -1  # Touriste (dernier kill du groupe) : -1 point
-SCORE_FIRST_GROUP_DEATH = -2  # Première victime du groupe : -2 points
+SCORE_FIRST_GROUP_DEATH = -1  # Première victime du groupe : -1 point
 
 # Codes d'outcome
 OUTCOME_WIN = 2
@@ -584,7 +584,7 @@ def _populate_events_map(
         for _match_id, event in src.items():
             key = (_match_id, event.gamertag)
             if key in events_map:
-                events_map[key].append({"event": event_name, "value": value})
+                events_map[key].append({"event": event_name, "value": float(value)})
     return events_map
 
 
