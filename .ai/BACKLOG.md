@@ -51,6 +51,20 @@ Quand `--force-performance-scores` est combiné avec d'autres flags, la boucle a
 
 ---
 
+### 🟡 UI — Axe "objectifs" mal mis à l'échelle (Page Coéquipiers · Complémentarité de l'escouade)
+
+**Noté le** : 2026-03-29 | **Priorité** : Moyenne
+
+Dans le graphe **"Complémentarité de l'escouade"** (page Coéquipiers), l'axe radial "objectifs" n'est pas correctement mis à l'échelle : les valeurs affichées ne reflètent pas la plage réelle des données, ce qui déforme la lecture de la complémentarité entre joueurs.
+
+**Symptôme observé** : même avec un bon score sur l'axe objectifs, le point reste proche du centre du radar — la surface visualisée est trop petite pour être lisible.
+
+**Attendu** : chaque axe normalisé de façon cohérente (ex. 0–max observé ou z-score) afin que les polygones soient comparables entre joueurs.
+
+**Fichiers probables** : `src/ui/pages/teammates.py`, `src/analysis/` (calcul des stats d'escouade), `src/ui/i18n/viz/`.
+
+---
+
 ### 🟡 Script — Analyse des kills par arme pour un match donné (v7+)
 
 **Noté le** : 2026-03-27 | **Priorité** : Basse

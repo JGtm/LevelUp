@@ -31,6 +31,9 @@ try:
     from src.analysis.friends_impact import (
         OUTCOME_LOSS,
         OUTCOME_WIN,
+        SCORE_CLUTCH_FINISHER,
+        SCORE_FIRST_BLOOD,
+        SCORE_LAST_CASUALTY,
         ImpactEvent,
         build_impact_matrix,
         compute_impact_scores,
@@ -342,10 +345,10 @@ class TestComputeImpactScores:
 
         scores = compute_impact_scores(first_bloods, clutch_finishers, last_casualties)
 
-        # Alice : 2 FB = +2
-        # Bob : 1 Clutch (+2) + 1 Boulet (-2) = 0
-        assert scores["Alice"] == 2
-        assert scores["Bob"] == 0
+        # Alice : 2 FB
+        # Bob : 1 Clutch + 1 Boulet
+        assert scores["Alice"] == 2 * SCORE_FIRST_BLOOD
+        assert scores["Bob"] == SCORE_CLUTCH_FINISHER + SCORE_LAST_CASUALTY
 
         # Vérifier le tri (Alice en premier car score plus élevé)
         assert list(scores.keys())[0] == "Alice"
@@ -362,14 +365,14 @@ class TestComputeImpactScores:
             "m1": ImpactEvent("m1", "100", "Alice", 1000, "first_blood"),
         }
         scores = compute_impact_scores(first_bloods, {}, {})
-        assert scores["Alice"] == 1
+        assert scores["Alice"] == SCORE_FIRST_BLOOD
 
         # Seulement des Boulets
         last_casualties = {
             "m1": ImpactEvent("m1", "200", "Bob", 3000, "last_casualty"),
         }
         scores = compute_impact_scores({}, {}, last_casualties)
-        assert scores["Bob"] == -2
+        assert scores["Bob"] == SCORE_LAST_CASUALTY
 
 
 # =============================================================================
@@ -440,7 +443,7 @@ class TestImpactLogicalConstraints:
 
         # Les scores doivent refléter les deux événements
         scores = compute_impact_scores(first_bloods, clutch_finishers, {})
-        assert scores["Alice"] == 3  # 1 (FB) + 2 (Clutch)
+        assert scores["Alice"] == SCORE_FIRST_BLOOD + SCORE_CLUTCH_FINISHER
 
     def test_outcome_filtering_correct(self) -> None:
         """Assertion : Finisseur/Boulet sont rejetés si outcome ne correspond pas."""
