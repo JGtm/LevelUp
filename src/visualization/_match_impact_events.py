@@ -44,7 +44,7 @@ def get_impact_labels(lang: str = "fr") -> dict[str, tuple[str, str]]:
         "first_group_death": ("🪦", viz_t("impact_first_group_death", lang)),
         "top_gun": ("🔫", viz_t("impact_top_gun", lang)),
         "silent_hero": ("🛡️", viz_t("impact_silent_hero", lang)),
-        "false_brother": ("🤡", viz_t("impact_false_brother", lang)),
+        "false_brother": ("🗡️", viz_t("impact_false_brother", lang)),
     }
 
 
@@ -54,12 +54,22 @@ def _find_silent_hero_event(
     me_xuid: str,
     lang: str = "fr",
 ) -> MatchImpactEvent | None:
-    """Victoire : joueur de l'équipe avec le meilleur ratio assists−deaths (≥1 assist)."""
+    """Victoire : joueur de l'équipe avec le plus d'assists ET le moins de morts (même joueur)."""
     team = [p for p in participants if str(p.get("xuid", "")).strip() in team_xuids]
-    eligible = [p for p in team if int(p.get("assists", 0)) >= 1]
-    if len(team) < 2 or not eligible:
+    if len(team) < 2:
         return None
-    best = max(eligible, key=lambda p: int(p.get("assists", 0)) - int(p.get("deaths", 0)))
+    max_assists = max((int(p.get("assists", 0)) for p in team), default=0)
+    if max_assists == 0:
+        return None
+    min_deaths = min(int(p.get("deaths", 0)) for p in team)
+    candidates = [
+        p
+        for p in team
+        if int(p.get("assists", 0)) == max_assists and int(p.get("deaths", 0)) == min_deaths
+    ]
+    if not candidates:
+        return None
+    best = candidates[0]
     xu = str(best.get("xuid", "")).strip()
     assists = int(best.get("assists", 0))
     deaths = int(best.get("deaths", 0))
@@ -83,12 +93,22 @@ def _find_false_brother_event(
     me_xuid: str,
     lang: str = "fr",
 ) -> MatchImpactEvent | None:
-    """Défaite : joueur de l'équipe avec le pire ratio deaths−assists (≥1 death)."""
+    """Défaite : joueur de l'équipe avec le plus de morts ET le moins d'assists (même joueur)."""
     team = [p for p in participants if str(p.get("xuid", "")).strip() in team_xuids]
-    eligible = [p for p in team if int(p.get("deaths", 0)) >= 1]
-    if len(team) < 2 or not eligible:
+    if len(team) < 2:
         return None
-    worst = max(eligible, key=lambda p: int(p.get("deaths", 0)) - int(p.get("assists", 0)))
+    max_deaths = max((int(p.get("deaths", 0)) for p in team), default=0)
+    if max_deaths == 0:
+        return None
+    min_assists = min(int(p.get("assists", 0)) for p in team)
+    candidates = [
+        p
+        for p in team
+        if int(p.get("deaths", 0)) == max_deaths and int(p.get("assists", 0)) == min_assists
+    ]
+    if not candidates:
+        return None
+    worst = candidates[0]
     xu = str(worst.get("xuid", "")).strip()
     deaths = int(worst.get("deaths", 0))
     assists = int(worst.get("assists", 0))

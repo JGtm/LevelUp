@@ -343,7 +343,7 @@ def identify_silent_hero_multi(
     matches_df: pl.DataFrame,
     friend_xuids: set[str] | None = None,
 ) -> dict[str, ImpactEvent]:
-    """Par match en victoire : joueur avec max(assists − deaths), ≥1 assist, ≥2 joueurs."""
+    """Par match en victoire : joueur avec simultanément max assists ET min deaths, ≥1 assist, ≥2 joueurs."""
     if participants_df.is_empty():
         return {}
     win_ids = set(
@@ -357,26 +357,24 @@ def identify_silent_hero_multi(
         df = df.filter(pl.col("xuid").is_in({str(x) for x in friend_xuids}))
     if df.is_empty():
         return {}
-    group_counts = df.group_by("match_id").agg(pl.len().alias("n"))
-    valid_ids = set(group_counts.filter(pl.col("n") >= 2)["match_id"].to_list())
-    eligible = df.filter(pl.col("assists") >= 1).filter(pl.col("match_id").is_in(valid_ids))
-    if eligible.is_empty():
-        return {}
-    eligible = eligible.with_columns((pl.col("assists") - pl.col("deaths")).alias("_ratio"))
-    best = (
-        eligible.group_by("match_id")
-        .agg(pl.col("_ratio").max().alias("_max_ratio"))
-        .join(eligible, on="match_id")
-        .filter(pl.col("_ratio") == pl.col("_max_ratio"))
-        .unique(subset=["match_id"])
-    )
     result: dict[str, ImpactEvent] = {}
-    for row in best.iter_rows(named=True):
-        mid = str(row["match_id"])
+    for match_id in df["match_id"].unique().to_list():
+        rows = df.filter(pl.col("match_id") == match_id).to_dicts()
+        if len(rows) < 2:
+            continue
+        max_assists = max(r["assists"] for r in rows)
+        if max_assists == 0:
+            continue
+        min_deaths = min(r["deaths"] for r in rows)
+        candidates = [r for r in rows if r["assists"] == max_assists and r["deaths"] == min_deaths]
+        if not candidates:
+            continue
+        hero = candidates[0]
+        mid = str(match_id)
         result[mid] = ImpactEvent(
             match_id=mid,
-            xuid=str(row["xuid"]),
-            gamertag=str(row.get("gamertag", "Unknown")),
+            xuid=str(hero["xuid"]),
+            gamertag=str(hero.get("gamertag", "Unknown")),
             time_ms=0,
             event_type="silent_hero",
         )
@@ -388,7 +386,7 @@ def identify_false_brother_multi(
     matches_df: pl.DataFrame,
     friend_xuids: set[str] | None = None,
 ) -> dict[str, ImpactEvent]:
-    """Par match en défaite : joueur avec max(deaths − assists), ≥1 mort, ≥2 joueurs."""
+    """Par match en défaite : joueur avec simultanément max deaths ET min assists, ≥1 mort, ≥2 joueurs."""
     if participants_df.is_empty():
         return {}
     loss_ids = set(
@@ -402,26 +400,24 @@ def identify_false_brother_multi(
         df = df.filter(pl.col("xuid").is_in({str(x) for x in friend_xuids}))
     if df.is_empty():
         return {}
-    group_counts = df.group_by("match_id").agg(pl.len().alias("n"))
-    valid_ids = set(group_counts.filter(pl.col("n") >= 2)["match_id"].to_list())
-    eligible = df.filter(pl.col("deaths") >= 1).filter(pl.col("match_id").is_in(valid_ids))
-    if eligible.is_empty():
-        return {}
-    eligible = eligible.with_columns((pl.col("deaths") - pl.col("assists")).alias("_ratio"))
-    worst = (
-        eligible.group_by("match_id")
-        .agg(pl.col("_ratio").max().alias("_max_ratio"))
-        .join(eligible, on="match_id")
-        .filter(pl.col("_ratio") == pl.col("_max_ratio"))
-        .unique(subset=["match_id"])
-    )
     result: dict[str, ImpactEvent] = {}
-    for row in worst.iter_rows(named=True):
-        mid = str(row["match_id"])
+    for match_id in df["match_id"].unique().to_list():
+        rows = df.filter(pl.col("match_id") == match_id).to_dicts()
+        if len(rows) < 2:
+            continue
+        max_deaths = max(r["deaths"] for r in rows)
+        if max_deaths == 0:
+            continue
+        min_assists = min(r["assists"] for r in rows)
+        candidates = [r for r in rows if r["deaths"] == max_deaths and r["assists"] == min_assists]
+        if not candidates:
+            continue
+        traitor = candidates[0]
+        mid = str(match_id)
         result[mid] = ImpactEvent(
             match_id=mid,
-            xuid=str(row["xuid"]),
-            gamertag=str(row.get("gamertag", "Unknown")),
+            xuid=str(traitor["xuid"]),
+            gamertag=str(traitor.get("gamertag", "Unknown")),
             time_ms=0,
             event_type="false_brother",
         )
