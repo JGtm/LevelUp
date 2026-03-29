@@ -2,9 +2,12 @@
 
 from __future__ import annotations
 
+import logging
 from dataclasses import dataclass
 
 import polars as pl
+
+logger = logging.getLogger(__name__)
 
 # Constantes de scoring
 SCORE_CLUTCH_FINISHER = 2  # Finisseur : +2 points
@@ -378,6 +381,7 @@ def identify_silent_hero_multi(
             time_ms=0,
             event_type="silent_hero",
         )
+    logger.debug("identify_silent_hero_multi : %d badge(s) attribué(s)", len(result))
     return result
 
 
@@ -421,6 +425,7 @@ def identify_false_brother_multi(
             time_ms=0,
             event_type="false_brother",
         )
+    logger.debug("identify_false_brother_multi : %d badge(s) attribué(s)", len(result))
     return result
 
 
