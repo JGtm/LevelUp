@@ -49,7 +49,7 @@ def compute_cumulative_metrics_polars(
             total_assists=0,
             cumulative_net_score=0,
             cumulative_kd=0.0,
-            cumulative_kda=0.0,
+            cumulative_efficiency=0.0,
             matches_count=0,
         )
 
@@ -69,7 +69,7 @@ def compute_cumulative_metrics_polars(
 
     net_score = total_kills - total_deaths
     kd = total_kills / max(1, total_deaths)
-    kda = (total_kills + total_assists) / max(1, total_deaths)
+    efficiency = (total_kills + total_assists) / max(1, total_deaths)
 
     return CumulativeMetricsResult(
         total_kills=total_kills,
@@ -77,7 +77,7 @@ def compute_cumulative_metrics_polars(
         total_assists=total_assists,
         cumulative_net_score=net_score,
         cumulative_kd=round(kd, 2),
-        cumulative_kda=round(kda, 2),
+        cumulative_efficiency=round(efficiency, 2),
         matches_count=matches_count,
     )
 

@@ -104,6 +104,6 @@ MODULE:src/data/sync/api_client.py:551L
 MODULE:src/data/sync/engine.py:672L
 MODULE:src/data/sync/transformers/_helpers.py:515L
 MODULE:src/data/sync/transformers/_match.py:534L
-MODULE:src/ui/pages/session_compare.py:536L
+MODULE:src/ui/pages/session_compare.py:538L
 MODULE:src/visualization/maps_outcome.py:587L
 MODULE:src/visualization/timeseries.py:504L

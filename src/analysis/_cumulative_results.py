@@ -32,7 +32,7 @@ class CumulativeMetricsResult:
         total_assists: Total des assistances.
         cumulative_net_score: Net score cumulé final.
         cumulative_kd: K/D cumulé final.
-        cumulative_kda: KDA cumulé final.
+        cumulative_efficiency: Efficacité cumulée finale (somme K+A / somme D).
         matches_count: Nombre de matchs.
     """
 
@@ -41,7 +41,7 @@ class CumulativeMetricsResult:
     total_assists: int
     cumulative_net_score: int
     cumulative_kd: float
-    cumulative_kda: float
+    cumulative_efficiency: float
     matches_count: int
 
     @property

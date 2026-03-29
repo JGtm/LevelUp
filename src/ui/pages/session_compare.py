@@ -281,7 +281,9 @@ def _render_detailed_metrics(perf_a: dict, perf_b: dict) -> None:
     render_metric_comparison_row(
         t("sc_win_rate"), perf_a["win_rate"], perf_b["win_rate"], "{:.1f}%"
     )
-    render_metric_comparison_row(t("sc_kda_label"), perf_a["kda"], perf_b["kda"], "{:.2f}")
+    render_metric_comparison_row(
+        t("sc_efficiency_label"), perf_a["efficiency"], perf_b["efficiency"], "{:.2f}"
+    )
     render_metric_comparison_row(
         t("sc_avg_life"),
         perf_a["avg_life_seconds"],
