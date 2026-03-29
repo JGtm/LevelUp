@@ -11,6 +11,12 @@
 
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 
+# Git Bash sur Windows crée un fichier "nul" si une commande Windows (tasklist,
+# chcp, where…) utilise ">nul" depuis ce shell — supprimer silencieusement.
+if [ -f "$SCRIPT_DIR/nul" ]; then
+    rm -f "$SCRIPT_DIR/nul"
+fi
+
 # S'assurer que LevelUp.sh est exécutable (peut arriver après extraction d'un zip)
 chmod +x "$SCRIPT_DIR/LevelUp.sh" 2>/dev/null || true
 
