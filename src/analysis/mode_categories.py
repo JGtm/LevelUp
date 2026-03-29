@@ -133,18 +133,31 @@ def infer_mode_super_category(mode_ui: str) -> str:
 
 
 def infer_custom_category_from_pair_name(pair_name: str | None) -> str:
-    """Infère la catégorie custom à partir du `pair_name` (DB).
+    """Infère la catégorie custom (sidebar) à partir du `pair_name` (DB).
+
+    Extrait le préfixe anglais du pair_name et le résout via ``PREFIX_TO_CATEGORY``
+    (qui définit le regroupement sidebar, distinct de ``_PREFIX_RULES`` qui régit
+    la suppression du préfixe dans les libellés d'affichage).
 
     Args:
-        pair_name: Valeur MatchStats.pair_name.
+        pair_name: Valeur MatchStats.pair_name, ex: "Ranked:Slayer on Aquarius".
 
     Returns:
         Catégorie custom (Assassin/Fiesta/BTB/Ranked/Firefight/Other).
     """
-    mode_ui = normalize_pair_name_to_mode_ui(pair_name)
-    if not mode_ui:
+    if not pair_name:
         return "Other"
-    return infer_mode_super_category(mode_ui)
+    raw = str(pair_name).strip()
+    raw = raw.split(" on ", 1)[0].strip()
+    m = _LABEL_SUFFIX_RE.match(raw)
+    if m:
+        raw = (m.group(1) or "").strip()
+    if not raw:
+        return "Other"
+    if ":" not in raw:
+        return PREFIX_TO_CATEGORY.get(raw, "Other")
+    prefix = raw.split(":", 1)[0].strip()
+    return PREFIX_TO_CATEGORY.get(prefix, "Other")
 
 
 __all__ = [

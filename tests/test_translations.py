@@ -28,23 +28,24 @@ class TestTranslatePairNameFR:
         assert translate_pair_name("   ") is None
 
     def test_generic_combinator_arena_ctf(self) -> None:
-        """Combinateur _prefixes + mode : Arena:CTF → Arène : Capture du drapeau."""
-        assert translate_pair_name("Arena:CTF") == "Arène : Capture du drapeau"
+        """Arena:CTF → préfixe Arena redondant (catég. Assassin) → juste le mode."""
+        assert translate_pair_name("Arena:CTF") == "Capture du drapeau"
 
     def test_generic_combinator_btb_slayer(self) -> None:
-        assert translate_pair_name("BTB:Slayer") == "Grande bataille en équipe : Assassin"
+        """BTB:Slayer → préfixe BTB redondant (catég. BTB) → juste le mode."""
+        assert translate_pair_name("BTB:Slayer") == "Assassin"
 
     def test_generic_combinator_ranked_strongholds(self) -> None:
-        assert translate_pair_name("Ranked:Strongholds") == "Classé : Bases"
+        """Ranked:Strongholds → préfixe Ranked redondant → juste le mode."""
+        assert translate_pair_name("Ranked:Strongholds") == "Bases"
 
     def test_generic_map_stripped_then_combined(self) -> None:
-        """Strip ' on <carte>' puis combinateur."""
-        assert translate_pair_name("Arena:CTF on Aquarius") == "Arène : Capture du drapeau"
+        """Strip ' on <carte>' puis résolution (préfixe Arena redondant)."""
+        assert translate_pair_name("Arena:CTF on Aquarius") == "Capture du drapeau"
 
     def test_case_normalization(self) -> None:
-        """Normalisation douce de la casse : préfixe corrigé, mode tel quel si déjà titlecase."""
-        # "Arena:Slayer" → combinateur standard
-        assert translate_pair_name("arena:Slayer") == "Arène : Assassin"
+        """Normalisation douce de la casse : préfixe Arena → Assassin → mode seul."""
+        assert translate_pair_name("arena:Slayer") == "Assassin"
 
     # -- _pairs overrides --
 
@@ -101,7 +102,8 @@ class TestTranslatePairNameEN:
     """Tests en anglais (lang="en")."""
 
     def test_generic_combinator_en(self) -> None:
-        assert translate_pair_name("Arena:CTF", lang="en") == "Arena: CTF"
+        """Arena:CTF EN → préfixe Arena redondant (catég. Assassin) → juste le mode."""
+        assert translate_pair_name("Arena:CTF", lang="en") == "CTF"
 
     def test_pairs_en_shotty_snipes(self) -> None:
         """Override _pairs EN : Shotty Snipers (sans préfixe)."""
