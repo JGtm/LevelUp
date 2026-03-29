@@ -7949,6 +7949,50 @@ Installé dans `main()` du launcher via `suppress_asyncio_proactor_connection_re
 **Résultat** : Élimination du spam WinError 10054 dans les logs launcher sans impacter
 les vraies erreurs asyncio.
 
+### [2026-03-29] — Renommage agrégats KDA → efficiency + QA finale (v6.2.1) — Complété
+
+**Contexte** : Audit demandé pour clarifier la sémantique ambiguë du terme `kda` dans le code
+Python. Deux usages coexistaient : `p.kda` (valeur per-match issue de l'API Halo, colonne
+`match_participants.kda`) et des variables locales `kda` calculant un agrégat session
+`(sum_kills + sum_assists) / sum_deaths`.
+
+**Décision technique** : Renommer uniquement les agrégats session en `efficiency`. Conserver
+intactes toutes les occurrences de `p.kda` (MatchRow, repositories, `mv_player_matches`,
+`_performance_relative.py`, `RELATIVE_WEIGHTS["kda"]`). Aucun backfill nécessaire :
+`performance_score` stocké en DB utilise `p.kda` per-match (inchangé) ; `efficiency` est
+calculée à la volée et jamais persistée.
+
+**QA finale** :
+- Logging ajouté dans `_performance_session.py` (`logger.debug` sur df vide, `logger.warning`
+  sur `total_weight <= 0`) et `cumulative.py` (`logger.debug` sur `cumulative_series_to_dicts`).
+- 18 nouveaux tests couvrant : `_compute_kd_component` (both-zero, no-deaths),
+  `_compute_win_component` (no outcome, empty), `_compute_objective_component`
+  (no cols, empty vals, zero vals, with data), `_compute_mmr_performance_component`
+  (MMR sans outcome, MMR + outcome), `_mmr_difficulty_multiplier` (delta ≠ 0),
+  `_weighted_score` (no components), `_saturation_score` (x≤0, scale≤0),
+  `average_kills/deaths_per_match` (matches=0), `cumulative_series_to_dicts` (vide),
+  `compute_cumulative_net_score_series_polars` (colonnes manquantes → ValueError),
+  `compute_cumulative_kda_series_polars` (DF vide → colonnes efficiency présentes),
+  `compute_cumulative_objective_score_series_polars` / `compute_rolling_kd_polars` (DF vides).
+
+**Résultats** :
+- `_performance_session.py` : 88% → 99.6%
+- `_cumulative_results.py` : 87% → 100%
+- `cumulative.py` : 96% → 100%
+- `_cumulative_series.py` : 79% → 94%
+- 5297 tests passent (1 échec pré-existant `test_teammates_impact_tab`)
+
+**Fichiers modifiés** :
+- `src/analysis/_performance_session.py` — logging + renommage (déjà commité)
+- `src/analysis/cumulative.py` — logging
+- `tests/test_performance_session.py` — 14 nouveaux tests (classe `TestComponents`)
+- `tests/test_performance_cumulative.py` — 6 nouveaux tests (classe `TestEdgeCases`)
+- `.ai/BACKLOG.md` — entrée mise à jour
+
+**Conclusion** : Refactoring sémantique exhaustif, couverture solide, aucun impact DB. Branche `feat/v6.2.1-mode-labels-kda-audit`.
+
+---
+
 ### [2025-07-21] — Formule B pour badges Héros silencieux / Faux-frère — Complété
 
 **Contexte** : Badges impact "Héros silencieux ���️" (victoire) et "Faux-frère ���️" (défaite)

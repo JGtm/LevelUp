@@ -7,6 +7,7 @@ objectif, performance MMR.
 
 from __future__ import annotations
 
+import logging
 import math
 from collections.abc import Callable
 from dataclasses import dataclass
@@ -17,6 +18,8 @@ import polars as pl
 from src.analysis._performance_relative import _normalize_df
 from src.data.domain.refdata import Outcome
 from src.utils.safe_types import clamp as _clamp
+
+logger = logging.getLogger(__name__)
 
 # =============================================================================
 # Helpers
@@ -250,6 +253,7 @@ def compute_session_performance_score_v1(df_session: pl.DataFrame | Any) -> dict
     """Version historique du score de session (0-100)."""
     df_session = _normalize_df(df_session)
     if df_session is None or df_session.is_empty():
+        logger.debug("compute_session_performance_score_v1: df vide ou None, retour par défaut")
         return dict(_EMPTY_V1_RESULT)
 
     total_kills = _sum_int(df_session, "kills")
@@ -337,6 +341,7 @@ def compute_session_performance_score_v2(
     df_session = _normalize_df(df_session)
 
     if df_session is None or df_session.is_empty():
+        logger.debug("compute_session_performance_score_v2: df vide ou None, retour par défaut")
         base = compute_session_performance_score_v1(df_session)
         base.update(
             {
@@ -468,6 +473,9 @@ def _weighted_score(
     """Calcule le score final pondéré."""
     total_weight = sum(weights_used.values())
     if total_weight <= 0:
+        logger.warning(
+            "_weighted_score: total_weight=%.4f, aucune composante disponible", total_weight
+        )
         return None
     final_score = sum(computed_scores[key] * (w / total_weight) for key, w in weights_used.items())
     if include_mmr_adjustment:
