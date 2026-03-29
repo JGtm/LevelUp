@@ -20,7 +20,6 @@ from src.ui.i18n import t
 from src.ui.pages._teammates_trio_helpers import (
     _detect_trio_session,
     _render_per_minute_stats,
-    _render_trio_medals,
     _render_trio_performance_charts,
 )
 from src.ui.pages.teammates_charts import render_metric_bar_charts
@@ -266,22 +265,6 @@ def render_trio_view(  # noqa: PLR0913, PLR0915, C901, PLR0912
         show_smooth=show_smooth,
         key_suffix=f"trio_{len(series)}",
         plot_fn=plot_multi_metric_bars_fn,
-    )
-
-    # Médailles escouade
-    _render_trio_medals(
-        squad_match_ids,
-        db_path,
-        xuid.strip(),
-        f1_xuid,
-        f2_xuid,
-        me_name,
-        f1_name,
-        f2_name,
-        db_key,
-        top_medals_fn,
-        f3_xuid=f3_xuid,
-        f3_name=f3_name,
     )
 
     return True

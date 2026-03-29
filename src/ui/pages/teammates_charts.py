@@ -43,8 +43,6 @@ def render_metric_bar_charts(
     _lang = get_lang()
     for metric_col, label, key_prefix in [
         ("max_killing_spree", t("tm_killing_spree"), "friend_spree_multi"),
-        ("headshot_kills", t("tm_headshots"), "friend_hs_multi"),
-        ("perfect_kills", t("tm_perfect_kills"), "friend_pk_multi"),
     ]:
         fig = plot_fn(
             series,
@@ -67,8 +65,7 @@ def render_metric_bar_charts(
                 config=PLOTLY_CLEAN_CONFIG,
             )
 
-    # ── Proposition : graphe combiné HS + PK (barres empilées) ────────────────
-    st.caption("⬇ Nouveau graphe combiné (comparaison) — les deux anciens restent ci-dessus")
+    # ── Graphe combiné HS + PK ──────────────────────────────────────────────
     fig_combined = plot_hs_pk_stacked(
         series,
         colors=colors_by_name,

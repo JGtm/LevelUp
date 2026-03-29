@@ -48,7 +48,7 @@ FUNC:src/ui/components/checkbox_filter.py:224:render_hierarchical_checkbox_filte
 FUNC:src/ui/components/checkbox_filter.py:97:render_checkbox_filter:111L
 FUNC:src/ui/filter_state.py:235:apply_filter_preferences:166L
 FUNC:src/ui/filter_state.py:66:save_filter_preferences:138L
-FUNC:src/ui/pages/_teammates_trio.py:36:render_trio_view:251L
+FUNC:src/ui/pages/_teammates_trio.py:35:render_trio_view:235L
 FUNC:src/ui/pages/career.py:106:_render_rank_header:89L
 FUNC:src/ui/pages/career_logic.py:249:_create_xp_history_chart:189L
 FUNC:src/ui/pages/citations.py:19:render_citations_page:169L
@@ -63,6 +63,7 @@ FUNC:src/ui/pages/match_view_players_nemesis.py:65:_render_antagonist_chart:101L
 FUNC:src/ui/pages/match_view_players_timeline.py:35:render_team_dominance_section:87L
 FUNC:src/ui/pages/match_view_rank.py:18:_build_match_rank_html:184L
 FUNC:src/ui/pages/media_tab.py:110:render_media_tab:154L
+FUNC:src/ui/pages/teammates_views.py:48:render_multi_teammate_view:101L
 FUNC:src/ui/styles.py:48:get_hero_html:146L
 FUNC:src/ui/sync.py:59:refresh_spnkr_db_via_api:86L
 FUNC:src/visualization/_antagonist_duels.py:17:plot_duel_history:105L
