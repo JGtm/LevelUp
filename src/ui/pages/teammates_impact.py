@@ -6,6 +6,8 @@ Heatmap des événements clés + tableau de ranking MVP/Boulet.
 
 from __future__ import annotations
 
+import html
+
 import polars as pl
 import streamlit as st
 
@@ -17,15 +19,8 @@ from src.analysis.friends_impact import (
 )
 from src.data.repositories import DuckDBRepository
 from src.ui.i18n import t
-from src.ui.streamlit_modern import PLOTLY_STATIC_CONFIG
 from src.utils.db import ensure_shared_attached
 from src.utils.paths import get_shared_matches_path_from_player
-from src.visualization.friends_impact_heatmap import (
-    build_impact_ranking_df,
-    count_events_by_player,
-    render_impact_summary_stats,
-)
-from src.visualization.friends_impact_scatter import plot_friends_impact_scatter
 
 
 def _load_match_participants(
@@ -141,80 +136,160 @@ def _load_match_outcomes(
     )
 
 
-def _render_impact_stats(
-    first_bloods: dict,
-    clutch_finishers: dict,
-    last_casualties: dict,
-) -> None:
-    """Affiche les métriques résumées d'impact."""
-    stats = render_impact_summary_stats(first_bloods, clutch_finishers, last_casualties)
-    cols = st.columns(4)
-    cols[0].metric(t("tmi_first_blood"), stats["total_fb"])
-    cols[1].metric(t("tmi_finisher"), stats["total_clutch"])
-    cols[2].metric(t("tmi_liability"), stats["total_casualty"])
-    cols[3].metric(t("tmi_matches_analyzed"), stats["total_matches"])
+_EVENT_TO_EMOJI: dict[str, str] = {
+    "first_blood": "⚡",
+    "clutch_finisher": "🎯",
+    "last_casualty": "💀",
+    "last_group_kill": "🐌",
+    "first_group_death": "🪦",
+    "silent_hero": "🛡️",
+    "false_brother": "🗡️",
+}
+_AGG_KEYS: list[str] = list(_EVENT_TO_EMOJI.keys())
+_IMPACT_INVERTED: set[str] = {
+    "last_casualty",
+    "last_group_kill",
+    "first_group_death",
+    "false_brother",
+}
+_OUTCOME_BG: dict[int, str] = {2: "rgba(0,158,115,0.30)", 3: "rgba(213,94,0,0.30)"}
+_OUTCOME_BG_TIE = "rgba(100,100,130,0.15)"
 
 
-def _render_ranking_table(
+def _pivot_matrix_cells(
+    impact_matrix: pl.DataFrame, gamertags: list[str], match_ids: list[str]
+) -> dict[str, dict[str, str]]:
+    """Construit {gamertag: {match_id: emojis}} depuis impact_matrix."""
+    cells: dict[str, dict[str, str]] = {gt: {} for gt in gamertags}
+    mid_set = set(match_ids)
+    for row in impact_matrix.filter(pl.col("gamertag") != "Résultat").iter_rows(named=True):
+        gt, mid = row["gamertag"], str(row["match_id"])
+        if gt not in cells or mid not in mid_set:
+            continue
+        emoji_list = [
+            _EVENT_TO_EMOJI[e["event"]]
+            for e in (row["events"] or [])
+            if e["event"] in _EVENT_TO_EMOJI
+        ]
+        parts: list[str] = []
+        for i, e in enumerate(emoji_list):
+            parts.append(e)
+            if (i + 1) % 2 == 0 and i < len(emoji_list) - 1:
+                parts.append("<br>")
+        cells[gt][mid] = "".join(parts)
+    return cells
+
+
+def _player_agg_counts(impact_matrix: pl.DataFrame, gamertag: str) -> dict[str, int]:
+    """Compte les events par type pour un joueur."""
+    counts = dict.fromkeys(_AGG_KEYS, 0)
+    for row in impact_matrix.filter(pl.col("gamertag") == gamertag).iter_rows(named=True):
+        for ev in row["events"] or []:
+            if ev["event"] in counts:
+                counts[ev["event"]] += 1
+    return counts
+
+
+def _impact_extremes_from_agg(all_agg: dict[str, dict[str, int]]) -> dict[str, tuple[int, int]]:
+    """Min/max par colonne d'agrégat (≥2 valeurs distinctes non nulles)."""
+    result: dict[str, tuple[int, int]] = {}
+    for key in _AGG_KEYS:
+        vals = [agg[key] for agg in all_agg.values() if agg[key] != 0]
+        if len(vals) >= 2 and (mn := min(vals)) != (mx := max(vals)):
+            result[key] = (mn, mx)
+    return result
+
+
+def _impact_td_class(key: str, val: int, extremes: dict[str, tuple[int, int]]) -> str:
+    """Classe CSS best/worst pour une cellule agrégat Impact."""
+    if key not in extremes or val == 0:
+        return ""
+    mn, mx = extremes[key]
+    if key in _IMPACT_INVERTED:
+        return " os-sb-td--worst" if val == mx else (" os-sb-td--best" if val == mn else "")
+    return " os-sb-td--best" if val == mx else (" os-sb-td--worst" if val == mn else "")
+
+
+def _render_impact_ranking_html(
+    impact_matrix: pl.DataFrame,
     scores: dict,
-    first_bloods: dict,
-    clutch_finishers: dict,
-    last_casualties: dict,
-) -> tuple[str | None, str | None]:
-    """Affiche le tableau de classement MVP/Boulet.
+    match_ids_order: list[str],
+) -> None:
+    """Tableau fusionné : grille match×joueur + totaux par badge + ranking."""
+    if not scores or impact_matrix.is_empty():
+        return
 
-    Returns:
-        (mvp_gamertag, boulet_gamertag) — None si absent.
-    """
-    fb_counts = count_events_by_player(first_bloods)
-    clutch_counts = count_events_by_player(clutch_finishers)
-    casualty_counts = count_events_by_player(last_casualties)
+    outcomes: dict[str, int] = {}
+    for row in impact_matrix.filter(pl.col("gamertag") == "Résultat").iter_rows(named=True):
+        outcomes[str(row["match_id"])] = int(row["outcome"] or 0)
 
-    ranking_df = build_impact_ranking_df(
-        scores,
-        first_blood_counts=fb_counts,
-        clutch_counts=clutch_counts,
-        casualty_counts=casualty_counts,
+    sorted_players = sorted(scores.items(), key=lambda x: x[1], reverse=True)
+    gamertags = [gt for gt, _ in sorted_players]
+    n, last_score = len(gamertags), sorted_players[-1][1] if sorted_players else 0
+
+    cells = _pivot_matrix_cells(impact_matrix, gamertags, match_ids_order)
+    all_agg = {gt: _player_agg_counts(impact_matrix, gt) for gt in gamertags}
+    extremes = _impact_extremes_from_agg(all_agg)
+    score_vals = [s for _, s in sorted_players if s != 0]
+    if len(score_vals) >= 2 and (mn := min(score_vals)) != (mx := max(score_vals)):
+        extremes["score"] = (mn, mx)
+
+    n_total = 1 + len(match_ids_order) + len(_AGG_KEYS) + 2
+    match_ths = "".join(
+        f"<th class='os-sb-th' style='width:34px;"
+        f"background:{_OUTCOME_BG.get(outcomes.get(mid, 0), _OUTCOME_BG_TIE)}'>{i + 1}</th>"
+        for i, mid in enumerate(match_ids_order)
+    )
+    agg_ths = "".join(f"<th class='os-sb-th'>{_EVENT_TO_EMOJI[k]}</th>" for k in _AGG_KEYS)
+    th_row = (
+        f"<th class='os-sb-th' style='text-align:left'>{t('tmi_col_player')}</th>"
+        f"{match_ths}{agg_ths}"
+        f"<th class='os-sb-th'>{t('tmi_col_score')}</th>"
+        f"<th class='os-sb-th'>{t('tmi_badge')}</th>"
+    )
+    header_html = (
+        "<tbody class='os-sb-head'>"
+        f"<tr><th class='os-sb-team os-sb-team--mine' colspan='{n_total}'>"
+        f"{html.escape(t('tm_impact_ranking'))}</th></tr>"
+        f"<tr>{th_row}</tr></tbody>"
     )
 
-    if ranking_df.is_empty():
-        return None, None
+    body_rows = []
+    for rank, (gt, score) in enumerate(sorted_players, start=1):
+        if rank == 1:
+            row_class, badge = " os-sb-row--mvp", "🏆 Champion"
+        elif rank == n and last_score < 0:
+            row_class, badge = " os-sb-row--lvp", "🍌 Maillon faible"
+        elif rank == n:
+            row_class, badge = "", "📉 Passager clandestin"
+        else:
+            row_class, badge = "", ""
+        score_str = f"+{score}" if score > 0 else str(score)
+        match_tds = "".join(
+            f"<td class='os-sb-td' style='text-align:center'>{cells.get(gt, {}).get(mid, '')}</td>"
+            for mid in match_ids_order
+        )
+        agg_tds = "".join(
+            f"<td class='os-sb-td{_impact_td_class(k, all_agg[gt][k], extremes)}'>"
+            f"{all_agg[gt][k] if all_agg[gt][k] else '—'}</td>"
+            for k in _AGG_KEYS
+        )
+        tds = (
+            f"<td class='os-sb-td' style='text-align:left'>{html.escape(gt)}</td>"
+            f"{match_tds}{agg_tds}"
+            f"<td class='os-sb-td{_impact_td_class('score', score, extremes)}'>{html.escape(score_str)}</td>"
+            f"<td class='os-sb-td'>{html.escape(badge)}</td>"
+        )
+        body_rows.append(
+            f"<tbody class='os-sb-player'><tr class='os-sb-row{row_class}'>{tds}</tr></tbody>"
+        )
 
-    col_cfg = {
-        "rang": st.column_config.NumberColumn(label=t("tmi_col_rank"), width=50),
-        "gamertag": st.column_config.TextColumn(label=t("tmi_col_player"), width=140),
-        "score": st.column_config.NumberColumn(label=t("tmi_col_score"), width=60),
-        "fb": st.column_config.NumberColumn(label="⚡", width=45),
-        "clutch": st.column_config.NumberColumn(label="🎯", width=45),
-        "boulet": st.column_config.NumberColumn(label="💀", width=45),
-        "badge": st.column_config.TextColumn(label=t("tmi_badge"), width=110),
-    }
-    st.dataframe(ranking_df, width="content", hide_index=True, column_config=col_cfg)
-
-    mvp = ranking_df[0, "gamertag"] if len(ranking_df) > 0 else None
-    boulet = (
-        ranking_df[-1, "gamertag"] if len(ranking_df) > 1 and ranking_df[-1, "score"] < 0 else None
+    table_html = (
+        "<div class='os-table-wrap os-sb-wrap'>"
+        f"<table class='os-table os-scoreboard os-impact-table'>"
+        f"{header_html}{''.join(body_rows)}</table></div>"
     )
-    return mvp, boulet
-
-
-def _render_impact_ranking_section(
-    scores: dict,
-    first_bloods: dict,
-    clutch_finishers: dict,
-    last_casualties: dict,
-) -> None:
-    """Affiche la légende, le tableau de classement et les badges MVP/Boulet."""
-    col_leg, col_rank, col_mvp = st.columns([1, 1.6, 0.8])
-    with col_leg:
-        st.caption(t("tm_impact_legend"))
-    with col_rank:
-        mvp, boulet = _render_ranking_table(scores, first_bloods, clutch_finishers, last_casualties)
-    with col_mvp:
-        if mvp:
-            st.success(t("tmi_mvp_label", mvp=mvp))
-        if boulet:
-            st.error(t("tmi_boulet_label", boulet=boulet))
+    st.markdown(table_html, unsafe_allow_html=True)
 
 
 def _render_impact_from_events(  # noqa: PLR0913
@@ -284,15 +359,8 @@ def _render_impact_from_events(  # noqa: PLR0913
         false_brothers=false_brothers,
     )
 
-    st.subheader(t("tm_impact_heatmap"))
-    fig = plot_friends_impact_scatter(
-        impact_matrix,
-        title=None,
-        max_matches=len(sorted_match_ids),
-        match_ids_order=sorted_match_ids,
-    )
-    st.plotly_chart(fig, width="stretch", config=PLOTLY_STATIC_CONFIG)
-    _render_impact_ranking_section(scores, first_bloods, clutch_finishers, last_casualties)
+    _render_impact_ranking_html(impact_matrix, scores, sorted_match_ids)
+    st.caption(t("tm_impact_legend"))
 
 
 def render_impact_taquinerie(

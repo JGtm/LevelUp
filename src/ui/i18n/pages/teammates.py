@@ -88,8 +88,8 @@ STRINGS: dict[str, dict[str, str] | str] = {
         "en": "Dots (symbols)",
     },
     "tm_impact_ranking": {
-        "fr": "🏆 Classement",
-        "en": "🏆 Ranking",
+        "fr": "Matrice d'impact",
+        "en": "Impact matrix",
     },
     "tm_impact_legend": {
         "fr": "- ⚡ **Premier sang** — premier kill du match, toutes équipes confondues\n- 🎯 **Finisseur** — dernier kill d'un match remporté\n- 💀 **Boulet** — dernière mort d'une défaite\n- 🐌 **Touriste** — dernier à obtenir son 1er kill\n- 🪦 **Première victime** — première mort du match, toutes équipes confondues\n- 🛡️ **Héros silencieux** — plus d'assists et moins de morts dans l'équipe (victoire)\n- 🗡️ **Faux-frère** — plus de morts et moins d'assists dans l'équipe (défaite)",
