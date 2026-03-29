@@ -1,8 +1,8 @@
 """Tests unitaires pour _match_impact_events : _find_silent_hero_event et _find_false_brother_event.
 
-Vérifie la logique de sélection des badges stats-only :
-- Héros silencieux (victoire) = max(assists - deaths) avec ≥1 assist, équipe ≥2 joueurs
-- Faux-frère (défaite) = max(deaths - assists) avec ≥1 death, équipe ≥2 joueurs
+Vérifie la logique de sélection des badges stats-only (formule B) :
+- Héros silencieux (victoire) = même joueur avec max assists ET min deaths simultanément, ≥1 assist, équipe ≥2 joueurs
+- Faux-frère (défaite) = même joueur avec max deaths ET min assists simultanément, ≥1 mort, équipe ≥2 joueurs
 """
 
 from __future__ import annotations

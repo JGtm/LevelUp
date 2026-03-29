@@ -94,7 +94,7 @@ FUNC:src/visualization/timeseries_combat.py:185:plot_streak_chart:84L
 FUNC:src/visualization/timeseries_combat.py:89:plot_spree_headshots_accuracy:93L
 FUNC:src/visualization/trio.py:315:plot_trio_kills_deaths:94L
 FUNC:src/visualization/trio.py:38:plot_trio_metric:206L
-MODULE:src/analysis/friends_impact.py:591L
+MODULE:src/analysis/friends_impact.py:596L
 MODULE:src/analysis/weapon_parser.py:502L
 MODULE:src/data/repositories/_weapon_kills_repo.py:567L
 MODULE:src/data/sync/_match_processing.py:554L
