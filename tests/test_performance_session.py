@@ -124,7 +124,7 @@ class TestSessionPerformanceScoreV1:
         expected_keys = {
             "score",
             "kd_ratio",
-            "kda",
+            "efficiency",
             "win_rate",
             "accuracy",
             "avg_score",

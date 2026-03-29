@@ -222,20 +222,20 @@ class TestCumulativeKDA:
     """Tests pour compute_cumulative_kda_series_polars."""
 
     def test_basic_cumulative_kda(self, sample_match_stats_df: pl.DataFrame):
-        """Test basique de calcul du KDA cumulé."""
+        """Test basique de calcul de l'efficacité cumulée."""
         from src.analysis.cumulative import compute_cumulative_kda_series_polars
 
         result = compute_cumulative_kda_series_polars(sample_match_stats_df)
 
         assert not result.is_empty()
-        assert "cumulative_kda" in result.columns
-        assert "kda" in result.columns
+        assert "cumulative_efficiency" in result.columns
+        assert "efficiency" in result.columns
 
-        # Vérifier le KDA final
+        # Vérifier l'efficacité finale
         # Total kills: 51, Total assists: 15, Total deaths: 40
-        # KDA final: (51+15)/40 = 1.65
-        final_kda = result.get_column("cumulative_kda").to_list()[-1]
-        assert round(final_kda, 2) == 1.65
+        # efficiency final: (51+15)/40 = 1.65
+        final_efficiency = result.get_column("cumulative_efficiency").to_list()[-1]
+        assert round(final_efficiency, 2) == 1.65
 
 
 class TestCumulativeObjective:
@@ -278,7 +278,7 @@ class TestCumulativeMetrics:
         assert result.cumulative_net_score == 11
         assert result.matches_count == 5
         assert result.cumulative_kd in (1.27, 1.28)
-        assert result.cumulative_kda == 1.65
+        assert result.cumulative_efficiency == 1.65
 
     def test_empty_dataframe(self, empty_df: pl.DataFrame):
         """Test avec DataFrame vide."""

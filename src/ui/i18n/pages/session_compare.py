@@ -75,7 +75,7 @@ STRINGS: dict[str, dict[str, str] | str] = {
     "sc_session_a": {"fr": "Session A", "en": "Session A"},
     "sc_session_b": {"fr": "Session B", "en": "Session B"},
     "sc_match_count": {"fr": "Nombre de parties", "en": "Number of matches"},
-    "sc_kda_label": {"fr": "FDA (Frags-Décès-Assists)", "en": "KDA (Kills-Deaths-Assists)"},
+    "sc_efficiency_label": {"fr": "Efficacité (K+A / D)", "en": "Efficiency (K+A / D)"},
     "sc_win_rate": "col_win_rate",  # alias → common
     "sc_avg_life": "col_avg_life_long",  # alias → common
     "sc_total_kills": {"fr": "Total des frags", "en": "Total kills"},

@@ -151,15 +151,15 @@ def compute_cumulative_kda_series_polars(
         match_stats_df: DataFrame Polars avec colonnes start_time, kills, deaths, assists.
 
     Returns:
-        DataFrame avec colonnes: match_id, start_time, kda, cumulative_kda.
+        DataFrame avec colonnes: match_id, start_time, efficiency, cumulative_efficiency.
     """
     if match_stats_df.is_empty():
         return pl.DataFrame(
             schema={
                 "match_id": pl.Utf8,
                 "start_time": pl.Utf8,
-                "kda": pl.Float64,
-                "cumulative_kda": pl.Float64,
+                "efficiency": pl.Float64,
+                "cumulative_efficiency": pl.Float64,
             }
         )
 
@@ -173,7 +173,7 @@ def compute_cumulative_kda_series_polars(
                     / pl.when(pl.col("deaths").fill_null(0) == 0)
                     .then(1)
                     .otherwise(pl.col("deaths").fill_null(0))
-                ).alias("kda"),
+                ).alias("efficiency"),
                 # Cumuls
                 pl.col("kills").fill_null(0).cum_sum().alias("_cum_kills"),
                 pl.col("deaths").fill_null(0).cum_sum().alias("_cum_deaths"),
@@ -186,13 +186,13 @@ def compute_cumulative_kda_series_polars(
                 (
                     (pl.col("_cum_kills") + pl.col("_cum_assists"))
                     / pl.when(pl.col("_cum_deaths") == 0).then(1).otherwise(pl.col("_cum_deaths"))
-                ).alias("cumulative_kda"),
+                ).alias("cumulative_efficiency"),
             ]
         )
     )
 
     # Sélectionner les colonnes de sortie
-    output_cols = ["start_time", "kda", "cumulative_kda"]
+    output_cols = ["start_time", "efficiency", "cumulative_efficiency"]
     if "match_id" in result.columns:
         output_cols = ["match_id"] + output_cols
 
