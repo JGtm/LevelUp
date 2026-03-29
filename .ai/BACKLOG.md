@@ -8,6 +8,7 @@
 
 | Date | Item |
 |------|------|
+| 2026-03-29 | **[v6.2.1] Renommage agrégats KDA → `efficiency`** : `_performance_session.py` v1/v2 variable + clé dict → `efficiency`. `_cumulative_results.py` champ → `cumulative_efficiency`. `_cumulative_series.py` colonnes DF → `efficiency`/`cumulative_efficiency`. `cumulative.py` variable locale + kwarg. i18n `sc_kda_label` → `sc_efficiency_label`. `session_compare.py` `perf["kda"]` → `perf["efficiency"]`. Tests mis à jour. 5332 tests passent. |
 | 2026-03-29 | **[v6.2.1] Normalisation labels modes — Phase 2 intégration UI** : `translate_pair_name()` délègue à `resolve_display_mode()` + `infer_mode_category_from_pair_name()`. `infer_custom_category_from_pair_name()` corrigée (format inversé, `PREFIX_TO_CATEGORY` direct). Dead code supprimé (`_normalize_pair_case`, `_mode_db_lookup`, `_mode_sep`). 18 nouveaux tests unitaires pour `infer_mode_category_from_pair_name`. 5261 tests passent. |
 | 2026-03-29 | **[v6.2.1] Normalisation labels modes — Phase 1 : `resolve_display_mode()`** : fonction pure `src/analysis/mode_display.py`, `_PREFIX_RULES`, format inversé, qualificatif Heavies, 29 overrides ajoutés dans `mode_pair_overrides` (FR + EN : Assault, KOTH, Team Slayer, Team Snipers, BTB Fiesta, Tactical). Validation CSV utilisateur. 35 tests unitaires. |
 | 2026-03-28 | **[v6.2] Badges narratifs** — Remontada / Débandade / Contre-Remontada + Héros silencieux / Faux-frère : `DominanceFlag`, `comeback_analysis.py`, `comeback_backfill.py`, `--comeback-badges` CLI, badge `MatchImpactEvent` stats-only. |
@@ -38,34 +39,7 @@
 
 ---
 
-### 🔴 Audit — Renommer les agrégats KDA locaux en `efficiency` (v6.2.1)
-
-**Noté le** : 2026-03-27 | **Priorité** : Moyenne
-
-**Contexte** : suite au fix KDA (2026-03-26), les affichages per-match utilisent `p.kda` de l'API. Mais plusieurs modules dans `src/analysis/` calculent encore un KDA local sur les totaux K/D/A pour les métriques agrégées.
-
-**Fichiers concernés** :
-- `src/analysis/cumulative.py:72` — `(kills + assists) / max(1, deaths)`
-- `src/analysis/stats.py:102,180` — formules session
-- `src/analysis/_performance_relative.py:75,77` — KDA relatif
-- `src/analysis/_performance_relative_helpers.py:271` — KDA dérivé
-- `src/analysis/_performance_session.py:263,362` — KDA session
-- `src/data/domain/models/stats.py:54,103` — propriété calculée sur `MatchRow`
-
-**Décision** : deux sémantiques distinctes.
-1. **Match / distribution / comparaison match-level** : `p.kda` de l'API, tel quel (peut être négatif).
-2. **Session / période / carte / cumul agrégé** : indicateur **`efficiency`** (code) / **`efficacité`** (UI FR), formule `sum(K + A/3) / sum(D)`.
-
-**⛔ Nommage obligatoire** : `efficiency` / `efficacité` uniquement pour les agrégats. Les termes `ratio`, `KDA`, `FDA` sont **interdits** pour cette métrique afin d'éviter toute confusion avec `kda` API.
-
-**Consignes** :
-- Renommer toutes les variables/clés i18n agrégées → `efficiency` / `session_efficiency`
-- Ajouter les clés i18n `efficiency` EN et `efficacité` FR dans `src/ui/i18n/`
-- Conserver `kda` intact dans les flux per-match et percentiles relatifs
-
----
-
-### 🟡 Perf — Vectoriser le backfill multi-flags performance scores (v7+)
+###  Perf — Vectoriser le backfill multi-flags performance scores (v7+)
 
 **Noté le** : 2026-03-26 | **Priorité** : Basse
 

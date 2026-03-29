@@ -7,6 +7,33 @@
 
 ## Journal
 
+### [2026-03-29] — Renommage agrégats KDA → efficiency (v6.2.1) — Complété
+
+**Statut** : Complété
+
+**Décision technique** :
+Distinction claire entre deux sémantiques KDA qui coexistaient sous le même nom `kda` :
+1. **`p.kda` API (per-match)** — valeur officielle Halo, peut être négative, conservée intacte dans `MatchRow`, repositories, UI match tables, `performance_config.py` (poids scoring)
+2. **`efficiency` (agrégat session)** — `sum(K+A) / sum(D)` calculé côté app sur plusieurs matchs
+
+**Périmètre exact modifié** :
+- `_performance_session.py` : variables `kda` → `efficiency` + clés dict `"kda"` → `"efficiency"` (v1 et v2)
+- `_cumulative_results.py` : champ `cumulative_kda` → `cumulative_efficiency`
+- `_cumulative_series.py` : colonnes DF `"kda"`/`"cumulative_kda"` → `"efficiency"`/`"cumulative_efficiency"`
+- `cumulative.py` : variable locale + kwarg `CumulativeMetricsResult`
+- `i18n/pages/session_compare.py` : `"sc_kda_label"` → `"sc_efficiency_label"` (fr: "Efficacité (K+A / D)")
+- `session_compare.py` : `perf["kda"]` → `perf["efficiency"]`
+- Tests mis à jour (`test_performance_cumulative.py`, `test_performance_session.py`)
+
+**Non modifié par décision** :
+- `_performance_relative*.py` (comparaison per-match vs historique) — `kda` intact  
+- `performance_config.py` `RELATIVE_WEIGHTS["kda"]` — poids scoring percentile per-match
+- Nom de fonction `compute_cumulative_kda_series_polars` — API publique stable
+
+**Résultats** : 5332 tests passent, 1 échec pré-existant non lié (`test_teammates_impact_tab`, attribut manquant dans `teammates_impact.py`).
+
+**Prochaine étape** : Backlog v6.2.1 terminé. Préparation PR ou passage à v7.
+
 ### [2026-03-29] — Tableau HTML fusionné Impact (comparaison A/B) — Complété
 
 **Décision** : Ajout d'un tableau HTML `_render_impact_ranking_html` affiché *sous* la section existante (scatter + `st.dataframe`) pour permettre la comparaison visuelle avant de décider lequel garder. Aucune suppression de l'existant.
