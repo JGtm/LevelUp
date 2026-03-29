@@ -10,6 +10,8 @@ import polars as pl
 SCORE_CLUTCH_FINISHER = 2  # Finisseur : +2 points
 SCORE_FIRST_BLOOD = 1  # Premier sang : +1 point
 SCORE_LAST_CASUALTY = -1  # Boulet : -1 point
+SCORE_SILENT_HERO = 1  # Héros silencieux : +1 point
+SCORE_FALSE_BROTHER = -1  # Faux-frère : -1 point
 
 # Codes d'outcome
 OUTCOME_WIN = 2
@@ -336,6 +338,96 @@ def identify_first_group_death(
     return result
 
 
+def identify_silent_hero_multi(
+    participants_df: pl.DataFrame,
+    matches_df: pl.DataFrame,
+    friend_xuids: set[str] | None = None,
+) -> dict[str, ImpactEvent]:
+    """Par match en victoire : joueur avec max(assists − deaths), ≥1 assist, ≥2 joueurs."""
+    if participants_df.is_empty():
+        return {}
+    win_ids = set(
+        matches_df.filter(pl.col("outcome") == OUTCOME_WIN)["match_id"].cast(pl.Utf8).to_list()
+    )
+    if not win_ids:
+        return {}
+    df = participants_df.with_columns(pl.col("xuid").cast(pl.Utf8))
+    df = df.filter(pl.col("match_id").cast(pl.Utf8).is_in(win_ids))
+    if friend_xuids:
+        df = df.filter(pl.col("xuid").is_in({str(x) for x in friend_xuids}))
+    if df.is_empty():
+        return {}
+    group_counts = df.group_by("match_id").agg(pl.len().alias("n"))
+    valid_ids = set(group_counts.filter(pl.col("n") >= 2)["match_id"].to_list())
+    eligible = df.filter(pl.col("assists") >= 1).filter(pl.col("match_id").is_in(valid_ids))
+    if eligible.is_empty():
+        return {}
+    eligible = eligible.with_columns((pl.col("assists") - pl.col("deaths")).alias("_ratio"))
+    best = (
+        eligible.group_by("match_id")
+        .agg(pl.col("_ratio").max().alias("_max_ratio"))
+        .join(eligible, on="match_id")
+        .filter(pl.col("_ratio") == pl.col("_max_ratio"))
+        .unique(subset=["match_id"])
+    )
+    result: dict[str, ImpactEvent] = {}
+    for row in best.iter_rows(named=True):
+        mid = str(row["match_id"])
+        result[mid] = ImpactEvent(
+            match_id=mid,
+            xuid=str(row["xuid"]),
+            gamertag=str(row.get("gamertag", "Unknown")),
+            time_ms=0,
+            event_type="silent_hero",
+        )
+    return result
+
+
+def identify_false_brother_multi(
+    participants_df: pl.DataFrame,
+    matches_df: pl.DataFrame,
+    friend_xuids: set[str] | None = None,
+) -> dict[str, ImpactEvent]:
+    """Par match en défaite : joueur avec max(deaths − assists), ≥1 mort, ≥2 joueurs."""
+    if participants_df.is_empty():
+        return {}
+    loss_ids = set(
+        matches_df.filter(pl.col("outcome") == OUTCOME_LOSS)["match_id"].cast(pl.Utf8).to_list()
+    )
+    if not loss_ids:
+        return {}
+    df = participants_df.with_columns(pl.col("xuid").cast(pl.Utf8))
+    df = df.filter(pl.col("match_id").cast(pl.Utf8).is_in(loss_ids))
+    if friend_xuids:
+        df = df.filter(pl.col("xuid").is_in({str(x) for x in friend_xuids}))
+    if df.is_empty():
+        return {}
+    group_counts = df.group_by("match_id").agg(pl.len().alias("n"))
+    valid_ids = set(group_counts.filter(pl.col("n") >= 2)["match_id"].to_list())
+    eligible = df.filter(pl.col("deaths") >= 1).filter(pl.col("match_id").is_in(valid_ids))
+    if eligible.is_empty():
+        return {}
+    eligible = eligible.with_columns((pl.col("deaths") - pl.col("assists")).alias("_ratio"))
+    worst = (
+        eligible.group_by("match_id")
+        .agg(pl.col("_ratio").max().alias("_max_ratio"))
+        .join(eligible, on="match_id")
+        .filter(pl.col("_ratio") == pl.col("_max_ratio"))
+        .unique(subset=["match_id"])
+    )
+    result: dict[str, ImpactEvent] = {}
+    for row in worst.iter_rows(named=True):
+        mid = str(row["match_id"])
+        result[mid] = ImpactEvent(
+            match_id=mid,
+            xuid=str(row["xuid"]),
+            gamertag=str(row.get("gamertag", "Unknown")),
+            time_ms=0,
+            event_type="false_brother",
+        )
+    return result
+
+
 def compute_impact_scores(
     first_bloods: dict[str, ImpactEvent],
     clutch_finishers: dict[str, ImpactEvent],
@@ -426,6 +518,8 @@ _EVENT_DEFS: list[tuple[str, int]] = [
     ("last_casualty", -1),
     ("last_group_kill", 3),
     ("first_group_death", -2),
+    ("silent_hero", 1),
+    ("false_brother", -1),
 ]
 
 _EMPTY_IMPACT_SCHEMA = {
@@ -480,6 +574,8 @@ def build_impact_matrix(  # noqa: PLR0913
     match_ids: list[str],
     gamertags: list[str],
     match_outcomes: dict[str, int] | None = None,
+    silent_heroes: dict[str, ImpactEvent] | None = None,
+    false_brothers: dict[str, ImpactEvent] | None = None,
 ) -> pl.DataFrame:
     """Construit une matrice d'impact pour la heatmap."""
     event_dicts = [
@@ -488,6 +584,8 @@ def build_impact_matrix(  # noqa: PLR0913
         last_casualties,
         last_group_kills,
         first_group_deaths,
+        silent_heroes if silent_heroes is not None else {},
+        false_brothers if false_brothers is not None else {},
     ]
     events_map = _populate_events_map(match_ids, gamertags, event_dicts)
     rows = _build_impact_rows(events_map, match_ids, match_outcomes)

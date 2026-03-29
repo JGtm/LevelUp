@@ -256,6 +256,7 @@ def render_match_impact_section(  # noqa: PLR0913
                     gamertag=resolved,
                     time_ms=ie.time_ms,
                     is_me=ie.is_me,
+                    extra_label=ie.extra_label,
                 )
             enriched.append(ie)
         impact_events = enriched

@@ -12,6 +12,8 @@ import streamlit as st
 from src.analysis.friends_impact import (
     build_impact_matrix,
     get_all_impact_events,
+    identify_false_brother_multi,
+    identify_silent_hero_multi,
 )
 from src.data.repositories import DuckDBRepository
 from src.ui.i18n import t
@@ -24,6 +26,38 @@ from src.visualization.friends_impact_heatmap import (
     render_impact_summary_stats,
 )
 from src.visualization.friends_impact_scatter import plot_friends_impact_scatter
+
+
+def _load_match_participants(
+    conn,
+    match_ids: list[str],
+    shared_alias: str,
+) -> pl.DataFrame | None:
+    """Charge les stats assists/deaths depuis shared.match_participants."""
+    try:
+        conn.execute(f"SELECT 1 FROM {shared_alias}.match_participants LIMIT 1")
+    except Exception:
+        return None
+    query = (
+        f"SELECT p.match_id, p.xuid::TEXT as xuid, "
+        f"COALESCE(vg.gamertag, p.gamertag, p.xuid::TEXT) as gamertag, "
+        f"p.assists, p.deaths "
+        f"FROM {shared_alias}.match_participants p "
+        f"LEFT JOIN {shared_alias}.v_gamertag_lookup vg ON vg.xuid = p.xuid::TEXT "
+        f"WHERE p.match_id IN ({', '.join(['?' for _ in match_ids])})"
+    )
+    rows = conn.execute(query, match_ids).fetchall()
+    if not rows:
+        return pl.DataFrame()
+    return pl.DataFrame(
+        {
+            "match_id": [str(r[0]) for r in rows],
+            "xuid": [str(r[1]) for r in rows],
+            "gamertag": [r[2] or "Unknown" for r in rows],
+            "assists": [int(r[3] or 0) for r in rows],
+            "deaths": [int(r[4] or 0) for r in rows],
+        }
+    )
 
 
 def _load_highlight_events(
@@ -183,12 +217,13 @@ def _render_impact_ranking_section(
             st.error(t("tmi_boulet_label", boulet=boulet))
 
 
-def _render_impact_from_events(
+def _render_impact_from_events(  # noqa: PLR0913
     events_df: pl.DataFrame,
     matches_df: pl.DataFrame,
     match_ids: list[str],
     friend_xuids: list[str],
     xuid: str,
+    participants_df: pl.DataFrame | None = None,
 ) -> None:
     """Calcule les métriques d'impact et affiche heatmap + ranking."""
     all_friend_xuids = {str(x) for x in friend_xuids}
@@ -203,17 +238,31 @@ def _render_impact_from_events(
         scores,
     ) = get_all_impact_events(events_df, matches_df, friend_xuids=all_friend_xuids)
 
+    # Badges stats-only depuis match_participants
+    silent_heroes: dict = {}
+    false_brothers: dict = {}
+    if participants_df is not None and not participants_df.is_empty():
+        silent_heroes = identify_silent_hero_multi(participants_df, matches_df, all_friend_xuids)
+        false_brothers = identify_false_brother_multi(participants_df, matches_df, all_friend_xuids)
+
     if not scores:
         st.info(t("tm_impact_no_events_players"))
         return
 
     gamertags = list(scores.keys())
+    # Ajouter les gamertags des nouveaux badges s'ils ne sont pas déjà dans la liste
+    for ev in list(silent_heroes.values()) + list(false_brothers.values()):
+        if ev.gamertag not in gamertags:
+            gamertags.append(ev.gamertag)
+
     impact_match_set = set(
         list(first_bloods.keys())
         + list(clutch_finishers.keys())
         + list(last_casualties.keys())
         + list(last_group_kills.keys())
         + list(first_group_deaths.keys())
+        + list(silent_heroes.keys())
+        + list(false_brothers.keys())
     )
     sorted_match_ids = [m for m in match_ids if m in impact_match_set]
 
@@ -231,6 +280,8 @@ def _render_impact_from_events(
         match_ids=sorted_match_ids,
         gamertags=gamertags,
         match_outcomes=match_outcomes,
+        silent_heroes=silent_heroes,
+        false_brothers=false_brothers,
     )
 
     st.subheader(t("tm_impact_heatmap"))
@@ -284,7 +335,10 @@ def render_impact_taquinerie(
             return
 
         matches_df = _load_match_outcomes(conn, match_ids, xuid, shared_alias)
-        _render_impact_from_events(events_df, matches_df, match_ids, friend_xuids, xuid)
+        participants_df = _load_match_participants(conn, match_ids, shared_alias)
+        _render_impact_from_events(
+            events_df, matches_df, match_ids, friend_xuids, xuid, participants_df
+        )
 
     except Exception as e:
         st.warning(t("error_chart", error=e))
