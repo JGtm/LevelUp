@@ -7,6 +7,14 @@
 
 ## Journal
 
+### [2026-03-29] — Tableau HTML fusionné Impact (comparaison A/B) — Complété
+
+**Décision** : Ajout d'un tableau HTML `_render_impact_ranking_html` affiché *sous* la section existante (scatter + `st.dataframe`) pour permettre la comparaison visuelle avant de décider lequel garder. Aucune suppression de l'existant.
+
+**Résultats** : Tableau avec 7 colonnes événements (⚡🎯💀🐌🪦🛡️🗡️), bordure verte sur le champion (`os-sb-row--mvp`), rouge sur le boulet (`os-sb-row--lvp`). `friends_impact_heatmap.py` (497L) non modifié. 40 tests passent.
+
+**Prochaine étape** : Validation visuelle → décider si on remplace le `st.dataframe` + `st.success/st.error` par ce tableau ou si on garde les deux.
+
 ### [2026-03-29] — Badges impact : Héros silencieux + Faux-frère — Complété
 
 **Statut** : Complété
