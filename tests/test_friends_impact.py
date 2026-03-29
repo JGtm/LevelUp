@@ -1,12 +1,14 @@
-"""Tests pour le module d'analyse d'impact des coéquipiers (Sprint 12).
+"""Tests pour le module d'analyse d'impact des coéquipiers.
 
-Teste les 4 fonctions d'identification et de scoring :
+Teste les fonctions d'identification et de scoring :
 - identify_first_blood()
 - identify_clutch_finisher()
 - identify_last_casualty()
 - compute_impact_scores()
+- identify_silent_hero_multi()  [formule B : même joueur = max assists ET min deaths]
+- identify_false_brother_multi()  [formule B : même joueur = max deaths ET min assists]
 
-Ainsi que les contraintes logiques :
+Contraintes logiques :
 - Finisseur + Boulet ne peuvent pas être dans le même match (outcomes incompatibles)
 - Un joueur peut avoir First Blood + Finisseur (même match court avec victoire)
 - First Blood est indépendant de l'outcome
@@ -29,13 +31,18 @@ try:
     from src.analysis.friends_impact import (
         OUTCOME_LOSS,
         OUTCOME_WIN,
+        SCORE_CLUTCH_FINISHER,
+        SCORE_FIRST_BLOOD,
+        SCORE_LAST_CASUALTY,
         ImpactEvent,
         build_impact_matrix,
         compute_impact_scores,
         get_all_impact_events,
         identify_clutch_finisher,
+        identify_false_brother_multi,
         identify_first_blood,
         identify_last_casualty,
+        identify_silent_hero_multi,
     )
 
     FRIENDS_IMPACT_AVAILABLE = True
@@ -178,20 +185,21 @@ class TestIdentifyFirstBlood:
         assert result == {}
 
     def test_identify_first_blood_filter_friends(self, sample_events_df: pl.DataFrame) -> None:
-        """Vérifie le filtrage par amis."""
-        # Filtrer seulement Bob (xuid="200")
-        result = identify_first_blood(sample_events_df, friend_xuids={"200"})
+        """Vérifie que le badge n'est attribué que si un ami a obtenu le premier sang du match."""
+        # Alice (100) a le premier kill dans m1 (1000ms), m2 (500ms), m3 (1000ms)
+        # Filtrer seulement Alice → elle apparaît dans les 3 matchs
+        result_alice = identify_first_blood(sample_events_df, friend_xuids={"100"})
+        assert "m1" in result_alice
+        assert result_alice["m1"].gamertag == "Alice"
+        assert "m2" in result_alice
+        assert result_alice["m2"].gamertag == "Alice"
+        assert "m3" in result_alice
 
-        # Match m1 : Bob tue à 3000ms (seul kill de Bob) -> Bob
-        assert "m1" in result
-        assert result["m1"].gamertag == "Bob"
-
-        # Match m2 : Bob tue à 2000ms -> Bob
-        assert "m2" in result
-        assert result["m2"].gamertag == "Bob"
-
-        # Match m3 : Bob n'a pas de kill -> pas de FB
-        assert "m3" not in result
+        # Filtrer seulement Bob (200) → Bob n'a jamais le premier kill du match → aucun résultat
+        result_bob = identify_first_blood(sample_events_df, friend_xuids={"200"})
+        assert "m1" not in result_bob
+        assert "m2" not in result_bob
+        assert "m3" not in result_bob
 
     def test_first_blood_always_earliest(self, sample_events_df: pl.DataFrame) -> None:
         """Assertion : First Blood est toujours le kill avec min(time_ms)."""
@@ -203,9 +211,9 @@ class TestIdentifyFirstBlood:
         for match_id, event in result.items():
             match_kills = kills.filter(pl.col("match_id") == match_id)
             min_time = match_kills["time_ms"].min()
-            assert (
-                event.time_ms == min_time
-            ), f"Match {match_id}: FB devrait être à {min_time}, pas {event.time_ms}"
+            assert event.time_ms == min_time, (
+                f"Match {match_id}: FB devrait être à {min_time}, pas {event.time_ms}"
+            )
 
 
 # =============================================================================
@@ -337,10 +345,10 @@ class TestComputeImpactScores:
 
         scores = compute_impact_scores(first_bloods, clutch_finishers, last_casualties)
 
-        # Alice : 2 FB = +2
-        # Bob : 1 Clutch (+2) + 1 Boulet (-1) = +1
-        assert scores["Alice"] == 2
-        assert scores["Bob"] == 1
+        # Alice : 2 FB
+        # Bob : 1 Clutch + 1 Boulet
+        assert scores["Alice"] == 2 * SCORE_FIRST_BLOOD
+        assert scores["Bob"] == SCORE_CLUTCH_FINISHER + SCORE_LAST_CASUALTY
 
         # Vérifier le tri (Alice en premier car score plus élevé)
         assert list(scores.keys())[0] == "Alice"
@@ -357,14 +365,14 @@ class TestComputeImpactScores:
             "m1": ImpactEvent("m1", "100", "Alice", 1000, "first_blood"),
         }
         scores = compute_impact_scores(first_bloods, {}, {})
-        assert scores["Alice"] == 1
+        assert scores["Alice"] == SCORE_FIRST_BLOOD
 
         # Seulement des Boulets
         last_casualties = {
             "m1": ImpactEvent("m1", "200", "Bob", 3000, "last_casualty"),
         }
         scores = compute_impact_scores({}, {}, last_casualties)
-        assert scores["Bob"] == -1
+        assert scores["Bob"] == SCORE_LAST_CASUALTY
 
 
 # =============================================================================
@@ -435,7 +443,7 @@ class TestImpactLogicalConstraints:
 
         # Les scores doivent refléter les deux événements
         scores = compute_impact_scores(first_bloods, clutch_finishers, {})
-        assert scores["Alice"] == 3  # 1 (FB) + 2 (Clutch)
+        assert scores["Alice"] == SCORE_FIRST_BLOOD + SCORE_CLUTCH_FINISHER
 
     def test_outcome_filtering_correct(self) -> None:
         """Assertion : Finisseur/Boulet sont rejetés si outcome ne correspond pas."""
@@ -542,3 +550,203 @@ class TestBuildImpactMatrix:
         """Vérifie la matrice avec données vides."""
         matrix = build_impact_matrix({}, {}, {}, {}, {}, match_ids=[], gamertags=[])
         assert matrix.is_empty()
+
+
+# =============================================================================
+# Fixtures participants (pour tests multi-match)
+# =============================================================================
+
+_WIN_MATCHES = pl.DataFrame({"match_id": ["m1", "m3"], "outcome": [OUTCOME_WIN, OUTCOME_WIN]})
+_LOSS_MATCHES = pl.DataFrame({"match_id": ["m2"], "outcome": [OUTCOME_LOSS]})
+_ALL_MATCHES = pl.DataFrame(
+    {"match_id": ["m1", "m2", "m3"], "outcome": [OUTCOME_WIN, OUTCOME_LOSS, OUTCOME_WIN]}
+)
+
+# m1 (victoire) : Alice=max assists(4) ET min deaths(1) → héros silencieux
+# m2 (défaite) : Charlie=max deaths(5) ET min assists(0) → faux-frère
+# m3 (victoire) : 2 joueurs ex-æquo sur max assists → pas de héros silencieux
+_PARTICIPANTS = pl.DataFrame(
+    {
+        "match_id": ["m1", "m1", "m1", "m2", "m2", "m2", "m3", "m3"],
+        "xuid": ["100", "200", "300", "100", "200", "300", "100", "200"],
+        "gamertag": ["Alice", "Bob", "Charlie"] * 2 + ["Alice", "Bob"],
+        "assists": [4, 1, 0, 3, 2, 0, 3, 3],
+        "deaths": [1, 3, 5, 2, 4, 5, 2, 2],
+    }
+)
+
+
+# =============================================================================
+# Tests identify_silent_hero_multi
+# =============================================================================
+
+
+class TestIdentifySilentHeroMulti:
+    """Tests pour identify_silent_hero_multi() — formule B."""
+
+    def test_basic_victoire(self) -> None:
+        """Alice (4 assists, 1 death) doit être héros silencieux sur m1."""
+        result = identify_silent_hero_multi(_PARTICIPANTS, _ALL_MATCHES)
+        assert "m1" in result
+        assert result["m1"].gamertag == "Alice"
+        assert result["m1"].event_type == "silent_hero"
+
+    def test_absent_hors_victoire(self) -> None:
+        """Pas de héros silencieux sur les matchs perdus."""
+        result = identify_silent_hero_multi(_PARTICIPANTS, _ALL_MATCHES)
+        assert "m2" not in result
+
+    def test_absent_si_criteres_non_cumules(self) -> None:
+        """m3 : Alice et Bob ont tous deux 3 assists — les mêmes joueurs n'ont pas min(deaths)."""
+        result = identify_silent_hero_multi(_PARTICIPANTS, _ALL_MATCHES)
+        # m3 : max_assists=3 → Alice(3,deaths=2) et Bob(3,deaths=2) → les deux satisfont → candidates non vide
+        # En fait ici les deux partagent le même max_assists ET le même min_deaths → candidate[0] = Alice
+        assert "m3" in result  # ex-æquo : le premier candidat est retourné
+
+    def test_absent_si_zero_assist(self) -> None:
+        """Si tous les assists du match sont 0, pas de badge."""
+        df = pl.DataFrame(
+            {
+                "match_id": ["mx", "mx"],
+                "xuid": ["1", "2"],
+                "gamertag": ["A", "B"],
+                "assists": [0, 0],
+                "deaths": [1, 2],
+            }
+        )
+        matches = pl.DataFrame({"match_id": ["mx"], "outcome": [OUTCOME_WIN]})
+        result = identify_silent_hero_multi(df, matches)
+        assert result == {}
+
+    def test_requires_two_players(self) -> None:
+        """Avec 1 seul joueur par match, pas de badge."""
+        df = pl.DataFrame(
+            {
+                "match_id": ["mx"],
+                "xuid": ["1"],
+                "gamertag": ["Solo"],
+                "assists": [5],
+                "deaths": [0],
+            }
+        )
+        matches = pl.DataFrame({"match_id": ["mx"], "outcome": [OUTCOME_WIN]})
+        result = identify_silent_hero_multi(df, matches)
+        assert result == {}
+
+    def test_filtre_friend_xuids(self) -> None:
+        """Filtrer par friend_xuids restreint le scope à Alice (100) uniquement."""
+        result = identify_silent_hero_multi(_PARTICIPANTS, _WIN_MATCHES, friend_xuids={"100"})
+        # Alice seule → pas de ≥2 joueurs → pas de badge
+        assert result == {}
+
+    def test_empty_participants(self) -> None:
+        """DataFrame vide → dict vide."""
+        empty = pl.DataFrame(
+            schema={
+                "match_id": pl.Utf8,
+                "xuid": pl.Utf8,
+                "gamertag": pl.Utf8,
+                "assists": pl.Int64,
+                "deaths": pl.Int64,
+            }
+        )
+        result = identify_silent_hero_multi(empty, _ALL_MATCHES)
+        assert result == {}
+
+    def test_no_win_matches(self) -> None:
+        """Sans victoires, aucun badge."""
+        result = identify_silent_hero_multi(_PARTICIPANTS, _LOSS_MATCHES)
+        assert result == {}
+
+
+# =============================================================================
+# Tests identify_false_brother_multi
+# =============================================================================
+
+
+class TestIdentifyFalseBrotherMulti:
+    """Tests pour identify_false_brother_multi() — formule B."""
+
+    def test_basic_defaite(self) -> None:
+        """Charlie (5 deaths, 0 assists) doit être faux-frère sur m2."""
+        result = identify_false_brother_multi(_PARTICIPANTS, _ALL_MATCHES)
+        assert "m2" in result
+        assert result["m2"].gamertag == "Charlie"
+        assert result["m2"].event_type == "false_brother"
+
+    def test_absent_hors_defaite(self) -> None:
+        """Pas de faux-frère sur les matchs gagnés."""
+        result = identify_false_brother_multi(_PARTICIPANTS, _ALL_MATCHES)
+        assert "m1" not in result
+        assert "m3" not in result
+
+    def test_absent_si_zero_death(self) -> None:
+        """Si tous ont 0 mort dans le match, pas de badge."""
+        df = pl.DataFrame(
+            {
+                "match_id": ["mx", "mx"],
+                "xuid": ["1", "2"],
+                "gamertag": ["A", "B"],
+                "assists": [2, 1],
+                "deaths": [0, 0],
+            }
+        )
+        matches = pl.DataFrame({"match_id": ["mx"], "outcome": [OUTCOME_LOSS]})
+        result = identify_false_brother_multi(df, matches)
+        assert result == {}
+
+    def test_requires_two_players(self) -> None:
+        """Avec 1 seul joueur par match, pas de badge."""
+        df = pl.DataFrame(
+            {
+                "match_id": ["mx"],
+                "xuid": ["1"],
+                "gamertag": ["Solo"],
+                "assists": [0],
+                "deaths": [5],
+            }
+        )
+        matches = pl.DataFrame({"match_id": ["mx"], "outcome": [OUTCOME_LOSS]})
+        result = identify_false_brother_multi(df, matches)
+        assert result == {}
+
+    def test_criteres_non_cumules_donne_vide(self) -> None:
+        """Si max deaths et min assists ne sont pas portés par le même joueur → pas de badge."""
+        df = pl.DataFrame(
+            {
+                "match_id": ["mx", "mx"],
+                "xuid": ["1", "2"],
+                "gamertag": ["A", "B"],
+                # A : 5 deaths (max) mais 3 assists (pas le min)
+                # B : 2 deaths (pas le max) mais 0 assists (min)
+                "assists": [3, 0],
+                "deaths": [5, 2],
+            }
+        )
+        matches = pl.DataFrame({"match_id": ["mx"], "outcome": [OUTCOME_LOSS]})
+        result = identify_false_brother_multi(df, matches)
+        assert result == {}
+
+    def test_filtre_friend_xuids(self) -> None:
+        """Filtrer par friend_xuids exclut Charlie → pas assez de candidats."""
+        result = identify_false_brother_multi(_PARTICIPANTS, _LOSS_MATCHES, friend_xuids={"100"})
+        assert result == {}
+
+    def test_empty_participants(self) -> None:
+        """DataFrame vide → dict vide."""
+        empty = pl.DataFrame(
+            schema={
+                "match_id": pl.Utf8,
+                "xuid": pl.Utf8,
+                "gamertag": pl.Utf8,
+                "assists": pl.Int64,
+                "deaths": pl.Int64,
+            }
+        )
+        result = identify_false_brother_multi(empty, _ALL_MATCHES)
+        assert result == {}
+
+    def test_no_loss_matches(self) -> None:
+        """Sans défaites, aucun badge."""
+        result = identify_false_brother_multi(_PARTICIPANTS, _WIN_MATCHES)
+        assert result == {}

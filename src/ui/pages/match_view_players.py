@@ -238,6 +238,8 @@ def render_match_impact_section(  # noqa: PLR0913
         me_xuid,
         outcome=outcome,
         team_xuids=team_xuids,
+        participants_stats=all_players or None,
+        lang=get_lang(),
     )
 
     # Enrichir les gamertags via gt_map
@@ -254,6 +256,7 @@ def render_match_impact_section(  # noqa: PLR0913
                     gamertag=resolved,
                     time_ms=ie.time_ms,
                     is_me=ie.is_me,
+                    extra_label=ie.extra_label,
                 )
             enriched.append(ie)
         impact_events = enriched
@@ -274,7 +277,7 @@ def render_match_impact_section(  # noqa: PLR0913
                 os_card(
                     f"{icon} {label_fr}",
                     display_html,
-                    _format_time(ie.time_ms),
+                    ie.extra_label if ie.extra_label else _format_time(ie.time_ms),
                     accent=accent,
                     kpi_color=accent,
                     kpi_is_html=not ie.is_me,

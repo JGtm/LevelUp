@@ -5,9 +5,12 @@ Sprint 6: Fonctions pour calculer les séries cumulées (net score, K/D, objecti
 
 from __future__ import annotations
 
+import logging
 from typing import Any
 
 import polars as pl
+
+logger = logging.getLogger(__name__)
 
 # Re-exports pour compatibilité descendante
 from src.analysis._cumulative_results import CumulativeMetricsResult, CumulativeSeriesResult
@@ -49,7 +52,7 @@ def compute_cumulative_metrics_polars(
             total_assists=0,
             cumulative_net_score=0,
             cumulative_kd=0.0,
-            cumulative_kda=0.0,
+            cumulative_efficiency=0.0,
             matches_count=0,
         )
 
@@ -69,7 +72,7 @@ def compute_cumulative_metrics_polars(
 
     net_score = total_kills - total_deaths
     kd = total_kills / max(1, total_deaths)
-    kda = (total_kills + total_assists) / max(1, total_deaths)
+    efficiency = (total_kills + total_assists) / max(1, total_deaths)
 
     return CumulativeMetricsResult(
         total_kills=total_kills,
@@ -77,7 +80,7 @@ def compute_cumulative_metrics_polars(
         total_assists=total_assists,
         cumulative_net_score=net_score,
         cumulative_kd=round(kd, 2),
-        cumulative_kda=round(kda, 2),
+        cumulative_efficiency=round(efficiency, 2),
         matches_count=matches_count,
     )
 
@@ -135,5 +138,6 @@ def cumulative_series_to_dicts(
 ) -> list[dict[str, Any]]:
     """Convertit un DataFrame Polars en liste de dicts pour Plotly."""
     if df.is_empty():
+        logger.debug("cumulative_series_to_dicts: df vide, retour []")
         return []
     return df.to_dicts()

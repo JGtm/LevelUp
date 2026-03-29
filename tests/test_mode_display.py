@@ -1,0 +1,346 @@
+"""Tests unitaires pour src/analysis/mode_display.py.
+
+Tous les tests sont purs (zéro DB, zéro Streamlit).
+Les tables de traduction sont injectées comme fixtures.
+"""
+
+from __future__ import annotations
+
+from src.analysis.mode_display import infer_mode_category_from_pair_name, resolve_display_mode
+
+# ── Fixtures tables ───────────────────────────────────────────────────────────
+
+TABLES_FR: dict = {
+    "mode_pair_overrides": {
+        "Fiesta:Slayer": "Fiesta",
+        "Community:Shotty Snipe Slayer Ffa": "Fusils snipers à grenaille",
+        "Arena:Shotty Snipes Slayer": "Fusils snipers à grenaille",
+        "Tactical:Slayer": "Assassin Tactique",
+        "Team Slayer:Arena": "Assassin",
+        "Arena:Team Slayer": "Assassin",
+        "KOTH:Arena": "Roi de la colline",
+    },
+    "mode_name_tr": {
+        "Slayer": "Assassin",
+        "CTF": "Capture du drapeau",
+        "King Of The Hill": "Roi de la colline",
+        "Oddball": "Oddball",
+        "Strongholds": "Bases",
+        "Total Control": "Contrôle total",
+        "Stockpile": "Stockage",
+        "Fiesta Slayer": "Fiesta",
+        "Fiesta Ctf": "Fiesta CDD",
+        "Fiesta Total Control": "Fiesta Contrôle total",
+        "Team Slayer": "Assassin en équipe",
+    },
+    "mode_prefix_names": {
+        "Arena": "Arène",
+        "BTB": "Grande bataille en équipe",
+        "BTB Heavies": "Grande bataille en équipe Heavies",
+        "Ranked": "Classé",
+        "Fiesta": "Fiesta",
+        "Super Fiesta": "Super Fiesta",
+        "Husky Raid": "Husky Raid",
+        "Super Husky Raid": "Super Husky Raid",
+        "Firefight": "Baptême du feu",
+        "Gruntpocalypse": "Gruntpocalypse",
+        "Tactical": "Tactique",
+        "Community": "Communauté",
+        "Event": "Événement",
+        "Assault": "Assaut",
+    },
+    "separator": " : ",
+}
+
+TABLES_EN: dict = {
+    "mode_pair_overrides": {
+        "Fiesta:Slayer": "Fiesta",
+        "Tactical:Slayer": "Tactical Slayer",
+        "Team Slayer:Arena": "Team Slayer",
+    },
+    "mode_name_tr": {
+        "Slayer": "Slayer",
+        "CTF": "CTF",
+        "King Of The Hill": "King of the Hill",
+        "Oddball": "Oddball",
+        "Strongholds": "Strongholds",
+        "Total Control": "Total Control",
+        "Stockpile": "Stockpile",
+    },
+    "mode_prefix_names": {
+        "Arena": "Arena",
+        "BTB": "BTB",
+        "BTB Heavies": "BTB Heavies",
+        "Ranked": "Ranked",
+        "Fiesta": "Fiesta",
+        "Super Fiesta": "Super Fiesta",
+        "Husky Raid": "Husky Raid",
+        "Super Husky Raid": "Super Husky Raid",
+        "Firefight": "Firefight",
+        "Gruntpocalypse": "Gruntpocalypse",
+        "Tactical": "Tactical",
+        "Community": "Community",
+        "Event": "Event",
+        "Assault": "Assault",
+    },
+    "separator": ": ",
+}
+
+
+# ── Format standard — préfixe redondant supprimé ──────────────────────────────
+
+
+class TestStandardFormatRedundant:
+    def test_btb_slayer_in_btb(self):
+        assert resolve_display_mode("BTB:Slayer", "BTB", "fr", TABLES_FR) == "Assassin"
+
+    def test_btb_ctf_in_btb(self):
+        assert resolve_display_mode("BTB:CTF", "BTB", "fr", TABLES_FR) == "Capture du drapeau"
+
+    def test_btb_total_control_in_btb(self):
+        assert resolve_display_mode("BTB:Total Control", "BTB", "fr", TABLES_FR) == "Contrôle total"
+
+    def test_arena_slayer_in_assassin(self):
+        assert resolve_display_mode("Arena:Slayer", "Assassin", "fr", TABLES_FR) == "Assassin"
+
+    def test_arena_ctf_in_assassin(self):
+        assert (
+            resolve_display_mode("Arena:CTF", "Assassin", "fr", TABLES_FR) == "Capture du drapeau"
+        )
+
+    def test_ranked_slayer_in_ranked(self):
+        assert resolve_display_mode("Ranked:Slayer", "Ranked", "fr", TABLES_FR) == "Assassin"
+
+    def test_ranked_ctf_in_ranked(self):
+        assert resolve_display_mode("Ranked:CTF", "Ranked", "fr", TABLES_FR) == "Capture du drapeau"
+
+    def test_firefight_koth_in_firefight(self):
+        assert (
+            resolve_display_mode("Firefight:King Of The Hill", "Firefight", "fr", TABLES_FR)
+            == "Roi de la colline"
+        )
+
+
+# ── Format standard — préfixe NON redondant conservé ─────────────────────────
+
+
+class TestTacticalQualifierAfter:
+    def test_tactical_slayer_override_fr(self):
+        """Tactical:Slayer → override DB → 'Assassin Tactique'."""
+        result = resolve_display_mode("Tactical:Slayer", "Assassin", "fr", TABLES_FR)
+        assert result == "Assassin Tactique"
+
+    def test_tactical_slayer_override_en(self):
+        result = resolve_display_mode("Tactical:Slayer", "Assassin", "en", TABLES_EN)
+        assert result == "Tactical Slayer"
+
+    def test_tactical_in_other_context(self):
+        """Tactical en contexte Other → override DB appliqué."""
+        result = resolve_display_mode("Tactical:Slayer", "Other", "fr", TABLES_FR)
+        assert result == "Assassin Tactique"
+
+    def test_tactical_unknown_mode_fallback(self):
+        """Tactical:CTF sans override → qualifier en préfixe standard."""
+        result = resolve_display_mode("Tactical:CTF", "Assassin", "fr", TABLES_FR)
+        assert result == "Tactique : Capture du drapeau"
+
+
+class TestStandardFormatNonRedundant:
+    def test_fiesta_slayer_in_assassin_playlist(self):
+        """Fiesta dans une playlist Assassin → Fiesta n'est pas redondant → conserver."""
+        result = resolve_display_mode("Fiesta:Slayer", "Assassin", "fr", TABLES_FR)
+        # Override exact attendu depuis mode_pair_overrides
+        assert result == "Fiesta"
+
+    def test_btb_slayer_in_assassin_context(self):
+        """BTB:Slayer dans contexte Assassin → préfixe BTB ≠ Assassin → label complet."""
+        result = resolve_display_mode("BTB:Slayer", "Assassin", "fr", TABLES_FR)
+        assert result == "Grande bataille en équipe : Assassin"
+
+    def test_arena_slayer_in_btb_context(self):
+        """Arena:Slayer dans contexte BTB → Arena ≠ BTB → label complet."""
+        result = resolve_display_mode("Arena:Slayer", "BTB", "fr", TABLES_FR)
+        assert result == "Arène : Assassin"
+
+
+# ── Qualificatif Heavies conservé ────────────────────────────────────────────
+
+
+class TestHeaviesQualifier:
+    def test_btb_heavies_ctf_in_btb(self):
+        result = resolve_display_mode("BTB Heavies:CTF", "BTB", "fr", TABLES_FR)
+        assert result == "Heavies : Capture du drapeau"
+
+    def test_btb_heavies_slayer_in_btb(self):
+        result = resolve_display_mode("BTB Heavies:Slayer", "BTB", "fr", TABLES_FR)
+        assert result == "Heavies : Assassin"
+
+    def test_btb_slayer_in_other_context(self):
+        """BTB:Slayer en contexte Other → préfixe toujours simplifié."""
+        result = resolve_display_mode("BTB:Slayer", "Other", "fr", TABLES_FR)
+        assert result == "Assassin"
+
+    def test_ranked_ctf_in_other_context(self):
+        """Ranked:CTF en contexte Other → simplifié."""
+        result = resolve_display_mode("Ranked:CTF", "Other", "fr", TABLES_FR)
+        assert result == "Capture du drapeau"
+
+    def test_btb_heavies_total_control_in_btb(self):
+        result = resolve_display_mode("BTB Heavies:Total Control", "BTB", "fr", TABLES_FR)
+        assert result == "Heavies : Contrôle total"
+
+
+# ── Format inversé ────────────────────────────────────────────────────────────
+
+
+class TestInvertedFormat:
+    def test_ctf_arena_in_assassin(self):
+        """CTF:Arena → format inversé → prefix=Arena, mode=CTF."""
+        result = resolve_display_mode("CTF:Arena", "Assassin", "fr", TABLES_FR)
+        assert result == "Capture du drapeau"
+
+    def test_koth_arena_in_assassin(self):
+        """KOTH:Arena → override → Roi de la colline."""
+        result = resolve_display_mode("KOTH:Arena", "Assassin", "fr", TABLES_FR)
+        assert result == "Roi de la colline"
+
+    def test_slayer_btb_heavies_in_btb(self):
+        """Slayer:BTB Heavies → format inversé → prefix=BTB Heavies, mode=Slayer."""
+        result = resolve_display_mode("Slayer:BTB Heavies", "BTB", "fr", TABLES_FR)
+        assert result == "Heavies : Assassin"
+
+    def test_ctf_btb_in_btb(self):
+        """CTF:BTB → right=BTB est un préfixe connu → inversé → prefix=BTB, mode=CTF."""
+        result = resolve_display_mode("CTF:BTB", "BTB", "fr", TABLES_FR)
+        assert result == "Capture du drapeau"
+
+    def test_team_slayer_arena_casing(self):
+        """Team Slayer:Arena → _normalize_case conserve title-case multi-mots."""
+        result = resolve_display_mode("Team Slayer:Arena", "Assassin", "fr", TABLES_FR)
+        # Override "Team Slayer:Arena" → "Assassin" attendu
+        assert result == "Assassin"
+
+
+# ── Variants sans séparateur ──────────────────────────────────────────────────
+
+
+class TestNoSeparator:
+    def test_castle_wars(self):
+        result = resolve_display_mode("CASTLE WARS", "Fiesta", "fr", TABLES_FR)
+        assert result == "CASTLE WARS"
+
+    def test_survive_the_undead(self):
+        result = resolve_display_mode("TFF | Survive The Undead", "Other", "fr", TABLES_FR)
+        assert result == "TFF | Survive The Undead"
+
+
+# ── Overrides exact ───────────────────────────────────────────────────────────
+
+
+class TestPairOverrides:
+    def test_fiesta_slayer_override(self):
+        """mode_pair_overrides a la priorité absolue."""
+        result = resolve_display_mode("Fiesta:Slayer", "Fiesta", "fr", TABLES_FR)
+        assert result == "Fiesta"
+
+    def test_shotty_snipes_override(self):
+        result = resolve_display_mode("Arena:Shotty Snipes Slayer", "Assassin", "fr", TABLES_FR)
+        assert result == "Fusils snipers à grenaille"
+
+
+# ── Guards input ──────────────────────────────────────────────────────────────
+
+
+class TestInputGuards:
+    def test_none_input(self):
+        result = resolve_display_mode(None, "Assassin", "fr", TABLES_FR)
+        assert result == "Mode inconnu"
+
+    def test_empty_string(self):
+        result = resolve_display_mode("", "Assassin", "fr", TABLES_FR)
+        assert result == "Mode inconnu"
+
+    def test_none_input_en(self):
+        result = resolve_display_mode(None, "Assassin", "en", TABLES_EN)
+        assert result == "Unknown mode"
+
+
+# ── Langue EN ────────────────────────────────────────────────────────────────
+
+
+class TestEnglishLang:
+    def test_btb_ctf_en(self):
+        assert resolve_display_mode("BTB:CTF", "BTB", "en", TABLES_EN) == "CTF"
+
+    def test_arena_slayer_en(self):
+        assert resolve_display_mode("Arena:Slayer", "Assassin", "en", TABLES_EN) == "Slayer"
+
+    def test_btb_heavies_en(self):
+        result = resolve_display_mode("BTB Heavies:CTF", "BTB", "en", TABLES_EN)
+        assert result == "Heavies: CTF"
+
+
+# ── infer_mode_category_from_pair_name ───────────────────────────────────────
+
+
+class TestInferModeCategoryFromPairName:
+    """Tests unitaires pour infer_mode_category_from_pair_name (pur, sans DB)."""
+
+    def test_arena_returns_assassin(self):
+        assert infer_mode_category_from_pair_name("Arena:Slayer") == "Assassin"
+
+    def test_arena_with_map_returns_assassin(self):
+        assert infer_mode_category_from_pair_name("Arena:CTF on Aquarius") == "Assassin"
+
+    def test_btb_returns_btb(self):
+        assert infer_mode_category_from_pair_name("BTB:Slayer") == "BTB"
+
+    def test_btb_heavies_returns_btb(self):
+        assert infer_mode_category_from_pair_name("BTB Heavies:CTF") == "BTB"
+
+    def test_ranked_returns_ranked(self):
+        assert infer_mode_category_from_pair_name("Ranked:Slayer on Aquarius") == "Ranked"
+
+    def test_fiesta_returns_fiesta(self):
+        assert infer_mode_category_from_pair_name("Fiesta:Slayer") == "Fiesta"
+
+    def test_husky_raid_returns_fiesta(self):
+        assert infer_mode_category_from_pair_name("Husky Raid:Assault on Urban Raid") == "Fiesta"
+
+    def test_firefight_returns_firefight(self):
+        assert infer_mode_category_from_pair_name("Firefight:King Of The Hill") == "Firefight"
+
+    def test_gruntpocalypse_returns_firefight(self):
+        assert infer_mode_category_from_pair_name("Gruntpocalypse:Slayer") == "Firefight"
+
+    def test_community_returns_other(self):
+        """Community → Other (sidebar regroupe Community en Assassin via PREFIX_TO_CATEGORY)."""
+        assert infer_mode_category_from_pair_name("Community:Fiesta Slayer") == "Other"
+
+    def test_tactical_returns_assassin(self):
+        assert infer_mode_category_from_pair_name("Tactical:Slayer") == "Assassin"
+
+    def test_assault_returns_assassin(self):
+        assert infer_mode_category_from_pair_name("Assault:Neutral Bomb") == "Assassin"
+
+    def test_inverted_format_ctf_arena(self):
+        """Format inversé : CTF:Arena → préfixe Arena → Assassin."""
+        assert infer_mode_category_from_pair_name("CTF:Arena") == "Assassin"
+
+    def test_inverted_format_ctf_btb(self):
+        """Format inversé : CTF:BTB → préfixe BTB → BTB."""
+        assert infer_mode_category_from_pair_name("CTF:BTB") == "BTB"
+
+    def test_no_separator_returns_other(self):
+        """Pas de ':' → Other."""
+        assert infer_mode_category_from_pair_name("CASTLE WARS") == "Other"
+
+    def test_empty_returns_other(self):
+        assert infer_mode_category_from_pair_name("") == "Other"
+
+    def test_unknown_prefix_returns_other(self):
+        assert infer_mode_category_from_pair_name("XYZ:Slayer") == "Other"
+
+    def test_case_insensitive_prefix(self):
+        """Normalisation de casse : 'arena:slayer' → Arena → Assassin."""
+        assert infer_mode_category_from_pair_name("arena:slayer") == "Assassin"

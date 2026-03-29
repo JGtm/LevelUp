@@ -57,17 +57,14 @@ class TestTranslatePairName:
     """Tests pour translate_pair_name."""
 
     def test_exact_match(self):
-        """Test avec correspondance exacte."""
-        assert translate_pair_name("Arena:CTF on Aquarius") == "Arène : Capture du drapeau"
-        # BTB est traduit en FR via _prefixes : "Grande bataille en équipe"
-        assert (
-            translate_pair_name("BTB:Slayer on Deadlock") == "Grande bataille en équipe : Assassin"
-        )
+        """Préfixe redondant supprimé (Arena→Assassin, BTB→BTB)."""
+        assert translate_pair_name("Arena:CTF on Aquarius") == "Capture du drapeau"
+        assert translate_pair_name("BTB:Slayer on Deadlock") == "Assassin"
 
     def test_generic_fallback(self):
-        """Test avec fallback générique (sans carte)."""
-        assert translate_pair_name("Arena:CTF") == "Arène : Capture du drapeau"
-        assert translate_pair_name("Arena:King of the Hill") == "Arène : Roi de la colline"
+        """Préfixe Arena redondant → mode seul en FR."""
+        assert translate_pair_name("Arena:CTF") == "Capture du drapeau"
+        assert translate_pair_name("Arena:King of the Hill") == "Roi de la colline"
 
     def test_case_normalization(self):
         """Test avec normalisation de casse."""
@@ -77,9 +74,9 @@ class TestTranslatePairName:
         assert result is not None
 
     def test_btb_heavies_preserved(self):
-        """Test que BTB Heavies est traduit correctement en FR."""
+        """BTB Heavies qualifier conservé (qualificatif non redondant en contexte BTB)."""
         result = translate_pair_name("BTB Heavies:CTF on Highpower Heavies")
-        assert result == "Grande bataille en équipe Heavies : Capture du drapeau"
+        assert result == "Heavies : Capture du drapeau"
 
     def test_none_value(self):
         """Test avec None."""

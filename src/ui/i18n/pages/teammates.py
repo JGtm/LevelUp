@@ -88,12 +88,12 @@ STRINGS: dict[str, dict[str, str] | str] = {
         "en": "Dots (symbols)",
     },
     "tm_impact_ranking": {
-        "fr": "🏆 Classement",
-        "en": "🏆 Ranking",
+        "fr": "Matrice d'impact",
+        "en": "Impact matrix",
     },
     "tm_impact_legend": {
-        "fr": "- ⚡ **Premier sang** — premier kill du match, toutes équipes confondues\n- 🎯 **Finisseur** — dernier kill d'un match remporté\n- 💀 **Boulet** — dernière mort d'une défaite\n- 🐌 **Touriste** — dernier à obtenir son 1er kill\n- 🪦 **Première victime** — première mort du match, toutes équipes confondues",
-        "en": "- ⚡ **First Blood** — first kill of the match, across all teams\n- 🎯 **Finisher** — last kill of a won match\n- 💀 **Dead Weight** — last death of a lost match\n- 🐌 **Tourist** — last to get their first kill\n- 🪦 **First Casualty** — first death of the match, across all teams",
+        "fr": "- ⚡ **Premier sang** — premier kill du match, toutes équipes confondues\n- 🎯 **Finisseur** — dernier kill d'un match remporté\n- 💀 **Boulet** — dernière mort d'une défaite\n- 🐌 **Touriste** — dernier de l'équipe à obtenir son 1er frag\n- 🪦 **Première victime** — première mort dans l'équipe\n- 🛡️ **Héros silencieux** — plus d'assists et moins de morts dans l'équipe d'un match remporté\n- 🗡️ **Faux-frère** — plus de morts et moins d'assists dans l'équipe d'un match perdu",
+        "en": "- ⚡ **First Blood** — first kill of the match, across all teams\n- 🎯 **Finisher** — last kill of a won match\n- 💀 **Dead Weight** — last death of a lost match\n- 🐌 **Tourist** — last to get their first kill\n- 🪦 **First Casualty** — first death in the team\n- 🛡️ **Silent Hero** — most assists and fewest deaths in the team (win only)\n- 🗡️ **False Brother** — most deaths and fewest assists in the team (loss only)",
     },
     # ── Page Match View ──────────────────────────────────────────────────────
     "tm_computing_teammate": {

@@ -17,7 +17,7 @@ from src.data.services.teammates_service import TeammatesService
 from src.ui import display_name_from_xuid
 from src.ui.i18n import get_lang, t
 from src.ui.pages._teammates_trio import render_trio_view
-from src.ui.pages._teammates_trio_helpers import _merge_trio_dataframes
+from src.ui.pages._teammates_trio_helpers import _merge_trio_dataframes, _render_trio_medals
 from src.ui.pages.teammates_charts import (
     render_metric_bar_charts,
 )
@@ -121,6 +121,32 @@ def render_multi_teammate_view(  # noqa: PLR0913
 
     if not rendered_bottom_charts:
         _render_bottom_charts(sub_all, series, colors_by_name, ctx, filters, callbacks)
+
+    # Médailles — toujours en dernier
+    if rendered_bottom_charts and picked_xuids:
+        _medal_match_ids = (
+            sub_all["match_id"].cast(pl.Utf8).to_list() if not sub_all.is_empty() else []
+        )
+        f1_xuid = picked_xuids[0]
+        f2_xuid = picked_xuids[1] if len(picked_xuids) >= 2 else None
+        f3_xuid = picked_xuids[2] if len(picked_xuids) >= 3 else None
+        f1_name = display_name_from_xuid(f1_xuid, db_path=db_path)
+        f2_name = display_name_from_xuid(f2_xuid, db_path=db_path) if f2_xuid else None
+        f3_name = display_name_from_xuid(f3_xuid, db_path=db_path) if f3_xuid else None
+        _render_trio_medals(
+            _medal_match_ids,
+            db_path,
+            ctx["xuid"],
+            f1_xuid,
+            f2_xuid,
+            ctx["me_name"],
+            f1_name,
+            f2_name,
+            db_key,
+            top_medals_fn,
+            f3_xuid=f3_xuid,
+            f3_name=f3_name,
+        )
 
 
 def _render_bottom_charts(  # noqa: PLR0913

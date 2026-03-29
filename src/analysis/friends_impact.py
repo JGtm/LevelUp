@@ -2,14 +2,21 @@
 
 from __future__ import annotations
 
+import logging
 from dataclasses import dataclass
 
 import polars as pl
 
+logger = logging.getLogger(__name__)
+
 # Constantes de scoring
 SCORE_CLUTCH_FINISHER = 2  # Finisseur : +2 points
-SCORE_FIRST_BLOOD = 1  # Premier sang : +1 point
-SCORE_LAST_CASUALTY = -1  # Boulet : -1 point
+SCORE_FIRST_BLOOD = 2  # Premier sang : +2 points
+SCORE_LAST_CASUALTY = -2  # Boulet : -2 points
+SCORE_SILENT_HERO = 1.5  # Héros silencieux : +1.5 points
+SCORE_FALSE_BROTHER = -1.5  # Faux-frère : -1.5 points
+SCORE_LAST_GROUP_KILL = -1  # Touriste (dernier kill du groupe) : -1 point
+SCORE_FIRST_GROUP_DEATH = -1  # Première victime du groupe : -1 point
 
 # Codes d'outcome
 OUTCOME_WIN = 2
@@ -34,12 +41,14 @@ def identify_first_blood(
     """Identifie le joueur avec le premier kill par match.
 
     Le First Blood est le kill avec le timestamp le plus bas (min time_ms)
-    dans chaque match, indépendamment de l'outcome.
+    dans chaque match, toutes équipes confondues.
+    Si friend_xuids est fourni, le badge n'est retenu que si le killer est un ami.
 
     Args:
         events_df: DataFrame Polars avec colonnes :
             - match_id, xuid, gamertag, event_type, time_ms
-        friend_xuids: Set d'XUIDs à filtrer (optionnel). Si None, tous les joueurs.
+        friend_xuids: Set d'XUIDs à filtrer (optionnel). Si fourni, seuls les matchs
+            où un ami a obtenu le premier kill sont retournés.
 
     Returns:
         Dict {match_id: ImpactEvent} pour le premier kill de chaque match.
@@ -53,16 +62,7 @@ def identify_first_blood(
     if kills.is_empty():
         return {}
 
-    # Filtrer par amis si spécifié
-    if friend_xuids:
-        # Normaliser en string pour comparaison
-        friend_xuids_str = {str(x) for x in friend_xuids}
-        kills = kills.filter(pl.col("xuid").cast(pl.Utf8).is_in(friend_xuids_str))
-
-    if kills.is_empty():
-        return {}
-
-    # Trouver le premier kill par match (min time_ms)
+    # Trouver le premier kill par match (min time_ms) — toutes équipes confondues
     first_kills = (
         kills.group_by("match_id")
         .agg(pl.col("time_ms").min().alias("min_time"))
@@ -81,6 +81,11 @@ def identify_first_blood(
             time_ms=int(row["time_ms"]),
             event_type="first_blood",
         )
+
+    # Ne conserver que les matchs où c'est un ami qui a obtenu le premier sang
+    if friend_xuids:
+        friend_xuids_str = {str(x) for x in friend_xuids}
+        result = {mid: ev for mid, ev in result.items() if ev.xuid in friend_xuids_str}
 
     return result
 
@@ -226,15 +231,16 @@ def identify_last_group_kill(
 ) -> dict[str, ImpactEvent]:
     """Identifie le joueur le plus lent à obtenir son premier kill dans chaque match.
 
-    Pour chaque match, trouve le joueur (parmi le groupe) dont le premier kill
+    Pour chaque match, trouve le joueur de l'équipe dont le premier kill
     a le time_ms le plus élevé (le plus lent à "démarrer").
+    Si friend_xuids est fourni, la recherche est restreinte à ces joueurs (équipe alliée).
 
     Args:
         events_df: DataFrame des événements highlight (avec gamertag).
-        friend_xuids: Set d'XUIDs des amis à filtrer (optionnel).
+        friend_xuids: Set d'XUIDs des amis/équipe à filtrer (optionnel).
 
     Returns:
-        Dict {match_id: ImpactEvent} du dernier à tuer dans chaque match.
+        Dict {match_id: ImpactEvent} du dernier à tuer dans l'équipe pour chaque match.
     """
     if events_df.is_empty():
         return {}
@@ -245,7 +251,7 @@ def identify_last_group_kill(
     if kills.is_empty():
         return {}
 
-    # Filtrer par amis si spécifié
+    # Filtrer par équipe alliée si spécifié
     if friend_xuids:
         friend_xuids_str = {str(x) for x in friend_xuids}
         kills = kills.filter(pl.col("xuid").cast(pl.Utf8).is_in(friend_xuids_str))
@@ -284,17 +290,18 @@ def identify_last_group_kill(
 def identify_first_group_death(
     events_df: pl.DataFrame, friend_xuids: set[str] | None = None
 ) -> dict[str, ImpactEvent]:
-    """Identifie le premier joueur à mourir dans chaque match.
+    """Identifie le premier joueur de l'équipe à mourir dans chaque match.
 
-    Pour chaque match, trouve le joueur (parmi le groupe) avec la première mort
-    (time_ms le plus bas).
+    Pour chaque match, trouve le joueur (parmi le groupe / l'équipe) avec la première mort
+    (time_ms le plus bas). Si friend_xuids est fourni, seules les morts de ces joueurs
+    sont considérées.
 
     Args:
         events_df: DataFrame des événements highlight (avec gamertag).
         friend_xuids: Set d'XUIDs des amis à filtrer (optionnel).
 
     Returns:
-        Dict {match_id: ImpactEvent} de la première victime dans chaque match.
+        Dict {match_id: ImpactEvent} de la première victime dans l'équipe pour chaque match.
     """
     if events_df.is_empty():
         return {}
@@ -305,7 +312,7 @@ def identify_first_group_death(
     if deaths.is_empty():
         return {}
 
-    # Filtrer par amis si spécifié
+    # Filtrer par amis/équipe si spécifié
     if friend_xuids:
         friend_xuids_str = {str(x) for x in friend_xuids}
         deaths = deaths.filter(pl.col("xuid").cast(pl.Utf8).is_in(friend_xuids_str))
@@ -313,7 +320,7 @@ def identify_first_group_death(
     if deaths.is_empty():
         return {}
 
-    # Trouver la première mort par match (min time_ms)
+    # Trouver la première mort par match (min time_ms) parmi l'équipe
     first_deaths = (
         deaths.group_by("match_id")
         .agg(pl.col("time_ms").min().alias("min_time"))
@@ -336,42 +343,162 @@ def identify_first_group_death(
     return result
 
 
-def compute_impact_scores(
+def identify_silent_hero_multi(
+    participants_df: pl.DataFrame,
+    matches_df: pl.DataFrame,
+    friend_xuids: set[str] | None = None,
+) -> dict[str, ImpactEvent]:
+    """Par match en victoire : joueur avec simultanément max assists ET min deaths, ≥1 assist, ≥2 joueurs."""
+    if participants_df.is_empty():
+        return {}
+    win_ids = set(
+        matches_df.filter(pl.col("outcome") == OUTCOME_WIN)["match_id"].cast(pl.Utf8).to_list()
+    )
+    if not win_ids:
+        return {}
+    df = participants_df.with_columns(pl.col("xuid").cast(pl.Utf8))
+    df = df.filter(pl.col("match_id").cast(pl.Utf8).is_in(win_ids))
+    if friend_xuids:
+        df = df.filter(pl.col("xuid").is_in({str(x) for x in friend_xuids}))
+    if df.is_empty():
+        return {}
+    result: dict[str, ImpactEvent] = {}
+    for match_id in df["match_id"].unique().to_list():
+        rows = df.filter(pl.col("match_id") == match_id).to_dicts()
+        if len(rows) < 2:
+            continue
+        max_assists = max(r["assists"] for r in rows)
+        if max_assists == 0:
+            continue
+        min_deaths = min(r["deaths"] for r in rows)
+        candidates = [r for r in rows if r["assists"] == max_assists and r["deaths"] == min_deaths]
+        if not candidates:
+            continue
+        hero = candidates[0]
+        mid = str(match_id)
+        result[mid] = ImpactEvent(
+            match_id=mid,
+            xuid=str(hero["xuid"]),
+            gamertag=str(hero.get("gamertag", "Unknown")),
+            time_ms=0,
+            event_type="silent_hero",
+        )
+    logger.debug("identify_silent_hero_multi : %d badge(s) attribué(s)", len(result))
+    return result
+
+
+def identify_false_brother_multi(
+    participants_df: pl.DataFrame,
+    matches_df: pl.DataFrame,
+    friend_xuids: set[str] | None = None,
+) -> dict[str, ImpactEvent]:
+    """Par match en défaite : joueur avec simultanément max deaths ET min assists, ≥1 mort, ≥2 joueurs."""
+    if participants_df.is_empty():
+        return {}
+    loss_ids = set(
+        matches_df.filter(pl.col("outcome") == OUTCOME_LOSS)["match_id"].cast(pl.Utf8).to_list()
+    )
+    if not loss_ids:
+        return {}
+    df = participants_df.with_columns(pl.col("xuid").cast(pl.Utf8))
+    df = df.filter(pl.col("match_id").cast(pl.Utf8).is_in(loss_ids))
+    if friend_xuids:
+        df = df.filter(pl.col("xuid").is_in({str(x) for x in friend_xuids}))
+    if df.is_empty():
+        return {}
+    result: dict[str, ImpactEvent] = {}
+    for match_id in df["match_id"].unique().to_list():
+        rows = df.filter(pl.col("match_id") == match_id).to_dicts()
+        if len(rows) < 2:
+            continue
+        max_deaths = max(r["deaths"] for r in rows)
+        if max_deaths == 0:
+            continue
+        min_assists = min(r["assists"] for r in rows)
+        candidates = [r for r in rows if r["deaths"] == max_deaths and r["assists"] == min_assists]
+        if not candidates:
+            continue
+        traitor = candidates[0]
+        mid = str(match_id)
+        result[mid] = ImpactEvent(
+            match_id=mid,
+            xuid=str(traitor["xuid"]),
+            gamertag=str(traitor.get("gamertag", "Unknown")),
+            time_ms=0,
+            event_type="false_brother",
+        )
+    logger.debug("identify_false_brother_multi : %d badge(s) attribué(s)", len(result))
+    return result
+
+
+def compute_impact_scores(  # noqa: PLR0913
     first_bloods: dict[str, ImpactEvent],
     clutch_finishers: dict[str, ImpactEvent],
     last_casualties: dict[str, ImpactEvent],
-) -> dict[str, int]:
+    last_group_kills: dict[str, ImpactEvent] | None = None,
+    first_group_deaths: dict[str, ImpactEvent] | None = None,
+    silent_heroes: dict[str, ImpactEvent] | None = None,
+    false_brothers: dict[str, ImpactEvent] | None = None,
+) -> dict[str, float]:
     """Calcule les scores d'impact par joueur.
 
     Scoring :
     - Clutch Finisher : +2 points
     - First Blood : +1 point
     - Last Casualty : -1 point
+    - Héros silencieux : +1.5 points
+    - Faux-frère : -1 point
+    - Touriste (last_group_kill) : +3 points
+    - Première victime (first_group_death) : -2 points
 
     Args:
         first_bloods: Dict {match_id: ImpactEvent} des premiers kills.
         clutch_finishers: Dict {match_id: ImpactEvent} des derniers kills victorieux.
         last_casualties: Dict {match_id: ImpactEvent} des dernières morts en défaite.
+        last_group_kills: Dict {match_id: ImpactEvent} des touristes (optionnel).
+        first_group_deaths: Dict {match_id: ImpactEvent} des premières victimes (optionnel).
+        silent_heroes: Dict {match_id: ImpactEvent} des héros silencieux (optionnel).
+        false_brothers: Dict {match_id: ImpactEvent} des faux-frères (optionnel).
 
     Returns:
         Dict {gamertag: score} trié par score décroissant.
     """
-    scores: dict[str, int] = {}
+    scores: dict[str, float] = {}
 
     # +1 pour First Blood
     for event in first_bloods.values():
         gamertag = event.gamertag
-        scores[gamertag] = scores.get(gamertag, 0) + SCORE_FIRST_BLOOD
+        scores[gamertag] = scores.get(gamertag, 0.0) + SCORE_FIRST_BLOOD
 
     # +2 pour Clutch Finisher
     for event in clutch_finishers.values():
         gamertag = event.gamertag
-        scores[gamertag] = scores.get(gamertag, 0) + SCORE_CLUTCH_FINISHER
+        scores[gamertag] = scores.get(gamertag, 0.0) + SCORE_CLUTCH_FINISHER
 
     # -1 pour Last Casualty
     for event in last_casualties.values():
         gamertag = event.gamertag
-        scores[gamertag] = scores.get(gamertag, 0) + SCORE_LAST_CASUALTY
+        scores[gamertag] = scores.get(gamertag, 0.0) + SCORE_LAST_CASUALTY
+
+    # +3 pour Touriste (dernier kill du groupe)
+    for event in (last_group_kills or {}).values():
+        gamertag = event.gamertag
+        scores[gamertag] = scores.get(gamertag, 0.0) + SCORE_LAST_GROUP_KILL
+
+    # -2 pour Première victime du groupe
+    for event in (first_group_deaths or {}).values():
+        gamertag = event.gamertag
+        scores[gamertag] = scores.get(gamertag, 0.0) + SCORE_FIRST_GROUP_DEATH
+
+    # +1.5 pour Héros silencieux
+    for event in (silent_heroes or {}).values():
+        gamertag = event.gamertag
+        scores[gamertag] = scores.get(gamertag, 0.0) + SCORE_SILENT_HERO
+
+    # -1 pour Faux-frère
+    for event in (false_brothers or {}).values():
+        gamertag = event.gamertag
+        scores[gamertag] = scores.get(gamertag, 0.0) + SCORE_FALSE_BROTHER
 
     # Trier par score décroissant
     return dict(sorted(scores.items(), key=lambda x: x[1], reverse=True))
@@ -387,7 +514,7 @@ def get_all_impact_events(
     dict[str, ImpactEvent],
     dict[str, ImpactEvent],
     dict[str, ImpactEvent],
-    dict[str, int],
+    dict[str, float],
 ]:
     """Récupère tous les événements d'impact et calcule les scores.
 
@@ -408,7 +535,13 @@ def get_all_impact_events(
     last_casualties = identify_last_casualty(events_df, matches_df, friend_xuids)
     last_group_kills = identify_last_group_kill(events_df, friend_xuids)
     first_group_deaths = identify_first_group_death(events_df, friend_xuids)
-    scores = compute_impact_scores(first_bloods, clutch_finishers, last_casualties)
+    scores = compute_impact_scores(
+        first_bloods,
+        clutch_finishers,
+        last_casualties,
+        last_group_kills=last_group_kills,
+        first_group_deaths=first_group_deaths,
+    )
 
     return (
         first_bloods,
@@ -420,18 +553,20 @@ def get_all_impact_events(
     )
 
 
-_EVENT_DEFS: list[tuple[str, int]] = [
-    ("first_blood", 1),
-    ("clutch_finisher", 2),
-    ("last_casualty", -1),
-    ("last_group_kill", 3),
-    ("first_group_death", -2),
+_EVENT_DEFS: list[tuple[str, int | float]] = [
+    ("first_blood", SCORE_FIRST_BLOOD),
+    ("clutch_finisher", SCORE_CLUTCH_FINISHER),
+    ("last_casualty", SCORE_LAST_CASUALTY),
+    ("last_group_kill", SCORE_LAST_GROUP_KILL),
+    ("first_group_death", SCORE_FIRST_GROUP_DEATH),
+    ("silent_hero", SCORE_SILENT_HERO),
+    ("false_brother", SCORE_FALSE_BROTHER),
 ]
 
 _EMPTY_IMPACT_SCHEMA = {
     "match_id": pl.Utf8,
     "gamertag": pl.Utf8,
-    "events": pl.List(pl.Struct([pl.Field("event", pl.Utf8), pl.Field("value", pl.Int64)])),
+    "events": pl.List(pl.Struct([pl.Field("event", pl.Utf8), pl.Field("value", pl.Float64)])),
     "outcome": pl.Int64,
 }
 
@@ -440,16 +575,16 @@ def _populate_events_map(
     match_ids: list[str],
     gamertags: list[str],
     event_dicts: list[dict[str, ImpactEvent]],
-) -> dict[tuple[str, str], list[dict[str, str | int]]]:
+) -> dict[tuple[str, str], list[dict[str, str | int | float]]]:
     """Initialise et remplit le mapping (match_id, gamertag) → events."""
-    events_map: dict[tuple[str, str], list[dict[str, str | int]]] = {
+    events_map: dict[tuple[str, str], list[dict[str, str | int | float]]] = {
         (mid, gt): [] for mid in match_ids for gt in gamertags
     }
     for src, (event_name, value) in zip(event_dicts, _EVENT_DEFS, strict=True):
         for _match_id, event in src.items():
             key = (_match_id, event.gamertag)
             if key in events_map:
-                events_map[key].append({"event": event_name, "value": value})
+                events_map[key].append({"event": event_name, "value": float(value)})
     return events_map
 
 
@@ -480,6 +615,8 @@ def build_impact_matrix(  # noqa: PLR0913
     match_ids: list[str],
     gamertags: list[str],
     match_outcomes: dict[str, int] | None = None,
+    silent_heroes: dict[str, ImpactEvent] | None = None,
+    false_brothers: dict[str, ImpactEvent] | None = None,
 ) -> pl.DataFrame:
     """Construit une matrice d'impact pour la heatmap."""
     event_dicts = [
@@ -488,6 +625,8 @@ def build_impact_matrix(  # noqa: PLR0913
         last_casualties,
         last_group_kills,
         first_group_deaths,
+        silent_heroes if silent_heroes is not None else {},
+        false_brothers if false_brothers is not None else {},
     ]
     events_map = _populate_events_map(match_ids, gamertags, event_dicts)
     rows = _build_impact_rows(events_map, match_ids, match_outcomes)

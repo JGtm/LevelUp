@@ -7,6 +7,7 @@ objectif, performance MMR.
 
 from __future__ import annotations
 
+import logging
 import math
 from collections.abc import Callable
 from dataclasses import dataclass
@@ -17,6 +18,8 @@ import polars as pl
 from src.analysis._performance_relative import _normalize_df
 from src.data.domain.refdata import Outcome
 from src.utils.safe_types import clamp as _clamp
+
+logger = logging.getLogger(__name__)
 
 # =============================================================================
 # Helpers
@@ -231,7 +234,7 @@ def _mmr_difficulty_multiplier(delta_mmr_avg: float | None) -> float:
 _EMPTY_V1_RESULT: dict[str, Any] = {
     "score": None,
     "kd_ratio": None,
-    "kda": None,
+    "efficiency": None,
     "win_rate": None,
     "accuracy": None,
     "avg_score": None,
@@ -250,6 +253,7 @@ def compute_session_performance_score_v1(df_session: pl.DataFrame | Any) -> dict
     """Version historique du score de session (0-100)."""
     df_session = _normalize_df(df_session)
     if df_session is None or df_session.is_empty():
+        logger.debug("compute_session_performance_score_v1: df vide ou None, retour par défaut")
         return dict(_EMPTY_V1_RESULT)
 
     total_kills = _sum_int(df_session, "kills")
@@ -259,7 +263,7 @@ def compute_session_performance_score_v1(df_session: pl.DataFrame | Any) -> dict
 
     kd_ratio = total_kills / total_deaths if total_deaths > 0 else float(total_kills)
     kd_score = _clamp(kd_ratio * 50.0)
-    kda = (
+    efficiency = (
         (total_kills + total_assists) / total_deaths
         if total_deaths > 0
         else float(total_kills + total_assists)
@@ -285,7 +289,7 @@ def compute_session_performance_score_v1(df_session: pl.DataFrame | Any) -> dict
     return {
         "score": round(final_score, 1),
         "kd_ratio": round(kd_ratio, 2),
-        "kda": round(kda, 2),
+        "efficiency": round(efficiency, 2),
         "win_rate": round(win_rate * 100.0, 1),
         "accuracy": round(accuracy, 1) if accuracy is not None else None,
         "avg_score": round(avg_score, 1) if avg_score is not None else None,
@@ -337,6 +341,7 @@ def compute_session_performance_score_v2(
     df_session = _normalize_df(df_session)
 
     if df_session is None or df_session.is_empty():
+        logger.debug("compute_session_performance_score_v2: df vide ou None, retour par défaut")
         base = compute_session_performance_score_v1(df_session)
         base.update(
             {
@@ -358,7 +363,7 @@ def compute_session_performance_score_v2(
     n_matches = len(df_session)
 
     kd_ratio = (total_kills / total_deaths) if total_deaths > 0 else float(total_kills)
-    kda = (
+    efficiency = (
         (total_kills + total_assists) / total_deaths
         if total_deaths > 0
         else float(total_kills + total_assists)
@@ -381,7 +386,7 @@ def compute_session_performance_score_v2(
     return _build_v2_result(
         final_score=final_score,
         kd_ratio=kd_ratio,
-        kda=kda,
+        efficiency=efficiency,
         accuracy=accuracy,
         avg_life_seconds=avg_life_seconds,
         n_matches=n_matches,
@@ -402,7 +407,7 @@ def _build_v2_result(  # noqa: PLR0913
     *,
     final_score: float | None,
     kd_ratio: float,
-    kda: float,
+    efficiency: float,
     accuracy: float | None,
     avg_life_seconds: float | None,
     n_matches: int,
@@ -421,7 +426,7 @@ def _build_v2_result(  # noqa: PLR0913
     return {
         "score": round(final_score, 1) if final_score is not None else None,
         "kd_ratio": round(kd_ratio, 2),
-        "kda": round(kda, 2),
+        "efficiency": round(efficiency, 2),
         "win_rate": component_meta.get("win", {}).get("win_rate"),
         "accuracy": round(accuracy, 1) if accuracy is not None else None,
         "avg_score": None,
@@ -468,6 +473,9 @@ def _weighted_score(
     """Calcule le score final pondéré."""
     total_weight = sum(weights_used.values())
     if total_weight <= 0:
+        logger.warning(
+            "_weighted_score: total_weight=%.4f, aucune composante disponible", total_weight
+        )
         return None
     final_score = sum(computed_scores[key] * (w / total_weight) for key, w in weights_used.items())
     if include_mmr_adjustment:
