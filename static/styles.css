@@ -1700,6 +1700,29 @@ div[data-testid="stNumberInput"] input:focus {
     border-left: 4px solid rgba(213, 94, 0, 0.85);
 }
 
+/* Impact table — headers sans contrainte de largeur max (contenu variable) */
+.os-table.os-impact-table th.os-sb-th {
+    white-space: nowrap;
+    max-width: none;
+    word-break: normal;
+}
+
+/* Impact table — bordure sur la cellule badge (last) au lieu de first */
+.os-table.os-impact-table tr.os-sb-row--mvp td.os-sb-td:first-child,
+.os-table.os-impact-table tr.os-sb-row--lvp td.os-sb-td:first-child {
+    border: none;
+}
+
+.os-table.os-impact-table tr.os-sb-row--mvp td.os-sb-td:last-child {
+    border: 2px solid rgba(0, 158, 115, 0.75);
+    border-right: 4px solid rgba(0, 158, 115, 0.85);
+}
+
+.os-table.os-impact-table tr.os-sb-row--lvp td.os-sb-td:last-child {
+    border: 2px solid rgba(213, 94, 0, 0.75);
+    border-right: 4px solid rgba(213, 94, 0, 0.85);
+}
+
 .os-table.os-scoreboard tbody.os-sb-player .os-sb-detail-row {
     display: none;
 }
