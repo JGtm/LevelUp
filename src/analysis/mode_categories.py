@@ -30,7 +30,8 @@ def normalize_pair_name_to_mode_ui(pair_name: str | None, lang: str = "fr") -> s
         lang:      ``"fr"`` (défaut) ou ``"en"``.
 
     Returns:
-        Libellé UI, ex: "Arène : Assassin" (FR) / "Arena: Slayer" (EN), ou None.
+        Libellé UI avec préfixes redondants supprimés, ex: "Assassin" (FR/EN),
+        ou "Heavies : Capture du drapeau" si le qualificatif est pertinent, ou None.
     """
     if pair_name is None:
         return None
@@ -133,18 +134,39 @@ def infer_mode_super_category(mode_ui: str) -> str:
 
 
 def infer_custom_category_from_pair_name(pair_name: str | None) -> str:
-    """Infère la catégorie custom à partir du `pair_name` (DB).
+    """Infère la catégorie custom (sidebar) à partir du `pair_name` (DB).
+
+    Extrait le préfixe anglais du pair_name et le résout via ``PREFIX_TO_CATEGORY``
+    (qui définit le regroupement sidebar, distinct de ``_PREFIX_RULES`` qui régit
+    la suppression du préfixe dans les libellés d'affichage).
+
+    Gère le format inversé (ex: ``CTF:Arena`` → préfixe Arena → Assassin) en
+    détectant si le terme droite est un préfixe connu et le gauche ne l'est pas.
 
     Args:
-        pair_name: Valeur MatchStats.pair_name.
+        pair_name: Valeur MatchStats.pair_name, ex: "Ranked:Slayer on Aquarius".
 
     Returns:
         Catégorie custom (Assassin/Fiesta/BTB/Ranked/Firefight/Other).
     """
-    mode_ui = normalize_pair_name_to_mode_ui(pair_name)
-    if not mode_ui:
+    if not pair_name:
         return "Other"
-    return infer_mode_super_category(mode_ui)
+    raw = str(pair_name).strip()
+    raw = raw.split(" on ", 1)[0].strip()
+    m = _LABEL_SUFFIX_RE.match(raw)
+    if m:
+        raw = (m.group(1) or "").strip()
+    if not raw:
+        return "Other"
+    if ":" not in raw:
+        return PREFIX_TO_CATEGORY.get(raw, "Other")
+    left, right = raw.split(":", 1)
+    left, right = left.strip(), right.strip()
+    # Détection format inversé : right est un préfixe connu, left ne l'est pas
+    left_is_prefix = left in PREFIX_TO_CATEGORY
+    right_is_prefix = right in PREFIX_TO_CATEGORY
+    prefix = right if right_is_prefix and not left_is_prefix else left
+    return PREFIX_TO_CATEGORY.get(prefix, "Other")
 
 
 __all__ = [
