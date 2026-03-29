@@ -236,6 +236,52 @@ def load_weapon_kills_data(
     return data
 
 
+def _build_zebra_shapes(n: int) -> list[dict]:
+    """Génère les bandes de fond alternées pour délimiter visuellement chaque arme."""
+    return [
+        {
+            "type": "rect",
+            "xref": "paper",
+            "yref": "y",
+            "x0": 0,
+            "x1": 1,
+            "y0": i - 0.5,
+            "y1": i + 0.5,
+            "fillcolor": "rgba(255,255,255,0.15)",
+            "line_width": 0,
+            "layer": "below",
+        }
+        for i in range(n)
+        if i % 2 == 0
+    ]
+
+
+def _add_weapon_bar_traces(
+    fig: go.Figure,
+    data: list[tuple[str, pl.DataFrame]],
+    weapons_sorted_ids: list[int],
+    weapons_sorted: list[str],
+    colors_by_name: dict[str, str],
+) -> None:
+    """Ajoute une trace Bar par joueur sur la figure."""
+    for idx, (name, df) in enumerate(data):
+        kills_map = {int(r["weapon_id"]): r["total_kills"] for r in df.iter_rows(named=True)}
+        kills = [kills_map.get(wid, 0) for wid in weapons_sorted_ids]
+        color = colors_by_name.get(name, OKABE_ITO_PALETTE[idx % len(OKABE_ITO_PALETTE)])
+        fig.add_trace(
+            go.Bar(
+                orientation="h",
+                x=kills,
+                y=weapons_sorted,
+                name=name,
+                marker_color=color,
+                text=[str(k) if k > 0 else "" for k in kills],
+                textposition="outside",
+                textfont={"color": "white", "size": 11, "family": "Arial Black"},
+            ),
+        )
+
+
 def render_weapon_kills_bar_chart(
     player_infos: list[tuple[str, str, list[str]]],
     colors_by_name: dict[str, str],
@@ -268,30 +314,18 @@ def render_weapon_kills_bar_chart(
     weapons_sorted = [_resolve_weapon_name(wid, lang=lang) for wid in weapons_sorted_ids]
 
     fig = go.Figure()
-    for idx, (name, df) in enumerate(data):
-        kills_map = {int(r["weapon_id"]): r["total_kills"] for r in df.iter_rows(named=True)}
-        kills = [kills_map.get(wid, 0) for wid in weapons_sorted_ids]
-        color = colors_by_name.get(name, OKABE_ITO_PALETTE[idx % len(OKABE_ITO_PALETTE)])
-        fig.add_trace(
-            go.Bar(
-                orientation="h",
-                x=kills,
-                y=weapons_sorted,
-                name=name,
-                marker_color=color,
-                text=[str(k) if k > 0 else "" for k in kills],
-                textposition="outside",
-                textfont={"color": "white", "size": 11, "family": "Arial Black"},
-            ),
-        )
+    _add_weapon_bar_traces(fig, data, weapons_sorted_ids, weapons_sorted, colors_by_name)
 
     fig.update_layout(
         title=t("tm_weapon_kills_chart"),
-        height=max(350, len(weapons_sorted) * 30),
+        height=max(350, len(weapons_sorted) * 38),
         margin={"l": 20, "r": 80, "t": 60, "b": 20},
         paper_bgcolor="rgba(0,0,0,0)",
         plot_bgcolor="rgba(0,0,0,0)",
         barmode="group",
+        bargap=0.35,
+        bargroupgap=0.08,
+        shapes=_build_zebra_shapes(len(weapons_sorted)),
         legend={"orientation": "h", "yanchor": "top", "y": -0.05, "xanchor": "center", "x": 0.5},
     )
     fig.update_xaxes(showgrid=False, visible=False)
