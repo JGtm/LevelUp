@@ -182,13 +182,20 @@ def compute_single_match_impact(  # noqa: C901, PLR0912, PLR0913 — complexité
     me_xuid = str(me_xuid).strip()
     events: list[MatchImpactEvent] = []
 
+    # Extraire les kills AVANT le filtre équipe : premier sang = toutes équipes confondues
+    all_match_kills = [
+        e
+        for e in highlight_events
+        if str(e.get("event_type", "")).lower() == "kill" and e.get("time_ms") is not None
+    ]
+
     # Filtrer par équipe si team_xuids est fourni
     if team_xuids:
         highlight_events = [
             e for e in highlight_events if str(e.get("xuid", "")).strip() in team_xuids
         ]
 
-    # Séparer kills et deaths
+    # Séparer kills et deaths (filtrés par équipe alliée)
     kills = [
         e
         for e in highlight_events
@@ -200,12 +207,12 @@ def compute_single_match_impact(  # noqa: C901, PLR0912, PLR0913 — complexité
         if str(e.get("event_type", "")).lower() == "death" and e.get("time_ms") is not None
     ]
 
-    if not kills and not deaths:
+    if not all_match_kills and not deaths:
         return []
 
-    # --- Premier sang : premier kill du match (tous joueurs) ---
-    if kills:
-        first_kill = min(kills, key=lambda e: int(e["time_ms"]))
+    # --- Premier sang : premier kill du match (toutes équipes confondues) ---
+    if all_match_kills:
+        first_kill = min(all_match_kills, key=lambda e: int(e["time_ms"]))
         xu = str(first_kill.get("xuid", "")).strip()
         events.append(
             MatchImpactEvent(
