@@ -12,6 +12,8 @@ import polars as pl
 import streamlit as st
 
 from src.analysis.friends_impact import (
+    SCORE_FALSE_BROTHER,
+    SCORE_SILENT_HERO,
     build_impact_matrix,
     get_all_impact_events,
     identify_false_brother_multi,
@@ -200,7 +202,9 @@ def _impact_extremes_from_agg(all_agg: dict[str, dict[str, int]]) -> dict[str, t
     return result
 
 
-def _impact_td_class(key: str, val: int, extremes: dict[str, tuple[int, int]]) -> str:
+def _impact_td_class(
+    key: str, val: int | float, extremes: dict[str, tuple[int | float, int | float]]
+) -> str:
     """Classe CSS best/worst pour une cellule agrégat Impact."""
     if key not in extremes or val == 0:
         return ""
@@ -264,7 +268,7 @@ def _render_impact_ranking_html(
             row_class, badge = "", "📉 Passager clandestin"
         else:
             row_class, badge = "", ""
-        score_str = f"+{score}" if score > 0 else str(score)
+        score_str = f"+{score:g}" if score > 0 else f"{score:g}"
         match_tds = "".join(
             f"<td class='os-sb-td' style='text-align:center'>{cells.get(gt, {}).get(mid, '')}</td>"
             for mid in match_ids_order
@@ -319,6 +323,12 @@ def _render_impact_from_events(  # noqa: PLR0913
     if participants_df is not None and not participants_df.is_empty():
         silent_heroes = identify_silent_hero_multi(participants_df, matches_df, all_friend_xuids)
         false_brothers = identify_false_brother_multi(participants_df, matches_df, all_friend_xuids)
+        # Ajouter les scores des badges stats-only au classement
+        for ev in silent_heroes.values():
+            scores[ev.gamertag] = scores.get(ev.gamertag, 0.0) + SCORE_SILENT_HERO
+        for ev in false_brothers.values():
+            scores[ev.gamertag] = scores.get(ev.gamertag, 0.0) + SCORE_FALSE_BROTHER
+        scores = dict(sorted(scores.items(), key=lambda x: x[1], reverse=True))
 
     if not scores:
         st.info(t("tm_impact_no_events_players"))

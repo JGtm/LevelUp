@@ -182,20 +182,21 @@ class TestIdentifyFirstBlood:
         assert result == {}
 
     def test_identify_first_blood_filter_friends(self, sample_events_df: pl.DataFrame) -> None:
-        """Vérifie le filtrage par amis."""
-        # Filtrer seulement Bob (xuid="200")
-        result = identify_first_blood(sample_events_df, friend_xuids={"200"})
+        """Vérifie que le badge n'est attribué que si un ami a obtenu le premier sang du match."""
+        # Alice (100) a le premier kill dans m1 (1000ms), m2 (500ms), m3 (1000ms)
+        # Filtrer seulement Alice → elle apparaît dans les 3 matchs
+        result_alice = identify_first_blood(sample_events_df, friend_xuids={"100"})
+        assert "m1" in result_alice
+        assert result_alice["m1"].gamertag == "Alice"
+        assert "m2" in result_alice
+        assert result_alice["m2"].gamertag == "Alice"
+        assert "m3" in result_alice
 
-        # Match m1 : Bob tue à 3000ms (seul kill de Bob) -> Bob
-        assert "m1" in result
-        assert result["m1"].gamertag == "Bob"
-
-        # Match m2 : Bob tue à 2000ms -> Bob
-        assert "m2" in result
-        assert result["m2"].gamertag == "Bob"
-
-        # Match m3 : Bob n'a pas de kill -> pas de FB
-        assert "m3" not in result
+        # Filtrer seulement Bob (200) → Bob n'a jamais le premier kill du match → aucun résultat
+        result_bob = identify_first_blood(sample_events_df, friend_xuids={"200"})
+        assert "m1" not in result_bob
+        assert "m2" not in result_bob
+        assert "m3" not in result_bob
 
     def test_first_blood_always_earliest(self, sample_events_df: pl.DataFrame) -> None:
         """Assertion : First Blood est toujours le kill avec min(time_ms)."""
@@ -342,9 +343,9 @@ class TestComputeImpactScores:
         scores = compute_impact_scores(first_bloods, clutch_finishers, last_casualties)
 
         # Alice : 2 FB = +2
-        # Bob : 1 Clutch (+2) + 1 Boulet (-1) = +1
+        # Bob : 1 Clutch (+2) + 1 Boulet (-2) = 0
         assert scores["Alice"] == 2
-        assert scores["Bob"] == 1
+        assert scores["Bob"] == 0
 
         # Vérifier le tri (Alice en premier car score plus élevé)
         assert list(scores.keys())[0] == "Alice"
@@ -368,7 +369,7 @@ class TestComputeImpactScores:
             "m1": ImpactEvent("m1", "200", "Bob", 3000, "last_casualty"),
         }
         scores = compute_impact_scores({}, {}, last_casualties)
-        assert scores["Bob"] == -1
+        assert scores["Bob"] == -2
 
 
 # =============================================================================
