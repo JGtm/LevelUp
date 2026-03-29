@@ -240,6 +240,248 @@ Le shortcut `_perf_force_only` (v6) bypasse cette boucle quand `--force-performa
 ---
 
 
+---
+
+## 🔮 Roadmap v6.3
+
+---
+
+### [v6.3] Score de forme — indice de progression court terme
+
+**Noté le** : 2026-03-28
+**Priorité** : Moyenne
+
+#### Problème
+
+Le `performance_score` existant est un score relatif à l'historique global du joueur. Il dit "tu as bien joué ce match", mais pas "tu joues mieux qu'il y a 2 semaines". Aucun indicateur de progression court terme n'existe.
+
+#### Concept
+
+Un `form_score` calculé après chaque sync, représentant la **forme récente** comparée à la baseline long terme :
+
+```
+form_score = moy_perf_score(14 derniers matchs) - moy_perf_score(90 derniers matchs)
+```
+
+- > 0 : en progression ("en forme")
+- < 0 : en régression ("creux de forme")
+- Normalisé en percentile pour l'affichage (ex. "Top 20% de tes sessions")
+
+Variante : calculer séparément par `mode_category` (Arena, BTB, Ranked) car la forme peut diverger selon le mode.
+
+#### Données disponibles
+
+- `player_match_enrichment.performance_score` — déjà calculé pour chaque match
+- `sessions` — groupement temporel existant
+- La fenêtre 14j / 90j est configurable via `app_settings.json`
+
+#### Implémentation
+
+1. Nouvelle fonction `compute_form_score(gamertag, anchor_date)` dans `src/analysis/performance_score.py`
+2. Colonne `form_score FLOAT` dans la table `sessions` (migration DuckDB)
+3. Calculé et stocké à chaque fin de session (appelé depuis le post-sync)
+4. Affiché : bloc "Forme actuelle" sur la page d'accueil / profil avec indicateur ↑↓ et sparkline 30j
+5. Tests unitaires : fenêtre vide, fenêtre partielle, forme positive/négative
+
+**Complexité estimée** : Faible — calcul purement SQL/Polars sur données existantes
+
+---
+
+### [v6.3] Détection de changement de niveau — tu as progressé ?
+
+**Noté le** : 2026-03-28
+**Priorité** : Basse
+
+#### Concept
+
+Détecter algorithmiquement les moments où la performance d'un joueur a **durablement changé** (amélioration ou régression), distinct des variations de forme court terme.
+
+Approche : **moyenne mobile double avec détection de croisement** (simple, no ML dependency) :
+- Rolling mean 14j vs rolling mean 90j
+- Un croisement ascendant → "pallier de progression"
+- Un croisement descendant → "pallier de régression"
+- Stocker les breakpoints détectés + direction + date + delta de performance
+
+#### Utilité concrète
+
+- "Tu as franchi un cap le 2026-02-10 (+8 pts perf en moyenne)"
+- Page carrière : overlay des breakpoints sur la courbe performance
+- Filtres "depuis ma dernière progression" pour les top matches
+
+#### Données disponibles
+
+- `player_match_enrichment.performance_score` + `start_time` par match
+- Les rolling means sont calculables en pure Polars (`.rolling_mean(window_size=N)`)
+
+#### Implémentation
+
+1. Fonction `detect_level_breakpoints(df: pl.DataFrame) -> list[Breakpoint]` dans `src/analysis/progression.py` (nouveau module)
+2. `Breakpoint` : dataclass `(date, direction: "up"|"down", delta_perf, n_matches_confirmed)`
+3. Seuil de confirmation : direction maintenue sur ≥10 matchs consécutifs post-croisement (évite les faux positifs)
+4. Table `progression_breakpoints` dans `stats.duckdb` (légère — quelques lignes max)
+5. Affichage : overlay "cap franchi" sur les courbes de tendance
+
+**Complexité estimée** : Moyenne — l'algo est simple mais la calibration du seuil de confirmation demande du test empirique sur données réelles
+
+---
+
+### [v6.3] Page Adversaires — Head-to-head, Nemesis, Proie
+
+**Noté le** : 2026-03-28
+**Priorité** : Moyenne
+
+#### Concept
+
+Une nouvelle page dédiée aux **adversaires récurrents** : qui tu croises souvent, contre qui tu gagnes/perds, qui te domine et qui tu domines.
+
+#### Données disponibles
+
+Tout est déjà dans `shared_matches_v2.duckdb` :
+- `match_participants` : tous les joueurs de chaque match, avec `team_id` → identifier adversaires (team_id ≠ le tien)
+- `killer_victim_pairs` : chaque kill → ratio kills/deaths entre deux joueurs spécifiques
+- `match_registry` : outcome du match (W/L)
+- `xuid_aliases` / `v_gamertag_lookup` : résolution gamertag
+
+#### Métriques cibles
+
+| Métrique | Source | Description |
+|----------|--------|-------------|
+| `matches_vs` | `match_participants` | Nb de matchs joués contre cet adversaire |
+| `win_rate_vs` | `match_registry.outcome` | % de victoires dans ces matchs |
+| `kills_on` | `killer_victim_pairs` | Fois où TU as tué CETTE personne |
+| `deaths_from` | `killer_victim_pairs` | Fois où CETTE personne t'a tué |
+| `nemesis_score` | dérivé | `deaths_from / max(1, kills_on)` pondéré par `matches_vs` |
+| `prey_score` | dérivé | `kills_on / max(1, deaths_from)` pondéré par `matches_vs` |
+
+**Nemesis** = adversaire avec le plus haut `nemesis_score` (min. 3 rencontres)
+**Proie** = adversaire avec le plus haut `prey_score` (min. 3 rencontres)
+
+#### Architecture cible
+
+1. Nouveau service `src/data/services/rivals_service.py` — `load_rivals_stats(gamertag, min_matches=3, limit=50)`
+2. Requête SQL sur `match_participants` (JOIN `killer_victim_pairs` + `match_registry`) — une seule requête agrégée
+3. Nouvelle page `src/ui/pages/rivals.py`
+4. Filtres : mode_category, fenêtre temporelle (30j/90j/all)
+5. 3 sections : Nemesis (top 3), Proie (top 3), tableau complet paginé
+
+#### Points d'attention
+
+- Exclure les bots (`xuid LIKE 'bid(%'`) — comme ailleurs dans le codebase
+- Minimum `min_matches` configurable pour éviter les conclusions sur 1 rencontre
+- Le head-to-head **win rate** peut être trompeur si les matchs sont en équipe large (BTB 12v12) — noter le contexte
+
+**Complexité estimée** : Moyenne — SQL complexe mais données existantes, pas de nouveau stockage requis (tout calculé à la volée ou mis en vue matérialisée)
+
+---
+
+### [v6.3] Discord — Résumé de session automatique post-sync
+
+**Noté le** : 2026-03-28
+**Priorité** : Basse
+
+#### Problème : comment détecter qu'une session est terminée ?
+
+La table `sessions` groupe déjà les matchs en sessions (gap > N min entre deux matchs = nouvelle session). Une session est considérée **terminée** si :
+
+> `now() - last_match_end_time_of_session > SESSION_CLOSE_THRESHOLD` (défaut : 60 min)
+
+Le mécanisme de déclenchement naturel est **la fin du sync** (`sync.py --delta`) : quand le sync s'achève, on vérifie les sessions complètes non encore notifiées.
+
+**Pas de polling.** Pas de process daemon. Déclenché uniquement au sync.
+
+#### Implémentation
+
+**Déclenchement — bouton `📤` dans l'UI**
+
+Pas d'automatisation temporelle. Un petit bouton `📤` placé à côté du bouton "Synchroniser" dans la sidebar/header.
+
+**Condition d'activation** : le bouton est **grisé** tant que `last_match_end_time_of_last_session + SESSION_NOTIFY_DELAY_MINUTES > now()`.
+- Valeur par défaut : **5 minutes** (configurable dans `app_settings.json` → `discord_session_notify_delay_minutes`)
+- Tooltip quand grisé : "Dernier match terminé il y a 2 min — disponible dans 3 min"
+- Tooltip quand actif : "Envoyer le résumé de la session sur Discord"
+
+Pourquoi `last_match_end_time` et pas `last_sync_at` : si tu synces un match terminé il y a 2h, le bouton est immédiatement actif. Si tu synces un match qui vient juste de finir, le délai s'applique pour éviter d'envoyer un résumé partiel.
+
+**Données** :
+- Colonne `discord_notified_at TIMESTAMP DEFAULT NULL` dans `sessions` (migration)
+- `discord_session_notify_delay_minutes` dans `app_settings.json` (défaut : 5)
+
+**Logique au clic** (`src/utils/discord_notifier.py` existant à étendre) :
+1. Identifier la dernière session non encore notifiée (`discord_notified_at IS NULL`)
+2. Vérifier que `last_match_end_time + delay < now()` (guard côté serveur, pas seulement UI)
+3. `build_session_embed(session)` → POST Discord → `UPDATE sessions SET discord_notified_at = now()`
+4. Confirmation inline dans l'UI : "✅ Résumé envoyé sur Discord"
+
+**Contenu de l'embed Discord** :
+- Nb matchs / W-L / win rate de la session
+- Meilleur match (perf_score max) avec carte + mode + score
+- `form_score` delta (si v8 axe 1 implémenté)
+- Top médaille de la session
+- Badge comeback/dominance si présent (via `DominanceFlag`)
+- Composition escouade (coéquipiers présents ≥ 2 matchs)
+- **Rôles de soirée** (section légère, max 3 lignes) : réutiliser `compute_impact_scores()` de `src/analysis/friends_impact.py` sur les matchs de la session → extraire 🏆 Champion, 🍌 Maillon Faible, et optionnellement le joueur avec le plus de ⚡ First Blood ou 🎯 Clutch Finisher. Les emojis et libellés i18n existent déjà (`tmi_mvp_label`, `tmi_boulet_label`). Aucune nouvelle logique d'archetype à créer.
+- **Héros silencieux 🛡️** (à ajouter si validé en prod) : joueur avec le ratio `assists/(deaths+1)` le plus élevé sur la session. Nécessite un nouveau critère dans `friends_impact.py` + clé i18n `tmi_silent_hero_label`. À brancher dans la matrice d'impact de l'app avant d'intégrer à la notif Discord.
+
+**Opt-in** : bouton visible uniquement si `app_settings.discord_session_notify = true` ET webhook configuré.
+
+**Complexité estimée** : Faible à Moyenne — la logique de déclenchement est simple, l'effort est dans la mise en forme de l'embed et les tests d'idempotence
+
+---
+
+### [v6.3] Clutch moments — détection intelligente des kills décisifs
+
+**Noté le** : 2026-03-28
+**Priorité** : Basse
+
+#### Concept
+
+Un kill est "clutch" s'il a été réalisé dans un **contexte de haute valeur** :
+- La cible était en pleine série (spree en cours)
+- Le match était serré et proche de sa fin
+- Le kill a inversé ou préservé un avantage fragile
+
+La difficulté : l'API ne fournit pas l'état du score seconde par seconde. On doit **inférer** le contexte depuis les données disponibles.
+
+#### Définitions retenues (par ordre de fiabilité)
+
+| Type | Définition | Source de données |
+|------|-----------|-------------------|
+| **Spree-stopper** | Kill sur un joueur qui avait une médaille de série dans ce match (`Killing Spree`, `Rampage`, `Running Riot`, `Demon`) | `medals_earned` × `killer_victim_pairs` |
+| **Comeback clutch** | Kill réalisé dans un match tagué `DominanceFlag.COMEBACK` ou `COUNTER_COMEBACK`, où le joueur est dans le top-2 killers de l'équipe | `match_registry.comeback_flag` × `match_participants.kills` |
+| **Fin de match sous tension** | Kill dans les dernières 60 secondes d'un match Slayer dont le score final était ≤ 2 pts d'écart | `killer_victim_pairs.timestamp_ms` × `match_registry.duration_ms + team_scores` |
+
+#### Stockage proposé
+
+Pas de nouvelle table — stocker un compteur agrégé par match :
+
+```sql
+-- Nouvelle colonne dans player_match_enrichment
+clutch_kills INTEGER DEFAULT 0   -- nb de kills clutch dans ce match (tous types confondus)
+clutch_type  TEXT DEFAULT NULL   -- type principal : 'spree_stopper' | 'comeback' | 'last_minute'
+```
+
+#### Backfill
+
+- Nouveau flag `--clutch-kills` dans `scripts/backfill_data.py`
+- Implémentation : `src/analysis/clutch_analysis.py` (nouveau module, 0 accès DB)
+- Orchestrateur : `scripts/backfill/orchestrator.py`
+
+#### Affichage UI
+
+- Badge "Clutch" sur la carte de match (page historique) quand `clutch_kills > 0`
+- Stat "Clutch kills" dans le détail d'un match
+- Filtre "Matchs clutch" dans la page historique
+
+#### Limites connues / honnêteté analytique
+
+- Le **spree-stopper** est approximatif : `medals_earned` dit qu'un joueur a eu une série dans ce match, pas au moment précis du kill. Un joueur peut avoir eu sa série en début de match et être tué en fin.
+- Le **last-minute** dépend de `killer_victim_pairs.timestamp_ms` disponible dans le filmshell — seulement pour les matchs avec extraction weapon_kills complète.
+- Ces approximations doivent être mentionnées dans l'UI (tooltip ou info icon).
+
+**Complexité estimée** : Moyenne — l'algo spree-stopper est faisable rapidement, le last-minute dépend de la couverture filmshell, le comeback clutch réutilise `DominanceFlag` déjà en place
+
+---
+
 ### Kills environnementaux — catégorie dédiée (v7++)
 
 **Contexte** : La médaille **Kong** (kill via baril projeté) est actuellement comptée dans `GRENADE_MEDALS` faute d'une meilleure catégorie. Ce classement est approximatif — il est impossible de savoir avec certitude si l'API inclut ces kills dans `GrenadeKills` ou non.

@@ -76,7 +76,7 @@ def _find_silent_hero_event(
     if lang == "en":
         extra = f"{assists} ast · {deaths} death" + ("s" if deaths != 1 else "")
     else:
-        extra = f"{assists} pass. · {deaths} mort" + ("s" if deaths != 1 else "")
+        extra = f"{assists} assists. · {deaths} mort" + ("s" if deaths != 1 else "")
     return MatchImpactEvent(
         event_type="silent_hero",
         xuid=xu,

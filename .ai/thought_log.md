@@ -14,7 +14,7 @@
 **Décision technique** :  
 Deux nouveaux badges stats-only dans la section "impact du match", conditionnés à l'outcome :
 - **Héros silencieux 🛡️** (victoire) : `max(assists - deaths)` parmi l'équipe, ≥1 assist requis
-- **Faux-frère 🤡** (défaite) : `max(deaths - assists)` parmi l'équipe, ≥1 death requis
+- **Faux-frère 🗡️** (défaite) : `max(deaths - assists)` parmi l'équipe, ≥1 death requis
 
 Ces badges n'ont pas de position temporelle → nouveau champ `extra_label: str = ""` dans `MatchImpactEvent`, et `time_ms = _STATS_SENTINEL (-1)`. La timeline ignore les events avec `time_ms < 0`.
 
@@ -7913,3 +7913,23 @@ Installé dans `main()` du launcher via `suppress_asyncio_proactor_connection_re
 
 **Résultat** : Élimination du spam WinError 10054 dans les logs launcher sans impacter
 les vraies erreurs asyncio.
+
+### [2025-07-21] — Formule B pour badges Héros silencieux / Faux-frère — Complété
+
+**Contexte** : Badges impact "Héros silencieux ���️" (victoire) et "Faux-frère ���️" (défaite)
+implantés sur 2 sessions précédentes. L'utilisateur a choisi la **formule B** : badge attribué
+uniquement si le MÊME joueur détient simultanément les deux critères (max assists ET min deaths,
+ou max deaths ET min assists). Emoji ���️ pour faux-frère.
+
+**Décision technique** : Abandon du ratio composite `assists - deaths` (formule A) → passage
+à une vérification stricte "même joueur". Pour les fonctions multi-match (Polars), conversion
+vers une boucle Python par match (plus lisible et sans complexité de `group_by + join`).
+
+**Fichiers modifiés** :
+- `src/visualization/_match_impact_events.py` — `_find_silent_hero_event` + `_find_false_brother_event` (formule B) + emoji ���️
+- `src/analysis/friends_impact.py` — `identify_silent_hero_multi` + `identify_false_brother_multi` (formule B, boucle Python)
+- `scripts/size_baseline.txt` — mise à jour ratchet (friends_impact.py 591L)
+
+**Résultats** : 37 tests passent (17 match_impact + 20 friends_impact). Commit `6ff1805`.
+
+**Conclusion** : Implémentation formule B complète sur les deux niveaux (match unique + multi-match). 
