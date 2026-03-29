@@ -54,24 +54,21 @@ def _skip_if_no_db() -> None:
 
 
 def test_arena_slayer_fr() -> None:
-    """Préfixe + mode en FR via combinatoire."""
+    """Arena:Slayer → préfixe Arena redondant (catég. Assassin) → mode seul."""
     _skip_if_no_db()
-    assert translate_pair_name("Arena:Slayer on Aquarius", "fr") == "Arène : Assassin"
+    assert translate_pair_name("Arena:Slayer on Aquarius", "fr") == "Assassin"
 
 
 def test_btb_ctf_fr() -> None:
-    """Préfixe BTB long + mode CTF en FR."""
+    """BTB:CTF → préfixe BTB redondant (catég. BTB) → mode seul."""
     _skip_if_no_db()
-    assert (
-        translate_pair_name("BTB:CTF on Fragmentation", "fr")
-        == "Grande bataille en équipe : Capture du drapeau"
-    )
+    assert translate_pair_name("BTB:CTF on Fragmentation", "fr") == "Capture du drapeau"
 
 
 def test_arena_slayer_en() -> None:
-    """Combinatoire EN — séparateur ': ' (sans espace avant)."""
+    """Arena:Slayer EN → préfixe Arena redondant (catég. Assassin) → mode seul."""
     _skip_if_no_db()
-    assert translate_pair_name("Arena:Slayer on Aquarius", "en") == "Arena: Slayer"
+    assert translate_pair_name("Arena:Slayer on Aquarius", "en") == "Slayer"
 
 
 # ---------------------------------------------------------------------------
@@ -80,9 +77,9 @@ def test_arena_slayer_en() -> None:
 
 
 def test_assault_neutral_bomb_override() -> None:
-    """Override Assault:Neutral Bomb (préfixe trompeur — traduction non standard)."""
+    """Override Assault:Neutral Bomb → label direct depuis mode_pair_overrides."""
     _skip_if_no_db()
-    assert translate_pair_name("Assault:Neutral Bomb on Curfew", "fr") == "Arène : Bombe neutre"
+    assert translate_pair_name("Assault:Neutral Bomb on Curfew", "fr") == "Bombe neutre"
 
 
 def test_survive_undead_override() -> None:
@@ -111,9 +108,9 @@ def test_mode_alone_fr() -> None:
 
 
 def test_strip_map_suffix() -> None:
-    """Strip ' on Recharge' avant combinatoire."""
+    """Strip ' on Recharge' puis préfixe Arena redondant → mode seul."""
     _skip_if_no_db()
-    assert translate_pair_name("Arena:Oddball on Recharge", "fr") == "Arène : Oddball"
+    assert translate_pair_name("Arena:Oddball on Recharge", "fr") == "Oddball"
 
 
 # ---------------------------------------------------------------------------
@@ -161,10 +158,10 @@ def test_lru_cache_hit() -> None:
 
 
 def test_unknown_lang_fallback() -> None:
-    """Langue absente en DB → retourne préfixe_EN + séparateur_fallback + mode_EN."""
+    """Langue absente en DB → tables vides + préfixe Arena redondant → mode_EN seul."""
     _skip_if_no_db()
     result = translate_pair_name("Arena:Slayer on Aquarius", "de")
-    assert result == "Arena : Slayer"  # séparateur fallback ' : '
+    assert result == "Slayer"  # Arena redondant (catég. Assassin), tables vides → mode_EN
 
 
 # ---------------------------------------------------------------------------

@@ -172,4 +172,30 @@ def resolve_display_mode(
     return f"{prefix_label}{sep}{mode_label}"
 
 
-__all__ = ["resolve_display_mode"]
+def infer_mode_category_from_pair_name(pair_name: str) -> str:
+    """Infère la mode_category depuis le pair_name sans accès DB.
+
+    Extrait le préfixe (gauche du ":"), résout le format inversé si besoin,
+    puis renvoie la catégorie canonique depuis ``_PREFIX_RULES``.
+
+    Returns:
+        Catégorie DB correspondante (BTB, Assassin, Fiesta, Ranked, Firefight)
+        ou ``"Other"`` si le préfixe est inconnu.
+    """
+    if not pair_name or ":" not in pair_name:
+        return "Other"
+    raw = _strip_map_suffix(str(pair_name).strip())
+    candidate = _normalize_case(raw or str(pair_name))
+    if ":" not in candidate:
+        return "Other"
+    left, right = candidate.split(":", 1)
+    left, right = left.strip(), right.strip()
+    # Détection format inversé
+    left_is_prefix = left in _KNOWN_PREFIXES
+    right_is_prefix = right in _KNOWN_PREFIXES
+    prefix_en = right if right_is_prefix and not left_is_prefix else left
+    rule = _PREFIX_RULES.get(prefix_en)
+    return rule["category"] if rule else "Other"
+
+
+__all__ = ["resolve_display_mode", "infer_mode_category_from_pair_name"]

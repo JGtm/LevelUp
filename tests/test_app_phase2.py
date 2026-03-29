@@ -50,14 +50,14 @@ class TestNormalizeModeLabel:
     """Tests pour normalize_mode_label."""
 
     def test_translates_known_mode(self):
-        """Traduit un mode connu."""
+        """Traduit un mode connu (préfixe Arena redondant → mode seul)."""
         result = normalize_mode_label("Arena:Slayer")
-        assert result == "Arène : Assassin"
+        assert result == "Assassin"
 
     def test_removes_map_name(self):
-        """Retire le nom de carte."""
+        """Retire le nom de carte (préfixe Arena redondant → mode seul)."""
         result = normalize_mode_label("Arena:Slayer on Aquarius")
-        assert result == "Arène : Assassin"
+        assert result == "Assassin"
 
     def test_removes_forge_suffix(self):
         """Retire le suffixe Forge."""
