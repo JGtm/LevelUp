@@ -26,6 +26,7 @@ def create_api_client(
     *,
     tokens: Tokens | None = None,
     requests_per_second: int = 5,
+    lang: str | None = None,
 ) -> HaloAPIPort:
     """Crée un client API Halo Infinite pour le backend demandé.
 
@@ -33,6 +34,8 @@ def create_api_client(
         backend: Nom du backend (``spnkr``).
         tokens: Tokens pré-fournis (sinon récupérés depuis env).
         requests_per_second: Rate limiting.
+        lang: Code BCP-47 pour Accept-Language (ex: 'fr-FR').
+              Permet de récupérer les PublicName localisés depuis Discovery UGC.
 
     Returns:
         Instance de client implémentant ``HaloAPIPort``.
@@ -43,6 +46,6 @@ def create_api_client(
     if backend == "spnkr":
         from src.data.sync.api_client import SPNKrAPIClient
 
-        return SPNKrAPIClient(tokens=tokens, requests_per_second=requests_per_second)
+        return SPNKrAPIClient(tokens=tokens, requests_per_second=requests_per_second, lang=lang)
 
     raise ValueError(f"Backend API inconnu : {backend!r}. Backends disponibles : 'spnkr'.")

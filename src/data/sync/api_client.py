@@ -121,14 +121,18 @@ class SPNKrAPIClient:
         *,
         tokens: Tokens | None = None,
         requests_per_second: int = 5,
+        lang: str | None = None,
     ) -> None:
         """
         Args:
             tokens: Tokens pré-fournis (sinon récupérés depuis env).
             requests_per_second: Rate limiting par service.
+            lang: Code BCP-47 pour Accept-Language (ex: 'fr-FR').
+                  Si None, l'en-tête n'est pas positionné (API renvoie EN par défaut).
         """
         self._tokens = tokens
         self._requests_per_second = requests_per_second
+        self._lang = lang
         self._session = None
         self._client = None
         self._film_mod = None
@@ -147,6 +151,8 @@ class SPNKrAPIClient:
             ) from e
 
         self._session = ClientSession(timeout=ClientTimeout(total=45))
+        if self._lang:
+            self._session.headers["Accept-Language"] = self._lang
         self._client = HaloInfiniteClient(
             session=self._session,
             spartan_token=self._tokens.spartan_token,
