@@ -63,7 +63,7 @@ def translate_playlist_name(name: str | None, lang: str = "fr") -> str | None:
     return s
 
 
-def translate_pair_name(name: str | None, lang: str = "fr") -> str | None:
+def translate_pair_name(name: str | None, lang: str = "fr", *, normalize: bool = True) -> str | None:
     """Traduit un pair_name depuis metadata.duckdb.
 
     Délègue à ``resolve_display_mode`` (``src.analysis.mode_display``) qui gère :
@@ -91,7 +91,9 @@ def translate_pair_name(name: str | None, lang: str = "fr") -> str | None:
     )
 
     mode_category = infer_mode_category_from_pair_name(s)
-    return resolve_display_mode(s, mode_category, lang, _load_mode_tables(lang))
+    return resolve_display_mode(
+        s, mode_category, lang, _load_mode_tables(lang), strip_redundant_prefix=normalize
+    )
 
 
 @lru_cache(maxsize=8)
