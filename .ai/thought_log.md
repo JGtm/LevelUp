@@ -7,6 +7,17 @@
 
 ## Journal
 
+### [2026-03-30] — Doc v6.2 : normalisation des noms de modes — Complété
+
+**Statut** : Complété
+**Décision technique** : Documenter explicitement la normalisation des labels de modes dans les deux points d'entrée release utilisateur.
+- `README.md` (`What's new`, v6.2) : ajout d'un bullet décrivant le resolver unique `resolve_display_mode`, la délégation via `translate_pair_name`, et les 29 overrides FR/EN de `mode_pair_overrides`.
+- `docs/CHANGELOG.md` (`[6.2.0] > Changed`) : ajout d'une entrée "Game mode label normalization (phase 1+2)" avec les mêmes éléments techniques.
+
+**Résultats** : Documentation alignée avec le contenu de la release v6.2.1 concernant la normalisation des noms de modes, sans impact code/runtime.
+- Parité FR ajoutée dans `docs/FR/README.md` (nouveau bullet v6.2 dans "Dernières nouveautés").
+**Conclusion** : Changelog + README EN/FR prêts pour publication/release notes.
+
 ### [2026-03-30] — Thumbnail cartes par asset_id (indépendant de la langue) — Complété
 
 **Statut** : Complété
@@ -7879,3 +7890,42 @@ Installé dans `main()` du launcher via `suppress_asyncio_proactor_connection_re
 
 **Résultat** : Élimination du spam WinError 10054 dans les logs launcher sans impacter
 les vraies erreurs asyncio.
+
+---
+
+## [2026-03-30] fix(radar) — Normalisation axe Objectifs du radar Complémentarité — Complété
+
+**Branche** : `fix/radar-objectifs-normalisation` — commits `1df74ce`, `93568dc`, `1638c4e`
+
+**Problème** : L'axe "Objectifs" du radar "Complémentarité de l'escouade" (teammates) et du
+radar de participation (match view) s'affichait proche de 0, même pour d'excellents scores CTF
+ou Strongholds. Exemple mesuré : 1800 pts sur 3 matchs CTF → 20% de l'axe.
+
+**Cause racine** : Dans `compute_global_radar_thresholds()`, le seuil objectifs était calculé
+comme `max(max_obj, max_kill)` — `max_kill` (~3000) écrasait systématiquement `max_obj` (~600
+en CTF). Le seuil objectifs se retrouvait calibré sur les kills, rendant les scores objectifs
+insignifiants.
+
+**Décision technique** :
+- Phase 0 : calcul du p90 réel par famille de mode (CTF, Strongholds, Oddball, Slayer…) via
+  une requête supplémentaire lors du scan des DBs joueurs
+- Phase 1 : `objectifs = max_obj * factor` (plus de `max(max_obj, max_kill)`)
+- Phase 2 : seuil objectifs de session = somme des p90 par match selon la famille détectée
+  par `_get_mode_family(pair_name)` — gestion native des sessions mixtes (BTB + Arena)
+- Percentile p90 : un joueur bon atteint ~82%, seul le top 10% plafonne à 100%
+- Match view : même correction, seuil per-mode appliqué au match unique
+
+**Fichiers modifiés** :
+- `src/analysis/participation_radar.py` — `RADAR_THRESHOLDS_PER_MODE`, `_get_mode_family()`,
+  `get_mode_family()` (public), scan per-mode dans `compute_global_radar_thresholds()`
+- `src/ui/pages/teammates_synergy.py` — `_compute_player_profile()` : seuil pondéré per-mode
+- `src/ui/pages/match_view_participation.py` — seuil per-mode sur le match unique
+
+**Tests ajoutés** :
+- `tests/test_participation_radar.py` — `TestGetModeFamily` : 22 cas (CTF/EN/FR, Strongholds,
+  Oddball, KOTH, Slayer, Fiesta, None, casse, invariant RADAR_THRESHOLDS_PER_MODE)
+- `tests/ui/test_teammates_helpers.py` — 2 cas : CTF objectifs_norm ≈ 750/p90_ctf,
+  custom per_mode consommé correctement
+
+**Résultat** : 49 tests verts. 1800 pts sur 3 CTF → 86% (contre 20% avant fix).
+Tous les radars (teammates + match view) utilisent maintenant le même référentiel p90 calibré.
