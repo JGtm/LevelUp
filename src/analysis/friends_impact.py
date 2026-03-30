@@ -348,7 +348,11 @@ def identify_silent_hero_multi(
     matches_df: pl.DataFrame,
     friend_xuids: set[str] | None = None,
 ) -> dict[str, ImpactEvent]:
-    """Par match en victoire : joueur avec simultanément max assists ET min deaths, ≥1 assist, ≥2 joueurs."""
+    """Par match en victoire : joueur avec simultanément max assists ET min deaths, ≥1 assist, ≥2 joueurs.
+
+    Le top killer de l'équipe est exclu : un fraggeur dominant ne peut pas être héros silencieux.
+    Si moins de 2 joueurs restent après exclusion, le badge n'est pas attribué.
+    """
     if participants_df.is_empty():
         return {}
     win_ids = set(
@@ -367,11 +371,18 @@ def identify_silent_hero_multi(
         rows = df.filter(pl.col("match_id") == match_id).to_dicts()
         if len(rows) < 2:
             continue
-        max_assists = max(r["assists"] for r in rows)
+        max_kills = max(r.get("kills", 0) for r in rows)
+        if max_kills > 0:
+            eligible = [r for r in rows if r.get("kills", 0) < max_kills]
+            if len(eligible) < 2:
+                continue
+        else:
+            eligible = rows
+        max_assists = max(r["assists"] for r in eligible)
         if max_assists == 0:
             continue
-        min_deaths = min(r["deaths"] for r in rows)
-        candidates = [r for r in rows if r["assists"] == max_assists and r["deaths"] == min_deaths]
+        min_deaths = min(r["deaths"] for r in eligible)
+        candidates = [r for r in eligible if r["assists"] == max_assists and r["deaths"] == min_deaths]
         if not candidates:
             continue
         hero = candidates[0]
@@ -392,7 +403,11 @@ def identify_false_brother_multi(
     matches_df: pl.DataFrame,
     friend_xuids: set[str] | None = None,
 ) -> dict[str, ImpactEvent]:
-    """Par match en défaite : joueur avec simultanément max deaths ET min assists, ≥1 mort, ≥2 joueurs."""
+    """Par match en défaite : joueur avec simultanément max deaths ET min assists, ≥1 mort, ≥2 joueurs.
+
+    Le top killer de l'équipe est exclu : un fraggeur dominant ne peut pas être faux-frère.
+    Si moins de 2 joueurs restent après exclusion, le badge n'est pas attribué.
+    """
     if participants_df.is_empty():
         return {}
     loss_ids = set(
@@ -411,11 +426,18 @@ def identify_false_brother_multi(
         rows = df.filter(pl.col("match_id") == match_id).to_dicts()
         if len(rows) < 2:
             continue
-        max_deaths = max(r["deaths"] for r in rows)
+        max_kills = max(r.get("kills", 0) for r in rows)
+        if max_kills > 0:
+            eligible = [r for r in rows if r.get("kills", 0) < max_kills]
+            if len(eligible) < 2:
+                continue
+        else:
+            eligible = rows
+        max_deaths = max(r["deaths"] for r in eligible)
         if max_deaths == 0:
             continue
-        min_assists = min(r["assists"] for r in rows)
-        candidates = [r for r in rows if r["deaths"] == max_deaths and r["assists"] == min_assists]
+        min_assists = min(r["assists"] for r in eligible)
+        candidates = [r for r in eligible if r["deaths"] == max_deaths and r["assists"] == min_assists]
         if not candidates:
             continue
         traitor = candidates[0]

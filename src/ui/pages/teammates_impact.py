@@ -38,7 +38,7 @@ def _load_match_participants(
     query = (
         f"SELECT p.match_id, p.xuid::TEXT as xuid, "
         f"COALESCE(vg.gamertag, p.gamertag, p.xuid::TEXT) as gamertag, "
-        f"p.assists, p.deaths "
+        f"p.assists, p.deaths, p.kills "
         f"FROM {shared_alias}.match_participants p "
         f"LEFT JOIN {shared_alias}.v_gamertag_lookup vg ON vg.xuid = p.xuid::TEXT "
         f"WHERE p.match_id IN ({', '.join(['?' for _ in match_ids])})"
@@ -53,6 +53,7 @@ def _load_match_participants(
             "gamertag": [r[2] or "Unknown" for r in rows],
             "assists": [int(r[3] or 0) for r in rows],
             "deaths": [int(r[4] or 0) for r in rows],
+            "kills": [int(r[5] or 0) for r in rows],
         }
     )
 
