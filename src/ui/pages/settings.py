@@ -88,6 +88,7 @@ def _build_settings_from_ui(  # noqa: PLR0913
     backfill_lusr: bool,
     backfill_weapons: bool,
     user_timezone: str = "Europe/Paris",
+    normalize_mode_labels: bool = True,
 ) -> AppSettings:
     """Construit un AppSettings à partir des valeurs UI actuelles."""
     return AppSettings(
@@ -116,6 +117,7 @@ def _build_settings_from_ui(  # noqa: PLR0913
         repository_mode="duckdb",
         enable_duckdb_analytics=True,
         user_timezone=str(user_timezone or "Europe/Paris").strip(),
+        normalize_mode_labels=bool(normalize_mode_labels),
         **_get_preserved_settings(settings),
     )
 
@@ -156,7 +158,7 @@ def render_settings_page(
     max_matches, rps = _render_sync_section(settings)
     backfill_vals = _render_backfill_section(settings)
     media_captures_base_dir, media_tolerance_minutes = _render_media_section(settings)
-    refresh_clears_caches, user_timezone = _render_experience_section(settings)
+    refresh_clears_caches, user_timezone, normalize_mode_labels = _render_experience_section(settings)
 
     cols = st.columns(2)
     if cols[0].button(t("btn_save"), width="stretch"):
@@ -169,6 +171,7 @@ def render_settings_page(
             rps=int(rps),
             **backfill_vals,
             user_timezone=str(user_timezone or "Europe/Paris"),
+            normalize_mode_labels=bool(normalize_mode_labels),
         )
         ok, err = save_settings(new_settings)
         if ok:
@@ -317,8 +320,8 @@ def _render_media_section(settings: AppSettings) -> tuple[str, int]:
     return str(media_captures_base_dir or ""), int(media_tolerance_minutes)
 
 
-def _render_experience_section(settings: AppSettings) -> tuple[bool, str]:
-    """Rend le bloc 'Expérience' et retourne (refresh_clears_caches, user_timezone)."""
+def _render_experience_section(settings: AppSettings) -> tuple[bool, str, bool]:
+    """Rend le bloc 'Expérience' et retourne (refresh_clears_caches, user_timezone, normalize_mode_labels)."""
     with st.expander(t("set_experience_title"), expanded=True):
         refresh_clears_caches = st.toggle(
             t("set_clear_cache_title"),
@@ -334,4 +337,9 @@ def _render_experience_section(settings: AppSettings) -> tuple[bool, str]:
             index=CURATED_TZ_LIST.index(_tz_current),
             help=t("set_timezone_help"),
         )
-    return bool(refresh_clears_caches), str(user_timezone or "Europe/Paris")
+        normalize_mode_labels = st.toggle(
+            t("set_normalize_mode_labels"),
+            value=bool(getattr(settings, "normalize_mode_labels", True)),
+            help=t("set_normalize_mode_labels_help"),
+        )
+    return bool(refresh_clears_caches), str(user_timezone or "Europe/Paris"), bool(normalize_mode_labels)
