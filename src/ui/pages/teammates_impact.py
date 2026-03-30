@@ -14,13 +14,15 @@ import streamlit as st
 from src.analysis.friends_impact import (
     SCORE_FALSE_BROTHER,
     SCORE_SILENT_HERO,
+    SCORE_TOP_KILLER,
     build_impact_matrix,
     get_all_impact_events,
     identify_false_brother_multi,
     identify_silent_hero_multi,
+    identify_top_killer_multi,
 )
 from src.data.repositories import DuckDBRepository
-from src.ui.i18n import t
+from src.ui.i18n import get_lang, t
 from src.utils.db import ensure_shared_attached
 from src.utils.paths import get_shared_matches_path_from_player
 
@@ -38,7 +40,7 @@ def _load_match_participants(
     query = (
         f"SELECT p.match_id, p.xuid::TEXT as xuid, "
         f"COALESCE(vg.gamertag, p.gamertag, p.xuid::TEXT) as gamertag, "
-        f"p.assists, p.deaths "
+        f"p.assists, p.deaths, p.kills "
         f"FROM {shared_alias}.match_participants p "
         f"LEFT JOIN {shared_alias}.v_gamertag_lookup vg ON vg.xuid = p.xuid::TEXT "
         f"WHERE p.match_id IN ({', '.join(['?' for _ in match_ids])})"
@@ -53,6 +55,7 @@ def _load_match_participants(
             "gamertag": [r[2] or "Unknown" for r in rows],
             "assists": [int(r[3] or 0) for r in rows],
             "deaths": [int(r[4] or 0) for r in rows],
+            "kills": [int(r[5] or 0) for r in rows],
         }
     )
 
@@ -320,14 +323,18 @@ def _render_impact_from_events(  # noqa: PLR0913
     # Badges stats-only depuis match_participants
     silent_heroes: dict = {}
     false_brothers: dict = {}
+    top_killers: dict = {}
     if participants_df is not None and not participants_df.is_empty():
         silent_heroes = identify_silent_hero_multi(participants_df, matches_df, all_friend_xuids)
         false_brothers = identify_false_brother_multi(participants_df, matches_df, all_friend_xuids)
+        top_killers = identify_top_killer_multi(participants_df, all_friend_xuids)
         # Ajouter les scores des badges stats-only au classement
         for ev in silent_heroes.values():
             scores[ev.gamertag] = scores.get(ev.gamertag, 0.0) + SCORE_SILENT_HERO
         for ev in false_brothers.values():
             scores[ev.gamertag] = scores.get(ev.gamertag, 0.0) + SCORE_FALSE_BROTHER
+        for ev in top_killers.values():
+            scores[ev.gamertag] = scores.get(ev.gamertag, 0.0) + SCORE_TOP_KILLER
         scores = dict(sorted(scores.items(), key=lambda x: x[1], reverse=True))
 
     if not scores:
@@ -336,7 +343,7 @@ def _render_impact_from_events(  # noqa: PLR0913
 
     gamertags = list(scores.keys())
     # Ajouter les gamertags des nouveaux badges s'ils ne sont pas déjà dans la liste
-    for ev in list(silent_heroes.values()) + list(false_brothers.values()):
+    for ev in list(silent_heroes.values()) + list(false_brothers.values()) + list(top_killers.values()):
         if ev.gamertag not in gamertags:
             gamertags.append(ev.gamertag)
 
@@ -348,6 +355,7 @@ def _render_impact_from_events(  # noqa: PLR0913
         + list(first_group_deaths.keys())
         + list(silent_heroes.keys())
         + list(false_brothers.keys())
+        + list(top_killers.keys())
     )
     sorted_match_ids = [m for m in match_ids if m in impact_match_set]
 
@@ -367,10 +375,13 @@ def _render_impact_from_events(  # noqa: PLR0913
         match_outcomes=match_outcomes,
         silent_heroes=silent_heroes,
         false_brothers=false_brothers,
+        top_killers=top_killers,
     )
 
     _render_impact_ranking_html(impact_matrix, scores, sorted_match_ids)
-    st.caption(t("tm_impact_legend"))
+    _legend_label = "ℹ️ Légende" if get_lang() == "fr" else "ℹ️ Legend"
+    with st.expander(_legend_label, expanded=False):
+        st.markdown(t("tm_impact_legend"))
 
 
 def render_impact_taquinerie(
