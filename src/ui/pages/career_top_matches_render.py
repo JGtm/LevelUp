@@ -212,7 +212,7 @@ def _build_top_table_html(rows: list[dict], *, best: bool, gamertag: str = "") -
         kd_style = f" style='color:{kd_c};font-weight:700;'" if kd_c else ""
         duration = html.escape(_format_duration(row.get("time_played_seconds")))
         date_str = html.escape(_format_date(row.get("start_time")))
-        map_td = map_name_cell_html(row.get("map_name")).replace("<td", "<td class='os-sb-td'", 1)
+        map_td = map_name_cell_html(row.get("map_name"), row.get("map_id")).replace("<td", "<td class='os-sb-td'", 1)
 
         badge_td = f"<td class='os-sb-td'>{badge}</td>" if show_badge_col else ""
         body.append(

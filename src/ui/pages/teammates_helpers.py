@@ -422,7 +422,7 @@ def _build_html_rows(  # noqa: C901, PLR0912
                     display = "-"
                 tds.append(f"<td style='{style}'>{html_lib.escape(display)}</td>")
             elif key == "map_name":
-                tds.append(map_name_cell_html(r.get(key)))
+                tds.append(map_name_cell_html(r.get(key), r.get("map_id")))
             else:
                 val = _fmt_value(r.get(key))
                 tds.append(f"<td>{html_lib.escape(val)}</td>")
