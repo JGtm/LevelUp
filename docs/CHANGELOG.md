@@ -25,6 +25,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 - `_merge_trio_dataframes` returns a two-player join when `f2_df` is absent; downstream code detects the schema (`has_f2_cols`) instead of checking the DataFrame reference.
 - `render_trio_synergy_radar`, `_render_per_minute_stats`, `_render_trio_performance_charts`, `_render_trio_medals` all accept `f2_name/f2_df = None`.
 - `_TRIO_METRIC_SPECS` no longer includes kills/deaths entries (replaced by combined chart).
+- **Game mode label normalization (phase 1+2)** — display names now go through a unified resolver (`resolve_display_mode`), `translate_pair_name` delegates to this resolver, and `mode_pair_overrides` was expanded with 29 FR/EN overrides to keep mode naming consistent across UI filters, tables, and charts.
 - Size baseline updated after `render_trio_view` growth (added f2-optional branches).
 
 ### Removed

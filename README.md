@@ -17,6 +17,7 @@
 - **Remontada / Collapse / Contre-Remontada badges** — the app now detects comeback narratives from your match history: *Remontada* (you were losing at the midpoint but came back to win), *Collapse* (you were winning and blew it), *Contre-Remontada* (you stopped the enemy's comeback). Run `--comeback-badges` to compute them
 - **Unified squad view** — the 1-on-1 teammate comparison view has been removed; the squad view now works for 1, 2, or 3 friends, giving you the same rich charts regardless of party size
 - **Kills ↑ / Deaths ↓ chart** — separate kills and deaths charts replaced by a single mirrored chart per squad member, making K/D arcs easier to compare at a glance
+- **Game mode names normalized** — mode labels now go through a single display resolver (`resolve_display_mode`), with translation delegated by `translate_pair_name` and 29 FR/EN overrides in `mode_pair_overrides`, so naming stays consistent across pages and charts
 
 **v6.1 — Sync faster, bugs fixed**
 - **Sync ~30–40 % faster** — each sync now completes significantly quicker
