@@ -1,14 +1,16 @@
-# Architecture LevelUp v5.1 — Pure Architecture DuckDB + Polars
+# Architecture LevelUp v6 — DuckDB Shared Matches + i18n Assets
 
-> **Date** : 2026-02-25
-> **Version** : 5.3.0
-> **Migration depuis** : v5.0 (Shared Matches initial)
+> **Date** : 2026-03-30
+> **Version** : 6.3.0
+> **Évolution depuis** : v5.1 (Shared Matches) → v6.0 (couche résolution ID) → v6.3 (asset_translations)
+
+> Version anglaise : [ARCHITECTURE_V6.md](../ARCHITECTURE_V6.md)
 
 ---
 
 ## Vue d'Ensemble
 
-LevelUp v5.1 est l'aboutissement de l'architecture **Shared Matches** avec cleanup complet des tables legacy, modernisation Streamlit et optimisation des performances.
+LevelUp v6 étend l'architecture **Shared Matches** avec une **couche d'abstraction SQL** (vues de résolution) et un système centralisé d'**internationalisation des assets** (`asset_translations`). Les noms de maps, modes de jeu, playlists et variantes sont désormais stockés en base dans 14 langues et exposés via la vue `v_match_full`.
 
 ### Gains mesurés
 

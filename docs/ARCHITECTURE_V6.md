@@ -1,11 +1,14 @@
-# Architecture (DuckDB v5) — LevelUp
+# Architecture LevelUp v6 — DuckDB Shared Matches + i18n Assets
 
-French version: [FR/ARCHITECTURE_V5.md](FR/ARCHITECTURE_V5.md)
+French version: [FR/ARCHITECTURE_V6.md](FR/ARCHITECTURE_V6.md)
 
-LevelUp uses a DuckDB v5 “shared matches” architecture:
+> **Version** : 6.3.0 — **Mise à jour** : 2026-03-30
 
-- `data/warehouse/shared_matches.duckdb` stores match-wide data for all players.
-- `data/players/{gamertag}/stats.duckdb` stores only per-player enrichments.
+LevelUp uses a DuckDB v6 architecture based on **shared matches** and **centralized i18n via `asset_translations`**:
+
+- `data/warehouse/shared_matches_v2.duckdb` — all match data shared across all players
+- `data/warehouse/metadata.duckdb` — referentials: asset names (14 langs), weapons, career ranks, citations
+- `data/players/{gamertag}/stats.duckdb` — per-player enrichments only
 
 ## Databases
 
@@ -13,7 +16,7 @@ LevelUp uses a DuckDB v5 “shared matches” architecture:
 data/
   warehouse/
     metadata.duckdb
-    shared_matches.duckdb
+    shared_matches_v2.duckdb
     shared_pve.duckdb
   players/
     {gamertag}/
@@ -30,7 +33,7 @@ data/
 - `citation_mappings`: medal → citation mappings
 - `mode_name_tr` / `mode_*`: game mode translations (legacy overrides, superseded by `asset_translations` for map/playlist/pair/variant names)
 
-### shared_matches.duckdb (v6: `shared_matches_v2.duckdb`)
+### shared_matches_v2.duckdb
 
 Core tables:
 - `match_registry`: one row per match

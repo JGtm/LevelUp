@@ -4,7 +4,7 @@
 > Ce fichier est conservé à titre historique. Il référence des documents de travail
 > qui n'existent plus ou ont été archivés dans `.ai/archive/v5.0/`.
 >
-> **Point d'entrée actuel** : voir `docs/ARCHITECTURE_V5.md` et `.ai/backlog_plan.md`.
+> **Point d'entrée actuel** : voir `docs/ARCHITECTURE_V6.md` et `.ai/backlog_plan.md`.
 
 ---
 
@@ -153,7 +153,7 @@ grep -c "^- \[ \]" .ai/MIGRATION_V5_FINAL_CHECKLIST.md
 
 ## 🔗 Liens Utiles
 
-- **Architecture** : `docs/ARCHITECTURE_V5.md`
+- **Architecture** : `docs/ARCHITECTURE_V6.md`
 - **Schéma shared** : `docs/SHARED_MATCHES_SCHEMA.md`
 - **Tests** : `tests/test_*_v5.py`
 
