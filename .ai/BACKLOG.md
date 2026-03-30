@@ -12,6 +12,8 @@
 | 2026-03-30 | **Fix critique — `v_match_full` sans traductions en prod** : `_try_attach_meta_for_views()` cherchait `meta.maps` (table absente en v6) → toujours `None` → vue créée sans JOINs i18n. Fix : vérifier `meta.asset_translations`. `_create_v_match_full()` : suppression des 4 JOINs legacy (`meta.maps/playlists/playlist_map_mode_pairs/game_variants`), 8 JOINs `asset_translations` (en-US + fr-FR × 4 types). Vue recréée en prod : "Starboard"→"Tribord", "The Pit"→"La fosse", etc. |
 | 2026-03-30 | **Docs — Renommage ARCHITECTURE_V5 → V6** : `git mv` + mise à jour contenu (titre, version 6.3.0, `shared_matches_v2.duckdb`). §6 asset_translations ajouté dans la version FR. Toutes les références mises à jour : `CLAUDE.md`, `README.md`, `README_FR.md`, `FR/README.md`, `FR/COMMANDS.md`, `.ai/project_map.md`, `.ai/START_HERE.md`. |
 | 2026-03-30 | **Docs — CHANGELOG 6.3.0** : entrées EN + FR documentant `asset_translations`, refonte `v_match_full` v6, fix `_try_attach_meta_for_views`. |
+| 2026-03-30 | **Normalisation des labels de modes de jeu (v6.2.1)** : `resolve_display_mode()` dans `src/analysis/mode_display.py`, colonne `canonical_category` dans `mode_prefix_names`, 29 overrides dans `mode_pair_overrides`, `translate_pair_name` délégue au resolver, fichier plat de contrôle généré et validé. |
+| 2026-03-30 | **Audit KDA locaux → `efficiency` (v6.2.1)** : sémantiques séparées — `p.kda` API conservé per-match, agrégats session/carte/cumul renommés `efficiency`/`session_efficiency` ; clés i18n `efficiency`/`efficacité` ajoutées ; 6 modules `src/analysis/` mis à jour (`cumulative.py`, `stats.py`, `_performance_relative.py`, `_performance_relative_helpers.py`, `_performance_session.py`, `stats.py` domain model). |
 | 2026-03-27 | **Bug — `index_media.py --force` levait `ConstraintError: Duplicate key`** : quand `force_rescan=True`, `existing` était laissé vide `{}` → toutes les entrées considérées "nouvelles" → INSERT sur des clés déjà présentes. Fix : `existing` est toujours chargé depuis la DB ; `force_rescan` contourne uniquement le filtre delta `mtime`. Ré-indexation JGtm (73 médias) exécutée avec succès après fix. |
 | 2026-03-26 | **Bug critique — `mv_player_matches` recalcule le KDA au lieu de lire la valeur API** : vue recréait `(kills + assists/3)/deaths` au lieu de `COALESCE(p.kda, fallback)`. Fix : détection dynamique `has_kda_col` (même pattern `has_enemy_mmr`) + génération SQL conditionnelle. |
 | 2026-03-26 | **UX — Score d'équipe supérieur aux scores individuels (En-tête Page Coéquipiers)** : carte équipe n'affichait pas les bonus collectifs. Fix : `_render_compact_team_card` calcule `bonus = score - base_avg` et affiche `"moy. X (+Y collectif)"` quand > 0. |
@@ -77,131 +79,7 @@
 ## 📋 Backlog
 
 
-### 🟠 Normalisation des labels de modes de jeu — suppression des redondances (v6.2.1)
-
-**Noté le** : 2026-03-28
-**Priorité** : Moyenne
-
-#### Problème
-
-Le champ `game_variant_name` (format API Halo : `{prefix}:{mode}`) contient des redondances visibles dans toute l'UI :
-- La **playlist** implique déjà le contexte → `BTB:Slayer` dans "Big Team Battle" = "Slayer" suffit
-- La **`mode_category`** implique déjà le préfixe → `Arena:Slayer` dans Assassin = "Slayer" suffit
-- Le format est parfois **inversé** (`CTF:Arena` vs `Arena:CTF`) selon les variants
-- Quelques variants n'ont **pas de séparateur** (`CASTLE WARS`, `TFF | Survive The Undead`)
-
-#### Mapping des redondances connues
-
-| Préfixe (`game_variant_name`) | `mode_category` impliquée | Redondant si… |
-|-------------------------------|--------------------------|---------------|
-| `Arena` | Assassin | toujours |
-| `BTB` | BTB | toujours |
-| `Ranked` | Ranked | toujours |
-| `Fiesta` | Fiesta | quand le mode est Slayer basique |
-| `Firefight` | Firefight | toujours |
-| `BTB Heavies` | BTB | **non** — "Heavies" est un qualificatif significatif à conserver |
-| `Tactical` | Assassin | oui (sous-variant Arena) |
-| `Community` / `Event` | Other | oui |
-
-#### Architecture cible
-
-**Principe** : normaliser à l'affichage, jamais au stockage. Le `game_variant_name` brut reste intact en DB.
-
-**Couche de résolution** : fonction Python pure dans `src/analysis/` (0 accès DB, 0 Streamlit).
-
-```
-resolve_display_mode(
-    game_variant_name: str,
-    mode_category: str,
-    lang: str,
-    overrides: dict[str, str],          # depuis mode_pair_overrides (metadata)
-    prefix_categories: dict[str, str],  # depuis mode_prefix_names étendu
-    mode_translations: dict[str, str],  # depuis mode_name_tr (metadata)
-) -> str
-```
-
-**Algorithme de résolution (priorité décroissante)** :
-1. Lookup exact dans `mode_pair_overrides` → retourner le label override si trouvé
-2. Si pas de `:` → retourner `game_variant_name` tel quel (variants sans séparateur)
-3. Split sur `:` → `(left, right)`
-4. Détecter le format inversé : si `right` est un préfixe connu (dans `mode_prefix_names`) et `left` ne l'est pas → `prefix=right`, `mode_name=left`
-5. Si `canonical_category(prefix)` == `mode_category` du match → afficher seulement `mode_name` traduit
-6. Sinon → afficher `label(prefix) + sep + label(mode_name)` traduit
-
-#### Extension `mode_prefix_names` requise
-
-Ajouter une colonne `canonical_category` (ou `implied_category`) mappant chaque préfixe vers sa `mode_category` :
-
-| prefix | canonical_category |
-|--------|--------------------|
-| Arena | Assassin |
-| BTB | BTB |
-| BTB Heavies | BTB |
-| Ranked | Ranked |
-| Fiesta | Fiesta |
-| Firefight | Firefight |
-| Gruntpocalypse | Firefight |
-| Tactical | Assassin |
-| Community | Other |
-| Event | Other |
-| Husky Raid | Fiesta |
-| Super Husky Raid | Fiesta |
-| Super Fiesta | Fiesta |
-| Assault | Assassin |
-
-#### Validation humaine obligatoire
-
-Avant de brancher la fonction dans l'UI, générer un **fichier plat de contrôle** (CSV ou tableau console) listant :
-
-```
-game_variant_name | mode_category | playlist_name | nb_matchs | → label_résolu
-```
-
-Le fichier doit être **relu et validé par l'utilisateur** avant toute intégration UI. Des corrections peuvent être apportées via des entrées supplémentaires dans `mode_pair_overrides`.
-
-#### Implémentation
-
-1. Migration `metadata.duckdb` : ajouter colonne `canonical_category` à `mode_prefix_names`
-2. Écrire `resolve_display_mode()` dans `src/analysis/mode_display.py`
-3. Script de génération du fichier plat de contrôle (CLI, sans toucher l'UI)
-4. **Validation utilisateur** du fichier plat
-5. Intégrer `resolve_display_mode()` dans les points d'affichage UI (filtres, top matches, profil, page match…)
-6. Tests unitaires couvrant : format standard, format inversé, override, sans séparateur, qualificatif Heavies
-
----
-
-### 🔴 Audit — Calculs KDA locaux dans `src/analysis/` à valider vs valeurs API  (v6.2.1)
-
-**Noté le** : 2026-03-27
-**Priorité** : Moyenne
-
-**Contexte** : Suite au fix KDA (2026-03-27), les affichages per-match utilisent désormais exclusivement `p.kda` de l'API. Cependant, plusieurs modules dans `src/analysis/` calculent encore un KDA local à partir des totaux K/D/A pour des métriques agrégées (session, cumul, performance relative) :
-
-- `src/analysis/cumulative.py:72` — `(kills + assists) / max(1, deaths)`
-- `src/analysis/stats.py:102,180` — formules session
-- `src/analysis/_performance_relative.py:75,77` — KDA relatif
-- `src/analysis/_performance_relative_helpers.py:271` — KDA dérivé
-- `src/analysis/_performance_session.py:263,362` — KDA session
-- `src/data/domain/models/stats.py:54,103` — propriété calculée sur `MatchRow`
-
-**Décision actée (2026-03-28)** : Séparer explicitement les deux sémantiques.
-
-1. **Match / distribution / comparaison match-level** : utiliser exclusivement `p.kda` de l'API, tel quel, même si la valeur est négative.
-2. **Session / période / carte / cumul agrégé** : utiliser un indicateur distinct nommé **`efficiency`** (code) / **`efficacité`** (UI FR) / **`efficiency`** (UI EN), dérivé des totaux, avec la formule `sum(K + A/3) / sum(D)`.
-
-**Justification** : le champ API `kda` ne doit plus être traité implicitement comme un simple ratio mathématique agrégable. S'il peut être négatif, alors la moyenne des `kda` match par match décrit la moyenne d'une métrique API signée, pas un rendement global de session. Pour les agrégats lisibles par l'utilisateur, il faut donc conserver un indicateur séparé et explicitement nommé.
-
-**⛔ Nommage obligatoire** : le terme `efficiency` / `efficacité` est **le seul terme autorisé** pour désigner cet agrégat. Les termes `ratio`, `FDA`, `KDA` ou `performance` sont **interdits** pour cette métrique afin d'éviter toute confusion avec la métrique API (`kda`) et le score de performance existant. Toute variable ou clé i18n doit utiliser `efficiency` (ex. `session_efficiency`, `combat_efficiency`).
-
-**Consigne d'implémentation** :
-- Conserver `kda` comme métrique API brute dans tous les flux per-match et percentiles relatifs.
-- Renommer tous les agrégats dérivés des totaux en `efficiency` / `session_efficiency` (code) et `efficacité` / `efficacité de session` (UI FR).
-- Ajouter les clés i18n `efficiency` EN et `efficacité` FR dans `src/ui/i18n/`.
-- Audit UI/i18n à prévoir pour éviter qu'une moyenne de `kda` API soit affichée comme une efficacité de session.
-
----
-
-### 🟡 Amélioration v7++ — Backfill multi-flags : vectoriser le calcul per-match des performance scores (v7+)
+###  Amélioration v7++ — Backfill multi-flags : vectoriser le calcul per-match des performance scores (v7+)
 
 **Noté le** : 2026-03-26
 **Priorité** : Basse (non bloquant — le chemin normal sync app est déjà vectorisé)
