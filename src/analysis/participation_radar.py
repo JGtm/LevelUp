@@ -227,21 +227,17 @@ def compute_global_radar_thresholds(  # noqa: C901, PLR0911, PLR0912, PLR0915
 
     # Objectifs = max_obj uniquement (max_kill ne concerne que l'axe Combat)
     objectifs = max_obj if max_obj > 0 else RADAR_THRESHOLDS["objectifs"]
-    combat = max(max_kill, 1.0)
-    support = max(max_assist, 1.0)
-    score = max(max_score, 1.0)
-    impact = max(max_impact, 1.0)
+    combat, support, score, impact = max(max_kill, 1.0), max(max_assist, 1.0), max(max_score, 1.0), max(max_impact, 1.0)
 
-    # Seuils = max Arena × 0.85 (évite radar vide, garde de la marge)
-    factor = 0.85
-    # p80 par mode à partir des données collectées dans ce scan
     import statistics as _stats
+    factor = 0.85
     per_mode: dict[str, float] = dict(RADAR_THRESHOLDS_PER_MODE)
     for family, scores in mode_scores.items():
         if len(scores) >= 2:
             per_mode[family] = max(1.0, float(_stats.quantiles(scores, n=100)[89]))
         elif scores:
             per_mode[family] = max(1.0, scores[0])
+    logger.info("radar_thresholds: p90/mode — %s", {k: round(v) for k, v in per_mode.items() if k in mode_scores})
 
     result = {
         "objectifs": objectifs * factor,
