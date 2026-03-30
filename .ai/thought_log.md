@@ -7,6 +7,15 @@
 
 ## Journal
 
+### [2026-03-30] — Option normalize_mode_labels dans AppSettings — Complété
+
+**Statut** : Complété
+**Décision technique** : Ajout d'un paramètre `strip_redundant_prefix: bool = True` dans `resolve_display_mode()` (algo pur, sans DB). Propagé via `translate_pair_name(normalize=True)` puis lu depuis `st.session_state["app_settings"].normalize_mode_labels` dans `normalize_mode_label()`. Toggle UI dans Paramètres > Expérience. Défaut : activé (comportement v6.2.1 conservé).
+**Résultats** : 5284 tests passés, 1 échec préexistant (Playwright e2e exclu + `plot_friends_impact_scatter` manquant, non lié).
+**Conclusion** : Branche `feat/normalize-mode-labels-setting`, commit `93f8498`. Prêt pour PR.
+
+---
+
 ### [2026-03-28] — Fix switch de DB sur liens match depuis Carrière/Historique — Complété
 
 **Statut** : Complété  

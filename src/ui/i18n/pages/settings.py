@@ -72,6 +72,14 @@ STRINGS: dict[str, dict[str, str] | str] = {
         "fr": "Toutes les dates et heures affichées dans l'application utiliseront ce fuseau horaire.",
         "en": "All dates and times displayed in the application will use this timezone.",
     },
+    "set_normalize_mode_labels": {
+        "fr": "Normaliser les labels de modes",
+        "en": "Normalize mode labels",
+    },
+    "set_normalize_mode_labels_help": {
+        "fr": "Supprime les préfixes redondants selon le contexte (ex: BTB:Assassin dans une playlist BTB → Assassin).",
+        "en": "Removes redundant prefixes based on context (e.g. BTB:Slayer in a BTB playlist → Slayer).",
+    },
     # ── Match view helpers ──────────────────────────────────────────────────
     "set_arch_v5_info": {
         "fr": "ℹ️ **Architecture v5** : La synchronisation récupère automatiquement TOUTES les données :\n- Nouveaux matchs (matchmaking uniquement)\n- Highlight events (clips)\n- Médailles\n- Stats skill/MMR\n- Personal score awards\n- Aliases XUID\n\nCes options ne sont plus configurables - tout est récupéré à chaque sync.",
