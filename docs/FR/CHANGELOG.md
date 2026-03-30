@@ -4,7 +4,43 @@
 
 Toutes les modifications notables de ce projet sont documentées ici.
 
-Le format est basé sur [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/).
+Le format est basé sur [Keep a Changelog](https://keepachangelog.fr/fr/1.1.0/).
+
+## [6.3.0] - 2026-03-30
+
+### Ajouté
+
+- **Table `asset_translations`** dans `metadata.duckdb` — stocke les noms localisés de tous les assets Halo (cartes, playlists, paires playlist-carte-mode, variantes de jeu) en 14 langues BCP-47 (`en-US`, `fr-FR`, `de-DE`, `es-ES`, `es-MX`, `it-IT`, `ja-JP`, `ko-KR`, `nl-NL`, `pl-PL`, `pt-BR`, `ru-RU`, `zh-Hans`, `zh-Hant`).
+  - Schéma : `(asset_id VARCHAR, asset_type VARCHAR, lang VARCHAR, name VARCHAR, fetched_at TIMESTAMP, PK(asset_id, asset_type, lang))`
+  - 9 674 lignes au premier peuplement (698 assets uniques × 14 langues)
+  - Peuplement : `python scripts/populate_asset_translations.py`
+
+- **`scripts/populate_asset_translations.py`** — script de peuplement parallélisé :
+  - `_build_version_id_cache()` : récupère une réponse `match_stats` API par asset pour extraire le `VersionId` requis (SPNKr Discovery UGC exige un `version_id` valide dans l'URL — une chaîne vide renvoie 404)
+  - Parallélise les 14 langues simultanément via `asyncio.gather` + `asyncio.Lock` pour les écritures DB sérialisées
+  - Reprise possible : ignore les combinaisons asset × langue déjà présentes (sauf `--force`)
+  - Supporte `--dry-run` et le filtre par type (`--types map playlist pair game_variant`)
+
+### Modifié
+
+- **`v_match_full` — refonte i18n v6** — les noms de cartes et modes sont maintenant résolus exclusivement depuis `asset_translations` (v6). Les quatre JOINs sur tables legacy (`meta.maps`, `meta.playlists`, `meta.playlist_map_mode_pairs`, `meta.game_variants`) ont été supprimés — ces tables n'existent plus dans `metadata.duckdb` v6.
+  - `map_name` : `COALESCE(at_map_en.name, mr.map_name)` (traduction en-US, fallback valeur brute)
+  - Nouvelle colonne `map_name_fr` : `at_map_fr.name` (traduction fr-FR, NULL si non disponible)
+  - Même pattern pour `playlist_name`, `pair_name`, `game_variant_name` et leurs variantes `_fr`
+  - 8 LEFT JOINs sur `meta.asset_translations` (en-US + fr-FR × 4 types) remplacent les 4 JOINs legacy
+
+- **`_try_attach_meta_for_views()`** — vérifie désormais `meta.asset_translations` au lieu de `meta.maps` pour déterminer si les métadonnées sont utilisables. `meta.maps` n'existant plus en v6, l'ancienne vérification retournait toujours `None`, forçant `v_match_full` à être créée sans JOINs i18n.
+
+### Corrigé
+
+- `v_match_full` était silencieusement créée sans localisation — `map_name_fr` était toujours `NULL` en production car `_try_attach_meta_for_views()` cherchait `meta.maps` (supprimée en v6) et basculait sur le chemin sans métadonnées.
+
+### Tests
+
+- `test_v_match_full_avec_metadata_attachee` réécrit pour l'architecture v6 : crée uniquement `asset_translations` (pas les tables legacy `maps`/`playlists`), vérifie que `map_name` (en-US) et `map_name_fr` (fr-FR) sont correctement résolus.
+- **14/14 tests passent** (`test_code_quality.py` + `test_resolution_views.py`)
+
+---
 
 ## [6.2.0] - 2026-03-28
 

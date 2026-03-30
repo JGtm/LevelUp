@@ -6,6 +6,42 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 > French version: [FR/CHANGELOG.md](FR/CHANGELOG.md)
 
+## [6.3.0] - 2026-03-30
+
+### Added
+
+- **`asset_translations` table** in `metadata.duckdb` — stores localized names for all Halo assets (maps, playlists, playlist-map-mode pairs, game variants) in 14 BCP-47 languages (`en-US`, `fr-FR`, `de-DE`, `es-ES`, `es-MX`, `it-IT`, `ja-JP`, `ko-KR`, `nl-NL`, `pl-PL`, `pt-BR`, `ru-RU`, `zh-Hans`, `zh-Hant`).
+  - Schema: `(asset_id VARCHAR, asset_type VARCHAR, lang VARCHAR, name VARCHAR, fetched_at TIMESTAMP, PRIMARY KEY(asset_id, asset_type, lang))`
+  - 9 674 rows on first population (698 unique assets × 14 languages)
+  - Populate with: `python scripts/populate_asset_translations.py`
+
+- **`scripts/populate_asset_translations.py`** — parallelized population script for `asset_translations`:
+  - `_build_version_id_cache()`: fetches one `match_stats` API response per asset to extract the required `VersionId` (SPNKr Discovery UGC requires a valid version ID in the URL — empty string yields 404)
+  - Parallelizes all 14 languages simultaneously via `asyncio.gather` + `asyncio.Lock` for serialized DB writes
+  - Resumable: skips asset × lang combinations already present in the table (unless `--force`)
+  - Supports `--dry-run` and per-type filtering (`--types map playlist pair game_variant`)
+
+### Changed
+
+- **`v_match_full` — v6 i18n overhaul** — map and mode names now resolved exclusively from `asset_translations` (v6). The four legacy table JOINs (`meta.maps`, `meta.playlists`, `meta.playlist_map_mode_pairs`, `meta.game_variants`) have been removed — those tables no longer exist in `metadata.duckdb` v6.
+  - `map_name`: `COALESCE(at_map_en.name, mr.map_name)` (en-US translation, fallback to raw registry value)
+  - New column `map_name_fr`: `at_map_fr.name` (fr-FR translation, NULL if not available)
+  - Same pattern for `playlist_name`, `pair_name`, `game_variant_name` and their `_fr` variants
+  - 8 LEFT JOINs on `meta.asset_translations` (en-US + fr-FR × 4 asset types) replace the 4 legacy table JOINs
+
+- **`_try_attach_meta_for_views()`** — now checks for `meta.asset_translations` instead of `meta.maps` to determine whether metadata is usable. Since `meta.maps` does not exist in v6, the previous check always returned `None`, causing `v_match_full` to be created without any i18n JOINs.
+
+### Fixed
+
+- `v_match_full` was silently created without any localization — `map_name_fr` was always `NULL` in production because `_try_attach_meta_for_views()` looked for `meta.maps` (removed in v6) and fell back to the no-metadata code path.
+
+### Tests
+
+- `test_v_match_full_avec_metadata_attachee` rewritten for v6 architecture: creates only `asset_translations` (not the legacy `maps`/`playlists` tables), verifies both `map_name` (en-US) and `map_name_fr` (fr-FR) are resolved correctly.
+- **14/14 tests passing** (`test_code_quality.py` + `test_resolution_views.py`)
+
+---
+
 ## [6.2.0] - 2026-03-28
 
 ### Added
