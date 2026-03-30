@@ -176,12 +176,49 @@ def _build_map_url_index() -> dict[str, str]:
 
 
 def map_thumb_url(map_name: str | None) -> str | None:
-    """Retourne l'URL statique Streamlit de la miniature pour un nom de carte."""
+    """Retourne l'URL statique Streamlit de la miniature pour un nom de carte (EN)."""
     if not map_name:
         return None
     key = str(map_name).strip().lower()
     idx = _build_map_url_index()
     return idx.get(key) or idx.get(key.replace(" ", "_"))
+
+
+@functools.cache
+def _build_map_id_index() -> dict[str, str]:
+    """Construit {asset_id: url} en joignant metadata.duckdb maps + index fichiers."""
+    import unicodedata
+
+    from src.utils.db import duckdb_read_only
+
+    name_idx = _build_map_url_index()
+    if not name_idx:
+        return {}
+    meta_path = Path(get_repo_root()) / "data" / "warehouse" / "metadata.duckdb"
+    if not meta_path.exists():
+        return {}
+    try:
+        with duckdb_read_only(meta_path) as conn:
+            rows = conn.execute(
+                "SELECT asset_id, name_en FROM maps WHERE name_en IS NOT NULL"
+            ).fetchall()
+    except Exception as exc:  # noqa: BLE001
+        _log.warning("Impossible de charger l'index map_id→thumbnail : %s", exc)
+        return {}
+    idx: dict[str, str] = {}
+    for asset_id, name_en in rows:
+        key = unicodedata.normalize("NFC", name_en.lower())
+        url = name_idx.get(key) or name_idx.get(key.replace(" ", "_"))
+        if url:
+            idx[str(asset_id)] = url
+    return idx
+
+
+def map_thumb_url_by_id(map_id: str | None) -> str | None:
+    """Retourne l'URL statique de la miniature via asset_id (indépendant de la langue)."""
+    if not map_id:
+        return None
+    return _build_map_id_index().get(str(map_id).strip())
 
 
 # ---------------------------------------------------------------------------
@@ -325,7 +362,7 @@ def _render_cell(r: dict, key: str, outcome_code: object) -> str:
 
     if key == "map_name":
         val = fmt_value(r.get(key))
-        url = map_thumb_url(r.get(key))
+        url = map_thumb_url_by_id(r.get("map_id")) or map_thumb_url(r.get(key))
         if url:
             esc_url = html_lib.escape(url)
             esc_val = html_lib.escape(val)

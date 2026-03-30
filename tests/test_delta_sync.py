@@ -17,13 +17,13 @@ from src.ui.translations import (
 
 
 class TestTranslatePlaylistName:
-    """Tests pour translate_playlist_name (traduction via i18n/playlists_*.json)."""
+    """Tests pour translate_playlist_name (passthrough + UUID detection depuis v6.3)."""
 
     def test_known_playlist_fr(self):
-        """Playlists connues traduites en FR via static/i18n/playlists_fr.json."""
-        assert translate_playlist_name("Quick Play", lang="fr") == "Partie rapide"
-        assert translate_playlist_name("Ranked Arena", lang="fr") == "Arène classée"
-        assert translate_playlist_name("Big Team Battle", lang="fr") == "Grande Bataille en Équipe"
+        """Playlists passthrough — traductions FR via asset_translations (DB), pas JSON."""
+        assert translate_playlist_name("Quick Play", lang="fr") == "Quick Play"
+        assert translate_playlist_name("Ranked Arena", lang="fr") == "Ranked Arena"
+        assert translate_playlist_name("Big Team Battle", lang="fr") == "Big Team Battle"
 
     def test_known_playlist_en(self):
         """Playlists connues restent identiques en EN."""
@@ -39,8 +39,8 @@ class TestTranslatePlaylistName:
         assert translate_playlist_name(None) is None
 
     def test_whitespace_handling(self):
-        """Test avec espaces autour — strip appliqué puis traduit."""
-        assert translate_playlist_name("  Quick Play  ") == "Partie rapide"
+        """Test avec espaces autour — strip appliqué puis passthrough."""
+        assert translate_playlist_name("  Quick Play  ") == "Quick Play"
 
     def test_uuid_returns_inconnue(self):
         """UUID brut → label 'Inconnue' + warning loggé."""

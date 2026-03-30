@@ -7,6 +7,23 @@
 
 ## Journal
 
+### [2026-03-30] — Thumbnail cartes par asset_id (indépendant de la langue) — Complété
+
+**Statut** : Complété
+**Décision technique** : Refactoring du tooltip thumbnail des tableaux de matchs pour utiliser `map_id` (asset_id) au lieu du nom texte de la carte. Sans ce fix, les thumbnails auraient disparu dès l'affichage des noms localisés (FR, DE…).
+- Nouveau `_build_map_id_index()` dans `match_table_html.py` : joint `metadata.duckdb maps(asset_id, name_en)` avec l'index fichiers `static/maps/` → `{asset_id: url}`. Mis en cache avec `@functools.cache`.
+- Nouvelle `map_thumb_url_by_id(map_id)` : lookup ID-first, language-agnostic.
+- `_render_cell()` : `map_thumb_url_by_id(r.get("map_id")) or map_thumb_url(r.get("map_name"))` — fallback EN si map non encore dans la DB.
+- `map_name_cell_html(map_name, map_id=None)` : même priorité ID > nom.
+- Callers mis à jour : `career_top_matches_render.py`, `teammates_helpers.py`.
+- `_session_compare_history.py` : iterate sur colonnes display, `map_id` non disponible → fallback nom EN conservé.
+- 2 tests `test_delta_sync.py::TestTranslatePlaylistName` mis à jour (attendaient l'ancien JSON supprimé).
+
+**Résultats** : 5284 passés, 3 failed (2 pre-existing : ruff venv cassé + plot_friends_impact_scatter ; 0 nouvelle régression).
+**Conclusion** : Les thumbnails fonctionneront même quand `map_name` est affiché en français ou autre langue.
+
+---
+
 ### [2026-03-30] — Référentiel multi-langue des assets Halo (v6.3) — Complété
 
 **Statut** : Complété
