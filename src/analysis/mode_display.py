@@ -113,6 +113,8 @@ def resolve_display_mode(
     mode_category: str,
     lang: str,
     tables: dict,
+    *,
+    strip_redundant_prefix: bool = True,
 ) -> str:
     """Résout le label d'affichage d'un mode sans redondance contextuelle.
 
@@ -166,8 +168,8 @@ def resolve_display_mode(
             "mode_en absent de mode_name_tr : %r (pair_name=%r)", mode_en, game_variant_name
         )
 
-    # 4) Préfixe redondant → simplifier
-    if rule and _is_redundant(rule, mode_category, prefix_en):
+    # 4) Préfixe redondant → simplifier (si activé)
+    if strip_redundant_prefix and rule and _is_redundant(rule, mode_category, prefix_en):
         qualifier = rule["qualifier"]
         if qualifier is None:
             return mode_label

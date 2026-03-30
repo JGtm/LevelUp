@@ -68,7 +68,9 @@ def normalize_mode_label(pair_name: str | None) -> str | None:
     if pair_name is None:
         return None
     base = clean_asset_label(pair_name)
-    _translated = translate_pair_name(base, lang=get_lang())
+    _settings = st.session_state.get("app_settings")
+    _normalize = getattr(_settings, "normalize_mode_labels", True) if _settings else True
+    _translated = translate_pair_name(base, lang=get_lang(), normalize=_normalize)
     if _translated is None:
         return None
     s = str(_translated).strip()
