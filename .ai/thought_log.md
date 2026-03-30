@@ -7,6 +7,48 @@
 
 ## Journal
 
+### [2026-03-30] — asset_translations v6 : peuplement + branchement v_match_full — Complété
+
+**Tâche** : Peupler `asset_translations` dans `metadata.duckdb` (14 langues × 698 assets) et brancher `v_match_full` dessus pour que les graphiques affichent des noms localisés.
+
+**Décision technique** :
+- `populate_asset_translations.py` : optimisé pour parallélisme (14 langues simultanées via `asyncio.gather` + `asyncio.Lock` pour écritures sérialisées)
+- Cause racine du bug : `get_map(asset_id, version_id="")` → 404 (URL `.../versions/`)
+- Fix : `_build_version_id_cache()` fetch les `VersionId` depuis `match stats API` (1 match par asset → 560 appels → 698 version_ids couverts) avant d'appeler Discovery UGC
+- Bug SQL DuckDB : `CURRENT_TIMESTAMP` dans `ON CONFLICT DO UPDATE SET` → utiliser `now()`
+- Bug SQL DuckDB : `LIMIT 1 BY col` invalide → `ROW_NUMBER() OVER (PARTITION BY col)`
+- `_try_attach_meta_for_views` : vérifiait `meta.maps` (table supprimée en v6) → corrigé pour vérifier `meta.asset_translations`
+- `_create_v_match_full` : suppression des 4 JOINs legacy (`meta.maps`, `meta.playlists`, `meta.playlist_map_mode_pairs`, `meta.game_variants`) inexistants en v6 ; COALESCE simplifié vers `asset_translations` directement
+- Fixes qualité : f-strings sans placeholders (F541), imports désordonnés (I001), import inutile (F401), SIM108
+
+**Résultats** :
+- `asset_translations` : 9674 lignes (698 assets × 14 langues) — maps, playlists, pairs, game_variants
+- `v_match_full` maintenant branchée sur `asset_translations` exclusivement (plus de tables legacy)
+- Durée script optimisé : ~6 min (vs ~26 min estimé sans parallélisme)
+- Tests : 14/14 passent (test_code_quality + test_resolution_views)
+
+**Conclusion** : Les graphiques affichant des noms de maps/modes de jeu en FR sont maintenant alimentés par `asset_translations` via `v_match_full`. Prochaine étape : vérifier visuellement en lançant l'app.
+
+### [2026-03-30] — Refactoring qualité code : friends_impact + participation_radar — Complété
+
+**Tâche** : Corriger les 2 violations de qualité détectées par audit (taille module + noqa:)
+
+**Décision technique** :
+- `friends_impact.py` (707L) → 3 modules : `_impact_types.py` (30L) + `_impact_event_badges.py` (296L) + `friends_impact.py` (363L)
+- `participation_radar.py` (496L, 4 noqa:) → extraction `_threshold_queries.py` (187L) + `ProfileOptions` dataclass → `participation_radar.py` (383L, 0 noqa:)
+- `ImpactEventSets` dataclass pour `build_impact_matrix` (8 args → 4 args)
+- `ProfileOptions` dataclass pour `compute_participation_profile` (7 args → 3 args)
+
+**Résultats** :
+- Ruff : 0 violations C90/PLR0912/PLR0913/PLR0915 sur tous les modules refactorisés
+- Tests : 47/47 passent (test_participation_radar + test_match_impact_events)
+- Callers mis à jour : `teammates_impact.py`, `match_view_participation.py`, `session_compare_charts.py`, `teammates_service.py`, `tests/test_participation_radar.py`
+- Re-export `ProfileOptions` ajouté dans `src/visualization/participation_radar.py`
+
+**Conclusion** : Refactoring terminé, 0 noqa: restant sur les modules corrigés.
+
+---
+
 ### [2026-03-30] — Branchement asset_translations sur v_match_full — Complété
 
 **Statut** : Complété  

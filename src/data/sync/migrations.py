@@ -1432,15 +1432,11 @@ def _create_v_match_full(
     et les colonnes EN tombent en fallback sur match_registry (comportement actuel).
     """
     if meta_alias:
-        map_en = f"COALESCE(at_map_en.name, m.name_en, mr.map_name)"
-        pl_en = f"COALESCE(at_pl_en.name, p.name_en, mr.playlist_name)"
-        pp_en = f"COALESCE(at_pair_en.name, pp.name_en, mr.pair_name)"
-        gv_en = f"COALESCE(at_gv_en.name, gv.name_en, mr.game_variant_name)"
+        map_en = "COALESCE(at_map_en.name, mr.map_name)"
+        pl_en = "COALESCE(at_pl_en.name, mr.playlist_name)"
+        pp_en = "COALESCE(at_pair_en.name, mr.pair_name)"
+        gv_en = "COALESCE(at_gv_en.name, mr.game_variant_name)"
         joins = f"""
-        LEFT JOIN {meta_alias}.maps m ON mr.map_id = m.asset_id
-        LEFT JOIN {meta_alias}.playlists p ON mr.playlist_id = p.asset_id
-        LEFT JOIN {meta_alias}.playlist_map_mode_pairs pp ON mr.pair_id = pp.asset_id
-        LEFT JOIN {meta_alias}.game_variants gv ON mr.game_variant_id = gv.asset_id
         LEFT JOIN {meta_alias}.asset_translations at_map_en
             ON mr.map_id = at_map_en.asset_id AND at_map_en.asset_type = 'map' AND at_map_en.lang = 'en-US'
         LEFT JOIN {meta_alias}.asset_translations at_map_fr
@@ -1458,14 +1454,14 @@ def _create_v_match_full(
         LEFT JOIN {meta_alias}.asset_translations at_gv_fr
             ON mr.game_variant_id = at_gv_fr.asset_id AND at_gv_fr.asset_type = 'game_variant' AND at_gv_fr.lang = 'fr-FR'"""
         fr_cols = """
-        COALESCE(at_map_fr.name, m.name_fr)          AS map_name_fr,
-        COALESCE(at_pl_fr.name, p.name_fr)           AS playlist_name_fr,
-        COALESCE(at_pair_fr.name, pp.name_fr)        AS pair_name_fr,
-        COALESCE(at_gv_fr.name, gv.name_fr)          AS game_variant_name_fr,
-        gv.mode_name                                 AS mode_name,
-        gv.mode_name_fr                              AS mode_name_fr,
-        p.playlist_canonical_en                      AS playlist_canonical_en,
-        p.playlist_canonical_fr                      AS playlist_canonical_fr"""
+        at_map_fr.name                               AS map_name_fr,
+        at_pl_fr.name                                AS playlist_name_fr,
+        at_pair_fr.name                              AS pair_name_fr,
+        at_gv_fr.name                                AS game_variant_name_fr,
+        NULL                                         AS mode_name,
+        NULL                                         AS mode_name_fr,
+        NULL                                         AS playlist_canonical_en,
+        NULL                                         AS playlist_canonical_fr"""
     else:
         map_en = "mr.map_name"
         pl_en = "mr.playlist_name"
@@ -1565,7 +1561,7 @@ def ensure_resolution_views(conn: duckdb.DuckDBPyConnection) -> None:
 def _try_attach_meta_for_views(conn: duckdb.DuckDBPyConnection) -> str | None:
     """Tente d'attacher metadata.duckdb pour que v_match_full puisse résoudre les noms FR.
 
-    Retourne l'alias si réussi ET que la table maps existe, None sinon.
+    Retourne l'alias si réussi ET que la table asset_translations existe (v6), None sinon.
     """
     from src.utils.db import ensure_metadata_attached
 
@@ -1578,20 +1574,15 @@ def _try_attach_meta_for_views(conn: duckdb.DuckDBPyConnection) -> str | None:
     if alias is None:
         return None
 
-    # Vérifier que les tables i18n sont bien peuplées (Commit 0 requis)
+    # Vérifier que asset_translations est présente (source i18n v6)
     try:
-        rows = conn.execute(
-            "SELECT table_name FROM duckdb_tables() WHERE table_name = 'maps'"
+        db_name_rows = conn.execute(
+            "SELECT database_name FROM duckdb_tables() WHERE table_name = 'asset_translations'"
         ).fetchall()
-        for _row in rows:
-            # Si la table est dans le bon catalog
-            db_name_rows = conn.execute(
-                "SELECT database_name FROM duckdb_tables() WHERE table_name = 'maps'"
-            ).fetchall()
-            if any(r[0] == alias for r in db_name_rows):
-                return alias
+        if any(r[0] == alias for r in db_name_rows):
+            return alias
     except Exception as e:
-        logger.debug("event=meta_maps_check_failed step=try_attach_meta_for_views error=%s", e)
+        logger.debug("event=meta_asset_translations_check_failed step=try_attach_meta_for_views error=%s", e)
     return None
 
 
