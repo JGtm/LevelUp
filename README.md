@@ -294,7 +294,7 @@ data/
 | player `stats` | `match_skill_rank` | LUSR/CSR rating per match |
 | player `stats` | `mv_map_stats`, `mv_global_stats` | Materialized views |
 
-**Technical docs**: [docs/ARCHITECTURE_V5.md](docs/ARCHITECTURE_V5.md)
+**Technical docs**: [docs/ARCHITECTURE_V6.md](docs/ARCHITECTURE_V6.md)
 
 ---
 
@@ -305,7 +305,7 @@ data/
 | [INSTALL.md](docs/INSTALL.md) | Detailed installation guide |
 | [CONFIGURATION.md](docs/CONFIGURATION.md) | Tokens and profiles configuration |
 | [COMMANDS.md](docs/COMMANDS.md) | Common commands cheat sheet |
-| [ARCHITECTURE_V5.md](docs/ARCHITECTURE_V5.md) | v5 architecture (shared matches) |
+| [ARCHITECTURE_V6.md](docs/ARCHITECTURE_V6.md) | v6 architecture (shared matches + i18n assets) |
 | [SYNC_GUIDE.md](docs/SYNC_GUIDE.md) | Sync guide |
 | [BACKUP_RESTORE.md](docs/BACKUP_RESTORE.md) | Backup and restore |
 | [TESTING_V5.md](docs/TESTING_V5.md) | v5 testing strategy |

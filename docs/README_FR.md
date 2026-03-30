@@ -134,7 +134,7 @@ data/
 | player `stats` | `match_skill_rank` | Rating LUSR/CSR par match |
 | player `stats` | `mv_map_stats`, `mv_global_stats` | Vues matérialisées |
 
-**Documentation technique** : [ARCHITECTURE_V5.md](ARCHITECTURE_V5.md)
+**Documentation technique** : [ARCHITECTURE_V6.md](ARCHITECTURE_V6.md)
 
 ---
 
@@ -144,7 +144,7 @@ data/
 |----------|---------|
 | [INSTALL.md](INSTALL.md) | Guide d'installation détaillé |
 | [CONFIGURATION.md](CONFIGURATION.md) | Configuration des tokens et profils |
-| [ARCHITECTURE_V5.md](ARCHITECTURE_V5.md) | Architecture v5 (shared matches) |
+| [ARCHITECTURE_V6.md](ARCHITECTURE_V6.md) | Architecture v6 (shared matches + i18n assets) |
 | [DATA_ARCHITECTURE.md](DATA_ARCHITECTURE.md) | Architecture des données |
 | [SHARED_MATCHES_SCHEMA.md](SHARED_MATCHES_SCHEMA.md) | Schéma shared_matches.duckdb |
 | [SQL_SCHEMA.md](SQL_SCHEMA.md) | Schémas DuckDB complets |
