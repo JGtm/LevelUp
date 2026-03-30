@@ -41,12 +41,12 @@ RADAR_THRESHOLDS: dict[str, float] = {
     "survie_avg_life_ref_seconds": 90.0,  # 90 sec durée vie moy = 100%
 }
 
-# Seuils p80 de référence par mode individuel (fallback si données insuffisantes)
+# Seuils p90 de référence par mode individuel (fallback si données insuffisantes)
 RADAR_THRESHOLDS_PER_MODE: dict[str, float] = {
-    "ctf": 700.0, "oddball": 600.0, "strongholds": 850.0,
-    "koth": 700.0, "stockpile": 800.0, "extraction": 650.0,
-    "land_grab": 700.0, "slayer": 3000.0, "fiesta": 2800.0,
-    "other": 800.0,
+    "ctf": 850.0, "oddball": 700.0, "strongholds": 1050.0,
+    "koth": 850.0, "stockpile": 950.0, "extraction": 800.0,
+    "land_grab": 850.0, "slayer": 3500.0, "fiesta": 3200.0,
+    "other": 950.0,
 }
 
 
@@ -239,7 +239,7 @@ def compute_global_radar_thresholds(  # noqa: C901, PLR0911, PLR0912, PLR0915
     per_mode: dict[str, float] = dict(RADAR_THRESHOLDS_PER_MODE)
     for family, scores in mode_scores.items():
         if len(scores) >= 2:
-            per_mode[family] = max(1.0, float(_stats.quantiles(scores, n=100)[79]))
+            per_mode[family] = max(1.0, float(_stats.quantiles(scores, n=100)[89]))
         elif scores:
             per_mode[family] = max(1.0, scores[0])
 

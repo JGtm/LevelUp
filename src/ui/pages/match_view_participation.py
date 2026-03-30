@@ -82,14 +82,27 @@ def render_participation_section(
         elif isinstance(match_row, dict):
             row_dict = match_row
 
-    # Profil de participation (seuils = meilleur match global si dispo)
+    # Profil de participation — seuil per-mode (p90) calibré sur le type de match
+    from src.analysis.participation_radar import (
+        RADAR_THRESHOLDS_PER_MODE,
+        get_mode_family,
+        is_objective_mode_from_pair_name,
+    )
+
     thresholds = get_radar_thresholds(db_path)
+    pair_name_match = row_dict.get("pair_name") if row_dict else None
+    per_mode = thresholds.pop("per_mode", None) or RADAR_THRESHOLDS_PER_MODE
+    family = get_mode_family(pair_name_match)
+    if is_objective_mode_from_pair_name(pair_name_match):
+        thresholds["objectifs"] = per_mode.get(family, RADAR_THRESHOLDS_PER_MODE.get(family, 950.0))
+    else:
+        thresholds["objectifs"] = per_mode.get("slayer", RADAR_THRESHOLDS_PER_MODE["slayer"])
     profile = compute_participation_profile(
         df,
         match_row=row_dict,
         name=t("mvc_this_match"),
         color="#636EFA",
-        pair_name=row_dict.get("pair_name") if row_dict else None,
+        pair_name=pair_name_match,
         thresholds=thresholds,
     )
 
