@@ -15,6 +15,7 @@ from src.analysis.friends_impact import (
     SCORE_FALSE_BROTHER,
     SCORE_SILENT_HERO,
     SCORE_TOP_KILLER,
+    ImpactEventSets,
     build_impact_matrix,
     get_all_impact_events,
     identify_false_brother_multi,
@@ -365,17 +366,19 @@ def _render_impact_from_events(  # noqa: PLR0913
             match_outcomes[str(row["match_id"])] = int(row["outcome"])
 
     impact_matrix = build_impact_matrix(
-        first_bloods,
-        clutch_finishers,
-        last_casualties,
-        last_group_kills,
-        first_group_deaths,
+        ImpactEventSets(
+            first_bloods=first_bloods,
+            clutch_finishers=clutch_finishers,
+            last_casualties=last_casualties,
+            last_group_kills=last_group_kills,
+            first_group_deaths=first_group_deaths,
+            silent_heroes=silent_heroes,
+            false_brothers=false_brothers,
+            top_killers=top_killers,
+        ),
         match_ids=sorted_match_ids,
         gamertags=gamertags,
         match_outcomes=match_outcomes,
-        silent_heroes=silent_heroes,
-        false_brothers=false_brothers,
-        top_killers=top_killers,
     )
 
     _render_impact_ranking_html(impact_matrix, scores, sorted_match_ids)

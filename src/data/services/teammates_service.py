@@ -377,6 +377,7 @@ class TeammatesService:
             Liste de profils (dicts) compatibles avec create_participation_profile_radar.
         """
         from src.analysis.participation_radar import (
+            ProfileOptions,
             compute_participation_profile,
             get_radar_thresholds,
         )
@@ -416,10 +417,12 @@ class TeammatesService:
                 profile = compute_participation_profile(
                     ps,
                     match_row=match_row,
-                    name=name,
-                    color=color,
-                    pair_name=match_row.get("pair_name"),
-                    thresholds=thresholds,
+                    options=ProfileOptions(
+                        name=name,
+                        color=color,
+                        pair_name=match_row.get("pair_name"),
+                        thresholds=thresholds,
+                    ),
                 )
                 profiles.append(profile)
             except Exception:

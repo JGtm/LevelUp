@@ -168,9 +168,14 @@ class TestComputeParticipationProfile:
     """Tests pour compute_participation_profile."""
 
     def test_empty_awards_returns_default_profile(self, empty_awards: pl.DataFrame) -> None:
-        from src.visualization.participation_radar import compute_participation_profile
+        from src.visualization.participation_radar import (
+            ProfileOptions,
+            compute_participation_profile,
+        )
 
-        profile = compute_participation_profile(empty_awards, name="Vide", color="#000")
+        profile = compute_participation_profile(
+            empty_awards, options=ProfileOptions(name="Vide", color="#000")
+        )
 
         assert profile["name"] == "Vide"
         assert profile["color"] == "#000"
@@ -180,12 +185,15 @@ class TestComputeParticipationProfile:
         assert profile["score_raw"] == 0
 
     def test_mode_objective_uses_objective_score(self, awards_mode_objective: pl.DataFrame) -> None:
-        from src.visualization.participation_radar import compute_participation_profile
+        from src.visualization.participation_radar import (
+            ProfileOptions,
+            compute_participation_profile,
+        )
 
         profile = compute_participation_profile(
             awards_mode_objective,
             match_row=None,
-            mode_is_objective=True,
+            options=ProfileOptions(mode_is_objective=True),
         )
 
         assert profile["objectifs_raw"] == 400
@@ -196,23 +204,29 @@ class TestComputeParticipationProfile:
     def test_mode_slayer_uses_kill_score_as_objectifs(
         self, awards_mode_slayer: pl.DataFrame
     ) -> None:
-        from src.visualization.participation_radar import compute_participation_profile
+        from src.visualization.participation_radar import (
+            ProfileOptions,
+            compute_participation_profile,
+        )
 
         profile = compute_participation_profile(
             awards_mode_slayer,
             match_row=None,
-            mode_is_objective=False,
+            options=ProfileOptions(mode_is_objective=False),
         )
 
         assert profile["objectifs_raw"] == 1200
         assert profile["combat_raw"] == 1200
 
     def test_detect_mode_from_pair_name_slayer(self, awards_mode_slayer: pl.DataFrame) -> None:
-        from src.visualization.participation_radar import compute_participation_profile
+        from src.visualization.participation_radar import (
+            ProfileOptions,
+            compute_participation_profile,
+        )
 
         profile = compute_participation_profile(
             awards_mode_slayer,
-            pair_name="Arena:Slayer on Aquarius",
+            options=ProfileOptions(pair_name="Arena:Slayer on Aquarius"),
         )
 
         assert profile["objectifs_raw"] == 1200
@@ -220,11 +234,14 @@ class TestComputeParticipationProfile:
     def test_detect_mode_from_pair_name_objective(
         self, awards_mode_objective: pl.DataFrame
     ) -> None:
-        from src.visualization.participation_radar import compute_participation_profile
+        from src.visualization.participation_radar import (
+            ProfileOptions,
+            compute_participation_profile,
+        )
 
         profile = compute_participation_profile(
             awards_mode_objective,
-            pair_name="BTB:CTF on Fragmentation",
+            options=ProfileOptions(pair_name="BTB:CTF on Fragmentation"),
         )
 
         assert profile["objectifs_raw"] == 400

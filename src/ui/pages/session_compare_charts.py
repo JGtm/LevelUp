@@ -385,6 +385,7 @@ def _load_participation_profiles(  # noqa: PLR0913
     db_path: str,
 ) -> list:
     """Charge et construit les profils de participation pour les deux sessions."""
+    from src.analysis.participation_radar import ProfileOptions
     from src.visualization.participation_radar import (
         compute_participation_profile,
         get_radar_thresholds,
@@ -423,10 +424,12 @@ def _load_participation_profiles(  # noqa: PLR0913
         profile_a = compute_participation_profile(
             df_a,
             match_row=match_row_a,
-            name="Session A",
-            color=SESSION_COLORS["session_a"],
-            pair_name=match_row_a.get("pair_name") if match_row_a else None,
-            thresholds=_session_thresholds(thresholds, len(match_ids_a)),
+            options=ProfileOptions(
+                name="Session A",
+                color=SESSION_COLORS["session_a"],
+                pair_name=match_row_a.get("pair_name") if match_row_a else None,
+                thresholds=_session_thresholds(thresholds, len(match_ids_a)),
+            ),
         )
         profiles.append(profile_a)
 
@@ -435,10 +438,12 @@ def _load_participation_profiles(  # noqa: PLR0913
         profile_b = compute_participation_profile(
             df_b,
             match_row=match_row_b,
-            name="Session B",
-            color=SESSION_COLORS["session_b"],
-            pair_name=match_row_b.get("pair_name") if match_row_b else None,
-            thresholds=_session_thresholds(thresholds, len(match_ids_b)),
+            options=ProfileOptions(
+                name="Session B",
+                color=SESSION_COLORS["session_b"],
+                pair_name=match_row_b.get("pair_name") if match_row_b else None,
+                thresholds=_session_thresholds(thresholds, len(match_ids_b)),
+            ),
         )
         profiles.append(profile_b)
     return profiles
