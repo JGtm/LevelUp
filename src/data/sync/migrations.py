@@ -1650,3 +1650,52 @@ def ensure_medal_definitions_table(conn: duckdb.DuckDBPyConnection) -> None:
     par ``scripts/populate_medal_metadata.py``.
     """
     conn.execute(_MEDAL_DEFINITIONS_DDL)
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# metadata.duckdb — Référentiels multi-langue (v6.3)
+# ─────────────────────────────────────────────────────────────────────────────
+
+_ASSET_TRANSLATIONS_DDL = """
+CREATE TABLE IF NOT EXISTS asset_translations (
+    asset_id    VARCHAR NOT NULL,
+    asset_type  VARCHAR NOT NULL,
+    lang        VARCHAR NOT NULL,
+    name        VARCHAR NOT NULL,
+    description VARCHAR,
+    fetched_at  TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    PRIMARY KEY (asset_id, asset_type, lang)
+);
+CREATE INDEX IF NOT EXISTS idx_asset_tr_id_type
+    ON asset_translations(asset_id, asset_type);
+"""
+
+_MEDAL_TRANSLATIONS_DDL = """
+CREATE TABLE IF NOT EXISTS medal_translations (
+    medal_name_id BIGINT  NOT NULL,
+    lang          VARCHAR NOT NULL,
+    name          VARCHAR NOT NULL,
+    description   VARCHAR,
+    PRIMARY KEY (medal_name_id, lang)
+);
+"""
+
+
+def ensure_asset_translations_table(conn: duckdb.DuckDBPyConnection) -> None:
+    """Crée ``asset_translations`` dans metadata.duckdb (idempotente).
+
+    Table pivot multi-langue pour les assets Discovery UGC :
+    maps, playlists, playlist_map_mode_pairs, game_variants.
+    Peuplée par ``scripts/populate_asset_translations.py``.
+    """
+    conn.execute(_ASSET_TRANSLATIONS_DDL)
+
+
+def ensure_medal_translations_table(conn: duckdb.DuckDBPyConnection) -> None:
+    """Crée ``medal_translations`` dans metadata.duckdb (idempotente).
+
+    Table pivot multi-langue pour les médailles Halo Infinite.
+    Peuplée par ``scripts/populate_medal_metadata.py`` (champ ``translations``
+    de l'API + migration depuis medal_definitions pour les médailles custom).
+    """
+    conn.execute(_MEDAL_TRANSLATIONS_DDL)

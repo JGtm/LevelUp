@@ -5,6 +5,7 @@ dans le registre via ``register()``.
 """
 
 from src.data.migration.steps import (
+    add_asset_translations,
     add_bot_teammate_column,
     add_career_progression_sequence,
     add_dominance_flag,
@@ -30,6 +31,7 @@ from src.data.migration.steps import (
 )
 
 __all__ = [
+    "add_asset_translations",
     "add_bot_teammate_column",
     "add_career_progression_sequence",
     "add_dominance_flag",
