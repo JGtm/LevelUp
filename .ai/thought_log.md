@@ -7,6 +7,25 @@
 
 ## Journal
 
+### [2026-03-30] — Référentiel multi-langue des assets Halo (v6.3) — Complété
+
+**Statut** : Complété
+**Décision technique** : Introduction de deux tables pivot dans `metadata.duckdb` :
+- `asset_translations(asset_id, asset_type, lang, name, description)` pour maps/playlists/pairs/game_variants → peuplée via `Accept-Language` header sur Discovery UGC API
+- `medal_translations(medal_name_id, lang, name, description)` pour les médailles → peuplée via champ `translations` de `gamecms.get_medal_metadata()` (14 langues en un seul appel)
+- Médailles custom (`medal_name_id >= 9B`) : pas d'endpoint API → migration depuis `medal_definitions` uniquement (fr-FR + en-US)
+- `SPNKrAPIClient` : nouveau paramètre `lang` → `session.headers["Accept-Language"]`
+- `MetadataResolver.resolve()` : nouveau paramètre `lang`, priorité `asset_translations → en-US fallback → tables legacy`
+- `resolve_medal_name()` / `resolve_medal_description()` : priorité `medal_translations → medal_definitions`
+- `resolve_asset_name()` dans `ui/translations.py` : lookup `asset_translations` avec fallback
+- **Bug fix** : `populate_metadata_from_discovery.py` cherchait `shared_matches.duckdb` → corrigé en `shared_matches_v2.duckdb` (tables maps/playlists n'avaient jamais été créées)
+- **Nettoyage** : suppression 6 JSON statiques obsolètes (medals + playlists), `enrich_i18n()` remplacé par no-op
+
+**Résultats** : 88/89 tests passés hors e2e (1 échec préexistant `test_ruff_no_errors` lié au venv cassé, non régressif). Ruff manual : 0 violation sur les fichiers modifiés. Baseline size mis à jour.
+**Conclusion** : Branche `feat/asset-translations-i18n`, 8 commits. Prêt pour : (1) `python scripts/populate_medal_metadata.py` pour migrer les médailles, (2) `python scripts/populate_asset_translations.py --langs fr-FR` pour les maps/assets.
+
+---
+
 ### [2026-03-30] — Option normalize_mode_labels dans AppSettings — Complété
 
 **Statut** : Complété

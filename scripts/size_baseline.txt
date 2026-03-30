@@ -100,7 +100,7 @@ MODULE:src/analysis/friends_impact.py:636L
 MODULE:src/analysis/weapon_parser.py:502L
 MODULE:src/data/repositories/_weapon_kills_repo.py:567L
 MODULE:src/data/sync/_match_processing.py:554L
-MODULE:src/data/sync/api_client.py:551L
+MODULE:src/data/sync/api_client.py:557L
 MODULE:src/data/sync/engine.py:672L
 MODULE:src/data/sync/transformers/_helpers.py:515L
 MODULE:src/data/sync/transformers/_match.py:534L
