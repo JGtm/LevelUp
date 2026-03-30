@@ -63,6 +63,7 @@ def render_participation_section(
                    pour Impact et Survie. Optionnel.
     """
     logger.debug("participation: rendu section match=%s xuid=%s", match_id, xuid)
+    from src.analysis.participation_radar import ProfileOptions
     from src.ui.components.radar_chart import create_participation_profile_radar
     from src.visualization.participation_radar import (
         compute_participation_profile,
@@ -104,10 +105,12 @@ def render_participation_section(
     profile = compute_participation_profile(
         df,
         match_row=row_dict,
-        name=t("mvc_this_match"),
-        color="#636EFA",
-        pair_name=pair_name_match,
-        thresholds=thresholds,
+        options=ProfileOptions(
+            name=t("mvc_this_match"),
+            color="#636EFA",
+            pair_name=pair_name_match,
+            thresholds=thresholds,
+        ),
     )
 
     st.subheader(f"🎯 {t('mvp_participation_title')}")
@@ -138,6 +141,7 @@ def _build_comparison_profiles(  # noqa: PLR0913
     thresholds: dict,
 ) -> list:
     """Construit les profils de participation pour chaque match."""
+    from src.analysis.participation_radar import ProfileOptions
     from src.visualization.participation_radar import compute_participation_profile
 
     profiles: list = []
@@ -152,10 +156,12 @@ def _build_comparison_profiles(  # noqa: PLR0913
         profile = compute_participation_profile(
             df,
             match_row=row,
-            name=labels[i] if i < len(labels) else f"Match {i + 1}",
-            color=colors[i] if i < len(colors) else None,
-            pair_name=row.get("pair_name") if row else None,
-            thresholds=thresholds,
+            options=ProfileOptions(
+                name=labels[i] if i < len(labels) else f"Match {i + 1}",
+                color=colors[i] if i < len(colors) else None,
+                pair_name=row.get("pair_name") if row else None,
+                thresholds=thresholds,
+            ),
         )
         profiles.append(profile)
     return profiles
