@@ -16,6 +16,15 @@
 
 ---
 
+### [2026-03-30] — Badge Top Killer + légende en expander — Complété
+
+**Statut** : Complété  
+**Décision technique** : Nouveau badge 💥 **Top Killer** (joueur avec le plus de kills dans l'équipe alliée, toute issue, min. 1 kill et 2 joueurs). Deux implémentations parallèles : `_find_top_killer_event` (match unique, `_match_impact_events.py`) et `identify_top_killer_multi` (multi-matchs, `friends_impact.py`). `SCORE_TOP_KILLER = 1.0`. Intégré dans `teammates_impact.py`, `build_impact_matrix` (8e événement dans `_EVENT_DEFS`/`event_dicts`). Légende déplacée de `st.caption` vers `st.expander` replié par défaut dans les deux pages. Traductions i18n FR/EN mises à jour.  
+**Résultats** : 53/53 tests passés. Commit `fa4169c` sur `feat/badges-exclude-top-killer`.  
+**Conclusion** : Branche prête pour merge. Deux commits sur la branche : `f10dfb6` (exclusion top killer) + `fa4169c` (badge Top Killer + expander).
+
+---
+
 ### [2026-03-30] — Option normalize_mode_labels dans AppSettings — Complété
 
 **Statut** : Complété
