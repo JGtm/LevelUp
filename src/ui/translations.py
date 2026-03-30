@@ -1,9 +1,9 @@
-"""Traductions UI — bilingue FR/EN.
+"""Traductions UI — multi-langue.
 
-Centralise les fonctions de traduction de libellés (playlist, mode/pair).
+Centralise les fonctions de traduction de libellés (playlist, mode/pair, maps, assets).
 
 Depuis v6 : la source de vérité est ``metadata.duckdb`` :
-- Playlists  : colonnes ``name_fr`` / ``name_en`` exposées via ``v_match_full``.
+- Assets (maps, playlists, pairs, variants) : table ``asset_translations`` (pivot multi-langue).
 - Modes/pairs : 4 tables ``mode_prefix_names``, ``mode_name_tr``,
   ``mode_pair_overrides``, ``mode_lang_settings``.
 
@@ -140,3 +140,66 @@ def _load_mode_tables(lang: str) -> dict[str, object]:
     except Exception as exc:
         logger.warning("Erreur chargement mode tables (%s): %s", lang, exc)
         return _empty
+
+
+def resolve_asset_name(
+    asset_id: str | None,
+    asset_type: str,
+    lang: str = "fr",
+    *,
+    fallback: str | None = None,
+) -> str | None:
+    """Résout le nom localisé d'un asset depuis asset_translations.
+
+    Ordre de priorité :
+    1. asset_translations (asset_id + asset_type + BCP-47 de lang)
+    2. asset_translations (asset_id + asset_type + 'en-US')
+    3. fallback fourni (ex: map_name depuis match_registry)
+
+    Args:
+        asset_id: UUID de l'asset (map_id, playlist_id, etc.).
+        asset_type: 'map' | 'playlist' | 'pair' | 'game_variant'.
+        lang: Code court ('fr', 'en', 'de'…) ou BCP-47 ('fr-FR', 'en-US'…).
+        fallback: Valeur à retourner si aucune traduction trouvée.
+
+    Returns:
+        Nom localisé, ou fallback, ou None.
+    """
+    if not asset_id:
+        return fallback
+
+    from src.data.sync._asset_langs import to_bcp47
+    from src.utils.db import duckdb_read_only
+    from src.utils.paths import get_metadata_db_path
+
+    bcp = to_bcp47(lang) if len(lang) <= 3 else lang
+    db_path = get_metadata_db_path()
+    if not db_path.exists():
+        return fallback
+
+    try:
+        with duckdb_read_only(str(db_path)) as conn:
+            # Vérifier que la table existe
+            tables = {
+                r[0]
+                for r in conn.execute(
+                    "SELECT table_name FROM information_schema.tables WHERE table_schema='main'"
+                ).fetchall()
+            }
+            if "asset_translations" not in tables:
+                return fallback
+
+            for try_lang in (bcp, "en-US"):
+                row = conn.execute(
+                    "SELECT name FROM asset_translations "
+                    "WHERE asset_id = ? AND asset_type = ? AND lang = ?",
+                    [asset_id, asset_type, try_lang],
+                ).fetchone()
+                if row and row[0]:
+                    return str(row[0]).strip()
+                if try_lang == bcp == "en-US":
+                    break  # pas la peine de réessayer en-US deux fois
+    except Exception as exc:
+        logger.debug("resolve_asset_name(%s, %s, %s): %s", asset_id, asset_type, lang, exc)
+
+    return fallback
