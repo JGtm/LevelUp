@@ -3,7 +3,7 @@
 
 Deux opérations distinctes :
 1. ``populate_medal_definitions`` : maintient medal_definitions (medal_name_id, is_custom).
-   Source : API gamecms (noms EN+FR uniquement pour compatibilité legacy).
+   Source : API gamecms_hacs (noms EN+FR uniquement pour compatibilité legacy).
 2. ``populate_medal_translations`` : peuple le pivot multi-langue medal_translations.
    Source : champ ``translations`` de l'API (toutes les langues en un seul appel).
    Médailles custom (is_custom=True) : migrées depuis medal_definitions uniquement.
@@ -60,11 +60,11 @@ _API_LANG_MAP: dict[str, str] = {
 
 
 async def _fetch_medals_from_api() -> list[dict[str, Any]]:
-    """Appelle gamecms.get_medal_metadata() et retourne la liste brute."""
+    """Appelle gamecms_hacs.get_medal_metadata() et retourne la liste brute."""
     from src.data.sync.api_client import SPNKrAPIClient
 
     async with SPNKrAPIClient() as spnkr:
-        resp = await spnkr.client.gamecms.get_medal_metadata()
+        resp = await spnkr.client.gamecms_hacs.get_medal_metadata()
         data = await resp.json()
     medals_raw = data.get("Medals") or data.get("medals") or []
     return medals_raw if isinstance(medals_raw, list) else []
