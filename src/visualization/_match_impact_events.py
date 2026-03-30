@@ -45,6 +45,7 @@ def get_impact_labels(lang: str = "fr") -> dict[str, tuple[str, str]]:
         "top_gun": ("🔫", viz_t("impact_top_gun", lang)),
         "silent_hero": ("🛡️", viz_t("impact_silent_hero", lang)),
         "false_brother": ("🗡️", viz_t("impact_false_brother", lang)),
+        "top_killer": ("💥", viz_t("impact_top_killer", lang)),
     }
 
 
@@ -142,6 +143,36 @@ def _find_false_brother_event(
         event_type="false_brother",
         xuid=xu,
         gamertag=worst.get("gamertag") or "?",
+        time_ms=_STATS_SENTINEL,
+        is_me=(xu == me_xuid),
+        extra_label=extra,
+    )
+
+
+def _find_top_killer_event(
+    participants: list[dict[str, Any]],
+    team_xuids: set[str],
+    me_xuid: str,
+    lang: str = "fr",
+) -> MatchImpactEvent | None:
+    """Joueur de l'équipe alliée avec le plus de kills (min 1 kill, équipe ≥2 joueurs)."""
+    team = [p for p in participants if str(p.get("xuid", "")).strip() in team_xuids]
+    if len(team) < 2:
+        return None
+    max_kills = max((int(p.get("kills", 0)) for p in team), default=0)
+    if max_kills == 0:
+        return None
+    candidates = [p for p in team if int(p.get("kills", 0)) == max_kills]
+    if not candidates:
+        return None
+    best = candidates[0]
+    xu = str(best.get("xuid", "")).strip()
+    kills = int(best.get("kills", 0))
+    extra = f"{kills} kill" + ("s" if kills != 1 else "")
+    return MatchImpactEvent(
+        event_type="top_killer",
+        xuid=xu,
+        gamertag=best.get("gamertag") or "?",
         time_ms=_STATS_SENTINEL,
         is_me=(xu == me_xuid),
         extra_label=extra,
@@ -320,6 +351,12 @@ def compute_single_match_impact(  # noqa: C901, PLR0912, PLR0913 — complexité
         top_gun = _find_top_gun_event(kills, me_xuid)
         if top_gun is not None:
             events.append(top_gun)
+
+    # --- Top Killer d'équipe (toute issue) ---
+    if participants_stats and team_xuids:
+        top_killer = _find_top_killer_event(participants_stats, team_xuids, me_xuid, lang)
+        if top_killer is not None:
+            events.append(top_killer)
 
     # --- Héros silencieux (victoire) / Faux-frère (défaite) ---
     if participants_stats and team_xuids:
