@@ -75,12 +75,23 @@ class MetadataResolver:
         else:
             logger.debug("metadata.duckdb non trouvé: %s", metadata_db_path)
 
-    def resolve(self, asset_type: str, asset_id: str | None) -> str | None:
+    def resolve(
+        self,
+        asset_type: str,
+        asset_id: str | None,
+        lang: str = "en-US",
+    ) -> str | None:
         """Résout un nom depuis les référentiels.
+
+        Ordre de priorité :
+        1. asset_translations (asset_id + asset_type + lang)
+        2. asset_translations (asset_id + asset_type + 'en-US')
+        3. Colonnes name_en / public_name des tables legacy (maps, playlists…)
 
         Args:
             asset_type: Type d'asset ('playlist', 'map', 'pair', 'game_variant').
             asset_id: ID de l'asset.
+            lang: Code BCP-47 préféré (ex: 'fr-FR'). Défaut 'en-US'.
 
         Returns:
             Nom résolu ou None si non trouvé.
@@ -88,22 +99,51 @@ class MetadataResolver:
         if not asset_id:
             return None
 
-        # Vérifier le cache
-        cache_key = (asset_type, asset_id)
+        cache_key = (asset_type, asset_id, lang)
         with self._lock:
             if cache_key in self._cache:
                 return self._cache[cache_key]
 
-        # Résoudre depuis metadata.duckdb si disponible
         with self._lock:
             if self._conn:
-                name = self._resolve_from_db(asset_type, asset_id)
-                if name:
-                    self._cache[cache_key] = name
-                    return name
+                name = self._resolve_from_asset_translations(asset_type, asset_id, lang)
+                if not name and lang != "en-US":
+                    name = self._resolve_from_asset_translations(asset_type, asset_id, "en-US")
+                if not name:
+                    name = self._resolve_from_db(asset_type, asset_id)
+                self._cache[cache_key] = name
+                return name
 
-            # Non trouvé
             self._cache[cache_key] = None
+            return None
+
+    def _resolve_from_asset_translations(
+        self,
+        asset_type: str,
+        asset_id: str,
+        lang: str,
+    ) -> str | None:
+        """Cherche dans asset_translations (pivot multi-langue)."""
+        if not self._conn:
+            return None
+        try:
+            # Vérifier que la table existe
+            tables = {
+                r[0]
+                for r in self._conn.execute(
+                    "SELECT table_name FROM information_schema.tables WHERE table_schema='main'"
+                ).fetchall()
+            }
+            if "asset_translations" not in tables:
+                return None
+            result = self._conn.execute(
+                "SELECT name FROM asset_translations "
+                "WHERE asset_id = ? AND asset_type = ? AND lang = ?",
+                [asset_id, asset_type, lang],
+            ).fetchone()
+            return str(result[0]) if result and result[0] else None
+        except Exception as exc:
+            logger.debug("asset_translations lookup %s %s [%s]: %s", asset_type, asset_id, lang, exc)
             return None
 
     def _resolve_from_db(self, asset_type: str, asset_id: str) -> str | None:
