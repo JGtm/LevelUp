@@ -10,7 +10,7 @@ import polars as pl
 import streamlit as st
 
 from src.ui.i18n import get_lang, t
-from src.ui.medals import load_medal_name_maps, render_medals_grid
+from src.ui.medals import load_medal_description_map, load_medal_name_maps, render_medals_grid
 
 logger = logging.getLogger(__name__)
 
@@ -198,11 +198,15 @@ def render_medals_tab(medals_last: list[dict[str, Any]] | None) -> None:
         .alias("label")
     )
     md_df = md_df.sort(["count", "label"], descending=[True, False])
+    _lang = get_lang()
+    _desc_map = load_medal_description_map(_lang)
+    _descriptions = {int(k): v for k, v in _desc_map.items()}
     render_medals_grid(
         md_df.select(["name_id", "count"]).to_dicts(),
         cols_per_row=8,
         center=True,
-        lang=get_lang(),
+        lang=_lang,
+        descriptions=_descriptions,
     )
 
 

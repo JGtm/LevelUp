@@ -7,6 +7,25 @@
 
 ## Journal
 
+### [2026-03-30] — Tooltips descriptions médailles + citations — Complété
+
+**Tâche** : Ajouter des tooltips (HTML `title=`) affichant la description des médailles dans les grilles de médailles (page dernier match onglet citations, page citations), et vérifier l'état des tooltips pour les citations.
+
+**Décision technique** :
+- Ajout de `load_medal_description_map(lang)` dans `medal_definitions.py` : chargement bulk en 1-2 requêtes SQL (medal_translations BCP-47 + en-US fallback, puis medal_definitions legacy) pour éviter N appels individuels
+- Wrapper Streamlit `@st.cache_data` exposé dans `medals.py`
+- `_medal_icon_html(path, title="")` : ajout du paramètre `title` → `title=` sur le div wrapper
+- `render_medals_grid` : nouveau paramètre `descriptions: dict[int, str] | None = None` + tooltip `"{nom} : {desc}"` sur icône et caption
+- `render_medals_tab` (match_view_citations.py) : charge `_desc_map` et le passe aux grilles
+- `render_citations_page` (citations.py) : idem
+- Les citations sur la page dernier match avaient déjà des tooltips via `title=` HTML (champ `description` des définitions)
+
+**Résultats** : 0 erreurs Pylance, 0 erreurs Ruff sur les 4 fichiers modifiés (1 E501 préexistant dans une docstring).
+
+**Fichiers modifiés** : `src/data/medal_definitions.py`, `src/ui/medals.py`, `src/ui/pages/match_view_citations.py`, `src/ui/pages/citations.py`
+
+---
+
 ### [2026-03-30] — asset_translations v6 : peuplement + branchement v_match_full — Complété
 
 **Tâche** : Peupler `asset_translations` dans `metadata.duckdb` (14 langues × 698 assets) et brancher `v_match_full` dessus pour que les graphiques affichent des noms localisés.
@@ -8013,3 +8032,32 @@ insignifiants.
 
 **Résultat** : 49 tests verts. 1800 pts sur 3 CTF → 86% (contre 20% avant fix).
 Tous les radars (teammates + match view) utilisent maintenant le même référentiel p90 calibré.
+---
+
+## [2026-03-30] Fix propagation map_id dans _session_compare_history.py
+
+**Statut** : Complété
+
+**Décision technique** :
+`map_id` était disponible dans `df_sess` à l'entrée du pipeline mais éliminé par
+`.select(display_cols)` dans `_build_history_dataframe`. Résultat : `map_name_cell_html`
+était appelé sans `map_id` → fallback EN, pas de thumbnail par ID.
+
+Pattern appliqué : identique à `perf_scores` — extraire la Series **avant** le `.select()`
+et la passer en 3ᵉ élément du tuple de retour, sans polluer `df_display`.
+
+**Fichiers modifiés** :
+- `src/ui/pages/_session_compare_history.py`
+  - `_build_history_dataframe` : signature `→ tuple[..., pl.Series | None, pl.Series | None]`,
+    extrait `map_ids` avant `.select(display_cols)`
+  - `_render_history_html` : nouveau paramètre `map_ids`, passe `map_ids[idx]` à
+    `map_name_cell_html(val, map_id)`
+  - `render_session_history_table` : décompacte le 3ᵉ élément et le transmet
+
+**Tests ajoutés** :
+- `tests/test_session_compare_history_map_id.py` — 7 cas :
+  retour 3-tuple, Series présente/absente, valeurs correctes, map_id absent de df_display,
+  longueur cohérente, perf_scores non cassé
+
+**Résultat** : 7/7 tests verts. La colonne Carte dans l'historique de session utilise
+désormais `map_id` pour la traduction FR et les thumbnails, comme les autres callers.
