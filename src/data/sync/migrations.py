@@ -1427,24 +1427,41 @@ def _create_v_match_full(
     """Crée la vue v_match_full dans shared_matches.duckdb.
 
     Résout les noms d'assets depuis metadata.duckdb (via meta_alias) si disponible.
+    Priorité pour les noms : asset_translations (14 langues) > tables legacy (name_en/name_fr) > match_registry.
     Si meta_alias est None, les colonnes *_fr et mode_* sont NULL,
     et les colonnes EN tombent en fallback sur match_registry (comportement actuel).
     """
     if meta_alias:
-        map_en = "COALESCE(m.name_en, mr.map_name)"
-        pl_en = "COALESCE(p.name_en, mr.playlist_name)"
-        pp_en = "COALESCE(pp.name_en, mr.pair_name)"
-        gv_en = "COALESCE(gv.name_en, mr.game_variant_name)"
+        map_en = f"COALESCE(at_map_en.name, m.name_en, mr.map_name)"
+        pl_en = f"COALESCE(at_pl_en.name, p.name_en, mr.playlist_name)"
+        pp_en = f"COALESCE(at_pair_en.name, pp.name_en, mr.pair_name)"
+        gv_en = f"COALESCE(at_gv_en.name, gv.name_en, mr.game_variant_name)"
         joins = f"""
         LEFT JOIN {meta_alias}.maps m ON mr.map_id = m.asset_id
         LEFT JOIN {meta_alias}.playlists p ON mr.playlist_id = p.asset_id
         LEFT JOIN {meta_alias}.playlist_map_mode_pairs pp ON mr.pair_id = pp.asset_id
-        LEFT JOIN {meta_alias}.game_variants gv ON mr.game_variant_id = gv.asset_id"""
+        LEFT JOIN {meta_alias}.game_variants gv ON mr.game_variant_id = gv.asset_id
+        LEFT JOIN {meta_alias}.asset_translations at_map_en
+            ON mr.map_id = at_map_en.asset_id AND at_map_en.asset_type = 'map' AND at_map_en.lang = 'en-US'
+        LEFT JOIN {meta_alias}.asset_translations at_map_fr
+            ON mr.map_id = at_map_fr.asset_id AND at_map_fr.asset_type = 'map' AND at_map_fr.lang = 'fr-FR'
+        LEFT JOIN {meta_alias}.asset_translations at_pl_en
+            ON mr.playlist_id = at_pl_en.asset_id AND at_pl_en.asset_type = 'playlist' AND at_pl_en.lang = 'en-US'
+        LEFT JOIN {meta_alias}.asset_translations at_pl_fr
+            ON mr.playlist_id = at_pl_fr.asset_id AND at_pl_fr.asset_type = 'playlist' AND at_pl_fr.lang = 'fr-FR'
+        LEFT JOIN {meta_alias}.asset_translations at_pair_en
+            ON mr.pair_id = at_pair_en.asset_id AND at_pair_en.asset_type = 'pair' AND at_pair_en.lang = 'en-US'
+        LEFT JOIN {meta_alias}.asset_translations at_pair_fr
+            ON mr.pair_id = at_pair_fr.asset_id AND at_pair_fr.asset_type = 'pair' AND at_pair_fr.lang = 'fr-FR'
+        LEFT JOIN {meta_alias}.asset_translations at_gv_en
+            ON mr.game_variant_id = at_gv_en.asset_id AND at_gv_en.asset_type = 'game_variant' AND at_gv_en.lang = 'en-US'
+        LEFT JOIN {meta_alias}.asset_translations at_gv_fr
+            ON mr.game_variant_id = at_gv_fr.asset_id AND at_gv_fr.asset_type = 'game_variant' AND at_gv_fr.lang = 'fr-FR'"""
         fr_cols = """
-        m.name_fr                                    AS map_name_fr,
-        p.name_fr                                    AS playlist_name_fr,
-        pp.name_fr                                   AS pair_name_fr,
-        gv.name_fr                                   AS game_variant_name_fr,
+        COALESCE(at_map_fr.name, m.name_fr)          AS map_name_fr,
+        COALESCE(at_pl_fr.name, p.name_fr)           AS playlist_name_fr,
+        COALESCE(at_pair_fr.name, pp.name_fr)        AS pair_name_fr,
+        COALESCE(at_gv_fr.name, gv.name_fr)          AS game_variant_name_fr,
         gv.mode_name                                 AS mode_name,
         gv.mode_name_fr                              AS mode_name_fr,
         p.playlist_canonical_en                      AS playlist_canonical_en,

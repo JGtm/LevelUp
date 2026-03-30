@@ -7,6 +7,30 @@
 
 ## Journal
 
+### [2026-03-30] — Branchement asset_translations sur v_match_full — Complété
+
+**Statut** : Complété  
+**Décision technique** : Patcher `_create_v_match_full()` dans `src/data/sync/migrations.py` pour sourcer les noms localisés depuis `asset_translations` (14 langues BCP-47) en priorité, avec fallback sur les tables legacy (`maps.name_fr`, etc.) puis `match_registry`.
+
+**Changements** :
+- `src/data/sync/migrations.py` : 8 LEFT JOINs supplémentaires sur `asset_translations` (`at_map_en`, `at_map_fr`, `at_pl_en`, `at_pl_fr`, `at_pair_en`, `at_pair_fr`, `at_gv_en`, `at_gv_fr`)
+- COALESCE updated : `asset_translations.name > legacy.name_en/name_fr > match_registry.map_name`
+- Branche dégradée (`meta_alias=None`) inchangée
+- `scripts/populate_asset_translations.py` : fix `gamecms` → `gamecms_hacs` pour `populate_medal_metadata.py`
+- `scripts/populate_medal_metadata.py` : idem fix, 2145 traductions médailles peuplées (14 langues)
+
+**Résultats observés** :
+- La vue se recrée correctement au démarrage (via `ensure_resolution_views()`)
+- `asset_translations` toujours vide au moment du test (peuplement en cours)
+- Blocage DuckDB multi-process résolu en killant les anciens process zombies
+
+**Prochaine étape** :
+- Attendre fin de `populate_asset_translations.py` (~45 min total)
+- Régénérer `mv_player_matches` via `scripts/post_sync_compute.py`
+- Valider que `map_name_fr` est non-NULL dans `v_match_full`
+
+---
+
 ### [2026-03-30] — Doc v6.2 : normalisation des noms de modes — Complété
 
 **Statut** : Complété

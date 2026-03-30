@@ -120,6 +120,9 @@ def _upsert_translation(
     )
 
 
+_CONCURRENCY = 10  # requêtes parallèles max par langue
+
+
 async def _fetch_one_lang(
     asset_ids: set[str],
     asset_type: str,
@@ -138,28 +141,31 @@ async def _fetch_one_lang(
         return 0
 
     logger.info("    [%s] %s : %d à récupérer (%d déjà présents)", lang, asset_type, len(to_fetch), len(already))
-    count = 0
-    async with create_api_client(lang=lang) as client:
-        for asset_id in to_fetch:
+    rows: list[tuple[str, str, str | None]] = []
+    sem = asyncio.Semaphore(_CONCURRENCY)
+
+    async def _fetch_one(client: Any, asset_id: str) -> None:
+        async with sem:
             try:
                 asset_json = await client.get_asset(api_type, asset_id, "")
             except Exception as exc:
                 logger.debug("Erreur fetch %s %s [%s]: %s", api_type, asset_id, lang, exc)
-                continue
+                return
             if not isinstance(asset_json, dict):
-                continue
+                return
             name = asset_json.get("PublicName", "")
             if not name or not name.strip():
                 logger.debug("PublicName vide pour %s %s [%s]", api_type, asset_id, lang)
-                continue
-            description = asset_json.get("Description") or None
-            if not dry_run:
-                _upsert_translation(conn, asset_id, asset_type, lang, name.strip(), description)
-                count += 1
-            else:
-                count += 1
-            await asyncio.sleep(0.1)
-    return count
+                return
+            rows.append((asset_id, name.strip(), asset_json.get("Description") or None))
+
+    async with create_api_client(lang=lang) as client:
+        await asyncio.gather(*[_fetch_one(client, aid) for aid in to_fetch])
+
+    if not dry_run:
+        for asset_id, name, description in rows:
+            _upsert_translation(conn, asset_id, asset_type, lang, name, description)
+    return len(rows)
 
 
 async def populate_translations(
