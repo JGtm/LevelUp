@@ -160,7 +160,73 @@ def _resolve_text_from_db(medal_name_id: int, columns: list[str]) -> str | None:
     return None
 
 
+def load_medal_description_map(lang: str = "fr") -> dict[str, str]:
+    """Charge une map {str(medal_name_id): description} en une seule requête.
+
+    Priorité : medal_translations (BCP-47 demandé, puis en-US), puis
+    medal_definitions (fallback legacy). Idéal pour les grilles de médailles
+    qui ont besoin de toutes les descriptions d'un coup.
+
+    Args:
+        lang: Code court ('fr', 'en') ou BCP-47 ('fr-FR', 'en-US').
+
+    Returns:
+        Map ``{str(medal_name_id): description}``.
+    """
+    bcp = to_bcp47(lang) if len(lang) <= 3 else lang
+    db_path = get_metadata_db_path()
+    if not db_path.exists():
+        return {}
+
+    result: dict[str, str] = {}
+    with duckdb_read_only(db_path) as conn:
+        # 1) medal_translations — langue demandée
+        try:
+            rows = conn.execute(
+                "SELECT medal_name_id, description FROM medal_translations"
+                " WHERE lang = ? AND description IS NOT NULL",
+                [bcp],
+            ).fetchall()
+            result = {str(r[0]): str(r[1]).strip() for r in rows if r[1]}
+        except Exception:
+            pass
+
+        # 2) Compléter avec en-US pour les entrées manquantes
+        if bcp != "en-US":
+            try:
+                rows_en = conn.execute(
+                    "SELECT medal_name_id, description FROM medal_translations"
+                    " WHERE lang = 'en-US' AND description IS NOT NULL"
+                ).fetchall()
+                for row in rows_en:
+                    key = str(row[0])
+                    if key not in result and row[1]:
+                        result[key] = str(row[1]).strip()
+            except Exception:
+                pass
+
+        # 3) Fallback medal_definitions (legacy)
+        if not result:
+            col_primary = "description_fr" if lang in ("fr", "fr-FR") else "description_en"
+            col_fallback = "description_en" if lang in ("fr", "fr-FR") else "description_fr"
+            try:
+                rows_def = conn.execute(
+                    f"SELECT medal_name_id, {col_primary}, {col_fallback}"
+                    " FROM medal_definitions"
+                ).fetchall()
+                for r in rows_def:
+                    for val in r[1:]:
+                        if val and str(val).strip():
+                            result[str(r[0])] = str(val).strip()
+                            break
+            except Exception:
+                pass
+
+    return result
+
+
 __all__ = [
+    "load_medal_description_map",
     "load_medal_name_maps",
     "resolve_medal_description",
     "resolve_medal_name",
