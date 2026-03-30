@@ -17,6 +17,7 @@ SCORE_SILENT_HERO = 1.5  # Héros silencieux : +1.5 points
 SCORE_FALSE_BROTHER = -1.5  # Faux-frère : -1.5 points
 SCORE_LAST_GROUP_KILL = -1  # Touriste (dernier kill du groupe) : -1 point
 SCORE_FIRST_GROUP_DEATH = -1  # Première victime du groupe : -1 point
+SCORE_TOP_KILLER = 1.0  # Top Killer d'équipe : +1 point
 
 # Codes d'outcome
 OUTCOME_WIN = 2
@@ -348,7 +349,11 @@ def identify_silent_hero_multi(
     matches_df: pl.DataFrame,
     friend_xuids: set[str] | None = None,
 ) -> dict[str, ImpactEvent]:
-    """Par match en victoire : joueur avec simultanément max assists ET min deaths, ≥1 assist, ≥2 joueurs."""
+    """Par match en victoire : joueur avec simultanément max assists ET min deaths, ≥1 assist, ≥2 joueurs.
+
+    Le top killer de l'équipe est exclu : un fraggeur dominant ne peut pas être héros silencieux.
+    Si moins de 2 joueurs restent après exclusion, le badge n'est pas attribué.
+    """
     if participants_df.is_empty():
         return {}
     win_ids = set(
@@ -367,11 +372,18 @@ def identify_silent_hero_multi(
         rows = df.filter(pl.col("match_id") == match_id).to_dicts()
         if len(rows) < 2:
             continue
-        max_assists = max(r["assists"] for r in rows)
+        max_kills = max(r.get("kills", 0) for r in rows)
+        if max_kills > 0:
+            eligible = [r for r in rows if r.get("kills", 0) < max_kills]
+            if len(eligible) < 2:
+                continue
+        else:
+            eligible = rows
+        max_assists = max(r["assists"] for r in eligible)
         if max_assists == 0:
             continue
-        min_deaths = min(r["deaths"] for r in rows)
-        candidates = [r for r in rows if r["assists"] == max_assists and r["deaths"] == min_deaths]
+        min_deaths = min(r["deaths"] for r in eligible)
+        candidates = [r for r in eligible if r["assists"] == max_assists and r["deaths"] == min_deaths]
         if not candidates:
             continue
         hero = candidates[0]
@@ -392,7 +404,11 @@ def identify_false_brother_multi(
     matches_df: pl.DataFrame,
     friend_xuids: set[str] | None = None,
 ) -> dict[str, ImpactEvent]:
-    """Par match en défaite : joueur avec simultanément max deaths ET min assists, ≥1 mort, ≥2 joueurs."""
+    """Par match en défaite : joueur avec simultanément max deaths ET min assists, ≥1 mort, ≥2 joueurs.
+
+    Le top killer de l'équipe est exclu : un fraggeur dominant ne peut pas être faux-frère.
+    Si moins de 2 joueurs restent après exclusion, le badge n'est pas attribué.
+    """
     if participants_df.is_empty():
         return {}
     loss_ids = set(
@@ -411,11 +427,18 @@ def identify_false_brother_multi(
         rows = df.filter(pl.col("match_id") == match_id).to_dicts()
         if len(rows) < 2:
             continue
-        max_deaths = max(r["deaths"] for r in rows)
+        max_kills = max(r.get("kills", 0) for r in rows)
+        if max_kills > 0:
+            eligible = [r for r in rows if r.get("kills", 0) < max_kills]
+            if len(eligible) < 2:
+                continue
+        else:
+            eligible = rows
+        max_deaths = max(r["deaths"] for r in eligible)
         if max_deaths == 0:
             continue
-        min_assists = min(r["assists"] for r in rows)
-        candidates = [r for r in rows if r["deaths"] == max_deaths and r["assists"] == min_assists]
+        min_assists = min(r["assists"] for r in eligible)
+        candidates = [r for r in eligible if r["deaths"] == max_deaths and r["assists"] == min_assists]
         if not candidates:
             continue
         traitor = candidates[0]
@@ -431,6 +454,46 @@ def identify_false_brother_multi(
     return result
 
 
+def identify_top_killer_multi(
+    participants_df: pl.DataFrame,
+    friend_xuids: set[str] | None = None,
+) -> dict[str, ImpactEvent]:
+    """Par match : joueur avec le plus de kills dans l'équipe, quelle que soit l'issue.
+
+    Nécessite la colonne `kills` dans participants_df.
+    Minimum 1 kill et 2 joueurs pour attribuer le badge.
+    """
+    if participants_df.is_empty() or "kills" not in participants_df.columns:
+        return {}
+    df = participants_df.with_columns(pl.col("xuid").cast(pl.Utf8))
+    if friend_xuids:
+        df = df.filter(pl.col("xuid").is_in({str(x) for x in friend_xuids}))
+    if df.is_empty():
+        return {}
+    result: dict[str, ImpactEvent] = {}
+    for match_id in df["match_id"].unique().to_list():
+        rows = df.filter(pl.col("match_id") == match_id).to_dicts()
+        if len(rows) < 2:
+            continue
+        max_kills = max(r.get("kills", 0) for r in rows)
+        if max_kills == 0:
+            continue
+        candidates = [r for r in rows if r.get("kills", 0) == max_kills]
+        if not candidates:
+            continue
+        top = candidates[0]
+        mid = str(match_id)
+        result[mid] = ImpactEvent(
+            match_id=mid,
+            xuid=str(top["xuid"]),
+            gamertag=str(top.get("gamertag", "Unknown")),
+            time_ms=0,
+            event_type="top_killer",
+        )
+    logger.debug("identify_top_killer_multi : %d badge(s) attribué(s)", len(result))
+    return result
+
+
 def compute_impact_scores(  # noqa: PLR0913
     first_bloods: dict[str, ImpactEvent],
     clutch_finishers: dict[str, ImpactEvent],
@@ -439,6 +502,7 @@ def compute_impact_scores(  # noqa: PLR0913
     first_group_deaths: dict[str, ImpactEvent] | None = None,
     silent_heroes: dict[str, ImpactEvent] | None = None,
     false_brothers: dict[str, ImpactEvent] | None = None,
+    top_killers: dict[str, ImpactEvent] | None = None,
 ) -> dict[str, float]:
     """Calcule les scores d'impact par joueur.
 
@@ -499,6 +563,11 @@ def compute_impact_scores(  # noqa: PLR0913
     for event in (false_brothers or {}).values():
         gamertag = event.gamertag
         scores[gamertag] = scores.get(gamertag, 0.0) + SCORE_FALSE_BROTHER
+
+    # +1 pour Top Killer
+    for event in (top_killers or {}).values():
+        gamertag = event.gamertag
+        scores[gamertag] = scores.get(gamertag, 0.0) + SCORE_TOP_KILLER
 
     # Trier par score décroissant
     return dict(sorted(scores.items(), key=lambda x: x[1], reverse=True))
@@ -561,6 +630,7 @@ _EVENT_DEFS: list[tuple[str, int | float]] = [
     ("first_group_death", SCORE_FIRST_GROUP_DEATH),
     ("silent_hero", SCORE_SILENT_HERO),
     ("false_brother", SCORE_FALSE_BROTHER),
+    ("top_killer", SCORE_TOP_KILLER),
 ]
 
 _EMPTY_IMPACT_SCHEMA = {
@@ -617,6 +687,7 @@ def build_impact_matrix(  # noqa: PLR0913
     match_outcomes: dict[str, int] | None = None,
     silent_heroes: dict[str, ImpactEvent] | None = None,
     false_brothers: dict[str, ImpactEvent] | None = None,
+    top_killers: dict[str, ImpactEvent] | None = None,
 ) -> pl.DataFrame:
     """Construit une matrice d'impact pour la heatmap."""
     event_dicts = [
@@ -627,6 +698,7 @@ def build_impact_matrix(  # noqa: PLR0913
         first_group_deaths,
         silent_heroes if silent_heroes is not None else {},
         false_brothers if false_brothers is not None else {},
+        top_killers if top_killers is not None else {},
     ]
     events_map = _populate_events_map(match_ids, gamertags, event_dicts)
     rows = _build_impact_rows(events_map, match_ids, match_outcomes)
