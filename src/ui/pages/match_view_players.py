@@ -296,7 +296,9 @@ def render_match_impact_section(  # noqa: PLR0913
         st.plotly_chart(fig, width="stretch", config=PLOTLY_STATIC_CONFIG)
     else:
         st.info(t("mv_impact_too_few"))
-    st.caption(t("mv_impact_legend"))
+    _legend_label = "ℹ️ Légende" if get_lang() == "fr" else "ℹ️ Legend"
+    with st.expander(_legend_label, expanded=False):
+        st.markdown(t("mv_impact_legend"))
 
 
 # =============================================================================
