@@ -150,6 +150,10 @@ def _compute_player_profile(  # noqa: PLR0913
         # objectifs_raw = kill_score_total → seuil = p80_slayer × n_matches
         obj_threshold = per_mode.get("slayer", RADAR_THRESHOLDS_PER_MODE["slayer"]) * n_matches
     scaled_th["objectifs"] = max(1.0, obj_threshold)
+    logger.debug(
+        "radar profil '%s': famille=%s obj_threshold=%.0f (n_matches=%d pair0=%r)",
+        name, get_mode_family(first_pair_name), obj_threshold, n_matches, first_pair_name,
+    )
     for _key in ("combat", "support", "score"):
         scaled_th[_key] = scaled_th[_key] * n_matches
 

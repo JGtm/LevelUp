@@ -97,6 +97,10 @@ def render_participation_section(
         thresholds["objectifs"] = per_mode.get(family, RADAR_THRESHOLDS_PER_MODE.get(family, 950.0))
     else:
         thresholds["objectifs"] = per_mode.get("slayer", RADAR_THRESHOLDS_PER_MODE["slayer"])
+    logger.debug(
+        "participation match=%s famille=%s seuil_objectifs=%.0f",
+        match_id, family, thresholds["objectifs"],
+    )
     profile = compute_participation_profile(
         df,
         match_row=row_dict,
