@@ -52,7 +52,7 @@ logger = logging.getLogger(__name__)
 DATA_DIR = Path(__file__).parent.parent / "data"
 WAREHOUSE_DIR = DATA_DIR / "warehouse"
 METADATA_DB_PATH = WAREHOUSE_DIR / "metadata.duckdb"
-SHARED_MATCHES_DB_PATH = WAREHOUSE_DIR / "shared_matches.duckdb"
+SHARED_MATCHES_DB_PATH = WAREHOUSE_DIR / "shared_matches_v2.duckdb"
 
 
 def get_unique_asset_ids() -> dict[str, set[str]]:
