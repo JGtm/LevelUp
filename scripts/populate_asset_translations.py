@@ -92,7 +92,7 @@ def _get_already_fetched(
         f"""
         SELECT asset_id FROM asset_translations
         WHERE asset_type = ? AND lang = ?
-          AND fetched_at >= CURRENT_TIMESTAMP - INTERVAL {_FRESHNESS_DAYS} DAY
+          AND fetched_at >= now() - INTERVAL {_FRESHNESS_DAYS} DAY
         """,
         [asset_type, lang],
     ).fetchall()
@@ -110,44 +110,121 @@ def _upsert_translation(
     conn.execute(
         """
         INSERT INTO asset_translations (asset_id, asset_type, lang, name, description, fetched_at)
-        VALUES (?, ?, ?, ?, ?, CURRENT_TIMESTAMP)
+        VALUES (?, ?, ?, ?, ?, now())
         ON CONFLICT (asset_id, asset_type, lang) DO UPDATE SET
             name = EXCLUDED.name,
             description = EXCLUDED.description,
-            fetched_at = CURRENT_TIMESTAMP
+            fetched_at = now()
         """,
         [asset_id, asset_type, lang, name, description],
     )
 
 
-_CONCURRENCY = 10  # requêtes parallèles max par langue
+_CONCURRENCY = 10  # requêtes parallèles max par langue (intra-langue)
+
+# Correspondance asset_type → clé dans MatchInfo du JSON de match stats
+_MATCH_INFO_KEY_MAP: dict[str, str] = {
+    "map": "MapVariant",
+    "playlist": "Playlist",
+    "pair": "PlaylistMapModePair",
+    "game_variant": "UgcGameVariant",
+}
 
 
-async def _fetch_one_lang(
+async def _build_version_id_cache(
+    asset_ids_by_type: dict[str, set[str]],
+    client: Any,
+) -> dict[tuple[str, str], str]:
+    """Construit un cache {(asset_id, asset_type) -> version_id} via l'API match stats.
+
+    Pour chaque (asset_id, asset_type), trouve un match_id dans match_registry,
+    déduplique les match_ids, les fetche en parallèle, et extrait les VersionId.
+    """
+    if not SHARED_MATCHES_DB_PATH.exists():
+        return {}
+
+    # Récupérer un match_id représentatif par (asset_id, asset_type)
+    match_id_per_asset: dict[tuple[str, str], str] = {}
+    with duckdb.connect(str(SHARED_MATCHES_DB_PATH), read_only=True) as conn:
+        for asset_type, asset_ids in asset_ids_by_type.items():
+            col = _REGISTRY_COL_MAP[asset_type]
+            rows = conn.execute(
+                f"""
+                SELECT {col}, match_id
+                FROM (
+                    SELECT {col}, match_id,
+                           ROW_NUMBER() OVER (PARTITION BY {col}) AS rn
+                    FROM match_registry
+                    WHERE {col} IS NOT NULL
+                )
+                WHERE rn = 1
+                """
+            ).fetchall()
+            for asset_id, match_id in rows:
+                if asset_id in asset_ids:
+                    match_id_per_asset[(asset_id, asset_type)] = match_id
+
+    # Dédupliquer les match_ids — un match donne les version_ids de TOUS ses assets
+    unique_match_ids: set[str] = set(match_id_per_asset.values())
+    logger.info("Chargement version_ids via %d matchs API...", len(unique_match_ids))
+
+    version_cache: dict[tuple[str, str], str] = {}
+    sem = asyncio.Semaphore(_CONCURRENCY)
+
+    async def _fetch_match(mid: str) -> dict[str, dict[str, str]]:
+        """Retourne {asset_type: {asset_id: version_id}} depuis un match."""
+        async with sem:
+            stats_json = await client.get_match_stats(mid)
+        if not isinstance(stats_json, dict):
+            return {}
+        match_info = stats_json.get("MatchInfo", {})
+        result: dict[str, dict[str, str]] = {}
+        for asset_type, json_key in _MATCH_INFO_KEY_MAP.items():
+            ref = match_info.get(json_key)
+            if isinstance(ref, dict):
+                aid = ref.get("AssetId")
+                vid = ref.get("VersionId")
+                if aid and vid:
+                    result.setdefault(asset_type, {})[aid] = vid
+        return result
+
+    match_results = await asyncio.gather(*[_fetch_match(mid) for mid in unique_match_ids])
+
+    for per_type in match_results:
+        for asset_type, id_version_map in per_type.items():
+            for asset_id, version_id in id_version_map.items():
+                version_cache[(asset_id, asset_type)] = version_id
+
+    covered = sum(1 for key in match_id_per_asset if key in version_cache)
+    total = len(match_id_per_asset)
+    logger.info("version_ids couverts : %d/%d assets", covered, total)
+    return version_cache
+
+
+async def _fetch_lang_rows(
     asset_ids: set[str],
     asset_type: str,
     api_type: str,
     lang: str,
-    conn: duckdb.DuckDBPyConnection,
-    *,
-    dry_run: bool,
-    force: bool,
-) -> int:
-    """Fetch et stocke les traductions pour un type d'asset + une langue."""
-    already = _get_already_fetched(conn, asset_type, lang, force=force)
+    already: set[str],
+    version_cache: dict[tuple[str, str], str],
+) -> list[tuple[str, str, str | None]]:
+    """Fetch les traductions pour une langue. Retourne les lignes sans toucher la DB."""
     to_fetch = asset_ids - already
     if not to_fetch:
-        logger.info("    [%s] %s : tout déjà présent (%d)", lang, asset_type, len(already))
-        return 0
+        return []
 
-    logger.info("    [%s] %s : %d à récupérer (%d déjà présents)", lang, asset_type, len(to_fetch), len(already))
     rows: list[tuple[str, str, str | None]] = []
     sem = asyncio.Semaphore(_CONCURRENCY)
 
     async def _fetch_one(client: Any, asset_id: str) -> None:
+        version_id = version_cache.get((asset_id, asset_type), "")
+        if not version_id:
+            logger.debug("version_id manquant pour %s %s — ignoré", asset_type, asset_id)
+            return
         async with sem:
             try:
-                asset_json = await client.get_asset(api_type, asset_id, "")
+                asset_json = await client.get_asset(api_type, asset_id, version_id)
             except Exception as exc:
                 logger.debug("Erreur fetch %s %s [%s]: %s", api_type, asset_id, lang, exc)
                 return
@@ -162,9 +239,32 @@ async def _fetch_one_lang(
     async with create_api_client(lang=lang) as client:
         await asyncio.gather(*[_fetch_one(client, aid) for aid in to_fetch])
 
-    if not dry_run:
+    return rows
+
+
+async def _fetch_and_save_lang(
+    lang: str,
+    asset_ids: set[str],
+    asset_type: str,
+    api_type: str,
+    already: set[str],
+    conn: duckdb.DuckDBPyConnection,
+    db_lock: asyncio.Lock,
+    version_cache: dict[tuple[str, str], str],
+    *,
+    dry_run: bool,
+) -> int:
+    """Fetch et sauvegarde les traductions pour une langue. Commit immédiat après écriture."""
+    rows = await _fetch_lang_rows(asset_ids, asset_type, api_type, lang, already, version_cache)
+    if not rows:
+        return 0
+    if dry_run:
+        return len(rows)
+    async with db_lock:
         for asset_id, name, description in rows:
             _upsert_translation(conn, asset_id, asset_type, lang, name, description)
+        conn.commit()
+    logger.info("    [%s] %s : %d écrites ✓", lang, asset_type, len(rows))
     return len(rows)
 
 
@@ -176,34 +276,73 @@ async def populate_translations(
     dry_run: bool,
     force: bool,
 ) -> dict[str, int]:
-    """Peuple asset_translations pour les types et langues demandés."""
+    """Peuple asset_translations pour les types et langues demandés.
+
+    Toutes les langues sont fetchées en parallèle pour chaque type d'asset.
+    Les écritures DB sont sérialisées via asyncio.Lock, avec commit après chaque langue.
+    En cas de crash, la reprise est automatique (langues déjà commitées sont skippées).
+    """
     totals: dict[str, int] = {}
+
+    # Collecter tous les asset_ids d'abord pour construire le cache version_ids en une passe
+    asset_ids_by_type = {
+        asset_type: _get_asset_ids(asset_type) for asset_type in asset_types
+    }
+
+    # Construire le cache version_id via l'API match stats (une fois pour tous les types)
+    async with create_api_client() as version_client:
+        version_cache = await _build_version_id_cache(
+            {at: ids for at, ids in asset_ids_by_type.items() if ids},
+            version_client,
+        )
+
     for asset_type in asset_types:
-        api_type = _ASSET_TYPE_MAP[asset_type]
-        asset_ids = _get_asset_ids(asset_type)
+        asset_ids = asset_ids_by_type.get(asset_type, set())
         if not asset_ids:
             continue
-        logger.info("=== %s (%d assets) ===", asset_type, len(asset_ids))
-        type_total = 0
+        api_type = _ASSET_TYPE_MAP[asset_type]
+        logger.info("=== %s (%d assets × %d langues en parallèle) ===", asset_type, len(asset_ids), len(langs))
+
+        # Lire l'état courant de la DB pour toutes les langues (avant le fetch parallèle)
+        already_by_lang = {
+            lang: _get_already_fetched(conn, asset_type, lang, force=force)
+            for lang in langs
+        }
         for lang in langs:
-            n = await _fetch_one_lang(
-                asset_ids, asset_type, api_type, lang, conn, dry_run=dry_run, force=force
+            n_already = len(already_by_lang[lang])
+            n_todo = len(asset_ids - already_by_lang[lang])
+            if n_todo == 0:
+                logger.info("    [%s] %s : tout déjà présent (%d)", lang, asset_type, n_already)
+            else:
+                logger.info("    [%s] %s : %d à récupérer (%d déjà présents)", lang, asset_type, n_todo, n_already)
+
+        langs_to_fetch = [lg for lg in langs if asset_ids - already_by_lang[lg]]
+        if not langs_to_fetch:
+            totals[asset_type] = 0
+            continue
+
+        db_lock = asyncio.Lock()
+        results = await asyncio.gather(*[
+            _fetch_and_save_lang(
+                lang, asset_ids, asset_type, api_type, already_by_lang[lang],
+                conn, db_lock, version_cache, dry_run=dry_run,
             )
-            type_total += n
-        totals[asset_type] = type_total
-        if not dry_run:
-            conn.commit()
+            for lang in langs_to_fetch
+        ])
+        totals[asset_type] = sum(results)
+        logger.info("  %s terminé : %d traductions au total", asset_type, totals[asset_type])
+
     return totals
 
 
 def _parse_langs(raw: str) -> list[str]:
     """Parse '--langs fr-FR,de-DE' en liste, valide chaque code."""
     valid = set(TARGET_LANGS)
-    langs = [l.strip() for l in raw.split(",") if l.strip()]
-    unknown = [l for l in langs if l not in valid]
+    langs = [code.strip() for code in raw.split(",") if code.strip()]
+    unknown = [code for code in langs if code not in valid]
     if unknown:
         logger.warning("Langues inconnues ignorées : %s", unknown)
-    return [l for l in langs if l in valid] or [DEFAULT_LANG]
+    return [code for code in langs if code in valid] or [DEFAULT_LANG]
 
 
 async def main_async(args: argparse.Namespace) -> int:

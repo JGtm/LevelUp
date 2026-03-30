@@ -290,10 +290,7 @@ def migrate_from_definitions_only(conn: Any, *, force: bool) -> int:
 async def main_async(args: argparse.Namespace) -> int:
     import duckdb
 
-    if args.dry_run:
-        conn = duckdb.connect(":memory:")
-    else:
-        conn = duckdb.connect(str(METADATA_DB))
+    conn = duckdb.connect(":memory:") if args.dry_run else duckdb.connect(str(METADATA_DB))
 
     try:
         if args.skip_api:
