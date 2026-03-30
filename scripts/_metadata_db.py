@@ -1,24 +1,21 @@
-"""DDL et enrichissement i18n pour metadata.duckdb.
+"""DDL et schéma pour metadata.duckdb.
 
 Contient :
-- METADATA_SCHEMA_DDL : schéma des 4 tables (playlists, maps, pairs, game_variants)
+- METADATA_SCHEMA_DDL : schéma des tables (playlists, maps, pairs, game_variants,
+  asset_translations, medal_translations)
 - create_metadata_db : création idempotente du schéma
-- enrich_i18n : enrichissement FR depuis mode_translations / playlist_translations
+- enrich_i18n : no-op depuis v6.3 (remplacé par populate_asset_translations.py)
 """
 
 from __future__ import annotations
 
 import logging
-from datetime import datetime
-from pathlib import Path
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
     import duckdb
 
 logger = logging.getLogger(__name__)
-
-ERRORS_FILE_PATH = Path(__file__).parent.parent / "metadata_populate_errors.txt"
 
 METADATA_SCHEMA_DDL = """
 -- Table playlists
@@ -127,127 +124,19 @@ def create_metadata_db(conn: duckdb.DuckDBPyConnection) -> None:
 # ---------------------------------------------------------------------------
 
 
-def _enrich_game_variants(conn: duckdb.DuckDBPyConnection, errors: list[str]) -> None:
-    """Calcule mode_name, name_fr et mode_name_fr pour game_variants."""
-    conn.execute("""
-        UPDATE game_variants
-        SET mode_name = CASE
-            WHEN CONTAINS(public_name, ':')
-            THEN TRIM(SPLIT_PART(public_name, ':', 2))
-            ELSE NULL
-        END
-        WHERE mode_name IS NULL AND public_name IS NOT NULL
-    """)
-    unresolved = conn.execute("""
-        SELECT asset_id, public_name FROM game_variants
-        WHERE mode_name IS NULL AND public_name IS NOT NULL
-    """).fetchall()
-    for asset_id, public_name in unresolved:
-        errors.append(
-            f'game_variants | asset_id={asset_id} | public_name="{public_name}" '
-            "| raison=mode_name_extraction_failed (pas de ':' dans public_name)"
-        )
-    conn.execute("""
-        UPDATE game_variants g
-        SET name_fr = (
-            SELECT mt.name_fr FROM mode_translations mt
-            WHERE STARTS_WITH(mt.name_en, g.public_name || ' on ')
-            LIMIT 1
-        )
-        WHERE g.name_fr IS NULL AND g.public_name IS NOT NULL
-    """)
-    conn.execute("""
-        UPDATE game_variants
-        SET mode_name_fr = CASE
-            WHEN name_fr IS NOT NULL AND CONTAINS(name_fr, ' : ')
-            THEN TRIM(SPLIT_PART(name_fr, ' : ', 2))
-            WHEN name_fr IS NOT NULL THEN name_fr
-            ELSE NULL
-        END
-        WHERE mode_name_fr IS NULL AND name_fr IS NOT NULL
-    """)
-
-
-def _enrich_pairs(conn: duckdb.DuckDBPyConnection) -> None:
-    """Calcule name_fr pour playlist_map_mode_pairs depuis mode_translations."""
-    conn.execute("""
-        UPDATE playlist_map_mode_pairs p
-        SET name_fr = (
-            SELECT mt.name_fr FROM mode_translations mt
-            WHERE TRIM(LOWER(mt.name_en)) = TRIM(LOWER(p.public_name))
-            LIMIT 1
-        )
-        WHERE p.name_fr IS NULL AND p.public_name IS NOT NULL
-    """)
-
-
-def _enrich_playlists(conn: duckdb.DuckDBPyConnection, errors: list[str]) -> None:
-    """Calcule name_fr, playlist_canonical_en/fr pour playlists."""
-    conn.execute("""
-        UPDATE playlists p
-        SET name_fr = pt.name_fr
-        FROM playlist_translations pt
-        WHERE p.asset_id = pt.uuid AND p.name_fr IS NULL
-    """)
-    unresolved = conn.execute("""
-        SELECT asset_id, public_name FROM playlists
-        WHERE name_fr IS NULL AND public_name IS NOT NULL
-    """).fetchall()
-    for asset_id, public_name in unresolved:
-        errors.append(
-            f'playlists | asset_id={asset_id} | public_name="{public_name}" '
-            "| raison=no_translation_found (UUID absent de playlist_translations)"
-        )
-    conn.execute("""
-        UPDATE playlists
-        SET playlist_canonical_en = TRIM(SPLIT_PART(public_name, ':', 1))
-        WHERE playlist_canonical_en IS NULL AND public_name IS NOT NULL
-    """)
-    conn.execute("""
-        UPDATE playlists
-        SET playlist_canonical_fr = name_fr
-        WHERE playlist_canonical_fr IS NULL AND name_fr IS NOT NULL
-    """)
-
-
-def _write_enrich_errors(errors: list[str]) -> None:
-    """Écrit les erreurs d'enrichissement dans ERRORS_FILE_PATH."""
-    if not errors:
-        logger.info("✓ Enrichissement i18n complet, aucune erreur")
-        return
-    ts = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-    with ERRORS_FILE_PATH.open("a", encoding="utf-8") as f:
-        for err in errors:
-            f.write(f"[{ts}] {err}\n")
-    logger.warning(
-        "populate_metadata: %d erreur(s) écrite(s) dans %s",
-        len(errors),
-        ERRORS_FILE_PATH,
-    )
-
-
 # ---------------------------------------------------------------------------
 # API publique
 # ---------------------------------------------------------------------------
 
 
-def enrich_i18n(conn: duckdb.DuckDBPyConnection) -> None:
-    """Enrichit les colonnes i18n depuis les tables de traduction existantes.
+def enrich_i18n(conn: duckdb.DuckDBPyConnection) -> None:  # noqa: ARG001
+    """(Obsolète) Enrichissement i18n via tables mode_translations / playlist_translations.
 
-    Sources :
-    - playlists.name_fr : depuis playlist_translations (join par UUID)
-    - game_variants.name_fr + mode_name + mode_name_fr : depuis mode_translations
-    - playlist_map_mode_pairs.name_fr : depuis mode_translations (correspondance exacte)
-    - playlist_canonical_en/fr : calculés depuis public_name et name_fr
-
-    Erreurs non résolues : écrites dans metadata_populate_errors.txt.
+    Ces tables n'existent plus depuis v6.3 (remplacées par asset_translations).
+    Les traductions sont désormais peuplées par :
+    - scripts/populate_asset_translations.py (maps, playlists, pairs, game_variants)
+    - scripts/populate_medal_metadata.py (médailles)
     """
-    errors: list[str] = []
-    _enrich_game_variants(conn, errors)
-    _enrich_pairs(conn)
-    _enrich_playlists(conn, errors)
-    n_modes = conn.execute(
-        "SELECT COUNT(DISTINCT mode_name) FROM game_variants WHERE mode_name IS NOT NULL"
-    ).fetchone()[0]
-    logger.info("mode_name distincts dans game_variants : %d (attendu ~27)", n_modes)
-    _write_enrich_errors(errors)
+    logger.info(
+        "enrich_i18n() : no-op depuis v6.3 — utiliser populate_asset_translations.py"
+    )
