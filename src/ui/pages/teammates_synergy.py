@@ -13,7 +13,11 @@ import streamlit as st
 
 logger = logging.getLogger(__name__)
 
-from src.analysis.participation_radar import is_objective_mode_from_pair_name
+from src.analysis.participation_radar import (
+    RADAR_THRESHOLDS_PER_MODE,
+    get_mode_family,
+    is_objective_mode_from_pair_name,
+)
 from src.config import OKABE_ITO_PALETTE
 from src.data.repositories import DuckDBRepository
 from src.ui.chart_utils import safe_chart_render
@@ -126,14 +130,26 @@ def _compute_player_profile(  # noqa: PLR0913
     # car kill_score/assist_score sont gagnés dans tous les modes mais objective_score
     # ne l'est que dans les matchs CTF/Strongholds/etc.
     scaled_th = dict(thresholds or RADAR_THRESHOLDS)
-    if "pair_name" in df_player.columns:
-        n_obj_matches = sum(
-            1 for pn in df_player["pair_name"].to_list() if is_objective_mode_from_pair_name(pn)
+    per_mode = scaled_th.pop("per_mode", None) or RADAR_THRESHOLDS_PER_MODE
+
+    pair_names = df_player["pair_name"].to_list() if "pair_name" in df_player.columns else []
+    first_pair_name = pair_names[0] if pair_names else None
+    is_obj_session = is_objective_mode_from_pair_name(first_pair_name)
+    if is_obj_session:
+        # objectifs_raw = objective_score → seuil = somme p80 des matchs objectif
+        obj_threshold = sum(
+            per_mode.get(get_mode_family(pn), RADAR_THRESHOLDS_PER_MODE.get(get_mode_family(pn), 800.0))
+            for pn in pair_names
+            if is_objective_mode_from_pair_name(pn)
+        )
+        obj_threshold = max(
+            obj_threshold,
+            per_mode.get(get_mode_family(first_pair_name or ""), 800.0),
         )
     else:
-        n_obj_matches = 0
-    n_obj_matches = max(1, n_obj_matches)
-    scaled_th["objectifs"] = scaled_th["objectifs"] * n_obj_matches
+        # objectifs_raw = kill_score_total → seuil = p80_slayer × n_matches
+        obj_threshold = per_mode.get("slayer", RADAR_THRESHOLDS_PER_MODE["slayer"]) * n_matches
+    scaled_th["objectifs"] = max(1.0, obj_threshold)
     for _key in ("combat", "support", "score"):
         scaled_th[_key] = scaled_th[_key] * n_matches
 

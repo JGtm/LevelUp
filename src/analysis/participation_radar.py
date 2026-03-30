@@ -41,7 +41,42 @@ RADAR_THRESHOLDS: dict[str, float] = {
     "survie_avg_life_ref_seconds": 90.0,  # 90 sec durée vie moy = 100%
 }
 
-# Cache des seuils globaux (meilleur match ever)
+# Seuils p80 de référence par mode individuel (fallback si données insuffisantes)
+RADAR_THRESHOLDS_PER_MODE: dict[str, float] = {
+    "ctf": 700.0, "oddball": 600.0, "strongholds": 850.0,
+    "koth": 700.0, "stockpile": 800.0, "extraction": 650.0,
+    "land_grab": 700.0, "slayer": 3000.0, "fiesta": 2800.0,
+    "other": 800.0,
+}
+
+
+def _get_mode_family(pair_name: str | None) -> str:
+    """Retourne la famille canonique du mode (clé de RADAR_THRESHOLDS_PER_MODE)."""
+    if not pair_name or not isinstance(pair_name, str):
+        return "other"
+    s = pair_name.strip().casefold()
+    if re.search(r"\bctf\b|\bcapture\s*(?:the\s*)?flag\b|\bdrapeau\b", s):
+        return "ctf"
+    if re.search(r"\boddball\b|\bballe\b", s):
+        return "oddball"
+    if re.search(r"\bstrongholds?\b|\bzone[s]?\b|\btotal\s*control\b|\bcontrôle\s*total\b", s):
+        return "strongholds"
+    if re.search(r"\bking\s*of\s*the\s*hill\b|\bkoth\b|\bhill\b", s):
+        return "koth"
+    if re.search(r"\bstockpile\b", s):
+        return "stockpile"
+    if re.search(r"\bextraction\b", s):
+        return "extraction"
+    if re.search(r"\bland\s*grab\b", s):
+        return "land_grab"
+    if re.search(r"\bfiesta\b", s):
+        return "fiesta"
+    if re.search(r"\bslayer\b", s):
+        return "slayer"
+    return "other"
+
+
+# Cache des seuils globaux (calcul unique par processus)
 _global_thresholds_cache: dict[str, float] | None = None
 
 
@@ -84,6 +119,7 @@ def compute_global_radar_thresholds(  # noqa: C901, PLR0911, PLR0912, PLR0915
 
     max_kill = max_obj = max_assist = max_score = max_impact = 0.0
     seen_any = False
+    mode_scores: dict[str, list[float]] = {}
 
     for player_dir in base.iterdir():
         if not player_dir.is_dir():
@@ -163,6 +199,25 @@ def compute_global_radar_thresholds(  # noqa: C901, PLR0911, PLR0912, PLR0915
                         seen_any = True
                 except Exception as e:
                     logger.debug("radar_thresholds: calcul impact échoué pour %s: %s", db_path, e)
+                # Per-mode : p80 des scores objectifs/kills par mode
+                try:
+                    mode_rows = conn.execute("""
+                        SELECT r.pair_name, p.award_category, SUM(p.award_score) AS score
+                        FROM personal_score_awards p
+                        JOIN shared.match_registry r ON p.match_id = r.match_id
+                        WHERE p.award_category IN ('objective', 'kill')
+                          AND (LOWER(COALESCE(r.pair_name,'')) NOT LIKE '%firefight%')
+                        GROUP BY p.match_id, r.pair_name, p.award_category
+                    """).fetchall()
+                    for pn, cat, sc in (mode_rows or []):
+                        family = _get_mode_family(pn)
+                        is_family_obj = family not in ("slayer", "fiesta", "other")
+                        if (is_family_obj and cat == "objective") or (
+                            not is_family_obj and cat == "kill"
+                        ):
+                            mode_scores.setdefault(family, []).append(float(sc or 0))
+                except Exception as e:
+                    logger.debug("radar_thresholds: per-mode échoué pour %s: %s", db_path, e)
         except Exception as e:
             logger.debug("radar_thresholds: player_dir %s ignoré: %s", db_path, e)
             continue
@@ -170,17 +225,24 @@ def compute_global_radar_thresholds(  # noqa: C901, PLR0911, PLR0912, PLR0915
     if not seen_any:
         return RADAR_THRESHOLDS.copy()
 
-    # Objectifs = max(objective, kill) car selon le mode
-    objectifs = max(max_obj, max_kill)
-    if objectifs <= 0:
-        objectifs = RADAR_THRESHOLDS["objectifs"]
+    # Objectifs = max_obj uniquement (max_kill ne concerne que l'axe Combat)
+    objectifs = max_obj if max_obj > 0 else RADAR_THRESHOLDS["objectifs"]
     combat = max(max_kill, 1.0)
     support = max(max_assist, 1.0)
     score = max(max_score, 1.0)
     impact = max(max_impact, 1.0)
 
-    # Seuils = max Arena/Slayer × 0.85 (évite radar vide, garde de la marge)
+    # Seuils = max Arena × 0.85 (évite radar vide, garde de la marge)
     factor = 0.85
+    # p80 par mode à partir des données collectées dans ce scan
+    import statistics as _stats
+    per_mode: dict[str, float] = dict(RADAR_THRESHOLDS_PER_MODE)
+    for family, scores in mode_scores.items():
+        if len(scores) >= 2:
+            per_mode[family] = max(1.0, float(_stats.quantiles(scores, n=100)[79]))
+        elif scores:
+            per_mode[family] = max(1.0, scores[0])
+
     result = {
         "objectifs": objectifs * factor,
         "combat": combat * factor,
@@ -189,6 +251,7 @@ def compute_global_radar_thresholds(  # noqa: C901, PLR0911, PLR0912, PLR0915
         "impact_pts_per_min": impact * factor,
         "survie_deaths_per_min_ref": RADAR_THRESHOLDS["survie_deaths_per_min_ref"],
         "survie_avg_life_ref_seconds": RADAR_THRESHOLDS.get("survie_avg_life_ref_seconds", 90.0),
+        "per_mode": per_mode,
     }
     _global_thresholds_cache = result
     return result.copy()
@@ -418,11 +481,18 @@ def compute_participation_profile(  # noqa: PLR0913
 
 __all__ = [
     "RADAR_THRESHOLDS",
+    "RADAR_THRESHOLDS_PER_MODE",
     "compute_global_radar_thresholds",
     "compute_participation_profile",
+    "get_mode_family",
     "get_radar_thresholds",
     "is_objective_mode_from_pair_name",
 ]
+
+
+def get_mode_family(pair_name: str | None) -> str:
+    """Alias public de _get_mode_family."""
+    return _get_mode_family(pair_name)
 
 
 def is_objective_mode_from_pair_name(pair_name: str | None) -> bool:
