@@ -54,17 +54,28 @@ def _find_silent_hero_event(
     me_xuid: str,
     lang: str = "fr",
 ) -> MatchImpactEvent | None:
-    """Victoire : joueur de l'équipe avec le plus d'assists ET le moins de morts (même joueur)."""
+    """Victoire : joueur de l'équipe avec le plus d'assists ET le moins de morts (même joueur).
+
+    Le top killer de l'équipe est exclu.
+    Si moins de 2 joueurs restent après exclusion, retourne None.
+    """
     team = [p for p in participants if str(p.get("xuid", "")).strip() in team_xuids]
     if len(team) < 2:
         return None
-    max_assists = max((int(p.get("assists", 0)) for p in team), default=0)
+    max_kills = max((int(p.get("kills", 0)) for p in team), default=0)
+    if max_kills > 0:
+        eligible = [p for p in team if int(p.get("kills", 0)) < max_kills]
+        if len(eligible) < 2:
+            return None
+    else:
+        eligible = team
+    max_assists = max((int(p.get("assists", 0)) for p in eligible), default=0)
     if max_assists == 0:
         return None
-    min_deaths = min(int(p.get("deaths", 0)) for p in team)
+    min_deaths = min(int(p.get("deaths", 0)) for p in eligible)
     candidates = [
         p
-        for p in team
+        for p in eligible
         if int(p.get("assists", 0)) == max_assists and int(p.get("deaths", 0)) == min_deaths
     ]
     if not candidates:
@@ -93,17 +104,28 @@ def _find_false_brother_event(
     me_xuid: str,
     lang: str = "fr",
 ) -> MatchImpactEvent | None:
-    """Défaite : joueur de l'équipe avec le plus de morts ET le moins d'assists (même joueur)."""
+    """Défaite : joueur de l'équipe avec le plus de morts ET le moins d'assists (même joueur).
+
+    Le top killer de l'équipe est exclu.
+    Si moins de 2 joueurs restent après exclusion, retourne None.
+    """
     team = [p for p in participants if str(p.get("xuid", "")).strip() in team_xuids]
     if len(team) < 2:
         return None
-    max_deaths = max((int(p.get("deaths", 0)) for p in team), default=0)
+    max_kills = max((int(p.get("kills", 0)) for p in team), default=0)
+    if max_kills > 0:
+        eligible = [p for p in team if int(p.get("kills", 0)) < max_kills]
+        if len(eligible) < 2:
+            return None
+    else:
+        eligible = team
+    max_deaths = max((int(p.get("deaths", 0)) for p in eligible), default=0)
     if max_deaths == 0:
         return None
-    min_assists = min(int(p.get("assists", 0)) for p in team)
+    min_assists = min(int(p.get("assists", 0)) for p in eligible)
     candidates = [
         p
-        for p in team
+        for p in eligible
         if int(p.get("deaths", 0)) == max_deaths and int(p.get("assists", 0)) == min_assists
     ]
     if not candidates:

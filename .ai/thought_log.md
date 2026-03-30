@@ -7,6 +7,15 @@
 
 ## Journal
 
+### [2026-03-30] — Exclure le top killer pour les badges Héros silencieux & Faux-frère — Complété
+
+**Statut** : Complété
+**Décision technique** : Avant de chercher le candidat au badge, on exclut le(s) joueur(s) ayant `kills == max_kills` de l'équipe. Guard `max_kills > 0` : si personne n'a de kill (match objectif ou données manquantes), aucune exclusion. Si après exclusion < 2 joueurs éligibles → badge non attribué. Implémenté dans 3 fichiers : `_match_impact_events.py` (match unique), `friends_impact.py` (multi-match), `teammates_impact.py` (ajout colonne `kills` dans la requête SQL).
+**Résultats** : 73/74 tests passés dans la suite ciblée ; 1 échec préexistant (`plot_friends_impact_scatter` manquant, non lié). Tests dans `test_match_impact_events.py` mis à jour pour refléter la nouvelle sémantique (Alice top killer exclue → Bob devient héros silencieux).
+**Conclusion** : Branche `feat/badges-exclude-top-killer` (worktree `LevelUp-badges`). Prêt pour merge.
+
+---
+
 ### [2026-03-30] — Option normalize_mode_labels dans AppSettings — Complété
 
 **Statut** : Complété
