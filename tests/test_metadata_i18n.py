@@ -248,26 +248,17 @@ def test_btb_variants_share_canonical_fr(tmp_path: Path) -> None:
 # ---------------------------------------------------------------------------
 
 
-def test_populate_errors_file_created_on_failure(
-    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
-) -> None:
-    """_write_enrich_errors() crée le fichier d'erreurs si des erreurs existent."""
+def test_enrich_i18n_is_noop(tmp_path: Path) -> None:
+    """enrich_i18n() est un no-op depuis v6.3 (remplacé par populate_asset_translations.py)."""
     import sys
 
     sys.path.insert(0, str(Path(__file__).parent.parent / "scripts"))
     import _metadata_db as mdb
+    import duckdb
 
-    errors_path = tmp_path / "metadata_populate_errors.txt"
-    monkeypatch.setattr(mdb, "ERRORS_FILE_PATH", errors_path)
-
-    # Simuler 1 erreur (game_variant sans ':' dans public_name)
-    mdb._write_enrich_errors(
-        [
-            'game_variants | asset_id=gv-99 | public_name="NoColon" | raison=mode_name_extraction_failed'
-        ]
-    )
-
-    assert errors_path.exists(), "Le fichier d'erreurs doit être créé"
-    content = errors_path.read_text(encoding="utf-8")
-    assert "gv-99" in content
-    assert "mode_name_extraction_failed" in content
+    conn = duckdb.connect(":memory:")
+    try:
+        # Ne doit pas lever d'exception
+        mdb.enrich_i18n(conn)
+    finally:
+        conn.close()
