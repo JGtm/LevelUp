@@ -90,6 +90,28 @@ CREATE INDEX IF NOT EXISTS idx_playlists_asset_id ON playlists(asset_id);
 CREATE INDEX IF NOT EXISTS idx_maps_asset_id ON maps(asset_id);
 CREATE INDEX IF NOT EXISTS idx_pairs_asset_id ON playlist_map_mode_pairs(asset_id);
 CREATE INDEX IF NOT EXISTS idx_variants_asset_id ON game_variants(asset_id);
+
+-- Table pivot multi-langue pour tous les assets Discovery UGC (v6.3)
+CREATE TABLE IF NOT EXISTS asset_translations (
+    asset_id    VARCHAR NOT NULL,
+    asset_type  VARCHAR NOT NULL,
+    lang        VARCHAR NOT NULL,
+    name        VARCHAR NOT NULL,
+    description VARCHAR,
+    fetched_at  TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    PRIMARY KEY (asset_id, asset_type, lang)
+);
+CREATE INDEX IF NOT EXISTS idx_asset_tr_id_type
+    ON asset_translations(asset_id, asset_type);
+
+-- Table pivot multi-langue pour les médailles (v6.3)
+CREATE TABLE IF NOT EXISTS medal_translations (
+    medal_name_id BIGINT  NOT NULL,
+    lang          VARCHAR NOT NULL,
+    name          VARCHAR NOT NULL,
+    description   VARCHAR,
+    PRIMARY KEY (medal_name_id, lang)
+);
 """
 
 
