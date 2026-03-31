@@ -86,16 +86,19 @@ def compute_map_breakdown(df: pl.DataFrame, df_history: pl.DataFrame | None = No
 
     df_pl = _resolve_map_names(df_pl)
 
+    # Utiliser map_ui (traduit) si disponible, sinon map_name (EN fallback)
+    display_col = "map_ui" if "map_ui" in df_pl.columns else "map_name"
+
     # Filtrer les map_name vides
-    d = df_pl.with_columns(pl.col("map_name").fill_null(""))
-    d = d.filter(pl.col("map_name").str.strip_chars() != "")
+    d = df_pl.with_columns(pl.col(display_col).fill_null(""))
+    d = d.filter(pl.col(display_col).str.strip_chars() != "")
 
     if d.is_empty():
         return pl.DataFrame(schema=empty_schema)
 
     rows: list[dict] = []
-    for map_name in d.select("map_name").unique().to_series().to_list():
-        g = d.filter(pl.col("map_name") == map_name)
+    for map_name in d.select(display_col).unique().to_series().to_list():
+        g = d.filter(pl.col(display_col) == map_name)
 
         rates = compute_outcome_rates(g)
         total_out = max(1, rates.total)

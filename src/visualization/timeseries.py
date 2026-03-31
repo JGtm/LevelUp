@@ -160,12 +160,13 @@ def plot_timeseries(df: DataFrameLike, title: str | None = None, lang: str = "fr
     )
     fig.update_yaxes(title_text=viz_t("axis_ratio", lang), secondary_y=True)
 
+    _map_tick_col = "map_ui" if "map_ui" in d.columns else "map_name"
     labels = (
         [
             f"#{i + 1}<br>{mn}" if mn else f"#{i + 1}"
-            for i, mn in enumerate(d["map_name"].fill_null("").to_list())
+            for i, mn in enumerate(d[_map_tick_col].fill_null("").to_list())
         ]
-        if "map_name" in d.columns
+        if _map_tick_col in d.columns
         else d["start_time"].dt.strftime(FMT_TICK_DATETIME).to_list()
     )
     step = max(1, len(labels) // 10) if len(labels) > 1 else 1
@@ -220,7 +221,7 @@ def plot_assists_timeseries(
             d["assists"].to_list(),
             accuracy.to_list(),
             d["ratio"].to_list(),
-            d["map_name"].fill_null("").to_list(),
+            (d["map_ui"] if "map_ui" in d.columns else d["map_name"]).fill_null("").to_list(),
             d["playlist_name"].fill_null("").to_list(),
             d["match_id"].to_list(),
             strict=False,
@@ -362,12 +363,13 @@ def plot_per_minute_timeseries(
             ]
         )
     x_idx = list(range(len(d)))
+    _map_tick_col2 = "map_ui" if "map_ui" in d.columns else "map_name"
     labels = (
         [
             f"#{i + 1}<br>{mn}" if mn else f"#{i + 1}"
-            for i, mn in enumerate(d["map_name"].fill_null("").to_list())
+            for i, mn in enumerate(d[_map_tick_col2].fill_null("").to_list())
         ]
-        if "map_name" in d.columns
+        if _map_tick_col2 in d.columns
         else d["start_time"].dt.strftime(FMT_TICK_DATETIME).to_list()
     )
     step = max(1, len(labels) // 10) if len(labels) > 1 else 1

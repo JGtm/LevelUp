@@ -125,12 +125,13 @@ def plot_trio_metric(  # noqa: PLR0912, PLR0913, PLR0915, C901 — graphe multi-
     # Formatage des dates pour ticktext
     # Construction post-alignement pour garantir longueur == len(aligned) et numérotation correcte
     _ref_pl = pl_dfs[0]
-    if "map_name" in _ref_pl.columns and not _ref_pl.is_empty():
+    _map_col_trio = "map_ui" if "map_ui" in _ref_pl.columns else "map_name"
+    if _map_col_trio in _ref_pl.columns and not _ref_pl.is_empty():
         _ref_clean = _ref_pl.drop_nulls(subset=["start_time"])
         _ts_to_map: dict = dict(
             zip(
                 _ref_clean["start_time"].to_list(),
-                _ref_clean["map_name"].fill_null("?").to_list(),
+                _ref_clean[_map_col_trio].fill_null("?").to_list(),
                 strict=False,
             )
         )

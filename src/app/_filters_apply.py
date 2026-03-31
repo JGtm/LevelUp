@@ -13,6 +13,7 @@ from src.app._filters_shared import safe_to_date as _safe_to_date
 from src.ui import translate_pair_name, translate_playlist_name
 from src.ui.cache import cached_compute_sessions_db
 from src.ui.i18n import get_lang
+from src.ui.translations import resolve_map_display_names
 from src.ui.vectorize_helpers import build_mapping
 from src.utils.polars_compat import ensure_polars as _to_polars
 
@@ -284,18 +285,46 @@ def _add_derived_columns(  # noqa: C901, PLR0912
                 .alias("pair_fr")
             )
         if "mode_ui" not in dff.columns:
-            if normalize_mode_label_fn is _identity:
-                derived_exprs.append(pl.col("pair_name").cast(pl.Utf8).alias("mode_ui"))
-            else:
-                _mui_map = build_mapping(dff["pair_name"], normalize_mode_label_fn)
-                derived_exprs.append(
-                    pl.col("pair_name")
-                    .cast(pl.Utf8)
-                    .replace_strict(_mui_map, default=None, return_dtype=pl.Utf8)
-                    .alias("mode_ui")
+            # mode_ui = pair_name traduit dans la langue courante
+            _mui_tr_map = build_mapping(
+                dff["pair_name"], lambda x: translate_pair_name(x, lang=get_lang())
+            )
+            derived_exprs.append(
+                pl.col("pair_name")
+                .cast(pl.Utf8)
+                .replace_strict(
+                    _mui_tr_map,
+                    default=pl.col("pair_name").cast(pl.Utf8),
+                    return_dtype=pl.Utf8,
                 )
+                .alias("mode_ui")
+            )
     if "map_name" in dff.columns and "map_ui" not in dff.columns:
-        if normalize_map_label_fn is _identity:
+        if "map_id" in dff.columns:
+            # Traduction i18n via asset_translations (requête batch)
+            lang = get_lang()
+            id_to_fallback: dict[str, str] = {
+                str(r["map_id"]): str(r["map_name"] or "")
+                for r in dff.select(["map_id", "map_name"])
+                .drop_nulls(subset=["map_id"])
+                .unique(subset=["map_id"])
+                .iter_rows(named=True)
+            }
+            if id_to_fallback:
+                translated_maps = resolve_map_display_names(id_to_fallback, lang)
+                derived_exprs.append(
+                    pl.col("map_id")
+                    .cast(pl.Utf8)
+                    .replace_strict(
+                        translated_maps,
+                        default=pl.col("map_name").cast(pl.Utf8),
+                        return_dtype=pl.Utf8,
+                    )
+                    .alias("map_ui")
+                )
+            else:
+                derived_exprs.append(pl.col("map_name").cast(pl.Utf8).alias("map_ui"))
+        elif normalize_map_label_fn is _identity:
             derived_exprs.append(pl.col("map_name").cast(pl.Utf8).alias("map_ui"))
         else:
             _mapui_map = build_mapping(dff["map_name"], normalize_map_label_fn)

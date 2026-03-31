@@ -21,7 +21,7 @@ from src.visualization._compat import DataFrameLike, ensure_polars
 def _build_history_dataframe(
     df_sess: DataFrameLike,
     df_full: DataFrameLike | None = None,
-) -> tuple[pl.DataFrame, pl.Series | None]:
+) -> tuple[pl.DataFrame, pl.Series | None, pl.Series | None]:
     """Construit le DataFrame d'affichage et les scores de performance.
 
     Prépare les colonnes à afficher (heure, mode, carte, frags, résultat, etc.)
@@ -32,7 +32,7 @@ def _build_history_dataframe(
         df_full: DataFrame complet pour le calcul du score relatif.
 
     Returns:
-        Tuple (df_display Polars préparé, Series Polars des scores de performance).
+        Tuple (df_display Polars préparé, Series scores de performance, Series map_id).
     """
     df_sess = _prepare_history_source(df_sess)
     df_full_pl = ensure_polars(df_full) if df_full is not None else None
@@ -41,8 +41,9 @@ def _build_history_dataframe(
     display_cols.append("Perf_display")
     col_map["Perf_display"] = t("col_performance")
     df_sess, display_cols = _add_mmr_display_columns(df_sess, display_cols)
+    map_ids = df_sess.get_column("map_id") if "map_id" in df_sess.columns else None
     df_display = df_sess.select(display_cols).rename(col_map)
-    return df_display, perf_scores
+    return df_display, perf_scores, map_ids
 
 
 def _prepare_history_source(df_sess: DataFrameLike) -> pl.DataFrame:
@@ -52,7 +53,7 @@ def _prepare_history_source(df_sess: DataFrameLike) -> pl.DataFrame:
         df_pl = df_pl.sort("start_time")
     if "pair_fr" in df_pl.columns or "pair_name" not in df_pl.columns:
         return df_pl
-    pair_map = build_mapping(df_pl["pair_name"], translate_pair_name)
+    pair_map = build_mapping(df_pl["pair_name"], lambda x: translate_pair_name(x, lang=get_lang()))
     return df_pl.with_columns(
         pl.col("pair_name")
         .cast(pl.Utf8)
@@ -107,7 +108,7 @@ def _add_mode_display_column(
         return df_sess
     if "pair_name" not in df_sess.columns:
         return df_sess
-    pair_map = build_mapping(df_sess["pair_name"], translate_pair_name)
+    pair_map = build_mapping(df_sess["pair_name"], lambda x: translate_pair_name(x, lang=get_lang()))
     df_sess = df_sess.with_columns(
         pl.col("pair_name")
         .cast(pl.Utf8)
@@ -201,12 +202,14 @@ def _add_mmr_display_columns(
 def _render_history_html(
     df_display: pl.DataFrame,
     perf_scores: pl.Series | None = None,
+    map_ids: pl.Series | None = None,
 ) -> None:
     """Génère et affiche le tableau HTML stylisé des parties.
 
     Args:
         df_display: DataFrame Polars préparé pour l'affichage.
         perf_scores: Series Polars des scores de performance pour la coloration.
+        map_ids: Series Polars des map_id pour les thumbnails et traductions FR.
     """
     html_rows: list[str] = []
     for idx, row in enumerate(df_display.iter_rows(named=True)):
@@ -224,7 +227,8 @@ def _render_history_html(
                     f"<td class='{css_class}'>{html_lib.escape(str(val) if val is not None else '-')}</td>"
                 )
             elif col == t("col_map"):
-                cells.append(map_name_cell_html(val))
+                map_id = map_ids[idx] if map_ids is not None else None
+                cells.append(map_name_cell_html(val, map_id))
             else:
                 cells.append(f"<td>{html_lib.escape(str(val) if val is not None else '-')}</td>")
         html_rows.append("<tr>" + "".join(cells) + "</tr>")
@@ -262,5 +266,5 @@ def render_session_history_table(
 
     if df_full is not None:
         df_full = ensure_polars(df_full)
-    df_display, perf_scores = _build_history_dataframe(df_sess.clone(), df_full)
-    _render_history_html(df_display, perf_scores)
+    df_display, perf_scores, map_ids = _build_history_dataframe(df_sess.clone(), df_full)
+    _render_history_html(df_display, perf_scores, map_ids)

@@ -274,25 +274,29 @@ def _render_cascade_filters(day_df: pl.DataFrame) -> pl.DataFrame:
     if pl_pick != all_lbl and "playlist_name" in day_df.columns:
         day_df = day_df.filter(pl.col("playlist_name") == pl_pick)
 
-    modes = _unique_sorted(day_df, "pair_name")
+    # Utiliser mode_ui (traduit) si disponible, sinon pair_name
+    _mode_col = "mode_ui" if "mode_ui" in day_df.columns else "pair_name"
+    modes = _unique_sorted(day_df, _mode_col)
     with col_mode:
         mode_pick = st.selectbox(
             t("exp_filter_mode"),
             [all_lbl] + modes,
             key="_exp_mode",
         )
-    if mode_pick != all_lbl and "pair_name" in day_df.columns:
-        day_df = day_df.filter(pl.col("pair_name") == mode_pick)
+    if mode_pick != all_lbl and _mode_col in day_df.columns:
+        day_df = day_df.filter(pl.col(_mode_col) == mode_pick)
 
-    maps = _unique_sorted(day_df, "map_name")
+    # Utiliser map_ui (traduit) si disponible, sinon map_name
+    _map_col = "map_ui" if "map_ui" in day_df.columns else "map_name"
+    maps = _unique_sorted(day_df, _map_col)
     with col_map:
         map_pick = st.selectbox(
             t("exp_filter_map"),
             [all_lbl] + maps,
             key="_exp_map",
         )
-    if map_pick != all_lbl and "map_name" in day_df.columns:
-        day_df = day_df.filter(pl.col("map_name") == map_pick)
+    if map_pick != all_lbl and _map_col in day_df.columns:
+        day_df = day_df.filter(pl.col(_map_col) == map_pick)
 
     return day_df
 
@@ -312,8 +316,13 @@ def _render_match_selector(
         mid = str(row.get("match_id") or "")
         dt = row.get("start_time")
         time_str = format_datetime_fn(dt) if dt else "?"
-        mode_label = normalize_mode_label_fn(row.get("pair_name")) or row.get("pair_name", "?")
-        label = f"{time_str} — {mode_label} — {row.get('map_name', '?')}"
+        mode_label = (
+            row.get("mode_ui")
+            or normalize_mode_label_fn(row.get("pair_name"))
+            or row.get("pair_name", "?")
+        )
+        map_label = row.get("map_ui") or row.get("map_name", "?")
+        label = f"{time_str} — {mode_label} — {map_label}"
         options.append((label, mid))
 
     all_lbl = t("exp_filter_all")

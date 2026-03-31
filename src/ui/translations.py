@@ -135,6 +135,65 @@ def _load_mode_tables(lang: str) -> dict[str, object]:
         return _empty
 
 
+def resolve_map_display_names(
+    map_id_to_fallback: dict[str, str],
+    lang: str,
+) -> dict[str, str]:
+    """Résout les noms traduits de cartes pour un lot de map_id (requête unique).
+
+    Consulte ``asset_translations`` (metadata.duckdb) en une seule requête SQL
+    pour tous les IDs. Retourne ``{map_id: nom_traduit}``, avec fallback sur
+    le map_name EN si aucune traduction n'est disponible.
+
+    Args:
+        map_id_to_fallback: Mapping ``{map_id: map_name_fallback}``.
+        lang: Code de langue (``'fr'``, ``'en'``, …).
+
+    Returns:
+        Mapping ``{map_id: nom_localisé}``.
+    """
+    if not map_id_to_fallback:
+        return {}
+
+    from src.data.sync._asset_langs import to_bcp47
+    from src.utils.db import duckdb_read_only
+    from src.utils.paths import get_metadata_db_path
+
+    result: dict[str, str] = dict(map_id_to_fallback)  # valeurs par défaut = EN
+    bcp = to_bcp47(lang) if len(lang) <= 3 else lang
+    db_path = get_metadata_db_path()
+    if not db_path.exists():
+        return result
+
+    try:
+        ids = list(map_id_to_fallback.keys())
+        placeholders = ", ".join("?" * len(ids))
+        with duckdb_read_only(str(db_path)) as conn:
+            tables = {
+                r[0]
+                for r in conn.execute(
+                    "SELECT table_name FROM information_schema.tables WHERE table_schema='main'"
+                ).fetchall()
+            }
+            if "asset_translations" not in tables:
+                return result
+            for try_lang in (bcp, "en-US"):
+                rows = conn.execute(
+                    f"SELECT asset_id, name FROM asset_translations "
+                    f"WHERE asset_id IN ({placeholders}) AND asset_type = 'map' AND lang = ?",
+                    [*ids, try_lang],
+                ).fetchall()
+                for asset_id, name in rows:
+                    if name and str(name).strip():
+                        result[str(asset_id)] = str(name).strip()
+                if try_lang == bcp == "en-US":
+                    break
+    except Exception as exc:
+        logger.debug("resolve_map_display_names(%d ids, %s): %s", len(map_id_to_fallback), lang, exc)
+
+    return result
+
+
 def resolve_asset_name(
     asset_id: str | None,
     asset_type: str,

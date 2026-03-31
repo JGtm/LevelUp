@@ -9,7 +9,8 @@ from datetime import datetime
 
 import streamlit as st
 
-from src.ui.i18n import t
+from src.ui.i18n import get_lang, t
+from src.ui.translations import translate_pair_name
 from src.ui.pages.career_top_matches_data import (
     load_top_best_matches,
     load_top_worst_matches,
@@ -202,7 +203,11 @@ def _build_top_table_html(rows: list[dict], *, best: bool, gamertag: str = "") -
 
         mid = str(row.get("match_id") or "")
         match_link = _match_id_link(mid, gamertag)
-        mode = html.escape(str(row.get("game_variant_name") or row.get("playlist_name") or "—"))
+        _pair = row.get("pair_name")
+        mode = html.escape(
+            translate_pair_name(_pair, lang=get_lang())
+            or str(row.get("mode_ui") or row.get("game_variant_name") or row.get("playlist_name") or "—")
+        )
 
         score = html.escape(_format_score(row.get("my_team_score"), row.get("enemy_team_score")))
 

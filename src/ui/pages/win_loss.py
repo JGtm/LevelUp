@@ -98,10 +98,11 @@ def _render_map_mode_breakdown(dff: pl.DataFrame) -> None:
     with col_by_map:
         st.markdown(f"##### {t('wl_by_map')}")
         if "map_name" in dff.columns and "outcome" in dff.columns:
+            _wl_map_col = "map_ui" if "map_ui" in dff.columns else "map_name"
             with safe_chart_render():
                 fig_map = plot_stacked_outcomes_by_category(
                     dff,
-                    "map_name",
+                    _wl_map_col,
                     title=None,
                     min_matches=1,
                     sort_by="total",
@@ -263,12 +264,13 @@ def _render_winrate_perf_vs_history(dff: pl.DataFrame, base: pl.DataFrame) -> No
         return
 
     lang = get_lang()
+    _wl_order_col = "map_ui" if "map_ui" in dff.columns else "map_name"
     map_order: list[str] | None = None
     if "start_time" in dff.columns:
         map_order = (
             dff.sort("start_time")
-            .unique(subset=["map_name"], keep="first", maintain_order=True)
-            .filter(pl.col("map_name").is_not_null())["map_name"]
+            .unique(subset=[_wl_order_col], keep="first", maintain_order=True)
+            .filter(pl.col(_wl_order_col).is_not_null())[_wl_order_col]
             .to_list()
         )
 
@@ -293,10 +295,11 @@ def _compute_session_map_order(dff: pl.DataFrame) -> list[str] | None:
     """Retourne l'ordre chronologique des cartes depuis les matchs d'une session."""
     if "start_time" not in dff.columns:
         return None
+    _col = "map_ui" if "map_ui" in dff.columns else "map_name"
     return (
         dff.sort("start_time")
-        .unique(subset=["map_name"], keep="first", maintain_order=True)
-        .filter(pl.col("map_name").is_not_null())["map_name"]
+        .unique(subset=[_col], keep="first", maintain_order=True)
+        .filter(pl.col(_col).is_not_null())[_col]
         .to_list()
     )
 
