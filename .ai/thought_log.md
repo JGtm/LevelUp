@@ -7,6 +7,75 @@
 
 ## Journal
 
+### [2026-03-31] — fix(i18n): noms de cartes EN et "Quick Play" sur pages Teammates + Historique — Complété
+
+**Statut** : Complété
+
+**Problème** : Les pages Coéquipiers et Historique affichaient les noms de cartes en anglais et "Quick Play" au lieu des traductions FR, malgré le commit i18n `405e246` déjà fusionné.
+
+**Analyse** :
+- `map_ui` (FR) était bien produit par `_add_derived_columns` via `resolve_map_display_names()`, mais les renderers HTML utilisaient encore la clé `"map_name"` (EN) au lieu de `"map_ui"`.
+- `translate_playlist_name()` est un passthrough pur → `playlist_fr` = `playlist_name` (EN). La traduction réelle est dans `v_match_full.playlist_name_fr` mais non sélectionnée par `mv_player_matches`.
+
+**Décision technique** :
+1. `match_table_html.py` : clé `"map_name"` → `"map_ui"` ; renderer unifié `key in ("map_name", "map_ui")` → affiche `map_ui or map_name`, thumbnail via `map_id`.
+2. `teammates_helpers.py` : idem — clé `"map_name"` → `"map_ui"` dans la liste des colonnes + handler dans `_build_html_rows`.
+3. `teammates_map_charts.py` : `map_order` construit depuis `map_ui` (si dispo) sinon `map_name` — cohérence avec `compute_map_breakdown` qui groupe sur `map_ui`.
+4. `migrations.py` — `ensure_mv_player_matches_view` : ajout de `r.map_name_fr`, `r.playlist_name_fr`, `r.game_variant_name_fr` quand la source est `v_match_full` ; sinon `NULL`.
+5. `_filters_apply.py` — `_add_derived_columns` : si `playlist_name_fr` présente dans le DataFrame → `COALESCE(playlist_name_fr, playlist_name)` pour `playlist_fr` et `playlist_ui` (lang=fr).
+
+**Résultats** : 65 tests i18n + explorer_logic + match_history + delta_sync : 99 passed, 0 failed.
+
+**Prochaine étape** : Redémarrer l'app pour régénérer la vue `mv_player_matches` et vérifier visuellement.
+
+---
+
+### [2026-03-31] — fix(teammates): axe X du graphe Frag/morts affichait la date au lieu de #n + map — Complété
+
+**Tâche** : Le graphe "Frag morts" (`plot_trio_kills_deaths`) affichait des dates `DD/MM` sur l'axe X au lieu des labels `#n<br>map` utilisés par tous les autres graphes de l'escouade.
+
+**Cause** : La fonction `_prep` interne sélectionnait uniquement `[start_time, kills, deaths]` et supprimait les colonnes `map_ui`/`map_name`. La génération des ticktext utilisait systématiquement `strftime("%d/%m")` sans vérifier si les colonnes map étaient disponibles.
+
+**Correction** : Dans `src/visualization/trio.py`, `_prep` conserve désormais `map_ui` ou `map_name` si présente. La logique de ticktext utilise maintenant le même pattern que `plot_trio_metric` : `#i+1<br>map_name` quand disponible, fallback `DD/MM` sinon.
+
+**Résultat** : Les labels `#1<br>Deadlock`, `#2<br>Aquarius`, etc. s'affichent correctement.
+
+---
+
+### [2026-03-31] — feat(teammates): graphe tendance premier frag / première mort — Complété
+
+**Tâche** : Ajouter sur la page Coéquipiers un line chart chronologique (Option B) montrant la tendance du premier frag et de la première mort pour chaque joueur de l'escouade. Rolling average 10 matchs.
+
+**Décision technique** :
+- Source : `shared.highlight_events` (event_type kill/death, time_ms) + JOIN `match_registry` pour start_time
+- Architecture respectée : `analysis/first_events.py` (logique pure) + `_teammates_first_events_queries.py` (SQL privé) + rendu dans `teammates_charts.py`
+- `teammates_service.py` à 502L → nouvelle requête isolée dans `_teammates_first_events_queries.py` (sans toucher au service surchargé)
+- Graphe : points bruts semi-transparents (opacity 0.25) + lignes rolling (solid = frag, dot = mort), une couleur par joueur via `colors_by_name`
+- Appel injecté dans `render_trio_view` après `render_metric_bar_charts`, avec extraction des xuids depuis la `series` déjà construite
+- 4 clés i18n ajoutées (`tm_first_events_title`, `tm_first_frag`, `tm_first_death`, `tm_match_index`)
+- Branche : `feat/teammates-first-events-chart`
+
+**Résultats** : 0 erreur pylance/ruff, tous les fichiers < 500L, fonctions < 80L.
+
+**Prochaine étape** : Tester en live sur Streamlit, vérifier que `highlight_events` contient des events pour les matchs d'escouade courants.
+
+---
+
+### [2026-03-31] — Audit BDD + fix compute_sessions.py — Complété
+
+**Tâche** : Audit BDD (assets non traduits, tables/colonnes supprimées). Backfill sessions XxDaemonGamerxX.
+
+**Décision technique** :
+- **Traductions `asset_translations`** : 100% couvertes — 691 assets × 14 langues, aucun `name` NULL/vide
+- **Tables legacy v5.0** : toutes absentes dans les 4 player DBs (`match_stats`, `match_participants`, `highlight_events`, etc.)
+- **`highlight_events.gamertag`** : absent de `shared_matches_v2` (drop v5.8 Wave 4 bien appliqué)
+- **Root cause `sessions` manquante pour XxDaemonGamerxX** : `scripts/compute_sessions.py` line 416 référençait `shared_matches.duckdb` (ancien fichier supprimé) au lieu de `shared_matches_v2.duckdb`. Les syncs réguliers appellent `backfill_sessions_for_player` (→ `player_match_enrichment.session_id` uniquement), jamais `populate_sessions_table`. Les 3 autres joueurs avaient la table créée avant la migration v2.
+- **Fix** : correction du path hardcodé + `compute_sessions.py --gamertag XxDaemonGamerxX --force` → 5 sessions créées pour 22 matchs.
+
+**Résultats** : 482 MB total BDD, 0 fichier WAL orphelin, table `sessions` créée pour XxDaemonGamerxX. Commit `5714015`.
+
+---
+
 ### [2026-03-31] — i18n exhaustif : actifs (cartes/modes) traduits dans la langue courante — Complété
 
 **Tâche** : Corriger l'ensemble des endroits du codebase affichant les noms de cartes et modes en anglais fixe ou en `lang="fr"` hardcodé. Objectif : tous les labels visuels utilisent `get_lang()` et `asset_translations`.
@@ -8102,4 +8171,29 @@ et la passer en 3ᵉ élément du tuple de retour, sans polluer `df_display`.
   longueur cohérente, perf_scores non cassé
 
 **Résultat** : 7/7 tests verts. La colonne Carte dans l'historique de session utilise
-désormais `map_id` pour la traduction FR et les thumbnails, comme les autres callers.
+désormais `map_id` pour la traduction FR et les thumbnails, comme les autres cal
+
+---
+
+## [2026-03-31] fix(radar) — Radar "Complémentarité de l'escouade" : "Données insuffisantes" malgré 12 matchs — Complété
+
+**Statut** : Complété — commit `2cefec6` sur `feat/teammates-first-events-chart`
+
+**Cause racine** : Lors du refactoring de `compute_participation_profile` (session précédente), la fonction a perdu ses kwargs directs (`name=`, `color=`, `pair_name=`, `thresholds=`) au profit de `ProfileOptions`. Mais `_compute_player_profile` dans `teammates_synergy.py` utilisait encore l'ancienne signature → `TypeError` catchée silencieusement par `_compute_profiles_from_squad` → `profiles` liste vide → `_render_radar_display(profiles)` → `st.info(t("insufficient_data_chart"))`.
+
+**Diagnostic** : 
+- Madina97294 : PSA = 0/12 pour les matchs du 24 mars (missing sync)
+- Chocoboflor : PSA = 12/12 ✓
+- Même si Chocoboflor avait un profil valide, la TypeError l'excluait aussi
+- `test_viz_participation.py::TestComputeParticipationProfile` échouaient tous (même bug)
+
+**Décision technique** : Utiliser `ProfileOptions(name=..., color=..., pair_name=..., thresholds=...)` partout, re-exporter `ProfileOptions` depuis `src/visualization/participation_radar.py` pour la compat des tests.
+
+**Fichiers modifiés** :
+- `src/visualization/participation_radar.py` : re-export `ProfileOptions`
+- `src/ui/pages/teammates_synergy.py` : pass `ProfileOptions(...)` dans `_compute_player_profile`
+- `tests/test_viz_participation.py` : `TestComputeParticipationProfile` → `ProfileOptions`
+
+**Résultats** : 109 tests passent (test_viz_participation + test_participation_radar + test_teammates_helpers)
+
+**Conclusion** : Le graphe radar "Complémentarité de l'escouade" s'affiche désormais correctement. Le bug PSA manquants pour Madina reste un sujet sync (backfill --personal-scores à relancer), mais l'affichage fonctionne quand au moins un joueur a ses PSA.lers.
