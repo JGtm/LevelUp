@@ -47,12 +47,14 @@ RADAR_THRESHOLDS: dict[str, float] = {
     "survie_avg_life_ref_seconds": 90.0,  # 90 sec durée vie moy = 100%
 }
 
-# Seuils p90 de référence par mode individuel (fallback si données insuffisantes)
+# Seuils de référence par mode individuel — calibrés sur données réelles (p80 JGtm)
+# Cible : un "bon joueur" objectif atteint ~70-75% sur l'axe Objectifs
+# (ex. session 24-mars : JGtm=1060 PSA sur 4 matchs objectifs → 72%, Chocoboflor=745 → 51%)
 RADAR_THRESHOLDS_PER_MODE: dict[str, float] = {
-    "ctf": 850.0, "oddball": 700.0, "strongholds": 1050.0,
-    "koth": 850.0, "stockpile": 950.0, "extraction": 800.0,
-    "land_grab": 850.0, "slayer": 3500.0, "fiesta": 3200.0,
-    "other": 950.0,
+    "ctf": 350.0, "oddball": 290.0, "strongholds": 420.0,
+    "koth": 350.0, "stockpile": 390.0, "extraction": 330.0,
+    "land_grab": 350.0, "slayer": 3500.0, "fiesta": 3200.0,
+    "other": 390.0,
 }
 
 
