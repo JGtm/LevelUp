@@ -413,7 +413,7 @@ def process_player(
                 xuid = str(_p.get("xuid", "")) or None
                 break
 
-    shared_db_path = str(REPO_ROOT / "data" / "warehouse" / "shared_matches.duckdb")
+    shared_db_path = str(REPO_ROOT / "data" / "warehouse" / "shared_matches_v2.duckdb")
 
     try:
         conn = duckdb.connect(str(db_path))
