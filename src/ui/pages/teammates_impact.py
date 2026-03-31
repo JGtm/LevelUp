@@ -150,6 +150,7 @@ _EVENT_TO_EMOJI: dict[str, str] = {
     "first_group_death": "🪦",
     "silent_hero": "🛡️",
     "false_brother": "🗡️",
+    "top_killer": "💥",
 }
 _AGG_KEYS: list[str] = list(_EVENT_TO_EMOJI.keys())
 _IMPACT_INVERTED: set[str] = {
