@@ -312,6 +312,13 @@ def _add_derived_columns(  # noqa: C901, PLR0912
             }
             if id_to_fallback:
                 translated_maps = resolve_map_display_names(id_to_fallback, lang)
+                n_translated = sum(1 for k, v in translated_maps.items() if v != id_to_fallback.get(k))
+                logger.debug(
+                    "map_ui i18n: %d/%d cartes traduites (lang=%s)",
+                    n_translated,
+                    len(id_to_fallback),
+                    lang,
+                )
                 derived_exprs.append(
                     pl.col("map_id")
                     .cast(pl.Utf8)
