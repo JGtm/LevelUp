@@ -239,7 +239,8 @@ def main() -> int:  # noqa: C901, PLR0912, PLR0915
         try:
             from src.ui.multiplayer import list_duckdb_v4_players
 
-            _SHARED_DB_BOT = REPO_ROOT / "data" / "warehouse" / "shared_matches.duckdb"
+            from src.utils.paths import get_shared_matches_path
+            _SHARED_DB_BOT = get_shared_matches_path()
             if not _SHARED_DB_BOT.exists():
                 logger.error("shared_matches.duckdb introuvable pour --bot-detection")
                 return 1
@@ -376,11 +377,10 @@ def main() -> int:  # noqa: C901, PLR0912, PLR0915
             from src.data.dominance_backfill import compute_dominance_for_player
             from src.ui.multiplayer import list_duckdb_v4_players
 
-            _SHARED_DB_DOM = REPO_ROOT / "data" / "warehouse" / "shared_matches_v2.duckdb"
+            from src.utils.paths import get_shared_matches_path
+            _SHARED_DB_DOM = get_shared_matches_path()
             if not _SHARED_DB_DOM.exists():
-                _SHARED_DB_DOM = REPO_ROOT / "data" / "warehouse" / "shared_matches.duckdb"
-            if not _SHARED_DB_DOM.exists():
-                logger.error("shared_matches(_v2).duckdb introuvable pour --dominance")
+                logger.error("shared_matches.duckdb introuvable pour --dominance")
                 return 1
 
             shared_conn = duckdb.connect(str(_SHARED_DB_DOM), read_only=True)

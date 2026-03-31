@@ -27,6 +27,8 @@ import duckdb
 REPO_ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(REPO_ROOT))
 
+from src.utils.paths import get_shared_matches_path  # noqa: E402
+
 logging.basicConfig(
     level=logging.INFO,
     format="%(asctime)s [%(levelname)s] %(message)s",
@@ -34,7 +36,7 @@ logging.basicConfig(
 )
 logger = logging.getLogger(__name__)
 
-SHARED_DB_PATH = REPO_ROOT / "data" / "warehouse" / "shared_matches.duckdb"
+SHARED_DB_PATH = get_shared_matches_path()
 
 
 def load_profiles() -> dict:

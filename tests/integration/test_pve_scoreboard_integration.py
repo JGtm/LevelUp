@@ -162,7 +162,7 @@ def _create_shared_for_scoreboard(tmp_path: Path) -> tuple[Path, Path, Path]:
     warehouse_dir.mkdir(parents=True)
 
     stats_path = player_dir / "stats.duckdb"
-    shared_path = warehouse_dir / "shared_matches.duckdb"
+    shared_path = warehouse_dir / "shared_matches_v2.duckdb"
     meta_path = warehouse_dir / "metadata.duckdb"
 
     # --- Minimal player DB ---
