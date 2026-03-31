@@ -19,7 +19,9 @@ import streamlit as st
 
 from src.analysis.performance_score import compute_performance_series
 from src.ui.date_formats import FMT_DATETIME_FR
-from src.ui.i18n import get_outcome_map, t
+from src.ui.i18n import get_lang, get_outcome_map, t
+from src.ui.translations import translate_pair_name
+from src.ui.vectorize_helpers import build_mapping
 from src.ui.pages.match_table_html import render_match_table_html
 from src.visualization._compat import DataFrameLike, ensure_polars
 
@@ -94,7 +96,15 @@ def _ensure_display_columns(dff_table: pl.DataFrame, waypoint_player: str) -> pl
     if "playlist_fr" not in dff_table.columns:
         dff_table = dff_table.with_columns(pl.col("playlist_name").alias("playlist_fr"))
     if "mode_ui" not in dff_table.columns:
-        dff_table = dff_table.with_columns(pl.col("pair_name").alias("mode_ui"))
+        _mh_mode_map = build_mapping(
+            dff_table["pair_name"], lambda x: translate_pair_name(x, lang=get_lang())
+        )
+        dff_table = dff_table.with_columns(
+            pl.col("pair_name")
+            .cast(pl.Utf8)
+            .replace_strict(_mh_mode_map, default=pl.col("pair_name").cast(pl.Utf8), return_dtype=pl.Utf8)
+            .alias("mode_ui")
+        )
     return dff_table.with_columns(
         (
             pl.lit("https://www.halowaypoint.com/halo-infinite/players/")

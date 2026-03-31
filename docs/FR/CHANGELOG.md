@@ -42,6 +42,53 @@ Le format est basé sur [Keep a Changelog](https://keepachangelog.fr/fr/1.1.0/).
 
 ---
 
+## [6.2.1] - 2026-03-29
+
+### Ajouts
+
+- **Badges "Héros silencieux" & "Faux-frère"** (`src/analysis/impact_analysis.py`) — deux badges d'impact narratifs détectés depuis `match_participants` + `medals_earned` :
+  - *Héros silencieux* : top assists sans être top kills dans l'équipe (formule B : assists ≥ seuil × bonus médailles)
+  - *Faux-frère* : nombreux kills dans une équipe perdante où les coéquipiers ont sous-performé
+  - Variantes single-match et multi-match ; visibles sur la timeline Impact et la page Coéquipiers
+  - Légende exposée dans un expander sous la grille de badges
+- **Tableau ranking d'impact** — tableau HTML (`os-impact-table`) remplace la heatmap précédente ; affiche le score d'impact classé par joueur par match avec lignes colorées
+- **Graphe combiné Tirs à la tête + Frags parfaits** (page coéquipiers) — `plot_headshots_perfect_kills()` affiche un seul histogramme groupé par coéquipier au lieu de deux graphes séparés
+- **Top matchs — exclusion BTB** — paramètre `career_top_exclude_btb` dans `AppSettings` ; quand activé, les matchs Big Team Battle sont exclus du classement pour une comparaison Arena/BTB équitable
+- **`--btb-only` / `--arena-only`** — nouvelles options dans `scripts/backfill_data.py` pour réparer ciblé les scores d'équipe corrompus CTF/TC/KOTH/Assault
+- **`monitor_uptime.sh`** — équivalent shell bash de `monitor_uptime.py` pour les environnements sans Python
+
+### Changements
+
+- **Renommage KDA → Efficiency** — toutes les variables agrégat locales nommées `kda` dans `src/analysis/` renommées en `efficiency` ; API publique inchangée
+- **Score impact** — poids *Héros silencieux* relevé à +1.5 ; constantes manquantes (`SILENT_HERO_MEDAL_BOOST`, `FALSE_BROTHER_LOSS_PENALTY`) centralisées
+- **Page Impact** — heatmap remplacée par le tableau HTML de ranking ; badges d'impact en premier, section coéquipiers en dernier
+- **Page Coéquipiers** — section médailles déplacée en fin de page ; graphes individuels Tirs à la tête et Frags parfaits remplacés par le graphe combiné
+- **Normalisation labels modes de jeu (phases 1 + 2)** — `resolve_display_mode()` ajouté comme résolveur unifié ; `translate_pair_name()` lui délègue ; `mode_pair_overrides` étendu avec 29 surcharges FR/EN ; filtre sidebar et tableaux de matchs utilisent les labels normalisés
+- **Normalisation score top matchs** — écart de score divisé par le max du match pour équité Arena/BTB ; tri par `performance_score` (pas le `score_diff` brut)
+- **`waypoint_player` propagé** dans les liens Explorer des top matchs pour les deep links joueur
+- **Docker** — montage `.env.local` désormais obligatoire (suppression de `required: false`)
+
+### Corrections
+
+- **Scores d'équipe corrompus** — `team_score` mis à `NULL` quand contaminé par `ps_score` (CASTLE WARS, Sentry Defense, et tous les modes objectifs) ; `backfill_fix_score_inversions` étendu à Slayer, KOTH et Assault
+- **Inversions de score** — inversion Bleu/Rouge corrigée pour Slayer + KOTH/Assault ; seuil comeback rendu proportionnel à la durée du match
+- **Flag dominance** — `WHERE dominance_flag IS NULL` corrigé en `WHERE dominance_flag NOT IN (1, 2)` pour ne plus ignorer les lignes avec valeur par défaut `0`
+- **Ordre badges comeback** — `CONTRE_REMONTADA` évalué avant `REMONTADA` (chemin mort corrigé)
+- **Seuil comeback** — formule symétrique via `_resolve_threshold()` pour éviter une détection asymétrique
+- **Navigation deep link** — DB joueur correctement restaurée à la navigation directe via paramètres URL `gamertag + match_id`
+- **`run.sh`** — fichier `nul` parasite créé par Git Bash sous Windows supprimé au démarrage
+- Badge Faux-frère : emoji 🗡️ appliqué uniformément ; label "assists" corrigé en français
+
+### Tests
+
+- `identify_silent_hero_multi` + `identify_false_brother_multi` : 16 nouveaux tests
+- `infer_mode_category` + format inversé sidebar : couvert
+- Top matchs : cas E/F/G — filtre BTB, exclusion score NULL, tri priorité badge
+- `test(analysis)` : logging + couverture efficiency/cumul (renommage v6.2.1)
+- **Total : suite précédente + ~25 nouveaux tests, 0 échecs**
+
+---
+
 ## [6.2.0] - 2026-03-28
 
 ### Ajouté

@@ -234,7 +234,7 @@ def _compute_match_series(df: pl.DataFrame) -> dict:
         accs.append(float(acc) if acc is not None else None)
         life = row.get("avg_life_seconds")
         lifes.append(float(life) if life is not None else None)
-        pair = str(row.get("pair_name") or "")
+        pair = str(row.get("pair_fr") or row.get("mode_ui") or row.get("pair_name") or "")
         short = pair.split(":")[-1].strip()[:18] if ":" in pair else pair[:18]
         lbl = t("sc_match_index") + f" {i}"
         labels.append(lbl + (f" — {short}" if short else ""))

@@ -42,6 +42,53 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ---
 
+## [6.2.1] - 2026-03-29
+
+### Added
+
+- **Badges "Héros silencieux" & "Faux-frère"** (`src/analysis/impact_analysis.py`) — two narrative impact badges detected from `match_participants` + `medals_earned`:
+  - *Héros silencieux*: top assists but not top kills on the team (formula B: assists ≥ threshold × medal boost)
+  - *Faux-frère*: high kills on a losing team where the rest of the squad underperformed
+  - Single-match and multi-match variants; both surface on the Impact timeline and Teammates pages
+  - Legend exposed in an expander below the badge grid
+- **Impact ranking table** — HTML table (`os-impact-table` CSS class) replaces the previous heatmap; shows ranked impact score per player per match with color-coded rows
+- **Combined Headshots + Perfect Kills chart** (teammates page) — `plot_headshots_perfect_kills()` renders a single grouped-bar chart per teammate instead of two separate charts
+- **Top Matches — BTB exclusion** — `career_top_exclude_btb` setting in `AppSettings`; when enabled, Big Team Battle matches are filtered out of the career top-matches list for fairer Arena/BTB comparison
+- **`--btb-only` / `--arena-only`** backfill options in `scripts/backfill_data.py` — targeted repair of corrupted CTF/TC/KOTH/Assault team scores for BTB or 4v4 matches respectively
+- **`monitor_uptime.sh`** — shell bash equivalent of `monitor_uptime.py` for environments without Python
+
+### Changed
+
+- **KDA → Efficiency rename** — all local aggregate variables named `kda` in `src/analysis/` renamed to `efficiency`; public API unchanged, only internal naming
+- **Impact scoring** — *Héros silencieux* weight raised to +1.5; missing constants (`SILENT_HERO_MEDAL_BOOST`, `FALSE_BROTHER_LOSS_PENALTY`) centralized
+- **Impact page** — heatmap replaced by the HTML ranking table; layout reorganized with impact badges first, teammates section last
+- **Teammates page** — medals section moved to last position; individual Headshots and Perfect Kills bar charts replaced by the combined chart
+- **Mode label normalization (phase 1 + 2)** — `resolve_display_mode()` added as a unified resolver; `translate_pair_name()` delegates to it; `mode_pair_overrides` expanded with 29 FR/EN overrides; sidebar filter and match tables use normalized labels
+- **Top matches score normalization** — score delta divided by the match max for Arena/BTB equity; sorted by `performance_score` (not raw `score_diff`)
+- **`waypoint_player` propagated** in top-match Explorer links so deep links open the correct player profile
+- **Docker** — `.env.local` mount is now mandatory (removed `required: false`)
+
+### Fixed
+
+- **Corrupt team scores** — `team_score` set to `NULL` when contaminated by `ps_score` (CASTLE WARS, Sentry Defense, and all objective modes); `backfill_fix_score_inversions` extended to Slayer, KOTH, and Assault
+- **Score inversions** — Blue/Red team score swap corrected for Slayer + KOTH/Assault; comeback threshold made proportional to match duration
+- **Dominance flag** — `WHERE dominance_flag IS NULL` corrected to `WHERE dominance_flag NOT IN (1, 2)` so rows with default value `0` are no longer skipped during backfill
+- **Comeback badge order** — `CONTRE_REMONTADA` now evaluated before `REMONTADA`; the previous code path was dead
+- **Comeback threshold** — symmetric formula via `_resolve_threshold()`; avoids asymmetric detection between winning and losing teams
+- **Navigation deep link** — player DB correctly restored when navigating directly to a match via `gamertag + match_id` URL params
+- **`run.sh`** — spurious `nul` file created by Git Bash on Windows cleaned up at startup
+- Impact badge display: emoji 🗡️ applied consistently for Faux-frère; "assists" label corrected to French in the badge tooltip
+
+### Tests
+
+- `identify_silent_hero_multi` + `identify_false_brother_multi`: 16 new tests
+- `infer_mode_category` + inverted sidebar format: covered
+- Top-matches: cases E/F/G — BTB filter, NULL score exclusion, badge priority sort
+- `test(analysis)`: logging + cumulative efficiency coverage (v6.2.1 rename)
+- **Total: previous suite + ~25 new tests, 0 failures**
+
+---
+
 ## [6.2.0] - 2026-03-28
 
 ### Added

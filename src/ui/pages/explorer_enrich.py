@@ -32,14 +32,24 @@ def enrich_for_table(
     """
     from src.analysis.performance_score import compute_performance_series
     from src.ui.date_formats import FMT_DATETIME_FR
-    from src.ui.i18n import get_outcome_map
+    from src.ui.i18n import get_lang, get_outcome_map
+    from src.ui.translations import translate_pair_name
+    from src.ui.vectorize_helpers import build_mapping
 
     result = dff.clone()
 
     if "playlist_fr" not in result.columns and "playlist_name" in result.columns:
         result = result.with_columns(pl.col("playlist_name").alias("playlist_fr"))
     if "mode_ui" not in result.columns and "pair_name" in result.columns:
-        result = result.with_columns(pl.col("pair_name").alias("mode_ui"))
+        _ee_mode_map = build_mapping(
+            result["pair_name"], lambda x: translate_pair_name(x, lang=get_lang())
+        )
+        result = result.with_columns(
+            pl.col("pair_name")
+            .cast(pl.Utf8)
+            .replace_strict(_ee_mode_map, default=pl.col("pair_name").cast(pl.Utf8), return_dtype=pl.Utf8)
+            .alias("mode_ui")
+        )
     if "outcome_label" not in result.columns and "outcome" in result.columns:
         result = result.with_columns(
             pl.col("outcome")
@@ -96,7 +106,9 @@ def enrich_common_matches(
         DataFrame enrichi compatible avec le tableau HTML.
     """
     from src.ui.date_formats import FMT_DATETIME_FR
-    from src.ui.i18n import get_outcome_map
+    from src.ui.i18n import get_lang, get_outcome_map
+    from src.ui.translations import translate_pair_name
+    from src.ui.vectorize_helpers import build_mapping
 
     result = common.clone()
 
@@ -111,9 +123,19 @@ def enrich_common_matches(
             pl.col("start_time").dt.strftime(FMT_DATETIME_FR).fill_null("-").alias("start_time_fr")
         )
     # Colonnes manquantes → alias
-    for col_name, src_col in (("playlist_fr", "playlist_name"), ("mode_ui", "pair_name")):
+    for col_name, src_col in (("playlist_fr", "playlist_name"),):
         if col_name not in result.columns and src_col in result.columns:
             result = result.with_columns(pl.col(src_col).alias(col_name))
+    if "mode_ui" not in result.columns and "pair_name" in result.columns:
+        _ec_mode_map = build_mapping(
+            result["pair_name"], lambda x: translate_pair_name(x, lang=get_lang())
+        )
+        result = result.with_columns(
+            pl.col("pair_name")
+            .cast(pl.Utf8)
+            .replace_strict(_ec_mode_map, default=pl.col("pair_name").cast(pl.Utf8), return_dtype=pl.Utf8)
+            .alias("mode_ui")
+        )
 
     # Colonnes absentes → null
     for col_name in (

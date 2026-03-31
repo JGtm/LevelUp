@@ -88,9 +88,12 @@ def plot_objective_vs_kills_scatter(
         .agg(pl.col("points").sum().alias("objective_score"))
     )
 
+    _obj_map_cols = ["match_id", "kills", "map_name", "start_time"]
+    if "map_ui" in match_stats_df.columns:
+        _obj_map_cols.append("map_ui")
     # Joindre avec match_stats pour avoir les kills
     combined = (
-        match_stats_df.select(["match_id", "kills", "map_name", "start_time"])
+        match_stats_df.select(_obj_map_cols)
         .join(obj_by_match, on="match_id", how="left")
         .with_columns([pl.col("objective_score").fill_null(0)])
     )
@@ -120,7 +123,7 @@ def plot_objective_vs_kills_scatter(
                 "opacity": 0.7,
                 "line": {"width": 1, "color": "white"},
             },
-            text=[d.get("map_name", "?") for d in data],
+            text=[d.get("map_ui") or d.get("map_name", "?") for d in data],
             customdata=[[d.get("start_time", ""), d.get("match_id", "")] for d in data],
             hovertemplate=viz_t("hover_obj_kills_score", lang),
             name=viz_t("trace_matches", lang),

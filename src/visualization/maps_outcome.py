@@ -245,6 +245,10 @@ def plot_map_outcome_timeline(
     if df_pl.is_empty() or not required.issubset(set(df_pl.columns)):
         return None
 
+    # Utiliser map_ui (traduit) si disponible pour les labels des cartes
+    if "map_ui" in df_pl.columns:
+        df_pl = df_pl.with_columns(pl.col("map_ui").alias("map_name"))
+
     session_ids: set[str] = set(session_match_ids or [])
     top_maps = (
         df_pl.filter(pl.col("map_name").is_not_null())

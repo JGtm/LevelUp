@@ -7,6 +7,48 @@
 
 ## Journal
 
+### [2026-03-31] — i18n exhaustif : actifs (cartes/modes) traduits dans la langue courante — Complété
+
+**Tâche** : Corriger l'ensemble des endroits du codebase affichant les noms de cartes et modes en anglais fixe ou en `lang="fr"` hardcodé. Objectif : tous les labels visuels utilisent `get_lang()` et `asset_translations`.
+
+**Décision technique** :
+- **`resolve_map_display_names(map_id_to_fallback, lang)`** ajouté dans `src/ui/translations.py` : requête batch SQL sur `asset_translations` (BCP-47 + fallback `en-US`), retourne `{map_id: traduit}` sans N+1
+- **`_add_derived_columns` (`_filters_apply.py`)** : point central v6 — `map_ui` produit via `resolve_map_display_names` quand `map_id` présent (1 requête batch par refresh), `mode_ui` via `translate_pair_name(lang=get_lang())`
+- **`compute_map_breakdown` (`analysis/maps.py`)** : groupe par `map_ui` si présent → valeur traduite propagée à tous les charts de carte
+- **6 fichiers de visualisation** (`timeseries`, `match_bars`, `trio`, `teammates_hs_pk`, `objective_charts`, `maps_outcome`) : utilisent `map_ui` si disponible (`"map_ui" if "map_ui" in d.columns else "map_name"`)
+- **`match_history.py` + `explorer_enrich.py`** : `mode_ui` via `build_mapping(pair_name, translate_pair_name(lang=get_lang()))`
+- **`explorer.py`** : dropdowns et match_selector utilisent `mode_ui`/`map_ui`
+- **`win_loss.py`** : `plot_stacked_outcomes_by_category` + `map_order` via `map_ui`
+- **`media_tab.py`** : caption label via `map_ui`
+- **`_session_compare_viz.py`** : hover label via `pair_fr`/`mode_ui`
+- **`career_top_matches_render.py`** : mode via `translate_pair_name(lang=get_lang())`
+- **`_session_compare_history.py`** (bug B) : `build_mapping` avec `lang=get_lang()` au lieu du défaut `"fr"`
+
+**Design pattern adopté** : la colonne `map_ui` est la source de vérité post-`_add_derived_columns`. Tous les consommateurs font `"map_ui" if "map_ui" in df.columns else "map_name"` — aucun hardcode de langue dans la couche visualisation.
+
+**Résultats** : 7/7 tests existants passent. Tous les modules modifiés s'importent sans erreur. 14 fichiers modifiés + 1 nouveau fichier de tests.
+
+**Fichiers modifiés** :
+- `src/ui/translations.py` — `resolve_map_display_names` ajouté
+- `src/app/_filters_apply.py` — `_add_derived_columns` : map_ui i18n + mode_ui i18n
+- `src/analysis/maps.py` — `compute_map_breakdown` : group by `map_ui`
+- `src/visualization/timeseries.py` — tick labels `map_ui`
+- `src/visualization/match_bars.py` — tick labels `_map_display`
+- `src/visualization/trio.py` — ticktext `map_ui`
+- `src/visualization/teammates_hs_pk.py` — tick labels `_map_display`
+- `src/visualization/objective_charts.py` — hover text `map_ui`
+- `src/visualization/maps_outcome.py` — `plot_map_outcome_timeline` : `map_ui → map_name`
+- `src/ui/pages/match_history.py` — `_ensure_display_columns` : mode_ui traduit
+- `src/ui/pages/explorer_enrich.py` — `enrich_for_table` + `enrich_common_matches` : mode_ui traduit
+- `src/ui/pages/explorer.py` — dropdowns + match_selector : `mode_ui`/`map_ui`
+- `src/ui/pages/win_loss.py` — `map_ui` pour stacked + map_order
+- `src/ui/pages/media_tab.py` — caption `map_ui`
+- `src/ui/pages/_session_compare_viz.py` — hover label `pair_fr`/`mode_ui`
+- `src/ui/pages/career_top_matches_render.py` — mode `translate_pair_name(get_lang())`
+- `src/ui/pages/_session_compare_history.py` — `build_mapping` avec `lang=get_lang()`
+
+---
+
 ### [2026-03-30] — Tooltips descriptions médailles + citations — Complété
 
 **Tâche** : Ajouter des tooltips (HTML `title=`) affichant la description des médailles dans les grilles de médailles (page dernier match onglet citations, page citations), et vérifier l'état des tooltips pour les citations.

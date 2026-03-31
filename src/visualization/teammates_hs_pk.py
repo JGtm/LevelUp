@@ -89,16 +89,18 @@ def plot_hs_pk_stacked(  # noqa: C901, PLR0912, PLR0915
 
         if has_match_id:
             map_cols = [pl.col("match_id").cast(pl.String).alias("match_id"), pl.col("start_time")]
-            if "map_name" in d.columns:
-                map_cols.append(pl.col("map_name").fill_null(""))
+            _disp_col_hs = "map_ui" if "map_ui" in d.columns else "map_name"
+            if _disp_col_hs in d.columns:
+                map_cols.append(pl.col(_disp_col_hs).fill_null("").alias("_map_display"))
             all_match_data.append(d.select(map_cols))
         else:
             ts_cols = [
                 pl.col("start_time").dt.strftime("%Y-%m-%dT%H:%M:%S").alias("match_id"),
                 pl.col("start_time"),
             ]
-            if "map_name" in d.columns:
-                ts_cols.append(pl.col("map_name").fill_null(""))
+            _disp_col_hs2 = "map_ui" if "map_ui" in d.columns else "map_name"
+            if _disp_col_hs2 in d.columns:
+                ts_cols.append(pl.col(_disp_col_hs2).fill_null("").alias("_map_display"))
             all_match_data.append(d.select(ts_cols))
 
     if not prepared or not all_match_data:
@@ -106,8 +108,8 @@ def plot_hs_pk_stacked(  # noqa: C901, PLR0912, PLR0915
 
     combined = pl.concat(all_match_data, how="diagonal")
     agg_exprs = [pl.col("start_time").min()]
-    if "map_name" in combined.columns:
-        agg_exprs.append(pl.col("map_name").first())
+    if "_map_display" in combined.columns:
+        agg_exprs.append(pl.col("_map_display").first())
     match_times = combined.group_by("match_id").agg(agg_exprs).sort("start_time")
 
     match_ids_ordered = match_times.get_column("match_id").to_list()
@@ -116,10 +118,10 @@ def plot_hs_pk_stacked(  # noqa: C901, PLR0912, PLR0915
     )
 
     n_matches = len(match_ids_ordered)
-    if "map_name" in match_times.columns:
+    if "_map_display" in match_times.columns:
         labels = [
             f"#{i + 1}<br>{mn}" if mn else f"#{i + 1}"
-            for i, mn in enumerate(match_times.get_column("map_name").fill_null("").to_list())
+            for i, mn in enumerate(match_times.get_column("_map_display").fill_null("").to_list())
         ]
     else:
         labels = match_times.get_column("start_time").dt.strftime(FMT_SHORT_DATETIME_FR).to_list()
