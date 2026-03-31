@@ -15,6 +15,7 @@ logger = logging.getLogger(__name__)
 
 from src.analysis.participation_radar import (
     RADAR_THRESHOLDS_PER_MODE,
+    ProfileOptions,
     get_mode_family,
     is_objective_mode_from_pair_name,
 )
@@ -160,10 +161,12 @@ def _compute_player_profile(  # noqa: PLR0913
     return compute_participation_profile(
         ps,
         match_row=match_row,
-        name=name,
-        color=color,
-        pair_name=match_row.get("pair_name"),
-        thresholds=scaled_th,
+        options=ProfileOptions(
+            name=name,
+            color=color,
+            pair_name=match_row.get("pair_name"),
+            thresholds=scaled_th,
+        ),
     )
 
 
