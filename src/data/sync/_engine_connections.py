@@ -430,6 +430,59 @@ class ConnectionMixin:
             logger.debug("event=latest_match_id_failed error=%s", e)
             return None
 
+    def _is_player_fully_synced_for_match(self, match_id: str) -> bool:
+        """Vérifie que le joueur a des données complètes pour ce match (enrichment + PSA).
+
+        Utilisé par le HEAD check delta pour éviter un court-circuit prématuré quand
+        un coéquipier a inséré le match dans shared_matches (via son propre sync) mais
+        que le joueur courant n'a jamais collecté ses PSA via l'API.
+
+        Un match est considéré « complet » si :
+        - le joueur a une ligne dans player_match_enrichment, ET
+        - soit des personal_score_awards existent, soit personal_score = 0 dans shared.
+
+        Returns:
+            True si le match est pleinement synchronisé pour ce joueur, False sinon.
+            En cas d'erreur, retourne False (conservateur : ne pas court-circuiter).
+        """
+        try:
+            conn = self._get_connection()
+            has_enrichment = (
+                conn.execute(
+                    "SELECT COUNT(*) FROM player_match_enrichment WHERE match_id = ?",
+                    [match_id],
+                ).fetchone()[0]
+                > 0
+            )
+            if not has_enrichment:
+                return False
+
+            has_psa = (
+                conn.execute(
+                    "SELECT COUNT(*) FROM personal_score_awards WHERE match_id = ?",
+                    [match_id],
+                ).fetchone()[0]
+                > 0
+            )
+            if has_psa:
+                return True
+
+            # Match légitimement sans PSA si personal_score = 0 dans shared
+            shared_conn = self._get_shared_connection()
+            if shared_conn and self._xuid:
+                score_row = shared_conn.execute(
+                    "SELECT COALESCE(personal_score, 0) FROM match_participants "
+                    "WHERE match_id = ? AND xuid = ?",
+                    [match_id, self._xuid],
+                ).fetchone()
+                if score_row and score_row[0] == 0:
+                    return True
+
+            return False
+        except Exception as e:
+            logger.debug("event=is_fully_synced_check_failed match=%s error=%s", match_id, e)
+            return False
+
     # =========================================================================
     # Fermeture
     # =========================================================================
