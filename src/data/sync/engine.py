@@ -214,6 +214,11 @@ class DuckDBSyncEngine(
         # Cache des XUIDs amis (chargé lazily depuis friends_defaults.json)
         self._friends_xuids: frozenset[str] | None = None
 
+        # PSA des coéquipiers enregistrés collectées pendant le traitement des matchs,
+        # distribuées vers leurs DBs via le fanout post-sync. Keyed by xuid.
+        # {xuid: [PersonalScoreAwardRow, ...]}
+        self._pending_other_psa: dict[str, list] = {}
+
         # Version SPNKr installée (trackée dans match_registry + sync_meta)
         self._spnkr_version: str | None = None
         try:
@@ -351,21 +356,32 @@ class DuckDBSyncEngine(
                             count=1,
                         )
                         if _head and _latest_db and _head[0].match_id == _latest_db:
-                            logger.info(
-                                "event=delta_head_check gamertag=%s short_circuit=true latest=%s",
-                                self._gamertag,
-                                _latest_db[:8],
-                            )
-                            # Toujours enregistrer la date du sync même si aucun nouveau match
-                            # (sinon l'indicateur affiche la date du dernier sync avec insertions)
-                            self._save_sync_metadata(delta_mode=True, matches_inserted=0)
-                            self._get_connection().commit()
-                            # Réparer les PME manquants chez les coéquipiers
-                            # (cas : session jouée ensemble non encore enrichie côté coéquipier)
-                            self.fanout_repair_missing_scores()
-                            result.finished_at = datetime.now(timezone.utc)
-                            result.duration_seconds = time.time() - start_time
-                            return result
+                            # Guard v5.6 : vérifier que le match est réellement complet
+                            # pour CE joueur (enrichment + PSA). Un coéquipier peut avoir
+                            # inséré ce match dans shared sans que le joueur ait ses PSA.
+                            if not self._is_player_fully_synced_for_match(_latest_db):
+                                logger.info(
+                                    "event=delta_head_check gamertag=%s short_circuit=skipped "
+                                    "latest=%s reason=missing_psa",
+                                    self._gamertag,
+                                    _latest_db[:8],
+                                )
+                            else:
+                                logger.info(
+                                    "event=delta_head_check gamertag=%s short_circuit=true latest=%s",
+                                    self._gamertag,
+                                    _latest_db[:8],
+                                )
+                                # Toujours enregistrer la date du sync même si aucun nouveau match
+                                # (sinon l'indicateur affiche la date du dernier sync avec insertions)
+                                self._save_sync_metadata(delta_mode=True, matches_inserted=0)
+                                self._get_connection().commit()
+                                # Réparer les PME manquants chez les coéquipiers
+                                # (cas : session jouée ensemble non encore enrichie côté coéquipier)
+                                self.fanout_repair_missing_scores()
+                                result.finished_at = datetime.now(timezone.utc)
+                                result.duration_seconds = time.time() - start_time
+                                return result
                         logger.debug(
                             "event=delta_head_check gamertag=%s short_circuit=false latest_db=%s",
                             self._gamertag,

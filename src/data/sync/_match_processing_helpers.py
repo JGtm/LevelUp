@@ -218,6 +218,45 @@ class MatchProcessingHelpersMixin:
             )
         return skill_row, personal_score_rows
 
+    def _collect_psa_for_other_players(
+        self: _SyncProtocol,
+        stats_json: dict,
+        match_id: str,
+    ) -> None:
+        """Extrait et met en attente les PSA des coéquipiers enregistrés.
+
+        Le JSON stats_json contient les PersonalScores de TOUS les participants.
+        Ici on les extrait pour chaque autre joueur enregistré dans db_profiles.json
+        et on les stocke dans self._pending_other_psa pour distribution
+        ultérieure par le fanout (_run_other_player_enrichment).
+
+        Appelé pendant le traitement de chaque match (known et new), pendant
+        que stats_json est disponible en mémoire.
+
+        Args:
+            stats_json: JSON brut du match (get_match_stats).
+            match_id: ID du match en cours.
+        """
+        others = self._get_other_registered_players()
+        for player in others:
+            xuid = player.get("xuid", "")
+            if not xuid:
+                continue
+            personal_scores = extract_personal_score_awards(stats_json, xuid)
+            if not personal_scores:
+                continue
+            rows = transform_personal_score_awards(match_id, xuid, personal_scores)
+            if rows:
+                if xuid not in self._pending_other_psa:
+                    self._pending_other_psa[xuid] = []
+                self._pending_other_psa[xuid].extend(rows)
+                logger.debug(
+                    "psa_fanout: %d PSA en attente pour xuid=%s match=%s",
+                    len(rows),
+                    xuid,
+                    match_id,
+                )
+
     async def _try_insert_pve_stats(
         self: _SyncProtocol,
         stats_json: dict,
