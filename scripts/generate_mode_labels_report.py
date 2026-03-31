@@ -70,10 +70,8 @@ def main() -> None:
     parser.add_argument("--lang", default="fr", choices=["fr", "en"], help="Langue (défaut: fr)")
     args = parser.parse_args()
 
-    shared_db = _ROOT / "data" / "warehouse" / "shared_matches_v2.duckdb"
-    if not shared_db.exists():
-        # Fallback legacy
-        shared_db = _ROOT / "data" / "warehouse" / "shared_matches.duckdb"
+    from src.utils.paths import get_shared_matches_path
+    shared_db = get_shared_matches_path()
     if not shared_db.exists():
         print("ERREUR : shared_matches DB introuvable.", file=sys.stderr)
         sys.exit(1)

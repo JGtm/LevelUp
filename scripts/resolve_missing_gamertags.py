@@ -81,7 +81,8 @@ logger = logging.getLogger(__name__)
 # Paths
 DATA_DIR = Path(__file__).resolve().parent.parent / "data"
 PLAYERS_DIR = DATA_DIR / "players"
-SHARED_DB_PATH = DATA_DIR / "warehouse" / "shared_matches.duckdb"
+from src.utils.paths import get_shared_matches_path  # noqa: E402
+SHARED_DB_PATH = get_shared_matches_path()
 
 
 def is_valid_xuid(xuid: str) -> bool:

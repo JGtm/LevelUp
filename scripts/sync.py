@@ -157,8 +157,9 @@ def _resolve_player_in_db(db_path: str, player_query: str) -> tuple[str, str | N
     if xuid_from_profiles:
         return xuid_from_profiles, xuid_from_profiles, player_query.strip()
 
-    # V5.1 : Chercher dans shared_matches.duckdb (source unique)
-    shared_path = REPO_ROOT / "data" / "warehouse" / "shared_matches.duckdb"
+    # V6 : Chercher dans shared_matches_v2.duckdb (source unique)
+    from src.utils.paths import get_shared_matches_path
+    shared_path = get_shared_matches_path()
     if shared_path.exists():
         try:
             import duckdb

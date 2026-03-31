@@ -73,9 +73,9 @@ def test_all_medals_from_json_in_db():
 @skip_no_data
 def test_join_medals_earned_to_definitions():
     """JOIN medals_earned → medal_definitions a un taux de correspondance >= 95%."""
-    shared_db = REPO_ROOT / "data" / "warehouse" / "shared_matches.duckdb"
+    shared_db = REPO_ROOT / "data" / "warehouse" / "shared_matches_v2.duckdb"
     if not shared_db.exists():
-        pytest.skip("shared_matches.duckdb absente")
+        pytest.skip("shared_matches_v2.duckdb absente")
 
     conn = duckdb.connect(str(METADATA_DB), read_only=True)
     conn.execute(f"ATTACH '{shared_db}' AS shared (READ_ONLY)")
