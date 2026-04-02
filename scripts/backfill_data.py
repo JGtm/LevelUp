@@ -803,6 +803,8 @@ def _print_totals(totals: dict, scope: object) -> None:  # noqa: C901, PLR0912
         logger.info(f"Weapon kills insérés: {totals.get('weapon_kills_inserted', 0)}")
     if getattr(scope, "team_scores", False):
         logger.info(f"Team scores mis à jour: {totals.get('team_scores_updated', 0)}")
+    if getattr(scope, "playable_duration", False):
+        logger.info(f"Playable duration mis à jour: {totals.get('playable_duration_updated', 0)}")
 
 
 if __name__ == "__main__":

@@ -224,6 +224,8 @@ def find_matches_missing_data(
         force_pve_stats=force_pve_stats,
         weapons=weapons,
         force_weapons=force_weapons,
+        playable_duration=getattr(scope, "playable_duration", False) if scope is not None else False,
+        force_playable_duration=getattr(scope, "force_playable_duration", False) if scope is not None else False,
     )
 
     # Fusionner résultats locaux + shared (dédoublonner, garder l'ordre)
@@ -333,6 +335,8 @@ def _find_matches_in_shared_all(
     force_pve_stats: bool = False,  # v5.2 : force le rescan PVE pour tous les Firefight
     weapons: bool = False,  # v5.5 : kills par arme → shared.weapon_kills
     force_weapons: bool = False,  # v5.5 : ignorer MatchBits.WEAPON_KILLS
+    playable_duration: bool = False,  # v6.3 : playable_duration_seconds + real_start_time
+    force_playable_duration: bool = False,  # v6.3 : re-traiter même si déjà rempli
 ) -> list[str]:
     """Détection V5 FINALE : tous les flags via shared DB.
 
@@ -462,6 +466,18 @@ def _find_matches_in_shared_all(
             conditions.append(
                 f"(COALESCE(mr.backfill_completed, 0) & {wk_bit}) = 0"
                 f" AND (COALESCE(mr.backfill_completed, 0) & {no_film_bit}) = 0"
+            )
+
+    # Playable duration — global match : colonne NULL dans match_registry
+    # Note : utiliser match_registry directement (pas v_match_full qui peut ne pas exposer la colonne)
+    if playable_duration:
+        if force_playable_duration:
+            conditions.append("1=1")
+        else:
+            conditions.append(
+                "mp.match_id NOT IN ("
+                "  SELECT match_id FROM match_registry WHERE playable_duration_seconds IS NOT NULL"
+                ")"
             )
 
     if not conditions:
