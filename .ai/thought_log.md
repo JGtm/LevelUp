@@ -7,6 +7,21 @@
 
 ## Journal
 
+### [2026-04-02] — feat(escouade): records historiques par joueur sur tous les graphes barres — Complété
+
+**Décision technique principale** : Architecture en 4 couches — analyse pure (`squad_records.py`), formes Plotly (`_squad_record_shapes.py`), modification des 4 fonctions de visualisation, threading des records depuis la couche UI.
+
+**Résultats observés** :
+- Records filtrés par `pair_name` dominant (même catégorie de mode, pas de mix BTB/4v4)
+- Stats négatives (morts) : record = minimum (plus proche de 0)
+- Stats positives : record = maximum
+- Rendu : barre blanche grasse à la largeur exacte de chaque baton (`add_record_shapes` / `add_overlay_record_shapes`)
+- Graphes couverts : kills/morts, assists, KDA, accuracy, avg_life, performance, killing spree, HS+PK, stats/min
+- `teammates_charts.py` maintenu à exactement 500L
+- Suite tests : 5411 passent, `test_ruff_no_errors` échoue sur 3 violations préexistantes (non introduites)
+
+**Conclusion / prochaine étape** : Fonctionnalité complète. Vérification visuelle recommandée sur la page Escouade avec 2+ coéquipiers.
+
 ### [2026-04-02] — feat(sync): playable_duration_seconds + real_start_time dans match_registry (v6.3) — Complété
 
 **Statut** : Complété
@@ -8470,3 +8485,78 @@ Assassin    → game_variant_name_fr = 'Assassin : Arène'
 ```
 
 **Résultats** : Tous les tests passent (test_metadata_i18n 7/7, test_i18n_derived_columns 17/17). Nécessite un redémarrage de l'app pour déclencher la migration.
+
+---
+
+### [2026-04-02] — analyse(psa): root cause PSA manquants Madina + backfill — Complété
+
+**Statut** : Complété
+
+**Contexte** : Audit PSA (personal_score_awards) révèle que Madina avait 41 matchs sans PSA dans sa DB joueur. Backfill effectué : +67 lignes insérées. Question : comment des PSA ont-elles pu manquer sur des matchs déjà synchés ?
+
+**Root cause identifiée** : Le fanout PSA était absent avant le commit `c794712` (31/03/2026 21:35).
+
+**Mécanisme du bug** :
+- L'API Halo retourne `stats_json` contenant les PSA de **tous les participants** du match
+- Avant `c794712`, le moteur de sync extrayait les PSA uniquement pour le joueur principal (JGtm, le compte qui fait le sync)
+- Les PSA des coéquipiers (Madina, Chocoboflor) étaient ignorées → `personal_score_awards` vides pour eux
+
+**Fix `c794712`** (3 fonctions ajoutées dans `src/data/sync/_engine_fanout.py`) :
+- `_collect_psa_for_other_players` : parcourt `stats_json`, extrait les PSA de chaque coéquipier
+- `_pending_other_psa` : accumulateur dict `xuid → [rows]` pendant le traitement d'un match
+- `_run_other_player_enrichment` : écrit les PSA accumulées dans les DBs joueurs concernées
+
+**Preuve par corrélation temporelle** :
+```
+Total matchs Madina  : 1048
+Matchs avec PSA      : 1029
+Matchs SANS PSA      : 19
+  → avant fix (< 2026-03-31) : 19
+  → après fix (≥ 2026-03-31) : 0
+```
+Corrélation parfaite — tous les matchs sans PSA sont antérieurs au fix.
+
+**Backfill résultats** :
+| Joueur | Matchs sans PSA | PSA insérées | Restants légitimes |
+|--------|----------------:|-------------:|-------------------:|
+| Madina97294 | 41 | 67 lignes | 19 (score=0 API) |
+| JGtm | 17 | 0 | 17 (score=0, abandon/déco) |
+| Chocoboflor | 5 | 4 lignes | 1 (score=0) |
+
+**Score=0 = 0 PSA** : L'API Halo ne génère aucun award pour un joueur avec score=0/kills=0 — comportement normal, non backfillable.
+
+**Conclusion** : Fanout correct depuis le 31/03. Rien à ajuster côté sync. La prochaine sync de JGtm distribuera automatiquement les PSA de Madina et Chocoboflor pour les nouveaux matchs. Les 19+17+1 PSA résiduelles manquantes sont légitimes (parties abandonnées ou score nul).
+
+---
+
+## [2026-04-02] Fix LUSR — bug de seed cascade en mode incrémental
+
+**Statut** : Complété
+
+**Décision technique** :
+Correction du bug de seed cascade dans `batch_compute_lusr` (mode incrémental).
+
+**Cause racine** : En mode `force=False`, la fonction chargait TOUS les matchs historiques (ex: 404 pour Madina) puis les passait à `compute_skill_ratings_batch` avec `existing_states` injecté comme µ₀ avant le match #1. TrueSkill recalculait toute l'historique depuis cette graine décalée. Chaque sync séparée dérivait le rating de ~160 pts (Madina), ~17 pts (Chocoboflor), +44 pts (JGtm).
+
+**Fix implémenté dans `src/data/sync/_skill_rating.py`** :
+1. `batch_compute_lusr` — en mode incrémental, filtrer `df_matches` et `df_participants` aux seuls nouveaux matchs (non présents dans `existing_lusr_ids | existing_csr_ids`) avant de passer à `compute_skill_ratings_batch`
+2. `_upsert_lusr_ratings` — nouveau kwarg `seed_ratings: dict[str, float] | None` pour initialiser `prev_rating` depuis le dernier rating connu → le delta du premier nouveau match est correct (`new_rating - last_stored_rating`)
+
+**Tests écrits** (`tests/test_lusr_incremental_seed.py`) — 11 tests, tous verts :
+- `TestIncrementalContinuityInvariant` : incrémental == full batch pour les nouveaux matchs
+- `TestCascadeDriftDetection` : simule le scénario Madina, prouve que le drift est corrigé
+- `TestUpsertLusrRatingsSeedRatings` : delta correct, guard-rail, isolation par groupe
+
+**CLI** : `--reset-lusr` ajouté dans `scripts/backfill/cli.py` (logique déjà présente dans `backfill_data.py`)
+
+**Reset données en production** :
+| Joueur | Matchs recalculés | Seed CSR |
+|--------|------------------:|----------|
+| Chocoboflor | 352 | CSR=711 → µ=1474 |
+| JGtm | 729 | CSR=667 → µ=1445 |
+| Madina97294 | 1042 | CSR=1400 → µ=1933 |
+| XxDaemonGamerxX | 22 | µ=1500 (défaut) |
+
+**Résultats** : Madina "Non classé" était à 988.6 (vrai avg ~1843). Après reset complet depuis CSR seed : recalcul propre sans dérive inter-syncs. Le fan-out (`_engine_fanout.py` l.197) bénéficie du fix automatiquement (même code path).
+
+**Prochaine étape** : Commit + PR.
