@@ -124,7 +124,7 @@ def render_match_citations_section(  # noqa: C901, PLR0912, PLR0915
             data_uri = _img_data_uri(img, mtime)
 
         desc = item["description"]
-        tip = html.escape(desc) if desc else html.escape(name)
+        tip = html.escape(desc, quote=True) if desc else html.escape(name, quote=True)
 
         with col:
             st.markdown("<div class='os-citation-top-gap'></div>", unsafe_allow_html=True)
@@ -137,9 +137,9 @@ def render_match_citations_section(  # noqa: C901, PLR0912, PLR0915
                 st.markdown(
                     "<div class='"
                     + ring_class
-                    + "' title='"
+                    + "' title=\""
                     + tip
-                    + "' style=\"--p:"
+                    + "\" style=\"--p:"
                     + str(float(progress_ratio))
                     + ";--ring-color:"
                     + ring_color
@@ -150,12 +150,14 @@ def render_match_citations_section(  # noqa: C901, PLR0912, PLR0915
                 )
             else:
                 st.markdown(
-                    "<div class='os-medal-missing' title='" + tip + "'>?</div>",
+                    "<div class='os-medal-missing' title=\"" + tip + "\">?</div>",
                     unsafe_allow_html=True,
                 )
 
             st.markdown(
-                "<div class='os-citation-name' title='" + tip + "'>" + html.escape(name) + "</div>",
+                "<div class='os-citation-name' title=\""
+                + tip
+                + "\">" + html.escape(name) + "</div>",
                 unsafe_allow_html=True,
             )
             level_class = (

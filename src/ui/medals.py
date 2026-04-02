@@ -9,6 +9,7 @@ Ce module centralise les fonctions UI liées aux médailles Halo Infinite :
 from __future__ import annotations
 
 import base64
+import html
 import logging
 import os
 
@@ -101,7 +102,7 @@ def _medal_icon_b64(path: str) -> str:
 def _medal_icon_html(path: str, title: str = "") -> str:
     """Retourne le HTML d'une icône médaille avec wrapper carré uniforme."""
     b64 = _medal_icon_b64(path)
-    title_attr = f" title='{title}'" if title else ""
+    title_attr = f' title="{html.escape(title, quote=True)}"' if title else ""
     return (
         f"<div class='os-medal-icon-wrap'{title_attr}>"
         f"<img class='os-medal-icon' src='data:image/png;base64,{b64}' alt=''>"
@@ -175,8 +176,9 @@ def render_medals_grid(
         if icon:
             col.markdown(_medal_icon_html(icon, title=tip), unsafe_allow_html=True)
         else:
+            escaped_tip = html.escape(tip, quote=True)
             col.markdown(
-                f"<div class='os-medal-missing' title='{tip}'>#{nid}</div>",
+                f"<div class='os-medal-missing' title=\"{escaped_tip}\">#{nid}</div>",
                 unsafe_allow_html=True,
             )
 
@@ -190,7 +192,7 @@ def render_medals_grid(
                 )
 
         col.markdown(
-            "<div class='os-medal-caption' title='" + tip + "'>"
+            "<div class='os-medal-caption' title=\"" + html.escape(tip, quote=True) + "\">"
             + "<div class='os-medal-name'>"
             + name
             + "</div>"
