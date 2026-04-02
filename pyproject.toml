@@ -38,6 +38,7 @@ dependencies = [
     "pydantic>=2.5.0",
     "msal>=1.28.0",
     "bitstring>=4.0.0",  # scan fire events weapon parser (import top-level)
+    "filelock>=3.12.0",  # verrou fichier sync
 ]
 
 [project.optional-dependencies]
