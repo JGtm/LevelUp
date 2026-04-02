@@ -14,15 +14,19 @@ Sprint 8bis : Vectorisation
 
 from __future__ import annotations
 
+import logging
+
 import polars as pl
 import streamlit as st
+
+_log = logging.getLogger(__name__)
 
 from src.analysis.performance_score import compute_performance_series
 from src.ui.date_formats import FMT_DATETIME_FR
 from src.ui.i18n import get_lang, get_outcome_map, t
+from src.ui.pages.match_table_html import render_match_table_html
 from src.ui.translations import translate_pair_name
 from src.ui.vectorize_helpers import build_mapping
-from src.ui.pages.match_table_html import render_match_table_html
 from src.visualization._compat import DataFrameLike, ensure_polars
 
 
@@ -77,7 +81,13 @@ def _add_win_rate_column(
 ) -> pl.DataFrame:
     """Ajoute win_rate_hist : % victoires sur cette carte sur TOUT l'historique (non filtré)."""
     if "outcome" not in dff_table.columns or "map_name" not in dff_table.columns:
-        return dff_table.with_columns(pl.lit(None).cast(pl.Float64).alias("win_rate_hist"))
+        _log.debug(
+            "_add_win_rate_column : colonnes outcome/map_name absentes — win_rate_hist ignoré"
+        )
+        return dff_table.with_columns(
+            pl.lit(None).cast(pl.Float64).alias("win_rate_hist"),
+            pl.lit(None).cast(pl.Int64).alias("win_rate_hist_total"),
+        )
     base = ensure_polars(df_full) if df_full is not None else dff_table
     map_wr = (
         base.group_by("map_name")
@@ -86,7 +96,13 @@ def _add_win_rate_column(
             pl.len().alias("_total"),
         )
         .with_columns((pl.col("_wins") / pl.col("_total") * 100).round(1).alias("win_rate_hist"))
-        .select(["map_name", "win_rate_hist"])
+        .rename({"_total": "win_rate_hist_total"})
+        .select(["map_name", "win_rate_hist", "win_rate_hist_total"])
+    )
+    _log.debug(
+        "_add_win_rate_column : %d cartes, total matchs base=%d",
+        len(map_wr),
+        len(base),
     )
     return dff_table.join(map_wr, on="map_name", how="left")
 
