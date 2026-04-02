@@ -651,11 +651,7 @@ def _load_and_prepare_data(  # noqa: PLR0913
         )
         from src.ui.pages import render_settings_page as _render_settings_empty
 
-        _render_settings_empty(
-            settings,
-            get_local_dbs_fn=cached_list_local_dbs,
-            on_clear_caches_fn=_clear_app_caches,
-        )
+        _render_settings_empty(settings)
         return None
 
     # Sidebar - Filtres
@@ -892,11 +888,7 @@ def _dispatch_navigation(ctx: PageContext) -> None:  # noqa: C901, PLR0915
     def _page_settings() -> None:
         from src.ui.pages import render_settings_page
 
-        render_settings_page(
-            ctx.settings,
-            get_local_dbs_fn=cached_list_local_dbs,
-            on_clear_caches_fn=_clear_app_caches,
-        )
+        render_settings_page(ctx.settings)
 
     page_callables: dict[str, Callable[[], None]] = {
         "timeseries": _page_timeseries,
