@@ -235,3 +235,242 @@ def render_trio_charts(  # noqa: PLR0913
             key=f"{key_prefix}_{key_suffix}",
             **extra,
         )
+
+
+# ---------------------------------------------------------------------------
+# Graphe butterfly — premier frag (haut) / première mort (bas)
+# ---------------------------------------------------------------------------
+
+_BIN_SIZE_S: int = 15
+
+
+def _load_first_events_data(
+    db_path: str,
+    xuids_by_name: dict[str, str],
+    match_ids: list[str],
+) -> pl.DataFrame:
+    """Charge les instants du premier frag et de la première mort par joueur par match.
+
+    Args:
+        db_path: Chemin vers la DB (shared accessible).
+        xuids_by_name: Mapping nom joueur → xuid.
+        match_ids: Liste de match_ids à interroger.
+
+    Returns:
+        DataFrame avec first_kill_s et first_death_s (en secondes) ou vide.
+    """
+    from src.data.repositories.duckdb_repo import DuckDBRepository
+    from src.data.services._teammates_first_events_queries import query_first_events
+
+    if not xuids_by_name or not match_ids:
+        return pl.DataFrame()
+
+    xuids = list(xuids_by_name.values())
+    xuid_to_name = {v: k for k, v in xuids_by_name.items()}
+
+    try:
+        repo = DuckDBRepository(db_path, "")
+        conn = repo._get_connection()
+        df = query_first_events(conn, xuids, match_ids)
+    except Exception:
+        logger.debug("_load_first_events_data: erreur connexion DB", exc_info=True)
+        return pl.DataFrame()
+
+    if df.is_empty():
+        return df
+
+    df = df.with_columns(
+        pl.col("xuid").replace(xuid_to_name).alias("player_name")
+    )
+    return df
+
+
+def _format_bin_label(start_s: int) -> str:
+    """Formate le début d'une tranche en 'Xs' ou 'XmYYs'."""
+    m, s = divmod(start_s, 60)
+    if m == 0:
+        return f"{s}s"
+    return f"{m}m{s:02d}s"
+
+
+def _compute_bin_counts(
+    df: pl.DataFrame,
+    player_names: list[str],
+    metric: str,
+) -> dict[str, dict[str, int]]:
+    """Compte les matchs par tranche de _BIN_SIZE_S secondes pour chaque joueur.
+
+    Args:
+        df: DataFrame avec colonnes player_name et metric (float secondes).
+        player_names: Liste des noms de joueurs.
+        metric: Colonne à agréger (first_kill_s ou first_death_s).
+
+    Returns:
+        Dict player_name → {label_bin: count}.
+    """
+    counts: dict[str, dict[str, int]] = {name: {} for name in player_names}
+    for name in player_names:
+        vals = (
+            df.filter(pl.col("player_name") == name)[metric].drop_nulls().to_list()
+        )
+        for v in vals:
+            b = int(v // _BIN_SIZE_S) * _BIN_SIZE_S
+            label = _format_bin_label(b)
+            counts[name][label] = counts[name].get(label, 0) + 1
+    return counts
+
+
+def _build_first_events_fig(
+    df: pl.DataFrame,
+    colors_by_name: dict[str, str],
+    lang: str,
+) -> go.Figure:
+    """Construit le butterfly histogram premier frag (haut) / première mort (bas).
+
+    X = tranches de 15 s. Barres positives = frags, barres négatives = morts.
+    Barres groupées par joueur (une couleur par joueur). Axe X en gras blanc.
+
+    Args:
+        df: DataFrame avec colonnes player_name, first_kill_s, first_death_s.
+        colors_by_name: Palette de couleurs par nom de joueur.
+        lang: Code langue courant.
+
+    Returns:
+        Figure Plotly butterfly groupée.
+    """
+    label_frag = t("tm_first_frag", lang=lang)
+    label_death = t("tm_first_death", lang=lang)
+
+    player_names = df["player_name"].unique().to_list()
+    kill_counts = _compute_bin_counts(df, player_names, "first_kill_s")
+    death_counts = _compute_bin_counts(df, player_names, "first_death_s")
+
+    all_bins: set[str] = set()
+    for d in list(kill_counts.values()) + list(death_counts.values()):
+        all_bins.update(d.keys())
+
+    def _bin_key(label: str) -> int:
+        """Retourne le nombre de secondes du début du bin pour le tri."""
+        part = label.rstrip("s")
+        if "m" in part:
+            m_str, s_str = part.split("m")
+            return int(m_str) * 60 + int(s_str)
+        return int(part)
+
+    sorted_bins = sorted(all_bins, key=_bin_key)
+
+    fig = go.Figure()
+    for name in player_names:
+        color = colors_by_name.get(name, "#888888")
+        y_frag = [kill_counts[name].get(b, 0) for b in sorted_bins]
+        y_death = [-death_counts[name].get(b, 0) for b in sorted_bins]
+
+        fig.add_trace(go.Bar(
+            x=sorted_bins, y=y_frag,
+            name=name, legendgroup=name, showlegend=True,
+            marker_color=color,
+            customdata=y_frag,
+            hovertemplate=(
+                f"<b>{name}</b><br>%{{x}}<br>{label_frag} : %{{customdata}} matchs<extra></extra>"
+            ),
+        ))
+        fig.add_trace(go.Bar(
+            x=sorted_bins, y=y_death,
+            name=name, legendgroup=name, showlegend=False,
+            marker_color=color,
+            customdata=[-v for v in y_death],
+            hovertemplate=(
+                f"<b>{name}</b><br>%{{x}}<br>{label_death} : %{{customdata}} matchs<extra></extra>"
+            ),
+        ))
+
+    max_kill = max((max(d.values(), default=0) for d in kill_counts.values()), default=1)
+    max_death = max((max(d.values(), default=0) for d in death_counts.values()), default=1)
+    max_count = max(max_kill, max_death, 1)
+    step = max(1, max_count // 5)
+    tickvals = sorted(set(range(-(max_count + step), max_count + step + 1, step)))
+    ticktext = [str(abs(v)) for v in tickvals]
+
+    # Séparateurs verticaux entre chaque tranche de 15 s
+    col_shapes = [
+        {
+            "type": "line",
+            "x0": i - 0.5, "x1": i - 0.5,
+            "y0": 0, "y1": 1,
+            "xref": "x", "yref": "paper",
+            "line": {"color": "rgba(255,255,255,0.18)", "width": 1, "dash": "dot"},
+        }
+        for i in range(1, len(sorted_bins))
+    ]
+
+    fig.update_layout(
+        title=t("tm_first_events_title", lang=lang),
+        barmode="group",
+        height=420,
+        margin={"l": 50, "r": 20, "t": 60, "b": 80},
+        paper_bgcolor="rgba(0,0,0,0)",
+        plot_bgcolor="rgba(0,0,0,0)",
+        shapes=col_shapes,
+        legend={
+            "orientation": "h", "yanchor": "top",
+            "y": -0.18, "xanchor": "center", "x": 0.5,
+        },
+        xaxis={
+            "gridcolor": "rgba(0,0,0,0)",
+            "tickfont": {"color": "white", "size": 13, "family": "Arial Black, Arial"},
+            "title_font": {"color": "white"},
+        },
+        yaxis={
+            "gridcolor": "rgba(255,255,255,0.08)",
+            "zerolinecolor": "rgba(255,255,255,0.5)",
+            "zerolinewidth": 2,
+            "tickvals": tickvals,
+            "ticktext": ticktext,
+            "title_text": t("col_matches", lang=lang),
+        },
+    )
+    fig.add_annotation(
+        text=f"▲ {label_frag}",
+        x=0.01, y=1.0, xref="paper", yref="paper",
+        showarrow=False, font={"color": "rgba(255,255,255,0.65)", "size": 11},
+        xanchor="left", yanchor="top",
+    )
+    fig.add_annotation(
+        text=f"▼ {label_death}",
+        x=0.01, y=0.0, xref="paper", yref="paper",
+        showarrow=False, font={"color": "rgba(255,255,255,0.65)", "size": 11},
+        xanchor="left", yanchor="bottom",
+    )
+    return fig
+
+
+@fragment_if_available
+def render_first_events_chart(
+    db_path: str,
+    xuids_by_name: dict[str, str],
+    match_ids: list[str],
+    colors_by_name: dict[str, str],
+    key_suffix: str,
+) -> None:
+    """Affiche la tendance chronologique du premier frag et de la première mort.
+
+    Args:
+        db_path: Chemin vers la DB (shared accessible).
+        xuids_by_name: Mapping nom joueur → xuid.
+        match_ids: Matchs d'escouade à considérer.
+        colors_by_name: Palette de couleurs par nom.
+        key_suffix: Suffixe unique pour la clé Streamlit.
+    """
+    _lang = get_lang()
+    df = _load_first_events_data(db_path, xuids_by_name, match_ids)
+    if df.is_empty() or "player_name" not in df.columns:
+        st.caption(t("insufficient_data_chart"))
+        return
+
+    fig = _build_first_events_fig(df, colors_by_name, _lang)
+    st.plotly_chart(
+        fig,
+        width="stretch",
+        key=f"first_events_{key_suffix}",
+        config=PLOTLY_CLEAN_CONFIG,
+    )
