@@ -7,6 +7,7 @@ dans le registre via ``register()``.
 from src.data.migration.steps import (
     add_asset_translations,
     add_bot_teammate_column,
+    add_mv_player_matches_fr_cols,
     add_career_progression_sequence,
     add_dominance_flag,
     add_highlight_events_autoincrement,
@@ -16,6 +17,7 @@ from src.data.migration.steps import (
     add_mv_player_matches_view,
     add_performance_indexes,
     add_performance_score,
+    add_playable_duration,
     add_pve_schema,
     add_skill_rating_table,
     add_spnkr_version,
@@ -33,6 +35,7 @@ from src.data.migration.steps import (
 __all__ = [
     "add_asset_translations",
     "add_bot_teammate_column",
+    "add_mv_player_matches_fr_cols",
     "add_career_progression_sequence",
     "add_dominance_flag",
     "add_highlight_events_autoincrement",
@@ -42,6 +45,7 @@ __all__ = [
     "add_mv_player_matches_view",
     "add_performance_indexes",
     "add_performance_score",
+    "add_playable_duration",
     "add_pve_schema",
     "add_skill_rating_table",
     "add_spnkr_version",

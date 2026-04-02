@@ -636,9 +636,11 @@ def ensure_mv_player_matches_view(conn: duckdb.DuckDBPyConnection) -> None:
 
     # Utiliser v_match_full (v6) si disponible, sinon match_registry
     match_source = f"{prefix}match_registry"
+    has_v_match_full = False
     try:
         conn.execute(f"SELECT 1 FROM {prefix}v_match_full LIMIT 1")
         match_source = f"{prefix}v_match_full"
+        has_v_match_full = True
     except Exception:
         pass
 
@@ -672,6 +674,13 @@ def ensure_mv_player_matches_view(conn: duckdb.DuckDBPyConnection) -> None:
         pass
     kda_expr = "p.kda" if has_kda_col else "NULL"
 
+    # Colonnes de traduction FR (disponibles seulement via v_match_full — v6)
+    fr_cols_expr = (
+        "r.map_name_fr,\n            r.playlist_name_fr,\n            r.pair_name_fr,\n            r.game_variant_name_fr,"
+        if has_v_match_full
+        else "NULL AS map_name_fr,\n            NULL AS playlist_name_fr,\n            NULL AS pair_name_fr,\n            NULL AS game_variant_name_fr,"
+    )
+
     conn.execute(f"""
         CREATE OR REPLACE VIEW {prefix}mv_player_matches AS
         SELECT
@@ -685,6 +694,8 @@ def ensure_mv_player_matches_view(conn: duckdb.DuckDBPyConnection) -> None:
             r.pair_name,
             r.game_variant_id,
             r.game_variant_name,
+            -- Traductions FR (depuis v_match_full via asset_translations)
+            {fr_cols_expr}
             p.xuid,
             p.outcome,
             p.team_id,
@@ -1707,3 +1718,28 @@ def ensure_medal_translations_table(conn: duckdb.DuckDBPyConnection) -> None:
     de l'API + migration depuis medal_definitions pour les médailles custom).
     """
     conn.execute(_MEDAL_TRANSLATIONS_DDL)
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Migration match_registry : playable_duration_seconds + real_start_time (v6.3)
+# ─────────────────────────────────────────────────────────────────────────────
+
+
+def ensure_match_registry_playable_duration(conn: duckdb.DuckDBPyConnection) -> None:
+    """Ajoute playable_duration_seconds et real_start_time à match_registry.
+
+    - playable_duration_seconds : durée réelle du gameplay (sans countdown/lobby),
+      extraite de MatchInfo.PlayableDuration (API SPNKr).
+    - real_start_time : heure UTC du début effectif du gameplay, calculée comme
+      start_time + (duration_seconds - playable_duration_seconds).
+
+    Ces colonnes sont NULL pour les matchs syncés avant cette migration.
+    Un backfill API (--playable-duration) est nécessaire pour les remplir
+    rétroactivement.
+
+    Idempotente via _add_column_if_missing().
+    """
+    if not table_exists(conn, "match_registry"):
+        return
+    _add_column_if_missing(conn, "match_registry", "playable_duration_seconds", "INTEGER")
+    _add_column_if_missing(conn, "match_registry", "real_start_time", "TIMESTAMP")

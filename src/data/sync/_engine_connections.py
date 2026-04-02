@@ -36,6 +36,8 @@ CREATE TABLE IF NOT EXISTS match_registry (
     is_ranked BOOLEAN DEFAULT FALSE,
     is_firefight BOOLEAN DEFAULT FALSE,
     duration_seconds INTEGER,
+    playable_duration_seconds INTEGER,
+    real_start_time TIMESTAMP,
     team_0_score SMALLINT, team_1_score SMALLINT,
     team_0_ps_score INTEGER, team_1_ps_score INTEGER,
     backfill_completed INTEGER DEFAULT 0,

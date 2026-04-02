@@ -40,6 +40,7 @@ def render_team_dominance_section(  # noqa: PLR0913
     db_key: tuple[int, int] | None,
     is_firefight: bool,
     load_highlight_events_fn: Callable,
+    playable_duration_seconds: int | None = None,
 ) -> None:
     """Rend la frise chronologique de dominance d'équipe (PvP uniquement).
 
@@ -100,7 +101,11 @@ def render_team_dominance_section(  # noqa: PLR0913
         st.info(t("mv_dynamics_no_kills"))
         return
 
-    duration_s = max(int(e["time_ms"]) for e in kill_events) / 1000.0 + 20.0
+    duration_s = (
+        float(playable_duration_seconds)
+        if playable_duration_seconds
+        else max(int(e["time_ms"]) for e in kill_events) / 1000.0 + 20.0
+    )
 
     buckets = compute_dominance_buckets(he, xuid_to_team, my_team_id, duration_s)
     streaks = detect_streaks(he, xuid_to_team, xuid_to_gamertag)
