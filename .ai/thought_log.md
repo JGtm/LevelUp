@@ -7,6 +7,30 @@
 
 ## Journal
 
+### [2026-04-02] — feat(deploy): artefacts déploiement VPS Ionos (levelup.fr) — Complété
+
+**Statut** : Complété
+
+**Décision technique principale** : Création des 3 artefacts nécessaires au déploiement Production sur VPS Ionos (212.227.206.42 / levelup.fr) via GitHub Actions + Docker + Nginx.
+
+**Fichiers créés** :
+1. `deploy.sh` — Script exécuté sur le VPS : `git pull` + `docker compose up --build --no-deps` + `docker image prune`
+2. `packaging/nginx/levelup.conf` — Template Nginx : HTTP→HTTPS redirect, proxy WebSocket Streamlit, HTTP Basic Auth, timeout 300s
+3. `.github/workflows/deploy.yml` — GitHub Actions : déclenché sur push `main`, SSH via `appleboy/ssh-action@v1`, secrets `VPS_HOST` + `VPS_SSH_KEY` à configurer dans GitHub
+
+**Prochaines étapes côté VPS** (manuelles) :
+1. Provisionner VPS Ubuntu 22.04 + créer user `deploy`
+2. Installer Docker, Nginx, Certbot
+3. `git clone` du repo dans `/opt/levelup/`
+4. Copier `packaging/nginx/levelup.conf` → `/etc/nginx/sites-available/levelup` + symlink + `certbot --nginx`
+5. `sudo htpasswd -c /etc/nginx/.htpasswd <login>`
+6. Renseigner secrets GitHub : `VPS_HOST=212.227.206.42`, `VPS_SSH_KEY=<clé privée>`
+7. `rsync` des données depuis Windows si migration locale
+
+**Conclusion** : Tout push sur `main` déclenchera un déploiement automatique sur levelup.fr.
+
+---
+
 ### [2026-04-02] — feat(sync): playable_duration_seconds + real_start_time dans match_registry (v6.3) — Complété
 
 **Statut** : Complété
