@@ -79,10 +79,13 @@ COLUMNS_COMMON: list[str] = [
     "start_time",
     "map_id",
     "map_name",
+    "map_name_fr",
     "playlist_id",
     "playlist_name",
+    "playlist_name_fr",
     "pair_id",
     "pair_name",
+    "pair_name_fr",
     "game_variant_name",  # utilisé dans match_view.py (mode affiché)
     "outcome",
     "kda",
