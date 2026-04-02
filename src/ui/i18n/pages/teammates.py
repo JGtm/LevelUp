@@ -206,6 +206,10 @@ STRINGS: dict[str, dict[str, str] | str] = {
         "fr": "moy. {base} (+{bonus} collectif)",
         "en": "avg. {base} (+{bonus} squad)",
     },
+    "squad_score_base_only": {
+        "fr": "moy. {base}",
+        "en": "avg. {base}",
+    },
     "squad_legend": {
         "fr": "▲ au-dessus de la moyenne d'équipe · ▼ en dessous",
         "en": "▲ above squad average · ▼ below",
@@ -293,5 +297,18 @@ STRINGS: dict[str, dict[str, str] | str] = {
     "tm_map_squad_heatmap_title": {
         "fr": "Performance par joueur × carte",
         "en": "Performance by player × map",
+    },
+    # ── Tendance premier frag / première mort ────────────────────────────────
+    "tm_first_events_title": {
+        "fr": "Tendance — Premier frag & première mort",
+        "en": "Trend — First frag & first death",
+    },
+    "tm_first_frag": {
+        "fr": "Premier frag",
+        "en": "First frag",
+    },
+    "tm_first_death": {
+        "fr": "Première mort",
+        "en": "First death",
     },
 }
