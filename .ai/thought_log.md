@@ -23,6 +23,20 @@
 
 **Conclusion / prochaine étape** : Fonctionnalité complète avec logging et couverture de tests. Vérification visuelle recommandée sur la page Escouade avec 2+ coéquipiers.
 
+### [2026-04-02] — fix(escouade): records depuis historique complet (pas les matchs de la session) — Complété
+
+**Décision technique principale** : Les records étaient calculés depuis les DFs filtrés aux matchs de l'escouade en cours — ils devaient venir de l'historique complet de chaque joueur. Nouvelle couche : `TeammatesService.load_all_teammate_stats()` charge sans filtre match_id ; `query_teammate_full_history()` dans `_teammates_history_queries.py`.
+
+**Architecture du fix** :
+- `src/data/services/_teammates_history_queries.py` (NEW) — query SQL complète sans `IN (match_ids)`
+- `TeammatesService.load_all_teammate_stats()` — charge historique complet d'un coéquipier
+- `compute_player_pm_records()` déplacé de `_teammates_trio_helpers` → `src/analysis/squad_records.py` (pure)
+- `render_trio_view` calcule `dominant_pair` + tous les records depuis les DFs complets (`df` joueur principal, `load_all_teammate_stats` pour coéquipiers) **avant** d'afficher les charts
+- `_render_trio_performance_charts` et `_render_per_minute_stats` acceptent `records`/`pm_records` pré-calculés en paramètre (inversion de dépendance)
+- `_hspk_records` utilise `headshot_kills` de l'historique complet comme proxy (perfect_kills absent hors session)
+
+**Résultats** : 5481 tests passent, 2 échecs préexistants (ruff + DB).
+
 ### [2026-04-02] — feat(sync): playable_duration_seconds + real_start_time dans match_registry (v6.3) — Complété
 
 **Statut** : Complété

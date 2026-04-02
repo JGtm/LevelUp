@@ -266,6 +266,38 @@ class TeammatesService:
             return _empty
 
     @staticmethod
+    def load_all_teammate_stats(
+        teammate_gamertag: str,
+        reference_db_path: str,
+    ) -> TeammateStats:
+        """Charge l'historique complet d'un coéquipier (tous matchs, sans filtre session).
+
+        Utilisé pour calculer les records historiques. Retourne toutes les parties
+        du joueur avec pair_name, pour permettre le filtre par catégorie de mode.
+
+        Returns:
+            TeammateStats avec le DataFrame complet ou vide.
+        """
+        from src.data.repositories.duckdb_repo import DuckDBRepository
+        from src.data.services._teammates_history_queries import query_teammate_full_history
+
+        _empty = TeammateStats(gamertag=teammate_gamertag, df=pl.DataFrame(), is_empty=True)
+        if not reference_db_path:
+            return _empty
+        try:
+            repo = DuckDBRepository(reference_db_path, "")
+            conn = repo._get_connection()
+            xuid = _resolve_xuid_from_shared(conn, teammate_gamertag)
+            if not xuid:
+                logger.debug("load_all_teammate_stats: xuid introuvable pour '%s'", teammate_gamertag)
+                return _empty
+            df_all = query_teammate_full_history(conn, xuid)
+            return TeammateStats(gamertag=teammate_gamertag, df=df_all, is_empty=df_all.is_empty())
+        except Exception as e:
+            logger.debug("Erreur load_all_teammate_stats pour '%s': %s", teammate_gamertag, e)
+            return _empty
+
+    @staticmethod
     def enrich_with_performance_score(
         df: pl.DataFrame,
         gamertag: str,
