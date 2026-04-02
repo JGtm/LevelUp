@@ -366,7 +366,7 @@ class TestSessionCompareHistory:
         )
         result = _build_history_dataframe(df_sess)
         assert isinstance(result, tuple)
-        assert len(result) == 2
+        assert len(result) == 3
 
 
 # =============================================================================
