@@ -7,6 +7,45 @@
 
 ## Journal
 
+### [2026-04-02] — docs(ai): complétion de CHARTS_AND_TABLES.md — Complété
+
+**Tâche** : Vérification finale et complétion du fichier `.ai/CHARTS_AND_TABLES.md` (doc exhaustive des graphiques/tableaux LevelUp).
+
+**Décision technique** : 7 ajouts / corrections identifiés après relecture croisée des fichiers sources vs la doc générée en session précédente.
+
+**Modifications apportées** :
+1. §2.6 — Ajout mention ⚠️ DÉSACTIVÉ (`if False:` dans win_loss.py et teammates_map_charts.py)
+2. §3.11 — Correction source (distributions.py, pas _distributions_advanced.py) + renvoi vers §3.18
+3. §3.17 (nouveau) — 6 histogrammes KDE de l'onglet Distribution : accuracy, kills, avg_life, perf_score, score/min, win_rate_glissant
+4. §3.18 (nouveau) — 5 scatter corrélation de l'onglet Corrélations : lifespan_vs_kills, accuracy_vs_kda, lifespan_vs_deaths, kills_vs_deaths, team_mmr_vs_enemy_mmr
+5. §4.10 (nouveau) — `plot_squad_performance_timeline` : barres perf escouade + ligne win rate + ligne MMR (axe secondaire)
+6. §5.0 (nouveau) — `render_expected_vs_actual` : KPI cards réel/attendu + graphique barres groupées 3 traces (réel, attendu, historique mode si ≥10 matchs)
+7. §6.9 (nouveau) — `render_modes_breakdown` : barres horizontales groupées Session A vs B par mode de jeu
+8. Chiffres clés mis à jour : +2 métadonnées (sections ~55, graphiques désactivés=2)
+
+**Résultats** : Doc complète et synchronisée avec le code source au 2026-04-02.
+
+**Conclusion** : Aucun graphique actif de l'app ne manque à la documentation. 2 graphiques désactivés annotés pour ne pas induire de confusion.
+
+---
+
+### [2026-03-31] — fix(radar): recalibrage seuils objectifs axe Complémentarité — Complété
+
+**Tâche** : L'axe Objectifs du radar escouade affichait <30% pour de bons joueurs (JGtm, Chocoboflor) sur la session du 24 mars.
+
+**Décision technique** : Recalibré `RADAR_THRESHOLDS_PER_MODE` depuis valeurs ~p95 imaginaires vers des seuils basés sur données réelles.
+- Audit historique : 130+ matchs obj JGtm (p80 CTF=500, SH=600), 90+ matchs Chocoboflor.
+- Cible utilisateur : un "bon joueur" doit afficher 70-75% sur l'axe.
+- Calcul : threshold_session(1 SH + 3 CTF) = 420 + 350×3 = 1470; JGtm=1060/1470=**72%** ✓
+
+**Nouveaux seuils** : CTF 850→350, Strongholds 1050→420, autres modes ×0.41.
+
+**Résultats** : 30/30 tests OK. Commit `fbf6ee4`.
+
+**Prochaine étape** : Vérifier le rendu visuel dans l'UI Streamlit.
+
+---
+
 ### [2026-03-31] — fix(sync): fanout ne distribuait pas les PSA des coéquipiers — Complété
 
 **Statut** : Complété
@@ -8241,3 +8280,54 @@ désormais `map_id` pour la traduction FR et les thumbnails, comme les autres ca
 **Résultats** : 49/49 tests passent sur les fichiers ciblés. La régression `test_viz_participation` et `test_teammates_helpers` observée en full-suite est du flapping lié à l'ordre d'exécution (passes en isolation).
 
 **Conclusion** : Branche propre, pas de nouvelles régressions.
+
+### [2025-07-24] — Butterfly histogram premier frag/mort (teammates)
+
+**Statut** : Complété
+**Branche** : `feat/teammates-first-events-chart`
+
+**Décision technique** : Implémentation d'un butterfly histogram (barres miroir positives/négatives) pour visualiser la distribution des premiers frags et premières morts par tranche de 15 secondes, par joueur de l'escouade.
+
+**Architecture** :
+- `src/analysis/first_events.py` : logique pure rolling avg (préservée, non utilisée dans le chemin final)
+- `src/data/services/_teammates_first_events_queries.py` : requête SQL sur `shared.highlight_events` MIN(time_ms) par event_type par match par xuid
+- `src/ui/pages/teammates_charts.py` : `_format_bin_label`, `_compute_bin_counts`, `_build_first_events_fig`, `render_first_events_chart`
+- `src/ui/pages/_teammates_trio.py` : wiring + fix bug xuid joueur principal
+- `src/ui/i18n/pages/teammates.py` : 3 clés FR/EN
+
+**Itérations design** :
+1. Rolling avg par index de match → rejeté (pas d'axe temporel)
+2. Subplots datetime → rejeté
+3. Butterfly histogram 15s bins → retenu
+
+**Fonctionnalités finales** :
+- Barres positives (frags) / négatives (morts) par tranche de 15s
+- Couleurs par joueur depuis `colors_by_name`
+- Axe X blanc gras (`Arial Black`), labels `0s`, `0m15s`, `0m30s`...
+- Séparateurs verticaux pointillés blancs entre tranches (`col_shapes`, `xref="x"`)
+- Annotations ▲ Frags / ▼ Morts
+- Bug fix : `me_df` n'a pas de colonne `xuid` → init directe depuis paramètre `xuid` de `render_trio_view`
+
+**Résultats** : Ruff all checks passed, commit `185f98b`.
+**Conclusion** : Feature complète et livrée.
+
+---
+
+## [2026-04-02] fix(weapons): image Mutilateur manquante dans scoreboard detail
+
+**Statut** : Complété
+
+**Problème** : L'image de l'arme "Mutilateur" n'apparaissait pas dans la section armes du résumé joueur (scoreboard inline detail).
+
+**Analyse** :
+- `weapon_asset_url("Mutilateur")` retournait `None`
+- La clé normalisée `"mutilateur"` n'était pas dans `_WEAPON_ASSET_ALIASES`
+- Pourtant `Mutilator.png` existait bien dans `static/weapons-assets/`
+
+**Décision technique** : Ajouter les deux aliases dans `_scoreboard_asset_urls.py` :
+- `"mutilator": "Mutilator"` — nom EN
+- `"mutilateur": "Mutilator"` — nom FR (via `WEAPON_NAME_FR`)
+
+**Résultats** : `weapon_asset_url("Mutilateur")` retourne `/app/static/weapons-assets/Mutilator.png` ✓
+
+**Conclusion** : Fix committé dans `_scoreboard_asset_urls.py`.
