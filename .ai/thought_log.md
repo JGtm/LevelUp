@@ -7,7 +7,27 @@
 
 ## Journal
 
-### [2026-04-02] — fix(radar): radar complémentarité filtré par session + bug Madina — Complété
+### [2026-04-02] — feat(sync): playable_duration_seconds + real_start_time dans match_registry (v6.3) — Complété
+
+**Statut** : Complété
+
+**Décision technique principale** : Exploiter `MatchInfo.PlayableDuration` (ISO 8601, ignoré jusqu'ici) de l'API SPNKr pour stocker la durée réelle de gameplay et calculer `real_start_time = start_time + countdown` (countdown = `duration - playable_duration`). Fix collatéral : `EndTime` lu depuis l'API directement plutôt que recalculé.
+
+**Périmètre des modifications (8 phases)** :
+1. DDL `_engine_connections.py` : 2 nouvelles colonnes (`playable_duration_seconds INTEGER`, `real_start_time TIMESTAMP`) dans `match_registry`
+2. Migration `migrations.py` : `ensure_match_registry_playable_duration` (idempotente via `_add_column_if_missing`) + step `add_playable_duration.py` + `steps/__init__.py`
+3. Transformer `transformers/_match.py` : parsing `PlayableDuration`, fix `EndTime` API, calcul `real_start_time`, guards (playable > duration → None + WARNING), logs DEBUG/WARNING + ajout du `logger = logging.getLogger(__name__)` manquant
+4. Écriture `_shared_writes.py` : INSERT 22 valeurs + UPDATE COALESCE pour les 2 nouvelles colonnes
+5. `SyncScope` : 4 champs ajoutés (`playable_duration`, `force_playable_duration`) dans `_FORCE_MAP`, `_ALL_DATA_FIELDS`, dataclass, `needs_api`
+6. CLI `scripts/backfill/cli.py` : args `--playable-duration` / `--force-playable-duration`
+7. Timeline UI `match_view_players_timeline.py` : param optionnel `playable_duration_seconds` → `duration_s` exact si disponible, sinon fallback `max(time_ms)/1000 + 20`; `match_view_tabs.py` : passage du param depuis `row.get("playable_duration_seconds")`
+8. Tests `tests/test_playable_duration.py` : 18 tests (parsing, calcul, guards, migration) — tous verts ✅
+
+**Résultats** : 18/18 tests. Aucune régression sur la suite hors-intégration.
+
+**Conclusion** : Les nouveaux matchs syncés après déploiement auront `playable_duration_seconds` et `real_start_time` directement remplis. Les anciens matchs nécessiteront un backfill API via `--playable-duration`.
+
+
 
 **Statut** : Complété
 
@@ -8393,3 +8413,36 @@ désormais `map_id` pour la traduction FR et les thumbnails, comme les autres ca
 **Résultats** : `weapon_asset_url("Mutilateur")` retourne `/app/static/weapons-assets/Mutilator.png` ✓
 
 **Conclusion** : Fix committé dans `_scoreboard_asset_urls.py`.
+
+---
+
+## [2026-04-02] Fix traductions EN→FR dans le tableau des matchs (map, playlist, mode)
+
+**Statut** : Complété
+
+**Symptôme** : Tableau des matchs affiche `Cliffhanger`, `Quick Play`, `Assassin` en anglais malgré les colonnes `map_ui`/`playlist_fr`/`mode_ui`.
+
+**Cause racine** (3 bugs distincts) :
+
+1. **`mv_player_matches` sans colonnes FR** : La migration `fix_mv_player_matches_scores` était déjà marquée dans `schema_migrations`, donc la vue existante ne contenait pas `map_name_fr`, `playlist_name_fr`, `pair_name_fr`, `game_variant_name_fr`. La fonction `ensure_mv_player_matches_view` avait été modifiée pour les inclure mais jamais réexécutée en prod.
+
+2. **`resolve_map_display_names` écrase FR par EN** : La boucle `for try_lang in (bcp, "en-US")` mettait d'abord la traduction FR dans `result`, puis l'écrasait avec l'EN-US au tour suivant. Fix : condition `if try_lang == "en-US" and result[key] != map_id_to_fallback[key]: continue`.
+
+3. **`mode_ui` et `pair_fr` ignorent les colonnes FR** : `_add_derived_columns` utilisait `pair_name` + `translate_pair_name` pour `mode_ui`, sans jamais utiliser `game_variant_name_fr` ni `pair_name_fr`. Idem pour `pair_fr`. Fix : préférer `game_variant_name_fr` (lang=fr) pour `mode_ui`, `pair_name_fr` pour `pair_fr`.
+
+**Actions** :
+- `src/data/migration/steps/add_mv_player_matches_fr_cols.py` : nouvelle migration recréant la vue
+- `src/data/migration/steps/__init__.py` : import + __all__ mis à jour
+- `src/data/sync/migrations.py` : `fr_cols_expr` ajoute `pair_name_fr`
+- `src/ui/translations.py` : `resolve_map_display_names` — pas d'écrasement FR par EN
+- `src/app/_filters_apply.py` : `pair_fr` via `pair_name_fr`, `mode_ui` via `game_variant_name_fr`
+- `tests/test_metadata_i18n.py` : attacher `meta` avant d'interroger `v_match_full`
+
+**Vérification** (données réelles `shared_matches_v2.duckdb`) :
+```
+Cliffhanger → map_name_fr = 'Dévissage'
+Quick Play  → playlist_name_fr = 'Partie rapide'
+Assassin    → game_variant_name_fr = 'Assassin : Arène'
+```
+
+**Résultats** : Tous les tests passent (test_metadata_i18n 7/7, test_i18n_derived_columns 17/17). Nécessite un redémarrage de l'app pour déclencher la migration.

@@ -11,10 +11,13 @@ Fonctions publiques :
 from __future__ import annotations
 
 import json
+import logging
 from collections.abc import Callable
 from datetime import timedelta
 from pathlib import Path
 from typing import Any
+
+logger = logging.getLogger(__name__)
 
 from src.data.domain.refdata import Outcome
 from src.data.sync.metadata_resolver import create_metadata_resolver_function
@@ -504,10 +507,48 @@ def extract_match_registry_data(  # noqa: C901, PLR0912
     if isinstance(duration_raw, str):
         duration_seconds = _parse_duration_to_seconds(duration_raw)
 
-    # Heure de fin
-    end_time = None
-    if start_time is not None and duration_seconds is not None and duration_seconds >= 0:
+    # Durée jouable réelle (sans countdown/lobby) — depuis PlayableDuration
+    playable_duration_seconds: int | None = None
+    playable_raw = match_info.get("PlayableDuration")
+    if isinstance(playable_raw, str):
+        playable_duration_seconds = _parse_duration_to_seconds(playable_raw)
+        if playable_duration_seconds is None:
+            logger.warning(
+                "PlayableDuration non parsé pour match %s: %r", match_id, playable_raw
+            )
+    else:
+        logger.debug("PlayableDuration absent du JSON pour match %s", match_id)
+
+    # Heure de fin — EndTime API en priorité, calcul en fallback
+    end_time_raw = match_info.get("EndTime")
+    end_time = _parse_iso_utc(end_time_raw) if isinstance(end_time_raw, str) else None
+    if end_time is None and start_time is not None and duration_seconds is not None and duration_seconds >= 0:
         end_time = start_time + timedelta(seconds=duration_seconds)
+
+    # Début réel du gameplay (après countdown/lobby)
+    real_start_time = None
+    if (
+        start_time is not None
+        and duration_seconds is not None
+        and playable_duration_seconds is not None
+    ):
+        countdown_s = duration_seconds - playable_duration_seconds
+        if countdown_s >= 0:
+            real_start_time = start_time + timedelta(seconds=countdown_s)
+            logger.debug(
+                "Match %s : countdown=%ds, real_start=%s",
+                match_id,
+                countdown_s,
+                real_start_time,
+            )
+        else:
+            logger.warning(
+                "Match %s : playable_duration_seconds (%d) > duration_seconds (%d) — "
+                "real_start_time ignoré",
+                match_id,
+                playable_duration_seconds,
+                duration_seconds,
+            )
 
     # Scores des équipes (team_0 et team_1, indépendants du joueur)
     team_0_score, team_1_score = _extract_team_scores_by_id(match_json)
@@ -528,6 +569,8 @@ def extract_match_registry_data(  # noqa: C901, PLR0912
         "is_ranked": is_ranked,
         "is_firefight": is_firefight,
         "duration_seconds": duration_seconds,
+        "playable_duration_seconds": playable_duration_seconds,
+        "real_start_time": real_start_time,
         "team_0_score": team_0_score,
         "team_1_score": team_1_score,
     }

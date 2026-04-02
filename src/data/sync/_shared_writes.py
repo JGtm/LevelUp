@@ -120,11 +120,11 @@ class SharedWritesMixin:
                 pair_id, pair_name,
                 game_variant_id, game_variant_name,
                 mode_category, is_ranked, is_firefight,
-                duration_seconds,
+                duration_seconds, playable_duration_seconds, real_start_time,
                 team_0_score, team_1_score,
                 sync_spnkr_version,
                 created_at, updated_at
-            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)""",
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)""",
             (
                 data["match_id"],
                 data["start_time"],
@@ -141,6 +141,8 @@ class SharedWritesMixin:
                 data["is_ranked"],
                 data["is_firefight"],
                 data["duration_seconds"],
+                data.get("playable_duration_seconds"),
+                data.get("real_start_time"),
                 data["team_0_score"],
                 data["team_1_score"],
                 self._spnkr_version,
@@ -149,16 +151,22 @@ class SharedWritesMixin:
         # Si le match existait déjà avec mode_category NULL (anciens matchs insérés
         # avant le calcul de _determine_mode_category), on le patche maintenant.
         # pair_name est aussi mis à jour si absent (UUID brut → nom résolu).
+        # playable_duration_seconds et real_start_time sont patchés si absents
+        # (matchs syncés avant l'introduction de ces colonnes).
         if data.get("mode_category"):
             shared_conn.execute(
                 """UPDATE match_registry
-                   SET mode_category  = ?,
-                       pair_name      = COALESCE(pair_name, ?),
-                       updated_at     = CURRENT_TIMESTAMP
+                   SET mode_category              = ?,
+                       pair_name                  = COALESCE(pair_name, ?),
+                       playable_duration_seconds  = COALESCE(playable_duration_seconds, ?),
+                       real_start_time            = COALESCE(real_start_time, ?),
+                       updated_at                 = CURRENT_TIMESTAMP
                    WHERE match_id = ? AND mode_category IS NULL""",
                 (
                     data["mode_category"],
                     data["pair_name"],
+                    data.get("playable_duration_seconds"),
+                    data.get("real_start_time"),
                     data["match_id"],
                 ),
             )

@@ -94,6 +94,7 @@ def _render_combat_tab(  # noqa: PLR0913
         db_key=db_key,
         is_firefight=bool(row.get("is_firefight")),
         load_highlight_events_fn=load_highlight_events_fn,
+        playable_duration_seconds=int(row["playable_duration_seconds"]) if row.get("playable_duration_seconds") else None,
     )
     render_nemesis_section(
         match_id=match_id,

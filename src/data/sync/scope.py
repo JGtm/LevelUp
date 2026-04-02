@@ -69,6 +69,8 @@ _FORCE_MAP: dict[str, str] = {
     "force_skill_rank": "skill_rank",
     # ── Badges narrative comeback v6.2 ──
     "force_comeback_badges": "comeback_badges",
+    # ── Playable duration (v6.3) ──
+    "force_playable_duration": "playable_duration",
 }
 
 # Champs activés par ``all_data``.  Listés explicitement pour ne pas
@@ -126,6 +128,8 @@ _ALL_DATA_FIELDS: tuple[str, ...] = (
     # Note : fetch_csr est un snapshot one-shot, non activé par --all-data
     # ── Badges narrative comeback v6.2 ──
     "comeback_badges",
+    # ── Playable duration v6.3 ──
+    "playable_duration",
 )
 
 # Mapping champ → clé pour ``requested_types`` (bitmask backfill_completed).
@@ -299,6 +303,11 @@ class SyncScope:
     comeback_badges: bool = False  # Calcul Remontada / Débandade / Contre-Remontada
     force_comeback_badges: bool = False  # Re-traiter les matchs déjà badgés (3-5)
 
+    # ── Playable duration (durée jouable / début réel) — v6.3 ────────
+    # Nécessite un appel API par match (get_match_stats), identique à sync normale.
+    playable_duration: bool = False  # Backfill playable_duration_seconds + real_start_time
+    force_playable_duration: bool = False  # Re-traiter même si déjà rempli
+
     # ── Méta-flag ────────────────────────────────────────────────────────
     all_data: bool = False
 
@@ -433,6 +442,7 @@ class SyncScope:
             "csr",  # re-fetch CSR nécessite l'API skill
             "fetch_csr",  # snapshot CSR via get_playlist_csr
             "skill_rank",  # skill_rank implique csr (côté API)
+            "playable_duration",  # nécessite get_match_stats par match
         }
         return any(getattr(self, f) for f in api_fields)
 
