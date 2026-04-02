@@ -7,20 +7,21 @@
 
 ## Journal
 
-### [2026-04-02] — feat(escouade): records historiques par joueur sur tous les graphes barres — Complété
+### [2026-04-02] — feat(escouade): records historiques par joueur sur tous les graphes barres — Complété + vérification finale
 
 **Décision technique principale** : Architecture en 4 couches — analyse pure (`squad_records.py`), formes Plotly (`_squad_record_shapes.py`), modification des 4 fonctions de visualisation, threading des records depuis la couche UI.
 
 **Résultats observés** :
 - Records filtrés par `pair_name` dominant (même catégorie de mode, pas de mix BTB/4v4)
-- Stats négatives (morts) : record = minimum (plus proche de 0)
-- Stats positives : record = maximum
+- Stats négatives (morts) : record = minimum (plus proche de 0) ; stats positives (y compris `average_life_seconds`) : record = maximum
 - Rendu : barre blanche grasse à la largeur exacte de chaque baton (`add_record_shapes` / `add_overlay_record_shapes`)
 - Graphes couverts : kills/morts, assists, KDA, accuracy, avg_life, performance, killing spree, HS+PK, stats/min
 - `teammates_charts.py` maintenu à exactement 500L
-- Suite tests : 5411 passent, `test_ruff_no_errors` échoue sur 3 violations préexistantes (non introduites)
+- Logging ajouté : `squad_records.py` (pair_name absent, filtre vide), `_teammates_trio_helpers.py` (`_compute_pm_records` colonnes manquantes, `_render_trio_performance_charts` dominant_pair=None)
+- Tests unitaires créés : `tests/test_squad_records.py` (24 tests) + `tests/test_squad_record_shapes.py` (25 tests) — 49/49 ✅
+- Suite complète : 3 violations ruff préexistantes (non introduites par cette feature)
 
-**Conclusion / prochaine étape** : Fonctionnalité complète. Vérification visuelle recommandée sur la page Escouade avec 2+ coéquipiers.
+**Conclusion / prochaine étape** : Fonctionnalité complète avec logging et couverture de tests. Vérification visuelle recommandée sur la page Escouade avec 2+ coéquipiers.
 
 ### [2026-04-02] — feat(sync): playable_duration_seconds + real_start_time dans match_registry (v6.3) — Complété
 
@@ -41,6 +42,29 @@
 **Résultats** : 18/18 tests. Aucune régression sur la suite hors-intégration.
 
 **Conclusion** : Les nouveaux matchs syncés après déploiement auront `playable_duration_seconds` et `real_start_time` directement remplis. Les anciens matchs nécessiteront un backfill API via `--playable-duration`.
+
+---
+
+### [2026-05-27] — feat(backfill): câblage backfill playable_duration + exécution complète — Complété
+
+**Statut** : Complété
+
+**Décision technique principale** : Le backfill `--playable-duration` retournait 0 inserts car l'orchestrateur n'était pas câblé. Câblage complet en 3 fichiers : `detection.py` (condition NOT IN), `orchestrator.py` (helper `_update_playable_duration` + intégration boucle), `backfill_data.py` (`_print_totals`).
+
+**Cause du bug** : `_find_matches_in_shared_all()` utilisait `mr.playable_duration_seconds IS NULL` via l'alias `mr` résolvant vers la vue `v_match_full` qui n'expose pas cette colonne. Fix : requête NOT IN sur `match_registry` directement.
+
+**Modifications** :
+- `scripts/backfill/detection.py` : params `playable_duration` / `force_playable_duration` + condition `mp.match_id NOT IN (SELECT match_id FROM match_registry WHERE playable_duration_seconds IS NOT NULL)`
+- `scripts/backfill/orchestrator.py` : `_empty_result()` ajoute `"playable_duration_updated": 0` ; `_backfill_with_api` extrait les scope vars + appel `_update_playable_duration()` ; helper `_update_playable_duration` avec logs DEBUG/WARNING complets
+- `scripts/backfill_data.py` : `_print_totals` affiche le compteur si `scope.playable_duration`
+
+**Résultats backfill** : 1532/1532 (100%) `playable_duration_seconds` remplis, 1527/1532 (99%) `real_start_time` (5 matchs avec `playable > duration` → `real_start_time = NULL` par guard, comportement attendu).
+
+**Tests** : 254/254 (test_playable_duration 18 + test_sync_shared_matches 32 + test_transformers_coverage + autres) — tous verts ✅
+
+**Commit** : `3cf7f52`
+
+**Conclusion** : Feature complète. L'UI timeline bénéficie désormais du `playable_duration_seconds` pour afficher la durée exacte du match (sans le compte à rebours). Le backfill est opérationnel pour les anciens matchs via `--playable-duration`.
 
 ---
 
