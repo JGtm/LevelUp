@@ -78,6 +78,103 @@
 
 ## 📋 Backlog
 
+---
+
+### [refacto] Traductions d'assets : supprimer les fallbacks Python, DB = source de vérité
+
+**Noté le** : 2026-04-02
+**Priorité** : Haute (cohérence + suppression de code mort — la DB est fiable, les dicts Python dupliquent sans valeur ajoutée)
+
+**Contexte** : Audit des traductions d'assets (maps, playlists, modes, armes). Deux pipelines coexistent :
+- **Pipeline SQL (bonne voie)** : `v_match_full` expose déjà `map_name_fr`, `playlist_name_fr`, `pair_name_fr`, `game_variant_name_fr` via JOIN sur `asset_translations` (metadata.duckdb). `weapon_labels` est la source de vérité des noms d'armes (EN + FR).
+- **Pipeline Python (legacy)** : dicts statiques `WEAPON_INT_TO_NAME` / `WEAPON_NAME_FR` dans `_weapon_data.py`, fonctions `normalize_map_label` / `translate_pair_name` / `translate_playlist_name` qui repassent par SQL ou des heuristiques string au lieu de lire les colonnes déjà resolues dans le DataFrame.
+
+**Décision** : La BDD est la source de vérité. Les fallbacks Python ne servent que si asset_translations est vide (cas onboarding premier lancement). En dehors de ce cas, tout duplicated est du code mort.
+
+**Tâches concrètes** :
+
+1. **Unifier `is_uuid_like`** — deux implémentations (`src/ui/translations.py::_is_uuid_like` et `src/app/helpers.py::is_uuid_like`). Déplacer dans `src/utils/strings.py`, supprimer les copies. *(15 min)*
+
+2. **Supprimer `_normalize_mode_label` dans `teammates_helpers.py`** — version locale qui réimplémente `normalize_mode_label` de `src/app/helpers.py`. Remplacer par import direct. *(10 min)*
+
+3. **Exploiter `map_name_fr` / `pair_name_fr` / `game_variant_name_fr` du DataFrame** — dans `_filters_apply.py`, lire ces colonnes en priorité (déjà dans le DF via `v_match_full`), fallback `map_name` si null. Supprimer le chemin `normalize_map_label` comme chemin principal (garder uniquement comme guard UUID). *(2h)*
+
+4. **Extraire `st.session_state` hors de `normalize_mode_label`** — la fonction appelle `st.session_state` pour lire `app_settings` → couplage UI/métier. Passer `lang` et `normalize` en paramètres explicites. *(1h)*
+
+5. **Armes : DB first, dicts Python en dernier recours** — inverser la priorité dans `_weapon_data.py::resolve_weapon_label()` : lire `weapon_labels` (metadata.duckdb) en premier, consulter `WEAPON_INT_TO_NAME` / `WEAPON_NAME_FR` uniquement si `weapon_id` absent de la table. À terme, supprimer les dicts statiques quand `weapon_labels` couvre 100% des armes connues. *(1h)*
+
+6. **Cache `@st.cache_data` sur `translate_playlist_name`** — appelée sans cache via `build_mapping` à chaque rendu, alors que `_load_mode_tables` est déjà cachée. Wrapper TTL court (300s). *(30 min)*
+
+**Ordre recommandé** : 1 → 2 → 4 → 3 → 5 → 6 (du moins risqué au plus impactant)
+
+**Impact** : Suppression ~100L de code mort, cohérence garantie avec la BDD, testabilité améliorée (plus de `st.session_state` dans la logique).
+
+---
+
+### [refacto] `safe_chart_render` manquant sur les pages Career et LUSR
+
+**Noté le** : 2026-04-02
+**Priorité** : Haute (stabilité — une exception dans une figure crashe la page entière)
+
+**Contexte** : Audit issu de la revue globale des visuels (`CHARTS_AND_TABLES.md`). Sur 81 appels `st.plotly_chart`, seulement ~4 sont enveloppés dans `with safe_chart_render():`. Les pages non protégées identifiées : `career.py` (L188, L224, L316), `career_lusr.py` (L176), `citations.py`, `match_view_charts.py`, `match_view_participation.py`.
+
+**Solution** : Enrouler chaque `st.plotly_chart` exposé dans `safe_chart_render`. Ne pas toucher les appels déjà à l'intérieur du wrapper.
+
+**Effort estimé** : 30 min.
+
+---
+
+### [refacto] Centraliser `_downsample_for_plot` dans `src/visualization/`
+
+**Noté le** : 2026-04-02
+**Priorité** : Haute (performance — pages `win_loss`, `teammates`, `career` envoient 500+ points bruts à Plotly)
+
+**Contexte** : La fonction `_downsample_for_plot` (MAX_PLOT_POINTS=200) est définie et utilisée uniquement dans `src/ui/pages/timeseries.py`. Les autres pages timeline (`career_lusr`, `teammates_charts`, `win_loss`) n'appliquent aucun downsampling.
+
+**Solution** : Déplacer `_downsample_for_plot` dans `src/visualization/theme.py` ou `src/visualization/_compat.py` (déjà importé partout). Appeler depuis toutes les fonctions `plot_timeseries*` et `plot_average_life` avant de construire les traces.
+
+**Effort estimé** : 1h.
+
+---
+
+### [refacto] Découper `maps_outcome.py` (590 L → limite 500 L)
+
+**Noté le** : 2026-04-02
+**Priorité** : Moyenne (seul fichier `visualization/` en dépassement)
+
+**Contexte** : `src/visualization/maps_outcome.py` fait 590 lignes — dépasse la limite projet de 500 L. Contient 4 fonctions indépendantes : `plot_map_lollipop`, `plot_map_outcome_timeline` (DÉSACTIVÉ), `plot_map_winrate_bullet`, `plot_map_perf_vs_history`.
+
+**Solution** : Extraire vers `_maps_outcome_bullet.py` (bullet + perf_vs_history) et `_maps_outcome_lollipop.py` (lollipop + timeline), réexporter depuis `maps_outcome.py` pour ne pas casser les imports.
+
+**Effort estimé** : 2h.
+
+---
+
+### [refacto] Magic numbers de hauteur → `PLOT_CONFIG.default_height`
+
+**Noté le** : 2026-04-02
+**Priorité** : Basse (cosmétique — 8 valeurs hardcodées : `320`, `420`, `400`)
+
+**Contexte** : `match_bars.py` (×2), `timeseries_combat.py` (×4), `_timeseries_progression.py` (×2) utilisent des hauteurs numériques au lieu de `PLOT_CONFIG.default_height` ou d'une constante nommée (`HEIGHT_COMPACT = 320`, `HEIGHT_NORMAL = 420`).
+
+**Solution** : Ajouter `HEIGHT_COMPACT` et `HEIGHT_NORMAL` dans `src/config.py` (ou `PLOT_CONFIG`) et remplacer les magic numbers.
+
+**Effort estimé** : 15 min.
+
+---
+
+### [refacto] PLR0913 : réduire les fonctions à trop d'arguments dans `_perf_progression.py`
+
+**Noté le** : 2026-04-02
+**Priorité** : Basse (3 violations `# noqa: PLR0913` dans ce seul fichier, 13 au total dans `src/visualization/`)
+
+**Contexte** : Les fonctions `plot_cumulative_kd_with_ci`, `plot_net_score_per_hour`, `plot_ewma_kd` et `plot_match_kill_death_timeline` ont 6–8 paramètres. Les suppressions `# noqa: PLR0913` masquent la dette.
+
+**Solution** : Regrouper les paramètres optionnels de style/config dans un `@dataclass PlotOptions` ou `TypedDict` (couleurs, largeur de ligne, alpha CI, show_kde, etc.). Les paramètres de données restent positionnels.
+
+**Effort estimé** : 3h (à faire par fichier, pas tout d'un coup).
+
+---
 
 ###  Amélioration v7++ — Backfill multi-flags : vectoriser le calcul per-match des performance scores (v7+)
 
@@ -143,3 +240,113 @@ Le shortcut `_perf_force_only` (v6) bypasse cette boucle quand `--force-performa
 **Priorité** : Basse — les barrel kills sont extrêmement rares, l'impact sur les stats est négligeable. À faire uniquement si on veut une exhaustivité totale des catégories de kills.
 
 ---
+
+## 🔮 Roadmap v6.3+
+
+---
+
+### [v6.3] Score de forme — indice de progression court terme
+
+**Noté le** : 2026-03-28 | **Priorité** : Moyenne
+
+```
+form_score = moy_perf_score(14 derniers matchs) - moy_perf_score(90 derniers matchs)
+```
+
+- Positif → en forme / Négatif → creux de forme
+- Calculable par `mode_category` (Arena, BTB, Ranked)
+- Données : `player_match_enrichment.performance_score` déjà disponible
+
+**Implémentation** :
+1. `compute_form_score(gamertag, anchor_date)` dans `src/analysis/performance_score.py`
+2. Colonne `form_score FLOAT` dans `sessions` (migration)
+3. Calculé au post-sync, affiché sur la page d'accueil / profil (sparkline 30j + indicateur ↑↓)
+
+---
+
+### [v6.3] Détection de changement de niveau (breakpoints)
+
+**Noté le** : 2026-03-28 | **Priorité** : Basse
+
+Moyenne mobile double (14j vs 90j) — croisements ascendant/descendant = pallier détecté.
+
+**Implémentation** :
+1. `detect_level_breakpoints(df: pl.DataFrame) -> list[Breakpoint]` dans `src/analysis/progression.py`
+2. `Breakpoint(date, direction: "up"|"down", delta_perf, n_matches_confirmed)` — seuil ≥10 matchs consécutifs
+3. Table `progression_breakpoints` dans `stats.duckdb`
+4. Overlay "cap franchi" sur les courbes de tendance
+
+---
+
+### [v6.3] Page Adversaires — Head-to-head, Nemesis, Proie
+
+**Noté le** : 2026-03-28 | **Priorité** : Moyenne
+
+Nouvelle page dédiée aux adversaires récurrents.
+
+**Données** : tout dans `shared_matches_v2.duckdb` — `match_participants`, `killer_victim_pairs`, `match_registry`, `v_gamertag_lookup`.
+
+| Métrique | Source |
+|----------|--------|
+| `matches_vs` | `match_participants` |
+| `win_rate_vs` | `match_registry.outcome` |
+| `kills_on` / `deaths_from` | `killer_victim_pairs` |
+| `nemesis_score` = `deaths_from / max(1, kills_on)` pondéré | dérivé |
+| `prey_score` = `kills_on / max(1, deaths_from)` pondéré | dérivé |
+
+**Implémentation** :
+1. `src/data/services/rivals_service.py` — `load_rivals_stats(gamertag, min_matches=3, limit=50)`
+2. Nouvelle page `src/ui/pages/rivals.py`
+3. Filtres : mode_category, fenêtre temporelle (30j/90j/all)
+4. Exclure bots (`xuid LIKE 'bid(%'`), min_matches configurable
+
+---
+
+### [v6.3] Discord — Résumé de session post-sync
+
+**Noté le** : 2026-03-28 | **Priorité** : Basse
+
+Bouton `📤` dans la sidebar, actif ≥5 min après `last_match_end_time` (configurable).
+
+**Contenu embed** : W-L/win rate, meilleur match, top médaille, badge comeback, composition escouade, rôles de soirée (Champion 🏆 / Maillon Faible 🍌 via `compute_impact_scores()`).
+
+**Données** :
+- Colonne `discord_notified_at TIMESTAMP DEFAULT NULL` dans `sessions` (migration)
+- `discord_session_notify_delay_minutes` dans `app_settings.json` (défaut : 5)
+- `src/utils/discord_notifier.py` à étendre
+
+**Opt-in** : visible uniquement si `discord_session_notify = true` ET webhook configuré.
+
+---
+
+### [v6.3] Clutch moments — kills décisifs
+
+**Noté le** : 2026-03-28 | **Priorité** : Basse
+
+Trois types de kills clutch, par ordre de fiabilité :
+
+| Type | Définition | Données |
+|------|-----------|---------|
+| **Spree-stopper** | Kill sur joueur avec médaille de série dans ce match | `medals_earned` × `killer_victim_pairs` |
+| **Comeback clutch** | Kill en match `DominanceFlag.COMEBACK` / `COUNTER_COMEBACK`, joueur top-2 killers | `match_registry.comeback_flag` × `match_participants` |
+| **Last-minute** | Kill dans les 60 dernières secondes d'un Slayer à ≤2 pts d'écart | `killer_victim_pairs.timestamp_ms` × `match_registry` |
+
+**Stockage** : colonnes `clutch_kills INTEGER` + `clutch_type TEXT` dans `player_match_enrichment`.
+**Backfill** : `--clutch-kills` dans `scripts/backfill_data.py`, logique dans `src/analysis/clutch_analysis.py`.
+**Limites** : spree-stopper approximatif (pas de timestamp par médaille) ; last-minute dépend de la couverture filmshell.
+
+---
+
+### [feat/teammates] Précision du timer premier frag/mort
+
+**Noté le** : 2026-04-02 | **Priorité** : Basse
+
+**Problème** : `time_ms` dans `highlight_events` est relatif au début du **lobby** (chargement inclus), pas au coup d'envoi du combat. Ce décalage est variable selon maps/modes (~30–45s), ce qui rend les tranches de 0–15s quasi vides et décale tout vers la droite.
+
+**Solutions envisagées** :
+
+1. **Normalisation par premier event du match** — soustraire `MIN(time_ms) OVER (PARTITION BY match_id)` (tous joueurs confondus) pour aligner sur le "premier sang". Simple, mais biaise : le joueur mort en premier aura toujours `adjusted = 0s`.
+
+2. **Capturer le timing du premier mouvement** — utiliser un event de type "premier déplacement" ou "spawn" comme temps 0. Non disponible aujourd'hui dans l'API SPNKr/filmshell ; nécessiterait une investigation sur les event_types non exploités (ex: `mode` events déjà présents dans `highlight_events`).
+
+**Aucune action immédiate** — documenter pour investigation future.
