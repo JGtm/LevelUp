@@ -281,3 +281,103 @@ class TestComputeParticipationProfile:
             "survie_norm",
         ):
             assert 0 <= profile[key] <= 1.1, f"{key} hors plage: {profile[key]}"
+
+
+# =============================================================================
+# Tests _compute_shared_match_ids (régression : "Madina disparaît sur vieilles sessions")
+# =============================================================================
+
+
+def _make_df(match_ids: list[str]) -> "pl.DataFrame":
+    """DataFrame minimal avec colonne match_id."""
+    import polars as pl
+
+    if not match_ids:
+        return pl.DataFrame({"match_id": pl.Series([], dtype=pl.Utf8)})
+    return pl.DataFrame({"match_id": match_ids})
+
+
+class TestComputeSharedMatchIds:
+    """Tests pour _compute_shared_match_ids — logique d'intersection robuste."""
+
+    def test_two_players_with_data(self) -> None:
+        from src.ui.pages.teammates_synergy import _compute_shared_match_ids
+
+        me = _make_df(["m1", "m2", "m3"])
+        f1 = _make_df(["m1", "m2"])
+        result = _compute_shared_match_ids(me, f1, None, None)
+        assert set(result) == {"m1", "m2"}
+
+    def test_f3_empty_does_not_collapse_shared(self) -> None:
+        """Bug : f3 DataFrame vide faisait shared=set() → radar disparaissait."""
+        from src.ui.pages.teammates_synergy import _compute_shared_match_ids
+
+        me = _make_df(["m1", "m2", "m3"])
+        f1 = _make_df(["m1", "m2", "m3"])
+        f2 = _make_df(["m1", "m2", "m3"])
+        f3_empty = _make_df([])  # Madina sans données pour cette session
+        result = _compute_shared_match_ids(me, f1, f2, f3_empty)
+        # L'intersection doit rester non vide — f3 vide est ignoré
+        assert set(result) == {"m1", "m2", "m3"}
+
+    def test_f2_empty_does_not_collapse_shared(self) -> None:
+        from src.ui.pages.teammates_synergy import _compute_shared_match_ids
+
+        me = _make_df(["m1", "m2"])
+        f1 = _make_df(["m1", "m2"])
+        f2_empty = _make_df([])
+        result = _compute_shared_match_ids(me, f1, f2_empty, None)
+        assert set(result) == {"m1", "m2"}
+
+    def test_all_players_with_data_intersection(self) -> None:
+        from src.ui.pages.teammates_synergy import _compute_shared_match_ids
+
+        me = _make_df(["m1", "m2", "m3"])
+        f1 = _make_df(["m1", "m2", "m4"])
+        f2 = _make_df(["m1", "m3", "m4"])
+        f3 = _make_df(["m1", "m2"])
+        result = _compute_shared_match_ids(me, f1, f2, f3)
+        # Seul m1 est dans les 4
+        assert set(result) == {"m1"}
+
+    def test_f3_none_ignored(self) -> None:
+        from src.ui.pages.teammates_synergy import _compute_shared_match_ids
+
+        me = _make_df(["m1", "m2"])
+        f1 = _make_df(["m1", "m2"])
+        result = _compute_shared_match_ids(me, f1, None, None)
+        assert set(result) == {"m1", "m2"}
+
+    def test_me_empty_returns_empty(self) -> None:
+        from src.ui.pages.teammates_synergy import _compute_shared_match_ids
+
+        me = _make_df([])
+        f1 = _make_df(["m1", "m2"])
+        result = _compute_shared_match_ids(me, f1, None, None)
+        assert result == []
+
+    def test_no_overlap_returns_empty(self) -> None:
+        from src.ui.pages.teammates_synergy import _compute_shared_match_ids
+
+        me = _make_df(["m1", "m2"])
+        f1 = _make_df(["m3", "m4"])
+        result = _compute_shared_match_ids(me, f1, None, None)
+        assert result == []
+
+    def test_session_change_produces_different_result(self) -> None:
+        """Le changement de session doit produire des match_ids différents."""
+        from src.ui.pages.teammates_synergy import _compute_shared_match_ids
+
+        # Session mars
+        me_mars = _make_df(["m1", "m2", "m3"])
+        f1_mars = _make_df(["m1", "m2", "m3"])
+        result_mars = set(_compute_shared_match_ids(me_mars, f1_mars, None, None))
+
+        # Session avril
+        me_avril = _make_df(["m4", "m5"])
+        f1_avril = _make_df(["m4", "m5"])
+        result_avril = set(_compute_shared_match_ids(me_avril, f1_avril, None, None))
+
+        assert result_mars != result_avril
+        assert result_mars == {"m1", "m2", "m3"}
+        assert result_avril == {"m4", "m5"}

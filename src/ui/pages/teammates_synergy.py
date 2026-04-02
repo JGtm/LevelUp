@@ -370,6 +370,31 @@ def _compute_profiles_from_squad(
     return profiles
 
 
+def _compute_shared_match_ids(
+    me_df: pl.DataFrame,
+    f1_df: pl.DataFrame,
+    f2_df: pl.DataFrame | None,
+    f3_df: pl.DataFrame | None,
+) -> list[str]:
+    """Retourne l'intersection des match_ids des joueurs ayant des données.
+
+    Les joueurs avec un DataFrame vide sont exclus de l'intersection : un df vide
+    ne doit pas réduire l'ensemble commun à zéro et faire disparaître tout le radar.
+    """
+
+    def _ids(df: pl.DataFrame) -> set[str]:
+        if df.is_empty() or "match_id" not in df.columns:
+            return set()
+        return set(df["match_id"].cast(pl.Utf8).to_list())
+
+    # me_df et f1_df sont obligatoires — les optionnels ne sont inclus que s'ils sont non vides
+    shared = _ids(me_df) & _ids(f1_df)
+    for optional in [f2_df, f3_df]:
+        if optional is not None and not optional.is_empty():
+            shared &= _ids(optional)
+    return list(shared)
+
+
 def render_trio_synergy_radar(  # noqa: PLR0913
     me_df: DataFrameLike,
     f1_df: DataFrameLike,
@@ -392,20 +417,12 @@ def render_trio_synergy_radar(  # noqa: PLR0913
     if db_path is None:
         db_path = st.session_state.get("db_path", "")
 
-    def _ids(df: pl.DataFrame) -> set[str]:
-        if df.is_empty() or "match_id" not in df.columns:
-            return set()
-        return set(df["match_id"].cast(pl.Utf8).to_list())
-
-    to_intersect: list[DataFrameLike] = [me_df, f1_df]
-    if f2_df is not None:
-        to_intersect.append(ensure_polars(f2_df))
-    if f3_df is not None:
-        to_intersect.append(ensure_polars(f3_df))
-    shared = _ids(ensure_polars(to_intersect[0]))
-    for _df in to_intersect[1:]:
-        shared &= _ids(ensure_polars(_df))
-    shared_match_ids = list(shared)
+    shared_match_ids = _compute_shared_match_ids(
+        me_df,
+        f1_df,
+        ensure_polars(f2_df) if f2_df is not None else None,
+        ensure_polars(f3_df) if f3_df is not None else None,
+    )
     if not shared_match_ids:
         return
 
