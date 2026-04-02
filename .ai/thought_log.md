@@ -7,6 +7,26 @@
 
 ## Journal
 
+### [2026-04-03] — fix(i18n): playlist_name_fr et map_name_fr manquants dans le flux Polars — Complété
+
+**Statut** : Complété
+
+**Décision technique** :
+La cause racine du "Quick Play" affiché en anglais dans l'historique était dans `_MV_VIEW_SOURCE` : le subquery SQL ne sélectionnait pas `playlist_name_fr`, `map_name_fr`, `pair_name_fr`, `game_variant_name_fr` depuis `mv_player_matches`. Résultat : `_add_derived_columns` recevait un DataFrame sans ces colonnes et générait `playlist_fr` via `translate_playlist_name` — une fonction qui fait un passthrough pour les chaînes non-UUID (retourne "Quick Play" tel quel en anglais).
+
+**Différence clé avec `pair_fr`/`map_ui`** : ces colonnes avaient déjà leur logique de fallback (`pair_name_fr → pair_fr`, `map_name_fr → map_ui`) mais elle restait morte faute de données.
+
+**Fichiers modifiés** :
+- `src/data/repositories/_match_queries.py` : `_MV_VIEW_SOURCE` + `_DIRECT_JOIN_SOURCE` enrichis avec `map_name_fr`, `playlist_name_fr`, `pair_name_fr`, `game_variant_name_fr`
+- `src/data/repositories/_match_queries_polars.py` : `all_select` (main + fallback) avec les 3 colonnes FR
+- `src/app/_filters_apply.py` : `_add_derived_columns` — priorité `playlist_name_fr` pour `playlist_fr` (même pattern que `pair_name_fr → pair_fr`)
+
+**Résultats vérifiés** :
+- `mv_player_matches` retourne bien `playlist_name_fr = 'Partie rapide'` pour "Quick Play" (avec `meta` attaché)
+- 84/84 tests passent
+
+**Conclusion** : le cross-catalog (v_match_full → meta.asset_translations) fonctionne correctement dès que `meta` est attaché à la connexion — ce n'était pas un bug DuckDB. Le vrai bug était l'absence de propagation des colonnes FR jusqu'au layer de présentation.
+
 ### [2026-04-02] — feat(escouade): records historiques par joueur sur tous les graphes barres — Complété + vérification finale
 
 **Décision technique principale** : Architecture en 4 couches — analyse pure (`squad_records.py`), formes Plotly (`_squad_record_shapes.py`), modification des 4 fonctions de visualisation, threading des records depuis la couche UI.
