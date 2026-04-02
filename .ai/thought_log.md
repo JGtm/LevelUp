@@ -7,25 +7,22 @@
 
 ## Journal
 
-### [2026-04-03] — fix(i18n): playlist_name_fr et map_name_fr manquants dans le flux Polars — Complété
+### [2026-04-03] — fix(i18n): playlist_name_fr et map_name_fr manquants dans le flux Polars — Complété (2 commits)
 
 **Statut** : Complété
 
 **Décision technique** :
-La cause racine du "Quick Play" affiché en anglais dans l'historique était dans `_MV_VIEW_SOURCE` : le subquery SQL ne sélectionnait pas `playlist_name_fr`, `map_name_fr`, `pair_name_fr`, `game_variant_name_fr` depuis `mv_player_matches`. Résultat : `_add_derived_columns` recevait un DataFrame sans ces colonnes et générait `playlist_fr` via `translate_playlist_name` — une fonction qui fait un passthrough pour les chaînes non-UUID (retourne "Quick Play" tel quel en anglais).
+Deux bugs en cascade :
+1. `_MV_VIEW_SOURCE` ne listait pas `playlist_name_fr`, `map_name_fr`, `pair_name_fr` → ajouté dans le SELECT
+2. `COLUMNS_COMMON` (projection appliquée par `load_df_optimized`) ne contenait pas ces colonnes → elles étaient filtrées avant d'atteindre `_add_derived_columns`
 
-**Différence clé avec `pair_fr`/`map_ui`** : ces colonnes avaient déjà leur logique de fallback (`pair_name_fr → pair_fr`, `map_name_fr → map_ui`) mais elle restait morte faute de données.
+`_add_derived_columns` avait déjà la logique `playlist_name_fr → playlist_fr` mais recevait un DataFrame sans cette colonne.
 
 **Fichiers modifiés** :
-- `src/data/repositories/_match_queries.py` : `_MV_VIEW_SOURCE` + `_DIRECT_JOIN_SOURCE` enrichis avec `map_name_fr`, `playlist_name_fr`, `pair_name_fr`, `game_variant_name_fr`
-- `src/data/repositories/_match_queries_polars.py` : `all_select` (main + fallback) avec les 3 colonnes FR
-- `src/app/_filters_apply.py` : `_add_derived_columns` — priorité `playlist_name_fr` pour `playlist_fr` (même pattern que `pair_name_fr → pair_fr`)
-
-**Résultats vérifiés** :
-- `mv_player_matches` retourne bien `playlist_name_fr = 'Partie rapide'` pour "Quick Play" (avec `meta` attaché)
-- 84/84 tests passent
-
-**Conclusion** : le cross-catalog (v_match_full → meta.asset_translations) fonctionne correctement dès que `meta` est attaché à la connexion — ce n'était pas un bug DuckDB. Le vrai bug était l'absence de propagation des colonnes FR jusqu'au layer de présentation.
+- `src/data/repositories/_match_queries.py` : `_MV_VIEW_SOURCE` + `_DIRECT_JOIN_SOURCE`
+- `src/data/repositories/_match_queries_polars.py` : `all_select` main + fallback
+- `src/app/_filters_apply.py` : `_add_derived_columns` playlist_name_fr priority
+- `src/ui/_cache_core.py` : `COLUMNS_COMMON` avec les 3 colonnes FR
 
 ### [2026-04-02] — feat(escouade): records historiques par joueur sur tous les graphes barres — Complété + vérification finale
 
