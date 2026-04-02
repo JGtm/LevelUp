@@ -87,6 +87,39 @@ def _detect_trio_session(  # noqa: PLR0913
 # ---------------------------------------------------------------------------
 
 
+def _compute_pm_records(
+    df: pl.DataFrame,
+    pair_name: str | None,
+) -> tuple[float | None, float | None, float | None]:
+    """Retourne (max_kpm, min_dpm, max_apm) pour le pair_name donné.
+
+    Args:
+        df: DataFrame joueur avec kills, deaths, assists, time_played_seconds.
+        pair_name: Filtre exact sur pair_name (None = tous les matchs).
+
+    Returns:
+        Tuple (record kills/min, record deaths/min, record assists/min).
+        Chaque valeur est None si données insuffisantes.
+    """
+    sub = df
+    if pair_name is not None and "pair_name" in df.columns:
+        sub = df.filter(pl.col("pair_name") == pair_name)
+    needed = {"kills", "deaths", "assists", "time_played_seconds"}
+    if sub.is_empty() or not needed.issubset(sub.columns):
+        logger.debug("_compute_pm_records: colonnes manquantes ou sous-df vide pour pair_name=%r", pair_name)
+        return None, None, None
+    sub = sub.filter(pl.col("time_played_seconds").is_not_null() & (pl.col("time_played_seconds") > 0))
+    if sub.is_empty():
+        logger.debug("_compute_pm_records: aucune ligne avec time_played_seconds > 0 pour pair_name=%r", pair_name)
+        return None, None, None
+    pm = sub.with_columns([
+        (pl.col("kills").cast(pl.Float64) / (pl.col("time_played_seconds") / 60)).alias("_kpm"),
+        (pl.col("deaths").cast(pl.Float64) / (pl.col("time_played_seconds") / 60)).alias("_dpm"),
+        (pl.col("assists").cast(pl.Float64) / (pl.col("time_played_seconds") / 60)).alias("_apm"),
+    ])
+    return pm["_kpm"].max(), pm["_dpm"].min(), pm["_apm"].max()
+
+
 def _render_per_minute_stats(  # noqa: PLR0913
     me_df: DataFrameLike,
     f1_df: DataFrameLike,
@@ -98,39 +131,26 @@ def _render_per_minute_stats(  # noqa: PLR0913
     *,
     f3_df: DataFrameLike | None = None,
     f3_name: str | None = None,
+    dominant_pair: str | None = None,
 ) -> None:
     """Affiche le graphe barres groupées stats/min pour l'escouade (2, 3 ou 4 joueurs)."""
     _pm_metrics = [t("tm_metric_frags_min"), t("tm_metric_deaths_min"), t("tm_metric_assists_min")]
-    _pm_players = [
-        (
-            me_name,
-            compute_aggregated_stats(me_df),
-            colors_by_name.get(me_name, OKABE_ITO_PALETTE[0]),
-        ),
-        (
-            f1_name,
-            compute_aggregated_stats(f1_df),
-            colors_by_name.get(f1_name, OKABE_ITO_PALETTE[1]),
-        ),
+    _pm_raw: list[tuple[str, pl.DataFrame]] = [
+        (me_name, ensure_polars(me_df)),
+        (f1_name, ensure_polars(f1_df)),
     ]
     if f2_name and f2_df is not None:
-        _pm_players.append(
-            (
-                f2_name,
-                compute_aggregated_stats(f2_df),
-                colors_by_name.get(f2_name, OKABE_ITO_PALETTE[2]),
-            )
-        )
+        _pm_raw.append((f2_name, ensure_polars(f2_df)))
     if f3_name and f3_df is not None:
-        _pm_players.append(
-            (
-                f3_name,
-                compute_aggregated_stats(f3_df),
-                colors_by_name.get(f3_name, OKABE_ITO_PALETTE[3]),
-            )
-        )
+        _pm_raw.append((f3_name, ensure_polars(f3_df)))
+
+    _pm_players = [
+        (name, compute_aggregated_stats(df), colors_by_name.get(name, OKABE_ITO_PALETTE[i]))
+        for i, (name, df) in enumerate(_pm_raw)
+    ]
     st.subheader(t("tm_per_minute"))
     fig_pm = go.Figure()
+    n_players = len(_pm_players)
     for _pm_name, _pm_st, _pm_color in _pm_players:
         _kpm = round(float(_pm_st.kills_per_minute), 2) if _pm_st.kills_per_minute else 0
         _dpm = round(float(_pm_st.deaths_per_minute), 2) if _pm_st.deaths_per_minute else 0
@@ -149,6 +169,23 @@ def _render_per_minute_stats(  # noqa: PLR0913
                 textposition="auto",
             )
         )
+    # ── Records par-minute ──────────────────────────────────────────────────
+    from src.visualization._squad_record_shapes import add_record_shapes
+    _player_names_pm = [n for n, _, _ in _pm_players]
+    for _p_idx, (p_name, p_df, _) in enumerate(_pm_raw):
+        _r_kpm, _r_dpm, _r_apm = _compute_pm_records(p_df, dominant_pair)
+        # kills/min : x catégoriel 0 → position 0, is_negative=False
+        if _r_kpm is not None:
+            add_record_shapes(fig_pm, xs=[0], records={p_name: _r_kpm},
+                              player_names=_player_names_pm, n_players=n_players, is_negative=False)
+        # deaths/min : x=1, dessiné en négatif sur l'axe
+        if _r_dpm is not None:
+            add_record_shapes(fig_pm, xs=[1], records={p_name: _r_dpm},
+                              player_names=_player_names_pm, n_players=n_players, is_negative=True)
+        # assists/min : x=2, is_negative=False
+        if _r_apm is not None:
+            add_record_shapes(fig_pm, xs=[2], records={p_name: _r_apm},
+                              player_names=_player_names_pm, n_players=n_players, is_negative=False)
     fig_pm.update_layout(
         barmode="group",
         height=350,
@@ -314,6 +351,31 @@ def _render_trio_performance_charts(  # noqa: PLR0913
     (injecté en amont via TeammatesService.enrich_with_performance_score).
     Sinon recalcule sur le sous-ensemble de matchs (fallback).
     """
+    from src.analysis.squad_records import compute_squad_records, get_dominant_pair_name
+
+    # Calculer les records AVANT le merge (les DFs originaux ont encore pair_name)
+    _raw = [(me_name, ensure_polars(me_df)), (f1_name, ensure_polars(f1_df))]
+    if f2_df is not None and f2_name:
+        _raw.append((f2_name, ensure_polars(f2_df)))
+    if f3_df is not None and f3_name:
+        _raw.append((f3_name, ensure_polars(f3_df)))
+    dominant_pair = get_dominant_pair_name([d for _, d in _raw])
+    if dominant_pair is None:
+        logger.debug("_render_trio_performance_charts: dominant_pair indéterminé — records sans filtre pair_name")
+    records = compute_squad_records(
+        _raw,
+        [
+            ("kills", False), ("deaths", True), ("assists", False),
+            ("ratio", False), ("accuracy", False),
+            ("average_life_seconds", False), ("performance_score", False),
+        ],
+        dominant_pair,
+    )
+    # Aligner le nom de clé : les charts utilisent "performance" (pas "performance_score")
+    for pr in records.values():
+        if "performance_score" in pr:
+            pr["performance"] = pr.pop("performance_score")
+
     merged = _merge_trio_dataframes(me_df, f1_df, f2_df)
     if merged.is_empty():
         logger.warning("_render_trio_performance_charts: merged vide, aucun match aligné")
@@ -342,6 +404,7 @@ def _render_trio_performance_charts(  # noqa: PLR0913
         f3_name=f3_name,
         f3_xuid=f3_xuid,
         colors_by_name=colors_by_name,
+        records=records,
     )
 
 

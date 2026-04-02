@@ -59,10 +59,11 @@ def render_map_charts_section(
     # Ordre chronologique des cartes (oldest first) depuis la sélection courante
     map_order: list[str] | None = None
     if not sub_pl.is_empty() and "start_time" in sub_pl.columns:
+        _map_col = "map_ui" if "map_ui" in sub_pl.columns else "map_name"
         map_order = (
             sub_pl.sort("start_time")
-            .unique(subset=["map_name"], keep="first", maintain_order=True)
-            .filter(pl.col("map_name").is_not_null())["map_name"]
+            .unique(subset=[_map_col], keep="first", maintain_order=True)
+            .filter(pl.col(_map_col).is_not_null())[_map_col]
             .to_list()
         )
 
@@ -139,10 +140,11 @@ def render_single_map_section(
     # Ordre chronologique des cartes (oldest first) depuis la sélection courante
     map_order_single: list[str] | None = None
     if "start_time" in sub_pl.columns:
+        _map_col = "map_ui" if "map_ui" in sub_pl.columns else "map_name"
         map_order_single = (
             sub_pl.sort("start_time")
-            .unique(subset=["map_name"], keep="first", maintain_order=True)
-            .filter(pl.col("map_name").is_not_null())["map_name"]
+            .unique(subset=[_map_col], keep="first", maintain_order=True)
+            .filter(pl.col(_map_col).is_not_null())[_map_col]
             .to_list()
         )
 

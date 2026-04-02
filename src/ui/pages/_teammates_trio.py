@@ -147,6 +147,10 @@ def render_trio_view(  # noqa: PLR0913, PLR0915, C901, PLR0912
 
     me_df = me_df.sort("start_time")
 
+    from src.analysis.squad_records import get_dominant_pair_name
+    _squad_dfs = [me_df, f1_df] + ([f2_df] if f2_df is not None else []) + ([f3_df] if f3_df is not None else [])
+    _dominant_pair = get_dominant_pair_name([d for d in _squad_dfs if d is not None])
+
     _render_per_minute_stats(
         me_df,
         f1_df,
@@ -157,6 +161,7 @@ def render_trio_view(  # noqa: PLR0913, PLR0915, C901, PLR0912
         colors_by_name,
         f3_df=f3_df,
         f3_name=f3_name,
+        dominant_pair=_dominant_pair,
     )
 
     # Radar de complémentarité escouade — filtré par la session/période courante
@@ -250,12 +255,28 @@ def render_trio_view(  # noqa: PLR0913, PLR0915, C901, PLR0912
         key_suffix=f"trio_{len(_weapon_player_infos)}",
     )
 
+    from src.analysis.squad_records import compute_squad_records
+    _series_pl = [(n, ensure_polars(d)) for n, d in series]
+    _spree_records = compute_squad_records(
+        _series_pl, [("max_killing_spree", False)], _dominant_pair
+    )
+    _hspk_dfs = [
+        (n, d.with_columns(
+            (pl.col("headshot_kills").fill_null(0) + pl.col("perfect_kills").fill_null(0))
+            .alias("hs_pk_total")
+        ))
+        for n, d in _series_pl
+        if "headshot_kills" in d.columns
+    ]
+    _hspk_records = compute_squad_records(_hspk_dfs, [("hs_pk_total", False)], _dominant_pair)
     render_metric_bar_charts(
         series=series,
         colors_by_name=colors_by_name,
         show_smooth=show_smooth,
         key_suffix=f"trio_{len(series)}",
         plot_fn=plot_multi_metric_bars_fn,
+        records=_spree_records,
+        hspk_records=_hspk_records,
     )
 
     # Tendance premier frag / première mort
