@@ -32,10 +32,12 @@ def prepare_time_axis(d: pl.DataFrame) -> tuple[list[int], list[str], int]:
         - ``step`` : pas de tick pour éviter le chevauchement
     """
     x_idx = list(range(d.height))
-    if "map_name" in d.columns:
+    # Préférer map_ui (traduit) si disponible, sinon map_name (EN fallback)
+    _map_col = "map_ui" if "map_ui" in d.columns else ("map_name" if "map_name" in d.columns else None)
+    if _map_col is not None:
         labels = [
             f"#{i + 1}<br>{mn}" if mn else f"#{i + 1}"
-            for i, mn in enumerate(d["map_name"].fill_null("").to_list())
+            for i, mn in enumerate(d[_map_col].fill_null("").to_list())
         ]
     else:
         labels = d["start_time"].dt.strftime(FMT_TICK_DATETIME).to_list()

@@ -35,6 +35,7 @@ try:
         SCORE_FIRST_BLOOD,
         SCORE_LAST_CASUALTY,
         ImpactEvent,
+        ImpactEventSets,
         build_impact_matrix,
         compute_impact_scores,
         get_all_impact_events,
@@ -343,7 +344,11 @@ class TestComputeImpactScores:
             "m2": ImpactEvent("m2", "200", "Bob", 3000, "last_casualty"),
         }
 
-        scores = compute_impact_scores(first_bloods, clutch_finishers, last_casualties)
+        scores = compute_impact_scores(ImpactEventSets(
+            first_bloods=first_bloods,
+            clutch_finishers=clutch_finishers,
+            last_casualties=last_casualties,
+        ))
 
         # Alice : 2 FB
         # Bob : 1 Clutch + 1 Boulet
@@ -355,7 +360,7 @@ class TestComputeImpactScores:
 
     def test_compute_impact_scores_empty(self) -> None:
         """Vérifie le comportement avec des dicts vides."""
-        scores = compute_impact_scores({}, {}, {})
+        scores = compute_impact_scores(ImpactEventSets())
         assert scores == {}
 
     def test_compute_impact_scores_edge_cases(self) -> None:
@@ -364,14 +369,14 @@ class TestComputeImpactScores:
         first_bloods = {
             "m1": ImpactEvent("m1", "100", "Alice", 1000, "first_blood"),
         }
-        scores = compute_impact_scores(first_bloods, {}, {})
+        scores = compute_impact_scores(ImpactEventSets(first_bloods=first_bloods))
         assert scores["Alice"] == SCORE_FIRST_BLOOD
 
         # Seulement des Boulets
         last_casualties = {
             "m1": ImpactEvent("m1", "200", "Bob", 3000, "last_casualty"),
         }
-        scores = compute_impact_scores({}, {}, last_casualties)
+        scores = compute_impact_scores(ImpactEventSets(last_casualties=last_casualties))
         assert scores["Bob"] == SCORE_LAST_CASUALTY
 
 
@@ -442,7 +447,10 @@ class TestImpactLogicalConstraints:
         assert clutch_finishers["m1"].gamertag == "Alice"
 
         # Les scores doivent refléter les deux événements
-        scores = compute_impact_scores(first_bloods, clutch_finishers, {})
+        scores = compute_impact_scores(ImpactEventSets(
+            first_bloods=first_bloods,
+            clutch_finishers=clutch_finishers,
+        ))
         assert scores["Alice"] == SCORE_FIRST_BLOOD + SCORE_CLUTCH_FINISHER
 
     def test_outcome_filtering_correct(self) -> None:
@@ -523,11 +531,11 @@ class TestBuildImpactMatrix:
         last_casualties = {}
 
         matrix = build_impact_matrix(
-            first_bloods,
-            clutch_finishers,
-            last_casualties,
-            {},  # last_group_kills
-            {},  # first_group_deaths
+            ImpactEventSets(
+                first_bloods=first_bloods,
+                clutch_finishers=clutch_finishers,
+                last_casualties=last_casualties,
+            ),
             match_ids=["m1"],
             gamertags=["Alice", "Bob"],
         )
@@ -548,7 +556,7 @@ class TestBuildImpactMatrix:
 
     def test_build_impact_matrix_empty(self) -> None:
         """Vérifie la matrice avec données vides."""
-        matrix = build_impact_matrix({}, {}, {}, {}, {}, match_ids=[], gamertags=[])
+        matrix = build_impact_matrix(ImpactEventSets(), match_ids=[], gamertags=[])
         assert matrix.is_empty()
 
 
