@@ -7,6 +7,68 @@
 
 ## Journal
 
+### [2026-04-02] — fix(radar): radar complémentarité filtré par session + bug Madina — Complété
+
+**Statut** : Complété
+
+**Décision technique** :
+- Bug 1 : `_teammates_trio.py` sauvegardait `radar_squad_ids` avant le filtre de session → radar figé toutes sessions. Fix : supprimer `radar_squad_ids`, utiliser `squad_ids` (filtré) + `base_for_trio` pour `radar_me_df`.
+- Bug 2 (découvert en testant) : `render_trio_synergy_radar` incluait les DataFrames vides dans l'intersection `shared` → `shared=set()` → radar entier masqué quand Madina n'a pas de données sur une vieille session.
+- Fix : extraire `_compute_shared_match_ids()` (fonction pure) qui exclut les DFs vides des joueurs optionnels (f2/f3) de l'intersection. f1 reste obligatoire.
+
+**Tests ajoutés** : 9 cas dans `TestComputeSharedMatchIds` (39 total dans le fichier) :
+- f3 vide ne collapse pas shared (régression Madina)
+- f2 vide idem
+- f1 vide → [] (f1 obligatoire)
+- None ignoré
+- me vide → []
+- intersection correcte si tous présents
+- pas de chevauchement → []
+- sessions différentes → résultats différents
+
+**Résultats** : 39/39 tests passés, ruff clean, commits b7597bf + 5abe04f
+
+**Prochaine étape** : Vérifier le rendu dans l'UI Streamlit
+
+---
+
+### [2026-04-02] — feat(settings): refonte page Paramètres V2 — Complété
+
+**Statut** : Complété
+
+**Décision technique** :
+- Suppression des sections Synchronisation et Base de données (optimisées, inutiles dans l'UI)
+- Remplacement de tous les `st.expander` par des sections fixes (`st.subheader` + `st.divider`)
+- Correction bug : `backfill_events` avait `disabled` manquant
+- Correction : `enable_duckdb_analytics` et `spnkr_refresh_with_highlight_events` étaient hardcodés incorrectement dans `_build_settings_from_ui`, désormais préservés via `_get_preserved_settings`
+- Nouveaux champs exposés : `lang` (langue UI), `career_top_exclude_btb`, Discord complet (`discord_notifications_enabled`, `discord_webhook_url`, `discord_lang`)
+- Suppression checkbox "Toutes les données" éphémère (non persistée)
+- Grille backfill uniformisée en 3 colonnes symétriques
+- Boutons Sauvegarder/Recharger remontés en haut de page
+
+**Résultats** : 18/18 tests passés
+
+**Prochaine étape** : Aucune — page prête
+
+---
+
+### [2026-04-02] — fix(teammates): régression score d'équipe sans moyenne/bonus — Complété
+
+**Tâche** : Régression sur la page Coéquipiers — la carte "Score d'équipe" n'affichait plus la moyenne de base ni le bonus collectif.
+
+**Décision technique** : La condition `if bonus > 0` dans `_render_compact_team_card` cachait aussi la moyenne de base quand aucun bonus collectif n'était activé (win_rate ≤ 60%, K/D ≤ 1.0, kills_std ≥ 3.0). La moyenne de base (`base_avg`) doit être affichée en permanence ; seul le `(+N collectif)` est conditionnel au bonus > 0.
+
+**Modifications apportées** :
+1. `src/ui/components/performance.py` — `_render_compact_team_card` : afficher `base_avg` toujours, bonus `+N` seulement si > 0
+2. `src/ui/i18n/pages/teammates.py` — ajout clé `squad_score_base_only` (`"moy. {base}"`) pour le cas sans bonus
+3. `tests/test_fixes_2026_03_26.py` — test `test_bonus_not_displayed_when_zero` → `test_base_displayed_when_bonus_zero` (vérifie que le détail s'affiche même sans bonus)
+
+**Résultats** : 4/4 tests `TestSquadScoreBonus` passent.
+
+**Branche** : `feat/teammates-first-events-chart`
+
+---
+
 ### [2026-04-02] — docs(ai): complétion de CHARTS_AND_TABLES.md — Complété
 
 **Tâche** : Vérification finale et complétion du fichier `.ai/CHARTS_AND_TABLES.md` (doc exhaustive des graphiques/tableaux LevelUp).

@@ -381,3 +381,12 @@ class TestComputeSharedMatchIds:
         assert result_mars != result_avril
         assert result_mars == {"m1", "m2", "m3"}
         assert result_avril == {"m4", "m5"}
+
+    def test_f1_empty_returns_empty(self) -> None:
+        """f1 est obligatoire : un df vide pour f1 doit retourner [] (pas de radar sans coéquipier)."""
+        from src.ui.pages.teammates_synergy import _compute_shared_match_ids
+
+        me = _make_df(["m1", "m2"])
+        f1_empty = _make_df([])
+        result = _compute_shared_match_ids(me, f1_empty, None, None)
+        assert result == []
