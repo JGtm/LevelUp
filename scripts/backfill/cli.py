@@ -554,6 +554,16 @@ def create_argument_parser() -> argparse.ArgumentParser:
         help="Recalculer et réécrire le LUSR pour TOUS les matchs non classés depuis zéro",
     )
     parser.add_argument(
+        "--reset-lusr",
+        action="store_true",
+        dest="reset_lusr",
+        help=(
+            "Supprime toutes les entrées LUSR du joueur dans match_skill_rank "
+            "et les recalcule depuis zéro (nécessite --player). "
+            "Utile pour corriger un drift de rating dû au bug de seed incrémental."
+        ),
+    )
+    parser.add_argument(
         "--csr",
         action="store_true",
         help=(
