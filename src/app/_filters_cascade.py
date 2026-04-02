@@ -175,43 +175,71 @@ def _vectorize_ui_columns(
 ) -> pl.DataFrame:
     """Ajoute les colonnes playlist_ui, mode_ui, map_ui vectorisées.
 
-    Utilise lang=get_lang() pour rester cohérent avec apply_filters.
+    Utilise les colonnes *_fr si disponibles (même logique que _add_derived_columns)
+    pour garantir la cohérence entre les options du sidebar et le filtrage réel.
     """
     _lang = get_lang()
 
     if "playlist_name" in dropdown_base.columns:
-        _pl_map = build_mapping(
-            dropdown_base["playlist_name"],
-            lambda x: translate_playlist_name(clean_asset_label_fn(x), lang=_lang),
-        )
-        pl_expr = (
-            pl.col("playlist_name")
-            .cast(pl.Utf8)
-            .replace_strict(_pl_map, default=None, return_dtype=pl.Utf8)
-            .alias("playlist_ui")
-        )
+        # Priorité : playlist_name_fr si disponible et lang=fr (aligné avec _add_derived_columns)
+        if "playlist_name_fr" in dropdown_base.columns and _lang == "fr":
+            pl_expr = (
+                pl.coalesce([
+                    pl.col("playlist_name_fr").cast(pl.Utf8),
+                    pl.col("playlist_name").cast(pl.Utf8),
+                ]).alias("playlist_ui")
+            )
+        else:
+            _pl_map = build_mapping(
+                dropdown_base["playlist_name"],
+                lambda x: translate_playlist_name(clean_asset_label_fn(x), lang=_lang),
+            )
+            pl_expr = (
+                pl.col("playlist_name")
+                .cast(pl.Utf8)
+                .replace_strict(_pl_map, default=None, return_dtype=pl.Utf8)
+                .alias("playlist_ui")
+            )
     else:
         pl_expr = pl.lit(None).cast(pl.Utf8).alias("playlist_ui")
 
     if "pair_name" in dropdown_base.columns:
-        _mode_map = build_mapping(dropdown_base["pair_name"], normalize_mode_label_fn)
-        mode_expr = (
-            pl.col("pair_name")
-            .cast(pl.Utf8)
-            .replace_strict(_mode_map, default=None, return_dtype=pl.Utf8)
-            .alias("mode_ui")
-        )
+        # Priorité : game_variant_name_fr si disponible et lang=fr (aligné avec _add_derived_columns)
+        if "game_variant_name_fr" in dropdown_base.columns and _lang == "fr":
+            mode_expr = (
+                pl.coalesce([
+                    pl.col("game_variant_name_fr").cast(pl.Utf8),
+                    pl.col("pair_name").cast(pl.Utf8),
+                ]).alias("mode_ui")
+            )
+        else:
+            _mode_map = build_mapping(dropdown_base["pair_name"], normalize_mode_label_fn)
+            mode_expr = (
+                pl.col("pair_name")
+                .cast(pl.Utf8)
+                .replace_strict(_mode_map, default=None, return_dtype=pl.Utf8)
+                .alias("mode_ui")
+            )
     else:
         mode_expr = pl.lit(None).cast(pl.Utf8).alias("mode_ui")
 
     if "map_name" in dropdown_base.columns:
-        _map_map = build_mapping(dropdown_base["map_name"], normalize_map_label_fn)
-        map_expr = (
-            pl.col("map_name")
-            .cast(pl.Utf8)
-            .replace_strict(_map_map, default=None, return_dtype=pl.Utf8)
-            .alias("map_ui")
-        )
+        # Priorité : map_name_fr si disponible et lang=fr (aligné avec _add_derived_columns)
+        if "map_name_fr" in dropdown_base.columns and _lang == "fr":
+            map_expr = (
+                pl.coalesce([
+                    pl.col("map_name_fr").cast(pl.Utf8),
+                    pl.col("map_name").cast(pl.Utf8),
+                ]).alias("map_ui")
+            )
+        else:
+            _map_map = build_mapping(dropdown_base["map_name"], normalize_map_label_fn)
+            map_expr = (
+                pl.col("map_name")
+                .cast(pl.Utf8)
+                .replace_strict(_map_map, default=None, return_dtype=pl.Utf8)
+                .alias("map_ui")
+            )
     else:
         map_expr = pl.lit(None).cast(pl.Utf8).alias("map_ui")
 
