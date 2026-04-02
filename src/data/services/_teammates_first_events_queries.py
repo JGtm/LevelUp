@@ -47,12 +47,13 @@ def query_first_events(
         SELECT
             e.match_id,
             e.xuid,
-            r.start_time,
+            ANY_VALUE(r.start_time) AS start_time,
             GREATEST(
                 MIN(CASE WHEN LOWER(e.event_type) = 'kill'  THEN e.time_ms END) / 1000.0
                     - GREATEST(
-                        COALESCE(r.duration_seconds, 0)
-                        - COALESCE(r.playable_duration_seconds, r.duration_seconds, 0),
+                        COALESCE(ANY_VALUE(r.duration_seconds), 0)
+                        - COALESCE(ANY_VALUE(r.playable_duration_seconds),
+                                   ANY_VALUE(r.duration_seconds), 0),
                         0
                     ),
                 0
@@ -60,8 +61,9 @@ def query_first_events(
             GREATEST(
                 MIN(CASE WHEN LOWER(e.event_type) = 'death' THEN e.time_ms END) / 1000.0
                     - GREATEST(
-                        COALESCE(r.duration_seconds, 0)
-                        - COALESCE(r.playable_duration_seconds, r.duration_seconds, 0),
+                        COALESCE(ANY_VALUE(r.duration_seconds), 0)
+                        - COALESCE(ANY_VALUE(r.playable_duration_seconds),
+                                   ANY_VALUE(r.duration_seconds), 0),
                         0
                     ),
                 0
@@ -70,8 +72,8 @@ def query_first_events(
         JOIN shared.match_registry r ON e.match_id = r.match_id
         WHERE e.xuid IN ({xu_ph})
           AND e.match_id IN ({mi_ph})
-        GROUP BY e.match_id, e.xuid, r.start_time
-        ORDER BY r.start_time ASC
+        GROUP BY e.match_id, e.xuid
+        ORDER BY start_time ASC
     """
     try:
         result = conn.execute(query, [*xuids, *match_ids])  # type: ignore[union-attr]
