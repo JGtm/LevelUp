@@ -48,26 +48,16 @@ def query_first_events(
             e.match_id,
             e.xuid,
             ANY_VALUE(r.start_time) AS start_time,
+            MIN(CASE WHEN LOWER(e.event_type) = 'kill'  THEN e.time_ms END) / 1000.0
+                AS first_kill_s_raw,
+            MIN(CASE WHEN LOWER(e.event_type) = 'death' THEN e.time_ms END) / 1000.0
+                AS first_death_s_raw,
             GREATEST(
-                MIN(CASE WHEN LOWER(e.event_type) = 'kill'  THEN e.time_ms END) / 1000.0
-                    - GREATEST(
-                        COALESCE(ANY_VALUE(r.duration_seconds), 0)
-                        - COALESCE(ANY_VALUE(r.playable_duration_seconds),
-                                   ANY_VALUE(r.duration_seconds), 0),
-                        0
-                    ),
+                COALESCE(ANY_VALUE(r.duration_seconds), 0)
+                - COALESCE(ANY_VALUE(r.playable_duration_seconds),
+                            ANY_VALUE(r.duration_seconds), 0),
                 0
-            ) AS first_kill_s,
-            GREATEST(
-                MIN(CASE WHEN LOWER(e.event_type) = 'death' THEN e.time_ms END) / 1000.0
-                    - GREATEST(
-                        COALESCE(ANY_VALUE(r.duration_seconds), 0)
-                        - COALESCE(ANY_VALUE(r.playable_duration_seconds),
-                                   ANY_VALUE(r.duration_seconds), 0),
-                        0
-                    ),
-                0
-            ) AS first_death_s
+            ) AS countdown_s
         FROM shared.highlight_events e
         JOIN shared.match_registry r ON e.match_id = r.match_id
         WHERE e.xuid IN ({xu_ph})
@@ -77,7 +67,26 @@ def query_first_events(
     """
     try:
         result = conn.execute(query, [*xuids, *match_ids])  # type: ignore[union-attr]
-        return result_to_polars(result)
+        df = result_to_polars(result)
     except Exception:
         logger.debug("query_first_events: erreur requête highlight_events", exc_info=True)
         return pl.DataFrame()
+
+    if df.is_empty():
+        return df
+
+    # Soustraire countdown en Python pour préserver NULL (GREATEST en SQL convertirait
+    # NULL → 0 dans DuckDB, ce qui fausserait les histogrammes).
+    # first_kill_s_raw / first_death_s_raw sont NULL si aucun event du type pour ce match.
+    def _apply_countdown(col: pl.Expr, countdown: pl.Expr) -> pl.Expr:
+        """Soustrait countdown_s de col en préservant NULL. Clamp à 0."""
+        return pl.when(col.is_not_null()).then(
+            (col - countdown).clip(lower_bound=0.0)
+        ).otherwise(None)
+
+    df = df.with_columns(
+        _apply_countdown(pl.col("first_kill_s_raw"), pl.col("countdown_s")).alias("first_kill_s"),
+        _apply_countdown(pl.col("first_death_s_raw"), pl.col("countdown_s")).alias("first_death_s"),
+    ).drop(["first_kill_s_raw", "first_death_s_raw", "countdown_s"])
+
+    return df
