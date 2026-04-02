@@ -359,6 +359,16 @@ def _build_first_events_fig(
 
     sorted_bins = sorted(all_bins, key=_bin_key)
 
+    # Tick labels positionnés aux bordures des colonnes (i-0.5) plutôt qu'au centre
+    n_bins = len(sorted_bins)
+    border_tickvals = [i - 0.5 for i in range(n_bins + 1)]
+    border_ticktext = [
+        _format_bin_label(
+            _bin_key(sorted_bins[i]) if i < n_bins else _bin_key(sorted_bins[-1]) + _BIN_SIZE_S
+        )
+        for i in range(n_bins + 1)
+    ]
+
     fig = go.Figure()
     for name in player_names:
         color = colors_by_name.get(name, "#888888")
@@ -419,6 +429,9 @@ def _build_first_events_fig(
             "gridcolor": "rgba(0,0,0,0)",
             "tickfont": {"color": "white", "size": 13, "family": "Arial Black, Arial"},
             "title_font": {"color": "white"},
+            "tickmode": "array",
+            "tickvals": border_tickvals,
+            "ticktext": border_ticktext,
         },
         yaxis={
             "gridcolor": "rgba(255,255,255,0.08)",
