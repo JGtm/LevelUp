@@ -438,7 +438,7 @@ def _build_first_events_fig(
         },
         xaxis={
             "gridcolor": "rgba(0,0,0,0)",
-            "tickfont": {"color": "white", "size": 13, "family": "Arial Black, Arial"},
+            "tickfont": {"color": "white", "size": 13, "family": "Arial"},
             "title_font": {"color": "white"},
             "tickmode": "array",
             "tickvals": border_tickvals,
