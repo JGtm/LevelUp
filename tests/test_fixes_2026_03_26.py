@@ -378,11 +378,13 @@ class TestSquadScoreBonus:
         assert "os-perf-card__detail" in html
         assert "+15" in html  # bonus = 75 - 60 = 15
 
-    def test_bonus_not_displayed_when_zero(self) -> None:
-        """Pas de bonus affiché quand score == base_avg (aucun bonus collectif)."""
+    def test_base_displayed_when_bonus_zero(self) -> None:
+        """La moyenne de base est affichée même quand bonus = 0."""
         team_perf = {"score": 60.0, "components": {"base_avg": 60.0}}
         html = self._render(team_perf)
-        assert "os-perf-card__detail" not in html
+        assert "os-perf-card__detail" in html
+        assert "moy. 60" in html
+        assert "+" not in html  # pas de bonus affiché
 
     def test_bonus_not_displayed_when_score_is_none(self) -> None:
         """Pas de bonus si le score est None."""
