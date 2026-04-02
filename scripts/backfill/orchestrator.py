@@ -99,6 +99,7 @@ def _empty_result() -> dict[str, int]:
         "lusr_computed": 0,
         "csr_fetched": 0,
         "csr_backfilled": 0,
+        "playable_duration_updated": 0,
     }
 
 
@@ -691,6 +692,90 @@ def _backfill_sessions(
     return n
 
 
+def _update_playable_duration(
+    shared_conn: Any,
+    match_id: str,
+    stats_json: dict,
+    *,
+    force: bool = False,
+    totals: dict,
+) -> None:
+    """Met à jour playable_duration_seconds et real_start_time dans match_registry.
+
+    Args:
+        shared_conn: Connexion shared_matches.duckdb.
+        match_id: Identifiant du match.
+        stats_json: JSON brut retourné par get_match_stats (contient MatchInfo).
+        force: Si True, met à jour même si déjà rempli.
+        totals: Dict de compteurs (modifié en place).
+    """
+    from datetime import timedelta
+
+    from src.data.sync.transformers._helpers import _parse_duration_to_seconds
+    from src.data.sync.transformers._helpers_conversions import _parse_iso_utc
+
+    match_info = stats_json.get("MatchInfo", {}) if isinstance(stats_json, dict) else {}
+
+    # Guard : déjà rempli et pas de force
+    if not force:
+        try:
+            row = shared_conn.execute(
+                "SELECT playable_duration_seconds FROM match_registry WHERE match_id = ?",
+                (match_id,),
+            ).fetchone()
+            if row and row[0] is not None:
+                logger.debug("playable_duration déjà présent pour %s — ignoré", match_id)
+                return
+        except Exception:
+            pass
+
+    playable_raw = match_info.get("PlayableDuration")
+    if not isinstance(playable_raw, str):
+        logger.debug("PlayableDuration absent/non-string pour %s", match_id)
+        return
+
+    playable_s = _parse_duration_to_seconds(playable_raw)
+    if playable_s is None:
+        logger.warning("PlayableDuration non parsé pour %s: %r", match_id, playable_raw)
+        return
+
+    # Calculer real_start_time
+    real_start_time = None
+    try:
+        start_raw = match_info.get("StartTime")
+        duration_raw = match_info.get("Duration")
+        start_time = _parse_iso_utc(start_raw) if isinstance(start_raw, str) else None
+        duration_s = _parse_duration_to_seconds(duration_raw) if isinstance(duration_raw, str) else None
+        if start_time is not None and duration_s is not None:
+            countdown_s = duration_s - playable_s
+            if countdown_s >= 0:
+                real_start_time = start_time + timedelta(seconds=countdown_s)
+            else:
+                logger.warning(
+                    "Match %s : playable_duration (%d) > duration (%d) — real_start_time ignoré",
+                    match_id, playable_s, duration_s,
+                )
+    except Exception as e:
+        logger.debug("Erreur calcul real_start_time pour %s: %s", match_id, e)
+
+    try:
+        shared_conn.execute(
+            """
+            UPDATE match_registry
+            SET playable_duration_seconds = ?,
+                real_start_time = ?
+            WHERE match_id = ?
+            """,
+            (playable_s, real_start_time, match_id),
+        )
+        totals["playable_duration_updated"] = totals.get("playable_duration_updated", 0) + 1
+        logger.debug(
+            "Match %s : playable_duration=%ds, real_start=%s", match_id, playable_s, real_start_time
+        )
+    except Exception as e:
+        logger.warning("Erreur UPDATE playable_duration pour %s: %s", match_id, e)
+
+
 async def _backfill_with_api(
     conn: Any,
     db_path: Path,
@@ -743,6 +828,8 @@ async def _backfill_with_api(
     force_pve_stats = getattr(scope, "force_pve_stats", False)
     weapons = getattr(scope, "weapons", False)
     force_weapons = getattr(scope, "force_weapons", False)
+    playable_duration = getattr(scope, "playable_duration", False)
+    force_playable_duration = getattr(scope, "force_playable_duration", False)
     from src.data.sync.api_client import get_tokens_from_env
     from src.data.sync.api_factory import create_api_client
     from src.data.sync.migrations import ensure_match_participants_columns
@@ -856,6 +943,7 @@ async def _backfill_with_api(
             participants_shots,
             participants_damage,
             participants_avg_life,
+            playable_duration,
         ]
     )
     _weapons_only_shortcut = weapons and _PARALLEL_WEAPON_KILLS_IN_SYNC and not _loop_api_needed
@@ -1063,6 +1151,16 @@ async def _backfill_with_api(
                             client, match_id, gamertag, xuid, shared_conn, force=force_weapons
                         )
                         totals["weapon_kills_inserted"] += n
+
+                # ── Playable duration → shared.match_registry (v6.3) ──
+                if playable_duration and shared_conn is not None:
+                    _update_playable_duration(
+                        shared_conn,
+                        match_id,
+                        stats_json,
+                        force=force_playable_duration,
+                        totals=totals,
+                    )
 
                 # Marquer le bitmask backfill_completed pour tous les types demandés
                 requested_types = scope.requested_types
