@@ -27,6 +27,30 @@
 
 **Conclusion** : Les nouveaux matchs syncés après déploiement auront `playable_duration_seconds` et `real_start_time` directement remplis. Les anciens matchs nécessiteront un backfill API via `--playable-duration`.
 
+---
+
+### [2026-04-28] — fix(i18n): noms de cartes/modes en français dans tableaux et graphes — Complété
+
+**Statut** : Complété
+
+**Décision technique principale** : 3 bugs indépendants empêchaient les traductions FR d'atteindre l'UI (tableau des matchs + graphes timeseries). Corrigés en chaîne depuis la couche DB jusqu'aux helpers de visualisation.
+
+**Bugs corrigés** :
+1. **`mv_player_matches` sans colonnes FR** : la migration `fix_mv_player_matches_scores` était déjà appliquée, bloquant la recréation de la vue. Solution : nouvelle migration `add_mv_player_matches_fr_cols` qui force la recréation. Colonnes ajoutées : `map_name_fr`, `playlist_name_fr`, `pair_name_fr`, `game_variant_name_fr`.
+2. **`resolve_map_display_names` écrase FR par EN** : la boucle `for try_lang in (bcp, "en-US")` passait d'abord fr-FR (correct) puis en-US écrasait la valeur. Fix : skip si une traduction non-fallback existe déjà.
+3. **`_add_derived_columns` ignorait les colonnes FR** : `map_ui`, `pair_fr`, `mode_ui` utilisaient des lookups i18n ou `pair_name` brut au lieu des colonnes `*_fr` déjà disponibles dans le DataFrame. Fix : priorité aux colonnes `*_fr` de la DB.
+4. **`test_metadata_i18n.py`** : `test_v_match_full_playlist_name_is_english` ouvrait `v_match_full` sans attacher `meta` → `CatalogException`. Fix : attach avant query.
+5. **`test_friends_impact.py`** : 6 tests appelaient `compute_impact_scores(a, b, c)` et `build_impact_matrix(fb, cf, ...)` avec l'ancienne API (3 dicts séparés). Refactorisé pour utiliser `ImpactEventSets` (nouvelle API). Fix : mise à jour des tests avec `ImpactEventSets(...)`.
+
+**Données vérifiées dans `shared_matches_v2.duckdb`** :
+- `Cliffhanger → Dévissage` ✅, `High Ground → Altitude` ✅, `The Pit → La fosse` ✅, `Origin → Origine` ✅
+- Cartes sans traduction FR distincte (Catalyst, Shiro, Domicile, Goliath, Empyrean, Detachment, Shogun) restent identiques EN=FR → comportement correct
+
+**Résultats** : 36/36 `test_friends_impact`, 23/23 `test_metadata_i18n + test_fixes_2026_03_26`. Suite complète : 5383 passent + e2e ignorés (Playwright non installé).
+
+**Conclusion** : Au prochain redémarrage de l'app, les graphes timeseries et le tableau des matchs afficheront les noms de cartes/modes en français pour les 62 cartes qui ont une traduction FR distincte dans `asset_translations`.
+
+
 
 
 **Statut** : Complété

@@ -25,6 +25,7 @@ from src.ui.translations import translate_playlist_name
 def test_v_match_full_playlist_name_is_english() -> None:
     """v_match_full.playlist_name doit contenir des noms EN, jamais des traductions FR."""
     v2 = Path("data/warehouse/shared_matches_v2.duckdb")
+    meta = Path("data/warehouse/metadata.duckdb")
     if not v2.exists():
         pytest.skip("shared_matches_v2.duckdb non disponible")
 
@@ -33,6 +34,12 @@ def test_v_match_full_playlist_name_is_english() -> None:
     except duckdb.IOException:
         pytest.skip("shared_matches_v2.duckdb verrouillé par un autre processus")
     try:
+        # v_match_full référence meta.asset_translations — attacher si disponible
+        if meta.exists():
+            try:
+                conn.execute(f"ATTACH '{meta}' AS meta (READ_ONLY)")
+            except Exception:
+                pass
         sample = conn.execute(
             "SELECT DISTINCT playlist_name FROM v_match_full "
             "WHERE playlist_name IS NOT NULL LIMIT 20"

@@ -253,54 +253,98 @@ def _add_derived_columns(  # noqa: C901, PLR0912
     derived_exprs: list[pl.Expr] = []
     if "playlist_name" in dff.columns:
         if "playlist_fr" not in dff.columns:
-            _pfr_map = build_mapping(
-                dff["playlist_name"], lambda x: translate_playlist_name(x, lang=get_lang())
-            )
-            derived_exprs.append(
-                pl.col("playlist_name")
-                .cast(pl.Utf8)
-                .replace_strict(_pfr_map, default=None, return_dtype=pl.Utf8)
-                .alias("playlist_fr")
-            )
+            # Utiliser playlist_name_fr (depuis v_match_full) si disponible, sinon passthrough
+            if "playlist_name_fr" in dff.columns:
+                derived_exprs.append(
+                    pl.coalesce([
+                        pl.col("playlist_name_fr").cast(pl.Utf8),
+                        pl.col("playlist_name").cast(pl.Utf8),
+                    ]).alias("playlist_fr")
+                )
+            else:
+                _pfr_map = build_mapping(
+                    dff["playlist_name"], lambda x: translate_playlist_name(x, lang=get_lang())
+                )
+                derived_exprs.append(
+                    pl.col("playlist_name")
+                    .cast(pl.Utf8)
+                    .replace_strict(_pfr_map, default=None, return_dtype=pl.Utf8)
+                    .alias("playlist_fr")
+                )
         if "playlist_ui" not in dff.columns:
-            _pui_map = build_mapping(
-                dff["playlist_name"],
-                lambda x: translate_playlist_name(clean_asset_label_fn(x), lang=get_lang()),
-            )
-            derived_exprs.append(
-                pl.col("playlist_name")
-                .cast(pl.Utf8)
-                .replace_strict(_pui_map, default=None, return_dtype=pl.Utf8)
-                .alias("playlist_ui")
-            )
+            # Utiliser playlist_name_fr si disponible et langue FR, sinon passthrough
+            if "playlist_name_fr" in dff.columns and get_lang() == "fr":
+                derived_exprs.append(
+                    pl.coalesce([
+                        pl.col("playlist_name_fr").cast(pl.Utf8),
+                        pl.col("playlist_name").cast(pl.Utf8),
+                    ]).alias("playlist_ui")
+                )
+            else:
+                _pui_map = build_mapping(
+                    dff["playlist_name"],
+                    lambda x: translate_playlist_name(clean_asset_label_fn(x), lang=get_lang()),
+                )
+                derived_exprs.append(
+                    pl.col("playlist_name")
+                    .cast(pl.Utf8)
+                    .replace_strict(_pui_map, default=None, return_dtype=pl.Utf8)
+                    .alias("playlist_ui")
+                )
     if "pair_name" in dff.columns:
         if "pair_fr" not in dff.columns:
-            _pair_map = build_mapping(
-                dff["pair_name"], lambda x: translate_pair_name(x, lang=get_lang())
-            )
-            derived_exprs.append(
-                pl.col("pair_name")
-                .cast(pl.Utf8)
-                .replace_strict(_pair_map, default=None, return_dtype=pl.Utf8)
-                .alias("pair_fr")
-            )
-        if "mode_ui" not in dff.columns:
-            # mode_ui = pair_name traduit dans la langue courante
-            _mui_tr_map = build_mapping(
-                dff["pair_name"], lambda x: translate_pair_name(x, lang=get_lang())
-            )
-            derived_exprs.append(
-                pl.col("pair_name")
-                .cast(pl.Utf8)
-                .replace_strict(
-                    _mui_tr_map,
-                    default=pl.col("pair_name").cast(pl.Utf8),
-                    return_dtype=pl.Utf8,
+            # Utiliser pair_name_fr (depuis v_match_full) si disponible, sinon translate
+            if "pair_name_fr" in dff.columns:
+                derived_exprs.append(
+                    pl.coalesce([
+                        pl.col("pair_name_fr").cast(pl.Utf8),
+                        pl.col("pair_name").cast(pl.Utf8),
+                    ]).alias("pair_fr")
                 )
-                .alias("mode_ui")
-            )
+            else:
+                _pair_map = build_mapping(
+                    dff["pair_name"], lambda x: translate_pair_name(x, lang=get_lang())
+                )
+                derived_exprs.append(
+                    pl.col("pair_name")
+                    .cast(pl.Utf8)
+                    .replace_strict(_pair_map, default=None, return_dtype=pl.Utf8)
+                    .alias("pair_fr")
+                )
+        if "mode_ui" not in dff.columns:
+            # mode_ui : préférer game_variant_name_fr (traduction directe API),
+            # sinon pair_name traduit dans la langue courante
+            if "game_variant_name_fr" in dff.columns and get_lang() == "fr":
+                derived_exprs.append(
+                    pl.coalesce([
+                        pl.col("game_variant_name_fr").cast(pl.Utf8),
+                        pl.col("pair_name").cast(pl.Utf8),
+                    ]).alias("mode_ui")
+                )
+            else:
+                _mui_tr_map = build_mapping(
+                    dff["pair_name"], lambda x: translate_pair_name(x, lang=get_lang())
+                )
+                derived_exprs.append(
+                    pl.col("pair_name")
+                    .cast(pl.Utf8)
+                    .replace_strict(
+                        _mui_tr_map,
+                        default=pl.col("pair_name").cast(pl.Utf8),
+                        return_dtype=pl.Utf8,
+                    )
+                    .alias("mode_ui")
+                )
     if "map_name" in dff.columns and "map_ui" not in dff.columns:
-        if "map_id" in dff.columns:
+        # Priorité 1 : map_name_fr direct (depuis mv_player_matches / v_match_full)
+        if "map_name_fr" in dff.columns and get_lang() == "fr":
+            derived_exprs.append(
+                pl.coalesce([
+                    pl.col("map_name_fr").cast(pl.Utf8),
+                    pl.col("map_name").cast(pl.Utf8),
+                ]).alias("map_ui")
+            )
+        elif "map_id" in dff.columns:
             # Traduction i18n via asset_translations (requête batch)
             lang = get_lang()
             id_to_fallback: dict[str, str] = {

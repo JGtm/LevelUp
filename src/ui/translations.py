@@ -185,7 +185,11 @@ def resolve_map_display_names(
                 ).fetchall()
                 for asset_id, name in rows:
                     if name and str(name).strip():
-                        result[str(asset_id)] = str(name).strip()
+                        key = str(asset_id)
+                        # Ne pas écraser une traduction cible par le fallback EN
+                        if try_lang == "en-US" and result[key] != map_id_to_fallback[key]:
+                            continue
+                        result[key] = str(name).strip()
                 if try_lang == bcp == "en-US":
                     break
     except Exception as exc:
