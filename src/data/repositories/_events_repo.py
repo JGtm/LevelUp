@@ -45,15 +45,31 @@ class EventsMixin:
 
         # Lecture depuis shared.highlight_events (xuid = le joueur de l'event)
         # Note v5.1 : xuid est le killer pour 'kill', la victime pour 'death'
+        # countdown_ms = compte à rebours pré-match en ms (0 si données absentes).
+        # Soustrait de MIN(time_ms) pour obtenir le temps depuis le vrai début
+        # du gameplay, pas depuis le début de la timeline Halo.
         try:
             result = conn.execute(
                 f"""
-                SELECT match_id, MIN(time_ms) as first_time
-                FROM shared.highlight_events
-                WHERE match_id IN ({placeholders})
-                  AND event_type IN ({event_placeholders})
-                  AND xuid = ?
-                GROUP BY match_id
+                SELECT
+                    e.match_id,
+                    GREATEST(
+                        MIN(e.time_ms)
+                        - GREATEST(
+                            (COALESCE(ANY_VALUE(r.duration_seconds), 0)
+                             - COALESCE(ANY_VALUE(r.playable_duration_seconds),
+                                        ANY_VALUE(r.duration_seconds), 0))
+                            * 1000,
+                            0
+                        ),
+                        0
+                    ) AS first_time
+                FROM shared.highlight_events e
+                JOIN shared.match_registry r ON r.match_id = e.match_id
+                WHERE e.match_id IN ({placeholders})
+                  AND e.event_type IN ({event_placeholders})
+                  AND e.xuid = ?
+                GROUP BY e.match_id
                 """,
                 [*match_ids, *event_variants, self._xuid],
             )
