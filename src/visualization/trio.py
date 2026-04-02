@@ -52,6 +52,7 @@ def plot_trio_metric(  # noqa: PLR0912, PLR0913, PLR0915, C901 — graphe multi-
     colors_by_name: dict[str, str] | None = None,
     is_inverse: bool = False,
     match_labels: list[str] | None = None,
+    records: dict[str, dict[str, float | None]] | None = None,
 ) -> go.Figure:
     """Graphique comparant une métrique entre 3 ou 4 joueurs.
 
@@ -226,6 +227,17 @@ def plot_trio_metric(  # noqa: PLR0912, PLR0913, PLR0915, C901 — graphe multi-
         )
     )
 
+    if records:
+        from src.visualization._squad_record_shapes import add_record_shapes
+        add_record_shapes(
+            fig,
+            xs=xs,
+            records={n: (records.get(n) or {}).get(metric) for n in names},
+            player_names=list(names),
+            n_players=len(names),
+            is_negative=is_inverse,
+        )
+
     fig.update_layout(
         title=title,
         margin={"l": 40, "r": 20, "t": 60, "b": 40},
@@ -324,6 +336,7 @@ def plot_trio_kills_deaths(  # noqa: PLR0913
     d_f3: DataFrameLike | None = None,
     colors_by_name: dict[str, str] | None = None,
     smooth_window: int = 7,
+    records: dict[str, dict[str, float | None]] | None = None,
 ) -> go.Figure:
     """Graphique combiné kills↑/morts↓ pour l'escouade (2, 3 ou 4 joueurs).
 
@@ -348,7 +361,9 @@ def plot_trio_kills_deaths(  # noqa: PLR0913
             return pl.DataFrame(
                 schema={"start_time": pl.Datetime, "kills": pl.Float64, "deaths": pl.Float64}
             )
-        out = p.select(["start_time", "kills", "deaths"])
+        map_col = "map_ui" if "map_ui" in p.columns else ("map_name" if "map_name" in p.columns else None)
+        cols = ["start_time", "kills", "deaths"] + ([map_col] if map_col else [])
+        out = p.select(cols)
         if not out.schema["start_time"].is_temporal():
             out = out.with_columns(pl.col("start_time").str.to_datetime(strict=False))
         return out.drop_nulls(subset=["start_time"]).sort("start_time")
@@ -373,6 +388,25 @@ def plot_trio_kills_deaths(  # noqa: PLR0913
         deaths_abs = [float(v) if v is not None else 0.0 for v in df_aligned["deaths"].to_list()]
         _add_kd_player_traces(fig, ordered_xs, kills, deaths_abs, color, name, smooth_window)
 
+    if records:
+        from src.visualization._squad_record_shapes import add_record_shapes
+        add_record_shapes(
+            fig,
+            xs=xs,
+            records={n: (records.get(n) or {}).get("kills") for n in names},
+            player_names=list(names),
+            n_players=len(names),
+            is_negative=False,
+        )
+        add_record_shapes(
+            fig,
+            xs=xs,
+            records={n: (records.get(n) or {}).get("deaths") for n in names},
+            player_names=list(names),
+            n_players=len(names),
+            is_negative=True,
+        )
+
     from src.visualization._permin_helpers import build_symmetric_abs_ticks
 
     if aligned.is_empty():
@@ -391,11 +425,27 @@ def plot_trio_kills_deaths(  # noqa: PLR0913
     tickvals, ticktext = build_symmetric_abs_ticks(
         max(all_kills, default=1), max(all_deaths, default=1)
     )
-    ticktext_fr = (
-        aligned["start_time"].dt.strftime("%d/%m").fill_null("").to_list()
-        if not aligned.is_empty()
-        else []
-    )
+    _ref_pl_kd = ensure_polars(d_self)
+    _map_col_kd = "map_ui" if "map_ui" in _ref_pl_kd.columns else ("map_name" if "map_name" in _ref_pl_kd.columns else None)
+    if _map_col_kd and not _ref_pl_kd.is_empty() and not aligned.is_empty():
+        _ref_clean_kd = _ref_pl_kd.drop_nulls(subset=["start_time"])
+        _ts_to_map_kd: dict = dict(
+            zip(
+                _ref_clean_kd["start_time"].to_list(),
+                _ref_clean_kd[_map_col_kd].fill_null("?").to_list(),
+                strict=False,
+            )
+        )
+        ticktext_fr = [
+            f"#{i + 1}<br>{_ts_to_map_kd.get(ts, '?')}"
+            for i, ts in enumerate(aligned["start_time"].to_list())
+        ]
+    else:
+        ticktext_fr = (
+            aligned["start_time"].dt.strftime("%d/%m").fill_null("").to_list()
+            if not aligned.is_empty()
+            else []
+        )
 
     fig.update_layout(
         barmode="group",

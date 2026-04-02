@@ -21,6 +21,7 @@ def plot_hs_pk_stacked(  # noqa: C901, PLR0912, PLR0915
     *,
     colors: dict[str, str] | None = None,
     lang: str = "fr",
+    records: dict[str, dict[str, float | None]] | None = None,
 ) -> go.Figure | None:
     """Graphique combiné Tirs à la tête + Frags parfaits par match (barres superposées).
 
@@ -130,6 +131,7 @@ def plot_hs_pk_stacked(  # noqa: C901, PLR0912, PLR0915
     # ── Construire les traces ─────────────────────────────────────────────────
     fig = go.Figure()
     default_colors = ["#56B4E9", "#E69F00", "#009E73", "#CC79A7", "#D55E00"]
+    _player_xs: dict[str, list[int]] = {}
     label_hs = "Tirs à la tête" if lang == "fr" else "Headshots"
     label_pk = "Frags parfaits" if lang == "fr" else "Perfect kills"
     first_player_trace: set[str] = set()
@@ -154,6 +156,7 @@ def plot_hs_pk_stacked(  # noqa: C901, PLR0912, PLR0915
             continue
 
         xs = d.get_column("_x").to_list()
+        _player_xs[name] = xs
         hs_vals = d.get_column("_hs").to_list()
         pk_vals = d.get_column("_pk").to_list()
 
@@ -197,6 +200,17 @@ def plot_hs_pk_stacked(  # noqa: C901, PLR0912, PLR0915
 
     if not fig.data:
         return None
+
+    if records and _player_xs:
+        from src.visualization._squad_record_shapes import add_overlay_record_shapes
+        _names_with_data = list(_player_xs.keys())
+        for _pname, _xs in _player_xs.items():
+            add_overlay_record_shapes(
+                fig,
+                xs=_xs,
+                records={_pname: (records.get(_pname) or {}).get("hs_pk_total")},
+                player_names=_names_with_data,
+            )
 
     # ── Légende manuelle (annotations) ───────────────────────────────────────
     # Titre du graphe et mise en forme
