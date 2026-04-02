@@ -24,12 +24,14 @@ from src.visualization.trio import plot_trio_kills_deaths
 
 
 @fragment_if_available
-def render_metric_bar_charts(
+def render_metric_bar_charts(  # noqa: PLR0913
     series: list[tuple[str, DataFrameLike]],
     colors_by_name: dict[str, str],
     show_smooth: bool,
     key_suffix: str,
     plot_fn,
+    records: dict | None = None,
+    hspk_records: dict | None = None,
 ) -> None:
     """Affiche les graphes de barres pour les métriques.
 
@@ -39,6 +41,8 @@ def render_metric_bar_charts(
         show_smooth: Afficher les courbes lissées.
         key_suffix: Suffixe pour les clés Streamlit.
         plot_fn: Fonction de tracé.
+        records: Records historiques pour le graphe killing spree.
+        hspk_records: Records historiques pour le graphe HS+PK.
     """
     _lang = get_lang()
     for metric_col, label, key_prefix in [
@@ -54,6 +58,7 @@ def render_metric_bar_charts(
             smooth_window=10,
             show_smooth_lines=show_smooth,
             lang=_lang,
+            records=records,
         )
         if fig is None:
             st.info(t("insufficient_data_chart"))
@@ -70,6 +75,7 @@ def render_metric_bar_charts(
         series,
         colors=colors_by_name,
         lang=_lang,
+        records=hspk_records,
     )
     if fig_combined is None:
         st.info(t("insufficient_data_chart"))
@@ -140,6 +146,7 @@ def _plot_trio_metric_chart(  # noqa: PLR0913
     y_suffix: str = "",
     y_format: str = "",
     is_inverse: bool = False,
+    records: dict | None = None,
 ) -> None:
     """Rend un seul graphique trio_metric via st.plotly_chart."""
     st.plotly_chart(
@@ -157,6 +164,7 @@ def _plot_trio_metric_chart(  # noqa: PLR0913
             d_f3=d_f3,
             colors_by_name=colors_by_name,
             is_inverse=is_inverse,
+            records=records,
         ),
         width="stretch",
         key=key,
@@ -189,6 +197,7 @@ def render_trio_charts(  # noqa: PLR0913
     f3_name: str | None = None,
     f3_xuid: str | None = None,
     colors_by_name: dict[str, str] | None = None,
+    records: dict | None = None,
 ) -> None:
     """Affiche les graphes de métriques pour une escouade de 2, 3 ou 4 joueurs."""
     names: tuple[str, ...] = (me_name, f1_name)
@@ -211,6 +220,7 @@ def render_trio_charts(  # noqa: PLR0913
                 lang=_lang,
                 d_f3=d_f3,
                 colors_by_name=colors_by_name,
+                records=records,
             ),
             width="stretch",
             key=f"trio_kd_{key_suffix}",
@@ -225,6 +235,7 @@ def render_trio_charts(  # noqa: PLR0913
         "names": names,
         "lang": _lang,
         "colors_by_name": colors_by_name,
+        "records": records,
     }
     for metric, title_key, ytitle_key, key_prefix, extra in _TRIO_METRIC_SPECS:
         _plot_trio_metric_chart(
