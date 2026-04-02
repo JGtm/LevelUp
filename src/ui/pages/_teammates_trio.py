@@ -13,6 +13,11 @@ import streamlit as st
 
 logger = logging.getLogger(__name__)
 
+from src.analysis.squad_records import (
+    compute_player_pm_records,
+    compute_squad_records,
+    get_dominant_pair_name,
+)
 from src.data.services.teammates_service import TeammatesService
 from src.ui import display_name_from_xuid
 from src.ui.cache import cached_same_team_match_ids_with_friend
@@ -147,9 +152,45 @@ def render_trio_view(  # noqa: PLR0913, PLR0915, C901, PLR0912
 
     me_df = me_df.sort("start_time")
 
-    from src.analysis.squad_records import get_dominant_pair_name
-    _squad_dfs = [me_df, f1_df] + ([f2_df] if f2_df is not None else []) + ([f3_df] if f3_df is not None else [])
-    _dominant_pair = get_dominant_pair_name([d for d in _squad_dfs if d is not None])
+    # ── Records depuis l'historique COMPLET (pas filtré à l'escouade) ────────
+    # Le joueur principal utilise `df` (toutes ses parties), les coéquipiers
+    # sont rechargés sans filtre match_id pour avoir leur historique complet.
+    _me_full = ensure_polars(df).filter(
+        pl.col("is_firefight").cast(pl.Boolean).not_()
+        if "is_firefight" in ensure_polars(df).columns
+        else pl.lit(True)
+    )
+    _f1_full = TeammatesService.load_all_teammate_stats(f1_name, db_path).df
+    _f2_full = TeammatesService.load_all_teammate_stats(f2_name, db_path).df if f2_name else pl.DataFrame()
+    _f3_full = TeammatesService.load_all_teammate_stats(f3_name, db_path).df if f3_name else pl.DataFrame()
+
+    _full_raw: list[tuple[str, pl.DataFrame]] = [(me_name, _me_full), (f1_name, _f1_full)]
+    if f2_name and not _f2_full.is_empty():
+        _full_raw.append((f2_name, _f2_full))
+    if f3_name and not _f3_full.is_empty():
+        _full_raw.append((f3_name, _f3_full))
+
+    _dominant_pair = get_dominant_pair_name([d for _, d in _full_raw])
+    _squad_records = compute_squad_records(
+        _full_raw,
+        [
+            ("kills", False), ("deaths", True), ("assists", False),
+            ("ratio", False), ("accuracy", False),
+            ("average_life_seconds", False), ("performance_score", False),
+            ("max_killing_spree", False), ("headshot_kills", False),
+        ],
+        _dominant_pair,
+    )
+    # Renommer performance_score → performance (nom interne des charts)
+    for _pr in _squad_records.values():
+        if "performance_score" in _pr:
+            _pr["performance"] = _pr.pop("performance_score")
+
+    # Records stats/min par joueur (calculés sur historique complet)
+    _pm_records: dict[str, tuple[float | None, float | None, float | None]] = {
+        name: compute_player_pm_records(full_df, _dominant_pair)
+        for name, full_df in _full_raw
+    }
 
     _render_per_minute_stats(
         me_df,
@@ -161,7 +202,7 @@ def render_trio_view(  # noqa: PLR0913, PLR0915, C901, PLR0912
         colors_by_name,
         f3_df=f3_df,
         f3_name=f3_name,
-        dominant_pair=_dominant_pair,
+        pm_records=_pm_records,
     )
 
     # Radar de complémentarité escouade — filtré par la session/période courante
@@ -224,6 +265,7 @@ def render_trio_view(  # noqa: PLR0913, PLR0915, C901, PLR0912
         f3_name=f3_name,
         f3_xuid=f3_xuid,
         colors_by_name=colors_by_name,
+        records=_squad_records,
     )
 
     # Graphes de barres - reconstruire series avec les DataFrames de l'escouade
@@ -255,20 +297,14 @@ def render_trio_view(  # noqa: PLR0913, PLR0915, C901, PLR0912
         key_suffix=f"trio_{len(_weapon_player_infos)}",
     )
 
-    from src.analysis.squad_records import compute_squad_records
-    _series_pl = [(n, ensure_polars(d)) for n, d in series]
-    _spree_records = compute_squad_records(
-        _series_pl, [("max_killing_spree", False)], _dominant_pair
-    )
-    _hspk_dfs = [
-        (n, d.with_columns(
-            (pl.col("headshot_kills").fill_null(0) + pl.col("perfect_kills").fill_null(0))
-            .alias("hs_pk_total")
-        ))
-        for n, d in _series_pl
-        if "headshot_kills" in d.columns
-    ]
-    _hspk_records = compute_squad_records(_hspk_dfs, [("hs_pk_total", False)], _dominant_pair)
+    # Records killing spree : déjà dans _squad_records (historique complet)
+    _spree_records = {n: {"max_killing_spree": r.get("max_killing_spree")} for n, r in _squad_records.items()}
+    # Records HS+PK : utilise headshot_kills de l'historique complet comme proxy
+    # (perfect_kills absent du full history — enrichissement non disponible hors session)
+    _hspk_records = {
+        n: {"hs_pk_total": r.get("headshot_kills")}
+        for n, r in _squad_records.items()
+    }
     render_metric_bar_charts(
         series=series,
         colors_by_name=colors_by_name,

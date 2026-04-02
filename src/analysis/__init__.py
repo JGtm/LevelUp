@@ -63,6 +63,7 @@ from src.analysis.sessions import (
     is_session_potentially_active,
 )
 from src.analysis.squad_records import (
+    compute_player_pm_records,
     compute_player_record,
     compute_squad_records,
     get_dominant_pair_name,
@@ -158,6 +159,7 @@ __all__ = [
     "streak_series_to_dicts",
     # Records historiques escouade
     "get_dominant_pair_name",
+    "compute_player_pm_records",
     "compute_player_record",
     "compute_squad_records",
 ]

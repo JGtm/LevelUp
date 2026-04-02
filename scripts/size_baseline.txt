@@ -10,9 +10,9 @@ FUNC:src/analysis/killer_victim.py:220:compute_killer_victim_pairs:91L
 FUNC:src/analysis/sessions.py:169:compute_sessions_with_context_polars:155L
 FUNC:src/analysis/skill_rating.py:194:compute_skill_ratings_batch:198L
 FUNC:src/analysis/win_streaks.py:236:compute_streak_series_polars:96L
-FUNC:src/app/_filters_apply.py:242:_add_derived_columns:152L
+FUNC:src/app/_filters_apply.py:242:_add_derived_columns:126L
 FUNC:src/app/_filters_apply.py:43:apply_filters:196L
-FUNC:src/app/_filters_cascade.py:326:_render_cascade_filters:101L
+FUNC:src/app/_filters_cascade.py:354:_render_cascade_filters:101L
 FUNC:src/app/_filters_session.py:64:_classify_sessions_solo_squad:118L
 FUNC:src/app/filters.py:206:render_session_filters:94L
 FUNC:src/app/filters_render.py:373:render_filters_sidebar:112L
@@ -29,7 +29,7 @@ FUNC:src/data/sync/_engine_connections.py:335:_load_existing_match_ids:81L
 FUNC:src/data/sync/_match_processing.py:304:_backfill_known_match_shared:82L
 FUNC:src/data/sync/_match_processing.py:37:_process_matches:120L
 FUNC:src/data/sync/_skill_rating.py:194:_upsert_lusr_ratings:81L
-FUNC:src/data/sync/_skill_rating.py:304:batch_compute_lusr:105L
+FUNC:src/data/sync/_skill_rating.py:304:batch_compute_lusr:108L
 FUNC:src/data/sync/engine.py:150:__init__:82L
 FUNC:src/data/sync/engine.py:315:_sync_internal:113L
 FUNC:src/data/sync/transformers/_match.py:287:extract_participants:141L
@@ -51,7 +51,7 @@ FUNC:src/ui/components/checkbox_filter.py:224:render_hierarchical_checkbox_filte
 FUNC:src/ui/components/checkbox_filter.py:97:render_checkbox_filter:111L
 FUNC:src/ui/filter_state.py:235:apply_filter_preferences:166L
 FUNC:src/ui/filter_state.py:66:save_filter_preferences:138L
-FUNC:src/ui/pages/_teammates_trio.py:35:render_trio_view:265L
+FUNC:src/ui/pages/_teammates_trio.py:40:render_trio_view:296L
 FUNC:src/ui/pages/career.py:106:_render_rank_header:89L
 FUNC:src/ui/pages/career_logic.py:249:_create_xp_history_chart:189L
 FUNC:src/ui/pages/citations.py:24:render_citations_page:173L
@@ -67,7 +67,7 @@ FUNC:src/ui/pages/match_view_players_nemesis.py:65:_render_antagonist_chart:101L
 FUNC:src/ui/pages/match_view_players_timeline.py:35:render_team_dominance_section:92L
 FUNC:src/ui/pages/match_view_rank.py:18:_build_match_rank_html:184L
 FUNC:src/ui/pages/media_tab.py:110:render_media_tab:154L
-FUNC:src/ui/pages/teammates_charts.py:334:_build_first_events_fig:134L
+FUNC:src/ui/pages/teammates_charts.py:323:_build_first_events_fig:134L
 FUNC:src/ui/pages/teammates_impact.py:304:_render_impact_from_events:84L
 FUNC:src/ui/pages/teammates_synergy.py:80:_compute_player_profile:90L
 FUNC:src/ui/pages/teammates_views.py:227:_render_map_history_section:96L
@@ -106,7 +106,7 @@ FUNC:src/visualization/trio.py:328:plot_trio_kills_deaths:132L
 FUNC:src/visualization/trio.py:38:plot_trio_metric:219L
 MODULE:src/analysis/weapon_parser.py:502L
 MODULE:src/data/repositories/_weapon_kills_repo.py:567L
-MODULE:src/data/services/teammates_service.py:503L
+MODULE:src/data/services/teammates_service.py:535L
 MODULE:src/data/sync/_engine_connections.py:510L
 MODULE:src/data/sync/_match_processing.py:559L
 MODULE:src/data/sync/api_client.py:557L
@@ -114,7 +114,6 @@ MODULE:src/data/sync/engine.py:688L
 MODULE:src/data/sync/transformers/_helpers.py:515L
 MODULE:src/data/sync/transformers/_match.py:577L
 MODULE:src/ui/pages/session_compare.py:538L
-MODULE:src/ui/pages/teammates_charts.py:501L
 MODULE:src/visualization/friends_impact_heatmap.py:502L
 MODULE:src/visualization/maps_outcome.py:591L
 MODULE:src/visualization/timeseries.py:506L

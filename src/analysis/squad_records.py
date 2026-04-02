@@ -77,6 +77,40 @@ def compute_player_record(
     return float(value)
 
 
+def compute_player_pm_records(
+    df: pl.DataFrame,
+    pair_name: str | None,
+) -> tuple[float | None, float | None, float | None]:
+    """Calcule les records de stats par minute pour un joueur.
+
+    Args:
+        df: DataFrame joueur avec kills, deaths, assists, time_played_seconds.
+        pair_name: Filtre exact sur pair_name (None = tous les matchs).
+
+    Returns:
+        Tuple (record max kills/min, record min deaths/min, record max assists/min).
+        Chaque valeur est None si les données sont insuffisantes.
+    """
+    sub = df
+    if pair_name is not None and "pair_name" in df.columns:
+        sub = df.filter(pl.col("pair_name") == pair_name)
+    needed = {"kills", "deaths", "assists", "time_played_seconds"}
+    if sub.is_empty() or not needed.issubset(sub.columns):
+        logger.debug("compute_player_pm_records: données insuffisantes pour pair_name=%r", pair_name)
+        return None, None, None
+    sub = sub.filter(
+        pl.col("time_played_seconds").is_not_null() & (pl.col("time_played_seconds") > 0)
+    )
+    if sub.is_empty():
+        return None, None, None
+    pm = sub.with_columns([
+        (pl.col("kills").cast(pl.Float64) / (pl.col("time_played_seconds") / 60)).alias("_kpm"),
+        (pl.col("deaths").cast(pl.Float64) / (pl.col("time_played_seconds") / 60)).alias("_dpm"),
+        (pl.col("assists").cast(pl.Float64) / (pl.col("time_played_seconds") / 60)).alias("_apm"),
+    ])
+    return pm["_kpm"].max(), pm["_dpm"].min(), pm["_apm"].max()
+
+
 def compute_squad_records(
     players: list[tuple[str, pl.DataFrame]],
     metrics: list[tuple[str, bool]],
