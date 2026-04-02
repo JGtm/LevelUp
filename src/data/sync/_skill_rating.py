@@ -363,6 +363,14 @@ class SkillRatingMixin:
             # En force, on repart depuis INITIAL_MU (pas de seed).
             existing_states: dict = {} if force else self._load_existing_lusr_states(conn)
 
+            # Capturer seed_ratings AVANT d'appeler compute_skill_ratings_batch :
+            # compute_skill_ratings_batch modifie existing_states en place →
+            # lire state.mu après l'appel donnerait la valeur post-nouveau-match,
+            # pas la valeur pré-nouveau-match qui sert de seed correct pour le delta.
+            seed_ratings: dict[str, float] | None = None
+            if existing_states and not force:
+                seed_ratings = {pg: state.mu for pg, state in existing_states.items()}
+
             # En mode incrémental : ne passer à TrueSkill QUE les nouveaux matchs.
             # Recomputer toute l'historique avec un seed décalé causait une cascade
             # de dérive (rating_value s'effondrait de ~160 pts à chaque sync séparé).
@@ -388,11 +396,6 @@ class SkillRatingMixin:
             )
             if ratings_df.is_empty():
                 return 0
-
-            # Seed prev_rating pour que le delta du 1er nouveau match soit correct
-            seed_ratings: dict[str, float] | None = None
-            if existing_states and not force:
-                seed_ratings = {pg: state.mu for pg, state in existing_states.items()}
 
             return self._upsert_lusr_ratings(
                 conn,
