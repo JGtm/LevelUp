@@ -509,3 +509,227 @@ class TestUpsertLusrRatingsSeedRatings:
         # La valeur reste 1550.
         assert row is not None
         assert row[0] == pytest.approx(1550.0, abs=0.01)
+
+    def test_csr_match_skipped_in_upsert(self, in_memory_db: duckdb.DuckDBPyConnection) -> None:
+        """Un match protégé par existing_csr_ids n'est pas écrasé par LUSR."""
+        mixin = _build_mixin_instance(in_memory_db)
+        # Pré-insérer m_csr avec type CSR
+        in_memory_db.execute(
+            """INSERT INTO match_skill_rank
+               (match_id, rating_type, rating_value, created_at, updated_at)
+               VALUES ('m_csr', 'CSR', 1700.0, NOW(), NOW())"""
+        )
+        ratings_df = _make_ratings_df(_make_rating_row("m_csr", 1550.0))
+        df_matches = _make_matches_df("m_csr", _T0)
+
+        count = mixin._upsert_lusr_ratings(
+            in_memory_db,
+            ratings_df,
+            df_matches,
+            {"m_csr"},  # match protégé par CSR
+            set(),
+            force=False,
+        )
+        assert count == 0
+
+        # Le rating CSR doit rester inchangé
+        row = in_memory_db.execute(
+            "SELECT rating_type, rating_value FROM match_skill_rank WHERE match_id = 'm_csr'"
+        ).fetchone()
+        assert row is not None
+        assert row[0] == "CSR"
+        assert row[1] == pytest.approx(1700.0, abs=0.01)
+
+
+# =============================================================================
+# Tests _load_existing_lusr_states
+# =============================================================================
+
+
+class TestLoadExistingLusrStates:
+    """Tests pour _load_existing_lusr_states — chargement des seeds depuis la DB."""
+
+    def test_empty_db_returns_empty_dict(self, in_memory_db: duckdb.DuckDBPyConnection) -> None:
+        """Sans données LUSR, retourne un dict vide."""
+        mixin = _build_mixin_instance(in_memory_db)
+        states = mixin._load_existing_lusr_states(in_memory_db)
+        assert states == {}
+
+    def test_loads_last_state_per_group(self, in_memory_db: duckdb.DuckDBPyConnection) -> None:
+        """Chaque groupe → le dernier état (mu, sigma) par start_time."""
+        in_memory_db.execute(
+            """INSERT INTO match_skill_rank
+               (match_id, rating_type, rating_value, rating_deviation,
+                playlist_group, start_time, created_at, updated_at)
+               VALUES
+               ('old', 'LUSR', 1450.0, 80.0, 'arena', '2025-01-01', NOW(), NOW()),
+               ('new', 'LUSR', 1520.0, 75.0, 'arena', '2025-01-02', NOW(), NOW())"""
+        )
+        mixin = _build_mixin_instance(in_memory_db)
+        states = mixin._load_existing_lusr_states(in_memory_db)
+
+        assert "arena" in states
+        assert states["arena"].mu == pytest.approx(1520.0, abs=0.01)
+        assert states["arena"].sigma == pytest.approx(75.0, abs=0.01)
+
+    def test_multiple_groups_isolated(self, in_memory_db: duckdb.DuckDBPyConnection) -> None:
+        """Plusieurs groupes → états indépendants."""
+        in_memory_db.execute(
+            """INSERT INTO match_skill_rank
+               (match_id, rating_type, rating_value, rating_deviation,
+                playlist_group, start_time, created_at, updated_at)
+               VALUES
+               ('a1', 'LUSR', 1600.0, 70.0, 'arena', '2025-01-01', NOW(), NOW()),
+               ('b1', 'LUSR', 1400.0, 90.0, 'btb',   '2025-01-01', NOW(), NOW())"""
+        )
+        mixin = _build_mixin_instance(in_memory_db)
+        states = mixin._load_existing_lusr_states(in_memory_db)
+
+        assert states["arena"].mu == pytest.approx(1600.0, abs=0.01)
+        assert states["btb"].mu == pytest.approx(1400.0, abs=0.01)
+
+    def test_sigma_defaults_when_null(self, in_memory_db: duckdb.DuckDBPyConnection) -> None:
+        """Si rating_deviation est NULL, sigma prend INITIAL_SIGMA."""
+        from src.analysis.skill_rating_config import INITIAL_SIGMA
+
+        in_memory_db.execute(
+            """INSERT INTO match_skill_rank
+               (match_id, rating_type, rating_value, rating_deviation,
+                playlist_group, start_time, created_at, updated_at)
+               VALUES ('m1', 'LUSR', 1500.0, NULL, 'arena', '2025-01-01', NOW(), NOW())"""
+        )
+        mixin = _build_mixin_instance(in_memory_db)
+        states = mixin._load_existing_lusr_states(in_memory_db)
+
+        assert "arena" in states
+        assert states["arena"].sigma == pytest.approx(INITIAL_SIGMA, abs=0.01)
+
+
+# =============================================================================
+# Tests batch_compute_lusr (end-to-end avec fake engine)
+# =============================================================================
+
+
+def _build_batch_mixin(
+    player_conn: duckdb.DuckDBPyConnection,
+    match_rows: list[dict],
+    participant_rows: list[dict] | None = None,
+) -> SkillRatingMixin:
+    """Construit un FakeMixin avec _load_lusr_match_data mocké."""
+    df_matches_fixed = pl.DataFrame(match_rows) if match_rows else pl.DataFrame(
+        schema={
+            "match_id": pl.Utf8, "start_time": pl.Datetime("us", "UTC"),
+            "playlist_name": pl.Utf8, "pair_name": pl.Utf8,
+            "outcome": pl.Int32, "kills": pl.Float64, "deaths": pl.Float64,
+            "kills_expected": pl.Float64, "deaths_expected": pl.Float64,
+            "damage_dealt": pl.Float64, "damage_taken": pl.Float64,
+            "accuracy": pl.Float64, "team_id": pl.Int32,
+        }
+    )
+    dp_fixed = (
+        pl.DataFrame(participant_rows)
+        if participant_rows
+        else _empty_participants()
+    )
+
+    class _FakeBatchMixin(SkillRatingMixin):
+        def _get_connection(self):  # type: ignore[override]
+            return player_conn
+
+        def _get_shared_connection(self):  # type: ignore[override]
+            return None
+
+        def _load_lusr_match_data(self):  # type: ignore[override]
+            if df_matches_fixed.is_empty():
+                return None
+            return df_matches_fixed, dp_fixed
+
+        _xuid = "test_xuid"
+        _gamertag = "TestPlayer"
+        _player_db_path = None  # type: ignore[assignment]
+
+    return _FakeBatchMixin()
+
+
+class TestBatchComputeLusr:
+    """Tests d'intégration pour batch_compute_lusr (avec fake engine)."""
+
+    def test_force_computes_all_matches(self, in_memory_db: duckdb.DuckDBPyConnection) -> None:
+        """En mode force=True, tous les matchs sont insérés depuis zéro."""
+        rows = [_match(match_id=f"m{i}", hour=i) for i in range(3)]
+        mixin = _build_batch_mixin(in_memory_db, rows)
+
+        count = mixin.batch_compute_lusr(force=True)
+
+        assert count == 3
+        stored = in_memory_db.execute(
+            "SELECT count(*) FROM match_skill_rank WHERE rating_type = 'LUSR'"
+        ).fetchone()[0]
+        assert stored == 3
+
+    def test_incremental_skips_already_computed(
+        self, in_memory_db: duckdb.DuckDBPyConnection
+    ) -> None:
+        """En mode force=False, les matchs déjà stockés ne sont pas recalculés."""
+        rows = [_match(match_id=f"m{i}", hour=i) for i in range(3)]
+        mixin = _build_batch_mixin(in_memory_db, rows)
+
+        # Premier run — insère les 3 matchs
+        count1 = mixin.batch_compute_lusr(force=False)
+        assert count1 == 3
+
+        # Deuxième run — aucun nouveau match
+        count2 = mixin.batch_compute_lusr(force=False)
+        assert count2 == 0
+
+    def test_incremental_seeds_from_last_stored_rating(
+        self, in_memory_db: duckdb.DuckDBPyConnection
+    ) -> None:
+        """En incrémental, le nouveau match est seedé depuis le dernier rating stocké.
+
+        Le delta calculé doit correspondre à new_rating - last_stored_rating,
+        pas new_rating - INITIAL_MU (comportement buggy).
+        """
+        rows_batch1 = [_match(match_id="m0", hour=0), _match(match_id="m1", hour=1)]
+        mixin1 = _build_batch_mixin(in_memory_db, rows_batch1)
+        mixin1.batch_compute_lusr(force=False)
+
+        # Récupérer le rating de m1 (dernier match stocké)
+        last_rating = in_memory_db.execute(
+            "SELECT rating_value FROM match_skill_rank WHERE match_id = 'm1'"
+        ).fetchone()[0]
+
+        # Ajouter m2
+        rows_batch2 = [
+            _match(match_id="m0", hour=0),
+            _match(match_id="m1", hour=1),
+            _match(match_id="m2", hour=2, outcome=2, kills=14, kills_expected=10),
+        ]
+        mixin2 = _build_batch_mixin(in_memory_db, rows_batch2)
+        mixin2.batch_compute_lusr(force=False)
+
+        row_m2 = in_memory_db.execute(
+            "SELECT rating_value, rating_delta FROM match_skill_rank WHERE match_id = 'm2'"
+        ).fetchone()
+        assert row_m2 is not None
+        stored_rating, stored_delta = row_m2
+
+        # Le delta doit être la différence entre le rating de m2 et celui de m1 (seed correct)
+        assert stored_delta is not None
+        assert stored_delta == pytest.approx(stored_rating - last_rating, abs=0.1)
+
+    def test_no_matches_returns_zero(self, in_memory_db: duckdb.DuckDBPyConnection) -> None:
+        """Sans matchs à calculer, retourne 0."""
+        mixin = _build_batch_mixin(in_memory_db, [])
+        count = mixin.batch_compute_lusr(force=False)
+        assert count == 0
+
+    def test_all_already_computed_returns_zero(
+        self, in_memory_db: duckdb.DuckDBPyConnection
+    ) -> None:
+        """En incrémental, si tous les matchs sont déjà en DB, retourne 0."""
+        rows = [_match(match_id="mx", hour=0)]
+        mixin = _build_batch_mixin(in_memory_db, rows)
+        mixin.batch_compute_lusr(force=False)  # premier run
+        count = mixin.batch_compute_lusr(force=False)  # deuxième run
+        assert count == 0
