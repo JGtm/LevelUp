@@ -62,6 +62,11 @@ from src.analysis.sessions import (
     compute_sessions_with_context_polars,
     is_session_potentially_active,
 )
+from src.analysis.squad_records import (
+    compute_player_record,
+    compute_squad_records,
+    get_dominant_pair_name,
+)
 from src.analysis.stats import (
     compute_aggregated_stats,
     compute_global_ratio,
@@ -151,4 +156,8 @@ __all__ = [
     "compute_streak_series_polars",
     "compute_rolling_win_rate_polars",
     "streak_series_to_dicts",
+    # Records historiques escouade
+    "get_dominant_pair_name",
+    "compute_player_record",
+    "compute_squad_records",
 ]

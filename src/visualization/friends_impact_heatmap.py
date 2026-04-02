@@ -376,8 +376,12 @@ def _order_maps_by_first_seen(
     raw_frames: list[pl.DataFrame] = []
     for _, df in series:
         df_pl = ensure_polars(df)
-        if not df_pl.is_empty() and "start_time" in df_pl.columns and "map_name" in df_pl.columns:
-            raw_frames.append(df_pl.select(["map_name", "start_time"]))
+        if df_pl.is_empty():
+            continue
+        # Préférer map_ui (traduit) si disponible pour l'ordre chronologique
+        _map_col = "map_ui" if "map_ui" in df_pl.columns else ("map_name" if "map_name" in df_pl.columns else None)
+        if _map_col is not None and "start_time" in df_pl.columns:
+            raw_frames.append(df_pl.select([pl.col(_map_col).alias("map_name"), "start_time"]))
 
     if not raw_frames:
         return maps

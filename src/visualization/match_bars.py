@@ -138,6 +138,7 @@ def plot_multi_metric_bars_by_match(  # noqa: C901, PLR0912, PLR0913, PLR0915
     smooth_window: int = 10,
     show_smooth_lines: bool = True,
     lang: str = "fr",
+    records: dict[str, dict[str, float | None]] | None = None,
 ) -> go.Figure | None:
     """Graphique en barres multi-joueurs d'une métrique par match.
 
@@ -261,6 +262,7 @@ def plot_multi_metric_bars_by_match(  # noqa: C901, PLR0912, PLR0913, PLR0915
 
     fig = go.Figure()
     w = int(smooth_window) if smooth_window else 0
+    _player_xs: dict[str, list[int]] = {}
 
     for i, (name, d) in enumerate(prepared):
         if isinstance(colors, dict):
@@ -308,6 +310,7 @@ def plot_multi_metric_bars_by_match(  # noqa: C901, PLR0912, PLR0913, PLR0915
         if not x:
             continue
 
+        _player_xs[name] = x
         fig.add_trace(
             go.Bar(
                 x=x,
@@ -338,6 +341,19 @@ def plot_multi_metric_bars_by_match(  # noqa: C901, PLR0912, PLR0913, PLR0915
 
     if not fig.data:
         return None
+
+    if records and _player_xs:
+        from src.visualization._squad_record_shapes import add_record_shapes
+        _names_with_data = list(_player_xs.keys())
+        for _pname, _xs in _player_xs.items():
+            add_record_shapes(
+                fig,
+                xs=_xs,
+                records={_pname: (records.get(_pname) or {}).get(metric_col)},
+                player_names=_names_with_data,
+                n_players=len(_names_with_data),
+                is_negative=False,
+            )
 
     fig.update_layout(
         title=title,
