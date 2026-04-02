@@ -1464,9 +1464,21 @@ def _create_v_match_full(
             ON mr.game_variant_id = at_gv_en.asset_id AND at_gv_en.asset_type = 'game_variant' AND at_gv_en.lang = 'en-US'
         LEFT JOIN {meta_alias}.asset_translations at_gv_fr
             ON mr.game_variant_id = at_gv_fr.asset_id AND at_gv_fr.asset_type = 'game_variant' AND at_gv_fr.lang = 'fr-FR'"""
-        fr_cols = """
+        # Fallback par nom EN : certains assets ont plusieurs UUIDs (ex: deux versions de
+        # "Quick Play"), dont certains sans traduction FR directe. Si la jointure par
+        # playlist_id ne trouve pas de FR, on cherche par le nom EN dans asset_translations.
+        fr_cols = f"""
         at_map_fr.name                               AS map_name_fr,
-        at_pl_fr.name                                AS playlist_name_fr,
+        COALESCE(
+            at_pl_fr.name,
+            (SELECT fb.name FROM {meta_alias}.asset_translations fb
+             INNER JOIN {meta_alias}.asset_translations fb_en
+                 ON fb.asset_id = fb_en.asset_id
+                 AND fb_en.asset_type = 'playlist' AND fb_en.lang = 'en-US'
+             WHERE fb.asset_type = 'playlist' AND fb.lang = 'fr-FR'
+             AND fb_en.name = COALESCE(at_pl_en.name, mr.playlist_name)
+             LIMIT 1)
+        )                                            AS playlist_name_fr,
         at_pair_fr.name                              AS pair_name_fr,
         at_gv_fr.name                                AS game_variant_name_fr,
         NULL                                         AS mode_name,
