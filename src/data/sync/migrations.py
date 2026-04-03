@@ -592,7 +592,7 @@ def ensure_medals_earned_bigint(conn: duckdb.DuckDBPyConnection) -> bool:
 
 
 def ensure_mv_player_matches_view(conn: duckdb.DuckDBPyConnection) -> None:
-    """Crée ou met à jour la vue mv_player_matches dans shared_matches.duckdb.
+    """Crée ou met à jour la vue mv_player_matches dans shared_matches_v2.duckdb.
 
     Cette vue pré-calcule toutes les expressions COALESCE/CASE WHEN
     qui étaient construites dynamiquement par _get_match_source(),
@@ -1151,7 +1151,7 @@ def ensure_dominance_flag_column(conn: duckdb.DuckDBPyConnection) -> None:
 
 
 # ─────────────────────────────────────────────────────────────────────────────
-# Correction bot XIDs (bug legacy migrate_sqlite) — shared_matches.duckdb
+# Correction bot XIDs (bug legacy migrate_sqlite) — shared_matches_v2.duckdb
 # ─────────────────────────────────────────────────────────────────────────────
 
 
@@ -1183,7 +1183,7 @@ def ensure_fix_bot_xuid_shared(conn: duckdb.DuckDBPyConnection) -> None:
 
 
 # ─────────────────────────────────────────────────────────────────────────────
-# Scores PS (personal score sums) — shared_matches.duckdb
+# Scores PS (personal score sums) — shared_matches_v2.duckdb
 # ─────────────────────────────────────────────────────────────────────────────
 
 
@@ -1205,7 +1205,7 @@ def ensure_team_ps_scores(conn: duckdb.DuckDBPyConnection) -> None:
 
 
 # ─────────────────────────────────────────────────────────────────────────────
-# Schéma weapon_kills — shared_matches.duckdb (v5.7, per-kill avec weapon_id UBIGINT)
+# Schéma weapon_kills — shared_matches_v2.duckdb (v5.7, per-kill avec weapon_id UBIGINT)
 # ─────────────────────────────────────────────────────────────────────────────
 
 _WEAPON_KILLS_DDL = """\
@@ -1342,7 +1342,7 @@ def ensure_weapon_kills_table(conn: duckdb.DuckDBPyConnection) -> None:
 
     Schéma per-kill v5.7 : une ligne par kill, avec weapon_id (UBIGINT),
     delta_ms, confidence, swap_detected, delayed_damage.
-    À appeler sur la connexion ``shared_matches.duckdb``.
+    À appeler sur la connexion ``shared_matches_v2.duckdb``.
     """
     try:
         _migrate_weapon_kills_schema(conn)
@@ -1355,7 +1355,7 @@ def ensure_weapon_kills_table(conn: duckdb.DuckDBPyConnection) -> None:
             err = str(e).lower()
             if "already exists" not in err:
                 logger.warning("Index weapon_kills non créé : %s", e)
-        logger.debug("Table weapon_kills initialisée (shared_matches.duckdb)")
+        logger.debug("Table weapon_kills initialisée (shared_matches_v2.duckdb)")
     except Exception as e:
         logger.error("Impossible d'initialiser weapon_kills : %s", e)
 
@@ -1407,7 +1407,7 @@ def _detect_shared_prefix(conn: duckdb.DuckDBPyConnection, table: str) -> str | 
 
 
 def _create_v_gamertag_lookup(conn: duckdb.DuckDBPyConnection, prefix: str) -> None:
-    """Crée la vue v_gamertag_lookup dans shared_matches.duckdb.
+    """Crée la vue v_gamertag_lookup dans shared_matches_v2.duckdb.
 
     Résolution XUID → gamertag courant.
     Priorité : xuid_aliases > match_participants (FULL OUTER JOIN).
@@ -1435,7 +1435,7 @@ def _create_v_match_full(
     prefix: str,
     meta_alias: str | None,
 ) -> None:
-    """Crée la vue v_match_full dans shared_matches.duckdb.
+    """Crée la vue v_match_full dans shared_matches_v2.duckdb.
 
     Résout les noms d'assets depuis metadata.duckdb (via meta_alias) si disponible.
     Priorité pour les noms : asset_translations (14 langues) > tables legacy (name_en/name_fr) > match_registry.
@@ -1533,7 +1533,7 @@ def _create_v_match_full(
 
 
 def _create_v_killer_victim_full(conn: duckdb.DuckDBPyConnection, prefix: str) -> None:
-    """Crée la vue v_killer_victim_full dans shared_matches.duckdb.
+    """Crée la vue v_killer_victim_full dans shared_matches_v2.duckdb.
 
     Résout killer_gamertag / victim_gamertag via v_gamertag_lookup.
     Chaîne : vue (courant) > snapshot figé > xuid brut.
@@ -1557,14 +1557,14 @@ def _create_v_killer_victim_full(conn: duckdb.DuckDBPyConnection, prefix: str) -
 
 
 def ensure_resolution_views(conn: duckdb.DuckDBPyConnection) -> None:
-    """Crée ou met à jour les 3 vues de résolution d'IDs dans shared_matches.duckdb.
+    """Crée ou met à jour les 3 vues de résolution d'IDs dans shared_matches_v2.duckdb.
 
     Vues créées (idempotentes via CREATE OR REPLACE VIEW) :
     - v_gamertag_lookup : XUID → gamertag courant
     - v_match_full      : match_registry + noms résolus depuis metadata.duckdb
     - v_killer_victim_full : killer_victim_pairs + gamertags résolus
 
-    Précondition : la connexion doit pointer sur shared_matches.duckdb
+    Précondition : la connexion doit pointer sur shared_matches_v2.duckdb
     (directement ou via ATTACH AS shared).
     """
     prefix = _detect_shared_prefix(conn, "match_registry")
@@ -1755,3 +1755,20 @@ def ensure_match_registry_playable_duration(conn: duckdb.DuckDBPyConnection) -> 
         return
     _add_column_if_missing(conn, "match_registry", "playable_duration_seconds", "INTEGER")
     _add_column_if_missing(conn, "match_registry", "real_start_time", "TIMESTAMP")
+
+
+def ensure_match_registry_film_start(conn: duckdb.DuckDBPyConnection) -> None:
+    """Ajoute film_match_start_ms à match_registry (shared).
+
+    Colonne INTEGER nullable stockant le timestamp filmshell (en ms depuis le
+    début de l'enregistrement) correspondant au premier mouvement réel des
+    joueurs — c'est-à-dire la fin du countdown, le vrai t=0 du match.
+
+    NULL pour les matchs dont les chunks filmshell n'ont pas encore été analysés.
+    Le backfill est effectué via scripts/_exp_spawn_download.py.
+
+    Idempotente via _add_column_if_missing().
+    """
+    if not table_exists(conn, "match_registry"):
+        return
+    _add_column_if_missing(conn, "match_registry", "film_match_start_ms", "INTEGER")
