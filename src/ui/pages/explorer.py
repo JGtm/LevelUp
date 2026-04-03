@@ -318,26 +318,24 @@ def _render_match_selector(
     # Ratio [3, 2] : le champ ID a 40% de la largeur — largeur suffisante pour un UUID complet
     col_sel, col_mid = st.columns([3, 2])
 
+    # Selectbox UUID : les options sont les match_ids disponibles.
+    # Streamlit filtre nativement les options dès le 1er caractère tapé.
+    match_ids: list[str] = (
+        filtered["match_id"].cast(pl.Utf8).to_list()
+        if "match_id" in filtered.columns
+        else []
+    )
     with col_mid:
-        mid_query = st.text_input(
-            "Match ID",
-            key="explorer_match_id_search",
-            placeholder="70a1c6c6-xxxx-xxxx-xxxx-xxxxxxxxxxxx",
-        ).strip()
-
-    # Filtrage par Match ID partiel si saisi (≥ 6 caractères)
-    n_before = len(filtered)
-    if mid_query and len(mid_query) >= 6 and "match_id" in filtered.columns:
-        filtered = filtered.filter(
-            pl.col("match_id").cast(pl.Utf8).str.contains(mid_query, literal=True)
+        mid_pick = st.selectbox(
+            t("exp_match_id_label"),
+            options=[""] + match_ids,
+            key="explorer_match_id_pick",
+            format_func=lambda x: "─" if not x else x,
         )
-        if filtered.is_empty():
-            with col_mid:
-                st.warning(t("exp_no_match_id"))
-            return None
-        with col_mid:
-            n_found = len(filtered)
-            st.caption(f"🎯 {n_found} / {n_before} match{'s' if n_found > 1 else ''}")
+
+    # Sélection directe par UUID → court-circuit le selectbox principal
+    if mid_pick:
+        return str(mid_pick)
 
     sorted_df = filtered.sort("start_time", descending=True)
     options: list[tuple[str, str]] = []
