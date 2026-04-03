@@ -445,7 +445,30 @@ section.main:after {
     height: 1px;
     width: 100%;
     background: linear-gradient(90deg, rgba(255,255,255,0.00), rgba(255,255,255,0.18), rgba(255,255,255,0.00));
-    margin: 0 0 12px 0;
+    margin: 10px 0 16px 0;
+}
+
+/* ── Sélecteur de langue : compact, transparent, largeur minimale ── */
+/* Cible le selectbox immédiatement après l'ancre #_lang_sel_anchor */
+[data-testid="stSidebar"] div:has(> #_lang_sel_anchor) ~ div [data-baseweb="select"] > div:first-child,
+[data-testid="stSidebar"] div:has(#_lang_sel_anchor) + div [data-baseweb="select"] > div:first-child {
+    background: transparent !important;
+    border: none !important;
+    box-shadow: none !important;
+    border-radius: 6px !important;
+    padding: 2px 4px 2px 8px !important;
+    min-width: 0 !important;
+    width: fit-content !important;
+    cursor: pointer;
+}
+[data-testid="stSidebar"] div:has(> #_lang_sel_anchor) ~ div [data-testid="stSelectbox"],
+[data-testid="stSidebar"] div:has(#_lang_sel_anchor) + div [data-testid="stSelectbox"] {
+    width: fit-content !important;
+    min-width: 0 !important;
+}
+/* Marge haute sous le sélecteur de langue avant le logo */
+[data-testid="stSidebar"] div:has(#_lang_sel_anchor) {
+    margin-bottom: 0 !important;
 }
 
 /* Sidebar : titres + séparateurs */
