@@ -32,18 +32,9 @@ def render_metric_bar_charts(  # noqa: PLR0913
     plot_fn,
     records: dict | None = None,
     hspk_records: dict | None = None,
+    records_per_map: dict | None = None,
 ) -> None:
-    """Affiche les graphes de barres pour les métriques.
-
-    Args:
-        series: Liste de tuples (nom, DataFrame).
-        colors_by_name: Mapping nom → couleur.
-        show_smooth: Afficher les courbes lissées.
-        key_suffix: Suffixe pour les clés Streamlit.
-        plot_fn: Fonction de tracé.
-        records: Records historiques pour le graphe killing spree.
-        hspk_records: Records historiques pour le graphe HS+PK.
-    """
+    """Affiche les graphes killing spree et HS+PK pour une escouade."""
     _lang = get_lang()
     for metric_col, label, key_prefix in [
         ("max_killing_spree", t("tm_killing_spree"), "friend_spree_multi"),
@@ -59,6 +50,7 @@ def render_metric_bar_charts(  # noqa: PLR0913
             show_smooth_lines=show_smooth,
             lang=_lang,
             records=records,
+            records_per_map=records_per_map,
         )
         if fig is None:
             st.info(t("insufficient_data_chart"))
@@ -147,6 +139,7 @@ def _plot_trio_metric_chart(  # noqa: PLR0913
     y_format: str = "",
     is_inverse: bool = False,
     records: dict | None = None,
+    records_per_map: dict | None = None,
 ) -> None:
     """Rend un seul graphique trio_metric via st.plotly_chart."""
     st.plotly_chart(
@@ -165,6 +158,7 @@ def _plot_trio_metric_chart(  # noqa: PLR0913
             colors_by_name=colors_by_name,
             is_inverse=is_inverse,
             records=records,
+            records_per_map=records_per_map,
         ),
         width="stretch",
         key=key,
@@ -198,6 +192,7 @@ def render_trio_charts(  # noqa: PLR0913
     f3_xuid: str | None = None,
     colors_by_name: dict[str, str] | None = None,
     records: dict | None = None,
+    records_per_map: dict | None = None,
 ) -> None:
     """Affiche les graphes de métriques pour une escouade de 2, 3 ou 4 joueurs."""
     names: tuple[str, ...] = (me_name, f1_name)
@@ -221,6 +216,7 @@ def render_trio_charts(  # noqa: PLR0913
                 d_f3=d_f3,
                 colors_by_name=colors_by_name,
                 records=records,
+                records_per_map=records_per_map,
             ),
             width="stretch",
             key=f"trio_kd_{key_suffix}",
@@ -228,14 +224,9 @@ def render_trio_charts(  # noqa: PLR0913
         )
 
     _shared: dict = {
-        "d_self": d_self,
-        "d_f1": d_f1,
-        "d_f2": d_f2,
-        "d_f3": d_f3,
-        "names": names,
-        "lang": _lang,
-        "colors_by_name": colors_by_name,
-        "records": records,
+        "d_self": d_self, "d_f1": d_f1, "d_f2": d_f2, "d_f3": d_f3,
+        "names": names, "lang": _lang, "colors_by_name": colors_by_name,
+        "records": records, "records_per_map": records_per_map,
     }
     for metric, title_key, ytitle_key, key_prefix, extra in _TRIO_METRIC_SPECS:
         _plot_trio_metric_chart(

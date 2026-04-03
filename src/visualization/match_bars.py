@@ -139,6 +139,7 @@ def plot_multi_metric_bars_by_match(  # noqa: C901, PLR0912, PLR0913, PLR0915
     show_smooth_lines: bool = True,
     lang: str = "fr",
     records: dict[str, dict[str, float | None]] | None = None,
+    records_per_map: dict[str, dict[str, dict[str, float | None]]] | None = None,
 ) -> go.Figure | None:
     """Graphique en barres multi-joueurs d'une métrique par match.
 
@@ -345,7 +346,16 @@ def plot_multi_metric_bars_by_match(  # noqa: C901, PLR0912, PLR0913, PLR0915
     if records and _player_xs:
         from src.visualization._squad_record_shapes import add_record_shapes
         _names_with_data = list(_player_xs.keys())
+        _map_names_x = [
+            labels[xi].split("<br>", 1)[1] if xi < len(labels) and "<br>" in labels[xi] else None
+            for xi in range(len(match_ids_ordered))
+        ]
+        _colors: dict[str, str] = colors if isinstance(colors, dict) else {}
         for _pname, _xs in _player_xs.items():
+            _pm = (
+                {_pname: (records_per_map.get(_pname) or {}).get(metric_col, {})}
+                if records_per_map else None
+            )
             add_record_shapes(
                 fig,
                 xs=_xs,
@@ -353,6 +363,9 @@ def plot_multi_metric_bars_by_match(  # noqa: C901, PLR0912, PLR0913, PLR0915
                 player_names=_names_with_data,
                 n_players=len(_names_with_data),
                 is_negative=False,
+                colors_by_name=_colors,
+                per_map_records=_pm,
+                map_names_per_x=[_map_names_x[xi] for xi in _xs if xi < len(_map_names_x)],
             )
 
     fig.update_layout(

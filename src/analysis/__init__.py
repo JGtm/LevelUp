@@ -66,6 +66,7 @@ from src.analysis.squad_records import (
     compute_player_pm_records,
     compute_player_record,
     compute_squad_records,
+    compute_squad_records_per_map,
     get_dominant_pair_name,
 )
 from src.analysis.stats import (
@@ -162,4 +163,5 @@ __all__ = [
     "compute_player_pm_records",
     "compute_player_record",
     "compute_squad_records",
+    "compute_squad_records_per_map",
 ]

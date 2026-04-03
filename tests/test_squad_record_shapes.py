@@ -96,12 +96,13 @@ class TestAddRecordShapes:
         assert len(fig.layout.shapes) == 4
 
     def test_shape_y_value_positive(self):
+        """Le rectangle va de 0 à la valeur record (non-négatif)."""
         fig = self._make_fig()
         add_record_shapes(
             fig, xs=[0], records={"Alice": 15.0}, player_names=["Alice"], n_players=1
         )
         shape = fig.layout.shapes[0]
-        assert shape.y0 == pytest.approx(15.0)
+        assert shape.y0 == pytest.approx(0.0)
         assert shape.y1 == pytest.approx(15.0)
 
     def test_shape_y_value_negative_for_deaths(self):
@@ -114,14 +115,16 @@ class TestAddRecordShapes:
         shape = fig.layout.shapes[0]
         assert shape.y0 == pytest.approx(-3.0)
 
-    def test_shapes_are_horizontal_lines(self):
+    def test_shapes_are_rectangles(self):
+        """Les records sont des rectangles (type=rect) de 0 à la valeur record."""
         fig = self._make_fig()
         add_record_shapes(
             fig, xs=[0], records={"Alice": 10.0}, player_names=["Alice"], n_players=1
         )
         shape = fig.layout.shapes[0]
-        assert shape.type == "line"
-        assert shape.y0 == shape.y1
+        assert shape.type == "rect"
+        assert shape.y0 == pytest.approx(0.0)
+        assert shape.y1 == pytest.approx(10.0)
 
     def test_shape_x_span_width(self):
         """La forme couvre exactement la largeur du baton (2 × half_width)."""
@@ -135,13 +138,24 @@ class TestAddRecordShapes:
         actual_width = shape.x1 - shape.x0
         assert actual_width == pytest.approx(expected_width)
 
-    def test_shape_line_color_white(self):
+    def test_shape_line_color_default(self):
+        """Sans colors_by_name, la bordure est blanche (#ffffff)."""
         fig = self._make_fig()
         add_record_shapes(
             fig, xs=[0], records={"Alice": 5.0}, player_names=["Alice"], n_players=1
         )
         shape = fig.layout.shapes[0]
-        assert shape.line.color == "white"
+        assert shape.line.color == "#ffffff"
+
+    def test_shape_line_color_from_player(self):
+        """Avec colors_by_name, la bordure utilise la couleur du joueur."""
+        fig = self._make_fig()
+        add_record_shapes(
+            fig, xs=[0], records={"Alice": 5.0}, player_names=["Alice"], n_players=1,
+            colors_by_name={"Alice": "#56B4E9"},
+        )
+        shape = fig.layout.shapes[0]
+        assert shape.line.color == "#56B4E9"
 
     def test_shape_layer_above(self):
         fig = self._make_fig()
@@ -221,11 +235,14 @@ class TestAddOverlayRecordShapes:
         assert center == pytest.approx(0.0)
 
     def test_shape_y_value(self):
+        """Le rectangle overlay va de 0 à la valeur record."""
         fig = self._make_fig()
         add_overlay_record_shapes(
             fig, xs=[0], records={"Alice": 7.5}, player_names=["Alice"]
         )
-        assert fig.layout.shapes[0].y0 == pytest.approx(7.5)
+        shape = fig.layout.shapes[0]
+        assert shape.y0 == pytest.approx(0.0)
+        assert shape.y1 == pytest.approx(7.5)
 
     def test_two_players_same_x_center(self):
         """En overlay, les deux joueurs ont des shapes centrées au même X."""
@@ -242,9 +259,10 @@ class TestAddOverlayRecordShapes:
         center_bob = (shapes[1].x0 + shapes[1].x1) / 2
         assert center_alice == pytest.approx(center_bob)
 
-    def test_shape_line_color_white(self):
+    def test_shape_line_color_default(self):
+        """Sans colors_by_name, la bordure overlay est blanche (#ffffff)."""
         fig = self._make_fig()
         add_overlay_record_shapes(
             fig, xs=[0], records={"Alice": 3.0}, player_names=["Alice"]
         )
-        assert fig.layout.shapes[0].line.color == "white"
+        assert fig.layout.shapes[0].line.color == "#ffffff"

@@ -16,6 +16,7 @@ logger = logging.getLogger(__name__)
 from src.analysis.squad_records import (
     compute_player_pm_records,
     compute_squad_records,
+    compute_squad_records_per_map,
     get_dominant_pair_name,
 )
 from src.data.services.teammates_service import TeammatesService
@@ -186,6 +187,21 @@ def render_trio_view(  # noqa: PLR0913, PLR0915, C901, PLR0912
         if "performance_score" in _pr:
             _pr["performance"] = _pr.pop("performance_score")
 
+    # Records par carte (même métriques, filtrés par pair_name dominant)
+    _metrics_per_map = [
+        ("kills", False), ("deaths", True), ("assists", False),
+        ("ratio", False), ("accuracy", False),
+        ("average_life_seconds", False), ("performance_score", False),
+        ("max_killing_spree", False),
+    ]
+    _squad_records_per_map = compute_squad_records_per_map(
+        _full_raw, _metrics_per_map, _dominant_pair
+    )
+    # Renommer performance_score → performance dans les records par carte
+    for _pm in _squad_records_per_map.values():
+        if "performance_score" in _pm:
+            _pm["performance"] = _pm.pop("performance_score")
+
     # Records stats/min par joueur (calculés sur historique complet)
     _pm_records: dict[str, tuple[float | None, float | None, float | None]] = {
         name: compute_player_pm_records(full_df, _dominant_pair)
@@ -266,6 +282,7 @@ def render_trio_view(  # noqa: PLR0913, PLR0915, C901, PLR0912
         f3_xuid=f3_xuid,
         colors_by_name=colors_by_name,
         records=_squad_records,
+        records_per_map=_squad_records_per_map,
     )
 
     # Graphes de barres - reconstruire series avec les DataFrames de l'escouade
@@ -313,6 +330,7 @@ def render_trio_view(  # noqa: PLR0913, PLR0915, C901, PLR0912
         plot_fn=plot_multi_metric_bars_fn,
         records=_spree_records,
         hspk_records=_hspk_records,
+        records_per_map=_squad_records_per_map,
     )
 
     # Tendance premier frag / première mort

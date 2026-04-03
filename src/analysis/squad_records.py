@@ -135,3 +135,53 @@ def compute_squad_records(
             )
         result[name] = player_records
     return result
+
+
+def compute_squad_records_per_map(
+    players: list[tuple[str, pl.DataFrame]],
+    metrics: list[tuple[str, bool]],
+    dominant_pair: str | None,
+) -> dict[str, dict[str, dict[str, float | None]]]:
+    """Calcule les records par carte pour N joueurs et M métriques.
+
+    Args:
+        players: Liste de (nom_joueur, df_historique_complet).
+            Les DataFrames doivent contenir une colonne map_name.
+        metrics: Liste de (nom_colonne, is_negative).
+        dominant_pair: pair_name filtrant. Si None, utilise tous les matchs.
+
+    Returns:
+        Dict {nom_joueur: {nom_métrique: {map_name: valeur | None}}}.
+        La structure est nom_joueur → métrique → carte → valeur pour
+        permettre aux graphiques de trancher d'abord par métrique.
+    """
+    result: dict[str, dict[str, dict[str, float | None]]] = {}
+    for name, df in players:
+        if df is None or df.is_empty() or "map_name" not in df.columns:
+            result[name] = {}
+            continue
+        sub = df
+        if dominant_pair is not None and "pair_name" in df.columns:
+            sub = df.filter(pl.col("pair_name") == dominant_pair)
+        if sub.is_empty():
+            result[name] = {}
+            continue
+        map_names = sub["map_name"].drop_nulls().unique().to_list()
+        # Initialise metric → {} for each metric
+        by_metric: dict[str, dict[str, float | None]] = {m: {} for m, _ in metrics}
+        for map_name in map_names:
+            if not map_name:
+                continue
+            map_sub = sub.filter(pl.col("map_name") == map_name)
+            for metric, is_neg in metrics:
+                if metric not in map_sub.columns:
+                    continue
+                vals = map_sub.select(metric).drop_nulls()
+                if vals.is_empty():
+                    continue
+                col = vals[metric]
+                val = col.min() if is_neg else col.max()
+                if val is not None:
+                    by_metric[metric][map_name] = float(val)
+        result[name] = by_metric
+    return result

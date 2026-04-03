@@ -53,6 +53,7 @@ def plot_trio_metric(  # noqa: PLR0912, PLR0913, PLR0915, C901 — graphe multi-
     is_inverse: bool = False,
     match_labels: list[str] | None = None,
     records: dict[str, dict[str, float | None]] | None = None,
+    records_per_map: dict[str, dict[str, dict[str, float | None]]] | None = None,
 ) -> go.Figure:
     """Graphique comparant une métrique entre 3 ou 4 joueurs.
 
@@ -229,6 +230,11 @@ def plot_trio_metric(  # noqa: PLR0912, PLR0913, PLR0915, C901 — graphe multi-
 
     if records:
         from src.visualization._squad_record_shapes import add_record_shapes
+        _map_names = [t.split("<br>", 1)[1] if "<br>" in t else None for t in ticktext]
+        _per_map = (
+            {n: (records_per_map.get(n) or {}).get(metric, {}) for n in names}
+            if records_per_map else None
+        )
         add_record_shapes(
             fig,
             xs=xs,
@@ -236,6 +242,9 @@ def plot_trio_metric(  # noqa: PLR0912, PLR0913, PLR0915, C901 — graphe multi-
             player_names=list(names),
             n_players=len(names),
             is_negative=is_inverse,
+            colors_by_name=colors_by_name or {},
+            per_map_records=_per_map,
+            map_names_per_x=_map_names,
         )
 
     fig.update_layout(
@@ -337,6 +346,7 @@ def plot_trio_kills_deaths(  # noqa: PLR0913
     colors_by_name: dict[str, str] | None = None,
     smooth_window: int = 7,
     records: dict[str, dict[str, float | None]] | None = None,
+    records_per_map: dict[str, dict[str, dict[str, float | None]]] | None = None,
 ) -> go.Figure:
     """Graphique combiné kills↑/morts↓ pour l'escouade (2, 3 ou 4 joueurs).
 
@@ -388,25 +398,6 @@ def plot_trio_kills_deaths(  # noqa: PLR0913
         deaths_abs = [float(v) if v is not None else 0.0 for v in df_aligned["deaths"].to_list()]
         _add_kd_player_traces(fig, ordered_xs, kills, deaths_abs, color, name, smooth_window)
 
-    if records:
-        from src.visualization._squad_record_shapes import add_record_shapes
-        add_record_shapes(
-            fig,
-            xs=xs,
-            records={n: (records.get(n) or {}).get("kills") for n in names},
-            player_names=list(names),
-            n_players=len(names),
-            is_negative=False,
-        )
-        add_record_shapes(
-            fig,
-            xs=xs,
-            records={n: (records.get(n) or {}).get("deaths") for n in names},
-            player_names=list(names),
-            n_players=len(names),
-            is_negative=True,
-        )
-
     from src.visualization._permin_helpers import build_symmetric_abs_ticks
 
     if aligned.is_empty():
@@ -445,6 +436,36 @@ def plot_trio_kills_deaths(  # noqa: PLR0913
             aligned["start_time"].dt.strftime("%d/%m").fill_null("").to_list()
             if not aligned.is_empty()
             else []
+        )
+
+    if records:
+        from src.visualization._squad_record_shapes import add_record_shapes
+        _kd_map_names = (
+            [t.split("<br>", 1)[1] if "<br>" in t else None for t in ticktext_fr]
+            if ticktext_fr else None
+        )
+        _cbname = colors_by_name or {}
+        _kills_pm = (
+            {n: (records_per_map.get(n) or {}).get("kills", {}) for n in names}
+            if records_per_map else None
+        )
+        _deaths_pm = (
+            {n: (records_per_map.get(n) or {}).get("deaths", {}) for n in names}
+            if records_per_map else None
+        )
+        add_record_shapes(
+            fig, xs=xs,
+            records={n: (records.get(n) or {}).get("kills") for n in names},
+            player_names=list(names), n_players=len(names), is_negative=False,
+            colors_by_name=_cbname, per_map_records=_kills_pm,
+            map_names_per_x=_kd_map_names,
+        )
+        add_record_shapes(
+            fig, xs=xs,
+            records={n: (records.get(n) or {}).get("deaths") for n in names},
+            player_names=list(names), n_players=len(names), is_negative=True,
+            colors_by_name=_cbname, per_map_records=_deaths_pm,
+            map_names_per_x=_kd_map_names,
         )
 
     fig.update_layout(
