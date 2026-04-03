@@ -318,23 +318,21 @@ def _render_match_selector(
     # Ratio [3, 2] : le champ ID a 40% de la largeur — largeur suffisante pour un UUID complet
     col_sel, col_mid = st.columns([3, 2])
 
-    # Autocomplete Match ID : selectbox avec tous les UUIDs disponibles.
-    # L'utilisateur clique et tape pour filtrer nativement (comportement BaseWeb).
-    match_ids: list[str] = (
-        filtered["match_id"].cast(pl.Utf8).to_list()
-        if "match_id" in filtered.columns
-        else []
-    )
     with col_mid:
-        mid_pick = st.selectbox(
+        mid_query = st.text_input(
             t("exp_match_id_label"),
-            options=[""] + match_ids,
-            key="explorer_match_id_pick",
-            format_func=lambda x: "—" if not x else x,
-        )
+            key="explorer_match_id_search",
+            placeholder="70a1c6c6-xxxx-xxxx-xxxx-xxxxxxxxxxxx",
+        ).strip()
 
-    if mid_pick:
-        return str(mid_pick)
+    if mid_query and "match_id" in filtered.columns:
+        filtered = filtered.filter(
+            pl.col("match_id").cast(pl.Utf8).str.contains(mid_query, literal=True)
+        )
+        if filtered.is_empty():
+            with col_mid:
+                st.warning(t("exp_no_match_id"))
+            return None
 
     sorted_df = filtered.sort("start_time", descending=True)
     options: list[tuple[str, str]] = []
