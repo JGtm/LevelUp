@@ -7,6 +7,28 @@
 
 ## Journal
 
+### [2026-04-03] — fix(filters): mismatch map_name_fr/map_name entre sidebar et dff — Complété
+
+**Statut** : Complété
+
+**Décision technique** :
+La sidebar construisait `map_ui` depuis `map_name` (EN) via `normalize_map_label_fn`, tandis que `_add_derived_columns` dans `apply_filters` utilisait `coalesce(map_name_fr, map_name)`. En mode FR, les 4 cartes ayant une traduction différente (Cliffhanger→Dévissage, Fortress→Forteresse, Nemesis→Némésis, The Pit→La fosse) produisaient des `map_ui` incohérents entre la liste du filtre sidebar et les valeurs dans `dff`. Le filtre `is_in` excluait donc silencieusement ces 4 matchs. Sur une session escouade de 11 matchs→seulement 7 visibles.
+
+**Root cause** :
+`_vectorize_ui_columns` dans `_filters_cascade.py` utilisait uniquement `map_name` (EN). La docstring disait pourtant "Utilise les colonnes *_fr si disponibles... pour garantir la cohérence" — incohérence code/doc.
+`_compute_all_filter_options` dans `filters_render.py` avait le même problème pour `_all_maps`.
+
+**Fixes** :
+1. `_vectorize_ui_columns`: si `map_name_fr` en colonnes et lang=fr → `coalesce(map_name_fr, map_name)` comme dans `_add_derived_columns`
+2. `_compute_all_filter_options`: utilise `map_name_fr` comme colonne source si disponible et lang=fr
+3. Suppression variable `n_players` inutilisée (`F841 Ruff`) dans `_teammates_trio_helpers`
+
+**Résultats** : 16 tests de qualité + contrats filtres passent. Baseline taille mise à jour (décalage de lignes dû aux ajouts).
+
+**Branche** : `fix/map-ui-fr-mismatch`
+
+---
+
 ### [2026-04-03] — fix(records): go.Bar fantômes hachurés + offsetgroup sur barres données — Complété
 
 **Statut** : Complété
