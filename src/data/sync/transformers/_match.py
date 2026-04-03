@@ -428,7 +428,7 @@ def extract_participants(match_json: dict[str, Any]) -> list[MatchParticipantRow
     return rows
 
 
-def extract_match_registry_data(  # noqa: C901, PLR0912
+def extract_match_registry_data(  # noqa: C901, PLR0912, PLR0915
     match_json: dict[str, Any],
     *,
     metadata_resolver: Callable[[str, str | None], str | None] | None = None,

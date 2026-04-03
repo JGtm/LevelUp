@@ -154,14 +154,18 @@ class _MatchQueriesPolarsMixin:
         where_sql: str,
         limit_clause: str,
     ) -> pl.DataFrame:
-        """Exécute la requête Polars en fallback (sans joins métadonnées)."""
+        """Exécute la requête Polars en fallback (sans joins métadonnées).
+
+        Utilise NULL pour les colonnes FR — le chemin principal les fournit
+        via mv_player_matches ; en fallback on préfère la robustesse.
+        """
         select_cols = build_match_select(ctx, coalesce_stats=True, direct_names=True)
         all_select = f"""
                 {select_cols},
                 {rank_select},
-                match_stats.playlist_name_fr,
-                match_stats.map_name_fr,
-                match_stats.pair_name_fr
+                NULL AS playlist_name_fr,
+                NULL AS map_name_fr,
+                NULL AS pair_name_fr
         """
 
         from_clause = f"FROM {ctx.source_sql}{ctx.pms_join}{rank_join}"

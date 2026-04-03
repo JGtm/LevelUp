@@ -360,7 +360,11 @@ class TestLoadMatchesPaginated:
                 NULL AS team_mmr, NULL AS enemy_mmr,
                 p.score AS personal_score,
                 COALESCE(r.is_firefight, FALSE) AS is_firefight,
-                COALESCE(r.is_ranked, FALSE) AS is_ranked
+                COALESCE(r.is_ranked, FALSE) AS is_ranked,
+                NULL::VARCHAR AS map_name_fr,
+                NULL::VARCHAR AS playlist_name_fr,
+                NULL::VARCHAR AS pair_name_fr,
+                NULL::VARCHAR AS game_variant_name_fr
             FROM match_registry r
             JOIN match_participants p ON r.match_id = p.match_id
         """)
@@ -564,7 +568,11 @@ class TestLazyLoadingIntegration:
                     NULL AS team_mmr, NULL AS enemy_mmr,
                     p.score AS personal_score,
                     FALSE AS is_firefight, FALSE AS is_ranked,
-                    p.xuid
+                    p.xuid,
+                    NULL::VARCHAR AS map_name_fr,
+                    NULL::VARCHAR AS playlist_name_fr,
+                    NULL::VARCHAR AS pair_name_fr,
+                    NULL::VARCHAR AS game_variant_name_fr
                 FROM match_registry r
                 JOIN match_participants p ON r.match_id = p.match_id
             """)

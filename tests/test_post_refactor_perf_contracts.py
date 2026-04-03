@@ -131,7 +131,11 @@ def sample_duckdb(tmp_path):
             NULL AS team_mmr, NULL AS enemy_mmr,
             CAST(p.score AS INTEGER) AS personal_score,
             COALESCE(r.is_firefight, FALSE) AS is_firefight,
-            COALESCE(r.is_ranked, FALSE) AS is_ranked
+            COALESCE(r.is_ranked, FALSE) AS is_ranked,
+            NULL::VARCHAR AS map_name_fr,
+            NULL::VARCHAR AS playlist_name_fr,
+            NULL::VARCHAR AS pair_name_fr,
+            NULL::VARCHAR AS game_variant_name_fr
         FROM match_registry r
         JOIN match_participants p ON r.match_id = p.match_id
     """)

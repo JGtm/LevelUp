@@ -25,7 +25,7 @@ _MATCH_B = "match-bbb"
 
 
 def _build_shared_db(path: Path) -> None:
-    """Crée une shared DB avec match_registry et match_participants."""
+    """Crée une shared DB avec match_registry, match_participants et v_match_full."""
     path.parent.mkdir(parents=True, exist_ok=True)
     conn = duckdb.connect(str(path))
     conn.execute("""
@@ -47,6 +47,17 @@ def _build_shared_db(path: Path) -> None:
             deaths INTEGER,
             score INTEGER
         )
+    """)
+    conn.execute("""
+        CREATE VIEW v_match_full AS
+        SELECT
+            match_id, start_time,
+            playlist_name,
+            NULL::VARCHAR AS playlist_name_fr,
+            pair_name,
+            NULL::VARCHAR AS pair_name_fr,
+            map_name
+        FROM match_registry
     """)
     conn.close()
 

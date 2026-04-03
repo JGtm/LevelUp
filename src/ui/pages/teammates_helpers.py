@@ -181,15 +181,23 @@ def _prepare_friends_table_data(  # noqa: PLR0912, PLR0913
         pl.col("start_time").dt.strftime(FMT_DATETIME_FR).fill_null("-").alias("start_time_fr")
     )
     if "playlist_fr" not in friends_table.columns:
-        _playlist_map = build_mapping(friends_table["playlist_name"], translate_playlist_name)
-        friends_table = friends_table.with_columns(
-            pl.col("playlist_name")
-            .cast(pl.Utf8)
-            .replace_strict(
-                _playlist_map, default=pl.col("playlist_name").cast(pl.Utf8), return_dtype=pl.Utf8
+        if "playlist_name_fr" in friends_table.columns:
+            friends_table = friends_table.with_columns(
+                pl.coalesce([
+                    pl.col("playlist_name_fr").cast(pl.Utf8),
+                    pl.col("playlist_name").cast(pl.Utf8),
+                ]).alias("playlist_fr")
             )
-            .alias("playlist_fr")
-        )
+        else:
+            _playlist_map = build_mapping(friends_table["playlist_name"], translate_playlist_name)
+            friends_table = friends_table.with_columns(
+                pl.col("playlist_name")
+                .cast(pl.Utf8)
+                .replace_strict(
+                    _playlist_map, default=pl.col("playlist_name").cast(pl.Utf8), return_dtype=pl.Utf8
+                )
+                .alias("playlist_fr")
+            )
     if "mode_ui" in friends_table.columns:
         friends_table = friends_table.with_columns(
             pl.when(

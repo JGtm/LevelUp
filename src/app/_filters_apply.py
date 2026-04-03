@@ -122,6 +122,13 @@ def apply_filters(  # noqa: C901, PLR0912, PLR0913, PLR0915
                 else:
                     session_subset = base_s
                 session_match_ids = set(session_subset["match_id"].cast(pl.Utf8).to_list())
+                logger.debug(
+                    "Session filter: base_s=%d, picked=%s, session_subset=%d, session_match_ids=%d",
+                    len(base_s),
+                    filter_state.picked_session_labels,
+                    len(session_subset),
+                    len(session_match_ids),
+                )
                 # Garde-fou : si l'intersection est vide (incohérence inattendue),
                 # ne pas filtrer plutôt que retourner un dff vide.
                 candidate = dff.filter(
@@ -135,6 +142,12 @@ def apply_filters(  # noqa: C901, PLR0912, PLR0913, PLR0915
             dff = dff.clone()
 
         _dff_after_session = len(dff)
+        logger.debug(
+            "Filtre session: %d → %d matchs (labels=%s)",
+            _dff_initial_len,
+            _dff_after_session,
+            filter_state.picked_session_labels,
+        )
 
         # Colonnes dérivées (nécessitent playlist_name, pair_name, map_name)
         # Vectorisation: build_mapping + replace_strict au lieu de map_elements
@@ -236,6 +249,18 @@ def apply_filters(  # noqa: C901, PLR0912, PLR0913, PLR0915
         )
 
     logger.info("Filtres appliqués: %d → %d matchs", _dff_initial_len, len(dff))
+    logger.debug(
+        "Détail filtres: session=%d exp=%d pl=%d mo=%d ma=%d final=%d (pl=%s mo=%s ma=%s)",
+        _dff_after_session,
+        _dff_after_experience,
+        _dff_after_playlists,
+        _dff_after_modes,
+        _dff_after_maps,
+        len(dff),
+        _playlists_list,
+        _modes_list,
+        _maps_list,
+    )
     return dff
 
 
