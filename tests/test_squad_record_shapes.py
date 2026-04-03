@@ -235,13 +235,14 @@ class TestAddOverlayRecordShapes:
         assert center == pytest.approx(0.0)
 
     def test_shape_y_value(self):
-        """Le rectangle overlay va de 0 à la valeur record."""
+        """La ligne overlay est tracée à la hauteur exacte du record."""
         fig = self._make_fig()
         add_overlay_record_shapes(
             fig, xs=[0], records={"Alice": 7.5}, player_names=["Alice"]
         )
         shape = fig.layout.shapes[0]
-        assert shape.y0 == pytest.approx(0.0)
+        assert shape.type == "line"
+        assert shape.y0 == pytest.approx(7.5)
         assert shape.y1 == pytest.approx(7.5)
 
     def test_two_players_same_x_center(self):

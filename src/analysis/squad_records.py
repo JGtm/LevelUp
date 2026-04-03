@@ -94,6 +94,9 @@ def compute_player_pm_records(
     sub = df
     if pair_name is not None and "pair_name" in df.columns:
         sub = df.filter(pl.col("pair_name") == pair_name)
+    # Alias duration_seconds → time_played_seconds si nécessaire
+    if "time_played_seconds" not in sub.columns and "duration_seconds" in sub.columns:
+        sub = sub.with_columns(pl.col("duration_seconds").alias("time_played_seconds"))
     needed = {"kills", "deaths", "assists", "time_played_seconds"}
     if sub.is_empty() or not needed.issubset(sub.columns):
         logger.debug("compute_player_pm_records: données insuffisantes pour pair_name=%r", pair_name)
