@@ -57,8 +57,8 @@ def _dominance_badge_html(flag: int | None) -> str:
     i18n_key, bg, fg = _DOMINANCE_BADGE_STYLES[flag]
     label = html.escape(t(i18n_key))
     return (
-        f"<br><span style='display:inline-block;margin-top:4px;padding:2px 8px;"
-        f"border-radius:4px;font-size:0.75em;font-weight:600;"
+        f"<br><span style='display:inline-block;margin-top:4px;padding:3px 10px;"
+        f"border-radius:4px;font-size:0.975em;font-weight:600;"
         f"background:{bg};color:{fg}'>{label}</span>"
     )
 
@@ -76,9 +76,10 @@ def _render_kpi_cards(  # noqa: PLR0913
     dominance_flag: int | None = None,
 ) -> None:
     """Affiche les 3 cartes KPI : Date, Résultat, Performance."""
+    _CARD_H = 160
     top_cols = st.columns(3)
     with top_cols[0]:
-        os_card(t("col_date"), format_date_fr(last_time, lang=get_lang()))
+        os_card(t("col_date"), format_date_fr(last_time, lang=get_lang()), min_h=_CARD_H)
     with top_cols[1]:
         outcome_class = (
             "text-win"
@@ -95,6 +96,8 @@ def _render_kpi_cards(  # noqa: PLR0913
             score_html,
             accent=str(outcome_color),
             kpi_color=str(outcome_color),
+            kpi_font_size="36px",
+            min_h=_CARD_H,
         )
     with top_cols[2]:
         bot_is_loss = had_bot and outcome_code != OUTCOME_CODES.WIN
@@ -113,6 +116,7 @@ def _render_kpi_cards(  # noqa: PLR0913
             perf_subtitle,
             accent=perf_color,
             kpi_color=perf_color,
+            min_h=_CARD_H,
         )
 
 
@@ -404,7 +408,6 @@ def _render_match_info_row(row: dict[str, Any], normalize_mode_label_fn: Any) ->
     last_playlist = row.get("playlist_name")
     last_playlist_fr = row.get("playlist_name_fr")
     last_pair = row.get("pair_name")
-    last_pair_fr_raw = row.get("pair_name_fr")
     last_mode = row.get("game_variant_name")
     lang = get_lang()
 
@@ -414,18 +417,22 @@ def _render_match_info_row(row: dict[str, Any], normalize_mode_label_fn: Any) ->
         if last_playlist_fr
         else (translate_playlist_name(str(last_playlist), lang=lang) if last_playlist else "-")
     )
-    last_mode_ui = (
-        row.get("mode_ui")
-        or (str(last_pair_fr_raw) if last_pair_fr_raw else None)
-        or normalize_mode_label_fn(str(last_pair) if last_pair else None)
+    # mode_ui : calculé par _add_derived_columns via translate_pair_name (normalisé).
+    # Pas de fallback sur pair_name_fr brut car son format "Mode on Map" n'est pas traduit.
+    last_mode_ui = row.get("mode_ui") or normalize_mode_label_fn(
+        str(last_pair) if last_pair else None
     )
     last_pair_fr = translate_pair_name(str(last_pair), lang=lang) if last_pair else None
     mode_display = last_mode_ui or last_pair_fr or last_mode or "-"
 
+    _CARD_H = 160
     row_cols = st.columns(3)
-    row_cols[0].metric(" ", map_display)
-    row_cols[1].metric(" ", playlist_display)
-    row_cols[2].metric(" ", mode_display)
+    with row_cols[0]:
+        os_card(t("col_map"), map_display, min_h=_CARD_H)
+    with row_cols[1]:
+        os_card(t("col_playlist"), playlist_display, min_h=_CARD_H)
+    with row_cols[2]:
+        os_card(t("col_mode"), mode_display, min_h=_CARD_H)
 
 
 __all__ = ["render_match_view"]
