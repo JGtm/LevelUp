@@ -7,6 +7,15 @@
 
 ## Journal
 
+### [2026-04-03] — fix(records): go.Bar fantômes hachurés + offsetgroup sur barres données — Complété
+
+**Statut** : Complété
+
+**Décision technique** :
+Plotly `add_shape` ne supporte pas les patterns/hachurage. La seule façon d'obtenir du hachurage est `go.Bar` avec `marker_pattern_shape`. Pour que les barres fantômes soient positionnées et dimensionnées exactement comme les barres de données, les deux doivent partager le même `offsetgroup=name`. Changements : `add_record_shapes` → traces `go.Bar` (showlegend=False, offsetgroup=name, marker_pattern_shape="/", marker_line_color=color) ; `plot_trio_metric` + `plot_multi_metric_bars_by_match` : ajout `offsetgroup=name` sur barres de données ; `_render_per_minute_stats` : offsetgroup pm + traces fantômes catégorielles directes.
+
+---
+
 ### [2026-04-03] — fix(i18n): propager playlist_name_fr dans tous les chemins de données — Complété
 
 **Statut** : Complété
