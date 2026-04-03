@@ -34,6 +34,29 @@ from src.ui.pages.teammates_weapons import render_weapon_kills_bar_chart
 from src.visualization._compat import DataFrameLike, ensure_polars
 
 # ---------------------------------------------------------------------------
+# Helpers privés
+# ---------------------------------------------------------------------------
+
+
+def _build_pm_records(
+    full_raw: list[tuple[str, pl.DataFrame]],
+    dominant_pair: str | None,
+    session_dfs: list[tuple[str | None, DataFrameLike | None]],
+) -> dict[str, tuple[float | None, float | None, float | None]]:
+    """Records stats/min par joueur avec fallback session si historique vide."""
+    records = {
+        name: compute_player_pm_records(full_df, dominant_pair)
+        for name, full_df in full_raw
+    }
+    for _n, _fb in session_dfs:
+        if not _n or _fb is None:
+            continue
+        if _n not in records or all(v is None for v in records[_n]):
+            records[_n] = compute_player_pm_records(ensure_polars(_fb), None)
+    return records
+
+
+# ---------------------------------------------------------------------------
 # Vue trio publique
 # ---------------------------------------------------------------------------
 
@@ -207,11 +230,11 @@ def render_trio_view(  # noqa: PLR0913, PLR0915, C901, PLR0912
         if "performance_score" in _pm:
             _pm["performance"] = _pm.pop("performance_score")
 
-    # Records stats/min par joueur (calculés sur historique complet)
-    _pm_records: dict[str, tuple[float | None, float | None, float | None]] = {
-        name: compute_player_pm_records(full_df, _dominant_pair)
-        for name, full_df in _full_raw
-    }
+    # Records stats/min par joueur (historique complet, fallback session)
+    _pm_records = _build_pm_records(
+        _full_raw, _dominant_pair,
+        [(me_name, me_df), (f1_name, f1_df), (f2_name, f2_df), (f3_name, f3_df)],
+    )
 
     _render_per_minute_stats(
         me_df,

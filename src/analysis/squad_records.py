@@ -94,6 +94,8 @@ def compute_player_pm_records(
     sub = df
     if pair_name is not None and "pair_name" in df.columns:
         sub = df.filter(pl.col("pair_name") == pair_name)
+        if sub.is_empty():
+            sub = df  # fallback: ignorer pair_name si aucune donnée filtrée
     # Alias duration_seconds → time_played_seconds si nécessaire
     if "time_played_seconds" not in sub.columns and "duration_seconds" in sub.columns:
         sub = sub.with_columns(pl.col("duration_seconds").alias("time_played_seconds"))
