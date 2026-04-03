@@ -86,6 +86,7 @@ from src.app.state import (
 )
 
 # Imports depuis la nouvelle architecture
+from src import __version__
 from src.config import (
     get_default_db_path,
 )
@@ -440,27 +441,24 @@ def _render_main_sidebar(db_path: str, xuid: str, settings: AppSettings) -> tupl
     waypoint_player = str(st.session_state.get("waypoint_player", "") or "").strip()
 
     with st.sidebar:
-        # Sélecteur de langue (discret) — au-dessus du logo
-        _LANG_OPTIONS = {"fr": "FR", "en": "EN"}
+        # Sélecteur de langue compact + version
         current_lang = str(get_lang() or "fr").strip().lower()
-        if current_lang not in _LANG_OPTIONS:
+        if current_lang not in ("fr", "en"):
             current_lang = "fr"
 
-        lang_keys = list(_LANG_OPTIONS.keys())
-        lang_idx = lang_keys.index(current_lang)
-        picked = st.radio(
+        # Ancre CSS pour cibler uniquement ce selectbox
+        st.markdown('<div id="_lang_sel_anchor"></div>', unsafe_allow_html=True)
+        picked_lang = st.selectbox(
             "Langue",
-            options=list(_LANG_OPTIONS.values()),
-            index=lang_idx,
+            options=["🇫🇷", "🇬🇧"],
+            index=0 if current_lang == "fr" else 1,
             key="_sidebar_lang_selector",
-            horizontal=True,
             label_visibility="collapsed",
         )
-
-        selected_lang = next(k for k, v in _LANG_OPTIONS.items() if v == picked)
-        if selected_lang != current_lang:
-            set_lang(selected_lang)
-            settings.lang = selected_lang
+        new_lang = "fr" if picked_lang == "🇫🇷" else "en"
+        if new_lang != current_lang:
+            set_lang(new_lang)
+            settings.lang = new_lang
             save_settings(settings)
             st.rerun()
 
@@ -472,17 +470,14 @@ def _render_main_sidebar(db_path: str, xuid: str, settings: AppSettings) -> tupl
             with open(logo_path, "rb") as _f:
                 _logo_b64 = base64.b64encode(_f.read()).decode()
             st.markdown(
-                f"<div style='display:flex;justify-content:center;'>"
+                f"<div style='display:flex;flex-direction:column;align-items:center;margin-top:12px;gap:8px'>"
                 f"<img src='data:image/png;base64,{_logo_b64}' style='width:65%;'/>"
+                f"<span style='font-size:11px;color:rgba(182,196,214,0.6);letter-spacing:0.04em'>v{__version__}</span>"
                 f"</div>",
                 unsafe_allow_html=True,
             )
 
         st.markdown("<div class='os-sidebar-divider'></div>", unsafe_allow_html=True)
-
-        # Indicateur de dernière synchronisation
-        if db_path and os.path.exists(db_path):
-            render_sync_indicator(db_path, xuid=xuid)
 
         # Sélecteur multi-joueurs
         if db_path and os.path.exists(db_path):
