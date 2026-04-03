@@ -603,11 +603,21 @@ async def process_match_adaptive(
                 fm2 = scan_first_movements(all_chunks, ignore_before_ms=ignore_before_ms)
                 refs2, _ = pick_spawn_references(fm2, n=min_players)
                 if len(refs2) >= min_players:
-                    estimate_ms = statistics.median(fm["timestamp_ms"] for _, fm in refs2)
-                    _print_match_report(match_id, fm2)
-                    corr = correlate_with_api(estimate_ms, match_id, n_events=corr_events)
-                    _print_correlation_report(corr, estimate_ms)
-                    print(f"  [CORR] Estimation corrigee -> {estimate_ms / 1000:.1f}s")
+                    estimate2 = int(statistics.median(fm["timestamp_ms"] for _, fm in refs2))
+                    # Guard : accepter seulement si l'estimate est bien après ignore_before.
+                    # Faux positif : joueurs déjà actifs → détection quasi-immédiate.
+                    if estimate2 - ignore_before_ms > 5_000:
+                        estimate_ms = estimate2
+                        _print_match_report(match_id, fm2)
+                        corr = correlate_with_api(estimate_ms, match_id, n_events=corr_events)
+                        _print_correlation_report(corr, estimate_ms)
+                        print(f"  [CORR] Estimation corrigee -> {estimate_ms / 1000:.1f}s")
+                    else:
+                        print(
+                            f"  [CORR] Correction rejetee (faux positif) :"
+                            f" estimate2={estimate2 / 1000:.1f}s trop proche ignore_before"
+                            f" ({ignore_before_ms / 1000:.1f}s) — match sans mouvement lobby"
+                        )
                 else:
                     print(
                         f"  [CORR] Correction échouée : {len(refs2)}/{min_players} refs"

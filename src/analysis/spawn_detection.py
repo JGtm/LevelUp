@@ -42,6 +42,12 @@ _LOBBY_CORRECTION_THRESHOLD_MS: float = 15_000.0
 #: On cherche les mouvements à partir de (gap_min - cette marge).
 _LOBBY_CORRECTION_BUFFER_MS: float = 10_000.0
 
+#: Décalage minimum entre ignore_before et la nouvelle estimation pour valider
+#: la correction. Évite les faux positifs : si les joueurs bougeaient déjà avant
+#: ignore_before, le premier changement post-ignore est quasi-immédiat (<1 s).
+#: Dans un vrai cas lobby, le vrai départ est plusieurs secondes après ignore_before.
+_LOBBY_CORRECTION_MIN_GAP_MS: float = 5_000.0
+
 _BYTE5_HUMAN: int = 0x40
 _BYTE9_HUMAN: int = 0x56
 
@@ -252,6 +258,11 @@ def estimate_film_match_start_ms(
             first_movements_2 = scan_first_movements(chunks, ignore_before_ms=ignore_before)
             refs_2, _ = pick_spawn_references(first_movements_2, n=min_players)
             if len(refs_2) >= min_players:
-                estimate = int(statistics.median(fm["timestamp_ms"] for _, fm in refs_2))
+                estimate_2 = int(statistics.median(fm["timestamp_ms"] for _, fm in refs_2))
+                # N'accepter que si l'estimate est significativement après ignore_before.
+                # Faux positif typique : joueurs actifs avant ignore_before → premier
+                # changement post-ignore quasi-immédiat (< 1 s) → guard rejeté.
+                if estimate_2 - ignore_before > _LOBBY_CORRECTION_MIN_GAP_MS:
+                    estimate = estimate_2
 
     return estimate
