@@ -400,6 +400,8 @@ def os_card(  # noqa: PLR0913
     kpi_is_html: bool = False,
     sub_style: str | None = None,
     min_h: int = 112,
+    kpi_font_size: str | None = None,
+    title_font_size: str | None = None,
 ) -> None:
     """Rend une carte KPI avec style OpenSpartan."""
     t = html.escape(str(title or ""))
@@ -412,13 +414,19 @@ def os_card(  # noqa: PLR0913
             style += f"border-color:{accent}66;"
         else:
             style += f"border-color:{accent};"
-    kpi_style = "" if not _is_valid_css_color(kpi_color) else f" style='color:{kpi_color}'"
+    _kpi_css_parts: list[str] = []
+    if _is_valid_css_color(kpi_color):
+        _kpi_css_parts.append(f"color:{kpi_color}")
+    if kpi_font_size:
+        _kpi_css_parts.append(f"font-size:{kpi_font_size}")
+    kpi_style = (" style='" + ";".join(_kpi_css_parts) + "'") if _kpi_css_parts else ""
     sub_style_attr = (
         "" if not sub_style else ' style="' + html.escape(str(sub_style), quote=True) + '"'
     )
+    title_style_attr = (" style='font-size:" + title_font_size + "'") if title_font_size else ""
     st.markdown(
         "<div class='os-card' style='" + style + "'>"
-        f"<div class='os-card-title'>{t}</div>"
+        f"<div class='os-card-title'{title_style_attr}>{t}</div>"
         f"<div class='os-card-kpi'{kpi_style}>{k}</div>"
         + ("" if not s else f"<div class='os-card-sub'{sub_style_attr}>{s}</div>")
         + "</div>",
