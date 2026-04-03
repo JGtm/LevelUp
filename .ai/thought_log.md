@@ -7,6 +7,51 @@
 
 ## Journal
 
+### [2026-04-03] — fix(records): stats/min records visibles pour tous les joueurs — Complété
+
+**Statut** : Complété
+
+**Décision technique** :
+Les records stats/min (frags/min, morts/min, assists/min) n'apparaissaient que pour un seul joueur (Madia97294). Deux causes indépendantes :
+1. `compute_player_pm_records` : si le filtre `pair_name` retournait un sous-ensemble vide, la fonction retournait `(None, None, None)` au lieu d'utiliser tous les matchs en fallback.
+2. `render_trio_view` : `_pm_records` n'était calculé que pour les joueurs dans `_full_raw`, lequel excluait f2/f3 si `load_all_teammate_stats()` retournait un df vide (xuid introuvable). Aucun fallback sur les données de session.
+
+**Fixes** :
+- `src/analysis/squad_records.py:compute_player_pm_records` : ajout `if sub.is_empty(): sub = df` après le filtre pair_name.
+- `src/ui/pages/_teammates_trio.py` : extraction de `_build_pm_records()` (helper privé) qui calcule les records depuis `_full_raw` puis complète avec les session dfs (`pair_name=None`) pour les joueurs absents ou avec records tous-None.
+
+**Résultats** :
+- 134 tests passent (squad_records, squad_record_shapes, visualizations, code_quality, imports).
+- `render_trio_view` reste à 318L (baseline stable, pas de nouvelle violation).
+
+**Prochaine étape** : vérification visuelle dans Streamlit avec 3 joueurs.
+
+### [2026-04-04] — fix(maps): noms FR dans graphes post-radar "Complémentarité de l'escouade" — Complété
+
+**Statut** : Complété
+
+**Décision technique** :
+Tous les graphes affichés après le radar dans la section "Complémentarité de l'escouade" montraient encore des noms de cartes EN (Cliffhanger, Fortress, Nemesis, The Pit) au lieu des noms FR. Diagnostic multi-composants : 4 sources de données distinctes dans le pipeline, chacune aveugle à `map_ui`.
+
+**4 causes indépendantes identifiées** :
+
+| Source DataFrame | Problème racine | Fix |
+|-----------------|-----------------|-----|
+| `f1_df/f2_df/f3_df` (shared stats trio) | `map_name_fr` présent mais pas `map_ui` | `_query_teammate_shared_stats` → ajout `COALESCE(r.map_name_fr, r.map_name, '') AS map_ui` |
+| `_f1_full/_f2_full/_f3_full` (historique trio) | JOIN sur `match_registry` sans `map_name_fr` | `query_teammate_full_history` → `JOIN shared.v_match_full` + `map_name_fr` + `map_ui` |
+| `_me_full` (historique joueur principal) | Sous-ensemble de `df`, pas de `map_ui` avant filtrage | Injection Python post-query dans `_teammates_trio.py` (hotfix pré-Item0) |
+| `records_per_map` (records par carte) | Clés dict = noms EN (`map_name`) vs labels FR des axes | `compute_squad_records_per_map` → guard dynamique `_map_col = "map_ui" if … else "map_name"` |
+
+**Chaîne d'appel** : `render_trio_view` → `_render_trio_performance_charts` → `render_trio_charts` (teammates_charts.py) → `plot_trio_kills_deaths` + metric charts (trio.py). La fonction `trio.py` utilisait déjà `"map_ui" if "map_ui" in p.columns else "map_name"` — il suffisait de fournir `map_ui` dans les DataFrames d'entrée.
+
+**Résultats** : 5405 passent, 4 skipped, 1 failed pré-existant (`test_v_match_full_colonnes_fr_nulles_sans_metadata`). Commit `df361f0` sur `fix/map-ui-fr-mismatch`.
+
+**Conclusion** : Ces 4 hotfixes (marqués `# Hotfix pré-Item0` dans le code) seront supprimés lors du déploiement de `src/app/i18n_columns.py` (Item 0 du plan de refacto). Le plan a été mis à jour pour documenter les 7 hotfixes pré-Item0 (3 antérieurs + 4 de df361f0).
+
+**Branche** : `fix/map-ui-fr-mismatch`
+
+---
+
 ### [2026-04-04] — fix(maps): noms FR dans graphes escouade — v_match_full + map_ui heatmap — Complété
 
 **Statut** : Complété
