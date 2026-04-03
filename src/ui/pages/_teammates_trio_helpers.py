@@ -135,24 +135,33 @@ def _render_per_minute_stats(  # noqa: PLR0913
                 marker_color=_bar_colors,
                 text=_pm_text,
                 textposition="auto",
+                offsetgroup=_pm_name,
             )
         )
-    # ── Records par-minute (depuis historique complet, pré-calculés) ─────────
+    # ── Records par-minute (traces fantômes hachurées, axe catégoriel) ───────
     if pm_records:
-        from src.visualization._squad_record_shapes import add_record_shapes
         _player_names_pm = [n for n, _, _ in _pm_players]
         for p_name, (r_kpm, r_dpm, r_apm) in pm_records.items():
             if p_name not in _player_names_pm:
                 continue
-            if r_kpm is not None:
-                add_record_shapes(fig_pm, xs=[0], records={p_name: r_kpm},
-                                  player_names=_player_names_pm, n_players=n_players, is_negative=False)
-            if r_dpm is not None:
-                add_record_shapes(fig_pm, xs=[1], records={p_name: r_dpm},
-                                  player_names=_player_names_pm, n_players=n_players, is_negative=True)
-            if r_apm is not None:
-                add_record_shapes(fig_pm, xs=[2], records={p_name: r_apm},
-                                  player_names=_player_names_pm, n_players=n_players, is_negative=False)
+            color = colors_by_name.get(p_name, OKABE_ITO_PALETTE[0])
+            y_rec = [
+                r_kpm if r_kpm is not None else None,
+                (-r_dpm) if r_dpm is not None else None,
+                r_apm if r_apm is not None else None,
+            ]
+            if all(v is None for v in y_rec):
+                continue
+            fig_pm.add_trace(go.Bar(
+                name=p_name, x=_pm_metrics, y=y_rec,
+                showlegend=False, legendgroup=p_name, offsetgroup=p_name,
+                marker_color="rgba(0,0,0,0)",
+                marker_pattern_shape="/", marker_pattern_fgcolor=color,
+                marker_pattern_fgopacity=0.55, marker_pattern_size=8,
+                marker_pattern_solidity=0.35,
+                marker_line_color=color, marker_line_width=2.0,
+                hoverinfo="skip",
+            ))
     fig_pm.update_layout(
         barmode="group",
         height=350,
