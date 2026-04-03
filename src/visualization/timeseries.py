@@ -222,7 +222,7 @@ def plot_assists_timeseries(
             accuracy.to_list(),
             d["ratio"].to_list(),
             (d["map_ui"] if "map_ui" in d.columns else d["map_name"]).fill_null("").to_list(),
-            d["playlist_name"].fill_null("").to_list(),
+            (d["playlist_ui"] if "playlist_ui" in d.columns else d["playlist_name"]).fill_null("").to_list(),
             d["match_id"].to_list(),
             strict=False,
         )
