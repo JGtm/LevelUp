@@ -2,7 +2,7 @@
 
 > **Analyze your Halo Infinite performance with advanced visualizations and an ultra-fast DuckDB architecture.**
 
-[![Version](https://img.shields.io/badge/Version-6.2.0-blue.svg)](https://github.com/JGtm/LevelUp/releases/tag/v6.2.0)
+[![Version](https://img.shields.io/badge/Version-6.3.0-blue.svg)](https://github.com/JGtm/LevelUp/releases/tag/v6.3.0)
 [![Python 3.12+](https://img.shields.io/badge/Python-3.12%2B-blue.svg)](https://www.python.org/downloads/)
 [![Streamlit](https://img.shields.io/badge/Streamlit-1.28%2B-FF4B4B.svg)](https://streamlit.io/)
 [![DuckDB](https://img.shields.io/badge/DuckDB-1.4%2B-FEE14E.svg)](https://duckdb.org/)
@@ -12,6 +12,15 @@
 ---
 
 ## What's new
+
+**v6.3 — Localized names, squad records & medal details**
+- **Maps and modes in your language** — map names, playlists and game modes now appear in French (or English) across every page: sidebar filters, match tables, charts, and the win-rate histogram
+- **Medal descriptions on hover** — hover any medal in the Last Match grid or the Citations section to see its description
+- **Squad all-time records** — the Teammates page now shows the career bests for each squad member (K/D, kills, streaks…) with color-coded per-player highlights and a per-map record breakdown
+- **Top Killer badge** 🔫 — shown on the Impact timeline for the first player on the team to reach 10 kills
+- **Time-to-first-kill/death histogram revamped** — mirrored butterfly chart with 15-second bins and real gameplay time (pre-game countdown excluded)
+- **Win rate chart** now shows total match count per map and translated map names
+- **Settings page redesigned** — reorganized into clear sections (General, Sync, Performance, Display) for easier navigation
 
 **v6.2 — Comeback badges & unified squad view**
 - **Remontada / Collapse / Contre-Remontada badges** — the app now detects comeback narratives from your match history: *Remontada* (you were losing at the midpoint but came back to win), *Collapse* (you were winning and blew it), *Contre-Remontada* (you stopped the enemy's comeback). Run `--comeback-badges` to compute them

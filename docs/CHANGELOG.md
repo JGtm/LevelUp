@@ -6,39 +6,75 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 > French version: [FR/CHANGELOG.md](FR/CHANGELOG.md)
 
-## [6.3.0] - 2026-03-30
+## [6.3.0] - 2026-04-03
 
 ### Added
 
-- **`asset_translations` table** in `metadata.duckdb` — stores localized names for all Halo assets (maps, playlists, playlist-map-mode pairs, game variants) in 14 BCP-47 languages (`en-US`, `fr-FR`, `de-DE`, `es-ES`, `es-MX`, `it-IT`, `ja-JP`, `ko-KR`, `nl-NL`, `pl-PL`, `pt-BR`, `ru-RU`, `zh-Hans`, `zh-Hant`).
-  - Schema: `(asset_id VARCHAR, asset_type VARCHAR, lang VARCHAR, name VARCHAR, fetched_at TIMESTAMP, PRIMARY KEY(asset_id, asset_type, lang))`
-  - 9 674 rows on first population (698 unique assets × 14 languages)
-  - Populate with: `python scripts/populate_asset_translations.py`
+- **Map & mode names localized in the UI language** — all map names, playlists, game modes, and pairs now display in French or English across every page: sidebar filters, match tables, charts, and the win-rate histogram. Powered by a new `asset_translations` table in `metadata.duckdb` storing 9 674 localized names across 14 BCP-47 languages.
+  - New schema: `asset_translations (asset_id, asset_type, lang, name, fetched_at, PK)` and `medal_translations (name_key, lang, name, description, PK)` in `metadata.duckdb`
+  - `v_match_full` v6 i18n overhaul: four legacy table JOINs (`meta.maps`, `meta.playlists`, `meta.playlist_map_mode_pairs`, `meta.game_variants`) removed; replaced by 8 `LEFT JOIN meta.asset_translations` (en-US + fr-FR × 4 asset types). New columns: `map_name_fr`, `playlist_name_fr`, `pair_name_fr`, `game_variant_name_fr`
+  - `resolve_asset_name()` / `resolve_medal_name()` use the pivot tables for deterministic per-language lookups
+  - `MetadataResolver.resolve()` now accepts a `lang` parameter
+  - Populate with: `python scripts/populate_asset_translations.py` (supports `--dry-run`, `--force`, `--types map playlist pair game_variant`)
 
-- **`scripts/populate_asset_translations.py`** — parallelized population script for `asset_translations`:
-  - `_build_version_id_cache()`: fetches one `match_stats` API response per asset to extract the required `VersionId` (SPNKr Discovery UGC requires a valid version ID in the URL — empty string yields 404)
-  - Parallelizes all 14 languages simultaneously via `asyncio.gather` + `asyncio.Lock` for serialized DB writes
-  - Resumable: skips asset × lang combinations already present in the table (unless `--force`)
-  - Supports `--dry-run` and per-type filtering (`--types map playlist pair game_variant`)
+- **Medal description tooltips** — hovering a medal in the Last Match grid or the Citations section shows its description. Fallback to medal name when description is unavailable.
+
+- **Squad all-time records** (Teammates page) — per-player career-best records surfaced on the Escouade page with colored rectangle annotations and per-map breakdowns. Records are fetched from each player's full match history (not only shared sessions).
+  - `compute_squad_records()` — pure analysis function returning best all-time value per metric per player
+  - Colored per-player rectangle overlays + record-by-map charts
+  - Integrated into `render_trio_charts` and `render_metric_bar_charts`
+
+- **Top Killer badge** 🔫 — new badge on the Impact timeline for the first player on the team to reach 10 kills. Added to `_EVENT_TO_EMOJI`. Explicitly excluded from *Héros silencieux* and *Faux-frère* badge detection to prevent conflation. Badge legend added to the expander below the grid.
+
+- **Butterfly histogram — Time to First Kill/Death** (Teammates page) — the first-kill / first-death distribution is now a mirrored butterfly histogram with 15-second bins, vertical bin separators, and tick labels at every boundary. The pre-game countdown is subtracted so the timer reflects actual in-game time; `NULL` preserved when no kill/death occurred.
+
+- **`playable_duration_seconds` + `real_start_time`** in `match_registry` (v6.3 migration) — `playable_duration_seconds` is the match length minus the pre-game countdown; `real_start_time` is the absolute UTC start of gameplay. Backfill: `python scripts/backfill_data.py --playable-duration`.
+
+- **PSA fanout for teammates** — Personal Score Awards earned by squad members are now distributed to all relevant player DBs during post-sync.
+
+- **Win rate histogram enriched** — bar tooltip now shows total match count per map; the map column uses the translated `map_ui` name.
+
+- **Settings page V2** — reorganized into fixed sections (General, Sync, Performance, Display) with a simplified internal function signature. No behavioral changes.
+
+- **VPS Ionos deployment package** — `packaging/nginx/` configuration files, `deploy.sh`, step-by-step guide (`docs/DEPLOY_GUIDE_ETAPES.md`), and Ionos-specific VPS guide (`docs/DEPLOY_VPS_IONOS.md`).
 
 ### Changed
 
-- **`v_match_full` — v6 i18n overhaul** — map and mode names now resolved exclusively from `asset_translations` (v6). The four legacy table JOINs (`meta.maps`, `meta.playlists`, `meta.playlist_map_mode_pairs`, `meta.game_variants`) have been removed — those tables no longer exist in `metadata.duckdb` v6.
-  - `map_name`: `COALESCE(at_map_en.name, mr.map_name)` (en-US translation, fallback to raw registry value)
-  - New column `map_name_fr`: `at_map_fr.name` (fr-FR translation, NULL if not available)
-  - Same pattern for `playlist_name`, `pair_name`, `game_variant_name` and their `_fr` variants
-  - 8 LEFT JOINs on `meta.asset_translations` (en-US + fr-FR × 4 asset types) replace the 4 legacy table JOINs
+- **`shared_matches.duckdb` → `shared_matches_v2.duckdb`** — the shared match database file has been renamed. `get_shared_matches_path()` helper introduced; all hardcoded paths updated project-wide; `compute_sessions.py` updated.
 
-- **`_try_attach_meta_for_views()`** — now checks for `meta.asset_translations` instead of `meta.maps` to determine whether metadata is usable. Since `meta.maps` does not exist in v6, the previous check always returned `None`, causing `v_match_full` to be created without any i18n JOINs.
+- **Radar squad** — complementarity axis thresholds recalibrated to p90 (was p80) for better per-mode distribution; all-time view removed, radar filtered by session only.
+
+- **LUSR incremental seed** — seed cascade bug corrected: `seed_ratings` was being mutated before `existing_states` read it in incremental mode.
+
+- **Sidebar i18n** — `_filters_cascade()` uses `playlist_name_fr` / `map_name_fr` when the UI language is French.
+
+- **`_try_attach_meta_for_views()`** — now checks for `meta.asset_translations` (exists in v6) instead of `meta.maps` (removed in v6).
 
 ### Fixed
 
-- `v_match_full` was silently created without any localization — `map_name_fr` was always `NULL` in production because `_try_attach_meta_for_views()` looked for `meta.maps` (removed in v6) and fell back to the no-metadata code path.
+- `v_match_full` was silently created without i18n — `map_name_fr` was always `NULL` in production because `_try_attach_meta_for_views()` fell back to the no-metadata code path after failing to find `meta.maps` (removed in v6).
+- `map_name_fr` / `playlist_name_fr` / `pair_name_fr` propagated in all Polars data paths via `COLUMNS_COMMON`; mismatch between sidebar filter values and DataFrame columns corrected.
+- Map/mode names now display in French in: sidebar, bullet + perf charts, heatmaps, match history, Escouade charts, and Records page.
+- Timeseries: match countdown subtracted from first-kill and first-death timestamps in `load_first_event_times()`; `NULL` preserved after subtraction.
+- Apostrophes escaped in `title=` attributes of medal / citation tooltips (prevented broken HTML).
+- `_build_map_id_index` reads `asset_translations` instead of the removed `maps` table.
+- Map thumbnail lookup via `map_id` (asset_id) independent of displayed language.
+- Squad radar: `shared_match_ids` intersection no longer collapses when a squad member has no matches.
+- Squad radar: `compute_participation_profile` called with `ProfileOptions` (fixes `TypeError`).
+- Records page: ghost hatched bars removed; `offsetgroup` corrected on bar data layers.
+- Records overlay: correctly colored line, exact width, `duration_seconds` fallback.
+- `playlist_name_fr` falls back to the EN name in `v_match_full` when FR translation is absent.
+- Performance page: team score chart shows bonus or base score according to context.
+- Squad stats-per-minute visible for all squad members (not only the focal player).
+- Weapon aliases `Mutilator` / `Mutilateur` added to `_scoreboard_asset_urls`.
+- `top_killer` added to `_EVENT_TO_EMOJI` (missing entry caused emoji display fallback).
 
 ### Tests
 
-- `test_v_match_full_avec_metadata_attachee` rewritten for v6 architecture: creates only `asset_translations` (not the legacy `maps`/`playlists` tables), verifies both `map_name` (en-US) and `map_name_fr` (fr-FR) are resolved correctly.
-- **14/14 tests passing** (`test_code_quality.py` + `test_resolution_views.py`)
+- `test(i18n)`: `resolve_map_display_names()` coverage + `map_ui` / `mode_ui` column assertions
+- `test(radar)`: `f1_vide` edge case + `shared_match_ids` collapse regression
+- Test suite updated for Settings V2 signature, i18n propagation, medal/playlist refactoring
+- Size baseline updated (`scripts/size_baseline.txt`)
 
 ---
 
