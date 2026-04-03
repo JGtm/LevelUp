@@ -339,7 +339,12 @@ def _compute_all_filter_options(
     return (
         _collect_unique_labels(base, "playlist_name", _playlist_label),
         _collect_unique_labels(base, "pair_name", normalize_mode_label_fn),
-        _collect_unique_labels(base, "map_name", normalize_map_label_fn),
+        # Cohérence avec _add_derived_columns / _vectorize_ui_columns : préférer map_name_fr
+        _collect_unique_labels(
+            base,
+            "map_name_fr" if ("map_name_fr" in base.columns and get_lang() == "fr") else "map_name",
+            normalize_map_label_fn,
+        ),
         _get_experience_type_options(),
     )
 

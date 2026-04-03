@@ -118,7 +118,6 @@ def _render_per_minute_stats(  # noqa: PLR0913
     ]
     st.subheader(t("tm_per_minute"))
     fig_pm = go.Figure()
-    n_players = len(_pm_players)
     for _pm_name, _pm_st, _pm_color in _pm_players:
         _kpm = round(float(_pm_st.kills_per_minute), 2) if _pm_st.kills_per_minute else 0
         _dpm = round(float(_pm_st.deaths_per_minute), 2) if _pm_st.deaths_per_minute else 0
