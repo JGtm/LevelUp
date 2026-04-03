@@ -595,6 +595,7 @@ section.main:after {
     padding: 6px 16px;
     background: transparent;
     width: 100%;
+    min-height: 200px; /* Contient le backdrop (~199px) même sans adornment */
 }
 
 /* Supprimé: pseudo-élément ::before avec bordure */
@@ -1244,15 +1245,6 @@ div[data-testid="stMetric"] [data-testid="stMetricValue"] {
     letter-spacing: -0.02em;
     line-height: 1.1;
     color: rgba(245, 248, 255, 0.96);
-}
-
-.os-kpi__sub {
-    margin-top: 3px;
-    font-size: 11px;
-    font-weight: 500;
-    color: rgba(182, 196, 214, 0.85);
-    letter-spacing: 0.01em;
-    line-height: 1.3;
 }
 
 /* =============================================================================

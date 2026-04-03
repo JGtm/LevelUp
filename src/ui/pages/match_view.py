@@ -21,6 +21,7 @@ from src.ui.formatting import format_date_fr
 from src.ui.i18n import get_lang, t
 from src.ui.pages.match_view_helpers import (
     map_thumb_path,
+    os_card,
 )
 from src.ui.pages.match_view_logic import (
     compute_perf_display,
@@ -56,15 +57,14 @@ def _dominance_badge_html(flag: int | None) -> str:
     i18n_key, bg, fg = _DOMINANCE_BADGE_STYLES[flag]
     label = html.escape(t(i18n_key))
     return (
-        f"<br><span style='display:inline-block;margin-top:4px;padding:3px 10px;"
-        f"border-radius:4px;font-size:0.975em;font-weight:600;"
+        f"<br><span style='display:inline-block;margin-top:4px;padding:2px 8px;"
+        f"border-radius:4px;font-size:0.75em;font-weight:600;"
         f"background:{bg};color:{fg}'>{label}</span>"
     )
 
 
-def _render_match_info_grid(  # noqa: PLR0913
+def _render_kpi_cards(  # noqa: PLR0913
     *,
-    row: dict[str, Any],
     last_time: Any,
     outcome_code: int | None,
     outcome_label: str,
@@ -74,60 +74,46 @@ def _render_match_info_grid(  # noqa: PLR0913
     perf_color: str | None,
     had_bot: bool,
     dominance_flag: int | None = None,
-    normalize_mode_label_fn: Any,
 ) -> None:
-    """Affiche en une seule grille les 6 infos du match : Date, Résultat, Performance, Carte, Playlist, Mode."""
-    from src.ui.components import render_compact_html_cards
-
-    # --- Résultats ---
-    outcome_class = (
-        "text-win"
-        if outcome_code == OUTCOME_CODES.WIN
-        else ("text-loss" if outcome_code == OUTCOME_CODES.LOSS else "text-tie")
-    )
-    score_html = f"<span class='{outcome_class} fw-bold'>{html.escape(str(score_label))}</span>"
-    dominance_badge = _dominance_badge_html(dominance_flag)
-    result_sub = score_html + dominance_badge
-
-    bot_is_loss = had_bot and outcome_code != OUTCOME_CODES.WIN
-    bot_is_win = had_bot and outcome_code == OUTCOME_CODES.WIN
-    if bot_is_loss:
-        perf_subtitle = html.escape(t("mv_bot_teammate_note"))
-    elif bot_is_win:
-        perf_subtitle = html.escape(t("mv_bot_teammate_win_note"))
-    else:
-        perf_subtitle = html.escape(
-            t("mv_relative_history") if perf_display != "-" else t("mv_insufficient_history")
+    """Affiche les 3 cartes KPI : Date, Résultat, Performance."""
+    top_cols = st.columns(3)
+    with top_cols[0]:
+        os_card(t("col_date"), format_date_fr(last_time, lang=get_lang()))
+    with top_cols[1]:
+        outcome_class = (
+            "text-win"
+            if outcome_code == OUTCOME_CODES.WIN
+            else ("text-loss" if outcome_code == OUTCOME_CODES.LOSS else "text-tie")
         )
-
-    # --- Carte / Playlist / Mode ---
-    lang = get_lang()
-    last_playlist = row.get("playlist_name")
-    last_playlist_fr = row.get("playlist_name_fr")
-    last_pair = row.get("pair_name")
-    last_mode = row.get("game_variant_name")
-    map_display = _display_map(row)
-    playlist_display = (
-        str(last_playlist_fr)
-        if last_playlist_fr
-        else (translate_playlist_name(str(last_playlist), lang=lang) if last_playlist else "-")
-    )
-    last_mode_ui = row.get("mode_ui") or normalize_mode_label_fn(
-        str(last_pair) if last_pair else None
-    )
-    last_pair_fr = translate_pair_name(str(last_pair), lang=lang) if last_pair else None
-    mode_display = last_mode_ui or last_pair_fr or last_mode or "-"
-
-    render_compact_html_cards(
-        [
-            (t("col_date"), html.escape(format_date_fr(last_time, lang=lang)), None, None),
-            (t("mv_results"), html.escape(str(outcome_label)), str(outcome_color), result_sub),
-            (t("mv_performance"), html.escape(str(perf_display)), perf_color, perf_subtitle),
-            (t("col_map"), html.escape(map_display), None, None),
-            (t("col_playlist"), html.escape(playlist_display), None, None),
-            (t("col_mode"), html.escape(mode_display), None, None),
-        ]
-    )
+        score_html = f"<span class='{outcome_class} fw-bold'>{html.escape(str(score_label))}</span>"
+        dominance_badge = _dominance_badge_html(dominance_flag)
+        if dominance_badge:
+            score_html += dominance_badge
+        os_card(
+            t("mv_results"),
+            str(outcome_label),
+            score_html,
+            accent=str(outcome_color),
+            kpi_color=str(outcome_color),
+        )
+    with top_cols[2]:
+        bot_is_loss = had_bot and outcome_code != OUTCOME_CODES.WIN
+        bot_is_win = had_bot and outcome_code == OUTCOME_CODES.WIN
+        if bot_is_loss:
+            perf_subtitle = t("mv_bot_teammate_note")
+        elif bot_is_win:
+            perf_subtitle = t("mv_bot_teammate_win_note")
+        else:
+            perf_subtitle = (
+                t("mv_relative_history") if perf_display != "-" else t("mv_insufficient_history")
+            )
+        os_card(
+            t("mv_performance"),
+            perf_display,
+            perf_subtitle,
+            accent=perf_color,
+            kpi_color=perf_color,
+        )
 
 
 def _render_map_and_rank(  # noqa: PLR0913
@@ -283,8 +269,7 @@ def _render_match_header(  # noqa: PLR0913
     db_key: Any,
 ) -> None:
     """Affiche KPI, info carte/playlist/mode, et miniature carte + rang."""
-    _render_match_info_grid(
-        row=row,
+    _render_kpi_cards(
         last_time=row.get("start_time"),
         outcome_code=outcome_code,
         outcome_label=outcome_label,
@@ -294,8 +279,8 @@ def _render_match_header(  # noqa: PLR0913
         perf_color=perf_color,
         had_bot=had_bot,
         dominance_flag=dominance_flag,
-        normalize_mode_label_fn=normalize_mode_label_fn,
     )
+    _render_match_info_row(row, normalize_mode_label_fn)
     _render_map_and_rank(
         row,
         map_display=_display_map(row),
@@ -406,15 +391,32 @@ def _build_waypoint_url(waypoint_player: str | None, match_id: str) -> str | Non
 
 
 def _display_map(row: dict[str, Any]) -> str:
-    """Retourne le label carte normalisé (FR en priorité, fallback EN normalisé)."""
-    map_fr = row.get("map_name_fr")
-    if map_fr:
-        return str(map_fr)
+    """Retourne le label carte normalisé."""
     last_map = row.get("map_name")
     return normalize_map_label(last_map) if last_map else "-"
 
 
+def _render_match_info_row(row: dict[str, Any], normalize_mode_label_fn: Any) -> None:
+    """Affiche la ligne Carte / Playlist / Mode."""
+    last_playlist = row.get("playlist_name")
+    last_pair = row.get("pair_name")
+    last_mode = row.get("game_variant_name")
+    lang = get_lang()
 
+    map_display = _display_map(row)
+    playlist_display = (
+        translate_playlist_name(str(last_playlist), lang=lang) if last_playlist else "-"
+    )
+    last_mode_ui = row.get("mode_ui") or normalize_mode_label_fn(
+        str(last_pair) if last_pair else None
+    )
+    last_pair_fr = translate_pair_name(str(last_pair), lang=lang) if last_pair else None
+    mode_display = last_mode_ui or last_pair_fr or last_mode or "-"
+
+    row_cols = st.columns(3)
+    row_cols[0].metric(" ", map_display)
+    row_cols[1].metric(" ", playlist_display)
+    row_cols[2].metric(" ", mode_display)
 
 
 __all__ = ["render_match_view"]
