@@ -32,6 +32,16 @@ _MIN_FRAME_LEN: int = 14
 #: Retard max par rapport au premier référent : au-delà = suspect AFK
 _AFK_THRESHOLD_MS: float = 10_000.0
 
+#: Si l'estimation filmshell est en avance de plus de cette durée (ms)
+#: sur le premier event API, un second passage est déclenchant avec filtre.
+#: Permet d'éliminer les mouvements de lobby (joueurs qui bougent pendant
+#: le countdown avant le début réel du match).
+_LOBBY_CORRECTION_THRESHOLD_MS: float = 15_000.0
+
+#: Marge de sécurité avant le premier event lors du second passage (ms).
+#: On cherche les mouvements à partir de (gap_min - cette marge).
+_LOBBY_CORRECTION_BUFFER_MS: float = 10_000.0
+
 _BYTE5_HUMAN: int = 0x40
 _BYTE9_HUMAN: int = 0x56
 
@@ -92,12 +102,16 @@ def _decode_coords(data: bytes, pos: int) -> tuple[int, int] | None:
 
 def scan_first_movements(
     chunks: dict[int, tuple[bytes, int, int]],
+    ignore_before_ms: float = 0.0,
 ) -> dict[int, FirstMovement]:
     """Détecte le premier CHANGEMENT de position pour chaque player_index.
 
     Algorithme :
     - Le premier frame vu par pi = baseline de spawn (position figée pendant le
       countdown, positions initiales dans la partie).
+    - ``ignore_before_ms`` : si > 0, les changements de position détectés avant
+      ce timestamp (ms) sont ignorés. Permet de sauter les mouvements de lobby
+      lors d'un second passage après correction.
     - Le premier frame DIFFÉRENT de cette baseline = premier mouvement réel.
     - Les chunks sont traités en ordre croissant : chunk_01 fournit la baseline,
       chunk_02+ capturent le premier mouvement si le match démarre plus tard.
@@ -132,16 +146,18 @@ def scan_first_movements(
                 if pi not in spawn_sig:
                     spawn_sig[pi] = sig
                 elif sig != spawn_sig[pi] and pi not in first_change:
-                    coords = _decode_coords(data, idx)
-                    first_change[pi] = FirstMovement(
-                        timestamp_ms=ts_fn(idx),
-                        chunk=chunk_idx,
-                        b5=data[idx + 5],
-                        b9=data[idx + 9],
-                        y_raw=coords[0] if coords else None,
-                        x_raw=coords[1] if coords else None,
-                        delay_ms=0.0,
-                    )
+                    ts = ts_fn(idx)
+                    if ts >= ignore_before_ms:
+                        coords = _decode_coords(data, idx)
+                        first_change[pi] = FirstMovement(
+                            timestamp_ms=ts,
+                            chunk=chunk_idx,
+                            b5=data[idx + 5],
+                            b9=data[idx + 9],
+                            y_raw=coords[0] if coords else None,
+                            x_raw=coords[1] if coords else None,
+                            delay_ms=0.0,
+                        )
                     spawn_sig[pi] = sig
             pos = idx + 1
 
@@ -189,17 +205,29 @@ def pick_spawn_references(
 def estimate_film_match_start_ms(
     chunks: dict[int, tuple[bytes, int, int]],
     min_players: int = 3,
+    api_first_event_ms: float | None = None,
 ) -> int | None:
     """Calcule l'estimation du timestamp de début de match dans le film.
 
     Valeur = médiane des timestamps de premier mouvement des ``min_players``
     joueurs les plus précoces (non-AFK).
 
+    Second passage automatique si l'estimation est trop précoce (mouvements
+    de lobby détectés pendant le countdown) :
+    - Si ``api_first_event_ms`` est fourni et que l'écart avec l'estimation
+      dépasse ``_LOBBY_CORRECTION_THRESHOLD_MS``, un second scan est lancé
+      avec ``ignore_before_ms`` positionné juste avant le premier event API.
+    - Ce mécanisme élimine les "faux positifs" où des joueurs bougent
+      légèrement (rotation caméra) pendant le lobby pre-match.
+
     Args:
         chunks: {chunk_index: (data, start_ms, dur_ms)}.
         min_players: Nombre minimum de références non-AFK requis.
             Si moins de joueurs sont détectés, retourne quand même
             la médiane de ce qui est disponible (avec 1 joueur minimum).
+        api_first_event_ms: Timestamp du premier kill/death API pour ce match
+            (ms, même référentiel que le film). Utilisé pour détecter les
+            estimations trop précoces (mouvements de lobby).
 
     Returns:
         Timestamp en ms (entier) ou None si aucun mouvement détecté.
@@ -210,9 +238,20 @@ def estimate_film_match_start_ms(
 
     refs, _ = pick_spawn_references(first_movements, n=min_players)
     if not refs:
-        # Repli : prendre le premier joueur disponible même si < min_players
         refs, _ = pick_spawn_references(first_movements, n=1)
     if not refs:
         return None
 
-    return int(statistics.median(fm["timestamp_ms"] for _, fm in refs))
+    estimate = int(statistics.median(fm["timestamp_ms"] for _, fm in refs))
+
+    # Second passage : correction des mouvements de lobby
+    if api_first_event_ms is not None:
+        gap_ms = api_first_event_ms - estimate
+        if gap_ms > _LOBBY_CORRECTION_THRESHOLD_MS:
+            ignore_before = estimate + gap_ms - _LOBBY_CORRECTION_BUFFER_MS
+            first_movements_2 = scan_first_movements(chunks, ignore_before_ms=ignore_before)
+            refs_2, _ = pick_spawn_references(first_movements_2, n=min_players)
+            if len(refs_2) >= min_players:
+                estimate = int(statistics.median(fm["timestamp_ms"] for _, fm in refs_2))
+
+    return estimate
