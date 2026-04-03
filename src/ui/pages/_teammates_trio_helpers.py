@@ -312,6 +312,7 @@ def _render_trio_performance_charts(  # noqa: PLR0913
     f3_xuid: str | None = None,
     colors_by_name: dict[str, str] | None = None,
     records: dict[str, dict[str, float | None]] | None = None,
+    records_per_map: dict | None = None,
 ) -> None:
     """Affiche les graphes de performance escouade (2, 3 ou 4 joueurs).
 
@@ -352,6 +353,7 @@ def _render_trio_performance_charts(  # noqa: PLR0913
         f3_xuid=f3_xuid,
         colors_by_name=colors_by_name,
         records=records,
+        records_per_map=records_per_map,
     )
 
 

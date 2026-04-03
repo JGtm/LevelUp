@@ -204,12 +204,14 @@ def plot_hs_pk_stacked(  # noqa: C901, PLR0912, PLR0915
     if records and _player_xs:
         from src.visualization._squad_record_shapes import add_overlay_record_shapes
         _names_with_data = list(_player_xs.keys())
+        _hspk_colors: dict[str, str] = colors if isinstance(colors, dict) else {}
         for _pname, _xs in _player_xs.items():
             add_overlay_record_shapes(
                 fig,
                 xs=_xs,
                 records={_pname: (records.get(_pname) or {}).get("hs_pk_total")},
                 player_names=_names_with_data,
+                colors_by_name=_hspk_colors,
             )
 
     # ── Légende manuelle (annotations) ───────────────────────────────────────

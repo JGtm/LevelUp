@@ -7,6 +7,38 @@
 
 ## Journal
 
+### [2026-04-03] — feat(records): redesign visuel + records par carte + passage couleurs — Complété
+
+**Statut** : Complété
+
+**Décision technique** :
+3 évolutions simultanées des records historiques sur la page Escouade :
+
+1. **Redesign visuel** : remplacement de la ligne blanche horizontale (`type="line"`) par un rectangle transparent (`type="rect"`) avec bordure épaisse en couleur du joueur et remplissage légèrement teinté. Paramètre `colors_by_name` ajouté à `add_record_shapes` / `add_overlay_record_shapes`.
+
+2. **Records par carte** : quand l'axe X affiche `#N<br>NomCarte`, le record affiché est celui propre à cette carte (meilleure valeur historique du joueur sur cette carte dans le même pair_name). Nouveau : `compute_squad_records_per_map()` dans `squad_records.py` (retourne `{joueur: {métrique: {carte: val}}}`), propagé via `records_per_map` à travers toute la chaîne UI→Viz.
+
+3. **Colonne `map_name`** ajoutée au SQL de `_teammates_history_queries.py` pour permettre le calcul par carte.
+
+**Fichiers modifiés** :
+- `src/data/services/_teammates_history_queries.py` (+map_name)
+- `src/analysis/squad_records.py` (+compute_squad_records_per_map)
+- `src/analysis/__init__.py` (export)
+- `src/visualization/_squad_record_shapes.py` (redesign rect + colors + per_map)
+- `src/visualization/trio.py` (+records_per_map, +colors)
+- `src/visualization/match_bars.py` (+records_per_map, +colors)
+- `src/visualization/teammates_hs_pk.py` (+colors)
+- `src/ui/pages/teammates_charts.py` (+records_per_map dans 3 fonctions)
+- `src/ui/pages/_teammates_trio_helpers.py` (+records_per_map)
+- `src/ui/pages/_teammates_trio.py` (+compute+pass records_per_map)
+- `tests/test_squad_record_shapes.py` (mise à jour assertions rect)
+
+**Résultats** : 50/50 tests records+shapes passent. Suite complète stable (5412 passed), failures pré-existantes inchangées.
+
+**Prochaine étape** : vérification visuelle dans l'app Streamlit.
+
+---
+
 ### [2026-04-03] — fix(i18n): playlist_name_fr et map_name_fr manquants dans le flux Polars — Complété (2 commits)
 
 **Statut** : Complété
