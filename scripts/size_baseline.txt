@@ -108,7 +108,7 @@ FUNC:src/visualization/trio.py:338:plot_trio_kills_deaths:144L
 FUNC:src/visualization/trio.py:38:plot_trio_metric:229L
 MODULE:src/analysis/weapon_parser.py:502L
 MODULE:src/data/repositories/_weapon_kills_repo.py:567L
-MODULE:src/data/services/teammates_service.py:535L
+MODULE:src/data/services/teammates_service.py:536L
 MODULE:src/data/sync/_engine_connections.py:510L
 MODULE:src/data/sync/_match_processing.py:559L
 MODULE:src/data/sync/api_client.py:557L
@@ -117,6 +117,6 @@ MODULE:src/data/sync/transformers/_helpers.py:515L
 MODULE:src/data/sync/transformers/_match.py:577L
 MODULE:src/ui/pages/session_compare.py:538L
 MODULE:src/ui/pages/teammates_helpers.py:502L
-MODULE:src/visualization/friends_impact_heatmap.py:502L
+MODULE:src/visualization/friends_impact_heatmap.py:508L
 MODULE:src/visualization/maps_outcome.py:591L
 MODULE:src/visualization/timeseries.py:506L

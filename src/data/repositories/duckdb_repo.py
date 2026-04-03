@@ -59,7 +59,7 @@ _instances_lock = threading.Lock()
 
 # ---------------------------------------------------------------------------
 # Flag global de mode sync
-# Lorsqu'actif, DuckDBRepository ne tente PAS d'attacher shared_matches.duckdb.
+# Lorsqu'actif, DuckDBRepository ne tente PAS d'attacher shared_matches_v2.duckdb.
 # Le DuckDBSyncEngine ouvre cette base en R/W (connexion directe) ; DuckDB
 # interdit qu'un même fichier soit ouvert sous deux noms différents dans le
 # même processus. Le flag empêche tout conflit avec les threads Streamlit.
@@ -70,7 +70,7 @@ _sync_mode = threading.Event()
 def begin_sync_mode() -> None:
     """Active le mode sync : les DuckDBRepository n'attacheront plus shared_matches.
 
-    À appeler avant que le DuckDBSyncEngine ouvre shared_matches.duckdb en R/W.
+    À appeler avant que le DuckDBSyncEngine ouvre shared_matches_v2.duckdb en R/W.
     """
     _sync_mode.set()
     logger.debug("begin_sync_mode: ATTACH shared_matches suspendu")
@@ -132,7 +132,7 @@ def release_db_connections(db_path: str | Path) -> int:
 def release_all_db_connections() -> int:
     """Ferme toutes les connexions DuckDBRepository actives (tous joueurs).
 
-    Nécessaire avant d'ouvrir shared_matches.duckdb directement (ex. sync),
+    Nécessaire avant d'ouvrir shared_matches_v2.duckdb directement (ex. sync),
     car DuckDB interdit qu'un même fichier soit utilisé sous deux noms différents
     dans le même processus.
 
@@ -192,7 +192,7 @@ class DuckDBRepository(
             player_db_path: Chemin vers stats.duckdb du joueur
             xuid: XUID du joueur
             metadata_db_path: Chemin vers metadata.duckdb (auto-détecté si None)
-            shared_db_path: Chemin vers shared_matches.duckdb (auto-détecté si None)
+            shared_db_path: Chemin vers shared_matches_v2.duckdb (auto-détecté si None)
             gamertag: Gamertag du joueur (optionnel, pour logging)
             read_only: Si True, connexion en lecture seule
             memory_limit: Limite mémoire DuckDB

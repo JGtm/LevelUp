@@ -461,6 +461,12 @@ def plot_squad_map_heatmap(
         df_pl = ensure_polars(df)
         if df_pl.is_empty():
             continue
+        # Ajouter map_ui si absent mais map_name_fr disponible (lang=fr)
+        # Garantit des noms FR cohérents sur l'axe X de la heatmap.
+        if "map_ui" not in df_pl.columns and "map_name_fr" in df_pl.columns and lang == "fr":
+            df_pl = df_pl.with_columns(
+                pl.coalesce([pl.col("map_name_fr").cast(pl.Utf8), pl.col("map_name").cast(pl.Utf8)]).alias("map_ui")
+            )
         bd = compute_map_breakdown(df_pl)
         if not bd.is_empty():
             player_bds.append(bd.with_columns(pl.lit(name).alias("_player")))
