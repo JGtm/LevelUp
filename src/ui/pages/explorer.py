@@ -337,7 +337,7 @@ def _render_match_selector(
             return None
         with col_mid:
             n_found = len(filtered)
-            st.caption(f"🎯 {n_found} / {n_before} match{'s' if n_found > 1 else ''}")
+            st.caption(f"{n_found} / {n_before} match{'s' if n_found > 1 else ''}")
 
     sorted_df = filtered.sort("start_time", descending=True)
     options: list[tuple[str, str]] = []
