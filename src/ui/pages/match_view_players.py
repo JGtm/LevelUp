@@ -19,7 +19,6 @@ from src.ui import display_name_from_xuid
 from src.ui.formatting import format_time_ms as _format_time
 from src.ui.i18n import get_lang, t
 from src.ui.pages.match_table_html import gamertag_link
-from src.ui.pages.match_view_helpers import os_card
 from src.ui.pages.match_view_players_data import (
     has_table_duckdb as _has_table_duckdb,
 )
@@ -261,28 +260,35 @@ def render_match_impact_section(  # noqa: PLR0913
             enriched.append(ie)
         impact_events = enriched
 
-    # Badges d'impact en colonnes
+    # Badges d'impact — flexbox HTML unique pour contrôler gap et padding
     if impact_events:
         _impact_labels = get_impact_labels(get_lang())
-        badge_cols = st.columns(len(impact_events))
-        for i, ie in enumerate(impact_events):
+        cards_html: list[str] = []
+        for ie in impact_events:
             label_info = _impact_labels.get(ie.event_type)
             if not label_info:
                 continue
-            icon, label_fr = label_info
+            _icon, label_fr = label_info
             display_name = ie.gamertag
-            display_html = gamertag_link(display_name) if not ie.is_me else display_name
+            display_html = gamertag_link(display_name) if not ie.is_me else html.escape(display_name)
             accent = "#3DFFB5" if ie.is_me else "#FFB703"  # vert si moi, ambre sinon
-            with badge_cols[i]:
-                os_card(
-                    f"{icon} {label_fr}",
-                    display_html,
-                    ie.extra_label if ie.extra_label else _format_time(ie.time_ms),
-                    accent=accent,
-                    kpi_color=accent,
-                    kpi_is_html=not ie.is_me,
-                    min_h=80,
-                )
+            time_str = html.escape(str(ie.extra_label if ie.extra_label else _format_time(ie.time_ms)))
+            icon_label = html.escape(label_fr)
+            cards_html.append(
+                f"<div class='os-card' style='padding:10px; min-height:80px; flex:1; min-width:90px;"
+                f" border-color:{accent}66;'>"
+                f"<div class='os-card-title' style='font-size:14px'>{icon_label}</div>"
+                f"<div class='os-card-kpi' style='color:{accent};font-size:15px'>{display_html}</div>"
+                f"<div class='os-card-sub'>{time_str}</div>"
+                f"</div>"
+            )
+        if cards_html:
+            st.markdown(
+                "<div style='display:flex; gap:8px; flex-wrap:wrap; margin-bottom:10px;'>"
+                + "".join(cards_html)
+                + "</div>",
+                unsafe_allow_html=True,
+            )
 
     # Graphe timeline kills/deaths
     fig = plot_match_kill_death_timeline(
