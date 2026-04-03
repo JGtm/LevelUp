@@ -151,7 +151,7 @@ def apply_pending_migrations(
 
     Args:
         player_db_path: Chemin vers stats.duckdb d'un joueur.
-        shared_db_path: Chemin vers shared_matches.duckdb.
+        shared_db_path: Chemin vers shared_matches_v2.duckdb.
         pve_db_path: Chemin vers shared_pve.duckdb.
         metadata_db_path: Chemin vers metadata.duckdb.
         backfill_kwargs: kwargs supplémentaires pour les fonctions de backfill.

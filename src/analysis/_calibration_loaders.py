@@ -16,12 +16,12 @@ logger = logging.getLogger(__name__)
 
 
 def _detect_shared_db(db_path: Path, explicit_path: str | Path | None) -> Path:
-    """Résout le chemin shared_matches.duckdb (auto-détecté ou explicite)."""
+    """Résout le chemin shared_matches_v2.duckdb (auto-détecté ou explicite)."""
     if explicit_path is not None:
         p = Path(explicit_path)
         if not p.exists():
             raise FileNotFoundError(
-                "shared_matches.duckdb introuvable. Vérifiez le chemin ou utilisez --shared-db."
+                "shared_matches_v2.duckdb introuvable. Vérifiez le chemin ou utilisez --shared-db."
             )
         logger.debug("_detect_shared_db: chemin explicite → %s", p)
         return p
@@ -35,7 +35,7 @@ def _detect_shared_db(db_path: Path, explicit_path: str | Path | None) -> Path:
         logger.debug("_detect_shared_db: détecté depuis player → %s", found)
     if found is None:
         raise FileNotFoundError(
-            "shared_matches.duckdb introuvable. Vérifiez le chemin ou utilisez --shared-db."
+            "shared_matches_v2.duckdb introuvable. Vérifiez le chemin ou utilisez --shared-db."
         )
     return found
 

@@ -311,7 +311,7 @@ def _fetch_shared_context(
     errors: list[str] = []
     shared_db = _resolve_shared_db_path(path)
     if not shared_db:
-        return None, pl.DataFrame(), frozenset(), ["shared_matches.duckdb introuvable"]
+        return None, pl.DataFrame(), frozenset(), ["shared_matches_v2.duckdb introuvable"]
 
     shared_alias, owns_shared_attach = _find_or_attach_shared(conn, shared_db)
     if not shared_alias:
@@ -378,7 +378,7 @@ def backfill_sessions_for_player(  # noqa: PLR0913
 
     shared_path = _resolve_shared_db_path(path)
     if shared_path is None:
-        results["errors"].append("shared_matches.duckdb introuvable")
+        results["errors"].append("shared_matches_v2.duckdb introuvable")
         return results
 
     ctx = duckdb_read_write(str(path)) if conn is None else nullcontext(conn)
@@ -448,7 +448,7 @@ def backfill_teammates_signatures(
         _ensure_enrichment_table(conn)
         shared_db = _resolve_shared_db_path(path)
         if not shared_db:
-            results["errors"].append("shared_matches.duckdb introuvable")
+            results["errors"].append("shared_matches_v2.duckdb introuvable")
             return results
         shared_alias, _ = _find_or_attach_shared(conn, shared_db)
         if not shared_alias:

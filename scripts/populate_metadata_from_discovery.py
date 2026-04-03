@@ -6,7 +6,7 @@ Ce script :
 1. Crée metadata.duckdb s'il n'existe pas
 2. Crée les tables nécessaires (playlists, maps, playlist_map_mode_pairs, game_variants)
    avec colonnes i18n (name_en, name_fr, mode_name, playlist_canonical_fr, ...)
-3. Récupère les asset IDs uniques depuis shared_matches.duckdb (marché v5.1+)
+3. Récupère les asset IDs uniques depuis shared_matches_v2.duckdb (v5.1+)
 4. Peuple les tables depuis Discovery UGC API
 5. Enrichit les colonnes i18n depuis les tables mode_translations / playlist_translations
 6. Écrit metadata_populate_errors.txt à la racine pour les cas non résolus
@@ -56,9 +56,9 @@ SHARED_MATCHES_DB_PATH = WAREHOUSE_DIR / "shared_matches_v2.duckdb"
 
 
 def get_unique_asset_ids() -> dict[str, set[str]]:
-    """Récupère les asset IDs uniques depuis shared_matches.duckdb.
+    """Récupère les asset IDs uniques depuis shared_matches_v2.duckdb.
 
-    Compatible v5.1+ : lit match_registry (shared_matches.duckdb),
+    Compatible v5.1+ : lit match_registry (shared_matches_v2.duckdb),
     pas match_stats des DBs joueurs (supprimée en v5.1).
     """
     assets: dict[str, set[str]] = {
@@ -69,7 +69,7 @@ def get_unique_asset_ids() -> dict[str, set[str]]:
     }
 
     if not SHARED_MATCHES_DB_PATH.exists():
-        logger.warning("shared_matches.duckdb non trouvé : %s", SHARED_MATCHES_DB_PATH)
+        logger.warning("shared_matches_v2.duckdb non trouvé : %s", SHARED_MATCHES_DB_PATH)
         return assets
 
     column_map = {
@@ -291,8 +291,8 @@ async def main_async(
         # Créer le schéma si nécessaire
         create_metadata_db(conn)
 
-        # Récupérer les asset IDs depuis shared_matches.duckdb
-        logger.info("Récupération des asset IDs depuis shared_matches.duckdb...")
+        # Récupérer les asset IDs depuis shared_matches_v2.duckdb
+        logger.info("Récupération des asset IDs depuis shared_matches_v2.duckdb...")
         assets = get_unique_asset_ids()
 
         if not any(assets.values()):

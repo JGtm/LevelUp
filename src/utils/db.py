@@ -179,7 +179,7 @@ def ensure_shared_attached(
 
     Args:
         conn: Connexion DuckDB active.
-        shared_path: Chemin absolu vers shared_matches.duckdb.
+        shared_path: Chemin absolu vers shared_matches_v2.duckdb.
         aliases: Noms d'alias à essayer pour l'attachement.
 
     Returns:
@@ -187,7 +187,7 @@ def ensure_shared_attached(
     """
     import contextlib
 
-    # Chercher un alias existant pointant vers shared_matches.duckdb
+    # Chercher un alias existant pointant vers shared_matches_v2.duckdb
     with contextlib.suppress(Exception):
         dbs = conn.execute("SELECT database_name, path FROM duckdb_databases()").fetchall()
         for db_name, db_path_val in dbs:

@@ -1,7 +1,7 @@
 """Mixin — traitement des matchs depuis l'API.
 
 Itération sur l'historique API, dispatch vers _process_known_match ou
-_process_new_match, backfill sélectif dans shared_matches.duckdb.
+_process_new_match, backfill sélectif dans shared_matches_v2.duckdb.
 """
 
 from __future__ import annotations
@@ -206,7 +206,7 @@ class MatchProcessingMixin(MatchProcessingHelpersMixin):
 
         # ── Mode legacy v4 non supporté en v5.1 (8bis.B1) ─────────────────
         raise RuntimeError(
-            f"Mode legacy v4 non supporté en v5.1 — shared_matches.duckdb requis. "
+            f"Mode legacy v4 non supporté en v5.1 — shared_matches_v2.duckdb requis. "
             f"Match {match_id} ne peut pas être traité sans shared DB. "
             f"Exécutez 'python scripts/migrate_to_v5.py' pour créer la DB partagée."
         )

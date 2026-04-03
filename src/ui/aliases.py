@@ -1,6 +1,6 @@
 """Gestion des alias XUID -> Gamertag.
 
-Ce module gère les alias XUID->Gamertag depuis shared_matches.duckdb
+Ce module gère les alias XUID->Gamertag depuis shared_matches_v2.duckdb
 (table xuid_aliases — source unique de vérité depuis v5.1).
 
 NOTE: Le fichier xuid_aliases.json et les fonctions associées
@@ -52,9 +52,9 @@ def load_aliases_from_db(db_path: str) -> dict[str, str]:
 
 
 def _get_shared_metadata_path(db_path: str) -> str | None:
-    """Retourne le chemin vers shared_matches.duckdb depuis un chemin de DB joueur.
+    """Retourne le chemin vers shared_matches_v2.duckdb depuis un chemin de DB joueur.
 
-    NOTE v5.1 : xuid_aliases est centralisée dans shared_matches.duckdb (13 955 rows).
+    NOTE v5.1 : xuid_aliases est centralisée dans shared_matches_v2.duckdb (13 955 rows).
     metadata.duckdb ne contient PAS cette table.
     """
     from src.utils.paths import get_shared_matches_path_from_player
@@ -67,16 +67,16 @@ def _get_shared_metadata_path(db_path: str) -> str | None:
 
 @lru_cache(maxsize=16)
 def _load_aliases_from_duckdb_cached(db_path: str, mtime: float | None) -> dict[str, str]:
-    """Version cachée pour DuckDB — lecture depuis shared_matches.duckdb uniquement.
+    """Version cachée pour DuckDB — lecture depuis shared_matches_v2.duckdb uniquement.
 
     NOTE v5.1 : Les aliases locaux (stats.duckdb) sont obsolètes.
-    Seule shared_matches.duckdb fait foi.
+    Seule shared_matches_v2.duckdb fait foi.
     """
     from src.utils.db import duckdb_read_only
 
     result: dict[str, str] = {}
 
-    # V5.1 : Lire UNIQUEMENT depuis shared_matches.duckdb (source de vérité)
+    # V5.1 : Lire UNIQUEMENT depuis shared_matches_v2.duckdb (source de vérité)
     shared_path = _get_shared_metadata_path(db_path)
     if shared_path:
         try:
@@ -104,7 +104,7 @@ def get_xuid_aliases(db_path: str | None = None) -> dict[str, str]:
 
     .. deprecated::
         OBSOLÈTE pour la résolution de gamertags dans le contexte d'un match.
-        Cette fonction lit shared_matches.duckdb via un cache LRU indirect et ignore
+        Cette fonction lit shared_matches_v2.duckdb via un cache LRU indirect et ignore
         les données fraîches de match_participants / highlight_events.
 
         **NE PAS UTILISER** dans les vues de match (render_match_scoreboard,
@@ -118,7 +118,7 @@ def get_xuid_aliases(db_path: str | None = None) -> dict[str, str]:
         contextes hors-match où aucun match_id n'est disponible.
 
     L'ordre de priorité est :
-    1. Table xuid_aliases de shared_matches.duckdb (si db_path fourni)
+    1. Table xuid_aliases de shared_matches_v2.duckdb (si db_path fourni)
     2. Constantes XUID_ALIASES_DEFAULT
 
     Args:
@@ -141,7 +141,7 @@ def display_name_from_xuid(xuid: str, db_path: str | None = None) -> str:
 
     .. deprecated::
         OBSOLÈTE pour la résolution de gamertags dans le contexte d'un match.
-        Passe par get_xuid_aliases() → cache LRU → shared_matches.duckdb et ignore
+        Passé par get_xuid_aliases() → cache LRU → shared_matches_v2.duckdb et ignore
         les données fraîches de match_participants / highlight_events.
 
         **NE PAS APPELER** depuis les sections de vue de match.

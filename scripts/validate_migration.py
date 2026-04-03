@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Scripts de validation post-migration v5.
 
-Vérifie l'intégrité des données après migration vers shared_matches.duckdb :
+Vérifie l'intégrité des données après migration vers shared_matches_v2.duckdb :
 - Aucune perte de matchs (comparaison avant/après)
 - Cohérence des comptages (médailles, events, participants)
 - Intégrité référentielle (FK, orphelins)
@@ -47,16 +47,16 @@ def load_profiles() -> dict:
 
 
 def check_shared_db_exists() -> bool:
-    """Vérifie que shared_matches.duckdb existe."""
+    """Vérifie que shared_matches_v2.duckdb existe."""
     if not SHARED_DB_PATH.exists():
-        logger.error("shared_matches.duckdb introuvable : %s", SHARED_DB_PATH)
+        logger.error("shared_matches_v2.duckdb introuvable : %s", SHARED_DB_PATH)
         return False
-    logger.info("✓ shared_matches.duckdb trouvée (%s)", SHARED_DB_PATH)
+    logger.info("✓ shared_matches_v2.duckdb trouvée (%s)", SHARED_DB_PATH)
     return True
 
 
 def check_shared_db_schema() -> list[str]:
-    """Vérifie que le schéma de shared_matches.duckdb est correct."""
+    """Vérifie que le schéma de shared_matches_v2.duckdb est correct."""
     errors: list[str] = []
 
     expected_tables = {
@@ -183,7 +183,7 @@ def check_match_completeness(baseline_path: Path | None = None) -> list[str]:
 
 
 def check_referential_integrity() -> list[str]:
-    """Vérifie l'intégrité référentielle dans shared_matches.duckdb."""
+    """Vérifie l'intégrité référentielle dans shared_matches_v2.duckdb."""
     errors: list[str] = []
 
     con = duckdb.connect(str(SHARED_DB_PATH), read_only=True)
@@ -356,7 +356,7 @@ def main() -> None:
     print()
 
     if not check_shared_db_exists():
-        print("\n❌ shared_matches.duckdb n'existe pas encore.")
+        print("\n❌ shared_matches_v2.duckdb n'existe pas encore.")
         print("   Ce script sera utilisable après Sprint 1 (création de la base)")
         print("   et Sprint 2 (migration des données).")
         sys.exit(0)

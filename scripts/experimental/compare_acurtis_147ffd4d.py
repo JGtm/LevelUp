@@ -40,11 +40,12 @@ from src.analysis.packet_index import (
 from src.analysis.player_index import detect_player_indices
 from src.analysis.weapon_parser import scan_fire_events, scan_formula_a
 from src.utils.db import duckdb_read_only
+from src.utils.paths import get_shared_matches_path
 
 # ── Constantes ────────────────────────────────────────────────────────────────
 
 MATCH_ID = "147ffd4d-3d1d-4b90-a46d-5570009f8c36"
-SHARED_DB = ROOT / "data" / "warehouse" / "shared_matches.duckdb"
+SHARED_DB = get_shared_matches_path()
 CHUNKS_DIR = ROOT / "data" / "investigation" / "chunks" / MATCH_ID[:8]
 APPROX_CHUNK_MS = 20_000
 

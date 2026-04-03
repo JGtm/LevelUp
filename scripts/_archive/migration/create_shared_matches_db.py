@@ -1,6 +1,6 @@
-"""Crée la base de données partagée shared_matches.duckdb.
+"""Crée la base de données partagée shared_matches_v2.duckdb.
 
-Ce script initialise la base `data/warehouse/shared_matches.duckdb`
+Ce script initialise la base `data/warehouse/shared_matches_v2.duckdb`
 à partir du DDL défini dans `scripts/migration/schema_v5.sql`.
 
 Idempotent : si la base existe déjà avec le bon schéma, ne fait rien.
@@ -21,7 +21,7 @@ import duckdb
 # Résolution du répertoire racine du projet
 PROJECT_ROOT = Path(__file__).resolve().parents[2]
 SCHEMA_SQL_PATH = PROJECT_ROOT / "scripts" / "migration" / "schema_v5.sql"
-DEFAULT_DB_PATH = PROJECT_ROOT / "data" / "warehouse" / "shared_matches.duckdb"
+DEFAULT_DB_PATH = PROJECT_ROOT / "data" / "warehouse" / "shared_matches_v2.duckdb"
 
 logger = logging.getLogger(__name__)
 
@@ -100,7 +100,7 @@ def create_shared_matches_db(
     force: bool = False,
     dry_run: bool = False,
 ) -> dict[str, object]:
-    """Crée la base shared_matches.duckdb avec le schéma v5.
+    """Crée la base shared_matches_v2.duckdb avec le schéma v5.
 
     Args:
         db_path: Chemin de la base à créer.
@@ -216,7 +216,7 @@ def create_shared_matches_db(
 
 
 def validate_shared_schema(db_path: Path = DEFAULT_DB_PATH) -> dict[str, object]:
-    """Valide le schéma de shared_matches.duckdb.
+    """Valide le schéma de shared_matches_v2.duckdb.
 
     Vérifie la présence de toutes les tables, colonnes-clé et index.
 
@@ -322,7 +322,7 @@ def validate_shared_schema(db_path: Path = DEFAULT_DB_PATH) -> dict[str, object]
 def main() -> None:
     """Point d'entrée CLI."""
     parser = argparse.ArgumentParser(
-        description="Crée la base de données partagée shared_matches.duckdb (v5)"
+        description="Crée la base de données partagée shared_matches_v2.duckdb (v5)"
     )
     parser.add_argument(
         "--db-path",

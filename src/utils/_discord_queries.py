@@ -1,7 +1,7 @@
 """Requêtes DuckDB pour les notifications Discord.
 
 Fonctions de récupération des données de matchs et de complétude
-depuis shared_matches.duckdb.
+depuis shared_matches_v2.duckdb.
 """
 
 from __future__ import annotations
@@ -86,7 +86,7 @@ def _fetch_squad_info(
 
 
 def fetch_last_match_info(xuid: str) -> object | None:
-    """Récupère les informations du dernier match depuis shared_matches.duckdb.
+    """Récupère les informations du dernier match depuis shared_matches_v2.duckdb.
 
     Args:
         xuid: Xbox User ID du joueur.

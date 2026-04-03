@@ -1,4 +1,4 @@
-"""Migration : table weapon_kills (shared_matches.duckdb).
+"""Migration : table weapon_kills (shared_matches_v2.duckdb).
 
 Stocke le nombre de kills par arme, joueur et match,
 alimentée par le backfill depuis les films SPNKr.

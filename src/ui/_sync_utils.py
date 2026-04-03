@@ -145,7 +145,7 @@ def _get_sync_metadata_smart(db_path: str, xuid: str | None = None) -> dict:
 
 
 def _shared_path(player_db: Path) -> Path:
-    """Résout le chemin vers shared_matches.duckdb depuis le chemin joueur."""
+    """Résout le chemin vers shared_matches_v2.duckdb depuis le chemin joueur."""
     from src.utils.paths import get_shared_matches_path, get_shared_matches_path_from_player
 
     return (

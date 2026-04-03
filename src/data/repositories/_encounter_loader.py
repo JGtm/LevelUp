@@ -1,7 +1,7 @@
-"""Chargement des statistiques d'historique des rencontres depuis shared_matches.duckdb.
+"""Chargement des statistiques d'historique des rencontres depuis shared_matches_v2.duckdb.
 
 Fournit load_encounter_stats() — fonction libre sans état, ouvrant
-shared_matches.duckdb en lecture seule pour calculer, pour chaque XUIDs
+shared_matches_v2.duckdb en lecture seule pour calculer, pour chaque XUIDs
 cible, les métriques d'interactions historiques avec le joueur principal.
 """
 
@@ -33,13 +33,13 @@ def _has_view(conn: duckdb.DuckDBPyConnection, view_name: str) -> bool:
 
 
 def _get_shared_db_path(db_path: str) -> Path:
-    """Dérive le chemin shared_matches.duckdb depuis le chemin stats.duckdb du joueur.
+    """Dérive le chemin shared_matches_v2.duckdb depuis le chemin stats.duckdb du joueur.
 
     Args:
         db_path: Chemin vers data/players/{gamertag}/stats.duckdb.
 
     Returns:
-        Chemin résolu vers data/warehouse/shared_matches.duckdb.
+        Chemin résolu vers data/warehouse/shared_matches_v2.duckdb.
     """
     return (
         get_shared_matches_path_from_player(db_path)
@@ -50,7 +50,7 @@ def _get_shared_db_path(db_path: str) -> Path:
 
 
 def _fetch_match_start_time(match_id: str, db_path: str) -> datetime | None:
-    """Récupère le start_time d'un match depuis shared_matches.duckdb.
+    """Récupère le start_time d'un match depuis shared_matches_v2.duckdb.
 
     Args:
         match_id: Identifiant du match.
@@ -193,7 +193,7 @@ def load_encounter_stats(
 
     shared_path = _get_shared_db_path(db_path)
     if not shared_path.exists():
-        logger.warning("shared_matches.duckdb introuvable : %s", shared_path)
+        logger.warning("shared_matches_v2.duckdb introuvable : %s", shared_path)
         return pl.DataFrame()
 
     filter_past = match_start_time is not None and current_match_id is not None

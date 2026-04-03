@@ -8,7 +8,7 @@
 ║ Conservé pour référence historique et cas exceptionnels de recovery.        ║
 ╚══════════════════════════════════════════════════════════════════════════════╝
 
-Migre les données d'un joueur vers shared_matches.duckdb.
+Migre les données d'un joueur vers shared_matches_v2.duckdb.
 
 Logique :
 1. Lire tous les matchs de data/players/{gamertag}/stats.duckdb
@@ -47,7 +47,7 @@ import polars as pl
 PROJECT_ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(PROJECT_ROOT))
 
-DEFAULT_SHARED_DB = PROJECT_ROOT / "data" / "warehouse" / "shared_matches.duckdb"
+DEFAULT_SHARED_DB = PROJECT_ROOT / "data" / "warehouse" / "shared_matches_v2.duckdb"
 PROFILES_PATH = PROJECT_ROOT / "db_profiles.json"
 XUID_ALIASES_JSON = PROJECT_ROOT / "data" / "xuid_aliases.json"
 
@@ -671,7 +671,7 @@ def recalculate_player_counts(
     ont ce match dans leur DB joueur, et met à jour player_count dans shared.
 
     Args:
-        shared_db_path: Chemin vers shared_matches.duckdb.
+        shared_db_path: Chemin vers shared_matches_v2.duckdb.
         profiles: Profils joueurs (si None, chargé depuis db_profiles.json).
         verbose: Afficher le détail.
 
@@ -762,13 +762,13 @@ def migrate_player_to_shared(
     dry_run: bool = False,
     verbose: bool = True,
 ) -> dict[str, int]:
-    """Migre toutes les données d'un joueur vers shared_matches.duckdb.
+    """Migre toutes les données d'un joueur vers shared_matches_v2.duckdb.
 
     Args:
         gamertag: Gamertag du joueur.
         xuid: XUID du joueur.
         player_db_path: Chemin vers la DB joueur.
-        shared_db_path: Chemin vers shared_matches.duckdb.
+        shared_db_path: Chemin vers shared_matches_v2.duckdb.
         dry_run: Si True, ne modifie rien.
         verbose: Si True, affiche le détail.
 
@@ -971,7 +971,7 @@ def migrate_all_players(
 def main() -> None:
     """Point d'entrée CLI."""
     parser = argparse.ArgumentParser(
-        description="Migre les données joueur vers shared_matches.duckdb"
+        description="Migre les données joueur vers shared_matches_v2.duckdb"
     )
     parser.add_argument(
         "gamertag",
@@ -997,7 +997,7 @@ def main() -> None:
         "--shared-db",
         type=Path,
         default=DEFAULT_SHARED_DB,
-        help=f"Chemin vers shared_matches.duckdb (défaut: {DEFAULT_SHARED_DB})",
+        help=f"Chemin vers shared_matches_v2.duckdb (défaut: {DEFAULT_SHARED_DB})",
     )
 
     args = parser.parse_args()

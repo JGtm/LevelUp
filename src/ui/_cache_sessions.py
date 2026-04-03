@@ -42,7 +42,7 @@ def cached_compute_sessions_db(  # noqa: C901, PLR0912, PLR0913, PLR0915
             from src.utils.paths import get_shared_matches_path_from_player
 
             with duckdb_read_only(db_path) as conn:
-                # Attacher shared_matches.duckdb pour accéder aux données partagées
+                # Attacher shared_matches_v2.duckdb pour accéder aux données partagées
                 shared_attached = False
                 shared_path = get_shared_matches_path_from_player(db_path)
                 if shared_path and shared_path.exists():
@@ -118,7 +118,7 @@ def cached_compute_sessions_db(  # noqa: C901, PLR0912, PLR0913, PLR0915
                             logger.warning("Erreur chargement matchs depuis shared: %s", e)
                             df_pl = None
                 else:
-                    logger.info("shared_matches.duckdb non attaché pour %s", db_path)
+                    logger.info("shared_matches_v2.duckdb non attaché pour %s", db_path)
 
                 if df_pl is None:
                     # v5.1 : pas de fallback local (match_stats supprimée des DBs individuelles)

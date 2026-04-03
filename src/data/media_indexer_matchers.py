@@ -18,7 +18,7 @@ def _load_matches_by_xuid(
     db_path: Path,
     player_dbs: list[tuple[Path, str]],
 ) -> dict[str, list[tuple[Any, ...]]]:
-    """Charge les matchs de chaque joueur depuis shared_matches.duckdb."""
+    """Charge les matchs de chaque joueur depuis shared_matches_v2.duckdb."""
     matches_by_xuid: dict[str, list[tuple[Any, ...]]] = {}
     shared_path = get_shared_matches_path_from_player(db_path)
     if shared_path and shared_path.exists():

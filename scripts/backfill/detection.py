@@ -4,7 +4,7 @@ Supporte deux modes de détection :
 - OR (défaut) : sélectionne les matchs manquant AU MOINS UNE donnée demandée
 - AND (strict) : sélectionne les matchs manquant TOUTES les données demandées
 
-V5 : La détection se fait via shared_matches.duckdb (match_registry + match_participants).
+V5 : La détection se fait via shared_matches_v2.duckdb (match_registry + match_participants).
 Le bitmask backfill_completed est stocké dans match_registry.
 
 Note architecture (v5.2+) :
@@ -94,7 +94,7 @@ def find_matches_missing_data(
     Args:
         conn: Connexion DuckDB (player DB).
         xuid: XUID du joueur.
-        shared_conn: Connexion à shared_matches.duckdb (obligatoire).
+        shared_conn: Connexion à shared_matches_v2.duckdb (obligatoire).
         scope: Périmètre de données — **méthode recommandée** (SyncScope).
         detection_mode: (legacy) "or" (défaut) ou "and" (strict).
         max_matches: (legacy) Limite de résultats.
@@ -523,7 +523,7 @@ def _find_matches_in_shared_db(
     force_participants_damage: bool,
     force_participants_avg_life: bool,
 ) -> list[str]:
-    """Détection des matchs manquants dans shared_matches.duckdb (v5).
+    """Détection des matchs manquants dans shared_matches_v2.duckdb (v5).
 
     Utilisé pour les backfills participants-only qui travaillent directement
     sur la base partagée sans dépendre de la DB joueur locale.
@@ -532,7 +532,7 @@ def _find_matches_in_shared_db(
     applique les conditions de NULL sur les colonnes demandées.
 
     Args:
-        shared_conn: Connexion à shared_matches.duckdb.
+        shared_conn: Connexion à shared_matches_v2.duckdb.
         xuid: XUID du joueur.
         max_matches: Limite de résultats.
         participants_*: Flags de backfill.
@@ -630,7 +630,7 @@ def find_matches_missing_participant_bits(
     pour identifier précisément quelles données sont absentes.
 
     Args:
-        shared_conn: Connexion à shared_matches.duckdb.
+        shared_conn: Connexion à shared_matches_v2.duckdb.
         xuid: XUID du joueur.
         bits_required: Masque des bits requis (ex: ``ParticipantBits.SKILL``).
         force: Si True, retourne tous les matchs (ignore le bitmask).
@@ -681,7 +681,7 @@ def find_matches_missing_match_bits(
     (bits ≥ 16). Pas de filtre xuid — les données match sont globales.
 
     Args:
-        shared_conn: Connexion à shared_matches.duckdb.
+        shared_conn: Connexion à shared_matches_v2.duckdb.
         bits_required: Masque des bits requis (ex: ``MatchBits.EVENTS``).
         force: Si True, retourne tous les matchs.
         max_matches: Limite de résultats.
@@ -822,7 +822,7 @@ def find_matches_with_stale_spnkr(
       (probablement échoués à cause du bug, avant l'ajout du tracking).
 
     Args:
-        shared_conn: Connexion à shared_matches.duckdb.
+        shared_conn: Connexion à shared_matches_v2.duckdb.
         min_version: Version SPNKr minimum acceptable.
         max_matches: Limite de résultats par catégorie.
 

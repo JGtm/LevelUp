@@ -135,10 +135,10 @@ def get_metadata_db_path() -> Path:
 
 
 def get_shared_matches_path() -> Path:
-    """Retourne le chemin vers la DB des matchs partagés (shared_matches.duckdb).
+    """Retourne le chemin vers la DB des matchs partagés (shared_matches_v2.duckdb).
 
     Returns:
-        Chemin absolu vers data/warehouse/shared_matches.duckdb
+        Chemin absolu vers data/warehouse/shared_matches_v2.duckdb
     """
     return WAREHOUSE_DIR / SHARED_MATCHES_DB_FILENAME
 

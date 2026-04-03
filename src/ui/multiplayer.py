@@ -135,7 +135,7 @@ def _resolve_from_shared(
     xuid: str | None,
     total_matches: int,
 ) -> tuple[str | None, int]:
-    """Résout xuid et/ou match count depuis shared_matches.duckdb.
+    """Résout xuid et/ou match count depuis shared_matches_v2.duckdb.
 
     Indépendant de la player DB — fonctionne même si celle-ci est verrouillée.
     """

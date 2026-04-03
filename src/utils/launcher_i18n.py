@@ -444,12 +444,12 @@ STRINGS: dict[str, dict[str, str]] = {
     },
     # ── _ensure_warehouse_dbs ─────────────────────────────────────────────────
     "warehouse_shared_init": {
-        "fr": "  ✓ shared_matches.duckdb initialisé",
-        "en": "  ✓ shared_matches.duckdb initialized",
+        "fr": "  ✓ shared_matches_v2.duckdb initialisé",
+        "en": "  ✓ shared_matches_v2.duckdb initialized",
     },
     "warehouse_shared_init_fail": {
-        "fr": "  ⚠ Impossible d'initialiser shared_matches.duckdb : {err}",
-        "en": "  ⚠ Unable to initialize shared_matches.duckdb: {err}",
+        "fr": "  ⚠ Impossible d'initialiser shared_matches_v2.duckdb : {err}",
+        "en": "  ⚠ Unable to initialize shared_matches_v2.duckdb: {err}",
     },
     "warehouse_meta_init": {
         "fr": "  ✓ metadata.duckdb initialisé",

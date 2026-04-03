@@ -72,7 +72,7 @@ def get_repository(  # noqa: PLR0913
         xuid: XUID du joueur principal
         mode: Mode de repository (seul DUCKDB est supporté)
         warehouse_path: @deprecated - Ignoré depuis v4
-        shared_db_path: Chemin vers shared_matches.duckdb (auto-détecté si None)
+        shared_db_path: Chemin vers shared_matches_v2.duckdb (auto-détecté si None)
         gamertag: Gamertag du joueur (optionnel)
 
     Returns:
@@ -149,7 +149,7 @@ def get_repository_from_profile(
         gamertag: Gamertag du joueur
         mode: @deprecated - Ignoré depuis v4, toujours DUCKDB
         profiles_path: Chemin vers db_profiles.json
-        shared_db_path: Chemin vers shared_matches.duckdb (auto-détecté si None)
+        shared_db_path: Chemin vers shared_matches_v2.duckdb (auto-détecté si None)
 
     Returns:
         Instance de DuckDBRepository configurée
