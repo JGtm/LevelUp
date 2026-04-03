@@ -314,6 +314,31 @@ def _render_match_selector(
     if filtered.is_empty():
         return None
 
+    # Colonnes alignées : sélecteur (gauche) | recherche par ID (droite)
+    # Ratio [3, 2] : le champ ID a 40% de la largeur — largeur suffisante pour un UUID complet
+    col_sel, col_mid = st.columns([3, 2])
+
+    with col_mid:
+        mid_query = st.text_input(
+            "Match ID",
+            key="explorer_match_id_search",
+            placeholder="70a1c6c6-xxxx-xxxx-xxxx-xxxxxxxxxxxx",
+        ).strip()
+
+    # Filtrage par Match ID partiel si saisi (≥ 6 caractères)
+    n_before = len(filtered)
+    if mid_query and len(mid_query) >= 6 and "match_id" in filtered.columns:
+        filtered = filtered.filter(
+            pl.col("match_id").cast(pl.Utf8).str.contains(mid_query, literal=True)
+        )
+        if filtered.is_empty():
+            with col_mid:
+                st.warning(t("exp_no_match_id"))
+            return None
+        with col_mid:
+            n_found = len(filtered)
+            st.caption(f"🎯 {n_found} / {n_before} match{'s' if n_found > 1 else ''}")
+
     sorted_df = filtered.sort("start_time", descending=True)
     options: list[tuple[str, str]] = []
     for row in sorted_df.iter_rows(named=True):
@@ -331,11 +356,12 @@ def _render_match_selector(
 
     all_lbl = t("exp_filter_all")
     labels = [all_lbl] + [lbl for lbl, _ in options]
-    pick = st.selectbox(
-        t("exp_match_select"),
-        labels,
-        key="_exp_match_pick",
-    )
+    with col_sel:
+        pick = st.selectbox(
+            t("exp_match_select"),
+            labels,
+            key="_exp_match_pick",
+        )
 
     if pick and pick != all_lbl:
         idx = labels.index(pick) - 1

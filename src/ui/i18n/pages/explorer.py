@@ -39,6 +39,10 @@ STRINGS: dict[str, dict[str, str] | str] = {
         "en": "Summary with {gamertag}",
     },
     "exp_no_results": {"fr": "Aucun résultat", "en": "No results"},
+    "exp_no_match_id": {
+        "fr": "Aucun match trouvé pour cet identifiant.",
+        "en": "No match found for this ID.",
+    },
     "exp_results_title": {"fr": "Résultats ({count})", "en": "Results ({count})"},
     "exp_select_match_hint": {
         "fr": "Cliquez sur « Rechercher » pour afficher le détail du match.",
