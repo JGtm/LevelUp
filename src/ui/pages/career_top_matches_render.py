@@ -205,8 +205,9 @@ def _build_top_table_html(rows: list[dict], *, best: bool, gamertag: str = "") -
         match_link = _match_id_link(mid, gamertag)
         _pair = row.get("pair_name")
         mode = html.escape(
-            translate_pair_name(_pair, lang=get_lang())
-            or str(row.get("mode_ui") or row.get("game_variant_name") or row.get("playlist_name") or "—")
+            str(row.get("mode_ui") or row.get("pair_name_fr") or "")
+            or (translate_pair_name(_pair, lang=get_lang()) if _pair else None)
+            or str(row.get("game_variant_name") or row.get("playlist_name") or "—")
         )
 
         score = html.escape(_format_score(row.get("my_team_score"), row.get("enemy_team_score")))
@@ -217,7 +218,8 @@ def _build_top_table_html(rows: list[dict], *, best: bool, gamertag: str = "") -
         kd_style = f" style='color:{kd_c};font-weight:700;'" if kd_c else ""
         duration = html.escape(_format_duration(row.get("time_played_seconds")))
         date_str = html.escape(_format_date(row.get("start_time")))
-        map_td = map_name_cell_html(row.get("map_name"), row.get("map_id")).replace("<td", "<td class='os-sb-td'", 1)
+        _map_display = row.get("map_ui") or row.get("map_name_fr") or row.get("map_name")
+        map_td = map_name_cell_html(_map_display, row.get("map_id")).replace("<td", "<td class='os-sb-td'", 1)
 
         badge_td = f"<td class='os-sb-td'>{badge}</td>" if show_badge_col else ""
         body.append(

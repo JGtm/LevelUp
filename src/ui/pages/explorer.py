@@ -244,8 +244,12 @@ def _render_cascade_filters(day_df: pl.DataFrame) -> pl.DataFrame:
     all_lbl = t("exp_filter_all")
     col_type, col_pl, col_mode, col_map = st.columns(4)
 
-    playlists = _unique_sorted(day_df, "playlist_name")
-    types = sorted({classify_experience_type(p) for p in playlists})
+    # Utiliser playlist_ui (traduit) si disponible, sinon playlist_name
+    _pl_col = "playlist_ui" if "playlist_ui" in day_df.columns else "playlist_name"
+    playlists = _unique_sorted(day_df, _pl_col)
+    # classify_experience_type opère toujours sur playlist_name (EN) pour la logique de catégorisation
+    _pl_en_col = "playlist_name"
+    types = sorted({classify_experience_type(p) for p in _unique_sorted(day_df, _pl_en_col)})
     type_labels = _experience_type_labels()
 
     with col_type:
@@ -255,15 +259,15 @@ def _render_cascade_filters(day_df: pl.DataFrame) -> pl.DataFrame:
             key="_exp_type",
         )
 
-    if type_pick != all_lbl and "playlist_name" in day_df.columns:
+    if type_pick != all_lbl and _pl_en_col in day_df.columns:
         code = next(
             (k for k, v in type_labels.items() if v == type_pick),
             None,
         )
         if code:
-            keep = [p for p in playlists if classify_experience_type(p) == code]
-            day_df = day_df.filter(pl.col("playlist_name").is_in(keep))
-            playlists = keep
+            keep_en = [p for p in _unique_sorted(day_df, _pl_en_col) if classify_experience_type(p) == code]
+            day_df = day_df.filter(pl.col(_pl_en_col).is_in(keep_en))
+            playlists = _unique_sorted(day_df, _pl_col)
 
     with col_pl:
         pl_pick = st.selectbox(
@@ -271,8 +275,8 @@ def _render_cascade_filters(day_df: pl.DataFrame) -> pl.DataFrame:
             [all_lbl] + playlists,
             key="_exp_pl",
         )
-    if pl_pick != all_lbl and "playlist_name" in day_df.columns:
-        day_df = day_df.filter(pl.col("playlist_name") == pl_pick)
+    if pl_pick != all_lbl and _pl_col in day_df.columns:
+        day_df = day_df.filter(pl.col(_pl_col) == pl_pick)
 
     # Utiliser mode_ui (traduit) si disponible, sinon pair_name
     _mode_col = "mode_ui" if "mode_ui" in day_df.columns else "pair_name"

@@ -110,17 +110,33 @@ def _add_win_rate_column(
 def _ensure_display_columns(dff_table: pl.DataFrame, waypoint_player: str) -> pl.DataFrame:
     """Ajoute les colonnes d'affichage manquantes pour le tableau."""
     if "playlist_fr" not in dff_table.columns:
-        dff_table = dff_table.with_columns(pl.col("playlist_name").alias("playlist_fr"))
+        if "playlist_name_fr" in dff_table.columns:
+            dff_table = dff_table.with_columns(
+                pl.coalesce([
+                    pl.col("playlist_name_fr").cast(pl.Utf8),
+                    pl.col("playlist_name").cast(pl.Utf8),
+                ]).alias("playlist_fr")
+            )
+        else:
+            dff_table = dff_table.with_columns(pl.col("playlist_name").alias("playlist_fr"))
     if "mode_ui" not in dff_table.columns:
-        _mh_mode_map = build_mapping(
-            dff_table["pair_name"], lambda x: translate_pair_name(x, lang=get_lang())
-        )
-        dff_table = dff_table.with_columns(
-            pl.col("pair_name")
-            .cast(pl.Utf8)
-            .replace_strict(_mh_mode_map, default=pl.col("pair_name").cast(pl.Utf8), return_dtype=pl.Utf8)
-            .alias("mode_ui")
-        )
+        if "pair_name_fr" in dff_table.columns:
+            dff_table = dff_table.with_columns(
+                pl.coalesce([
+                    pl.col("pair_name_fr").cast(pl.Utf8),
+                    pl.col("pair_name").cast(pl.Utf8),
+                ]).alias("mode_ui")
+            )
+        else:
+            _mh_mode_map = build_mapping(
+                dff_table["pair_name"], lambda x: translate_pair_name(x, lang=get_lang())
+            )
+            dff_table = dff_table.with_columns(
+                pl.col("pair_name")
+                .cast(pl.Utf8)
+                .replace_strict(_mh_mode_map, default=pl.col("pair_name").cast(pl.Utf8), return_dtype=pl.Utf8)
+                .alias("mode_ui")
+            )
     return dff_table.with_columns(
         (
             pl.lit("https://www.halowaypoint.com/halo-infinite/players/")
