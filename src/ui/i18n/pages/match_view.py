@@ -266,7 +266,7 @@ STRINGS: dict[str, dict[str, str] | str] = {
     },
     "mv_scoreboard_avg_life": {"fr": "Durée de vie moy.", "en": "Avg life span"},
     "mv_dominance_legend": {
-        "fr": "- **Barres ** : % des frags par tranche de 30 s — bleu = mon équipe, orange = adversaires\n- **Chiffres encadrés** : score cumulé de chaque équipe à l'instant T (encadré si en tête)\n- **Points ** : chaque point = un kill individuel\n- **Lignes reliées** : série d'un même joueur (≥ 3 kills consécutifs sans mourir)",
+        "fr": "- **Barres** : % des frags par tranche de 30 s — bleu = mon équipe, orange = adversaires\n- **Chiffres encadrés** : score cumulé de chaque équipe à l'instant T (encadré si en tête)\n- **Points** : chaque point = un kill individuel\n- **Lignes reliées** : série d'un même joueur (≥ 3 kills consécutifs sans mourir)",
         "en": "- **Bars**: % of kills per 30s interval — blue = my team, orange = opponents\n- **Framed numbers**: cumulative team score at that point (framed if leading)\n- **Dots**: each dot = an individual kill\n- **Connected lines**: streak by a single player (≥ 3 consecutive kills without dying)",
     },
     "mv_nemesis_unavailable": {
