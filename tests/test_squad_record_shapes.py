@@ -56,150 +56,118 @@ class TestBarCenterOffset:
 
 
 class TestAddRecordShapes:
+    """add_record_shapes ajoute des traces go.Bar fantômes hachurées (fig.data)."""
+
     def _make_fig(self) -> go.Figure:
         return go.Figure()
 
-    def test_no_shape_if_records_empty(self):
+    def _ghost_traces(self, fig: go.Figure) -> list:
+        return [t for t in fig.data if isinstance(t, go.Bar) and t.showlegend is False]
+
+    def test_no_trace_if_records_empty(self):
         fig = self._make_fig()
         add_record_shapes(fig, xs=[0, 1], records={}, player_names=["Alice"], n_players=1)
-        assert len(fig.layout.shapes) == 0
+        assert len(self._ghost_traces(fig)) == 0
 
-    def test_no_shape_if_record_is_none(self):
+    def test_no_trace_if_record_is_none(self):
         fig = self._make_fig()
         add_record_shapes(
             fig, xs=[0, 1], records={"Alice": None}, player_names=["Alice"], n_players=1
         )
-        assert len(fig.layout.shapes) == 0
+        assert len(self._ghost_traces(fig)) == 0
 
-    def test_one_shape_per_x_per_player(self):
+    def test_one_trace_per_player_with_data(self):
+        """Une trace fantôme par joueur ayant un record non-None."""
         fig = self._make_fig()
         add_record_shapes(
-            fig,
-            xs=[0, 1, 2],
-            records={"Alice": 15.0},
-            player_names=["Alice"],
-            n_players=1,
+            fig, xs=[0, 1, 2], records={"Alice": 15.0},
+            player_names=["Alice"], n_players=1,
         )
-        # 3 xs × 1 player = 3 shapes
-        assert len(fig.layout.shapes) == 3
+        assert len(self._ghost_traces(fig)) == 1
 
-    def test_two_players_correct_shape_count(self):
+    def test_two_players_two_traces(self):
         fig = self._make_fig()
         add_record_shapes(
-            fig,
-            xs=[0, 1],
+            fig, xs=[0, 1],
             records={"Alice": 10.0, "Bob": 20.0},
-            player_names=["Alice", "Bob"],
-            n_players=2,
+            player_names=["Alice", "Bob"], n_players=2,
         )
-        # 2 xs × 2 players = 4 shapes
-        assert len(fig.layout.shapes) == 4
+        assert len(self._ghost_traces(fig)) == 2
 
-    def test_shape_y_value_positive(self):
-        """Le rectangle va de 0 à la valeur record (non-négatif)."""
+    def test_y_value_positive(self):
+        """La trace fantôme a y=[record_val] pour chaque xs."""
         fig = self._make_fig()
         add_record_shapes(
-            fig, xs=[0], records={"Alice": 15.0}, player_names=["Alice"], n_players=1
+            fig, xs=[0, 1], records={"Alice": 15.0}, player_names=["Alice"], n_players=1
         )
-        shape = fig.layout.shapes[0]
-        assert shape.y0 == pytest.approx(0.0)
-        assert shape.y1 == pytest.approx(15.0)
+        trace = self._ghost_traces(fig)[0]
+        assert list(trace.y) == pytest.approx([15.0, 15.0])
 
-    def test_shape_y_value_negative_for_deaths(self):
-        """Les morts sont dessinées en négatif sur l'axe Y."""
+    def test_y_value_negative_for_deaths(self):
+        """is_negative=True → valeurs y négatives."""
         fig = self._make_fig()
         add_record_shapes(
             fig, xs=[0], records={"Alice": 3.0}, player_names=["Alice"], n_players=1,
-            is_negative=True
+            is_negative=True,
         )
-        shape = fig.layout.shapes[0]
-        assert shape.y0 == pytest.approx(-3.0)
+        trace = self._ghost_traces(fig)[0]
+        assert list(trace.y) == pytest.approx([-3.0])
 
-    def test_shapes_are_rectangles(self):
-        """Les records sont des rectangles (type=rect) de 0 à la valeur record."""
+    def test_uses_pattern_shape(self):
+        """La trace fantôme utilise un hachurage."""
         fig = self._make_fig()
         add_record_shapes(
-            fig, xs=[0], records={"Alice": 10.0}, player_names=["Alice"], n_players=1
+            fig, xs=[0], records={"Alice": 5.0}, player_names=["Alice"], n_players=1
         )
-        shape = fig.layout.shapes[0]
-        assert shape.type == "rect"
-        assert shape.y0 == pytest.approx(0.0)
-        assert shape.y1 == pytest.approx(10.0)
+        trace = self._ghost_traces(fig)[0]
+        assert trace.marker.pattern.shape == "/"
 
-    def test_shape_x_span_width(self):
-        """La forme couvre exactement la largeur du baton (2 × half_width)."""
-        fig = self._make_fig()
-        add_record_shapes(
-            fig, xs=[0], records={"Alice": 10.0}, player_names=["Alice"], n_players=1
-        )
-        shape = fig.layout.shapes[0]
-        hw = _bar_half_width(1)
-        expected_width = 2 * hw
-        actual_width = shape.x1 - shape.x0
-        assert actual_width == pytest.approx(expected_width)
-
-    def test_shape_line_color_default(self):
+    def test_border_color_default(self):
         """Sans colors_by_name, la bordure est blanche (#ffffff)."""
         fig = self._make_fig()
         add_record_shapes(
             fig, xs=[0], records={"Alice": 5.0}, player_names=["Alice"], n_players=1
         )
-        shape = fig.layout.shapes[0]
-        assert shape.line.color == "#ffffff"
+        trace = self._ghost_traces(fig)[0]
+        assert trace.marker.line.color == "#ffffff"
 
-    def test_shape_line_color_from_player(self):
-        """Avec colors_by_name, la bordure utilise la couleur du joueur."""
+    def test_border_color_from_player(self):
+        """Avec colors_by_name, la bordure et le hachurage utilisent la couleur du joueur."""
         fig = self._make_fig()
         add_record_shapes(
             fig, xs=[0], records={"Alice": 5.0}, player_names=["Alice"], n_players=1,
             colors_by_name={"Alice": "#56B4E9"},
         )
-        shape = fig.layout.shapes[0]
-        assert shape.line.color == "#56B4E9"
+        trace = self._ghost_traces(fig)[0]
+        assert trace.marker.line.color == "#56B4E9"
+        assert trace.marker.pattern.fgcolor == "#56B4E9"
 
-    def test_shape_layer_above(self):
+    def test_offsetgroup_equals_player_name(self):
+        """offsetgroup=name pour que la barre fantôme s'aligne sur la barre réelle."""
         fig = self._make_fig()
         add_record_shapes(
             fig, xs=[0], records={"Alice": 5.0}, player_names=["Alice"], n_players=1
         )
-        shape = fig.layout.shapes[0]
-        assert shape.layer == "above"
+        trace = self._ghost_traces(fig)[0]
+        assert trace.offsetgroup == "Alice"
 
     def test_player_not_in_records_skipped(self):
-        """Si un joueur est dans player_names mais pas dans records, aucune shape pour lui."""
+        """Bob absent de records → aucune trace pour Bob."""
         fig = self._make_fig()
         add_record_shapes(
-            fig,
-            xs=[0],
-            records={"Alice": 10.0},
-            player_names=["Alice", "Bob"],
-            n_players=2,
+            fig, xs=[0], records={"Alice": 10.0},
+            player_names=["Alice", "Bob"], n_players=2,
         )
-        # Seulement Alice → 1 shape
-        assert len(fig.layout.shapes) == 1
-
-    def test_two_players_different_x_offsets(self):
-        """Les deux joueurs ont des offsets X différents (barres côte à côte)."""
-        fig = self._make_fig()
-        add_record_shapes(
-            fig,
-            xs=[0],
-            records={"Alice": 10.0, "Bob": 10.0},
-            player_names=["Alice", "Bob"],
-            n_players=2,
-        )
-        shapes = fig.layout.shapes
-        assert len(shapes) == 2
-        center_0 = (shapes[0].x0 + shapes[0].x1) / 2
-        center_1 = (shapes[1].x0 + shapes[1].x1) / 2
-        assert center_0 != pytest.approx(center_1)
+        assert len(self._ghost_traces(fig)) == 1
+        assert self._ghost_traces(fig)[0].offsetgroup == "Alice"
 
     def test_empty_xs(self):
+        """xs vide → y=[] → aucune trace ajoutée."""
         fig = self._make_fig()
         add_record_shapes(
             fig, xs=[], records={"Alice": 10.0}, player_names=["Alice"], n_players=1
         )
-        assert len(fig.layout.shapes) == 0
+        assert len(self._ghost_traces(fig)) == 0
 
 
 # ---------------------------------------------------------------------------

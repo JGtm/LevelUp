@@ -190,6 +190,7 @@ def plot_trio_metric(  # noqa: PLR0912, PLR0913, PLR0915, C901 — graphe multi-
             "opacity": 0.75,
             "customdata": bar_cdata,
             "hovertemplate": hover_format,
+            "offsetgroup": name,
         }
         fig.add_trace(go.Bar(**bar_kwargs))
 

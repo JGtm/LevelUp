@@ -321,6 +321,7 @@ def plot_multi_metric_bars_by_match(  # noqa: C901, PLR0912, PLR0913, PLR0915
                 opacity=0.70,
                 hovertemplate=f"{name}<br>{hover_label}=%{{y}}<extra></extra>",
                 legendgroup=name,
+                offsetgroup=name,
             )
         )
 
