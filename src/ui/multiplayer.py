@@ -316,8 +316,13 @@ def render_duckdb_v4_player_selector(
     if key not in st.session_state:
         st.session_state[key] = labels[current_idx] if labels else None
 
-    # Afficher le sélecteur
-    st.markdown(f"#### {t('sidebar_player_heading')}")
+    # Afficher le sélecteur avec indicateur sync sur la même ligne
+    _col_heading, _col_sync = st.columns([1, 1])
+    with _col_heading:
+        st.markdown(f"#### {t('sidebar_player_heading')}")
+    with _col_sync:
+        from src.ui._sync_indicator import render_sync_indicator as _render_sync
+        _render_sync(current_db_path)
     selected_label = st.selectbox(
         t("sidebar_player_label"),
         options=labels,
