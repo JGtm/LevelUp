@@ -39,7 +39,7 @@ STRINGS: dict[str, dict[str, str] | str] = {
         "en": "Summary with {gamertag}",
     },
     "exp_no_results": {"fr": "Aucun résultat", "en": "No results"},
-    "exp_match_id_label": {"fr": "Recherche par Match ID", "en": "Search by Match ID"},
+    "exp_match_id_label": {"fr": "Recherche par ID de Match", "en": "Search by Match ID"},
     "exp_no_match_id": {
         "fr": "Aucun match trouvé pour cet identifiant.",
         "en": "No match found for this ID.",
