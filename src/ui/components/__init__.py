@@ -6,6 +6,7 @@ from src.ui.components.checkbox_filter import (
     render_hierarchical_checkbox_filter,
 )
 from src.ui.components.kpi import (
+    render_compact_html_cards,
     render_kpi_cards,
     render_top_summary,
 )
@@ -33,6 +34,7 @@ __all__ = [
     "get_score_label",
     "render_performance_score_card",
     "render_metric_comparison_row",
+    "render_compact_html_cards",
     "render_kpi_cards",
     "render_top_summary",
     # DuckDB Analytics
