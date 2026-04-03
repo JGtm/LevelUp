@@ -7,6 +7,38 @@
 
 ## Journal
 
+### [2026-04-03] — fix(i18n): propager playlist_name_fr dans tous les chemins de données — Complété
+
+**Statut** : Complété
+
+**Décision technique** :
+Diagnostic de pourquoi "Quick Play" restait en anglais dans l'UI malgré les fixes précédents.
+
+**Root causes identifiées** :
+1. `load_friend_match_details` (teammates) requêtait `shared.match_registry` directement (pas de colonnes FR) → playlist_fr retombait sur `translate_playlist_name` (passthrough)
+2. `_translate_playlist_pair_columns` (cache_filters.py) n'utilisait pas les colonnes FR même si présentes
+3. `_execute_polars_fallback` sélectionnait `match_stats.playlist_name_fr` même sur des sources sans ces colonnes → BinderException en cascade sur ~20 fixtures de test
+4. Cache `@st.cache_data` gardait l'ancien DataFrame (sans colonnes FR) tant que `db_key=(mtime, size)` ne changeait pas
+
+**Corrections** :
+- `_match_relations.py` : `load_friend_match_details` → requête sur `shared.v_match_full` (expose playlist_name_fr, pair_name_fr)
+- `cache_filters.py` : `_translate_playlist_pair_columns` utilise `playlist_name_fr` en priorité si présent, avec fallback `translate_playlist_name`. Schema empty enrichi avec 2 colonnes FR.
+- `teammates_helpers.py` : même pattern dans `_prepare_friends_table_data`
+- `_match_queries_polars.py` : `_execute_polars_fallback` utilise `NULL AS playlist_name_fr` au lieu de référencer la colonne (robustesse)
+- `cache_loaders.py` : commentaire COLUMNS_SCHEMA_VERSION=2 bust le cache stale Streamlit
+- 9 fixtures de test `mv_player_matches` : ajout des 4 colonnes FR (NULL) pour compatibilité
+
+**Résultat** : 5483/5484 tests (1 pré-existant échoue : `test_v_match_full_colonnes_fr_nulles_sans_metadata`)
+
+**Pipeline vérifié** :
+```
+shared.v_match_full → load_friend_match_details → playlist_name_fr: 'Partie rapide' ✅
+shared.mv_player_matches → load_matches_as_polars → playlist_name_fr: 'Partie rapide' ✅
+_add_derived_columns → playlist_fr: 'Partie rapide' ✅
+```
+
+---
+
 ### [2026-04-03] — fix(records): overlay ligne colorée, largeur exacte, fallback duration_seconds — Complété
 
 **Statut** : Complété
