@@ -30,6 +30,8 @@ def query_teammate_full_history(conn: object, xuid: str) -> pl.DataFrame:
             p.match_id, r.start_time,
             COALESCE(r.pair_name, '') AS pair_name,
             COALESCE(r.map_name, '') AS map_name,
+            COALESCE(r.map_name_fr, r.map_name, '') AS map_name_fr,
+            COALESCE(r.map_name_fr, r.map_name, '') AS map_ui,
             p.kda AS ratio,
             COALESCE(p.max_killing_spree, 0) AS max_killing_spree,
             COALESCE(p.headshot_kills, 0) AS headshot_kills,
@@ -44,7 +46,7 @@ def query_teammate_full_history(conn: object, xuid: str) -> pl.DataFrame:
             END AS accuracy,
             COALESCE(r.is_firefight, FALSE) AS is_firefight
         FROM shared.match_participants p
-        JOIN shared.match_registry r ON p.match_id = r.match_id
+        JOIN shared.v_match_full r ON p.match_id = r.match_id
         WHERE p.xuid = ?
           AND COALESCE(r.is_firefight, FALSE) = FALSE
         ORDER BY r.start_time DESC

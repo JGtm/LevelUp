@@ -51,7 +51,7 @@ FUNC:src/ui/components/checkbox_filter.py:224:render_hierarchical_checkbox_filte
 FUNC:src/ui/components/checkbox_filter.py:97:render_checkbox_filter:111L
 FUNC:src/ui/filter_state.py:235:apply_filter_preferences:166L
 FUNC:src/ui/filter_state.py:66:save_filter_preferences:138L
-FUNC:src/ui/pages/_teammates_trio.py:41:render_trio_view:313L
+FUNC:src/ui/pages/_teammates_trio.py:41:render_trio_view:318L
 FUNC:src/ui/pages/_teammates_trio_helpers.py:91:_render_per_minute_stats:86L
 FUNC:src/ui/pages/career.py:106:_render_rank_header:89L
 FUNC:src/ui/pages/career_logic.py:249:_create_xp_history_chart:189L
@@ -108,7 +108,7 @@ FUNC:src/visualization/trio.py:338:plot_trio_kills_deaths:144L
 FUNC:src/visualization/trio.py:38:plot_trio_metric:229L
 MODULE:src/analysis/weapon_parser.py:502L
 MODULE:src/data/repositories/_weapon_kills_repo.py:567L
-MODULE:src/data/services/teammates_service.py:536L
+MODULE:src/data/services/teammates_service.py:537L
 MODULE:src/data/sync/_engine_connections.py:510L
 MODULE:src/data/sync/_match_processing.py:559L
 MODULE:src/data/sync/api_client.py:557L

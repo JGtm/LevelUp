@@ -109,6 +109,7 @@ def _query_teammate_shared_stats(
             p.match_id, r.start_time, r.map_id,
             COALESCE(r.map_name, '') AS map_name,
             COALESCE(r.map_name_fr, r.map_name, '') AS map_name_fr,
+            COALESCE(r.map_name_fr, r.map_name, '') AS map_ui,
             r.playlist_id, COALESCE(r.playlist_name, '') AS playlist_name,
             r.pair_id, COALESCE(r.pair_name, '') AS pair_name,
             r.game_variant_id, COALESCE(r.game_variant_name, '') AS game_variant_name,
@@ -230,7 +231,7 @@ class TeammatesService:
     ) -> TeammateStats:
         """Charge les stats d'un coéquipier depuis shared.match_participants.
 
-        Architecture V5 : lit directement depuis shared_matches.duckdb
+        Architecture V5 : lit directement depuis shared_matches_v2.duckdb
         au lieu de charger la DB individuelle du coéquipier.
 
         Returns:
