@@ -198,6 +198,7 @@ async def download_spawn_chunks(
 
 def scan_first_movements(
     chunks: dict[int, tuple[bytes, int, int]],
+    ignore_before_ms: float = 0.0,
 ) -> dict[int, dict]:
     """Détecte le premier CHANGEMENT de position pour chaque player_index.
 
@@ -206,6 +207,8 @@ def scan_first_movements(
     - Le premier frame DIFFÉRENT de cette baseline = premier mouvement réel.
     - Les chunks sont traités en ordre croissant : chunk_01 fournit la baseline,
       chunk_02+ capturent le premier mouvement.
+    - ``ignore_before_ms`` : ignorer les changements détectés avant ce timestamp,
+      pour éliminer les mouvements de lobby (rotation caméra pre-match).
     - Accepte tous les formats stream (b5 quelconque, b9 quelconque).
 
     Returns:
@@ -230,23 +233,21 @@ def scan_first_movements(
                 break
             pi = _is_position_frame(data, idx)
             if pi is not None:
-                # Signature = bytes de coordonnées (décalé depuis b9 = offset 9)
-                # On exclut b3-b4 (timestamp interne) et b5-b8 (type/stream) —
-                # seuls les bytes de payload [9:16] encodent la position.
                 sig = bytes(data[idx + 9 : idx + 16])
                 if pi not in spawn_sig:
                     spawn_sig[pi] = sig  # premier frame = baseline de spawn
                 elif sig != spawn_sig[pi] and pi not in first_change:
-                    # Première différence = premier mouvement réel
-                    coords = _decode_coords(data, idx)
-                    first_change[pi] = {
-                        "timestamp_ms": ts_fn(idx),
-                        "chunk": chunk_idx,
-                        "b5": data[idx + 5],
-                        "b9": data[idx + 9],
-                        "y_raw": coords[0] if coords else None,
-                        "x_raw": coords[1] if coords else None,
-                    }
+                    ts = ts_fn(idx)
+                    if ts >= ignore_before_ms:
+                        coords = _decode_coords(data, idx)
+                        first_change[pi] = {
+                            "timestamp_ms": ts,
+                            "chunk": chunk_idx,
+                            "b5": data[idx + 5],
+                            "b9": data[idx + 9],
+                            "y_raw": coords[0] if coords else None,
+                            "x_raw": coords[1] if coords else None,
+                        }
                     spawn_sig[pi] = sig  # update baseline
             pos = idx + 1
 
@@ -572,6 +573,47 @@ async def process_match_adaptive(
             estimate_ms = statistics.median(fm["timestamp_ms"] for _, fm in refs)
             corr = correlate_with_api(estimate_ms, match_id, n_events=corr_events)
             _print_correlation_report(corr, estimate_ms)
+
+            # Second passage : correction des mouvements de lobby
+            # Si le premier event API est >15s après notre estimation → l'estimation
+            # est trop précoce (mouvement de caméra pendant le countdown).
+            # On re-scanne en ignorant les mouvements avant (gap_min - 10s).
+            if (
+                corr.get("verdict") != "unavailable"
+                and corr.get("n_negative", 1) == 0
+                and corr.get("gap_min", 0) > 15_000
+            ):
+                ignore_before_ms = estimate_ms + corr["gap_min"] - 10_000
+                print(
+                    f"  [CORR] Lobby détecté — re-scan depuis {ignore_before_ms / 1000:.1f}s"
+                    f" (gap_min={corr['gap_min'] / 1000:.1f}s)"
+                )
+                # Charger les chunks manquants jusqu'à couvrir ignore_before_ms + 20s
+                needed_coverage_ms = ignore_before_ms + 20_000
+                needed_chunk = int(needed_coverage_ms // 20_000) + 1
+                needed_chunk = min(needed_chunk, max_chunks)
+                for ci in range(next_chunk_idx + 1, needed_chunk + 1):
+                    if ci not in all_chunks:
+                        extra = await download_spawn_chunks(
+                            match_id, api, {ci}, dry_run, cached_only=cached_only
+                        )
+                        if extra:
+                            all_chunks.update(extra)
+
+                fm2 = scan_first_movements(all_chunks, ignore_before_ms=ignore_before_ms)
+                refs2, _ = pick_spawn_references(fm2, n=min_players)
+                if len(refs2) >= min_players:
+                    estimate_ms = statistics.median(fm["timestamp_ms"] for _, fm in refs2)
+                    _print_match_report(match_id, fm2)
+                    corr = correlate_with_api(estimate_ms, match_id, n_events=corr_events)
+                    _print_correlation_report(corr, estimate_ms)
+                    print(f"  [CORR] Estimation corrigee -> {estimate_ms / 1000:.1f}s")
+                else:
+                    print(
+                        f"  [CORR] Correction échouée : {len(refs2)}/{min_players} refs"
+                        f" — chunks supplémentaires nécessaires (essayer --max-chunks plus élevé)"
+                    )
+
             if write_db and not dry_run:
                 write_film_start_to_db(match_id, int(estimate_ms))
     else:

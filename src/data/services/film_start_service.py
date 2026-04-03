@@ -68,7 +68,14 @@ class FilmStartService:
             logger.debug("film_start %s : aucun chunk disponible", match_id[:8])
             return None
 
-        estimate_ms = estimate_film_match_start_ms(chunks, min_players=_MIN_PLAYERS)
+        # Récupère le premier event API pour la correction de lobby
+        api_first_event_ms = self._get_first_event_ms(match_id)
+
+        estimate_ms = estimate_film_match_start_ms(
+            chunks,
+            min_players=_MIN_PLAYERS,
+            api_first_event_ms=api_first_event_ms,
+        )
         if estimate_ms is None:
             logger.debug("film_start %s : aucun mouvement détecté", match_id[:8])
             return None
@@ -148,3 +155,28 @@ class FilmStartService:
             "UPDATE match_registry SET film_match_start_ms = ? WHERE match_id = ?",
             [film_match_start_ms, match_id],
         )
+
+    def _get_first_event_ms(self, match_id: str) -> float | None:
+        """Retourne le timestamp du premier kill/death pour ce match (ms).
+
+        Utilisé pour détecter et corriger les estimations trop précoces
+        causées par des mouvements de lobby (countdown pre-match).
+
+        Returns:
+            Timestamp ms du premier event (même référentiel que le film),
+            ou None si aucun event disponible.
+        """
+        try:
+            row = self._conn.execute(
+                """
+                SELECT MIN(time_ms)
+                FROM highlight_events
+                WHERE match_id = ?
+                  AND event_type IN ('kill', 'death')
+                """,
+                (match_id,),
+            ).fetchone()
+            return float(row[0]) if row and row[0] is not None else None
+        except Exception as exc:
+            logger.debug("film_start _get_first_event_ms %s : %s", match_id[:8], exc)
+            return None

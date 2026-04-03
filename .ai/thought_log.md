@@ -7,6 +7,52 @@
 
 ## Journal
 
+### [2026-04-03] — fix(film-start): correction mouvements de lobby dans spawn_detection — Complété
+
+**Statut** : Complété
+
+**Décision technique** :
+`scan_first_movements` détectait le premier changement de position dans chunk_01 (0-20s). Sur certains matchs, les joueurs bougent légèrement pendant le countdown pre-match (rotation caméra dans le lobby) → premier changement à ~2.5s, match daté trop tôt. La corrélation montrait `gap_min = +35s` (premier event API 35s après l'estimation) mais sous le seuil SUSPECT de 60s → non détecté.
+
+**Fix (second passage) — 3 fichiers** :
+- `src/analysis/spawn_detection.py` :
+  - `scan_first_movements(chunks, ignore_before_ms=0.0)` : nouveau param pour ignorer les changements avant un timestamp donné.
+  - Constantes `_LOBBY_CORRECTION_THRESHOLD_MS = 15_000` et `_LOBBY_CORRECTION_BUFFER_MS = 10_000`.
+  - `estimate_film_match_start_ms(chunks, min_players, api_first_event_ms=None)` : si `api_first_event_ms` est fourni et `gap > 15s`, second scan avec `ignore_before_ms = estimate + gap - 10000`.
+- `src/data/services/film_start_service.py` : `_get_first_event_ms(match_id)` depuis `highlight_events` → passé à `estimate_film_match_start_ms` pour correction automatique dans la pipeline sync.
+- `scripts/_exp_spawn_download.py` : idem `scan_first_movements` locale + second passage avec chargement automatique des chunks manquants.
+
+**Validation sur Fortress 2026-03-31** :
+- Avant : `film_match_start_ms = 2551ms` (lobby), première mort affichée à 35s dans le graphe.
+- Après : `film_match_start_ms = ~33 769ms` (vrai début), `gap_min = +3.81s` → première mort à ~4s ✓
+
+**Branche** : `fix/map-ui-fr-mismatch`
+
+---
+
+### [2026-04-05] — feat(ui): améliorations UX v6.3.1 — Complété
+
+**Statut** : Complété
+
+**Décision technique** :
+5 améliorations UX issues du backlog v6.3.1, toutes sur la branche `fix/map-ui-fr-mismatch`.
+
+1. **Sélecteur de langue → drapeaux** (`sidebar.py`) : `_LANG_OPTIONS` raccourci à `{"fr": "🇫🇷", "en": "🇬🇧"}` + `label_visibility="collapsed"` → sélecteur compact sans texte.
+
+2. **Version app en sidebar** (`src/__init__.py`, `pyproject.toml`, `sidebar.py`) : correction `2.0.0` → `6.3.0` (source unique), affichage `st.caption(f"v{__version__}")` sous le header "LevelUp".
+
+3. **Harmonisation hauteur cases Dernier Match** (`match_view.py`) : remplacement des 3 `st.metric` par 3 `os_card(min_h=112)` dans `_render_match_info_row` → cohérence visuelle avec la rangée KPI supérieure (style Waypoint).
+
+4. **Recherche Match ID partiel dans Explorer** (`explorer.py` + i18n) : colonne `[3, 1]` dans `_render_match_selector` — à droite du selectbox de match, un `st.text_input` (placeholder `70a1c6c6…`, label masqué) filtre le DataFrame si la saisie fait ≥ 6 caractères. Clé i18n `exp_no_match_id` ajoutée.
+
+5. **Badges Dernier Match +30%** (`match_view.py`) : badge DominanceFlag `font-size: 0.75em → 0.975em`, `padding: 2px 8px → 3px 10px` ; badge Outcome via `kpi_font_size="36px"` sur la carte Résultat.
+
+**Résultats** : Ruff OK, 0 erreurs, tous les fichiers modifiés < 500 L.
+
+**Branche** : `fix/map-ui-fr-mismatch`
+
+---
+
 ### [2026-04-05] — feat(i18n): add_i18n_display_columns — correction systémique i18n — Complété
 
 **Statut** : Complété
