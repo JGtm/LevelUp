@@ -48,7 +48,7 @@ _PARALLEL_WEAPON_KILLS_IN_SYNC: bool = True
 
 
 def _get_shared_connection() -> Any | None:
-    """Ouvre une connexion vers shared_matches.duckdb (v5).
+    """Ouvre une connexion vers shared_matches_v2.duckdb.
 
     Le chemin est dérivé depuis la racine du projet via get_shared_matches_path().
     Retourne None si la base n'existe pas.
@@ -59,12 +59,12 @@ def _get_shared_connection() -> Any | None:
 
     shared_path = get_shared_matches_path()
     if not shared_path.exists():
-        logger.warning(f"shared_matches.duckdb introuvable: {shared_path}")
+        logger.warning(f"shared_matches_v2.duckdb introuvable: {shared_path}")
         return None
     try:
         return duckdb.connect(str(shared_path), read_only=False)
     except Exception as e:
-        logger.warning(f"Impossible d'ouvrir shared_matches.duckdb: {e}")
+        logger.warning(f"Impossible d'ouvrir shared_matches_v2.duckdb: {e}")
         return None
 
 
@@ -185,7 +185,7 @@ async def backfill_player_data(
     shared_conn_for_detection = _get_shared_connection()
     if shared_conn_for_detection is None:
         logger.error(
-            f"❌ {gamertag}: shared_matches.duckdb introuvable — "
+            f"❌ {gamertag}: shared_matches_v2.duckdb introuvable — "
             "impossible de backfill en V5. Vérifiez l'installation."
         )
         conn.close()
@@ -565,7 +565,7 @@ def _backfill_local_only(  # noqa: PLR0913
 
     if killer_victim:
         logger.info("Backfill des paires killer/victim depuis highlight_events...")
-        # Ouvrir une connexion vers shared_matches.duckdb (v5)
+        # Ouvrir une connexion vers shared_matches_v2.duckdb
         shared_conn = _get_shared_connection()
         n = backfill_killer_victim_pairs(conn, xuid, shared_conn=shared_conn)
         if shared_conn is not None:
@@ -703,7 +703,7 @@ def _update_playable_duration(
     """Met à jour playable_duration_seconds et real_start_time dans match_registry.
 
     Args:
-        shared_conn: Connexion shared_matches.duckdb.
+        shared_conn: Connexion shared_matches_v2.duckdb.
         match_id: Identifiant du match.
         stats_json: JSON brut retourné par get_match_stats (contient MatchInfo).
         force: Si True, met à jour même si déjà rempli.
@@ -1391,7 +1391,7 @@ def _update_participant_backfill_bits(
     besoin de lister les champs scope — on se base sur ce qui est NOT NULL.
 
     Args:
-        shared_conn: Connexion à shared_matches.duckdb.
+        shared_conn: Connexion à shared_matches_v2.duckdb.
         match_id: ID du match.
         xuid: XUID du joueur.
         scope: Périmètre de données (conservé pour compatibilité de signature).
@@ -1497,7 +1497,7 @@ async def _backfill_pve_for_match(
     Args:
         stats_json: JSON brut du match.
         match_id: ID du match.
-        shared_conn: Connexion vers shared_matches.duckdb (pour le guard).
+        shared_conn: Connexion vers shared_matches_v2.duckdb (pour le guard).
         db_path: Chemin de la DB joueur (pour dériver shared_pve.duckdb).
         force: Si True, insert même si PVE_STATS déjà posé.
 
@@ -1560,7 +1560,7 @@ async def _backfill_weapon_kills_for_match(
         match_id: ID du match.
         gamertag: Gamertag du joueur.
         xuid: XUID du joueur.
-        shared_conn: Connexion shared_matches.duckdb.
+        shared_conn: Connexion shared_matches_v2.duckdb.
         force: Si True, re-traiter même si MatchBits.WEAPON_KILLS posé.
 
     Returns:
@@ -1697,7 +1697,7 @@ def _update_accuracy_shots(
     """Met à jour accuracy et/ou shots pour un match dans shared.match_participants (V5).
 
     Args:
-        shared_conn: Connexion à shared_matches.duckdb
+        shared_conn: Connexion à shared_matches_v2.duckdb
         match_row: Données du match (contient accuracy, shots_fired, shots_hit)
         match_id: ID du match
         xuid: XUID du joueur

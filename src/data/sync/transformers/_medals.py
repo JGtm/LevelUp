@@ -97,7 +97,7 @@ def extract_all_medals(  # noqa: C901, PLR0912
     de chacun avec leur xuid.
 
     Utilisée par :
-    - La migration v5 (shared_matches.duckdb)
+    - La migration v5 (shared_matches_v2.duckdb)
     - Le sync engine v5 (insertion dans shared)
 
     Args:

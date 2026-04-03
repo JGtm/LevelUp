@@ -63,7 +63,7 @@ def query_player_db_stats(
 
     Args:
         conn: Connexion DuckDB déjà ouverte (shared ATTACH déjà effectué).
-        shared_path_sql: Chemin SQL-escaped de shared_matches.duckdb (non utilisé ici,
+        shared_path_sql: Chemin SQL-escaped de shared_matches_v2.duckdb (non utilisé ici,
             présent pour cohérence d'interface).
         get_mode_family_fn: Fonction de résolution de famille de mode.
 

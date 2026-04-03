@@ -20,7 +20,7 @@ logger = logging.getLogger(__name__)
 
 
 class SharedDBUnavailableError(RuntimeError):
-    """Levée quand shared_matches.duckdb est verrouillé par un autre processus.
+    """Levée quand shared_matches_v2.duckdb est verrouillé par un autre processus.
 
     Non cachée par @st.cache_data → le prochain appel retente l'ATTACH.
     """
@@ -60,7 +60,7 @@ def get_cached_repository_st(
     if not repo.has_shared and repo._shared_db_path.exists():
         repo.close()
         raise SharedDBUnavailableError(
-            "shared_matches.duckdb est verrouillé par un autre processus "
+            "shared_matches_v2.duckdb est verrouillé par un autre processus "
             "et ne peut pas être attaché. Fermez toute connexion DuckDB "
             "externe (extension VS Code, CLI) et rechargez la page."
         )
@@ -119,8 +119,8 @@ COLUMNS_COMPUTED: list[str] = [
 def db_cache_key(db_path: str) -> tuple[int, int, int, int, int] | None:
     """Retourne une signature stable des DBs pour invalider les caches.
 
-    Surveille à la fois *stats.duckdb* (player) ET *shared_matches.duckdb*
-    (matchs partagés v5) : les nouveaux matchs sont écrits dans shared, pas
+    Surveille à la fois *stats.duckdb* (player) ET *shared_matches_v2.duckdb*
+    (matchs partagés v6) : les nouveaux matchs sont écrits dans shared, pas
     dans stats. Sans ce second composant, le cache @st.cache_data ne voit
     pas les matchs ajoutés après la dernière lecture.
 
@@ -142,7 +142,7 @@ def db_cache_key(db_path: str) -> tuple[int, int, int, int, int] | None:
     mtime_player = int(getattr(st_, "st_mtime_ns", int(st_.st_mtime * 1e9)))
     size_player = int(st_.st_size)
 
-    # Chemin shared_matches.duckdb déduit du chemin joueur
+    # Chemin shared_matches_v2.duckdb déduit du chemin joueur
     mtime_shared = 0
     size_shared = 0
     wal_sentinel = 0
@@ -201,7 +201,7 @@ def _resolve_player_xuid(db_path: str) -> str:
                     "_resolve_player_xuid: sync_meta indisponible, tentative xuid_aliases: %s", e
                 )
 
-        # Stratégie 2 : xuid_aliases via shared_matches.duckdb (v5.1)
+        # Stratégie 2 : xuid_aliases via shared_matches_v2.duckdb (v6)
         try:
             from pathlib import Path
 

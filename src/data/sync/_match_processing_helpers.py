@@ -271,7 +271,7 @@ class MatchProcessingHelpersMixin:
         Args:
             stats_json: JSON brut du match (get_match_stats).
             match_id: ID du match.
-            shared_conn: Connexion vers shared_matches.duckdb (pour le bitmask guard).
+            shared_conn: Connexion vers shared_matches_v2.duckdb (pour le bitmask guard).
         """
         from src.data.sync.batch_insert import batch_insert_pve_stats
         from src.data.sync.constants import MatchBits

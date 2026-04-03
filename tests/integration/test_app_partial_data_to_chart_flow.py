@@ -89,7 +89,7 @@ def app_partial_flow_db(tmp_path):
         conn.close()
 
     # ===== Shared DB (v6 — requis par DuckDBRepository) =====
-    shared_path = tmp_path / "shared_matches.duckdb"
+    shared_path = tmp_path / "shared_matches_v2.duckdb"
     conn_shared = duckdb.connect(str(shared_path))
     try:
         conn_shared.execute("""

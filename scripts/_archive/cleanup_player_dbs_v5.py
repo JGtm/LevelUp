@@ -2,10 +2,10 @@
 """Nettoie les données redondantes des player DBs après migration v5.
 
 Après la migration vers l'architecture v5 (shared_matches), certaines tables
-des player DBs sont redondantes car elles existent maintenant dans shared_matches.duckdb.
+des player DBs sont redondantes car elles existent maintenant dans shared_matches_v2.duckdb.
 
 Ce script supprime ces tables en toute sécurité avec plusieurs vérifications :
-1. Vérifie que shared_matches.duckdb existe et contient les données
+1. Vérifie que shared_matches_v2.duckdb existe et contient les données
 2. Mode --dry-run pour simuler sans supprimer
 3. Sauvegarde optionnelle avant nettoyage
 4. Validation post-nettoyage
@@ -64,14 +64,14 @@ import duckdb
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(PROJECT_ROOT))
 
-DEFAULT_SHARED_DB = PROJECT_ROOT / "data" / "warehouse" / "shared_matches.duckdb"
+DEFAULT_SHARED_DB = PROJECT_ROOT / "data" / "warehouse" / "shared_matches_v2.duckdb"
 PROFILES_PATH = PROJECT_ROOT / "db_profiles.json"
 BACKUP_DIR = PROJECT_ROOT / "backups" / "v5_cleanup"
 
 logger = logging.getLogger(__name__)
 
 
-# Tables à supprimer (maintenant dans shared_matches.duckdb ou obsolètes)
+# Tables à supprimer (maintenant dans shared_matches_v2.duckdb ou obsolètes)
 TABLES_TO_REMOVE = [
     "match_stats",
     "match_participants",
@@ -114,9 +114,9 @@ def load_profiles() -> dict[str, dict[str, str]]:
 
 
 def check_shared_db_exists(shared_db_path: Path) -> bool:
-    """Vérifie que shared_matches.duckdb existe et contient des données."""
+    """Vérifie que shared_matches_v2.duckdb existe et contient des données."""
     if not shared_db_path.exists():
-        logger.error(f"❌ shared_matches.duckdb introuvable : {shared_db_path}")
+        logger.error(f"❌ shared_matches_v2.duckdb introuvable : {shared_db_path}")
         logger.error("   Vous devez d'abord créer la base partagée avec :")
         logger.error("   python scripts/migration/create_shared_matches_db.py")
         return False
@@ -133,7 +133,7 @@ def check_shared_db_exists(shared_db_path: Path) -> bool:
         required_tables = {"match_registry", "match_participants"}
         if not required_tables.issubset(table_names):
             missing = required_tables - table_names
-            logger.error(f"❌ Tables manquantes dans shared_matches.duckdb : {missing}")
+            logger.error(f"❌ Tables manquantes dans shared_matches_v2.duckdb : {missing}")
             conn.close()
             return False
 
@@ -142,16 +142,16 @@ def check_shared_db_exists(shared_db_path: Path) -> bool:
         conn.close()
 
         if match_count == 0:
-            logger.warning("⚠️  shared_matches.duckdb existe mais ne contient aucun match")
+            logger.warning("⚠️  shared_matches_v2.duckdb existe mais ne contient aucun match")
             logger.warning("   Exécutez d'abord la migration avec :")
             logger.warning("   python scripts/migration/migrate_player_to_shared.py --all")
             return False
 
-        logger.info(f"✓ shared_matches.duckdb valide ({match_count} matchs)")
+        logger.info(f"✓ shared_matches_v2.duckdb valide ({match_count} matchs)")
         return True
 
     except Exception as exc:
-        logger.error(f"❌ Erreur lors de la vérification de shared_matches.duckdb : {exc}")
+        logger.error(f"❌ Erreur lors de la vérification de shared_matches_v2.duckdb : {exc}")
         return False
 
 
@@ -260,7 +260,7 @@ def verify_shared_coverage(
     shared_db_path: Path,
     gamertag: str,
 ) -> dict[str, Any]:
-    """Vérifie que shared_matches.duckdb couvre TOUS les matchs du joueur.
+    """Vérifie que shared_matches_v2.duckdb couvre TOUS les matchs du joueur.
 
     Compare les match_id de la player DB (match_stats) avec ceux présents
     dans shared.match_participants pour ce joueur. C'est la vérification
@@ -359,13 +359,13 @@ def cleanup_player_db(
 ) -> dict[str, Any]:
     """Nettoie les données redondantes d'une player DB.
 
-    Avant de supprimer, vérifie que shared_matches.duckdb couvre 100%
+    Avant de supprimer, vérifie que shared_matches_v2.duckdb couvre 100%
     des matchs du joueur (sauf si skip_coverage_check=True).
 
     Args:
         player_db_path: Chemin vers la DB joueur.
         gamertag: Gamertag du joueur.
-        shared_db_path: Chemin vers shared_matches.duckdb.
+        shared_db_path: Chemin vers shared_matches_v2.duckdb.
         remove_compat_views: Si True, supprime aussi les views de compatibilité.
         dry_run: Si True, simule sans modifier.
         skip_coverage_check: Si True, ne vérifie pas la couverture shared.
@@ -568,9 +568,9 @@ def cleanup_all_players(
     Returns:
         Résultats de nettoyage pour chaque joueur.
     """
-    # Vérifier que shared_matches.duckdb existe
+    # Vérifier que shared_matches_v2.duckdb existe
     if not check_shared_db_exists(shared_db_path):
-        logger.error("❌ Impossible de continuer sans shared_matches.duckdb valide")
+        logger.error("❌ Impossible de continuer sans shared_matches_v2.duckdb valide")
         return {}
 
     profiles = load_profiles()
@@ -729,7 +729,7 @@ def main() -> None:
         "--shared-db",
         type=Path,
         default=DEFAULT_SHARED_DB,
-        help=f"Chemin vers shared_matches.duckdb (défaut: {DEFAULT_SHARED_DB})",
+        help=f"Chemin vers shared_matches_v2.duckdb (défaut: {DEFAULT_SHARED_DB})",
     )
     parser.add_argument(
         "--skip-coverage-check",
@@ -760,9 +760,9 @@ def main() -> None:
             compact=args.compact,
         )
     elif args.gamertag:
-        # Vérifier que shared_matches.duckdb existe
+        # Vérifier que shared_matches_v2.duckdb existe
         if not check_shared_db_exists(args.shared_db):
-            logger.error("❌ Impossible de continuer sans shared_matches.duckdb valide")
+            logger.error("❌ Impossible de continuer sans shared_matches_v2.duckdb valide")
             sys.exit(1)
 
         profiles = load_profiles()

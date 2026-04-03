@@ -59,7 +59,7 @@ class AggregatesMixin:
                 )
 
                 # shared_connection est fermé : désactiver brièvement sync_mode
-                # pour permettre au DuckDBRepository d'attacher shared_matches.duckdb
+                # pour permettre au DuckDBRepository d'attacher shared_matches_v2.duckdb
                 end_sync_mode()
                 try:
                     repo = DuckDBRepository(
@@ -78,7 +78,7 @@ class AggregatesMixin:
                     result["materialized_views"] = 1
                 finally:
                     # CRITIQUE : fermer repo même si refresh_materialized_views lève une
-                    # exception, pour libérer le handle sur shared_matches.duckdb et
+                    # exception, pour libérer le handle sur shared_matches_v2.duckdb et
                     # permettre à _get_shared_connection() de rouvrir la connexion.
                     repo.close()
             except Exception as e:

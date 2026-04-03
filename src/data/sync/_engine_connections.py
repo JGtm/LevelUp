@@ -20,7 +20,7 @@ _SHARED_MIGRATIONS_DONE: set[str] = set()
 
 
 # =============================================================================
-# Bootstrap shared_matches.duckdb
+# Bootstrap shared_matches_v2.duckdb
 # =============================================================================
 
 _SHARED_SCHEMA_SQL = """
@@ -96,7 +96,7 @@ CREATE TABLE IF NOT EXISTS schema_version (
 
 
 def _bootstrap_shared_matches_db(db_path) -> None:  # type: ignore[no-untyped-def]  # noqa: C901, PLR0915
-    """Crée shared_matches.duckdb avec le schéma v5 de base (idempotent)."""
+    """Crée shared_matches_v2.duckdb avec le schéma v5 de base (idempotent)."""
     import pathlib
 
     path = pathlib.Path(db_path)
@@ -112,7 +112,7 @@ def _bootstrap_shared_matches_db(db_path) -> None:  # type: ignore[no-untyped-de
             "INSERT OR IGNORE INTO schema_version (version, description) "
             "VALUES (1, 'v5.0 — Création initiale du schéma shared_matches')"
         )
-        logger.info("shared_matches.duckdb initialisé : %s", path)
+        logger.info("shared_matches_v2.duckdb initialisé : %s", path)
     finally:
         conn.close()
 
@@ -142,7 +142,7 @@ class ConnectionMixin:
         return self._connection
 
     def _get_shared_connection(self) -> duckdb.DuckDBPyConnection | None:  # noqa: PLR0912, C901
-        """Retourne une connexion vers shared_matches.duckdb.
+        """Retourne une connexion vers shared_matches_v2.duckdb.
 
         Mode R/O si self._shared_read_only=True (fanout), R/W sinon (sync principal).
         Returns None si la base n'existe pas — l'initialisation est assurée
@@ -172,7 +172,7 @@ class ConnectionMixin:
             err = str(e).lower()
             if "unique file handle conflict" in err or "already attached" in err:
                 logger.debug(
-                    "shared_matches.duckdb conflit de handle, libération et retry… (%s)", e
+                    "shared_matches_v2.duckdb conflit de handle, libération et retry… (%s)", e
                 )
                 try:
                     from src.data.repositories.duckdb_repo import release_all_db_connections
@@ -188,7 +188,7 @@ class ConnectionMixin:
                     # 2ème tentative aussi échouée : log + return None
                     # pour éviter de faire remonter le Binder Error dans result.errors.
                     logger.debug(
-                        "shared_matches.duckdb : retry échoué (%s) — shared non disponible", e2
+                        "shared_matches_v2.duckdb : retry échoué (%s) — shared non disponible", e2
                     )
                     return None
             else:
@@ -304,7 +304,7 @@ class ConnectionMixin:
                 except Exception:
                     pass
 
-                # 2. v_gamertag_lookup via shared_matches.duckdb (v5.8)
+                # 2. v_gamertag_lookup via shared_matches_v2.duckdb (v5.8)
                 if self._gamertag:
                     try:
                         from src.utils.paths import get_shared_matches_path_from_player

@@ -66,7 +66,7 @@ def _load_highlight_events(
     match_ids: list[str],
     shared_alias: str,
 ) -> pl.DataFrame | None:
-    """Charge les événements highlight depuis shared_matches.duckdb.
+    """Charge les événements highlight depuis shared_matches_v2.duckdb.
 
     Args:
         conn: Connexion DuckDB.
@@ -76,7 +76,7 @@ def _load_highlight_events(
     Returns:
         DataFrame Polars des événements, ou None si indisponible.
     """
-    # V5 : highlight_events est dans shared_matches.duckdb
+    # V5 : highlight_events est dans shared_matches_v2.duckdb
     try:
         conn.execute(f"SELECT 1 FROM {shared_alias}.highlight_events LIMIT 1")
     except Exception:

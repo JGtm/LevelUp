@@ -240,7 +240,7 @@ def validate_db_path(db_path: str, default_db: str) -> str:
 
 
 def get_db_cache_key(db_path: str) -> tuple[int, int, int, int] | None:
-    """Retourne une clé de cache basée sur player DB + shared_matches.duckdb.
+    """Retourne une clé de cache basée sur player DB + shared_matches_v2.duckdb.
 
     Args:
         db_path: Chemin vers la base de données joueur.
@@ -254,7 +254,7 @@ def get_db_cache_key(db_path: str) -> tuple[int, int, int, int] | None:
 def get_aliases_cache_key() -> int | None:
     """Retourne toujours None depuis v5.2 (plus de fichier xuid_aliases.json).
 
-    Les aliases sont désormais exclusivement dans shared_matches.duckdb.
+    Les aliases sont désormais exclusivement dans shared_matches_v2.duckdb.
     L'invalidation de cache se fait via db_cache_key() sur la DB.
     """
     return None

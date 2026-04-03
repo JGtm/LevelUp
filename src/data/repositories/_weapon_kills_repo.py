@@ -1,4 +1,4 @@
-"""Mixin – requêtes weapon_kills (shared_matches.duckdb).
+"""Mixin – requêtes weapon_kills (shared_matches_v2.duckdb).
 
 Schéma v5.7+ per-kill : (match_id, xuid, time_ms, weapon_id, delta_ms,
 confidence, swap_detected, delayed_damage, reconciled_as, attribution_path,

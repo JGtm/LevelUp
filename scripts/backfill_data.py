@@ -242,7 +242,7 @@ def main() -> int:  # noqa: C901, PLR0912, PLR0915
             from src.utils.paths import get_shared_matches_path
             _SHARED_DB_BOT = get_shared_matches_path()
             if not _SHARED_DB_BOT.exists():
-                logger.error("shared_matches.duckdb introuvable pour --bot-detection")
+                logger.error("shared_matches_v2.duckdb introuvable pour --bot-detection")
                 return 1
 
             shared_conn = duckdb.connect(str(_SHARED_DB_BOT), read_only=True)
@@ -380,7 +380,7 @@ def main() -> int:  # noqa: C901, PLR0912, PLR0915
             from src.utils.paths import get_shared_matches_path
             _SHARED_DB_DOM = get_shared_matches_path()
             if not _SHARED_DB_DOM.exists():
-                logger.error("shared_matches.duckdb introuvable pour --dominance")
+                logger.error("shared_matches_v2.duckdb introuvable pour --dominance")
                 return 1
 
             shared_conn = duckdb.connect(str(_SHARED_DB_DOM), read_only=True)
@@ -545,7 +545,7 @@ def main() -> int:  # noqa: C901, PLR0912, PLR0915
 
             _shared_path = get_shared_matches_path()
             if not Path(_shared_path).exists():
-                logger.error("shared_matches.duckdb introuvable : %s", _shared_path)
+                logger.error("shared_matches_v2.duckdb introuvable : %s", _shared_path)
                 return 1
 
             # Récupérer le xuid

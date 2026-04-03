@@ -38,7 +38,7 @@ from pathlib import Path
 # ---------------------------------------------------------------------------
 CHUNKS_DIR = Path(__file__).parent.parent.parent / "data/investigation/chunks/d9329229"
 MAIN_DB = (
-    Path(__file__).parent.parent.parent.parent / "LevelUp/data/warehouse/shared_matches.duckdb"
+    Path(__file__).parent.parent.parent.parent / "LevelUp/data/warehouse/shared_matches_v2.duckdb"
 )
 
 # ---------------------------------------------------------------------------

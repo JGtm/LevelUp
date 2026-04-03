@@ -7,7 +7,7 @@ Architecture mixin :
     Le code métier est réparti dans 8 modules mixin :
     - _engine_connections.py : gestion des connexions DuckDB + résolution XUID
     - _engine_schema.py     : DDL et migrations du schéma
-    - _shared_writes.py     : insertions dans shared_matches.duckdb
+    - _shared_writes.py     : insertions dans shared_matches_v2.duckdb
     - _performance.py       : calcul des scores de performance
     - _skill_rating.py      : CSR (ranked) + LUSR (TrueSkill 2)
     - _career.py            : synchronisation du rang carrière
@@ -138,7 +138,7 @@ class DuckDBSyncEngine(
     Mixins :
         ConnectionMixin       — connexions DuckDB + résolution XUID
         SchemaMixin           — schéma DDL + migrations
-        SharedWritesMixin     — insertions dans shared_matches.duckdb
+        SharedWritesMixin     — insertions dans shared_matches_v2.duckdb
         PerformanceMixin      — calcul des scores de performance
         SkillRatingMixin      — CSR + LUSR (TrueSkill 2)
         CareerMixin           — rang carrière
@@ -164,9 +164,9 @@ class DuckDBSyncEngine(
             xuid: XUID du joueur.
             gamertag: Gamertag pour l'identification API.
             metadata_db_path: Chemin vers metadata.duckdb (auto-détecté si None).
-            shared_db_path: Chemin vers shared_matches.duckdb (auto-détecté si None).
+            shared_db_path: Chemin vers shared_matches_v2.duckdb (auto-détecté si None).
             tokens: Tokens SPNKr pré-fournis (sinon récupérés depuis env).
-            shared_read_only: Si True, ouvre shared_matches.duckdb en lecture seule.
+            shared_read_only: Si True, ouvre shared_matches_v2.duckdb en lecture seule.
                 Utiliser True pour le fanout (ne fait que lire shared), False (défaut)
                 pour le sync principal (écrit dans shared).
         """
@@ -506,12 +506,12 @@ class DuckDBSyncEngine(
             logger.warning("Erreur calcul LUSR post-sync (non bloquant) : %s", e)
 
     def _detach_shared_from_player_conn(self) -> None:
-        """Détache shared_matches.duckdb de la connexion joueur si attaché.
+        """Détache shared_matches_v2.duckdb de la connexion joueur si attaché.
 
         Nécessaire après des opérations qui ATTACH shared en READ_ONLY
         sur la connexion joueur (ex: citations_backfill), pour libérer
         le file handle et permettre à batch_compute_lusr d'ouvrir
-        shared_matches.duckdb en R/W.
+        shared_matches_v2.duckdb en R/W.
         """
         try:
             conn = self._get_connection()

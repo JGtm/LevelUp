@@ -199,13 +199,13 @@ def resolve_xuid_from_db(  # noqa: C901, PLR0912
     if not db_path or not os.path.exists(db_path):
         return None
 
-    # DuckDB v5.1 : utiliser shared_matches.duckdb comme source unique
+    # DuckDB v5.1 : utiliser shared_matches_v2.duckdb comme source unique
     if db_path.endswith(".duckdb"):
         try:
             from src.utils.db import duckdb_read_only
             from src.utils.paths import get_shared_matches_path_from_player
 
-            # V5.1 : Lire UNIQUEMENT depuis shared_matches.duckdb
+            # V5.1 : Lire UNIQUEMENT depuis shared_matches_v2.duckdb
             shared_path = get_shared_matches_path_from_player(db_path)
             if shared_path and shared_path.exists():
                 with duckdb_read_only(str(shared_path)) as conn:

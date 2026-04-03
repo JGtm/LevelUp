@@ -1,7 +1,7 @@
 """Tests d'intégration: flux BDD -> repository -> analyse -> graphes.
 
 Valide un scénario minimal mais complet sur des données DuckDB temporaires.
-Architecture v5: player stats.duckdb + shared_matches.duckdb.
+Architecture v6: player stats.duckdb + shared_matches_v2.duckdb.
 """
 
 from __future__ import annotations
@@ -17,11 +17,11 @@ pytest.importorskip("polars")
 
 @pytest.fixture
 def app_flow_dbs(tmp_path):
-    """Crée une structure v5 avec player DB et shared_matches.duckdb."""
+    """Crée une structure v6 avec player DB et shared_matches_v2.duckdb."""
     t0 = datetime.now(timezone.utc)
 
     # ===== Shared DB =====
-    shared_path = tmp_path / "data" / "warehouse" / "shared_matches.duckdb"
+    shared_path = tmp_path / "data" / "warehouse" / "shared_matches_v2.duckdb"
     shared_path.parent.mkdir(parents=True, exist_ok=True)
     conn_shared = duckdb.connect(str(shared_path))
     try:

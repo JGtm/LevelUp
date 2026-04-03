@@ -39,10 +39,9 @@ def query_first_events(
 
     xu_ph = ", ".join(["?" for _ in xuids])
     mi_ph = ", ".join(["?" for _ in match_ids])
-    # countdown_s = durée du compte à rebours pré-match (0 si données absentes).
-    # first_kill_s / first_death_s sont soustraits du countdown pour obtenir
-    # le temps écoulé depuis le vrai début du gameplay, pas depuis le début
-    # de la timeline Halo (qui inclut le lobby/countdown).
+    # countdown_s = durée du compte à rebours pré-match.
+    # Priorité : film_match_start_ms / 1000.0 (calibré filmshell, exact)
+    # Fallback  : (duration - playable_duration) en secondes (estimation API)
     query = f"""
         SELECT
             e.match_id,
@@ -52,11 +51,14 @@ def query_first_events(
                 AS first_kill_s_raw,
             MIN(CASE WHEN LOWER(e.event_type) = 'death' THEN e.time_ms END) / 1000.0
                 AS first_death_s_raw,
-            GREATEST(
-                COALESCE(ANY_VALUE(r.duration_seconds), 0)
-                - COALESCE(ANY_VALUE(r.playable_duration_seconds),
-                            ANY_VALUE(r.duration_seconds), 0),
-                0
+            COALESCE(
+                ANY_VALUE(r.film_match_start_ms) / 1000.0,
+                GREATEST(
+                    COALESCE(ANY_VALUE(r.duration_seconds), 0)
+                    - COALESCE(ANY_VALUE(r.playable_duration_seconds),
+                                ANY_VALUE(r.duration_seconds), 0),
+                    0
+                )
             ) AS countdown_s
         FROM shared.highlight_events e
         JOIN shared.match_registry r ON e.match_id = r.match_id

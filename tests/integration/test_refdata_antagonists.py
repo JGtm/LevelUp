@@ -151,8 +151,8 @@ def temp_duckdb(tmp_path):
 
 @pytest.fixture
 def shared_duckdb(tmp_path):
-    """Crée une shared_matches.duckdb avec données de test et vues v6."""
-    db_path = tmp_path / "shared_matches.duckdb"
+    """Crée une shared_matches_v2.duckdb avec données de test et vues v6."""
+    db_path = tmp_path / "shared_matches_v2.duckdb"
     now = datetime.now(timezone.utc)
 
     conn = duckdb.connect(str(db_path))

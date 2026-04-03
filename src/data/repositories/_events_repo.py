@@ -1,5 +1,5 @@
 """
-Mixin pour le chargement des highlight events depuis shared_matches.duckdb.
+Mixin pour le chargement des highlight events depuis shared_matches_v2.duckdb.
 
 Regroupe les méthodes d'événements extraites de DuckDBRepository :
 - load_first_event_times
@@ -45,9 +45,8 @@ class EventsMixin:
 
         # Lecture depuis shared.highlight_events (xuid = le joueur de l'event)
         # Note v5.1 : xuid est le killer pour 'kill', la victime pour 'death'
-        # countdown_ms = compte à rebours pré-match en ms (0 si données absentes).
-        # Soustrait de MIN(time_ms) pour obtenir le temps depuis le vrai début
-        # du gameplay, pas depuis le début de la timeline Halo.
+        # Priorité : film_match_start_ms (calibré filmshell, même référentiel)
+        # Fallback  : (duration - playable_duration) * 1000 (estimation API)
         try:
             result = conn.execute(
                 f"""
@@ -55,12 +54,15 @@ class EventsMixin:
                     e.match_id,
                     GREATEST(
                         MIN(e.time_ms)
-                        - GREATEST(
-                            (COALESCE(ANY_VALUE(r.duration_seconds), 0)
-                             - COALESCE(ANY_VALUE(r.playable_duration_seconds),
-                                        ANY_VALUE(r.duration_seconds), 0))
-                            * 1000,
-                            0
+                        - COALESCE(
+                            ANY_VALUE(r.film_match_start_ms),
+                            GREATEST(
+                                (COALESCE(ANY_VALUE(r.duration_seconds), 0)
+                                 - COALESCE(ANY_VALUE(r.playable_duration_seconds),
+                                            ANY_VALUE(r.duration_seconds), 0))
+                                * 1000,
+                                0
+                            )
                         ),
                         0
                     ) AS first_time

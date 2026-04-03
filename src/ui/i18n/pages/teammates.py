@@ -239,8 +239,8 @@ STRINGS: dict[str, dict[str, str] | str] = {
     "tmi_mvp_label": {"fr": "🏆 Champion : {mvp}", "en": "🏆 MVP of the Night: {mvp}"},
     "tmi_boulet_label": {"fr": "🍌 Maillon Faible : {boulet}", "en": "🍌 Weak Link: {boulet}"},
     "tmi_no_shared_db": {
-        "fr": "Impossible d'accéder à shared_matches.duckdb pour les événements.",
-        "en": "Cannot access shared_matches.duckdb for events.",
+        "fr": "Impossible d'accéder à shared_matches_v2.duckdb pour les événements.",
+        "en": "Cannot access shared_matches_v2.duckdb for events.",
     },
     "tmi_no_events": {
         "fr": "Les données d'événements ne sont pas disponibles. Lance un backfill events.",

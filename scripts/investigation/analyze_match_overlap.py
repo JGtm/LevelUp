@@ -4,7 +4,7 @@
 Produit `.ai/v5-match-overlap-analysis.md` documentant :
 - Matrice de partage (nb matchs communs entre chaque paire)
 - Taux de recouvrement (%)
-- Estimation des gains de stockage avec shared_matches.duckdb
+- Estimation des gains de stockage avec shared_matches_v2.duckdb
 - Matchs uniques vs dupliqués
 
 Usage:
@@ -151,7 +151,7 @@ def format_markdown_report(
         "## Objectif",
         "",
         "Quantifier le taux de partage de matchs entre joueurs pour valider",
-        "l'architecture `shared_matches.duckdb` et estimer les gains.",
+        "l'architecture `shared_matches_v2.duckdb` et estimer les gains.",
         "",
         "---",
         "",
@@ -204,7 +204,7 @@ def format_markdown_report(
     lines.append("")
 
     # Estimation des gains
-    lines.append("## Estimation des Gains avec shared_matches.duckdb")
+    lines.append("## Estimation des Gains avec shared_matches_v2.duckdb")
     lines.append("")
     lines.append("### Stockage")
     lines.append("")
