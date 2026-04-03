@@ -7,6 +7,18 @@
 
 ## Journal
 
+### [2026-04-03] — fix(records): overlay ligne colorée, largeur exacte, fallback duration_seconds — Complété
+
+**Statut** : Complété
+
+**Décision technique** :
+3 bugs constatés en test visuel :
+1. HS+PK overlay : rects de tous les joueurs se superposaient au même x → seul le dernier dessiné (vert) visible. Fix : `add_overlay_record_shapes` passe de `type="rect"` à `type="line"` (ligne horizontale colorée par joueur à la hauteur du record — distinguable même si les valeurs diffèrent).
+2. Largeur trop étroite : `_BAR_FILL=0.85` → rect à 85% de la largeur réelle. Fix : `_BAR_FILL=1.0`.
+3. Un seul joueur avec record sur stats/min : `compute_player_pm_records` requérait `time_played_seconds` mais le DataFrame du joueur principal a `duration_seconds` (depuis match_registry). Fix : fallback `duration_seconds → time_played_seconds` avant la vérification des colonnes.
+
+---
+
 ### [2026-04-03] — feat(records): redesign visuel + records par carte + passage couleurs — Complété
 
 **Statut** : Complété

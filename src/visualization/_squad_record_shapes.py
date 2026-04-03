@@ -11,10 +11,11 @@ import plotly.graph_objects as go
 
 # Paramètres de mise en forme
 _BAR_GAP: float = 0.2        # bargap Plotly par défaut (gap entre groupes)
-_BAR_FILL: float = 0.85      # fraction de la largeur de baton à couvrir
+_BAR_FILL: float = 1.0       # fraction de la largeur de baton à couvrir (1.0 = largeur exacte)
 _BORDER_WIDTH: float = 2.0   # épaisseur de la bordure colorée
 _FILL_OPACITY: float = 0.14  # opacité du remplissage teinté
 _SHAPE_OPACITY: float = 0.88 # opacité globale de la forme
+_OVERLAY_LINE_WIDTH: float = 3.0  # épaisseur de la ligne record en mode overlay
 
 
 def _hex_to_rgba(hex_color: str, opacity: float) -> str:
@@ -102,10 +103,13 @@ def add_overlay_record_shapes(
     player_names: list[str],
     colors_by_name: dict[str, str] | None = None,
 ) -> None:
-    """Ajoute les rectangles de record pour barmode=overlay (sans offset horizontal).
+    """Ajoute les lignes de record pour barmode=overlay.
 
     Utilisé pour plot_hs_pk_stacked où les barres se superposent au même X.
-    En mode overlay, chaque barre occupe la largeur totale du groupe.
+    En overlay, les rects de joueurs différents se cacheraient mutuellement.
+    On dessine donc une ligne horizontale colorée par joueur à la hauteur
+    de son record — chaque joueur a sa propre couleur, distinguable même
+    si plusieurs lignes se croisent.
 
     Args:
         fig: Figure Plotly à modifier in-place.
@@ -120,16 +124,15 @@ def add_overlay_record_shapes(
         if record_val is None:
             continue
         color = (colors_by_name or {}).get(name, "#ffffff")
-        fill = _hex_to_rgba(color, _FILL_OPACITY) if color.startswith("#") else f"rgba(255,255,255,{_FILL_OPACITY})"
         for x in xs:
             fig.add_shape(
-                type="rect",
+                type="line",
                 xref="x", yref="y",
                 x0=x - half_w,
                 x1=x + half_w,
-                y0=0.0, y1=record_val,
-                fillcolor=fill,
-                line={"color": color, "width": _BORDER_WIDTH},
+                y0=record_val,
+                y1=record_val,
+                line={"color": color, "width": _OVERLAY_LINE_WIDTH},
                 opacity=_SHAPE_OPACITY,
                 layer="above",
             )
