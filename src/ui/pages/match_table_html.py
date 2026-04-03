@@ -186,7 +186,7 @@ def map_thumb_url(map_name: str | None) -> str | None:
 
 @functools.cache
 def _build_map_id_index() -> dict[str, str]:
-    """Construit {asset_id: url} en joignant metadata.duckdb maps + index fichiers."""
+    """Construit {asset_id: url} en joignant asset_translations (lang=en-US) + index fichiers."""
     import unicodedata
 
     from src.utils.db import duckdb_read_only
@@ -200,7 +200,8 @@ def _build_map_id_index() -> dict[str, str]:
     try:
         with duckdb_read_only(meta_path) as conn:
             rows = conn.execute(
-                "SELECT asset_id, name_en FROM maps WHERE name_en IS NOT NULL"
+                "SELECT asset_id, name FROM asset_translations"
+                " WHERE asset_type='map' AND lang='en-US' AND name IS NOT NULL"
             ).fetchall()
     except Exception as exc:  # noqa: BLE001
         _log.warning("Impossible de charger l'index map_id→thumbnail : %s", exc)
