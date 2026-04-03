@@ -206,13 +206,22 @@ def _vectorize_ui_columns(
         mode_expr = pl.lit(None).cast(pl.Utf8).alias("mode_ui")
 
     if "map_name" in dropdown_base.columns:
-        _map_map = build_mapping(dropdown_base["map_name"], normalize_map_label_fn)
-        map_expr = (
-            pl.col("map_name")
-            .cast(pl.Utf8)
-            .replace_strict(_map_map, default=None, return_dtype=pl.Utf8)
-            .alias("map_ui")
-        )
+        if "map_name_fr" in dropdown_base.columns and _lang == "fr":
+            # Cohérence avec _add_derived_columns : utiliser le nom FR si disponible
+            map_expr = (
+                pl.coalesce([
+                    pl.col("map_name_fr").cast(pl.Utf8),
+                    pl.col("map_name").cast(pl.Utf8),
+                ]).alias("map_ui")
+            )
+        else:
+            _map_map = build_mapping(dropdown_base["map_name"], normalize_map_label_fn)
+            map_expr = (
+                pl.col("map_name")
+                .cast(pl.Utf8)
+                .replace_strict(_map_map, default=None, return_dtype=pl.Utf8)
+                .alias("map_ui")
+            )
     else:
         map_expr = pl.lit(None).cast(pl.Utf8).alias("map_ui")
 
