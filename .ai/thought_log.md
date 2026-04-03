@@ -7,6 +7,24 @@
 
 ## Journal
 
+### [2026-04-04] — fix(maps): mismatch map_name_fr dans win_loss + teammates bullet/perf charts — Complété
+
+**Statut** : Complété
+
+**Décision technique** :
+Le mismatch `map_ui` (FR) vs `map_name` (EN) affectait aussi les graphiques "Taux de victoires vs historique" et "Performance vs historique" dans la page Win/Loss et l'onglet Coéquipiers. La cause : `base`/`full_squad_df` (DataFrames bruts, non-filtrés) n'ont pas `map_ui`. `compute_map_breakdown(base)` utilisait donc `map_name` (EN) → `bd_history.map_name` = EN. Le join inner dans `_prepare_bullet_joined_data` entre `view` (FR, depuis `dff`) et `bd_history` (EN) échouait silencieusement pour les 4 cartes FR ≠ EN.
+
+**Fixes** :
+1. `win_loss.py` `_render_winrate_perf_vs_history` : ajouter `map_ui` sur `base` (coalesce `map_name_fr`/`map_name`) avant `compute_map_breakdown(base)`
+2. `win_loss.py` `_render_ratio_by_map_section` (désactivée mais future-proof) : même correction avant `WinLossService.compute_map_breakdown(base, 1)`
+3. `teammates_map_charts.py` `_compute_history_breakdown` : ajouter `map_ui` sur `full_df` si `map_name_fr` disponible et lang=fr — couvre les deux call sites : `render_map_charts_section(full_pl)` et `render_single_map_section(dfr_pl)`
+
+**Résultats** : 10 tests passent (qualité + UI teammates). `_render_winrate_perf_vs_history` retourne désormais toutes les cartes dans les graphiques bullet/perf.
+
+**Branche** : `fix/map-ui-fr-mismatch`
+
+---
+
 ### [2026-04-03] — fix(filters): mismatch map_name_fr/map_name entre sidebar et dff — Complété
 
 **Statut** : Complété

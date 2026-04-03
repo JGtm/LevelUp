@@ -258,6 +258,14 @@ def _render_winrate_perf_vs_history(dff: pl.DataFrame, base: pl.DataFrame) -> No
     """Affiche les graphes Taux de victoires vs historique et Performance vs historique."""
     from src.analysis import compute_map_breakdown
 
+    # Assurer cohérence map_ui : dff a map_ui (FR via _add_derived_columns), base brut n'en a pas.
+    # Sans cela l'inner join sur map_name dans _prepare_bullet_joined_data échoue pour les 4 cartes
+    # dont le nom FR diffère du nom EN (Cliffhanger, Fortress, Nemesis, The Pit).
+    if "map_ui" not in base.columns and "map_name_fr" in base.columns and get_lang() == "fr":
+        base = base.with_columns(
+            pl.coalesce([pl.col("map_name_fr").cast(pl.Utf8), pl.col("map_name").cast(pl.Utf8)]).alias("map_ui")
+        )
+
     bd_current = compute_map_breakdown(dff, df_history=base)
     bd_history = compute_map_breakdown(base)
     if bd_current.is_empty() or bd_history.is_empty():
@@ -325,6 +333,13 @@ def _render_ratio_by_map_section(
     )
 
     with st.spinner(t("wl_computing_map")):
+        # Assurer cohérence map_ui : base brut n'a pas map_ui, dff l'a (FR).
+        # Nécessaire pour que l'inner join map_name dans _prepare_bullet_joined_data
+        # retrouve les 4 cartes dont le nom FR ≠ EN (Cliffhanger, Fortress, Nemesis, The Pit).
+        if "map_ui" not in base.columns and "map_name_fr" in base.columns and get_lang() == "fr":
+            base = base.with_columns(
+                pl.coalesce([pl.col("map_name_fr").cast(pl.Utf8), pl.col("map_name").cast(pl.Utf8)]).alias("map_ui")
+            )
         map_result = WinLossService.compute_map_breakdown(dff, min_matches, df_history=base)
         breakdown_history = WinLossService.compute_map_breakdown(base, 1).breakdown
 
