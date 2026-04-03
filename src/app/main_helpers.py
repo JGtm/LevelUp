@@ -370,6 +370,9 @@ def load_match_dataframe(
     if not df.is_empty():
         with perf_section("analysis/mark_firefight"):
             df = mark_firefight(df)
+        from src.app.i18n_columns import add_i18n_display_columns
+        from src.ui.i18n import get_lang
+        df = add_i18n_display_columns(df, lang=get_lang())
 
     _ms = (_time.perf_counter() - _t0) * 1000
     logger.info(
