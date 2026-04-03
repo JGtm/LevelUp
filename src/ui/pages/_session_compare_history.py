@@ -51,8 +51,12 @@ def _prepare_history_source(df_sess: DataFrameLike) -> pl.DataFrame:
     df_pl = ensure_polars(df_sess)
     if "start_time" in df_pl.columns:
         df_pl = df_pl.sort("start_time")
-    if "pair_fr" in df_pl.columns or "pair_name" not in df_pl.columns:
+    if "pair_fr" in df_pl.columns or "mode_ui" in df_pl.columns or "pair_name" not in df_pl.columns:
         return df_pl
+    if "pair_name_fr" in df_pl.columns:
+        return df_pl.with_columns(
+            pl.coalesce([pl.col("pair_name_fr"), pl.col("pair_name").cast(pl.Utf8)]).alias("pair_fr")
+        )
     pair_map = build_mapping(df_pl["pair_name"], lambda x: translate_pair_name(x, lang=get_lang()))
     return df_pl.with_columns(
         pl.col("pair_name")
@@ -102,6 +106,10 @@ def _add_mode_display_column(
     col_map: dict[str, str],
 ) -> pl.DataFrame:
     """Ajoute la colonne mode à afficher."""
+    if "mode_ui" in df_sess.columns:
+        col_map["mode_ui"] = t("col_mode")
+        display_cols.append("mode_ui")
+        return df_sess
     if "pair_fr" in df_sess.columns:
         col_map["pair_fr"] = t("col_mode")
         display_cols.append("pair_fr")
