@@ -161,6 +161,11 @@ def render_trio_view(  # noqa: PLR0913, PLR0915, C901, PLR0912
         if "is_firefight" in ensure_polars(df).columns
         else pl.lit(True)
     )
+    # Hotfix pré-Item0 : df n'a pas encore map_ui (calculé dans _filters_cascade, pas au chargement)
+    if "map_ui" not in _me_full.columns and "map_name_fr" in _me_full.columns:
+        _me_full = _me_full.with_columns(
+            pl.coalesce([pl.col("map_name_fr").cast(pl.Utf8), pl.col("map_name").cast(pl.Utf8)]).alias("map_ui")
+        )
     _f1_full = TeammatesService.load_all_teammate_stats(f1_name, db_path).df
     _f2_full = TeammatesService.load_all_teammate_stats(f2_name, db_path).df if f2_name else pl.DataFrame()
     _f3_full = TeammatesService.load_all_teammate_stats(f3_name, db_path).df if f3_name else pl.DataFrame()
