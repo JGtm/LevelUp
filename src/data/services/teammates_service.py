@@ -100,7 +100,7 @@ def _resolve_xuid_from_shared(conn: object, gamertag: str) -> str | None:
 def _query_teammate_shared_stats(
     conn: object, xuid: str, match_ids_list: list[str]
 ) -> pl.DataFrame:
-    """Charge les stats d'un coéquipier depuis shared.match_participants + match_registry."""
+    """Charge les stats d'un coéquipier depuis shared.match_participants + v_match_full."""
     from src.data.repositories._arrow_bridge import result_to_polars
 
     placeholders = ", ".join(["?" for _ in match_ids_list])
@@ -108,6 +108,7 @@ def _query_teammate_shared_stats(
         SELECT
             p.match_id, r.start_time, r.map_id,
             COALESCE(r.map_name, '') AS map_name,
+            COALESCE(r.map_name_fr, r.map_name, '') AS map_name_fr,
             r.playlist_id, COALESCE(r.playlist_name, '') AS playlist_name,
             r.pair_id, COALESCE(r.pair_name, '') AS pair_name,
             r.game_variant_id, COALESCE(r.game_variant_name, '') AS game_variant_name,
@@ -136,7 +137,7 @@ def _query_teammate_shared_stats(
                 ELSE NULL
             END AS kills_per_min
         FROM shared.match_participants p
-        JOIN shared.match_registry r ON p.match_id = r.match_id
+        JOIN shared.v_match_full r ON p.match_id = r.match_id
         WHERE p.xuid = ?
           AND p.match_id IN ({placeholders})
         ORDER BY r.start_time DESC
