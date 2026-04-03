@@ -325,19 +325,25 @@ def _render_match_selector(
             placeholder="70a1c6c6-xxxx-xxxx-xxxx-xxxxxxxxxxxx",
         ).strip()
 
-    # Filtrage par Match ID partiel si saisi (≥ 3 caractères)
-    n_before = len(filtered)
+    # Suggestions : dès 3 caractères, un selectbox filtré apparaît sous le champ
     if mid_query and len(mid_query) >= 3 and "match_id" in filtered.columns:
-        filtered = filtered.filter(
-            pl.col("match_id").cast(pl.Utf8).str.contains(mid_query, literal=True)
+        suggestions = (
+            filtered
+            .filter(pl.col("match_id").cast(pl.Utf8).str.contains(mid_query, literal=True))
+            ["match_id"].cast(pl.Utf8).to_list()
         )
-        if filtered.is_empty():
+        if not suggestions:
             with col_mid:
                 st.warning(t("exp_no_match_id"))
             return None
         with col_mid:
-            n_found = len(filtered)
-            st.caption(f"{n_found} / {n_before} match{'s' if n_found > 1 else ''}")
+            chosen = st.selectbox(
+                t("exp_match_id_label"),
+                options=suggestions,
+                key="explorer_match_id_suggestion",
+                label_visibility="collapsed",
+            )
+        return str(chosen)
 
     sorted_df = filtered.sort("start_time", descending=True)
     options: list[tuple[str, str]] = []
