@@ -634,7 +634,9 @@ async def main(args: argparse.Namespace) -> None:
     if args.all_matches:
         with duckdb.connect(str(_SHARED_DB_PATH), read_only=True) as con:
             q = "SELECT match_id FROM match_registry"
-            if args.skip_done:
+            if getattr(args, "fix_suspects", False):
+                q += " WHERE film_match_start_ms IS NOT NULL AND film_match_start_ms < 5000"
+            elif args.skip_done:
                 q += " WHERE film_match_start_ms IS NULL"
             q += " ORDER BY start_time"
             if args.limit:
@@ -698,6 +700,15 @@ if __name__ == "__main__":
         action="store_true",
         default=True,
         help="(Avec --all-matches) Ignorer les matchs qui ont déjà film_match_start_ms (défaut: True).",
+    )
+    parser.add_argument(
+        "--fix-suspects",
+        action="store_true",
+        default=False,
+        help=(
+            "(Avec --all-matches) Ré-traiter uniquement les matchs dont film_match_start_ms < 5000ms "
+            "(probable mouvement de lobby). Ignore --skip-done."
+        ),
     )
     parser.add_argument(
         "--limit",
