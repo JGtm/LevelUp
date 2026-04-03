@@ -7,6 +7,24 @@
 
 ## Journal
 
+### [2026-04-04] — fix(maps): noms FR dans graphes escouade — v_match_full + map_ui heatmap — Complété
+
+**Statut** : Complété
+
+**Décision technique** :
+La heatmap "Impact ami par carte" et les graphes escouade affichaient des noms EN pour l'axe X/Y des cartes. Cause : `_query_teammate_shared_stats` joinait `shared.match_registry` qui n'a pas de colonne `map_name_fr`. En conséquence, `fr_sub` (DataFrame coéquipier) n'avait pas `map_name_fr`, donc `compute_map_breakdown` utilisait `map_name` (EN) → `top_maps` = noms anglais → axe X heatmap = EN.
+
+**Fixes** :
+1. `teammates_service.py` `_query_teammate_shared_stats` : `JOIN shared.v_match_full r` (au lieu de `match_registry`) + `COALESCE(r.map_name_fr, r.map_name, '') AS map_name_fr` — `fr_sub` contient désormais `map_name_fr`
+2. `friends_impact_heatmap.py` `plot_squad_map_heatmap` : ajoute `map_ui = coalesce(map_name_fr, map_name)` si `lang=fr` avant `compute_map_breakdown(df_pl)` — `top_maps` contient des noms FR
+3. `duckdb_repo.py` : correction docstring `begin_sync_mode` malformée (triple-quote prématurée à la ligne 73 cassait ruff + imports)
+
+**Résultats** : 5405 passent, 4 skipped, 1 failed pré-existant (`test_v_match_full_colonnes_fr_nulles_sans_metadata`). Commit `6df05c6` sur `fix/map-ui-fr-mismatch`.
+
+**Branche** : `fix/map-ui-fr-mismatch`
+
+---
+
 ### [2026-04-04] — fix(maps): mismatch map_name_fr dans win_loss + teammates bullet/perf charts — Complété
 
 **Statut** : Complété
