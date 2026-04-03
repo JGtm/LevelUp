@@ -17,6 +17,8 @@ import streamlit as st
 
 from src.data.medal_definitions import (
     load_medal_description_map as _load_medal_description_map,
+)
+from src.data.medal_definitions import (
     load_medal_name_maps as _load_medal_name_maps,
 )
 
@@ -123,7 +125,7 @@ def medal_icon_path(nid: int) -> str | None:
     return local_p if os.path.exists(local_p) else None
 
 
-def render_medals_grid(
+def render_medals_grid(  # noqa: PLR0913
     medals: list[dict[str, int]],
     cols_per_row: int = 8,
     deltas: dict[int, int] | None = None,

@@ -218,6 +218,43 @@ Le shortcut `_perf_force_only` (v6) bypasse cette boucle quand `--force-performa
 
 ---
 
+### [investigation] Déterminer le vrai début de match (countdown non fiable)
+
+**Noté le** : 2026-04-02
+**Priorité** : Moyenne (impacte la précision du graphe premier frag/première mort dans la page Teammates et les stats temporelles en général)
+
+**Contexte** : Le champ `MatchInfo.PlayableDuration` de l'API SPNKr est censé représenter la durée réelle du gameplay (hors countdown). On en déduit le countdown : `countdown = duration_seconds - playable_duration_seconds`, et par extension `real_start_time`.
+
+Mais ce champ s'avère non fiable dans la pratique : pour de nombreux matchs (notamment Ranked Arena), `PlayableDuration = Duration` → countdown calculé = 0, même lorsqu'on sait qu'un temps de préparation existe. On ne peut donc pas distinguer "pas de countdown" de "API a renvoyé une valeur incorrecte".
+
+**Impact actuel** : `time_ms` dans `highlight_events` est relatif au début du fichier film (qui inclut le countdown). Le graphe "Premier frag / Première mort" soustrait le countdown estimé, mais si ce dernier vaut 0 à tort, les valeurs restent décalées vers les premières secondes.
+
+**Exploration effectuée le 2026-04-02** — dépôts [`dend/grunt`](https://github.com/dend/grunt) et [`dend/filmshell`](https://github.com/dend/filmshell) analysés. Résultats :
+
+**Grunt API** : Le modèle `MatchInfo` (TypeScript, `match-info.ts`) confirme que les seuls champs temporels disponibles sont `StartTime`, `EndTime`, `Duration` et `PlayableDuration`. **Pas de `GameplayStartTime`** ni de champ similaire. L'API officielle n'expose rien de plus que ce qu'on utilise déjà.
+
+**FilmShell — format binaire** : Pas d'event "spawn" explicite avec timestamp dans le format film. Le contenu est uniquement des frames de **position à ~60Hz** (index `frame` = position dans le flux binaire, pas un timestamp UTC). Le marqueur de frame est `A0 7B 42`. Deux pistes intéressantes :
+- `FilmCustomData.FilmLength` (millisecondes) : longueur totale du film exposée par l'API film. Si cette valeur diffère de `Duration * 1000`, le film ne couvre pas le match complet. Si `FilmLength ≈ PlayableDuration * 1000`, cela confirmerait que le film démarre après le countdown — et donnerait une mesure de countdown indépendante.
+- **Discontinuités de position** : le code filmshell filtre les grands sauts (`DISCONTINUITY_THRESHOLD = 4000`) en les sautant — ces sauts correspondent aux morts/respawn et au spawn initial. La **première discontinuité majeure** dans le film est le spawn initial du joueur (transition de la zone de lobby vers la carte). Son index de frame, divisé par le framerate (~60Hz calculé depuis `FilmLength`), donnerait `gameplay_start_ms`. **C'est la piste la plus prometteuse sans appel API supplémentaire.**
+
+**Pistes restantes (sans exploration approfondie)** :
+
+1. **`FilmLength` vs `Duration`** : comparer sur un batch de matchs connus. Si `FilmLength < Duration * 1000` systématiquement pour les matchs Ranked, cela prouverait que le film ne couvre pas le countdown → countdown = `Duration - FilmLength/1000`.
+
+2. **Premier spawn via discontinuité filmshell** : réimplémenter en Python la détection du premier grand saut de coordonnées dans les chunks décompressés (marqueur `A0 7B 42`, offset +10/+11 pour coord1). L'index de frame du premier saut × (1000/Hz) = `countdown_ms`. Nécessite un POC Python sur les chunks déjà téléchargés.
+
+3. **`highlight_events` — première occurrence globale** : `MIN(time_ms)` sur *tous* les événements du match (tous types, tous joueurs) est une borne supérieure du début réel. Utile en sanity check : si `countdown_calculé > MIN(time_ms)`, le countdown est surestimé.
+
+4. **Table de valeurs typiques par mode** : Ranked Arena → countdown ~0-5s, BTB/Custom → 10-20s. Peut servir de fallback quand `PlayableDuration` semble incohérent.
+
+**Ce qu'il faudrait faire** :
+1. **(facile, ~1h)** Requête SQL sur les matchs connus : comparer `FilmLength` (si stocké dans `media_files`) vs `duration_seconds`. Si absents, télécharger quelques films de référence via filmshell sur des matchs avec countdown connu.
+2. **(moyen, ~4h)** POC Python : lire les chunks `filmChunkN_dec` de filmshell, détecter le marqueur `A0 7B 42`, extraire les deltas coord1/coord2, identifier le premier grand saut → `countdown_ms`. Valider sur 3-4 matchs de référence.
+3. Si validé : ajouter colonne `gameplay_start_ms` dans `match_registry`, backfillable pour les films déjà téléchargés.
+
+**Référence** : Correction partielle appliquée en session 2026-04-02 (`_teammates_first_events_queries.py` + `_events_repo.py`), mais la source `PlayableDuration` reste non fiable pour les matchs Ranked Arena.
+
+---
 
 ### Kills environnementaux — catégorie dédiée (v7++)
 

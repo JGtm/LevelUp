@@ -10,12 +10,12 @@ from datetime import datetime
 import streamlit as st
 
 from src.ui.i18n import get_lang, t
-from src.ui.translations import translate_pair_name
 from src.ui.pages.career_top_matches_data import (
     load_top_best_matches,
     load_top_worst_matches,
 )
 from src.ui.pages.win_loss_table_style import map_name_cell_html
+from src.ui.translations import translate_pair_name
 
 logger = logging.getLogger(__name__)
 

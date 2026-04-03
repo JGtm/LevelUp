@@ -540,6 +540,17 @@ class TestLoadFriendMatchDetailsMapName:
                      ["m1", "0001", 0, 2, 10, 5, 1000])
         conn.execute("INSERT INTO match_participants VALUES (?, ?, ?, ?, ?, ?, ?)",
                      ["m1", "0002", 1, 3, 8, 3, 800])
+        conn.execute("""
+            CREATE VIEW v_match_full AS
+            SELECT
+                match_id, start_time,
+                playlist_name,
+                NULL::VARCHAR AS playlist_name_fr,
+                pair_name,
+                NULL::VARCHAR AS pair_name_fr,
+                map_name
+            FROM match_registry
+        """)
         conn.close()
 
         # Player DB

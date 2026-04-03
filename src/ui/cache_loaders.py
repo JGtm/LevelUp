@@ -246,6 +246,7 @@ def load_df_optimized(  # noqa: PLR0913
     """
     _ = db_key  # Utilisé pour invalidation du cache Streamlit
     _ = cache_buster  # Utilisé pour forcer le rechargement après sync
+    # COLUMNS_SCHEMA_VERSION=2 : playlist_name_fr, map_name_fr, pair_name_fr ajoutées à COLUMNS_COMMON
     logger.debug(
         "load_df_optimized: xuid=%s..., cache_buster=%s",
         str(xuid or "")[:8],
