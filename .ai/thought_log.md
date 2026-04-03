@@ -7,6 +7,29 @@
 
 ## Journal
 
+### [2026-04-03] — feat(film_start): intégration film_match_start_ms : pipeline + backfill + graphes — Complété
+
+**Statut** : Complété
+
+**Décision technique** :
+`highlight_events.time_ms` utilise le même référentiel que le film (t=0 = début enregistrement, countdown inclus). L'estimation via `duration - playable_duration` (API) est approximative. On remplace par `film_match_start_ms` calibré filmshell (détecté depuis les frames de position REPLICATION_DATA, précision ±200ms).
+
+**Architecture créée** :
+- `src/analysis/spawn_detection.py` : fonctions pures (`scan_first_movements`, `pick_spawn_references`, `estimate_film_match_start_ms`) — 0 accès DB/API.
+- `src/data/services/film_start_service.py` : `FilmStartService.compute_and_write()` — réutilise manifest mis en cache par WeaponExtractionService.
+- Hook `_try_compute_film_start()` dans `_engine_weapon_kills.py` : appelé après chaque extraction weapon_kills pour tout nouveau match avec film.
+
+**Graphes câblés (premier frag / première mort)** :
+- `_events_repo.py::load_first_event_times` : `COALESCE(film_match_start_ms, (duration - playable_duration) * 1000)` au lieu de l'estimation seule.
+- `_teammates_first_events_queries.py::query_first_events` : idem pour `countdown_s`.
+- Fallback transparent si `film_match_start_ms` NULL (matchs sans film).
+
+**Backfill terminé** :
+- 953/1532 matchs balisés (62%) — les 579 restants n'ont pas de film disponible (404 API : PvE, modes sans spectate).
+- Fixes bugs : `cached_only` bloquait mal l'API dans la boucle adaptative + early-exit sur 404 chunk_01.
+
+**Résultats** : ruff OK, import OK, 0 erreur backfill.
+
 ### [2026-04-03] — fix(records): stats/min records visibles pour tous les joueurs — Complété
 
 **Statut** : Complété

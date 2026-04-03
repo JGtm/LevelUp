@@ -387,3 +387,160 @@ Trois types de kills clutch, par ordre de fiabilité :
 2. **Capturer le timing du premier mouvement** — utiliser un event de type "premier déplacement" ou "spawn" comme temps 0. Non disponible aujourd'hui dans l'API SPNKr/filmshell ; nécessiterait une investigation sur les event_types non exploités (ex: `mode` events déjà présents dans `highlight_events`).
 
 **Aucune action immédiate** — documenter pour investigation future.
+
+---
+
+## 🆕 Ajouté le 2026-04-03 — v6.3.1
+
+---
+
+### [v6.3.1][feat] Option pour désactiver l'affichage des records
+
+**Noté le** : 2026-04-03 | **Priorité** : Basse
+
+**Contexte** : L'app met en avant les records personnels (meilleur KDA, meilleure performance score, etc.) sur plusieurs pages. Certains utilisateurs pourraient préférer une vue épurée sans cette mise en avant.
+
+**Solution** :
+1. Ajouter `show_records: bool = True` dans `app_settings.json` (section préférences UI)
+2. Lire ce flag depuis `AppSettings` (Pydantic v2)
+3. Conditionner l'affichage des blocs records via `if app_settings.show_records:` dans les pages concernées
+4. Exposer le toggle dans la page Paramètres (si elle existe) ou dans la sidebar
+
+**Effort estimé** : 1h (une fois les emplacements identifiés).
+
+---
+
+### [v6.3.1][ux] Sélecteur de langue : remplacer le bouton radio par un menu déroulant avec drapeau
+
+**Noté le** : 2026-04-03 | **Priorité** : Basse
+
+**Contexte** : Le sélecteur de langue actuel utilise des boutons radio Streamlit (`st.radio`) — verbeux et visuellement encombrant dans la sidebar. L'objectif est un `st.selectbox` discret n'affichant que le drapeau (🇫🇷 / 🇬🇧) sans label textuel visible.
+
+**Solution** :
+1. Remplacer `st.radio` par `st.selectbox` avec options `["🇫🇷", "🇬🇧"]` (ou `{"🇫🇷": "fr", "🇬🇧": "en"}`)
+2. Masquer le label via `label_visibility="collapsed"`
+3. Conserver la logique de persistance `st.session_state["lang"]` existante
+4. Vérifier que le changement déclenche bien un `st.rerun()` pour propager la langue
+
+**Localisation probable** : `src/ui/sidebar.py` ou équivalent (chercher `st.radio` + `lang`).
+
+**Effort estimé** : 30 min.
+
+---
+
+### [v6.3.1][fix] Mode "Quick Play" dans la notification Discord
+
+**Noté le** : 2026-04-03 | **Priorité** : Basse
+
+**Contexte** : La notification Discord affiche le mode brut `"Quick Play"` au lieu du nom traduit/normalisé. La couche `resolve_display_mode()` / `translate_pair_name()` n'est apparemment pas appelée au moment de la construction de l'embed Discord.
+
+**Solution** :
+1. Dans `src/utils/discord_notifier.py`, appliquer `resolve_display_mode(mode_raw, lang="fr")` (ou `"en"` selon la config webhook) avant d'injecter le nom de mode dans l'embed
+2. Vérifier que `canonical_category` (table `mode_prefix_names`) est bien attachée lors de la construction du message
+3. Tester sur un embed local avec `mode_raw = "Quick Play"` → attendu : `"Jeu rapide"` (FR) ou `"Quick Play"` normalisé (EN)
+
+**Effort estimé** : 30 min.
+
+---
+
+### [v6.3.1][ux] Afficher la version de l'app discrètement
+
+**Noté le** : 2026-04-03 | **Priorité** : Basse
+
+**Contexte** : Pas de versioning visible dans l'interface. Utile pour le support, les captures d'écran de rapport de bug et la cohérence avec le CHANGELOG.
+
+**Solution** :
+1. Lire la version depuis un fichier source unique (ex. `src/__version__.py` : `__version__ = "6.3.0"`, ou depuis `pyproject.toml`)
+2. Afficher en bas de sidebar via `st.caption(f"v{__version__}")` avec style discret
+3. Ne pas dupliquer la chaîne de version dans plusieurs fichiers — une seule source de vérité
+
+**Effort estimé** : 20 min.
+
+---
+
+### [v6.3.1][ui] Harmoniser et fixer la hauteur des rangées de cases dans Dernier Match
+
+**Noté le** : 2026-04-03 | **Priorité** : Basse
+
+**Contexte** : Dans la section "Dernier Match", les deux rangées de métriques (ex. Victoire / Défaite / KDA…) ont des hauteurs de cases irrégulières — contenu variable + absence de hauteur fixe CSS.
+
+**Solution** :
+1. Identifier le composant de carte métrique utilisé (`st.metric`, div custom, ou composant `src/ui/components/`)
+2. Appliquer une hauteur fixe minimale cohérente sur les deux rangées (CSS `min-height` ou paramètre du composant)
+3. S'assurer que le texte tronqué long ne fasse pas déborder une case
+
+**Localisation probable** : `src/ui/pages/last_match.py` ou `src/ui/components/metrics.py`.
+
+**Effort estimé** : 30–45 min (surtout du CSS/HTML Streamlit).
+
+---
+
+### [v6.3.1][ui] Agrandir les badges d'outcome dans la case Outcome (Dernier Match)
+
+**Noté le** : 2026-04-03 | **Priorité** : Basse
+
+**Contexte** : Les badges visuels liés à l'outcome (Victoire / Défaite / Égalité / DNF) dans la case Outcome de la page Dernier Match sont trop petits — difficilement lisibles d'un coup d'œil.
+
+**Solution** :
+1. Localiser le rendu du badge outcome dans `src/ui/pages/last_match.py` (ou composant dédié)
+2. Augmenter la taille du badge : agrandir l'emoji ou l'icône, la police du label, ou le padding de la carte
+3. Conserver la cohérence avec les couleurs `Outcome.WIN` / `LOSS` / `TIE` / `DNF` déjà définies
+
+**Effort estimé** : 20 min.
+
+---
+
+### [v6.3.1][feat] Page Explorer — champ de recherche par Match ID partiel
+
+**Noté le** : 2026-04-03 | **Priorité** : Basse
+
+**Contexte** : La page Explorer permet de parcourir l'historique de matchs mais ne propose pas de recherche directe par `match_id`. Utile pour retrouver un match à partir d'un identifiant copié-collé (ex. depuis une capture écran ou un URL filmshell : `70a1c6c6`).
+
+**Comportement attendu** : L'utilisateur saisit un fragment de match ID (min 6–8 caractères), la liste est filtrée en temps réel sur `match_id LIKE '%<saisie>%'` (insensible à la casse).
+
+**Solution** :
+1. Ajouter `st.text_input("Rechercher par Match ID", key="explorer_match_id_search")` dans les filtres de `src/ui/pages/explorer.py`
+2. Si la saisie est non vide (≥ 6 caractères pour éviter les faux positifs), ajouter un filtre `.filter(pl.col("match_id").str.contains(query, literal=True))` sur le DataFrame chargé
+3. Pas de fuzzy matching au sens strict nécessaire — `LIKE '%prefix%'` suffit pour les UUIDs tronqués
+4. Afficher un message "Aucun match trouvé" si le filtre ne retourne rien
+
+**Effort estimé** : 45 min.
+
+---
+
+## ❓ À détailler par l'utilisateur
+
+> Ces items sont trop vagues pour être implémentés sans plus de contexte. Décrire le comportement attendu avant de les planifier.
+
+---
+
+### [?] Revue de code par ChatGPT
+
+**Noté le** : 2026-04-03
+
+Processus/outillage à clarifier : quels fichiers ? quel périmètre ? via API ou copier-coller manuel ? objectif de la revue (sécurité, qualité, style) ?
+
+---
+
+### [?] Tester/corriger sync sur le site
+
+**Noté le** : 2026-04-03
+
+Préciser : quel environnement ("le site" = prod déployée ? staging ?) — quels symptômes observés — quels gamertags concernés.
+
+---
+
+### [?] Créer des utilisateurs Chroot Jail pour Madi et Flo
+
+**Noté le** : 2026-04-03
+
+Infrastructure serveur (hors app LevelUp). Préciser : OS cible, accès souhaité (SSH ? SFTP ? accès lecture seule au dossier projet ?), contraintes de sécurité.
+
+---
+
+### [?] Revoir l'affichage de la section badge dans Dernier Match
+
+**Noté le** : 2026-04-03
+
+Préciser : quels badges sont concernés (médailles ? outcome ? comeback ?) — quel est le problème exact (ordre, taille, débordement, absence de badge attendu) ?
+
