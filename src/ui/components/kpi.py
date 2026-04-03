@@ -31,39 +31,6 @@ def render_kpi_cards(cards: list[tuple[str, str]], *, dense: bool = True) -> Non
     st.markdown(f"<div class='{grid_class}'>{items}</div>", unsafe_allow_html=True)
 
 
-def render_compact_html_cards(
-    cards: list[tuple[str, str, str | None, str | None]],
-    *,
-    dense: bool = False,
-) -> None:
-    """Affiche une grille de cartes KPI compactes avec support HTML des valeurs.
-
-    Args:
-        cards: Liste de tuples (label, value_html, kpi_color, sub_html).
-            - label: titre de la carte (sera échappé).
-            - value_html: valeur, peut contenir du HTML (spans de couleur, badges…).
-            - kpi_color: couleur CSS inline optionnelle pour la valeur (ex. '#c62828').
-            - sub_html: sous-texte HTML optionnel affiché sous la valeur.
-        dense: Espacement réduit entre les cartes.
-    """
-    if not cards:
-        return
-    grid_class = "os-kpi-grid os-kpi-grid--dense" if dense else "os-kpi-grid"
-    items = ""
-    for label, value_html, kpi_color, sub_html in cards:
-        safe_label = html_mod.escape(str(label))
-        color_attr = f" style='color:{kpi_color}'" if kpi_color else ""
-        sub_part = f"<div class='os-kpi__sub'>{sub_html}</div>" if sub_html else ""
-        items += (
-            f"<div class='os-kpi'>"
-            f"<div class='os-kpi__label'>{safe_label}</div>"
-            f"<div class='os-kpi__value'{color_attr}>{value_html}</div>"
-            f"{sub_part}"
-            f"</div>"
-        )
-    st.markdown(f"<div class='{grid_class}'>{items}</div>", unsafe_allow_html=True)
-
-
 def render_top_summary(
     total_matches: int,
     rates,

@@ -420,7 +420,10 @@ def ensure_local_image_path(
             return cached
 
     if not download_enabled:
-        # Pas de réseau: on renvoie le cache si trouvé (y compris anciens préfixes)
+        # Pas de réseau: retourner le cache périmé s'il existe (plutôt que rien)
+        # resolve_local_image_path ne connaît que les anciens préfixes et manque "adornment"/"rank"
+        if os.path.exists(cached) and os.path.isfile(cached):
+            return cached
         return resolve_local_image_path(s)
 
     ok, _err, out_path = download_image_to_cache(s, prefix=prefix, timeout_seconds=timeout_seconds)
