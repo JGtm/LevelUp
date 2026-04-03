@@ -26,9 +26,12 @@ def add_i18n_display_columns(df: pl.DataFrame, lang: str = "fr") -> pl.DataFrame
     pas recalculées.
 
     Priorité pour chaque colonne (lang == "fr") :
-    - ``map_ui``      : ``map_name_fr``     → ``map_name``
-    - ``mode_ui``     : ``pair_name_fr``    → ``pair_name``
+    - ``map_ui``      : ``map_name_fr``      → ``map_name``
     - ``playlist_ui`` : ``playlist_name_fr`` → ``playlist_name``
+
+    Note : ``mode_ui`` n'est PAS calculé ici — ``pair_name_fr`` est le nom
+    brut de l'asset (non normalisé), la traduction est gérée par
+    ``_add_derived_columns`` via ``translate_pair_name``.
 
     En lang == "en", on utilise directement les colonnes EN (passthrough).
 
@@ -57,16 +60,10 @@ def add_i18n_display_columns(df: pl.DataFrame, lang: str = "fr") -> pl.DataFrame
             exprs.append(pl.col("map_name").cast(pl.Utf8).alias("map_ui"))
 
     # --- mode_ui ---
-    if "mode_ui" not in df.columns and "pair_name" in df.columns:
-        if lang == "fr" and "pair_name_fr" in df.columns:
-            exprs.append(
-                pl.coalesce([
-                    pl.col("pair_name_fr").cast(pl.Utf8),
-                    pl.col("pair_name").cast(pl.Utf8),
-                ]).alias("mode_ui")
-            )
-        else:
-            exprs.append(pl.col("pair_name").cast(pl.Utf8).alias("mode_ui"))
+    # NOTE: mode_ui n'est PAS calculé ici car pair_name_fr est le nom brut de l'asset
+    # (ex : "Arena:Slayer on Cliffhanger - Forge") et non une traduction normalisée.
+    # La normalisation/traduction via translate_pair_name est gérée par
+    # _add_derived_columns dans _filters_apply.py.
 
     # --- playlist_ui ---
     if "playlist_ui" not in df.columns and "playlist_name" in df.columns:

@@ -1,7 +1,8 @@
 """Tests unitaires pour src.app.i18n_columns.add_i18n_display_columns.
 
 Vérifie :
-- Priorité aux colonnes *_fr sur les colonnes EN
+- Priorité aux colonnes map_name_fr/playlist_name_fr sur les colonnes EN
+- mode_ui n'est PAS calculé ici (pair_name_fr brut ≠ traduction normalisée)
 - Idempotence (colonnes existantes non recalculées)
 - Comportement en lang="en" (passthrough)
 - DataFrame vide retourné intact
@@ -32,26 +33,25 @@ class TestAddI18nDisplayColumns:
         assert "map_ui" in out.columns
         assert out["map_ui"].to_list() == ["Dévissage", "Aquarius"]
 
-    def test_adds_mode_ui_from_pair_name_fr(self) -> None:
-        df = _base_df(pair_name_fr=["Jeu rapide:Slayer", "Classé:Slayer"])
-        out = add_i18n_display_columns(df, lang="fr")
-        assert "mode_ui" in out.columns
-        assert out["mode_ui"].to_list() == ["Jeu rapide:Slayer", "Classé:Slayer"]
-
     def test_adds_playlist_ui_from_playlist_name_fr(self) -> None:
         df = _base_df(playlist_name_fr=["Jeu rapide", "Arène classée"])
         out = add_i18n_display_columns(df, lang="fr")
         assert "playlist_ui" in out.columns
         assert out["playlist_ui"].to_list() == ["Jeu rapide", "Arène classée"]
 
-    def test_falls_back_to_en_when_fr_col_absent(self) -> None:
+    def test_mode_ui_not_computed_here(self) -> None:
+        """mode_ui ne doit pas être créé : pair_name_fr brut n'est pas normalisé."""
+        df = _base_df(pair_name_fr=["Arena:Slayer on Cliffhanger - Forge", "Ranked:Slayer"])
+        out = add_i18n_display_columns(df, lang="fr")
+        assert "mode_ui" not in out.columns
+
+    def test_map_ui_fallback_to_en_when_fr_col_absent(self) -> None:
         df = _base_df()  # pas de colonnes _fr
         out = add_i18n_display_columns(df, lang="fr")
         assert out["map_ui"].to_list() == ["Cliffhanger", "Aquarius"]
-        assert out["mode_ui"].to_list() == ["Quick Play:Slayer", "Ranked:Slayer"]
         assert out["playlist_ui"].to_list() == ["Quick Play", "Ranked Arena"]
 
-    def test_coalesce_null_fr_with_en(self) -> None:
+    def test_coalesce_null_map_name_fr_with_en(self) -> None:
         """Si map_name_fr est null pour une ligne, fallback sur map_name."""
         df = _base_df(map_name_fr=[None, "Aquarius"])
         out = add_i18n_display_columns(df, lang="fr")
@@ -63,10 +63,10 @@ class TestAddI18nDisplayColumns:
         out = add_i18n_display_columns(df, lang="fr")
         assert out["map_ui"].to_list() == ["EXISTING", "EXISTING"]
 
-    def test_idempotent_mode_ui(self) -> None:
-        df = _base_df(pair_name_fr=["Jeu rapide", "Classé"], mode_ui=["OLD", "OLD"])
+    def test_idempotent_playlist_ui(self) -> None:
+        df = _base_df(playlist_name_fr=["Jeu rapide", "Classé"], playlist_ui=["OLD", "OLD"])
         out = add_i18n_display_columns(df, lang="fr")
-        assert out["mode_ui"].to_list() == ["OLD", "OLD"]
+        assert out["playlist_ui"].to_list() == ["OLD", "OLD"]
 
     def test_lang_en_uses_passthrough(self) -> None:
         """En lang='en', les colonnes EN sont utilisées directement."""
@@ -81,9 +81,8 @@ class TestAddI18nDisplayColumns:
         assert "map_ui" not in out.columns
 
     def test_missing_source_cols_no_error(self) -> None:
-        """Si map_name/pair_name/playlist_name absents, pas d'erreur."""
+        """Si map_name/playlist_name absents, pas d'erreur."""
         df = pl.DataFrame({"match_id": ["m1"]})
         out = add_i18n_display_columns(df, lang="fr")
         assert "map_ui" not in out.columns
-        assert "mode_ui" not in out.columns
         assert "playlist_ui" not in out.columns
