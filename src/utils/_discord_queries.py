@@ -101,22 +101,29 @@ def fetch_last_match_info(xuid: str) -> object | None:
         from src.utils.discord_notifier import LastMatchInfo
 
         with duckdb_read_only(_SHARED_DB) as conn:
+            # Attacher metadata.duckdb pour que v_match_full puisse résoudre les noms FR
+            try:
+                from src.utils.db import ensure_metadata_attached
+                ensure_metadata_attached(conn)
+            except Exception:
+                pass
+
             row = conn.execute(
                 """
                 SELECT
                     mr.match_id,
-                    COALESCE(mr.map_name,          mr.map_id,       '—') AS map_name,
-                    COALESCE(mr.playlist_name,     '—')                  AS playlist_name,
-                    COALESCE(mr.game_variant_name, '—')                  AS game_variant_name,
-                    COALESCE(mr.pair_name,         '—')                  AS pair_name,
-                    COALESCE(mr.is_ranked,         FALSE)                AS is_ranked,
+                    COALESCE(mr.map_name_fr, mr.map_name, mr.map_id, '—') AS map_name,
+                    COALESCE(mr.playlist_name_fr, mr.playlist_name, '—')  AS playlist_name,
+                    COALESCE(mr.game_variant_name, '—')                   AS game_variant_name,
+                    COALESCE(mr.pair_name,         '—')                   AS pair_name,
+                    COALESCE(mr.is_ranked,         FALSE)                 AS is_ranked,
                     mr.start_time,
                     COALESCE(mp.kills,   0) AS kills,
                     COALESCE(mp.deaths,  0) AS deaths,
                     COALESCE(mp.assists, 0) AS assists,
                     COALESCE(mp.outcome, 0) AS outcome,
                     COALESCE(mp.score,   0) AS score
-                FROM match_registry mr
+                FROM v_match_full mr
                 JOIN match_participants mp ON mr.match_id = mp.match_id
                 WHERE mp.xuid = ?
                 ORDER BY mr.start_time DESC
