@@ -391,7 +391,10 @@ def _build_waypoint_url(waypoint_player: str | None, match_id: str) -> str | Non
 
 
 def _display_map(row: dict[str, Any]) -> str:
-    """Retourne le label carte normalisé."""
+    """Retourne le label carte normalisé (FR en priorité, fallback EN normalisé)."""
+    map_fr = row.get("map_name_fr")
+    if map_fr:
+        return str(map_fr)
     last_map = row.get("map_name")
     return normalize_map_label(last_map) if last_map else "-"
 
@@ -399,16 +402,22 @@ def _display_map(row: dict[str, Any]) -> str:
 def _render_match_info_row(row: dict[str, Any], normalize_mode_label_fn: Any) -> None:
     """Affiche la ligne Carte / Playlist / Mode."""
     last_playlist = row.get("playlist_name")
+    last_playlist_fr = row.get("playlist_name_fr")
     last_pair = row.get("pair_name")
+    last_pair_fr_raw = row.get("pair_name_fr")
     last_mode = row.get("game_variant_name")
     lang = get_lang()
 
     map_display = _display_map(row)
     playlist_display = (
-        translate_playlist_name(str(last_playlist), lang=lang) if last_playlist else "-"
+        str(last_playlist_fr)
+        if last_playlist_fr
+        else (translate_playlist_name(str(last_playlist), lang=lang) if last_playlist else "-")
     )
-    last_mode_ui = row.get("mode_ui") or normalize_mode_label_fn(
-        str(last_pair) if last_pair else None
+    last_mode_ui = (
+        row.get("mode_ui")
+        or (str(last_pair_fr_raw) if last_pair_fr_raw else None)
+        or normalize_mode_label_fn(str(last_pair) if last_pair else None)
     )
     last_pair_fr = translate_pair_name(str(last_pair), lang=lang) if last_pair else None
     mode_display = last_mode_ui or last_pair_fr or last_mode or "-"
