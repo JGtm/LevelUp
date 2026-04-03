@@ -277,7 +277,7 @@ def render_match_impact_section(  # noqa: PLR0913
             cards_html.append(
                 f"<div class='os-card' style='padding:10px; min-height:80px; flex:1; min-width:90px;"
                 f" border-color:{accent}66;'>"
-                f"<div class='os-card-title' style='font-size:14px'>{icon_label}</div>"
+                f"<div class='os-card-title' style='font-size:16px;letter-spacing:0'>{icon_label}</div>"
                 f"<div class='os-card-kpi' style='color:{accent};font-size:15px'>{display_html}</div>"
                 f"<div class='os-card-sub'>{time_str}</div>"
                 f"</div>"
