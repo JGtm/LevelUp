@@ -7,6 +7,56 @@
 
 ## Journal
 
+### [2026-04-05] — feat(i18n): add_i18n_display_columns — correction systémique i18n — Complété
+
+**Statut** : Complété
+
+**Décision technique** :
+L'utilisateur signalait que l'UI affichait partout des valeurs EN (Playlist, Mode, Carte) au lieu de FR, notamment dans les dropdowns de l'Explorer. Problème architectural : `map_ui`/`mode_ui`/`playlist_ui` n'étaient calculés que dans `_add_derived_columns` sur `dff` (après filtrage), jamais sur `df` au chargement. Toute surface travaillant sur `df` ou ses sous-ensembles pré-filtrage restait aveugle aux traductions FR.
+
+**Fix systémique** :
+- Création de `src/app/i18n_columns.py` avec `add_i18n_display_columns(df, lang)` : module pur (0 Streamlit, 0 DB), idempotent, utilise les colonnes `*_fr` déjà présentes dans `df` depuis `v_match_full`
+- Injection dans `main_helpers.py` après `mark_firefight` : `df` en session_state reçoit `map_ui`/`mode_ui`/`playlist_ui` → tous les sous-ensembles (`dff`, etc.) en héritent automatiquement
+- 10 tests unitaires (test_add_i18n_display_columns.py)
+
+**Surfaces fixées** :
+- `explorer.py` : dropdown Playlist utilise `playlist_ui`
+- `match_history.py` : `_ensure_display_columns` prioritise `playlist_name_fr`/`pair_name_fr`
+- `career_top_matches_render.py` : mode/map via `map_ui`/`pair_name_fr`
+- `_session_compare_history.py` : priorité `mode_ui` > `pair_fr` > translate ; support `pair_name_fr`
+- `timeseries.py` : tooltip playlist utilise `playlist_ui` avec guard
+
+**Surfaces déjà correctes** (bénéficient automatiquement) :
+- `match_table_html.py`, `win_loss.py`, `teammates_helpers.py`, `maps.py compute_map_breakdown`
+
+**Commits** :
+- `6b0392fe` : feat(i18n): add_i18n_display_columns (6 fichiers, 227 insertions)
+- `a625a8f8` : fix(i18n): session_compare + timeseries
+
+**Branche** : `fix/map-ui-fr-mismatch`
+
+---
+
+### [2026-04-04] — fix(match-view): playlist/carte/mode en FR dans la page Dernier Match — Complété
+
+**Statut** : Complété
+
+**Décision technique** :
+La page Dernier Match affichait "Quick Play" (EN) au lieu de "Jeu rapide" (FR) dans la colonne Playlist. Même problème pour Carte et Mode.
+
+**Cause** : `_render_match_info_row` dans `match_view.py` ignorait les colonnes `playlist_name_fr`, `map_name_fr` et `pair_name_fr` qui sont dans `COLUMNS_COMMON` (chargées depuis `v_match_full`).
+- `playlist_display` → `translate_playlist_name(playlist_name)` = passthrough, retourne "Quick Play"
+- `_display_map` → `normalize_map_label(map_name)` = nom EN
+- `mode_display` → `row.get("mode_ui")` absent de COLUMNS_COMMON → fallback normalize
+
+**Fix** (commit `a2949d3`) : priorité aux colonnes DB déjà présentes dans le row, fallback vers les fonctions de normalisation.
+
+**Résultats** : 174 tests passent. Commit `a2949d3` sur `fix/map-ui-fr-mismatch`.
+
+**Branche** : `fix/map-ui-fr-mismatch`
+
+---
+
 ### [2026-04-03] — feat(film_start): intégration film_match_start_ms : pipeline + backfill + graphes — Complété
 
 **Statut** : Complété
