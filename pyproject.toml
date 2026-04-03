@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "levelup-halo"
-version = "5.7.0"
+version = "6.3.0"
 description = "Dashboard d'analyse de statistiques Halo Infinite avec architecture DuckDB v5 (shared matches)"
 readme = "README.md"
 license = {text = "MIT"}
