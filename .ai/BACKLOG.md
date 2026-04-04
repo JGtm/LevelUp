@@ -394,19 +394,37 @@ Trois types de kills clutch, par ordre de fiabilité :
 
 ---
 
-### [v6.3.1][feat] Option pour désactiver l'affichage des records
+### [v6.3.1][feat] Option pour désactiver l'affichage des records (page Teammates)
 
 **Noté le** : 2026-04-03 | **Priorité** : Basse
 
-**Contexte** : L'app met en avant les records personnels (meilleur KDA, meilleure performance score, etc.) sur plusieurs pages. Certains utilisateurs pourraient préférer une vue épurée sans cette mise en avant.
+**Périmètre** : La feature records est active **uniquement sur la page Teammates**, sur 4 graphes + 1 bloc textuel.
+
+**État actuel** : Les records s'affichent toujours si les données sont disponibles. Pas de toggle UI. Calculés sur l'historique complet du joueur (pas filtré par session/date).
+
+**Rendus visuels concernés** :
+
+| Graphe | Visuel record | Fonctions |
+|--------|--------------|-----------|
+| Trio Metric (assists, ratio, accuracy…) | Barres fantômes hachurées `/` au-dessus des barres réelles | `plot_trio_metric()` → `add_record_shapes()` |
+| Trio Kills/Deaths | Barres fantômes hachurées (kills +, deaths −) | `plot_trio_kills_deaths()` → `add_record_shapes()` |
+| Killing Spree (bar chart) | Barres fantômes hachurées | `plot_multi_metric_bars_by_match()` → `add_record_shapes()` |
+| HS+PK Stacked | Lignes horizontales colorées | `plot_hs_pk_stacked()` → `add_overlay_record_shapes()` |
+| Stats par minute | Texte "Record : X/min" | `_render_per_minute_stats()` |
+
+**Calcul** : `compute_squad_records()` / `compute_squad_records_per_map()` dans `src/analysis/squad_records.py`, appelés dans `src/ui/pages/_teammates_trio.py` (L203–231) et `teammates_views.py` (L183–199).
 
 **Solution** :
-1. Ajouter `show_records: bool = True` dans `app_settings.json` (section préférences UI)
+1. Ajouter `show_records: bool = True` dans `app_settings.json`
 2. Lire ce flag depuis `AppSettings` (Pydantic v2)
-3. Conditionner l'affichage des blocs records via `if app_settings.show_records:` dans les pages concernées
-4. Exposer le toggle dans la page Paramètres (si elle existe) ou dans la sidebar
+3. Dans `_teammates_trio.py` : conditionner le calcul `compute_squad_records()` et `compute_squad_records_per_map()` — passer `records=None` aux graphes si désactivé
+4. Dans `teammates_views.py` : même chose pour les 2 appels `compute_squad_records()`
+5. Dans `_render_per_minute_stats()` : masquer le bloc textuel record si le flag est `False`
+6. Exposer le toggle dans la sidebar ou page Paramètres
 
-**Effort estimé** : 1h (une fois les emplacements identifiés).
+**Impact si désactivé** : zéro calcul de records (gain perf mineur), graphes affichent uniquement les barres réelles sans barres fantômes ni lignes horizontales.
+
+**Effort estimé** : 1h.
 
 ---
 
@@ -475,18 +493,22 @@ Trois types de kills clutch, par ordre de fiabilité :
 
 ---
 
-### [v6.3.1][ui] Agrandir les badges d'outcome dans la case Outcome (Dernier Match)
+### [v6.3.1][ui] Agrandir les badges dans la page Dernier Match (+30%)
 
 **Noté le** : 2026-04-03 | **Priorité** : Basse
 
-**Contexte** : Les badges visuels liés à l'outcome (Victoire / Défaite / Égalité / DNF) dans la case Outcome de la page Dernier Match sont trop petits — difficilement lisibles d'un coup d'œil.
+**Contexte** : Deux catégories de badges dans la page Dernier Match sont trop petits :
+- **Outcome** : Victoire / Défaite / Égalité / DNF (case Outcome)
+- **DominanceFlag** : Remontada / Contre-Remontada / Débandade / Humiliation / Domination Totale (section badges)
+
+**Action** : Augmenter la taille des deux types de badges d'environ 30% (emoji, police, ou padding selon le rendu actuel).
 
 **Solution** :
-1. Localiser le rendu du badge outcome dans `src/ui/pages/last_match.py` (ou composant dédié)
-2. Augmenter la taille du badge : agrandir l'emoji ou l'icône, la police du label, ou le padding de la carte
-3. Conserver la cohérence avec les couleurs `Outcome.WIN` / `LOSS` / `TIE` / `DNF` déjà définies
+1. Localiser le rendu outcome dans `src/ui/pages/last_match.py` — chercher `Outcome.WIN` / `LOSS` / `TIE` / `DNF`
+2. Localiser le rendu DominanceFlag dans le même fichier — chercher `DominanceFlag` ou `comeback_flag`
+3. Appliquer le même facteur d'agrandissement sur les deux pour conserver la cohérence visuelle
 
-**Effort estimé** : 20 min.
+**Effort estimé** : 30 min.
 
 ---
 
@@ -498,11 +520,14 @@ Trois types de kills clutch, par ordre de fiabilité :
 
 **Comportement attendu** : L'utilisateur saisit un fragment de match ID (min 6–8 caractères), la liste est filtrée en temps réel sur `match_id LIKE '%<saisie>%'` (insensible à la casse).
 
+**Layout** : Le champ de recherche doit être placé sur la **même ligne** que le sélecteur "Sélectionner un match", à sa droite — via `st.columns([3, 1])` ou proportions similaires.
+
 **Solution** :
-1. Ajouter `st.text_input("Rechercher par Match ID", key="explorer_match_id_search")` dans les filtres de `src/ui/pages/explorer.py`
-2. Si la saisie est non vide (≥ 6 caractères pour éviter les faux positifs), ajouter un filtre `.filter(pl.col("match_id").str.contains(query, literal=True))` sur le DataFrame chargé
-3. Pas de fuzzy matching au sens strict nécessaire — `LIKE '%prefix%'` suffit pour les UUIDs tronqués
-4. Afficher un message "Aucun match trouvé" si le filtre ne retourne rien
+1. Dans `src/ui/pages/explorer.py`, enrouler le sélecteur existant et le nouveau champ dans `col1, col2 = st.columns([3, 1])`
+2. `col1` : sélecteur "Sélectionner un match" (existant)
+3. `col2` : `st.text_input("🔍 Match ID", key="explorer_match_id_search", placeholder="70a1c6c6…")`
+4. Si la saisie est non vide (≥ 6 caractères), filtrer `.filter(pl.col("match_id").str.contains(query, literal=True))` sur la liste des matchs avant de peupler le sélecteur
+5. Afficher un message "Aucun match trouvé" si le filtre ne retourne rien
 
 **Effort estimé** : 45 min.
 
@@ -538,9 +563,4 @@ Infrastructure serveur (hors app LevelUp). Préciser : OS cible, accès souhait�
 
 ---
 
-### [?] Revoir l'affichage de la section badge dans Dernier Match
-
-**Noté le** : 2026-04-03
-
-Préciser : quels badges sont concernés (médailles ? outcome ? comeback ?) — quel est le problème exact (ordre, taille, débordement, absence de badge attendu) ?
 

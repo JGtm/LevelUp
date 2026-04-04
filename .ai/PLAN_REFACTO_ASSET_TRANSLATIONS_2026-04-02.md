@@ -1,14 +1,31 @@
-# Plan détaillé — Refacto traductions d'assets : DB = source de vérité
+# Plan détaillé — Refacto architecture : i18n pipeline + abstraction ChartData
 
-**Date :** 2026-04-02 (mis à jour 2026-04-03)
-**Branche de travail :** `refactor/asset-translations-db-first`  
+**Date :** 2026-04-02 (mis à jour 2026-04-04)
+**Branche de travail :** `refactor/asset-translations-db-first`
 **Backlog source :** `.ai/BACKLOG.md` — § "[refacto] Traductions d'assets"
+
+> **État au 2026-04-04 :** Phase 0 complète + hotfixes UI supprimés. Reste : Phases 1→4 (Axe A) puis Phase 7 (Axe B).
+
+---
+
+## Vue d'ensemble : deux axes complémentaires
+
+Ce plan adresse deux problèmes orthogonaux qui ont tous les deux causé des rustines lors du feature "records historiques" (branch `fix/map-ui-fr-mismatch`) :
+
+| Axe | Couche | Symptôme observé | Solution |
+|-----|--------|-----------------|----------|
+| **A — i18n pipeline** | Données | `map_ui` absent de `df` → chaque page le recalcule localement (7 hotfixes posés) | `add_i18n_display_columns()` appelée une seule fois après `load_df_optimized()` |
+| **B — ChartData** | Visualisation | Ajouter les records a requis de modifier 4 signatures + 3 implémentations distinctes | `ChartData` dataclass centralisant séries, couleurs, records, downsampling |
+
+Les deux axes sont **indépendants** mais **se renforcent** : l'Axe A garantit `map_ui` dans le df avant qu'il entre dans `ChartData`, ce qui permet de supprimer les guards dynamiques `_map_col` encore présents dans `squad_records.py`.
+
+**Ordre recommandé :** Phases 0→6 (Axe A) puis Phase 7 (Axe B). La Phase 7 peut démarrer en parallèle de la Phase 4 si besoin, mais pas avant la Phase 0.
 
 ---
 
 ## 0. Diagnostic racine — Pourquoi les fixes sont éparpillés
 
-### Le pipeline actuel (cassé)
+### 0.A — Pipeline i18n (Axe A)
 
 ```
 load_df_optimized()          → df  (a map_name_fr, PAS map_ui)
@@ -18,25 +35,38 @@ _filters_apply / _cascade    → dff (a map_ui) ← lang-aware ✅
 base, full_df, fr_sub...     → pas de map_ui  ← chaque page corrige localement ❌
 ```
 
-**3 implémentations parallèles de la même logique** existent aujourd'hui :
+**3 implémentations parallèles de la même logique** :
 
 | Symbole | Fichier | Défaut |
 |---------|---------|--------|
 | `add_ui_columns()` | `filters.py` | Ignore `map_name_fr`, utilise toujours `map_name` EN |
 | `_add_derived_columns()` | `_filters_apply.py` | Correcte mais uniquement appliquée à `dff` |
 | `_vectorize_ui_columns()` | `_filters_cascade.py` | Idem |
-| patches ad-hoc | `win_loss.py`, `teammates_views.py`, `friends_impact_heatmap.py` | Rustines symptomatiques |
+| patches ad-hoc | `win_loss.py`, `teammates_views.py`, `friends_impact_heatmap.py`, `_teammates_trio.py` | Rustines symptomatiques |
 
-**La vraie cause racine** : `df` (sortie de `load_df_optimized`) a déjà `map_name_fr` (depuis `v_match_full`), mais `map_ui` n'est jamais calculé à ce stade. Toute sous-sélection de `df` avant filtrage est borgne, obligeant chaque page à patcher localement.
+**La vraie cause racine** : `df` (sortie de `load_df_optimized`) a déjà `map_name_fr` (depuis `v_match_full`), mais `map_ui` n'est jamais calculé à ce stade.
 
-### La solution structurelle : Item 0
+### 0.B — Architecture graphique (Axe B)
 
-Créer **`src/app/i18n_columns.py`** avec une fonction unique `add_i18n_display_columns(df, lang)`, appelée **une seule fois** juste après `load_df_optimized()`. Ainsi :
+Les 5 graphes "barres multi-joueurs par match" de la page Escouade partagent les mêmes besoins transversaux, mais chaque fonction les implémente indépendamment :
 
-- `df` (stocké dans `st.session_state`) a toujours `map_ui`, `playlist_ui`, `mode_ui`
-- `dff` (sous-ensemble filtré de `df`) en hérite automatiquement — les 3 implémentations deviennent des no-ops (elles ont déjà les guards `if "map_ui" not in df.columns`)
-- `base`, `full_df` et tout sous-ensemble de `df` en héritent aussi
-- `fr_sub` (données coéquipiers, chargé séparément) est traité par un second appel à la même fonction
+| Besoin | Situation actuelle | Coût réel |
+|--------|-------------------|-----------|
+| Axe X normalisé (entiers + labels) | Chaque fonction reconstruit son propre idx_map | Logique dupliquée ×5 |
+| Couleurs par joueur | 7-10 kwargs individuels par fonction | PLR0913 systématique |
+| Records historiques | Ajout = 4 signatures modifiées + 3 implémentations | 2 sessions de travail |
+| Records par carte | `_map_col` guard dans `squad_records.py` | Dette supplémentaire |
+| Downsampling | `_downsample_for_plot` défini dans `timeseries.py` seulement | Pages escouade non protégées |
+
+**Graphes concernés (§4 de `CHARTS_AND_TABLES.md`) :**
+
+| Graphe | Fichier | barmode |
+|--------|---------|---------|
+| `plot_trio_metric` | `trio.py` | `group` |
+| `plot_trio_kills_deaths` | `trio.py` | `group` |
+| `plot_multi_metric_bars_by_match` | `match_bars.py` | `group` |
+| `plot_hs_pk_stacked` | `teammates_hs_pk.py` | `overlay` |
+| `_render_per_minute_stats` | `_teammates_trio_helpers.py` | catégoriel |
 
 ---
 
@@ -51,26 +81,18 @@ Créer **`src/app/i18n_columns.py`** avec une fonction unique `add_i18n_display_
 | `normalize_mode_label` couple `st.session_state` à la logique métier | ✅ Confirmé |
 | `translate_playlist_name` n'a pas de cache | ✅ Confirmé |
 
-### 1.2 Corrections et nuances à apporter
+### 1.2 Corrections et nuances
 
-**Item 2 — Diagnostic plus précis de `_normalize_mode_label` :**  
-Le backlog dit "réimplémente `normalize_mode_label`". En réalité, c'est pire : la version locale ne fait qu'appeler `translate_pair_name(pair_name)`, sans `clean_asset_label`, sans stripping `" on "`, sans nettoyage Forge/Ranked. Remplacer par `normalize_mode_label` serait un **gain de justesse** (comportement plus complet), pas seulement un DRY. Attention : cela dépend de l'Item 4 — voir §2.3.
+**Item 2 — `_normalize_mode_label` :**
+La version locale ne fait qu'appeler `translate_pair_name(pair_name)`, sans `clean_asset_label`, sans stripping `" on "`, sans nettoyage Forge/Ranked. Remplacer par `normalize_mode_label` est un **gain de justesse**, pas seulement un DRY. Dépend de l'Item 4.
 
-**Item 5 — Armes : déjà implémenté**  
-`resolve_weapon_display` dans `src/analysis/_weapon_data.py` suit déjà l'ordre correct :
-1. Fusion canonique (WEAPON_FUSION_MAP_ID)
-2. DB via `_resolve_weapon_cached` (lru_cache 512, `metadata.duckdb → weapon_labels`)
-3. Fallback dicts Python
+**Item 5 — Armes : déjà implémenté**
+`resolve_weapon_display` dans `src/analysis/_weapon_data.py` suit déjà l'ordre correct (fusion → DB → dicts Python). Aucun code à écrire — barrer dans le backlog.
 
-**Aucun code à écrire pour l'item 5.** Le backlog l'a estimé à 1h — c'est une dette déjà apurée. À valider (§4.5) puis à barrer.
+**Item 3 — Carte DB-first : résolu structurellement par Item 0**
+Avec `add_i18n_display_columns` appliqué dès le chargement, l'Item 3 se réduit à supprimer `add_ui_columns()` et les 7 hotfixes pré-Item0.
 
-**Item 3 — Carte DB-first : résolu par Item 0**  
-Avec `add_i18n_display_columns` appliqué dès le chargement, `map_name_fr` est toujours le chemin principal et `normalize_map_label_fn` reste le fallback explicite (cas map inédite / sync partiel). L'item 3 se réduit à supprimer `add_ui_columns()` de `filters.py` (qui ignorait `map_name_fr`) et vérifier `cache_filters.py` L87.
-
-**Ordre recommandé dans le backlog (1→2→4→3→5→6) — à réviser :**  
-L'item 2 doit impérativement venir **après** l'item 4. Remplacer `_normalize_mode_label` par `normalize_mode_label` avant de découpler son `st.session_state` revient à introduire le couplage UI là où il n'existait pas encore.
-
-### 1.3 Ordre corrigé (avec Item 0 prérequis)
+### 1.3 Ordre corrigé
 
 ```
 0 (couche centralisée) → 1 (is_uuid_like) → 4 (découplage st) → 2 (teammates) → 3 (nettoyage) → (5 : vérification) → 6
@@ -78,322 +100,329 @@ L'item 2 doit impérativement venir **après** l'item 4. Remplacer `_normalize_m
 
 ---
 
-## 2. Analyse technique détaillée par item
+## 2. Analyse technique — Axe A (i18n)
 
-### 2.0 Item 0 — Créer `src/app/i18n_columns.py` (couche centralisée) ⭐ PRÉREQUIS
+### 2.0 Item 0 — ~~Créer `src/app/i18n_columns.py`~~ ✅ COMPLÉTÉ
 
-**Motivation :**  
-La multiplication des rustines locales (rustines ajoutées sur `win_loss.py`, `teammates_views.py`, `friends_impact_heatmap.py`) est le symptôme d'une architecture où la traduction arrive trop tard dans le pipeline. Ce refacto déplace le calcul de `map_ui` / `playlist_ui` / `mode_ui` au point de chargement.
+> **2026-04-04 — Déjà implémenté.** `src/app/i18n_columns.py` existe et est intégré dans
+> `main_helpers.py:373`. Voir ci-dessous pour les divergences avec le plan initial.
 
-**Pipeline cible :**
+**Pipeline effectif :**
 ```
 load_df_optimized()            → df brut (map_name_fr présent, map_ui absent)
        ↓
-add_i18n_display_columns(df, lang)   ← NOUVEAU — appelée UNE SEULE FOIS
+add_i18n_display_columns(df, lang)   ← EN PLACE dans main_helpers.py:373
        ↓
-df enrichi (map_ui, playlist_ui, mode_ui présents) ← stocké dans session_state
+df enrichi (map_ui, playlist_ui présents) ← stocké dans session_state ✅
        ↓
 dff = apply_filters(df, ...)   → hérite automatiquement de map_ui ✅
 base, full_df, ...             → héritent automatiquement de map_ui ✅
-fr_sub (teammates)             → add_i18n_display_columns() aussi ✅
 ```
 
-**Nouveau fichier `src/app/i18n_columns.py` :**
+**Divergences par rapport au plan initial :**
 
-```python
-"""Couche centralisée d'enrichissement i18n des DataFrames de matchs.
+| Point | Plan initial | Implémentation réelle |
+|-------|-------------|----------------------|
+| Signature | 6 params dont 4 callbacks fn | `(df, lang="fr")` seulement — autonome |
+| `mode_ui` | Calculé ici via `normalize_mode_label_fn` | **Non calculé ici** — délégué à `_add_derived_columns` dans `_filters_apply.py` (pair_name brut ≠ label normalisé, décision correcte) |
+| `playlist_ui` | Via callback | Via `coalesce([playlist_name_fr, playlist_name])` directement |
 
-Ce module est la source de vérité unique pour le calcul de map_ui,
-playlist_ui et mode_ui. Il doit être appelé une seule fois après
-load_df_optimized(), jamais dans les pages individuelles.
-"""
-from __future__ import annotations
-import polars as pl
+**Hotfixes pré-Item0 — état actuel :**
 
-
-def add_i18n_display_columns(
-    df: pl.DataFrame,
-    lang: str,
-    *,
-    normalize_mode_label_fn,
-    normalize_map_label_fn,
-    translate_playlist_name_fn,
-    clean_asset_label_fn,
-) -> pl.DataFrame:
-    """Ajoute map_ui, playlist_ui, mode_ui au DataFrame.
-
-    Logique (par ordre de priorité pour chaque colonne) :
-    - map_ui      : map_name_fr (DB) → normalize_map_label_fn(map_name) (fallback UUID)
-    - playlist_ui : playlist_name_fr (DB) → translate_playlist_name_fn(playlist_name)
-    - mode_ui     : pair_name_fr (DB) → normalize_mode_label_fn(pair_name)
-
-    Cette fonction est idempotente : si la colonne existe déjà, elle n'est pas recalculée.
-    """
-    ...  # implémentation : cf. logique existante de _add_derived_columns
-```
-
-**Call-site : `streamlit_app.py` juste après `load_df_optimized()`**
-
-```python
-# Avant (actuel — map_ui calculé trop tard)
-df = load_df_optimized(...)
-
-# Après (centralisé)
-df = load_df_optimized(...)
-df = add_i18n_display_columns(
-    df, lang=get_lang(),
-    normalize_mode_label_fn=...,
-    normalize_map_label_fn=...,
-    translate_playlist_name_fn=translate_playlist_name,
-    clean_asset_label_fn=clean_asset_label,
-)
-st.session_state["df"] = df
-```
-
-**Périmètre complet des hotfixes pré-Item0 (marqués `# Hotfix pré-Item0` dans le code, à supprimer après déploiement de l'Item 0) :**
-
-| Fichier | Hotfix | Commit |
-|---------|--------|--------|
-| `win_loss.py` L261 | injection `map_ui` sur `base` | pré-df361f0 |
-| `teammates_views.py` L289 | injection `map_ui` sur `fr_sub` | pré-df361f0 |
-| `friends_impact_heatmap.py` | injection `map_ui` dans `plot_squad_map_heatmap` | 6df05c6 |
-| `_teammates_trio.py` | injection `map_ui` sur `_me_full` | df361f0 |
-| `_query_teammate_shared_stats` (SQL) | alias `map_ui` dans SELECT | df361f0 |
-| `query_teammate_full_history` (SQL) | `JOIN v_match_full` + alias `map_ui` | df361f0 |
-| `compute_squad_records_per_map` | guard dynamique `_map_col = "map_ui" if … else "map_name"` | df361f0 |
-
-Le commit `df361f0` ("fix(maps): noms FR dans graphes après radar") a corrigé 4 composants du pipeline de la page "Complémentarité de l'escouade" où les graphes post-radar affichaient encore les noms EN :
-
-1. **`f1_df/f2_df/f3_df`** — issus de `_query_teammate_shared_stats` : avaient `map_name_fr` mais pas `map_ui` → ajout de `COALESCE(r.map_name_fr, r.map_name, '') AS map_ui` dans le SELECT
-2. **`_f1_full/_f2_full/_f3_full`** — issus de `query_teammate_full_history` : jointure sur `match_registry` (sans `map_name_fr`) → remplacée par `JOIN shared.v_match_full` + ajout `map_name_fr`/`map_ui`
-3. **`_me_full`** — sous-ensemble de `df` (historique joueur principal) : `df` n'a pas `map_ui` avant filtrage → injection Python post-query dans `_teammates_trio.py`
-4. **`records_per_map`** — dict de `compute_squad_records_per_map` : clés EN (`map_name`) vs labels FR des axes → guard dynamique `_map_col`
-
-**Conséquences de l'Item 0 :**
-- `_add_derived_columns` et `_vectorize_ui_columns` deviennent des no-ops pour `map_ui` (guards `if "map_ui" not in df.columns:` déjà présentes) — pas de suppression précoce, mais la logique n'est plus dupliquée
-- `add_ui_columns()` dans `filters.py` devient obsolète → supprimer après validation
-- Les 7 hotfixes listés ci-dessus → supprimer (code mort une fois l'Item 0 déployé)
-- `fr_sub` dans `teammates_service.py` : appeler `add_i18n_display_columns(fr_sub, lang, ...)` dans `TeammatesService.load_teammate_stats` après la query SQL (remplace les `COALESCE` SQL partiels ajoutés dans df361f0)
-
-**Risque :** modéré. `streamlit_app.py` est le point central — un test de régression end-to-end (filtres + affichage) est nécessaire. Les guards idempotentes dans `_add_derived_columns` et `_filters_cascade` protègent contre la double exécution.
+| Fichier | Hotfix | État |
+|---------|--------|------|
+| `win_loss.py` L261 | injection `map_ui` sur `base` | ✅ Supprimé |
+| `teammates_views.py` L289 | injection `map_ui` sur `fr_sub` | ✅ Supprimé |
+| `friends_impact_heatmap.py` | injection `map_ui` dans `plot_squad_map_heatmap` | ✅ Supprimé |
+| `_teammates_trio.py` | injection `map_ui` sur `_me_full` | ✅ Supprimé |
+| `_query_teammate_shared_stats` (SQL) | alias `map_ui` dans SELECT | ✅ Supprimé |
+| `query_teammate_full_history` (SQL) | `JOIN v_match_full` + alias `map_ui` | ✅ Supprimé |
+| `compute_squad_records_per_map` | guard dynamique `_map_col` | ⏳ Encore présente — à supprimer en Phase 4 |
+| `add_ui_columns()` dans `filters.py` | L48 + caller L315 | ⏳ Encore présente — à supprimer en Phase 4 |
+| `maps.py:89-90` | guard `"map_ui" if "map_ui" in df` | ⏳ Oubliée dans le plan initial — à supprimer en Phase 4 |
 
 ---
 
 ### 2.1 Item 1 — Unifier `is_uuid_like` dans `src/utils/strings.py`
 
-**Situation actuelle :**
-
 | Fichier | Symbole | Pattern |
 |---------|---------|---------|
-| `src/ui/translations.py` L26 | `_is_uuid_like(s: str) -> bool` | import `re` lazy à l'intérieur |
-| `src/app/helpers.py` L50 | `is_uuid_like(s: str) -> bool` | import `re` module-level |
+| `src/ui/translations.py` L26 | `_is_uuid_like(s: str) -> bool` | regex interne |
+| `src/app/helpers.py` L50 | `is_uuid_like(s: str) -> bool` | regex module-level |
 
-Regex identique dans les deux cas : `^[a-f0-9]{8}(-[a-f0-9]{4}){0,3}(-[a-f0-9]{1,12})?$`
-
-`src/utils/strings.py` **n'existe pas encore**.
-
-**Callers post-migration :**
-- `translations.py` L53, L77 → `_is_uuid_like` (interne) → devient `is_uuid_like` importé
-- `helpers.py` L99 → `is_uuid_like` (local) → devient `is_uuid_like` importé
-
-**Ce qu'il faut faire :**
-1. Créer `src/utils/strings.py` avec `is_uuid_like` (+ import `re` module-level)
-2. Dans `translations.py` : supprimer `_is_uuid_like`, importer `is_uuid_like` depuis `src.utils.strings`
-3. Dans `helpers.py` : supprimer la définition locale, importer depuis `src.utils.strings`
-
-**Risque :** quasi nul. Les deux callers restent dans leurs fichiers respectifs. Seul le symbole bouge.
+Créer `src/utils/strings.py` avec `is_uuid_like`. Supprimer les deux copies. Risque : quasi nul.
 
 ---
 
 ### 2.2 Item 4 — Extraire `st.session_state` de `normalize_mode_label`
 
-**Situation actuelle (helpers.py L53–L78) :**
-```python
-def normalize_mode_label(pair_name: str | None) -> str | None:
-    ...
-    _settings = st.session_state.get("app_settings")          # ← couplage UI/métier
-    _normalize = getattr(_settings, "normalize_mode_labels", True) if _settings else True
-    _translated = translate_pair_name(base, lang=get_lang(), normalize=_normalize)
-```
-
-**Callers dans `streamlit_app.py` (L673, L690, L711) :** passent `normalize_mode_label` comme callback `normalize_mode_label_fn=normalize_mode_label`.
-
-**Ce qu'il faut faire :**
-
-Transformer la signature pour accepter `lang` et `normalize` en paramètres explicites avec valeurs par défaut :
-
+Transformer la signature (actuellement [helpers.py:55-72](src/app/helpers.py#L55)) :
 ```python
 def normalize_mode_label(
     pair_name: str | None,
     *,
     lang: str = "fr",
     normalize: bool = True,
-) -> str | None:
-    ...
-    _translated = translate_pair_name(base, lang=lang, normalize=normalize)
+) -> str | None: ...
+```
+Adapter les 3 call-sites dans `streamlit_app.py` (lambda ou `functools.partial`). Risque : modéré.
+
+> ⚠️ **Prérequis test** : écrire `tests/test_normalize_mode_label.py` qui appelle la fonction
+> **sans** `st.session_state` actif — doit passer avant de modifier la signature (sinon aucun
+> filet de sécurité pour détecter une régression).
+
+---
+
+### 2.3 Item 2 — Supprimer `_normalize_mode_label` (dépend de §2.2)
+
+Supprimer `def _normalize_mode_label` (L40–L44) de `teammates_helpers.py`. Remplacer par `normalize_mode_label` importée. Risque : faible après item 4.
+
+---
+
+### 2.4 Item 3 — Nettoyer `normalize_map_label` et `add_ui_columns` (après §2.0)
+
+- Supprimer `add_ui_columns()` dans `filters.py` (L48 + caller L315) — ⏳ à faire
+- ~~Supprimer les 7 hotfixes UI~~ — ✅ déjà fait (voir §2.0)
+- Garder la guard UUID dans `normalize_map_label` (fallback légitime pour maps inédites)
+- Supprimer la guard `_map_col` dans `compute_squad_records_per_map` [squad_records.py:165](src/analysis/squad_records.py#L165) → utiliser `"map_ui"` directement — ⏳ à faire
+- **Nouveau** : supprimer la guard similaire dans `maps.py:89-90` (`"map_ui" if "map_ui" in df_pl.columns else "map_name"`) → utiliser `"map_ui"` directement — ⏳ oubliée dans le plan initial
+
+---
+
+### 2.5 Item 5 — Armes (DÉJÀ IMPLÉMENTÉ)
+
+`resolve_weapon_display` dans `src/analysis/_weapon_data.py` est déjà DB-first. Barrer dans le backlog.
+
+---
+
+### 2.6 Item 6 — Cache `translate_playlist_name`
+
+Vérifier si `build_mapping(dfr["playlist_name"], translate_playlist_name)` dans `cache_filters.py` est sous `@st.cache_data`. Si oui : item terminé. Sinon : placer le cache autour du `build_mapping`.
+
+---
+
+## 3. Analyse technique — Axe B (ChartData)
+
+### 3.0 Vue d'ensemble de l'abstraction
+
+L'objectif est de remplacer les 8–12 kwargs individuels de chaque fonction de chart escouade par un objet `ChartData` qui transporte toutes les données + comportements transversaux.
+
+```
+Aujourd'hui                         Avec ChartData
+─────────────────────────           ──────────────────────────
+plot_trio_metric(               →   build_chart_data(series, metric, ...)
+  records, records_per_map,         .add_record_overlays(fig)
+  colors_by_name, n_players,        .downsample(max_points=200)
+  player_names, xs, …)              → n kwargs → 1 objet
 ```
 
-Supprimer les imports `st` et `get_lang` de `helpers.py` si plus utilisés ailleurs.
+### 3.0b Risque import circulaire à surveiller
 
-**Adapter les 3 call-sites dans `streamlit_app.py` :**
+`ChartData.add_record_overlays()` importe lazily (dans la méthode) depuis
+`src.visualization._squad_record_shapes`. L'import lazy évite le cycle au chargement,
+mais il faut vérifier que `_squad_record_shapes` n'importe **rien** depuis `_chart_series.py`
+(ni directement ni transitif). À valider avant de commencer Phase 7a.
+
+### 3.1 Nouveau fichier `src/visualization/_chart_series.py` (~90 L)
+
 ```python
-# Avant
-normalize_mode_label_fn=normalize_mode_label
+from __future__ import annotations
+from dataclasses import dataclass, field
+from typing import Literal
+import plotly.graph_objects as go
 
-# Après (créer un wrapper dans streamlit_app.py, ou passer un partial)
-_settings = st.session_state.get("app_settings")
-_lang = get_lang()
-_norm = getattr(_settings, "normalize_mode_labels", True) if _settings else True
-normalize_mode_label_fn = lambda p: normalize_mode_label(p, lang=_lang, normalize=_norm)
+HEIGHT_COMPACT: int = 320      # consolide les magic numbers dans match_bars.py etc.
+HEIGHT_NORMAL: int = 420
+MAX_PLOT_POINTS: int = 200     # déplace _downsample_for_plot de timeseries.py
+
+@dataclass
+class MatchSeries:
+    """Une série de données pour un joueur sur l'axe X commun de matchs."""
+    name: str                        # nom du joueur (= offsetgroup Plotly)
+    x: list[int]                     # positions entières normalisées 0..N-1
+    y: list[float | None]            # valeurs métriques
+    color: str                       # couleur hex du joueur
+    map_names: list[str | None]      # carte à chaque position x (records par carte)
+
+@dataclass
+class ChartData:
+    """Container pour un graphe multi-joueurs par match."""
+    series: list[MatchSeries]
+    x_labels: list[str]              # labels affichés (#N<br>Carte ou date)
+    barmode: Literal["group", "overlay", "categorical"]
+    global_records: dict[str, float | None] = field(default_factory=dict)
+    per_map_records: dict[str, dict[str, float | None]] = field(default_factory=dict)
+
+    @property
+    def player_names(self) -> list[str]:
+        return [s.name for s in self.series]
+
+    @property
+    def colors_by_name(self) -> dict[str, str]:
+        return {s.name: s.color for s in self.series}
+
+    @property
+    def tick_step(self) -> int:
+        n = len(self.x_labels)
+        return max(1, n // 10) if n else 1
+
+    def add_record_overlays(self, fig: go.Figure) -> None:
+        """Dispatche vers la bonne implémentation selon barmode."""
+        from src.visualization._squad_record_shapes import (
+            add_record_shapes, add_overlay_record_shapes,
+        )
+        if self.barmode == "overlay":
+            xs_ref = self.series[0].x if self.series else []
+            add_overlay_record_shapes(
+                fig, xs=xs_ref,
+                records=self.global_records,
+                player_names=self.player_names,
+                colors_by_name=self.colors_by_name,
+            )
+        elif self.barmode == "categorical":
+            # pm chart : ghost bars avec labels catégoriels
+            _add_categorical_record_bars(fig, self)
+        else:  # group
+            for s in self.series:
+                add_record_shapes(
+                    fig, xs=s.x,
+                    records={s.name: self.global_records.get(s.name)},
+                    player_names=self.player_names,
+                    n_players=len(self.series),
+                    colors_by_name=self.colors_by_name,
+                    per_map_records=(
+                        {s.name: self.per_map_records[s.name]}
+                        if s.name in self.per_map_records else None
+                    ),
+                    map_names_per_x=[
+                        s.map_names[i] for i in range(len(s.x))
+                        if i < len(s.map_names)
+                    ],
+                )
+
+    def downsample(self, max_points: int = MAX_PLOT_POINTS) -> "ChartData":
+        """Réduit le nombre de matchs affichés si trop de points pour Plotly."""
+        n = max(len(s.x) for s in self.series) if self.series else 0
+        if n <= max_points:
+            return self
+        step = max(1, n // max_points)
+        new_series = [
+            MatchSeries(
+                name=s.name, color=s.color,
+                x=s.x[::step], y=s.y[::step],
+                map_names=s.map_names[::step],
+            )
+            for s in self.series
+        ]
+        return ChartData(
+            series=new_series,
+            x_labels=self.x_labels[::step],
+            barmode=self.barmode,
+            global_records=self.global_records,
+            per_map_records=self.per_map_records,
+        )
 ```
 
-> Ou utiliser `functools.partial` si la lambda n'est pas appropriée. À décider à l'implémentation.
+**`_add_categorical_record_bars`** (fonction interne) : ghost `go.Bar` avec `x=_pm_metrics` (labels string), extrait de la logique actuellement inline dans `_teammates_trio_helpers.py`.
 
-**Risque :** modéré. La signature change — mais les call-sites sont peu nombreux (3 dans `streamlit_app.py` + 1 indirect dans `cache_filters.py` via callback). Revue des 3 sites obligatoire.
+### 3.2 Migration des 5 fonctions de chart
 
----
+Chaque fonction reçoit un `ChartData` **en plus** des kwargs existants (rétrocompatibilité via `chart_data: ChartData | None = None`). Si `chart_data` est fourni, on l'utilise ; sinon comportement actuel inchangé.
 
-### 2.3 Item 2 — Supprimer `_normalize_mode_label` dans `teammates_helpers.py`
+**Étape finale (après migration complète) :** supprimer les anciens kwargs `records`, `records_per_map`, `colors_by_name`, `n_players`, `player_names` qui sont maintenant dans `ChartData`.
 
-**Dépend de l'item 4 (§2.2).**
+| Fonction | Fichier | Priorité |
+|----------|---------|----------|
+| `plot_trio_metric` | `trio.py` | 1 |
+| `plot_trio_kills_deaths` | `trio.py` | 1 |
+| `plot_multi_metric_bars_by_match` | `match_bars.py` | 2 |
+| `plot_hs_pk_stacked` | `teammates_hs_pk.py` | 2 |
+| `_render_per_minute_stats` | `_teammates_trio_helpers.py` | 3 |
 
-**Situation actuelle (`teammates_helpers.py` L40–L44) :**
-```python
-def _normalize_mode_label(pair_name: str | None) -> str | None:
-    """Normalise un pair_name en label UI."""
-    from src.ui.translations import translate_pair_name
-    return translate_pair_name(pair_name) if pair_name else None
-```
+### 3.3 Construction de `ChartData` dans la couche UI
 
-Appelée L203 : `_mode_map = build_mapping(friends_table["pair_name"], _normalize_mode_label)`
+`ChartData` est construit dans `_teammates_trio.py` (qui a déjà les séries, couleurs, records) et passé aux fonctions de chart. Les helpers `render_trio_charts` / `render_metric_bar_charts` dans `teammates_charts.py` transmettent l'objet sans le manipuler.
 
-**Problème** : cette version locale appelle uniquement `translate_pair_name` — elle rate :
-- `clean_asset_label` (suppression parenthèses, gestion None/whitespace)
-- stripping `" on MapName"`
-- regex Forge/Ranked
-- respect de `normalize_mode_labels` du profil
+### 3.4 Items backlog absorbés par la Phase 7
 
-**Ce qu'il faut faire (après item 4) :**
-1. Supprimer la fonction `_normalize_mode_label` (L40–L44)
-2. Importer `normalize_mode_label` depuis `src.app.helpers`
-3. Adapter L203 :
-   ```python
-   _mode_map = build_mapping(
-       friends_table["pair_name"],
-       lambda p: normalize_mode_label(p, lang=get_lang(), normalize=_normalize_setting),
-   )
-   ```
-   où `_normalize_setting` est lu depuis `st.session_state` une fois en début de fonction.
+| Item backlog | Résolution |
+|-------------|-----------|
+| `_downsample_for_plot` centralisé | `ChartData.downsample()` |
+| PLR0913 (trop d'arguments) | `ChartData` remplace les kwargs individuels |
+| Magic numbers `HEIGHT_COMPACT = 320` | Constantes dans `_chart_series.py` |
 
-**Risque :** faible après item 4. Gain : label modes coéquipiers devient cohérent avec le reste de l'app (actuellement il manque le nettoyage Forge/Ranked).
+### 3.5 Scope futur (Phase 8 — optionnel)
+
+Les graphes solo de la page Timeseries (§3 de `CHARTS_AND_TABLES.md`) suivent le même pattern "barres par match" mais sans dimension multi-joueurs. Une variante `SingleSeriesChartData` pourrait centraliser le downsampling et les annotations de max. **Non prioritaire** — la valeur principale est sur la page Escouade.
 
 ---
 
-### 2.4 Item 3 — Nettoyer `normalize_map_label` et `add_ui_columns` après Item 0
+## 4. Résumé des actions
 
-**Résolu structurellement par Item 0.** Ce qui reste :
+| # | Axe | Item | Fichiers modifiés | Effort | Risque | État |
+|---|-----|------|-------------------|--------|--------|------|
+| **0** | A | **`src/app/i18n_columns.py`** | `i18n_columns.py`, `main_helpers.py` | **1h** | **Modéré** | ✅ Fait |
+| 1 | A | `src/utils/strings.py` + `is_uuid_like` unifié | `strings.py` (new), `translations.py`, `helpers.py` | 15 min | Nul | ⏳ |
+| 4 | A | Découpler `normalize_mode_label` de `st.session_state` | `helpers.py`, `streamlit_app.py` (3 sites) | 45 min | Modéré | ⏳ |
+| 2 | A | Supprimer `_normalize_mode_label` (après item 4) | `teammates_helpers.py` | 10 min | Faible | ⏳ |
+| 3 | A | Supprimer `add_ui_columns` + guards `_map_col` / `maps.py` | 3 fichiers | 30 min | Faible | ⏳ |
+| 5 | A | **Aucun code** — valider + barrer le backlog | — | 5 min | Nul | ⏳ |
+| 6 | A | Vérifier cache `build_mapping` dans `cache_filters.py` | `cache_filters.py` si absent | 15 min | Nul | ⏳ |
+| **7a** | B | **Créer `src/visualization/_chart_series.py`** | `_chart_series.py` (new) | **1h** | **Faible** | ⏳ |
+| 7b | B | Migrer `plot_trio_metric` + `plot_trio_kills_deaths` | `trio.py`, `teammates_charts.py` | 1h30 | Modéré | ⏳ |
+| 7c | B | Migrer `plot_multi_metric_bars_by_match` | `match_bars.py` | 45 min | Modéré | ⏳ |
+| 7d | B | Migrer `plot_hs_pk_stacked` | `teammates_hs_pk.py` | 30 min | Faible | ⏳ |
+| 7e | B | Migrer `_render_per_minute_stats` + ghost bars catégoriels | `_teammates_trio_helpers.py` | 45 min | Modéré | ⏳ |
+| 7f | B | Supprimer anciens kwargs (après 7b-7e) | 5 fichiers | 30 min | Faible | ⏳ |
 
-a) **Supprimer `add_ui_columns()` dans `filters.py`** — cette fonction ignorait `map_name_fr` et sera rendue obsolète par Item 0. Vérifier qu'il n'y a plus de caller externe avant suppression (seul `filters.py` L315 l'appelait sur `dropdown_base` — à remplacer par un appel à `add_i18n_display_columns`).
-
-b) **Supprimer les rustines symptomatiques** dans `win_loss.py` (L261), `teammates_views.py` (L289), `friends_impact_heatmap.py` — devenues code mort une fois que `df` porte toujours `map_ui`.
-
-c) **Garder la guard UUID** dans `normalize_map_label` : reste le fallback légitime pour maps inédites ou sync partiel — ne pas la supprimer.
-
-d) **`filters_render.py`** (L332, 342, 385, 399, 462) : `normalize_map_label_fn` propagée pour le render des options — usage légitime, conserver.
-
-**Risque :** faible. Suppressions de code mort testées via `tests/test_imports.py` + suite complète.
-
----
-
-### 2.5 Item 5 — Armes DB-first (DÉJÀ IMPLÉMENTÉ — validation seule)
-
-`resolve_weapon_display` dans `src/analysis/_weapon_data.py` (L265–L295) suit déjà l'ordre correct :
-```
-fusion canonique → _resolve_weapon_cached (DB/lru_cache) → dicts Python
-```
-
-**Action :** aucun code. Barrer cet item dans le backlog. Optionnel : valider que `weapon_labels` couvre bien 100% des `WEAPON_INT_TO_NAME` connus via un script de diagnostic.
+**Total estimé restant : ~5h30** (Axe A ~1h40 + Axe B ~4h20, Phase 0 déjà faite).
 
 ---
 
-### 2.6 Item 6 — Cache `@st.cache_data` sur `translate_playlist_name`
+## 5. Checklist d'implémentation
 
-**Situation actuelle (`translations.py` L34–L62) :**  
-La fonction est presque un passthrough pur :
-1. Guard None/vide
-2. Guard UUID → `_UNKNOWN_PLAYLIST.get(lang, s)` (dict constant)
-3. `return s` (passthrough)
+### Phase 0 — Couche centralisée `src/app/i18n_columns.py` ✅ COMPLÉTÉE
 
-Aucun appel SQL ou I/O. Le coût est négligeable. Le seul appel notable dans `cache_filters.py` est déjà sous `@st.cache_data`. Dans `_filters_apply.py`, elle est appelée dans `_add_derived_columns` uniquement en fallback (colonne `playlist_name_fr` absente du DF).
-
-**Verdict :** le cache `@st.cache_data` apporterait peu de valeur ici — la fonction n'a pas d'état ni d'I/O. En revanche, si `build_mapping` dans `cache_filters.py` n'est pas lui aussi mis en cache, **c'est là** que le coût se paie.
-
-**Action recommandée :** plutôt que wrapper `translate_playlist_name`, vérifier que `build_mapping(dfr["playlist_name"], translate_playlist_name)` dans `cache_filters.py` est bien sous un `@st.cache_data`. Si oui, item terminé sans code. Si non, placer le cache autour du `build_mapping`.
-
----
-
-## 3. Résumé des actions
-
-| # | Item | Fichiers modifiés | Effort réel | Risque |
-|---|------|-------------------|-------------|--------|
-| **0** | **Créer `src/app/i18n_columns.py` + call-site dans `streamlit_app.py`** | `i18n_columns.py` (new), `streamlit_app.py`, `teammates_service.py` | **1h** | **Modéré** |
-| 1 | Créer `src/utils/strings.py` + déplacer `is_uuid_like` | `strings.py` (new), `translations.py`, `helpers.py` | 15 min | Nul |
-| 4 | Découpler `normalize_mode_label` de `st.session_state` | `helpers.py`, `streamlit_app.py` (3 sites) | 45 min | Modéré |
-| 2 | Supprimer `_normalize_mode_label` (après item 4) | `teammates_helpers.py` (2 lignes) | 10 min | Faible |
-| 3 | Supprimer `add_ui_columns` + 7 hotfixes pré-Item0 (après item 0) | `filters.py`, `win_loss.py`, `teammates_views.py`, `friends_impact_heatmap.py`, `_teammates_trio.py`, `teammates_service.py`, `_teammates_history_queries.py`, `squad_records.py` | 30 min | Faible |
-| 5 | **Aucun code** — valider + barrer le backlog | — | 5 min | Nul |
-| 6 | Vérifier cache `build_mapping` dans `cache_filters.py` | `cache_filters.py` si absent | 15 min | Nul |
-
-**Total estimé : ~2h40** (Item 0 ajouté, item 5 toujours sans code, Phase 4 étendue aux hotfixes df361f0).
-
----
-
-## 4. Checklist d'implémentation
-
-### Phase 0 — Couche centralisée `src/app/i18n_columns.py` ⭐ PREMIER
-
-- [ ] Créer `src/app/i18n_columns.py` avec `add_i18n_display_columns(df, lang, *, normalize_mode_label_fn, normalize_map_label_fn, translate_playlist_name_fn, clean_asset_label_fn) -> pl.DataFrame`
-  - Extraire la logique de `_add_derived_columns` (chemin `map_name_fr` prioritaire, fallback `normalize_map_label_fn`)
-  - Idempotente : guard `if "map_ui" not in df.columns:` pour chaque colonne
-  - 0 import Streamlit — module pur testable
-- [ ] Dans `streamlit_app.py` : appeler `add_i18n_display_columns(df, lang=get_lang(), ...)` immédiatement après `load_df_optimized()`, avant de stocker dans `session_state["df"]`
-- [ ] Dans `TeammatesService.load_teammate_stats` (`teammates_service.py`) : appeler `add_i18n_display_columns(fr_sub, lang, ...)` après la query SQL (remplace le `COALESCE` SQL partiel par la logique Python complète)
-- [ ] Écrire un test unitaire `tests/test_i18n_columns.py` : vérifier que `map_ui` est `map_name_fr` quand présent, `normalize_map_label_fn(map_name)` sinon, et idempotence
+- [x] Créer `src/app/i18n_columns.py` avec `add_i18n_display_columns(df, lang="fr")` — idempotente, 0 import Streamlit
+- [x] Dans `main_helpers.py:373` : appelée juste après `load_df_optimized()`
+- [x] Hotfixes UI dans `win_loss.py`, `teammates_views.py`, `friends_impact_heatmap.py`, `_teammates_trio.py`, requêtes SQL teammates — supprimés
+- [ ] ~~`TeammatesService.load_teammate_stats`~~ : à vérifier si `fr_sub` hérite déjà de `map_ui` via le pipeline
+- [ ] Écrire `tests/test_i18n_columns.py` : `map_ui` = `map_name_fr` si présent, fallback sinon, idempotence
 - [ ] Tests → vert
 
-### Phase 1 — `src/utils/strings.py` (Item 1)
+### Phase 1 — `src/utils/strings.py`
 
-- [ ] Créer `src/utils/strings.py` avec `is_uuid_like(s: str) -> bool`
-- [ ] `translations.py` : supprimer `_is_uuid_like`, ajouter import `from src.utils.strings import is_uuid_like`, remplacer les 2 usages
-- [ ] `helpers.py` : supprimer la définition locale, ajouter import
+- [ ] Créer `src/utils/strings.py` avec `is_uuid_like`
+- [ ] `translations.py` : supprimer `_is_uuid_like`, importer depuis `src.utils.strings`
+- [ ] `helpers.py` : supprimer définition locale, importer
 - [ ] Tests → vert
 
-### Phase 2 — Découpler `st.session_state` de `normalize_mode_label` (Item 4)
+### Phase 2 — Découpler `normalize_mode_label` (Item 4)
 
-- [ ] Modifier signature dans `helpers.py` : ajouter `lang: str = "fr"` et `normalize: bool = True`
-- [ ] Supprimer les lignes `_settings = st.session_state...` et `_normalize = ...` — déplacer dans les call-sites
-- [ ] Vérifier si `st` et `get_lang` sont encore utilisés ailleurs dans `helpers.py`; supprimer les imports si plus nécessaires
-- [ ] Adapter les 3 call-sites dans `streamlit_app.py` (lambda ou `functools.partial`)
-- [ ] Vérifier `cache_filters.py` si `normalize_mode_label` y est aussi appelée directement
+- [ ] **Prérequis** : écrire `tests/test_normalize_mode_label.py` sans `st.session_state` actif — doit passer avant toute modification
+- [ ] Modifier signature dans [helpers.py:55](src/app/helpers.py#L55) : ajouter `lang: str = "fr"` et `normalize: bool = True`
+- [ ] Supprimer les lignes `_settings = st.session_state...` ([helpers.py:71-72](src/app/helpers.py#L71))
+- [ ] Adapter les 3 call-sites dans `streamlit_app.py`
+- [ ] Vérifier `cache_filters.py` pour usage éventuel
 - [ ] Tests → vert
 
 ### Phase 3 — Supprimer `_normalize_mode_label` (Item 2)
 
 - [ ] Supprimer `def _normalize_mode_label` (L40–L44) dans `teammates_helpers.py`
-- [ ] L203 : remplacer par `lambda p: normalize_mode_label(p, lang=..., normalize=...)` avec les paramètres corrects issus de `st.session_state`
-- [ ] Importer `normalize_mode_label` depuis `src.app.helpers`
+- [ ] L203 : remplacer par `lambda p: normalize_mode_label(p, lang=..., normalize=...)`
 - [ ] Tests → vert
 
-### Phase 4 — Nettoyer le code mort (Item 3, après Item 0)
+### Phase 4 — Nettoyer code mort (Item 3, après Phase 0)
 
-- [ ] Supprimer `add_ui_columns()` dans `filters.py` (remplacée par `add_i18n_display_columns`) + caller `filters.py` L315 → remplacer par `add_i18n_display_columns`
-- [ ] Supprimer le patch ad-hoc dans `win_loss.py` L261 (`# Hotfix pré-Item0`, code mort)
-- [ ] Supprimer le patch ad-hoc dans `teammates_views.py` L289 (`# Hotfix pré-Item0`, code mort)
-- [ ] Supprimer le patch ad-hoc dans `friends_impact_heatmap.py` (code mort)
-- [ ] Supprimer le patch ad-hoc dans `_teammates_trio.py` `_me_full` (`# Hotfix pré-Item0`, code mort)
-- [ ] Supprimer les alias SQL `map_ui` de `_query_teammate_shared_stats` (remplacé par l'appel `add_i18n_display_columns` sur `fr_sub`)
-- [ ] Supprimer les alias SQL `map_ui` de `query_teammate_full_history` (idem)
-- [ ] Supprimer la guard dynamique `_map_col` dans `compute_squad_records_per_map` (utiliser `"map_ui"` directement, garanti présent)
+- [x] ~~Supprimer le patch dans `win_loss.py` L261~~ — déjà fait
+- [x] ~~Supprimer le patch dans `teammates_views.py` L289~~ — déjà fait
+- [x] ~~Supprimer le patch dans `friends_impact_heatmap.py`~~ — déjà fait
+- [x] ~~Supprimer le patch `_me_full` dans `_teammates_trio.py`~~ — déjà fait
+- [x] ~~Supprimer les alias SQL `map_ui` de `_query_teammate_shared_stats`~~ — déjà fait
+- [x] ~~Supprimer les alias SQL `map_ui` de `query_teammate_full_history`~~ — déjà fait
+- [ ] Supprimer `add_ui_columns()` dans [filters.py:48](src/app/filters.py#L48) + caller L315
+- [ ] Supprimer la guard `_map_col` dans [squad_records.py:165](src/analysis/squad_records.py#L165) → `"map_ui"` direct
+- [ ] **Nouveau** : supprimer la guard dans [maps.py:89-90](src/analysis/maps.py#L89) → `"map_ui"` direct
 - [ ] Tests → vert
 
 ### Phase 5 — Validation armes (Item 5)
@@ -403,25 +432,39 @@ Aucun appel SQL ou I/O. Le coût est négligeable. Le seul appel notable dans `c
 
 ### Phase 6 — Cache playlist (Item 6)
 
-- [ ] Lire `src/ui/cache_filters.py` L95 → confirmer si déjà sous `@st.cache_data`
-- [ ] Si oui : barrer item 6 dans le backlog (rien à faire)
-- [ ] Si non : wraper le `build_mapping(dfr["playlist_name"], translate_playlist_name)` dans un cache
+- [ ] Vérifier `cache_filters.py` : `build_mapping(dfr["playlist_name"], translate_playlist_name)` sous `@st.cache_data` ?
+- [ ] Si oui : barrer item 6. Si non : ajouter le cache.
+
+### Phase 7 — Abstraction ChartData ⭐ AXE B
+
+- [ ] **Prérequis** : vérifier que `_squad_record_shapes.py` n'importe rien depuis `_chart_series.py` (risque import circulaire — voir §3.0b)
+- [ ] **7a** — Créer `src/visualization/_chart_series.py` avec `MatchSeries`, `ChartData`, `HEIGHT_COMPACT`, `HEIGHT_NORMAL`, `MAX_PLOT_POINTS`, `_add_categorical_record_bars`
+- [ ] Écrire `tests/test_chart_series.py` : `add_record_overlays` dispatche correctement, `downsample` réduit les points, idempotence sur ChartData sans records
+- [ ] **7b** — Migrer `plot_trio_metric` et `plot_trio_kills_deaths` (`trio.py`) : accepter `chart_data: ChartData | None = None` en plus des kwargs actuels ; `add_record_overlays` remplace les appels directs à `add_record_shapes`
+- [ ] Adapter `_plot_trio_metric_chart` + `render_trio_charts` dans `teammates_charts.py` pour construire et passer `ChartData`
+- [ ] **7c** — Migrer `plot_multi_metric_bars_by_match` (`match_bars.py`) : idem pattern ; `ChartData.downsample()` remplace éventuel futur downsampling inline
+- [ ] **7d** — Migrer `plot_hs_pk_stacked` (`teammates_hs_pk.py`) : `barmode="overlay"`, `add_record_overlays` dispatche vers `add_overlay_record_shapes`
+- [ ] **7e** — Migrer `_render_per_minute_stats` (`_teammates_trio_helpers.py`) : extraire les ghost bars catégoriels vers `_add_categorical_record_bars` dans `_chart_series.py` ; le chart reçoit un `ChartData(barmode="categorical")`
+- [ ] **7f** — Supprimer les anciens kwargs `records`, `records_per_map`, `colors_by_name`, `n_players`, `player_names` des 5 fonctions (remplacés par `ChartData`)
+- [ ] Vérifier taille `teammates_charts.py` < 500 L après migration
+- [ ] Tests → vert (notamment `test_visualizations.py` + `test_squad_record_shapes.py`)
 
 ---
 
-## 5. Contraintes architecture à respecter
+## 6. Contraintes architecture à respecter
 
-- **Pandas PROSCRIT** — aucun usage, tout reste Polars
-- **`src/app/i18n_columns.py`** doit rester un module pur sans import Streamlit — testable en isolation
-- **`st.session_state` interdit dans `src/app/helpers.py`** — la fonction helpers.py est testable sans Streamlit
-- **`src/utils/strings.py`** doit rester un module pur (0 import Streamlit, 0 import DuckDB)
+- **Pandas PROSCRIT** — tout reste Polars
+- **`src/app/i18n_columns.py`** — 0 import Streamlit, testable en isolation
+- **`src/visualization/_chart_series.py`** — 0 import Streamlit, 0 accès DB, testable unitairement
+- **`st.session_state` interdit dans `src/app/helpers.py`** après Phase 2
 - **Pas de guard `_has_shared_view`** — les vues v6 sont garanties présentes
-- **Tests obligatoires après chaque phase** : `python -m pytest tests/ -q --ignore=tests/integration`
-- **Taille fichiers** : tous les nouveaux modules restent sous 500L, fonctions sous 80L
+- **Tests obligatoires après chaque phase** : `python -m pytest tests/ -q --ignore=tests/integration --ignore=tests/e2e`
+- **Taille** : nouveaux modules < 500 L, fonctions < 80 L
+- **Rétrocompatibilité Phase 7** : `chart_data: ChartData | None = None` pendant la transition — supprimer en 7f seulement une fois tous les callers migrés
 
 ---
 
-## 6. Branche Git
+## 7. Branche Git
 
 ```bash
 git checkout -b refactor/asset-translations-db-first
@@ -433,9 +476,311 @@ feat(i18n): créer src/app/i18n_columns.py — couche centralisée map_ui/playli
 feat(utils): ajouter src/utils/strings.py avec is_uuid_like unifié
 refactor(helpers): découpler normalize_mode_label de st.session_state
 refactor(teammates): supprimer _normalize_mode_label, utiliser normalize_mode_label
-refactor(ui): supprimer add_ui_columns + rustines symptomatiques (code mort)
-docs(backlog): barrer items 5 et 6 (déjà implémentés)
+refactor(ui): supprimer add_ui_columns + rustines symptomatiques (code mort i18n)
+docs(backlog): barrer items 5 et 6 (déjà implémentés / vérifiés)
+feat(viz): créer _chart_series.py — MatchSeries, ChartData, downsample, record overlays
+refactor(viz): migrer trio.py vers ChartData (plot_trio_metric, plot_trio_kills_deaths)
+refactor(viz): migrer match_bars.py + teammates_hs_pk.py vers ChartData
+refactor(viz): migrer _render_per_minute_stats vers ChartData (barmode=categorical)
+refactor(viz): supprimer anciens kwargs records/colors (migration ChartData complète)
 ```
-refactor(filters): vérifier DB-first pour map_name_fr dans build_mapping
-docs(backlog): barrer items 5 et 6 (déjà implémentés)
+
+---
+
+## 8. Plan V2 — Extensions post-V1
+
+> **Prérequis** : V1 Phases 0→7f complètes. V2 s'exécute sur une nouvelle branche depuis `main`.
+> **Date de rédaction** : 2026-04-04
+
+### Vue d'ensemble V2
+
+La V1 centralise les colonnes i18n et structure les données des graphes escouade.
+La V2 tire les conséquences logiques de ces deux axes et adresse les violations de taille actives.
+
+| Axe | Problème | Dépendance V1 | Effort | Valeur |
+|-----|---------|--------------|--------|--------|
+| **C** — Éliminer injection callback fn | `normalize_*_fn` transite encore comme Callable dans 28 sites | Phase 2 terminée | ~2h | ⭐⭐⭐ |
+| **D** — `mode_ui` centralisé + `_add_derived_columns` démantelée | God function noqa: C901/PLR0912, logique dupliquée dans `_filters_cascade` | Phase 2 + Axe C | ~2h | ⭐⭐⭐ |
+| **E** — Résorber les 3 modules > 500L | Violations actives : `maps_outcome.py` 590L, `friends_impact_heatmap.py` 507L, `timeseries.py` 505L | Indépendant | ~3h | ⭐⭐ |
+| **E′** — Surveillance préventive modules 450–500L | `session_compare_charts.py` 498L, `match_view_helpers.py` 495L, `teammates_charts.py` 491L (grossira avec ChartData) | V1 Phase 7 | — (monitorer) | ⭐ |
+| **F** — ChartData solo timeseries | `_rolling_mean` import privé cross-module, magic numbers height incohérents, pas de downsampling centralisé | V1 Phase 7 + Axe E | ~2h | ⭐ |
+
+**Total estimé V2 : ~9h** (C ~2h + D ~2h + E ~3h + F ~2h).
+
+---
+
+### Axe C — Éliminer le pattern callback fn injection
+
+#### Diagnostic
+
+Après V1 Phase 2, `normalize_mode_label(pair_name, lang=lang)` et `normalize_map_label` sont des fonctions pures. Pourtant elles continuent de voyager comme callables injectées à travers toute la pile :
+
+```
+streamlit_app.py
+  → page_router.py           normalize_mode_label_fn: Callable
+    → FilterSidebarCallbacks normalize_mode_label_fn, normalize_map_label_fn
+      → filters_render.py    callbacks["normalize_mode_label_fn"](...)
+        → MatchViewParams    normalize_mode_label_fn: Callable[[str], str]
+          → match_view.py, explorer.py
+```
+
+**Sites effectifs identifiés (28 occurrences) :**
+
+| Fichier | Occurrences | Nature |
+|---------|-------------|--------|
+| `src/app/filters_render.py` | L389, L390, L403, L404, L466, L467 | extraction depuis callbacks dict + transmission |
+| `src/app/_filters_apply.py` | L77–80, L155, L161, L386, L389, L426, L428 | fallback `_identity`, transmission, utilisation |
+| `src/app/_filters_cascade.py` | L198, L218, L344–345, L360–361 | `build_mapping(...)` avec la fn injectée |
+| `src/app/page_router.py` | L101, L121 | construction du dict |
+| `src/app/_page_context.py` | L28, L45, L46 | typage TypedDict |
+| `src/ui/pages/explorer.py` | L65, L227, L345 | extraction + appel |
+| `src/ui/pages/match_view.py` | L238, L286, L303, L440 | propagation + appel |
+
+#### Solution
+
+Remplacer l'injection de callbacks par des appels directs avec `lang` explicite :
+
+```python
+# Avant (V1)
+params["normalize_mode_label_fn"](pair_name)
+
+# Après (V2)
+from src.app.helpers import normalize_mode_label
+normalize_mode_label(pair_name, lang=get_lang())
+```
+
+- Supprimer `normalize_mode_label_fn` et `normalize_map_label_fn` de `FilterSidebarCallbacks` et `MatchViewParams`
+- Supprimer le fallback `_identity` dans `_filters_apply.py` (L77–80) — appel direct
+- Supprimer les champs correspondants dans `_page_context.py`
+- Adapter `page_router.py` : ne plus construire ni passer ces clés
+
+**Gain collatéral** : `apply_filters` (noqa: C901, PLR0912, PLR0913, PLR0915) perd 2 de ses 4 violations PLR0913 une fois les 2 callbacks retirés de sa signature.
+
+---
+
+### Axe D — Centraliser `mode_ui` et démanteler `_add_derived_columns`
+
+#### Diagnostic
+
+`mode_ui` est calculé dans deux endroits séparés :
+
+| Fichier | Fonction | Violation |
+|---------|---------|-----------|
+| `src/app/_filters_apply.py:267` | `_add_derived_columns` | `# noqa: C901, PLR0912` |
+| `src/app/_filters_cascade.py:170` | `_vectorize_ui_columns` | logique identique |
+
+Après Axe C, `normalize_mode_label` est pure → `mode_ui` peut rejoindre `i18n_columns.py` via `coalesce([pair_name_fr, pair_name])` + normalisation, exactement comme `map_ui`.
+
+#### Solution en 3 étapes
+
+**D1 — Ajouter `mode_ui` dans `add_i18n_display_columns`**
+```python
+# Dans i18n_columns.py
+if "mode_ui" not in df.columns and "pair_name" in df.columns:
+    if lang == "fr" and "pair_name_fr" in df.columns:
+        exprs.append(pl.coalesce([...]).alias("mode_ui"))
+    # + normalize via map_elements(normalize_mode_label, lang=lang)
+```
+(Note : `pair_name_fr` est le nom brut asset, la normalisation reste nécessaire — mais elle est maintenant pure.)
+
+**D2 — Décomposer `_add_derived_columns` → 3 fonctions à responsabilité unique**
+
+```python
+# Extrait de _add_derived_columns (noqa: C901, PLR0912 → supprimés)
+def _compute_map_ui_column(dff, normalize_map_label_fn, lang) -> pl.Expr: ...
+def _compute_mode_ui_column(dff, lang) -> pl.Expr: ...       # plus besoin de fn injectée
+def _compute_playlist_ui_column(dff, lang) -> pl.Expr: ...
+```
+
+**D3 — Supprimer `_vectorize_ui_columns` dans `_filters_cascade.py`**
+Remplacer par un appel à `add_i18n_display_columns(dropdown_base, lang)` — même résultat.
+
+**D4 — Déplacer `_rolling_mean` vers `_timeseries_helpers.py`**
+Actuellement défini dans `timeseries.py:27` et importé comme private depuis `timeseries_combat.py:23` (`from src.visualization.timeseries import _rolling_mean`). Import d'un symbole privé cross-module = dette. Le déplacer dans `_timeseries_helpers.py` où il rejoint `apply_chrono_xaxis` et `prepare_time_axis`.
+
+---
+
+### Axe E — Résorber les 3 modules > 500L (violations actives)
+
+#### `maps_outcome.py` (590L) → split data / rendu
+
+| Nouveau fichier | Contenu | Lignes estimées |
+|----------------|---------|----------------|
+| `src/visualization/_maps_outcome_data.py` | `_perf_color`, `_sort_by_map_order`, `_empty_map_figure`, `_prepare_timeline_df`, `_add_timeline_traces`, `_prepare_bullet_joined_data` | ~170L |
+| `src/visualization/maps_outcome.py` | `plot_map_lollipop`, `plot_map_outcome_timeline`, `_add_bullet_bar_traces`, `_add_bullet_color_legend_traces`, `_add_bullet_overlay_traces`, `plot_map_winrate_bullet`, `plot_map_perf_vs_history` | ~420L |
+
+Les 2 noqa PLR0913 dans `_add_bullet_bar_traces` et `_add_bullet_overlay_traces` sont liées à la nature intrinsèque des fonctions Plotly (nombreux paramètres de style) — les conserver avec annotation.
+
+#### `friends_impact_heatmap.py` (507L) → split data / rendu
+
+| Nouveau fichier | Contenu | Lignes estimées |
+|----------------|---------|----------------|
+| `src/visualization/_heatmap_data.py` | `build_impact_ranking_df`, `count_events_by_player`, `_top_maps_by_frequency`, `_order_maps_by_first_seen`, `_build_perf_matrix`, `_discrete_perf_colorscale` | ~175L |
+| `src/visualization/friends_impact_heatmap.py` | `plot_friends_impact_heatmap` (noqa: C901, PLR0912, PLR0915 — complexité inhérente aux heatmaps multi-axes), `render_impact_summary_stats`, `plot_squad_map_heatmap` | ~330L |
+
+#### `timeseries.py` (505L) → extraction helpers
+
+Les helpers utilitaires migrent vers `_timeseries_helpers.py` (déjà existant) :
+
+| Symbole | Source | Destination |
+|---------|--------|------------|
+| `_normalize_df` | `timeseries.py:22` | `_timeseries_helpers.py` |
+| `_rolling_mean` | `timeseries.py:27` (cf. Axe D4) | `_timeseries_helpers.py` |
+| `_build_kda_customdata` | `timeseries.py:43` | `_timeseries_helpers.py` |
+| `_add_kda_traces` | `timeseries.py:68` | `_timeseries_helpers.py` |
+| `_add_permin_rolling_lines` | `timeseries.py:276` | `_timeseries_helpers.py` |
+
+Résultat : `timeseries.py` ne garde que les 4 fonctions publiques (`plot_timeseries`, `plot_assists_timeseries`, `plot_per_minute_timeseries`, `plot_accuracy_last_n`) → ~270L.
+
+#### Modules 450–500L à surveiller (Axe E′)
+
+Ces modules ne violent pas encore la règle mais sont à risque, en particulier `teammates_charts.py` qui recevra du code lors de la migration ChartData (V1 Phase 7) :
+
+| Module | Lignes | Risque | Action préventive |
+|--------|--------|--------|-----------------|
+| `session_compare_charts.py` | 498L | Élevé — 1 commit peut dépasser | Split `_session_compare_annotations.py` prêt |
+| `match_view_helpers.py` | 495L | Élevé | Split `_match_view_kpi.py` si dépasse |
+| `teammates_charts.py` | 491L | Élevé — grossira avec ChartData | Mesurer après V1 Phase 7 ; split si > 500L |
+| `match_impact_timeline.py` | 482L | Modéré — 2 god functions (C901+PLR0912+PLR0913+PLR0915) | `_match_impact_trace_builders.py` si dépasse |
+| `timeseries_combat.py` | 481L | Modéré | `_timeseries_combat_helpers.py` si dépasse |
+| `_perf_progression.py` | 476L | Faible | — |
+| `_perf_session.py` | 470L | Faible | — |
+
+> `match_impact_timeline.py` mérite une attention particulière : `plot_match_kill_death_timeline` et `plot_all_players_frags_timeline` ont toutes deux 3–4 violations noqa simultanées (C901, PLR0912, PLR0913, PLR0915). Non adressé dans V1. Si le fichier dépasse 500L, extraire les builders de traces dans `_match_impact_trace_builders.py`.
+
+---
+
+### Axe F — Étendre ChartData aux graphes solo timeseries
+
+#### Diagnostic
+
+Les 4 graphes timeseries solo (`plot_timeseries`, `plot_assists_timeseries`, `plot_per_minute_timeseries`, `plot_accuracy_last_n`) partagent les mêmes besoins non centralisés :
+
+| Besoin | Situation actuelle |
+|--------|------------------|
+| Rolling mean (lissage) | `_rolling_mean` avec `window=10` codé à chaque call-site |
+| Magic numbers height | `height=420` × 4 dans `timeseries_combat.py`, `height=400` × 2 dans `_timeseries_progression.py` — **incohérents** |
+| Downsampling | Absent des graphes solo — seul `_downsample_for_plot` existe dans `timeseries.py` et n'est pas réutilisé |
+
+> Note : les graphes solo utilisent un axe X chronologique (temps), pas des positions entières par match. `SingleSeriesChartData` sera une **dataclass séparée** de `ChartData` (pas d'héritage), plus simple.
+
+#### Solution
+
+**F1 — Harmoniser les magic numbers height**
+
+Ajouter dans `_chart_series.py` (déjà créé en V1) :
+```python
+HEIGHT_TIMESERIES: int = 420   # graphes combat, timeseries standard
+HEIGHT_PROGRESSION: int = 400  # courbes LUSR/performance (plus compact)
+HEIGHT_MINI: int = 150         # mini-charts (participation_charts_extra.py)
+```
+Remplacer les 6 occurrences inline dans `timeseries_combat.py` et `_timeseries_progression.py`.
+
+**F2 — `SingleSeriesChartData` dans `_chart_series.py`**
+
+```python
+@dataclass
+class SingleSeriesChartData:
+    """Container pour un graphe solo (KDA, per-minute, etc.)."""
+    x: list[Any]                    # positions ou timestamps
+    y: list[float | None]           # valeurs métriques
+    y_smooth: list[float | None]    # rolling mean pré-calculée
+    height: int = HEIGHT_TIMESERIES
+    title: str = ""
+
+    @classmethod
+    def from_series(
+        cls,
+        x: list[Any],
+        y: list[float | None],
+        window: int = 10,
+        **kwargs,
+    ) -> "SingleSeriesChartData":
+        """Construit avec rolling mean pré-calculée."""
+        smooth = _rolling_mean_list(y, window)
+        return cls(x=x, y=y, y_smooth=smooth, **kwargs)
+```
+
+**Graphes solo concernés :**
+
+| Graphe | Fichier | window | Gain |
+|--------|---------|--------|------|
+| `plot_timeseries` | `timeseries.py` | 10 | supprime `_rolling_mean` inline |
+| `plot_assists_timeseries` | `timeseries.py` | 10 | idem |
+| `plot_per_minute_timeseries` | `timeseries.py` | 10 | idem × 3 traces |
+| `plot_shots_accuracy` | `timeseries_combat.py` | 10 | idem |
+| `plot_damage_dealt_taken` | `timeseries_combat.py` | 10 | idem |
+| `plot_spree_headshots_accuracy` | `timeseries_combat.py` | 10 | idem |
+| `plot_average_life` | `timeseries_combat.py` | 10 | idem |
+
+> `plot_accuracy_last_n` (statique, pas de rolling) : compatible `SingleSeriesChartData` mais sans `y_smooth`.
+
+---
+
+## 9. Checklist V2
+
+### Phase C — Éliminer injection callback fn
+
+- [ ] Écrire test `tests/test_normalize_without_injection.py` : appels directs sans session_state
+- [ ] Supprimer `normalize_mode_label_fn` + `normalize_map_label_fn` de `FilterSidebarCallbacks` et `MatchViewParams` (`_page_context.py`)
+- [ ] Supprimer construction des clés dans `page_router.py:101+121`
+- [ ] Adapter `filters_render.py` : appels directs `normalize_mode_label(x, lang=get_lang())`
+- [ ] Adapter `_filters_apply.py` : supprimer fallback `_identity` L77–80, appels directs
+- [ ] Adapter `_filters_cascade.py` : idem, supprimer params L344–345
+- [ ] Adapter `explorer.py` + `match_view.py` : appels directs
+- [ ] Vérifier que `apply_filters` perd ses violations PLR0913 (signature plus courte)
+- [ ] Tests → vert
+
+### Phase D — Centraliser mode_ui + démanteler _add_derived_columns
+
+- [ ] **D1** — Ajouter `mode_ui` dans `add_i18n_display_columns` (`i18n_columns.py`)
+- [ ] Mettre à jour `tests/test_i18n_columns.py` : `mode_ui` calculé correctement en fr/en
+- [ ] **D2** — Extraire `_compute_map_ui_column`, `_compute_mode_ui_column`, `_compute_playlist_ui_column` depuis `_add_derived_columns` → supprimer noqa C901/PLR0912
+- [ ] **D3** — Supprimer `_vectorize_ui_columns` dans `_filters_cascade.py` → remplacer par `add_i18n_display_columns`
+- [ ] **D4** — Déplacer `_rolling_mean` de `timeseries.py:27` vers `_timeseries_helpers.py` ; adapter imports dans `timeseries_combat.py` et `_timeseries_progression.py`
+- [ ] Tests → vert
+
+### Phase E — Résorber modules > 500L
+
+- [ ] **E1** — Créer `src/visualization/_maps_outcome_data.py` : extraire les 6 fonctions data de `maps_outcome.py`
+- [ ] Vérifier `maps_outcome.py` < 500L après extraction
+- [ ] **E2** — Créer `src/visualization/_heatmap_data.py` : extraire les 6 fonctions data de `friends_impact_heatmap.py`
+- [ ] Vérifier `friends_impact_heatmap.py` < 500L après extraction
+- [ ] **E3** — Extraire `_normalize_df`, `_build_kda_customdata`, `_add_kda_traces`, `_add_permin_rolling_lines` vers `_timeseries_helpers.py` (+ `_rolling_mean` depuis D4)
+- [ ] Vérifier `timeseries.py` < 500L après extraction
+- [ ] Vérifier `_timeseries_helpers.py` < 500L après ajouts
+- [ ] Mesurer `teammates_charts.py` après V1 Phase 7 — split si > 500L
+- [ ] Tests → vert
+
+### Phase F — ChartData solo timeseries
+
+- [ ] Ajouter `HEIGHT_TIMESERIES = 420`, `HEIGHT_PROGRESSION = 400`, `HEIGHT_MINI = 150` dans `_chart_series.py`
+- [ ] Remplacer les 6 magic numbers height dans `timeseries_combat.py` et `_timeseries_progression.py`
+- [ ] Créer `SingleSeriesChartData` + `from_series()` dans `_chart_series.py`
+- [ ] Mettre à jour `tests/test_chart_series.py` : `from_series` pré-calcule le rolling, `HEIGHT_*` constantes exportées
+- [ ] Migrer les 7 graphes solo listés en §Axe F vers `SingleSeriesChartData`
+- [ ] Tests → vert
+
+---
+
+## 10. Branche Git V2
+
+```bash
+git checkout main
+git pull
+git checkout -b refactor/viz-pipeline-v2
+```
+
+Commits séquentiels :
+```
+refactor(app): éliminer injection callback fn normalize_*_label (Axe C)
+feat(i18n): ajouter mode_ui dans add_i18n_display_columns (Axe D1)
+refactor(filters): démanteler _add_derived_columns → 3 fonctions (Axe D2)
+refactor(filters): supprimer _vectorize_ui_columns (Axe D3)
+refactor(viz): déplacer _rolling_mean vers _timeseries_helpers (Axe D4)
+refactor(viz): split maps_outcome.py → _maps_outcome_data.py (Axe E1)
+refactor(viz): split friends_impact_heatmap.py → _heatmap_data.py (Axe E2)
+refactor(viz): split timeseries.py → helpers extraits (Axe E3)
+feat(viz): HEIGHT_* constantes + SingleSeriesChartData (Axe F)
+refactor(viz): migrer graphes solo timeseries vers SingleSeriesChartData (Axe F)
 ```
