@@ -18,6 +18,7 @@ from src.ui.chart_utils import safe_chart_render
 from src.ui.i18n import get_lang, t
 from src.ui.streamlit_modern import PLOTLY_CLEAN_CONFIG, PLOTLY_STATIC_CONFIG, fragment_if_available
 from src.visualization import plot_trio_metric
+from src.visualization._chart_series import SquadRecordSet
 from src.visualization._compat import DataFrameLike, ensure_polars
 from src.visualization.teammates_hs_pk import plot_hs_pk_stacked
 from src.visualization.trio import plot_trio_kills_deaths
@@ -30,9 +31,8 @@ def render_metric_bar_charts(  # noqa: PLR0913
     show_smooth: bool,
     key_suffix: str,
     plot_fn,
-    records: dict | None = None,
+    squad_records: SquadRecordSet | None = None,
     hspk_records: dict | None = None,
-    records_per_map: dict | None = None,
 ) -> None:
     """Affiche les graphes killing spree et HS+PK pour une escouade."""
     _lang = get_lang()
@@ -49,8 +49,7 @@ def render_metric_bar_charts(  # noqa: PLR0913
             smooth_window=10,
             show_smooth_lines=show_smooth,
             lang=_lang,
-            records=records,
-            records_per_map=records_per_map,
+            squad_records=squad_records,
         )
         if fig is None:
             st.info(t("insufficient_data_chart"))
@@ -138,8 +137,7 @@ def _plot_trio_metric_chart(  # noqa: PLR0913
     y_suffix: str = "",
     y_format: str = "",
     is_inverse: bool = False,
-    records: dict | None = None,
-    records_per_map: dict | None = None,
+    squad_records: SquadRecordSet | None = None,
 ) -> None:
     """Rend un seul graphique trio_metric via st.plotly_chart."""
     st.plotly_chart(
@@ -157,8 +155,7 @@ def _plot_trio_metric_chart(  # noqa: PLR0913
             d_f3=d_f3,
             colors_by_name=colors_by_name,
             is_inverse=is_inverse,
-            records=records,
-            records_per_map=records_per_map,
+            squad_records=squad_records,
         ),
         width="stretch",
         key=key,
@@ -191,8 +188,7 @@ def render_trio_charts(  # noqa: PLR0913
     f3_name: str | None = None,
     f3_xuid: str | None = None,
     colors_by_name: dict[str, str] | None = None,
-    records: dict | None = None,
-    records_per_map: dict | None = None,
+    squad_records: SquadRecordSet | None = None,
 ) -> None:
     """Affiche les graphes de métriques pour une escouade de 2, 3 ou 4 joueurs."""
     names: tuple[str, ...] = (me_name, f1_name)
@@ -215,8 +211,7 @@ def render_trio_charts(  # noqa: PLR0913
                 lang=_lang,
                 d_f3=d_f3,
                 colors_by_name=colors_by_name,
-                records=records,
-                records_per_map=records_per_map,
+                squad_records=squad_records,
             ),
             width="stretch",
             key=f"trio_kd_{key_suffix}",
@@ -226,7 +221,7 @@ def render_trio_charts(  # noqa: PLR0913
     _shared: dict = {
         "d_self": d_self, "d_f1": d_f1, "d_f2": d_f2, "d_f3": d_f3,
         "names": names, "lang": _lang, "colors_by_name": colors_by_name,
-        "records": records, "records_per_map": records_per_map,
+        "squad_records": squad_records,
     }
     for metric, title_key, ytitle_key, key_prefix, extra in _TRIO_METRIC_SPECS:
         _plot_trio_metric_chart(

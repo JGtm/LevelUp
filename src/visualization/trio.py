@@ -5,7 +5,7 @@ import polars as pl
 
 from src.config import OKABE_ITO_PALETTE, PLOT_CONFIG
 from src.ui.i18n.viz import viz_t
-from src.visualization._chart_series import ChartData, MatchSeries
+from src.visualization._chart_series import ChartData, MatchSeries, SquadRecordSet
 from src.visualization._compat import DataFrameLike, ensure_polars
 from src.visualization.theme import apply_halo_plot_style, get_legend_horizontal_bottom
 
@@ -53,8 +53,7 @@ def plot_trio_metric(  # noqa: PLR0912, PLR0913, PLR0915, C901 — graphe multi-
     colors_by_name: dict[str, str] | None = None,
     is_inverse: bool = False,
     match_labels: list[str] | None = None,
-    records: dict[str, dict[str, float | None]] | None = None,
-    records_per_map: dict[str, dict[str, dict[str, float | None]]] | None = None,
+    squad_records: SquadRecordSet | None = None,
 ) -> go.Figure:
     """Graphique comparant une métrique entre 3 ou 4 joueurs.
 
@@ -230,12 +229,11 @@ def plot_trio_metric(  # noqa: PLR0912, PLR0913, PLR0915, C901 — graphe multi-
         )
     )
 
-    if records:
+    if squad_records and squad_records.records:
         _map_names_trio = [t.split("<br>", 1)[1] if "<br>" in t else None for t in ticktext]
-        _per_map_trio = (
-            {n: (records_per_map.get(n) or {}).get(metric, {}) for n in names}
-            if records_per_map else {}
-        )
+        _per_map_trio = {
+            n: (squad_records.per_map.get(n) or {}).get(metric, {}) for n in names
+        }
         _cbname_trio = colors_by_name or {}
         _cd_trio = ChartData(
             series=[
@@ -250,7 +248,7 @@ def plot_trio_metric(  # noqa: PLR0912, PLR0913, PLR0915, C901 — graphe multi-
             ],
             x_labels=ticktext,
             barmode="group",
-            global_records={n: (records.get(n) or {}).get(metric) for n in names},
+            global_records={n: (squad_records.records.get(n) or {}).get(metric) for n in names},
             per_map_records=_per_map_trio,
             is_negative=is_inverse,
         )
@@ -354,8 +352,7 @@ def plot_trio_kills_deaths(  # noqa: PLR0913
     d_f3: DataFrameLike | None = None,
     colors_by_name: dict[str, str] | None = None,
     smooth_window: int = 7,
-    records: dict[str, dict[str, float | None]] | None = None,
-    records_per_map: dict[str, dict[str, dict[str, float | None]]] | None = None,
+    squad_records: SquadRecordSet | None = None,
 ) -> go.Figure:
     """Graphique combiné kills↑/morts↓ pour l'escouade (2, 3 ou 4 joueurs).
 
@@ -447,7 +444,7 @@ def plot_trio_kills_deaths(  # noqa: PLR0913
             else []
         )
 
-    if records:
+    if squad_records and squad_records.records:
         _kd_map_names = (
             [t.split("<br>", 1)[1] if "<br>" in t else None for t in ticktext_fr]
             if ticktext_fr else []
@@ -468,11 +465,10 @@ def plot_trio_kills_deaths(  # noqa: PLR0913
             series=_kd_series,
             x_labels=ticktext_fr or [str(x) for x in xs],
             barmode="group",
-            global_records={n: (records.get(n) or {}).get("kills") for n in names},
-            per_map_records=(
-                {n: (records_per_map.get(n) or {}).get("kills", {}) for n in names}
-                if records_per_map else {}
-            ),
+            global_records={n: (squad_records.records.get(n) or {}).get("kills") for n in names},
+            per_map_records={
+                n: (squad_records.per_map.get(n) or {}).get("kills", {}) for n in names
+            },
             is_negative=False,
         ).add_record_overlays(fig)
         # Morts (record min, barres négatives)
@@ -480,11 +476,10 @@ def plot_trio_kills_deaths(  # noqa: PLR0913
             series=_kd_series,
             x_labels=ticktext_fr or [str(x) for x in xs],
             barmode="group",
-            global_records={n: (records.get(n) or {}).get("deaths") for n in names},
-            per_map_records=(
-                {n: (records_per_map.get(n) or {}).get("deaths", {}) for n in names}
-                if records_per_map else {}
-            ),
+            global_records={n: (squad_records.records.get(n) or {}).get("deaths") for n in names},
+            per_map_records={
+                n: (squad_records.per_map.get(n) or {}).get("deaths", {}) for n in names
+            },
             is_negative=True,
         ).add_record_overlays(fig)
 

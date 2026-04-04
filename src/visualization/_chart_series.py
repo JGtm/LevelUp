@@ -28,6 +28,23 @@ MAX_PLOT_POINTS: int = 200  # au-delà Plotly devient lent
 
 
 @dataclass
+class SquadRecordSet:
+    """Enveloppe légère regroupant records + records_per_map pour une escouade.
+
+    Remplace le passage de deux dicts séparés (records, records_per_map) à travers
+    toute la chaîne caller→viz.  Construit une seule fois dans ``_teammates_trio.py``
+    et transmis tel quel jusqu'aux fonctions de visualisation.
+
+    Attributs :
+        records      : ``{nom_joueur: {métrique: valeur_record}}``
+        per_map      : ``{nom_joueur: {nom_carte: {métrique: valeur_record}}}``
+    """
+
+    records: dict[str, dict[str, float | None]] = field(default_factory=dict)
+    per_map: dict[str, dict[str, dict[str, float | None]]] = field(default_factory=dict)
+
+
+@dataclass
 class MatchSeries:
     """Une série de données pour un joueur sur l'axe X commun de matchs."""
 
