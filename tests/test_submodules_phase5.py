@@ -8,6 +8,9 @@ Sous-modules testés :
 - src/ai/_rag_models.py
 - src/ai/_rag_github.py
 - src/ai/_rag_chunker.py
+- src/visualization/_maps_outcome_bullet.py  (Axe E1 — split maps_outcome >500L)
+- src/visualization/_heatmap_squad.py        (Axe E2 — split friends_impact_heatmap >500L)
+- src/visualization/_timeseries_helpers.py   (Axe D4 — helpers timeseries centralisés)
 """
 
 from __future__ import annotations
@@ -496,3 +499,175 @@ class TestRAGGitHub:
 
         assert hasattr(mod, "logger")
         assert isinstance(mod.logger, logging.Logger)
+
+
+# =============================================================================
+# Tests Axe E1 — _maps_outcome_bullet.py (split depuis maps_outcome.py >500L)
+# =============================================================================
+
+
+class TestMapsOutcomeBulletSubmodule:
+    """Tests de non-régression pour le sous-module _maps_outcome_bullet (Axe E1)."""
+
+    def test_importable_directly(self):
+        """Le module _maps_outcome_bullet est importable directement."""
+        from src.visualization import _maps_outcome_bullet  # noqa: F401
+
+    def test_plot_map_winrate_bullet_reexported(self):
+        """plot_map_winrate_bullet est réexportée depuis maps_outcome (interface publique préservée)."""
+        from src.visualization.maps_outcome import plot_map_winrate_bullet
+
+        assert callable(plot_map_winrate_bullet)
+
+    def test_sort_by_map_order_reexported(self):
+        """_sort_by_map_order est réexportée depuis maps_outcome (dépendance interne préservée)."""
+        from src.visualization.maps_outcome import _sort_by_map_order
+
+        assert callable(_sort_by_map_order)
+
+    def test_sort_by_map_order_stable_on_known_order(self):
+        """_sort_by_map_order trie selon map_order (descending=True par défaut → newest en haut)."""
+        import polars as pl
+
+        from src.visualization._maps_outcome_bullet import _sort_by_map_order
+
+        df = pl.DataFrame({"map_name": ["Deadlock", "Aquarius", "Recharge"], "win_rate": [0.4, 0.6, 0.5]})
+        # map_order = [oldest=Aquarius, ..., newest=Deadlock]
+        # descending=True → Deadlock (pos 2) en haut, Aquarius (pos 0) en bas
+        result = _sort_by_map_order(df, ["Aquarius", "Recharge", "Deadlock"])
+        assert result["map_name"].to_list() == ["Deadlock", "Recharge", "Aquarius"]
+
+    def test_sort_by_map_order_ascending(self):
+        """_sort_by_map_order avec descending=False trie oldest d'abord."""
+        import polars as pl
+
+        from src.visualization._maps_outcome_bullet import _sort_by_map_order
+
+        df = pl.DataFrame({"map_name": ["Deadlock", "Aquarius", "Recharge"], "win_rate": [0.4, 0.6, 0.5]})
+        result = _sort_by_map_order(df, ["Aquarius", "Recharge", "Deadlock"], descending=False)
+        assert result["map_name"].to_list() == ["Aquarius", "Recharge", "Deadlock"]
+
+    def test_sort_by_map_order_unknown_maps_at_top(self):
+        """Les cartes absentes de map_order reçoivent la position max (default)."""
+        import polars as pl
+
+        from src.visualization._maps_outcome_bullet import _sort_by_map_order
+
+        df = pl.DataFrame({"map_name": ["Bazaar", "Aquarius"], "win_rate": [0.3, 0.7]})
+        # descending=True → Bazaar (default pos = 2) en haut, Aquarius (pos 0) en bas
+        result = _sort_by_map_order(df, ["Aquarius", "Deadlock"])
+        maps = result["map_name"].to_list()
+        assert maps[0] == "Bazaar"   # inconnu → position max → en haut avec descending
+        assert "Aquarius" in maps
+
+    def test_plot_winrate_bullet_returns_none_on_empty(self):
+        """plot_map_winrate_bullet retourne None si aucune carte commune."""
+        import polars as pl
+
+        from src.visualization._maps_outcome_bullet import plot_map_winrate_bullet
+
+        empty = pl.DataFrame({
+            "map_name": pl.Series([], dtype=pl.Utf8),
+            "win_rate": pl.Series([], dtype=pl.Float64),
+            "matches": pl.Series([], dtype=pl.Int64),
+        })
+        result = plot_map_winrate_bullet(empty, empty)
+        assert result is None
+
+
+# =============================================================================
+# Tests Axe E2 — _heatmap_squad.py (split depuis friends_impact_heatmap.py >500L)
+# =============================================================================
+
+
+class TestHeatmapSquadSubmodule:
+    """Tests de non-régression pour le sous-module _heatmap_squad (Axe E2)."""
+
+    def test_importable_directly(self):
+        """Le module _heatmap_squad est importable directement."""
+        from src.visualization import _heatmap_squad  # noqa: F401
+
+    def test_plot_squad_map_heatmap_reexported(self):
+        """plot_squad_map_heatmap est réexportée depuis friends_impact_heatmap (interface publique préservée)."""
+        from src.visualization.friends_impact_heatmap import plot_squad_map_heatmap
+
+        assert callable(plot_squad_map_heatmap)
+
+    def test_plot_squad_map_heatmap_returns_none_on_empty_series(self):
+        """plot_squad_map_heatmap retourne None si series vide."""
+        from src.visualization._heatmap_squad import plot_squad_map_heatmap
+
+        result = plot_squad_map_heatmap([])
+        assert result is None
+
+    def test_top_maps_by_frequency_basic(self):
+        """_top_maps_by_frequency retourne les cartes les plus jouées."""
+        import polars as pl
+
+        from src.visualization._heatmap_squad import _top_maps_by_frequency
+
+        bd = pl.DataFrame({
+            "map_name": ["Aquarius", "Aquarius", "Recharge", "Deadlock"],
+            "matches": [10, 10, 5, 2],
+        })
+        result = _top_maps_by_frequency(bd)
+        assert result[0] == "Aquarius"  # la plus jouée en premier
+
+    def test_discrete_perf_colorscale_valid_format(self):
+        """_discrete_perf_colorscale retourne une liste de paires [float, str]."""
+        from src.visualization._heatmap_squad import _discrete_perf_colorscale
+
+        cs = _discrete_perf_colorscale()
+        assert isinstance(cs, list)
+        assert len(cs) >= 2
+        for entry in cs:
+            assert len(entry) == 2
+            assert isinstance(entry[0], float)
+            assert isinstance(entry[1], str)
+
+
+# =============================================================================
+# Tests Axe D4 — _timeseries_helpers.py (helpers centralisés)
+# =============================================================================
+
+
+class TestTimeseriesHelpersSubmodule:
+    """Tests de non-régression pour _timeseries_helpers (Axe D4)."""
+
+    def test_importable_directly(self):
+        """Le module _timeseries_helpers est importable directement."""
+        from src.visualization import _timeseries_helpers  # noqa: F401
+
+    def test_rolling_mean_importable(self):
+        """_rolling_mean est accessible depuis _timeseries_helpers."""
+        from src.visualization._timeseries_helpers import _rolling_mean
+
+        assert callable(_rolling_mean)
+
+    def test_normalize_df_importable(self):
+        """_normalize_df est accessible depuis _timeseries_helpers."""
+        from src.visualization._timeseries_helpers import _normalize_df
+
+        assert callable(_normalize_df)
+
+    def test_rolling_mean_polars_series(self):
+        """_rolling_mean retourne une Series Polars de même longueur."""
+        import polars as pl
+
+        from src.visualization._timeseries_helpers import _rolling_mean
+
+        s = pl.Series([1.0, 2.0, 3.0, 4.0, 5.0])
+        result = _rolling_mean(s, window=3)
+        assert isinstance(result, pl.Series)
+        assert len(result) == len(s)
+
+    def test_normalize_df_passthrough_polars(self):
+        """_normalize_df accepte un pl.DataFrame et le retourne sans erreur."""
+        import polars as pl
+
+        from src.visualization._timeseries_helpers import _normalize_df
+
+        df = pl.DataFrame({"x": [1, 2, 3], "y": [4.0, 5.0, 6.0]})
+        result = _normalize_df(df)
+        assert isinstance(result, pl.DataFrame)
+        assert result.shape == (3, 2)
