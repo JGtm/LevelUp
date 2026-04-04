@@ -7,6 +7,28 @@
 
 ## Journal
 
+### [2026-04-04] — fix(film-start): batch fix 753 valeurs film_match_start_ms incorrectes — Complété
+
+**Problème** : 753 valeurs `film_match_start_ms < 5000ms` en production dans `shared_matches_v2.duckdb`. Cause racine : le premier backfill `scan_first_movements` enregistrait les mouvements de lobby (1-5s) comme "premier mouvement". À l'apparition du vrai spawn (~30-35s), le joueur était déjà dans `first_change` → sauté.
+
+**Décision technique** :
+- Commit `99076d6e` — algorithme spawn detection v2 : `find_peak_activity_window` (scan ALL sig changes, window de 2s avec le max de joueurs simultanés) comme estimation initiale, + second passage avec `ignore_before_ms` si gap > 15s avec les `highlight_events` API. La mécanique `ignore_before_ms` est la clé : les changements avant la coupure mettent à jour `spawn_sig` sans enregistrer dans `first_change`, permettant de détecter le VRAI spawn suivant.
+- **Insight Halo Infinite** : les joueurs peuvent marcher dans la zone de spawn pendant le countdown → même `find_peak_activity_window` peut se déclencher en lobby (ex: Fortress match → 12.5s sans API, 34.1s avec API).
+
+**Batch fix en 4 passes** :
+1. Run1 (`&` background) : killed par SIGHUP → ~134 fixes
+2. Run2 (nohup) : crash DB locked (orphelin run1) → ~2 fixes
+3. Run3 (foreground + tee) : crash DB locked mid-batch → ~413 fixes
+4. Run4 (foreground, après kill orphelins) : 259/259 ✓
+
+**Résultats** :
+- Suspects < 5s : 753 → 139 → 0
+- 139 cas irréductibles (6 chunks, second passage insuffisant) → NULLifiés → UI utilise `GREATEST((duration - playable_duration)*1000, 0)` comme fallback
+- Distribution finale : 814 OK (≥ 5s) | 718 NULL (fallback) | 0 suspects | Total 1532
+- Percentiles : p10=3.7s, médiane=19.6s, p90=50.3s
+
+**Prochaine étape** : Relancer Streamlit, vérifier l'affichage des clips film sur quelques matchs.
+
 ### [2026-04-04] — fix(tests): fixtures manquantes map_ui + tests orphelins — Complété
 
 **Problème** : Phase 4 (maps.py / squad_records.py) a rendu `map_ui` obligatoire comme clé de groupement. 10 fixtures de tests créées avant cette migration ne contenaient pas la colonne → `ColumnNotFoundError` dans 14 tests. Également 3 tests importaient la fonction `_normalize_mode_label` supprimée (Phase 3), et 1 test testait `add_ui_columns` supprimée (Phase 2).
