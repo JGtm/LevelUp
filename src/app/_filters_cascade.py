@@ -13,6 +13,7 @@ from datetime import date
 import polars as pl
 import streamlit as st
 
+from src.app.helpers import normalize_map_label, normalize_mode_label
 from src.ui import translate_playlist_name
 from src.ui.components import (
     get_firefight_playlists,
@@ -170,8 +171,6 @@ def _apply_temporal_filter(  # noqa: PLR0913
 def _vectorize_ui_columns(
     dropdown_base: pl.DataFrame,
     clean_asset_label_fn: Callable[[str], str],
-    normalize_mode_label_fn: Callable[[str], str],
-    normalize_map_label_fn: Callable[[str], str],
 ) -> pl.DataFrame:
     """Ajoute les colonnes playlist_ui, mode_ui, map_ui vectorisées.
 
@@ -195,7 +194,10 @@ def _vectorize_ui_columns(
         pl_expr = pl.lit(None).cast(pl.Utf8).alias("playlist_ui")
 
     if "pair_name" in dropdown_base.columns:
-        _mode_map = build_mapping(dropdown_base["pair_name"], normalize_mode_label_fn)
+        _mode_map = build_mapping(
+            dropdown_base["pair_name"],
+            lambda x: normalize_mode_label(x, lang=_lang),
+        )
         mode_expr = (
             pl.col("pair_name")
             .cast(pl.Utf8)
@@ -215,7 +217,10 @@ def _vectorize_ui_columns(
                 ]).alias("map_ui")
             )
         else:
-            _map_map = build_mapping(dropdown_base["map_name"], normalize_map_label_fn)
+            _map_map = build_mapping(
+                dropdown_base["map_name"],
+                normalize_map_label,
+            )
             map_expr = (
                 pl.col("map_name")
                 .cast(pl.Utf8)
@@ -341,8 +346,8 @@ def _render_cascade_filters(  # noqa: PLR0913
     picked_session_labels: list[str] | None,
     base_s_ui: pl.DataFrame | None,
     clean_asset_label_fn: Callable[[str], str],
-    normalize_mode_label_fn: Callable[[str], str],
-    normalize_map_label_fn: Callable[[str], str],
+    normalize_mode_label_fn: Callable[[str], str] | None = None,  # LEGACY — ignoré
+    normalize_map_label_fn: Callable[[str], str] | None = None,  # LEGACY — ignoré
 ) -> _CascadeResult:
     """Rend les filtres Type d'expérience + Playlists + Modes + Cartes (v5.2)."""
     dropdown_base = _to_polars(base_for_filters)
@@ -354,12 +359,7 @@ def _render_cascade_filters(  # noqa: PLR0913
         picked_session_labels,
         base_s_ui,
     )
-    dropdown_base = _vectorize_ui_columns(
-        dropdown_base,
-        clean_asset_label_fn,
-        normalize_mode_label_fn,
-        normalize_map_label_fn,
-    )
+    dropdown_base = _vectorize_ui_columns(dropdown_base, clean_asset_label_fn)
 
     # ── Sélecteur Type d'expérience (pré-filtre, v5.2) ──────────────────────
     playlist_values_all = _unique_sorted_values(dropdown_base, "playlist_ui")

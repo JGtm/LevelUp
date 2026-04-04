@@ -10,6 +10,7 @@ import streamlit as st
 
 from src.app._filters_cascade import _apply_experience_filter, _get_experience_type_options
 from src.app._filters_shared import safe_to_date as _safe_to_date
+from src.app.helpers import normalize_map_label, normalize_mode_label
 from src.ui import translate_pair_name, translate_playlist_name
 from src.ui.cache import cached_compute_sessions_db
 from src.ui.i18n import get_lang
@@ -47,8 +48,8 @@ def apply_filters(  # noqa: C901, PLR0912, PLR0913, PLR0915
     xuid: str | None = None,
     db_key: tuple[int, int] | None = None,
     clean_asset_label_fn: Callable[[str], str] | None = None,
-    normalize_mode_label_fn: Callable[[str], str] | None = None,
-    normalize_map_label_fn: Callable[[str], str] | None = None,
+    normalize_mode_label_fn: Callable[[str], str] | None = None,  # LEGACY — ignoré
+    normalize_map_label_fn: Callable[[str], str] | None = None,   # LEGACY — ignoré
 ) -> pl.DataFrame:
     """Applique tous les filtres au DataFrame.
 
@@ -74,10 +75,6 @@ def apply_filters(  # noqa: C901, PLR0912, PLR0913, PLR0915
 
     if clean_asset_label_fn is None:
         clean_asset_label_fn = _identity
-    if normalize_mode_label_fn is None:
-        normalize_mode_label_fn = _identity
-    if normalize_map_label_fn is None:
-        normalize_map_label_fn = _identity
     if db_path is None:
         db_path = ""
     if xuid is None:
@@ -151,14 +148,12 @@ def apply_filters(  # noqa: C901, PLR0912, PLR0913, PLR0915
 
         # Colonnes dérivées (nécessitent playlist_name, pair_name, map_name)
         # Vectorisation: build_mapping + replace_strict au lieu de map_elements
-        dff = _add_derived_columns(
-            dff, clean_asset_label_fn, normalize_mode_label_fn, normalize_map_label_fn
-        )
+        dff = _add_derived_columns(dff, clean_asset_label_fn)
 
     # Debug: Afficher l'état des filtres avant application
     show_debug = st.session_state.get("_show_debug_info", False)
     if show_debug:
-        _show_debug_info_before(dff, filter_state, normalize_mode_label_fn, normalize_map_label_fn)
+        _show_debug_info_before(dff, filter_state)
 
     # Application des filtres checkboxes
     # Filtre type d'expérience (pré-filtre, v5.2)
@@ -267,8 +262,6 @@ def apply_filters(  # noqa: C901, PLR0912, PLR0913, PLR0915
 def _add_derived_columns(  # noqa: C901, PLR0912
     dff: pl.DataFrame,
     clean_asset_label_fn: Callable[[str], str],
-    normalize_mode_label_fn: Callable[[str], str],
-    normalize_map_label_fn: Callable[[str], str],
 ) -> pl.DataFrame:
     """Ajoute les colonnes dérivées UI (playlist_fr, mode_ui, map_ui, etc.)."""
 
@@ -383,10 +376,9 @@ def _add_derived_columns(  # noqa: C901, PLR0912
                 )
             else:
                 derived_exprs.append(pl.col("map_name").cast(pl.Utf8).alias("map_ui"))
-        elif normalize_map_label_fn is _identity:
-            derived_exprs.append(pl.col("map_name").cast(pl.Utf8).alias("map_ui"))
         else:
-            _mapui_map = build_mapping(dff["map_name"], normalize_map_label_fn)
+            _lang = get_lang()
+            _mapui_map = build_mapping(dff["map_name"], normalize_map_label)
             derived_exprs.append(
                 pl.col("map_name")
                 .cast(pl.Utf8)
@@ -405,10 +397,9 @@ def _add_derived_columns(  # noqa: C901, PLR0912
 def _show_debug_info_before(
     dff: pl.DataFrame,
     filter_state: FilterState,  # noqa: F821
-    normalize_mode_label_fn: Callable[[str], str],
-    normalize_map_label_fn: Callable[[str], str],
 ) -> None:
     """Affiche les infos de debug avant application des filtres checkboxes."""
+    _lang = get_lang()
     st.write(f"🔍 **Debug filtres** - Avant application des filtres checkboxes: {len(dff)} matchs")
     st.write(
         f"- Playlists sélectionnées: {filter_state.playlists_selected if filter_state.playlists_selected else 'Toutes'}"
@@ -423,9 +414,9 @@ def _show_debug_info_before(
         recent = dff.sort("start_time", descending=True).head(5)
         st.write("**5 matchs les plus récents avant filtres checkboxes:**")
         for row in recent.iter_rows(named=True):
-            map_ui = row.get("map_ui") or normalize_map_label_fn(row.get("map_name", ""))
+            map_ui = row.get("map_ui") or normalize_map_label(row.get("map_name", ""))
             playlist_ui = row.get("playlist_ui") or row.get("playlist_name", "")
-            mode_ui = row.get("mode_ui") or normalize_mode_label_fn(row.get("pair_name", ""))
+            mode_ui = row.get("mode_ui") or normalize_mode_label(row.get("pair_name"), lang=_lang)
             st.write(
                 f"- {row.get('start_time')} | Map: {map_ui} | Playlist: {playlist_ui} | Mode: {mode_ui}"
             )

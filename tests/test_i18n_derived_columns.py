@@ -160,7 +160,7 @@ class TestAddDerivedColumnsI18n:
         from src.app._filters_apply import _add_derived_columns
 
         df = self._make_df(with_map_id=False)
-        result = _add_derived_columns(df, self._identity, self._identity, self._identity)
+        result = _add_derived_columns(df, self._identity)
         assert "mode_ui" in result.columns
         modes = result["mode_ui"].to_list()
         # translate_pair_name("Arena:Slayer") → "Assassin" en fr
@@ -171,7 +171,7 @@ class TestAddDerivedColumnsI18n:
         from src.app._filters_apply import _add_derived_columns
 
         df = self._make_df(with_map_id=False)
-        result = _add_derived_columns(df, self._identity, self._identity, self._identity)
+        result = _add_derived_columns(df, self._identity)
         assert "map_ui" in result.columns
         assert result["map_ui"].to_list() == result["map_name"].to_list()
 
@@ -184,7 +184,7 @@ class TestAddDerivedColumnsI18n:
             "src.utils.paths.get_metadata_db_path",
             return_value=tmp_path / "absent.duckdb",
         ):
-            result = _add_derived_columns(df, self._identity, self._identity, self._identity)
+            result = _add_derived_columns(df, self._identity)
 
         assert "map_ui" in result.columns
         # Sans DB, map_ui = fallback = map_name
@@ -216,7 +216,7 @@ class TestAddDerivedColumnsI18n:
             patch("src.ui.i18n.get_lang", return_value="fr"),
             patch("src.app._filters_apply.get_lang", return_value="fr"),
         ):
-            result = _add_derived_columns(df, self._identity, self._identity, self._identity)
+            result = _add_derived_columns(df, self._identity)
 
         assert "map_ui" in result.columns
         map_uis = result["map_ui"].to_list()
@@ -231,7 +231,7 @@ class TestAddDerivedColumnsI18n:
         df = self._make_df(with_map_id=True).with_columns(
             pl.lit("custom_map_ui").alias("map_ui")
         )
-        result = _add_derived_columns(df, self._identity, self._identity, self._identity)
+        result = _add_derived_columns(df, self._identity)
         assert all(v == "custom_map_ui" for v in result["map_ui"].to_list())
 
     def test_existing_mode_ui_not_overwritten(self) -> None:
@@ -239,7 +239,7 @@ class TestAddDerivedColumnsI18n:
         from src.app._filters_apply import _add_derived_columns
 
         df = self._make_df().with_columns(pl.lit("custom_mode").alias("mode_ui"))
-        result = _add_derived_columns(df, self._identity, self._identity, self._identity)
+        result = _add_derived_columns(df, self._identity)
         assert all(v == "custom_mode" for v in result["mode_ui"].to_list())
 
 

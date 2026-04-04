@@ -16,6 +16,8 @@ from datetime import date
 import polars as pl
 import streamlit as st
 
+from src.app.helpers import normalize_map_label, normalize_mode_label
+
 logger = logging.getLogger(__name__)
 
 from src.app._filters_cascade import (
@@ -328,22 +330,21 @@ def _auto_save_preferences(
 def _compute_all_filter_options(
     base: pl.DataFrame,
     clean_asset_label_fn: Callable[[str], str],
-    normalize_mode_label_fn: Callable[[str], str],
-    normalize_map_label_fn: Callable[[str], str],
 ) -> tuple[list[str], list[str], list[str], list[str]]:
     """Calcule les options larges (base complète, hors fenêtre temporelle)."""
+    _lang = get_lang()
 
     def _playlist_label(x: str) -> str:
-        return str(translate_playlist_name(clean_asset_label_fn(x), lang=get_lang()))
+        return str(translate_playlist_name(clean_asset_label_fn(x), lang=_lang))
 
     return (
         _collect_unique_labels(base, "playlist_name", _playlist_label),
-        _collect_unique_labels(base, "pair_name", normalize_mode_label_fn),
+        _collect_unique_labels(base, "pair_name", lambda x: normalize_mode_label(x, lang=_lang)),
         # Cohérence avec _add_derived_columns / _vectorize_ui_columns : préférer map_name_fr
         _collect_unique_labels(
             base,
-            "map_name_fr" if ("map_name_fr" in base.columns and get_lang() == "fr") else "map_name",
-            normalize_map_label_fn,
+            "map_name_fr" if ("map_name_fr" in base.columns and _lang == "fr") else "map_name",
+            normalize_map_label,
         ),
         _get_experience_type_options(),
     )
@@ -386,8 +387,6 @@ def render_filters_sidebar(  # noqa: PLR0913
     """Rend la section complète des filtres dans la sidebar."""
     date_range_fn = callbacks["date_range_fn"]
     clean_asset_label_fn = callbacks["clean_asset_label_fn"]
-    normalize_mode_label_fn = callbacks["normalize_mode_label_fn"]
-    normalize_map_label_fn = callbacks["normalize_map_label_fn"]
     build_friends_opts_map_fn = callbacks["build_friends_opts_map_fn"]
 
     df = _to_polars(df)
@@ -397,12 +396,7 @@ def render_filters_sidebar(  # noqa: PLR0913
     player_key = _get_player_key(xuid, db_path)
 
     # Options larges (base complète, hors fenêtre temporelle)
-    all_options = _compute_all_filter_options(
-        base_for_filters,
-        clean_asset_label_fn,
-        normalize_mode_label_fn,
-        normalize_map_label_fn,
-    )
+    all_options = _compute_all_filter_options(base_for_filters, clean_asset_label_fn)
 
     _restore_shadow_keys()
     _init_filter_preferences(
@@ -463,8 +457,6 @@ def render_filters_sidebar(  # noqa: PLR0913
         picked_session_labels=picked_session_labels,
         base_s_ui=base_s_ui,
         clean_asset_label_fn=clean_asset_label_fn,
-        normalize_mode_label_fn=normalize_mode_label_fn,
-        normalize_map_label_fn=normalize_map_label_fn,
     )
 
     _auto_save_preferences(

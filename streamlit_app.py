@@ -665,8 +665,6 @@ def _load_and_prepare_data(  # noqa: PLR0913
             callbacks={
                 "date_range_fn": date_range,
                 "clean_asset_label_fn": clean_asset_label,
-                "normalize_mode_label_fn": normalize_mode_label,
-                "normalize_map_label_fn": normalize_map_label,
                 "build_friends_opts_map_fn": build_friends_opts_map,
             },
         )
@@ -682,8 +680,6 @@ def _load_and_prepare_data(  # noqa: PLR0913
         xuid=xuid,
         db_key=db_key,
         clean_asset_label_fn=clean_asset_label,
-        normalize_mode_label_fn=normalize_mode_label,
-        normalize_map_label_fn=normalize_map_label,
     )
 
     gap_minutes = filter_state.gap_minutes
@@ -703,7 +699,6 @@ def _load_and_prepare_data(  # noqa: PLR0913
         settings=settings,
         df_full=df,
         render_match_view_fn=render_match_view,
-        normalize_mode_label_fn=normalize_mode_label,
         format_score_label_fn=format_score_label,
         score_css_color_fn=score_css_color,
         format_datetime_fn=format_datetime_fr_hm,

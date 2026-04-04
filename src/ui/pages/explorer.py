@@ -18,7 +18,8 @@ import polars as pl
 import streamlit as st
 
 from src.app._page_context import MatchViewParams
-from src.ui.i18n import t
+from src.app.helpers import normalize_mode_label
+from src.ui.i18n import get_lang, t
 from src.ui.pages.explorer_data import (
     get_all_gamertags,
     load_is_with_friends,
@@ -62,7 +63,6 @@ def render_explorer_page(
         params["db_path"],
         params["xuid"],
         params["format_datetime_fn"],
-        params["normalize_mode_label_fn"],
     )
 
     st.divider()
@@ -166,7 +166,6 @@ def _render_match_filters(
     db_path: str,
     xuid: str,
     format_datetime_fn: Callable[..., Any],
-    normalize_mode_label_fn: Callable[[str | None], str | None],
 ) -> tuple[pl.DataFrame, str | None]:
     """Rend les filtres en cascade et retourne (df_filtrée, match_id)."""
     if dff.is_empty():
@@ -175,10 +174,11 @@ def _render_match_filters(
 
     # Ajouter mode_ui si absent (ctx.df brut sans enrichissement _vectorize_ui_columns)
     if "mode_ui" not in dff.columns and "pair_name" in dff.columns:
+        _lang = get_lang()
         dff = dff.with_columns(
             pl.col("pair_name")
             .cast(pl.Utf8)
-            .map_elements(normalize_mode_label_fn, return_dtype=pl.Utf8)
+            .map_elements(lambda x: normalize_mode_label(x, lang=_lang), return_dtype=pl.Utf8)
             .alias("mode_ui")
         )
 
@@ -230,11 +230,7 @@ def _render_match_filters(
     filtered = _render_cascade_filters(day_df)
 
     # Ligne 3 : Sélection de match
-    selected_mid = _render_match_selector(
-        filtered,
-        format_datetime_fn,
-        normalize_mode_label_fn,
-    )
+    selected_mid = _render_match_selector(filtered, format_datetime_fn)
 
     return filtered, selected_mid
 
@@ -317,7 +313,6 @@ def _render_cascade_filters(day_df: pl.DataFrame) -> pl.DataFrame:
 def _render_match_selector(
     filtered: pl.DataFrame,
     format_datetime_fn: Callable[..., Any],
-    normalize_mode_label_fn: Callable[[str | None], str | None],
 ) -> str | None:
     """Rend le selectbox des matchs et retourne le match_id choisi."""
     if filtered.is_empty():
@@ -343,6 +338,7 @@ def _render_match_selector(
                 st.warning(t("exp_no_match_id"))
             return None
 
+    _lang = get_lang()
     sorted_df = filtered.sort("start_time", descending=True)
     options: list[tuple[str, str]] = []
     for row in sorted_df.iter_rows(named=True):
@@ -351,7 +347,7 @@ def _render_match_selector(
         time_str = format_datetime_fn(dt) if dt else "?"
         mode_label = (
             row.get("mode_ui")
-            or normalize_mode_label_fn(row.get("pair_name"))
+            or normalize_mode_label(row.get("pair_name"), lang=_lang)
             or row.get("pair_name", "?")
         )
         map_label = row.get("map_ui") or row.get("map_name", "?")
