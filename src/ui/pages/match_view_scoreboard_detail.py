@@ -54,7 +54,7 @@ class ScoreboardPlayerExtraData:
     weapons: list[WeaponDetailItem] = field(default_factory=list)
     medals: list[MedalDetailItem] = field(default_factory=list)
     antagonist_items: list[tuple[str, str]] = field(default_factory=list)
-    citations: list[tuple[str, int, str | None]] = field(default_factory=list)
+    citations: list[tuple[str, int, str | None, str | None]] = field(default_factory=list)
     # (label, actual, expected, higher_is_better)
     expected_items: list[tuple[str, float, float]] = field(default_factory=list)
     performance_score: float | None = None
@@ -324,8 +324,15 @@ def _load_citation_items(
         )
         return []
 
+    try:
+        full_map = engine.aggregate_for_display(match_ids=None)
+    except Exception:
+        logger.debug("scoreboard detail: citations full_map indisponible xuid=%s", xuid)
+        full_map = {}
+
     items: list[tuple[str, int, str | None]] = []
     from src.data.citation_definitions import load_citation_definitions
+    from src.ui.commendations import _compute_mastery_display, _parse_tier_targets
 
     citations_db = load_citation_definitions()
     norm_to_meta: dict[str, dict] = {c["citation_name_norm"]: c for c in citations_db}
@@ -333,10 +340,21 @@ def _load_citation_items(
         if norm == "_processed" or int(value or 0) <= 0:
             continue
         meta = norm_to_meta.get(norm, {})
+        delta = int(value or 0)
+        # Même filtre que l'onglet Citations : exclure les citations déjà maîtrisées avant ce match
+        tiers = _parse_tier_targets(meta.get("tier_targets"))
+        current_full = full_map.get(norm, 0)
+        _, _, is_master, _ = _compute_mastery_display(current_full, tiers)
+        if is_master:
+            count_before = current_full - delta
+            _, _, was_master_before, _ = _compute_mastery_display(count_before, tiers)
+            if was_master_before:
+                continue
         name = meta.get("citation_name_display", norm)
         raw_path = meta.get("image_path") or ""
         icon_url = f"/app/{raw_path}" if raw_path else None
-        items.append((name, int(value), icon_url))
+        description = meta.get("description") or None
+        items.append((name, delta, icon_url, description))
     items.sort(key=lambda item: (-item[1], item[0]))
     return items[:_DETAIL_LIMIT_CITATIONS]
 
@@ -515,12 +533,12 @@ def _render_medal_item(medal: MedalDetailItem) -> str:
     )
 
 
-def _render_citation_item(name: str, count: int, icon_url: str | None) -> str:
-    tooltip_text = html.escape(name)
+def _render_citation_item(name: str, count: int, icon_url: str | None, description: str | None = None) -> str:
+    tooltip_text = html.escape(f"{name} : {description}" if description else name)
     icon_html = (
         f"<div class='os-sb-detail-medal-icon-wrap'>"
         f"<img class='os-sb-detail-medal-icon os-sb-detail-citation-icon' src='{html.escape(icon_url)}' "
-        f"alt='{tooltip_text}' title='{tooltip_text}'>"
+        f"alt='{html.escape(name)}' title='{tooltip_text}'>"
         f"</div>"
         if icon_url
         else ""
@@ -539,7 +557,7 @@ def _render_medals_and_citations_section(
 ) -> str:
     """Construit la section Médailles & Citations avec icônes compactes."""
     medal_rows = [_render_medal_item(m) for m in medals]
-    citation_rows = [_render_citation_item(name, count, icon_url) for name, count, icon_url in citations]
+    citation_rows = [_render_citation_item(name, count, icon_url, desc) for name, count, icon_url, desc in citations]
     if not medal_rows and not citation_rows:
         return ""
     # Séparateur invisible pleine largeur pour forcer les citations sur une nouvelle ligne
