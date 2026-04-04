@@ -11,6 +11,10 @@ STRINGS: dict[str, dict[str, str] | str] = {
         "fr": "Médailles",
         "en": "Medals",
     },
+    "mv_medals_and_citations": {
+        "fr": "Médailles & Citations",
+        "en": "Medals & Citations",
+    },
     "mv_lusr_no_data": {
         "fr": "Aucun rating LUSR/CSR calculé pour ce match. Lancez `--lusr` (non classé) ou `--csr` (classé) pour calculer.",
         "en": "No LUSR/CSR rating computed for this match. Run `--lusr` (unranked) or `--csr` (ranked) to compute it.",
@@ -145,6 +149,18 @@ STRINGS: dict[str, dict[str, str] | str] = {
     "mv_scoreboard_detail_bot_note": {
         "fr": "Contexte",
         "en": "Context",
+    },
+    "mv_scoreboard_detail_lusr": {
+        "fr": "LUSR",
+        "en": "LUSR",
+    },
+    "mv_scoreboard_detail_csr": {
+        "fr": "CSR",
+        "en": "CSR",
+    },
+    "mv_scoreboard_detail_expected": {
+        "fr": "Attendu vs Réel",
+        "en": "Expected vs Actual",
     },
     "mv_scoreboard_no_data": {
         "fr": "Statistiques des joueurs indisponibles pour ce match.",
