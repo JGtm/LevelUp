@@ -1856,10 +1856,12 @@ div[data-testid="stNumberInput"] input:focus {
 .os-sb-detail-list--medals .os-sb-detail-list-break {
     grid-column: 1 / -1;
 }
+.os-sb-detail-list--weapons {
     display: grid;
     grid-template-columns: repeat(2, minmax(0, 1fr));
     column-gap: 10px;
     row-gap: 5px;
+    justify-items: center;
 }
 
 .os-sb-detail-item,
@@ -1886,8 +1888,11 @@ div[data-testid="stNumberInput"] input:focus {
 }
 
 .os-sb-detail-item--weapon {
-    min-height: 36px;
-    min-width: 0;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    width: 100%;
+    gap: 3px;
     padding: 2px 0;
     background: transparent;
     border: 0;
@@ -1922,7 +1927,7 @@ div[data-testid="stNumberInput"] input:focus {
 .os-sb-detail-weapon-asset {
     width: 54px;
     height: 18px;
-    flex: 0 0 54px;
+    flex: none;
     object-fit: contain;
     object-position: center;
     filter: drop-shadow(0 1px 2px rgba(0, 0, 0, 0.25));
