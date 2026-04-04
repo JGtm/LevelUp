@@ -54,8 +54,11 @@ class ScoreboardPlayerExtraData:
     weapons: list[WeaponDetailItem] = field(default_factory=list)
     medals: list[MedalDetailItem] = field(default_factory=list)
     antagonist_items: list[tuple[str, str]] = field(default_factory=list)
-    citations: list[tuple[str, int]] = field(default_factory=list)
+    citations: list[tuple[str, int, str | None]] = field(default_factory=list)
+    # (label, actual, expected, higher_is_better)
+    expected_items: list[tuple[str, float, float]] = field(default_factory=list)
     performance_score: float | None = None
+    skill_rank: tuple[str, str] | None = None   # (label affiché, rating_type)
     had_bot_teammate: bool = False
     has_local_db: bool = False
     profile_link_html: str | None = None
@@ -84,6 +87,7 @@ def load_scoreboard_player_extra_data(
         extra.weapons = _load_weapon_items(shared_repo, normalized_xuid, match_id, lang)
         extra.medals = _load_medal_items(shared_repo, match_id, lang)
         extra.antagonist_items = _load_antagonist_items(shared_repo, normalized_xuid, match_id)
+        extra.expected_items = _load_expected_items(shared_repo, match_id)
     except Exception:
         logger.debug(
             "scoreboard detail: chargement shared impossible match=%s xuid=%s",
@@ -107,6 +111,7 @@ def load_scoreboard_player_extra_data(
         extra.had_bot_teammate = had_bot
         extra.performance_score = performance_score
         extra.citations = _load_citation_items(player_db_path, normalized_xuid, match_id, lang)
+        extra.skill_rank = _load_skill_rank_item(player_db_path, match_id)
     except Exception:
         logger.debug(
             "scoreboard detail: chargement local impossible match=%s xuid=%s db=%s",
@@ -117,6 +122,34 @@ def load_scoreboard_player_extra_data(
         )
 
     return extra
+
+
+def _render_expected_section(items: list[tuple[str, float, float]]) -> str:
+    """Section Attendu vs Réel avec symbole ↑/↓ et delta coloré."""
+    if not items:
+        return ""
+    rows = []
+    for label, actual, expected, higher_is_better in items:
+        delta = actual - expected
+        better = (delta > 0) if higher_is_better else (delta < 0)
+        symbol = "↑" if delta > 0 else ("↓" if delta < 0 else "→")
+        color_class = "os-ev-better" if better else ("os-ev-worse" if delta != 0 else "os-ev-neutral")
+        sign = "+" if delta > 0 else ""
+        rows.append(
+            "<div class='os-sb-detail-item--kv'>"
+            f"<span class='os-sb-detail-item-label'>{html.escape(str(label))}</span>"
+            f"<span class='os-sb-detail-item-value'>"
+            f"<span class='os-ev-expected'>{expected:.1f} vs </span>"
+            f"{actual:.0f} <span class='{color_class}'>{symbol} {sign}{delta:.1f}</span>"
+            f"</span>"
+            "</div>"
+        )
+    return (
+        "<section class='os-sb-detail-section'>"
+        f"<div class='os-sb-detail-title'>{html.escape(t('mv_scoreboard_detail_expected'))}</div>"
+        f"<div class='os-sb-detail-list--kv'>{''.join(rows)}</div>"
+        "</section>"
+    )
 
 
 def render_scoreboard_player_detail_html(
@@ -132,8 +165,10 @@ def render_scoreboard_player_detail_html(
     sections: list[str] = []
     if extra.weapons:
         sections.append(_render_weapons_section(extra.weapons))
-    if extra.medals:
-        sections.append(_render_medals_section(extra.medals))
+    if extra.medals or extra.citations:
+        sections.append(_render_medals_and_citations_section(extra.medals, extra.citations))
+    if extra.expected_items:
+        sections.append(_render_expected_section(extra.expected_items))
     if extra.antagonist_items:
         sections.append(
             _render_items_section(
@@ -289,19 +324,52 @@ def _load_citation_items(
         )
         return []
 
-    items = []
+    items: list[tuple[str, int, str | None]] = []
     from src.data.citation_definitions import load_citation_definitions
 
     citations_db = load_citation_definitions()
-    norm_to_name: dict[str, str] = {
-        c["citation_name_norm"]: c["citation_name_display"] for c in citations_db
-    }
+    norm_to_meta: dict[str, dict] = {c["citation_name_norm"]: c for c in citations_db}
     for norm, value in delta_map.items():
         if norm == "_processed" or int(value or 0) <= 0:
             continue
-        items.append((norm_to_name.get(norm, norm), int(value)))
+        meta = norm_to_meta.get(norm, {})
+        name = meta.get("citation_name_display", norm)
+        raw_path = meta.get("image_path") or ""
+        icon_url = f"/app/{raw_path}" if raw_path else None
+        items.append((name, int(value), icon_url))
     items.sort(key=lambda item: (-item[1], item[0]))
     return items[:_DETAIL_LIMIT_CITATIONS]
+
+
+def _load_expected_items(
+    repo: object,
+    match_id: str,
+) -> list[tuple[str, float, float]]:
+    """Charge kills/deaths/assists attendus vs réels depuis shared.match_participants.
+
+    Returns:
+        Liste de (label, actual, expected, higher_is_better).
+    """
+    try:
+        skill_data = repo.load_match_skill_data(match_id)
+    except Exception:
+        logger.debug("scoreboard detail: expected indisponible match=%s", match_id, exc_info=True)
+        return []
+    if not skill_data:
+        return []
+    items: list[tuple[str, float, float]] = []
+    for key, label_key, higher_is_better in (
+        ("kills", "tm_kills", True),
+        ("deaths", "tm_deaths", False),
+        ("assists", "tm_assists", True),
+    ):
+        stat = skill_data.get(key) or {}
+        actual = stat.get("count")
+        expected = stat.get("expected")
+        if actual is None or expected is None:
+            continue
+        items.append((t(label_key), float(actual), float(expected), higher_is_better))  # type: ignore[arg-type]
+    return items
 
 
 def _load_antagonist_items(repo: object, xuid: str, match_id: str) -> list[tuple[str, str]]:
@@ -327,6 +395,33 @@ def _load_antagonist_items(repo: object, xuid: str, match_id: str) -> list[tuple
     return items
 
 
+def _load_skill_rank_item(
+    player_db_path: str,
+    match_id: str,
+) -> tuple[str, str] | None:
+    """Retourne (label_affiché, rating_type) depuis match_skill_rank, ou None."""
+    from src.utils.db import duckdb_read_only
+
+    try:
+        with duckdb_read_only(player_db_path) as conn:
+            row = conn.execute(
+                "SELECT rating_type, rating_value, tier_label, rating_delta "
+                "FROM match_skill_rank WHERE match_id = ?",
+                (match_id,),
+            ).fetchone()
+        if row is None:
+            return None
+        rating_type, rating_value, tier_label, rating_delta = row
+        label = tier_label or f"{rating_value:.0f}"
+        if rating_delta is not None:
+            sign = "+" if rating_delta >= 0 else ""
+            label = f"{label} ({sign}{rating_delta:.0f} pts)"
+        return (label, str(rating_type))
+    except Exception:
+        logger.debug("scoreboard detail: skill_rank indisponible match=%s", match_id, exc_info=True)
+        return None
+
+
 def _format_antagonist_value(gamertag: str | None, count: int) -> str:
     name = _clean_gamertag(gamertag) or "—"
     return f"{name} ({int(count)})"
@@ -334,9 +429,12 @@ def _format_antagonist_value(gamertag: str | None, count: int) -> str:
 
 def _build_local_items(extra: ScoreboardPlayerExtraData) -> list[tuple[str, str]]:
     items: list[tuple[str, str]] = []
+    if extra.skill_rank is not None:
+        label, rating_type = extra.skill_rank
+        key = "mv_scoreboard_detail_lusr" if rating_type == "LUSR" else "mv_scoreboard_detail_csr"
+        items.append((t(key), label))
     if extra.had_bot_teammate:
         items.append((t("mv_scoreboard_detail_bot_note"), t("mv_bot_teammate_note")))
-    items.extend((name, str(count)) for name, count in extra.citations)
     return items
 
 
@@ -346,14 +444,14 @@ def _render_local_section(extra: ScoreboardPlayerExtraData) -> str:
         score_value = f"{float(extra.performance_score):.1f}"
         score_class = get_score_class(extra.performance_score)
         rows.append(
-            "<div class='os-sb-detail-item'>"
+            "<div class='os-sb-detail-item--kv'>"
             f"<span class='os-sb-detail-item-label'>{html.escape(str(t('mv_performance')))}</span>"
             f"<span class='os-sb-detail-item-value {html.escape(score_class)}'>{html.escape(score_value)}</span>"
             "</div>"
         )
     for label, value in _build_local_items(extra):
         rows.append(
-            "<div class='os-sb-detail-item'>"
+            "<div class='os-sb-detail-item--kv'>"
             f"<span class='os-sb-detail-item-label'>{html.escape(str(label))}</span>"
             f"<span class='os-sb-detail-item-value'>{html.escape(str(value))}</span>"
             "</div>"
@@ -363,7 +461,7 @@ def _render_local_section(extra: ScoreboardPlayerExtraData) -> str:
     return (
         "<section class='os-sb-detail-section'>"
         f"<div class='os-sb-detail-title'>{html.escape(t('mv_scoreboard_detail_local'))}</div>"
-        f"<div class='os-sb-detail-list'>{''.join(rows)}</div>"
+        f"<div class='os-sb-detail-list--kv'>{''.join(rows)}</div>"
         "</section>"
     )
 
@@ -372,23 +470,21 @@ def _render_items_section(
     *,
     title: str,
     items: list[tuple[str, str]],
-    pill_class: str = "os-sb-detail-item",
-    value_class: str = "os-sb-detail-item-value",
 ) -> str:
     if not items:
         return ""
     rows = []
     for label, value in items:
         rows.append(
-            f"<div class='{pill_class}'>"
+            "<div class='os-sb-detail-item--kv'>"
             f"<span class='os-sb-detail-item-label'>{html.escape(str(label))}</span>"
-            f"<span class='{value_class}'>{html.escape(str(value))}</span>"
+            f"<span class='os-sb-detail-item-value'>{html.escape(str(value))}</span>"
             "</div>"
         )
     return (
         "<section class='os-sb-detail-section'>"
         f"<div class='os-sb-detail-title'>{html.escape(title)}</div>"
-        f"<div class='os-sb-detail-list'>{''.join(rows)}</div>"
+        f"<div class='os-sb-detail-list--kv'>{''.join(rows)}</div>"
         "</section>"
     )
 
@@ -401,32 +497,60 @@ def _render_profile_footer(profile_link_html: str | None, badge_text: str) -> st
     return f"<div class='os-sb-detail-footer'>{badge_html}{profile_link_html}</div>"
 
 
-def _render_medals_section(medals: Sequence[MedalDetailItem]) -> str:
-    """Construit la section médailles avec icônes compactes."""
-    rows = []
-    for medal in medals:
-        if medal.description:
-            tooltip_text = html.escape(f"{medal.name} : {medal.description}")
-        else:
-            tooltip_text = html.escape(medal.name)
-        icon_html = ""
-        if medal.icon_url:
-            icon_html = (
-                f"<div class='os-sb-detail-medal-icon-wrap'>"
-                f"<img class='os-sb-detail-medal-icon' src='{html.escape(medal.icon_url)}' "
-                f"alt='{html.escape(medal.name)}' title='{tooltip_text}'>"
-                f"</div>"
-            )
-        rows.append(
-            f"<div class='os-sb-detail-item os-sb-detail-item--medal' title='{tooltip_text}'>"
-            f"{icon_html}"
-            f"<span class='os-sb-detail-item-value'>{html.escape(str(medal.count))}</span>"
-            "</div>"
-        )
+def _render_medal_item(medal: MedalDetailItem) -> str:
+    tooltip_text = html.escape(f"{medal.name} : {medal.description}" if medal.description else medal.name)
+    icon_html = (
+        f"<div class='os-sb-detail-medal-icon-wrap'>"
+        f"<img class='os-sb-detail-medal-icon' src='{html.escape(medal.icon_url)}' "
+        f"alt='{html.escape(medal.name)}' title='{tooltip_text}'>"
+        f"</div>"
+        if medal.icon_url
+        else ""
+    )
+    return (
+        f"<div class='os-sb-detail-item os-sb-detail-item--medal' title='{tooltip_text}'>"
+        f"{icon_html}"
+        f"<span class='os-sb-detail-item-value'>×{html.escape(str(medal.count))}</span>"
+        "</div>"
+    )
+
+
+def _render_citation_item(name: str, count: int, icon_url: str | None) -> str:
+    tooltip_text = html.escape(name)
+    icon_html = (
+        f"<div class='os-sb-detail-medal-icon-wrap'>"
+        f"<img class='os-sb-detail-medal-icon os-sb-detail-citation-icon' src='{html.escape(icon_url)}' "
+        f"alt='{tooltip_text}' title='{tooltip_text}'>"
+        f"</div>"
+        if icon_url
+        else ""
+    )
+    return (
+        f"<div class='os-sb-detail-item os-sb-detail-item--medal' title='{tooltip_text}'>"
+        f"{icon_html}"
+        f"<span class='os-sb-detail-item-value'>×{html.escape(str(count))}</span>"
+        "</div>"
+    )
+
+
+def _render_medals_and_citations_section(
+    medals: Sequence[MedalDetailItem],
+    citations: list[tuple[str, int, str | None]],
+) -> str:
+    """Construit la section Médailles & Citations avec icônes compactes."""
+    medal_rows = [_render_medal_item(m) for m in medals]
+    citation_rows = [_render_citation_item(name, count, icon_url) for name, count, icon_url in citations]
+    if not medal_rows and not citation_rows:
+        return ""
+    # Séparateur invisible pleine largeur pour forcer les citations sur une nouvelle ligne
+    separator = "<div class='os-sb-detail-list-break'></div>" if medal_rows and citation_rows else ""
+    title = t("mv_medals_and_citations") if citations else t("mv_medals")
     return (
         "<section class='os-sb-detail-section'>"
-        f"<div class='os-sb-detail-title'>{html.escape(t('mv_medals'))}</div>"
-        f"<div class='os-sb-detail-list'>{''.join(rows)}</div>"
+        f"<div class='os-sb-detail-title'>{html.escape(title)}</div>"
+        f"<div class='os-sb-detail-list os-sb-detail-list--medals'>"
+        f"{''.join(medal_rows)}{separator}{''.join(citation_rows)}"
+        f"</div>"
         "</section>"
     )
 
