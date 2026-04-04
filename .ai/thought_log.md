@@ -7,6 +7,31 @@
 
 ## Journal
 
+### [2026-04-04] — fix(scoreboard): citations incohérentes entre panneau expandable et onglet Citations — Complété
+
+**Problème** : En cliquant sur un joueur (ex: Chocoboflor) dans la partie expandable du scoreboard, les citations affichées ne correspondaient pas à celles de l'onglet Citations de la page match view pour ce même joueur.
+
+**Cause** : `_load_citation_items` (scoreboard) n'appliquait pas le filtre "déjà maître avant ce match" que `render_match_citations_section` (onglet Citations) applique — via `_compute_mastery_display` + `_parse_tier_targets`. Le scoreboard affichait donc des citations pour lesquelles le joueur était déjà maître depuis avant le match en question.
+
+**Correction** : Dans `_load_citation_items` (fichier `match_view_scoreboard_detail.py`) :
+- Ajout d'un appel `engine.aggregate_for_display(match_ids=None)` pour obtenir `full_map`
+- Import de `_compute_mastery_display` et `_parse_tier_targets` depuis `src.ui.commendations`
+- Application du même filtre : si `is_master` ET `was_master_before` → exclure la citation
+
+**Résultat** : Les deux vues sont désormais cohérentes.
+
+---
+
+### [2026-04-04] — fix(ui): style tableau Outil de destruction aligné sur Historique des rencontres — Complété
+
+**Décision** : Remplacement du HTML inline de `_render_weapon_table` (`match_view_weapon_kills.py`) par les classes CSS `os-sb-*` (`os-table-wrap os-sb-wrap`, `os-table os-scoreboard`, `os-sb-th`, `os-sb-row`, `os-sb-td`), identiques à celles utilisées dans `_build_encounter_table_html` (tableau Historique des rencontres, onglet Équipe).
+
+**Résultat** : Le tableau Outil de destruction hérite du style scoreboard (fond, bordures, hover, typographie) sans toucher à la mise en page colonnes camembert + tableau.
+
+**Conclusion** : Modification minimale, aucun test impacté.
+
+---
+
 ### [2026-04-04] — feat(viz): Phase 7 — ChartData + migration 5 fonctions escouade — Complété
 
 **Phase 7a** : Créé `src/visualization/_chart_series.py` (203L) avec `MatchSeries`, `ChartData`, `HEIGHT_COMPACT/NORMAL/PM`, `MAX_PLOT_POINTS`, `_add_categorical_record_bars`. Tests : 24 cas (`test_chart_series.py`).
