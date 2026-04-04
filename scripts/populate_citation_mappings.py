@@ -89,7 +89,7 @@ PVP_CITATIONS: list[tuple] = [
     # ── GROUPE 3 : Multijoueur (10) ────────────────────────────────────────
     ("assassin", "Assassin", "medal", 548533137, None, None, None, None, None, None, "high", "Multijoueur — Médaille Par derrière", True,
      "static/commendations/h5g/H5G_citation_Assassin.png", "Multijoueur", "Assassinez des Spartans adverses.", "5,10,15,25,50", None),
-    ("spartan_carnage", "Carnage de Spartans", "stat", None, None, "max_killing_spree", None, None, None, None, "high", "Multijoueur — max killing spree", True,
+    ("spartan_carnage", "Carnage de Spartans", "medal", None, "2780740615,4261842076,418532952,1486797009,710323196,1720896992,2567026752,2875941471", None, None, None, None, None, "high", "Multijoueur — médailles de killing spree (5→40 kills sans mourir)", True,
      "static/commendations/h5g/H5G_citation_Carnage_de_Spartans.png", "Multijoueur", "Tuez plusieurs Spartans adverses sans mourir.", "3,6,9,15,30", None),
     ("close_combat", "Combat rapproché", "stat", None, None, "melee_kills", None, None, None, None, "high", "Multijoueur — melee kills", True,
      "static/commendations/h5g/H5G_citation_Combat_rapproch%C3%A9.png", "Multijoueur", "Remportez n'importe quelle médaille de combat rapproché.", "10,20,30,50,100", None),

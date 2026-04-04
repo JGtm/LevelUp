@@ -80,6 +80,35 @@
 
 ---
 
+### [backfill] Recalculer `match_citations` pour `spartan_carnage` (tous les joueurs)
+
+**Noté le** : 2026-04-04
+**Priorité** : Haute (données incorrectes en production — valeur actuelle = `max_killing_spree` brut au lieu de la somme des médailles de spree)
+
+**Contexte** : Le mapping `spartan_carnage` était de type `stat` (source : `max_killing_spree`). Corrigé le 2026-04-04 : type → `medal`, `medal_ids` = `2780740615,4261842076,418532952,1486797009,710323196,1720896992,2567026752,2875941471` (Folie meurtrière, Massacre, Émeute, Carnage, Cauchemar, Croque-mitaine, Croque-mort, Démon). La DB `metadata.duckdb` doit être mise à jour quand Streamlit est arrêté (fichier verrouillé).
+
+**Prérequis** : Arrêter Streamlit, puis exécuter :
+```python
+con.execute("""
+    UPDATE citation_mappings
+    SET mapping_type = 'medal',
+        medal_ids = '2780740615,4261842076,418532952,1486797009,710323196,1720896992,2567026752,2875941471',
+        stat_name = NULL,
+        notes = 'Multijoueur — médailles de killing spree (5→40 kills sans mourir)',
+        updated_at = CURRENT_TIMESTAMP
+    WHERE citation_name_norm = 'spartan_carnage'
+""")
+```
+
+**Backfill** :
+```bash
+python scripts/backfill_data.py --all --citations --force-citations
+```
+
+**Impact** : Toutes les lignes `match_citations` avec `citation_name_norm = 'spartan_carnage'` sont à recalculer pour tous les joueurs.
+
+---
+
 ### [refacto] Traductions d'assets : supprimer les fallbacks Python, DB = source de vérité
 
 **Noté le** : 2026-04-02
