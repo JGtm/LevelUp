@@ -7,6 +7,26 @@
 
 ## Journal
 
+### [2026-04-04] — Phase 7f : SquadRecordSet — Complété
+
+**Tâche** : Implémenter Phase 7f du plan `PLAN_REFACTO_ASSET_TRANSLATIONS_2026-04-02.md` — remplacer le passage de `records + records_per_map` (2 kwargs) par un seul `squad_records: SquadRecordSet | None`.
+
+**Décision** : Créer `SquadRecordSet` dans `_chart_series.py` (aux côtés de `ChartData`). `plot_hs_pk_stacked` et `_render_per_minute_stats` gardent leurs propres formats (shapes différentes, pas groupables).
+
+**Fichiers modifiés (6)** :
+- `src/visualization/_chart_series.py` : ajout `SquadRecordSet` dataclass
+- `src/visualization/trio.py` : `plot_trio_metric` + `plot_trio_kills_deaths`
+- `src/visualization/match_bars.py` : `plot_multi_metric_bars_by_match`
+- `src/ui/pages/teammates_charts.py` : `render_metric_bar_charts` + `_plot_trio_metric_chart` + `render_trio_charts`
+- `src/ui/pages/_teammates_trio_helpers.py` : `_render_trio_performance_charts`
+- `src/ui/pages/_teammates_trio.py` : construction de 2 `SquadRecordSet` + mise à jour call sites
+
+**Résultats** : 80/80 tests ciblés vert. Suite complète : 1212/1213 — 1 échec pré-existant (`test_load_first_event_times_kill_shared`, confirmé par stash test).
+
+**Conclusion** : Plan `PLAN_REFACTO_ASSET_TRANSLATIONS_2026-04-02.md` V1 entièrement complété sur branche `refactor/asset-translations-db-first`.
+
+---
+
 ### [2026-04-04] — refactor(quality): corrections violations code qualité + bilan plan asset-translations — Complété
 
 **Décision** : Revue de l'état réel du plan `PLAN_REFACTO_ASSET_TRANSLATIONS_2026-04-02.md` — le code avait avancé bien au-delà de ce que le document indiquait (stale). Violations de qualité préexistantes corrigées.

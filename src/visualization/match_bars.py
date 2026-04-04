@@ -11,7 +11,7 @@ import polars as pl
 
 from src.ui.date_formats import FMT_SHORT_DATETIME_FR, FMT_TICK_DATETIME
 from src.ui.i18n.viz import viz_t
-from src.visualization._chart_series import ChartData, MatchSeries
+from src.visualization._chart_series import ChartData, MatchSeries, SquadRecordSet
 from src.visualization._compat import DataFrameLike, ensure_polars
 from src.visualization.theme import apply_halo_plot_style, get_legend_horizontal_bottom
 
@@ -139,8 +139,7 @@ def plot_multi_metric_bars_by_match(  # noqa: C901, PLR0912, PLR0913, PLR0915
     smooth_window: int = 10,
     show_smooth_lines: bool = True,
     lang: str = "fr",
-    records: dict[str, dict[str, float | None]] | None = None,
-    records_per_map: dict[str, dict[str, dict[str, float | None]]] | None = None,
+    squad_records: SquadRecordSet | None = None,
 ) -> go.Figure | None:
     """Graphique en barres multi-joueurs d'une métrique par match.
 
@@ -345,7 +344,7 @@ def plot_multi_metric_bars_by_match(  # noqa: C901, PLR0912, PLR0913, PLR0915
     if not fig.data:
         return None
 
-    if records and _player_xs:
+    if squad_records and squad_records.records and _player_xs:
         _names_with_data = list(_player_xs.keys())
         _map_names_x = [
             labels[xi].split("<br>", 1)[1] if xi < len(labels) and "<br>" in labels[xi] else None
@@ -369,16 +368,13 @@ def plot_multi_metric_bars_by_match(  # noqa: C901, PLR0912, PLR0913, PLR0915
             x_labels=list(labels),
             barmode="group",
             global_records={
-                _pname: (records.get(_pname) or {}).get(metric_col)
+                _pname: (squad_records.records.get(_pname) or {}).get(metric_col)
                 for _pname in _names_with_data
             },
-            per_map_records=(
-                {
-                    _pname: (records_per_map.get(_pname) or {}).get(metric_col, {})
-                    for _pname in _names_with_data
-                }
-                if records_per_map else {}
-            ),
+            per_map_records={
+                _pname: (squad_records.per_map.get(_pname) or {}).get(metric_col, {})
+                for _pname in _names_with_data
+            },
         )
         _cd_mb.add_record_overlays(fig)
 

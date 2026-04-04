@@ -31,6 +31,7 @@ from src.ui.pages._teammates_trio_helpers import (
 from src.ui.pages.teammates_charts import render_first_events_chart, render_metric_bar_charts
 from src.ui.pages.teammates_synergy import render_trio_synergy_radar
 from src.ui.pages.teammates_weapons import render_weapon_kills_bar_chart
+from src.visualization._chart_series import SquadRecordSet
 from src.visualization._compat import DataFrameLike, ensure_polars
 
 # ---------------------------------------------------------------------------
@@ -230,6 +231,11 @@ def render_trio_view(  # noqa: PLR0913, PLR0915, C901, PLR0912
         if "performance_score" in _pm:
             _pm["performance"] = _pm.pop("performance_score")
 
+    _squad_record_set = SquadRecordSet(
+        records=_squad_records,
+        per_map=_squad_records_per_map,
+    )
+
     # Records stats/min par joueur (historique complet, fallback session)
     _pm_records = _build_pm_records(
         _full_raw, _dominant_pair,
@@ -309,8 +315,7 @@ def render_trio_view(  # noqa: PLR0913, PLR0915, C901, PLR0912
         f3_name=f3_name,
         f3_xuid=f3_xuid,
         colors_by_name=colors_by_name,
-        records=_squad_records,
-        records_per_map=_squad_records_per_map,
+        squad_records=_squad_record_set,
     )
 
     # Graphes de barres - reconstruire series avec les DataFrames de l'escouade
@@ -343,7 +348,10 @@ def render_trio_view(  # noqa: PLR0913, PLR0915, C901, PLR0912
     )
 
     # Records killing spree : déjà dans _squad_records (historique complet)
-    _spree_records = {n: {"max_killing_spree": r.get("max_killing_spree")} for n, r in _squad_records.items()}
+    _spree_record_set = SquadRecordSet(
+        records={n: {"max_killing_spree": r.get("max_killing_spree")} for n, r in _squad_records.items()},
+        per_map=_squad_records_per_map,
+    )
     # Records HS+PK : utilise headshot_kills de l'historique complet comme proxy
     # (perfect_kills absent du full history — enrichissement non disponible hors session)
     _hspk_records = {
@@ -356,9 +364,8 @@ def render_trio_view(  # noqa: PLR0913, PLR0915, C901, PLR0912
         show_smooth=show_smooth,
         key_suffix=f"trio_{len(series)}",
         plot_fn=plot_multi_metric_bars_fn,
-        records=_spree_records,
+        squad_records=_spree_record_set,
         hspk_records=_hspk_records,
-        records_per_map=_squad_records_per_map,
     )
 
     # Tendance premier frag / première mort

@@ -21,7 +21,7 @@ from src.ui.i18n import t
 from src.ui.medals import render_medals_grid
 from src.ui.pages.teammates_charts import render_trio_charts
 from src.ui.streamlit_modern import PLOTLY_STATIC_CONFIG
-from src.visualization._chart_series import ChartData, MatchSeries
+from src.visualization._chart_series import ChartData, MatchSeries, SquadRecordSet
 from src.visualization._compat import DataFrameLike, ensure_polars
 from src.visualization.theme import apply_halo_plot_style, get_legend_horizontal_bottom
 from src.visualization.trio import _negative_color
@@ -318,8 +318,7 @@ def _render_trio_performance_charts(  # noqa: PLR0913
     f3_name: str | None = None,
     f3_xuid: str | None = None,
     colors_by_name: dict[str, str] | None = None,
-    records: dict[str, dict[str, float | None]] | None = None,
-    records_per_map: dict | None = None,
+    squad_records: SquadRecordSet | None = None,
 ) -> None:
     """Affiche les graphes de performance escouade (2, 3 ou 4 joueurs).
 
@@ -359,8 +358,7 @@ def _render_trio_performance_charts(  # noqa: PLR0913
         f3_name=f3_name,
         f3_xuid=f3_xuid,
         colors_by_name=colors_by_name,
-        records=records,
-        records_per_map=records_per_map,
+        squad_records=squad_records,
     )
 
 
