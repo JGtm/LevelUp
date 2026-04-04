@@ -7,6 +7,26 @@
 
 ## Journal
 
+### [2026-04-04] — refactor(V2 Axe C): élimination callbacks normalize_mode_label_fn / normalize_map_label_fn — Complété
+
+**Décision** : Remplacement de 49 sites d'injection de callbacks `normalize_mode_label_fn` / `normalize_map_label_fn` par des appels directs à `normalize_mode_label(x, lang=get_lang())` et `normalize_map_label(x)` dans toute la chaîne de filtrage et d'affichage.
+
+**Fichiers modifiés** :
+- `src/app/_filters_apply.py` : params LEGACY marqués `= None`, `_add_derived_columns` réduit à 2 args, `_show_debug_info_before` simplifié
+- `src/app/_filters_cascade.py` : `_vectorize_ui_columns` réduit à 2 args, `_render_cascade_filters` params LEGACY `= None`
+- `src/app/filters_render.py` : `_compute_all_filter_options` réduit à 2 args, `render_filters_sidebar` ne lit plus les callbacks LEGACY
+- `src/app/_page_context.py` : champs `normalize_mode_label_fn` / `normalize_map_label_fn` marqués `NotRequired` LEGACY
+- `src/app/page_router.py` : `build_match_view_params` param `normalize_mode_label_fn` rendu optionnel `= None`
+- `src/ui/pages/explorer.py` : `_render_match_filters` et `_render_match_selector` allégés
+- `src/ui/pages/match_view.py` : `_render_kpi_cards` et `_render_match_header` allégés
+- `streamlit_app.py` : 3 occurrences de passage de callbacks supprimées
+- `tests/test_i18n_derived_columns.py` : appels à 4 args mis à jour (2 args)
+- `scripts/size_baseline.txt` : ratchet mis à jour (fonctions dont la position a bougé)
+
+**Résultats** : 5534 tests, 0 régression introduite par Axe C. Violations code_quality pré-existantes non liées.
+
+---
+
 ### [2026-04-04] — fix(scoreboard): citations incohérentes entre panneau expandable et onglet Citations — Complété
 
 **Problème** : En cliquant sur un joueur (ex: Chocoboflor) dans la partie expandable du scoreboard, les citations affichées ne correspondaient pas à celles de l'onglet Citations de la page match view pour ce même joueur.

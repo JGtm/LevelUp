@@ -98,7 +98,6 @@ def build_match_view_params(  # noqa: PLR0913
     settings: AppSettings,
     df_full: pl.DataFrame,
     render_match_view_fn: Callable,
-    normalize_mode_label_fn: Callable,
     format_score_label_fn: Callable,
     score_css_color_fn: Callable,
     format_datetime_fn: Callable,
@@ -108,6 +107,7 @@ def build_match_view_params(  # noqa: PLR0913
     load_match_gamertags_fn: Callable,
     load_match_rosters_fn: Callable,
     paris_tz,
+    normalize_mode_label_fn: Callable | None = None,  # LEGACY — ignoré
 ) -> MatchViewParams:
     """Construit les paramètres communs pour les pages de match."""
     return {
@@ -118,7 +118,6 @@ def build_match_view_params(  # noqa: PLR0913
         "settings": settings,
         "df_full": df_full,
         "render_match_view_fn": render_match_view_fn,
-        "normalize_mode_label_fn": normalize_mode_label_fn,
         "format_score_label_fn": format_score_label_fn,
         "score_css_color_fn": score_css_color_fn,
         "format_datetime_fn": format_datetime_fn,

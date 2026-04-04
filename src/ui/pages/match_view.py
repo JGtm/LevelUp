@@ -11,7 +11,7 @@ import streamlit as st
 import streamlit.components.v1 as components
 
 from src.app._page_context import MatchViewParams
-from src.app.helpers import normalize_map_label
+from src.app.helpers import normalize_map_label, normalize_mode_label
 from src.config import HALO_COLORS, OUTCOME_CODES
 from src.ui import (
     translate_pair_name,
@@ -73,7 +73,6 @@ def _render_kpi_cards(  # noqa: PLR0913
     had_bot: bool,
     dominance_flag: int | None = None,
     row: dict[str, Any],
-    normalize_mode_label_fn: Any,
 ) -> None:
     """Affiche la rangée KPI unique : Date, Résultat, Playlist, Mode sur Carte."""
     lang = get_lang()
@@ -88,8 +87,8 @@ def _render_kpi_cards(  # noqa: PLR0913
         if last_playlist_fr
         else (translate_playlist_name(str(last_playlist), lang=lang) if last_playlist else "-")
     )
-    last_mode_ui = row.get("mode_ui") or normalize_mode_label_fn(
-        str(last_pair) if last_pair else None
+    last_mode_ui = row.get("mode_ui") or normalize_mode_label(
+        str(last_pair) if last_pair else None, lang=lang
     )
     last_pair_fr = translate_pair_name(str(last_pair), lang=lang) if last_pair else None
     mode_display = last_mode_ui or last_pair_fr or row.get("game_variant_name") or "-"
@@ -271,7 +270,6 @@ def render_match_view(  # noqa: C901, PLR0912
         perf_color=perf_color,
         had_bot=_had_bot,
         dominance_flag=_dominance_flag,
-        normalize_mode_label_fn=params["normalize_mode_label_fn"],
         db_path=db_path,
         match_id=match_id,
         db_key=db_key,
@@ -319,7 +317,6 @@ def _render_match_header(  # noqa: PLR0913
     perf_color: str | None,
     had_bot: bool,
     dominance_flag: int | None,
-    normalize_mode_label_fn: Any,
     db_path: str,
     match_id: str,
     db_key: Any,
@@ -334,7 +331,6 @@ def _render_match_header(  # noqa: PLR0913
         had_bot=had_bot,
         dominance_flag=dominance_flag,
         row=row,
-        normalize_mode_label_fn=normalize_mode_label_fn,
     )
     _render_map_and_rank(
         row,

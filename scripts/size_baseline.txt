@@ -10,12 +10,12 @@ FUNC:src/analysis/killer_victim.py:220:compute_killer_victim_pairs:91L
 FUNC:src/analysis/sessions.py:169:compute_sessions_with_context_polars:155L
 FUNC:src/analysis/skill_rating.py:194:compute_skill_ratings_batch:198L
 FUNC:src/analysis/win_streaks.py:236:compute_streak_series_polars:96L
-FUNC:src/app/_filters_apply.py:267:_add_derived_columns:135L
-FUNC:src/app/_filters_apply.py:43:apply_filters:221L
-FUNC:src/app/_filters_cascade.py:336:_render_cascade_filters:101L
+FUNC:src/app/_filters_apply.py:262:_add_derived_columns:132L
+FUNC:src/app/_filters_apply.py:44:apply_filters:215L
+FUNC:src/app/_filters_cascade.py:341:_render_cascade_filters:96L
 FUNC:src/app/_filters_session.py:64:_classify_sessions_solo_squad:118L
 FUNC:src/app/filters.py:143:render_session_filters:94L
-FUNC:src/app/filters_render.py:378:render_filters_sidebar:112L
+FUNC:src/app/filters_render.py:379:render_filters_sidebar:103L
 FUNC:src/app/main_helpers.py:168:render_profile_hero:144L
 FUNC:src/app/profile.py:188:load_profile_assets:108L
 FUNC:src/app/sidebar.py:177:render_sync_button:120L
@@ -56,8 +56,7 @@ FUNC:src/ui/pages/_teammates_trio_helpers.py:92:_render_per_minute_stats:84L
 FUNC:src/ui/pages/career.py:106:_render_rank_header:89L
 FUNC:src/ui/pages/career_logic.py:249:_create_xp_history_chart:189L
 FUNC:src/ui/pages/citations.py:24:render_citations_page:173L
-FUNC:src/ui/pages/match_view.py:227:render_match_view:81L
-FUNC:src/ui/pages/match_view.py:66:_render_kpi_cards:89L
+FUNC:src/ui/pages/match_view.py:66:_render_kpi_cards:88L
 FUNC:src/ui/pages/match_view_charts.py:257:_render_spree_headshots:124L
 FUNC:src/ui/pages/match_view_charts.py:43:render_expected_vs_actual:211L
 FUNC:src/ui/pages/match_view_citations.py:18:render_match_citations_section:162L
@@ -117,7 +116,7 @@ MODULE:src/data/sync/engine.py:688L
 MODULE:src/data/sync/transformers/_helpers.py:515L
 MODULE:src/data/sync/transformers/_match.py:577L
 MODULE:src/ui/pages/match_view_helpers.py:504L
-MODULE:src/ui/pages/match_view_scoreboard_detail.py:596L
+MODULE:src/ui/pages/match_view_scoreboard_detail.py:614L
 MODULE:src/ui/pages/session_compare.py:538L
 MODULE:src/visualization/friends_impact_heatmap.py:508L
 MODULE:src/visualization/maps_outcome.py:591L
