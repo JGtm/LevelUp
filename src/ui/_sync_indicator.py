@@ -31,8 +31,6 @@ def render_sync_indicator(db_path: str, xuid: str | None = None) -> None:
 
     meta = _get_sync_metadata_smart(db_path, xuid=xuid)
     last_sync_raw = meta.get("last_sync_at")
-    total_matches = meta.get("total_matches", 0)
-
     now = datetime.now(timezone.utc)
     sync_text = ""
 

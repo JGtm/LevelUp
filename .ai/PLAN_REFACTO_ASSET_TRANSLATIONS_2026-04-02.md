@@ -4,7 +4,7 @@
 **Branche de travail :** `refactor/asset-translations-db-first`
 **Backlog source :** `.ai/BACKLOG.md` — § "[refacto] Traductions d'assets"
 
-> **État au 2026-04-04 :** Phase 0 complète + hotfixes UI supprimés. Reste : Phases 1→4 (Axe A) puis Phase 7 (Axe B).
+> **État au 2026-04-04 :** Phase 0 ✅, Phases 5/6 ✅, Phase 7a-7e ✅ (ChartData), V2 Axe C ✅ (49 callbacks éliminés). Reste V1 : Phases 1, 2, 3, 4, 7f. Reste V2 : Axes D, E, F, G.
 
 ---
 
@@ -363,19 +363,19 @@ Les graphes solo de la page Timeseries (§3 de `CHARTS_AND_TABLES.md`) suivent l
 |---|-----|------|-------------------|--------|--------|------|
 | **0** | A | **`src/app/i18n_columns.py`** | `i18n_columns.py`, `main_helpers.py` | **1h** | **Modéré** | ✅ Fait |
 | 1 | A | `src/utils/strings.py` + `is_uuid_like` unifié | `strings.py` (new), `translations.py`, `helpers.py` | 15 min | Nul | ⏳ |
-| 4 | A | Découpler `normalize_mode_label` de `st.session_state` | `helpers.py`, `streamlit_app.py` (3 sites) | 45 min | Modéré | ⏳ |
+| 4 | A | Découpler `normalize_mode_label` de `st.session_state` | `helpers.py`, `streamlit_app.py` (3 sites) | 45 min | Modéré | ✅ Fait (via Axe C — signature `lang=` déjà en place) |
 | 2 | A | Supprimer `_normalize_mode_label` (après item 4) | `teammates_helpers.py` | 10 min | Faible | ⏳ |
 | 3 | A | Supprimer `add_ui_columns` + guards `_map_col` / `maps.py` | 3 fichiers | 30 min | Faible | ⏳ |
 | 5 | A | **Aucun code** — valider + barrer le backlog | — | 5 min | Nul | ✅ Fait |
 | 6 | A | Vérifier cache `build_mapping` dans `cache_filters.py` | — | 15 min | Nul | ✅ Fait |
-| **7a** | B | **Créer `src/visualization/_chart_series.py`** | `_chart_series.py` (new) | **1h** | **Faible** | ⏳ |
-| 7b | B | Migrer `plot_trio_metric` + `plot_trio_kills_deaths` | `trio.py`, `teammates_charts.py` | 1h30 | Modéré | ⏳ |
-| 7c | B | Migrer `plot_multi_metric_bars_by_match` | `match_bars.py` | 45 min | Modéré | ⏳ |
-| 7d | B | Migrer `plot_hs_pk_stacked` | `teammates_hs_pk.py` | 30 min | Faible | ⏳ |
-| 7e | B | Migrer `_render_per_minute_stats` + ghost bars catégoriels | `_teammates_trio_helpers.py` | 45 min | Modéré | ⏳ |
+| **7a** | B | **Créer `src/visualization/_chart_series.py`** | `_chart_series.py` (new) | **1h** | **Faible** | ✅ Fait |
+| 7b | B | Migrer `plot_trio_metric` + `plot_trio_kills_deaths` | `trio.py`, `teammates_charts.py` | 1h30 | Modéré | ✅ Fait |
+| 7c | B | Migrer `plot_multi_metric_bars_by_match` | `match_bars.py` | 45 min | Modéré | ✅ Fait |
+| 7d | B | Migrer `plot_hs_pk_stacked` | `teammates_hs_pk.py` | 30 min | Faible | ✅ Fait |
+| 7e | B | Migrer `_render_per_minute_stats` + ghost bars catégoriels | `_teammates_trio_helpers.py` | 45 min | Modéré | ✅ Fait |
 | 7f | B | Supprimer anciens kwargs (après 7b-7e) | 5 fichiers | 30 min | Faible | ⏳ |
 
-**Total estimé restant : ~5h** (Phases 1→4 ~40min + TeammatesService ~15min + Phase 7 ~4h20, Phases 0/5/6 déjà faites).
+**Total estimé restant : ~2h** (Phase 1 ~15min + Phase 2 ~10min + Phase 3 ~30min + Phase 4 ~30min + TeammatesService ~15min + 7f ~30min).
 
 ---
 
@@ -435,16 +435,15 @@ Les graphes solo de la page Timeseries (§3 de `CHARTS_AND_TABLES.md`) suivent l
 - [x] Confirmé : `build_mapping(dfr["playlist_name"], translate_playlist_name)` dans `cache_filters.py:102` est appelée à l'intérieur de `_translate_playlist_pair_columns` (L95) → appelée par `_build_friend_df_from_match_ids_v4` → appelée par `cached_friend_matches_df` décorée `@st.cache_data`. Le cache est en place via la hiérarchie d'appels.
 - [x] Barrer item 6 dans `.ai/BACKLOG.md`
 
-### Phase 7 — Abstraction ChartData ⭐ AXE B
+### Phase 7 — Abstraction ChartData ⭐ AXE B ✅ PARTIELLEMENT COMPLÉTÉE
 
-- [ ] **Prérequis** : vérifier que `_squad_record_shapes.py` n'importe rien depuis `_chart_series.py` (risque import circulaire — voir §3.0b)
-- [ ] **7a** — Créer `src/visualization/_chart_series.py` avec `MatchSeries`, `ChartData`, `HEIGHT_COMPACT`, `HEIGHT_NORMAL`, `MAX_PLOT_POINTS`, `_add_categorical_record_bars`
-- [ ] Écrire `tests/test_chart_series.py` : `add_record_overlays` dispatche correctement, `downsample` réduit les points, idempotence sur ChartData sans records
-- [ ] **7b** — Migrer `plot_trio_metric` et `plot_trio_kills_deaths` (`trio.py`) : accepter `chart_data: ChartData | None = None` en plus des kwargs actuels ; `add_record_overlays` remplace les appels directs à `add_record_shapes`
-- [ ] Adapter `_plot_trio_metric_chart` + `render_trio_charts` dans `teammates_charts.py` pour construire et passer `ChartData`
-- [ ] **7c** — Migrer `plot_multi_metric_bars_by_match` (`match_bars.py`) : idem pattern ; `ChartData.downsample()` remplace éventuel futur downsampling inline
-- [ ] **7d** — Migrer `plot_hs_pk_stacked` (`teammates_hs_pk.py`) : `barmode="overlay"`, `add_record_overlays` dispatche vers `add_overlay_record_shapes`
-- [ ] **7e** — Migrer `_render_per_minute_stats` (`_teammates_trio_helpers.py`) : extraire les ghost bars catégoriels vers `_add_categorical_record_bars` dans `_chart_series.py` ; le chart reçoit un `ChartData(barmode="categorical")`
+- [x] **Prérequis** : `_squad_record_shapes.py` n'importe rien depuis `_chart_series.py` — validé
+- [x] **7a** — Créer `src/visualization/_chart_series.py` avec `MatchSeries`, `ChartData`, `HEIGHT_COMPACT`, `HEIGHT_NORMAL`, `MAX_PLOT_POINTS`, `_add_categorical_record_bars`
+- [x] Écrire `tests/test_chart_series.py` (24 tests : constants, dispatch, downsample, categorical bars)
+- [x] **7b** — Migrer `plot_trio_metric` et `plot_trio_kills_deaths` (`trio.py`)
+- [x] **7c** — Migrer `plot_multi_metric_bars_by_match` (`match_bars.py`)
+- [x] **7d** — Migrer `plot_hs_pk_stacked` (`teammates_hs_pk.py`)
+- [x] **7e** — Migrer `_render_per_minute_stats` (`_teammates_trio_helpers.py`) avec `barmode="categorical"`
 - [ ] **7f** — Supprimer les anciens kwargs `records`, `records_per_map`, `colors_by_name`, `n_players`, `player_names` des 5 fonctions (remplacés par `ChartData`)
 - [ ] Vérifier taille `teammates_charts.py` < 500 L après migration
 - [ ] Tests → vert (notamment `test_visualizations.py` + `test_squad_record_shapes.py`)
@@ -499,7 +498,7 @@ La V2 tire les conséquences logiques de ces deux axes et adresse les violations
 
 | Axe | Problème | Dépendance V1 | Effort | Valeur |
 |-----|---------|--------------|--------|--------|
-| **C** — Éliminer injection callback fn | `normalize_*_fn` transite encore comme Callable dans **49 sites** (7 fichiers) | Phase 2 terminée | ~2h | ⭐⭐⭐ |
+| **C** — Éliminer injection callback fn | `normalize_*_fn` transite encore comme Callable dans **49 sites** (7 fichiers) | Phase 2 terminée | ~2h | ⭐⭐⭐ | ✅ **Fait** (2026-04-04) |
 | **D** — `mode_ui` centralisé + `_add_derived_columns` démantelée | God function noqa: C901/PLR0912, logique dupliquée dans `_filters_cascade` | Phase 2 + Axe C | ~2h | ⭐⭐⭐ |
 | **E** — Résorber les 3 modules > 500L | Violations actives : `maps_outcome.py` 590L, `friends_impact_heatmap.py` 507L, `timeseries.py` 505L | Indépendant | ~3h | ⭐⭐ |
 | **E′** — Surveillance préventive modules 450–500L | `session_compare_charts.py` 498L, `match_view_helpers.py` 495L, `teammates_charts.py` 491L (grossira avec ChartData) | V1 Phase 7 | — (monitorer) | ⭐ |

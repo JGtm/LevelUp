@@ -56,7 +56,6 @@ FUNC:src/ui/pages/_teammates_trio_helpers.py:92:_render_per_minute_stats:84L
 FUNC:src/ui/pages/career.py:106:_render_rank_header:89L
 FUNC:src/ui/pages/career_logic.py:249:_create_xp_history_chart:189L
 FUNC:src/ui/pages/citations.py:24:render_citations_page:173L
-FUNC:src/ui/pages/match_view.py:66:_render_kpi_cards:88L
 FUNC:src/ui/pages/match_view_charts.py:257:_render_spree_headshots:124L
 FUNC:src/ui/pages/match_view_charts.py:43:render_expected_vs_actual:211L
 FUNC:src/ui/pages/match_view_citations.py:18:render_match_citations_section:162L
@@ -106,6 +105,7 @@ FUNC:src/visualization/timeseries_combat.py:185:plot_streak_chart:84L
 FUNC:src/visualization/timeseries_combat.py:89:plot_spree_headshots_accuracy:93L
 FUNC:src/visualization/trio.py:346:plot_trio_kills_deaths:155L
 FUNC:src/visualization/trio.py:39:plot_trio_metric:236L
+MODULE:src/analysis/spawn_detection.py:561L
 MODULE:src/analysis/weapon_parser.py:502L
 MODULE:src/data/repositories/_weapon_kills_repo.py:567L
 MODULE:src/data/services/teammates_service.py:537L

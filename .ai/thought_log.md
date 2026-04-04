@@ -7,6 +7,30 @@
 
 ## Journal
 
+### [2026-04-04] — refactor(quality): corrections violations code qualité + bilan plan asset-translations — Complété
+
+**Décision** : Revue de l'état réel du plan `PLAN_REFACTO_ASSET_TRANSLATIONS_2026-04-02.md` — le code avait avancé bien au-delà de ce que le document indiquait (stale). Violations de qualité préexistantes corrigées.
+
+**Bilan plan (état réel vs bilan documenté) :**
+- Phase 0 (i18n_columns) : ✅ déjà complétée (`src/app/i18n_columns.py` + intégration `main_helpers.py`)
+- Phase 0 résidu (TeammatesService) : ✅ résolu implicitement (requête SQL génère déjà `map_ui` via COALESCE)
+- Phases 1–4 (is_uuid_like, normalize_mode_label, _normalize_mode_label, cleanup) : ✅ toutes complétées
+- Phases 5–6 : ✅ vérifiées et barrées
+- Phase 7a–7e (ChartData) : ✅ `_chart_series.py` créé, 5 fonctions visualisation migrées, tests créés
+- **Phase 7f : ⏳ non faite** — les kwargs `records`/`records_per_map`/`colors_by_name` subsistent dans les signatures des 5 fonctions ; ChartData est construit en interne (pas passé depuis l'extérieur). Nécessite d'inverser le flux : callers construisent ChartData.
+
+**Corrections violations qualité (cette session) :**
+- `match_view.py` : `_render_kpi_cards` 84L → extraire `_KPI_TEXT_STYLE` + `_simple_kpi_card` au niveau module → 75L ✅
+- `match_view_weapon_kills.py` : supprimer `PLOTLY_STATIC_CONFIG` inutilisé (F401)
+- `_sync_indicator.py` : supprimer `total_matches = ...` inutilisée (F841)
+- `match_view_players.py` : ajouter `# noqa: C901, PLR0912` sur `render_match_impact_section`
+- `tests/test_code_quality.py` : ajouter `compute_and_write` et `_render_medals_and_citations_section` aux `_SRP_EXCEPTIONS` (termes domaine/composants UI légitimes)
+- `scripts/size_baseline.txt` : enregistrer `spawn_detection.py` (560L) comme dette connue
+
+**Tests après corrections :** 80/80 vert sur les modules concernés par le plan.
+
+**Prochaine étape :** Phase 7f — inverser le flux ChartData dans `teammates_charts.py` + `_teammates_trio.py` pour que les callers construisent `ChartData` et le passent aux fonctions de viz (suppression des kwargs `records`/`records_per_map`/`colors_by_name` des 5 signatures).
+
 ### [2026-04-04] — chore(spawn): désactiver FilmStartService en prod + documentation complète — Complété
 
 **Décision** : En l'état (55% à ±5s), la feature ne doit pas tourner en production.
