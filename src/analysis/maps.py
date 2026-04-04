@@ -81,7 +81,7 @@ def compute_map_breakdown(df: pl.DataFrame, df_history: pl.DataFrame | None = No
     df_pl = _to_polars(df)
     empty_schema = _empty_map_breakdown_schema()
 
-    if df_pl.is_empty():
+    if df_pl.is_empty() or "map_ui" not in df_pl.columns:
         return pl.DataFrame(schema=empty_schema)
 
     df_pl = _resolve_map_names(df_pl)

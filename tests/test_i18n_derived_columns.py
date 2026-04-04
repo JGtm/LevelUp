@@ -267,13 +267,10 @@ class TestComputeMapBreakdownI18n:
         return pl.DataFrame(data)
 
     def test_groups_by_map_name_when_no_map_ui(self) -> None:
-        """Sans map_ui, groupe par map_name (comportement existant inchangé)."""
+        """Sans map_ui, retourne un DataFrame vide (map_ui est requis depuis Phase 4)."""
         df = self._make_breakdown_df(with_map_ui=False)
         result = compute_map_breakdown(df)
-        assert "map_name" in result.columns
-        map_names = set(result["map_name"].to_list())
-        assert "Aquarius EN" in map_names
-        assert "Behemoth EN" in map_names
+        assert result.is_empty()
 
     def test_groups_by_map_ui_when_present(self) -> None:
         """Avec map_ui, le résultat porte les noms traduits dans la colonne map_name."""
