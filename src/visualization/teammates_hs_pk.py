@@ -12,6 +12,7 @@ import polars as pl
 from src.config import PLOT_CONFIG
 from src.ui.date_formats import FMT_SHORT_DATETIME_FR
 from src.ui.i18n.viz import viz_t
+from src.visualization._chart_series import ChartData, MatchSeries
 from src.visualization._compat import DataFrameLike, ensure_polars
 from src.visualization.theme import apply_halo_plot_style, get_legend_horizontal_bottom
 
@@ -202,17 +203,26 @@ def plot_hs_pk_stacked(  # noqa: C901, PLR0912, PLR0915
         return None
 
     if records and _player_xs:
-        from src.visualization._squad_record_shapes import add_overlay_record_shapes
         _names_with_data = list(_player_xs.keys())
         _hspk_colors: dict[str, str] = colors if isinstance(colors, dict) else {}
-        for _pname, _xs in _player_xs.items():
-            add_overlay_record_shapes(
-                fig,
-                xs=_xs,
-                records={_pname: (records.get(_pname) or {}).get("hs_pk_total")},
-                player_names=_names_with_data,
-                colors_by_name=_hspk_colors,
-            )
+        ChartData(
+            series=[
+                MatchSeries(
+                    name=_pname,
+                    x=_player_xs[_pname],
+                    y=[],
+                    color=_hspk_colors.get(_pname, "#35D0FF"),
+                    map_names=[],
+                )
+                for _pname in _names_with_data
+            ],
+            x_labels=list(labels),
+            barmode="overlay",
+            global_records={
+                _pname: (records.get(_pname) or {}).get("hs_pk_total")
+                for _pname in _names_with_data
+            },
+        ).add_record_overlays(fig)
 
     # ── Légende manuelle (annotations) ───────────────────────────────────────
     # Titre du graphe et mise en forme

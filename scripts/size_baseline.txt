@@ -52,7 +52,7 @@ FUNC:src/ui/components/checkbox_filter.py:97:render_checkbox_filter:111L
 FUNC:src/ui/filter_state.py:235:apply_filter_preferences:166L
 FUNC:src/ui/filter_state.py:66:save_filter_preferences:138L
 FUNC:src/ui/pages/_teammates_trio.py:64:render_trio_view:318L
-FUNC:src/ui/pages/_teammates_trio_helpers.py:91:_render_per_minute_stats:86L
+FUNC:src/ui/pages/_teammates_trio_helpers.py:92:_render_per_minute_stats:84L
 FUNC:src/ui/pages/career.py:106:_render_rank_header:89L
 FUNC:src/ui/pages/career_logic.py:249:_create_xp_history_chart:189L
 FUNC:src/ui/pages/citations.py:24:render_citations_page:173L
@@ -90,8 +90,8 @@ FUNC:src/visualization/distributions_outcomes.py:173:plot_win_ratio_heatmap:105L
 FUNC:src/visualization/distributions_outcomes.py:286:plot_matches_at_top_by_week:117L
 FUNC:src/visualization/distributions_outcomes.py:28:plot_outcomes_over_time:90L
 FUNC:src/visualization/friends_impact_heatmap.py:62:plot_friends_impact_heatmap:188L
-FUNC:src/visualization/match_bars.py:130:plot_multi_metric_bars_by_match:258L
-FUNC:src/visualization/match_bars.py:18:plot_metric_bars_by_match:109L
+FUNC:src/visualization/match_bars.py:131:plot_multi_metric_bars_by_match:270L
+FUNC:src/visualization/match_bars.py:19:plot_metric_bars_by_match:109L
 FUNC:src/visualization/match_impact_timeline.py:281:plot_all_players_frags_timeline:188L
 FUNC:src/visualization/match_impact_timeline.py:31:plot_match_kill_death_timeline:242L
 FUNC:src/visualization/objective_charts.py:173:plot_objective_breakdown_bars:96L
@@ -101,12 +101,12 @@ FUNC:src/visualization/participation_charts.py:38:plot_participation_pie:101L
 FUNC:src/visualization/participation_charts_extra.py:69:create_participation_indicator:97L
 FUNC:src/visualization/team_dominance_timeline.py:101:detect_streaks:99L
 FUNC:src/visualization/team_dominance_timeline.py:208:plot_dominance_chart:135L
-FUNC:src/visualization/teammates_hs_pk.py:19:plot_hs_pk_stacked:218L
+FUNC:src/visualization/teammates_hs_pk.py:20:plot_hs_pk_stacked:227L
 FUNC:src/visualization/timeseries.py:329:plot_per_minute_timeseries:130L
 FUNC:src/visualization/timeseries_combat.py:185:plot_streak_chart:84L
 FUNC:src/visualization/timeseries_combat.py:89:plot_spree_headshots_accuracy:93L
-FUNC:src/visualization/trio.py:338:plot_trio_kills_deaths:144L
-FUNC:src/visualization/trio.py:38:plot_trio_metric:229L
+FUNC:src/visualization/trio.py:346:plot_trio_kills_deaths:155L
+FUNC:src/visualization/trio.py:39:plot_trio_metric:236L
 MODULE:src/analysis/weapon_parser.py:502L
 MODULE:src/data/repositories/_weapon_kills_repo.py:567L
 MODULE:src/data/services/teammates_service.py:537L
@@ -122,3 +122,4 @@ MODULE:src/ui/pages/session_compare.py:538L
 MODULE:src/visualization/friends_impact_heatmap.py:508L
 MODULE:src/visualization/maps_outcome.py:591L
 MODULE:src/visualization/timeseries.py:506L
+MODULE:src/visualization/trio.py:502L

@@ -5,6 +5,7 @@ import polars as pl
 
 from src.config import OKABE_ITO_PALETTE, PLOT_CONFIG
 from src.ui.i18n.viz import viz_t
+from src.visualization._chart_series import ChartData, MatchSeries
 from src.visualization._compat import DataFrameLike, ensure_polars
 from src.visualization.theme import apply_halo_plot_style, get_legend_horizontal_bottom
 
@@ -230,23 +231,30 @@ def plot_trio_metric(  # noqa: PLR0912, PLR0913, PLR0915, C901 — graphe multi-
     )
 
     if records:
-        from src.visualization._squad_record_shapes import add_record_shapes
-        _map_names = [t.split("<br>", 1)[1] if "<br>" in t else None for t in ticktext]
-        _per_map = (
+        _map_names_trio = [t.split("<br>", 1)[1] if "<br>" in t else None for t in ticktext]
+        _per_map_trio = (
             {n: (records_per_map.get(n) or {}).get(metric, {}) for n in names}
-            if records_per_map else None
+            if records_per_map else {}
         )
-        add_record_shapes(
-            fig,
-            xs=xs,
-            records={n: (records.get(n) or {}).get(metric) for n in names},
-            player_names=list(names),
-            n_players=len(names),
+        _cbname_trio = colors_by_name or {}
+        _cd_trio = ChartData(
+            series=[
+                MatchSeries(
+                    name=n,
+                    x=xs,
+                    y=[],
+                    color=_cbname_trio.get(n, OKABE_ITO_PALETTE[i % len(OKABE_ITO_PALETTE)]),
+                    map_names=_map_names_trio,
+                )
+                for i, n in enumerate(names)
+            ],
+            x_labels=ticktext,
+            barmode="group",
+            global_records={n: (records.get(n) or {}).get(metric) for n in names},
+            per_map_records=_per_map_trio,
             is_negative=is_inverse,
-            colors_by_name=colors_by_name or {},
-            per_map_records=_per_map,
-            map_names_per_x=_map_names,
         )
+        _cd_trio.add_record_overlays(fig)
 
     fig.update_layout(
         title=title,
@@ -440,34 +448,45 @@ def plot_trio_kills_deaths(  # noqa: PLR0913
         )
 
     if records:
-        from src.visualization._squad_record_shapes import add_record_shapes
         _kd_map_names = (
             [t.split("<br>", 1)[1] if "<br>" in t else None for t in ticktext_fr]
-            if ticktext_fr else None
+            if ticktext_fr else []
         )
-        _cbname = colors_by_name or {}
-        _kills_pm = (
-            {n: (records_per_map.get(n) or {}).get("kills", {}) for n in names}
-            if records_per_map else None
-        )
-        _deaths_pm = (
-            {n: (records_per_map.get(n) or {}).get("deaths", {}) for n in names}
-            if records_per_map else None
-        )
-        add_record_shapes(
-            fig, xs=xs,
-            records={n: (records.get(n) or {}).get("kills") for n in names},
-            player_names=list(names), n_players=len(names), is_negative=False,
-            colors_by_name=_cbname, per_map_records=_kills_pm,
-            map_names_per_x=_kd_map_names,
-        )
-        add_record_shapes(
-            fig, xs=xs,
-            records={n: (records.get(n) or {}).get("deaths") for n in names},
-            player_names=list(names), n_players=len(names), is_negative=True,
-            colors_by_name=_cbname, per_map_records=_deaths_pm,
-            map_names_per_x=_kd_map_names,
-        )
+        _cbname_kd = colors_by_name or {}
+        _kd_series = [
+            MatchSeries(
+                name=n,
+                x=xs,
+                y=[],
+                color=_cbname_kd.get(n, OKABE_ITO_PALETTE[i % len(OKABE_ITO_PALETTE)]),
+                map_names=_kd_map_names,
+            )
+            for i, n in enumerate(names)
+        ]
+        # Kills (record max, barres positives)
+        ChartData(
+            series=_kd_series,
+            x_labels=ticktext_fr or [str(x) for x in xs],
+            barmode="group",
+            global_records={n: (records.get(n) or {}).get("kills") for n in names},
+            per_map_records=(
+                {n: (records_per_map.get(n) or {}).get("kills", {}) for n in names}
+                if records_per_map else {}
+            ),
+            is_negative=False,
+        ).add_record_overlays(fig)
+        # Morts (record min, barres négatives)
+        ChartData(
+            series=_kd_series,
+            x_labels=ticktext_fr or [str(x) for x in xs],
+            barmode="group",
+            global_records={n: (records.get(n) or {}).get("deaths") for n in names},
+            per_map_records=(
+                {n: (records_per_map.get(n) or {}).get("deaths", {}) for n in names}
+                if records_per_map else {}
+            ),
+            is_negative=True,
+        ).add_record_overlays(fig)
 
     fig.update_layout(
         barmode="group",
