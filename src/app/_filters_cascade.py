@@ -7,21 +7,18 @@ Contient : _get_experience_type_options, _apply_experience_filter,
 
 from __future__ import annotations
 
-from collections.abc import Callable
 from datetime import date
 
 import polars as pl
 import streamlit as st
 
-from src.app.helpers import normalize_map_label, normalize_mode_label
-from src.ui import translate_playlist_name
+from src.app.i18n_columns import add_i18n_display_columns
 from src.ui.components import (
     get_firefight_playlists,
     render_checkbox_filter,
     render_hierarchical_checkbox_filter,
 )
 from src.ui.i18n import get_lang, t
-from src.ui.vectorize_helpers import build_mapping
 from src.utils.polars_compat import ensure_polars as _to_polars
 
 # ---------------------------------------------------------------------------
@@ -168,71 +165,6 @@ def _apply_temporal_filter(  # noqa: PLR0913
     return dropdown_base
 
 
-def _vectorize_ui_columns(
-    dropdown_base: pl.DataFrame,
-    clean_asset_label_fn: Callable[[str], str],
-) -> pl.DataFrame:
-    """Ajoute les colonnes playlist_ui, mode_ui, map_ui vectorisées.
-
-    Utilise les colonnes *_fr si disponibles (même logique que _add_derived_columns)
-    pour garantir la cohérence entre les options du sidebar et le filtrage réel.
-    """
-    _lang = get_lang()
-
-    if "playlist_name" in dropdown_base.columns:
-        _pl_map = build_mapping(
-            dropdown_base["playlist_name"],
-            lambda x: translate_playlist_name(clean_asset_label_fn(x), lang=_lang),
-        )
-        pl_expr = (
-            pl.col("playlist_name")
-            .cast(pl.Utf8)
-            .replace_strict(_pl_map, default=None, return_dtype=pl.Utf8)
-            .alias("playlist_ui")
-        )
-    else:
-        pl_expr = pl.lit(None).cast(pl.Utf8).alias("playlist_ui")
-
-    if "pair_name" in dropdown_base.columns:
-        _mode_map = build_mapping(
-            dropdown_base["pair_name"],
-            lambda x: normalize_mode_label(x, lang=_lang),
-        )
-        mode_expr = (
-            pl.col("pair_name")
-            .cast(pl.Utf8)
-            .replace_strict(_mode_map, default=None, return_dtype=pl.Utf8)
-            .alias("mode_ui")
-        )
-    else:
-        mode_expr = pl.lit(None).cast(pl.Utf8).alias("mode_ui")
-
-    if "map_name" in dropdown_base.columns:
-        if "map_name_fr" in dropdown_base.columns and _lang == "fr":
-            # Cohérence avec _add_derived_columns : utiliser le nom FR si disponible
-            map_expr = (
-                pl.coalesce([
-                    pl.col("map_name_fr").cast(pl.Utf8),
-                    pl.col("map_name").cast(pl.Utf8),
-                ]).alias("map_ui")
-            )
-        else:
-            _map_map = build_mapping(
-                dropdown_base["map_name"],
-                normalize_map_label,
-            )
-            map_expr = (
-                pl.col("map_name")
-                .cast(pl.Utf8)
-                .replace_strict(_map_map, default=None, return_dtype=pl.Utf8)
-                .alias("map_ui")
-            )
-    else:
-        map_expr = pl.lit(None).cast(pl.Utf8).alias("map_ui")
-
-    return dropdown_base.with_columns([pl_expr, mode_expr, map_expr])
-
-
 def _compute_faceted_options(
     dropdown_base_filtered: pl.DataFrame,
     preferred_order: list[str],
@@ -345,7 +277,6 @@ def _render_cascade_filters(  # noqa: PLR0913
     end_d: date,
     picked_session_labels: list[str] | None,
     base_s_ui: pl.DataFrame | None,
-    clean_asset_label_fn: Callable[[str], str],
 ) -> _CascadeResult:
     """Rend les filtres Type d'expérience + Playlists + Modes + Cartes (v5.2)."""
     dropdown_base = _to_polars(base_for_filters)
@@ -357,7 +288,7 @@ def _render_cascade_filters(  # noqa: PLR0913
         picked_session_labels,
         base_s_ui,
     )
-    dropdown_base = _vectorize_ui_columns(dropdown_base, clean_asset_label_fn)
+    dropdown_base = add_i18n_display_columns(dropdown_base, get_lang())
 
     # ── Sélecteur Type d'expérience (pré-filtre, v5.2) ──────────────────────
     playlist_values_all = _unique_sorted_values(dropdown_base, "playlist_ui")

@@ -15,9 +15,14 @@ from src.config import PLOT_CONFIG
 from src.ui.date_formats import FMT_DATETIME_FR
 from src.ui.i18n.viz import viz_t
 from src.visualization._compat import DataFrameLike, smart_scatter
-from src.visualization._timeseries_helpers import COLORS, apply_chrono_xaxis, prepare_time_axis
+from src.visualization._timeseries_helpers import (
+    COLORS,
+    _normalize_df,
+    _rolling_mean,
+    apply_chrono_xaxis,
+    prepare_time_axis,
+)
 from src.visualization.theme import apply_halo_plot_style, get_legend_horizontal_bottom
-from src.visualization.timeseries import _normalize_df, _rolling_mean
 
 
 def _ensure_performance_column(d: pl.DataFrame, history: pl.DataFrame) -> pl.DataFrame:

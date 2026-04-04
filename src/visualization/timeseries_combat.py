@@ -13,14 +13,19 @@ from src.config import PLOT_CONFIG
 from src.data.domain.refdata import Outcome
 from src.ui.i18n.viz import viz_t
 from src.visualization._compat import DataFrameLike, ensure_polars, smart_scatter  # noqa: F401
-from src.visualization._timeseries_helpers import COLORS, apply_chrono_xaxis, prepare_time_axis
+from src.visualization._timeseries_helpers import (
+    COLORS,
+    _normalize_df,
+    _rolling_mean,
+    apply_chrono_xaxis,
+    prepare_time_axis,
+)
 from src.visualization._timeseries_progression import (  # noqa: F401 — re-exports
     plot_lusr_timeseries,
     plot_performance_timeseries,
     plot_rank_score,
 )
 from src.visualization.theme import apply_halo_plot_style, get_legend_horizontal_bottom
-from src.visualization.timeseries import _normalize_df, _rolling_mean
 
 
 def plot_average_life(df: DataFrameLike, title: str | None = None, lang: str = "fr") -> go.Figure:
