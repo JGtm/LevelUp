@@ -203,17 +203,14 @@ def scan_first_movements(
     """Détecte le premier CHANGEMENT de position pour chaque player_index.
 
     Algorithme :
-    - Le premier frame vu par pi = baseline de spawn (position figée pendant le countdown).
+    - Le premier frame vu par pi = baseline de spawn.
     - Le premier frame DIFFÉRENT de cette baseline = premier mouvement réel.
-    - Les chunks sont traités en ordre croissant : chunk_01 fournit la baseline,
-      chunk_02+ capturent le premier mouvement.
-    - ``ignore_before_ms`` : ignorer les changements détectés avant ce timestamp,
-      pour éliminer les mouvements de lobby (rotation caméra pre-match).
+    - ``ignore_before_ms`` : ignorer les changements avant ce timestamp
+      (la signature est quand même mise à jour) pour le second passage.
     - Accepte tous les formats stream (b5 quelconque, b9 quelconque).
 
     Returns:
         {player_index: {"timestamp_ms", "chunk", "b5", "b9", "y_raw", "x_raw"}}
-        y_raw/x_raw sont None si le format n'est pas h/b5=0x40/b9=0x56.
     """
     spawn_sig: dict[int, bytes] = {}   # pi -> bytes signature du frame de spawn
     first_change: dict[int, dict] = {}
@@ -299,11 +296,58 @@ def pick_spawn_references(
     return references, afk_suspects
 
 
+# ── Détection cluster spawn ────────────────────────────────────────────────────
+
+#: Fenêtre temporelle pour détecter le cluster de spawn (ms).
+_SPAWN_CLUSTER_WINDOW_MS = 2_000.0
+
+
+def find_densest_spawn_cluster(
+    first_movements: dict[int, dict],
+    window_ms: float = _SPAWN_CLUSTER_WINDOW_MS,
+) -> tuple[list[tuple[int, dict]], list[tuple[int, dict]]]:
+    """Fenêtre glissante — cluster le plus dense = vrai début de match.
+
+    Au spawn réel tous les joueurs bougent quasi-simultanément (<2s).
+    En lobby, les mouvements de caméra sont éparpillés (1-2 joueurs).
+    En cas d'égalité de densité : préférer la fenêtre la plus tardive.
+    """
+    if not first_movements:
+        return [], []
+
+    sorted_items = sorted(first_movements.items(), key=lambda kv: kv[1]["timestamp_ms"])
+    timestamps = [fm["timestamp_ms"] for _, fm in sorted_items]
+
+    best_start_ts: float = timestamps[0]
+    best_count: int = 0
+
+    for t_start in timestamps:
+        count = sum(1 for t in timestamps if t_start <= t <= t_start + window_ms)
+        if count > best_count or (count == best_count and t_start > best_start_ts):
+            best_count = count
+            best_start_ts = t_start
+
+    t_end = best_start_ts + window_ms
+    cluster = [(pi, fm) for pi, fm in sorted_items if best_start_ts <= fm["timestamp_ms"] <= t_end]
+    outside = [(pi, fm) for pi, fm in sorted_items if not (best_start_ts <= fm["timestamp_ms"] <= t_end)]
+
+    earliest = cluster[0][1]["timestamp_ms"] if cluster else 0.0
+    for _, fm in cluster:
+        fm["delay_ms"] = fm["timestamp_ms"] - earliest
+    for _, fm in outside:
+        fm["delay_ms"] = fm["timestamp_ms"] - earliest
+
+    return cluster, outside
+
+
 # ── Rapport ────────────────────────────────────────────────────────────────────
 
 
 def _print_match_report(match_id: str, first_movements: dict[int, dict]) -> None:
-    refs, afk = pick_spawn_references(first_movements, n=3)
+    cluster, outside = find_densest_spawn_cluster(first_movements)
+    cluster_pis = {pi for pi, _ in cluster}
+    all_sorted = sorted(first_movements.items(), key=lambda kv: kv[1]["timestamp_ms"])
+    earliest = cluster[0][1]["timestamp_ms"] if cluster else 0.0
 
     def _coord(v: int | None) -> str:
         return f"{v:>6}" if v is not None else "     ?"
@@ -311,21 +355,18 @@ def _print_match_report(match_id: str, first_movements: dict[int, dict]) -> None
     print(f"\n  {'PI':>3}  {'1er mouvement':>14}  {'Retard':>8}  {'Y_raw':>6}  {'X_raw':>6}  b5  b9   Statut")
     print(f"  {'-'*3}  {'-'*14}  {'-'*8}  {'-'*6}  {'-'*6}  --  --   ------")
 
-    for pi, fm in refs:
+    for pi, fm in all_sorted:
         ts = _fmt_ms(fm["timestamp_ms"])
-        delay = f"+{fm['delay_ms']:.0f}ms" if fm['delay_ms'] > 0 else "REF"
-        print(f"  {pi:>3}  {ts:>14}  {delay:>8}  {_coord(fm['y_raw'])}  {_coord(fm['x_raw'])}  {fm['b5']:02X}  {fm['b9']:02X}   OK  (chunk_{fm['chunk']:02d})")
+        delay_ms = fm["timestamp_ms"] - earliest
+        delay = "REF" if delay_ms == 0 else (f"+{delay_ms:.0f}ms" if delay_ms < 10_000 else f"+{delay_ms/1000:.1f}s")
+        statut = f"CLUSTER (chunk_{fm['chunk']:02d})" if pi in cluster_pis else f"lobby?  (chunk_{fm['chunk']:02d})"
+        print(f"  {pi:>3}  {ts:>14}  {delay:>8}  {_coord(fm['y_raw'])}  {_coord(fm['x_raw'])}  {fm['b5']:02X}  {fm['b9']:02X}   {statut}")
 
-    for pi, fm in afk:
-        ts = _fmt_ms(fm["timestamp_ms"])
-        delay = f"+{fm['delay_ms']/1000:.1f}s"
-        print(f"  {pi:>3}  {ts:>14}  {delay:>8}  {_coord(fm['y_raw'])}  {_coord(fm['x_raw'])}  {fm['b5']:02X}  {fm['b9']:02X}   AFK? (chunk_{fm['chunk']:02d})")
-
-    if refs:
-        ref_ts = refs[0][1]["timestamp_ms"]
-        print(f"\n  Reference spawn : {_fmt_ms(ref_ts)}  ({len(refs)} joueur(s) confirmes, {len(afk)} suspect(s) AFK)")
+    if cluster:
+        ref_ts = cluster[0][1]["timestamp_ms"]
+        print(f"\n  Cluster spawn : {_fmt_ms(ref_ts)}  ({len(cluster)} joueur(s) dans cluster, {len(outside)} hors cluster)")
     else:
-        print("\n  Aucune reference de spawn trouvee.")
+        print("\n  Aucun cluster de spawn trouvé.")
 
 
 # ── Corrélation API highlight_events ─────────────────────────────────────────
@@ -534,10 +575,12 @@ async def process_match_adaptive(
             all_chunks.update(new)
 
         first_movements = scan_first_movements(all_chunks)
-        refs, afk = pick_spawn_references(first_movements, n=min_players)
+        cluster, _outside = find_densest_spawn_cluster(first_movements)
 
-        # Condition d'arrêt : assez de références ou plafond atteint
-        enough = len(refs) >= min_players
+        # Condition d'arrêt : cluster dense suffisant ET au moins 2 chunks vus,
+        # OU plafond atteint. Le minimum de 2 chunks (0-40s) garantit que les
+        # mouvements de lobby (chunk_01) et le vrai spawn (chunk_02) sont comparés.
+        enough = len(cluster) >= min_players and next_chunk_idx >= 2
         at_limit = next_chunk_idx >= max_chunks
 
         if not first_movements and at_limit:
@@ -545,7 +588,7 @@ async def process_match_adaptive(
             return
 
         if enough or at_limit:
-            reason = f"{len(refs)} refs ok" if enough else f"limite {max_chunks} chunks atteinte"
+            reason = f"{len(cluster)} dans cluster" if enough else f"limite {max_chunks} chunks atteinte"
             chunks_span_s = next_chunk_idx * 20  # 20s par chunk REPLICATION_DATA
             print(
                 f"  Stop a chunk_{next_chunk_idx:02d}"
@@ -556,7 +599,7 @@ async def process_match_adaptive(
 
         # Pas assez → ajouter le chunk suivant
         print(
-            f"  chunk_{next_chunk_idx:02d} traite — {len(refs)}/{min_players} refs,"
+            f"  chunk_{next_chunk_idx:02d} traite — {len(cluster)}/{min_players} dans cluster,"
             f" telechargement chunk_{next_chunk_idx + 1:02d}..."
         )
         next_chunk_idx += 1
@@ -567,28 +610,26 @@ async def process_match_adaptive(
 
     if first_movements:
         _print_match_report(match_id, first_movements)
-        # Estimation consensus : médiane des timestamps des refs filmshell
-        refs, _ = pick_spawn_references(first_movements, n=min_players)
-        if refs:
-            estimate_ms = statistics.median(fm["timestamp_ms"] for _, fm in refs)
+        cluster_final, _ = find_densest_spawn_cluster(first_movements)
+        if cluster_final:
+            estimate_ms = int(statistics.median(fm["timestamp_ms"] for _, fm in cluster_final))
             corr = correlate_with_api(estimate_ms, match_id, n_events=corr_events)
             _print_correlation_report(corr, estimate_ms)
 
-            # Second passage : correction des mouvements de lobby
-            # Si le premier event API est >15s après notre estimation → l'estimation
-            # est trop précoce (mouvement de caméra pendant le countdown).
-            # On re-scanne en ignorant les mouvements avant (gap_min - 10s).
+            # Second passage : si gap > 15s, l'estimation est trop précoce
+            # (lobby actif). On re-scanne avec ignore_before_ms positionné
+            # avant le premier event API (contrainte dure).
             if (
                 corr.get("verdict") != "unavailable"
                 and corr.get("n_negative", 1) == 0
                 and corr.get("gap_min", 0) > 15_000
             ):
-                ignore_before_ms = estimate_ms + corr["gap_min"] - 10_000
+                gap_min = corr["gap_min"]
+                ignore_before_ms = estimate_ms + gap_min - 10_000
                 print(
-                    f"  [CORR] Lobby détecté — re-scan depuis {ignore_before_ms / 1000:.1f}s"
-                    f" (gap_min={corr['gap_min'] / 1000:.1f}s)"
+                    f"  [CORR] Lobby suspect — re-scan depuis {ignore_before_ms / 1000:.1f}s"
+                    f" (gap_min={gap_min / 1000:.1f}s)"
                 )
-                # Charger les chunks manquants jusqu'à couvrir ignore_before_ms + 20s
                 needed_coverage_ms = ignore_before_ms + 20_000
                 needed_chunk = int(needed_coverage_ms // 20_000) + 1
                 needed_chunk = min(needed_chunk, max_chunks)
@@ -604,28 +645,22 @@ async def process_match_adaptive(
                 refs2, _ = pick_spawn_references(fm2, n=min_players)
                 if len(refs2) >= min_players:
                     estimate2 = int(statistics.median(fm["timestamp_ms"] for _, fm in refs2))
-                    # Guard : accepter seulement si l'estimate est bien après ignore_before.
-                    # Faux positif : joueurs déjà actifs → détection quasi-immédiate.
-                    if estimate2 - ignore_before_ms > 5_000:
+                    if estimate2 > estimate_ms:
                         estimate_ms = estimate2
                         _print_match_report(match_id, fm2)
                         corr = correlate_with_api(estimate_ms, match_id, n_events=corr_events)
                         _print_correlation_report(corr, estimate_ms)
                         print(f"  [CORR] Estimation corrigee -> {estimate_ms / 1000:.1f}s")
                     else:
-                        print(
-                            f"  [CORR] Correction rejetee (faux positif) :"
-                            f" estimate2={estimate2 / 1000:.1f}s trop proche ignore_before"
-                            f" ({ignore_before_ms / 1000:.1f}s) — match sans mouvement lobby"
-                        )
+                        print(f"  [CORR] Second passage sans amélioration (estimate2={estimate2/1000:.1f}s)")
                 else:
                     print(
-                        f"  [CORR] Correction échouée : {len(refs2)}/{min_players} refs"
-                        f" — chunks supplémentaires nécessaires (essayer --max-chunks plus élevé)"
+                        f"  [CORR] Second passage insuffisant : {len(refs2)}/{min_players} refs"
+                        f" — essayer --max-chunks plus élevé"
                     )
 
             if write_db and not dry_run:
-                write_film_start_to_db(match_id, int(estimate_ms))
+                write_film_start_to_db(match_id, estimate_ms)
     else:
         print("  Pas de donnees disponibles.")
 
