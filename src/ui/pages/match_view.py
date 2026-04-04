@@ -57,8 +57,8 @@ def _dominance_badge_html(flag: int | None) -> str:
     i18n_key, bg, fg = _DOMINANCE_BADGE_STYLES[flag]
     label = html.escape(t(i18n_key))
     return (
-        f"<br><span style='display:inline-block;margin-top:4px;padding:2px 8px;"
-        f"border-radius:4px;font-size:0.75em;font-weight:600;"
+        f"<br><span style='display:inline-block;margin-top:4px;padding:3px 10px;"
+        f"border-radius:4px;font-size:0.975em;font-weight:600;"
         f"background:{bg};color:{fg}'>{label}</span>"
     )
 
@@ -76,9 +76,10 @@ def _render_kpi_cards(  # noqa: PLR0913
     dominance_flag: int | None = None,
 ) -> None:
     """Affiche les 3 cartes KPI : Date, Résultat, Performance."""
+    _CARD_H = 160
     top_cols = st.columns(3)
     with top_cols[0]:
-        os_card(t("col_date"), format_date_fr(last_time, lang=get_lang()))
+        os_card(t("col_date"), format_date_fr(last_time, lang=get_lang()), min_h=_CARD_H)
     with top_cols[1]:
         outcome_class = (
             "text-win"
@@ -95,6 +96,8 @@ def _render_kpi_cards(  # noqa: PLR0913
             score_html,
             accent=str(outcome_color),
             kpi_color=str(outcome_color),
+            kpi_font_size="36px",
+            min_h=_CARD_H,
         )
     with top_cols[2]:
         bot_is_loss = had_bot and outcome_code != OUTCOME_CODES.WIN
@@ -113,6 +116,7 @@ def _render_kpi_cards(  # noqa: PLR0913
             perf_subtitle,
             accent=perf_color,
             kpi_color=perf_color,
+            min_h=_CARD_H,
         )
 
 
@@ -125,8 +129,10 @@ def _render_map_and_rank(  # noqa: PLR0913
     db_key: tuple[int, int] | None,
     had_bot: bool,
     outcome_code: int | None,
+    perf_display: str = "-",
+    perf_color: str | None = None,
 ) -> None:
-    """Affiche la miniature de carte et le rang côte à côte."""
+    """Affiche la miniature de carte, le bloc performance et le rang côte à côte."""
     map_id = row.get("map_id")
     thumb = map_thumb_path(row, str(map_id) if map_id else None)
 
@@ -156,11 +162,26 @@ def _render_map_and_rank(  # noqa: PLR0913
             f"{t('mv_thumbnail_unavailable')}</div>"
         )
 
+    # Bloc performance (label + score coloré)
+    import html as _html
+
+    _score_color = perf_color if (perf_color and perf_display != "-") else "#888888"
+    _score_escaped = _html.escape(perf_display)
+    _label_escaped = _html.escape(t("mv_performance"))
+    perf_html = (
+        f"<div style='text-align:center;white-space:nowrap'>"
+        f"<div style='font-size:1.4em;font-weight:700;line-height:1.2;color:#dddddd'>{_label_escaped}</div>"
+        f"<div style='font-size:4.2em;font-weight:700;color:{_score_color};margin-top:4px;line-height:1'>{_score_escaped}</div>"
+        f"</div>"
+    )
+
     if rank_html:
         st.markdown(
-            f"""<div style='display:flex;align-items:center;gap:24px;flex-wrap:wrap;margin-bottom:1.5rem'>
-  <div style='flex:1;min-width:250px'>{map_img_html}</div>
-  <div style='flex:1;min-width:250px'>{rank_html}</div>
+            f"""<div style='display:flex;align-items:center;gap:20px;flex-wrap:wrap;margin-bottom:1.5rem'>
+  <div style='flex:1 1 45%;min-width:180px;max-width:420px'>{map_img_html}</div>
+  <div style='flex:0 0 auto;min-width:90px'>{perf_html}</div>
+  <div style='flex:0 0 1px;align-self:stretch;background:rgba(255,255,255,0.12);border-radius:1px'></div>
+  <div style='flex:0 0 auto;width:320px;max-width:320px;overflow:hidden'>{rank_html}</div>
 </div>""",
             unsafe_allow_html=True,
         )
@@ -289,6 +310,8 @@ def _render_match_header(  # noqa: PLR0913
         db_key=db_key,
         had_bot=had_bot,
         outcome_code=outcome_code,
+        perf_display=perf_display,
+        perf_color=perf_color,
     )
 
 
@@ -391,7 +414,10 @@ def _build_waypoint_url(waypoint_player: str | None, match_id: str) -> str | Non
 
 
 def _display_map(row: dict[str, Any]) -> str:
-    """Retourne le label carte normalisé."""
+    """Retourne le label carte normalisé (FR en priorité, fallback EN normalisé)."""
+    map_fr = row.get("map_name_fr")
+    if map_fr:
+        return str(map_fr)
     last_map = row.get("map_name")
     return normalize_map_label(last_map) if last_map else "-"
 
@@ -399,24 +425,33 @@ def _display_map(row: dict[str, Any]) -> str:
 def _render_match_info_row(row: dict[str, Any], normalize_mode_label_fn: Any) -> None:
     """Affiche la ligne Carte / Playlist / Mode."""
     last_playlist = row.get("playlist_name")
+    last_playlist_fr = row.get("playlist_name_fr")
     last_pair = row.get("pair_name")
     last_mode = row.get("game_variant_name")
     lang = get_lang()
 
     map_display = _display_map(row)
     playlist_display = (
-        translate_playlist_name(str(last_playlist), lang=lang) if last_playlist else "-"
+        str(last_playlist_fr)
+        if last_playlist_fr
+        else (translate_playlist_name(str(last_playlist), lang=lang) if last_playlist else "-")
     )
+    # mode_ui : calculé par _add_derived_columns via translate_pair_name (normalisé).
+    # Pas de fallback sur pair_name_fr brut car son format "Mode on Map" n'est pas traduit.
     last_mode_ui = row.get("mode_ui") or normalize_mode_label_fn(
         str(last_pair) if last_pair else None
     )
     last_pair_fr = translate_pair_name(str(last_pair), lang=lang) if last_pair else None
     mode_display = last_mode_ui or last_pair_fr or last_mode or "-"
 
+    _CARD_H = 160
     row_cols = st.columns(3)
-    row_cols[0].metric(" ", map_display)
-    row_cols[1].metric(" ", playlist_display)
-    row_cols[2].metric(" ", mode_display)
+    with row_cols[0]:
+        os_card(t("col_map"), map_display, min_h=_CARD_H)
+    with row_cols[1]:
+        os_card(t("col_playlist"), playlist_display, min_h=_CARD_H)
+    with row_cols[2]:
+        os_card(t("col_mode"), mode_display, min_h=_CARD_H)
 
 
 __all__ = ["render_match_view"]
