@@ -173,6 +173,15 @@ def _render_match_filters(
         st.info(t("no_data_filter"))
         return dff, None
 
+    # Ajouter mode_ui si absent (ctx.df brut sans enrichissement _vectorize_ui_columns)
+    if "mode_ui" not in dff.columns and "pair_name" in dff.columns:
+        dff = dff.with_columns(
+            pl.col("pair_name")
+            .cast(pl.Utf8)
+            .map_elements(normalize_mode_label_fn, return_dtype=pl.Utf8)
+            .alias("mode_ui")
+        )
+
     dates = get_distinct_dates(dff)
     last_date = dates[-1] if dates else date.today()
 
