@@ -504,8 +504,9 @@ La V2 tire les conséquences logiques de ces deux axes et adresse les violations
 | **E** — Résorber les 3 modules > 500L | Violations actives : `maps_outcome.py` 590L, `friends_impact_heatmap.py` 507L, `timeseries.py` 505L | Indépendant | ~3h | ⭐⭐ |
 | **E′** — Surveillance préventive modules 450–500L | `session_compare_charts.py` 498L, `match_view_helpers.py` 495L, `teammates_charts.py` 491L (grossira avec ChartData) | V1 Phase 7 | — (monitorer) | ⭐ |
 | **F** — ChartData solo timeseries | `_rolling_mean` import privé cross-module, magic numbers height incohérents, pas de downsampling centralisé | V1 Phase 7 + Axe E | ~2h | ⭐ |
+| **G** — Titres de graphes externalisés | **74 graphes** ont leur titre embarqué dans la figure Plotly (`apply_halo_plot_style(title=...)`) ; l'utilisateur veut des titres Streamlit au-dessus des graphes | Indépendant | ~4h | ⭐⭐⭐ |
 
-**Total estimé V2 : ~9h** (C ~2h + D ~2h + E ~3h + F ~2h).
+**Total estimé V2 : ~13h** (C ~2h + D ~2h + E ~3h + F ~2h + G ~4h).
 
 ---
 
@@ -740,6 +741,98 @@ class SingleSeriesChartData:
 
 ---
 
+### Axe G — Externaliser les titres des graphes Plotly
+
+#### Diagnostic
+
+Actuellement, le titre de chaque graphe est rendu **à l'intérieur** de la figure Plotly via `apply_halo_plot_style(fig, title=...)` → `fig.update_layout(title=...)`. L'utilisateur veut un rendu identique au pattern "Complémentarité de l'escouade" : titre affiché par Streamlit **au-dessus** du graphe, pas dans le graphe.
+
+```
+# Pattern actuel (titre dans Plotly)
+fig = plot_timeseries(df, title="KDA par match")
+st.plotly_chart(fig, ...)
+
+# Pattern cible (titre Streamlit au-dessus)
+st.subheader("KDA par match")          # ou st.markdown("#### KDA par match")
+fig = plot_timeseries(df)              # title absent / title=None
+st.plotly_chart(fig, ...)
+```
+
+**État du code :**
+
+| Fichier | Appels `apply_halo_plot_style` avec titre non-vide | Notes |
+|---------|--------------------------------------------------|-------|
+| `src/visualization/_antagonist_duels.py` | 4 | titre via param `title` |
+| `src/visualization/_antagonist_kv.py` | 7 | titre via param `title` |
+| `src/visualization/_distributions_advanced.py` | 4 | titre via param `title` |
+| `src/visualization/_perf_cumulative.py` | 6 | titre via param `title` |
+| `src/visualization/_perf_progression.py` | 6 | titre via param `title` |
+| `src/visualization/_perf_session.py` | 3 | titre via param `title` |
+| `src/visualization/_squad_timeline.py` | 1 | titre via param `title` |
+| `src/visualization/_timeseries_progression.py` | 4 | titre via param `title` |
+| `src/visualization/distributions.py` | 6 | titre via param `title` |
+| `src/visualization/distributions_outcomes.py` | 3 (+ 2 à vérifier) | |
+| `src/visualization/friends_impact_heatmap.py` | 2 | |
+| `src/visualization/maps_outcome.py` | ~4 | |
+| `src/visualization/maps.py` | ~2 | |
+| `src/visualization/match_bars.py` | 2 | |
+| `src/visualization/match_impact_timeline.py` | 2 | |
+| `src/visualization/objective_charts.py` | ~4 | |
+| `src/visualization/timeseries.py` | ~4 | dont `title=None` pour certains |
+| `src/visualization/timeseries_combat.py` | ~5 | 7 pages passent `title=None` explicitement |
+| `src/visualization/trio.py` | ~2 | |
+| _Autres_ | ~3 | |
+| **Total** | **~74** | |
+
+**7 call-sites dans les pages passent déjà `title=None` explicitement** (ex: `timeseries.py:237`, `timeseries.py:331`) → ces graphes sont déjà sans titre Plotly, manquent juste le `st.subheader` au-dessus.
+
+**7 call-sites dans les pages passent un titre réel** (`career_lusr.py`, `objective_analysis.py` ×2, `teammates_synergy.py`, `timeseries.py:357`, `win_loss.py` ×2) → titre à migrer vers `st.subheader` / `st.markdown`.
+
+#### Solution en 3 étapes
+
+**G1 — Modifier `apply_halo_plot_style` : déprécier `title`, réduire `margin_top`**
+
+```python
+# theme.py — avant : margin_top = 30 (espace réservé au titre Plotly)
+# après migration : margin_top = 10 (plus de titre à héberger)
+```
+Ajouter un warning de dépréciation sur le param `title` de `apply_halo_plot_style` :
+```python
+if title is not None:
+    import warnings
+    warnings.warn("title= dans apply_halo_plot_style est déprécié — utiliser st.subheader() avant st.plotly_chart()", DeprecationWarning, stacklevel=2)
+    fig.update_layout(title=title)
+```
+
+**G2 — Supprimer `title` dans les 74 fonctions de visualisation**
+
+Dans chaque fonction `plot_xxx(df, ..., title: str | None = None, ...)` :
+- Supprimer le param `title` de la signature (ou le garder avec valeur ignorée transitoirement)
+- Ne plus passer `title` à `apply_halo_plot_style`
+
+**G3 — Ajouter `st.subheader` / `st.markdown` dans les pages appelantes**
+
+Dans chaque `src/ui/pages/*.py`, avant chaque `st.plotly_chart(fig, ...)` qui correspond à un graphe auparavant titré :
+- Si le graphe est seul dans sa section : `st.subheader(t("clé_i18n"))`
+- Si plusieurs graphes sont dans la même section (colonnes) : `st.markdown(f"**{t('clé_i18n')}**")` sur la ligne au-dessus
+
+> **Clés i18n** : les titres existants dans les fonctions `plot_xxx` sont souvent des chaînes hardcodées en français. Les migrer comme clé i18n dans les fichiers `src/ui/i18n/pages/` correspondants, selon la page qui les affiche.
+
+#### Cas particuliers
+
+| Graphe | Situation | Traitement |
+|--------|-----------|-----------|
+| `_radar_teammates.py` — radar complémentarité | Titre dans le Plotly radar (`title={"text": ..., "x": 0.5}`) | Retirer ; le `st.subheader` existe déjà via `_render_radar_display(title=...)` dans `teammates_synergy.py:445` |
+| `plot_win_ratio_heatmap` | Page `win_loss.py:183` passe déjà `title=None` | Ajouter `st.markdown` au-dessus |
+| Graphes dans `match_view` (vue match unique) | Pas de `st.subheader` sur ces pages — contexte compact | Utiliser `st.caption(titre)` plutôt que `st.subheader` pour ne pas surcharger |
+| `plot_objective_ratio_gauge` | Titre hardcodé dans la page (`"% du score sur objectifs"`) | Migrer en clé i18n |
+
+#### Impact sur `config.py` / `get_default_layout_kwargs`
+
+Le `margin_top = 30` dans `PLOT_CONFIG` est dimensionné pour héberger le titre Plotly. Après G2, réduire à `margin_top = 10` pour récupérer l'espace vertical. Ce changement est dans `src/config.py` ou `src/visualization/theme.py:get_default_layout_kwargs`.
+
+---
+
 ## 9. Checklist V2
 
 ### Phase C — Éliminer injection callback fn
@@ -784,6 +877,29 @@ class SingleSeriesChartData:
 - [ ] Migrer les 7 graphes solo listés en §Axe F vers `SingleSeriesChartData`
 - [ ] Tests → vert
 
+### Phase G — Externaliser les titres Plotly → titres Streamlit
+
+> **Ordre recommandé** : G1 en premier (dépréciation + warning), puis G2+G3 par page/domaine fonctionnel.
+
+- [ ] **G1** — `src/visualization/theme.py` : ajouter `DeprecationWarning` sur le param `title` de `apply_halo_plot_style` ; réduire `margin_top` de 30 → 10 dans `src/config.py` (après G2 complète)
+- [ ] **G2a** — Supprimer param `title` dans les fonctions `plot_xxx` de `src/visualization/` — par domaine :
+  - [ ] `_antagonist_duels.py` (4 appels) + `_antagonist_kv.py` (7 appels)
+  - [ ] `_perf_cumulative.py` (6) + `_perf_progression.py` (6) + `_perf_session.py` (3)
+  - [ ] `_distributions_advanced.py` (4) + `distributions.py` (6) + `distributions_outcomes.py` (~5)
+  - [ ] `_timeseries_progression.py` (4) + `timeseries.py` (~4) + `timeseries_combat.py` (~5)
+  - [ ] `_squad_timeline.py` (1) + `maps_outcome.py` (~4) + `maps.py` (~2)
+  - [ ] `match_bars.py` (2) + `match_impact_timeline.py` (2) + `objective_charts.py` (~4)
+  - [ ] `friends_impact_heatmap.py` (2) + `trio.py` (~2) + divers (~3)
+- [ ] **G2b** — Retirer le titre Plotly dans `_radar_teammates.py` (radar complémentarité) — le titre est déjà rendu par `_render_radar_display` via `st.subheader`
+- [ ] **G3** — Dans chaque `src/ui/pages/*.py`, ajouter le titre Streamlit avant chaque `st.plotly_chart` :
+  - [ ] Pages timeseries : `st.subheader` (déjà partiel — compléter les graphes sans titre)
+  - [ ] Pages win_loss, maps, objective_analysis : `st.subheader` / `st.markdown("####")`
+  - [ ] Pages match_view (contexte compact) : `st.caption(titre)` plutôt que `st.subheader`
+  - [ ] Pages teammates, career, session_compare : `st.subheader` / `st.markdown("####")`
+  - [ ] Migrer les 7 titres hardcodés en page vers clés i18n dans `src/ui/i18n/pages/`
+- [ ] **G4** — Réduire `margin_top` de 30 → 10 dans `PLOT_CONFIG` (`src/config.py`) une fois G2 terminé
+- [ ] Tests → vert (visuels à valider manuellement)
+
 ---
 
 ## 10. Branche Git V2
@@ -806,4 +922,12 @@ refactor(viz): split friends_impact_heatmap.py → _heatmap_data.py (Axe E2)
 refactor(viz): split timeseries.py → helpers extraits (Axe E3)
 feat(viz): HEIGHT_* constantes + SingleSeriesChartData (Axe F)
 refactor(viz): migrer graphes solo timeseries vers SingleSeriesChartData (Axe F)
+refactor(viz): déprécier title= dans apply_halo_plot_style (Axe G1)
+refactor(viz): supprimer param title des fonctions plot_xxx — domaine antagonistes/perf (Axe G2a)
+refactor(viz): supprimer param title des fonctions plot_xxx — domaine timeseries/maps/bars (Axe G2a)
+refactor(viz): supprimer param title des fonctions plot_xxx — domaine distributions/impact/divers (Axe G2a-b)
+refactor(ui): ajouter titres Streamlit avant st.plotly_chart — pages timeseries/win_loss/maps (Axe G3)
+refactor(ui): ajouter titres Streamlit avant st.plotly_chart — pages teammates/career/match_view (Axe G3)
+refactor(ui): migrer titres hardcodés vers clés i18n (Axe G3)
+refactor(viz): réduire margin_top 30 → 10 dans PLOT_CONFIG (Axe G4)
 ```
