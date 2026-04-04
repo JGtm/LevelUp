@@ -7,6 +7,21 @@
 
 ## Journal
 
+### [2026-04-04] — feat(viz): Phase 7 — ChartData + migration 5 fonctions escouade — Complété
+
+**Phase 7a** : Créé `src/visualization/_chart_series.py` (203L) avec `MatchSeries`, `ChartData`, `HEIGHT_COMPACT/NORMAL/PM`, `MAX_PLOT_POINTS`, `_add_categorical_record_bars`. Tests : 24 cas (`test_chart_series.py`).
+
+**Phases 7b-7e** : Migration des 5 fonctions de chart vers `ChartData.add_record_overlays()` à la place des appels directs `add_record_shapes` / `add_overlay_record_shapes` :
+- `plot_trio_metric` → 1 ChartData (group, is_negative selon is_inverse)
+- `plot_trio_kills_deaths` → 2 ChartData (kills is_negative=False, deaths is_negative=True)
+- `plot_multi_metric_bars_by_match` → 1 ChartData (per-player xs)
+- `plot_hs_pk_stacked` → 1 ChartData (overlay mode)
+- `_render_per_minute_stats` → 1 ChartData (categorical mode, global_records = tuples)
+
+**Décision** : Phase 7f (suppression anciens kwargs `records`/`colors_by_name`) différée — les callers (`_teammates_trio.py`) ne construisent pas encore de ChartData. Risque: l'interface publique reste inchangée. La valeur de 7b-7e = dispatch centralisé + suppression du boilerplate import-dans-bloc.
+
+**Résultat** : 5533 passed (+44 vs baseline). `trio.py` = 501L → enregistré baseline.
+
 ### [2026-04-04] — test: couverture manquante post-refacto Phases 1-4 — Complété
 
 **Lacunes identifiées** :

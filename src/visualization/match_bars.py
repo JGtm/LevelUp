@@ -11,6 +11,7 @@ import polars as pl
 
 from src.ui.date_formats import FMT_SHORT_DATETIME_FR, FMT_TICK_DATETIME
 from src.ui.i18n.viz import viz_t
+from src.visualization._chart_series import ChartData, MatchSeries
 from src.visualization._compat import DataFrameLike, ensure_polars
 from src.visualization.theme import apply_halo_plot_style, get_legend_horizontal_bottom
 
@@ -345,29 +346,41 @@ def plot_multi_metric_bars_by_match(  # noqa: C901, PLR0912, PLR0913, PLR0915
         return None
 
     if records and _player_xs:
-        from src.visualization._squad_record_shapes import add_record_shapes
         _names_with_data = list(_player_xs.keys())
         _map_names_x = [
             labels[xi].split("<br>", 1)[1] if xi < len(labels) and "<br>" in labels[xi] else None
             for xi in range(len(match_ids_ordered))
         ]
-        _colors: dict[str, str] = colors if isinstance(colors, dict) else {}
-        for _pname, _xs in _player_xs.items():
-            _pm = (
-                {_pname: (records_per_map.get(_pname) or {}).get(metric_col, {})}
-                if records_per_map else None
-            )
-            add_record_shapes(
-                fig,
-                xs=_xs,
-                records={_pname: (records.get(_pname) or {}).get(metric_col)},
-                player_names=_names_with_data,
-                n_players=len(_names_with_data),
-                is_negative=False,
-                colors_by_name=_colors,
-                per_map_records=_pm,
-                map_names_per_x=[_map_names_x[xi] for xi in _xs if xi < len(_map_names_x)],
-            )
+        _colors_mb: dict[str, str] = colors if isinstance(colors, dict) else {}
+        _cd_mb = ChartData(
+            series=[
+                MatchSeries(
+                    name=_pname,
+                    x=_player_xs[_pname],
+                    y=[],
+                    color=_colors_mb.get(_pname, "#35D0FF"),
+                    map_names=[
+                        _map_names_x[xi] for xi in _player_xs[_pname]
+                        if xi < len(_map_names_x)
+                    ],
+                )
+                for _pname in _names_with_data
+            ],
+            x_labels=list(labels),
+            barmode="group",
+            global_records={
+                _pname: (records.get(_pname) or {}).get(metric_col)
+                for _pname in _names_with_data
+            },
+            per_map_records=(
+                {
+                    _pname: (records_per_map.get(_pname) or {}).get(metric_col, {})
+                    for _pname in _names_with_data
+                }
+                if records_per_map else {}
+            ),
+        )
+        _cd_mb.add_record_overlays(fig)
 
     fig.update_layout(
         title=title,
