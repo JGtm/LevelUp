@@ -10,9 +10,9 @@ FUNC:src/analysis/killer_victim.py:220:compute_killer_victim_pairs:91L
 FUNC:src/analysis/sessions.py:169:compute_sessions_with_context_polars:155L
 FUNC:src/analysis/skill_rating.py:194:compute_skill_ratings_batch:198L
 FUNC:src/analysis/win_streaks.py:236:compute_streak_series_polars:96L
-FUNC:src/app/_filters_apply.py:262:_add_derived_columns:132L
-FUNC:src/app/_filters_apply.py:44:apply_filters:215L
-FUNC:src/app/_filters_cascade.py:341:_render_cascade_filters:96L
+FUNC:src/app/_filters_apply.py:260:_add_derived_columns:132L
+FUNC:src/app/_filters_apply.py:44:apply_filters:213L
+FUNC:src/app/_filters_cascade.py:341:_render_cascade_filters:94L
 FUNC:src/app/_filters_session.py:64:_classify_sessions_solo_squad:118L
 FUNC:src/app/filters.py:143:render_session_filters:94L
 FUNC:src/app/filters_render.py:379:render_filters_sidebar:103L

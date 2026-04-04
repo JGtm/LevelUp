@@ -108,8 +108,6 @@ def test_apply_filters_period_updates_result_set() -> None:
         xuid="",
         db_key=None,
         clean_asset_label_fn=lambda s: str(s),
-        normalize_mode_label_fn=lambda s: str(s),
-        normalize_map_label_fn=lambda s: str(s),
     )
 
     assert len(filtered) == 1
@@ -159,8 +157,6 @@ def test_apply_filters_sessions_updates_result_set(monkeypatch: pytest.MonkeyPat
         xuid="123456",
         db_key=(1, 2),
         clean_asset_label_fn=lambda s: str(s),
-        normalize_mode_label_fn=lambda s: str(s),
-        normalize_map_label_fn=lambda s: str(s),
     )
 
     assert sorted(filtered["match_id"].to_list()) == ["m2", "m3"]
@@ -287,8 +283,6 @@ def test_filters_change_dataset_for_key_pages(
         xuid="",
         db_key=None,
         clean_asset_label_fn=lambda s: str(s),
-        normalize_mode_label_fn=lambda s: str(s),
-        normalize_map_label_fn=lambda s: str(s),
     )
 
     assert sorted(filtered["match_id"].to_list()) == expected_match_ids
@@ -336,8 +330,6 @@ def test_filters_change_graph_metric_values() -> None:
         xuid="",
         db_key=None,
         clean_asset_label_fn=lambda s: str(s),
-        normalize_mode_label_fn=lambda s: str(s),
-        normalize_map_label_fn=lambda s: str(s),
     )
     quick_df = apply_filters(
         dff=df,
@@ -346,8 +338,6 @@ def test_filters_change_graph_metric_values() -> None:
         xuid="",
         db_key=None,
         clean_asset_label_fn=lambda s: str(s),
-        normalize_mode_label_fn=lambda s: str(s),
-        normalize_map_label_fn=lambda s: str(s),
     )
 
     assert len(ranked_df) > 0 and len(quick_df) > 0

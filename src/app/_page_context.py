@@ -7,7 +7,7 @@ from __future__ import annotations
 
 from collections.abc import Callable
 from datetime import date
-from typing import Any, NotRequired, TypedDict
+from typing import Any, TypedDict
 
 
 class MatchViewParams(TypedDict):
@@ -25,7 +25,6 @@ class MatchViewParams(TypedDict):
     settings: Any  # AppSettings (évite import circulaire au runtime)
     df_full: Any  # pl.DataFrame
     render_match_view_fn: Callable[..., Any]
-    normalize_mode_label_fn: NotRequired[Callable[[str], str]]  # LEGACY — ignoré
     format_score_label_fn: Callable[..., Any]
     score_css_color_fn: Callable[..., Any]
     format_datetime_fn: Callable[..., Any]
@@ -42,8 +41,6 @@ class FilterSidebarCallbacks(TypedDict):
 
     date_range_fn: Callable[..., tuple[date, date]]
     clean_asset_label_fn: Callable[[str], str]
-    normalize_mode_label_fn: NotRequired[Callable[[str], str]]  # LEGACY — ignoré
-    normalize_map_label_fn: NotRequired[Callable[[str], str]]  # LEGACY — ignoré
     build_friends_opts_map_fn: Callable[..., Any]
 
 
