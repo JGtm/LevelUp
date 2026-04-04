@@ -1345,8 +1345,8 @@ div[data-testid="stNumberInput"] input:focus {
     content: "";
     position: absolute;
     inset: 0;
-    /* Bordure grise subtile */
-    background: rgba(255, 255, 255, 0.25);
+    /* Bordure grise subtile — surchargeable via --card-border-color */
+    background: var(--card-border-color, rgba(255, 255, 255, 0.25));
     clip-path: polygon(
         0 var(--corner-size),
         var(--corner-size) 0,

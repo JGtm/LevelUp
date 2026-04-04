@@ -414,11 +414,11 @@ def os_card(  # noqa: PLR0913
     if center_content:
         style += "display:flex;flex-direction:column;justify-content:center;align-items:center;text-align:center;"
     if accent and _is_valid_css_color(accent):
-        # Pour les couleurs hex, ajouter transparence; pour var(), utiliser directement
+        # Surcharge la couleur de bordure via la variable CSS lue par ::before
         if str(accent).startswith("#"):
-            style += f"border-color:{accent}66;"
+            style += f"--card-border-color:{accent}66;"
         else:
-            style += f"border-color:{accent};"
+            style += f"--card-border-color:{accent};"
     _kpi_css_parts: list[str] = []
     if _is_valid_css_color(kpi_color):
         _kpi_css_parts.append(f"color:{kpi_color}")

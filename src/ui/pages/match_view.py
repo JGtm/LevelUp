@@ -111,42 +111,38 @@ def _render_kpi_cards(  # noqa: PLR0913
         "clip-path:polygon(0 var(--corner-size),var(--corner-size) 0,100% 0,"
         "100% calc(100% - var(--corner-size)),calc(100% - var(--corner-size)) 100%,0 100%);"
     )
-    _card_outer_style = (
-        f"flex:1;{_clip}"
-        "background:rgba(255,255,255,0.25);padding:1px;margin-bottom:10px;"
-    )
     _card_inner_style = (
         "display:flex;flex-direction:column;justify-content:center;align-items:center;"
         f"text-align:center;padding:9px 15px;background:rgba(21,50,62,0.7);height:100%;{_clip}"
     )
-    _card_score_outer_style = (
-        f"flex:1;{_clip}"
-        f"background:{_accent66};padding:1px;margin-bottom:10px;"
-    )
-
     _text_style = "font-family:var(--font-display);font-size:24px;font-weight:400;letter-spacing:0.02em;color:rgba(255,255,255,0.98)"
     _score_kpi = (
-        f"<span class='{outcome_class} fw-bold' style='font-size:38px;line-height:1'>{score_escaped}</span>"
+        f"<span class='{outcome_class} fw-bold' style='font-family:var(--font-display);font-size:38px;line-height:1'>{score_escaped}</span>"
     )
 
     def _simple_card(text: str) -> str:
         return (
-            f"<div style='{_card_outer_style}'>"
-            f"<div style='{_card_inner_style}'>"
+            f"<div class='os-card' style='flex:1;margin-bottom:10px;"
+            f"display:flex;flex-direction:column;justify-content:center;align-items:center;"
+            f"text-align:center;padding:9px 15px;'>"
             f"<div style='{_text_style}'>{html.escape(str(text))}</div>"
-            f"</div>"
             f"</div>"
         )
 
     date_display = format_date_fr(last_time, lang=lang)
 
+    _score_card = (
+        f"<div class='os-card' style='flex:1;margin-bottom:10px;"
+        f"--card-border-color:{_accent66};"
+        f"display:flex;flex-direction:column;justify-content:center;align-items:center;text-align:center;padding:9px 15px;'>"
+        f"{_score_kpi}{badge_html}"
+        f"</div>"
+    )
+
     st.markdown(
         f"<div style='display:flex;gap:8px;align-items:stretch;margin-bottom:0'>"
         f"{_simple_card(date_display)}"
-        f"<div style='{_card_score_outer_style}'>"
-        f"<div style='{_card_inner_style}justify-content:center;align-items:center;'>"
-        f"{_score_kpi}{badge_html}"
-        f"</div></div>"
+        f"{_score_card}"
         f"{_simple_card(playlist_display)}"
         f"{_simple_card(mode_map_display)}"
         f"</div>",
