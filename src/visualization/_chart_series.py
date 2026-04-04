@@ -7,6 +7,7 @@ Centralise :
 - ChartData : container complet pour un graphe multi-joueurs
   - add_record_overlays(fig) : dispatche vers add_record_shapes / add_overlay_record_shapes
   - downsample(max_points) : réduit le nombre de points pour Plotly
+- SingleSeriesChartData : container solo (graphes timeseries / KDA / per-minute)
 
 Pas d'import Streamlit, pas d'accès DB — testable en isolation.
 """
@@ -14,7 +15,7 @@ Pas d'import Streamlit, pas d'accès DB — testable en isolation.
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-from typing import Literal
+from typing import Any, Literal
 
 import plotly.graph_objects as go
 
@@ -22,6 +23,9 @@ import plotly.graph_objects as go
 HEIGHT_COMPACT: int = 320   # barres multi-joueurs (match_bars.py)
 HEIGHT_NORMAL: int = 360    # graphes trio standard (sync avec PLOT_CONFIG.default_height)
 HEIGHT_PM: int = 350        # stats par-minute (_teammates_trio_helpers.py)
+HEIGHT_TIMESERIES: int = 420   # graphes combat, timeseries standard
+HEIGHT_PROGRESSION: int = 400  # courbes LUSR/performance (plus compact)
+HEIGHT_MINI: int = 150         # mini-charts (participation_charts_extra.py)
 
 # ─── Downsampling ─────────────────────────────────────────────────────────────
 MAX_PLOT_POINTS: int = 200  # au-delà Plotly devient lent
@@ -218,3 +222,60 @@ def _add_categorical_record_bars(fig: go.Figure, chart_data: ChartData) -> None:
                 hoverinfo="skip",
             )
         )
+
+
+# ─── SingleSeriesChartData — graphes solo (timeseries, KDA, per-minute) ──────
+
+
+def _rolling_mean_list(
+    values: list[float | None], window: int = 10
+) -> list[float | None]:
+    """Calcule une moyenne glissante sur une liste, sans polars (module pur)."""
+    result: list[float | None] = []
+    for i, v in enumerate(values):
+        if v is None:
+            result.append(None)
+            continue
+        chunk = [x for x in values[max(0, i - window + 1): i + 1] if x is not None]
+        result.append(sum(chunk) / len(chunk) if chunk else None)
+    return result
+
+
+@dataclass
+class SingleSeriesChartData:
+    """Container pour un graphe solo (KDA, per-minute, shots, etc.).
+
+    Centralise :
+    - les données brutes (x, y)
+    - la moyenne glissante pré-calculée (y_smooth)
+    - la hauteur cible du graphe
+    - un titre optionnel
+
+    Pas d'accès DB, pas de Streamlit — testable en isolation.
+    """
+
+    x: list[Any]                    # positions ou timestamps
+    y: list[float | None]           # valeurs métriques brutes
+    y_smooth: list[float | None]    # rolling mean pré-calculée
+    height: int = HEIGHT_TIMESERIES
+    title: str = ""
+
+    @classmethod
+    def from_series(
+        cls,
+        x: list[Any],
+        y: list[float | None],
+        window: int = 10,
+        **kwargs: Any,
+    ) -> SingleSeriesChartData:
+        """Construit un ``SingleSeriesChartData`` avec rolling mean pré-calculée.
+
+        Args:
+            x:      Axe X (timestamps, indices de match, etc.)
+            y:      Valeurs métriques (None = match sans donnée).
+            window: Taille de la fenêtre pour la moyenne glissante.
+            **kwargs: Autres attributs (height, title).
+        """
+        smooth = _rolling_mean_list(y, window)
+        return cls(x=x, y=y, y_smooth=smooth, **kwargs)
+
