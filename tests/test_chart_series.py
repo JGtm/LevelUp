@@ -5,25 +5,32 @@ Couvre :
 - ChartData : propriétés dérivées, downsample, add_record_overlays dispatch
 - _add_categorical_record_bars : logique des ghost bars
 - HEIGHT_* et MAX_PLOT_POINTS : présence des constantes
+- HEIGHT_TIMESERIES / HEIGHT_PROGRESSION / HEIGHT_MINI (Axe F)
+- _rolling_mean_list : calcul sans polars
+- SingleSeriesChartData : construction + from_series
 """
 
 from __future__ import annotations
 
-from unittest.mock import MagicMock, patch
+from unittest.mock import patch
 
 import plotly.graph_objects as go
 import pytest
 
 from src.visualization._chart_series import (
     HEIGHT_COMPACT,
+    HEIGHT_MINI,
     HEIGHT_NORMAL,
     HEIGHT_PM,
+    HEIGHT_PROGRESSION,
+    HEIGHT_TIMESERIES,
     MAX_PLOT_POINTS,
     ChartData,
     MatchSeries,
+    SingleSeriesChartData,
     _add_categorical_record_bars,
+    _rolling_mean_list,
 )
-
 
 # ─── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -65,6 +72,100 @@ class TestConstants:
     def test_max_plot_points_defined(self) -> None:
         assert isinstance(MAX_PLOT_POINTS, int)
         assert MAX_PLOT_POINTS >= 50
+
+    def test_height_timeseries_defined(self) -> None:
+        assert isinstance(HEIGHT_TIMESERIES, int)
+        assert HEIGHT_TIMESERIES > 0
+
+    def test_height_progression_defined(self) -> None:
+        assert isinstance(HEIGHT_PROGRESSION, int)
+        assert HEIGHT_PROGRESSION > 0
+
+    def test_height_mini_defined(self) -> None:
+        assert isinstance(HEIGHT_MINI, int)
+        assert HEIGHT_MINI > 0
+
+    def test_height_ordering(self) -> None:
+        """MINI < PROGRESSION < TIMESERIES (tailles croissantes par usage)."""
+        assert HEIGHT_MINI < HEIGHT_PROGRESSION
+        assert HEIGHT_PROGRESSION <= HEIGHT_TIMESERIES
+
+
+# ─── _rolling_mean_list ────────────────────────────────────────────────────────
+
+class TestRollingMeanList:
+    def test_single_value(self) -> None:
+        assert _rolling_mean_list([10.0]) == [10.0]
+
+    def test_simple_3_values(self) -> None:
+        # Fenêtre glissante : [10], [10,20], [10,20,15]
+        result = _rolling_mean_list([10.0, 20.0, 15.0], window=10)
+        assert result[0] == pytest.approx(10.0)
+        assert result[1] == pytest.approx(15.0)   # (10+20)/2
+        assert result[2] == pytest.approx(15.0)   # (10+20+15)/3
+
+    def test_none_passthrough(self) -> None:
+        result = _rolling_mean_list([1.0, None, 3.0], window=10)
+        assert result[1] is None
+        # Les valeurs None sont ignorées dans le calcul du mean
+        assert result[2] == pytest.approx(2.0)  # (1+3)/2
+
+    def test_all_none(self) -> None:
+        result = _rolling_mean_list([None, None], window=10)
+        assert result == [None, None]
+
+    def test_window_limits(self) -> None:
+        vals = [float(i) for i in range(1, 6)]  # [1,2,3,4,5]
+        result = _rolling_mean_list(vals, window=3)
+        # Fenêtre 3 : [1], [1,2], [1,2,3], [2,3,4], [3,4,5]
+        assert result[0] == pytest.approx(1.0)
+        assert result[1] == pytest.approx(1.5)
+        assert result[2] == pytest.approx(2.0)
+        assert result[3] == pytest.approx(3.0)
+        assert result[4] == pytest.approx(4.0)
+
+    def test_empty_list(self) -> None:
+        assert _rolling_mean_list([]) == []
+
+
+# ─── SingleSeriesChartData ────────────────────────────────────────────────────
+
+class TestSingleSeriesChartData:
+    def test_from_series_basic(self) -> None:
+        obj = SingleSeriesChartData.from_series([1, 2, 3], [10.0, 20.0, 15.0])
+        assert obj.x == [1, 2, 3]
+        assert obj.y == [10.0, 20.0, 15.0]
+        assert len(obj.y_smooth) == 3
+        assert obj.y_smooth[0] == pytest.approx(10.0)
+        assert obj.height == HEIGHT_TIMESERIES
+
+    def test_from_series_height_override(self) -> None:
+        obj = SingleSeriesChartData.from_series([1, 2], [5.0, 10.0], height=HEIGHT_MINI)
+        assert obj.height == HEIGHT_MINI
+
+    def test_from_series_title(self) -> None:
+        obj = SingleSeriesChartData.from_series([1], [3.0], title="KDA")
+        assert obj.title == "KDA"
+
+    def test_from_series_empty(self) -> None:
+        obj = SingleSeriesChartData.from_series([], [])
+        assert obj.x == []
+        assert obj.y == []
+        assert obj.y_smooth == []
+
+    def test_from_series_with_none(self) -> None:
+        obj = SingleSeriesChartData.from_series([1, 2, 3], [1.0, None, 3.0])
+        assert obj.y_smooth[1] is None
+
+    def test_default_title_empty(self) -> None:
+        obj = SingleSeriesChartData.from_series([1], [1.0])
+        assert obj.title == ""
+
+    def test_window_kwarg_forwarded(self) -> None:
+        """window=1 → y_smooth == y (chaque valeur est sa propre moyenne)."""
+        vals = [10.0, 20.0, 30.0]
+        obj = SingleSeriesChartData.from_series([1, 2, 3], vals, window=1)
+        assert obj.y_smooth == pytest.approx(vals)
 
 
 # ─── MatchSeries ──────────────────────────────────────────────────────────────
