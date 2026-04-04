@@ -78,14 +78,14 @@ class TestAppUrl:
 
 class TestNormalizeModeLabel:
     def test_none(self):
-        from src.ui.pages.teammates_helpers import _normalize_mode_label
+        from src.app.helpers import normalize_mode_label
 
-        assert _normalize_mode_label(None) is None
+        assert normalize_mode_label(None) is None
 
     def test_empty(self):
-        from src.ui.pages.teammates_helpers import _normalize_mode_label
+        from src.app.helpers import normalize_mode_label
 
-        assert _normalize_mode_label("") is None
+        assert normalize_mode_label("") is None
 
 
 # ============================================================================
