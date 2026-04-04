@@ -6,9 +6,11 @@ Sortie : timestamp estimé du début du match (ms depuis début d'enregistrement
 
 Algorithme :
 1. Scan des frames de position pour chaque player_index dans chaque chunk.
-2. Premier frame vu = baseline de spawn (joueurs figés pendant le countdown).
-3. Premier frame DIFFÉRENT de la baseline = premier mouvement réel.
-4. Estimation = médiane des timestamps des 3 joueurs les plus précoces.
+2. Détection du début de mouvement soutenu par joueur (find_motion_onset).
+   En lobby, les joueurs font 1-2 changements de caméra puis restent statiques.
+   Au spawn réel, ils commencent à courir = changements continus (N+ dans 2s).
+3. Densest cluster : fenêtre [t, t+2s] où le maximum de joueurs ont leur onset.
+4. Estimation = médiane des timestamps du cluster.
 
 Référentiel : identique à highlight_events.time_ms (t=0 = début enregistrement film).
 """
@@ -32,21 +34,18 @@ _MIN_FRAME_LEN: int = 14
 #: Retard max par rapport au premier référent : au-delà = suspect AFK
 _AFK_THRESHOLD_MS: float = 10_000.0
 
+#: Fenêtre temporelle pour détecter le cluster de spawn (ms).
+#: Au début réel du match, tous les joueurs bougent dans cette fenêtre.
+#: En lobby, les mouvements de caméra sont éparpillés → cluster moins dense.
+_SPAWN_CLUSTER_WINDOW_MS: float = 2_000.0
+
 #: Si l'estimation filmshell est en avance de plus de cette durée (ms)
-#: sur le premier event API, un second passage est déclenchant avec filtre.
-#: Permet d'éliminer les mouvements de lobby (joueurs qui bougent pendant
-#: le countdown avant le début réel du match).
+#: sur le premier event API, un second passage avec ignore_before_ms est déclenché.
+#: Le premier kill/death est une contrainte dure : le match a forcément démarré avant.
 _LOBBY_CORRECTION_THRESHOLD_MS: float = 15_000.0
 
 #: Marge de sécurité avant le premier event lors du second passage (ms).
-#: On cherche les mouvements à partir de (gap_min - cette marge).
 _LOBBY_CORRECTION_BUFFER_MS: float = 10_000.0
-
-#: Décalage minimum entre ignore_before et la nouvelle estimation pour valider
-#: la correction. Évite les faux positifs : si les joueurs bougeaient déjà avant
-#: ignore_before, le premier changement post-ignore est quasi-immédiat (<1 s).
-#: Dans un vrai cas lobby, le vrai départ est plusieurs secondes après ignore_before.
-_LOBBY_CORRECTION_MIN_GAP_MS: float = 5_000.0
 
 _BYTE5_HUMAN: int = 0x40
 _BYTE9_HUMAN: int = 0x56
@@ -115,16 +114,17 @@ def scan_first_movements(
     Algorithme :
     - Le premier frame vu par pi = baseline de spawn (position figée pendant le
       countdown, positions initiales dans la partie).
-    - ``ignore_before_ms`` : si > 0, les changements de position détectés avant
-      ce timestamp (ms) sont ignorés. Permet de sauter les mouvements de lobby
-      lors d'un second passage après correction.
     - Le premier frame DIFFÉRENT de cette baseline = premier mouvement réel.
     - Les chunks sont traités en ordre croissant : chunk_01 fournit la baseline,
       chunk_02+ capturent le premier mouvement si le match démarre plus tard.
+    - ``ignore_before_ms`` : si > 0, les changements détectés avant ce timestamp
+      sont ignorés (mais la signature est quand même mise à jour). Cela permet
+      au second passage de détecter le premier VRAI mouvement après le lobby.
     - Accepte tous les formats stream (b5 quelconque, b9 quelconque).
 
     Args:
         chunks: {chunk_index: (data, start_ms, dur_ms)}.
+        ignore_before_ms: Ignorer les changements avant ce timestamp (ms).
 
     Returns:
         {player_index: FirstMovement} — y_raw/x_raw None si format non-human.
@@ -208,49 +208,158 @@ def pick_spawn_references(
     return references, afk_suspects
 
 
+# ── Pic d'activité simultanée ─────────────────────────────────────────────────
+
+
+def find_peak_activity_window(
+    chunks: dict[int, tuple[bytes, int, int]],
+    window_ms: float = _SPAWN_CLUSTER_WINDOW_MS,
+) -> float | None:
+    """Trouve la fenêtre où le plus de joueurs DISTINCTS sont actifs simultanément.
+
+    Scanne TOUS les changements de signature (pas seulement le premier par joueur).
+    Au spawn réel, TOUS les joueurs se déplacent en même temps → pic maximal.
+    En lobby, les sous-groupes bougent à des moments différents → pic partiel.
+
+    En cas d'égalité de densité : la fenêtre la plus tardive est préférée
+    (lobby précède toujours le spawn réel).
+
+    Args:
+        chunks: {chunk_index: (data, start_ms, dur_ms)}.
+        window_ms: Durée de la fenêtre glissante (défaut: 2000ms).
+
+    Returns:
+        Timestamp (ms) du début de la fenêtre avec le plus de joueurs actifs,
+        ou None si aucun changement détecté.
+    """
+    events: list[tuple[float, int]] = []  # (timestamp_ms, player_index)
+    current_sig: dict[int, bytes] = {}
+
+    for chunk_idx in sorted(chunks):
+        data, start_ms, _ = chunks[chunk_idx]
+        try:
+            packets = index_chunk(data)
+            ts_fn = build_packet_estimator(packets, float(start_ms))
+        except Exception:
+            _s = float(start_ms)
+            ts_fn = lambda _p, _start=_s: _start  # noqa: E731
+
+        pos = 0
+        while True:
+            idx = data.find(FRAME_MARKER, pos)
+            if idx == -1:
+                break
+            pi = _is_position_frame(data, idx)
+            if pi is not None:
+                sig = bytes(data[idx + 9 : idx + 16])
+                if pi not in current_sig:
+                    current_sig[pi] = sig
+                elif sig != current_sig[pi]:
+                    current_sig[pi] = sig
+                    events.append((ts_fn(idx), pi))
+            pos = idx + 1
+
+    if not events:
+        return None
+
+    events.sort()
+    best_ts: float = events[0][0]
+    best_count: int = 0
+
+    for t_start, _ in events:
+        t_end = t_start + window_ms
+        unique = {pi for t, pi in events if t_start <= t <= t_end}
+        if len(unique) > best_count or (len(unique) == best_count and t_start > best_ts):
+            best_count = len(unique)
+            best_ts = t_start
+
+    return best_ts
+
+
+
+def find_densest_spawn_cluster(
+    first_movements: dict[int, FirstMovement],
+    window_ms: float = _SPAWN_CLUSTER_WINDOW_MS,
+) -> tuple[list[tuple[int, FirstMovement]], list[tuple[int, FirstMovement]]]:
+    """Détecte le cluster de spawn le plus dense (vrai début de match).
+
+    Fenêtre glissante sur les premiers mouvements de chaque joueur.
+    La fenêtre [t, t + window_ms] avec le plus grand nombre de joueurs est
+    retenue — au spawn réel, tous les joueurs bougent quasi-simultanément.
+    En lobby, les mouvements de caméra sont éparpillés (1-2 joueurs).
+    En cas d'égalité de densité : la fenêtre la plus tardive est préférée
+    (les mouvements de lobby précèdent toujours le vrai spawn).
+
+    Args:
+        first_movements: {player_index: FirstMovement}.
+        window_ms: Durée de la fenêtre glissante en ms (défaut: 2000ms).
+
+    Returns:
+        (cluster, outside) — chaque liste est [(player_index, FirstMovement)].
+        ``cluster`` : joueurs dans la fenêtre la plus dense.
+        ``outside`` : joueurs hors du cluster (mouvements isolés ou de lobby).
+    """
+    if not first_movements:
+        return [], []
+
+    sorted_items = sorted(first_movements.items(), key=lambda kv: kv[1]["timestamp_ms"])
+    timestamps = [fm["timestamp_ms"] for _, fm in sorted_items]
+
+    best_start_ts: float = timestamps[0]
+    best_count: int = 0
+
+    for t_start in timestamps:
+        count = sum(1 for t in timestamps if t_start <= t <= t_start + window_ms)
+        # Égalité → préférer la fenêtre la plus tardive (lobby < spawn réel)
+        if count > best_count or (count == best_count and t_start > best_start_ts):
+            best_count = count
+            best_start_ts = t_start
+
+    t_end = best_start_ts + window_ms
+    cluster = [(pi, fm) for pi, fm in sorted_items if best_start_ts <= fm["timestamp_ms"] <= t_end]
+    outside = [(pi, fm) for pi, fm in sorted_items if not (best_start_ts <= fm["timestamp_ms"] <= t_end)]
+
+    earliest = cluster[0][1]["timestamp_ms"] if cluster else 0.0
+    for _, fm in cluster:
+        fm["delay_ms"] = fm["timestamp_ms"] - earliest
+    for _, fm in outside:
+        fm["delay_ms"] = fm["timestamp_ms"] - earliest
+
+    return cluster, outside
+
+
 def estimate_film_match_start_ms(
     chunks: dict[int, tuple[bytes, int, int]],
     min_players: int = 3,
     api_first_event_ms: float | None = None,
 ) -> int | None:
-    """Calcule l'estimation du timestamp de début de match dans le film.
+    """Estime le timestamp (ms) du début de match dans le film.
 
-    Valeur = médiane des timestamps de premier mouvement des ``min_players``
-    joueurs les plus précoces (non-AFK).
-
-    Second passage automatique si l'estimation est trop précoce (mouvements
-    de lobby détectés pendant le countdown) :
-    - Si ``api_first_event_ms`` est fourni et que l'écart avec l'estimation
-      dépasse ``_LOBBY_CORRECTION_THRESHOLD_MS``, un second scan est lancé
-      avec ``ignore_before_ms`` positionné juste avant le premier event API.
-    - Ce mécanisme élimine les "faux positifs" où des joueurs bougent
-      légèrement (rotation caméra) pendant le lobby pre-match.
+    Algorithme en deux étapes :
+    1. ``find_peak_activity_window`` scanne TOUS les changements de signature
+       et retient la fenêtre [t, t+2s] où le plus de joueurs distincts sont
+       actifs simultanément. Plus robuste que l'ancien premier-mouvement seul.
+    2. Si ``api_first_event_ms`` est fourni et que le gap dépasse
+       ``_LOBBY_CORRECTION_THRESHOLD_MS``, un second scan est déclenché avec
+       ``ignore_before_ms`` positionné avant le premier event connu.
+       La contrainte dure : aucun kill/death ne peut précéder le début du match.
 
     Args:
         chunks: {chunk_index: (data, start_ms, dur_ms)}.
-        min_players: Nombre minimum de références non-AFK requis.
-            Si moins de joueurs sont détectés, retourne quand même
-            la médiane de ce qui est disponible (avec 1 joueur minimum).
-        api_first_event_ms: Timestamp du premier kill/death API pour ce match
-            (ms, même référentiel que le film). Utilisé pour détecter les
-            estimations trop précoces (mouvements de lobby).
+        min_players: Nombre minimum de références pour le second passage.
+        api_first_event_ms: Timestamp du premier kill/death (même référentiel
+            que le film). Contrainte dure utilisée pour valider et corriger.
 
     Returns:
-        Timestamp en ms (entier) ou None si aucun mouvement détecté.
+        Timestamp en ms (entier) ou None si aucun changement détecté.
     """
-    first_movements = scan_first_movements(chunks)
-    if not first_movements:
+    # Étape 1 : estimation initiale via pic d'activité simultanée
+    peak_ts = find_peak_activity_window(chunks)
+    if peak_ts is None:
         return None
+    estimate = int(peak_ts)
 
-    refs, _ = pick_spawn_references(first_movements, n=min_players)
-    if not refs:
-        refs, _ = pick_spawn_references(first_movements, n=1)
-    if not refs:
-        return None
-
-    estimate = int(statistics.median(fm["timestamp_ms"] for _, fm in refs))
-
-    # Second passage : correction des mouvements de lobby
+    # Étape 2 : correction si l'estimate est trop précoce vs premier event API
     if api_first_event_ms is not None:
         gap_ms = api_first_event_ms - estimate
         if gap_ms > _LOBBY_CORRECTION_THRESHOLD_MS:
@@ -259,10 +368,7 @@ def estimate_film_match_start_ms(
             refs_2, _ = pick_spawn_references(first_movements_2, n=min_players)
             if len(refs_2) >= min_players:
                 estimate_2 = int(statistics.median(fm["timestamp_ms"] for _, fm in refs_2))
-                # N'accepter que si l'estimate est significativement après ignore_before.
-                # Faux positif typique : joueurs actifs avant ignore_before → premier
-                # changement post-ignore quasi-immédiat (< 1 s) → guard rejeté.
-                if estimate_2 - ignore_before > _LOBBY_CORRECTION_MIN_GAP_MS:
+                if estimate_2 > estimate:
                     estimate = estimate_2
 
     return estimate
