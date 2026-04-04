@@ -16,19 +16,13 @@ from __future__ import annotations
 import logging
 from functools import lru_cache
 
+from src.utils.strings import is_uuid_like as _is_uuid_like
+
 logger = logging.getLogger(__name__)
 
 # Labels de fallback pour UUIDs non résolus (metadata.duckdb incomplet)
 _UNKNOWN_PLAYLIST: dict[str, str] = {"fr": "Inconnue", "en": "Unknown"}
 _UNKNOWN_MODE: dict[str, str] = {"fr": "Mode inconnu", "en": "Unknown mode"}
-
-
-def _is_uuid_like(s: str) -> bool:
-    """Vérifie si une chaîne ressemble à un UUID (ex: a446725e-b281-414c-a21e)."""
-    import re
-
-    # UUID complet ou partiel (au moins 8 caractères hex avec tirets)
-    return bool(re.match(r"^[a-f0-9]{8}(-[a-f0-9]{4}){0,3}(-[a-f0-9]{1,12})?$", s.lower()))
 
 
 def translate_playlist_name(name: str | None, lang: str = "fr") -> str | None:

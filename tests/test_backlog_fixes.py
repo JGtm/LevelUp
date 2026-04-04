@@ -184,6 +184,7 @@ class TestMapBreakdownPerformanceScore:
             {
                 "match_id": [f"m{i}" for i in range(n)],
                 "map_name": ["MapA"] * (n // 2) + ["MapB"] * (n // 2),
+                "map_ui": ["MapA"] * (n // 2) + ["MapB"] * (n // 2),
                 "outcome": [2, 3] * (n // 2),  # WIN=2, LOSS=3
                 "kills": [random.randint(3, 15) for _ in range(n)],
                 "deaths": [random.randint(1, 10) for _ in range(n)],

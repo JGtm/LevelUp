@@ -162,8 +162,7 @@ def compute_squad_records_per_map(
     """
     result: dict[str, dict[str, dict[str, float | None]]] = {}
     for name, df in players:
-        _map_col = "map_ui" if df is not None and "map_ui" in df.columns else "map_name"
-        if df is None or df.is_empty() or _map_col not in df.columns:
+        if df is None or df.is_empty() or "map_ui" not in df.columns:
             result[name] = {}
             continue
         sub = df
@@ -172,13 +171,13 @@ def compute_squad_records_per_map(
         if sub.is_empty():
             result[name] = {}
             continue
-        map_names = sub[_map_col].drop_nulls().unique().to_list()
+        map_names = sub["map_ui"].drop_nulls().unique().to_list()
         # Initialise metric → {} for each metric
         by_metric: dict[str, dict[str, float | None]] = {m: {} for m, _ in metrics}
         for map_name in map_names:
             if not map_name:
                 continue
-            map_sub = sub.filter(pl.col(_map_col) == map_name)
+            map_sub = sub.filter(pl.col("map_ui") == map_name)
             for metric, is_neg in metrics:
                 if metric not in map_sub.columns:
                     continue
