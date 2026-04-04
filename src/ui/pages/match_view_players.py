@@ -187,7 +187,7 @@ def render_roster_section(  # noqa: C901, PLR0913
 
 
 @fragment_if_available
-def render_match_impact_section(  # noqa: PLR0913
+def render_match_impact_section(  # noqa: PLR0913, C901, PLR0912
     *,
     match_id: str,
     db_path: str,

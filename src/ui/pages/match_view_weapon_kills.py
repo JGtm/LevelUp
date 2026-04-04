@@ -15,7 +15,7 @@ if TYPE_CHECKING:
 logger = logging.getLogger(__name__)
 
 from src.ui.i18n import t
-from src.ui.streamlit_modern import PLOTLY_STATIC_CONFIG, fragment_if_available
+from src.ui.streamlit_modern import PLOTLY_CLEAN_CONFIG, fragment_if_available
 from src.visualization.theme import apply_halo_plot_style
 
 
@@ -78,40 +78,62 @@ def _render_weapon_pie(df: pl.DataFrame, colors: dict) -> None:
         "#EC407A",
         "#8D6E63",
     ]
+    slice_colors = (palette * ((len(df) // len(palette)) + 1))[: len(df)]
     fig = go.Figure(
         go.Pie(
             labels=df["weapon_name"].to_list(),
             values=df["kills"].to_list(),
             hole=0.35,
-            marker={"colors": palette[: len(df)]},
+            marker={"colors": slice_colors},
             textinfo="percent",
+            textposition="inside",
+            insidetextorientation="horizontal",
             hovertemplate="%{label}<br>%{value} frags (%{percent})<extra></extra>",
             sort=False,
         )
     )
-    apply_halo_plot_style(fig, height=260)
+    apply_halo_plot_style(fig, height=300)
     fig.update_layout(
         margin={"t": 10, "b": 10, "l": 10, "r": 10},
-        showlegend=False,
+        showlegend=True,
+        legend={
+            "orientation": "v",
+            "x": 1.02,
+            "y": 0.5,
+            "xanchor": "left",
+            "yanchor": "middle",
+            "font": {"color": "#dce8ff", "size": 11},
+            "bgcolor": "rgba(0,0,0,0)",
+            "borderwidth": 0,
+        },
     )
-    st.plotly_chart(fig, width="stretch", config=PLOTLY_STATIC_CONFIG)
+    st.plotly_chart(fig, width="stretch", config=PLOTLY_CLEAN_CONFIG)
 
 
 def _render_weapon_table(df: pl.DataFrame) -> None:
-    """Rend le tableau arme / frags."""
+    """Rend le tableau arme / frags avec le style scoreboard (os-sb-*)."""
     col_w = t("mv_weapon_kills_col_weapon")
     col_f = t("mv_weapon_kills_col_frags")
+    col_headers = "".join(
+        f"<th class='os-sb-th'>{h}</th>"
+        for h in [col_w, col_f]
+    )
     rows_html = "".join(
-        f"<tr><td style='padding:4px 12px 4px 0'>{row['weapon_name']}</td>"
-        f"<td style='text-align:right;font-weight:600'>{row['kills']}</td></tr>"
+        f"<tr class='os-sb-row'>"
+        f"<td class='os-sb-td'>{row['weapon_name']}</td>"
+        f"<td class='os-sb-td' style='text-align:right;font-weight:600'>{row['kills']}</td>"
+        f"</tr>"
         for row in df.iter_rows(named=True)
     )
     table_html = (
-        f"<table style='width:100%;border-collapse:collapse;font-size:0.9em'>"
-        f"<thead><tr>"
-        f"<th style='text-align:left;padding:4px 12px 4px 0;color:#888'>{col_w}</th>"
-        f"<th style='text-align:right;color:#888'>{col_f}</th>"
-        f"</tr></thead><tbody>{rows_html}</tbody></table>"
+        "<div style='display:flex;align-items:center;min-height:300px'>"
+        "<div class='os-table-wrap' style='width:100%'>"
+        "<table class='os-table os-scoreboard' style='min-width:0;width:100%'>"
+        f"<thead><tr>{col_headers}</tr></thead>"
+        f"<tbody>{rows_html}</tbody>"
+        "</table>"
+        "</div>"
+        "</div>"
     )
     st.markdown(table_html, unsafe_allow_html=True)
 

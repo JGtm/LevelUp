@@ -21,7 +21,6 @@ from src.ui.formatting import format_date_fr
 from src.ui.i18n import get_lang, t
 from src.ui.pages.match_view_helpers import (
     map_thumb_path,
-    os_card,
 )
 from src.ui.pages.match_view_logic import (
     compute_perf_display,
@@ -60,6 +59,23 @@ def _dominance_badge_html(flag: int | None) -> str:
         f"<span style='display:block;margin-top:1px;padding:3px 10px;"
         f"border-radius:4px;font-size:0.975em;font-weight:600;"
         f"background:{bg};color:{fg}'>{label}</span>"
+    )
+
+
+_KPI_TEXT_STYLE = (
+    "font-family:var(--font-display);font-size:24px;font-weight:400;"
+    "letter-spacing:0.02em;color:rgba(255,255,255,0.98)"
+)
+
+
+def _simple_kpi_card(text: str) -> str:
+    """Carte KPI simple avec texte centré."""
+    return (
+        f"<div class='os-card' style='flex:1;margin-bottom:10px;"
+        f"display:flex;flex-direction:column;justify-content:center;align-items:center;"
+        f"text-align:center;padding:9px 15px;'>"
+        f"<div style='{_KPI_TEXT_STYLE}'>{html.escape(str(text))}</div>"
+        f"</div>"
     )
 
 
@@ -115,19 +131,9 @@ def _render_kpi_cards(  # noqa: PLR0913
         "display:flex;flex-direction:column;justify-content:center;align-items:center;"
         f"text-align:center;padding:9px 15px;background:rgba(21,50,62,0.7);height:100%;{_clip}"
     )
-    _text_style = "font-family:var(--font-display);font-size:24px;font-weight:400;letter-spacing:0.02em;color:rgba(255,255,255,0.98)"
     _score_kpi = (
         f"<span class='{outcome_class} fw-bold' style='font-family:var(--font-display);font-size:38px;line-height:1'>{score_escaped}</span>"
     )
-
-    def _simple_card(text: str) -> str:
-        return (
-            f"<div class='os-card' style='flex:1;margin-bottom:10px;"
-            f"display:flex;flex-direction:column;justify-content:center;align-items:center;"
-            f"text-align:center;padding:9px 15px;'>"
-            f"<div style='{_text_style}'>{html.escape(str(text))}</div>"
-            f"</div>"
-        )
 
     date_display = format_date_fr(last_time, lang=lang)
 
@@ -141,10 +147,10 @@ def _render_kpi_cards(  # noqa: PLR0913
 
     st.markdown(
         f"<div style='display:flex;gap:8px;align-items:stretch;margin-bottom:0'>"
-        f"{_simple_card(date_display)}"
+        f"{_simple_kpi_card(date_display)}"
         f"{_score_card}"
-        f"{_simple_card(playlist_display)}"
-        f"{_simple_card(mode_map_display)}"
+        f"{_simple_kpi_card(playlist_display)}"
+        f"{_simple_kpi_card(mode_map_display)}"
         f"</div>",
         unsafe_allow_html=True,
     )
