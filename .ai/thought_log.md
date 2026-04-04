@@ -9265,3 +9265,38 @@ Correction du bug de seed cascade dans `batch_compute_lusr` (mode incrémental).
 **Résultats** : Madina "Non classé" était à 988.6 (vrai avg ~1843). Après reset complet depuis CSR seed : recalcul propre sans dérive inter-syncs. Le fan-out (`_engine_fanout.py` l.197) bénéficie du fix automatiquement (même code path).
 
 **Prochaine étape** : Commit + PR.
+
+---
+
+### [2026-05-29] — refactor(viz): V2 Axes D + E + F — Complété
+
+**Statut** : Complété  
+**Branche** : `refactor/viz-pipeline-v2`
+
+**Décision technique** :
+Implémentation des axes D, E, F du plan `PLAN_REFACTO_ASSET_TRANSLATIONS_2026-04-02.md` V2.
+
+**Axe D — mode_ui centralisé + _vectorize_ui_columns supprimé** (commit `7d122297`) :
+- **D1** : Ajout du bloc `mode_ui` dans `add_i18n_display_columns` (helper pur `_strip_mode_map_suffix` via regex — 0 accès DB). Strips " on MapName", "- Forge", "- Ranked". Idempotent.
+- **D3** : Suppression de `_vectorize_ui_columns` (67L) dans `_filters_cascade.py` + nettoyage de 5 imports devenus orphelins (Callable, normalize_map_label, normalize_mode_label, build_mapping, translate_playlist_name). `clean_asset_label_fn` retiré de la signature de `_render_cascade_filters` et de son call site.
+- **D4** : Helpers `_rolling_mean`/`_normalize_df` migrés vers `_timeseries_helpers.py`. Deux imports dupliqués mergés dans `timeseries_combat.py` et `_timeseries_progression.py`.
+- 4 nouveaux tests `test_add_i18n_display_columns.py` (13 tests total). 5 534 tests vert.
+
+**Axe E — Split modules > 500L** (commit `31863b59`) :
+- **E1** : `maps_outcome.py` 590L → 363L. Section Option C (bullet charts, 207L) extraite dans `_maps_outcome_bullet.py` (254L). `_sort_by_map_order` déplacée avec le module extrait + réexportée depuis `maps_outcome.py`.
+- **E2** : `friends_impact_heatmap.py` 507L → 358L. Section squad heatmap extraite dans `_heatmap_squad.py` (~168L), avec lazy import pour éviter dépendance circulaire.
+- Baseline : 116 → 114 violations, modules >500L : 15 → 13.
+
+**Axe F — HEIGHT_* constants + SingleSeriesChartData** (commit `64f48fdd`) :
+- `HEIGHT_TIMESERIES=420`, `HEIGHT_PROGRESSION=400`, `HEIGHT_MINI=150` ajoutés dans `_chart_series.py` (source unique pour les magic numbers de hauteur).
+- `_rolling_mean_list()` helper pur (sans polars).
+- `SingleSeriesChartData` dataclass avec `from_series(x, y, window=10)` → calcule `y_smooth` à la construction. Prêt pour migration des graphes timeseries solo (Axe F3, futur).
+- `_chart_series.py` : 223L → 285L. Ruff clean.
+
+**Axe G — Titres Plotly → st.subheader** :
+- Non implémenté dans cette session (74 call-sites, 20+ fichiers). Déféré à la session suivante ou à V3.
+- G1 (DeprecationWarning dans `apply_halo_plot_style`) serait à faible risque si voulu rapidement.
+
+**Résultats** : 3 commits sur  `refactor/viz-pipeline-v2`, 0 régression.
+
+**Prochaine étape** : Axe G ou PR de V2.
