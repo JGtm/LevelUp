@@ -75,7 +75,7 @@ def _render_kpi_cards(  # noqa: PLR0913
     row: dict[str, Any],
     normalize_mode_label_fn: Any,
 ) -> None:
-    """Affiche la rangée KPI unique : Date, Résultat, Playlist, Carte, Mode."""
+    """Affiche la rangée KPI unique : Date, Résultat, Playlist, Mode sur Carte."""
     lang = get_lang()
 
     # Infos carte/playlist/mode
@@ -93,6 +93,8 @@ def _render_kpi_cards(  # noqa: PLR0913
     )
     last_pair_fr = translate_pair_name(str(last_pair), lang=lang) if last_pair else None
     mode_display = last_mode_ui or last_pair_fr or row.get("game_variant_name") or "-"
+    _sep = " sur " if lang == "fr" else " on "
+    mode_map_display = f"{mode_display}{_sep}{map_display}"
 
     outcome_class = (
         "text-win"
@@ -127,7 +129,7 @@ def _render_kpi_cards(  # noqa: PLR0913
             f"</div>"
         )
 
-    date_display = format_date_fr(last_time, lang=lang, compact=True)
+    date_display = format_date_fr(last_time, lang=lang)
 
     st.markdown(
         f"<div style='display:flex;gap:8px;align-items:stretch;margin-bottom:0'>"
@@ -136,8 +138,7 @@ def _render_kpi_cards(  # noqa: PLR0913
         f"{_score_kpi}{badge_html}"
         f"</div>"
         f"{_simple_card(playlist_display)}"
-        f"{_simple_card(map_display)}"
-        f"{_simple_card(mode_display)}"
+        f"{_simple_card(mode_map_display)}"
         f"</div>",
         unsafe_allow_html=True,
     )
