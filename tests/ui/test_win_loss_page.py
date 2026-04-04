@@ -99,6 +99,7 @@ def _make_win_loss_df(
             "kda": np.random.uniform(-5, 10, n).tolist(),
             "outcome": outcomes,
             "map_name": np.random.choice(["Recharge", "Streets", "Live Fire"], n).tolist(),
+            "map_ui": np.random.choice(["Recharge", "Streets", "Live Fire"], n).tolist(),
             "playlist_name": np.random.choice(["Ranked", "Quick Play"], n).tolist(),
             "pair_name": np.random.choice(["Arena: Slayer", "Arena: CTF"], n).tolist(),
             "time_played_seconds": np.random.randint(300, 900, n).tolist(),

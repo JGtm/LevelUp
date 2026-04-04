@@ -24,6 +24,7 @@ def _make_match_df(n: int = 6) -> pl.DataFrame:
         {
             "match_id": [f"m{i}" for i in range(n)],
             "map_name": ["Recharge", "Streets"] * (n // 2),
+            "map_ui": ["Recharge", "Streets"] * (n // 2),
             "start_time": [start + timedelta(hours=i) for i in range(n)],
             "outcome": [2, 3] * (n // 2),
             "kills": [10] * n,

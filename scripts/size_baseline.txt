@@ -14,7 +14,7 @@ FUNC:src/app/_filters_apply.py:267:_add_derived_columns:135L
 FUNC:src/app/_filters_apply.py:43:apply_filters:221L
 FUNC:src/app/_filters_cascade.py:336:_render_cascade_filters:101L
 FUNC:src/app/_filters_session.py:64:_classify_sessions_solo_squad:118L
-FUNC:src/app/filters.py:206:render_session_filters:94L
+FUNC:src/app/filters.py:143:render_session_filters:94L
 FUNC:src/app/filters_render.py:378:render_filters_sidebar:112L
 FUNC:src/app/main_helpers.py:168:render_profile_hero:144L
 FUNC:src/app/profile.py:188:load_profile_assets:108L

@@ -7,6 +7,21 @@
 
 ## Journal
 
+### [2026-04-04] — fix(tests): fixtures manquantes map_ui + tests orphelins — Complété
+
+**Problème** : Phase 4 (maps.py / squad_records.py) a rendu `map_ui` obligatoire comme clé de groupement. 10 fixtures de tests créées avant cette migration ne contenaient pas la colonne → `ColumnNotFoundError` dans 14 tests. Également 3 tests importaient la fonction `_normalize_mode_label` supprimée (Phase 3), et 1 test testait `add_ui_columns` supprimée (Phase 2).
+
+**Décision** : 
+- Ajouter garde défensive dans `compute_map_breakdown` : si `map_ui` absent → retourner DataFrame vide (cohérent avec le cas `is_empty()`).
+- Ajouter `map_ui` dans 7 fixtures de tests (`test_data_services_contracts`, `test_squad_map_heatmap`, `test_polars_migration`, `test_i18n_derived_columns`, `test_teammates_map_charts`, `test_win_loss_page`).
+- Rediriger 3 tests qui importaient `_normalize_mode_label` supprimée → `normalize_mode_label` de `src.app.helpers`.
+- Supprimer `test_add_ui_columns_polars` (teste une fonction morte).
+- Mettre à jour `test_groups_by_map_name_when_no_map_ui` : ancienne assertion (grouper par map_name) → nouvelle assertion (`result.is_empty()`).
+
+**Résultat** : 5489 passed, 4 skipped, 6 failed (tous pre-existants hors de notre scope : `test_ruff_no_errors`, `TestSharedHighlightEvents` ×3, `test_resolution_views`, `test_scoreboard_expand` ×2).
+
+**Prochaine étape** : V1 Phase 7 (Axe B ChartData), V2 Axes C-G.
+
 ### [2026-04-04] — fix: mode_ui absent dans le dropdown Mode de la page Explorer — Complété
 
 **Problème** : La liste déroulante "Mode" de la page Explorer affichait les valeurs brutes (`pair_name` DB) au lieu des libellés normalisés (ex. "Arena:Slayer on Aquarius" au lieu de "Assassin").
