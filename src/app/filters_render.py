@@ -456,7 +456,6 @@ def render_filters_sidebar(  # noqa: PLR0913
         end_d=end_d,
         picked_session_labels=picked_session_labels,
         base_s_ui=base_s_ui,
-        clean_asset_label_fn=clean_asset_label_fn,
     )
 
     _auto_save_preferences(

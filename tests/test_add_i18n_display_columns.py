@@ -2,7 +2,7 @@
 
 Vérifie :
 - Priorité aux colonnes map_name_fr/playlist_name_fr sur les colonnes EN
-- mode_ui n'est PAS calculé ici (pair_name_fr brut ≠ traduction normalisée)
+- mode_ui calculé depuis pair_name_fr via _strip_mode_map_suffix (pur, sans DB)
 - Idempotence (colonnes existantes non recalculées)
 - Comportement en lang="en" (passthrough)
 - DataFrame vide retourné intact
@@ -39,11 +39,31 @@ class TestAddI18nDisplayColumns:
         assert "playlist_ui" in out.columns
         assert out["playlist_ui"].to_list() == ["Jeu rapide", "Arène classée"]
 
-    def test_mode_ui_not_computed_here(self) -> None:
-        """mode_ui ne doit pas être créé : pair_name_fr brut n'est pas normalisé."""
-        df = _base_df(pair_name_fr=["Arena:Slayer on Cliffhanger - Forge", "Ranked:Slayer"])
+    def test_mode_ui_computed_from_pair_name_fr(self) -> None:
+        """mode_ui est calculé via _strip_mode_map_suffix : supprime ' on Carte' + Forge/Ranked."""
+        df = _base_df(pair_name_fr=["Slayer on Cliffhanger - Forge", "Slayer - Ranked"])
         out = add_i18n_display_columns(df, lang="fr")
-        assert "mode_ui" not in out.columns
+        assert "mode_ui" in out.columns
+        assert out["mode_ui"].to_list() == ["Slayer", "Slayer"]
+
+    def test_mode_ui_strips_on_suffix_only(self) -> None:
+        """Vérifie que seul le ' on MapName' est supprimé, pas les variantes."""
+        df = _base_df(pair_name_fr=["Capture the Flag on Bazaar", "Slayer"])
+        out = add_i18n_display_columns(df, lang="fr")
+        assert out["mode_ui"].to_list() == ["Capture the Flag", "Slayer"]
+
+    def test_mode_ui_fallback_to_pair_name_when_fr_absent(self) -> None:
+        """Sans pair_name_fr, mode_ui utilise pair_name (passthrough)."""
+        df = _base_df()  # pas de pair_name_fr
+        out = add_i18n_display_columns(df, lang="fr")
+        assert "mode_ui" in out.columns
+        assert out["mode_ui"].to_list() == ["Quick Play:Slayer", "Ranked:Slayer"]
+
+    def test_mode_ui_idempotent(self) -> None:
+        """Si mode_ui existe déjà, il n'est pas recalculé."""
+        df = _base_df(pair_name_fr=["Slayer on Bazaar", "Slayer"], mode_ui=["EXISTING", "EXISTING"])
+        out = add_i18n_display_columns(df, lang="fr")
+        assert out["mode_ui"].to_list() == ["EXISTING", "EXISTING"]
 
     def test_map_ui_fallback_to_en_when_fr_col_absent(self) -> None:
         df = _base_df()  # pas de colonnes _fr

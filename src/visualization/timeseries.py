@@ -12,32 +12,11 @@ from src.ui.i18n.viz import viz_t
 from src.visualization._compat import (
     DataFrameLike,
     ensure_polars,
-    ensure_polars_series,
     smart_scatter,
 )
 from src.visualization._permin_helpers import build_symmetric_abs_ticks
+from src.visualization._timeseries_helpers import _rolling_mean
 from src.visualization.theme import apply_halo_plot_style, get_legend_horizontal_bottom
-
-
-def _normalize_df(df: DataFrameLike) -> pl.DataFrame:
-    """Normalise un DataFrame en Polars (compat arrière)."""
-    return ensure_polars(df)
-
-
-def _rolling_mean(series: pl.Series, window: int = 10) -> pl.Series:
-    """Calcule la moyenne mobile.
-
-    Args:
-        series: Série Polars (accepte aussi Pandas pour compat arrière).
-        window: Taille de la fenêtre.
-
-    Returns:
-        Série Polars avec moyenne mobile.
-    """
-    w = int(window) if window and window > 0 else 1
-    if not isinstance(series, pl.Series):
-        series = ensure_polars_series(series)
-    return series.rolling_mean(window_size=w, min_samples=1)
 
 
 def _build_kda_customdata(d: pl.DataFrame, lang: str = "fr") -> tuple[list, str]:
