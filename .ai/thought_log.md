@@ -19,6 +19,17 @@
 
 **Résultat** : Aucune erreur pylance. Le dropdown Mode affichera désormais les modes normalisés (FR/EN selon la langue).
 
+### [2026-04-04] — plan: ajout Axe G (titres graphes externalisés) — Complété
+
+**Statut** : Complété
+
+**Décision technique** :
+L'utilisateur veut supprimer les titres embarqués dans les figures Plotly (`apply_halo_plot_style(title=...)`) et les remplacer par des titres Streamlit au-dessus des graphes (`st.subheader` / `st.markdown("####")`), sur le modèle du titre "Complémentarité de l'escouade". Scan : 74 appels avec titre non-vide, `margin_top=30` dans `PLOT_CONFIG` à réduire à 10 après migration. Plan G1→G4 ajouté.
+
+**Branche** : `fix/map-ui-fr-mismatch`
+
+---
+
 ### [2026-04-04] — plan: vérification exhaustive + corrections post-scan — Complété
 
 **Statut** : Complété
