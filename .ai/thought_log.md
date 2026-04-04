@@ -7,6 +7,29 @@
 
 ## Journal
 
+### [2026-04-04] — plan: vérification exhaustive + corrections post-scan — Complété
+
+**Statut** : Complété
+
+**Décision technique** :
+Vérification exhaustive du plan (V1 + V2) contre l'état réel du codebase via agent Explore + lectures ciblées.
+
+**Corrections apportées :**
+- `main_helpers.py:373` → `:375` (décalé de 2 lignes)
+- Phases 5 et 6 marquées ✅ (armes déjà DB-first, cache playlist déjà sous @st.cache_data via hiérarchie d'appels)
+- Phase 0 : `TeammatesService.load_teammate_stats` n'appelle pas `add_i18n_display_columns` — SQL fetch `map_name_fr`/`pair_name_fr` mais `map_ui` absent du df retourné → item rouvert
+- Axe C : 28 → **49 occurrences** réelles (+75% ; 7 fichiers, répartition documentée)
+- Axe D : `_vectorize_ui_columns` est une version **simplifiée** (59L) de `_add_derived_columns` (135L), pas copie identique — D3 nécessite validation mode_ui avant suppression
+- Axe E : clarification périmètre — les 3 modules > 500L trouvés par le scan (`_weapon_kills_repo.py`, `teammates_service.py`, `weapon_parser.py`) sont déjà dans `size_baseline.txt`, hors scope de ce plan
+- Axe E′ : ajout `session_compare.py` (538L, déjà baseline, déjà dépassé)
+- `import pandas` dans `distributions.py` : sous garde `TYPE_CHECKING` — pas une violation
+
+**Résultats** : Plan à jour, aucune omission identifiée dans le périmètre visualization/UI/i18n.
+
+**Branche** : `fix/map-ui-fr-mismatch`
+
+---
+
 ### [2026-04-04] — plan: ajout V2 (Axes C/D/E/F) au plan refacto asset-translations — Complété
 
 **Statut** : Complété

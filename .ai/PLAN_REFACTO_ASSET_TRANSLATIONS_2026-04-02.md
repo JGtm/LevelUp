@@ -111,7 +111,7 @@ Avec `add_i18n_display_columns` appliqué dès le chargement, l'Item 3 se rédui
 ```
 load_df_optimized()            → df brut (map_name_fr présent, map_ui absent)
        ↓
-add_i18n_display_columns(df, lang)   ← EN PLACE dans main_helpers.py:373
+add_i18n_display_columns(df, lang)   ← EN PLACE dans main_helpers.py:375
        ↓
 df enrichi (map_ui, playlist_ui présents) ← stocké dans session_state ✅
        ↓
@@ -366,8 +366,8 @@ Les graphes solo de la page Timeseries (§3 de `CHARTS_AND_TABLES.md`) suivent l
 | 4 | A | Découpler `normalize_mode_label` de `st.session_state` | `helpers.py`, `streamlit_app.py` (3 sites) | 45 min | Modéré | ⏳ |
 | 2 | A | Supprimer `_normalize_mode_label` (après item 4) | `teammates_helpers.py` | 10 min | Faible | ⏳ |
 | 3 | A | Supprimer `add_ui_columns` + guards `_map_col` / `maps.py` | 3 fichiers | 30 min | Faible | ⏳ |
-| 5 | A | **Aucun code** — valider + barrer le backlog | — | 5 min | Nul | ⏳ |
-| 6 | A | Vérifier cache `build_mapping` dans `cache_filters.py` | `cache_filters.py` si absent | 15 min | Nul | ⏳ |
+| 5 | A | **Aucun code** — valider + barrer le backlog | — | 5 min | Nul | ✅ Fait |
+| 6 | A | Vérifier cache `build_mapping` dans `cache_filters.py` | — | 15 min | Nul | ✅ Fait |
 | **7a** | B | **Créer `src/visualization/_chart_series.py`** | `_chart_series.py` (new) | **1h** | **Faible** | ⏳ |
 | 7b | B | Migrer `plot_trio_metric` + `plot_trio_kills_deaths` | `trio.py`, `teammates_charts.py` | 1h30 | Modéré | ⏳ |
 | 7c | B | Migrer `plot_multi_metric_bars_by_match` | `match_bars.py` | 45 min | Modéré | ⏳ |
@@ -375,7 +375,7 @@ Les graphes solo de la page Timeseries (§3 de `CHARTS_AND_TABLES.md`) suivent l
 | 7e | B | Migrer `_render_per_minute_stats` + ghost bars catégoriels | `_teammates_trio_helpers.py` | 45 min | Modéré | ⏳ |
 | 7f | B | Supprimer anciens kwargs (après 7b-7e) | 5 fichiers | 30 min | Faible | ⏳ |
 
-**Total estimé restant : ~5h30** (Axe A ~1h40 + Axe B ~4h20, Phase 0 déjà faite).
+**Total estimé restant : ~5h** (Phases 1→4 ~40min + TeammatesService ~15min + Phase 7 ~4h20, Phases 0/5/6 déjà faites).
 
 ---
 
@@ -384,9 +384,9 @@ Les graphes solo de la page Timeseries (§3 de `CHARTS_AND_TABLES.md`) suivent l
 ### Phase 0 — Couche centralisée `src/app/i18n_columns.py` ✅ COMPLÉTÉE
 
 - [x] Créer `src/app/i18n_columns.py` avec `add_i18n_display_columns(df, lang="fr")` — idempotente, 0 import Streamlit
-- [x] Dans `main_helpers.py:373` : appelée juste après `load_df_optimized()`
+- [x] Dans `main_helpers.py:375` : appelée juste après `load_df_optimized()`
 - [x] Hotfixes UI dans `win_loss.py`, `teammates_views.py`, `friends_impact_heatmap.py`, `_teammates_trio.py`, requêtes SQL teammates — supprimés
-- [ ] ~~`TeammatesService.load_teammate_stats`~~ : à vérifier si `fr_sub` hérite déjà de `map_ui` via le pipeline
+- [ ] `TeammatesService.load_teammate_stats` (`src/data/services/teammates_service.py`) : la requête SQL inclut déjà `map_name_fr` et `pair_name_fr` (L111-112), mais `add_i18n_display_columns` n'est **pas** appelée sur le df retourné → `map_ui` absent. À corriger : appeler `add_i18n_display_columns(df, lang)` avant le `return` dans cette méthode.
 - [ ] Écrire `tests/test_i18n_columns.py` : `map_ui` = `map_name_fr` si présent, fallback sinon, idempotence
 - [ ] Tests → vert
 
@@ -425,15 +425,15 @@ Les graphes solo de la page Timeseries (§3 de `CHARTS_AND_TABLES.md`) suivent l
 - [ ] **Nouveau** : supprimer la guard dans [maps.py:89-90](src/analysis/maps.py#L89) → `"map_ui"` direct
 - [ ] Tests → vert
 
-### Phase 5 — Validation armes (Item 5)
+### Phase 5 — Validation armes (Item 5) ✅ COMPLÉTÉE
 
-- [ ] Lire `src/analysis/_weapon_data.py` L265–L295 → confirmer DB-first en place
-- [ ] Barrer item 5 dans `.ai/BACKLOG.md`
+- [x] `src/analysis/_weapon_data.py:265` — `resolve_weapon_display` est bien DB-first (confirmé : appel `_resolve_weapon_cached()` en premier, fallback dicts Python)
+- [x] Barrer item 5 dans `.ai/BACKLOG.md`
 
-### Phase 6 — Cache playlist (Item 6)
+### Phase 6 — Cache playlist (Item 6) ✅ COMPLÉTÉE
 
-- [ ] Vérifier `cache_filters.py` : `build_mapping(dfr["playlist_name"], translate_playlist_name)` sous `@st.cache_data` ?
-- [ ] Si oui : barrer item 6. Si non : ajouter le cache.
+- [x] Confirmé : `build_mapping(dfr["playlist_name"], translate_playlist_name)` dans `cache_filters.py:102` est appelée à l'intérieur de `_translate_playlist_pair_columns` (L95) → appelée par `_build_friend_df_from_match_ids_v4` → appelée par `cached_friend_matches_df` décorée `@st.cache_data`. Le cache est en place via la hiérarchie d'appels.
+- [x] Barrer item 6 dans `.ai/BACKLOG.md`
 
 ### Phase 7 — Abstraction ChartData ⭐ AXE B
 
@@ -499,7 +499,7 @@ La V2 tire les conséquences logiques de ces deux axes et adresse les violations
 
 | Axe | Problème | Dépendance V1 | Effort | Valeur |
 |-----|---------|--------------|--------|--------|
-| **C** — Éliminer injection callback fn | `normalize_*_fn` transite encore comme Callable dans 28 sites | Phase 2 terminée | ~2h | ⭐⭐⭐ |
+| **C** — Éliminer injection callback fn | `normalize_*_fn` transite encore comme Callable dans **49 sites** (7 fichiers) | Phase 2 terminée | ~2h | ⭐⭐⭐ |
 | **D** — `mode_ui` centralisé + `_add_derived_columns` démantelée | God function noqa: C901/PLR0912, logique dupliquée dans `_filters_cascade` | Phase 2 + Axe C | ~2h | ⭐⭐⭐ |
 | **E** — Résorber les 3 modules > 500L | Violations actives : `maps_outcome.py` 590L, `friends_impact_heatmap.py` 507L, `timeseries.py` 505L | Indépendant | ~3h | ⭐⭐ |
 | **E′** — Surveillance préventive modules 450–500L | `session_compare_charts.py` 498L, `match_view_helpers.py` 495L, `teammates_charts.py` 491L (grossira avec ChartData) | V1 Phase 7 | — (monitorer) | ⭐ |
@@ -524,17 +524,19 @@ streamlit_app.py
           → match_view.py, explorer.py
 ```
 
-**Sites effectifs identifiés (28 occurrences) :**
+**Sites effectifs identifiés (49 occurrences, 7 fichiers) :**
 
 | Fichier | Occurrences | Nature |
 |---------|-------------|--------|
-| `src/app/filters_render.py` | L389, L390, L403, L404, L466, L467 | extraction depuis callbacks dict + transmission |
-| `src/app/_filters_apply.py` | L77–80, L155, L161, L386, L389, L426, L428 | fallback `_identity`, transmission, utilisation |
-| `src/app/_filters_cascade.py` | L198, L218, L344–345, L360–361 | `build_mapping(...)` avec la fn injectée |
-| `src/app/page_router.py` | L101, L121 | construction du dict |
-| `src/app/_page_context.py` | L28, L45, L46 | typage TypedDict |
-| `src/ui/pages/explorer.py` | L65, L227, L345 | extraction + appel |
-| `src/ui/pages/match_view.py` | L238, L286, L303, L440 | propagation + appel |
+| `src/app/_filters_apply.py` | 16 | fallback `_identity`, transmission, utilisation |
+| `src/app/filters_render.py` | 10 | extraction depuis callbacks dict + transmission |
+| `src/app/_filters_cascade.py` | 8 | `build_mapping(...)` avec la fn injectée |
+| `src/app/_page_context.py` | 3 | typage TypedDict |
+| `src/ui/pages/explorer.py` | 5 | extraction + appel |
+| `src/ui/pages/match_view.py` | 5 | propagation + appel |
+| `src/app/page_router.py` | 2 | construction du dict |
+
+> **Écart vs estimation initiale** : 49 occurrences réelles vs 28 annoncées (+75%). L'effort ~2h reste valide car les sites sont mécaniques (find/replace guidé par les TypedDict), mais la revue est plus large qu'anticipée.
 
 #### Solution
 
@@ -567,7 +569,7 @@ normalize_mode_label(pair_name, lang=get_lang())
 | Fichier | Fonction | Violation |
 |---------|---------|-----------|
 | `src/app/_filters_apply.py:267` | `_add_derived_columns` | `# noqa: C901, PLR0912` |
-| `src/app/_filters_cascade.py:170` | `_vectorize_ui_columns` | logique identique |
+| `src/app/_filters_cascade.py:170` | `_vectorize_ui_columns` | version **simplifiée** (59L vs 135L) : calcule seulement `playlist_ui`, `mode_ui`, `map_ui` sans `playlist_fr` ni `pair_fr`, avec logique facettée intégrée |
 
 Après Axe C, `normalize_mode_label` est pure → `mode_ui` peut rejoindre `i18n_columns.py` via `coalesce([pair_name_fr, pair_name])` + normalisation, exactement comme `map_ui`.
 
@@ -593,7 +595,7 @@ def _compute_playlist_ui_column(dff, lang) -> pl.Expr: ...
 ```
 
 **D3 — Supprimer `_vectorize_ui_columns` dans `_filters_cascade.py`**
-Remplacer par un appel à `add_i18n_display_columns(dropdown_base, lang)` — même résultat.
+⚠️ N'est pas une copie identique de `_add_derived_columns` — c'est une version simplifiée (59L vs 135L) qui ne calcule pas `playlist_fr` / `pair_fr`. La remplacer par `add_i18n_display_columns(dropdown_base, lang)` couvre les colonnes UI (`map_ui`, `playlist_ui`) mais il faudra vérifier que `mode_ui` (D1) est aussi produit avant de supprimer `_vectorize_ui_columns`.
 
 **D4 — Déplacer `_rolling_mean` vers `_timeseries_helpers.py`**
 Actuellement défini dans `timeseries.py:27` et importé comme private depuis `timeseries_combat.py:23` (`from src.visualization.timeseries import _rolling_mean`). Import d'un symbole privé cross-module = dette. Le déplacer dans `_timeseries_helpers.py` où il rejoint `apply_chrono_xaxis` et `prepare_time_axis`.
@@ -632,19 +634,40 @@ Les helpers utilitaires migrent vers `_timeseries_helpers.py` (déjà existant) 
 
 Résultat : `timeseries.py` ne garde que les 4 fonctions publiques (`plot_timeseries`, `plot_assists_timeseries`, `plot_per_minute_timeseries`, `plot_accuracy_last_n`) → ~270L.
 
+#### Périmètre de l'Axe E — modules hors scope (baseline connue)
+
+`size_baseline.txt` documente les violations connues et acceptées en dehors du domaine visualisation/UI. Ces modules NE sont PAS dans le scope de ce plan :
+
+| Module | Lignes (baseline) | Domaine | Raison hors scope |
+|--------|-----------------|---------|------------------|
+| `src/data/sync/engine.py` | 688L | sync | Architecture mixins déjà en place |
+| `src/data/sync/transformers/_match.py` | 577L | sync | Transformers données brutes API |
+| `src/data/repositories/_weapon_kills_repo.py` | 567L | repo | Domaine persistence |
+| `src/data/sync/_match_processing.py` | 559L | sync | — |
+| `src/data/sync/api_client.py` | 557L | sync | — |
+| `src/data/sync/transformers/_helpers.py` | 515L | sync | — |
+| `src/data/sync/_engine_connections.py` | 510L | sync | — |
+| `src/data/services/teammates_service.py` | 537L | services | Domaine service (dette connue) |
+| `src/analysis/weapon_parser.py` | 502L | analysis | Domaine analyse armes |
+
+> Ces modules sont documentés dans `scripts/size_baseline.txt` comme dette technique connue. Les réduire est souhaitable mais relève d'un plan de refacto dédié (`refactor/sync-engine-cleanup`, etc.), pas de ce plan.
+
+> **Note** : `src/visualization/distributions.py` contient `import pandas as pd` mais **sous garde `TYPE_CHECKING`** — c'est le pattern correct pour les annotations de type uniquement, pas une violation.
+
 #### Modules 450–500L à surveiller (Axe E′)
 
-Ces modules ne violent pas encore la règle mais sont à risque, en particulier `teammates_charts.py` qui recevra du code lors de la migration ChartData (V1 Phase 7) :
+Ces modules ne violent pas encore la règle mais sont à risque. Ceux marqués (baseline) sont déjà documentés comme dette connue :
 
-| Module | Lignes | Risque | Action préventive |
-|--------|--------|--------|-----------------|
-| `session_compare_charts.py` | 498L | Élevé — 1 commit peut dépasser | Split `_session_compare_annotations.py` prêt |
-| `match_view_helpers.py` | 495L | Élevé | Split `_match_view_kpi.py` si dépasse |
-| `teammates_charts.py` | 491L | Élevé — grossira avec ChartData | Mesurer après V1 Phase 7 ; split si > 500L |
-| `match_impact_timeline.py` | 482L | Modéré — 2 god functions (C901+PLR0912+PLR0913+PLR0915) | `_match_impact_trace_builders.py` si dépasse |
-| `timeseries_combat.py` | 481L | Modéré | `_timeseries_combat_helpers.py` si dépasse |
-| `_perf_progression.py` | 476L | Faible | — |
-| `_perf_session.py` | 470L | Faible | — |
+| Module | Lignes | Baseline | Risque | Action préventive |
+|--------|--------|----------|--------|-----------------|
+| `session_compare.py` | 538L | ✅ oui | Déjà dépassé | Split `_session_compare_kpi.py` lors du prochain touch |
+| `session_compare_charts.py` | 498L | non | Élevé — 1 commit peut dépasser | Split `_session_compare_annotations.py` prêt |
+| `match_view_helpers.py` | 495L | non | Élevé | Split `_match_view_kpi.py` si dépasse |
+| `teammates_charts.py` | 491L | non | Élevé — grossira avec ChartData | Mesurer après V1 Phase 7 ; split si > 500L |
+| `match_impact_timeline.py` | 482L | non | Modéré — 2 god functions (C901+PLR0912+PLR0913+PLR0915) | `_match_impact_trace_builders.py` si dépasse |
+| `timeseries_combat.py` | 481L | non | Modéré | `_timeseries_combat_helpers.py` si dépasse |
+| `_perf_progression.py` | 476L | non | Faible | — |
+| `_perf_session.py` | 470L | non | Faible | — |
 
 > `match_impact_timeline.py` mérite une attention particulière : `plot_match_kill_death_timeline` et `plot_all_players_frags_timeline` ont toutes deux 3–4 violations noqa simultanées (C901, PLR0912, PLR0913, PLR0915). Non adressé dans V1. Si le fichier dépasse 500L, extraire les builders de traces dans `_match_impact_trace_builders.py`.
 
