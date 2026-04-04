@@ -7,6 +7,44 @@
 
 ## Journal
 
+### [2026-04-04] — fix(spawn_detection): exclure frames b5=0x00 (game-state) + investigation filmshell — Complété
+
+**Contexte** : Exploration du repo filmshell (dend/filmshell) pour améliorer la détection du début de match. Investigation approfondie du format des frames de position Halo Infinite.
+
+**Découvertes critiques (filmshell motion-extraction.md + motion-extractor.ts)** :
+1. **Format confirmé** : marker `A0 7B 42`, b5=0x40, b6=(pi<<5|base), b7=0x00 (humain), b9=0x56, d0hnib=4, coords Y 16-bit / X 12-bit
+2. **3 variantes d'encodage** : standard base=0x09 (Live Fire, Aquarius), b3variant (Argyle), 40088064 (Bazaar)
+3. **`DISCONTINUITY_THRESHOLD=4000`** : utilisé par filmshell pour filtrer les téléportations (spawn/mort), PAS pour les détecter
+4. **Frames `b5=0x00, base=0x0A`** : frames game-state (timer, score, objectif) répétés en lobby avec b9 variable → faux sig-changes. Ces frames ont d0=0x0A, d1-d3=0x00 CONSTANTS mais b9 varie → détection incorrecte de mouvement à 2.5s
+
+**Hypothèse testée** : Filtre strict b5=0x40 + d0hnib=4 (aligné sur filmshell) → élimine tots les frames lobby.
+**Résultat** : Trop restrictif. Certains modes (ex: type `b5=0x80, base=0x0B`) utilisent des formats non-standard AUSSI BIEN en lobby qu'en match → le filtre strict donne 31% à 5s vs 47% baseline.
+
+**Correction minimale retenue** : Exclure UNIQUEMENT `b5=0x00` dans `_is_position_frame` :
+- Marginal improvement : 47% → 48% à 5s (non-régressif sur tous les modes)
+- N'aide pas pour Fortress (lobby via `b5=0x80` frames) car API correction gère ce cas
+- Confirmation : avec `api_first_event_ms~35s`, Fortress donne 34.1s (≈ attendu 33s) ✓
+
+**Tiebreak restauré** : "Préférer la fenêtre tardive" est correct pour le filtre permissif utilisé (lobby < spawn). Le changement vers "précoce" était wrong.
+
+**Conclusion** : L'API correction (`api_first_event_ms` dans `estimate_film_match_start_ms`) est l'outil principal pour corriger les faux positifs de lobby. La correction b5!=0x00 est un gain marginal sur les cas où des frames game-state pur (b5=0x00) créent des fax positifs.
+
+**Fichiers modifiés** : `src/analysis/spawn_detection.py` (correction `_is_position_frame`)
+
+---
+
+### [2026-04-04] — fix(match_view): harmoniser police des cards KPI du haut avec card MMR — Complété
+
+**Décision** : Deux incohérences de police dans `_render_kpi_cards` (match_view.py) :
+1. `_text_style` avait `font-size:24px` alors que `.os-card-kpi` est à `28px` → taille harmonisée à 28px
+2. Le span du score (`50-33`) n'avait pas de `font-family` explicite → héritage de `[class*="st-"] { font-family: var(--font-body) !important }` donnait `Roboto Condensed` au lieu de `Bebas Neue` → ajout de `font-family:var(--font-display)` dans le style inline du span
+
+**Fichiers modifiés** : `src/ui/pages/match_view.py`
+
+**Résultat** : Les 4 cases du haut (Date, Score, Playlist, Mode+Carte) utilisent désormais la même police Bebas Neue que la case MMR d'équipe.
+
+---
+
 ### [2026-04-04] — refactor(V2 Axe C): élimination callbacks normalize_mode_label_fn / normalize_map_label_fn — Complété
 
 **Décision** : Remplacement de 49 sites d'injection de callbacks `normalize_mode_label_fn` / `normalize_map_label_fn` par des appels directs à `normalize_mode_label(x, lang=get_lang())` et `normalize_map_label(x)` dans toute la chaîne de filtrage et d'affichage.

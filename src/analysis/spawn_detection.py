@@ -72,13 +72,18 @@ class FirstMovement(TypedDict):
 def _is_position_frame(data: bytes, pos: int) -> int | None:
     """Retourne player_index si le marker est un frame de position valide.
 
-    Filtre permissif : seul base_type (b6 & 0x1F) est vérifié, ce qui
-    capture tous les joueurs quel que soit le format réseau.
+    Filtre permissif avec exclusion des frames game-state (b5=0x00).
+    Les frames b5=0x00, base=0x0A sont des frames d'état de jeu (timer, score
+    objectif) répétés avec b9 variable — ils créent de faux sig-changes en
+    lobby sur certains modes (Fortress, etc.) et ne codent pas une position.
+    Tous les autres formats (b5=0x40, b5=0x80...) sont acceptés.
 
     Returns:
         player_index (0-7) ou None si frame invalide.
     """
     if pos + _MIN_FRAME_LEN > len(data):
+        return None
+    if data[pos + 5] == 0x00:  # frames game-state : pas de position physique
         return None
     b6 = data[pos + 6]
     if (b6 & 0x1F) not in _VALID_BASE_TYPES:
