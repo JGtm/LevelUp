@@ -12,8 +12,9 @@ import streamlit as st
 
 from src.config import OKABE_ITO_PALETTE
 from src.ui import translate_pair_name
-from src.ui.i18n import get_lang, t
+from src.ui.i18n import t
 from src.utils.polars_compat import ensure_polars as _to_polars
+from src.utils.strings import is_uuid_like
 
 # =============================================================================
 # Regex & constantes
@@ -47,12 +48,13 @@ def clean_asset_label(s: str | None) -> str | None:
     return v or None
 
 
-def is_uuid_like(s: str) -> bool:
-    """Vérifie si une chaîne ressemble à un UUID (ex: a446725e-b281-414c-a21e)."""
-    return bool(re.match(r"^[a-f0-9]{8}(-[a-f0-9]{4}){0,3}(-[a-f0-9]{1,12})?$", s.lower()))
 
-
-def normalize_mode_label(pair_name: str | None) -> str | None:
+def normalize_mode_label(
+    pair_name: str | None,
+    *,
+    lang: str = "fr",
+    normalize: bool = True,
+) -> str | None:
     """Normalise le label d'un mode de jeu.
 
     - Traduit le mode
@@ -61,6 +63,8 @@ def normalize_mode_label(pair_name: str | None) -> str | None:
 
     Args:
         pair_name: Nom du pair (mode + carte).
+        lang: Code de langue ("fr" ou "en").
+        normalize: Si True, applique la normalisation des préfixes de modes.
 
     Returns:
         Label normalisé ou None.
@@ -68,9 +72,7 @@ def normalize_mode_label(pair_name: str | None) -> str | None:
     if pair_name is None:
         return None
     base = clean_asset_label(pair_name)
-    _settings = st.session_state.get("app_settings")
-    _normalize = getattr(_settings, "normalize_mode_labels", True) if _settings else True
-    _translated = translate_pair_name(base, lang=get_lang(), normalize=_normalize)
+    _translated = translate_pair_name(base, lang=lang, normalize=normalize)
     if _translated is None:
         return None
     s = str(_translated).strip()

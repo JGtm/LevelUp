@@ -19,6 +19,24 @@
 
 **Résultat** : Aucune erreur pylance. Le dropdown Mode affichera désormais les modes normalisés (FR/EN selon la langue).
 
+### [2026-04-04] — refactor(V1 Phases 1-4) : i18n pipeline + normalisation mode — Complété
+
+**Statut** : Complété  
+**Branche** : `refactor/asset-translations-db-first`
+
+**Décision technique** :
+Application des Phases 1→4 du plan V1 (Axe A). Phase 0 déjà complète (i18n_columns + SQL map_ui alias).
+
+- **Phase 1** : `src/utils/strings.py` créé avec `is_uuid_like` unifié. Deux copies supprimées : `_is_uuid_like` dans `translations.py` remplacée par un import, `is_uuid_like` dans `helpers.py` aussi. Pattern regex compilé une fois (`_UUID_LIKE_RE`).
+- **Phase 2** : `normalize_mode_label` découplée de `st.session_state`. Signature `(pair_name, *, lang="fr", normalize=True)`. Import `get_lang` supprimé de `helpers.py`. Test `test_normalize_mode_label.py` écrit (7 cas).
+- **Phase 3** : `_normalize_mode_label` dans `teammates_helpers.py` supprimée. Remplacée par `normalize_mode_label(p, lang=get_lang())` via lambda — gain de justesse (strips "on X", Forge, Ranked).
+- **Phase 4** : `add_ui_columns()` et `render_cascade_filters()` supprimées de `filters.py` (code mort — aucun call-site). 8 imports orphelins nettoyés via ruff. Guards `_map_col` dans `squad_records.py:165` et `maps.py:89-90` supprimées → `"map_ui"` direct. Fixture de test `test_backlog_fixes.py` complétée avec `map_ui`.
+- **Baseline** : mis à jour via `enforce_size_limits.py --update` (décalage de lignes dû aux commits précédents sur la branche parente).
+
+**Résultats** : 98 tests ciblés vert. Suite complète en cours.
+
+---
+
 ### [2026-04-04] — plan: ajout Axe G (titres graphes externalisés) — Complété
 
 **Statut** : Complété

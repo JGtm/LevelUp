@@ -14,6 +14,7 @@ _log = logging.getLogger(__name__)
 import polars as pl
 import streamlit as st
 
+from src.app.helpers import normalize_mode_label
 from src.config import HALO_COLORS
 from src.ui import (
     display_name_from_xuid,
@@ -39,12 +40,6 @@ def _format_datetime_fr_hm(dt: object) -> str:
     except Exception:
         return str(dt)
 
-
-def _normalize_mode_label(pair_name: str | None) -> str | None:
-    """Normalise un pair_name en label UI."""
-    from src.ui.translations import translate_pair_name
-
-    return translate_pair_name(pair_name) if pair_name else None
 
 
 def _app_url(page: str, **params: str) -> str:
@@ -211,7 +206,8 @@ def _prepare_friends_table_data(  # noqa: PLR0912, PLR0913
     else:
         friends_table = friends_table.with_columns(pl.lit(None).cast(pl.Utf8).alias("mode"))
     if friends_table["mode"].is_null().any() and "pair_name" in friends_table.columns:
-        _mode_map = build_mapping(friends_table["pair_name"], _normalize_mode_label)
+        _lang = get_lang()
+        _mode_map = build_mapping(friends_table["pair_name"], lambda p: normalize_mode_label(p, lang=_lang))
         friends_table = friends_table.with_columns(
             pl.when(pl.col("mode").is_null())
             .then(
