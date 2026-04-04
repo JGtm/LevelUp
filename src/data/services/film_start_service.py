@@ -21,6 +21,14 @@ from src.ports.api import HaloAPIPort
 
 logger = logging.getLogger(__name__)
 
+#: Feature flag — mettre à True pour activer la détection en production.
+#: Désactivé le 2026-04-04 : l'algorithme de détection du spawn atteint 55%
+#: de précision à ±5s sur 200 matchs (baseline signature-change).
+#: Les approches testées et leurs limites sont documentées dans
+#: ``src/analysis/spawn_detection.py`` (section "ÉTAT DE LA RECHERCHE").
+#: Réactiver ici dès qu'une approche plus robuste est validée.
+_FILM_START_ENABLED: bool = False
+
 #: Chunks à analyser pour la détection de spawn (0-20s et 20-40s).
 #: chunk_01 suffit pour la plupart des matchs ; chunk_02 couvre les
 #: matchs à chargement lent ou parties démarrant après 20s.
@@ -61,6 +69,10 @@ class FilmStartService:
         """
         if self._already_done(match_id):
             logger.debug("film_start %s : déjà calculé, skip", match_id[:8])
+            return None
+
+        if not _FILM_START_ENABLED:
+            logger.debug("film_start %s : feature désactivée (_FILM_START_ENABLED=False)", match_id[:8])
             return None
 
         chunks = await self._load_spawn_chunks(match_id)
