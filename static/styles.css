@@ -1791,10 +1791,8 @@ div[data-testid="stNumberInput"] input:focus {
 }
 
 .os-sb-detail-panel {
-    padding: 14px 16px 16px;
-    background:
-        linear-gradient(180deg, rgba(18, 24, 34, 0.96), rgba(11, 16, 24, 0.98)),
-        radial-gradient(circle at top right, rgba(65, 214, 255, 0.10), transparent 45%);
+    padding: 10px 14px 12px;
+    background: rgba(65, 214, 255, 0.08);
     border-top: 1px solid rgba(65, 214, 255, 0.18);
     border-bottom: 1px solid rgba(65, 214, 255, 0.10);
 }
@@ -1809,38 +1807,59 @@ div[data-testid="stNumberInput"] input:focus {
 }
 
 .os-sb-detail-grid {
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-    gap: 12px;
+    display: flex;
+    flex-wrap: wrap;
+    align-items: flex-start;
+    gap: 10px 0;
 }
 
 .os-sb-detail-section {
-    padding: 12px;
-    border: 1px solid rgba(126, 231, 255, 0.10);
-    border-radius: 14px;
-    background: rgba(255, 255, 255, 0.02);
+    flex: 1 1 150px;
+    padding: 0 12px;
+}
+
+.os-sb-detail-section:first-child {
+    padding-left: 0;
+}
+
+.os-sb-detail-section + .os-sb-detail-section {
+    border-left: 1px solid rgba(126, 231, 255, 0.13);
 }
 
 .os-sb-detail-title {
-    margin-bottom: 10px;
-    font-size: 0.74rem;
+    margin-bottom: 6px;
+    font-size: 0.72rem;
     font-weight: 700;
-    letter-spacing: 0.06em;
+    letter-spacing: 0.07em;
     text-transform: uppercase;
-    color: #ffffff;
+    color: rgba(182, 210, 230, 0.65);
 }
 
 .os-sb-detail-list {
     display: flex;
     flex-wrap: wrap;
-    gap: 8px;
+    gap: 5px;
 }
 
-.os-sb-detail-list--weapons {
+.os-sb-detail-list-break {
+    width: 100%;
+    height: 3px;
+}
+
+.os-sb-detail-list--medals {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 4px 6px;
+    justify-items: center;
+}
+
+.os-sb-detail-list--medals .os-sb-detail-list-break {
+    grid-column: 1 / -1;
+}
     display: grid;
     grid-template-columns: repeat(2, minmax(0, 1fr));
-    column-gap: 12px;
-    row-gap: 8px;
+    column-gap: 10px;
+    row-gap: 5px;
 }
 
 .os-sb-detail-item,
@@ -1855,7 +1874,11 @@ div[data-testid="stNumberInput"] input:focus {
 }
 
 .os-sb-detail-item--medal {
-    min-height: 36px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    width: 100%;
+    gap: 3px;
     padding: 2px 0;
     background: transparent;
     border: 0;
@@ -1889,13 +1912,19 @@ div[data-testid="stNumberInput"] input:focus {
     filter: drop-shadow(0 1px 2px rgba(0, 0, 0, 0.25));
 }
 
+.os-sb-detail-citation-icon {
+    max-width: 24px;
+    max-height: 24px;
+    border-radius: 4px;
+    filter: drop-shadow(0 1px 2px rgba(0, 0, 0, 0.35)) sepia(0.4) saturate(1.5) hue-rotate(190deg);
+}
+
 .os-sb-detail-weapon-asset {
-    width: auto;
-    height: auto;
-    max-width: 30px;
-    max-height: 30px;
-    flex: 0 0 42px;
+    width: 54px;
+    height: 18px;
+    flex: 0 0 54px;
     object-fit: contain;
+    object-position: center;
     filter: drop-shadow(0 1px 2px rgba(0, 0, 0, 0.25));
 }
 
@@ -1911,6 +1940,53 @@ div[data-testid="stNumberInput"] input:focus {
 
 .os-sb-detail-item-value,
 .os-sb-detail-pill-value {
+    font-size: 0.8rem;
+    font-weight: 700;
+    color: #edf7ff;
+}
+
+/* Grille clé : valeur (Antagoniste, Enrichissements) */
+.os-sb-detail-list--kv {
+    display: grid;
+    grid-template-columns: auto 1fr;
+    column-gap: 10px;
+    row-gap: 3px;
+    align-items: baseline;
+}
+
+.os-sb-detail-item--kv {
+    display: contents;
+}
+
+.os-sb-detail-item--kv .os-sb-detail-item-label {
+    white-space: nowrap;
+    text-align: right;
+    color: rgba(182, 196, 214, 0.60);
+}
+
+.os-sb-detail-item--kv .os-sb-detail-item-value {
+    color: #edf7ff;
+}
+
+.os-ev-better {
+    color: #4cde80;
+    font-size: 0.78rem;
+    font-weight: 700;
+}
+
+.os-ev-worse {
+    color: #f25c5c;
+    font-size: 0.78rem;
+    font-weight: 700;
+}
+
+.os-ev-neutral {
+    color: #41d6ff;
+    font-size: 0.78rem;
+    font-weight: 700;
+}
+
+.os-ev-expected {
     font-size: 0.8rem;
     font-weight: 700;
     color: #edf7ff;
