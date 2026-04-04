@@ -7,6 +7,29 @@
 
 ## Journal
 
+### [2026-04-04] — chore(spawn): désactiver FilmStartService en prod + documentation complète — Complété
+
+**Décision** : En l'état (55% à ±5s), la feature ne doit pas tourner en production.
+Deux actions prises :
+1. `_FILM_START_ENABLED = False` dans `film_start_service.py` — `compute_and_write` retourne immédiatement `None` sans calcul ni écriture en DB.
+2. Docstring module `spawn_detection.py` enrichie d'une section "ÉTAT DE LA RECHERCHE" avec pour chaque approche testée : hypothèse, test réalisé, raison de l'échec.
+
+**Approches documentées** :
+- Discontinuité de coordonnées → wraparound 12-bit rend le seuil inatteignable
+- Filtre strict b5=0x40 → format b5=0x80 dominant sur certains modes = régression -16%
+- Correction API second scan → détruit les grandes maps (travel time 30-45s = gap "innocent")
+- Déplacement vectoriel per-frame → vitesse identique lobby/match, prémisse fausse
+
+**Performance de référence** : 55% à ±5s / 60% à ±10s / 91% à ±30s (198 matchs, vrais timestamps manifest).
+
+**Piste la plus prometteuse non testée** : bounding box expansive par joueur sur 5-10s glissants (nécessite meilleure couverture frames b5=0x40 en début de match, actuellement 23% des matchs).
+
+**Fichiers modifiés** :
+- `src/data/services/film_start_service.py` (flag `_FILM_START_ENABLED = False`)
+- `src/analysis/spawn_detection.py` (documentation + helpers déplacement non actifs)
+
+---
+
 ### [2026-04-04] — fix(spawn_detection): exclure frames b5=0x00 (game-state) + investigation filmshell — Complété
 
 **Contexte** : Exploration du repo filmshell (dend/filmshell) pour améliorer la détection du début de match. Investigation approfondie du format des frames de position Halo Infinite.

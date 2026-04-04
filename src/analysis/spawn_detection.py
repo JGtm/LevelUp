@@ -4,20 +4,98 @@ Fonctions pures — aucun accès DB, aucun appel API.
 Entrée : chunks REPLICATION_DATA {index: (data, start_ms, dur_ms)}.
 Sortie : timestamp estimé du début du match (ms depuis début d'enregistrement).
 
-Algorithme :
-1. Scan des frames de position pour chaque player_index dans chaque chunk.
-2. Détection du début de mouvement soutenu par joueur (find_motion_onset).
-   En lobby, les joueurs font 1-2 changements de caméra puis restent statiques.
-   Au spawn réel, ils commencent à courir = changements continus (N+ dans 2s).
-3. Densest cluster : fenêtre [t, t+2s] où le maximum de joueurs ont leur onset.
-4. Estimation = médiane des timestamps du cluster.
+Algorithme actuel :
+1. Scan des changements de signature de bytes[9:16] par player_index.
+2. Fenêtre glissante [t, t+2s] où le plus de joueurs sont actifs simultanément.
+3. Estimation = timestamp du début de cette fenêtre.
+4. Correction-cap API : si l'estimate dépasse le premier kill/death connu,
+   on recule à api_first_event_ms - 5s.
 
 Référentiel : identique à highlight_events.time_ms (t=0 = début enregistrement film).
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+ÉTAT DE LA RECHERCHE — Dernière mise à jour : 2026-04-04
+Performance actuelle : 55% à ±5s, 60% à ±10s, 91% à ±30s (198 matchs)
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+## Ce qui a été testé et pourquoi ça n'a pas fonctionné
+
+### 1. Approche par discontinuité de coordonnées (spawn = téléportation)
+Hypothèse : à la mort/spawn, le joueur se téléporte → grand saut de coordonnées.
+Test : delta Y/X entre frames consécutifs, seuil > 4000 (valeur filmshell DISCONTINUITY_THRESHOLD).
+Résultat : ÉCHEC. Le champ X est encodé sur 12 bits (range 0-4095).
+Un mouvement normal peut traverser 0→4095 (wraparound) générant un delta de 4096
+sans téléportation réelle. Les deltas "Y" oscillent entre 0 et ±1 sur Fortress lobby.
+La correction de wraparound ramène tous les deltas sous 2048 → impossible de distinguer.
+
+### 2. Filtre strict sur format human (b5=0x40, b7=0x00, b9=0x56, d0hnib=4)
+Hypothèse : seul ce format code de vraies positions spatiales (confirmé filmshell docs).
+Test : exclure tous les frames d'autres formats, ne garder que le format "human".
+Résultat : ÉCHEC partiel.
+ - Sur Fortress : élimine correctement les faux positifs de lobby à 12.3s
+   (causés par des frames b5=0x80 avec b9 variable → faux sig-changes).
+ - Sur d'autres maps (ex: 5aa360c3) : le format b5=0x80, base=0x0B est le format
+   DOMINANT pendant tout le match, pas uniquement en lobby. Le filtre strict le supprime
+   et rate les 14-37 premières secondes de match réel.
+ - Performance globale : 31% à ±5s vs 47% baseline → régression de -16 points.
+
+### 3. Correction API via second scan (ignore_before_ms)
+Hypothèse : si l'estimate est trop précoce vs premier kill/death, relancer un scan
+depuis ignore_before = estimate + gap - 10s pour trouver le vrai spawn.
+Test : appliqué à Fortress (41b61fb9) avec api_first_event_ms=35s → donne 34.1s (correct).
+Résultat : ÉCHEC sur les grandes maps.
+ - Sur une grande map avec travel time 30-45s : le premier kill arrive à ~60s,
+   l'estimate correct (spawn à 15s) génère gap=45s → second scan depuis 50s
+   → détecte une activité en cours de match à 55s → écrase le bon résultat.
+ - La prémisse « grand gap = lobby indétectable » est fausse : le gap peut être
+   grand simplement parce que les joueurs n'ont pas encore croisé d'ennemi.
+ - Stratégie remplacée par une simple contrainte dure (cap) : si estimate > premier kill,
+   on recule uniquement. Un grand gap est désormais ignoré.
+
+### 4. Approche par déplacement vectoriel (delta Y²+X² entre frames consécutifs)
+Hypothèse : en lobby, mouvements "courts et restreints" → faibles deltas par frame.
+          Au spawn réel, les joueurs courent → grands deltas → pic dense simultané.
+Test : seuils 5, 10, 20, 30, 50 unités filmshell testés sur 200 matchs.
+Résultat : ÉCHEC. La prémisse est fausse.
+ - Dans la staging area Halo, les joueurs se déplacent à vitesse normale.
+ - Le déplacement par frame entre deux positions consécutives est identique en lobby
+   et en match (même format de frames, même vitesse de marche/course).
+ - Ce qui diffère réellement : la SURFACE TOTALE de trajectoire (bounding box)
+   sur 5-10s. En lobby : zone restreinte → bounding box petite.
+   En match : progression linéaire vers objectif → bounding box expansive.
+ - Pour exploiter ça, il faudrait calculer l'expansion de la bounding box par joueur
+   sur une fenêtre glissante de 5-10s. Mais les frames b5=0x40 décodables ne couvrent
+   que 23% des matchs dans les chunks 1-2 (les autres maps utilisent b5=0x80).
+ - Performance sur les 23% couverts : 34% à ±5s vs 61% avec la signature → régression.
+ - Infrastructure présente (find_peak_displacement_window, _collect_displacement_events,
+   _displacement) mais NON UTILISÉE dans estimate_film_match_start_ms.
+
+## Explication du résultat actuel (55% à ±5s)
+
+L'algorithme signature confond lobby et spawn sur les matchs où :
+ A) Un sous-groupe de joueurs (3+) fait des mouvements de caméra groupés en lobby
+    (rare mais arrive sur BTB en attente de joueurs → cluster dense mais précoce).
+ B) Le match commence DANS le chunk_01 (< 20s depuis recording start) sans lobby
+    filmshell visible → signature correcte mais on mesure le premier mouvement
+    absolu plutôt que le spawn.
+ C) AFK ou chargement lent d'un joueur → cluster < min_players dans la fenêtre spawn.
+
+## Piste la plus prometteuse non testée
+
+Analyse de la bounding box expansive par joueur sur 5-10s glissants :
+ - Filtrer uniquement les frames b5=0x40 (représente 23% des matchs actuellement).
+ - Pour chaque joueur : calculer la bounding box de ses positions sur la fenêtre [t, t+5s].
+ - Lobby : bounding box < 50 unités (zone de staging restreinte).
+ - Match réel : bounding box > 200 unités (progression vers objectif).
+ - Utiliser le moment où la médiane des bounding boxes d'au moins 3 joueurs dépasse
+   le seuil → timestamp du début de match.
+ - Limite : nécessite une meilleure couverture de frames b5=0x40 en début de match.
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 """
 
 from __future__ import annotations
 
-import statistics
 from typing import TypedDict
 
 from src.analysis.packet_index import build_packet_estimator, index_chunk
@@ -39,13 +117,15 @@ _AFK_THRESHOLD_MS: float = 10_000.0
 #: En lobby, les mouvements de caméra sont éparpillés → cluster moins dense.
 _SPAWN_CLUSTER_WINDOW_MS: float = 2_000.0
 
-#: Si l'estimation filmshell est en avance de plus de cette durée (ms)
-#: sur le premier event API, un second passage avec ignore_before_ms est déclenché.
-#: Le premier kill/death est une contrainte dure : le match a forcément démarré avant.
-_LOBBY_CORRECTION_THRESHOLD_MS: float = 15_000.0
+#: Déplacement minimum (unités filmshell) entre deux frames consécutifs d'un joueur
+#: pour que le frame soit compté comme un mouvement réel.
+#: En lobby : petits déplacements non-soutenus (walking restreint).
+#: Au spawn : course vers objectif → grands deltas consécutifs sur tous les joueurs.
+#: Valeur empirique — calibrer si nécessaire selon le scale world-units de la map.
+_MIN_DISPLACEMENT: float = 5.0
 
-#: Marge de sécurité avant le premier event lors du second passage (ms).
-_LOBBY_CORRECTION_BUFFER_MS: float = 10_000.0
+#: Marge de sécurité (ms) appliquée si l'estimate dépasse le premier kill connu.
+_API_CAP_BUFFER_MS: float = 5_000.0
 
 _BYTE5_HUMAN: int = 0x40
 _BYTE9_HUMAN: int = 0x56
@@ -282,6 +362,103 @@ def find_peak_activity_window(
 
 
 
+def _displacement(prev: tuple[int, int], cur: tuple[int, int]) -> float:
+    """Distance euclidienne entre deux positions (Y 16-bit, X 12-bit).
+
+    Corrige le wraparound du champ X 12-bit (range 0-4095).
+    """
+    dy = cur[0] - prev[0]
+    dx = cur[1] - prev[1]
+    if dx > 2048:
+        dx -= 4096
+    elif dx < -2048:
+        dx += 4096
+    return (dy * dy + dx * dx) ** 0.5
+
+
+def _collect_displacement_events(
+    chunks: dict[int, tuple[bytes, int, int]],
+    min_displacement: float,
+) -> list[tuple[float, int]]:
+    """Retourne la liste (timestamp_ms, player_index) des frames où un joueur
+    s'est déplacé de plus de ``min_displacement`` unités depuis son frame précédent.
+    Limites décodables : frames format human (b5=0x40, b9=0x56) uniquement.
+    """
+    events: list[tuple[float, int]] = []
+    last_pos: dict[int, tuple[int, int]] = {}
+
+    for chunk_idx in sorted(chunks):
+        data, start_ms, _ = chunks[chunk_idx]
+        try:
+            packets = index_chunk(data)
+            ts_fn = build_packet_estimator(packets, float(start_ms))
+        except Exception:
+            _s = float(start_ms)
+            ts_fn = lambda _p, _start=_s: _start  # noqa: E731
+
+        pos = 0
+        while True:
+            idx = data.find(FRAME_MARKER, pos)
+            if idx == -1:
+                break
+            coords = _decode_coords(data, idx)
+            if coords is not None:
+                b6 = data[idx + 6]
+                if (b6 & 0x1F) in _VALID_BASE_TYPES:
+                    pi = b6 >> 5
+                    if pi in last_pos and _displacement(last_pos[pi], coords) >= min_displacement:
+                        events.append((ts_fn(idx), pi))
+                    last_pos[pi] = coords
+            pos = idx + 1
+
+    return events
+
+
+def find_peak_displacement_window(
+    chunks: dict[int, tuple[bytes, int, int]],
+    window_ms: float = _SPAWN_CLUSTER_WINDOW_MS,
+    min_displacement: float = _MIN_DISPLACEMENT,
+) -> float | None:
+    """Variante de find_peak_activity_window basée sur le déplacement vectoriel réel.
+
+    Decode les coordonnées (Y 16-bit, X 12-bit) des frames format human
+    (b5=0x40, b9=0x56). N'émet un événement de mouvement que si le déplacement
+    entre deux frames consécutifs d'un même joueur dépasse ``min_displacement``.
+
+    Lobby : petits déplacements ponctuels → peu de joueurs simultanément actifs.
+    Spawn réel : tous les joueurs courent → grands deltas simultanés → pic maximal.
+
+    En cas d'égalité de densité : fenêtre la plus tardive préférée (lobby < spawn).
+
+    Returns:
+        Timestamp (ms) du début de la fenêtre la plus dense, ou None si données
+        insuffisantes (maps sans frames human décodables → fallback signature).
+    """
+    events = _collect_displacement_events(chunks, min_displacement)
+
+    if not events:
+        return None
+
+    events.sort()
+    # Nombre minimum de joueurs distincts pour valider le pic → évite les
+    # faux pics à 1-2 joueurs sur des maps avec peu de frames human.
+    _MIN_PEAK = 2
+    best_ts: float = events[0][0]
+    best_count: int = 0
+
+    for t_start, _ in events:
+        t_end = t_start + window_ms
+        unique = {pi for t, pi in events if t_start <= t <= t_end}
+        if len(unique) > best_count or (len(unique) == best_count and t_start > best_ts):
+            best_count = len(unique)
+            best_ts = t_start
+
+    if best_count < _MIN_PEAK:
+        return None
+
+    return best_ts
+
+
 def find_densest_spawn_cluster(
     first_movements: dict[int, FirstMovement],
     window_ms: float = _SPAWN_CLUSTER_WINDOW_MS,
@@ -340,40 +517,44 @@ def estimate_film_match_start_ms(
 ) -> int | None:
     """Estime le timestamp (ms) du début de match dans le film.
 
-    Algorithme en deux étapes :
+    Algorithme :
     1. ``find_peak_activity_window`` scanne TOUS les changements de signature
-       et retient la fenêtre [t, t+2s] où le plus de joueurs distincts sont
-       actifs simultanément. Plus robuste que l'ancien premier-mouvement seul.
-    2. Si ``api_first_event_ms`` est fourni et que le gap dépasse
-       ``_LOBBY_CORRECTION_THRESHOLD_MS``, un second scan est déclenché avec
-       ``ignore_before_ms`` positionné avant le premier event connu.
-       La contrainte dure : aucun kill/death ne peut précéder le début du match.
+       (toutes les maps, tous les formats de frames) et retient la fenêtre
+       [t, t+2s] où le plus de joueurs distincts sont actifs simultanément.
+       En lobby, les mouvements de caméra/staging sont éparpillés → pic partiel.
+       Au spawn, tous les joueurs bougent en même temps → pic maximal.
+    2. Contrainte dure API : si l'estimate dépasse le premier kill/death connu
+       (impossible physiquement), on recule à ``api_first_event_ms - 5s``.
+       Un grand gap estimate→premier_kill est NORMAL sur les grandes maps
+       (travel time 30-45s avant le premier contact) → pas de second scan.
+
+    Note : ``find_peak_displacement_window`` (déplacement vectoriel réel)
+    est disponible dans ce module pour usage futur. Elle nécessite que les
+    frames format human (b5=0x40) couvrent le début de match AND que les
+    mouvements lobby soient distinguables via leur amplitude (non garanti en
+    staging Halo, où les joueurs se déplacent à vitesse normale dans une zone
+    restreinte → per-frame delta similaire au sprint en match réel).
 
     Args:
         chunks: {chunk_index: (data, start_ms, dur_ms)}.
-        min_players: Nombre minimum de références pour le second passage.
-        api_first_event_ms: Timestamp du premier kill/death (même référentiel
-            que le film). Contrainte dure utilisée pour valider et corriger.
+        min_players: Inutilisé (conservé pour compatibilité API).
+        api_first_event_ms: Timestamp du premier kill/death (mm référentiel
+            que le film). Contrainte dure uniquement (cap).
 
     Returns:
         Timestamp en ms (entier) ou None si aucun changement détecté.
     """
-    # Étape 1 : estimation initiale via pic d'activité simultanée
+    # Étape 1 : pic d'activité simultanée (toutes maps, tous formats de frames).
     peak_ts = find_peak_activity_window(chunks)
     if peak_ts is None:
         return None
     estimate = int(peak_ts)
 
-    # Étape 2 : correction si l'estimate est trop précoce vs premier event API
-    if api_first_event_ms is not None:
-        gap_ms = api_first_event_ms - estimate
-        if gap_ms > _LOBBY_CORRECTION_THRESHOLD_MS:
-            ignore_before = estimate + gap_ms - _LOBBY_CORRECTION_BUFFER_MS
-            first_movements_2 = scan_first_movements(chunks, ignore_before_ms=ignore_before)
-            refs_2, _ = pick_spawn_references(first_movements_2, n=min_players)
-            if len(refs_2) >= min_players:
-                estimate_2 = int(statistics.median(fm["timestamp_ms"] for _, fm in refs_2))
-                if estimate_2 > estimate:
-                    estimate = estimate_2
+    # Étape 2 : contrainte dure API — le premier kill/death ne peut pas
+    # précéder le début du match. Si l'estimate la dépasse (rare), on recule.
+    # On ne déclenche PAS de second scan : un grand gap estimate→premier_kill
+    # est NORMAL sur les grandes maps (travel time 30-45s).
+    if api_first_event_ms is not None and estimate > api_first_event_ms:
+        estimate = max(0, int(api_first_event_ms) - int(_API_CAP_BUFFER_MS))
 
     return estimate
