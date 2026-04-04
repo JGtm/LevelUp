@@ -1755,6 +1755,16 @@ div[data-testid="stNumberInput"] input:focus {
     border-right: 4px solid rgba(213, 94, 0, 0.85);
 }
 
+.os-table.os-scoreboard tr:hover,
+.os-table.os-scoreboard tr:hover td,
+.os-table.os-scoreboard tr:hover th {
+    background-color: transparent !important;
+}
+
+.os-table.os-scoreboard tbody.os-sb-player:has(.os-sb-toggle:checked) tr.os-sb-row:hover td.os-sb-td {
+    background: rgba(65, 214, 255, 0.08) !important;
+}
+
 .os-table.os-scoreboard tbody.os-sb-player .os-sb-detail-row {
     display: none;
 }

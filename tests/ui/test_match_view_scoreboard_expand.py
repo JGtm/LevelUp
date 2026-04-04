@@ -78,7 +78,7 @@ def test_render_match_scoreboard_emits_expandable_detail_rows(mock_st) -> None:
             )
         ],
         antagonist_items=[("Némésis", "Bravo (3)")],
-        citations=[("Tireur d'elite", 2)],
+        citations=[("Tireur d'elite", 2, None, "Elimine 5 ennemis de loin.")],
         performance_score=87.5,
         had_bot_teammate=True,
         has_local_db=True,
