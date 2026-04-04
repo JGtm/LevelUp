@@ -8,6 +8,7 @@ import pytest
 from src.analysis.squad_records import (
     compute_player_record,
     compute_squad_records,
+    compute_squad_records_per_map,
     get_dominant_pair_name,
 )
 
@@ -183,3 +184,93 @@ class TestComputeSquadRecords:
             [("X", df)], [("kills", False), ("assists", False)], "BTB"
         )
         assert set(records["X"].keys()) == {"kills", "assists"}
+
+
+# ---------------------------------------------------------------------------
+# compute_squad_records_per_map
+# ---------------------------------------------------------------------------
+
+
+def _make_df_with_map_ui(rows: list[dict]) -> pl.DataFrame:
+    """Crée un DataFrame avec map_ui pour compute_squad_records_per_map."""
+    return pl.DataFrame(rows)
+
+
+class TestComputeSquadRecordsPerMap:
+    """compute_squad_records_per_map requiert map_ui depuis Phase 4."""
+
+    def test_empty_result_when_map_ui_absent(self) -> None:
+        """Sans map_ui, retourne {} pour le joueur (non-régression Phase 4)."""
+        df = _make_df([{"kills": 10, "pair_name": "BTB"}])
+        result = compute_squad_records_per_map([("Alice", df)], [("kills", False)], "BTB")
+        assert result["Alice"] == {}
+
+    def test_basic_one_player_one_map(self) -> None:
+        """Résultat correct pour 1 joueur, 1 carte."""
+        df = _make_df_with_map_ui([
+            {"kills": 10, "map_ui": "Recharge", "pair_name": "BTB"},
+            {"kills": 20, "map_ui": "Recharge", "pair_name": "BTB"},
+        ])
+        result = compute_squad_records_per_map([("Alice", df)], [("kills", False)], "BTB")
+        assert result["Alice"]["kills"]["Recharge"] == pytest.approx(20.0)
+
+    def test_two_maps_selects_max_per_map(self) -> None:
+        """max par carte correct quand 2 cartes différentes."""
+        df = _make_df_with_map_ui([
+            {"kills": 10, "map_ui": "Recharge", "pair_name": "BTB"},
+            {"kills": 15, "map_ui": "Recharge", "pair_name": "BTB"},
+            {"kills": 8, "map_ui": "Streets", "pair_name": "BTB"},
+            {"kills": 12, "map_ui": "Streets", "pair_name": "BTB"},
+        ])
+        result = compute_squad_records_per_map([("Bob", df)], [("kills", False)], "BTB")
+        assert result["Bob"]["kills"]["Recharge"] == pytest.approx(15.0)
+        assert result["Bob"]["kills"]["Streets"] == pytest.approx(12.0)
+
+    def test_negative_metric_uses_min(self) -> None:
+        """Métrique négative (deaths) → min par carte."""
+        df = _make_df_with_map_ui([
+            {"deaths": 5, "map_ui": "Recharge", "pair_name": "BTB"},
+            {"deaths": 2, "map_ui": "Recharge", "pair_name": "BTB"},
+        ])
+        result = compute_squad_records_per_map([("Alice", df)], [("deaths", True)], "BTB")
+        assert result["Alice"]["deaths"]["Recharge"] == pytest.approx(2.0)
+
+    def test_dominant_pair_filters_rows(self) -> None:
+        """dominant_pair filtre les matchs hors mode."""
+        df = _make_df_with_map_ui([
+            {"kills": 30, "map_ui": "Recharge", "pair_name": "Arena:4v4"},
+            {"kills": 5, "map_ui": "Recharge", "pair_name": "BTB"},
+        ])
+        result = compute_squad_records_per_map(
+            [("Alice", df)], [("kills", False)], "Arena:4v4"
+        )
+        assert result["Alice"]["kills"]["Recharge"] == pytest.approx(30.0)
+
+    def test_dominant_pair_none_uses_all_rows(self) -> None:
+        """dominant_pair=None → aucun filtre sur pair_name."""
+        df = _make_df_with_map_ui([
+            {"kills": 10, "map_ui": "Recharge", "pair_name": "BTB"},
+            {"kills": 25, "map_ui": "Recharge", "pair_name": "Arena:4v4"},
+        ])
+        result = compute_squad_records_per_map([("Alice", df)], [("kills", False)], None)
+        assert result["Alice"]["kills"]["Recharge"] == pytest.approx(25.0)
+
+    def test_empty_players_list(self) -> None:
+        result = compute_squad_records_per_map([], [("kills", False)], "BTB")
+        assert result == {}
+
+    def test_empty_dataframe(self) -> None:
+        df = pl.DataFrame(schema={"kills": pl.Int64, "map_ui": pl.Utf8, "pair_name": pl.Utf8})
+        result = compute_squad_records_per_map([("Alice", df)], [("kills", False)], "BTB")
+        assert result["Alice"] == {}
+
+    def test_missing_metric_column_skipped(self) -> None:
+        """Métrique absente du DataFrame → ignorée sans exception."""
+        df = _make_df_with_map_ui([
+            {"kills": 10, "map_ui": "Recharge", "pair_name": "BTB"},
+        ])
+        result = compute_squad_records_per_map(
+            [("Alice", df)], [("headshot_kills", False)], "BTB"
+        )
+        # headshot_kills absent → aucune entrée pour cette métrique
+        assert result["Alice"].get("headshot_kills", {}) == {}

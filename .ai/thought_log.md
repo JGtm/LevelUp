@@ -7,6 +7,15 @@
 
 ## Journal
 
+### [2026-04-04] — test: couverture manquante post-refacto Phases 1-4 — Complété
+
+**Lacunes identifiées** :
+1. `src/utils/strings.py::is_uuid_like` — testé indirectement via re-export, jamais directement
+2. `compute_squad_records_per_map` — zéro tests, Phase 4 y a rendu `map_ui` obligatoire (9 cas ajoutés)
+3. E2E — aucun test vérifiant que les noms de cartes dans l'UI ne sont pas des UUIDs bruts
+
+**Résultat** : +20 tests (11 `test_utils_strings`, 9 `TestComputeSquadRecordsPerMap`, 1 `test_e2e_010`). 44/44 passent.
+
 ### [2026-04-04] — fix(film-start): batch fix 753 valeurs film_match_start_ms incorrectes — Complété
 
 **Problème** : 753 valeurs `film_match_start_ms < 5000ms` en production dans `shared_matches_v2.duckdb`. Cause racine : le premier backfill `scan_first_movements` enregistrait les mouvements de lobby (1-5s) comme "premier mouvement". À l'apparition du vrai spawn (~30-35s), le joueur était déjà dans `first_change` → sauté.
