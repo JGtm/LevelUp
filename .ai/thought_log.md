@@ -7,6 +7,18 @@
 
 ## Journal
 
+### [2026-04-04] — fix: mode_ui absent dans le dropdown Mode de la page Explorer — Complété
+
+**Problème** : La liste déroulante "Mode" de la page Explorer affichait les valeurs brutes (`pair_name` DB) au lieu des libellés normalisés (ex. "Arena:Slayer on Aquarius" au lieu de "Assassin").
+
+**Cause racine** : `streamlit_app.py` passe `dff=ctx.df` (DataFrame brut) à `render_explorer_page`. Or `ctx.df` n'est jamais enrichi par `_vectorize_ui_columns` (qui crée la colonne `mode_ui`). Seul `ctx.dff` contient `mode_ui`, mais il est filtré par la sidebar — inapproprié pour un Explorer qui doit afficher tous les matchs.
+
+**Fix** : Dans `_render_match_filters` (`src/ui/pages/explorer.py`), ajouter un enrichissement conditionnel : si `mode_ui` est absent et `pair_name` présent, appliquer `normalize_mode_label_fn` via `map_elements` pour créer `mode_ui`. Ce pattern est déjà disponible car `normalize_mode_label_fn` est un paramètre de la fonction.
+
+**Décision** : Ne pas changer le `dff=ctx.df` dans `streamlit_app.py` (conserver l'accès à tous les matchs sans les filtres sidebar). Corriger au plus près du symptôme dans la page elle-même.
+
+**Résultat** : Aucune erreur pylance. Le dropdown Mode affichera désormais les modes normalisés (FR/EN selon la langue).
+
 ### [2026-04-04] — plan: vérification exhaustive + corrections post-scan — Complété
 
 **Statut** : Complété
