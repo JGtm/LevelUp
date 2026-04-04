@@ -87,7 +87,7 @@ FUNC:src/visualization/distributions.py:32:plot_kda_distribution:87L
 FUNC:src/visualization/distributions_outcomes.py:173:plot_win_ratio_heatmap:105L
 FUNC:src/visualization/distributions_outcomes.py:286:plot_matches_at_top_by_week:117L
 FUNC:src/visualization/distributions_outcomes.py:28:plot_outcomes_over_time:90L
-FUNC:src/visualization/friends_impact_heatmap.py:62:plot_friends_impact_heatmap:188L
+FUNC:src/visualization/friends_impact_heatmap.py:61:plot_friends_impact_heatmap:188L
 FUNC:src/visualization/match_bars.py:131:plot_multi_metric_bars_by_match:266L
 FUNC:src/visualization/match_bars.py:19:plot_metric_bars_by_match:109L
 FUNC:src/visualization/match_impact_timeline.py:281:plot_all_players_frags_timeline:188L
@@ -118,5 +118,3 @@ MODULE:src/data/sync/transformers/_match.py:577L
 MODULE:src/ui/pages/match_view_helpers.py:504L
 MODULE:src/ui/pages/match_view_scoreboard_detail.py:614L
 MODULE:src/ui/pages/session_compare.py:538L
-MODULE:src/visualization/friends_impact_heatmap.py:508L
-MODULE:src/visualization/maps_outcome.py:591L
