@@ -145,12 +145,13 @@ def user_tz_epoch_seconds(dt_value) -> float | None:
 paris_epoch_seconds = user_tz_epoch_seconds
 
 
-def format_date_fr(dt_value, lang: str = "fr") -> str:
+def format_date_fr(dt_value, lang: str = "fr", compact: bool = False) -> str:
     """Formate une date dans la langue donnée, ex: 'Lun. 4 décembre 2025' / 'Mon. December 4 2025'.
 
     Args:
         dt_value: Valeur de date (datetime, Timestamp, str, etc.).
         lang: ``"fr"`` ou ``"en"`` (défaut: ``"fr"`` pour compatibilité).
+        compact: Si True, omet le jour de la semaine (ex: '31 mars 2026').
 
     Returns:
         Date formatée ou "-" si invalide.
@@ -199,8 +200,8 @@ def format_date_fr(dt_value, lang: str = "fr") -> str:
     mois = mois_fr if lang == "fr" else mois_en
 
     if lang == "en":
-        return f"{jours[d.weekday()]} {mois[d.month - 1]} {d.day} {d.year}"
-    return f"{jours[d.weekday()]} {d.day} {mois[d.month - 1]} {d.year}"
+        return f"{mois[d.month - 1]} {d.day} {d.year}" if compact else f"{jours[d.weekday()]} {mois[d.month - 1]} {d.day} {d.year}"
+    return f"{d.day} {mois[d.month - 1]} {d.year}" if compact else f"{jours[d.weekday()]} {d.day} {mois[d.month - 1]} {d.year}"
 
 
 def _is_nan(value) -> bool:

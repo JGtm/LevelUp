@@ -1325,7 +1325,7 @@ div[data-testid="stNumberInput"] input:focus {
 
 .os-card {
     position: relative;
-    padding: 16px 16px;
+    padding: 10px 16px;
     /* Fond semi-transparent */
     background: rgba(21, 50, 62, 0.7);
     /* Coins coupés style Waypoint (haut-gauche et bas-droite) */

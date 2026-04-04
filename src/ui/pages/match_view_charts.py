@@ -73,7 +73,7 @@ def render_expected_vs_actual(  # noqa: C901, PLR0912, PLR0913, PLR0915
                 if dm > 0
                 else ("#F44336" if dm < 0 else "#9E9E9E")  # --color-loss / --color-tie
             )
-            os_card(t("mvc_mmr_gap"), f"{dm:+.1f}", t("mvc_mmr_gap_sub"), accent=col, kpi_color=col)
+            os_card(t("mvc_mmr_gap"), f"{dm:+.1f}", accent=col, kpi_color=col)
 
     def _ev_card(title: str, perf: dict, *, mode: str) -> None:
         count = perf.get("count")
