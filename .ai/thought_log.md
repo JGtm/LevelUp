@@ -7,6 +7,74 @@
 
 ## Journal
 
+### [2026-04-04] — plan: ajout V2 (Axes C/D/E/F) au plan refacto asset-translations — Complété
+
+**Statut** : Complété
+
+**Décision technique** :
+Scan complet du codebase (visualization/, ui/pages/, app/) pour identifier les problèmes non adressés par V1 et écrire un plan V2 en §8-10 du plan existant. Quatre axes :
+
+- **Axe C** : Éliminer le pattern callback fn injection (`normalize_mode_label_fn` / `normalize_map_label_fn` en Callable dans 28 sites). Possible dès que V1 Phase 2 rend ces fonctions pures.
+- **Axe D** : Centraliser `mode_ui` dans `i18n_columns.py` + démanteler `_add_derived_columns` (noqa: C901/PLR0912) → 3 fonctions. Supprimer `_vectorize_ui_columns` dans `_filters_cascade.py`. Déplacer `_rolling_mean` de `timeseries.py` vers `_timeseries_helpers.py` (import privé cross-module → dette).
+- **Axe E** : Résorber 3 violations actives > 500L : `maps_outcome.py` 590L → `_maps_outcome_data.py`, `friends_impact_heatmap.py` 507L → `_heatmap_data.py`, `timeseries.py` 505L → extraction helpers. Identifier 7 modules proches de la limite (450–500L) dont `teammates_charts.py` qui grossira avec V1 Phase 7.
+- **Axe F** : `SingleSeriesChartData` pour les 7 graphes solo timeseries. Harmoniser les magic numbers height (`420` vs `400` incohérents). Centraliser `from_series()` avec rolling mean pré-calculé.
+
+**Oublis détectés par rapport au plan V1** :
+- `match_impact_timeline.py` (482L, 2 god functions avec 4 violations noqa chacune) — non adressé nulle part
+- `maps.py:89-90` guard similaire à `_map_col` — ajouté en Phase 4 (déjà fait dans la mise à jour précédente)
+
+**Résultats** :
+- §8 (Analyse V2), §9 (Checklist V2), §10 (Git V2) ajoutés au plan.
+- Aucun code modifié.
+
+**Branche** : `fix/map-ui-fr-mismatch`
+
+---
+
+### [2026-04-04] — plan: revue + mise à jour PLAN_REFACTO_ASSET_TRANSLATIONS — Complété
+
+**Statut** : Complété
+
+**Décision technique** :
+Revue du plan de refacto i18n pipeline + ChartData. Constat d'écart entre le plan (daté 2026-04-03) et l'état réel du code :
+
+- **Phase 0 déjà complète** : `src/app/i18n_columns.py` existe et est intégré dans `main_helpers.py:373`. La signature implémentée `(df, lang="fr")` est plus simple que prévu (pas de callbacks fn) — décision correcte car les colonnes `*_fr` sont déjà dans le df. `mode_ui` volontairement exclu (pair_name brut ≠ label normalisé).
+- **Hotfixes UI supprimés** : les 6 patches `map_ui` dans `win_loss.py`, `teammates_views.py`, `friends_impact_heatmap.py`, `_teammates_trio.py`, requêtes SQL — tous supprimés.
+- **Restants Phase 4** : `add_ui_columns()` dans `filters.py`, guard `_map_col` dans `squad_records.py:165`, guard similaire dans `maps.py:89-90` (oubliée dans le plan initial).
+- **Ajout prérequis test** Phase 2 : test `normalize_mode_label` sans `st.session_state` à écrire avant de modifier la signature.
+- **Ajout risque import circulaire** Phase 7 : `ChartData.add_record_overlays` → import lazy vers `_squad_record_shapes` à valider en sens inverse.
+
+**Résultats** :
+- Plan mis à jour : date, état de chaque phase (✅/⏳), tableau récapitulatif avec colonne État, estimation résiduelle ~5h30.
+- Aucun code modifié — révision documentaire uniquement.
+
+**Branche** : `fix/map-ui-fr-mismatch`
+
+---
+
+### [2026-04-03] — fix(hero): adornment disparu + backdrop sur KPIs pour Chocoboflor — Complété
+
+**Statut** : Complété
+
+**Décision technique** :
+Deux bugs liés :
+
+1. **Adornment manquant** (`player_assets.py`) : `ensure_local_image_path` avec `download_enabled=False` et cache périmé (âge > `auto_refresh_hours`) appelait `resolve_local_image_path` comme fallback. Or cette fonction ne cherche que les préfixes `("asset", "banner", "emblem", "backdrop", "nameplate")` mais PAS `"adornment"` ni `"rank"`. Résultat : le fichier `adornment_49404f49760014740a68.png` existait bien en cache (21 KB, valide) mais n'était jamais trouvé. Configuration en cause : `profile_assets_download_enabled=False, profile_api_enabled=False, profile_assets_auto_refresh_hours=24` → cache de 72h considéré périmé.
+
+   **Fix** : quand `download_enabled=False` et que le cache avec le préfixe exact existe (même périmé), le retourner directement avant d'appeler `resolve_local_image_path`.
+
+2. **Backdrop déborde sur les KPIs** (`styles.css`) : L'image backdrop de Chocoboflor (1000×776 px) s'affiche à ~256×199 px dans `.spartan-id` (82px de hauteur, `overflow: visible`). Sans adornment pour forcer la hauteur du wrapper, `.spartan-id-wrapper` ne faisait que ~94px → le backdrop en position absolue débordait de ~60px sur les éléments suivants (section `render_top_summary`).
+
+   **Fix** : `min-height: 200px` sur `.spartan-id-wrapper` — la hauteur du backdrop calculé (~199px) est entièrement contenue ; les KPIs s'affichent dessous.
+
+**Résultats** :
+- Adornment Colonel Or III de Chocoboflor visible de nouveau
+- Backdrop ne déborde plus sur la section "Matchs joués / Durée / Victoires..."
+
+**Branche** : `fix/map-ui-fr-mismatch`
+
+---
+
 ### [2026-04-03] — fix(film-start): correction mouvements de lobby dans spawn_detection — Complété
 
 **Statut** : Complété
