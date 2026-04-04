@@ -457,24 +457,6 @@ Trois types de kills clutch, par ordre de fiabilité :
 
 ---
 
-### [v6.3.1][ux] Sélecteur de langue : remplacer le bouton radio par un menu déroulant avec drapeau
-
-**Noté le** : 2026-04-03 | **Priorité** : Basse
-
-**Contexte** : Le sélecteur de langue actuel utilise des boutons radio Streamlit (`st.radio`) — verbeux et visuellement encombrant dans la sidebar. L'objectif est un `st.selectbox` discret n'affichant que le drapeau (🇫🇷 / 🇬🇧) sans label textuel visible.
-
-**Solution** :
-1. Remplacer `st.radio` par `st.selectbox` avec options `["🇫🇷", "🇬🇧"]` (ou `{"🇫🇷": "fr", "🇬🇧": "en"}`)
-2. Masquer le label via `label_visibility="collapsed"`
-3. Conserver la logique de persistance `st.session_state["lang"]` existante
-4. Vérifier que le changement déclenche bien un `st.rerun()` pour propager la langue
-
-**Localisation probable** : `src/ui/sidebar.py` ou équivalent (chercher `st.radio` + `lang`).
-
-**Effort estimé** : 30 min.
-
----
-
 ### [v6.3.1][fix] Mode "Quick Play" dans la notification Discord
 
 **Noté le** : 2026-04-03 | **Priorité** : Basse
@@ -487,78 +469,6 @@ Trois types de kills clutch, par ordre de fiabilité :
 3. Tester sur un embed local avec `mode_raw = "Quick Play"` → attendu : `"Jeu rapide"` (FR) ou `"Quick Play"` normalisé (EN)
 
 **Effort estimé** : 30 min.
-
----
-
-### [v6.3.1][ux] Afficher la version de l'app discrètement
-
-**Noté le** : 2026-04-03 | **Priorité** : Basse
-
-**Contexte** : Pas de versioning visible dans l'interface. Utile pour le support, les captures d'écran de rapport de bug et la cohérence avec le CHANGELOG.
-
-**Solution** :
-1. Lire la version depuis un fichier source unique (ex. `src/__version__.py` : `__version__ = "6.3.0"`, ou depuis `pyproject.toml`)
-2. Afficher en bas de sidebar via `st.caption(f"v{__version__}")` avec style discret
-3. Ne pas dupliquer la chaîne de version dans plusieurs fichiers — une seule source de vérité
-
-**Effort estimé** : 20 min.
-
----
-
-### [v6.3.1][ui] Harmoniser et fixer la hauteur des rangées de cases dans Dernier Match
-
-**Noté le** : 2026-04-03 | **Priorité** : Basse
-
-**Contexte** : Dans la section "Dernier Match", les deux rangées de métriques (ex. Victoire / Défaite / KDA…) ont des hauteurs de cases irrégulières — contenu variable + absence de hauteur fixe CSS.
-
-**Solution** :
-1. Identifier le composant de carte métrique utilisé (`st.metric`, div custom, ou composant `src/ui/components/`)
-2. Appliquer une hauteur fixe minimale cohérente sur les deux rangées (CSS `min-height` ou paramètre du composant)
-3. S'assurer que le texte tronqué long ne fasse pas déborder une case
-
-**Localisation probable** : `src/ui/pages/last_match.py` ou `src/ui/components/metrics.py`.
-
-**Effort estimé** : 30–45 min (surtout du CSS/HTML Streamlit).
-
----
-
-### [v6.3.1][ui] Agrandir les badges dans la page Dernier Match (+30%)
-
-**Noté le** : 2026-04-03 | **Priorité** : Basse
-
-**Contexte** : Deux catégories de badges dans la page Dernier Match sont trop petits :
-- **Outcome** : Victoire / Défaite / Égalité / DNF (case Outcome)
-- **DominanceFlag** : Remontada / Contre-Remontada / Débandade / Humiliation / Domination Totale (section badges)
-
-**Action** : Augmenter la taille des deux types de badges d'environ 30% (emoji, police, ou padding selon le rendu actuel).
-
-**Solution** :
-1. Localiser le rendu outcome dans `src/ui/pages/last_match.py` — chercher `Outcome.WIN` / `LOSS` / `TIE` / `DNF`
-2. Localiser le rendu DominanceFlag dans le même fichier — chercher `DominanceFlag` ou `comeback_flag`
-3. Appliquer le même facteur d'agrandissement sur les deux pour conserver la cohérence visuelle
-
-**Effort estimé** : 30 min.
-
----
-
-### [v6.3.1][feat] Page Explorer — champ de recherche par Match ID partiel
-
-**Noté le** : 2026-04-03 | **Priorité** : Basse
-
-**Contexte** : La page Explorer permet de parcourir l'historique de matchs mais ne propose pas de recherche directe par `match_id`. Utile pour retrouver un match à partir d'un identifiant copié-collé (ex. depuis une capture écran ou un URL filmshell : `70a1c6c6`).
-
-**Comportement attendu** : L'utilisateur saisit un fragment de match ID (min 6–8 caractères), la liste est filtrée en temps réel sur `match_id LIKE '%<saisie>%'` (insensible à la casse).
-
-**Layout** : Le champ de recherche doit être placé sur la **même ligne** que le sélecteur "Sélectionner un match", à sa droite — via `st.columns([3, 1])` ou proportions similaires.
-
-**Solution** :
-1. Dans `src/ui/pages/explorer.py`, enrouler le sélecteur existant et le nouveau champ dans `col1, col2 = st.columns([3, 1])`
-2. `col1` : sélecteur "Sélectionner un match" (existant)
-3. `col2` : `st.text_input("🔍 Match ID", key="explorer_match_id_search", placeholder="70a1c6c6…")`
-4. Si la saisie est non vide (≥ 6 caractères), filtrer `.filter(pl.col("match_id").str.contains(query, literal=True))` sur la liste des matchs avant de peupler le sélecteur
-5. Afficher un message "Aucun match trouvé" si le filtre ne retourne rien
-
-**Effort estimé** : 45 min.
 
 ---
 
