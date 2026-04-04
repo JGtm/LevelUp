@@ -197,8 +197,6 @@ def test_nr_003_filter_persistence_cross_pages_consistent_dataset() -> None:
         xuid="",
         db_key=None,
         clean_asset_label_fn=None,
-        normalize_mode_label_fn=None,
-        normalize_map_label_fn=None,
     )
     winloss_df = apply_filters(
         dff=df,
@@ -207,8 +205,6 @@ def test_nr_003_filter_persistence_cross_pages_consistent_dataset() -> None:
         xuid="",
         db_key=None,
         clean_asset_label_fn=None,
-        normalize_mode_label_fn=None,
-        normalize_map_label_fn=None,
     )
     teammates_df = apply_filters(
         dff=df,
@@ -217,8 +213,6 @@ def test_nr_003_filter_persistence_cross_pages_consistent_dataset() -> None:
         xuid="",
         db_key=None,
         clean_asset_label_fn=None,
-        normalize_mode_label_fn=None,
-        normalize_map_label_fn=None,
     )
 
     expected_ids = ["m2"]

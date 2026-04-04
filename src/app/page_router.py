@@ -107,7 +107,6 @@ def build_match_view_params(  # noqa: PLR0913
     load_match_gamertags_fn: Callable,
     load_match_rosters_fn: Callable,
     paris_tz,
-    normalize_mode_label_fn: Callable | None = None,  # LEGACY — ignoré
 ) -> MatchViewParams:
     """Construit les paramètres communs pour les pages de match."""
     return {

@@ -48,8 +48,6 @@ def apply_filters(  # noqa: C901, PLR0912, PLR0913, PLR0915
     xuid: str | None = None,
     db_key: tuple[int, int] | None = None,
     clean_asset_label_fn: Callable[[str], str] | None = None,
-    normalize_mode_label_fn: Callable[[str], str] | None = None,  # LEGACY — ignoré
-    normalize_map_label_fn: Callable[[str], str] | None = None,   # LEGACY — ignoré
 ) -> pl.DataFrame:
     """Applique tous les filtres au DataFrame.
 

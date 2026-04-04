@@ -346,8 +346,6 @@ def _render_cascade_filters(  # noqa: PLR0913
     picked_session_labels: list[str] | None,
     base_s_ui: pl.DataFrame | None,
     clean_asset_label_fn: Callable[[str], str],
-    normalize_mode_label_fn: Callable[[str], str] | None = None,  # LEGACY — ignoré
-    normalize_map_label_fn: Callable[[str], str] | None = None,  # LEGACY — ignoré
 ) -> _CascadeResult:
     """Rend les filtres Type d'expérience + Playlists + Modes + Cartes (v5.2)."""
     dropdown_base = _to_polars(base_for_filters)
