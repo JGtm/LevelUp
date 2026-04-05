@@ -80,6 +80,33 @@
 
 ---
 
+### [refacto] Supprimer title= de apply_halo_plot_style (finalisation Axe G)
+
+**Noté le** : 2026-04-05
+**Priorité** : Basse (warning en place, aucun impact fonctionnel)
+
+**Contexte** : L'Axe G du plan V2 a externalisé ~74 titres Plotly vers `st.subheader()` et ajouté un `DeprecationWarning` dans `apply_halo_plot_style` quand `title=` est non vide. La prochaine étape est de supprimer complètement le param `title` de la signature et de la logique interne de `theme.py`, une fois que tous les call-sites auront été vérifiés. Vérifier avec `grep -rn "title=" src/visualization/` qu'il ne reste aucun appel actif avant de supprimer.
+
+---
+
+### [refacto] Migrer les pages timeseries vers SingleSeriesChartData
+
+**Noté le** : 2026-04-05
+**Priorité** : Basse
+
+**Contexte** : `SingleSeriesChartData` (créé en Axe F) centralise la construction des séries temporelles single-joueur. La moitié des fonctions `plot_*` dans `src/visualization/timeseries*.py` construisent encore leurs traces manuellement. Les migrer réduirait la duplication et rendrait le downsampling automatique.
+
+---
+
+### [perf] Indexer les requêtes SQL non indexées identifiées dans les audits
+
+**Noté le** : 2026-04-05
+**Priorité** : Basse
+
+**Contexte** : Plusieurs requêtes DuckDB sur `match_participants`, `medals_earned` et `weapon_kills` effectuent des scans complets alors qu'un index sur `(xuid, match_id)` accélérerait les lookups par joueur. À investiguer avec `EXPLAIN ANALYZE` sur les requêtes lentes identifiées lors des audits de performance.
+
+---
+
 ### [backfill] Recalculer `match_citations` pour `spartan_carnage` (tous les joueurs)
 
 **Noté le** : 2026-04-04
