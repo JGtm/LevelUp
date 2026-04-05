@@ -7,6 +7,29 @@
 
 ## Journal
 
+### [2026-04-05] — Axe G : titres Plotly externalisés vers st.subheader — Complété
+
+**Tâche** : Implémenter Axe G du plan `PLAN_REFACTO_ASSET_TRANSLATIONS_2026-04-02.md` V2 — déplacer les titres Plotly (passés via `apply_halo_plot_style(title=...)`) vers `st.subheader()` dans les pages.
+
+**Décision technique** : Transformation en 4 sous-axes :
+- G1 : `DeprecationWarning` rétrocompatible dans `theme.py`
+- G2 : Suppression automatisée via script Python regex sur ~55 signatures viz (25 fichiers)
+- G3 : Ajout `st.subheader()` dans 8 pages/composants + suppression des `title=` des call-sites
+- G4 : `margin_top` 30→10 dans `config.py`
+
+**Complexités rencontrées** :
+- Regex supprimant le `,` avant `title={}` → virgules manquantes dans `update_layout` (5 fichiers)
+- `create_kd_indicator` : `title` est un label de trace `go.Indicator`, PAS un titre de chart → paramètre conservé
+- `plot_trio_kills_deaths` : `title` doublement utilisé (chart title + y-axis label) → supprimé des deux
+- Script de fix tests trop large : a incorrectement supprimé `title=` de `format_career_rank_label_fr()` et `SingleSeriesChartData.from_series()` → restaurations manuelles
+- Baseline tailles obs solète après removal des params → `enforce_size_limits.py --update`
+
+**Résultats** : 5573 passés / 6 pré-existants inchangés. Commit `dda952b7`.
+
+**Conclusion** : Plan V2 entièrement complété. Tous les Axes (C, D, E, F, G) commités sur `refactor/viz-pipeline-v2`.
+
+---
+
 ### [2026-04-04] — Phase 7f : SquadRecordSet — Complété
 
 **Tâche** : Implémenter Phase 7f du plan `PLAN_REFACTO_ASSET_TRANSLATIONS_2026-04-02.md` — remplacer le passage de `records + records_per_map` (2 kwargs) par un seul `squad_records: SquadRecordSet | None`.
