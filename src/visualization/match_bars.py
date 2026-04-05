@@ -20,7 +20,6 @@ def plot_metric_bars_by_match(  # noqa: PLR0913
     df_: DataFrameLike,
     *,
     metric_col: str,
-    title: str | None = None,
     y_axis_title: str,
     hover_label: str,
     bar_color: str,
@@ -108,12 +107,10 @@ def plot_metric_bars_by_match(  # noqa: PLR0913
         )
     )
     layout_kwargs: dict = {
-        "margin": {"l": 40, "r": 20, "t": 40 if title else 10, "b": 90},
+        "margin": {"l": 40, "r": 20, "t": 10, "b": 90},
         "hovermode": "x unified",
         "legend": get_legend_horizontal_bottom(),
     }
-    if title is not None:
-        layout_kwargs["title"] = title
     fig.update_layout(**layout_kwargs)
     fig.update_yaxes(title_text=y_axis_title, rangemode="tozero")
     fig.update_xaxes(
@@ -132,7 +129,6 @@ def plot_multi_metric_bars_by_match(  # noqa: C901, PLR0912, PLR0913, PLR0915
     series: list[tuple[str, DataFrameLike]],
     *,
     metric_col: str,
-    title: str,
     y_axis_title: str,
     hover_label: str,
     colors: dict[str, str] | list[str] | None,
@@ -379,7 +375,6 @@ def plot_multi_metric_bars_by_match(  # noqa: C901, PLR0912, PLR0913, PLR0915
         _cd_mb.add_record_overlays(fig)
 
     fig.update_layout(
-        title=title,
         margin={"l": 40, "r": 20, "t": 40, "b": 150},
         hovermode="x unified",
         legend={**get_legend_horizontal_bottom(), "y": -0.52},

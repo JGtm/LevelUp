@@ -201,13 +201,13 @@ def render_trio_charts(  # noqa: PLR0913
 
     # Graphe combiné kills↑/morts↓ (remplace les deux graphes séparés)
     with safe_chart_render():
+        st.subheader(t("tm_kills_deaths"))
         st.plotly_chart(
             plot_trio_kills_deaths(
                 d_self,
                 d_f1,
                 d_f2,
                 names=names,
-                title=t("tm_kills_deaths"),
                 lang=_lang,
                 d_f3=d_f3,
                 colors_by_name=colors_by_name,

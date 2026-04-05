@@ -28,7 +28,7 @@ from src.visualization._timeseries_progression import (  # noqa: F401 — re-exp
 from src.visualization.theme import apply_halo_plot_style, get_legend_horizontal_bottom
 
 
-def plot_average_life(df: DataFrameLike, title: str | None = None, lang: str = "fr") -> go.Figure:
+def plot_average_life(df: DataFrameLike, lang: str = "fr") -> go.Figure:
     """Graphique de la durée de vie moyenne.
 
     Args:
@@ -39,8 +39,6 @@ def plot_average_life(df: DataFrameLike, title: str | None = None, lang: str = "
         Figure Plotly.
     """
     d = _normalize_df(df)
-    if title is None:
-        title = viz_t("title_avg_life", lang)
 
     d = d.filter(pl.col("average_life_seconds").is_not_null()).sort("start_time")
     x_idx, labels, step = prepare_time_axis(d)
@@ -80,7 +78,6 @@ def plot_average_life(df: DataFrameLike, title: str | None = None, lang: str = "
     )
 
     fig.update_layout(
-        title=title,
         margin={"l": 40, "r": 20, "t": 50, "b": 90},
         hovermode="x unified",
         legend=get_legend_horizontal_bottom(),
@@ -189,7 +186,6 @@ def plot_spree_headshots_accuracy(
 
 def plot_streak_chart(
     df: DataFrameLike,
-    title: str | None = None,
     lang: str = "fr",
 ) -> go.Figure:
     """Graphique des séries de victoires et défaites dans le temps.
@@ -217,7 +213,7 @@ def plot_streak_chart(
             showarrow=False,
             font={"size": 16},
         )
-        return apply_halo_plot_style(fig, title=title or None, height=PLOT_CONFIG.short_height)
+        return apply_halo_plot_style(fig or None, height=PLOT_CONFIG.short_height)
 
     x_idx, labels, step = prepare_time_axis(d)
 
@@ -257,11 +253,9 @@ def plot_streak_chart(
     )
 
     layout_kwargs: dict = {
-        "margin": {"l": 40, "r": 20, "t": 40 if title else 10, "b": 90},
+        "margin": {"l": 40, "r": 20, "t": 10, "b": 90},
         "hovermode": "x unified",
     }
-    if title is not None:
-        layout_kwargs["title"] = title
     fig.update_layout(**layout_kwargs)
     fig.update_yaxes(
         title_text=viz_t("axis_streak", lang),
@@ -319,7 +313,6 @@ def _add_damage_traces(  # noqa: PLR0913
 
 def plot_damage_dealt_taken(
     df: DataFrameLike,
-    title: str | None = None,
     lang: str = "fr",
 ) -> go.Figure:
     """Graphique des dégâts infligés et subis par match.
@@ -332,8 +325,6 @@ def plot_damage_dealt_taken(
         Figure Plotly.
     """
     d = _normalize_df(df)
-    if title is None:
-        title = viz_t("title_damage", lang)
 
     d = d.sort("start_time")
     x_idx, labels, step = prepare_time_axis(d)
@@ -367,7 +358,6 @@ def plot_damage_dealt_taken(
     )
 
     fig.update_layout(
-        title=title,
         margin={"l": 40, "r": 20, "t": 40, "b": 90},
         hovermode="x unified",
         legend=get_legend_horizontal_bottom(),
@@ -439,7 +429,6 @@ def _add_shots_traces(
 
 def plot_shots_accuracy(
     df: DataFrameLike,
-    title: str | None = None,
     lang: str = "fr",
 ) -> go.Figure:
     """Graphique des tirs (tirés/touchés) en barres groupées avec courbe de précision.
@@ -452,8 +441,6 @@ def plot_shots_accuracy(
         Figure Plotly avec axe Y secondaire pour la précision.
     """
     d = _normalize_df(df)
-    if title is None:
-        title = viz_t("title_shots", lang)
 
     d = d.sort("start_time")
     x_idx, labels, step = prepare_time_axis(d)
@@ -465,7 +452,6 @@ def plot_shots_accuracy(
     apply_chrono_xaxis(fig, x_idx, labels, step, lang, as_category=False)
 
     fig.update_layout(
-        title=title,
         height=420,
         margin={"l": 40, "r": 50, "t": 40, "b": 90},
         legend=get_legend_horizontal_bottom(),

@@ -225,11 +225,7 @@ def plot_hs_pk_stacked(  # noqa: C901, PLR0912, PLR0915
         ).add_record_overlays(fig)
 
     # ── Légende manuelle (annotations) ───────────────────────────────────────
-    # Titre du graphe et mise en forme
-    title = viz_t("hs_pk_combined_title", lang)
-
     fig.update_layout(
-        title=title,
         margin={"l": 40, "r": 20, "t": 60, "b": 160},
         hovermode="closest",
         legend={**get_legend_horizontal_bottom(), "y": -0.55},

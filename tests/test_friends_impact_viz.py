@@ -153,7 +153,7 @@ class TestPlotFriendsImpactHeatmap:
         self, sample_impact_matrix: pl.DataFrame
     ) -> None:
         """Vérifie que le titre est appliqué."""
-        fig = plot_friends_impact_heatmap(sample_impact_matrix, title="Test Heatmap")
+        fig = plot_friends_impact_heatmap(sample_impact_matrix)
 
         assert fig is not None
         # Le titre devrait être dans le layout

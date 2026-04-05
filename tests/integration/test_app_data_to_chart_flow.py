@@ -340,14 +340,12 @@ def test_app_data_to_chart_flow(app_flow_dbs) -> None:
         stats_pd["personal_score"] = stats_pd["match_id"].map(score_map)
         fig_hist = plot_histogram(
             stats_pd["personal_score"],
-            title="Score personnel",
             x_label="Score",
         )
         assert len(fig_hist.data) >= 1
 
         fig_heat_win = plot_win_ratio_heatmap(
             stats_pd,
-            title="Win Ratio",
             min_matches=1,
         )
         assert len(fig_heat_win.data) >= 1

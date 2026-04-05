@@ -61,7 +61,6 @@ EVENT_LABELS = {
 def plot_friends_impact_heatmap(  # noqa: C901, PLR0912, PLR0915
     impact_matrix: pl.DataFrame,
     *,
-    title: str | None = None,
     max_matches: int = 50,
     height: int | None = None,
     lang: str = "fr",
@@ -92,7 +91,7 @@ def plot_friends_impact_heatmap(  # noqa: C901, PLR0912, PLR0915
             font={"size": 14, "color": colors.get("slate", "#64748b")},
         )
         fig.update_layout(height=height or 300)
-        return apply_halo_plot_style(fig, title=title, height=height)
+        return apply_halo_plot_style(fig, height=height)
 
     # Récupérer les valeurs uniques
     all_gamertags = sorted(impact_matrix["gamertag"].unique().to_list())
@@ -121,7 +120,7 @@ def plot_friends_impact_heatmap(  # noqa: C901, PLR0912, PLR0915
     if n_matches == 0:
         fig = go.Figure()
         fig.update_layout(height=height or 300)
-        return apply_halo_plot_style(fig, title=title, height=height)
+        return apply_halo_plot_style(fig, height=height)
 
     # Pivoter pour créer la matrice Z
     # Structure : [Joueur1, Joueur2, ...] × match_ids
@@ -239,14 +238,14 @@ def plot_friends_impact_heatmap(  # noqa: C901, PLR0912, PLR0915
 
     fig.update_layout(
         height=calc_height,
-        margin={"l": 120, "r": 40, "t": 60 if title else 30, "b": 50},
+        margin={"l": 120, "r": 40, "t": 30, "b": 50},
         xaxis_title=viz_t("axis_matches", lang),
         yaxis_title="",
         plot_bgcolor="rgba(245, 245, 245, 0.5)",  # Background clair
     )
     fig.update_yaxes(autorange="reversed")  # Premier en haut
 
-    return apply_halo_plot_style(fig, title=title, height=calc_height)
+    return apply_halo_plot_style(fig, height=calc_height)
 
 
 def build_impact_ranking_df(

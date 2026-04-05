@@ -149,12 +149,10 @@ class TestTeammatePersonalScoreComparison:
         # Vérifier que les histogrammes peuvent être générés
         fig_me = plot_histogram(
             sample_match_df["personal_score"],
-            title="Mon score personnel",
             x_label="Score",
         )
         fig_teammate = plot_histogram(
             teammate_match_df["personal_score"],
-            title="Score coéquipier",
             x_label="Score",
         )
 
@@ -226,7 +224,6 @@ class TestTeammateCorrelationsComparison:
             sample_match_df,
             x_col="avg_life_seconds",
             y_col="kills",
-            title="Corrélation : Durée de vie vs Kills",
             x_label="Durée de vie (s)",
             y_label="Kills",
             show_trendline=True,
@@ -244,7 +241,6 @@ class TestTeammateCorrelationsComparison:
             x_col="team_mmr",
             y_col="enemy_mmr",
             color_col="outcome",
-            title="MMR Équipe vs Ennemi",
         )
 
         assert fig is not None
@@ -265,13 +261,11 @@ class TestTeammateDistributionsComparison:
         # Distribution des kills
         fig_kills_me = plot_histogram(
             sample_match_df["kills"],
-            title="Distribution Kills (Moi)",
             x_label="Kills",
             show_kde=True,
         )
         fig_kills_teammate = plot_histogram(
             teammate_match_df["kills"],
-            title="Distribution Kills (Coéquipier)",
             x_label="Kills",
             show_kde=True,
         )
@@ -284,7 +278,6 @@ class TestTeammateDistributionsComparison:
         """Distribution de la précision."""
         fig = plot_histogram(
             sample_match_df["accuracy"],
-            title="Distribution Précision",
             x_label="Précision (%)",
             bins=10,
         )
@@ -330,14 +323,12 @@ class TestTeammateDamageComparison:
         # Distribution dégâts infligés
         fig_dealt = plot_histogram(
             sample_match_df["damage_dealt"],
-            title="Dégâts infligés",
             x_label="Dégâts",
         )
 
         # Distribution dégâts reçus
         fig_taken = plot_histogram(
             sample_match_df["damage_taken"],
-            title="Dégâts reçus",
             x_label="Dégâts",
         )
 
@@ -367,7 +358,6 @@ class TestTeammateWinRatioHeatmap:
         # Générer la heatmap win ratio (jour × heure)
         fig = plot_win_ratio_heatmap(
             sample_match_df,
-            title="Win Rate par Jour/Heure",
             min_matches=1,
         )
 
