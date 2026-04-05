@@ -12,7 +12,12 @@ from __future__ import annotations
 
 import duckdb
 
-from src.data.sync.migrations import ensure_asset_translations_table, ensure_resolution_views
+from src.data.sync.migrations import (
+    _create_v_gamertag_lookup,
+    _create_v_match_full,
+    ensure_asset_translations_table,
+    ensure_resolution_views,
+)
 
 # ─────────────────────────────────────────────────────────────────────────────
 # Helpers de fixtures
@@ -162,13 +167,21 @@ def test_v_match_full_colonnes_en_non_nulles():
 
 
 def test_v_match_full_colonnes_fr_nulles_sans_metadata():
-    """Sans metadata.duckdb attaché, les colonnes *_fr doivent être NULL."""
+    """Sans metadata.duckdb attaché, les colonnes *_fr doivent être NULL.
+
+    Appelle directement _create_v_match_full(meta_alias=None) pour tester le
+    chemin sans metadata — ensure_resolution_views auto-attache le metadata.duckdb
+    réel s'il existe sur le système de fichiers.
+    """
     conn = _make_shared_db()
     conn.execute("""
         INSERT INTO match_registry(match_id, map_name, playlist_name, pair_name, game_variant_name)
         VALUES ('m2', 'Recharge', 'Ranked Arena', 'Arena | Attrition', 'Arena:Attrition on Recharge')
     """)
-    ensure_resolution_views(conn)
+    # Créer v_gamertag_lookup (prérequis de v_match_full)
+    _create_v_gamertag_lookup(conn, prefix="")
+    # Créer v_match_full explicitement sans metadata → toutes colonnes FR = NULL
+    _create_v_match_full(conn, prefix="", meta_alias=None)
 
     row = conn.execute(
         "SELECT map_name_fr, playlist_name_fr, mode_name FROM v_match_full WHERE match_id = 'm2'"

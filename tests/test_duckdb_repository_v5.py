@@ -166,6 +166,7 @@ def _create_shared_db(db_path: Path) -> None:
             first_sync_at TIMESTAMP,
             last_updated_at TIMESTAMP,
             player_count SMALLINT DEFAULT 0,
+            film_match_start_ms INTEGER,
             created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
             updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
         )

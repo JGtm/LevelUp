@@ -21,6 +21,7 @@ from src.ui.formatting import format_date_fr
 from src.ui.i18n import get_lang, t
 from src.ui.pages.match_view_helpers import (
     map_thumb_path,
+    os_card,  # noqa: F401 — re-export public (importé par test_phase6_refactoring)
 )
 from src.ui.pages.match_view_logic import (
     compute_perf_display,
