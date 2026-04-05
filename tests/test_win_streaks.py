@@ -214,7 +214,6 @@ class TestPersonalScorePerMatch:
         fig = plot_metric_bars_by_match(
             df,
             metric_col="personal_score",
-            title="Score personnel",
             y_axis_title="Score",
             hover_label="Score",
             bar_color="#FFB703",
@@ -232,7 +231,6 @@ class TestPersonalScorePerMatch:
         result = plot_metric_bars_by_match(
             pd.DataFrame(),
             metric_col="personal_score",
-            title="Test",
             y_axis_title="Score",
             hover_label="Score",
             bar_color="#FFB703",
@@ -255,7 +253,7 @@ class TestRankAndPersonalScore:
         from src.visualization.timeseries import plot_rank_score
 
         df = _make_match_df_pandas(15)
-        fig = plot_rank_score(df, title="Rang et score")
+        fig = plot_rank_score(df)
         assert isinstance(fig, go.Figure)
         assert len(fig.data) >= 2  # barres score + ligne rang
 

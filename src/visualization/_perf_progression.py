@@ -148,7 +148,6 @@ def _add_kd_ci_traces(  # noqa: PLR0913
 def plot_cumulative_kd_with_ci(
     cumul_ci_df: pl.DataFrame,
     *,
-    title: str | None = None,
     height: int = 400,
     outcome_values: list[int | None] | None = None,
     lang: str = "fr",
@@ -164,8 +163,6 @@ def plot_cumulative_kd_with_ci(
         outcome_values: Liste d'Outcome pour les marqueurs V/D (optionnel).
         lang: Langue.
     """
-    if title is None:
-        title = viz_t("title_cumul_kd_ci", lang)
     fig = go.Figure()
 
     if cumul_ci_df.is_empty():
@@ -178,7 +175,7 @@ def plot_cumulative_kd_with_ci(
             showarrow=False,
             font={"size": 16, "color": THEME_COLORS.text_primary},
         )
-        return apply_halo_plot_style(fig, title=title, height=height)
+        return apply_halo_plot_style(fig, height=height)
 
     data = cumul_ci_df.to_dicts()
     x_values = [d.get("start_time", "") for d in data]
@@ -206,7 +203,7 @@ def plot_cumulative_kd_with_ci(
         legend={"orientation": "h", "yanchor": "bottom", "y": 1.02, "xanchor": "center", "x": 0.5},
     )
     _add_outcome_markers(fig, x_values, outcome_values, lang=lang)
-    return apply_halo_plot_style(fig, title=title, height=height)
+    return apply_halo_plot_style(fig, height=height)
 
 
 # =============================================================================
@@ -274,7 +271,6 @@ def _add_nph_traces(
 def plot_net_score_per_hour(
     nph_df: pl.DataFrame,
     *,
-    title: str | None = None,
     height: int = 350,
     outcome_values: list[int | None] | None = None,
     lang: str = "fr",
@@ -291,8 +287,6 @@ def plot_net_score_per_hour(
         outcome_values: Liste d'Outcome pour les marqueurs V/D.
         lang: Langue.
     """
-    if title is None:
-        title = viz_t("title_net_score_per_hour", lang)
     fig = go.Figure()
 
     if nph_df.is_empty():
@@ -305,7 +299,7 @@ def plot_net_score_per_hour(
             showarrow=False,
             font={"size": 16, "color": THEME_COLORS.text_primary},
         )
-        return apply_halo_plot_style(fig, title=title, height=height)
+        return apply_halo_plot_style(fig, height=height)
 
     data = nph_df.sort("start_time").to_dicts()
     x_values = [d.get("start_time", "") for d in data]
@@ -337,7 +331,7 @@ def plot_net_score_per_hour(
         layout["yaxis_range"] = list(y_range)
     fig.update_layout(**layout)
     _add_outcome_markers(fig, x_values, outcome_values, lang=lang)
-    return apply_halo_plot_style(fig, title=title, height=height)
+    return apply_halo_plot_style(fig, height=height)
 
 
 # =============================================================================
@@ -401,7 +395,6 @@ def _add_ewma_traces(  # noqa: PLR0913
 def plot_ewma_kd(  # noqa: PLR0913
     ewma_df: pl.DataFrame,
     *,
-    title: str | None = None,
     height: int = 400,
     regression_data: dict | None = None,
     outcome_values: list[int | None] | None = None,
@@ -420,8 +413,6 @@ def plot_ewma_kd(  # noqa: PLR0913
         outcome_values: Liste d'Outcome pour les marqueurs V/D.
         lang: Langue.
     """
-    if title is None:
-        title = viz_t("title_ewma_kd", lang)
     fig = go.Figure()
 
     if ewma_df.is_empty():
@@ -434,7 +425,7 @@ def plot_ewma_kd(  # noqa: PLR0913
             showarrow=False,
             font={"size": 14, "color": THEME_COLORS.text_primary},
         )
-        return apply_halo_plot_style(fig, title=title, height=height)
+        return apply_halo_plot_style(fig, height=height)
 
     data = ewma_df.sort("start_time").to_dicts()
     x_values = [d.get("start_time", "") for d in data]
@@ -473,4 +464,4 @@ def plot_ewma_kd(  # noqa: PLR0913
         layout["yaxis_range"] = list(y_range)
     fig.update_layout(**layout)
     _add_outcome_markers(fig, x_values, outcome_values, lang=lang)
-    return apply_halo_plot_style(fig, title=title, height=height)
+    return apply_halo_plot_style(fig, height=height)

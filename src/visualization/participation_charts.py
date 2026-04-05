@@ -38,7 +38,6 @@ _log = logging.getLogger(__name__)
 def plot_participation_pie(
     df: pl.DataFrame,
     *,
-    title: str | None = None,
     show_values: bool = True,
     lang: str = "fr",
 ) -> go.Figure:
@@ -54,7 +53,6 @@ def plot_participation_pie(
     """
     import polars as pl
 
-    title = title or viz_t("title_participation_profile", lang)
     cat_labels = get_category_labels(lang)
     # Agréger par catégorie
     agg = (
@@ -110,7 +108,6 @@ def plot_participation_pie(
     total_net = total_positive + penalties
 
     fig.update_layout(
-        title={"text": title, "x": 0.5},
         showlegend=True,
         legend={"orientation": "h", "yanchor": "bottom", "y": -0.1},
         annotations=[
@@ -147,7 +144,6 @@ def plot_participation_pie(
 def plot_participation_bars(
     df: pl.DataFrame,
     *,
-    title: str | None = None,
     top_n: int = 10,
     orientation: str = "h",
     lang: str = "fr",
@@ -163,7 +159,6 @@ def plot_participation_bars(
     Returns:
         Figure Plotly.
     """
-    title = title or viz_t("title_action_detail", lang)
     import polars as pl
 
     # Agréger par action
@@ -247,7 +242,6 @@ def plot_participation_bars(
         )
 
     fig.update_layout(
-        title={"text": title, "x": 0.5},
         showlegend=False,
         margin={"l": 150} if orientation == "h" else {"b": 100},
     )
@@ -263,7 +257,6 @@ def plot_participation_bars(
 def plot_participation_by_match(
     df: pl.DataFrame,
     *,
-    title: str | None = None,
     last_n: int = 20,
     lang: str = "fr",
 ) -> go.Figure:
@@ -277,7 +270,6 @@ def plot_participation_by_match(
     Returns:
         Figure Plotly.
     """
-    title = title or viz_t("title_participation_by_match", lang)
     cat_labels = get_category_labels(lang)
     import polars as pl
 
@@ -317,7 +309,6 @@ def plot_participation_by_match(
             )
 
     fig.update_layout(
-        title={"text": title, "x": 0.5},
         barmode="relative",  # Permet les valeurs négatives
         xaxis_title=viz_t("axis_match_number", lang),
         yaxis_title=viz_t("axis_points", lang),

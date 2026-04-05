@@ -62,7 +62,6 @@ def create_teammate_synergy_radar(
     me_data: dict[str, Any],
     teammate_data: dict[str, Any],
     *,
-    title: str | None = None,
     height: int = 400,
 ) -> go.Figure:
     """Crée un radar comparant le profil de jeu entre moi et un coéquipier.
@@ -101,9 +100,8 @@ def create_teammate_synergy_radar(
         },
         showlegend=True,
         legend={"orientation": "h", "yanchor": "bottom", "y": -0.15, "x": 0.5, "xanchor": "center"},
-        title={"text": title or t("radar_complementarity"), "x": 0.5, "xanchor": "center"},
         height=height,
-        margin={"l": 70, "r": 70, "t": 60 if title else 30, "b": 70},
+        margin={"l": 70, "r": 70, "t": 30, "b": 70},
     )
 
     return fig
@@ -112,7 +110,6 @@ def create_teammate_synergy_radar(
 def create_session_trend_radar(
     sessions: list[dict[str, Any]],
     *,
-    title: str | None = None,
     height: int = 400,
 ) -> go.Figure:
     """Crée un radar montrant l'évolution du profil entre plusieurs sessions.
@@ -137,7 +134,6 @@ def create_session_trend_radar(
     if not sessions:
         fig = go.Figure()
         fig.update_layout(
-            title={"text": title or t("radar_session_evolution"), "x": 0.5, "xanchor": "center"},
             height=height,
         )
         return fig
@@ -198,9 +194,8 @@ def create_session_trend_radar(
             },
         },
         showlegend=True,
-        title={"text": title or t("radar_session_evolution"), "x": 0.5, "xanchor": "center"},
         height=height,
-        margin={"l": 70, "r": 70, "t": 60 if title else 30, "b": 50},
+        margin={"l": 70, "r": 70, "t": 30, "b": 50},
     )
 
     return fig

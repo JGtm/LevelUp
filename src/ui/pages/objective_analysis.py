@@ -163,7 +163,7 @@ def _render_analysis_tabs(
         st.markdown(f"### {t('obj_correlation_title')}")
         st.caption(t("obj_scatter_caption"))
         with safe_chart_render():
-            fig = plot_objective_vs_kills_scatter(my_awards_df, match_stats_df, title=None)
+            fig = plot_objective_vs_kills_scatter(my_awards_df, match_stats_df)
             if fig is not None:
                 st.plotly_chart(fig, width="stretch", config=PLOTLY_CLEAN_CONFIG)
             else:
@@ -174,7 +174,7 @@ def _render_analysis_tabs(
         with col_bars:
             st.markdown(f"### {t('obj_breakdown_title')}")
             with safe_chart_render():
-                fig = plot_objective_breakdown_bars(my_awards_df, xuid=xuid, title=None)
+                fig = plot_objective_breakdown_bars(my_awards_df, xuid=xuid)
                 if fig is not None:
                     st.plotly_chart(fig, width="stretch", config=PLOTLY_STATIC_CONFIG)
                 else:
@@ -182,7 +182,7 @@ def _render_analysis_tabs(
         with col_gauge:
             st.markdown(f"### {t('obj_ratio_label')}")
             with safe_chart_render():
-                fig = plot_objective_ratio_gauge(objective_ratio, title="% du score sur objectifs")
+                fig = plot_objective_ratio_gauge(objective_ratio)
                 if fig is not None:
                     st.plotly_chart(fig, width="stretch", config=PLOTLY_STATIC_CONFIG)
                 else:
@@ -198,7 +198,7 @@ def _render_analysis_tabs(
                 .sort("start_time")
             )
             with safe_chart_render():
-                fig = plot_objective_trend_over_time(summary_with_time, title=None)
+                fig = plot_objective_trend_over_time(summary_with_time)
                 if fig is not None:
                     st.plotly_chart(fig, width="stretch", config=PLOTLY_CLEAN_CONFIG)
                 else:
@@ -225,6 +225,7 @@ def _render_assists_section(my_awards_df: pl.DataFrame) -> None:
     )
     col_pie, col_table = st.columns([1, 1])
     with col_pie:
+        st.subheader("Types d'Assistances")
         kill_assists = assist_awards.filter(pl.col("award_name").str.contains("(?i)kill")).height
         mark_assists = assist_awards.filter(
             pl.col("award_name").str.contains("(?i)mark|spot|tag")
@@ -239,7 +240,7 @@ def _render_assists_section(my_awards_df: pl.DataFrame) -> None:
             "emp_assists": emp_assists,
             "other_assists": max(0, other_assists),
         }
-        fig_pie = plot_assist_breakdown_pie(breakdown, title="Types d'Assistances")
+        fig_pie = plot_assist_breakdown_pie(breakdown)
         st.plotly_chart(fig_pie, width="stretch", config=PLOTLY_STATIC_CONFIG)
 
     with col_table:

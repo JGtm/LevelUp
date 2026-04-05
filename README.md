@@ -21,6 +21,11 @@
 - **Time-to-first-kill/death histogram revamped** — mirrored butterfly chart with 15-second bins and real gameplay time (pre-game countdown excluded)
 - **Win rate chart** now shows total match count per map and translated map names
 - **Settings page redesigned** — reorganized into clear sections (General, Sync, Performance, Display) for easier navigation
+- **Last Match page polished** — map and mode merged into one KPI card; the MMR, Kills, and Deaths cards now show the opponent team's score alongside your own, with a color-coded gap; the performance score appears directly next to your rating; all cards share a uniform height
+- **Medals and citations in a 4-column grid** — the scoreboard now lays out medals and citations in 4 columns for a cleaner overview; weapons in 2 columns with correct thumbnail sizing; citation tooltips include the medal description
+- **Match ID search in Explorer** — start typing any part of a match ID (3+ characters) to instantly filter your match list with live feedback
+- **Compact language selector** — the language switcher now shows flag emojis inline; the app version is always displayed below the logo
+- **Bug fixes** — Spartan Carnage citation type corrected (now properly counts killing-spree medals); Discord notifications now display correct map and playlist names; hero page backdrop overflow fixed
 
 **v6.2 — Comeback badges & unified squad view**
 - **Remontada / Collapse / Contre-Remontada badges** — the app now detects comeback narratives from your match history: *Remontada* (you were losing at the midpoint but came back to win), *Collapse* (you were winning and blew it), *Contre-Remontada* (you stopped the enemy's comeback). Run `--comeback-badges` to compute them

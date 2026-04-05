@@ -167,7 +167,6 @@ def _apply_scatter_layout(  # noqa: PLR0913
     n_players: int,
     gamertags: list[str],
     *,
-    title: str | None,
     calc_height: int,
     lang: str,
 ) -> None:
@@ -176,7 +175,7 @@ def _apply_scatter_layout(  # noqa: PLR0913
         shapes=shapes,
         height=calc_height,
         showlegend=False,
-        margin={"l": 130, "r": 40, "t": 64 if title else 34, "b": 50},
+        margin={"l": 130, "r": 40, "t": 34, "b": 50},
         xaxis={
             "title": viz_t("axis_matches", lang),
             "tickvals": list(range(n_matches)),
@@ -201,7 +200,6 @@ def _apply_scatter_layout(  # noqa: PLR0913
 def plot_friends_impact_scatter(
     impact_matrix: pl.DataFrame,
     *,
-    title: str | None = None,
     max_matches: int = 50,
     height: int | None = None,
     match_ids_order: list[str] | None = None,
@@ -221,7 +219,7 @@ def plot_friends_impact_scatter(
             showarrow=False,
             font={"size": 14, "color": colors.get("slate", "#64748b")},
         )
-        return apply_halo_plot_style(fig, title=title, height=height or 300)
+        return apply_halo_plot_style(fig, height=height or 300)
 
     all_gt = sorted(impact_matrix["gamertag"].unique().to_list())
     gamertags = [g for g in all_gt if g != "Résultat"]
@@ -244,7 +242,7 @@ def plot_friends_impact_scatter(
         impact_matrix = impact_matrix.filter(pl.col("match_id").is_in(match_ids))
 
     if not match_ids or not gamertags:
-        return apply_halo_plot_style(go.Figure(), title=title, height=height or 300)
+        return apply_halo_plot_style(go.Figure(), height=height or 300)
 
     n_matches, n_players = len(match_ids), len(gamertags)
     match_to_x = {mid: i for i, mid in enumerate(match_ids)}
@@ -263,8 +261,7 @@ def plot_friends_impact_scatter(
         n_matches,
         n_players,
         gamertags,
-        title=title,
         calc_height=calc_height,
         lang=lang,
     )
-    return apply_halo_plot_style(fig, title=title, height=calc_height)
+    return apply_halo_plot_style(fig, height=calc_height)

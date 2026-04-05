@@ -43,7 +43,6 @@ def plot_trio_metric(  # noqa: PLR0912, PLR0913, PLR0915, C901 — graphe multi-
     *,
     metric: str,
     names: tuple[str, ...],
-    title: str,
     y_title: str,
     y_suffix: str = "",
     y_format: str = "",
@@ -114,8 +113,7 @@ def plot_trio_metric(  # noqa: PLR0912, PLR0913, PLR0915, C901 — graphe multi-
 
     fig = go.Figure()
     if aligned.is_empty():
-        fig.update_layout(title=title)
-        return apply_halo_plot_style(fig, title=title, height=PLOT_CONFIG.default_height)
+        return apply_halo_plot_style(fig, height=PLOT_CONFIG.default_height)
 
     def _roll(s: pl.Series) -> list:
         """Moyenne glissante, retourne une liste pour Plotly."""
@@ -255,7 +253,6 @@ def plot_trio_metric(  # noqa: PLR0912, PLR0913, PLR0915, C901 — graphe multi-
         _cd_trio.add_record_overlays(fig)
 
     fig.update_layout(
-        title=title,
         margin={"l": 40, "r": 20, "t": 60, "b": 40},
         hovermode="x unified",
         legend=get_legend_horizontal_bottom(),
@@ -267,7 +264,7 @@ def plot_trio_metric(  # noqa: PLR0912, PLR0913, PLR0915, C901 — graphe multi-
     if y_suffix:
         fig.update_yaxes(ticksuffix=y_suffix)
 
-    fig = apply_halo_plot_style(fig, title=title, height=PLOT_CONFIG.default_height)
+    fig = apply_halo_plot_style(fig, height=PLOT_CONFIG.default_height)
     # Rétablir l'axe zéro en gras blanc (apply_halo_plot_style le désactive via theme.py)
     fig.update_yaxes(zeroline=True, zerolinecolor="rgba(255,255,255,0.75)", zerolinewidth=2)
     return fig
@@ -347,7 +344,6 @@ def plot_trio_kills_deaths(  # noqa: PLR0913
     d_f2: DataFrameLike | None = None,
     *,
     names: tuple[str, ...],
-    title: str,
     lang: str = "fr",
     d_f3: DataFrameLike | None = None,
     colors_by_name: dict[str, str] | None = None,
@@ -490,7 +486,7 @@ def plot_trio_kills_deaths(  # noqa: PLR0913
         legend=get_legend_horizontal_bottom(),
     )
     fig.update_xaxes(tickmode="array", tickvals=xs, ticktext=ticktext_fr or xs, title_text="")
-    fig.update_yaxes(tickvals=tickvals, ticktext=ticktext, title_text=title)
-    fig = apply_halo_plot_style(fig, title=title, height=None)
+    fig.update_yaxes(tickvals=tickvals, ticktext=ticktext)
+    fig = apply_halo_plot_style(fig, height=None)
     fig.update_yaxes(zeroline=True, zerolinecolor="rgba(255,255,255,0.75)", zerolinewidth=2)
     return fig

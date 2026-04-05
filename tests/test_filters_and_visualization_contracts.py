@@ -192,7 +192,6 @@ def test_plot_metric_bars_by_match_has_represented_data() -> None:
     fig = plot_metric_bars_by_match(
         _make_match_df(),
         metric_col="kills",
-        title="Frags par match",
         y_axis_title="Frags",
         hover_label="frags",
         bar_color="#00bcd4",
@@ -214,7 +213,7 @@ def test_plot_map_comparison_has_represented_data() -> None:
             ratio_global=("ratio", "mean"),
         )
     )
-    fig = plot_map_comparison(maps_df, metric="ratio_global", title="Ratio par carte")
+    fig = plot_map_comparison(maps_df, metric="ratio_global")
     _assert_has_represented_data(fig)
 
 

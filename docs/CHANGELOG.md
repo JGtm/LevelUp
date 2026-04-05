@@ -38,6 +38,18 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 - **VPS Ionos deployment package** — `packaging/nginx/` configuration files, `deploy.sh`, step-by-step guide (`docs/DEPLOY_GUIDE_ETAPES.md`), and Ionos-specific VPS guide (`docs/DEPLOY_VPS_IONOS.md`).
 
+- **Scoreboard — medal & citation grid** — medals and citations in the Last Match scoreboard now display in a centered 4-column grid instead of a flat list, for a cleaner at-a-glance overview.
+
+- **Scoreboard — weapons grid** — weapons are displayed in a centered 2-column grid with corrected 54×18 px thumbnail ratio.
+
+- **Explorer — partial Match ID search** — new text input lets you type 3+ characters of a match ID to filter results; a live counter shows the number of matches found, with clear feedback when no result is found.
+
+- **Sidebar — compact language selector** — the language switcher now uses flag emojis in a compact inline format; the app version is always visible below the logo.
+
+- **Sidebar — inline sync indicator** — the sync status indicator is displayed inline with the player heading, without a match counter.
+
+- **Last Match — performance score placement** — the player's performance score is now shown directly to the left of the LUSR/CSR rating for easier comparison.
+
 ### Changed
 
 - **`shared_matches.duckdb` → `shared_matches_v2.duckdb`** — the shared match database file has been renamed. `get_shared_matches_path()` helper introduced; all hardcoded paths updated project-wide; `compute_sessions.py` updated.
@@ -49,6 +61,14 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 - **Sidebar i18n** — `_filters_cascade()` uses `playlist_name_fr` / `map_name_fr` when the UI language is French.
 
 - **`_try_attach_meta_for_views()`** — now checks for `meta.asset_translations` (exists in v6) instead of `meta.maps` (removed in v6).
+
+- **Last Match KPI row redesigned** — map and mode fused into a single card; date format restored; rendered via `render_compact_html_cards`; dominance legend added. MMR, Frags, and Deaths cards enriched with the opponent team's score and a colored gap indicator. `os_card` height unified; impact badges enlarged by +30 %; all KPI borders applied on all 4 sides.
+
+- **i18n — `add_i18n_display_columns()`** — `map_ui`, `mode_ui`, and `playlist_ui` columns now injected at DataFrame load time, propagated into `session_compare` and timeseries pages; missing `match_view` translation keys added (medals, scoreboard detail).
+
+- **Viz (Teammates) — Phase 7 ChartData** — the 5 squad chart functions migrated to the `ChartData` pattern for consistent rendering and reduced boilerplate.
+
+- **Internal refactoring (V1 Phases 1-4 + V2 Axe C)** — `is_uuid_like` unified project-wide; `normalize_mode_label` decoupled; dead code removed; `normalize_mode` / `map_label_fn` callbacks eliminated from 49 call sites.
 
 ### Fixed
 
@@ -69,12 +89,22 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 - Weapon aliases `Mutilator` / `Mutilateur` added to `_scoreboard_asset_urls`.
 - `top_killer` added to `_EVENT_TO_EMOJI` (missing entry caused emoji display fallback).
 
+- Last Match: font and background style of KPI cards harmonized across all card types.
+- Scoreboard: row hover background removed for a cleaner scoreboard; citation descriptions now displayed inside the tooltip.
+- Scoreboard: citations expandable filter correctly aligned with the Citations tab.
+- Discord notifications: now use `v_match_full` + `COALESCE(playlist_name_fr, ...)` / `map_name_fr` so correct localized names appear in alerts.
+- Citations: `spartan_carnage` score type corrected from `stat` → `medal` (now correctly sums killing-spree medals).
+- Hero page: stale adornment cache cleared; hero backdrop no longer overflows onto KPI cards.
+- i18n: French agreement corrected — label reads "Recherche par ID de Match"; `mode_ui` removed from `add_i18n_display_columns` to avoid unnormalized `pair_name_fr` values leaking into filters.
+
 ### Tests
 
 - `test(i18n)`: `resolve_map_display_names()` coverage + `map_ui` / `mode_ui` column assertions
 - `test(radar)`: `f1_vide` edge case + `shared_match_ids` collapse regression
 - Test suite updated for Settings V2 signature, i18n propagation, medal/playlist refactoring
 - Size baseline updated (`scripts/size_baseline.txt`)
+- Missing coverage for Phases 1-4 refactor added; missing `map_ui` fixtures and orphan tests after Phase 4 corrected
+- `test_teammates_helpers` adapted to use the new public `normalize_mode_label`
 
 ---
 

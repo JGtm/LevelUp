@@ -68,7 +68,6 @@ def _extract_assist_values(
 def plot_assist_breakdown_pie(
     assist_breakdown: Any,  # AssistBreakdownResult
     *,
-    title: str | None = None,
     height: int = 350,
     lang: str = "fr",
 ) -> go.Figure:
@@ -82,7 +81,6 @@ def plot_assist_breakdown_pie(
     Returns:
         Figure Plotly avec le camembert.
     """
-    title = title or viz_t("title_assist_breakdown", lang)
     fig = go.Figure()
 
     assists = _extract_assist_values(assist_breakdown)
@@ -95,7 +93,7 @@ def plot_assist_breakdown_pie(
             y=0.5,
             showarrow=False,
         )
-        return apply_halo_plot_style(fig, title=title, height=height)
+        return apply_halo_plot_style(fig, height=height)
 
     kill_assists, mark_assists, emp_assists, other_assists = assists
 
@@ -124,7 +122,7 @@ def plot_assist_breakdown_pie(
             y=0.5,
             showarrow=False,
         )
-        return apply_halo_plot_style(fig, title=title, height=height)
+        return apply_halo_plot_style(fig, height=height)
 
     labels, values, colors = zip(*filtered, strict=False)
 
@@ -140,13 +138,12 @@ def plot_assist_breakdown_pie(
         )
     )
 
-    return apply_halo_plot_style(fig, title=title, height=height)
+    return apply_halo_plot_style(fig, height=height)
 
 
 def plot_objective_trend_over_time(
     summary_df: pl.DataFrame,
     *,
-    title: str | None = None,
     height: int = 400,
     lang: str = "fr",
 ) -> go.Figure:
@@ -160,7 +157,6 @@ def plot_objective_trend_over_time(
     Returns:
         Figure Plotly avec la timeseries.
     """
-    title = title or viz_t("title_obj_trend", lang)
     fig = go.Figure()
 
     if summary_df.is_empty():
@@ -173,7 +169,7 @@ def plot_objective_trend_over_time(
             showarrow=False,
             font={"size": 16, "color": THEME_COLORS.text_primary},
         )
-        return apply_halo_plot_style(fig, title=title, height=height)
+        return apply_halo_plot_style(fig, height=height)
 
     # Trier par date
     df = summary_df.sort("start_time") if "start_time" in summary_df.columns else summary_df
@@ -217,7 +213,7 @@ def plot_objective_trend_over_time(
         legend={"orientation": "h", "yanchor": "bottom", "y": 1.02, "xanchor": "center", "x": 0.5},
     )
 
-    return apply_halo_plot_style(fig, title=title, height=height)
+    return apply_halo_plot_style(fig, height=height)
 
 
 def get_objective_chart_colors() -> dict[str, str]:

@@ -328,7 +328,7 @@ def _render_sprint7_sections(dff: pl.DataFrame, lang: str = "fr") -> None:
         st.subheader(t("ts_shots"))
         st.caption(t("ts_shots_caption"))
         with safe_chart_render():
-            fig_shots = plot_shots_accuracy(dff, title=None, lang=lang)
+            fig_shots = plot_shots_accuracy(dff, lang=lang)
             if fig_shots is not None:
                 st.plotly_chart(fig_shots, width="stretch", config=PLOTLY_CLEAN_CONFIG)
             else:
@@ -341,7 +341,7 @@ def _render_sprint7_sections(dff: pl.DataFrame, lang: str = "fr") -> None:
         st.subheader(t("ts_damage"))
         st.caption(t("ts_damage_caption"))
         with safe_chart_render():
-            fig_damage = plot_damage_dealt_taken(dff, title=None, lang=lang)
+            fig_damage = plot_damage_dealt_taken(dff, lang=lang)
             if fig_damage is not None:
                 st.plotly_chart(fig_damage, width="stretch", config=PLOTLY_CLEAN_CONFIG)
             else:
@@ -354,7 +354,7 @@ def _render_sprint7_sections(dff: pl.DataFrame, lang: str = "fr") -> None:
         st.subheader(t("ts_rank_score"))
         st.caption(t("ts_rank_score_caption"))
         with safe_chart_render():
-            fig_rank = plot_rank_score(dff, title=t("ts_rank_score"), lang=lang)
+            fig_rank = plot_rank_score(dff, lang=lang)
             if fig_rank is not None:
                 st.plotly_chart(fig_rank, width="stretch", config=PLOTLY_CLEAN_CONFIG)
             else:

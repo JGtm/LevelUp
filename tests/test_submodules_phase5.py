@@ -284,7 +284,7 @@ class TestAntagonistDuels:
         """create_kd_indicator retourne une Figure Plotly."""
         from src.visualization._antagonist_duels import create_kd_indicator
 
-        fig = create_kd_indicator(10, 5, title="K/D Test")
+        fig = create_kd_indicator(10, 5)
         assert fig is not None
         # Vérifier que c'est un objet Figure
         import plotly.graph_objects as go

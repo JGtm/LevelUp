@@ -107,7 +107,7 @@ class TestPlotParticipationPie:
         assert isinstance(fig, go.Figure)
 
     def test_custom_title(self, awards_df):
-        fig = plot_participation_pie(awards_df, title="Test Title")
+        fig = plot_participation_pie(awards_df)
         assert isinstance(fig, go.Figure)
 
     def test_no_values(self, awards_df):

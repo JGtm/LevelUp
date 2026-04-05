@@ -129,7 +129,6 @@ def _add_cumulative_score_traces(
 def plot_cumulative_net_score(  # noqa: PLR0913
     cumulative_df: pl.DataFrame,
     *,
-    title: str | None = None,
     height: int = 400,
     show_zero_line: bool = True,
     time_played_seconds: list[int | float] | None = None,
@@ -137,8 +136,6 @@ def plot_cumulative_net_score(  # noqa: PLR0913
     lang: str = "fr",
 ) -> go.Figure:
     """Crée un graphique du net score cumulé au fil des matchs."""
-    if title is None:
-        title = viz_t("title_cumul_net_score", lang)
     fig = go.Figure()
 
     if cumulative_df.is_empty():
@@ -151,7 +148,7 @@ def plot_cumulative_net_score(  # noqa: PLR0913
             showarrow=False,
             font={"size": 16, "color": THEME_COLORS.text_primary},
         )
-        return apply_halo_plot_style(fig, title=title, height=height)
+        return apply_halo_plot_style(fig, height=height)
 
     data = cumulative_df.to_dicts()
     x_values = [d.get("start_time", "") for d in data]
@@ -179,13 +176,12 @@ def plot_cumulative_net_score(  # noqa: PLR0913
 
     _add_duration_markers(fig, x_values, time_played_seconds, duration_marker_minutes)
 
-    return apply_halo_plot_style(fig, title=title, height=height)
+    return apply_halo_plot_style(fig, height=height)
 
 
 def plot_cumulative_kd(  # noqa: PLR0913
     cumulative_df: pl.DataFrame,
     *,
-    title: str | None = None,
     height: int = 400,
     show_target: float | None = 1.0,
     time_played_seconds: list[int | float] | None = None,
@@ -193,8 +189,6 @@ def plot_cumulative_kd(  # noqa: PLR0913
     lang: str = "fr",
 ) -> go.Figure:
     """Crée un graphique du K/D cumulé au fil des matchs."""
-    if title is None:
-        title = viz_t("title_cumul_kd", lang)
     fig = go.Figure()
 
     if cumulative_df.is_empty():
@@ -207,7 +201,7 @@ def plot_cumulative_kd(  # noqa: PLR0913
             showarrow=False,
             font={"size": 16, "color": THEME_COLORS.text_primary},
         )
-        return apply_halo_plot_style(fig, title=title, height=height)
+        return apply_halo_plot_style(fig, height=height)
 
     data = cumulative_df.to_dicts()
     x_values = [d.get("start_time", "") for d in data]
@@ -261,20 +255,17 @@ def plot_cumulative_kd(  # noqa: PLR0913
 
     _add_duration_markers(fig, x_values, time_played_seconds, duration_marker_minutes)
 
-    return apply_halo_plot_style(fig, title=title, height=height)
+    return apply_halo_plot_style(fig, height=height)
 
 
 def plot_rolling_kd(
     rolling_df: pl.DataFrame,
     *,
     window_size: int = 5,
-    title: str | None = None,
     height: int = 400,
     lang: str = "fr",
 ) -> go.Figure:
     """Crée un graphique du K/D glissant."""
-    if title is None:
-        title = viz_t("title_rolling_kd", lang, window=window_size)
 
     fig = go.Figure()
 
@@ -288,7 +279,7 @@ def plot_rolling_kd(
             showarrow=False,
             font={"size": 16, "color": THEME_COLORS.text_primary},
         )
-        return apply_halo_plot_style(fig, title=title, height=height)
+        return apply_halo_plot_style(fig, height=height)
 
     data = rolling_df.to_dicts()
     x_values = [d.get("start_time", "") for d in data]
@@ -335,4 +326,4 @@ def plot_rolling_kd(
         legend={"orientation": "h", "yanchor": "bottom", "y": 1.02, "xanchor": "center", "x": 0.5},
     )
 
-    return apply_halo_plot_style(fig, title=title, height=height)
+    return apply_halo_plot_style(fig, height=height)

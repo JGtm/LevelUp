@@ -40,7 +40,6 @@ def _ensure_performance_column(d: pl.DataFrame, history: pl.DataFrame) -> pl.Dat
 def plot_performance_timeseries(
     df: "DataFrameLike",
     df_history: "DataFrameLike | None" = None,
-    title: str | None = None,
     show_smooth: bool = True,
     lang: str = "fr",
 ) -> go.Figure:
@@ -57,8 +56,6 @@ def plot_performance_timeseries(
     """
 
     d = _normalize_df(df)
-    if title is None:
-        title = viz_t("title_performance", lang)
     history_pl: pl.DataFrame | None = None
     if df_history is not None:
         history_pl = _normalize_df(df_history)
@@ -103,7 +100,6 @@ def plot_performance_timeseries(
         )
 
     fig.update_layout(
-        title=title,
         margin={"l": 40, "r": 20, "t": 60, "b": 90},
         hovermode="x unified",
         legend=get_legend_horizontal_bottom(),
@@ -113,12 +109,11 @@ def plot_performance_timeseries(
     )
     apply_chrono_xaxis(fig, x_idx, labels, step, lang)
 
-    return apply_halo_plot_style(fig, title=title, height=PLOT_CONFIG.default_height)
+    return apply_halo_plot_style(fig, height=PLOT_CONFIG.default_height)
 
 
 def plot_rank_score(
     df: "DataFrameLike",
-    title: str | None = None,
     lang: str = "fr",
 ) -> go.Figure:
     """Graphique du rang et du score personnel par match.
@@ -131,8 +126,6 @@ def plot_rank_score(
         Figure Plotly avec axe Y secondaire pour le rang.
     """
     d = _normalize_df(df)
-    if title is None:
-        title = viz_t("title_rank_score", lang)
 
     d = d.sort("start_time")
     x_idx, labels, step = prepare_time_axis(d)
@@ -171,7 +164,6 @@ def plot_rank_score(
     apply_chrono_xaxis(fig, x_idx, labels, step, lang, as_category=False)
 
     fig.update_layout(
-        title=title,
         height=400,
         margin={"l": 40, "r": 50, "t": 40, "b": 90},
         legend=get_legend_horizontal_bottom(),
@@ -193,7 +185,6 @@ def plot_rank_score(
 
 def plot_lusr_timeseries(  # noqa: PLR0913
     df: "DataFrameLike",
-    title: str | None = None,
     show_confidence: bool = True,
     show_smooth: bool = True,
     playlist_group: str | None = None,
@@ -219,16 +210,13 @@ def plot_lusr_timeseries(  # noqa: PLR0913
     from src.analysis.skill_rating_config import SKILL_TIERS
 
     d = _normalize_df(df)
-    if title is None:
-        title = viz_t("trace_lusr_default_title", lang)
 
     if playlist_group and "playlist_group" in d.columns:
         d = d.filter(pl.col("playlist_group") == playlist_group)
 
     if d.is_empty():
         fig = go.Figure()
-        fig.update_layout(title=title)
-        return apply_halo_plot_style(fig, title=title, height=PLOT_CONFIG.default_height)
+        return apply_halo_plot_style(fig, height=PLOT_CONFIG.default_height)
 
     d = d.sort("start_time")
     x_idx, labels, step = prepare_time_axis(d)
@@ -269,7 +257,6 @@ def plot_lusr_timeseries(  # noqa: PLR0913
         )
 
     fig.update_layout(
-        title=title,
         margin={"l": 40, "r": 20, "t": 60, "b": 140},
         hovermode="x unified",
         legend={**get_legend_horizontal_bottom(), "y": -0.45},
@@ -280,7 +267,7 @@ def plot_lusr_timeseries(  # noqa: PLR0913
     )
     apply_chrono_xaxis(fig, x_idx, labels, step, lang)
 
-    return apply_halo_plot_style(fig, title=title, height=PLOT_CONFIG.default_height)
+    return apply_halo_plot_style(fig, height=PLOT_CONFIG.default_height)
 
 
 # ── Helpers internes ──────────────────────────────────────────────────────

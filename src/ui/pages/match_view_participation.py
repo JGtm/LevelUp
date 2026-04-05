@@ -219,7 +219,7 @@ def render_participation_comparison(  # noqa: C901, PLR0912, PLR0913
         st.subheader(f"📊 {t('mvp_comparison_title')}")
         col_radar, col_legend = st.columns([2, 1])
         with col_radar, safe_chart_render():
-            fig = create_participation_profile_radar(profiles, title="", height=400)
+            fig = create_participation_profile_radar(profiles, height=400)
             if fig is not None:
                 st.plotly_chart(fig, width="stretch", config=PLOTLY_STATIC_CONFIG)
             else:

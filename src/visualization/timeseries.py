@@ -98,11 +98,10 @@ def _add_kda_traces(  # noqa: PLR0913
     )
 
 
-def plot_timeseries(df: DataFrameLike, title: str | None = None, lang: str = "fr") -> go.Figure:
+def plot_timeseries(df: DataFrameLike, lang: str = "fr") -> go.Figure:
     """Graphique principal: Kills/Deaths/Ratio dans le temps."""
     df_pl = pl.DataFrame() if df is None else ensure_polars(df)
 
-    title = title or viz_t("title_kda", lang)
     if df_pl.is_empty():
         fig = go.Figure()
         fig.add_annotation(
@@ -114,7 +113,7 @@ def plot_timeseries(df: DataFrameLike, title: str | None = None, lang: str = "fr
             showarrow=False,
             font={"size": 16},
         )
-        return apply_halo_plot_style(fig, title=title, height=PLOT_CONFIG.tall_height)
+        return apply_halo_plot_style(fig, height=PLOT_CONFIG.tall_height)
 
     fig = make_subplots(rows=1, cols=1, specs=[[{"secondary_y": True}]])
     colors = HALO_COLORS.as_dict()
@@ -125,7 +124,6 @@ def plot_timeseries(df: DataFrameLike, title: str | None = None, lang: str = "fr
     _add_kda_traces(fig, x_idx, d, customdata, common_hover, colors, lang=lang)
 
     fig.update_layout(
-        title=title,
         legend=get_legend_horizontal_bottom(),
         margin={"l": 40, "r": 20, "t": 80, "b": 90},
         hovermode="x unified",
@@ -168,11 +166,11 @@ def plot_timeseries(df: DataFrameLike, title: str | None = None, lang: str = "fr
         secondary_y=True,
     )
 
-    return apply_halo_plot_style(fig, title=title, height=PLOT_CONFIG.tall_height)
+    return apply_halo_plot_style(fig, height=PLOT_CONFIG.tall_height)
 
 
 def plot_assists_timeseries(
-    df: DataFrameLike, title: str | None = None, lang: str = "fr"
+    df: DataFrameLike, lang: str = "fr"
 ) -> go.Figure:
     """Graphique des assistances dans le temps.
 
@@ -185,7 +183,6 @@ def plot_assists_timeseries(
     """
     df_pl = ensure_polars(df)
 
-    title = title or viz_t("title_assists", lang)
     colors = HALO_COLORS.as_dict()
     d = df_pl.sort("start_time")
     x_idx = list(range(len(d)))
@@ -235,7 +232,6 @@ def plot_assists_timeseries(
     )
 
     fig.update_layout(
-        title=title,
         margin={"l": 40, "r": 20, "t": 60, "b": 90},
         hovermode="x unified",
         legend=get_legend_horizontal_bottom(),
@@ -249,7 +245,7 @@ def plot_assists_timeseries(
         type="category",
     )
 
-    return apply_halo_plot_style(fig, title=title, height=PLOT_CONFIG.default_height)
+    return apply_halo_plot_style(fig, height=PLOT_CONFIG.default_height)
 
 
 def _add_permin_rolling_lines(  # noqa: PLR0913
@@ -306,7 +302,7 @@ def _add_permin_rolling_lines(  # noqa: PLR0913
 
 
 def plot_per_minute_timeseries(
-    df: DataFrameLike, title: str | None = None, lang: str = "fr"
+    df: DataFrameLike, lang: str = "fr"
 ) -> go.Figure:
     """Graphique des stats par minute.
 
@@ -319,7 +315,6 @@ def plot_per_minute_timeseries(
     """
     df_pl = ensure_polars(df)
 
-    title = title or viz_t("title_permin", lang)
     colors = HALO_COLORS.as_dict()
     d = df_pl.sort("start_time")
     _permin_cols = ("kills_per_min", "deaths_per_min", "assists_per_min")
@@ -413,7 +408,6 @@ def plot_per_minute_timeseries(
         max((abs(v) for v in dpm_neg), default=0.1),
     )
     fig.update_layout(
-        title=title,
         margin={"l": 40, "r": 20, "t": 60, "b": 90},
         hovermode="x unified",
         legend=get_legend_horizontal_bottom(),
@@ -435,7 +429,7 @@ def plot_per_minute_timeseries(
         type="category",
     )
 
-    return apply_halo_plot_style(fig, title=title, height=PLOT_CONFIG.default_height)
+    return apply_halo_plot_style(fig, height=PLOT_CONFIG.default_height)
 
 
 def plot_accuracy_last_n(df: DataFrameLike, n: int, lang: str = "fr") -> go.Figure:

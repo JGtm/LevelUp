@@ -21,7 +21,6 @@ from src.visualization.theme import apply_halo_plot_style
 def plot_session_trend(
     match_stats_df: pl.DataFrame,
     *,
-    title: str | None = None,
     height: int = 350,
     lang: str = "fr",
 ) -> go.Figure:
@@ -30,8 +29,6 @@ def plot_session_trend(
     Compare la première et la seconde moitié avec une indication visuelle
     de l'amélioration ou de la dégradation.
     """
-    if title is None:
-        title = viz_t("title_session_trend", lang)
     fig = go.Figure()
 
     if match_stats_df.is_empty() or len(match_stats_df) < 4:
@@ -44,7 +41,7 @@ def plot_session_trend(
             showarrow=False,
             font={"size": 14, "color": THEME_COLORS.text_primary},
         )
-        return apply_halo_plot_style(fig, title=title, height=height)
+        return apply_halo_plot_style(fig, height=height)
 
     # Import local pour éviter les imports circulaires
     from src.analysis.cumulative import compute_session_trend_polars
@@ -132,7 +129,7 @@ def plot_session_trend(
         col=3,
     )
 
-    return apply_halo_plot_style(fig, title=title, height=height)
+    return apply_halo_plot_style(fig, height=height)
 
 
 def _perf_color(p: float | None, fallback: str) -> str:
@@ -221,7 +218,6 @@ def plot_cumulative_comparison(  # noqa: PLR0913
     *,
     label_a: str = "Session A",
     label_b: str = "Session B",
-    title: str | None = None,
     height: int = 420,
     lang: str = "fr",
     rank_a: list[float | None] | None = None,
@@ -231,8 +227,6 @@ def plot_cumulative_comparison(  # noqa: PLR0913
     perf_b: list[float | None] | None = None,
 ) -> go.Figure:
     """Compare deux sessions avec leurs courbes de net score cumulé."""
-    if title is None:
-        title = viz_t("title_session_comparison", lang)
 
     fig = go.Figure()
     _add_session_trace(fig, session_a_df, label_a, PERFORMANCE_COLORS["neutral"], lang, perf_a)
@@ -268,7 +262,7 @@ def plot_cumulative_comparison(  # noqa: PLR0913
             "rangemode": "tozero",
         }
     fig.update_layout(**layout_kwargs)
-    return apply_halo_plot_style(fig, title=title, height=height)
+    return apply_halo_plot_style(fig, height=height)
 
 
 def create_cumulative_metrics_indicator(
@@ -428,7 +422,6 @@ def _wr_progression_indicator(wr_relative_change: float, lang: str) -> go.Indica
 def plot_regression_trend(
     regression_data: dict,
     *,
-    title: str | None = None,
     height: int = 160,
     lang: str = "fr",
 ) -> go.Figure:
@@ -443,8 +436,6 @@ def plot_regression_trend(
         height: Hauteur en pixels.
         lang: Langue.
     """
-    if title is None:
-        title = viz_t("title_regression_trend", lang)
 
     slope = regression_data.get("slope", 0.0) or 0.0
     r_sq = regression_data.get("r_squared", 0.0) or 0.0
@@ -467,4 +458,4 @@ def plot_regression_trend(
     # Marges serrées : le titre est géré côté Streamlit (st.markdown) pour
     # éviter tout débordement avec height=160.
     fig.update_layout(margin={"l": 10, "r": 10, "t": 10, "b": 10})
-    return apply_halo_plot_style(fig, title=None, height=height)
+    return apply_halo_plot_style(fig, height=height)

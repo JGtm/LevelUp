@@ -19,14 +19,11 @@ def plot_duel_history(  # noqa: C901, PLR0912, PLR0913
     me_gamertag: str,
     opponent_gamertag: str,
     *,
-    title: str | None = None,
     height: int = 300,
     lang: str = "fr",
 ) -> go.Figure:
     """Graphique d'historique de duels entre deux joueurs (barres groupées + net)."""
     colors = COLORS
-    if title is None:
-        title = f"Historique des duels : {me_gamertag} vs {opponent_gamertag}"
     fig = go.Figure()
 
     if duel_df.is_empty():
@@ -39,7 +36,7 @@ def plot_duel_history(  # noqa: C901, PLR0912, PLR0913
             showarrow=False,
             font={"size": 16, "color": colors["neutral"]},
         )
-        return apply_halo_plot_style(fig, title=title, height=height)
+        return apply_halo_plot_style(fig, height=height)
 
     matches = list(range(len(duel_df)))
     my_kills = duel_df["my_kills"].to_list()
@@ -119,21 +116,18 @@ def plot_duel_history(  # noqa: C901, PLR0912, PLR0913
 
     fig.add_hline(y=0, line_width=2, line_color="rgba(255,255,255,0.75)", yref="y2")
 
-    return apply_halo_plot_style(fig, title=title, height=height)
+    return apply_halo_plot_style(fig, height=height)
 
 
 def plot_nemesis_victim_summary(
     nemesis_data: dict,
     victim_data: dict,
     *,
-    title: str | None = None,
     height: int = 250,
     lang: str = "fr",
 ) -> go.Figure:
     """Indicateurs résumé : nemesis et victime principale."""
     colors = COLORS
-    if title is None:
-        title = viz_t("title_nemesis_victim", lang)
 
     fig = make_subplots(
         rows=1,
@@ -174,7 +168,7 @@ def plot_nemesis_victim_summary(
         col=2,
     )
 
-    return apply_halo_plot_style(fig, title=title, height=height)
+    return apply_halo_plot_style(fig, height=height)
 
 
 def plot_top_antagonists_bars(  # noqa: PLR0913
@@ -182,14 +176,11 @@ def plot_top_antagonists_bars(  # noqa: PLR0913
     victims: list[dict],
     *,
     top_n: int = 5,
-    title: str | None = None,
     height: int = 400,
     lang: str = "fr",
 ) -> go.Figure:
     """Barres horizontales des top antagonistes (némésis et souffre-douleurs)."""
     colors = COLORS
-    if title is None:
-        title = viz_t("title_top_antagonists", lang)
 
     fig = make_subplots(
         rows=1,
@@ -239,7 +230,7 @@ def plot_top_antagonists_bars(  # noqa: PLR0913
     fig.update_xaxes(title_text=viz_t("axis_deaths", lang), row=1, col=1)
     fig.update_xaxes(title_text=viz_t("axis_kills", lang), row=1, col=2)
 
-    return apply_halo_plot_style(fig, title=title, height=height)
+    return apply_halo_plot_style(fig, height=height)
 
 
 def get_antagonist_chart_colors() -> dict[str, str]:
@@ -251,7 +242,7 @@ def create_kd_indicator(
     kills: int,
     deaths: int,
     *,
-    title: str = "F/D",
+    title: str | None = None,
     height: int = 150,
 ) -> go.Figure:
     """Indicateur K/D unique avec delta par rapport à 1.0."""
@@ -284,4 +275,4 @@ def create_kd_indicator(
         )
     )
 
-    return apply_halo_plot_style(fig, title="", height=height)
+    return apply_halo_plot_style(fig, height=height)
