@@ -225,6 +225,6 @@ def test_scoreboard_styles_define_inline_expansion_rules() -> None:
     assert ".os-sb-detail-weapon-asset" in css_text
     assert ".os-sb-detail-list--weapons" in css_text
     assert "grid-template-columns: repeat(2, minmax(0, 1fr));" in css_text
-    assert "max-width: 30px;" in css_text
-    assert "max-height: 30px;" in css_text
+    assert "max-width: 32px;" in css_text
+    assert "max-height: 32px;" in css_text
     assert "font-size: 0.68em;" in css_text

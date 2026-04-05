@@ -52,6 +52,10 @@ def test_medal_definitions_populated():
 
 
 @skip_no_data
+@pytest.mark.skipif(
+    not (Path(__file__).resolve().parent.parent.parent / "static" / "medals" / "medals_fr.json").exists(),
+    reason="medals_fr.json absent — générer via populate_medal_metadata.py d'abord",
+)
 def test_all_medals_from_json_in_db():
     """Tous les IDs des JSON sont présents dans la DB."""
     import json

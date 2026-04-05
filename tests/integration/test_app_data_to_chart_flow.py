@@ -162,7 +162,11 @@ def app_flow_dbs(tmp_path):
                    r.team_0_score AS my_team_score, r.team_1_score AS enemy_team_score,
                    NULL AS team_mmr, NULL AS enemy_mmr,
                    COALESCE(p.score, 0) AS personal_score,
-                   FALSE AS is_firefight, FALSE AS is_ranked
+                   FALSE AS is_firefight, FALSE AS is_ranked,
+                   NULL::VARCHAR AS map_name_fr,
+                   NULL::VARCHAR AS playlist_name_fr,
+                   NULL::VARCHAR AS pair_name_fr,
+                   NULL::VARCHAR AS game_variant_name_fr
             FROM match_registry r
             JOIN match_participants p ON r.match_id = p.match_id
             """
@@ -303,7 +307,11 @@ def app_flow_dbs(tmp_path):
 
 def test_app_data_to_chart_flow(app_flow_dbs) -> None:
     """Valide le flux complet depuis DuckDB jusqu'aux graphes."""
-    from src.analysis.friends_impact import build_impact_matrix, get_all_impact_events
+    from src.analysis.friends_impact import (
+        ImpactEventSets,
+        build_impact_matrix,
+        get_all_impact_events,
+    )
     from src.data.repositories.duckdb_repo import DuckDBRepository
     from src.visualization.distributions import plot_histogram, plot_win_ratio_heatmap
     from src.visualization.friends_impact_heatmap import plot_friends_impact_heatmap
@@ -392,12 +400,15 @@ def test_app_data_to_chart_flow(app_flow_dbs) -> None:
         )
         assert len(scores) >= 1
 
+        events = ImpactEventSets(
+            first_bloods=fb,
+            clutch_finishers=clutch,
+            last_casualties=casualty,
+            last_group_kills=_last_group_kills,
+            first_group_deaths=_first_group_deaths,
+        )
         impact_matrix = build_impact_matrix(
-            fb,
-            clutch,
-            casualty,
-            _last_group_kills,
-            _first_group_deaths,
+            events,
             match_ids=["m1", "m2"],
             gamertags=sorted(scores.keys()),
         )
