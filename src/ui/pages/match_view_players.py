@@ -28,6 +28,7 @@ from src.ui.pages.match_view_players_data import (
 from src.ui.pages.match_view_players_nemesis import render_nemesis_section  # noqa: F401
 from src.ui.pages.match_view_players_timeline import (  # noqa: F401
     render_kd_timeline_section,
+    render_match_cadence_section,
     render_team_dominance_section,
 )
 from src.ui.pages.match_view_scoreboard import (
@@ -331,6 +332,7 @@ def render_match_impact_section(  # noqa: PLR0913
 
 __all__ = [
     "render_team_dominance_section",
+    "render_match_cadence_section",
     "render_nemesis_section",
     "render_roster_section",
     "render_match_impact_section",

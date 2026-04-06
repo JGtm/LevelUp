@@ -121,4 +121,9 @@ STRINGS: dict[str, dict[str, str] | str] = {
     "axis_performance": {"fr": "Performance (0-100)", "en": "Performance (0-100)"},
     "axis_team_mmr": {"fr": "MMR Équipe", "en": "Team MMR"},
     "axis_sessions": {"fr": "Sessions", "en": "Sessions"},
+    # ── Axes cadence / intensité ──────────────────────────────────────────────
+    "axis_cadence_time": {"fr": "Temps de jeu", "en": "Game time"},
+    "axis_cadence_kills": {"fr": "Kills", "en": "Kills"},
+    "axis_intensity_phase": {"fr": "Phase du match (%)", "en": "Match phase (%)"},
+    "axis_intensity_match": {"fr": "Match", "en": "Match"},
 }

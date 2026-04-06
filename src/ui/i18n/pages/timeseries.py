@@ -256,4 +256,28 @@ STRINGS: dict[str, dict[str, str] | str] = {
     "ts_tab_progression": {"fr": "📈 Progression", "en": "📈 Progression"},
     "ts_tab_distributions": {"fr": "📊 Distributions", "en": "📊 Distributions"},
     "ts_tab_advanced": {"fr": "🎯 Avancé", "en": "🎯 Advanced"},
+    # ── Heatmap d'intensité ───────────────────────────────────────────────────
+    "ts_match_intensity": {
+        "fr": "Profil d'intensité par match",
+        "en": "Intensity profile per match",
+    },
+    "ts_match_intensity_caption": {
+        "fr": "Chaque ligne = un match. Les colonnes découpent le match en 10 phases égales. La couleur indique le nombre de kills dans chaque phase.",
+        "en": "Each row = a match. Columns split the match into 10 equal phases. Color indicates the number of kills in each phase.",
+    },
+    "ts_intensity_no_data": {
+        "fr": "Pas assez de matchs avec données de timeline pour afficher le profil d'intensité.",
+        "en": "Not enough matches with timeline data to display the intensity profile.",
+    },
+    "ts_intensity_filter": {
+        "fr": "Filtrer par résultat",
+        "en": "Filter by outcome",
+    },
+    "ts_intensity_all": {"fr": "Tous", "en": "All"},
+    "ts_intensity_wins": {"fr": "Victoires", "en": "Wins"},
+    "ts_intensity_losses": {"fr": "Défaites", "en": "Losses"},
+    "ts_intensity_match_count": {
+        "fr": "{n} matchs avec données de timeline",
+        "en": "{n} matches with timeline data",
+    },
 }

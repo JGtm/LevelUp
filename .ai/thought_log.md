@@ -7,6 +7,52 @@
 
 ## Journal
 
+### [2025-07-05] — Graphes cadence/tempo (Features A, C, E) — Complété
+
+**Tâche** : Implémenter 3 nouveaux graphiques de cadence de match basés sur les `highlight_events` (kills par tranche de temps).
+
+**Décisions techniques principales** :
+- **Feature A — Histogramme de cadence bicolore** : Barres empilées kills équipe/ennemis par tranche (15s/30s/60s) sur l'onglet Combat du dernier match. Sélecteur granularité via `st.segmented_control`.
+- **Feature C — Heatmap d'intensité** : Profil normalisé de kills en 10 phases pour N matchs, affiché en Timeseries (onglet Progression). Filtre par résultat (tous/victoires/défaites).
+- **Feature E — Profil de tempo synchronisé** : Courbes multi-joueurs (jusqu'à 8 coéquipiers) montrant le profil moyen de kills par phase. Page Coéquipiers après le squad timeline.
+- **Architecture V3** respectée : `PlotOptions` + `ChartTheme`, palette Okabe-Ito.
+- **Séparation analysis/viz/UI** : `match_cadence.py` et `match_intensity.py` (analysis pure, 0 dépendance UI), 3 modules viz, render sections dans les pages.
+- **PLR0913 fix** : `render_squad_cadence_section` avait 7 params → refactoré en `xuid_name_map: dict[str, str]` (4 params).
+
+**Fichiers créés** : `src/analysis/match_cadence.py`, `src/analysis/match_intensity.py`, `src/visualization/_cadence_histogram.py`, `src/visualization/match_intensity_heatmap.py`, `src/visualization/squad_cadence_chart.py`, `tests/test_match_cadence_intensity.py`.
+
+**Fichiers modifiés** : `match_view_players_timeline.py`, `match_view_tabs.py`, `match_view_players.py`, `timeseries.py`, `teammates_map_charts.py`, `teammates_views.py`, `_events_repo.py`, `_cache_queries.py`, i18n (viz traces/axes/hovers/labels/titles + pages match_view/timeseries/teammates).
+
+**Résultats** : 5633 tests passent, 0 échec. 14 tests unitaires spécifiques pour les modules analysis.
+
+### [2026-04-06] — Fix Discord Quick Play dans la notification — Complété
+
+**Tâche** : Corriger le libellé brut `Quick Play` dans l'embed Discord du dernier match.
+
+**Décisions techniques principales** :
+- `src/utils/_discord_embed.py::_resolve_mode_label` converge désormais vers `translate_pair_name()` (donc `resolve_display_mode`) pour `pair_name` puis pour `game_variant_name` nettoyé.
+- `src/utils/_discord_embed.py::_localize_playlist` garde le pipeline existant mais ajoute un fallback i18n explicite pour les playlists non couvertes par `data_labels` (`Quick Play`, `Ranked Arena`, `Ranked Assassin`).
+- Test de non-régression ajouté dans `tests/test_discord_notifier.py` pour verrouiller `Assassin` + `Partie rapide` dans le rendu du dernier match.
+
+**Résultats** : 84/84 tests passent sur `tests/test_discord_notifier.py`.
+
+**Conclusion** : L'embed Discord n'affiche plus `Quick Play` brut dans le résumé de dernier match quand la langue Discord est en français.
+
+### [2026-04-18] — Vérification finale Plan V3 + tests cadence histogram — Complété
+
+**Tâche** : Vérification finale du travail Plan V3 (Axes H/I/J/K/L), couverture tests et logging.
+
+**Décisions techniques principales :**
+
+- **Couverture tests** : `_cadence_histogram.py` était à 25.7% (nouveau fichier). Ajout de `test_cadence_histogram_viz.py` (17 tests) : `_format_time_label` (6 cas) + `plot_match_cadence_histogram` (11 cas : None, figure, traces, stack, PlotOptions, annotation, labels). Couverture montée à **97.1%**.
+- **Logging** : Les fonctions viz sont pures (données → go.Figure), pas d'IO. Le logging est géré au niveau UI par `safe_chart_render()`. Pas de lacune.
+- **career_logic.py** : 85% de couverture — bon pour un module de calcul.
+- **Suite complète** : 5645 tests passent, 4 skippés. Lint ruff OK, format OK.
+
+**Résultats** : Tous les fichiers modifiés par les commits `4187bb51` et `0d67e0ac` sont vérifiés.
+
+---
+
 ### [2026-04-18] — Plan V3 : Axe H finalisé + dead code cleanup — Complété
 
 **Tâche** : Mettre à jour PLAN_V3 avec l'état réel d'avancement, nettoyer le code mort dans career_logic.py, et corriger les violations ruff dans _cadence_histogram.py.

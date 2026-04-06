@@ -86,6 +86,19 @@ STRINGS: dict[str, dict[str, str] | str] = {
         "fr": "Données insuffisantes pour la frise de dominance.",
         "en": "Not enough data for the dominance timeline.",
     },
+    # ── Cadence du match ──────────────────────────────────────────────────────
+    "mv_match_cadence": {
+        "fr": "Cadence du match",
+        "en": "Match tempo",
+    },
+    "mv_cadence_no_data": {
+        "fr": "Données insuffisantes pour afficher la cadence du match.",
+        "en": "Not enough data to display match tempo.",
+    },
+    "mv_cadence_granularity": {
+        "fr": "Granularité",
+        "en": "Granularity",
+    },
     "mv_antagonists_title": {
         "fr": "Antagonistes du match",
         "en": "Match antagonists",
