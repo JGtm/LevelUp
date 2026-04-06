@@ -217,16 +217,21 @@ class MaterializedViewsMixin:
                 return 0
 
             if new_ids is not None:
+                logger.debug("mv_session_stats: rebuild incrémental (3 dernières sessions)")
                 self._partial_refresh_session_stats(conn)
             else:
+                logger.debug("mv_session_stats: rebuild complet (new_ids=None)")
                 conn.execute("DELETE FROM mv_session_stats")
                 conn.execute(
                     _SESSION_STATS_INSERT_SQL.format(extra_filter=""),
                     [self._xuid],
                 )
 
-            return conn.execute("SELECT COUNT(*) FROM mv_session_stats").fetchone()[0]
-        except Exception:
+            n = conn.execute("SELECT COUNT(*) FROM mv_session_stats").fetchone()[0]
+            logger.debug("mv_session_stats: %d session(s) après refresh", n)
+            return n
+        except Exception as exc:
+            logger.warning("mv_session_stats: erreur refresh — %s", exc)
             return 0
 
     def _partial_refresh_session_stats(self, conn: duckdb.DuckDBPyConnection) -> None:
@@ -236,7 +241,9 @@ class MaterializedViewsMixin:
         ).fetchall()
         recent_ids = [r[0] for r in rows]
         if not recent_ids:
+            logger.debug("mv_session_stats: aucune session existante, skip incrémental")
             return
+        logger.debug("mv_session_stats: recalcul session(s) %s", recent_ids)
         placeholders = ", ".join("?" * len(recent_ids))
         conn.execute(
             f"DELETE FROM mv_session_stats WHERE session_id IN ({placeholders})",

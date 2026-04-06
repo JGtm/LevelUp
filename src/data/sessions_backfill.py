@@ -283,8 +283,10 @@ def _upsert_session_rows(
                 updated_at            = now()
             """
         )
+        logger.debug("_upsert_session_rows: %d lignes upsertées, %d skip", df_bulk.height, skipped)
         return df_bulk.height, skipped, []
     except Exception as e:
+        logger.warning("_upsert_session_rows: erreur bulk insert — %s", e)
         return 0, skipped, [str(e)]
     finally:
         with contextlib.suppress(Exception):

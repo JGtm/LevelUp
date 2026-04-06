@@ -106,10 +106,10 @@ FUNC:src/visualization/trio.py:341:plot_trio_kills_deaths:151L
 FUNC:src/visualization/trio.py:39:plot_trio_metric:231L
 MODULE:src/analysis/spawn_detection.py:561L
 MODULE:src/analysis/weapon_parser.py:502L
-MODULE:src/data/repositories/_materialized_views.py:505L
+MODULE:src/data/repositories/_materialized_views.py:512L
 MODULE:src/data/repositories/_weapon_kills_repo.py:567L
 MODULE:src/data/services/teammates_service.py:537L
-MODULE:src/data/sessions_backfill.py:549L
+MODULE:src/data/sessions_backfill.py:551L
 MODULE:src/data/sync/_engine_connections.py:510L
 MODULE:src/data/sync/_match_processing.py:559L
 MODULE:src/data/sync/api_client.py:557L
