@@ -22,6 +22,8 @@ def _render_period_filter(dmin: date, dmax: date) -> tuple[date, date]:
     with cols[0]:
         start_default_date = _safe_to_date(dmin)
         end_limit_date = _safe_to_date(dmax)
+        nav_min = date(start_default_date.year, 1, 1)
+        nav_max = date(end_limit_date.year, 12, 31)
         if "start_date_cal" not in st.session_state:
             st.session_state["start_date_cal"] = start_default_date
         else:
@@ -30,8 +32,8 @@ def _render_period_filter(dmin: date, dmax: date) -> tuple[date, date]:
                 st.session_state["start_date_cal"] = start_default_date
         start_date = st.date_input(
             t("filter_start"),
-            min_value=start_default_date,
-            max_value=end_limit_date,
+            min_value=nav_min,
+            max_value=nav_max,
             format="DD/MM/YYYY",
             key="start_date_cal",
         )
@@ -46,8 +48,8 @@ def _render_period_filter(dmin: date, dmax: date) -> tuple[date, date]:
                 st.session_state["end_date_cal"] = end_default_date
         end_date = st.date_input(
             t("filter_end"),
-            min_value=start_limit_date,
-            max_value=end_default_date,
+            min_value=nav_min,
+            max_value=nav_max,
             format="DD/MM/YYYY",
             key="end_date_cal",
         )
