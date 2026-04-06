@@ -87,13 +87,14 @@ data/players/
 data/warehouse/match_facts/
 data/warehouse/*.duckdb
 data/warehouse/*.wal
-!data/warehouse/metadata.duckdb
 data/warehouse/metadata.db
 
 # Fichiers temporaires d'import SPNKr
 *.tmp.*.db
 data/*.tmp.*
 *.tmp.*
+data/tmp_*.py
+data/archive/*.bak
 
 # Documentation locale (non trackée)
 ROADMAP_*.md
