@@ -7,6 +7,29 @@
 
 ## Journal
 
+### [2026-04-06] — fix(records): records historiques invisibles sur graphes Teammates — Complété
+
+**Tâche** : Diagnostic approfondi de l'absence d'affichage des records sur tous les graphes Teammates (Kills/Deaths, Assists, Ratio, Accuracy, Life, Performance, Spree) sauf Stats/min.
+
+**Décision technique** : Deux bugs distincts identifiés et corrigés :
+
+1. **Bug principal — `_resolve_record` sans fallback** (`src/visualization/_squad_record_shapes.py`) :
+   - `_resolve_record` : si `per_map_records` est non-None (même `{}`), tente le per-map et retourne `None` si la carte est absente — sans jamais fallback sur le record global.
+   - Pour le joueur principal, `compute_squad_records_per_map` retourne `{}` (pas de `map_ui` dans le merged). Résultat : `y_vals = [None, …, None]` → trace Plotly skippée → 0 records visibles.
+   - Fix : `if per_map_val is not None: return per_map_val` + retour global systématique.
+
+2. **Bug secondaire — `map_ui` absent du pipeline `d_self`** (`src/ui/pages/_teammates_trio_helpers.py`) :
+   - `_STAT_COLS` et `_opt` n'incluaient pas `map_ui` → `d_self` transportait `map_name` (EN) au lieu de `map_ui` (FR), divergeant des clés des records per-map des coéquipiers (noms FR).
+   - Fix : ajout de `"map_ui"` à `_STAT_COLS` et à `_opt` (colonne optionnelle dans le merge).
+
+3. **Bug session précédente — `compute_player_record` sans fallback** (`src/analysis/squad_records.py`) :
+   - Même pattern : si `pair_name` filter vide → `return None` sans fallback.
+   - Déjà corrigé en début de session.
+
+**Résultats** : 5663 tests passent. Records visibles sur tous les graphes Teammates.
+
+---
+
 ### [2025-07-05] — Graphes cadence/tempo (Features A, C, E) — Complété
 
 **Tâche** : Implémenter 3 nouveaux graphiques de cadence de match basés sur les `highlight_events` (kills par tranche de temps).
