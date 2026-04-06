@@ -33,6 +33,8 @@ setup_app_logging()
 logger = logging.getLogger("streamlit_app")
 
 # Phase 4 refactoring: Main helpers
+# Imports depuis la nouvelle architecture
+from src import __version__
 from src.app.cache_control import invalidate_after_sync
 from src.app.data_loader import (
     ensure_h5g_commendations_repo,
@@ -53,8 +55,6 @@ from src.app.helpers import (
     assign_player_colors,
     clean_asset_label,
     date_range,
-    normalize_map_label,
-    normalize_mode_label,
 )
 
 # Phase 5 refactoring: KPIs et Filtres
@@ -69,7 +69,7 @@ from src.app.main_helpers import (
     render_profile_hero,
     validate_and_fix_db_path,
 )
-from src.app.media_background import background_media_indexing
+from src.app.media_background import background_media_indexing, reindex_media_after_sync
 
 # Phase 4 refactoring: Page router
 from src.app.page_router import (
@@ -84,9 +84,6 @@ from src.app.session_keys import SK
 from src.app.state import (
     apply_settings_path_overrides as apply_settings_overrides_main,
 )
-
-# Imports depuis la nouvelle architecture
-from src import __version__
 from src.config import (
     get_default_db_path,
 )
@@ -99,7 +96,6 @@ from src.ui import (
 )
 from src.ui.cache import (
     cached_compute_sessions_db,
-    cached_list_local_dbs,
     cached_load_highlight_events_for_match,
     cached_load_match_medals_for_player,
     cached_load_match_player_gamertags,
@@ -132,7 +128,6 @@ from src.ui.perf import perf_reset_run, perf_section
 from src.ui.sync import (
     cleanup_orphan_tmp_dbs,
     is_spnkr_db_path,
-    render_sync_indicator,
     sync_all_players_duckdb,
 )
 from src.ui.tz import get_tz  # timezone dynamique depuis app_settings
@@ -571,6 +566,7 @@ def _render_main_sidebar(db_path: str, xuid: str, settings: AppSettings) -> tupl
                     _send_sync_discord_notification(sync_started_at, sync_finished_at, msg)
 
                     invalidate_after_sync()
+                    reindex_media_after_sync(settings, db_path)
                     st.rerun()
                 else:
                     logger.error("Sync échoué: %s", msg)
