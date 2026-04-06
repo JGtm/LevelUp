@@ -25,7 +25,10 @@
 - **Medals and citations in a 4-column grid** — the scoreboard now lays out medals and citations in 4 columns for a cleaner overview; weapons in 2 columns with correct thumbnail sizing; citation tooltips include the medal description
 - **Match ID search in Explorer** — start typing any part of a match ID (3+ characters) to instantly filter your match list with live feedback
 - **Compact language selector** — the language switcher now shows flag emojis inline; the app version is always displayed below the logo
-- **Bug fixes** — Spartan Carnage citation type corrected (now properly counts killing-spree medals); Discord notifications now display correct map and playlist names; hero page backdrop overflow fixed
+- **Kill cadence histogram** — a new chart in the Combat tab breaks down your kills (and enemies') by 15-second intervals, with a moving-average overlay per team so you can see exactly when the pace shifted
+- **Match intensity heatmap** — visualizes kill density across game phases (early/mid/late) for all your matches at a glance
+- **Media library auto-index** — the media indexer now runs automatically in the background every few hours and after each sync, so your clips are always up to date without manual rescans
+- **Bug fixes** — Spartan Carnage citation type corrected (now properly counts killing-spree medals); Discord notifications now display correct map and playlist names; hero page backdrop overflow fixed; squad all-time records now always display correctly on Teammates charts; date filter calendar allows free navigation across year boundaries
 
 **v6.2 — Comeback badges & unified squad view**
 - **Remontada / Collapse / Contre-Remontada badges** — the app now detects comeback narratives from your match history: *Remontada* (you were losing at the midpoint but came back to win), *Collapse* (you were winning and blew it), *Contre-Remontada* (you stopped the enemy's comeback). Run `--comeback-badges` to compute them

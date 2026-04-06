@@ -101,7 +101,7 @@ FUNC:src/visualization/participation_charts_extra.py:69:create_participation_ind
 FUNC:src/visualization/squad_cadence_chart.py:23:plot_squad_cadence_profiles:96L
 FUNC:src/visualization/team_dominance_timeline.py:102:detect_streaks:99L
 FUNC:src/visualization/team_dominance_timeline.py:209:plot_dominance_chart:137L
-FUNC:src/visualization/teammates_hs_pk.py:20:plot_hs_pk_stacked:244L
+FUNC:src/visualization/teammates_hs_pk.py:20:plot_hs_pk_stacked:230L
 FUNC:src/visualization/timeseries.py:305:plot_per_minute_timeseries:126L
 FUNC:src/visualization/timeseries_combat.py:189:plot_streak_chart:81L
 FUNC:src/visualization/timeseries_combat.py:93:plot_spree_headshots_accuracy:93L

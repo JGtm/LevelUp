@@ -50,6 +50,14 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 - **Last Match — performance score placement** — the player's performance score is now shown directly to the left of the LUSR/CSR rating for easier comparison.
 
+- **Kill cadence histogram** (Combat tab, match timeline) — bicolor histogram showing kills-per-segment for your team (blue) vs enemies (vermillion) at 15/30/60s granularity. Two moving-average traces overlay the bars (one per team). Default granularity changed from 30s to 15s.
+
+- **Match intensity heatmap** (Progression / Timeseries tab) — heatmap showing kill intensity by match × game phase (early/mid/late). Colorscale Plasma for high contrast.
+
+- **Squad cadence chart** (Teammates page) — grouped-bar chart synchronizing each squad member's kill tempo across a shared match, with per-player color mapping.
+
+- **Media library — periodic auto-indexing** — the media indexer now runs automatically every N hours (configurable via `media_indexing_interval_hours`, default 4 h; 0 = single-run only) and triggers a one-shot re-index after each successful sync (`media_reindex_after_sync` setting).
+
 ### Changed
 
 - **`shared_matches.duckdb` → `shared_matches_v2.duckdb`** — the shared match database file has been renamed. `get_shared_matches_path()` helper introduced; all hardcoded paths updated project-wide; `compute_sessions.py` updated.
@@ -69,6 +77,14 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 - **Viz (Teammates) — Phase 7 ChartData** — the 5 squad chart functions migrated to the `ChartData` pattern for consistent rendering and reduced boilerplate.
 
 - **Internal refactoring (V1 Phases 1-4 + V2 Axe C)** — `is_uuid_like` unified project-wide; `normalize_mode_label` decoupled; dead code removed; `normalize_mode` / `map_label_fn` callbacks eliminated from 49 call sites.
+
+- **Viz refactoring — Axe G** — Plotly `title=` parameter removed from ~55 viz function signatures across 25 files; chart titles now rendered via `st.subheader()`. `margin_top` reduced from 30→10 in `config.py`. Eliminates Plotly deprecation warnings at runtime.
+
+- **Viz refactoring — Axe H** — `PlotOptions` adopted in 10 viz functions (formerly `lang` + `height` positional args); 4 stale `# noqa: PLR0913` annotations removed. Three silent `title=` bugs fixed in `win_loss.py`, `match_view_players_nemesis.py`, `session_compare.py`.
+
+- **UI refactoring — Plan V3 (axes K/I/L)** — session_state keys migrated to typed `SK` constants in 4 modules; `render_chart_or_info` adopted in 7 pages/components replacing ad-hoc `safe_chart_render` wrapping; 8 C901 complexity violations resolved via sub-function extraction (`match_view_players`, `match_view_players_nemesis`, `match_view_charts`, and others).
+
+- **Sessions — schema fix + performance** — `mv_session_stats.session_id` corrected to `VARCHAR` (was silently stored as `INTEGER`); session row upsert migrated to bulk `conn.register()` (one INSERT instead of N round-trips); `_add_friends_columns` extracted as a vectorized Polars helper; `_refresh_session_stats` now incremental (recalculates only the 3 most recent sessions; full rebuild only when `new_ids=None`).
 
 ### Fixed
 
@@ -97,6 +113,10 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 - Hero page: stale adornment cache cleared; hero backdrop no longer overflows onto KPI cards.
 - i18n: French agreement corrected — label reads "Recherche par ID de Match"; `mode_ui` removed from `add_i18n_display_columns` to avoid unnormalized `pair_name_fr` values leaking into filters.
 
+- Squad records invisible on Teammates charts — three distinct bugs fixed: `_resolve_record` returned `None` instead of falling back to the global record when `per_map_records` was empty (caused all record shapes to be skipped by Plotly); `map_ui` column was absent from the `d_self` pipeline in `trio_helpers`; import of `xuid` in `match_view_players_nemesis` pointed to wrong module.
+
+- Date filter calendar: lower and upper bounds now span full calendar years, allowing free backward/forward navigation without hitting artificial day-level boundaries.
+
 ### Tests
 
 - `test(i18n)`: `resolve_map_display_names()` coverage + `map_ui` / `mode_ui` column assertions
@@ -105,6 +125,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 - Size baseline updated (`scripts/size_baseline.txt`)
 - Missing coverage for Phases 1-4 refactor added; missing `map_ui` fixtures and orphan tests after Phase 4 corrected
 - `test_teammates_helpers` adapted to use the new public `normalize_mode_label`
+- `test(cadence)`: 17 unit tests for cadence histogram (97% coverage); `my_kills`/`enemy_kills` field variants; 4-trace output validation (bars × 2 + MA × 2)
+- `test(sessions)`: `_add_friends_columns`, `_upsert_session_rows` bulk path, `_refresh_session_stats` incremental, PME/mv_varchar schema migrations
 
 ---
 

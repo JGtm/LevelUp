@@ -315,35 +315,27 @@ def render_profile_hero(  # noqa: C901
 
 
 def _fix_untranslated_mode_ui(df: pl.DataFrame, lang: str) -> pl.DataFrame:
-    """Traduit ``mode_ui`` via ``translate_pair_name`` pour les lignes sans ``pair_name_fr``.
+    """Recalcule ``mode_ui`` via ``translate_pair_name`` (même logique que _filters_apply).
 
-    ``add_i18n_display_columns`` est un module pur (0 accès DB). Quand ``pair_name_fr``
-    est NULL, il produit un ``mode_ui`` brut (ex. ``"Arena:CTF"``). Ce second pass
-    utilise ``translate_pair_name`` (avec lookup DB metadata) pour ces cas.
+    ``add_i18n_display_columns`` produit un ``mode_ui`` brut (ex. ``"Arena:CTF"``) car
+    ``pair_name_fr`` contient souvent le nom EN copié, pas une vraie traduction.
+    Ce second pass utilise ``translate_pair_name`` (lookup DB metadata) pour produire
+    les vrais labels localisés (ex. ``"Capture du drapeau"``).
     """
-    needed_cols = {"mode_ui", "pair_name_fr", "pair_name"}
-    if not needed_cols.issubset(df.columns):
-        return df
-
-    untranslated = df.filter(pl.col("pair_name_fr").is_null()).get_column("pair_name").unique()
-    if untranslated.is_empty():
+    if "pair_name" not in df.columns:
         return df
 
     from src.ui import translate_pair_name
     from src.utils.polars_compat import build_mapping
 
-    tr_map = build_mapping(untranslated, lambda x: translate_pair_name(x, lang=lang))
+    tr_map = build_mapping(df["pair_name"], lambda x: translate_pair_name(x, lang=lang))
     if not tr_map:
         return df
 
     return df.with_columns(
-        pl.when(pl.col("pair_name_fr").is_null())
-        .then(
-            pl.col("pair_name")
-            .cast(pl.Utf8)
-            .replace_strict(tr_map, default=pl.col("mode_ui"), return_dtype=pl.Utf8)
-        )
-        .otherwise(pl.col("mode_ui"))
+        pl.col("pair_name")
+        .cast(pl.Utf8)
+        .replace_strict(tr_map, default=pl.col("pair_name").cast(pl.Utf8), return_dtype=pl.Utf8)
         .alias("mode_ui")
     )
 
