@@ -7,6 +7,23 @@
 
 ## Journal
 
+### [2026-04-18] — Plan V3 : Axe H finalisé + dead code cleanup — Complété
+
+**Tâche** : Mettre à jour PLAN_V3 avec l'état réel d'avancement, nettoyer le code mort dans career_logic.py, et corriger les violations ruff dans _cadence_histogram.py.
+
+**Décisions techniques principales :**
+
+- **PLAN_V3 checkboxes** : Marqué 14/21 items Axe H comme [x], 8/9 Axe I [x], 4/4 Axe J [x], 7/7 Axe K [x], 10/16 Axe L [x]. Statuts de la table mise à jour (I/J/K → ✅, H/L → ⏳ résiduel).
+- **career_logic.py : code mort supprimé** : `_create_xp_history_chart` (200L) et `_OTHER_PLAYERS_COLORS` étaient dupliqués dans `career_charts.py` (le seul importeur). Suppression + nettoyage des imports orphelins (`go`, `THEME_COLORS`, `format_career_rank_label_fr`, `apply_halo_plot_style`). Fichier réduit de 450L → 231L.
+- **test_career_xp_projection.py** : Import mis à jour de `career_logic` → `career_charts` pour `_OTHER_PLAYERS_COLORS` et `_create_xp_history_chart`.
+- **_cadence_histogram.py** : 12 violations ruff corrigées (11 C408 dict()→{}, 1 F401 import unused, 1 F841 variable unused).
+- **Axe H pages restantes** : Analysé `_add_radar_trace`, `teammates_charts`, `teammates_synergy`, `career_charts/_create_xp_history_chart` — aucun n'a de param `lang` ou `height` → PlotOptions non applicable. Les noqa PLR0913 sont justifiés.
+- **Baseline tailles** : mis à jour (118 violations).
+
+**Résultats** : 5615/5615 tests passent, 4 skippés, 0 violations ruff.
+
+**Conclusion** : Branche `refactor/sessions-perf`. Axe H est complet pour les migrations PlotOptions. Les fonctions restantes non migrées ont des signatures sans lang/height (PLR0913 justifié). Prochaines cibles possibles : Axe L résiduel (47 C901 masqués, surtout complexité inhérente).
+
 ### [2026-04-17] — Plan V3 : Axes K/I/L complets (sessions 2-3) — Complété
 
 **Tâche** : Poursuivre et terminer les Axes K, I et L du Plan V3.
