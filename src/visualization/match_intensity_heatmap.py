@@ -12,6 +12,44 @@ from src.ui.i18n.viz import viz_t
 from src.visualization._plot_options import PlotOptions
 
 
+def _build_heatmap_trace(
+    z_data: object,
+    x_labels: list[str],
+    y_labels: list[str],
+    lang: str,
+) -> go.Heatmap:
+    """Construit la trace Heatmap avec colorscale Okabe-Ito."""
+    return go.Heatmap(
+        z=z_data,
+        x=x_labels,
+        y=y_labels,
+        colorscale=[
+            [0.0, "rgba(29, 35, 40, 0.8)"],
+            [0.25, "#0072B2"],
+            [0.5, "#009E73"],
+            [0.75, "#E69F00"],
+            [1.0, "#D55E00"],
+        ],
+        colorbar={
+            "title": {
+                "text": viz_t("axis_cadence_kills", lang),
+                "font": {"size": 11},
+            },
+            "thickness": 12,
+            "len": 0.8,
+        },
+        hovertemplate=(
+            viz_t("axis_intensity_phase", lang)
+            + ": %{x}<br>"
+            + viz_t("axis_intensity_match", lang)
+            + ": %{y}<br>"
+            + viz_t("axis_cadence_kills", lang)
+            + ": %{z}"
+            + "<extra></extra>"
+        ),
+    )
+
+
 def plot_match_intensity_heatmap(
     profile: IntensityProfile,
     opts: PlotOptions | None = None,
@@ -33,46 +71,13 @@ def plot_match_intensity_heatmap(
     lang = opts.lang
     n = profile.n_buckets
 
-    # Extraire la matrice de valeurs (matchs × phases)
     phase_cols = [f"phase_{i}" for i in range(n)]
     z_data = profile.df.select(phase_cols).to_numpy()
-
-    # Labels Y = numéros de match (1-based, plus récent en haut)
     y_labels = [f"#{i + 1}" for i in range(len(profile.df))]
-
-    # Labels X = tranches en pourcentage
     pct_step = 100 // n
     x_labels = [f"{i * pct_step}–{(i + 1) * pct_step}%" for i in range(n)]
 
-    fig = go.Figure(
-        go.Heatmap(
-            z=z_data,
-            x=x_labels,
-            y=y_labels,
-            colorscale=[
-                [0.0, "rgba(29, 35, 40, 0.8)"],
-                [0.25, "#0072B2"],
-                [0.5, "#009E73"],
-                [0.75, "#E69F00"],
-                [1.0, "#D55E00"],
-            ],
-            colorbar={
-                "title": {
-                    "text": viz_t("axis_cadence_kills", lang),
-                    "font": {"size": 11},
-                },
-                "thickness": 12,
-                "len": 0.8,
-            },
-            hovertemplate=(
-                viz_t("axis_intensity_phase", lang) + ": %{x}<br>"
-                + viz_t("axis_intensity_match", lang) + ": %{y}<br>"
-                + viz_t("axis_cadence_kills", lang) + ": %{z}"
-                + "<extra></extra>"
-            ),
-        )
-    )
-
+    fig = go.Figure(_build_heatmap_trace(z_data, x_labels, y_labels, lang))
     height = min(max(200, len(profile.df) * 22 + 80), 600)
 
     fig.update_layout(

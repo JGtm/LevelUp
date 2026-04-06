@@ -18,6 +18,12 @@ logger = logging.getLogger(__name__)
 
 _APP_SETTINGS = Path(__file__).resolve().parents[2] / "app_settings.json"
 
+_PLAYLIST_I18N_KEYS: dict[str, str] = {
+    "Quick Play": "playlist_quick_play",
+    "Ranked Arena": "playlist_ranked_arena",
+    "Ranked Assassin": "playlist_ranked_assassin",
+}
+
 
 def _to_local(dt: datetime) -> datetime:
     """Convertit un datetime UTC vers l'heure locale du système."""
@@ -37,9 +43,21 @@ def _get_discord_lang() -> str:
 
 
 def _localize_playlist(name: str, lang: str = "fr") -> str:
-    """Retourne la traduction du nom de playlist via le module translations."""
+    """Retourne la traduction du nom de playlist via la couche i18n."""
     try:
+        from src.ui.i18n import t
+        from src.ui.i18n.data_labels import label
         from src.ui.translations import translate_playlist_name
+
+        widget_key = _PLAYLIST_I18N_KEYS.get(name)
+        if widget_key:
+            localized = t(widget_key, lang=lang)
+            if localized and not localized.startswith("["):
+                return localized
+
+        localized = label("playlists", name, lang=lang)
+        if localized and localized != name:
+            return localized
 
         result = translate_playlist_name(name, lang=lang)
         return result if result is not None else name
@@ -61,15 +79,23 @@ def _resolve_mode_label(
     lang: str = "fr",
 ) -> str:
     """Résout le libellé du mode de jeu dans la langue demandée."""
-    if pair_name and pair_name != "—":
-        try:
-            from src.analysis.mode_categories import normalize_pair_name_to_mode_ui
+    try:
+        from src.ui.translations import translate_pair_name
 
-            mode = normalize_pair_name_to_mode_ui(pair_name, lang=lang)
+        if pair_name and pair_name != "—":
+            mode = translate_pair_name(pair_name, lang=lang)
             if mode:
                 return mode
-        except Exception:
-            pass
+
+        clean_variant = _clean_game_variant(game_variant_name)
+        if clean_variant and clean_variant != "—":
+            mode = translate_pair_name(clean_variant, lang=lang)
+            if mode:
+                return mode
+            return clean_variant
+    except Exception:
+        pass
+
     return _clean_game_variant(game_variant_name)
 
 

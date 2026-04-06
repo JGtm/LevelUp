@@ -298,13 +298,17 @@ def render_squad_cadence_section(
     all_xuids = list(xuid_name_map.keys())
     all_names = list(xuid_name_map.values())
     raw = cached_load_kill_timing_for_matches(
-        db_path, all_xuids[0], tuple(all_match_ids), xuids=tuple(all_xuids),
+        db_path,
+        all_xuids[0],
+        tuple(all_match_ids),
+        xuids=tuple(all_xuids),
     )
     if not raw:
         return
 
     events_df = pl.DataFrame(
-        raw, schema={"match_id": pl.Utf8, "time_ms": pl.Int64, "xuid": pl.Utf8},
+        raw,
+        schema={"match_id": pl.Utf8, "time_ms": pl.Int64, "xuid": pl.Utf8},
     )
 
     profiles = compute_squad_cadence_profiles(events_df, xuid_name_map, n_buckets=10)
@@ -316,7 +320,9 @@ def render_squad_cadence_section(
 
     with safe_chart_render():
         fig = plot_squad_cadence_profiles(
-            profiles, all_names, opts=PlotOptions(lang=lang, height_px=340),
+            profiles,
+            all_names,
+            opts=PlotOptions(lang=lang, height_px=340),
         )
         if fig is not None:
             st.plotly_chart(fig, width="stretch", config=PLOTLY_CLEAN_CONFIG)

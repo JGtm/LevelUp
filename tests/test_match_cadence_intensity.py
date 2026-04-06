@@ -15,7 +15,6 @@ from src.analysis.match_intensity import (
     compute_squad_cadence_profiles,
 )
 
-
 # =============================================================================
 # Tests compute_cadence_buckets
 # =============================================================================
@@ -38,7 +37,7 @@ class TestComputeCadenceBuckets:
     def test_basic_bucketing(self):
         xuid_to_team = {"a": 1, "b": 2}
         events = [
-            _make_kill_event(5_000, "a"),   # 5s → bucket 0 (0-30)
+            _make_kill_event(5_000, "a"),  # 5s → bucket 0 (0-30)
             _make_kill_event(10_000, "b"),  # 10s → bucket 0
             _make_kill_event(35_000, "a"),  # 35s → bucket 1 (30-60)
             _make_kill_event(65_000, "b"),  # 65s → bucket 2 (60-90)
@@ -104,10 +103,12 @@ class TestComputeMatchIntensityProfiles:
         assert profile.n_buckets == 5
 
     def test_single_match(self):
-        df = pl.DataFrame({
-            "match_id": ["m1", "m1", "m1", "m1"],
-            "time_ms": [0, 2500, 5000, 10000],
-        })
+        df = pl.DataFrame(
+            {
+                "match_id": ["m1", "m1", "m1", "m1"],
+                "time_ms": [0, 2500, 5000, 10000],
+            }
+        )
         profile = compute_match_intensity_profiles(df, n_buckets=5)
         assert len(profile.df) == 1
         # All phases should have at least some kills
@@ -116,10 +117,12 @@ class TestComputeMatchIntensityProfiles:
         assert total == 4
 
     def test_multiple_matches(self):
-        df = pl.DataFrame({
-            "match_id": ["m1", "m1", "m2", "m2"],
-            "time_ms": [1000, 9000, 500, 4500],
-        })
+        df = pl.DataFrame(
+            {
+                "match_id": ["m1", "m1", "m2", "m2"],
+                "time_ms": [1000, 9000, 500, 4500],
+            }
+        )
         profile = compute_match_intensity_profiles(df, n_buckets=10)
         assert len(profile.df) == 2
         assert profile.n_buckets == 10
@@ -137,24 +140,30 @@ class TestComputeSquadCadenceProfiles:
         assert result.is_empty()
 
     def test_single_player(self):
-        df = pl.DataFrame({
-            "match_id": ["m1", "m1", "m1"],
-            "time_ms": [0, 5000, 10000],
-            "xuid": ["a", "a", "a"],
-        })
+        df = pl.DataFrame(
+            {
+                "match_id": ["m1", "m1", "m1"],
+                "time_ms": [0, 5000, 10000],
+                "xuid": ["a", "a", "a"],
+            }
+        )
         result = compute_squad_cadence_profiles(df, {"a": "PlayerA"}, n_buckets=5)
         assert "phase" in result.columns
         assert "PlayerA" in result.columns
         assert len(result) == 5
 
     def test_two_players(self):
-        df = pl.DataFrame({
-            "match_id": ["m1", "m1", "m1", "m1"],
-            "time_ms": [0, 5000, 2500, 7500],
-            "xuid": ["a", "a", "b", "b"],
-        })
+        df = pl.DataFrame(
+            {
+                "match_id": ["m1", "m1", "m1", "m1"],
+                "time_ms": [0, 5000, 2500, 7500],
+                "xuid": ["a", "a", "b", "b"],
+            }
+        )
         result = compute_squad_cadence_profiles(
-            df, {"a": "Alice", "b": "Bob"}, n_buckets=5,
+            df,
+            {"a": "Alice", "b": "Bob"},
+            n_buckets=5,
         )
         assert "Alice" in result.columns
         assert "Bob" in result.columns

@@ -177,7 +177,8 @@ def render_match_cadence_section(  # noqa: PLR0913
         return
 
     kill_events = [
-        e for e in he
+        e
+        for e in he
         if str(e.get("event_type", "")).lower() == "kill" and e.get("time_ms") is not None
     ]
     if len(kill_events) < 3:

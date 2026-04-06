@@ -16,6 +16,7 @@ from src.data.services.timeseries_service import TimeseriesService
 from src.ui.chart_utils import safe_chart_render
 from src.ui.i18n import get_lang, t
 from src.ui.pages._timeseries_distributions import render_correlations, render_distributions
+from src.ui.pages._timeseries_intensity import render_intensity_heatmap as _render_intensity_heatmap
 from src.ui.pages._timeseries_weapons import render_weapon_kills_chart as _render_weapon_kills_chart
 from src.ui.pages.timeseries_skill_rank import render_skill_rank_progression
 from src.ui.streamlit_modern import PLOTLY_CLEAN_CONFIG, PLOTLY_STATIC_CONFIG, fragment_if_available
@@ -25,7 +26,6 @@ from src.visualization.distributions import (
     plot_first_event_distribution,
     plot_kda_distribution,
 )
-from src.visualization.match_intensity_heatmap import plot_match_intensity_heatmap
 from src.visualization.performance import (
     plot_cumulative_kd_with_ci,
     plot_ewma_kd,
@@ -361,76 +361,6 @@ def _render_sprint7_sections(dff: pl.DataFrame, lang: str = "fr") -> None:
                 st.plotly_chart(fig_rank, width="stretch", config=PLOTLY_CLEAN_CONFIG)
             else:
                 st.info(t("insufficient_data_chart"))
-
-
-@fragment_if_available
-def _render_intensity_heatmap(
-    dff: pl.DataFrame,
-    *,
-    db_path: str,
-    xuid: str,
-    lang: str = "fr",
-) -> None:
-    """Heatmap d'intensité : profil de kills normalisé par phase pour chaque match."""
-    match_ids = dff["match_id"].cast(pl.Utf8).to_list() if "match_id" in dff.columns else []
-    if len(match_ids) < 3:
-        return
-
-    from src.analysis.match_intensity import IntensityProfile, compute_match_intensity_profiles
-    from src.ui._cache_queries import cached_load_kill_timing_for_matches
-
-    raw = cached_load_kill_timing_for_matches(
-        db_path, xuid, tuple(match_ids), xuids=(xuid,),
-    )
-    if not raw:
-        return
-
-    events_df = pl.DataFrame(raw, schema={"match_id": pl.Utf8, "time_ms": pl.Int64, "xuid": pl.Utf8})
-    profile = compute_match_intensity_profiles(events_df, n_buckets=10)
-
-    if profile.df.is_empty() or len(profile.df) < 3:
-        return
-
-    # Réordonner par date si possible
-    if "start_time" in dff.columns:
-        order = dff.sort("start_time")["match_id"].cast(pl.Utf8).to_list()
-        order_map = {mid: i for i, mid in enumerate(order)}
-        profile_with_order = profile.df.with_columns(
-            pl.col("match_id").replace_strict(order_map, default=9999, return_dtype=pl.Int32).alias("_order")
-        ).sort("_order").drop("_order")
-        profile = IntensityProfile(df=profile_with_order, n_buckets=profile.n_buckets)
-
-    # Filtre par outcome
-    st.subheader(t("ts_match_intensity"))
-    st.caption(t("ts_match_intensity_caption"))
-
-    filter_opts = [t("ts_intensity_all"), t("ts_intensity_wins"), t("ts_intensity_losses")]
-    outcome_filter = st.segmented_control(
-        t("ts_intensity_filter"),
-        options=filter_opts,
-        default=filter_opts[0],
-        key="intensity_heatmap_filter",
-    )
-
-    filtered_profile = profile
-    if outcome_filter and "outcome" in dff.columns:
-        if outcome_filter == filter_opts[1]:
-            win_ids = dff.filter(pl.col("outcome") == 2)["match_id"].cast(pl.Utf8).to_list()
-            filtered_df = profile.df.filter(pl.col("match_id").is_in(win_ids))
-            filtered_profile = IntensityProfile(df=filtered_df, n_buckets=profile.n_buckets)
-        elif outcome_filter == filter_opts[2]:
-            loss_ids = dff.filter(pl.col("outcome") == 3)["match_id"].cast(pl.Utf8).to_list()
-            filtered_df = profile.df.filter(pl.col("match_id").is_in(loss_ids))
-            filtered_profile = IntensityProfile(df=filtered_df, n_buckets=profile.n_buckets)
-
-    st.caption(t("ts_intensity_match_count").format(n=len(filtered_profile.df)))
-
-    with safe_chart_render():
-        fig = plot_match_intensity_heatmap(filtered_profile, opts=PlotOptions(lang=lang))
-        if fig is not None:
-            st.plotly_chart(fig, width="stretch", config=PLOTLY_CLEAN_CONFIG)
-        else:
-            st.info(t("ts_intensity_no_data"))
 
 
 # =============================================================================

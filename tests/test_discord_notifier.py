@@ -216,6 +216,12 @@ class TestFormatPlayerField:
         assert "🏆" in value
         assert "10F / 4D / 2A" in value
 
+    def test_last_match_localizes_quick_play_playlist(self):
+        p = _player(last_match=_last_match(outcome=2))
+        _, value = _format_player_field(p, "sync_delta")
+        assert "Assassin" in value
+        assert "Partie rapide" in value
+
     def test_last_match_loss_shows_skull(self):
         p = _player(last_match=_last_match(outcome=3))
         _, value = _format_player_field(p, "sync_delta")
