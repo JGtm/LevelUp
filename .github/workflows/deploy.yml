@@ -16,4 +16,6 @@ jobs:
           host: ${{ secrets.VPS_HOST }}
           username: deploy
           key: ${{ secrets.VPS_SSH_KEY }}
-          script: /opt/levelup/deploy.sh
+          script: |
+            chmod +x /opt/levelup/deploy.sh
+            /opt/levelup/deploy.sh
