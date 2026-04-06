@@ -32,7 +32,7 @@ COPY db_profiles.json /app/db_profiles.json
 RUN if [ ! -f /app/app_settings.json ]; then echo '{}' > /app/app_settings.json; fi
 
 # Dossiers attendus par le runtime
-RUN mkdir -p /app/data/players /app/data/warehouse /app/data/logs
+RUN mkdir -p /app/data/players /app/data/warehouse /app/data/logs /app/data/cache
 
 # --- Étape 3 : Utilisateur non-root ---
 RUN adduser --disabled-password --gecos "" --uid 10001 appuser \
