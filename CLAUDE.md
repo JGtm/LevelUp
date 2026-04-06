@@ -27,7 +27,7 @@ Avant tout commit (ou à défaut avant de rendre la main à l'utilisateur), ajou
 
 Ne pas sauter cette étape même pour des modifications « mineures ». L'absence d'entrée thought_log = tâche non terminée.
 
-**Documentation architecture** : `docs/ARCHITECTURE_V5.md`
+**Documentation architecture** : `docs/ARCHITECTURE_V6.md`
 **Plans archivés** : `.ai/archive/v5.0/` (plans, audits, rapports de migration)
 
 ## Architecture des Données (v5)

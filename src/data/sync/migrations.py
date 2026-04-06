@@ -592,7 +592,7 @@ def ensure_medals_earned_bigint(conn: duckdb.DuckDBPyConnection) -> bool:
 
 
 def ensure_mv_player_matches_view(conn: duckdb.DuckDBPyConnection) -> None:
-    """Crée ou met à jour la vue mv_player_matches dans shared_matches.duckdb.
+    """Crée ou met à jour la vue mv_player_matches dans shared_matches_v2.duckdb.
 
     Cette vue pré-calcule toutes les expressions COALESCE/CASE WHEN
     qui étaient construites dynamiquement par _get_match_source(),
@@ -636,9 +636,11 @@ def ensure_mv_player_matches_view(conn: duckdb.DuckDBPyConnection) -> None:
 
     # Utiliser v_match_full (v6) si disponible, sinon match_registry
     match_source = f"{prefix}match_registry"
+    has_v_match_full = False
     try:
         conn.execute(f"SELECT 1 FROM {prefix}v_match_full LIMIT 1")
         match_source = f"{prefix}v_match_full"
+        has_v_match_full = True
     except Exception:
         pass
 
@@ -672,6 +674,13 @@ def ensure_mv_player_matches_view(conn: duckdb.DuckDBPyConnection) -> None:
         pass
     kda_expr = "p.kda" if has_kda_col else "NULL"
 
+    # Colonnes de traduction FR (disponibles seulement via v_match_full — v6)
+    fr_cols_expr = (
+        "r.map_name_fr,\n            r.playlist_name_fr,\n            r.pair_name_fr,\n            r.game_variant_name_fr,"
+        if has_v_match_full
+        else "NULL AS map_name_fr,\n            NULL AS playlist_name_fr,\n            NULL AS pair_name_fr,\n            NULL AS game_variant_name_fr,"
+    )
+
     conn.execute(f"""
         CREATE OR REPLACE VIEW {prefix}mv_player_matches AS
         SELECT
@@ -685,6 +694,8 @@ def ensure_mv_player_matches_view(conn: duckdb.DuckDBPyConnection) -> None:
             r.pair_name,
             r.game_variant_id,
             r.game_variant_name,
+            -- Traductions FR (depuis v_match_full via asset_translations)
+            {fr_cols_expr}
             p.xuid,
             p.outcome,
             p.team_id,
@@ -1140,7 +1151,7 @@ def ensure_dominance_flag_column(conn: duckdb.DuckDBPyConnection) -> None:
 
 
 # ─────────────────────────────────────────────────────────────────────────────
-# Correction bot XIDs (bug legacy migrate_sqlite) — shared_matches.duckdb
+# Correction bot XIDs (bug legacy migrate_sqlite) — shared_matches_v2.duckdb
 # ─────────────────────────────────────────────────────────────────────────────
 
 
@@ -1172,7 +1183,7 @@ def ensure_fix_bot_xuid_shared(conn: duckdb.DuckDBPyConnection) -> None:
 
 
 # ─────────────────────────────────────────────────────────────────────────────
-# Scores PS (personal score sums) — shared_matches.duckdb
+# Scores PS (personal score sums) — shared_matches_v2.duckdb
 # ─────────────────────────────────────────────────────────────────────────────
 
 
@@ -1194,7 +1205,7 @@ def ensure_team_ps_scores(conn: duckdb.DuckDBPyConnection) -> None:
 
 
 # ─────────────────────────────────────────────────────────────────────────────
-# Schéma weapon_kills — shared_matches.duckdb (v5.7, per-kill avec weapon_id UBIGINT)
+# Schéma weapon_kills — shared_matches_v2.duckdb (v5.7, per-kill avec weapon_id UBIGINT)
 # ─────────────────────────────────────────────────────────────────────────────
 
 _WEAPON_KILLS_DDL = """\
@@ -1331,7 +1342,7 @@ def ensure_weapon_kills_table(conn: duckdb.DuckDBPyConnection) -> None:
 
     Schéma per-kill v5.7 : une ligne par kill, avec weapon_id (UBIGINT),
     delta_ms, confidence, swap_detected, delayed_damage.
-    À appeler sur la connexion ``shared_matches.duckdb``.
+    À appeler sur la connexion ``shared_matches_v2.duckdb``.
     """
     try:
         _migrate_weapon_kills_schema(conn)
@@ -1344,7 +1355,7 @@ def ensure_weapon_kills_table(conn: duckdb.DuckDBPyConnection) -> None:
             err = str(e).lower()
             if "already exists" not in err:
                 logger.warning("Index weapon_kills non créé : %s", e)
-        logger.debug("Table weapon_kills initialisée (shared_matches.duckdb)")
+        logger.debug("Table weapon_kills initialisée (shared_matches_v2.duckdb)")
     except Exception as e:
         logger.error("Impossible d'initialiser weapon_kills : %s", e)
 
@@ -1396,7 +1407,7 @@ def _detect_shared_prefix(conn: duckdb.DuckDBPyConnection, table: str) -> str | 
 
 
 def _create_v_gamertag_lookup(conn: duckdb.DuckDBPyConnection, prefix: str) -> None:
-    """Crée la vue v_gamertag_lookup dans shared_matches.duckdb.
+    """Crée la vue v_gamertag_lookup dans shared_matches_v2.duckdb.
 
     Résolution XUID → gamertag courant.
     Priorité : xuid_aliases > match_participants (FULL OUTER JOIN).
@@ -1424,31 +1435,56 @@ def _create_v_match_full(
     prefix: str,
     meta_alias: str | None,
 ) -> None:
-    """Crée la vue v_match_full dans shared_matches.duckdb.
+    """Crée la vue v_match_full dans shared_matches_v2.duckdb.
 
     Résout les noms d'assets depuis metadata.duckdb (via meta_alias) si disponible.
+    Priorité pour les noms : asset_translations (14 langues) > tables legacy (name_en/name_fr) > match_registry.
     Si meta_alias est None, les colonnes *_fr et mode_* sont NULL,
     et les colonnes EN tombent en fallback sur match_registry (comportement actuel).
     """
     if meta_alias:
-        map_en = "COALESCE(m.name_en, mr.map_name)"
-        pl_en = "COALESCE(p.name_en, mr.playlist_name)"
-        pp_en = "COALESCE(pp.name_en, mr.pair_name)"
-        gv_en = "COALESCE(gv.name_en, mr.game_variant_name)"
+        map_en = "COALESCE(at_map_en.name, mr.map_name)"
+        pl_en = "COALESCE(at_pl_en.name, mr.playlist_name)"
+        pp_en = "COALESCE(at_pair_en.name, mr.pair_name)"
+        gv_en = "COALESCE(at_gv_en.name, mr.game_variant_name)"
         joins = f"""
-        LEFT JOIN {meta_alias}.maps m ON mr.map_id = m.asset_id
-        LEFT JOIN {meta_alias}.playlists p ON mr.playlist_id = p.asset_id
-        LEFT JOIN {meta_alias}.playlist_map_mode_pairs pp ON mr.pair_id = pp.asset_id
-        LEFT JOIN {meta_alias}.game_variants gv ON mr.game_variant_id = gv.asset_id"""
-        fr_cols = """
-        m.name_fr                                    AS map_name_fr,
-        p.name_fr                                    AS playlist_name_fr,
-        pp.name_fr                                   AS pair_name_fr,
-        gv.name_fr                                   AS game_variant_name_fr,
-        gv.mode_name                                 AS mode_name,
-        gv.mode_name_fr                              AS mode_name_fr,
-        p.playlist_canonical_en                      AS playlist_canonical_en,
-        p.playlist_canonical_fr                      AS playlist_canonical_fr"""
+        LEFT JOIN {meta_alias}.asset_translations at_map_en
+            ON mr.map_id = at_map_en.asset_id AND at_map_en.asset_type = 'map' AND at_map_en.lang = 'en-US'
+        LEFT JOIN {meta_alias}.asset_translations at_map_fr
+            ON mr.map_id = at_map_fr.asset_id AND at_map_fr.asset_type = 'map' AND at_map_fr.lang = 'fr-FR'
+        LEFT JOIN {meta_alias}.asset_translations at_pl_en
+            ON mr.playlist_id = at_pl_en.asset_id AND at_pl_en.asset_type = 'playlist' AND at_pl_en.lang = 'en-US'
+        LEFT JOIN {meta_alias}.asset_translations at_pl_fr
+            ON mr.playlist_id = at_pl_fr.asset_id AND at_pl_fr.asset_type = 'playlist' AND at_pl_fr.lang = 'fr-FR'
+        LEFT JOIN {meta_alias}.asset_translations at_pair_en
+            ON mr.pair_id = at_pair_en.asset_id AND at_pair_en.asset_type = 'pair' AND at_pair_en.lang = 'en-US'
+        LEFT JOIN {meta_alias}.asset_translations at_pair_fr
+            ON mr.pair_id = at_pair_fr.asset_id AND at_pair_fr.asset_type = 'pair' AND at_pair_fr.lang = 'fr-FR'
+        LEFT JOIN {meta_alias}.asset_translations at_gv_en
+            ON mr.game_variant_id = at_gv_en.asset_id AND at_gv_en.asset_type = 'game_variant' AND at_gv_en.lang = 'en-US'
+        LEFT JOIN {meta_alias}.asset_translations at_gv_fr
+            ON mr.game_variant_id = at_gv_fr.asset_id AND at_gv_fr.asset_type = 'game_variant' AND at_gv_fr.lang = 'fr-FR'"""
+        # Fallback par nom EN : certains assets ont plusieurs UUIDs (ex: deux versions de
+        # "Quick Play"), dont certains sans traduction FR directe. Si la jointure par
+        # playlist_id ne trouve pas de FR, on cherche par le nom EN dans asset_translations.
+        fr_cols = f"""
+        at_map_fr.name                               AS map_name_fr,
+        COALESCE(
+            at_pl_fr.name,
+            (SELECT fb.name FROM {meta_alias}.asset_translations fb
+             INNER JOIN {meta_alias}.asset_translations fb_en
+                 ON fb.asset_id = fb_en.asset_id
+                 AND fb_en.asset_type = 'playlist' AND fb_en.lang = 'en-US'
+             WHERE fb.asset_type = 'playlist' AND fb.lang = 'fr-FR'
+             AND fb_en.name = COALESCE(at_pl_en.name, mr.playlist_name)
+             LIMIT 1)
+        )                                            AS playlist_name_fr,
+        at_pair_fr.name                              AS pair_name_fr,
+        at_gv_fr.name                                AS game_variant_name_fr,
+        NULL                                         AS mode_name,
+        NULL                                         AS mode_name_fr,
+        NULL                                         AS playlist_canonical_en,
+        NULL                                         AS playlist_canonical_fr"""
     else:
         map_en = "mr.map_name"
         pl_en = "mr.playlist_name"
@@ -1497,7 +1533,7 @@ def _create_v_match_full(
 
 
 def _create_v_killer_victim_full(conn: duckdb.DuckDBPyConnection, prefix: str) -> None:
-    """Crée la vue v_killer_victim_full dans shared_matches.duckdb.
+    """Crée la vue v_killer_victim_full dans shared_matches_v2.duckdb.
 
     Résout killer_gamertag / victim_gamertag via v_gamertag_lookup.
     Chaîne : vue (courant) > snapshot figé > xuid brut.
@@ -1521,14 +1557,14 @@ def _create_v_killer_victim_full(conn: duckdb.DuckDBPyConnection, prefix: str) -
 
 
 def ensure_resolution_views(conn: duckdb.DuckDBPyConnection) -> None:
-    """Crée ou met à jour les 3 vues de résolution d'IDs dans shared_matches.duckdb.
+    """Crée ou met à jour les 3 vues de résolution d'IDs dans shared_matches_v2.duckdb.
 
     Vues créées (idempotentes via CREATE OR REPLACE VIEW) :
     - v_gamertag_lookup : XUID → gamertag courant
     - v_match_full      : match_registry + noms résolus depuis metadata.duckdb
     - v_killer_victim_full : killer_victim_pairs + gamertags résolus
 
-    Précondition : la connexion doit pointer sur shared_matches.duckdb
+    Précondition : la connexion doit pointer sur shared_matches_v2.duckdb
     (directement ou via ATTACH AS shared).
     """
     prefix = _detect_shared_prefix(conn, "match_registry")
@@ -1548,7 +1584,7 @@ def ensure_resolution_views(conn: duckdb.DuckDBPyConnection) -> None:
 def _try_attach_meta_for_views(conn: duckdb.DuckDBPyConnection) -> str | None:
     """Tente d'attacher metadata.duckdb pour que v_match_full puisse résoudre les noms FR.
 
-    Retourne l'alias si réussi ET que la table maps existe, None sinon.
+    Retourne l'alias si réussi ET que la table asset_translations existe (v6), None sinon.
     """
     from src.utils.db import ensure_metadata_attached
 
@@ -1561,20 +1597,17 @@ def _try_attach_meta_for_views(conn: duckdb.DuckDBPyConnection) -> str | None:
     if alias is None:
         return None
 
-    # Vérifier que les tables i18n sont bien peuplées (Commit 0 requis)
+    # Vérifier que asset_translations est présente (source i18n v6)
     try:
-        rows = conn.execute(
-            "SELECT table_name FROM duckdb_tables() WHERE table_name = 'maps'"
+        db_name_rows = conn.execute(
+            "SELECT database_name FROM duckdb_tables() WHERE table_name = 'asset_translations'"
         ).fetchall()
-        for _row in rows:
-            # Si la table est dans le bon catalog
-            db_name_rows = conn.execute(
-                "SELECT database_name FROM duckdb_tables() WHERE table_name = 'maps'"
-            ).fetchall()
-            if any(r[0] == alias for r in db_name_rows):
-                return alias
+        if any(r[0] == alias for r in db_name_rows):
+            return alias
     except Exception as e:
-        logger.debug("event=meta_maps_check_failed step=try_attach_meta_for_views error=%s", e)
+        logger.debug(
+            "event=meta_asset_translations_check_failed step=try_attach_meta_for_views error=%s", e
+        )
     return None
 
 
@@ -1650,3 +1683,144 @@ def ensure_medal_definitions_table(conn: duckdb.DuckDBPyConnection) -> None:
     par ``scripts/populate_medal_metadata.py``.
     """
     conn.execute(_MEDAL_DEFINITIONS_DDL)
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# metadata.duckdb — Référentiels multi-langue (v6.3)
+# ─────────────────────────────────────────────────────────────────────────────
+
+_ASSET_TRANSLATIONS_DDL = """
+CREATE TABLE IF NOT EXISTS asset_translations (
+    asset_id    VARCHAR NOT NULL,
+    asset_type  VARCHAR NOT NULL,
+    lang        VARCHAR NOT NULL,
+    name        VARCHAR NOT NULL,
+    description VARCHAR,
+    fetched_at  TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    PRIMARY KEY (asset_id, asset_type, lang)
+);
+CREATE INDEX IF NOT EXISTS idx_asset_tr_id_type
+    ON asset_translations(asset_id, asset_type);
+"""
+
+_MEDAL_TRANSLATIONS_DDL = """
+CREATE TABLE IF NOT EXISTS medal_translations (
+    medal_name_id BIGINT  NOT NULL,
+    lang          VARCHAR NOT NULL,
+    name          VARCHAR NOT NULL,
+    description   VARCHAR,
+    PRIMARY KEY (medal_name_id, lang)
+);
+"""
+
+
+def ensure_asset_translations_table(conn: duckdb.DuckDBPyConnection) -> None:
+    """Crée ``asset_translations`` dans metadata.duckdb (idempotente).
+
+    Table pivot multi-langue pour les assets Discovery UGC :
+    maps, playlists, playlist_map_mode_pairs, game_variants.
+    Peuplée par ``scripts/populate_asset_translations.py``.
+    """
+    conn.execute(_ASSET_TRANSLATIONS_DDL)
+
+
+def ensure_medal_translations_table(conn: duckdb.DuckDBPyConnection) -> None:
+    """Crée ``medal_translations`` dans metadata.duckdb (idempotente).
+
+    Table pivot multi-langue pour les médailles Halo Infinite.
+    Peuplée par ``scripts/populate_medal_metadata.py`` (champ ``translations``
+    de l'API + migration depuis medal_definitions pour les médailles custom).
+    """
+    conn.execute(_MEDAL_TRANSLATIONS_DDL)
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Migration match_registry : playable_duration_seconds + real_start_time (v6.3)
+# ─────────────────────────────────────────────────────────────────────────────
+
+
+def ensure_match_registry_playable_duration(conn: duckdb.DuckDBPyConnection) -> None:
+    """Ajoute playable_duration_seconds et real_start_time à match_registry.
+
+    - playable_duration_seconds : durée réelle du gameplay (sans countdown/lobby),
+      extraite de MatchInfo.PlayableDuration (API SPNKr).
+    - real_start_time : heure UTC du début effectif du gameplay, calculée comme
+      start_time + (duration_seconds - playable_duration_seconds).
+
+    Ces colonnes sont NULL pour les matchs syncés avant cette migration.
+    Un backfill API (--playable-duration) est nécessaire pour les remplir
+    rétroactivement.
+
+    Idempotente via _add_column_if_missing().
+    """
+    if not table_exists(conn, "match_registry"):
+        return
+    _add_column_if_missing(conn, "match_registry", "playable_duration_seconds", "INTEGER")
+    _add_column_if_missing(conn, "match_registry", "real_start_time", "TIMESTAMP")
+
+
+def ensure_match_registry_film_start(conn: duckdb.DuckDBPyConnection) -> None:
+    """Ajoute film_match_start_ms à match_registry (shared).
+
+    Colonne INTEGER nullable stockant le timestamp filmshell (en ms depuis le
+    début de l'enregistrement) correspondant au premier mouvement réel des
+    joueurs — c'est-à-dire la fin du countdown, le vrai t=0 du match.
+
+    NULL pour les matchs dont les chunks filmshell n'ont pas encore été analysés.
+    Le backfill est effectué via scripts/_exp_spawn_download.py.
+
+    Idempotente via _add_column_if_missing().
+    """
+    if not table_exists(conn, "match_registry"):
+        return
+    _add_column_if_missing(conn, "match_registry", "film_match_start_ms", "INTEGER")
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Sessions — player (stats.duckdb)
+# ─────────────────────────────────────────────────────────────────────────────
+
+
+def ensure_pme_session_index(conn: duckdb.DuckDBPyConnection) -> None:
+    """Crée l'index sur player_match_enrichment(session_id) s'il n'existe pas.
+
+    Utilisé dans les GROUP BY et filter de mv_session_stats.
+    Idempotente : CREATE INDEX IF NOT EXISTS.
+    """
+    if not table_exists(conn, "player_match_enrichment"):
+        logger.debug("player_match_enrichment absente, index session ignoré")
+        return
+    _create_index_safe(
+        conn,
+        "CREATE INDEX IF NOT EXISTS idx_pme_session ON player_match_enrichment(session_id)",
+        "idx_pme_session",
+    )
+
+
+def ensure_mv_session_stats_varchar(conn: duckdb.DuckDBPyConnection) -> None:
+    """Migre mv_session_stats.session_id de INTEGER vers VARCHAR si nécessaire.
+
+    La table était créée avec session_id INTEGER PRIMARY KEY mais reçoit du
+    VARCHAR depuis player_match_enrichment. Cette migration recrée la table
+    avec le bon type (la table est de toute façon reconstruite à chaque sync).
+    Idempotente : vérifie le type avant d'agir.
+    """
+    if not table_exists(conn, "mv_session_stats"):
+        return
+    row = conn.execute(
+        "SELECT data_type FROM information_schema.columns "
+        "WHERE table_name = 'mv_session_stats' AND column_name = 'session_id'"
+    ).fetchone()
+    if not row or row[0].upper() in ("VARCHAR", "TEXT"):
+        return  # déjà correct
+
+    logger.info("mv_session_stats.session_id est %s → migration vers VARCHAR", row[0])
+    conn.execute("DROP TABLE mv_session_stats")
+    conn.execute(
+        """CREATE TABLE mv_session_stats (
+            session_id VARCHAR PRIMARY KEY, match_count INTEGER,
+            start_time TIMESTAMP, end_time TIMESTAMP,
+            total_kills INTEGER, total_deaths INTEGER, total_assists INTEGER,
+            kd_ratio DOUBLE, win_rate DOUBLE,
+            avg_accuracy DOUBLE, avg_life_seconds DOUBLE, updated_at TIMESTAMP)"""
+    )

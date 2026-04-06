@@ -17,7 +17,6 @@ from src.visualization.theme import apply_halo_plot_style, get_legend_horizontal
 def plot_map_comparison(
     df_breakdown: DataFrameLike,
     metric: str,
-    title: str,
     color_by_sign: bool = False,
 ) -> go.Figure:
     """Graphique de comparaison d'une métrique par carte.
@@ -75,12 +74,11 @@ def plot_map_comparison(
     )
     fig.update_layout(
         height=PLOT_CONFIG.tall_height,
-        title=title,
         margin={"l": 40, "r": 20, "t": 60, "b": 90},
         legend=get_legend_horizontal_bottom(),
     )
 
-    return apply_halo_plot_style(fig, title=title, height=PLOT_CONFIG.tall_height)
+    return apply_halo_plot_style(fig, height=PLOT_CONFIG.tall_height)
 
 
 def _winloss_display_params(d: object, lang: str, absolute_counts: bool) -> dict:
@@ -176,7 +174,6 @@ def _add_winloss_traces(fig: go.Figure, d: object, p: dict, colors: dict, lang: 
 
 def plot_map_ratio_with_winloss(
     df_breakdown: DataFrameLike,
-    title: str,
     lang: str = "fr",
     absolute_counts: bool = False,
 ) -> go.Figure:
@@ -203,7 +200,6 @@ def plot_map_ratio_with_winloss(
     _add_winloss_traces(fig, d, p, colors, lang)
     fig.update_layout(
         height=PLOT_CONFIG.tall_height,
-        title=title,
         margin={"l": 40, "r": 20, "t": 60, "b": 90},
         barmode="stack",
         bargap=0.18,
@@ -212,4 +208,4 @@ def plot_map_ratio_with_winloss(
     fig.update_xaxes(title_text=p["x_axis_title"], tickformat=p["x_axis_fmt"])
     if p["x_range"] is not None:
         fig.update_xaxes(range=p["x_range"])
-    return apply_halo_plot_style(fig, title=title, height=PLOT_CONFIG.tall_height)
+    return apply_halo_plot_style(fig, height=PLOT_CONFIG.tall_height)

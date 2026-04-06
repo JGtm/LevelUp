@@ -1,5 +1,5 @@
 """
-Mixin pour l'accès aux paires killer/victim depuis shared_matches.duckdb.
+Mixin pour l'accès aux paires killer/victim depuis shared_matches_v2.duckdb.
 
 Regroupe les méthodes de chargement et d'analyse des relations
 killer/victim depuis la table partagée ``killer_victim_pairs`` :

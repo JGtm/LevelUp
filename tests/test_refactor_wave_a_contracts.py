@@ -194,7 +194,7 @@ class TestMapsContracts:
                 "accuracy_avg": [55.0, 62.0],
             }
         )
-        fig = plot_map_comparison(df, metric="ratio_global", title="Test")
+        fig = plot_map_comparison(df, metric="ratio_global")
         assert fig is not None
 
     def test_plot_map_comparison_empty(self) -> None:
@@ -208,7 +208,7 @@ class TestMapsContracts:
                 "accuracy_avg": [],
             }
         )
-        fig = plot_map_comparison(df, metric="ratio_global", title="Test vide")
+        fig = plot_map_comparison(df, metric="ratio_global")
         assert fig is not None
 
     def test_plot_map_ratio_with_winloss_accepts_polars(self) -> None:
@@ -222,7 +222,7 @@ class TestMapsContracts:
                 "matches": [30],
             }
         )
-        fig = plot_map_ratio_with_winloss(df, title="Test Win/Loss")
+        fig = plot_map_ratio_with_winloss(df)
         assert fig is not None
 
 
@@ -296,7 +296,6 @@ class TestTrioContracts:
             d2,
             metric="kills",
             names=("P1", "P2", "P3"),
-            title="Test trio",
             y_title="Kills",
         )
         assert fig is not None

@@ -12,6 +12,7 @@ import polars as pl
 from src.config import HALO_COLORS, OUTCOME_CODES, PLOT_CONFIG
 from src.ui.i18n.viz import viz_t
 from src.visualization._compat import DataFrameLike, ensure_polars
+from src.visualization._plot_options import PlotOptions
 from src.visualization.theme import apply_halo_plot_style, get_legend_horizontal_bottom
 
 
@@ -21,11 +22,10 @@ def plot_correlation_scatter(  # noqa: PLR0913
     y_col: str,
     *,
     color_col: str | None = None,
-    title: str | None = None,
     x_label: str | None = None,
     y_label: str | None = None,
     show_trendline: bool = True,
-    lang: str = "fr",
+    opts: PlotOptions | None = None,
 ) -> go.Figure:
     """Scatter plot pour visualiser les corrélations.
 
@@ -42,6 +42,8 @@ def plot_correlation_scatter(  # noqa: PLR0913
     Returns:
         Figure Plotly avec scatter plot.
     """
+    _opts = opts if opts is not None else PlotOptions()
+    lang = _opts.lang
     df = ensure_polars(df)
 
     colors = HALO_COLORS.as_dict()
@@ -50,7 +52,7 @@ def plot_correlation_scatter(  # noqa: PLR0913
     if d.is_empty():
         fig = go.Figure()
         fig.update_layout(height=PLOT_CONFIG.default_height)
-        return apply_halo_plot_style(fig, title=title)
+        return apply_halo_plot_style(fig)
 
     x_series = d.get_column(x_col).cast(pl.Float64, strict=False)
     y_series = d.get_column(y_col).cast(pl.Float64, strict=False)
@@ -139,20 +141,19 @@ def plot_correlation_scatter(  # noqa: PLR0913
 
     fig.update_layout(
         height=PLOT_CONFIG.default_height,
-        margin={"l": 40, "r": 20, "t": 60 if title else 30, "b": 40},
+        margin={"l": 40, "r": 20, "t": 30, "b": 40},
         showlegend=show_trendline,
     )
     fig.update_xaxes(title_text=x_label or x_col)
     fig.update_yaxes(title_text=y_label or y_col)
 
-    return apply_halo_plot_style(fig, title=title, height=PLOT_CONFIG.default_height)
+    return apply_halo_plot_style(fig, height=PLOT_CONFIG.default_height)
 
 
 def plot_first_event_distribution(
     first_kills: dict[str, int | None],
     first_deaths: dict[str, int | None],
     *,
-    title: str | None = None,
     lang: str = "fr",
 ) -> go.Figure:
     """Graphique de distribution des timestamps du premier kill/death.
@@ -174,7 +175,7 @@ def plot_first_event_distribution(
     if not kills_sec and not deaths_sec:
         fig = go.Figure()
         fig.update_layout(height=PLOT_CONFIG.default_height)
-        return apply_halo_plot_style(fig, title=title)
+        return apply_halo_plot_style(fig)
 
     fig = go.Figure()
 
@@ -249,10 +250,10 @@ def plot_first_event_distribution(
     fig.update_layout(
         barmode="overlay",
         height=PLOT_CONFIG.default_height,
-        margin={"l": 40, "r": 20, "t": 60 if title else 30, "b": 40},
+        margin={"l": 40, "r": 20, "t": 30, "b": 40},
         legend=get_legend_horizontal_bottom(),
     )
     fig.update_xaxes(title_text=viz_t("axis_time_seconds", lang))
     fig.update_yaxes(title_text=viz_t("axis_match_count", lang))
 
-    return apply_halo_plot_style(fig, title=title, height=PLOT_CONFIG.default_height)
+    return apply_halo_plot_style(fig, height=PLOT_CONFIG.default_height)

@@ -1,14 +1,16 @@
-# Architecture LevelUp v5.1 — Pure Architecture DuckDB + Polars
+# Architecture LevelUp v6 — DuckDB Shared Matches + i18n Assets
 
-> **Date** : 2026-02-25
-> **Version** : 5.3.0
-> **Migration depuis** : v5.0 (Shared Matches initial)
+> **Date** : 2026-03-30
+> **Version** : 6.3.0
+> **Évolution depuis** : v5.1 (Shared Matches) → v6.0 (couche résolution ID) → v6.3 (asset_translations)
+
+> Version anglaise : [ARCHITECTURE_V6.md](../ARCHITECTURE_V6.md)
 
 ---
 
 ## Vue d'Ensemble
 
-LevelUp v5.1 est l'aboutissement de l'architecture **Shared Matches** avec cleanup complet des tables legacy, modernisation Streamlit et optimisation des performances.
+LevelUp v6 étend l'architecture **Shared Matches** avec une **couche d'abstraction SQL** (vues de résolution) et un système centralisé d'**internationalisation des assets** (`asset_translations`). Les noms de maps, modes de jeu, playlists et variantes sont désormais stockés en base dans 14 langues et exposés via la vue `v_match_full`.
 
 ### Gains mesurés
 
@@ -79,7 +81,7 @@ LevelUp v5.1 est l'aboutissement de l'architecture **Shared Matches** avec clean
 ```
 data/
 ├── warehouse/
-│   ├── metadata.duckdb            # Référentiels (modes, medals, citations, weapon_labels)
+│   ├── metadata.duckdb            # Référentiels (asset_translations 14 langues, weapon_labels, career_ranks, citation_mappings)
 │   ├── shared_matches.duckdb      # Base partagée - TOUS les matchs
 │   │   ├── match_registry         # Registre central (1 ligne par match unique)
 │   │   ├── match_participants     # Stats de TOUS les joueurs de TOUS les matchs
@@ -160,7 +162,54 @@ Pattern Factory pour créer des `DuckDBRepository` avec auto-détection des chem
 - `metadata_db_path` : Auto-détecté depuis `data/warehouse/metadata.duckdb`
 - Fallback v4 transparent si `shared_matches.duckdb` n'existe pas
 
-### 6. SyncScope (`src/data/sync/scope.py`)
+### 6. asset_translations — Internationalisation des assets (v6.3)
+
+La table `asset_translations` dans `metadata.duckdb` est la **source unique** de noms localisés pour les assets Halo (cartes, modes, playlists, variantes).
+
+#### Peuplement
+
+```bash
+python scripts/populate_asset_translations.py
+# Options
+python scripts/populate_asset_translations.py --force        # réécrit tout
+python scripts/populate_asset_translations.py --dry-run      # simule sans écrire
+python scripts/populate_asset_translations.py --types map    # type spécifique
+```
+
+Le script utilise `_build_version_id_cache()` pour récupérer les `VersionId` requis par l'API SPNKr Discovery UGC avant de paralléliser les 14 langues via `asyncio.gather`.
+
+#### Utilisation via v_match_full
+
+```sql
+-- Dans shared_matches_v2.duckdb (meta doit être ATTACHé)
+SELECT match_id, map_name, map_name_fr, game_variant_name, game_variant_name_fr
+FROM v_match_full
+WHERE map_name_fr IS NOT NULL
+LIMIT 10;
+```
+
+`DuckDBRepository` attache automatiquement `metadata.duckdb` en `meta` à l'ouverture de chaque connexion. Aucune configuration manuelle requise.
+
+#### Langues disponibles
+
+| Code BCP-47 | Langue |
+|-------------|--------|
+| `en-US` | Anglais (US) |
+| `fr-FR` | Français |
+| `de-DE` | Allemand |
+| `es-ES` | Espagnol (ES) |
+| `es-MX` | Espagnol (MX) |
+| `it-IT` | Italien |
+| `ja-JP` | Japonais |
+| `ko-KR` | Coréen |
+| `nl-NL` | Néerlandais |
+| `pl-PL` | Polonais |
+| `pt-BR` | Portugais (BR) |
+| `ru-RU` | Russe |
+| `zh-Hans` | Chinois simplifié |
+| `zh-Hant` | Chinois traditionnel |
+
+### 7. SyncScope (`src/data/sync/scope.py`)
 
 **Nouveau en v5.2** — Dataclass centralisant les 30+ flags de données partagés
 entre `sync.py`, `backfill_data.py` et leurs sous-modules (orchestrator, detection, engine).

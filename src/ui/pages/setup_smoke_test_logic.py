@@ -1,7 +1,7 @@
 """Logique métier du smoke test post-installation.
 
 Vérifie l'intégrité complète des données après une sync initiale :
-- Tables shared_matches.duckdb (match_registry, match_participants, etc.)
+- Tables shared_matches_v2.duckdb (match_registry, match_participants, etc.)
 - Tables stats.duckdb (player_match_enrichment, match_citations, etc.)
 - Cohérence croisée entre les deux bases
 """
@@ -206,7 +206,7 @@ def _simple_check(conn: Any, tables: set[str], params: _SimpleCheckParams) -> Ta
 
 
 def _check_shared_tables(shared_path: Path, result: SmokeTestResult) -> None:
-    """Vérifie les tables de shared_matches.duckdb."""
+    """Vérifie les tables de shared_matches_v2.duckdb."""
     with duckdb_read_only(shared_path) as conn:
         tables = _get_tables(conn)
         result.checks.append(

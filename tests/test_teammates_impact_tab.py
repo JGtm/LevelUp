@@ -80,6 +80,8 @@ def _patch_streamlit(monkeypatch):
     monkeypatch.setattr(teammates.st, "error", error)
     monkeypatch.setattr(teammates.st, "radio", radio)
     monkeypatch.setattr(teammates.st, "columns", columns)
+    markdown = MagicMock()
+    monkeypatch.setattr(teammates.st, "markdown", markdown)
 
     return {
         "info": info,
@@ -94,6 +96,7 @@ def _patch_streamlit(monkeypatch):
         "columns": columns,
         "metric_cols": metric_cols,
         "summary_cols": summary_cols,
+        "markdown": markdown,
     }
 
 
@@ -213,10 +216,12 @@ def test_impact_tab_renders_heatmap_and_ranking(monkeypatch) -> None:
             {"match_id": ["m1", "m2"], "outcome": [2, 3]}
         ),
     )
+    # Pas de participants → badge computation ignorée
+    monkeypatch.setattr(
+        "src.ui.pages.teammates_impact._load_match_participants",
+        lambda *_: None,
+    )
 
-    first_bloods = {"m1": object()}
-    clutch_finishers = {"m2": object()}
-    last_casualties = {"m2": object()}
     scores = {"Alice": 3, "Bob": -1}
 
     # get_all_impact_events retourne un 6-tuple (last_group_kills + first_group_deaths ajoutés)
@@ -224,9 +229,9 @@ def test_impact_tab_renders_heatmap_and_ranking(monkeypatch) -> None:
         teammates,
         "get_all_impact_events",
         lambda *_args, **_kwargs: (
-            first_bloods,
-            clutch_finishers,
-            last_casualties,
+            {"m1": MagicMock(gamertag="Alice")},
+            {},
+            {},
             {},
             {},
             scores,
@@ -237,31 +242,15 @@ def test_impact_tab_renders_heatmap_and_ranking(monkeypatch) -> None:
         "build_impact_matrix",
         lambda *_args, **_kwargs: pl.DataFrame(
             {
-                "match_id": ["m1", "m2"],
-                "gamertag": ["Alice", "Bob"],
-                "event_type": ["first_blood", "last_casualty"],
-                "event_value": [1, -1],
-            }
-        ),
-    )
-    monkeypatch.setattr(
-        teammates, "plot_friends_impact_scatter", lambda *_args, **_kwargs: MagicMock()
-    )
-    monkeypatch.setattr(
-        teammates, "count_events_by_player", lambda events: {"Alice": 1} if events else {}
-    )
-    monkeypatch.setattr(
-        teammates,
-        "build_impact_ranking_df",
-        lambda *_args, **_kwargs: pl.DataFrame(
-            {
-                "rang": [1, 2],
-                "gamertag": ["Alice", "Bob"],
-                "score": [3, -1],
-                "fb": [1, 0],
-                "clutch": [1, 0],
-                "boulet": [0, 1],
-                "badge": ["🏆 MVP", "🍌 Boulet"],
+                "match_id": pl.Series([], dtype=pl.Utf8),
+                "gamertag": pl.Series([], dtype=pl.Utf8),
+                "events": pl.Series(
+                    [],
+                    dtype=pl.List(
+                        pl.Struct([pl.Field("event", pl.Utf8), pl.Field("value", pl.Float64)])
+                    ),
+                ),
+                "outcome": pl.Series([], dtype=pl.Int64),
             }
         ),
     )
@@ -273,9 +262,6 @@ def test_impact_tab_renders_heatmap_and_ranking(monkeypatch) -> None:
         friend_xuids=["200", "300"],
     )
 
-    assert st_mocks["plotly_chart"].called
-    assert st_mocks["dataframe"].called
-    # st.columns est appelé 1 fois (3 colonnes : légende, ranking, mvp/boulet)
-    assert st_mocks["columns"].call_count == 1
-    st_mocks["success"].assert_called_once()
-    st_mocks["error"].assert_called_once()
+    # Le tableau de ranking est rendu via st.markdown (pas plotly_chart)
+    assert st_mocks["markdown"].called
+    assert not st_mocks["warning"].called

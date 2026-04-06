@@ -572,9 +572,9 @@ class TestLoadPerformance:
         gc.collect()
 
         assert len(result) == 1000
-        assert (
-            query_time < 1.0
-        ), f"Lecture 1000 matchs doit prendre < 1s (actual: {query_time:.3f}s)"
+        assert query_time < 1.0, (
+            f"Lecture 1000 matchs doit prendre < 1s (actual: {query_time:.3f}s)"
+        )
 
     @pytest.mark.slow
     def test_aggregation_performance(self, tmp_path: Path):

@@ -75,7 +75,7 @@ def migrate_backfill_bits(
     3. Bit KILLER_VICTIM via sous-requête killer_victim_pairs
 
     Args:
-        conn: Connexion DuckDB ouverte sur shared_matches.duckdb.
+        conn: Connexion DuckDB ouverte sur shared_matches_v2.duckdb.
         dry_run: Si True, affiche les stats sans modifier la DB.
         batch_size: Non utilisé (opération en une passe SQL).
 
@@ -341,7 +341,7 @@ Exemples :
         "--db-path",
         type=str,
         default=None,
-        help=f"Chemin vers shared_matches.duckdb (défaut: {SHARED_PATH})",
+        help=f"Chemin vers shared_matches_v2.duckdb (défaut: {SHARED_PATH})",
     )
     args = parser.parse_args()
 

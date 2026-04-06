@@ -43,7 +43,7 @@ def backfill_xuid_aliases_from_events(
     En mode force  : met à jour TOUS les XUIDs (écrase les gamertags existants).
 
     Args:
-        shared_conn: Connexion en écriture vers shared_matches.duckdb.
+        shared_conn: Connexion en écriture vers shared_matches_v2.duckdb.
         force: Si True, met à jour même les XUIDs déjà présents.
 
     Returns:
@@ -124,7 +124,7 @@ def backfill_killer_victim_pairs(
 ) -> int:
     """Extrait les paires killer/victim depuis highlight_events vers shared.
 
-    En v5, cette table est mutualisée dans shared_matches.duckdb car les
+    En v5, cette table est mutualisée dans shared_matches_v2.duckdb car les
     paires sont identiques quel que soit le joueur POV.
 
     Mode incrémental par défaut : ne traite que les matchs qui n'ont pas
@@ -135,7 +135,7 @@ def backfill_killer_victim_pairs(
         conn: Connexion DuckDB joueur (utilisée comme fallback pour highlight_events).
         me_xuid: XUID du joueur principal (pour référence).
         force: Si True, reconstruit toute la table.
-        shared_conn: Connexion vers shared_matches.duckdb (v5).
+        shared_conn: Connexion vers shared_matches_v2.duckdb (v5).
             Si fourni, lit/écrit depuis shared. Sinon, fallback local.
 
     Returns:
@@ -442,7 +442,7 @@ def compute_lusr_for_player(
         db_path: Chemin vers la DB joueur (utilisé pour dériver shared si shared_conn=None).
         xuid: XUID du joueur.
         force: Si True, recalcule et réécrit tous les matchs LUSR.
-        shared_conn: Connexion vers shared_matches.duckdb (ouverte si None).
+        shared_conn: Connexion vers shared_matches_v2.duckdb (ouverte si None).
 
     Returns:
         Nombre de matchs mis à jour dans match_skill_rank.
@@ -474,12 +474,12 @@ def compute_lusr_for_player(
 
                 shared_path = get_shared_matches_path()
             if not shared_path.exists():
-                logger.warning(f"shared_matches.duckdb introuvable: {shared_path}")
+                logger.warning(f"shared_matches_v2.duckdb introuvable: {shared_path}")
                 return 0
             shared_conn = duckdb.connect(str(shared_path), read_only=False)
             _owned_shared = True
         except Exception as e:
-            logger.warning(f"Impossible d'ouvrir shared_matches.duckdb: {e}")
+            logger.warning(f"Impossible d'ouvrir shared_matches_v2.duckdb: {e}")
             return 0
 
     try:
@@ -699,7 +699,7 @@ async def backfill_csr_for_player(
         xuid: XUID du joueur.
         api_client: Instance API Halo (``HaloAPIPort``) déjà authentifiée.
         force: Si True, re-fetche le CSR même si déjà présent.
-        shared_conn: Connexion vers shared_matches.duckdb (ouverte si None).
+        shared_conn: Connexion vers shared_matches_v2.duckdb (ouverte si None).
 
     Returns:
         Nombre de matchs écrits dans match_skill_rank.
@@ -732,12 +732,12 @@ async def backfill_csr_for_player(
 
                 shared_path = get_shared_matches_path()
             if not shared_path.exists():
-                logger.warning(f"shared_matches.duckdb introuvable: {shared_path}")
+                logger.warning(f"shared_matches_v2.duckdb introuvable: {shared_path}")
                 return 0
             shared_conn = duckdb.connect(str(shared_path), read_only=True)
             _owned_shared = True
         except Exception as e:
-            logger.warning(f"Impossible d'ouvrir shared_matches.duckdb: {e}")
+            logger.warning(f"Impossible d'ouvrir shared_matches_v2.duckdb: {e}")
             return 0
 
     try:
@@ -896,7 +896,7 @@ def backfill_end_time(conn: Any, force: bool = False, *, shared_conn: Any) -> in
     Args:
         conn: Connexion DuckDB joueur (non utilisée, conservée pour compatibilité de signature).
         force: Si True, recalcule pour tous les matchs.
-        shared_conn: Connexion shared_matches.duckdb (obligatoire).
+        shared_conn: Connexion shared_matches_v2.duckdb (obligatoire).
 
     Returns:
         Nombre de lignes mises à jour.
@@ -961,7 +961,7 @@ def compute_performance_score_for_match(
     Args:
         conn: Connexion DuckDB (player DB pour player_match_enrichment).
         match_id: ID du match.
-        shared_conn: Connexion vers shared_matches.duckdb (obligatoire).
+        shared_conn: Connexion vers shared_matches_v2.duckdb (obligatoire).
         xuid: XUID du joueur (obligatoire).
         force: Si True, recalcule même si le score existe déjà.
 
@@ -1114,7 +1114,7 @@ async def backfill_participants_enrich(
     deaths_stddev, assists_expected, assists_stddev.
 
     Args:
-        shared_conn: Connexion en écriture vers shared_matches.duckdb.
+        shared_conn: Connexion en écriture vers shared_matches_v2.duckdb.
         xuid: Si fourni, ne traiter que les matchs de ce joueur.
         max_matches: Nombre max de matchs à traiter.
         force: Si True, recalcule même si les colonnes existent déjà.
@@ -1355,7 +1355,7 @@ async def backfill_team_scores(
     ZonesStats qui sont toujours fiables.
 
     Args:
-        shared_conn: Connexion en écriture vers shared_matches.duckdb.
+        shared_conn: Connexion en écriture vers shared_matches_v2.duckdb.
         max_matches: Nombre max de matchs à traiter.
         force: Si True, recalcule même si les scores sont déjà présents.
         btb_only: Limite aux matchs BTB CTF/Total Control/Stockpile avec score corrompu.
@@ -1492,7 +1492,7 @@ def backfill_mode_category(shared_conn: Any, *, force: bool = False) -> int:
     stockés en base.
 
     Args:
-        shared_conn: Connexion en écriture vers shared_matches.duckdb.
+        shared_conn: Connexion en écriture vers shared_matches_v2.duckdb.
         force: Si True, recalcule pour TOUS les matchs (même ceux déjà renseignés).
 
     Returns:
@@ -1573,7 +1573,7 @@ def cleanup_player_dbs_legacy(players_dir: str | Any = "data/players") -> dict[s
     - 4 vues (``v_highlight_events``, ``v_match_participants``, ``v_match_stats``,
       ``v_medals_earned``) référencent des tables supprimées lors de la migration v5.1.
     - Table ``match_participants`` legacy encore présente dans certains joueurs
-      (données centralisées dans shared_matches.duckdb depuis v5.1).
+      (données centralisées dans shared_matches_v2.duckdb depuis v5.1).
 
     Args:
         players_dir: Dossier racine des joueurs (``data/players/``).
@@ -1676,7 +1676,7 @@ async def backfill_weapon_kills(
     upserte dans ``shared_matches.weapon_kills``.
 
     Args:
-        shared_conn: Connexion shared_matches.duckdb.
+        shared_conn: Connexion shared_matches_v2.duckdb.
         xuid: XUID du joueur.
         match_ids: Matchs à traiter.
         gamertag: Gamertag du joueur (pour charger les kills POV).
@@ -1715,7 +1715,7 @@ def backfill_avenger_medal(shared_conn: Any, *, force: bool = False) -> int:
     Les matchs sans données killer_victim sont ignorés silencieusement.
 
     Args:
-        shared_conn: Connexion en écriture vers shared_matches.duckdb.
+        shared_conn: Connexion en écriture vers shared_matches_v2.duckdb.
         force: Si True, écrase les valeurs déjà présentes (INSERT OR REPLACE).
                Si False, ignore les paires déjà calculées (INSERT OR IGNORE).
 
@@ -1789,7 +1789,7 @@ def backfill_fix_score_inversions(shared_conn: Any, *, dry_run: bool = False) ->
     Les ``ps_score`` sont calculés depuis match_participants et sont corrects.
 
     Args:
-        shared_conn: Connexion en écriture vers shared_matches.duckdb.
+        shared_conn: Connexion en écriture vers shared_matches_v2.duckdb.
         dry_run: Si True, affiche les matchs affectés sans modifier la DB.
 
     Returns:
@@ -1872,7 +1872,7 @@ def backfill_fix_pscore_leaks(shared_conn: Any, *, dry_run: bool = False) -> int
     positifs sur les modes objectifs normaux (CTF, KOTH, Stockpile…).
 
     Args:
-        shared_conn: Connexion en écriture vers shared_matches.duckdb.
+        shared_conn: Connexion en écriture vers shared_matches_v2.duckdb.
         dry_run: Si True, affiche les matchs affectés sans modifier la DB.
 
     Returns:

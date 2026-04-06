@@ -40,7 +40,9 @@ _FRIEND_DF_EMPTY_SCHEMA: dict[str, pl.PolarsDataType] = {
     "match_id": pl.Utf8,
     "start_time": pl.Datetime,
     "playlist_name": pl.Utf8,
+    "playlist_name_fr": pl.Utf8,
     "pair_name": pl.Utf8,
+    "pair_name_fr": pl.Utf8,
     "map_name": pl.Utf8,
     "same_team": pl.Boolean,
     "my_team_id": pl.Int64,
@@ -91,17 +93,32 @@ def _build_friend_df_from_match_ids_v4(  # noqa: PLR0913
 
 
 def _translate_playlist_pair_columns(dfr: pl.DataFrame) -> pl.DataFrame:
-    """Traduit les colonnes playlist_name et pair_name."""
-    _pl_map = build_mapping(dfr["playlist_name"], translate_playlist_name)
-    _pair_map = build_mapping(dfr["pair_name"], translate_pair_name)
-    return dfr.with_columns(
-        pl.col("playlist_name").replace_strict(
-            _pl_map, default=pl.col("playlist_name"), return_dtype=pl.Utf8
-        ),
-        pl.col("pair_name").replace_strict(
-            _pair_map, default=pl.col("pair_name"), return_dtype=pl.Utf8
-        ),
-    )
+    """Traduit les colonnes playlist_name et pair_name en utilisant les colonnes FR si disponibles."""
+    if "playlist_name_fr" in dfr.columns:
+        dfr = dfr.with_columns(
+            pl.coalesce([pl.col("playlist_name_fr"), pl.col("playlist_name")]).alias(
+                "playlist_name"
+            )
+        )
+    else:
+        _pl_map = build_mapping(dfr["playlist_name"], translate_playlist_name)
+        dfr = dfr.with_columns(
+            pl.col("playlist_name").replace_strict(
+                _pl_map, default=pl.col("playlist_name"), return_dtype=pl.Utf8
+            )
+        )
+    if "pair_name_fr" in dfr.columns:
+        dfr = dfr.with_columns(
+            pl.coalesce([pl.col("pair_name_fr"), pl.col("pair_name")]).alias("pair_name")
+        )
+    else:
+        _pair_map = build_mapping(dfr["pair_name"], translate_pair_name)
+        dfr = dfr.with_columns(
+            pl.col("pair_name").replace_strict(
+                _pair_map, default=pl.col("pair_name"), return_dtype=pl.Utf8
+            )
+        )
+    return dfr
 
 
 def _convert_start_time_timezone(dfr: pl.DataFrame, tz_name: str) -> pl.DataFrame:

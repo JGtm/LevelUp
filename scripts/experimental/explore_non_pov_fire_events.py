@@ -56,6 +56,7 @@ from src.analysis.weapon_parser import (
     scan_fire_events,
 )
 from src.utils.db import duckdb_read_only
+from src.utils.paths import get_shared_matches_path
 
 logging.basicConfig(
     level=logging.INFO,
@@ -64,7 +65,7 @@ logging.basicConfig(
 )
 logger = logging.getLogger("phase0")
 
-SHARED_DB = ROOT / "data" / "warehouse" / "shared_matches.duckdb"
+SHARED_DB = get_shared_matches_path()
 CHUNKS_BASE = ROOT / "data" / "investigation" / "chunks"
 OUTPUT_DIR = ROOT / "data" / "investigation"
 _WEAPON_KILLS_BIT = 1 << 21

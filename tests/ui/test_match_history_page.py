@@ -59,17 +59,17 @@ class TestAppUrl:
 
 
 class TestNormalizeModeLabel:
-    """Tests pour _normalize_mode_label (déplacée vers teammates_helpers)."""
+    """Tests pour normalize_mode_label (canonique dans src.app.helpers)."""
 
     def test_none(self) -> None:
-        from src.ui.pages.teammates_helpers import _normalize_mode_label
+        from src.app.helpers import normalize_mode_label
 
-        assert _normalize_mode_label(None) is None
+        assert normalize_mode_label(None) is None
 
     def test_string(self) -> None:
-        from src.ui.pages.teammates_helpers import _normalize_mode_label
+        from src.app.helpers import normalize_mode_label
 
-        result = _normalize_mode_label("Slayer")
+        result = normalize_mode_label("Slayer")
         assert isinstance(result, str)
 
 

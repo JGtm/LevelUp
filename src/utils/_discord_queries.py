@@ -1,7 +1,7 @@
 """Requêtes DuckDB pour les notifications Discord.
 
 Fonctions de récupération des données de matchs et de complétude
-depuis shared_matches.duckdb.
+depuis shared_matches_v2.duckdb.
 """
 
 from __future__ import annotations
@@ -86,7 +86,7 @@ def _fetch_squad_info(
 
 
 def fetch_last_match_info(xuid: str) -> object | None:
-    """Récupère les informations du dernier match depuis shared_matches.duckdb.
+    """Récupère les informations du dernier match depuis shared_matches_v2.duckdb.
 
     Args:
         xuid: Xbox User ID du joueur.
@@ -101,22 +101,34 @@ def fetch_last_match_info(xuid: str) -> object | None:
         from src.utils.discord_notifier import LastMatchInfo
 
         with duckdb_read_only(_SHARED_DB) as conn:
+            # Attacher metadata.duckdb pour que v_match_full puisse résoudre les noms FR
+            try:
+                from src.utils.db import ensure_metadata_attached
+
+                ensure_metadata_attached(conn)
+            except Exception:
+                pass
+
             row = conn.execute(
                 """
                 SELECT
                     mr.match_id,
-                    COALESCE(mr.map_name,          mr.map_id,       '—') AS map_name,
-                    COALESCE(mr.playlist_name,     '—')                  AS playlist_name,
+                    COALESCE(mr.map_id, '')                              AS map_id,
+                    COALESCE(mr.playlist_id, '')                         AS playlist_id,
+                    COALESCE(mr.pair_id, '')                             AS pair_id,
+                    COALESCE(mr.game_variant_id, '')                     AS game_variant_id,
+                    COALESCE(mr.map_name, mr.map_id, '—')                AS map_name,
+                    COALESCE(mr.playlist_name, '—')                      AS playlist_name,
                     COALESCE(mr.game_variant_name, '—')                  AS game_variant_name,
-                    COALESCE(mr.pair_name,         '—')                  AS pair_name,
-                    COALESCE(mr.is_ranked,         FALSE)                AS is_ranked,
+                    COALESCE(mr.pair_name, '—')                          AS pair_name,
+                    COALESCE(mr.is_ranked, FALSE)                        AS is_ranked,
                     mr.start_time,
                     COALESCE(mp.kills,   0) AS kills,
                     COALESCE(mp.deaths,  0) AS deaths,
                     COALESCE(mp.assists, 0) AS assists,
                     COALESCE(mp.outcome, 0) AS outcome,
                     COALESCE(mp.score,   0) AS score
-                FROM match_registry mr
+                FROM v_match_full mr
                 JOIN match_participants mp ON mr.match_id = mp.match_id
                 WHERE mp.xuid = ?
                 ORDER BY mr.start_time DESC
@@ -134,17 +146,21 @@ def fetch_last_match_info(xuid: str) -> object | None:
 
             return LastMatchInfo(
                 match_id=match_id,
-                map_name=str(row[1] or "—"),
-                playlist_name=str(row[2] or "—"),
-                game_variant_name=str(row[3] or "—"),
-                pair_name=str(row[4] or "—"),
-                is_ranked=bool(row[5]),
-                start_time=row[6],
-                kills=int(row[7] or 0),
-                deaths=int(row[8] or 0),
-                assists=int(row[9] or 0),
-                outcome=int(row[10] or 0),
-                score=int(row[11] or 0),
+                map_id=str(row[1] or ""),
+                playlist_id=str(row[2] or ""),
+                pair_id=str(row[3] or ""),
+                game_variant_id=str(row[4] or ""),
+                map_name=str(row[5] or "—"),
+                playlist_name=str(row[6] or "—"),
+                game_variant_name=str(row[7] or "—"),
+                pair_name=str(row[8] or "—"),
+                is_ranked=bool(row[9]),
+                start_time=row[10],
+                kills=int(row[11] or 0),
+                deaths=int(row[12] or 0),
+                assists=int(row[13] or 0),
+                outcome=int(row[14] or 0),
+                score=int(row[15] or 0),
                 participants_count=participants_count,
                 squad_friends=squad_friends,
             )

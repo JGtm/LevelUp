@@ -100,7 +100,7 @@ def _resolve_xuid_from_shared(conn: object, gamertag: str) -> str | None:
 def _query_teammate_shared_stats(
     conn: object, xuid: str, match_ids_list: list[str]
 ) -> pl.DataFrame:
-    """Charge les stats d'un coéquipier depuis shared.match_participants + match_registry."""
+    """Charge les stats d'un coéquipier depuis shared.match_participants + v_match_full."""
     from src.data.repositories._arrow_bridge import result_to_polars
 
     placeholders = ", ".join(["?" for _ in match_ids_list])
@@ -108,6 +108,8 @@ def _query_teammate_shared_stats(
         SELECT
             p.match_id, r.start_time, r.map_id,
             COALESCE(r.map_name, '') AS map_name,
+            COALESCE(r.map_name_fr, r.map_name, '') AS map_name_fr,
+            COALESCE(r.map_name_fr, r.map_name, '') AS map_ui,
             r.playlist_id, COALESCE(r.playlist_name, '') AS playlist_name,
             r.pair_id, COALESCE(r.pair_name, '') AS pair_name,
             r.game_variant_id, COALESCE(r.game_variant_name, '') AS game_variant_name,
@@ -136,7 +138,7 @@ def _query_teammate_shared_stats(
                 ELSE NULL
             END AS kills_per_min
         FROM shared.match_participants p
-        JOIN shared.match_registry r ON p.match_id = r.match_id
+        JOIN shared.v_match_full r ON p.match_id = r.match_id
         WHERE p.xuid = ?
           AND p.match_id IN ({placeholders})
         ORDER BY r.start_time DESC
@@ -229,7 +231,7 @@ class TeammatesService:
     ) -> TeammateStats:
         """Charge les stats d'un coéquipier depuis shared.match_participants.
 
-        Architecture V5 : lit directement depuis shared_matches.duckdb
+        Architecture V5 : lit directement depuis shared_matches_v2.duckdb
         au lieu de charger la DB individuelle du coéquipier.
 
         Returns:
@@ -263,6 +265,40 @@ class TeammatesService:
             )
         except Exception as e:
             logger.debug("Erreur load_teammate_stats shared: %s", e)
+            return _empty
+
+    @staticmethod
+    def load_all_teammate_stats(
+        teammate_gamertag: str,
+        reference_db_path: str,
+    ) -> TeammateStats:
+        """Charge l'historique complet d'un coéquipier (tous matchs, sans filtre session).
+
+        Utilisé pour calculer les records historiques. Retourne toutes les parties
+        du joueur avec pair_name, pour permettre le filtre par catégorie de mode.
+
+        Returns:
+            TeammateStats avec le DataFrame complet ou vide.
+        """
+        from src.data.repositories.duckdb_repo import DuckDBRepository
+        from src.data.services._teammates_history_queries import query_teammate_full_history
+
+        _empty = TeammateStats(gamertag=teammate_gamertag, df=pl.DataFrame(), is_empty=True)
+        if not reference_db_path:
+            return _empty
+        try:
+            repo = DuckDBRepository(reference_db_path, "")
+            conn = repo._get_connection()
+            xuid = _resolve_xuid_from_shared(conn, teammate_gamertag)
+            if not xuid:
+                logger.debug(
+                    "load_all_teammate_stats: xuid introuvable pour '%s'", teammate_gamertag
+                )
+                return _empty
+            df_all = query_teammate_full_history(conn, xuid)
+            return TeammateStats(gamertag=teammate_gamertag, df=df_all, is_empty=df_all.is_empty())
+        except Exception as e:
+            logger.debug("Erreur load_all_teammate_stats pour '%s': %s", teammate_gamertag, e)
             return _empty
 
     @staticmethod
@@ -377,6 +413,7 @@ class TeammatesService:
             Liste de profils (dicts) compatibles avec create_participation_profile_radar.
         """
         from src.analysis.participation_radar import (
+            ProfileOptions,
             compute_participation_profile,
             get_radar_thresholds,
         )
@@ -416,10 +453,12 @@ class TeammatesService:
                 profile = compute_participation_profile(
                     ps,
                     match_row=match_row,
-                    name=name,
-                    color=color,
-                    pair_name=match_row.get("pair_name"),
-                    thresholds=thresholds,
+                    options=ProfileOptions(
+                        name=name,
+                        color=color,
+                        pair_name=match_row.get("pair_name"),
+                        thresholds=thresholds,
+                    ),
                 )
                 profiles.append(profile)
             except Exception:

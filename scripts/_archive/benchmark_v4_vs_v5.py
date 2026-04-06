@@ -59,7 +59,7 @@ def main() -> None:
     base_dir = Path(__file__).parent.parent
     warehouse_dir = base_dir / "data" / "warehouse"
     players_dir = base_dir / "data" / "players"
-    shared_db = warehouse_dir / "shared_matches.duckdb"
+    shared_db = warehouse_dir / "shared_matches_v2.duckdb"
     metadata_db = warehouse_dir / "metadata.duckdb"
 
     print("=" * 70)
@@ -73,7 +73,7 @@ def main() -> None:
 
     shared_size = get_db_size_mb(str(shared_db))
     metadata_size = get_db_size_mb(str(metadata_db))
-    print(f"  shared_matches.duckdb : {shared_size:.1f} MB")
+    print(f"  shared_matches_v2.duckdb : {shared_size:.1f} MB")
     print(f"  metadata.duckdb       : {metadata_size:.1f} MB")
 
     total_player_size = 0.0

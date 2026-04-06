@@ -1,8 +1,8 @@
 """Crée des VIEWs de compatibilité dans les DBs joueur.
 
-Après la migration vers shared_matches.duckdb, les DBs joueur sont simplifiées.
+Après la migration vers shared_matches_v2.duckdb, les DBs joueur sont simplifiées.
 Ce script crée des VIEWs qui émulent l'ancien schéma (match_stats, medals_earned,
-highlight_events) en lisant les données depuis shared_matches.duckdb via ATTACH.
+highlight_events) en lisant les données depuis shared_matches_v2.duckdb via ATTACH.
 
 Objectif : permettre à l'UI et au code existant de fonctionner sans modification
 pendant la période de transition (Sprint 5).
@@ -24,7 +24,7 @@ import duckdb
 PROJECT_ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(PROJECT_ROOT))
 
-DEFAULT_SHARED_DB = PROJECT_ROOT / "data" / "warehouse" / "shared_matches.duckdb"
+DEFAULT_SHARED_DB = PROJECT_ROOT / "data" / "warehouse" / "shared_matches_v2.duckdb"
 PROFILES_PATH = PROJECT_ROOT / "db_profiles.json"
 
 logger = logging.getLogger(__name__)
@@ -220,7 +220,7 @@ def create_compat_views(
         gamertag: Gamertag du joueur.
         xuid: XUID du joueur.
         player_db_path: Chemin vers la DB joueur.
-        shared_db_path: Chemin vers shared_matches.duckdb.
+        shared_db_path: Chemin vers shared_matches_v2.duckdb.
         dry_run: Si True, affiche les SQL sans exécuter.
         verbose: Afficher le détail.
 
@@ -235,7 +235,7 @@ def create_compat_views(
     conn = duckdb.connect(str(player_db_path))
 
     try:
-        # 1. ATTACH shared_matches.duckdb
+        # 1. ATTACH shared_matches_v2.duckdb
         attach_sql = f"ATTACH '{shared_db_path}' AS shared (READ_ONLY)"
 
         if dry_run:

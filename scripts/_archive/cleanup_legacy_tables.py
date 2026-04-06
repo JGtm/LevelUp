@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Supprime les tables legacy obsolètes des bases joueurs.
 
-V5.1: Les données sont centralisées dans shared_matches.duckdb.
+V5.1: Les données sont centralisées dans shared_matches_v2.duckdb.
 Les tables locales redondantes peuvent être supprimées pour réduire
 la taille des DBs joueurs (~30MB → ~4MB par joueur).
 
@@ -69,7 +69,7 @@ DATA_DIR = Path(__file__).resolve().parent.parent / "data"
 PLAYERS_DIR = DATA_DIR / "players"
 BACKUP_DIR = Path(__file__).resolve().parent.parent / "backups" / "pre_cleanup"
 
-# Tables à supprimer (redondantes avec shared_matches.duckdb)
+# Tables à supprimer (redondantes avec shared_matches_v2.duckdb)
 TABLES_TO_DROP = [
     "match_stats",
     "medals_earned",
@@ -263,7 +263,7 @@ def main():
         print("=" * 40)
         for table in TABLES_TO_DROP:
             print(f"  - {table}")
-        print("\nCes tables sont redondantes avec shared_matches.duckdb")
+        print("\nCes tables sont redondantes avec shared_matches_v2.duckdb")
         return
 
     if not args.gamertag and not args.all:

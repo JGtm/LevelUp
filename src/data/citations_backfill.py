@@ -319,7 +319,7 @@ def backfill_citations_for_player(
     shared_path = get_shared_matches_path_from_player(db_path)
 
     if shared_path is None:
-        logger.debug("citations_backfill: shared_matches.duckdb absent, skip")
+        logger.debug("citations_backfill: shared_matches_v2.duckdb absent, skip")
         return dict(_EMPTY_RESULT)
 
     logger.debug("citations_backfill: shared_matches résolu → %s", shared_path)

@@ -107,9 +107,9 @@ class TestSessionsForCompareConstruction:
         """Utiliser ctx.df (tous les matchs) → 2 sessions disponibles pour la comparaison."""
         result = _build_sessions_for_compare(two_session_all_matches, all_sessions_pl)
         unique_sessions = result.get_column("session_label").unique().to_list()
-        assert (
-            len(unique_sessions) == 2
-        ), "sessions_for_compare doit contenir 2 sessions quand ctx.df est utilisé"
+        assert len(unique_sessions) == 2, (
+            "sessions_for_compare doit contenir 2 sessions quand ctx.df est utilisé"
+        )
 
     def test_with_filtered_matches_gives_only_one_session(
         self,
@@ -154,9 +154,9 @@ class TestSessionsForCompareConstruction:
 
         # La garde "< 2 sessions" dans render_session_comparison_page aurait tiré
         # avec le résultat buggy mais pas avec le résultat fixé.
-        assert (
-            n_sessions_fixed >= 2
-        ), "Avec le fix, len(session_labels) >= 2 → pas de warning, fallback actif"
+        assert n_sessions_fixed >= 2, (
+            "Avec le fix, len(session_labels) >= 2 → pas de warning, fallback actif"
+        )
 
 
 # ---------------------------------------------------------------------------

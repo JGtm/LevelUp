@@ -44,16 +44,16 @@ class TestResolveFromHighlightEventsRemoved:
     def test_resolve_from_highlight_events_absent(self) -> None:
         from src.data.repositories._gamertag_resolver import GamertagResolverMixin
 
-        assert not hasattr(
-            GamertagResolverMixin, "_resolve_from_highlight_events"
-        ), "_resolve_from_highlight_events doit être supprimée (Commit 8)"
+        assert not hasattr(GamertagResolverMixin, "_resolve_from_highlight_events"), (
+            "_resolve_from_highlight_events doit être supprimée (Commit 8)"
+        )
 
     def test_extract_ascii_token_absent(self) -> None:
         from src.data.repositories._gamertag_resolver import GamertagResolverMixin
 
-        assert not hasattr(
-            GamertagResolverMixin, "_extract_ascii_token"
-        ), "_extract_ascii_token doit être supprimée (Commit 8)"
+        assert not hasattr(GamertagResolverMixin, "_extract_ascii_token"), (
+            "_extract_ascii_token doit être supprimée (Commit 8)"
+        )
 
 
 # ---------------------------------------------------------------------------

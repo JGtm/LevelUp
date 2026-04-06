@@ -49,9 +49,9 @@ def test_metadata_resolver_has_rlock():
     resolver = MetadataResolver(metadata_db_path="/nonexistent/metadata.duckdb")
     assert hasattr(resolver, "_lock"), "_lock absent de MetadataResolver"
     # threading.RLock() retourne une instance de _RLock (type interne)
-    assert isinstance(
-        resolver._lock, type(threading.RLock())
-    ), f"_lock doit être un threading.RLock, got {type(resolver._lock)}"
+    assert isinstance(resolver._lock, type(threading.RLock())), (
+        f"_lock doit être un threading.RLock, got {type(resolver._lock)}"
+    )
 
 
 def test_metadata_resolver_lock_is_reentrant():
@@ -133,9 +133,9 @@ async def test_transform_match_stats_async_passes_correct_args(tmp_path):
         await mixin._transform_match_stats_async(_STATS_JSON, skill_json)
 
     assert captured_fn is not None
-    assert isinstance(
-        captured_fn, functools.partial
-    ), f"Le callable doit être un functools.partial, got {type(captured_fn)}"
+    assert isinstance(captured_fn, functools.partial), (
+        f"Le callable doit être un functools.partial, got {type(captured_fn)}"
+    )
     # Les kwargs doivent inclure skill_json et xuid correct
     assert captured_fn.keywords.get("skill_json") is skill_json
     assert captured_fn.args[1] == "xuid_test_axe5"  # xuid

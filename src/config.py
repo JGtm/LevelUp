@@ -286,7 +286,7 @@ class PlotConfig:
 
     margin_left: int = 40
     margin_right: int = 20
-    margin_top: int = 30
+    margin_top: int = 10
     margin_bottom: int = 40
 
 

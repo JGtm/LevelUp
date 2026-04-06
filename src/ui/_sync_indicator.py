@@ -31,8 +31,6 @@ def render_sync_indicator(db_path: str, xuid: str | None = None) -> None:
 
     meta = _get_sync_metadata_smart(db_path, xuid=xuid)
     last_sync_raw = meta.get("last_sync_at")
-    total_matches = meta.get("total_matches", 0)
-
     now = datetime.now(timezone.utc)
     sync_text = ""
 
@@ -61,10 +59,8 @@ def render_sync_indicator(db_path: str, xuid: str | None = None) -> None:
             return
 
     if sync_text:
-        match_info = f" ({total_matches} matchs)" if total_matches > 0 else ""
         st.markdown(
-            f"<div style='font-size: 0.85em; color: #888; margin: 4px 0 8px 0;'>"
-            f"{sync_text}{match_info}</div>",
+            f"<div style='font-size: 0.85em; color: #888; margin: 4px 0 8px 0;'>{sync_text}</div>",
             unsafe_allow_html=True,
         )
 

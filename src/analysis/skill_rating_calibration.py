@@ -232,7 +232,7 @@ def _build_cli_parser() -> argparse.ArgumentParser:
         default="mae",
         help="Métrique : mae (minimiser) ou corr (maximiser, défaut: mae)",
     )
-    parser.add_argument("--shared-db", metavar="PATH", help="Chemin vers shared_matches.duckdb")
+    parser.add_argument("--shared-db", metavar="PATH", help="Chemin vers shared_matches_v2.duckdb")
     parser.add_argument("--seed", type=int, default=42, help="Graine aléatoire (défaut: 42)")
     parser.add_argument("--quiet", action="store_true", help="Sortie minimale")
     return parser

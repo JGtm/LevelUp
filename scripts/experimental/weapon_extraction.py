@@ -3,7 +3,7 @@
 Extraction expérimentale de l'arme utilisée lors d'un kill.
 
 Approche v2 (basée sur filmshell / Den Delimarsky + Andy Curtis) :
-  1. Charger les kills du joueur depuis shared_matches.duckdb
+  1. Charger les kills du joueur depuis shared_matches_v2.duckdb
   2. Exclure les kills melee/grenade via medal_name (raw_json highlight_events)
   3. Dériver le player_index du tueur (order team_id ASC, rank ASC dans match_participants)
   4. Pour chaque kill à temps T, trouver le(s) chunk(s) REPLICATION_DATA couvrant [T-1000ms, T]
@@ -175,7 +175,7 @@ def load_player_kills(match_id: str, gamertag: str, data_dir: Path | None = None
     import duckdb
 
     base = data_dir or (PROJECT_ROOT / "data")
-    db_path = base / "warehouse" / "shared_matches.duckdb"
+    db_path = base / "warehouse" / "shared_matches_v2.duckdb"
     conn = duckdb.connect(str(db_path), read_only=True)
 
     # v6 : gamertag supprimé de highlight_events — résolution du xuid via xuid_aliases
@@ -254,7 +254,7 @@ def get_player_index(match_id: str, gamertag: str, data_dir: Path | None = None)
     import duckdb
 
     base = data_dir or (PROJECT_ROOT / "data")
-    db_path = base / "warehouse" / "shared_matches.duckdb"
+    db_path = base / "warehouse" / "shared_matches_v2.duckdb"
     conn = duckdb.connect(str(db_path), read_only=True)
 
     # Tous les participants dans l'ordre (sans JOIN pour ne pas filtrer les lignes)
@@ -859,7 +859,7 @@ def main() -> int:
             PROJECT_ROOT / "data",
             PROJECT_ROOT.parent / "LevelUp" / "data",
         ]:
-            if (c / "warehouse" / "shared_matches.duckdb").exists():
+            if (c / "warehouse" / "shared_matches_v2.duckdb").exists():
                 data_dir = c
                 break
 

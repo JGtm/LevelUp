@@ -29,6 +29,7 @@ sys.path.insert(0, str(PROJECT_ROOT))
 import duckdb
 
 from src.data.repositories import DuckDBRepository
+from src.utils.paths import SHARED_MATCHES_DB_FILENAME
 
 
 @dataclass
@@ -284,7 +285,7 @@ def list_indexes(db_path: str) -> dict[str, list[str]]:
             pass
 
         # Attacher shared pour lister ses index
-        shared_path = Path(db_path).parent.parent.parent / "warehouse" / "shared_matches.duckdb"
+        shared_path = Path(db_path).parent.parent.parent / "warehouse" / SHARED_MATCHES_DB_FILENAME
         if shared_path.exists():
             try:
                 conn.execute(f"ATTACH '{shared_path}' AS shared (READ_ONLY)")

@@ -89,6 +89,8 @@ _WEAPON_ASSET_ALIASES: dict[str, str] = {
     "ma40": "MA40",
     "mangler": "Mangler",
     "dechiqueteur": "Mangler",
+    "mutilator": "Mutilator",
+    "mutilateur": "Mutilator",
     "mk51sidekick": "Sidekick",
     "mk50sidekick": "Sidekick",
     "sidekick": "Sidekick",

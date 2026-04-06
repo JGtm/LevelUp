@@ -1,7 +1,7 @@
 """Mixin — traitement des matchs depuis l'API.
 
 Itération sur l'historique API, dispatch vers _process_known_match ou
-_process_new_match, backfill sélectif dans shared_matches.duckdb.
+_process_new_match, backfill sélectif dans shared_matches_v2.duckdb.
 """
 
 from __future__ import annotations
@@ -206,7 +206,7 @@ class MatchProcessingMixin(MatchProcessingHelpersMixin):
 
         # ── Mode legacy v4 non supporté en v5.1 (8bis.B1) ─────────────────
         raise RuntimeError(
-            f"Mode legacy v4 non supporté en v5.1 — shared_matches.duckdb requis. "
+            f"Mode legacy v4 non supporté en v5.1 — shared_matches_v2.duckdb requis. "
             f"Match {match_id} ne peut pas être traité sans shared DB. "
             f"Exécutez 'python scripts/migrate_to_v5.py' pour créer la DB partagée."
         )
@@ -252,6 +252,9 @@ class MatchProcessingMixin(MatchProcessingHelpersMixin):
                 skill_json,
             )
             alias_rows = extract_aliases(stats_json) if options.with_aliases else []
+
+            # Collecter PSA pour les coéquipiers enregistrés (distribués en fanout post-sync)
+            self._collect_psa_for_other_players(stats_json, match_id)
 
             await self._write_player_enrichments(
                 match_id,
@@ -468,6 +471,8 @@ class MatchProcessingMixin(MatchProcessingHelpersMixin):
         skill_row, personal_score_rows = self._extract_personal_data(
             stats_json, match_id, skill_json
         )
+        # Collecter PSA pour les coéquipiers enregistrés (distribués en fanout post-sync)
+        self._collect_psa_for_other_players(stats_json, match_id)
         await self._upsert_skill_new_match(match_id, skill_json, skill_row)
         await self._write_player_enrichments(match_id, match_row, personal_score_rows, skill_row)
         return True

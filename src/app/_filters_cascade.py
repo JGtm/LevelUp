@@ -7,20 +7,19 @@ Contient : _get_experience_type_options, _apply_experience_filter,
 
 from __future__ import annotations
 
-from collections.abc import Callable
 from datetime import date
 
 import polars as pl
 import streamlit as st
 
-from src.ui import translate_playlist_name
+from src.app.i18n_columns import add_i18n_display_columns
+from src.app.session_keys import SK
 from src.ui.components import (
     get_firefight_playlists,
     render_checkbox_filter,
     render_hierarchical_checkbox_filter,
 )
 from src.ui.i18n import get_lang, t
-from src.ui.vectorize_helpers import build_mapping
 from src.utils.polars_compat import ensure_polars as _to_polars
 
 # ---------------------------------------------------------------------------
@@ -167,57 +166,6 @@ def _apply_temporal_filter(  # noqa: PLR0913
     return dropdown_base
 
 
-def _vectorize_ui_columns(
-    dropdown_base: pl.DataFrame,
-    clean_asset_label_fn: Callable[[str], str],
-    normalize_mode_label_fn: Callable[[str], str],
-    normalize_map_label_fn: Callable[[str], str],
-) -> pl.DataFrame:
-    """Ajoute les colonnes playlist_ui, mode_ui, map_ui vectorisées.
-
-    Utilise lang=get_lang() pour rester cohérent avec apply_filters.
-    """
-    _lang = get_lang()
-
-    if "playlist_name" in dropdown_base.columns:
-        _pl_map = build_mapping(
-            dropdown_base["playlist_name"],
-            lambda x: translate_playlist_name(clean_asset_label_fn(x), lang=_lang),
-        )
-        pl_expr = (
-            pl.col("playlist_name")
-            .cast(pl.Utf8)
-            .replace_strict(_pl_map, default=None, return_dtype=pl.Utf8)
-            .alias("playlist_ui")
-        )
-    else:
-        pl_expr = pl.lit(None).cast(pl.Utf8).alias("playlist_ui")
-
-    if "pair_name" in dropdown_base.columns:
-        _mode_map = build_mapping(dropdown_base["pair_name"], normalize_mode_label_fn)
-        mode_expr = (
-            pl.col("pair_name")
-            .cast(pl.Utf8)
-            .replace_strict(_mode_map, default=None, return_dtype=pl.Utf8)
-            .alias("mode_ui")
-        )
-    else:
-        mode_expr = pl.lit(None).cast(pl.Utf8).alias("mode_ui")
-
-    if "map_name" in dropdown_base.columns:
-        _map_map = build_mapping(dropdown_base["map_name"], normalize_map_label_fn)
-        map_expr = (
-            pl.col("map_name")
-            .cast(pl.Utf8)
-            .replace_strict(_map_map, default=None, return_dtype=pl.Utf8)
-            .alias("map_ui")
-        )
-    else:
-        map_expr = pl.lit(None).cast(pl.Utf8).alias("map_ui")
-
-    return dropdown_base.with_columns([pl_expr, mode_expr, map_expr])
-
-
 def _compute_faceted_options(
     dropdown_base_filtered: pl.DataFrame,
     preferred_order: list[str],
@@ -227,9 +175,9 @@ def _compute_faceted_options(
     Chaque dimension n'affiche que les options ayant ≥1 match dans le contexte
     des sélections actives dans les AUTRES dimensions.
     """
-    _sel_modes = st.session_state.get("filter_modes")
-    _sel_maps = st.session_state.get("filter_maps")
-    _sel_playlists = st.session_state.get("filter_playlists")
+    _sel_modes = st.session_state.get(SK.FILTER_MODES)
+    _sel_maps = st.session_state.get(SK.FILTER_MAPS)
+    _sel_playlists = st.session_state.get(SK.FILTER_PLAYLISTS)
 
     # Playlists facettées : filtré par modes + cartes actuels
     _base_pl = dropdown_base_filtered
@@ -330,9 +278,6 @@ def _render_cascade_filters(  # noqa: PLR0913
     end_d: date,
     picked_session_labels: list[str] | None,
     base_s_ui: pl.DataFrame | None,
-    clean_asset_label_fn: Callable[[str], str],
-    normalize_mode_label_fn: Callable[[str], str],
-    normalize_map_label_fn: Callable[[str], str],
 ) -> _CascadeResult:
     """Rend les filtres Type d'expérience + Playlists + Modes + Cartes (v5.2)."""
     dropdown_base = _to_polars(base_for_filters)
@@ -344,18 +289,13 @@ def _render_cascade_filters(  # noqa: PLR0913
         picked_session_labels,
         base_s_ui,
     )
-    dropdown_base = _vectorize_ui_columns(
-        dropdown_base,
-        clean_asset_label_fn,
-        normalize_mode_label_fn,
-        normalize_map_label_fn,
-    )
+    dropdown_base = add_i18n_display_columns(dropdown_base, get_lang())
 
     # ── Sélecteur Type d'expérience (pré-filtre, v5.2) ──────────────────────
     playlist_values_all = _unique_sorted_values(dropdown_base, "playlist_ui")
     exp_values = _get_experience_type_options()
     _reconcile_filter_options(
-        "filter_experience_types",
+        SK.FILTER_EXPERIENCE_TYPES,
         exp_values,
         "_experience_types_filter_mode",
         "_experience_types_exclusions",
@@ -363,7 +303,7 @@ def _render_cascade_filters(  # noqa: PLR0913
     experience_selected = render_checkbox_filter(
         label="Type",
         options=exp_values,
-        session_key="filter_experience_types",
+        session_key=SK.FILTER_EXPERIENCE_TYPES,
         expanded=False,
     )
     dropdown_base_filtered = _apply_experience_filter(
@@ -386,9 +326,9 @@ def _render_cascade_filters(  # noqa: PLR0913
     map_values = _unique_sorted_values(dropdown_base_filtered, "map_ui")
 
     for key, vals, mode_k, excl_k in [
-        ("filter_playlists", playlist_values, "_playlists_filter_mode", "_playlists_exclusions"),
-        ("filter_modes", mode_values, "_modes_filter_mode", "_modes_exclusions"),
-        ("filter_maps", map_values, "_maps_filter_mode", "_maps_exclusions"),
+        (SK.FILTER_PLAYLISTS, playlist_values, "_playlists_filter_mode", "_playlists_exclusions"),
+        (SK.FILTER_MODES, mode_values, "_modes_filter_mode", "_modes_exclusions"),
+        (SK.FILTER_MAPS, map_values, "_maps_filter_mode", "_maps_exclusions"),
     ]:
         _reconcile_filter_options(key, vals, mode_k, excl_k)
 
@@ -400,19 +340,19 @@ def _render_cascade_filters(  # noqa: PLR0913
     playlists_selected = _render_dimension_with_restore(
         t("filter_playlists"),
         pl_faceted,
-        "filter_playlists",
+        SK.FILTER_PLAYLISTS,
         default_unchecked=get_firefight_playlists(pl_faceted),
     )
     modes_selected = _render_dimension_with_restore(
         t("filter_modes"),
         mode_faceted,
-        "filter_modes",
+        SK.FILTER_MODES,
         use_hierarchical=True,
     )
     maps_selected = _render_dimension_with_restore(
         t("filter_maps"),
         map_faceted,
-        "filter_maps",
+        SK.FILTER_MAPS,
     )
 
     return (

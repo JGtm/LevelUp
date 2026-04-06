@@ -92,8 +92,8 @@ STRINGS: dict[str, dict[str, str] | str] = {
         "en": "Impact matrix",
     },
     "tm_impact_legend": {
-        "fr": "- ⚡ **Premier sang** — premier kill du match, toutes équipes confondues\n- 🎯 **Finisseur** — dernier kill d'un match remporté\n- 💀 **Boulet** — dernière mort d'une défaite\n- 🐌 **Touriste** — dernier de l'équipe à obtenir son 1er frag\n- 🪦 **Première victime** — première mort dans l'équipe\n- 🛡️ **Héros silencieux** — plus d'assists et moins de morts dans l'équipe d'un match remporté\n- 🗡️ **Faux-frère** — plus de morts et moins d'assists dans l'équipe d'un match perdu",
-        "en": "- ⚡ **First Blood** — first kill of the match, across all teams\n- 🎯 **Finisher** — last kill of a won match\n- 💀 **Dead Weight** — last death of a lost match\n- 🐌 **Tourist** — last to get their first kill\n- 🪦 **First Casualty** — first death in the team\n- 🛡️ **Silent Hero** — most assists and fewest deaths in the team (win only)\n- 🗡️ **False Brother** — most deaths and fewest assists in the team (loss only)",
+        "fr": "- ⚡ **Premier sang** — premier kill du match, toutes équipes confondues\n- 🎯 **Finisseur** — dernier kill d'un match remporté\n- 💀 **Boulet** — dernière mort d'une défaite\n- 🐌 **Touriste** — dernier de l'équipe à obtenir son 1er frag\n- 🪦 **Première victime** — première mort dans l'équipe\n- 🛡️ **Héros silencieux** — plus d'assists et moins de morts dans l'équipe d'un match remporté\n- 🗡️ **Faux-frère** — plus de morts et moins d'assists dans l'équipe d'un match perdu\n- 💥 **Bourreau** — le plus de kills dans l'équipe alliée",
+        "en": "- ⚡ **First Blood** — first kill of the match, across all teams\n- 🎯 **Finisher** — last kill of a won match\n- 💀 **Dead Weight** — last death of a lost match\n- 🐌 **Tourist** — last to get their first kill\n- 🪦 **First Casualty** — first death in the team\n- 🛡️ **Silent Hero** — most assists and fewest deaths in the team (win only)\n- 🗡️ **False Brother** — most deaths and fewest assists in the team (loss only)\n- 💥 **Top Killer** — most kills in the allied team",
     },
     # ── Page Match View ──────────────────────────────────────────────────────
     "tm_computing_teammate": {
@@ -206,6 +206,10 @@ STRINGS: dict[str, dict[str, str] | str] = {
         "fr": "moy. {base} (+{bonus} collectif)",
         "en": "avg. {base} (+{bonus} squad)",
     },
+    "squad_score_base_only": {
+        "fr": "moy. {base}",
+        "en": "avg. {base}",
+    },
     "squad_legend": {
         "fr": "▲ au-dessus de la moyenne d'équipe · ▼ en dessous",
         "en": "▲ above squad average · ▼ below",
@@ -235,8 +239,8 @@ STRINGS: dict[str, dict[str, str] | str] = {
     "tmi_mvp_label": {"fr": "🏆 Champion : {mvp}", "en": "🏆 MVP of the Night: {mvp}"},
     "tmi_boulet_label": {"fr": "🍌 Maillon Faible : {boulet}", "en": "🍌 Weak Link: {boulet}"},
     "tmi_no_shared_db": {
-        "fr": "Impossible d'accéder à shared_matches.duckdb pour les événements.",
-        "en": "Cannot access shared_matches.duckdb for events.",
+        "fr": "Impossible d'accéder à shared_matches_v2.duckdb pour les événements.",
+        "en": "Cannot access shared_matches_v2.duckdb for events.",
     },
     "tmi_no_events": {
         "fr": "Les données d'événements ne sont pas disponibles. Lance un backfill events.",
@@ -293,5 +297,31 @@ STRINGS: dict[str, dict[str, str] | str] = {
     "tm_map_squad_heatmap_title": {
         "fr": "Performance par joueur × carte",
         "en": "Performance by player × map",
+    },
+    # ── Tendance premier frag / première mort ────────────────────────────────
+    "tm_first_events_title": {
+        "fr": "Tendance — Premier frag & première mort",
+        "en": "Trend — First frag & first death",
+    },
+    "tm_first_frag": {
+        "fr": "Premier frag",
+        "en": "First frag",
+    },
+    "tm_first_death": {
+        "fr": "Première mort",
+        "en": "First death",
+    },
+    # ── Profil de tempo synchronisé ───────────────────────────────────────────
+    "tm_squad_cadence": {
+        "fr": "Profil de tempo synchronisé",
+        "en": "Synchronized tempo profile",
+    },
+    "tm_squad_cadence_caption": {
+        "fr": "Comparaison des profils de kills moyens par phase du match sur les matchs communs. Les joueurs qui peakent en même temps montrent une synergie de push.",
+        "en": "Comparison of average kill profiles per match phase across common matches. Players peaking together show push synergy.",
+    },
+    "tm_squad_cadence_no_data": {
+        "fr": "Pas assez de matchs avec données de timeline pour afficher le profil de tempo.",
+        "en": "Not enough matches with timeline data to display the tempo profile.",
     },
 }

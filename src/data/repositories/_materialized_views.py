@@ -24,6 +24,35 @@ if TYPE_CHECKING:
 
 logger = logging.getLogger(__name__)
 
+# SQL d'agrégation partagé entre rebuild complet et incrémental.
+# Paramètres positionnels : [xuid, ...session_ids (optionnel)].
+_SESSION_STATS_INSERT_SQL = """
+INSERT INTO mv_session_stats
+SELECT
+    pme.session_id,
+    COUNT(*) AS match_count,
+    MIN(mr.start_time) AS start_time,
+    MAX(mr.start_time) AS end_time,
+    SUM(mp.kills) AS total_kills,
+    SUM(mp.deaths) AS total_deaths,
+    SUM(mp.assists) AS total_assists,
+    CASE WHEN SUM(mp.deaths) > 0
+         THEN CAST(SUM(mp.kills) AS DOUBLE) / SUM(mp.deaths)
+         ELSE SUM(mp.kills) END AS kd_ratio,
+    CASE WHEN COUNT(*) > 0
+         THEN SUM(CASE WHEN mp.outcome = 2 THEN 1.0 ELSE 0.0 END) / COUNT(*)
+         ELSE 0 END AS win_rate,
+    AVG(mp.accuracy) AS avg_accuracy,
+    AVG(mp.avg_life_seconds) AS avg_life_seconds,
+    CURRENT_TIMESTAMP AS updated_at
+FROM player_match_enrichment pme
+JOIN shared.match_participants mp ON mp.match_id = pme.match_id AND mp.xuid = ?
+JOIN shared.match_registry mr ON mr.match_id = pme.match_id
+WHERE pme.session_id IS NOT NULL
+{extra_filter}
+GROUP BY pme.session_id
+"""
+
 
 class MaterializedViewsMixin:
     """Mixin fournissant la gestion des vues matérialisées pour DuckDBRepository."""
@@ -44,7 +73,7 @@ class MaterializedViewsMixin:
                 avg_kda DOUBLE, avg_accuracy DOUBLE, win_rate DOUBLE,
                 updated_at TIMESTAMP)""",
             """CREATE TABLE IF NOT EXISTS mv_session_stats (
-                session_id INTEGER PRIMARY KEY, match_count INTEGER,
+                session_id VARCHAR PRIMARY KEY, match_count INTEGER,
                 start_time TIMESTAMP, end_time TIMESTAMP,
                 total_kills INTEGER, total_deaths INTEGER, total_assists INTEGER,
                 kd_ratio DOUBLE, win_rate DOUBLE,
@@ -119,8 +148,8 @@ class MaterializedViewsMixin:
         # ─── mv_global_stats (toujours rebuild complet) ───
         results["mv_global_stats"] = self._rebuild_global_stats(conn)
 
-        # ─── mv_session_stats (toujours rebuild complet) ───
-        results["mv_session_stats"] = self._rebuild_session_stats(conn)
+        # ─── mv_session_stats (rebuild complet ou incrémental) ───
+        results["mv_session_stats"] = self._refresh_session_stats(conn, new_ids)
 
         logger.info("Vues matérialisées rafraîchies: %s", results)
         return results
@@ -165,8 +194,17 @@ class MaterializedViewsMixin:
             )
         return conn.execute("SELECT COUNT(*) FROM mv_global_stats").fetchone()[0]
 
-    def _rebuild_session_stats(self, conn: duckdb.DuckDBPyConnection) -> int:
-        """Reconstruit mv_session_stats (skip si session_id indisponible)."""
+    def _refresh_session_stats(
+        self, conn: duckdb.DuckDBPyConnection, new_ids: list[str] | None
+    ) -> int:
+        """Rafraîchit mv_session_stats.
+
+        - ``new_ids`` fourni (sync delta) : recalcule les 3 sessions les plus
+          récentes (par ``start_time DESC``).
+        - ``new_ids`` est None (backfill/full) : rebuild complet.
+
+        Retourne le nombre total de lignes dans mv_session_stats.
+        """
         try:
             has_sessions = (
                 conn.execute(
@@ -177,39 +215,46 @@ class MaterializedViewsMixin:
             )
             if not has_sessions:
                 return 0
-            conn.execute("DELETE FROM mv_session_stats")
-            conn.execute(
-                """
-                INSERT INTO mv_session_stats
-                SELECT
-                    pme.session_id,
-                    COUNT(*) as match_count,
-                    MIN(mr.start_time) as start_time,
-                    MAX(mr.start_time) as end_time,
-                    SUM(mp.kills) as total_kills,
-                    SUM(mp.deaths) as total_deaths,
-                    SUM(mp.assists) as total_assists,
-                    CASE WHEN SUM(mp.deaths) > 0
-                         THEN CAST(SUM(mp.kills) AS DOUBLE) / SUM(mp.deaths)
-                         ELSE SUM(mp.kills) END as kd_ratio,
-                    CASE WHEN COUNT(*) > 0
-                         THEN SUM(CASE WHEN mp.outcome = 2 THEN 1.0 ELSE 0.0 END) / COUNT(*)
-                         ELSE 0 END as win_rate,
-                    AVG(mp.accuracy) as avg_accuracy,
-                    AVG(mp.avg_life_seconds) as avg_life_seconds,
-                    CURRENT_TIMESTAMP as updated_at
-                FROM player_match_enrichment pme
-                JOIN shared.match_participants mp
-                    ON mp.match_id = pme.match_id AND mp.xuid = ?
-                JOIN shared.match_registry mr ON mr.match_id = pme.match_id
-                WHERE pme.session_id IS NOT NULL
-                GROUP BY pme.session_id
-                """,
-                [self._xuid],
-            )
-            return conn.execute("SELECT COUNT(*) FROM mv_session_stats").fetchone()[0]
-        except Exception:
+
+            if new_ids is not None:
+                logger.debug("mv_session_stats: rebuild incrémental (3 dernières sessions)")
+                self._partial_refresh_session_stats(conn)
+            else:
+                logger.debug("mv_session_stats: rebuild complet (new_ids=None)")
+                conn.execute("DELETE FROM mv_session_stats")
+                conn.execute(
+                    _SESSION_STATS_INSERT_SQL.format(extra_filter=""),
+                    [self._xuid],
+                )
+
+            n = conn.execute("SELECT COUNT(*) FROM mv_session_stats").fetchone()[0]
+            logger.debug("mv_session_stats: %d session(s) après refresh", n)
+            return n
+        except Exception as exc:
+            logger.warning("mv_session_stats: erreur refresh — %s", exc)
             return 0
+
+    def _partial_refresh_session_stats(self, conn: duckdb.DuckDBPyConnection) -> None:
+        """Supprime et recalcule les 3 dernières sessions (rebuild incrémental)."""
+        rows = conn.execute(
+            "SELECT session_id FROM mv_session_stats ORDER BY start_time DESC LIMIT 3"
+        ).fetchall()
+        recent_ids = [r[0] for r in rows]
+        if not recent_ids:
+            logger.debug("mv_session_stats: aucune session existante, skip incrémental")
+            return
+        logger.debug("mv_session_stats: recalcul session(s) %s", recent_ids)
+        placeholders = ", ".join("?" * len(recent_ids))
+        conn.execute(
+            f"DELETE FROM mv_session_stats WHERE session_id IN ({placeholders})",
+            recent_ids,
+        )
+        conn.execute(
+            _SESSION_STATS_INSERT_SQL.format(
+                extra_filter=f"AND pme.session_id IN ({placeholders})"
+            ),
+            [self._xuid, *recent_ids],
+        )
 
     def _refresh_mv_map_stats(
         self,

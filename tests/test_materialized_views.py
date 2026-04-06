@@ -580,9 +580,9 @@ class TestPerformanceComparison:
 
             # Les MV devraient être au moins aussi rapides (souvent plus rapides)
             # On tolère une marge car les deux sont très rapides sur DuckDB
-            assert (
-                mv_time <= direct_time * 2
-            ), f"MV time ({mv_time:.4f}s) should be faster than direct ({direct_time:.4f}s)"
+            assert mv_time <= direct_time * 2, (
+                f"MV time ({mv_time:.4f}s) should be faster than direct ({direct_time:.4f}s)"
+            )
 
         finally:
             repo.close()

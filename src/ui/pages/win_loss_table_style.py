@@ -41,13 +41,13 @@ _VIOLET = "#8E6CFF"
 # ---------------------------------------------------------------------------
 
 
-def map_name_cell_html(map_name: str | None) -> str:
+def map_name_cell_html(map_name: str | None, map_id: str | None = None) -> str:
     """Retourne une <td> avec tooltip thumbnail pour le nom de carte."""
-    from src.ui.pages.match_table_html import map_thumb_url
+    from src.ui.pages.match_table_html import map_thumb_url, map_thumb_url_by_id
 
     raw = str(map_name or "").strip() or "-"
     val = html_lib.escape(raw)
-    url = map_thumb_url(map_name)
+    url = (map_thumb_url_by_id(map_id) if map_id else None) or map_thumb_url(map_name)
     if url:
         esc_url = html_lib.escape(url)
         return (

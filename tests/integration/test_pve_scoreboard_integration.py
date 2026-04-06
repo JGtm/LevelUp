@@ -9,7 +9,7 @@ Deux flux non couverts par les tests d'intégration existants :
    - Fallback gracieux si shared_pve.duckdb absent
 
 2. Scoreboard end-to-end (load_match_scoreboard)
-   - DuckDBRepository attaché à shared_matches.duckdb réel
+   - DuckDBRepository attaché à shared_matches_v2.duckdb réel
    - Champs attendus, tri (team_id, rank), résolution gamertag, Perfect Kill
    - Cas limites : match inexistant, team_id NULL
 """
@@ -149,7 +149,7 @@ def _create_pve_env(tmp_path: Path) -> tuple[Path, Path, Path]:
 
 
 def _create_shared_for_scoreboard(tmp_path: Path) -> tuple[Path, Path, Path]:
-    """Crée la structure shared_matches.duckdb + stats.duckdb pour le scoreboard.
+    """Crée la structure shared_matches_v2.duckdb + stats.duckdb pour le scoreboard.
 
     Données :
         - match-sc01 : 2 équipes (team 0 et team 1), 4 joueurs
@@ -162,7 +162,7 @@ def _create_shared_for_scoreboard(tmp_path: Path) -> tuple[Path, Path, Path]:
     warehouse_dir.mkdir(parents=True)
 
     stats_path = player_dir / "stats.duckdb"
-    shared_path = warehouse_dir / "shared_matches.duckdb"
+    shared_path = warehouse_dir / "shared_matches_v2.duckdb"
     meta_path = warehouse_dir / "metadata.duckdb"
 
     # --- Minimal player DB ---
@@ -174,7 +174,7 @@ def _create_shared_for_scoreboard(tmp_path: Path) -> tuple[Path, Path, Path]:
     meta.execute("CREATE TABLE IF NOT EXISTS playlists (asset_id VARCHAR PRIMARY KEY)")
     meta.close()
 
-    # --- shared_matches.duckdb ---
+    # --- shared_matches_v2.duckdb ---
     sh = duckdb.connect(str(shared_path))
     sh.execute("""
         CREATE TABLE IF NOT EXISTS match_participants (

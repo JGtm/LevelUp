@@ -9,14 +9,21 @@ Ce module centralise les fonctions UI liées aux médailles Halo Infinite :
 from __future__ import annotations
 
 import base64
+import html
 import logging
 import os
 
 import streamlit as st
 
-from src.data.medal_definitions import load_medal_name_maps as _load_medal_name_maps
+from src.data.medal_definitions import (
+    load_medal_description_map as _load_medal_description_map,
+)
+from src.data.medal_definitions import (
+    load_medal_name_maps as _load_medal_name_maps,
+)
 
 __all__ = [
+    "load_medal_description_map",
     "load_medal_name_maps",
     "medal_has_known_label",
     "get_local_medals_icons_dir",
@@ -26,6 +33,12 @@ __all__ = [
 ]
 
 logger = logging.getLogger(__name__)
+
+
+@st.cache_data(show_spinner=False)
+def load_medal_description_map(lang: str = "fr") -> dict[str, str]:
+    """Charge la map {str(medal_name_id): description} (wrapper Streamlit cache)."""
+    return _load_medal_description_map(lang)
 
 
 @st.cache_data(show_spinner=False)
@@ -88,11 +101,12 @@ def _medal_icon_b64(path: str) -> str:
         return base64.b64encode(f.read()).decode()
 
 
-def _medal_icon_html(path: str) -> str:
+def _medal_icon_html(path: str, title: str = "") -> str:
     """Retourne le HTML d'une icône médaille avec wrapper carré uniforme."""
     b64 = _medal_icon_b64(path)
+    title_attr = f' title="{html.escape(title, quote=True)}"' if title else ""
     return (
-        "<div class='os-medal-icon-wrap'>"
+        f"<div class='os-medal-icon-wrap'{title_attr}>"
         f"<img class='os-medal-icon' src='data:image/png;base64,{b64}' alt=''>"
         "</div>"
     )
@@ -111,12 +125,13 @@ def medal_icon_path(nid: int) -> str | None:
     return local_p if os.path.exists(local_p) else None
 
 
-def render_medals_grid(
+def render_medals_grid(  # noqa: PLR0913
     medals: list[dict[str, int]],
     cols_per_row: int = 8,
     deltas: dict[int, int] | None = None,
     center: bool = False,
     lang: str = "fr",
+    descriptions: dict[int, str] | None = None,
 ) -> None:
     """Affiche une grille de médailles dans Streamlit.
 
@@ -125,6 +140,7 @@ def render_medals_grid(
         cols_per_row: Nombre de colonnes (3-12, défaut 8).
         deltas: Dict {medal_id: delta_count} pour afficher +XXX à côté du compteur.
         center: Si True et que le nombre de médailles < cols_per_row, centre la grille.
+        descriptions: Dict {medal_id: description} pour les tooltips au survol.
     """
     if not medals:
         st.info("Aucune médaille.")
@@ -156,12 +172,15 @@ def render_medals_grid(
         cnt = int(m.get("count", 0))
         name = medal_label(nid, lang=lang)
         icon = medal_icon_path(nid)
+        desc = (descriptions or {}).get(nid, "")
+        tip = f"{name} : {desc}" if desc else name
 
         if icon:
-            col.markdown(_medal_icon_html(icon), unsafe_allow_html=True)
+            col.markdown(_medal_icon_html(icon, title=tip), unsafe_allow_html=True)
         else:
+            escaped_tip = html.escape(tip, quote=True)
             col.markdown(
-                f"<div class='os-medal-missing'>#{nid}</div>",
+                f"<div class='os-medal-missing' title=\"{escaped_tip}\">#{nid}</div>",
                 unsafe_allow_html=True,
             )
 
@@ -175,7 +194,9 @@ def render_medals_grid(
                 )
 
         col.markdown(
-            "<div class='os-medal-caption'>"
+            "<div class='os-medal-caption' title=\""
+            + html.escape(tip, quote=True)
+            + '">'
             + "<div class='os-medal-name'>"
             + name
             + "</div>"

@@ -29,8 +29,15 @@ def compute_needed_chunks(
     kill_times_ms: list[int],
     chunks_meta: list,
     kill_window_ms: int = _KILL_WINDOW_MS_DEFAULT,
+    *,
+    include_spawn_chunk: bool = False,
 ) -> set[int]:
-    """Identifie les chunks couvrant les fenêtres [kill_t - kill_window_ms, kill_t]."""
+    """Identifie les chunks couvrant les fenêtres [kill_t - kill_window_ms, kill_t].
+
+    Args:
+        include_spawn_chunk: Si True, ajoute toujours le premier chunk
+            REPLICATION_DATA (chunk_01, start=0ms) pour capturer les spawns initiaux.
+    """
     needed: set[int] = set()
     for kill_t in kill_times_ms:
         window_start = kill_t - kill_window_ms
@@ -41,6 +48,16 @@ def compute_needed_chunks(
             ch_end = ch_start + ch.duration_milliseconds
             if ch_end >= window_start and ch_start <= kill_t:
                 needed.add(ch.index)
+
+    if include_spawn_chunk:
+        # Inclure le premier chunk REPLICATION_DATA (index le plus bas, start=0ms)
+        first_rep = next(
+            (ch for ch in sorted(chunks_meta, key=lambda c: c.index) if ch.chunk_type.value == 2),
+            None,
+        )
+        if first_rep is not None:
+            needed.add(first_rep.index)
+
     return needed
 
 

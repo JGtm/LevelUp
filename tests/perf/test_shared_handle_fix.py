@@ -247,9 +247,9 @@ class TestNoAttachOnPlayerConn:
         # Aucune nouvelle DB ne doit avoir été attachée à player_conn
         new_attachments = names_after - names_before
         shared_attached = any("shared" in n.lower() for n in new_attachments)
-        assert (
-            not shared_attached
-        ), f"shared_matches a été attaché à player_conn : {new_attachments}"
+        assert not shared_attached, (
+            f"shared_matches a été attaché à player_conn : {new_attachments}"
+        )
 
     def test_citations_backfill_does_not_attach_shared_to_player_conn(self, shared_and_player_dbs):
         """backfill_citations_for_player ne doit pas ATTACH shared sur player_conn."""
@@ -280,9 +280,9 @@ class TestNoAttachOnPlayerConn:
 
         new_attachments = dbs_after - dbs_before
         shared_attached = any("shared" in n.lower() for n in new_attachments)
-        assert (
-            not shared_attached
-        ), f"shared_matches a été attaché à player_conn : {new_attachments}"
+        assert not shared_attached, (
+            f"shared_matches a été attaché à player_conn : {new_attachments}"
+        )
 
 
 # ---------------------------------------------------------------------------

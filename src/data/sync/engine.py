@@ -7,7 +7,7 @@ Architecture mixin :
     Le code métier est réparti dans 8 modules mixin :
     - _engine_connections.py : gestion des connexions DuckDB + résolution XUID
     - _engine_schema.py     : DDL et migrations du schéma
-    - _shared_writes.py     : insertions dans shared_matches.duckdb
+    - _shared_writes.py     : insertions dans shared_matches_v2.duckdb
     - _performance.py       : calcul des scores de performance
     - _skill_rating.py      : CSR (ranked) + LUSR (TrueSkill 2)
     - _career.py            : synchronisation du rang carrière
@@ -138,7 +138,7 @@ class DuckDBSyncEngine(
     Mixins :
         ConnectionMixin       — connexions DuckDB + résolution XUID
         SchemaMixin           — schéma DDL + migrations
-        SharedWritesMixin     — insertions dans shared_matches.duckdb
+        SharedWritesMixin     — insertions dans shared_matches_v2.duckdb
         PerformanceMixin      — calcul des scores de performance
         SkillRatingMixin      — CSR + LUSR (TrueSkill 2)
         CareerMixin           — rang carrière
@@ -164,9 +164,9 @@ class DuckDBSyncEngine(
             xuid: XUID du joueur.
             gamertag: Gamertag pour l'identification API.
             metadata_db_path: Chemin vers metadata.duckdb (auto-détecté si None).
-            shared_db_path: Chemin vers shared_matches.duckdb (auto-détecté si None).
+            shared_db_path: Chemin vers shared_matches_v2.duckdb (auto-détecté si None).
             tokens: Tokens SPNKr pré-fournis (sinon récupérés depuis env).
-            shared_read_only: Si True, ouvre shared_matches.duckdb en lecture seule.
+            shared_read_only: Si True, ouvre shared_matches_v2.duckdb en lecture seule.
                 Utiliser True pour le fanout (ne fait que lire shared), False (défaut)
                 pour le sync principal (écrit dans shared).
         """
@@ -213,6 +213,11 @@ class DuckDBSyncEngine(
 
         # Cache des XUIDs amis (chargé lazily depuis friends_defaults.json)
         self._friends_xuids: frozenset[str] | None = None
+
+        # PSA des coéquipiers enregistrés collectées pendant le traitement des matchs,
+        # distribuées vers leurs DBs via le fanout post-sync. Keyed by xuid.
+        # {xuid: [PersonalScoreAwardRow, ...]}
+        self._pending_other_psa: dict[str, list] = {}
 
         # Version SPNKr installée (trackée dans match_registry + sync_meta)
         self._spnkr_version: str | None = None
@@ -351,21 +356,32 @@ class DuckDBSyncEngine(
                             count=1,
                         )
                         if _head and _latest_db and _head[0].match_id == _latest_db:
-                            logger.info(
-                                "event=delta_head_check gamertag=%s short_circuit=true latest=%s",
-                                self._gamertag,
-                                _latest_db[:8],
-                            )
-                            # Toujours enregistrer la date du sync même si aucun nouveau match
-                            # (sinon l'indicateur affiche la date du dernier sync avec insertions)
-                            self._save_sync_metadata(delta_mode=True, matches_inserted=0)
-                            self._get_connection().commit()
-                            # Réparer les PME manquants chez les coéquipiers
-                            # (cas : session jouée ensemble non encore enrichie côté coéquipier)
-                            self.fanout_repair_missing_scores()
-                            result.finished_at = datetime.now(timezone.utc)
-                            result.duration_seconds = time.time() - start_time
-                            return result
+                            # Guard v5.6 : vérifier que le match est réellement complet
+                            # pour CE joueur (enrichment + PSA). Un coéquipier peut avoir
+                            # inséré ce match dans shared sans que le joueur ait ses PSA.
+                            if not self._is_player_fully_synced_for_match(_latest_db):
+                                logger.info(
+                                    "event=delta_head_check gamertag=%s short_circuit=skipped "
+                                    "latest=%s reason=missing_psa",
+                                    self._gamertag,
+                                    _latest_db[:8],
+                                )
+                            else:
+                                logger.info(
+                                    "event=delta_head_check gamertag=%s short_circuit=true latest=%s",
+                                    self._gamertag,
+                                    _latest_db[:8],
+                                )
+                                # Toujours enregistrer la date du sync même si aucun nouveau match
+                                # (sinon l'indicateur affiche la date du dernier sync avec insertions)
+                                self._save_sync_metadata(delta_mode=True, matches_inserted=0)
+                                self._get_connection().commit()
+                                # Réparer les PME manquants chez les coéquipiers
+                                # (cas : session jouée ensemble non encore enrichie côté coéquipier)
+                                self.fanout_repair_missing_scores()
+                                result.finished_at = datetime.now(timezone.utc)
+                                result.duration_seconds = time.time() - start_time
+                                return result
                         logger.debug(
                             "event=delta_head_check gamertag=%s short_circuit=false latest_db=%s",
                             self._gamertag,
@@ -490,12 +506,12 @@ class DuckDBSyncEngine(
             logger.warning("Erreur calcul LUSR post-sync (non bloquant) : %s", e)
 
     def _detach_shared_from_player_conn(self) -> None:
-        """Détache shared_matches.duckdb de la connexion joueur si attaché.
+        """Détache shared_matches_v2.duckdb de la connexion joueur si attaché.
 
         Nécessaire après des opérations qui ATTACH shared en READ_ONLY
         sur la connexion joueur (ex: citations_backfill), pour libérer
         le file handle et permettre à batch_compute_lusr d'ouvrir
-        shared_matches.duckdb en R/W.
+        shared_matches_v2.duckdb en R/W.
         """
         try:
             conn = self._get_connection()

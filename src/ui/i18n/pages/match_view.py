@@ -11,6 +11,10 @@ STRINGS: dict[str, dict[str, str] | str] = {
         "fr": "Médailles",
         "en": "Medals",
     },
+    "mv_medals_and_citations": {
+        "fr": "Médailles & Citations",
+        "en": "Medals & Citations",
+    },
     "mv_lusr_no_data": {
         "fr": "Aucun rating LUSR/CSR calculé pour ce match. Lancez `--lusr` (non classé) ou `--csr` (classé) pour calculer.",
         "en": "No LUSR/CSR rating computed for this match. Run `--lusr` (unranked) or `--csr` (ranked) to compute it.",
@@ -82,6 +86,19 @@ STRINGS: dict[str, dict[str, str] | str] = {
         "fr": "Données insuffisantes pour la frise de dominance.",
         "en": "Not enough data for the dominance timeline.",
     },
+    # ── Cadence du match ──────────────────────────────────────────────────────
+    "mv_match_cadence": {
+        "fr": "Cadence du match",
+        "en": "Match tempo",
+    },
+    "mv_cadence_no_data": {
+        "fr": "Données insuffisantes pour afficher la cadence du match.",
+        "en": "Not enough data to display match tempo.",
+    },
+    "mv_cadence_granularity": {
+        "fr": "Granularité",
+        "en": "Granularity",
+    },
     "mv_antagonists_title": {
         "fr": "Antagonistes du match",
         "en": "Match antagonists",
@@ -146,6 +163,18 @@ STRINGS: dict[str, dict[str, str] | str] = {
         "fr": "Contexte",
         "en": "Context",
     },
+    "mv_scoreboard_detail_lusr": {
+        "fr": "LUSR",
+        "en": "LUSR",
+    },
+    "mv_scoreboard_detail_csr": {
+        "fr": "CSR",
+        "en": "CSR",
+    },
+    "mv_scoreboard_detail_expected": {
+        "fr": "Attendu vs Réel",
+        "en": "Expected vs Actual",
+    },
     "mv_scoreboard_no_data": {
         "fr": "Statistiques des joueurs indisponibles pour ce match.",
         "en": "Player stats unavailable for this match.",
@@ -159,8 +188,8 @@ STRINGS: dict[str, dict[str, str] | str] = {
         "en": "Match impact",
     },
     "mv_impact_legend": {
-        "fr": "- ⚡ **Premier sang** — premier kill du match, toutes équipes confondues\n- 🎯 **Finisseur** — dernier kill d'un match remporté\n- 💀 **Boulet** — dernière mort d'une défaite\n- 🐌 **Touriste** — dernier à obtenir son 1er kill\n- 🪦 **Première victime** — première mort du match, toutes équipes confondues\n- 🛡️ **Héros silencieux** — plus d'assists et moins de morts dans l'équipe (victoire)\n- 🗡️ **Faux-frère** — plus de morts et moins d'assists dans l'équipe (défaite)",
-        "en": "- ⚡ **First Blood** — first kill of the match, across all teams\n- 🎯 **Finisher** — last kill of a won match\n- 💀 **Dead Weight** — last death of a lost match\n- 🐌 **Tourist** — last to get their first kill\n- 🪦 **First Casualty** — first death of the match, across all teams\n- 🛡️ **Silent Hero** — most assists and fewest deaths in the team (win only)\n- 🗡️ **False Brother** — most deaths and fewest assists in the team (loss only)",
+        "fr": "- ⚡ **Premier sang** — premier kill du match, toutes équipes confondues\n- 🎯 **Finisseur** — dernier kill d'un match remporté\n- 💀 **Boulet** — dernière mort d'une défaite\n- 🐌 **Touriste** — dernier à obtenir son 1er kill\n- 🪦 **Première victime** — première mort du match, toutes équipes confondues\n- 🛡️ **Héros silencieux** — plus d'assists et moins de morts dans l'équipe (victoire)\n- 🗡️ **Faux-frère** — plus de morts et moins d'assists dans l'équipe (défaite)\n- 💥 **Bourreau** — le plus de kills dans l'équipe alliée",
+        "en": "- ⚡ **First Blood** — first kill of the match, across all teams\n- 🎯 **Finisher** — last kill of a won match\n- 💀 **Dead Weight** — last death of a lost match\n- 🐌 **Tourist** — last to get their first kill\n- 🪦 **First Casualty** — first death of the match, across all teams\n- 🛡️ **Silent Hero** — most assists and fewest deaths in the team (win only)\n- 🗡️ **False Brother** — most deaths and fewest assists in the team (loss only)\n- 💥 **Top Killer** — most kills in the allied team",
     },
     "mv_impact_no_events": {
         "fr": "Données d'impact indisponibles (highlight events manquants).",
@@ -266,7 +295,7 @@ STRINGS: dict[str, dict[str, str] | str] = {
     },
     "mv_scoreboard_avg_life": {"fr": "Durée de vie moy.", "en": "Avg life span"},
     "mv_dominance_legend": {
-        "fr": "- **Barres ** : % des frags par tranche de 30 s — bleu = mon équipe, orange = adversaires\n- **Chiffres encadrés** : score cumulé de chaque équipe à l'instant T (encadré si en tête)\n- **Points ** : chaque point = un kill individuel\n- **Lignes reliées** : série d'un même joueur (≥ 3 kills consécutifs sans mourir)",
+        "fr": "- **Barres** : % des frags par tranche de 30 s — bleu = mon équipe, orange = adversaires\n- **Chiffres encadrés** : score cumulé de chaque équipe à l'instant T (encadré si en tête)\n- **Points** : chaque point = un kill individuel\n- **Lignes reliées** : série d'un même joueur (≥ 3 kills consécutifs sans mourir)",
         "en": "- **Bars**: % of kills per 30s interval — blue = my team, orange = opponents\n- **Framed numbers**: cumulative team score at that point (framed if leading)\n- **Dots**: each dot = an individual kill\n- **Connected lines**: streak by a single player (≥ 3 consecutive kills without dying)",
     },
     "mv_nemesis_unavailable": {

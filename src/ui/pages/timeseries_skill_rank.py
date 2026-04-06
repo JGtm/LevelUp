@@ -74,7 +74,5 @@ def render_skill_rank_progression(
         )
 
     with safe_chart_render():
-        fig = plot_lusr_timeseries(
-            df_plot, title=sel, playlist_group=None, show_smooth=False, lang=lang
-        )
+        fig = plot_lusr_timeseries(df_plot, playlist_group=None, show_smooth=False, lang=lang)
         st.plotly_chart(fig, width="stretch", config=PLOTLY_CLEAN_CONFIG)

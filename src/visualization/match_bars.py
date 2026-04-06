@@ -11,7 +11,9 @@ import polars as pl
 
 from src.ui.date_formats import FMT_SHORT_DATETIME_FR, FMT_TICK_DATETIME
 from src.ui.i18n.viz import viz_t
+from src.visualization._chart_series import HEIGHT_COMPACT, ChartData, MatchSeries, SquadRecordSet
 from src.visualization._compat import DataFrameLike, ensure_polars
+from src.visualization._plot_options import PlotOptions
 from src.visualization.theme import apply_halo_plot_style, get_legend_horizontal_bottom
 
 
@@ -19,13 +21,12 @@ def plot_metric_bars_by_match(  # noqa: PLR0913
     df_: DataFrameLike,
     *,
     metric_col: str,
-    title: str | None = None,
     y_axis_title: str,
     hover_label: str,
     bar_color: str,
     smooth_color: str,
     smooth_window: int = 10,
-    lang: str = "fr",
+    opts: PlotOptions | None = None,
 ) -> go.Figure | None:
     """Graphique en barres d'une métrique par match avec courbe de moyenne lissée.
 
@@ -42,6 +43,8 @@ def plot_metric_bars_by_match(  # noqa: PLR0913
     Returns:
         Figure Plotly ou None si données insuffisantes.
     """
+    _opts = opts if opts is not None else PlotOptions()
+    lang = _opts.lang
     if df_ is None:
         return None
     df_pl = ensure_polars(df_)
@@ -65,12 +68,13 @@ def plot_metric_bars_by_match(  # noqa: PLR0913
     d = d.with_columns(pl.col(metric_col).cast(pl.Float64, strict=False))
     y = d.get_column(metric_col).to_list()
     x_idx = list(range(len(d)))
+    _map_tick_col = "map_ui" if "map_ui" in d.columns else "map_name"
     labels = (
         [
             f"#{i + 1}<br>{mn}" if mn else f"#{i + 1}"
-            for i, mn in enumerate(d.get_column("map_name").fill_null("").to_list())
+            for i, mn in enumerate(d.get_column(_map_tick_col).fill_null("").to_list())
         ]
-        if "map_name" in d.columns
+        if _map_tick_col in d.columns
         else d.get_column("start_time").dt.strftime(FMT_TICK_DATETIME).to_list()
     )
     step = max(1, len(labels) // 10) if labels else 1
@@ -106,12 +110,10 @@ def plot_metric_bars_by_match(  # noqa: PLR0913
         )
     )
     layout_kwargs: dict = {
-        "margin": {"l": 40, "r": 20, "t": 40 if title else 10, "b": 90},
+        "margin": {"l": 40, "r": 20, "t": 10, "b": 90},
         "hovermode": "x unified",
         "legend": get_legend_horizontal_bottom(),
     }
-    if title is not None:
-        layout_kwargs["title"] = title
     fig.update_layout(**layout_kwargs)
     fig.update_yaxes(title_text=y_axis_title, rangemode="tozero")
     fig.update_xaxes(
@@ -123,27 +125,26 @@ def plot_metric_bars_by_match(  # noqa: PLR0913
         type="category",
     )
 
-    return apply_halo_plot_style(fig, height=320)
+    return apply_halo_plot_style(fig, height=HEIGHT_COMPACT)
 
 
 def plot_multi_metric_bars_by_match(  # noqa: C901, PLR0912, PLR0913, PLR0915
     series: list[tuple[str, DataFrameLike]],
     *,
     metric_col: str,
-    title: str,
     y_axis_title: str,
     hover_label: str,
     colors: dict[str, str] | list[str] | None,
     smooth_window: int = 10,
     show_smooth_lines: bool = True,
     lang: str = "fr",
+    squad_records: SquadRecordSet | None = None,
 ) -> go.Figure | None:
     """Graphique en barres multi-joueurs d'une métrique par match.
 
     Args:
         series: Liste de tuples (nom, DataFrame).
         metric_col: Nom de la colonne de métrique.
-        title: Titre du graphique.
         y_axis_title: Titre de l'axe Y.
         hover_label: Label pour le hover.
         colors: Dict ou liste de couleurs par joueur.
@@ -211,16 +212,18 @@ def plot_multi_metric_bars_by_match(  # noqa: C901, PLR0912, PLR0913, PLR0915
         # Collecter les données pour l'axe X commun (vectorisé)
         if has_match_id:
             map_cols = [pl.col("match_id").cast(pl.String).alias("match_id"), pl.col("start_time")]
-            if "map_name" in d.columns:
-                map_cols.append(pl.col("map_name").fill_null(""))
+            _disp_col = "map_ui" if "map_ui" in d.columns else "map_name"
+            if _disp_col in d.columns:
+                map_cols.append(pl.col(_disp_col).fill_null("").alias("_map_display"))
             match_df = d.select(map_cols)
         else:
             map_cols_no_id = [
                 pl.col("start_time").dt.strftime("%Y-%m-%dT%H:%M:%S").alias("match_id"),
                 pl.col("start_time"),
             ]
-            if "map_name" in d.columns:
-                map_cols_no_id.append(pl.col("map_name").fill_null(""))
+            _disp_col_no_id = "map_ui" if "map_ui" in d.columns else "map_name"
+            if _disp_col_no_id in d.columns:
+                map_cols_no_id.append(pl.col(_disp_col_no_id).fill_null("").alias("_map_display"))
             match_df = d.select(map_cols_no_id)
         all_match_data.append(match_df)
 
@@ -231,10 +234,10 @@ def plot_multi_metric_bars_by_match(  # noqa: C901, PLR0912, PLR0913, PLR0915
     combined = pl.concat(
         all_match_data, how="diagonal"
     )  # diagonal pour tolérer colonnes manquantes
-    # Garder le premier start_time (et map_name si dispo) par match_id
+    # Garder le premier start_time (et _map_display si dispo) par match_id
     agg_exprs = [pl.col("start_time").min()]
-    if "map_name" in combined.columns:
-        agg_exprs.append(pl.col("map_name").first())
+    if "_map_display" in combined.columns:
+        agg_exprs.append(pl.col("_map_display").first())
     match_times = combined.group_by("match_id").agg(agg_exprs).sort("start_time")
 
     match_ids_ordered = match_times.get_column("match_id").to_list()
@@ -245,12 +248,12 @@ def plot_multi_metric_bars_by_match(  # noqa: C901, PLR0912, PLR0913, PLR0915
         }
     )
 
-    # Labels pour l'axe X : #N + map_name si disponible, sinon dates
+    # Labels pour l'axe X : #N + map_display si disponible, sinon dates
     n_matches = len(match_ids_ordered)
-    if "map_name" in match_times.columns:
+    if "_map_display" in match_times.columns:
         labels = [
             f"#{i + 1}<br>{mn}" if mn else f"#{i + 1}"
-            for i, mn in enumerate(match_times.get_column("map_name").fill_null("").to_list())
+            for i, mn in enumerate(match_times.get_column("_map_display").fill_null("").to_list())
         ]
     else:
         labels = match_times.get_column("start_time").dt.strftime(FMT_SHORT_DATETIME_FR).to_list()
@@ -258,6 +261,7 @@ def plot_multi_metric_bars_by_match(  # noqa: C901, PLR0912, PLR0913, PLR0915
 
     fig = go.Figure()
     w = int(smooth_window) if smooth_window else 0
+    _player_xs: dict[str, list[int]] = {}
 
     for i, (name, d) in enumerate(prepared):
         if isinstance(colors, dict):
@@ -305,6 +309,7 @@ def plot_multi_metric_bars_by_match(  # noqa: C901, PLR0912, PLR0913, PLR0915
         if not x:
             continue
 
+        _player_xs[name] = x
         fig.add_trace(
             go.Bar(
                 x=x,
@@ -314,6 +319,7 @@ def plot_multi_metric_bars_by_match(  # noqa: C901, PLR0912, PLR0913, PLR0915
                 opacity=0.70,
                 hovertemplate=f"{name}<br>{hover_label}=%{{y}}<extra></extra>",
                 legendgroup=name,
+                offsetgroup=name,
             )
         )
 
@@ -336,8 +342,40 @@ def plot_multi_metric_bars_by_match(  # noqa: C901, PLR0912, PLR0913, PLR0915
     if not fig.data:
         return None
 
+    if squad_records and squad_records.records and _player_xs:
+        _names_with_data = list(_player_xs.keys())
+        _map_names_x = [
+            labels[xi].split("<br>", 1)[1] if xi < len(labels) and "<br>" in labels[xi] else None
+            for xi in range(len(match_ids_ordered))
+        ]
+        _colors_mb: dict[str, str] = colors if isinstance(colors, dict) else {}
+        _cd_mb = ChartData(
+            series=[
+                MatchSeries(
+                    name=_pname,
+                    x=_player_xs[_pname],
+                    y=[],
+                    color=_colors_mb.get(_pname, "#35D0FF"),
+                    map_names=[
+                        _map_names_x[xi] for xi in _player_xs[_pname] if xi < len(_map_names_x)
+                    ],
+                )
+                for _pname in _names_with_data
+            ],
+            x_labels=list(labels),
+            barmode="group",
+            global_records={
+                _pname: (squad_records.records.get(_pname) or {}).get(metric_col)
+                for _pname in _names_with_data
+            },
+            per_map_records={
+                _pname: (squad_records.per_map.get(_pname) or {}).get(metric_col, {})
+                for _pname in _names_with_data
+            },
+        )
+        _cd_mb.add_record_overlays(fig)
+
     fig.update_layout(
-        title=title,
         margin={"l": 40, "r": 20, "t": 40, "b": 150},
         hovermode="x unified",
         legend={**get_legend_horizontal_bottom(), "y": -0.52},
@@ -352,4 +390,4 @@ def plot_multi_metric_bars_by_match(  # noqa: C901, PLR0912, PLR0913, PLR0915
         tickangle=-45,
     )
 
-    return apply_halo_plot_style(fig, height=320)
+    return apply_halo_plot_style(fig, height=HEIGHT_COMPACT)

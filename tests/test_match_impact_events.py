@@ -46,17 +46,17 @@ TEAM = {"100", "200", "300"}
 
 
 def test_silent_hero_picks_best_ratio() -> None:
-    """Alice (4 assists - 1 death = +3) doit être choisie."""
+    """Bob (1 assist, 3 morts) doit être choisi : Alice (5 kills = top killer) est exclue."""
     result = _find_silent_hero_event([P_ALICE, P_BOB, P_CHARLIE], TEAM, me_xuid="999")
     assert result is not None
     assert result.event_type == "silent_hero"
-    assert result.xuid == "100"
-    assert result.gamertag == "Alice"
+    assert result.xuid == "200"
+    assert result.gamertag == "Bob"
 
 
 def test_silent_hero_is_me_flag() -> None:
-    """is_me=True quand me_xuid == hero.xuid."""
-    result = _find_silent_hero_event([P_ALICE, P_BOB, P_CHARLIE], TEAM, me_xuid="100")
+    """is_me=True quand me_xuid == hero.xuid (Bob, car Alice est exclue comme top killer)."""
+    result = _find_silent_hero_event([P_ALICE, P_BOB, P_CHARLIE], TEAM, me_xuid="200")
     assert result is not None
     assert result.is_me is True
 
@@ -69,11 +69,11 @@ def test_silent_hero_time_ms_is_sentinel() -> None:
 
 
 def test_silent_hero_extra_label_fr() -> None:
-    """extra_label FR doit contenir le nombre d'assists et de morts."""
+    """extra_label FR doit contenir le nombre d'assists et de morts du héros (Bob : 1 assist, 3 morts)."""
     result = _find_silent_hero_event([P_ALICE, P_BOB, P_CHARLIE], TEAM, me_xuid="999", lang="fr")
     assert result is not None
-    assert "4" in result.extra_label  # 4 passes
-    assert "1" in result.extra_label  # 1 mort
+    assert "1" in result.extra_label  # 1 assist (Bob)
+    assert "3" in result.extra_label  # 3 morts (Bob)
 
 
 def test_silent_hero_extra_label_en() -> None:
@@ -109,7 +109,7 @@ def test_silent_hero_filters_by_team_xuids() -> None:
         "deaths": 0,
         "assists": 10,
     }
-    result = _find_silent_hero_event([P_ALICE, P_BOB, enemy], TEAM, me_xuid="000")
+    result = _find_silent_hero_event([P_ALICE, P_BOB, P_CHARLIE, enemy], TEAM, me_xuid="000")
     assert result is not None
     assert result.xuid != "999"
 
@@ -188,7 +188,7 @@ def test_compute_includes_silent_hero_on_win() -> None:
         events,
         me_xuid="100",
         outcome=Outcome.WIN,
-        team_xuids={"100", "200"},
+        team_xuids={"100", "200", "300"},
         participants_stats=[P_ALICE, P_BOB, P_CHARLIE],
     )
     event_types = [e.event_type for e in result]
@@ -205,7 +205,7 @@ def test_compute_includes_false_brother_on_loss() -> None:
         events,
         me_xuid="100",
         outcome=Outcome.LOSS,
-        team_xuids={"100", "200"},
+        team_xuids={"100", "200", "300"},
         participants_stats=[P_ALICE, P_BOB, P_CHARLIE],
     )
     event_types = [e.event_type for e in result]

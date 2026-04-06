@@ -57,7 +57,7 @@ async def _run_engine_and_cleanup(
     finally:
         try:
             engine.close()
-            logger.debug("Sync: engine.close() → WAL shared_matches.duckdb checkpointé")
+            logger.debug("Sync: engine.close() → WAL shared_matches_v2.duckdb checkpointé")
         except Exception:
             pass
     return _sync_result, _sync_error

@@ -19,6 +19,7 @@ from src.visualization._distributions_outcomes_helpers import (
     ensure_datetime,
     safe_col,
 )
+from src.visualization._plot_options import PlotOptions
 from src.visualization.theme import (
     apply_halo_plot_style,
     get_legend_horizontal_bottom,
@@ -127,13 +128,14 @@ def plot_stacked_outcomes_by_category(  # noqa: PLR0913
     df: DataFrameLike,
     category_col: str,
     *,
-    title: str | None = None,
     min_matches: int = 1,
     sort_by: str = "total",
     max_categories: int = 20,
-    lang: str = "fr",
+    opts: PlotOptions | None = None,
 ) -> go.Figure:
     """Graphique de colonnes empilées Win/Loss/Tie/Left par catégorie."""
+    _opts = opts if opts is not None else PlotOptions()
+    lang = _opts.lang
     d = ensure_polars(df)
     colors = HALO_COLORS.as_dict()
     d = d.drop_nulls(subset=[category_col, "outcome"])
@@ -141,13 +143,13 @@ def plot_stacked_outcomes_by_category(  # noqa: PLR0913
     if d.is_empty():
         fig = go.Figure()
         fig.update_layout(height=PLOT_CONFIG.default_height)
-        return apply_halo_plot_style(fig, title=title)
+        return apply_halo_plot_style(fig)
 
     pivot = build_outcome_pivot(d, category_col, min_matches, sort_by, max_categories)
     if pivot is None:
         fig = go.Figure()
         fig.update_layout(height=PLOT_CONFIG.default_height)
-        return apply_halo_plot_style(fig, title=title)
+        return apply_halo_plot_style(fig)
 
     fig = go.Figure()
     add_outcome_traces(fig, pivot, colors, category_col=category_col, lang=lang)
@@ -157,12 +159,12 @@ def plot_stacked_outcomes_by_category(  # noqa: PLR0913
         barmode="stack",
         bargap=0.15,
         height=height,
-        margin={"l": 40, "r": 20, "t": 60 if title else 30, "b": 100},
+        margin={"l": 40, "r": 20, "t": 30, "b": 100},
         legend=get_legend_horizontal_bottom(),
     )
     fig.update_xaxes(tickangle=45, title_text="")
     fig.update_yaxes(title_text=viz_t("trace_matches", lang))
-    return apply_halo_plot_style(fig, title=title, height=height)
+    return apply_halo_plot_style(fig, height=height)
 
 
 # ---------------------------------------------------------------------------
@@ -173,7 +175,6 @@ def plot_stacked_outcomes_by_category(  # noqa: PLR0913
 def plot_win_ratio_heatmap(
     df: DataFrameLike,
     *,
-    title: str | None = None,
     min_matches: int = 2,
     lang: str = "fr",
 ) -> go.Figure | None:
@@ -271,11 +272,11 @@ def plot_win_ratio_heatmap(
     )
     fig.update_layout(
         height=PLOT_CONFIG.default_height,
-        margin={"l": 60, "r": 20, "t": 60 if title else 30, "b": 40},
+        margin={"l": 60, "r": 20, "t": 30, "b": 40},
     )
     fig.update_xaxes(title_text=viz_t("axis_hour_label", lang), side="bottom")
     fig.update_yaxes(title_text=viz_t("axis_day_label", lang), autorange="reversed")
-    return apply_halo_plot_style(fig, title=title, height=PLOT_CONFIG.default_height)
+    return apply_halo_plot_style(fig, height=PLOT_CONFIG.default_height)
 
 
 # ---------------------------------------------------------------------------
@@ -286,7 +287,6 @@ def plot_win_ratio_heatmap(
 def plot_matches_at_top_by_week(
     df: DataFrameLike,
     *,
-    title: str | None = None,
     rank_col: str = "rank",
     top_n_ranks: int = 1,
     lang: str = "fr",
@@ -299,7 +299,7 @@ def plot_matches_at_top_by_week(
     if d.is_empty():
         fig = go.Figure()
         fig.update_layout(height=PLOT_CONFIG.default_height)
-        return apply_halo_plot_style(fig, title=title)
+        return apply_halo_plot_style(fig)
 
     d, period_label = determine_top_period(d, lang=lang)
 
@@ -388,7 +388,7 @@ def plot_matches_at_top_by_week(
         barmode="stack",
         bargap=0.15,
         height=PLOT_CONFIG.default_height,
-        margin={"l": 40, "r": 60, "t": 60 if title else 30, "b": 80},
+        margin={"l": 40, "r": 60, "t": 30, "b": 80},
         legend=get_legend_horizontal_bottom(),
         yaxis2={
             "title": viz_t("axis_rate_pct", lang),
@@ -400,4 +400,4 @@ def plot_matches_at_top_by_week(
     )
     fig.update_xaxes(tickangle=45, title_text=period_label)
     fig.update_yaxes(title_text=viz_t("trace_matches", lang))
-    return apply_halo_plot_style(fig, title=title, height=PLOT_CONFIG.default_height)
+    return apply_halo_plot_style(fig, height=PLOT_CONFIG.default_height)

@@ -60,9 +60,9 @@ class TestGetOutcomeMap:
         """refdata n'exporte plus get_outcome_name_fr ni OUTCOME_TO_FR."""
         import src.data.domain.refdata as refdata
 
-        assert not hasattr(
-            refdata, "get_outcome_name_fr"
-        ), "get_outcome_name_fr doit être supprimé de refdata"
+        assert not hasattr(refdata, "get_outcome_name_fr"), (
+            "get_outcome_name_fr doit être supprimé de refdata"
+        )
         assert not hasattr(refdata, "OUTCOME_TO_FR"), "OUTCOME_TO_FR doit être supprimé de refdata"
 
 

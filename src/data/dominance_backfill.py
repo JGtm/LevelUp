@@ -1,6 +1,6 @@
 """Calcul des dominance flags (médaille Steaktacular) pour un joueur.
 
-Interroge ``shared_matches.duckdb`` pour détecter la présence de la médaille
+Interroge ``shared_matches_v2.duckdb`` pour détecter la présence de la médaille
 "À table" (Steaktacular) — dans l'équipe du joueur ou l'équipe adverse — et
 persiste le résultat dans ``player_match_enrichment.dominance_flag``.
 
@@ -69,7 +69,7 @@ def compute_dominance_for_player(
 
     Args:
         player_conn: Connexion RW vers ``stats.duckdb`` du joueur.
-        shared_conn: Connexion RO vers ``shared_matches.duckdb``.
+        shared_conn: Connexion RO vers ``shared_matches_v2.duckdb``.
         xuid: XUID du joueur.
         force: Recalculer même les matchs déjà flaggués.
 

@@ -10,9 +10,12 @@ import streamlit as st
 
 from src.app._filters_cascade import _apply_experience_filter, _get_experience_type_options
 from src.app._filters_shared import safe_to_date as _safe_to_date
+from src.app.helpers import normalize_map_label, normalize_mode_label
+from src.app.session_keys import SK
 from src.ui import translate_pair_name, translate_playlist_name
 from src.ui.cache import cached_compute_sessions_db
 from src.ui.i18n import get_lang
+from src.ui.translations import resolve_map_display_names
 from src.ui.vectorize_helpers import build_mapping
 from src.utils.polars_compat import ensure_polars as _to_polars
 
@@ -46,8 +49,6 @@ def apply_filters(  # noqa: C901, PLR0912, PLR0913, PLR0915
     xuid: str | None = None,
     db_key: tuple[int, int] | None = None,
     clean_asset_label_fn: Callable[[str], str] | None = None,
-    normalize_mode_label_fn: Callable[[str], str] | None = None,
-    normalize_map_label_fn: Callable[[str], str] | None = None,
 ) -> pl.DataFrame:
     """Applique tous les filtres au DataFrame.
 
@@ -73,10 +74,6 @@ def apply_filters(  # noqa: C901, PLR0912, PLR0913, PLR0915
 
     if clean_asset_label_fn is None:
         clean_asset_label_fn = _identity
-    if normalize_mode_label_fn is None:
-        normalize_mode_label_fn = _identity
-    if normalize_map_label_fn is None:
-        normalize_map_label_fn = _identity
     if db_path is None:
         db_path = ""
     if xuid is None:
@@ -121,6 +118,13 @@ def apply_filters(  # noqa: C901, PLR0912, PLR0913, PLR0915
                 else:
                     session_subset = base_s
                 session_match_ids = set(session_subset["match_id"].cast(pl.Utf8).to_list())
+                logger.debug(
+                    "Session filter: base_s=%d, picked=%s, session_subset=%d, session_match_ids=%d",
+                    len(base_s),
+                    filter_state.picked_session_labels,
+                    len(session_subset),
+                    len(session_match_ids),
+                )
                 # Garde-fou : si l'intersection est vide (incohérence inattendue),
                 # ne pas filtrer plutôt que retourner un dff vide.
                 candidate = dff.filter(
@@ -134,17 +138,21 @@ def apply_filters(  # noqa: C901, PLR0912, PLR0913, PLR0915
             dff = dff.clone()
 
         _dff_after_session = len(dff)
+        logger.debug(
+            "Filtre session: %d → %d matchs (labels=%s)",
+            _dff_initial_len,
+            _dff_after_session,
+            filter_state.picked_session_labels,
+        )
 
         # Colonnes dérivées (nécessitent playlist_name, pair_name, map_name)
         # Vectorisation: build_mapping + replace_strict au lieu de map_elements
-        dff = _add_derived_columns(
-            dff, clean_asset_label_fn, normalize_mode_label_fn, normalize_map_label_fn
-        )
+        dff = _add_derived_columns(dff, clean_asset_label_fn)
 
     # Debug: Afficher l'état des filtres avant application
-    show_debug = st.session_state.get("_show_debug_info", False)
+    show_debug = st.session_state.get(SK.SHOW_DEBUG_INFO, False)
     if show_debug:
-        _show_debug_info_before(dff, filter_state, normalize_mode_label_fn, normalize_map_label_fn)
+        _show_debug_info_before(dff, filter_state)
 
     # Application des filtres checkboxes
     # Filtre type d'expérience (pré-filtre, v5.2)
@@ -235,14 +243,24 @@ def apply_filters(  # noqa: C901, PLR0912, PLR0913, PLR0915
         )
 
     logger.info("Filtres appliqués: %d → %d matchs", _dff_initial_len, len(dff))
+    logger.debug(
+        "Détail filtres: session=%d exp=%d pl=%d mo=%d ma=%d final=%d (pl=%s mo=%s ma=%s)",
+        _dff_after_session,
+        _dff_after_experience,
+        _dff_after_playlists,
+        _dff_after_modes,
+        _dff_after_maps,
+        len(dff),
+        _playlists_list,
+        _modes_list,
+        _maps_list,
+    )
     return dff
 
 
 def _add_derived_columns(  # noqa: C901, PLR0912
     dff: pl.DataFrame,
     clean_asset_label_fn: Callable[[str], str],
-    normalize_mode_label_fn: Callable[[str], str],
-    normalize_map_label_fn: Callable[[str], str],
 ) -> pl.DataFrame:
     """Ajoute les colonnes dérivées UI (playlist_fr, mode_ui, map_ui, etc.)."""
 
@@ -252,53 +270,132 @@ def _add_derived_columns(  # noqa: C901, PLR0912
     derived_exprs: list[pl.Expr] = []
     if "playlist_name" in dff.columns:
         if "playlist_fr" not in dff.columns:
-            _pfr_map = build_mapping(
-                dff["playlist_name"], lambda x: translate_playlist_name(x, lang=get_lang())
-            )
-            derived_exprs.append(
-                pl.col("playlist_name")
-                .cast(pl.Utf8)
-                .replace_strict(_pfr_map, default=None, return_dtype=pl.Utf8)
-                .alias("playlist_fr")
-            )
+            # Priorité : playlist_name_fr (depuis mv_player_matches/v_match_full)
+            if "playlist_name_fr" in dff.columns:
+                derived_exprs.append(
+                    pl.coalesce(
+                        [
+                            pl.col("playlist_name_fr").cast(pl.Utf8),
+                            pl.col("playlist_name").cast(pl.Utf8),
+                        ]
+                    ).alias("playlist_fr")
+                )
+            else:
+                _pfr_map = build_mapping(
+                    dff["playlist_name"], lambda x: translate_playlist_name(x, lang=get_lang())
+                )
+                derived_exprs.append(
+                    pl.col("playlist_name")
+                    .cast(pl.Utf8)
+                    .replace_strict(_pfr_map, default=None, return_dtype=pl.Utf8)
+                    .alias("playlist_fr")
+                )
         if "playlist_ui" not in dff.columns:
-            _pui_map = build_mapping(
-                dff["playlist_name"],
-                lambda x: translate_playlist_name(clean_asset_label_fn(x), lang=get_lang()),
-            )
-            derived_exprs.append(
-                pl.col("playlist_name")
-                .cast(pl.Utf8)
-                .replace_strict(_pui_map, default=None, return_dtype=pl.Utf8)
-                .alias("playlist_ui")
-            )
+            if "playlist_name_fr" in dff.columns:
+                derived_exprs.append(
+                    pl.coalesce(
+                        [
+                            pl.col("playlist_name_fr").cast(pl.Utf8),
+                            pl.col("playlist_name").cast(pl.Utf8),
+                        ]
+                    ).alias("playlist_ui")
+                )
+            else:
+                _pui_map = build_mapping(
+                    dff["playlist_name"],
+                    lambda x: translate_playlist_name(clean_asset_label_fn(x), lang=get_lang()),
+                )
+                derived_exprs.append(
+                    pl.col("playlist_name")
+                    .cast(pl.Utf8)
+                    .replace_strict(_pui_map, default=None, return_dtype=pl.Utf8)
+                    .alias("playlist_ui")
+                )
     if "pair_name" in dff.columns:
         if "pair_fr" not in dff.columns:
-            _pair_map = build_mapping(
+            # Utiliser pair_name_fr (depuis v_match_full) si disponible, sinon translate
+            if "pair_name_fr" in dff.columns:
+                derived_exprs.append(
+                    pl.coalesce(
+                        [
+                            pl.col("pair_name_fr").cast(pl.Utf8),
+                            pl.col("pair_name").cast(pl.Utf8),
+                        ]
+                    ).alias("pair_fr")
+                )
+            else:
+                _pair_map = build_mapping(
+                    dff["pair_name"], lambda x: translate_pair_name(x, lang=get_lang())
+                )
+                derived_exprs.append(
+                    pl.col("pair_name")
+                    .cast(pl.Utf8)
+                    .replace_strict(_pair_map, default=None, return_dtype=pl.Utf8)
+                    .alias("pair_fr")
+                )
+        if "mode_ui" not in dff.columns:
+            # mode_ui : toujours translate_pair_name pour cohérence avec le sidebar
+            # (game_variant_name_fr n'est disponible que pour certains matchs → incohérence de filtre)
+            _mui_tr_map = build_mapping(
                 dff["pair_name"], lambda x: translate_pair_name(x, lang=get_lang())
             )
             derived_exprs.append(
                 pl.col("pair_name")
                 .cast(pl.Utf8)
-                .replace_strict(_pair_map, default=None, return_dtype=pl.Utf8)
-                .alias("pair_fr")
-            )
-        if "mode_ui" not in dff.columns:
-            if normalize_mode_label_fn is _identity:
-                derived_exprs.append(pl.col("pair_name").cast(pl.Utf8).alias("mode_ui"))
-            else:
-                _mui_map = build_mapping(dff["pair_name"], normalize_mode_label_fn)
-                derived_exprs.append(
-                    pl.col("pair_name")
-                    .cast(pl.Utf8)
-                    .replace_strict(_mui_map, default=None, return_dtype=pl.Utf8)
-                    .alias("mode_ui")
+                .replace_strict(
+                    _mui_tr_map,
+                    default=pl.col("pair_name").cast(pl.Utf8),
+                    return_dtype=pl.Utf8,
                 )
+                .alias("mode_ui")
+            )
     if "map_name" in dff.columns and "map_ui" not in dff.columns:
-        if normalize_map_label_fn is _identity:
-            derived_exprs.append(pl.col("map_name").cast(pl.Utf8).alias("map_ui"))
+        # Priorité 1 : map_name_fr direct (depuis mv_player_matches / v_match_full)
+        if "map_name_fr" in dff.columns and get_lang() == "fr":
+            derived_exprs.append(
+                pl.coalesce(
+                    [
+                        pl.col("map_name_fr").cast(pl.Utf8),
+                        pl.col("map_name").cast(pl.Utf8),
+                    ]
+                ).alias("map_ui")
+            )
+        elif "map_id" in dff.columns:
+            # Traduction i18n via asset_translations (requête batch)
+            lang = get_lang()
+            id_to_fallback: dict[str, str] = {
+                str(r["map_id"]): str(r["map_name"] or "")
+                for r in dff.select(["map_id", "map_name"])
+                .drop_nulls(subset=["map_id"])
+                .unique(subset=["map_id"])
+                .iter_rows(named=True)
+            }
+            if id_to_fallback:
+                translated_maps = resolve_map_display_names(id_to_fallback, lang)
+                n_translated = sum(
+                    1 for k, v in translated_maps.items() if v != id_to_fallback.get(k)
+                )
+                logger.debug(
+                    "map_ui i18n: %d/%d cartes traduites (lang=%s)",
+                    n_translated,
+                    len(id_to_fallback),
+                    lang,
+                )
+                derived_exprs.append(
+                    pl.col("map_id")
+                    .cast(pl.Utf8)
+                    .replace_strict(
+                        translated_maps,
+                        default=pl.col("map_name").cast(pl.Utf8),
+                        return_dtype=pl.Utf8,
+                    )
+                    .alias("map_ui")
+                )
+            else:
+                derived_exprs.append(pl.col("map_name").cast(pl.Utf8).alias("map_ui"))
         else:
-            _mapui_map = build_mapping(dff["map_name"], normalize_map_label_fn)
+            _lang = get_lang()
+            _mapui_map = build_mapping(dff["map_name"], normalize_map_label)
             derived_exprs.append(
                 pl.col("map_name")
                 .cast(pl.Utf8)
@@ -317,10 +414,9 @@ def _add_derived_columns(  # noqa: C901, PLR0912
 def _show_debug_info_before(
     dff: pl.DataFrame,
     filter_state: FilterState,  # noqa: F821
-    normalize_mode_label_fn: Callable[[str], str],
-    normalize_map_label_fn: Callable[[str], str],
 ) -> None:
     """Affiche les infos de debug avant application des filtres checkboxes."""
+    _lang = get_lang()
     st.write(f"🔍 **Debug filtres** - Avant application des filtres checkboxes: {len(dff)} matchs")
     st.write(
         f"- Playlists sélectionnées: {filter_state.playlists_selected if filter_state.playlists_selected else 'Toutes'}"
@@ -335,9 +431,9 @@ def _show_debug_info_before(
         recent = dff.sort("start_time", descending=True).head(5)
         st.write("**5 matchs les plus récents avant filtres checkboxes:**")
         for row in recent.iter_rows(named=True):
-            map_ui = row.get("map_ui") or normalize_map_label_fn(row.get("map_name", ""))
+            map_ui = row.get("map_ui") or normalize_map_label(row.get("map_name", ""))
             playlist_ui = row.get("playlist_ui") or row.get("playlist_name", "")
-            mode_ui = row.get("mode_ui") or normalize_mode_label_fn(row.get("pair_name", ""))
+            mode_ui = row.get("mode_ui") or normalize_mode_label(row.get("pair_name"), lang=_lang)
             st.write(
                 f"- {row.get('start_time')} | Map: {map_ui} | Playlist: {playlist_ui} | Mode: {mode_ui}"
             )

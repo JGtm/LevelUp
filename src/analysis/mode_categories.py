@@ -17,7 +17,9 @@ _LABEL_SUFFIX_RE: Final[re.Pattern[str]] = re.compile(
 )
 
 
-def normalize_pair_name_to_mode_ui(pair_name: str | None, lang: str = "fr") -> str | None:
+def normalize_pair_name_to_mode_ui(
+    pair_name: str | None, lang: str = "fr", *, normalize: bool = True
+) -> str | None:
     """Normalise un `pair_name` (DB) vers le libellé UI de mode.
 
     Aligne le comportement avec `src.app.helpers.normalize_mode_label`:
@@ -28,6 +30,7 @@ def normalize_pair_name_to_mode_ui(pair_name: str | None, lang: str = "fr") -> s
     Args:
         pair_name: Nom du pair (mode + carte), ex: "Arena:Slayer on Aquarius".
         lang:      ``"fr"`` (défaut) ou ``"en"``.
+        normalize: Si True, applique la normalisation des préfixes de modes.
 
     Returns:
         Libellé UI avec préfixes redondants supprimés, ex: "Assassin" (FR/EN),
@@ -46,7 +49,7 @@ def normalize_pair_name_to_mode_ui(pair_name: str | None, lang: str = "fr") -> s
 
     from src.ui.translations import translate_pair_name  # local import (dep UI → analysis évitée)
 
-    translated = translate_pair_name(raw, lang=lang)
+    translated = translate_pair_name(raw, lang=lang, normalize=normalize)
     if translated is None:
         return None
 

@@ -2,7 +2,7 @@
 
 > **Analyze your Halo Infinite performance with advanced visualizations and an ultra-fast DuckDB architecture.**
 
-[![Version](https://img.shields.io/badge/Version-6.2.0-blue.svg)](https://github.com/JGtm/LevelUp/releases/tag/v6.2.0)
+[![Version](https://img.shields.io/badge/Version-6.3.0-blue.svg)](https://github.com/JGtm/LevelUp/releases/tag/v6.3.0)
 [![Python 3.12+](https://img.shields.io/badge/Python-3.12%2B-blue.svg)](https://www.python.org/downloads/)
 [![Streamlit](https://img.shields.io/badge/Streamlit-1.28%2B-FF4B4B.svg)](https://streamlit.io/)
 [![DuckDB](https://img.shields.io/badge/DuckDB-1.4%2B-FEE14E.svg)](https://duckdb.org/)
@@ -13,41 +13,33 @@
 
 ## What's new
 
+**v6.3 — Localized names, squad records & medal details**
+- **Maps and modes in your language** — map names, playlists and game modes now appear in French (or English) across every page: sidebar filters, match tables, charts, and the win-rate histogram
+- **Medal descriptions on hover** — hover any medal in the Last Match grid or the Citations section to see its description
+- **Squad all-time records** — the Teammates page now shows the career bests for each squad member (K/D, kills, streaks…) with color-coded per-player highlights and a per-map record breakdown
+- **Top Killer badge** 🔫 — shown on the Impact timeline for the first player on the team to reach 10 kills
+- **Time-to-first-kill/death histogram revamped** — mirrored butterfly chart with 15-second bins and real gameplay time (pre-game countdown excluded)
+- **Win rate chart** now shows total match count per map and translated map names
+- **Settings page redesigned** — reorganized into clear sections (General, Sync, Performance, Display) for easier navigation
+- **Last Match page polished** — map and mode merged into one KPI card; the MMR, Kills, and Deaths cards now show the opponent team's score alongside your own, with a color-coded gap; the performance score appears directly next to your rating; all cards share a uniform height
+- **Medals and citations in a 4-column grid** — the scoreboard now lays out medals and citations in 4 columns for a cleaner overview; weapons in 2 columns with correct thumbnail sizing; citation tooltips include the medal description
+- **Match ID search in Explorer** — start typing any part of a match ID (3+ characters) to instantly filter your match list with live feedback
+- **Compact language selector** — the language switcher now shows flag emojis inline; the app version is always displayed below the logo
+- **Kill cadence histogram** — a new chart in the Combat tab breaks down your kills (and enemies') by 15-second intervals, with a moving-average overlay per team so you can see exactly when the pace shifted
+- **Match intensity heatmap** — visualizes kill density across game phases (early/mid/late) for all your matches at a glance
+- **Media library auto-index** — the media indexer now runs automatically in the background every few hours and after each sync, so your clips are always up to date without manual rescans
+- **Bug fixes** — Spartan Carnage citation type corrected (now properly counts killing-spree medals); Discord notifications now display correct map and playlist names; hero page backdrop overflow fixed; squad all-time records now always display correctly on Teammates charts; date filter calendar allows free navigation across year boundaries
+
 **v6.2 — Comeback badges & unified squad view**
 - **Remontada / Collapse / Contre-Remontada badges** — the app now detects comeback narratives from your match history: *Remontada* (you were losing at the midpoint but came back to win), *Collapse* (you were winning and blew it), *Contre-Remontada* (you stopped the enemy's comeback). Run `--comeback-badges` to compute them
 - **Unified squad view** — the 1-on-1 teammate comparison view has been removed; the squad view now works for 1, 2, or 3 friends, giving you the same rich charts regardless of party size
 - **Kills ↑ / Deaths ↓ chart** — separate kills and deaths charts replaced by a single mirrored chart per squad member, making K/D arcs easier to compare at a glance
+- **Game mode names normalized** — mode labels now go through a single display resolver (`resolve_display_mode`), with translation delegated by `translate_pair_name` and 29 FR/EN overrides in `mode_pair_overrides`, so naming stays consistent across pages and charts
 
 **v6.1 — Sync faster, bugs fixed**
 - **Sync ~30–40 % faster** — each sync now completes significantly quicker
 - **Career rank names corrected** — displays the actual rank name (e.g. "Lance Corporal Diamond 1") instead of an approximation
 - Bug fixes: performance scores and materialized views now always update correctly
-
-**v6.0 — Zero configuration, weapon accuracy & new medals**
-- **No setup required** — the app gives you a one-time code to enter at Microsoft.com/activate; your gamertag is detected automatically from your Microsoft account; no Azure account, no config file
-- **Navigate between matches** — `◀ Previous` / `Next ▶` buttons to browse your filtered match history
-- **Weapon kill attribution** — accuracy jumped from ~15 % to ~95 % of kills correctly attributed to a weapon
-- **New medal: Avenger** — awarded when you eliminate the opponent who last killed you
-- **Top Gun badge** — 🔫 shown on the Impact timeline for the first player on your team to reach 10 kills
-
-**v5.7 — Bilingual launchers, map hover thumbnails & Polars cleanup**
-- `LevelUp.sh` and `LevelUp.bat` now detect the system language (FR/EN) and display launcher messages accordingly
-- **Map hover thumbnails** — CSS-only hover popups on map names in all HTML tables (replaces the sandboxed JS approach)
-- French translations for all Halo rank names (career ranks + CSR tiers) used in metadata and the Career page
-- Pandas eliminated from UI/viz modules — Polars native end-to-end (7 `.to_pandas()` calls removed)
-
-**v5.6 (beta) — MSAL Device Code Flow & Weapon Extraction**
-- Token acquisition replaced with **MSAL Device Code Flow** — enter a code on xbox.com/activate, no redirect URI or client secret required
-- **Weapon kills from SPNKr films** *(beta — estimated coverage 70–100 % depending on matches, weapon catalog in progress)* — binary film parsing identifies the weapon used for each POV kill; kills-by-weapon in Match View and Teammates tabs; auto-extraction at sync configurable via Settings
-- **Impact Matrix** — vertical match separators for improved readability; renamed from "Impact Heatmap"
-
-**v5.5 — Setup Wizard & Multi-platform**
-- Guided first-time setup with Xbox one-click login (Device Code Flow) or manual Azure token flow
-- `LevelUp.bat` launcher for Windows and `LevelUp.sh` launcher for macOS & Linux
-- Portable Windows release (self-contained zip, no Python install required)
-- Timezone selector in Settings (~40 zones, defaults to Europe/Paris)
-- **Session Comparison page revamped** — outcomes donuts, F/D + accuracy curve, match highlights, mode & map breakdowns, LUSR/CSR rating overlay on cumulative net score
-- **XP & Hero rank comparison** — Career page now overlays XP curves and Hero projections for all players with a refresh token; precision scales with available data (real delta between syncs → global average fallback)
 
 ---
 
@@ -293,7 +285,7 @@ data/
 | player `stats` | `match_skill_rank` | LUSR/CSR rating per match |
 | player `stats` | `mv_map_stats`, `mv_global_stats` | Materialized views |
 
-**Technical docs**: [docs/ARCHITECTURE_V5.md](docs/ARCHITECTURE_V5.md)
+**Technical docs**: [docs/ARCHITECTURE_V6.md](docs/ARCHITECTURE_V6.md)
 
 ---
 
@@ -304,7 +296,7 @@ data/
 | [INSTALL.md](docs/INSTALL.md) | Detailed installation guide |
 | [CONFIGURATION.md](docs/CONFIGURATION.md) | Tokens and profiles configuration |
 | [COMMANDS.md](docs/COMMANDS.md) | Common commands cheat sheet |
-| [ARCHITECTURE_V5.md](docs/ARCHITECTURE_V5.md) | v5 architecture (shared matches) |
+| [ARCHITECTURE_V6.md](docs/ARCHITECTURE_V6.md) | v6 architecture (shared matches + i18n assets) |
 | [SYNC_GUIDE.md](docs/SYNC_GUIDE.md) | Sync guide |
 | [BACKUP_RESTORE.md](docs/BACKUP_RESTORE.md) | Backup and restore |
 | [TESTING_V5.md](docs/TESTING_V5.md) | v5 testing strategy |

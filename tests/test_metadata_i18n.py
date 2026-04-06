@@ -25,6 +25,7 @@ from src.ui.translations import translate_playlist_name
 def test_v_match_full_playlist_name_is_english() -> None:
     """v_match_full.playlist_name doit contenir des noms EN, jamais des traductions FR."""
     v2 = Path("data/warehouse/shared_matches_v2.duckdb")
+    meta = Path("data/warehouse/metadata.duckdb")
     if not v2.exists():
         pytest.skip("shared_matches_v2.duckdb non disponible")
 
@@ -33,6 +34,12 @@ def test_v_match_full_playlist_name_is_english() -> None:
     except duckdb.IOException:
         pytest.skip("shared_matches_v2.duckdb verrouillé par un autre processus")
     try:
+        # v_match_full référence meta.asset_translations — attacher si disponible
+        if meta.exists():
+            try:
+                conn.execute(f"ATTACH '{meta}' AS meta (READ_ONLY)")
+            except Exception:
+                pass
         sample = conn.execute(
             "SELECT DISTINCT playlist_name FROM v_match_full "
             "WHERE playlist_name IS NOT NULL LIMIT 20"
@@ -146,9 +153,9 @@ def test_translate_playlist_name_uuid_logs_warning(caplog: pytest.LogCaptureFixt
 
     assert result_fr == "Inconnue", f"attendu 'Inconnue', obtenu '{result_fr}'"
     assert result_en == "Unknown", f"attendu 'Unknown', obtenu '{result_en}'"
-    assert any(
-        "UUID brut" in r.message or "non r" in r.message for r in caplog.records
-    ), "Un WARNING doit être loggué pour un UUID non résolu"
+    assert any("UUID brut" in r.message or "non r" in r.message for r in caplog.records), (
+        "Un WARNING doit être loggué pour un UUID non résolu"
+    )
 
 
 # ---------------------------------------------------------------------------
@@ -248,26 +255,17 @@ def test_btb_variants_share_canonical_fr(tmp_path: Path) -> None:
 # ---------------------------------------------------------------------------
 
 
-def test_populate_errors_file_created_on_failure(
-    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
-) -> None:
-    """_write_enrich_errors() crée le fichier d'erreurs si des erreurs existent."""
+def test_enrich_i18n_is_noop(tmp_path: Path) -> None:
+    """enrich_i18n() est un no-op depuis v6.3 (remplacé par populate_asset_translations.py)."""
     import sys
 
     sys.path.insert(0, str(Path(__file__).parent.parent / "scripts"))
     import _metadata_db as mdb
+    import duckdb
 
-    errors_path = tmp_path / "metadata_populate_errors.txt"
-    monkeypatch.setattr(mdb, "ERRORS_FILE_PATH", errors_path)
-
-    # Simuler 1 erreur (game_variant sans ':' dans public_name)
-    mdb._write_enrich_errors(
-        [
-            'game_variants | asset_id=gv-99 | public_name="NoColon" | raison=mode_name_extraction_failed'
-        ]
-    )
-
-    assert errors_path.exists(), "Le fichier d'erreurs doit être créé"
-    content = errors_path.read_text(encoding="utf-8")
-    assert "gv-99" in content
-    assert "mode_name_extraction_failed" in content
+    conn = duckdb.connect(":memory:")
+    try:
+        # Ne doit pas lever d'exception
+        mdb.enrich_i18n(conn)
+    finally:
+        conn.close()

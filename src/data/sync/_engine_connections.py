@@ -20,7 +20,7 @@ _SHARED_MIGRATIONS_DONE: set[str] = set()
 
 
 # =============================================================================
-# Bootstrap shared_matches.duckdb
+# Bootstrap shared_matches_v2.duckdb
 # =============================================================================
 
 _SHARED_SCHEMA_SQL = """
@@ -36,6 +36,8 @@ CREATE TABLE IF NOT EXISTS match_registry (
     is_ranked BOOLEAN DEFAULT FALSE,
     is_firefight BOOLEAN DEFAULT FALSE,
     duration_seconds INTEGER,
+    playable_duration_seconds INTEGER,
+    real_start_time TIMESTAMP,
     team_0_score SMALLINT, team_1_score SMALLINT,
     team_0_ps_score INTEGER, team_1_ps_score INTEGER,
     backfill_completed INTEGER DEFAULT 0,
@@ -94,7 +96,7 @@ CREATE TABLE IF NOT EXISTS schema_version (
 
 
 def _bootstrap_shared_matches_db(db_path) -> None:  # type: ignore[no-untyped-def]  # noqa: C901, PLR0915
-    """Crée shared_matches.duckdb avec le schéma v5 de base (idempotent)."""
+    """Crée shared_matches_v2.duckdb avec le schéma v5 de base (idempotent)."""
     import pathlib
 
     path = pathlib.Path(db_path)
@@ -110,7 +112,7 @@ def _bootstrap_shared_matches_db(db_path) -> None:  # type: ignore[no-untyped-de
             "INSERT OR IGNORE INTO schema_version (version, description) "
             "VALUES (1, 'v5.0 — Création initiale du schéma shared_matches')"
         )
-        logger.info("shared_matches.duckdb initialisé : %s", path)
+        logger.info("shared_matches_v2.duckdb initialisé : %s", path)
     finally:
         conn.close()
 
@@ -140,7 +142,7 @@ class ConnectionMixin:
         return self._connection
 
     def _get_shared_connection(self) -> duckdb.DuckDBPyConnection | None:  # noqa: PLR0912, C901
-        """Retourne une connexion vers shared_matches.duckdb.
+        """Retourne une connexion vers shared_matches_v2.duckdb.
 
         Mode R/O si self._shared_read_only=True (fanout), R/W sinon (sync principal).
         Returns None si la base n'existe pas — l'initialisation est assurée
@@ -170,7 +172,7 @@ class ConnectionMixin:
             err = str(e).lower()
             if "unique file handle conflict" in err or "already attached" in err:
                 logger.debug(
-                    "shared_matches.duckdb conflit de handle, libération et retry… (%s)", e
+                    "shared_matches_v2.duckdb conflit de handle, libération et retry… (%s)", e
                 )
                 try:
                     from src.data.repositories.duckdb_repo import release_all_db_connections
@@ -186,7 +188,7 @@ class ConnectionMixin:
                     # 2ème tentative aussi échouée : log + return None
                     # pour éviter de faire remonter le Binder Error dans result.errors.
                     logger.debug(
-                        "shared_matches.duckdb : retry échoué (%s) — shared non disponible", e2
+                        "shared_matches_v2.duckdb : retry échoué (%s) — shared non disponible", e2
                     )
                     return None
             else:
@@ -302,7 +304,7 @@ class ConnectionMixin:
                 except Exception:
                     pass
 
-                # 2. v_gamertag_lookup via shared_matches.duckdb (v5.8)
+                # 2. v_gamertag_lookup via shared_matches_v2.duckdb (v5.8)
                 if self._gamertag:
                     try:
                         from src.utils.paths import get_shared_matches_path_from_player
@@ -429,6 +431,59 @@ class ConnectionMixin:
         except Exception as e:
             logger.debug("event=latest_match_id_failed error=%s", e)
             return None
+
+    def _is_player_fully_synced_for_match(self, match_id: str) -> bool:
+        """Vérifie que le joueur a des données complètes pour ce match (enrichment + PSA).
+
+        Utilisé par le HEAD check delta pour éviter un court-circuit prématuré quand
+        un coéquipier a inséré le match dans shared_matches (via son propre sync) mais
+        que le joueur courant n'a jamais collecté ses PSA via l'API.
+
+        Un match est considéré « complet » si :
+        - le joueur a une ligne dans player_match_enrichment, ET
+        - soit des personal_score_awards existent, soit personal_score = 0 dans shared.
+
+        Returns:
+            True si le match est pleinement synchronisé pour ce joueur, False sinon.
+            En cas d'erreur, retourne False (conservateur : ne pas court-circuiter).
+        """
+        try:
+            conn = self._get_connection()
+            has_enrichment = (
+                conn.execute(
+                    "SELECT COUNT(*) FROM player_match_enrichment WHERE match_id = ?",
+                    [match_id],
+                ).fetchone()[0]
+                > 0
+            )
+            if not has_enrichment:
+                return False
+
+            has_psa = (
+                conn.execute(
+                    "SELECT COUNT(*) FROM personal_score_awards WHERE match_id = ?",
+                    [match_id],
+                ).fetchone()[0]
+                > 0
+            )
+            if has_psa:
+                return True
+
+            # Match légitimement sans PSA si personal_score = 0 dans shared
+            shared_conn = self._get_shared_connection()
+            if shared_conn and self._xuid:
+                score_row = shared_conn.execute(
+                    "SELECT COALESCE(personal_score, 0) FROM match_participants "
+                    "WHERE match_id = ? AND xuid = ?",
+                    [match_id, self._xuid],
+                ).fetchone()
+                if score_row and score_row[0] == 0:
+                    return True
+
+            return False
+        except Exception as e:
+            logger.debug("event=is_fully_synced_check_failed match=%s error=%s", match_id, e)
+            return False
 
     # =========================================================================
     # Fermeture

@@ -11,9 +11,11 @@ import threading
 import time
 from pathlib import Path
 
-import streamlit as st
-
 logger = logging.getLogger(__name__)
+
+# Guard process-level : un seul thread périodique par process, indépendant des sessions.
+_PERIODIC_LOCK = threading.Lock()
+_PERIODIC_STARTED: bool = False
 
 
 def _index_media_for_player(
@@ -103,10 +105,14 @@ def _index_with_retry(db_file: Path, gamertag: str, captures_dir: Path, toleranc
 
 
 def background_media_indexing(settings, db_path: str) -> None:
-    """Lance l'indexation des médias en arrière-plan (non-bloquant).
+    """Lance l'indexation périodique des médias (une seule fois par process).
 
     Dossier par joueur : base_dir/{gamertag}/. Indexe tous les joueurs connus.
+    Le thread worker boucle toutes les ``media_indexing_interval_hours`` heures.
+    Si l'intervalle vaut 0, il tourne une seule fois.
     """
+    global _PERIODIC_STARTED  # noqa: PLW0603
+
     if not settings.media_enabled:
         logger.debug("Indexation médias désactivée dans les paramètres")
         return
@@ -125,28 +131,79 @@ def background_media_indexing(settings, db_path: str) -> None:
         logger.debug("DB non DuckDB ou invalide - indexation ignorée")
         return
 
-    if st.session_state.get("_media_indexing_started"):
-        logger.debug("Indexation médias déjà démarrée dans cette session")
+    with _PERIODIC_LOCK:
+        if _PERIODIC_STARTED:
+            logger.debug("Thread indexation médias déjà actif (process-level guard)")
+            return
+        _PERIODIC_STARTED = True
+
+    interval_hours: int = getattr(settings, "media_indexing_interval_hours", 4)
+    logger.info(
+        "🚀 Démarrage indexation médias (intervalle: %dh)",
+        interval_hours if interval_hours > 0 else 0,
+    )
+
+    def worker() -> None:
+        while True:
+            try:
+                tolerance = settings.media_tolerance_minutes
+                base_path = Path(base_dir) if base_dir else None
+
+                if base_path is not None and base_path.exists():
+                    _index_all_players(base_path, tolerance)
+                else:
+                    _index_media_legacy(db_path, videos_dir, screens_dir, tolerance)
+                logger.info("✅ Indexation médias terminée")
+            except Exception as e:
+                logger.exception("❌ Erreur indexation médias: %s", e)
+
+            if interval_hours <= 0:
+                break
+            logger.debug("⏳ Prochaine indexation médias dans %dh", interval_hours)
+            time.sleep(interval_hours * 3600)
+
+    thread = threading.Thread(target=worker, daemon=True, name="media-indexer")
+    thread.start()
+
+
+def reindex_media_after_sync(settings, db_path: str) -> None:
+    """Lance un scan one-shot des médias après un sync (thread indépendant).
+
+    N'interfère pas avec le thread périodique (_PERIODIC_STARTED).
+    Ignoré si media_enabled=False ou media_reindex_after_sync=False.
+    """
+    if not settings.media_enabled:
+        return
+    if not getattr(settings, "media_reindex_after_sync", True):
         return
 
-    st.session_state["_media_indexing_started"] = True
-    logger.info("🚀 Démarrage indexation médias en arrière-plan")
+    base_dir = settings.media_captures_base_dir.strip()
+    if not base_dir:
+        videos_dir = settings.media_videos_dir.strip()
+        screens_dir = settings.media_screens_dir.strip()
+        if not videos_dir and not screens_dir:
+            return
+    else:
+        videos_dir = screens_dir = ""
+
+    if not db_path or not db_path.endswith(".duckdb"):
+        return
+
+    logger.info("🔄 Réindexation médias post-sync démarrée")
 
     def worker() -> None:
         try:
             tolerance = settings.media_tolerance_minutes
             base_path = Path(base_dir) if base_dir else None
-
             if base_path is not None and base_path.exists():
                 _index_all_players(base_path, tolerance)
             else:
                 _index_media_legacy(db_path, videos_dir, screens_dir, tolerance)
-            logger.info("✅ Indexation médias terminée")
+            logger.info("✅ Réindexation médias post-sync terminée")
         except Exception as e:
-            logger.exception("❌ Erreur indexation médias: %s", e)
+            logger.exception("❌ Erreur réindexation post-sync: %s", e)
 
-    thread = threading.Thread(target=worker, daemon=True, name="media-indexer")
-    thread.start()
+    threading.Thread(target=worker, daemon=True, name="media-indexer-post-sync").start()
 
 
 def _index_all_players(base_path: Path, tolerance: int) -> None:

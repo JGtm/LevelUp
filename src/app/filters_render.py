@@ -16,6 +16,9 @@ from datetime import date
 import polars as pl
 import streamlit as st
 
+from src.app.helpers import normalize_map_label, normalize_mode_label
+from src.app.session_keys import SK
+
 logger = logging.getLogger(__name__)
 
 from src.app._filters_cascade import (
@@ -85,12 +88,12 @@ def _cascade_reset_filters() -> None:
     quand la clé widget existe déjà dans session_state).
     """
     for _k in (
-        "filter_experience_types",
+        SK.FILTER_EXPERIENCE_TYPES,
         "_experience_types_exclusions",
         "_experience_types_filter_mode",
-        "filter_playlists",
-        "filter_modes",
-        "filter_maps",
+        SK.FILTER_PLAYLISTS,
+        SK.FILTER_MODES,
+        SK.FILTER_MAPS,
         "_playlists_exclusions",
         "_modes_exclusions",
         "_maps_exclusions",
@@ -165,12 +168,12 @@ def _collect_unique_labels(df: pl.DataFrame, col: str, label_fn: Callable[[str],
 # Avec st.navigation + st.switch_page, Streamlit peut effacer les clés de
 # widgets lors d'un changement de page. Les clés shadow survivent à ces cycles.
 _SHADOW_RESTORATIONS: list[tuple[str, str]] = [
-    ("filter_mode", "_filter_mode_shadow"),
-    ("picked_session_label", "_picked_session_label_shadow"),
+    ("filter_mode", SK.FILTER_MODE_SHADOW),
+    (SK.PICKED_SESSION_LABEL, "_picked_session_label_shadow"),
     ("start_date_cal", "_start_date_cal_shadow"),
     ("end_date_cal", "_end_date_cal_shadow"),
-    ("picked_solo_session_label", "_picked_solo_session_label_shadow"),
-    ("picked_squad_session_label", "_picked_squad_session_label_shadow"),
+    (SK.PICKED_SOLO_SESSION_LABEL, "_picked_solo_session_label_shadow"),
+    (SK.PICKED_SQUAD_SESSION_LABEL, "_picked_squad_session_label_shadow"),
 ]
 
 
@@ -182,7 +185,7 @@ def _restore_shadow_keys() -> None:
             if shadow_val is not None:
                 st.session_state[widget_key] = shadow_val
     if "picked_sessions" not in st.session_state:
-        ps_shadow = st.session_state.get("_picked_sessions_shadow")
+        ps_shadow = st.session_state.get(SK.PICKED_SESSIONS_SHADOW)
         if isinstance(ps_shadow, list):
             st.session_state["picked_sessions"] = ps_shadow
 
@@ -193,7 +196,7 @@ def _write_shadow_keys() -> None:
         if widget_key in st.session_state:
             st.session_state[shadow_key] = st.session_state[widget_key]
     if "picked_sessions" in st.session_state:
-        st.session_state["_picked_sessions_shadow"] = st.session_state["picked_sessions"]
+        st.session_state[SK.PICKED_SESSIONS_SHADOW] = st.session_state["picked_sessions"]
 
 
 def _init_filter_preferences(  # noqa: PLR0913
@@ -259,16 +262,16 @@ def _init_filter_preferences(  # noqa: PLR0913
 
 def _consume_pending_states() -> None:
     """Consomme les clés pending (filter_mode, session_label, sessions)."""
-    pending_mode = st.session_state.pop("_pending_filter_mode", None)
+    pending_mode = st.session_state.pop(SK.PENDING_FILTER_MODE, None)
     if pending_mode in ("Période", "Sessions"):
         st.session_state["filter_mode"] = pending_mode
 
     pending_label = st.session_state.pop("_pending_picked_session_label", None)
     if isinstance(pending_label, str) and pending_label:
-        prev_label = st.session_state.get("picked_session_label", "(toutes)")
+        prev_label = st.session_state.get(SK.PICKED_SESSION_LABEL, "(toutes)")
         if pending_label != prev_label:
             _cascade_reset_filters()
-        st.session_state["picked_session_label"] = pending_label
+        st.session_state[SK.PICKED_SESSION_LABEL] = pending_label
 
     pending_sessions = st.session_state.pop("_pending_picked_sessions", None)
     if isinstance(pending_sessions, list):
@@ -328,18 +331,34 @@ def _auto_save_preferences(
 def _compute_all_filter_options(
     base: pl.DataFrame,
     clean_asset_label_fn: Callable[[str], str],
-    normalize_mode_label_fn: Callable[[str], str],
-    normalize_map_label_fn: Callable[[str], str],
 ) -> tuple[list[str], list[str], list[str], list[str]]:
     """Calcule les options larges (base complète, hors fenêtre temporelle)."""
+    _lang = get_lang()
 
     def _playlist_label(x: str) -> str:
-        return str(translate_playlist_name(clean_asset_label_fn(x), lang=get_lang()))
+        return str(translate_playlist_name(clean_asset_label_fn(x), lang=_lang))
+
+    # Cohérence avec _add_derived_columns : préférer playlist_name_fr si disponible
+    playlist_col = (
+        "playlist_name_fr"
+        if ("playlist_name_fr" in base.columns and _lang == "fr")
+        else "playlist_name"
+    )
+    playlist_label_fn = (
+        (lambda x: str(clean_asset_label_fn(x)))
+        if playlist_col == "playlist_name_fr"
+        else _playlist_label
+    )
 
     return (
-        _collect_unique_labels(base, "playlist_name", _playlist_label),
-        _collect_unique_labels(base, "pair_name", normalize_mode_label_fn),
-        _collect_unique_labels(base, "map_name", normalize_map_label_fn),
+        _collect_unique_labels(base, playlist_col, playlist_label_fn),
+        _collect_unique_labels(base, "pair_name", lambda x: normalize_mode_label(x, lang=_lang)),
+        # Cohérence avec _add_derived_columns / _vectorize_ui_columns : préférer map_name_fr
+        _collect_unique_labels(
+            base,
+            "map_name_fr" if ("map_name_fr" in base.columns and _lang == "fr") else "map_name",
+            normalize_map_label,
+        ),
         _get_experience_type_options(),
     )
 
@@ -355,11 +374,11 @@ def _render_filter_mode_selector() -> str:
         horizontal=True,
         key="filter_mode",
     )
-    st.session_state["_filter_mode_shadow"] = filter_mode
+    st.session_state[SK.FILTER_MODE_SHADOW] = filter_mode
     logger.info("Mode filtre: %s", filter_mode)
     for auto_key, val_key in (
-        ("_min_matches_maps_auto", "min_matches_maps"),
-        ("_min_matches_maps_friends_auto", "min_matches_maps_friends"),
+        (SK.MIN_MATCHES_MAPS_AUTO, "min_matches_maps"),
+        (SK.MIN_MATCHES_MAPS_FRIENDS_AUTO, "min_matches_maps_friends"),
     ):
         if filter_mode == "Période" and bool(st.session_state.get(auto_key)):
             st.session_state[val_key] = 5
@@ -381,8 +400,6 @@ def render_filters_sidebar(  # noqa: PLR0913
     """Rend la section complète des filtres dans la sidebar."""
     date_range_fn = callbacks["date_range_fn"]
     clean_asset_label_fn = callbacks["clean_asset_label_fn"]
-    normalize_mode_label_fn = callbacks["normalize_mode_label_fn"]
-    normalize_map_label_fn = callbacks["normalize_map_label_fn"]
     build_friends_opts_map_fn = callbacks["build_friends_opts_map_fn"]
 
     df = _to_polars(df)
@@ -392,12 +409,7 @@ def render_filters_sidebar(  # noqa: PLR0913
     player_key = _get_player_key(xuid, db_path)
 
     # Options larges (base complète, hors fenêtre temporelle)
-    all_options = _compute_all_filter_options(
-        base_for_filters,
-        clean_asset_label_fn,
-        normalize_mode_label_fn,
-        normalize_map_label_fn,
-    )
+    all_options = _compute_all_filter_options(base_for_filters, clean_asset_label_fn)
 
     _restore_shadow_keys()
     _init_filter_preferences(
@@ -457,9 +469,6 @@ def render_filters_sidebar(  # noqa: PLR0913
         end_d=end_d,
         picked_session_labels=picked_session_labels,
         base_s_ui=base_s_ui,
-        clean_asset_label_fn=clean_asset_label_fn,
-        normalize_mode_label_fn=normalize_mode_label_fn,
-        normalize_map_label_fn=normalize_map_label_fn,
     )
 
     _auto_save_preferences(

@@ -9,35 +9,15 @@ from plotly.subplots import make_subplots
 from src.config import HALO_COLORS, PLOT_CONFIG
 from src.ui.components.chart_annotations import add_extreme_annotations
 from src.ui.i18n.viz import viz_t
+from src.visualization._chart_series import downsample_for_plot
 from src.visualization._compat import (
     DataFrameLike,
     ensure_polars,
-    ensure_polars_series,
     smart_scatter,
 )
 from src.visualization._permin_helpers import build_symmetric_abs_ticks
+from src.visualization._timeseries_helpers import _rolling_mean
 from src.visualization.theme import apply_halo_plot_style, get_legend_horizontal_bottom
-
-
-def _normalize_df(df: DataFrameLike) -> pl.DataFrame:
-    """Normalise un DataFrame en Polars (compat arrière)."""
-    return ensure_polars(df)
-
-
-def _rolling_mean(series: pl.Series, window: int = 10) -> pl.Series:
-    """Calcule la moyenne mobile.
-
-    Args:
-        series: Série Polars (accepte aussi Pandas pour compat arrière).
-        window: Taille de la fenêtre.
-
-    Returns:
-        Série Polars avec moyenne mobile.
-    """
-    w = int(window) if window and window > 0 else 1
-    if not isinstance(series, pl.Series):
-        series = ensure_polars_series(series)
-    return series.rolling_mean(window_size=w, min_samples=1)
 
 
 def _build_kda_customdata(d: pl.DataFrame, lang: str = "fr") -> tuple[list, str]:
@@ -119,11 +99,10 @@ def _add_kda_traces(  # noqa: PLR0913
     )
 
 
-def plot_timeseries(df: DataFrameLike, title: str | None = None, lang: str = "fr") -> go.Figure:
+def plot_timeseries(df: DataFrameLike, lang: str = "fr") -> go.Figure:
     """Graphique principal: Kills/Deaths/Ratio dans le temps."""
     df_pl = pl.DataFrame() if df is None else ensure_polars(df)
 
-    title = title or viz_t("title_kda", lang)
     if df_pl.is_empty():
         fig = go.Figure()
         fig.add_annotation(
@@ -135,7 +114,7 @@ def plot_timeseries(df: DataFrameLike, title: str | None = None, lang: str = "fr
             showarrow=False,
             font={"size": 16},
         )
-        return apply_halo_plot_style(fig, title=title, height=PLOT_CONFIG.tall_height)
+        return apply_halo_plot_style(fig, height=PLOT_CONFIG.tall_height)
 
     fig = make_subplots(rows=1, cols=1, specs=[[{"secondary_y": True}]])
     colors = HALO_COLORS.as_dict()
@@ -146,7 +125,6 @@ def plot_timeseries(df: DataFrameLike, title: str | None = None, lang: str = "fr
     _add_kda_traces(fig, x_idx, d, customdata, common_hover, colors, lang=lang)
 
     fig.update_layout(
-        title=title,
         legend=get_legend_horizontal_bottom(),
         margin={"l": 40, "r": 20, "t": 80, "b": 90},
         hovermode="x unified",
@@ -160,12 +138,13 @@ def plot_timeseries(df: DataFrameLike, title: str | None = None, lang: str = "fr
     )
     fig.update_yaxes(title_text=viz_t("axis_ratio", lang), secondary_y=True)
 
+    _map_tick_col = "map_ui" if "map_ui" in d.columns else "map_name"
     labels = (
         [
             f"#{i + 1}<br>{mn}" if mn else f"#{i + 1}"
-            for i, mn in enumerate(d["map_name"].fill_null("").to_list())
+            for i, mn in enumerate(d[_map_tick_col].fill_null("").to_list())
         ]
-        if "map_name" in d.columns
+        if _map_tick_col in d.columns
         else d["start_time"].dt.strftime(FMT_TICK_DATETIME).to_list()
     )
     step = max(1, len(labels) // 10) if len(labels) > 1 else 1
@@ -188,12 +167,10 @@ def plot_timeseries(df: DataFrameLike, title: str | None = None, lang: str = "fr
         secondary_y=True,
     )
 
-    return apply_halo_plot_style(fig, title=title, height=PLOT_CONFIG.tall_height)
+    return apply_halo_plot_style(fig, height=PLOT_CONFIG.tall_height)
 
 
-def plot_assists_timeseries(
-    df: DataFrameLike, title: str | None = None, lang: str = "fr"
-) -> go.Figure:
+def plot_assists_timeseries(df: DataFrameLike, lang: str = "fr") -> go.Figure:
     """Graphique des assistances dans le temps.
 
     Args:
@@ -203,9 +180,8 @@ def plot_assists_timeseries(
     Returns:
         Figure Plotly.
     """
-    df_pl = ensure_polars(df)
+    df_pl = downsample_for_plot(ensure_polars(df))
 
-    title = title or viz_t("title_assists", lang)
     colors = HALO_COLORS.as_dict()
     d = df_pl.sort("start_time")
     x_idx = list(range(len(d)))
@@ -220,8 +196,10 @@ def plot_assists_timeseries(
             d["assists"].to_list(),
             accuracy.to_list(),
             d["ratio"].to_list(),
-            d["map_name"].fill_null("").to_list(),
-            d["playlist_name"].fill_null("").to_list(),
+            (d["map_ui"] if "map_ui" in d.columns else d["map_name"]).fill_null("").to_list(),
+            (d["playlist_ui"] if "playlist_ui" in d.columns else d["playlist_name"])
+            .fill_null("")
+            .to_list(),
             d["match_id"].to_list(),
             strict=False,
         )
@@ -255,7 +233,6 @@ def plot_assists_timeseries(
     )
 
     fig.update_layout(
-        title=title,
         margin={"l": 40, "r": 20, "t": 60, "b": 90},
         hovermode="x unified",
         legend=get_legend_horizontal_bottom(),
@@ -269,7 +246,7 @@ def plot_assists_timeseries(
         type="category",
     )
 
-    return apply_halo_plot_style(fig, title=title, height=PLOT_CONFIG.default_height)
+    return apply_halo_plot_style(fig, height=PLOT_CONFIG.default_height)
 
 
 def _add_permin_rolling_lines(  # noqa: PLR0913
@@ -325,9 +302,7 @@ def _add_permin_rolling_lines(  # noqa: PLR0913
     )
 
 
-def plot_per_minute_timeseries(
-    df: DataFrameLike, title: str | None = None, lang: str = "fr"
-) -> go.Figure:
+def plot_per_minute_timeseries(df: DataFrameLike, lang: str = "fr") -> go.Figure:
     """Graphique des stats par minute.
 
     Args:
@@ -339,7 +314,6 @@ def plot_per_minute_timeseries(
     """
     df_pl = ensure_polars(df)
 
-    title = title or viz_t("title_permin", lang)
     colors = HALO_COLORS.as_dict()
     d = df_pl.sort("start_time")
     _permin_cols = ("kills_per_min", "deaths_per_min", "assists_per_min")
@@ -362,12 +336,13 @@ def plot_per_minute_timeseries(
             ]
         )
     x_idx = list(range(len(d)))
+    _map_tick_col2 = "map_ui" if "map_ui" in d.columns else "map_name"
     labels = (
         [
             f"#{i + 1}<br>{mn}" if mn else f"#{i + 1}"
-            for i, mn in enumerate(d["map_name"].fill_null("").to_list())
+            for i, mn in enumerate(d[_map_tick_col2].fill_null("").to_list())
         ]
-        if "map_name" in d.columns
+        if _map_tick_col2 in d.columns
         else d["start_time"].dt.strftime(FMT_TICK_DATETIME).to_list()
     )
     step = max(1, len(labels) // 10) if len(labels) > 1 else 1
@@ -432,7 +407,6 @@ def plot_per_minute_timeseries(
         max((abs(v) for v in dpm_neg), default=0.1),
     )
     fig.update_layout(
-        title=title,
         margin={"l": 40, "r": 20, "t": 60, "b": 90},
         hovermode="x unified",
         legend=get_legend_horizontal_bottom(),
@@ -454,7 +428,7 @@ def plot_per_minute_timeseries(
         type="category",
     )
 
-    return apply_halo_plot_style(fig, title=title, height=PLOT_CONFIG.default_height)
+    return apply_halo_plot_style(fig, height=PLOT_CONFIG.default_height)
 
 
 def plot_accuracy_last_n(df: DataFrameLike, n: int, lang: str = "fr") -> go.Figure:

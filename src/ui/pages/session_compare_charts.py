@@ -14,7 +14,7 @@ import plotly.graph_objects as go
 import polars as pl
 import streamlit as st
 
-from src.ui.chart_utils import safe_chart_render
+from src.ui.chart_utils import render_chart_or_info, safe_chart_render
 from src.ui.i18n import t
 from src.ui.pages._session_compare_history import (  # noqa: F401
     render_session_history_table,
@@ -385,6 +385,7 @@ def _load_participation_profiles(  # noqa: PLR0913
     db_path: str,
 ) -> list:
     """Charge et construit les profils de participation pour les deux sessions."""
+    from src.analysis.participation_radar import ProfileOptions
     from src.visualization.participation_radar import (
         compute_participation_profile,
         get_radar_thresholds,
@@ -423,10 +424,12 @@ def _load_participation_profiles(  # noqa: PLR0913
         profile_a = compute_participation_profile(
             df_a,
             match_row=match_row_a,
-            name="Session A",
-            color=SESSION_COLORS["session_a"],
-            pair_name=match_row_a.get("pair_name") if match_row_a else None,
-            thresholds=_session_thresholds(thresholds, len(match_ids_a)),
+            options=ProfileOptions(
+                name="Session A",
+                color=SESSION_COLORS["session_a"],
+                pair_name=match_row_a.get("pair_name") if match_row_a else None,
+                thresholds=_session_thresholds(thresholds, len(match_ids_a)),
+            ),
         )
         profiles.append(profile_a)
 
@@ -435,16 +438,18 @@ def _load_participation_profiles(  # noqa: PLR0913
         profile_b = compute_participation_profile(
             df_b,
             match_row=match_row_b,
-            name="Session B",
-            color=SESSION_COLORS["session_b"],
-            pair_name=match_row_b.get("pair_name") if match_row_b else None,
-            thresholds=_session_thresholds(thresholds, len(match_ids_b)),
+            options=ProfileOptions(
+                name="Session B",
+                color=SESSION_COLORS["session_b"],
+                pair_name=match_row_b.get("pair_name") if match_row_b else None,
+                thresholds=_session_thresholds(thresholds, len(match_ids_b)),
+            ),
         )
         profiles.append(profile_b)
     return profiles
 
 
-def render_participation_trend_section(  # noqa: C901
+def render_participation_trend_section(
     df_session_a: DataFrameLike,
     df_session_b: DataFrameLike,
     db_path: str,
@@ -476,18 +481,19 @@ def render_participation_trend_section(  # noqa: C901
         if not profiles:
             return
 
-        from src.ui.pages._session_compare_viz import _build_participation_bar_chart
-
         st.markdown("---")
         st.markdown(t("sc_participation_profile"))
         st.caption(t("sc_participation_comparison"))
 
-        with safe_chart_render():
-            fig = _build_participation_bar_chart(profiles)
-            if fig is not None:
-                st.plotly_chart(fig, width="stretch", config=PLOTLY_STATIC_CONFIG)
-            else:
-                st.info(t("insufficient_data_chart"))
+        from src.ui.pages._session_compare_viz import _build_participation_bar_chart
+
+        fig = _build_participation_bar_chart(profiles)
+        render_chart_or_info(
+            fig,
+            key="sc_participation_trend",
+            config=PLOTLY_STATIC_CONFIG,
+            info_key="insufficient_data_chart",
+        )
 
     except Exception:
         pass

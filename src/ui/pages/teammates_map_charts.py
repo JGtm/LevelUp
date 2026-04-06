@@ -59,10 +59,11 @@ def render_map_charts_section(
     # Ordre chronologique des cartes (oldest first) depuis la sélection courante
     map_order: list[str] | None = None
     if not sub_pl.is_empty() and "start_time" in sub_pl.columns:
+        _map_col = "map_ui" if "map_ui" in sub_pl.columns else "map_name"
         map_order = (
             sub_pl.sort("start_time")
-            .unique(subset=["map_name"], keep="first", maintain_order=True)
-            .filter(pl.col("map_name").is_not_null())["map_name"]
+            .unique(subset=[_map_col], keep="first", maintain_order=True)
+            .filter(pl.col(_map_col).is_not_null())[_map_col]
             .to_list()
         )
 
@@ -139,10 +140,11 @@ def render_single_map_section(
     # Ordre chronologique des cartes (oldest first) depuis la sélection courante
     map_order_single: list[str] | None = None
     if "start_time" in sub_pl.columns:
+        _map_col = "map_ui" if "map_ui" in sub_pl.columns else "map_name"
         map_order_single = (
             sub_pl.sort("start_time")
-            .unique(subset=["map_name"], keep="first", maintain_order=True)
-            .filter(pl.col("map_name").is_not_null())["map_name"]
+            .unique(subset=[_map_col], keep="first", maintain_order=True)
+            .filter(pl.col(_map_col).is_not_null())[_map_col]
             .to_list()
         )
 
@@ -278,6 +280,75 @@ def render_squad_timeline(
             st.plotly_chart(fig, width="stretch", config=PLOTLY_CLEAN_CONFIG, key=key)
 
 
+def render_squad_cadence_section(
+    db_path: str,
+    xuid_name_map: dict[str, str],
+    all_match_ids: list[str],
+    lang: str = "fr",
+    color_map: dict[str, str] | None = None,
+) -> None:
+    """Affiche le profil de tempo synchronisé (moyenne de kills/phase par joueur)."""
+    if not all_match_ids or len(xuid_name_map) < 2:
+        return
+
+    logger.debug(
+        "squad_cadence: %d joueurs, %d matchs",
+        len(xuid_name_map),
+        len(all_match_ids),
+    )
+
+    from src.analysis.match_intensity import compute_squad_cadence_profiles
+    from src.ui._cache_queries import cached_load_kill_timing_for_matches
+    from src.visualization._plot_options import PlotOptions
+    from src.visualization.squad_cadence_chart import plot_squad_cadence_profiles
+
+    all_xuids = list(xuid_name_map.keys())
+    all_names = list(xuid_name_map.values())
+    raw = cached_load_kill_timing_for_matches(
+        db_path,
+        all_xuids[0],
+        tuple(all_match_ids),
+        xuids=tuple(all_xuids),
+    )
+    if not raw:
+        return
+
+    events_df = pl.DataFrame(
+        raw,
+        schema={"match_id": pl.Utf8, "time_ms": pl.Int64, "xuid": pl.Utf8},
+    )
+
+    profiles = compute_squad_cadence_profiles(events_df, xuid_name_map, n_buckets=10)
+    if profiles.is_empty():
+        return
+
+    st.subheader(t("tm_squad_cadence"))
+    st.caption(t("tm_squad_cadence_caption"))
+
+    with safe_chart_render():
+        fig = plot_squad_cadence_profiles(
+            profiles,
+            all_names,
+            opts=PlotOptions(lang=lang, height_px=340),
+            color_map=color_map,
+        )
+        if fig is not None:
+            st.plotly_chart(fig, width="stretch", config=PLOTLY_CLEAN_CONFIG)
+        else:
+            st.info(t("tm_squad_cadence_no_data"))
+
+
 def _compute_history_breakdown(full_df: pl.DataFrame) -> pl.DataFrame:
     """Calcule le breakdown historique complet (min_matches=1) depuis un DataFrame de matchs."""
+    from src.ui.i18n import get_lang
+
+    # Même correction que win_loss.py : full_df vient du df brut (sans map_ui).
+    # Sans map_ui, compute_map_breakdown utiliserait map_name (EN) → inner join
+    # avec view (FR, calculé depuis sub_all/bd_all qui a map_ui) raterait les 4 cartes FR.
+    if "map_ui" not in full_df.columns and "map_name_fr" in full_df.columns and get_lang() == "fr":
+        full_df = full_df.with_columns(
+            pl.coalesce(
+                [pl.col("map_name_fr").cast(pl.Utf8), pl.col("map_name").cast(pl.Utf8)]
+            ).alias("map_ui")
+        )
     return compute_map_breakdown(full_df)

@@ -21,7 +21,7 @@ import polars as pl
 
 from src.config import HALO_COLORS, OUTCOME_CODES, get_repo_root
 from src.ui.components.performance import get_score_class
-from src.ui.i18n import t
+from src.ui.i18n import get_lang, t
 
 # ---------------------------------------------------------------------------
 # URL interne — centralisée (était dupliquée dans streamlit_app + match_history)
@@ -176,12 +176,50 @@ def _build_map_url_index() -> dict[str, str]:
 
 
 def map_thumb_url(map_name: str | None) -> str | None:
-    """Retourne l'URL statique Streamlit de la miniature pour un nom de carte."""
+    """Retourne l'URL statique Streamlit de la miniature pour un nom de carte (EN)."""
     if not map_name:
         return None
     key = str(map_name).strip().lower()
     idx = _build_map_url_index()
     return idx.get(key) or idx.get(key.replace(" ", "_"))
+
+
+@functools.cache
+def _build_map_id_index() -> dict[str, str]:
+    """Construit {asset_id: url} en joignant asset_translations (lang=en-US) + index fichiers."""
+    import unicodedata
+
+    from src.utils.db import duckdb_read_only
+
+    name_idx = _build_map_url_index()
+    if not name_idx:
+        return {}
+    meta_path = Path(get_repo_root()) / "data" / "warehouse" / "metadata.duckdb"
+    if not meta_path.exists():
+        return {}
+    try:
+        with duckdb_read_only(meta_path) as conn:
+            rows = conn.execute(
+                "SELECT asset_id, name FROM asset_translations"
+                " WHERE asset_type='map' AND lang='en-US' AND name IS NOT NULL"
+            ).fetchall()
+    except Exception as exc:  # noqa: BLE001
+        _log.warning("Impossible de charger l'index map_id→thumbnail : %s", exc)
+        return {}
+    idx: dict[str, str] = {}
+    for asset_id, name_en in rows:
+        key = unicodedata.normalize("NFC", name_en.lower())
+        url = name_idx.get(key) or name_idx.get(key.replace(" ", "_"))
+        if url:
+            idx[str(asset_id)] = url
+    return idx
+
+
+def map_thumb_url_by_id(map_id: str | None) -> str | None:
+    """Retourne l'URL statique de la miniature via asset_id (indépendant de la langue)."""
+    if not map_id:
+        return None
+    return _build_map_id_index().get(str(map_id).strip())
 
 
 # ---------------------------------------------------------------------------
@@ -196,7 +234,7 @@ def _build_default_columns() -> list[tuple[str, str]]:
     """Construit la liste (label, clé) des colonnes standard."""
     return [
         (t("col_start_date"), "start_time_fr"),
-        (t("col_map"), "map_name"),
+        (t("col_map"), "map_ui"),
         (t("col_playlist"), "playlist_fr"),
         (t("col_mode"), "mode_ui"),
         (t("col_result"), "outcome_label"),
@@ -316,16 +354,22 @@ def _render_cell(r: dict, key: str, outcome_code: object) -> str:
 
     if key == "win_rate_hist":
         val = r.get(key)
+        total = r.get("win_rate_hist_total")
         style = win_rate_style(val)
         try:
-            display = f"{int(round(float(val)))}%"  # type: ignore[arg-type]
+            pct = f"{int(round(float(val)))}%"  # type: ignore[arg-type]
+            if total is not None:
+                n_label = "matches" if get_lang() == "en" else "matchs"
+                pct = f"{pct} ({int(total)} {n_label})"
         except Exception:
-            display = "-"
-        return f"<td style='{style}'>{html_lib.escape(display)}</td>"
+            pct = "-"
+        return f"<td style='{style}'>{html_lib.escape(pct)}</td>"
 
-    if key == "map_name":
-        val = fmt_value(r.get(key))
-        url = map_thumb_url(r.get(key))
+    if key in ("map_name", "map_ui"):
+        # Afficher map_ui (traduit) si disponible, sinon map_name (EN fallback)
+        display_name = r.get("map_ui") or r.get("map_name")
+        val = fmt_value(display_name)
+        url = map_thumb_url_by_id(r.get("map_id")) or map_thumb_url(r.get("map_name"))
         if url:
             esc_url = html_lib.escape(url)
             esc_val = html_lib.escape(val)

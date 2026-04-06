@@ -19,7 +19,7 @@ import streamlit as st
 from src.app._filters_friends import build_teammates_opts_map
 from src.data.services.teammates_service import TeammatesService
 from src.ui.cache import cached_has_cache_tables
-from src.ui.i18n import t
+from src.ui.i18n import get_lang, t
 from src.ui.pages.teammates_views import render_multi_teammate_view
 from src.ui.perf import perf_section
 from src.visualization._compat import DataFrameLike, ensure_polars
@@ -50,12 +50,43 @@ def _enrich_series_with_perfect_kills(
     series: list[tuple[str, DataFrameLike]],
     db_path: str,
 ) -> list[tuple[str, DataFrameLike]]:
-    """Ajoute la colonne perfect_kills à chaque DataFrame de la série.
+    """Ajoute la colonne perfect_kills et map_ui à chaque DataFrame de la série.
 
     Délègue au TeammatesService (Sprint 14 — isolation backend/frontend).
     """
     result = TeammatesService.enrich_series_with_perfect_kills(series, db_path)
-    return result.series
+    enriched = result.series
+
+    # Ajouter map_ui (traduit) si absent
+    from src.ui.translations import resolve_map_display_names
+
+    final_series: list[tuple[str, DataFrameLike]] = []
+    lang = get_lang()
+
+    for _name, df in enriched:
+        df = ensure_polars(df)
+        if "map_ui" not in df.columns and "map_id" in df.columns and "map_name" in df.columns:
+            _id_to_fallback = {
+                str(r["map_id"]): str(r["map_name"] or "")
+                for r in df.select(["map_id", "map_name"])
+                .drop_nulls(subset=["map_id"])
+                .unique(subset=["map_id"])
+                .iter_rows(named=True)
+            }
+            if _id_to_fallback:
+                _translated = resolve_map_display_names(_id_to_fallback, lang)
+                df = df.with_columns(
+                    pl.col("map_id")
+                    .cast(pl.Utf8)
+                    .replace_strict(
+                        _translated,
+                        default=pl.col("map_name").cast(pl.Utf8),
+                        return_dtype=pl.Utf8,
+                    )
+                    .alias("map_ui")
+                )
+        final_series.append((_name, df))
+    return final_series
 
 
 def _select_picked_teammates(
@@ -155,7 +186,7 @@ def _build_teammates_callbacks(
 # =============================================================================
 
 
-def render_teammates_page(  # noqa: C901, PLR0912, PLR0913, PLR0915
+def render_teammates_page(  # noqa: PLR0912, PLR0913, PLR0915
     df: DataFrameLike,
     dff: DataFrameLike,
     base: DataFrameLike,

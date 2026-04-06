@@ -74,9 +74,9 @@ class TestAuthFacade:
         for node in ast.iter_child_nodes(tree):
             if isinstance(node, ast.Import):
                 for alias in node.names:
-                    assert not alias.name.startswith(
-                        "spnkr"
-                    ), f"Import spnkr au top-level dans _auth.py : {alias.name}"
+                    assert not alias.name.startswith("spnkr"), (
+                        f"Import spnkr au top-level dans _auth.py : {alias.name}"
+                    )
             elif (
                 isinstance(node, ast.ImportFrom) and node.module and node.module.startswith("spnkr")
             ):
@@ -122,9 +122,9 @@ class TestNoSpnkrInMigratedUI:
         for node in ast.iter_child_nodes(tree):
             if isinstance(node, ast.Import):
                 for alias in node.names:
-                    assert not alias.name.startswith(
-                        "spnkr"
-                    ), f"Import spnkr dans {module_path} : {alias.name}"
+                    assert not alias.name.startswith("spnkr"), (
+                        f"Import spnkr dans {module_path} : {alias.name}"
+                    )
             elif (
                 isinstance(node, ast.ImportFrom) and node.module and node.module.startswith("spnkr")
             ):

@@ -31,6 +31,7 @@ logger = logging.getLogger(__name__)
 
 _MV_VIEW_SOURCE = """(SELECT
     match_id, start_time, map_id, map_name,
+    map_name_fr, playlist_name_fr, pair_name_fr, game_variant_name_fr,
     playlist_id, playlist_name, pair_id, pair_name,
     game_variant_id, game_variant_name, outcome, team_id,
     kda, max_killing_spree, headshot_kills, avg_life_seconds,
@@ -44,6 +45,7 @@ WHERE xuid = ?
 
 _DIRECT_JOIN_SOURCE = f"""(SELECT
     r.match_id, r.start_time, r.map_id, r.map_name,
+    NULL AS map_name_fr, NULL AS playlist_name_fr, NULL AS pair_name_fr, NULL AS game_variant_name_fr,
     r.playlist_id, r.playlist_name, r.pair_id, r.pair_name,
     r.game_variant_id, r.game_variant_name,
     p.outcome, p.team_id,

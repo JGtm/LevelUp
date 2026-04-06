@@ -16,7 +16,7 @@ def _load_top_encountered(
     *,
     since: datetime | None = None,
 ) -> list[dict]:
-    """Charge les joueurs les plus croisés depuis shared_matches.duckdb."""
+    """Charge les joueurs les plus croisés depuis shared_matches_v2.duckdb."""
     from src.ui._cache_core import get_cached_repository_st
 
     repo = get_cached_repository_st(db_path, xuid)

@@ -58,7 +58,7 @@ def _render_media_grid(
                     row = chunk[j]
                     file_path = row.get("file_path")
                     file_name = row.get("file_name") or ""
-                    map_name = row.get("map_name")
+                    map_name = row.get("map_ui") or row.get("map_name")
                     capture_end = row.get("capture_end_utc")
                     match_id = row.get("match_id")
                     kind = row.get("kind") or "image"

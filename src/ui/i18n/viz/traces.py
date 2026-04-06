@@ -1,4 +1,4 @@
-"""Chaînes viz — noms de traces Plotly (56 clés)."""
+"""Chaînes viz — noms de traces Plotly (72 clés)."""
 
 from __future__ import annotations
 
@@ -196,4 +196,9 @@ STRINGS: dict[str, dict[str, str] | str] = {
     "trace_team_mmr": {"fr": "MMR équipe", "en": "Team MMR"},
     "trace_match_count": {"fr": "Matchs", "en": "Matches"},
     "trace_squad_win_rate": {"fr": "Taux de victoires", "en": "Win Rate"},
+    # ── Traces cadence / intensité ────────────────────────────────────────────
+    "trace_cadence_my_team": {"fr": "Mon équipe", "en": "My team"},
+    "trace_cadence_enemy": {"fr": "Adversaires", "en": "Opponents"},
+    "trace_cadence_ma_my_team": {"fr": "Moy. mon équipe", "en": "My team avg."},
+    "trace_cadence_ma_enemy": {"fr": "Moy. adversaires", "en": "Opponents avg."},
 }

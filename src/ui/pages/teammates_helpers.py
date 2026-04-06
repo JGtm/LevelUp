@@ -6,11 +6,15 @@ Fonctions d'aide pour l'affichage des cartes joueurs et tableaux.
 from __future__ import annotations
 
 import html as html_lib
+import logging
 import urllib.parse
+
+_log = logging.getLogger(__name__)
 
 import polars as pl
 import streamlit as st
 
+from src.app.helpers import normalize_mode_label
 from src.config import HALO_COLORS
 from src.ui import (
     display_name_from_xuid,
@@ -20,7 +24,7 @@ from src.ui import (
 )
 from src.ui.cache import cached_load_player_match_result
 from src.ui.date_formats import FMT_DATETIME_FR
-from src.ui.i18n import t
+from src.ui.i18n import get_lang, t
 from src.ui.pages.win_loss_table_style import map_name_cell_html
 from src.ui.player_assets import ensure_local_image_path
 from src.ui.vectorize_helpers import build_mapping
@@ -35,13 +39,6 @@ def _format_datetime_fr_hm(dt: object) -> str:
         return dt.strftime(FMT_DATETIME_FR)
     except Exception:
         return str(dt)
-
-
-def _normalize_mode_label(pair_name: str | None) -> str | None:
-    """Normalise un pair_name en label UI."""
-    from src.ui.translations import translate_pair_name
-
-    return translate_pair_name(pair_name) if pair_name else None
 
 
 def _app_url(page: str, **params: str) -> str:
@@ -178,15 +175,27 @@ def _prepare_friends_table_data(  # noqa: PLR0912, PLR0913
         pl.col("start_time").dt.strftime(FMT_DATETIME_FR).fill_null("-").alias("start_time_fr")
     )
     if "playlist_fr" not in friends_table.columns:
-        _playlist_map = build_mapping(friends_table["playlist_name"], translate_playlist_name)
-        friends_table = friends_table.with_columns(
-            pl.col("playlist_name")
-            .cast(pl.Utf8)
-            .replace_strict(
-                _playlist_map, default=pl.col("playlist_name").cast(pl.Utf8), return_dtype=pl.Utf8
+        if "playlist_name_fr" in friends_table.columns:
+            friends_table = friends_table.with_columns(
+                pl.coalesce(
+                    [
+                        pl.col("playlist_name_fr").cast(pl.Utf8),
+                        pl.col("playlist_name").cast(pl.Utf8),
+                    ]
+                ).alias("playlist_fr")
             )
-            .alias("playlist_fr")
-        )
+        else:
+            _playlist_map = build_mapping(friends_table["playlist_name"], translate_playlist_name)
+            friends_table = friends_table.with_columns(
+                pl.col("playlist_name")
+                .cast(pl.Utf8)
+                .replace_strict(
+                    _playlist_map,
+                    default=pl.col("playlist_name").cast(pl.Utf8),
+                    return_dtype=pl.Utf8,
+                )
+                .alias("playlist_fr")
+            )
     if "mode_ui" in friends_table.columns:
         friends_table = friends_table.with_columns(
             pl.when(
@@ -200,7 +209,10 @@ def _prepare_friends_table_data(  # noqa: PLR0912, PLR0913
     else:
         friends_table = friends_table.with_columns(pl.lit(None).cast(pl.Utf8).alias("mode"))
     if friends_table["mode"].is_null().any() and "pair_name" in friends_table.columns:
-        _mode_map = build_mapping(friends_table["pair_name"], _normalize_mode_label)
+        _lang = get_lang()
+        _mode_map = build_mapping(
+            friends_table["pair_name"], lambda p: normalize_mode_label(p, lang=_lang)
+        )
         friends_table = friends_table.with_columns(
             pl.when(pl.col("mode").is_null())
             .then(
@@ -245,7 +257,13 @@ def _prepare_friends_table_data(  # noqa: PLR0912, PLR0913
 def _add_win_rate_column(df: pl.DataFrame, full_df: pl.DataFrame | None) -> pl.DataFrame:
     """Ajoute win_rate_hist : % victoires sur cette carte sur TOUT l'historique escouade."""
     if "outcome" not in df.columns or "map_name" not in df.columns:
-        return df.with_columns(pl.lit(None).cast(pl.Float64).alias("win_rate_hist"))
+        _log.debug(
+            "_add_win_rate_column (teammates) : colonnes outcome/map_name absentes — win_rate_hist ignoré"
+        )
+        return df.with_columns(
+            pl.lit(None).cast(pl.Float64).alias("win_rate_hist"),
+            pl.lit(None).cast(pl.Int64).alias("win_rate_hist_total"),
+        )
     base = full_df if full_df is not None else df
     map_wr = (
         base.group_by("map_name")
@@ -254,7 +272,13 @@ def _add_win_rate_column(df: pl.DataFrame, full_df: pl.DataFrame | None) -> pl.D
             pl.len().alias("_total"),
         )
         .with_columns((pl.col("_wins") / pl.col("_total") * 100).round(1).alias("win_rate_hist"))
-        .select(["map_name", "win_rate_hist"])
+        .rename({"_total": "win_rate_hist_total"})
+        .select(["map_name", "win_rate_hist", "win_rate_hist_total"])
+    )
+    _log.debug(
+        "_add_win_rate_column (teammates) : %d cartes, total matchs base=%d",
+        len(map_wr),
+        len(base),
     )
     return df.join(map_wr, on="map_name", how="left")
 
@@ -336,7 +360,7 @@ def _fmt_mmr_int(v: object) -> str:
         return _fmt_value(v)
 
 
-def _win_rate_td(raw: object, colors: dict[str, str]) -> str:
+def _win_rate_td(raw: object, colors: dict[str, str], total: object = None) -> str:
     """Génère une cellule <td> colorée pour le taux de victoire cumulatif."""
     try:
         f = float(raw)  # type: ignore[arg-type]
@@ -346,7 +370,11 @@ def _win_rate_td(raw: object, colors: dict[str, str]) -> str:
             style = f"color:{colors['red']}; font-weight:700"
         else:
             style = f"color:{colors['cyan']}; font-weight:700"
-        return f"<td style='{style}'>{html_lib.escape(f'{int(round(f))}%')}</td>"
+        label = f"{int(round(f))}%"
+        if total is not None:
+            n_label = "matches" if get_lang() == "en" else "matchs"
+            label = f"{label} ({int(total)} {n_label})"
+        return f"<td style='{style}'>{html_lib.escape(label)}</td>"
     except Exception:
         return "<td>-</td>"
 
@@ -409,7 +437,7 @@ def _build_html_rows(  # noqa: C901, PLR0912
                 val = _fmt_value(r.get(key))
                 tds.append(f"<td style='{_outcome_style(val)}'>{html_lib.escape(val)}</td>")
             elif key == "win_rate_hist":
-                tds.append(_win_rate_td(r.get(key), colors))
+                tds.append(_win_rate_td(r.get(key), colors, r.get("win_rate_hist_total")))
             elif key in ("team_mmr", "enemy_mmr"):
                 val = _fmt_mmr_int(r.get(key))
                 tds.append(f"<td>{html_lib.escape(val)}</td>")
@@ -421,8 +449,10 @@ def _build_html_rows(  # noqa: C901, PLR0912
                 except Exception:
                     display = "-"
                 tds.append(f"<td style='{style}'>{html_lib.escape(display)}</td>")
-            elif key == "map_name":
-                tds.append(map_name_cell_html(r.get(key)))
+            elif key in ("map_ui", "map_name"):
+                tds.append(
+                    map_name_cell_html(r.get("map_ui") or r.get("map_name"), r.get("map_id"))
+                )
             else:
                 val = _fmt_value(r.get(key))
                 tds.append(f"<td>{html_lib.escape(val)}</td>")
@@ -450,7 +480,7 @@ def render_friends_history_table(  # noqa: PLR0913
         (t("tmh_col_match"), "_app"),
         (t("tmh_waypoint"), "match_url"),
         (t("tmh_col_date"), "start_time_fr"),
-        (t("tmh_col_map"), "map_name"),
+        (t("tmh_col_map"), "map_ui"),
         (t("tmh_col_playlist"), "playlist_fr"),
         (t("tmh_col_mode"), "mode"),
         (t("tmh_col_result"), "outcome_label"),

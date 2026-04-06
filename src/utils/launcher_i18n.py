@@ -68,8 +68,7 @@ STRINGS: dict[str, dict[str, str]] = {
             "  → Ferme le dashboard LevelUp (Streamlit) avant de synchroniser."
         ),
         "en": (
-            "  ⚠ Database is locked.\n"
-            "  → Close the LevelUp dashboard (Streamlit) before syncing."
+            "  ⚠ Database is locked.\n  → Close the LevelUp dashboard (Streamlit) before syncing."
         ),
     },
     "sync_error_network": {
@@ -77,9 +76,7 @@ STRINGS: dict[str, dict[str, str]] = {
             "  ⚠ Impossible de joindre les serveurs Halo.\n"
             "  → Vérifie ta connexion internet et réessaie."
         ),
-        "en": (
-            "  ⚠ Cannot reach Halo servers.\n" "  → Check your internet connection and try again."
-        ),
+        "en": ("  ⚠ Cannot reach Halo servers.\n  → Check your internet connection and try again."),
     },
     "sync_error_unknown": {
         "fr": (
@@ -444,12 +441,12 @@ STRINGS: dict[str, dict[str, str]] = {
     },
     # ── _ensure_warehouse_dbs ─────────────────────────────────────────────────
     "warehouse_shared_init": {
-        "fr": "  ✓ shared_matches.duckdb initialisé",
-        "en": "  ✓ shared_matches.duckdb initialized",
+        "fr": "  ✓ shared_matches_v2.duckdb initialisé",
+        "en": "  ✓ shared_matches_v2.duckdb initialized",
     },
     "warehouse_shared_init_fail": {
-        "fr": "  ⚠ Impossible d'initialiser shared_matches.duckdb : {err}",
-        "en": "  ⚠ Unable to initialize shared_matches.duckdb: {err}",
+        "fr": "  ⚠ Impossible d'initialiser shared_matches_v2.duckdb : {err}",
+        "en": "  ⚠ Unable to initialize shared_matches_v2.duckdb: {err}",
     },
     "warehouse_meta_init": {
         "fr": "  ✓ metadata.duckdb initialisé",

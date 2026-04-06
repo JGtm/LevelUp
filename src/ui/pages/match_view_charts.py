@@ -12,8 +12,8 @@ from plotly.subplots import make_subplots
 
 from src.analysis.stats import compute_mode_category_averages, extract_mode_category, format_mmss
 from src.config import HALO_COLORS
-from src.ui.chart_utils import safe_chart_render
-from src.ui.i18n import t
+from src.ui.chart_utils import render_chart_or_info
+from src.ui.i18n import get_lang, t
 from src.ui.pages.match_view_helpers import os_card
 from src.ui.streamlit_modern import PLOTLY_STATIC_CONFIG, fragment_if_available
 from src.ui.vectorize_helpers import build_mapping
@@ -39,8 +39,38 @@ def _safe_numeric(value: Any) -> float:
 # =============================================================================
 
 
+def _ev_card(title: str, perf: dict, *, mode: str) -> None:
+    """Affiche une carte KPI réel/attendu avec delta coloré."""
+    count = perf.get("count")
+    expected = perf.get("expected")
+
+    if count is None:
+        os_card(title, "-", "", min_h=80)
+        return
+
+    if expected is None:
+        os_card(title, f"{float(count):.0f}", t("mvc_actual_only"), min_h=80)
+        return
+
+    delta = float(count) - float(expected)
+    if delta == 0:
+        delta_col = "#2196F3"
+    else:
+        good = delta > 0
+        if mode == "inverse":
+            good = not good
+        delta_col = "#4CAF50" if good else "#F44336"
+
+    _kpi = (
+        f"{float(count):.0f}"
+        f"<span style='color:rgba(182,196,214,0.85);font-weight:400'> vs {float(expected):.1f}</span>"
+        f"<span style='font-size:0.6em;color:{delta_col};font-weight:700'> {delta:+.1f}</span>"
+    )
+    os_card(title, _kpi, kpi_is_html=True, min_h=80)
+
+
 @fragment_if_available
-def render_expected_vs_actual(  # noqa: C901, PLR0912, PLR0913, PLR0915
+def render_expected_vs_actual(  # noqa: PLR0912, PLR0913, PLR0915
     row: dict[str, Any],
     pm: dict,
     colors: dict,
@@ -56,65 +86,33 @@ def render_expected_vs_actual(  # noqa: C901, PLR0912, PLR0913, PLR0915
         df_full = ensure_polars(df_full)
     team_mmr = pm.get("team_mmr")
     enemy_mmr = pm.get("enemy_mmr")
-    delta_mmr = (team_mmr - enemy_mmr) if (team_mmr is not None and enemy_mmr is not None) else None
-
-    mmr_cols = st.columns(3)
-    with mmr_cols[0]:
-        os_card(t("mvc_mmr_team"), f"{team_mmr:.1f}" if team_mmr is not None else "-")
-    with mmr_cols[1]:
-        os_card(t("mvc_mmr_enemy"), f"{enemy_mmr:.1f}" if enemy_mmr is not None else "-")
-    with mmr_cols[2]:
-        if delta_mmr is None:
-            os_card(t("mvc_mmr_gap"), "-")
-        else:
-            dm = float(delta_mmr)
-            col = (
-                "#4CAF50"  # --color-win
-                if dm > 0
-                else ("#F44336" if dm < 0 else "#9E9E9E")  # --color-loss / --color-tie
-            )
-            os_card(t("mvc_mmr_gap"), f"{dm:+.1f}", t("mvc_mmr_gap_sub"), accent=col, kpi_color=col)
-
-    def _ev_card(title: str, perf: dict, *, mode: str) -> None:
-        count = perf.get("count")
-        expected = perf.get("expected")
-
-        # Si count est disponible mais expected est None (DuckDB v4), afficher quand même la valeur réelle
-        if count is None:
-            os_card(title, "-", "")
-            return
-
-        # Si expected est None, afficher seulement la valeur réelle sans comparaison
-        if expected is None:
-            os_card(title, f"{float(count):.0f}", t("mvc_actual_only"))
-            return
-
-        delta = float(count) - float(expected)
-        if delta == 0:
-            delta_class = "text-neutral"
-        else:
-            good = delta > 0
-            if mode == "inverse":
-                good = not good
-            delta_class = "text-positive" if good else "text-negative"
-
-        arrow = "↑" if delta > 0 else ("↓" if delta < 0 else "→")
-        sub = f"<span class='{delta_class} fw-bold'>{arrow} {delta:+.1f}</span>"
-        os_card(title, f"{float(count):.0f} vs {float(expected):.1f}", sub)
 
     perf_k = pm.get("kills") or {}
     perf_d = pm.get("deaths") or {}
     perf_a = pm.get("assists") or {}
 
-    st.subheader(t("mv_vs_expected"))
-    av_cols = st.columns(3)
+    av_cols = st.columns([1.5, 1, 1, 1])
     with av_cols[0]:
-        _ev_card(t("tm_kills"), perf_k, mode="normal")
+        if team_mmr is not None and enemy_mmr is not None:
+            dm = float(team_mmr - enemy_mmr)
+            col = "#4CAF50" if dm > 0 else ("#F44336" if dm < 0 else "#2196F3")
+            _kpi = (
+                f"{team_mmr:.1f}"
+                f"<span style='color:rgba(182,196,214,0.85);font-weight:400'> vs {enemy_mmr:.1f}</span>"
+                f"<span style='font-size:0.6em;color:{col};font-weight:700'> {dm:+.1f}</span>"
+            )
+            os_card(t("mvc_mmr_team"), _kpi, kpi_is_html=True, min_h=80)
+        else:
+            os_card(t("mvc_mmr_team"), f"{team_mmr:.1f}" if team_mmr is not None else "-", min_h=80)
+    _vs_exp = "vs attendus" if get_lang() == "fr" else "vs expected"
+    _vs_exp_f = "vs attendues" if get_lang() == "fr" else "vs expected"
     with av_cols[1]:
-        _ev_card(t("tm_deaths"), perf_d, mode="inverse")
+        _ev_card(f"{t('tm_kills')} {_vs_exp}", perf_k, mode="normal")
     with av_cols[2]:
+        _ev_card(f"{t('tm_deaths')} {_vs_exp_f}", perf_d, mode="inverse")
+    with av_cols[3]:
         avg_life_last = row.get("average_life_seconds")
-        os_card(t("col_avg_life_long"), format_mmss(avg_life_last), "")
+        os_card(t("col_avg_life_long"), format_mmss(avg_life_last), "", min_h=80)
 
     # Calculer la moyenne historique par catégorie de mode
     mode_category = extract_mode_category(row.get("pair_name"))
@@ -240,11 +238,13 @@ def render_expected_vs_actual(  # noqa: C901, PLR0912, PLR0913, PLR0915
 
     # K/D/A et Folie meurtrière sur la même rangée
     chart_cols = st.columns(2)
-    with chart_cols[0], safe_chart_render():
-        if exp_fig is not None:
-            st.plotly_chart(exp_fig, width="stretch", config=PLOTLY_STATIC_CONFIG)
-        else:
-            st.info(t("insufficient_data_chart"))
+    with chart_cols[0]:
+        render_chart_or_info(
+            exp_fig,
+            key="mvc_exp_vs_actual",
+            config=PLOTLY_STATIC_CONFIG,
+            info_key="insufficient_data_chart",
+        )
     with chart_cols[1]:
         _render_spree_headshots(
             row,
@@ -373,12 +373,13 @@ def _render_spree_headshots(
             legend=get_legend_horizontal_bottom(),
         )
         fig_sh.update_yaxes(rangemode="tozero")
-        with safe_chart_render():
-            styled_fig = apply_halo_plot_style(fig_sh, height=260)
-            if styled_fig is not None:
-                st.plotly_chart(styled_fig, width="stretch", config=PLOTLY_STATIC_CONFIG)
-            else:
-                st.info(t("insufficient_data_chart"))
+        styled_fig = apply_halo_plot_style(fig_sh, height=260)
+        render_chart_or_info(
+            styled_fig,
+            key="mvc_spree_hs",
+            config=PLOTLY_STATIC_CONFIG,
+            info_key="insufficient_data_chart",
+        )
 
 
 # =============================================================================

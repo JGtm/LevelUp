@@ -80,7 +80,7 @@ def load_match_info(match_id: str) -> dict:
     """Charge les infos du match ET la liste des XUIDs+gamertags depuis shared_matches."""
     import duckdb
 
-    db_path = LEVELUP_ROOT / "data" / "warehouse" / "shared_matches.duckdb"
+    db_path = LEVELUP_ROOT / "data" / "warehouse" / "shared_matches_v2.duckdb"
     if not db_path.exists():
         print(f"  [warn] DB introuvable : {db_path}")
         return {}

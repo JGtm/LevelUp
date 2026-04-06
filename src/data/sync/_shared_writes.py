@@ -1,4 +1,4 @@
-"""Mixin — insertions dans shared_matches.duckdb.
+"""Mixin — insertions dans shared_matches_v2.duckdb.
 
 Regroupe les méthodes d'écriture dans la base partagée :
 match_registry, match_participants, highlight_events, medals_earned, xuid_aliases.
@@ -24,7 +24,7 @@ logger = logging.getLogger(__name__)
 
 
 class SharedWritesMixin:
-    """Méthodes d'écriture dans shared_matches.duckdb."""
+    """Méthodes d'écriture dans shared_matches_v2.duckdb."""
 
     def _insert_shared_killer_victim_pairs(
         self,
@@ -38,7 +38,7 @@ class SharedWritesMixin:
         la cohérence des résultats entre sync temps réel et rattrapage.
 
         Args:
-            shared_conn: Connexion vers shared_matches.duckdb.
+            shared_conn: Connexion vers shared_matches_v2.duckdb.
             match_id: ID du match.
             highlight_events: Events bruts SPNKr (dicts/objets).
 
@@ -109,7 +109,7 @@ class SharedWritesMixin:
         """Insère un match dans match_registry (shared).
 
         Args:
-            shared_conn: Connexion vers shared_matches.duckdb.
+            shared_conn: Connexion vers shared_matches_v2.duckdb.
             data: Dict retourné par extract_match_registry_data().
         """
         shared_conn.execute(
@@ -120,11 +120,11 @@ class SharedWritesMixin:
                 pair_id, pair_name,
                 game_variant_id, game_variant_name,
                 mode_category, is_ranked, is_firefight,
-                duration_seconds,
+                duration_seconds, playable_duration_seconds, real_start_time,
                 team_0_score, team_1_score,
                 sync_spnkr_version,
                 created_at, updated_at
-            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)""",
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)""",
             (
                 data["match_id"],
                 data["start_time"],
@@ -141,6 +141,8 @@ class SharedWritesMixin:
                 data["is_ranked"],
                 data["is_firefight"],
                 data["duration_seconds"],
+                data.get("playable_duration_seconds"),
+                data.get("real_start_time"),
                 data["team_0_score"],
                 data["team_1_score"],
                 self._spnkr_version,
@@ -149,16 +151,22 @@ class SharedWritesMixin:
         # Si le match existait déjà avec mode_category NULL (anciens matchs insérés
         # avant le calcul de _determine_mode_category), on le patche maintenant.
         # pair_name est aussi mis à jour si absent (UUID brut → nom résolu).
+        # playable_duration_seconds et real_start_time sont patchés si absents
+        # (matchs syncés avant l'introduction de ces colonnes).
         if data.get("mode_category"):
             shared_conn.execute(
                 """UPDATE match_registry
-                   SET mode_category  = ?,
-                       pair_name      = COALESCE(pair_name, ?),
-                       updated_at     = CURRENT_TIMESTAMP
+                   SET mode_category              = ?,
+                       pair_name                  = COALESCE(pair_name, ?),
+                       playable_duration_seconds  = COALESCE(playable_duration_seconds, ?),
+                       real_start_time            = COALESCE(real_start_time, ?),
+                       updated_at                 = CURRENT_TIMESTAMP
                    WHERE match_id = ? AND mode_category IS NULL""",
                 (
                     data["mode_category"],
                     data["pair_name"],
+                    data.get("playable_duration_seconds"),
+                    data.get("real_start_time"),
                     data["match_id"],
                 ),
             )
@@ -176,7 +184,7 @@ class SharedWritesMixin:
             détruisait les colonnes MMR déjà peuplées par le pipeline skill.
 
         Args:
-            shared_conn: Connexion vers shared_matches.duckdb.
+            shared_conn: Connexion vers shared_matches_v2.duckdb.
             participants: Liste de MatchParticipantRow.
 
         Returns:
@@ -202,7 +210,7 @@ class SharedWritesMixin:
         Appelé après chaque insertion/mise à jour de participants pendant le sync.
 
         Args:
-            shared_conn: Connexion vers shared_matches.duckdb.
+            shared_conn: Connexion vers shared_matches_v2.duckdb.
             match_id: ID du match à mettre à jour.
         """
         from src.data.sync.constants import ParticipantBits as PB
@@ -276,7 +284,7 @@ class SharedWritesMixin:
         (source réelle des gamertags : film analysis, pas l'API stats).
 
         Args:
-            shared_conn: Connexion vers shared_matches.duckdb.
+            shared_conn: Connexion vers shared_matches_v2.duckdb.
             event_rows: Liste de HighlightEventRow.
 
         Returns:
@@ -304,7 +312,7 @@ class SharedWritesMixin:
         Cette méthode comble ce manque en peuplant xuid_aliases à partir des events.
 
         Args:
-            shared_conn: Connexion vers shared_matches.duckdb.
+            shared_conn: Connexion vers shared_matches_v2.duckdb.
             event_rows: Liste de HighlightEventRow avec xuid et gamertag.
         """
         from src.data.sync.models import XuidAliasRow
@@ -340,7 +348,7 @@ class SharedWritesMixin:
         """Insère les médailles de TOUS les joueurs dans shared.medals_earned.
 
         Args:
-            shared_conn: Connexion vers shared_matches.duckdb.
+            shared_conn: Connexion vers shared_matches_v2.duckdb.
             medals: Liste de SharedMedalEarnedRow.
         """
         if not medals:
@@ -357,7 +365,7 @@ class SharedWritesMixin:
         """Insère les aliases xuid→gamertag dans shared.xuid_aliases.
 
         Args:
-            shared_conn: Connexion vers shared_matches.duckdb.
+            shared_conn: Connexion vers shared_matches_v2.duckdb.
             alias_rows: Liste de XuidAliasRow.
         """
         if not alias_rows:

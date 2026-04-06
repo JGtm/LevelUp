@@ -117,9 +117,9 @@ class TestRefdataPersonalScores:
         )
 
         for member in PersonalScoreNameId:
-            assert (
-                int(member) in PERSONAL_SCORE_TECHNICAL_IDS
-            ), f"{member.name} ({int(member)}) absent de PERSONAL_SCORE_TECHNICAL_IDS"
+            assert int(member) in PERSONAL_SCORE_TECHNICAL_IDS, (
+                f"{member.name} ({int(member)}) absent de PERSONAL_SCORE_TECHNICAL_IDS"
+            )
 
     def test_points_dict_consistent(self):
         """PERSONAL_SCORE_POINTS couvre tous les membres de l'enum."""
@@ -129,9 +129,9 @@ class TestRefdataPersonalScores:
         )
 
         for member in PersonalScoreNameId:
-            assert (
-                int(member) in PERSONAL_SCORE_POINTS
-            ), f"{member.name} ({int(member)}) absent de PERSONAL_SCORE_POINTS"
+            assert int(member) in PERSONAL_SCORE_POINTS, (
+                f"{member.name} ({int(member)}) absent de PERSONAL_SCORE_POINTS"
+            )
 
 
 # =============================================================================
@@ -366,7 +366,7 @@ class TestSessionCompareHistory:
         )
         result = _build_history_dataframe(df_sess)
         assert isinstance(result, tuple)
-        assert len(result) == 2
+        assert len(result) == 3
 
 
 # =============================================================================

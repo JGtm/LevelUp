@@ -5,7 +5,9 @@ import polars as pl
 
 from src.config import OKABE_ITO_PALETTE, PLOT_CONFIG
 from src.ui.i18n.viz import viz_t
+from src.visualization._chart_series import ChartData, MatchSeries, SquadRecordSet
 from src.visualization._compat import DataFrameLike, ensure_polars
+from src.visualization._plot_options import DEFAULT_THEME, PlotOptions
 from src.visualization.theme import apply_halo_plot_style, get_legend_horizontal_bottom
 
 # Couleurs "négatives" : famille rouge, luminance HSL bien espacée (~13-15% d'écart)
@@ -42,7 +44,6 @@ def plot_trio_metric(  # noqa: PLR0912, PLR0913, PLR0915, C901 — graphe multi-
     *,
     metric: str,
     names: tuple[str, ...],
-    title: str,
     y_title: str,
     y_suffix: str = "",
     y_format: str = "",
@@ -52,6 +53,7 @@ def plot_trio_metric(  # noqa: PLR0912, PLR0913, PLR0915, C901 — graphe multi-
     colors_by_name: dict[str, str] | None = None,
     is_inverse: bool = False,
     match_labels: list[str] | None = None,
+    squad_records: SquadRecordSet | None = None,
 ) -> go.Figure:
     """Graphique comparant une métrique entre 3 ou 4 joueurs.
 
@@ -63,7 +65,6 @@ def plot_trio_metric(  # noqa: PLR0912, PLR0913, PLR0915, C901 — graphe multi-
         d_f2: DataFrame du deuxième coéquipier.
         metric: Nom de la colonne à comparer.
         names: Tuple des noms (3 ou 4 éléments).
-        title: Titre du graphique.
         y_title: Titre de l'axe Y.
         y_suffix: Suffixe pour les valeurs Y (ex: "%").
         y_format: Format pour le hover (ex: ".2f").
@@ -112,8 +113,7 @@ def plot_trio_metric(  # noqa: PLR0912, PLR0913, PLR0915, C901 — graphe multi-
 
     fig = go.Figure()
     if aligned.is_empty():
-        fig.update_layout(title=title)
-        return apply_halo_plot_style(fig, title=title, height=PLOT_CONFIG.default_height)
+        return apply_halo_plot_style(fig, height=PLOT_CONFIG.default_height)
 
     def _roll(s: pl.Series) -> list:
         """Moyenne glissante, retourne une liste pour Plotly."""
@@ -125,12 +125,13 @@ def plot_trio_metric(  # noqa: PLR0912, PLR0913, PLR0915, C901 — graphe multi-
     # Formatage des dates pour ticktext
     # Construction post-alignement pour garantir longueur == len(aligned) et numérotation correcte
     _ref_pl = pl_dfs[0]
-    if "map_name" in _ref_pl.columns and not _ref_pl.is_empty():
+    _map_col_trio = "map_ui" if "map_ui" in _ref_pl.columns else "map_name"
+    if _map_col_trio in _ref_pl.columns and not _ref_pl.is_empty():
         _ref_clean = _ref_pl.drop_nulls(subset=["start_time"])
         _ts_to_map: dict = dict(
             zip(
                 _ref_clean["start_time"].to_list(),
-                _ref_clean["map_name"].fill_null("?").to_list(),
+                _ref_clean[_map_col_trio].fill_null("?").to_list(),
                 strict=False,
             )
         )
@@ -187,6 +188,7 @@ def plot_trio_metric(  # noqa: PLR0912, PLR0913, PLR0915, C901 — graphe multi-
             "opacity": 0.75,
             "customdata": bar_cdata,
             "hovertemplate": hover_format,
+            "offsetgroup": name,
         }
         fig.add_trace(go.Bar(**bar_kwargs))
 
@@ -203,7 +205,7 @@ def plot_trio_metric(  # noqa: PLR0912, PLR0913, PLR0915, C901 — graphe multi-
         )
 
     # Moyenne lissée de tous les joueurs (ligne neutre pointillée)
-    avg_color = "rgba(255, 255, 255, 0.55)"
+    avg_color = DEFAULT_THEME.avg_color
     avg_rolled = _roll(avg_all)
     if is_inverse:
         hover_format_avg = (
@@ -225,8 +227,30 @@ def plot_trio_metric(  # noqa: PLR0912, PLR0913, PLR0915, C901 — graphe multi-
         )
     )
 
+    if squad_records and squad_records.records:
+        _map_names_trio = [t.split("<br>", 1)[1] if "<br>" in t else None for t in ticktext]
+        _per_map_trio = {n: (squad_records.per_map.get(n) or {}).get(metric, {}) for n in names}
+        _cbname_trio = colors_by_name or {}
+        _cd_trio = ChartData(
+            series=[
+                MatchSeries(
+                    name=n,
+                    x=xs,
+                    y=[],
+                    color=_cbname_trio.get(n, OKABE_ITO_PALETTE[i % len(OKABE_ITO_PALETTE)]),
+                    map_names=_map_names_trio,
+                )
+                for i, n in enumerate(names)
+            ],
+            x_labels=ticktext,
+            barmode="group",
+            global_records={n: (squad_records.records.get(n) or {}).get(metric) for n in names},
+            per_map_records=_per_map_trio,
+            is_negative=is_inverse,
+        )
+        _cd_trio.add_record_overlays(fig)
+
     fig.update_layout(
-        title=title,
         margin={"l": 40, "r": 20, "t": 60, "b": 40},
         hovermode="x unified",
         legend=get_legend_horizontal_bottom(),
@@ -238,9 +262,13 @@ def plot_trio_metric(  # noqa: PLR0912, PLR0913, PLR0915, C901 — graphe multi-
     if y_suffix:
         fig.update_yaxes(ticksuffix=y_suffix)
 
-    fig = apply_halo_plot_style(fig, title=title, height=PLOT_CONFIG.default_height)
+    fig = apply_halo_plot_style(fig, height=PLOT_CONFIG.default_height)
     # Rétablir l'axe zéro en gras blanc (apply_halo_plot_style le désactive via theme.py)
-    fig.update_yaxes(zeroline=True, zerolinecolor="rgba(255,255,255,0.75)", zerolinewidth=2)
+    fig.update_yaxes(
+        zeroline=True,
+        zerolinecolor=DEFAULT_THEME.zero_line_color,
+        zerolinewidth=DEFAULT_THEME.zero_line_width,
+    )
     return fig
 
 
@@ -318,11 +346,11 @@ def plot_trio_kills_deaths(  # noqa: PLR0913
     d_f2: DataFrameLike | None = None,
     *,
     names: tuple[str, ...],
-    title: str,
-    lang: str = "fr",
+    opts: PlotOptions | None = None,
     d_f3: DataFrameLike | None = None,
     colors_by_name: dict[str, str] | None = None,
     smooth_window: int = 7,
+    squad_records: SquadRecordSet | None = None,
 ) -> go.Figure:
     """Graphique combiné kills↑/morts↓ pour l'escouade (2, 3 ou 4 joueurs).
 
@@ -330,6 +358,7 @@ def plot_trio_kills_deaths(  # noqa: PLR0913
     (teinte négative Okabe-Ito). Les barres kills/morts d'un même joueur
     partagent le même offsetgroup → alignées au même x.
     """
+    _opts = opts if opts is not None else PlotOptions()
     all_dfs = (
         [d_self, d_f1] + ([d_f2] if d_f2 is not None else []) + ([d_f3] if d_f3 is not None else [])
     )
@@ -347,7 +376,11 @@ def plot_trio_kills_deaths(  # noqa: PLR0913
             return pl.DataFrame(
                 schema={"start_time": pl.Datetime, "kills": pl.Float64, "deaths": pl.Float64}
             )
-        out = p.select(["start_time", "kills", "deaths"])
+        map_col = (
+            "map_ui" if "map_ui" in p.columns else ("map_name" if "map_name" in p.columns else None)
+        )
+        cols = ["start_time", "kills", "deaths"] + ([map_col] if map_col else [])
+        out = p.select(cols)
         if not out.schema["start_time"].is_temporal():
             out = out.with_columns(pl.col("start_time").str.to_datetime(strict=False))
         return out.drop_nulls(subset=["start_time"]).sort("start_time")
@@ -390,11 +423,71 @@ def plot_trio_kills_deaths(  # noqa: PLR0913
     tickvals, ticktext = build_symmetric_abs_ticks(
         max(all_kills, default=1), max(all_deaths, default=1)
     )
-    ticktext_fr = (
-        aligned["start_time"].dt.strftime("%d/%m").fill_null("").to_list()
-        if not aligned.is_empty()
-        else []
+    _ref_pl_kd = ensure_polars(d_self)
+    _map_col_kd = (
+        "map_ui"
+        if "map_ui" in _ref_pl_kd.columns
+        else ("map_name" if "map_name" in _ref_pl_kd.columns else None)
     )
+    if _map_col_kd and not _ref_pl_kd.is_empty() and not aligned.is_empty():
+        _ref_clean_kd = _ref_pl_kd.drop_nulls(subset=["start_time"])
+        _ts_to_map_kd: dict = dict(
+            zip(
+                _ref_clean_kd["start_time"].to_list(),
+                _ref_clean_kd[_map_col_kd].fill_null("?").to_list(),
+                strict=False,
+            )
+        )
+        ticktext_fr = [
+            f"#{i + 1}<br>{_ts_to_map_kd.get(ts, '?')}"
+            for i, ts in enumerate(aligned["start_time"].to_list())
+        ]
+    else:
+        ticktext_fr = (
+            aligned["start_time"].dt.strftime("%d/%m").fill_null("").to_list()
+            if not aligned.is_empty()
+            else []
+        )
+
+    if squad_records and squad_records.records:
+        _kd_map_names = (
+            [t.split("<br>", 1)[1] if "<br>" in t else None for t in ticktext_fr]
+            if ticktext_fr
+            else []
+        )
+        _cbname_kd = colors_by_name or {}
+        _kd_series = [
+            MatchSeries(
+                name=n,
+                x=xs,
+                y=[],
+                color=_cbname_kd.get(n, OKABE_ITO_PALETTE[i % len(OKABE_ITO_PALETTE)]),
+                map_names=_kd_map_names,
+            )
+            for i, n in enumerate(names)
+        ]
+        # Kills (record max, barres positives)
+        ChartData(
+            series=_kd_series,
+            x_labels=ticktext_fr or [str(x) for x in xs],
+            barmode="group",
+            global_records={n: (squad_records.records.get(n) or {}).get("kills") for n in names},
+            per_map_records={
+                n: (squad_records.per_map.get(n) or {}).get("kills", {}) for n in names
+            },
+            is_negative=False,
+        ).add_record_overlays(fig)
+        # Morts (record min, barres négatives)
+        ChartData(
+            series=_kd_series,
+            x_labels=ticktext_fr or [str(x) for x in xs],
+            barmode="group",
+            global_records={n: (squad_records.records.get(n) or {}).get("deaths") for n in names},
+            per_map_records={
+                n: (squad_records.per_map.get(n) or {}).get("deaths", {}) for n in names
+            },
+            is_negative=True,
+        ).add_record_overlays(fig)
 
     fig.update_layout(
         barmode="group",
@@ -403,7 +496,11 @@ def plot_trio_kills_deaths(  # noqa: PLR0913
         legend=get_legend_horizontal_bottom(),
     )
     fig.update_xaxes(tickmode="array", tickvals=xs, ticktext=ticktext_fr or xs, title_text="")
-    fig.update_yaxes(tickvals=tickvals, ticktext=ticktext, title_text=title)
-    fig = apply_halo_plot_style(fig, title=title, height=None)
-    fig.update_yaxes(zeroline=True, zerolinecolor="rgba(255,255,255,0.75)", zerolinewidth=2)
+    fig.update_yaxes(tickvals=tickvals, ticktext=ticktext)
+    fig = apply_halo_plot_style(fig, height=None)
+    fig.update_yaxes(
+        zeroline=True,
+        zerolinecolor=DEFAULT_THEME.zero_line_color,
+        zerolinewidth=DEFAULT_THEME.zero_line_width,
+    )
     return fig

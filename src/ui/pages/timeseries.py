@@ -16,10 +16,13 @@ from src.data.services.timeseries_service import TimeseriesService
 from src.ui.chart_utils import safe_chart_render
 from src.ui.i18n import get_lang, t
 from src.ui.pages._timeseries_distributions import render_correlations, render_distributions
+from src.ui.pages._timeseries_intensity import render_intensity_heatmap as _render_intensity_heatmap
 from src.ui.pages._timeseries_weapons import render_weapon_kills_chart as _render_weapon_kills_chart
 from src.ui.pages.timeseries_skill_rank import render_skill_rank_progression
 from src.ui.streamlit_modern import PLOTLY_CLEAN_CONFIG, PLOTLY_STATIC_CONFIG, fragment_if_available
+from src.visualization._chart_series import downsample_for_plot
 from src.visualization._compat import DataFrameLike, ensure_polars
+from src.visualization._plot_options import PlotOptions
 from src.visualization.distributions import (
     plot_first_event_distribution,
     plot_kda_distribution,
@@ -43,40 +46,6 @@ from src.visualization.timeseries import (
 )
 
 # =============================================================================
-# Downsampling pour performance (8bis.A6)
-# =============================================================================
-
-MAX_PLOT_POINTS = 200
-
-
-def _downsample_for_plot(df: pl.DataFrame, max_points: int = MAX_PLOT_POINTS) -> pl.DataFrame:
-    """Réduit le DataFrame pour le rendu graphique (conserve tendance).
-
-    Garde le premier, le dernier, et un échantillonnage régulier entre les deux.
-    Idéal pour les timeseries où on veut voir la tendance générale.
-
-    Args:
-        df: DataFrame d'entrée trié par start_time.
-        max_points: Nombre maximum de points à conserver.
-
-    Returns:
-        DataFrame réduit si nécessaire.
-    """
-    if len(df) <= max_points:
-        return df
-
-    # Calculer le pas d'échantillonnage
-    step = len(df) // max_points
-
-    # Indices à conserver : 0, step, 2*step, ..., dernier
-    indices = list(range(0, len(df), step))
-    if indices[-1] != len(df) - 1:
-        indices.append(len(df) - 1)
-
-    return df[indices]
-
-
-# =============================================================================
 # Sous-fonctions de rendu extraites du monolithe (Sprint 16)
 # =============================================================================
 
@@ -92,7 +61,7 @@ def _render_kda_section(
     """Affiche le graphe KDA et sa distribution."""
     with safe_chart_render():
         # 8bis.A6 : Downsampling pour performance
-        df_plot = _downsample_for_plot(dff)
+        df_plot = downsample_for_plot(dff)
         fig = plot_timeseries(df_plot, lang=lang)
         if fig is not None:
             st.plotly_chart(fig, width="stretch", config=PLOTLY_CLEAN_CONFIG)
@@ -171,9 +140,9 @@ def _render_cumulative_performance(dff: pl.DataFrame, lang: str = "fr") -> None:
     with safe_chart_render():
         fig_ewma = plot_ewma_kd(
             ewma_data,
-            lang=lang,
             regression_data=regression,
             outcome_values=outcome_values,
+            opts=PlotOptions(lang=lang),
         )
         st.plotly_chart(fig_ewma, width="stretch", config=PLOTLY_CLEAN_CONFIG)
     _render_note(t("ts_note_ewma"))
@@ -328,7 +297,7 @@ def _render_sprint7_sections(dff: pl.DataFrame, lang: str = "fr") -> None:
         st.subheader(t("ts_shots"))
         st.caption(t("ts_shots_caption"))
         with safe_chart_render():
-            fig_shots = plot_shots_accuracy(dff, title=None, lang=lang)
+            fig_shots = plot_shots_accuracy(dff, lang=lang)
             if fig_shots is not None:
                 st.plotly_chart(fig_shots, width="stretch", config=PLOTLY_CLEAN_CONFIG)
             else:
@@ -341,7 +310,7 @@ def _render_sprint7_sections(dff: pl.DataFrame, lang: str = "fr") -> None:
         st.subheader(t("ts_damage"))
         st.caption(t("ts_damage_caption"))
         with safe_chart_render():
-            fig_damage = plot_damage_dealt_taken(dff, title=None, lang=lang)
+            fig_damage = plot_damage_dealt_taken(dff, lang=lang)
             if fig_damage is not None:
                 st.plotly_chart(fig_damage, width="stretch", config=PLOTLY_CLEAN_CONFIG)
             else:
@@ -354,7 +323,7 @@ def _render_sprint7_sections(dff: pl.DataFrame, lang: str = "fr") -> None:
         st.subheader(t("ts_rank_score"))
         st.caption(t("ts_rank_score_caption"))
         with safe_chart_render():
-            fig_rank = plot_rank_score(dff, title=t("ts_rank_score"), lang=lang)
+            fig_rank = plot_rank_score(dff, lang=lang)
             if fig_rank is not None:
                 st.plotly_chart(fig_rank, width="stretch", config=PLOTLY_CLEAN_CONFIG)
             else:
@@ -409,6 +378,8 @@ def render_timeseries_page(
         _render_kda_section(dff, lang=lang, db_path=db_path, xuid=xuid)
 
     with _tab_prog:
+        if db_path and xuid:
+            _render_intensity_heatmap(dff, db_path=db_path, xuid=xuid, lang=lang)
         render_skill_rank_progression(dff, db_path, xuid, lang=lang)
         _render_cumulative_performance(dff, lang=lang)
 

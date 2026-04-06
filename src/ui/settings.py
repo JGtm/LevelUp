@@ -47,6 +47,8 @@ class AppSettings(BaseModel):
     media_videos_dir: str = ""  # Déprécié: migration vers media_captures_base_dir
     media_captures_base_dir: str = ""  # Base unique: base_dir/{gamertag}/ pour captures
     media_tolerance_minutes: int = Field(default=3, ge=0)
+    media_indexing_interval_hours: int = Field(default=4, ge=0)  # 0 = run unique au démarrage
+    media_reindex_after_sync: bool = True  # Réindexer les médias après chaque sync
 
     # UX
     refresh_clears_caches: bool = False
@@ -122,8 +124,13 @@ class AppSettings(BaseModel):
     # Carrière — top/pire matchs
     career_top_exclude_btb: bool = False  # Exclure les matchs BTB du top 10 meilleurs/pires
 
+    # Affichage — records historiques
+    show_records: bool = True  # Afficher les barres de records sur les graphes Escouade
+
     # Affichage — modes de jeu
-    normalize_mode_labels: bool = True  # Supprimer les préfixes redondants (ex: BTB:Slayer → Assassin)
+    normalize_mode_labels: bool = (
+        True  # Supprimer les préfixes redondants (ex: BTB:Slayer → Assassin)
+    )
 
     # --- Validators ---
 

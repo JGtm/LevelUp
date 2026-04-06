@@ -27,6 +27,7 @@ from src.visualization import (
     plot_win_ratio_heatmap,
 )
 from src.visualization._compat import DataFrameLike, ensure_polars
+from src.visualization._plot_options import PlotOptions
 
 
 def _clear_min_matches_maps_auto() -> None:
@@ -98,15 +99,15 @@ def _render_map_mode_breakdown(dff: pl.DataFrame) -> None:
     with col_by_map:
         st.markdown(f"##### {t('wl_by_map')}")
         if "map_name" in dff.columns and "outcome" in dff.columns:
+            _wl_map_col = "map_ui" if "map_ui" in dff.columns else "map_name"
             with safe_chart_render():
                 fig_map = plot_stacked_outcomes_by_category(
                     dff,
-                    "map_name",
-                    title=None,
+                    _wl_map_col,
                     min_matches=1,
                     sort_by="total",
                     max_categories=12,
-                    lang=get_lang(),
+                    opts=PlotOptions(lang=get_lang()),
                 )
                 if fig_map is not None:
                     fig_map.update_layout(
@@ -147,11 +148,10 @@ def _render_map_mode_breakdown(dff: pl.DataFrame) -> None:
                 fig_mode = plot_stacked_outcomes_by_category(
                     dff_mode,
                     "_mode_short",
-                    title=None,
                     min_matches=1,
                     sort_by="total",
                     max_categories=10,
-                    lang=get_lang(),
+                    opts=PlotOptions(lang=get_lang()),
                 )
                 if fig_mode is not None:
                     fig_mode.update_layout(
@@ -179,7 +179,7 @@ def _render_heatmap_section(dff: pl.DataFrame) -> None:
     st.caption(t("wl_heatmap_caption", tz=get_tz_name()))
     if "start_time" in dff.columns and "outcome" in dff.columns:
         with safe_chart_render():
-            fig_heat = plot_win_ratio_heatmap(dff, title=None, min_matches=1, lang=get_lang())
+            fig_heat = plot_win_ratio_heatmap(dff, min_matches=1, lang=get_lang())
             if fig_heat is not None:
                 st.plotly_chart(fig_heat, width="stretch", config=PLOTLY_STATIC_CONFIG)
             else:
@@ -220,7 +220,7 @@ def _render_streak_section(dff: pl.DataFrame) -> None:
     st.caption(t("wl_streaks_caption"))
     if "outcome" in dff.columns and "start_time" in dff.columns:
         with safe_chart_render():
-            fig_streak = plot_streak_chart(dff, title=None, lang=get_lang())
+            fig_streak = plot_streak_chart(dff, lang=get_lang())
             if fig_streak is not None:
                 st.plotly_chart(fig_streak, width="stretch", config=PLOTLY_CLEAN_CONFIG)
             else:
@@ -257,18 +257,29 @@ def _render_winrate_perf_vs_history(dff: pl.DataFrame, base: pl.DataFrame) -> No
     """Affiche les graphes Taux de victoires vs historique et Performance vs historique."""
     from src.analysis import compute_map_breakdown
 
+    # Assurer cohérence map_ui : dff a map_ui (FR via _add_derived_columns), base brut n'en a pas.
+    # Sans cela l'inner join sur map_name dans _prepare_bullet_joined_data échoue pour les 4 cartes
+    # dont le nom FR diffère du nom EN (Cliffhanger, Fortress, Nemesis, The Pit).
+    if "map_ui" not in base.columns and "map_name_fr" in base.columns and get_lang() == "fr":
+        base = base.with_columns(
+            pl.coalesce(
+                [pl.col("map_name_fr").cast(pl.Utf8), pl.col("map_name").cast(pl.Utf8)]
+            ).alias("map_ui")
+        )
+
     bd_current = compute_map_breakdown(dff, df_history=base)
     bd_history = compute_map_breakdown(base)
     if bd_current.is_empty() or bd_history.is_empty():
         return
 
     lang = get_lang()
+    _wl_order_col = "map_ui" if "map_ui" in dff.columns else "map_name"
     map_order: list[str] | None = None
     if "start_time" in dff.columns:
         map_order = (
             dff.sort("start_time")
-            .unique(subset=["map_name"], keep="first", maintain_order=True)
-            .filter(pl.col("map_name").is_not_null())["map_name"]
+            .unique(subset=[_wl_order_col], keep="first", maintain_order=True)
+            .filter(pl.col(_wl_order_col).is_not_null())[_wl_order_col]
             .to_list()
         )
 
@@ -293,10 +304,11 @@ def _compute_session_map_order(dff: pl.DataFrame) -> list[str] | None:
     """Retourne l'ordre chronologique des cartes depuis les matchs d'une session."""
     if "start_time" not in dff.columns:
         return None
+    _col = "map_ui" if "map_ui" in dff.columns else "map_name"
     return (
         dff.sort("start_time")
-        .unique(subset=["map_name"], keep="first", maintain_order=True)
-        .filter(pl.col("map_name").is_not_null())["map_name"]
+        .unique(subset=[_col], keep="first", maintain_order=True)
+        .filter(pl.col(_col).is_not_null())[_col]
         .to_list()
     )
 
@@ -322,6 +334,15 @@ def _render_ratio_by_map_section(
     )
 
     with st.spinner(t("wl_computing_map")):
+        # Assurer cohérence map_ui : base brut n'a pas map_ui, dff l'a (FR).
+        # Nécessaire pour que l'inner join map_name dans _prepare_bullet_joined_data
+        # retrouve les 4 cartes dont le nom FR ≠ EN (Cliffhanger, Fortress, Nemesis, The Pit).
+        if "map_ui" not in base.columns and "map_name_fr" in base.columns and get_lang() == "fr":
+            base = base.with_columns(
+                pl.coalesce(
+                    [pl.col("map_name_fr").cast(pl.Utf8), pl.col("map_name").cast(pl.Utf8)]
+                ).alias("map_ui")
+            )
         map_result = WinLossService.compute_map_breakdown(dff, min_matches, df_history=base)
         breakdown_history = WinLossService.compute_map_breakdown(base, 1).breakdown
 
@@ -368,10 +389,12 @@ def _render_ratio_by_map_section(
 def _render_map_ratio_accuracy(view: pl.DataFrame, lang: str) -> None:
     """Affiche les charts ratio F/M et précision par carte."""
     with safe_chart_render():
-        fig_r = plot_map_comparison(view, "ratio_global", title=t("wl_metric_ratio"))
+        st.subheader(t("wl_metric_ratio"))
+        fig_r = plot_map_comparison(view, "ratio_global")
         st.plotly_chart(fig_r, width="stretch", config=PLOTLY_STATIC_CONFIG)
     with safe_chart_render():
         if view.filter(pl.col("accuracy_avg").is_not_null()).is_empty():
             return
-        fig_a = plot_map_comparison(view, "accuracy_avg", title=t("wl_metric_accuracy"))
+        st.subheader(t("wl_metric_accuracy"))
+        fig_a = plot_map_comparison(view, "accuracy_avg")
         st.plotly_chart(fig_a, width="stretch", config=PLOTLY_STATIC_CONFIG)

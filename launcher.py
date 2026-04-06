@@ -878,7 +878,7 @@ def _run_migrations() -> None:
     shared_path = get_shared_matches_path()
     pve_path = get_pve_db_path()
 
-    # Initialiser shared_matches.duckdb si absent (premier lancement avec joueurs)
+    # Initialiser shared_matches_v2.duckdb si absent (premier lancement avec joueurs)
     if players and not shared_path.exists():
         _ensure_warehouse_dbs()
 
@@ -1168,7 +1168,7 @@ def _cmd_info(args: argparse.Namespace) -> int:
 
 
 def _ensure_warehouse_dbs() -> None:
-    """Crée data/warehouse/ et initialise shared_matches.duckdb et metadata.duckdb si absents (idempotent)."""
+    """Crée data/warehouse/ et initialise shared_matches_v2.duckdb et metadata.duckdb si absents (idempotent)."""
     WAREHOUSE_DIR.mkdir(parents=True, exist_ok=True)
 
     shared_path = get_shared_matches_path()
@@ -1939,7 +1939,7 @@ Exemples:
 
 Architecture v5:
   - Données joueurs: data/players/{gamertag}/stats.duckdb
-  - Matchs partagés: data/warehouse/shared_matches.duckdb
+  - Matchs partagés: data/warehouse/shared_matches_v2.duckdb
   - Métadonnées: data/warehouse/metadata.duckdb
 """,
     )

@@ -182,7 +182,7 @@ data/
 | `docs/INSTALL.md` | Installation |
 | `docs/CONFIGURATION.md` | Configuration |
 | `docs/COMMANDS.md` | Commandes usuelles |
-| `docs/ARCHITECTURE_V5.md` | Architecture DuckDB v5 |
+| `docs/ARCHITECTURE_V6.md` | Architecture DuckDB v6 |
 | `docs/SYNC_GUIDE.md` | Guide synchronisation |
 | `docs/BACKUP_RESTORE.md` | Backup/Restore |
 | `docs/TESTING_V5.md` | Tests (v5) |

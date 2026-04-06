@@ -33,6 +33,8 @@ setup_app_logging()
 logger = logging.getLogger("streamlit_app")
 
 # Phase 4 refactoring: Main helpers
+# Imports depuis la nouvelle architecture
+from src import __version__
 from src.app.cache_control import invalidate_after_sync
 from src.app.data_loader import (
     ensure_h5g_commendations_repo,
@@ -53,8 +55,6 @@ from src.app.helpers import (
     assign_player_colors,
     clean_asset_label,
     date_range,
-    normalize_map_label,
-    normalize_mode_label,
 )
 
 # Phase 5 refactoring: KPIs et Filtres
@@ -69,7 +69,7 @@ from src.app.main_helpers import (
     render_profile_hero,
     validate_and_fix_db_path,
 )
-from src.app.media_background import background_media_indexing
+from src.app.media_background import background_media_indexing, reindex_media_after_sync
 
 # Phase 4 refactoring: Page router
 from src.app.page_router import (
@@ -84,8 +84,6 @@ from src.app.session_keys import SK
 from src.app.state import (
     apply_settings_path_overrides as apply_settings_overrides_main,
 )
-
-# Imports depuis la nouvelle architecture
 from src.config import (
     get_default_db_path,
 )
@@ -98,7 +96,6 @@ from src.ui import (
 )
 from src.ui.cache import (
     cached_compute_sessions_db,
-    cached_list_local_dbs,
     cached_load_highlight_events_for_match,
     cached_load_match_medals_for_player,
     cached_load_match_player_gamertags,
@@ -131,7 +128,6 @@ from src.ui.perf import perf_reset_run, perf_section
 from src.ui.sync import (
     cleanup_orphan_tmp_dbs,
     is_spnkr_db_path,
-    render_sync_indicator,
     sync_all_players_duckdb,
 )
 from src.ui.tz import get_tz  # timezone dynamique depuis app_settings
@@ -440,27 +436,24 @@ def _render_main_sidebar(db_path: str, xuid: str, settings: AppSettings) -> tupl
     waypoint_player = str(st.session_state.get("waypoint_player", "") or "").strip()
 
     with st.sidebar:
-        # Sélecteur de langue (discret) — au-dessus du logo
-        _LANG_OPTIONS = {"fr": "FR", "en": "EN"}
+        # Sélecteur de langue compact + version
         current_lang = str(get_lang() or "fr").strip().lower()
-        if current_lang not in _LANG_OPTIONS:
+        if current_lang not in ("fr", "en"):
             current_lang = "fr"
 
-        lang_keys = list(_LANG_OPTIONS.keys())
-        lang_idx = lang_keys.index(current_lang)
-        picked = st.radio(
+        # Ancre CSS pour cibler uniquement ce selectbox
+        st.markdown('<div id="_lang_sel_anchor"></div>', unsafe_allow_html=True)
+        picked_lang = st.selectbox(
             "Langue",
-            options=list(_LANG_OPTIONS.values()),
-            index=lang_idx,
+            options=["🇫🇷", "🇬🇧"],
+            index=0 if current_lang == "fr" else 1,
             key="_sidebar_lang_selector",
-            horizontal=True,
             label_visibility="collapsed",
         )
-
-        selected_lang = next(k for k, v in _LANG_OPTIONS.items() if v == picked)
-        if selected_lang != current_lang:
-            set_lang(selected_lang)
-            settings.lang = selected_lang
+        new_lang = "fr" if picked_lang == "🇫🇷" else "en"
+        if new_lang != current_lang:
+            set_lang(new_lang)
+            settings.lang = new_lang
             save_settings(settings)
             st.rerun()
 
@@ -472,17 +465,14 @@ def _render_main_sidebar(db_path: str, xuid: str, settings: AppSettings) -> tupl
             with open(logo_path, "rb") as _f:
                 _logo_b64 = base64.b64encode(_f.read()).decode()
             st.markdown(
-                f"<div style='display:flex;justify-content:center;'>"
+                f"<div style='display:flex;flex-direction:column;align-items:center;margin-top:12px;gap:8px'>"
                 f"<img src='data:image/png;base64,{_logo_b64}' style='width:65%;'/>"
+                f"<span style='font-size:11px;color:rgba(182,196,214,0.6);letter-spacing:0.04em'>v{__version__}</span>"
                 f"</div>",
                 unsafe_allow_html=True,
             )
 
         st.markdown("<div class='os-sidebar-divider'></div>", unsafe_allow_html=True)
-
-        # Indicateur de dernière synchronisation
-        if db_path and os.path.exists(db_path):
-            render_sync_indicator(db_path, xuid=xuid)
 
         # Sélecteur multi-joueurs
         if db_path and os.path.exists(db_path):
@@ -576,6 +566,7 @@ def _render_main_sidebar(db_path: str, xuid: str, settings: AppSettings) -> tupl
                     _send_sync_discord_notification(sync_started_at, sync_finished_at, msg)
 
                     invalidate_after_sync()
+                    reindex_media_after_sync(settings, db_path)
                     st.rerun()
                 else:
                     logger.error("Sync échoué: %s", msg)
@@ -651,11 +642,7 @@ def _load_and_prepare_data(  # noqa: PLR0913
         )
         from src.ui.pages import render_settings_page as _render_settings_empty
 
-        _render_settings_empty(
-            settings,
-            get_local_dbs_fn=cached_list_local_dbs,
-            on_clear_caches_fn=_clear_app_caches,
-        )
+        _render_settings_empty(settings)
         return None
 
     # Sidebar - Filtres
@@ -674,8 +661,6 @@ def _load_and_prepare_data(  # noqa: PLR0913
             callbacks={
                 "date_range_fn": date_range,
                 "clean_asset_label_fn": clean_asset_label,
-                "normalize_mode_label_fn": normalize_mode_label,
-                "normalize_map_label_fn": normalize_map_label,
                 "build_friends_opts_map_fn": build_friends_opts_map,
             },
         )
@@ -691,8 +676,6 @@ def _load_and_prepare_data(  # noqa: PLR0913
         xuid=xuid,
         db_key=db_key,
         clean_asset_label_fn=clean_asset_label,
-        normalize_mode_label_fn=normalize_mode_label,
-        normalize_map_label_fn=normalize_map_label,
     )
 
     gap_minutes = filter_state.gap_minutes
@@ -712,7 +695,6 @@ def _load_and_prepare_data(  # noqa: PLR0913
         settings=settings,
         df_full=df,
         render_match_view_fn=render_match_view,
-        normalize_mode_label_fn=normalize_mode_label,
         format_score_label_fn=format_score_label,
         score_css_color_fn=score_css_color,
         format_datetime_fn=format_datetime_fr_hm,
@@ -892,11 +874,7 @@ def _dispatch_navigation(ctx: PageContext) -> None:  # noqa: C901, PLR0915
     def _page_settings() -> None:
         from src.ui.pages import render_settings_page
 
-        render_settings_page(
-            ctx.settings,
-            get_local_dbs_fn=cached_list_local_dbs,
-            on_clear_caches_fn=_clear_app_caches,
-        )
+        render_settings_page(ctx.settings)
 
     page_callables: dict[str, Callable[[], None]] = {
         "timeseries": _page_timeseries,

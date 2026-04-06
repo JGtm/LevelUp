@@ -48,7 +48,7 @@ from src.ui.streamlit_modern import PLOTLY_CLEAN_CONFIG, PLOTLY_STATIC_CONFIG, f
 logger = logging.getLogger(__name__)
 
 
-def _render_rank_section(  # noqa: C901, PLR0912, PLR0915
+def _render_rank_section(
     *,
     career_data: dict,
     db_path: str,
@@ -250,7 +250,7 @@ def _render_xp_snapshots_table(history: list[dict]) -> None:
             )
 
 
-def _render_xp_history(  # noqa: C901, PLR0912
+def _render_xp_history(
     db_path: str,
     xuid: str,
     is_max: bool,
@@ -328,7 +328,7 @@ def _render_xp_history(  # noqa: C901, PLR0912
 
 
 @fragment_if_available
-def render_career_page(  # noqa: C901, PLR0912, PLR0915
+def render_career_page(
     *,
     db_path: str,
     xuid: str,

@@ -143,7 +143,7 @@ Note: `Display` values are currently in French because they match the stored/UI 
 | # | Norm | Display | Type | Source | FR medal(s) | Tiers | Master | Image |
 |---|------|---------|------|--------|-------------|-------|--------|-------|
 | 14 | `assassin` | Assassin | medal | `548533137` | Par derrière | 5, 10, 15, 25, **50** | 50 | `H5G_citation_Assassin.png` |
-| 15 | `carnage de spartans` | Carnage de Spartans | stat | `max_killing_spree` | — | 3, 6, 9, 15, **30** | 30 | `H5G_citation_Carnage_de_Spartans.png` |
+| 15 | `carnage de spartans` | Carnage de Spartans | medal | `2780740615,4261842076,418532952,1486797009,710323196,1720896992,2567026752,2875941471` | Folie meurtrière, Massacre, Émeute, Carnage, Cauchemar, Croque-mitaine, Croque-mort, Démon | 3, 6, 9, 15, **30** | 30 | `H5G_citation_Carnage_de_Spartans.png` |
 | 16 | `combat rapproche` | Combat rapproché | stat | `melee_kills` | — | 10, 20, 30, 50, **100** | 100 | `H5G_citation_Combat_rapproch%C3%A9.png` |
 | 17 | `combattant opportuniste` | Combattant opportuniste | medal | `medal_ids` | Double frag, Triple frag, Massacre, Quelle tuerie, Carnage, Boucherie, Meurtre mort détruire | 10, 20, 30, 50, **100** | 100 | `H5G_citation_Combattant_opportuniste.png` |
 | 18 | `multifrag` | Multifrag | medal | `622331684` | Double frag | 3, 6, 9, 15, **30** | 30 | `H5G_citation_Multifrag.png` |

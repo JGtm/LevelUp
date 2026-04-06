@@ -93,9 +93,9 @@ class TestGamertagResolverV6:
     def test_resolve_gamertag_without_view_absent(self) -> None:
         from src.data.repositories._gamertag_resolver import GamertagResolverMixin
 
-        assert not hasattr(
-            GamertagResolverMixin, "_resolve_gamertag_without_view"
-        ), "_resolve_gamertag_without_view doit être supprimée (Ph-1a)"
+        assert not hasattr(GamertagResolverMixin, "_resolve_gamertag_without_view"), (
+            "_resolve_gamertag_without_view doit être supprimée (Ph-1a)"
+        )
 
     def test_resolve_gamertag_uses_view(self, tmp_path: Path) -> None:
         """resolve_gamertag retourne le gamertag depuis shared.v_gamertag_lookup."""
@@ -122,9 +122,9 @@ class TestGamertagResolverV6:
         from src.data.repositories._gamertag_resolver import GamertagResolverMixin
 
         src = inspect.getsource(GamertagResolverMixin.get_all_gamertags)
-        assert (
-            "_has_shared_table" not in src
-        ), "get_all_gamertags ne doit plus utiliser _has_shared_table"
+        assert "_has_shared_table" not in src, (
+            "get_all_gamertags ne doit plus utiliser _has_shared_table"
+        )
 
     def test_get_all_gamertags_via_view(self, tmp_path: Path) -> None:
         """get_all_gamertags retourne les gamertags depuis v_gamertag_lookup."""
@@ -215,9 +215,9 @@ class TestCareerEncountersV6:
     def test_get_kv_source_shared_absent(self) -> None:
         from src.data.repositories._career_encounters_repo import EncounterCareerMixin
 
-        assert not hasattr(
-            EncounterCareerMixin, "_get_kv_source_shared"
-        ), "_get_kv_source_shared doit être supprimée (Ph-1c)"
+        assert not hasattr(EncounterCareerMixin, "_get_kv_source_shared"), (
+            "_get_kv_source_shared doit être supprimée (Ph-1c)"
+        )
 
     def test_load_antagonists_no_table_guard(self) -> None:
         """load_antagonists ne doit plus vérifier l'existence de killer_victim_pairs."""
@@ -226,9 +226,9 @@ class TestCareerEncountersV6:
         from src.data.repositories._career_encounters_repo import EncounterCareerMixin
 
         src = inspect.getsource(EncounterCareerMixin.load_antagonists)
-        assert (
-            '_has_shared_table("killer_victim_pairs")' not in src
-        ), "Le guard _has_shared_table('killer_victim_pairs') doit être supprimé"
+        assert '_has_shared_table("killer_victim_pairs")' not in src, (
+            "Le guard _has_shared_table('killer_victim_pairs') doit être supprimé"
+        )
 
     def test_load_top_encountered_inline_view(self) -> None:
         """load_top_encountered doit inliner shared.v_killer_victim_full."""
@@ -262,9 +262,9 @@ class TestMatchQueriesV6:
     def test_get_match_table_name_absent(self) -> None:
         from src.data.repositories._match_queries import MatchQueriesMixin
 
-        assert not hasattr(
-            MatchQueriesMixin, "_get_match_table_name"
-        ), "_get_match_table_name doit être supprimée (Ph-2)"
+        assert not hasattr(MatchQueriesMixin, "_get_match_table_name"), (
+            "_get_match_table_name doit être supprimée (Ph-2)"
+        )
 
     def test_get_match_source_no_information_schema(self) -> None:
         """_get_match_source ne doit plus scanner information_schema."""
@@ -370,9 +370,9 @@ class TestLegacyCompatV6:
     def test_collect_xuids_local_absent(self) -> None:
         from src.data.repositories._legacy_compat import LegacyCompatMixin
 
-        assert not hasattr(
-            LegacyCompatMixin, "_collect_xuids_local"
-        ), "_collect_xuids_local doit être supprimée (Ph-3)"
+        assert not hasattr(LegacyCompatMixin, "_collect_xuids_local"), (
+            "_collect_xuids_local doit être supprimée (Ph-3)"
+        )
 
     def test_list_other_player_xuids_no_local_tables(self) -> None:
         """list_other_player_xuids ne doit plus interroger les tables locales supprimées."""

@@ -205,7 +205,7 @@ app_settings.json                  # Paramètres app
 | Document | Lien |
 |----------|------|
 | Installation | [INSTALL.md](INSTALL.md) |
-| Architecture v5 | [ARCHITECTURE_V5.md](ARCHITECTURE_V5.md) |
+| Architecture v6 | [ARCHITECTURE_V6.md](ARCHITECTURE_V6.md) |
 | Migration v5 | [../archive/MIGRATION_V4_TO_V5.md](../archive/MIGRATION_V4_TO_V5.md) |
 | Nettoyage v5 | [../archive/CLEANUP_V5.md](../archive/CLEANUP_V5.md) |
 | Synchronisation | [SYNC_GUIDE.md](SYNC_GUIDE.md) |

@@ -85,8 +85,8 @@ def _get_project_root() -> Path:
 
 
 def _get_shared_path() -> Path:
-    """Retourne le chemin vers shared_matches.duckdb."""
-    return _get_project_root() / "data" / "warehouse" / "shared_matches.duckdb"
+    """Retourne le chemin vers shared_matches_v2.duckdb."""
+    return _get_project_root() / "data" / "warehouse" / "shared_matches_v2.duckdb"
 
 
 def _get_profiles() -> dict:
@@ -126,7 +126,7 @@ def migrate_shared(dry_run: bool = False) -> dict[str, int]:
     """
     shared_path = _get_shared_path()
     if not shared_path.exists():
-        logger.error("shared_matches.duckdb introuvable : %s", shared_path)
+        logger.error("shared_matches_v2.duckdb introuvable : %s", shared_path)
         return {"added": 0, "skipped": 0, "errors": 1}
 
     conn = duckdb.connect(str(shared_path), read_only=dry_run)
@@ -488,7 +488,7 @@ def verify_migration() -> bool:
     """Vérifie que la migration est complète."""
     shared_path = _get_shared_path()
     if not shared_path.exists():
-        logger.error("shared_matches.duckdb introuvable")
+        logger.error("shared_matches_v2.duckdb introuvable")
         return False
 
     conn = duckdb.connect(str(shared_path), read_only=True)

@@ -53,6 +53,7 @@ def _make_player_matches(maps: list[str], outcomes: list[int] | None = None) -> 
         {
             "match_id": [f"m{i}" for i in range(n)],
             "map_name": maps,
+            "map_ui": maps,
             "start_time": [start + timedelta(hours=i) for i in range(n)],
             "outcome": outcomes,
             "kills": [10] * n,

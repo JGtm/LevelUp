@@ -59,7 +59,7 @@ _instances_lock = threading.Lock()
 
 # ---------------------------------------------------------------------------
 # Flag global de mode sync
-# Lorsqu'actif, DuckDBRepository ne tente PAS d'attacher shared_matches.duckdb.
+# Lorsqu'actif, DuckDBRepository ne tente PAS d'attacher shared_matches_v2.duckdb.
 # Le DuckDBSyncEngine ouvre cette base en R/W (connexion directe) ; DuckDB
 # interdit qu'un même fichier soit ouvert sous deux noms différents dans le
 # même processus. Le flag empêche tout conflit avec les threads Streamlit.
@@ -70,7 +70,7 @@ _sync_mode = threading.Event()
 def begin_sync_mode() -> None:
     """Active le mode sync : les DuckDBRepository n'attacheront plus shared_matches.
 
-    À appeler avant que le DuckDBSyncEngine ouvre shared_matches.duckdb en R/W.
+    À appeler avant que le DuckDBSyncEngine ouvre shared_matches_v2.duckdb en R/W.
     """
     _sync_mode.set()
     logger.debug("begin_sync_mode: ATTACH shared_matches suspendu")
@@ -132,7 +132,7 @@ def release_db_connections(db_path: str | Path) -> int:
 def release_all_db_connections() -> int:
     """Ferme toutes les connexions DuckDBRepository actives (tous joueurs).
 
-    Nécessaire avant d'ouvrir shared_matches.duckdb directement (ex. sync),
+    Nécessaire avant d'ouvrir shared_matches_v2.duckdb directement (ex. sync),
     car DuckDB interdit qu'un même fichier soit utilisé sous deux noms différents
     dans le même processus.
 
@@ -192,7 +192,7 @@ class DuckDBRepository(
             player_db_path: Chemin vers stats.duckdb du joueur
             xuid: XUID du joueur
             metadata_db_path: Chemin vers metadata.duckdb (auto-détecté si None)
-            shared_db_path: Chemin vers shared_matches.duckdb (auto-détecté si None)
+            shared_db_path: Chemin vers shared_matches_v2.duckdb (auto-détecté si None)
             gamertag: Gamertag du joueur (optionnel, pour logging)
             read_only: Si True, connexion en lecture seule
             memory_limit: Limite mémoire DuckDB
@@ -210,7 +210,7 @@ class DuckDBRepository(
         else:
             self._metadata_db_path = Path(metadata_db_path)
 
-        # Auto-détection du chemin shared_matches.duckdb (v5/v6)
+        # Auto-détection du chemin shared_matches_v2.duckdb (v5/v6)
         if shared_db_path is None:
             from src.utils.paths import get_shared_matches_path, get_shared_matches_path_from_player
 
@@ -257,7 +257,7 @@ class DuckDBRepository(
 
     @property
     def has_shared(self) -> bool:
-        """Indique si shared_matches.duckdb est attaché et disponible."""
+        """Indique si shared_matches_v2.duckdb est attaché et disponible."""
         return "shared" in self._attached_dbs
 
     def _get_connection(self) -> duckdb.DuckDBPyConnection:  # noqa: C901, PLR0912
@@ -366,11 +366,11 @@ class DuckDBRepository(
             self._attached_dbs.add("meta")
 
     def _attach_shared(self, attached_db_names: set[str]) -> None:
-        """Attache shared_matches.duckdb en lecture seule si possible."""
+        """Attache shared_matches_v2.duckdb en lecture seule si possible."""
         if self._shared_db_path.exists() and "shared" not in attached_db_names:
             if _sync_mode.is_set():
                 logger.debug(
-                    "Sync en cours : ATTACH shared_matches.duckdb différé pour cette instance"
+                    "Sync en cours : ATTACH shared_matches_v2.duckdb différé pour cette instance"
                 )
                 return
             try:
@@ -384,16 +384,16 @@ class DuckDBRepository(
                     for k in ("already exists", "unique file handle conflict", "already attached")
                 ):
                     logger.debug(
-                        "shared_matches.duckdb conflit de handle lors de l'ATTACH "
+                        "shared_matches_v2.duckdb conflit de handle lors de l'ATTACH "
                         "(sync probablement en cours) — shared non disponible"
                     )
                 else:
-                    logger.warning("Impossible d'attacher shared_matches.duckdb: %s", e)
+                    logger.warning("Impossible d'attacher shared_matches_v2.duckdb: %s", e)
         elif "shared" in attached_db_names:
             self._attached_dbs.add("shared")
 
     def _try_reattach_shared(self) -> None:
-        """Tente de ré-attacher shared_matches.duckdb après une période sync_mode."""
+        """Tente de ré-attacher shared_matches_v2.duckdb après une période sync_mode."""
         try:
             self._connection.execute(f"ATTACH '{self._shared_db_path}' AS shared (READ_ONLY)")
             self._attached_dbs.add("shared")

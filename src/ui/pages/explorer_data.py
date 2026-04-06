@@ -32,7 +32,7 @@ def load_is_with_friends(db_path: str, xuid: str, match_ids: list[str]) -> dict[
 
 
 def get_all_gamertags(db_path: str, xuid: str) -> list[str]:
-    """Retourne tous les gamertags connus depuis shared_matches.duckdb.
+    """Retourne tous les gamertags connus depuis shared_matches_v2.duckdb.
 
     Args:
         db_path: Chemin vers stats.duckdb du joueur.
@@ -49,7 +49,7 @@ def get_all_gamertags(db_path: str, xuid: str) -> list[str]:
 
 
 def resolve_gamertag_to_xuid(db_path: str, xuid: str, gamertag: str) -> str | None:
-    """Résout un gamertag exact en XUID via shared_matches.duckdb.
+    """Résout un gamertag exact en XUID via shared_matches_v2.duckdb.
 
     Args:
         db_path: Chemin vers stats.duckdb du joueur.

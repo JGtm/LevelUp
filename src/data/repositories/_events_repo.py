@@ -1,5 +1,5 @@
 """
-Mixin pour le chargement des highlight events depuis shared_matches.duckdb.
+Mixin pour le chargement des highlight events depuis shared_matches_v2.duckdb.
 
 Regroupe les méthodes d'événements extraites de DuckDBRepository :
 - load_first_event_times
@@ -45,15 +45,33 @@ class EventsMixin:
 
         # Lecture depuis shared.highlight_events (xuid = le joueur de l'event)
         # Note v5.1 : xuid est le killer pour 'kill', la victime pour 'death'
+        # Priorité : film_match_start_ms (calibré filmshell, même référentiel)
+        # Fallback  : (duration - playable_duration) * 1000 (estimation API)
         try:
             result = conn.execute(
                 f"""
-                SELECT match_id, MIN(time_ms) as first_time
-                FROM shared.highlight_events
-                WHERE match_id IN ({placeholders})
-                  AND event_type IN ({event_placeholders})
-                  AND xuid = ?
-                GROUP BY match_id
+                SELECT
+                    e.match_id,
+                    GREATEST(
+                        MIN(e.time_ms)
+                        - COALESCE(
+                            ANY_VALUE(r.film_match_start_ms),
+                            GREATEST(
+                                (COALESCE(ANY_VALUE(r.duration_seconds), 0)
+                                 - COALESCE(ANY_VALUE(r.playable_duration_seconds),
+                                            ANY_VALUE(r.duration_seconds), 0))
+                                * 1000,
+                                0
+                            )
+                        ),
+                        0
+                    ) AS first_time
+                FROM shared.highlight_events e
+                JOIN shared.match_registry r ON r.match_id = e.match_id
+                WHERE e.match_id IN ({placeholders})
+                  AND e.event_type IN ({event_placeholders})
+                  AND e.xuid = ?
+                GROUP BY e.match_id
                 """,
                 [*match_ids, *event_variants, self._xuid],
             )
@@ -109,4 +127,50 @@ class EventsMixin:
             return [dict(zip(columns, row, strict=False)) for row in result.fetchall()]
         except Exception as e:
             logger.debug("Erreur load_highlight_events shared: %s", e)
+            return []
+
+    def load_kill_timing_for_matches(
+        self,
+        match_ids: list[str],
+        xuids: list[str] | None = None,
+    ) -> list[dict[str, Any]]:
+        """Charge les timestamps de kills pour plusieurs matchs.
+
+        Args:
+            match_ids: Liste des IDs de matchs.
+            xuids: Si fourni, filtre sur ces xuids (sinon tous les joueurs).
+
+        Returns:
+            Liste de dicts {match_id, time_ms, xuid}.
+        """
+        if not match_ids:
+            return []
+
+        conn = self._get_connection()
+        placeholders = ", ".join(["?" for _ in match_ids])
+
+        xuid_clause = ""
+        params: list[Any] = list(match_ids)
+        if xuids:
+            xuid_placeholders = ", ".join(["?" for _ in xuids])
+            xuid_clause = f" AND he.xuid IN ({xuid_placeholders})"
+            params.extend(xuids)
+
+        try:
+            result = conn.execute(
+                f"""
+                SELECT he.match_id, he.time_ms, he.xuid
+                FROM shared.highlight_events he
+                WHERE he.match_id IN ({placeholders})
+                  AND he.event_type IN ('kill', 'Kill')
+                  AND he.time_ms IS NOT NULL
+                  {xuid_clause}
+                ORDER BY he.match_id, he.time_ms
+                """,
+                params,
+            )
+            columns = ["match_id", "time_ms", "xuid"]
+            return [dict(zip(columns, row, strict=False)) for row in result.fetchall()]
+        except Exception as e:
+            logger.debug("Erreur load_kill_timing_for_matches: %s", e)
             return []

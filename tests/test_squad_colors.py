@@ -152,7 +152,6 @@ class TestPlotTrioMetric4Players:
             d_f3=sample_df.copy(),
             metric="kills",
             names=("P1", "P2", "P3", "P4"),
-            title="Test 4 joueurs",
             y_title="Kills",
         )
         assert isinstance(fig, go.Figure)
@@ -167,7 +166,6 @@ class TestPlotTrioMetric4Players:
             sample_df.copy(),
             metric="kills",
             names=("P1", "P2", "P3"),
-            title="3 joueurs",
             y_title="Kills",
         )
         fig4 = plot_trio_metric(
@@ -177,7 +175,6 @@ class TestPlotTrioMetric4Players:
             d_f3=sample_df.copy(),
             metric="kills",
             names=("P1", "P2", "P3", "P4"),
-            title="4 joueurs",
             y_title="Kills",
         )
         # 4 joueurs → 2 traces par joueur (bar + ligne) + 1 moyenne = 9 traces
@@ -195,7 +192,6 @@ class TestPlotTrioMetric4Players:
             d_f3=sample_df.copy(),
             metric="kills",
             names=("P1", "P2", "P3", "P4"),
-            title="Test",
             y_title="Kills",
         )
         bars = [t for t in fig.data if isinstance(t, go.Bar)]
@@ -212,7 +208,6 @@ class TestPlotTrioMetric4Players:
             sample_df.copy(),
             metric="kills",
             names=("P1", "P2", "P3"),
-            title="Test couleurs",
             y_title="Kills",
             colors_by_name=custom_colors,
         )
@@ -243,7 +238,6 @@ class TestPlotTrioMetric4Players:
             d_f3=sample_df.copy(),
             metric="kills",
             names=("P1", "P2", "P3", "P4"),
-            title="Test 4 couleurs",
             y_title="Kills",
             colors_by_name=custom_colors,
         )
@@ -268,7 +262,6 @@ class TestPlotTrioMetric4Players:
             d_f3=None,
             metric="kills",
             names=("P1", "P2", "P3"),
-            title="3 joueurs (d_f3=None)",
             y_title="Kills",
         )
         bars = [t for t in fig.data if isinstance(t, go.Bar)]

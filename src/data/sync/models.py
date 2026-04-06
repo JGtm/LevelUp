@@ -173,7 +173,7 @@ class MedalEarnedRow:
 
 @dataclass
 class SharedMedalEarnedRow:
-    """Ligne pour la table medals_earned dans shared_matches.duckdb (v5).
+    """Ligne pour la table medals_earned dans shared_matches_v2.duckdb (v5).
 
     Identique à MedalEarnedRow mais avec colonne xuid obligatoire
     pour identifier quel joueur a obtenu la médaille.

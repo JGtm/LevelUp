@@ -63,6 +63,33 @@ class SK:
     MIN_MATCHES_MAPS_FRIENDS: str = "min_matches_maps_friends"
 
     # ------------------------------------------------------------------
+    # Filtres cascade (multi-select maps/modes/playlists)
+    # ------------------------------------------------------------------
+    FILTER_MAPS: str = "filter_maps"
+    FILTER_MODES: str = "filter_modes"
+    FILTER_PLAYLISTS: str = "filter_playlists"
+    FILTER_EXPERIENCE_TYPES: str = "filter_experience_types"
+    FILTER_MODE_SHADOW: str = "_filter_mode_shadow"
+    PENDING_FILTER_MODE: str = "_pending_filter_mode"
+    SHOW_DEBUG_INFO: str = "_show_debug_info"
+
+    # ------------------------------------------------------------------
+    # Sessions filtrées (solo / escouade)
+    # ------------------------------------------------------------------
+    PICKED_SESSION_LABEL: str = "picked_session_label"
+    PICKED_SOLO_SESSION_LABEL: str = "picked_solo_session_label"
+    PICKED_SQUAD_SESSION_LABEL: str = "picked_squad_session_label"
+    TEAMMATES_PICKED_LABELS: str = "teammates_picked_labels"
+    PICKED_SESSIONS_SHADOW: str = "_picked_sessions_shadow"
+
+    # ------------------------------------------------------------------
+    # Seuils automatiques et initialisation session
+    # ------------------------------------------------------------------
+    MIN_MATCHES_MAPS_AUTO: str = "_min_matches_maps_auto"
+    MIN_MATCHES_MAPS_FRIENDS_AUTO: str = "_min_matches_maps_friends_auto"
+    APP_SESSION_INIT_DONE: str = "_app_session_init_done"
+
+    # ------------------------------------------------------------------
     # OAuth Xbox — Device Code Flow
     # ------------------------------------------------------------------
     XBOX_OAUTH_RESULT: str = "_xbox_oauth_result"

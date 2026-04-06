@@ -89,7 +89,7 @@ def app_partial_flow_db(tmp_path):
         conn.close()
 
     # ===== Shared DB (v6 — requis par DuckDBRepository) =====
-    shared_path = tmp_path / "shared_matches.duckdb"
+    shared_path = tmp_path / "shared_matches_v2.duckdb"
     conn_shared = duckdb.connect(str(shared_path))
     try:
         conn_shared.execute("""
@@ -156,7 +156,11 @@ def app_partial_flow_db(tmp_path):
                    r.team_0_score AS my_team_score, r.team_1_score AS enemy_team_score,
                    NULL AS team_mmr, NULL AS enemy_mmr,
                    COALESCE(p.score, 0) AS personal_score,
-                   FALSE AS is_firefight, FALSE AS is_ranked
+                   FALSE AS is_firefight, FALSE AS is_ranked,
+                   NULL::VARCHAR AS map_name_fr,
+                   NULL::VARCHAR AS playlist_name_fr,
+                   NULL::VARCHAR AS pair_name_fr,
+                   NULL::VARCHAR AS game_variant_name_fr
             FROM match_registry r
             JOIN match_participants p ON r.match_id = p.match_id
         """)
@@ -168,7 +172,11 @@ def app_partial_flow_db(tmp_path):
 
 def test_app_partial_data_to_chart_flow_graceful(app_partial_flow_db) -> None:
     """Le flux app doit rester fonctionnel avec des données partielles."""
-    from src.analysis.friends_impact import build_impact_matrix, get_all_impact_events
+    from src.analysis.friends_impact import (
+        ImpactEventSets,
+        build_impact_matrix,
+        get_all_impact_events,
+    )
     from src.data.repositories.duckdb_repo import DuckDBRepository
     from src.visualization.distributions import plot_win_ratio_heatmap
     from src.visualization.friends_impact_heatmap import plot_friends_impact_heatmap
@@ -234,12 +242,15 @@ def test_app_partial_data_to_chart_flow_graceful(app_partial_flow_db) -> None:
 
         # Le score peut être vide en données partielles, mais le pipeline ne doit pas casser
         gamertags = sorted(scores.keys()) or ["Me"]
+        events = ImpactEventSets(
+            first_bloods=first_bloods,
+            clutch_finishers=clutch_finishers,
+            last_casualties=last_casualties,
+            last_group_kills=last_group_kills,
+            first_group_deaths=first_group_deaths,
+        )
         impact_matrix = build_impact_matrix(
-            first_bloods,
-            clutch_finishers,
-            last_casualties,
-            last_group_kills,
-            first_group_deaths,
+            events,
             match_ids=["m1", "m2"],
             gamertags=gamertags,
         )

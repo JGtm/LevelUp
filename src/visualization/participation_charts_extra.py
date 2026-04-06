@@ -69,7 +69,6 @@ def get_participation_colors() -> dict[str, str]:
 def create_participation_indicator(
     df: pl.DataFrame,
     *,
-    title: str | None = None,
     lang: str = "fr",
 ) -> go.Figure:
     """Indicateur multi-valeurs de participation.
@@ -83,7 +82,6 @@ def create_participation_indicator(
     Returns:
         Figure Plotly avec indicateurs.
     """
-    title = title or viz_t("title_participation", lang)
     import polars as pl
 
     # Agréger par catégorie
@@ -158,7 +156,6 @@ def create_participation_indicator(
     )
 
     fig.update_layout(
-        title={"text": title, "x": 0.5},
         height=150,
         margin={"t": 60, "b": 20, "l": 20, "r": 20},
     )
@@ -174,7 +171,6 @@ def create_participation_indicator(
 def plot_participation_sunburst(
     df: pl.DataFrame,
     *,
-    title: str | None = None,
     lang: str = "fr",
 ) -> go.Figure:
     """Sunburst chart hiérarchique catégorie → action.
@@ -186,7 +182,6 @@ def plot_participation_sunburst(
     Returns:
         Figure Plotly.
     """
-    title = title or viz_t("title_participation_detail", lang)
     cat_labels = get_category_labels(lang)
     import polars as pl
 
@@ -243,9 +238,7 @@ def plot_participation_sunburst(
         hovertemplate="<b>%{label}</b><br>%{value:,.0f} pts<extra></extra>",
     )
 
-    fig.update_layout(
-        title={"text": title, "x": 0.5},
-    )
+    fig.update_layout()
 
     return apply_halo_plot_style(fig)
 
