@@ -170,7 +170,7 @@ async def download_spawn_chunks(
 
         if cache_path.exists():
             data = cache_path.read_bytes()
-            print(f"  [{match_id[:8]}] CACHE chunk_{ch.index:02d}.bin  ({len(data)//1024}KB)")
+            print(f"  [{match_id[:8]}] CACHE chunk_{ch.index:02d}.bin  ({len(data) // 1024}KB)")
             result[ch.index] = (data, start_ms, dur_ms)
             continue
 
@@ -185,7 +185,7 @@ async def download_spawn_chunks(
         data = await api.download_film_chunk(url)
         if data is not None:
             cache_path.write_bytes(data)
-            print(f"             -> {len(data)//1024}KB ok")
+            print(f"             -> {len(data) // 1024}KB ok")
             result[ch.index] = (data, start_ms, dur_ms)
         else:
             print(f"             -> ECHEC")
@@ -212,7 +212,7 @@ def scan_first_movements(
     Returns:
         {player_index: {"timestamp_ms", "chunk", "b5", "b9", "y_raw", "x_raw"}}
     """
-    spawn_sig: dict[int, bytes] = {}   # pi -> bytes signature du frame de spawn
+    spawn_sig: dict[int, bytes] = {}  # pi -> bytes signature du frame de spawn
     first_change: dict[int, dict] = {}
 
     for chunk_idx in sorted(chunks):
@@ -329,7 +329,9 @@ def find_densest_spawn_cluster(
 
     t_end = best_start_ts + window_ms
     cluster = [(pi, fm) for pi, fm in sorted_items if best_start_ts <= fm["timestamp_ms"] <= t_end]
-    outside = [(pi, fm) for pi, fm in sorted_items if not (best_start_ts <= fm["timestamp_ms"] <= t_end)]
+    outside = [
+        (pi, fm) for pi, fm in sorted_items if not (best_start_ts <= fm["timestamp_ms"] <= t_end)
+    ]
 
     earliest = cluster[0][1]["timestamp_ms"] if cluster else 0.0
     for _, fm in cluster:
@@ -352,19 +354,33 @@ def _print_match_report(match_id: str, first_movements: dict[int, dict]) -> None
     def _coord(v: int | None) -> str:
         return f"{v:>6}" if v is not None else "     ?"
 
-    print(f"\n  {'PI':>3}  {'1er mouvement':>14}  {'Retard':>8}  {'Y_raw':>6}  {'X_raw':>6}  b5  b9   Statut")
-    print(f"  {'-'*3}  {'-'*14}  {'-'*8}  {'-'*6}  {'-'*6}  --  --   ------")
+    print(
+        f"\n  {'PI':>3}  {'1er mouvement':>14}  {'Retard':>8}  {'Y_raw':>6}  {'X_raw':>6}  b5  b9   Statut"
+    )
+    print(f"  {'-' * 3}  {'-' * 14}  {'-' * 8}  {'-' * 6}  {'-' * 6}  --  --   ------")
 
     for pi, fm in all_sorted:
         ts = _fmt_ms(fm["timestamp_ms"])
         delay_ms = fm["timestamp_ms"] - earliest
-        delay = "REF" if delay_ms == 0 else (f"+{delay_ms:.0f}ms" if delay_ms < 10_000 else f"+{delay_ms/1000:.1f}s")
-        statut = f"CLUSTER (chunk_{fm['chunk']:02d})" if pi in cluster_pis else f"lobby?  (chunk_{fm['chunk']:02d})"
-        print(f"  {pi:>3}  {ts:>14}  {delay:>8}  {_coord(fm['y_raw'])}  {_coord(fm['x_raw'])}  {fm['b5']:02X}  {fm['b9']:02X}   {statut}")
+        delay = (
+            "REF"
+            if delay_ms == 0
+            else (f"+{delay_ms:.0f}ms" if delay_ms < 10_000 else f"+{delay_ms / 1000:.1f}s")
+        )
+        statut = (
+            f"CLUSTER (chunk_{fm['chunk']:02d})"
+            if pi in cluster_pis
+            else f"lobby?  (chunk_{fm['chunk']:02d})"
+        )
+        print(
+            f"  {pi:>3}  {ts:>14}  {delay:>8}  {_coord(fm['y_raw'])}  {_coord(fm['x_raw'])}  {fm['b5']:02X}  {fm['b9']:02X}   {statut}"
+        )
 
     if cluster:
         ref_ts = cluster[0][1]["timestamp_ms"]
-        print(f"\n  Cluster spawn : {_fmt_ms(ref_ts)}  ({len(cluster)} joueur(s) dans cluster, {len(outside)} hors cluster)")
+        print(
+            f"\n  Cluster spawn : {_fmt_ms(ref_ts)}  ({len(cluster)} joueur(s) dans cluster, {len(outside)} hors cluster)"
+        )
     else:
         print("\n  Aucun cluster de spawn trouvé.")
 
@@ -484,13 +500,13 @@ def _print_correlation_report(corr: dict, estimate_ms: float) -> None:
 
     print(
         f"  [CORR {sign}] {n} events — "
-        f"gap min={gap_min/1000:+.2f}s  med={gap_median/1000:+.2f}s  max={gap_max/1000:+.2f}s"
+        f"gap min={gap_min / 1000:+.2f}s  med={gap_median / 1000:+.2f}s  max={gap_max / 1000:+.2f}s"
         + (f"  ({n_neg} event(s) AVANT l'estimation!)" if n_neg else "")
     )
     if verdict == "suspect" and gap_min > _CORRELATION_WARN_GAP_MS:
         print(
-            f"  [CORR] Premier event a +{gap_min/1000:.0f}s apres l'estimate "
-            f"({estimate_ms/1000:.1f}s) — le match a peut-etre demarre plus tot."
+            f"  [CORR] Premier event a +{gap_min / 1000:.0f}s apres l'estimate "
+            f"({estimate_ms / 1000:.1f}s) — le match a peut-etre demarre plus tot."
         )
 
 
@@ -551,58 +567,62 @@ async def process_match_adaptive(
         cached_only:  Si True, ne télécharge que depuis le cache local (ni manifest ni blob API).
         dry_run:      Ne pas télécharger, juste vérifier le cache.
     """
-    print(f"\n{'-'*60}")
+    print(f"\n{'-' * 60}")
     print(f"MATCH {match_id}")
-    print(f"{'-'*60}")
+    print(f"{'-' * 60}")
 
     all_chunks: dict[int, tuple[bytes, int, int]] = {}
     next_chunk_idx = 1  # toujours commencer par chunk_01 (baseline)
 
     try:
-      while next_chunk_idx <= max_chunks:
-        new = await download_spawn_chunks(
-            match_id, api, {next_chunk_idx}, dry_run, cached_only=cached_only
-        )
-
-        # Si chunk_01 est introuvable et qu'on n'est pas en mode cached-only,
-        # le film n'existe pas pour ce match (404 API) → inutile d'essayer les
-        # chunks suivants, on sortirait avec le même 404 à chaque itération.
-        if not new and next_chunk_idx == 1 and not cached_only and not dry_run:
-            print(f"  [{match_id[:8]}] Pas de film disponible, skip.")
-            return
-
-        if new:
-            all_chunks.update(new)
-
-        first_movements = scan_first_movements(all_chunks)
-        cluster, _outside = find_densest_spawn_cluster(first_movements)
-
-        # Condition d'arrêt : cluster dense suffisant ET au moins 2 chunks vus,
-        # OU plafond atteint. Le minimum de 2 chunks (0-40s) garantit que les
-        # mouvements de lobby (chunk_01) et le vrai spawn (chunk_02) sont comparés.
-        enough = len(cluster) >= min_players and next_chunk_idx >= 2
-        at_limit = next_chunk_idx >= max_chunks
-
-        if not first_movements and at_limit:
-            print("  Aucun position frame humain trouve apres", max_chunks, "chunks.")
-            return
-
-        if enough or at_limit:
-            reason = f"{len(cluster)} dans cluster" if enough else f"limite {max_chunks} chunks atteinte"
-            chunks_span_s = next_chunk_idx * 20  # 20s par chunk REPLICATION_DATA
-            print(
-                f"  Stop a chunk_{next_chunk_idx:02d}"
-                f" ([0-{chunks_span_s}s]) — {reason}"
-                f" — {len(first_movements)} joueur(s) total"
+        while next_chunk_idx <= max_chunks:
+            new = await download_spawn_chunks(
+                match_id, api, {next_chunk_idx}, dry_run, cached_only=cached_only
             )
-            break
 
-        # Pas assez → ajouter le chunk suivant
-        print(
-            f"  chunk_{next_chunk_idx:02d} traite — {len(cluster)}/{min_players} dans cluster,"
-            f" telechargement chunk_{next_chunk_idx + 1:02d}..."
-        )
-        next_chunk_idx += 1
+            # Si chunk_01 est introuvable et qu'on n'est pas en mode cached-only,
+            # le film n'existe pas pour ce match (404 API) → inutile d'essayer les
+            # chunks suivants, on sortirait avec le même 404 à chaque itération.
+            if not new and next_chunk_idx == 1 and not cached_only and not dry_run:
+                print(f"  [{match_id[:8]}] Pas de film disponible, skip.")
+                return
+
+            if new:
+                all_chunks.update(new)
+
+            first_movements = scan_first_movements(all_chunks)
+            cluster, _outside = find_densest_spawn_cluster(first_movements)
+
+            # Condition d'arrêt : cluster dense suffisant ET au moins 2 chunks vus,
+            # OU plafond atteint. Le minimum de 2 chunks (0-40s) garantit que les
+            # mouvements de lobby (chunk_01) et le vrai spawn (chunk_02) sont comparés.
+            enough = len(cluster) >= min_players and next_chunk_idx >= 2
+            at_limit = next_chunk_idx >= max_chunks
+
+            if not first_movements and at_limit:
+                print("  Aucun position frame humain trouve apres", max_chunks, "chunks.")
+                return
+
+            if enough or at_limit:
+                reason = (
+                    f"{len(cluster)} dans cluster"
+                    if enough
+                    else f"limite {max_chunks} chunks atteinte"
+                )
+                chunks_span_s = next_chunk_idx * 20  # 20s par chunk REPLICATION_DATA
+                print(
+                    f"  Stop a chunk_{next_chunk_idx:02d}"
+                    f" ([0-{chunks_span_s}s]) — {reason}"
+                    f" — {len(first_movements)} joueur(s) total"
+                )
+                break
+
+            # Pas assez → ajouter le chunk suivant
+            print(
+                f"  chunk_{next_chunk_idx:02d} traite — {len(cluster)}/{min_players} dans cluster,"
+                f" telechargement chunk_{next_chunk_idx + 1:02d}..."
+            )
+            next_chunk_idx += 1
 
     except Exception as exc:  # noqa: BLE001
         print(f"  [{match_id[:8]}] ERREUR inattendue: {exc}")
@@ -652,7 +672,9 @@ async def process_match_adaptive(
                         _print_correlation_report(corr, estimate_ms)
                         print(f"  [CORR] Estimation corrigee -> {estimate_ms / 1000:.1f}s")
                     else:
-                        print(f"  [CORR] Second passage sans amélioration (estimate2={estimate2/1000:.1f}s)")
+                        print(
+                            f"  [CORR] Second passage sans amélioration (estimate2={estimate2 / 1000:.1f}s)"
+                        )
                 else:
                     print(
                         f"  [CORR] Second passage insuffisant : {len(refs2)}/{min_players} refs"
@@ -687,7 +709,9 @@ async def main(args: argparse.Namespace) -> None:
 
     print(f"Matchs         : {len(match_ids)}")
     print(f"Min joueurs    : {args.min_players}  (refs non-AFK avant arret)")
-    print(f"Max chunks     : {args.max_chunks}  (=> couverture max {args.max_chunks * 20}s du film)")
+    print(
+        f"Max chunks     : {args.max_chunks}  (=> couverture max {args.max_chunks * 20}s du film)"
+    )
     print(f"Corr events    : {args.corr_events}  (kill/death API pour validation)")
     print(f"Write DB       : {args.write_db}")
     if args.dry_run:

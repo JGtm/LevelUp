@@ -80,17 +80,22 @@ class TestAddRecordShapes:
         """Une trace fantôme par joueur ayant un record non-None."""
         fig = self._make_fig()
         add_record_shapes(
-            fig, xs=[0, 1, 2], records={"Alice": 15.0},
-            player_names=["Alice"], n_players=1,
+            fig,
+            xs=[0, 1, 2],
+            records={"Alice": 15.0},
+            player_names=["Alice"],
+            n_players=1,
         )
         assert len(self._ghost_traces(fig)) == 1
 
     def test_two_players_two_traces(self):
         fig = self._make_fig()
         add_record_shapes(
-            fig, xs=[0, 1],
+            fig,
+            xs=[0, 1],
             records={"Alice": 10.0, "Bob": 20.0},
-            player_names=["Alice", "Bob"], n_players=2,
+            player_names=["Alice", "Bob"],
+            n_players=2,
         )
         assert len(self._ghost_traces(fig)) == 2
 
@@ -107,7 +112,11 @@ class TestAddRecordShapes:
         """is_negative=True → valeurs y négatives."""
         fig = self._make_fig()
         add_record_shapes(
-            fig, xs=[0], records={"Alice": 3.0}, player_names=["Alice"], n_players=1,
+            fig,
+            xs=[0],
+            records={"Alice": 3.0},
+            player_names=["Alice"],
+            n_players=1,
             is_negative=True,
         )
         trace = self._ghost_traces(fig)[0]
@@ -116,18 +125,14 @@ class TestAddRecordShapes:
     def test_uses_pattern_shape(self):
         """La trace fantôme utilise un hachurage."""
         fig = self._make_fig()
-        add_record_shapes(
-            fig, xs=[0], records={"Alice": 5.0}, player_names=["Alice"], n_players=1
-        )
+        add_record_shapes(fig, xs=[0], records={"Alice": 5.0}, player_names=["Alice"], n_players=1)
         trace = self._ghost_traces(fig)[0]
         assert trace.marker.pattern.shape == "/"
 
     def test_border_color_default(self):
         """Sans colors_by_name, la bordure est blanche (#ffffff)."""
         fig = self._make_fig()
-        add_record_shapes(
-            fig, xs=[0], records={"Alice": 5.0}, player_names=["Alice"], n_players=1
-        )
+        add_record_shapes(fig, xs=[0], records={"Alice": 5.0}, player_names=["Alice"], n_players=1)
         trace = self._ghost_traces(fig)[0]
         assert trace.marker.line.color == "#ffffff"
 
@@ -135,7 +140,11 @@ class TestAddRecordShapes:
         """Avec colors_by_name, la bordure et le hachurage utilisent la couleur du joueur."""
         fig = self._make_fig()
         add_record_shapes(
-            fig, xs=[0], records={"Alice": 5.0}, player_names=["Alice"], n_players=1,
+            fig,
+            xs=[0],
+            records={"Alice": 5.0},
+            player_names=["Alice"],
+            n_players=1,
             colors_by_name={"Alice": "#56B4E9"},
         )
         trace = self._ghost_traces(fig)[0]
@@ -145,9 +154,7 @@ class TestAddRecordShapes:
     def test_offsetgroup_equals_player_name(self):
         """offsetgroup=name pour que la barre fantôme s'aligne sur la barre réelle."""
         fig = self._make_fig()
-        add_record_shapes(
-            fig, xs=[0], records={"Alice": 5.0}, player_names=["Alice"], n_players=1
-        )
+        add_record_shapes(fig, xs=[0], records={"Alice": 5.0}, player_names=["Alice"], n_players=1)
         trace = self._ghost_traces(fig)[0]
         assert trace.offsetgroup == "Alice"
 
@@ -155,8 +162,11 @@ class TestAddRecordShapes:
         """Bob absent de records → aucune trace pour Bob."""
         fig = self._make_fig()
         add_record_shapes(
-            fig, xs=[0], records={"Alice": 10.0},
-            player_names=["Alice", "Bob"], n_players=2,
+            fig,
+            xs=[0],
+            records={"Alice": 10.0},
+            player_names=["Alice", "Bob"],
+            n_players=2,
         )
         assert len(self._ghost_traces(fig)) == 1
         assert self._ghost_traces(fig)[0].offsetgroup == "Alice"
@@ -164,9 +174,7 @@ class TestAddRecordShapes:
     def test_empty_xs(self):
         """xs vide → y=[] → aucune trace ajoutée."""
         fig = self._make_fig()
-        add_record_shapes(
-            fig, xs=[], records={"Alice": 10.0}, player_names=["Alice"], n_players=1
-        )
+        add_record_shapes(fig, xs=[], records={"Alice": 10.0}, player_names=["Alice"], n_players=1)
         assert len(self._ghost_traces(fig)) == 0
 
 
@@ -181,23 +189,17 @@ class TestAddOverlayRecordShapes:
 
     def test_no_shape_if_record_none(self):
         fig = self._make_fig()
-        add_overlay_record_shapes(
-            fig, xs=[0], records={"Alice": None}, player_names=["Alice"]
-        )
+        add_overlay_record_shapes(fig, xs=[0], records={"Alice": None}, player_names=["Alice"])
         assert len(fig.layout.shapes) == 0
 
     def test_one_shape_per_x(self):
         fig = self._make_fig()
-        add_overlay_record_shapes(
-            fig, xs=[0, 1, 2], records={"Alice": 5.0}, player_names=["Alice"]
-        )
+        add_overlay_record_shapes(fig, xs=[0, 1, 2], records={"Alice": 5.0}, player_names=["Alice"])
         assert len(fig.layout.shapes) == 3
 
     def test_centered_at_x(self):
         fig = self._make_fig()
-        add_overlay_record_shapes(
-            fig, xs=[0], records={"Alice": 5.0}, player_names=["Alice"]
-        )
+        add_overlay_record_shapes(fig, xs=[0], records={"Alice": 5.0}, player_names=["Alice"])
         shape = fig.layout.shapes[0]
         center = (shape.x0 + shape.x1) / 2
         assert center == pytest.approx(0.0)
@@ -205,9 +207,7 @@ class TestAddOverlayRecordShapes:
     def test_shape_y_value(self):
         """La ligne overlay est tracée à la hauteur exacte du record."""
         fig = self._make_fig()
-        add_overlay_record_shapes(
-            fig, xs=[0], records={"Alice": 7.5}, player_names=["Alice"]
-        )
+        add_overlay_record_shapes(fig, xs=[0], records={"Alice": 7.5}, player_names=["Alice"])
         shape = fig.layout.shapes[0]
         assert shape.type == "line"
         assert shape.y0 == pytest.approx(7.5)
@@ -231,7 +231,5 @@ class TestAddOverlayRecordShapes:
     def test_shape_line_color_default(self):
         """Sans colors_by_name, la bordure overlay est blanche (#ffffff)."""
         fig = self._make_fig()
-        add_overlay_record_shapes(
-            fig, xs=[0], records={"Alice": 3.0}, player_names=["Alice"]
-        )
+        add_overlay_record_shapes(fig, xs=[0], records={"Alice": 3.0}, player_names=["Alice"])
         assert fig.layout.shapes[0].line.color == "#ffffff"

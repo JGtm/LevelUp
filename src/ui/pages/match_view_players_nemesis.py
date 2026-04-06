@@ -29,6 +29,7 @@ from src.ui.pages.match_view_players_data import (
 )
 from src.ui.streamlit_modern import PLOTLY_STATIC_CONFIG, fragment_if_available
 from src.utils import parse_xuid_input
+from src.visualization._plot_options import PlotOptions
 
 logger = logging.getLogger(__name__)
 
@@ -152,9 +153,7 @@ def _render_antagonist_chart(  # noqa: PLR0912, PLR0913
                     match_id=match_id,
                     me_xuid=me_xuid,
                     rank_by_xuid=rank_by_xuid,
-                    title=t("mv_killer_victim_title"),
-                    height=400,
-                    lang=get_lang(),
+                    opts=PlotOptions(lang=get_lang()),
                 )
                 render_chart_or_info(
                     fig,

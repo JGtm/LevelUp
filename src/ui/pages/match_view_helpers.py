@@ -433,7 +433,9 @@ def os_card(  # noqa: PLR0913
     title_style_attr = (" style='font-size:" + title_font_size + "'") if title_font_size else ""
     title_html = f"<div class='os-card-title'{title_style_attr}>{t}</div>" if show_title else ""
     st.markdown(
-        "<div class='os-card' style='" + style + "'>"
+        "<div class='os-card' style='"
+        + style
+        + "'>"
         + title_html
         + f"<div class='os-card-kpi'{kpi_style}>{k}</div>"
         + ("" if not s else f"<div class='os-card-sub'{sub_style_attr}>{s}</div>")

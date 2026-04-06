@@ -485,9 +485,9 @@ class TestPolarsOutput:
         df = repo_with_shared.load_matches_as_polars()
         expected_cols = {"match_id", "kills", "deaths", "assists"}
         actual_cols = set(df.columns)
-        assert expected_cols.issubset(
-            actual_cols
-        ), f"Colonnes manquantes : {expected_cols - actual_cols}"
+        assert expected_cols.issubset(actual_cols), (
+            f"Colonnes manquantes : {expected_cols - actual_cols}"
+        )
 
 
 # =============================================================================

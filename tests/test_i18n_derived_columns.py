@@ -84,10 +84,7 @@ class TestResolveMapDisplayNames:
             "CREATE TABLE asset_translations "
             "(asset_id VARCHAR, asset_type VARCHAR, lang VARCHAR, name VARCHAR)"
         )
-        conn.execute(
-            "INSERT INTO asset_translations VALUES "
-            "('uuid-1', 'map', 'fr-FR', 'Aquarius')"
-        )
+        conn.execute("INSERT INTO asset_translations VALUES ('uuid-1', 'map', 'fr-FR', 'Aquarius')")
         conn.close()
 
         fallbacks = {"uuid-1": "Aquarius_EN", "uuid-2": "Unknown_EN"}
@@ -108,8 +105,7 @@ class TestResolveMapDisplayNames:
             "(asset_id VARCHAR, asset_type VARCHAR, lang VARCHAR, name VARCHAR)"
         )
         conn.execute(
-            "INSERT INTO asset_translations VALUES "
-            "('uuid-1', 'map', 'en-US', 'Aquarius EN')"
+            "INSERT INTO asset_translations VALUES ('uuid-1', 'map', 'en-US', 'Aquarius EN')"
         )
         conn.close()
 
@@ -228,9 +224,7 @@ class TestAddDerivedColumnsI18n:
         """Si map_ui est déjà présent dans le DataFrame, il n'est pas recalculé."""
         from src.app._filters_apply import _add_derived_columns
 
-        df = self._make_df(with_map_id=True).with_columns(
-            pl.lit("custom_map_ui").alias("map_ui")
-        )
+        df = self._make_df(with_map_id=True).with_columns(pl.lit("custom_map_ui").alias("map_ui"))
         result = _add_derived_columns(df, self._identity)
         assert all(v == "custom_map_ui" for v in result["map_ui"].to_list())
 

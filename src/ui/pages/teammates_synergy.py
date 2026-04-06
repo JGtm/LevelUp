@@ -139,7 +139,9 @@ def _compute_player_profile(  # noqa: PLR0913
     if is_obj_session:
         # objectifs_raw = objective_score → seuil = somme p80 des matchs objectif
         obj_threshold = sum(
-            per_mode.get(get_mode_family(pn), RADAR_THRESHOLDS_PER_MODE.get(get_mode_family(pn), 800.0))
+            per_mode.get(
+                get_mode_family(pn), RADAR_THRESHOLDS_PER_MODE.get(get_mode_family(pn), 800.0)
+            )
             for pn in pair_names
             if is_objective_mode_from_pair_name(pn)
         )
@@ -153,7 +155,11 @@ def _compute_player_profile(  # noqa: PLR0913
     scaled_th["objectifs"] = max(1.0, obj_threshold)
     logger.debug(
         "radar profil '%s': famille=%s obj_threshold=%.0f (n_matches=%d pair0=%r)",
-        name, get_mode_family(first_pair_name), obj_threshold, n_matches, first_pair_name,
+        name,
+        get_mode_family(first_pair_name),
+        obj_threshold,
+        n_matches,
+        first_pair_name,
     )
     for _key in ("combat", "support", "score"):
         scaled_th[_key] = scaled_th[_key] * n_matches

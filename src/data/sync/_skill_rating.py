@@ -377,16 +377,12 @@ class SkillRatingMixin:
             # existing_states fournit le point de départ correct pour les nouveaux matchs.
             if not force:
                 already_computed = existing_lusr_ids | existing_csr_ids
-                df_matches = df_matches.filter(
-                    ~pl.col("match_id").is_in(already_computed)
-                )
+                df_matches = df_matches.filter(~pl.col("match_id").is_in(already_computed))
                 if df_matches.is_empty():
                     logger.info("batch_compute_lusr : aucun nouveau match à calculer")
                     return 0
                 new_match_ids = set(df_matches["match_id"].to_list())
-                df_participants = df_participants.filter(
-                    pl.col("match_id").is_in(new_match_ids)
-                )
+                df_participants = df_participants.filter(pl.col("match_id").is_in(new_match_ids))
 
             # Calculer les ratings via TrueSkill 2 batch
             ratings_df = compute_skill_ratings_batch(

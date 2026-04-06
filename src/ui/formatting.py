@@ -200,8 +200,16 @@ def format_date_fr(dt_value, lang: str = "fr", compact: bool = False) -> str:
     mois = mois_fr if lang == "fr" else mois_en
 
     if lang == "en":
-        return f"{mois[d.month - 1]} {d.day} {d.year}" if compact else f"{jours[d.weekday()]} {mois[d.month - 1]} {d.day} {d.year}"
-    return f"{d.day} {mois[d.month - 1]} {d.year}" if compact else f"{jours[d.weekday()]} {d.day} {mois[d.month - 1]} {d.year}"
+        return (
+            f"{mois[d.month - 1]} {d.day} {d.year}"
+            if compact
+            else f"{jours[d.weekday()]} {mois[d.month - 1]} {d.day} {d.year}"
+        )
+    return (
+        f"{d.day} {mois[d.month - 1]} {d.year}"
+        if compact
+        else f"{jours[d.weekday()]} {d.day} {mois[d.month - 1]} {d.year}"
+    )
 
 
 def _is_nan(value) -> bool:

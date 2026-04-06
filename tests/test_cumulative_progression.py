@@ -335,9 +335,9 @@ class TestComputeLinearRegressionKd:
         )
         result = compute_linear_regression_kd(df)
         assert "wr_relative_change" in result
-        assert (
-            abs(result["wr_relative_change"]) <= 1.0
-        ), f"wr_relative_change={result['wr_relative_change']} dépasse ±1.0 (±100 pp)"
+        assert abs(result["wr_relative_change"]) <= 1.0, (
+            f"wr_relative_change={result['wr_relative_change']} dépasse ±1.0 (±100 pp)"
+        )
 
     def test_is_significant_seuil_r2(self) -> None:
         """is_significant = True ssi R² ≥ 0.3."""

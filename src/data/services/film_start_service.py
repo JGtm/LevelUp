@@ -72,7 +72,9 @@ class FilmStartService:
             return None
 
         if not _FILM_START_ENABLED:
-            logger.debug("film_start %s : feature désactivée (_FILM_START_ENABLED=False)", match_id[:8])
+            logger.debug(
+                "film_start %s : feature désactivée (_FILM_START_ENABLED=False)", match_id[:8]
+            )
             return None
 
         chunks = await self._load_spawn_chunks(match_id)
@@ -185,4 +187,3 @@ class FilmStartService:
         except Exception as exc:
             logger.debug("film_start _get_first_event_ms %s : %s", match_id[:8], exc)
             return None
-

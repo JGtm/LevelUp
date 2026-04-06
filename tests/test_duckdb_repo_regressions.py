@@ -225,9 +225,9 @@ def test_load_same_team_match_ids_basic(repo_with_data):
     assert isinstance(result, list)
     assert match_id_1 in result, "match_id_1 doit être dans les résultats (même équipe)"
     assert match_id_2 in result, "match_id_2 doit être dans les résultats (même équipe)"
-    assert (
-        match_id_3 not in result
-    ), "match_id_3 ne doit PAS être dans les résultats (équipe différente)"
+    assert match_id_3 not in result, (
+        "match_id_3 ne doit PAS être dans les résultats (équipe différente)"
+    )
 
 
 def test_load_same_team_match_ids_no_same_team(repo_with_data):

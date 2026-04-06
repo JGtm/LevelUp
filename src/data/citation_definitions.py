@@ -74,8 +74,7 @@ def get_citation_display_name(norm: str) -> str:
     with duckdb_read_only(db_path) as conn:
         try:
             row = conn.execute(
-                "SELECT citation_name_display FROM citation_mappings "
-                "WHERE citation_name_norm = ?",
+                "SELECT citation_name_display FROM citation_mappings WHERE citation_name_norm = ?",
                 [norm],
             ).fetchone()
             return row[0] if row and row[0] else norm

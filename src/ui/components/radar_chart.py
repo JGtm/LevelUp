@@ -24,7 +24,7 @@ from ._radar_teammates import (  # noqa: F401
 )
 
 
-def create_radar_chart(  # noqa: PLR0913
+def create_radar_chart(
     data: list[dict[str, Any]],
     *,
     show_legend: bool = True,
@@ -152,7 +152,7 @@ def create_stats_per_minute_radar(
     # Gestion du cas vide
     if not players:
         fig = go.Figure()
-        fig.update_layout( height=height)
+        fig.update_layout(height=height)
         return fig
 
     # Seuils de référence FIXES pour une échelle absolue

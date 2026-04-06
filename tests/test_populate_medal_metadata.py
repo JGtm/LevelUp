@@ -47,7 +47,10 @@ _SAMPLE_MEDALS_RAW = [
 def tmp_conn():
     """Connexion DuckDB en mémoire avec schéma medal_definitions + medal_translations."""
     conn = duckdb.connect(":memory:")
-    from src.data.sync.migrations import ensure_medal_definitions_table, ensure_medal_translations_table
+    from src.data.sync.migrations import (
+        ensure_medal_definitions_table,
+        ensure_medal_translations_table,
+    )
 
     ensure_medal_definitions_table(conn)
     ensure_medal_translations_table(conn)
@@ -180,7 +183,10 @@ def test_populate_medal_translations_custom_skipped(tmp_conn):
 
 def test_migrate_from_definitions_only(tmp_conn):
     """migrate_from_definitions_only() peuple medal_translations depuis medal_definitions."""
-    from scripts.populate_medal_metadata import migrate_from_definitions_only, populate_medal_definitions
+    from scripts.populate_medal_metadata import (
+        migrate_from_definitions_only,
+        populate_medal_definitions,
+    )
 
     populate_medal_definitions(_SAMPLE_MEDALS_RAW, tmp_conn, force=False)
     n = migrate_from_definitions_only(tmp_conn, force=False)

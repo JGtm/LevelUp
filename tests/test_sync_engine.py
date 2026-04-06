@@ -890,9 +890,9 @@ class TestRunLusrPostSync:
 
         def fake_lusr(force: bool = False) -> int:
             # La connexion doit avoir été fermée avant cet appel
-            assert (
-                engine._shared_connection is None
-            ), "_shared_connection doit être None quand batch_compute_lusr est appelé"
+            assert engine._shared_connection is None, (
+                "_shared_connection doit être None quand batch_compute_lusr est appelé"
+            )
             calls.append("lusr")
             return 2
 

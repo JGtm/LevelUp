@@ -421,9 +421,9 @@ class TestSendDiscordNotification:
             f"User-Agent Python générique détecté : '{ua}'. "
             "Cloudflare bloque ces requêtes avec 403."
         )
-        assert (
-            "LevelUp" in ua or "levelup" in ua.lower() or "bot" in ua.lower()
-        ), f"User-Agent doit identifier l'application, obtenu : '{ua}'"
+        assert "LevelUp" in ua or "levelup" in ua.lower() or "bot" in ua.lower(), (
+            f"User-Agent doit identifier l'application, obtenu : '{ua}'"
+        )
 
     def test_content_type_is_json(self):
         """Content-Type doit être application/json."""

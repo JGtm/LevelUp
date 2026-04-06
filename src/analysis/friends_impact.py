@@ -111,7 +111,9 @@ def identify_silent_hero_multi(
         if max_assists == 0:
             continue
         min_deaths = min(r["deaths"] for r in eligible)
-        candidates = [r for r in eligible if r["assists"] == max_assists and r["deaths"] == min_deaths]
+        candidates = [
+            r for r in eligible if r["assists"] == max_assists and r["deaths"] == min_deaths
+        ]
         if not candidates:
             continue
         hero = candidates[0]
@@ -166,7 +168,9 @@ def identify_false_brother_multi(
         if max_deaths == 0:
             continue
         min_assists = min(r["assists"] for r in eligible)
-        candidates = [r for r in eligible if r["deaths"] == max_deaths and r["assists"] == min_assists]
+        candidates = [
+            r for r in eligible if r["deaths"] == max_deaths and r["assists"] == min_assists
+        ]
         if not candidates:
             continue
         traitor = candidates[0]

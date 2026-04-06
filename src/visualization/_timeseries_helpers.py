@@ -55,7 +55,9 @@ def prepare_time_axis(d: pl.DataFrame) -> tuple[list[int], list[str], int]:
     """
     x_idx = list(range(d.height))
     # Préférer map_ui (traduit) si disponible, sinon map_name (EN fallback)
-    _map_col = "map_ui" if "map_ui" in d.columns else ("map_name" if "map_name" in d.columns else None)
+    _map_col = (
+        "map_ui" if "map_ui" in d.columns else ("map_name" if "map_name" in d.columns else None)
+    )
     if _map_col is not None:
         labels = [
             f"#{i + 1}<br>{mn}" if mn else f"#{i + 1}"

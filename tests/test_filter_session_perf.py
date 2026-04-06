@@ -221,9 +221,9 @@ class TestNoRerunOnSquadReset:
         import re
 
         real_rerun_calls = re.findall(r"^\s+st\.rerun\(\)", squad_reset_block, re.MULTILINE)
-        assert (
-            len(real_rerun_calls) == 0
-        ), "st.rerun() ne doit plus être appelé dans le bloc de reset escouade→solo"
+        assert len(real_rerun_calls) == 0, (
+            "st.rerun() ne doit plus être appelé dans le bloc de reset escouade→solo"
+        )
 
     def test_rerun_still_used_for_buttons(self) -> None:
         """Les boutons "Dernière session" / "Session précédente" utilisent
@@ -239,9 +239,9 @@ class TestNoRerunOnSquadReset:
         total_reruns = solo_src.count("st.rerun()") + squad_src.count("st.rerun()")
 
         # Les boutons doivent toujours avoir st.rerun()
-        assert (
-            total_reruns >= 4
-        ), "Les 4 boutons (solo last/prev, squad last/prev) doivent garder st.rerun()"
+        assert total_reruns >= 4, (
+            "Les 4 boutons (solo last/prev, squad last/prev) doivent garder st.rerun()"
+        )
 
 
 # ──────────────────────────────────────────────────────────────────────────────

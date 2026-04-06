@@ -19,6 +19,7 @@ from src.visualization._distributions_outcomes_helpers import (
     ensure_datetime,
     safe_col,
 )
+from src.visualization._plot_options import PlotOptions
 from src.visualization.theme import (
     apply_halo_plot_style,
     get_legend_horizontal_bottom,
@@ -130,9 +131,11 @@ def plot_stacked_outcomes_by_category(  # noqa: PLR0913
     min_matches: int = 1,
     sort_by: str = "total",
     max_categories: int = 20,
-    lang: str = "fr",
+    opts: PlotOptions | None = None,
 ) -> go.Figure:
     """Graphique de colonnes empilées Win/Loss/Tie/Left par catégorie."""
+    _opts = opts if opts is not None else PlotOptions()
+    lang = _opts.lang
     d = ensure_polars(df)
     colors = HALO_COLORS.as_dict()
     d = d.drop_nulls(subset=[category_col, "outcome"])

@@ -15,6 +15,7 @@ from plotly.subplots import make_subplots
 from src.config import THEME_COLORS
 from src.ui.i18n.viz import viz_t
 from src.visualization._perf_cumulative import PERFORMANCE_COLORS
+from src.visualization._plot_options import PlotOptions
 from src.visualization.theme import apply_halo_plot_style
 
 
@@ -218,8 +219,7 @@ def plot_cumulative_comparison(  # noqa: PLR0913
     *,
     label_a: str = "Session A",
     label_b: str = "Session B",
-    height: int = 420,
-    lang: str = "fr",
+    opts: PlotOptions | None = None,
     rank_a: list[float | None] | None = None,
     rank_b: list[float | None] | None = None,
     rank_label: str = "CSR",
@@ -227,6 +227,9 @@ def plot_cumulative_comparison(  # noqa: PLR0913
     perf_b: list[float | None] | None = None,
 ) -> go.Figure:
     """Compare deux sessions avec leurs courbes de net score cumulé."""
+    _opts = opts if opts is not None else PlotOptions()
+    lang = _opts.lang
+    height = _opts.height_px
 
     fig = go.Figure()
     _add_session_trace(fig, session_a_df, label_a, PERFORMANCE_COLORS["neutral"], lang, perf_a)

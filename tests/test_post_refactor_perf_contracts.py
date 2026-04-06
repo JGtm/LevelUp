@@ -414,9 +414,9 @@ class TestSmartScatter:
         scatter_direct = [
             line for line in lines if "go.Scatter(" in line and "smart_scatter" not in line
         ]
-        assert (
-            len(scatter_direct) == 0
-        ), f"go.Scatter() encore utilisé directement : {scatter_direct}"
+        assert len(scatter_direct) == 0, (
+            f"go.Scatter() encore utilisé directement : {scatter_direct}"
+        )
 
 
 # ─────────────────────────────────────────────────────────────────────

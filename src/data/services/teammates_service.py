@@ -291,7 +291,9 @@ class TeammatesService:
             conn = repo._get_connection()
             xuid = _resolve_xuid_from_shared(conn, teammate_gamertag)
             if not xuid:
-                logger.debug("load_all_teammate_stats: xuid introuvable pour '%s'", teammate_gamertag)
+                logger.debug(
+                    "load_all_teammate_stats: xuid introuvable pour '%s'", teammate_gamertag
+                )
                 return _empty
             df_all = query_teammate_full_history(conn, xuid)
             return TeammateStats(gamertag=teammate_gamertag, df=df_all, is_empty=df_all.is_empty())

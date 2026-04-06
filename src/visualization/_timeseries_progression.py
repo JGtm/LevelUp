@@ -183,7 +183,7 @@ def plot_rank_score(
     return apply_halo_plot_style(fig, height=400)
 
 
-def plot_lusr_timeseries(  # noqa: PLR0913
+def plot_lusr_timeseries(
     df: "DataFrameLike",
     show_confidence: bool = True,
     show_smooth: bool = True,

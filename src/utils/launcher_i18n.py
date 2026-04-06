@@ -68,8 +68,7 @@ STRINGS: dict[str, dict[str, str]] = {
             "  → Ferme le dashboard LevelUp (Streamlit) avant de synchroniser."
         ),
         "en": (
-            "  ⚠ Database is locked.\n"
-            "  → Close the LevelUp dashboard (Streamlit) before syncing."
+            "  ⚠ Database is locked.\n  → Close the LevelUp dashboard (Streamlit) before syncing."
         ),
     },
     "sync_error_network": {
@@ -77,9 +76,7 @@ STRINGS: dict[str, dict[str, str]] = {
             "  ⚠ Impossible de joindre les serveurs Halo.\n"
             "  → Vérifie ta connexion internet et réessaie."
         ),
-        "en": (
-            "  ⚠ Cannot reach Halo servers.\n" "  → Check your internet connection and try again."
-        ),
+        "en": ("  ⚠ Cannot reach Halo servers.\n  → Check your internet connection and try again."),
     },
     "sync_error_unknown": {
         "fr": (

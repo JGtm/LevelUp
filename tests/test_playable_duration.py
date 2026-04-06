@@ -137,9 +137,7 @@ class TestRealStartTime:
         assert result is not None
         assert result["real_start_time"] == result["start_time"]
 
-    def test_real_start_time_debug_logged(
-        self, caplog: pytest.LogCaptureFixture
-    ) -> None:
+    def test_real_start_time_debug_logged(self, caplog: pytest.LogCaptureFixture) -> None:
         """Un log DEBUG est émis quand real_start_time est calculé."""
         with caplog.at_level(logging.DEBUG, logger="src.data.sync.transformers._match"):
             result = extract_match_registry_data(_BASE_JSON)

@@ -210,9 +210,9 @@ class TestDbCacheKey:
 
         key = db_cache_key(str(db_path))
         wal_sentinel = key[4]
-        assert (
-            wal_sentinel != 0
-        ), f"WAL sentinel doit être non nul quand shared .wal existe, obtenu {wal_sentinel}"
+        assert wal_sentinel != 0, (
+            f"WAL sentinel doit être non nul quand shared .wal existe, obtenu {wal_sentinel}"
+        )
 
     def test_wal_sentinel_zero_without_wal(self, tmp_path):
         """Le wal_sentinel (index 4) est 0 si aucun shared_matches_v2.duckdb.wal n'existe."""
@@ -256,9 +256,9 @@ class TestDbCacheKey:
             db_cache_key(str(db_path))
 
         messages = [r.message for r in caplog.records]
-        assert any(
-            "db_cache_key" in m and "stats.duckdb" in m for m in messages
-        ), f"Log DEBUG db_cache_key attendu, messages={messages}"
+        assert any("db_cache_key" in m and "stats.duckdb" in m for m in messages), (
+            f"Log DEBUG db_cache_key attendu, messages={messages}"
+        )
 
 
 class TestInvalidateAfterSyncLogs:
@@ -287,9 +287,9 @@ class TestInvalidateAfterSyncLogs:
             invalidate_after_sync()
 
         messages = [r.message for r in caplog.records]
-        assert any(
-            "cache_buster=4" in m for m in messages
-        ), f"Log doit contenir cache_buster=4, messages={messages}"
-        assert any(
-            "_filters_loaded_p1" in m or "_filters_db_key_p1" in m for m in messages
-        ), f"Log doit lister les clés supprimées, messages={messages}"
+        assert any("cache_buster=4" in m for m in messages), (
+            f"Log doit contenir cache_buster=4, messages={messages}"
+        )
+        assert any("_filters_loaded_p1" in m or "_filters_db_key_p1" in m for m in messages), (
+            f"Log doit lister les clés supprimées, messages={messages}"
+        )

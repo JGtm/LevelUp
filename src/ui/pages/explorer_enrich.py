@@ -47,7 +47,9 @@ def enrich_for_table(
         result = result.with_columns(
             pl.col("pair_name")
             .cast(pl.Utf8)
-            .replace_strict(_ee_mode_map, default=pl.col("pair_name").cast(pl.Utf8), return_dtype=pl.Utf8)
+            .replace_strict(
+                _ee_mode_map, default=pl.col("pair_name").cast(pl.Utf8), return_dtype=pl.Utf8
+            )
             .alias("mode_ui")
         )
     if "outcome_label" not in result.columns and "outcome" in result.columns:
@@ -133,7 +135,9 @@ def enrich_common_matches(
         result = result.with_columns(
             pl.col("pair_name")
             .cast(pl.Utf8)
-            .replace_strict(_ec_mode_map, default=pl.col("pair_name").cast(pl.Utf8), return_dtype=pl.Utf8)
+            .replace_strict(
+                _ec_mode_map, default=pl.col("pair_name").cast(pl.Utf8), return_dtype=pl.Utf8
+            )
             .alias("mode_ui")
         )
 

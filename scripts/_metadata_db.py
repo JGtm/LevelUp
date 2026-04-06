@@ -137,6 +137,4 @@ def enrich_i18n(conn: duckdb.DuckDBPyConnection) -> None:  # noqa: ARG001
     - scripts/populate_asset_translations.py (maps, playlists, pairs, game_variants)
     - scripts/populate_medal_metadata.py (médailles)
     """
-    logger.info(
-        "enrich_i18n() : no-op depuis v6.3 — utiliser populate_asset_translations.py"
-    )
+    logger.info("enrich_i18n() : no-op depuis v6.3 — utiliser populate_asset_translations.py")

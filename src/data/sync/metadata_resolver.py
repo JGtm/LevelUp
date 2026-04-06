@@ -143,7 +143,9 @@ class MetadataResolver:
             ).fetchone()
             return str(result[0]) if result and result[0] else None
         except Exception as exc:
-            logger.debug("asset_translations lookup %s %s [%s]: %s", asset_type, asset_id, lang, exc)
+            logger.debug(
+                "asset_translations lookup %s %s [%s]: %s", asset_type, asset_id, lang, exc
+            )
             return None
 
     def _resolve_from_db(self, asset_type: str, asset_id: str) -> str | None:

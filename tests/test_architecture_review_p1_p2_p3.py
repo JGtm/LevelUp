@@ -82,9 +82,9 @@ class TestTranslationsNoBareConnect:
 
         # Vérifier que duckdb n'est pas dans le namespace du module (import top-level)
         # Note: import local dans la fonction est OK et attendu
-        assert not isinstance(
-            getattr(mod, "duckdb", None), types.ModuleType
-        ), "'import duckdb' ne doit plus exister au niveau module dans translations.py"
+        assert not isinstance(getattr(mod, "duckdb", None), types.ModuleType), (
+            "'import duckdb' ne doit plus exister au niveau module dans translations.py"
+        )
 
     def test_load_mode_tables_uses_duckdb_read_only(self):
         """_load_mode_tables doit passer par duckdb_read_only, pas duckdb.connect."""
@@ -94,9 +94,9 @@ class TestTranslationsNoBareConnect:
 
         source = inspect.getsource(_load_mode_tables)
         assert "duckdb_read_only" in source, "_load_mode_tables doit utiliser duckdb_read_only"
-        assert (
-            "duckdb.connect" not in source
-        ), "_load_mode_tables ne doit pas appeler duckdb.connect"
+        assert "duckdb.connect" not in source, (
+            "_load_mode_tables ne doit pas appeler duckdb.connect"
+        )
 
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -265,12 +265,12 @@ class TestDefaultIdentityDelegation:
         source = inspect.getsource(data_loader.default_identity_from_secrets)
         # La fonction doit être courte (délégation = ~4 lignes)
         # Elle ne doit pas contenir de lecture directe de st.secrets
-        assert (
-            "st.secrets" not in source
-        ), "data_loader.default_identity_from_secrets ne doit plus lire st.secrets directement"
-        assert (
-            "LEVELUP_DEFAULT_GAMERTAG" not in source
-        ), "La logique env ne doit plus être dans data_loader"
+        assert "st.secrets" not in source, (
+            "data_loader.default_identity_from_secrets ne doit plus lire st.secrets directement"
+        )
+        assert "LEVELUP_DEFAULT_GAMERTAG" not in source, (
+            "La logique env ne doit plus être dans data_loader"
+        )
 
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -305,12 +305,12 @@ class TestResolveXuidInputDelegation:
         from src.app import data_loader
 
         source = inspect.getsource(data_loader.resolve_xuid_input)
-        assert (
-            "parse_xuid_input" not in source
-        ), "La logique de résolution ne doit plus être dupliquée dans data_loader"
-        assert (
-            "resolve_xuid_from_db" not in source
-        ), "La logique de résolution ne doit plus être dupliquée dans data_loader"
+        assert "parse_xuid_input" not in source, (
+            "La logique de résolution ne doit plus être dupliquée dans data_loader"
+        )
+        assert "resolve_xuid_from_db" not in source, (
+            "La logique de résolution ne doit plus être dupliquée dans data_loader"
+        )
 
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -325,9 +325,9 @@ class TestParisTzNameSingleDefinition:
         """_cache_core.PARIS_TZ_NAME est le même objet que formatting.PARIS_TZ_NAME."""
         from src.ui import _cache_core, formatting
 
-        assert (
-            _cache_core.PARIS_TZ_NAME is formatting.PARIS_TZ_NAME
-        ), "_cache_core.PARIS_TZ_NAME doit être importé depuis formatting, pas redéfini"
+        assert _cache_core.PARIS_TZ_NAME is formatting.PARIS_TZ_NAME, (
+            "_cache_core.PARIS_TZ_NAME doit être importé depuis formatting, pas redéfini"
+        )
 
     def test_cache_core_no_standalone_definition(self):
         """_cache_core.py ne doit plus définir PARIS_TZ_NAME en standalone."""
@@ -337,9 +337,9 @@ class TestParisTzNameSingleDefinition:
 
         source = inspect.getsource(_cache_core)
         # On cherche la présence d'une assignation directe (pas un import)
-        assert (
-            'PARIS_TZ_NAME = "Europe/Paris"' not in source
-        ), "_cache_core.py ne doit plus définir PARIS_TZ_NAME = 'Europe/Paris'"
+        assert 'PARIS_TZ_NAME = "Europe/Paris"' not in source, (
+            "_cache_core.py ne doit plus définir PARIS_TZ_NAME = 'Europe/Paris'"
+        )
 
     def test_value_is_europe_paris(self):
         """La valeur reste 'Europe/Paris' depuis la source canonique."""
@@ -363,9 +363,9 @@ class TestDataRepositoryProtocol:
         from src.ports.repository import DataRepository
 
         for name, method in inspect.getmembers(DataRepository, predicate=inspect.isfunction):
-            assert not getattr(
-                method, "__isabstractmethod__", False
-            ), f"DataRepository.{name} ne doit pas être @abstractmethod dans un Protocol"
+            assert not getattr(method, "__isabstractmethod__", False), (
+                f"DataRepository.{name} ne doit pas être @abstractmethod dans un Protocol"
+            )
 
     def test_no_abc_import_in_protocol_module(self):
         """Le module protocol.py ne doit plus importer abc.abstractmethod."""
@@ -384,9 +384,9 @@ class TestDataRepositoryProtocol:
         # @runtime_checkable permet isinstance() sur les méthodes déclarées
         # Vérification structurelle : DuckDBRepository a les méthodes attendues
         for attr in ("xuid", "db_path", "load_matches", "get_match_count"):
-            assert hasattr(
-                DuckDBRepository, attr
-            ), f"DuckDBRepository doit avoir la méthode/propriété '{attr}'"
+            assert hasattr(DuckDBRepository, attr), (
+                f"DuckDBRepository doit avoir la méthode/propriété '{attr}'"
+            )
 
     def test_protocol_is_runtime_checkable(self):
         """DataRepository doit rester @runtime_checkable."""
@@ -423,12 +423,12 @@ class TestCachedFriendMatchesDfNoLegacy:
         from src.ui.cache_filters import cached_friend_matches_df
 
         source = inspect.getsource(cached_friend_matches_df)
-        assert (
-            "pl.DataFrame(schema=" in source
-        ), "cached_friend_matches_df doit retourner un DataFrame vide quand rows est vide"
-        assert (
-            "_FRIEND_DF_EMPTY_SCHEMA" in source
-        ), "Le schéma vide doit utiliser _FRIEND_DF_EMPTY_SCHEMA"
+        assert "pl.DataFrame(schema=" in source, (
+            "cached_friend_matches_df doit retourner un DataFrame vide quand rows est vide"
+        )
+        assert "_FRIEND_DF_EMPTY_SCHEMA" in source, (
+            "Le schéma vide doit utiliser _FRIEND_DF_EMPTY_SCHEMA"
+        )
 
     def test_no_is_duckdb_v4_path_import(self):
         """_is_duckdb_v4_path ne doit plus être importé dans cache_filters (devenu orphelin)."""
@@ -437,6 +437,6 @@ class TestCachedFriendMatchesDfNoLegacy:
         from src.ui import cache_filters
 
         source = inspect.getsource(cache_filters)
-        assert (
-            "is_duckdb_v4_path" not in source
-        ), "is_duckdb_v4_path ne doit plus être importé dans cache_filters après suppression legacy"
+        assert "is_duckdb_v4_path" not in source, (
+            "is_duckdb_v4_path ne doit plus être importé dans cache_filters après suppression legacy"
+        )

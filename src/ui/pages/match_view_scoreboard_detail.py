@@ -58,7 +58,7 @@ class ScoreboardPlayerExtraData:
     # (label, actual, expected, higher_is_better)
     expected_items: list[tuple[str, float, float]] = field(default_factory=list)
     performance_score: float | None = None
-    skill_rank: tuple[str, str] | None = None   # (label affiché, rating_type)
+    skill_rank: tuple[str, str] | None = None  # (label affiché, rating_type)
     had_bot_teammate: bool = False
     has_local_db: bool = False
     profile_link_html: str | None = None
@@ -133,7 +133,9 @@ def _render_expected_section(items: list[tuple[str, float, float]]) -> str:
         delta = actual - expected
         better = (delta > 0) if higher_is_better else (delta < 0)
         symbol = "↑" if delta > 0 else ("↓" if delta < 0 else "→")
-        color_class = "os-ev-better" if better else ("os-ev-worse" if delta != 0 else "os-ev-neutral")
+        color_class = (
+            "os-ev-better" if better else ("os-ev-worse" if delta != 0 else "os-ev-neutral")
+        )
         sign = "+" if delta > 0 else ""
         rows.append(
             "<div class='os-sb-detail-item--kv'>"
@@ -516,7 +518,9 @@ def _render_profile_footer(profile_link_html: str | None, badge_text: str) -> st
 
 
 def _render_medal_item(medal: MedalDetailItem) -> str:
-    tooltip_text = html.escape(f"{medal.name} : {medal.description}" if medal.description else medal.name)
+    tooltip_text = html.escape(
+        f"{medal.name} : {medal.description}" if medal.description else medal.name
+    )
     icon_html = (
         f"<div class='os-sb-detail-medal-icon-wrap'>"
         f"<img class='os-sb-detail-medal-icon' src='{html.escape(medal.icon_url)}' "
@@ -533,7 +537,9 @@ def _render_medal_item(medal: MedalDetailItem) -> str:
     )
 
 
-def _render_citation_item(name: str, count: int, icon_url: str | None, description: str | None = None) -> str:
+def _render_citation_item(
+    name: str, count: int, icon_url: str | None, description: str | None = None
+) -> str:
     tooltip_text = html.escape(f"{name} : {description}" if description else name)
     icon_html = (
         f"<div class='os-sb-detail-medal-icon-wrap'>"
@@ -557,11 +563,16 @@ def _render_medals_and_citations_section(
 ) -> str:
     """Construit la section Médailles & Citations avec icônes compactes."""
     medal_rows = [_render_medal_item(m) for m in medals]
-    citation_rows = [_render_citation_item(name, count, icon_url, desc) for name, count, icon_url, desc in citations]
+    citation_rows = [
+        _render_citation_item(name, count, icon_url, desc)
+        for name, count, icon_url, desc in citations
+    ]
     if not medal_rows and not citation_rows:
         return ""
     # Séparateur invisible pleine largeur pour forcer les citations sur une nouvelle ligne
-    separator = "<div class='os-sb-detail-list-break'></div>" if medal_rows and citation_rows else ""
+    separator = (
+        "<div class='os-sb-detail-list-break'></div>" if medal_rows and citation_rows else ""
+    )
     title = t("mv_medals_and_citations") if citations else t("mv_medals")
     return (
         "<section class='os-sb-detail-section'>"

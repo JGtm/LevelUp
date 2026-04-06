@@ -196,9 +196,7 @@ def _render_compact_team_card(team_perf: dict, grade: str, lang: str | None) -> 
                 t("squad_score_bonus", lang=lang, base=f"{base_avg:.0f}", bonus=bonus)
             )
         else:
-            label = html_mod.escape(
-                t("squad_score_base_only", lang=lang, base=f"{base_avg:.0f}")
-            )
+            label = html_mod.escape(t("squad_score_base_only", lang=lang, base=f"{base_avg:.0f}"))
         bonus_html = f"<div class='os-perf-card__detail'>{label}</div>"
 
     st.markdown(

@@ -364,7 +364,6 @@ def _render_cumulative_section(  # noqa: PLR0913 — 2 sessions + labels + db_pa
                     pl_b,
                     label_a=session_a_label,
                     label_b=session_b_label,
-                    title="",
                     rank_a=None,
                     rank_b=None,
                     rank_label=rank_label,

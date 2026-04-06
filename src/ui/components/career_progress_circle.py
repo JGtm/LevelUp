@@ -10,6 +10,7 @@ import plotly.graph_objects as go
 
 from src.config import THEME_COLORS
 from src.ui.i18n import t
+from src.visualization._plot_options import PlotOptions
 
 # Constantes de progression vers le rang Héros (rang 272)
 XP_HERO_TOTAL: int = 9_319_350  # XP cumulée pour atteindre le rang 272 (officiel)
@@ -90,7 +91,7 @@ def create_career_progress_gauge(  # noqa: PLR0913
     rank_name_fr: str,
     *,
     is_max_rank: bool = False,
-    height: int = 280,
+    opts: PlotOptions | None = None,
 ) -> go.Figure:
     """Crée un indicateur gauge de progression XP vers le prochain rang.
 
@@ -100,11 +101,13 @@ def create_career_progress_gauge(  # noqa: PLR0913
         progress_pct: Pourcentage de progression (0-100).
         rank_name_fr: Nom du rang en français.
         is_max_rank: True si le joueur est au rang maximum.
-        height: Hauteur de la figure en pixels.
+        opts: Options de rendu (height via opts.height_px, défaut 280).
 
     Returns:
         Figure Plotly avec l'indicateur gauge.
     """
+    _opts = opts if opts is not None else PlotOptions(height_px=280)
+    height = _opts.height_px
     if is_max_rank:
         progress_pct = 100.0
         subtitle = t("career_max_rank")

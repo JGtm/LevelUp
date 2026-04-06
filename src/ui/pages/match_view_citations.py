@@ -139,7 +139,7 @@ def render_match_citations_section(  # noqa: C901, PLR0912, PLR0915
                     + ring_class
                     + "' title=\""
                     + tip
-                    + "\" style=\"--p:"
+                    + '" style="--p:'
                     + str(float(progress_ratio))
                     + ";--ring-color:"
                     + ring_color
@@ -150,14 +150,16 @@ def render_match_citations_section(  # noqa: C901, PLR0912, PLR0915
                 )
             else:
                 st.markdown(
-                    "<div class='os-medal-missing' title=\"" + tip + "\">?</div>",
+                    "<div class='os-medal-missing' title=\"" + tip + '">?</div>',
                     unsafe_allow_html=True,
                 )
 
             st.markdown(
                 "<div class='os-citation-name' title=\""
                 + tip
-                + "\">" + html.escape(name) + "</div>",
+                + '">'
+                + html.escape(name)
+                + "</div>",
                 unsafe_allow_html=True,
             )
             level_class = (

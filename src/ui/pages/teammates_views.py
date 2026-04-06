@@ -178,15 +178,21 @@ def _render_bottom_charts(  # noqa: PLR0913
             key_suffix=f"multi_{len(series)}",
         )
     from src.analysis.squad_records import compute_squad_records, get_dominant_pair_name
+
     _series_pl = [(n, ensure_polars(d)) for n, d in series]
     _dom_pair = get_dominant_pair_name([d for _, d in _series_pl])
     _spree_rec = compute_squad_records(_series_pl, [("max_killing_spree", False)], _dom_pair)
     _hspk_dfs = [
-        (n, d.with_columns(
-            (pl.col("headshot_kills").fill_null(0) + pl.col("perfect_kills").fill_null(0))
-            .alias("hs_pk_total")
-        ))
-        for n, d in _series_pl if "headshot_kills" in d.columns
+        (
+            n,
+            d.with_columns(
+                (
+                    pl.col("headshot_kills").fill_null(0) + pl.col("perfect_kills").fill_null(0)
+                ).alias("hs_pk_total")
+            ),
+        )
+        for n, d in _series_pl
+        if "headshot_kills" in d.columns
     ]
     _hspk_rec = compute_squad_records(_hspk_dfs, [("hs_pk_total", False)], _dom_pair)
     render_metric_bar_charts(
@@ -287,7 +293,11 @@ def _render_map_history_section(
                     fr_sub, fx_gamertag, db_path
                 )
                 # Ajouter map_ui (traduit) si absent — même logique que _add_derived_columns
-                if "map_ui" not in fr_sub.columns and "map_id" in fr_sub.columns and "map_name" in fr_sub.columns:
+                if (
+                    "map_ui" not in fr_sub.columns
+                    and "map_id" in fr_sub.columns
+                    and "map_name" in fr_sub.columns
+                ):
                     _id_to_fallback = {
                         str(r["map_id"]): str(r["map_name"] or "")
                         for r in fr_sub.select(["map_id", "map_name"])
@@ -300,7 +310,11 @@ def _render_map_history_section(
                         fr_sub = fr_sub.with_columns(
                             pl.col("map_id")
                             .cast(pl.Utf8)
-                            .replace_strict(_translated, default=pl.col("map_name").cast(pl.Utf8), return_dtype=pl.Utf8)
+                            .replace_strict(
+                                _translated,
+                                default=pl.col("map_name").cast(pl.Utf8),
+                                return_dtype=pl.Utf8,
+                            )
                             .alias("map_ui")
                         )
                 series.append((fx_gamertag, fr_sub))

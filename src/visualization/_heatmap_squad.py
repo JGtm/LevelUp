@@ -36,7 +36,11 @@ def _order_maps_by_first_seen(
         if df_pl.is_empty():
             continue
         # Préférer map_ui (traduit) si disponible pour l'ordre chronologique
-        _map_col = "map_ui" if "map_ui" in df_pl.columns else ("map_name" if "map_name" in df_pl.columns else None)
+        _map_col = (
+            "map_ui"
+            if "map_ui" in df_pl.columns
+            else ("map_name" if "map_name" in df_pl.columns else None)
+        )
         if _map_col is not None and "start_time" in df_pl.columns:
             raw_frames.append(df_pl.select([pl.col(_map_col).alias("map_name"), "start_time"]))
 
@@ -122,7 +126,9 @@ def plot_squad_map_heatmap(
         # Garantit des noms FR cohérents sur l'axe X de la heatmap.
         if "map_ui" not in df_pl.columns and "map_name_fr" in df_pl.columns and lang == "fr":
             df_pl = df_pl.with_columns(
-                pl.coalesce([pl.col("map_name_fr").cast(pl.Utf8), pl.col("map_name").cast(pl.Utf8)]).alias("map_ui")
+                pl.coalesce(
+                    [pl.col("map_name_fr").cast(pl.Utf8), pl.col("map_name").cast(pl.Utf8)]
+                ).alias("map_ui")
             )
         bd = compute_map_breakdown(df_pl)
         if not bd.is_empty():

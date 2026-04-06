@@ -20,6 +20,7 @@ from src.ui.streamlit_modern import PLOTLY_CLEAN_CONFIG, PLOTLY_STATIC_CONFIG, f
 from src.visualization import plot_trio_metric
 from src.visualization._chart_series import SquadRecordSet
 from src.visualization._compat import DataFrameLike, ensure_polars
+from src.visualization._plot_options import PlotOptions
 from src.visualization.teammates_hs_pk import plot_hs_pk_stacked
 from src.visualization.trio import plot_trio_kills_deaths
 
@@ -208,7 +209,7 @@ def render_trio_charts(  # noqa: PLR0913
                 d_f1,
                 d_f2,
                 names=names,
-                lang=_lang,
+                opts=PlotOptions(lang=_lang),
                 d_f3=d_f3,
                 colors_by_name=colors_by_name,
                 squad_records=squad_records,
@@ -219,8 +220,13 @@ def render_trio_charts(  # noqa: PLR0913
         )
 
     _shared: dict = {
-        "d_self": d_self, "d_f1": d_f1, "d_f2": d_f2, "d_f3": d_f3,
-        "names": names, "lang": _lang, "colors_by_name": colors_by_name,
+        "d_self": d_self,
+        "d_f1": d_f1,
+        "d_f2": d_f2,
+        "d_f3": d_f3,
+        "names": names,
+        "lang": _lang,
+        "colors_by_name": colors_by_name,
         "squad_records": squad_records,
     }
     for metric, title_key, ytitle_key, key_prefix, extra in _TRIO_METRIC_SPECS:
@@ -276,9 +282,7 @@ def _load_first_events_data(
     if df.is_empty():
         return df
 
-    df = df.with_columns(
-        pl.col("xuid").replace(xuid_to_name).alias("player_name")
-    )
+    df = df.with_columns(pl.col("xuid").replace(xuid_to_name).alias("player_name"))
     return df
 
 
@@ -307,9 +311,7 @@ def _compute_bin_counts(
     """
     counts: dict[str, dict[str, int]] = {name: {} for name in player_names}
     for name in player_names:
-        vals = (
-            df.filter(pl.col("player_name") == name)[metric].drop_nulls().to_list()
-        )
+        vals = df.filter(pl.col("player_name") == name)[metric].drop_nulls().to_list()
         for v in vals:
             b = int(v // _BIN_SIZE_S) * _BIN_SIZE_S
             label = _format_bin_label(b)
@@ -372,24 +374,34 @@ def _build_first_events_fig(
         y_frag = [kill_counts[name].get(b, 0) for b in sorted_bins]
         y_death = [-death_counts[name].get(b, 0) for b in sorted_bins]
 
-        fig.add_trace(go.Bar(
-            x=sorted_bins, y=y_frag,
-            name=name, legendgroup=name, showlegend=True,
-            marker_color=color,
-            customdata=y_frag,
-            hovertemplate=(
-                f"<b>{name}</b><br>%{{x}}<br>{label_frag} : %{{customdata}} matchs<extra></extra>"
-            ),
-        ))
-        fig.add_trace(go.Bar(
-            x=sorted_bins, y=y_death,
-            name=name, legendgroup=name, showlegend=False,
-            marker_color=color,
-            customdata=[-v for v in y_death],
-            hovertemplate=(
-                f"<b>{name}</b><br>%{{x}}<br>{label_death} : %{{customdata}} matchs<extra></extra>"
-            ),
-        ))
+        fig.add_trace(
+            go.Bar(
+                x=sorted_bins,
+                y=y_frag,
+                name=name,
+                legendgroup=name,
+                showlegend=True,
+                marker_color=color,
+                customdata=y_frag,
+                hovertemplate=(
+                    f"<b>{name}</b><br>%{{x}}<br>{label_frag} : %{{customdata}} matchs<extra></extra>"
+                ),
+            )
+        )
+        fig.add_trace(
+            go.Bar(
+                x=sorted_bins,
+                y=y_death,
+                name=name,
+                legendgroup=name,
+                showlegend=False,
+                marker_color=color,
+                customdata=[-v for v in y_death],
+                hovertemplate=(
+                    f"<b>{name}</b><br>%{{x}}<br>{label_death} : %{{customdata}} matchs<extra></extra>"
+                ),
+            )
+        )
 
     max_kill = max((max(d.values(), default=0) for d in kill_counts.values()), default=1)
     max_death = max((max(d.values(), default=0) for d in death_counts.values()), default=1)
@@ -402,9 +414,12 @@ def _build_first_events_fig(
     col_shapes = [
         {
             "type": "line",
-            "x0": i - 0.5, "x1": i - 0.5,
-            "y0": 0, "y1": 1,
-            "xref": "x", "yref": "paper",
+            "x0": i - 0.5,
+            "x1": i - 0.5,
+            "y0": 0,
+            "y1": 1,
+            "xref": "x",
+            "yref": "paper",
             "line": {"color": "rgba(255,255,255,0.18)", "width": 1, "dash": "dot"},
         }
         for i in range(1, len(sorted_bins))
@@ -419,8 +434,11 @@ def _build_first_events_fig(
         plot_bgcolor="rgba(0,0,0,0)",
         shapes=col_shapes,
         legend={
-            "orientation": "h", "yanchor": "top",
-            "y": -0.18, "xanchor": "center", "x": 0.5,
+            "orientation": "h",
+            "yanchor": "top",
+            "y": -0.18,
+            "xanchor": "center",
+            "x": 0.5,
         },
         xaxis={
             "gridcolor": "rgba(0,0,0,0)",
@@ -441,15 +459,25 @@ def _build_first_events_fig(
     )
     fig.add_annotation(
         text=f"▲ {label_frag}",
-        x=0.01, y=1.0, xref="paper", yref="paper",
-        showarrow=False, font={"color": "rgba(255,255,255,0.65)", "size": 11},
-        xanchor="left", yanchor="top",
+        x=0.01,
+        y=1.0,
+        xref="paper",
+        yref="paper",
+        showarrow=False,
+        font={"color": "rgba(255,255,255,0.65)", "size": 11},
+        xanchor="left",
+        yanchor="top",
     )
     fig.add_annotation(
         text=f"▼ {label_death}",
-        x=0.01, y=0.0, xref="paper", yref="paper",
-        showarrow=False, font={"color": "rgba(255,255,255,0.65)", "size": 11},
-        xanchor="left", yanchor="bottom",
+        x=0.01,
+        y=0.0,
+        xref="paper",
+        yref="paper",
+        showarrow=False,
+        font={"color": "rgba(255,255,255,0.65)", "size": 11},
+        xanchor="left",
+        yanchor="bottom",
     )
     return fig
 

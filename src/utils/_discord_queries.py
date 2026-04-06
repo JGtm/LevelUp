@@ -104,6 +104,7 @@ def fetch_last_match_info(xuid: str) -> object | None:
             # Attacher metadata.duckdb pour que v_match_full puisse résoudre les noms FR
             try:
                 from src.utils.db import ensure_metadata_attached
+
                 ensure_metadata_attached(conn)
             except Exception:
                 pass

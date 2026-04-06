@@ -150,7 +150,6 @@ def plot_squad_performance_timeline(
     if d.is_empty() or "squad_perf" not in d.columns:
         return None
 
-
     x_labels = d["bucket_label"].to_list()
     x_idx = list(range(len(x_labels)))
     perf = d["squad_perf"].cast(pl.Float64, strict=False).to_list()

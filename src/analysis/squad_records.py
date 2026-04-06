@@ -101,18 +101,26 @@ def compute_player_pm_records(
         sub = sub.with_columns(pl.col("duration_seconds").alias("time_played_seconds"))
     needed = {"kills", "deaths", "assists", "time_played_seconds"}
     if sub.is_empty() or not needed.issubset(sub.columns):
-        logger.debug("compute_player_pm_records: données insuffisantes pour pair_name=%r", pair_name)
+        logger.debug(
+            "compute_player_pm_records: données insuffisantes pour pair_name=%r", pair_name
+        )
         return None, None, None
     sub = sub.filter(
         pl.col("time_played_seconds").is_not_null() & (pl.col("time_played_seconds") > 0)
     )
     if sub.is_empty():
         return None, None, None
-    pm = sub.with_columns([
-        (pl.col("kills").cast(pl.Float64) / (pl.col("time_played_seconds") / 60)).alias("_kpm"),
-        (pl.col("deaths").cast(pl.Float64) / (pl.col("time_played_seconds") / 60)).alias("_dpm"),
-        (pl.col("assists").cast(pl.Float64) / (pl.col("time_played_seconds") / 60)).alias("_apm"),
-    ])
+    pm = sub.with_columns(
+        [
+            (pl.col("kills").cast(pl.Float64) / (pl.col("time_played_seconds") / 60)).alias("_kpm"),
+            (pl.col("deaths").cast(pl.Float64) / (pl.col("time_played_seconds") / 60)).alias(
+                "_dpm"
+            ),
+            (pl.col("assists").cast(pl.Float64) / (pl.col("time_played_seconds") / 60)).alias(
+                "_apm"
+            ),
+        ]
+    )
     return pm["_kpm"].max(), pm["_dpm"].min(), pm["_apm"].max()
 
 

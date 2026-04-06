@@ -48,7 +48,6 @@ def clean_asset_label(s: str | None) -> str | None:
     return v or None
 
 
-
 def normalize_mode_label(
     pair_name: str | None,
     *,

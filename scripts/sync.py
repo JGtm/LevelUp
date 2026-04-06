@@ -159,6 +159,7 @@ def _resolve_player_in_db(db_path: str, player_query: str) -> tuple[str, str | N
 
     # V6 : Chercher dans shared_matches_v2.duckdb (source unique)
     from src.utils.paths import get_shared_matches_path
+
     shared_path = get_shared_matches_path()
     if shared_path.exists():
         try:

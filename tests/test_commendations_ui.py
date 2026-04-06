@@ -20,25 +20,25 @@ class TestObsoleteCodeRemoved:
         """CUSTOM_CITATION_RULES ne doit plus exister dans commendations.py."""
         from src.ui import commendations
 
-        assert not hasattr(
-            commendations, "CUSTOM_CITATION_RULES"
-        ), "CUSTOM_CITATION_RULES devrait être supprimé"
+        assert not hasattr(commendations, "CUSTOM_CITATION_RULES"), (
+            "CUSTOM_CITATION_RULES devrait être supprimé"
+        )
 
     def test_no_compute_custom_citation_value(self) -> None:
         """_compute_custom_citation_value ne doit plus exister."""
         from src.ui import commendations
 
-        assert not hasattr(
-            commendations, "_compute_custom_citation_value"
-        ), "_compute_custom_citation_value devrait être supprimé"
+        assert not hasattr(commendations, "_compute_custom_citation_value"), (
+            "_compute_custom_citation_value devrait être supprimé"
+        )
 
     def test_no_tracking_rules_loader(self) -> None:
         """load_h5g_commendations_tracking_rules ne doit plus exister."""
         from src.ui import commendations
 
-        assert not hasattr(
-            commendations, "load_h5g_commendations_tracking_rules"
-        ), "load_h5g_commendations_tracking_rules devrait être supprimé"
+        assert not hasattr(commendations, "load_h5g_commendations_tracking_rules"), (
+            "load_h5g_commendations_tracking_rules devrait être supprimé"
+        )
 
     def test_no_tracking_constants(self) -> None:
         """Les constantes DEFAULT_H5G_TRACKING_*_PATH ne doivent plus exister."""
@@ -57,9 +57,9 @@ class TestObsoleteCodeRemoved:
                 fp = os.path.join(root, fn)
                 with open(fp, encoding="utf-8") as f:
                     content = f.read()
-                assert (
-                    "CUSTOM_CITATION_RULES" not in content
-                ), f"Référence résiduelle à CUSTOM_CITATION_RULES dans {fp}"
+                assert "CUSTOM_CITATION_RULES" not in content, (
+                    f"Référence résiduelle à CUSTOM_CITATION_RULES dans {fp}"
+                )
 
 
 # ---------------------------------------------------------------------------
@@ -126,9 +126,9 @@ class TestCitationEngineIntegration:
         from src.ui.commendations import render_h5g_commendations_section
 
         source = inspect.getsource(render_h5g_commendations_section)
-        assert (
-            "CitationEngine" in source
-        ), "render_h5g_commendations_section devrait utiliser CitationEngine"
+        assert "CitationEngine" in source, (
+            "render_h5g_commendations_section devrait utiliser CitationEngine"
+        )
 
     def test_source_uses_aggregate(self) -> None:
         """Le code utilise aggregate_for_display ou aggregate_citations."""
@@ -160,6 +160,6 @@ class TestFileSizeReduction:
         fp = os.path.join(os.path.dirname(__file__), "..", "src", "ui", "commendations.py")
         with open(fp, encoding="utf-8") as f:
             content = f.read()
-        assert (
-            "iter_rows" not in content
-        ), "iter_rows ne devrait plus être présent (remplacé par agrégation SQL)"
+        assert "iter_rows" not in content, (
+            "iter_rows ne devrait plus être présent (remplacé par agrégation SQL)"
+        )

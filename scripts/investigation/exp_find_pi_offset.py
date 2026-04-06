@@ -562,10 +562,10 @@ def _validate_event_structure(
     print(f"\n--- Validation structurelle ({total} events) ---")
     print(f"  pos%8 distribution: {dict(sorted(pos_mod8.items()))}")
     print(
-        f"  counter div4: {counter_valid}/{counter_valid+counter_invalid} ({counter_valid*100//(counter_valid+counter_invalid) if counter_valid+counter_invalid else 0}%)"
+        f"  counter div4: {counter_valid}/{counter_valid + counter_invalid} ({counter_valid * 100 // (counter_valid + counter_invalid) if counter_valid + counter_invalid else 0}%)"
     )
     print(
-        f"  slot in {{1,3}}: {slot_valid}/{slot_valid+slot_invalid} ({slot_valid*100//(slot_valid+slot_invalid) if slot_valid+slot_invalid else 0}%)"
+        f"  slot in {{1,3}}: {slot_valid}/{slot_valid + slot_invalid} ({slot_valid * 100 // (slot_valid + slot_invalid) if slot_valid + slot_invalid else 0}%)"
     )
     print(f"  slot dist top10: {dict(slot_dist.most_common(10))}")
 

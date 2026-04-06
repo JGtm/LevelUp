@@ -33,8 +33,6 @@ __all__ = ["build_friends_opts_map", "get_friends_xuids_for_sessions"]
 # =============================================================================
 
 
-
-
 def apply_date_filter(df: pl.DataFrame, start_d: date, end_d: date) -> pl.DataFrame:
     """Applique un filtre de dates au DataFrame.
 
@@ -235,8 +233,6 @@ def render_session_filters(  # noqa: C901
     picked_session_labels = None if picked_one == t("flt_session_all") else [picked_one]
 
     return gap_minutes, picked_session_labels
-
-
 
 
 # =============================================================================

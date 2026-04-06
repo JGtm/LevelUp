@@ -169,9 +169,7 @@ def plot_timeseries(df: DataFrameLike, lang: str = "fr") -> go.Figure:
     return apply_halo_plot_style(fig, height=PLOT_CONFIG.tall_height)
 
 
-def plot_assists_timeseries(
-    df: DataFrameLike, lang: str = "fr"
-) -> go.Figure:
+def plot_assists_timeseries(df: DataFrameLike, lang: str = "fr") -> go.Figure:
     """Graphique des assistances dans le temps.
 
     Args:
@@ -198,7 +196,9 @@ def plot_assists_timeseries(
             accuracy.to_list(),
             d["ratio"].to_list(),
             (d["map_ui"] if "map_ui" in d.columns else d["map_name"]).fill_null("").to_list(),
-            (d["playlist_ui"] if "playlist_ui" in d.columns else d["playlist_name"]).fill_null("").to_list(),
+            (d["playlist_ui"] if "playlist_ui" in d.columns else d["playlist_name"])
+            .fill_null("")
+            .to_list(),
             d["match_id"].to_list(),
             strict=False,
         )
@@ -301,9 +301,7 @@ def _add_permin_rolling_lines(  # noqa: PLR0913
     )
 
 
-def plot_per_minute_timeseries(
-    df: DataFrameLike, lang: str = "fr"
-) -> go.Figure:
+def plot_per_minute_timeseries(df: DataFrameLike, lang: str = "fr") -> go.Figure:
     """Graphique des stats par minute.
 
     Args:

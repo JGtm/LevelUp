@@ -24,8 +24,10 @@ for p in players:
         """).fetchall()
         print(f"\n=== {p} ===")
         for g in groups:
-            print(f"  [{g[0]:10s}] n={g[1]:3d}  last_rating={g[6]:7.1f} ({g[7] or 'Non classe'})  "
-                  f"min={g[4]:.0f}  max={g[5]:.0f}")
+            print(
+                f"  [{g[0]:10s}] n={g[1]:3d}  last_rating={g[6]:7.1f} ({g[7] or 'Non classe'})  "
+                f"min={g[4]:.0f}  max={g[5]:.0f}"
+            )
 
         # Détecte drops brutaux (delta entre matchs consécutifs > 50 pts)
         drops = con.execute("""

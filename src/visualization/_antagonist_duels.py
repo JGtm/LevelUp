@@ -171,7 +171,7 @@ def plot_nemesis_victim_summary(
     return apply_halo_plot_style(fig, height=height)
 
 
-def plot_top_antagonists_bars(  # noqa: PLR0913
+def plot_top_antagonists_bars(
     nemeses: list[dict],
     victims: list[dict],
     *,

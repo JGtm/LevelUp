@@ -82,6 +82,7 @@ logger = logging.getLogger(__name__)
 DATA_DIR = Path(__file__).resolve().parent.parent / "data"
 PLAYERS_DIR = DATA_DIR / "players"
 from src.utils.paths import get_shared_matches_path  # noqa: E402
+
 SHARED_DB_PATH = get_shared_matches_path()
 
 

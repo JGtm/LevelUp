@@ -143,10 +143,7 @@ class TestIncrementalContinuityInvariant:
 
     def test_five_matches_all_incremental_equals_full_batch(self) -> None:
         """Cinq matchs calculés un par un donnent les mêmes ratings que en un seul batch."""
-        rows = [
-            _match(match_id=f"m{i}", hour=i, outcome=2 if i % 2 == 0 else 3)
-            for i in range(5)
-        ]
+        rows = [_match(match_id=f"m{i}", hour=i, outcome=2 if i % 2 == 0 else 3) for i in range(5)]
         dp = _empty_participants()
 
         # ── Référence batch complet ──
@@ -179,8 +176,10 @@ class TestIncrementalContinuityInvariant:
         """Seed arena ne contamine pas le groupe ranked."""
         row_arena = _match(match_id="a1", hour=0, pair_name="Arena:Slayer on Aquarius")
         row_ranked = _match(
-            match_id="r1", hour=1, pair_name="Ranked:Slayer on Aquarius",
-            playlist_name="Ranked Arena"
+            match_id="r1",
+            hour=1,
+            pair_name="Ranked:Slayer on Aquarius",
+            playlist_name="Ranked Arena",
         )
         dp = _empty_participants()
 
@@ -190,12 +189,8 @@ class TestIncrementalContinuityInvariant:
 
         # Incrémental : arena d'abord, puis ranked
         res_a = compute_skill_ratings_batch(_df(row_arena), dp)
-        state_a = PlayerState(
-            mu=res_a["rating_value"][0], sigma=res_a["rating_deviation"][0]
-        )
-        res_r = compute_skill_ratings_batch(
-            _df(row_ranked), dp, existing_states={"arena": state_a}
-        )
+        state_a = PlayerState(mu=res_a["rating_value"][0], sigma=res_a["rating_deviation"][0])
+        res_r = compute_skill_ratings_batch(_df(row_ranked), dp, existing_states={"arena": state_a})
         # ranked doit partir de INITIAL_MU (état absent → groupe créé à 0)
         # → ne pas hériter du seed arena
         incr_r = res_r["rating_value"][0]
@@ -242,9 +237,7 @@ class TestCascadeDriftDetection:
                 _df(row), dp, existing_states=state if state else None
             )
             group = res["playlist_group"][0]
-            state[group] = PlayerState(
-                mu=res["rating_value"][0], sigma=res["rating_deviation"][0]
-            )
+            state[group] = PlayerState(mu=res["rating_value"][0], sigma=res["rating_deviation"][0])
         incr_final_rating = state.get("arena", PlayerState()).mu
 
         # L'écart entre mode correct et référence doit être négligeable
@@ -616,21 +609,28 @@ def _build_batch_mixin(
     participant_rows: list[dict] | None = None,
 ) -> SkillRatingMixin:
     """Construit un FakeMixin avec _load_lusr_match_data mocké."""
-    df_matches_fixed = pl.DataFrame(match_rows) if match_rows else pl.DataFrame(
-        schema={
-            "match_id": pl.Utf8, "start_time": pl.Datetime("us", "UTC"),
-            "playlist_name": pl.Utf8, "pair_name": pl.Utf8,
-            "outcome": pl.Int32, "kills": pl.Float64, "deaths": pl.Float64,
-            "kills_expected": pl.Float64, "deaths_expected": pl.Float64,
-            "damage_dealt": pl.Float64, "damage_taken": pl.Float64,
-            "accuracy": pl.Float64, "team_id": pl.Int32,
-        }
+    df_matches_fixed = (
+        pl.DataFrame(match_rows)
+        if match_rows
+        else pl.DataFrame(
+            schema={
+                "match_id": pl.Utf8,
+                "start_time": pl.Datetime("us", "UTC"),
+                "playlist_name": pl.Utf8,
+                "pair_name": pl.Utf8,
+                "outcome": pl.Int32,
+                "kills": pl.Float64,
+                "deaths": pl.Float64,
+                "kills_expected": pl.Float64,
+                "deaths_expected": pl.Float64,
+                "damage_dealt": pl.Float64,
+                "damage_taken": pl.Float64,
+                "accuracy": pl.Float64,
+                "team_id": pl.Int32,
+            }
+        )
     )
-    dp_fixed = (
-        pl.DataFrame(participant_rows)
-        if participant_rows
-        else _empty_participants()
-    )
+    dp_fixed = pl.DataFrame(participant_rows) if participant_rows else _empty_participants()
 
     class _FakeBatchMixin(SkillRatingMixin):
         def _get_connection(self):  # type: ignore[override]

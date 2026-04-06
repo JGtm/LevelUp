@@ -347,14 +347,18 @@ class TestComputeParticipationProfile:
             assert 0.0 <= result[key] <= 1.0, f"{key} out of range: {result[key]}"
 
     def test_empty_awards(self, empty_awards_df):
-        result = compute_participation_profile(empty_awards_df, options=ProfileOptions(name="Empty"))
+        result = compute_participation_profile(
+            empty_awards_df, options=ProfileOptions(name="Empty")
+        )
         assert result["combat_raw"] == 0
         assert result["support_raw"] == 0
         assert result["score_raw"] == 0
 
     def test_custom_thresholds(self, awards_df):
         th = dict.fromkeys(RADAR_THRESHOLDS, 100.0)
-        result = compute_participation_profile(awards_df, options=ProfileOptions(thresholds=th, name="Custom"))
+        result = compute_participation_profile(
+            awards_df, options=ProfileOptions(thresholds=th, name="Custom")
+        )
         # With very low thresholds, norms should be 1.0 (capped)
         assert result["combat_norm"] == 1.0
 
@@ -379,8 +383,12 @@ class TestComputeParticipationProfile:
         assert result["survie_raw"] > 0
 
     def test_explicit_mode_is_objective(self, awards_df):
-        result_obj = compute_participation_profile(awards_df, options=ProfileOptions(mode_is_objective=True))
-        result_slay = compute_participation_profile(awards_df, options=ProfileOptions(mode_is_objective=False))
+        result_obj = compute_participation_profile(
+            awards_df, options=ProfileOptions(mode_is_objective=True)
+        )
+        result_slay = compute_participation_profile(
+            awards_df, options=ProfileOptions(mode_is_objective=False)
+        )
         # Objective mode uses objective_score, Slayer uses kill_score
         assert result_obj["objectifs_raw"] != result_slay["objectifs_raw"]
 

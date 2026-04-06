@@ -141,7 +141,7 @@ def create_participation_radar(
     return fig
 
 
-def create_participation_profile_radar(  # noqa: PLR0913
+def create_participation_profile_radar(
     profiles: list[dict[str, Any]],
     *,
     height: int = 400,

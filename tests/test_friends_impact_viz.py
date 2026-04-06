@@ -328,6 +328,6 @@ class TestImpactConstants:
         """Vérifie le format des couleurs (hex ou rgba)."""
         for key, color in IMPACT_COLORS.items():
             # Doit être hex (#xxx ou #xxxxxx) ou rgba()
-            assert color.startswith("#") or color.startswith(
-                "rgba"
-            ), f"Couleur invalide pour {key}: {color}"
+            assert color.startswith("#") or color.startswith("rgba"), (
+                f"Couleur invalide pour {key}: {color}"
+            )

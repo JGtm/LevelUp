@@ -179,9 +179,9 @@ class TestDuckDBReadOnly:
             if line.strip().startswith("import duckdb") and not line.strip().startswith("#")
         ]
         # Pas d'import duckdb au top-level (module-scope)
-        assert (
-            len(top_level_imports) == 0
-        ), f"career.py a encore un import duckdb top-level : {top_level_imports}"
+        assert len(top_level_imports) == 0, (
+            f"career.py a encore un import duckdb top-level : {top_level_imports}"
+        )
 
 
 # =====================================================================

@@ -270,7 +270,9 @@ def _render_cascade_filters(day_df: pl.DataFrame) -> pl.DataFrame:
             None,
         )
         if code:
-            keep_en = [p for p in _unique_sorted(day_df, _pl_en_col) if classify_experience_type(p) == code]
+            keep_en = [
+                p for p in _unique_sorted(day_df, _pl_en_col) if classify_experience_type(p) == code
+            ]
             day_df = day_df.filter(pl.col(_pl_en_col).is_in(keep_en))
             playlists = _unique_sorted(day_df, _pl_col)
 

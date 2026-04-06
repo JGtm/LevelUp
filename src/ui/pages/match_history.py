@@ -112,20 +112,24 @@ def _ensure_display_columns(dff_table: pl.DataFrame, waypoint_player: str) -> pl
     if "playlist_fr" not in dff_table.columns:
         if "playlist_name_fr" in dff_table.columns:
             dff_table = dff_table.with_columns(
-                pl.coalesce([
-                    pl.col("playlist_name_fr").cast(pl.Utf8),
-                    pl.col("playlist_name").cast(pl.Utf8),
-                ]).alias("playlist_fr")
+                pl.coalesce(
+                    [
+                        pl.col("playlist_name_fr").cast(pl.Utf8),
+                        pl.col("playlist_name").cast(pl.Utf8),
+                    ]
+                ).alias("playlist_fr")
             )
         else:
             dff_table = dff_table.with_columns(pl.col("playlist_name").alias("playlist_fr"))
     if "mode_ui" not in dff_table.columns:
         if "pair_name_fr" in dff_table.columns:
             dff_table = dff_table.with_columns(
-                pl.coalesce([
-                    pl.col("pair_name_fr").cast(pl.Utf8),
-                    pl.col("pair_name").cast(pl.Utf8),
-                ]).alias("mode_ui")
+                pl.coalesce(
+                    [
+                        pl.col("pair_name_fr").cast(pl.Utf8),
+                        pl.col("pair_name").cast(pl.Utf8),
+                    ]
+                ).alias("mode_ui")
             )
         else:
             _mh_mode_map = build_mapping(
@@ -134,7 +138,9 @@ def _ensure_display_columns(dff_table: pl.DataFrame, waypoint_player: str) -> pl
             dff_table = dff_table.with_columns(
                 pl.col("pair_name")
                 .cast(pl.Utf8)
-                .replace_strict(_mh_mode_map, default=pl.col("pair_name").cast(pl.Utf8), return_dtype=pl.Utf8)
+                .replace_strict(
+                    _mh_mode_map, default=pl.col("pair_name").cast(pl.Utf8), return_dtype=pl.Utf8
+                )
                 .alias("mode_ui")
             )
     return dff_table.with_columns(

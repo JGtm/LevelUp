@@ -55,7 +55,9 @@ def _prepare_history_source(df_sess: DataFrameLike) -> pl.DataFrame:
         return df_pl
     if "pair_name_fr" in df_pl.columns:
         return df_pl.with_columns(
-            pl.coalesce([pl.col("pair_name_fr"), pl.col("pair_name").cast(pl.Utf8)]).alias("pair_fr")
+            pl.coalesce([pl.col("pair_name_fr"), pl.col("pair_name").cast(pl.Utf8)]).alias(
+                "pair_fr"
+            )
         )
     pair_map = build_mapping(df_pl["pair_name"], lambda x: translate_pair_name(x, lang=get_lang()))
     return df_pl.with_columns(
@@ -116,7 +118,9 @@ def _add_mode_display_column(
         return df_sess
     if "pair_name" not in df_sess.columns:
         return df_sess
-    pair_map = build_mapping(df_sess["pair_name"], lambda x: translate_pair_name(x, lang=get_lang()))
+    pair_map = build_mapping(
+        df_sess["pair_name"], lambda x: translate_pair_name(x, lang=get_lang())
+    )
     df_sess = df_sess.with_columns(
         pl.col("pair_name")
         .cast(pl.Utf8)

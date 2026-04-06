@@ -322,6 +322,7 @@ def render_duckdb_v4_player_selector(
         st.markdown(f"#### {t('sidebar_player_heading')}")
     with _col_sync:
         from src.ui._sync_indicator import render_sync_indicator as _render_sync
+
         _render_sync(current_db_path)
     selected_label = st.selectbox(
         t("sidebar_player_label"),
