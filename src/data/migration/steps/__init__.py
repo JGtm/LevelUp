@@ -31,6 +31,7 @@ from src.data.migration.steps import (
     drop_highlight_events_gamertag,
     drop_legacy_translation_tables,
     fix_bot_xuid,
+    fix_events_loaded_inconsistency,
     fix_mv_player_matches_scores,
     migrate_weapon_kills_to_ubigint,
 )
@@ -62,6 +63,7 @@ __all__ = [
     "drop_highlight_events_gamertag",
     "drop_legacy_translation_tables",
     "fix_bot_xuid",
+    "fix_events_loaded_inconsistency",
     "fix_mv_player_matches_scores",
     "migrate_weapon_kills_to_ubigint",
 ]

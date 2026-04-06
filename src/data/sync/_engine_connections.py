@@ -19,6 +19,30 @@ logger = logging.getLogger(__name__)
 _SHARED_MIGRATIONS_DONE: set[str] = set()
 
 
+def _get_pending_events_ids(shared_conn: duckdb.DuckDBPyConnection) -> set[str]:
+    """Retourne les match_ids récents (≤7j) dont events_loaded=FALSE dans shared.
+
+    Utilisé par _load_existing_match_ids pour exclure ces matchs de existing_ids :
+    le [DELTA] arrêt ne les figera pas et chaque prochain sync retentera l'API film.
+    """
+    try:
+        rows = shared_conn.execute(
+            "SELECT match_id FROM match_registry "
+            "WHERE events_loaded = FALSE "
+            "  AND start_time >= CURRENT_TIMESTAMP - INTERVAL 7 DAY",
+        ).fetchall()
+        ids = {str(r[0]) for r in rows if r[0]}
+        if ids:
+            logger.info(
+                "%d match(s) récents avec events_loaded=FALSE → seront re-traités",
+                len(ids),
+            )
+        return ids
+    except Exception as _e:
+        logger.debug("_get_pending_events_ids: %s", _e)
+        return set()
+
+
 # =============================================================================
 # Bootstrap shared_matches_v2.duckdb
 # =============================================================================
@@ -390,6 +414,8 @@ class ConnectionMixin:
                 # légitimement sans awards (score nul) ne doivent pas être re-traités.
                 enriched_and_done = enriched_ids & (scored_ids | shared_score_zero)
                 ids = shared_ids & enriched_and_done
+
+                ids -= _get_pending_events_ids(shared_conn)
 
                 missing_personal_scores = (shared_ids & enriched_ids) - enriched_and_done
                 skipped = shared_ids - enriched_ids

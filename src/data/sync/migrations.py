@@ -1776,6 +1776,28 @@ def ensure_match_registry_film_start(conn: duckdb.DuckDBPyConnection) -> None:
     _add_column_if_missing(conn, "match_registry", "film_match_start_ms", "INTEGER")
 
 
+def fix_events_loaded_inconsistency(conn: duckdb.DuckDBPyConnection) -> None:
+    """Corrige les matchs avec events_loaded=TRUE mais sans entrée dans highlight_events.
+
+    Root cause : la migration add_highlight_events_autoincrement (2026-03-07) a recréé
+    la table highlight_events, perdant tous les events antérieurs mais laissant
+    events_loaded=TRUE dans match_registry.
+
+    Remet events_loaded=FALSE pour ces matchs afin que :
+    - les matchs récents soient retentés au prochain delta sync (via pending_events_ids)
+    - le backfill --events puisse les cibler
+    Idempotente.
+    """
+    if not table_exists(conn, "match_registry") or not table_exists(conn, "highlight_events"):
+        return
+    conn.execute(
+        """UPDATE match_registry
+           SET events_loaded = FALSE
+           WHERE events_loaded = TRUE
+             AND match_id NOT IN (SELECT DISTINCT match_id FROM highlight_events)"""
+    )
+
+
 # ─────────────────────────────────────────────────────────────────────────────
 # Sessions — player (stats.duckdb)
 # ─────────────────────────────────────────────────────────────────────────────
