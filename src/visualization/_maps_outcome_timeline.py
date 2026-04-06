@@ -5,8 +5,12 @@ Visualisation chronologique des matchs par carte avec mise en évidence de la se
 
 from __future__ import annotations
 
+import logging
+
 import plotly.graph_objects as go
 import polars as pl
+
+logger = logging.getLogger(__name__)
 
 from src.config import HALO_COLORS, PLOT_CONFIG
 from src.data.domain.refdata import Outcome
@@ -86,46 +90,12 @@ def _add_timeline_traces(fig: go.Figure, sub: pl.DataFrame, color: str, label: s
 # ─── Fonction publique ──────────────────────────────────────────────────────
 
 
-def plot_map_outcome_timeline(
-    df_matches: DataFrameLike,
-    session_match_ids: list[str] | None = None,
-    lang: str = "fr",
+def _build_timeline_figure(
+    df_proc: pl.DataFrame,
+    top_maps: list[str],
+    lang: str,
 ) -> go.Figure | None:
-    """Timeline des outcomes par carte : un cercle coloré par match, ordonné chronologiquement.
-
-    Les matchs de la sélection courante sont mis en évidence (plus grands, contour blanc).
-
-    Args:
-        df_matches: DataFrame brut (map_name, start_time, outcome, match_id).
-        session_match_ids: IDs des matchs a mettre en evidence.
-        lang: Langue.
-
-    Returns:
-        Figure Plotly ou None si donnees insuffisantes.
-    """
-    required = {"map_name", "start_time", "outcome", "match_id"}
-    df_pl = ensure_polars(df_matches)
-    if df_pl.is_empty() or not required.issubset(set(df_pl.columns)):
-        return None
-
-    # Utiliser map_ui (traduit) si disponible pour les labels des cartes
-    if "map_ui" in df_pl.columns:
-        df_pl = df_pl.with_columns(pl.col("map_ui").alias("map_name"))
-
-    session_ids: set[str] = set(session_match_ids or [])
-    top_maps = (
-        df_pl.filter(pl.col("map_name").is_not_null())
-        .group_by("map_name")
-        .agg(pl.len().alias("_cnt"))
-        .sort("_cnt", descending=True)
-        .head(_MAX_MAPS_TIMELINE)["map_name"]
-        .to_list()
-    )
-    df_pl = df_pl.filter(pl.col("map_name").is_in(top_maps))
-    if df_pl.is_empty():
-        return None
-
-    df_proc = _prepare_timeline_df(df_pl, session_ids)
+    """Construit la figure Plotly à partir du DataFrame pré-traité."""
     colors = HALO_COLORS.as_dict()
     fig = go.Figure()
     for outcome_val, color_key, label_fr, label_en in _TIMELINE_OUTCOMES:
@@ -165,3 +135,53 @@ def plot_map_outcome_timeline(
         legend=get_legend_horizontal_bottom(),
     )
     return apply_halo_plot_style(fig, height=height)
+
+
+def plot_map_outcome_timeline(
+    df_matches: DataFrameLike,
+    session_match_ids: list[str] | None = None,
+    lang: str = "fr",
+) -> go.Figure | None:
+    """Timeline des outcomes par carte : un cercle coloré par match, ordonné chronologiquement.
+
+    Les matchs de la sélection courante sont mis en évidence (plus grands, contour blanc).
+
+    Args:
+        df_matches: DataFrame brut (map_name, start_time, outcome, match_id).
+        session_match_ids: IDs des matchs a mettre en evidence.
+        lang: Langue.
+
+    Returns:
+        Figure Plotly ou None si donnees insuffisantes.
+    """
+    required = {"map_name", "start_time", "outcome", "match_id"}
+    df_pl = ensure_polars(df_matches)
+    if df_pl.is_empty() or not required.issubset(set(df_pl.columns)):
+        missing = required - set(df_pl.columns)
+        logger.debug(
+            "plot_map_outcome_timeline: donnees insuffisantes (vide=%s, colonnes_manquantes=%s)",
+            df_pl.is_empty(),
+            missing,
+        )
+        return None
+
+    # Utiliser map_ui (traduit) si disponible pour les labels des cartes
+    if "map_ui" in df_pl.columns:
+        df_pl = df_pl.with_columns(pl.col("map_ui").alias("map_name"))
+
+    session_ids: set[str] = set(session_match_ids or [])
+    top_maps = (
+        df_pl.filter(pl.col("map_name").is_not_null())
+        .group_by("map_name")
+        .agg(pl.len().alias("_cnt"))
+        .sort("_cnt", descending=True)
+        .head(_MAX_MAPS_TIMELINE)["map_name"]
+        .to_list()
+    )
+    df_pl = df_pl.filter(pl.col("map_name").is_in(top_maps))
+    if df_pl.is_empty():
+        logger.debug("plot_map_outcome_timeline: DataFrame vide apres filtrage top_maps")
+        return None
+
+    df_proc = _prepare_timeline_df(df_pl, session_ids)
+    return _build_timeline_figure(df_proc, top_maps, lang)

@@ -8,6 +8,7 @@ Couvre :
 - HEIGHT_TIMESERIES / HEIGHT_PROGRESSION / HEIGHT_MINI (Axe F)
 - _rolling_mean_list : calcul sans polars
 - SingleSeriesChartData : construction + from_series
+- downsample_for_plot (standalone Polars)
 """
 
 from __future__ import annotations
@@ -15,6 +16,7 @@ from __future__ import annotations
 from unittest.mock import patch
 
 import plotly.graph_objects as go
+import polars as pl
 import pytest
 
 from src.visualization._chart_series import (
@@ -30,6 +32,7 @@ from src.visualization._chart_series import (
     SingleSeriesChartData,
     _add_categorical_record_bars,
     _rolling_mean_list,
+    downsample_for_plot,
 )
 
 # ─── Helpers ──────────────────────────────────────────────────────────────────
@@ -362,3 +365,44 @@ class TestAddCategoricalRecordBars:
         fig = go.Figure()
         _add_categorical_record_bars(fig, cd)
         assert len(fig.data) == 2
+
+
+# ─── downsample_for_plot (standalone Polars) ──────────────────────────────────
+
+
+class TestDownsampleForPlot:
+    def _make_df(self, n: int) -> pl.DataFrame:
+        return pl.DataFrame({"x": list(range(n)), "y": [float(i) for i in range(n)]})
+
+    def test_retourne_df_intact_si_sous_limite(self) -> None:
+        df = self._make_df(50)
+        result = downsample_for_plot(df, max_points=200)
+        assert len(result) == 50
+
+    def test_reduit_si_au_dessus_limite(self) -> None:
+        df = self._make_df(500)
+        result = downsample_for_plot(df, max_points=100)
+        assert len(result) <= 105  # step + dernier point peuvent légèrement dépasser
+        assert len(result) < 500
+
+    def test_conserve_premier_et_dernier_point(self) -> None:
+        df = self._make_df(300)
+        result = downsample_for_plot(df, max_points=50)
+        x_list = result["x"].to_list()
+        assert x_list[0] == 0
+        assert x_list[-1] == 299
+
+    def test_max_points_exact(self) -> None:
+        df = self._make_df(200)
+        result = downsample_for_plot(df, max_points=200)
+        assert len(result) == 200
+
+    def test_df_vide(self) -> None:
+        df = pl.DataFrame({"x": [], "y": []})
+        result = downsample_for_plot(df, max_points=100)
+        assert len(result) == 0
+
+    def test_df_un_element(self) -> None:
+        df = self._make_df(1)
+        result = downsample_for_plot(df, max_points=100)
+        assert len(result) == 1
