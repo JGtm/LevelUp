@@ -1,4 +1,4 @@
-"""Profils de tempo synchronisés — multi-lignes par joueur.
+"""Profils de tempo synchronisés — barres groupées par joueur.
 
 Architecture V3 : PlotOptions + ChartTheme.
 """
@@ -24,14 +24,17 @@ def plot_squad_cadence_profiles(
     profiles_df: pl.DataFrame,
     player_names: list[str],
     opts: PlotOptions | None = None,
+    color_map: dict[str, str] | None = None,
 ) -> go.Figure | None:
-    """Construit le graphe multi-lignes de tempo synchronisé.
+    """Construit le graphe barres groupées de tempo synchronisé.
 
     Args:
         profiles_df: DataFrame avec colonne ``phase`` (0-9) +
                      une colonne par joueur (avg kills/phase).
         player_names: Noms des joueurs (dans l'ordre des colonnes).
         opts: Options de rendu V3.
+        color_map: Mapping {nom: couleur_hex} issu d'``assign_player_colors``.
+                   Si absent, la palette interne est utilisée.
 
     Returns:
         Figure Plotly ou None si données insuffisantes.
@@ -52,22 +55,22 @@ def plot_squad_cadence_profiles(
     for i, name in enumerate(player_names):
         if name not in profiles_df.columns:
             continue
-        color = _PLAYER_COLORS[i % len(_PLAYER_COLORS)]
+        color = color_map.get(name) if color_map else _PLAYER_COLORS[i % len(_PLAYER_COLORS)]
         values = profiles_df[name].to_list()
 
         fig.add_trace(
-            go.Scatter(
+            go.Bar(
                 x=x_labels,
                 y=values,
-                mode="lines+markers",
                 name=name,
-                line={"color": color, "width": 2.5},
-                marker={"color": color, "size": 6},
+                marker_color=color,
+                marker_line={"color": color, "width": 0.5},
                 hovertemplate=f"{name}: %{{y:.1f}} kills<extra></extra>",
             )
         )
 
     fig.update_layout(
+        barmode="group",
         height=opts.height_px,
         plot_bgcolor=theme.bg_plot,
         paper_bgcolor=theme.bg_plot,

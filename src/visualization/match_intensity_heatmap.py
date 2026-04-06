@@ -18,17 +18,17 @@ def _build_heatmap_trace(
     y_labels: list[str],
     lang: str,
 ) -> go.Heatmap:
-    """Construit la trace Heatmap avec colorscale Okabe-Ito."""
+    """Construit la trace Heatmap avec colorscale Plasma."""
     return go.Heatmap(
         z=z_data,
         x=x_labels,
         y=y_labels,
         colorscale=[
-            [0.0, "rgba(29, 35, 40, 0.8)"],
-            [0.25, "#0072B2"],
-            [0.5, "#009E73"],
-            [0.75, "#E69F00"],
-            [1.0, "#D55E00"],
+            [0.0, "#0D0887"],
+            [0.25, "#7E03A8"],
+            [0.5, "#CC4778"],
+            [0.75, "#F89441"],
+            [1.0, "#F0F921"],
         ],
         colorbar={
             "title": {

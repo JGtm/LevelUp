@@ -212,7 +212,7 @@ def _merge_trio_dataframes(
     missing_f1 = [c for c in friend_cols if c not in f1_df.columns]
     if missing_me or missing_f1 or me_df.is_empty() or f1_df.is_empty():
         return pl.DataFrame()
-    _opt = ["performance_score"]
+    _opt = ["performance_score", "map_ui"]
     me_opt = [c for c in _opt if c in me_df.columns]
     me_cols_actual = [c for c in me_cols if c in me_df.columns]
     f1_ext = friend_cols + [c for c in _opt if c in f1_df.columns]
@@ -237,6 +237,7 @@ def _merge_trio_dataframes(
 _STAT_COLS = [
     "start_time",
     "map_name",
+    "map_ui",
     "kills",
     "deaths",
     "assists",

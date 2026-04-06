@@ -71,8 +71,30 @@ class TestPlotSquadCadenceProfiles:
         assert fig is not None
         assert fig.layout.legend.orientation == "h"
 
-    def test_lines_and_markers_mode(self):
+    def test_bar_traces(self):
         df = _make_profiles(players=["Alice"])
         fig = plot_squad_cadence_profiles(df, ["Alice"])
         assert fig is not None
-        assert fig.data[0].mode == "lines+markers"
+        assert isinstance(fig.data[0], go.Bar)
+
+    def test_barmode_group(self):
+        df = _make_profiles(players=["Alice", "Bob"])
+        fig = plot_squad_cadence_profiles(df, ["Alice", "Bob"])
+        assert fig is not None
+        assert fig.layout.barmode == "group"
+
+    def test_color_map_applied(self):
+        """Les couleurs du color_map doivent être utilisées."""
+        df = _make_profiles(players=["Alice", "Bob"])
+        color_map = {"Alice": "#FF0000", "Bob": "#00FF00"}
+        fig = plot_squad_cadence_profiles(df, ["Alice", "Bob"], color_map=color_map)
+        assert fig is not None
+        assert fig.data[0].marker.color == "#FF0000"
+        assert fig.data[1].marker.color == "#00FF00"
+
+    def test_color_map_none_uses_defaults(self):
+        """Sans color_map, la palette interne est utilisée (pas de crash)."""
+        df = _make_profiles(players=["Alice"])
+        fig = plot_squad_cadence_profiles(df, ["Alice"], color_map=None)
+        assert fig is not None
+        assert fig.data[0].marker.color == "#0072B2"

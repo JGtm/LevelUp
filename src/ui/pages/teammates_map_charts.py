@@ -285,6 +285,7 @@ def render_squad_cadence_section(
     xuid_name_map: dict[str, str],
     all_match_ids: list[str],
     lang: str = "fr",
+    color_map: dict[str, str] | None = None,
 ) -> None:
     """Affiche le profil de tempo synchronisé (moyenne de kills/phase par joueur)."""
     if not all_match_ids or len(xuid_name_map) < 2:
@@ -329,6 +330,7 @@ def render_squad_cadence_section(
             profiles,
             all_names,
             opts=PlotOptions(lang=lang, height_px=340),
+            color_map=color_map,
         )
         if fig is not None:
             st.plotly_chart(fig, width="stretch", config=PLOTLY_CLEAN_CONFIG)

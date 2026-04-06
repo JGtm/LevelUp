@@ -56,13 +56,26 @@ def _add_cadence_traces(
     )
     ma_my = compute_cadence_moving_avg(buckets, window=3, field="my_kills")
     ma_enemy = compute_cadence_moving_avg(buckets, window=3, field="enemy_kills")
+    # Bordures blanches fines (traces fantômes sous les courbes MA)
+    _outline = {"color": "rgba(255,255,255,0.8)", "width": 5}
+    for ma_vals in (ma_my, ma_enemy):
+        fig.add_trace(
+            go.Scatter(
+                x=x_labels,
+                y=ma_vals,
+                mode="lines",
+                line=_outline,
+                hoverinfo="skip",
+                showlegend=False,
+            )
+        )
     fig.add_trace(
         go.Scatter(
             x=x_labels,
             y=ma_my,
             mode="lines",
             name=viz_t("trace_cadence_ma_my_team", lang),
-            line={"color": _MA_MY_TEAM_COLOR, "width": 2, "dash": "dot"},
+            line={"color": _MA_MY_TEAM_COLOR, "width": 3},
             hovertemplate="%{y:.1f}<extra></extra>",
         )
     )
@@ -72,7 +85,7 @@ def _add_cadence_traces(
             y=ma_enemy,
             mode="lines",
             name=viz_t("trace_cadence_ma_enemy", lang),
-            line={"color": _MA_ENEMY_COLOR, "width": 2, "dash": "dot"},
+            line={"color": _MA_ENEMY_COLOR, "width": 3},
             hovertemplate="%{y:.1f}<extra></extra>",
         )
     )

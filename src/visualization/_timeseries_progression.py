@@ -199,7 +199,6 @@ def plot_lusr_timeseries(
         df: DataFrame avec colonnes : ``rating_value``, ``start_time``,
             optionnel : ``rating_deviation``, ``tier_label``, ``rating_type``,
             ``playlist_group``.
-        title: Titre du graphique.
         show_confidence: Afficher la bande de confiance (± rating_deviation).
         show_smooth: Afficher la courbe de tendance lissée (rolling mean 20).
         playlist_group: Filtrer sur un groupe spécifique (None = tous).

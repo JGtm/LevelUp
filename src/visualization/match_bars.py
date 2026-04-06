@@ -145,7 +145,6 @@ def plot_multi_metric_bars_by_match(  # noqa: C901, PLR0912, PLR0913, PLR0915
     Args:
         series: Liste de tuples (nom, DataFrame).
         metric_col: Nom de la colonne de métrique.
-        title: Titre du graphique.
         y_axis_title: Titre de l'axe Y.
         hover_label: Label pour le hover.
         colors: Dict ou liste de couleurs par joueur.

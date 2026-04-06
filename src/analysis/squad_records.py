@@ -62,11 +62,11 @@ def compute_player_record(
         sub = df.filter(pl.col("pair_name") == pair_name)
         if sub.is_empty():
             logger.debug(
-                "compute_player_record: aucune ligne pour pair_name=%r metric=%s",
+                "compute_player_record: pair_name=%r vide pour metric=%s — fallback historique complet",
                 pair_name,
                 metric,
             )
-            return None
+            sub = df  # fallback: ignorer pair_name si aucune donnée filtrée
     sub = sub.select(metric).drop_nulls()
     if sub.is_empty():
         return None

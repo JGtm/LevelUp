@@ -411,10 +411,10 @@ def render_timeseries_page(
         _render_kda_section(dff, lang=lang, db_path=db_path, xuid=xuid)
 
     with _tab_prog:
-        render_skill_rank_progression(dff, db_path, xuid, lang=lang)
-        _render_cumulative_performance(dff, lang=lang)
         if db_path and xuid:
             _render_intensity_heatmap(dff, db_path=db_path, xuid=xuid, lang=lang)
+        render_skill_rank_progression(dff, db_path, xuid, lang=lang)
+        _render_cumulative_performance(dff, lang=lang)
 
     with _tab_dist:
         render_distributions(dff, lang=lang)
