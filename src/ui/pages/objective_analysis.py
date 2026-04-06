@@ -17,7 +17,7 @@ from src.analysis.objective_participation import (
     compute_award_frequency_polars,
     compute_objective_summary_by_match_polars,
 )
-from src.ui.chart_utils import safe_chart_render
+from src.ui.chart_utils import render_chart_or_info, safe_chart_render
 from src.ui.i18n import get_lang, t
 from src.ui.i18n.data_labels import label as i18n_label
 from src.ui.streamlit_modern import PLOTLY_CLEAN_CONFIG, PLOTLY_STATIC_CONFIG, fragment_if_available
@@ -241,7 +241,12 @@ def _render_assists_section(my_awards_df: pl.DataFrame) -> None:
             "other_assists": max(0, other_assists),
         }
         fig_pie = plot_assist_breakdown_pie(breakdown)
-        st.plotly_chart(fig_pie, width="stretch", config=PLOTLY_STATIC_CONFIG)
+        render_chart_or_info(
+            fig_pie,
+            key="obj_assist_pie",
+            config=PLOTLY_STATIC_CONFIG,
+            info_key="insufficient_data_chart",
+        )
 
     with col_table:
         st.markdown(f"### {t('obj_assist_detail')}")
@@ -311,7 +316,7 @@ def _render_tips(objective_ratio: float, total_kill: int, total_assist: int) -> 
 
 
 @fragment_if_available
-def render_objective_analysis_page(  # noqa: C901, PLR0912, PLR0915
+def render_objective_analysis_page(  # noqa: PLR0912, PLR0915
     repo: DuckDBRepository,
     xuid: str,
     *,

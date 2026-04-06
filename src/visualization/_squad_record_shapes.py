@@ -13,16 +13,18 @@ from __future__ import annotations
 
 import plotly.graph_objects as go
 
+from src.visualization._plot_options import DEFAULT_THEME
+
 # Paramètres de mise en forme
-_BAR_GAP: float = 0.2             # bargap Plotly par défaut (gap entre groupes)
-_BAR_FILL: float = 1.0            # fraction de la largeur de baton (1.0 = exacte)
+_BAR_GAP: float = 0.2  # bargap Plotly par défaut (gap entre groupes)
+_BAR_FILL: float = 1.0  # fraction de la largeur de baton (1.0 = exacte)
 _OVERLAY_LINE_WIDTH: float = 3.0  # épaisseur de la ligne record en mode overlay
-# Pattern hachurage
-_PATTERN_SHAPE: str = "/"
-_PATTERN_OPACITY: float = 0.55
-_PATTERN_SIZE: int = 8
-_PATTERN_SOLIDITY: float = 0.35
-_GHOST_BORDER_WIDTH: float = 2.0
+# Pattern hachurage — source unique : DEFAULT_THEME
+_PATTERN_SHAPE: str = DEFAULT_THEME.record_pattern_shape
+_PATTERN_OPACITY: float = DEFAULT_THEME.record_pattern_opacity
+_PATTERN_SIZE: int = DEFAULT_THEME.record_pattern_size
+_PATTERN_SOLIDITY: float = DEFAULT_THEME.record_pattern_solidity
+_GHOST_BORDER_WIDTH: float = DEFAULT_THEME.record_border_width
 
 
 def _bar_half_width(n_players: int) -> float:
@@ -76,23 +78,25 @@ def add_record_shapes(  # noqa: PLR0913
             y_vals.append((-rv if is_negative else rv) if rv is not None else None)
         if all(v is None for v in y_vals):
             continue
-        fig.add_trace(go.Bar(
-            x=xs,
-            y=y_vals,
-            name=name,
-            showlegend=False,
-            legendgroup=name,
-            offsetgroup=name,
-            marker_color="rgba(0,0,0,0)",
-            marker_pattern_shape=_PATTERN_SHAPE,
-            marker_pattern_fgcolor=color,
-            marker_pattern_fgopacity=_PATTERN_OPACITY,
-            marker_pattern_size=_PATTERN_SIZE,
-            marker_pattern_solidity=_PATTERN_SOLIDITY,
-            marker_line_color=color,
-            marker_line_width=_GHOST_BORDER_WIDTH,
-            hoverinfo="skip",
-        ))
+        fig.add_trace(
+            go.Bar(
+                x=xs,
+                y=y_vals,
+                name=name,
+                showlegend=False,
+                legendgroup=name,
+                offsetgroup=name,
+                marker_color="rgba(0,0,0,0)",
+                marker_pattern_shape=_PATTERN_SHAPE,
+                marker_pattern_fgcolor=color,
+                marker_pattern_fgopacity=_PATTERN_OPACITY,
+                marker_pattern_size=_PATTERN_SIZE,
+                marker_pattern_solidity=_PATTERN_SOLIDITY,
+                marker_line_color=color,
+                marker_line_width=_GHOST_BORDER_WIDTH,
+                hoverinfo="skip",
+            )
+        )
 
 
 def add_overlay_record_shapes(
@@ -127,7 +131,8 @@ def add_overlay_record_shapes(
         for x in xs:
             fig.add_shape(
                 type="line",
-                xref="x", yref="y",
+                xref="x",
+                yref="y",
                 x0=x - half_w,
                 x1=x + half_w,
                 y0=record_val,

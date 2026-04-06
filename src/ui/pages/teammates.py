@@ -155,7 +155,7 @@ def _build_teammates_callbacks(
 # =============================================================================
 
 
-def render_teammates_page(  # noqa: C901, PLR0912, PLR0913, PLR0915
+def render_teammates_page(  # noqa: PLR0912, PLR0913, PLR0915
     df: DataFrameLike,
     dff: DataFrameLike,
     base: DataFrameLike,

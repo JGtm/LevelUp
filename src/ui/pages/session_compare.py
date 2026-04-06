@@ -50,7 +50,28 @@ from src.visualization._compat import (
 from src.visualization.performance import plot_cumulative_comparison
 
 
-def _get_friends_names(df_session: DataFrameLike) -> set[str]:  # noqa: C901, PLR0912
+def _load_friends_mapping_from_db(db_path: str, xuid: str) -> dict[str, str]:
+    """Charge le mapping xuid→nom des amis depuis la table friends (si disponible)."""
+    if not db_path.endswith(".duckdb"):
+        return {}
+    try:
+        from src.ui.cache_loaders import get_cached_repository_st
+        from src.utils.db import has_table
+
+        repo = get_cached_repository_st(db_path, xuid)
+        conn = repo._get_connection()
+        if not has_table(conn, "friends"):
+            return {}
+        rows = conn.execute(
+            "SELECT friend_xuid, friend_gamertag, nickname FROM friends WHERE owner_xuid = ?",
+            (xuid,),
+        ).fetchall()
+        return {fxuid: (nickname or gamertag or fxuid) for fxuid, gamertag, nickname in rows}
+    except Exception:
+        return {}
+
+
+def _get_friends_names(df_session: DataFrameLike) -> set[str]:
     """Récupère les noms/nicknames des amis présents dans une session.
 
     Utilise les aliases chargés en session_state si disponibles,
@@ -66,7 +87,6 @@ def _get_friends_names(df_session: DataFrameLike) -> set[str]:  # noqa: C901, PL
     if df_session.is_empty() or "friends_xuids" not in df_session.columns:
         return set()
 
-    # Collecter tous les XUIDs des amis
     friends_xuids: set[str] = set()
     for friends_str in df_session.get_column("friends_xuids").drop_nulls().to_list():
         if friends_str:
@@ -76,51 +96,22 @@ def _get_friends_names(df_session: DataFrameLike) -> set[str]:  # noqa: C901, PL
     if not friends_xuids:
         return set()
 
-    # Charger les noms des amis depuis la DB si possible
+    aliases = st.session_state.get("xuid_aliases", {})
     friends_mapping: dict[str, str] = {}
 
-    # 1. Essayer depuis session_state (aliases chargés)
-    aliases = st.session_state.get("xuid_aliases", {})
-
-    # 2. Essayer de charger depuis la table Friends
     db_path = st.session_state.get("db_path")
     xuid = st.session_state.get("player_xuid")
     if db_path and xuid:
-        try:
-            # Utiliser le repo caché au lieu d'ouvrir une nouvelle connexion
-            # (8bis.A3 : gain ~200-400ms par visite de page)
-            if db_path.endswith(".duckdb"):
-                from src.ui.cache_loaders import get_cached_repository_st
+        friends_mapping = _load_friends_mapping_from_db(db_path, xuid)
 
-                repo = get_cached_repository_st(db_path, xuid)
-                # _get_connection() légitime : accès à la table `friends` (domaine
-                # joueur isolé, pas shared). Aucun équivalent dans le repo pattern.
-                conn = repo._get_connection()
-                # Vérifier si la table existe
-                from src.utils.db import has_table
-
-                if has_table(conn, "friends"):
-                    result = conn.execute(
-                        "SELECT friend_xuid, friend_gamertag, nickname FROM friends WHERE owner_xuid = ?",
-                        (xuid,),
-                    ).fetchall()
-                    for row in result:
-                        fxuid, gamertag, nickname = row
-                        friends_mapping[fxuid] = nickname or gamertag or fxuid
-        except Exception:
-            pass
-
-    # Construire les noms
     names: set[str] = set()
-    for xuid in friends_xuids:
-        if xuid in friends_mapping:
-            names.add(friends_mapping[xuid])
-        elif xuid in aliases:
-            names.add(aliases[xuid])
+    for xu in friends_xuids:
+        if xu in friends_mapping:
+            names.add(friends_mapping[xu])
+        elif xu in aliases:
+            names.add(aliases[xu])
         else:
-            # Garder le XUID tronqué comme fallback
-            names.add(xuid[-6:] if len(xuid) > 6 else xuid)
-
+            names.add(xu[-6:] if len(xu) > 6 else xu)
     return names
 
 

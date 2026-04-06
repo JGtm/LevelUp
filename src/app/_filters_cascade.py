@@ -13,6 +13,7 @@ import polars as pl
 import streamlit as st
 
 from src.app.i18n_columns import add_i18n_display_columns
+from src.app.session_keys import SK
 from src.ui.components import (
     get_firefight_playlists,
     render_checkbox_filter,
@@ -174,9 +175,9 @@ def _compute_faceted_options(
     Chaque dimension n'affiche que les options ayant ≥1 match dans le contexte
     des sélections actives dans les AUTRES dimensions.
     """
-    _sel_modes = st.session_state.get("filter_modes")
-    _sel_maps = st.session_state.get("filter_maps")
-    _sel_playlists = st.session_state.get("filter_playlists")
+    _sel_modes = st.session_state.get(SK.FILTER_MODES)
+    _sel_maps = st.session_state.get(SK.FILTER_MAPS)
+    _sel_playlists = st.session_state.get(SK.FILTER_PLAYLISTS)
 
     # Playlists facettées : filtré par modes + cartes actuels
     _base_pl = dropdown_base_filtered
@@ -294,7 +295,7 @@ def _render_cascade_filters(  # noqa: PLR0913
     playlist_values_all = _unique_sorted_values(dropdown_base, "playlist_ui")
     exp_values = _get_experience_type_options()
     _reconcile_filter_options(
-        "filter_experience_types",
+        SK.FILTER_EXPERIENCE_TYPES,
         exp_values,
         "_experience_types_filter_mode",
         "_experience_types_exclusions",
@@ -302,7 +303,7 @@ def _render_cascade_filters(  # noqa: PLR0913
     experience_selected = render_checkbox_filter(
         label="Type",
         options=exp_values,
-        session_key="filter_experience_types",
+        session_key=SK.FILTER_EXPERIENCE_TYPES,
         expanded=False,
     )
     dropdown_base_filtered = _apply_experience_filter(
@@ -325,9 +326,9 @@ def _render_cascade_filters(  # noqa: PLR0913
     map_values = _unique_sorted_values(dropdown_base_filtered, "map_ui")
 
     for key, vals, mode_k, excl_k in [
-        ("filter_playlists", playlist_values, "_playlists_filter_mode", "_playlists_exclusions"),
-        ("filter_modes", mode_values, "_modes_filter_mode", "_modes_exclusions"),
-        ("filter_maps", map_values, "_maps_filter_mode", "_maps_exclusions"),
+        (SK.FILTER_PLAYLISTS, playlist_values, "_playlists_filter_mode", "_playlists_exclusions"),
+        (SK.FILTER_MODES, mode_values, "_modes_filter_mode", "_modes_exclusions"),
+        (SK.FILTER_MAPS, map_values, "_maps_filter_mode", "_maps_exclusions"),
     ]:
         _reconcile_filter_options(key, vals, mode_k, excl_k)
 
@@ -339,19 +340,19 @@ def _render_cascade_filters(  # noqa: PLR0913
     playlists_selected = _render_dimension_with_restore(
         t("filter_playlists"),
         pl_faceted,
-        "filter_playlists",
+        SK.FILTER_PLAYLISTS,
         default_unchecked=get_firefight_playlists(pl_faceted),
     )
     modes_selected = _render_dimension_with_restore(
         t("filter_modes"),
         mode_faceted,
-        "filter_modes",
+        SK.FILTER_MODES,
         use_hierarchical=True,
     )
     maps_selected = _render_dimension_with_restore(
         t("filter_maps"),
         map_faceted,
-        "filter_maps",
+        SK.FILTER_MAPS,
     )
 
     return (

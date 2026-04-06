@@ -119,9 +119,7 @@ def _render_kpi_cards(  # noqa: PLR0913
     )
     score_escaped = html.escape(str(score_label))
     dominance_badge = _dominance_badge_html(dominance_flag)
-    badge_html = (
-        f"<div style='margin-top:1px'>{dominance_badge}</div>" if dominance_badge else ""
-    )
+    badge_html = f"<div style='margin-top:1px'>{dominance_badge}</div>" if dominance_badge else ""
 
     _accent66 = f"{outcome_color}66" if str(outcome_color).startswith("#") else outcome_color
     _clip = (
@@ -132,9 +130,7 @@ def _render_kpi_cards(  # noqa: PLR0913
         "display:flex;flex-direction:column;justify-content:center;align-items:center;"
         f"text-align:center;padding:9px 15px;background:rgba(21,50,62,0.7);height:100%;{_clip}"
     )
-    _score_kpi = (
-        f"<span class='{outcome_class} fw-bold' style='font-family:var(--font-display);font-size:38px;line-height:1'>{score_escaped}</span>"
-    )
+    _score_kpi = f"<span class='{outcome_class} fw-bold' style='font-family:var(--font-display);font-size:38px;line-height:1'>{score_escaped}</span>"
 
     date_display = format_date_fr(last_time, lang=lang)
 
@@ -226,7 +222,7 @@ def _render_map_and_rank(  # noqa: PLR0913
         st.markdown(map_img_html, unsafe_allow_html=True)
 
 
-def render_match_view(  # noqa: C901, PLR0912
+def render_match_view(
     *,
     row: dict[str, Any],
     match_id: str,

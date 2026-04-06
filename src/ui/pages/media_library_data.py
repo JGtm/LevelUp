@@ -206,7 +206,7 @@ def associate_media_to_matches(media_df: pl.DataFrame, windows_df: pl.DataFrame)
 # ------------------------------------------------------------------
 
 
-def load_match_windows_from_db(db_path: str, xuid: str = "") -> pl.DataFrame:  # noqa: C901, PLR0912, PLR0915
+def load_match_windows_from_db(db_path: str, xuid: str = "") -> pl.DataFrame:  # noqa: PLR0912, PLR0915
     """Charge les fenêtres temporelles des matchs depuis la DB.
 
     V5 : Utilise shared_matches_v2.duckdb via le repository.

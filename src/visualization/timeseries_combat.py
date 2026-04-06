@@ -13,6 +13,7 @@ from src.config import PLOT_CONFIG
 from src.data.domain.refdata import Outcome
 from src.ui.i18n.viz import viz_t
 from src.visualization._compat import DataFrameLike, ensure_polars, smart_scatter  # noqa: F401
+from src.visualization._plot_options import DEFAULT_THEME
 from src.visualization._timeseries_helpers import (
     COLORS,
     _normalize_df,
@@ -260,8 +261,8 @@ def plot_streak_chart(
     fig.update_yaxes(
         title_text=viz_t("axis_streak", lang),
         zeroline=True,
-        zerolinecolor="rgba(255,255,255,0.75)",
-        zerolinewidth=2,
+        zerolinecolor=DEFAULT_THEME.zero_line_color,
+        zerolinewidth=DEFAULT_THEME.zero_line_width,
     )
     apply_chrono_xaxis(fig, x_idx, labels, step, lang)
 
