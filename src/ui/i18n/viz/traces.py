@@ -1,4 +1,4 @@
-"""Chaînes viz — noms de traces Plotly (56 clés)."""
+"""Chaînes viz — noms de traces Plotly (72 clés)."""
 
 from __future__ import annotations
 
@@ -199,5 +199,6 @@ STRINGS: dict[str, dict[str, str] | str] = {
     # ── Traces cadence / intensité ────────────────────────────────────────────
     "trace_cadence_my_team": {"fr": "Mon équipe", "en": "My team"},
     "trace_cadence_enemy": {"fr": "Adversaires", "en": "Opponents"},
-    "trace_cadence_moving_avg": {"fr": "Moy. glissante", "en": "Moving avg."},
+    "trace_cadence_ma_my_team": {"fr": "Moy. mon équipe", "en": "My team avg."},
+    "trace_cadence_ma_enemy": {"fr": "Moy. adversaires", "en": "Opponents avg."},
 }

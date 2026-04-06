@@ -177,7 +177,7 @@ def render_match_cadence_section(  # noqa: PLR0913
     if not (match_id and match_id.strip() and _has_table_duckdb(db_path, "highlight_events")):
         return
 
-    logger.debug("cadence: match=%s bucket_default=30s", match_id)
+    logger.debug("cadence: match=%s bucket_default=15s", match_id)
     st.subheader(t("mv_match_cadence"))
 
     he = load_highlight_events_fn(db_path, match_id.strip(), db_key=db_key)
@@ -208,10 +208,10 @@ def render_match_cadence_section(  # noqa: PLR0913
         t("mv_cadence_granularity"),
         options=[15, 30, 60],
         format_func=lambda x: f"{x}s",
-        default=30,
+        default=15,
         key=f"cadence_bucket_{match_id}",
     )
-    bucket_s = int(bucket_s) if bucket_s else 30
+    bucket_s = int(bucket_s) if bucket_s else 15
 
     buckets = compute_cadence_buckets(he, xuid_to_team, my_team_id, duration_s, bucket_s)
     fig = plot_match_cadence_histogram(

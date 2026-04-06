@@ -100,6 +100,30 @@ class TestComputeCadenceMovingAvg:
         assert result[1] == pytest.approx(4.0)  # [2, 6] / 2
         assert result[2] == pytest.approx(14 / 3)  # [2, 6, 6] / 3
 
+    def test_field_my_kills(self):
+        buckets = [
+            CadenceBucket(0, 30, my_kills=3, enemy_kills=1),
+            CadenceBucket(30, 60, my_kills=1, enemy_kills=5),
+            CadenceBucket(60, 90, my_kills=2, enemy_kills=0),
+        ]
+        result = compute_cadence_moving_avg(buckets, window=3, field="my_kills")
+        assert len(result) == 3
+        assert result[0] == pytest.approx(3.0)
+        assert result[1] == pytest.approx(2.0)  # (3+1)/2
+        assert result[2] == pytest.approx(2.0)  # (3+1+2)/3
+
+    def test_field_enemy_kills(self):
+        buckets = [
+            CadenceBucket(0, 30, my_kills=3, enemy_kills=1),
+            CadenceBucket(30, 60, my_kills=1, enemy_kills=5),
+            CadenceBucket(60, 90, my_kills=2, enemy_kills=0),
+        ]
+        result = compute_cadence_moving_avg(buckets, window=3, field="enemy_kills")
+        assert len(result) == 3
+        assert result[0] == pytest.approx(1.0)
+        assert result[1] == pytest.approx(3.0)  # (1+5)/2
+        assert result[2] == pytest.approx(2.0)  # (1+5+0)/3
+
 
 # =============================================================================
 # Tests compute_match_intensity_profiles
