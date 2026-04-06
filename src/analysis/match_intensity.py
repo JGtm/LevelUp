@@ -42,9 +42,7 @@ def compute_match_intensity_profiles(
         return IntensityProfile(df=pl.DataFrame(schema=schema), n_buckets=n_buckets)
 
     # Durée max par match pour normaliser
-    durations = events_df.group_by("match_id").agg(
-        pl.col("time_ms").max().alias("max_ms")
-    )
+    durations = events_df.group_by("match_id").agg(pl.col("time_ms").max().alias("max_ms"))
 
     enriched = events_df.join(durations, on="match_id")
 
@@ -112,9 +110,7 @@ def compute_squad_cadence_profiles(
         return pl.DataFrame()
 
     # Durée max par match (tous joueurs confondus pour l'axe temps partagé)
-    durations = events_df.group_by("match_id").agg(
-        pl.col("time_ms").max().alias("max_ms")
-    )
+    durations = events_df.group_by("match_id").agg(pl.col("time_ms").max().alias("max_ms"))
 
     enriched = filtered.join(durations, on="match_id")
     enriched = enriched.with_columns(

@@ -203,6 +203,9 @@ def _add_categorical_record_bars(fig: go.Figure, chart_data: ChartData) -> None:
         ]
         if all(v is None for v in y_rec):
             continue
+        # Les records à valeurs négatives (morts) utilisent blanc pour tous les joueurs :
+        # la couleur positive du joueur sur une barre négative est trompeuse visuellement.
+        _bar_colors = ["#ffffff" if (v is not None and v < 0) else s.color for v in y_rec]
         fig.add_trace(
             go.Bar(
                 name=s.name,
@@ -213,11 +216,11 @@ def _add_categorical_record_bars(fig: go.Figure, chart_data: ChartData) -> None:
                 offsetgroup=s.name,
                 marker_color="rgba(0,0,0,0)",
                 marker_pattern_shape="/",
-                marker_pattern_fgcolor=s.color,
+                marker_pattern_fgcolor=_bar_colors,
                 marker_pattern_fgopacity=0.55,
                 marker_pattern_size=8,
                 marker_pattern_solidity=0.35,
-                marker_line_color=s.color,
+                marker_line_color=_bar_colors,
                 marker_line_width=2.0,
                 hoverinfo="skip",
             )

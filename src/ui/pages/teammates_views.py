@@ -338,7 +338,9 @@ def _render_map_history_section(
             db_path=db_path,
             xuid_name_map={
                 str(xuid): me_name,
-                **{str(fx): display_name_from_xuid(str(fx), db_path=db_path) for fx in picked_xuids},
+                **{
+                    str(fx): display_name_from_xuid(str(fx), db_path=db_path) for fx in picked_xuids
+                },
             },
             all_match_ids=list(all_match_ids),
             lang=get_lang(),
