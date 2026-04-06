@@ -85,6 +85,7 @@ def _enrich_series_with_perfect_kills(
                     )
                     .alias("map_ui")
                 )
+        final_series.append((_name, df))
     return final_series
 
 

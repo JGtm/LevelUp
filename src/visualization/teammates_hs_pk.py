@@ -43,12 +43,6 @@ def plot_hs_pk_stacked(  # noqa: C901, PLR0912, PLR0915
     if not series:
         return None
 
-    print(f"[DEBUG HS+PK] series count: {len(series)}")
-    for name, df_ in series:
-        print(
-            f"[DEBUG HS+PK] {name}: {len(df_) if df_ is not None else 0} rows, columns={list(df_.columns) if df_ is not None else []}"
-        )
-
     normalized: list[tuple[str, pl.DataFrame]] = []
     for name, df_ in series:
         if df_ is None:
@@ -61,9 +55,7 @@ def plot_hs_pk_stacked(  # noqa: C901, PLR0912, PLR0915
             continue
         normalized.append((str(name), df_pl))
 
-    print(f"[DEBUG HS+PK] normalized count: {len(normalized)}")
     if not normalized:
-        print("[DEBUG HS+PK] returning None - no normalized data")
         return None
 
     has_match_id = all("match_id" in df_pl.columns for _, df_pl in normalized)
@@ -120,13 +112,7 @@ def plot_hs_pk_stacked(  # noqa: C901, PLR0912, PLR0915
                 ts_cols.append(pl.col("map_name").fill_null("").alias("_map_display"))
             all_match_data.append(d.select(ts_cols))
 
-    print(
-        f"[DEBUG HS+PK] prepared count: {len(prepared)}, all_match_data count: {len(all_match_data)}"
-    )
     if not prepared or not all_match_data:
-        print(
-            f"[DEBUG HS+PK] returning None - prepared={len(prepared)}, all_match_data={len(all_match_data)}"
-        )
         return None
 
     combined = pl.concat(all_match_data, how="diagonal")
