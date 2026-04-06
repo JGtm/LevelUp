@@ -128,3 +128,49 @@ class EventsMixin:
         except Exception as e:
             logger.debug("Erreur load_highlight_events shared: %s", e)
             return []
+
+    def load_kill_timing_for_matches(
+        self,
+        match_ids: list[str],
+        xuids: list[str] | None = None,
+    ) -> list[dict[str, Any]]:
+        """Charge les timestamps de kills pour plusieurs matchs.
+
+        Args:
+            match_ids: Liste des IDs de matchs.
+            xuids: Si fourni, filtre sur ces xuids (sinon tous les joueurs).
+
+        Returns:
+            Liste de dicts {match_id, time_ms, xuid}.
+        """
+        if not match_ids:
+            return []
+
+        conn = self._get_connection()
+        placeholders = ", ".join(["?" for _ in match_ids])
+
+        xuid_clause = ""
+        params: list[Any] = list(match_ids)
+        if xuids:
+            xuid_placeholders = ", ".join(["?" for _ in xuids])
+            xuid_clause = f" AND he.xuid IN ({xuid_placeholders})"
+            params.extend(xuids)
+
+        try:
+            result = conn.execute(
+                f"""
+                SELECT he.match_id, he.time_ms, he.xuid
+                FROM shared.highlight_events he
+                WHERE he.match_id IN ({placeholders})
+                  AND he.event_type IN ('kill', 'Kill')
+                  AND he.time_ms IS NOT NULL
+                  {xuid_clause}
+                ORDER BY he.match_id, he.time_ms
+                """,
+                params,
+            )
+            columns = ["match_id", "time_ms", "xuid"]
+            return [dict(zip(columns, row, strict=False)) for row in result.fetchall()]
+        except Exception as e:
+            logger.debug("Erreur load_kill_timing_for_matches: %s", e)
+            return []

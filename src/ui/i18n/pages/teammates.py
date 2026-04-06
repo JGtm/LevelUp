@@ -311,4 +311,17 @@ STRINGS: dict[str, dict[str, str] | str] = {
         "fr": "Première mort",
         "en": "First death",
     },
+    # ── Profil de tempo synchronisé ───────────────────────────────────────────
+    "tm_squad_cadence": {
+        "fr": "Profil de tempo synchronisé",
+        "en": "Synchronized tempo profile",
+    },
+    "tm_squad_cadence_caption": {
+        "fr": "Comparaison des profils de kills moyens par phase du match sur les matchs communs. Les joueurs qui peakent en même temps montrent une synergie de push.",
+        "en": "Comparison of average kill profiles per match phase across common matches. Players peaking together show push synergy.",
+    },
+    "tm_squad_cadence_no_data": {
+        "fr": "Pas assez de matchs avec données de timeline pour afficher le profil de tempo.",
+        "en": "Not enough matches with timeline data to display the tempo profile.",
+    },
 }

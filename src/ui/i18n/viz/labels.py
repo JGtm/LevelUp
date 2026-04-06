@@ -176,4 +176,8 @@ STRINGS: dict[str, dict[str, str] | str] = {
         "fr": "{k} frags",
         "en": "{k} kills",
     },
+    # ── Labels cadence / intensité ────────────────────────────────────────────
+    "label_cadence_peak": {"fr": "pic", "en": "peak"},
+    "label_intensity_low": {"fr": "Calme", "en": "Quiet"},
+    "label_intensity_high": {"fr": "Intense", "en": "Intense"},
 }

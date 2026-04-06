@@ -19,6 +19,7 @@ from src.ui.pages.match_view_helpers import render_media_section
 from src.ui.pages.match_view_participation import render_participation_section
 from src.ui.pages.match_view_players import (
     render_kd_timeline_section,
+    render_match_cadence_section,
     render_match_impact_section,
     render_match_scoreboard,
     render_nemesis_section,
@@ -88,6 +89,17 @@ def _render_combat_tab(  # noqa: PLR0913
         load_match_gamertags_fn=load_match_gamertags_fn,
     )
     render_team_dominance_section(
+        match_id=match_id,
+        db_path=db_path,
+        xuid=xuid,
+        db_key=db_key,
+        is_firefight=bool(row.get("is_firefight")),
+        load_highlight_events_fn=load_highlight_events_fn,
+        playable_duration_seconds=int(row["playable_duration_seconds"])
+        if row.get("playable_duration_seconds")
+        else None,
+    )
+    render_match_cadence_section(
         match_id=match_id,
         db_path=db_path,
         xuid=xuid,

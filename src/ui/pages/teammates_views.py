@@ -27,6 +27,7 @@ from src.ui.pages.teammates_helpers import (
 from src.ui.pages.teammates_impact import render_impact_taquinerie
 from src.ui.pages.teammates_map_charts import (
     render_map_charts_section,
+    render_squad_cadence_section,
     render_squad_heatmap,
     render_squad_timeline,
 )
@@ -330,6 +331,15 @@ def _render_map_history_section(
             db_path=db_path,
             me_name=me_name,
             friend_names=[display_name_from_xuid(str(fx), db_path=db_path) for fx in picked_xuids],
+            all_match_ids=list(all_match_ids),
+            lang=get_lang(),
+        )
+        render_squad_cadence_section(
+            db_path=db_path,
+            xuid_name_map={
+                str(xuid): me_name,
+                **{str(fx): display_name_from_xuid(str(fx), db_path=db_path) for fx in picked_xuids},
+            },
             all_match_ids=list(all_match_ids),
             lang=get_lang(),
         )

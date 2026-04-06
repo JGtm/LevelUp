@@ -280,6 +280,50 @@ def render_squad_timeline(
             st.plotly_chart(fig, width="stretch", config=PLOTLY_CLEAN_CONFIG, key=key)
 
 
+def render_squad_cadence_section(
+    db_path: str,
+    xuid_name_map: dict[str, str],
+    all_match_ids: list[str],
+    lang: str = "fr",
+) -> None:
+    """Affiche le profil de tempo synchronisé (moyenne de kills/phase par joueur)."""
+    if not all_match_ids or len(xuid_name_map) < 2:
+        return
+
+    from src.analysis.match_intensity import compute_squad_cadence_profiles
+    from src.ui._cache_queries import cached_load_kill_timing_for_matches
+    from src.visualization._plot_options import PlotOptions
+    from src.visualization.squad_cadence_chart import plot_squad_cadence_profiles
+
+    all_xuids = list(xuid_name_map.keys())
+    all_names = list(xuid_name_map.values())
+    raw = cached_load_kill_timing_for_matches(
+        db_path, all_xuids[0], tuple(all_match_ids), xuids=tuple(all_xuids),
+    )
+    if not raw:
+        return
+
+    events_df = pl.DataFrame(
+        raw, schema={"match_id": pl.Utf8, "time_ms": pl.Int64, "xuid": pl.Utf8},
+    )
+
+    profiles = compute_squad_cadence_profiles(events_df, xuid_name_map, n_buckets=10)
+    if profiles.is_empty():
+        return
+
+    st.subheader(t("tm_squad_cadence"))
+    st.caption(t("tm_squad_cadence_caption"))
+
+    with safe_chart_render():
+        fig = plot_squad_cadence_profiles(
+            profiles, all_names, opts=PlotOptions(lang=lang, height_px=340),
+        )
+        if fig is not None:
+            st.plotly_chart(fig, width="stretch", config=PLOTLY_CLEAN_CONFIG)
+        else:
+            st.info(t("tm_squad_cadence_no_data"))
+
+
 def _compute_history_breakdown(full_df: pl.DataFrame) -> pl.DataFrame:
     """Calcule le breakdown historique complet (min_matches=1) depuis un DataFrame de matchs."""
     from src.ui.i18n import get_lang
