@@ -7,6 +7,70 @@
 
 ## Journal
 
+### [2026-04-06] — refactor(viz+i18n): plan REFACTO_VIZ_PLAN appliqué — Complété
+
+**Tâche** : Appliquer le plan de refactorisation défini dans `.ai/REFACTO_VIZ_PLAN.md` — items viz (#10, #9, #1, #7, #8) + items i18n (#A, #D, #B, #C).
+
+**Décisions techniques** :
+
+**Viz** :
+1. **#10** — `KdCiData` + `EwmaData` dataclasses dans `_plot_options.py` — supprime les violations PLR0913 de `_add_kd_ci_traces` et `_add_ewma_traces`
+2. **#9** — Magic numbers hauteur (`320`, `420`, `400`) → constantes `HEIGHT_COMPACT`, `HEIGHT_TIMESERIES`, `HEIGHT_PROGRESSION` de `_chart_series.py` (3 fichiers modifiés)
+3. **#1** — Suppression du paramètre déprécié `title=` de `apply_halo_plot_style()` + `import warnings` inutilisé
+4. **#7** — Centralisation `downsample_for_plot()` standalone dans `_chart_series.py` (appelé dans 4 fonctions `plot_*` + page timeseries), suppression copie locale dans `src/ui/pages/timeseries.py`
+5. **#8** — Découpage `maps_outcome.py` (363L) en 3 modules : `_maps_outcome_timeline.py` (167L), `_maps_outcome_history.py` (109L), `maps_outcome.py` (141L) — réexports conservés
+
+**i18n** :
+1. **#A** — `explorer_enrich.py` : `playlist_fr` et `mode_ui` priorisent `*_fr` columns via `pl.coalesce()`
+2. **#D** — DRY `normalize_mode_label` : délègue à `normalize_pair_name_to_mode_ui` (analyse → app, pas l'inverse), param `normalize` ajouté à la fonction analyse
+3. **#B** — `_filters_apply.py` : `playlist_ui` priorise `playlist_name_fr` via coalesce (avant : toujours via translate)
+4. **#C** — `filters_render.py` : options sidebar collectées depuis `playlist_name_fr` si disponible (même pattern que `map_name_fr`)
+
+**Résultats** : 5671 tests passent, aucune régression sur les modules viz/i18n. Fichier `timeseries_combat.py` à 474L (sous limite 500L). Aucune duplication `_downsample_for_plot` ni `MAX_PLOT_POINTS` locale.
+
+**Fichiers créés** : `src/visualization/_maps_outcome_timeline.py`, `src/visualization/_maps_outcome_history.py`
+
+**Fichiers modifiés** : `src/visualization/_plot_options.py`, `src/visualization/_perf_progression.py`, `src/visualization/match_bars.py`, `src/visualization/timeseries_combat.py`, `src/visualization/_timeseries_progression.py`, `src/visualization/theme.py`, `src/visualization/_chart_series.py`, `src/visualization/timeseries.py`, `src/visualization/maps_outcome.py`, `src/ui/pages/timeseries.py`, `src/ui/pages/explorer_enrich.py`, `src/app/helpers.py`, `src/analysis/mode_categories.py`, `src/app/_filters_apply.py`, `src/app/filters_render.py`
+
+---
+
+### [2025-07-25] — feat(settings): toggle show_records dans la page Paramètres — Complété
+
+**Tâche** : Ajouter un bouton toggle dans la page Paramètres pour activer/désactiver l'affichage des records historiques sur les graphes Escouade.
+
+**Décision technique** :
+- Ajout du champ `show_records: bool = True` dans `AppSettings` (Pydantic v2)
+- Toggle dans `_render_display_section` avec traductions FR/EN
+- Propagation dans `_teammates_trio.py` : `_show_records` conditionne l'appel à `_compute_all_records`
+- Extraction de `_compute_all_records` en helper pour respecter le seuil 80L (metrics en constantes module-level)
+- Corrections collatérales : import `polars` manquant dans `_chart_series.py`, import inutilisé dans `helpers.py`, noqa C901 dans `explorer_enrich.py`
+
+**Résultats** : 5665 tests passés, 0 échecs. Ruff clean. Size baseline à jour.
+
+**Fichiers modifiés** : `src/ui/settings.py`, `src/ui/pages/settings.py`, `src/ui/i18n/pages/settings.py`, `src/ui/pages/_teammates_trio.py`, `tests/ui/test_settings_page.py`, `src/visualization/_chart_series.py`, `src/app/helpers.py`, `src/ui/pages/explorer_enrich.py`, `scripts/size_baseline.txt`
+
+---
+
+### [2026-04-06] — fix(i18n): termes anglais dans la page Session — Complété
+
+**Tâche** : Corriger plusieurs libellés anglais restants dans la page "Comparaison de sessions" : "⭐ Highlights", "K+A / D", noms de modes anglais (CTF, Strongholds), noms de cartes anglais.
+
+**Cause racine** : `add_i18n_display_columns` est un module pur (0 DB). Quand `pair_name_fr` est NULL dans la vue SQL `v_match_full` (traduction absente dans `asset_translations`), il prend `pair_name` brut (ex. `"Arena:CTF"`) et applique `_strip_mode_map_suffix` qui ne fait que supprimer les suffixes — sans traduire. Résultat : `mode_ui = "Arena:CTF"` (EN brut).
+
+**Décision technique** : Utiliser la couche de normalisation existante `translate_pair_name` (avec lookup DB `metadata.duckdb`).
+
+1. **`_fix_untranslated_mode_ui`** — nouveau helper dans `main_helpers.py` : second pass après `add_i18n_display_columns` — utilise `translate_pair_name` via `build_mapping` pour les lignes où `pair_name_fr` est NULL. Produit le nom FR correct (ex. "Capture du drapeau") au lieu du brut strippé.
+2. **`i18n_columns.py`** : revert de la tentative de strip du préfixe `:` dans `_strip_mode_map_suffix` (contournement incorrect, produisait "CTF" au lieu de "Capture du drapeau").
+3. **`sc_match_highlights`** (`src/ui/i18n/pages/session_compare.py`) : "⭐ Highlights" → "⭐ Temps forts" (FR).
+4. **`sc_efficiency_label`** : "K+A / D" → "F+A / D" (FR : Frags et non Kills).
+5. **`_extract_mode()`** (`_session_compare_extra.py`) : priorise `mode_ui` (déjà traduit) avant `pair_name`.
+6. **`render_map_table()`** : utilise `map_ui` (FR) avec fallback `map_name`.
+7. **Fixes ruff** : variable `l` → `losses` (E741), `\u2014` dans f-strings → variables (Python 3.10 compat).
+
+**Résultats** : 5633 tests passent, 0 régressions.
+
+---
+
 ### [2026-04-06] — fix(records): records historiques invisibles sur graphes Teammates — Complété
 
 **Tâche** : Diagnostic approfondi de l'absence d'affichage des records sur tous les graphes Teammates (Kills/Deaths, Assists, Ratio, Accuracy, Life, Performance, Spree) sauf Stats/min.

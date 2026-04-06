@@ -18,6 +18,7 @@ from dataclasses import dataclass, field
 from typing import Any, Literal
 
 import plotly.graph_objects as go
+import polars as pl
 
 # ─── Constantes hauteur (consolide les magic numbers éparpillés) ──────────────
 HEIGHT_COMPACT: int = 320  # barres multi-joueurs (match_bars.py)
@@ -29,6 +30,27 @@ HEIGHT_MINI: int = 150  # mini-charts (participation_charts_extra.py)
 
 # ─── Downsampling ─────────────────────────────────────────────────────────────
 MAX_PLOT_POINTS: int = 200  # au-delà Plotly devient lent
+
+
+def downsample_for_plot(df: pl.DataFrame, max_points: int = MAX_PLOT_POINTS) -> pl.DataFrame:
+    """Réduit le DataFrame pour le rendu graphique (conserve tendance).
+
+    Garde le premier, le dernier, et un échantillonnage régulier entre les deux.
+
+    Args:
+        df: DataFrame d'entrée trié par start_time.
+        max_points: Nombre maximum de points à conserver.
+
+    Returns:
+        DataFrame réduit si nécessaire.
+    """
+    if len(df) <= max_points:
+        return df
+    step = len(df) // max_points
+    indices = list(range(0, len(df), step))
+    if indices[-1] != len(df) - 1:
+        indices.append(len(df) - 1)
+    return df[indices]
 
 
 @dataclass

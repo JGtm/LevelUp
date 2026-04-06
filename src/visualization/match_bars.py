@@ -11,7 +11,7 @@ import polars as pl
 
 from src.ui.date_formats import FMT_SHORT_DATETIME_FR, FMT_TICK_DATETIME
 from src.ui.i18n.viz import viz_t
-from src.visualization._chart_series import ChartData, MatchSeries, SquadRecordSet
+from src.visualization._chart_series import HEIGHT_COMPACT, ChartData, MatchSeries, SquadRecordSet
 from src.visualization._compat import DataFrameLike, ensure_polars
 from src.visualization._plot_options import PlotOptions
 from src.visualization.theme import apply_halo_plot_style, get_legend_horizontal_bottom
@@ -125,7 +125,7 @@ def plot_metric_bars_by_match(  # noqa: PLR0913
         type="category",
     )
 
-    return apply_halo_plot_style(fig, height=320)
+    return apply_halo_plot_style(fig, height=HEIGHT_COMPACT)
 
 
 def plot_multi_metric_bars_by_match(  # noqa: C901, PLR0912, PLR0913, PLR0915
@@ -390,4 +390,4 @@ def plot_multi_metric_bars_by_match(  # noqa: C901, PLR0912, PLR0913, PLR0915
         tickangle=-45,
     )
 
-    return apply_halo_plot_style(fig, height=320)
+    return apply_halo_plot_style(fig, height=HEIGHT_COMPACT)

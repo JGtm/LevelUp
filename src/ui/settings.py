@@ -124,6 +124,9 @@ class AppSettings(BaseModel):
     # Carrière — top/pire matchs
     career_top_exclude_btb: bool = False  # Exclure les matchs BTB du top 10 meilleurs/pires
 
+    # Affichage — records historiques
+    show_records: bool = True  # Afficher les barres de records sur les graphes Escouade
+
     # Affichage — modes de jeu
     normalize_mode_labels: bool = (
         True  # Supprimer les préfixes redondants (ex: BTB:Slayer → Assassin)

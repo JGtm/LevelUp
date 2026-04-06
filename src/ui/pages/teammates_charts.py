@@ -16,6 +16,7 @@ logger = logging.getLogger(__name__)
 from src.config import OKABE_ITO_PALETTE
 from src.ui.chart_utils import safe_chart_render
 from src.ui.i18n import get_lang, t
+from src.ui.i18n.viz import viz_t
 from src.ui.streamlit_modern import PLOTLY_CLEAN_CONFIG, PLOTLY_STATIC_CONFIG, fragment_if_available
 from src.visualization import plot_trio_metric
 from src.visualization._chart_series import SquadRecordSet
@@ -54,6 +55,7 @@ def render_metric_bar_charts(  # noqa: PLR0913
         if fig is None:
             st.info(t("insufficient_data_chart"))
         else:
+            st.subheader(label)
             st.plotly_chart(
                 fig,
                 width="stretch",
@@ -71,6 +73,7 @@ def render_metric_bar_charts(  # noqa: PLR0913
     if fig_combined is None:
         st.info(t("insufficient_data_chart"))
     else:
+        st.subheader(viz_t("hs_pk_combined_title", _lang))
         st.plotly_chart(
             fig_combined,
             width="stretch",

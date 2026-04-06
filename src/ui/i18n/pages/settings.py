@@ -125,6 +125,14 @@ STRINGS: dict[str, dict[str, str] | str] = {
     "set_language_section": {"fr": "Langue & Région", "en": "Language & Region"},
     "set_lang_label": {"fr": "Langue de l'interface", "en": "Interface language"},
     "set_display_section": {"fr": "Affichage", "en": "Display"},
+    "set_show_records": {
+        "fr": "Afficher les records historiques sur les graphes Escouade",
+        "en": "Show historical records on Squad charts",
+    },
+    "set_show_records_help": {
+        "fr": "Affiche des barres hachurées indiquant le record personnel de chaque joueur sur les graphes de la page Escouade.",
+        "en": "Displays hatched bars showing each player's personal record on Squad page charts.",
+    },
     "set_career_exclude_btb": {
         "fr": "Exclure les matchs BTB du Top / Pire",
         "en": "Exclude BTB matches from Top / Worst",

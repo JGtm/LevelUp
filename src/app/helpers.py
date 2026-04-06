@@ -11,7 +11,6 @@ import polars as pl
 import streamlit as st
 
 from src.config import OKABE_ITO_PALETTE
-from src.ui import translate_pair_name
 from src.ui.i18n import t
 from src.utils.polars_compat import ensure_polars as _to_polars
 from src.utils.strings import is_uuid_like
@@ -54,7 +53,7 @@ def normalize_mode_label(
     lang: str = "fr",
     normalize: bool = True,
 ) -> str | None:
-    """Normalise le label d'un mode de jeu.
+    """Normalise le label d'un mode de jeu (délègue à mode_categories).
 
     - Traduit le mode
     - Retire le nom de carte si présent ("X on MapName")
@@ -68,18 +67,9 @@ def normalize_mode_label(
     Returns:
         Label normalisé ou None.
     """
-    if pair_name is None:
-        return None
-    base = clean_asset_label(pair_name)
-    _translated = translate_pair_name(base, lang=lang, normalize=normalize)
-    if _translated is None:
-        return None
-    s = str(_translated).strip()
-    if " on " in s:
-        s = s.split(" on ", 1)[0].strip()
-    s = re.sub(r"\s*-\s*Forge\b", "", s, flags=re.IGNORECASE).strip()
-    s = re.sub(r"\s*-\s*Ranked\b", "", s, flags=re.IGNORECASE).strip()
-    return s or None
+    from src.analysis.mode_categories import normalize_pair_name_to_mode_ui
+
+    return normalize_pair_name_to_mode_ui(pair_name, lang=lang, normalize=normalize)
 
 
 def normalize_map_label(map_name: str | None) -> str | None:

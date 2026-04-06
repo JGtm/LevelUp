@@ -2,8 +2,6 @@
 
 from __future__ import annotations
 
-import warnings
-
 import plotly.graph_objects as go
 
 from src.config import PLOT_CONFIG, THEME_COLORS
@@ -12,7 +10,6 @@ from src.config import PLOT_CONFIG, THEME_COLORS
 def apply_halo_plot_style(
     fig: go.Figure,
     *,
-    title: str | None = None,
     height: int | None = None,
 ) -> go.Figure:
     """Applique le thème Halo aux graphiques Plotly.
@@ -22,20 +19,11 @@ def apply_halo_plot_style(
 
     Args:
         fig: Figure Plotly à styliser.
-        title: **Déprécié** — utiliser ``st.subheader()`` avant ``st.plotly_chart()``.
-            Sera supprimé dans la prochaine version majeure.
         height: Hauteur optionnelle en pixels.
 
     Returns:
         La figure stylisée (modifiée in-place).
     """
-    if title is not None and title != "":
-        warnings.warn(
-            "title= dans apply_halo_plot_style est déprécié — "
-            "utiliser st.subheader() avant st.plotly_chart() à la place.",
-            DeprecationWarning,
-            stacklevel=2,
-        )
     # Couleurs centralisées depuis config.py
     bg_color = THEME_COLORS.bg_plot_rgba(1.0)
 
@@ -51,8 +39,6 @@ def apply_halo_plot_style(
         },
     )
 
-    if title is not None:
-        fig.update_layout(title=title)
     if height is not None:
         fig.update_layout(height=height)
 

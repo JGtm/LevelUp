@@ -9,6 +9,7 @@ from plotly.subplots import make_subplots
 from src.config import HALO_COLORS, PLOT_CONFIG
 from src.ui.components.chart_annotations import add_extreme_annotations
 from src.ui.i18n.viz import viz_t
+from src.visualization._chart_series import downsample_for_plot
 from src.visualization._compat import (
     DataFrameLike,
     ensure_polars,
@@ -179,7 +180,7 @@ def plot_assists_timeseries(df: DataFrameLike, lang: str = "fr") -> go.Figure:
     Returns:
         Figure Plotly.
     """
-    df_pl = ensure_polars(df)
+    df_pl = downsample_for_plot(ensure_polars(df))
 
     colors = HALO_COLORS.as_dict()
     d = df_pl.sort("start_time")

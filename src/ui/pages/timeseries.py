@@ -20,6 +20,7 @@ from src.ui.pages._timeseries_intensity import render_intensity_heatmap as _rend
 from src.ui.pages._timeseries_weapons import render_weapon_kills_chart as _render_weapon_kills_chart
 from src.ui.pages.timeseries_skill_rank import render_skill_rank_progression
 from src.ui.streamlit_modern import PLOTLY_CLEAN_CONFIG, PLOTLY_STATIC_CONFIG, fragment_if_available
+from src.visualization._chart_series import downsample_for_plot
 from src.visualization._compat import DataFrameLike, ensure_polars
 from src.visualization._plot_options import PlotOptions
 from src.visualization.distributions import (
@@ -45,40 +46,6 @@ from src.visualization.timeseries import (
 )
 
 # =============================================================================
-# Downsampling pour performance (8bis.A6)
-# =============================================================================
-
-MAX_PLOT_POINTS = 200
-
-
-def _downsample_for_plot(df: pl.DataFrame, max_points: int = MAX_PLOT_POINTS) -> pl.DataFrame:
-    """Réduit le DataFrame pour le rendu graphique (conserve tendance).
-
-    Garde le premier, le dernier, et un échantillonnage régulier entre les deux.
-    Idéal pour les timeseries où on veut voir la tendance générale.
-
-    Args:
-        df: DataFrame d'entrée trié par start_time.
-        max_points: Nombre maximum de points à conserver.
-
-    Returns:
-        DataFrame réduit si nécessaire.
-    """
-    if len(df) <= max_points:
-        return df
-
-    # Calculer le pas d'échantillonnage
-    step = len(df) // max_points
-
-    # Indices à conserver : 0, step, 2*step, ..., dernier
-    indices = list(range(0, len(df), step))
-    if indices[-1] != len(df) - 1:
-        indices.append(len(df) - 1)
-
-    return df[indices]
-
-
-# =============================================================================
 # Sous-fonctions de rendu extraites du monolithe (Sprint 16)
 # =============================================================================
 
@@ -94,7 +61,7 @@ def _render_kda_section(
     """Affiche le graphe KDA et sa distribution."""
     with safe_chart_render():
         # 8bis.A6 : Downsampling pour performance
-        df_plot = _downsample_for_plot(dff)
+        df_plot = downsample_for_plot(dff)
         fig = plot_timeseries(df_plot, lang=lang)
         if fig is not None:
             st.plotly_chart(fig, width="stretch", config=PLOTLY_CLEAN_CONFIG)

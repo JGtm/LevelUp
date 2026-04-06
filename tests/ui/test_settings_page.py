@@ -14,7 +14,6 @@ from __future__ import annotations
 
 from unittest.mock import MagicMock, patch
 
-
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------
@@ -35,28 +34,29 @@ def _full_build_kwargs(**overrides):
     """Retourne un dict complet de kwargs pour _build_settings_from_ui."""
     from src.ui import AppSettings
 
-    defaults = dict(
-        settings=AppSettings(),
-        lang="fr",
-        user_timezone="Europe/Paris",
-        backfill_enabled=False,
-        backfill_medals=False,
-        backfill_events=False,
-        backfill_skill=False,
-        backfill_personal_scores=False,
-        backfill_performance_scores=True,
-        backfill_aliases=False,
-        backfill_lusr=True,
-        backfill_weapons=False,
-        refresh_clears_caches=False,
-        normalize_mode_labels=True,
-        career_top_exclude_btb=False,
-        media_captures_base_dir="",
-        media_tolerance_minutes=3,
-        discord_notifications_enabled=False,
-        discord_webhook_url="",
-        discord_lang="fr",
-    )
+    defaults = {
+        "settings": AppSettings(),
+        "lang": "fr",
+        "user_timezone": "Europe/Paris",
+        "backfill_enabled": False,
+        "backfill_medals": False,
+        "backfill_events": False,
+        "backfill_skill": False,
+        "backfill_personal_scores": False,
+        "backfill_performance_scores": True,
+        "backfill_aliases": False,
+        "backfill_lusr": True,
+        "backfill_weapons": False,
+        "refresh_clears_caches": False,
+        "normalize_mode_labels": True,
+        "career_top_exclude_btb": False,
+        "show_records": True,
+        "media_captures_base_dir": "",
+        "media_tolerance_minutes": 3,
+        "discord_notifications_enabled": False,
+        "discord_webhook_url": "",
+        "discord_lang": "fr",
+    }
     defaults.update(overrides)
     return defaults
 
@@ -414,7 +414,7 @@ class TestRenderDisplaySection:
     """Tests de la section Affichage."""
 
     def test_three_toggles_rendered(self, mock_st) -> None:
-        """normalize_mode_labels + career_top_exclude_btb + refresh_clears_caches."""
+        """normalize_mode_labels + career_top_exclude_btb + refresh_clears_caches + show_records."""
         from src.ui import AppSettings
         from src.ui.pages import settings as mod
 
@@ -423,7 +423,7 @@ class TestRenderDisplaySection:
 
         mod._render_display_section(AppSettings())
 
-        assert ms.calls["toggle"].call_count == 3
+        assert ms.calls["toggle"].call_count == 4
 
     def test_career_top_exclude_btb_uses_settings_value(self, mock_st) -> None:
         """Le toggle career_top_exclude_btb lit la valeur dans les settings."""
@@ -436,12 +436,12 @@ class TestRenderDisplaySection:
         mod._render_display_section(AppSettings(career_top_exclude_btb=True))
 
         toggle_calls = ms.calls["toggle"].call_args_list
-        # 2e toggle = career_top_exclude_btb
-        career_call = toggle_calls[1]
+        # 3e toggle = career_top_exclude_btb (après normalize_mode_labels et show_records)
+        career_call = toggle_calls[2]
         assert career_call.kwargs["value"] is True
 
     def test_returns_three_bools(self, mock_st) -> None:
-        """La fonction retourne un tuple (bool, bool, bool)."""
+        """La fonction retourne un tuple (bool, bool, bool, bool)."""
         from src.ui import AppSettings
         from src.ui.pages import settings as mod
 
@@ -450,7 +450,7 @@ class TestRenderDisplaySection:
 
         result = mod._render_display_section(AppSettings())
 
-        assert len(result) == 3
+        assert len(result) == 4
         assert all(isinstance(v, bool) for v in result)
 
 

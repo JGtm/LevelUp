@@ -48,7 +48,15 @@ def plot_squad_cadence_profiles(
     n_buckets = len(profiles_df)
 
     pct_step = 100 // n_buckets
-    x_labels = [f"{i * pct_step}–{(i + 1) * pct_step}%" for i in range(n_buckets)]
+    # Chaque barre est étiquetée par sa borne GAUCHE : "0%", "10%", …, "90%"
+    x_labels = [f"{i * pct_step}%" for i in range(n_buckets)]
+    # Borne droite finale pour la ligne de fermeture
+    x_last_border = f"{n_buckets * pct_step}%"
+
+    # Calcul du range Y depuis les données pour amplifier les variations
+    player_cols = [n for n in player_names if n in profiles_df.columns]
+    y_max = profiles_df.select(player_cols).max().to_numpy().max() if player_cols else 1.0
+    y_range = [0, max(float(y_max) * 1.25, 1.0)]
 
     fig = go.Figure()
 
@@ -75,11 +83,11 @@ def plot_squad_cadence_profiles(
         plot_bgcolor=theme.bg_plot,
         paper_bgcolor=theme.bg_plot,
         font={"color": theme.font_color, "size": 12},
-        margin={"l": 40, "r": 20, "t": 30, "b": 40},
+        margin={"l": 40, "r": 20, "t": 10, "b": 80},
         legend={
             "orientation": "h",
-            "yanchor": "bottom",
-            "y": 1.02,
+            "yanchor": "top",
+            "y": -0.15,
             "xanchor": "center",
             "x": 0.5,
             "font": {"size": 11},
@@ -87,6 +95,11 @@ def plot_squad_cadence_profiles(
         xaxis={
             "title": viz_t("axis_intensity_phase", lang),
             "gridcolor": theme.grid_color,
+            # Borne gauche visible sur chaque groupe → impression de colonnes délimitées
+            "ticklabelposition": "outside left",
+            # Dernière étiquette "100%" ajoutée comme catégorie fantôme invisible
+            "categoryorder": "array",
+            "categoryarray": x_labels + [x_last_border],
         },
         yaxis={
             "title": viz_t("axis_cadence_kills", lang),
@@ -94,6 +107,9 @@ def plot_squad_cadence_profiles(
             "zeroline": True,
             "zerolinecolor": theme.zero_line_color,
             "zerolinewidth": 1,
+            "range": y_range,
+            "dtick": 0.5,
+            "tickformat": ".1f",
         },
     )
 

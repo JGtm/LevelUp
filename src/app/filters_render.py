@@ -338,8 +338,20 @@ def _compute_all_filter_options(
     def _playlist_label(x: str) -> str:
         return str(translate_playlist_name(clean_asset_label_fn(x), lang=_lang))
 
+    # Cohérence avec _add_derived_columns : préférer playlist_name_fr si disponible
+    playlist_col = (
+        "playlist_name_fr"
+        if ("playlist_name_fr" in base.columns and _lang == "fr")
+        else "playlist_name"
+    )
+    playlist_label_fn = (
+        (lambda x: str(clean_asset_label_fn(x)))
+        if playlist_col == "playlist_name_fr"
+        else _playlist_label
+    )
+
     return (
-        _collect_unique_labels(base, "playlist_name", _playlist_label),
+        _collect_unique_labels(base, playlist_col, playlist_label_fn),
         _collect_unique_labels(base, "pair_name", lambda x: normalize_mode_label(x, lang=_lang)),
         # Cohérence avec _add_derived_columns / _vectorize_ui_columns : préférer map_name_fr
         _collect_unique_labels(
