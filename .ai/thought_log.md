@@ -3,6 +3,27 @@
 > Ce fichier capture le raisonnement de l'agent entre les sessions.
 > Archivé : 2026-02-01 (logs précédents dans `.ai/archive/thought_log_pre_phase6.md`)
 
+## [2026-04-06] fix(sync): retry HE + cohérence events_loaded — Complété
+
+**Statut** : Complété  
+**Commit** : `ada7570d`
+
+**Problème** : 4 features cassées sur la page match post-partie (aucun événement, dynamique, cadence, némésis) — toutes dépendent de `highlight_events`.
+
+**Root cause #1 — Delta freeze** :  
+`_load_existing_match_ids()` marquait un match comme "déjà traité" dès que `player_match_enrichment` existait, sans vérifier `events_loaded`. Si le film API n'était pas prêt lors du premier sync (~28 min après la partie), le match entrait dans `existing_ids` avec `events_loaded=FALSE` et n'était jamais re-tenté.  
+**Fix** : `_get_pending_events_ids()` — exclut les matchs ≤7j avec `events_loaded=FALSE` de l'ensemble `existing_ids`.
+
+**Root cause #2 — Données incohérentes** :  
+Migration `add_highlight_events_autoincrement` (7 mars 2026) a recréé la table `highlight_events` en perdant 579 matchs, mais a laissé `events_loaded=TRUE` dans `match_registry`. Madina97294 : 575 matchs affectés (55% de son historique).  
+**Fix** : Migration `fix_events_loaded_inconsistency` — remet `events_loaded=FALSE` pour tous les matchs sans HE correspondants.
+
+**Chronologie régression** : Bug introduit dans `40af10f7` (26 mars, hardening pipeline) — présent en v6.2.1 et v6.3. Pas de régression spécifique à v6.3.
+
+**Récupérabilité** : Match d'hier (`ac7ec523`) — 100% récupérable au prochain sync. Matchs historiques corrompus (avant 7 mars) — film expiré, définitivement perdus.
+
+---
+
 ## [2026-04-06] Merge refactor/viz-cleanup → main — Complété
 
 **Statut** : Complété
