@@ -80,6 +80,7 @@ def _build_settings_from_ui(  # noqa: PLR0913
     refresh_clears_caches: bool,
     normalize_mode_labels: bool,
     career_top_exclude_btb: bool,
+    show_records: bool,
     media_captures_base_dir: str,
     media_tolerance_minutes: int,
     discord_notifications_enabled: bool,
@@ -98,6 +99,7 @@ def _build_settings_from_ui(  # noqa: PLR0913
         user_timezone=user_timezone,
         normalize_mode_labels=normalize_mode_labels,
         career_top_exclude_btb=career_top_exclude_btb,
+        show_records=show_records,
         lang=lang,
         discord_notifications_enabled=discord_notifications_enabled,
         discord_webhook_url=discord_webhook_url,
@@ -138,8 +140,8 @@ def render_settings_page(settings: AppSettings) -> AppSettings:
 
     lang, user_timezone = _render_language_section(settings)
     backfill_vals = _render_backfill_section(settings)
-    refresh_clears_caches, normalize_mode_labels, career_top_exclude_btb = _render_display_section(
-        settings
+    refresh_clears_caches, normalize_mode_labels, career_top_exclude_btb, show_records = (
+        _render_display_section(settings)
     )
     media_captures_base_dir, media_tolerance_minutes = _render_media_section(settings)
     discord_enabled, discord_url, discord_lang_val = _render_discord_section(settings)
@@ -152,6 +154,7 @@ def render_settings_page(settings: AppSettings) -> AppSettings:
             refresh_clears_caches=refresh_clears_caches,
             normalize_mode_labels=normalize_mode_labels,
             career_top_exclude_btb=career_top_exclude_btb,
+            show_records=show_records,
             media_captures_base_dir=str(media_captures_base_dir or ""),
             media_tolerance_minutes=int(media_tolerance_minutes),
             discord_notifications_enabled=discord_enabled,
@@ -287,6 +290,11 @@ def _render_display_section(settings: AppSettings) -> tuple[bool, bool, bool]:
         value=bool(getattr(settings, "normalize_mode_labels", True)),
         help=t("set_normalize_mode_labels_help"),
     )
+    show_records = st.toggle(
+        t("set_show_records"),
+        value=bool(getattr(settings, "show_records", True)),
+        help=t("set_show_records_help"),
+    )
     career_top_exclude_btb = st.toggle(
         t("set_career_exclude_btb"),
         value=bool(getattr(settings, "career_top_exclude_btb", False)),
@@ -299,7 +307,12 @@ def _render_display_section(settings: AppSettings) -> tuple[bool, bool, bool]:
     )
 
     st.divider()
-    return bool(refresh_clears_caches), bool(normalize_mode_labels), bool(career_top_exclude_btb)
+    return (
+        bool(refresh_clears_caches),
+        bool(normalize_mode_labels),
+        bool(career_top_exclude_btb),
+        bool(show_records),
+    )
 
 
 def _render_media_section(settings: AppSettings) -> tuple[str, int]:

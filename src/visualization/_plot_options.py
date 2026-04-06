@@ -113,3 +113,24 @@ class PlotOptions:
         from src.ui.i18n import get_lang
 
         return cls(lang=get_lang())
+
+
+@dataclass
+class KdCiData:
+    """Données pour les traces IC de la courbe K/D cumulée."""
+
+    x: list
+    y_cumul: list
+    y_upper: list
+    y_lower: list
+    y_match: list
+
+
+@dataclass
+class EwmaData:
+    """Données pour les traces EWMA K/D."""
+
+    x: list
+    y_kd: list
+    y_ewma: list
+    regression_data: dict | None

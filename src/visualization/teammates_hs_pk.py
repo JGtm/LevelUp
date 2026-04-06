@@ -43,6 +43,12 @@ def plot_hs_pk_stacked(  # noqa: C901, PLR0912, PLR0915
     if not series:
         return None
 
+    print(f"[DEBUG HS+PK] series count: {len(series)}")
+    for name, df_ in series:
+        print(
+            f"[DEBUG HS+PK] {name}: {len(df_) if df_ is not None else 0} rows, columns={list(df_.columns) if df_ is not None else []}"
+        )
+
     normalized: list[tuple[str, pl.DataFrame]] = []
     for name, df_ in series:
         if df_ is None:
@@ -55,7 +61,9 @@ def plot_hs_pk_stacked(  # noqa: C901, PLR0912, PLR0915
             continue
         normalized.append((str(name), df_pl))
 
+    print(f"[DEBUG HS+PK] normalized count: {len(normalized)}")
     if not normalized:
+        print("[DEBUG HS+PK] returning None - no normalized data")
         return None
 
     has_match_id = all("match_id" in df_pl.columns for _, df_pl in normalized)
@@ -68,7 +76,10 @@ def plot_hs_pk_stacked(  # noqa: C901, PLR0912, PLR0915
         cols = ["start_time", "headshot_kills", "perfect_kills"]
         if has_match_id:
             cols.append("match_id")
-        if "map_name" in df_pl.columns:
+        # Priorité à map_ui (traduit) puis fallback sur map_name
+        if "map_ui" in df_pl.columns:
+            cols.append("map_ui")
+        elif "map_name" in df_pl.columns:
             cols.append("map_name")
 
         d = df_pl.select(cols)
@@ -91,21 +102,31 @@ def plot_hs_pk_stacked(  # noqa: C901, PLR0912, PLR0915
 
         if has_match_id:
             map_cols = [pl.col("match_id").cast(pl.String).alias("match_id"), pl.col("start_time")]
-            _disp_col_hs = "map_ui" if "map_ui" in d.columns else "map_name"
-            if _disp_col_hs in d.columns:
-                map_cols.append(pl.col(_disp_col_hs).fill_null("").alias("_map_display"))
+            # Utiliser map_ui si disponible, sinon map_name
+            if "map_ui" in d.columns:
+                map_cols.append(pl.col("map_ui").fill_null("").alias("_map_display"))
+            elif "map_name" in d.columns:
+                map_cols.append(pl.col("map_name").fill_null("").alias("_map_display"))
             all_match_data.append(d.select(map_cols))
         else:
             ts_cols = [
                 pl.col("start_time").dt.strftime("%Y-%m-%dT%H:%M:%S").alias("match_id"),
                 pl.col("start_time"),
             ]
-            _disp_col_hs2 = "map_ui" if "map_ui" in d.columns else "map_name"
-            if _disp_col_hs2 in d.columns:
-                ts_cols.append(pl.col(_disp_col_hs2).fill_null("").alias("_map_display"))
+            # Utiliser map_ui si disponible, sinon map_name
+            if "map_ui" in d.columns:
+                ts_cols.append(pl.col("map_ui").fill_null("").alias("_map_display"))
+            elif "map_name" in d.columns:
+                ts_cols.append(pl.col("map_name").fill_null("").alias("_map_display"))
             all_match_data.append(d.select(ts_cols))
 
+    print(
+        f"[DEBUG HS+PK] prepared count: {len(prepared)}, all_match_data count: {len(all_match_data)}"
+    )
     if not prepared or not all_match_data:
+        print(
+            f"[DEBUG HS+PK] returning None - prepared={len(prepared)}, all_match_data={len(all_match_data)}"
+        )
         return None
 
     combined = pl.concat(all_match_data, how="diagonal")

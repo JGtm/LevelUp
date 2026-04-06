@@ -15,7 +15,7 @@ from src.visualization._compat import ensure_polars
 logger = logging.getLogger(__name__)
 
 
-def enrich_for_table(
+def enrich_for_table(  # noqa: C901, PLR0912
     dff: pl.DataFrame,
     waypoint_player: str,
     df_full: pl.DataFrame | None,
@@ -39,19 +39,39 @@ def enrich_for_table(
     result = dff.clone()
 
     if "playlist_fr" not in result.columns and "playlist_name" in result.columns:
-        result = result.with_columns(pl.col("playlist_name").alias("playlist_fr"))
-    if "mode_ui" not in result.columns and "pair_name" in result.columns:
-        _ee_mode_map = build_mapping(
-            result["pair_name"], lambda x: translate_pair_name(x, lang=get_lang())
-        )
-        result = result.with_columns(
-            pl.col("pair_name")
-            .cast(pl.Utf8)
-            .replace_strict(
-                _ee_mode_map, default=pl.col("pair_name").cast(pl.Utf8), return_dtype=pl.Utf8
+        if "playlist_name_fr" in result.columns:
+            result = result.with_columns(
+                pl.coalesce(
+                    [
+                        pl.col("playlist_name_fr").cast(pl.Utf8),
+                        pl.col("playlist_name").cast(pl.Utf8),
+                    ]
+                ).alias("playlist_fr")
             )
-            .alias("mode_ui")
-        )
+        else:
+            result = result.with_columns(pl.col("playlist_name").alias("playlist_fr"))
+    if "mode_ui" not in result.columns and "pair_name" in result.columns:
+        if "pair_name_fr" in result.columns:
+            result = result.with_columns(
+                pl.coalesce(
+                    [
+                        pl.col("pair_name_fr").cast(pl.Utf8),
+                        pl.col("pair_name").cast(pl.Utf8),
+                    ]
+                ).alias("mode_ui")
+            )
+        else:
+            _ee_mode_map = build_mapping(
+                result["pair_name"], lambda x: translate_pair_name(x, lang=get_lang())
+            )
+            result = result.with_columns(
+                pl.col("pair_name")
+                .cast(pl.Utf8)
+                .replace_strict(
+                    _ee_mode_map, default=pl.col("pair_name").cast(pl.Utf8), return_dtype=pl.Utf8
+                )
+                .alias("mode_ui")
+            )
     if "outcome_label" not in result.columns and "outcome" in result.columns:
         result = result.with_columns(
             pl.col("outcome")
@@ -124,22 +144,41 @@ def enrich_common_matches(
         result = result.with_columns(
             pl.col("start_time").dt.strftime(FMT_DATETIME_FR).fill_null("-").alias("start_time_fr")
         )
-    # Colonnes manquantes → alias
-    for col_name, src_col in (("playlist_fr", "playlist_name"),):
-        if col_name not in result.columns and src_col in result.columns:
-            result = result.with_columns(pl.col(src_col).alias(col_name))
-    if "mode_ui" not in result.columns and "pair_name" in result.columns:
-        _ec_mode_map = build_mapping(
-            result["pair_name"], lambda x: translate_pair_name(x, lang=get_lang())
-        )
-        result = result.with_columns(
-            pl.col("pair_name")
-            .cast(pl.Utf8)
-            .replace_strict(
-                _ec_mode_map, default=pl.col("pair_name").cast(pl.Utf8), return_dtype=pl.Utf8
+    # Colonnes manquantes → alias avec priorité FR
+    if "playlist_fr" not in result.columns and "playlist_name" in result.columns:
+        if "playlist_name_fr" in result.columns:
+            result = result.with_columns(
+                pl.coalesce(
+                    [
+                        pl.col("playlist_name_fr").cast(pl.Utf8),
+                        pl.col("playlist_name").cast(pl.Utf8),
+                    ]
+                ).alias("playlist_fr")
             )
-            .alias("mode_ui")
-        )
+        else:
+            result = result.with_columns(pl.col("playlist_name").alias("playlist_fr"))
+    if "mode_ui" not in result.columns and "pair_name" in result.columns:
+        if "pair_name_fr" in result.columns:
+            result = result.with_columns(
+                pl.coalesce(
+                    [
+                        pl.col("pair_name_fr").cast(pl.Utf8),
+                        pl.col("pair_name").cast(pl.Utf8),
+                    ]
+                ).alias("mode_ui")
+            )
+        else:
+            _ec_mode_map = build_mapping(
+                result["pair_name"], lambda x: translate_pair_name(x, lang=get_lang())
+            )
+            result = result.with_columns(
+                pl.col("pair_name")
+                .cast(pl.Utf8)
+                .replace_strict(
+                    _ec_mode_map, default=pl.col("pair_name").cast(pl.Utf8), return_dtype=pl.Utf8
+                )
+                .alias("mode_ui")
+            )
 
     # Colonnes absentes → null
     for col_name in (

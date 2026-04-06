@@ -314,6 +314,40 @@ def render_profile_hero(  # noqa: C901
     )
 
 
+def _fix_untranslated_mode_ui(df: pl.DataFrame, lang: str) -> pl.DataFrame:
+    """Traduit ``mode_ui`` via ``translate_pair_name`` pour les lignes sans ``pair_name_fr``.
+
+    ``add_i18n_display_columns`` est un module pur (0 accès DB). Quand ``pair_name_fr``
+    est NULL, il produit un ``mode_ui`` brut (ex. ``"Arena:CTF"``). Ce second pass
+    utilise ``translate_pair_name`` (avec lookup DB metadata) pour ces cas.
+    """
+    needed_cols = {"mode_ui", "pair_name_fr", "pair_name"}
+    if not needed_cols.issubset(df.columns):
+        return df
+
+    untranslated = df.filter(pl.col("pair_name_fr").is_null()).get_column("pair_name").unique()
+    if untranslated.is_empty():
+        return df
+
+    from src.ui import translate_pair_name
+    from src.utils.polars_compat import build_mapping
+
+    tr_map = build_mapping(untranslated, lambda x: translate_pair_name(x, lang=lang))
+    if not tr_map:
+        return df
+
+    return df.with_columns(
+        pl.when(pl.col("pair_name_fr").is_null())
+        .then(
+            pl.col("pair_name")
+            .cast(pl.Utf8)
+            .replace_strict(tr_map, default=pl.col("mode_ui"), return_dtype=pl.Utf8)
+        )
+        .otherwise(pl.col("mode_ui"))
+        .alias("mode_ui")
+    )
+
+
 def load_match_dataframe(
     db_path: str, xuid: str, cache_buster: int = 0
 ) -> tuple[pl.DataFrame, tuple[int, ...] | None]:
@@ -375,7 +409,9 @@ def load_match_dataframe(
         from src.app.i18n_columns import add_i18n_display_columns
         from src.ui.i18n import get_lang
 
-        df = add_i18n_display_columns(df, lang=get_lang())
+        lang = get_lang()
+        df = add_i18n_display_columns(df, lang=lang)
+        df = _fix_untranslated_mode_ui(df, lang)
 
     _ms = (_time.perf_counter() - _t0) * 1000
     logger.info(

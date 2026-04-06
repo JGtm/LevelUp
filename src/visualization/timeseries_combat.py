@@ -12,6 +12,7 @@ from plotly.subplots import make_subplots
 from src.config import PLOT_CONFIG
 from src.data.domain.refdata import Outcome
 from src.ui.i18n.viz import viz_t
+from src.visualization._chart_series import HEIGHT_TIMESERIES, downsample_for_plot
 from src.visualization._compat import DataFrameLike, ensure_polars, smart_scatter  # noqa: F401
 from src.visualization._plot_options import DEFAULT_THEME
 from src.visualization._timeseries_helpers import (
@@ -39,7 +40,7 @@ def plot_average_life(df: DataFrameLike, lang: str = "fr") -> go.Figure:
     Returns:
         Figure Plotly.
     """
-    d = _normalize_df(df)
+    d = downsample_for_plot(_normalize_df(df))
 
     d = d.filter(pl.col("average_life_seconds").is_not_null()).sort("start_time")
     x_idx, labels, step = prepare_time_axis(d)
@@ -103,7 +104,7 @@ def plot_spree_headshots_accuracy(
     Returns:
         Figure Plotly avec axe Y secondaire pour la précision.
     """
-    d = _normalize_df(df)
+    d = downsample_for_plot(_normalize_df(df))
 
     d = d.sort("start_time")
     x_idx, labels, step = prepare_time_axis(d)
@@ -169,7 +170,7 @@ def plot_spree_headshots_accuracy(
     apply_chrono_xaxis(fig, x_idx, labels, step, lang, as_category=False)
 
     fig.update_layout(
-        height=420,
+        height=HEIGHT_TIMESERIES,
         margin={"l": 40, "r": 50, "t": 30, "b": 90},
         legend=get_legend_horizontal_bottom(),
         hovermode="x unified",
@@ -182,7 +183,7 @@ def plot_spree_headshots_accuracy(
         title_text=viz_t("axis_spree_headshots", lang), rangemode="tozero", secondary_y=False
     )
 
-    return apply_halo_plot_style(fig, height=420)
+    return apply_halo_plot_style(fig, height=HEIGHT_TIMESERIES)
 
 
 def plot_streak_chart(
@@ -325,7 +326,7 @@ def plot_damage_dealt_taken(
     Returns:
         Figure Plotly.
     """
-    d = _normalize_df(df)
+    d = downsample_for_plot(_normalize_df(df))
 
     d = d.sort("start_time")
     x_idx, labels, step = prepare_time_axis(d)
@@ -453,7 +454,7 @@ def plot_shots_accuracy(
     apply_chrono_xaxis(fig, x_idx, labels, step, lang, as_category=False)
 
     fig.update_layout(
-        height=420,
+        height=HEIGHT_TIMESERIES,
         margin={"l": 40, "r": 50, "t": 40, "b": 90},
         legend=get_legend_horizontal_bottom(),
         hovermode="x unified",
@@ -470,4 +471,4 @@ def plot_shots_accuracy(
         secondary_y=True,
     )
 
-    return apply_halo_plot_style(fig, height=420)
+    return apply_halo_plot_style(fig, height=HEIGHT_TIMESERIES)

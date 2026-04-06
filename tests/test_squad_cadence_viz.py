@@ -57,19 +57,39 @@ class TestPlotSquadCadenceProfiles:
         fig = plot_squad_cadence_profiles(df, ["Alice", "Bob"], opts=opts)
         assert fig is not None
 
-    def test_x_labels_percentage(self):
+    def test_x_labels_left_boundary(self):
+        """Chaque groupe doit être étiqueté par sa borne gauche (0%, 10%…90%)."""
         df = _make_profiles(n_buckets=10)
         fig = plot_squad_cadence_profiles(df, ["Alice", "Bob"])
         assert fig is not None
-        x_data = fig.data[0].x
-        assert x_data[0] == "0–10%"
-        assert x_data[-1] == "90–100%"
+        x_data = list(fig.data[0].x)
+        assert x_data[0] == "0%"
+        assert x_data[-1] == "90%"
+        assert len(x_data) == 10
 
-    def test_legend_horizontal(self):
+    def test_x_bar_centers_numeric(self):
+        """Les barres doivent être centrées dans chaque tranche (5, 15, …, 95)."""
+        df = _make_profiles(n_buckets=10)
+        fig = plot_squad_cadence_profiles(df, ["Alice"])
+        assert fig is not None
+        x_data = list(fig.data[0].x)
+        assert x_data[0] == "0%"
+        assert x_data[-1] == "90%"
+
+    def test_legend_at_bottom(self):
         df = _make_profiles()
         fig = plot_squad_cadence_profiles(df, ["Alice", "Bob"])
         assert fig is not None
-        assert fig.layout.legend.orientation == "h"
+        assert fig.layout.legend.yanchor == "top"
+        assert fig.layout.legend.y < 0
+
+    def test_yaxis_range_set(self):
+        """Le range Y doit être [0, max*1.25] et non auto."""
+        df = _make_profiles(players=["Alice"])
+        fig = plot_squad_cadence_profiles(df, ["Alice"])
+        assert fig is not None
+        assert fig.layout.yaxis.range is not None
+        assert fig.layout.yaxis.range[0] == 0
 
     def test_bar_traces(self):
         df = _make_profiles(players=["Alice"])

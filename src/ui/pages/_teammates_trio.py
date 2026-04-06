@@ -56,6 +56,85 @@ def _build_pm_records(
     return records
 
 
+# Métriques records partagées entre compute_squad_records et compute_squad_records_per_map
+_RECORD_METRICS = [
+    ("kills", False),
+    ("deaths", True),
+    ("assists", False),
+    ("ratio", False),
+    ("accuracy", False),
+    ("average_life_seconds", False),
+    ("performance_score", False),
+    ("max_killing_spree", False),
+    ("headshot_kills", False),
+]
+_RECORD_METRICS_PER_MAP = [m for m in _RECORD_METRICS if m[0] != "headshot_kills"]
+
+
+def _rename_perf_score(records: dict[str, dict[str, float | None]]) -> None:
+    """Renomme performance_score → performance dans les records (in-place)."""
+    for r in records.values():
+        if "performance_score" in r:
+            r["performance"] = r.pop("performance_score")
+
+
+def _compute_all_records(  # noqa: PLR0913
+    df: DataFrameLike,
+    me_name: str,
+    f1_name: str,
+    f2_name: str | None,
+    f3_name: str | None,
+    db_path: str,
+    me_df: pl.DataFrame,
+    f1_df: pl.DataFrame,
+    f2_df: pl.DataFrame | None,
+    f3_df: pl.DataFrame | None,
+) -> tuple[SquadRecordSet, dict[str, tuple[float | None, float | None, float | None]]]:
+    """Calcule les records historiques (SquadRecordSet + pm_records)."""
+    _me_full = ensure_polars(df).filter(
+        pl.col("is_firefight").cast(pl.Boolean).not_()
+        if "is_firefight" in ensure_polars(df).columns
+        else pl.lit(True)
+    )
+    if "map_ui" not in _me_full.columns and "map_name_fr" in _me_full.columns:
+        _me_full = _me_full.with_columns(
+            pl.coalesce(
+                [pl.col("map_name_fr").cast(pl.Utf8), pl.col("map_name").cast(pl.Utf8)]
+            ).alias("map_ui")
+        )
+    _f1_full = TeammatesService.load_all_teammate_stats(f1_name, db_path).df
+    _f2_full = (
+        TeammatesService.load_all_teammate_stats(f2_name, db_path).df if f2_name else pl.DataFrame()
+    )
+    _f3_full = (
+        TeammatesService.load_all_teammate_stats(f3_name, db_path).df if f3_name else pl.DataFrame()
+    )
+
+    _full_raw: list[tuple[str, pl.DataFrame]] = [(me_name, _me_full), (f1_name, _f1_full)]
+    if f2_name and not _f2_full.is_empty():
+        _full_raw.append((f2_name, _f2_full))
+    if f3_name and not _f3_full.is_empty():
+        _full_raw.append((f3_name, _f3_full))
+
+    _dominant_pair = get_dominant_pair_name([d for _, d in _full_raw])
+
+    _squad_records = compute_squad_records(_full_raw, _RECORD_METRICS, _dominant_pair)
+    _rename_perf_score(_squad_records)
+
+    _squad_records_per_map = compute_squad_records_per_map(
+        _full_raw, _RECORD_METRICS_PER_MAP, _dominant_pair
+    )
+    _rename_perf_score(_squad_records_per_map)
+
+    record_set = SquadRecordSet(records=_squad_records, per_map=_squad_records_per_map)
+    pm_records = _build_pm_records(
+        _full_raw,
+        _dominant_pair,
+        [(me_name, me_df), (f1_name, f1_df), (f2_name, f2_df), (f3_name, f3_df)],
+    )
+    return record_set, pm_records
+
+
 # ---------------------------------------------------------------------------
 # Vue trio publique
 # ---------------------------------------------------------------------------
@@ -177,85 +256,25 @@ def render_trio_view(  # noqa: PLR0913, PLR0915, C901, PLR0912
     me_df = me_df.sort("start_time")
 
     # ── Records depuis l'historique COMPLET (pas filtré à l'escouade) ────────
-    # Le joueur principal utilise `df` (toutes ses parties), les coéquipiers
-    # sont rechargés sans filtre match_id pour avoir leur historique complet.
-    _me_full = ensure_polars(df).filter(
-        pl.col("is_firefight").cast(pl.Boolean).not_()
-        if "is_firefight" in ensure_polars(df).columns
-        else pl.lit(True)
-    )
-    # Hotfix pré-Item0 : df n'a pas encore map_ui (calculé dans _filters_cascade, pas au chargement)
-    if "map_ui" not in _me_full.columns and "map_name_fr" in _me_full.columns:
-        _me_full = _me_full.with_columns(
-            pl.coalesce(
-                [pl.col("map_name_fr").cast(pl.Utf8), pl.col("map_name").cast(pl.Utf8)]
-            ).alias("map_ui")
+    # Conditionnés par le setting show_records (page Paramètres).
+    _show_records = bool(getattr(st.session_state.get("app_settings"), "show_records", True))
+
+    _squad_record_set: SquadRecordSet | None = None
+    _pm_records: dict[str, tuple[float | None, float | None, float | None]] | None = None
+
+    if _show_records:
+        _squad_record_set, _pm_records = _compute_all_records(
+            df,
+            me_name,
+            f1_name,
+            f2_name,
+            f3_name,
+            db_path,
+            me_df,
+            f1_df,
+            f2_df,
+            f3_df,
         )
-    _f1_full = TeammatesService.load_all_teammate_stats(f1_name, db_path).df
-    _f2_full = (
-        TeammatesService.load_all_teammate_stats(f2_name, db_path).df if f2_name else pl.DataFrame()
-    )
-    _f3_full = (
-        TeammatesService.load_all_teammate_stats(f3_name, db_path).df if f3_name else pl.DataFrame()
-    )
-
-    _full_raw: list[tuple[str, pl.DataFrame]] = [(me_name, _me_full), (f1_name, _f1_full)]
-    if f2_name and not _f2_full.is_empty():
-        _full_raw.append((f2_name, _f2_full))
-    if f3_name and not _f3_full.is_empty():
-        _full_raw.append((f3_name, _f3_full))
-
-    _dominant_pair = get_dominant_pair_name([d for _, d in _full_raw])
-    _squad_records = compute_squad_records(
-        _full_raw,
-        [
-            ("kills", False),
-            ("deaths", True),
-            ("assists", False),
-            ("ratio", False),
-            ("accuracy", False),
-            ("average_life_seconds", False),
-            ("performance_score", False),
-            ("max_killing_spree", False),
-            ("headshot_kills", False),
-        ],
-        _dominant_pair,
-    )
-    # Renommer performance_score → performance (nom interne des charts)
-    for _pr in _squad_records.values():
-        if "performance_score" in _pr:
-            _pr["performance"] = _pr.pop("performance_score")
-
-    # Records par carte (même métriques, filtrés par pair_name dominant)
-    _metrics_per_map = [
-        ("kills", False),
-        ("deaths", True),
-        ("assists", False),
-        ("ratio", False),
-        ("accuracy", False),
-        ("average_life_seconds", False),
-        ("performance_score", False),
-        ("max_killing_spree", False),
-    ]
-    _squad_records_per_map = compute_squad_records_per_map(
-        _full_raw, _metrics_per_map, _dominant_pair
-    )
-    # Renommer performance_score → performance dans les records par carte
-    for _pm in _squad_records_per_map.values():
-        if "performance_score" in _pm:
-            _pm["performance"] = _pm.pop("performance_score")
-
-    _squad_record_set = SquadRecordSet(
-        records=_squad_records,
-        per_map=_squad_records_per_map,
-    )
-
-    # Records stats/min par joueur (historique complet, fallback session)
-    _pm_records = _build_pm_records(
-        _full_raw,
-        _dominant_pair,
-        [(me_name, me_df), (f1_name, f1_df), (f2_name, f2_df), (f3_name, f3_df)],
-    )
 
     _render_per_minute_stats(
         me_df,
@@ -362,16 +381,23 @@ def render_trio_view(  # noqa: PLR0913, PLR0915, C901, PLR0912
         key_suffix=f"trio_{len(_weapon_player_infos)}",
     )
 
-    # Records killing spree : déjà dans _squad_records (historique complet)
-    _spree_record_set = SquadRecordSet(
-        records={
-            n: {"max_killing_spree": r.get("max_killing_spree")} for n, r in _squad_records.items()
-        },
-        per_map=_squad_records_per_map,
-    )
-    # Records HS+PK : utilise headshot_kills de l'historique complet comme proxy
-    # (perfect_kills absent du full history — enrichissement non disponible hors session)
-    _hspk_records = {n: {"hs_pk_total": r.get("headshot_kills")} for n, r in _squad_records.items()}
+    # Records killing spree et HS+PK — conditionnés par show_records
+    _spree_record_set: SquadRecordSet | None = None
+    _hspk_records: dict | None = None
+    if _show_records and _squad_record_set is not None:
+        _spree_record_set = SquadRecordSet(
+            records={
+                n: {"max_killing_spree": r.get("max_killing_spree")}
+                for n, r in _squad_record_set.records.items()
+            },
+            per_map=_squad_record_set.per_map,
+        )
+        # Records HS+PK : utilise headshot_kills de l'historique complet comme proxy
+        # (perfect_kills absent du full history — enrichissement non disponible hors session)
+        _hspk_records = {
+            n: {"hs_pk_total": r.get("headshot_kills")}
+            for n, r in _squad_record_set.records.items()
+        }
     render_metric_bar_charts(
         series=series,
         colors_by_name=colors_by_name,

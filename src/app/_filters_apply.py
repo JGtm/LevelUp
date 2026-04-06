@@ -291,16 +291,26 @@ def _add_derived_columns(  # noqa: C901, PLR0912
                     .alias("playlist_fr")
                 )
         if "playlist_ui" not in dff.columns:
-            _pui_map = build_mapping(
-                dff["playlist_name"],
-                lambda x: translate_playlist_name(clean_asset_label_fn(x), lang=get_lang()),
-            )
-            derived_exprs.append(
-                pl.col("playlist_name")
-                .cast(pl.Utf8)
-                .replace_strict(_pui_map, default=None, return_dtype=pl.Utf8)
-                .alias("playlist_ui")
-            )
+            if "playlist_name_fr" in dff.columns:
+                derived_exprs.append(
+                    pl.coalesce(
+                        [
+                            pl.col("playlist_name_fr").cast(pl.Utf8),
+                            pl.col("playlist_name").cast(pl.Utf8),
+                        ]
+                    ).alias("playlist_ui")
+                )
+            else:
+                _pui_map = build_mapping(
+                    dff["playlist_name"],
+                    lambda x: translate_playlist_name(clean_asset_label_fn(x), lang=get_lang()),
+                )
+                derived_exprs.append(
+                    pl.col("playlist_name")
+                    .cast(pl.Utf8)
+                    .replace_strict(_pui_map, default=None, return_dtype=pl.Utf8)
+                    .alias("playlist_ui")
+                )
     if "pair_name" in dff.columns:
         if "pair_fr" not in dff.columns:
             # Utiliser pair_name_fr (depuis v_match_full) si disponible, sinon translate

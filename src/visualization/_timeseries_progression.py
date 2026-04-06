@@ -14,6 +14,7 @@ from src.analysis.performance_config import SCORE_THRESHOLDS
 from src.config import PLOT_CONFIG
 from src.ui.date_formats import FMT_DATETIME_FR
 from src.ui.i18n.viz import viz_t
+from src.visualization._chart_series import HEIGHT_PROGRESSION
 from src.visualization._compat import DataFrameLike, smart_scatter
 from src.visualization._timeseries_helpers import (
     COLORS,
@@ -164,7 +165,7 @@ def plot_rank_score(
     apply_chrono_xaxis(fig, x_idx, labels, step, lang, as_category=False)
 
     fig.update_layout(
-        height=400,
+        height=HEIGHT_PROGRESSION,
         margin={"l": 40, "r": 50, "t": 40, "b": 90},
         legend=get_legend_horizontal_bottom(),
         hovermode="x unified",
@@ -180,7 +181,7 @@ def plot_rank_score(
         secondary_y=True,
     )
 
-    return apply_halo_plot_style(fig, height=400)
+    return apply_halo_plot_style(fig, height=HEIGHT_PROGRESSION)
 
 
 def plot_lusr_timeseries(
