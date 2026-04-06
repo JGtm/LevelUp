@@ -66,6 +66,17 @@ class TestComputeCadenceBuckets:
         buckets = compute_cadence_buckets(events, {"a": 1}, 1, 30.0)
         assert buckets[0].total == 0
 
+    def test_none_time_ms_skipped(self):
+        events = [{"event_type": "kill", "time_ms": None, "xuid": "a"}]
+        buckets = compute_cadence_buckets(events, {"a": 1}, 1, 30.0)
+        assert buckets[0].total == 0
+
+    def test_negative_time_ms_clamped(self):
+        events = [{"event_type": "kill", "time_ms": -5000, "xuid": "a"}]
+        buckets = compute_cadence_buckets(events, {"a": 1}, 1, 30.0)
+        # Négatif → idx<0 → clamped à 0
+        assert buckets[0].my_kills == 1
+
 
 class TestComputeCadenceMovingAvg:
     def test_empty(self):
@@ -136,6 +147,18 @@ class TestComputeMatchIntensityProfiles:
 class TestComputeSquadCadenceProfiles:
     def test_empty(self):
         df = pl.DataFrame(schema={"match_id": pl.Utf8, "time_ms": pl.Int64, "xuid": pl.Utf8})
+        result = compute_squad_cadence_profiles(df, {"a": "PlayerA"})
+        assert result.is_empty()
+
+    def test_xuids_not_in_events_returns_empty(self):
+        """Joueurs demandés absents des events → DataFrame vide."""
+        df = pl.DataFrame(
+            {
+                "match_id": ["m1"],
+                "time_ms": [1000],
+                "xuid": ["other_player"],
+            }
+        )
         result = compute_squad_cadence_profiles(df, {"a": "PlayerA"})
         assert result.is_empty()
 

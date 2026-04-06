@@ -245,6 +245,7 @@ def cached_load_kill_timing_for_matches(
                 xuids=list(xuids) if xuids else None,
             )
         except Exception:
+            logger.debug("cached_load_kill_timing_for_matches: erreur, %d matchs", len(match_ids))
             return []
     return []
 

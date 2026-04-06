@@ -26,6 +26,46 @@ def _format_time_label(seconds: float) -> str:
     return f"{m}:{s:02d}"
 
 
+def _add_cadence_traces(
+    fig: go.Figure,
+    x_labels: list[str],
+    buckets: list[CadenceBucket],
+    lang: str,
+) -> None:
+    """Ajoute les 3 traces (mon équipe, adverses, moyenne glissante)."""
+    fig.add_trace(
+        go.Bar(
+            x=x_labels,
+            y=[b.my_kills for b in buckets],
+            name=viz_t("trace_cadence_my_team", lang),
+            marker_color=MY_TEAM_RGBA,
+            marker_line={"color": MY_TEAM_COLOR, "width": 1},
+            hovertemplate="%{y} " + viz_t("hover_cadence_kills", lang) + "<extra></extra>",
+        )
+    )
+    fig.add_trace(
+        go.Bar(
+            x=x_labels,
+            y=[b.enemy_kills for b in buckets],
+            name=viz_t("trace_cadence_enemy", lang),
+            marker_color=ENEMY_RGBA,
+            marker_line={"color": ENEMY_COLOR, "width": 1},
+            hovertemplate="%{y} " + viz_t("hover_cadence_kills", lang) + "<extra></extra>",
+        )
+    )
+    ma = compute_cadence_moving_avg(buckets, window=3)
+    fig.add_trace(
+        go.Scatter(
+            x=x_labels,
+            y=ma,
+            mode="lines",
+            name=viz_t("trace_cadence_moving_avg", lang),
+            line={"color": _MA_COLOR, "width": 2, "dash": "dot"},
+            hovertemplate="%{y:.1f}<extra></extra>",
+        )
+    )
+
+
 def plot_match_cadence_histogram(
     buckets: list[CadenceBucket],
     duration_s: float,
@@ -47,52 +87,10 @@ def plot_match_cadence_histogram(
     opts = opts or PlotOptions()
     theme = opts.theme
     lang = opts.lang
-
     x_labels = [_format_time_label(b.t_center_s) for b in buckets]
 
-    my_kills = [b.my_kills for b in buckets]
-    enemy_kills = [b.enemy_kills for b in buckets]
-
-    # Moyenne glissante sur le total
-    ma = compute_cadence_moving_avg(buckets, window=3)
-
     fig = go.Figure()
-
-    # Barres mon équipe (bas)
-    fig.add_trace(
-        go.Bar(
-            x=x_labels,
-            y=my_kills,
-            name=viz_t("trace_cadence_my_team", lang),
-            marker_color=MY_TEAM_RGBA,
-            marker_line={"color": MY_TEAM_COLOR, "width": 1},
-            hovertemplate="%{y} " + viz_t("hover_cadence_kills", lang) + "<extra></extra>",
-        )
-    )
-
-    # Barres adverses (empilées)
-    fig.add_trace(
-        go.Bar(
-            x=x_labels,
-            y=enemy_kills,
-            name=viz_t("trace_cadence_enemy", lang),
-            marker_color=ENEMY_RGBA,
-            marker_line={"color": ENEMY_COLOR, "width": 1},
-            hovertemplate="%{y} " + viz_t("hover_cadence_kills", lang) + "<extra></extra>",
-        )
-    )
-
-    # Moyenne glissante
-    fig.add_trace(
-        go.Scatter(
-            x=x_labels,
-            y=ma,
-            mode="lines",
-            name=viz_t("trace_cadence_moving_avg", lang),
-            line={"color": _MA_COLOR, "width": 2, "dash": "dot"},
-            hovertemplate="%{y:.1f}<extra></extra>",
-        )
-    )
+    _add_cadence_traces(fig, x_labels, buckets, lang)
 
     fig.update_layout(
         barmode="stack",
@@ -124,11 +122,9 @@ def plot_match_cadence_histogram(
         bargap=0.15,
     )
 
-    # Annotation du pic d'intensité
     max_total = max(b.total for b in buckets)
     if max_total > 0:
         peak_idx = next(i for i, b in enumerate(buckets) if b.total == max_total)
-        buckets[peak_idx]
         fig.add_annotation(
             x=x_labels[peak_idx],
             y=max_total,

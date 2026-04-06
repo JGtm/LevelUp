@@ -201,7 +201,6 @@ def _render_radar_display(
     with col_radar, safe_chart_render():
         fig = create_participation_profile_radar(
             profiles,
-            title=t("tms_participation_title"),
             height=380,
             show_fill=show_fill,
         )

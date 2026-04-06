@@ -30,13 +30,15 @@
 **Tâche** : Corriger le libellé brut `Quick Play` dans l'embed Discord du dernier match.
 
 **Décisions techniques principales** :
-- `src/utils/_discord_embed.py::_resolve_mode_label` converge désormais vers `translate_pair_name()` (donc `resolve_display_mode`) pour `pair_name` puis pour `game_variant_name` nettoyé.
-- `src/utils/_discord_embed.py::_localize_playlist` garde le pipeline existant mais ajoute un fallback i18n explicite pour les playlists non couvertes par `data_labels` (`Quick Play`, `Ranked Arena`, `Ranked Assassin`).
-- Test de non-régression ajouté dans `tests/test_discord_notifier.py` pour verrouiller `Assassin` + `Partie rapide` dans le rendu du dernier match.
+- Le flux Discord a été réaligné sur une règle stricte DB-first : `fetch_last_match_info()` remonte désormais `map_id`, `playlist_id`, `pair_id`, `game_variant_id` et les libellés EN bruts, sans lire les colonnes `_fr` de `v_match_full`.
+- `src/utils/_discord_embed.py` résout map/playlist/pair/game_variant via `resolve_asset_name(asset_id, asset_type, lang, fallback=nom_en)` ; le seul fallback métier est donc l'anglais stocké en base.
+- Le helper playlist spécifique Discord a été supprimé. Plus de fallback widgets/data_labels/logic legacy dans ce flux.
+- `src/ui/translations.py::translate_playlist_name()` conserve un chemin DB-first par nom EN quand seul le label brut est disponible côté UI, avec tests déterministes via DuckDB temporaire / DB absente.
+- Audit complémentaire des call-sites : dette restante principalement UI sur `src/app/_filters_apply.py`, `src/app/filters_render.py`, `src/ui/pages/match_view.py`, `src/ui/pages/explorer_enrich.py`, `src/ui/pages/match_history.py`, `src/ui/pages/career_top_matches_render.py`, `src/ui/pages/_session_compare_history.py` ; ces chemins traduisent encore depuis `playlist_name` / `pair_name` au lieu d'exploiter directement les IDs ou colonnes déjà résolues.
 
-**Résultats** : 84/84 tests passent sur `tests/test_discord_notifier.py`.
+**Résultats** : 138/138 tests passent sur `tests/test_translations.py`, `tests/test_delta_sync.py` et `tests/test_discord_notifier.py`.
 
-**Conclusion** : L'embed Discord n'affiche plus `Quick Play` brut dans le résumé de dernier match quand la langue Discord est en français.
+**Conclusion** : L'embed Discord n'affiche plus `Quick Play` brut dans le résumé de dernier match quand la langue Discord est en français, et le flux suit maintenant la règle projet attendue : traduction par asset ID, fallback unique vers l'anglais en BDD.
 
 ### [2026-04-18] — Vérification finale Plan V3 + tests cadence histogram — Complété
 

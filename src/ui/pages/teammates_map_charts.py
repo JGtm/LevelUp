@@ -290,6 +290,12 @@ def render_squad_cadence_section(
     if not all_match_ids or len(xuid_name_map) < 2:
         return
 
+    logger.debug(
+        "squad_cadence: %d joueurs, %d matchs",
+        len(xuid_name_map),
+        len(all_match_ids),
+    )
+
     from src.analysis.match_intensity import compute_squad_cadence_profiles
     from src.ui._cache_queries import cached_load_kill_timing_for_matches
     from src.visualization._plot_options import PlotOptions
