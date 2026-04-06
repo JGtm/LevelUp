@@ -108,6 +108,20 @@ def compute_player_pm_records(
     sub = sub.filter(
         pl.col("time_played_seconds").is_not_null() & (pl.col("time_played_seconds") > 0)
     )
+    # Exclure les matchs DNF (outcome=4) et sans résultat (outcome=0) :
+    # un joueur présent mais inactif (0 kills, 0 deaths) fausserait le record min dpm.
+    if "outcome" in sub.columns:
+        sub = sub.filter(~pl.col("outcome").is_in([0, 4]))
+    # Exclure les matchs où le joueur était connecté mais inactif (0 kills, 0 deaths, 0 assists) :
+    # présence système sans engagement réel (match trop court, déconnexion précoce, etc.)
+    sub = sub.filter(
+        (
+            pl.col("kills").fill_null(0)
+            + pl.col("deaths").fill_null(0)
+            + pl.col("assists").fill_null(0)
+        )
+        > 0
+    )
     if sub.is_empty():
         return None, None, None
     pm = sub.with_columns(

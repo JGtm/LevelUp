@@ -65,7 +65,6 @@ def plot_trio_metric(  # noqa: PLR0912, PLR0913, PLR0915, C901 — graphe multi-
         d_f2: DataFrame du deuxième coéquipier.
         metric: Nom de la colonne à comparer.
         names: Tuple des noms (3 ou 4 éléments).
-        title: Titre du graphique.
         y_title: Titre de l'axe Y.
         y_suffix: Suffixe pour les valeurs Y (ex: "%").
         y_format: Format pour le hover (ex: ".2f").

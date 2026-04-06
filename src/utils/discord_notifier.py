@@ -54,6 +54,10 @@ class LastMatchInfo:
     """Informations sur le dernier match du joueur."""
 
     match_id: str = ""
+    map_id: str = ""
+    playlist_id: str = ""
+    pair_id: str = ""
+    game_variant_id: str = ""
     map_name: str = "—"
     playlist_name: str = "—"
     game_variant_name: str = "—"

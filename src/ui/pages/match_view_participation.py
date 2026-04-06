@@ -121,7 +121,6 @@ def render_participation_section(
     with col_radar, safe_chart_render():
         fig = create_participation_profile_radar(
             [profile],
-            title=t("mvp_participation_title"),
             height=380,
         )
         if fig is not None:

@@ -22,6 +22,8 @@ from pathlib import Path
 from typing import Any
 from unittest.mock import MagicMock, patch
 
+import duckdb
+
 from src.utils.discord_notifier import (
     DiscordPlayerResult,
     LastMatchInfo,
@@ -62,8 +64,13 @@ def _player(
 def _last_match(outcome: int = 2, is_ranked: bool = False) -> LastMatchInfo:
     return LastMatchInfo(
         match_id="abc123",
+        map_id="map-bazaar",
+        playlist_id="pl-quick-play",
+        pair_id="pair-arena-slayer",
+        game_variant_id="gv-slayer",
         map_name="Bazaar",
         playlist_name="Quick Play",
+        pair_name="Arena:Slayer",
         game_variant_name="Slayer",
         is_ranked=is_ranked,
         start_time=_NOW - timedelta(hours=1),
@@ -216,11 +223,32 @@ class TestFormatPlayerField:
         assert "🏆" in value
         assert "10F / 4D / 2A" in value
 
-    def test_last_match_localizes_quick_play_playlist(self):
+    def test_last_match_localizes_quick_play_playlist(self, tmp_path):
+        db_path = tmp_path / "metadata.duckdb"
+        conn = duckdb.connect(str(db_path))
+        conn.execute(
+            "CREATE TABLE asset_translations (asset_id VARCHAR, asset_type VARCHAR, lang VARCHAR, name VARCHAR)"
+        )
+        conn.executemany(
+            "INSERT INTO asset_translations VALUES (?, ?, ?, ?)",
+            [
+                ("map-bazaar", "map", "en-US", "Bazaar"),
+                ("map-bazaar", "map", "fr-FR", "Bazaar"),
+                ("pl-quick-play", "playlist", "en-US", "Quick Play"),
+                ("pl-quick-play", "playlist", "fr-FR", "Partie rapide"),
+                ("pair-arena-slayer", "pair", "en-US", "Arena:Slayer"),
+                ("pair-arena-slayer", "pair", "fr-FR", "Assassin"),
+                ("gv-slayer", "game_variant", "en-US", "Slayer"),
+                ("gv-slayer", "game_variant", "fr-FR", "Assassin"),
+            ],
+        )
+        conn.close()
+
         p = _player(last_match=_last_match(outcome=2))
-        _, value = _format_player_field(p, "sync_delta")
-        assert "Assassin" in value
-        assert "Partie rapide" in value
+        with patch("src.utils.paths.get_metadata_db_path", return_value=db_path):
+            _, value = _format_player_field(p, "sync_delta")
+            assert "Assassin" in value
+            assert "Partie rapide" in value
 
     def test_last_match_loss_shows_skull(self):
         p = _player(last_match=_last_match(outcome=3))

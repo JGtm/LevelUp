@@ -15,6 +15,7 @@ from __future__ import annotations
 
 import logging
 from functools import lru_cache
+from pathlib import Path
 
 from src.utils.strings import is_uuid_like as _is_uuid_like
 
@@ -30,7 +31,8 @@ def translate_playlist_name(name: str | None, lang: str = "fr") -> str | None:
 
     Résolution en 2 étapes :
     1. UUID brut → label "Inconnue"/"Unknown"
-    2. Passthrough (les noms de playlists viennent de l'API ou asset_translations)
+    2. Lookup DB-first dans ``asset_translations`` par nom EN
+    3. Passthrough si aucune traduction n'est disponible
 
     Args:
         name: Nom de playlist brut (peut être ``None``).
@@ -47,7 +49,79 @@ def translate_playlist_name(name: str | None, lang: str = "fr") -> str | None:
     if _is_uuid_like(s):
         logger.warning("playlist_name non résolu (UUID brut) : %s — asset_translations vide ?", s)
         return _UNKNOWN_PLAYLIST.get(lang, s)
+
+    from src.utils.paths import get_metadata_db_path
+
+    resolved = _resolve_asset_name_from_english_name(
+        str(get_metadata_db_path()), s, "playlist", lang
+    )
+    if resolved:
+        return resolved
+
     return s
+
+
+@lru_cache(maxsize=512)
+def _resolve_asset_name_from_english_name(
+    db_path_key: str,
+    english_name: str,
+    asset_type: str,
+    lang: str,
+) -> str | None:
+    """Résout un asset traduit à partir de son nom anglais dans ``asset_translations``.
+
+    Ce chemin sert aux call-sites qui n'ont pas l'``asset_id`` mais seulement le
+    nom EN stocké dans ``match_registry`` ou propagé dans l'UI.
+    """
+    from src.data.sync._asset_langs import to_bcp47
+    from src.utils.db import duckdb_read_only
+
+    db_path = Path(db_path_key)
+    if not db_path.exists():
+        return None
+
+    bcp = to_bcp47(lang) if len(lang) <= 3 else lang
+    if bcp == "en-US":
+        return english_name
+
+    try:
+        with duckdb_read_only(str(db_path)) as conn:
+            tables = {
+                r[0]
+                for r in conn.execute(
+                    "SELECT table_name FROM information_schema.tables WHERE table_schema='main'"
+                ).fetchall()
+            }
+            if "asset_translations" not in tables:
+                return None
+
+            row = conn.execute(
+                """
+                SELECT target.name
+                FROM asset_translations target
+                JOIN asset_translations source
+                  ON source.asset_id = target.asset_id
+                 AND source.asset_type = target.asset_type
+                 AND source.lang = 'en-US'
+                WHERE target.asset_type = ?
+                  AND target.lang = ?
+                  AND lower(trim(source.name)) = lower(trim(?))
+                LIMIT 1
+                """,
+                [asset_type, bcp, english_name],
+            ).fetchone()
+            if row and row[0]:
+                return str(row[0]).strip()
+    except Exception as exc:
+        logger.debug(
+            "_resolve_asset_name_from_english_name(%s, %s, %s): %s",
+            asset_type,
+            english_name,
+            lang,
+            exc,
+        )
+
+    return None
 
 
 def translate_pair_name(

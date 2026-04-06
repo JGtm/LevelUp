@@ -132,7 +132,6 @@ def _plot_trio_metric_chart(  # noqa: PLR0913
     lang: str,
     colors_by_name: dict[str, str] | None,
     metric: str,
-    title: str,
     y_title: str,
     key: str,
     y_suffix: str = "",
@@ -148,7 +147,6 @@ def _plot_trio_metric_chart(  # noqa: PLR0913
             d_f2,
             metric=metric,
             names=names,
-            title=title,
             y_title=y_title,
             y_suffix=y_suffix,
             y_format=y_format,
@@ -230,14 +228,15 @@ def render_trio_charts(  # noqa: PLR0913
         "squad_records": squad_records,
     }
     for metric, title_key, ytitle_key, key_prefix, extra in _TRIO_METRIC_SPECS:
-        _plot_trio_metric_chart(
-            **_shared,
-            metric=metric,
-            title=t(title_key),
-            y_title=t(ytitle_key) if ytitle_key else "%",
-            key=f"{key_prefix}_{key_suffix}",
-            **extra,
-        )
+        with safe_chart_render():
+            st.subheader(t(title_key))
+            _plot_trio_metric_chart(
+                **_shared,
+                metric=metric,
+                y_title=t(ytitle_key) if ytitle_key else "%",
+                key=f"{key_prefix}_{key_suffix}",
+                **extra,
+            )
 
 
 # ---------------------------------------------------------------------------

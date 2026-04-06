@@ -43,7 +43,7 @@ FUNC:src/ui/_sync_duckdb_ops.py:183:sync_player_duckdb_async:81L
 FUNC:src/ui/cache_loaders.py:124:_enrich_matches_df:85L
 FUNC:src/ui/cache_loaders.py:213:load_df_optimized:97L
 FUNC:src/ui/commendations.py:283:render_h5g_commendations_section:163L
-FUNC:src/ui/components/_radar_participation.py:144:create_participation_profile_radar:128L
+FUNC:src/ui/components/_radar_participation.py:144:create_participation_profile_radar:127L
 FUNC:src/ui/components/_radar_participation.py:17:create_participation_radar:124L
 FUNC:src/ui/components/_radar_teammates.py:110:create_session_trend_radar:91L
 FUNC:src/ui/components/chart_annotations.py:14:add_extreme_annotations:95L
@@ -59,13 +59,13 @@ FUNC:src/ui/pages/citations.py:24:render_citations_page:172L
 FUNC:src/ui/pages/match_view_charts.py:257:_render_spree_headshots:125L
 FUNC:src/ui/pages/match_view_charts.py:73:render_expected_vs_actual:181L
 FUNC:src/ui/pages/match_view_citations.py:18:render_match_citations_section:164L
-FUNC:src/ui/pages/match_view_participation.py:44:render_participation_section:90L
+FUNC:src/ui/pages/match_view_participation.py:44:render_participation_section:89L
 FUNC:src/ui/pages/match_view_players_nemesis.py:262:render_nemesis_section:131L
 FUNC:src/ui/pages/match_view_players_nemesis.py:66:_render_antagonist_chart:101L
 FUNC:src/ui/pages/match_view_players_timeline.py:38:render_team_dominance_section:91L
 FUNC:src/ui/pages/match_view_rank.py:18:_build_match_rank_html:184L
 FUNC:src/ui/pages/media_tab.py:110:render_media_tab:154L
-FUNC:src/ui/pages/teammates_charts.py:322:_build_first_events_fig:160L
+FUNC:src/ui/pages/teammates_charts.py:321:_build_first_events_fig:160L
 FUNC:src/ui/pages/teammates_helpers.py:162:_prepare_friends_table_data:92L
 FUNC:src/ui/pages/teammates_impact.py:304:_render_impact_from_events:86L
 FUNC:src/ui/pages/teammates_synergy.py:80:_compute_player_profile:96L
@@ -73,9 +73,9 @@ FUNC:src/ui/pages/teammates_views.py:234:_render_map_history_section:115L
 FUNC:src/ui/pages/teammates_views.py:50:render_multi_teammate_view:101L
 FUNC:src/ui/styles.py:48:get_hero_html:146L
 FUNC:src/ui/sync.py:59:refresh_spnkr_db_via_api:86L
+FUNC:src/utils/_discord_queries.py:88:fetch_last_match_info:81L
 FUNC:src/visualization/_antagonist_duels.py:17:plot_duel_history:102L
 FUNC:src/visualization/_antagonist_kv.py:17:plot_killer_victim_stacked_bars:102L
-FUNC:src/visualization/_cadence_histogram.py:29:plot_match_cadence_histogram:115L
 FUNC:src/visualization/_distributions_advanced.py:153:plot_first_event_distribution:106L
 FUNC:src/visualization/_distributions_advanced.py:19:plot_correlation_scatter:131L
 FUNC:src/visualization/_match_impact_events.py:210:compute_single_match_impact:162L
@@ -102,8 +102,8 @@ FUNC:src/visualization/teammates_hs_pk.py:20:plot_hs_pk_stacked:223L
 FUNC:src/visualization/timeseries.py:304:plot_per_minute_timeseries:126L
 FUNC:src/visualization/timeseries_combat.py:188:plot_streak_chart:81L
 FUNC:src/visualization/timeseries_combat.py:92:plot_spree_headshots_accuracy:93L
-FUNC:src/visualization/trio.py:344:plot_trio_kills_deaths:163L
-FUNC:src/visualization/trio.py:40:plot_trio_metric:233L
+FUNC:src/visualization/trio.py:343:plot_trio_kills_deaths:163L
+FUNC:src/visualization/trio.py:40:plot_trio_metric:232L
 MODULE:src/analysis/spawn_detection.py:562L
 MODULE:src/analysis/weapon_parser.py:502L
 MODULE:src/data/repositories/_materialized_views.py:512L
@@ -119,6 +119,6 @@ MODULE:src/data/sync/transformers/_match.py:580L
 MODULE:src/ui/pages/match_view_helpers.py:506L
 MODULE:src/ui/pages/match_view_scoreboard_detail.py:625L
 MODULE:src/ui/pages/session_compare.py:528L
-MODULE:src/ui/pages/teammates_charts.py:515L
+MODULE:src/ui/pages/teammates_charts.py:514L
 MODULE:src/ui/pages/teammates_helpers.py:505L
-MODULE:src/visualization/trio.py:508L
+MODULE:src/visualization/trio.py:507L

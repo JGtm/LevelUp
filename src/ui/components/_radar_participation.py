@@ -156,7 +156,6 @@ def create_participation_profile_radar(
 
     Args:
         profiles: Liste de dicts avec clés *_norm et *_raw pour chaque axe.
-        title: Titre du graphe.
         height: Hauteur en pixels.
         fill_opacity: Opacité du remplissage (0-1, défaut 1.0 = opaque).
         show_fill: Si True, remplit la zone ; False = lignes uniquement.

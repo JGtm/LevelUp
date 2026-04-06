@@ -4,6 +4,7 @@ import sqlite3
 import tempfile
 from datetime import datetime, timezone
 from pathlib import Path
+from unittest.mock import patch
 
 from src.analysis.filters import is_allowed_playlist_name
 from src.ui.translations import (
@@ -19,28 +20,32 @@ from src.ui.translations import (
 class TestTranslatePlaylistName:
     """Tests pour translate_playlist_name (passthrough + UUID detection depuis v6.3)."""
 
-    def test_known_playlist_fr(self):
+    def test_known_playlist_fr(self, tmp_path):
         """Playlists passthrough — traductions FR via asset_translations (DB), pas JSON."""
-        assert translate_playlist_name("Quick Play", lang="fr") == "Quick Play"
-        assert translate_playlist_name("Ranked Arena", lang="fr") == "Ranked Arena"
-        assert translate_playlist_name("Big Team Battle", lang="fr") == "Big Team Battle"
+        with patch("src.utils.paths.get_metadata_db_path", return_value=tmp_path / "absent.duckdb"):
+            assert translate_playlist_name("Quick Play", lang="fr") == "Quick Play"
+            assert translate_playlist_name("Ranked Arena", lang="fr") == "Ranked Arena"
+            assert translate_playlist_name("Big Team Battle", lang="fr") == "Big Team Battle"
 
-    def test_known_playlist_en(self):
+    def test_known_playlist_en(self, tmp_path):
         """Playlists connues restent identiques en EN."""
-        assert translate_playlist_name("Quick Play", lang="en") == "Quick Play"
-        assert translate_playlist_name("Ranked Arena", lang="en") == "Ranked Arena"
+        with patch("src.utils.paths.get_metadata_db_path", return_value=tmp_path / "absent.duckdb"):
+            assert translate_playlist_name("Quick Play", lang="en") == "Quick Play"
+            assert translate_playlist_name("Ranked Arena", lang="en") == "Ranked Arena"
 
-    def test_unknown_playlist(self):
+    def test_unknown_playlist(self, tmp_path):
         """Test avec une playlist inconnue - retourne l'original (passthrough)."""
-        assert translate_playlist_name("Unknown Playlist") == "Unknown Playlist"
+        with patch("src.utils.paths.get_metadata_db_path", return_value=tmp_path / "absent.duckdb"):
+            assert translate_playlist_name("Unknown Playlist") == "Unknown Playlist"
 
     def test_none_value(self):
         """Test avec None."""
         assert translate_playlist_name(None) is None
 
-    def test_whitespace_handling(self):
+    def test_whitespace_handling(self, tmp_path):
         """Test avec espaces autour — strip appliqué puis passthrough."""
-        assert translate_playlist_name("  Quick Play  ") == "Quick Play"
+        with patch("src.utils.paths.get_metadata_db_path", return_value=tmp_path / "absent.duckdb"):
+            assert translate_playlist_name("  Quick Play  ") == "Quick Play"
 
     def test_uuid_returns_inconnue(self):
         """UUID brut → label 'Inconnue' + warning loggé."""

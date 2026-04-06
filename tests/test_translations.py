@@ -10,6 +10,10 @@ Valide la nouvelle architecture JSON-first de translate_pair_name() :
 
 from __future__ import annotations
 
+from unittest.mock import patch
+
+import duckdb
+
 from src.ui.translations import translate_pair_name, translate_playlist_name
 
 # ---------------------------------------------------------------------------
@@ -132,10 +136,31 @@ class TestTranslatePairNameEN:
 
 
 class TestTranslatePlaylistNameFR:
-    def test_passthrough_playlist_name(self) -> None:
+    def test_passthrough_playlist_name_without_metadata_db(self, tmp_path) -> None:
         """Les noms de playlists sont retournés tels quels (lookup via asset_translations)."""
-        assert translate_playlist_name("Quick Play") == "Quick Play"
-        assert translate_playlist_name("Ranked Arena") == "Ranked Arena"
+        with patch("src.utils.paths.get_metadata_db_path", return_value=tmp_path / "absent.duckdb"):
+            assert translate_playlist_name("Quick Play") == "Quick Play"
+            assert translate_playlist_name("Ranked Arena") == "Ranked Arena"
+
+    def test_db_first_playlist_translation(self, tmp_path) -> None:
+        """Quand asset_translations est présente, la traduction vient de la DB."""
+        db_path = tmp_path / "metadata.duckdb"
+        conn = duckdb.connect(str(db_path))
+        conn.execute(
+            "CREATE TABLE asset_translations (asset_id VARCHAR, asset_type VARCHAR, lang VARCHAR, name VARCHAR)"
+        )
+        conn.executemany(
+            "INSERT INTO asset_translations VALUES (?, ?, ?, ?)",
+            [
+                ("pl-quick-play", "playlist", "en-US", "Quick Play"),
+                ("pl-quick-play", "playlist", "fr-FR", "Partie rapide"),
+            ],
+        )
+        conn.close()
+
+        with patch("src.utils.paths.get_metadata_db_path", return_value=db_path):
+            assert translate_playlist_name("Quick Play") == "Partie rapide"
+            assert translate_playlist_name("Quick Play", lang="en") == "Quick Play"
 
     def test_uuid_playlist_returns_inconnue(self) -> None:
         """UUID brut → 'Inconnue' (metadata.duckdb incomplet)."""
@@ -145,6 +170,7 @@ class TestTranslatePlaylistNameFR:
     def test_none_returns_none(self) -> None:
         assert translate_playlist_name(None) is None
 
-    def test_unknown_playlist_passthrough(self) -> None:
+    def test_unknown_playlist_passthrough(self, tmp_path) -> None:
         """Playlist inconnue : retourne telle quelle."""
-        assert translate_playlist_name("Unknown Playlist XYZ123") == "Unknown Playlist XYZ123"
+        with patch("src.utils.paths.get_metadata_db_path", return_value=tmp_path / "absent.duckdb"):
+            assert translate_playlist_name("Unknown Playlist XYZ123") == "Unknown Playlist XYZ123"

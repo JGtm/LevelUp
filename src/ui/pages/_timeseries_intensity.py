@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import logging
+
 import polars as pl
 import streamlit as st
 
@@ -10,6 +12,8 @@ from src.ui.i18n import t
 from src.ui.streamlit_modern import PLOTLY_CLEAN_CONFIG, fragment_if_available
 from src.visualization._plot_options import PlotOptions
 from src.visualization.match_intensity_heatmap import plot_match_intensity_heatmap
+
+logger = logging.getLogger(__name__)
 
 
 def _reorder_profile_by_date(
@@ -71,6 +75,8 @@ def render_intensity_heatmap(
     match_ids = dff["match_id"].cast(pl.Utf8).to_list() if "match_id" in dff.columns else []
     if len(match_ids) < 3:
         return
+
+    logger.debug("intensity_heatmap: %d matchs à analyser", len(match_ids))
 
     from src.analysis.match_intensity import compute_match_intensity_profiles
     from src.ui._cache_queries import cached_load_kill_timing_for_matches

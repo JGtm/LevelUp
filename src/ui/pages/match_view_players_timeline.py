@@ -129,6 +129,33 @@ def render_team_dominance_section(  # noqa: PLR0913
         st.info(t("mv_dynamics_no_dominance"))
 
 
+def _resolve_cadence_teams(
+    db_path: str,
+    match_id: str,
+    xuid: str,
+) -> tuple[dict[str, int], int | None]:
+    """Résout le mapping xuid→team_id et l'équipe du joueur courant.
+
+    Returns:
+        (xuid_to_team, my_team_id) — my_team_id=None si données insuffisantes.
+    """
+    all_players = _load_match_players_stats(db_path, match_id.strip())
+    if not all_players:
+        return {}, None
+
+    me_xuid = str(parse_xuid_input(str(xuid or "").strip()) or str(xuid or "").strip()).strip()
+    xuid_to_team: dict[str, int] = {
+        str(p.get("xuid", "")).strip(): int(p["team_id"])
+        for p in all_players
+        if p.get("team_id") is not None and p.get("xuid")
+    }
+
+    if len(set(xuid_to_team.values())) < 2:
+        return xuid_to_team, None
+
+    return xuid_to_team, xuid_to_team.get(me_xuid)
+
+
 @fragment_if_available
 def render_match_cadence_section(  # noqa: PLR0913
     *,
@@ -150,6 +177,7 @@ def render_match_cadence_section(  # noqa: PLR0913
     if not (match_id and match_id.strip() and _has_table_duckdb(db_path, "highlight_events")):
         return
 
+    logger.debug("cadence: match=%s bucket_default=30s", match_id)
     st.subheader(t("mv_match_cadence"))
 
     he = load_highlight_events_fn(db_path, match_id.strip(), db_key=db_key)
@@ -157,22 +185,7 @@ def render_match_cadence_section(  # noqa: PLR0913
         st.info(t("mv_cadence_no_data"))
         return
 
-    all_players = _load_match_players_stats(db_path, match_id.strip())
-    if not all_players:
-        st.info(t("mv_cadence_no_data"))
-        return
-
-    me_xuid = str(parse_xuid_input(str(xuid or "").strip()) or str(xuid or "").strip()).strip()
-    xuid_to_team: dict[str, int] = {
-        str(p.get("xuid", "")).strip(): int(p["team_id"])
-        for p in all_players
-        if p.get("team_id") is not None and p.get("xuid")
-    }
-
-    if len(set(xuid_to_team.values())) < 2:
-        return
-
-    my_team_id = xuid_to_team.get(me_xuid)
+    xuid_to_team, my_team_id = _resolve_cadence_teams(db_path, match_id, xuid)
     if my_team_id is None:
         return
 

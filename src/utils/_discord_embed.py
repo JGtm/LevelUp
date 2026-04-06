@@ -18,12 +18,6 @@ logger = logging.getLogger(__name__)
 
 _APP_SETTINGS = Path(__file__).resolve().parents[2] / "app_settings.json"
 
-_PLAYLIST_I18N_KEYS: dict[str, str] = {
-    "Quick Play": "playlist_quick_play",
-    "Ranked Arena": "playlist_ranked_arena",
-    "Ranked Assassin": "playlist_ranked_assassin",
-}
-
 
 def _to_local(dt: datetime) -> datetime:
     """Convertit un datetime UTC vers l'heure locale du système."""
@@ -42,27 +36,20 @@ def _get_discord_lang() -> str:
         return "fr"
 
 
-def _localize_playlist(name: str, lang: str = "fr") -> str:
-    """Retourne la traduction du nom de playlist via la couche i18n."""
+def _resolve_asset_label(
+    asset_id: str | None,
+    asset_type: str,
+    fallback: str,
+    lang: str,
+) -> str:
+    """Résout un label d'asset via asset_translations, sinon fallback EN."""
     try:
-        from src.ui.i18n import t
-        from src.ui.i18n.data_labels import label
-        from src.ui.translations import translate_playlist_name
+        from src.ui.translations import resolve_asset_name
 
-        widget_key = _PLAYLIST_I18N_KEYS.get(name)
-        if widget_key:
-            localized = t(widget_key, lang=lang)
-            if localized and not localized.startswith("["):
-                return localized
-
-        localized = label("playlists", name, lang=lang)
-        if localized and localized != name:
-            return localized
-
-        result = translate_playlist_name(name, lang=lang)
-        return result if result is not None else name
+        resolved = resolve_asset_name(asset_id, asset_type, lang=lang, fallback=fallback)
+        return str(resolved or fallback)
     except Exception:
-        return name
+        return fallback
 
 
 def _clean_game_variant(name: str) -> str:
@@ -74,29 +61,21 @@ def _clean_game_variant(name: str) -> str:
 
 
 def _resolve_mode_label(
+    pair_id: str,
     pair_name: str,
+    game_variant_id: str,
     game_variant_name: str,
     lang: str = "fr",
 ) -> str:
-    """Résout le libellé du mode de jeu dans la langue demandée."""
-    try:
-        from src.ui.translations import translate_pair_name
+    """Résout le libellé du mode via asset_translations, sans fallback legacy."""
+    if pair_id:
+        return _resolve_asset_label(pair_id, "pair", pair_name, lang)
 
-        if pair_name and pair_name != "—":
-            mode = translate_pair_name(pair_name, lang=lang)
-            if mode:
-                return mode
+    clean_variant = _clean_game_variant(game_variant_name)
+    if game_variant_id:
+        return _resolve_asset_label(game_variant_id, "game_variant", clean_variant, lang)
 
-        clean_variant = _clean_game_variant(game_variant_name)
-        if clean_variant and clean_variant != "—":
-            mode = translate_pair_name(clean_variant, lang=lang)
-            if mode:
-                return mode
-            return clean_variant
-    except Exception:
-        pass
-
-    return _clean_game_variant(game_variant_name)
+    return clean_variant
 
 
 def _format_duration(started_at: datetime, finished_at: datetime) -> str:
@@ -195,12 +174,21 @@ def _append_last_match_lines(
     kda = discord_t("discord_kda", k=lm.kills, d=lm.deaths, a=lm.assists)
     _st = _to_local(lm.start_time) if lm.start_time else None
     time_str = _st.strftime("%d/%m %H:%M") if _st else "—"
-    variant = _resolve_mode_label(lm.pair_name, lm.game_variant_name, lang=lang)
-    playlist = _localize_playlist(lm.playlist_name, lang=lang)
+    variant = _resolve_mode_label(
+        getattr(lm, "pair_id", ""),
+        lm.pair_name,
+        getattr(lm, "game_variant_id", ""),
+        lm.game_variant_name,
+        lang=lang,
+    )
+    playlist = _resolve_asset_label(
+        getattr(lm, "playlist_id", ""), "playlist", lm.playlist_name, lang
+    )
+    map_name = _resolve_asset_label(getattr(lm, "map_id", ""), "map", lm.map_name, lang)
     last_match_label = discord_t("discord_last_match")
     lines.append(
         f"**{last_match_label}** ({time_str}){ranked_tag}\n"
-        f"🗺️  **{lm.map_name}**  ·  🎮 {variant}\n"
+        f"🗺️  **{map_name}**  ·  🎮 {variant}\n"
         f"📋  {playlist}\n"
         f"📊  {kda}  ·  {outcome_icon} {outcome_label}"
     )
