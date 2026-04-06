@@ -16,9 +16,11 @@ DEPLOY_DIR="/opt/levelup"
 echo "[deploy] Répertoire : $DEPLOY_DIR"
 cd "$DEPLOY_DIR"
 
-# 1. Récupérer les derniers commits depuis main
-echo "[deploy] git pull origin main..."
-git pull origin main
+# 1. Récupérer les derniers commits depuis main (force, ignore les changements locaux)
+echo "[deploy] git fetch + reset --hard origin/main..."
+git fetch origin main
+git reset --hard origin/main
+git clean -fd --exclude=data/ --exclude=.env.local --exclude=app_settings.json --exclude=db_profiles.json
 
 # 2. Rebuilder et redémarrer uniquement le service levelup (sans downtime des autres)
 echo "[deploy] docker compose up --build..."
