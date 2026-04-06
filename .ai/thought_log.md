@@ -7,6 +7,31 @@
 
 ## Journal
 
+### [2026-04-06] — Audit complet CHARTS_AND_TABLES.md vs plan V3 + codebase — Complété
+
+**Tâche** : Vérification que `CHARTS_AND_TABLES.md` est exhaustif au regard du plan V3 (2026-04-05) et du codebase réel.
+
+**Décision technique** : Audit en deux passes :
+1. Plan V3 = axes structurels (PlotOptions, BaseService, SK, render_chart_or_info, C901) — pas de nouveaux visuels déclarés.
+2. Grep systématique de toutes les `def plot_*/create_*/render_*` dans `src/visualization/` et `src/ui/pages/` × vérification appels effectifs.
+
+**5 sections manquantes confirmées (utilisées dans l'UI)** :
+- §3.20 `render_weapon_kills_chart` (`_timeseries_weapons.py`) — barres armes sur période filtrée, appelé depuis `timeseries.py`
+- §4.14 `render_weapon_kills_bar_chart` (`teammates_weapons.py`) — barres groupées armes multi-joueurs, appelé depuis `_teammates_trio.py` et `teammates_views.py`
+- §4.15 `render_first_events_chart` (`teammates_charts.py`) — timeline premier frag/mort escouade, appelé depuis `_teammates_trio.py`
+- §5.19 `render_scoreboard_player_detail_html` (`match_view_scoreboard_detail.py`) — panneau HTML collapsible (armes, médailles, attendu, antagoniste), appelé depuis `match_view_scoreboard.py`
+- §6.10 `render_participation_trend_section` (`session_compare_charts.py`) — barres horiz. profil participation A vs B (6 axes), appelé depuis `session_compare.py`
+
+**1 correction source erronée** : §4.8 source `friends_impact_heatmap.py::plot_squad_map_heatmap` → `_heatmap_squad.py::plot_squad_map_heatmap`.
+
+**Fonctions exportées non utilisées dans l'UI (non ajoutées)** : `plot_cumulative_net_score`, `plot_cumulative_kd`, `plot_rolling_kd`, `plot_accuracy_last_n`, `plot_kd_timeseries`, `plot_map_ratio_with_winloss`, `render_weapon_kills_table`.
+
+**Résultats** : Doc mis à jour — ~92 → ~96 `st.plotly_chart`, ~73 → ~80 sections, 9 → 10 tableaux HTML.
+
+**Conclusion** : Doc exhaustif au 2026-04-06. Prochaine mise à jour requise si nouveaux visuels ajoutés dans V3 (axes H/I/J/K/L ne créent pas de nouveaux visuels).
+
+---
+
 ### [2026-04-07] — Correction 10 échecs pré-existants (tests unitaires + intégration) — Complété
 
 **Tâche** : Corriger l'intégralité des tests en échec pré-existants sur la branche `fix/preexisting-test-failures` (depuis `refactor/viz-pipeline-v2`).

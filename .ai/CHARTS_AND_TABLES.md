@@ -6,12 +6,12 @@
 
 | Métrique | Valeur |
 |----------|--------|
-| Instances `st.plotly_chart` dans les pages | **~92** |
+| Instances `st.plotly_chart` dans les pages | **~96** |
 | Fonctions `plot_*/create_*` dans `src/visualization/` | **~80** |
 | Fonctions `create_*` dans `src/ui/components/` | **9** |
 | Pages Streamlit avec rendu graphique | **15** |
-| Tableaux HTML personnalisés | **9** |
-| Sections documentées (visuels distincts) | **~73** |
+| Tableaux HTML personnalisés | **10** |
+| Sections documentées (visuels distincts) | **~80** |
 | Graphiques désactivés (`if False:`) | **2** (`plot_map_outcome_timeline` §2.6, `_render_ratio_by_map_section` win_loss) |
 
 ---
@@ -525,6 +525,19 @@ Tous les graphiques partagent :
 | Hover | N/A (indicateurs) |
 | **Source** | `src/visualization/_perf_session.py::plot_regression_trend` |
 
+### 3.20 Barres : Kills par arme sur la période filtrée (Timeseries)
+
+| Propriété | Valeur |
+|-----------|--------|
+| Type | `go.Bar` horizontales |
+| Axe Y | Noms d'armes (FR/EN via `resolve_weapon_display`) |
+| Axe X | Total kills |
+| Couleur | Cyan (palette Halo) |
+| Données | Agrégées depuis `weapon_kills` (film) + grenade/mêlée API (post-correction) |
+| Annotations | Headshot rate % à droite de chaque barre |
+| Conditionnel | Affiché uniquement si données weapon_kills disponibles |
+| **Source** | `src/ui/pages/_timeseries_weapons.py::render_weapon_kills_chart` |
+
 ---
 
 ## 4. Page TEAMMATES (Coéquipiers & Synergies)
@@ -618,7 +631,7 @@ Tous les graphiques partagent :
 | Valeur Z | Win rate % (0.0–1.0) |
 | Gradient | Rouge (0 %) → ambre (50 %) → vert (100 %) |
 | Hover | Ami, Carte, Win rate, Nb matchs |
-| **Source** | `src/visualization/friends_impact_heatmap.py::plot_squad_map_heatmap` |
+| **Source** | `src/visualization/_heatmap_squad.py::plot_squad_map_heatmap` |
 
 ### 4.9 Tableau récapitulatif coéquipiers (`st.dataframe`)
 
@@ -678,6 +691,29 @@ Tous les graphiques partagent :
 | Remplissage | `toself`, opacity configurable (défaut 1.0) |
 | Hover | Valeur normalisée + valeur brute en tooltip |
 | **Source** | `src/ui/components/_radar_participation.py::create_participation_profile_radar` (depuis `teammates_synergy.py`) |
+
+### 4.14 Barres : Armes de kill multi-joueurs (escouade)
+
+| Propriété | Valeur |
+|-----------|--------|
+| Type | `go.Bar` horizontales groupées par joueur |
+| Axe Y | Noms d'armes (FR/EN via `_resolve_weapon_name`) |
+| Axe X | Total kills par arme |
+| Traces | 1 par joueur de l'escouade (couleurs Halo fixes par joueur) |
+| `barmode` | `group` |
+| Titre | `t("tm_weapon_kills_chart")` |
+| **Source** | `src/ui/pages/teammates_weapons.py::render_weapon_kills_bar_chart` (depuis `_teammates_trio.py` et `teammates_views.py`) |
+
+### 4.15 Timeline : Premier frag et première mort (escouade)
+
+| Propriété | Valeur |
+|-----------|--------|
+| Type | `go.Scatter` multiligne |
+| Axe X | Index de match commun (chronologique) |
+| Axe Y | Temps en secondes (premier frag / première mort) |
+| Traces | 2 par joueur : premier frag (solide) + première mort (pointillés) |
+| Couleurs | 1 par joueur (identiques au reste de la vue escouade) |
+| **Source** | `src/ui/pages/teammates_charts.py::render_first_events_chart` (depuis `_teammates_trio.py`) |
 
 ---
 
@@ -908,6 +944,21 @@ Tous les graphiques partagent :
 | Légende badges | `build_badge_legend_html()` inline sous le tableau |
 | **Source** | `src/ui/pages/match_view_encounters.py::render_encounter_section` |
 
+### 5.19 Panneau HTML : Détail joueur (scoreboard expandable)
+
+> Déclenché par clic « Expand » sur une ligne du scoreboard. Panneau HTML collapsible construit dynamiquement.
+
+| Propriété | Valeur |
+|-----------|--------|
+| Type | Bloc HTML généré (`st.markdown` unsafe) |
+| Section Armes | Top armes par kills (nom arme + count + headshot %) |
+| Section Médailles | Grille icônes médailles avec count |
+| Section Citations | Liste citations gagnées dans ce match |
+| Section Attendu | Comparatif réel vs. attendu (CSR / historique) |
+| Section Antagoniste | Kills/deaths vs. adversaire principal |
+| Badge joueur | 🎮 Données complètes vs 🔗 Données partagées seulement |
+| **Source** | `src/ui/pages/match_view_scoreboard_detail.py::render_scoreboard_player_detail_html` |
+
 ---
 
 ## 6. Page SESSION COMPARE (Comparaison de sessions)
@@ -1013,6 +1064,23 @@ Tous les graphiques partagent :
 | Hauteur | Dynamique : max(180, N_modes × 48 px) |
 | Note | Affiché uniquement si colonne `pair_name` disponible |
 | **Source** | `src/ui/pages/_session_compare_extra.py::render_modes_breakdown` |
+
+### 6.10 Barres horizontales : Profil de participation A vs B (6 axes)
+
+> Remplace le radar superposé, plus lisible. Affiché conditionnel à la disponibilité de `personal_score_awards`.
+
+| Propriété | Valeur |
+|-----------|--------|
+| Type | `go.Bar` horizontales groupées |
+| Orientation | Horizontale (`orientation="h"`) |
+| Axe Y | 6 axes : Objectifs, Combat, Support, Score, Impact, Survie |
+| Axe X | Valeur normalisée (0–110 %, affiché en %) |
+| Trace A | Coral `#E74C3C` — Session A |
+| Trace B | Bleu `#3498DB` — Session B |
+| `barmode` | `group` |
+| Hauteur | 300 px |
+| Conditionnel | `repo.has_personal_score_awards()` = True |
+| **Source** | `src/ui/pages/session_compare_charts.py::render_participation_trend_section` → `_session_compare_viz.py::_build_participation_bar_chart` |
 
 ---
 
@@ -1214,6 +1282,7 @@ Tous les graphiques partagent :
 | 2.10 | Score personnel par match | Win Loss |
 | 4.11 | Stats multi-joueurs par match | Teammates |
 | 4.12 | Stats/min escouade (catégoriel) | Teammates |
+| 4.15 | Premier frag/mort escouade | Teammates |
 | 1.3 | XP / Rang | Carrière |
 | 1.4 | LUSR progression | Carrière |
 | 2.9 | Séries V/D | Win Loss |
@@ -1264,6 +1333,9 @@ Tous les graphiques partagent :
 | 2.5 | Win rate par carte (lollipop) | Win Loss |
 | 2.7 | Win rate vs historique (bullet) | Win Loss |
 | 2.2 | Résultats par carte (empilées) | Win Loss |
+| 3.20 | Kills par arme (période filtrée) | Timeseries |
+| 4.14 | Armes kill multi-joueurs | Teammates |
+| 6.10 | Profil participation A vs B (6 axes) | Session Compare |
 
 ### Pie / Donut / Sunburst
 | # | Nom | Page |
@@ -1281,6 +1353,7 @@ Tous les graphiques partagent :
 | 5.12 | Scoreboard match | Match View |
 | 5.17 | Rang CSR/LUSR match | Match View |
 | 5.18 | Encounters du match | Match View |
+| 5.19 | Détail joueur (expand scoreboard) | Match View |
 | 1.5 | Top 10 meilleurs matchs | Carrière |
 | 1.6 | Top 10 pires matchs | Carrière |
 | 1.7 | Encounters adversaires récurrents | Carrière |
