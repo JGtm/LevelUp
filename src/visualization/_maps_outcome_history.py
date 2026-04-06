@@ -5,7 +5,11 @@ Barres horizontales groupées comparant la session actuelle à l'historique.
 
 from __future__ import annotations
 
+import logging
+
 import plotly.graph_objects as go
+
+logger = logging.getLogger(__name__)
 
 from src.analysis.performance_config import SCORE_THRESHOLDS
 from src.config import HALO_COLORS, PLOT_CONFIG
@@ -62,6 +66,11 @@ def plot_map_perf_vs_history(
     )
     joined = bd_curr.join(bd_hist, on="map_name", how="inner")
     if joined.is_empty():
+        logger.debug(
+            "plot_map_perf_vs_history: aucune carte commune (curr=%d, hist=%d lignes)",
+            len(bd_curr),
+            len(bd_hist),
+        )
         return None
 
     if map_order is not None:
