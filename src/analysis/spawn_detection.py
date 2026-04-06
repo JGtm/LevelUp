@@ -361,7 +361,6 @@ def find_peak_activity_window(
     return best_ts
 
 
-
 def _displacement(prev: tuple[int, int], cur: tuple[int, int]) -> float:
     """Distance euclidienne entre deux positions (Y 16-bit, X 12-bit).
 
@@ -499,7 +498,9 @@ def find_densest_spawn_cluster(
 
     t_end = best_start_ts + window_ms
     cluster = [(pi, fm) for pi, fm in sorted_items if best_start_ts <= fm["timestamp_ms"] <= t_end]
-    outside = [(pi, fm) for pi, fm in sorted_items if not (best_start_ts <= fm["timestamp_ms"] <= t_end)]
+    outside = [
+        (pi, fm) for pi, fm in sorted_items if not (best_start_ts <= fm["timestamp_ms"] <= t_end)
+    ]
 
     earliest = cluster[0][1]["timestamp_ms"] if cluster else 0.0
     for _, fm in cluster:

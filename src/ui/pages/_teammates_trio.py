@@ -46,8 +46,7 @@ def _build_pm_records(
 ) -> dict[str, tuple[float | None, float | None, float | None]]:
     """Records stats/min par joueur avec fallback session si historique vide."""
     records = {
-        name: compute_player_pm_records(full_df, dominant_pair)
-        for name, full_df in full_raw
+        name: compute_player_pm_records(full_df, dominant_pair) for name, full_df in full_raw
     }
     for _n, _fb in session_dfs:
         if not _n or _fb is None:
@@ -188,11 +187,17 @@ def render_trio_view(  # noqa: PLR0913, PLR0915, C901, PLR0912
     # Hotfix pré-Item0 : df n'a pas encore map_ui (calculé dans _filters_cascade, pas au chargement)
     if "map_ui" not in _me_full.columns and "map_name_fr" in _me_full.columns:
         _me_full = _me_full.with_columns(
-            pl.coalesce([pl.col("map_name_fr").cast(pl.Utf8), pl.col("map_name").cast(pl.Utf8)]).alias("map_ui")
+            pl.coalesce(
+                [pl.col("map_name_fr").cast(pl.Utf8), pl.col("map_name").cast(pl.Utf8)]
+            ).alias("map_ui")
         )
     _f1_full = TeammatesService.load_all_teammate_stats(f1_name, db_path).df
-    _f2_full = TeammatesService.load_all_teammate_stats(f2_name, db_path).df if f2_name else pl.DataFrame()
-    _f3_full = TeammatesService.load_all_teammate_stats(f3_name, db_path).df if f3_name else pl.DataFrame()
+    _f2_full = (
+        TeammatesService.load_all_teammate_stats(f2_name, db_path).df if f2_name else pl.DataFrame()
+    )
+    _f3_full = (
+        TeammatesService.load_all_teammate_stats(f3_name, db_path).df if f3_name else pl.DataFrame()
+    )
 
     _full_raw: list[tuple[str, pl.DataFrame]] = [(me_name, _me_full), (f1_name, _f1_full)]
     if f2_name and not _f2_full.is_empty():
@@ -204,10 +209,15 @@ def render_trio_view(  # noqa: PLR0913, PLR0915, C901, PLR0912
     _squad_records = compute_squad_records(
         _full_raw,
         [
-            ("kills", False), ("deaths", True), ("assists", False),
-            ("ratio", False), ("accuracy", False),
-            ("average_life_seconds", False), ("performance_score", False),
-            ("max_killing_spree", False), ("headshot_kills", False),
+            ("kills", False),
+            ("deaths", True),
+            ("assists", False),
+            ("ratio", False),
+            ("accuracy", False),
+            ("average_life_seconds", False),
+            ("performance_score", False),
+            ("max_killing_spree", False),
+            ("headshot_kills", False),
         ],
         _dominant_pair,
     )
@@ -218,9 +228,13 @@ def render_trio_view(  # noqa: PLR0913, PLR0915, C901, PLR0912
 
     # Records par carte (même métriques, filtrés par pair_name dominant)
     _metrics_per_map = [
-        ("kills", False), ("deaths", True), ("assists", False),
-        ("ratio", False), ("accuracy", False),
-        ("average_life_seconds", False), ("performance_score", False),
+        ("kills", False),
+        ("deaths", True),
+        ("assists", False),
+        ("ratio", False),
+        ("accuracy", False),
+        ("average_life_seconds", False),
+        ("performance_score", False),
         ("max_killing_spree", False),
     ]
     _squad_records_per_map = compute_squad_records_per_map(
@@ -238,7 +252,8 @@ def render_trio_view(  # noqa: PLR0913, PLR0915, C901, PLR0912
 
     # Records stats/min par joueur (historique complet, fallback session)
     _pm_records = _build_pm_records(
-        _full_raw, _dominant_pair,
+        _full_raw,
+        _dominant_pair,
         [(me_name, me_df), (f1_name, f1_df), (f2_name, f2_df), (f3_name, f3_df)],
     )
 
@@ -349,15 +364,14 @@ def render_trio_view(  # noqa: PLR0913, PLR0915, C901, PLR0912
 
     # Records killing spree : déjà dans _squad_records (historique complet)
     _spree_record_set = SquadRecordSet(
-        records={n: {"max_killing_spree": r.get("max_killing_spree")} for n, r in _squad_records.items()},
+        records={
+            n: {"max_killing_spree": r.get("max_killing_spree")} for n, r in _squad_records.items()
+        },
         per_map=_squad_records_per_map,
     )
     # Records HS+PK : utilise headshot_kills de l'historique complet comme proxy
     # (perfect_kills absent du full history — enrichissement non disponible hors session)
-    _hspk_records = {
-        n: {"hs_pk_total": r.get("headshot_kills")}
-        for n, r in _squad_records.items()
-    }
+    _hspk_records = {n: {"hs_pk_total": r.get("headshot_kills")} for n, r in _squad_records.items()}
     render_metric_bar_charts(
         series=series,
         colors_by_name=colors_by_name,

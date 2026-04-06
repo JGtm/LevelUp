@@ -37,7 +37,9 @@ def _kill(
     }
 
 
-def _event(timestamp_ms: int, weapon_bytes: bytes = _KNOWN_WEAPON_BYTES, player_index: int = 1) -> dict:
+def _event(
+    timestamp_ms: int, weapon_bytes: bytes = _KNOWN_WEAPON_BYTES, player_index: int = 1
+) -> dict:
     return {
         "timestamp_ms": timestamp_ms,
         "weapon_bytes": weapon_bytes,

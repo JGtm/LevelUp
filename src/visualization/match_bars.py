@@ -13,6 +13,7 @@ from src.ui.date_formats import FMT_SHORT_DATETIME_FR, FMT_TICK_DATETIME
 from src.ui.i18n.viz import viz_t
 from src.visualization._chart_series import ChartData, MatchSeries, SquadRecordSet
 from src.visualization._compat import DataFrameLike, ensure_polars
+from src.visualization._plot_options import PlotOptions
 from src.visualization.theme import apply_halo_plot_style, get_legend_horizontal_bottom
 
 
@@ -25,7 +26,7 @@ def plot_metric_bars_by_match(  # noqa: PLR0913
     bar_color: str,
     smooth_color: str,
     smooth_window: int = 10,
-    lang: str = "fr",
+    opts: PlotOptions | None = None,
 ) -> go.Figure | None:
     """Graphique en barres d'une métrique par match avec courbe de moyenne lissée.
 
@@ -42,6 +43,8 @@ def plot_metric_bars_by_match(  # noqa: PLR0913
     Returns:
         Figure Plotly ou None si données insuffisantes.
     """
+    _opts = opts if opts is not None else PlotOptions()
+    lang = _opts.lang
     if df_ is None:
         return None
     df_pl = ensure_polars(df_)
@@ -355,8 +358,7 @@ def plot_multi_metric_bars_by_match(  # noqa: C901, PLR0912, PLR0913, PLR0915
                     y=[],
                     color=_colors_mb.get(_pname, "#35D0FF"),
                     map_names=[
-                        _map_names_x[xi] for xi in _player_xs[_pname]
-                        if xi < len(_map_names_x)
+                        _map_names_x[xi] for xi in _player_xs[_pname] if xi < len(_map_names_x)
                     ],
                 )
                 for _pname in _names_with_data

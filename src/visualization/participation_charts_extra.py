@@ -238,8 +238,7 @@ def plot_participation_sunburst(
         hovertemplate="<b>%{label}</b><br>%{value:,.0f} pts<extra></extra>",
     )
 
-    fig.update_layout(
-    )
+    fig.update_layout()
 
     return apply_halo_plot_style(fig)
 

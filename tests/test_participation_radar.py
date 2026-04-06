@@ -16,105 +16,135 @@ class TestGetModeFamily:
 
     def test_ctf_en(self) -> None:
         from src.analysis.participation_radar import get_mode_family
+
         assert get_mode_family("Arena:CTF on Aquarius") == "ctf"
 
     def test_ctf_btb(self) -> None:
         from src.analysis.participation_radar import get_mode_family
+
         assert get_mode_family("BTB:CTF on Fragmentation") == "ctf"
 
     def test_capture_flag_long(self) -> None:
         from src.analysis.participation_radar import get_mode_family
+
         assert get_mode_family("Arena:Capture the Flag on Recharge") == "ctf"
 
     def test_drapeau_fr(self) -> None:
         from src.analysis.participation_radar import get_mode_family
+
         assert get_mode_family("Arène:Drapeau sur Aquarius") == "ctf"
 
     def test_oddball_en(self) -> None:
         from src.analysis.participation_radar import get_mode_family
+
         assert get_mode_family("Arena:Oddball on Catalyst") == "oddball"
 
     def test_balle_fr(self) -> None:
         from src.analysis.participation_radar import get_mode_family
+
         assert get_mode_family("Arène:Balle sur Catalyst") == "oddball"
 
     def test_strongholds(self) -> None:
         from src.analysis.participation_radar import get_mode_family
+
         assert get_mode_family("Arena:Strongholds on Streets") == "strongholds"
 
     def test_zones_fr(self) -> None:
         from src.analysis.participation_radar import get_mode_family
+
         assert get_mode_family("Arène:Zones sur Recharge") == "strongholds"
 
     def test_total_control(self) -> None:
         from src.analysis.participation_radar import get_mode_family
+
         assert get_mode_family("Arena:Total Control on Aquarius") == "strongholds"
 
     def test_koth(self) -> None:
         from src.analysis.participation_radar import get_mode_family
+
         assert get_mode_family("Arena:King of the Hill on Streets") == "koth"
 
     def test_koth_abbrev(self) -> None:
         from src.analysis.participation_radar import get_mode_family
+
         assert get_mode_family("Arena:KOTH on Recharge") == "koth"
 
     def test_stockpile(self) -> None:
         from src.analysis.participation_radar import get_mode_family
+
         assert get_mode_family("Arena:Stockpile on Scarr") == "stockpile"
 
     def test_extraction(self) -> None:
         from src.analysis.participation_radar import get_mode_family
+
         assert get_mode_family("Arena:Extraction on Recharge") == "extraction"
 
     def test_land_grab(self) -> None:
         from src.analysis.participation_radar import get_mode_family
+
         assert get_mode_family("Arena:Land Grab on Aquarius") == "land_grab"
 
     def test_fiesta(self) -> None:
         from src.analysis.participation_radar import get_mode_family
+
         assert get_mode_family("Arena:Fiesta on Aquarius") == "fiesta"
 
     def test_slayer(self) -> None:
         from src.analysis.participation_radar import get_mode_family
+
         assert get_mode_family("Arena:Slayer on Recharge") == "slayer"
 
     def test_ranked_slayer(self) -> None:
         from src.analysis.participation_radar import get_mode_family
+
         assert get_mode_family("Ranked:Slayer on Streets") == "slayer"
 
     def test_none_returns_other(self) -> None:
         from src.analysis.participation_radar import get_mode_family
+
         assert get_mode_family(None) == "other"
 
     def test_empty_string_returns_other(self) -> None:
         from src.analysis.participation_radar import get_mode_family
+
         assert get_mode_family("") == "other"
 
     def test_unknown_mode_returns_other(self) -> None:
         from src.analysis.participation_radar import get_mode_family
+
         assert get_mode_family("Arena:Infection on Aquarius") == "other"
 
     def test_case_insensitive(self) -> None:
         from src.analysis.participation_radar import get_mode_family
+
         assert get_mode_family("ARENA:CTF ON AQUARIUS") == "ctf"
 
     def test_global_thresholds_fallback_has_no_per_mode(self) -> None:
         """RADAR_THRESHOLDS (fallback sans DB) ne doit pas contenir 'per_mode'."""
         from src.analysis.participation_radar import RADAR_THRESHOLDS
+
         assert "per_mode" not in RADAR_THRESHOLDS
 
     def test_all_families_in_per_mode_constant(self) -> None:
         """Toutes les familles retournées par get_mode_family existent dans RADAR_THRESHOLDS_PER_MODE."""
         from src.analysis.participation_radar import RADAR_THRESHOLDS_PER_MODE, get_mode_family
+
         pair_names = [
-            "Arena:CTF on A", "Arena:Oddball on A", "Arena:Strongholds on A",
-            "Arena:King of the Hill on A", "Arena:Stockpile on A",
-            "Arena:Extraction on A", "Arena:Land Grab on A",
-            "Arena:Fiesta on A", "Arena:Slayer on A", None,
+            "Arena:CTF on A",
+            "Arena:Oddball on A",
+            "Arena:Strongholds on A",
+            "Arena:King of the Hill on A",
+            "Arena:Stockpile on A",
+            "Arena:Extraction on A",
+            "Arena:Land Grab on A",
+            "Arena:Fiesta on A",
+            "Arena:Slayer on A",
+            None,
         ]
         for pn in pair_names:
             family = get_mode_family(pn)
             assert family in RADAR_THRESHOLDS_PER_MODE, f"{pn!r} -> {family!r} absent"
+
 
 # =============================================================================
 # Fixtures

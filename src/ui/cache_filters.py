@@ -96,7 +96,9 @@ def _translate_playlist_pair_columns(dfr: pl.DataFrame) -> pl.DataFrame:
     """Traduit les colonnes playlist_name et pair_name en utilisant les colonnes FR si disponibles."""
     if "playlist_name_fr" in dfr.columns:
         dfr = dfr.with_columns(
-            pl.coalesce([pl.col("playlist_name_fr"), pl.col("playlist_name")]).alias("playlist_name")
+            pl.coalesce([pl.col("playlist_name_fr"), pl.col("playlist_name")]).alias(
+                "playlist_name"
+            )
         )
     else:
         _pl_map = build_mapping(dfr["playlist_name"], translate_playlist_name)

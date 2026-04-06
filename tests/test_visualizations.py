@@ -193,9 +193,9 @@ def assert_valid_figure(fig: go.Figure, min_traces: int = 0) -> None:
     assert fig.layout is not None, "Figure has no layout"
 
     if min_traces > 0:
-        assert (
-            len(fig.data) >= min_traces
-        ), f"Expected at least {min_traces} traces, got {len(fig.data)}"
+        assert len(fig.data) >= min_traces, (
+            f"Expected at least {min_traces} traces, got {len(fig.data)}"
+        )
 
 
 def assert_figure_has_data(fig: go.Figure) -> None:

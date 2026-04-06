@@ -153,9 +153,9 @@ def test_translate_playlist_name_uuid_logs_warning(caplog: pytest.LogCaptureFixt
 
     assert result_fr == "Inconnue", f"attendu 'Inconnue', obtenu '{result_fr}'"
     assert result_en == "Unknown", f"attendu 'Unknown', obtenu '{result_en}'"
-    assert any(
-        "UUID brut" in r.message or "non r" in r.message for r in caplog.records
-    ), "Un WARNING doit être loggué pour un UUID non résolu"
+    assert any("UUID brut" in r.message or "non r" in r.message for r in caplog.records), (
+        "Un WARNING doit être loggué pour un UUID non résolu"
+    )
 
 
 # ---------------------------------------------------------------------------

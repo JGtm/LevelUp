@@ -82,9 +82,9 @@ def query_first_events(
     # first_kill_s_raw / first_death_s_raw sont NULL si aucun event du type pour ce match.
     def _apply_countdown(col: pl.Expr, countdown: pl.Expr) -> pl.Expr:
         """Soustrait countdown_s de col en préservant NULL. Clamp à 0."""
-        return pl.when(col.is_not_null()).then(
-            (col - countdown).clip(lower_bound=0.0)
-        ).otherwise(None)
+        return (
+            pl.when(col.is_not_null()).then((col - countdown).clip(lower_bound=0.0)).otherwise(None)
+        )
 
     df = df.with_columns(
         _apply_countdown(pl.col("first_kill_s_raw"), pl.col("countdown_s")).alias("first_kill_s"),

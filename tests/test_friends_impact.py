@@ -344,11 +344,13 @@ class TestComputeImpactScores:
             "m2": ImpactEvent("m2", "200", "Bob", 3000, "last_casualty"),
         }
 
-        scores = compute_impact_scores(ImpactEventSets(
-            first_bloods=first_bloods,
-            clutch_finishers=clutch_finishers,
-            last_casualties=last_casualties,
-        ))
+        scores = compute_impact_scores(
+            ImpactEventSets(
+                first_bloods=first_bloods,
+                clutch_finishers=clutch_finishers,
+                last_casualties=last_casualties,
+            )
+        )
 
         # Alice : 2 FB
         # Bob : 1 Clutch + 1 Boulet
@@ -447,10 +449,12 @@ class TestImpactLogicalConstraints:
         assert clutch_finishers["m1"].gamertag == "Alice"
 
         # Les scores doivent refléter les deux événements
-        scores = compute_impact_scores(ImpactEventSets(
-            first_bloods=first_bloods,
-            clutch_finishers=clutch_finishers,
-        ))
+        scores = compute_impact_scores(
+            ImpactEventSets(
+                first_bloods=first_bloods,
+                clutch_finishers=clutch_finishers,
+            )
+        )
         assert scores["Alice"] == SCORE_FIRST_BLOOD + SCORE_CLUTCH_FINISHER
 
     def test_outcome_filtering_correct(self) -> None:

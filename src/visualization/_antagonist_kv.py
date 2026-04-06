@@ -10,19 +10,22 @@ import polars as pl
 
 from src.ui.i18n.viz import viz_t
 from src.visualization._antagonist_colors import COLORS, PLAYER_COLORS
+from src.visualization._plot_options import PlotOptions
 from src.visualization.theme import apply_halo_plot_style
 
 
-def plot_killer_victim_stacked_bars(  # noqa: PLR0913
+def plot_killer_victim_stacked_bars(
     pairs_df: pl.DataFrame,
     match_id: str | None = None,
     *,
     me_xuid: str | None = None,
     rank_by_xuid: dict[str, int] | None = None,
-    height: int = 400,
-    lang: str = "fr",
+    opts: PlotOptions | None = None,
 ) -> go.Figure:
     """Graphique barres empilées : une ligne par tueur, segments = victimes."""
+    _opts = opts if opts is not None else PlotOptions()
+    lang = _opts.lang
+    height = _opts.height_px
     colors = COLORS
     player_colors = PLAYER_COLORS
     fig = go.Figure()

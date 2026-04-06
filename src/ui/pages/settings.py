@@ -138,7 +138,9 @@ def render_settings_page(settings: AppSettings) -> AppSettings:
 
     lang, user_timezone = _render_language_section(settings)
     backfill_vals = _render_backfill_section(settings)
-    refresh_clears_caches, normalize_mode_labels, career_top_exclude_btb = _render_display_section(settings)
+    refresh_clears_caches, normalize_mode_labels, career_top_exclude_btb = _render_display_section(
+        settings
+    )
     media_captures_base_dir, media_tolerance_minutes = _render_media_section(settings)
     discord_enabled, discord_url, discord_lang_val = _render_discord_section(settings)
 

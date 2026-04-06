@@ -184,9 +184,9 @@ class TestOrphanedParticipantNotCounted:
 
         result = load_encounter_stats(_ME, [_TARGET], player_db)
         assert len(result) == 1
-        assert (
-            result["total_encounters"][0] == 1
-        ), "Seul le match avec entrée registry doit être comptabilisé"
+        assert result["total_encounters"][0] == 1, (
+            "Seul le match avec entrée registry doit être comptabilisé"
+        )
 
 
 class TestEncounterCounting:

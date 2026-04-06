@@ -482,9 +482,9 @@ class TestEndToEndMatchLoading:
         )
         try:
             matches = repo.load_matches()
-            assert (
-                len(matches) == 3
-            ), f"Attendu 3 matchs (régression 0 matchs !), obtenu {len(matches)}"
+            assert len(matches) == 3, (
+                f"Attendu 3 matchs (régression 0 matchs !), obtenu {len(matches)}"
+            )
         finally:
             repo.close()
 
@@ -662,9 +662,9 @@ class TestZeroMatchesRegression:
         )
         try:
             matches = repo.load_matches()
-            assert (
-                len(matches) == 3
-            ), f"Cas SpartanD : enrichment vide mais shared a 3 matchs, obtenu {len(matches)}"
+            assert len(matches) == 3, (
+                f"Cas SpartanD : enrichment vide mais shared a 3 matchs, obtenu {len(matches)}"
+            )
         finally:
             repo.close()
 

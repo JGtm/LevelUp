@@ -27,6 +27,7 @@ from src.visualization import (
     plot_win_ratio_heatmap,
 )
 from src.visualization._compat import DataFrameLike, ensure_polars
+from src.visualization._plot_options import PlotOptions
 
 
 def _clear_min_matches_maps_auto() -> None:
@@ -103,11 +104,10 @@ def _render_map_mode_breakdown(dff: pl.DataFrame) -> None:
                 fig_map = plot_stacked_outcomes_by_category(
                     dff,
                     _wl_map_col,
-                    title=None,
                     min_matches=1,
                     sort_by="total",
                     max_categories=12,
-                    lang=get_lang(),
+                    opts=PlotOptions(lang=get_lang()),
                 )
                 if fig_map is not None:
                     fig_map.update_layout(
@@ -148,11 +148,10 @@ def _render_map_mode_breakdown(dff: pl.DataFrame) -> None:
                 fig_mode = plot_stacked_outcomes_by_category(
                     dff_mode,
                     "_mode_short",
-                    title=None,
                     min_matches=1,
                     sort_by="total",
                     max_categories=10,
-                    lang=get_lang(),
+                    opts=PlotOptions(lang=get_lang()),
                 )
                 if fig_mode is not None:
                     fig_mode.update_layout(
@@ -263,7 +262,9 @@ def _render_winrate_perf_vs_history(dff: pl.DataFrame, base: pl.DataFrame) -> No
     # dont le nom FR diffère du nom EN (Cliffhanger, Fortress, Nemesis, The Pit).
     if "map_ui" not in base.columns and "map_name_fr" in base.columns and get_lang() == "fr":
         base = base.with_columns(
-            pl.coalesce([pl.col("map_name_fr").cast(pl.Utf8), pl.col("map_name").cast(pl.Utf8)]).alias("map_ui")
+            pl.coalesce(
+                [pl.col("map_name_fr").cast(pl.Utf8), pl.col("map_name").cast(pl.Utf8)]
+            ).alias("map_ui")
         )
 
     bd_current = compute_map_breakdown(dff, df_history=base)
@@ -338,7 +339,9 @@ def _render_ratio_by_map_section(
         # retrouve les 4 cartes dont le nom FR ≠ EN (Cliffhanger, Fortress, Nemesis, The Pit).
         if "map_ui" not in base.columns and "map_name_fr" in base.columns and get_lang() == "fr":
             base = base.with_columns(
-                pl.coalesce([pl.col("map_name_fr").cast(pl.Utf8), pl.col("map_name").cast(pl.Utf8)]).alias("map_ui")
+                pl.coalesce(
+                    [pl.col("map_name_fr").cast(pl.Utf8), pl.col("map_name").cast(pl.Utf8)]
+                ).alias("map_ui")
             )
         map_result = WinLossService.compute_map_breakdown(dff, min_matches, df_history=base)
         breakdown_history = WinLossService.compute_map_breakdown(base, 1).breakdown

@@ -19,6 +19,7 @@ from unittest.mock import MagicMock, patch
 # Helpers
 # ---------------------------------------------------------------------------
 
+
 def _base_mocks(ms, *, toggle=False, checkbox=False, selectbox="fr", slider=3):
     """Configure les mocks courants pour les tests settings."""
     ms.calls["toggle"].return_value = toggle
@@ -344,8 +345,7 @@ class TestRenderBackfillSection:
         mod._render_backfill_section(AppSettings())
 
         calls_with_disabled = [
-            c for c in ms.calls["checkbox"].call_args_list
-            if "disabled" in c.kwargs
+            c for c in ms.calls["checkbox"].call_args_list if "disabled" in c.kwargs
         ]
         # 7 checkboxes sur 8 ont disabled (sauf performance_scores)
         assert len(calls_with_disabled) == 7
@@ -361,8 +361,7 @@ class TestRenderBackfillSection:
         mod._render_backfill_section(AppSettings(spnkr_refresh_with_backfill=False))
 
         calls_with_disabled = [
-            c for c in ms.calls["checkbox"].call_args_list
-            if "disabled" in c.kwargs
+            c for c in ms.calls["checkbox"].call_args_list if "disabled" in c.kwargs
         ]
         assert all(c.kwargs["disabled"] is True for c in calls_with_disabled)
 
@@ -377,8 +376,7 @@ class TestRenderBackfillSection:
         mod._render_backfill_section(AppSettings(spnkr_refresh_with_backfill=True))
 
         calls_with_disabled = [
-            c for c in ms.calls["checkbox"].call_args_list
-            if "disabled" in c.kwargs
+            c for c in ms.calls["checkbox"].call_args_list if "disabled" in c.kwargs
         ]
         assert all(c.kwargs["disabled"] is False for c in calls_with_disabled)
 
@@ -393,9 +391,15 @@ class TestRenderBackfillSection:
         result = mod._render_backfill_section(AppSettings())
 
         expected_keys = {
-            "backfill_enabled", "backfill_medals", "backfill_events",
-            "backfill_skill", "backfill_personal_scores", "backfill_performance_scores",
-            "backfill_aliases", "backfill_lusr", "backfill_weapons",
+            "backfill_enabled",
+            "backfill_medals",
+            "backfill_events",
+            "backfill_skill",
+            "backfill_personal_scores",
+            "backfill_performance_scores",
+            "backfill_aliases",
+            "backfill_lusr",
+            "backfill_weapons",
         }
         assert set(result.keys()) == expected_keys
         assert all(isinstance(v, bool) for v in result.values())

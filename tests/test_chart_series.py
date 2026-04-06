@@ -34,6 +34,7 @@ from src.visualization._chart_series import (
 
 # ─── Helpers ──────────────────────────────────────────────────────────────────
 
+
 def _make_series(name: str = "Alice", n: int = 5) -> MatchSeries:
     return MatchSeries(
         name=name,
@@ -55,6 +56,7 @@ def _make_chart_data(barmode: str = "group", n: int = 5) -> ChartData:
 
 
 # ─── Constantes ───────────────────────────────────────────────────────────────
+
 
 class TestConstants:
     def test_height_compact_defined(self) -> None:
@@ -93,6 +95,7 @@ class TestConstants:
 
 # ─── _rolling_mean_list ────────────────────────────────────────────────────────
 
+
 class TestRollingMeanList:
     def test_single_value(self) -> None:
         assert _rolling_mean_list([10.0]) == [10.0]
@@ -101,8 +104,8 @@ class TestRollingMeanList:
         # Fenêtre glissante : [10], [10,20], [10,20,15]
         result = _rolling_mean_list([10.0, 20.0, 15.0], window=10)
         assert result[0] == pytest.approx(10.0)
-        assert result[1] == pytest.approx(15.0)   # (10+20)/2
-        assert result[2] == pytest.approx(15.0)   # (10+20+15)/3
+        assert result[1] == pytest.approx(15.0)  # (10+20)/2
+        assert result[2] == pytest.approx(15.0)  # (10+20+15)/3
 
     def test_none_passthrough(self) -> None:
         result = _rolling_mean_list([1.0, None, 3.0], window=10)
@@ -129,6 +132,7 @@ class TestRollingMeanList:
 
 
 # ─── SingleSeriesChartData ────────────────────────────────────────────────────
+
 
 class TestSingleSeriesChartData:
     def test_from_series_basic(self) -> None:
@@ -170,6 +174,7 @@ class TestSingleSeriesChartData:
 
 # ─── MatchSeries ──────────────────────────────────────────────────────────────
 
+
 class TestMatchSeries:
     def test_basic_construction(self) -> None:
         s = _make_series("Alice", 3)
@@ -184,6 +189,7 @@ class TestMatchSeries:
 
 
 # ─── ChartData.player_names / colors_by_name ──────────────────────────────────
+
 
 class TestChartDataProperties:
     def test_player_names(self) -> None:
@@ -213,6 +219,7 @@ class TestChartDataProperties:
 
 
 # ─── ChartData.downsample ─────────────────────────────────────────────────────
+
 
 class TestChartDataDownsample:
     def test_no_downsample_when_under_limit(self) -> None:
@@ -254,6 +261,7 @@ class TestChartDataDownsample:
 
 # ─── ChartData.add_record_overlays ────────────────────────────────────────────
 
+
 class TestAddRecordOverlaysDispatch:
     def test_no_op_when_no_records(self) -> None:
         cd = ChartData(series=[], x_labels=[], barmode="group")
@@ -263,18 +271,14 @@ class TestAddRecordOverlaysDispatch:
     def test_group_mode_calls_add_record_shapes(self) -> None:
         cd = _make_chart_data(barmode="group")
         fig = go.Figure()
-        with patch(
-            "src.visualization._squad_record_shapes.add_record_shapes"
-        ) as mock_add:
+        with patch("src.visualization._squad_record_shapes.add_record_shapes") as mock_add:
             cd.add_record_overlays(fig)
         assert mock_add.called
 
     def test_overlay_mode_calls_add_overlay_record_shapes(self) -> None:
         cd = _make_chart_data(barmode="overlay")
         fig = go.Figure()
-        with patch(
-            "src.visualization._squad_record_shapes.add_overlay_record_shapes"
-        ) as mock_add:
+        with patch("src.visualization._squad_record_shapes.add_overlay_record_shapes") as mock_add:
             cd.add_record_overlays(fig)
         assert mock_add.called
 
@@ -295,6 +299,7 @@ class TestAddRecordOverlaysDispatch:
 
 
 # ─── _add_categorical_record_bars ─────────────────────────────────────────────
+
 
 class TestAddCategoricalRecordBars:
     def test_adds_trace_for_valid_tuple(self) -> None:

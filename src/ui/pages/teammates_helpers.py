@@ -41,7 +41,6 @@ def _format_datetime_fr_hm(dt: object) -> str:
         return str(dt)
 
 
-
 def _app_url(page: str, **params: str) -> str:
     """Génère une URL interne vers une page de l'app."""
     base = "/"
@@ -178,10 +177,12 @@ def _prepare_friends_table_data(  # noqa: PLR0912, PLR0913
     if "playlist_fr" not in friends_table.columns:
         if "playlist_name_fr" in friends_table.columns:
             friends_table = friends_table.with_columns(
-                pl.coalesce([
-                    pl.col("playlist_name_fr").cast(pl.Utf8),
-                    pl.col("playlist_name").cast(pl.Utf8),
-                ]).alias("playlist_fr")
+                pl.coalesce(
+                    [
+                        pl.col("playlist_name_fr").cast(pl.Utf8),
+                        pl.col("playlist_name").cast(pl.Utf8),
+                    ]
+                ).alias("playlist_fr")
             )
         else:
             _playlist_map = build_mapping(friends_table["playlist_name"], translate_playlist_name)
@@ -189,7 +190,9 @@ def _prepare_friends_table_data(  # noqa: PLR0912, PLR0913
                 pl.col("playlist_name")
                 .cast(pl.Utf8)
                 .replace_strict(
-                    _playlist_map, default=pl.col("playlist_name").cast(pl.Utf8), return_dtype=pl.Utf8
+                    _playlist_map,
+                    default=pl.col("playlist_name").cast(pl.Utf8),
+                    return_dtype=pl.Utf8,
                 )
                 .alias("playlist_fr")
             )
@@ -207,7 +210,9 @@ def _prepare_friends_table_data(  # noqa: PLR0912, PLR0913
         friends_table = friends_table.with_columns(pl.lit(None).cast(pl.Utf8).alias("mode"))
     if friends_table["mode"].is_null().any() and "pair_name" in friends_table.columns:
         _lang = get_lang()
-        _mode_map = build_mapping(friends_table["pair_name"], lambda p: normalize_mode_label(p, lang=_lang))
+        _mode_map = build_mapping(
+            friends_table["pair_name"], lambda p: normalize_mode_label(p, lang=_lang)
+        )
         friends_table = friends_table.with_columns(
             pl.when(pl.col("mode").is_null())
             .then(
@@ -445,7 +450,9 @@ def _build_html_rows(  # noqa: C901, PLR0912
                     display = "-"
                 tds.append(f"<td style='{style}'>{html_lib.escape(display)}</td>")
             elif key in ("map_ui", "map_name"):
-                tds.append(map_name_cell_html(r.get("map_ui") or r.get("map_name"), r.get("map_id")))
+                tds.append(
+                    map_name_cell_html(r.get("map_ui") or r.get("map_name"), r.get("map_id"))
+                )
             else:
                 val = _fmt_value(r.get(key))
                 tds.append(f"<td>{html_lib.escape(val)}</td>")

@@ -194,7 +194,9 @@ def render_medals_grid(  # noqa: PLR0913
                 )
 
         col.markdown(
-            "<div class='os-medal-caption' title=\"" + html.escape(tip, quote=True) + "\">"
+            "<div class='os-medal-caption' title=\""
+            + html.escape(tip, quote=True)
+            + '">'
             + "<div class='os-medal-name'>"
             + name
             + "</div>"

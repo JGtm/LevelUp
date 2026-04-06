@@ -612,9 +612,9 @@ class TestBusinessInvariants:
                 "WHERE effective_weapon_id IS NULL "
                 "  AND (weapon_id IS NOT NULL OR reconciled_as IS NOT NULL)"
             ).fetchall()
-            assert (
-                not bad
-            ), f"effective_weapon_id NULL malgré weapon_id/reconciled_as renseigné : {bad}"
+            assert not bad, (
+                f"effective_weapon_id NULL malgré weapon_id/reconciled_as renseigné : {bad}"
+            )
         finally:
             conn.close()
 

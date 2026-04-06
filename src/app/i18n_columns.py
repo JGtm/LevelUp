@@ -67,10 +67,12 @@ def add_i18n_display_columns(df: pl.DataFrame, lang: str = "fr") -> pl.DataFrame
     if "map_ui" not in df.columns and "map_name" in df.columns:
         if lang == "fr" and "map_name_fr" in df.columns:
             exprs.append(
-                pl.coalesce([
-                    pl.col("map_name_fr").cast(pl.Utf8),
-                    pl.col("map_name").cast(pl.Utf8),
-                ]).alias("map_ui")
+                pl.coalesce(
+                    [
+                        pl.col("map_name_fr").cast(pl.Utf8),
+                        pl.col("map_name").cast(pl.Utf8),
+                    ]
+                ).alias("map_ui")
             )
         else:
             exprs.append(pl.col("map_name").cast(pl.Utf8).alias("map_ui"))
@@ -80,10 +82,12 @@ def add_i18n_display_columns(df: pl.DataFrame, lang: str = "fr") -> pl.DataFrame
         if lang == "fr" and "pair_name_fr" in df.columns:
             # pair_name_fr est déjà traduit — normaliser sans accès DB (supp. ' on Carte', Forge, Ranked)
             exprs.append(
-                pl.coalesce([
-                    pl.col("pair_name_fr").cast(pl.Utf8),
-                    pl.col("pair_name").cast(pl.Utf8),
-                ])
+                pl.coalesce(
+                    [
+                        pl.col("pair_name_fr").cast(pl.Utf8),
+                        pl.col("pair_name").cast(pl.Utf8),
+                    ]
+                )
                 .map_elements(_strip_mode_map_suffix, return_dtype=pl.Utf8)
                 .alias("mode_ui")
             )
@@ -95,10 +99,12 @@ def add_i18n_display_columns(df: pl.DataFrame, lang: str = "fr") -> pl.DataFrame
     if "playlist_ui" not in df.columns and "playlist_name" in df.columns:
         if lang == "fr" and "playlist_name_fr" in df.columns:
             exprs.append(
-                pl.coalesce([
-                    pl.col("playlist_name_fr").cast(pl.Utf8),
-                    pl.col("playlist_name").cast(pl.Utf8),
-                ]).alias("playlist_ui")
+                pl.coalesce(
+                    [
+                        pl.col("playlist_name_fr").cast(pl.Utf8),
+                        pl.col("playlist_name").cast(pl.Utf8),
+                    ]
+                ).alias("playlist_ui")
             )
         else:
             exprs.append(pl.col("playlist_name").cast(pl.Utf8).alias("playlist_ui"))

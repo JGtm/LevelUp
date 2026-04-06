@@ -114,10 +114,7 @@ def _render_weapon_table(df: pl.DataFrame) -> None:
     """Rend le tableau arme / frags avec le style scoreboard (os-sb-*)."""
     col_w = t("mv_weapon_kills_col_weapon")
     col_f = t("mv_weapon_kills_col_frags")
-    col_headers = "".join(
-        f"<th class='os-sb-th'>{h}</th>"
-        for h in [col_w, col_f]
-    )
+    col_headers = "".join(f"<th class='os-sb-th'>{h}</th>" for h in [col_w, col_f])
     rows_html = "".join(
         f"<tr class='os-sb-row'>"
         f"<td class='os-sb-td'>{row['weapon_name']}</td>"

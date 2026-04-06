@@ -130,9 +130,9 @@ async def test_shared_connection_closed_before_executor(tmp_path):
     ):
         await engine._run_post_sync_compute(options)
 
-    assert call_order.index("close") < call_order.index(
-        "run_in_executor"
-    ), "close() doit précéder run_in_executor()"
+    assert call_order.index("close") < call_order.index("run_in_executor"), (
+        "close() doit précéder run_in_executor()"
+    )
     assert engine._shared_connection is None
 
 
@@ -178,9 +178,9 @@ async def test_citations_exception_does_not_block(tmp_path):
         with contextlib.suppress(Exception):
             await engine._run_post_sync_compute(options)
 
-    assert (
-        dominance_called
-    ), "_compute_dominance_post_sync doit être appelé avant le await cit_future"
+    assert dominance_called, (
+        "_compute_dominance_post_sync doit être appelé avant le await cit_future"
+    )
 
 
 # ---------------------------------------------------------------------------
@@ -265,9 +265,9 @@ async def test_post_sync_logs_start_and_timing(tmp_path, caplog):
         await engine._run_post_sync_compute(options)
 
     messages = [r.message for r in caplog.records if r.levelno == logging.INFO]
-    assert any(
-        "post_sync" in m and "démarrage" in m for m in messages
-    ), f"Log démarrage post_sync introuvable. Messages INFO : {messages}"
-    assert any(
-        "post_sync" in m and "terminé" in m for m in messages
-    ), f"Log timing post_sync introuvable. Messages INFO : {messages}"
+    assert any("post_sync" in m and "démarrage" in m for m in messages), (
+        f"Log démarrage post_sync introuvable. Messages INFO : {messages}"
+    )
+    assert any("post_sync" in m and "terminé" in m for m in messages), (
+        f"Log timing post_sync introuvable. Messages INFO : {messages}"
+    )

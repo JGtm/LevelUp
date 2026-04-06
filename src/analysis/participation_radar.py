@@ -51,9 +51,15 @@ RADAR_THRESHOLDS: dict[str, float] = {
 # Cible : un "bon joueur" objectif atteint ~70-75% sur l'axe Objectifs
 # (ex. session 24-mars : JGtm=1060 PSA sur 4 matchs objectifs → 72%, Chocoboflor=745 → 51%)
 RADAR_THRESHOLDS_PER_MODE: dict[str, float] = {
-    "ctf": 350.0, "oddball": 290.0, "strongholds": 420.0,
-    "koth": 350.0, "stockpile": 390.0, "extraction": 330.0,
-    "land_grab": 350.0, "slayer": 3500.0, "fiesta": 3200.0,
+    "ctf": 350.0,
+    "oddball": 290.0,
+    "strongholds": 420.0,
+    "koth": 350.0,
+    "stockpile": 390.0,
+    "extraction": 330.0,
+    "land_grab": 350.0,
+    "slayer": 3500.0,
+    "fiesta": 3200.0,
     "other": 390.0,
 }
 
@@ -111,6 +117,7 @@ def compute_global_radar_thresholds(
 
     if players_base_path is None:
         from src.config import get_repo_root
+
         players_base_path = Path(get_repo_root()) / "data" / "players"
 
     base = Path(players_base_path)
@@ -327,9 +334,7 @@ def compute_participation_profile(
         )
 
     objectifs_raw = int(objective_score) if is_obj else int(kill_score)
-    score_raw = int(
-        kill_score + assist_score + objective_score + vehicle_score + penalty_score
-    )
+    score_raw = int(kill_score + assist_score + objective_score + vehicle_score + penalty_score)
 
     deaths, duration_min, avg_life_sec = _get_match_stats_values(row_dict)
     impact_raw = max(0.0, float(score_raw)) / duration_min if duration_min > 0 else 0.0

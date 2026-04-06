@@ -531,7 +531,9 @@ class TestMapsOutcomeBulletSubmodule:
 
         from src.visualization._maps_outcome_bullet import _sort_by_map_order
 
-        df = pl.DataFrame({"map_name": ["Deadlock", "Aquarius", "Recharge"], "win_rate": [0.4, 0.6, 0.5]})
+        df = pl.DataFrame(
+            {"map_name": ["Deadlock", "Aquarius", "Recharge"], "win_rate": [0.4, 0.6, 0.5]}
+        )
         # map_order = [oldest=Aquarius, ..., newest=Deadlock]
         # descending=True → Deadlock (pos 2) en haut, Aquarius (pos 0) en bas
         result = _sort_by_map_order(df, ["Aquarius", "Recharge", "Deadlock"])
@@ -543,7 +545,9 @@ class TestMapsOutcomeBulletSubmodule:
 
         from src.visualization._maps_outcome_bullet import _sort_by_map_order
 
-        df = pl.DataFrame({"map_name": ["Deadlock", "Aquarius", "Recharge"], "win_rate": [0.4, 0.6, 0.5]})
+        df = pl.DataFrame(
+            {"map_name": ["Deadlock", "Aquarius", "Recharge"], "win_rate": [0.4, 0.6, 0.5]}
+        )
         result = _sort_by_map_order(df, ["Aquarius", "Recharge", "Deadlock"], descending=False)
         assert result["map_name"].to_list() == ["Aquarius", "Recharge", "Deadlock"]
 
@@ -557,7 +561,7 @@ class TestMapsOutcomeBulletSubmodule:
         # descending=True → Bazaar (default pos = 2) en haut, Aquarius (pos 0) en bas
         result = _sort_by_map_order(df, ["Aquarius", "Deadlock"])
         maps = result["map_name"].to_list()
-        assert maps[0] == "Bazaar"   # inconnu → position max → en haut avec descending
+        assert maps[0] == "Bazaar"  # inconnu → position max → en haut avec descending
         assert "Aquarius" in maps
 
     def test_plot_winrate_bullet_returns_none_on_empty(self):
@@ -566,11 +570,13 @@ class TestMapsOutcomeBulletSubmodule:
 
         from src.visualization._maps_outcome_bullet import plot_map_winrate_bullet
 
-        empty = pl.DataFrame({
-            "map_name": pl.Series([], dtype=pl.Utf8),
-            "win_rate": pl.Series([], dtype=pl.Float64),
-            "matches": pl.Series([], dtype=pl.Int64),
-        })
+        empty = pl.DataFrame(
+            {
+                "map_name": pl.Series([], dtype=pl.Utf8),
+                "win_rate": pl.Series([], dtype=pl.Float64),
+                "matches": pl.Series([], dtype=pl.Int64),
+            }
+        )
         result = plot_map_winrate_bullet(empty, empty)
         assert result is None
 
@@ -606,10 +612,12 @@ class TestHeatmapSquadSubmodule:
 
         from src.visualization._heatmap_squad import _top_maps_by_frequency
 
-        bd = pl.DataFrame({
-            "map_name": ["Aquarius", "Aquarius", "Recharge", "Deadlock"],
-            "matches": [10, 10, 5, 2],
-        })
+        bd = pl.DataFrame(
+            {
+                "map_name": ["Aquarius", "Aquarius", "Recharge", "Deadlock"],
+                "matches": [10, 10, 5, 2],
+            }
+        )
         result = _top_maps_by_frequency(bd)
         assert result[0] == "Aquarius"  # la plus jouée en premier
 

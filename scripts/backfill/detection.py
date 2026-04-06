@@ -224,8 +224,12 @@ def find_matches_missing_data(
         force_pve_stats=force_pve_stats,
         weapons=weapons,
         force_weapons=force_weapons,
-        playable_duration=getattr(scope, "playable_duration", False) if scope is not None else False,
-        force_playable_duration=getattr(scope, "force_playable_duration", False) if scope is not None else False,
+        playable_duration=getattr(scope, "playable_duration", False)
+        if scope is not None
+        else False,
+        force_playable_duration=getattr(scope, "force_playable_duration", False)
+        if scope is not None
+        else False,
     )
 
     # Fusionner résultats locaux + shared (dédoublonner, garder l'ordre)

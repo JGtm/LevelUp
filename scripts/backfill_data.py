@@ -240,6 +240,7 @@ def main() -> int:  # noqa: C901, PLR0912, PLR0915
             from src.ui.multiplayer import list_duckdb_v4_players
 
             from src.utils.paths import get_shared_matches_path
+
             _SHARED_DB_BOT = get_shared_matches_path()
             if not _SHARED_DB_BOT.exists():
                 logger.error("shared_matches_v2.duckdb introuvable pour --bot-detection")
@@ -378,6 +379,7 @@ def main() -> int:  # noqa: C901, PLR0912, PLR0915
             from src.ui.multiplayer import list_duckdb_v4_players
 
             from src.utils.paths import get_shared_matches_path
+
             _SHARED_DB_DOM = get_shared_matches_path()
             if not _SHARED_DB_DOM.exists():
                 logger.error("shared_matches_v2.duckdb introuvable pour --dominance")

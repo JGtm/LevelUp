@@ -211,8 +211,7 @@ def load_medal_description_map(lang: str = "fr") -> dict[str, str]:
             col_fallback = "description_en" if lang in ("fr", "fr-FR") else "description_fr"
             try:
                 rows_def = conn.execute(
-                    f"SELECT medal_name_id, {col_primary}, {col_fallback}"
-                    " FROM medal_definitions"
+                    f"SELECT medal_name_id, {col_primary}, {col_fallback} FROM medal_definitions"
                 ).fetchall()
                 for r in rows_def:
                     for val in r[1:]:

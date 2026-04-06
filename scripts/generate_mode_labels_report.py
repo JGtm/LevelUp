@@ -71,6 +71,7 @@ def main() -> None:
     args = parser.parse_args()
 
     from src.utils.paths import get_shared_matches_path
+
     shared_db = get_shared_matches_path()
     if not shared_db.exists():
         print("ERREUR : shared_matches DB introuvable.", file=sys.stderr)

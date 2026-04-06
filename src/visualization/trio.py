@@ -7,7 +7,7 @@ from src.config import OKABE_ITO_PALETTE, PLOT_CONFIG
 from src.ui.i18n.viz import viz_t
 from src.visualization._chart_series import ChartData, MatchSeries, SquadRecordSet
 from src.visualization._compat import DataFrameLike, ensure_polars
-from src.visualization._plot_options import DEFAULT_THEME
+from src.visualization._plot_options import DEFAULT_THEME, PlotOptions
 from src.visualization.theme import apply_halo_plot_style, get_legend_horizontal_bottom
 
 # Couleurs "négatives" : famille rouge, luminance HSL bien espacée (~13-15% d'écart)
@@ -347,7 +347,7 @@ def plot_trio_kills_deaths(  # noqa: PLR0913
     d_f2: DataFrameLike | None = None,
     *,
     names: tuple[str, ...],
-    lang: str = "fr",
+    opts: PlotOptions | None = None,
     d_f3: DataFrameLike | None = None,
     colors_by_name: dict[str, str] | None = None,
     smooth_window: int = 7,
@@ -359,6 +359,7 @@ def plot_trio_kills_deaths(  # noqa: PLR0913
     (teinte négative Okabe-Ito). Les barres kills/morts d'un même joueur
     partagent le même offsetgroup → alignées au même x.
     """
+    _opts = opts if opts is not None else PlotOptions()
     all_dfs = (
         [d_self, d_f1] + ([d_f2] if d_f2 is not None else []) + ([d_f3] if d_f3 is not None else [])
     )

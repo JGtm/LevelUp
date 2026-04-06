@@ -274,9 +274,7 @@ class TestFanoutGetOtherPlayers:
                 },
             },
         }
-        (tmp_path / "db_profiles.json").write_text(
-            json.dumps(profiles), encoding="utf-8"
-        )
+        (tmp_path / "db_profiles.json").write_text(json.dumps(profiles), encoding="utf-8")
 
         class FakeEngine(FanoutEnrichmentMixin):
             def __init__(self):
@@ -329,13 +327,10 @@ class TestFanoutFindCommonMatchIds:
         """Crée un shared_matches minimal avec les match_participants demandés."""
         conn = duckdb.connect(str(path))
         conn.execute(
-            "CREATE TABLE IF NOT EXISTS match_participants "
-            "(match_id VARCHAR, xuid VARCHAR)"
+            "CREATE TABLE IF NOT EXISTS match_participants (match_id VARCHAR, xuid VARCHAR)"
         )
         for mid in match_ids:
-            conn.execute(
-                "INSERT INTO match_participants VALUES (?, ?)", [mid, xuid]
-            )
+            conn.execute("INSERT INTO match_participants VALUES (?, ?)", [mid, xuid])
         conn.close()
 
     def test_returns_common_ids(self, tmp_path):
@@ -364,9 +359,7 @@ class TestFanoutFindCommonMatchIds:
             pass
 
         engine = FakeEngine()
-        result = engine._find_common_match_ids(
-            "TARGET_XUID", shared, ["match_A"]
-        )
+        result = engine._find_common_match_ids("TARGET_XUID", shared, ["match_A"])
         assert result == []
 
     def test_returns_empty_on_missing_shared(self, tmp_path):
@@ -535,12 +528,18 @@ class TestLoadFriendMatchDetailsMapName:
             )
         """)
         ts = datetime(2024, 6, 1, 12, 0, tzinfo=timezone.utc)
-        conn.execute("INSERT INTO match_registry VALUES (?, ?, ?, ?, ?)",
-                     ["m1", ts, "Ranked", "RSSLAYER", "Bazaar"])
-        conn.execute("INSERT INTO match_participants VALUES (?, ?, ?, ?, ?, ?, ?)",
-                     ["m1", "0001", 0, 2, 10, 5, 1000])
-        conn.execute("INSERT INTO match_participants VALUES (?, ?, ?, ?, ?, ?, ?)",
-                     ["m1", "0002", 1, 3, 8, 3, 800])
+        conn.execute(
+            "INSERT INTO match_registry VALUES (?, ?, ?, ?, ?)",
+            ["m1", ts, "Ranked", "RSSLAYER", "Bazaar"],
+        )
+        conn.execute(
+            "INSERT INTO match_participants VALUES (?, ?, ?, ?, ?, ?, ?)",
+            ["m1", "0001", 0, 2, 10, 5, 1000],
+        )
+        conn.execute(
+            "INSERT INTO match_participants VALUES (?, ?, ?, ?, ?, ?, ?)",
+            ["m1", "0002", 1, 3, 8, 3, 800],
+        )
         conn.execute("""
             CREATE VIEW v_match_full AS
             SELECT
@@ -556,11 +555,14 @@ class TestLoadFriendMatchDetailsMapName:
 
         # Player DB
         pconn = duckdb.connect(str(player_path))
-        pconn.execute("CREATE TABLE sync_meta (key VARCHAR PRIMARY KEY, value VARCHAR, updated_at TIMESTAMP)")
+        pconn.execute(
+            "CREATE TABLE sync_meta (key VARCHAR PRIMARY KEY, value VARCHAR, updated_at TIMESTAMP)"
+        )
         pconn.close()
 
-        repo = DuckDBRepository(player_db_path=player_path, xuid="0001",
-                                shared_db_path=shared_path, read_only=False)
+        repo = DuckDBRepository(
+            player_db_path=player_path, xuid="0001", shared_db_path=shared_path, read_only=False
+        )
         dfr = repo.load_friend_match_details("0002", ["m1"])
 
         assert not dfr.is_empty(), "load_friend_match_details doit retourner des données"

@@ -22,9 +22,9 @@ def test_open_match_button_key_uniqueness():
     # Avec unique_suffix, les clés sont uniques
     stable_ids = [0, 1, 2]
     keys_with_suffix = [f"open_match_{match_id}_{sid}" for sid in stable_ids]
-    assert len(set(keys_with_suffix)) == len(
-        keys_with_suffix
-    ), "Avec suffixe, les clés doivent être uniques"
+    assert len(set(keys_with_suffix)) == len(keys_with_suffix), (
+        "Avec suffixe, les clés doivent être uniques"
+    )
     assert len(keys_with_suffix) == 3, "Il doit y avoir 3 clés différentes"
 
 
@@ -128,9 +128,9 @@ def test_multiple_media_same_match_id():
         button_keys.append(button_key)
 
     # Toutes les clés doivent être uniques
-    assert len(set(button_keys)) == len(
-        button_keys
-    ), "Les clés de boutons doivent être uniques même pour le même match_id"
+    assert len(set(button_keys)) == len(button_keys), (
+        "Les clés de boutons doivent être uniques même pour le même match_id"
+    )
     assert len(button_keys) == 3, "Il doit y avoir 3 clés différentes"
 
 
@@ -150,14 +150,14 @@ def test_render_context_detection():
     ]
 
     for context in group_contexts:
-        assert context.startswith(
-            "match_"
-        ), f"Le contexte {context} devrait être détecté comme groupe"
+        assert context.startswith("match_"), (
+            f"Le contexte {context} devrait être détecté comme groupe"
+        )
 
     for context in non_group_contexts:
-        assert not context.startswith(
-            "match_"
-        ), f"Le contexte {context} ne devrait pas être détecté comme groupe"
+        assert not context.startswith("match_"), (
+            f"Le contexte {context} ne devrait pas être détecté comme groupe"
+        )
 
 
 if __name__ == "__main__":

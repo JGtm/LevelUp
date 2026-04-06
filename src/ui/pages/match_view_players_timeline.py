@@ -117,7 +117,6 @@ def render_team_dominance_section(  # noqa: PLR0913
         xuid_to_team=xuid_to_team,
         my_team_id=my_team_id,
         duration_s=duration_s,
-        height=360,
     )
 
     if fig is not None:

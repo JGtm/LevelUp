@@ -285,9 +285,7 @@ async def populate_translations(
     totals: dict[str, int] = {}
 
     # Collecter tous les asset_ids d'abord pour construire le cache version_ids en une passe
-    asset_ids_by_type = {
-        asset_type: _get_asset_ids(asset_type) for asset_type in asset_types
-    }
+    asset_ids_by_type = {asset_type: _get_asset_ids(asset_type) for asset_type in asset_types}
 
     # Construire le cache version_id via l'API match stats (une fois pour tous les types)
     async with create_api_client() as version_client:
@@ -301,12 +299,16 @@ async def populate_translations(
         if not asset_ids:
             continue
         api_type = _ASSET_TYPE_MAP[asset_type]
-        logger.info("=== %s (%d assets × %d langues en parallèle) ===", asset_type, len(asset_ids), len(langs))
+        logger.info(
+            "=== %s (%d assets × %d langues en parallèle) ===",
+            asset_type,
+            len(asset_ids),
+            len(langs),
+        )
 
         # Lire l'état courant de la DB pour toutes les langues (avant le fetch parallèle)
         already_by_lang = {
-            lang: _get_already_fetched(conn, asset_type, lang, force=force)
-            for lang in langs
+            lang: _get_already_fetched(conn, asset_type, lang, force=force) for lang in langs
         }
         for lang in langs:
             n_already = len(already_by_lang[lang])
@@ -314,7 +316,13 @@ async def populate_translations(
             if n_todo == 0:
                 logger.info("    [%s] %s : tout déjà présent (%d)", lang, asset_type, n_already)
             else:
-                logger.info("    [%s] %s : %d à récupérer (%d déjà présents)", lang, asset_type, n_todo, n_already)
+                logger.info(
+                    "    [%s] %s : %d à récupérer (%d déjà présents)",
+                    lang,
+                    asset_type,
+                    n_todo,
+                    n_already,
+                )
 
         langs_to_fetch = [lg for lg in langs if asset_ids - already_by_lang[lg]]
         if not langs_to_fetch:
@@ -322,13 +330,22 @@ async def populate_translations(
             continue
 
         db_lock = asyncio.Lock()
-        results = await asyncio.gather(*[
-            _fetch_and_save_lang(
-                lang, asset_ids, asset_type, api_type, already_by_lang[lang],
-                conn, db_lock, version_cache, dry_run=dry_run,
-            )
-            for lang in langs_to_fetch
-        ])
+        results = await asyncio.gather(
+            *[
+                _fetch_and_save_lang(
+                    lang,
+                    asset_ids,
+                    asset_type,
+                    api_type,
+                    already_by_lang[lang],
+                    conn,
+                    db_lock,
+                    version_cache,
+                    dry_run=dry_run,
+                )
+                for lang in langs_to_fetch
+            ]
+        )
         totals[asset_type] = sum(results)
         logger.info("  %s terminé : %d traductions au total", asset_type, totals[asset_type])
 

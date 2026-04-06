@@ -513,16 +513,19 @@ def extract_match_registry_data(  # noqa: C901, PLR0912, PLR0915
     if isinstance(playable_raw, str):
         playable_duration_seconds = _parse_duration_to_seconds(playable_raw)
         if playable_duration_seconds is None:
-            logger.warning(
-                "PlayableDuration non parsé pour match %s: %r", match_id, playable_raw
-            )
+            logger.warning("PlayableDuration non parsé pour match %s: %r", match_id, playable_raw)
     else:
         logger.debug("PlayableDuration absent du JSON pour match %s", match_id)
 
     # Heure de fin — EndTime API en priorité, calcul en fallback
     end_time_raw = match_info.get("EndTime")
     end_time = _parse_iso_utc(end_time_raw) if isinstance(end_time_raw, str) else None
-    if end_time is None and start_time is not None and duration_seconds is not None and duration_seconds >= 0:
+    if (
+        end_time is None
+        and start_time is not None
+        and duration_seconds is not None
+        and duration_seconds >= 0
+    ):
         end_time = start_time + timedelta(seconds=duration_seconds)
 
     # Début réel du gameplay (après countdown/lobby)

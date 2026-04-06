@@ -184,8 +184,12 @@ def _populate_official_translations(
         name_en = name_obj.get("value", "") if isinstance(name_obj, dict) else str(name_obj)
         desc_en = desc_obj.get("value") if isinstance(desc_obj, dict) else None
 
-        tr_name: dict[str, str] = name_obj.get("translations", {}) if isinstance(name_obj, dict) else {}
-        tr_desc: dict[str, str] = desc_obj.get("translations", {}) if isinstance(desc_obj, dict) else {}
+        tr_name: dict[str, str] = (
+            name_obj.get("translations", {}) if isinstance(name_obj, dict) else {}
+        )
+        tr_desc: dict[str, str] = (
+            desc_obj.get("translations", {}) if isinstance(desc_obj, dict) else {}
+        )
 
         if not name_en:
             continue

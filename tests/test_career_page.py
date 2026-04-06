@@ -65,13 +65,15 @@ class TestCareerProgressGauge:
         assert fig.data[0].value == 100.0
 
     def test_custom_height(self):
-        """Vérifie que la hauteur personnalisée est respectée."""
+        """Vérifie que la hauteur personnalisée est respectée via opts."""
+        from src.visualization._plot_options import PlotOptions
+
         fig = create_career_progress_gauge(
             current_xp=500,
             xp_for_next_rank=1000,
             progress_pct=50.0,
             rank_name_fr="Caporal - Bronze I",
-            height=400,
+            opts=PlotOptions(height_px=400),
         )
         assert fig.layout.height == 400
 

@@ -146,9 +146,9 @@ class TestSmartScatterIntegration:
             for i, line in enumerate(lines)
             if "go.Scatter(" in line and "smart_scatter" not in line
         ]
-        assert (
-            len(direct_scatter) == 0
-        ), f"go.Scatter() direct trouvé dans timeseries.py: {direct_scatter}"
+        assert len(direct_scatter) == 0, (
+            f"go.Scatter() direct trouvé dans timeseries.py: {direct_scatter}"
+        )
 
     def test_no_direct_go_scatter_in_timeseries_combat(self):
         """timeseries_combat.py n'utilise plus go.Scatter() directement."""
@@ -161,9 +161,9 @@ class TestSmartScatterIntegration:
             for i, line in enumerate(lines)
             if "go.Scatter(" in line and "smart_scatter" not in line
         ]
-        assert (
-            len(direct_scatter) == 0
-        ), f"go.Scatter() direct trouvé dans timeseries_combat.py: {direct_scatter}"
+        assert len(direct_scatter) == 0, (
+            f"go.Scatter() direct trouvé dans timeseries_combat.py: {direct_scatter}"
+        )
 
 
 class TestZeroCopyPathAvailable:

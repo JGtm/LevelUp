@@ -206,7 +206,9 @@ def render_profile_hero(  # noqa: C901
 
     # Fallback : adornment_path + rank_label issus de la dernière sync career rank (DB)
     # Utile quand l'API profile est désactivée ou le cache froid.
-    _needs_db_career = (not adornment_value or not rank_label_value) and db_path and str(xuid or "").strip()
+    _needs_db_career = (
+        (not adornment_value or not rank_label_value) and db_path and str(xuid or "").strip()
+    )
     if _needs_db_career:
         with contextlib.suppress(Exception):
             from src.ui._cache_core import get_cached_repository_st
@@ -372,6 +374,7 @@ def load_match_dataframe(
             df = mark_firefight(df)
         from src.app.i18n_columns import add_i18n_display_columns
         from src.ui.i18n import get_lang
+
         df = add_i18n_display_columns(df, lang=get_lang())
 
     _ms = (_time.perf_counter() - _t0) * 1000

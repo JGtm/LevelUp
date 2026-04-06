@@ -12,6 +12,7 @@ import polars as pl
 from src.config import HALO_COLORS, OUTCOME_CODES, PLOT_CONFIG
 from src.ui.i18n.viz import viz_t
 from src.visualization._compat import DataFrameLike, ensure_polars
+from src.visualization._plot_options import PlotOptions
 from src.visualization.theme import apply_halo_plot_style, get_legend_horizontal_bottom
 
 
@@ -24,7 +25,7 @@ def plot_correlation_scatter(  # noqa: PLR0913
     x_label: str | None = None,
     y_label: str | None = None,
     show_trendline: bool = True,
-    lang: str = "fr",
+    opts: PlotOptions | None = None,
 ) -> go.Figure:
     """Scatter plot pour visualiser les corrélations.
 
@@ -41,6 +42,8 @@ def plot_correlation_scatter(  # noqa: PLR0913
     Returns:
         Figure Plotly avec scatter plot.
     """
+    _opts = opts if opts is not None else PlotOptions()
+    lang = _opts.lang
     df = ensure_polars(df)
 
     colors = HALO_COLORS.as_dict()

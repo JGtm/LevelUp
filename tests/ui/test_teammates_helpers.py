@@ -203,9 +203,13 @@ class TestComputePlayerProfile:
             }
         )
         custom_thresholds = {
-            "objectifs": 999.0, "combat": 3000.0, "support": 800.0,
-            "score": 4000.0, "impact_pts_per_min": 250.0,
-            "survie_deaths_per_min_ref": 2.0, "survie_avg_life_ref_seconds": 90.0,
+            "objectifs": 999.0,
+            "combat": 3000.0,
+            "support": 800.0,
+            "score": 4000.0,
+            "impact_pts_per_min": 250.0,
+            "survie_deaths_per_min_ref": 2.0,
+            "survie_avg_life_ref_seconds": 90.0,
             "per_mode": {"ctf": 600.0, "slayer": 3000.0, "other": 800.0},
         }
         result = _compute_player_profile(repo, df, ["m1"], "Test", "#FF0000", custom_thresholds)

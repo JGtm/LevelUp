@@ -1,5 +1,6 @@
 # -*- coding: utf-8 -*-
 """Génère .ai/suspects_film_start_jgtm.md depuis le log backfill."""
+
 import duckdb
 import os
 import re
@@ -61,15 +62,21 @@ doc = []
 doc.append("# Suspects film_match_start \u2014 JGtm")
 doc.append("")
 doc.append("> Matchs dont la corr\u00e9lation filmshell \u2194 highlight_events est suspecte")
-doc.append("> (**gap_min > +60s** : l'estimation est trop pr\u00e9coce, captur\u00e9e pendant le countdown).")
+doc.append(
+    "> (**gap_min > +60s** : l'estimation est trop pr\u00e9coce, captur\u00e9e pendant le countdown)."
+)
 doc.append("")
-doc.append(f"**Nb total** : {len(results)} matchs suspects ({len(pvp)} PvP + {len(ignored)} Firefight ignor\u00e9)")
+doc.append(
+    f"**Nb total** : {len(results)} matchs suspects ({len(pvp)} PvP + {len(ignored)} Firefight ignor\u00e9)"
+)
 doc.append("")
 doc.append("---")
 doc.append("")
 doc.append("## Commande de retraitement (autre PC avec chunks locaux)")
 doc.append("")
-doc.append("Copier le r\u00e9pertoire `data/cache/film_chunks/` de l'autre PC vers ce PC (ou lancer")
+doc.append(
+    "Copier le r\u00e9pertoire `data/cache/film_chunks/` de l'autre PC vers ce PC (ou lancer"
+)
 doc.append("directement sur l'autre PC), puis ex\u00e9cuter :")
 doc.append("")
 doc.append("```bash")
@@ -77,7 +84,7 @@ doc.append("# --max-chunks 10 = couvre jusqu'a 200s, d\u00e9tecte les countdowns
 mids_join = " ".join(m for m, _ in pvp)
 doc.append(f"for mid in {mids_join}; do")
 doc.append("  python scripts/_exp_spawn_download.py \\")
-doc.append("    --match-id \"$mid\" \\")
+doc.append('    --match-id "$mid" \\')
 doc.append("    --cached-only \\")
 doc.append("    --write-db \\")
 doc.append("    --max-chunks 10")
@@ -104,7 +111,9 @@ for mid, dt, map_name, mode, db_start, gap, chunks_local in results:
     gap_str = f"+{gap:.0f}s"
     nb = str(len(chunks_local)) if chunks_local else "0"
     link = f"[Waypoint]({BASE_URL}/{mid})"
-    doc.append(f"| {n} | {date_str} | {time_str} | {map_name} | {mode} | {nb} | {start_s} | {gap_str} | {link} |")
+    doc.append(
+        f"| {n} | {date_str} | {time_str} | {map_name} | {mode} | {nb} | {start_s} | {gap_str} | {link} |"
+    )
 
 doc.append("")
 if ignored:
@@ -123,8 +132,12 @@ doc.append("---")
 doc.append("")
 doc.append("## Interpr\u00e9tation du gap")
 doc.append("")
-doc.append("- **gap_min ~+3s** : estimation correcte (premier frag 3s apr\u00e8s le d\u00e9but du match)")
-doc.append("- **gap_min ~+60-80s** : estimation trop pr\u00e9coce \u2014 le script a d\u00e9tect\u00e9 un mouvement")
+doc.append(
+    "- **gap_min ~+3s** : estimation correcte (premier frag 3s apr\u00e8s le d\u00e9but du match)"
+)
+doc.append(
+    "- **gap_min ~+60-80s** : estimation trop pr\u00e9coce \u2014 le script a d\u00e9tect\u00e9 un mouvement"
+)
 doc.append("  pendant le **countdown** (~3-5s dans l'enregistrement) alors que le match a")
 doc.append("  vraiment commenc\u00e9 ~63-85s plus tard.")
 doc.append("- **Correction attendue** : avec `--max-chunks 10`, la d\u00e9tection remontera les")

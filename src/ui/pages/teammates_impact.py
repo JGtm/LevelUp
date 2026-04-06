@@ -345,7 +345,9 @@ def _render_impact_from_events(  # noqa: PLR0913
 
     gamertags = list(scores.keys())
     # Ajouter les gamertags des nouveaux badges s'ils ne sont pas déjà dans la liste
-    for ev in list(silent_heroes.values()) + list(false_brothers.values()) + list(top_killers.values()):
+    for ev in (
+        list(silent_heroes.values()) + list(false_brothers.values()) + list(top_killers.values())
+    ):
         if ev.gamertag not in gamertags:
             gamertags.append(ev.gamertag)
 

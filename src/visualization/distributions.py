@@ -20,6 +20,7 @@ from src.visualization._compat import (
     ensure_polars,
     ensure_polars_series,
 )
+from src.visualization._plot_options import PlotOptions
 from src.visualization.theme import (
     apply_halo_plot_style,
     get_legend_horizontal_bottom,  # noqa: F401 – re-export implicite
@@ -187,7 +188,7 @@ def plot_histogram(  # noqa: PLR0913
     bins: int | str = "auto",
     color: str | None = None,
     show_kde: bool = False,
-    lang: str = "fr",
+    opts: PlotOptions | None = None,
 ) -> go.Figure:
     """Histogramme générique avec option KDE.
 
@@ -203,6 +204,8 @@ def plot_histogram(  # noqa: PLR0913
     Returns:
         Figure Plotly avec histogramme.
     """
+    _opts = opts if opts is not None else PlotOptions()
+    lang = _opts.lang
     colors = HALO_COLORS.as_dict()
     bar_color = color or colors["cyan"]
     if y_label is None:

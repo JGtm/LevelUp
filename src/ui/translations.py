@@ -50,7 +50,9 @@ def translate_playlist_name(name: str | None, lang: str = "fr") -> str | None:
     return s
 
 
-def translate_pair_name(name: str | None, lang: str = "fr", *, normalize: bool = True) -> str | None:
+def translate_pair_name(
+    name: str | None, lang: str = "fr", *, normalize: bool = True
+) -> str | None:
     """Traduit un pair_name depuis metadata.duckdb.
 
     Délègue à ``resolve_display_mode`` (``src.analysis.mode_display``) qui gère :
@@ -187,7 +189,9 @@ def resolve_map_display_names(
                 if try_lang == bcp == "en-US":
                     break
     except Exception as exc:
-        logger.debug("resolve_map_display_names(%d ids, %s): %s", len(map_id_to_fallback), lang, exc)
+        logger.debug(
+            "resolve_map_display_names(%d ids, %s): %s", len(map_id_to_fallback), lang, exc
+        )
 
     return result
 

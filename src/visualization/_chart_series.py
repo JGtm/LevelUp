@@ -20,12 +20,12 @@ from typing import Any, Literal
 import plotly.graph_objects as go
 
 # ─── Constantes hauteur (consolide les magic numbers éparpillés) ──────────────
-HEIGHT_COMPACT: int = 320   # barres multi-joueurs (match_bars.py)
-HEIGHT_NORMAL: int = 360    # graphes trio standard (sync avec PLOT_CONFIG.default_height)
-HEIGHT_PM: int = 350        # stats par-minute (_teammates_trio_helpers.py)
-HEIGHT_TIMESERIES: int = 420   # graphes combat, timeseries standard
+HEIGHT_COMPACT: int = 320  # barres multi-joueurs (match_bars.py)
+HEIGHT_NORMAL: int = 360  # graphes trio standard (sync avec PLOT_CONFIG.default_height)
+HEIGHT_PM: int = 350  # stats par-minute (_teammates_trio_helpers.py)
+HEIGHT_TIMESERIES: int = 420  # graphes combat, timeseries standard
 HEIGHT_PROGRESSION: int = 400  # courbes LUSR/performance (plus compact)
-HEIGHT_MINI: int = 150         # mini-charts (participation_charts_extra.py)
+HEIGHT_MINI: int = 150  # mini-charts (participation_charts_extra.py)
 
 # ─── Downsampling ─────────────────────────────────────────────────────────────
 MAX_PLOT_POINTS: int = 200  # au-delà Plotly devient lent
@@ -52,10 +52,10 @@ class SquadRecordSet:
 class MatchSeries:
     """Une série de données pour un joueur sur l'axe X commun de matchs."""
 
-    name: str                    # nom du joueur (= offsetgroup Plotly)
-    x: list[int]                 # positions entières normalisées 0..N-1
-    y: list[float | None]        # valeurs métriques
-    color: str                   # couleur hex du joueur
+    name: str  # nom du joueur (= offsetgroup Plotly)
+    x: list[int]  # positions entières normalisées 0..N-1
+    y: list[float | None]  # valeurs métriques
+    color: str  # couleur hex du joueur
     map_names: list[str | None]  # carte à chaque position x (pour records par carte)
 
 
@@ -227,16 +227,14 @@ def _add_categorical_record_bars(fig: go.Figure, chart_data: ChartData) -> None:
 # ─── SingleSeriesChartData — graphes solo (timeseries, KDA, per-minute) ──────
 
 
-def _rolling_mean_list(
-    values: list[float | None], window: int = 10
-) -> list[float | None]:
+def _rolling_mean_list(values: list[float | None], window: int = 10) -> list[float | None]:
     """Calcule une moyenne glissante sur une liste, sans polars (module pur)."""
     result: list[float | None] = []
     for i, v in enumerate(values):
         if v is None:
             result.append(None)
             continue
-        chunk = [x for x in values[max(0, i - window + 1): i + 1] if x is not None]
+        chunk = [x for x in values[max(0, i - window + 1) : i + 1] if x is not None]
         result.append(sum(chunk) / len(chunk) if chunk else None)
     return result
 
@@ -254,9 +252,9 @@ class SingleSeriesChartData:
     Pas d'accès DB, pas de Streamlit — testable en isolation.
     """
 
-    x: list[Any]                    # positions ou timestamps
-    y: list[float | None]           # valeurs métriques brutes
-    y_smooth: list[float | None]    # rolling mean pré-calculée
+    x: list[Any]  # positions ou timestamps
+    y: list[float | None]  # valeurs métriques brutes
+    y_smooth: list[float | None]  # rolling mean pré-calculée
     height: int = HEIGHT_TIMESERIES
     title: str = ""
 
@@ -278,4 +276,3 @@ class SingleSeriesChartData:
         """
         smooth = _rolling_mean_list(y, window)
         return cls(x=x, y=y, y_smooth=smooth, **kwargs)
-

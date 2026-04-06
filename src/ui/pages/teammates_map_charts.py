@@ -289,6 +289,8 @@ def _compute_history_breakdown(full_df: pl.DataFrame) -> pl.DataFrame:
     # avec view (FR, calculé depuis sub_all/bd_all qui a map_ui) raterait les 4 cartes FR.
     if "map_ui" not in full_df.columns and "map_name_fr" in full_df.columns and get_lang() == "fr":
         full_df = full_df.with_columns(
-            pl.coalesce([pl.col("map_name_fr").cast(pl.Utf8), pl.col("map_name").cast(pl.Utf8)]).alias("map_ui")
+            pl.coalesce(
+                [pl.col("map_name_fr").cast(pl.Utf8), pl.col("map_name").cast(pl.Utf8)]
+            ).alias("map_ui")
         )
     return compute_map_breakdown(full_df)

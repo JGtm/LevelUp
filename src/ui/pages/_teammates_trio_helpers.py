@@ -88,7 +88,6 @@ def _detect_trio_session(  # noqa: PLR0913
 # ---------------------------------------------------------------------------
 
 
-
 def _render_per_minute_stats(  # noqa: PLR0913
     me_df: DataFrameLike,
     f1_df: DataFrameLike,
@@ -155,9 +154,7 @@ def _render_per_minute_stats(  # noqa: PLR0913
             x_labels=_pm_metrics,
             barmode="categorical",
             global_records={
-                p_name: rec
-                for p_name, rec in pm_records.items()
-                if p_name in _player_names_pm
+                p_name: rec for p_name, rec in pm_records.items() if p_name in _player_names_pm
             },
         ).add_record_overlays(fig_pm)
     fig_pm.update_layout(

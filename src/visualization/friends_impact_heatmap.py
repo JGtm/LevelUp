@@ -354,4 +354,3 @@ def render_impact_summary_stats(
         "total_casualty": len(last_casualties),
         "total_matches": len(all_match_ids),
     }
-

@@ -745,7 +745,9 @@ def _update_playable_duration(
         start_raw = match_info.get("StartTime")
         duration_raw = match_info.get("Duration")
         start_time = _parse_iso_utc(start_raw) if isinstance(start_raw, str) else None
-        duration_s = _parse_duration_to_seconds(duration_raw) if isinstance(duration_raw, str) else None
+        duration_s = (
+            _parse_duration_to_seconds(duration_raw) if isinstance(duration_raw, str) else None
+        )
         if start_time is not None and duration_s is not None:
             countdown_s = duration_s - playable_s
             if countdown_s >= 0:
@@ -753,7 +755,9 @@ def _update_playable_duration(
             else:
                 logger.warning(
                     "Match %s : playable_duration (%d) > duration (%d) — real_start_time ignoré",
-                    match_id, playable_s, duration_s,
+                    match_id,
+                    playable_s,
+                    duration_s,
                 )
     except Exception as e:
         logger.debug("Erreur calcul real_start_time pour %s: %s", match_id, e)

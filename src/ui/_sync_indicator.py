@@ -60,8 +60,7 @@ def render_sync_indicator(db_path: str, xuid: str | None = None) -> None:
 
     if sync_text:
         st.markdown(
-            f"<div style='font-size: 0.85em; color: #888; margin: 4px 0 8px 0;'>"
-            f"{sync_text}</div>",
+            f"<div style='font-size: 0.85em; color: #888; margin: 4px 0 8px 0;'>{sync_text}</div>",
             unsafe_allow_html=True,
         )
 

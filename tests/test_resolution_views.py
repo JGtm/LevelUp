@@ -219,8 +219,8 @@ def test_v_match_full_avec_metadata_attachee(tmp_path):
         "SELECT map_name, map_name_fr FROM v_match_full WHERE match_id = 'm3'"
     ).fetchone()
     assert row is not None
-    assert row[0] == "Recharge EN"   # depuis asset_translations en-US
-    assert row[1] == "Recharge FR"   # depuis asset_translations fr-FR
+    assert row[0] == "Recharge EN"  # depuis asset_translations en-US
+    assert row[1] == "Recharge FR"  # depuis asset_translations fr-FR
 
 
 def test_v_match_full_idempotente():

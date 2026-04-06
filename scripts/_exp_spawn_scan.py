@@ -35,10 +35,10 @@ from src.analysis.packet_index import PacketType, index_chunk, build_packet_esti
 FRAME_MARKER = bytes([0xA0, 0x7B, 0x42])
 
 # Position frames humains
-BYTE5_POSITION = 0x40       # prefix type "position frame"
-BYTE9_HUMAN = 0x56          # stream humain
-BYTE9_BOT = 0x35            # stream bot
-BASE_TYPE_POSITION = 0x09   # low 5 bits de byte6 = type standard
+BYTE5_POSITION = 0x40  # prefix type "position frame"
+BYTE9_HUMAN = 0x56  # stream humain
+BYTE9_BOT = 0x35  # stream bot
+BASE_TYPE_POSITION = 0x09  # low 5 bits de byte6 = type standard
 
 # Coordonnées 16-bit (Y) et 12-bit (X)
 # Y: wraparound à ±32768, discontinuité > 32000 = respawn
@@ -50,7 +50,7 @@ X_HALF = X_WRAP // 2
 # Seuils de respawn calibrés empiriquement :
 # Y_raw range ~109 unités, delta normal max ~37 → seuil=60 discrimine bien
 # X_raw range ~2000 unités, delta normal max ~100 → seuil=300
-RESPAWN_THRESHOLD_Y = 60   # delta brut Y > 60 = discontinuité physique (mort/tp)
+RESPAWN_THRESHOLD_Y = 60  # delta brut Y > 60 = discontinuité physique (mort/tp)
 RESPAWN_THRESHOLD_X = 300  # delta brut X > 300 = discontinuité physique
 
 # Frame minimal valide : au moins 14 bytes après le marker
@@ -76,10 +76,11 @@ SESSION_MATCH_IDS = [
 @dataclass
 class PositionFrame:
     """Résultat du décodage d'un position frame."""
+
     byte_pos: int
     timestamp_ms: float
     player_index: int
-    stream: str          # "human" | "bot"
+    stream: str  # "human" | "bot"
     y_raw: int
     x_raw: int
 
@@ -87,6 +88,7 @@ class PositionFrame:
 @dataclass
 class PlayerTrack:
     """Track cumulatif des coordonnées d'un joueur."""
+
     player_index: int
     stream: str
     acc_y: int = 0
@@ -103,6 +105,7 @@ class PlayerTrack:
 @dataclass
 class ChunkScanResult:
     """Résultat du scan d'un chunk."""
+
     chunk_index: int
     start_ms: int
     duration_ms: int
@@ -114,9 +117,10 @@ class ChunkScanResult:
 @dataclass
 class MatchScanResult:
     """Résultat global pour un match."""
+
     match_id: str
     chunks_scanned: list[ChunkScanResult]
-    player_tracks: dict[str, PlayerTrack]      # clé = "pi_{idx}_{stream}"
+    player_tracks: dict[str, PlayerTrack]  # clé = "pi_{idx}_{stream}"
     total_position_frames: int
     errors: list[str]
 
@@ -156,7 +160,7 @@ def _decode_position_frame(data: bytes, pos: int) -> PositionFrame | None:
     if b9 not in (BYTE9_HUMAN, BYTE9_BOT):
         return None
 
-    base_type = b6 & 0x1F   # low 5 bits
+    base_type = b6 & 0x1F  # low 5 bits
     player_index = b6 >> 5  # top 3 bits
 
     # Type standard = 0x09, variantes connues : 0x08, 0x29, 0x28
@@ -179,7 +183,7 @@ def _decode_position_frame(data: bytes, pos: int) -> PositionFrame | None:
         return None  # bot offset : bytes aux positions 11-14
 
     if stream == "human":
-        y_raw = d0 * 256 + d1       # 16-bit
+        y_raw = d0 * 256 + d1  # 16-bit
         x_raw = (d2 & 0x0F) * 256 + d3  # 12-bit
     else:
         # Bot : décalé d'un byte (pos+11 = d0_bot, pos+12 = d1_bot, ...)
@@ -221,15 +225,17 @@ def _update_track(track: PlayerTrack, frame: PositionFrame) -> bool:
 
         if abs(dy) > RESPAWN_THRESHOLD_Y or abs(dx) > RESPAWN_THRESHOLD_X:
             # Discontinuité = respawn
-            track.respawn_events.append({
-                "timestamp_ms": frame.timestamp_ms,
-                "delta_y": dy,
-                "delta_x": dx,
-                "y_raw_before": track.prev_y_raw,
-                "x_raw_before": track.prev_x_raw,
-                "y_raw_after": frame.y_raw,
-                "x_raw_after": frame.x_raw,
-            })
+            track.respawn_events.append(
+                {
+                    "timestamp_ms": frame.timestamp_ms,
+                    "delta_y": dy,
+                    "delta_x": dx,
+                    "y_raw_before": track.prev_y_raw,
+                    "x_raw_before": track.prev_x_raw,
+                    "y_raw_after": frame.y_raw,
+                    "x_raw_after": frame.x_raw,
+                }
+            )
             is_respawn = True
             # Réinitialiser acc après discontinuité
             track.acc_y = frame.y_raw
@@ -378,7 +384,7 @@ def scan_match(
 
         if verbose:
             print(
-                f"  chunk {chunk_idx:02d} [{start_ms/1000:.0f}s-{(start_ms+duration_ms)/1000:.0f}s]"
+                f"  chunk {chunk_idx:02d} [{start_ms / 1000:.0f}s-{(start_ms + duration_ms) / 1000:.0f}s]"
                 f"  {len(frames_in_chunk):4d} pos-frames"
                 f"  pi={sorted(pis_seen)}"
                 f"  paquets={len(packets)}"
@@ -401,9 +407,11 @@ def _fmt_ms(ms: float) -> str:
 def print_report(result: MatchScanResult, verbose: bool = False) -> None:
     """Affiche le rapport de scan d'un match."""
     mid = result.match_id
-    print(f"\n{'='*70}")
-    print(f"MATCH {mid[:8]}...  |  chunks scannés={len(result.chunks_scanned)}"
-          f"  |  total pos-frames={result.total_position_frames}")
+    print(f"\n{'=' * 70}")
+    print(
+        f"MATCH {mid[:8]}...  |  chunks scannés={len(result.chunks_scanned)}"
+        f"  |  total pos-frames={result.total_position_frames}"
+    )
     if result.errors:
         for e in result.errors:
             print(f"  ⚠ {e}")
@@ -411,9 +419,11 @@ def print_report(result: MatchScanResult, verbose: bool = False) -> None:
             return
 
     # Résumé par joueur
-    print(f"\n  {'PI':>3}  {'Stream':6}  {'Frames':>7}  {'Premier frame':>14}  "
-          f"{'1er chunk':>9}  {'Respawns':>8}")
-    print(f"  {'-'*3}  {'-'*6}  {'-'*7}  {'-'*14}  {'-'*9}  {'-'*8}")
+    print(
+        f"\n  {'PI':>3}  {'Stream':6}  {'Frames':>7}  {'Premier frame':>14}  "
+        f"{'1er chunk':>9}  {'Respawns':>8}"
+    )
+    print(f"  {'-' * 3}  {'-' * 6}  {'-' * 7}  {'-' * 14}  {'-' * 9}  {'-' * 8}")
 
     for key in sorted(result.player_tracks):
         t = result.player_tracks[key]
@@ -430,24 +440,19 @@ def print_report(result: MatchScanResult, verbose: bool = False) -> None:
                     f"  →  Y={ev['y_raw_after']}  X={ev['x_raw_after']}"
                 )
             if len(t.respawn_events) > 5:
-                print(f"         ... +{len(t.respawn_events)-5} autres respawns")
+                print(f"         ... +{len(t.respawn_events) - 5} autres respawns")
 
 
 def print_summary(results: list[MatchScanResult]) -> None:
     """Résumé global sur tous les matchs."""
     total_frames = sum(r.total_position_frames for r in results)
-    total_respawns = sum(
-        len(t.respawn_events)
-        for r in results
-        for t in r.player_tracks.values()
-    )
+    total_respawns = sum(len(t.respawn_events) for r in results for t in r.player_tracks.values())
     matches_with_data = sum(1 for r in results if r.total_position_frames > 0)
     matches_with_respawns = sum(
-        1 for r in results
-        if any(t.respawn_events for t in r.player_tracks.values())
+        1 for r in results if any(t.respawn_events for t in r.player_tracks.values())
     )
 
-    print(f"\n{'='*70}")
+    print(f"\n{'=' * 70}")
     print("RÉSUMÉ GLOBAL")
     print(f"  Matchs analysés      : {len(results)}")
     print(f"  Matchs avec données  : {matches_with_data}/{len(results)}")
@@ -468,15 +473,14 @@ def print_summary(results: list[MatchScanResult]) -> None:
 
 
 def main() -> None:
-    parser = argparse.ArgumentParser(
-        description="Scan expérimental des position frames filmshell."
-    )
+    parser = argparse.ArgumentParser(description="Scan expérimental des position frames filmshell.")
     parser.add_argument(
         "--match-id",
         help="Scanner un seul match (par ID complet ou préfixe 8 chars).",
     )
     parser.add_argument(
-        "--verbose", "-v",
+        "--verbose",
+        "-v",
         action="store_true",
         help="Affiche le détail chunk par chunk et les événements respawn.",
     )
