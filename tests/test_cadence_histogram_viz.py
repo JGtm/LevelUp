@@ -71,12 +71,12 @@ class TestPlotMatchCadenceHistogram:
         fig = plot_match_cadence_histogram(buckets, duration_s=60.0)
         assert isinstance(fig, go.Figure)
 
-    def test_three_traces(self):
-        """On attend 3 traces : barres mon équipe, barres adverses, moyenne glissante."""
+    def test_four_traces(self):
+        """On attend 4 traces : 2 barres + 2 moyennes glissantes par équipe."""
         buckets = _make_buckets([(3, 2), (1, 1), (2, 3)])
         fig = plot_match_cadence_histogram(buckets, duration_s=90.0)
         assert fig is not None
-        assert len(fig.data) == 3
+        assert len(fig.data) == 4
 
     def test_bar_traces_stacked(self):
         buckets = _make_buckets([(2, 1), (1, 2)])
@@ -118,10 +118,11 @@ class TestPlotMatchCadenceHistogram:
         # Premier bucket centré à 15s → "0:15"
         assert fig.data[0].x[0] == "0:15"
 
-    def test_moving_average_trace_is_scatter(self):
+    def test_moving_average_traces_are_scatter(self):
         buckets = _make_buckets([(3, 2), (1, 1), (2, 3)])
         fig = plot_match_cadence_histogram(buckets, duration_s=90.0)
         assert fig is not None
-        ma_trace = fig.data[2]
-        assert isinstance(ma_trace, go.Scatter)
-        assert ma_trace.mode == "lines"
+        for idx in (2, 3):
+            ma_trace = fig.data[idx]
+            assert isinstance(ma_trace, go.Scatter)
+            assert ma_trace.mode == "lines"

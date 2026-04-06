@@ -81,8 +81,14 @@ def compute_cadence_buckets(
 def compute_cadence_moving_avg(
     buckets: list[CadenceBucket],
     window: int = 3,
+    field: str = "total",
 ) -> list[float]:
-    """Moyenne glissante du total de kills sur *window* tranches.
+    """Moyenne glissante sur *window* tranches.
+
+    Args:
+        buckets: Tranches de cadence.
+        window: Taille de la fenêtre glissante.
+        field: ``"total"``, ``"my_kills"`` ou ``"enemy_kills"``.
 
     Returns:
         Liste de flottants de même longueur que *buckets*.
@@ -90,9 +96,9 @@ def compute_cadence_moving_avg(
     if not buckets:
         return []
 
-    totals = [b.total for b in buckets]
+    values = [getattr(b, field) for b in buckets]
     result: list[float] = []
-    for i in range(len(totals)):
+    for i in range(len(values)):
         start = max(0, i - window + 1)
-        result.append(sum(totals[start : i + 1]) / (i - start + 1))
+        result.append(sum(values[start : i + 1]) / (i - start + 1))
     return result

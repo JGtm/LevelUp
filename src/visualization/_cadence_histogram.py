@@ -17,7 +17,8 @@ from src.visualization._team_dominance_helpers import (
     MY_TEAM_RGBA,
 )
 
-_MA_COLOR = "rgba(255, 255, 255, 0.60)"
+_MA_MY_TEAM_COLOR = "rgba(0, 114, 178, 0.85)"  # MY_TEAM bleu semi-opaque
+_MA_ENEMY_COLOR = "rgba(213, 94, 0, 0.85)"  # ENEMY vermillion semi-opaque
 
 
 def _format_time_label(seconds: float) -> str:
@@ -32,7 +33,7 @@ def _add_cadence_traces(
     buckets: list[CadenceBucket],
     lang: str,
 ) -> None:
-    """Ajoute les 3 traces (mon équipe, adverses, moyenne glissante)."""
+    """Ajoute les 4 traces (barres + moyennes glissantes par équipe)."""
     fig.add_trace(
         go.Bar(
             x=x_labels,
@@ -53,14 +54,25 @@ def _add_cadence_traces(
             hovertemplate="%{y} " + viz_t("hover_cadence_kills", lang) + "<extra></extra>",
         )
     )
-    ma = compute_cadence_moving_avg(buckets, window=3)
+    ma_my = compute_cadence_moving_avg(buckets, window=3, field="my_kills")
+    ma_enemy = compute_cadence_moving_avg(buckets, window=3, field="enemy_kills")
     fig.add_trace(
         go.Scatter(
             x=x_labels,
-            y=ma,
+            y=ma_my,
             mode="lines",
-            name=viz_t("trace_cadence_moving_avg", lang),
-            line={"color": _MA_COLOR, "width": 2, "dash": "dot"},
+            name=viz_t("trace_cadence_ma_my_team", lang),
+            line={"color": _MA_MY_TEAM_COLOR, "width": 2, "dash": "dot"},
+            hovertemplate="%{y:.1f}<extra></extra>",
+        )
+    )
+    fig.add_trace(
+        go.Scatter(
+            x=x_labels,
+            y=ma_enemy,
+            mode="lines",
+            name=viz_t("trace_cadence_ma_enemy", lang),
+            line={"color": _MA_ENEMY_COLOR, "width": 2, "dash": "dot"},
             hovertemplate="%{y:.1f}<extra></extra>",
         )
     )
