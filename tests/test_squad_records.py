@@ -12,7 +12,6 @@ from src.analysis.squad_records import (
     get_dominant_pair_name,
 )
 
-
 # ---------------------------------------------------------------------------
 # Fixtures
 # ---------------------------------------------------------------------------
@@ -123,8 +122,9 @@ class TestComputePlayerRecord:
         assert compute_player_record(df, "kills", "Arena:4v4") is None
 
     def test_returns_none_if_no_row_for_pair_name(self):
+        # Fallback: si pair_name introuvable, utilise le df complet (comme compute_player_pm_records)
         df = _make_df([{"kills": 10, "pair_name": "BTB"}])
-        assert compute_player_record(df, "kills", "Arena:4v4") is None
+        assert compute_player_record(df, "kills", "Arena:4v4") == pytest.approx(10.0)
 
     def test_returns_none_for_all_null_values(self):
         df = _make_df([{"kills": None, "pair_name": "Arena:4v4"}])

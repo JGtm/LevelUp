@@ -43,7 +43,6 @@ def render_metric_bar_charts(  # noqa: PLR0913
         fig = plot_fn(
             series,
             metric_col=metric_col,
-            title=label,
             y_axis_title=label,
             hover_label=label,
             colors=colors_by_name,

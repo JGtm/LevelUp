@@ -71,12 +71,12 @@ class TestPlotMatchCadenceHistogram:
         fig = plot_match_cadence_histogram(buckets, duration_s=60.0)
         assert isinstance(fig, go.Figure)
 
-    def test_four_traces(self):
-        """On attend 4 traces : 2 barres + 2 moyennes glissantes par équipe."""
+    def test_six_traces(self):
+        """6 traces : 2 barres + 2 outlines blanches + 2 MA par équipe."""
         buckets = _make_buckets([(3, 2), (1, 1), (2, 3)])
         fig = plot_match_cadence_histogram(buckets, duration_s=90.0)
         assert fig is not None
-        assert len(fig.data) == 4
+        assert len(fig.data) == 6
 
     def test_bar_traces_stacked(self):
         buckets = _make_buckets([(2, 1), (1, 2)])
@@ -122,7 +122,16 @@ class TestPlotMatchCadenceHistogram:
         buckets = _make_buckets([(3, 2), (1, 1), (2, 3)])
         fig = plot_match_cadence_histogram(buckets, duration_s=90.0)
         assert fig is not None
-        for idx in (2, 3):
+        # Indices 4,5 = MA couleur (après 2 barres + 2 outlines blanches)
+        for idx in (4, 5):
             ma_trace = fig.data[idx]
             assert isinstance(ma_trace, go.Scatter)
             assert ma_trace.mode == "lines"
+
+    def test_outline_traces_hidden(self):
+        """Les 2 outlines blanches ne sont pas dans la légende."""
+        buckets = _make_buckets([(3, 2), (1, 1), (2, 3)])
+        fig = plot_match_cadence_histogram(buckets, duration_s=90.0)
+        assert fig is not None
+        for idx in (2, 3):
+            assert fig.data[idx].showlegend is False

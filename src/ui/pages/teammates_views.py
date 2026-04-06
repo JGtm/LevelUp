@@ -344,6 +344,7 @@ def _render_map_history_section(
             },
             all_match_ids=list(all_match_ids),
             lang=get_lang(),
+            color_map=colors_by_name,
         )
 
     return sub_all, series, colors_by_name, rendered_bottom_charts

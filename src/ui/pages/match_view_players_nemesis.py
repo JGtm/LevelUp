@@ -200,7 +200,7 @@ def _resolve_kv_display_name(
     xuid_value: object, gamertag_value: object, match_gt_map: dict | None
 ) -> str:
     """Résout le nom d'affichage d'un joueur depuis xuid/gamertag + gt_map du match."""
-    from src.utils.xuid_parser import parse_xuid_input
+    from src.utils.xuid import parse_xuid_input
 
     gt = str(gamertag_value or "").strip()
     xu_raw = str(xuid_value or "").strip()

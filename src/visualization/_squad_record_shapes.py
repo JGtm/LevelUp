@@ -150,9 +150,16 @@ def _resolve_record(
     per_map_records: dict[str, dict[str, float | None]] | None,
     map_names_per_x: list[str | None] | None,
 ) -> float | None:
-    """Retourne la valeur record à utiliser : par-carte si possible, sinon globale."""
+    """Retourne la valeur record à utiliser : par-carte si possible, sinon globale.
+
+    Priorité : record par carte > record global. Si le record par carte est None
+    (carte absente ou dict vide), fallback systématique sur le record global.
+    """
     if per_map_records is not None and map_names_per_x is not None:
         map_name = map_names_per_x[xi] if xi < len(map_names_per_x) else None
         if map_name:
-            return (per_map_records.get(name) or {}).get(map_name)
+            per_map_val = (per_map_records.get(name) or {}).get(map_name)
+            if per_map_val is not None:
+                return per_map_val
+            # Fallback : carte introuvable dans per_map → afficher le record global
     return records.get(name)
