@@ -37,7 +37,9 @@ fi
 
 mkdir -p "$REPO_ROOT/data/players"
 mkdir -p "$REPO_ROOT/data/warehouse"
-echo "· Dossiers data/players et data/warehouse OK"
+mkdir -p "$REPO_ROOT/data/cache"
+mkdir -p "$REPO_ROOT/data/logs"
+echo "· Dossiers data/{players,warehouse,cache,logs} OK"
 
 # --- Fichiers de données optionnels ---
 
