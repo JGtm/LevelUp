@@ -71,8 +71,8 @@ FUNC:src/ui/pages/teammates_charts.py:323:_build_first_events_fig:160L
 FUNC:src/ui/pages/teammates_helpers.py:162:_prepare_friends_table_data:92L
 FUNC:src/ui/pages/teammates_impact.py:304:_render_impact_from_events:86L
 FUNC:src/ui/pages/teammates_synergy.py:80:_compute_player_profile:96L
-FUNC:src/ui/pages/teammates_views.py:234:_render_map_history_section:116L
-FUNC:src/ui/pages/teammates_views.py:50:render_multi_teammate_view:101L
+FUNC:src/ui/pages/teammates_views.py:233:_render_map_history_section:106L
+FUNC:src/ui/pages/teammates_views.py:49:render_multi_teammate_view:101L
 FUNC:src/ui/styles.py:48:get_hero_html:146L
 FUNC:src/ui/sync.py:59:refresh_spnkr_db_via_api:86L
 FUNC:src/utils/_discord_queries.py:88:fetch_last_match_info:81L
@@ -98,7 +98,7 @@ FUNC:src/visualization/objective_charts.py:46:plot_objective_vs_kills_scatter:12
 FUNC:src/visualization/participation_charts.py:144:plot_participation_bars:105L
 FUNC:src/visualization/participation_charts.py:38:plot_participation_pie:98L
 FUNC:src/visualization/participation_charts_extra.py:69:create_participation_indicator:94L
-FUNC:src/visualization/squad_cadence_chart.py:23:plot_squad_cadence_profiles:93L
+FUNC:src/visualization/squad_cadence_chart.py:23:plot_squad_cadence_profiles:96L
 FUNC:src/visualization/team_dominance_timeline.py:102:detect_streaks:99L
 FUNC:src/visualization/team_dominance_timeline.py:209:plot_dominance_chart:137L
 FUNC:src/visualization/teammates_hs_pk.py:20:plot_hs_pk_stacked:244L
