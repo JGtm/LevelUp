@@ -334,11 +334,11 @@ Mais ce champ s'avère non fiable dans la pratique : pour de nombreux matchs (no
 
 ---
 
-## 🔮 Roadmap v6.3+
+## 🔮 Roadmap v6.4+
 
 ---
 
-### [v6.3] Score de forme — indice de progression court terme
+### [v6.4] Score de forme — indice de progression court terme
 
 **Noté le** : 2026-03-28 | **Priorité** : Moyenne
 
@@ -357,7 +357,7 @@ form_score = moy_perf_score(14 derniers matchs) - moy_perf_score(90 derniers mat
 
 ---
 
-### [v6.3] Détection de changement de niveau (breakpoints)
+### [v6.4] Détection de changement de niveau (breakpoints)
 
 **Noté le** : 2026-03-28 | **Priorité** : Basse
 
@@ -371,7 +371,7 @@ Moyenne mobile double (14j vs 90j) — croisements ascendant/descendant = pallie
 
 ---
 
-### [v6.3] Page Adversaires — Head-to-head, Nemesis, Proie
+### [v6.4] Page Adversaires — Head-to-head, Nemesis, Proie
 
 **Noté le** : 2026-03-28 | **Priorité** : Moyenne
 
@@ -395,7 +395,7 @@ Nouvelle page dédiée aux adversaires récurrents.
 
 ---
 
-### [v6.3] Discord — Résumé de session post-sync
+### [v6.4] Discord — Résumé de session post-sync
 
 **Noté le** : 2026-03-28 | **Priorité** : Basse
 
@@ -412,7 +412,7 @@ Bouton `📤` dans la sidebar, actif ≥5 min après `last_match_end_time` (conf
 
 ---
 
-### [v6.3] Clutch moments — kills décisifs
+### [v6.4] Clutch moments — kills décisifs
 
 **Noté le** : 2026-03-28 | **Priorité** : Basse
 
@@ -430,7 +430,7 @@ Trois types de kills clutch, par ordre de fiabilité :
 
 ---
 
-### [feat/teammates] Précision du timer premier frag/mort
+### [v6.4] [feat/teammates] Précision du timer premier frag/mort
 
 **Noté le** : 2026-04-02 | **Priorité** : Basse
 
