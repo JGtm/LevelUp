@@ -1605,7 +1605,9 @@ def _try_attach_meta_for_views(conn: duckdb.DuckDBPyConnection) -> str | None:
         if any(r[0] == alias for r in db_name_rows):
             return alias
     except Exception as e:
-        logger.debug("event=meta_asset_translations_check_failed step=try_attach_meta_for_views error=%s", e)
+        logger.debug(
+            "event=meta_asset_translations_check_failed step=try_attach_meta_for_views error=%s", e
+        )
     return None
 
 
@@ -1772,3 +1774,53 @@ def ensure_match_registry_film_start(conn: duckdb.DuckDBPyConnection) -> None:
     if not table_exists(conn, "match_registry"):
         return
     _add_column_if_missing(conn, "match_registry", "film_match_start_ms", "INTEGER")
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Sessions — player (stats.duckdb)
+# ─────────────────────────────────────────────────────────────────────────────
+
+
+def ensure_pme_session_index(conn: duckdb.DuckDBPyConnection) -> None:
+    """Crée l'index sur player_match_enrichment(session_id) s'il n'existe pas.
+
+    Utilisé dans les GROUP BY et filter de mv_session_stats.
+    Idempotente : CREATE INDEX IF NOT EXISTS.
+    """
+    if not table_exists(conn, "player_match_enrichment"):
+        logger.debug("player_match_enrichment absente, index session ignoré")
+        return
+    _create_index_safe(
+        conn,
+        "CREATE INDEX IF NOT EXISTS idx_pme_session ON player_match_enrichment(session_id)",
+        "idx_pme_session",
+    )
+
+
+def ensure_mv_session_stats_varchar(conn: duckdb.DuckDBPyConnection) -> None:
+    """Migre mv_session_stats.session_id de INTEGER vers VARCHAR si nécessaire.
+
+    La table était créée avec session_id INTEGER PRIMARY KEY mais reçoit du
+    VARCHAR depuis player_match_enrichment. Cette migration recrée la table
+    avec le bon type (la table est de toute façon reconstruite à chaque sync).
+    Idempotente : vérifie le type avant d'agir.
+    """
+    if not table_exists(conn, "mv_session_stats"):
+        return
+    row = conn.execute(
+        "SELECT data_type FROM information_schema.columns "
+        "WHERE table_name = 'mv_session_stats' AND column_name = 'session_id'"
+    ).fetchone()
+    if not row or row[0].upper() in ("VARCHAR", "TEXT"):
+        return  # déjà correct
+
+    logger.info("mv_session_stats.session_id est %s → migration vers VARCHAR", row[0])
+    conn.execute("DROP TABLE mv_session_stats")
+    conn.execute(
+        """CREATE TABLE mv_session_stats (
+            session_id VARCHAR PRIMARY KEY, match_count INTEGER,
+            start_time TIMESTAMP, end_time TIMESTAMP,
+            total_kills INTEGER, total_deaths INTEGER, total_assists INTEGER,
+            kd_ratio DOUBLE, win_rate DOUBLE,
+            avg_accuracy DOUBLE, avg_life_seconds DOUBLE, updated_at TIMESTAMP)"""
+    )
