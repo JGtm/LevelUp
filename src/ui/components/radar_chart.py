@@ -24,10 +24,9 @@ from ._radar_teammates import (  # noqa: F401
 )
 
 
-def create_radar_chart(  # noqa: PLR0913
+def create_radar_chart(
     data: list[dict[str, Any]],
     *,
-    title: str | None = None,
     show_legend: bool = True,
     fill_opacity: float = 0.25,
     line_width: float = 2,
@@ -87,9 +86,8 @@ def create_radar_chart(  # noqa: PLR0913
             },
         },
         showlegend=show_legend,
-        title=title,
         height=height,
-        margin={"l": 60, "r": 60, "t": 60 if title else 30, "b": 40},
+        margin={"l": 60, "r": 60, "t": 30, "b": 40},
     )
 
     return fig
@@ -133,7 +131,6 @@ def _add_permin_radar_trace(  # noqa: PLR0913
 def create_stats_per_minute_radar(
     players: list[dict[str, Any]],
     *,
-    title: str | None = None,
     categories: list[str] | None = None,
     height: int = 350,
 ) -> go.Figure:
@@ -151,13 +148,11 @@ def create_stats_per_minute_radar(
     """
     if categories is None:
         categories = [t("radar_kpm"), t("radar_dpm"), t("radar_apm")]
-    if title is None:
-        title = t("radar_stats_per_min")
 
     # Gestion du cas vide
     if not players:
         fig = go.Figure()
-        fig.update_layout(title={"text": title, "x": 0.5, "xanchor": "center"}, height=height)
+        fig.update_layout(height=height)
         return fig
 
     # Seuils de référence FIXES pour une échelle absolue
@@ -181,7 +176,6 @@ def create_stats_per_minute_radar(
             },
         },
         showlegend=True,
-        title={"text": title, "x": 0.5, "xanchor": "center"},
         height=height,
         margin={"l": 60, "r": 60, "t": 50, "b": 40},
     )
@@ -236,7 +230,6 @@ def _add_radar_player_traces(  # noqa: PLR0913
 def create_performance_radar(
     players: list[dict[str, Any]],
     *,
-    title: str | None = None,
     height: int = 400,
 ) -> go.Figure:
     """Crée un graphe radar pour le profil de performance (objectif/frags/morts/assists).
@@ -259,7 +252,6 @@ def create_performance_radar(
     if not players:
         fig = go.Figure()
         fig.update_layout(
-            title={"text": title or t("radar_perf_profile"), "x": 0.5, "xanchor": "center"},
             height=height,
         )
         return fig
@@ -281,7 +273,6 @@ def create_performance_radar(
             },
         },
         showlegend=True,
-        title={"text": title or t("radar_perf_profile"), "x": 0.5, "xanchor": "center"},
         height=height,
         margin={"l": 60, "r": 60, "t": 50, "b": 40},
     )

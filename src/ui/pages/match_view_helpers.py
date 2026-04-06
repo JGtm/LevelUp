@@ -398,28 +398,46 @@ def os_card(  # noqa: PLR0913
     accent: str | None = None,
     kpi_color: str | None = None,
     kpi_is_html: bool = False,
+    kpi_extra_style: str | None = None,
     sub_style: str | None = None,
     min_h: int = 112,
+    kpi_font_size: str | None = None,
+    title_font_size: str | None = None,
+    show_title: bool = True,
+    center_content: bool = False,
 ) -> None:
     """Rend une carte KPI avec style OpenSpartan."""
     t = html.escape(str(title or ""))
     k = str(kpi or "-") if kpi_is_html else html.escape(str(kpi or "-"))
     s = "" if not sub_html else str(sub_html)
     style = "min-height:" + str(int(min_h)) + "px; margin-bottom:10px;"
+    if center_content:
+        style += "display:flex;flex-direction:column;justify-content:center;align-items:center;text-align:center;"
     if accent and _is_valid_css_color(accent):
-        # Pour les couleurs hex, ajouter transparence; pour var(), utiliser directement
+        # Surcharge la couleur de bordure via la variable CSS lue par ::before
         if str(accent).startswith("#"):
-            style += f"border-color:{accent}66;"
+            style += f"--card-border-color:{accent}66;"
         else:
-            style += f"border-color:{accent};"
-    kpi_style = "" if not _is_valid_css_color(kpi_color) else f" style='color:{kpi_color}'"
+            style += f"--card-border-color:{accent};"
+    _kpi_css_parts: list[str] = []
+    if _is_valid_css_color(kpi_color):
+        _kpi_css_parts.append(f"color:{kpi_color}")
+    if kpi_font_size:
+        _kpi_css_parts.append(f"font-size:{kpi_font_size}")
+    if kpi_extra_style:
+        _kpi_css_parts.append(kpi_extra_style)
+    kpi_style = (" style='" + ";".join(_kpi_css_parts) + "'") if _kpi_css_parts else ""
     sub_style_attr = (
         "" if not sub_style else ' style="' + html.escape(str(sub_style), quote=True) + '"'
     )
+    title_style_attr = (" style='font-size:" + title_font_size + "'") if title_font_size else ""
+    title_html = f"<div class='os-card-title'{title_style_attr}>{t}</div>" if show_title else ""
     st.markdown(
-        "<div class='os-card' style='" + style + "'>"
-        f"<div class='os-card-title'>{t}</div>"
-        f"<div class='os-card-kpi'{kpi_style}>{k}</div>"
+        "<div class='os-card' style='"
+        + style
+        + "'>"
+        + title_html
+        + f"<div class='os-card-kpi'{kpi_style}>{k}</div>"
         + ("" if not s else f"<div class='os-card-sub'{sub_style_attr}>{s}</div>")
         + "</div>",
         unsafe_allow_html=True,

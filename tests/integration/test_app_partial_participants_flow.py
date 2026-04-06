@@ -11,9 +11,9 @@ duckdb = pytest.importorskip("duckdb")
 
 @pytest.fixture
 def participants_partial_dbs(tmp_path):
-    """Crée une structure v5 avec shared_matches.duckdb + player stats.duckdb."""
+    """Crée une structure v6 avec shared_matches_v2.duckdb + player stats.duckdb."""
     # Créer la shared DB avec match_participants
-    shared_path = tmp_path / "data" / "warehouse" / "shared_matches.duckdb"
+    shared_path = tmp_path / "data" / "warehouse" / "shared_matches_v2.duckdb"
     shared_path.parent.mkdir(parents=True, exist_ok=True)
     conn_shared = duckdb.connect(str(shared_path))
     try:

@@ -105,4 +105,13 @@ STRINGS: dict[str, dict[str, str] | str] = {
         "fr": "Nombre de kills",
         "en": "Kill count",
     },
+    # ── Titres cadence / intensité ────────────────────────────────────────────
+    "title_intensity_heatmap": {
+        "fr": "Profil d'intensité par match",
+        "en": "Intensity profile per match",
+    },
+    "title_squad_cadence": {
+        "fr": "Profil de tempo synchronisé",
+        "en": "Synchronized tempo profile",
+    },
 }

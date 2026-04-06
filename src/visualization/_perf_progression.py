@@ -12,6 +12,7 @@ import polars as pl
 from src.config import THEME_COLORS
 from src.ui.i18n.viz import viz_t
 from src.visualization._perf_cumulative import PERFORMANCE_COLORS
+from src.visualization._plot_options import EwmaData, KdCiData, PlotOptions
 from src.visualization.theme import apply_halo_plot_style, iqr_yrange
 
 # =============================================================================
@@ -95,20 +96,12 @@ def _add_outcome_markers(
 # =============================================================================
 
 
-def _add_kd_ci_traces(  # noqa: PLR0913
-    fig: go.Figure,
-    x_values: list,
-    y_cumul: list,
-    y_upper: list,
-    y_lower: list,
-    y_match: list,
-    lang: str,
-) -> None:
+def _add_kd_ci_traces(fig: go.Figure, data: KdCiData, lang: str) -> None:
     """Ajoute bande IC, points match et courbe K/D cumulé sur `fig`."""
     fig.add_trace(
         go.Scatter(
-            x=x_values + list(reversed(x_values)),
-            y=y_upper + list(reversed(y_lower)),
+            x=data.x + list(reversed(data.x)),
+            y=data.y_upper + list(reversed(data.y_lower)),
             fill="toself",
             fillcolor="rgba(86,180,233,0.18)",
             line={"color": "rgba(0,0,0,0)"},
@@ -119,8 +112,8 @@ def _add_kd_ci_traces(  # noqa: PLR0913
     )
     fig.add_trace(
         go.Scatter(
-            x=x_values,
-            y=y_match,
+            x=data.x,
+            y=data.y_match,
             mode="markers",
             name=viz_t("trace_kd_match", lang),
             marker={
@@ -134,8 +127,8 @@ def _add_kd_ci_traces(  # noqa: PLR0913
     )
     fig.add_trace(
         go.Scatter(
-            x=x_values,
-            y=y_cumul,
+            x=data.x,
+            y=data.y_cumul,
             mode="lines+markers",
             name=viz_t("trace_kd_cumul", lang),
             line={"color": PERFORMANCE_COLORS["kd_line"], "width": 3},
@@ -148,7 +141,6 @@ def _add_kd_ci_traces(  # noqa: PLR0913
 def plot_cumulative_kd_with_ci(
     cumul_ci_df: pl.DataFrame,
     *,
-    title: str | None = None,
     height: int = 400,
     outcome_values: list[int | None] | None = None,
     lang: str = "fr",
@@ -164,8 +156,6 @@ def plot_cumulative_kd_with_ci(
         outcome_values: Liste d'Outcome pour les marqueurs V/D (optionnel).
         lang: Langue.
     """
-    if title is None:
-        title = viz_t("title_cumul_kd_ci", lang)
     fig = go.Figure()
 
     if cumul_ci_df.is_empty():
@@ -178,17 +168,19 @@ def plot_cumulative_kd_with_ci(
             showarrow=False,
             font={"size": 16, "color": THEME_COLORS.text_primary},
         )
-        return apply_halo_plot_style(fig, title=title, height=height)
+        return apply_halo_plot_style(fig, height=height)
 
     data = cumul_ci_df.to_dicts()
     x_values = [d.get("start_time", "") for d in data]
     _add_kd_ci_traces(
         fig,
-        x_values,
-        y_cumul=[d.get("cumulative_kd", 0.0) for d in data],
-        y_upper=[d.get("ci_upper", 0.0) for d in data],
-        y_lower=[d.get("ci_lower", 0.0) for d in data],
-        y_match=[d.get("kd", 0.0) for d in data],
+        KdCiData(
+            x=x_values,
+            y_cumul=[d.get("cumulative_kd", 0.0) for d in data],
+            y_upper=[d.get("ci_upper", 0.0) for d in data],
+            y_lower=[d.get("ci_lower", 0.0) for d in data],
+            y_match=[d.get("kd", 0.0) for d in data],
+        ),
         lang=lang,
     )
     fig.add_hline(
@@ -206,7 +198,7 @@ def plot_cumulative_kd_with_ci(
         legend={"orientation": "h", "yanchor": "bottom", "y": 1.02, "xanchor": "center", "x": 0.5},
     )
     _add_outcome_markers(fig, x_values, outcome_values, lang=lang)
-    return apply_halo_plot_style(fig, title=title, height=height)
+    return apply_halo_plot_style(fig, height=height)
 
 
 # =============================================================================
@@ -274,7 +266,6 @@ def _add_nph_traces(
 def plot_net_score_per_hour(
     nph_df: pl.DataFrame,
     *,
-    title: str | None = None,
     height: int = 350,
     outcome_values: list[int | None] | None = None,
     lang: str = "fr",
@@ -291,8 +282,6 @@ def plot_net_score_per_hour(
         outcome_values: Liste d'Outcome pour les marqueurs V/D.
         lang: Langue.
     """
-    if title is None:
-        title = viz_t("title_net_score_per_hour", lang)
     fig = go.Figure()
 
     if nph_df.is_empty():
@@ -305,7 +294,7 @@ def plot_net_score_per_hour(
             showarrow=False,
             font={"size": 16, "color": THEME_COLORS.text_primary},
         )
-        return apply_halo_plot_style(fig, title=title, height=height)
+        return apply_halo_plot_style(fig, height=height)
 
     data = nph_df.sort("start_time").to_dicts()
     x_values = [d.get("start_time", "") for d in data]
@@ -337,7 +326,7 @@ def plot_net_score_per_hour(
         layout["yaxis_range"] = list(y_range)
     fig.update_layout(**layout)
     _add_outcome_markers(fig, x_values, outcome_values, lang=lang)
-    return apply_halo_plot_style(fig, title=title, height=height)
+    return apply_halo_plot_style(fig, height=height)
 
 
 # =============================================================================
@@ -345,19 +334,12 @@ def plot_net_score_per_hour(
 # =============================================================================
 
 
-def _add_ewma_traces(  # noqa: PLR0913
-    fig: go.Figure,
-    x_values: list,
-    y_kd: list,
-    y_ewma: list,
-    regression_data: dict | None,
-    lang: str,
-) -> None:
+def _add_ewma_traces(fig: go.Figure, data: EwmaData, lang: str) -> None:
     """Ajoute K/D brut, courbe EWMA et droite de régression (si significative)."""
     fig.add_trace(
         go.Scatter(
-            x=x_values,
-            y=y_kd,
+            x=data.x,
+            y=data.y_kd,
             mode="lines",
             name=viz_t("trace_kd_match", lang),
             line={"color": PERFORMANCE_COLORS["neutral"], "width": 1},
@@ -367,8 +349,8 @@ def _add_ewma_traces(  # noqa: PLR0913
     )
     fig.add_trace(
         go.Scatter(
-            x=x_values,
-            y=y_ewma,
+            x=data.x,
+            y=data.y_ewma,
             mode="lines+markers",
             name=viz_t("trace_kd_ewma", lang),
             line={"color": PERFORMANCE_COLORS["rolling"], "width": 3},
@@ -376,8 +358,12 @@ def _add_ewma_traces(  # noqa: PLR0913
             hovertemplate=viz_t("hover_kd_ewma", lang),
         )
     )
-    if regression_data and regression_data.get("is_significant") and regression_data.get("y_hat"):
-        trend = regression_data.get("trend", "stable")
+    if (
+        data.regression_data
+        and data.regression_data.get("is_significant")
+        and data.regression_data.get("y_hat")
+    ):
+        trend = data.regression_data.get("trend", "stable")
         reg_color = (
             PERFORMANCE_COLORS["trend_up"]
             if trend == "improving"
@@ -387,8 +373,8 @@ def _add_ewma_traces(  # noqa: PLR0913
         )
         fig.add_trace(
             go.Scatter(
-                x=x_values,
-                y=regression_data["y_hat"],
+                x=data.x,
+                y=data.regression_data["y_hat"],
                 mode="lines",
                 name=viz_t("trace_regression_line", lang),
                 line={"color": reg_color, "width": 2, "dash": "dot"},
@@ -398,14 +384,12 @@ def _add_ewma_traces(  # noqa: PLR0913
         )
 
 
-def plot_ewma_kd(  # noqa: PLR0913
+def plot_ewma_kd(
     ewma_df: pl.DataFrame,
     *,
-    title: str | None = None,
-    height: int = 400,
     regression_data: dict | None = None,
     outcome_values: list[int | None] | None = None,
-    lang: str = "fr",
+    opts: PlotOptions | None = None,
 ) -> go.Figure:
     """Graphique du K/D lissé (EWMA) avec droite de régression optionnelle.
 
@@ -414,14 +398,13 @@ def plot_ewma_kd(  # noqa: PLR0913
 
     Args:
         ewma_df: DataFrame issu de compute_ewma_kd_polars.
-        title: Titre (auto si None).
-        height: Hauteur en pixels.
         regression_data: Dict issu de compute_linear_regression_kd (optionnel).
         outcome_values: Liste d'Outcome pour les marqueurs V/D.
-        lang: Langue.
+        opts: Options de rendu (langue, hauteur…).
     """
-    if title is None:
-        title = viz_t("title_ewma_kd", lang)
+    _opts = opts if opts is not None else PlotOptions()
+    lang = _opts.lang
+    height = _opts.height_px
     fig = go.Figure()
 
     if ewma_df.is_empty():
@@ -434,7 +417,7 @@ def plot_ewma_kd(  # noqa: PLR0913
             showarrow=False,
             font={"size": 14, "color": THEME_COLORS.text_primary},
         )
-        return apply_halo_plot_style(fig, title=title, height=height)
+        return apply_halo_plot_style(fig, height=height)
 
     data = ewma_df.sort("start_time").to_dicts()
     x_values = [d.get("start_time", "") for d in data]
@@ -442,10 +425,7 @@ def plot_ewma_kd(  # noqa: PLR0913
     y_ewma = [d.get("ewma_kd", 0.0) for d in data]
     _add_ewma_traces(
         fig,
-        x_values,
-        y_kd=y_kd,
-        y_ewma=y_ewma,
-        regression_data=regression_data,
+        EwmaData(x=x_values, y_kd=y_kd, y_ewma=y_ewma, regression_data=regression_data),
         lang=lang,
     )
     fig.add_hline(
@@ -473,4 +453,4 @@ def plot_ewma_kd(  # noqa: PLR0913
         layout["yaxis_range"] = list(y_range)
     fig.update_layout(**layout)
     _add_outcome_markers(fig, x_values, outcome_values, lang=lang)
-    return apply_halo_plot_style(fig, title=title, height=height)
+    return apply_halo_plot_style(fig, height=height)

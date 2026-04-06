@@ -24,7 +24,7 @@ class SchemaIntrospectionMixin:
     # ------------------------------------------------------------------
 
     def _has_shared_table(self, table_name: str) -> bool:
-        """Vérifie si une table existe dans shared_matches.duckdb (avec cache).
+        """Vérifie si une table existe dans shared_matches_v2.duckdb (avec cache).
 
         Args:
             table_name: Nom de la table à vérifier (sans préfixe 'shared.').
@@ -54,7 +54,7 @@ class SchemaIntrospectionMixin:
             return False
 
     def _has_shared_view(self, view_name: str) -> bool:
-        """Vérifie si une vue existe dans shared_matches.duckdb (avec cache).
+        """Vérifie si une vue existe dans shared_matches_v2.duckdb (avec cache).
 
         Utilise ``duckdb_views()`` qui fonctionne bien avec les bases attachées,
         contrairement à ``catalog.information_schema.views``.

@@ -21,6 +21,7 @@ import plotly.graph_objects as go
 from plotly.subplots import make_subplots
 
 from src.ui.i18n.viz import viz_t
+from src.visualization._plot_options import PlotOptions
 from src.visualization._team_dominance_helpers import (
     ENEMY_COLOR,
     MY_TEAM_COLOR,
@@ -213,14 +214,16 @@ def plot_dominance_chart(  # noqa: PLR0913
     my_team_id: int,
     duration_s: float,
     bucket_s: int = 30,
-    height: int = 360,
-    lang: str = "fr",
+    opts: PlotOptions | None = None,
 ) -> go.Figure | None:
     """Construit la figure Plotly avec deux panneaux liés par l'axe temps.
 
     Panneau 1 (haut) — barres de dominance par tranche (tug-of-war).
     Panneau 2 (bas) — kill feed individuel avec séries annotées.
     """
+    _opts = opts if opts is not None else PlotOptions()
+    lang = _opts.lang
+    height = _opts.height_px
     if not buckets or not kill_events:
         return None
 

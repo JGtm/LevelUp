@@ -95,10 +95,6 @@ def _handle_rescan_button(settings: AppSettings, dirs: _MediaDirs, db_path: str)
     with contextlib.suppress(Exception):
         index_media_dir.clear()
 
-    # Forcer re-indexation en BDD
-    if "_media_indexing_started" in st.session_state:
-        del st.session_state["_media_indexing_started"]
-
     # Lancer l'indexation manuellement si DB DuckDB disponible
     if db_path and db_path.endswith(".duckdb"):
         try:

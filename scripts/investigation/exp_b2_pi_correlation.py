@@ -233,7 +233,7 @@ def print_comparison(
         pi = xuid_to_pi.get(xuid, "?")
         kills = b2_by_player.get(xuid, [])
         print(f"\n  {gt or xuid}  (xuid={xuid}  pi={pi})")
-        print(f"  {'-'*70}")
+        print(f"  {'-' * 70}")
 
         # b2_pi
         wcount_b2: Counter = Counter()
@@ -262,7 +262,7 @@ def print_comparison(
         total = len(kills)
         high_conf = sum(1 for k in kills if k["confidence"] == "high")
         print(
-            f"  -> Total kills: {total}  matched: {total-unmatched}  high_conf: {high_conf}  changed: {changed}"
+            f"  -> Total kills: {total}  matched: {total - unmatched}  high_conf: {high_conf}  changed: {changed}"
         )
 
 
@@ -353,7 +353,7 @@ def main() -> None:
     no_match = sum(1 for k in kills_b2 if k["source"] == "no_match")
     print()
     print(
-        f"GLOBAL  total={total}  matched={matched} ({matched*100//total}%)  "
+        f"GLOBAL  total={total}  matched={matched} ({matched * 100 // total}%)  "
         f"high_conf={high}  no_match={no_match}"
     )
 

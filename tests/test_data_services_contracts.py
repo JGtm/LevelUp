@@ -54,6 +54,7 @@ def _make_match_pl(n: int = 20) -> pl.DataFrame:
             "average_life_seconds": [25.0 + i for i in range(n)],
             "personal_score": [1000 + i * 50 for i in range(n)],
             "map_name": [f"Map{i % 4}" for i in range(n)],
+            "map_ui": [f"Map{i % 4}" for i in range(n)],
             "playlist_name": ["Ranked" if i % 2 == 0 else "Quick Play" for i in range(n)],
             "pair_name": ["Slayer" if i % 2 == 0 else "CTF" for i in range(n)],
             "team_mmr": [1500 + i * 10 for i in range(n)],

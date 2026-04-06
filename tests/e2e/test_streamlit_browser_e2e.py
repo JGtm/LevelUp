@@ -576,3 +576,54 @@ def test_e2e_009_career_smoke(running_streamlit_app: str) -> None:
 
         _assert_no_front_error(page)
         browser.close()
+
+
+@pytest.mark.e2e_browser
+def test_e2e_010_map_names_not_uuids(running_streamlit_app: str) -> None:
+    """E2E-010: les noms de cartes affichés dans l'UI ne sont pas des UUIDs bruts.
+
+    Non-régression Phase 4 : add_i18n_display_columns doit être appelé avant
+    l'affichage. Si map_ui est manquant, les cartes apparaîtraient sous forme
+    de UUIDs (ex. 'a446725e-b281-414c-...') au lieu de 'Aquarius', 'Cliffhanger', etc.
+    """
+    import re
+
+    playwright = pytest.importorskip("playwright.sync_api")
+
+    _UUID_RE = re.compile(r"[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}", re.IGNORECASE)
+
+    with playwright.sync_playwright() as p:
+        browser = p.chromium.launch(headless=True)
+        page = browser.new_page()
+        page.goto(running_streamlit_app, wait_until="domcontentloaded", timeout=120000)
+        page.wait_for_timeout(2500)
+
+        # Cherche les onglets qui affichent des noms de cartes
+        map_tabs = [
+            "Victoires/Défaites",
+            "Mes coéquipiers",
+            "Historique",
+        ]
+        clicked = _click_first_visible_text(page, map_tabs)
+        if clicked is None:
+            _assert_no_front_error(page)
+            browser.close()
+            return
+
+        page.wait_for_timeout(2000)
+        content = page.content()
+
+        # Les UUIDs ne doivent pas apparaître dans le contenu rendu
+        uuid_matches = _UUID_RE.findall(content)
+        # Filtrer les UUIDs qui peuvent apparaître dans les URLs/params internes
+        # (match_id dans les liens href) — seuls les UUIDs dans du texte visible comptent
+        visible_text = page.evaluate("() => document.body.innerText")
+        uuid_in_text = _UUID_RE.findall(visible_text)
+
+        assert len(uuid_in_text) == 0, (
+            f"UUIDs bruts trouvés dans le texte visible : {uuid_in_text[:5]}\n"
+            "→ add_i18n_display_columns n'a pas été appliqué avant l'affichage."
+        )
+
+        _assert_no_front_error(page)
+        browser.close()

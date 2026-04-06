@@ -10,24 +10,24 @@ import polars as pl
 
 from src.ui.i18n.viz import viz_t
 from src.visualization._antagonist_colors import COLORS, PLAYER_COLORS
+from src.visualization._plot_options import PlotOptions
 from src.visualization.theme import apply_halo_plot_style
 
 
-def plot_killer_victim_stacked_bars(  # noqa: PLR0913
+def plot_killer_victim_stacked_bars(
     pairs_df: pl.DataFrame,
     match_id: str | None = None,
     *,
     me_xuid: str | None = None,
     rank_by_xuid: dict[str, int] | None = None,
-    title: str | None = None,
-    height: int = 400,
-    lang: str = "fr",
+    opts: PlotOptions | None = None,
 ) -> go.Figure:
     """Graphique barres empilées : une ligne par tueur, segments = victimes."""
+    _opts = opts if opts is not None else PlotOptions()
+    lang = _opts.lang
+    height = _opts.height_px
     colors = COLORS
     player_colors = PLAYER_COLORS
-    if title is None:
-        title = viz_t("title_elim_victim", lang)
     fig = go.Figure()
 
     if pairs_df.is_empty():
@@ -40,7 +40,7 @@ def plot_killer_victim_stacked_bars(  # noqa: PLR0913
             showarrow=False,
             font={"size": 16, "color": colors["neutral"]},
         )
-        return apply_halo_plot_style(fig, title=title, height=height)
+        return apply_halo_plot_style(fig, height=height)
 
     filtered_df = pairs_df
     if match_id:
@@ -56,7 +56,7 @@ def plot_killer_victim_stacked_bars(  # noqa: PLR0913
             showarrow=False,
             font={"size": 16, "color": colors["neutral"]},
         )
-        return apply_halo_plot_style(fig, title=title, height=height)
+        return apply_halo_plot_style(fig, height=height)
 
     agg_df = filtered_df.group_by(
         "killer_xuid", "killer_gamertag", "victim_xuid", "victim_gamertag"
@@ -116,7 +116,7 @@ def plot_killer_victim_stacked_bars(  # noqa: PLR0913
     )
 
     plot_height = max(height, 80 + 24 * n_killers)
-    return apply_halo_plot_style(fig, title=title, height=plot_height)
+    return apply_halo_plot_style(fig, height=plot_height)
 
 
 def _add_kd_cumulative_trace(
@@ -146,14 +146,12 @@ def _add_kd_cumulative_trace(
 def plot_kd_timeseries(
     timeseries_df: pl.DataFrame,
     *,
-    title: str | None = None,
     show_cumulative: bool = True,
     height: int = 350,
     lang: str = "fr",
 ) -> go.Figure:
     """Graphique timeseries du K/D par minute."""
     colors = COLORS
-    title = title or viz_t("title_kd_per_min", lang)
     fig = go.Figure()
 
     if timeseries_df.is_empty():
@@ -166,7 +164,7 @@ def plot_kd_timeseries(
             showarrow=False,
             font={"size": 16, "color": colors["neutral"]},
         )
-        return apply_halo_plot_style(fig, title=title, height=height)
+        return apply_halo_plot_style(fig, height=height)
 
     minutes = timeseries_df["minute"].to_list()
     kills = timeseries_df["kills"].to_list()
@@ -212,20 +210,17 @@ def plot_kd_timeseries(
     )
     fig.add_hline(y=0, line_width=2, line_color="rgba(255,255,255,0.75)")
 
-    return apply_halo_plot_style(fig, title=title, height=height)
+    return apply_halo_plot_style(fig, height=height)
 
 
 def plot_killer_victim_heatmap(
     matrix_df: pl.DataFrame,
     *,
-    title: str | None = None,
     height: int = 500,
     lang: str = "fr",
 ) -> go.Figure:
     """Heatmap de la matrice killer-victim."""
     colors = COLORS
-    if title is None:
-        title = viz_t("title_killer_victim_matrix", lang)
     fig = go.Figure()
 
     if matrix_df.is_empty():
@@ -238,7 +233,7 @@ def plot_killer_victim_heatmap(
             showarrow=False,
             font={"size": 16, "color": colors["neutral"]},
         )
-        return apply_halo_plot_style(fig, title=title, height=height)
+        return apply_halo_plot_style(fig, height=height)
 
     killers = matrix_df["killer_gamertag"].to_list()
     victim_cols = [c for c in matrix_df.columns if c != "killer_gamertag"]
@@ -270,4 +265,4 @@ def plot_killer_victim_heatmap(
         xaxis={"side": "bottom"},
     )
 
-    return apply_halo_plot_style(fig, title=title, height=height)
+    return apply_halo_plot_style(fig, height=height)

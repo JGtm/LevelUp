@@ -13,6 +13,12 @@ import streamlit as st
 
 logger = logging.getLogger(__name__)
 
+from src.analysis.squad_records import (
+    compute_player_pm_records,
+    compute_squad_records,
+    compute_squad_records_per_map,
+    get_dominant_pair_name,
+)
 from src.data.services.teammates_service import TeammatesService
 from src.ui import display_name_from_xuid
 from src.ui.cache import cached_same_team_match_ids_with_friend
@@ -22,10 +28,112 @@ from src.ui.pages._teammates_trio_helpers import (
     _render_per_minute_stats,
     _render_trio_performance_charts,
 )
-from src.ui.pages.teammates_charts import render_metric_bar_charts
+from src.ui.pages.teammates_charts import render_first_events_chart, render_metric_bar_charts
 from src.ui.pages.teammates_synergy import render_trio_synergy_radar
 from src.ui.pages.teammates_weapons import render_weapon_kills_bar_chart
+from src.visualization._chart_series import SquadRecordSet
 from src.visualization._compat import DataFrameLike, ensure_polars
+
+# ---------------------------------------------------------------------------
+# Helpers privés
+# ---------------------------------------------------------------------------
+
+
+def _build_pm_records(
+    full_raw: list[tuple[str, pl.DataFrame]],
+    dominant_pair: str | None,
+    session_dfs: list[tuple[str | None, DataFrameLike | None]],
+) -> dict[str, tuple[float | None, float | None, float | None]]:
+    """Records stats/min par joueur avec fallback session si historique vide."""
+    records = {
+        name: compute_player_pm_records(full_df, dominant_pair) for name, full_df in full_raw
+    }
+    for _n, _fb in session_dfs:
+        if not _n or _fb is None:
+            continue
+        if _n not in records or all(v is None for v in records[_n]):
+            records[_n] = compute_player_pm_records(ensure_polars(_fb), None)
+    return records
+
+
+# Métriques records partagées entre compute_squad_records et compute_squad_records_per_map
+_RECORD_METRICS = [
+    ("kills", False),
+    ("deaths", True),
+    ("assists", False),
+    ("ratio", False),
+    ("accuracy", False),
+    ("average_life_seconds", False),
+    ("performance_score", False),
+    ("max_killing_spree", False),
+    ("headshot_kills", False),
+]
+_RECORD_METRICS_PER_MAP = [m for m in _RECORD_METRICS if m[0] != "headshot_kills"]
+
+
+def _rename_perf_score(records: dict[str, dict[str, float | None]]) -> None:
+    """Renomme performance_score → performance dans les records (in-place)."""
+    for r in records.values():
+        if "performance_score" in r:
+            r["performance"] = r.pop("performance_score")
+
+
+def _compute_all_records(  # noqa: PLR0913
+    df: DataFrameLike,
+    me_name: str,
+    f1_name: str,
+    f2_name: str | None,
+    f3_name: str | None,
+    db_path: str,
+    me_df: pl.DataFrame,
+    f1_df: pl.DataFrame,
+    f2_df: pl.DataFrame | None,
+    f3_df: pl.DataFrame | None,
+) -> tuple[SquadRecordSet, dict[str, tuple[float | None, float | None, float | None]]]:
+    """Calcule les records historiques (SquadRecordSet + pm_records)."""
+    _me_full = ensure_polars(df).filter(
+        pl.col("is_firefight").cast(pl.Boolean).not_()
+        if "is_firefight" in ensure_polars(df).columns
+        else pl.lit(True)
+    )
+    if "map_ui" not in _me_full.columns and "map_name_fr" in _me_full.columns:
+        _me_full = _me_full.with_columns(
+            pl.coalesce(
+                [pl.col("map_name_fr").cast(pl.Utf8), pl.col("map_name").cast(pl.Utf8)]
+            ).alias("map_ui")
+        )
+    _f1_full = TeammatesService.load_all_teammate_stats(f1_name, db_path).df
+    _f2_full = (
+        TeammatesService.load_all_teammate_stats(f2_name, db_path).df if f2_name else pl.DataFrame()
+    )
+    _f3_full = (
+        TeammatesService.load_all_teammate_stats(f3_name, db_path).df if f3_name else pl.DataFrame()
+    )
+
+    _full_raw: list[tuple[str, pl.DataFrame]] = [(me_name, _me_full), (f1_name, _f1_full)]
+    if f2_name and not _f2_full.is_empty():
+        _full_raw.append((f2_name, _f2_full))
+    if f3_name and not _f3_full.is_empty():
+        _full_raw.append((f3_name, _f3_full))
+
+    _dominant_pair = get_dominant_pair_name([d for _, d in _full_raw])
+
+    _squad_records = compute_squad_records(_full_raw, _RECORD_METRICS, _dominant_pair)
+    _rename_perf_score(_squad_records)
+
+    _squad_records_per_map = compute_squad_records_per_map(
+        _full_raw, _RECORD_METRICS_PER_MAP, _dominant_pair
+    )
+    _rename_perf_score(_squad_records_per_map)
+
+    record_set = SquadRecordSet(records=_squad_records, per_map=_squad_records_per_map)
+    pm_records = _build_pm_records(
+        _full_raw,
+        _dominant_pair,
+        [(me_name, me_df), (f1_name, f1_df), (f2_name, f2_df), (f3_name, f3_df)],
+    )
+    return record_set, pm_records
+
 
 # ---------------------------------------------------------------------------
 # Vue trio publique
@@ -90,10 +198,6 @@ def render_trio_view(  # noqa: PLR0913, PLR0915, C901, PLR0912
         squad_ids = squad_ids & ids_d
 
     base_for_trio = dff if apply_current_filters else df
-    # Sauvegarder l'ensemble complet AVANT le filtre UI :
-    # le radar de complémentarité utilise l'historique all-time (profil de style de jeu global).
-    # Les DFs timeline/graphes utilisent squad_ids filtré.
-    radar_squad_ids = squad_ids.copy()
     squad_ids = squad_ids & set(base_for_trio["match_id"].cast(pl.Utf8).to_list())
 
     logger.debug(
@@ -151,6 +255,27 @@ def render_trio_view(  # noqa: PLR0913, PLR0915, C901, PLR0912
 
     me_df = me_df.sort("start_time")
 
+    # ── Records depuis l'historique COMPLET (pas filtré à l'escouade) ────────
+    # Conditionnés par le setting show_records (page Paramètres).
+    _show_records = bool(getattr(st.session_state.get("app_settings"), "show_records", True))
+
+    _squad_record_set: SquadRecordSet | None = None
+    _pm_records: dict[str, tuple[float | None, float | None, float | None]] | None = None
+
+    if _show_records:
+        _squad_record_set, _pm_records = _compute_all_records(
+            df,
+            me_name,
+            f1_name,
+            f2_name,
+            f3_name,
+            db_path,
+            me_df,
+            f1_df,
+            f2_df,
+            f3_df,
+        )
+
     _render_per_minute_stats(
         me_df,
         f1_df,
@@ -161,12 +286,12 @@ def render_trio_view(  # noqa: PLR0913, PLR0915, C901, PLR0912
         colors_by_name,
         f3_df=f3_df,
         f3_name=f3_name,
+        pm_records=_pm_records,
     )
 
-    # Radar de complémentarité escouade — utilise l'historique all-time (radar_squad_ids)
-    # pour que les PSA soient disponibles même si les filtres UI excluent les matchs récents.
-    radar_me_df = df.filter(pl.col("match_id").cast(pl.Utf8).is_in(list(radar_squad_ids)))
-    radar_ids_str = {str(x) for x in radar_squad_ids}
+    # Radar de complémentarité escouade — filtré par la session/période courante
+    radar_ids_str = {str(x) for x in squad_ids}
+    radar_me_df = base_for_trio.filter(pl.col("match_id").cast(pl.Utf8).is_in(list(squad_ids)))
     radar_f1_df = ensure_polars(load_teammate_stats_fn(f1_name, radar_ids_str, db_path))
     radar_f2_df: pl.DataFrame | None = (
         ensure_polars(load_teammate_stats_fn(f2_name, radar_ids_str, db_path)) if f2_name else None
@@ -174,11 +299,7 @@ def render_trio_view(  # noqa: PLR0913, PLR0915, C901, PLR0912
     radar_f3_df: pl.DataFrame | None = (
         ensure_polars(load_teammate_stats_fn(f3_name, radar_ids_str, db_path)) if f3_name else None
     )
-    logger.debug(
-        "render_trio_view: radar squad_ids=%d (all-time) vs squad_ids=%d (filtrés)",
-        len(radar_squad_ids),
-        len(squad_ids),
-    )
+    logger.debug("render_trio_view: radar squad_ids=%d (filtrés par session)", len(squad_ids))
     render_trio_synergy_radar(
         me_df=radar_me_df,
         f1_df=radar_f1_df,
@@ -228,6 +349,7 @@ def render_trio_view(  # noqa: PLR0913, PLR0915, C901, PLR0912
         f3_name=f3_name,
         f3_xuid=f3_xuid,
         colors_by_name=colors_by_name,
+        squad_records=_squad_record_set,
     )
 
     # Graphes de barres - reconstruire series avec les DataFrames de l'escouade
@@ -259,12 +381,49 @@ def render_trio_view(  # noqa: PLR0913, PLR0915, C901, PLR0912
         key_suffix=f"trio_{len(_weapon_player_infos)}",
     )
 
+    # Records killing spree et HS+PK — conditionnés par show_records
+    _spree_record_set: SquadRecordSet | None = None
+    _hspk_records: dict | None = None
+    if _show_records and _squad_record_set is not None:
+        _spree_record_set = SquadRecordSet(
+            records={
+                n: {"max_killing_spree": r.get("max_killing_spree")}
+                for n, r in _squad_record_set.records.items()
+            },
+            per_map=_squad_record_set.per_map,
+        )
+        # Records HS+PK : utilise headshot_kills de l'historique complet comme proxy
+        # (perfect_kills absent du full history — enrichissement non disponible hors session)
+        _hspk_records = {
+            n: {"hs_pk_total": r.get("headshot_kills")}
+            for n, r in _squad_record_set.records.items()
+        }
     render_metric_bar_charts(
         series=series,
         colors_by_name=colors_by_name,
         show_smooth=show_smooth,
         key_suffix=f"trio_{len(series)}",
         plot_fn=plot_multi_metric_bars_fn,
+        squad_records=_spree_record_set,
+        hspk_records=_hspk_records,
     )
+
+    # Tendance premier frag / première mort
+    # Le joueur principal (me_name) a le xuid déjà disponible en paramètre ;
+    # les coéquipiers l'ont dans leur colonne xuid (via _query_teammate_shared_stats).
+    xuids_by_name: dict[str, str] = {me_name: xuid}
+    for _name, _df in series[1:]:
+        if "xuid" in _df.columns and not _df.is_empty():
+            _unique = _df["xuid"].drop_nulls().unique()
+            if len(_unique) > 0:
+                xuids_by_name[_name] = str(_unique[0])
+    if xuids_by_name and squad_match_ids:
+        render_first_events_chart(
+            db_path=db_path,
+            xuids_by_name=xuids_by_name,
+            match_ids=squad_match_ids,
+            colors_by_name=colors_by_name,
+            key_suffix=f"trio_{len(series)}",
+        )
 
     return True

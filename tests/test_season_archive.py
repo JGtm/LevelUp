@@ -158,7 +158,11 @@ def temp_player_db(tmp_path: Path):
                 1500.0 AS team_mmr, 1480.0 AS enemy_mmr,
                 p.score AS personal_score,
                 FALSE AS is_firefight, FALSE AS is_ranked,
-                p.xuid
+                p.xuid,
+                NULL::VARCHAR AS map_name_fr,
+                NULL::VARCHAR AS playlist_name_fr,
+                NULL::VARCHAR AS pair_name_fr,
+                NULL::VARCHAR AS game_variant_name_fr
             FROM match_registry r
             JOIN match_participants p ON r.match_id = p.match_id
         """)

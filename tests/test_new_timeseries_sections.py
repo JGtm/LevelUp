@@ -140,7 +140,6 @@ class TestCorrelationScatterPlots:
             "avg_life_seconds",
             "deaths",
             color_col="outcome",
-            title="Durée de vie vs morts",
             x_label="Durée de vie (s)",
             y_label="Morts",
             show_trendline=True,
@@ -156,7 +155,6 @@ class TestCorrelationScatterPlots:
             "kills",
             "deaths",
             color_col="outcome",
-            title="Frags vs morts",
             x_label="Frags",
             y_label="Morts",
             show_trendline=True,
@@ -174,7 +172,6 @@ class TestCorrelationScatterPlots:
             "team_mmr",
             "enemy_mmr",
             color_col="outcome",
-            title="MMR Équipe vs MMR Adversaire",
             x_label="MMR Équipe",
             y_label="MMR Adversaire",
             show_trendline=True,
@@ -189,7 +186,6 @@ class TestCorrelationScatterPlots:
             empty_df,
             "kills",
             "deaths",
-            title="Vide",
         )
         assert_valid_figure(fig)
 
@@ -241,7 +237,6 @@ class TestPersonalScorePerMinuteDistribution:
 
         fig = plot_histogram(
             score_per_min,
-            title="Distribution Score Personnel / min",
             x_label="Score / min",
             y_label="Matchs",
             show_kde=True,
@@ -268,7 +263,6 @@ class TestPersonalScorePerMinuteDistribution:
 
         fig = plot_histogram(
             pd.Series([], dtype=float),
-            title="Score/min vide",
             x_label="Score / min",
         )
         assert_valid_figure(fig)
@@ -304,7 +298,6 @@ class TestWinRatioRollingDistribution:
 
         fig = plot_histogram(
             win_rate_clean,
-            title="Distribution Win Rate Glissant (10 matchs)",
             x_label="Taux de victoire (%)",
             y_label="Fréquence",
             show_kde=True,

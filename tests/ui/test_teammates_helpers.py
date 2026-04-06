@@ -8,6 +8,7 @@ from __future__ import annotations
 from unittest.mock import MagicMock, patch
 
 import polars as pl
+import pytest
 
 # ============================================================================
 # teammates_helpers.py — fonctions pures
@@ -77,14 +78,14 @@ class TestAppUrl:
 
 class TestNormalizeModeLabel:
     def test_none(self):
-        from src.ui.pages.teammates_helpers import _normalize_mode_label
+        from src.app.helpers import normalize_mode_label
 
-        assert _normalize_mode_label(None) is None
+        assert normalize_mode_label(None) is None
 
     def test_empty(self):
-        from src.ui.pages.teammates_helpers import _normalize_mode_label
+        from src.app.helpers import normalize_mode_label
 
-        assert _normalize_mode_label("") is None
+        assert normalize_mode_label("") is None
 
 
 # ============================================================================
@@ -154,6 +155,67 @@ class TestComputePlayerProfile:
         df = pl.DataFrame({"match_id": ["m1"]})
         result = _compute_player_profile(repo, df, ["m1"], "Test", "#FF0000", None)
         assert result is not None
+
+    def test_objective_mode_ctf_uses_per_mode_threshold(self):
+        """En mode CTF, le seuil objectifs doit être basé sur p90 CTF, pas combat."""
+        from src.analysis.participation_radar import RADAR_THRESHOLDS_PER_MODE
+        from src.ui.pages.teammates_synergy import _compute_player_profile
+
+        repo = MagicMock()
+        repo.has_personal_score_awards.return_value = True
+        repo.load_personal_score_awards_as_polars.return_value = pl.DataFrame(
+            {
+                "award_category": ["kill", "assist", "objective"],
+                "award_score": [500, 200, 750],
+            }
+        )
+        df = pl.DataFrame(
+            {
+                "match_id": ["m1"],
+                "deaths": [3],
+                "time_played_seconds": [600],
+                "pair_name": ["Arena:CTF on Aquarius"],
+            }
+        )
+        # Thresholds sans per_mode → fallback statique
+        result_ctf = _compute_player_profile(repo, df, ["m1"], "Test", "#FF0000", None)
+        assert result_ctf is not None
+        # 750 pts objectifs / p90_ctf(850) = ~88% — bien supérieur à l'ancien 750/9000 ≈ 8%
+        ctf_p90 = RADAR_THRESHOLDS_PER_MODE["ctf"]
+        expected_norm = min(1.0, 750.0 / ctf_p90)
+        assert result_ctf["objectifs_norm"] == pytest.approx(expected_norm, rel=0.05)
+
+    def test_per_mode_passed_in_thresholds_is_consumed(self):
+        """Si thresholds contient 'per_mode', il est utilisé et non propagé vers compute_participation_profile."""
+        from src.ui.pages.teammates_synergy import _compute_player_profile
+
+        repo = MagicMock()
+        repo.has_personal_score_awards.return_value = True
+        repo.load_personal_score_awards_as_polars.return_value = pl.DataFrame(
+            {"award_category": ["objective"], "award_score": [600]}
+        )
+        df = pl.DataFrame(
+            {
+                "match_id": ["m1"],
+                "deaths": [2],
+                "time_played_seconds": [600],
+                "pair_name": ["Arena:CTF on Streets"],
+            }
+        )
+        custom_thresholds = {
+            "objectifs": 999.0,
+            "combat": 3000.0,
+            "support": 800.0,
+            "score": 4000.0,
+            "impact_pts_per_min": 250.0,
+            "survie_deaths_per_min_ref": 2.0,
+            "survie_avg_life_ref_seconds": 90.0,
+            "per_mode": {"ctf": 600.0, "slayer": 3000.0, "other": 800.0},
+        }
+        result = _compute_player_profile(repo, df, ["m1"], "Test", "#FF0000", custom_thresholds)
+        assert result is not None
+        # 600 pts / per_mode["ctf"]=600 → norm doit être ~1.0
+        assert result["objectifs_norm"] == pytest.approx(1.0, rel=0.05)
 
 
 class TestRenderRadarDisplay:

@@ -3,9 +3,1535 @@
 > Ce fichier capture le raisonnement de l'agent entre les sessions.
 > Archivé : 2026-02-01 (logs précédents dans `.ai/archive/thought_log_pre_phase6.md`)
 
+## [2026-04-06] Mise à jour docs CHANGELOG + README What's New — Complété
+
+**Statut** : Complété
+
+**Décision technique** : Mis à jour `docs/CHANGELOG.md` (section `[6.3.0]`) et `README.md` (bloc `v6.3 What's New`) pour couvrir tous les commits post-`dda952b7` (Axe G, dernier commit ayant touché le CHANGELOG).
+
+**Éléments documentés** :
+- CHANGELOG `### Added` : cadence histogram bicolore + MA par équipe, heatmap intensité, squad cadence chart, media auto-index périodique
+- CHANGELOG `### Changed` : Axe G (titres Plotly → st.subheader), Axe H (PlotOptions), Plan V3 K/I/L (SK constants, render_chart_or_info, C901), sessions schema/perf (VARCHAR, bulk upsert, refresh incrémental)
+- CHANGELOG `### Fixed` : records invisibles Teammates (3 bugs _resolve_record/map_ui/xuid import), bornes calendrier libres
+- CHANGELOG `### Tests` : 17 tests cadence (97%), tests sessions (bulk/incremental/migrations)
+- README `v6.3` : 4 nouveaux bullets user-oriented + mise à jour "Bug fixes"
+
+**Conclusion** : Documentation à jour avec HEAD (`c7e02346`). Prochaine étape : PR ou bump de version si les features cadence sont considérées finales.
+
 ---
 
 ## Journal
+
+### [2026-04-06] — chore(teammates): désactivation du profil de tempo synchronisé — Complété
+
+**Tâche** : Désactiver le graphe "Profil de tempo synchronisé" sans supprimer son code.
+
+**Décision technique** : Suppression de l'appel à `render_squad_cadence_section()` dans le wiring de la page coéquipiers ([src/ui/pages/teammates_views.py](src/ui/pages/teammates_views.py)). Le composant, son analyse et sa visualisation restent présents dans le codebase, mais la page ne l'invoque plus.
+
+**Résultats observés** : Le graphe ne s'affiche plus et aucun chargement de données associé (`cached_load_kill_timing_for_matches`, calcul des profils, rendu Plotly) n'est déclenché.
+
+**Conclusion** : Désactivation propre et réversible, au point d'entrée UI, sans suppression de code.
+
+### [2026-04-06] — fix(i18n): mode_ui toujours traduit via translate_pair_name dans main_helpers — Complété
+
+**Tâche** : Corriger les noms de modes non traduits (`"Arena:CTF"`, `"Arena:Strongholds"`) dans la page de comparaison de sessions.
+
+**Cause racine** :
+- `add_i18n_display_columns` pose `mode_ui = _strip_mode_map_suffix(coalesce(pair_name_fr, pair_name))`
+- `pair_name_fr` contient la valeur EN copiée (`"Arena:CTF on Aquarius"`), pas une traduction → résultat `"Arena:CTF"` après stripping du suffixe " on "
+- `_filters_apply.py` voit `"mode_ui" in dff.columns` → saute sa propre traduction via `translate_pair_name`
+- `_fix_untranslated_mode_ui` vérifiait `pair_name_fr.is_null()` → jamais vrai car `pair_name_fr` ≠ NULL
+
+**Décision technique** : Réécriture de `_fix_untranslated_mode_ui` dans `main_helpers.py` pour recalculer `mode_ui` **inconditionnellement** via `translate_pair_name(pair_name)` — même logique que `_filters_apply.py`. Suppression de la condition `pair_name_fr.is_null()` et de la dépendance sur `pair_name_fr`. La fonction s'appuie sur `build_mapping + replace_strict` (pattern vectorisé identique au reste de l'app).
+
+**Résultat** : `"Arena:CTF"` → `"Capture du drapeau"`, `"Arena:Strongholds"` → `"Bases"`. 5678 tests passent (1 failure pré-existante dans `test_no_new_size_violations` pour `squad_cadence_chart.py` et `teammates_hs_pk.py`, non liée).
+
+**Conclusion** : La cohérence est rétablie — `mode_ui` est toujours produit par `translate_pair_name(pair_name)` partout dans l'app.
+
+---
+
+### [2026-04-06] — refactor(viz+i18n): plan REFACTO_VIZ_PLAN appliqué — Complété
+
+**Tâche** : Appliquer le plan de refactorisation défini dans `.ai/REFACTO_VIZ_PLAN.md` — items viz (#10, #9, #1, #7, #8) + items i18n (#A, #D, #B, #C).
+
+**Décisions techniques** :
+
+**Viz** :
+1. **#10** — `KdCiData` + `EwmaData` dataclasses dans `_plot_options.py` — supprime les violations PLR0913 de `_add_kd_ci_traces` et `_add_ewma_traces`
+2. **#9** — Magic numbers hauteur (`320`, `420`, `400`) → constantes `HEIGHT_COMPACT`, `HEIGHT_TIMESERIES`, `HEIGHT_PROGRESSION` de `_chart_series.py` (3 fichiers modifiés)
+3. **#1** — Suppression du paramètre déprécié `title=` de `apply_halo_plot_style()` + `import warnings` inutilisé
+4. **#7** — Centralisation `downsample_for_plot()` standalone dans `_chart_series.py` (appelé dans 4 fonctions `plot_*` + page timeseries), suppression copie locale dans `src/ui/pages/timeseries.py`
+5. **#8** — Découpage `maps_outcome.py` (363L) en 3 modules : `_maps_outcome_timeline.py` (167L), `_maps_outcome_history.py` (109L), `maps_outcome.py` (141L) — réexports conservés
+
+**i18n** :
+1. **#A** — `explorer_enrich.py` : `playlist_fr` et `mode_ui` priorisent `*_fr` columns via `pl.coalesce()`
+2. **#D** — DRY `normalize_mode_label` : délègue à `normalize_pair_name_to_mode_ui` (analyse → app, pas l'inverse), param `normalize` ajouté à la fonction analyse
+3. **#B** — `_filters_apply.py` : `playlist_ui` priorise `playlist_name_fr` via coalesce (avant : toujours via translate)
+4. **#C** — `filters_render.py` : options sidebar collectées depuis `playlist_name_fr` si disponible (même pattern que `map_name_fr`)
+
+**Résultats** : 5671 tests passent, aucune régression sur les modules viz/i18n. Fichier `timeseries_combat.py` à 474L (sous limite 500L). Aucune duplication `_downsample_for_plot` ni `MAX_PLOT_POINTS` locale.
+
+**Fichiers créés** : `src/visualization/_maps_outcome_timeline.py`, `src/visualization/_maps_outcome_history.py`
+
+**Fichiers modifiés** : `src/visualization/_plot_options.py`, `src/visualization/_perf_progression.py`, `src/visualization/match_bars.py`, `src/visualization/timeseries_combat.py`, `src/visualization/_timeseries_progression.py`, `src/visualization/theme.py`, `src/visualization/_chart_series.py`, `src/visualization/timeseries.py`, `src/visualization/maps_outcome.py`, `src/ui/pages/timeseries.py`, `src/ui/pages/explorer_enrich.py`, `src/app/helpers.py`, `src/analysis/mode_categories.py`, `src/app/_filters_apply.py`, `src/app/filters_render.py`
+
+---
+
+### [2025-07-25] — feat(settings): toggle show_records dans la page Paramètres — Complété
+
+**Tâche** : Ajouter un bouton toggle dans la page Paramètres pour activer/désactiver l'affichage des records historiques sur les graphes Escouade.
+
+**Décision technique** :
+- Ajout du champ `show_records: bool = True` dans `AppSettings` (Pydantic v2)
+- Toggle dans `_render_display_section` avec traductions FR/EN
+- Propagation dans `_teammates_trio.py` : `_show_records` conditionne l'appel à `_compute_all_records`
+- Extraction de `_compute_all_records` en helper pour respecter le seuil 80L (metrics en constantes module-level)
+- Corrections collatérales : import `polars` manquant dans `_chart_series.py`, import inutilisé dans `helpers.py`, noqa C901 dans `explorer_enrich.py`
+
+**Résultats** : 5665 tests passés, 0 échecs. Ruff clean. Size baseline à jour.
+
+**Fichiers modifiés** : `src/ui/settings.py`, `src/ui/pages/settings.py`, `src/ui/i18n/pages/settings.py`, `src/ui/pages/_teammates_trio.py`, `tests/ui/test_settings_page.py`, `src/visualization/_chart_series.py`, `src/app/helpers.py`, `src/ui/pages/explorer_enrich.py`, `scripts/size_baseline.txt`
+
+---
+
+### [2026-04-06] — fix(i18n): termes anglais dans la page Session — Complété
+
+**Tâche** : Corriger plusieurs libellés anglais restants dans la page "Comparaison de sessions" : "⭐ Highlights", "K+A / D", noms de modes anglais (CTF, Strongholds), noms de cartes anglais.
+
+**Cause racine** : `add_i18n_display_columns` est un module pur (0 DB). Quand `pair_name_fr` est NULL dans la vue SQL `v_match_full` (traduction absente dans `asset_translations`), il prend `pair_name` brut (ex. `"Arena:CTF"`) et applique `_strip_mode_map_suffix` qui ne fait que supprimer les suffixes — sans traduire. Résultat : `mode_ui = "Arena:CTF"` (EN brut).
+
+**Décision technique** : Utiliser la couche de normalisation existante `translate_pair_name` (avec lookup DB `metadata.duckdb`).
+
+1. **`_fix_untranslated_mode_ui`** — nouveau helper dans `main_helpers.py` : second pass après `add_i18n_display_columns` — utilise `translate_pair_name` via `build_mapping` pour les lignes où `pair_name_fr` est NULL. Produit le nom FR correct (ex. "Capture du drapeau") au lieu du brut strippé.
+2. **`i18n_columns.py`** : revert de la tentative de strip du préfixe `:` dans `_strip_mode_map_suffix` (contournement incorrect, produisait "CTF" au lieu de "Capture du drapeau").
+3. **`sc_match_highlights`** (`src/ui/i18n/pages/session_compare.py`) : "⭐ Highlights" → "⭐ Temps forts" (FR).
+4. **`sc_efficiency_label`** : "K+A / D" → "F+A / D" (FR : Frags et non Kills).
+5. **`_extract_mode()`** (`_session_compare_extra.py`) : priorise `mode_ui` (déjà traduit) avant `pair_name`.
+6. **`render_map_table()`** : utilise `map_ui` (FR) avec fallback `map_name`.
+7. **Fixes ruff** : variable `l` → `losses` (E741), `\u2014` dans f-strings → variables (Python 3.10 compat).
+
+**Résultats** : 5633 tests passent, 0 régressions.
+
+---
+
+### [2026-04-06] — fix(records): records historiques invisibles sur graphes Teammates — Complété
+
+**Tâche** : Diagnostic approfondi de l'absence d'affichage des records sur tous les graphes Teammates (Kills/Deaths, Assists, Ratio, Accuracy, Life, Performance, Spree) sauf Stats/min.
+
+**Décision technique** : Deux bugs distincts identifiés et corrigés :
+
+1. **Bug principal — `_resolve_record` sans fallback** (`src/visualization/_squad_record_shapes.py`) :
+   - `_resolve_record` : si `per_map_records` est non-None (même `{}`), tente le per-map et retourne `None` si la carte est absente — sans jamais fallback sur le record global.
+   - Pour le joueur principal, `compute_squad_records_per_map` retourne `{}` (pas de `map_ui` dans le merged). Résultat : `y_vals = [None, …, None]` → trace Plotly skippée → 0 records visibles.
+   - Fix : `if per_map_val is not None: return per_map_val` + retour global systématique.
+
+2. **Bug secondaire — `map_ui` absent du pipeline `d_self`** (`src/ui/pages/_teammates_trio_helpers.py`) :
+   - `_STAT_COLS` et `_opt` n'incluaient pas `map_ui` → `d_self` transportait `map_name` (EN) au lieu de `map_ui` (FR), divergeant des clés des records per-map des coéquipiers (noms FR).
+   - Fix : ajout de `"map_ui"` à `_STAT_COLS` et à `_opt` (colonne optionnelle dans le merge).
+
+3. **Bug session précédente — `compute_player_record` sans fallback** (`src/analysis/squad_records.py`) :
+   - Même pattern : si `pair_name` filter vide → `return None` sans fallback.
+   - Déjà corrigé en début de session.
+
+**Résultats** : 5663 tests passent. Records visibles sur tous les graphes Teammates.
+
+---
+
+### [2025-07-05] — Graphes cadence/tempo (Features A, C, E) — Complété
+
+**Tâche** : Implémenter 3 nouveaux graphiques de cadence de match basés sur les `highlight_events` (kills par tranche de temps).
+
+**Décisions techniques principales** :
+- **Feature A — Histogramme de cadence bicolore** : Barres empilées kills équipe/ennemis par tranche (15s/30s/60s) sur l'onglet Combat du dernier match. Sélecteur granularité via `st.segmented_control`.
+- **Feature C — Heatmap d'intensité** : Profil normalisé de kills en 10 phases pour N matchs, affiché en Timeseries (onglet Progression). Filtre par résultat (tous/victoires/défaites).
+- **Feature E — Profil de tempo synchronisé** : Courbes multi-joueurs (jusqu'à 8 coéquipiers) montrant le profil moyen de kills par phase. Page Coéquipiers après le squad timeline.
+- **Architecture V3** respectée : `PlotOptions` + `ChartTheme`, palette Okabe-Ito.
+- **Séparation analysis/viz/UI** : `match_cadence.py` et `match_intensity.py` (analysis pure, 0 dépendance UI), 3 modules viz, render sections dans les pages.
+- **PLR0913 fix** : `render_squad_cadence_section` avait 7 params → refactoré en `xuid_name_map: dict[str, str]` (4 params).
+
+**Fichiers créés** : `src/analysis/match_cadence.py`, `src/analysis/match_intensity.py`, `src/visualization/_cadence_histogram.py`, `src/visualization/match_intensity_heatmap.py`, `src/visualization/squad_cadence_chart.py`, `tests/test_match_cadence_intensity.py`.
+
+**Fichiers modifiés** : `match_view_players_timeline.py`, `match_view_tabs.py`, `match_view_players.py`, `timeseries.py`, `teammates_map_charts.py`, `teammates_views.py`, `_events_repo.py`, `_cache_queries.py`, i18n (viz traces/axes/hovers/labels/titles + pages match_view/timeseries/teammates).
+
+**Résultats** : 5633 tests passent, 0 échec. 14 tests unitaires spécifiques pour les modules analysis.
+
+### [2026-04-06] — Fix Discord Quick Play dans la notification — Complété
+
+**Tâche** : Corriger le libellé brut `Quick Play` dans l'embed Discord du dernier match.
+
+**Décisions techniques principales** :
+- Le flux Discord a été réaligné sur une règle stricte DB-first : `fetch_last_match_info()` remonte désormais `map_id`, `playlist_id`, `pair_id`, `game_variant_id` et les libellés EN bruts, sans lire les colonnes `_fr` de `v_match_full`.
+- `src/utils/_discord_embed.py` résout map/playlist/pair/game_variant via `resolve_asset_name(asset_id, asset_type, lang, fallback=nom_en)` ; le seul fallback métier est donc l'anglais stocké en base.
+- Le helper playlist spécifique Discord a été supprimé. Plus de fallback widgets/data_labels/logic legacy dans ce flux.
+- `src/ui/translations.py::translate_playlist_name()` conserve un chemin DB-first par nom EN quand seul le label brut est disponible côté UI, avec tests déterministes via DuckDB temporaire / DB absente.
+- Audit complémentaire des call-sites : dette restante principalement UI sur `src/app/_filters_apply.py`, `src/app/filters_render.py`, `src/ui/pages/match_view.py`, `src/ui/pages/explorer_enrich.py`, `src/ui/pages/match_history.py`, `src/ui/pages/career_top_matches_render.py`, `src/ui/pages/_session_compare_history.py` ; ces chemins traduisent encore depuis `playlist_name` / `pair_name` au lieu d'exploiter directement les IDs ou colonnes déjà résolues.
+
+**Résultats** : 138/138 tests passent sur `tests/test_translations.py`, `tests/test_delta_sync.py` et `tests/test_discord_notifier.py`.
+
+**Conclusion** : L'embed Discord n'affiche plus `Quick Play` brut dans le résumé de dernier match quand la langue Discord est en français, et le flux suit maintenant la règle projet attendue : traduction par asset ID, fallback unique vers l'anglais en BDD.
+
+### [2026-04-18] — Vérification finale Plan V3 + tests cadence histogram — Complété
+
+**Tâche** : Vérification finale du travail Plan V3 (Axes H/I/J/K/L), couverture tests et logging.
+
+**Décisions techniques principales :**
+
+- **Couverture tests** : `_cadence_histogram.py` était à 25.7% (nouveau fichier). Ajout de `test_cadence_histogram_viz.py` (17 tests) : `_format_time_label` (6 cas) + `plot_match_cadence_histogram` (11 cas : None, figure, traces, stack, PlotOptions, annotation, labels). Couverture montée à **97.1%**.
+- **Logging** : Les fonctions viz sont pures (données → go.Figure), pas d'IO. Le logging est géré au niveau UI par `safe_chart_render()`. Pas de lacune.
+- **career_logic.py** : 85% de couverture — bon pour un module de calcul.
+- **Suite complète** : 5645 tests passent, 4 skippés. Lint ruff OK, format OK.
+
+**Résultats** : Tous les fichiers modifiés par les commits `4187bb51` et `0d67e0ac` sont vérifiés.
+
+---
+
+### [2026-04-18] — Plan V3 : Axe H finalisé + dead code cleanup — Complété
+
+**Tâche** : Mettre à jour PLAN_V3 avec l'état réel d'avancement, nettoyer le code mort dans career_logic.py, et corriger les violations ruff dans _cadence_histogram.py.
+
+**Décisions techniques principales :**
+
+- **PLAN_V3 checkboxes** : Marqué 14/21 items Axe H comme [x], 8/9 Axe I [x], 4/4 Axe J [x], 7/7 Axe K [x], 10/16 Axe L [x]. Statuts de la table mise à jour (I/J/K → ✅, H/L → ⏳ résiduel).
+- **career_logic.py : code mort supprimé** : `_create_xp_history_chart` (200L) et `_OTHER_PLAYERS_COLORS` étaient dupliqués dans `career_charts.py` (le seul importeur). Suppression + nettoyage des imports orphelins (`go`, `THEME_COLORS`, `format_career_rank_label_fr`, `apply_halo_plot_style`). Fichier réduit de 450L → 231L.
+- **test_career_xp_projection.py** : Import mis à jour de `career_logic` → `career_charts` pour `_OTHER_PLAYERS_COLORS` et `_create_xp_history_chart`.
+- **_cadence_histogram.py** : 12 violations ruff corrigées (11 C408 dict()→{}, 1 F401 import unused, 1 F841 variable unused).
+- **Axe H pages restantes** : Analysé `_add_radar_trace`, `teammates_charts`, `teammates_synergy`, `career_charts/_create_xp_history_chart` — aucun n'a de param `lang` ou `height` → PlotOptions non applicable. Les noqa PLR0913 sont justifiés.
+- **Baseline tailles** : mis à jour (118 violations).
+
+**Résultats** : 5615/5615 tests passent, 4 skippés, 0 violations ruff.
+
+**Conclusion** : Branche `refactor/sessions-perf`. Axe H est complet pour les migrations PlotOptions. Les fonctions restantes non migrées ont des signatures sans lang/height (PLR0913 justifié). Prochaines cibles possibles : Axe L résiduel (47 C901 masqués, surtout complexité inhérente).
+
+### [2026-04-17] — Plan V3 : Axes K/I/L complets (sessions 2-3) — Complété
+
+**Tâche** : Poursuivre et terminer les Axes K, I et L du Plan V3.
+
+**Décisions techniques principales :**
+
+**Axe K (SK constants)** : 4 fichiers migrés vers constantes typées :
+- `_filters_cascade.py`, `filters_render.py`, `_filters_apply.py` → `SK.FILTER_*`, `SK.PICKED_SESSION_LABEL`, etc.
+- `filter_state.py` → 8 remplacements dans save/apply preferences
+
+**Axe I (render_chart_or_info)** : 6 fichiers migrés :
+- `match_view_charts.py`, `objective_analysis.py`, `_session_compare_viz.py`, `citations.py`, `match_view_participation.py`, `session_compare_charts.py`
+- Pattern A/B (safe_chart_render + if fig) → appel unique `render_chart_or_info`
+
+**Axe L (résorption C901)** : ~15 noqa supprimés ou neutralisés :
+- `career.py` : 3 fonctions C901 supprimés (violations disparues après refactoring précédent)
+- `match_view_charts.py` : `_ev_card` extrait en module-level → C901 supprimé
+- `match_view_players.py` : `render_match_impact_section` — 3 helpers extraits (`_resolve_impact_team_xuids`, `_enrich_impact_gamertags`, `_render_impact_badges`)
+- `match_view_players_nemesis.py` : 6 inner functions extraites (`_is_debug_antagonists_enabled`, `_resolve_kv_display_name`, `_clean_antagonist_name`, `_antagonist_cmp_color`, `_fmt_antagonist_count`, `_fmt_antagonist_two_lines`) → render_nemesis_section C901 supprimé
+- `match_view_participation.py`, `match_view.py`, `objective_analysis.py`, `citations.py` etc. : noqa C901 retirés (violations devenues inexistantes)
+- `session_compare.py` : `_load_friends_mapping_from_db` extrait → `_get_friends_names` C901 supprimé
+
+**Bugs corrigés :**
+- `citations.py` : parenthèse parasite après migration `render_chart_or_info` → `IndentationError`
+- `_session_compare_viz.py` : `with col_a:` désindenté → `IndentationError`
+- `filters_render.py` : liste `_SHADOW_RESTORATIONS` non fermée → `SyntaxError`
+- 3 imports `safe_chart_render` inutilisés retirés
+
+**Résultats** : 5612/5614 passent (1 e2e pré-existant, 1 noqa C901 remis car PLR0912 manquant dans `match_view_citations.py`).
+Baseline tailles mis à jour (113 violations documentées).
+
+**Conclusion** : Plan V3 Axes I/K/L substantiellement complétés sur les modules src/ui/pages/ et src/app/. Violations C901 résiduelles (16 fonctions) = complexité inhérente, non extractable sans risque. Branche `refactor/sessions-perf`.
+
+
+
+**Tâche** : Implémenter les axes H, I, J, K du Plan V3 (`PLAN_V3_2026-04-05.md`) et démarrer Axe L.
+
+**Décisions techniques principales :**
+- **Axe H** : `src/visualization/_plot_options.py` créé — `ChartTheme` (28 champs), `PlotOptions` (6 champs), `DEFAULT_THEME` singleton. 5 fichiers viz migrent leurs constantes hardcodées vers `DEFAULT_THEME` (zeroline ×3, avg_color, PATTERN_* ×5, LEAD_BG ×2, PERFORMANCE_COLORS ×11). 3 fonctions publiques migrent `lang+height` → `opts: PlotOptions | None = None`.
+- **Axe I** : `render_chart_or_info(fig, *, key, config, info_key)` ajouté à `chart_utils.py`.
+- **Axe J** : `src/data/services/_base.py` créé — `StatelessServiceProtocol` (@runtime_checkable).
+- **Axe K** : 15 constantes SK ajoutées à `session_keys.py` (filtres cascade, sessions, auto-seuils).
+- **Axe L** : `render_roster_section` dans `match_view_players.py` refactorisée — 4 helpers extraits au niveau module (`_get_team_label`, `_get_roster_name`, `_roster_pill_html`, `_resolve_enemy_team_label`), `# noqa: C901` supprimé.
+
+**Corrections qualité :**
+- Import `chart_utils.py` : ordre TYPE_CHECKING block (`collections.abc` avant `plotly`) — I001.
+- Baseline tailles mis à jour (décalages de numéros de ligne dus aux imports ajoutés dans `trio.py` et `timeseries_combat.py`).
+
+**Résultats** : 5614/5614 passent (1 échec e2e pré-existant `test_e2e_010_map_names_not_uuids` confirmé stable).
+
+**Blocage Axe L** : `apply_filters` (419L) bloqué par Axe D (`_add_derived_columns` toujours présent à la ligne 149 de `_filters_apply.py`).
+
+**Conclusion** : Branche `refactor/sessions-perf`. Axe L partiellement avancé — prochaine priorité : `render_match_impact_section` (117L, `# noqa: C901, PLR0912`).
+
+---
+
+### [2026-04-06] — refactor(sessions): cohérence schéma + perf upsert/teammates/mv_session_stats — Complété
+
+**Tâche** : Corriger 6 problèmes détectés sur le système de sessions (schéma, perf, incrémental).
+
+**Décisions techniques** :
+- `mv_session_stats.session_id` : migration de INTEGER vers VARCHAR (mismatch silencieux avec `player_match_enrichment`)
+- `idx_pme_session` ajouté aux steps de migration officiels (`add_pme_session_index.py`)
+- `_upsert_session_rows` remplacé par bulk INSERT via `conn.register()` + `_add_friends_columns` extrait
+- `backfill_teammates_signatures` : 2 sous-requêtes corrélées → JOIN groupé O(N)
+- `_refresh_session_stats` : logique incrémentale (3 dernières sessions en delta, full rebuild si `new_ids=None`) ; SQL dédupliqué dans `_SESSION_STATS_INSERT_SQL`
+- Modules `sessions_backfill.py` et `_materialized_views.py` baselinés (dette — proches de 500L avant les changements)
+- logging : debug/warning ajoutés dans `_refresh_session_stats`, `_partial_refresh_session_stats`, `_upsert_session_rows`
+
+**Commits** :
+- `83edd854` — implémentation P1-P4 (7 fichiers)
+- `6c47f94c` — 22 tests ciblés + correction baseline taille
+
+**Résultats** : 57/57 tests sessions passent, tous hooks pre-commit OK.
+
+**Note Polars** : `map_elements(skip_nulls=True)` par défaut → signature NULL retourne `None` (pas `False`) pour `_iwf`/`_ktc`. Le COALESCE dans l'UPDATE ON CONFLICT préserve la valeur existante dans ce cas.
+
+**Conclusion** : Branche `refactor/sessions-perf` prête pour PR.
+
+---
+
+### [2026-04-06] — Audit complet CHARTS_AND_TABLES.md vs plan V3 + codebase — Complété
+
+**Tâche** : Vérification que `CHARTS_AND_TABLES.md` est exhaustif au regard du plan V3 (2026-04-05) et du codebase réel.
+
+**Décision technique** : Audit en deux passes :
+1. Plan V3 = axes structurels (PlotOptions, BaseService, SK, render_chart_or_info, C901) — pas de nouveaux visuels déclarés.
+2. Grep systématique de toutes les `def plot_*/create_*/render_*` dans `src/visualization/` et `src/ui/pages/` × vérification appels effectifs.
+
+**5 sections manquantes confirmées (utilisées dans l'UI)** :
+- §3.20 `render_weapon_kills_chart` (`_timeseries_weapons.py`) — barres armes sur période filtrée, appelé depuis `timeseries.py`
+- §4.14 `render_weapon_kills_bar_chart` (`teammates_weapons.py`) — barres groupées armes multi-joueurs, appelé depuis `_teammates_trio.py` et `teammates_views.py`
+- §4.15 `render_first_events_chart` (`teammates_charts.py`) — timeline premier frag/mort escouade, appelé depuis `_teammates_trio.py`
+- §5.19 `render_scoreboard_player_detail_html` (`match_view_scoreboard_detail.py`) — panneau HTML collapsible (armes, médailles, attendu, antagoniste), appelé depuis `match_view_scoreboard.py`
+- §6.10 `render_participation_trend_section` (`session_compare_charts.py`) — barres horiz. profil participation A vs B (6 axes), appelé depuis `session_compare.py`
+
+**1 correction source erronée** : §4.8 source `friends_impact_heatmap.py::plot_squad_map_heatmap` → `_heatmap_squad.py::plot_squad_map_heatmap`.
+
+**Fonctions exportées non utilisées dans l'UI (non ajoutées)** : `plot_cumulative_net_score`, `plot_cumulative_kd`, `plot_rolling_kd`, `plot_accuracy_last_n`, `plot_kd_timeseries`, `plot_map_ratio_with_winloss`, `render_weapon_kills_table`.
+
+**Résultats** : Doc mis à jour — ~92 → ~96 `st.plotly_chart`, ~73 → ~80 sections, 9 → 10 tableaux HTML.
+
+**Conclusion** : Doc exhaustif au 2026-04-06. Prochaine mise à jour requise si nouveaux visuels ajoutés dans V3 (axes H/I/J/K/L ne créent pas de nouveaux visuels).
+
+---
+
+### [2026-04-07] — Correction 10 échecs pré-existants (tests unitaires + intégration) — Complété
+
+**Tâche** : Corriger l'intégralité des tests en échec pré-existants sur la branche `fix/preexisting-test-failures` (depuis `refactor/viz-pipeline-v2`).
+
+**Décision technique** : 5 catégories de causes racines identifiées et traitées :
+1. Fixture `match_registry` manquait la colonne `film_match_start_ms` → 3 tests échouaient
+2. `os_card` non re-exporté depuis `match_view.py` → import explicite + `# noqa: F401`
+3. CSS `max-width/max-height: 30px` vieilli, valeur réelle = 32px → patch tests
+4. `ensure_resolution_views` auto-attachait `metadata.duckdb` réel → test appelant les fonctions privées directement
+5. Fixtures d'intégration (`mv_player_matches`) manquaient 4 colonnes `*_fr` + API `build_impact_matrix` migrée vers `ImpactEventSets`
+6. `medals_fr.json` absent → `@pytest.mark.skipif` conditionnel
+
+**Résultats** :
+- Suite unitaire : 5578 passed, 4 skipped ✅
+- Suite intégration : 56 passed, 1 skipped ✅
+- `ruff check src/` : All checks passed ✅
+
+**Conclusion** : Tous les échecs pré-existants sont corrigés. Prochaine étape : merge vers `refactor/viz-pipeline-v2`.
+
+---
+
+### [2026-04-05] — Axe G : titres Plotly externalisés vers st.subheader — Complété
+
+**Tâche** : Implémenter Axe G du plan `PLAN_REFACTO_ASSET_TRANSLATIONS_2026-04-02.md` V2 — déplacer les titres Plotly (passés via `apply_halo_plot_style(title=...)`) vers `st.subheader()` dans les pages.
+
+**Décision technique** : Transformation en 4 sous-axes :
+- G1 : `DeprecationWarning` rétrocompatible dans `theme.py`
+- G2 : Suppression automatisée via script Python regex sur ~55 signatures viz (25 fichiers)
+- G3 : Ajout `st.subheader()` dans 8 pages/composants + suppression des `title=` des call-sites
+- G4 : `margin_top` 30→10 dans `config.py`
+
+**Complexités rencontrées** :
+- Regex supprimant le `,` avant `title={}` → virgules manquantes dans `update_layout` (5 fichiers)
+- `create_kd_indicator` : `title` est un label de trace `go.Indicator`, PAS un titre de chart → paramètre conservé
+- `plot_trio_kills_deaths` : `title` doublement utilisé (chart title + y-axis label) → supprimé des deux
+- Script de fix tests trop large : a incorrectement supprimé `title=` de `format_career_rank_label_fr()` et `SingleSeriesChartData.from_series()` → restaurations manuelles
+- Baseline tailles obs solète après removal des params → `enforce_size_limits.py --update`
+
+**Résultats** : 5573 passés / 6 pré-existants inchangés. Commit `dda952b7`.
+
+**Conclusion** : Plan V2 entièrement complété. Tous les Axes (C, D, E, F, G) commités sur `refactor/viz-pipeline-v2`.
+
+---
+
+### [2026-04-05] — Vérification finale V1+V2 post-refacto — Complété
+
+**Tâche** : Vérification finale complète du travail V1+V2 (branches `refactor/asset-translations-db-first` → `refactor/viz-pipeline-v2`). Couverture tests unitaires, non-régression, intégration, E2E, logging et qualité statique.
+
+**Décision technique** : Vérification systématique par couche (tests → qualité → logging → E2E). Confirmation pré-existance de tous les échecs via `git stash` avant/après.
+
+**Résultats par catégorie :**
+
+| Catégorie | Résultat | Commentaire |
+|-----------|----------|-------------|
+| **Tests unitaires** | `5573 passés / 6 échoués` | 6 échecs pré-existants confirmés par stash |
+| **Tests intégration** | `53 passés / 4 échoués` | 4 pré-existants : `map_name_fr` absent du test-DB + état DB |
+| **Ruff (src/)** | `All checks passed!` | Aucune violation |
+| **Taille fichiers** | 114 violations baseline | Aucune NOUVELLE violation |
+| **test_code_quality + test_imports** | `11/11 passés` | SRP, imports, etc. |
+| **Tests E2E** | `14 échoués` | Cause : navigateur Playwright non installé (`playwright install` requis) — contrainte env, pas régression |
+
+**Audit logging :**
+- `src/app/` : couverture complète (data_loader, filters_render, i18n_columns, cache_control, kpis_render…)
+- `src/visualization/` : 2/30 fichiers avec logger — par design (fonctions pures retournant `go.Figure`)
+- `src/ui/pages/` : 127 appels log + `safe_chart_render` wrappe 84 charts ; 4 pages ont des `try/except` manuels acceptables
+
+**Points d'attention mineurs (non bloquants) :**
+- 4 pages (`match_view_players`, `match_view_players_timeline`, `match_view_weapon_kills`, `teammates_weapons`) utilisent `try/except` manuel plutôt que `safe_chart_render` — acceptable
+- E2E nécessite `playwright install chromium` + app Streamlit en cours d'exécution
+
+**Conclusion** : Branche `refactor/viz-pipeline-v2` propre et stable. Plan V2 entièrement validé. Prête pour merge vers `main`.
+
+---
+
+### [2026-04-04] — Phase 7f : SquadRecordSet — Complété
+
+**Tâche** : Implémenter Phase 7f du plan `PLAN_REFACTO_ASSET_TRANSLATIONS_2026-04-02.md` — remplacer le passage de `records + records_per_map` (2 kwargs) par un seul `squad_records: SquadRecordSet | None`.
+
+**Décision** : Créer `SquadRecordSet` dans `_chart_series.py` (aux côtés de `ChartData`). `plot_hs_pk_stacked` et `_render_per_minute_stats` gardent leurs propres formats (shapes différentes, pas groupables).
+
+**Fichiers modifiés (6)** :
+- `src/visualization/_chart_series.py` : ajout `SquadRecordSet` dataclass
+- `src/visualization/trio.py` : `plot_trio_metric` + `plot_trio_kills_deaths`
+- `src/visualization/match_bars.py` : `plot_multi_metric_bars_by_match`
+- `src/ui/pages/teammates_charts.py` : `render_metric_bar_charts` + `_plot_trio_metric_chart` + `render_trio_charts`
+- `src/ui/pages/_teammates_trio_helpers.py` : `_render_trio_performance_charts`
+- `src/ui/pages/_teammates_trio.py` : construction de 2 `SquadRecordSet` + mise à jour call sites
+
+**Résultats** : 80/80 tests ciblés vert. Suite complète : 1212/1213 — 1 échec pré-existant (`test_load_first_event_times_kill_shared`, confirmé par stash test).
+
+**Conclusion** : Plan `PLAN_REFACTO_ASSET_TRANSLATIONS_2026-04-02.md` V1 entièrement complété sur branche `refactor/asset-translations-db-first`.
+
+---
+
+### [2026-04-04] — refactor(quality): corrections violations code qualité + bilan plan asset-translations — Complété
+
+**Décision** : Revue de l'état réel du plan `PLAN_REFACTO_ASSET_TRANSLATIONS_2026-04-02.md` — le code avait avancé bien au-delà de ce que le document indiquait (stale). Violations de qualité préexistantes corrigées.
+
+**Bilan plan (état réel vs bilan documenté) :**
+- Phase 0 (i18n_columns) : ✅ déjà complétée (`src/app/i18n_columns.py` + intégration `main_helpers.py`)
+- Phase 0 résidu (TeammatesService) : ✅ résolu implicitement (requête SQL génère déjà `map_ui` via COALESCE)
+- Phases 1–4 (is_uuid_like, normalize_mode_label, _normalize_mode_label, cleanup) : ✅ toutes complétées
+- Phases 5–6 : ✅ vérifiées et barrées
+- Phase 7a–7e (ChartData) : ✅ `_chart_series.py` créé, 5 fonctions visualisation migrées, tests créés
+- **Phase 7f : ⏳ non faite** — les kwargs `records`/`records_per_map`/`colors_by_name` subsistent dans les signatures des 5 fonctions ; ChartData est construit en interne (pas passé depuis l'extérieur). Nécessite d'inverser le flux : callers construisent ChartData.
+
+**Corrections violations qualité (cette session) :**
+- `match_view.py` : `_render_kpi_cards` 84L → extraire `_KPI_TEXT_STYLE` + `_simple_kpi_card` au niveau module → 75L ✅
+- `match_view_weapon_kills.py` : supprimer `PLOTLY_STATIC_CONFIG` inutilisé (F401)
+- `_sync_indicator.py` : supprimer `total_matches = ...` inutilisée (F841)
+- `match_view_players.py` : ajouter `# noqa: C901, PLR0912` sur `render_match_impact_section`
+- `tests/test_code_quality.py` : ajouter `compute_and_write` et `_render_medals_and_citations_section` aux `_SRP_EXCEPTIONS` (termes domaine/composants UI légitimes)
+- `scripts/size_baseline.txt` : enregistrer `spawn_detection.py` (560L) comme dette connue
+
+**Tests après corrections :** 80/80 vert sur les modules concernés par le plan.
+
+**Prochaine étape :** Phase 7f — inverser le flux ChartData dans `teammates_charts.py` + `_teammates_trio.py` pour que les callers construisent `ChartData` et le passent aux fonctions de viz (suppression des kwargs `records`/`records_per_map`/`colors_by_name` des 5 signatures).
+
+### [2026-04-04] — chore(spawn): désactiver FilmStartService en prod + documentation complète — Complété
+
+**Décision** : En l'état (55% à ±5s), la feature ne doit pas tourner en production.
+Deux actions prises :
+1. `_FILM_START_ENABLED = False` dans `film_start_service.py` — `compute_and_write` retourne immédiatement `None` sans calcul ni écriture en DB.
+2. Docstring module `spawn_detection.py` enrichie d'une section "ÉTAT DE LA RECHERCHE" avec pour chaque approche testée : hypothèse, test réalisé, raison de l'échec.
+
+**Approches documentées** :
+- Discontinuité de coordonnées → wraparound 12-bit rend le seuil inatteignable
+- Filtre strict b5=0x40 → format b5=0x80 dominant sur certains modes = régression -16%
+- Correction API second scan → détruit les grandes maps (travel time 30-45s = gap "innocent")
+- Déplacement vectoriel per-frame → vitesse identique lobby/match, prémisse fausse
+
+**Performance de référence** : 55% à ±5s / 60% à ±10s / 91% à ±30s (198 matchs, vrais timestamps manifest).
+
+**Piste la plus prometteuse non testée** : bounding box expansive par joueur sur 5-10s glissants (nécessite meilleure couverture frames b5=0x40 en début de match, actuellement 23% des matchs).
+
+**Fichiers modifiés** :
+- `src/data/services/film_start_service.py` (flag `_FILM_START_ENABLED = False`)
+- `src/analysis/spawn_detection.py` (documentation + helpers déplacement non actifs)
+
+---
+
+### [2026-04-04] — fix(spawn_detection): exclure frames b5=0x00 (game-state) + investigation filmshell — Complété
+
+**Contexte** : Exploration du repo filmshell (dend/filmshell) pour améliorer la détection du début de match. Investigation approfondie du format des frames de position Halo Infinite.
+
+**Découvertes critiques (filmshell motion-extraction.md + motion-extractor.ts)** :
+1. **Format confirmé** : marker `A0 7B 42`, b5=0x40, b6=(pi<<5|base), b7=0x00 (humain), b9=0x56, d0hnib=4, coords Y 16-bit / X 12-bit
+2. **3 variantes d'encodage** : standard base=0x09 (Live Fire, Aquarius), b3variant (Argyle), 40088064 (Bazaar)
+3. **`DISCONTINUITY_THRESHOLD=4000`** : utilisé par filmshell pour filtrer les téléportations (spawn/mort), PAS pour les détecter
+4. **Frames `b5=0x00, base=0x0A`** : frames game-state (timer, score, objectif) répétés en lobby avec b9 variable → faux sig-changes. Ces frames ont d0=0x0A, d1-d3=0x00 CONSTANTS mais b9 varie → détection incorrecte de mouvement à 2.5s
+
+**Hypothèse testée** : Filtre strict b5=0x40 + d0hnib=4 (aligné sur filmshell) → élimine tots les frames lobby.
+**Résultat** : Trop restrictif. Certains modes (ex: type `b5=0x80, base=0x0B`) utilisent des formats non-standard AUSSI BIEN en lobby qu'en match → le filtre strict donne 31% à 5s vs 47% baseline.
+
+**Correction minimale retenue** : Exclure UNIQUEMENT `b5=0x00` dans `_is_position_frame` :
+- Marginal improvement : 47% → 48% à 5s (non-régressif sur tous les modes)
+- N'aide pas pour Fortress (lobby via `b5=0x80` frames) car API correction gère ce cas
+- Confirmation : avec `api_first_event_ms~35s`, Fortress donne 34.1s (≈ attendu 33s) ✓
+
+**Tiebreak restauré** : "Préférer la fenêtre tardive" est correct pour le filtre permissif utilisé (lobby < spawn). Le changement vers "précoce" était wrong.
+
+**Conclusion** : L'API correction (`api_first_event_ms` dans `estimate_film_match_start_ms`) est l'outil principal pour corriger les faux positifs de lobby. La correction b5!=0x00 est un gain marginal sur les cas où des frames game-state pur (b5=0x00) créent des fax positifs.
+
+**Fichiers modifiés** : `src/analysis/spawn_detection.py` (correction `_is_position_frame`)
+
+---
+
+### [2026-04-04] — fix(match_view): harmoniser police des cards KPI du haut avec card MMR — Complété
+
+**Décision** : Deux incohérences de police dans `_render_kpi_cards` (match_view.py) :
+1. `_text_style` avait `font-size:24px` alors que `.os-card-kpi` est à `28px` → taille harmonisée à 28px
+2. Le span du score (`50-33`) n'avait pas de `font-family` explicite → héritage de `[class*="st-"] { font-family: var(--font-body) !important }` donnait `Roboto Condensed` au lieu de `Bebas Neue` → ajout de `font-family:var(--font-display)` dans le style inline du span
+
+**Fichiers modifiés** : `src/ui/pages/match_view.py`
+
+**Résultat** : Les 4 cases du haut (Date, Score, Playlist, Mode+Carte) utilisent désormais la même police Bebas Neue que la case MMR d'équipe.
+
+---
+
+### [2026-04-04] — refactor(V2 Axe C): élimination callbacks normalize_mode_label_fn / normalize_map_label_fn — Complété
+
+**Décision** : Remplacement de 49 sites d'injection de callbacks `normalize_mode_label_fn` / `normalize_map_label_fn` par des appels directs à `normalize_mode_label(x, lang=get_lang())` et `normalize_map_label(x)` dans toute la chaîne de filtrage et d'affichage.
+
+**Fichiers modifiés** :
+- `src/app/_filters_apply.py` : params LEGACY marqués `= None`, `_add_derived_columns` réduit à 2 args, `_show_debug_info_before` simplifié
+- `src/app/_filters_cascade.py` : `_vectorize_ui_columns` réduit à 2 args, `_render_cascade_filters` params LEGACY `= None`
+- `src/app/filters_render.py` : `_compute_all_filter_options` réduit à 2 args, `render_filters_sidebar` ne lit plus les callbacks LEGACY
+- `src/app/_page_context.py` : champs `normalize_mode_label_fn` / `normalize_map_label_fn` marqués `NotRequired` LEGACY
+- `src/app/page_router.py` : `build_match_view_params` param `normalize_mode_label_fn` rendu optionnel `= None`
+- `src/ui/pages/explorer.py` : `_render_match_filters` et `_render_match_selector` allégés
+- `src/ui/pages/match_view.py` : `_render_kpi_cards` et `_render_match_header` allégés
+- `streamlit_app.py` : 3 occurrences de passage de callbacks supprimées
+- `tests/test_i18n_derived_columns.py` : appels à 4 args mis à jour (2 args)
+- `scripts/size_baseline.txt` : ratchet mis à jour (fonctions dont la position a bougé)
+
+**Résultats** : 5534 tests, 0 régression introduite par Axe C. Violations code_quality pré-existantes non liées.
+
+---
+
+### [2026-04-04] — fix(scoreboard): citations incohérentes entre panneau expandable et onglet Citations — Complété
+
+**Problème** : En cliquant sur un joueur (ex: Chocoboflor) dans la partie expandable du scoreboard, les citations affichées ne correspondaient pas à celles de l'onglet Citations de la page match view pour ce même joueur.
+
+**Cause** : `_load_citation_items` (scoreboard) n'appliquait pas le filtre "déjà maître avant ce match" que `render_match_citations_section` (onglet Citations) applique — via `_compute_mastery_display` + `_parse_tier_targets`. Le scoreboard affichait donc des citations pour lesquelles le joueur était déjà maître depuis avant le match en question.
+
+**Correction** : Dans `_load_citation_items` (fichier `match_view_scoreboard_detail.py`) :
+- Ajout d'un appel `engine.aggregate_for_display(match_ids=None)` pour obtenir `full_map`
+- Import de `_compute_mastery_display` et `_parse_tier_targets` depuis `src.ui.commendations`
+- Application du même filtre : si `is_master` ET `was_master_before` → exclure la citation
+
+**Résultat** : Les deux vues sont désormais cohérentes.
+
+---
+
+### [2026-04-04] — fix(ui): style tableau Outil de destruction aligné sur Historique des rencontres — Complété
+
+**Décision** : Remplacement du HTML inline de `_render_weapon_table` (`match_view_weapon_kills.py`) par les classes CSS `os-sb-*` (`os-table-wrap os-sb-wrap`, `os-table os-scoreboard`, `os-sb-th`, `os-sb-row`, `os-sb-td`), identiques à celles utilisées dans `_build_encounter_table_html` (tableau Historique des rencontres, onglet Équipe).
+
+**Résultat** : Le tableau Outil de destruction hérite du style scoreboard (fond, bordures, hover, typographie) sans toucher à la mise en page colonnes camembert + tableau.
+
+**Conclusion** : Modification minimale, aucun test impacté.
+
+---
+
+### [2026-04-04] — feat(viz): Phase 7 — ChartData + migration 5 fonctions escouade — Complété
+
+**Phase 7a** : Créé `src/visualization/_chart_series.py` (203L) avec `MatchSeries`, `ChartData`, `HEIGHT_COMPACT/NORMAL/PM`, `MAX_PLOT_POINTS`, `_add_categorical_record_bars`. Tests : 24 cas (`test_chart_series.py`).
+
+**Phases 7b-7e** : Migration des 5 fonctions de chart vers `ChartData.add_record_overlays()` à la place des appels directs `add_record_shapes` / `add_overlay_record_shapes` :
+- `plot_trio_metric` → 1 ChartData (group, is_negative selon is_inverse)
+- `plot_trio_kills_deaths` → 2 ChartData (kills is_negative=False, deaths is_negative=True)
+- `plot_multi_metric_bars_by_match` → 1 ChartData (per-player xs)
+- `plot_hs_pk_stacked` → 1 ChartData (overlay mode)
+- `_render_per_minute_stats` → 1 ChartData (categorical mode, global_records = tuples)
+
+**Décision** : Phase 7f (suppression anciens kwargs `records`/`colors_by_name`) différée — les callers (`_teammates_trio.py`) ne construisent pas encore de ChartData. Risque: l'interface publique reste inchangée. La valeur de 7b-7e = dispatch centralisé + suppression du boilerplate import-dans-bloc.
+
+**Résultat** : 5533 passed (+44 vs baseline). `trio.py` = 501L → enregistré baseline.
+
+### [2026-04-04] — test: couverture manquante post-refacto Phases 1-4 — Complété
+
+**Lacunes identifiées** :
+1. `src/utils/strings.py::is_uuid_like` — testé indirectement via re-export, jamais directement
+2. `compute_squad_records_per_map` — zéro tests, Phase 4 y a rendu `map_ui` obligatoire (9 cas ajoutés)
+3. E2E — aucun test vérifiant que les noms de cartes dans l'UI ne sont pas des UUIDs bruts
+
+**Résultat** : +20 tests (11 `test_utils_strings`, 9 `TestComputeSquadRecordsPerMap`, 1 `test_e2e_010`). 44/44 passent.
+
+### [2026-04-04] — fix(film-start): batch fix 753 valeurs film_match_start_ms incorrectes — Complété
+
+**Problème** : 753 valeurs `film_match_start_ms < 5000ms` en production dans `shared_matches_v2.duckdb`. Cause racine : le premier backfill `scan_first_movements` enregistrait les mouvements de lobby (1-5s) comme "premier mouvement". À l'apparition du vrai spawn (~30-35s), le joueur était déjà dans `first_change` → sauté.
+
+**Décision technique** :
+- Commit `99076d6e` — algorithme spawn detection v2 : `find_peak_activity_window` (scan ALL sig changes, window de 2s avec le max de joueurs simultanés) comme estimation initiale, + second passage avec `ignore_before_ms` si gap > 15s avec les `highlight_events` API. La mécanique `ignore_before_ms` est la clé : les changements avant la coupure mettent à jour `spawn_sig` sans enregistrer dans `first_change`, permettant de détecter le VRAI spawn suivant.
+- **Insight Halo Infinite** : les joueurs peuvent marcher dans la zone de spawn pendant le countdown → même `find_peak_activity_window` peut se déclencher en lobby (ex: Fortress match → 12.5s sans API, 34.1s avec API).
+
+**Batch fix en 4 passes** :
+1. Run1 (`&` background) : killed par SIGHUP → ~134 fixes
+2. Run2 (nohup) : crash DB locked (orphelin run1) → ~2 fixes
+3. Run3 (foreground + tee) : crash DB locked mid-batch → ~413 fixes
+4. Run4 (foreground, après kill orphelins) : 259/259 ✓
+
+**Résultats** :
+- Suspects < 5s : 753 → 139 → 0
+- 139 cas irréductibles (6 chunks, second passage insuffisant) → NULLifiés → UI utilise `GREATEST((duration - playable_duration)*1000, 0)` comme fallback
+- Distribution finale : 814 OK (≥ 5s) | 718 NULL (fallback) | 0 suspects | Total 1532
+- Percentiles : p10=3.7s, médiane=19.6s, p90=50.3s
+
+**Prochaine étape** : Relancer Streamlit, vérifier l'affichage des clips film sur quelques matchs.
+
+### [2026-04-04] — fix(tests): fixtures manquantes map_ui + tests orphelins — Complété
+
+**Problème** : Phase 4 (maps.py / squad_records.py) a rendu `map_ui` obligatoire comme clé de groupement. 10 fixtures de tests créées avant cette migration ne contenaient pas la colonne → `ColumnNotFoundError` dans 14 tests. Également 3 tests importaient la fonction `_normalize_mode_label` supprimée (Phase 3), et 1 test testait `add_ui_columns` supprimée (Phase 2).
+
+**Décision** : 
+- Ajouter garde défensive dans `compute_map_breakdown` : si `map_ui` absent → retourner DataFrame vide (cohérent avec le cas `is_empty()`).
+- Ajouter `map_ui` dans 7 fixtures de tests (`test_data_services_contracts`, `test_squad_map_heatmap`, `test_polars_migration`, `test_i18n_derived_columns`, `test_teammates_map_charts`, `test_win_loss_page`).
+- Rediriger 3 tests qui importaient `_normalize_mode_label` supprimée → `normalize_mode_label` de `src.app.helpers`.
+- Supprimer `test_add_ui_columns_polars` (teste une fonction morte).
+- Mettre à jour `test_groups_by_map_name_when_no_map_ui` : ancienne assertion (grouper par map_name) → nouvelle assertion (`result.is_empty()`).
+
+**Résultat** : 5489 passed, 4 skipped, 6 failed (tous pre-existants hors de notre scope : `test_ruff_no_errors`, `TestSharedHighlightEvents` ×3, `test_resolution_views`, `test_scoreboard_expand` ×2).
+
+**Prochaine étape** : V1 Phase 7 (Axe B ChartData), V2 Axes C-G.
+
+### [2026-04-04] — fix: mode_ui absent dans le dropdown Mode de la page Explorer — Complété
+
+**Problème** : La liste déroulante "Mode" de la page Explorer affichait les valeurs brutes (`pair_name` DB) au lieu des libellés normalisés (ex. "Arena:Slayer on Aquarius" au lieu de "Assassin").
+
+**Cause racine** : `streamlit_app.py` passe `dff=ctx.df` (DataFrame brut) à `render_explorer_page`. Or `ctx.df` n'est jamais enrichi par `_vectorize_ui_columns` (qui crée la colonne `mode_ui`). Seul `ctx.dff` contient `mode_ui`, mais il est filtré par la sidebar — inapproprié pour un Explorer qui doit afficher tous les matchs.
+
+**Fix** : Dans `_render_match_filters` (`src/ui/pages/explorer.py`), ajouter un enrichissement conditionnel : si `mode_ui` est absent et `pair_name` présent, appliquer `normalize_mode_label_fn` via `map_elements` pour créer `mode_ui`. Ce pattern est déjà disponible car `normalize_mode_label_fn` est un paramètre de la fonction.
+
+**Décision** : Ne pas changer le `dff=ctx.df` dans `streamlit_app.py` (conserver l'accès à tous les matchs sans les filtres sidebar). Corriger au plus près du symptôme dans la page elle-même.
+
+**Résultat** : Aucune erreur pylance. Le dropdown Mode affichera désormais les modes normalisés (FR/EN selon la langue).
+
+### [2026-04-04] — refactor(V1 Phases 1-4) : i18n pipeline + normalisation mode — Complété
+
+**Statut** : Complété  
+**Branche** : `refactor/asset-translations-db-first`
+
+**Décision technique** :
+Application des Phases 1→4 du plan V1 (Axe A). Phase 0 déjà complète (i18n_columns + SQL map_ui alias).
+
+- **Phase 1** : `src/utils/strings.py` créé avec `is_uuid_like` unifié. Deux copies supprimées : `_is_uuid_like` dans `translations.py` remplacée par un import, `is_uuid_like` dans `helpers.py` aussi. Pattern regex compilé une fois (`_UUID_LIKE_RE`).
+- **Phase 2** : `normalize_mode_label` découplée de `st.session_state`. Signature `(pair_name, *, lang="fr", normalize=True)`. Import `get_lang` supprimé de `helpers.py`. Test `test_normalize_mode_label.py` écrit (7 cas).
+- **Phase 3** : `_normalize_mode_label` dans `teammates_helpers.py` supprimée. Remplacée par `normalize_mode_label(p, lang=get_lang())` via lambda — gain de justesse (strips "on X", Forge, Ranked).
+- **Phase 4** : `add_ui_columns()` et `render_cascade_filters()` supprimées de `filters.py` (code mort — aucun call-site). 8 imports orphelins nettoyés via ruff. Guards `_map_col` dans `squad_records.py:165` et `maps.py:89-90` supprimées → `"map_ui"` direct. Fixture de test `test_backlog_fixes.py` complétée avec `map_ui`.
+- **Baseline** : mis à jour via `enforce_size_limits.py --update` (décalage de lignes dû aux commits précédents sur la branche parente).
+
+**Résultats** : 98 tests ciblés vert. Suite complète en cours.
+
+---
+
+### [2026-04-04] — plan: ajout Axe G (titres graphes externalisés) — Complété
+
+**Statut** : Complété
+
+**Décision technique** :
+L'utilisateur veut supprimer les titres embarqués dans les figures Plotly (`apply_halo_plot_style(title=...)`) et les remplacer par des titres Streamlit au-dessus des graphes (`st.subheader` / `st.markdown("####")`), sur le modèle du titre "Complémentarité de l'escouade". Scan : 74 appels avec titre non-vide, `margin_top=30` dans `PLOT_CONFIG` à réduire à 10 après migration. Plan G1→G4 ajouté.
+
+**Branche** : `fix/map-ui-fr-mismatch`
+
+---
+
+### [2026-04-04] — plan: vérification exhaustive + corrections post-scan — Complété
+
+**Statut** : Complété
+
+**Décision technique** :
+Vérification exhaustive du plan (V1 + V2) contre l'état réel du codebase via agent Explore + lectures ciblées.
+
+**Corrections apportées :**
+- `main_helpers.py:373` → `:375` (décalé de 2 lignes)
+- Phases 5 et 6 marquées ✅ (armes déjà DB-first, cache playlist déjà sous @st.cache_data via hiérarchie d'appels)
+- Phase 0 : `TeammatesService.load_teammate_stats` n'appelle pas `add_i18n_display_columns` — SQL fetch `map_name_fr`/`pair_name_fr` mais `map_ui` absent du df retourné → item rouvert
+- Axe C : 28 → **49 occurrences** réelles (+75% ; 7 fichiers, répartition documentée)
+- Axe D : `_vectorize_ui_columns` est une version **simplifiée** (59L) de `_add_derived_columns` (135L), pas copie identique — D3 nécessite validation mode_ui avant suppression
+- Axe E : clarification périmètre — les 3 modules > 500L trouvés par le scan (`_weapon_kills_repo.py`, `teammates_service.py`, `weapon_parser.py`) sont déjà dans `size_baseline.txt`, hors scope de ce plan
+- Axe E′ : ajout `session_compare.py` (538L, déjà baseline, déjà dépassé)
+- `import pandas` dans `distributions.py` : sous garde `TYPE_CHECKING` — pas une violation
+
+**Résultats** : Plan à jour, aucune omission identifiée dans le périmètre visualization/UI/i18n.
+
+**Branche** : `fix/map-ui-fr-mismatch`
+
+---
+
+### [2026-04-04] — plan: ajout V2 (Axes C/D/E/F) au plan refacto asset-translations — Complété
+
+**Statut** : Complété
+
+**Décision technique** :
+Scan complet du codebase (visualization/, ui/pages/, app/) pour identifier les problèmes non adressés par V1 et écrire un plan V2 en §8-10 du plan existant. Quatre axes :
+
+- **Axe C** : Éliminer le pattern callback fn injection (`normalize_mode_label_fn` / `normalize_map_label_fn` en Callable dans 28 sites). Possible dès que V1 Phase 2 rend ces fonctions pures.
+- **Axe D** : Centraliser `mode_ui` dans `i18n_columns.py` + démanteler `_add_derived_columns` (noqa: C901/PLR0912) → 3 fonctions. Supprimer `_vectorize_ui_columns` dans `_filters_cascade.py`. Déplacer `_rolling_mean` de `timeseries.py` vers `_timeseries_helpers.py` (import privé cross-module → dette).
+- **Axe E** : Résorber 3 violations actives > 500L : `maps_outcome.py` 590L → `_maps_outcome_data.py`, `friends_impact_heatmap.py` 507L → `_heatmap_data.py`, `timeseries.py` 505L → extraction helpers. Identifier 7 modules proches de la limite (450–500L) dont `teammates_charts.py` qui grossira avec V1 Phase 7.
+- **Axe F** : `SingleSeriesChartData` pour les 7 graphes solo timeseries. Harmoniser les magic numbers height (`420` vs `400` incohérents). Centraliser `from_series()` avec rolling mean pré-calculé.
+
+**Oublis détectés par rapport au plan V1** :
+- `match_impact_timeline.py` (482L, 2 god functions avec 4 violations noqa chacune) — non adressé nulle part
+- `maps.py:89-90` guard similaire à `_map_col` — ajouté en Phase 4 (déjà fait dans la mise à jour précédente)
+
+**Résultats** :
+- §8 (Analyse V2), §9 (Checklist V2), §10 (Git V2) ajoutés au plan.
+- Aucun code modifié.
+
+**Branche** : `fix/map-ui-fr-mismatch`
+
+---
+
+### [2026-04-04] — plan: revue + mise à jour PLAN_REFACTO_ASSET_TRANSLATIONS — Complété
+
+**Statut** : Complété
+
+**Décision technique** :
+Revue du plan de refacto i18n pipeline + ChartData. Constat d'écart entre le plan (daté 2026-04-03) et l'état réel du code :
+
+- **Phase 0 déjà complète** : `src/app/i18n_columns.py` existe et est intégré dans `main_helpers.py:373`. La signature implémentée `(df, lang="fr")` est plus simple que prévu (pas de callbacks fn) — décision correcte car les colonnes `*_fr` sont déjà dans le df. `mode_ui` volontairement exclu (pair_name brut ≠ label normalisé).
+- **Hotfixes UI supprimés** : les 6 patches `map_ui` dans `win_loss.py`, `teammates_views.py`, `friends_impact_heatmap.py`, `_teammates_trio.py`, requêtes SQL — tous supprimés.
+- **Restants Phase 4** : `add_ui_columns()` dans `filters.py`, guard `_map_col` dans `squad_records.py:165`, guard similaire dans `maps.py:89-90` (oubliée dans le plan initial).
+- **Ajout prérequis test** Phase 2 : test `normalize_mode_label` sans `st.session_state` à écrire avant de modifier la signature.
+- **Ajout risque import circulaire** Phase 7 : `ChartData.add_record_overlays` → import lazy vers `_squad_record_shapes` à valider en sens inverse.
+
+**Résultats** :
+- Plan mis à jour : date, état de chaque phase (✅/⏳), tableau récapitulatif avec colonne État, estimation résiduelle ~5h30.
+- Aucun code modifié — révision documentaire uniquement.
+
+**Branche** : `fix/map-ui-fr-mismatch`
+
+---
+
+### [2026-04-03] — fix(hero): adornment disparu + backdrop sur KPIs pour Chocoboflor — Complété
+
+**Statut** : Complété
+
+**Décision technique** :
+Deux bugs liés :
+
+1. **Adornment manquant** (`player_assets.py`) : `ensure_local_image_path` avec `download_enabled=False` et cache périmé (âge > `auto_refresh_hours`) appelait `resolve_local_image_path` comme fallback. Or cette fonction ne cherche que les préfixes `("asset", "banner", "emblem", "backdrop", "nameplate")` mais PAS `"adornment"` ni `"rank"`. Résultat : le fichier `adornment_49404f49760014740a68.png` existait bien en cache (21 KB, valide) mais n'était jamais trouvé. Configuration en cause : `profile_assets_download_enabled=False, profile_api_enabled=False, profile_assets_auto_refresh_hours=24` → cache de 72h considéré périmé.
+
+   **Fix** : quand `download_enabled=False` et que le cache avec le préfixe exact existe (même périmé), le retourner directement avant d'appeler `resolve_local_image_path`.
+
+2. **Backdrop déborde sur les KPIs** (`styles.css`) : L'image backdrop de Chocoboflor (1000×776 px) s'affiche à ~256×199 px dans `.spartan-id` (82px de hauteur, `overflow: visible`). Sans adornment pour forcer la hauteur du wrapper, `.spartan-id-wrapper` ne faisait que ~94px → le backdrop en position absolue débordait de ~60px sur les éléments suivants (section `render_top_summary`).
+
+   **Fix** : `min-height: 200px` sur `.spartan-id-wrapper` — la hauteur du backdrop calculé (~199px) est entièrement contenue ; les KPIs s'affichent dessous.
+
+**Résultats** :
+- Adornment Colonel Or III de Chocoboflor visible de nouveau
+- Backdrop ne déborde plus sur la section "Matchs joués / Durée / Victoires..."
+
+**Branche** : `fix/map-ui-fr-mismatch`
+
+---
+
+### [2026-04-03] — fix(film-start): correction mouvements de lobby dans spawn_detection — Complété
+
+**Statut** : Complété
+
+**Décision technique** :
+`scan_first_movements` détectait le premier changement de position dans chunk_01 (0-20s). Sur certains matchs, les joueurs bougent légèrement pendant le countdown pre-match (rotation caméra dans le lobby) → premier changement à ~2.5s, match daté trop tôt. La corrélation montrait `gap_min = +35s` (premier event API 35s après l'estimation) mais sous le seuil SUSPECT de 60s → non détecté.
+
+**Fix (second passage) — 3 fichiers** :
+- `src/analysis/spawn_detection.py` :
+  - `scan_first_movements(chunks, ignore_before_ms=0.0)` : nouveau param pour ignorer les changements avant un timestamp donné.
+  - Constantes `_LOBBY_CORRECTION_THRESHOLD_MS = 15_000` et `_LOBBY_CORRECTION_BUFFER_MS = 10_000`.
+  - `estimate_film_match_start_ms(chunks, min_players, api_first_event_ms=None)` : si `api_first_event_ms` est fourni et `gap > 15s`, second scan avec `ignore_before_ms = estimate + gap - 10000`.
+- `src/data/services/film_start_service.py` : `_get_first_event_ms(match_id)` depuis `highlight_events` → passé à `estimate_film_match_start_ms` pour correction automatique dans la pipeline sync.
+- `scripts/_exp_spawn_download.py` : idem `scan_first_movements` locale + second passage avec chargement automatique des chunks manquants.
+
+**Validation sur Fortress 2026-03-31** :
+- Avant : `film_match_start_ms = 2551ms` (lobby), première mort affichée à 35s dans le graphe.
+- Après : `film_match_start_ms = ~33 769ms` (vrai début), `gap_min = +3.81s` → première mort à ~4s ✓
+
+**Branche** : `fix/map-ui-fr-mismatch`
+
+---
+
+### [2026-04-05] — feat(ui): améliorations UX v6.3.1 — Complété
+
+**Statut** : Complété
+
+**Décision technique** :
+5 améliorations UX issues du backlog v6.3.1, toutes sur la branche `fix/map-ui-fr-mismatch`.
+
+1. **Sélecteur de langue → drapeaux** (`sidebar.py`) : `_LANG_OPTIONS` raccourci à `{"fr": "🇫🇷", "en": "🇬🇧"}` + `label_visibility="collapsed"` → sélecteur compact sans texte.
+
+2. **Version app en sidebar** (`src/__init__.py`, `pyproject.toml`, `sidebar.py`) : correction `2.0.0` → `6.3.0` (source unique), affichage `st.caption(f"v{__version__}")` sous le header "LevelUp".
+
+3. **Harmonisation hauteur cases Dernier Match** (`match_view.py`) : remplacement des 3 `st.metric` par 3 `os_card(min_h=112)` dans `_render_match_info_row` → cohérence visuelle avec la rangée KPI supérieure (style Waypoint).
+
+4. **Recherche Match ID partiel dans Explorer** (`explorer.py` + i18n) : colonne `[3, 1]` dans `_render_match_selector` — à droite du selectbox de match, un `st.text_input` (placeholder `70a1c6c6…`, label masqué) filtre le DataFrame si la saisie fait ≥ 6 caractères. Clé i18n `exp_no_match_id` ajoutée.
+
+5. **Badges Dernier Match +30%** (`match_view.py`) : badge DominanceFlag `font-size: 0.75em → 0.975em`, `padding: 2px 8px → 3px 10px` ; badge Outcome via `kpi_font_size="36px"` sur la carte Résultat.
+
+**Résultats** : Ruff OK, 0 erreurs, tous les fichiers modifiés < 500 L.
+
+**Branche** : `fix/map-ui-fr-mismatch`
+
+---
+
+### [2026-04-05] — feat(i18n): add_i18n_display_columns — correction systémique i18n — Complété
+
+**Statut** : Complété
+
+**Décision technique** :
+L'utilisateur signalait que l'UI affichait partout des valeurs EN (Playlist, Mode, Carte) au lieu de FR, notamment dans les dropdowns de l'Explorer. Problème architectural : `map_ui`/`mode_ui`/`playlist_ui` n'étaient calculés que dans `_add_derived_columns` sur `dff` (après filtrage), jamais sur `df` au chargement. Toute surface travaillant sur `df` ou ses sous-ensembles pré-filtrage restait aveugle aux traductions FR.
+
+**Fix systémique** :
+- Création de `src/app/i18n_columns.py` avec `add_i18n_display_columns(df, lang)` : module pur (0 Streamlit, 0 DB), idempotent, utilise les colonnes `*_fr` déjà présentes dans `df` depuis `v_match_full`
+- Injection dans `main_helpers.py` après `mark_firefight` : `df` en session_state reçoit `map_ui`/`mode_ui`/`playlist_ui` → tous les sous-ensembles (`dff`, etc.) en héritent automatiquement
+- 10 tests unitaires (test_add_i18n_display_columns.py)
+
+**Surfaces fixées** :
+- `explorer.py` : dropdown Playlist utilise `playlist_ui`
+- `match_history.py` : `_ensure_display_columns` prioritise `playlist_name_fr`/`pair_name_fr`
+- `career_top_matches_render.py` : mode/map via `map_ui`/`pair_name_fr`
+- `_session_compare_history.py` : priorité `mode_ui` > `pair_fr` > translate ; support `pair_name_fr`
+- `timeseries.py` : tooltip playlist utilise `playlist_ui` avec guard
+
+**Surfaces déjà correctes** (bénéficient automatiquement) :
+- `match_table_html.py`, `win_loss.py`, `teammates_helpers.py`, `maps.py compute_map_breakdown`
+
+**Commits** :
+- `6b0392fe` : feat(i18n): add_i18n_display_columns (6 fichiers, 227 insertions)
+- `a625a8f8` : fix(i18n): session_compare + timeseries
+
+**Branche** : `fix/map-ui-fr-mismatch`
+
+---
+
+### [2026-04-04] — fix(match-view): playlist/carte/mode en FR dans la page Dernier Match — Complété
+
+**Statut** : Complété
+
+**Décision technique** :
+La page Dernier Match affichait "Quick Play" (EN) au lieu de "Jeu rapide" (FR) dans la colonne Playlist. Même problème pour Carte et Mode.
+
+**Cause** : `_render_match_info_row` dans `match_view.py` ignorait les colonnes `playlist_name_fr`, `map_name_fr` et `pair_name_fr` qui sont dans `COLUMNS_COMMON` (chargées depuis `v_match_full`).
+- `playlist_display` → `translate_playlist_name(playlist_name)` = passthrough, retourne "Quick Play"
+- `_display_map` → `normalize_map_label(map_name)` = nom EN
+- `mode_display` → `row.get("mode_ui")` absent de COLUMNS_COMMON → fallback normalize
+
+**Fix** (commit `a2949d3`) : priorité aux colonnes DB déjà présentes dans le row, fallback vers les fonctions de normalisation.
+
+**Résultats** : 174 tests passent. Commit `a2949d3` sur `fix/map-ui-fr-mismatch`.
+
+**Branche** : `fix/map-ui-fr-mismatch`
+
+---
+
+### [2026-04-03] — feat(film_start): intégration film_match_start_ms : pipeline + backfill + graphes — Complété
+
+**Statut** : Complété
+
+**Décision technique** :
+`highlight_events.time_ms` utilise le même référentiel que le film (t=0 = début enregistrement, countdown inclus). L'estimation via `duration - playable_duration` (API) est approximative. On remplace par `film_match_start_ms` calibré filmshell (détecté depuis les frames de position REPLICATION_DATA, précision ±200ms).
+
+**Architecture créée** :
+- `src/analysis/spawn_detection.py` : fonctions pures (`scan_first_movements`, `pick_spawn_references`, `estimate_film_match_start_ms`) — 0 accès DB/API.
+- `src/data/services/film_start_service.py` : `FilmStartService.compute_and_write()` — réutilise manifest mis en cache par WeaponExtractionService.
+- Hook `_try_compute_film_start()` dans `_engine_weapon_kills.py` : appelé après chaque extraction weapon_kills pour tout nouveau match avec film.
+
+**Graphes câblés (premier frag / première mort)** :
+- `_events_repo.py::load_first_event_times` : `COALESCE(film_match_start_ms, (duration - playable_duration) * 1000)` au lieu de l'estimation seule.
+- `_teammates_first_events_queries.py::query_first_events` : idem pour `countdown_s`.
+- Fallback transparent si `film_match_start_ms` NULL (matchs sans film).
+
+**Backfill terminé** :
+- 953/1532 matchs balisés (62%) — les 579 restants n'ont pas de film disponible (404 API : PvE, modes sans spectate).
+- Fixes bugs : `cached_only` bloquait mal l'API dans la boucle adaptative + early-exit sur 404 chunk_01.
+
+**Résultats** : ruff OK, import OK, 0 erreur backfill.
+
+### [2026-04-03] — fix(records): stats/min records visibles pour tous les joueurs — Complété
+
+**Statut** : Complété
+
+**Décision technique** :
+Les records stats/min (frags/min, morts/min, assists/min) n'apparaissaient que pour un seul joueur (Madia97294). Deux causes indépendantes :
+1. `compute_player_pm_records` : si le filtre `pair_name` retournait un sous-ensemble vide, la fonction retournait `(None, None, None)` au lieu d'utiliser tous les matchs en fallback.
+2. `render_trio_view` : `_pm_records` n'était calculé que pour les joueurs dans `_full_raw`, lequel excluait f2/f3 si `load_all_teammate_stats()` retournait un df vide (xuid introuvable). Aucun fallback sur les données de session.
+
+**Fixes** :
+- `src/analysis/squad_records.py:compute_player_pm_records` : ajout `if sub.is_empty(): sub = df` après le filtre pair_name.
+- `src/ui/pages/_teammates_trio.py` : extraction de `_build_pm_records()` (helper privé) qui calcule les records depuis `_full_raw` puis complète avec les session dfs (`pair_name=None`) pour les joueurs absents ou avec records tous-None.
+
+**Résultats** :
+- 134 tests passent (squad_records, squad_record_shapes, visualizations, code_quality, imports).
+- `render_trio_view` reste à 318L (baseline stable, pas de nouvelle violation).
+
+**Prochaine étape** : vérification visuelle dans Streamlit avec 3 joueurs.
+
+### [2026-04-04] — fix(maps): noms FR dans graphes post-radar "Complémentarité de l'escouade" — Complété
+
+**Statut** : Complété
+
+**Décision technique** :
+Tous les graphes affichés après le radar dans la section "Complémentarité de l'escouade" montraient encore des noms de cartes EN (Cliffhanger, Fortress, Nemesis, The Pit) au lieu des noms FR. Diagnostic multi-composants : 4 sources de données distinctes dans le pipeline, chacune aveugle à `map_ui`.
+
+**4 causes indépendantes identifiées** :
+
+| Source DataFrame | Problème racine | Fix |
+|-----------------|-----------------|-----|
+| `f1_df/f2_df/f3_df` (shared stats trio) | `map_name_fr` présent mais pas `map_ui` | `_query_teammate_shared_stats` → ajout `COALESCE(r.map_name_fr, r.map_name, '') AS map_ui` |
+| `_f1_full/_f2_full/_f3_full` (historique trio) | JOIN sur `match_registry` sans `map_name_fr` | `query_teammate_full_history` → `JOIN shared.v_match_full` + `map_name_fr` + `map_ui` |
+| `_me_full` (historique joueur principal) | Sous-ensemble de `df`, pas de `map_ui` avant filtrage | Injection Python post-query dans `_teammates_trio.py` (hotfix pré-Item0) |
+| `records_per_map` (records par carte) | Clés dict = noms EN (`map_name`) vs labels FR des axes | `compute_squad_records_per_map` → guard dynamique `_map_col = "map_ui" if … else "map_name"` |
+
+**Chaîne d'appel** : `render_trio_view` → `_render_trio_performance_charts` → `render_trio_charts` (teammates_charts.py) → `plot_trio_kills_deaths` + metric charts (trio.py). La fonction `trio.py` utilisait déjà `"map_ui" if "map_ui" in p.columns else "map_name"` — il suffisait de fournir `map_ui` dans les DataFrames d'entrée.
+
+**Résultats** : 5405 passent, 4 skipped, 1 failed pré-existant (`test_v_match_full_colonnes_fr_nulles_sans_metadata`). Commit `df361f0` sur `fix/map-ui-fr-mismatch`.
+
+**Conclusion** : Ces 4 hotfixes (marqués `# Hotfix pré-Item0` dans le code) seront supprimés lors du déploiement de `src/app/i18n_columns.py` (Item 0 du plan de refacto). Le plan a été mis à jour pour documenter les 7 hotfixes pré-Item0 (3 antérieurs + 4 de df361f0).
+
+**Branche** : `fix/map-ui-fr-mismatch`
+
+---
+
+### [2026-04-04] — fix(maps): noms FR dans graphes escouade — v_match_full + map_ui heatmap — Complété
+
+**Statut** : Complété
+
+**Décision technique** :
+La heatmap "Impact ami par carte" et les graphes escouade affichaient des noms EN pour l'axe X/Y des cartes. Cause : `_query_teammate_shared_stats` joinait `shared.match_registry` qui n'a pas de colonne `map_name_fr`. En conséquence, `fr_sub` (DataFrame coéquipier) n'avait pas `map_name_fr`, donc `compute_map_breakdown` utilisait `map_name` (EN) → `top_maps` = noms anglais → axe X heatmap = EN.
+
+**Fixes** :
+1. `teammates_service.py` `_query_teammate_shared_stats` : `JOIN shared.v_match_full r` (au lieu de `match_registry`) + `COALESCE(r.map_name_fr, r.map_name, '') AS map_name_fr` — `fr_sub` contient désormais `map_name_fr`
+2. `friends_impact_heatmap.py` `plot_squad_map_heatmap` : ajoute `map_ui = coalesce(map_name_fr, map_name)` si `lang=fr` avant `compute_map_breakdown(df_pl)` — `top_maps` contient des noms FR
+3. `duckdb_repo.py` : correction docstring `begin_sync_mode` malformée (triple-quote prématurée à la ligne 73 cassait ruff + imports)
+
+**Résultats** : 5405 passent, 4 skipped, 1 failed pré-existant (`test_v_match_full_colonnes_fr_nulles_sans_metadata`). Commit `6df05c6` sur `fix/map-ui-fr-mismatch`.
+
+**Branche** : `fix/map-ui-fr-mismatch`
+
+---
+
+### [2026-04-04] — fix(maps): mismatch map_name_fr dans win_loss + teammates bullet/perf charts — Complété
+
+**Statut** : Complété
+
+**Décision technique** :
+Le mismatch `map_ui` (FR) vs `map_name` (EN) affectait aussi les graphiques "Taux de victoires vs historique" et "Performance vs historique" dans la page Win/Loss et l'onglet Coéquipiers. La cause : `base`/`full_squad_df` (DataFrames bruts, non-filtrés) n'ont pas `map_ui`. `compute_map_breakdown(base)` utilisait donc `map_name` (EN) → `bd_history.map_name` = EN. Le join inner dans `_prepare_bullet_joined_data` entre `view` (FR, depuis `dff`) et `bd_history` (EN) échouait silencieusement pour les 4 cartes FR ≠ EN.
+
+**Fixes** :
+1. `win_loss.py` `_render_winrate_perf_vs_history` : ajouter `map_ui` sur `base` (coalesce `map_name_fr`/`map_name`) avant `compute_map_breakdown(base)`
+2. `win_loss.py` `_render_ratio_by_map_section` (désactivée mais future-proof) : même correction avant `WinLossService.compute_map_breakdown(base, 1)`
+3. `teammates_map_charts.py` `_compute_history_breakdown` : ajouter `map_ui` sur `full_df` si `map_name_fr` disponible et lang=fr — couvre les deux call sites : `render_map_charts_section(full_pl)` et `render_single_map_section(dfr_pl)`
+
+**Résultats** : 10 tests passent (qualité + UI teammates). `_render_winrate_perf_vs_history` retourne désormais toutes les cartes dans les graphiques bullet/perf.
+
+**Branche** : `fix/map-ui-fr-mismatch`
+
+---
+
+### [2026-04-03] — fix(filters): mismatch map_name_fr/map_name entre sidebar et dff — Complété
+
+**Statut** : Complété
+
+**Décision technique** :
+La sidebar construisait `map_ui` depuis `map_name` (EN) via `normalize_map_label_fn`, tandis que `_add_derived_columns` dans `apply_filters` utilisait `coalesce(map_name_fr, map_name)`. En mode FR, les 4 cartes ayant une traduction différente (Cliffhanger→Dévissage, Fortress→Forteresse, Nemesis→Némésis, The Pit→La fosse) produisaient des `map_ui` incohérents entre la liste du filtre sidebar et les valeurs dans `dff`. Le filtre `is_in` excluait donc silencieusement ces 4 matchs. Sur une session escouade de 11 matchs→seulement 7 visibles.
+
+**Root cause** :
+`_vectorize_ui_columns` dans `_filters_cascade.py` utilisait uniquement `map_name` (EN). La docstring disait pourtant "Utilise les colonnes *_fr si disponibles... pour garantir la cohérence" — incohérence code/doc.
+`_compute_all_filter_options` dans `filters_render.py` avait le même problème pour `_all_maps`.
+
+**Fixes** :
+1. `_vectorize_ui_columns`: si `map_name_fr` en colonnes et lang=fr → `coalesce(map_name_fr, map_name)` comme dans `_add_derived_columns`
+2. `_compute_all_filter_options`: utilise `map_name_fr` comme colonne source si disponible et lang=fr
+3. Suppression variable `n_players` inutilisée (`F841 Ruff`) dans `_teammates_trio_helpers`
+
+**Résultats** : 16 tests de qualité + contrats filtres passent. Baseline taille mise à jour (décalage de lignes dû aux ajouts).
+
+**Branche** : `fix/map-ui-fr-mismatch`
+
+---
+
+### [2026-04-03] — fix(records): go.Bar fantômes hachurés + offsetgroup sur barres données — Complété
+
+**Statut** : Complété
+
+**Décision technique** :
+Plotly `add_shape` ne supporte pas les patterns/hachurage. La seule façon d'obtenir du hachurage est `go.Bar` avec `marker_pattern_shape`. Pour que les barres fantômes soient positionnées et dimensionnées exactement comme les barres de données, les deux doivent partager le même `offsetgroup=name`. Changements : `add_record_shapes` → traces `go.Bar` (showlegend=False, offsetgroup=name, marker_pattern_shape="/", marker_line_color=color) ; `plot_trio_metric` + `plot_multi_metric_bars_by_match` : ajout `offsetgroup=name` sur barres de données ; `_render_per_minute_stats` : offsetgroup pm + traces fantômes catégorielles directes.
+
+---
+
+### [2026-04-03] — fix(i18n): propager playlist_name_fr dans tous les chemins de données — Complété
+
+**Statut** : Complété
+
+**Décision technique** :
+Diagnostic de pourquoi "Quick Play" restait en anglais dans l'UI malgré les fixes précédents.
+
+**Root causes identifiées** :
+1. `load_friend_match_details` (teammates) requêtait `shared.match_registry` directement (pas de colonnes FR) → playlist_fr retombait sur `translate_playlist_name` (passthrough)
+2. `_translate_playlist_pair_columns` (cache_filters.py) n'utilisait pas les colonnes FR même si présentes
+3. `_execute_polars_fallback` sélectionnait `match_stats.playlist_name_fr` même sur des sources sans ces colonnes → BinderException en cascade sur ~20 fixtures de test
+4. Cache `@st.cache_data` gardait l'ancien DataFrame (sans colonnes FR) tant que `db_key=(mtime, size)` ne changeait pas
+
+**Corrections** :
+- `_match_relations.py` : `load_friend_match_details` → requête sur `shared.v_match_full` (expose playlist_name_fr, pair_name_fr)
+- `cache_filters.py` : `_translate_playlist_pair_columns` utilise `playlist_name_fr` en priorité si présent, avec fallback `translate_playlist_name`. Schema empty enrichi avec 2 colonnes FR.
+- `teammates_helpers.py` : même pattern dans `_prepare_friends_table_data`
+- `_match_queries_polars.py` : `_execute_polars_fallback` utilise `NULL AS playlist_name_fr` au lieu de référencer la colonne (robustesse)
+- `cache_loaders.py` : commentaire COLUMNS_SCHEMA_VERSION=2 bust le cache stale Streamlit
+- 9 fixtures de test `mv_player_matches` : ajout des 4 colonnes FR (NULL) pour compatibilité
+
+**Résultat** : 5483/5484 tests (1 pré-existant échoue : `test_v_match_full_colonnes_fr_nulles_sans_metadata`)
+
+**Pipeline vérifié** :
+```
+shared.v_match_full → load_friend_match_details → playlist_name_fr: 'Partie rapide' ✅
+shared.mv_player_matches → load_matches_as_polars → playlist_name_fr: 'Partie rapide' ✅
+_add_derived_columns → playlist_fr: 'Partie rapide' ✅
+```
+
+---
+
+### [2026-04-03] — fix(records): overlay ligne colorée, largeur exacte, fallback duration_seconds — Complété
+
+**Statut** : Complété
+
+**Décision technique** :
+3 bugs constatés en test visuel :
+1. HS+PK overlay : rects de tous les joueurs se superposaient au même x → seul le dernier dessiné (vert) visible. Fix : `add_overlay_record_shapes` passe de `type="rect"` à `type="line"` (ligne horizontale colorée par joueur à la hauteur du record — distinguable même si les valeurs diffèrent).
+2. Largeur trop étroite : `_BAR_FILL=0.85` → rect à 85% de la largeur réelle. Fix : `_BAR_FILL=1.0`.
+3. Un seul joueur avec record sur stats/min : `compute_player_pm_records` requérait `time_played_seconds` mais le DataFrame du joueur principal a `duration_seconds` (depuis match_registry). Fix : fallback `duration_seconds → time_played_seconds` avant la vérification des colonnes.
+
+---
+
+### [2026-04-03] — feat(records): redesign visuel + records par carte + passage couleurs — Complété
+
+**Statut** : Complété
+
+**Décision technique** :
+3 évolutions simultanées des records historiques sur la page Escouade :
+
+1. **Redesign visuel** : remplacement de la ligne blanche horizontale (`type="line"`) par un rectangle transparent (`type="rect"`) avec bordure épaisse en couleur du joueur et remplissage légèrement teinté. Paramètre `colors_by_name` ajouté à `add_record_shapes` / `add_overlay_record_shapes`.
+
+2. **Records par carte** : quand l'axe X affiche `#N<br>NomCarte`, le record affiché est celui propre à cette carte (meilleure valeur historique du joueur sur cette carte dans le même pair_name). Nouveau : `compute_squad_records_per_map()` dans `squad_records.py` (retourne `{joueur: {métrique: {carte: val}}}`), propagé via `records_per_map` à travers toute la chaîne UI→Viz.
+
+3. **Colonne `map_name`** ajoutée au SQL de `_teammates_history_queries.py` pour permettre le calcul par carte.
+
+**Fichiers modifiés** :
+- `src/data/services/_teammates_history_queries.py` (+map_name)
+- `src/analysis/squad_records.py` (+compute_squad_records_per_map)
+- `src/analysis/__init__.py` (export)
+- `src/visualization/_squad_record_shapes.py` (redesign rect + colors + per_map)
+- `src/visualization/trio.py` (+records_per_map, +colors)
+- `src/visualization/match_bars.py` (+records_per_map, +colors)
+- `src/visualization/teammates_hs_pk.py` (+colors)
+- `src/ui/pages/teammates_charts.py` (+records_per_map dans 3 fonctions)
+- `src/ui/pages/_teammates_trio_helpers.py` (+records_per_map)
+- `src/ui/pages/_teammates_trio.py` (+compute+pass records_per_map)
+- `tests/test_squad_record_shapes.py` (mise à jour assertions rect)
+
+**Résultats** : 50/50 tests records+shapes passent. Suite complète stable (5412 passed), failures pré-existantes inchangées.
+
+**Prochaine étape** : vérification visuelle dans l'app Streamlit.
+
+---
+
+### [2026-04-03] — fix(i18n): playlist_name_fr et map_name_fr manquants dans le flux Polars — Complété (2 commits)
+
+**Statut** : Complété
+
+**Décision technique** :
+Deux bugs en cascade :
+1. `_MV_VIEW_SOURCE` ne listait pas `playlist_name_fr`, `map_name_fr`, `pair_name_fr` → ajouté dans le SELECT
+2. `COLUMNS_COMMON` (projection appliquée par `load_df_optimized`) ne contenait pas ces colonnes → elles étaient filtrées avant d'atteindre `_add_derived_columns`
+
+`_add_derived_columns` avait déjà la logique `playlist_name_fr → playlist_fr` mais recevait un DataFrame sans cette colonne.
+
+**Fichiers modifiés** :
+- `src/data/repositories/_match_queries.py` : `_MV_VIEW_SOURCE` + `_DIRECT_JOIN_SOURCE`
+- `src/data/repositories/_match_queries_polars.py` : `all_select` main + fallback
+- `src/app/_filters_apply.py` : `_add_derived_columns` playlist_name_fr priority
+- `src/ui/_cache_core.py` : `COLUMNS_COMMON` avec les 3 colonnes FR
+
+### [2026-04-02] — feat(escouade): records historiques par joueur sur tous les graphes barres — Complété + vérification finale
+
+**Décision technique principale** : Architecture en 4 couches — analyse pure (`squad_records.py`), formes Plotly (`_squad_record_shapes.py`), modification des 4 fonctions de visualisation, threading des records depuis la couche UI.
+
+**Résultats observés** :
+- Records filtrés par `pair_name` dominant (même catégorie de mode, pas de mix BTB/4v4)
+- Stats négatives (morts) : record = minimum (plus proche de 0) ; stats positives (y compris `average_life_seconds`) : record = maximum
+- Rendu : barre blanche grasse à la largeur exacte de chaque baton (`add_record_shapes` / `add_overlay_record_shapes`)
+- Graphes couverts : kills/morts, assists, KDA, accuracy, avg_life, performance, killing spree, HS+PK, stats/min
+- `teammates_charts.py` maintenu à exactement 500L
+- Logging ajouté : `squad_records.py` (pair_name absent, filtre vide), `_teammates_trio_helpers.py` (`_compute_pm_records` colonnes manquantes, `_render_trio_performance_charts` dominant_pair=None)
+- Tests unitaires créés : `tests/test_squad_records.py` (24 tests) + `tests/test_squad_record_shapes.py` (25 tests) — 49/49 ✅
+- Suite complète : 3 violations ruff préexistantes (non introduites par cette feature)
+
+**Conclusion / prochaine étape** : Fonctionnalité complète avec logging et couverture de tests. Vérification visuelle recommandée sur la page Escouade avec 2+ coéquipiers.
+
+### [2026-04-02] — fix(escouade): records depuis historique complet (pas les matchs de la session) — Complété
+
+**Décision technique principale** : Les records étaient calculés depuis les DFs filtrés aux matchs de l'escouade en cours — ils devaient venir de l'historique complet de chaque joueur. Nouvelle couche : `TeammatesService.load_all_teammate_stats()` charge sans filtre match_id ; `query_teammate_full_history()` dans `_teammates_history_queries.py`.
+
+**Architecture du fix** :
+- `src/data/services/_teammates_history_queries.py` (NEW) — query SQL complète sans `IN (match_ids)`
+- `TeammatesService.load_all_teammate_stats()` — charge historique complet d'un coéquipier
+- `compute_player_pm_records()` déplacé de `_teammates_trio_helpers` → `src/analysis/squad_records.py` (pure)
+- `render_trio_view` calcule `dominant_pair` + tous les records depuis les DFs complets (`df` joueur principal, `load_all_teammate_stats` pour coéquipiers) **avant** d'afficher les charts
+- `_render_trio_performance_charts` et `_render_per_minute_stats` acceptent `records`/`pm_records` pré-calculés en paramètre (inversion de dépendance)
+- `_hspk_records` utilise `headshot_kills` de l'historique complet comme proxy (perfect_kills absent hors session)
+
+**Résultats** : 5481 tests passent, 2 échecs préexistants (ruff + DB).
+
+### [2026-04-02] — feat(sync): playable_duration_seconds + real_start_time dans match_registry (v6.3) — Complété
+
+**Statut** : Complété
+
+**Décision technique principale** : Exploiter `MatchInfo.PlayableDuration` (ISO 8601, ignoré jusqu'ici) de l'API SPNKr pour stocker la durée réelle de gameplay et calculer `real_start_time = start_time + countdown` (countdown = `duration - playable_duration`). Fix collatéral : `EndTime` lu depuis l'API directement plutôt que recalculé.
+
+**Périmètre des modifications (8 phases)** :
+1. DDL `_engine_connections.py` : 2 nouvelles colonnes (`playable_duration_seconds INTEGER`, `real_start_time TIMESTAMP`) dans `match_registry`
+2. Migration `migrations.py` : `ensure_match_registry_playable_duration` (idempotente via `_add_column_if_missing`) + step `add_playable_duration.py` + `steps/__init__.py`
+3. Transformer `transformers/_match.py` : parsing `PlayableDuration`, fix `EndTime` API, calcul `real_start_time`, guards (playable > duration → None + WARNING), logs DEBUG/WARNING + ajout du `logger = logging.getLogger(__name__)` manquant
+4. Écriture `_shared_writes.py` : INSERT 22 valeurs + UPDATE COALESCE pour les 2 nouvelles colonnes
+5. `SyncScope` : 4 champs ajoutés (`playable_duration`, `force_playable_duration`) dans `_FORCE_MAP`, `_ALL_DATA_FIELDS`, dataclass, `needs_api`
+6. CLI `scripts/backfill/cli.py` : args `--playable-duration` / `--force-playable-duration`
+7. Timeline UI `match_view_players_timeline.py` : param optionnel `playable_duration_seconds` → `duration_s` exact si disponible, sinon fallback `max(time_ms)/1000 + 20`; `match_view_tabs.py` : passage du param depuis `row.get("playable_duration_seconds")`
+8. Tests `tests/test_playable_duration.py` : 18 tests (parsing, calcul, guards, migration) — tous verts ✅
+
+**Résultats** : 18/18 tests. Aucune régression sur la suite hors-intégration.
+
+**Conclusion** : Les nouveaux matchs syncés après déploiement auront `playable_duration_seconds` et `real_start_time` directement remplis. Les anciens matchs nécessiteront un backfill API via `--playable-duration`.
+
+---
+
+### [2026-05-27] — feat(backfill): câblage backfill playable_duration + exécution complète — Complété
+
+**Statut** : Complété
+
+**Décision technique principale** : Le backfill `--playable-duration` retournait 0 inserts car l'orchestrateur n'était pas câblé. Câblage complet en 3 fichiers : `detection.py` (condition NOT IN), `orchestrator.py` (helper `_update_playable_duration` + intégration boucle), `backfill_data.py` (`_print_totals`).
+
+**Cause du bug** : `_find_matches_in_shared_all()` utilisait `mr.playable_duration_seconds IS NULL` via l'alias `mr` résolvant vers la vue `v_match_full` qui n'expose pas cette colonne. Fix : requête NOT IN sur `match_registry` directement.
+
+**Modifications** :
+- `scripts/backfill/detection.py` : params `playable_duration` / `force_playable_duration` + condition `mp.match_id NOT IN (SELECT match_id FROM match_registry WHERE playable_duration_seconds IS NOT NULL)`
+- `scripts/backfill/orchestrator.py` : `_empty_result()` ajoute `"playable_duration_updated": 0` ; `_backfill_with_api` extrait les scope vars + appel `_update_playable_duration()` ; helper `_update_playable_duration` avec logs DEBUG/WARNING complets
+- `scripts/backfill_data.py` : `_print_totals` affiche le compteur si `scope.playable_duration`
+
+**Résultats backfill** : 1532/1532 (100%) `playable_duration_seconds` remplis, 1527/1532 (99%) `real_start_time` (5 matchs avec `playable > duration` → `real_start_time = NULL` par guard, comportement attendu).
+
+**Tests** : 254/254 (test_playable_duration 18 + test_sync_shared_matches 32 + test_transformers_coverage + autres) — tous verts ✅
+
+**Commit** : `3cf7f52`
+
+**Conclusion** : Feature complète. L'UI timeline bénéficie désormais du `playable_duration_seconds` pour afficher la durée exacte du match (sans le compte à rebours). Le backfill est opérationnel pour les anciens matchs via `--playable-duration`.
+
+---
+
+### [2026-04-28] — fix(i18n): noms de cartes/modes en français dans tableaux et graphes — Complété
+
+**Statut** : Complété
+
+**Décision technique principale** : 3 bugs indépendants empêchaient les traductions FR d'atteindre l'UI (tableau des matchs + graphes timeseries). Corrigés en chaîne depuis la couche DB jusqu'aux helpers de visualisation.
+
+**Bugs corrigés** :
+1. **`mv_player_matches` sans colonnes FR** : la migration `fix_mv_player_matches_scores` était déjà appliquée, bloquant la recréation de la vue. Solution : nouvelle migration `add_mv_player_matches_fr_cols` qui force la recréation. Colonnes ajoutées : `map_name_fr`, `playlist_name_fr`, `pair_name_fr`, `game_variant_name_fr`.
+2. **`resolve_map_display_names` écrase FR par EN** : la boucle `for try_lang in (bcp, "en-US")` passait d'abord fr-FR (correct) puis en-US écrasait la valeur. Fix : skip si une traduction non-fallback existe déjà.
+3. **`_add_derived_columns` ignorait les colonnes FR** : `map_ui`, `pair_fr`, `mode_ui` utilisaient des lookups i18n ou `pair_name` brut au lieu des colonnes `*_fr` déjà disponibles dans le DataFrame. Fix : priorité aux colonnes `*_fr` de la DB.
+4. **`test_metadata_i18n.py`** : `test_v_match_full_playlist_name_is_english` ouvrait `v_match_full` sans attacher `meta` → `CatalogException`. Fix : attach avant query.
+5. **`test_friends_impact.py`** : 6 tests appelaient `compute_impact_scores(a, b, c)` et `build_impact_matrix(fb, cf, ...)` avec l'ancienne API (3 dicts séparés). Refactorisé pour utiliser `ImpactEventSets` (nouvelle API). Fix : mise à jour des tests avec `ImpactEventSets(...)`.
+
+**Données vérifiées dans `shared_matches_v2.duckdb`** :
+- `Cliffhanger → Dévissage` ✅, `High Ground → Altitude` ✅, `The Pit → La fosse` ✅, `Origin → Origine` ✅
+- Cartes sans traduction FR distincte (Catalyst, Shiro, Domicile, Goliath, Empyrean, Detachment, Shogun) restent identiques EN=FR → comportement correct
+
+**Résultats** : 36/36 `test_friends_impact`, 23/23 `test_metadata_i18n + test_fixes_2026_03_26`. Suite complète : 5383 passent + e2e ignorés (Playwright non installé).
+
+**Conclusion** : Au prochain redémarrage de l'app, les graphes timeseries et le tableau des matchs afficheront les noms de cartes/modes en français pour les 62 cartes qui ont une traduction FR distincte dans `asset_translations`.
+
+
+
+
+**Statut** : Complété
+
+**Décision technique** :
+- Bug 1 : `_teammates_trio.py` sauvegardait `radar_squad_ids` avant le filtre de session → radar figé toutes sessions. Fix : supprimer `radar_squad_ids`, utiliser `squad_ids` (filtré) + `base_for_trio` pour `radar_me_df`.
+- Bug 2 (découvert en testant) : `render_trio_synergy_radar` incluait les DataFrames vides dans l'intersection `shared` → `shared=set()` → radar entier masqué quand Madina n'a pas de données sur une vieille session.
+- Fix : extraire `_compute_shared_match_ids()` (fonction pure) qui exclut les DFs vides des joueurs optionnels (f2/f3) de l'intersection. f1 reste obligatoire.
+
+**Tests ajoutés** : 9 cas dans `TestComputeSharedMatchIds` (39 total dans le fichier) :
+- f3 vide ne collapse pas shared (régression Madina)
+- f2 vide idem
+- f1 vide → [] (f1 obligatoire)
+- None ignoré
+- me vide → []
+- intersection correcte si tous présents
+- pas de chevauchement → []
+- sessions différentes → résultats différents
+
+**Résultats** : 39/39 tests passés, ruff clean, commits b7597bf + 5abe04f
+
+**Prochaine étape** : Vérifier le rendu dans l'UI Streamlit
+
+---
+
+### [2026-04-02] — feat(settings): refonte page Paramètres V2 — Complété
+
+**Statut** : Complété
+
+**Décision technique** :
+- Suppression des sections Synchronisation et Base de données (optimisées, inutiles dans l'UI)
+- Remplacement de tous les `st.expander` par des sections fixes (`st.subheader` + `st.divider`)
+- Correction bug : `backfill_events` avait `disabled` manquant
+- Correction : `enable_duckdb_analytics` et `spnkr_refresh_with_highlight_events` étaient hardcodés incorrectement dans `_build_settings_from_ui`, désormais préservés via `_get_preserved_settings`
+- Nouveaux champs exposés : `lang` (langue UI), `career_top_exclude_btb`, Discord complet (`discord_notifications_enabled`, `discord_webhook_url`, `discord_lang`)
+- Suppression checkbox "Toutes les données" éphémère (non persistée)
+- Grille backfill uniformisée en 3 colonnes symétriques
+- Boutons Sauvegarder/Recharger remontés en haut de page
+
+**Résultats** : 18/18 tests passés
+
+**Prochaine étape** : Aucune — page prête
+
+---
+
+### [2026-04-02] — fix(teammates): régression score d'équipe sans moyenne/bonus — Complété
+
+**Tâche** : Régression sur la page Coéquipiers — la carte "Score d'équipe" n'affichait plus la moyenne de base ni le bonus collectif.
+
+**Décision technique** : La condition `if bonus > 0` dans `_render_compact_team_card` cachait aussi la moyenne de base quand aucun bonus collectif n'était activé (win_rate ≤ 60%, K/D ≤ 1.0, kills_std ≥ 3.0). La moyenne de base (`base_avg`) doit être affichée en permanence ; seul le `(+N collectif)` est conditionnel au bonus > 0.
+
+**Modifications apportées** :
+1. `src/ui/components/performance.py` — `_render_compact_team_card` : afficher `base_avg` toujours, bonus `+N` seulement si > 0
+2. `src/ui/i18n/pages/teammates.py` — ajout clé `squad_score_base_only` (`"moy. {base}"`) pour le cas sans bonus
+3. `tests/test_fixes_2026_03_26.py` — test `test_bonus_not_displayed_when_zero` → `test_base_displayed_when_bonus_zero` (vérifie que le détail s'affiche même sans bonus)
+
+**Résultats** : 4/4 tests `TestSquadScoreBonus` passent.
+
+**Branche** : `feat/teammates-first-events-chart`
+
+---
+
+### [2026-04-02] — docs(ai): complétion de CHARTS_AND_TABLES.md — Complété
+
+**Tâche** : Vérification finale et complétion du fichier `.ai/CHARTS_AND_TABLES.md` (doc exhaustive des graphiques/tableaux LevelUp).
+
+**Décision technique** : 7 ajouts / corrections identifiés après relecture croisée des fichiers sources vs la doc générée en session précédente.
+
+**Modifications apportées** :
+1. §2.6 — Ajout mention ⚠️ DÉSACTIVÉ (`if False:` dans win_loss.py et teammates_map_charts.py)
+2. §3.11 — Correction source (distributions.py, pas _distributions_advanced.py) + renvoi vers §3.18
+3. §3.17 (nouveau) — 6 histogrammes KDE de l'onglet Distribution : accuracy, kills, avg_life, perf_score, score/min, win_rate_glissant
+4. §3.18 (nouveau) — 5 scatter corrélation de l'onglet Corrélations : lifespan_vs_kills, accuracy_vs_kda, lifespan_vs_deaths, kills_vs_deaths, team_mmr_vs_enemy_mmr
+5. §4.10 (nouveau) — `plot_squad_performance_timeline` : barres perf escouade + ligne win rate + ligne MMR (axe secondaire)
+6. §5.0 (nouveau) — `render_expected_vs_actual` : KPI cards réel/attendu + graphique barres groupées 3 traces (réel, attendu, historique mode si ≥10 matchs)
+7. §6.9 (nouveau) — `render_modes_breakdown` : barres horizontales groupées Session A vs B par mode de jeu
+8. Chiffres clés mis à jour : +2 métadonnées (sections ~55, graphiques désactivés=2)
+
+**Résultats** : Doc complète et synchronisée avec le code source au 2026-04-02.
+
+**Conclusion** : Aucun graphique actif de l'app ne manque à la documentation. 2 graphiques désactivés annotés pour ne pas induire de confusion.
+
+---
+
+### [2026-03-31] — fix(radar): recalibrage seuils objectifs axe Complémentarité — Complété
+
+**Tâche** : L'axe Objectifs du radar escouade affichait <30% pour de bons joueurs (JGtm, Chocoboflor) sur la session du 24 mars.
+
+**Décision technique** : Recalibré `RADAR_THRESHOLDS_PER_MODE` depuis valeurs ~p95 imaginaires vers des seuils basés sur données réelles.
+- Audit historique : 130+ matchs obj JGtm (p80 CTF=500, SH=600), 90+ matchs Chocoboflor.
+- Cible utilisateur : un "bon joueur" doit afficher 70-75% sur l'axe.
+- Calcul : threshold_session(1 SH + 3 CTF) = 420 + 350×3 = 1470; JGtm=1060/1470=**72%** ✓
+
+**Nouveaux seuils** : CTF 850→350, Strongholds 1050→420, autres modes ×0.41.
+
+**Résultats** : 30/30 tests OK. Commit `fbf6ee4`.
+
+**Prochaine étape** : Vérifier le rendu visuel dans l'UI Streamlit.
+
+---
+
+### [2026-03-31] — fix(sync): fanout ne distribuait pas les PSA des coéquipiers — Complété
+
+**Statut** : Complété
+
+**Cause racine** : `stats_json` retourné par `get_match_stats()` contient les `PersonalScores[]` de TOUS les participants. Mais `extract_personal_score_awards(stats_json, self._xuid)` filtre uniquement sur le joueur courant. Le fanout (`_run_other_player_enrichment`) distribuait perf_scores, sessions, citations, dominance et LUSR vers les DBs coéquipiers — mais jamais les PSA. Résultat : Madina97294 avait des enrichissements (créés par fanout de JGtm/Chocoboflor) mais 0 PSA depuis le 12 mars.
+
+**Décision technique** :
+1. `_pending_other_psa: dict[str, list] = {}` sur `DuckDBSyncEngine.__init__` — accumule les PSA des co-joueurs pendant le traitement
+2. `_collect_psa_for_other_players(stats_json, match_id)` dans `MatchProcessingHelpersMixin` — extrait et met en attente les PSA pour chaque joueur enregistré (via `_get_other_registered_players()`)
+3. Appelé dans `_process_known_match` et `_save_player_data_new_match` après `_extract_personal_data`
+4. Fanout `_run_other_player_enrichment` : écrit les PSA en attente via `engine._insert_personal_score_rows(pending_psa)` avant les autres enrichissements
+5. Fix défensif secondaire : `_is_player_fully_synced_for_match` dans le HEAD check évite le court-circuit prématuré si PSA manquants
+
+**Fichiers modifiés** :
+- `src/data/sync/engine.py` : `_pending_other_psa` dans __init__, HEAD check patché
+- `src/data/sync/_match_processing_helpers.py` : `_collect_psa_for_other_players`
+- `src/data/sync/_match_processing.py` : appels dans known et new match
+- `src/data/sync/_engine_fanout.py` : distribution PSA en fanout
+- `src/data/sync/_engine_connections.py` : `_is_player_fully_synced_for_match`
+- `src/data/sync/_protocol.py` : 3 nouvelles signatures
+
+**Résultats** : 42 tests passent (`tests/test_sync_engine.py`). À partir du prochain sync, les PSA seront distribuées automatiquement vers tous les joueurs enregistrés.
+
+---
+
+### [2026-03-31] — fix(i18n): noms de cartes EN et "Quick Play" sur pages Teammates + Historique — Complété
+
+**Statut** : Complété
+
+**Problème** : Les pages Coéquipiers et Historique affichaient les noms de cartes en anglais et "Quick Play" au lieu des traductions FR, malgré le commit i18n `405e246` déjà fusionné.
+
+**Analyse** :
+- `map_ui` (FR) était bien produit par `_add_derived_columns` via `resolve_map_display_names()`, mais les renderers HTML utilisaient encore la clé `"map_name"` (EN) au lieu de `"map_ui"`.
+- `translate_playlist_name()` est un passthrough pur → `playlist_fr` = `playlist_name` (EN). La traduction réelle est dans `v_match_full.playlist_name_fr` mais non sélectionnée par `mv_player_matches`.
+
+**Décision technique** :
+1. `match_table_html.py` : clé `"map_name"` → `"map_ui"` ; renderer unifié `key in ("map_name", "map_ui")` → affiche `map_ui or map_name`, thumbnail via `map_id`.
+2. `teammates_helpers.py` : idem — clé `"map_name"` → `"map_ui"` dans la liste des colonnes + handler dans `_build_html_rows`.
+3. `teammates_map_charts.py` : `map_order` construit depuis `map_ui` (si dispo) sinon `map_name` — cohérence avec `compute_map_breakdown` qui groupe sur `map_ui`.
+4. `migrations.py` — `ensure_mv_player_matches_view` : ajout de `r.map_name_fr`, `r.playlist_name_fr`, `r.game_variant_name_fr` quand la source est `v_match_full` ; sinon `NULL`.
+5. `_filters_apply.py` — `_add_derived_columns` : si `playlist_name_fr` présente dans le DataFrame → `COALESCE(playlist_name_fr, playlist_name)` pour `playlist_fr` et `playlist_ui` (lang=fr).
+
+**Résultats** : 65 tests i18n + explorer_logic + match_history + delta_sync : 99 passed, 0 failed.
+
+**Prochaine étape** : Redémarrer l'app pour régénérer la vue `mv_player_matches` et vérifier visuellement.
+
+---
+
+### [2026-03-31] — fix(teammates): axe X du graphe Frag/morts affichait la date au lieu de #n + map — Complété
+
+**Tâche** : Le graphe "Frag morts" (`plot_trio_kills_deaths`) affichait des dates `DD/MM` sur l'axe X au lieu des labels `#n<br>map` utilisés par tous les autres graphes de l'escouade.
+
+**Cause** : La fonction `_prep` interne sélectionnait uniquement `[start_time, kills, deaths]` et supprimait les colonnes `map_ui`/`map_name`. La génération des ticktext utilisait systématiquement `strftime("%d/%m")` sans vérifier si les colonnes map étaient disponibles.
+
+**Correction** : Dans `src/visualization/trio.py`, `_prep` conserve désormais `map_ui` ou `map_name` si présente. La logique de ticktext utilise maintenant le même pattern que `plot_trio_metric` : `#i+1<br>map_name` quand disponible, fallback `DD/MM` sinon.
+
+**Résultat** : Les labels `#1<br>Deadlock`, `#2<br>Aquarius`, etc. s'affichent correctement.
+
+---
+
+### [2026-03-31] — feat(teammates): graphe tendance premier frag / première mort — Complété
+
+**Tâche** : Ajouter sur la page Coéquipiers un line chart chronologique (Option B) montrant la tendance du premier frag et de la première mort pour chaque joueur de l'escouade. Rolling average 10 matchs.
+
+**Décision technique** :
+- Source : `shared.highlight_events` (event_type kill/death, time_ms) + JOIN `match_registry` pour start_time
+- Architecture respectée : `analysis/first_events.py` (logique pure) + `_teammates_first_events_queries.py` (SQL privé) + rendu dans `teammates_charts.py`
+- `teammates_service.py` à 502L → nouvelle requête isolée dans `_teammates_first_events_queries.py` (sans toucher au service surchargé)
+- Graphe : points bruts semi-transparents (opacity 0.25) + lignes rolling (solid = frag, dot = mort), une couleur par joueur via `colors_by_name`
+- Appel injecté dans `render_trio_view` après `render_metric_bar_charts`, avec extraction des xuids depuis la `series` déjà construite
+- 4 clés i18n ajoutées (`tm_first_events_title`, `tm_first_frag`, `tm_first_death`, `tm_match_index`)
+- Branche : `feat/teammates-first-events-chart`
+
+**Résultats** : 0 erreur pylance/ruff, tous les fichiers < 500L, fonctions < 80L.
+
+**Prochaine étape** : Tester en live sur Streamlit, vérifier que `highlight_events` contient des events pour les matchs d'escouade courants.
+
+---
+
+### [2026-03-31] — Audit BDD + fix compute_sessions.py — Complété
+
+**Tâche** : Audit BDD (assets non traduits, tables/colonnes supprimées). Backfill sessions XxDaemonGamerxX.
+
+**Décision technique** :
+- **Traductions `asset_translations`** : 100% couvertes — 691 assets × 14 langues, aucun `name` NULL/vide
+- **Tables legacy v5.0** : toutes absentes dans les 4 player DBs (`match_stats`, `match_participants`, `highlight_events`, etc.)
+- **`highlight_events.gamertag`** : absent de `shared_matches_v2` (drop v5.8 Wave 4 bien appliqué)
+- **Root cause `sessions` manquante pour XxDaemonGamerxX** : `scripts/compute_sessions.py` line 416 référençait `shared_matches.duckdb` (ancien fichier supprimé) au lieu de `shared_matches_v2.duckdb`. Les syncs réguliers appellent `backfill_sessions_for_player` (→ `player_match_enrichment.session_id` uniquement), jamais `populate_sessions_table`. Les 3 autres joueurs avaient la table créée avant la migration v2.
+- **Fix** : correction du path hardcodé + `compute_sessions.py --gamertag XxDaemonGamerxX --force` → 5 sessions créées pour 22 matchs.
+
+**Résultats** : 482 MB total BDD, 0 fichier WAL orphelin, table `sessions` créée pour XxDaemonGamerxX. Commit `5714015`.
+
+---
+
+### [2026-03-31] — i18n exhaustif : actifs (cartes/modes) traduits dans la langue courante — Complété
+
+**Tâche** : Corriger l'ensemble des endroits du codebase affichant les noms de cartes et modes en anglais fixe ou en `lang="fr"` hardcodé. Objectif : tous les labels visuels utilisent `get_lang()` et `asset_translations`.
+
+**Décision technique** :
+- **`resolve_map_display_names(map_id_to_fallback, lang)`** ajouté dans `src/ui/translations.py` : requête batch SQL sur `asset_translations` (BCP-47 + fallback `en-US`), retourne `{map_id: traduit}` sans N+1
+- **`_add_derived_columns` (`_filters_apply.py`)** : point central v6 — `map_ui` produit via `resolve_map_display_names` quand `map_id` présent (1 requête batch par refresh), `mode_ui` via `translate_pair_name(lang=get_lang())`
+- **`compute_map_breakdown` (`analysis/maps.py`)** : groupe par `map_ui` si présent → valeur traduite propagée à tous les charts de carte
+- **6 fichiers de visualisation** (`timeseries`, `match_bars`, `trio`, `teammates_hs_pk`, `objective_charts`, `maps_outcome`) : utilisent `map_ui` si disponible (`"map_ui" if "map_ui" in d.columns else "map_name"`)
+- **`match_history.py` + `explorer_enrich.py`** : `mode_ui` via `build_mapping(pair_name, translate_pair_name(lang=get_lang()))`
+- **`explorer.py`** : dropdowns et match_selector utilisent `mode_ui`/`map_ui`
+- **`win_loss.py`** : `plot_stacked_outcomes_by_category` + `map_order` via `map_ui`
+- **`media_tab.py`** : caption label via `map_ui`
+- **`_session_compare_viz.py`** : hover label via `pair_fr`/`mode_ui`
+- **`career_top_matches_render.py`** : mode via `translate_pair_name(lang=get_lang())`
+- **`_session_compare_history.py`** (bug B) : `build_mapping` avec `lang=get_lang()` au lieu du défaut `"fr"`
+
+**Design pattern adopté** : la colonne `map_ui` est la source de vérité post-`_add_derived_columns`. Tous les consommateurs font `"map_ui" if "map_ui" in df.columns else "map_name"` — aucun hardcode de langue dans la couche visualisation.
+
+**Résultats** : 7/7 tests existants passent. Tous les modules modifiés s'importent sans erreur. 14 fichiers modifiés + 1 nouveau fichier de tests.
+
+**Fichiers modifiés** :
+- `src/ui/translations.py` — `resolve_map_display_names` ajouté
+- `src/app/_filters_apply.py` — `_add_derived_columns` : map_ui i18n + mode_ui i18n
+- `src/analysis/maps.py` — `compute_map_breakdown` : group by `map_ui`
+- `src/visualization/timeseries.py` — tick labels `map_ui`
+- `src/visualization/match_bars.py` — tick labels `_map_display`
+- `src/visualization/trio.py` — ticktext `map_ui`
+- `src/visualization/teammates_hs_pk.py` — tick labels `_map_display`
+- `src/visualization/objective_charts.py` — hover text `map_ui`
+- `src/visualization/maps_outcome.py` — `plot_map_outcome_timeline` : `map_ui → map_name`
+- `src/ui/pages/match_history.py` — `_ensure_display_columns` : mode_ui traduit
+- `src/ui/pages/explorer_enrich.py` — `enrich_for_table` + `enrich_common_matches` : mode_ui traduit
+- `src/ui/pages/explorer.py` — dropdowns + match_selector : `mode_ui`/`map_ui`
+- `src/ui/pages/win_loss.py` — `map_ui` pour stacked + map_order
+- `src/ui/pages/media_tab.py` — caption `map_ui`
+- `src/ui/pages/_session_compare_viz.py` — hover label `pair_fr`/`mode_ui`
+- `src/ui/pages/career_top_matches_render.py` — mode `translate_pair_name(get_lang())`
+- `src/ui/pages/_session_compare_history.py` — `build_mapping` avec `lang=get_lang()`
+
+---
+
+### [2026-03-30] — Tooltips descriptions médailles + citations — Complété
+
+**Tâche** : Ajouter des tooltips (HTML `title=`) affichant la description des médailles dans les grilles de médailles (page dernier match onglet citations, page citations), et vérifier l'état des tooltips pour les citations.
+
+**Décision technique** :
+- Ajout de `load_medal_description_map(lang)` dans `medal_definitions.py` : chargement bulk en 1-2 requêtes SQL (medal_translations BCP-47 + en-US fallback, puis medal_definitions legacy) pour éviter N appels individuels
+- Wrapper Streamlit `@st.cache_data` exposé dans `medals.py`
+- `_medal_icon_html(path, title="")` : ajout du paramètre `title` → `title=` sur le div wrapper
+- `render_medals_grid` : nouveau paramètre `descriptions: dict[int, str] | None = None` + tooltip `"{nom} : {desc}"` sur icône et caption
+- `render_medals_tab` (match_view_citations.py) : charge `_desc_map` et le passe aux grilles
+- `render_citations_page` (citations.py) : idem
+- Les citations sur la page dernier match avaient déjà des tooltips via `title=` HTML (champ `description` des définitions)
+
+**Résultats** : 0 erreurs Pylance, 0 erreurs Ruff sur les 4 fichiers modifiés (1 E501 préexistant dans une docstring).
+
+**Fichiers modifiés** : `src/data/medal_definitions.py`, `src/ui/medals.py`, `src/ui/pages/match_view_citations.py`, `src/ui/pages/citations.py`
+
+---
+
+### [2026-03-30] — asset_translations v6 : peuplement + branchement v_match_full — Complété
+
+**Tâche** : Peupler `asset_translations` dans `metadata.duckdb` (14 langues × 698 assets) et brancher `v_match_full` dessus pour que les graphiques affichent des noms localisés.
+
+**Décision technique** :
+- `populate_asset_translations.py` : optimisé pour parallélisme (14 langues simultanées via `asyncio.gather` + `asyncio.Lock` pour écritures sérialisées)
+- Cause racine du bug : `get_map(asset_id, version_id="")` → 404 (URL `.../versions/`)
+- Fix : `_build_version_id_cache()` fetch les `VersionId` depuis `match stats API` (1 match par asset → 560 appels → 698 version_ids couverts) avant d'appeler Discovery UGC
+- Bug SQL DuckDB : `CURRENT_TIMESTAMP` dans `ON CONFLICT DO UPDATE SET` → utiliser `now()`
+- Bug SQL DuckDB : `LIMIT 1 BY col` invalide → `ROW_NUMBER() OVER (PARTITION BY col)`
+- `_try_attach_meta_for_views` : vérifiait `meta.maps` (table supprimée en v6) → corrigé pour vérifier `meta.asset_translations`
+- `_create_v_match_full` : suppression des 4 JOINs legacy (`meta.maps`, `meta.playlists`, `meta.playlist_map_mode_pairs`, `meta.game_variants`) inexistants en v6 ; COALESCE simplifié vers `asset_translations` directement
+- Fixes qualité : f-strings sans placeholders (F541), imports désordonnés (I001), import inutile (F401), SIM108
+
+**Résultats** :
+- `asset_translations` : 9674 lignes (698 assets × 14 langues) — maps, playlists, pairs, game_variants
+- `v_match_full` maintenant branchée sur `asset_translations` exclusivement (plus de tables legacy)
+- Durée script optimisé : ~6 min (vs ~26 min estimé sans parallélisme)
+- Tests : 14/14 passent (test_code_quality + test_resolution_views)
+
+**Conclusion** : Les graphiques affichant des noms de maps/modes de jeu en FR sont maintenant alimentés par `asset_translations` via `v_match_full`. Prochaine étape : vérifier visuellement en lançant l'app.
+
+### [2026-03-30] — Refactoring qualité code : friends_impact + participation_radar — Complété
+
+**Tâche** : Corriger les 2 violations de qualité détectées par audit (taille module + noqa:)
+
+**Décision technique** :
+- `friends_impact.py` (707L) → 3 modules : `_impact_types.py` (30L) + `_impact_event_badges.py` (296L) + `friends_impact.py` (363L)
+- `participation_radar.py` (496L, 4 noqa:) → extraction `_threshold_queries.py` (187L) + `ProfileOptions` dataclass → `participation_radar.py` (383L, 0 noqa:)
+- `ImpactEventSets` dataclass pour `build_impact_matrix` (8 args → 4 args)
+- `ProfileOptions` dataclass pour `compute_participation_profile` (7 args → 3 args)
+
+**Résultats** :
+- Ruff : 0 violations C90/PLR0912/PLR0913/PLR0915 sur tous les modules refactorisés
+- Tests : 47/47 passent (test_participation_radar + test_match_impact_events)
+- Callers mis à jour : `teammates_impact.py`, `match_view_participation.py`, `session_compare_charts.py`, `teammates_service.py`, `tests/test_participation_radar.py`
+- Re-export `ProfileOptions` ajouté dans `src/visualization/participation_radar.py`
+
+**Conclusion** : Refactoring terminé, 0 noqa: restant sur les modules corrigés.
+
+---
+
+### [2026-03-30] — Branchement asset_translations sur v_match_full — Complété
+
+**Statut** : Complété  
+**Décision technique** : Patcher `_create_v_match_full()` dans `src/data/sync/migrations.py` pour sourcer les noms localisés depuis `asset_translations` (14 langues BCP-47) en priorité, avec fallback sur les tables legacy (`maps.name_fr`, etc.) puis `match_registry`.
+
+**Changements** :
+- `src/data/sync/migrations.py` : 8 LEFT JOINs supplémentaires sur `asset_translations` (`at_map_en`, `at_map_fr`, `at_pl_en`, `at_pl_fr`, `at_pair_en`, `at_pair_fr`, `at_gv_en`, `at_gv_fr`)
+- COALESCE updated : `asset_translations.name > legacy.name_en/name_fr > match_registry.map_name`
+- Branche dégradée (`meta_alias=None`) inchangée
+- `scripts/populate_asset_translations.py` : fix `gamecms` → `gamecms_hacs` pour `populate_medal_metadata.py`
+- `scripts/populate_medal_metadata.py` : idem fix, 2145 traductions médailles peuplées (14 langues)
+
+**Résultats observés** :
+- La vue se recrée correctement au démarrage (via `ensure_resolution_views()`)
+- `asset_translations` toujours vide au moment du test (peuplement en cours)
+- Blocage DuckDB multi-process résolu en killant les anciens process zombies
+
+**Prochaine étape** :
+- Attendre fin de `populate_asset_translations.py` (~45 min total)
+- Régénérer `mv_player_matches` via `scripts/post_sync_compute.py`
+- Valider que `map_name_fr` est non-NULL dans `v_match_full`
+
+---
+
+### [2026-03-30] — Doc v6.2 : normalisation des noms de modes — Complété
+
+**Statut** : Complété
+**Décision technique** : Documenter explicitement la normalisation des labels de modes dans les deux points d'entrée release utilisateur.
+- `README.md` (`What's new`, v6.2) : ajout d'un bullet décrivant le resolver unique `resolve_display_mode`, la délégation via `translate_pair_name`, et les 29 overrides FR/EN de `mode_pair_overrides`.
+- `docs/CHANGELOG.md` (`[6.2.0] > Changed`) : ajout d'une entrée "Game mode label normalization (phase 1+2)" avec les mêmes éléments techniques.
+
+**Résultats** : Documentation alignée avec le contenu de la release v6.2.1 concernant la normalisation des noms de modes, sans impact code/runtime.
+- Parité FR ajoutée dans `docs/FR/README.md` (nouveau bullet v6.2 dans "Dernières nouveautés").
+**Conclusion** : Changelog + README EN/FR prêts pour publication/release notes.
+
+### [2026-03-30] — Thumbnail cartes par asset_id (indépendant de la langue) — Complété
+
+**Statut** : Complété
+**Décision technique** : Refactoring du tooltip thumbnail des tableaux de matchs pour utiliser `map_id` (asset_id) au lieu du nom texte de la carte. Sans ce fix, les thumbnails auraient disparu dès l'affichage des noms localisés (FR, DE…).
+- Nouveau `_build_map_id_index()` dans `match_table_html.py` : joint `metadata.duckdb maps(asset_id, name_en)` avec l'index fichiers `static/maps/` → `{asset_id: url}`. Mis en cache avec `@functools.cache`.
+- Nouvelle `map_thumb_url_by_id(map_id)` : lookup ID-first, language-agnostic.
+- `_render_cell()` : `map_thumb_url_by_id(r.get("map_id")) or map_thumb_url(r.get("map_name"))` — fallback EN si map non encore dans la DB.
+- `map_name_cell_html(map_name, map_id=None)` : même priorité ID > nom.
+- Callers mis à jour : `career_top_matches_render.py`, `teammates_helpers.py`.
+- `_session_compare_history.py` : iterate sur colonnes display, `map_id` non disponible → fallback nom EN conservé.
+- 2 tests `test_delta_sync.py::TestTranslatePlaylistName` mis à jour (attendaient l'ancien JSON supprimé).
+
+**Résultats** : 5284 passés, 3 failed (2 pre-existing : ruff venv cassé + plot_friends_impact_scatter ; 0 nouvelle régression).
+**Conclusion** : Les thumbnails fonctionneront même quand `map_name` est affiché en français ou autre langue.
+
+---
+
+### [2026-03-30] — Référentiel multi-langue des assets Halo (v6.3) — Complété
+
+**Statut** : Complété
+**Décision technique** : Introduction de deux tables pivot dans `metadata.duckdb` :
+- `asset_translations(asset_id, asset_type, lang, name, description)` pour maps/playlists/pairs/game_variants → peuplée via `Accept-Language` header sur Discovery UGC API
+- `medal_translations(medal_name_id, lang, name, description)` pour les médailles → peuplée via champ `translations` de `gamecms.get_medal_metadata()` (14 langues en un seul appel)
+- Médailles custom (`medal_name_id >= 9B`) : pas d'endpoint API → migration depuis `medal_definitions` uniquement (fr-FR + en-US)
+- `SPNKrAPIClient` : nouveau paramètre `lang` → `session.headers["Accept-Language"]`
+- `MetadataResolver.resolve()` : nouveau paramètre `lang`, priorité `asset_translations → en-US fallback → tables legacy`
+- `resolve_medal_name()` / `resolve_medal_description()` : priorité `medal_translations → medal_definitions`
+- `resolve_asset_name()` dans `ui/translations.py` : lookup `asset_translations` avec fallback
+- **Bug fix** : `populate_metadata_from_discovery.py` cherchait `shared_matches.duckdb` → corrigé en `shared_matches_v2.duckdb` (tables maps/playlists n'avaient jamais été créées)
+- **Nettoyage** : suppression 6 JSON statiques obsolètes (medals + playlists), `enrich_i18n()` remplacé par no-op
+
+**Résultats** : 88/89 tests passés hors e2e (1 échec préexistant `test_ruff_no_errors` lié au venv cassé, non régressif). Ruff manual : 0 violation sur les fichiers modifiés. Baseline size mis à jour.
+**Conclusion** : Branche `feat/asset-translations-i18n`, 8 commits. Prêt pour : (1) `python scripts/populate_medal_metadata.py` pour migrer les médailles, (2) `python scripts/populate_asset_translations.py --langs fr-FR` pour les maps/assets.
+
+---
+
+### [2026-03-30] — Exclure le top killer pour les badges Héros silencieux & Faux-frère — Complété
+
+**Statut** : Complété
+**Décision technique** : Avant de chercher le candidat au badge, on exclut le(s) joueur(s) ayant `kills == max_kills` de l'équipe. Guard `max_kills > 0` : si personne n'a de kill (match objectif ou données manquantes), aucune exclusion. Si après exclusion < 2 joueurs éligibles → badge non attribué. Implémenté dans 3 fichiers : `_match_impact_events.py` (match unique), `friends_impact.py` (multi-match), `teammates_impact.py` (ajout colonne `kills` dans la requête SQL).
+**Résultats** : 73/74 tests passés dans la suite ciblée ; 1 échec préexistant (`plot_friends_impact_scatter` manquant, non lié). Tests dans `test_match_impact_events.py` mis à jour pour refléter la nouvelle sémantique (Alice top killer exclue → Bob devient héros silencieux).
+**Conclusion** : Branche `feat/badges-exclude-top-killer` (worktree `LevelUp-badges`). Prêt pour merge.
+
+---
+
+### [2026-03-30] — Badge Bourreau (Top Killer) + légende en expander — Complété
+
+**Statut** : Complété  
+**Décision technique** : Nouveau badge 💥 **Bourreau** (FR) / **Top Killer** (EN) — joueur avec le plus de kills dans l'équipe alliée, toute issue, min. 1 kill et 2 joueurs. Deux implémentations parallèles : `_find_top_killer_event` (match unique, `_match_impact_events.py`) et `identify_top_killer_multi` (multi-matchs, `friends_impact.py`). `SCORE_TOP_KILLER = 1.0`. Intégré dans `teammates_impact.py`, `build_impact_matrix` (8e événement dans `_EVENT_DEFS`/`event_dicts`). Légende déplacée de `st.caption` vers `st.expander` replié par défaut dans les deux pages. Traductions i18n FR/EN mises à jour.  
+**Résultats** : 53/53 tests passés. Commits `fa4169c` + `93fd354` sur `feat/badges-exclude-top-killer`.  
+**Conclusion** : Mergé dans `fix/radar-objectifs-normalisation`.
+
+---
 
 ### [2026-03-30] — Option normalize_mode_labels dans AppSettings — Complété
 
@@ -7843,3 +9369,309 @@ Installé dans `main()` du launcher via `suppress_asyncio_proactor_connection_re
 
 **Résultat** : Élimination du spam WinError 10054 dans les logs launcher sans impacter
 les vraies erreurs asyncio.
+
+---
+
+## [2026-03-30] fix(radar) — Normalisation axe Objectifs du radar Complémentarité — Complété
+
+**Branche** : `fix/radar-objectifs-normalisation` — commits `1df74ce`, `93568dc`, `1638c4e`
+
+**Problème** : L'axe "Objectifs" du radar "Complémentarité de l'escouade" (teammates) et du
+radar de participation (match view) s'affichait proche de 0, même pour d'excellents scores CTF
+ou Strongholds. Exemple mesuré : 1800 pts sur 3 matchs CTF → 20% de l'axe.
+
+**Cause racine** : Dans `compute_global_radar_thresholds()`, le seuil objectifs était calculé
+comme `max(max_obj, max_kill)` — `max_kill` (~3000) écrasait systématiquement `max_obj` (~600
+en CTF). Le seuil objectifs se retrouvait calibré sur les kills, rendant les scores objectifs
+insignifiants.
+
+**Décision technique** :
+- Phase 0 : calcul du p90 réel par famille de mode (CTF, Strongholds, Oddball, Slayer…) via
+  une requête supplémentaire lors du scan des DBs joueurs
+- Phase 1 : `objectifs = max_obj * factor` (plus de `max(max_obj, max_kill)`)
+- Phase 2 : seuil objectifs de session = somme des p90 par match selon la famille détectée
+  par `_get_mode_family(pair_name)` — gestion native des sessions mixtes (BTB + Arena)
+- Percentile p90 : un joueur bon atteint ~82%, seul le top 10% plafonne à 100%
+- Match view : même correction, seuil per-mode appliqué au match unique
+
+**Fichiers modifiés** :
+- `src/analysis/participation_radar.py` — `RADAR_THRESHOLDS_PER_MODE`, `_get_mode_family()`,
+  `get_mode_family()` (public), scan per-mode dans `compute_global_radar_thresholds()`
+- `src/ui/pages/teammates_synergy.py` — `_compute_player_profile()` : seuil pondéré per-mode
+- `src/ui/pages/match_view_participation.py` — seuil per-mode sur le match unique
+
+**Tests ajoutés** :
+- `tests/test_participation_radar.py` — `TestGetModeFamily` : 22 cas (CTF/EN/FR, Strongholds,
+  Oddball, KOTH, Slayer, Fiesta, None, casse, invariant RADAR_THRESHOLDS_PER_MODE)
+- `tests/ui/test_teammates_helpers.py` — 2 cas : CTF objectifs_norm ≈ 750/p90_ctf,
+  custom per_mode consommé correctement
+
+**Résultat** : 49 tests verts. 1800 pts sur 3 CTF → 86% (contre 20% avant fix).
+Tous les radars (teammates + match view) utilisent maintenant le même référentiel p90 calibré.
+---
+
+## [2026-03-30] Fix propagation map_id dans _session_compare_history.py
+
+**Statut** : Complété
+
+**Décision technique** :
+`map_id` était disponible dans `df_sess` à l'entrée du pipeline mais éliminé par
+`.select(display_cols)` dans `_build_history_dataframe`. Résultat : `map_name_cell_html`
+était appelé sans `map_id` → fallback EN, pas de thumbnail par ID.
+
+Pattern appliqué : identique à `perf_scores` — extraire la Series **avant** le `.select()`
+et la passer en 3ᵉ élément du tuple de retour, sans polluer `df_display`.
+
+**Fichiers modifiés** :
+- `src/ui/pages/_session_compare_history.py`
+  - `_build_history_dataframe` : signature `→ tuple[..., pl.Series | None, pl.Series | None]`,
+    extrait `map_ids` avant `.select(display_cols)`
+  - `_render_history_html` : nouveau paramètre `map_ids`, passe `map_ids[idx]` à
+    `map_name_cell_html(val, map_id)`
+  - `render_session_history_table` : décompacte le 3ᵉ élément et le transmet
+
+**Tests ajoutés** :
+- `tests/test_session_compare_history_map_id.py` — 7 cas :
+  retour 3-tuple, Series présente/absente, valeurs correctes, map_id absent de df_display,
+  longueur cohérente, perf_scores non cassé
+
+**Résultat** : 7/7 tests verts. La colonne Carte dans l'historique de session utilise
+désormais `map_id` pour la traduction FR et les thumbnails, comme les autres cal
+
+---
+
+## [2026-03-31] fix(radar) — Radar "Complémentarité de l'escouade" : "Données insuffisantes" malgré 12 matchs — Complété
+
+**Statut** : Complété — commit `2cefec6` sur `feat/teammates-first-events-chart`
+
+**Cause racine** : Lors du refactoring de `compute_participation_profile` (session précédente), la fonction a perdu ses kwargs directs (`name=`, `color=`, `pair_name=`, `thresholds=`) au profit de `ProfileOptions`. Mais `_compute_player_profile` dans `teammates_synergy.py` utilisait encore l'ancienne signature → `TypeError` catchée silencieusement par `_compute_profiles_from_squad` → `profiles` liste vide → `_render_radar_display(profiles)` → `st.info(t("insufficient_data_chart"))`.
+
+**Diagnostic** : 
+- Madina97294 : PSA = 0/12 pour les matchs du 24 mars (missing sync)
+- Chocoboflor : PSA = 12/12 ✓
+- Même si Chocoboflor avait un profil valide, la TypeError l'excluait aussi
+- `test_viz_participation.py::TestComputeParticipationProfile` échouaient tous (même bug)
+
+**Décision technique** : Utiliser `ProfileOptions(name=..., color=..., pair_name=..., thresholds=...)` partout, re-exporter `ProfileOptions` depuis `src/visualization/participation_radar.py` pour la compat des tests.
+
+**Fichiers modifiés** :
+- `src/visualization/participation_radar.py` : re-export `ProfileOptions`
+- `src/ui/pages/teammates_synergy.py` : pass `ProfileOptions(...)` dans `_compute_player_profile`
+- `tests/test_viz_participation.py` : `TestComputeParticipationProfile` → `ProfileOptions`
+
+**Résultats** : 109 tests passent (test_viz_participation + test_participation_radar + test_teammates_helpers)
+
+**Conclusion** : Le graphe radar "Complémentarité de l'escouade" s'affiche désormais correctement. Le bug PSA manquants pour Madina reste un sujet sync (backfill --personal-scores à relancer), mais l'affichage fonctionne quand au moins un joueur a ses PSA.lers.
+---
+
+## [2026-03-31] Fix 3 régressions tests post-i18n graphiques
+
+**Statut** : Complété
+
+**Contexte** : Suite aux 3 fixes i18n sur les graphiques (session précédente), 28 tests échouaient. Après isolation, 3 échecs réels :
+
+1. `test_teammates_history_rows_use_map_hover` — regression : `_build_html_rows` avait son elif changé de `"map_name"` à `"map_ui"`, mais le test passait `col_key="map_name"`. Fix : condition `elif key in ("map_ui", "map_name")`.
+
+2. `test_build_history_dataframe_empty` — `_build_history_dataframe` retourne désormais un tuple de 3 valeurs (`df_display, perf_scores, map_ids`) depuis commit 405e246. Le test attendait 2. Fix : `assert len(result) == 3`.
+
+3. `test_impact_tab_renders_heatmap_and_ranking` — test entièrement désynchronisé avec le module actuel (`plot_friends_impact_scatter`, `count_events_by_player`, `build_impact_ranking_df` n'existent plus dans `teammates_impact.py`). Fix : suppression des 3 monkeypatches invalides, correction schéma mock `build_impact_matrix` (colonne `events: List[Struct]`), ajout mock `_load_match_participants → None`, ajout mock `st.markdown`, updated assertions vers `st_mocks["markdown"].called`.
+
+**Décision technique** : Corriger les tests pour refléter l'API actuelle, pas ajouter du code mort pour satisfaire les anciens tests.
+
+**Résultats** : 49/49 tests passent sur les fichiers ciblés. La régression `test_viz_participation` et `test_teammates_helpers` observée en full-suite est du flapping lié à l'ordre d'exécution (passes en isolation).
+
+**Conclusion** : Branche propre, pas de nouvelles régressions.
+
+### [2025-07-24] — Butterfly histogram premier frag/mort (teammates)
+
+**Statut** : Complété
+**Branche** : `feat/teammates-first-events-chart`
+
+**Décision technique** : Implémentation d'un butterfly histogram (barres miroir positives/négatives) pour visualiser la distribution des premiers frags et premières morts par tranche de 15 secondes, par joueur de l'escouade.
+
+**Architecture** :
+- `src/analysis/first_events.py` : logique pure rolling avg (préservée, non utilisée dans le chemin final)
+- `src/data/services/_teammates_first_events_queries.py` : requête SQL sur `shared.highlight_events` MIN(time_ms) par event_type par match par xuid
+- `src/ui/pages/teammates_charts.py` : `_format_bin_label`, `_compute_bin_counts`, `_build_first_events_fig`, `render_first_events_chart`
+- `src/ui/pages/_teammates_trio.py` : wiring + fix bug xuid joueur principal
+- `src/ui/i18n/pages/teammates.py` : 3 clés FR/EN
+
+**Itérations design** :
+1. Rolling avg par index de match → rejeté (pas d'axe temporel)
+2. Subplots datetime → rejeté
+3. Butterfly histogram 15s bins → retenu
+
+**Fonctionnalités finales** :
+- Barres positives (frags) / négatives (morts) par tranche de 15s
+- Couleurs par joueur depuis `colors_by_name`
+- Axe X blanc gras (`Arial Black`), labels `0s`, `0m15s`, `0m30s`...
+- Séparateurs verticaux pointillés blancs entre tranches (`col_shapes`, `xref="x"`)
+- Annotations ▲ Frags / ▼ Morts
+- Bug fix : `me_df` n'a pas de colonne `xuid` → init directe depuis paramètre `xuid` de `render_trio_view`
+
+**Résultats** : Ruff all checks passed, commit `185f98b`.
+**Conclusion** : Feature complète et livrée.
+
+---
+
+## [2026-04-02] fix(weapons): image Mutilateur manquante dans scoreboard detail
+
+**Statut** : Complété
+
+**Problème** : L'image de l'arme "Mutilateur" n'apparaissait pas dans la section armes du résumé joueur (scoreboard inline detail).
+
+**Analyse** :
+- `weapon_asset_url("Mutilateur")` retournait `None`
+- La clé normalisée `"mutilateur"` n'était pas dans `_WEAPON_ASSET_ALIASES`
+- Pourtant `Mutilator.png` existait bien dans `static/weapons-assets/`
+
+**Décision technique** : Ajouter les deux aliases dans `_scoreboard_asset_urls.py` :
+- `"mutilator": "Mutilator"` — nom EN
+- `"mutilateur": "Mutilator"` — nom FR (via `WEAPON_NAME_FR`)
+
+**Résultats** : `weapon_asset_url("Mutilateur")` retourne `/app/static/weapons-assets/Mutilator.png` ✓
+
+**Conclusion** : Fix committé dans `_scoreboard_asset_urls.py`.
+
+---
+
+## [2026-04-02] Fix traductions EN→FR dans le tableau des matchs (map, playlist, mode)
+
+**Statut** : Complété
+
+**Symptôme** : Tableau des matchs affiche `Cliffhanger`, `Quick Play`, `Assassin` en anglais malgré les colonnes `map_ui`/`playlist_fr`/`mode_ui`.
+
+**Cause racine** (3 bugs distincts) :
+
+1. **`mv_player_matches` sans colonnes FR** : La migration `fix_mv_player_matches_scores` était déjà marquée dans `schema_migrations`, donc la vue existante ne contenait pas `map_name_fr`, `playlist_name_fr`, `pair_name_fr`, `game_variant_name_fr`. La fonction `ensure_mv_player_matches_view` avait été modifiée pour les inclure mais jamais réexécutée en prod.
+
+2. **`resolve_map_display_names` écrase FR par EN** : La boucle `for try_lang in (bcp, "en-US")` mettait d'abord la traduction FR dans `result`, puis l'écrasait avec l'EN-US au tour suivant. Fix : condition `if try_lang == "en-US" and result[key] != map_id_to_fallback[key]: continue`.
+
+3. **`mode_ui` et `pair_fr` ignorent les colonnes FR** : `_add_derived_columns` utilisait `pair_name` + `translate_pair_name` pour `mode_ui`, sans jamais utiliser `game_variant_name_fr` ni `pair_name_fr`. Idem pour `pair_fr`. Fix : préférer `game_variant_name_fr` (lang=fr) pour `mode_ui`, `pair_name_fr` pour `pair_fr`.
+
+**Actions** :
+- `src/data/migration/steps/add_mv_player_matches_fr_cols.py` : nouvelle migration recréant la vue
+- `src/data/migration/steps/__init__.py` : import + __all__ mis à jour
+- `src/data/sync/migrations.py` : `fr_cols_expr` ajoute `pair_name_fr`
+- `src/ui/translations.py` : `resolve_map_display_names` — pas d'écrasement FR par EN
+- `src/app/_filters_apply.py` : `pair_fr` via `pair_name_fr`, `mode_ui` via `game_variant_name_fr`
+- `tests/test_metadata_i18n.py` : attacher `meta` avant d'interroger `v_match_full`
+
+**Vérification** (données réelles `shared_matches_v2.duckdb`) :
+```
+Cliffhanger → map_name_fr = 'Dévissage'
+Quick Play  → playlist_name_fr = 'Partie rapide'
+Assassin    → game_variant_name_fr = 'Assassin : Arène'
+```
+
+**Résultats** : Tous les tests passent (test_metadata_i18n 7/7, test_i18n_derived_columns 17/17). Nécessite un redémarrage de l'app pour déclencher la migration.
+
+---
+
+### [2026-04-02] — analyse(psa): root cause PSA manquants Madina + backfill — Complété
+
+**Statut** : Complété
+
+**Contexte** : Audit PSA (personal_score_awards) révèle que Madina avait 41 matchs sans PSA dans sa DB joueur. Backfill effectué : +67 lignes insérées. Question : comment des PSA ont-elles pu manquer sur des matchs déjà synchés ?
+
+**Root cause identifiée** : Le fanout PSA était absent avant le commit `c794712` (31/03/2026 21:35).
+
+**Mécanisme du bug** :
+- L'API Halo retourne `stats_json` contenant les PSA de **tous les participants** du match
+- Avant `c794712`, le moteur de sync extrayait les PSA uniquement pour le joueur principal (JGtm, le compte qui fait le sync)
+- Les PSA des coéquipiers (Madina, Chocoboflor) étaient ignorées → `personal_score_awards` vides pour eux
+
+**Fix `c794712`** (3 fonctions ajoutées dans `src/data/sync/_engine_fanout.py`) :
+- `_collect_psa_for_other_players` : parcourt `stats_json`, extrait les PSA de chaque coéquipier
+- `_pending_other_psa` : accumulateur dict `xuid → [rows]` pendant le traitement d'un match
+- `_run_other_player_enrichment` : écrit les PSA accumulées dans les DBs joueurs concernées
+
+**Preuve par corrélation temporelle** :
+```
+Total matchs Madina  : 1048
+Matchs avec PSA      : 1029
+Matchs SANS PSA      : 19
+  → avant fix (< 2026-03-31) : 19
+  → après fix (≥ 2026-03-31) : 0
+```
+Corrélation parfaite — tous les matchs sans PSA sont antérieurs au fix.
+
+**Backfill résultats** :
+| Joueur | Matchs sans PSA | PSA insérées | Restants légitimes |
+|--------|----------------:|-------------:|-------------------:|
+| Madina97294 | 41 | 67 lignes | 19 (score=0 API) |
+| JGtm | 17 | 0 | 17 (score=0, abandon/déco) |
+| Chocoboflor | 5 | 4 lignes | 1 (score=0) |
+
+**Score=0 = 0 PSA** : L'API Halo ne génère aucun award pour un joueur avec score=0/kills=0 — comportement normal, non backfillable.
+
+**Conclusion** : Fanout correct depuis le 31/03. Rien à ajuster côté sync. La prochaine sync de JGtm distribuera automatiquement les PSA de Madina et Chocoboflor pour les nouveaux matchs. Les 19+17+1 PSA résiduelles manquantes sont légitimes (parties abandonnées ou score nul).
+
+---
+
+## [2026-04-02] Fix LUSR — bug de seed cascade en mode incrémental
+
+**Statut** : Complété
+
+**Décision technique** :
+Correction du bug de seed cascade dans `batch_compute_lusr` (mode incrémental).
+
+**Cause racine** : En mode `force=False`, la fonction chargait TOUS les matchs historiques (ex: 404 pour Madina) puis les passait à `compute_skill_ratings_batch` avec `existing_states` injecté comme µ₀ avant le match #1. TrueSkill recalculait toute l'historique depuis cette graine décalée. Chaque sync séparée dérivait le rating de ~160 pts (Madina), ~17 pts (Chocoboflor), +44 pts (JGtm).
+
+**Fix implémenté dans `src/data/sync/_skill_rating.py`** :
+1. `batch_compute_lusr` — en mode incrémental, filtrer `df_matches` et `df_participants` aux seuls nouveaux matchs (non présents dans `existing_lusr_ids | existing_csr_ids`) avant de passer à `compute_skill_ratings_batch`
+2. `_upsert_lusr_ratings` — nouveau kwarg `seed_ratings: dict[str, float] | None` pour initialiser `prev_rating` depuis le dernier rating connu → le delta du premier nouveau match est correct (`new_rating - last_stored_rating`)
+
+**Tests écrits** (`tests/test_lusr_incremental_seed.py`) — 11 tests, tous verts :
+- `TestIncrementalContinuityInvariant` : incrémental == full batch pour les nouveaux matchs
+- `TestCascadeDriftDetection` : simule le scénario Madina, prouve que le drift est corrigé
+- `TestUpsertLusrRatingsSeedRatings` : delta correct, guard-rail, isolation par groupe
+
+**CLI** : `--reset-lusr` ajouté dans `scripts/backfill/cli.py` (logique déjà présente dans `backfill_data.py`)
+
+**Reset données en production** :
+| Joueur | Matchs recalculés | Seed CSR |
+|--------|------------------:|----------|
+| Chocoboflor | 352 | CSR=711 → µ=1474 |
+| JGtm | 729 | CSR=667 → µ=1445 |
+| Madina97294 | 1042 | CSR=1400 → µ=1933 |
+| XxDaemonGamerxX | 22 | µ=1500 (défaut) |
+
+**Résultats** : Madina "Non classé" était à 988.6 (vrai avg ~1843). Après reset complet depuis CSR seed : recalcul propre sans dérive inter-syncs. Le fan-out (`_engine_fanout.py` l.197) bénéficie du fix automatiquement (même code path).
+
+**Prochaine étape** : Commit + PR.
+
+---
+
+### [2026-05-29] — refactor(viz): V2 Axes D + E + F — Complété
+
+**Statut** : Complété  
+**Branche** : `refactor/viz-pipeline-v2`
+
+**Décision technique** :
+Implémentation des axes D, E, F du plan `PLAN_REFACTO_ASSET_TRANSLATIONS_2026-04-02.md` V2.
+
+**Axe D — mode_ui centralisé + _vectorize_ui_columns supprimé** (commit `7d122297`) :
+- **D1** : Ajout du bloc `mode_ui` dans `add_i18n_display_columns` (helper pur `_strip_mode_map_suffix` via regex — 0 accès DB). Strips " on MapName", "- Forge", "- Ranked". Idempotent.
+- **D3** : Suppression de `_vectorize_ui_columns` (67L) dans `_filters_cascade.py` + nettoyage de 5 imports devenus orphelins (Callable, normalize_map_label, normalize_mode_label, build_mapping, translate_playlist_name). `clean_asset_label_fn` retiré de la signature de `_render_cascade_filters` et de son call site.
+- **D4** : Helpers `_rolling_mean`/`_normalize_df` migrés vers `_timeseries_helpers.py`. Deux imports dupliqués mergés dans `timeseries_combat.py` et `_timeseries_progression.py`.
+- 4 nouveaux tests `test_add_i18n_display_columns.py` (13 tests total). 5 534 tests vert.
+
+**Axe E — Split modules > 500L** (commit `31863b59`) :
+- **E1** : `maps_outcome.py` 590L → 363L. Section Option C (bullet charts, 207L) extraite dans `_maps_outcome_bullet.py` (254L). `_sort_by_map_order` déplacée avec le module extrait + réexportée depuis `maps_outcome.py`.
+- **E2** : `friends_impact_heatmap.py` 507L → 358L. Section squad heatmap extraite dans `_heatmap_squad.py` (~168L), avec lazy import pour éviter dépendance circulaire.
+- Baseline : 116 → 114 violations, modules >500L : 15 → 13.
+
+**Axe F — HEIGHT_* constants + SingleSeriesChartData** (commit `64f48fdd`) :
+- `HEIGHT_TIMESERIES=420`, `HEIGHT_PROGRESSION=400`, `HEIGHT_MINI=150` ajoutés dans `_chart_series.py` (source unique pour les magic numbers de hauteur).
+- `_rolling_mean_list()` helper pur (sans polars).
+- `SingleSeriesChartData` dataclass avec `from_series(x, y, window=10)` → calcule `y_smooth` à la construction. Prêt pour migration des graphes timeseries solo (Axe F3, futur).
+- `_chart_series.py` : 223L → 285L. Ruff clean.
+
+**Axe G — Titres Plotly → st.subheader** :
+- Non implémenté dans cette session (74 call-sites, 20+ fichiers). Déféré à la session suivante ou à V3.
+- G1 (DeprecationWarning dans `apply_halo_plot_style`) serait à faible risque si voulu rapidement.
+
+**Résultats** : 3 commits sur  `refactor/viz-pipeline-v2`, 0 régression.
+
+**Prochaine étape** : Axe G ou PR de V2.

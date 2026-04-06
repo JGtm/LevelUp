@@ -20,6 +20,7 @@ from src.visualization._compat import (
     ensure_polars,
     ensure_polars_series,
 )
+from src.visualization._plot_options import PlotOptions
 from src.visualization.theme import (
     apply_halo_plot_style,
     get_legend_horizontal_bottom,  # noqa: F401 – re-export implicite
@@ -122,7 +123,6 @@ def plot_kda_distribution(df: DataFrameLike, lang: str = "fr") -> go.Figure:
 def plot_top_weapons(
     weapons_data: list[dict],
     *,
-    title: str | None = None,
     top_n: int = 10,
     lang: str = "fr",
 ) -> go.Figure:
@@ -141,7 +141,7 @@ def plot_top_weapons(
     if not weapons_data:
         fig = go.Figure()
         fig.update_layout(height=PLOT_CONFIG.default_height)
-        return apply_halo_plot_style(fig, title=title)
+        return apply_halo_plot_style(fig)
 
     # Limiter et trier
     data = sorted(weapons_data, key=lambda x: x.get("total_kills", 0), reverse=True)[:top_n]
@@ -172,24 +172,23 @@ def plot_top_weapons(
 
     fig.update_layout(
         height=height,
-        margin={"l": 120, "r": 60, "t": 60 if title else 30, "b": 40},
+        margin={"l": 120, "r": 60, "t": 30, "b": 40},
     )
     fig.update_xaxes(title_text=viz_t("axis_kills", lang))
     fig.update_yaxes(title_text="")
 
-    return apply_halo_plot_style(fig, title=title, height=height)
+    return apply_halo_plot_style(fig, height=height)
 
 
 def plot_histogram(  # noqa: PLR0913
     values: pd.Series | pl.Series | np.ndarray,
     *,
-    title: str | None = None,
     x_label: str = "Valeur",
     y_label: str | None = None,
     bins: int | str = "auto",
     color: str | None = None,
     show_kde: bool = False,
-    lang: str = "fr",
+    opts: PlotOptions | None = None,
 ) -> go.Figure:
     """Histogramme générique avec option KDE.
 
@@ -205,6 +204,8 @@ def plot_histogram(  # noqa: PLR0913
     Returns:
         Figure Plotly avec histogramme.
     """
+    _opts = opts if opts is not None else PlotOptions()
+    lang = _opts.lang
     colors = HALO_COLORS.as_dict()
     bar_color = color or colors["cyan"]
     if y_label is None:
@@ -219,7 +220,7 @@ def plot_histogram(  # noqa: PLR0913
     if x.size == 0:
         fig = go.Figure()
         fig.update_layout(height=PLOT_CONFIG.default_height)
-        return apply_halo_plot_style(fig, title=title)
+        return apply_halo_plot_style(fig)
 
     # Calculer les bins
     n_bins = min(50, max(10, int(np.sqrt(x.size)))) if bins == "auto" else int(bins)
@@ -281,20 +282,19 @@ def plot_histogram(  # noqa: PLR0913
 
     fig.update_layout(
         height=PLOT_CONFIG.default_height,
-        margin={"l": 40, "r": 20, "t": 60 if title else 30, "b": 40},
+        margin={"l": 40, "r": 20, "t": 30, "b": 40},
         bargap=0.05,
     )
     fig.update_xaxes(title_text=x_label)
     fig.update_yaxes(title_text=y_label)
 
-    return apply_halo_plot_style(fig, title=title, height=PLOT_CONFIG.default_height)
+    return apply_halo_plot_style(fig, height=PLOT_CONFIG.default_height)
 
 
 def plot_medals_distribution(
     medals_data: list[tuple[int, int]],
     medal_names: dict[int, str],
     *,
-    title: str | None = None,
     top_n: int = 20,
     lang: str = "fr",
 ) -> go.Figure:
@@ -312,7 +312,7 @@ def plot_medals_distribution(
     if not medals_data:
         fig = go.Figure()
         fig.update_layout(height=PLOT_CONFIG.default_height)
-        return apply_halo_plot_style(fig, title=title)
+        return apply_halo_plot_style(fig)
 
     # Trier et limiter
     sorted_medals = sorted(medals_data, key=lambda x: x[1], reverse=True)[:top_n]
@@ -347,12 +347,12 @@ def plot_medals_distribution(
 
     fig.update_layout(
         height=height,
-        margin={"l": 40, "r": 60, "t": 60 if title else 30, "b": 40},
+        margin={"l": 40, "r": 60, "t": 30, "b": 40},
     )
     fig.update_xaxes(title_text=viz_t("axis_count", lang))
     fig.update_yaxes(title_text="")
 
-    return apply_halo_plot_style(fig, title=title, height=height)
+    return apply_halo_plot_style(fig, height=height)
 
 
 # ---------------------------------------------------------------------------

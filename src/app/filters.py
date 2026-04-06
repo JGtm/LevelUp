@@ -19,22 +19,10 @@ from src.app._filters_friends import (
     get_friends_xuids_for_sessions,
 )
 from src.app._filters_shared import safe_to_date as _safe_to_date
-from src.app.helpers import (
-    clean_asset_label,
-    normalize_map_label,
-    normalize_mode_label,
-)
-from src.ui import translate_playlist_name
 from src.ui.cache import (
     cached_compute_sessions_db,
 )
-from src.ui.components import (
-    get_firefight_playlists,
-    render_checkbox_filter,
-    render_hierarchical_checkbox_filter,
-)
 from src.ui.i18n import t
-from src.ui.vectorize_helpers import build_mapping
 from src.utils.polars_compat import ensure_polars as _to_polars
 
 # Re-exports pour backward compat
@@ -43,59 +31,6 @@ __all__ = ["build_friends_opts_map", "get_friends_xuids_for_sessions"]
 # =============================================================================
 # Filtres DataFrame
 # =============================================================================
-
-
-def add_ui_columns(df: pl.DataFrame) -> pl.DataFrame:
-    """Ajoute les colonnes UI au DataFrame (playlist_ui, mode_ui, map_ui).
-
-    Args:
-        df: DataFrame Polars source.
-
-    Returns:
-        DataFrame Polars avec colonnes UI ajoutées.
-    """
-    df = _to_polars(df)
-    exprs: list[pl.Expr] = []
-    if "playlist_ui" not in df.columns:
-        if "playlist_name" in df.columns:
-            # Vectorisation: build_mapping + replace_strict au lieu de map_elements
-            _pl_map = build_mapping(
-                df["playlist_name"],
-                lambda x: translate_playlist_name(clean_asset_label(x)),
-            )
-            exprs.append(
-                pl.col("playlist_name")
-                .cast(pl.Utf8)
-                .replace_strict(_pl_map, default=None, return_dtype=pl.Utf8)
-                .alias("playlist_ui")
-            )
-        else:
-            exprs.append(pl.lit("").alias("playlist_ui"))
-    if "mode_ui" not in df.columns:
-        if "pair_name" in df.columns:
-            _mode_map = build_mapping(df["pair_name"], normalize_mode_label)
-            exprs.append(
-                pl.col("pair_name")
-                .cast(pl.Utf8)
-                .replace_strict(_mode_map, default=None, return_dtype=pl.Utf8)
-                .alias("mode_ui")
-            )
-        else:
-            exprs.append(pl.lit("").alias("mode_ui"))
-    if "map_ui" not in df.columns:
-        if "map_name" in df.columns:
-            _map_map = build_mapping(df["map_name"], normalize_map_label)
-            exprs.append(
-                pl.col("map_name")
-                .cast(pl.Utf8)
-                .replace_strict(_map_map, default=None, return_dtype=pl.Utf8)
-                .alias("map_ui")
-            )
-        else:
-            exprs.append(pl.lit("").alias("map_ui"))
-    if exprs:
-        df = df.with_columns(exprs)
-    return df
 
 
 def apply_date_filter(df: pl.DataFrame, start_d: date, end_d: date) -> pl.DataFrame:
@@ -298,77 +233,6 @@ def render_session_filters(  # noqa: C901
     picked_session_labels = None if picked_one == t("flt_session_all") else [picked_one]
 
     return gap_minutes, picked_session_labels
-
-
-def render_cascade_filters(
-    dropdown_base: pl.DataFrame,
-) -> tuple[list[str] | None, list[str] | None, list[str] | None]:
-    """Rend les filtres en cascade (Playlist → Mode → Carte).
-
-    Args:
-        dropdown_base: DataFrame Polars de base pour les options.
-
-    Returns:
-        Tuple (playlists_selected, modes_selected, maps_selected).
-    """
-    # Ajouter colonnes UI si nécessaire
-    dropdown_base = add_ui_columns(_to_polars(dropdown_base))
-
-    # --- Playlists (avec Firefight décoché par défaut) ---
-    playlist_values = sorted(
-        {
-            str(x).strip()
-            for x in dropdown_base["playlist_ui"].drop_nulls().to_list()
-            if str(x).strip()
-        }
-    )
-    preferred_order = ["Partie rapide", "Arène classée", "Assassin classé"]
-    playlist_values = [p for p in preferred_order if p in playlist_values] + [
-        p for p in playlist_values if p not in preferred_order
-    ]
-
-    firefight_playlists = get_firefight_playlists(playlist_values)
-    playlists_selected = render_checkbox_filter(
-        label=t("col_playlists"),
-        options=playlist_values,
-        session_key="filter_playlists",
-        default_unchecked=firefight_playlists,
-        expanded=False,
-    )
-
-    # Scope après filtre playlist
-    scope1 = dropdown_base
-    if playlists_selected and len(playlists_selected) < len(playlist_values):
-        scope1 = scope1.filter(pl.col("playlist_ui").fill_null("").is_in(playlists_selected))
-
-    # --- Modes (hiérarchique par catégorie) ---
-    mode_values = sorted(
-        {str(x).strip() for x in scope1["mode_ui"].drop_nulls().to_list() if str(x).strip()}
-    )
-    modes_selected = render_hierarchical_checkbox_filter(
-        label=t("col_modes"),
-        options=mode_values,
-        session_key="filter_modes",
-        expanded=False,
-    )
-
-    # Scope après filtre mode
-    scope2 = scope1
-    if modes_selected and len(modes_selected) < len(mode_values):
-        scope2 = scope2.filter(pl.col("mode_ui").fill_null("").is_in(modes_selected))
-
-    # --- Cartes ---
-    map_values = sorted(
-        {str(x).strip() for x in scope2["map_ui"].drop_nulls().to_list() if str(x).strip()}
-    )
-    maps_selected = render_checkbox_filter(
-        label=t("col_maps"),
-        options=map_values,
-        session_key="filter_maps",
-        expanded=False,
-    )
-
-    return playlists_selected, modes_selected, maps_selected
 
 
 # =============================================================================

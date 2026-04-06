@@ -154,6 +154,8 @@ def _create_shared_db(db_path: Path) -> None:
             is_ranked BOOLEAN DEFAULT FALSE,
             is_firefight BOOLEAN DEFAULT FALSE,
             duration_seconds INTEGER,
+            playable_duration_seconds INTEGER,
+            real_start_time TIMESTAMP,
             team_0_score SMALLINT,
             team_1_score SMALLINT,
             backfill_completed INTEGER DEFAULT 0,
@@ -164,6 +166,7 @@ def _create_shared_db(db_path: Path) -> None:
             first_sync_at TIMESTAMP,
             last_updated_at TIMESTAMP,
             player_count SMALLINT DEFAULT 0,
+            film_match_start_ms INTEGER,
             created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
             updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
         )
@@ -349,7 +352,11 @@ def _create_shared_db(db_path: Path) -> None:
             NULL AS enemy_mmr,
             p.score AS personal_score,
             COALESCE(r.is_firefight, FALSE) AS is_firefight,
-            COALESCE(r.is_ranked, FALSE) AS is_ranked
+            COALESCE(r.is_ranked, FALSE) AS is_ranked,
+            NULL::VARCHAR AS map_name_fr,
+            NULL::VARCHAR AS playlist_name_fr,
+            NULL::VARCHAR AS pair_name_fr,
+            NULL::VARCHAR AS game_variant_name_fr
         FROM match_registry r
         JOIN match_participants p
             ON r.match_id = p.match_id

@@ -192,10 +192,12 @@ def _render_compact_team_card(team_perf: dict, grade: str, lang: str | None) -> 
     if score is not None and base_avg is not None:
         bonus = round(score - base_avg)
         if bonus > 0:
-            bonus_label = html_mod.escape(
+            label = html_mod.escape(
                 t("squad_score_bonus", lang=lang, base=f"{base_avg:.0f}", bonus=bonus)
             )
-            bonus_html = f"<div class='os-perf-card__detail'>{bonus_label}</div>"
+        else:
+            label = html_mod.escape(t("squad_score_base_only", lang=lang, base=f"{base_avg:.0f}"))
+        bonus_html = f"<div class='os-perf-card__detail'>{label}</div>"
 
     st.markdown(
         f"""

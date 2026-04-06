@@ -193,9 +193,9 @@ def assert_valid_figure(fig: go.Figure, min_traces: int = 0) -> None:
     assert fig.layout is not None, "Figure has no layout"
 
     if min_traces > 0:
-        assert (
-            len(fig.data) >= min_traces
-        ), f"Expected at least {min_traces} traces, got {len(fig.data)}"
+        assert len(fig.data) >= min_traces, (
+            f"Expected at least {min_traces} traces, got {len(fig.data)}"
+        )
 
 
 def assert_figure_has_data(fig: go.Figure) -> None:
@@ -319,7 +319,6 @@ class TestDistributions:
         fig = plot_stacked_outcomes_by_category(
             sample_match_df,
             "mode_category",
-            title="Test Title",
             min_matches=1,
             sort_by="win_rate",
             max_categories=5,
@@ -428,7 +427,6 @@ class TestDistributions:
             "kills",
             "deaths",
             show_trendline=True,
-            title="Test Scatter",
         )
         assert_valid_figure(fig)
 
@@ -524,7 +522,7 @@ class TestTimeseries:
         """plot_timeseries avec titre personnalisé."""
         from src.visualization.timeseries import plot_timeseries
 
-        fig = plot_timeseries(sample_match_df, title="Custom Title")
+        fig = plot_timeseries(sample_match_df)
         assert_valid_figure(fig)
         assert fig.layout.title is not None
 
@@ -555,7 +553,7 @@ class TestTimeseries:
         """plot_assists_timeseries avec titre."""
         from src.visualization.timeseries import plot_assists_timeseries
 
-        fig = plot_assists_timeseries(sample_match_df, title="Assists Over Time")
+        fig = plot_assists_timeseries(sample_match_df)
         assert_valid_figure(fig)
 
     # --- plot_per_minute_timeseries ---
@@ -596,7 +594,7 @@ class TestTimeseries:
         """plot_average_life avec titre."""
         from src.visualization.timeseries import plot_average_life
 
-        fig = plot_average_life(sample_match_df, title="Average Life Duration")
+        fig = plot_average_life(sample_match_df)
         assert_valid_figure(fig)
 
     # --- plot_spree_headshots_accuracy ---
@@ -701,7 +699,6 @@ class TestMatchBars:
         fig = plot_metric_bars_by_match(
             sample_match_df,
             metric_col="kills",
-            title="Kills par match",
             y_axis_title="Kills",
             hover_label="kills",
             bar_color="#35D0FF",
@@ -717,7 +714,6 @@ class TestMatchBars:
         fig = plot_metric_bars_by_match(
             empty_df,
             metric_col="kills",
-            title="Test",
             y_axis_title="Kills",
             hover_label="kills",
             bar_color="#35D0FF",
@@ -732,7 +728,6 @@ class TestMatchBars:
         fig = plot_metric_bars_by_match(
             sample_match_df,
             metric_col="nonexistent_column",
-            title="Test",
             y_axis_title="Test",
             hover_label="test",
             bar_color="#35D0FF",
@@ -752,7 +747,6 @@ class TestMatchBars:
         fig = plot_multi_metric_bars_by_match(
             series,
             metric_col="kills",
-            title="Kills comparaison",
             y_axis_title="Kills",
             hover_label="kills",
             colors={"Player1": "#FF6B6B", "Player2": "#4ECDC4"},
@@ -767,7 +761,6 @@ class TestMatchBars:
         fig = plot_multi_metric_bars_by_match(
             [],
             metric_col="kills",
-            title="Test",
             y_axis_title="Kills",
             hover_label="kills",
             colors={},
@@ -799,7 +792,6 @@ class TestTrio:
             d3,
             metric="kills",
             names=("Player1", "Player2", "Player3"),
-            title="Kills Trio",
             y_title="Kills",
         )
         assert_valid_figure(fig)
@@ -814,7 +806,6 @@ class TestTrio:
             empty_df,
             metric="kills",
             names=("P1", "P2", "P3"),
-            title="Test",
             y_title="Kills",
         )
         assert_valid_figure(fig)
@@ -829,7 +820,6 @@ class TestTrio:
             sample_match_df,
             metric="accuracy",
             names=("P1", "P2", "P3"),
-            title="Accuracy",
             y_title="Précision",
             y_suffix="%",
             y_format=".2f",
@@ -866,7 +856,6 @@ class TestRadarChart:
 
         fig = create_radar_chart(
             sample_radar_data,
-            title="Test Radar",
             show_legend=True,
             fill_opacity=0.3,
             line_width=3,

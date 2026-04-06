@@ -40,7 +40,7 @@ def insert_medal_rows(conn: Any, rows: list, xuid: str | None = None) -> int:
         conn: Connexion DuckDB.
         rows: Liste de MedalRow (avec ou sans xuid).
         xuid: XUID du joueur. Si fourni, sera ajouté à chaque row pour
-              insertion dans shared_matches.duckdb.
+              insertion dans shared_matches_v2.duckdb.
 
     Returns:
         Nombre de médailles insérées.

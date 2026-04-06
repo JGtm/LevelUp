@@ -17,7 +17,6 @@ from src.visualization.theme import apply_halo_plot_style
 def create_participation_radar(
     participation_data: list[dict[str, Any]],
     *,
-    title: str | None = None,
     height: int = 400,
     show_values: bool = True,
 ) -> go.Figure:
@@ -56,11 +55,6 @@ def create_participation_radar(
     if not participation_data:
         fig = go.Figure()
         fig.update_layout(
-            title={
-                "text": title or t("radar_participation_profile"),
-                "x": 0.5,
-                "xanchor": "center",
-            },
             height=height,
         )
         return fig
@@ -140,18 +134,16 @@ def create_participation_radar(
             },
         },
         showlegend=len(participation_data) > 1,
-        title={"text": title, "x": 0.5, "xanchor": "center"},
         height=height,
-        margin={"l": 70, "r": 70, "t": 60 if title else 30, "b": 50},
+        margin={"l": 70, "r": 70, "t": 30, "b": 50},
     )
 
     return fig
 
 
-def create_participation_profile_radar(  # noqa: PLR0913
+def create_participation_profile_radar(
     profiles: list[dict[str, Any]],
     *,
-    title: str = "Profil de participation",
     height: int = 400,
     fill_opacity: float = 1.0,
     show_fill: bool = True,
@@ -164,7 +156,6 @@ def create_participation_profile_radar(  # noqa: PLR0913
 
     Args:
         profiles: Liste de dicts avec clés *_norm et *_raw pour chaque axe.
-        title: Titre du graphe.
         height: Hauteur en pixels.
         fill_opacity: Opacité du remplissage (0-1, défaut 1.0 = opaque).
         show_fill: Si True, remplit la zone ; False = lignes uniquement.
@@ -185,11 +176,6 @@ def create_participation_profile_radar(  # noqa: PLR0913
     if not profiles:
         fig = go.Figure()
         fig.update_layout(
-            title={
-                "text": title or t("radar_participation_profile"),
-                "x": 0.5,
-                "xanchor": "center",
-            },
             height=height,
         )
         return fig
@@ -278,14 +264,8 @@ def create_participation_profile_radar(  # noqa: PLR0913
             "xanchor": "center",
             "font": {"color": THEME_COLORS.text_primary},
         },
-        title={
-            "text": title or t("radar_participation_profile"),
-            "x": 0.5,
-            "xanchor": "center",
-            "font": {"color": THEME_COLORS.text_primary},
-        },
         height=height,
-        margin={"l": 70, "r": 70, "t": 60 if title else 30, "b": 60},
+        margin={"l": 70, "r": 70, "t": 30, "b": 60},
     )
 
-    return apply_halo_plot_style(fig, title=None, height=None)
+    return apply_halo_plot_style(fig, height=None)

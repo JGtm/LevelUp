@@ -320,7 +320,11 @@ def _create_shared_db(db_path: Path) -> None:
             NULL AS enemy_mmr,
             p.score AS personal_score,
             COALESCE(r.is_firefight, FALSE) AS is_firefight,
-            COALESCE(r.is_ranked, FALSE) AS is_ranked
+            COALESCE(r.is_ranked, FALSE) AS is_ranked,
+            NULL::VARCHAR AS map_name_fr,
+            NULL::VARCHAR AS playlist_name_fr,
+            NULL::VARCHAR AS pair_name_fr,
+            NULL::VARCHAR AS game_variant_name_fr
         FROM match_registry r
         JOIN match_participants p
             ON r.match_id = p.match_id
@@ -481,9 +485,9 @@ class TestPolarsOutput:
         df = repo_with_shared.load_matches_as_polars()
         expected_cols = {"match_id", "kills", "deaths", "assists"}
         actual_cols = set(df.columns)
-        assert expected_cols.issubset(
-            actual_cols
-        ), f"Colonnes manquantes : {expected_cols - actual_cols}"
+        assert expected_cols.issubset(actual_cols), (
+            f"Colonnes manquantes : {expected_cols - actual_cols}"
+        )
 
 
 # =============================================================================

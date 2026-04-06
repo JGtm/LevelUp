@@ -114,5 +114,7 @@ _SRP_EXCEPTIONS: frozenset[str] = frozenset(
         "_exchange_and_cache",  # auth/provider.py — échange access_token → Halo tokens + mise en cache (atomique)
         "_run_engine_and_cleanup",  # _sync_duckdb_ops.py — exécute sync + engine.close() (try/finally atomique)
         "_render_single_teammate_weapon_and_map",  # teammates_views.py — composant UI composite (armes + carte, toujours affichés ensemble)
+        "compute_and_write",  # film_start_service.py — calcul + écriture DB (ETL atomique)
+        "_render_medals_and_citations_section",  # match_view_scoreboard_detail.py — composant UI composite (médailles + citations, toujours affichés ensemble)
     }
 )

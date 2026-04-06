@@ -21,6 +21,7 @@ from src.ui.i18n import t
 from src.ui.medals import render_medals_grid
 from src.ui.pages.teammates_charts import render_trio_charts
 from src.ui.streamlit_modern import PLOTLY_STATIC_CONFIG
+from src.visualization._chart_series import ChartData, MatchSeries, SquadRecordSet
 from src.visualization._compat import DataFrameLike, ensure_polars
 from src.visualization.theme import apply_halo_plot_style, get_legend_horizontal_bottom
 from src.visualization.trio import _negative_color
@@ -98,37 +99,23 @@ def _render_per_minute_stats(  # noqa: PLR0913
     *,
     f3_df: DataFrameLike | None = None,
     f3_name: str | None = None,
+    pm_records: dict[str, tuple[float | None, float | None, float | None]] | None = None,
 ) -> None:
     """Affiche le graphe barres groupées stats/min pour l'escouade (2, 3 ou 4 joueurs)."""
     _pm_metrics = [t("tm_metric_frags_min"), t("tm_metric_deaths_min"), t("tm_metric_assists_min")]
-    _pm_players = [
-        (
-            me_name,
-            compute_aggregated_stats(me_df),
-            colors_by_name.get(me_name, OKABE_ITO_PALETTE[0]),
-        ),
-        (
-            f1_name,
-            compute_aggregated_stats(f1_df),
-            colors_by_name.get(f1_name, OKABE_ITO_PALETTE[1]),
-        ),
+    _pm_raw: list[tuple[str, pl.DataFrame]] = [
+        (me_name, ensure_polars(me_df)),
+        (f1_name, ensure_polars(f1_df)),
     ]
     if f2_name and f2_df is not None:
-        _pm_players.append(
-            (
-                f2_name,
-                compute_aggregated_stats(f2_df),
-                colors_by_name.get(f2_name, OKABE_ITO_PALETTE[2]),
-            )
-        )
+        _pm_raw.append((f2_name, ensure_polars(f2_df)))
     if f3_name and f3_df is not None:
-        _pm_players.append(
-            (
-                f3_name,
-                compute_aggregated_stats(f3_df),
-                colors_by_name.get(f3_name, OKABE_ITO_PALETTE[3]),
-            )
-        )
+        _pm_raw.append((f3_name, ensure_polars(f3_df)))
+
+    _pm_players = [
+        (name, compute_aggregated_stats(df), colors_by_name.get(name, OKABE_ITO_PALETTE[i]))
+        for i, (name, df) in enumerate(_pm_raw)
+    ]
     st.subheader(t("tm_per_minute"))
     fig_pm = go.Figure()
     for _pm_name, _pm_st, _pm_color in _pm_players:
@@ -147,15 +134,36 @@ def _render_per_minute_stats(  # noqa: PLR0913
                 marker_color=_bar_colors,
                 text=_pm_text,
                 textposition="auto",
+                offsetgroup=_pm_name,
             )
         )
+    # ── Records par-minute (traces fantômes hachurées, axe catégoriel) ───────
+    if pm_records:
+        _player_names_pm = [n for n, _, _ in _pm_players]
+        ChartData(
+            series=[
+                MatchSeries(
+                    name=n,
+                    x=[],
+                    y=[],
+                    color=colors_by_name.get(n, OKABE_ITO_PALETTE[i]),
+                    map_names=[],
+                )
+                for i, (n, _, _) in enumerate(_pm_players)
+            ],
+            x_labels=_pm_metrics,
+            barmode="categorical",
+            global_records={
+                p_name: rec for p_name, rec in pm_records.items() if p_name in _player_names_pm
+            },
+        ).add_record_overlays(fig_pm)
     fig_pm.update_layout(
         barmode="group",
         height=350,
         margin={"l": 40, "r": 20, "t": 30, "b": 80},
         legend=get_legend_horizontal_bottom(),
     )
-    fig_pm = apply_halo_plot_style(fig_pm, title=None, height=None)
+    fig_pm = apply_halo_plot_style(fig_pm, height=None)
     # Forcer l'axe zéro en gras blanc (apply_halo_plot_style le désactive via theme.py)
     fig_pm.update_yaxes(zeroline=True, zerolinecolor="rgba(255,255,255,0.75)", zerolinewidth=2)
     with safe_chart_render():
@@ -204,7 +212,7 @@ def _merge_trio_dataframes(
     missing_f1 = [c for c in friend_cols if c not in f1_df.columns]
     if missing_me or missing_f1 or me_df.is_empty() or f1_df.is_empty():
         return pl.DataFrame()
-    _opt = ["performance_score"]
+    _opt = ["performance_score", "map_ui"]
     me_opt = [c for c in _opt if c in me_df.columns]
     me_cols_actual = [c for c in me_cols if c in me_df.columns]
     f1_ext = friend_cols + [c for c in _opt if c in f1_df.columns]
@@ -229,6 +237,7 @@ def _merge_trio_dataframes(
 _STAT_COLS = [
     "start_time",
     "map_name",
+    "map_ui",
     "kills",
     "deaths",
     "assists",
@@ -307,12 +316,17 @@ def _render_trio_performance_charts(  # noqa: PLR0913
     f3_name: str | None = None,
     f3_xuid: str | None = None,
     colors_by_name: dict[str, str] | None = None,
+    squad_records: SquadRecordSet | None = None,
 ) -> None:
     """Affiche les graphes de performance escouade (2, 3 ou 4 joueurs).
 
     Utilise performance_score stocké dans player_match_enrichment si disponible
     (injecté en amont via TeammatesService.enrich_with_performance_score).
     Sinon recalcule sur le sous-ensemble de matchs (fallback).
+
+    Args:
+        records: Records historiques pré-calculés depuis l'historique complet.
+            Si None, aucun record n'est affiché sur les graphes.
     """
     merged = _merge_trio_dataframes(me_df, f1_df, f2_df)
     if merged.is_empty():
@@ -342,6 +356,7 @@ def _render_trio_performance_charts(  # noqa: PLR0913
         f3_name=f3_name,
         f3_xuid=f3_xuid,
         colors_by_name=colors_by_name,
+        squad_records=squad_records,
     )
 
 

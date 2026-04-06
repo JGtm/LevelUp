@@ -115,9 +115,9 @@ class TestResolveForce:
     def test_force_implies_data(self, force_field: str, data_field: str) -> None:
         scope = SyncScope(**{force_field: True})
         scope.resolve()
-        assert (
-            getattr(scope, data_field) is True
-        ), f"{force_field}=True devrait impliquer {data_field}=True"
+        assert getattr(scope, data_field) is True, (
+            f"{force_field}=True devrait impliquer {data_field}=True"
+        )
 
     def test_force_does_not_override_existing_true(self) -> None:
         """Si le champ data est déjà True, force ne le met pas False."""
@@ -408,9 +408,9 @@ class TestRegistryConsistency:
     def test_force_map_values_in_all_data_fields(self) -> None:
         """Chaque cible de _FORCE_MAP est dans _ALL_DATA_FIELDS."""
         for data_field in _FORCE_MAP.values():
-            assert (
-                data_field in _ALL_DATA_FIELDS
-            ), f"{data_field} dans _FORCE_MAP mais absent de _ALL_DATA_FIELDS"
+            assert data_field in _ALL_DATA_FIELDS, (
+                f"{data_field} dans _FORCE_MAP mais absent de _ALL_DATA_FIELDS"
+            )
 
 
 # ─────────────────────────────────────────────────────────────────────────────

@@ -1,6 +1,6 @@
 """Calcul des badges narrative (Remontada / Débandade / Contre-Remontada) pour un joueur.
 
-Interroge ``shared_matches.duckdb`` pour reconstruire une timeline approximative
+Interroge ``shared_matches_v2.duckdb`` pour reconstruire une timeline approximative
 à partir des kill-events de ``highlight_events``, puis persiste le résultat dans
 ``player_match_enrichment.dominance_flag``.
 
@@ -160,7 +160,7 @@ def compute_comeback_badges_for_player(
 
     Args:
         player_conn: Connexion RW vers ``stats.duckdb`` du joueur.
-        shared_conn: Connexion RO vers ``shared_matches.duckdb``.
+        shared_conn: Connexion RO vers ``shared_matches_v2.duckdb``.
         xuid: XUID du joueur.
         force: Re-traiter les matchs déjà badgés (3-5). Ne jamais écraser 1 ou 2.
 

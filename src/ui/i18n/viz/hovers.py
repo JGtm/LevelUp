@@ -235,4 +235,10 @@ STRINGS: dict[str, dict[str, str] | str] = {
     },
     "hover_kill_ordinal": {"fr": "Frag n°%{x}", "en": "Kill #%{x}"},
     "hover_death_ordinal": {"fr": "Mort n°%{x}", "en": "Death #%{x}"},
+    # ── Hovers cadence / intensité ────────────────────────────────────────────
+    "hover_cadence_kills": {"fr": "kills", "en": "kills"},
+    "hover_intensity_kills": {
+        "fr": "Kills: %{z}<br>Match #%{y}",
+        "en": "Kills: %{z}<br>Match #%{y}",
+    },
 }

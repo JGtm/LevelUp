@@ -290,7 +290,7 @@ def _load_xuid_by_gamertag(shared_path: Path) -> dict[str, str]:
 def get_all_player_dbs() -> list[tuple[Path, str]]:
     """Retourne les (db_path, xuid) de tous les joueurs.
 
-    Lit les xuids depuis shared_matches.duckdb/v_gamertag_lookup.
+    Lit les xuids depuis shared_matches_v2.duckdb/v_gamertag_lookup.
     """
     player_dbs: list[tuple[Path, str]] = []
     if not PLAYERS_DIR.exists():

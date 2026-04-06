@@ -97,9 +97,9 @@ class TestGetDefaultDbPath:
         db_path = get_default_db_path()
 
         if db_path:  # Si non vide
-            assert Path(
-                db_path
-            ).exists(), f"get_default_db_path() returned non-existent file: {db_path}"
+            assert Path(db_path).exists(), (
+                f"get_default_db_path() returned non-existent file: {db_path}"
+            )
 
             # Le fichier doit être accessible en lecture
             assert Path(db_path).is_file(), f"Expected file, got directory: {db_path}"
@@ -110,9 +110,9 @@ class TestGetDefaultDbPath:
 
         # Tous les résultats doivent être identiques
         unique_results = set(results)
-        assert (
-            len(unique_results) == 1
-        ), f"get_default_db_path() is non-deterministic. Got: {unique_results}"
+        assert len(unique_results) == 1, (
+            f"get_default_db_path() is non-deterministic. Got: {unique_results}"
+        )
 
     def test_ignores_sqlite_files(self):
         """DOIT ignorer les fichiers .db (SQLite legacy)."""
@@ -120,9 +120,9 @@ class TestGetDefaultDbPath:
 
         # Si un chemin est retourné, il doit être .duckdb
         if db_path:
-            assert not db_path.endswith(
-                ".db"
-            ), f"RÉGRESSION: Detected SQLite file (.db) instead of DuckDB: {db_path}"
+            assert not db_path.endswith(".db"), (
+                f"RÉGRESSION: Detected SQLite file (.db) instead of DuckDB: {db_path}"
+            )
 
     def test_env_override_takes_priority(self):
         """LEVELUP_DB doit avoir priorité sur auto-detection."""

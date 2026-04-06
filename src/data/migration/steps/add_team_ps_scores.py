@@ -1,4 +1,4 @@
-"""Migration : colonnes team_0_ps_score / team_1_ps_score (shared_matches.duckdb).
+"""Migration : colonnes team_0_ps_score / team_1_ps_score (shared_matches_v2.duckdb).
 
 Ces colonnes stockent la somme des scores personnels (personal_score) de chaque
 équipe, calculée depuis match_participants.

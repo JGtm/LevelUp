@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "levelup-halo"
-version = "5.7.0"
+version = "6.3.0"
 description = "Dashboard d'analyse de statistiques Halo Infinite avec architecture DuckDB v5 (shared matches)"
 readme = "README.md"
 license = {text = "MIT"}
@@ -38,6 +38,7 @@ dependencies = [
     "pydantic>=2.5.0",
     "msal>=1.28.0",
     "bitstring>=4.0.0",  # scan fire events weapon parser (import top-level)
+    "filelock>=3.12.0",  # verrou fichier sync
 ]
 
 [project.optional-dependencies]

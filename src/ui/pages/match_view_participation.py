@@ -11,7 +11,7 @@ from typing import Any
 
 import streamlit as st
 
-from src.ui.chart_utils import safe_chart_render
+from src.ui.chart_utils import render_chart_or_info, safe_chart_render
 from src.ui.i18n import t
 from src.ui.streamlit_modern import PLOTLY_STATIC_CONFIG, fragment_if_available
 
@@ -63,6 +63,7 @@ def render_participation_section(
                    pour Impact et Survie. Optionnel.
     """
     logger.debug("participation: rendu section match=%s xuid=%s", match_id, xuid)
+    from src.analysis.participation_radar import ProfileOptions
     from src.ui.components.radar_chart import create_participation_profile_radar
     from src.visualization.participation_radar import (
         compute_participation_profile,
@@ -82,15 +83,36 @@ def render_participation_section(
         elif isinstance(match_row, dict):
             row_dict = match_row
 
-    # Profil de participation (seuils = meilleur match global si dispo)
+    # Profil de participation — seuil per-mode (p90) calibré sur le type de match
+    from src.analysis.participation_radar import (
+        RADAR_THRESHOLDS_PER_MODE,
+        get_mode_family,
+        is_objective_mode_from_pair_name,
+    )
+
     thresholds = get_radar_thresholds(db_path)
+    pair_name_match = row_dict.get("pair_name") if row_dict else None
+    per_mode = thresholds.pop("per_mode", None) or RADAR_THRESHOLDS_PER_MODE
+    family = get_mode_family(pair_name_match)
+    if is_objective_mode_from_pair_name(pair_name_match):
+        thresholds["objectifs"] = per_mode.get(family, RADAR_THRESHOLDS_PER_MODE.get(family, 950.0))
+    else:
+        thresholds["objectifs"] = per_mode.get("slayer", RADAR_THRESHOLDS_PER_MODE["slayer"])
+    logger.debug(
+        "participation match=%s famille=%s seuil_objectifs=%.0f",
+        match_id,
+        family,
+        thresholds["objectifs"],
+    )
     profile = compute_participation_profile(
         df,
         match_row=row_dict,
-        name=t("mvc_this_match"),
-        color="#636EFA",
-        pair_name=row_dict.get("pair_name") if row_dict else None,
-        thresholds=thresholds,
+        options=ProfileOptions(
+            name=t("mvc_this_match"),
+            color="#636EFA",
+            pair_name=pair_name_match,
+            thresholds=thresholds,
+        ),
     )
 
     st.subheader(f"🎯 {t('mvp_participation_title')}")
@@ -99,7 +121,6 @@ def render_participation_section(
     with col_radar, safe_chart_render():
         fig = create_participation_profile_radar(
             [profile],
-            title=t("mvp_participation_title"),
             height=380,
         )
         if fig is not None:
@@ -121,6 +142,7 @@ def _build_comparison_profiles(  # noqa: PLR0913
     thresholds: dict,
 ) -> list:
     """Construit les profils de participation pour chaque match."""
+    from src.analysis.participation_radar import ProfileOptions
     from src.visualization.participation_radar import compute_participation_profile
 
     profiles: list = []
@@ -135,16 +157,18 @@ def _build_comparison_profiles(  # noqa: PLR0913
         profile = compute_participation_profile(
             df,
             match_row=row,
-            name=labels[i] if i < len(labels) else f"Match {i + 1}",
-            color=colors[i] if i < len(colors) else None,
-            pair_name=row.get("pair_name") if row else None,
-            thresholds=thresholds,
+            options=ProfileOptions(
+                name=labels[i] if i < len(labels) else f"Match {i + 1}",
+                color=colors[i] if i < len(colors) else None,
+                pair_name=row.get("pair_name") if row else None,
+                thresholds=thresholds,
+            ),
         )
         profiles.append(profile)
     return profiles
 
 
-def render_participation_comparison(  # noqa: C901, PLR0912, PLR0913
+def render_participation_comparison(  # noqa: PLR0913
     db_path: str,
     match_ids: list[str],
     xuid: str,
@@ -195,12 +219,14 @@ def render_participation_comparison(  # noqa: C901, PLR0912, PLR0913
 
         st.subheader(f"📊 {t('mvp_comparison_title')}")
         col_radar, col_legend = st.columns([2, 1])
-        with col_radar, safe_chart_render():
-            fig = create_participation_profile_radar(profiles, title="", height=400)
-            if fig is not None:
-                st.plotly_chart(fig, width="stretch", config=PLOTLY_STATIC_CONFIG)
-            else:
-                st.info(t("insufficient_data_chart"))
+        with col_radar:
+            fig = create_participation_profile_radar(profiles, height=400)
+            render_chart_or_info(
+                fig,
+                key="mvp_radar_comparison",
+                config=PLOTLY_STATIC_CONFIG,
+                info_key="insufficient_data_chart",
+            )
         with col_legend:
             st.markdown(f"**{t('mvp_axes_label')}**")
             for line in get_radar_axis_lines():

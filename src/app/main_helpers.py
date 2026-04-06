@@ -206,7 +206,9 @@ def render_profile_hero(  # noqa: C901
 
     # Fallback : adornment_path + rank_label issus de la dernière sync career rank (DB)
     # Utile quand l'API profile est désactivée ou le cache froid.
-    _needs_db_career = (not adornment_value or not rank_label_value) and db_path and str(xuid or "").strip()
+    _needs_db_career = (
+        (not adornment_value or not rank_label_value) and db_path and str(xuid or "").strip()
+    )
     if _needs_db_career:
         with contextlib.suppress(Exception):
             from src.ui._cache_core import get_cached_repository_st
@@ -312,6 +314,32 @@ def render_profile_hero(  # noqa: C901
     )
 
 
+def _fix_untranslated_mode_ui(df: pl.DataFrame, lang: str) -> pl.DataFrame:
+    """Recalcule ``mode_ui`` via ``translate_pair_name`` (même logique que _filters_apply).
+
+    ``add_i18n_display_columns`` produit un ``mode_ui`` brut (ex. ``"Arena:CTF"``) car
+    ``pair_name_fr`` contient souvent le nom EN copié, pas une vraie traduction.
+    Ce second pass utilise ``translate_pair_name`` (lookup DB metadata) pour produire
+    les vrais labels localisés (ex. ``"Capture du drapeau"``).
+    """
+    if "pair_name" not in df.columns:
+        return df
+
+    from src.ui import translate_pair_name
+    from src.utils.polars_compat import build_mapping
+
+    tr_map = build_mapping(df["pair_name"], lambda x: translate_pair_name(x, lang=lang))
+    if not tr_map:
+        return df
+
+    return df.with_columns(
+        pl.col("pair_name")
+        .cast(pl.Utf8)
+        .replace_strict(tr_map, default=pl.col("pair_name").cast(pl.Utf8), return_dtype=pl.Utf8)
+        .alias("mode_ui")
+    )
+
+
 def load_match_dataframe(
     db_path: str, xuid: str, cache_buster: int = 0
 ) -> tuple[pl.DataFrame, tuple[int, ...] | None]:
@@ -370,6 +398,12 @@ def load_match_dataframe(
     if not df.is_empty():
         with perf_section("analysis/mark_firefight"):
             df = mark_firefight(df)
+        from src.app.i18n_columns import add_i18n_display_columns
+        from src.ui.i18n import get_lang
+
+        lang = get_lang()
+        df = add_i18n_display_columns(df, lang=lang)
+        df = _fix_untranslated_mode_ui(df, lang)
 
     _ms = (_time.perf_counter() - _t0) * 1000
     logger.info(

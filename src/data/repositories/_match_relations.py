@@ -38,7 +38,9 @@ class MatchRelationsMixin(GamertagResolverMixin):
             "match_id": pl.Utf8,
             "start_time": pl.Datetime,
             "playlist_name": pl.Utf8,
+            "playlist_name_fr": pl.Utf8,
             "pair_name": pl.Utf8,
+            "pair_name_fr": pl.Utf8,
             "map_name": pl.Utf8,
             "my_team_id": pl.Int64,
             "my_outcome": pl.Utf8,
@@ -55,23 +57,25 @@ class MatchRelationsMixin(GamertagResolverMixin):
             result = conn.execute(
                 f"""
                 SELECT
-                    mr.match_id,
-                    mr.start_time,
-                    mr.playlist_name,
-                    mr.pair_name,
-                    mr.map_name,
+                    vmf.match_id,
+                    vmf.start_time,
+                    vmf.playlist_name,
+                    vmf.playlist_name_fr,
+                    vmf.pair_name,
+                    vmf.pair_name_fr,
+                    vmf.map_name,
                     me.team_id  AS my_team_id,
                     CAST(me.outcome AS VARCHAR) AS my_outcome,
                     fr.team_id  AS friend_team_id,
                     CAST(fr.outcome AS VARCHAR) AS friend_outcome,
                     (me.team_id = fr.team_id) AS same_team
-                FROM shared.match_registry mr
+                FROM shared.v_match_full vmf
                 LEFT JOIN shared.match_participants me
-                    ON mr.match_id = me.match_id AND me.xuid = ?
+                    ON vmf.match_id = me.match_id AND me.xuid = ?
                 LEFT JOIN shared.match_participants fr
-                    ON mr.match_id = fr.match_id AND fr.xuid = ?
-                WHERE mr.match_id IN ({placeholders})
-                ORDER BY mr.start_time ASC
+                    ON vmf.match_id = fr.match_id AND fr.xuid = ?
+                WHERE vmf.match_id IN ({placeholders})
+                ORDER BY vmf.start_time ASC
                 """,  # noqa: S608
                 [str(self._xuid), friend_xuid, *match_ids],
             )

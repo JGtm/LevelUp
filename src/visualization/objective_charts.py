@@ -47,7 +47,6 @@ def plot_objective_vs_kills_scatter(
     awards_df: pl.DataFrame,
     match_stats_df: pl.DataFrame,
     *,
-    title: str | None = None,
     height: int = 450,
     lang: str = "fr",
 ) -> go.Figure:
@@ -65,7 +64,6 @@ def plot_objective_vs_kills_scatter(
     Returns:
         Figure Plotly avec le scatter plot.
     """
-    title = title or viz_t("title_obj_vs_kills", lang)
     fig = go.Figure()
 
     if awards_df.is_empty() or match_stats_df.is_empty():
@@ -78,7 +76,7 @@ def plot_objective_vs_kills_scatter(
             showarrow=False,
             font={"size": 16, "color": THEME_COLORS.text_primary},
         )
-        return apply_halo_plot_style(fig, title=title, height=height)
+        return apply_halo_plot_style(fig, height=height)
 
     # Calculer score objectifs par match
     objective_categories = ["objective", "mode"]
@@ -88,9 +86,12 @@ def plot_objective_vs_kills_scatter(
         .agg(pl.col("points").sum().alias("objective_score"))
     )
 
+    _obj_map_cols = ["match_id", "kills", "map_name", "start_time"]
+    if "map_ui" in match_stats_df.columns:
+        _obj_map_cols.append("map_ui")
     # Joindre avec match_stats pour avoir les kills
     combined = (
-        match_stats_df.select(["match_id", "kills", "map_name", "start_time"])
+        match_stats_df.select(_obj_map_cols)
         .join(obj_by_match, on="match_id", how="left")
         .with_columns([pl.col("objective_score").fill_null(0)])
     )
@@ -104,7 +105,7 @@ def plot_objective_vs_kills_scatter(
             y=0.5,
             showarrow=False,
         )
-        return apply_halo_plot_style(fig, title=title, height=height)
+        return apply_halo_plot_style(fig, height=height)
 
     data = combined.to_dicts()
 
@@ -120,7 +121,7 @@ def plot_objective_vs_kills_scatter(
                 "opacity": 0.7,
                 "line": {"width": 1, "color": "white"},
             },
-            text=[d.get("map_name", "?") for d in data],
+            text=[d.get("map_ui") or d.get("map_name", "?") for d in data],
             customdata=[[d.get("start_time", ""), d.get("match_id", "")] for d in data],
             hovertemplate=viz_t("hover_obj_kills_score", lang),
             name=viz_t("trace_matches", lang),
@@ -164,14 +165,13 @@ def plot_objective_vs_kills_scatter(
         hovermode="closest",
     )
 
-    return apply_halo_plot_style(fig, title=title, height=height)
+    return apply_halo_plot_style(fig, height=height)
 
 
 def plot_objective_breakdown_bars(
     awards_df: pl.DataFrame,
     *,
     xuid: str | None = None,
-    title: str | None = None,
     height: int = 400,
     lang: str = "fr",
 ) -> go.Figure:
@@ -186,7 +186,6 @@ def plot_objective_breakdown_bars(
     Returns:
         Figure Plotly avec les barres.
     """
-    title = title or viz_t("title_score_by_category", lang)
     fig = go.Figure()
 
     if awards_df.is_empty():
@@ -199,7 +198,7 @@ def plot_objective_breakdown_bars(
             showarrow=False,
             font={"size": 16, "color": THEME_COLORS.text_primary},
         )
-        return apply_halo_plot_style(fig, title=title, height=height)
+        return apply_halo_plot_style(fig, height=height)
 
     df = awards_df
     if xuid is not None and "xuid" in df.columns:
@@ -226,7 +225,7 @@ def plot_objective_breakdown_bars(
             y=0.5,
             showarrow=False,
         )
-        return apply_halo_plot_style(fig, title=title, height=height)
+        return apply_halo_plot_style(fig, height=height)
 
     data = by_category.to_dicts()
 
@@ -263,14 +262,13 @@ def plot_objective_breakdown_bars(
         showlegend=False,
     )
 
-    return apply_halo_plot_style(fig, title=title, height=height)
+    return apply_halo_plot_style(fig, height=height)
 
 
 def plot_top_players_objective_bars(
     rankings: list[Any],  # list[PlayerObjectiveRanking]
     *,
     top_n: int = 10,
-    title: str | None = None,
     height: int = 450,
     lang: str = "fr",
 ) -> go.Figure:
@@ -285,7 +283,6 @@ def plot_top_players_objective_bars(
     Returns:
         Figure Plotly avec les barres horizontales.
     """
-    title = title or viz_t("title_top_players_obj", lang)
     fig = go.Figure()
 
     if not rankings:
@@ -298,7 +295,7 @@ def plot_top_players_objective_bars(
             showarrow=False,
             font={"size": 16, "color": THEME_COLORS.text_primary},
         )
-        return apply_halo_plot_style(fig, title=title, height=height)
+        return apply_halo_plot_style(fig, height=height)
 
     # Limiter au top N
     top_rankings = rankings[:top_n]
@@ -329,13 +326,12 @@ def plot_top_players_objective_bars(
         showlegend=False,
     )
 
-    return apply_halo_plot_style(fig, title=title, height=height)
+    return apply_halo_plot_style(fig, height=height)
 
 
 def plot_objective_ratio_gauge(
     ratio: float,
     *,
-    title: str | None = None,
     height: int = 250,
     lang: str = "fr",
 ) -> go.Figure:
@@ -349,7 +345,6 @@ def plot_objective_ratio_gauge(
     Returns:
         Figure Plotly avec l'indicateur.
     """
-    title = title or viz_t("title_obj_ratio_pct", lang)
     # Convertir en pourcentage
     percentage = ratio * 100
 
@@ -377,7 +372,6 @@ def plot_objective_ratio_gauge(
                     "value": percentage,
                 },
             },
-            title={"text": title, "font": {"size": 16}},
         )
     )
 

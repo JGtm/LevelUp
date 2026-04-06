@@ -1,5 +1,5 @@
 """
-Mixin pour le chargement des médailles depuis shared_matches.duckdb.
+Mixin pour le chargement des médailles depuis shared_matches_v2.duckdb.
 
 Regroupe les méthodes de requête de médailles extraites de DuckDBRepository :
 - load_top_medals

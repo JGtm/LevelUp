@@ -14,6 +14,7 @@ from typing import TYPE_CHECKING
 
 import streamlit as st
 
+from src import __version__
 from src.ui.i18n import set_lang, t
 from src.ui.multiplayer import (
     render_player_selector,
@@ -51,7 +52,7 @@ def _check_spnkr_version_warning() -> None:
 
 def _render_lang_selector(settings: AppSettings) -> bool:
     """Affiche le sélecteur de langue et retourne True si la langue a changé."""
-    _LANG_OPTIONS = {"fr": "🇫🇷 Français", "en": "🇬🇧 English"}
+    _LANG_OPTIONS = {"fr": "🇫🇷", "en": "🇬🇧"}
     current = st.session_state.get("lang", settings.lang or "fr")
     option_keys = list(_LANG_OPTIONS.keys())
     current_idx = option_keys.index(current) if current in option_keys else 0
@@ -61,6 +62,7 @@ def _render_lang_selector(settings: AppSettings) -> bool:
         options=list(_LANG_OPTIONS.values()),
         index=current_idx,
         key="_lang_selector_widget",
+        label_visibility="collapsed",
     )
     selected_lang = next(k for k, v in _LANG_OPTIONS.items() if v == selected_label)
 
@@ -97,6 +99,7 @@ def render_sidebar(
     with st.sidebar:
         # Brand
         st.header("LevelUp")
+        st.caption(f"v{__version__}")
         st.divider()
 
         # Sélecteur de langue (initialise aussi st.session_state["lang"])

@@ -102,7 +102,7 @@ def test_module_imports_in_isolation(module: str) -> None:
         cwd=str(ROOT),
     )
     if result.returncode != 0:
-        pytest.fail(f"Impossible d'importer `{module}` en isolation :\n" f"{result.stderr.strip()}")
+        pytest.fail(f"Impossible d'importer `{module}` en isolation :\n{result.stderr.strip()}")
 
 
 # Packages dont les __init__.py NE DOIVENT PAS être importés au niveau module

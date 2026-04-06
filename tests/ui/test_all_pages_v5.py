@@ -122,11 +122,11 @@ class TestMatchHistoryHelpers:
     """Tests pour les helpers de match_history (fonctions déplacées vers teammates_helpers)."""
 
     def test_normalize_mode_label(self) -> None:
-        """_normalize_mode_label traite les noms de modes."""
-        from src.ui.pages.teammates_helpers import _normalize_mode_label
+        """normalize_mode_label traite les noms de modes."""
+        from src.app.helpers import normalize_mode_label
 
         # Ne crash pas sur un nom simple
-        result = _normalize_mode_label("Slayer")
+        result = normalize_mode_label("Slayer")
         assert isinstance(result, str)
 
     def test_format_datetime_fr_hm(self) -> None:

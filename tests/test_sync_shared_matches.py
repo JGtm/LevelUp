@@ -175,6 +175,8 @@ def tmp_shared_db(tmp_path: Path) -> Path:
             is_ranked BOOLEAN DEFAULT FALSE,
             is_firefight BOOLEAN DEFAULT FALSE,
             duration_seconds INTEGER,
+            playable_duration_seconds INTEGER,
+            real_start_time TIMESTAMP,
             team_0_score SMALLINT,
             team_1_score SMALLINT,
             backfill_completed INTEGER DEFAULT 0,

@@ -227,6 +227,30 @@ def cached_load_match_player_gamertags(
 
 
 @st.cache_data(show_spinner=False)
+def cached_load_kill_timing_for_matches(
+    db_path: str,
+    xuid: str,
+    match_ids: tuple[str, ...],
+    *,
+    xuids: tuple[str, ...] | None = None,
+    db_key: tuple[int, int] | None = None,
+) -> list[dict]:
+    """Charge les timestamps de kills pour plusieurs matchs (cache)."""
+    _ = db_key
+    if _is_duckdb_v4_path(db_path):
+        try:
+            repo = get_cached_repository_st(db_path, xuid)
+            return repo.load_kill_timing_for_matches(
+                list(match_ids),
+                xuids=list(xuids) if xuids else None,
+            )
+        except Exception:
+            logger.debug("cached_load_kill_timing_for_matches: erreur, %d matchs", len(match_ids))
+            return []
+    return []
+
+
+@st.cache_data(show_spinner=False)
 def cached_load_top_medals(
     db_path: str,
     xuid: str,

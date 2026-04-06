@@ -12,7 +12,12 @@ from __future__ import annotations
 
 import duckdb
 
-from src.data.sync.migrations import ensure_resolution_views
+from src.data.sync.migrations import (
+    _create_v_gamertag_lookup,
+    _create_v_match_full,
+    ensure_asset_translations_table,
+    ensure_resolution_views,
+)
 
 # ─────────────────────────────────────────────────────────────────────────────
 # Helpers de fixtures
@@ -162,13 +167,21 @@ def test_v_match_full_colonnes_en_non_nulles():
 
 
 def test_v_match_full_colonnes_fr_nulles_sans_metadata():
-    """Sans metadata.duckdb attaché, les colonnes *_fr doivent être NULL."""
+    """Sans metadata.duckdb attaché, les colonnes *_fr doivent être NULL.
+
+    Appelle directement _create_v_match_full(meta_alias=None) pour tester le
+    chemin sans metadata — ensure_resolution_views auto-attache le metadata.duckdb
+    réel s'il existe sur le système de fichiers.
+    """
     conn = _make_shared_db()
     conn.execute("""
         INSERT INTO match_registry(match_id, map_name, playlist_name, pair_name, game_variant_name)
         VALUES ('m2', 'Recharge', 'Ranked Arena', 'Arena | Attrition', 'Arena:Attrition on Recharge')
     """)
-    ensure_resolution_views(conn)
+    # Créer v_gamertag_lookup (prérequis de v_match_full)
+    _create_v_gamertag_lookup(conn, prefix="")
+    # Créer v_match_full explicitement sans metadata → toutes colonnes FR = NULL
+    _create_v_match_full(conn, prefix="", meta_alias=None)
 
     row = conn.execute(
         "SELECT map_name_fr, playlist_name_fr, mode_name FROM v_match_full WHERE match_id = 'm2'"
@@ -180,29 +193,18 @@ def test_v_match_full_colonnes_fr_nulles_sans_metadata():
 
 
 def test_v_match_full_avec_metadata_attachee(tmp_path):
-    """Avec metadata.duckdb attaché, name_en est résolu depuis les tables meta."""
-    # Créer une metadata.duckdb minimale
+    """Avec metadata.duckdb attaché, map_name est résolu depuis asset_translations (v6)."""
+    # Créer une metadata.duckdb minimale avec asset_translations uniquement (v6)
     meta_path = tmp_path / "metadata.duckdb"
     meta_conn = duckdb.connect(str(meta_path))
-    meta_conn.execute("""
-        CREATE TABLE maps (
-            asset_id VARCHAR PRIMARY KEY,
-            name_en VARCHAR,
-            name_fr VARCHAR
-        )
-    """)
-    meta_conn.execute("INSERT INTO maps VALUES ('map_001', 'Recharge', 'Recharge')")
-    # Tables vides requises par les LEFT JOINs
+    ensure_asset_translations_table(meta_conn)
     meta_conn.execute(
-        "CREATE TABLE playlists (asset_id VARCHAR, name_en VARCHAR, name_fr VARCHAR,"
-        " playlist_canonical_en VARCHAR, playlist_canonical_fr VARCHAR)"
+        "INSERT INTO asset_translations (asset_id, asset_type, lang, name, description, fetched_at)"
+        " VALUES ('map_001', 'map', 'en-US', 'Recharge EN', NULL, now())"
     )
     meta_conn.execute(
-        "CREATE TABLE playlist_map_mode_pairs (asset_id VARCHAR, name_en VARCHAR, name_fr VARCHAR)"
-    )
-    meta_conn.execute(
-        "CREATE TABLE game_variants (asset_id VARCHAR, name_en VARCHAR, name_fr VARCHAR,"
-        " mode_name VARCHAR, mode_name_fr VARCHAR)"
+        "INSERT INTO asset_translations (asset_id, asset_type, lang, name, description, fetched_at)"
+        " VALUES ('map_001', 'map', 'fr-FR', 'Recharge FR', NULL, now())"
     )
     meta_conn.close()
 
@@ -213,9 +215,12 @@ def test_v_match_full_avec_metadata_attachee(tmp_path):
     conn.execute(f"ATTACH '{meta_path}' AS meta (READ_ONLY)")
     ensure_resolution_views(conn)
 
-    row = conn.execute("SELECT map_name FROM v_match_full WHERE match_id = 'm3'").fetchone()
+    row = conn.execute(
+        "SELECT map_name, map_name_fr FROM v_match_full WHERE match_id = 'm3'"
+    ).fetchone()
     assert row is not None
-    assert row[0] == "Recharge"  # vient de meta.maps.name_en
+    assert row[0] == "Recharge EN"  # depuis asset_translations en-US
+    assert row[1] == "Recharge FR"  # depuis asset_translations fr-FR
 
 
 def test_v_match_full_idempotente():

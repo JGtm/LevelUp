@@ -554,6 +554,16 @@ def create_argument_parser() -> argparse.ArgumentParser:
         help="Recalculer et réécrire le LUSR pour TOUS les matchs non classés depuis zéro",
     )
     parser.add_argument(
+        "--reset-lusr",
+        action="store_true",
+        dest="reset_lusr",
+        help=(
+            "Supprime toutes les entrées LUSR du joueur dans match_skill_rank "
+            "et les recalcule depuis zéro (nécessite --player). "
+            "Utile pour corriger un drift de rating dû au bug de seed incrémental."
+        ),
+    )
+    parser.add_argument(
         "--csr",
         action="store_true",
         help=(
@@ -701,6 +711,23 @@ def create_argument_parser() -> argparse.ArgumentParser:
         action="store_true",
         dest="force_comeback_badges",
         help="Re-traite les matchs déjà badgés (valeurs 3-5) en plus des non badgés.",
+    )
+
+    # ── Playable duration (v6.3) ──────────────────────────────────────────
+    parser.add_argument(
+        "--playable-duration",
+        action="store_true",
+        dest="playable_duration",
+        help=(
+            "Backfill playable_duration_seconds et real_start_time dans match_registry. "
+            "Requiert un appel API get_match_stats par match non rempli."
+        ),
+    )
+    parser.add_argument(
+        "--force-playable-duration",
+        action="store_true",
+        dest="force_playable_duration",
+        help="Force le backfill de playable_duration même si la colonne est déjà remplie.",
     )
 
     return parser

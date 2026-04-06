@@ -645,9 +645,9 @@ class TestDropLegacyTranslationTables:
 
         _load_migration_steps()
         mig = next((m for m in MIGRATIONS if m.name == "drop_legacy_translation_tables"), None)
-        assert (
-            mig is not None
-        ), "Migration drop_legacy_translation_tables non trouvée dans MIGRATIONS"
+        assert mig is not None, (
+            "Migration drop_legacy_translation_tables non trouvée dans MIGRATIONS"
+        )
         assert mig.target_db == "metadata"
         assert mig.apply_backfill is None  # pas de backfill
 

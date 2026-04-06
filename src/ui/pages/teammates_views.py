@@ -34,6 +34,7 @@ from src.ui.pages.teammates_views_shared import (
     _collect_friend_match_ids,
 )
 from src.ui.pages.teammates_weapons import render_weapon_kills_bar_chart
+from src.ui.translations import resolve_map_display_names
 from src.ui.tz import get_tz_name
 from src.visualization._compat import DataFrameLike, ensure_polars
 
@@ -176,12 +177,32 @@ def _render_bottom_charts(  # noqa: PLR0913
             db_path=db_path,
             key_suffix=f"multi_{len(series)}",
         )
+    from src.analysis.squad_records import compute_squad_records, get_dominant_pair_name
+
+    _series_pl = [(n, ensure_polars(d)) for n, d in series]
+    _dom_pair = get_dominant_pair_name([d for _, d in _series_pl])
+    _spree_rec = compute_squad_records(_series_pl, [("max_killing_spree", False)], _dom_pair)
+    _hspk_dfs = [
+        (
+            n,
+            d.with_columns(
+                (
+                    pl.col("headshot_kills").fill_null(0) + pl.col("perfect_kills").fill_null(0)
+                ).alias("hs_pk_total")
+            ),
+        )
+        for n, d in _series_pl
+        if "headshot_kills" in d.columns
+    ]
+    _hspk_rec = compute_squad_records(_hspk_dfs, [("hs_pk_total", False)], _dom_pair)
     render_metric_bar_charts(
         series=series,
         colors_by_name=colors_by_name,
         show_smooth=show_smooth,
         key_suffix=f"{len(series)}",
         plot_fn=plot_multi_metric_bars_fn,
+        records=_spree_rec,
+        hspk_records=_hspk_rec,
     )
 
 
@@ -271,6 +292,31 @@ def _render_map_history_section(
                 fr_sub = TeammatesService.enrich_with_performance_score(
                     fr_sub, fx_gamertag, db_path
                 )
+                # Ajouter map_ui (traduit) si absent — même logique que _add_derived_columns
+                if (
+                    "map_ui" not in fr_sub.columns
+                    and "map_id" in fr_sub.columns
+                    and "map_name" in fr_sub.columns
+                ):
+                    _id_to_fallback = {
+                        str(r["map_id"]): str(r["map_name"] or "")
+                        for r in fr_sub.select(["map_id", "map_name"])
+                        .drop_nulls(subset=["map_id"])
+                        .unique(subset=["map_id"])
+                        .iter_rows(named=True)
+                    }
+                    if _id_to_fallback:
+                        _translated = resolve_map_display_names(_id_to_fallback, get_lang())
+                        fr_sub = fr_sub.with_columns(
+                            pl.col("map_id")
+                            .cast(pl.Utf8)
+                            .replace_strict(
+                                _translated,
+                                default=pl.col("map_name").cast(pl.Utf8),
+                                return_dtype=pl.Utf8,
+                            )
+                            .alias("map_ui")
+                        )
                 series.append((fx_gamertag, fr_sub))
 
         colors_by_name = assign_player_colors_fn([n for n, _ in series])
@@ -287,6 +333,8 @@ def _render_map_history_section(
             all_match_ids=list(all_match_ids),
             lang=get_lang(),
         )
+        # Désactivé temporairement: ne plus afficher ni charger les données
+        # du profil de tempo synchronisé, tout en conservant le code en place.
 
     return sub_all, series, colors_by_name, rendered_bottom_charts
 

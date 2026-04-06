@@ -113,6 +113,7 @@ STRINGS: dict[str, dict[str, str] | str] = {
     "impact_top_gun": {"fr": "As de la gâchette", "en": "Top Gun"},
     "impact_silent_hero": {"fr": "Héros silencieux", "en": "Silent Hero"},
     "impact_false_brother": {"fr": "Faux-frère", "en": "False Brother"},
+    "impact_top_killer": {"fr": "Bourreau", "en": "Top Killer"},
     # ── Messages vides ────────────────────────────────────────────────────────
     "empty_no_data": "no_data",
     "empty_no_duel": {"fr": "Aucun duel trouvé.", "en": "No duel found."},
@@ -175,4 +176,8 @@ STRINGS: dict[str, dict[str, str] | str] = {
         "fr": "{k} frags",
         "en": "{k} kills",
     },
+    # ── Labels cadence / intensité ────────────────────────────────────────────
+    "label_cadence_peak": {"fr": "pic", "en": "peak"},
+    "label_intensity_low": {"fr": "Calme", "en": "Quiet"},
+    "label_intensity_high": {"fr": "Intense", "en": "Intense"},
 }

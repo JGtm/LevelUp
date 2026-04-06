@@ -172,7 +172,8 @@ def _render_lusr_rating_chart(db_path: str, xuid: str) -> None:
     selected_group = group_options[selected_label]
     chart_title = f"LUSR / CSR — {selected_label}"
     with safe_chart_render("career_lusr_group_error"):
-        fig = plot_lusr_timeseries(df_all, title=chart_title, playlist_group=selected_group)
+        st.subheader(chart_title)
+        fig = plot_lusr_timeseries(df_all, playlist_group=selected_group)
         st.plotly_chart(
             fig, key=f"lusr_chart_{selected_label}", width="stretch", config=PLOTLY_CLEAN_CONFIG
         )

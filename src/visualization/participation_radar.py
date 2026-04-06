@@ -10,6 +10,7 @@ from __future__ import annotations
 
 from src.analysis.participation_radar import (
     RADAR_THRESHOLDS,
+    ProfileOptions,
     compute_global_radar_thresholds,
     compute_participation_profile,
     get_radar_thresholds,
@@ -36,6 +37,7 @@ def get_radar_axis_lines(lang: str | None = None) -> list[str]:
 
 __all__ = [
     "RADAR_THRESHOLDS",
+    "ProfileOptions",
     "get_radar_axis_lines",
     "compute_participation_profile",
     "compute_global_radar_thresholds",

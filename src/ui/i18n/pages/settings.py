@@ -121,5 +121,39 @@ STRINGS: dict[str, dict[str, str] | str] = {
         "fr": "Racine des captures. Un sous-dossier par joueur, nommé comme le gamertag (ex: D:/Captures/PlayerA/, D:/Captures/PlayerB/). Images et vidéos dans le même dossier.",
         "en": "Capture root. One subfolder per player, named like the gamertag (e.g. D:/Captures/PlayerA/, D:/Captures/PlayerB/). Images and videos in the same folder.",
     },
+    # ── Settings V2 — nouvelles sections ────────────────────────────────────
+    "set_language_section": {"fr": "Langue & Région", "en": "Language & Region"},
+    "set_lang_label": {"fr": "Langue de l'interface", "en": "Interface language"},
+    "set_display_section": {"fr": "Affichage", "en": "Display"},
+    "set_show_records": {
+        "fr": "Afficher les records historiques sur les graphes Escouade",
+        "en": "Show historical records on Squad charts",
+    },
+    "set_show_records_help": {
+        "fr": "Affiche des barres hachurées indiquant le record personnel de chaque joueur sur les graphes de la page Escouade.",
+        "en": "Displays hatched bars showing each player's personal record on Squad page charts.",
+    },
+    "set_career_exclude_btb": {
+        "fr": "Exclure les matchs BTB du Top / Pire",
+        "en": "Exclude BTB matches from Top / Worst",
+    },
+    "set_career_exclude_btb_help": {
+        "fr": "Les matchs Big Team Battle sont exclus du classement Top 10 meilleurs/pires matchs.",
+        "en": "Big Team Battle matches are excluded from the Top 10 best/worst matches ranking.",
+    },
+    "set_clear_cache_help": {
+        "fr": "Vide automatiquement le cache Streamlit à chaque synchronisation. Utile si la DB change en dehors de l'app (NAS, import externe).",
+        "en": "Automatically clears the Streamlit cache on each sync. Useful if the DB changes outside the app (NAS, external import).",
+    },
+    "set_discord_section": {"fr": "Notifications Discord", "en": "Discord Notifications"},
+    "set_discord_enable": {
+        "fr": "Activer les notifications Discord",
+        "en": "Enable Discord notifications",
+    },
+    "set_discord_url": {"fr": "URL du webhook", "en": "Webhook URL"},
+    "set_discord_lang_label": {
+        "fr": "Langue des messages Discord",
+        "en": "Discord message language",
+    },
     # ── Match view helpers (Phase 3) ─────────────────────────────────────────
 }

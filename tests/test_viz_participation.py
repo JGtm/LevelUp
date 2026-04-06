@@ -11,6 +11,7 @@ import pytest
 
 from src.analysis.participation_radar import (
     RADAR_THRESHOLDS,
+    ProfileOptions,
     _extract_scores_from_awards,
     _get_match_stats_values,
     _is_objective_mode_from_pair_name,
@@ -106,7 +107,7 @@ class TestPlotParticipationPie:
         assert isinstance(fig, go.Figure)
 
     def test_custom_title(self, awards_df):
-        fig = plot_participation_pie(awards_df, title="Test Title")
+        fig = plot_participation_pie(awards_df)
         assert isinstance(fig, go.Figure)
 
     def test_no_values(self, awards_df):
@@ -319,8 +320,7 @@ class TestComputeParticipationProfile:
         result = compute_participation_profile(
             awards_df,
             match_row={"deaths": 5, "time_played_seconds": 600},
-            name="Test",
-            pair_name="Arena:Slayer on Streets",
+            options=ProfileOptions(name="Test", pair_name="Arena:Slayer on Streets"),
         )
         assert result["name"] == "Test"
         # Slayer → objectifs_raw = kill_score
@@ -330,13 +330,12 @@ class TestComputeParticipationProfile:
         result = compute_participation_profile(
             awards_df,
             match_row={"deaths": 5, "time_played_seconds": 600},
-            name="Test",
-            pair_name="Arena:CTF on Aquarius",
+            options=ProfileOptions(name="Test", pair_name="Arena:CTF on Aquarius"),
         )
         assert result["objectifs_raw"] == 600  # objective score
 
     def test_normalization_range(self, awards_df):
-        result = compute_participation_profile(awards_df, name="Test")
+        result = compute_participation_profile(awards_df, options=ProfileOptions(name="Test"))
         for key in (
             "objectifs_norm",
             "combat_norm",
@@ -348,19 +347,23 @@ class TestComputeParticipationProfile:
             assert 0.0 <= result[key] <= 1.0, f"{key} out of range: {result[key]}"
 
     def test_empty_awards(self, empty_awards_df):
-        result = compute_participation_profile(empty_awards_df, name="Empty")
+        result = compute_participation_profile(
+            empty_awards_df, options=ProfileOptions(name="Empty")
+        )
         assert result["combat_raw"] == 0
         assert result["support_raw"] == 0
         assert result["score_raw"] == 0
 
     def test_custom_thresholds(self, awards_df):
         th = dict.fromkeys(RADAR_THRESHOLDS, 100.0)
-        result = compute_participation_profile(awards_df, thresholds=th, name="Custom")
+        result = compute_participation_profile(
+            awards_df, options=ProfileOptions(thresholds=th, name="Custom")
+        )
         # With very low thresholds, norms should be 1.0 (capped)
         assert result["combat_norm"] == 1.0
 
     def test_with_color(self, awards_df):
-        result = compute_participation_profile(awards_df, color="#FF0000")
+        result = compute_participation_profile(awards_df, options=ProfileOptions(color="#FF0000"))
         assert result["color"] == "#FF0000"
 
     def test_with_no_match_row(self, awards_df):
@@ -380,8 +383,12 @@ class TestComputeParticipationProfile:
         assert result["survie_raw"] > 0
 
     def test_explicit_mode_is_objective(self, awards_df):
-        result_obj = compute_participation_profile(awards_df, mode_is_objective=True)
-        result_slay = compute_participation_profile(awards_df, mode_is_objective=False)
+        result_obj = compute_participation_profile(
+            awards_df, options=ProfileOptions(mode_is_objective=True)
+        )
+        result_slay = compute_participation_profile(
+            awards_df, options=ProfileOptions(mode_is_objective=False)
+        )
         # Objective mode uses objective_score, Slayer uses kill_score
         assert result_obj["objectifs_raw"] != result_slay["objectifs_raw"]
 

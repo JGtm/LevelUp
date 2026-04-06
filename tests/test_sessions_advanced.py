@@ -50,15 +50,15 @@ def test_compute_sessions_with_teammates_change():
     # Vérifier que session_id change au match m3
     sessions = result.select(["match_id", "session_id"]).sort("match_id")
 
-    assert (
-        sessions["session_id"][0] == sessions["session_id"][1]
-    ), "m1 et m2 doivent être dans la même session"
-    assert (
-        sessions["session_id"][1] != sessions["session_id"][2]
-    ), "m2 et m3 doivent être dans des sessions différentes"
-    assert (
-        sessions["session_id"][2] == sessions["session_id"][3]
-    ), "m3 et m4 doivent être dans la même session"
+    assert sessions["session_id"][0] == sessions["session_id"][1], (
+        "m1 et m2 doivent être dans la même session"
+    )
+    assert sessions["session_id"][1] != sessions["session_id"][2], (
+        "m2 et m3 doivent être dans des sessions différentes"
+    )
+    assert sessions["session_id"][2] == sessions["session_id"][3], (
+        "m3 et m4 doivent être dans la même session"
+    )
 
 
 def test_compute_sessions_with_gap():
@@ -85,12 +85,12 @@ def test_compute_sessions_with_gap():
 
     sessions = result.select(["match_id", "session_id"]).sort("match_id")
 
-    assert (
-        sessions["session_id"][0] == sessions["session_id"][1]
-    ), "m1 et m2 doivent être dans la même session"
-    assert (
-        sessions["session_id"][1] != sessions["session_id"][2]
-    ), "m2 et m3 doivent être dans des sessions différentes (gap > 120 min)"
+    assert sessions["session_id"][0] == sessions["session_id"][1], (
+        "m1 et m2 doivent être dans la même session"
+    )
+    assert sessions["session_id"][1] != sessions["session_id"][2], (
+        "m2 et m3 doivent être dans des sessions différentes (gap > 120 min)"
+    )
 
 
 def test_compute_sessions_without_teammates_column():

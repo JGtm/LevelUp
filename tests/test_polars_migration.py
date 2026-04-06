@@ -127,6 +127,7 @@ class TestAnalysisPolars:
         df = pl.DataFrame(
             {
                 "map_name": ["Recharge", "Streets", "Recharge", "Live Fire"],
+                "map_ui": ["Recharge", "Streets", "Recharge", "Live Fire"],
                 "kills": [10, 15, 12, 8],
                 "deaths": [5, 10, 6, 4],
                 "outcome": [2, 3, 2, 2],
@@ -201,13 +202,6 @@ class TestHelpersPolars:
 
         stats = compute_kpi_stats(sample_match_df_polars)
         assert stats is not None
-
-    def test_add_ui_columns_polars(self, sample_match_df_polars: pl.DataFrame):
-        """Test add_ui_columns avec Polars."""
-        from src.app.filters import add_ui_columns
-
-        df_with_ui = add_ui_columns(sample_match_df_polars)
-        assert df_with_ui is not None
 
 
 # =============================================================================

@@ -4,7 +4,126 @@
 
 Toutes les modifications notables de ce projet sont documentées ici.
 
-Le format est basé sur [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/).
+Le format est basé sur [Keep a Changelog](https://keepachangelog.fr/fr/1.1.0/).
+
+## [6.3.0] - 2026-04-03
+
+### Ajouté
+
+- **Noms de cartes et modes dans la langue de l'interface** — tous les noms de cartes, playlists, modes de jeu et paires s'affichent désormais en français ou en anglais sur chaque page : filtres sidebar, tableaux de matchs, graphes et histogramme win rate. Alimenté par une nouvelle table `asset_translations` dans `metadata.duckdb` contenant 9 674 noms localisés en 14 langues BCP-47.
+  - Nouveau schéma : `asset_translations (asset_id, asset_type, lang, name, fetched_at, PK)` et `medal_translations (name_key, lang, name, description, PK)` dans `metadata.duckdb`
+  - `v_match_full` refonte i18n v6 : les quatre JOINs sur tables legacy supprimés ; remplacés par 8 `LEFT JOIN meta.asset_translations` (en-US + fr-FR × 4 types). Nouvelles colonnes : `map_name_fr`, `playlist_name_fr`, `pair_name_fr`, `game_variant_name_fr`
+  - `resolve_asset_name()` / `resolve_medal_name()` utilisent les tables pivot pour des résolutions déterministes par langue
+  - `MetadataResolver.resolve()` accepte désormais un paramètre `lang`
+  - Peuplement : `python scripts/populate_asset_translations.py` (supporte `--dry-run`, `--force`, `--types map playlist pair game_variant`)
+
+- **Tooltips descriptions des médailles** — survoler une médaille dans la grille du dernier match ou la section Citations affiche sa description. Repli sur le nom de la médaille si la description est indisponible.
+
+- **Records historiques de l'escouade** (page Coéquipiers) — les meilleurs scores all-time par joueur s'affichent sur la page Escouade avec des annotations rectangulaires colorées par joueur et un classement par carte. Les records sont chargés depuis l'historique complet de chaque joueur (pas seulement les sessions partagées).
+  - `compute_squad_records()` — fonction d'analyse pure retournant le meilleur all-time par métrique par joueur
+  - Overlays rectangles colorés par joueur + graphes records par carte
+  - Intégré dans `render_trio_charts` et `render_metric_bar_charts`
+
+- **Badge Top Killer** 🔫 — nouveau badge sur la timeline Impact pour le premier joueur de l'équipe à atteindre 10 kills. Ajouté à `_EVENT_TO_EMOJI`. Explicitement exclu de la détection des badges *Héros silencieux* et *Faux-frère*. Légende ajoutée dans l'expander sous la grille.
+
+- **Histogramme en papillon — Premier frag / Première mort** (page Coéquipiers) — la distribution premier-frag / première-mort devient un histogramme en miroir avec des tranches de 15 secondes, des séparateurs visuels et des étiquettes de graduation à chaque bordure. Le countdown pré-match est soustrait pour afficher le temps réel de jeu ; `NULL` préservé si aucun kill/mort dans le match.
+
+- **`playable_duration_seconds` + `real_start_time`** dans `match_registry` (migration schéma v6.3) — `playable_duration_seconds` est la durée totale du match moins le countdown ; `real_start_time` est l'horodatage UTC absolu du début du gameplay. Backfill : `python scripts/backfill_data.py --playable-duration`.
+
+- **Fanout PSA coéquipiers** — les Personal Score Awards des membres de l'escouade sont distribués dans toutes les DBs joueur concernées lors du post-sync.
+
+- **Histogramme win rate enrichi** — le tooltip des barres affiche désormais le total de matchs par carte ; la colonne carte utilise le nom traduit (`map_ui`).
+
+- **Page Paramètres V2** — réorganisée en sections fixes (Général, Sync, Performance, Affichage) avec une signature de fonction interne simplifiée. Aucun changement comportemental.
+
+- **Artefacts déploiement VPS Ionos** — configuration `packaging/nginx/`, `deploy.sh`, guide étape par étape (`docs/DEPLOY_GUIDE_ETAPES.md`) et guide VPS Ionos (`docs/DEPLOY_VPS_IONOS.md`).
+
+### Modifié
+
+- **`shared_matches.duckdb` → `shared_matches_v2.duckdb`** — la base de données des matchs partagés a été renommée. Helper `get_shared_matches_path()` introduit ; tous les chemins hardcodés mis à jour ; `compute_sessions.py` mis à jour.
+
+- **Radar escouade** — seuils de l'axe complémentarité recalibrés à p90 (était p80) ; la vue all-time supprimée, le radar est filtré par session uniquement.
+
+- **Seed incrémental LUSR** — bug de cascade corrigé : `seed_ratings` était muté avant d'être lu par `existing_states` en mode incrémental.
+
+- **Sidebar i18n** — `_filters_cascade()` utilise `playlist_name_fr` / `map_name_fr` quand la langue de l'interface est le français.
+
+- **`_try_attach_meta_for_views()`** — vérifie désormais `meta.asset_translations` (présente en v6) au lieu de `meta.maps` (supprimée en v6).
+
+### Corrigé
+
+- `v_match_full` était silencieusement créée sans i18n — `map_name_fr` était toujours `NULL` en production car `_try_attach_meta_for_views()` cherchait `meta.maps` (supprimée en v6) et basculait sur le chemin sans métadonnées.
+- `map_name_fr` / `playlist_name_fr` / `pair_name_fr` propagés dans tous les chemins de données Polars via `COLUMNS_COMMON` ; mismatch entre valeurs du filtre sidebar et colonnes du DataFrame corrigé.
+- Noms de cartes/modes affichés en français partout : sidebar, graphes bullet + perf, heatmaps, historique de matchs, graphes Escouade et page Records.
+- Timeseries : countdown soustrait des timestamps premier-frag et première-mort dans `load_first_event_times()` ; `NULL` préservé après soustraction.
+- Apostrophes échappées dans les attributs `title=` des tooltips médailles et citations (HTML brisé corrigé).
+- `_build_map_id_index` lit `asset_translations` au lieu de la table `maps` supprimée.
+- Miniature carte résolue via `map_id` (asset_id) indépendamment de la langue affichée.
+- Radar escouade : l'intersection `shared_match_ids` ne s'effondre plus si un membre n'a pas de matchs.
+- Radar escouade : `compute_participation_profile` appelé avec `ProfileOptions` (corrige `TypeError`).
+- Page Records : barres hachurées fantômes supprimées ; `offsetgroup` corrigé sur les couches de données.
+- Overlay Records : ligne correctement colorée, largeur exacte, repli sur `duration_seconds`.
+- `playlist_name_fr` utilise le nom EN comme fallback dans `v_match_full` si la traduction FR est absente.
+- Page Performance : graphe score équipe affiche bonus ou base selon le contexte.
+- Stats/min escouade visibles pour tous les membres (pas seulement le joueur focal).
+- Aliases armes `Mutilator` / `Mutilateur` ajoutés dans `_scoreboard_asset_urls`.
+- `top_killer` ajouté à `_EVENT_TO_EMOJI` (entrée manquante causait un repli d'affichage emoji).
+
+### Tests
+
+- `test(i18n)` : couverture `resolve_map_display_names()` + assertions colonnes `map_ui` / `mode_ui`
+- `test(radar)` : cas limite `f1_vide` + régression effondrement `shared_match_ids`
+- Suite mise à jour pour la signature V2 des Paramètres, la propagation i18n, le refactoring médailles/playlists
+- Baseline taille mise à jour (`scripts/size_baseline.txt`)
+
+---
+
+## [6.2.1] - 2026-03-29
+
+### Ajouts
+
+- **Badges "Héros silencieux" & "Faux-frère"** (`src/analysis/impact_analysis.py`) — deux badges d'impact narratifs détectés depuis `match_participants` + `medals_earned` :
+  - *Héros silencieux* : top assists sans être top kills dans l'équipe (formule B : assists ≥ seuil × bonus médailles)
+  - *Faux-frère* : nombreux kills dans une équipe perdante où les coéquipiers ont sous-performé
+  - Variantes single-match et multi-match ; visibles sur la timeline Impact et la page Coéquipiers
+  - Légende exposée dans un expander sous la grille de badges
+- **Tableau ranking d'impact** — tableau HTML (`os-impact-table`) remplace la heatmap précédente ; affiche le score d'impact classé par joueur par match avec lignes colorées
+- **Graphe combiné Tirs à la tête + Frags parfaits** (page coéquipiers) — `plot_headshots_perfect_kills()` affiche un seul histogramme groupé par coéquipier au lieu de deux graphes séparés
+- **Top matchs — exclusion BTB** — paramètre `career_top_exclude_btb` dans `AppSettings` ; quand activé, les matchs Big Team Battle sont exclus du classement pour une comparaison Arena/BTB équitable
+- **`--btb-only` / `--arena-only`** — nouvelles options dans `scripts/backfill_data.py` pour réparer ciblé les scores d'équipe corrompus CTF/TC/KOTH/Assault
+- **`monitor_uptime.sh`** — équivalent shell bash de `monitor_uptime.py` pour les environnements sans Python
+
+### Changements
+
+- **Renommage KDA → Efficiency** — toutes les variables agrégat locales nommées `kda` dans `src/analysis/` renommées en `efficiency` ; API publique inchangée
+- **Score impact** — poids *Héros silencieux* relevé à +1.5 ; constantes manquantes (`SILENT_HERO_MEDAL_BOOST`, `FALSE_BROTHER_LOSS_PENALTY`) centralisées
+- **Page Impact** — heatmap remplacée par le tableau HTML de ranking ; badges d'impact en premier, section coéquipiers en dernier
+- **Page Coéquipiers** — section médailles déplacée en fin de page ; graphes individuels Tirs à la tête et Frags parfaits remplacés par le graphe combiné
+- **Normalisation labels modes de jeu (phases 1 + 2)** — `resolve_display_mode()` ajouté comme résolveur unifié ; `translate_pair_name()` lui délègue ; `mode_pair_overrides` étendu avec 29 surcharges FR/EN ; filtre sidebar et tableaux de matchs utilisent les labels normalisés
+- **Normalisation score top matchs** — écart de score divisé par le max du match pour équité Arena/BTB ; tri par `performance_score` (pas le `score_diff` brut)
+- **`waypoint_player` propagé** dans les liens Explorer des top matchs pour les deep links joueur
+- **Docker** — montage `.env.local` désormais obligatoire (suppression de `required: false`)
+
+### Corrections
+
+- **Scores d'équipe corrompus** — `team_score` mis à `NULL` quand contaminé par `ps_score` (CASTLE WARS, Sentry Defense, et tous les modes objectifs) ; `backfill_fix_score_inversions` étendu à Slayer, KOTH et Assault
+- **Inversions de score** — inversion Bleu/Rouge corrigée pour Slayer + KOTH/Assault ; seuil comeback rendu proportionnel à la durée du match
+- **Flag dominance** — `WHERE dominance_flag IS NULL` corrigé en `WHERE dominance_flag NOT IN (1, 2)` pour ne plus ignorer les lignes avec valeur par défaut `0`
+- **Ordre badges comeback** — `CONTRE_REMONTADA` évalué avant `REMONTADA` (chemin mort corrigé)
+- **Seuil comeback** — formule symétrique via `_resolve_threshold()` pour éviter une détection asymétrique
+- **Navigation deep link** — DB joueur correctement restaurée à la navigation directe via paramètres URL `gamertag + match_id`
+- **`run.sh`** — fichier `nul` parasite créé par Git Bash sous Windows supprimé au démarrage
+- Badge Faux-frère : emoji 🗡️ appliqué uniformément ; label "assists" corrigé en français
+
+### Tests
+
+- `identify_silent_hero_multi` + `identify_false_brother_multi` : 16 nouveaux tests
+- `infer_mode_category` + format inversé sidebar : couvert
+- Top matchs : cas E/F/G — filtre BTB, exclusion score NULL, tri priorité badge
+- `test(analysis)` : logging + couverture efficiency/cumul (renommage v6.2.1)
+- **Total : suite précédente + ~25 nouveaux tests, 0 échecs**
+
+---
 
 ## [6.2.0] - 2026-03-28
 

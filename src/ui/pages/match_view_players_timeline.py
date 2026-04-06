@@ -12,6 +12,7 @@ from collections.abc import Callable
 
 import streamlit as st
 
+from src.analysis.match_cadence import compute_cadence_buckets
 from src.ui.i18n import get_lang, t
 from src.ui.pages.match_view_players_data import (
     has_table_duckdb as _has_table_duckdb,
@@ -21,6 +22,8 @@ from src.ui.pages.match_view_players_data import (
 )
 from src.ui.streamlit_modern import PLOTLY_CLEAN_CONFIG, fragment_if_available
 from src.utils import parse_xuid_input
+from src.visualization._cadence_histogram import plot_match_cadence_histogram
+from src.visualization._plot_options import PlotOptions
 from src.visualization.match_impact_timeline import plot_all_players_frags_timeline
 from src.visualization.team_dominance_timeline import (
     compute_dominance_buckets,
@@ -40,6 +43,7 @@ def render_team_dominance_section(  # noqa: PLR0913
     db_key: tuple[int, int] | None,
     is_firefight: bool,
     load_highlight_events_fn: Callable,
+    playable_duration_seconds: int | None = None,
 ) -> None:
     """Rend la frise chronologique de dominance d'équipe (PvP uniquement).
 
@@ -100,7 +104,11 @@ def render_team_dominance_section(  # noqa: PLR0913
         st.info(t("mv_dynamics_no_kills"))
         return
 
-    duration_s = max(int(e["time_ms"]) for e in kill_events) / 1000.0 + 20.0
+    duration_s = (
+        float(playable_duration_seconds)
+        if playable_duration_seconds
+        else max(int(e["time_ms"]) for e in kill_events) / 1000.0 + 20.0
+    )
 
     buckets = compute_dominance_buckets(he, xuid_to_team, my_team_id, duration_s)
     streaks = detect_streaks(he, xuid_to_team, xuid_to_gamertag)
@@ -112,7 +120,6 @@ def render_team_dominance_section(  # noqa: PLR0913
         xuid_to_team=xuid_to_team,
         my_team_id=my_team_id,
         duration_s=duration_s,
-        height=360,
     )
 
     if fig is not None:
@@ -120,6 +127,103 @@ def render_team_dominance_section(  # noqa: PLR0913
         st.markdown(t("mv_dominance_legend"))
     else:
         st.info(t("mv_dynamics_no_dominance"))
+
+
+def _resolve_cadence_teams(
+    db_path: str,
+    match_id: str,
+    xuid: str,
+) -> tuple[dict[str, int], int | None]:
+    """Résout le mapping xuid→team_id et l'équipe du joueur courant.
+
+    Returns:
+        (xuid_to_team, my_team_id) — my_team_id=None si données insuffisantes.
+    """
+    all_players = _load_match_players_stats(db_path, match_id.strip())
+    if not all_players:
+        return {}, None
+
+    me_xuid = str(parse_xuid_input(str(xuid or "").strip()) or str(xuid or "").strip()).strip()
+    xuid_to_team: dict[str, int] = {
+        str(p.get("xuid", "")).strip(): int(p["team_id"])
+        for p in all_players
+        if p.get("team_id") is not None and p.get("xuid")
+    }
+
+    if len(set(xuid_to_team.values())) < 2:
+        return xuid_to_team, None
+
+    return xuid_to_team, xuid_to_team.get(me_xuid)
+
+
+@fragment_if_available
+def render_match_cadence_section(  # noqa: PLR0913
+    *,
+    match_id: str,
+    db_path: str,
+    xuid: str,
+    db_key: tuple[int, int] | None,
+    is_firefight: bool,
+    load_highlight_events_fn: Callable,
+    playable_duration_seconds: int | None = None,
+) -> None:
+    """Histogramme de cadence bicolore : kills par tranche de temps.
+
+    Affiche les kills mon équipe / adverse en barres empilées avec
+    sélecteur de granularité (15s, 30s, 60s) et moyenne glissante.
+    """
+    if is_firefight:
+        return
+    if not (match_id and match_id.strip() and _has_table_duckdb(db_path, "highlight_events")):
+        return
+
+    logger.debug("cadence: match=%s bucket_default=15s", match_id)
+    st.subheader(t("mv_match_cadence"))
+
+    he = load_highlight_events_fn(db_path, match_id.strip(), db_key=db_key)
+    if not he:
+        st.info(t("mv_cadence_no_data"))
+        return
+
+    xuid_to_team, my_team_id = _resolve_cadence_teams(db_path, match_id, xuid)
+    if my_team_id is None:
+        return
+
+    kill_events = [
+        e
+        for e in he
+        if str(e.get("event_type", "")).lower() == "kill" and e.get("time_ms") is not None
+    ]
+    if len(kill_events) < 3:
+        st.info(t("mv_cadence_no_data"))
+        return
+
+    duration_s = (
+        float(playable_duration_seconds)
+        if playable_duration_seconds
+        else max(int(e["time_ms"]) for e in kill_events) / 1000.0 + 20.0
+    )
+
+    bucket_s = st.segmented_control(
+        t("mv_cadence_granularity"),
+        options=[15, 30, 60],
+        format_func=lambda x: f"{x}s",
+        default=15,
+        key=f"cadence_bucket_{match_id}",
+    )
+    bucket_s = int(bucket_s) if bucket_s else 15
+
+    buckets = compute_cadence_buckets(he, xuid_to_team, my_team_id, duration_s, bucket_s)
+    fig = plot_match_cadence_histogram(
+        buckets=buckets,
+        duration_s=duration_s,
+        opts=PlotOptions(lang=get_lang(), height_px=320),
+    )
+
+    if fig is not None:
+        st.plotly_chart(fig, width="stretch", config=PLOTLY_CLEAN_CONFIG)
+    else:
+        st.info(t("mv_cadence_no_data"))
 
 
 def render_kd_timeline_section(  # noqa: PLR0913

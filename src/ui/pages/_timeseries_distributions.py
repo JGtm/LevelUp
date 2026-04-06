@@ -13,6 +13,7 @@ from src.data.services.timeseries_service import TimeseriesService
 from src.ui.chart_utils import safe_chart_render
 from src.ui.i18n import t
 from src.ui.streamlit_modern import PLOTLY_CLEAN_CONFIG, PLOTLY_STATIC_CONFIG, fragment_if_available
+from src.visualization._plot_options import PlotOptions
 from src.visualization.distributions import (
     plot_correlation_scatter,
     plot_histogram,
@@ -92,12 +93,11 @@ def _render_distribution_row3(dff: pl.DataFrame, colors: dict, lang: str = "fr")
         if spm_data.has_data:
             fig_spm = plot_histogram(
                 spm_data.values,
-                title=t("ts_dist_score_per_min_title"),
                 x_label=t("ts_score_per_min_label"),
                 y_label=t("ts_frequency_label"),
                 show_kde=True,
                 color=colors["amber"],
-                lang=lang,
+                opts=PlotOptions(lang=lang),
             )
             st.plotly_chart(fig_spm, width="stretch", config=PLOTLY_STATIC_CONFIG)
         elif "personal_score" not in dff.columns or "time_played_seconds" not in dff.columns:
@@ -110,12 +110,11 @@ def _render_distribution_row3(dff: pl.DataFrame, colors: dict, lang: str = "fr")
         if wr_data.has_data:
             fig_wr = plot_histogram(
                 wr_data.values,
-                title=t("ts_dist_win_rate_title"),
                 x_label=t("ts_win_rate_label"),
                 y_label=t("ts_frequency_label"),
                 show_kde=True,
                 color=colors["green"],
-                lang=lang,
+                opts=PlotOptions(lang=lang),
             )
             st.plotly_chart(fig_wr, width="stretch", config=PLOTLY_STATIC_CONFIG)
         elif wr_data.missing_column:
@@ -143,12 +142,11 @@ def _render_single_histogram(  # noqa: PLR0913
     if len(data) > min_data - 1:
         fig = plot_histogram(
             data,
-            title=title,
             x_label=x_label,
             y_label=t("ts_frequency_label"),
             show_kde=True,
             color=color,
-            lang=lang,
+            opts=PlotOptions(lang=lang),
         )
         st.plotly_chart(fig, width="stretch", config=PLOTLY_STATIC_CONFIG)
     elif len(data) == 0:
@@ -269,11 +267,10 @@ def _render_scatter(  # noqa: PLR0913
             x_col,
             y_col,
             color_col=color_col,
-            title=title,
             x_label=x_label,
             y_label=y_label,
             show_trendline=True,
-            lang=lang,
+            opts=PlotOptions(lang=lang),
         )
         if fig is not None:
             st.plotly_chart(fig, width="stretch", config=PLOTLY_CLEAN_CONFIG)

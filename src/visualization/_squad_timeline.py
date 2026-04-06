@@ -134,7 +134,6 @@ def _configure_axes(
 
 def plot_squad_performance_timeline(
     df: DataFrameLike,
-    title: str | None = None,
     lang: str = "fr",
 ) -> go.Figure | None:
     """Graphique d'évolution de la performance d'escouade par session.
@@ -150,9 +149,6 @@ def plot_squad_performance_timeline(
     d = ensure_polars(df)
     if d.is_empty() or "squad_perf" not in d.columns:
         return None
-
-    if title is None:
-        title = viz_t("title_squad_timeline", lang)
 
     x_labels = d["bucket_label"].to_list()
     x_idx = list(range(len(x_labels)))
@@ -189,9 +185,8 @@ def plot_squad_performance_timeline(
 
     _configure_axes(fig, x_labels, x_idx, has_mmr, lang)
     fig.update_layout(
-        title=title,
         margin={"l": 40, "r": 60, "t": 60, "b": 90},
         hovermode="x unified",
         legend=get_legend_horizontal_bottom(),
     )
-    return apply_halo_plot_style(fig, title=title, height=PLOT_CONFIG.default_height)
+    return apply_halo_plot_style(fig, height=PLOT_CONFIG.default_height)

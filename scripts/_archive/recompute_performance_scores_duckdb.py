@@ -61,9 +61,9 @@ def load_player_matches(db_path: Path) -> pl.DataFrame:
     Les stats sont dans shared.match_participants, les enrichissements
     (performance_score) dans player_match_enrichment.
     """
-    shared_path = db_path.parent.parent.parent / "warehouse" / "shared_matches.duckdb"
+    shared_path = db_path.parent.parent.parent / "warehouse" / "shared_matches_v2.duckdb"
     if not shared_path.exists():
-        raise FileNotFoundError(f"shared_matches.duckdb introuvable : {shared_path}")
+        raise FileNotFoundError(f"shared_matches_v2.duckdb introuvable : {shared_path}")
 
     # Le gamertag est le nom du répertoire parent
     gamertag = db_path.parent.name

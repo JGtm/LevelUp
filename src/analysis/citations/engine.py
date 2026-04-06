@@ -34,16 +34,16 @@ class CitationEngine(CitationDataLoaderMixin):
     Chaque instance travaille sur la DB d'un joueur donné et charge
     les référentiels depuis ``metadata.duckdb`` (ATTACHé en ``meta``).
 
-    En mode V5, les tables ``medals_earned`` et ``match_stats`` (via
+    en mode V5, les tables ``medals_earned`` et ``match_stats`` (via
     ``match_participants`` / ``match_registry``) sont lues depuis
-    ``shared_matches.duckdb`` (ATTACHé en ``shared``).
+    ``shared_matches_v2.duckdb`` (ATTACHé en ``shared``).
 
     Args:
         db_path: Chemin vers ``stats.duckdb`` du joueur.
         xuid: XUID du joueur.
         metadata_db_path: Chemin vers ``metadata.duckdb``.  Si ``None``,
             dérivé automatiquement de *db_path*.
-        shared_db_path: Chemin vers ``shared_matches.duckdb``.  Si ``None``,
+        shared_db_path: Chemin vers ``shared_matches_v2.duckdb``.  Si ``None``,
             auto-détecté. Passez ``False`` pour désactiver.
         conn: Connexion DuckDB partagée (réutilisée si fournie).
     """
@@ -69,7 +69,7 @@ class CitationEngine(CitationDataLoaderMixin):
                 self._db_path.parent.parent.parent / "warehouse" / "metadata.duckdb"
             )
 
-        # Auto-détection shared_matches.duckdb (V5)
+        # Auto-détection shared_matches_v2.duckdb
         if shared_db_path is False:
             self._shared_db_path: Path | None = None
         elif shared_db_path is not None:
@@ -102,7 +102,7 @@ class CitationEngine(CitationDataLoaderMixin):
             return
         conn = duckdb.connect(str(self._db_path), read_only=True)
         try:
-            # ATTACH shared_matches.duckdb pour lecture V5
+            # ATTACH shared_matches_v2.duckdb pour lecture
             if self._shared_db_path is not None and self._shared_db_path.exists():
                 try:
                     conn.execute(f"ATTACH '{self._shared_db_path}' AS shared (READ_ONLY)")
@@ -116,7 +116,7 @@ class CitationEngine(CitationDataLoaderMixin):
 
     @property
     def has_shared(self) -> bool:
-        """Indique si shared_matches.duckdb est configuré et existe."""
+        """Indique si shared_matches_v2.duckdb est configuré et existe."""
         return self._shared_db_path is not None and self._shared_db_path.exists()
 
     def _conn_has_shared(self, conn: duckdb.DuckDBPyConnection) -> bool:

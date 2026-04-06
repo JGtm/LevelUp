@@ -18,7 +18,8 @@ import polars as pl
 import streamlit as st
 
 from src.app._page_context import MatchViewParams
-from src.ui.i18n import t
+from src.app.helpers import normalize_mode_label
+from src.ui.i18n import get_lang, t
 from src.ui.pages.explorer_data import (
     get_all_gamertags,
     load_is_with_friends,
@@ -62,7 +63,6 @@ def render_explorer_page(
         params["db_path"],
         params["xuid"],
         params["format_datetime_fn"],
-        params["normalize_mode_label_fn"],
     )
 
     st.divider()
@@ -166,12 +166,21 @@ def _render_match_filters(
     db_path: str,
     xuid: str,
     format_datetime_fn: Callable[..., Any],
-    normalize_mode_label_fn: Callable[[str | None], str | None],
 ) -> tuple[pl.DataFrame, str | None]:
     """Rend les filtres en cascade et retourne (df_filtrée, match_id)."""
     if dff.is_empty():
         st.info(t("no_data_filter"))
         return dff, None
+
+    # Ajouter mode_ui si absent (ctx.df brut sans enrichissement _vectorize_ui_columns)
+    if "mode_ui" not in dff.columns and "pair_name" in dff.columns:
+        _lang = get_lang()
+        dff = dff.with_columns(
+            pl.col("pair_name")
+            .cast(pl.Utf8)
+            .map_elements(lambda x: normalize_mode_label(x, lang=_lang), return_dtype=pl.Utf8)
+            .alias("mode_ui")
+        )
 
     dates = get_distinct_dates(dff)
     last_date = dates[-1] if dates else date.today()
@@ -221,11 +230,7 @@ def _render_match_filters(
     filtered = _render_cascade_filters(day_df)
 
     # Ligne 3 : Sélection de match
-    selected_mid = _render_match_selector(
-        filtered,
-        format_datetime_fn,
-        normalize_mode_label_fn,
-    )
+    selected_mid = _render_match_selector(filtered, format_datetime_fn)
 
     return filtered, selected_mid
 
@@ -244,8 +249,12 @@ def _render_cascade_filters(day_df: pl.DataFrame) -> pl.DataFrame:
     all_lbl = t("exp_filter_all")
     col_type, col_pl, col_mode, col_map = st.columns(4)
 
-    playlists = _unique_sorted(day_df, "playlist_name")
-    types = sorted({classify_experience_type(p) for p in playlists})
+    # Utiliser playlist_ui (traduit) si disponible, sinon playlist_name
+    _pl_col = "playlist_ui" if "playlist_ui" in day_df.columns else "playlist_name"
+    playlists = _unique_sorted(day_df, _pl_col)
+    # classify_experience_type opère toujours sur playlist_name (EN) pour la logique de catégorisation
+    _pl_en_col = "playlist_name"
+    types = sorted({classify_experience_type(p) for p in _unique_sorted(day_df, _pl_en_col)})
     type_labels = _experience_type_labels()
 
     with col_type:
@@ -255,15 +264,17 @@ def _render_cascade_filters(day_df: pl.DataFrame) -> pl.DataFrame:
             key="_exp_type",
         )
 
-    if type_pick != all_lbl and "playlist_name" in day_df.columns:
+    if type_pick != all_lbl and _pl_en_col in day_df.columns:
         code = next(
             (k for k, v in type_labels.items() if v == type_pick),
             None,
         )
         if code:
-            keep = [p for p in playlists if classify_experience_type(p) == code]
-            day_df = day_df.filter(pl.col("playlist_name").is_in(keep))
-            playlists = keep
+            keep_en = [
+                p for p in _unique_sorted(day_df, _pl_en_col) if classify_experience_type(p) == code
+            ]
+            day_df = day_df.filter(pl.col(_pl_en_col).is_in(keep_en))
+            playlists = _unique_sorted(day_df, _pl_col)
 
     with col_pl:
         pl_pick = st.selectbox(
@@ -271,28 +282,32 @@ def _render_cascade_filters(day_df: pl.DataFrame) -> pl.DataFrame:
             [all_lbl] + playlists,
             key="_exp_pl",
         )
-    if pl_pick != all_lbl and "playlist_name" in day_df.columns:
-        day_df = day_df.filter(pl.col("playlist_name") == pl_pick)
+    if pl_pick != all_lbl and _pl_col in day_df.columns:
+        day_df = day_df.filter(pl.col(_pl_col) == pl_pick)
 
-    modes = _unique_sorted(day_df, "pair_name")
+    # Utiliser mode_ui (traduit) si disponible, sinon pair_name
+    _mode_col = "mode_ui" if "mode_ui" in day_df.columns else "pair_name"
+    modes = _unique_sorted(day_df, _mode_col)
     with col_mode:
         mode_pick = st.selectbox(
             t("exp_filter_mode"),
             [all_lbl] + modes,
             key="_exp_mode",
         )
-    if mode_pick != all_lbl and "pair_name" in day_df.columns:
-        day_df = day_df.filter(pl.col("pair_name") == mode_pick)
+    if mode_pick != all_lbl and _mode_col in day_df.columns:
+        day_df = day_df.filter(pl.col(_mode_col) == mode_pick)
 
-    maps = _unique_sorted(day_df, "map_name")
+    # Utiliser map_ui (traduit) si disponible, sinon map_name
+    _map_col = "map_ui" if "map_ui" in day_df.columns else "map_name"
+    maps = _unique_sorted(day_df, _map_col)
     with col_map:
         map_pick = st.selectbox(
             t("exp_filter_map"),
             [all_lbl] + maps,
             key="_exp_map",
         )
-    if map_pick != all_lbl and "map_name" in day_df.columns:
-        day_df = day_df.filter(pl.col("map_name") == map_pick)
+    if map_pick != all_lbl and _map_col in day_df.columns:
+        day_df = day_df.filter(pl.col(_map_col) == map_pick)
 
     return day_df
 
@@ -300,29 +315,55 @@ def _render_cascade_filters(day_df: pl.DataFrame) -> pl.DataFrame:
 def _render_match_selector(
     filtered: pl.DataFrame,
     format_datetime_fn: Callable[..., Any],
-    normalize_mode_label_fn: Callable[[str | None], str | None],
 ) -> str | None:
     """Rend le selectbox des matchs et retourne le match_id choisi."""
     if filtered.is_empty():
         return None
 
+    # Colonnes alignées : sélecteur (gauche) | recherche par ID (droite)
+    # Ratio [3, 2] : le champ ID a 40% de la largeur — largeur suffisante pour un UUID complet
+    col_sel, col_mid = st.columns([3, 2])
+
+    with col_mid:
+        mid_query = st.text_input(
+            t("exp_match_id_label"),
+            key="explorer_match_id_search",
+            placeholder="70a1c6c6-xxxx-xxxx-xxxx-xxxxxxxxxxxx",
+        ).strip()
+
+    if mid_query and "match_id" in filtered.columns:
+        filtered = filtered.filter(
+            pl.col("match_id").cast(pl.Utf8).str.contains(mid_query, literal=True)
+        )
+        if filtered.is_empty():
+            with col_mid:
+                st.warning(t("exp_no_match_id"))
+            return None
+
+    _lang = get_lang()
     sorted_df = filtered.sort("start_time", descending=True)
     options: list[tuple[str, str]] = []
     for row in sorted_df.iter_rows(named=True):
         mid = str(row.get("match_id") or "")
         dt = row.get("start_time")
         time_str = format_datetime_fn(dt) if dt else "?"
-        mode_label = normalize_mode_label_fn(row.get("pair_name")) or row.get("pair_name", "?")
-        label = f"{time_str} — {mode_label} — {row.get('map_name', '?')}"
+        mode_label = (
+            row.get("mode_ui")
+            or normalize_mode_label(row.get("pair_name"), lang=_lang)
+            or row.get("pair_name", "?")
+        )
+        map_label = row.get("map_ui") or row.get("map_name", "?")
+        label = f"{time_str} — {mode_label} — {map_label}"
         options.append((label, mid))
 
     all_lbl = t("exp_filter_all")
     labels = [all_lbl] + [lbl for lbl, _ in options]
-    pick = st.selectbox(
-        t("exp_match_select"),
-        labels,
-        key="_exp_match_pick",
-    )
+    with col_sel:
+        pick = st.selectbox(
+            t("exp_match_select"),
+            labels,
+            key="_exp_match_pick",
+        )
 
     if pick and pick != all_lbl:
         idx = labels.index(pick) - 1

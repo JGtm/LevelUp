@@ -200,15 +200,24 @@ class SkillRatingMixin:
         existing_lusr_ids: set[str],
         *,
         force: bool,
+        seed_ratings: dict[str, float] | None = None,
     ) -> int:
-        """Insère/met à jour les ratings LUSR dans match_skill_rank."""
+        """Insère/met à jour les ratings LUSR dans match_skill_rank.
+
+        Args:
+            seed_ratings: Ratings initiaux par playlist_group pour calculer le
+                delta du premier nouveau match d'un batch incrémental.
+                En mode force, doit être None.
+        """
         now = datetime.now(timezone.utc)
         start_time_map: dict[str, Any] = {}
         if "match_id" in df_matches.columns and "start_time" in df_matches.columns:
             for m_row in df_matches.select(["match_id", "start_time"]).iter_rows(named=True):
                 start_time_map[m_row["match_id"]] = m_row["start_time"]
 
-        prev_rating: dict[str, float] = {}
+        # Seed prev_rating depuis les derniers ratings connus pour que le delta
+        # du premier nouveau match d'un batch soit cohérent avec la valeur stockée.
+        prev_rating: dict[str, float] = dict(seed_ratings) if seed_ratings else {}
         rows_to_insert: list[tuple] = []
 
         for row in ratings_df.iter_rows(named=True):
@@ -296,8 +305,10 @@ class SkillRatingMixin:
         """Calcule le LUSR pour tous les matchs non classés sans rating LUSR.
 
         Traitement **séquentiel** (TrueSkill 2) : chaque match dépend du précédent.
-        En mode incrémental, calcule tout mais n'écrit que les matchs sans entrée.
-        En mode force, recalcule et écrase tout.
+        En mode incrémental, seuls les **nouveaux matchs** (absents de match_skill_rank)
+        sont passés à TrueSkill. existing_states sert de seed (état après le dernier
+        match déjà calculé) — évite la cascade de dérive entre syncs séparés.
+        En mode force, recalcule toute l'historique depuis INITIAL_MU.
 
         Seuls les matchs non classés, non-Firefight sont traités.
         Les matchs classés utilisent le CSR de l'API (géré par _upsert_csr_rating).
@@ -348,9 +359,30 @@ class SkillRatingMixin:
                     existing_lusr_ids = set()
 
             # Seed depuis les derniers ratings connus en DB pour le mode incrémental.
-            # Sans ce seed, chaque batch repart de INITIAL_MU=1500 et crée
-            # une discontinuité permanente par rapport aux matchs déjà stockés.
+            # existing_states représente l'état APRÈS le dernier match déjà calculé.
+            # En force, on repart depuis INITIAL_MU (pas de seed).
             existing_states: dict = {} if force else self._load_existing_lusr_states(conn)
+
+            # Capturer seed_ratings AVANT d'appeler compute_skill_ratings_batch :
+            # compute_skill_ratings_batch modifie existing_states en place →
+            # lire state.mu après l'appel donnerait la valeur post-nouveau-match,
+            # pas la valeur pré-nouveau-match qui sert de seed correct pour le delta.
+            seed_ratings: dict[str, float] | None = None
+            if existing_states and not force:
+                seed_ratings = {pg: state.mu for pg, state in existing_states.items()}
+
+            # En mode incrémental : ne passer à TrueSkill QUE les nouveaux matchs.
+            # Recomputer toute l'historique avec un seed décalé causait une cascade
+            # de dérive (rating_value s'effondrait de ~160 pts à chaque sync séparé).
+            # existing_states fournit le point de départ correct pour les nouveaux matchs.
+            if not force:
+                already_computed = existing_lusr_ids | existing_csr_ids
+                df_matches = df_matches.filter(~pl.col("match_id").is_in(already_computed))
+                if df_matches.is_empty():
+                    logger.info("batch_compute_lusr : aucun nouveau match à calculer")
+                    return 0
+                new_match_ids = set(df_matches["match_id"].to_list())
+                df_participants = df_participants.filter(pl.col("match_id").is_in(new_match_ids))
 
             # Calculer les ratings via TrueSkill 2 batch
             ratings_df = compute_skill_ratings_batch(
@@ -362,7 +394,13 @@ class SkillRatingMixin:
                 return 0
 
             return self._upsert_lusr_ratings(
-                conn, ratings_df, df_matches, existing_csr_ids, existing_lusr_ids, force=force
+                conn,
+                ratings_df,
+                df_matches,
+                existing_csr_ids,
+                existing_lusr_ids,
+                force=force,
+                seed_ratings=seed_ratings,
             )
 
         except Exception as e:

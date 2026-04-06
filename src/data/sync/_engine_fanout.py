@@ -145,7 +145,7 @@ class FanoutEnrichmentMixin:
         player_db_path: Path,
         shared_path: Path,
     ) -> None:
-        """Lance perf_scores + sessions + citations pour un autre joueur.
+        """Lance PSA + perf_scores + sessions + citations pour un autre joueur.
 
         Crée un DuckDBSyncEngine minimal (sans tokens API) pour réutiliser
         batch_compute_performance_scores, puis ferme la connexion shared avant
@@ -161,6 +161,22 @@ class FanoutEnrichmentMixin:
             shared_read_only=True,  # Fanout ne fait que lire shared (J.4)
         )
         try:
+            # Écrire les PSA collectées pendant le traitement des matchs du joueur courant.
+            # stats_json contient les PSA de TOUS les participants : on les extrait
+            # côté expéditeur (self) et on les distribue ici vers chaque DB coéquipier.
+            pending_psa = getattr(self, "_pending_other_psa", {}).get(xuid, [])
+            if pending_psa:
+                try:
+                    engine._insert_personal_score_rows(pending_psa)
+                    engine._get_connection().commit()
+                    logger.info(
+                        "fanout [%s]: %d PSA insérés (collectés depuis stats_json)",
+                        gamertag,
+                        len(pending_psa),
+                    )
+                except Exception as exc:
+                    logger.warning("fanout [%s]: insertion PSA échouée: %s", gamertag, exc)
+
             perf_count = engine.batch_compute_performance_scores()
             logger.info("fanout [%s]: %d performance_score(s) calculé(s)", gamertag, perf_count)
 

@@ -31,7 +31,6 @@ class AggregatesMixin:
 
         Met à jour :
         - Vues matérialisées (mv_*)
-        - Tables pré-calculées (precomputed_sessions, precomputed_kda_trend, etc.)
 
         Returns:
             Dict table_name → rows_affected.
@@ -59,7 +58,7 @@ class AggregatesMixin:
                 )
 
                 # shared_connection est fermé : désactiver brièvement sync_mode
-                # pour permettre au DuckDBRepository d'attacher shared_matches.duckdb
+                # pour permettre au DuckDBRepository d'attacher shared_matches_v2.duckdb
                 end_sync_mode()
                 try:
                     repo = DuckDBRepository(
@@ -78,7 +77,7 @@ class AggregatesMixin:
                     result["materialized_views"] = 1
                 finally:
                     # CRITIQUE : fermer repo même si refresh_materialized_views lève une
-                    # exception, pour libérer le handle sur shared_matches.duckdb et
+                    # exception, pour libérer le handle sur shared_matches_v2.duckdb et
                     # permettre à _get_shared_connection() de rouvrir la connexion.
                     repo.close()
             except Exception as e:
@@ -88,8 +87,7 @@ class AggregatesMixin:
             try:
                 from scripts.post_sync_compute import post_sync_compute
 
-                precomp = post_sync_compute(str(self._player_db_path))
-                result.update(precomp)
+                result.update(post_sync_compute(str(self._player_db_path)))
             except Exception as e:
                 logger.debug("post_sync_compute non disponible: %s", e)
 

@@ -13,7 +13,12 @@ import streamlit as st
 
 logger = logging.getLogger(__name__)
 
-from src.analysis.participation_radar import is_objective_mode_from_pair_name
+from src.analysis.participation_radar import (
+    RADAR_THRESHOLDS_PER_MODE,
+    ProfileOptions,
+    get_mode_family,
+    is_objective_mode_from_pair_name,
+)
 from src.config import OKABE_ITO_PALETTE
 from src.data.repositories import DuckDBRepository
 from src.ui.chart_utils import safe_chart_render
@@ -126,24 +131,48 @@ def _compute_player_profile(  # noqa: PLR0913
     # car kill_score/assist_score sont gagnés dans tous les modes mais objective_score
     # ne l'est que dans les matchs CTF/Strongholds/etc.
     scaled_th = dict(thresholds or RADAR_THRESHOLDS)
-    if "pair_name" in df_player.columns:
-        n_obj_matches = sum(
-            1 for pn in df_player["pair_name"].to_list() if is_objective_mode_from_pair_name(pn)
+    per_mode = scaled_th.pop("per_mode", None) or RADAR_THRESHOLDS_PER_MODE
+
+    pair_names = df_player["pair_name"].to_list() if "pair_name" in df_player.columns else []
+    first_pair_name = pair_names[0] if pair_names else None
+    is_obj_session = is_objective_mode_from_pair_name(first_pair_name)
+    if is_obj_session:
+        # objectifs_raw = objective_score → seuil = somme p80 des matchs objectif
+        obj_threshold = sum(
+            per_mode.get(
+                get_mode_family(pn), RADAR_THRESHOLDS_PER_MODE.get(get_mode_family(pn), 800.0)
+            )
+            for pn in pair_names
+            if is_objective_mode_from_pair_name(pn)
+        )
+        obj_threshold = max(
+            obj_threshold,
+            per_mode.get(get_mode_family(first_pair_name or ""), 800.0),
         )
     else:
-        n_obj_matches = 0
-    n_obj_matches = max(1, n_obj_matches)
-    scaled_th["objectifs"] = scaled_th["objectifs"] * n_obj_matches
+        # objectifs_raw = kill_score_total → seuil = p80_slayer × n_matches
+        obj_threshold = per_mode.get("slayer", RADAR_THRESHOLDS_PER_MODE["slayer"]) * n_matches
+    scaled_th["objectifs"] = max(1.0, obj_threshold)
+    logger.debug(
+        "radar profil '%s': famille=%s obj_threshold=%.0f (n_matches=%d pair0=%r)",
+        name,
+        get_mode_family(first_pair_name),
+        obj_threshold,
+        n_matches,
+        first_pair_name,
+    )
     for _key in ("combat", "support", "score"):
         scaled_th[_key] = scaled_th[_key] * n_matches
 
     return compute_participation_profile(
         ps,
         match_row=match_row,
-        name=name,
-        color=color,
-        pair_name=match_row.get("pair_name"),
-        thresholds=scaled_th,
+        options=ProfileOptions(
+            name=name,
+            color=color,
+            pair_name=match_row.get("pair_name"),
+            thresholds=scaled_th,
+        ),
     )
 
 
@@ -172,7 +201,6 @@ def _render_radar_display(
     with col_radar, safe_chart_render():
         fig = create_participation_profile_radar(
             profiles,
-            title=t("tms_participation_title"),
             height=380,
             show_fill=show_fill,
         )
@@ -347,6 +375,31 @@ def _compute_profiles_from_squad(
     return profiles
 
 
+def _compute_shared_match_ids(
+    me_df: pl.DataFrame,
+    f1_df: pl.DataFrame,
+    f2_df: pl.DataFrame | None,
+    f3_df: pl.DataFrame | None,
+) -> list[str]:
+    """Retourne l'intersection des match_ids des joueurs ayant des données.
+
+    Les joueurs avec un DataFrame vide sont exclus de l'intersection : un df vide
+    ne doit pas réduire l'ensemble commun à zéro et faire disparaître tout le radar.
+    """
+
+    def _ids(df: pl.DataFrame) -> set[str]:
+        if df.is_empty() or "match_id" not in df.columns:
+            return set()
+        return set(df["match_id"].cast(pl.Utf8).to_list())
+
+    # me_df et f1_df sont obligatoires — les optionnels ne sont inclus que s'ils sont non vides
+    shared = _ids(me_df) & _ids(f1_df)
+    for optional in [f2_df, f3_df]:
+        if optional is not None and not optional.is_empty():
+            shared &= _ids(optional)
+    return list(shared)
+
+
 def render_trio_synergy_radar(  # noqa: PLR0913
     me_df: DataFrameLike,
     f1_df: DataFrameLike,
@@ -369,20 +422,12 @@ def render_trio_synergy_radar(  # noqa: PLR0913
     if db_path is None:
         db_path = st.session_state.get("db_path", "")
 
-    def _ids(df: pl.DataFrame) -> set[str]:
-        if df.is_empty() or "match_id" not in df.columns:
-            return set()
-        return set(df["match_id"].cast(pl.Utf8).to_list())
-
-    to_intersect: list[DataFrameLike] = [me_df, f1_df]
-    if f2_df is not None:
-        to_intersect.append(ensure_polars(f2_df))
-    if f3_df is not None:
-        to_intersect.append(ensure_polars(f3_df))
-    shared = _ids(ensure_polars(to_intersect[0]))
-    for _df in to_intersect[1:]:
-        shared &= _ids(ensure_polars(_df))
-    shared_match_ids = list(shared)
+    shared_match_ids = _compute_shared_match_ids(
+        me_df,
+        f1_df,
+        ensure_polars(f2_df) if f2_df is not None else None,
+        ensure_polars(f3_df) if f3_df is not None else None,
+    )
     if not shared_match_ids:
         return
 

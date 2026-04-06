@@ -119,9 +119,9 @@ class TestConstants:
         for hex_id, expected_name in confirmed:
             key = bytes.fromhex(hex_id)
             assert key in WEAPON_ID_MAP, f"{hex_id} absent du map"
-            assert (
-                WEAPON_ID_MAP[key] == expected_name
-            ), f"{hex_id}: attendu {expected_name!r}, got {WEAPON_ID_MAP[key]!r}"
+            assert WEAPON_ID_MAP[key] == expected_name, (
+                f"{hex_id}: attendu {expected_name!r}, got {WEAPON_ID_MAP[key]!r}"
+            )
 
 
 # ═══════════════════════════════════════════════════════════════════════════
@@ -855,9 +855,9 @@ class TestFallbackFormulaA:
         attr = _fallback_formula_a(
             kill, pi, timeline, {}, timing, chunks_sorted, "m", timeline_ns=timeline_ns
         )
-        assert (
-            attr.weapon_id == _FA_WID_A
-        ), f"NS ({_FA_WB_A_NAME}={_FA_WID_A}) doit primer sur raw FA ({_FA_WB_B_NAME}={_FA_WID_B})"
+        assert attr.weapon_id == _FA_WID_A, (
+            f"NS ({_FA_WB_A_NAME}={_FA_WID_A}) doit primer sur raw FA ({_FA_WB_B_NAME}={_FA_WID_B})"
+        )
         assert attr.attribution_path == "formula_a"
 
     def test_raw_fa_used_when_no_ns_timeline(self):

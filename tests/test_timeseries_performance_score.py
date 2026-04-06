@@ -56,9 +56,9 @@ def test_timeseries_page_imports_compute_performance_series():
     import src.ui.pages.timeseries as timeseries_module
 
     # Sprint 14 : compute_performance_series est maintenant dans TimeseriesService
-    assert hasattr(
-        timeseries_module, "TimeseriesService"
-    ), "timeseries.py doit importer TimeseriesService (Sprint 14)"
+    assert hasattr(timeseries_module, "TimeseriesService"), (
+        "timeseries.py doit importer TimeseriesService (Sprint 14)"
+    )
 
 
 def test_performance_score_column_exists_after_computation():
@@ -77,9 +77,9 @@ def test_performance_score_column_exists_after_computation():
     scores = compute_performance_series(df, df)
     df_with_score = df.with_columns(scores.alias("performance_score"))
 
-    assert (
-        "performance_score" in df_with_score.columns
-    ), "La colonne performance_score doit exister après calcul"
-    assert (
-        not df_with_score.get_column("performance_score").is_null().all()
-    ), "Au moins certains scores doivent être calculés"
+    assert "performance_score" in df_with_score.columns, (
+        "La colonne performance_score doit exister après calcul"
+    )
+    assert not df_with_score.get_column("performance_score").is_null().all(), (
+        "Au moins certains scores doivent être calculés"
+    )

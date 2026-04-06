@@ -1,4 +1,8 @@
-"""Tests pour le script populate_medal_metadata.py."""
+"""Tests pour le script populate_medal_metadata.py (v6.3).
+
+Le script utilise désormais l'API gamecms (champ translations) plutôt que les JSON statiques.
+Les tests vérifient les fonctions de construction + insertion sans appel API réel.
+"""
 
 from __future__ import annotations
 
@@ -6,123 +10,193 @@ import duckdb
 import pytest
 
 
+# Payload minimal simulant la réponse API gamecms.get_medal_metadata()
+_SAMPLE_MEDALS_RAW = [
+    {
+        "nameId": 622331684,
+        "name": {
+            "value": "Double Kill",
+            "translations": {
+                "fr-FR": "Double frag",
+                "de-DE": "Doppelter Abschuss",
+            },
+        },
+        "description": {
+            "value": "Kill 2 enemies in quick succession",
+            "translations": {
+                "fr-FR": "Tuez 2 ennemis d'affilée.",
+                "de-DE": "2 Gegner schnell hintereinander eliminieren",
+            },
+        },
+    },
+    {
+        "nameId": 17866865,
+        "name": {"value": "Avenger", "translations": {"fr-FR": "Vengeur"}},
+        "description": {"value": "Desc EN", "translations": {"fr-FR": "Desc FR"}},
+    },
+    # Médaille custom (nameId >= 9_000_000_000) → ne doit pas être dans l'API normalement
+    {
+        "nameId": 9000000001,
+        "name": {"value": "Custom Medal", "translations": {}},
+        "description": {"value": "", "translations": {}},
+    },
+]
+
+
 @pytest.fixture()
-def tmp_metadata_env(tmp_path, monkeypatch):
-    """Prépare un environnement avec metadata.duckdb temporaire."""
-    db_path = tmp_path / "data" / "warehouse" / "metadata.duckdb"
-    db_path.parent.mkdir(parents=True, exist_ok=True)
+def tmp_conn():
+    """Connexion DuckDB en mémoire avec schéma medal_definitions + medal_translations."""
+    conn = duckdb.connect(":memory:")
+    from src.data.sync.migrations import (
+        ensure_medal_definitions_table,
+        ensure_medal_translations_table,
+    )
 
-    import scripts.populate_medal_metadata as mod
-
-    monkeypatch.setattr(mod, "METADATA_DB", db_path)
-    return db_path
-
-
-def test_build_medal_rows():
-    """build_medal_rows retourne au moins 167 médailles."""
-    from scripts.populate_medal_metadata import build_medal_rows
-
-    rows = build_medal_rows()
-    assert len(rows) >= 167
-    # Vérifier la structure
-    first = rows[0]
-    assert len(first) == 6  # medal_name_id, name_fr, name_en, desc_fr, desc_en, is_custom
-    assert isinstance(first[0], int)
-    assert isinstance(first[5], bool)
-
-
-def test_custom_detection():
-    """Les médailles >= 9_000_000_000 sont marquées custom."""
-    from scripts.populate_medal_metadata import build_medal_rows
-
-    rows = build_medal_rows()
-    custom = [r for r in rows if r[5]]
-    non_custom = [r for r in rows if not r[5]]
-    for r in custom:
-        assert r[0] >= 9_000_000_000
-    for r in non_custom:
-        assert r[0] < 9_000_000_000
-
-
-def test_dry_run_makes_no_writes(tmp_metadata_env):
-    """--dry-run ne crée pas de données dans la table."""
-    from scripts.populate_medal_metadata import populate_medal_definitions
-
-    n = populate_medal_definitions(dry_run=True)
-    assert n == 0
-    # La DB n'existe pas encore (dry-run ne connecte pas)
-    if tmp_metadata_env.exists():
-        conn = duckdb.connect(str(tmp_metadata_env), read_only=True)
-        try:
-            tables = conn.execute(
-                "SELECT table_name FROM information_schema.tables "
-                "WHERE table_name = 'medal_definitions'"
-            ).fetchall()
-            if tables:
-                count = conn.execute("SELECT COUNT(*) FROM medal_definitions").fetchone()[0]
-                assert count == 0
-        finally:
-            conn.close()
-
-
-def test_all_json_entries_inserted(tmp_metadata_env):
-    """Toutes les entrées JSON sont insérées."""
-    from scripts.populate_medal_metadata import populate_medal_definitions
-
-    n = populate_medal_definitions(dry_run=False, force=False)
-    assert n >= 167
-
-    conn = duckdb.connect(str(tmp_metadata_env), read_only=True)
-    count = conn.execute("SELECT COUNT(*) FROM medal_definitions").fetchone()[0]
+    ensure_medal_definitions_table(conn)
+    ensure_medal_translations_table(conn)
+    yield conn
     conn.close()
-    assert count >= 167
 
 
-def test_force_flag_overwrites_existing(tmp_metadata_env):
+# ---------------------------------------------------------------------------
+# _build_definitions_rows
+# ---------------------------------------------------------------------------
+
+
+def test_build_definitions_rows_structure():
+    """_build_definitions_rows retourne des tuples (id, name_fr, name_en, desc_fr, desc_en, is_custom)."""
+    from scripts.populate_medal_metadata import _build_definitions_rows
+
+    rows = _build_definitions_rows(_SAMPLE_MEDALS_RAW)
+    assert len(rows) == 3
+    first = rows[0]
+    assert len(first) == 6
+    assert first[0] == 622331684  # medal_name_id
+    assert first[1] == "Double frag"  # name_fr
+    assert first[2] == "Double Kill"  # name_en
+    assert first[5] is False  # is_custom
+
+
+def test_build_definitions_rows_custom_detection():
+    """Les médailles >= 9_000_000_000 sont marquées is_custom=True."""
+    from scripts.populate_medal_metadata import _build_definitions_rows
+
+    rows = _build_definitions_rows(_SAMPLE_MEDALS_RAW)
+    custom = [r for r in rows if r[5]]
+    assert len(custom) == 1
+    assert custom[0][0] == 9000000001
+
+
+# ---------------------------------------------------------------------------
+# populate_medal_definitions
+# ---------------------------------------------------------------------------
+
+
+def test_populate_medal_definitions_inserts(tmp_conn):
+    """populate_medal_definitions() insère les lignes dans medal_definitions."""
+    from scripts.populate_medal_metadata import populate_medal_definitions
+
+    n = populate_medal_definitions(_SAMPLE_MEDALS_RAW, tmp_conn, force=False)
+    assert n == 3
+    count = tmp_conn.execute("SELECT COUNT(*) FROM medal_definitions").fetchone()[0]
+    assert count == 3
+
+
+def test_populate_medal_definitions_force_overwrites(tmp_conn):
     """--force écrase les entrées existantes."""
     from scripts.populate_medal_metadata import populate_medal_definitions
 
-    # Première insertion
-    populate_medal_definitions(dry_run=False, force=False)
-
-    # Modifier une entrée manuellement
-    conn = duckdb.connect(str(tmp_metadata_env), read_only=False)
-    conn.execute("UPDATE medal_definitions SET name_fr = 'MODIFIE' WHERE medal_name_id = 17866865")
-    conn.commit()
-    conn.close()
-
-    # Force re-insertion → doit écraser
-    populate_medal_definitions(dry_run=False, force=True)
-
-    conn = duckdb.connect(str(tmp_metadata_env), read_only=True)
-    row = conn.execute(
-        "SELECT name_fr FROM medal_definitions WHERE medal_name_id = 17866865"
-    ).fetchone()
-    conn.close()
-    assert row[0] != "MODIFIE"
-    assert row[0] == "Affection"
-
-
-def test_missing_en_label_logged_as_warning(tmp_path, monkeypatch, caplog):
-    """Un ID présent en FR mais absent de EN génère un WARNING."""
-    import scripts.populate_medal_metadata as mod
-
-    # Créer des JSON avec asymétrie
-    medals_dir = tmp_path / "medals"
-    medals_dir.mkdir()
-    import json
-
-    (medals_dir / "medals_fr.json").write_text(
-        json.dumps({"100": "Test FR", "200": "Autre FR"}), encoding="utf-8"
+    populate_medal_definitions(_SAMPLE_MEDALS_RAW, tmp_conn, force=False)
+    # Modifier manuellement
+    tmp_conn.execute(
+        "UPDATE medal_definitions SET name_fr = 'MODIFIE' WHERE medal_name_id = 622331684"
     )
-    (medals_dir / "medals_en.json").write_text(json.dumps({"100": "Test EN"}), encoding="utf-8")
-    (medals_dir / "medals_descriptions_fr.json").write_text("{}", encoding="utf-8")
-    (medals_dir / "medals_descriptions_en.json").write_text("{}", encoding="utf-8")
 
-    monkeypatch.setattr(mod, "MEDALS_DIR", medals_dir)
+    populate_medal_definitions(_SAMPLE_MEDALS_RAW, tmp_conn, force=True)
 
-    with caplog.at_level("WARNING", logger="levelup.medals"):
-        rows = mod.build_medal_rows()
+    row = tmp_conn.execute(
+        "SELECT name_fr FROM medal_definitions WHERE medal_name_id = 622331684"
+    ).fetchone()
+    assert row[0] == "Double frag"  # restauré depuis le payload
 
-    assert any("200" in r.message and "FR" in r.message for r in caplog.records)
-    assert len(rows) == 2
+
+def test_populate_medal_definitions_ignore_without_force(tmp_conn):
+    """Sans --force, INSERT OR IGNORE ne touche pas les entrées existantes."""
+    from scripts.populate_medal_metadata import populate_medal_definitions
+
+    populate_medal_definitions(_SAMPLE_MEDALS_RAW, tmp_conn, force=False)
+    tmp_conn.execute(
+        "UPDATE medal_definitions SET name_fr = 'MODIFIE' WHERE medal_name_id = 622331684"
+    )
+
+    populate_medal_definitions(_SAMPLE_MEDALS_RAW, tmp_conn, force=False)
+
+    row = tmp_conn.execute(
+        "SELECT name_fr FROM medal_definitions WHERE medal_name_id = 622331684"
+    ).fetchone()
+    assert row[0] == "MODIFIE"  # non écrasé
+
+
+# ---------------------------------------------------------------------------
+# populate_medal_translations
+# ---------------------------------------------------------------------------
+
+
+def test_populate_medal_translations_official_langs(tmp_conn):
+    """Les médailles officielles ont des entrées pour en-US + langues translations."""
+    from scripts.populate_medal_metadata import populate_medal_translations
+
+    populate_medal_translations(_SAMPLE_MEDALS_RAW, tmp_conn, force=False)
+
+    langs = {
+        r[0]
+        for r in tmp_conn.execute(
+            "SELECT DISTINCT lang FROM medal_translations WHERE medal_name_id = 622331684"
+        ).fetchall()
+    }
+    assert "en-US" in langs
+    assert "fr-FR" in langs
+    assert "de-DE" in langs
+
+
+def test_populate_medal_translations_custom_skipped(tmp_conn):
+    """Les médailles custom ne sont PAS peuplées via les données API (pas de translations)."""
+    from scripts.populate_medal_metadata import populate_medal_translations
+
+    # La custom dans _SAMPLE_MEDALS_RAW a translations={} → seul en-US (si name présent)
+    populate_medal_translations(_SAMPLE_MEDALS_RAW, tmp_conn, force=False)
+
+    langs = {
+        r[0]
+        for r in tmp_conn.execute(
+            "SELECT DISTINCT lang FROM medal_translations WHERE medal_name_id = 9000000001"
+        ).fetchall()
+    }
+    # Pas de traductions (translations vide) — custom skippée côté officiel
+    assert "fr-FR" not in langs
+
+
+# ---------------------------------------------------------------------------
+# migrate_from_definitions_only
+# ---------------------------------------------------------------------------
+
+
+def test_migrate_from_definitions_only(tmp_conn):
+    """migrate_from_definitions_only() peuple medal_translations depuis medal_definitions."""
+    from scripts.populate_medal_metadata import (
+        migrate_from_definitions_only,
+        populate_medal_definitions,
+    )
+
+    populate_medal_definitions(_SAMPLE_MEDALS_RAW, tmp_conn, force=False)
+    n = migrate_from_definitions_only(tmp_conn, force=False)
+
+    assert n > 0
+    en = tmp_conn.execute(
+        "SELECT name FROM medal_translations WHERE medal_name_id=622331684 AND lang='en-US'"
+    ).fetchone()
+    fr = tmp_conn.execute(
+        "SELECT name FROM medal_translations WHERE medal_name_id=622331684 AND lang='fr-FR'"
+    ).fetchone()
+    assert en and en[0] == "Double Kill"
+    assert fr and fr[0] == "Double frag"

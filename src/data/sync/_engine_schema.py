@@ -94,7 +94,7 @@ class SchemaMixin:
         if conn is None:
             return
 
-        # Nettoyage one-shot : supprimer les tables legacy migrées vers shared_matches.duckdb
+        # Nettoyage one-shot : supprimer les tables legacy migrées vers shared_matches_v2.duckdb
         _LEGACY_PLAYER_TABLES = [
             "medals_earned",
             "player_match_stats",

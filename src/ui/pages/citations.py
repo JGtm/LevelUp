@@ -7,16 +7,21 @@ from collections.abc import Callable
 import polars as pl
 import streamlit as st
 
-from src.ui.chart_utils import safe_chart_render
+from src.ui.chart_utils import render_chart_or_info
 from src.ui.commendations import render_h5g_commendations_section
 from src.ui.i18n import get_lang, t
-from src.ui.medals import load_medal_name_maps, medal_label, render_medals_grid
+from src.ui.medals import (
+    load_medal_description_map,
+    load_medal_name_maps,
+    medal_label,
+    render_medals_grid,
+)
 from src.ui.streamlit_modern import PLOTLY_STATIC_CONFIG
 from src.visualization._compat import DataFrameLike, ensure_polars
 from src.visualization.distributions import plot_medals_distribution
 
 
-def render_citations_page(  # noqa: C901, PLR0912, PLR0913, PLR0915
+def render_citations_page(  # noqa: PLR0912, PLR0913, PLR0915
     *,
     dff: DataFrameLike,
     df_full: DataFrameLike,
@@ -158,21 +163,20 @@ def render_citations_page(  # noqa: C901, PLR0912, PLR0913, PLR0915
             st.subheader(t("citations_medals_distribution"))
 
             # Préparer les données pour le graphique
-            with safe_chart_render():
-                medal_names_dict = {
-                    int(nid): medal_label(int(nid), lang=get_lang()) for nid, _ in top
-                }
-                fig_medals = plot_medals_distribution(
-                    top,
-                    medal_names_dict,
-                    title=None,
-                    top_n=25,
-                    lang=get_lang(),
-                )
-                if fig_medals is not None:
-                    st.plotly_chart(fig_medals, width="stretch", config=PLOTLY_STATIC_CONFIG)
-                else:
-                    st.info(t("insufficient_data_chart"))
+            medal_names_dict = {int(nid): medal_label(int(nid), lang=get_lang()) for nid, _ in top}
+            fig_medals = plot_medals_distribution(
+                top,
+                medal_names_dict,
+                title=None,
+                top_n=25,
+                lang=get_lang(),
+            )
+            render_chart_or_info(
+                fig_medals,
+                key="citations_medals_dist",
+                config=PLOTLY_STATIC_CONFIG,
+                info_key="insufficient_data_chart",
+            )
 
             st.divider()
             st.subheader(t("citations_medals_grid"))
@@ -181,8 +185,12 @@ def render_citations_page(  # noqa: C901, PLR0912, PLR0913, PLR0915
             deltas = None
             if is_filtered:
                 deltas = {int(nid): int(cnt) for nid, cnt in counts_by_medal.items()}
+            _desc_map = load_medal_description_map(get_lang())
+            _descriptions = {int(k): v for k, v in _desc_map.items()}
             render_medals_grid(
                 md_desc.select("name_id", "count").to_dicts(),
                 cols_per_row=8,
                 deltas=deltas,
+                lang=get_lang(),
+                descriptions=_descriptions,
             )

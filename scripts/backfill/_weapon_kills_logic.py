@@ -58,7 +58,7 @@ async def collect_weapon_match_ids_all_players(
 
     Args:
         players: Liste de DuckDBPlayerInfo (champ xuid optionnel).
-        shared_conn: Connexion ouverte vers shared_matches.duckdb.
+        shared_conn: Connexion ouverte vers shared_matches_v2.duckdb.
         force: Si True, inclure aussi les matchs déjà traités.
         limit_per_player: Limite de matchs par joueur (garde-fou).
 
@@ -112,7 +112,7 @@ async def run_weapon_kills_backfill(
         gamertag: Gamertag du joueur (nécessaire pour charger kills POV).
         xuid: XUID du joueur.
         match_ids: Liste de match_id à traiter.
-        shared_conn: Connexion ouverte vers shared_matches.duckdb.
+        shared_conn: Connexion ouverte vers shared_matches_v2.duckdb.
         force: Si True, re-traite même si MatchBits.WEAPON_KILLS déjà posé.
         cache_dir: Répertoire cache chunks (défaut : data/investigation/chunks).
 

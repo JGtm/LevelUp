@@ -10,7 +10,6 @@ from src.config import PLOT_CONFIG, THEME_COLORS
 def apply_halo_plot_style(
     fig: go.Figure,
     *,
-    title: str | None = None,
     height: int | None = None,
 ) -> go.Figure:
     """Applique le thème Halo aux graphiques Plotly.
@@ -20,7 +19,6 @@ def apply_halo_plot_style(
 
     Args:
         fig: Figure Plotly à styliser.
-        title: Titre optionnel à ajouter.
         height: Hauteur optionnelle en pixels.
 
     Returns:
@@ -41,8 +39,6 @@ def apply_halo_plot_style(
         },
     )
 
-    if title is not None:
-        fig.update_layout(title=title)
     if height is not None:
         fig.update_layout(height=height)
 

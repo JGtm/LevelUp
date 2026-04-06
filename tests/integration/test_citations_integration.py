@@ -239,9 +239,9 @@ class TestCitationsWorkflow:
 
         # Le filtré doit être <= au total pour chaque citation
         for name, val in totals_filtered.items():
-            assert val <= totals_full.get(
-                name, 0
-            ), f"{name}: filtré ({val}) > total ({totals_full.get(name, 0)})"
+            assert val <= totals_full.get(name, 0), (
+                f"{name}: filtré ({val}) > total ({totals_full.get(name, 0)})"
+            )
 
         conn.close()
 

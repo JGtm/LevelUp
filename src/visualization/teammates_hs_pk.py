@@ -12,6 +12,7 @@ import polars as pl
 from src.config import PLOT_CONFIG
 from src.ui.date_formats import FMT_SHORT_DATETIME_FR
 from src.ui.i18n.viz import viz_t
+from src.visualization._chart_series import ChartData, MatchSeries
 from src.visualization._compat import DataFrameLike, ensure_polars
 from src.visualization.theme import apply_halo_plot_style, get_legend_horizontal_bottom
 
@@ -21,6 +22,7 @@ def plot_hs_pk_stacked(  # noqa: C901, PLR0912, PLR0915
     *,
     colors: dict[str, str] | None = None,
     lang: str = "fr",
+    records: dict[str, dict[str, float | None]] | None = None,
 ) -> go.Figure | None:
     """Graphique combiné Tirs à la tête + Frags parfaits par match (barres superposées).
 
@@ -66,7 +68,10 @@ def plot_hs_pk_stacked(  # noqa: C901, PLR0912, PLR0915
         cols = ["start_time", "headshot_kills", "perfect_kills"]
         if has_match_id:
             cols.append("match_id")
-        if "map_name" in df_pl.columns:
+        # Priorité à map_ui (traduit) puis fallback sur map_name
+        if "map_ui" in df_pl.columns:
+            cols.append("map_ui")
+        elif "map_name" in df_pl.columns:
             cols.append("map_name")
 
         d = df_pl.select(cols)
@@ -89,16 +94,22 @@ def plot_hs_pk_stacked(  # noqa: C901, PLR0912, PLR0915
 
         if has_match_id:
             map_cols = [pl.col("match_id").cast(pl.String).alias("match_id"), pl.col("start_time")]
-            if "map_name" in d.columns:
-                map_cols.append(pl.col("map_name").fill_null(""))
+            # Utiliser map_ui si disponible, sinon map_name
+            if "map_ui" in d.columns:
+                map_cols.append(pl.col("map_ui").fill_null("").alias("_map_display"))
+            elif "map_name" in d.columns:
+                map_cols.append(pl.col("map_name").fill_null("").alias("_map_display"))
             all_match_data.append(d.select(map_cols))
         else:
             ts_cols = [
                 pl.col("start_time").dt.strftime("%Y-%m-%dT%H:%M:%S").alias("match_id"),
                 pl.col("start_time"),
             ]
-            if "map_name" in d.columns:
-                ts_cols.append(pl.col("map_name").fill_null(""))
+            # Utiliser map_ui si disponible, sinon map_name
+            if "map_ui" in d.columns:
+                ts_cols.append(pl.col("map_ui").fill_null("").alias("_map_display"))
+            elif "map_name" in d.columns:
+                ts_cols.append(pl.col("map_name").fill_null("").alias("_map_display"))
             all_match_data.append(d.select(ts_cols))
 
     if not prepared or not all_match_data:
@@ -106,8 +117,8 @@ def plot_hs_pk_stacked(  # noqa: C901, PLR0912, PLR0915
 
     combined = pl.concat(all_match_data, how="diagonal")
     agg_exprs = [pl.col("start_time").min()]
-    if "map_name" in combined.columns:
-        agg_exprs.append(pl.col("map_name").first())
+    if "_map_display" in combined.columns:
+        agg_exprs.append(pl.col("_map_display").first())
     match_times = combined.group_by("match_id").agg(agg_exprs).sort("start_time")
 
     match_ids_ordered = match_times.get_column("match_id").to_list()
@@ -116,10 +127,10 @@ def plot_hs_pk_stacked(  # noqa: C901, PLR0912, PLR0915
     )
 
     n_matches = len(match_ids_ordered)
-    if "map_name" in match_times.columns:
+    if "_map_display" in match_times.columns:
         labels = [
             f"#{i + 1}<br>{mn}" if mn else f"#{i + 1}"
-            for i, mn in enumerate(match_times.get_column("map_name").fill_null("").to_list())
+            for i, mn in enumerate(match_times.get_column("_map_display").fill_null("").to_list())
         ]
     else:
         labels = match_times.get_column("start_time").dt.strftime(FMT_SHORT_DATETIME_FR).to_list()
@@ -128,6 +139,7 @@ def plot_hs_pk_stacked(  # noqa: C901, PLR0912, PLR0915
     # ── Construire les traces ─────────────────────────────────────────────────
     fig = go.Figure()
     default_colors = ["#56B4E9", "#E69F00", "#009E73", "#CC79A7", "#D55E00"]
+    _player_xs: dict[str, list[int]] = {}
     label_hs = "Tirs à la tête" if lang == "fr" else "Headshots"
     label_pk = "Frags parfaits" if lang == "fr" else "Perfect kills"
     first_player_trace: set[str] = set()
@@ -152,6 +164,7 @@ def plot_hs_pk_stacked(  # noqa: C901, PLR0912, PLR0915
             continue
 
         xs = d.get_column("_x").to_list()
+        _player_xs[name] = xs
         hs_vals = d.get_column("_hs").to_list()
         pk_vals = d.get_column("_pk").to_list()
 
@@ -196,12 +209,30 @@ def plot_hs_pk_stacked(  # noqa: C901, PLR0912, PLR0915
     if not fig.data:
         return None
 
-    # ── Légende manuelle (annotations) ───────────────────────────────────────
-    # Titre du graphe et mise en forme
-    title = viz_t("hs_pk_combined_title", lang)
+    if records and _player_xs:
+        _names_with_data = list(_player_xs.keys())
+        _hspk_colors: dict[str, str] = colors if isinstance(colors, dict) else {}
+        ChartData(
+            series=[
+                MatchSeries(
+                    name=_pname,
+                    x=_player_xs[_pname],
+                    y=[],
+                    color=_hspk_colors.get(_pname, "#35D0FF"),
+                    map_names=[],
+                )
+                for _pname in _names_with_data
+            ],
+            x_labels=list(labels),
+            barmode="overlay",
+            global_records={
+                _pname: (records.get(_pname) or {}).get("hs_pk_total")
+                for _pname in _names_with_data
+            },
+        ).add_record_overlays(fig)
 
+    # ── Légende manuelle (annotations) ───────────────────────────────────────
     fig.update_layout(
-        title=title,
         margin={"l": 40, "r": 20, "t": 60, "b": 160},
         hovermode="closest",
         legend={**get_legend_horizontal_bottom(), "y": -0.55},
