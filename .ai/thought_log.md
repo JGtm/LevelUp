@@ -18,12 +18,17 @@
 - `backfill_teammates_signatures` : 2 sous-requêtes corrélées → JOIN groupé O(N)
 - `_refresh_session_stats` : logique incrémentale (3 dernières sessions en delta, full rebuild si `new_ids=None`) ; SQL dédupliqué dans `_SESSION_STATS_INSERT_SQL`
 - Modules `sessions_backfill.py` et `_materialized_views.py` baselinés (dette — proches de 500L avant les changements)
+- logging : debug/warning ajoutés dans `_refresh_session_stats`, `_partial_refresh_session_stats`, `_upsert_session_rows`
 
-**Branche** : `refactor/sessions-perf` — commit `83edd854`
+**Commits** :
+- `83edd854` — implémentation P1-P4 (7 fichiers)
+- `6c47f94c` — 22 tests ciblés + correction baseline taille
 
-**Résultats** : 199 tests passent, tous hooks pre-commit OK.
+**Résultats** : 57/57 tests sessions passent, tous hooks pre-commit OK.
 
-**Conclusion** : Prêt pour PR. Prochaine étape : merge ou travail suivant.
+**Note Polars** : `map_elements(skip_nulls=True)` par défaut → signature NULL retourne `None` (pas `False`) pour `_iwf`/`_ktc`. Le COALESCE dans l'UPDATE ON CONFLICT préserve la valeur existante dans ce cas.
+
+**Conclusion** : Branche `refactor/sessions-perf` prête pour PR.
 
 ---
 
