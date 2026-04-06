@@ -16,11 +16,14 @@ from datetime import datetime, timedelta
 import pytest
 
 from src.ui.components.career_progress_circle import XP_HERO_TOTAL
+from src.ui.pages.career_charts import (
+    _OTHER_PLAYERS_COLORS,
+    _create_xp_history_chart,
+)
 from src.ui.pages.career_data import (
     _load_other_players_histories,
 )
 from src.ui.pages.career_logic import (
-    _OTHER_PLAYERS_COLORS,
     CAREER_XP_LAUNCH_DATE,
     DAILY_CHALLENGE_XP,
     INACTIVITY_GAP_DAYS,
@@ -29,7 +32,6 @@ from src.ui.pages.career_logic import (
     _compute_active_xp_per_day,
     _compute_estimated_xp_curve,
     _compute_hero_projections,
-    _create_xp_history_chart,
 )
 
 # ── Helpers ──────────────────────────────────────────────────────────────────
