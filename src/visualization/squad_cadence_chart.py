@@ -48,10 +48,12 @@ def plot_squad_cadence_profiles(
     n_buckets = len(profiles_df)
 
     pct_step = 100 // n_buckets
-    # Chaque barre est étiquetée par sa borne GAUCHE : "0%", "10%", …, "90%"
-    x_labels = [f"{i * pct_step}%" for i in range(n_buckets)]
-    # Borne droite finale pour la ligne de fermeture
-    x_last_border = f"{n_buckets * pct_step}%"
+    # Axe numérique : chaque barre est centrée à i*pct_step + pct_step/2
+    # Les ticks sont placés exactement aux frontières : 0, 10, 20 … 100
+    x_centers = [i * pct_step + pct_step / 2 for i in range(n_buckets)]
+    x_tickvals = list(range(0, n_buckets * pct_step + 1, pct_step))
+    x_ticktext = [f"{v}%" for v in x_tickvals]
+    bar_width = pct_step  # chaque groupe occupe exactement une tranche
 
     # Calcul du range Y depuis les données pour amplifier les variations
     player_cols = [n for n in player_names if n in profiles_df.columns]
@@ -60,6 +62,7 @@ def plot_squad_cadence_profiles(
 
     fig = go.Figure()
 
+    n_players = sum(1 for n in player_names if n in profiles_df.columns)
     for i, name in enumerate(player_names):
         if name not in profiles_df.columns:
             continue
@@ -68,9 +71,11 @@ def plot_squad_cadence_profiles(
 
         fig.add_trace(
             go.Bar(
-                x=x_labels,
+                x=x_centers,
                 y=values,
                 name=name,
+                width=[bar_width * 0.9 / max(n_players, 1)] * n_buckets,
+                offset=[(i - n_players / 2) * bar_width * 0.9 / max(n_players, 1)] * n_buckets,
                 marker_color=color,
                 marker_line={"color": color, "width": 0.5},
                 hovertemplate=f"{name}: %{{y:.1f}} kills<extra></extra>",
@@ -78,7 +83,7 @@ def plot_squad_cadence_profiles(
         )
 
     fig.update_layout(
-        barmode="group",
+        barmode="overlay",
         height=opts.height_px,
         plot_bgcolor=theme.bg_plot,
         paper_bgcolor=theme.bg_plot,
@@ -95,11 +100,9 @@ def plot_squad_cadence_profiles(
         xaxis={
             "title": viz_t("axis_intensity_phase", lang),
             "gridcolor": theme.grid_color,
-            # Borne gauche visible sur chaque groupe → impression de colonnes délimitées
-            "ticklabelposition": "outside left",
-            # Dernière étiquette "100%" ajoutée comme catégorie fantôme invisible
-            "categoryorder": "array",
-            "categoryarray": x_labels + [x_last_border],
+            "tickvals": x_tickvals,
+            "ticktext": x_ticktext,
+            "range": [0, n_buckets * pct_step],
         },
         yaxis={
             "title": viz_t("axis_cadence_kills", lang),
@@ -108,7 +111,7 @@ def plot_squad_cadence_profiles(
             "zerolinecolor": theme.zero_line_color,
             "zerolinewidth": 1,
             "range": y_range,
-            "dtick": 0.5,
+            "dtick": 0.1,
             "tickformat": ".1f",
         },
     )

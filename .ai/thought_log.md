@@ -3,9 +3,52 @@
 > Ce fichier capture le raisonnement de l'agent entre les sessions.
 > Archivé : 2026-02-01 (logs précédents dans `.ai/archive/thought_log_pre_phase6.md`)
 
+## [2026-04-06] Mise à jour docs CHANGELOG + README What's New — Complété
+
+**Statut** : Complété
+
+**Décision technique** : Mis à jour `docs/CHANGELOG.md` (section `[6.3.0]`) et `README.md` (bloc `v6.3 What's New`) pour couvrir tous les commits post-`dda952b7` (Axe G, dernier commit ayant touché le CHANGELOG).
+
+**Éléments documentés** :
+- CHANGELOG `### Added` : cadence histogram bicolore + MA par équipe, heatmap intensité, squad cadence chart, media auto-index périodique
+- CHANGELOG `### Changed` : Axe G (titres Plotly → st.subheader), Axe H (PlotOptions), Plan V3 K/I/L (SK constants, render_chart_or_info, C901), sessions schema/perf (VARCHAR, bulk upsert, refresh incrémental)
+- CHANGELOG `### Fixed` : records invisibles Teammates (3 bugs _resolve_record/map_ui/xuid import), bornes calendrier libres
+- CHANGELOG `### Tests` : 17 tests cadence (97%), tests sessions (bulk/incremental/migrations)
+- README `v6.3` : 4 nouveaux bullets user-oriented + mise à jour "Bug fixes"
+
+**Conclusion** : Documentation à jour avec HEAD (`c7e02346`). Prochaine étape : PR ou bump de version si les features cadence sont considérées finales.
+
 ---
 
 ## Journal
+
+### [2026-04-06] — chore(teammates): désactivation du profil de tempo synchronisé — Complété
+
+**Tâche** : Désactiver le graphe "Profil de tempo synchronisé" sans supprimer son code.
+
+**Décision technique** : Suppression de l'appel à `render_squad_cadence_section()` dans le wiring de la page coéquipiers ([src/ui/pages/teammates_views.py](src/ui/pages/teammates_views.py)). Le composant, son analyse et sa visualisation restent présents dans le codebase, mais la page ne l'invoque plus.
+
+**Résultats observés** : Le graphe ne s'affiche plus et aucun chargement de données associé (`cached_load_kill_timing_for_matches`, calcul des profils, rendu Plotly) n'est déclenché.
+
+**Conclusion** : Désactivation propre et réversible, au point d'entrée UI, sans suppression de code.
+
+### [2026-04-06] — fix(i18n): mode_ui toujours traduit via translate_pair_name dans main_helpers — Complété
+
+**Tâche** : Corriger les noms de modes non traduits (`"Arena:CTF"`, `"Arena:Strongholds"`) dans la page de comparaison de sessions.
+
+**Cause racine** :
+- `add_i18n_display_columns` pose `mode_ui = _strip_mode_map_suffix(coalesce(pair_name_fr, pair_name))`
+- `pair_name_fr` contient la valeur EN copiée (`"Arena:CTF on Aquarius"`), pas une traduction → résultat `"Arena:CTF"` après stripping du suffixe " on "
+- `_filters_apply.py` voit `"mode_ui" in dff.columns` → saute sa propre traduction via `translate_pair_name`
+- `_fix_untranslated_mode_ui` vérifiait `pair_name_fr.is_null()` → jamais vrai car `pair_name_fr` ≠ NULL
+
+**Décision technique** : Réécriture de `_fix_untranslated_mode_ui` dans `main_helpers.py` pour recalculer `mode_ui` **inconditionnellement** via `translate_pair_name(pair_name)` — même logique que `_filters_apply.py`. Suppression de la condition `pair_name_fr.is_null()` et de la dépendance sur `pair_name_fr`. La fonction s'appuie sur `build_mapping + replace_strict` (pattern vectorisé identique au reste de l'app).
+
+**Résultat** : `"Arena:CTF"` → `"Capture du drapeau"`, `"Arena:Strongholds"` → `"Bases"`. 5678 tests passent (1 failure pré-existante dans `test_no_new_size_violations` pour `squad_cadence_chart.py` et `teammates_hs_pk.py`, non liée).
+
+**Conclusion** : La cohérence est rétablie — `mode_ui` est toujours produit par `translate_pair_name(pair_name)` partout dans l'app.
+
+---
 
 ### [2026-04-06] — refactor(viz+i18n): plan REFACTO_VIZ_PLAN appliqué — Complété
 

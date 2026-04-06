@@ -58,23 +58,24 @@ class TestPlotSquadCadenceProfiles:
         assert fig is not None
 
     def test_x_labels_left_boundary(self):
-        """Chaque groupe doit être étiqueté par sa borne gauche (0%, 10%…90%)."""
+        """Les ticks X doivent être aux frontières (0%, 10%...100%), pas au centre."""
         df = _make_profiles(n_buckets=10)
         fig = plot_squad_cadence_profiles(df, ["Alice", "Bob"])
         assert fig is not None
-        x_data = list(fig.data[0].x)
-        assert x_data[0] == "0%"
-        assert x_data[-1] == "90%"
-        assert len(x_data) == 10
+        ticktext = list(fig.layout.xaxis.ticktext)
+        assert ticktext[0] == "0%"
+        assert ticktext[-1] == "100%"
+        assert len(ticktext) == 11  # 0..100 inclus
 
     def test_x_bar_centers_numeric(self):
-        """Les barres doivent être centrées dans chaque tranche (5, 15, …, 95)."""
+        """Les barres sont positionnées sur axe numérique (centres dans chaque tranche)."""
         df = _make_profiles(n_buckets=10)
         fig = plot_squad_cadence_profiles(df, ["Alice"])
         assert fig is not None
+        # x_centers = [5, 15, 25, …, 95]
         x_data = list(fig.data[0].x)
-        assert x_data[0] == "0%"
-        assert x_data[-1] == "90%"
+        assert x_data[0] == 5.0
+        assert x_data[-1] == 95.0
 
     def test_legend_at_bottom(self):
         df = _make_profiles()
@@ -97,11 +98,12 @@ class TestPlotSquadCadenceProfiles:
         assert fig is not None
         assert isinstance(fig.data[0], go.Bar)
 
-    def test_barmode_group(self):
+    def test_barmode_overlay(self):
+        """barmode=overlay est requis pour le positionnement manuel des barres groupées."""
         df = _make_profiles(players=["Alice", "Bob"])
         fig = plot_squad_cadence_profiles(df, ["Alice", "Bob"])
         assert fig is not None
-        assert fig.layout.barmode == "group"
+        assert fig.layout.barmode == "overlay"
 
     def test_color_map_applied(self):
         """Les couleurs du color_map doivent être utilisées."""
