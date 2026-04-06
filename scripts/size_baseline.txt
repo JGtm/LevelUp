@@ -24,7 +24,6 @@ FUNC:src/data/media_indexer.py:94:ensure_schema:138L
 FUNC:src/data/repositories/_archives_repo.py:135:load_matches_from_archives:102L
 FUNC:src/data/repositories/_weapon_kills_repo.py:276:insert_weapon_kill_rows_v2:85L
 FUNC:src/data/services/win_loss_service.py:64:compute_period_table:109L
-FUNC:src/data/sync/_aggregates.py:27:refresh_aggregates:82L
 FUNC:src/data/sync/_engine_connections.py:335:_load_existing_match_ids:81L
 FUNC:src/data/sync/_match_processing.py:304:_backfill_known_match_shared:82L
 FUNC:src/data/sync/_match_processing.py:37:_process_matches:120L
@@ -107,8 +106,10 @@ FUNC:src/visualization/trio.py:341:plot_trio_kills_deaths:151L
 FUNC:src/visualization/trio.py:39:plot_trio_metric:231L
 MODULE:src/analysis/spawn_detection.py:561L
 MODULE:src/analysis/weapon_parser.py:502L
+MODULE:src/data/repositories/_materialized_views.py:505L
 MODULE:src/data/repositories/_weapon_kills_repo.py:567L
 MODULE:src/data/services/teammates_service.py:537L
+MODULE:src/data/sessions_backfill.py:549L
 MODULE:src/data/sync/_engine_connections.py:510L
 MODULE:src/data/sync/_match_processing.py:559L
 MODULE:src/data/sync/api_client.py:557L

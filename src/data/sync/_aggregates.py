@@ -31,7 +31,6 @@ class AggregatesMixin:
 
         Met à jour :
         - Vues matérialisées (mv_*)
-        - Tables pré-calculées (precomputed_sessions, precomputed_kda_trend, etc.)
 
         Returns:
             Dict table_name → rows_affected.
@@ -88,8 +87,7 @@ class AggregatesMixin:
             try:
                 from scripts.post_sync_compute import post_sync_compute
 
-                precomp = post_sync_compute(str(self._player_db_path))
-                result.update(precomp)
+                result.update(post_sync_compute(str(self._player_db_path)))
             except Exception as e:
                 logger.debug("post_sync_compute non disponible: %s", e)
 

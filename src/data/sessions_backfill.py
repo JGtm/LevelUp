@@ -180,7 +180,43 @@ def _ensure_enrichment_table(conn: duckdb.DuckDBPyConnection) -> None:
         )
 
 
-def _upsert_session_rows(  # noqa: PLR0912
+def _add_friends_columns(df: pl.DataFrame, friends_set: frozenset[str]) -> pl.DataFrame:
+    """Ajoute _iwf, _ktc, _fx calculés depuis teammates_signature et friends_set."""
+    from src.analysis.sessions import _parse_teammates_signature
+
+    if friends_set:
+
+        def _iwf(sig: str | None) -> bool | None:
+            return bool(_parse_teammates_signature(sig) & friends_set)
+
+        def _ktc(sig: str | None) -> int | None:
+            return len(_parse_teammates_signature(sig) & friends_set)
+
+        def _fx(sig: str | None) -> str | None:
+            common = _parse_teammates_signature(sig) & friends_set
+            return ",".join(sorted(common)) if common else None
+
+        return df.with_columns(
+            [
+                pl.col("teammates_signature")
+                .map_elements(_iwf, return_dtype=pl.Boolean)
+                .alias("_iwf"),
+                pl.col("teammates_signature")
+                .map_elements(_ktc, return_dtype=pl.Int32)
+                .alias("_ktc"),
+                pl.col("teammates_signature").map_elements(_fx, return_dtype=pl.Utf8).alias("_fx"),
+            ]
+        )
+    return df.with_columns(
+        [
+            pl.lit(None).cast(pl.Boolean).alias("_iwf"),
+            pl.lit(None).cast(pl.Int32).alias("_ktc"),
+            pl.lit(None).cast(pl.Utf8).alias("_fx"),
+        ]
+    )
+
+
+def _upsert_session_rows(
     conn: duckdb.DuckDBPyConnection,
     df_sessions: pl.DataFrame,
     friends_set: frozenset[str],
@@ -188,69 +224,71 @@ def _upsert_session_rows(  # noqa: PLR0912
     include_recent: bool,
     threshold: float,
 ) -> tuple[int, int, list[str]]:
-    """Upsert les lignes de sessions dans player_match_enrichment.
+    """Upsert les lignes de sessions dans player_match_enrichment (bulk).
 
     Retourne (updated, skipped, errors).
     """
-    from src.analysis.sessions import _parse_teammates_signature
+    if "_ts" not in df_sessions.columns:
+        return 0, 0, ["Colonne _ts absente du DataFrame sessions"]
 
-    has_friends_config = len(friends_set) > 0
-    updated = 0
+    df = df_sessions.filter(pl.col("_ts").is_not_null())
     skipped = 0
-    errors: list[str] = []
+    if not include_recent:
+        skipped = df.filter(pl.col("_ts") > threshold).height
+        df = df.filter(pl.col("_ts") <= threshold)
 
-    for row in df_sessions.iter_rows(named=True):
-        match_id = row["match_id"]
-        session_id = row["session_id"]
-        session_label = row["session_label"]
-        st_ts = row.get("_ts")
+    if df.is_empty():
+        return 0, skipped, []
 
-        if st_ts is None:
-            continue
-        if not include_recent and st_ts > threshold:
-            skipped += 1
-            continue
+    df = _add_friends_columns(df, friends_set)
+    df_bulk = (
+        df.with_columns(pl.col("session_label").cast(pl.Utf8))
+        .rename(
+            {"_iwf": "is_with_friends", "_ktc": "known_teammates_count", "_fx": "friends_xuids"}
+        )
+        .select(
+            [
+                "match_id",
+                "session_id",
+                "session_label",
+                "is_with_friends",
+                "known_teammates_count",
+                "friends_xuids",
+                "teammates_signature",
+            ]
+        )
+    )
 
-        if has_friends_config:
-            sig = row.get("teammates_signature")
-            team_set = _parse_teammates_signature(sig)
-            common = team_set & friends_set
-            iwf: bool | None = bool(common)
-            ktc: int | None = len(common)
-            fx: str | None = ",".join(sorted(common)) if common else None
-        else:
-            iwf = None
-            ktc = None
-            fx = None
-
-        try:
-            conn.execute(
-                "INSERT INTO player_match_enrichment "
-                "(match_id, session_id, session_label, is_with_friends, known_teammates_count, friends_xuids, teammates_signature) "
-                "VALUES (?, ?, ?, ?, ?, ?, ?) "
-                "ON CONFLICT (match_id) DO UPDATE SET "
-                "session_id = EXCLUDED.session_id, "
-                "session_label = EXCLUDED.session_label, "
-                "teammates_signature = COALESCE(EXCLUDED.teammates_signature, player_match_enrichment.teammates_signature), "
-                "is_with_friends = COALESCE(EXCLUDED.is_with_friends, player_match_enrichment.is_with_friends), "
-                "known_teammates_count = COALESCE(EXCLUDED.known_teammates_count, player_match_enrichment.known_teammates_count), "
-                "friends_xuids = COALESCE(EXCLUDED.friends_xuids, player_match_enrichment.friends_xuids), "
-                "updated_at = now()",
-                [
-                    match_id,
-                    session_id,
-                    str(session_label) if session_label else None,
-                    iwf,
-                    ktc,
-                    fx,
-                    sig if has_friends_config else row.get("teammates_signature"),
-                ],
-            )
-            updated += 1
-        except Exception as e:
-            errors.append(f"{match_id}: {e}")
-
-    return updated, skipped, errors
+    try:
+        conn.register("_tmp_session_upsert", df_bulk)
+        conn.execute(
+            """
+            INSERT INTO player_match_enrichment
+                (match_id, session_id, session_label, is_with_friends,
+                 known_teammates_count, friends_xuids, teammates_signature)
+            SELECT match_id, session_id, session_label, is_with_friends,
+                   known_teammates_count, friends_xuids, teammates_signature
+            FROM _tmp_session_upsert
+            ON CONFLICT (match_id) DO UPDATE SET
+                session_id            = EXCLUDED.session_id,
+                session_label         = EXCLUDED.session_label,
+                teammates_signature   = COALESCE(EXCLUDED.teammates_signature,
+                                                 player_match_enrichment.teammates_signature),
+                is_with_friends       = COALESCE(EXCLUDED.is_with_friends,
+                                                 player_match_enrichment.is_with_friends),
+                known_teammates_count = COALESCE(EXCLUDED.known_teammates_count,
+                                                 player_match_enrichment.known_teammates_count),
+                friends_xuids         = COALESCE(EXCLUDED.friends_xuids,
+                                                 player_match_enrichment.friends_xuids),
+                updated_at            = now()
+            """
+        )
+        return df_bulk.height, skipped, []
+    except Exception as e:
+        return 0, skipped, [str(e)]
+    finally:
+        with contextlib.suppress(Exception):
+            conn.unregister("_tmp_session_upsert")
 
 
 def _top_teammates_ro(
@@ -463,14 +501,33 @@ def backfill_teammates_signatures(
         friends_set = get_friends_xuids_for_backfill(path, xuid, conn=conn)
         nf = "" if force else "WHERE pme.teammates_signature IS NULL"
         a = shared_alias
+        # Calcul de toutes les signatures en une seule passe (JOIN groupé au lieu
+        # de 2 sous-requêtes corrélées par match_id — O(N) vs O(N²)).
         sigs = conn.execute(
-            f"SELECT pme.match_id, COALESCE("
-            f" (SELECT string_agg(o.xuid ORDER BY o.xuid) FROM {a}.match_participants me"
-            f"  JOIN {a}.match_participants o ON o.match_id=me.match_id"
-            f"  AND o.team_id=me.team_id AND o.xuid!=? WHERE me.match_id=pme.match_id AND me.xuid=?),"
-            f" (SELECT string_agg(o.xuid ORDER BY o.xuid) FROM {a}.match_participants o"
-            f"  WHERE o.match_id=pme.match_id AND o.xuid!=?)) AS sig"
-            f" FROM player_match_enrichment pme {nf}",
+            f"""
+            SELECT pme.match_id,
+                   COALESCE(team_sig.sig, all_sig.sig) AS sig
+            FROM player_match_enrichment pme
+            LEFT JOIN (
+                SELECT me.match_id,
+                       string_agg(o.xuid ORDER BY o.xuid) AS sig
+                FROM {a}.match_participants me
+                JOIN {a}.match_participants o
+                    ON o.match_id = me.match_id
+                   AND o.team_id  = me.team_id
+                   AND o.xuid    != ?
+                WHERE me.xuid = ?
+                GROUP BY me.match_id
+            ) team_sig ON team_sig.match_id = pme.match_id
+            LEFT JOIN (
+                SELECT o.match_id,
+                       string_agg(o.xuid ORDER BY o.xuid) AS sig
+                FROM {a}.match_participants o
+                WHERE o.xuid != ?
+                GROUP BY o.match_id
+            ) all_sig ON all_sig.match_id = pme.match_id
+            {nf}
+            """,
             [xuid, xuid, xuid],
         ).fetchall()
         for match_id, sig in sigs:
