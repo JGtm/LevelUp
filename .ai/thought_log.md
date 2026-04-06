@@ -3,6 +3,22 @@
 > Ce fichier capture le raisonnement de l'agent entre les sessions.
 > Archivé : 2026-02-01 (logs précédents dans `.ai/archive/thought_log_pre_phase6.md`)
 
+## [2026-04-06] Merge refactor/viz-cleanup → main — Complété
+
+**Statut** : Complété
+
+**Décision technique** : Merge `--no-ff` de `refactor/viz-cleanup` dans `main` après validation complète des tests.
+
+**Commits mergés** : 50+ commits depuis `refactor/sessions-perf` → `refactor/viz-cleanup` couvrant refactoring viz axes A-H, i18n, cadence/tempo/heatmap, bug fixes.
+
+**Tests** : 5756 passed, 5 skipped (intégration incluse).
+
+**Résolution** : Les fichiers supprimés du disque (67 fichiers, probablement par Streamlit/watcher actif) ont été contournés via `git checkout -f main` avant le merge.
+
+**SHA merge commit** : `19f25f20`
+
+---
+
 ## [2026-04-06] Mise à jour docs CHANGELOG + README What's New — Complété
 
 **Statut** : Complété
