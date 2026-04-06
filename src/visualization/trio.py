@@ -7,6 +7,7 @@ from src.config import OKABE_ITO_PALETTE, PLOT_CONFIG
 from src.ui.i18n.viz import viz_t
 from src.visualization._chart_series import ChartData, MatchSeries, SquadRecordSet
 from src.visualization._compat import DataFrameLike, ensure_polars
+from src.visualization._plot_options import DEFAULT_THEME
 from src.visualization.theme import apply_halo_plot_style, get_legend_horizontal_bottom
 
 # Couleurs "négatives" : famille rouge, luminance HSL bien espacée (~13-15% d'écart)
@@ -205,7 +206,7 @@ def plot_trio_metric(  # noqa: PLR0912, PLR0913, PLR0915, C901 — graphe multi-
         )
 
     # Moyenne lissée de tous les joueurs (ligne neutre pointillée)
-    avg_color = "rgba(255, 255, 255, 0.55)"
+    avg_color = DEFAULT_THEME.avg_color
     avg_rolled = _roll(avg_all)
     if is_inverse:
         hover_format_avg = (
@@ -229,9 +230,7 @@ def plot_trio_metric(  # noqa: PLR0912, PLR0913, PLR0915, C901 — graphe multi-
 
     if squad_records and squad_records.records:
         _map_names_trio = [t.split("<br>", 1)[1] if "<br>" in t else None for t in ticktext]
-        _per_map_trio = {
-            n: (squad_records.per_map.get(n) or {}).get(metric, {}) for n in names
-        }
+        _per_map_trio = {n: (squad_records.per_map.get(n) or {}).get(metric, {}) for n in names}
         _cbname_trio = colors_by_name or {}
         _cd_trio = ChartData(
             series=[
@@ -266,7 +265,11 @@ def plot_trio_metric(  # noqa: PLR0912, PLR0913, PLR0915, C901 — graphe multi-
 
     fig = apply_halo_plot_style(fig, height=PLOT_CONFIG.default_height)
     # Rétablir l'axe zéro en gras blanc (apply_halo_plot_style le désactive via theme.py)
-    fig.update_yaxes(zeroline=True, zerolinecolor="rgba(255,255,255,0.75)", zerolinewidth=2)
+    fig.update_yaxes(
+        zeroline=True,
+        zerolinecolor=DEFAULT_THEME.zero_line_color,
+        zerolinewidth=DEFAULT_THEME.zero_line_width,
+    )
     return fig
 
 
@@ -373,7 +376,9 @@ def plot_trio_kills_deaths(  # noqa: PLR0913
             return pl.DataFrame(
                 schema={"start_time": pl.Datetime, "kills": pl.Float64, "deaths": pl.Float64}
             )
-        map_col = "map_ui" if "map_ui" in p.columns else ("map_name" if "map_name" in p.columns else None)
+        map_col = (
+            "map_ui" if "map_ui" in p.columns else ("map_name" if "map_name" in p.columns else None)
+        )
         cols = ["start_time", "kills", "deaths"] + ([map_col] if map_col else [])
         out = p.select(cols)
         if not out.schema["start_time"].is_temporal():
@@ -419,7 +424,11 @@ def plot_trio_kills_deaths(  # noqa: PLR0913
         max(all_kills, default=1), max(all_deaths, default=1)
     )
     _ref_pl_kd = ensure_polars(d_self)
-    _map_col_kd = "map_ui" if "map_ui" in _ref_pl_kd.columns else ("map_name" if "map_name" in _ref_pl_kd.columns else None)
+    _map_col_kd = (
+        "map_ui"
+        if "map_ui" in _ref_pl_kd.columns
+        else ("map_name" if "map_name" in _ref_pl_kd.columns else None)
+    )
     if _map_col_kd and not _ref_pl_kd.is_empty() and not aligned.is_empty():
         _ref_clean_kd = _ref_pl_kd.drop_nulls(subset=["start_time"])
         _ts_to_map_kd: dict = dict(
@@ -443,7 +452,8 @@ def plot_trio_kills_deaths(  # noqa: PLR0913
     if squad_records and squad_records.records:
         _kd_map_names = (
             [t.split("<br>", 1)[1] if "<br>" in t else None for t in ticktext_fr]
-            if ticktext_fr else []
+            if ticktext_fr
+            else []
         )
         _cbname_kd = colors_by_name or {}
         _kd_series = [
@@ -488,5 +498,9 @@ def plot_trio_kills_deaths(  # noqa: PLR0913
     fig.update_xaxes(tickmode="array", tickvals=xs, ticktext=ticktext_fr or xs, title_text="")
     fig.update_yaxes(tickvals=tickvals, ticktext=ticktext)
     fig = apply_halo_plot_style(fig, height=None)
-    fig.update_yaxes(zeroline=True, zerolinecolor="rgba(255,255,255,0.75)", zerolinewidth=2)
+    fig.update_yaxes(
+        zeroline=True,
+        zerolinecolor=DEFAULT_THEME.zero_line_color,
+        zerolinewidth=DEFAULT_THEME.zero_line_width,
+    )
     return fig

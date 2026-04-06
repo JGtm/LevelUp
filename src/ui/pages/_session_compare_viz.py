@@ -16,7 +16,7 @@ import polars as pl
 import streamlit as st
 
 from src.data.domain.refdata import Outcome
-from src.ui.chart_utils import safe_chart_render
+from src.ui.chart_utils import render_chart_or_info
 from src.ui.i18n import t
 from src.ui.pages.session_compare_logic import format_date_with_weekday
 from src.ui.streamlit_modern import PLOTLY_STATIC_CONFIG, fragment_if_available
@@ -203,15 +203,23 @@ def render_outcomes_distribution(
     st.markdown(t("sc_outcomes_distribution"))
     col_a, col_b = st.columns(2)
 
-    with col_a, safe_chart_render():
+    with col_a:
         fig = _build_outcome_donut(df_a, "Session A")
-        if fig:
-            st.plotly_chart(fig, width="stretch", config=PLOTLY_STATIC_CONFIG)
+        render_chart_or_info(
+            fig,
+            key="sc_outcome_donut_a",
+            config=PLOTLY_STATIC_CONFIG,
+            info_key="insufficient_data_chart",
+        )
 
-    with col_b, safe_chart_render():
+    with col_b:
         fig = _build_outcome_donut(df_b, "Session B")
-        if fig:
-            st.plotly_chart(fig, width="stretch", config=PLOTLY_STATIC_CONFIG)
+        render_chart_or_info(
+            fig,
+            key="sc_outcome_donut_b",
+            config=PLOTLY_STATIC_CONFIG,
+            info_key="insufficient_data_chart",
+        )
 
 
 # ════════════════════════════════════════════════════════════════════════════
@@ -362,8 +370,12 @@ def render_kd_progression(
     has_acc = any(v is not None for v in (s_a["accuracies"] + s_b["accuracies"]))
     st.markdown(t("sc_kd_progression"))
     fig = _build_kd_progression_figure(s_a, s_b, label_a, label_b, has_acc)
-    with safe_chart_render():
-        st.plotly_chart(fig, width="stretch", config=PLOTLY_STATIC_CONFIG)
+    render_chart_or_info(
+        fig,
+        key="sc_kd_progression",
+        config=PLOTLY_STATIC_CONFIG,
+        info_key="insufficient_data_chart",
+    )
 
 
 __all__ = [

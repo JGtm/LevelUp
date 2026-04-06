@@ -7,6 +7,62 @@
 
 ## Journal
 
+### [2026-04-17] — Plan V3 : Axes K/I/L complets (sessions 2-3) — Complété
+
+**Tâche** : Poursuivre et terminer les Axes K, I et L du Plan V3.
+
+**Décisions techniques principales :**
+
+**Axe K (SK constants)** : 4 fichiers migrés vers constantes typées :
+- `_filters_cascade.py`, `filters_render.py`, `_filters_apply.py` → `SK.FILTER_*`, `SK.PICKED_SESSION_LABEL`, etc.
+- `filter_state.py` → 8 remplacements dans save/apply preferences
+
+**Axe I (render_chart_or_info)** : 6 fichiers migrés :
+- `match_view_charts.py`, `objective_analysis.py`, `_session_compare_viz.py`, `citations.py`, `match_view_participation.py`, `session_compare_charts.py`
+- Pattern A/B (safe_chart_render + if fig) → appel unique `render_chart_or_info`
+
+**Axe L (résorption C901)** : ~15 noqa supprimés ou neutralisés :
+- `career.py` : 3 fonctions C901 supprimés (violations disparues après refactoring précédent)
+- `match_view_charts.py` : `_ev_card` extrait en module-level → C901 supprimé
+- `match_view_players.py` : `render_match_impact_section` — 3 helpers extraits (`_resolve_impact_team_xuids`, `_enrich_impact_gamertags`, `_render_impact_badges`)
+- `match_view_players_nemesis.py` : 6 inner functions extraites (`_is_debug_antagonists_enabled`, `_resolve_kv_display_name`, `_clean_antagonist_name`, `_antagonist_cmp_color`, `_fmt_antagonist_count`, `_fmt_antagonist_two_lines`) → render_nemesis_section C901 supprimé
+- `match_view_participation.py`, `match_view.py`, `objective_analysis.py`, `citations.py` etc. : noqa C901 retirés (violations devenues inexistantes)
+- `session_compare.py` : `_load_friends_mapping_from_db` extrait → `_get_friends_names` C901 supprimé
+
+**Bugs corrigés :**
+- `citations.py` : parenthèse parasite après migration `render_chart_or_info` → `IndentationError`
+- `_session_compare_viz.py` : `with col_a:` désindenté → `IndentationError`
+- `filters_render.py` : liste `_SHADOW_RESTORATIONS` non fermée → `SyntaxError`
+- 3 imports `safe_chart_render` inutilisés retirés
+
+**Résultats** : 5612/5614 passent (1 e2e pré-existant, 1 noqa C901 remis car PLR0912 manquant dans `match_view_citations.py`).
+Baseline tailles mis à jour (113 violations documentées).
+
+**Conclusion** : Plan V3 Axes I/K/L substantiellement complétés sur les modules src/ui/pages/ et src/app/. Violations C901 résiduelles (16 fonctions) = complexité inhérente, non extractable sans risque. Branche `refactor/sessions-perf`.
+
+
+
+**Tâche** : Implémenter les axes H, I, J, K du Plan V3 (`PLAN_V3_2026-04-05.md`) et démarrer Axe L.
+
+**Décisions techniques principales :**
+- **Axe H** : `src/visualization/_plot_options.py` créé — `ChartTheme` (28 champs), `PlotOptions` (6 champs), `DEFAULT_THEME` singleton. 5 fichiers viz migrent leurs constantes hardcodées vers `DEFAULT_THEME` (zeroline ×3, avg_color, PATTERN_* ×5, LEAD_BG ×2, PERFORMANCE_COLORS ×11). 3 fonctions publiques migrent `lang+height` → `opts: PlotOptions | None = None`.
+- **Axe I** : `render_chart_or_info(fig, *, key, config, info_key)` ajouté à `chart_utils.py`.
+- **Axe J** : `src/data/services/_base.py` créé — `StatelessServiceProtocol` (@runtime_checkable).
+- **Axe K** : 15 constantes SK ajoutées à `session_keys.py` (filtres cascade, sessions, auto-seuils).
+- **Axe L** : `render_roster_section` dans `match_view_players.py` refactorisée — 4 helpers extraits au niveau module (`_get_team_label`, `_get_roster_name`, `_roster_pill_html`, `_resolve_enemy_team_label`), `# noqa: C901` supprimé.
+
+**Corrections qualité :**
+- Import `chart_utils.py` : ordre TYPE_CHECKING block (`collections.abc` avant `plotly`) — I001.
+- Baseline tailles mis à jour (décalages de numéros de ligne dus aux imports ajoutés dans `trio.py` et `timeseries_combat.py`).
+
+**Résultats** : 5614/5614 passent (1 échec e2e pré-existant `test_e2e_010_map_names_not_uuids` confirmé stable).
+
+**Blocage Axe L** : `apply_filters` (419L) bloqué par Axe D (`_add_derived_columns` toujours présent à la ligne 149 de `_filters_apply.py`).
+
+**Conclusion** : Branche `refactor/sessions-perf`. Axe L partiellement avancé — prochaine priorité : `render_match_impact_section` (117L, `# noqa: C901, PLR0912`).
+
+---
+
 ### [2026-04-06] — refactor(sessions): cohérence schéma + perf upsert/teammates/mv_session_stats — Complété
 
 **Tâche** : Corriger 6 problèmes détectés sur le système de sessions (schéma, perf, incrémental).

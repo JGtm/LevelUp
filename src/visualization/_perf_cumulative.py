@@ -8,27 +8,28 @@ from __future__ import annotations
 import plotly.graph_objects as go
 import polars as pl
 
-from src.config import HALO_COLORS, THEME_COLORS
+from src.config import THEME_COLORS
 from src.ui.i18n.viz import viz_t
+from src.visualization._plot_options import DEFAULT_THEME, PlotOptions
 from src.visualization.theme import apply_halo_plot_style
 
 # =============================================================================
 # Configuration des couleurs
 # =============================================================================
 
-# Couleurs mises à jour pour respecter la palette Okabe-Ito (accessibilité daltonisme).
+# Dérivé de DEFAULT_THEME — source unique de vérité pour les couleurs performance.
 PERFORMANCE_COLORS = {
-    "positive": HALO_COLORS.green,  # Vert néon pour positif
-    "negative": HALO_COLORS.red,  # Rouge pour négatif
-    "neutral": HALO_COLORS.cyan,  # Cyan pour neutre
-    "kills": "#009E73",  # Vert bleuté Okabe-Ito (visible deuteranopes)
-    "deaths": "#D55E00",  # Vermillon Okabe-Ito (distinct du vert bleuté)
-    "kd_line": "#E69F00",  # Orange Okabe-Ito pour K/D
-    "cumulative": "#56B4E9",  # Bleu ciel Okabe-Ito pour cumulatif
-    "rolling": "#CC79A7",  # Rose mauve Okabe-Ito pour rolling
-    "trend_up": "#009E73",  # Vert bleuté Okabe-Ito pour amélioration
-    "trend_down": "#D55E00",  # Vermillon Okabe-Ito pour dégradation
-    "baseline": "#999999",  # Gris neutre
+    "positive": DEFAULT_THEME.color_positive,
+    "negative": DEFAULT_THEME.color_negative,
+    "neutral": DEFAULT_THEME.solo_color,  # cyan = neutre
+    "kills": DEFAULT_THEME.color_kills,
+    "deaths": DEFAULT_THEME.color_deaths,
+    "kd_line": DEFAULT_THEME.color_kd,
+    "cumulative": DEFAULT_THEME.squad_palette[0],  # sky blue
+    "rolling": DEFAULT_THEME.color_rolling,
+    "trend_up": DEFAULT_THEME.color_trend_up,
+    "trend_down": DEFAULT_THEME.color_trend_down,
+    "baseline": DEFAULT_THEME.color_baseline,
 }
 
 
@@ -126,16 +127,18 @@ def _add_cumulative_score_traces(
     )
 
 
-def plot_cumulative_net_score(  # noqa: PLR0913
+def plot_cumulative_net_score(
     cumulative_df: pl.DataFrame,
     *,
-    height: int = 400,
     show_zero_line: bool = True,
     time_played_seconds: list[int | float] | None = None,
     duration_marker_minutes: float = 8.0,
-    lang: str = "fr",
+    opts: PlotOptions | None = None,
 ) -> go.Figure:
     """Crée un graphique du net score cumulé au fil des matchs."""
+    _opts = opts if opts is not None else PlotOptions()
+    lang = _opts.lang
+    height = _opts.height_px
     fig = go.Figure()
 
     if cumulative_df.is_empty():
@@ -179,16 +182,18 @@ def plot_cumulative_net_score(  # noqa: PLR0913
     return apply_halo_plot_style(fig, height=height)
 
 
-def plot_cumulative_kd(  # noqa: PLR0913
+def plot_cumulative_kd(
     cumulative_df: pl.DataFrame,
     *,
-    height: int = 400,
     show_target: float | None = 1.0,
     time_played_seconds: list[int | float] | None = None,
     duration_marker_minutes: float = 8.0,
-    lang: str = "fr",
+    opts: PlotOptions | None = None,
 ) -> go.Figure:
     """Crée un graphique du K/D cumulé au fil des matchs."""
+    _opts = opts if opts is not None else PlotOptions()
+    lang = _opts.lang
+    height = _opts.height_px
     fig = go.Figure()
 
     if cumulative_df.is_empty():

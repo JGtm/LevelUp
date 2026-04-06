@@ -12,6 +12,7 @@ import polars as pl
 from src.config import THEME_COLORS
 from src.ui.i18n.viz import viz_t
 from src.visualization._perf_cumulative import PERFORMANCE_COLORS
+from src.visualization._plot_options import PlotOptions
 from src.visualization.theme import apply_halo_plot_style, iqr_yrange
 
 # =============================================================================
@@ -392,13 +393,12 @@ def _add_ewma_traces(  # noqa: PLR0913
         )
 
 
-def plot_ewma_kd(  # noqa: PLR0913
+def plot_ewma_kd(
     ewma_df: pl.DataFrame,
     *,
-    height: int = 400,
     regression_data: dict | None = None,
     outcome_values: list[int | None] | None = None,
-    lang: str = "fr",
+    opts: PlotOptions | None = None,
 ) -> go.Figure:
     """Graphique du K/D lissé (EWMA) avec droite de régression optionnelle.
 
@@ -407,12 +407,13 @@ def plot_ewma_kd(  # noqa: PLR0913
 
     Args:
         ewma_df: DataFrame issu de compute_ewma_kd_polars.
-        title: Titre (auto si None).
-        height: Hauteur en pixels.
         regression_data: Dict issu de compute_linear_regression_kd (optionnel).
         outcome_values: Liste d'Outcome pour les marqueurs V/D.
-        lang: Langue.
+        opts: Options de rendu (langue, hauteur…).
     """
+    _opts = opts if opts is not None else PlotOptions()
+    lang = _opts.lang
+    height = _opts.height_px
     fig = go.Figure()
 
     if ewma_df.is_empty():

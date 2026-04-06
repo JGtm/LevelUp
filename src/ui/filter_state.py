@@ -24,6 +24,7 @@ from pathlib import Path
 
 import streamlit as st
 
+from src.app.session_keys import SK
 from src.ui._filter_state_model import (
     FILTER_DATA_KEYS,
     FILTER_WIDGET_KEY_PREFIXES,
@@ -109,7 +110,7 @@ def save_filter_preferences(  # noqa: C901, PLR0912, PLR0913, PLR0915
         gap_minutes_val = st.session_state.get("gap_minutes")
         if isinstance(gap_minutes_val, int | float):
             preferences.gap_minutes = int(gap_minutes_val)
-        picked_session_label_val = st.session_state.get("picked_session_label")
+        picked_session_label_val = st.session_state.get(SK.PICKED_SESSION_LABEL)
         if isinstance(picked_session_label_val, str):
             preferences.picked_session_label = picked_session_label_val
         # Sauvegarder aussi la "vraie dernière session" pour détecter le tracking
@@ -117,24 +118,24 @@ def save_filter_preferences(  # noqa: C901, PLR0912, PLR0913, PLR0915
         if isinstance(latest_session_label_val, str):
             preferences.latest_session_label = latest_session_label_val
         # Sessions solo / escouade (v5.3)
-        solo_label = st.session_state.get("picked_solo_session_label")
+        solo_label = st.session_state.get(SK.PICKED_SOLO_SESSION_LABEL)
         if isinstance(solo_label, str):
             preferences.picked_solo_session_label = solo_label
-        squad_label = st.session_state.get("picked_squad_session_label")
+        squad_label = st.session_state.get(SK.PICKED_SQUAD_SESSION_LABEL)
         if isinstance(squad_label, str):
             preferences.picked_squad_session_label = squad_label
         # Amis sélectionnés dans Teammates (v5.3)
-        friends_labels = st.session_state.get("teammates_picked_labels")
+        friends_labels = st.session_state.get(SK.TEAMMATES_PICKED_LABELS)
         if isinstance(friends_labels, list):
             preferences.friends_selected_labels = friends_labels
 
         # Filtres cascade — logique intent-based
         # Mapping session_key → exclusions_key pour mise à jour mid-session
         _EXCLUSIONS_KEY_MAP: dict[str, str] = {
-            "filter_playlists": "_playlists_exclusions",
-            "filter_modes": "_modes_exclusions",
-            "filter_maps": "_maps_exclusions",
-            "filter_experience_types": "_experience_types_exclusions",
+            SK.FILTER_PLAYLISTS: "_playlists_exclusions",
+            SK.FILTER_MODES: "_modes_exclusions",
+            SK.FILTER_MAPS: "_maps_exclusions",
+            SK.FILTER_EXPERIENCE_TYPES: "_experience_types_exclusions",
         }
 
         def _save_filter(
@@ -169,23 +170,25 @@ def save_filter_preferences(  # noqa: C901, PLR0912, PLR0913, PLR0915
                 stored = sorted(val)
             return stored, mode
 
-        pl_list, pl_mode = _save_filter("filter_playlists", "_playlists_filter_mode", all_playlists)
+        pl_list, pl_mode = _save_filter(
+            SK.FILTER_PLAYLISTS, "_playlists_filter_mode", all_playlists
+        )
         if pl_list is not None:
             preferences.playlists_selected = pl_list
             preferences.playlists_mode = pl_mode
 
-        mo_list, mo_mode = _save_filter("filter_modes", "_modes_filter_mode", all_modes)
+        mo_list, mo_mode = _save_filter(SK.FILTER_MODES, "_modes_filter_mode", all_modes)
         if mo_list is not None:
             preferences.modes_selected = mo_list
             preferences.modes_mode = mo_mode
 
-        ma_list, ma_mode = _save_filter("filter_maps", "_maps_filter_mode", all_maps)
+        ma_list, ma_mode = _save_filter(SK.FILTER_MAPS, "_maps_filter_mode", all_maps)
         if ma_list is not None:
             preferences.maps_selected = ma_list
             preferences.maps_mode = ma_mode
 
         exp_list, exp_mode = _save_filter(
-            "filter_experience_types", "_experience_types_filter_mode", all_experience_types
+            SK.FILTER_EXPERIENCE_TYPES, "_experience_types_filter_mode", all_experience_types
         )
         if exp_list is not None:
             preferences.experience_types = exp_list
@@ -290,9 +293,9 @@ def apply_filter_preferences(  # noqa: C901, PLR0912, PLR0913, PLR0915
 
     # Sessions solo / escouade (v5.3) — précédence sur l'ancien picked_session_label
     if preferences.picked_solo_session_label:
-        st.session_state["picked_solo_session_label"] = preferences.picked_solo_session_label
+        st.session_state[SK.PICKED_SOLO_SESSION_LABEL] = preferences.picked_solo_session_label
     if preferences.picked_squad_session_label:
-        st.session_state["picked_squad_session_label"] = preferences.picked_squad_session_label
+        st.session_state[SK.PICKED_SQUAD_SESSION_LABEL] = preferences.picked_squad_session_label
 
     # Dériver picked_session_label actif depuis solo/squad, ou fallback legacy
     _active_new = None
@@ -304,10 +307,10 @@ def apply_filter_preferences(  # noqa: C901, PLR0912, PLR0913, PLR0915
         _active_new = squad_saved
 
     if _active_new:
-        st.session_state["picked_session_label"] = _active_new
+        st.session_state[SK.PICKED_SESSION_LABEL] = _active_new
         st.session_state["picked_sessions"] = [_active_new]
     elif preferences.picked_session_label:
-        st.session_state["picked_session_label"] = preferences.picked_session_label
+        st.session_state[SK.PICKED_SESSION_LABEL] = preferences.picked_session_label
         # Mettre à jour picked_sessions aussi
         if preferences.picked_session_label != "(toutes)":
             st.session_state["picked_sessions"] = [preferences.picked_session_label]
@@ -316,7 +319,7 @@ def apply_filter_preferences(  # noqa: C901, PLR0912, PLR0913, PLR0915
 
     # Amis sélectionnés dans Teammates (v5.3)
     if preferences.friends_selected_labels:
-        st.session_state["teammates_picked_labels"] = preferences.friends_selected_labels
+        st.session_state[SK.TEAMMATES_PICKED_LABELS] = preferences.friends_selected_labels
 
     # Filtres cascade — logique intent-based
     def _apply_filter(  # noqa: PLR0913
@@ -347,7 +350,7 @@ def apply_filter_preferences(  # noqa: C901, PLR0912, PLR0913, PLR0915
         preferences.playlists_selected,
         preferences.playlists_mode,
         all_playlists,
-        "filter_playlists",
+        SK.FILTER_PLAYLISTS,
         "_playlists_filter_mode",
         "_playlists_exclusions",
     )
@@ -355,7 +358,7 @@ def apply_filter_preferences(  # noqa: C901, PLR0912, PLR0913, PLR0915
         preferences.modes_selected,
         preferences.modes_mode,
         all_modes,
-        "filter_modes",
+        SK.FILTER_MODES,
         "_modes_filter_mode",
         "_modes_exclusions",
     )
@@ -363,7 +366,7 @@ def apply_filter_preferences(  # noqa: C901, PLR0912, PLR0913, PLR0915
         preferences.maps_selected,
         preferences.maps_mode,
         all_maps,
-        "filter_maps",
+        SK.FILTER_MAPS,
         "_maps_filter_mode",
         "_maps_exclusions",
     )
@@ -371,7 +374,7 @@ def apply_filter_preferences(  # noqa: C901, PLR0912, PLR0913, PLR0915
         preferences.experience_types,
         preferences.experience_types_mode,
         all_experience_types,
-        "filter_experience_types",
+        SK.FILTER_EXPERIENCE_TYPES,
         "_experience_types_filter_mode",
         "_experience_types_exclusions",
     )
@@ -383,7 +386,7 @@ def apply_filter_preferences(  # noqa: C901, PLR0912, PLR0913, PLR0915
     if (
         all_experience_types
         and preferences.experience_types is not None
-        and "filter_experience_types" in st.session_state
+        and SK.FILTER_EXPERIENCE_TYPES in st.session_state
     ):
         stored_set = set(preferences.experience_types)
         current_set = set(all_experience_types)
@@ -392,13 +395,13 @@ def apply_filter_preferences(  # noqa: C901, PLR0912, PLR0913, PLR0915
             valid = stored_set & current_set
             if len(stored_set) >= _EXP_TYPES_TOTAL:
                 # Tous les types étaient sélectionnés → restaurer tous les types courants
-                st.session_state["filter_experience_types"] = current_set
+                st.session_state[SK.FILTER_EXPERIENCE_TYPES] = current_set
             elif valid:
                 # Sélection partielle avec certains labels valides
-                st.session_state["filter_experience_types"] = valid
+                st.session_state[SK.FILTER_EXPERIENCE_TYPES] = valid
             else:
                 # Aucun label valide → sélectionner tout (fallback)
-                st.session_state["filter_experience_types"] = current_set
+                st.session_state[SK.FILTER_EXPERIENCE_TYPES] = current_set
 
 
 def clear_filter_preferences(xuid: str, db_path: str | None = None) -> None:

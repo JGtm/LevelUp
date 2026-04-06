@@ -11,6 +11,7 @@ import streamlit as st
 from src.app._filters_cascade import _apply_experience_filter, _get_experience_type_options
 from src.app._filters_shared import safe_to_date as _safe_to_date
 from src.app.helpers import normalize_map_label, normalize_mode_label
+from src.app.session_keys import SK
 from src.ui import translate_pair_name, translate_playlist_name
 from src.ui.cache import cached_compute_sessions_db
 from src.ui.i18n import get_lang
@@ -149,7 +150,7 @@ def apply_filters(  # noqa: C901, PLR0912, PLR0913, PLR0915
         dff = _add_derived_columns(dff, clean_asset_label_fn)
 
     # Debug: Afficher l'état des filtres avant application
-    show_debug = st.session_state.get("_show_debug_info", False)
+    show_debug = st.session_state.get(SK.SHOW_DEBUG_INFO, False)
     if show_debug:
         _show_debug_info_before(dff, filter_state)
 
@@ -272,10 +273,12 @@ def _add_derived_columns(  # noqa: C901, PLR0912
             # Priorité : playlist_name_fr (depuis mv_player_matches/v_match_full)
             if "playlist_name_fr" in dff.columns:
                 derived_exprs.append(
-                    pl.coalesce([
-                        pl.col("playlist_name_fr").cast(pl.Utf8),
-                        pl.col("playlist_name").cast(pl.Utf8),
-                    ]).alias("playlist_fr")
+                    pl.coalesce(
+                        [
+                            pl.col("playlist_name_fr").cast(pl.Utf8),
+                            pl.col("playlist_name").cast(pl.Utf8),
+                        ]
+                    ).alias("playlist_fr")
                 )
             else:
                 _pfr_map = build_mapping(
@@ -303,10 +306,12 @@ def _add_derived_columns(  # noqa: C901, PLR0912
             # Utiliser pair_name_fr (depuis v_match_full) si disponible, sinon translate
             if "pair_name_fr" in dff.columns:
                 derived_exprs.append(
-                    pl.coalesce([
-                        pl.col("pair_name_fr").cast(pl.Utf8),
-                        pl.col("pair_name").cast(pl.Utf8),
-                    ]).alias("pair_fr")
+                    pl.coalesce(
+                        [
+                            pl.col("pair_name_fr").cast(pl.Utf8),
+                            pl.col("pair_name").cast(pl.Utf8),
+                        ]
+                    ).alias("pair_fr")
                 )
             else:
                 _pair_map = build_mapping(
@@ -338,10 +343,12 @@ def _add_derived_columns(  # noqa: C901, PLR0912
         # Priorité 1 : map_name_fr direct (depuis mv_player_matches / v_match_full)
         if "map_name_fr" in dff.columns and get_lang() == "fr":
             derived_exprs.append(
-                pl.coalesce([
-                    pl.col("map_name_fr").cast(pl.Utf8),
-                    pl.col("map_name").cast(pl.Utf8),
-                ]).alias("map_ui")
+                pl.coalesce(
+                    [
+                        pl.col("map_name_fr").cast(pl.Utf8),
+                        pl.col("map_name").cast(pl.Utf8),
+                    ]
+                ).alias("map_ui")
             )
         elif "map_id" in dff.columns:
             # Traduction i18n via asset_translations (requête batch)
@@ -355,7 +362,9 @@ def _add_derived_columns(  # noqa: C901, PLR0912
             }
             if id_to_fallback:
                 translated_maps = resolve_map_display_names(id_to_fallback, lang)
-                n_translated = sum(1 for k, v in translated_maps.items() if v != id_to_fallback.get(k))
+                n_translated = sum(
+                    1 for k, v in translated_maps.items() if v != id_to_fallback.get(k)
+                )
                 logger.debug(
                     "map_ui i18n: %d/%d cartes traduites (lang=%s)",
                     n_translated,

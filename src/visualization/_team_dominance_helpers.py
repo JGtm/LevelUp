@@ -12,6 +12,7 @@ from typing import Any
 import plotly.graph_objects as go
 
 from src.ui.i18n.viz import viz_t
+from src.visualization._plot_options import DEFAULT_THEME
 
 # ─────────────────────────────────────────────────────────────────────────────
 # Constantes visuelles (palette HALO_COLORS)
@@ -33,8 +34,8 @@ NORMAL_MARKER_SIZE = 7
 STREAK_LINE_WIDTH = 2
 
 LEAD_MY_COLOR = "#009E73"  # Vert Okabe-Ito — avantage cumulé mon équipe
-LEAD_MY_BG = "rgba(0, 158, 115, 0.22)"
-LEAD_ENEMY_BG = "rgba(213, 94, 0, 0.22)"
+LEAD_MY_BG = DEFAULT_THEME.zone_win_bg
+LEAD_ENEMY_BG = DEFAULT_THEME.zone_loss_bg
 
 
 # ─────────────────────────────────────────────────────────────────────────────

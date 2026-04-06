@@ -20,6 +20,7 @@ from src.ui.pages._timeseries_weapons import render_weapon_kills_chart as _rende
 from src.ui.pages.timeseries_skill_rank import render_skill_rank_progression
 from src.ui.streamlit_modern import PLOTLY_CLEAN_CONFIG, PLOTLY_STATIC_CONFIG, fragment_if_available
 from src.visualization._compat import DataFrameLike, ensure_polars
+from src.visualization._plot_options import PlotOptions
 from src.visualization.distributions import (
     plot_first_event_distribution,
     plot_kda_distribution,
@@ -171,9 +172,9 @@ def _render_cumulative_performance(dff: pl.DataFrame, lang: str = "fr") -> None:
     with safe_chart_render():
         fig_ewma = plot_ewma_kd(
             ewma_data,
-            lang=lang,
             regression_data=regression,
             outcome_values=outcome_values,
+            opts=PlotOptions(lang=lang),
         )
         st.plotly_chart(fig_ewma, width="stretch", config=PLOTLY_CLEAN_CONFIG)
     _render_note(t("ts_note_ewma"))

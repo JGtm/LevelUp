@@ -11,7 +11,7 @@ from typing import Any
 
 import streamlit as st
 
-from src.ui.chart_utils import safe_chart_render
+from src.ui.chart_utils import render_chart_or_info, safe_chart_render
 from src.ui.i18n import t
 from src.ui.streamlit_modern import PLOTLY_STATIC_CONFIG, fragment_if_available
 
@@ -100,7 +100,9 @@ def render_participation_section(
         thresholds["objectifs"] = per_mode.get("slayer", RADAR_THRESHOLDS_PER_MODE["slayer"])
     logger.debug(
         "participation match=%s famille=%s seuil_objectifs=%.0f",
-        match_id, family, thresholds["objectifs"],
+        match_id,
+        family,
+        thresholds["objectifs"],
     )
     profile = compute_participation_profile(
         df,
@@ -167,7 +169,7 @@ def _build_comparison_profiles(  # noqa: PLR0913
     return profiles
 
 
-def render_participation_comparison(  # noqa: C901, PLR0912, PLR0913
+def render_participation_comparison(  # noqa: PLR0913
     db_path: str,
     match_ids: list[str],
     xuid: str,
@@ -218,12 +220,14 @@ def render_participation_comparison(  # noqa: C901, PLR0912, PLR0913
 
         st.subheader(f"📊 {t('mvp_comparison_title')}")
         col_radar, col_legend = st.columns([2, 1])
-        with col_radar, safe_chart_render():
+        with col_radar:
             fig = create_participation_profile_radar(profiles, height=400)
-            if fig is not None:
-                st.plotly_chart(fig, width="stretch", config=PLOTLY_STATIC_CONFIG)
-            else:
-                st.info(t("insufficient_data_chart"))
+            render_chart_or_info(
+                fig,
+                key="mvp_radar_comparison",
+                config=PLOTLY_STATIC_CONFIG,
+                info_key="insufficient_data_chart",
+            )
         with col_legend:
             st.markdown(f"**{t('mvp_axes_label')}**")
             for line in get_radar_axis_lines():
