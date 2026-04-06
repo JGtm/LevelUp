@@ -7,6 +7,26 @@
 
 ## Journal
 
+### [2026-04-06] — refactor(sessions): cohérence schéma + perf upsert/teammates/mv_session_stats — Complété
+
+**Tâche** : Corriger 6 problèmes détectés sur le système de sessions (schéma, perf, incrémental).
+
+**Décisions techniques** :
+- `mv_session_stats.session_id` : migration de INTEGER vers VARCHAR (mismatch silencieux avec `player_match_enrichment`)
+- `idx_pme_session` ajouté aux steps de migration officiels (`add_pme_session_index.py`)
+- `_upsert_session_rows` remplacé par bulk INSERT via `conn.register()` + `_add_friends_columns` extrait
+- `backfill_teammates_signatures` : 2 sous-requêtes corrélées → JOIN groupé O(N)
+- `_refresh_session_stats` : logique incrémentale (3 dernières sessions en delta, full rebuild si `new_ids=None`) ; SQL dédupliqué dans `_SESSION_STATS_INSERT_SQL`
+- Modules `sessions_backfill.py` et `_materialized_views.py` baselinés (dette — proches de 500L avant les changements)
+
+**Branche** : `refactor/sessions-perf` — commit `83edd854`
+
+**Résultats** : 199 tests passent, tous hooks pre-commit OK.
+
+**Conclusion** : Prêt pour PR. Prochaine étape : merge ou travail suivant.
+
+---
+
 ### [2026-04-06] — Audit complet CHARTS_AND_TABLES.md vs plan V3 + codebase — Complété
 
 **Tâche** : Vérification que `CHARTS_AND_TABLES.md` est exhaustif au regard du plan V3 (2026-04-05) et du codebase réel.
