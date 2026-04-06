@@ -16,4 +16,6 @@ jobs:
           host: ${{ secrets.VPS_HOST }}
           username: deploy
           key: ${{ secrets.VPS_SSH_KEY }}
-          script: bash /opt/levelup/deploy.sh
+          script: |
+            git config --global --add safe.directory /opt/levelup
+            bash /opt/levelup/deploy.sh
