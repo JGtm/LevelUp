@@ -38,32 +38,6 @@
 - **Career rank names corrected** — displays the actual rank name (e.g. "Lance Corporal Diamond 1") instead of an approximation
 - Bug fixes: performance scores and materialized views now always update correctly
 
-**v6.0 — Zero configuration, weapon accuracy & new medals**
-- **No setup required** — the app gives you a one-time code to enter at Microsoft.com/activate; your gamertag is detected automatically from your Microsoft account; no Azure account, no config file
-- **Navigate between matches** — `◀ Previous` / `Next ▶` buttons to browse your filtered match history
-- **Weapon kill attribution** — accuracy jumped from ~15 % to ~95 % of kills correctly attributed to a weapon
-- **New medal: Avenger** — awarded when you eliminate the opponent who last killed you
-- **Top Gun badge** — 🔫 shown on the Impact timeline for the first player on your team to reach 10 kills
-
-**v5.7 — Bilingual launchers, map hover thumbnails & Polars cleanup**
-- `LevelUp.sh` and `LevelUp.bat` now detect the system language (FR/EN) and display launcher messages accordingly
-- **Map hover thumbnails** — CSS-only hover popups on map names in all HTML tables (replaces the sandboxed JS approach)
-- French translations for all Halo rank names (career ranks + CSR tiers) used in metadata and the Career page
-- Pandas eliminated from UI/viz modules — Polars native end-to-end (7 `.to_pandas()` calls removed)
-
-**v5.6 (beta) — MSAL Device Code Flow & Weapon Extraction**
-- Token acquisition replaced with **MSAL Device Code Flow** — enter a code on xbox.com/activate, no redirect URI or client secret required
-- **Weapon kills from SPNKr films** *(beta — estimated coverage 70–100 % depending on matches, weapon catalog in progress)* — binary film parsing identifies the weapon used for each POV kill; kills-by-weapon in Match View and Teammates tabs; auto-extraction at sync configurable via Settings
-- **Impact Matrix** — vertical match separators for improved readability; renamed from "Impact Heatmap"
-
-**v5.5 — Setup Wizard & Multi-platform**
-- Guided first-time setup with Xbox one-click login (Device Code Flow) or manual Azure token flow
-- `LevelUp.bat` launcher for Windows and `LevelUp.sh` launcher for macOS & Linux
-- Portable Windows release (self-contained zip, no Python install required)
-- Timezone selector in Settings (~40 zones, defaults to Europe/Paris)
-- **Session Comparison page revamped** — outcomes donuts, F/D + accuracy curve, match highlights, mode & map breakdowns, LUSR/CSR rating overlay on cumulative net score
-- **XP & Hero rank comparison** — Career page now overlays XP curves and Hero projections for all players with a refresh token; precision scales with available data (real delta between syncs → global average fallback)
-
 ---
 
 ## Features

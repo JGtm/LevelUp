@@ -520,13 +520,3 @@ Processus/outillage à clarifier : quels fichiers ? quel périmètre ? via API o
 Préciser : quel environnement ("le site" = prod déployée ? staging ?) — quels symptômes observés — quels gamertags concernés.
 
 ---
-
-### [?] Créer des utilisateurs Chroot Jail pour Madi et Flo
-
-**Noté le** : 2026-04-03
-
-Infrastructure serveur (hors app LevelUp). Préciser : OS cible, accès souhaité (SSH ? SFTP ? accès lecture seule au dossier projet ?), contraintes de sécurité.
-
----
-
-

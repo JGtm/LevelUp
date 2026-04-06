@@ -6,12 +6,12 @@
 
 | Métrique | Valeur |
 |----------|--------|
-| Instances `st.plotly_chart` dans les pages | **81** |
-| Fonctions `plot_*/create_*` dans `src/visualization/` | **74** |
+| Instances `st.plotly_chart` dans les pages | **~92** |
+| Fonctions `plot_*/create_*` dans `src/visualization/` | **~80** |
 | Fonctions `create_*` dans `src/ui/components/` | **9** |
-| Pages Streamlit avec rendu graphique | **14** |
-| Tableaux HTML personnalisés | **5** |
-| Sections documentées (visuels distincts) | **~55** |
+| Pages Streamlit avec rendu graphique | **15** |
+| Tableaux HTML personnalisés | **9** |
+| Sections documentées (visuels distincts) | **~73** |
 | Graphiques désactivés (`if False:`) | **2** (`plot_map_outcome_timeline` §2.6, `_render_ratio_by_map_section` win_loss) |
 
 ---
@@ -108,6 +108,17 @@ Tous les graphiques partagent :
 | Type | Tableau HTML identique §1.5 |
 | Colonnes | Idem |
 | Tri | Score personnel ASC |
+
+### 1.7 Tableau HTML : Encounters (adversaires récurrents)
+
+| Propriété | Valeur |
+|-----------|--------|
+| Type | Tableau HTML généré (`st.markdown` unsafe) |
+| Colonnes | Gamertag, Côté (allié/ennemi), N° rencontre, Win Rate %, K/D, Badges |
+| Badges | Allié plus (+), Coriace, Noix dure — `os-sb-td--best` / `encounter-badge--amber` / `os-sb-td--worst` |
+| Filtres | Période configurable (7j, 30j, 90j, Tout) |
+| Légende badges | `build_badge_legend_html()` inline |
+| **Source** | `src/ui/pages/career_encounters_render.py::render_encounters_section` |
 
 ---
 
@@ -233,6 +244,34 @@ Tous les graphiques partagent :
 | Barres descendantes | Série de défaites (rouge blur) |
 | Ligne | Tendance lissée (EWMA sur les valeurs streak) |
 | **Source** | `src/visualization/timeseries_combat.py::plot_streak_chart` |
+
+### 2.10 Barres : Score personnel par match
+
+| Propriété | Valeur |
+|-----------|--------|
+| Type | `go.Bar` + `go.Scatter` ligne lissée |
+| Axe X | Numéro de match (`#N<br>Carte`) — catégorique, angle -45° |
+| Axe Y | Valeur de la métrique (score personnel) |
+| Barre | Couleur configurable (cyan par défaut), opacity 0.70 |
+| Ligne lissée | `MA(10)` vert, fenêtre configurable |
+| Hover | `hover_label=valeur` par barre |
+| Hauteur | 320 px |
+| **Source** | `src/visualization/match_bars.py::plot_metric_bars_by_match` |
+
+### 2.11 Barres horizontales : Ratio K/D et Précision par carte
+
+> Deux instances côte à côte dans la section « Rapport kills/défaites par carte ».
+
+| Propriété | Valeur |
+|-----------|--------|
+| Type | `go.Bar` horizontales |
+| Axe Y | Noms des cartes (`map_name`) |
+| Axe X | Valeur de la métrique (`ratio_global` ou `accuracy_avg`) |
+| Couleur barres | Cyan fixe, ou palette dynamique performance si `color_by_sign=True` |
+| Hover | `map_name, value, matches` |
+| Instance 1 | `metric="ratio_global"` — ratio K/D par carte |
+| Instance 2 | `metric="accuracy_avg"` — précision moyenne par carte |
+| **Source** | `src/visualization/maps.py::plot_map_comparison` |
 
 ---
 
@@ -472,6 +511,20 @@ Tous les graphiques partagent :
 
 **Source** : `src/ui/pages/_timeseries_distributions.py::render_correlations`
 
+### 3.19 Régression K/D — indicateurs compacts (onglet Avancé)
+
+> Affiché sous §3.7 EWMA K/D, dans l'onglet Avancé. Conditionné à `cumul.has_enough_for_trend`.
+
+| Propriété | Valeur |
+|-----------|--------|
+| Type | `go.Indicator` × 3 (pente K/D, pente win rate, R²) |
+| Hauteur | 160 px (compact) |
+| Indicateur 1 | Pente K/D (slope) — delta positif = amélioration |
+| Indicateur 2 | Pente win rate (%) |
+| Indicateur 3 | R² — annotated ⚠ si < 0.3 (« tendance non significative ») |
+| Hover | N/A (indicateurs) |
+| **Source** | `src/visualization/_perf_session.py::plot_regression_trend` |
+
 ---
 
 ## 4. Page TEAMMATES (Coéquipiers & Synergies)
@@ -590,6 +643,41 @@ Tous les graphiques partagent :
 | Ligne MMR équipe | Axe Y droit, violet `#8B5CF6`, marqueurs 5px |
 | `hovermode` | `x unified` |
 | **Source** | `src/visualization/_squad_timeline.py::plot_squad_performance_timeline` (appelé depuis `teammates_map_charts.py`) |
+
+### 4.11 Barres multi-métriques multi-joueurs par match (escouade)
+
+| Propriété | Valeur |
+|-----------|--------|
+| Type | `go.Bar` groupées par joueur (`ChartData` via `MatchSeries`) |
+| Axe X | Positions entières normalisées 0..N-1 (labels `#N<br>Carte`) |
+| Axe Y | Métrique choisie (kills, deaths, assists, accuracy, avg_life, perf, ratio, etc.) |
+| Traces | 2–4 joueurs, 1 couleur par joueur fixes dans toute la page |
+| Records | Lignes horizontales records historiques (global + par carte si `per_map_records` présent) |
+| Downsampling | `ChartData.downsample(max_points=200)` — protection performance |
+| `barmode` | `group` |
+| **Source** | `src/visualization/match_bars.py::plot_multi_metric_bars_by_match` (via callback `plot_multi_metric_bars_fn`) |
+
+### 4.12 Stats par minute escouade (barres catégorielles)
+
+| Propriété | Valeur |
+|-----------|--------|
+| Type | `go.Bar` catégorielles par métrique par minute (`ChartData(barmode="categorical")`) |
+| Axe X | Noms de métriques catégoriels (KPM, DPM, APM, etc.) — pas de positions entières |
+| Axe Y | Valeur par minute |
+| Traces | 1 par joueur (`offsetgroup` par joueur) |
+| Ghost bars | Records historiques affichés comme barres fantômes derrière (`_add_categorical_record_bars`) |
+| **Source** | `src/ui/pages/_teammates_trio_helpers.py::_render_per_minute_stats` |
+
+### 4.13 Radar Profil Participation escouade (6 axes)
+
+| Propriété | Valeur |
+|-----------|--------|
+| Type | `go.Scatterpolar` |
+| Axes radiaux | Objectifs, Combat, Support, Score, Impact, Survie (normalisés 0–1.1) |
+| Traces | 1 par joueur de l'escouade, couleurs Halo distinctes |
+| Remplissage | `toself`, opacity configurable (défaut 1.0) |
+| Hover | Valeur normalisée + valeur brute en tooltip |
+| **Source** | `src/ui/components/_radar_participation.py::create_participation_profile_radar` (depuis `teammates_synergy.py`) |
 
 ---
 
@@ -784,6 +872,41 @@ Tous les graphiques partagent :
 | Axe X | Numéro de match |
 | Axe Y | Points par catégorie |
 | **Source** | `src/visualization/participation_charts.py::plot_participation_by_match` |
+
+### 5.16 Radar Profil Participation match (6 axes)
+
+> Affiché dans l'onglet « Participation » du Match View. Supporte 1 joueur (vue solo) et N joueurs (vue comparaison avec l'équipe).
+
+| Propriété | Valeur |
+|-----------|--------|
+| Type | `go.Scatterpolar` |
+| Axes radiaux | Objectifs, Combat, Support, Score, Impact, Survie — normalisés 0–1.1 |
+| Vue solo | 1 trace (joueur principal) — remplissage opaque |
+| Vue comparaison | N traces (joueurs de l'équipe) — remplissage semi-transparent |
+| Hover | Valeur normalisée + valeur brute en tooltip |
+| **Source** | `src/ui/components/_radar_participation.py::create_participation_profile_radar` (depuis `match_view_participation.py`) |
+
+### 5.17 Bloc HTML : Rang CSR / LUSR du match
+
+| Propriété | Valeur |
+|-----------|--------|
+| Type | Bloc HTML généré (`st.markdown` unsafe) |
+| Contenu | Rang CSR (tier + sous-rang + points) ou LUSR après le match |
+| Delta | +/- points vs match précédent, coloré vert/rouge |
+| Contexte bot | Si `had_bot_teammate=True`, note contextuelle sous le delta |
+| Conditionnel | Affiché uniquement si données CSR/LUSR disponibles pour ce match |
+| **Source** | `src/ui/pages/match_view_rank.py::_build_match_rank_html` |
+
+### 5.18 Tableau HTML : Encounters du match
+
+| Propriété | Valeur |
+|-----------|--------|
+| Type | Tableau HTML généré (`st.markdown` unsafe) |
+| Colonnes | Gamertag, Côté (allié/ennemi), N° rencontre, Win Rate %, Kills/Deaths |
+| Badges | Allié plus (vert), Coriace (ambre), Noix dure (rouge) — calculés via `compute_encounter_badges` |
+| Badge ordinal | `ème rencontre` grisé en sur-titre |
+| Légende badges | `build_badge_legend_html()` inline sous le tableau |
+| **Source** | `src/ui/pages/match_view_encounters.py::render_encounter_section` |
 
 ---
 
@@ -1030,6 +1153,26 @@ Tous les graphiques partagent :
 
 ---
 
+## 13. Page MATCH HISTORY (Historique des matchs)
+
+**Fichiers** : `src/ui/pages/match_history.py`, `match_table_html.py`
+
+> `render_match_table_html` est un module **partagé** entre la page Match History et la page Explorer (§9.1). La table est identique dans les deux contextes.
+
+### 13.1 Tableau HTML : Historique de matchs
+
+| Propriété | Valeur |
+|-----------|--------|
+| Type | Tableau HTML généré (`st.markdown` unsafe) |
+| Colonnes | #, Date, Mode, Carte, K, D, A, Score, Résultat (emoji), Durée |
+| Couleur ligne | Vert = Victoire, Rouge = Défaite, Bleu = Égalité, Gris = DNF |
+| Lien | Clic → page Match View pour ce match |
+| Tri | Chronologique inversé (plus récent en haut) |
+| Export | Bouton téléchargement CSV (`_render_csv_download`) |
+| **Source** | `src/ui/pages/match_table_html.py::render_match_table_html` (partagé avec §9.1 Explorer) |
+
+---
+
 ## 11. Composants réutilisables transversaux
 
 ### 11.1 Radar générique (`src/ui/components/radar_chart.py`)
@@ -1068,6 +1211,9 @@ Tous les graphiques partagent :
 | 3.3 | Stats/min timeline | Timeseries |
 | 3.8 | Performance score | Timeseries |
 | 3.9 | Rang + score | Timeseries |
+| 2.10 | Score personnel par match | Win Loss |
+| 4.11 | Stats multi-joueurs par match | Teammates |
+| 4.12 | Stats/min escouade (catégoriel) | Teammates |
 | 1.3 | XP / Rang | Carrière |
 | 1.4 | LUSR progression | Carrière |
 | 2.9 | Séries V/D | Win Loss |
@@ -1085,9 +1231,11 @@ Tous les graphiques partagent :
 ### Radar / Polaire
 | # | Nom | Axes | Page |
 |---|-----|------|------|
-| 5.4 | Participation radar | kills%, assists%, obj%, véhicules% | Match View |
+| 5.4 | Participation radar 4 axes | kills%, assists%, obj%, véhicules% | Match View |
+| 5.16 | Profil participation 6 axes | Objectifs, Combat, Support, Score, Impact, Survie | Match View |
 | 4.5 | Synergie coéquipiers | KDA, Win%, Accuracy, K/match, A/match | Teammates |
 | 4.6 | Tendance session escouade | KDA, Win%, Perf, Accuracy | Teammates |
+| 4.13 | Profil participation escouade 6 axes | Objectifs, Combat, Support, Score, Impact, Survie | Teammates |
 | 6.1 | Comparaison sessions A vs B | idem | Session Compare |
 
 ### Distributions (KDE, histogramme, scatter)
@@ -1104,9 +1252,18 @@ Tous les graphiques partagent :
 |---|-----|------|
 | 1.1 | Progression rang XP | Carrière |
 | 1.2 | Progression rang Héros | Carrière |
+| 3.19 | Régression K/D (pente + R²) | Timeseries |
 | 7.3 | Ratio objectifs | Objectives |
 | 5.11 | K/D vs nemesis | Match View |
 | 6.6 | Delta métriques A vs B | Session Compare |
+
+### Barres par carte / mode
+| # | Nom | Page |
+|---|-----|------|
+| 2.11 | Ratio K/D + Précision par carte | Win Loss |
+| 2.5 | Win rate par carte (lollipop) | Win Loss |
+| 2.7 | Win rate vs historique (bullet) | Win Loss |
+| 2.2 | Résultats par carte (empilées) | Win Loss |
 
 ### Pie / Donut / Sunburst
 | # | Nom | Page |
@@ -1122,9 +1279,13 @@ Tous les graphiques partagent :
 | # | Nom | Page |
 |---|-----|------|
 | 5.12 | Scoreboard match | Match View |
+| 5.17 | Rang CSR/LUSR match | Match View |
+| 5.18 | Encounters du match | Match View |
 | 1.5 | Top 10 meilleurs matchs | Carrière |
 | 1.6 | Top 10 pires matchs | Carrière |
+| 1.7 | Encounters adversaires récurrents | Carrière |
 | 9.1 | Résultats Explorer | Explorer |
+| 13.1 | Historique de matchs | Match History |
 | 8.2 | Grille médailles | Citations |
 
 ---
