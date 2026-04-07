@@ -3,6 +3,29 @@
 > Ce fichier capture le raisonnement de l'agent entre les sessions.
 > Archivé : 2026-02-01 (logs précédents dans `.ai/archive/thought_log_pre_phase6.md`)
 
+## [2026-04-07] feat(media): watcher inotify Linux pour indexation automatique — Complété
+
+**Statut** : Complété  
+**Branche** : `fix/lusr-schema-backfill-teammates`  
+
+**Problème** : L'indexation des médias tournait soit au lancement soit toutes les X heures (polling). Sur Debian/VPS, inotify permet un déclenchement instantané à la détection de nouveaux fichiers, sans CPU en veille.
+
+**Décision technique** : Utiliser `watchdog` (déjà installé en dep dev) déplacé en dep principale. Sur Linux + `media_captures_base_dir` configuré + `media_watcher_enabled=True` → l'Observer inotify remplace le thread périodique. Sur Windows ou mode legacy (deux dossiers séparés) → comportement inchangé (thread périodique).
+
+**Architecture** :
+- `src/app/media_watcher.py` (nouveau) : `_MediaEventHandler` avec debounce par gamertag via `threading.Timer`, scan one-shot au démarrage dans un thread séparé
+- `src/app/media_background.py` : branchement `platform.system() == "Linux"` avant le `_PERIODIC_LOCK`
+- `src/ui/settings.py` (`AppSettings`) : `media_watcher_enabled: bool = True`, `media_watcher_debounce_seconds: int = 5`
+- `src/ui/pages/settings.py` : toggle + slider dans la section Médias
+
+**Choix debounce** : 5s par défaut. Les gros fichiers MP4 sont écrits par blocs → `on_created` se déclenche avant fin d'écriture. On attend 5s d'inactivité par gamertag.
+
+**Résultats** : Ruff clean, 817 tests passent (hors intégration).
+
+**Prochaine étape** : Déployer via GH Actions → `pip install watchdog` automatique sur le VPS.
+
+---
+
 ## [2026-04-07] fix(lusr): migration colonnes manquantes match_skill_rank — Complété
 
 **Statut** : Complété  

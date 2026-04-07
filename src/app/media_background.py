@@ -7,6 +7,7 @@ from __future__ import annotations
 
 import logging
 import os
+import platform
 import threading
 import time
 from pathlib import Path
@@ -131,6 +132,21 @@ def background_media_indexing(settings, db_path: str) -> None:
         logger.debug("DB non DuckDB ou invalide - indexation ignorée")
         return
 
+    base_path = Path(base_dir) if base_dir else None
+
+    # Sur Linux + dossier base configuré + watcher activé → inotify (zéro polling)
+    if (
+        platform.system() == "Linux"
+        and base_path is not None
+        and base_path.exists()
+        and getattr(settings, "media_watcher_enabled", True)
+    ):
+        from src.app.media_watcher import start_media_watcher
+
+        start_media_watcher(base_path, settings)
+        return
+
+    # Windows ou mode legacy (deux dossiers séparés) → thread périodique
     with _PERIODIC_LOCK:
         if _PERIODIC_STARTED:
             logger.debug("Thread indexation médias déjà actif (process-level guard)")
@@ -147,8 +163,6 @@ def background_media_indexing(settings, db_path: str) -> None:
         while True:
             try:
                 tolerance = settings.media_tolerance_minutes
-                base_path = Path(base_dir) if base_dir else None
-
                 if base_path is not None and base_path.exists():
                     _index_all_players(base_path, tolerance)
                 else:
