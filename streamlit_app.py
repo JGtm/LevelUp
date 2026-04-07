@@ -12,6 +12,7 @@ import threading
 import urllib.parse
 from collections.abc import Callable
 from datetime import datetime
+from pathlib import Path
 from typing import Any, NamedTuple
 
 import streamlit as st
@@ -104,6 +105,10 @@ from src.ui.cache import (
     clear_app_caches,
     db_cache_key,
     top_medals_smart,
+)
+from src.ui.components.browser_storage import (
+    persist_browser_prefs,
+    restore_browser_prefs,
 )
 from src.ui.filter_state import (
     _get_player_key,
@@ -455,6 +460,7 @@ def _render_main_sidebar(db_path: str, xuid: str, settings: AppSettings) -> tupl
             set_lang(new_lang)
             settings.lang = new_lang
             save_settings(settings)
+            persist_browser_prefs(lang=new_lang)
             st.rerun()
 
         # Logo en haut de la sidebar
@@ -508,6 +514,8 @@ def _render_main_sidebar(db_path: str, xuid: str, settings: AppSettings) -> tupl
                         st.session_state[SK.XUID_INPUT] = gamertag
                         st.session_state[SK.WAYPOINT_PLAYER] = gamertag
                         xuid = gamertag
+                        _slug = Path(new_db_path).parent.name
+                        persist_browser_prefs(last_gamertag=_slug, last_db_path=_slug)
                 if new_xuid:
                     st.session_state[SK.XUID_INPUT] = new_xuid
                     xuid = new_xuid
@@ -912,8 +920,37 @@ def _dispatch_navigation(ctx: PageContext) -> None:  # noqa: C901, PLR0915
 # =============================================================================
 
 
+def _maybe_apply_browser_prefs(browser_prefs: dict) -> None:
+    """Applique les préférences navigateur (localStorage) à la session courante.
+
+    Restaure la langue et le joueur depuis localStorage une seule fois par session
+    (guard ``_browser_prefs_applied``). Déclenche un rerun si le joueur change.
+    """
+    if st.session_state.get("_browser_prefs_applied"):
+        return
+    st.session_state["_browser_prefs_applied"] = True
+
+    ls_lang = str(browser_prefs.get("lang") or "").strip()
+    if ls_lang in ("fr", "en") and get_lang() != ls_lang:
+        set_lang(ls_lang)
+
+    ls_slug = str(browser_prefs.get("last_db_path") or "").strip()
+    current_db = str(st.session_state.get("db_path") or "").strip()
+    current_slug = Path(current_db).parent.name if current_db else ""
+    if ls_slug and ls_slug != current_slug:
+        # Le data_loader n'a pas encore été initialisé — on attend qu'il lise
+        # _browser_prefs_restored lors du prochain cycle init_source_state.
+        st.rerun()
+
+
 def main() -> None:
     """Point d'entrée principal de l'application Streamlit."""
+    # 0. Restauration des préférences navigateur (localStorage, une fois par session)
+    browser_prefs = restore_browser_prefs()
+    if browser_prefs is not None:
+        st.session_state["_browser_prefs_restored"] = browser_prefs
+        _maybe_apply_browser_prefs(browser_prefs)
+
     # 1. Initialisation (config, CSS, settings, validation)
     settings, DEFAULT_DB, cfg_warnings, cfg_errors = _initialize_app()
 
