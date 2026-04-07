@@ -207,7 +207,6 @@ class FanoutEnrichmentMixin:
             self._run_other_sessions(gamertag, xuid, player_db_path, player_conn)
             self._run_other_citations(gamertag, xuid, player_db_path, player_conn)
             self._run_other_dominance(gamertag, xuid, shared_path, player_conn)
-            self._run_other_comeback_badges(gamertag, xuid, shared_path, player_conn)
             lusr_count = engine.batch_compute_lusr(force=False)
             if lusr_count > 0:
                 logger.info("fanout [%s]: %d LUSR calculé(s)", gamertag, lusr_count)
@@ -262,54 +261,38 @@ class FanoutEnrichmentMixin:
         shared_path: Path,
         conn: duckdb.DuckDBPyConnection,
     ) -> None:
-        """Calcule les dominance flags pour un autre joueur (fanout).
+        """Calcule les dominance flags et comeback badges pour un autre joueur (fanout).
 
-        Ouvre shared en R/O pour éviter tout conflit avec le dashboard ouvert.
-        """
-        try:
-            from src.data.dominance_backfill import compute_dominance_for_player
-
-            with duckdb.connect(str(shared_path), read_only=True) as shared_ro:
-                result = compute_dominance_for_player(conn, shared_ro, xuid)
-            logger.info(
-                "fanout [%s]: dominance — %d traité(s)",
-                gamertag,
-                result.get("processed", 0),
-            )
-        except Exception as exc:
-            logger.warning("fanout [%s]: dominance échoué (non bloquant): %s", gamertag, exc)
-
-    def _run_other_comeback_badges(
-        self: _SyncProtocol,
-        gamertag: str,
-        xuid: str,
-        shared_path: Path,
-        conn: duckdb.DuckDBPyConnection,
-    ) -> None:
-        """Calcule les badges comeback pour un autre joueur (fanout).
-
-        Idempotent : seuls les matchs avec dominance_flag=0/NULL sont traités.
-        Si le badge a déjà été calculé (via fanout ou sync propre du joueur),
-        le match n'est pas re-traité.
+        Ouvre shared en R/O une seule fois pour les deux calculs séquentiels,
+        évitant une double connexion sur le même fichier.
         """
         try:
             from src.data.comeback_backfill import compute_comeback_badges_for_player
+            from src.data.dominance_backfill import compute_dominance_for_player
 
             with duckdb.connect(str(shared_path), read_only=True) as shared_ro:
-                result = compute_comeback_badges_for_player(conn, shared_ro, xuid)
-            processed = result.get("processed", 0)
-            if processed > 0:
+                dom_result = compute_dominance_for_player(conn, shared_ro, xuid)
+                cb_result = compute_comeback_badges_for_player(conn, shared_ro, xuid)
+            logger.info(
+                "fanout [%s]: dominance — %d traité(s)",
+                gamertag,
+                dom_result.get("processed", 0),
+            )
+            cb_processed = cb_result.get("processed", 0)
+            if cb_processed > 0:
                 logger.info(
                     "fanout [%s]: comeback badges — %d traité(s) "
                     "(remontada=%d, débandade=%d, contre=%d)",
                     gamertag,
-                    processed,
-                    result.get("remontada", 0),
-                    result.get("debandade", 0),
-                    result.get("contre_remontada", 0),
+                    cb_processed,
+                    cb_result.get("remontada", 0),
+                    cb_result.get("debandade", 0),
+                    cb_result.get("contre_remontada", 0),
                 )
         except Exception as exc:
-            logger.warning("fanout [%s]: comeback_badges échoué (non bloquant): %s", gamertag, exc)
+            logger.warning(
+                "fanout [%s]: dominance/comeback échoué (non bloquant): %s", gamertag, exc
+            )
 
     def _enrich_other_registered_players(
         self: _SyncProtocol,
