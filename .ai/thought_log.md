@@ -3,6 +3,51 @@
 > Ce fichier capture le raisonnement de l'agent entre les sessions.
 > Archivé : 2026-02-01 (logs précédents dans `.ai/archive/thought_log_pre_phase6.md`)
 
+## [2026-04-07] fix(lusr): migration colonnes manquantes match_skill_rank — Complété
+
+**Statut** : Complété  
+**Branche** : `fix/lusr-schema-backfill-teammates`  
+**Commits** : `88e1ce13` (LUSR fix), `bbed7633` (settings/teammates)
+
+**Problème** : "Rating non encore calculé / LUSR calculé automatiquement au prochain sync" persistant pour Madina97294 sur le VPS Docker, même après ~22 tentatives de fix dans les sessions précédentes.
+
+**Root cause identifiée** : Binder Error silencieux dans deux endroits : 
+1. `_LUSR_UPSERT_SQL` référence `start_time` → `Binder Error: column not found` si colonne absente → 0 rows écrits silencieusement
+2. `cached_get_match_skill_rank` : CTE `COALESCE(msr.start_time, msr.updated_at)` → Binder Error → retourne `None` → message affiché en boucle
+
+**Investigation historique** : La table `match_skill_rank` a été introduite avec `start_time` dès le commit `838dce17` (25 fév 2026) — pas de DDL antérieur dans git. Le VPS a probablement une DB créée par une version du code non présente dans l'historique git actuel (squash/rebase ou vieille image Docker), avec un DDL différent.
+
+**Fix principal** (`migrations.py`) :  
+`ensure_match_skill_rank_table` appelle maintenant `_add_column_if_missing` pour `start_time TIMESTAMP`, `rating_deviation FLOAT`, `playlist_group VARCHAR` après le `CREATE TABLE IF NOT EXISTS`. Migration idempotente.
+
+**Fixes complémentaires** :
+- `_engine_fanout.py` : `_run_lusr_for_other_players()` — calcule LUSR des co-joueurs même pour leurs matchs solo
+- `engine.py` : chemin short-circuit delta — appel `_run_lusr_post_sync()` + `_run_lusr_for_other_players()` même quand 0 nouveaux matchs
+
+**Tests** : 5756 passed, 0 failed.
+
+**Conclusion** : Sur le VPS, dès le prochain restart/sync, `ensure_match_skill_rank_table` ajoutera `start_time` si absente → LUSR calculé correctement → message disparu.
+
+---
+
+## [2026-04-06] fix(lusr): LUSR manquant pour matchs solo des co-joueurs — Complété
+
+**Statut** : Complété
+
+**Problème** : "Rating non encore calculé" persistant pour Madina sur le dernier match, même après 22 syncs.
+
+**Root cause** :  
+Le fan-out (step 6 du post-sync) calculait le LUSR des co-joueurs enregistrés **uniquement** quand `result.inserted_match_ids` était non vide, c'est-à-dire quand le joueur principal avait de nouveaux matchs **et** que ces matchs étaient communs avec le co-joueur. Les matchs **solo** de Madina (sans le joueur principal) n'apparaissaient jamais dans `inserted_match_ids`, donc leur LUSR n'était jamais calculé.
+
+**Fix** :  
+- Ajout de `_run_lusr_for_other_players()` dans `FanoutEnrichmentMixin` (`_engine_fanout.py`) : itère sur tous les joueurs enregistrés et appelle `batch_compute_lusr(force=False)` pour chacun (mode incrémental, rapide si rien de nouveau).  
+- Appel dans `engine.py` à l'étape 5b, juste après `_run_lusr_post_sync()`, de façon **inconditionnelle** (comme le LUSR du joueur principal).  
+- Aucune régression dans le fan-out step 6 : `batch_compute_lusr(force=False)` est idempotent, le deuxième appel retourne 0 si déjà calculé.
+
+**Tests** : 110 passed, 0 failed.
+
+---
+
 ## [2026-04-06] fix(sync): retry HE + cohérence events_loaded — Complété
 
 **Statut** : Complété  
