@@ -23,7 +23,7 @@ from src.ui.pages.teammates_charts import render_trio_charts
 from src.ui.streamlit_modern import PLOTLY_STATIC_CONFIG
 from src.visualization._chart_series import ChartData, MatchSeries, SquadRecordSet
 from src.visualization._compat import DataFrameLike, ensure_polars
-from src.visualization.theme import apply_halo_plot_style, get_legend_horizontal_bottom
+from src.visualization.theme import apply_halo_plot_style
 from src.visualization.trio import _negative_color
 
 # ---------------------------------------------------------------------------
@@ -161,10 +161,10 @@ def _render_per_minute_stats(  # noqa: PLR0913
         barmode="group",
         height=350,
         margin={"l": 40, "r": 20, "t": 30, "b": 80},
-        legend=get_legend_horizontal_bottom(),
         showlegend=False,
     )
     fig_pm = apply_halo_plot_style(fig_pm, height=None)
+    fig_pm.update_traces(showlegend=False)
     # Forcer l'axe zéro en gras blanc (apply_halo_plot_style le désactive via theme.py)
     fig_pm.update_yaxes(zeroline=True, zerolinecolor="rgba(255,255,255,0.75)", zerolinewidth=2)
     with safe_chart_render():
