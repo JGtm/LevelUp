@@ -28,6 +28,24 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 - **Teammates — fixed player legend panel** — a floating panel (bottom-right, `position: fixed`) now shows each squad member's color throughout the entire squad section. It appears from the squad header onwards and stays visible while scrolling. Legends have been removed from all individual charts on the page (kills/deaths, per-minute stats, metrics, killing sprees, HS+PK, first events, weapon kills) since they are fully replaced by the panel. Switch strategy by changing `_PANEL_MODE` in `teammates_legend.py` (`"fixed"` / `"sidebar"` / `"hidden"`).
 
+### Added (continued)
+
+- **DB healthcheck** — a new module (`src/utils/healthcheck_db.py`) verifies the state of all DuckDB databases at every app startup and after deploys:
+  - Checks presence of tables, v6 views (`v_gamertag_lookup`, `v_match_full`, `v_killer_victim_full`, `v_weapon_kills`), and critical columns per DB
+  - Verifies that `metadata.duckdb` is attachable from `shared_matches`
+  - Detects pending migrations
+  - Auto-repairs missing or broken v6 views via `ensure_resolution_views()`
+  - `--deep` mode adds referential integrity checks (orphan participants/medals, duplicates)
+  - CLI: `python scripts/healthcheck_db.py [--verbose] [--deep] [--player GT] [--json]`
+  - Integrated into `launcher.py` — runs automatically after migrations at boot, prints ✅/⚠️/❌ to console
+  - Integrated into `deploy.sh` — post-deploy smoke test, results appended to `data/logs/healthcheck_deploy.log` (persisted across deploys via the Docker volume)
+
+- **UI state persistence across sessions** — selected player and language are now persisted in the browser via a lightweight `localStorage` component (`levelup.prefs`). On next visit the app automatically restores the last active player without any server-side session.
+  - Filter preferences (map/mode/outcome/context) moved from `.streamlit/filter_preferences/` to `data/players/{gamertag}/ui_prefs.json` — inside the Docker data volume, so they survive container rebuilds and image updates
+  - Silent migration: existing `.streamlit/` prefs are copied to the new location on first load, then the legacy file is left in place as a fallback
+  - `_resolve_db_path` extended with a third priority level (localStorage slug → `data/players/<slug>/stats.duckdb`) between deep-link and SPNKr auto-detect
+  - New custom Streamlit component: `src/ui/components/browser_storage/` (`persist_browser_prefs`, `restore_browser_prefs`, `clear_browser_prefs`)
+
 ### Changed
 
 - **Docker image** — `ffmpeg` is now installed in the image, enabling video thumbnail generation in containerized deployments without a manual post-install step.
