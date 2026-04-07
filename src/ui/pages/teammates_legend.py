@@ -9,9 +9,13 @@ Pour changer de stratégie de positionnement, modifier ``_PANEL_MODE`` :
 
 from __future__ import annotations
 
+import logging
+
 import streamlit as st
 
 from src.ui.i18n import get_lang
+
+logger = logging.getLogger(__name__)
 
 # ── Stratégie ─────────────────────────────────────────────────────────────────
 # Changer cette valeur pour tester une autre approche sans toucher au reste.
@@ -42,18 +46,22 @@ _LABEL_EN = "Players"
 def render_player_legend_panel(colors_by_name: dict[str, str]) -> None:
     """Injecte le panneau de légende joueurs selon la stratégie ``_PANEL_MODE``."""
     if not colors_by_name:
+        logger.debug("render_player_legend_panel: colors_by_name vide, panneau ignoré")
         return
 
     label = _LABEL_FR if get_lang() == "fr" else _LABEL_EN
 
     if _PANEL_MODE == "hidden":
+        logger.debug("render_player_legend_panel: mode 'hidden', panneau désactivé")
         return
 
     if _PANEL_MODE == "sidebar":
+        logger.debug("render_player_legend_panel: mode 'sidebar', %d joueurs", len(colors_by_name))
         _render_sidebar(colors_by_name, label)
         return
 
     # "fixed" (défaut)
+    logger.debug("render_player_legend_panel: mode 'fixed', %d joueurs", len(colors_by_name))
     _render_fixed(colors_by_name, label)
 
 
