@@ -27,8 +27,13 @@ from src.visualization.trio import plot_trio_kills_deaths
 
 
 def _hide_legend(fig: go.Figure) -> go.Figure:
-    """Masque la légende Plotly — les noms apparaissent dans le panneau latéral fixe."""
+    """Masque la légende Plotly — les noms apparaissent dans le panneau latéral fixe.
+
+    Double verrouillage : update_layout (boîte globale) + update_traces (défaut
+    showlegend=True implicite sur les traces nommées go.Bar / go.Scatter).
+    """
     fig.update_layout(showlegend=False)
+    fig.update_traces(showlegend=False)
     return fig
 
 
