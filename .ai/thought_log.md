@@ -3,6 +3,20 @@
 > Ce fichier capture le raisonnement de l'agent entre les sessions.
 > Archivé : 2026-02-01 (logs précédents dans `.ai/archive/thought_log_pre_phase6.md`)
 
+## [2026-04-07] fix(tests): isolation _sync_mode — 5889 passed, 0 failed — Complété
+
+**Statut** : Complété
+**Branche** : `fix/lusr-schema-backfill-teammates`
+**Commit** : `4aa898d2`
+
+**Cause racine** : Le flag global `_sync_mode` (threading.Event dans `duckdb_repo.py`) restait actif si un test sync levait une exception avant que `end_sync_mode()` soit appelé. Les tests suivants (`test_v52_new_features`, `test_v5_match_queries`, `test_xuid_resolution_regression`) créaient des `DuckDBRepository` qui ne pouvaient plus attacher `shared_matches_v2.duckdb` → retournaient 0 rows → 42 assertions en échec.
+
+**Fix** : Fixture `autouse=True` `_reset_sync_mode` dans `tests/conftest.py` qui appelle `end_sync_mode()` après chaque test.
+
+**Résultats** : **5889 passed, 0 failed, 4 skipped** — 100% de la suite hors integration.
+
+---
+
 ## [2026-04-07] test(sync): audit final + centralisation helpers + caplog + v6 views — Complété
 
 **Statut** : Complété
