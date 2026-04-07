@@ -19,6 +19,13 @@ from src.ui.i18n import t
 from src.ui.tz import CURATED_TZ_LIST
 
 
+def _resolve_env_webhook() -> str:
+    """Retourne l'URL webhook Discord si définie dans l'environnement."""
+    import os
+
+    return os.environ.get("DISCORD_WEBHOOK_URL", "").strip()
+
+
 def _get_preserved_settings(settings: AppSettings) -> dict:
     """Champs non exposés dans l'UI — préservés tels quels depuis les settings actuels."""
 
@@ -281,7 +288,7 @@ def _render_backfill_section(settings: AppSettings) -> dict:
     }
 
 
-def _render_display_section(settings: AppSettings) -> tuple[bool, bool, bool]:
+def _render_display_section(settings: AppSettings) -> tuple[bool, bool, bool, bool]:
     """Rend la section Affichage."""
     st.subheader(t("set_display_section"))
 
@@ -289,21 +296,25 @@ def _render_display_section(settings: AppSettings) -> tuple[bool, bool, bool]:
         t("set_normalize_mode_labels"),
         value=bool(getattr(settings, "normalize_mode_labels", True)),
         help=t("set_normalize_mode_labels_help"),
+        key="setting_normalize_mode_labels",
     )
     show_records = st.toggle(
         t("set_show_records"),
         value=bool(getattr(settings, "show_records", True)),
         help=t("set_show_records_help"),
+        key="setting_show_records",
     )
     career_top_exclude_btb = st.toggle(
         t("set_career_exclude_btb"),
         value=bool(getattr(settings, "career_top_exclude_btb", False)),
         help=t("set_career_exclude_btb_help"),
+        key="setting_career_top_exclude_btb",
     )
     refresh_clears_caches = st.toggle(
         t("set_clear_cache_title"),
         value=bool(getattr(settings, "refresh_clears_caches", False)),
         help=t("set_clear_cache_help"),
+        key="setting_refresh_clears_caches",
     )
 
     st.divider()
@@ -357,13 +368,19 @@ def _render_discord_section(settings: AppSettings) -> tuple[bool, str, str]:
     discord_enabled = st.toggle(
         t("set_discord_enable"),
         value=bool(getattr(settings, "discord_notifications_enabled", False)),
+        key="setting_discord_enabled",
     )
+    # Détection webhook via .env.local (prioritaire, non affiché pour sécurité)
+    _env_webhook = _resolve_env_webhook()
     discord_url = st.text_input(
         t("set_discord_url"),
         value=str(getattr(settings, "discord_webhook_url", "") or ""),
         disabled=not discord_enabled,
         placeholder="https://discord.com/api/webhooks/...",
+        key="setting_discord_webhook_url",
     )
+    if _env_webhook and not discord_url:
+        st.caption(t("set_discord_url_env_hint"))
     _discord_lang_current = str(getattr(settings, "discord_lang", "fr") or "fr")
     if _discord_lang_current not in ("fr", "en"):
         _discord_lang_current = "fr"
