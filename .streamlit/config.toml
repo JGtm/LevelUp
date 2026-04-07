@@ -5,5 +5,8 @@ enableStaticServing = true
 [global]
 showWarningOnDirectExecution = false
 
+[client]
+toolbarMode = "viewer"
+
 [theme]
 base = "dark"

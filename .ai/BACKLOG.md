@@ -12,7 +12,7 @@
 
 ---
 
-###  Amélioration v7++ — Backfill multi-flags : vectoriser le calcul per-match des performance scores (v8+)
+###  Amélioration v8++ — Backfill multi-flags : vectoriser le calcul per-match des performance scores (v8+)
 
 **Noté le** : 2026-03-26
 **Priorité** : Basse (non bloquant — le chemin normal sync app est déjà vectorisé)

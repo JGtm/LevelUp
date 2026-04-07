@@ -3,6 +3,42 @@
 > Ce fichier capture le raisonnement de l'agent entre les sessions.
 > Archivé : 2026-02-01 (logs précédents dans `.ai/archive/thought_log_pre_phase6.md`)
 
+## [2026-04-07] fix(stash): récupération stash WIP — Complété
+
+**Statut** : Complété
+**Branche** : `fix/lusr-schema-backfill-teammates`
+
+**Décision technique** : Résolution de 9 fichiers conflictuels après `git stash pop stash@{0}`. Stratégie : garder HEAD pour les blocs de logging/debug, prendre stash pour l'import `get_legend_horizontal_bottom` et la restauration localStorage robuste dans `streamlit_app.py`.
+
+**Points notables** :
+- Regex conflit avait tronqué `_apply_media_filters` → restaurée depuis HEAD (implémentation complète avec logging)
+- `_teammates_trio_helpers.py` : import manquant `get_legend_horizontal_bottom` (F821 ruff) → ajouté depuis `src.visualization.theme`
+- `size_baseline.txt` mis à jour : `_render_per_minute_stats` 82L→83L (+1L pour `legend=`)
+- Stash conservé (git ne l'a pas supprimé automatiquement vu les conflits)
+
+**Résultats** : 5875 passed, 0 failed, 4 skipped — suite complète hors e2e/intégration
+
+**Conclusion** : Travaux stash récupérés intégralement. Stash@{0} peut être supprimé (`git stash drop stash@{0}`).
+
+## [2026-04-07] feat(healthcheck): DB healthcheck post-deploy — Complété
+
+**Statut** : Complété
+**Branche** : `fix/lusr-schema-backfill-teammates`
+
+**Décision technique** : Création d'un système de healthcheck DB en 3 couches :
+1. `src/utils/healthcheck_db.py` (+ `_healthcheck_schema.py`, `_healthcheck_format.py`) — module principal, vérifie tables/vues/colonnes/migrations par DB
+2. `scripts/healthcheck_db.py` — CLI avec `--deep`, `--verbose`, `--player`, `--json`
+3. `launcher.py::_run_db_healthcheck()` — exécution automatique au boot Streamlit, après migrations
+4. `deploy.sh` — smoke test post-deploy : healthcheck dans le conteneur → `data/logs/healthcheck_deploy.log`
+
+**Modifications** :
+- `src/data/sync/_engine_connections.py` : `logger.debug` → `logger.warning` pour échecs `weapon_kills`/`ensure_resolution_views`
+- `src/utils/launcher_i18n.py` : clé `healthcheck_ok` ajoutée
+
+**Résultats** : 34/34 tests passent, couverture 87%/100%/87%, ruff clean, CLI testée sur données réelles (détecte `match_participants.mmr` manquant)
+
+**Conclusion** : Le healthcheck est opérationnel. Au prochain deploy, le log `data/logs/healthcheck_deploy.log` contiendra le résultat complet avec horodatage et hash de commit.
+
 ## [2026-04-07] fix(tests): isolation _sync_mode — 5889 passed, 0 failed — Complété
 
 **Statut** : Complété
