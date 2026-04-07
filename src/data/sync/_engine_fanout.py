@@ -326,6 +326,55 @@ class FanoutEnrichmentMixin:
             logger.debug("fanout repair: check PME échoué pour xuid=%s: %s", xuid, exc)
             return False
 
+    def _run_lusr_for_other_players(self: _SyncProtocol) -> None:
+        """Calcule le LUSR manquant pour tous les joueurs enregistrés (non bloquant).
+
+        Appelé inconditionnellement après ``_run_lusr_post_sync`` (step 5) pour
+        rattraper les matchs solo de coéquipiers enregistrés qui ne déclenchent
+        jamais le fan-out (car le joueur principal y était absent).
+
+        Crée un moteur léger (sans API) par joueur et appelle
+        ``batch_compute_lusr(force=False)`` — mode incrémental, donc rapide
+        quand il n'y a rien de nouveau.
+        """
+        from src.data.sync.engine import DuckDBSyncEngine
+        from src.utils.paths import get_shared_matches_path_from_player
+
+        others = self._get_other_registered_players()
+        if not others:
+            return
+
+        for player in others:
+            try:
+                db_path: Path = player["db_path"]
+                if not db_path.exists():
+                    continue
+                shared_path = get_shared_matches_path_from_player(db_path)
+                if not shared_path or not shared_path.exists():
+                    continue
+
+                engine = DuckDBSyncEngine(
+                    player_db_path=db_path,
+                    xuid=player["xuid"],
+                    gamertag=player["gamertag"],
+                    shared_db_path=shared_path,
+                    shared_read_only=True,
+                )
+                try:
+                    lusr_count = engine.batch_compute_lusr(force=False)
+                    if lusr_count > 0:
+                        logger.info(
+                            "lusr_catchup [%s]: %d match(s) calculé(s)",
+                            player["gamertag"],
+                            lusr_count,
+                        )
+                finally:
+                    engine.close()
+            except Exception as exc:
+                logger.warning(
+                    "lusr_catchup [%s]: erreur non bloquante: %s", player["gamertag"], exc
+                )
+
     def fanout_repair_missing_scores(self: _SyncProtocol) -> None:
         """Répare les performance_scores manquants chez les coéquipiers enregistrés.
 

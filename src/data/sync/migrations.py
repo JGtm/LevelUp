@@ -1092,6 +1092,19 @@ def ensure_match_skill_rank_table(conn: duckdb.DuckDBPyConnection) -> None:
     except Exception as e:
         logger.error("Impossible d'initialiser match_skill_rank : %s", e)
 
+    # Colonnes ajoutées après la création initiale de la table — migration idempotente.
+    # CREATE TABLE IF NOT EXISTS ne suffit pas si la table existe déjà sans ces colonnes.
+    _MISSING_COLS = [
+        ("start_time", "TIMESTAMP"),
+        ("rating_deviation", "FLOAT"),
+        ("playlist_group", "VARCHAR"),
+    ]
+    for col_name, col_type in _MISSING_COLS:
+        try:
+            _add_column_if_missing(conn, "match_skill_rank", col_name, col_type)
+        except Exception as e:
+            logger.warning("ensure_match_skill_rank_table: migration colonne %s: %s", col_name, e)
+
 
 # ─────────────────────────────────────────────────────────────────────────────
 # Migration match_registry : colonne sync_spnkr_version (v5.4)
