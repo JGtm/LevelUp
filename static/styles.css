@@ -2216,3 +2216,10 @@ div[data-testid="stNumberInput"] input:focus {
 .ts-note strong {
     color: rgba(245, 248, 255, 0.92);
 }
+
+/* Masquer la barre Streamlit native (header, toolbar, menu) */
+#MainMenu { visibility: hidden !important; }
+header[data-testid="stHeader"] { display: none !important; }
+div[data-testid="stToolbar"] { display: none !important; }
+div[data-testid="stDecoration"] { display: none !important; }
+div[data-testid="stStatusWidget"] { display: none !important; }

@@ -1,6 +1,8 @@
 [server]
 port = 8501
 enableStaticServing = true
+enableCORS = false
+enableXsrfProtection = false
 
 [global]
 showWarningOnDirectExecution = false
