@@ -3,6 +3,27 @@
 > Ce fichier capture le raisonnement de l'agent entre les sessions.
 > Archivé : 2026-02-01 (logs précédents dans `.ai/archive/thought_log_pre_phase6.md`)
 
+## [2026-04-07] feat(ui): persistance UI v6.4 — localStorage + migration filtres — Complété
+
+**Statut** : Complété  
+**Branche** : `fix/lusr-schema-backfill-teammates`  
+**Commit** : `e957f0dd`
+
+**Décision technique** :
+- Composant Streamlit custom `browser_storage` (localStorage `levelup.prefs`) pour persister `last_db_path` + `lang` entre sessions navigateur
+- Migration silencieuse des filtres joueur de `.streamlit/filter_preferences/` → `data/players/{gamertag}/ui_prefs.json` (volume Docker)
+- `_resolve_db_path` augmentée d'une priorité 3 (localStorage) entre deep-link et SPNKr
+- `healthcheck_db` : extraction en 3 sous-modules (`_healthcheck_schema.py`, `_healthcheck_format.py`, `healthcheck_db.py`) — fonctions trop complexes annotées `# noqa: C901, PLR0912`
+
+**Résultats** :
+- 5849 tests passent (0 failed, 4 skipped) — suite hors intégration/e2e
+- ruff clean sur `src/` (0 violations)
+- Baseline taille : 122 violations documentées
+
+**Conclusion** : Feature v6.4 complète. Prête pour merge ou test Streamlit.
+
+---
+
 ## [2026-04-07] fix(fanout): double parse skill_json + fusion dominance/comeback — Complété
 
 **Statut** : Complété  
