@@ -89,6 +89,7 @@ def _run_for_db(
     *,
     backfill_kwargs: dict[str, object] | None = None,
     on_progress: object | None = None,
+    metadata_db_path: Path | None = None,
 ) -> MigrationReport:
     """Exécute les migrations pendantes sur une DB donnée."""
     report = MigrationReport(errors=[])
@@ -100,6 +101,13 @@ def _run_for_db(
         return report
 
     with duckdb_read_write(db_path) as conn:
+        # Pour les migrations shared, attacher metadata.duckdb afin que
+        # v_match_full (qui JOINt meta.asset_translations) soit accessible.
+        if target_db == "shared" and metadata_db_path and metadata_db_path.exists():
+            import contextlib
+
+            with contextlib.suppress(Exception):
+                conn.execute(f"ATTACH '{metadata_db_path}' AS meta (READ_ONLY)")
         _ensure_migration_table(conn)
         applied = _get_applied(conn)
 
@@ -173,7 +181,12 @@ def apply_pending_migrations(
     for path, target in db_map:
         if path is None:
             continue
-        sub = _run_for_db(path, target, backfill_kwargs=backfill_kwargs)
+        sub = _run_for_db(
+            path,
+            target,
+            backfill_kwargs=backfill_kwargs,
+            metadata_db_path=metadata_db_path,
+        )
         total.schemas_applied += sub.schemas_applied
         total.backfills_applied += sub.backfills_applied
         if sub.errors:

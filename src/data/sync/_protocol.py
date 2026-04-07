@@ -38,6 +38,7 @@ class _SyncProtocol(Protocol):
     _existing_match_ids: set[str] | None
     _friends_xuids: frozenset[str] | None
     _pending_other_psa: dict[str, list]
+    _pending_other_csr: dict[str, list]  # xuid → [SkillParticipantUpdate] (CSR co-joueurs)
 
     # Résolveur de métadonnées (maps, playlists)
     _metadata_resolver: Callable[[str, str | None], str | None] | None

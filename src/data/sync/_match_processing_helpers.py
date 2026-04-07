@@ -257,6 +257,43 @@ class MatchProcessingHelpersMixin:
                     match_id,
                 )
 
+    def _collect_csr_for_other_players(
+        self: _SyncProtocol,
+        skill_json: dict | None,
+        match_id: str,
+    ) -> None:
+        """Collecte les données CSR des coéquipiers enregistrés depuis skill_json.
+
+        Lors du sync d'un match classé, skill_json contient le RankRecap de TOUS
+        les participants. On extrait les CSR des autres joueurs enregistrés et on
+        les stocke dans self._pending_other_csr pour distribution par le fanout.
+
+        Args:
+            skill_json: JSON brut de l'API skill (peut être None pour les non-classés).
+            match_id: ID du match en cours.
+        """
+        if not skill_json:
+            return
+        all_updates = transform_all_skill_stats(skill_json, match_id)
+        csr_updates = [u for u in all_updates if u.post_match_csr is not None]
+        if not csr_updates:
+            return
+
+        my_xuid = self._xuid or ""
+        others = {p["xuid"] for p in self._get_other_registered_players() if p.get("xuid")}
+
+        for update in csr_updates:
+            if update.xuid == my_xuid or update.xuid not in others:
+                continue
+            bucket = self._pending_other_csr.setdefault(update.xuid, [])
+            bucket.append(update)
+            logger.debug(
+                "csr_fanout: CSR en attente pour xuid=%s match=%s (csr=%.0f)",
+                update.xuid,
+                match_id,
+                update.post_match_csr,
+            )
+
     async def _try_insert_pve_stats(
         self: _SyncProtocol,
         stats_json: dict,
