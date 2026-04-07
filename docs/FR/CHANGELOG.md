@@ -24,6 +24,18 @@ Le format est basé sur [Keep a Changelog](https://keepachangelog.fr/fr/1.1.0/).
 
 - **Fanout badges comeback** — les badges Remontada / Débandade / Contre-Remontada sont désormais calculés pour les co-joueurs enregistrés lors du fanout de sync, en parallèle de la distribution PSA et CSR.
 
+### Ajouté (suite)
+
+- **Healthcheck DB** — nouveau module (`src/utils/healthcheck_db.py`) qui vérifie l'état de toutes les bases DuckDB à chaque démarrage et après chaque déploiement :
+  - Vérifie la présence des tables, des vues v6 (`v_gamertag_lookup`, `v_match_full`, `v_killer_victim_full`, `v_weapon_kills`) et des colonnes critiques
+  - Vérifie que `metadata.duckdb` est attachable depuis `shared_matches`
+  - Détecte les migrations en attente
+  - Auto-répare les vues v6 manquantes/cassées via `ensure_resolution_views()`
+  - Mode `--deep` : intégrité référentielle (participants orphelins, doublons)
+  - CLI : `python scripts/healthcheck_db.py [--verbose] [--deep] [--player GT] [--json]`
+  - Intégré dans `launcher.py` — s'exécute automatiquement après les migrations au démarrage, affiche ✅/⚠️/❌ dans la console
+  - Intégré dans `deploy.sh` — smoke test post-déploiement, résultats ajoutés dans `data/logs/healthcheck_deploy.log` (persisté entre les déploiements via le volume Docker)
+
 ### Modifié
 
 - **Image Docker** — `ffmpeg` est désormais installé dans l'image, permettant la génération de miniatures vidéo dans les déploiements conteneurisés sans étape d'installation manuelle supplémentaire.

@@ -40,7 +40,7 @@ STRINGS: dict[str, dict[str, str] | str] = {
     "media_no_thumbnail": "no_thumbnail",  # alias → common
     "media_unassociated_match": "not_associated",  # alias → common
     # ── Settings ─────────────────────────────────────────────────────────────
-    "media_view_full": {"fr": "Voir en grand", "en": "View full size"},
+    "media_view_full": {"fr": "Agrandir", "en": "Enlarge"},
     "media_file_missing": {"fr": "Fichier absent : {file_name}", "en": "File missing: {file_name}"},
     "media_dialog_title": {"fr": "Média", "en": "Media"},
     "media_no_indexed": {
@@ -55,7 +55,7 @@ STRINGS: dict[str, dict[str, str] | str] = {
     "media_captures_of": {"fr": "Captures de {gamertag}", "en": "Captures by {gamertag}"},
     "media_unmatched": {"fr": "Sans correspondance", "en": "Unmatched"},
     # ── Media library ───────────────────────────────────────────────────────
-    "ml_open_match": {"fr": "Ouvrir le match", "en": "Open match"},
+    "ml_open_match": {"fr": "Match", "en": "Match"},
     "ml_click_thumbnail": {
         "fr": "Cliquer pour afficher la miniature",
         "en": "Click to show thumbnail",
@@ -133,6 +133,8 @@ STRINGS: dict[str, dict[str, str] | str] = {
     "media_filter_all": {"fr": "(Tous)", "en": "(All)"},
     "media_sort_by": {"fr": "Trier par", "en": "Sort by"},
     "media_sort_desc": {"fr": "Décroissant", "en": "Descending"},
+    "media_sort_asc": {"fr": "Croissant", "en": "Ascending"},
+    "media_sort_order": {"fr": "Ordre", "en": "Order"},
     "media_sort_date_capture": {"fr": "Date capture", "en": "Capture date"},
     "media_sort_map": {"fr": "Carte", "en": "Map"},
     "media_sort_mode": {"fr": "Mode", "en": "Mode"},

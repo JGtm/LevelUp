@@ -2,7 +2,7 @@
 
 Ces tests couvrent :
 - _enrich_media_with_match_data : jointure df_full sur match_id
-- _apply_media_filters           : filtres kind/nom/carte/mode/outcome/squad + tri
+- _apply_media_filters           : filtres carte/mode/squad + tri stable + idempotence
 
 Aucun import Streamlit — ces fonctions sont testables sans UI.
 """
@@ -81,15 +81,12 @@ def _base_filters(**overrides) -> dict:
         "map_col": "map_ui",
         "mode": None,
         "mode_col": "mode_ui",
-        "outcome_codes": [],
         "squad": "Tous",
         "squad_solo": "Solo",
         "squad_squad": "Escouade",
-        "kinds": ["image", "video"],
-        "name": "",
         "sort_col": "capture_end_utc",
         "sort_desc": True,
-        "cols_per_row": 4,
+        "cols_per_row": 5,
     }
     base.update(overrides)
     return base
@@ -148,7 +145,6 @@ class TestEnrichMediaWithMatchData:
         """Si map_ui est déjà dans media_df, il ne doit pas être écrasé."""
         media = _make_media_df().with_columns(pl.lit("Existant").alias("map_ui"))
         result = _enrich_media_with_match_data(media, _make_df_full())
-        # La colonne existante doit être conservée
         assert result.filter(pl.col("match_id") == "match-001")["map_ui"][0] == "Existant"
 
     def test_preserves_row_count(self) -> None:
@@ -172,42 +168,11 @@ class TestApplyMediaFilters:
         result = _apply_media_filters(media, _base_filters())
         assert len(result) == len(media)
 
-    def test_kind_filter_images_only(self) -> None:
-        media = _make_media_df()
-        result = _apply_media_filters(media, _base_filters(kinds=["image"]))
-        assert all(r == "image" for r in result["kind"].to_list())
-
-    def test_kind_filter_videos_only(self) -> None:
-        media = _make_media_df()
-        result = _apply_media_filters(media, _base_filters(kinds=["video"]))
-        assert all(r == "video" for r in result["kind"].to_list())
-
-    def test_kind_filter_empty_returns_empty(self) -> None:
-        media = _make_media_df()
-        result = _apply_media_filters(media, _base_filters(kinds=[]))
-        # kinds=[] → pas de filtre kind (comportement voulu : retain all)
-        assert len(result) == len(media)
-
-    def test_name_filter_case_insensitive(self) -> None:
-        media = _make_media_df()
-        result = _apply_media_filters(media, _base_filters(name="CLIP"))
-        assert len(result) == 1
-        assert result["file_name"][0] == "clip1.mp4"
-
-    def test_name_filter_partial_match(self) -> None:
-        media = _make_media_df()
-        result = _apply_media_filters(media, _base_filters(name="old"))
-        assert len(result) == 1
-
-    def test_name_filter_no_match_returns_empty(self) -> None:
-        media = _make_media_df()
-        result = _apply_media_filters(media, _base_filters(name="zyxwvuts"))
-        assert result.is_empty()
-
     def test_map_filter_exact_match(self) -> None:
         media = _enrich_media_with_match_data(_make_media_df(), _make_df_full())
         result = _apply_media_filters(media, _base_filters(map="Recharge", map_col="map_ui"))
-        assert all(r == "Recharge" for r in result["map_ui"].drop_nulls().to_list())
+        non_null = result["map_ui"].drop_nulls().to_list()
+        assert all(r == "Recharge" for r in non_null)
         assert len(result) >= 1
 
     def test_map_filter_none_skipped(self) -> None:
@@ -220,12 +185,6 @@ class TestApplyMediaFilters:
         result = _apply_media_filters(media, _base_filters(mode="CTF", mode_col="mode_ui"))
         assert len(result) == 1
         assert result["mode_ui"][0] == "CTF"
-
-    def test_outcome_filter_victory_only(self) -> None:
-        media = _enrich_media_with_match_data(_make_media_df(), _make_df_full())
-        result = _apply_media_filters(media, _base_filters(outcome_codes=[2]))
-        victories = [r for r in result["outcome"].to_list() if r is not None]
-        assert all(v == 2 for v in victories)
 
     def test_squad_solo_filter(self) -> None:
         media = _enrich_media_with_match_data(_make_media_df(), _make_df_full())
@@ -243,19 +202,17 @@ class TestApplyMediaFilters:
         friends_values = [v for v in result["is_with_friends"].to_list() if v is not None]
         assert all(v is True for v in friends_values)
 
-    def test_apply_match_filters_false_skips_map_mode_outcome_squad(self) -> None:
-        """apply_match_filters=False → seuls kind et nom sont appliqués."""
+    def test_apply_match_filters_false_skips_map_mode_squad(self) -> None:
+        """apply_match_filters=False → les filtres map/mode/squad sont ignorés."""
         media = _enrich_media_with_match_data(_make_media_df(), _make_df_full())
         filters = _base_filters(
             map="Recharge",
             map_col="map_ui",
-            outcome_codes=[2],
             squad="Solo",
             squad_solo="Solo",
             squad_squad="Escouade",
         )
         result = _apply_media_filters(media, filters, apply_match_filters=False)
-        # Tous les médias doivent rester (les filtres match sont ignorés)
         assert len(result) == len(media)
 
     def test_sort_descending_by_date(self) -> None:
@@ -275,17 +232,67 @@ class TestApplyMediaFilters:
         assert dates == sorted(dates)
 
     def test_sort_falls_back_to_capture_end_utc_if_col_missing(self) -> None:
-        """Si sort_col n'existe pas, repli sur capture_end_utc."""
+        """Si sort_col n'existe pas, repli sur capture_end_utc sans exception."""
         media = _make_media_df()
         result = _apply_media_filters(media, _base_filters(sort_col="nonexistent_col"))
-        # Doit trier quand même sans lever d'exception
         assert len(result) == len(media)
 
-    def test_combined_kind_and_name_filter(self) -> None:
-        media = _make_media_df()
-        result = _apply_media_filters(media, _base_filters(kinds=["image"], name="screen"))
-        assert len(result) == 1
-        assert result["file_name"][0] == "screen2.png"
+
+# ── Idempotence ───────────────────────────────────────────────────────────────
+
+
+class TestApplyMediaFiltersIdempotence:
+    """Appliquer le même filtre N fois doit toujours produire le même résultat."""
+
+    def _check_idempotent(
+        self, media: pl.DataFrame, filters: dict, *, match_filters: bool = True
+    ) -> None:
+        r1 = _apply_media_filters(media, filters, apply_match_filters=match_filters)
+        r2 = _apply_media_filters(media, filters, apply_match_filters=match_filters)
+        r3 = _apply_media_filters(media, filters, apply_match_filters=match_filters)
+        assert r1["file_path"].to_list() == r2["file_path"].to_list(), (
+            "Résultat différent entre appel 1 et 2"
+        )
+        assert r2["file_path"].to_list() == r3["file_path"].to_list(), (
+            "Résultat différent entre appel 2 et 3"
+        )
+
+    def test_no_filter_idempotent(self) -> None:
+        self._check_idempotent(_make_media_df(), _base_filters())
+
+    def test_sort_desc_idempotent(self) -> None:
+        self._check_idempotent(_make_media_df(), _base_filters(sort_desc=True))
+
+    def test_sort_asc_idempotent(self) -> None:
+        self._check_idempotent(_make_media_df(), _base_filters(sort_desc=False))
+
+    def test_map_filter_idempotent(self) -> None:
+        media = _enrich_media_with_match_data(_make_media_df(), _make_df_full())
+        self._check_idempotent(media, _base_filters(map="Recharge", map_col="map_ui"))
+
+    def test_mode_filter_idempotent(self) -> None:
+        media = _enrich_media_with_match_data(_make_media_df(), _make_df_full())
+        self._check_idempotent(media, _base_filters(mode="CTF", mode_col="mode_ui"))
+
+    def test_squad_filter_idempotent(self) -> None:
+        media = _enrich_media_with_match_data(_make_media_df(), _make_df_full())
+        self._check_idempotent(
+            media, _base_filters(squad="Solo", squad_solo="Solo", squad_squad="Escouade")
+        )
+
+    def test_no_match_filters_idempotent(self) -> None:
+        media = _enrich_media_with_match_data(_make_media_df(), _make_df_full())
+        self._check_idempotent(media, _base_filters(), match_filters=False)
+
+    def test_combined_filters_idempotent(self) -> None:
+        media = _enrich_media_with_match_data(_make_media_df(), _make_df_full())
+        filters = _base_filters(
+            map="Recharge",
+            map_col="map_ui",
+            sort_col="map_ui",
+            sort_desc=False,
+        )
+        self._check_idempotent(media, filters)
 
 
 # ── Constantes déclarées ──────────────────────────────────────────────────────
