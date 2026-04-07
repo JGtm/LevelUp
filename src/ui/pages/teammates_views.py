@@ -328,9 +328,6 @@ def _render_map_history_section(
                 series.append((fx_gamertag, fr_sub))
 
         colors_by_name = assign_player_colors_fn([n for n, _ in series])
-        from src.ui.pages.teammates_legend import render_player_legend_panel
-
-        render_player_legend_panel(colors_by_name)
         breakdown_all = ensure_polars(compute_map_breakdown(sub_all))
 
         # full_squad_df = tous les matchs avec ces amis (non filtré par session/date)
