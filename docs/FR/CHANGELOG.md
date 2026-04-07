@@ -6,14 +6,28 @@ Toutes les modifications notables de ce projet sont documentées ici.
 
 Le format est basé sur [Keep a Changelog](https://keepachangelog.fr/fr/1.1.0/).
 
-## [6.3.0] - 2026-04-03
+## [6.4.0] - 2026-04-07
 
 ### Ajouté
 
-- **Noms de cartes et modes dans la langue de l'interface** — tous les noms de cartes, playlists, modes de jeu et paires s'affichent désormais en français ou en anglais sur chaque page : filtres sidebar, tableaux de matchs, graphes et histogramme win rate. Alimenté par une nouvelle table `asset_translations` dans `metadata.duckdb` contenant 9 674 noms localisés en 14 langues BCP-47.
-  - Nouveau schéma : `asset_translations (asset_id, asset_type, lang, name, fetched_at, PK)` et `medal_translations (name_key, lang, name, description, PK)` dans `metadata.duckdb`
-  - `v_match_full` refonte i18n v6 : les quatre JOINs sur tables legacy supprimés ; remplacés par 8 `LEFT JOIN meta.asset_translations` (en-US + fr-FR × 4 types). Nouvelles colonnes : `map_name_fr`, `playlist_name_fr`, `pair_name_fr`, `game_variant_name_fr`
-  - `resolve_asset_name()` / `resolve_medal_name()` utilisent les tables pivot pour des résolutions déterministes par langue
+- **Bibliothèque médias — filtres & tri** — la page Médias dispose désormais d'un panneau de filtres complet :
+  - **Propriétaire** — multiselect pour afficher/masquer les sections (Mes captures / Coéquipier(s) / Non associés)
+  - **Carte** — filtre par nom de carte (provenant des données de match)
+  - **Mode** — filtre par label de mode normalisé
+  - **Résultat** — multiselect (Victoire / Défaite / Égalité / Non terminé) basé sur les codes de résultat
+  - **Contexte** — radio pour restreindre aux matchs Solo ou en Escouade
+  - **Tri** — trier par date de capture (par défaut), carte, mode, résultat ou propriétaire ; bascule croissant/décroissant
+  - Les filtres type (image/vidéo) et nom de fichier sont conservés depuis l'ancien panneau
+  - Les médias non associés (sans match) ne sont pas affectés par les filtres de match et apparaissent toujours dans leur propre section quand elle est sélectionnée
+
+- **Fanout CSR coéquipiers** — lors de la synchronisation d'un match classé, les données CSR de tous les co-joueurs enregistrés sont désormais automatiquement collectées depuis le payload API `skill_json` et distribuées à chaque DB joueur. Auparavant, chaque joueur devait synchroniser son propre compte pour alimenter son historique CSR sur les matchs communs.
+
+- **Fanout badges comeback** — les badges Remontada / Débandade / Contre-Remontada sont désormais calculés pour les co-joueurs enregistrés lors du fanout de sync, en parallèle de la distribution PSA et CSR.
+
+### Modifié
+
+- **Image Docker** — `ffmpeg` est désormais installé dans l'image, permettant la génération de miniatures vidéo dans les déploiements conteneurisés sans étape d'installation manuelle supplémentaire.
+
   - `MetadataResolver.resolve()` accepte désormais un paramètre `lang`
   - Peuplement : `python scripts/populate_asset_translations.py` (supporte `--dry-run`, `--force`, `--types map playlist pair game_variant`)
 
