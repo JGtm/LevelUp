@@ -379,6 +379,11 @@ class DuckDBSyncEngine(
                                 # Réparer les PME manquants chez les coéquipiers
                                 # (cas : session jouée ensemble non encore enrichie côté coéquipier)
                                 self.fanout_repair_missing_scores()
+                                # Rattraper les LUSR manquants (joueur principal + coéquipiers)
+                                # — nécessaire car _run_post_sync_pipeline n'est pas appelé.
+                                self._detach_shared_from_player_conn()
+                                self._run_lusr_post_sync()
+                                self._run_lusr_for_other_players()
                                 result.finished_at = datetime.now(timezone.utc)
                                 result.duration_seconds = time.time() - start_time
                                 return result
@@ -460,6 +465,9 @@ class DuckDBSyncEngine(
         # 5. LUSR toujours recalculé (rattrapage des ratings manquants)
         self._detach_shared_from_player_conn()
         self._run_lusr_post_sync()
+        # 5b. LUSR catchup pour les autres joueurs enregistrés — inconditionnel
+        # pour rattraper leurs matchs solo (non présents dans inserted_match_ids).
+        self._run_lusr_for_other_players()
 
         # 6. Fan-out après detach — shared libéré (voir _engine_fanout.py)
         if result.inserted_match_ids:
