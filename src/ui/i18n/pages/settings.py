@@ -151,6 +151,10 @@ STRINGS: dict[str, dict[str, str] | str] = {
         "en": "Enable Discord notifications",
     },
     "set_discord_url": {"fr": "URL du webhook", "en": "Webhook URL"},
+    "set_discord_url_env_hint": {
+        "fr": "✅ Webhook configuré via `.env.local` (DISCORD_WEBHOOK_URL)",
+        "en": "✅ Webhook configured via `.env.local` (DISCORD_WEBHOOK_URL)",
+    },
     "set_discord_lang_label": {
         "fr": "Langue des messages Discord",
         "en": "Discord message language",
