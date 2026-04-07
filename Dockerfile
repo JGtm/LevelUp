@@ -6,6 +6,11 @@ ENV PYTHONDONTWRITEBYTECODE=1 \
 
 WORKDIR /app
 
+# --- Étape 0 : Paquets système ---
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    ffmpeg \
+    && rm -rf /var/lib/apt/lists/*
+
 # --- Étape 1 : Dépendances (cache Docker maximisé) ---
 # On copie pyproject.toml en premier pour ne pas
 # réinstaller à chaque changement de code source.
