@@ -19,66 +19,14 @@ from __future__ import annotations
 from datetime import datetime, timezone
 from pathlib import Path
 
-import duckdb
-
 from tests.conftest_sync import (
     GT_PLAYER_A,
     GT_PLAYER_B,
     XUID_PLAYER_A,
     XUID_PLAYER_B,
     count_rows,
-    create_player_db,
-    create_shared_db,
+    make_engine,
 )
-
-# ---------------------------------------------------------------------------
-# Helpers locaux
-# ---------------------------------------------------------------------------
-
-_METADATA_SCHEMA = """
-CREATE TABLE IF NOT EXISTS asset_translations (
-    asset_id VARCHAR, asset_type VARCHAR, lang VARCHAR,
-    name VARCHAR, description VARCHAR,
-    PRIMARY KEY (asset_id, asset_type, lang)
-);
-"""
-
-
-def _create_metadata_db(path: Path) -> Path:
-    path.parent.mkdir(parents=True, exist_ok=True)
-    conn = duckdb.connect(str(path))
-    try:
-        for stmt in _METADATA_SCHEMA.split(";"):
-            s = stmt.strip()
-            if s:
-                conn.execute(s)
-    finally:
-        conn.close()
-    return path
-
-
-def _make_engine(tmp_path: Path, *, shared_read_only: bool = False):
-    """Crée un DuckDBSyncEngine avec DBs réelles dans tmp_path."""
-    data_dir = tmp_path / "data"
-    player_dir = data_dir / "players" / GT_PLAYER_A
-    warehouse_dir = data_dir / "warehouse"
-
-    player_db = create_player_db(player_dir / "stats.duckdb")
-    shared_db = create_shared_db(warehouse_dir / "shared_matches_v2.duckdb")
-    metadata_db = _create_metadata_db(warehouse_dir / "metadata.duckdb")
-
-    from src.data.sync.engine import DuckDBSyncEngine
-
-    engine = DuckDBSyncEngine(
-        player_db_path=player_db,
-        xuid=XUID_PLAYER_A,
-        gamertag=GT_PLAYER_A,
-        shared_db_path=shared_db,
-        metadata_db_path=metadata_db,
-        shared_read_only=shared_read_only,
-    )
-    return engine
-
 
 # ===========================================================================
 # Tests match_registry
@@ -90,7 +38,7 @@ class TestInsertSharedRegistry:
 
     def test_insert_single_match(self, tmp_path: Path) -> None:
         """Un match inséré dans registry est lisible avec toutes ses colonnes."""
-        engine = _make_engine(tmp_path)
+        engine = make_engine(tmp_path)
         try:
             shared = engine._get_shared_connection()
             assert shared is not None
@@ -134,7 +82,7 @@ class TestInsertSharedRegistry:
 
     def test_insert_idempotent(self, tmp_path: Path) -> None:
         """Double insertion OR IGNORE → pas d'erreur, pas de doublon."""
-        engine = _make_engine(tmp_path)
+        engine = make_engine(tmp_path)
         try:
             shared = engine._get_shared_connection()
             data = {
@@ -166,7 +114,7 @@ class TestInsertSharedRegistry:
 
     def test_mode_category_patched_if_null(self, tmp_path: Path) -> None:
         """Si un match existe avec mode_category NULL, la 2e insertion le patche."""
-        engine = _make_engine(tmp_path)
+        engine = make_engine(tmp_path)
         try:
             shared = engine._get_shared_connection()
             # Insertion initiale SANS mode_category
@@ -223,7 +171,7 @@ class TestInsertSharedParticipants:
 
     def test_insert_participants(self, tmp_path: Path) -> None:
         """Les participants sont insérés avec leurs stats complètes."""
-        engine = _make_engine(tmp_path)
+        engine = make_engine(tmp_path)
         try:
             shared = engine._get_shared_connection()
 
@@ -302,7 +250,7 @@ class TestInsertSharedParticipants:
         PARTICIPANT_COLUMNS, donc batch_upsert_participants ne les touche pas.
         Le pipeline skill les écrit séparément via UPDATE + COALESCE.
         """
-        engine = _make_engine(tmp_path)
+        engine = make_engine(tmp_path)
         try:
             shared = engine._get_shared_connection()
 
@@ -377,7 +325,7 @@ class TestInsertSharedMedals:
 
     def test_insert_medals(self, tmp_path: Path) -> None:
         """Les médailles sont insérées avec la PK (match_id, xuid, medal_name_id)."""
-        engine = _make_engine(tmp_path)
+        engine = make_engine(tmp_path)
         try:
             shared = engine._get_shared_connection()
 
@@ -412,7 +360,7 @@ class TestInsertSharedMedals:
 
     def test_medals_idempotent(self, tmp_path: Path) -> None:
         """Double insertion des mêmes médailles → pas de doublon."""
-        engine = _make_engine(tmp_path)
+        engine = make_engine(tmp_path)
         try:
             shared = engine._get_shared_connection()
 
@@ -449,7 +397,7 @@ class TestInsertSharedAliases:
 
     def test_insert_aliases(self, tmp_path: Path) -> None:
         """Les aliases xuid→gamertag sont insérés."""
-        engine = _make_engine(tmp_path)
+        engine = make_engine(tmp_path)
         try:
             shared = engine._get_shared_connection()
 
@@ -475,7 +423,7 @@ class TestInsertSharedAliases:
 
     def test_alias_upsert_updates_gamertag(self, tmp_path: Path) -> None:
         """Si un xuid change de gamertag, l'upsert met à jour."""
-        engine = _make_engine(tmp_path)
+        engine = make_engine(tmp_path)
         try:
             shared = engine._get_shared_connection()
 
@@ -514,7 +462,7 @@ class TestBackfillBits:
 
     def test_bits_set_from_nonnull_columns(self, tmp_path: Path) -> None:
         """backfill_bits reflète les colonnes NOT NULL du participant."""
-        engine = _make_engine(tmp_path)
+        engine = make_engine(tmp_path)
         try:
             shared = engine._get_shared_connection()
             from src.data.sync.constants import ParticipantBits as PB
@@ -543,7 +491,7 @@ class TestBackfillBits:
 
     def test_bits_medals_flag(self, tmp_path: Path) -> None:
         """Le bit MEDALS est posé quand des médailles existent pour ce participant."""
-        engine = _make_engine(tmp_path)
+        engine = make_engine(tmp_path)
         try:
             shared = engine._get_shared_connection()
             from src.data.sync.constants import ParticipantBits as PB
@@ -583,7 +531,7 @@ class TestBackfillEventsBlock:
 
     def test_events_block_sets_events_loaded(self, tmp_path: Path) -> None:
         """Après _backfill_events_block, events_loaded=TRUE dans match_registry."""
-        engine = _make_engine(tmp_path)
+        engine = make_engine(tmp_path)
         try:
             shared = engine._get_shared_connection()
             match_id = "match-evblock-001"
@@ -619,7 +567,7 @@ class TestBackfillEventsBlock:
 
     def test_events_block_empty_list(self, tmp_path: Path) -> None:
         """Liste vide → 0 events insérés, events_loaded reste FALSE."""
-        engine = _make_engine(tmp_path)
+        engine = make_engine(tmp_path)
         try:
             shared = engine._get_shared_connection()
             match_id = "match-evblock-empty"
