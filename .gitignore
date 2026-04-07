@@ -128,3 +128,4 @@ query_weapons_tmp.py
 kill_python.bat
 data/.sync.lock
 data/warehouse/archive/shared_matches.duckdb
+data/ui_prefs.json
