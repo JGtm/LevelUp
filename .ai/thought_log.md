@@ -3,6 +3,24 @@
 > Ce fichier capture le raisonnement de l'agent entre les sessions.
 > Archivé : 2026-02-01 (logs précédents dans `.ai/archive/thought_log_pre_phase6.md`)
 
+## [2026-04-07] test(sync): audit final + centralisation helpers + caplog + v6 views — Complété
+
+**Statut** : Complété
+**Branche** : `fix/lusr-schema-backfill-teammates`
+
+**Décision technique** :
+Audit exhaustif des 4 fichiers de tests sync (shared_writes, fanout, nonregression, e2e) + corrections :
+1. **Centralisation helpers** dans `conftest_sync.py` : `V6_SHARED_VIEWS`, `METADATA_SCHEMA` (4 tables), `create_metadata_db()`, `make_engine()` — suppression des 4 copies locales `_METADATA_SCHEMA` + `_create_metadata_db` + `_make_engine`
+2. **Vues SQL v6** appliquées automatiquement dans `create_shared_db()` : `v_gamertag_lookup`, `v_weapon_kills`, `v_killer_victim_full`
+3. **Assertions faibles corrigées** : 3 × `>= 0` dans test_fanout remplacées par `== 0` (< MIN_MATCHES_FOR_RELATIVE) et `isinstance(c_pme, int)`
+4. **DDL defaults corrigés** : `headshot_kills DEFAULT 0`, `max_killing_spree DEFAULT 0` (au lieu de 3/5)
+5. **Tests caplog** : nouveau fichier `test_sync_logging.py` (4 tests) — close sans erreur, perf_scores vide, db_profiles absent
+6. **CI gate** : déjà couvert par `.github/workflows/ci.yml` job `test` (exécute `tests/` hors integration)
+
+**Résultats** : 67 tests sync passent (63 + 4 logging), 5847 total (42 échecs pré-existants dans v5_match_queries/xuid_resolution, non liés).
+
+---
+
 ## [2026-04-07] feat(ui): persistance UI v6.4 — localStorage + migration filtres — Complété
 
 **Statut** : Complété  
