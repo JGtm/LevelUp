@@ -2,7 +2,7 @@
 
 Pour changer de stratégie de positionnement, modifier ``_PANEL_MODE`` :
 
-- ``"fixed"``   → ``position:fixed`` côté droit, toujours visible en scrollant ✅ (défaut)
+- ``"fixed"``   → ``position:fixed`` côté droit, scroll-conditionné ✅ (défaut)
 - ``"sidebar"`` → ``st.sidebar``, très simple à tester
 - ``"hidden"``  → désactivé (debug / comparaison visuelle)
 """
@@ -12,6 +12,7 @@ from __future__ import annotations
 import logging
 
 import streamlit as st
+import streamlit.components.v1 as components
 
 from src.ui.i18n import get_lang
 
@@ -42,6 +43,36 @@ _FIXED_STYLE: str = (
 _LABEL_FR = "Joueurs"
 _LABEL_EN = "Players"
 
+# JS injecté via components.html(height=0) — observe deux sentinelles DOM :
+# - #llp-squad-start  : fin de l'en-tête Escouade (injecté par _render_fixed)
+# - #llp-impact-end   : début de la section Impact (injecté par teammates_impact)
+# Le panneau n'est visible qu'entre les deux.
+_SCROLL_OBSERVER_JS: str = """<script>
+(function(){
+  var T=0;
+  function run(){
+    try{
+      var d=window.parent.document;
+      var p=d.getElementById('llp-fixed-panel');
+      var s=d.getElementById('llp-squad-start');
+      if(!p||!s){if(T++<30)setTimeout(run,150);return;}
+      var e=d.getElementById('llp-impact-end');
+      function upd(){
+        var iH=window.parent.innerHeight||768;
+        var ok=s.getBoundingClientRect().top<iH;
+        if(ok&&e)ok=e.getBoundingClientRect().top>50;
+        p.style.display=ok?'block':'none';
+      }
+      var mc=d.querySelector('[data-testid="stMain"]')||d.querySelector('.main');
+      if(mc)mc.addEventListener('scroll',upd,{passive:true});
+      window.parent.addEventListener('scroll',upd,{passive:true});
+      upd();
+    }catch(ex){if(T++<30)setTimeout(run,150);}
+  }
+  run();
+})();
+</script>"""
+
 
 def render_player_legend_panel(colors_by_name: dict[str, str]) -> None:
     """Injecte le panneau de légende joueurs selon la stratégie ``_PANEL_MODE``."""
@@ -66,7 +97,13 @@ def render_player_legend_panel(colors_by_name: dict[str, str]) -> None:
 
 
 def _render_fixed(colors_by_name: dict[str, str], label: str) -> None:
-    """Panneau ``position:fixed`` côté droit — toujours visible en scrollant."""
+    """Panneau ``position:fixed`` c\u00f4t\u00e9 droit \u2014 visible entre Escouade et Impact.
+
+    Le panneau d\u00e9marre cach\u00e9 (``display:none``). Un observateur JS pilote sa
+    visibilit\u00e9 selon la position de deux sentinelles DOM :
+    ``#llp-squad-start`` (inject\u00e9e ici) et ``#llp-impact-end`` (inject\u00e9e dans
+    ``render_impact_taquinerie``).
+    """
     dots = "".join(
         f'<div style="display:flex;align-items:center;gap:8px;margin:3px 0;">'
         f'<span style="width:11px;height:11px;border-radius:50%;background:{color};'
@@ -81,8 +118,14 @@ def _render_fixed(colors_by_name: dict[str, str], label: str) -> None:
         f'letter-spacing:.08em;color:rgba(255,255,255,.5);margin-bottom:6px;">'
         f"{label}</div>"
     )
-    html = f'<div style="{_FIXED_STYLE}">{header}{dots}</div>'
+    # Sentinelle de d\u00e9but + panneau cach\u00e9 initialement (le JS g\u00e8re la visibilit\u00e9)
+    html = (
+        '<div id="llp-squad-start" style="height:0;line-height:0;overflow:hidden;'
+        'padding:0;margin:0;border:0;"></div>'
+        f'<div id="llp-fixed-panel" style="display:none;{_FIXED_STYLE}">{header}{dots}</div>'
+    )
     st.markdown(html, unsafe_allow_html=True)
+    components.html(_SCROLL_OBSERVER_JS, height=0)
 
 
 def _render_sidebar(colors_by_name: dict[str, str], label: str) -> None:
