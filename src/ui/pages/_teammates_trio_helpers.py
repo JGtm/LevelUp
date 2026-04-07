@@ -19,7 +19,7 @@ from src.ui.cache import cached_compute_sessions_db
 from src.ui.chart_utils import safe_chart_render
 from src.ui.i18n import t
 from src.ui.medals import render_medals_grid
-from src.ui.pages.teammates_charts import render_trio_charts
+from src.ui.pages.teammates_charts import _hide_legend, render_trio_charts
 from src.ui.streamlit_modern import PLOTLY_STATIC_CONFIG
 from src.visualization._chart_series import ChartData, MatchSeries, SquadRecordSet
 from src.visualization._compat import DataFrameLike, ensure_polars
@@ -164,12 +164,11 @@ def _render_per_minute_stats(  # noqa: PLR0913
         showlegend=False,
     )
     fig_pm = apply_halo_plot_style(fig_pm, height=None)
-    fig_pm.update_traces(showlegend=False)
     # Forcer l'axe zéro en gras blanc (apply_halo_plot_style le désactive via theme.py)
     fig_pm.update_yaxes(zeroline=True, zerolinecolor="rgba(255,255,255,0.75)", zerolinewidth=2)
     with safe_chart_render():
         if fig_pm is not None:
-            st.plotly_chart(fig_pm, width="stretch", config=PLOTLY_STATIC_CONFIG)
+            st.plotly_chart(_hide_legend(fig_pm), width="stretch", config=PLOTLY_STATIC_CONFIG)
         else:
             st.info(t("insufficient_data_chart"))
 
