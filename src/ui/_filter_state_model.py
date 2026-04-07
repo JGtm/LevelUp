@@ -170,3 +170,16 @@ def get_filter_file_path(player_key: str) -> Path:
     filters_dir = get_filters_dir()
     safe_key = player_key.replace("/", "_").replace("\\", "_").replace(":", "_")
     return filters_dir / f"{safe_key}.json"
+
+
+def get_player_prefs_path(xuid: str, db_path: str | None = None) -> Path | None:
+    """Retourne data/players/{gamertag}/ui_prefs.json si la DB est dans un répertoire joueur.
+
+    Retourne None si le répertoire n'existe pas ou si db_path est absent.
+    Ce chemin est dans le volume Docker monté (persistant entre rebuilds).
+    """
+    if db_path:
+        gamertag_dir = Path(db_path).parent
+        if gamertag_dir.parent.name == "players" and gamertag_dir.exists():
+            return gamertag_dir / "ui_prefs.json"
+    return None

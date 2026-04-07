@@ -40,6 +40,9 @@ from src.ui._filter_state_model import (
 from src.ui._filter_state_model import (
     get_player_key as _get_player_key,
 )
+from src.ui._filter_state_model import (
+    get_player_prefs_path as _get_player_prefs_path,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -57,6 +60,40 @@ def _get_filter_file_path(player_key: str) -> Path:
     filters_dir = _get_filters_dir()
     safe_key = player_key.replace("/", "_").replace("\\", "_").replace(":", "_")
     return filters_dir / f"{safe_key}.json"
+
+
+def _resolve_prefs_path(xuid: str, db_path: str | None = None) -> Path:
+    """Retourne le chemin des préférences et migre silencieusement si besoin (v6.4).
+
+    Algorithme :
+    1. Si db_path est dans data/players/{gamertag}/ :
+       → chemin cible = data/players/{gamertag}/ui_prefs.json (volume Docker)
+       → migration silencieuse depuis l'ancien emplacement .streamlit/
+    2. Sinon fallback sur .streamlit/filter_preferences/ (chemin legacy,
+       compatible avec les tests qui mockent _get_filters_dir).
+    """
+    import shutil
+
+    new_path = _get_player_prefs_path(xuid, db_path)
+    if new_path is not None:
+        if not new_path.exists():
+            player_key = _get_player_key(xuid, db_path)
+            old_path = _get_filter_file_path(player_key)
+            if old_path.exists() and old_path != new_path:
+                try:
+                    shutil.copy2(old_path, new_path)
+                    old_path.unlink()
+                    logger.info(
+                        "Prefs filtre migrées : %s → %s",
+                        old_path.name,
+                        new_path,
+                    )
+                except Exception as _e:
+                    logger.debug("Migration prefs ignorée : %s", _e)
+        return new_path
+    # Fallback legacy (.streamlit/filter_preferences/) — path mockable dans les tests
+    player_key = _get_player_key(xuid, db_path)
+    return _get_filter_file_path(player_key)
 
 
 # ---------------------------------------------------------------------------
@@ -194,9 +231,8 @@ def save_filter_preferences(  # noqa: C901, PLR0912, PLR0913, PLR0915
             preferences.experience_types = exp_list
             preferences.experience_types_mode = exp_mode
 
-    # Sauvegarder dans le fichier
-    player_key = _get_player_key(xuid, db_path)
-    file_path = _get_filter_file_path(player_key)
+    # Sauvegarder dans le fichier (v6.4 : chemin résolu — data/players/ ou legacy)
+    file_path = _resolve_prefs_path(xuid, db_path)
     logger.debug("Prefs filtres sauvegardées (xuid=%s...)", str(xuid or "")[:8])
 
     try:
@@ -220,8 +256,7 @@ def load_filter_preferences(
     Returns:
         Préférences chargées ou None si aucune préférence sauvegardée.
     """
-    player_key = _get_player_key(xuid, db_path)
-    file_path = _get_filter_file_path(player_key)
+    file_path = _resolve_prefs_path(xuid, db_path)
 
     if not file_path.exists():
         return None
@@ -411,8 +446,7 @@ def clear_filter_preferences(xuid: str, db_path: str | None = None) -> None:
         xuid: XUID ou gamertag du joueur.
         db_path: Chemin vers la base de données (optionnel).
     """
-    player_key = _get_player_key(xuid, db_path)
-    file_path = _get_filter_file_path(player_key)
+    file_path = _resolve_prefs_path(xuid, db_path)
 
     if file_path.exists():
         with contextlib.suppress(Exception):
