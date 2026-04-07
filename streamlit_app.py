@@ -262,9 +262,17 @@ def _initialize_app() -> tuple[AppSettings, str, list[str], list[str]]:  # noqa:
         ensure_h5g_commendations_repo()
 
     # Paramètres (persistés)
-    settings: AppSettings = load_settings()
-    st.session_state[SK.APP_SETTINGS] = settings
-    logger.info("Settings chargées: lang=%s", getattr(settings, "lang", "fr"))
+    # Guard : si app_settings est déjà en session (rerun dans la même session), ne pas
+    # recharger depuis disque pour éviter d'écraser une valeur sauvegardée par la page
+    # Paramètres au cours du même run.
+    _cached_settings: AppSettings | None = st.session_state.get(SK.APP_SETTINGS)
+    if _cached_settings is not None and isinstance(_cached_settings, AppSettings):
+        settings = _cached_settings
+        logger.debug("Settings depuis session_state (rerun, pas de rechargement disque)")
+    else:
+        settings = load_settings()
+        st.session_state[SK.APP_SETTINGS] = settings
+        logger.info("Settings chargées depuis disque: lang=%s", getattr(settings, "lang", "fr"))
 
     # Appliquer la méthode d'auth préférée issue d'app_settings.json
     try:

@@ -36,7 +36,6 @@ from src.ui.pages.explorer_logic import (
 from src.ui.pages.explorer_results import (
     render_filter_results,
     render_player_results,
-    show_single_match,
 )
 from src.visualization._compat import ensure_polars
 
@@ -57,6 +56,7 @@ def render_explorer_page(
     df, dff = ensure_polars(df), ensure_polars(dff)
     _inject_explorer_css()
     pending_gt, pending_mid = _consume_deep_links()
+    deep_link_mid = pending_mid.strip() if isinstance(pending_mid, str) else ""
 
     filtered, selected_mid = _render_match_filters(
         dff,
@@ -70,33 +70,44 @@ def render_explorer_page(
 
     search_clicked = st.button(t("btn_search"), width="stretch", type="primary")
 
-    # Réinitialiser la sélection de match quand une nouvelle recherche est lancée
     if search_clicked:
         st.session_state.pop("_explorer_selected_match", None)
 
-    if pending_mid and isinstance(pending_mid, str) and pending_mid.strip():
-        show_single_match(df, pending_mid.strip(), params)
-        return
-
-    # Auto-déclencher la recherche si un gamertag est passé en deep link
-    if not search_clicked and not pending_gt:
+    if not search_clicked and not pending_gt and not deep_link_mid:
         st.info(t("exp_select_match_hint"))
         return
+
+    effective_mid = selected_mid or (deep_link_mid if deep_link_mid else None)
+
+    # Ancre de scroll pour deep link — injectée juste avant les résultats
+    if deep_link_mid:
+        _scroll_into_view()
 
     _dispatch_results(
         player_gt,
         player_xuid,
         filtered,
-        selected_mid,
+        effective_mid,
         df,
         params,
     )
 
 
 def _consume_deep_links() -> tuple[str | None, str]:
-    """Extrait les paramètres deep link depuis session_state."""
+    """Extrait les paramètres deep link depuis session_state.
+
+    Deux sources possibles pour match_id :
+    - ``_pending_match_id`` : posé par ``_parse_query_params`` si ``st.switch_page``
+      a interrompu le run avant ``consume_pending_match_id``.
+    - ``match_id_input`` : posé par ``consume_pending_match_id`` dans le run précédent
+      (chemin normal : query params → pending_match_id → match_id_input → switch_page).
+    """
     pending_gt = st.session_state.pop("_pending_gamertag", None)
-    pending_mid = st.session_state.get("match_id_input", "")
+    pending_mid = (
+        st.session_state.pop("_pending_match_id", None)
+        or st.session_state.pop("match_id_input", None)
+        or ""
+    ).strip()
     if pending_gt:
         logger.info("Explorer deep link gamertag=%s", pending_gt)
     if pending_mid:
@@ -153,6 +164,21 @@ def _inject_explorer_css() -> None:
         "{ border-radius: 0 !important; }"
         "</style>",
         unsafe_allow_html=True,
+    )
+
+
+def _scroll_into_view() -> None:
+    """Injecte un micro-composant invisible qui scrolle la page jusqu'à sa position."""
+    import streamlit.components.v1 as components
+
+    components.html(
+        "<script>"
+        "const f=window.frameElement;"
+        "if(f){f.scrollIntoView({behavior:'instant',block:'start'});}"
+        "else{window.parent.document.querySelector('.stHtml:last-of-type')"
+        "?.scrollIntoView({behavior:'instant',block:'start'});}"
+        "</script>",
+        height=0,
     )
 
 

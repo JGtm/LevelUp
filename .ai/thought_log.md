@@ -3,6 +3,24 @@
 > Ce fichier capture le raisonnement de l'agent entre les sessions.
 > Archivé : 2026-02-01 (logs précédents dans `.ai/archive/thought_log_pre_phase6.md`)
 
+## [2026-04-07] fix(settings): auto-sauvegarde show_records via on_change + guard session_state — Complété
+
+**Tâche** : Le toggle "Afficher les records historiques" dans la page Paramètres revenait sporadiquement à `True` après relancement.
+
+**Cause(s) identifiée(s)** :
+1. `_initialize_app()` dans `streamlit_app.py` appelle `load_settings()` à **chaque rerun** (pas seulement au premier chargement de session), écrasant `session_state["app_settings"]` avec le contenu disque. Si un rerun se produisait dans une fenêtre de temps entre une sauvegarde et la propagation en session, la valeur pouvait être perdue.
+2. Le bug étant aléatoire, ça indique une race condition liée au rerun Streamlit (hot-reload, rerun après sync, etc.)
+
+**Décisions techniques** :
+1. **Guard `_initialize_app`** : `load_settings()` n'est appelé que si `session_state["app_settings"]` est absent (première session). Sur un rerun intra-session, la valeur session_state est réutilisée — cohérent avec le bouton "Recharger" qui met `session_state["app_settings"]` à jour avant le rerun.
+2. **Callback `_auto_save_show_records`** : sauvegarde immédiate au toggle (ajouté dans la session précédente), avec correction du fallback (`current.show_records` au lieu de `True` comme default).
+
+**Résultats** : 5890 tests passent (1 échec préexistant `media_tab.py` hors scope).
+
+**Branche** : `fix/lusr-schema-backfill-teammates`
+
+---
+
 ## [2026-04-07] fix(stash): récupération stash WIP — Complété
 
 **Statut** : Complété
@@ -9938,3 +9956,37 @@ Ajout d'un panneau de filtres complet sur la page Médias, en exploitant `df_ful
 **Résultats** : ruff clean, AST OK, baseline size 122 violations (render_media_tab 154L, conservé noqa).
 
 **Prochaine étape** : Tester sur VPS après déploiement.
+
+
+---
+
+## [2025-07-16] Réécriture test_media_filters_v64.py — Complété
+
+**Statut** : Complété
+
+**Décision technique :** `_apply_media_filters` a perdu les filtres `kinds`, `name`, `outcome_codes` lors du sprint précédent (suppression UI). La suite `TestApplyMediaFilters` référençait ces clés dans `_base_filters()` → 7 tests échouants. Réécriture complète du fichier : nouvelle `_base_filters()` sans les clés obsolètes, remplacement des 7 tests supprimés par 8 tests de filtres actuels (map/mode/squad/apply_match_filters) + 8 tests d'idempotence (`TestApplyMediaFiltersIdempotence`) + 2 tests de constantes (`TestConstants`). Ajout de `maintain_order=True` sur `unique()` + tri secondaire stable sur `file_path`.
+
+**Résultats** : 31/31 tests passent. Suites régressives sprint5/sprint6 : 5/5 OK.
+
+**Conclusion** : Tests alignés avec l'interface réelle de `_apply_media_filters`. Idempotence couverte.
+
+---
+
+## [2025-07-16] Fix navigation Media → Explorer (deep-link match_id) — Complété
+
+**Statut** : Complété
+
+**Décision technique :** Le flux Media → Explorer (bouton "Match" dans la bibliothèque médias) était cassé : `_consume_deep_links()` dans `explorer.py` ne lisait que `_pending_match_id` depuis `session_state`, mais `consume_pending_match_id()` (appelé dans le même run que `st.switch_page`) avait déjà consommé cette clé et créé `match_id_input`. Après le `st.switch_page` (rerun 3 → Explorer), `_pending_match_id` était absent et `match_id_input` non lu → `pending_mid` vide → `show_single_match` jamais appelé.
+
+**Flux complet corrigé (3 reruns)** :
+1. Bouton cliqué → `open_match_button()` pose `st.query_params["page"]="Match"` + `st.query_params["match_id"]=mid` → `st.rerun()`
+2. Routing : `_parse_query_params()` lit URL → pose `_pending_match_id` + `_pending_page` → vide URL → `consume_pending_match_id()` transfère vers `match_id_input` → `st.switch_page(explorer)`
+3. Explorer : `_consume_deep_links()` pop `match_id_input` (ou `_pending_match_id` en fallback) → `show_single_match()`
+
+**Fichiers modifiés** :
+- `src/ui/pages/explorer.py` : `_consume_deep_links` — ajout fallback `match_id_input` + `.strip()` inline
+- `tests/test_media_to_explorer_navigation.py` : docstring corrigée (flux query_params) + classe `TestOpenMatchButton` (4 tests)
+
+**Résultats** : 18/18 tests passent. Ruff OK.
+
+**Conclusion** : Navigation fonctionnelle. Les 3 chemins sont testés : (1) flux normal via `match_id_input`, (2) fallback via `_pending_match_id` (switch_page interrompt), (3) bouton `open_match_button` avec query_params.

@@ -1,10 +1,10 @@
-"""Composant Streamlit pour la persistance dans localStorage du navigateur.
+"""Persistance des préférences utilisateur dans un fichier JSON côté serveur.
 
-Stocke sous la clé ``levelup.prefs`` un objet JSON plat contenant :
+Stocke dans ``data/ui_prefs.json`` un objet JSON plat contenant :
 
 - ``last_gamertag``  : dernier gamertag sélectionné
 - ``last_db_path``   : dernier db_path sélectionné (slug, pas chemin complet)
-- ``lang``           : langue choisie dans ce navigateur
+- ``lang``           : langue choisie
 
 Usage :
 
@@ -21,50 +21,60 @@ Usage :
 
 from __future__ import annotations
 
+import json
 import logging
 from pathlib import Path
 
-import streamlit.components.v1 as components
+from src.utils.paths import DATA_DIR
 
 logger = logging.getLogger(__name__)
 
-_FRONTEND_DIR = Path(__file__).parent / "frontend"
-_component = components.declare_component(
-    "levelup_browser_storage",
-    path=str(_FRONTEND_DIR),
-)
+_PREFS_FILE: Path = DATA_DIR / "ui_prefs.json"
 
 # Clé session_state indiquant que le chargement initial est fait ce run
 _LOADED_KEY = "_browser_prefs_loaded"
 
 
+def _read_prefs() -> dict[str, str]:
+    """Lit le fichier de préférences. Retourne {} si absent ou invalide."""
+    try:
+        if _PREFS_FILE.exists():
+            data = json.loads(_PREFS_FILE.read_text(encoding="utf-8"))
+            if isinstance(data, dict):
+                return {str(k): str(v) for k, v in data.items() if v is not None}
+    except Exception as exc:
+        logger.debug("Lecture ui_prefs.json échouée : %s", exc)
+    return {}
+
+
+def _write_prefs(data: dict[str, str]) -> None:
+    """Écrit le fichier de préférences."""
+    try:
+        _PREFS_FILE.parent.mkdir(parents=True, exist_ok=True)
+        _PREFS_FILE.write_text(json.dumps(data, ensure_ascii=False), encoding="utf-8")
+    except Exception as exc:
+        logger.debug("Écriture ui_prefs.json échouée : %s", exc)
+
+
 def restore_browser_prefs() -> dict | None:
-    """Lit les préférences depuis localStorage (une seule fois par session Streamlit).
+    """Lit les préférences persistées (une seule fois par session Streamlit).
 
     Retourne un dict avec les clés présentes, ou ``None`` si déjà restauré
     ce run (pour ne pas déclencher de boucles de re-render).
-
-    Le composant rend une iframe hauteur=0, invisible.
     """
     import streamlit as st
 
     if st.session_state.get(_LOADED_KEY):
         return None
 
-    result = _component(action="read", data={}, key="_ls_read_init", default=None)
-    if result is None:
-        # Premier rendu : le composant n'a pas encore répondu — attendre prochain run
-        return None
-
     st.session_state[_LOADED_KEY] = True
-    if isinstance(result, dict) and result.get("ok") and result.get("data"):
-        logger.debug("localStorage restauré : %s", list(result["data"].keys()))
-        return result["data"]
-    return {}
+    prefs = _read_prefs()
+    logger.debug("Préférences restaurées : %s", list(prefs.keys()))
+    return prefs
 
 
 def persist_browser_prefs(**fields: str) -> None:
-    """Écrit un ou plusieurs champs dans localStorage (merge avec l'existant).
+    """Écrit un ou plusieurs champs dans les préférences (merge avec l'existant).
 
     Args:
         **fields: Paires clé/valeur à persister. Valeurs vides ignorées.
@@ -78,18 +88,25 @@ def persist_browser_prefs(**fields: str) -> None:
     if not clean:
         return
 
-    write_key = f"_ls_write_{'_'.join(sorted(clean.keys()))}"
+    # Déduplication : éviter les écritures répétées avec les mêmes valeurs au sein d'un run
+    write_key = f"_prefs_write_{'_'.join(sorted(clean.keys()))}"
     if st.session_state.get(write_key) == clean:
-        return  # Déjà écrit avec les mêmes valeurs ce run
+        return
 
-    _component(action="write", data=clean, key=write_key, default=None)
+    existing = _read_prefs()
+    existing.update(clean)
+    _write_prefs(existing)
     st.session_state[write_key] = clean
-    logger.debug("localStorage mis à jour : %s", list(clean.keys()))
+    logger.debug("Préférences mises à jour : %s", list(clean.keys()))
 
 
 def clear_browser_prefs() -> None:
-    """Efface toutes les préférences localStorage (pour debug / reset)."""
+    """Efface toutes les préférences (pour debug / reset)."""
     import streamlit as st
 
     st.session_state.pop(_LOADED_KEY, None)
-    _component(action="clear", data={}, key="_ls_clear", default=None)
+    try:
+        if _PREFS_FILE.exists():
+            _PREFS_FILE.unlink()
+    except Exception as exc:
+        logger.debug("Suppression ui_prefs.json échouée : %s", exc)

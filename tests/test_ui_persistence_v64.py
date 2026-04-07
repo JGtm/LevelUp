@@ -208,10 +208,10 @@ class TestResolvePrefsPath:
 
 
 class TestBrowserStorageLogic:
-    """Tests pour restore_browser_prefs / persist_browser_prefs (sans composant réel).
+    """Tests pour restore_browser_prefs / persist_browser_prefs (stockage JSON fichier).
 
-    Les fonctions importent `streamlit` en body → on peut mocker st.session_state
-    et le composant _component pour tester la logique pure.
+    Les fonctions importent `streamlit` en body → on mocke st.session_state.
+    Les I/O fichier sont mockées via _read_prefs / _write_prefs.
     """
 
     def _make_fake_st(self) -> SimpleNamespace:
@@ -225,7 +225,7 @@ class TestBrowserStorageLogic:
 
         fake_st = self._make_fake_st()
         fake_st.session_state["_browser_prefs_loaded"] = True
-        monkeypatch.setattr(bs, "_component", MagicMock())
+        monkeypatch.setattr(bs, "_read_prefs", MagicMock(return_value={}))
 
         with patch("streamlit.session_state", fake_st.session_state):
             import streamlit as st_real
@@ -235,14 +235,12 @@ class TestBrowserStorageLogic:
 
         assert result is None
 
-    def test_restore_returns_none_on_first_render_no_response(
-        self, monkeypatch: pytest.MonkeyPatch
-    ) -> None:
-        """Premier rendu sans réponse du composant → None (attendre prochain run)."""
+    def test_restore_returns_empty_dict_when_no_file(self, monkeypatch: pytest.MonkeyPatch) -> None:
+        """Fichier absent → retourne {} et pose le flag."""
         import src.ui.components.browser_storage as bs
 
         fake_st = self._make_fake_st()
-        monkeypatch.setattr(bs, "_component", MagicMock(return_value=None))
+        monkeypatch.setattr(bs, "_read_prefs", MagicMock(return_value={}))
 
         with patch("streamlit.session_state", fake_st.session_state):
             import streamlit as st_real
@@ -250,17 +248,16 @@ class TestBrowserStorageLogic:
             monkeypatch.setattr(st_real, "session_state", fake_st.session_state)
             result = bs.restore_browser_prefs()
 
-        assert result is None
-        # Le flag ne doit pas encore être posé
-        assert not fake_st.session_state.get("_browser_prefs_loaded")
+        assert result == {}
+        assert fake_st.session_state.get("_browser_prefs_loaded") is True
 
-    def test_restore_returns_data_on_ok_response(self, monkeypatch: pytest.MonkeyPatch) -> None:
-        """Réponse {ok: true, data: {...}} → retourne le dict data et pose le flag."""
+    def test_restore_returns_data_from_file(self, monkeypatch: pytest.MonkeyPatch) -> None:
+        """Fichier présent → retourne le dict et pose le flag."""
         import src.ui.components.browser_storage as bs
 
         fake_st = self._make_fake_st()
-        payload = {"ok": True, "data": {"last_gamertag": "GuiGui", "lang": "fr"}}
-        monkeypatch.setattr(bs, "_component", MagicMock(return_value=payload))
+        prefs_data = {"last_gamertag": "GuiGui", "lang": "fr"}
+        monkeypatch.setattr(bs, "_read_prefs", MagicMock(return_value=prefs_data))
 
         with patch("streamlit.session_state", fake_st.session_state):
             import streamlit as st_real
@@ -272,11 +269,11 @@ class TestBrowserStorageLogic:
         assert fake_st.session_state.get("_browser_prefs_loaded") is True
 
     def test_restore_returns_empty_dict_when_no_data(self, monkeypatch: pytest.MonkeyPatch) -> None:
-        """Réponse {ok: true, data: {}} → retourne {} (localStorage vide)."""
+        """Fichier vide → retourne {} après avoir posé le flag."""
         import src.ui.components.browser_storage as bs
 
         fake_st = self._make_fake_st()
-        monkeypatch.setattr(bs, "_component", MagicMock(return_value={"ok": True, "data": {}}))
+        monkeypatch.setattr(bs, "_read_prefs", MagicMock(return_value={}))
 
         with patch("streamlit.session_state", fake_st.session_state):
             import streamlit as st_real
@@ -291,8 +288,9 @@ class TestBrowserStorageLogic:
         import src.ui.components.browser_storage as bs
 
         fake_st = self._make_fake_st()
-        mock_comp = MagicMock()
-        monkeypatch.setattr(bs, "_component", mock_comp)
+        mock_write = MagicMock()
+        monkeypatch.setattr(bs, "_write_prefs", mock_write)
+        monkeypatch.setattr(bs, "_read_prefs", MagicMock(return_value={}))
 
         with patch("streamlit.session_state", fake_st.session_state):
             import streamlit as st_real
@@ -300,15 +298,16 @@ class TestBrowserStorageLogic:
             monkeypatch.setattr(st_real, "session_state", fake_st.session_state)
             bs.persist_browser_prefs(last_gamertag="", lang=None)
 
-        mock_comp.assert_not_called()
+        mock_write.assert_not_called()
 
-    def test_persist_calls_component_write(self, monkeypatch: pytest.MonkeyPatch) -> None:
-        """persist_browser_prefs appelle _component avec action='write'."""
+    def test_persist_writes_to_file(self, monkeypatch: pytest.MonkeyPatch) -> None:
+        """persist_browser_prefs écrit les données dans le fichier JSON."""
         import src.ui.components.browser_storage as bs
 
         fake_st = self._make_fake_st()
-        mock_comp = MagicMock(return_value=None)
-        monkeypatch.setattr(bs, "_component", mock_comp)
+        mock_write = MagicMock()
+        monkeypatch.setattr(bs, "_write_prefs", mock_write)
+        monkeypatch.setattr(bs, "_read_prefs", MagicMock(return_value={}))
 
         with patch("streamlit.session_state", fake_st.session_state):
             import streamlit as st_real
@@ -316,25 +315,19 @@ class TestBrowserStorageLogic:
             monkeypatch.setattr(st_real, "session_state", fake_st.session_state)
             bs.persist_browser_prefs(last_gamertag="GuiGui", lang="fr")
 
-        mock_comp.assert_called_once()
-        call_kwargs = mock_comp.call_args
-        assert (
-            call_kwargs.kwargs.get("action") == "write"
-            or call_kwargs.args[0] == "write"
-            or (call_kwargs.kwargs or {}).get("action") == "write"
-            or mock_comp.call_args[1].get("action") == "write"
-            or mock_comp.call_args[0][0] == "write"
-            if mock_comp.call_args[0]
-            else True
-        )
+        mock_write.assert_called_once()
+        written = mock_write.call_args[0][0]
+        assert written.get("last_gamertag") == "GuiGui"
+        assert written.get("lang") == "fr"
 
     def test_persist_deduplicates_same_values(self, monkeypatch: pytest.MonkeyPatch) -> None:
         """Appeler persist deux fois avec les mêmes valeurs → une seule écriture."""
         import src.ui.components.browser_storage as bs
 
         fake_st = self._make_fake_st()
-        mock_comp = MagicMock(return_value=None)
-        monkeypatch.setattr(bs, "_component", mock_comp)
+        mock_write = MagicMock()
+        monkeypatch.setattr(bs, "_write_prefs", mock_write)
+        monkeypatch.setattr(bs, "_read_prefs", MagicMock(return_value={}))
 
         with patch("streamlit.session_state", fake_st.session_state):
             import streamlit as st_real
@@ -343,7 +336,7 @@ class TestBrowserStorageLogic:
             bs.persist_browser_prefs(lang="fr")
             bs.persist_browser_prefs(lang="fr")  # doublon
 
-        assert mock_comp.call_count == 1  # une seule écriture
+        assert mock_write.call_count == 1  # une seule écriture
 
     def test_clear_removes_loaded_flag(self, monkeypatch: pytest.MonkeyPatch) -> None:
         """clear_browser_prefs réinitialise le flag _browser_prefs_loaded."""
@@ -351,8 +344,7 @@ class TestBrowserStorageLogic:
 
         fake_st = self._make_fake_st()
         fake_st.session_state["_browser_prefs_loaded"] = True
-        mock_comp = MagicMock(return_value=None)
-        monkeypatch.setattr(bs, "_component", mock_comp)
+        monkeypatch.setattr(bs, "_PREFS_FILE", MagicMock(**{"exists.return_value": False}))
 
         with patch("streamlit.session_state", fake_st.session_state):
             import streamlit as st_real

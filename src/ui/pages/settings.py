@@ -58,6 +58,11 @@ def _get_preserved_settings(settings: AppSettings) -> dict:
         "doppler_enabled": _b("doppler_enabled"),
         "doppler_project": _s("doppler_project"),
         "doppler_config": _s("doppler_config"),
+        # Auth
+        "auth_method": _s("auth_method", "refresh_token"),
+        # Médias — non exposés dans l'UI, préservés tels quels
+        "media_indexing_interval_hours": _i("media_indexing_interval_hours", 4),
+        "media_reindex_after_sync": _b("media_reindex_after_sync", True),
         # Sync — optimisé, non exposé, préservé tel quel
         "prefer_spnkr_db_if_available": _b("prefer_spnkr_db_if_available", True),
         "spnkr_refresh_on_start": _b("spnkr_refresh_on_start", True),
@@ -298,6 +303,25 @@ def _render_backfill_section(settings: AppSettings) -> dict:
     }
 
 
+def _auto_save_show_records() -> None:
+    """Persiste immédiatement show_records dès le changement du toggle.
+
+    Appelé via on_change : évite la perte de la valeur lors d'une navigation
+    entre pages (st.navigation réinitialise les clés widget au retour).
+    """
+    current: AppSettings | None = st.session_state.get("app_settings")
+    if current is None:
+        return
+    # Utilise la valeur courante des settings comme fallback (jamais True par défaut)
+    new_val = bool(st.session_state.get("setting_show_records", current.show_records))
+    if new_val == current.show_records:
+        return  # Aucun changement réel, ne pas écrire inutilement
+    updated = current.model_copy(update={"show_records": new_val})
+    ok, _ = save_settings(updated)
+    if ok:
+        st.session_state["app_settings"] = updated
+
+
 def _render_display_section(settings: AppSettings) -> tuple[bool, bool, bool, bool]:
     """Rend la section Affichage."""
     st.subheader(t("set_display_section"))
@@ -313,6 +337,7 @@ def _render_display_section(settings: AppSettings) -> tuple[bool, bool, bool, bo
         value=bool(getattr(settings, "show_records", True)),
         help=t("set_show_records_help"),
         key="setting_show_records",
+        on_change=_auto_save_show_records,
     )
     career_top_exclude_btb = st.toggle(
         t("set_career_exclude_btb"),

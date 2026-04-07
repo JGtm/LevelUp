@@ -66,8 +66,9 @@ FUNC:src/ui/pages/match_view_players_nemesis.py:262:render_nemesis_section:131L
 FUNC:src/ui/pages/match_view_players_nemesis.py:66:_render_antagonist_chart:101L
 FUNC:src/ui/pages/match_view_players_timeline.py:38:render_team_dominance_section:91L
 FUNC:src/ui/pages/match_view_rank.py:18:_build_match_rank_html:184L
-FUNC:src/ui/pages/media_tab.py:183:_build_media_filter_ui:101L
-FUNC:src/ui/pages/media_tab.py:318:render_media_tab:129L
+FUNC:src/ui/pages/media_tab.py:202:_build_media_filter_ui:99L
+FUNC:src/ui/pages/media_tab.py:338:render_media_tab:145L
+FUNC:src/ui/pages/media_tab.py:46:_render_media_grid:82L
 FUNC:src/ui/pages/teammates_charts.py:338:_build_first_events_fig:160L
 FUNC:src/ui/pages/teammates_helpers.py:162:_prepare_friends_table_data:92L
 FUNC:src/ui/pages/teammates_impact.py:304:_render_impact_from_events:86L
