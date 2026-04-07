@@ -2,7 +2,7 @@
 
 > **Analyze your Halo Infinite performance with advanced visualizations and an ultra-fast DuckDB architecture.**
 
-[![Version](https://img.shields.io/badge/Version-6.3.0-blue.svg)](https://github.com/JGtm/LevelUp/releases/tag/v6.3.0)
+[![Version](https://img.shields.io/badge/Version-6.4.0-blue.svg)](https://github.com/JGtm/LevelUp/releases/tag/v6.4.0)
 [![Python 3.12+](https://img.shields.io/badge/Python-3.12%2B-blue.svg)](https://www.python.org/downloads/)
 [![Streamlit](https://img.shields.io/badge/Streamlit-1.28%2B-FF4B4B.svg)](https://streamlit.io/)
 [![DuckDB](https://img.shields.io/badge/DuckDB-1.4%2B-FEE14E.svg)](https://duckdb.org/)
@@ -12,6 +12,12 @@
 ---
 
 ## What's new
+
+**v6.4 — Media filters, CSR & comeback fanout**
+- **Media library filters** — filter your captures by owner (My captures / Teammates / Unmatched), map, mode, outcome (Victory / Defeat / …), and solo vs squad context. Sort by capture date, map, mode, outcome, or owner with a one-click descending/ascending toggle
+- **CSR history for squadmates** — when you sync a ranked match, the ranking data of all registered co-players is now automatically collected and distributed to each player's DB — no separate sync required per player
+- **Comeback badges auto-computed for squadmates** — Remontada, Collapse, and Contre-Remontada badges are now calculated for your co-players during the sync fanout alongside PSA and CSR
+- **ffmpeg bundled in Docker** — video thumbnail generation works out of the box in containerized deployments
 
 **v6.3 — Localized names, squad records & medal details**
 - **Maps and modes in your language** — map names, playlists and game modes now appear in French (or English) across every page: sidebar filters, match tables, charts, and the win-rate histogram

@@ -9796,3 +9796,31 @@ Implémentation des axes D, E, F du plan `PLAN_REFACTO_ASSET_TRANSLATIONS_2026-0
 **Résultats** : 3 commits sur  `refactor/viz-pipeline-v2`, 0 régression.
 
 **Prochaine étape** : Axe G ou PR de V2.
+
+---
+
+## [2026-04-07] — Media library : filtres & tri (v6.4)
+
+**Statut** : Complété  
+**Branche** : `fix/lusr-schema-backfill-teammates`
+
+**Décision technique** :
+Ajout d'un panneau de filtres complet sur la page Médias, en exploitant `df_full` (déjà passé à `render_media_tab` mais ignoré jusqu'ici) pour enrichir les médias avec les données de match.
+
+**Architecture** :
+- `_enrich_media_with_match_data(media_df, df_full)` — join LEFT sur `match_id`, colonnes rapatriées : `outcome`, `pair_name`, `mode_ui`, `map_ui`, `is_with_friends`. Guard si df_full None/vide.
+- `_build_media_filter_ui(media_df) → dict` — construit l'expander Streamlit (2 rangées × 4-5 colonnes), retourne un dict de filtres typé. Options dynamiques calculées depuis le DataFrame enrichi.
+- `_apply_media_filters(df, filters, *, apply_match_filters=True) → pl.DataFrame` — applique les filtres kind, nom, carte, mode, outcome, contexte solo/escouade, et le tri. `apply_match_filters=False` pour la section "non associés".
+- Sections "mine" et "unassigned" : `unique(file_path)` avant `_apply_media_filters`. Section "teammate" : filtre d'abord, puis `unique` par gamertag dans la boucle de rendu.
+- Visibilité des sections contrôlée par le filtre "Propriétaire" ([] = tout afficher).
+
+**i18n** : 22 clés ajoutées dans `src/ui/i18n/pages/media.py` (filtres, tri, labels sections, squad, outcomes).
+
+**Commits associés de session** :
+- `chore(docker)` : ffmpeg dans l'image  
+- `feat(sync)` : fanout CSR + comeback badges coéquipiers (vérifié dans `1fb62a19`)
+- `feat(media)` : filtres & tri (ce commit)
+
+**Résultats** : ruff clean, AST OK, baseline size 122 violations (render_media_tab 154L, conservé noqa).
+
+**Prochaine étape** : Tester sur VPS après déploiement.

@@ -6,6 +6,28 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 > French version: [FR/CHANGELOG.md](FR/CHANGELOG.md)
 
+## [6.4.0] - 2026-04-07
+
+### Added
+
+- **Media library — filters & sort** — the Media page now offers a full filter panel:
+  - **Owner** — multiselect to show/hide sections (My captures / Teammate(s) / Unmatched)
+  - **Map** — filter by map name (from match data)
+  - **Mode** — filter by normalized mode label
+  - **Outcome** — multiselect (Victory / Defeat / Tie / DNF) derived from match outcome codes
+  - **Context** — radio selector to restrict to Solo or Squad matches
+  - **Sort** — sort by capture date (default), map, mode, outcome, or owner; ascending or descending toggle
+  - Type (image/video) and filename filters preserved from the previous panel
+  - Unmatched media (no associated match) are unaffected by match-specific filters and always appear in their own section when selected
+
+- **CSR fanout for squadmates** — when syncing a ranked match, the CSR ranking data for all registered co-players is now automatically collected from the `skill_json` API payload and distributed to each player's DB. Previously required each player to sync their own account to obtain CSR history for shared matches.
+
+- **Comeback badges fanout** — Remontada / Collapse / Contre-Remontada badges are now computed for registered co-players during the sync fanout, in parallel with PSA and CSR distribution.
+
+### Changed
+
+- **Docker image** — `ffmpeg` is now installed in the image, enabling video thumbnail generation in containerized deployments without a manual post-install step.
+
 ## [6.3.0] - 2026-04-03
 
 ### Added
