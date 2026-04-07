@@ -96,8 +96,12 @@ class MatchProcessingHelpersMixin:
         shared_conn: duckdb.DuckDBPyConnection,
         match_id: str,
         skill_json: dict,
-    ) -> None:
-        """Écrit team_mmr/enemy_mmr + expected/stddev dans shared.match_participants."""
+    ) -> list:
+        """Écrit team_mmr/enemy_mmr + expected/stddev dans shared.match_participants.
+
+        Returns:
+            La liste des SkillParticipantUpdate parsés (réutilisable sans re-parse).
+        """
         all_skill_updates = transform_all_skill_stats(skill_json, match_id)
         for su in all_skill_updates:
             if su.team_mmr is not None or su.enemy_mmr is not None:
@@ -173,12 +177,18 @@ class MatchProcessingHelpersMixin:
         Si skill_json est disponible, met à jour TOUS les participants (team_mmr,
         enemy_mmr, expected/stddev). Sinon, met à jour uniquement le joueur courant.
         Cela corrige le bug où seul le premier joueur à syncer obtenait son MMR.
+
+        Collecte également les CSR des coéquipiers depuis la liste pré-parsée,
+        évitant un double appel à transform_all_skill_stats.
         """
         if skill_json:
             async with self._shared_db_lock:
                 shared_conn = self._get_shared_connection()
                 if shared_conn:
-                    self._upsert_skill_to_shared_participants(shared_conn, match_id, skill_json)
+                    skill_updates = self._upsert_skill_to_shared_participants(
+                        shared_conn, match_id, skill_json
+                    )
+                    self._collect_csr_for_other_players(skill_updates)
         else:
             await self._upsert_single_player_skill_to_shared(match_id, skill_row)
 
@@ -259,23 +269,18 @@ class MatchProcessingHelpersMixin:
 
     def _collect_csr_for_other_players(
         self: _SyncProtocol,
-        skill_json: dict | None,
-        match_id: str,
+        all_skill_updates: list,
     ) -> None:
-        """Collecte les données CSR des coéquipiers enregistrés depuis skill_json.
+        """Collecte les données CSR des coéquipiers enregistrés depuis la liste pré-parsée.
 
-        Lors du sync d'un match classé, skill_json contient le RankRecap de TOUS
-        les participants. On extrait les CSR des autres joueurs enregistrés et on
-        les stocke dans self._pending_other_csr pour distribution par le fanout.
+        Reçoit la liste déjà parsée par _upsert_skill_to_shared_participants
+        (évite un double appel à transform_all_skill_stats par match).
+        Stocke les CSR dans self._pending_other_csr pour distribution par le fanout.
 
         Args:
-            skill_json: JSON brut de l'API skill (peut être None pour les non-classés).
-            match_id: ID du match en cours.
+            all_skill_updates: Liste de SkillParticipantUpdate déjà parsés.
         """
-        if not skill_json:
-            return
-        all_updates = transform_all_skill_stats(skill_json, match_id)
-        csr_updates = [u for u in all_updates if u.post_match_csr is not None]
+        csr_updates = [u for u in all_skill_updates if u.post_match_csr is not None]
         if not csr_updates:
             return
 
@@ -290,7 +295,7 @@ class MatchProcessingHelpersMixin:
             logger.debug(
                 "csr_fanout: CSR en attente pour xuid=%s match=%s (csr=%.0f)",
                 update.xuid,
-                match_id,
+                update.match_id,
                 update.post_match_csr,
             )
 
