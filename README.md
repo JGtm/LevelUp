@@ -19,6 +19,7 @@
 - **Comeback badges auto-computed for squadmates** — Remontada, Collapse, and Contre-Remontada badges are now calculated for your co-players during the sync fanout alongside PSA and CSR
 - **ffmpeg bundled in Docker** — video thumbnail generation works out of the box in containerized deployments
 - **Teammates — fixed legend panel** — a floating panel shows each squad member's color swatch while you scroll through the squad section; all per-chart legends removed as they were redundant
+- **UI state persistence across sessions** — your last selected player and language are now remembered in the browser (`localStorage`). Filter preferences are stored in `data/players/{gamertag}/ui_prefs.json` (inside the Docker volume) and survive container rebuilds
 
 **v6.3 — Localized names, squad records & medal details**
 - **Maps and modes in your language** — map names, playlists and game modes now appear in French (or English) across every page: sidebar filters, match tables, charts, and the win-rate histogram
