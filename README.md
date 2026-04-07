@@ -18,6 +18,7 @@
 - **CSR history for squadmates** — when you sync a ranked match, the ranking data of all registered co-players is now automatically collected and distributed to each player's DB — no separate sync required per player
 - **Comeback badges auto-computed for squadmates** — Remontada, Collapse, and Contre-Remontada badges are now calculated for your co-players during the sync fanout alongside PSA and CSR
 - **ffmpeg bundled in Docker** — video thumbnail generation works out of the box in containerized deployments
+- **Teammates — fixed legend panel** — a floating panel shows each squad member's color swatch while you scroll through the squad section; all per-chart legends removed as they were redundant
 
 **v6.3 — Localized names, squad records & medal details**
 - **Maps and modes in your language** — map names, playlists and game modes now appear in French (or English) across every page: sidebar filters, match tables, charts, and the win-rate histogram
