@@ -115,22 +115,16 @@ def _resolve_db_path(default_db: str, settings: AppSettings) -> str:
     except Exception:
         pass
 
-    # localStorage navigateur (v6.4) : restaure le dernier joueur du navigateur.
-    try:
-        ls_prefs = st.session_state.get("_browser_prefs_restored") or {}
-        ls_slug = str(ls_prefs.get("last_db_path") or "").strip()
-        if ls_slug and default_db:
-            from pathlib import Path as _Path
+    # localStorage navigateur (v6.4) — si le slug gamertag pointe vers une DB existante
+    ls_prefs = st.session_state.get("_browser_prefs_restored") or {}
+    ls_slug = str(ls_prefs.get("last_db_path") or "").strip()
+    if ls_slug and default_db:
+        from pathlib import Path as _Path
 
-            _candidate = _Path(default_db).parent.parent / ls_slug / "stats.duckdb"
-            if _candidate.exists() and _candidate.stat().st_size > 0:
-                logger.debug(
-                    "_resolve_db_path: DB restaurée depuis localStorage → %s",
-                    _candidate,
-                )
-                return str(_candidate)
-    except Exception:
-        pass
+        _candidate = _Path(default_db).parent.parent / ls_slug / "stats.duckdb"
+        if _candidate.exists() and _candidate.stat().st_size > 0:
+            logger.debug("_resolve_db_path: DB restaurée depuis localStorage → %s", _candidate)
+            return str(_candidate)
 
     if settings.prefer_spnkr_db_if_available:
         spnkr = pick_latest_spnkr_db_if_any()

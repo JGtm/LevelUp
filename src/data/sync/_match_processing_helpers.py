@@ -129,6 +129,7 @@ class MatchProcessingHelpersMixin:
                         su.xuid,
                     ),
                 )
+        return all_skill_updates
 
     async def _upsert_single_player_skill_to_shared(
         self: _SyncProtocol,

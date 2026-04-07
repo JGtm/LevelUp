@@ -273,14 +273,14 @@ class ConnectionMixin:
 
             ensure_weapon_kills_table(conn)
         except Exception as e:
-            logger.debug("Migration weapon_kills shared: %s", e)
+            logger.warning("Migration weapon_kills shared: %s", e)
 
         try:
             from src.data.sync.migrations import ensure_resolution_views
 
             ensure_resolution_views(conn)
         except Exception as e:
-            logger.debug("ensure_resolution_views shared: %s", e)
+            logger.warning("ensure_resolution_views shared: %s", e)
 
     def _get_pve_connection(self) -> duckdb.DuckDBPyConnection:
         """Retourne (lazy) la connexion vers shared_pve.duckdb."""

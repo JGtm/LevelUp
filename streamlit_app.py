@@ -525,6 +525,14 @@ def _render_main_sidebar(db_path: str, xuid: str, settings: AppSettings) -> tupl
                     old_xuid[:8] if old_xuid else "?",
                     xuid[:8] if xuid else "?",
                 )
+                # Persister le nouveau joueur dans localStorage navigateur
+                _new_slug = (get_gamertag_from_duckdb_v4_path(db_path) if db_path else xuid) or xuid
+                if _new_slug:
+                    from src.ui.components.browser_storage import (
+                        persist_browser_prefs as _persist_ls,
+                    )
+
+                    _persist_ls(last_gamertag=_new_slug, last_db_path=_new_slug)
                 apply_filter_preferences(xuid, db_path)
                 st.rerun()
 
@@ -930,17 +938,30 @@ def _maybe_apply_browser_prefs(browser_prefs: dict) -> None:
         return
     st.session_state["_browser_prefs_applied"] = True
 
-    ls_lang = str(browser_prefs.get("lang") or "").strip()
-    if ls_lang in ("fr", "en") and get_lang() != ls_lang:
-        set_lang(ls_lang)
-
     ls_slug = str(browser_prefs.get("last_db_path") or "").strip()
-    current_db = str(st.session_state.get("db_path") or "").strip()
-    current_slug = Path(current_db).parent.name if current_db else ""
-    if ls_slug and ls_slug != current_slug:
-        # Le data_loader n'a pas encore été initialisé — on attend qu'il lise
-        # _browser_prefs_restored lors du prochain cycle init_source_state.
-        st.rerun()
+    ls_lang = str(browser_prefs.get("lang") or "").strip()
+
+    # Restauration de la langue (si différente de la session courante)
+    if ls_lang in ("fr", "en"):
+        current_lang = str(st.session_state.get(SK.LANG) or "fr").strip()
+        if ls_lang != current_lang:
+            set_lang(ls_lang)
+            st.session_state[SK.LANG] = ls_lang
+
+    # Restauration du joueur (si le slug LS diffère du joueur actuel)
+    current_db = str(st.session_state.get(SK.DB_PATH) or "").strip()
+    if ls_slug and current_db:
+        from pathlib import Path as _Path
+
+        _current = _Path(current_db)
+        if _current.parent.name != ls_slug:
+            _candidate = _current.parent.parent / ls_slug / "stats.duckdb"
+            if _candidate.exists() and _candidate.stat().st_size > 0:
+                st.session_state[SK.DB_PATH] = str(_candidate)
+                st.session_state[SK.XUID_INPUT] = ls_slug
+                st.session_state[SK.WAYPOINT_PLAYER] = ls_slug
+                logger.debug("localStorage: joueur restauré → %s", ls_slug)
+                st.rerun()
 
 
 def main() -> None:
