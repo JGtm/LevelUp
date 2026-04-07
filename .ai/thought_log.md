@@ -3,7 +3,32 @@
 > Ce fichier capture le raisonnement de l'agent entre les sessions.
 > Archivé : 2026-02-01 (logs précédents dans `.ai/archive/thought_log_pre_phase6.md`)
 
-## [2026-04-07] fix(i18n): mv_player_matches avec NULL FR sur VPS — Complété
+## [2026-04-07] fix(fanout): double parse skill_json + fusion dominance/comeback — Complété
+
+**Statut** : Complété  
+**Branche** : `fix/lusr-schema-backfill-teammates`  
+**Commits** : `72448c10` (fix sync), `d6213636` (tests)
+
+**Problème identifié (audit exhaustivité sync)** :
+1. `transform_all_skill_stats` était appelé deux fois par match classé : une fois dans `_upsert_skill_to_shared_participants` puis une fois dans `_collect_csr_for_other_players`
+2. `_run_other_dominance` et `_run_other_comeback_badges` ouvrent chacune une connexion `duckdb.connect(shared_path, read_only=True)` séquentielle sur le même fichier
+
+**Décisions techniques** :
+1. `_upsert_skill_to_shared_participants` retourne maintenant `list[SkillParticipantUpdate]` (la liste parsée) — réutilisée directement par `_collect_csr_for_other_players` au lieu de re-parser
+2. `_run_other_dominance` absorbe `_run_other_comeback_badges` : un seul `with duckdb.connect(shared_path, read_only=True)` pour les deux calculs séquentiels — suppression de `_run_other_comeback_badges` comme méthode séparée
+
+**Couverture tests nouveaux** (`test_csr_comeback_fanout.py`, 16 tests) :
+- `write_csr_from_skill_update` : écriture, delta, idempotence ON CONFLICT, cas None, match_id absent
+- `_collect_csr_for_other_players` : filtrage self, non-enregistrés, mises à jour sans CSR, accumulation multi-match, profil sans xuid
+- `_run_other_dominance` fusionnée : 1 seule connexion, appel des deux fonctions, exception non bloquante
+
+**Fix annexe** : `test_shared_writes_integration.py` — correction SyntaxError (try sans finally dans `test_bits_medals_flag`)
+
+**Résultats** : 5854 tests passent (16 nouveaux, 0 régression).
+
+---
+
+
 
 **Statut** : Complété  
 **Branche** : `fix/lusr-schema-backfill-teammates`  
