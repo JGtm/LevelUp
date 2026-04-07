@@ -28,6 +28,8 @@ Le format est basé sur [Keep a Changelog](https://keepachangelog.fr/fr/1.1.0/).
 
 - **Image Docker** — `ffmpeg` est désormais installé dans l'image, permettant la génération de miniatures vidéo dans les déploiements conteneurisés sans étape d'installation manuelle supplémentaire.
 
+- **Coéquipiers — panneau légende fixe** — un panneau flottant (en bas à droite, `position: fixed`) affiche la couleur de chaque membre de l'escouade tout au long de la section escouade. Il apparaît à partir de l'en-tête escouade et reste visible au scroll. Les légendes ont été supprimées de tous les graphes individuels (kills/morts, stats/min, métriques, killing sprees, HS+PK, premier événement, kills par arme) car remplacées par ce panneau. Changer de stratégie via `_PANEL_MODE` dans `teammates_legend.py` (`"fixed"` / `"sidebar"` / `"hidden"`).
+
   - `MetadataResolver.resolve()` accepte désormais un paramètre `lang`
   - Peuplement : `python scripts/populate_asset_translations.py` (supporte `--dry-run`, `--force`, `--types map playlist pair game_variant`)
 

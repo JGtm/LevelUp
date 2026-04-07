@@ -24,6 +24,10 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 - **Comeback badges fanout** — Remontada / Collapse / Contre-Remontada badges are now computed for registered co-players during the sync fanout, in parallel with PSA and CSR distribution.
 
+### Added (continued)
+
+- **Teammates — fixed player legend panel** — a floating panel (bottom-right, `position: fixed`) now shows each squad member's color throughout the entire squad section. It appears from the squad header onwards and stays visible while scrolling. Legends have been removed from all individual charts on the page (kills/deaths, per-minute stats, metrics, killing sprees, HS+PK, first events, weapon kills) since they are fully replaced by the panel. Switch strategy by changing `_PANEL_MODE` in `teammates_legend.py` (`"fixed"` / `"sidebar"` / `"hidden"`).
+
 ### Changed
 
 - **Docker image** — `ffmpeg` is now installed in the image, enabling video thumbnail generation in containerized deployments without a manual post-install step.
