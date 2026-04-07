@@ -80,7 +80,7 @@ def render_explorer_page(
     effective_mid = selected_mid or (deep_link_mid if deep_link_mid else None)
 
     # Ancre de scroll pour deep link — injectée juste avant les résultats
-    if deep_link_mid:
+    if deep_link_mid or pending_gt:
         _scroll_into_view()
 
     _dispatch_results(
