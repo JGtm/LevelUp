@@ -97,6 +97,7 @@ class TestRenderPlayerLegendPanelFixed:
             with (
                 patch("src.ui.pages.teammates_legend.get_lang", return_value="fr"),
                 patch.object(legend.st, "markdown") as mock_md,
+                patch("streamlit.components.v1.html"),
             ):
                 legend.render_player_legend_panel(_COLORS)
                 mock_md.assert_called_once()
@@ -117,6 +118,7 @@ class TestRenderPlayerLegendPanelFixed:
                 patch.object(
                     legend.st, "markdown", side_effect=lambda html, **_: captured_html.append(html)
                 ),
+                patch("streamlit.components.v1.html"),
             ):
                 legend.render_player_legend_panel(_COLORS)
             assert len(captured_html) == 1
@@ -138,6 +140,7 @@ class TestRenderPlayerLegendPanelFixed:
                 patch.object(
                     legend.st, "markdown", side_effect=lambda html, **_: captured_html.append(html)
                 ),
+                patch("streamlit.components.v1.html"),
             ):
                 legend.render_player_legend_panel(_COLORS)
             html = captured_html[0]
@@ -158,6 +161,7 @@ class TestRenderPlayerLegendPanelFixed:
                 patch.object(
                     legend.st, "markdown", side_effect=lambda html, **_: captured_html.append(html)
                 ),
+                patch("streamlit.components.v1.html"),
             ):
                 legend.render_player_legend_panel(_COLORS)
             assert "Joueurs" in captured_html[0]
@@ -176,6 +180,7 @@ class TestRenderPlayerLegendPanelFixed:
                 patch.object(
                     legend.st, "markdown", side_effect=lambda html, **_: captured_html.append(html)
                 ),
+                patch("streamlit.components.v1.html"),
             ):
                 legend.render_player_legend_panel(_COLORS)
             assert "Players" in captured_html[0]
@@ -194,9 +199,48 @@ class TestRenderPlayerLegendPanelFixed:
                 patch.object(
                     legend.st, "markdown", side_effect=lambda html, **_: captured_html.append(html)
                 ),
+                patch("streamlit.components.v1.html"),
             ):
                 legend.render_player_legend_panel(_COLORS)
             assert "position:fixed" in captured_html[0]
+        finally:
+            legend._PANEL_MODE = original_mode
+
+    def test_fixed_html_starts_hidden(self) -> None:
+        """Le panneau doit démarrer caché (display:none) — le JS gère la visibilité."""
+        legend = _import_legend()
+        original_mode = legend._PANEL_MODE
+        try:
+            legend._PANEL_MODE = "fixed"
+            captured_html: list[str] = []
+            with (
+                patch("src.ui.pages.teammates_legend.get_lang", return_value="fr"),
+                patch.object(
+                    legend.st, "markdown", side_effect=lambda html, **_: captured_html.append(html)
+                ),
+                patch("streamlit.components.v1.html"),
+            ):
+                legend.render_player_legend_panel(_COLORS)
+            assert "display:none" in captured_html[0]
+        finally:
+            legend._PANEL_MODE = original_mode
+
+    def test_fixed_html_has_start_sentinel(self) -> None:
+        """Le HTML doit contenir la sentinelle llp-squad-start pour le JS observer."""
+        legend = _import_legend()
+        original_mode = legend._PANEL_MODE
+        try:
+            legend._PANEL_MODE = "fixed"
+            captured_html: list[str] = []
+            with (
+                patch("src.ui.pages.teammates_legend.get_lang", return_value="fr"),
+                patch.object(
+                    legend.st, "markdown", side_effect=lambda html, **_: captured_html.append(html)
+                ),
+                patch("streamlit.components.v1.html"),
+            ):
+                legend.render_player_legend_panel(_COLORS)
+            assert "llp-squad-start" in captured_html[0]
         finally:
             legend._PANEL_MODE = original_mode
 

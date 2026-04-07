@@ -398,6 +398,13 @@ def render_impact_taquinerie(
     db_key: tuple[int, int] | None = None,
 ) -> None:
     """Affiche l'onglet Impact (Sprint 12)."""
+    # Sentinelle de fin pour le panneau légende joueurs fixe (teammates_legend).
+    # Placée ici pour cacher le panneau dès que la section Impact entre dans la vue.
+    st.markdown(
+        '<div id="llp-impact-end" style="height:0;line-height:0;overflow:hidden;'
+        'padding:0;margin:0;border:0;"></div>',
+        unsafe_allow_html=True,
+    )
     if not friend_xuids:
         st.info(t("tm_impact_select_two"))
         return
