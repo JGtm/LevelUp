@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import hashlib
+import logging
 from pathlib import Path
 
 import polars as pl
@@ -13,6 +14,8 @@ from src.ui.components.media_thumbnail import render_media_thumbnail
 from src.ui.i18n import t
 from src.ui.pages.media_library_render import open_match_button
 from src.ui.settings import AppSettings
+
+logger = logging.getLogger(__name__)
 
 
 def _format_short_date(ts) -> str:
@@ -140,17 +143,32 @@ def _enrich_media_with_match_data(
 ) -> pl.DataFrame:
     """Enrichit media_df avec outcome/mode/carte/is_with_friends depuis df_full."""
     if df_full is None or df_full.is_empty():
+        logger.debug(
+            "_enrich_media_with_match_data: df_full absent ou vide — enrichissement ignoré"
+        )
         return media_df
     if "match_id" not in media_df.columns or "match_id" not in df_full.columns:
+        logger.debug(
+            "_enrich_media_with_match_data: colonne match_id manquante — enrichissement ignoré"
+        )
         return media_df
     available = [c for c in _ENRICH_COLS if c in df_full.columns]
     if len(available) <= 1:
+        logger.debug(
+            "_enrich_media_with_match_data: aucune colonne enrichissable disponible dans df_full"
+        )
         return media_df
     # Exclure les colonnes déjà présentes dans media_df (sauf match_id = clé de jointure)
     existing = set(media_df.columns) - {"match_id"}
     cols = ["match_id"] + [c for c in available[1:] if c not in existing]
     df_enrich = df_full.select(cols).unique(subset=["match_id"])
-    return media_df.join(df_enrich, on="match_id", how="left")
+    result = media_df.join(df_enrich, on="match_id", how="left")
+    logger.debug(
+        "_enrich_media_with_match_data: %d médias enrichis avec colonnes %s",
+        len(result),
+        cols[1:],
+    )
+    return result
 
 
 def _build_media_filter_ui(media_df: pl.DataFrame) -> dict:  # noqa: PLR0912
@@ -267,6 +285,7 @@ def _apply_media_filters(
     apply_match_filters: bool = True,
 ) -> pl.DataFrame:
     """Applique filtres (kind, nom, match) et tri sur un DataFrame médias."""
+    initial_len = len(df)
     if filters["kinds"]:
         df = df.filter(pl.col("kind").is_in(filters["kinds"]))
     if filters["name"].strip():
@@ -287,6 +306,14 @@ def _apply_media_filters(
     sort_col = filters["sort_col"] if filters["sort_col"] in df.columns else "capture_end_utc"
     if sort_col in df.columns:
         df = df.sort(sort_col, descending=filters["sort_desc"], nulls_last=True)
+    logger.debug(
+        "_apply_media_filters: %d→%d médias (match_filters=%s, tri='%s' desc=%s)",
+        initial_len,
+        len(df),
+        apply_match_filters,
+        sort_col,
+        filters["sort_desc"],
+    )
     return df
 
 

@@ -39,6 +39,7 @@ PAGE_MODULES = [
     "src.ui.pages.teammates_charts",
     "src.ui.pages.teammates_helpers",
     "src.ui.pages.teammates_impact",
+    "src.ui.pages.teammates_legend",
     "src.ui.pages.teammates_synergy",
     "src.ui.pages.teammates_views",
     "src.ui.pages.timeseries",
