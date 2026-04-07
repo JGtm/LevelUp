@@ -26,6 +26,12 @@ from src.visualization.teammates_hs_pk import plot_hs_pk_stacked
 from src.visualization.trio import plot_trio_kills_deaths
 
 
+def _hide_legend(fig: go.Figure) -> go.Figure:
+    """Masque la légende Plotly — les noms apparaissent dans le panneau latéral fixe."""
+    fig.update_layout(showlegend=False)
+    return fig
+
+
 @fragment_if_available
 def render_metric_bar_charts(  # noqa: PLR0913
     series: list[tuple[str, DataFrameLike]],
@@ -57,7 +63,7 @@ def render_metric_bar_charts(  # noqa: PLR0913
         else:
             st.subheader(label)
             st.plotly_chart(
-                fig,
+                _hide_legend(fig),
                 width="stretch",
                 key=f"{key_prefix}_{key_suffix}",
                 config=PLOTLY_CLEAN_CONFIG,
@@ -75,7 +81,7 @@ def render_metric_bar_charts(  # noqa: PLR0913
     else:
         st.subheader(viz_t("hs_pk_combined_title", _lang))
         st.plotly_chart(
-            fig_combined,
+            _hide_legend(fig_combined),
             width="stretch",
             key=f"friend_hs_pk_stacked_{key_suffix}",
             config=PLOTLY_CLEAN_CONFIG,
@@ -143,20 +149,22 @@ def _plot_trio_metric_chart(  # noqa: PLR0913
 ) -> None:
     """Rend un seul graphique trio_metric via st.plotly_chart."""
     st.plotly_chart(
-        plot_trio_metric(
-            d_self,
-            d_f1,
-            d_f2,
-            metric=metric,
-            names=names,
-            y_title=y_title,
-            y_suffix=y_suffix,
-            y_format=y_format,
-            lang=lang,
-            d_f3=d_f3,
-            colors_by_name=colors_by_name,
-            is_inverse=is_inverse,
-            squad_records=squad_records,
+        _hide_legend(
+            plot_trio_metric(
+                d_self,
+                d_f1,
+                d_f2,
+                metric=metric,
+                names=names,
+                y_title=y_title,
+                y_suffix=y_suffix,
+                y_format=y_format,
+                lang=lang,
+                d_f3=d_f3,
+                colors_by_name=colors_by_name,
+                is_inverse=is_inverse,
+                squad_records=squad_records,
+            )
         ),
         width="stretch",
         key=key,
@@ -204,15 +212,17 @@ def render_trio_charts(  # noqa: PLR0913
     with safe_chart_render():
         st.subheader(t("tm_kills_deaths"))
         st.plotly_chart(
-            plot_trio_kills_deaths(
-                d_self,
-                d_f1,
-                d_f2,
-                names=names,
-                opts=PlotOptions(lang=_lang),
-                d_f3=d_f3,
-                colors_by_name=colors_by_name,
-                squad_records=squad_records,
+            _hide_legend(
+                plot_trio_kills_deaths(
+                    d_self,
+                    d_f1,
+                    d_f2,
+                    names=names,
+                    opts=PlotOptions(lang=_lang),
+                    d_f3=d_f3,
+                    colors_by_name=colors_by_name,
+                    squad_records=squad_records,
+                )
             ),
             width="stretch",
             key=f"trio_kd_{key_suffix}",
@@ -508,7 +518,7 @@ def render_first_events_chart(
 
     fig = _build_first_events_fig(df, colors_by_name, _lang)
     st.plotly_chart(
-        fig,
+        _hide_legend(fig),
         width="stretch",
         key=f"first_events_{key_suffix}",
         config=PLOTLY_CLEAN_CONFIG,

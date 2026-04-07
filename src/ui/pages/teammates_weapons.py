@@ -326,7 +326,7 @@ def render_weapon_kills_bar_chart(
         bargap=0.35,
         bargroupgap=0.08,
         shapes=_build_zebra_shapes(len(weapons_sorted)),
-        legend={"orientation": "h", "yanchor": "top", "y": -0.05, "xanchor": "center", "x": 0.5},
+        showlegend=False,
     )
     fig.update_xaxes(showgrid=False, visible=False)
     st.plotly_chart(
