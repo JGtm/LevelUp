@@ -164,7 +164,6 @@ def _render_per_minute_stats(  # noqa: PLR0913
         showlegend=False,
     )
     fig_pm = apply_halo_plot_style(fig_pm, height=None)
-    fig_pm.update_traces(showlegend=False)
     # Forcer l'axe zéro en gras blanc (apply_halo_plot_style le désactive via theme.py)
     fig_pm.update_yaxes(zeroline=True, zerolinecolor="rgba(255,255,255,0.75)", zerolinewidth=2)
     with safe_chart_render():
