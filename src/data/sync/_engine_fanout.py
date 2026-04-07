@@ -177,6 +177,21 @@ class FanoutEnrichmentMixin:
                 except Exception as exc:
                     logger.warning("fanout [%s]: insertion PSA échouée: %s", gamertag, exc)
 
+            pending_csr = getattr(self, "_pending_other_csr", {}).get(xuid, [])
+            if pending_csr:
+                try:
+                    from src.data.sync._skill_rating import write_csr_from_skill_update
+
+                    written = sum(
+                        1
+                        for upd in pending_csr
+                        if write_csr_from_skill_update(engine._get_connection(), upd)
+                    )
+                    engine._get_connection().commit()
+                    logger.info("fanout [%s]: %d CSR écrit(s) depuis skill_json", gamertag, written)
+                except Exception as exc:
+                    logger.warning("fanout [%s]: écriture CSR échouée: %s", gamertag, exc)
+
             perf_count = engine.batch_compute_performance_scores()
             logger.info("fanout [%s]: %d performance_score(s) calculé(s)", gamertag, perf_count)
 
@@ -192,6 +207,7 @@ class FanoutEnrichmentMixin:
             self._run_other_sessions(gamertag, xuid, player_db_path, player_conn)
             self._run_other_citations(gamertag, xuid, player_db_path, player_conn)
             self._run_other_dominance(gamertag, xuid, shared_path, player_conn)
+            self._run_other_comeback_badges(gamertag, xuid, shared_path, player_conn)
             lusr_count = engine.batch_compute_lusr(force=False)
             if lusr_count > 0:
                 logger.info("fanout [%s]: %d LUSR calculé(s)", gamertag, lusr_count)
@@ -262,6 +278,38 @@ class FanoutEnrichmentMixin:
             )
         except Exception as exc:
             logger.warning("fanout [%s]: dominance échoué (non bloquant): %s", gamertag, exc)
+
+    def _run_other_comeback_badges(
+        self: _SyncProtocol,
+        gamertag: str,
+        xuid: str,
+        shared_path: Path,
+        conn: duckdb.DuckDBPyConnection,
+    ) -> None:
+        """Calcule les badges comeback pour un autre joueur (fanout).
+
+        Idempotent : seuls les matchs avec dominance_flag=0/NULL sont traités.
+        Si le badge a déjà été calculé (via fanout ou sync propre du joueur),
+        le match n'est pas re-traité.
+        """
+        try:
+            from src.data.comeback_backfill import compute_comeback_badges_for_player
+
+            with duckdb.connect(str(shared_path), read_only=True) as shared_ro:
+                result = compute_comeback_badges_for_player(conn, shared_ro, xuid)
+            processed = result.get("processed", 0)
+            if processed > 0:
+                logger.info(
+                    "fanout [%s]: comeback badges — %d traité(s) "
+                    "(remontada=%d, débandade=%d, contre=%d)",
+                    gamertag,
+                    processed,
+                    result.get("remontada", 0),
+                    result.get("debandade", 0),
+                    result.get("contre_remontada", 0),
+                )
+        except Exception as exc:
+            logger.warning("fanout [%s]: comeback_badges échoué (non bloquant): %s", gamertag, exc)
 
     def _enrich_other_registered_players(
         self: _SyncProtocol,

@@ -13,6 +13,8 @@ from typing import TYPE_CHECKING, Any
 import polars as pl
 
 if TYPE_CHECKING:
+    import duckdb
+
     from src.data.sync._protocol import _SyncProtocol
 
 from src.data.sync.migrations import ensure_match_skill_rank_table
@@ -75,6 +77,46 @@ def _build_csr_tier_label(
         f"{tier_fr} {_ROMAN[csr_sub_tier]}" if csr_sub_tier and csr_sub_tier in _ROMAN else tier_fr
     )
     return tier_fr, tier_label
+
+
+def write_csr_from_skill_update(
+    conn: duckdb.DuckDBPyConnection,
+    skill_update: Any,
+) -> bool:
+    """Écrit le CSR depuis un SkillParticipantUpdate dans match_skill_rank.
+
+    Fonction standalone (sans self) utilisée par le fan-out pour écrire
+    le CSR des coéquipiers dans leur player DB.
+
+    Args:
+        conn: Connexion RW vers la stats.duckdb du joueur cible.
+        skill_update: SkillParticipantUpdate avec post_match_csr non-null.
+
+    Returns:
+        True si l'écriture a eu lieu, False sinon.
+    """
+    post_csr = getattr(skill_update, "post_match_csr", None)
+    if post_csr is None:
+        return False
+    match_id = getattr(skill_update, "match_id", None)
+    if not match_id:
+        return False
+    try:
+        ensure_match_skill_rank_table(conn)
+        pre_csr = getattr(skill_update, "pre_match_csr", None)
+        csr_tier_name = getattr(skill_update, "csr_tier", None)
+        csr_sub_tier = getattr(skill_update, "csr_sub_tier", None) or 0
+        delta: float | None = (post_csr - pre_csr) if pre_csr is not None else None
+        tier_fr, tier_label = _build_csr_tier_label(csr_tier_name, csr_sub_tier)
+        now = datetime.now(timezone.utc)
+        conn.execute(
+            _CSR_UPSERT_SQL,
+            (match_id, post_csr, csr_tier_name, tier_fr, csr_sub_tier, tier_label, delta, now, now),
+        )
+        return True
+    except Exception as exc:
+        logger.warning("write_csr_from_skill_update: erreur match=%s: %s", match_id, exc)
+        return False
 
 
 _LUSR_UPSERT_SQL = """

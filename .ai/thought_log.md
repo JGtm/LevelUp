@@ -3,6 +3,22 @@
 > Ce fichier capture le raisonnement de l'agent entre les sessions.
 > Archivé : 2026-02-01 (logs précédents dans `.ai/archive/thought_log_pre_phase6.md`)
 
+## [2026-04-07] fix(i18n): mv_player_matches avec NULL FR sur VPS — Complété
+
+**Statut** : Complété  
+**Branche** : `fix/lusr-schema-backfill-teammates`  
+
+**Problème** : Sur le VPS, l'UI affichait les noms de cartes/playlists en anglais malgré `lang=fr` et `asset_translations` correct dans `metadata.duckdb`.
+
+**Cause racine** : La vue `mv_player_matches` dans `shared_matches_v2.duckdb` avait `NULL AS map_name_fr, NULL AS playlist_name_fr, NULL AS pair_name_fr`. Cette vue avait été créée par la migration `add_mv_player_matches_fr_cols` (2026-04-02) avec `has_v_match_full = False` car `v_match_full` JOINte `meta.asset_translations` — or `_run_for_db` ouvrait `shared` **sans attacher `metadata.duckdb`**, rendant `v_match_full` inaccessible lors du test.
+
+**Actions** :
+1. Recréation manuelle de la vue sur le VPS via `ensure_mv_player_matches_view` (avec meta attaché) → `map_name_fr='Tribord'`, `playlist_name_fr='Partie rapide'` confirmés
+2. `docker compose restart levelup` pour vider le cache `@st.cache_data`
+3. Fix structurel dans `src/data/migration/runner.py` : `_run_for_db` accepte maintenant `metadata_db_path` et l'ATTACHe pour `target_db="shared"` avant d'exécuter les migrations
+
+**Résultats** : Traductions FR opérationnelles sur VPS. Migration idempotente garantie sur les prochains déploiements.
+
 ## [2026-04-07] feat(media): watcher inotify Linux pour indexation automatique — Complété
 
 **Statut** : Complété  

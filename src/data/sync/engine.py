@@ -219,6 +219,11 @@ class DuckDBSyncEngine(
         # {xuid: [PersonalScoreAwardRow, ...]}
         self._pending_other_psa: dict[str, list] = {}
 
+        # CSR des coéquipiers enregistrés collectés depuis skill_json lors du traitement
+        # d'un match classé, distribués via le fanout. Keyed by xuid.
+        # {xuid: [SkillParticipantUpdate, ...]}
+        self._pending_other_csr: dict[str, list] = {}
+
         # Version SPNKr installée (trackée dans match_registry + sync_meta)
         self._spnkr_version: str | None = None
         try:

@@ -28,10 +28,10 @@ FUNC:src/data/services/win_loss_service.py:64:compute_period_table:109L
 FUNC:src/data/sync/_engine_connections.py:359:_load_existing_match_ids:83L
 FUNC:src/data/sync/_match_processing.py:304:_backfill_known_match_shared:82L
 FUNC:src/data/sync/_match_processing.py:37:_process_matches:120L
-FUNC:src/data/sync/_skill_rating.py:194:_upsert_lusr_ratings:81L
-FUNC:src/data/sync/_skill_rating.py:304:batch_compute_lusr:104L
-FUNC:src/data/sync/engine.py:150:__init__:82L
-FUNC:src/data/sync/engine.py:315:_sync_internal:118L
+FUNC:src/data/sync/_skill_rating.py:236:_upsert_lusr_ratings:81L
+FUNC:src/data/sync/_skill_rating.py:346:batch_compute_lusr:104L
+FUNC:src/data/sync/engine.py:150:__init__:87L
+FUNC:src/data/sync/engine.py:320:_sync_internal:118L
 FUNC:src/data/sync/transformers/_match.py:287:extract_participants:141L
 FUNC:src/data/sync/transformers/_match.py:431:extract_match_registry_data:148L
 FUNC:src/data/sync/transformers/_match.py:74:transform_match_stats:170L
@@ -114,9 +114,9 @@ MODULE:src/data/repositories/_weapon_kills_repo.py:567L
 MODULE:src/data/services/teammates_service.py:539L
 MODULE:src/data/sessions_backfill.py:551L
 MODULE:src/data/sync/_engine_connections.py:536L
-MODULE:src/data/sync/_match_processing.py:559L
+MODULE:src/data/sync/_match_processing.py:560L
 MODULE:src/data/sync/api_client.py:557L
-MODULE:src/data/sync/engine.py:696L
+MODULE:src/data/sync/engine.py:701L
 MODULE:src/data/sync/transformers/_helpers.py:515L
 MODULE:src/data/sync/transformers/_match.py:580L
 MODULE:src/ui/pages/match_view_helpers.py:506L

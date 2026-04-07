@@ -471,8 +471,9 @@ class MatchProcessingMixin(MatchProcessingHelpersMixin):
         skill_row, personal_score_rows = self._extract_personal_data(
             stats_json, match_id, skill_json
         )
-        # Collecter PSA pour les coéquipiers enregistrés (distribués en fanout post-sync)
+        # Collecter PSA et CSR pour les coéquipiers enregistrés (distribués en fanout post-sync)
         self._collect_psa_for_other_players(stats_json, match_id)
+        self._collect_csr_for_other_players(skill_json, match_id)
         await self._upsert_skill_new_match(match_id, skill_json, skill_row)
         await self._write_player_enrichments(match_id, match_row, personal_score_rows, skill_row)
         return True
