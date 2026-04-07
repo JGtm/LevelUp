@@ -162,6 +162,7 @@ def _render_per_minute_stats(  # noqa: PLR0913
         height=350,
         margin={"l": 40, "r": 20, "t": 30, "b": 80},
         legend=get_legend_horizontal_bottom(),
+        showlegend=False,
     )
     fig_pm = apply_halo_plot_style(fig_pm, height=None)
     # Forcer l'axe zéro en gras blanc (apply_halo_plot_style le désactive via theme.py)
