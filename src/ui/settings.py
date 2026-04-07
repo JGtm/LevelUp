@@ -49,6 +49,8 @@ class AppSettings(BaseModel):
     media_tolerance_minutes: int = Field(default=3, ge=0)
     media_indexing_interval_hours: int = Field(default=4, ge=0)  # 0 = run unique au démarrage
     media_reindex_after_sync: bool = True  # Réindexer les médias après chaque sync
+    media_watcher_enabled: bool = True  # Watcher inotify Linux (remplace le thread périodique)
+    media_watcher_debounce_seconds: int = Field(default=5, ge=1, le=60)  # Délai avant indexation
 
     # UX
     refresh_clears_caches: bool = False
@@ -61,7 +63,6 @@ class AppSettings(BaseModel):
     spnkr_refresh_on_manual_refresh: bool = True
     spnkr_refresh_match_type: Literal["all", "matchmaking", "custom", "local"] = "matchmaking"
     spnkr_refresh_max_matches: int = Field(default=200, ge=1)
-    spnkr_refresh_rps: int = Field(default=3, ge=1)
     spnkr_refresh_with_highlight_events: bool = False
 
     # Backfill après synchronisation
@@ -198,7 +199,7 @@ class AppSettings(BaseModel):
         except (ValueError, TypeError):
             return cls.model_fields[info.field_name].default
 
-    @field_validator("spnkr_refresh_max_matches", "spnkr_refresh_rps", mode="before")
+    @field_validator("spnkr_refresh_max_matches", mode="before")
     @classmethod
     def _clamp_positive(cls, v: Any, info: Any) -> int:
         """Convertit en int ≥ 1 avec fallback sur le défaut du champ."""

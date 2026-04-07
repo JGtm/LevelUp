@@ -64,7 +64,6 @@ def _get_preserved_settings(settings: AppSettings) -> dict:
         "spnkr_refresh_on_manual_refresh": _b("spnkr_refresh_on_manual_refresh", True),
         "spnkr_refresh_match_type": _s("spnkr_refresh_match_type", "matchmaking"),
         "spnkr_refresh_max_matches": _i("spnkr_refresh_max_matches", 200),
-        "spnkr_refresh_rps": _i("spnkr_refresh_rps", 3),
         "spnkr_refresh_with_highlight_events": _b("spnkr_refresh_with_highlight_events", False),
         "enable_duckdb_analytics": _b("enable_duckdb_analytics", False),
     }
@@ -90,6 +89,8 @@ def _build_settings_from_ui(  # noqa: PLR0913
     show_records: bool,
     media_captures_base_dir: str,
     media_tolerance_minutes: int,
+    media_watcher_enabled: bool,
+    media_watcher_debounce_seconds: int,
     discord_notifications_enabled: bool,
     discord_webhook_url: str,
     discord_lang: str,
@@ -101,6 +102,8 @@ def _build_settings_from_ui(  # noqa: PLR0913
         media_videos_dir="",
         media_captures_base_dir=media_captures_base_dir,
         media_tolerance_minutes=media_tolerance_minutes,
+        media_watcher_enabled=media_watcher_enabled,
+        media_watcher_debounce_seconds=media_watcher_debounce_seconds,
         refresh_clears_caches=refresh_clears_caches,
         repository_mode="duckdb",
         user_timezone=user_timezone,
@@ -150,7 +153,12 @@ def render_settings_page(settings: AppSettings) -> AppSettings:
     refresh_clears_caches, normalize_mode_labels, career_top_exclude_btb, show_records = (
         _render_display_section(settings)
     )
-    media_captures_base_dir, media_tolerance_minutes = _render_media_section(settings)
+    (
+        media_captures_base_dir,
+        media_tolerance_minutes,
+        media_watcher_enabled,
+        media_watcher_debounce_seconds,
+    ) = _render_media_section(settings)
     discord_enabled, discord_url, discord_lang_val = _render_discord_section(settings)
 
     if save_clicked:
@@ -164,6 +172,8 @@ def render_settings_page(settings: AppSettings) -> AppSettings:
             show_records=show_records,
             media_captures_base_dir=str(media_captures_base_dir or ""),
             media_tolerance_minutes=int(media_tolerance_minutes),
+            media_watcher_enabled=bool(media_watcher_enabled),
+            media_watcher_debounce_seconds=int(media_watcher_debounce_seconds),
             discord_notifications_enabled=discord_enabled,
             discord_webhook_url=str(discord_url or ""),
             discord_lang=discord_lang_val,
@@ -326,7 +336,7 @@ def _render_display_section(settings: AppSettings) -> tuple[bool, bool, bool, bo
     )
 
 
-def _render_media_section(settings: AppSettings) -> tuple[str, int]:
+def _render_media_section(settings: AppSettings) -> tuple[str, int, bool, int]:
     """Rend la section Médias."""
     st.subheader(t("set_media_title"))
 
@@ -344,6 +354,23 @@ def _render_media_section(settings: AppSettings) -> tuple[str, int]:
         value=int(settings.media_tolerance_minutes or 0),
         step=1,
     )
+    media_watcher_enabled = st.toggle(
+        "Watcher automatique (Linux/inotify)",
+        value=bool(getattr(settings, "media_watcher_enabled", True)),
+        key="setting_media_watcher_enabled",
+        help="Sur Linux, surveille le dossier captures en temps réel (inotify). "
+        "Désactiver pour revenir au scan périodique.",
+    )
+    media_watcher_debounce_seconds = st.slider(
+        "Délai avant indexation (secondes)",
+        min_value=1,
+        max_value=60,
+        value=int(getattr(settings, "media_watcher_debounce_seconds", 5) or 5),
+        step=1,
+        disabled=not media_watcher_enabled,
+        help="Attend N secondes d'inactivité après le dernier fichier détecté avant d'indexer. "
+        "Utile pour les copies de gros fichiers vidéo.",
+    )
     if st.button(t("ml_rescan"), key="settings_reset_media_index"):
         from src.config import get_default_db_path
         from src.data.media_indexer import MediaIndexer
@@ -358,7 +385,12 @@ def _render_media_section(settings: AppSettings) -> tuple[str, int]:
                 st.error(t("error_loading", error=e))
 
     st.divider()
-    return str(media_captures_base_dir or ""), int(media_tolerance_minutes)
+    return (
+        str(media_captures_base_dir or ""),
+        int(media_tolerance_minutes),
+        bool(media_watcher_enabled),
+        int(media_watcher_debounce_seconds),
+    )
 
 
 def _render_discord_section(settings: AppSettings) -> tuple[bool, str, str]:

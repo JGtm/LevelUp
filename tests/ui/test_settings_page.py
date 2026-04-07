@@ -53,6 +53,8 @@ def _full_build_kwargs(**overrides):
         "show_records": True,
         "media_captures_base_dir": "",
         "media_tolerance_minutes": 3,
+        "media_watcher_enabled": True,
+        "media_watcher_debounce_seconds": 5,
         "discord_notifications_enabled": False,
         "discord_webhook_url": "",
         "discord_lang": "fr",
@@ -158,15 +160,6 @@ class TestGetPreservedSettings:
         preserved = _get_preserved_settings(s)
         assert preserved["spnkr_refresh_max_matches"] == 750
 
-    def test_preserves_spnkr_rps(self) -> None:
-        """spnkr_refresh_rps doit être préservé depuis les settings."""
-        from src.ui import AppSettings
-        from src.ui.pages.settings import _get_preserved_settings
-
-        s = AppSettings(spnkr_refresh_rps=8)
-        preserved = _get_preserved_settings(s)
-        assert preserved["spnkr_refresh_rps"] == 8
-
     def test_preserves_sync_booleans(self) -> None:
         """Les flags sync (on_start, on_manual_refresh, highlight_events) sont préservés."""
         from src.ui import AppSettings
@@ -252,10 +245,9 @@ class TestBuildSettingsFromUI:
         from src.ui import AppSettings
         from src.ui.pages.settings import _build_settings_from_ui
 
-        s = AppSettings(spnkr_refresh_max_matches=999, spnkr_refresh_rps=12)
+        s = AppSettings(spnkr_refresh_max_matches=999)
         result = _build_settings_from_ui(**_full_build_kwargs(settings=s))
         assert result.spnkr_refresh_max_matches == 999
-        assert result.spnkr_refresh_rps == 12
 
     def test_backfill_flags_saved(self) -> None:
         """Tous les flags backfill sont correctement transmis."""
