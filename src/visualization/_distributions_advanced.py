@@ -161,7 +161,7 @@ def plot_first_event_distribution(
     Args:
         first_kills: Dict {match_id: time_ms} pour le premier kill.
         first_deaths: Dict {match_id: time_ms} pour la première mort.
-        title: Titre optionnel.
+        lang: Langue d'affichage.
 
     Returns:
         Figure Plotly avec histogrammes superposés.

@@ -303,8 +303,8 @@ def plot_medals_distribution(
     Args:
         medals_data: Liste de tuples (medal_name_id, count).
         medal_names: Dictionnaire {medal_name_id: nom_traduit}.
-        title: Titre optionnel.
         top_n: Nombre de médailles à afficher.
+        lang: Langue d'affichage.
 
     Returns:
         Figure Plotly avec barres horizontales.
