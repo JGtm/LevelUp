@@ -12,11 +12,18 @@ from __future__ import annotations
 
 import argparse
 import contextlib
+import io
 import json
 import os
 import shutil
 import sys
 from pathlib import Path
+
+# ── Forcer UTF-8 sur stdout/stderr (Windows cp1252 sinon) ────────────────────
+if hasattr(sys.stdout, "buffer"):
+    sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding="utf-8", errors="replace")
+if hasattr(sys.stderr, "buffer"):
+    sys.stderr = io.TextIOWrapper(sys.stderr.buffer, encoding="utf-8", errors="replace")
 
 # ── Racine du projet ──────────────────────────────────────────────────────────
 _REPO_ROOT = Path(__file__).resolve().parent.parent
@@ -152,6 +159,76 @@ def _extract_player(
                 )
 
     print("  [player] OK")
+
+
+def _reimport_existing_media(
+    out_player_db: Path,
+    demo_media_dir: Path,
+    demo_xuid: str,
+) -> int:
+    """Réimporte les fichiers média déjà présents dans demo_media_dir dans la DB joueur.
+
+    Utilisé lors des regens VPS où les fichiers ont déjà été uploadés une première fois.
+    Lit les associations depuis media_registry.json (créé lors de la première extraction)
+    pour préserver les associations match_id / map_name correctes.
+    """
+    levelup_root = Path(os.environ.get("LEVELUP_ROOT", str(_REPO_ROOT)))
+    demo_media_root = str(levelup_root / "data" / "players" / "DEMO" / "media")
+
+    registry_path = demo_media_dir / "media_registry.json"
+    if not registry_path.exists():
+        print(
+            "    [media] media_registry.json absent — skip réimport (lancer --force-media en local)"
+        )
+        return 0
+
+    registry: list[dict] = json.loads(registry_path.read_text(encoding="utf-8"))
+    if not registry:
+        return 0
+
+    imported = 0
+    with duckdb.connect(str(out_player_db)) as dst:
+        _ensure_media_tables(dst)
+        for entry in registry:
+            filename = entry["filename"]
+            file_path = demo_media_dir / filename
+            if not file_path.exists():
+                print(f"    [media] absent sur disque : {filename} — skip")
+                continue
+            new_path = f"{demo_media_root}/{filename}"
+            stat = file_path.stat()
+            dst.execute(
+                "INSERT INTO media_files"
+                " (file_path, file_hash, file_name, file_size, file_ext, kind, mtime, status)"
+                " VALUES (?, ?, ?, ?, ?, ?, ?, ?)"
+                " ON CONFLICT (file_path) DO NOTHING",
+                [
+                    new_path,
+                    entry.get("file_hash", file_path.stem),
+                    filename,
+                    stat.st_size,
+                    file_path.suffix.lstrip("."),
+                    "video",
+                    stat.st_mtime,
+                    "active",
+                ],
+            )
+            dst.execute(
+                "INSERT INTO media_match_associations"
+                " (media_path, match_id, xuid, match_start_time, map_name)"
+                " VALUES (?, ?, ?, ?, ?)"
+                " ON CONFLICT (media_path, match_id, xuid) DO NOTHING",
+                [
+                    new_path,
+                    entry["match_id"],
+                    demo_xuid,
+                    entry.get("match_start_time"),
+                    entry.get("map_name"),
+                ],
+            )
+            imported += 1
+            print(f"    [media] réimporté : {filename} ({entry.get('map_name', '?')})")
+    return imported
 
 
 # DDL media tables — doit rester synchronisé avec src/data/media_indexer.py
@@ -317,6 +394,7 @@ def _extract_media(
 
         demo_media_dir.mkdir(parents=True, exist_ok=True)
         mf_ph = ", ".join("?" * len(mf_cols))
+        registry: list[dict] = []
         with duckdb.connect(str(out_player_db)) as dst:
             _ensure_media_tables(dst)
             for fp, target_mid, target_mtime, map_name in candidates:
@@ -342,7 +420,26 @@ def _extract_media(
                 )
                 label = "direct" if target_mid in [c[1] for c in candidates] else "fuzzy"
                 print(f"    [media] {filename} ({label}, {map_name or '?'})")
+                registry.append(
+                    {
+                        "filename": filename,
+                        "file_hash": str(new_row[mf_cols.index("file_hash")])
+                        if "file_hash" in mf_cols
+                        else filename,
+                        "match_id": target_mid,
+                        "match_start_time": str(target_mtime) if target_mtime else None,
+                        "map_name": map_name or None,
+                    }
+                )
                 extracted += 1
+
+        # Sauvegarder le registre pour les regens futures sur VPS (--force-media absent)
+        if registry:
+            registry_path = demo_media_dir / "media_registry.json"
+            registry_path.write_text(
+                json.dumps(registry, indent=2, ensure_ascii=False), encoding="utf-8"
+            )
+            print(f"    [media] media_registry.json sauvegardé ({len(registry)} entrées)")
     except Exception as exc:
         print(f"    [warn] extraction media: {exc}")
     return extracted
@@ -416,6 +513,11 @@ def main() -> None:
     parser.add_argument(
         "--service-tag", default="", help="Spartan ID (ex: SPTA) affiché sous le gamertag"
     )
+    parser.add_argument(
+        "--force-media",
+        action="store_true",
+        help="Forcer la ré-extraction média même si des fichiers sont déjà présents",
+    )
     args = parser.parse_args()
 
     gamertag: str = args.gamertag
@@ -484,11 +586,20 @@ def main() -> None:
     _extract_player(src_player_db, out_player_db, match_ids, source_xuid, demo_xuid)
 
     # 4b. Extraire médias (optionnel, 5 clips max)
+    # Si des fichiers sont déjà présents dans le dossier démo (ex : après un premier
+    # upload local→VPS), on les réimporte dans la nouvelle DB sans recopier les fichiers.
     print("\n  [4b] Extraction médias…")
-    media_count = _extract_media(
-        src_player_db, out_player_db, out_dir, match_ids, src_shared, demo_xuid
-    )
-    print(f"  {media_count} fichier(s) média extrait(s)")
+    demo_media_dir = out_dir / "players" / "DEMO" / "media"
+    existing_files = list(demo_media_dir.glob("*")) if demo_media_dir.exists() else []
+    if existing_files and not args.force_media:
+        print(f"    [media] {len(existing_files)} fichier(s) déjà présents — réimport dans la DB")
+        media_count = _reimport_existing_media(out_player_db, demo_media_dir, demo_xuid)
+        print(f"  {media_count} fichier(s) média réimportés")
+    else:
+        media_count = _extract_media(
+            src_player_db, out_player_db, out_dir, match_ids, src_shared, demo_xuid
+        )
+        print(f"  {media_count} fichier(s) média extrait(s)")
 
     # 5. Écrire les fichiers de config
     print("\n[5/5] Génération des fichiers de configuration…")
