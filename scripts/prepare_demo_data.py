@@ -230,7 +230,8 @@ def _extract_media(
                 new_row = list(row)
                 new_row[fp_idx] = new_path
                 dst.execute(
-                    f"INSERT OR REPLACE INTO media_files ({', '.join(col_names)}) VALUES ({ph})",
+                    f"INSERT INTO media_files ({', '.join(col_names)}) VALUES ({ph})"
+                    " ON CONFLICT (file_path) DO NOTHING",
                     new_row,
                 )
 
@@ -243,8 +244,9 @@ def _extract_media(
                     a = list(assoc)
                     a[mp_idx] = new_path
                     dst.execute(
-                        f"INSERT OR IGNORE INTO media_match_associations"
-                        f" ({', '.join(assoc_cols)}) VALUES ({assoc_ph})",
+                        f"INSERT INTO media_match_associations"
+                        f" ({', '.join(assoc_cols)}) VALUES ({assoc_ph})"
+                        " ON CONFLICT (media_path, match_id, xuid) DO NOTHING",
                         a,
                     )
 
