@@ -267,7 +267,12 @@ def _extract_media(
 
 
 def _write_configs(
-    out_dir: Path, demo_xuid: str, gamertag: str = "DEMO", *, media_enabled: bool = False
+    out_dir: Path,
+    demo_xuid: str,
+    gamertag: str = "DEMO",
+    *,
+    media_enabled: bool = False,
+    service_tag: str = "",
 ) -> None:
     """Génère db_profiles.json et app_settings.json pour le mode démo."""
     profiles = {
@@ -307,6 +312,7 @@ def _write_configs(
         "tailscale_funnel_enabled": False,
         "profile_assets_download_enabled": False,
         "profile_api_enabled": False,
+        "profile_service_tag": service_tag,
         "repository_mode": "duckdb",
         "enable_duckdb_analytics": True,
     }
@@ -324,6 +330,9 @@ def main() -> None:
     parser.add_argument("--max-matches", type=int, default=50, help="Nombre de matchs à extraire")
     parser.add_argument(
         "--out", default="data/demo", help="Répertoire de sortie (défaut: data/demo)"
+    )
+    parser.add_argument(
+        "--service-tag", default="", help="Spartan ID (ex: SPTA) affiché sous le gamertag"
     )
     args = parser.parse_args()
 
@@ -399,7 +408,13 @@ def main() -> None:
 
     # 5. Écrire les fichiers de config
     print("\n[5/5] Génération des fichiers de configuration…")
-    _write_configs(out_dir, demo_xuid, gamertag=gamertag, media_enabled=media_count > 0)
+    _write_configs(
+        out_dir,
+        demo_xuid,
+        gamertag=gamertag,
+        media_enabled=media_count > 0,
+        service_tag=args.service_tag,
+    )
 
     print(f"\n✅ Données démo prêtes dans {out_dir}")
     print("   Lancer le conteneur : docker compose up -d levelup-demo")
