@@ -257,7 +257,16 @@ def load_settings() -> AppSettings:
 
 def save_settings(settings: AppSettings) -> tuple[bool, str]:
     """Sauvegarde les paramètres dans le fichier JSON."""
-    logger.info("Settings sauvegardées")
+    import traceback as _tb
+
+    _caller = _tb.extract_stack()[-2]
+    logger.info(
+        "save_settings: show_records=%s  [appelé depuis %s:%d %s()]",
+        getattr(settings, "show_records", "?"),
+        _caller.filename.split("\\")[-1].split("/")[-1],
+        _caller.lineno,
+        _caller.name,
+    )
     path = get_settings_path()
     try:
         os.makedirs(os.path.dirname(path) or ".", exist_ok=True)

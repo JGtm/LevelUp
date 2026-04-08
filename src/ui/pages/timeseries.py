@@ -13,6 +13,7 @@ import re
 import polars as pl
 import streamlit as st
 
+from src.app.kpis_render import render_kpis_section
 from src.data.services.timeseries_service import TimeseriesService
 from src.ui.chart_utils import safe_chart_render
 from src.ui.components.browser_storage import hints_visible
@@ -63,6 +64,23 @@ from src.visualization.timeseries import (
 # =============================================================================
 
 logger = logging.getLogger(__name__)
+
+
+def _render_summary_tab(  # noqa: PLR0913
+    dff: pl.DataFrame,
+    df_full: pl.DataFrame | None,
+    *,
+    lang: str,
+    db_path: str | None,
+    xuid: str | None,
+    is_session_scope: bool,
+) -> None:
+    """Affiche l'onglet Résumé (KPIs, KDA, résultats, séries)."""
+    render_kpis_section(dff, df_full)
+    st.divider()
+    _render_kda_section(dff, lang=lang, db_path=db_path, xuid=xuid)
+    _render_outcomes_over_time(dff, is_session_scope)
+    _render_streak_section(dff)
 
 
 @fragment_if_available
@@ -413,9 +431,9 @@ def render_timeseries_page(  # noqa: PLR0913
     )
 
     with _tab_summary:
-        _render_kda_section(dff, lang=lang, db_path=db_path, xuid=xuid)
-        _render_outcomes_over_time(dff, is_session_scope)
-        _render_streak_section(dff)
+        _render_summary_tab(
+            dff, df_full, lang=lang, db_path=db_path, xuid=xuid, is_session_scope=is_session_scope
+        )
 
     with _tab_maps:
         _render_map_mode_breakdown(dff)
