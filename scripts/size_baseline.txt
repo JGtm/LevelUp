@@ -18,7 +18,7 @@ FUNC:src/app/filters.py:141:render_session_filters:94L
 FUNC:src/app/filters_render.py:392:render_filters_sidebar:102L
 FUNC:src/app/i18n_columns.py:36:add_i18n_display_columns:85L
 FUNC:src/app/main_helpers.py:151:render_profile_hero:83L
-FUNC:src/app/profile.py:187:load_profile_assets:108L
+FUNC:src/app/profile.py:183:load_profile_assets:89L
 FUNC:src/app/sidebar.py:178:render_sync_button:124L
 FUNC:src/data/media_indexer.py:238:scan_and_index:91L
 FUNC:src/data/media_indexer.py:94:ensure_schema:138L
