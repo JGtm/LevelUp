@@ -82,7 +82,7 @@ def _resolve_db_path(default_db: str, settings: AppSettings) -> str:
        quand on navigue depuis l'historique ou la carrière vers un match spécifique.
        La présence conjointe de ``match_id`` distingue ce cas des liens d'encounter
        Explorer (``?gamertag=`` seul) qui ne doivent **pas** switcher de joueur.
-    3. localStorage navigateur (``last_db_path``) — restaure le joueur du dernier run.
+    3. Préférences serveur (``last_db_path`` via ``ui_prefs.json``) — restaure le joueur du dernier run.
     4. SPNKr DB si ``prefer_spnkr_db_if_available`` est activé dans les settings
     5. ``default_db`` (premier joueur alphabétique fourni par ``get_default_db_path()``)
     """
@@ -115,7 +115,7 @@ def _resolve_db_path(default_db: str, settings: AppSettings) -> str:
     except Exception:
         pass
 
-    # localStorage navigateur (v6.4) — si le slug gamertag pointe vers une DB existante
+    # Préférences serveur (v6.4) — si le slug gamertag pointe vers une DB existante
     ls_prefs = st.session_state.get("_browser_prefs_restored") or {}
     ls_slug = str(ls_prefs.get("last_db_path") or "").strip()
     if ls_slug and default_db:

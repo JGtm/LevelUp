@@ -533,7 +533,7 @@ def _render_main_sidebar(db_path: str, xuid: str, settings: AppSettings) -> tupl
                     old_xuid[:8] if old_xuid else "?",
                     xuid[:8] if xuid else "?",
                 )
-                # Persister le nouveau joueur dans localStorage navigateur
+                # Persister le nouveau joueur dans ui_prefs.json (serveur)
                 _new_slug = (get_gamertag_from_duckdb_v4_path(db_path) if db_path else xuid) or xuid
                 if _new_slug:
                     from src.ui.components.browser_storage import (
