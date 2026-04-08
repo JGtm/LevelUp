@@ -36,6 +36,21 @@ Le format est basé sur [Keep a Changelog](https://keepachangelog.fr/fr/1.1.0/).
   - Intégré dans `launcher.py` — s'exécute automatiquement après les migrations au démarrage, affiche ✅/⚠️/❌ dans la console
   - Intégré dans `deploy.sh` — smoke test post-déploiement, résultats ajoutés dans `data/logs/healthcheck_deploy.log` (persisté entre les déploiements via le volume Docker)
 
+### Ajouté (suite)
+
+- **Bascule "Aides à la lecture"** — une nouvelle case à cocher dans la sidebar permet d'afficher ou masquer les ~45 bandeaux d'aide contextuels présents sur chaque page. Le paramètre est persisté dans `ui_prefs.json` (clé `show_hints`) et actif par défaut. `hints_visible()` est le prédicat global utilisé dans tous les modules de page.
+  - Plusieurs blocs `st.expander` convertis en `st.popover` pour une expérience plus légère (`match_view_players`, `match_view_encounters`, `career_top_matches_render`, `career_encounters_render`, `teammates_impact`)
+  - `restore_hints_from_prefs()` restaure la valeur persistée depuis `ui_prefs.json` au redémarrage
+
+- **Cases KPI carrière refondues** — la ligne de résumé au-dessus des graphes carrière est désormais une rangée compacte de 8 cases :
+  - **Matchs joués**, **Durée totale**, **Frags**, **Morts**, **Assists**, **Précision**, **Durée de vie**, **Résultats**
+  - Frags, Morts, Assists : valeur principale avec une sous-valeur `/min` inline en petite police
+  - Code couleur (vert / or / rouge) par rapport à la moyenne all-time (seuil ±8 %)
+  - Case Résultats : barre segmentée avec compteurs bruts V/D/E/DNF et légende colorée
+  - `render_top_summary()` supprimé (redondant) ; `_build_kpi_cards()` extrait pour respecter la limite 80L
+
+- **Page Win/Loss fusionnée dans Timeseries** — la page Win/Loss autonome a été absorbée dans la page Timeseries sous forme d'un nouvel onglet. La route `win_loss` est supprimée de `page_router.py`. Onglets Timeseries renommés : Résumé · Cartes & Modes · Progression · Avancé.
+
 ### Modifié
 
 - **Image Docker** — `ffmpeg` est désormais installé dans l'image, permettant la génération de miniatures vidéo dans les déploiements conteneurisés sans étape d'installation manuelle supplémentaire.
@@ -96,8 +111,19 @@ Le format est basé sur [Keep a Changelog](https://keepachangelog.fr/fr/1.1.0/).
 - Stats/min escouade visibles pour tous les membres (pas seulement le joueur focal).
 - Aliases armes `Mutilator` / `Mutilateur` ajoutés dans `_scoreboard_asset_urls`.
 - `top_killer` ajouté à `_EVENT_TO_EMOJI` (entrée manquante causait un repli d'affichage emoji).
+- Panneau légende coéquipiers : visibilité conditionnée à la section Escouade uniquement — le panneau démarre en `display:none`, apparaît quand la sentinelle `#llp-squad-start` entre dans le viewport et se masque quand la sentinelle Impact (`#llp-impact-end`) atteint le haut de l'écran.
+- Barre native Streamlit masquée — header, toolbar, menu et barre de décoration supprimés via `.streamlit/config.toml` et surcharges CSS.
+- Deep links Explorer : `open_match_button` utilise désormais `session_state` au lieu de `query_params` pour éviter le changement de DB lors de la navigation ; `_scroll_into_view` fait défiler la ligne correspondante via un `scrollIntoView` JS same-origin ; le deep link gamertag bénéficie aussi du scroll automatique.
+- Ratio KDA/efficacité : valeur lue directement depuis le champ API `mean(ratio)` au lieu d'être recalculée en `(K + A/3) / D`, corrigeant une divergence systématique pour les joueurs avec beaucoup d'assists.
+- Watcher media : guard process-level (`_PERIODIC_LOCK` / `_PERIODIC_STARTED`) déplacé avant le branchement Linux/Windows pour éviter la création d'instances `watchdog.Observer` dupliquées lors des reruns Streamlit ; mode actif (inotify vs. polling) logué au démarrage.
+- Migrations sync : la DB est marquée comme migrée uniquement après le succès de `ensure_resolution_views()` (guard success-based) ; les `duckdb.connect()` nus dans `_engine_connections.py` et `launcher.py` remplacés par des context managers.
+- Healthcheck : statut `'repaired'` traité comme warning (était ignoré silencieusement) ; `recompute_status()` ajouté pour recalculer le résultat global après mutation de checks individuels ; `deploy.sh` mis à jour en conséquence.
+- Runner migrations : la DB `metadata` est traitée avant `shared` pour que les vues i18n v6 puissent attacher `metadata.duckdb` à la création ; un `logger.warning()` est désormais émis quand les vues basculent en mode dégradé (colonnes FR = NULL).
 
 ### Tests
+
+- `test(ui_persistence)` : 9 nouveaux tests pour `hints_visible()` / `restore_hints_from_prefs()` ; 5 930 tests passent au total
+- `test(remediation)` : tests de non-régression P0.2 (suppression code mort `browser_storage`), P0.3 (corrections commentaires localStorage), P1.2 (4 cas supplémentaires)
 
 - `test(i18n)` : couverture `resolve_map_display_names()` + assertions colonnes `map_ui` / `mode_ui`
 - `test(radar)` : cas limite `f1_vide` + régression effondrement `shared_match_ids`

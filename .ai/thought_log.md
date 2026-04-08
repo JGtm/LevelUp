@@ -3,6 +3,22 @@
 > Ce fichier capture le raisonnement de l'agent entre les sessions.
 > Archivé : 2026-02-01 (logs précédents dans `.ai/archive/thought_log_pre_phase6.md`)
 
+## [2026-04-08] docs: mise à jour CHANGELOG + README post-v6.4.0 — Complété
+
+**Tâche** : Repérer et documenter tous les commits réalisés depuis la dernière mise à jour des docs (commit `2c371357`) et mettre à jour `docs/CHANGELOG.md`, `docs/FR/CHANGELOG.md` et `README.md`.
+
+**Périmètre analysé** : 20 commits entre `2c371357` et HEAD (`2f59409f`).
+
+**Entrées ajoutées (CHANGELOG [6.4.0]) :**
+- Added: Aides à la lecture (`hints_visible()`, popovers, toggle sidebar)
+- Added: Refonte cases KPI carrière (8 cases, /min, code couleur all-time, barre V/D/E/DNF)
+- Added: Fusion page Win/Loss dans Timeseries (onglets renommés)
+- Fixed (9) : légende teammates DOM sentinels, barre Streamlit native, deep links Explorer, ratio KDA API, watcher media guard, migrations success-based, healthcheck 'repaired', ordre metadata→shared
+
+**Conclusion** : `docs/CHANGELOG.md`, `docs/FR/CHANGELOG.md` et `README.md` à jour. Pas de V7/V8 inclus.
+
+---
+
 ## [2026-04-08] feat(ui): système Aides à la lecture — Complété
 
 **Tâche** : Rendre les ~45 aides à la lecture (légendes, captions, notes, tips) optionnelles via un toggle sidebar persisté.
@@ -10106,3 +10122,19 @@ Ajout d'un panneau de filtres complet sur la page Médias, en exploitant `df_ful
 | **Total** | **275 MB** | **37 MB** | **−238 MB** |
 
 **Conclusion** : 238 MB récupérés. Les DBs joueurs sont maintenant proportionnelles à leurs données. À noter : si d'autres migrations DROP TABLE importantes ont lieu à l'avenir, il faudra re-exécuter le même compactage (ou intégrer un step de compactage dans le workflow de migration).
+
+---
+
+## [2025-07-25] Navigation pleine largeur — Complété
+
+**Statut** : Complété
+
+**Décision technique** : Injection CSS via `static/styles.css` (chargé par `load_css()` au démarrage).
+Ajout de 3 règles ciblant `div[data-testid="stSegmentedControl"]` :
+- conteneur à `width: 100%`
+- groupe interne en `display: flex; width: 100%`
+- chaque `<label>` avec `flex: 1 1 0` pour répartition égale
+
+**Résultat** : Barre de navigation (st.segmented_control) occupe toute la largeur disponible, onglets équidistants.
+
+**Conclusion** : Modification minimaliste et non-invasive. CSS appliqué globalement via le mécanisme existant.
