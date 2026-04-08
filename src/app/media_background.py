@@ -98,6 +98,10 @@ def _index_with_retry(db_file: Path, gamertag: str, captures_dir: Path, toleranc
     for attempt in range(3):
         try:
             _index_media_for_player(db_file, gamertag, captures_dir, tolerance)
+            if attempt > 0:
+                logger.info(
+                    "✅ Indexation médias %s réussie après %d tentative(s)", gamertag, attempt + 1
+                )
             return
         except Exception as err:
             last_err = err
@@ -134,6 +138,13 @@ def background_media_indexing(settings, db_path: str) -> None:
 
     base_path = Path(base_dir) if base_dir else None
 
+    # Guard process-level — un seul thread/watcher par process, quel que soit l'OS
+    with _PERIODIC_LOCK:
+        if _PERIODIC_STARTED:
+            logger.debug("Indexation médias déjà active (process-level guard)")
+            return
+        _PERIODIC_STARTED = True
+
     # Sur Linux + dossier base configuré + watcher activé → inotify (zéro polling)
     if (
         platform.system() == "Linux"
@@ -144,14 +155,10 @@ def background_media_indexing(settings, db_path: str) -> None:
         from src.app.media_watcher import start_media_watcher
 
         start_media_watcher(base_path, settings)
+        logger.info("👁️ Mode indexation médias : watcher inotify (Linux)")
         return
 
     # Windows ou mode legacy (deux dossiers séparés) → thread périodique
-    with _PERIODIC_LOCK:
-        if _PERIODIC_STARTED:
-            logger.debug("Thread indexation médias déjà actif (process-level guard)")
-            return
-        _PERIODIC_STARTED = True
 
     interval_hours: int = getattr(settings, "media_indexing_interval_hours", 4)
     logger.info(
