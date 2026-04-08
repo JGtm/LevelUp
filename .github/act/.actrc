@@ -1,0 +1,29 @@
+# act — Configuration pour tester les workflows GitHub Actions en local
+#
+# Prérequis : https://github.com/nektos/act
+# Installation Windows :
+#   winget install nektos.act
+#   choco install act-cli
+#   ou : télécharger depuis https://github.com/nektos/act/releases
+#
+# Installation Linux/macOS :
+#   curl --proto '=https' --tlsv1.2 -sSf https://raw.githubusercontent.com/nektos/act/master/install.sh | sudo bash
+#
+# Usage depuis la racine du repo :
+#   act -W .github/workflows/test-deploy-precheck.yml         # workflow complet
+#   act -W .github/workflows/test-deploy-precheck.yml -j validate-syntax   # job seul
+#   act push --secret-file .github/act/secrets.local          # avec secrets
+#   act workflow_dispatch -W .github/workflows/test-deploy-precheck.yml    # déclenchement manuel
+#   act -n                                                     # dry-run act lui-même
+#
+# NOTE : Le workflow deploy.yml nécessite SSH → non testable avec act (secrets VPS requis).
+# Utiliser test-deploy-precheck.yml pour la validation sans SSH.
+
+# Image Docker pour simuler ubuntu-latest
+--platform=ubuntu-latest=catthehacker/ubuntu:act-latest
+
+# Répertoires de cache act (accélère les exécutions successives)
+--artifact-server-path=/tmp/act-artifacts
+
+# Ne pas afficher les warnings d'action inconnues
+--action-offline-mode=false
