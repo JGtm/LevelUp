@@ -19,7 +19,4 @@ jobs:
           script: |
             git config --global --add safe.directory /opt/levelup
             cd /opt/levelup
-            git fetch origin main
-            git reset --hard origin/main
-            git clean -fd --exclude=data/ --exclude=.env.local --exclude=app_settings.json --exclude=db_profiles.json
             bash /opt/levelup/deploy.sh
