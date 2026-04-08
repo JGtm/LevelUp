@@ -675,11 +675,11 @@ def ensure_mv_player_matches_view(conn: duckdb.DuckDBPyConnection) -> None:
     kda_expr = "p.kda" if has_kda_col else "NULL"
 
     # Colonnes de traduction FR (disponibles seulement via v_match_full — v6)
-    fr_cols_expr = (
-        "r.map_name_fr,\n            r.playlist_name_fr,\n            r.pair_name_fr,\n            r.game_variant_name_fr,"
-        if has_v_match_full
-        else "NULL AS map_name_fr,\n            NULL AS playlist_name_fr,\n            NULL AS pair_name_fr,\n            NULL AS game_variant_name_fr,"
-    )
+    if has_v_match_full:
+        fr_cols_expr = "r.map_name_fr,\n            r.playlist_name_fr,\n            r.pair_name_fr,\n            r.game_variant_name_fr,"
+    else:
+        logger.warning("v_match_full absente — mv_player_matches créée sans colonnes FR")
+        fr_cols_expr = "NULL AS map_name_fr,\n            NULL AS playlist_name_fr,\n            NULL AS pair_name_fr,\n            NULL AS game_variant_name_fr,"
 
     conn.execute(f"""
         CREATE OR REPLACE VIEW {prefix}mv_player_matches AS
@@ -1499,6 +1499,7 @@ def _create_v_match_full(
         NULL                                         AS playlist_canonical_en,
         NULL                                         AS playlist_canonical_fr"""
     else:
+        logger.warning("metadata.duckdb non attachée — v_match_full créée sans traductions FR")
         map_en = "mr.map_name"
         pl_en = "mr.playlist_name"
         pp_en = "mr.pair_name"

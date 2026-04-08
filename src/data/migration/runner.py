@@ -172,10 +172,10 @@ def apply_pending_migrations(
 
     total = MigrationReport(errors=[])
     db_map: list[tuple[Path | None, str]] = [
+        (metadata_db_path, "metadata"),  # 1er — prérequis i18n pour les vues shared
         (shared_db_path, "shared"),
         (pve_db_path, "shared_pve"),
         (player_db_path, "player"),
-        (metadata_db_path, "metadata"),
     ]
 
     for path, target in db_map:
