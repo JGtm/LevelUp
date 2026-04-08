@@ -16,6 +16,9 @@ DEPLOY_DIR="/opt/levelup"
 echo "[deploy] Répertoire : $DEPLOY_DIR"
 cd "$DEPLOY_DIR"
 
+# 0. Corriger les permissions git (idempotent — protège contre les écrits root via Docker)
+find .git/objects -not -writable -exec chmod u+w {} \; 2>/dev/null || true
+
 # 1. Récupérer les derniers commits depuis main (force, ignore les changements locaux)
 echo "[deploy] git fetch + reset --hard origin/main..."
 git fetch origin main
