@@ -91,43 +91,27 @@ jobs:
             set -euo pipefail
             cd /opt/levelup
 
-            # [Guard 1] Fix permissions data/ — UID 10001 doit pouvoir écrire
-            echo "[regen] Fix permissions data/..."
-            docker run --rm --user root \
-              -v /opt/levelup/data:/app/data \
-              alpine:3 sh -c "chown -R 10001:10001 /app/data && chmod -R u+rw /app/data" \
-              && echo "[regen] ✅ Permissions OK" \
-              || echo "[regen] ⚠️  Fix permissions ignoré"
-
-            # [Guard 2] Cleanup répertoires fantômes AVANT le rm -rf
-            # (si le regen précédent a échoué, Docker les a peut-être créés)
+            # Regen données démo
+            # Note : on supprime uniquement les données, PAS les fichiers de config stub.
+            # Les stubs (créés par deploy.sh) évitent que Docker crée des répertoires
+            # fantômes si le regen échoue en cours de route.
+            rm -rf data/demo/warehouse data/demo/players/DEMO/stats.duckdb
+            # Supprimer les JSON seulement s'ils sont de vrais fichiers (pas des répertoires)
             for f in data/demo/db_profiles.json data/demo/app_settings.json; do
-              fp="/opt/levelup/$f"
-              if [[ -d "$fp" ]]; then
-                echo "[regen] ⚠️  Fantôme détecté : $f — nettoyage..."
-                rm -rf "$fp"
-                echo "[regen] ✅ Nettoyé : $f"
-              fi
+              [[ -f "$f" ]] && rm -f "$f"
             done
 
-            # Regen données démo
-            rm -rf data/demo/warehouse data/demo/db_profiles.json \
-                   data/demo/app_settings.json data/demo/players/DEMO/stats.duckdb
             docker compose run --rm levelup \
               python scripts/prepare_demo_data.py \
                 --gamertag JGtm --max-matches 50 --service-tag SPTA --out data/demo
 
-            # [Guard 3] Vérification post-regen — les fichiers doivent exister
+            # [Guard] Vérification post-regen — les fichiers doivent exister et être des fichiers
             echo "[regen] Vérification fichiers post-regen..."
             ok=true
             for f in data/demo/db_profiles.json data/demo/app_settings.json; do
               fp="/opt/levelup/$f"
               if [[ -d "$fp" ]]; then
-                echo "[regen] ❌ ERREUR : $f est un répertoire fantôme après regen"
-                rm -rf "$fp"
-                ok=false
-              elif [[ ! -f "$fp" ]]; then
-                echo "[regen] ❌ ERREUR : $f absent — le script de regen a peut-être échoué"
+                echo "[regen] ❌ ERREUR : $f est un répertoire (regen a échoué + Docker a créé un fantôme)"
                 ok=false
               else
                 echo "[regen] ✅ $f OK"

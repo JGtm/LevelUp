@@ -8,6 +8,10 @@
 # de docker-compose.yml, pour éviter que Docker ne crée des DOSSIERS
 # à la place des fichiers attendus (comportement par défaut si absents).
 #
+# IMPORTANT (VPS) : lancer ce script en tant qu'utilisateur `deploy` (pas root).
+# Si lancé en root, les fichiers seront possédés par root et le container appuser (UID 10001)
+# ne pourra pas écrire dans data/. En cas de doute : chown -R deploy:deploy /opt/levelup/data
+#
 # Idempotent : peut être relancé sans risque.
 
 set -euo pipefail
@@ -39,7 +43,21 @@ mkdir -p "$REPO_ROOT/data/players"
 mkdir -p "$REPO_ROOT/data/warehouse"
 mkdir -p "$REPO_ROOT/data/cache"
 mkdir -p "$REPO_ROOT/data/logs"
-echo "· Dossiers data/{players,warehouse,cache,logs} OK"
+mkdir -p "$REPO_ROOT/data/demo/players/DEMO"
+echo "· Dossiers data/{players,warehouse,cache,logs,demo} OK"
+
+# --- Stubs bind-mount pour levelup-demo ---
+# IMPORTANT : Docker crée automatiquement un RÉPERTOIRE quand il rencontre un bind-mount fichier
+# dont la source n'existe pas. Ces stubs évitent ce piège ; ils seront remplacés par le
+# vrai contenu lors du premier regen (scripts/prepare_demo_data.py).
+for demo_file in "$REPO_ROOT/data/demo/db_profiles.json" "$REPO_ROOT/data/demo/app_settings.json"; do
+    if [[ ! -e "$demo_file" ]]; then
+        echo '{}' > "$demo_file"
+        echo "✓ $(basename "$demo_file") demo créé (stub)"
+    else
+        echo "· $(basename "$demo_file") demo existe déjà"
+    fi
+done
 
 # --- Fichiers de données optionnels ---
 
