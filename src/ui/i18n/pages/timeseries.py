@@ -252,10 +252,11 @@ STRINGS: dict[str, dict[str, str] | str] = {
     },
     "ts_skill_rank_type": {"fr": "Type de rating :", "en": "Rating type:"},
     # ── Onglets (navigation)
-    "ts_tab_kda": {"fr": "⚔️ F/D/A", "en": "⚔️ K/D/A"},
-    "ts_tab_progression": {"fr": "📈 Progression", "en": "📈 Progression"},
+    "ts_tab_kda": {"fr": "📊 Résumé", "en": "📊 Summary"},
+    "ts_tab_maps": {"fr": "🗺️ Cartes & Modes", "en": "🗺️ Maps & Modes"},
     "ts_tab_distributions": {"fr": "📊 Distributions", "en": "📊 Distributions"},
-    "ts_tab_advanced": {"fr": "🎯 Avancé", "en": "🎯 Advanced"},
+    "ts_tab_advanced": {"fr": "📈 Progression", "en": "📈 Progression"},
+    "ts_tab_progression": {"fr": "🎯 Avancé", "en": "🎯 Advanced"},
     # ── Heatmap d'intensité ───────────────────────────────────────────────────
     "ts_match_intensity": {
         "fr": "Profil d'intensité par match",
