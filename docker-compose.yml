@@ -2,7 +2,7 @@ services:
   levelup:
     build: .
     ports:
-      - "8501:8501"
+      - "127.0.0.1:8501:8501"
     environment:
       # Optionnel: forcer une base explicite (sinon sélection via profils/UI)
       # - LEVELUP_DB=/app/data/players/MonGamertag/stats.duckdb
@@ -28,7 +28,7 @@ services:
   levelup-demo:
     build: .
     ports:
-      - "8502:8501"
+      - "127.0.0.1:8502:8501"
     environment:
       - LEVELUP_ROOT=/app
       - LEVELUP_DATA=/app/data
