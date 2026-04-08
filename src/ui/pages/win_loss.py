@@ -11,6 +11,7 @@ import streamlit as st
 from src.config import HALO_COLORS
 from src.data.services.win_loss_service import WinLossService
 from src.ui.chart_utils import safe_chart_render
+from src.ui.components.browser_storage import hints_visible
 from src.ui.i18n import get_lang, t
 from src.ui.streamlit_modern import PLOTLY_CLEAN_CONFIG, PLOTLY_STATIC_CONFIG, fragment_if_available
 from src.ui.tz import get_tz_name
@@ -176,7 +177,8 @@ def _render_heatmap_section(dff: pl.DataFrame) -> None:
     """Affiche la heatmap Win Rate par jour et heure."""
     st.divider()
     st.subheader(t("wl_heatmap_title"))
-    st.caption(t("wl_heatmap_caption", tz=get_tz_name()))
+    if hints_visible():
+        st.caption(t("wl_heatmap_caption", tz=get_tz_name()))
     if "start_time" in dff.columns and "outcome" in dff.columns:
         with safe_chart_render():
             fig_heat = plot_win_ratio_heatmap(dff, min_matches=1, lang=get_lang())
@@ -193,7 +195,8 @@ def _render_top_by_week(dff: pl.DataFrame) -> None:
     """Affiche Matchs Top vs Total par semaine (Sprint 5.4.7)."""
     st.divider()
     st.subheader(t("wl_top_by_week"))
-    st.caption(t("wl_top_by_week_caption"))
+    if hints_visible():
+        st.caption(t("wl_top_by_week_caption"))
     if "start_time" not in dff.columns:
         st.info(t("missing_time_data"))
         return
@@ -201,7 +204,6 @@ def _render_top_by_week(dff: pl.DataFrame) -> None:
     with safe_chart_render():
         fig_top = plot_matches_at_top_by_week(
             dff,
-            title=None,
             rank_col=rank_col,
             top_n_ranks=1,
             lang=get_lang(),
@@ -217,7 +219,8 @@ def _render_streak_section(dff: pl.DataFrame) -> None:
     """Affiche les séries de victoires/défaites (Sprint 7.2)."""
     st.divider()
     st.subheader(t("wl_streaks"))
-    st.caption(t("wl_streaks_caption"))
+    if hints_visible():
+        st.caption(t("wl_streaks_caption"))
     if "outcome" in dff.columns and "start_time" in dff.columns:
         with safe_chart_render():
             fig_streak = plot_streak_chart(dff, lang=get_lang())
@@ -235,7 +238,8 @@ def _render_personal_score_section(dff: pl.DataFrame) -> None:
         return
     st.divider()
     st.subheader(t("wl_personal_score"))
-    st.caption(t("wl_personal_score_caption"))
+    if hints_visible():
+        st.caption(t("wl_personal_score_caption"))
     colors = HALO_COLORS.as_dict()
     fig_ps = plot_metric_bars_by_match(
         dff,
@@ -287,7 +291,8 @@ def _render_winrate_perf_vs_history(dff: pl.DataFrame, base: pl.DataFrame) -> No
 
     st.divider()
     st.markdown(f"##### {t('wl_map_bullet_title')}")
-    st.caption(t("wl_map_bullet_caption"))
+    if hints_visible():
+        st.caption(t("wl_map_bullet_caption"))
     with safe_chart_render():
         fig_bullet = plot_map_winrate_bullet(view, bd_history, lang=lang, map_order=map_order)
         if fig_bullet is not None:
@@ -321,7 +326,8 @@ def _render_ratio_by_map_section(
     """Affiche la section par carte : lollipop, timeline, bullet, perf vs historique."""
     st.divider()
     st.subheader(t("wl_ratio_by_map"))
-    st.caption(t("wl_ratio_caption"))
+    if hints_visible():
+        st.caption(t("wl_ratio_caption"))
     if "min_matches_maps" not in st.session_state:
         st.session_state["min_matches_maps"] = 1
     min_matches = st.slider(
@@ -370,7 +376,8 @@ def _render_ratio_by_map_section(
 
     # C — Bullet win rate vs historique
     st.markdown(f"##### {t('wl_map_bullet_title')}")
-    st.caption(t("wl_map_bullet_caption"))
+    if hints_visible():
+        st.caption(t("wl_map_bullet_caption"))
     with safe_chart_render():
         fig_bullet = plot_map_winrate_bullet(view, breakdown_history, lang=lang)
         if fig_bullet is not None:

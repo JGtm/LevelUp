@@ -17,6 +17,7 @@ from src.ui.career_ranks import (
     get_rank_info as get_meta_rank_info,
 )
 from src.ui.chart_utils import safe_chart_render
+from src.ui.components.browser_storage import hints_visible
 from src.ui.components.career_progress_circle import (
     RANK_MAX,
     XP_HERO_TOTAL,
@@ -319,7 +320,7 @@ def _render_xp_history(
                 width="stretch",
                 config=PLOTLY_CLEAN_CONFIG,
             )
-            if estimated_curve:
+            if estimated_curve and hints_visible():
                 st.caption(t("career_xp_estimated_note"))
         else:
             st.info(t("career_rank_history_no_data"))

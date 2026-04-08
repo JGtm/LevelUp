@@ -5,15 +5,24 @@ Stocke dans ``data/ui_prefs.json`` un objet JSON plat contenant :
 - ``last_gamertag``  : dernier gamertag sélectionné
 - ``last_db_path``   : dernier db_path sélectionné (slug, pas chemin complet)
 - ``lang``           : langue choisie
+- ``show_hints``     : affichage des aides à la lecture ("1" = activé, "0" = masqué)
 
 Usage :
 
-    from src.ui.components.browser_storage import restore_browser_prefs, persist_browser_prefs
+    from src.ui.components.browser_storage import (
+        restore_browser_prefs, persist_browser_prefs,
+        hints_visible, restore_hints_from_prefs,
+    )
 
     # En haut de main(), avant toute logique DB :
     prefs = restore_browser_prefs()  # None si déjà restauré ce run
     if prefs:
         _apply_browser_prefs(prefs)
+        restore_hints_from_prefs(prefs)
+
+    # Lecture dynamique dans n'importe quelle page :
+    if hints_visible():
+        st.caption("Légende...")
 
     # Après changement de joueur / langue :
     persist_browser_prefs(last_gamertag="GuiGui", last_db_path="GuiGui", lang="fr")
@@ -110,3 +119,32 @@ def clear_browser_prefs() -> None:
             _PREFS_FILE.unlink()
     except Exception as exc:
         logger.debug("Suppression ui_prefs.json échouée : %s", exc)
+
+
+# ---------------------------------------------------------------------------
+# Aides à la lecture (hints)
+# ---------------------------------------------------------------------------
+
+_HINTS_KEY = "show_hints"
+_HINTS_SS_KEY = "_hints_visible"
+
+
+def hints_visible() -> bool:
+    """Retourne True si les aides à la lecture sont activées (défaut : True)."""
+    import streamlit as st
+
+    return bool(st.session_state.get(_HINTS_SS_KEY, True))
+
+
+def restore_hints_from_prefs(prefs: dict) -> None:
+    """Restaure la préférence d'affichage des aides depuis ui_prefs.json.
+
+    Appelé une seule fois au démarrage depuis _maybe_apply_browser_prefs().
+    Ne fait rien si la clé est absente du fichier (conserve le défaut True).
+    """
+    import streamlit as st
+
+    raw = prefs.get(_HINTS_KEY)
+    if raw is not None:
+        st.session_state[_HINTS_SS_KEY] = str(raw) != "0"
+        logger.debug("Aides à la lecture restaurées : %s", st.session_state[_HINTS_SS_KEY])

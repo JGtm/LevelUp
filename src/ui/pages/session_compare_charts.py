@@ -15,6 +15,7 @@ import polars as pl
 import streamlit as st
 
 from src.ui.chart_utils import render_chart_or_info, safe_chart_render
+from src.ui.components.browser_storage import hints_visible
 from src.ui.i18n import t
 from src.ui.pages._session_compare_history import (  # noqa: F401
     render_session_history_table,
@@ -483,7 +484,8 @@ def render_participation_trend_section(
 
         st.markdown("---")
         st.markdown(t("sc_participation_profile"))
-        st.caption(t("sc_participation_comparison"))
+        if hints_visible():
+            st.caption(t("sc_participation_comparison"))
 
         from src.ui.pages._session_compare_viz import _build_participation_bar_chart
 

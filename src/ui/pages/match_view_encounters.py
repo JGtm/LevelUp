@@ -17,7 +17,7 @@ import streamlit as st
 from src.config import get_bot_name
 from src.data.repositories._encounter_loader import _fetch_match_start_time, load_encounter_stats
 from src.data.repositories.duckdb_repo import DuckDBRepository
-from src.ui.i18n import t
+from src.ui.i18n import get_lang, t
 from src.ui.pages.match_table_html import gamertag_link
 from src.ui.pages.match_view_encounters_logic import (
     Badge,
@@ -349,8 +349,10 @@ def render_encounter_section(
     rows_html = _build_encounter_rows(records, xuid_to_team, my_team_id)
     if rows_html:
         st.markdown(_build_encounter_table_html(rows_html), unsafe_allow_html=True)
-        st.markdown(build_badge_legend_html(), unsafe_allow_html=True)
-        st.caption(t("mv_encounter_legend"))
+        _legend_label = "ℹ️ Légende" if get_lang() == "fr" else "ℹ️ Legend"
+        with st.popover(_legend_label):
+            st.markdown(build_badge_legend_html(), unsafe_allow_html=True)
+            st.caption(t("mv_encounter_legend"))
 
 
 __all__ = [

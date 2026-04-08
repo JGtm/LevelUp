@@ -280,7 +280,9 @@ def render_top_matches_section(*, db_path: str, xuid: str, waypoint_player: str 
             )
             has_badge = any(_badge_html(r.get("dominance_flag", 0) or 0, best=True) for r in best)
             if has_badge:
-                st.markdown(_build_match_badge_legend_html(best=True), unsafe_allow_html=True)
+                _legend_label = "ℹ️ Légende" if get_lang() == "fr" else "ℹ️ Legend"
+                with st.popover(_legend_label):
+                    st.markdown(_build_match_badge_legend_html(best=True), unsafe_allow_html=True)
         else:
             st.info(t("career_top_no_data"))
 
@@ -292,6 +294,8 @@ def render_top_matches_section(*, db_path: str, xuid: str, waypoint_player: str 
             )
             has_badge = any(_badge_html(r.get("dominance_flag", 0) or 0, best=False) for r in worst)
             if has_badge:
-                st.markdown(_build_match_badge_legend_html(best=False), unsafe_allow_html=True)
+                _legend_label = "ℹ️ Légende" if get_lang() == "fr" else "ℹ️ Legend"
+                with st.popover(_legend_label):
+                    st.markdown(_build_match_badge_legend_html(best=False), unsafe_allow_html=True)
         else:
             st.info(t("career_top_no_data"))

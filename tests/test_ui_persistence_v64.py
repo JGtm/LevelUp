@@ -513,3 +513,158 @@ class TestResolveDbPathLocalStorage:
             result = dl._resolve_db_path(default_db, settings)
 
         assert result == default_db
+
+
+# ===========================================================================
+# Tests : hints_visible + restore_hints_from_prefs
+# ===========================================================================
+
+
+class TestHintsVisible:
+    """Tests pour hints_visible() et restore_hints_from_prefs()."""
+
+    def _make_fake_st(self) -> SimpleNamespace:
+        return SimpleNamespace(session_state={})
+
+    def test_hints_visible_default_true(self, monkeypatch: pytest.MonkeyPatch) -> None:
+        """Sans clé dans session_state, hints_visible() retourne True (défaut)."""
+        import src.ui.components.browser_storage as bs
+
+        fake_st = self._make_fake_st()
+
+        with patch("streamlit.session_state", fake_st.session_state):
+            import streamlit as st_real
+
+            monkeypatch.setattr(st_real, "session_state", fake_st.session_state)
+            result = bs.hints_visible()
+
+        assert result is True
+
+    def test_hints_visible_false_when_set(self, monkeypatch: pytest.MonkeyPatch) -> None:
+        """Si _hints_visible = False dans session_state, hints_visible() retourne False."""
+        import src.ui.components.browser_storage as bs
+
+        fake_st = self._make_fake_st()
+        fake_st.session_state["_hints_visible"] = False
+
+        with patch("streamlit.session_state", fake_st.session_state):
+            import streamlit as st_real
+
+            monkeypatch.setattr(st_real, "session_state", fake_st.session_state)
+            result = bs.hints_visible()
+
+        assert result is False
+
+    def test_hints_visible_true_when_set(self, monkeypatch: pytest.MonkeyPatch) -> None:
+        """Si _hints_visible = True dans session_state, hints_visible() retourne True."""
+        import src.ui.components.browser_storage as bs
+
+        fake_st = self._make_fake_st()
+        fake_st.session_state["_hints_visible"] = True
+
+        with patch("streamlit.session_state", fake_st.session_state):
+            import streamlit as st_real
+
+            monkeypatch.setattr(st_real, "session_state", fake_st.session_state)
+            result = bs.hints_visible()
+
+        assert result is True
+
+    def test_restore_hints_sets_false_when_zero(self, monkeypatch: pytest.MonkeyPatch) -> None:
+        """restore_hints_from_prefs avec show_hints='0' → _hints_visible = False."""
+        import src.ui.components.browser_storage as bs
+
+        fake_st = self._make_fake_st()
+
+        with patch("streamlit.session_state", fake_st.session_state):
+            import streamlit as st_real
+
+            monkeypatch.setattr(st_real, "session_state", fake_st.session_state)
+            bs.restore_hints_from_prefs({"show_hints": "0"})
+
+        assert fake_st.session_state.get("_hints_visible") is False
+
+    def test_restore_hints_sets_true_when_one(self, monkeypatch: pytest.MonkeyPatch) -> None:
+        """restore_hints_from_prefs avec show_hints='1' → _hints_visible = True."""
+        import src.ui.components.browser_storage as bs
+
+        fake_st = self._make_fake_st()
+
+        with patch("streamlit.session_state", fake_st.session_state):
+            import streamlit as st_real
+
+            monkeypatch.setattr(st_real, "session_state", fake_st.session_state)
+            bs.restore_hints_from_prefs({"show_hints": "1"})
+
+        assert fake_st.session_state.get("_hints_visible") is True
+
+    def test_restore_hints_absent_key_no_change(self, monkeypatch: pytest.MonkeyPatch) -> None:
+        """restore_hints_from_prefs sans clé show_hints → session_state inchangé."""
+        import src.ui.components.browser_storage as bs
+
+        fake_st = self._make_fake_st()
+
+        with patch("streamlit.session_state", fake_st.session_state):
+            import streamlit as st_real
+
+            monkeypatch.setattr(st_real, "session_state", fake_st.session_state)
+            bs.restore_hints_from_prefs({"lang": "fr"})  # pas de show_hints
+
+        assert "_hints_visible" not in fake_st.session_state
+
+    def test_persist_hints_writes_show_hints_key(self, monkeypatch: pytest.MonkeyPatch) -> None:
+        """persist_browser_prefs(show_hints='0') écrit bien la clé show_hints dans le JSON."""
+        import src.ui.components.browser_storage as bs
+
+        fake_st = self._make_fake_st()
+        mock_write = MagicMock()
+        monkeypatch.setattr(bs, "_write_prefs", mock_write)
+        monkeypatch.setattr(bs, "_read_prefs", MagicMock(return_value={}))
+
+        with patch("streamlit.session_state", fake_st.session_state):
+            import streamlit as st_real
+
+            monkeypatch.setattr(st_real, "session_state", fake_st.session_state)
+            bs.persist_browser_prefs(show_hints="0")
+
+        mock_write.assert_called_once()
+        written = mock_write.call_args[0][0]
+        assert written.get("show_hints") == "0"
+
+    def test_persist_hints_dedup_same_value(self, monkeypatch: pytest.MonkeyPatch) -> None:
+        """Deux appels persist_browser_prefs identiques → une seule écriture (dédup)."""
+        import src.ui.components.browser_storage as bs
+
+        fake_st = self._make_fake_st()
+        mock_write = MagicMock()
+        monkeypatch.setattr(bs, "_write_prefs", mock_write)
+        monkeypatch.setattr(bs, "_read_prefs", MagicMock(return_value={}))
+
+        with patch("streamlit.session_state", fake_st.session_state):
+            import streamlit as st_real
+
+            monkeypatch.setattr(st_real, "session_state", fake_st.session_state)
+            bs.persist_browser_prefs(show_hints="0")
+            bs.persist_browser_prefs(show_hints="0")  # doublon
+
+        assert mock_write.call_count == 1
+
+    def test_persist_hints_different_values_two_writes(
+        self, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        """Toggle Off puis On → deux écritures distinctes (pas de faux positif dédup)."""
+        import src.ui.components.browser_storage as bs
+
+        fake_st = self._make_fake_st()
+        mock_write = MagicMock()
+        monkeypatch.setattr(bs, "_write_prefs", mock_write)
+        monkeypatch.setattr(bs, "_read_prefs", MagicMock(return_value={}))
+
+        with patch("streamlit.session_state", fake_st.session_state):
+            import streamlit as st_real
+
+            monkeypatch.setattr(st_real, "session_state", fake_st.session_state)
+            bs.persist_browser_prefs(show_hints="0")  # désactiver
+            bs.persist_browser_prefs(show_hints="1")  # réactiver
+
+        assert mock_write.call_count == 2

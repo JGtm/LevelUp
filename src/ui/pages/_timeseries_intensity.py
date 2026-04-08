@@ -8,6 +8,7 @@ import polars as pl
 import streamlit as st
 
 from src.ui.chart_utils import safe_chart_render
+from src.ui.components.browser_storage import hints_visible
 from src.ui.i18n import t
 from src.ui.streamlit_modern import PLOTLY_CLEAN_CONFIG, fragment_if_available
 from src.visualization._plot_options import PlotOptions
@@ -96,7 +97,8 @@ def render_intensity_heatmap(
     profile = _reorder_profile_by_date(profile, dff)
 
     st.subheader(t("ts_match_intensity"))
-    st.caption(t("ts_match_intensity_caption"))
+    if hints_visible():
+        st.caption(t("ts_match_intensity_caption"))
 
     filter_opts = [t("ts_intensity_all"), t("ts_intensity_wins"), t("ts_intensity_losses")]
     outcome_filter = st.segmented_control(

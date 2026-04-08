@@ -9,6 +9,7 @@ import streamlit as st
 
 from src.ui.chart_utils import render_chart_or_info
 from src.ui.commendations import render_h5g_commendations_section
+from src.ui.components.browser_storage import hints_visible
 from src.ui.i18n import get_lang, t
 from src.ui.medals import (
     load_medal_description_map,
@@ -132,7 +133,8 @@ def render_citations_page(  # noqa: PLR0912, PLR0913, PLR0915
     with cols_medals[2]:
         st.metric(t("cit_matches_analyzed"), len(dff) if not dff.is_empty() else 0)
 
-    st.caption(t("citations_medals_caption"))
+    if hints_visible():
+        st.caption(t("citations_medals_caption"))
     if dff.is_empty():
         st.info(t("no_data_filter"))
     else:

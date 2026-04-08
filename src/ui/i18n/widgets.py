@@ -215,6 +215,7 @@ STRINGS: dict[str, dict[str, str] | str] = {
         "en": "Backfilling missing data…",
     },
     "sidebar_navigation": {"fr": "Navigation", "en": "Navigation"},
+    "sidebar_show_hints": {"fr": "Aides à la lecture", "en": "Reading hints"},
     "sidebar_db_not_found": {
         "fr": "Base introuvable : {path}",
         "en": "Database not found: {path}",

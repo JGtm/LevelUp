@@ -6,7 +6,7 @@ from datetime import datetime, timedelta, timezone
 
 import streamlit as st
 
-from src.ui.i18n import t
+from src.ui.i18n import get_lang, t
 from src.ui.pages.career_encounters_data import (
     _load_top_encountered,
     _load_top_nemeses,
@@ -53,7 +53,9 @@ def render_encounters_section(*, db_path: str, xuid: str) -> None:
             build_encounters_table_html(encountered, t("career_encounters_header")),
             unsafe_allow_html=True,
         )
-        st.markdown(build_badge_legend_html(), unsafe_allow_html=True)
+        _legend_label = "ℹ️ Légende" if get_lang() == "fr" else "ℹ️ Legend"
+        with st.popover(_legend_label):
+            st.markdown(build_badge_legend_html(), unsafe_allow_html=True)
     else:
         st.info(t("career_encounters_no_data"))
 

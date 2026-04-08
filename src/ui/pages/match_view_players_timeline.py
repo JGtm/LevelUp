@@ -13,6 +13,7 @@ from collections.abc import Callable
 import streamlit as st
 
 from src.analysis.match_cadence import compute_cadence_buckets
+from src.ui.components.browser_storage import hints_visible
 from src.ui.i18n import get_lang, t
 from src.ui.pages.match_view_players_data import (
     has_table_duckdb as _has_table_duckdb,
@@ -124,7 +125,8 @@ def render_team_dominance_section(  # noqa: PLR0913
 
     if fig is not None:
         st.plotly_chart(fig, width="stretch", config=PLOTLY_CLEAN_CONFIG)
-        st.markdown(t("mv_dominance_legend"))
+        if hints_visible():
+            st.markdown(t("mv_dominance_legend"))
     else:
         st.info(t("mv_dynamics_no_dominance"))
 
