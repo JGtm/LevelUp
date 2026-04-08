@@ -236,6 +236,22 @@ Le fan-out (step 6 du post-sync) calculait le LUSR des co-joueurs enregistrés *
 
 **Tests** : 110 passed, 0 failed.
 
+## [2026-04-08] docs(ux): wireframes détaillés V7 alternative — Complété
+
+**Tâche** : Sortir la variante ambitieuse V7 alternative dans son propre document, puis détailler les hubs et les nouveaux graphes réellement justifiés.
+
+**Décision technique** :
+1. Création du document `.ai/PLAN_V7_ALTERNATIVE_COCKPIT.md` pour isoler la variante ambitieuse du plan V7 principal.
+2. Ajout d'une section `Wireframes textuels détaillés — prêts à coder` avec architecture bloc par bloc pour `Accueil`, `Stats`, `Escouade`, `Explorer`, `Médias`, `Profil`.
+3. Ajout d'une section `Nouveaux graphes réellement justifiés — priorisation` pour limiter la refonte aux visualisations à plus forte valeur produit.
+
+**Résultats** :
+- La V7 alternative est maintenant indépendante du plan principal.
+- Les hubs sont définis à un niveau de détail directement exploitable pour la phase backlog / implémentation.
+- Les nouveaux graphes sont priorisés selon leur valeur de lecture et non selon leur nouveauté visuelle.
+
+**Conclusion** : Base UX suffisamment précise pour passer à la transformation en backlog technique exécutable, lot par lot.
+
 ---
 
 ## [2026-04-06] fix(sync): retry HE + cohérence events_loaded — Complété
