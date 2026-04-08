@@ -125,6 +125,14 @@ STRINGS: dict[str, dict[str, str] | str] = {
     "set_language_section": {"fr": "Langue & Région", "en": "Language & Region"},
     "set_lang_label": {"fr": "Langue de l'interface", "en": "Interface language"},
     "set_display_section": {"fr": "Affichage", "en": "Display"},
+    "set_show_hints": {
+        "fr": "Aides à la lecture",
+        "en": "Reading hints",
+    },
+    "set_show_hints_help": {
+        "fr": "Affiche les légendes, notes explicatives et conseils contextuels dans les graphiques.",
+        "en": "Shows legends, explanatory notes and contextual tips in charts.",
+    },
     "set_show_records": {
         "fr": "Afficher les records historiques sur les graphes Escouade",
         "en": "Show historical records on Squad charts",

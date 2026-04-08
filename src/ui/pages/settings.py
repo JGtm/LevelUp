@@ -15,6 +15,10 @@ from pathlib import Path
 import streamlit as st
 
 from src.ui import AppSettings, directory_input, load_settings, save_settings
+from src.ui.components.browser_storage import (
+    hints_visible,
+    persist_browser_prefs,
+)
 from src.ui.i18n import t
 from src.ui.tz import CURATED_TZ_LIST
 
@@ -303,6 +307,13 @@ def _render_backfill_section(settings: AppSettings) -> dict:
     }
 
 
+def _auto_save_show_hints() -> None:
+    """Persiste immédiatement show_hints dès le changement du toggle."""
+    new_val = bool(st.session_state.get("setting_show_hints", True))
+    st.session_state["_hints_visible"] = new_val
+    persist_browser_prefs(show_hints="1" if new_val else "0")
+
+
 def _auto_save_show_records() -> None:
     """Persiste immédiatement show_records dès le changement du toggle.
 
@@ -336,6 +347,13 @@ def _render_display_section(settings: AppSettings) -> tuple[bool, bool, bool, bo
         value=bool(getattr(settings, "normalize_mode_labels", True)),
         help=t("set_normalize_mode_labels_help"),
         key="setting_normalize_mode_labels",
+    )
+    st.toggle(
+        t("set_show_hints"),
+        value=hints_visible(),
+        help=t("set_show_hints_help"),
+        key="setting_show_hints",
+        on_change=_auto_save_show_hints,
     )
     show_records = st.toggle(
         t("set_show_records"),

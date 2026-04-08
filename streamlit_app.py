@@ -101,7 +101,6 @@ from src.ui.cache import (
     top_medals_smart,
 )
 from src.ui.components.browser_storage import (
-    hints_visible,
     persist_browser_prefs,
     restore_browser_prefs,
     restore_hints_from_prefs,
@@ -598,21 +597,6 @@ def _render_main_sidebar(db_path: str, xuid: str, settings: AppSettings) -> tupl
                 else:
                     logger.error("Sync échoué: %s", msg)
                     st.error(msg)
-
-        # Toggle : aides à la lecture (fin de sidebar)
-        def _on_hints_toggle() -> None:
-            """Callback : persistance du toggle Aides à la lecture."""
-            new_val = bool(st.session_state.get("_sidebar_hints_toggle", True))
-            st.session_state["_hints_visible"] = new_val
-            persist_browser_prefs(show_hints="1" if new_val else "0")
-            logger.debug("Toggle hints: %s", new_val)
-
-        st.checkbox(
-            t("sidebar_show_hints"),
-            value=hints_visible(),
-            key="_sidebar_hints_toggle",
-            on_change=_on_hints_toggle,
-        )
 
     return db_path, xuid, waypoint_player
 
