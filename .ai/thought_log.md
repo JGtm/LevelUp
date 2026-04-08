@@ -3,6 +3,47 @@
 > Ce fichier capture le raisonnement de l'agent entre les sessions.
 > Archivé : 2026-02-01 (logs précédents dans `.ai/archive/thought_log_pre_phase6.md`)
 
+## [2026-04-08] fix(demo): wizard + bind mount stale + sync_meta.xuid — Complété
+
+**Statut** : Complété · Poussé sur `feat/demo-mode` (commits `f0b9d73b`, `e02c8ea5`)
+
+**Problème** : La démo affichait "Bienvenue dans LevelUp / Choisissez une méthode de connexion" au lieu du dashboard.
+
+**Deux causes distinctes :**
+
+1. **Bind mount Linux stale** — Après `rm -rf data/demo` + regen, le container démo continuait de pointer vers l'ancien inode (supprimé). `/app/data/players/` apparaissait vide → `_count_players() = 0` → wizard affiché. Fix : `docker compose stop levelup-demo && docker compose up -d` pour recréer le montage sur les nouveaux inodes. Dans le flow build, Docker recrée automatiquement le container (image change) — pas de problème au déploiement normal.
+
+2. **`sync_meta.xuid` non mis à jour** — `_extract_player` copiait `player_match_enrichment` et `match_skill_rank` en remplaçant le xuid, mais `sync_meta` conservait le vrai xuid (`2533274823110022`). `_resolve_player_xuid()` lit `sync_meta.key='xuid'` en priorité → queries `mv_player_matches WHERE xuid='2533274823110022'` → 0 résultats. Fix : `UPDATE sync_meta SET value=demo_xuid WHERE key='xuid' AND value=source_xuid`.
+
+3. **Guard wizard manquant** — `setup_status.needs_setup` peut être `True` en mode démo si le container démarre avec un bind mount stale (ou pour toute autre raison). Fix : `if setup_status.needs_setup and not is_demo_mode()` dans `streamlit_app.py`.
+
+**Décision technique** : La garde `not is_demo_mode()` sur le wizard est défensive — avec les données correctement générées et les volumes correctement montés, `needs_setup` sera `False`. Mais mieux vaut une double protection.
+
+**Résultat** : Dashboard s'affiche correctement sur `https://demo.lvelup.info`. HTTP 200, 50 matchs JGtm visibles.
+
+---
+
+## [2026-04-09] fix(demo): 5 bugs mode démo corrigés — Complété
+
+**Statut** : Complété · Poussé sur `feat/demo-mode`
+
+**Bugs corrigés** :
+1. `[Errno 30] Read-only file system` sur `ui_prefs.json` → `save_filter_preferences` retourne tôt en mode démo (volume `:ro`)
+2. `Aucun rating LUSR/CSR` + `Matchs marquants — Pas assez de matchs` → `match_skill_rank` manquait dans `_player_tables` de `prepare_demo_data.py`
+3. `Complémentarité de l'escouade — Données insuffisantes` → `mv_player_matches` n'était pas créée dans le shared DB démo
+4. `Rating non encore calculé` → même cause que #2 et #3
+5. Absence de médias → ajout de `_extract_media()` (5 clips max avec LEVELUP_ROOT-aware paths)
+
+**Décision technique** :
+- `ensure_mv_player_matches_view(dst)` doit impérativement être appelé sur la connexion au **shared DB** (a besoin de `match_registry` + `v_match_full`). L'appel précédent sur le player DB échouait silencieusement (player DB n'a pas `match_registry`).
+- `match_skill_rank` est dans `stats.duckdb` (player) et filtrée par `match_id IN (...)` comme les autres tables.
+- `media_match_associations.media_path` (≠ `file_path`) est la FK vers `media_files.file_path`.
+- Les chemins media sont stockés en absolu via `str(Path.resolve())` → utiliser `LEVELUP_ROOT` (env var `/app` en Docker) pour construire les paths demo cohérents avec le container.
+
+**Résultat** : Push `07492115` sur `feat/demo-mode`.
+
+**Prochaine étape** : Sur VPS — `git pull && rm -rf data/demo && python scripts/prepare_demo_data.py --gamertag JGtm --max-matches 50 && docker compose restart levelup-demo`
+
 ## [2026-04-08] feat(demo): mode démo public demo.lvelup.info — Complété
 
 **Tâche** : Créer un sous-domaine public `demo.lvelup.info` exposant LevelUp avec données restreintes (50 matchs, sync désactivée), sans auth htpasswd.
