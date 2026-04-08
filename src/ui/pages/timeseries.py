@@ -7,18 +7,32 @@ Graphes d'évolution des statistiques dans le temps.
 
 from __future__ import annotations
 
+import logging
 import re
 
 import polars as pl
 import streamlit as st
 
+from src.app.kpis_render import render_kpis_section
 from src.data.services.timeseries_service import TimeseriesService
 from src.ui.chart_utils import safe_chart_render
+from src.ui.components.browser_storage import hints_visible
 from src.ui.i18n import get_lang, t
 from src.ui.pages._timeseries_distributions import render_correlations, render_distributions
 from src.ui.pages._timeseries_intensity import render_intensity_heatmap as _render_intensity_heatmap
 from src.ui.pages._timeseries_weapons import render_weapon_kills_chart as _render_weapon_kills_chart
 from src.ui.pages.timeseries_skill_rank import render_skill_rank_progression
+from src.ui.pages.win_loss import (
+    _render_heatmap_section as _render_wl_heatmap_section,
+)
+from src.ui.pages.win_loss import (
+    _render_map_mode_breakdown,
+    _render_outcomes_over_time,
+    _render_personal_score_section,
+    _render_streak_section,
+    _render_top_by_week,
+    _render_winrate_perf_vs_history,
+)
 from src.ui.streamlit_modern import PLOTLY_CLEAN_CONFIG, PLOTLY_STATIC_CONFIG, fragment_if_available
 from src.visualization._chart_series import downsample_for_plot
 from src.visualization._compat import DataFrameLike, ensure_polars
@@ -48,6 +62,25 @@ from src.visualization.timeseries import (
 # =============================================================================
 # Sous-fonctions de rendu extraites du monolithe (Sprint 16)
 # =============================================================================
+
+logger = logging.getLogger(__name__)
+
+
+def _render_summary_tab(  # noqa: PLR0913
+    dff: pl.DataFrame,
+    df_full: pl.DataFrame | None,
+    *,
+    lang: str,
+    db_path: str | None,
+    xuid: str | None,
+    is_session_scope: bool,
+) -> None:
+    """Affiche l'onglet Résumé (KPIs, KDA, résultats, séries)."""
+    render_kpis_section(dff, df_full)
+    st.divider()
+    _render_kda_section(dff, lang=lang, db_path=db_path, xuid=xuid)
+    _render_outcomes_over_time(dff, is_session_scope)
+    _render_streak_section(dff)
 
 
 @fragment_if_available
@@ -92,7 +125,8 @@ def _render_kda_section(
 def _render_cumulative_performance(dff: pl.DataFrame, lang: str = "fr") -> None:
     """Affiche les graphes de progression cumulée et de forme récente (refonte)."""
     st.subheader(t("ts_cumulative"))
-    st.caption(t("ts_cumulative_caption"))
+    if hints_visible():
+        st.caption(t("ts_cumulative_caption"))
 
     cumul = TimeseriesService.compute_cumulative_metrics(dff)
     if cumul is None:
@@ -159,6 +193,8 @@ def _render_cumulative_performance(dff: pl.DataFrame, lang: str = "fr") -> None:
 
 def _render_note(text: str) -> None:
     """Encadré conclusif discret sous chaque graphe (thème Halo)."""
+    if not hints_visible():
+        return
     lines = text.split("\n")
     parts: list[str] = []
     in_list = False
@@ -193,7 +229,7 @@ def _render_first_event_section(
 ) -> None:
     """Affiche la distribution du premier frag / première mort (Sprint 5.4.4)."""
     st.subheader(t("ts_first_event"))
-    st.caption(t("ts_first_event_caption"))
+    st.caption(t("ts_first_event_caption")) if hints_visible() else None
 
     _match_ids = dff["match_id"].cast(pl.Utf8).to_list() if "match_id" in dff.columns else []
     first_event = TimeseriesService.load_first_event_times(db_path, xuid, _match_ids)
@@ -203,7 +239,6 @@ def _render_first_event_section(
             fig_events = plot_first_event_distribution(
                 first_event.first_kills,
                 first_event.first_deaths,
-                title=None,
                 lang=lang,
             )
             if fig_events is not None:
@@ -295,7 +330,8 @@ def _render_sprint7_sections(dff: pl.DataFrame, lang: str = "fr") -> None:
     if _has_shots:
         st.divider()
         st.subheader(t("ts_shots"))
-        st.caption(t("ts_shots_caption"))
+        if hints_visible():
+            st.caption(t("ts_shots_caption"))
         with safe_chart_render():
             fig_shots = plot_shots_accuracy(dff, lang=lang)
             if fig_shots is not None:
@@ -308,7 +344,8 @@ def _render_sprint7_sections(dff: pl.DataFrame, lang: str = "fr") -> None:
     if _has_damage:
         st.divider()
         st.subheader(t("ts_damage"))
-        st.caption(t("ts_damage_caption"))
+        if hints_visible():
+            st.caption(t("ts_damage_caption"))
         with safe_chart_render():
             fig_damage = plot_damage_dealt_taken(dff, lang=lang)
             if fig_damage is not None:
@@ -321,7 +358,8 @@ def _render_sprint7_sections(dff: pl.DataFrame, lang: str = "fr") -> None:
     if _has_rank_score:
         st.divider()
         st.subheader(t("ts_rank_score"))
-        st.caption(t("ts_rank_score_caption"))
+        if hints_visible():
+            st.caption(t("ts_rank_score_caption"))
         with safe_chart_render():
             fig_rank = plot_rank_score(dff, lang=lang)
             if fig_rank is not None:
@@ -336,26 +374,40 @@ def _render_sprint7_sections(dff: pl.DataFrame, lang: str = "fr") -> None:
 
 
 @fragment_if_available
-def render_timeseries_page(
+def render_timeseries_page(  # noqa: PLR0913
     dff: DataFrameLike,
     df_full: DataFrameLike | None = None,
     *,
+    base: DataFrameLike | None = None,
+    picked_session_labels: list[str] | None = None,
     db_path: str | None = None,
     xuid: str | None = None,
+    db_key: tuple[int, int] | None = None,
 ) -> None:
-    """Affiche la page Séries temporelles.
+    """Affiche la page Séries temporelles (5 onglets).
 
     Args:
         dff: DataFrame filtré des matchs.
         df_full: DataFrame complet pour le calcul du score relatif.
+        base: DataFrame de base (toutes les parties hors Firefight) pour les comparaisons carte.
+        picked_session_labels: Labels des sessions sélectionnées.
         db_path: Chemin vers la DB (optionnel, pour les features DuckDB).
         xuid: XUID du joueur (optionnel, pour les features DuckDB).
+        db_key: Clé de cache de la DB.
     """
     dff = ensure_polars(dff)
     df_full = ensure_polars(df_full) if df_full is not None else None
+    base_df = ensure_polars(base) if base is not None else dff
     if dff.is_empty():
         st.warning(t("no_matches"))
         return
+
+    logger.debug(
+        "render_timeseries_page: %d matchs, base=%d, session_scope=%s",
+        len(dff),
+        len(base_df),
+        bool(picked_session_labels),
+    )
 
     # Calculer le score de performance via service (Sprint 14)
     dff = TimeseriesService.enrich_performance_score(
@@ -364,29 +416,41 @@ def render_timeseries_page(
     )
 
     lang = get_lang()
+    current_mode = st.session_state.get("filter_mode")
+    is_session_scope = bool(current_mode == "Sessions" and picked_session_labels)
 
-    _tab_kda, _tab_prog, _tab_dist, _tab_adv = st.tabs(
+    _tab_summary, _tab_maps, _tab_dist, _tab_prog, _tab_adv = st.tabs(
         [
             t("ts_tab_kda"),
-            t("ts_tab_progression"),
+            t("ts_tab_maps"),
             t("ts_tab_distributions"),
             t("ts_tab_advanced"),
+            t("ts_tab_progression"),
         ]
     )
 
-    with _tab_kda:
-        _render_kda_section(dff, lang=lang, db_path=db_path, xuid=xuid)
+    with _tab_summary:
+        _render_summary_tab(
+            dff, df_full, lang=lang, db_path=db_path, xuid=xuid, is_session_scope=is_session_scope
+        )
 
-    with _tab_prog:
-        if db_path and xuid:
-            _render_intensity_heatmap(dff, db_path=db_path, xuid=xuid, lang=lang)
-        render_skill_rank_progression(dff, db_path, xuid, lang=lang)
-        _render_cumulative_performance(dff, lang=lang)
+    with _tab_maps:
+        _render_map_mode_breakdown(dff)
+        _render_winrate_perf_vs_history(dff, base_df)
 
     with _tab_dist:
         render_distributions(dff, lang=lang)
         render_correlations(dff, lang=lang)
 
-    with _tab_adv:
+    with _tab_prog:
         _render_first_event_section(dff, db_path, xuid, lang=lang)
         _render_advanced_sections(dff, df_full, db_path, xuid, lang=lang)
+        _render_personal_score_section(dff)
+
+    with _tab_adv:
+        if db_path and xuid:
+            _render_intensity_heatmap(dff, db_path=db_path, xuid=xuid, lang=lang)
+        render_skill_rank_progression(dff, db_path, xuid, lang=lang)
+        _render_cumulative_performance(dff, lang=lang)
+        _render_wl_heatmap_section(dff)
+        _render_top_by_week(dff)

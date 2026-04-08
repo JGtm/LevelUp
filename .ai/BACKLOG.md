@@ -12,7 +12,7 @@
 
 ---
 
-###  Amélioration v7++ — Backfill multi-flags : vectoriser le calcul per-match des performance scores (v7+)
+###  Amélioration v8++ — Backfill multi-flags : vectoriser le calcul per-match des performance scores (v8+)
 
 **Noté le** : 2026-03-26
 **Priorité** : Basse (non bloquant — le chemin normal sync app est déjà vectorisé)
@@ -27,7 +27,7 @@ Le shortcut `_perf_force_only` (v6) bypasse cette boucle quand `--force-performa
 
 ---
 
-### Script d'analyse des kills par arme pour un match donné (v7+)
+### Script d'analyse des kills par arme pour un match donné (v8+)
 
 **Noté le** : 2026-03-27
 **Priorité** : Basse
@@ -54,7 +54,7 @@ Le shortcut `_perf_force_only` (v6) bypasse cette boucle quand `--force-performa
 
 ---
 
-### Kills environnementaux — catégorie dédiée (v7++)
+### Kills environnementaux — catégorie dédiée (v8++)
 
 **Contexte** : La médaille **Kong** (kill via baril projeté) est actuellement comptée dans `GRENADE_MEDALS` faute d'une meilleure catégorie. Ce classement est approximatif — il est impossible de savoir avec certitude si l'API inclut ces kills dans `GrenadeKills` ou non.
 
@@ -76,11 +76,11 @@ Le shortcut `_perf_force_only` (v6) bypasse cette boucle quand `--force-performa
 
 ---
 
-## 🔮 Roadmap v6.4+
+## 🔮 Roadmap v7.1+
 
 ---
 
-### [v6.4] Score de forme — indice de progression court terme
+### [v7.1] Score de forme — indice de progression court terme
 
 **Noté le** : 2026-03-28 | **Priorité** : Moyenne
 
@@ -99,7 +99,7 @@ form_score = moy_perf_score(14 derniers matchs) - moy_perf_score(90 derniers mat
 
 ---
 
-### [v6.4] Détection de changement de niveau (breakpoints)
+### [v7.1] Détection de changement de niveau (breakpoints)
 
 **Noté le** : 2026-03-28 | **Priorité** : Basse
 
@@ -113,7 +113,7 @@ Moyenne mobile double (14j vs 90j) — croisements ascendant/descendant = pallie
 
 ---
 
-### [v6.4] Page Adversaires — Head-to-head, Nemesis, Proie
+### [v7.1] Page Adversaires — Head-to-head, Nemesis, Proie
 
 **Noté le** : 2026-03-28 | **Priorité** : Moyenne
 
@@ -137,7 +137,7 @@ Nouvelle page dédiée aux adversaires récurrents.
 
 ---
 
-### [v6.4] Discord — Résumé de session post-sync
+### [v7.1] Discord — Résumé de session post-sync
 
 **Noté le** : 2026-03-28 | **Priorité** : Basse
 
@@ -154,7 +154,7 @@ Bouton `📤` dans la sidebar, actif ≥5 min après `last_match_end_time` (conf
 
 ---
 
-### [v6.4] Clutch moments — kills décisifs
+### [v7.1] Clutch moments — kills décisifs
 
 **Noté le** : 2026-03-28 | **Priorité** : Basse
 
@@ -172,7 +172,7 @@ Trois types de kills clutch, par ordre de fiabilité :
 
 ---
 
-### [v6.4] [feat/teammates] Précision du timer premier frag/mort
+### [v7.1] [feat/teammates] Précision du timer premier frag/mort
 
 **Noté le** : 2026-04-02 | **Priorité** : Basse
 
@@ -185,28 +185,6 @@ Trois types de kills clutch, par ordre de fiabilité :
 2. **Capturer le timing du premier mouvement** — utiliser un event de type "premier déplacement" ou "spawn" comme temps 0. Non disponible aujourd'hui dans l'API SPNKr/filmshell ; nécessiterait une investigation sur les event_types non exploités (ex: `mode` events déjà présents dans `highlight_events`).
 
 **Aucune action immédiate** — documenter pour investigation future.
-
----
-
-## ❓ À détailler par l'utilisateur
-
-> Ces items sont trop vagues pour être implémentés sans plus de contexte. Décrire le comportement attendu avant de les planifier.
-
----
-
-### [?] Revue de code par ChatGPT
-
-**Noté le** : 2026-04-03
-
-Processus/outillage à clarifier : quels fichiers ? quel périmètre ? via API ou copier-coller manuel ? objectif de la revue (sécurité, qualité, style) ?
-
----
-
-### [?] Tester/corriger sync sur le site
-
-**Noté le** : 2026-04-03
-
-Préciser : quel environnement ("le site" = prod déployée ? staging ?) — quels symptômes observés — quels gamertags concernés.
 
 ---
 

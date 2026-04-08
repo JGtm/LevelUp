@@ -7,6 +7,7 @@ import streamlit as st
 
 from src.config import CORE_STAT_COLUMNS
 from src.ui.chart_utils import safe_chart_render
+from src.ui.components.browser_storage import hints_visible
 from src.ui.components.performance import (
     compute_session_performance_score_v2_ui,
     render_metric_comparison_row,
@@ -357,7 +358,7 @@ def _render_cumulative_section(  # noqa: PLR0913 — 2 sessions + labels + db_pa
 
         if not pl_a.is_empty() and not pl_b.is_empty():
             st.markdown(t("sc_net_score_cumul"))
-            st.caption(t("sc_net_score_desc"))
+            st.caption(t("sc_net_score_desc")) if hints_visible() else None
             with safe_chart_render():
                 fig_cumul = plot_cumulative_comparison(
                     pl_a,
@@ -474,7 +475,8 @@ def render_session_comparison_page(
         db_path = st.session_state.get("db_path", "")
     if xuid is None:
         xuid = st.session_state.get("xuid", "")
-    st.caption(t("sc_loading_caption"))
+    if hints_visible():
+        st.caption(t("sc_loading_caption"))
 
     if all_sessions_df.is_empty():
         st.info(t("sc_no_sessions"))

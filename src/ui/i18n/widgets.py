@@ -201,6 +201,14 @@ STRINGS: dict[str, dict[str, str] | str] = {
     # ── Match history ─────────────────────────────────────────────────────────
     "mh_no_matches": "no_matches",  # alias → common
     # ── Sidebar — sync ──────────────────────────────────────────────────────
+    "demo_banner": {
+        "fr": "**Mode démo** — 50 matchs · Synchronisation désactivée",
+        "en": "**Demo mode** — 50 matches · Sync disabled",
+    },
+    "demo_sync_disabled": {
+        "fr": "Mode démo — synchronisation désactivée.",
+        "en": "Demo mode — sync disabled.",
+    },
     "sidebar_sync_btn": {"fr": "🔄 Synchroniser", "en": "🔄 Sync"},
     "sidebar_sync_help": {
         "fr": "Synchronise tous les joueurs (nouveaux matchs, highlights, aliases).",
@@ -215,6 +223,7 @@ STRINGS: dict[str, dict[str, str] | str] = {
         "en": "Backfilling missing data…",
     },
     "sidebar_navigation": {"fr": "Navigation", "en": "Navigation"},
+    "sidebar_show_hints": {"fr": "Aides à la lecture", "en": "Reading hints"},
     "sidebar_db_not_found": {
         "fr": "Base introuvable : {path}",
         "en": "Database not found: {path}",

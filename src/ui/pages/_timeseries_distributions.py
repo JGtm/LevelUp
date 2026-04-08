@@ -11,6 +11,7 @@ import streamlit as st
 from src.config import HALO_COLORS
 from src.data.services.timeseries_service import TimeseriesService
 from src.ui.chart_utils import safe_chart_render
+from src.ui.components.browser_storage import hints_visible
 from src.ui.i18n import t
 from src.ui.streamlit_modern import PLOTLY_CLEAN_CONFIG, PLOTLY_STATIC_CONFIG, fragment_if_available
 from src.visualization._plot_options import PlotOptions
@@ -28,7 +29,8 @@ from src.visualization.distributions import (
 def render_distributions(dff: pl.DataFrame, lang: str = "fr") -> None:
     """Affiche les distributions statistiques (Sprint 5.4.3 + Sprint 6)."""
     st.subheader(t("ts_distributions"))
-    st.caption(t("ts_distributions_caption"))
+    if hints_visible():
+        st.caption(t("ts_distributions_caption"))
 
     colors = HALO_COLORS.as_dict()
     _render_distribution_row1(dff, colors, lang=lang)
@@ -165,7 +167,8 @@ def render_correlations(dff: pl.DataFrame, lang: str = "fr") -> None:
     """Affiche les graphes de corrélation (Sprint 5.4.5 + Sprint 6)."""
     st.divider()
     st.subheader(t("ts_correlations"))
-    st.caption(t("ts_correlations_caption"))
+    if hints_visible():
+        st.caption(t("ts_correlations_caption"))
 
     _render_correlation_row1(dff, lang=lang)
     _render_correlation_row2(dff, lang=lang)

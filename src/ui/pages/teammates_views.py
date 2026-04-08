@@ -177,32 +177,40 @@ def _render_bottom_charts(  # noqa: PLR0913
             db_path=db_path,
             key_suffix=f"multi_{len(series)}",
         )
-    from src.analysis.squad_records import compute_squad_records, get_dominant_pair_name
+    from src.visualization._chart_series import SquadRecordSet
 
-    _series_pl = [(n, ensure_polars(d)) for n, d in series]
-    _dom_pair = get_dominant_pair_name([d for _, d in _series_pl])
-    _spree_rec = compute_squad_records(_series_pl, [("max_killing_spree", False)], _dom_pair)
-    _hspk_dfs = [
-        (
-            n,
-            d.with_columns(
-                (
-                    pl.col("headshot_kills").fill_null(0) + pl.col("perfect_kills").fill_null(0)
-                ).alias("hs_pk_total")
-            ),
-        )
-        for n, d in _series_pl
-        if "headshot_kills" in d.columns
-    ]
-    _hspk_rec = compute_squad_records(_hspk_dfs, [("hs_pk_total", False)], _dom_pair)
+    _show_records = bool(getattr(st.session_state.get("app_settings"), "show_records", True))
+    _spree_record_set: SquadRecordSet | None = None
+    _hspk_dict: dict | None = None
+    if _show_records:
+        from src.analysis.squad_records import compute_squad_records, get_dominant_pair_name
+
+        _series_pl = [(n, ensure_polars(d)) for n, d in series]
+        _dom_pair = get_dominant_pair_name([d for _, d in _series_pl])
+        _spree_rec = compute_squad_records(_series_pl, [("max_killing_spree", False)], _dom_pair)
+        _hspk_dfs = [
+            (
+                n,
+                d.with_columns(
+                    (
+                        pl.col("headshot_kills").fill_null(0) + pl.col("perfect_kills").fill_null(0)
+                    ).alias("hs_pk_total")
+                ),
+            )
+            for n, d in _series_pl
+            if "headshot_kills" in d.columns
+        ]
+        _hspk_rec = compute_squad_records(_hspk_dfs, [("hs_pk_total", False)], _dom_pair)
+        _spree_record_set = SquadRecordSet(records=_spree_rec, per_map={})
+        _hspk_dict = _hspk_rec
     render_metric_bar_charts(
         series=series,
         colors_by_name=colors_by_name,
         show_smooth=show_smooth,
         key_suffix=f"{len(series)}",
         plot_fn=plot_multi_metric_bars_fn,
-        records=_spree_rec,
-        hspk_records=_hspk_rec,
+        squad_records=_spree_record_set,
+        hspk_records=_hspk_dict,
     )
 
 

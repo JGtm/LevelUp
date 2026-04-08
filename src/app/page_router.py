@@ -24,11 +24,10 @@ logger = logging.getLogger(__name__)
 PAGE_KEYS: list[str] = [
     "timeseries",
     "session_compare",
+    "teammates",
     "last_match",
     "media",
     "citations",
-    "win_loss",
-    "teammates",
     "explorer",
     "match_history",
     "career",
@@ -43,7 +42,6 @@ _PAGE_I18N_KEYS: dict[str, str] = {
     "explorer": "page_explorer",
     "media": "page_media",
     "citations": "page_citations",
-    "win_loss": "page_win_loss",
     "teammates": "page_teammates",
     "match_history": "page_match_history",
     "career": "page_career",
@@ -59,7 +57,8 @@ _LEGACY_NAME_TO_SLUG: dict[str, str] = {
     "Explorer": "explorer",
     "Médias": "media",
     "Citations": "citations",
-    "Victoires/Défaites": "win_loss",
+    # ↓ Redirigé vers timeseries depuis la fusion v6.3 (ancienne page Victoires/Défaites)
+    "Victoires/Défaites": "timeseries",
     "Mes coéquipiers": "teammates",
     "Historique des parties": "match_history",
     "Carrière": "career",
@@ -149,7 +148,6 @@ _PAGE_URL_PATHS: dict[str, str] = {
     "explorer": "explorer",
     "media": "medias",
     "citations": "citations",
-    "win_loss": "win-loss",
     "teammates": "teammates",
     "match_history": "history",
     "career": "career",
@@ -163,7 +161,6 @@ _PAGE_ICONS: dict[str, str] = {
     "explorer": "🔍",
     "media": "🎬",
     "citations": "🏅",
-    "win_loss": "📊",
     "teammates": "👥",
     "match_history": "📋",
     "career": "⭐",
@@ -215,6 +212,7 @@ def render_page_selector_nav(
         options=titles,
         default=current_title,
         label_visibility="collapsed",
+        width="stretch",
     )
 
     if selected and selected != current_title:

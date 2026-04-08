@@ -13,10 +13,15 @@ sont déléguées aux sous-modules :
 
 from __future__ import annotations
 
+import logging
+
 import polars as pl
 import streamlit as st
 
+logger = logging.getLogger(__name__)
+
 from src.app._filters_friends import build_teammates_opts_map
+from src.app.kpis_render import render_kpis_section
 from src.data.services.teammates_service import TeammatesService
 from src.ui.cache import cached_has_cache_tables
 from src.ui.i18n import get_lang, t
@@ -206,12 +211,23 @@ def render_teammates_page(  # noqa: PLR0912, PLR0913, PLR0915
     top_medals_fn,
 ) -> None:
     """Affiche la page Mes coéquipiers."""
+    logger.debug(
+        "render_teammates_page: dff=%d matchs, session_scope=%s",
+        len(ensure_polars(dff)),
+        bool(picked_session_labels),
+    )
     df = ensure_polars(df)
     dff = ensure_polars(dff)
     base = ensure_polars(base)
 
     if _should_abort_teammates_page(dff, picked_session_labels, db_path, db_key):
         return
+
+    # ── Résumé personnel : mes stats sur le scope actuel ─────────────────────
+    st.subheader(t("tm_my_stats_section"))
+    render_kpis_section(dff, df)
+    st.divider()
+    st.subheader(t("tm_squad_section"))
 
     with perf_section("teammates/build_friends_opts_map"):
         opts_map, default_labels = build_teammates_opts_map(

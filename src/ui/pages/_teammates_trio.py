@@ -182,6 +182,9 @@ def render_trio_view(  # noqa: PLR0913, PLR0915, C901, PLR0912
 
     friend_names_all = [f1_name] + ([f2_name] if f2_name else []) + ([f3_name] if f3_name else [])
     st.subheader(t("tm_squad_header", names=" + ".join(friend_names_all)))
+    from src.ui.pages.teammates_legend import render_player_legend_panel
+
+    render_player_legend_panel(colors_by_name)
 
     squad_ids = set(
         cached_same_team_match_ids_with_friend(db_path, xuid.strip(), f1_xuid, db_key=db_key)

@@ -2,11 +2,8 @@
 
 from __future__ import annotations
 
-import html
 import logging
 import os
-
-from src.ui.player_assets import file_to_data_url
 
 _log = logging.getLogger(__name__)
 
@@ -49,149 +46,40 @@ def get_hero_html(  # noqa: PLR0913
     *,
     player_name: str | None = None,
     service_tag: str | None = None,
-    rank_label: str | None = None,
-    rank_subtitle: str | None = None,
-    rank_icon_path: str | None = None,
     adornment_path: str | None = None,
-    banner_path: str | None = None,
     backdrop_path: str | None = None,
     nameplate_path: str | None = None,
-    id_badge_text_color: str | None = None,
     emblem_path: str | None = None,
-    spartan_id: str | None = None,
     grid_mode: bool = False,
 ) -> str:
-    """Retourne le HTML du banner hero (Spartan ID card style).
+    """Génère le HTML du Spartan ID (façade vers render_spartan_id).
 
-    Structure visuelle (de l'arrière vers l'avant):
-    1. Career Rank icon (à gauche, aligné horizontalement)
-       - Adornement en arrière-plan (centré derrière l'icône de rang)
-    2. Spartan ID card:
-       - Backdrop (240px, 2/3 de la nameplate, centré)
-       - Nameplate (360px)
-       - Emblème (par-dessus, aligné à gauche avec padding 10px)
-       - Gamertag + Service tag (à droite de l'emblème)
+    Le Spartan ID est la carte visuelle standard Halo : backdrop, nameplate,
+    emblème, adornment, gamertag et service tag.
+
+    Pour construire le composant depuis des données typées, préférer directement
+    ``SpartanIdCard`` + ``render_spartan_id()`` (src.ui.spartan_id).
 
     Args:
-        adornment_path: Chemin vers l'image d'adornement (badge du rang).
-        spartan_id: Identifiant Spartan du joueur (ex: "XY7B"), affiché dans la section rang.
-        grid_mode: Si True, utilise un style compact pour les grilles (sans margin-top, centré).
+        player_name: Gamertag du joueur. Si vide, renvoie le hero par défaut LevelUp.
+        service_tag: Tag de clan court (ex: «NS»).
+        adornment_path: Chemin local vers le badge de rang.
+        backdrop_path: Chemin local vers l'image de fond.
+        nameplate_path: Chemin local vers la bannière principale.
+        emblem_path: Chemin local vers le logo du joueur.
+        grid_mode: Mode compact sans notches (grilles coéquipiers).
     """
+    from src.ui.spartan_id import SpartanIdCard, render_spartan_id
 
-    p = (player_name or "").strip()
-    if not p:
-        return """
-        <div class="wp-notch-top"></div>
-        <div class="wp-notch-bottom"></div>
-        <div class="hero">
-            <div class="title">LevelUp</div>
-            <div class="subtitle">Analyse tes parties Halo Infinite depuis la DB SPNKr — filtres, séries temporelles, amis, maps.</div>
-        </div>
-        """
-
-    # Images locales (déjà résolues en dehors de ce module)
-    backdrop_data = file_to_data_url(backdrop_path, max_bytes=8 * 1024 * 1024)
-    emblem_data = file_to_data_url(emblem_path)
-    nameplate_data = file_to_data_url(nameplate_path)
-    rank_icon_data = file_to_data_url(rank_icon_path)
-    adornment_data = file_to_data_url(adornment_path)
-
-    st = (service_tag or "").strip()
-
-    safe_player = html.escape(p)
-    safe_service_tag = html.escape(st)
-
-    # Backdrop (arrière-plan, 2/3 de la largeur)
-    backdrop_html = ""
-    if backdrop_data:
-        backdrop_html = (
-            f"<div class='spartan-id__backdrop'><img src='{backdrop_data}' alt='' /></div>"
-        )
-
-    # Nameplate
-    nameplate_html = ""
-    if nameplate_data:
-        nameplate_html = (
-            f"<div class='spartan-id__nameplate'><img src='{nameplate_data}' alt='' /></div>"
-        )
-
-    # Emblème
-    emblem_html = ""
-    if emblem_data:
-        emblem_html = (
-            f"<div class='spartan-id__emblem'><img src='{emblem_data}' alt='emblem' /></div>"
-        )
-
-    # Service tag
-    service_tag_html = ""
-    if safe_service_tag:
-        service_tag_html = f"<div class='spartan-id__servicetag'>{safe_service_tag}</div>"
-
-    # Classe wrapper (avec ou sans --grid)
-    wrapper_class = (
-        "spartan-id-wrapper spartan-id-wrapper--grid" if grid_mode else "spartan-id-wrapper"
+    card = SpartanIdCard(
+        gamertag=player_name or "",
+        service_tag=service_tag,
+        backdrop_path=backdrop_path,
+        nameplate_path=nameplate_path,
+        emblem_path=emblem_path,
+        adornment_path=adornment_path,
     )
-
-    # Notches uniquement en mode normal (pas en grille)
-    notches = (
-        "" if grid_mode else "<div class='wp-notch-top'></div><div class='wp-notch-bottom'></div>"
-    )
-
-    # Career Rank (icône + label, à gauche du Spartan ID)
-    # Priorité: adornment > rank_icon (10C.3.3)
-    rank_html = ""
-    if adornment_data or rank_icon_data or rank_label:
-        safe_rank_label = html.escape(rank_label or "") if rank_label else ""
-        safe_rank_subtitle = html.escape(rank_subtitle or "") if rank_subtitle else ""
-        safe_spartan_id = html.escape(str(spartan_id).strip()) if spartan_id else ""
-
-        # Priorité : adornment > rank_icon (fallback si adornment non dispo)
-        adornment_html = ""
-        rank_icon_html = ""
-        if adornment_data:
-            adornment_html = f"<img src='{adornment_data}' alt='rank' class='career-rank__adornment career-rank__adornment--primary' />"
-        elif rank_icon_data:
-            rank_icon_html = f"<img src='{rank_icon_data}' alt='rank' class='career-rank__icon' />"
-
-        rank_label_html = ""
-        if safe_rank_label:
-            rank_label_html = f"<div class='career-rank__label'>{safe_rank_label}</div>"
-
-        rank_subtitle_html = ""
-        if safe_rank_subtitle:
-            rank_subtitle_html = f"<div class='career-rank__subtitle'>{safe_rank_subtitle}</div>"
-
-        spartan_id_html = ""
-        if safe_spartan_id:
-            spartan_id_html = f"<div class='career-rank__spartan-id'>{safe_spartan_id}</div>"
-
-        rank_html = (
-            "<div class='career-rank'>"
-            f"  {adornment_html}"
-            f"  {rank_icon_html}"
-            "  <div class='career-rank__text'>"
-            f"    {rank_label_html}"
-            f"    {rank_subtitle_html}"
-            f"    {spartan_id_html}"
-            "  </div>"
-            "</div>"
-        )
-
-    return (
-        f"{notches}"
-        f"<div class='{wrapper_class}'>"
-        f"  {rank_html}"
-        "  <div class='spartan-id'>"
-        f"    {backdrop_html}"
-        f"    {nameplate_html}"
-        f"    {emblem_html}"
-        "    <div class='spartan-id__text'>"
-        f"      <div class='spartan-id__gamertag'>{safe_player}</div>"
-        f"      {service_tag_html}"
-        "    </div>"
-        "  </div>"
-        "</div>"
-    )
+    return render_spartan_id(card, grid_mode=grid_mode)
 
 
 def get_notches_html() -> str:

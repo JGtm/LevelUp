@@ -320,8 +320,7 @@ def _list_players() -> list[PlayerInfo]:
         db_readable = True
 
         try:
-            con = duckdb.connect(str(db_path), read_only=True)
-            try:
+            with duckdb.connect(str(db_path), read_only=True) as con:
                 # Architecture v5 : utilise player_match_enrichment si disponible
                 # (plus fiable que player_match_stats qui peut contenir des stats agrégées)
                 try:
@@ -350,8 +349,6 @@ def _list_players() -> list[PlayerInfo]:
                     xuid = result[0] if result else None
                 except Exception:
                     pass
-            finally:
-                con.close()
         except Exception:
             db_readable = False
 
@@ -387,12 +384,9 @@ def _count_matches_duckdb(db_path: Path) -> int:
         return 0
     try:
         duckdb = _import_duckdb()
-        con = duckdb.connect(str(db_path), read_only=True)
-        try:
+        with duckdb.connect(str(db_path), read_only=True) as con:
             row = con.execute("SELECT COUNT(*) FROM player_match_enrichment").fetchone()
             return row[0] if row else 0
-        finally:
-            con.close()
     except Exception:
         return 0
 
@@ -934,6 +928,44 @@ def _run_migrations() -> None:
             print(f"     - {err}", flush=True)
 
 
+def _run_db_healthcheck() -> None:
+    """Vérifie l'état des DB et vues après les migrations.
+
+    Affiche un résumé rapide. Non-bloquant en cas d'erreur.
+    """
+    try:
+        from src.utils.healthcheck_db import run_healthcheck
+    except ImportError:
+        return
+
+    try:
+        results = run_healthcheck(deep=False, auto_repair=True)
+    except Exception as e:
+        logger.debug("DB healthcheck échoué: %s", e)
+        return
+
+    errors = [r for r in results if r.status == "error"]
+    warnings = [r for r in results if r.status == "warning"]
+
+    if not errors and not warnings:
+        print(_t("healthcheck_ok", _LANG), flush=True)
+        return
+
+    for r in warnings:
+        for c in r.issues:
+            print(f"  ⚠️  {r.db_name}: {c.name} — {c.message}", flush=True)
+
+    for r in errors:
+        for c in r.issues:
+            print(f"  ❌ {r.db_name}: {c.name} — {c.message}", flush=True)
+
+    if errors:
+        print(
+            "  💡 python scripts/healthcheck_db.py --verbose  pour un diagnostic complet",
+            flush=True,
+        )
+
+
 # =============================================================================
 # Commandes principales
 # =============================================================================
@@ -975,6 +1007,9 @@ def _launch_streamlit(
 
     # Appliquer les migrations de schéma avant le lancement
     _run_migrations()
+
+    # Vérifier l'état des DB et vues après migrations
+    _run_db_healthcheck()
 
     print(_t("launching_dashboard", _LANG), flush=True)
     print(_t("launching_url", _LANG, url=url), flush=True)
@@ -1186,8 +1221,8 @@ def _ensure_warehouse_dbs() -> None:
         try:
             import duckdb as _duckdb
 
-            _conn = _duckdb.connect(str(meta_path))
-            _conn.close()
+            with _duckdb.connect(str(meta_path)):
+                pass  # Crée le fichier DB vide
             print(_t("warehouse_meta_init", _LANG), flush=True)
         except Exception as exc:
             print(_t("warehouse_meta_init_fail", _LANG, err=exc), flush=True)

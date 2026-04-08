@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "levelup-halo"
-version = "6.3.0"
+version = "6.4.0"
 description = "Dashboard d'analyse de statistiques Halo Infinite avec architecture DuckDB v5 (shared matches)"
 readme = "README.md"
 license = {text = "MIT"}
@@ -39,6 +39,7 @@ dependencies = [
     "msal>=1.28.0",
     "bitstring>=4.0.0",  # scan fire events weapon parser (import top-level)
     "filelock>=3.12.0",  # verrou fichier sync
+    "watchdog>=4.0.0",  # watcher inotify Linux pour l'indexation auto des médias
 ]
 
 [project.optional-dependencies]
@@ -55,7 +56,6 @@ dev = [
     "pandas-stubs>=2.0.0",
     "pre-commit>=3.7.0",
     "vulture>=2.11",
-    "watchdog>=4.0.0",
     "detect-secrets>=1.4.0",
     # Dépendances nécessaires pour les tests auth/sync sur CI
     "aiohttp>=3.8.0",

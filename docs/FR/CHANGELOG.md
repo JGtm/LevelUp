@@ -6,14 +6,57 @@ Toutes les modifications notables de ce projet sont documentées ici.
 
 Le format est basé sur [Keep a Changelog](https://keepachangelog.fr/fr/1.1.0/).
 
-## [6.3.0] - 2026-04-03
+## [6.4.0] - 2026-04-07
 
 ### Ajouté
 
-- **Noms de cartes et modes dans la langue de l'interface** — tous les noms de cartes, playlists, modes de jeu et paires s'affichent désormais en français ou en anglais sur chaque page : filtres sidebar, tableaux de matchs, graphes et histogramme win rate. Alimenté par une nouvelle table `asset_translations` dans `metadata.duckdb` contenant 9 674 noms localisés en 14 langues BCP-47.
-  - Nouveau schéma : `asset_translations (asset_id, asset_type, lang, name, fetched_at, PK)` et `medal_translations (name_key, lang, name, description, PK)` dans `metadata.duckdb`
-  - `v_match_full` refonte i18n v6 : les quatre JOINs sur tables legacy supprimés ; remplacés par 8 `LEFT JOIN meta.asset_translations` (en-US + fr-FR × 4 types). Nouvelles colonnes : `map_name_fr`, `playlist_name_fr`, `pair_name_fr`, `game_variant_name_fr`
-  - `resolve_asset_name()` / `resolve_medal_name()` utilisent les tables pivot pour des résolutions déterministes par langue
+- **Bibliothèque médias — filtres & tri** — la page Médias dispose désormais d'un panneau de filtres complet :
+  - **Propriétaire** — multiselect pour afficher/masquer les sections (Mes captures / Coéquipier(s) / Non associés)
+  - **Carte** — filtre par nom de carte (provenant des données de match)
+  - **Mode** — filtre par label de mode normalisé
+  - **Résultat** — multiselect (Victoire / Défaite / Égalité / Non terminé) basé sur les codes de résultat
+  - **Contexte** — radio pour restreindre aux matchs Solo ou en Escouade
+  - **Tri** — trier par date de capture (par défaut), carte, mode, résultat ou propriétaire ; bascule croissant/décroissant
+  - Les filtres type (image/vidéo) et nom de fichier sont conservés depuis l'ancien panneau
+  - Les médias non associés (sans match) ne sont pas affectés par les filtres de match et apparaissent toujours dans leur propre section quand elle est sélectionnée
+
+- **Fanout CSR coéquipiers** — lors de la synchronisation d'un match classé, les données CSR de tous les co-joueurs enregistrés sont désormais automatiquement collectées depuis le payload API `skill_json` et distribuées à chaque DB joueur. Auparavant, chaque joueur devait synchroniser son propre compte pour alimenter son historique CSR sur les matchs communs.
+
+- **Fanout badges comeback** — les badges Remontada / Débandade / Contre-Remontada sont désormais calculés pour les co-joueurs enregistrés lors du fanout de sync, en parallèle de la distribution PSA et CSR.
+
+### Ajouté (suite)
+
+- **Healthcheck DB** — nouveau module (`src/utils/healthcheck_db.py`) qui vérifie l'état de toutes les bases DuckDB à chaque démarrage et après chaque déploiement :
+  - Vérifie la présence des tables, des vues v6 (`v_gamertag_lookup`, `v_match_full`, `v_killer_victim_full`, `v_weapon_kills`) et des colonnes critiques
+  - Vérifie que `metadata.duckdb` est attachable depuis `shared_matches`
+  - Détecte les migrations en attente
+  - Auto-répare les vues v6 manquantes/cassées via `ensure_resolution_views()`
+  - Mode `--deep` : intégrité référentielle (participants orphelins, doublons)
+  - CLI : `python scripts/healthcheck_db.py [--verbose] [--deep] [--player GT] [--json]`
+  - Intégré dans `launcher.py` — s'exécute automatiquement après les migrations au démarrage, affiche ✅/⚠️/❌ dans la console
+  - Intégré dans `deploy.sh` — smoke test post-déploiement, résultats ajoutés dans `data/logs/healthcheck_deploy.log` (persisté entre les déploiements via le volume Docker)
+
+### Ajouté (suite)
+
+- **Bascule "Aides à la lecture"** — une nouvelle case à cocher dans la sidebar permet d'afficher ou masquer les ~45 bandeaux d'aide contextuels présents sur chaque page. Le paramètre est persisté dans `ui_prefs.json` (clé `show_hints`) et actif par défaut. `hints_visible()` est le prédicat global utilisé dans tous les modules de page.
+  - Plusieurs blocs `st.expander` convertis en `st.popover` pour une expérience plus légère (`match_view_players`, `match_view_encounters`, `career_top_matches_render`, `career_encounters_render`, `teammates_impact`)
+  - `restore_hints_from_prefs()` restaure la valeur persistée depuis `ui_prefs.json` au redémarrage
+
+- **Cases KPI carrière refondues** — la ligne de résumé au-dessus des graphes carrière est désormais une rangée compacte de 8 cases :
+  - **Matchs joués**, **Durée totale**, **Frags**, **Morts**, **Assists**, **Précision**, **Durée de vie**, **Résultats**
+  - Frags, Morts, Assists : valeur principale avec une sous-valeur `/min` inline en petite police
+  - Code couleur (vert / or / rouge) par rapport à la moyenne all-time (seuil ±8 %)
+  - Case Résultats : barre segmentée avec compteurs bruts V/D/E/DNF et légende colorée
+  - `render_top_summary()` supprimé (redondant) ; `_build_kpi_cards()` extrait pour respecter la limite 80L
+
+- **Page Win/Loss fusionnée dans Timeseries** — la page Win/Loss autonome a été absorbée dans la page Timeseries sous forme d'un nouvel onglet. La route `win_loss` est supprimée de `page_router.py`. Onglets Timeseries renommés : Résumé · Cartes & Modes · Progression · Avancé.
+
+### Modifié
+
+- **Image Docker** — `ffmpeg` est désormais installé dans l'image, permettant la génération de miniatures vidéo dans les déploiements conteneurisés sans étape d'installation manuelle supplémentaire.
+
+- **Coéquipiers — panneau légende fixe** — un panneau flottant (en bas à droite, `position: fixed`) affiche la couleur de chaque membre de l'escouade tout au long de la section escouade. Il apparaît à partir de l'en-tête escouade et reste visible au scroll. Les légendes ont été supprimées de tous les graphes individuels (kills/morts, stats/min, métriques, killing sprees, HS+PK, premier événement, kills par arme) car remplacées par ce panneau. Changer de stratégie via `_PANEL_MODE` dans `teammates_legend.py` (`"fixed"` / `"sidebar"` / `"hidden"`).
+
   - `MetadataResolver.resolve()` accepte désormais un paramètre `lang`
   - Peuplement : `python scripts/populate_asset_translations.py` (supporte `--dry-run`, `--force`, `--types map playlist pair game_variant`)
 
@@ -68,8 +111,19 @@ Le format est basé sur [Keep a Changelog](https://keepachangelog.fr/fr/1.1.0/).
 - Stats/min escouade visibles pour tous les membres (pas seulement le joueur focal).
 - Aliases armes `Mutilator` / `Mutilateur` ajoutés dans `_scoreboard_asset_urls`.
 - `top_killer` ajouté à `_EVENT_TO_EMOJI` (entrée manquante causait un repli d'affichage emoji).
+- Panneau légende coéquipiers : visibilité conditionnée à la section Escouade uniquement — le panneau démarre en `display:none`, apparaît quand la sentinelle `#llp-squad-start` entre dans le viewport et se masque quand la sentinelle Impact (`#llp-impact-end`) atteint le haut de l'écran.
+- Barre native Streamlit masquée — header, toolbar, menu et barre de décoration supprimés via `.streamlit/config.toml` et surcharges CSS.
+- Deep links Explorer : `open_match_button` utilise désormais `session_state` au lieu de `query_params` pour éviter le changement de DB lors de la navigation ; `_scroll_into_view` fait défiler la ligne correspondante via un `scrollIntoView` JS same-origin ; le deep link gamertag bénéficie aussi du scroll automatique.
+- Ratio KDA/efficacité : valeur lue directement depuis le champ API `mean(ratio)` au lieu d'être recalculée en `(K + A/3) / D`, corrigeant une divergence systématique pour les joueurs avec beaucoup d'assists.
+- Watcher media : guard process-level (`_PERIODIC_LOCK` / `_PERIODIC_STARTED`) déplacé avant le branchement Linux/Windows pour éviter la création d'instances `watchdog.Observer` dupliquées lors des reruns Streamlit ; mode actif (inotify vs. polling) logué au démarrage.
+- Migrations sync : la DB est marquée comme migrée uniquement après le succès de `ensure_resolution_views()` (guard success-based) ; les `duckdb.connect()` nus dans `_engine_connections.py` et `launcher.py` remplacés par des context managers.
+- Healthcheck : statut `'repaired'` traité comme warning (était ignoré silencieusement) ; `recompute_status()` ajouté pour recalculer le résultat global après mutation de checks individuels ; `deploy.sh` mis à jour en conséquence.
+- Runner migrations : la DB `metadata` est traitée avant `shared` pour que les vues i18n v6 puissent attacher `metadata.duckdb` à la création ; un `logger.warning()` est désormais émis quand les vues basculent en mode dégradé (colonnes FR = NULL).
 
 ### Tests
+
+- `test(ui_persistence)` : 9 nouveaux tests pour `hints_visible()` / `restore_hints_from_prefs()` ; 5 930 tests passent au total
+- `test(remediation)` : tests de non-régression P0.2 (suppression code mort `browser_storage`), P0.3 (corrections commentaires localStorage), P1.2 (4 cas supplémentaires)
 
 - `test(i18n)` : couverture `resolve_map_display_names()` + assertions colonnes `map_ui` / `mode_ui`
 - `test(radar)` : cas limite `f1_vide` + régression effondrement `shared_match_ids`

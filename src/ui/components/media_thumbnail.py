@@ -143,7 +143,7 @@ def _build_thumbnail_container_html(  # noqa: PLR0913
     hover_js: str,
 ) -> str:
     """Génère le HTML complet du conteneur thumbnail + lightbox + JS."""
-    return f"""
+    return f"""<style>html,body{{margin:0;padding:0;overflow:hidden;}}</style>
 <div id="{container_id}" class="media-thumb-container" style="
   width: 100%;
   max-width: {width}px;

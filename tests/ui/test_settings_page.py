@@ -53,6 +53,8 @@ def _full_build_kwargs(**overrides):
         "show_records": True,
         "media_captures_base_dir": "",
         "media_tolerance_minutes": 3,
+        "media_watcher_enabled": True,
+        "media_watcher_debounce_seconds": 5,
         "discord_notifications_enabled": False,
         "discord_webhook_url": "",
         "discord_lang": "fr",
@@ -158,15 +160,6 @@ class TestGetPreservedSettings:
         preserved = _get_preserved_settings(s)
         assert preserved["spnkr_refresh_max_matches"] == 750
 
-    def test_preserves_spnkr_rps(self) -> None:
-        """spnkr_refresh_rps doit être préservé depuis les settings."""
-        from src.ui import AppSettings
-        from src.ui.pages.settings import _get_preserved_settings
-
-        s = AppSettings(spnkr_refresh_rps=8)
-        preserved = _get_preserved_settings(s)
-        assert preserved["spnkr_refresh_rps"] == 8
-
     def test_preserves_sync_booleans(self) -> None:
         """Les flags sync (on_start, on_manual_refresh, highlight_events) sont préservés."""
         from src.ui import AppSettings
@@ -252,10 +245,9 @@ class TestBuildSettingsFromUI:
         from src.ui import AppSettings
         from src.ui.pages.settings import _build_settings_from_ui
 
-        s = AppSettings(spnkr_refresh_max_matches=999, spnkr_refresh_rps=12)
+        s = AppSettings(spnkr_refresh_max_matches=999)
         result = _build_settings_from_ui(**_full_build_kwargs(settings=s))
         assert result.spnkr_refresh_max_matches == 999
-        assert result.spnkr_refresh_rps == 12
 
     def test_backfill_flags_saved(self) -> None:
         """Tous les flags backfill sont correctement transmis."""
@@ -414,7 +406,7 @@ class TestRenderDisplaySection:
     """Tests de la section Affichage."""
 
     def test_three_toggles_rendered(self, mock_st) -> None:
-        """normalize_mode_labels + career_top_exclude_btb + refresh_clears_caches + show_records."""
+        """normalize_mode_labels + show_hints + show_records + career_top_exclude_btb + refresh_clears_caches."""
         from src.ui import AppSettings
         from src.ui.pages import settings as mod
 
@@ -423,7 +415,7 @@ class TestRenderDisplaySection:
 
         mod._render_display_section(AppSettings())
 
-        assert ms.calls["toggle"].call_count == 4
+        assert ms.calls["toggle"].call_count == 5
 
     def test_career_top_exclude_btb_uses_settings_value(self, mock_st) -> None:
         """Le toggle career_top_exclude_btb lit la valeur dans les settings."""
@@ -436,8 +428,8 @@ class TestRenderDisplaySection:
         mod._render_display_section(AppSettings(career_top_exclude_btb=True))
 
         toggle_calls = ms.calls["toggle"].call_args_list
-        # 3e toggle = career_top_exclude_btb (après normalize_mode_labels et show_records)
-        career_call = toggle_calls[2]
+        # 4e toggle = career_top_exclude_btb (après normalize_mode_labels, show_hints et show_records)
+        career_call = toggle_calls[3]
         assert career_call.kwargs["value"] is True
 
     def test_returns_three_bools(self, mock_st) -> None:

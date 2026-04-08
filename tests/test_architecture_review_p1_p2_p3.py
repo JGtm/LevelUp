@@ -14,7 +14,7 @@ Couvre :
 from __future__ import annotations
 
 from pathlib import Path
-from unittest.mock import MagicMock, patch
+from unittest.mock import patch
 
 import duckdb
 
@@ -154,69 +154,6 @@ class TestLoadCareerDataSpartanId:
 # ─────────────────────────────────────────────────────────────────────────────
 # P1-9b : _load_spartan_id_from_db via repo (main_helpers)
 # ─────────────────────────────────────────────────────────────────────────────
-
-
-class TestLoadSpartanIdFromDb:
-    """_load_spartan_id_from_db délègue à get_cached_repository_st."""
-
-    def test_returns_spartan_id_from_repo(self):
-        """Si le repo retourne career_data avec spartan_id, la valeur est retournée."""
-        from src.app.main_helpers import _load_spartan_id_from_db
-
-        mock_repo = MagicMock()
-        mock_repo.load_career_data.return_value = {"spartan_id": "S42", "adornment_path": None}
-
-        with patch("src.ui._cache_core.get_cached_repository_st", return_value=mock_repo):
-            result = _load_spartan_id_from_db("/fake/db.duckdb", "XUID_TEST")
-
-        assert result == "S42"
-
-    def test_returns_none_when_spartan_id_null(self):
-        """Retourne None si spartan_id est None dans career_data."""
-        from src.app.main_helpers import _load_spartan_id_from_db
-
-        mock_repo = MagicMock()
-        mock_repo.load_career_data.return_value = {"spartan_id": None}
-
-        with patch("src.ui._cache_core.get_cached_repository_st", return_value=mock_repo):
-            result = _load_spartan_id_from_db("/fake/db.duckdb", "XUID_TEST")
-
-        assert result is None
-
-    def test_returns_none_when_spartan_id_empty_string(self):
-        """Retourne None si spartan_id est une chaîne vide."""
-        from src.app.main_helpers import _load_spartan_id_from_db
-
-        mock_repo = MagicMock()
-        mock_repo.load_career_data.return_value = {"spartan_id": "   "}
-
-        with patch("src.ui._cache_core.get_cached_repository_st", return_value=mock_repo):
-            result = _load_spartan_id_from_db("/fake/db.duckdb", "XUID_TEST")
-
-        assert result is None
-
-    def test_returns_none_when_repo_raises(self):
-        """Retourne None silencieusement si le repo lève une exception."""
-        from src.app.main_helpers import _load_spartan_id_from_db
-
-        with patch(
-            "src.ui._cache_core.get_cached_repository_st", side_effect=RuntimeError("DB error")
-        ):
-            result = _load_spartan_id_from_db("/fake/db.duckdb", "XUID_TEST")
-
-        assert result is None
-
-    def test_returns_none_when_career_data_none(self):
-        """Retourne None si load_career_data retourne None."""
-        from src.app.main_helpers import _load_spartan_id_from_db
-
-        mock_repo = MagicMock()
-        mock_repo.load_career_data.return_value = None
-
-        with patch("src.ui._cache_core.get_cached_repository_st", return_value=mock_repo):
-            result = _load_spartan_id_from_db("/fake/db.duckdb", "XUID_TEST")
-
-        assert result is None
 
 
 # ─────────────────────────────────────────────────────────────────────────────

@@ -3,6 +3,366 @@
 > Ce fichier capture le raisonnement de l'agent entre les sessions.
 > Archivé : 2026-02-01 (logs précédents dans `.ai/archive/thought_log_pre_phase6.md`)
 
+## [2026-04-08] fix(demo): wizard + bind mount stale + sync_meta.xuid — Complété
+
+**Statut** : Complété · Poussé sur `feat/demo-mode` (commits `f0b9d73b`, `e02c8ea5`)
+
+**Problème** : La démo affichait "Bienvenue dans LevelUp / Choisissez une méthode de connexion" au lieu du dashboard.
+
+**Deux causes distinctes :**
+
+1. **Bind mount Linux stale** — Après `rm -rf data/demo` + regen, le container démo continuait de pointer vers l'ancien inode (supprimé). `/app/data/players/` apparaissait vide → `_count_players() = 0` → wizard affiché. Fix : `docker compose stop levelup-demo && docker compose up -d` pour recréer le montage sur les nouveaux inodes. Dans le flow build, Docker recrée automatiquement le container (image change) — pas de problème au déploiement normal.
+
+2. **`sync_meta.xuid` non mis à jour** — `_extract_player` copiait `player_match_enrichment` et `match_skill_rank` en remplaçant le xuid, mais `sync_meta` conservait le vrai xuid (`2533274823110022`). `_resolve_player_xuid()` lit `sync_meta.key='xuid'` en priorité → queries `mv_player_matches WHERE xuid='2533274823110022'` → 0 résultats. Fix : `UPDATE sync_meta SET value=demo_xuid WHERE key='xuid' AND value=source_xuid`.
+
+3. **Guard wizard manquant** — `setup_status.needs_setup` peut être `True` en mode démo si le container démarre avec un bind mount stale (ou pour toute autre raison). Fix : `if setup_status.needs_setup and not is_demo_mode()` dans `streamlit_app.py`.
+
+**Décision technique** : La garde `not is_demo_mode()` sur le wizard est défensive — avec les données correctement générées et les volumes correctement montés, `needs_setup` sera `False`. Mais mieux vaut une double protection.
+
+**Résultat** : Dashboard s'affiche correctement sur `https://demo.lvelup.info`. HTTP 200, 50 matchs JGtm visibles.
+
+---
+
+## [2026-04-09] fix(demo): 5 bugs mode démo corrigés — Complété
+
+**Statut** : Complété · Poussé sur `feat/demo-mode`
+
+**Bugs corrigés** :
+1. `[Errno 30] Read-only file system` sur `ui_prefs.json` → `save_filter_preferences` retourne tôt en mode démo (volume `:ro`)
+2. `Aucun rating LUSR/CSR` + `Matchs marquants — Pas assez de matchs` → `match_skill_rank` manquait dans `_player_tables` de `prepare_demo_data.py`
+3. `Complémentarité de l'escouade — Données insuffisantes` → `mv_player_matches` n'était pas créée dans le shared DB démo
+4. `Rating non encore calculé` → même cause que #2 et #3
+5. Absence de médias → ajout de `_extract_media()` (5 clips max avec LEVELUP_ROOT-aware paths)
+
+**Décision technique** :
+- `ensure_mv_player_matches_view(dst)` doit impérativement être appelé sur la connexion au **shared DB** (a besoin de `match_registry` + `v_match_full`). L'appel précédent sur le player DB échouait silencieusement (player DB n'a pas `match_registry`).
+- `match_skill_rank` est dans `stats.duckdb` (player) et filtrée par `match_id IN (...)` comme les autres tables.
+- `media_match_associations.media_path` (≠ `file_path`) est la FK vers `media_files.file_path`.
+- Les chemins media sont stockés en absolu via `str(Path.resolve())` → utiliser `LEVELUP_ROOT` (env var `/app` en Docker) pour construire les paths demo cohérents avec le container.
+
+**Résultat** : Push `07492115` sur `feat/demo-mode`.
+
+**Prochaine étape** : Sur VPS — `git pull && rm -rf data/demo && python scripts/prepare_demo_data.py --gamertag JGtm --max-matches 50 && docker compose restart levelup-demo`
+
+## [2026-04-08] feat(demo): mode démo public demo.lvelup.info — Complété
+
+**Tâche** : Créer un sous-domaine public `demo.lvelup.info` exposant LevelUp avec données restreintes (50 matchs, sync désactivée), sans auth htpasswd.
+
+**Décision technique** :
+- Conteneur Docker dédié `levelup-demo` (port 8502) avec volumes `:ro`
+- Variable `LEVELUP_DEMO_MODE=true` → `src/utils/demo.py::is_demo_mode()` contrôle le blocage sync
+- Script `scripts/prepare_demo_data.py` : extraction via DuckDB `ATTACH + CTAS` (évite les séquences)
+- Vhost Nginx `packaging/nginx/demo.conf` sans `auth_basic`, certbot `--expand` pour le cert SSL
+
+**Résultats** :
+- 50 matchs JGtm extraits + anonymisés ("DEMO") dans `data/demo/`
+- `levelup-levelup-demo-1` healthy sur 8502
+- `https://demo.lvelup.info` répond HTTP 200, `http://` → 301
+
+**Conclusion** : Déployé en production. Branche `feat/demo-mode`, 5 commits.
+
+## [2026-04-08] docs: mise à jour CHANGELOG + README post-v6.4.0 — Complété
+
+**Tâche** : Repérer et documenter tous les commits réalisés depuis la dernière mise à jour des docs (commit `2c371357`) et mettre à jour `docs/CHANGELOG.md`, `docs/FR/CHANGELOG.md` et `README.md`.
+
+**Périmètre analysé** : 20 commits entre `2c371357` et HEAD (`2f59409f`).
+
+**Entrées ajoutées (CHANGELOG [6.4.0]) :**
+- Added: Aides à la lecture (`hints_visible()`, popovers, toggle sidebar)
+- Added: Refonte cases KPI carrière (8 cases, /min, code couleur all-time, barre V/D/E/DNF)
+- Added: Fusion page Win/Loss dans Timeseries (onglets renommés)
+- Fixed (9) : légende teammates DOM sentinels, barre Streamlit native, deep links Explorer, ratio KDA API, watcher media guard, migrations success-based, healthcheck 'repaired', ordre metadata→shared
+
+**Conclusion** : `docs/CHANGELOG.md`, `docs/FR/CHANGELOG.md` et `README.md` à jour. Pas de V7/V8 inclus.
+
+---
+
+## [2026-04-08] feat(ui): système Aides à la lecture — Complété
+
+**Tâche** : Rendre les ~45 aides à la lecture (légendes, captions, notes, tips) optionnelles via un toggle sidebar persisté.
+
+**Décisions techniques** :
+1. **`hints_visible()` + `restore_hints_from_prefs()`** dans `browser_storage/__init__.py` — lecture/écriture de `show_hints` dans `ui_prefs.json`, valeur par défaut `True`
+2. **Checkbox sidebar** dans `streamlit_app.py` avec `on_change=_on_hints_toggle` et `persist_browser_prefs(show_hints=...)`
+3. **5 popovers** : `st.expander` → `st.popover` pour légendes badges (match_view_players, teammates_impact, encounters, career_top_matches)
+4. **~28 guards `if hints_visible():`** dans 13 fichiers pour captions/notes/tips
+5. **Radar adaptatif** : `if hints_visible(): st.columns([2,1])` sinon plein écran (3 occurrences)
+6. **Fix qualité** : SIM102 (ifs imbriqués fusionnés), PLR0912 (helper extrait), F401 (imports nettoyés), I001 (isort)
+
+**Résultats** : 5930 tests passés, 0 failed. Ruff propre. Baseline taille mis à jour (décalages de lignes sur dette préexistante).
+
+**Conclusion** : Feature commitée (`7dc47e82`). Prête pour PR. Les pré-commits v6.4.0 (fusion win_loss→timeseries) ont été commités séparément (`31027c62`).
+
+---
+
+## [2026-04-08] feat(ui): fusion page Victoires/Défaites dans page Séries — Complété
+
+**Tâche** : Fusionner la page "Victoires/Défaites" (`win_loss.py`) dans la page "Séries" (`timeseries.py`).
+
+**Décision technique** : Restructuration en 5 onglets par thème croissant de complexité :
+1. **Résumé** (ex-KDA) + évolution V/D + séries consécutives
+2. **Cartes & Modes** (nouveau) — breakdown par carte/mode + bullet winrate + perf vs historique
+3. **Distributions** — inchangé
+4. **Progression** (ex-Avancé) — métriques match par match + score personnel
+5. **Avancé** (ex-Progression) — modélisation statistique, EWMA, LUSR, heatmaps
+
+Les fonctions de `win_loss.py` sont importées directement dans `timeseries.py` (pas de duplication). Le fichier `win_loss.py` reste dans le dépôt comme bibliothèque mais n'est plus enregistré dans la navigation.
+
+**Résultats** : 817 tests passés, 0 régression. Ruff propre sur tous les fichiers modifiés. `timeseries.py` = 429 lignes (< 500L).
+
+**Conclusion** : Page `win_loss` retirée de PAGE_KEYS, `streamlit_app.py`, `__init__.py`. Prête pour commit.
+
+
+
+**Tâche** : Appliquer le plan de remédiation issu de la revue chirurgicale du delta v6.2.1→HEAD.
+
+**Décision technique** : 8 commits séquentiels sur branche `fix/remediation-post-v6.2.1`, ordonnés par risque décroissant :
+
+1. **P0.2+O3** : Guard process-level unifié avant branchement Linux dans `media_background.py` + log retry
+2. **P0.3+O6+O7+O8** : Guard migrations success-based dans `_engine_connections.py` + context managers DuckDB (4 bare connects éliminés) + guard PVE
+3. **P2.1** : Dédupliquer git fetch/reset/clean entre deploy.yml et deploy.sh
+4. **P1.2** : `HealthCheckResult.add()` gère `repaired` + `recompute_status()` + deploy.sh parsing
+5. **P2.2** : Aligner CLAUDE.md et copilot-instructions.md sur `shared_matches_v2.duckdb`
+6. **P1.1+P1.3** : Ordre `metadata → shared` dans runner.py + warnings explicites sur fallback NULL
+7. **P0.1** : Supprimer code mort `browser_storage/frontend/` + corriger commentaires localStorage
+8. **P2.3** : 9 tests de non-régression (guard media, retry migrations, healthcheck recompute)
+
+**Résultats** : 5922 tests passed, 0 failed, 4 skipped. Aucune régression.
+
+**Conclusion** : Plan de remédiation complet appliqué. Vérification finale : 5 commentaires localStorage corrigés, 4 tests ajoutés (P1.1 ordre runner, O3 retry logging, P0.3 best-effort, P1.2 cross-status). Total : 13 tests de non-régression. Observations O1-O9 traitées en synergie avec les correctifs principaux.
+
+## [2026-04-07] fix(settings): auto-sauvegarde show_records via on_change + guard session_state — Complété
+
+**Tâche** : Le toggle "Afficher les records historiques" dans la page Paramètres revenait sporadiquement à `True` après relancement.
+
+**Cause(s) identifiée(s)** :
+1. `_initialize_app()` dans `streamlit_app.py` appelle `load_settings()` à **chaque rerun** (pas seulement au premier chargement de session), écrasant `session_state["app_settings"]` avec le contenu disque. Si un rerun se produisait dans une fenêtre de temps entre une sauvegarde et la propagation en session, la valeur pouvait être perdue.
+2. Le bug étant aléatoire, ça indique une race condition liée au rerun Streamlit (hot-reload, rerun après sync, etc.)
+
+**Décisions techniques** :
+1. **Guard `_initialize_app`** : `load_settings()` n'est appelé que si `session_state["app_settings"]` est absent (première session). Sur un rerun intra-session, la valeur session_state est réutilisée — cohérent avec le bouton "Recharger" qui met `session_state["app_settings"]` à jour avant le rerun.
+2. **Callback `_auto_save_show_records`** : sauvegarde immédiate au toggle (ajouté dans la session précédente), avec correction du fallback (`current.show_records` au lieu de `True` comme default).
+
+**Résultats** : 5890 tests passent (1 échec préexistant `media_tab.py` hors scope).
+
+**Branche** : `fix/lusr-schema-backfill-teammates`
+
+---
+
+## [2026-04-07] fix(stash): récupération stash WIP — Complété
+
+**Statut** : Complété
+**Branche** : `fix/lusr-schema-backfill-teammates`
+
+**Décision technique** : Résolution de 9 fichiers conflictuels après `git stash pop stash@{0}`. Stratégie : garder HEAD pour les blocs de logging/debug, prendre stash pour l'import `get_legend_horizontal_bottom` et la restauration localStorage robuste dans `streamlit_app.py`.
+
+**Points notables** :
+- Regex conflit avait tronqué `_apply_media_filters` → restaurée depuis HEAD (implémentation complète avec logging)
+- `_teammates_trio_helpers.py` : import manquant `get_legend_horizontal_bottom` (F821 ruff) → ajouté depuis `src.visualization.theme`
+- `size_baseline.txt` mis à jour : `_render_per_minute_stats` 82L→83L (+1L pour `legend=`)
+- Stash conservé (git ne l'a pas supprimé automatiquement vu les conflits)
+
+**Résultats** : 5875 passed, 0 failed, 4 skipped — suite complète hors e2e/intégration
+
+**Conclusion** : Travaux stash récupérés intégralement. Stash@{0} peut être supprimé (`git stash drop stash@{0}`).
+
+## [2026-04-07] feat(healthcheck): DB healthcheck post-deploy — Complété
+
+**Statut** : Complété
+**Branche** : `fix/lusr-schema-backfill-teammates`
+
+**Décision technique** : Création d'un système de healthcheck DB en 3 couches :
+1. `src/utils/healthcheck_db.py` (+ `_healthcheck_schema.py`, `_healthcheck_format.py`) — module principal, vérifie tables/vues/colonnes/migrations par DB
+2. `scripts/healthcheck_db.py` — CLI avec `--deep`, `--verbose`, `--player`, `--json`
+3. `launcher.py::_run_db_healthcheck()` — exécution automatique au boot Streamlit, après migrations
+4. `deploy.sh` — smoke test post-deploy : healthcheck dans le conteneur → `data/logs/healthcheck_deploy.log`
+
+**Modifications** :
+- `src/data/sync/_engine_connections.py` : `logger.debug` → `logger.warning` pour échecs `weapon_kills`/`ensure_resolution_views`
+- `src/utils/launcher_i18n.py` : clé `healthcheck_ok` ajoutée
+
+**Résultats** : 34/34 tests passent, couverture 87%/100%/87%, ruff clean, CLI testée sur données réelles (détecte `match_participants.mmr` manquant)
+
+**Conclusion** : Le healthcheck est opérationnel. Au prochain deploy, le log `data/logs/healthcheck_deploy.log` contiendra le résultat complet avec horodatage et hash de commit.
+
+## [2026-04-07] fix(tests): isolation _sync_mode — 5889 passed, 0 failed — Complété
+
+**Statut** : Complété
+**Branche** : `fix/lusr-schema-backfill-teammates`
+**Commit** : `4aa898d2`
+
+**Cause racine** : Le flag global `_sync_mode` (threading.Event dans `duckdb_repo.py`) restait actif si un test sync levait une exception avant que `end_sync_mode()` soit appelé. Les tests suivants (`test_v52_new_features`, `test_v5_match_queries`, `test_xuid_resolution_regression`) créaient des `DuckDBRepository` qui ne pouvaient plus attacher `shared_matches_v2.duckdb` → retournaient 0 rows → 42 assertions en échec.
+
+**Fix** : Fixture `autouse=True` `_reset_sync_mode` dans `tests/conftest.py` qui appelle `end_sync_mode()` après chaque test.
+
+**Résultats** : **5889 passed, 0 failed, 4 skipped** — 100% de la suite hors integration.
+
+---
+
+## [2026-04-07] test(sync): audit final + centralisation helpers + caplog + v6 views — Complété
+
+**Statut** : Complété
+**Branche** : `fix/lusr-schema-backfill-teammates`
+
+**Décision technique** :
+Audit exhaustif des 4 fichiers de tests sync (shared_writes, fanout, nonregression, e2e) + corrections :
+1. **Centralisation helpers** dans `conftest_sync.py` : `V6_SHARED_VIEWS`, `METADATA_SCHEMA` (4 tables), `create_metadata_db()`, `make_engine()` — suppression des 4 copies locales `_METADATA_SCHEMA` + `_create_metadata_db` + `_make_engine`
+2. **Vues SQL v6** appliquées automatiquement dans `create_shared_db()` : `v_gamertag_lookup`, `v_weapon_kills`, `v_killer_victim_full`
+3. **Assertions faibles corrigées** : 3 × `>= 0` dans test_fanout remplacées par `== 0` (< MIN_MATCHES_FOR_RELATIVE) et `isinstance(c_pme, int)`
+4. **DDL defaults corrigés** : `headshot_kills DEFAULT 0`, `max_killing_spree DEFAULT 0` (au lieu de 3/5)
+5. **Tests caplog** : nouveau fichier `test_sync_logging.py` (4 tests) — close sans erreur, perf_scores vide, db_profiles absent
+6. **CI gate** : déjà couvert par `.github/workflows/ci.yml` job `test` (exécute `tests/` hors integration)
+
+**Résultats** : 67 tests sync passent (63 + 4 logging), 5847 total (42 échecs pré-existants dans v5_match_queries/xuid_resolution, non liés).
+
+---
+
+## [2026-04-07] feat(ui): persistance UI v6.4 — localStorage + migration filtres — Complété
+
+**Statut** : Complété  
+**Branche** : `fix/lusr-schema-backfill-teammates`  
+**Commit** : `e957f0dd`
+
+**Décision technique** :
+- Composant Streamlit custom `browser_storage` (localStorage `levelup.prefs`) pour persister `last_db_path` + `lang` entre sessions navigateur
+- Migration silencieuse des filtres joueur de `.streamlit/filter_preferences/` → `data/players/{gamertag}/ui_prefs.json` (volume Docker)
+- `_resolve_db_path` augmentée d'une priorité 3 (localStorage) entre deep-link et SPNKr
+- `healthcheck_db` : extraction en 3 sous-modules (`_healthcheck_schema.py`, `_healthcheck_format.py`, `healthcheck_db.py`) — fonctions trop complexes annotées `# noqa: C901, PLR0912`
+
+**Résultats** :
+- 5849 tests passent (0 failed, 4 skipped) — suite hors intégration/e2e
+- ruff clean sur `src/` (0 violations)
+- Baseline taille : 122 violations documentées
+
+**Conclusion** : Feature v6.4 complète. Prête pour merge ou test Streamlit.
+
+---
+
+## [2026-04-07] fix(fanout): double parse skill_json + fusion dominance/comeback — Complété
+
+**Statut** : Complété  
+**Branche** : `fix/lusr-schema-backfill-teammates`  
+**Commits** : `72448c10` (fix sync), `d6213636` (tests)
+
+**Problème identifié (audit exhaustivité sync)** :
+1. `transform_all_skill_stats` était appelé deux fois par match classé : une fois dans `_upsert_skill_to_shared_participants` puis une fois dans `_collect_csr_for_other_players`
+2. `_run_other_dominance` et `_run_other_comeback_badges` ouvrent chacune une connexion `duckdb.connect(shared_path, read_only=True)` séquentielle sur le même fichier
+
+**Décisions techniques** :
+1. `_upsert_skill_to_shared_participants` retourne maintenant `list[SkillParticipantUpdate]` (la liste parsée) — réutilisée directement par `_collect_csr_for_other_players` au lieu de re-parser
+2. `_run_other_dominance` absorbe `_run_other_comeback_badges` : un seul `with duckdb.connect(shared_path, read_only=True)` pour les deux calculs séquentiels — suppression de `_run_other_comeback_badges` comme méthode séparée
+
+**Couverture tests nouveaux** (`test_csr_comeback_fanout.py`, 16 tests) :
+- `write_csr_from_skill_update` : écriture, delta, idempotence ON CONFLICT, cas None, match_id absent
+- `_collect_csr_for_other_players` : filtrage self, non-enregistrés, mises à jour sans CSR, accumulation multi-match, profil sans xuid
+- `_run_other_dominance` fusionnée : 1 seule connexion, appel des deux fonctions, exception non bloquante
+
+**Fix annexe** : `test_shared_writes_integration.py` — correction SyntaxError (try sans finally dans `test_bits_medals_flag`)
+
+**Résultats** : 5854 tests passent (16 nouveaux, 0 régression).
+
+---
+
+
+
+**Statut** : Complété  
+**Branche** : `fix/lusr-schema-backfill-teammates`  
+
+**Problème** : Sur le VPS, l'UI affichait les noms de cartes/playlists en anglais malgré `lang=fr` et `asset_translations` correct dans `metadata.duckdb`.
+
+**Cause racine** : La vue `mv_player_matches` dans `shared_matches_v2.duckdb` avait `NULL AS map_name_fr, NULL AS playlist_name_fr, NULL AS pair_name_fr`. Cette vue avait été créée par la migration `add_mv_player_matches_fr_cols` (2026-04-02) avec `has_v_match_full = False` car `v_match_full` JOINte `meta.asset_translations` — or `_run_for_db` ouvrait `shared` **sans attacher `metadata.duckdb`**, rendant `v_match_full` inaccessible lors du test.
+
+**Actions** :
+1. Recréation manuelle de la vue sur le VPS via `ensure_mv_player_matches_view` (avec meta attaché) → `map_name_fr='Tribord'`, `playlist_name_fr='Partie rapide'` confirmés
+2. `docker compose restart levelup` pour vider le cache `@st.cache_data`
+3. Fix structurel dans `src/data/migration/runner.py` : `_run_for_db` accepte maintenant `metadata_db_path` et l'ATTACHe pour `target_db="shared"` avant d'exécuter les migrations
+
+**Résultats** : Traductions FR opérationnelles sur VPS. Migration idempotente garantie sur les prochains déploiements.
+
+## [2026-04-07] feat(media): watcher inotify Linux pour indexation automatique — Complété
+
+**Statut** : Complété  
+**Branche** : `fix/lusr-schema-backfill-teammates`  
+
+**Problème** : L'indexation des médias tournait soit au lancement soit toutes les X heures (polling). Sur Debian/VPS, inotify permet un déclenchement instantané à la détection de nouveaux fichiers, sans CPU en veille.
+
+**Décision technique** : Utiliser `watchdog` (déjà installé en dep dev) déplacé en dep principale. Sur Linux + `media_captures_base_dir` configuré + `media_watcher_enabled=True` → l'Observer inotify remplace le thread périodique. Sur Windows ou mode legacy (deux dossiers séparés) → comportement inchangé (thread périodique).
+
+**Architecture** :
+- `src/app/media_watcher.py` (nouveau) : `_MediaEventHandler` avec debounce par gamertag via `threading.Timer`, scan one-shot au démarrage dans un thread séparé
+- `src/app/media_background.py` : branchement `platform.system() == "Linux"` avant le `_PERIODIC_LOCK`
+- `src/ui/settings.py` (`AppSettings`) : `media_watcher_enabled: bool = True`, `media_watcher_debounce_seconds: int = 5`
+- `src/ui/pages/settings.py` : toggle + slider dans la section Médias
+
+**Choix debounce** : 5s par défaut. Les gros fichiers MP4 sont écrits par blocs → `on_created` se déclenche avant fin d'écriture. On attend 5s d'inactivité par gamertag.
+
+**Résultats** : Ruff clean, 817 tests passent (hors intégration).
+
+**Prochaine étape** : Déployer via GH Actions → `pip install watchdog` automatique sur le VPS.
+
+---
+
+## [2026-04-07] fix(lusr): migration colonnes manquantes match_skill_rank — Complété
+
+**Statut** : Complété  
+**Branche** : `fix/lusr-schema-backfill-teammates`  
+**Commits** : `88e1ce13` (LUSR fix), `bbed7633` (settings/teammates)
+
+**Problème** : "Rating non encore calculé / LUSR calculé automatiquement au prochain sync" persistant pour Madina97294 sur le VPS Docker, même après ~22 tentatives de fix dans les sessions précédentes.
+
+**Root cause identifiée** : Binder Error silencieux dans deux endroits : 
+1. `_LUSR_UPSERT_SQL` référence `start_time` → `Binder Error: column not found` si colonne absente → 0 rows écrits silencieusement
+2. `cached_get_match_skill_rank` : CTE `COALESCE(msr.start_time, msr.updated_at)` → Binder Error → retourne `None` → message affiché en boucle
+
+**Investigation historique** : La table `match_skill_rank` a été introduite avec `start_time` dès le commit `838dce17` (25 fév 2026) — pas de DDL antérieur dans git. Le VPS a probablement une DB créée par une version du code non présente dans l'historique git actuel (squash/rebase ou vieille image Docker), avec un DDL différent.
+
+**Fix principal** (`migrations.py`) :  
+`ensure_match_skill_rank_table` appelle maintenant `_add_column_if_missing` pour `start_time TIMESTAMP`, `rating_deviation FLOAT`, `playlist_group VARCHAR` après le `CREATE TABLE IF NOT EXISTS`. Migration idempotente.
+
+**Fixes complémentaires** :
+- `_engine_fanout.py` : `_run_lusr_for_other_players()` — calcule LUSR des co-joueurs même pour leurs matchs solo
+- `engine.py` : chemin short-circuit delta — appel `_run_lusr_post_sync()` + `_run_lusr_for_other_players()` même quand 0 nouveaux matchs
+
+**Tests** : 5756 passed, 0 failed.
+
+**Conclusion** : Sur le VPS, dès le prochain restart/sync, `ensure_match_skill_rank_table` ajoutera `start_time` si absente → LUSR calculé correctement → message disparu.
+
+---
+
+## [2026-04-06] fix(lusr): LUSR manquant pour matchs solo des co-joueurs — Complété
+
+**Statut** : Complété
+
+**Problème** : "Rating non encore calculé" persistant pour Madina sur le dernier match, même après 22 syncs.
+
+**Root cause** :  
+Le fan-out (step 6 du post-sync) calculait le LUSR des co-joueurs enregistrés **uniquement** quand `result.inserted_match_ids` était non vide, c'est-à-dire quand le joueur principal avait de nouveaux matchs **et** que ces matchs étaient communs avec le co-joueur. Les matchs **solo** de Madina (sans le joueur principal) n'apparaissaient jamais dans `inserted_match_ids`, donc leur LUSR n'était jamais calculé.
+
+**Fix** :  
+- Ajout de `_run_lusr_for_other_players()` dans `FanoutEnrichmentMixin` (`_engine_fanout.py`) : itère sur tous les joueurs enregistrés et appelle `batch_compute_lusr(force=False)` pour chacun (mode incrémental, rapide si rien de nouveau).  
+- Appel dans `engine.py` à l'étape 5b, juste après `_run_lusr_post_sync()`, de façon **inconditionnelle** (comme le LUSR du joueur principal).  
+- Aucune régression dans le fan-out step 6 : `batch_compute_lusr(force=False)` est idempotent, le deuxième appel retourne 0 si déjà calculé.
+
+**Tests** : 110 passed, 0 failed.
+
+## [2026-04-08] docs(ux): wireframes détaillés V7 alternative — Complété
+
+**Tâche** : Sortir la variante ambitieuse V7 alternative dans son propre document, puis détailler les hubs et les nouveaux graphes réellement justifiés.
+
+**Décision technique** :
+1. Création du document `.ai/PLAN_V7_ALTERNATIVE_COCKPIT.md` pour isoler la variante ambitieuse du plan V7 principal.
+2. Ajout d'une section `Wireframes textuels détaillés — prêts à coder` avec architecture bloc par bloc pour `Accueil`, `Stats`, `Escouade`, `Explorer`, `Médias`, `Profil`.
+3. Ajout d'une section `Nouveaux graphes réellement justifiés — priorisation` pour limiter la refonte aux visualisations à plus forte valeur produit.
+
+**Résultats** :
+- La V7 alternative est maintenant indépendante du plan principal.
+- Les hubs sont définis à un niveau de détail directement exploitable pour la phase backlog / implémentation.
+- Les nouveaux graphes sont priorisés selon leur valeur de lecture et non selon leur nouveauté visuelle.
+
+**Conclusion** : Base UX suffisamment précise pour passer à la transformation en backlog technique exécutable, lot par lot.
+
+---
+
 ## [2026-04-06] fix(sync): retry HE + cohérence events_loaded — Complété
 
 **Statut** : Complété  
@@ -9712,3 +10072,127 @@ Implémentation des axes D, E, F du plan `PLAN_REFACTO_ASSET_TRANSLATIONS_2026-0
 **Résultats** : 3 commits sur  `refactor/viz-pipeline-v2`, 0 régression.
 
 **Prochaine étape** : Axe G ou PR de V2.
+
+---
+
+## [2026-04-07] — Media library : filtres & tri (v6.4)
+
+**Statut** : Complété  
+**Branche** : `fix/lusr-schema-backfill-teammates`
+
+**Décision technique** :
+Ajout d'un panneau de filtres complet sur la page Médias, en exploitant `df_full` (déjà passé à `render_media_tab` mais ignoré jusqu'ici) pour enrichir les médias avec les données de match.
+
+**Architecture** :
+- `_enrich_media_with_match_data(media_df, df_full)` — join LEFT sur `match_id`, colonnes rapatriées : `outcome`, `pair_name`, `mode_ui`, `map_ui`, `is_with_friends`. Guard si df_full None/vide.
+- `_build_media_filter_ui(media_df) → dict` — construit l'expander Streamlit (2 rangées × 4-5 colonnes), retourne un dict de filtres typé. Options dynamiques calculées depuis le DataFrame enrichi.
+- `_apply_media_filters(df, filters, *, apply_match_filters=True) → pl.DataFrame` — applique les filtres kind, nom, carte, mode, outcome, contexte solo/escouade, et le tri. `apply_match_filters=False` pour la section "non associés".
+- Sections "mine" et "unassigned" : `unique(file_path)` avant `_apply_media_filters`. Section "teammate" : filtre d'abord, puis `unique` par gamertag dans la boucle de rendu.
+- Visibilité des sections contrôlée par le filtre "Propriétaire" ([] = tout afficher).
+
+**i18n** : 22 clés ajoutées dans `src/ui/i18n/pages/media.py` (filtres, tri, labels sections, squad, outcomes).
+
+**Commits associés de session** :
+- `chore(docker)` : ffmpeg dans l'image  
+- `feat(sync)` : fanout CSR + comeback badges coéquipiers (vérifié dans `1fb62a19`)
+- `feat(media)` : filtres & tri (ce commit)
+
+**Résultats** : ruff clean, AST OK, baseline size 122 violations (render_media_tab 154L, conservé noqa).
+
+**Prochaine étape** : Tester sur VPS après déploiement.
+
+
+---
+
+## [2025-07-16] Réécriture test_media_filters_v64.py — Complété
+
+**Statut** : Complété
+
+**Décision technique :** `_apply_media_filters` a perdu les filtres `kinds`, `name`, `outcome_codes` lors du sprint précédent (suppression UI). La suite `TestApplyMediaFilters` référençait ces clés dans `_base_filters()` → 7 tests échouants. Réécriture complète du fichier : nouvelle `_base_filters()` sans les clés obsolètes, remplacement des 7 tests supprimés par 8 tests de filtres actuels (map/mode/squad/apply_match_filters) + 8 tests d'idempotence (`TestApplyMediaFiltersIdempotence`) + 2 tests de constantes (`TestConstants`). Ajout de `maintain_order=True` sur `unique()` + tri secondaire stable sur `file_path`.
+
+**Résultats** : 31/31 tests passent. Suites régressives sprint5/sprint6 : 5/5 OK.
+
+**Conclusion** : Tests alignés avec l'interface réelle de `_apply_media_filters`. Idempotence couverte.
+
+---
+
+## [2025-07-16] Fix navigation Media → Explorer (deep-link match_id) — Complété
+
+**Statut** : Complété
+
+**Décision technique :** Le flux Media → Explorer (bouton "Match" dans la bibliothèque médias) était cassé : `_consume_deep_links()` dans `explorer.py` ne lisait que `_pending_match_id` depuis `session_state`, mais `consume_pending_match_id()` (appelé dans le même run que `st.switch_page`) avait déjà consommé cette clé et créé `match_id_input`. Après le `st.switch_page` (rerun 3 → Explorer), `_pending_match_id` était absent et `match_id_input` non lu → `pending_mid` vide → `show_single_match` jamais appelé.
+
+**Flux complet corrigé (3 reruns)** :
+1. Bouton cliqué → `open_match_button()` pose `st.query_params["page"]="Match"` + `st.query_params["match_id"]=mid` → `st.rerun()`
+2. Routing : `_parse_query_params()` lit URL → pose `_pending_match_id` + `_pending_page` → vide URL → `consume_pending_match_id()` transfère vers `match_id_input` → `st.switch_page(explorer)`
+3. Explorer : `_consume_deep_links()` pop `match_id_input` (ou `_pending_match_id` en fallback) → `show_single_match()`
+
+**Fichiers modifiés** :
+- `src/ui/pages/explorer.py` : `_consume_deep_links` — ajout fallback `match_id_input` + `.strip()` inline
+- `tests/test_media_to_explorer_navigation.py` : docstring corrigée (flux query_params) + classe `TestOpenMatchButton` (4 tests)
+
+**Résultats** : 18/18 tests passent. Ruff OK.
+
+**Conclusion** : Navigation fonctionnelle. Les 3 chemins sont testés : (1) flux normal via `match_id_input`, (2) fallback via `_pending_match_id` (switch_page interrompt), (3) bouton `open_match_button` avec query_params.
+
+---
+
+## [2026-04-07] Revue chirurgicale post-v6.2.1 + plan de remédiation — Complété
+
+**Statut** : Complété
+**Branche** : `fix/lusr-schema-backfill-teammates`
+
+**Tâche** : Réaliser une revue de code ciblée sur le delta Git entre `v6.2.1` et `HEAD`, puis produire un plan de remédiation dédié sans modifier le code applicatif.
+
+**Décisions techniques** :
+1. Revue focalisée sur les couches à plus fort risque depuis `v6.2.1` : persistance UI, watcher média Linux, migrations shared/metadata, healthcheck post-deploy et workflow de déploiement.
+2. Validation croisée par lecture directe du code courant, extraction des diffs, recherche des anti-patterns explicitement proscrits par le dépôt et vérification des zones réellement couvertes par les tests.
+3. Production d'un document dédié `.ai/PLAN_REMEDIATION_POST_V6_2_1.md` pour transformer les constats en ordre d'exécution concret.
+
+**Résultats** :
+- Risques principaux confirmés : contrat ambigu de persistance UI, absence de guard process-level pour le watcher Linux, guard des migrations shared validé trop tôt, dépendance metadata/shared encore gérée par fallback silencieux, statut healthcheck incohérent après auto-repair, duplication de logique destructive dans le déploiement, documentation agentique partiellement obsolète.
+- Le plan a ensuite été enrichi pour couvrir aussi les points secondaires vus pendant la revue : migration legacy des prefs non atomique, visibilité insuffisante des fallbacks watchdog/retry media, masquage partiel des erreurs dans le parsing post-deploy, dette de taille/complexité sur certains modules critiques.
+- Une annexe de classification a été ajoutée pour séparer explicitement les constats certainement nouveaux depuis `v6.2.1`, ceux probablement aggravés depuis `v6.2.1`, et ceux plus anciens mais toujours toxiques.
+- Aucun changement de code applicatif effectué dans cette tâche.
+
+**Conclusion** : Le plan de remédiation est prêt et exploitable. La prochaine étape logique est d'attaquer les points P0 dans l'ordre défini par le document.   
+
+---
+
+## [2026-04-08] Compactage des DBs joueurs (migration v5.1 dead space) — Complété
+
+**Statut** : Complété
+
+**Tâche** : Diagnostic et nettoyage de l'espace mort dans les `stats.duckdb` par joueur.
+
+**Décision technique** :
+- Diagnostic : les 4 DBs joueurs pesaient 10–103 MB alors que leurs données réelles représentent 0.1–0.25 MB en Parquet (ratio ×350–×850). L'espace mort provient des 8 tables supprimées lors de la migration v5.1 (`match_stats`, `match_participants`, `highlight_events`, `medals_earned`, `killer_victim_pairs`, `player_match_stats`, `xuid_aliases`, `teammates_aggregate`). DuckDB ne compacte pas automatiquement après `DROP TABLE`.
+- Solution : export via `EXPORT DATABASE … (FORMAT PARQUET)` + `IMPORT DATABASE` dans un nouveau fichier propre + rotation atomique.
+
+**Résultats** :
+
+| Joueur | Avant | Après | Gain |
+|---|---|---|---|
+| Chocoboflor | 103 MB | 8.8 MB | −94 MB |
+| JGtm | 89.5 MB | 12 MB | −77.5 MB |
+| Madina97294 | 72.8 MB | 10.3 MB | −62.5 MB |
+| XxDaemonGamerxX | 10 MB | 6 MB | −4 MB |
+| **Total** | **275 MB** | **37 MB** | **−238 MB** |
+
+**Conclusion** : 238 MB récupérés. Les DBs joueurs sont maintenant proportionnelles à leurs données. À noter : si d'autres migrations DROP TABLE importantes ont lieu à l'avenir, il faudra re-exécuter le même compactage (ou intégrer un step de compactage dans le workflow de migration).
+
+---
+
+## [2025-07-25] Navigation pleine largeur — Complété
+
+**Statut** : Complété
+
+**Décision technique** : Injection CSS via `static/styles.css` (chargé par `load_css()` au démarrage).
+Ajout de 3 règles ciblant `div[data-testid="stSegmentedControl"]` :
+- conteneur à `width: 100%`
+- groupe interne en `display: flex; width: 100%`
+- chaque `<label>` avec `flex: 1 1 0` pour répartition égale
+
+**Résultat** : Barre de navigation (st.segmented_control) occupe toute la largeur disponible, onglets équidistants.
+
+**Conclusion** : Modification minimaliste et non-invasive. CSS appliqué globalement via le mécanisme existant.

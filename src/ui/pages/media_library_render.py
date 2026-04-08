@@ -44,7 +44,7 @@ def open_match_button(match_id: str, *, unique_suffix: str | None = None) -> Non
     button_key = f"open_match_{mid}_{unique_suffix}" if unique_suffix else f"open_match_{mid}"
 
     if st.button(t("ml_open_match"), key=button_key, width="stretch"):
-        logger.info("Match ouvert depuis media library: %s", mid)
+        logger.info("[media→explorer] Bouton Match: mid=%r", mid)
         st.session_state["_pending_page"] = "Match"
         st.session_state["_pending_match_id"] = mid
         st.rerun()

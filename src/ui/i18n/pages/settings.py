@@ -125,6 +125,14 @@ STRINGS: dict[str, dict[str, str] | str] = {
     "set_language_section": {"fr": "Langue & Région", "en": "Language & Region"},
     "set_lang_label": {"fr": "Langue de l'interface", "en": "Interface language"},
     "set_display_section": {"fr": "Affichage", "en": "Display"},
+    "set_show_hints": {
+        "fr": "Aides à la lecture",
+        "en": "Reading hints",
+    },
+    "set_show_hints_help": {
+        "fr": "Affiche les légendes, notes explicatives et conseils contextuels dans les graphiques.",
+        "en": "Shows legends, explanatory notes and contextual tips in charts.",
+    },
     "set_show_records": {
         "fr": "Afficher les records historiques sur les graphes Escouade",
         "en": "Show historical records on Squad charts",
@@ -151,6 +159,10 @@ STRINGS: dict[str, dict[str, str] | str] = {
         "en": "Enable Discord notifications",
     },
     "set_discord_url": {"fr": "URL du webhook", "en": "Webhook URL"},
+    "set_discord_url_env_hint": {
+        "fr": "✅ Webhook configuré via `.env.local` (DISCORD_WEBHOOK_URL)",
+        "en": "✅ Webhook configured via `.env.local` (DISCORD_WEBHOOK_URL)",
+    },
     "set_discord_lang_label": {
         "fr": "Langue des messages Discord",
         "en": "Discord message language",
