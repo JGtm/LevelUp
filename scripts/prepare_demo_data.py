@@ -154,115 +154,197 @@ def _extract_player(
     print("  [player] OK")
 
 
+# DDL media tables — doit rester synchronisé avec src/data/media_indexer.py
+_MEDIA_FILES_DDL = """
+CREATE TABLE IF NOT EXISTS media_files (
+    file_path VARCHAR PRIMARY KEY,
+    file_hash VARCHAR NOT NULL,
+    file_name VARCHAR NOT NULL,
+    file_size BIGINT NOT NULL,
+    file_ext VARCHAR NOT NULL,
+    kind VARCHAR NOT NULL,
+    mtime DOUBLE NOT NULL,
+    mtime_paris_epoch DOUBLE,
+    thumbnail_path VARCHAR,
+    thumbnail_generated_at TIMESTAMP,
+    first_seen_at TIMESTAMP,
+    last_scan_at TIMESTAMP,
+    scan_version INTEGER,
+    capture_start_utc TIMESTAMP,
+    capture_end_utc TIMESTAMP,
+    duration_seconds DOUBLE,
+    title VARCHAR,
+    status VARCHAR NOT NULL DEFAULT 'active'
+)
+"""
+
+_MEDIA_ASSOC_DDL = """
+CREATE TABLE IF NOT EXISTS media_match_associations (
+    media_path VARCHAR NOT NULL,
+    match_id VARCHAR NOT NULL,
+    xuid VARCHAR NOT NULL,
+    match_start_time TIMESTAMP NOT NULL,
+    association_confidence DOUBLE DEFAULT 1.0,
+    associated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    map_id VARCHAR,
+    map_name VARCHAR,
+    PRIMARY KEY (media_path, match_id, xuid)
+)
+"""
+
+
+def _ensure_media_tables(conn: duckdb.DuckDBPyConnection) -> None:
+    """Crée les tables média avec contraintes PRIMARY KEY si absentes."""
+    conn.execute(_MEDIA_FILES_DDL)
+    conn.execute(_MEDIA_ASSOC_DDL)
+
+
+def _build_demo_map_index(src_shared: Path, match_ids: list[str]) -> dict[str, list[tuple]]:
+    """Retourne {map_name: [(match_id, start_time), ...]} pour les matchs démo."""
+    ids_lit = ", ".join(f"'{mid}'" for mid in match_ids)
+    with duckdb.connect(str(src_shared), read_only=True) as s:
+        rows = s.execute(f"""
+            SELECT match_id, map_name, start_time FROM match_registry
+            WHERE match_id IN ({ids_lit}) AND map_name IS NOT NULL
+        """).fetchall()
+    index: dict[str, list[tuple]] = {}
+    for mid, mname, mtime in rows:
+        index.setdefault(mname, []).append((mid, mtime))
+    return index
+
+
+def _collect_media_candidates(
+    src: duckdb.DuckDBPyConnection,
+    match_ids: list[str],
+    demo_map_index: dict[str, list[tuple]],
+    max_media: int,
+) -> list[tuple[str, str, object, str]]:
+    """Collecte jusqu'à max_media médias avec fallback par carte.
+
+    Retourne [(file_path, target_match_id, target_match_start_time, map_name)].
+    Priorité : médias directement associés aux matchs démo, puis médias d'autres
+    matchs réassignés à un match démo sur la même carte.
+    """
+    ids_lit = ", ".join(f"'{mid}'" for mid in match_ids)
+    seen: set[str] = set()
+    result: list[tuple] = []
+
+    direct = src.execute(f"""
+        SELECT DISTINCT mf.file_path, mma.match_id, mma.match_start_time, mma.map_name
+        FROM media_files mf
+        JOIN media_match_associations mma ON mma.media_path = mf.file_path
+        WHERE mf.status = 'active' AND mma.match_id IN ({ids_lit})
+        ORDER BY mf.mtime DESC LIMIT {max_media}
+    """).fetchall()
+    for fp, mid, mtime, mname in direct:
+        if Path(fp).exists():
+            result.append((fp, mid, mtime, mname or ""))
+            seen.add(fp)
+
+    if len(result) >= max_media:
+        return result[:max_media]
+
+    # Fallback : médias hors démo réassignés à un match demo de même carte
+    fallbacks = src.execute(f"""
+        SELECT DISTINCT mf.file_path, mma.map_name
+        FROM media_files mf
+        JOIN media_match_associations mma ON mma.media_path = mf.file_path
+        WHERE mf.status = 'active' AND mma.match_id NOT IN ({ids_lit})
+          AND mma.map_name IS NOT NULL
+        ORDER BY mf.mtime DESC LIMIT 200
+    """).fetchall()
+    for fp, mname in fallbacks:
+        if fp in seen or not Path(fp).exists():
+            continue
+        demo_matches = demo_map_index.get(mname)
+        if not demo_matches:
+            continue
+        target_mid, target_mtime = demo_matches[0]
+        result.append((fp, target_mid, target_mtime, mname))
+        seen.add(fp)
+        if len(result) >= max_media:
+            break
+
+    return result
+
+
 def _extract_media(
     src_player_db: Path,
     out_player_db: Path,
     out_dir: Path,
     match_ids: list[str],
+    src_shared: Path,
+    demo_xuid: str = "0000000000000000",
     max_media: int = 5,
 ) -> int:
     """Extrait jusqu'à max_media fichiers média depuis la DB joueur source.
 
+    Tente d'abord les médias liés aux matchs démo ; si insuffisants, réassigne
+    des médias d'autres matchs sur la même carte (fuzzy fallback).
+    Note : les fichiers sources doivent être accessibles localement.
+
     Returns: nombre de fichiers réellement copiés.
     """
-    ids_literal = ", ".join(f"'{mid}'" for mid in match_ids)
     demo_media_dir = out_dir / "players" / "DEMO" / "media"
-
-    # Chemin base dans le container (LEVELUP_ROOT=/app en Docker)
     levelup_root = Path(os.environ.get("LEVELUP_ROOT", str(_REPO_ROOT)))
     demo_media_root = str(levelup_root / "data" / "players" / "DEMO" / "media")
-
     extracted = 0
     try:
         with duckdb.connect(str(src_player_db), read_only=True) as src:
             tables = {
                 r[0]
                 for r in src.execute(
-                    "SELECT table_name FROM information_schema.tables WHERE table_schema = 'main'"
+                    "SELECT table_name FROM information_schema.tables WHERE table_schema='main'"
                 ).fetchall()
             }
             if "media_files" not in tables or "media_match_associations" not in tables:
                 print("    [media] tables absentes — skip")
                 return 0
+            demo_map_index = _build_demo_map_index(src_shared, match_ids)
+            candidates = _collect_media_candidates(src, match_ids, demo_map_index, max_media)
+            if not candidates:
+                print("    [media] aucun fichier média disponible localement — skip")
+                return 0
+            # Récupérer les lignes media_files pour les candidats
+            src.execute("SELECT * FROM media_files LIMIT 0")
+            mf_cols = [d[0] for d in src.description]
+            fp_idx = mf_cols.index("file_path")
+            rows_by_fp: dict[str, tuple] = {}
+            for fp, *_ in candidates:
+                r = src.execute("SELECT * FROM media_files WHERE file_path = ?", [fp]).fetchone()
+                if r:
+                    rows_by_fp[fp] = r
 
-            rows = src.execute(f"""
-                SELECT DISTINCT mf.*
-                FROM media_files mf
-                JOIN media_match_associations mma ON mma.media_path = mf.file_path
-                WHERE mf.status = 'active'
-                  AND mma.match_id IN ({ids_literal})
-                ORDER BY COALESCE(epoch(mf.capture_start_utc), mf.mtime) DESC
-                LIMIT {max_media}
-            """).fetchall()
-            col_names = [d[0] for d in src.description]
-
-        if not rows:
-            print("    [media] aucun média associé aux matchs extraits — skip")
-            return 0
-
-        fp_idx = col_names.index("file_path")
         demo_media_dir.mkdir(parents=True, exist_ok=True)
-        ph = ", ".join("?" * len(col_names))
-
+        mf_ph = ", ".join("?" * len(mf_cols))
         with duckdb.connect(str(out_player_db)) as dst:
-            dst.execute(f"ATTACH '{src_player_db}' AS _msrc (READ_ONLY)")
-            dst.execute(
-                "CREATE TABLE IF NOT EXISTS media_files AS "
-                "SELECT * FROM _msrc.media_files WHERE 1=0"
-            )
-            dst.execute(
-                "CREATE TABLE IF NOT EXISTS media_match_associations AS "
-                "SELECT * FROM _msrc.media_match_associations WHERE 1=0"
-            )
-            assoc_cols = [
-                d[0]
-                for d in dst.execute(
-                    "SELECT * FROM _msrc.media_match_associations WHERE 1=0"
-                ).description
-            ]
-            mp_idx = assoc_cols.index("media_path")
-            assoc_ph = ", ".join("?" * len(assoc_cols))
-
-            for row in rows:
-                src_path = Path(row[fp_idx])
-                if not src_path.exists():
-                    print(f"    [media] absent: {src_path.name} — skip")
+            _ensure_media_tables(dst)
+            for fp, target_mid, target_mtime, map_name in candidates:
+                row = rows_by_fp.get(fp)
+                if row is None:
                     continue
-
-                filename = src_path.name
+                filename = Path(fp).name
                 new_path = f"{demo_media_root}/{filename}"
-                shutil.copy2(src_path, demo_media_dir / filename)
-
+                shutil.copy2(fp, demo_media_dir / filename)
                 new_row = list(row)
                 new_row[fp_idx] = new_path
                 dst.execute(
-                    f"INSERT INTO media_files ({', '.join(col_names)}) VALUES ({ph})"
+                    f"INSERT INTO media_files ({', '.join(mf_cols)}) VALUES ({mf_ph})"  # noqa: S608
                     " ON CONFLICT (file_path) DO NOTHING",
                     new_row,
                 )
-
-                assoc_rows = dst.execute(
-                    f"SELECT * FROM _msrc.media_match_associations"
-                    f" WHERE media_path = ? AND match_id IN ({ids_literal})",
-                    [str(src_path)],
-                ).fetchall()
-                for assoc in assoc_rows:
-                    a = list(assoc)
-                    a[mp_idx] = new_path
-                    dst.execute(
-                        f"INSERT INTO media_match_associations"
-                        f" ({', '.join(assoc_cols)}) VALUES ({assoc_ph})"
-                        " ON CONFLICT (media_path, match_id, xuid) DO NOTHING",
-                        a,
-                    )
-
+                dst.execute(
+                    "INSERT INTO media_match_associations"
+                    " (media_path, match_id, xuid, match_start_time, map_name)"
+                    " VALUES (?, ?, ?, ?, ?)"
+                    " ON CONFLICT (media_path, match_id, xuid) DO NOTHING",
+                    [new_path, target_mid, demo_xuid, target_mtime, map_name or None],
+                )
+                label = "direct" if target_mid in [c[1] for c in candidates] else "fuzzy"
+                print(f"    [media] {filename} ({label}, {map_name or '?'})")
                 extracted += 1
-                print(f"    [media] {filename} → {new_path}")
-
-            dst.execute("DETACH _msrc")
     except Exception as exc:
         print(f"    [warn] extraction media: {exc}")
-
     return extracted
 
 
@@ -403,7 +485,9 @@ def main() -> None:
 
     # 4b. Extraire médias (optionnel, 5 clips max)
     print("\n  [4b] Extraction médias…")
-    media_count = _extract_media(src_player_db, out_player_db, out_dir, match_ids)
+    media_count = _extract_media(
+        src_player_db, out_player_db, out_dir, match_ids, src_shared, demo_xuid
+    )
     print(f"  {media_count} fichier(s) média extrait(s)")
 
     # 5. Écrire les fichiers de config
