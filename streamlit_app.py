@@ -107,8 +107,10 @@ from src.ui.cache import (
     top_medals_smart,
 )
 from src.ui.components.browser_storage import (
+    hints_visible,
     persist_browser_prefs,
     restore_browser_prefs,
+    restore_hints_from_prefs,
 )
 from src.ui.filter_state import (
     _get_player_key,
@@ -596,6 +598,21 @@ def _render_main_sidebar(db_path: str, xuid: str, settings: AppSettings) -> tupl
                     logger.error("Sync échoué: %s", msg)
                     st.error(msg)
 
+        # Toggle : aides à la lecture (fin de sidebar)
+        def _on_hints_toggle() -> None:
+            """Callback : persistance du toggle Aides à la lecture."""
+            new_val = bool(st.session_state.get("_sidebar_hints_toggle", True))
+            st.session_state["_hints_visible"] = new_val
+            persist_browser_prefs(show_hints="1" if new_val else "0")
+            logger.debug("Toggle hints: %s", new_val)
+
+        st.checkbox(
+            t("sidebar_show_hints"),
+            value=hints_visible(),
+            key="_sidebar_hints_toggle",
+            on_change=_on_hints_toggle,
+        )
+
     return db_path, xuid, waypoint_player
 
 
@@ -760,7 +777,15 @@ def _dispatch_navigation(ctx: PageContext) -> None:  # noqa: C901, PLR0915
     def _page_timeseries() -> None:
         from src.ui.pages import render_timeseries_page
 
-        render_timeseries_page(ctx.dff, df_full=ctx.df, db_path=ctx.db_path, xuid=ctx.xuid)
+        render_timeseries_page(
+            ctx.dff,
+            df_full=ctx.df,
+            base=ctx.base,
+            picked_session_labels=ctx.picked_session_labels,
+            db_path=ctx.db_path,
+            xuid=ctx.xuid,
+            db_key=ctx.db_key,
+        )
 
     def _page_session_compare() -> None:
         from src.app._filters_helpers import _to_polars
@@ -838,18 +863,6 @@ def _dispatch_navigation(ctx: PageContext) -> None:  # noqa: C901, PLR0915
             top_medals_fn=_top_medals,
         )
 
-    def _page_win_loss() -> None:
-        from src.ui.pages import render_win_loss_page
-
-        render_win_loss_page(
-            dff=ctx.dff,
-            base=ctx.base,
-            picked_session_labels=ctx.picked_session_labels,
-            db_path=ctx.db_path,
-            xuid=ctx.xuid,
-            db_key=ctx.db_key,
-        )
-
     def _page_teammates() -> None:
         from src.ui.pages import render_teammates_page
 
@@ -906,7 +919,6 @@ def _dispatch_navigation(ctx: PageContext) -> None:  # noqa: C901, PLR0915
         "last_match": _page_last_match,
         "media": _page_media,
         "citations": _page_citations,
-        "win_loss": _page_win_loss,
         "teammates": _page_teammates,
         "explorer": _page_explorer,
         "match_history": _page_match_history,
@@ -970,6 +982,9 @@ def _maybe_apply_browser_prefs(browser_prefs: dict) -> None:
                 st.session_state[SK.WAYPOINT_PLAYER] = ls_slug
                 logger.debug("Préférences serveur: joueur restauré → %s", ls_slug)
                 st.rerun()
+
+    # Restauration de la préférence Aides à la lecture
+    restore_hints_from_prefs(browser_prefs)
 
 
 def main() -> None:

@@ -386,7 +386,7 @@ def _render_impact_from_events(  # noqa: PLR0913
 
     _render_impact_ranking_html(impact_matrix, scores, sorted_match_ids)
     _legend_label = "ℹ️ Légende" if get_lang() == "fr" else "ℹ️ Legend"
-    with st.expander(_legend_label, expanded=False):
+    with st.popover(_legend_label):
         st.markdown(t("tm_impact_legend"))
 
 

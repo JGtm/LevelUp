@@ -17,6 +17,7 @@ logger = logging.getLogger(__name__)
 
 from src.analysis import compute_map_breakdown
 from src.ui.chart_utils import safe_chart_render
+from src.ui.components.browser_storage import hints_visible
 from src.ui.i18n import t
 from src.ui.streamlit_modern import PLOTLY_CLEAN_CONFIG, PLOTLY_STATIC_CONFIG
 from src.visualization import (
@@ -323,7 +324,8 @@ def render_squad_cadence_section(
         return
 
     st.subheader(t("tm_squad_cadence"))
-    st.caption(t("tm_squad_cadence_caption"))
+    if hints_visible():
+        st.caption(t("tm_squad_cadence_caption"))
 
     with safe_chart_render():
         fig = plot_squad_cadence_profiles(

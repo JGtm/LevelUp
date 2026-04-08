@@ -22,6 +22,7 @@ from src.analysis.participation_radar import (
 from src.config import OKABE_ITO_PALETTE
 from src.data.repositories import DuckDBRepository
 from src.ui.chart_utils import safe_chart_render
+from src.ui.components.browser_storage import hints_visible
 from src.ui.components.radar_chart import create_participation_profile_radar
 from src.ui.i18n import t
 from src.ui.streamlit_modern import PLOTLY_CLEAN_CONFIG, PLOTLY_STATIC_CONFIG
@@ -197,22 +198,35 @@ def _render_radar_display(
         return
 
     st.subheader(title)
-    col_radar, col_legend = st.columns([2, 1])
-    with col_radar, safe_chart_render():
-        fig = create_participation_profile_radar(
-            profiles,
-            height=380,
-            show_fill=show_fill,
-        )
-        if fig is not None:
-            config = PLOTLY_STATIC_CONFIG if static_plot else PLOTLY_CLEAN_CONFIG
-            st.plotly_chart(fig, width="stretch", config=config)
-        else:
-            st.info(t("insufficient_data_chart"))
-    with col_legend:
-        st.markdown(t("tms_axes"))
-        for line in get_radar_axis_lines():
-            st.markdown(line)
+    if hints_visible():
+        col_radar, col_legend = st.columns([2, 1])
+        with col_radar, safe_chart_render():
+            fig = create_participation_profile_radar(
+                profiles,
+                height=380,
+                show_fill=show_fill,
+            )
+            if fig is not None:
+                config = PLOTLY_STATIC_CONFIG if static_plot else PLOTLY_CLEAN_CONFIG
+                st.plotly_chart(fig, width="stretch", config=config)
+            else:
+                st.info(t("insufficient_data_chart"))
+        with col_legend:
+            st.markdown(t("tms_axes"))
+            for line in get_radar_axis_lines():
+                st.markdown(line)
+    else:
+        with safe_chart_render():
+            fig = create_participation_profile_radar(
+                profiles,
+                height=380,
+                show_fill=show_fill,
+            )
+            if fig is not None:
+                config = PLOTLY_STATIC_CONFIG if static_plot else PLOTLY_CLEAN_CONFIG
+                st.plotly_chart(fig, width="stretch", config=config)
+            else:
+                st.info(t("insufficient_data_chart"))
 
 
 def render_synergy_radar(  # noqa: PLR0913

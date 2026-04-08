@@ -3,7 +3,24 @@
 > Ce fichier capture le raisonnement de l'agent entre les sessions.
 > Archivé : 2026-02-01 (logs précédents dans `.ai/archive/thought_log_pre_phase6.md`)
 
-## [2026-04-08] Remédiation post-v6.2.1 — Complété
+## [2026-04-08] feat(ui): fusion page Victoires/Défaites dans page Séries — Complété
+
+**Tâche** : Fusionner la page "Victoires/Défaites" (`win_loss.py`) dans la page "Séries" (`timeseries.py`).
+
+**Décision technique** : Restructuration en 5 onglets par thème croissant de complexité :
+1. **Résumé** (ex-KDA) + évolution V/D + séries consécutives
+2. **Cartes & Modes** (nouveau) — breakdown par carte/mode + bullet winrate + perf vs historique
+3. **Distributions** — inchangé
+4. **Progression** (ex-Avancé) — métriques match par match + score personnel
+5. **Avancé** (ex-Progression) — modélisation statistique, EWMA, LUSR, heatmaps
+
+Les fonctions de `win_loss.py` sont importées directement dans `timeseries.py` (pas de duplication). Le fichier `win_loss.py` reste dans le dépôt comme bibliothèque mais n'est plus enregistré dans la navigation.
+
+**Résultats** : 817 tests passés, 0 régression. Ruff propre sur tous les fichiers modifiés. `timeseries.py` = 429 lignes (< 500L).
+
+**Conclusion** : Page `win_loss` retirée de PAGE_KEYS, `streamlit_app.py`, `__init__.py`. Prête pour commit.
+
+
 
 **Tâche** : Appliquer le plan de remédiation issu de la revue chirurgicale du delta v6.2.1→HEAD.
 
@@ -10046,4 +10063,28 @@ Ajout d'un panneau de filtres complet sur la page Médias, en exploitant `df_ful
 - Une annexe de classification a été ajoutée pour séparer explicitement les constats certainement nouveaux depuis `v6.2.1`, ceux probablement aggravés depuis `v6.2.1`, et ceux plus anciens mais toujours toxiques.
 - Aucun changement de code applicatif effectué dans cette tâche.
 
-**Conclusion** : Le plan de remédiation est prêt et exploitable. La prochaine étape logique est d'attaquer les points P0 dans l'ordre défini par le document.
+**Conclusion** : Le plan de remédiation est prêt et exploitable. La prochaine étape logique est d'attaquer les points P0 dans l'ordre défini par le document.   
+
+---
+
+## [2026-04-08] Compactage des DBs joueurs (migration v5.1 dead space) — Complété
+
+**Statut** : Complété
+
+**Tâche** : Diagnostic et nettoyage de l'espace mort dans les `stats.duckdb` par joueur.
+
+**Décision technique** :
+- Diagnostic : les 4 DBs joueurs pesaient 10–103 MB alors que leurs données réelles représentent 0.1–0.25 MB en Parquet (ratio ×350–×850). L'espace mort provient des 8 tables supprimées lors de la migration v5.1 (`match_stats`, `match_participants`, `highlight_events`, `medals_earned`, `killer_victim_pairs`, `player_match_stats`, `xuid_aliases`, `teammates_aggregate`). DuckDB ne compacte pas automatiquement après `DROP TABLE`.
+- Solution : export via `EXPORT DATABASE … (FORMAT PARQUET)` + `IMPORT DATABASE` dans un nouveau fichier propre + rotation atomique.
+
+**Résultats** :
+
+| Joueur | Avant | Après | Gain |
+|---|---|---|---|
+| Chocoboflor | 103 MB | 8.8 MB | −94 MB |
+| JGtm | 89.5 MB | 12 MB | −77.5 MB |
+| Madina97294 | 72.8 MB | 10.3 MB | −62.5 MB |
+| XxDaemonGamerxX | 10 MB | 6 MB | −4 MB |
+| **Total** | **275 MB** | **37 MB** | **−238 MB** |
+
+**Conclusion** : 238 MB récupérés. Les DBs joueurs sont maintenant proportionnelles à leurs données. À noter : si d'autres migrations DROP TABLE importantes ont lieu à l'avenir, il faudra re-exécuter le même compactage (ou intégrer un step de compactage dans le workflow de migration).

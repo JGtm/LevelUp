@@ -18,6 +18,7 @@ from src.analysis.objective_participation import (
     compute_objective_summary_by_match_polars,
 )
 from src.ui.chart_utils import render_chart_or_info, safe_chart_render
+from src.ui.components.browser_storage import hints_visible
 from src.ui.i18n import get_lang, t
 from src.ui.i18n.data_labels import label as i18n_label
 from src.ui.streamlit_modern import PLOTLY_CLEAN_CONFIG, PLOTLY_STATIC_CONFIG, fragment_if_available
@@ -161,7 +162,8 @@ def _render_analysis_tabs(
     )
     with tab_scatter:
         st.markdown(f"### {t('obj_correlation_title')}")
-        st.caption(t("obj_scatter_caption"))
+        if hints_visible():
+            st.caption(t("obj_scatter_caption"))
         with safe_chart_render():
             fig = plot_objective_vs_kills_scatter(my_awards_df, match_stats_df)
             if fig is not None:
@@ -211,7 +213,8 @@ def _render_assists_section(my_awards_df: pl.DataFrame) -> None:
     """Affiche la section d'analyse des assistances."""
     st.markdown("---")
     st.markdown("## 🤝 Analyse des Assistances")
-    st.caption(t("obj_assists_caption"))
+    if hints_visible():
+        st.caption(t("obj_assists_caption"))
 
     assist_awards = my_awards_df.filter(pl.col("score_category") == "assist")
     if assist_awards.is_empty():
@@ -298,7 +301,8 @@ def _render_comparison_placeholder() -> None:
     """Affiche la section de comparaison (placeholder)."""
     st.markdown("---")
     st.markdown("## 👥 Comparaison avec les Adversaires")
-    st.caption(t("obj_top_opponents_caption"))
+    if hints_visible():
+        st.caption(t("obj_top_opponents_caption"))
     with st.expander(t("obj_comparison_coming_soon"), expanded=False):
         st.info(t("obj_team_feature_hint"))
 
@@ -307,12 +311,13 @@ def _render_tips(objective_ratio: float, total_kill: int, total_assist: int) -> 
     """Affiche les conseils personnalisés."""
     st.markdown("---")
     st.markdown(f"## {t('obj_tips')}")
-    if objective_ratio < 0.15:
-        st.warning(t("obj_tip_improve_obj"))
-    elif objective_ratio > 0.5:
-        st.success(t("obj_tip_great_support"))
-    if total_assist > total_kill * 0.3:
-        st.info(t("obj_tip_assists"))
+    if hints_visible():
+        if objective_ratio < 0.15:
+            st.warning(t("obj_tip_improve_obj"))
+        elif objective_ratio > 0.5:
+            st.success(t("obj_tip_great_support"))
+        if total_assist > total_kill * 0.3:
+            st.info(t("obj_tip_assists"))
 
 
 @fragment_if_available
@@ -324,7 +329,8 @@ def render_objective_analysis_page(  # noqa: PLR0912, PLR0915
 ) -> None:
     """Affiche la page d'analyse des objectifs."""
     st.title(t("obj_analysis_title"))
-    st.caption(t("obj_caption"))
+    if hints_visible():
+        st.caption(t("obj_caption"))
 
     # Chargement des données
     awards_df, match_stats_df = _load_awards_data(repo, match_ids)

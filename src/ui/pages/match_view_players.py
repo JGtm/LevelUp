@@ -322,7 +322,7 @@ def render_match_impact_section(  # noqa: PLR0913
         st.info(t("mv_impact_too_few"))
 
     _legend_label = "ℹ️ Légende" if get_lang() == "fr" else "ℹ️ Legend"
-    with st.expander(_legend_label, expanded=False):
+    with st.popover(_legend_label):
         st.markdown(t("mv_impact_legend"))
 
 
