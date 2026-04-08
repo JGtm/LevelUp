@@ -68,7 +68,6 @@ EXPECTED_RENDER_FUNCTIONS = [
     "render_last_match_page",
     "render_match_view",
     "render_match_history_page",
-    "render_win_loss_page",
     "render_teammates_page",
     "render_citations_page",
     "render_settings_page",
