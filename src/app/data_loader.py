@@ -123,7 +123,9 @@ def _resolve_db_path(default_db: str, settings: AppSettings) -> str:
 
         _candidate = _Path(default_db).parent.parent / ls_slug / "stats.duckdb"
         if _candidate.exists() and _candidate.stat().st_size > 0:
-            logger.debug("_resolve_db_path: DB restaurée depuis localStorage → %s", _candidate)
+            logger.debug(
+                "_resolve_db_path: DB restaurée depuis préférences serveur → %s", _candidate
+            )
             return str(_candidate)
 
     if settings.prefer_spnkr_db_if_available:

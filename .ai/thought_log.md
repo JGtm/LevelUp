@@ -3,6 +3,25 @@
 > Ce fichier capture le raisonnement de l'agent entre les sessions.
 > Archivé : 2026-02-01 (logs précédents dans `.ai/archive/thought_log_pre_phase6.md`)
 
+## [2026-04-08] Remédiation post-v6.2.1 — Complété
+
+**Tâche** : Appliquer le plan de remédiation issu de la revue chirurgicale du delta v6.2.1→HEAD.
+
+**Décision technique** : 8 commits séquentiels sur branche `fix/remediation-post-v6.2.1`, ordonnés par risque décroissant :
+
+1. **P0.2+O3** : Guard process-level unifié avant branchement Linux dans `media_background.py` + log retry
+2. **P0.3+O6+O7+O8** : Guard migrations success-based dans `_engine_connections.py` + context managers DuckDB (4 bare connects éliminés) + guard PVE
+3. **P2.1** : Dédupliquer git fetch/reset/clean entre deploy.yml et deploy.sh
+4. **P1.2** : `HealthCheckResult.add()` gère `repaired` + `recompute_status()` + deploy.sh parsing
+5. **P2.2** : Aligner CLAUDE.md et copilot-instructions.md sur `shared_matches_v2.duckdb`
+6. **P1.1+P1.3** : Ordre `metadata → shared` dans runner.py + warnings explicites sur fallback NULL
+7. **P0.1** : Supprimer code mort `browser_storage/frontend/` + corriger commentaires localStorage
+8. **P2.3** : 9 tests de non-régression (guard media, retry migrations, healthcheck recompute)
+
+**Résultats** : 5922 tests passed, 0 failed, 4 skipped. Aucune régression.
+
+**Conclusion** : Plan de remédiation complet appliqué. Vérification finale : 5 commentaires localStorage corrigés, 4 tests ajoutés (P1.1 ordre runner, O3 retry logging, P0.3 best-effort, P1.2 cross-status). Total : 13 tests de non-régression. Observations O1-O9 traitées en synergie avec les correctifs principaux.
+
 ## [2026-04-07] fix(settings): auto-sauvegarde show_records via on_change + guard session_state — Complété
 
 **Tâche** : Le toggle "Afficher les records historiques" dans la page Paramètres revenait sporadiquement à `True` après relancement.
@@ -9990,3 +10009,25 @@ Ajout d'un panneau de filtres complet sur la page Médias, en exploitant `df_ful
 **Résultats** : 18/18 tests passent. Ruff OK.
 
 **Conclusion** : Navigation fonctionnelle. Les 3 chemins sont testés : (1) flux normal via `match_id_input`, (2) fallback via `_pending_match_id` (switch_page interrompt), (3) bouton `open_match_button` avec query_params.
+
+---
+
+## [2026-04-07] Revue chirurgicale post-v6.2.1 + plan de remédiation — Complété
+
+**Statut** : Complété
+**Branche** : `fix/lusr-schema-backfill-teammates`
+
+**Tâche** : Réaliser une revue de code ciblée sur le delta Git entre `v6.2.1` et `HEAD`, puis produire un plan de remédiation dédié sans modifier le code applicatif.
+
+**Décisions techniques** :
+1. Revue focalisée sur les couches à plus fort risque depuis `v6.2.1` : persistance UI, watcher média Linux, migrations shared/metadata, healthcheck post-deploy et workflow de déploiement.
+2. Validation croisée par lecture directe du code courant, extraction des diffs, recherche des anti-patterns explicitement proscrits par le dépôt et vérification des zones réellement couvertes par les tests.
+3. Production d'un document dédié `.ai/PLAN_REMEDIATION_POST_V6_2_1.md` pour transformer les constats en ordre d'exécution concret.
+
+**Résultats** :
+- Risques principaux confirmés : contrat ambigu de persistance UI, absence de guard process-level pour le watcher Linux, guard des migrations shared validé trop tôt, dépendance metadata/shared encore gérée par fallback silencieux, statut healthcheck incohérent après auto-repair, duplication de logique destructive dans le déploiement, documentation agentique partiellement obsolète.
+- Le plan a ensuite été enrichi pour couvrir aussi les points secondaires vus pendant la revue : migration legacy des prefs non atomique, visibilité insuffisante des fallbacks watchdog/retry media, masquage partiel des erreurs dans le parsing post-deploy, dette de taille/complexité sur certains modules critiques.
+- Une annexe de classification a été ajoutée pour séparer explicitement les constats certainement nouveaux depuis `v6.2.1`, ceux probablement aggravés depuis `v6.2.1`, et ceux plus anciens mais toujours toxiques.
+- Aucun changement de code applicatif effectué dans cette tâche.
+
+**Conclusion** : Le plan de remédiation est prêt et exploitable. La prochaine étape logique est d'attaquer les points P0 dans l'ordre défini par le document.
