@@ -3,6 +3,23 @@
 > Ce fichier capture le raisonnement de l'agent entre les sessions.
 > Archivé : 2026-02-01 (logs précédents dans `.ai/archive/thought_log_pre_phase6.md`)
 
+## [2026-04-08] feat(demo): mode démo public demo.lvelup.info — Complété
+
+**Tâche** : Créer un sous-domaine public `demo.lvelup.info` exposant LevelUp avec données restreintes (50 matchs, sync désactivée), sans auth htpasswd.
+
+**Décision technique** :
+- Conteneur Docker dédié `levelup-demo` (port 8502) avec volumes `:ro`
+- Variable `LEVELUP_DEMO_MODE=true` → `src/utils/demo.py::is_demo_mode()` contrôle le blocage sync
+- Script `scripts/prepare_demo_data.py` : extraction via DuckDB `ATTACH + CTAS` (évite les séquences)
+- Vhost Nginx `packaging/nginx/demo.conf` sans `auth_basic`, certbot `--expand` pour le cert SSL
+
+**Résultats** :
+- 50 matchs JGtm extraits + anonymisés ("DEMO") dans `data/demo/`
+- `levelup-levelup-demo-1` healthy sur 8502
+- `https://demo.lvelup.info` répond HTTP 200, `http://` → 301
+
+**Conclusion** : Déployé en production. Branche `feat/demo-mode`, 5 commits.
+
 ## [2026-04-08] docs: mise à jour CHANGELOG + README post-v6.4.0 — Complété
 
 **Tâche** : Repérer et documenter tous les commits réalisés depuis la dernière mise à jour des docs (commit `2c371357`) et mettre à jour `docs/CHANGELOG.md`, `docs/FR/CHANGELOG.md` et `README.md`.
