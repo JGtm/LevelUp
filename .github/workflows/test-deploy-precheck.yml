@@ -11,6 +11,7 @@ name: Deploy Pre-Check
 on:
   push:
     branches:
+      - main
       - chore/**
       - fix/**
       - feat/**
