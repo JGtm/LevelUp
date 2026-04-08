@@ -5,9 +5,62 @@ on:
     branches: [main]
 
 jobs:
+  # ── Job 0 : Pré-validation rapide (syntaxe — ne nécessite pas de SSH) ──────
+  pre-check:
+    name: Pré-validation deploy
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Validation YAML workflows
+        run: |
+          pip install pyyaml -q
+          python3 - <<'EOF'
+          import yaml, os, sys
+          errors = 0
+          for f in sorted(os.listdir(".github/workflows")):
+              if not f.endswith((".yml", ".yaml")):
+                  continue
+              path = os.path.join(".github/workflows", f)
+              try:
+                  yaml.safe_load(open(path, encoding="utf-8"))
+                  print(f"  ✅ {f}")
+              except yaml.YAMLError as e:
+                  print(f"  ❌ {f}: {e}")
+                  errors += 1
+          sys.exit(errors)
+          EOF
+
+      - name: Validation syntaxe Bash (deploy.sh, scripts/*.sh)
+        run: |
+          errors=0
+          for f in deploy.sh scripts/*.sh; do
+            [[ -f "$f" ]] || continue
+            if bash -n "$f" 2>&1; then echo "  ✅ $f"
+            else echo "  ❌ $f"; errors=$((errors + 1)); fi
+          done
+          exit $errors
+
+      - name: Validation syntaxe Python (prepare_demo_data.py)
+        run: |
+          python3 -m py_compile scripts/prepare_demo_data.py
+          echo "  ✅ prepare_demo_data.py"
+
+      - name: Pas de répertoires fantômes à la racine
+        run: |
+          for f in db_profiles.json app_settings.json; do
+            if [[ -d "$f" ]]; then
+              echo "  ❌ $f est un répertoire — volume Docker corrompu"
+              exit 1
+            fi
+          done
+          echo "  ✅ Aucun répertoire fantôme à la racine"
+
+  # ── Job 1 : Déploiement VPS ────────────────────────────────────────────────
   deploy:
     name: Deploy levelup.fr
     runs-on: ubuntu-latest
+    needs: pre-check
 
     steps:
       - name: Deploy via SSH
@@ -21,8 +74,9 @@ jobs:
             cd /opt/levelup
             bash /opt/levelup/deploy.sh
 
+  # ── Job 2 : Regen données démo ────────────────────────────────────────────
   deploy-demo:
-    name: Regen demo.lvelup.info
+    name: Regen demo.levelup.info
     runs-on: ubuntu-latest
     needs: deploy
 
@@ -34,8 +88,54 @@ jobs:
           username: deploy
           key: ${{ secrets.VPS_SSH_KEY }}
           script: |
+            set -euo pipefail
             cd /opt/levelup
-            rm -rf data/demo/warehouse data/demo/db_profiles.json data/demo/app_settings.json data/demo/players/DEMO/stats.duckdb
-            docker compose run --rm levelup python scripts/prepare_demo_data.py --gamertag JGtm --max-matches 50 --service-tag SPTA --out data/demo
+
+            # [Guard 1] Fix permissions data/ — UID 10001 doit pouvoir écrire
+            echo "[regen] Fix permissions data/..."
+            docker run --rm --user root \
+              -v /opt/levelup/data:/app/data \
+              alpine:3 sh -c "chown -R 10001:10001 /app/data && chmod -R u+rw /app/data" \
+              && echo "[regen] ✅ Permissions OK" \
+              || echo "[regen] ⚠️  Fix permissions ignoré"
+
+            # [Guard 2] Cleanup répertoires fantômes AVANT le rm -rf
+            # (si le regen précédent a échoué, Docker les a peut-être créés)
+            for f in data/demo/db_profiles.json data/demo/app_settings.json; do
+              fp="/opt/levelup/$f"
+              if [[ -d "$fp" ]]; then
+                echo "[regen] ⚠️  Fantôme détecté : $f — nettoyage..."
+                rm -rf "$fp"
+                echo "[regen] ✅ Nettoyé : $f"
+              fi
+            done
+
+            # Regen données démo
+            rm -rf data/demo/warehouse data/demo/db_profiles.json \
+                   data/demo/app_settings.json data/demo/players/DEMO/stats.duckdb
+            docker compose run --rm levelup \
+              python scripts/prepare_demo_data.py \
+                --gamertag JGtm --max-matches 50 --service-tag SPTA --out data/demo
+
+            # [Guard 3] Vérification post-regen — les fichiers doivent exister
+            echo "[regen] Vérification fichiers post-regen..."
+            ok=true
+            for f in data/demo/db_profiles.json data/demo/app_settings.json; do
+              fp="/opt/levelup/$f"
+              if [[ -d "$fp" ]]; then
+                echo "[regen] ❌ ERREUR : $f est un répertoire fantôme après regen"
+                rm -rf "$fp"
+                ok=false
+              elif [[ ! -f "$fp" ]]; then
+                echo "[regen] ❌ ERREUR : $f absent — le script de regen a peut-être échoué"
+                ok=false
+              else
+                echo "[regen] ✅ $f OK"
+              fi
+            done
+            $ok || { echo "[regen] ❌ Abandon — levelup-demo ne sera pas redémarré"; exit 1; }
+
+            # Redémarrer levelup-demo avec les nouvelles données
             docker compose stop levelup-demo
             docker compose up -d levelup-demo
+            echo "[regen] ✅ levelup-demo redémarré"

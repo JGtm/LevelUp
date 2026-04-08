@@ -25,7 +25,31 @@ git fetch origin main
 git reset --hard origin/main
 git clean -fd --exclude=data/ --exclude=.env.local --exclude=app_settings.json --exclude=db_profiles.json
 
-# 2. Rebuilder et redémarrer les services (sans downtime des autres)
+# 2a. Fix automatique des permissions data/
+# Docker peut créer des fichiers/dossiers en root ; appuser (UID 10001) ne peut alors pas écrire.
+# Utiliser alpine (image légère toujours disponible) pour chown sans dépendre de l'image locale.
+echo "[deploy] Fix permissions data/ → UID 10001..."
+mkdir -p "$DEPLOY_DIR/data/logs" "$DEPLOY_DIR/data/demo"
+docker run --rm --user root \
+    -v "${DEPLOY_DIR}/data:/app/data" \
+    alpine:3 sh -c "chown -R 10001:10001 /app/data && chmod -R u+rw /app/data" \
+    2>/dev/null && echo "[deploy] ✅ Permissions OK" \
+    || echo "[deploy] ⚠️  Fix permissions ignoré (alpine non disponible)"
+
+# 2b. Cleanup automatique des répertoires fantômes dans data/demo/
+# Bug Docker : si un fichier bind-mount n'existe pas côté hôte, Docker crée un répertoire.
+# Cela fait échouer docker compose up avec "not a directory".
+for ghost_path in \
+    "${DEPLOY_DIR}/data/demo/db_profiles.json" \
+    "${DEPLOY_DIR}/data/demo/app_settings.json"; do
+    if [[ -d "$ghost_path" ]]; then
+        echo "[deploy] ⚠️  Répertoire fantôme détecté : ${ghost_path##*/data/} — nettoyage..."
+        rm -rf "$ghost_path"
+        echo "[deploy] ✅ Nettoyé"
+    fi
+done
+
+# 2c. Rebuilder et redémarrer les services (sans downtime des autres)
 echo "[deploy] docker compose up --build..."
 docker compose up -d --build --no-deps levelup levelup-demo
 
