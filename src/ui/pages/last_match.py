@@ -12,6 +12,7 @@ import streamlit as st
 
 from src.app._page_context import MatchViewParams
 from src.app.session_keys import SK
+from src.ui.components.browser_storage import hints_visible
 from src.ui.i18n import t
 from src.visualization._compat import ensure_polars
 
@@ -67,7 +68,8 @@ def render_last_match_page(
         dff: DataFrame filtré des matchs.
         params: Paramètres communs (DB, fonctions injectées, settings, etc.).
     """
-    st.caption(t("last_match_caption"))
+    if hints_visible():
+        st.caption(t("last_match_caption"))
 
     dff = ensure_polars(dff)
     if dff.is_empty():
