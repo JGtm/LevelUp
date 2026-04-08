@@ -324,4 +324,13 @@ STRINGS: dict[str, dict[str, str] | str] = {
         "fr": "Pas assez de matchs avec données de timeline pour afficher le profil de tempo.",
         "en": "Not enough matches with timeline data to display the tempo profile.",
     },
+    # ── Sections de la page escouade ─────────────────────────────────────────
+    "tm_my_stats_section": {
+        "fr": "Mes stats sur cette session",
+        "en": "My stats on this session",
+    },
+    "tm_squad_section": {
+        "fr": "Statistiques d'escouade",
+        "en": "Squad statistics",
+    },
 }

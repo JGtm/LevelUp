@@ -12,6 +12,7 @@ import threading
 import urllib.parse
 from collections.abc import Callable
 from datetime import datetime
+from pathlib import Path
 from typing import Any, NamedTuple
 
 import streamlit as st
@@ -56,12 +57,6 @@ from src.app.helpers import (
     clean_asset_label,
     date_range,
 )
-
-# Phase 5 refactoring: KPIs et Filtres
-from src.app.kpis_render import (
-    render_kpis_section,
-    render_performance_info,
-)
 from src.app.main_helpers import (
     load_match_dataframe,
     load_profile_api,
@@ -104,6 +99,11 @@ from src.ui.cache import (
     clear_app_caches,
     db_cache_key,
     top_medals_smart,
+)
+from src.ui.components.browser_storage import (
+    persist_browser_prefs,
+    restore_browser_prefs,
+    restore_hints_from_prefs,
 )
 from src.ui.filter_state import (
     _get_player_key,
@@ -257,9 +257,17 @@ def _initialize_app() -> tuple[AppSettings, str, list[str], list[str]]:  # noqa:
         ensure_h5g_commendations_repo()
 
     # Paramètres (persistés)
-    settings: AppSettings = load_settings()
-    st.session_state[SK.APP_SETTINGS] = settings
-    logger.info("Settings chargées: lang=%s", getattr(settings, "lang", "fr"))
+    # Guard : si app_settings est déjà en session (rerun dans la même session), ne pas
+    # recharger depuis disque pour éviter d'écraser une valeur sauvegardée par la page
+    # Paramètres au cours du même run.
+    _cached_settings: AppSettings | None = st.session_state.get(SK.APP_SETTINGS)
+    if _cached_settings is not None and isinstance(_cached_settings, AppSettings):
+        settings = _cached_settings
+        logger.debug("Settings depuis session_state (rerun, pas de rechargement disque)")
+    else:
+        settings = load_settings()
+        st.session_state[SK.APP_SETTINGS] = settings
+        logger.info("Settings chargées depuis disque: lang=%s", getattr(settings, "lang", "fr"))
 
     # Appliquer la méthode d'auth préférée issue d'app_settings.json
     try:
@@ -453,8 +461,16 @@ def _render_main_sidebar(db_path: str, xuid: str, settings: AppSettings) -> tupl
         new_lang = "fr" if picked_lang == "🇫🇷" else "en"
         if new_lang != current_lang:
             set_lang(new_lang)
-            settings.lang = new_lang
-            save_settings(settings)
+            # Lire session_state["app_settings"] en direct plutôt que d'utiliser
+            # le paramètre `settings` (potentiellement périmé si un on_change a
+            # créé un nouvel objet via model_copy depuis le dernier rerun).
+            _ss_settings = st.session_state.get(SK.APP_SETTINGS, settings)
+            if not isinstance(_ss_settings, type(settings)):
+                _ss_settings = settings
+            _ss_settings.lang = new_lang
+            save_settings(_ss_settings)
+            st.session_state[SK.APP_SETTINGS] = _ss_settings
+            persist_browser_prefs(lang=new_lang)
             st.rerun()
 
         # Logo en haut de la sidebar
@@ -508,6 +524,8 @@ def _render_main_sidebar(db_path: str, xuid: str, settings: AppSettings) -> tupl
                         st.session_state[SK.XUID_INPUT] = gamertag
                         st.session_state[SK.WAYPOINT_PLAYER] = gamertag
                         xuid = gamertag
+                        _slug = Path(new_db_path).parent.name
+                        persist_browser_prefs(last_gamertag=_slug, last_db_path=_slug)
                 if new_xuid:
                     st.session_state[SK.XUID_INPUT] = new_xuid
                     xuid = new_xuid
@@ -517,11 +535,21 @@ def _render_main_sidebar(db_path: str, xuid: str, settings: AppSettings) -> tupl
                     old_xuid[:8] if old_xuid else "?",
                     xuid[:8] if xuid else "?",
                 )
+                # Persister le nouveau joueur dans ui_prefs.json (serveur)
+                _new_slug = (get_gamertag_from_duckdb_v4_path(db_path) if db_path else xuid) or xuid
+                if _new_slug:
+                    from src.ui.components.browser_storage import (
+                        persist_browser_prefs as _persist_ls,
+                    )
+
+                    _persist_ls(last_gamertag=_new_slug, last_db_path=_new_slug)
                 apply_filter_preferences(xuid, db_path)
                 st.rerun()
 
-        # Bouton Sync
-        if db_path and is_spnkr_db_path(db_path) and os.path.exists(db_path):  # noqa: SIM102
+        # Bouton Sync (masqué en mode démo — sync désactivé)
+        from src.utils.demo import is_demo_mode as _is_demo
+
+        if not _is_demo() and db_path and is_spnkr_db_path(db_path) and os.path.exists(db_path):  # noqa: SIM102
             is_syncing = st.session_state.get(SK.IS_SYNCING, False)
             if st.button(
                 t("sidebar_sync_btn"),
@@ -682,10 +710,6 @@ def _load_and_prepare_data(  # noqa: PLR0913
     picked_session_labels = filter_state.picked_session_labels
     base_s_ui = filter_state.base_s_ui
 
-    # KPIs
-    render_kpis_section(dff)
-    render_performance_info()
-
     # Paramètres communs pour les pages de match
     _match_view_params = build_match_view_params(
         db_path=db_path,
@@ -736,7 +760,15 @@ def _dispatch_navigation(ctx: PageContext) -> None:  # noqa: C901, PLR0915
     def _page_timeseries() -> None:
         from src.ui.pages import render_timeseries_page
 
-        render_timeseries_page(ctx.dff, df_full=ctx.df, db_path=ctx.db_path, xuid=ctx.xuid)
+        render_timeseries_page(
+            ctx.dff,
+            df_full=ctx.df,
+            base=ctx.base,
+            picked_session_labels=ctx.picked_session_labels,
+            db_path=ctx.db_path,
+            xuid=ctx.xuid,
+            db_key=ctx.db_key,
+        )
 
     def _page_session_compare() -> None:
         from src.app._filters_helpers import _to_polars
@@ -814,18 +846,6 @@ def _dispatch_navigation(ctx: PageContext) -> None:  # noqa: C901, PLR0915
             top_medals_fn=_top_medals,
         )
 
-    def _page_win_loss() -> None:
-        from src.ui.pages import render_win_loss_page
-
-        render_win_loss_page(
-            dff=ctx.dff,
-            base=ctx.base,
-            picked_session_labels=ctx.picked_session_labels,
-            db_path=ctx.db_path,
-            xuid=ctx.xuid,
-            db_key=ctx.db_key,
-        )
-
     def _page_teammates() -> None:
         from src.ui.pages import render_teammates_page
 
@@ -882,7 +902,6 @@ def _dispatch_navigation(ctx: PageContext) -> None:  # noqa: C901, PLR0915
         "last_match": _page_last_match,
         "media": _page_media,
         "citations": _page_citations,
-        "win_loss": _page_win_loss,
         "teammates": _page_teammates,
         "explorer": _page_explorer,
         "match_history": _page_match_history,
@@ -912,16 +931,70 @@ def _dispatch_navigation(ctx: PageContext) -> None:  # noqa: C901, PLR0915
 # =============================================================================
 
 
+def _maybe_apply_browser_prefs(browser_prefs: dict) -> None:
+    """Applique les préférences persistantes (ui_prefs.json) à la session courante.
+
+    Restaure la langue et le joueur depuis les préférences serveur une seule fois par session
+    (guard ``_browser_prefs_applied``). Déclenche un rerun si le joueur change.
+    """
+    if st.session_state.get("_browser_prefs_applied"):
+        return
+    st.session_state["_browser_prefs_applied"] = True
+
+    ls_slug = str(browser_prefs.get("last_db_path") or "").strip()
+    ls_lang = str(browser_prefs.get("lang") or "").strip()
+
+    # Restauration de la langue (si différente de la session courante)
+    if ls_lang in ("fr", "en"):
+        current_lang = str(st.session_state.get(SK.LANG) or "fr").strip()
+        if ls_lang != current_lang:
+            set_lang(ls_lang)
+            st.session_state[SK.LANG] = ls_lang
+
+    # Restauration du joueur (si le slug LS diffère du joueur actuel)
+    current_db = str(st.session_state.get(SK.DB_PATH) or "").strip()
+    if ls_slug and current_db:
+        from pathlib import Path as _Path
+
+        _current = _Path(current_db)
+        if _current.parent.name != ls_slug:
+            _candidate = _current.parent.parent / ls_slug / "stats.duckdb"
+            if _candidate.exists() and _candidate.stat().st_size > 0:
+                st.session_state[SK.DB_PATH] = str(_candidate)
+                st.session_state[SK.XUID_INPUT] = ls_slug
+                st.session_state[SK.WAYPOINT_PLAYER] = ls_slug
+                logger.debug("Préférences serveur: joueur restauré → %s", ls_slug)
+                st.rerun()
+
+    # Restauration de la préférence Aides à la lecture
+    restore_hints_from_prefs(browser_prefs)
+
+
 def main() -> None:
     """Point d'entrée principal de l'application Streamlit."""
+    # 0. Restauration des préférences persistantes (ui_prefs.json, une fois par session)
+    browser_prefs = restore_browser_prefs()
+    if browser_prefs is not None:
+        st.session_state["_browser_prefs_restored"] = browser_prefs
+        _maybe_apply_browser_prefs(browser_prefs)
+
     # 1. Initialisation (config, CSS, settings, validation)
     settings, DEFAULT_DB, cfg_warnings, cfg_errors = _initialize_app()
+
+    # 1a. Bandeau mode démo (affiché avant tout contenu)
+    from src.utils.demo import is_demo_mode
+
+    if is_demo_mode():
+        st.info(
+            t("demo_banner"),
+            icon="ℹ️",
+        )
 
     # 1b. Wizard de configuration initiale si config incomplète
     from src.ui.pages.setup_wizard_logic import get_setup_status
 
     setup_status = get_setup_status()
-    if setup_status.needs_setup:
+    if setup_status.needs_setup and not is_demo_mode():
         from src.ui.pages.setup_wizard import render_setup_wizard_page
 
         render_setup_wizard_page()

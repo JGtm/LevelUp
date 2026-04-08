@@ -303,6 +303,11 @@ STRINGS: dict[str, dict[str, str]] = {
         "fr": "   ⚠ {n} erreur(s) non-bloquante(s):",
         "en": "   ⚠ {n} non-blocking error(s):",
     },
+    # ── _run_db_healthcheck ───────────────────────────────────────────────────
+    "healthcheck_ok": {
+        "fr": "   ✓ DB healthcheck OK",
+        "en": "   ✓ DB healthcheck OK",
+    },
     # ── _launch_streamlit ─────────────────────────────────────────────────────
     "launching_dashboard": {
         "fr": "\n🚀 Lancement du dashboard…",

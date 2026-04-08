@@ -13,6 +13,62 @@ import streamlit as st
 from src.ui.i18n import t
 
 
+def render_combined_kpi_cards(cards: list[dict]) -> None:
+    """Affiche une grille de cases KPI avec valeur principale, sous-valeur et tendance vs all-time.
+
+    Chaque dict contient :
+        label (str)          — intitulé de la case
+        main  (str)          — valeur principale (gros texte)
+        sub   (str | None)   — sous-valeur (ex: "1.2/min"), optionnel
+        trend (str)          — "above" | "near" | "below" | "none"
+    """
+    if not cards:
+        return
+    items = []
+    for c in cards:
+        trend = c.get("trend", "none")
+        trend_class = f" os-kpi--{trend}" if trend != "none" else ""
+        if c.get("wide"):
+            trend_class += " os-kpi--wide"
+        if c.get("bar"):
+            segments = "".join(
+                f"<div style='flex:{pct};background:{html_mod.escape(color)};height:100%'></div>"
+                for color, pct, _ in c["bar"]
+                if pct > 0
+            )
+            legend = " · ".join(
+                f"<span style='color:{html_mod.escape(color)}'>{html_mod.escape(lbl)}</span>"
+                for color, pct, lbl in c["bar"]
+                if pct > 0
+            )
+            body_html = (
+                f"<div class='os-kpi__bar-wrap'>"
+                f"<div class='os-kpi__bar-track'>{segments}</div>"
+                f"<div class='os-kpi__bar-legend'>{legend}</div>"
+                f"</div>"
+            )
+        else:
+            sub_html = ""
+            if c.get("sub"):
+                sub_html = f"<span class='os-kpi__subvalue'>{html_mod.escape(str(c['sub']))}</span>"
+            body_html = (
+                f"<div class='os-kpi__value-row'>"
+                f"<span class='os-kpi__value'>{html_mod.escape(str(c['main']))}</span>"
+                f"{sub_html}"
+                f"</div>"
+            )
+        items.append(
+            f"<div class='os-kpi{trend_class}'>"
+            f"<div class='os-kpi__label'>{html_mod.escape(str(c['label']))}</div>"
+            f"{body_html}"
+            f"</div>"
+        )
+    st.markdown(
+        f"<div class='os-kpi-grid'>{''.join(items)}</div>",
+        unsafe_allow_html=True,
+    )
+
+
 def render_kpi_cards(cards: list[tuple[str, str]], *, dense: bool = True) -> None:
     """Affiche une grille de cartes KPI.
 

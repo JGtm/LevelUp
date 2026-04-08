@@ -102,6 +102,23 @@ def pytest_configure(config: pytest.Config) -> None:
 
 
 # =============================================================================
+# FIXTURES GLOBALES D'ISOLATION
+# =============================================================================
+
+
+@pytest.fixture(autouse=True)
+def _reset_sync_mode() -> None:
+    """Remet end_sync_mode() après chaque test pour éviter la pollution du flag global."""
+    yield
+    try:
+        from src.data.repositories.duckdb_repo import end_sync_mode
+
+        end_sync_mode()
+    except Exception:
+        pass
+
+
+# =============================================================================
 # FIXTURES POLARS
 # =============================================================================
 

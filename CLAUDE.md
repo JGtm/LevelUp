@@ -35,7 +35,7 @@ Ne pas sauter cette étape même pour des modifications « mineures ». L'absenc
 | Type | Stockage | Chemin |
 |------|----------|--------|
 | Référentiels | DuckDB | `data/warehouse/metadata.duckdb` |
-| Matchs partagés | DuckDB | `data/warehouse/shared_matches.duckdb` |
+| Matchs partagés | DuckDB | `data/warehouse/shared_matches_v2.duckdb` |
 | Stats PvE Firefight | DuckDB | `data/warehouse/shared_pve.duckdb` |
 | Enrichissements joueur | DuckDB | `data/players/{gamertag}/stats.duckdb` |
 | Archives | Parquet | `data/players/{gamertag}/archive/` |
@@ -55,7 +55,7 @@ Ne pas sauter cette étape même pour des modifications « mineures ». L'absenc
 | `mode_prefix_names` | Préfixes canoniques de modes |
 | `weapon_labels` | Labels EN/FR par weapon_id filmshell (UBIGINT) — **v5.4** |
 
-### shared_matches.duckdb (centralisée)
+### shared_matches_v2.duckdb (centralisée)
 
 | Table | Description |
 |-------|-------------|
@@ -197,7 +197,7 @@ python scripts/backfill_data.py --player MonGT --participants-shots --force-part
 
 Chaque joueur a sa propre DB : `data/players/{gamertag}/stats.duckdb` (enrichissements uniquement).
 
-**Données partagées** : Toutes les stats de matchs, médailles, events, killer/victim et xuid_aliases sont dans `shared_matches.duckdb`.
+**Données partagées** : Toutes les stats de matchs, médailles, events, killer/victim et xuid_aliases sont dans `shared_matches_v2.duckdb`.
 
 **Pour afficher les stats d'un coéquipier** sur des matchs communs :
 1. Identifier les `match_id` communs via `shared.match_participants`

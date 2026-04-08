@@ -2,7 +2,7 @@ services:
   levelup:
     build: .
     ports:
-      - "8501:8501"
+      - "127.0.0.1:8501:8501"
     environment:
       # Optionnel: forcer une base explicite (sinon sélection via profils/UI)
       # - LEVELUP_DB=/app/data/players/MonGamertag/stats.duckdb
@@ -23,4 +23,20 @@ services:
       - ./db_profiles.json:/app/db_profiles.json
       - ./app_settings.json:/app/app_settings.json
 
+    restart: unless-stopped
+
+  levelup-demo:
+    build: .
+    ports:
+      - "127.0.0.1:8502:8501"
+    environment:
+      - LEVELUP_ROOT=/app
+      - LEVELUP_DATA=/app/data
+      - LEVELUP_DEMO_MODE=true
+    volumes:
+      # Données de démo en lecture seule (générées par scripts/prepare_demo_data.py)
+      - ./data/demo/warehouse:/app/data/warehouse:ro
+      - ./data/demo/players:/app/data/players:ro
+      - ./data/demo/db_profiles.json:/app/db_profiles.json:ro
+      - ./data/demo/app_settings.json:/app/app_settings.json:ro
     restart: unless-stopped

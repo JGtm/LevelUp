@@ -55,6 +55,7 @@ repos:
       - id: check-docstring-first     # Docstring en premier
       - id: name-tests-test           # Tests nommés test_*
         args: [--pytest-test-first]
+        exclude: conftest
 
   # ==========================================================================
   # SÉCURITÉ (détection de secrets)

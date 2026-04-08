@@ -23,6 +23,7 @@ from src.ui.sync import (
     render_sync_indicator,
     sync_all_players_duckdb,
 )
+from src.utils.demo import is_demo_mode
 
 if TYPE_CHECKING:
     from src.ui.settings import AppSettings
@@ -198,6 +199,10 @@ def render_sync_button(  # noqa: C901, PLR0912
     db_profiles_path = repo_root / "db_profiles.json"
 
     if not db_profiles_path.exists():
+        return False
+
+    if is_demo_mode():
+        st.info(t("demo_sync_disabled"), icon="🎮")
         return False
 
     if st.button(

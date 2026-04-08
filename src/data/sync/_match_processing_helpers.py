@@ -96,8 +96,12 @@ class MatchProcessingHelpersMixin:
         shared_conn: duckdb.DuckDBPyConnection,
         match_id: str,
         skill_json: dict,
-    ) -> None:
-        """Écrit team_mmr/enemy_mmr + expected/stddev dans shared.match_participants."""
+    ) -> list:
+        """Écrit team_mmr/enemy_mmr + expected/stddev dans shared.match_participants.
+
+        Returns:
+            La liste des SkillParticipantUpdate parsés (réutilisable sans re-parse).
+        """
         all_skill_updates = transform_all_skill_stats(skill_json, match_id)
         for su in all_skill_updates:
             if su.team_mmr is not None or su.enemy_mmr is not None:
@@ -125,6 +129,7 @@ class MatchProcessingHelpersMixin:
                         su.xuid,
                     ),
                 )
+        return all_skill_updates
 
     async def _upsert_single_player_skill_to_shared(
         self: _SyncProtocol,
@@ -173,12 +178,18 @@ class MatchProcessingHelpersMixin:
         Si skill_json est disponible, met à jour TOUS les participants (team_mmr,
         enemy_mmr, expected/stddev). Sinon, met à jour uniquement le joueur courant.
         Cela corrige le bug où seul le premier joueur à syncer obtenait son MMR.
+
+        Collecte également les CSR des coéquipiers depuis la liste pré-parsée,
+        évitant un double appel à transform_all_skill_stats.
         """
         if skill_json:
             async with self._shared_db_lock:
                 shared_conn = self._get_shared_connection()
                 if shared_conn:
-                    self._upsert_skill_to_shared_participants(shared_conn, match_id, skill_json)
+                    skill_updates = self._upsert_skill_to_shared_participants(
+                        shared_conn, match_id, skill_json
+                    )
+                    self._collect_csr_for_other_players(skill_updates)
         else:
             await self._upsert_single_player_skill_to_shared(match_id, skill_row)
 
@@ -256,6 +267,38 @@ class MatchProcessingHelpersMixin:
                     xuid,
                     match_id,
                 )
+
+    def _collect_csr_for_other_players(
+        self: _SyncProtocol,
+        all_skill_updates: list,
+    ) -> None:
+        """Collecte les données CSR des coéquipiers enregistrés depuis la liste pré-parsée.
+
+        Reçoit la liste déjà parsée par _upsert_skill_to_shared_participants
+        (évite un double appel à transform_all_skill_stats par match).
+        Stocke les CSR dans self._pending_other_csr pour distribution par le fanout.
+
+        Args:
+            all_skill_updates: Liste de SkillParticipantUpdate déjà parsés.
+        """
+        csr_updates = [u for u in all_skill_updates if u.post_match_csr is not None]
+        if not csr_updates:
+            return
+
+        my_xuid = self._xuid or ""
+        others = {p["xuid"] for p in self._get_other_registered_players() if p.get("xuid")}
+
+        for update in csr_updates:
+            if update.xuid == my_xuid or update.xuid not in others:
+                continue
+            bucket = self._pending_other_csr.setdefault(update.xuid, [])
+            bucket.append(update)
+            logger.debug(
+                "csr_fanout: CSR en attente pour xuid=%s match=%s (csr=%.0f)",
+                update.xuid,
+                update.match_id,
+                update.post_match_csr,
+            )
 
     async def _try_insert_pve_stats(
         self: _SyncProtocol,

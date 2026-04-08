@@ -12,6 +12,7 @@ from typing import Any
 import streamlit as st
 
 from src.ui.chart_utils import render_chart_or_info, safe_chart_render
+from src.ui.components.browser_storage import hints_visible
 from src.ui.i18n import t
 from src.ui.streamlit_modern import PLOTLY_STATIC_CONFIG, fragment_if_available
 
@@ -117,20 +118,26 @@ def render_participation_section(
 
     st.subheader(f"🎯 {t('mvp_participation_title')}")
 
-    col_radar, col_legend = st.columns([2, 1])
-    with col_radar, safe_chart_render():
-        fig = create_participation_profile_radar(
-            [profile],
-            height=380,
-        )
-        if fig is not None:
-            st.plotly_chart(fig, width="stretch", config=PLOTLY_STATIC_CONFIG)
-        else:
-            st.info(t("insufficient_data_chart"))
-    with col_legend:
-        st.markdown(f"**{t('mvp_axes_label')}**")
-        for line in get_radar_axis_lines():
-            st.markdown(line)
+    if hints_visible():
+        col_radar, col_legend = st.columns([2, 1])
+        with col_radar, safe_chart_render():
+            _plot_participation_radar_fig(profile, create_participation_profile_radar)
+        with col_legend:
+            st.markdown(f"**{t('mvp_axes_label')}**")
+            for line in get_radar_axis_lines():
+                st.markdown(line)
+    else:
+        with safe_chart_render():
+            _plot_participation_radar_fig(profile, create_participation_profile_radar)
+
+
+def _plot_participation_radar_fig(profile: Any, create_radar_fn: Any) -> None:
+    """Affiche le chart radar de participation (helper pour limiter les branches)."""
+    fig = create_radar_fn([profile], height=380)
+    if fig is not None:
+        st.plotly_chart(fig, width="stretch", config=PLOTLY_STATIC_CONFIG)
+    else:
+        st.info(t("insufficient_data_chart"))
 
 
 def _build_comparison_profiles(  # noqa: PLR0913
@@ -218,8 +225,21 @@ def render_participation_comparison(  # noqa: PLR0913
             return
 
         st.subheader(f"📊 {t('mvp_comparison_title')}")
-        col_radar, col_legend = st.columns([2, 1])
-        with col_radar:
+        if hints_visible():
+            col_radar, col_legend = st.columns([2, 1])
+            with col_radar:
+                fig = create_participation_profile_radar(profiles, height=400)
+                render_chart_or_info(
+                    fig,
+                    key="mvp_radar_comparison",
+                    config=PLOTLY_STATIC_CONFIG,
+                    info_key="insufficient_data_chart",
+                )
+            with col_legend:
+                st.markdown(f"**{t('mvp_axes_label')}**")
+                for line in get_radar_axis_lines():
+                    st.markdown(line)
+        else:
             fig = create_participation_profile_radar(profiles, height=400)
             render_chart_or_info(
                 fig,
@@ -227,10 +247,6 @@ def render_participation_comparison(  # noqa: PLR0913
                 config=PLOTLY_STATIC_CONFIG,
                 info_key="insufficient_data_chart",
             )
-        with col_legend:
-            st.markdown(f"**{t('mvp_axes_label')}**")
-            for line in get_radar_axis_lines():
-                st.markdown(line)
 
     except Exception:
         logger.warning(

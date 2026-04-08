@@ -13,6 +13,7 @@ from typing import Any
 import streamlit as st
 
 from src.config import TEAM_MAP, get_bot_name
+from src.ui.components.browser_storage import hints_visible
 from src.ui.i18n import t
 from src.ui.pages.match_view_players_data import load_match_scoreboard
 from src.ui.pages.match_view_scoreboard_detail import (
@@ -383,7 +384,8 @@ def render_match_scoreboard(
         load_match_gamertags_fn: Fonction de résolution gamertags injectée.
     """
     st.subheader(t("mv_scoreboard"))
-    st.caption(t("mv_scoreboard_detail_click_hint"))
+    if hints_visible():
+        st.caption(t("mv_scoreboard_detail_click_hint"))
 
     players = load_match_scoreboard(db_path, match_id.strip())
     if not players:
@@ -436,5 +438,5 @@ def render_match_scoreboard(
             extremes=extremes,
         )
 
-    if n_real_teams > 1:
+    if n_real_teams > 1 and hints_visible():
         st.caption(t("mv_scoreboard_rank_note"))

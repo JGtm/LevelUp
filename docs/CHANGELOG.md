@@ -6,6 +6,65 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 > French version: [FR/CHANGELOG.md](FR/CHANGELOG.md)
 
+## [6.4.0] - 2026-04-07
+
+### Added
+
+- **Media library — filters & sort** — the Media page now offers a full filter panel:
+  - **Owner** — multiselect to show/hide sections (My captures / Teammate(s) / Unmatched)
+  - **Map** — filter by map name (from match data)
+  - **Mode** — filter by normalized mode label
+  - **Outcome** — multiselect (Victory / Defeat / Tie / DNF) derived from match outcome codes
+  - **Context** — radio selector to restrict to Solo or Squad matches
+  - **Sort** — sort by capture date (default), map, mode, outcome, or owner; ascending or descending toggle
+  - Type (image/video) and filename filters preserved from the previous panel
+  - Unmatched media (no associated match) are unaffected by match-specific filters and always appear in their own section when selected
+
+- **CSR fanout for squadmates** — when syncing a ranked match, the CSR ranking data for all registered co-players is now automatically collected from the `skill_json` API payload and distributed to each player's DB. Previously required each player to sync their own account to obtain CSR history for shared matches.
+
+- **Comeback badges fanout** — Remontada / Collapse / Contre-Remontada badges are now computed for registered co-players during the sync fanout, in parallel with PSA and CSR distribution.
+
+### Added (continued)
+
+- **Teammates — fixed player legend panel** — a floating panel (bottom-right, `position: fixed`) now shows each squad member's color throughout the entire squad section. It appears from the squad header onwards and stays visible while scrolling. Legends have been removed from all individual charts on the page (kills/deaths, per-minute stats, metrics, killing sprees, HS+PK, first events, weapon kills) since they are fully replaced by the panel. Switch strategy by changing `_PANEL_MODE` in `teammates_legend.py` (`"fixed"` / `"sidebar"` / `"hidden"`).
+
+### Added (continued)
+
+- **DB healthcheck** — a new module (`src/utils/healthcheck_db.py`) verifies the state of all DuckDB databases at every app startup and after deploys:
+  - Checks presence of tables, v6 views (`v_gamertag_lookup`, `v_match_full`, `v_killer_victim_full`, `v_weapon_kills`), and critical columns per DB
+  - Verifies that `metadata.duckdb` is attachable from `shared_matches`
+  - Detects pending migrations
+  - Auto-repairs missing or broken v6 views via `ensure_resolution_views()`
+  - `--deep` mode adds referential integrity checks (orphan participants/medals, duplicates)
+  - CLI: `python scripts/healthcheck_db.py [--verbose] [--deep] [--player GT] [--json]`
+  - Integrated into `launcher.py` — runs automatically after migrations at boot, prints ✅/⚠️/❌ to console
+  - Integrated into `deploy.sh` — post-deploy smoke test, results appended to `data/logs/healthcheck_deploy.log` (persisted across deploys via the Docker volume)
+
+- **UI state persistence across sessions** — selected player and language are now persisted in the browser via a lightweight `localStorage` component (`levelup.prefs`). On next visit the app automatically restores the last active player without any server-side session.
+  - Filter preferences (map/mode/outcome/context) moved from `.streamlit/filter_preferences/` to `data/players/{gamertag}/ui_prefs.json` — inside the Docker data volume, so they survive container rebuilds and image updates
+  - Silent migration: existing `.streamlit/` prefs are copied to the new location on first load, then the legacy file is left in place as a fallback
+  - `_resolve_db_path` extended with a third priority level (localStorage slug → `data/players/<slug>/stats.duckdb`) between deep-link and SPNKr auto-detect
+  - New custom Streamlit component: `src/ui/components/browser_storage/` (`persist_browser_prefs`, `restore_browser_prefs`, `clear_browser_prefs`)
+
+### Added (continued)
+
+- **Reading aids toggle** — a new sidebar checkbox ("Aides à la lecture") lets users show or hide the ~45 contextual help banners scattered across every page. The setting is stored in `ui_prefs.json` (key `show_hints`) and defaults to on. `hints_visible()` is the project-wide predicate used in all page modules.
+  - Several `st.expander` help blocks converted to `st.popover` for a lighter inline experience (legend/badge sections in `match_view_players`, `match_view_encounters`, `career_top_matches_render`, `career_encounters_render`, `teammates_impact`)
+  - `restore_hints_from_prefs()` restores the persisted value from `ui_prefs.json` on restart
+
+- **Career KPI cards redesigned** — the summary row above the career charts is now a compact 8-card row:
+  - **Matches played**, **Total duration**, **Frags**, **Deaths**, **Assists**, **Accuracy**, **Time alive**, **Results**
+  - Frags, Deaths, Assists: main value with an inline per-minute sub-value in small type
+  - Color coding (green / gold / red) vs. all-time average (threshold ±8%)
+  - Results card: segmented bar with W/L/T/DNF raw counts and color legend
+  - `render_top_summary()` removed as redundant; `_build_kpi_cards()` extracted to respect 80L limit
+
+- **Win/Loss page merged into Timeseries** — the standalone Win/Loss page has been absorbed into the Timeseries page as a new tab. The `win_loss` route has been removed from `page_router.py`. Timeseries tabs renamed: Résumé · Cartes & Modes · Progression · Avancé.
+
+### Changed
+
+- **Docker image** — `ffmpeg` is now installed in the image, enabling video thumbnail generation in containerized deployments without a manual post-install step.
+
 ## [6.3.0] - 2026-04-03
 
 ### Added
@@ -116,8 +175,19 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 - Squad records invisible on Teammates charts — three distinct bugs fixed: `_resolve_record` returned `None` instead of falling back to the global record when `per_map_records` was empty (caused all record shapes to be skipped by Plotly); `map_ui` column was absent from the `d_self` pipeline in `trio_helpers`; import of `xuid` in `match_view_players_nemesis` pointed to wrong module.
 
 - Date filter calendar: lower and upper bounds now span full calendar years, allowing free backward/forward navigation without hitting artificial day-level boundaries.
+- Teammates legend panel: visibility now conditioned to the squad section only — panel starts as `display:none`, appears when the `#llp-squad-start` sentinel enters the viewport, and hides again when the Impact section sentinel (`#llp-impact-end`) reaches the top of the screen.
+- Native Streamlit chrome hidden — header, toolbar, menu, and decoration bars suppressed via `.streamlit/config.toml` and CSS overrides.
+- Explorer deep links: `open_match_button` now uses `session_state` instead of `query_params` to avoid triggering a DB switch on navigation; `_scroll_into_view` scrolls the matched row into view via a same-origin JS `scrollIntoView` call; gamertag deep links also benefit from the auto-scroll.
+- KDA/efficiency ratio: value read directly from the API's `mean(ratio)` field instead of being recomputed as `(K + A/3) / D`, fixing systematic divergence for players with many assists.
+- Media watcher: process-level guard (`_PERIODIC_LOCK` / `_PERIODIC_STARTED`) moved before the Linux/Windows branching to prevent duplicate `watchdog.Observer` instances on Streamlit rerun; active mode (inotify vs. polling) now logged on startup.
+- Sync migrations: DB marked as migrated only after `ensure_resolution_views()` succeeds (success-based guard); bare `duckdb.connect()` calls in `_engine_connections.py` and `launcher.py` replaced by context managers.
+- Healthcheck: `'repaired'` status treated as warning-level (was silently ignored); `recompute_status()` added to recalculate the overall result after in-place mutation of individual checks; `deploy.sh` updated to match.
+- Migration runner: `metadata` DB processed before `shared` so the v6 i18n views can attach `metadata.duckdb` at creation time; a `logger.warning()` is now emitted when views fall back to NULL-column mode (degraded path made visible).
 
 ### Tests
+
+- `test(ui_persistence)`: 9 new tests for `hints_visible()` / `restore_hints_from_prefs()`; 5 930 tests pass total
+- `test(remediation)`: non-regression tests for P0.2 (`browser_storage` dead code removal), P0.3 (localStorage comment fixes), P1.2 (4 extra test cases)
 
 - `test(i18n)`: `resolve_map_display_names()` coverage + `map_ui` / `mode_ui` column assertions
 - `test(radar)`: `f1_vide` edge case + `shared_match_ids` collapse regression

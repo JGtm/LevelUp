@@ -7,6 +7,7 @@ from __future__ import annotations
 
 import logging
 import os
+import platform
 import threading
 import time
 from pathlib import Path
@@ -97,6 +98,10 @@ def _index_with_retry(db_file: Path, gamertag: str, captures_dir: Path, toleranc
     for attempt in range(3):
         try:
             _index_media_for_player(db_file, gamertag, captures_dir, tolerance)
+            if attempt > 0:
+                logger.info(
+                    "✅ Indexation médias %s réussie après %d tentative(s)", gamertag, attempt + 1
+                )
             return
         except Exception as err:
             last_err = err
@@ -131,11 +136,29 @@ def background_media_indexing(settings, db_path: str) -> None:
         logger.debug("DB non DuckDB ou invalide - indexation ignorée")
         return
 
+    base_path = Path(base_dir) if base_dir else None
+
+    # Guard process-level — un seul thread/watcher par process, quel que soit l'OS
     with _PERIODIC_LOCK:
         if _PERIODIC_STARTED:
-            logger.debug("Thread indexation médias déjà actif (process-level guard)")
+            logger.debug("Indexation médias déjà active (process-level guard)")
             return
         _PERIODIC_STARTED = True
+
+    # Sur Linux + dossier base configuré + watcher activé → inotify (zéro polling)
+    if (
+        platform.system() == "Linux"
+        and base_path is not None
+        and base_path.exists()
+        and getattr(settings, "media_watcher_enabled", True)
+    ):
+        from src.app.media_watcher import start_media_watcher
+
+        start_media_watcher(base_path, settings)
+        logger.info("👁️ Mode indexation médias : watcher inotify (Linux)")
+        return
+
+    # Windows ou mode legacy (deux dossiers séparés) → thread périodique
 
     interval_hours: int = getattr(settings, "media_indexing_interval_hours", 4)
     logger.info(
@@ -147,8 +170,6 @@ def background_media_indexing(settings, db_path: str) -> None:
         while True:
             try:
                 tolerance = settings.media_tolerance_minutes
-                base_path = Path(base_dir) if base_dir else None
-
                 if base_path is not None and base_path.exists():
                     _index_all_players(base_path, tolerance)
                 else:

@@ -82,6 +82,7 @@ backups/
 data/rag/
 
 # Architecture v4 - DuckDB (données locales volumineuses)
+data/demo/
 data/logs/
 data/players/
 data/warehouse/match_facts/
@@ -128,3 +129,4 @@ query_weapons_tmp.py
 kill_python.bat
 data/.sync.lock
 data/warehouse/archive/shared_matches.duckdb
+data/ui_prefs.json

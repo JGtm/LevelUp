@@ -19,11 +19,11 @@ from src.ui.cache import cached_compute_sessions_db
 from src.ui.chart_utils import safe_chart_render
 from src.ui.i18n import t
 from src.ui.medals import render_medals_grid
-from src.ui.pages.teammates_charts import render_trio_charts
+from src.ui.pages.teammates_charts import _hide_legend, render_trio_charts
 from src.ui.streamlit_modern import PLOTLY_STATIC_CONFIG
 from src.visualization._chart_series import ChartData, MatchSeries, SquadRecordSet
 from src.visualization._compat import DataFrameLike, ensure_polars
-from src.visualization.theme import apply_halo_plot_style, get_legend_horizontal_bottom
+from src.visualization.theme import apply_halo_plot_style
 from src.visualization.trio import _negative_color
 
 # ---------------------------------------------------------------------------
@@ -161,14 +161,14 @@ def _render_per_minute_stats(  # noqa: PLR0913
         barmode="group",
         height=350,
         margin={"l": 40, "r": 20, "t": 30, "b": 80},
-        legend=get_legend_horizontal_bottom(),
+        showlegend=False,
     )
     fig_pm = apply_halo_plot_style(fig_pm, height=None)
     # Forcer l'axe zéro en gras blanc (apply_halo_plot_style le désactive via theme.py)
     fig_pm.update_yaxes(zeroline=True, zerolinecolor="rgba(255,255,255,0.75)", zerolinewidth=2)
     with safe_chart_render():
         if fig_pm is not None:
-            st.plotly_chart(fig_pm, width="stretch", config=PLOTLY_STATIC_CONFIG)
+            st.plotly_chart(_hide_legend(fig_pm), width="stretch", config=PLOTLY_STATIC_CONFIG)
         else:
             st.info(t("insufficient_data_chart"))
 

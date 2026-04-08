@@ -26,8 +26,7 @@ from src.ui import (
     get_hero_html,
     get_profile_appearance,
 )
-from src.ui.i18n import t
-from src.ui.player_assets import download_image_to_cache, ensure_local_image_path
+from src.ui.player_assets import ensure_local_image_path
 from src.utils import parse_xuid_input, resolve_xuid_from_db
 
 # =============================================================================
@@ -174,14 +173,10 @@ def _needs_halo_auth(url: str) -> bool:
 class ProfileAssets(NamedTuple):
     """Assets du profil joueur."""
 
-    banner_path: str | None
     emblem_path: str | None
     backdrop_path: str | None
     nameplate_path: str | None
-    rank_icon_path: str | None
     service_tag: str | None
-    rank_label: str | None
-    rank_subtitle: str | None
     adornment_path: str | None = None
 
 
@@ -216,7 +211,6 @@ def load_profile_assets(
             api_app, api_err = None, str(e)
 
     # Valeurs manuelles (prioritaires) / sinon auto depuis API
-    banner_value = settings.profile_banner.strip()
     emblem_value = settings.profile_emblem.strip() or (
         getattr(api_app, "emblem_image_url", None) if api_app else ""
     )
@@ -229,13 +223,6 @@ def load_profile_assets(
     service_tag_value = settings.profile_service_tag.strip() or (
         getattr(api_app, "service_tag", None) if api_app else ""
     )
-    rank_label_value = settings.profile_rank_label.strip() or (
-        getattr(api_app, "rank_label", None) if api_app else ""
-    )
-    rank_subtitle_value = settings.profile_rank_subtitle.strip() or (
-        getattr(api_app, "rank_subtitle", None) if api_app else ""
-    )
-    rank_icon_value = (getattr(api_app, "rank_image_url", None) if api_app else "") or ""
     adornment_value = (getattr(api_app, "adornment_image_url", None) if api_app else "") or ""
 
     # Configuration du téléchargement
@@ -248,7 +235,6 @@ def load_profile_assets(
         and (not str(os.environ.get("SPNKR_CLEARANCE_TOKEN") or "").strip())
         and (
             _needs_halo_auth(backdrop_value)
-            or _needs_halo_auth(rank_icon_value)
             or _needs_halo_auth(nameplate_value)
             or _needs_halo_auth(adornment_value)
         )
@@ -256,9 +242,6 @@ def load_profile_assets(
         ensure_spnkr_tokens(timeout_seconds=12)
 
     # Téléchargement/résolution des chemins
-    banner_path = ensure_local_image_path(
-        banner_value, prefix="banner", download_enabled=dl_enabled, auto_refresh_hours=refresh_h
-    )
     emblem_path = ensure_local_image_path(
         emblem_value, prefix="emblem", download_enabled=dl_enabled, auto_refresh_hours=refresh_h
     )
@@ -271,9 +254,6 @@ def load_profile_assets(
         download_enabled=dl_enabled,
         auto_refresh_hours=refresh_h,
     )
-    rank_icon_path = ensure_local_image_path(
-        rank_icon_value, prefix="rank", download_enabled=dl_enabled, auto_refresh_hours=refresh_h
-    )
     adornment_path = ensure_local_image_path(
         adornment_value,
         prefix="adornment",
@@ -282,58 +262,14 @@ def load_profile_assets(
     )
 
     assets = ProfileAssets(
-        banner_path=banner_path,
         emblem_path=emblem_path,
         backdrop_path=backdrop_path,
         nameplate_path=nameplate_path,
-        rank_icon_path=rank_icon_path,
         service_tag=str(service_tag_value or "").strip() or None,
-        rank_label=str(rank_label_value or "").strip() or None,
-        rank_subtitle=str(rank_subtitle_value or "").strip() or None,
         adornment_path=adornment_path,
     )
 
     return assets, api_err
-
-
-def warn_missing_assets(
-    settings: AppSettings,
-    backdrop_value: str,
-    backdrop_path: str | None,
-    rank_icon_value: str,
-    rank_icon_path: str | None,
-) -> None:
-    """Affiche des avertissements pour les assets non téléchargés.
-
-    Args:
-        settings: Paramètres de l'application.
-        backdrop_value: URL du backdrop.
-        backdrop_path: Chemin local du backdrop ou None.
-        rank_icon_value: URL de l'icône de rang.
-        rank_icon_path: Chemin local de l'icône ou None.
-    """
-    dl_enabled = settings.profile_assets_download_enabled
-    api_enabled = settings.profile_api_enabled
-    dl_enabled = dl_enabled or api_enabled
-
-    def _warn_asset(prefix: str, url: str, path: str | None) -> None:
-        if not dl_enabled:
-            return
-        u = str(url or "").strip()
-        if not u or (not u.startswith("http://") and not u.startswith("https://")):
-            return
-        if path:
-            return
-        key = f"_warned_asset_{prefix}_{hash(u)}"
-        if st.session_state.get(key):
-            return
-        st.session_state[key] = True
-        ok, err, _out = download_image_to_cache(u, prefix=prefix, timeout_seconds=12)
-        if not ok:
-            st.caption(t("profile_asset_error", prefix=prefix, error=err))
-
-    _warn_asset("backdrop", backdrop_value, backdrop_path)
-    _warn_asset("rank", rank_icon_value, rank_icon_path)
 
 
 # =============================================================================
@@ -365,14 +301,9 @@ def render_profile_header(
         get_hero_html(
             player_name=me_name,
             service_tag=assets.service_tag,
-            rank_label=assets.rank_label,
-            rank_subtitle=assets.rank_subtitle,
-            rank_icon_path=assets.rank_icon_path,
             adornment_path=assets.adornment_path,
-            banner_path=assets.banner_path,
             backdrop_path=assets.backdrop_path,
             nameplate_path=assets.nameplate_path,
-            id_badge_text_color=settings.profile_id_badge_text_color.strip() or None,
             emblem_path=assets.emblem_path,
         ),
         unsafe_allow_html=True,

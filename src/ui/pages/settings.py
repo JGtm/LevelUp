@@ -15,8 +15,19 @@ from pathlib import Path
 import streamlit as st
 
 from src.ui import AppSettings, directory_input, load_settings, save_settings
+from src.ui.components.browser_storage import (
+    hints_visible,
+    persist_browser_prefs,
+)
 from src.ui.i18n import t
 from src.ui.tz import CURATED_TZ_LIST
+
+
+def _resolve_env_webhook() -> str:
+    """Retourne l'URL webhook Discord si définie dans l'environnement."""
+    import os
+
+    return os.environ.get("DISCORD_WEBHOOK_URL", "").strip()
 
 
 def _get_preserved_settings(settings: AppSettings) -> dict:
@@ -51,13 +62,17 @@ def _get_preserved_settings(settings: AppSettings) -> dict:
         "doppler_enabled": _b("doppler_enabled"),
         "doppler_project": _s("doppler_project"),
         "doppler_config": _s("doppler_config"),
+        # Auth
+        "auth_method": _s("auth_method", "refresh_token"),
+        # Médias — non exposés dans l'UI, préservés tels quels
+        "media_indexing_interval_hours": _i("media_indexing_interval_hours", 4),
+        "media_reindex_after_sync": _b("media_reindex_after_sync", True),
         # Sync — optimisé, non exposé, préservé tel quel
         "prefer_spnkr_db_if_available": _b("prefer_spnkr_db_if_available", True),
         "spnkr_refresh_on_start": _b("spnkr_refresh_on_start", True),
         "spnkr_refresh_on_manual_refresh": _b("spnkr_refresh_on_manual_refresh", True),
         "spnkr_refresh_match_type": _s("spnkr_refresh_match_type", "matchmaking"),
         "spnkr_refresh_max_matches": _i("spnkr_refresh_max_matches", 200),
-        "spnkr_refresh_rps": _i("spnkr_refresh_rps", 3),
         "spnkr_refresh_with_highlight_events": _b("spnkr_refresh_with_highlight_events", False),
         "enable_duckdb_analytics": _b("enable_duckdb_analytics", False),
     }
@@ -83,6 +98,8 @@ def _build_settings_from_ui(  # noqa: PLR0913
     show_records: bool,
     media_captures_base_dir: str,
     media_tolerance_minutes: int,
+    media_watcher_enabled: bool,
+    media_watcher_debounce_seconds: int,
     discord_notifications_enabled: bool,
     discord_webhook_url: str,
     discord_lang: str,
@@ -94,6 +111,8 @@ def _build_settings_from_ui(  # noqa: PLR0913
         media_videos_dir="",
         media_captures_base_dir=media_captures_base_dir,
         media_tolerance_minutes=media_tolerance_minutes,
+        media_watcher_enabled=media_watcher_enabled,
+        media_watcher_debounce_seconds=media_watcher_debounce_seconds,
         refresh_clears_caches=refresh_clears_caches,
         repository_mode="duckdb",
         user_timezone=user_timezone,
@@ -143,7 +162,12 @@ def render_settings_page(settings: AppSettings) -> AppSettings:
     refresh_clears_caches, normalize_mode_labels, career_top_exclude_btb, show_records = (
         _render_display_section(settings)
     )
-    media_captures_base_dir, media_tolerance_minutes = _render_media_section(settings)
+    (
+        media_captures_base_dir,
+        media_tolerance_minutes,
+        media_watcher_enabled,
+        media_watcher_debounce_seconds,
+    ) = _render_media_section(settings)
     discord_enabled, discord_url, discord_lang_val = _render_discord_section(settings)
 
     if save_clicked:
@@ -157,6 +181,8 @@ def render_settings_page(settings: AppSettings) -> AppSettings:
             show_records=show_records,
             media_captures_base_dir=str(media_captures_base_dir or ""),
             media_tolerance_minutes=int(media_tolerance_minutes),
+            media_watcher_enabled=bool(media_watcher_enabled),
+            media_watcher_debounce_seconds=int(media_watcher_debounce_seconds),
             discord_notifications_enabled=discord_enabled,
             discord_webhook_url=str(discord_url or ""),
             discord_lang=discord_lang_val,
@@ -281,7 +307,38 @@ def _render_backfill_section(settings: AppSettings) -> dict:
     }
 
 
-def _render_display_section(settings: AppSettings) -> tuple[bool, bool, bool]:
+def _auto_save_show_hints() -> None:
+    """Persiste immédiatement show_hints dès le changement du toggle."""
+    new_val = bool(st.session_state.get("setting_show_hints", True))
+    st.session_state["_hints_visible"] = new_val
+    persist_browser_prefs(show_hints="1" if new_val else "0")
+
+
+def _auto_save_show_records() -> None:
+    """Persiste immédiatement show_records dès le changement du toggle.
+
+    Appelé via on_change : évite la perte de la valeur lors d'une navigation
+    entre pages (st.navigation réinitialise les clés widget au retour).
+    """
+    current: AppSettings | None = st.session_state.get("app_settings")
+    if current is None:
+        return
+    # Utilise la valeur courante des settings comme fallback (jamais True par défaut)
+    new_val = bool(st.session_state.get("setting_show_records", current.show_records))
+    if new_val == current.show_records:
+        return  # Aucun changement réel, ne pas écrire inutilement
+    updated = current.model_copy(update={"show_records": new_val})
+    # Mettre à jour session_state AVANT la vérification du succès fichier.
+    # Si l'écriture disque échoue (verrou Windows, permissions), le toggle
+    # restera cohérent en session. Sans ça, un rechargement ou une reconnexion
+    # WebSocket rechargerait la valeur périmée du disque.
+    st.session_state["app_settings"] = updated
+    ok, err = save_settings(updated)
+    if not ok:
+        st.toast(f"⚠️ Sauvegarde échouée : {err}", icon="⚠️")
+
+
+def _render_display_section(settings: AppSettings) -> tuple[bool, bool, bool, bool]:
     """Rend la section Affichage."""
     st.subheader(t("set_display_section"))
 
@@ -289,21 +346,33 @@ def _render_display_section(settings: AppSettings) -> tuple[bool, bool, bool]:
         t("set_normalize_mode_labels"),
         value=bool(getattr(settings, "normalize_mode_labels", True)),
         help=t("set_normalize_mode_labels_help"),
+        key="setting_normalize_mode_labels",
+    )
+    st.toggle(
+        t("set_show_hints"),
+        value=hints_visible(),
+        help=t("set_show_hints_help"),
+        key="setting_show_hints",
+        on_change=_auto_save_show_hints,
     )
     show_records = st.toggle(
         t("set_show_records"),
         value=bool(getattr(settings, "show_records", True)),
         help=t("set_show_records_help"),
+        key="setting_show_records",
+        on_change=_auto_save_show_records,
     )
     career_top_exclude_btb = st.toggle(
         t("set_career_exclude_btb"),
         value=bool(getattr(settings, "career_top_exclude_btb", False)),
         help=t("set_career_exclude_btb_help"),
+        key="setting_career_top_exclude_btb",
     )
     refresh_clears_caches = st.toggle(
         t("set_clear_cache_title"),
         value=bool(getattr(settings, "refresh_clears_caches", False)),
         help=t("set_clear_cache_help"),
+        key="setting_refresh_clears_caches",
     )
 
     st.divider()
@@ -315,7 +384,7 @@ def _render_display_section(settings: AppSettings) -> tuple[bool, bool, bool]:
     )
 
 
-def _render_media_section(settings: AppSettings) -> tuple[str, int]:
+def _render_media_section(settings: AppSettings) -> tuple[str, int, bool, int]:
     """Rend la section Médias."""
     st.subheader(t("set_media_title"))
 
@@ -333,6 +402,23 @@ def _render_media_section(settings: AppSettings) -> tuple[str, int]:
         value=int(settings.media_tolerance_minutes or 0),
         step=1,
     )
+    media_watcher_enabled = st.toggle(
+        "Watcher automatique (Linux/inotify)",
+        value=bool(getattr(settings, "media_watcher_enabled", True)),
+        key="setting_media_watcher_enabled",
+        help="Sur Linux, surveille le dossier captures en temps réel (inotify). "
+        "Désactiver pour revenir au scan périodique.",
+    )
+    media_watcher_debounce_seconds = st.slider(
+        "Délai avant indexation (secondes)",
+        min_value=1,
+        max_value=60,
+        value=int(getattr(settings, "media_watcher_debounce_seconds", 5) or 5),
+        step=1,
+        disabled=not media_watcher_enabled,
+        help="Attend N secondes d'inactivité après le dernier fichier détecté avant d'indexer. "
+        "Utile pour les copies de gros fichiers vidéo.",
+    )
     if st.button(t("ml_rescan"), key="settings_reset_media_index"):
         from src.config import get_default_db_path
         from src.data.media_indexer import MediaIndexer
@@ -347,7 +433,12 @@ def _render_media_section(settings: AppSettings) -> tuple[str, int]:
                 st.error(t("error_loading", error=e))
 
     st.divider()
-    return str(media_captures_base_dir or ""), int(media_tolerance_minutes)
+    return (
+        str(media_captures_base_dir or ""),
+        int(media_tolerance_minutes),
+        bool(media_watcher_enabled),
+        int(media_watcher_debounce_seconds),
+    )
 
 
 def _render_discord_section(settings: AppSettings) -> tuple[bool, str, str]:
@@ -357,13 +448,19 @@ def _render_discord_section(settings: AppSettings) -> tuple[bool, str, str]:
     discord_enabled = st.toggle(
         t("set_discord_enable"),
         value=bool(getattr(settings, "discord_notifications_enabled", False)),
+        key="setting_discord_enabled",
     )
+    # Détection webhook via .env.local (prioritaire, non affiché pour sécurité)
+    _env_webhook = _resolve_env_webhook()
     discord_url = st.text_input(
         t("set_discord_url"),
         value=str(getattr(settings, "discord_webhook_url", "") or ""),
         disabled=not discord_enabled,
         placeholder="https://discord.com/api/webhooks/...",
+        key="setting_discord_webhook_url",
     )
+    if _env_webhook and not discord_url:
+        st.caption(t("set_discord_url_env_hint"))
     _discord_lang_current = str(getattr(settings, "discord_lang", "fr") or "fr")
     if _discord_lang_current not in ("fr", "en"):
         _discord_lang_current = "fr"

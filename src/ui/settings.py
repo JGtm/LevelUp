@@ -49,6 +49,8 @@ class AppSettings(BaseModel):
     media_tolerance_minutes: int = Field(default=3, ge=0)
     media_indexing_interval_hours: int = Field(default=4, ge=0)  # 0 = run unique au démarrage
     media_reindex_after_sync: bool = True  # Réindexer les médias après chaque sync
+    media_watcher_enabled: bool = True  # Watcher inotify Linux (remplace le thread périodique)
+    media_watcher_debounce_seconds: int = Field(default=5, ge=1, le=60)  # Délai avant indexation
 
     # UX
     refresh_clears_caches: bool = False
@@ -61,7 +63,6 @@ class AppSettings(BaseModel):
     spnkr_refresh_on_manual_refresh: bool = True
     spnkr_refresh_match_type: Literal["all", "matchmaking", "custom", "local"] = "matchmaking"
     spnkr_refresh_max_matches: int = Field(default=200, ge=1)
-    spnkr_refresh_rps: int = Field(default=3, ge=1)
     spnkr_refresh_with_highlight_events: bool = False
 
     # Backfill après synchronisation
@@ -79,12 +80,12 @@ class AppSettings(BaseModel):
     aliases_path: str = ""
     profiles_path: str = ""
 
-    # Profil joueur (bannière/rang) — aucun accès réseau implicite
-    profile_assets_download_enabled: bool = False
+    # Profil joueur (bannière/rang) — télécharge les assets quand les tokens sont dispo
+    profile_assets_download_enabled: bool = True
     profile_assets_auto_refresh_hours: int = Field(default=24, ge=0)  # 0 = désactivé
 
-    # Profil joueur (auto depuis API Waypoint via SPNKr) — opt-in
-    profile_api_enabled: bool = False
+    # Profil joueur (auto depuis API Waypoint via SPNKr)
+    profile_api_enabled: bool = True
     profile_api_auto_refresh_hours: int = Field(default=6, ge=0)
 
     profile_banner: str = ""  # URL https://... ou chemin local
@@ -125,7 +126,9 @@ class AppSettings(BaseModel):
     career_top_exclude_btb: bool = False  # Exclure les matchs BTB du top 10 meilleurs/pires
 
     # Affichage — records historiques
-    show_records: bool = True  # Afficher les barres de records sur les graphes Escouade
+    show_records: bool = (
+        False  # Afficher les barres de records sur les graphes Escouade (expérimental)
+    )
 
     # Affichage — modes de jeu
     normalize_mode_labels: bool = (
@@ -198,7 +201,7 @@ class AppSettings(BaseModel):
         except (ValueError, TypeError):
             return cls.model_fields[info.field_name].default
 
-    @field_validator("spnkr_refresh_max_matches", "spnkr_refresh_rps", mode="before")
+    @field_validator("spnkr_refresh_max_matches", mode="before")
     @classmethod
     def _clamp_positive(cls, v: Any, info: Any) -> int:
         """Convertit en int ≥ 1 avec fallback sur le défaut du champ."""
@@ -256,7 +259,16 @@ def load_settings() -> AppSettings:
 
 def save_settings(settings: AppSettings) -> tuple[bool, str]:
     """Sauvegarde les paramètres dans le fichier JSON."""
-    logger.info("Settings sauvegardées")
+    import traceback as _tb
+
+    _caller = _tb.extract_stack()[-2]
+    logger.info(
+        "save_settings: show_records=%s  [appelé depuis %s:%d %s()]",
+        getattr(settings, "show_records", "?"),
+        _caller.filename.split("\\")[-1].split("/")[-1],
+        _caller.lineno,
+        _caller.name,
+    )
     path = get_settings_path()
     try:
         os.makedirs(os.path.dirname(path) or ".", exist_ok=True)

@@ -406,3 +406,109 @@ class TestRenderCumulativePerformance:
 
         # st.info doit être appelé (ts_trend_min_matches + ts_nph_unavailable)
         assert ms.calls["info"].call_count >= 1
+
+
+# =============================================================================
+# Tests de la fusion Victoires/Défaites → Séries (v6.3)
+# =============================================================================
+
+
+class TestMergedPageSignature:
+    """Vérifie que render_timeseries_page accepte les nouveaux paramètres de win_loss."""
+
+    def test_accepts_base_and_session_params(self, mock_st) -> None:
+        """render_timeseries_page ne lève pas si base/picked_session_labels/db_key sont passés."""
+        from src.ui.pages import timeseries as mod
+
+        ms = mock_st(mod)
+        ms.set_columns_dynamic()
+        dff = _make_timeseries_df(10)
+        base_df = _make_timeseries_df(20)
+
+        with patch.object(mod, "TimeseriesService") as mock_svc:
+            mock_svc.enrich_performance_score.return_value = dff
+            cumul = MagicMock()
+            cumul.has_enough_for_trend = False
+            mock_svc.compute_cumulative_metrics.return_value = cumul
+            mock_svc.compute_rolling_net_score_per_hour.return_value = None
+            mock_svc.compute_cumulative_kd_with_ci.return_value = None
+            mock_svc.compute_ewma_kd.return_value = dff
+            mock_svc.compute_linear_regression_kd.return_value = {
+                "slope": 0.0,
+                "r_squared": 0.0,
+                "is_significant": False,
+                "trend": "stable",
+                "y_hat": [],
+                "x_labels": [],
+            }
+            first_ev = MagicMock()
+            first_ev.available = False
+            mock_svc.load_first_event_times.return_value = first_ev
+            pk = MagicMock()
+            pk.counts = {}
+            mock_svc.load_perfect_kills.return_value = pk
+
+            # Ne doit pas lever d'exception
+            mod.render_timeseries_page(
+                dff,
+                df_full=base_df,
+                base=base_df,
+                picked_session_labels=["Session 1"],
+                db_path=None,
+                xuid=None,
+                db_key=None,
+            )
+
+    def test_base_defaults_to_dff_when_none(self, mock_st) -> None:
+        """Quand base=None, base_df est initialisé depuis dff (pas d'erreur)."""
+        from src.ui.pages import timeseries as mod
+
+        mock_st(mod)
+        dff = pl.DataFrame(schema={"match_id": pl.Utf8})
+
+        # DataFrame vide → warning immédiat, pas de crash sur base=None
+        mod.render_timeseries_page(dff, base=None)
+        # Vérifie que la page n'explose pas si base n'est pas fourni
+
+
+class TestWinLossIntegration:
+    """Vérifie que les fonctions win_loss s'importent bien et sont accessibles depuis timeseries."""
+
+    def test_win_loss_functions_importable_from_timeseries(self) -> None:
+        """Les helpers win_loss réexportés dans timeseries.py sont bien présents."""
+        from src.ui.pages import timeseries as mod
+
+        for name in [
+            "_render_outcomes_over_time",
+            "_render_streak_section",
+            "_render_map_mode_breakdown",
+            "_render_winrate_perf_vs_history",
+            "_render_wl_heatmap_section",
+            "_render_top_by_week",
+            "_render_personal_score_section",
+        ]:
+            assert hasattr(mod, name), f"{name} manquant dans timeseries.py"
+            assert callable(getattr(mod, name))
+
+    def test_win_loss_module_still_importable(self) -> None:
+        """win_loss.py reste importable (utilisé comme bibliothèque)."""
+        import importlib
+
+        mod = importlib.import_module("src.ui.pages.win_loss")
+        assert mod is not None
+        assert callable(mod.render_win_loss_page)
+
+
+class TestPageRouterNoWinLoss:
+    """Vérifie que win_loss a été retiré de la navigation."""
+
+    def test_win_loss_not_in_page_keys(self) -> None:
+        from src.app.page_router import PAGE_KEYS
+
+        assert "win_loss" not in PAGE_KEYS, "win_loss ne doit plus figurer dans PAGE_KEYS"
+
+    def test_legacy_redirect_points_to_timeseries(self) -> None:
+        """L'ancienne URL Victoires/Défaites redirige vers timeseries."""
+        from src.app.page_router import _LEGACY_NAME_TO_SLUG
+
+        assert _LEGACY_NAME_TO_SLUG.get("Victoires/Défaites") == "timeseries"
