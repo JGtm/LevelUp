@@ -3,6 +3,19 @@
 > Ce fichier capture le raisonnement de l'agent entre les sessions.
 > Archivé : 2026-02-01 (logs précédents dans `.ai/archive/thought_log_pre_phase6.md`)
 
+## [2026-04-08] release(v6.4.0): merge feat/demo-mode → main + tag — Complété
+
+**Statut** : Complété · Tag `v6.4.0` poussé sur `origin/main`
+
+**Décision technique principale** : Avant le merge, 2 tests échouaient dans `tests/ui/test_settings_page.py` : le toggle `show_hints` avait été ajouté à `_render_display_section` (5 toggles au lieu de 4). Correction : mise à jour du count attendu (4→5) et de l'index du toggle `career_top_exclude_btb` (2→3).
+
+**Résultats** :
+- Suite complète : 6012 tests — 0 échec
+- Merge `--no-ff` dans `main`, tag annoté `v6.4.0` créé
+- Push `origin/main` + `origin/v6.4.0` → release GitHub déclenchée
+
+**Prochaine étape** : Vérifier que la GitHub Action de release/deploy s'est bien déclenchée sur le tag `v6.4.0`.
+
 ## [2026-04-08] fix(demo): wizard + bind mount stale + sync_meta.xuid — Complété
 
 **Statut** : Complété · Poussé sur `feat/demo-mode` (commits `f0b9d73b`, `e02c8ea5`)
