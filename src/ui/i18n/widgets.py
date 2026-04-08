@@ -201,6 +201,10 @@ STRINGS: dict[str, dict[str, str] | str] = {
     # ── Match history ─────────────────────────────────────────────────────────
     "mh_no_matches": "no_matches",  # alias → common
     # ── Sidebar — sync ──────────────────────────────────────────────────────
+    "demo_banner": {
+        "fr": "**Mode démo** — 50 matchs · Synchronisation désactivée",
+        "en": "**Demo mode** — 50 matches · Sync disabled",
+    },
     "demo_sync_disabled": {
         "fr": "Mode démo — synchronisation désactivée.",
         "en": "Demo mode — sync disabled.",
