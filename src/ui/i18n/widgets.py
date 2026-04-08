@@ -201,6 +201,10 @@ STRINGS: dict[str, dict[str, str] | str] = {
     # ── Match history ─────────────────────────────────────────────────────────
     "mh_no_matches": "no_matches",  # alias → common
     # ── Sidebar — sync ──────────────────────────────────────────────────────
+    "demo_sync_disabled": {
+        "fr": "Mode démo — synchronisation désactivée.",
+        "en": "Demo mode — sync disabled.",
+    },
     "sidebar_sync_btn": {"fr": "🔄 Synchroniser", "en": "🔄 Sync"},
     "sidebar_sync_help": {
         "fr": "Synchronise tous les joueurs (nouveaux matchs, highlights, aliases).",

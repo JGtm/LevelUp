@@ -979,6 +979,15 @@ def main() -> None:
     # 1. Initialisation (config, CSS, settings, validation)
     settings, DEFAULT_DB, cfg_warnings, cfg_errors = _initialize_app()
 
+    # 1a. Bandeau mode démo (affiché avant tout contenu)
+    from src.utils.demo import is_demo_mode
+
+    if is_demo_mode():
+        st.info(
+            "🎮 **Mode démo** — 50 matchs · Données non personnelles · Synchronisation désactivée",
+            icon="ℹ️",
+        )
+
     # 1b. Wizard de configuration initiale si config incomplète
     from src.ui.pages.setup_wizard_logic import get_setup_status
 
