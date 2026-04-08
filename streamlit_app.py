@@ -57,12 +57,6 @@ from src.app.helpers import (
     clean_asset_label,
     date_range,
 )
-
-# Phase 5 refactoring: KPIs et Filtres
-from src.app.kpis_render import (
-    render_kpis_section,
-    render_performance_info,
-)
 from src.app.main_helpers import (
     load_match_dataframe,
     load_profile_api,
@@ -468,8 +462,15 @@ def _render_main_sidebar(db_path: str, xuid: str, settings: AppSettings) -> tupl
         new_lang = "fr" if picked_lang == "🇫🇷" else "en"
         if new_lang != current_lang:
             set_lang(new_lang)
-            settings.lang = new_lang
-            save_settings(settings)
+            # Lire session_state["app_settings"] en direct plutôt que d'utiliser
+            # le paramètre `settings` (potentiellement périmé si un on_change a
+            # créé un nouvel objet via model_copy depuis le dernier rerun).
+            _ss_settings = st.session_state.get(SK.APP_SETTINGS, settings)
+            if not isinstance(_ss_settings, type(settings)):
+                _ss_settings = settings
+            _ss_settings.lang = new_lang
+            save_settings(_ss_settings)
+            st.session_state[SK.APP_SETTINGS] = _ss_settings
             persist_browser_prefs(lang=new_lang)
             st.rerun()
 
@@ -722,10 +723,6 @@ def _load_and_prepare_data(  # noqa: PLR0913
     gap_minutes = filter_state.gap_minutes
     picked_session_labels = filter_state.picked_session_labels
     base_s_ui = filter_state.base_s_ui
-
-    # KPIs
-    render_kpis_section(dff, df)
-    render_performance_info()
 
     # Paramètres communs pour les pages de match
     _match_view_params = build_match_view_params(

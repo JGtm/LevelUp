@@ -148,3 +148,5 @@ def restore_hints_from_prefs(prefs: dict) -> None:
     if raw is not None:
         st.session_state[_HINTS_SS_KEY] = str(raw) != "0"
         logger.debug("Aides à la lecture restaurées : %s", st.session_state[_HINTS_SS_KEY])
+    else:
+        logger.debug("Aides à la lecture : clé absente de ui_prefs.json, défaut True conservé")

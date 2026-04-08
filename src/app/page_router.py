@@ -24,10 +24,10 @@ logger = logging.getLogger(__name__)
 PAGE_KEYS: list[str] = [
     "timeseries",
     "session_compare",
+    "teammates",
     "last_match",
     "media",
     "citations",
-    "teammates",
     "explorer",
     "match_history",
     "career",
@@ -212,6 +212,7 @@ def render_page_selector_nav(
         options=titles,
         default=current_title,
         label_visibility="collapsed",
+        width="stretch",
     )
 
     if selected and selected != current_title:

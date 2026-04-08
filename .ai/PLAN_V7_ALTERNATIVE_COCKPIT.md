@@ -157,8 +157,7 @@ Je propose une hiérarchie de décision en trois niveaux :
 - drill-down inline de `render_match_view()`
 
 **Ce qui peut être réutilisé :**
-- `timeseries.py`
-- `win_loss.py`
+- `timeseries.py` (fusionné avec `win_loss.py` en v6.4 — 5 onglets : Résumé, Cartes & Modes, Distributions, Progression, Avancé)
 - `match_history.py`
 - `session_compare.py`
 
@@ -519,7 +518,7 @@ Vue d'ensemble | Performance | Historique | Sessions | Matchs
 | Bloc | Source | Rôle |
 |---|---|---|
 | S8 — Historique filtré | Existant recomposé | Lire la suite des matchs dans un contexte stable |
-| S9 — Win/Loss et tendances longues | Existant recomposé | Conserver la lecture historique sans disperser la navigation |
+| S9 — Win/Loss et tendances longues | Existant recomposé — onglet `ts_tab_maps` de `timeseries.py` (fusion v6.4) | Conserver la lecture historique sans disperser la navigation |
 
 **Sessions**
 

@@ -317,9 +317,14 @@ def _auto_save_show_records() -> None:
     if new_val == current.show_records:
         return  # Aucun changement réel, ne pas écrire inutilement
     updated = current.model_copy(update={"show_records": new_val})
-    ok, _ = save_settings(updated)
-    if ok:
-        st.session_state["app_settings"] = updated
+    # Mettre à jour session_state AVANT la vérification du succès fichier.
+    # Si l'écriture disque échoue (verrou Windows, permissions), le toggle
+    # restera cohérent en session. Sans ça, un rechargement ou une reconnexion
+    # WebSocket rechargerait la valeur périmée du disque.
+    st.session_state["app_settings"] = updated
+    ok, err = save_settings(updated)
+    if not ok:
+        st.toast(f"⚠️ Sauvegarde échouée : {err}", icon="⚠️")
 
 
 def _render_display_section(settings: AppSettings) -> tuple[bool, bool, bool, bool]:
