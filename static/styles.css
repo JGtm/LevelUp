@@ -769,6 +769,25 @@ section.main:after {
     object-fit: contain;
 }
 
+/* Adornment : image du rang, ancrée à droite de la nameplate (par-dessus) */
+.spartan-id__adornment {
+    position: absolute;
+    right: -41px;
+    top: 50%;
+    transform: translateY(-50%);
+    z-index: 4;
+    height: 180px;
+    width: 180px;
+    pointer-events: none;
+}
+
+.spartan-id__adornment img {
+    height: 100%;
+    width: 100%;
+    object-fit: contain;
+    filter: drop-shadow(0 2px 6px rgba(0, 0, 0, 0.6));
+}
+
 /* Texte : gamertag + service tag, à droite de l'emblème */
 .spartan-id__text {
     position: absolute;

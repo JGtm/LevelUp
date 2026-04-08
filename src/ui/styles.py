@@ -45,7 +45,7 @@ def load_css() -> str:
         """
 
 
-def get_hero_html(  # noqa: PLR0913
+def get_hero_html(  # noqa: PLR0913, C901
     *,
     player_name: str | None = None,
     service_tag: str | None = None,
@@ -122,6 +122,13 @@ def get_hero_html(  # noqa: PLR0913
             f"<div class='spartan-id__emblem'><img src='{emblem_data}' alt='emblem' /></div>"
         )
 
+    # Adornment sur le côté droit de la bannière
+    banner_adornment_html = ""
+    if adornment_data:
+        banner_adornment_html = (
+            f"<div class='spartan-id__adornment'><img src='{adornment_data}' alt='' /></div>"
+        )
+
     # Service tag
     service_tag_html = ""
     if safe_service_tag:
@@ -189,6 +196,7 @@ def get_hero_html(  # noqa: PLR0913
         f"      <div class='spartan-id__gamertag'>{safe_player}</div>"
         f"      {service_tag_html}"
         "    </div>"
+        f"    {banner_adornment_html}"
         "  </div>"
         "</div>"
     )
