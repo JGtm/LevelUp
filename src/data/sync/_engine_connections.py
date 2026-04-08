@@ -15,8 +15,9 @@ import duckdb
 
 logger = logging.getLogger(__name__)
 
-# Guard process-level : évite de relancer les migrations shared à chaque SyncEngine
+# Guards process-level : évite de relancer les migrations à chaque SyncEngine
 _SHARED_MIGRATIONS_DONE: set[str] = set()
+_PVE_MIGRATIONS_DONE: set[str] = set()
 
 
 def _get_pending_events_ids(shared_conn: duckdb.DuckDBPyConnection) -> set[str]:
@@ -125,8 +126,7 @@ def _bootstrap_shared_matches_db(db_path) -> None:  # type: ignore[no-untyped-de
 
     path = pathlib.Path(db_path)
     path.parent.mkdir(parents=True, exist_ok=True)
-    conn = duckdb.connect(str(path), read_only=False)
-    try:
+    with duckdb.connect(str(path), read_only=False) as conn:
         for stmt in _SHARED_SCHEMA_SQL.split(";"):
             s = stmt.strip()
             if s:
@@ -137,8 +137,6 @@ def _bootstrap_shared_matches_db(db_path) -> None:  # type: ignore[no-untyped-de
             "VALUES (1, 'v5.0 — Création initiale du schéma shared_matches')"
         )
         logger.info("shared_matches_v2.duckdb initialisé : %s", path)
-    finally:
-        conn.close()
 
 
 class ConnectionMixin:
@@ -229,7 +227,13 @@ class ConnectionMixin:
         conn: duckdb.DuckDBPyConnection,
         db_path: Path | None = None,
     ) -> None:
-        """Applique les migrations sur la connexion shared."""
+        """Applique les migrations inline sur la connexion shared.
+
+        NOTE: ces migrations coexistent avec le runner formel (migration/runner.py).
+        Toutes les fonctions appelées ici sont idempotentes (IF NOT EXISTS / CREATE OR REPLACE).
+        Le runner trace l'état dans schema_migrations ; ici le guard est process-level uniquement.
+        À terme, ces migrations inline devront être absorbées par le runner.
+        """
         # Guard process-level : clé = chemin résolu pour éviter collision entre
         # fichiers différents portant le même nom (ex. fixtures de test)
         db_key: str | None = None
@@ -245,42 +249,32 @@ class ConnectionMixin:
                 logger.debug("event=db_key_current_database_failed error=%s", e)
         if db_key and db_key in _SHARED_MIGRATIONS_DONE:
             return
-        if db_key:
-            _SHARED_MIGRATIONS_DONE.add(db_key)
-        try:
-            from src.data.sync.migrations import ensure_match_participants_columns
 
-            ensure_match_participants_columns(conn)
-        except Exception as e:
-            logger.debug("Migration match_participants shared: %s", e)
+        # Migrations best-effort (échec toléré, ne bloque pas le marquage)
+        for mig_name in (
+            "ensure_match_participants_columns",
+            "ensure_performance_indexes",
+            "ensure_match_registry_spnkr_version",
+            "ensure_weapon_kills_table",
+        ):
+            try:
+                mod = __import__("src.data.sync.migrations", fromlist=[mig_name])
+                getattr(mod, mig_name)(conn)
+            except Exception as e:
+                logger.debug("Migration %s shared: %s", mig_name, e)
 
-        try:
-            from src.data.sync.migrations import ensure_performance_indexes
-
-            ensure_performance_indexes(conn)
-        except Exception as e:
-            logger.debug("Index performance shared: %s", e)
-
-        try:
-            from src.data.sync.migrations import ensure_match_registry_spnkr_version
-
-            ensure_match_registry_spnkr_version(conn)
-        except Exception as e:
-            logger.debug("Migration sync_spnkr_version shared: %s", e)
-
-        try:
-            from src.data.sync.migrations import ensure_weapon_kills_table
-
-            ensure_weapon_kills_table(conn)
-        except Exception as e:
-            logger.warning("Migration weapon_kills shared: %s", e)
-
+        # Migration critique (construit les vues v6 — dépend de metadata)
         try:
             from src.data.sync.migrations import ensure_resolution_views
 
             ensure_resolution_views(conn)
         except Exception as e:
-            logger.warning("ensure_resolution_views shared: %s", e)
+            logger.warning("ensure_resolution_views échouée — retry au prochain appel: %s", e)
+            return  # PAS de add() → le prochain SyncEngine retentera
+
+        # Succès confirmé : marquer la DB comme migrée
+        if db_key:
+            _SHARED_MIGRATIONS_DONE.add(db_key)
 
     def _get_pve_connection(self) -> duckdb.DuckDBPyConnection:
         """Retourne (lazy) la connexion vers shared_pve.duckdb."""
@@ -291,12 +285,15 @@ class ConnectionMixin:
         self._pve_connection = duckdb.connect(str(self._pve_db_path), read_only=False)
         self._pve_connection.execute("SET enable_object_cache = true")
 
-        try:
-            from src.data.sync.migrations import ensure_pve_schema
+        pve_key = str(self._pve_db_path.resolve())
+        if pve_key not in _PVE_MIGRATIONS_DONE:
+            try:
+                from src.data.sync.migrations import ensure_pve_schema
 
-            ensure_pve_schema(self._pve_connection)
-        except Exception as e:
-            logger.warning("ensure_pve_schema: %s", e)
+                ensure_pve_schema(self._pve_connection)
+            except Exception as e:
+                logger.warning("ensure_pve_schema: %s", e)
+            _PVE_MIGRATIONS_DONE.add(pve_key)
 
         return self._pve_connection
 
