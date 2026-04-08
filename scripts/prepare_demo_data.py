@@ -43,60 +43,35 @@ def _extract_shared(
 
     ids_literal = ", ".join(f"'{mid}'" for mid in match_ids)
 
-    with (
-        duckdb.connect(str(src_shared), read_only=True) as src,
-        duckdb.connect(str(out_shared)) as dst,
-    ):
-        # match_registry
-        rows = src.execute(
-            f"SELECT * FROM match_registry WHERE match_id IN ({ids_literal})"
-        ).fetchall()
-        cols = [d[0] for d in src.description]  # type: ignore[union-attr]
-        _insert_rows(dst, "match_registry", cols, rows, src, "match_registry")
+    _shared_tables = [
+        ("match_registry", f"match_id IN ({ids_literal})"),
+        ("match_participants", f"match_id IN ({ids_literal})"),
+        ("medals_earned", f"match_id IN ({ids_literal})"),
+        ("highlight_events", f"match_id IN ({ids_literal})"),
+        ("weapon_kills", f"match_id IN ({ids_literal})"),
+        (
+            "xuid_aliases",
+            f"""xuid IN (
+                SELECT DISTINCT xuid FROM match_participants
+                WHERE match_id IN ({ids_literal})
+            )""",
+        ),
+    ]
 
-        # match_participants
-        rows = src.execute(
-            f"SELECT * FROM match_participants WHERE match_id IN ({ids_literal})"
-        ).fetchall()
-        _insert_rows(dst, "match_participants", cols, rows, src, "match_participants")
+    with duckdb.connect(str(out_shared)) as dst:
+        dst.execute(f"ATTACH '{src_shared}' AS src (READ_ONLY)")
 
-        # medals_earned
-        rows = src.execute(
-            f"SELECT * FROM medals_earned WHERE match_id IN ({ids_literal})"
-        ).fetchall()
-        _insert_rows(dst, "medals_earned", cols, rows, src, "medals_earned")
+        for table, where in _shared_tables:
+            dst.execute(f"CREATE TABLE {table} AS SELECT * FROM src.{table} WHERE {where}")
+            count = dst.execute(f"SELECT COUNT(*) FROM {table}").fetchone()[0]  # type: ignore[index]
+            print(f"    {table}: {count} lignes insérées")
 
-        # highlight_events
-        rows = src.execute(
-            f"SELECT * FROM highlight_events WHERE match_id IN ({ids_literal})"
-        ).fetchall()
-        _insert_rows(dst, "highlight_events", cols, rows, src, "highlight_events")
+        dst.execute("DETACH src")
 
-        # weapon_kills
-        rows = src.execute(
-            f"SELECT * FROM weapon_kills WHERE match_id IN ({ids_literal})"
-        ).fetchall()
-        _insert_rows(dst, "weapon_kills", cols, rows, src, "weapon_kills")
-
-        # xuid_aliases — seulement les xuids présents dans les matchs extraits
-        rows = src.execute(
-            f"""
-                SELECT DISTINCT xa.*
-                FROM xuid_aliases xa
-                JOIN match_participants mp ON mp.xuid = xa.xuid
-                WHERE mp.match_id IN ({ids_literal})
-                """
-        ).fetchall()
-        _insert_rows(dst, "xuid_aliases", cols, rows, src, "xuid_aliases")
-
-        # Anonymiser le gamertag source → "DEMO" dans xuid_aliases
+        # Anonymiser le gamertag source → "DEMO"
+        dst.execute("UPDATE xuid_aliases SET gamertag = 'DEMO' WHERE xuid = ?", (source_xuid,))
         dst.execute(
-            "UPDATE xuid_aliases SET gamertag = 'DEMO' WHERE xuid = ?",
-            (source_xuid,),
-        )
-        dst.execute(
-            "UPDATE match_participants SET gamertag = 'DEMO' WHERE xuid = ?",
-            (source_xuid,),
+            "UPDATE match_participants SET gamertag = 'DEMO' WHERE xuid = ?", (source_xuid,)
         )
 
         # Vues V6 — réutiliser la fonction de migration officielle
@@ -111,36 +86,6 @@ def _extract_shared(
     print("  [shared] OK")
 
 
-def _insert_rows(
-    dst: duckdb.DuckDBPyConnection,
-    table: str,
-    _placeholder_cols: list[str],
-    rows: list,
-    src: duckdb.DuckDBPyConnection,
-    src_table: str,
-) -> None:
-    """Recrée la table dst depuis src (schéma + données filtrées)."""
-    # Récupérer le DDL depuis src
-    ddl = src.execute(
-        "SELECT sql FROM duckdb_tables() WHERE table_name = ?", (src_table,)
-    ).fetchone()
-    if ddl and ddl[0]:
-        dst.execute(ddl[0])
-    else:
-        # Fallback : CREATE TABLE AS SELECT avec 0 ligne pour copier le schéma
-        dst.execute(f"CREATE TABLE IF NOT EXISTS {table} AS SELECT * FROM src.{src_table} LIMIT 0")
-
-    if not rows:
-        return
-
-    # Récupérer les colonnes du src pour construire l'INSERT
-    src.execute(f"SELECT * FROM {src_table} LIMIT 0")
-    cols = [d[0] for d in src.description]  # type: ignore[union-attr]
-    placeholders = ", ".join("?" * len(cols))
-    dst.executemany(f"INSERT INTO {table} VALUES ({placeholders})", rows)
-    print(f"    {table}: {len(rows)} lignes insérées")
-
-
 def _extract_player(
     src_player: Path,
     out_player: Path,
@@ -152,22 +97,26 @@ def _extract_player(
 
     ids_literal = ", ".join(f"'{mid}'" for mid in match_ids)
 
-    with (
-        duckdb.connect(str(src_player), read_only=True) as src,
-        duckdb.connect(str(out_player)) as dst,
-    ):
-        for table, where in [
-            ("player_match_enrichment", f"match_id IN ({ids_literal})"),
-            ("match_citations", f"match_id IN ({ids_literal})"),
-            ("sessions", "1=1"),
-            ("career_progression", "1=1"),
-            ("sync_meta", "key NOT IN ('msal_token_cache')"),
-        ]:
+    _player_tables = [
+        ("player_match_enrichment", f"match_id IN ({ids_literal})"),
+        ("match_citations", f"match_id IN ({ids_literal})"),
+        ("sessions", "1=1"),
+        ("career_progression", "1=1"),
+        ("sync_meta", "key NOT IN ('msal_token_cache')"),
+    ]
+
+    with duckdb.connect(str(out_player)) as dst:
+        dst.execute(f"ATTACH '{src_player}' AS src (READ_ONLY)")
+
+        for table, where in _player_tables:
             try:
-                rows = src.execute(f"SELECT * FROM {table} WHERE {where}").fetchall()
-                _insert_rows(dst, table, [], rows, src, table)
+                dst.execute(f"CREATE TABLE {table} AS SELECT * FROM src.{table} WHERE {where}")
+                count = dst.execute(f"SELECT COUNT(*) FROM {table}").fetchone()[0]  # type: ignore[index]
+                print(f"    {table}: {count} lignes insérées")
             except Exception as exc:
                 print(f"    [warn] {table}: {exc}")
+
+        dst.execute("DETACH src")
 
         # Vues matérialisées (player) — recréer via la migration officielle
         from src.data.sync.migrations import ensure_player_materialized_views
