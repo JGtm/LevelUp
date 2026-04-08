@@ -546,8 +546,10 @@ def _render_main_sidebar(db_path: str, xuid: str, settings: AppSettings) -> tupl
                 apply_filter_preferences(xuid, db_path)
                 st.rerun()
 
-        # Bouton Sync
-        if db_path and is_spnkr_db_path(db_path) and os.path.exists(db_path):  # noqa: SIM102
+        # Bouton Sync (masqué en mode démo — sync désactivé)
+        from src.utils.demo import is_demo_mode as _is_demo
+
+        if not _is_demo() and db_path and is_spnkr_db_path(db_path) and os.path.exists(db_path):  # noqa: SIM102
             is_syncing = st.session_state.get(SK.IS_SYNCING, False)
             if st.button(
                 t("sidebar_sync_btn"),

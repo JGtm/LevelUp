@@ -11,6 +11,7 @@ Utilisation :
 from __future__ import annotations
 
 import argparse
+import contextlib
 import json
 import os
 import shutil
@@ -70,10 +71,11 @@ def _extract_shared(
 
         dst.execute("DETACH src")
 
-        # Anonymiser le gamertag source → "DEMO"
-        dst.execute("UPDATE xuid_aliases SET gamertag = 'DEMO' WHERE xuid = ?", (source_xuid,))
+        # Le gamertag source est conservé tel quel (données du propriétaire)
+        # Seul le xuid est remplacé par une valeur anonyme
+        dst.execute("UPDATE xuid_aliases SET xuid = ? WHERE xuid = ?", (demo_xuid, source_xuid))
         dst.execute(
-            "UPDATE match_participants SET gamertag = 'DEMO' WHERE xuid = ?", (source_xuid,)
+            "UPDATE match_participants SET xuid = ? WHERE xuid = ?", (demo_xuid, source_xuid)
         )
 
         # Vues V6 — réutiliser la fonction de migration officielle
@@ -103,6 +105,8 @@ def _extract_player(
     src_player: Path,
     out_player: Path,
     match_ids: list[str],
+    source_xuid: str = "",
+    demo_xuid: str = "",
 ) -> None:
     """Extrait player_match_enrichment, match_citations, sessions filtrés sur match_ids."""
     out_player.parent.mkdir(parents=True, exist_ok=True)
@@ -131,6 +135,15 @@ def _extract_player(
                 print(f"    [warn] {table}: {exc}")
 
         dst.execute("DETACH src")
+
+        # Remplacer le xuid réel par le xuid démo dans les tables joueur
+        if source_xuid and demo_xuid:
+            for tbl in ("player_match_enrichment", "match_skill_rank"):
+                with contextlib.suppress(Exception):
+                    dst.execute(
+                        f"UPDATE {tbl} SET xuid = ? WHERE xuid = ?",  # noqa: S608
+                        (demo_xuid, source_xuid),
+                    )
 
     print("  [player] OK")
 
@@ -245,7 +258,9 @@ def _extract_media(
     return extracted
 
 
-def _write_configs(out_dir: Path, demo_xuid: str, *, media_enabled: bool = False) -> None:
+def _write_configs(
+    out_dir: Path, demo_xuid: str, gamertag: str = "DEMO", *, media_enabled: bool = False
+) -> None:
     """Génère db_profiles.json et app_settings.json pour le mode démo."""
     profiles = {
         "version": "2.1",
@@ -255,7 +270,7 @@ def _write_configs(out_dir: Path, demo_xuid: str, *, media_enabled: bool = False
             "DEMO": {
                 "db_path": "data/players/DEMO/stats.duckdb",
                 "xuid": demo_xuid,
-                "waypoint_player": "DEMO",
+                "waypoint_player": gamertag,
             }
         },
     }
@@ -367,7 +382,7 @@ def main() -> None:
     # 4. Extraire stats.duckdb joueur
     print("\n[4/5] Extraction stats.duckdb joueur…")
     out_player_db = out_dir / "players" / "DEMO" / "stats.duckdb"
-    _extract_player(src_player_db, out_player_db, match_ids)
+    _extract_player(src_player_db, out_player_db, match_ids, source_xuid, demo_xuid)
 
     # 4b. Extraire médias (optionnel, 5 clips max)
     print("\n  [4b] Extraction médias…")
@@ -376,7 +391,7 @@ def main() -> None:
 
     # 5. Écrire les fichiers de config
     print("\n[5/5] Génération des fichiers de configuration…")
-    _write_configs(out_dir, demo_xuid, media_enabled=media_count > 0)
+    _write_configs(out_dir, demo_xuid, gamertag=gamertag, media_enabled=media_count > 0)
 
     print(f"\n✅ Données démo prêtes dans {out_dir}")
     print("   Lancer le conteneur : docker compose up -d levelup-demo")
