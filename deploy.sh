@@ -49,7 +49,7 @@ import sys, json
 try:
     data = json.load(sys.stdin)
     errors = [r['db_name'] for r in data if r['status'] == 'error']
-    warnings = [r['db_name'] for r in data if r['status'] == 'warning']
+    warnings = [r['db_name'] for r in data if r['status'] in ('warning', 'repaired')]
     if errors:
         print('ERROR:' + ','.join(errors))
     elif warnings:
