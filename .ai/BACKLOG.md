@@ -188,20 +188,6 @@ Trois types de kills clutch, par ordre de fiabilité :
 
 ---
 
-## ❓ À détailler par l'utilisateur
-
-> Ces items sont trop vagues pour être implémentés sans plus de contexte. Décrire le comportement attendu avant de les planifier.
-
----
-
-### [?] Revue de code par ChatGPT
-
-**Noté le** : 2026-04-03
-
-Processus/outillage à clarifier : quels fichiers ? quel périmètre ? via API ou copier-coller manuel ? objectif de la revue (sécurité, qualité, style) ?
-
----
-
 ## ✅ Récemment complété (référence)
 
 | Date | Item |
