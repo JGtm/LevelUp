@@ -698,11 +698,11 @@ class TestHintsVisible:
         assert fake_st.session_state.get("_hints_visible") is True
 
     def test_on_hints_toggle_persists_to_prefs(self, monkeypatch: pytest.MonkeyPatch) -> None:
-        """Le callback _on_hints_toggle met à jour session_state et appelle persist."""
+        """Le callback _auto_save_show_hints (settings) met à jour session_state et appelle persist."""
         import src.ui.components.browser_storage as bs
 
         fake_st = self._make_fake_st()
-        fake_st.session_state["_sidebar_hints_toggle"] = False  # user vient de décocher
+        fake_st.session_state["setting_show_hints"] = False  # user vient de décocher
 
         mock_write = MagicMock()
         monkeypatch.setattr(bs, "_write_prefs", mock_write)
@@ -713,8 +713,8 @@ class TestHintsVisible:
 
             monkeypatch.setattr(st_real, "session_state", fake_st.session_state)
 
-            # Reproduire la logique _on_hints_toggle de streamlit_app.py
-            new_val = bool(st_real.session_state.get("_sidebar_hints_toggle", True))
+            # Reproduire la logique _auto_save_show_hints de settings.py
+            new_val = bool(st_real.session_state.get("setting_show_hints", True))
             st_real.session_state["_hints_visible"] = new_val
             bs.persist_browser_prefs(show_hints="1" if new_val else "0")
 

@@ -13,8 +13,12 @@ sont déléguées aux sous-modules :
 
 from __future__ import annotations
 
+import logging
+
 import polars as pl
 import streamlit as st
+
+logger = logging.getLogger(__name__)
 
 from src.app._filters_friends import build_teammates_opts_map
 from src.app.kpis_render import render_kpis_section
@@ -207,6 +211,11 @@ def render_teammates_page(  # noqa: PLR0912, PLR0913, PLR0915
     top_medals_fn,
 ) -> None:
     """Affiche la page Mes coéquipiers."""
+    logger.debug(
+        "render_teammates_page: dff=%d matchs, session_scope=%s",
+        len(ensure_polars(dff)),
+        bool(picked_session_labels),
+    )
     df = ensure_polars(df)
     dff = ensure_polars(dff)
     base = ensure_polars(base)
