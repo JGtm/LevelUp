@@ -49,6 +49,7 @@ def _extract_shared(
         ("medals_earned", f"match_id IN ({ids_literal})"),
         ("highlight_events", f"match_id IN ({ids_literal})"),
         ("weapon_kills", f"match_id IN ({ids_literal})"),
+        ("killer_victim_pairs", f"match_id IN ({ids_literal})"),
         (
             "xuid_aliases",
             f"""xuid IN (
