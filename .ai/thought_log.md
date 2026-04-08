@@ -3,6 +3,24 @@
 > Ce fichier capture le raisonnement de l'agent entre les sessions.
 > Archivé : 2026-02-01 (logs précédents dans `.ai/archive/thought_log_pre_phase6.md`)
 
+## [2026-04-08] feat(ui): système Aides à la lecture — Complété
+
+**Tâche** : Rendre les ~45 aides à la lecture (légendes, captions, notes, tips) optionnelles via un toggle sidebar persisté.
+
+**Décisions techniques** :
+1. **`hints_visible()` + `restore_hints_from_prefs()`** dans `browser_storage/__init__.py` — lecture/écriture de `show_hints` dans `ui_prefs.json`, valeur par défaut `True`
+2. **Checkbox sidebar** dans `streamlit_app.py` avec `on_change=_on_hints_toggle` et `persist_browser_prefs(show_hints=...)`
+3. **5 popovers** : `st.expander` → `st.popover` pour légendes badges (match_view_players, teammates_impact, encounters, career_top_matches)
+4. **~28 guards `if hints_visible():`** dans 13 fichiers pour captions/notes/tips
+5. **Radar adaptatif** : `if hints_visible(): st.columns([2,1])` sinon plein écran (3 occurrences)
+6. **Fix qualité** : SIM102 (ifs imbriqués fusionnés), PLR0912 (helper extrait), F401 (imports nettoyés), I001 (isort)
+
+**Résultats** : 5930 tests passés, 0 failed. Ruff propre. Baseline taille mis à jour (décalages de lignes sur dette préexistante).
+
+**Conclusion** : Feature commitée (`7dc47e82`). Prête pour PR. Les pré-commits v6.4.0 (fusion win_loss→timeseries) ont été commités séparément (`31027c62`).
+
+---
+
 ## [2026-04-08] feat(ui): fusion page Victoires/Défaites dans page Séries — Complété
 
 **Tâche** : Fusionner la page "Victoires/Défaites" (`win_loss.py`) dans la page "Séries" (`timeseries.py`).
