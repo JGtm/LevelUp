@@ -172,7 +172,7 @@ def _extract_media(
                 JOIN media_match_associations mma ON mma.media_path = mf.file_path
                 WHERE mf.status = 'active'
                   AND mma.match_id IN ({ids_literal})
-                ORDER BY COALESCE(mf.capture_start_utc, mf.mtime) DESC
+                ORDER BY COALESCE(epoch(mf.capture_start_utc), mf.mtime) DESC
                 LIMIT {max_media}
             """).fetchall()
             col_names = [d[0] for d in src.description]
