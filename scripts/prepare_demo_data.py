@@ -75,11 +75,14 @@ def _extract_shared(
         )
 
         # Vues V6 — réutiliser la fonction de migration officielle
-        from src.data.sync.migrations import ensure_resolution_views, ensure_weapon_kills_view
+        from src.data.sync.migrations import (
+            ensure_resolution_views,
+            ensure_weapon_kills_reconciled_as,
+        )
 
         ensure_resolution_views(dst)
         try:
-            ensure_weapon_kills_view(dst)
+            ensure_weapon_kills_reconciled_as(dst)
         except Exception as exc:
             print(f"    [warn] v_weapon_kills: {exc}")
 
@@ -118,11 +121,11 @@ def _extract_player(
 
         dst.execute("DETACH src")
 
-        # Vues matérialisées (player) — recréer via la migration officielle
-        from src.data.sync.migrations import ensure_player_materialized_views
-
+        # Vues matérialisées player — optionnel, l'app les recrée au démarrage
         try:
-            ensure_player_materialized_views(dst)
+            from src.data.sync.migrations import ensure_mv_player_matches_view
+
+            ensure_mv_player_matches_view(dst)
         except Exception as exc:
             print(f"    [warn] mv_player: {exc}")
 
