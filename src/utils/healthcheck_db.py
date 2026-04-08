@@ -81,8 +81,23 @@ class HealthCheckResult:
         self.checks.append(check)
         if check.status in ("error", "broken") and self.status != "error":
             self.status = "error"
-        elif check.status in ("missing", "warning") and self.status == "ok":
+        elif (
+            check.status == "repaired"
+            and self.status == "ok"
+            or check.status in ("missing", "warning")
+            and self.status == "ok"
+        ):
             self.status = "warning"
+
+    def recompute_status(self) -> None:
+        """Recalcule le statut global à partir des checks individuels."""
+        self.status = "ok"
+        for check in self.checks:
+            if check.status in ("error", "broken"):
+                self.status = "error"
+                return
+            if check.status in ("missing", "warning", "repaired"):
+                self.status = "warning"
 
     @property
     def issues(self) -> list[CheckDetail]:
@@ -442,6 +457,7 @@ def run_healthcheck(
     shared_result = _check_shared(deep=deep)
     if auto_repair:
         _try_repair_views(shared_result)
+        shared_result.recompute_status()
     results.append(shared_result)
 
     # metadata
