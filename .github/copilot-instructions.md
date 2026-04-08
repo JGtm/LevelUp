@@ -40,7 +40,7 @@ Healthcheck (à lancer avant de diagnostiquer un souci d'environnement) :
 | Données | Stockage | Chemin |
 |---------|----------|--------|
 | Référentiels | DuckDB | `data/warehouse/metadata.duckdb` |
-| Matchs partagés | DuckDB | `data/warehouse/shared_matches.duckdb` |
+| Matchs partagés | DuckDB | `data/warehouse/shared_matches_v2.duckdb` |
 | Enrichissements joueur | DuckDB | `data/players/{gamertag}/stats.duckdb` |
 | Archives | Parquet | `data/players/{gamertag}/archive/` |
 | Config | JSON | `db_profiles.json` |
@@ -57,7 +57,7 @@ Healthcheck (à lancer avant de diagnostiquer un souci d'environnement) :
 | `mode_name_tr` / `mode_*` | Traductions et paramètres des modes de jeu |
 | `weapon_labels` | Labels EN/FR par weapon_id filmshell (UBIGINT) |
 
-#### shared_matches.duckdb (centralisée)
+#### shared_matches_v2.duckdb (centralisée)
 
 | Table | Description |
 |-------|-------------|
@@ -274,7 +274,7 @@ Quand tu ajoutes ou modifies une colonne, une table ou un index dans une DB Duck
 - Les migrations sont appliquées **automatiquement** au prochain lancement via `launcher.py → _run_migrations()`
 - Chaque DB trace les migrations dans une table `schema_migrations` (colonnes : `name`, `applied_at`, `schema_done`, `backfill_done`)
 - Une migration déjà appliquée ne tourne **jamais** deux fois (idempotence garantie)
-- `target_db` détermine quelle DB reçoit la migration : `"player"` (stats.duckdb de chaque joueur), `"shared"` (shared_matches.duckdb), `"shared_pve"` (shared_pve.duckdb), `"metadata"` (metadata.duckdb)
+- `target_db` détermine quelle DB reçoit la migration : `"player"` (stats.duckdb de chaque joueur), `"shared"` (shared_matches_v2.duckdb), `"shared_pve"` (shared_pve.duckdb), `"metadata"` (metadata.duckdb)
 
 ---
 
