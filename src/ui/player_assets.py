@@ -68,9 +68,9 @@ def resolve_local_image_path(value: str | None) -> str | None:
     if is_http_url(s):
         cache_dir = get_player_assets_cache_dir()
         # Compat: selon les usages, les téléchargements ont pu être faits
-        # avec différents préfixes (banner/emblem/backdrop/nameplate).
+        # avec différents préfixes.
         # On tente plusieurs noms déterministes.
-        for prefix in ("asset", "banner", "emblem", "backdrop", "nameplate"):
+        for prefix in ("asset", "banner", "emblem", "backdrop", "nameplate", "adornment", "rank"):
             fname = _hashed_name(s, prefix=prefix)
             cached = os.path.join(cache_dir, fname)
             if os.path.exists(cached) and os.path.isfile(cached):

@@ -80,12 +80,12 @@ class AppSettings(BaseModel):
     aliases_path: str = ""
     profiles_path: str = ""
 
-    # Profil joueur (bannière/rang) — aucun accès réseau implicite
-    profile_assets_download_enabled: bool = False
+    # Profil joueur (bannière/rang) — télécharge les assets quand les tokens sont dispo
+    profile_assets_download_enabled: bool = True
     profile_assets_auto_refresh_hours: int = Field(default=24, ge=0)  # 0 = désactivé
 
-    # Profil joueur (auto depuis API Waypoint via SPNKr) — opt-in
-    profile_api_enabled: bool = False
+    # Profil joueur (auto depuis API Waypoint via SPNKr)
+    profile_api_enabled: bool = True
     profile_api_auto_refresh_hours: int = Field(default=6, ge=0)
 
     profile_banner: str = ""  # URL https://... ou chemin local
@@ -126,7 +126,9 @@ class AppSettings(BaseModel):
     career_top_exclude_btb: bool = False  # Exclure les matchs BTB du top 10 meilleurs/pires
 
     # Affichage — records historiques
-    show_records: bool = True  # Afficher les barres de records sur les graphes Escouade
+    show_records: bool = (
+        False  # Afficher les barres de records sur les graphes Escouade (expérimental)
+    )
 
     # Affichage — modes de jeu
     normalize_mode_labels: bool = (
