@@ -125,12 +125,6 @@ def render_teammate_cards(picked_xuids: list[str], settings: object, db_path: st
             download_enabled=dl_enabled,
             auto_refresh_hours=refresh_h,
         )
-        t_rank_icon_path = ensure_local_image_path(
-            card_data["rank_icon_url"],
-            prefix="rank",
-            download_enabled=dl_enabled,
-            auto_refresh_hours=refresh_h,
-        )
         t_adornment_path = ensure_local_image_path(
             card_data["adornment_url"],
             prefix="adornment",
@@ -141,9 +135,6 @@ def render_teammate_cards(picked_xuids: list[str], settings: object, db_path: st
         card_html = get_hero_html(
             player_name=card_data["name"],
             service_tag=card_data["service_tag"],
-            rank_label=str(card_data["rank_label"] or "").strip() or None,
-            rank_subtitle=str(card_data["rank_subtitle"] or "").strip() or None,
-            rank_icon_path=t_rank_icon_path,
             adornment_path=t_adornment_path,
             emblem_path=t_emblem_path,
             backdrop_path=t_backdrop_path,
