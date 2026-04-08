@@ -406,7 +406,7 @@ class TestRenderDisplaySection:
     """Tests de la section Affichage."""
 
     def test_three_toggles_rendered(self, mock_st) -> None:
-        """normalize_mode_labels + career_top_exclude_btb + refresh_clears_caches + show_records."""
+        """normalize_mode_labels + show_hints + show_records + career_top_exclude_btb + refresh_clears_caches."""
         from src.ui import AppSettings
         from src.ui.pages import settings as mod
 
@@ -415,7 +415,7 @@ class TestRenderDisplaySection:
 
         mod._render_display_section(AppSettings())
 
-        assert ms.calls["toggle"].call_count == 4
+        assert ms.calls["toggle"].call_count == 5
 
     def test_career_top_exclude_btb_uses_settings_value(self, mock_st) -> None:
         """Le toggle career_top_exclude_btb lit la valeur dans les settings."""
@@ -428,8 +428,8 @@ class TestRenderDisplaySection:
         mod._render_display_section(AppSettings(career_top_exclude_btb=True))
 
         toggle_calls = ms.calls["toggle"].call_args_list
-        # 3e toggle = career_top_exclude_btb (après normalize_mode_labels et show_records)
-        career_call = toggle_calls[2]
+        # 4e toggle = career_top_exclude_btb (après normalize_mode_labels, show_hints et show_records)
+        career_call = toggle_calls[3]
         assert career_call.kwargs["value"] is True
 
     def test_returns_three_bools(self, mock_st) -> None:
