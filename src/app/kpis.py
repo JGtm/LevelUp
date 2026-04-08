@@ -11,7 +11,7 @@ from typing import NamedTuple
 
 import polars as pl
 
-from src.analysis import compute_aggregated_stats, compute_global_ratio, compute_outcome_rates
+from src.analysis import compute_aggregated_stats, compute_outcome_rates
 from src.app.helpers import avg_match_duration_seconds, compute_session_span_seconds
 from src.utils.polars_compat import ensure_polars as _to_polars
 
@@ -74,7 +74,9 @@ def compute_kpi_stats(df: pl.DataFrame) -> KPIStats:
     avg_acc = None
     if not df_pl.is_empty() and "accuracy" in df_pl.columns:
         avg_acc = df_pl.select(pl.col("accuracy").drop_nulls().mean()).item()
-    global_ratio = compute_global_ratio(df_pl)
+    global_ratio = None
+    if not df_pl.is_empty() and "ratio" in df_pl.columns:
+        global_ratio = df_pl.select(pl.col("ratio").drop_nulls().mean()).item()
     avg_life = None
     if not df_pl.is_empty() and "average_life_seconds" in df_pl.columns:
         avg_life = df_pl.select(pl.col("average_life_seconds").drop_nulls().mean()).item()
