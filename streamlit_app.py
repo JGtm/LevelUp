@@ -707,7 +707,7 @@ def _load_and_prepare_data(  # noqa: PLR0913
     base_s_ui = filter_state.base_s_ui
 
     # KPIs
-    render_kpis_section(dff)
+    render_kpis_section(dff, df)
     render_performance_info()
 
     # Paramètres communs pour les pages de match
