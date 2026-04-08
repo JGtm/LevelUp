@@ -14,11 +14,14 @@
 ## What's new
 
 **v6.4 — Media filters, CSR & comeback fanout**
+- **Reading aids toggle** — a sidebar checkbox lets you show or hide the ~45 contextual help banners across every page. The preference is saved in `ui_prefs.json` and is on by default; help sections use `st.popover` for a lighter inline experience
+- **Career KPI cards redesigned** — the career summary row is now 8 compact cards side by side (Matches, Total duration, Frags, Deaths, Assists, Accuracy, Time alive, Results). Frags/Deaths/Assists show a per-minute sub-value; each card is color-coded green/gold/red against your all-time average (±8%); the Results card has a segmented W/L/T/DNF bar
+- **Win/Loss integrated into Timeseries** — the standalone Win/Loss page is now a tab inside Timeseries; tabs renamed to Résumé · Maps & Modes · Progression · Advanced
 - **Media library filters** — filter your captures by owner (My captures / Teammates / Unmatched), map, mode, outcome (Victory / Defeat / …), and solo vs squad context. Sort by capture date, map, mode, outcome, or owner with a one-click descending/ascending toggle
 - **CSR history for squadmates** — when you sync a ranked match, the ranking data of all registered co-players is now automatically collected and distributed to each player's DB — no separate sync required per player
 - **Comeback badges auto-computed for squadmates** — Remontada, Collapse, and Contre-Remontada badges are now calculated for your co-players during the sync fanout alongside PSA and CSR
 - **ffmpeg bundled in Docker** — video thumbnail generation works out of the box in containerized deployments
-- **Teammates — fixed legend panel** — a floating panel shows each squad member's color swatch while you scroll through the squad section; all per-chart legends removed as they were redundant
+- **Teammates — fixed legend panel** — a floating panel shows each squad member's color swatch while you scroll through the squad section (hidden outside it); all per-chart legends removed as they were redundant
 - **UI state persistence across sessions** — your last selected player and language are now remembered in the browser (`localStorage`). Filter preferences are stored in `data/players/{gamertag}/ui_prefs.json` (inside the Docker volume) and survive container rebuilds
 
 **v6.3 — Localized names, squad records & medal details**
