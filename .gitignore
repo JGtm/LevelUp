@@ -82,6 +82,7 @@ backups/
 data/rag/
 
 # Architecture v4 - DuckDB (données locales volumineuses)
+data/demo/
 data/logs/
 data/players/
 data/warehouse/match_facts/
