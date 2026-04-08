@@ -320,8 +320,7 @@ def _list_players() -> list[PlayerInfo]:
         db_readable = True
 
         try:
-            con = duckdb.connect(str(db_path), read_only=True)
-            try:
+            with duckdb.connect(str(db_path), read_only=True) as con:
                 # Architecture v5 : utilise player_match_enrichment si disponible
                 # (plus fiable que player_match_stats qui peut contenir des stats agrégées)
                 try:
@@ -350,8 +349,6 @@ def _list_players() -> list[PlayerInfo]:
                     xuid = result[0] if result else None
                 except Exception:
                     pass
-            finally:
-                con.close()
         except Exception:
             db_readable = False
 
@@ -387,12 +384,9 @@ def _count_matches_duckdb(db_path: Path) -> int:
         return 0
     try:
         duckdb = _import_duckdb()
-        con = duckdb.connect(str(db_path), read_only=True)
-        try:
+        with duckdb.connect(str(db_path), read_only=True) as con:
             row = con.execute("SELECT COUNT(*) FROM player_match_enrichment").fetchone()
             return row[0] if row else 0
-        finally:
-            con.close()
     except Exception:
         return 0
 
@@ -1227,8 +1221,8 @@ def _ensure_warehouse_dbs() -> None:
         try:
             import duckdb as _duckdb
 
-            _conn = _duckdb.connect(str(meta_path))
-            _conn.close()
+            with _duckdb.connect(str(meta_path)):
+                pass  # Crée le fichier DB vide
             print(_t("warehouse_meta_init", _LANG), flush=True)
         except Exception as exc:
             print(_t("warehouse_meta_init_fail", _LANG, err=exc), flush=True)
