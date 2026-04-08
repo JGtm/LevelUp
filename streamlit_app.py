@@ -994,7 +994,7 @@ def main() -> None:
     from src.ui.pages.setup_wizard_logic import get_setup_status
 
     setup_status = get_setup_status()
-    if setup_status.needs_setup:
+    if setup_status.needs_setup and not is_demo_mode():
         from src.ui.pages.setup_wizard import render_setup_wizard_page
 
         render_setup_wizard_page()
