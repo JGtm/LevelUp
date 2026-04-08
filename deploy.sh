@@ -22,9 +22,9 @@ git fetch origin main
 git reset --hard origin/main
 git clean -fd --exclude=data/ --exclude=.env.local --exclude=app_settings.json --exclude=db_profiles.json
 
-# 2. Rebuilder et redémarrer uniquement le service levelup (sans downtime des autres)
+# 2. Rebuilder et redémarrer les services (sans downtime des autres)
 echo "[deploy] docker compose up --build..."
-docker compose up -d --build --no-deps levelup
+docker compose up -d --build --no-deps levelup levelup-demo
 
 # 3. Nettoyer les images orphelines
 echo "[deploy] Nettoyage des images obsolètes..."
