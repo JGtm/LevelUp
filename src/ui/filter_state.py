@@ -231,6 +231,12 @@ def save_filter_preferences(  # noqa: C901, PLR0912, PLR0913, PLR0915
             preferences.experience_types = exp_list
             preferences.experience_types_mode = exp_mode
 
+    # En mode démo, les volumes sont montés en lecture seule — skip silencieux
+    from src.utils.demo import is_demo_mode
+
+    if is_demo_mode():
+        return
+
     # Sauvegarder dans le fichier (v6.4 : chemin résolu — data/players/ ou legacy)
     file_path = _resolve_prefs_path(xuid, db_path)
     logger.debug("Prefs filtres sauvegardées (xuid=%s...)", str(xuid or "")[:8])
