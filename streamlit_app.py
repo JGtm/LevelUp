@@ -937,9 +937,9 @@ def _dispatch_navigation(ctx: PageContext) -> None:  # noqa: C901, PLR0915
 
 
 def _maybe_apply_browser_prefs(browser_prefs: dict) -> None:
-    """Applique les préférences navigateur (localStorage) à la session courante.
+    """Applique les préférences persistantes (ui_prefs.json) à la session courante.
 
-    Restaure la langue et le joueur depuis localStorage une seule fois par session
+    Restaure la langue et le joueur depuis les préférences serveur une seule fois par session
     (guard ``_browser_prefs_applied``). Déclenche un rerun si le joueur change.
     """
     if st.session_state.get("_browser_prefs_applied"):
@@ -968,13 +968,13 @@ def _maybe_apply_browser_prefs(browser_prefs: dict) -> None:
                 st.session_state[SK.DB_PATH] = str(_candidate)
                 st.session_state[SK.XUID_INPUT] = ls_slug
                 st.session_state[SK.WAYPOINT_PLAYER] = ls_slug
-                logger.debug("localStorage: joueur restauré → %s", ls_slug)
+                logger.debug("Préférences serveur: joueur restauré → %s", ls_slug)
                 st.rerun()
 
 
 def main() -> None:
     """Point d'entrée principal de l'application Streamlit."""
-    # 0. Restauration des préférences navigateur (localStorage, une fois par session)
+    # 0. Restauration des préférences persistantes (ui_prefs.json, une fois par session)
     browser_prefs = restore_browser_prefs()
     if browser_prefs is not None:
         st.session_state["_browser_prefs_restored"] = browser_prefs
