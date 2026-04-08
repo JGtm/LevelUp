@@ -169,7 +169,6 @@ def render_citations_page(  # noqa: PLR0912, PLR0913, PLR0915
             fig_medals = plot_medals_distribution(
                 top,
                 medal_names_dict,
-                title=None,
                 top_n=25,
                 lang=get_lang(),
             )

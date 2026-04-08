@@ -55,7 +55,7 @@ FUNC:src/ui/medals.py:128:render_medals_grid:81L
 FUNC:src/ui/pages/_teammates_trio.py:143:render_trio_view:289L
 FUNC:src/ui/pages/_teammates_trio_helpers.py:91:_render_per_minute_stats:82L
 FUNC:src/ui/pages/career.py:107:_render_rank_header:89L
-FUNC:src/ui/pages/citations.py:25:render_citations_page:173L
+FUNC:src/ui/pages/citations.py:25:render_citations_page:172L
 FUNC:src/ui/pages/explorer_enrich.py:113:enrich_common_matches:87L
 FUNC:src/ui/pages/explorer_enrich.py:18:enrich_for_table:92L
 FUNC:src/ui/pages/match_view_charts.py:257:_render_spree_headshots:125L

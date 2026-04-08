@@ -4,9 +4,12 @@ Valident :
 - Les clés i18n des nouvelles sections (KPI bloc dans teammates, onglets timeseries)
 - La présence du logger dans les modules de page modifiés
 - Le logging dans render_teammates_page
+- Les signatures des fonctions de visualisation utilisées dans timeseries.py
 """
 
 from __future__ import annotations
+
+import inspect
 
 
 class TestTeammatesI18nKeys:
@@ -88,3 +91,52 @@ class TestTimeseriesTabLabels:
             entry = STRINGS[key]
             assert "fr" in entry and entry["fr"], f"Traduction FR manquante pour {key}"
             assert "en" in entry and entry["en"], f"Traduction EN manquante pour {key}"
+
+
+class TestVisualizationSignatures:
+    """Vérifie les signatures des fonctions de visualisation appelées dans timeseries.py.
+
+    Ces tests détectent les regressions de type 'unexpected keyword argument'.
+    """
+
+    def test_plot_first_event_distribution_no_title_param(self) -> None:
+        """plot_first_event_distribution ne doit PAS avoir de paramètre 'title'."""
+        from src.visualization.distributions import plot_first_event_distribution
+
+        params = inspect.signature(plot_first_event_distribution).parameters
+        assert "title" not in params, (
+            "plot_first_event_distribution a un paramètre 'title' inattendu — "
+            "vérifier les appels dans timeseries.py"
+        )
+
+    def test_plot_first_event_distribution_accepts_lang(self) -> None:
+        """plot_first_event_distribution doit accepter le paramètre 'lang'."""
+        from src.visualization.distributions import plot_first_event_distribution
+
+        params = inspect.signature(plot_first_event_distribution).parameters
+        assert "lang" in params
+
+    def test_plot_first_event_distribution_callable_with_empty_dicts(self) -> None:
+        """plot_first_event_distribution ne lève pas avec des dicts vides."""
+        from src.visualization.distributions import plot_first_event_distribution
+
+        fig = plot_first_event_distribution({}, {}, lang="fr")
+        assert fig is not None
+
+    def test_plot_medals_distribution_no_title_param(self) -> None:
+        """plot_medals_distribution ne doit PAS avoir de paramètre 'title'."""
+        from src.visualization.distributions import plot_medals_distribution
+
+        params = inspect.signature(plot_medals_distribution).parameters
+        assert "title" not in params, (
+            "plot_medals_distribution a un paramètre 'title' inattendu — "
+            "vérifier les appels dans citations.py"
+        )
+
+    def test_plot_medals_distribution_accepts_lang_and_top_n(self) -> None:
+        """plot_medals_distribution doit accepter lang et top_n."""
+        from src.visualization.distributions import plot_medals_distribution
+
+        params = inspect.signature(plot_medals_distribution).parameters
+        assert "lang" in params
+        assert "top_n" in params

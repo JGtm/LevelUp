@@ -239,7 +239,6 @@ def _render_first_event_section(
             fig_events = plot_first_event_distribution(
                 first_event.first_kills,
                 first_event.first_deaths,
-                title=None,
                 lang=lang,
             )
             if fig_events is not None:
