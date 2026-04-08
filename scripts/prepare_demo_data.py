@@ -144,6 +144,12 @@ def _extract_player(
                         f"UPDATE {tbl} SET xuid = ? WHERE xuid = ?",  # noqa: S608
                         (demo_xuid, source_xuid),
                     )
+            # sync_meta : clé 'xuid' — source canonique lue par _resolve_player_xuid
+            with contextlib.suppress(Exception):
+                dst.execute(
+                    "UPDATE sync_meta SET value = ? WHERE key = 'xuid' AND value = ?",
+                    (demo_xuid, source_xuid),
+                )
 
     print("  [player] OK")
 
