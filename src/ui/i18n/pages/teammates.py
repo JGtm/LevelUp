@@ -326,11 +326,11 @@ STRINGS: dict[str, dict[str, str] | str] = {
     },
     # ── Sections de la page escouade ─────────────────────────────────────────
     "tm_my_stats_section": {
-        "fr": "📊 Mes stats sur ce scope",
-        "en": "📊 My stats on this scope",
+        "fr": "Mes stats sur cette session",
+        "en": "My stats on this session",
     },
     "tm_squad_section": {
-        "fr": "👥 Analyse escouade",
-        "en": "👥 Squad analysis",
+        "fr": "Statistiques d'escouade",
+        "en": "Squad statistics",
     },
 }
