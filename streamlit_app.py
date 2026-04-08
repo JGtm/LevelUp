@@ -984,7 +984,7 @@ def main() -> None:
 
     if is_demo_mode():
         st.info(
-            "🎮 **Mode démo** — 50 matchs · Données non personnelles · Synchronisation désactivée",
+            "**Mode démo** — 50 matchs · Synchronisation désactivée",
             icon="ℹ️",
         )
 

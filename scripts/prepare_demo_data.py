@@ -12,6 +12,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import os
 import shutil
 import sys
 from pathlib import Path
@@ -77,6 +78,7 @@ def _extract_shared(
 
         # Vues V6 — réutiliser la fonction de migration officielle
         from src.data.sync.migrations import (
+            ensure_mv_player_matches_view,
             ensure_resolution_views,
             ensure_weapon_kills_reconciled_as,
         )
@@ -86,6 +88,13 @@ def _extract_shared(
             ensure_weapon_kills_reconciled_as(dst)
         except Exception as exc:
             print(f"    [warn] v_weapon_kills: {exc}")
+
+        # Vue mv_player_matches — requise par la plupart des pages analytics
+        try:
+            ensure_mv_player_matches_view(dst)
+            print("    [shared] mv_player_matches: OK")
+        except Exception as exc:
+            print(f"    [warn] mv_player_matches: {exc}")
 
     print("  [shared] OK")
 
@@ -107,6 +116,7 @@ def _extract_player(
         ("sessions", "1=1"),
         ("career_progression", "1=1"),
         ("sync_meta", "key NOT IN ('msal_token_cache')"),
+        ("match_skill_rank", f"match_id IN ({ids_literal})"),
     ]
 
     with duckdb.connect(str(out_player)) as dst:
@@ -122,18 +132,120 @@ def _extract_player(
 
         dst.execute("DETACH src")
 
-        # Vues matérialisées player — optionnel, l'app les recrée au démarrage
-        try:
-            from src.data.sync.migrations import ensure_mv_player_matches_view
-
-            ensure_mv_player_matches_view(dst)
-        except Exception as exc:
-            print(f"    [warn] mv_player: {exc}")
-
     print("  [player] OK")
 
 
-def _write_configs(out_dir: Path, demo_xuid: str) -> None:
+def _extract_media(
+    src_player_db: Path,
+    out_player_db: Path,
+    out_dir: Path,
+    match_ids: list[str],
+    max_media: int = 5,
+) -> int:
+    """Extrait jusqu'à max_media fichiers média depuis la DB joueur source.
+
+    Returns: nombre de fichiers réellement copiés.
+    """
+    ids_literal = ", ".join(f"'{mid}'" for mid in match_ids)
+    demo_media_dir = out_dir / "players" / "DEMO" / "media"
+
+    # Chemin base dans le container (LEVELUP_ROOT=/app en Docker)
+    levelup_root = Path(os.environ.get("LEVELUP_ROOT", str(_REPO_ROOT)))
+    demo_media_root = str(levelup_root / "data" / "players" / "DEMO" / "media")
+
+    extracted = 0
+    try:
+        with duckdb.connect(str(src_player_db), read_only=True) as src:
+            tables = {
+                r[0]
+                for r in src.execute(
+                    "SELECT table_name FROM information_schema.tables WHERE table_schema = 'main'"
+                ).fetchall()
+            }
+            if "media_files" not in tables or "media_match_associations" not in tables:
+                print("    [media] tables absentes — skip")
+                return 0
+
+            rows = src.execute(f"""
+                SELECT DISTINCT mf.*
+                FROM media_files mf
+                JOIN media_match_associations mma ON mma.media_path = mf.file_path
+                WHERE mf.status = 'active'
+                  AND mma.match_id IN ({ids_literal})
+                ORDER BY COALESCE(mf.capture_start_utc, mf.mtime) DESC
+                LIMIT {max_media}
+            """).fetchall()
+            col_names = [d[0] for d in src.description]
+
+        if not rows:
+            print("    [media] aucun média associé aux matchs extraits — skip")
+            return 0
+
+        fp_idx = col_names.index("file_path")
+        demo_media_dir.mkdir(parents=True, exist_ok=True)
+        ph = ", ".join("?" * len(col_names))
+
+        with duckdb.connect(str(out_player_db)) as dst:
+            dst.execute(f"ATTACH '{src_player_db}' AS _msrc (READ_ONLY)")
+            dst.execute(
+                "CREATE TABLE IF NOT EXISTS media_files AS "
+                "SELECT * FROM _msrc.media_files WHERE 1=0"
+            )
+            dst.execute(
+                "CREATE TABLE IF NOT EXISTS media_match_associations AS "
+                "SELECT * FROM _msrc.media_match_associations WHERE 1=0"
+            )
+            assoc_cols = [
+                d[0]
+                for d in dst.execute(
+                    "SELECT * FROM _msrc.media_match_associations WHERE 1=0"
+                ).description
+            ]
+            mp_idx = assoc_cols.index("media_path")
+            assoc_ph = ", ".join("?" * len(assoc_cols))
+
+            for row in rows:
+                src_path = Path(row[fp_idx])
+                if not src_path.exists():
+                    print(f"    [media] absent: {src_path.name} — skip")
+                    continue
+
+                filename = src_path.name
+                new_path = f"{demo_media_root}/{filename}"
+                shutil.copy2(src_path, demo_media_dir / filename)
+
+                new_row = list(row)
+                new_row[fp_idx] = new_path
+                dst.execute(
+                    f"INSERT OR REPLACE INTO media_files ({', '.join(col_names)}) VALUES ({ph})",
+                    new_row,
+                )
+
+                assoc_rows = dst.execute(
+                    f"SELECT * FROM _msrc.media_match_associations"
+                    f" WHERE media_path = ? AND match_id IN ({ids_literal})",
+                    [str(src_path)],
+                ).fetchall()
+                for assoc in assoc_rows:
+                    a = list(assoc)
+                    a[mp_idx] = new_path
+                    dst.execute(
+                        f"INSERT OR IGNORE INTO media_match_associations"
+                        f" ({', '.join(assoc_cols)}) VALUES ({assoc_ph})",
+                        a,
+                    )
+
+                extracted += 1
+                print(f"    [media] {filename} → {new_path}")
+
+            dst.execute("DETACH _msrc")
+    except Exception as exc:
+        print(f"    [warn] extraction media: {exc}")
+
+    return extracted
+
+
+def _write_configs(out_dir: Path, demo_xuid: str, *, media_enabled: bool = False) -> None:
     """Génère db_profiles.json et app_settings.json pour le mode démo."""
     profiles = {
         "version": "2.1",
@@ -153,7 +265,7 @@ def _write_configs(out_dir: Path, demo_xuid: str) -> None:
 
     settings = {
         "lang": "fr",
-        "media_enabled": False,
+        "media_enabled": media_enabled,
         "spnkr_refresh_on_start": False,
         "spnkr_refresh_on_manual_refresh": False,
         "spnkr_refresh_max_matches": 0,
@@ -254,15 +366,17 @@ def main() -> None:
 
     # 4. Extraire stats.duckdb joueur
     print("\n[4/5] Extraction stats.duckdb joueur…")
-    _extract_player(
-        src_player_db,
-        out_dir / "players" / "DEMO" / "stats.duckdb",
-        match_ids,
-    )
+    out_player_db = out_dir / "players" / "DEMO" / "stats.duckdb"
+    _extract_player(src_player_db, out_player_db, match_ids)
+
+    # 4b. Extraire médias (optionnel, 5 clips max)
+    print("\n  [4b] Extraction médias…")
+    media_count = _extract_media(src_player_db, out_player_db, out_dir, match_ids)
+    print(f"  {media_count} fichier(s) média extrait(s)")
 
     # 5. Écrire les fichiers de config
     print("\n[5/5] Génération des fichiers de configuration…")
-    _write_configs(out_dir, demo_xuid)
+    _write_configs(out_dir, demo_xuid, media_enabled=media_count > 0)
 
     print(f"\n✅ Données démo prêtes dans {out_dir}")
     print("   Lancer le conteneur : docker compose up -d levelup-demo")

@@ -49,8 +49,8 @@ FUNC:src/ui/components/_radar_teammates.py:110:create_session_trend_radar:91L
 FUNC:src/ui/components/chart_annotations.py:14:add_extreme_annotations:95L
 FUNC:src/ui/components/checkbox_filter.py:224:render_hierarchical_checkbox_filter:233L
 FUNC:src/ui/components/checkbox_filter.py:97:render_checkbox_filter:111L
-FUNC:src/ui/filter_state.py:104:save_filter_preferences:139L
-FUNC:src/ui/filter_state.py:273:apply_filter_preferences:166L
+FUNC:src/ui/filter_state.py:104:save_filter_preferences:145L
+FUNC:src/ui/filter_state.py:279:apply_filter_preferences:166L
 FUNC:src/ui/medals.py:128:render_medals_grid:81L
 FUNC:src/ui/pages/_teammates_trio.py:143:render_trio_view:289L
 FUNC:src/ui/pages/_teammates_trio_helpers.py:91:_render_per_minute_stats:82L
