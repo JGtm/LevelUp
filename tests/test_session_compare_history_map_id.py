@@ -9,10 +9,8 @@ from __future__ import annotations
 from datetime import datetime, timezone
 
 import polars as pl
-import pytest
 
 from src.ui.pages._session_compare_history import _build_history_dataframe
-
 
 # ---------------------------------------------------------------------------
 # Helpers

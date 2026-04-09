@@ -9,7 +9,6 @@ from __future__ import annotations
 import duckdb
 import pytest
 
-
 # Payload minimal simulant la réponse API gamecms.get_medal_metadata()
 _SAMPLE_MEDALS_RAW = [
     {

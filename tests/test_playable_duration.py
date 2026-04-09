@@ -20,7 +20,6 @@ import pytest
 from src.data.sync.migrations import ensure_match_registry_playable_duration
 from src.data.sync.transformers import extract_match_registry_data
 
-
 # =============================================================================
 # Helpers
 # =============================================================================

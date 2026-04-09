@@ -611,10 +611,8 @@ def test_e2e_010_map_names_not_uuids(running_streamlit_app: str) -> None:
             return
 
         page.wait_for_timeout(2000)
-        content = page.content()
 
         # Les UUIDs ne doivent pas apparaître dans le contenu rendu
-        uuid_matches = _UUID_RE.findall(content)
         # Filtrer les UUIDs qui peuvent apparaître dans les URLs/params internes
         # (match_id dans les liens href) — seuls les UUIDs dans du texte visible comptent
         visible_text = page.evaluate("() => document.body.innerText")

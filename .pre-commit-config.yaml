@@ -96,6 +96,14 @@ repos:
         pass_filenames: false
         stages: [pre-push]
 
+      # Dry-run deploy avant push sur main (vérifie Docker, stubs, permissions)
+      - id: deploy-dry-run
+        name: Deploy dry-run (Docker, stubs, permissions)
+        entry: bash scripts/test_deploy_dry_run.sh
+        language: system
+        pass_filenames: false
+        stages: [pre-push]
+
       # Vérification des imports circulaires
       - id: check-imports
         name: Check circular imports

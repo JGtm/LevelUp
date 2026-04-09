@@ -122,7 +122,8 @@ class TestToPandas:
         pdf = to_pandas_for_plotly(df)
         assert pdf["int_col"].dtype in (int, "int64", "Int64")
         assert pdf["float_col"].dtype == "float64"
-        assert pdf["str_col"].dtype == "object"
+        # Pandas 2.x peut retourner StringDtype au lieu de object selon la version
+        assert str(pdf["str_col"].dtype) in ("object", "string")
 
 
 # ---------------------------------------------------------------------------
