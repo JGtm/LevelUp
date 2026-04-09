@@ -22,7 +22,7 @@ import json
 import logging
 import urllib.request
 from dataclasses import dataclass, field
-from datetime import datetime
+from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
 
@@ -195,6 +195,11 @@ def notify_operation_done(  # noqa: PLR0913
         return
 
     try:
+        cfg = _load_app_settings()
+        if not cfg.get("discord_notify_sync", True):
+            logger.debug("[Discord] Notif sync désactivée par discord_notify_sync=false")
+            return
+
         webhook_url = _get_webhook_url()
         if not webhook_url:
             return
@@ -238,3 +243,130 @@ def notify_operation_done(  # noqa: PLR0913
 
     except Exception as exc:
         logger.warning("[Discord] Erreur inattendue : %s", exc)
+
+
+# =============================================================================
+# Notification de déploiement — nouvelle version majeure
+# =============================================================================
+
+_README = Path(__file__).resolve().parents[2] / "README.md"
+_MAX_DISCORD_BODY = 1900  # Discord limite les embeds à 2048 chars, marge de sécurité
+
+
+def _is_major_minor_change(old: str, new: str) -> bool:
+    """Retourne True si X ou Y changent dans vX.Y.Z.
+
+    Retourne False si old est vide (premier démarrage) pour éviter le spam.
+    """
+    if not old or not old.strip():
+        return False
+
+    def _parse(v: str) -> tuple[int, int]:
+        parts = v.lstrip("v").split(".")
+        return (int(parts[0]), int(parts[1])) if len(parts) >= 2 else (0, 0)
+
+    try:
+        return _parse(old) != _parse(new)
+    except (ValueError, IndexError):
+        return old.strip() != new.strip()
+
+
+def _extract_whats_new(version: str) -> str:
+    """Extrait la section What's New du README pour la version donnée.
+
+    Cherche le bloc ``**vX.Y`` correspondant et retourne les bullet points
+    jusqu'au prochain bloc ``**v``.
+
+    Retourne une chaîne vide si la section n'est pas trouvée.
+    """
+    if not _README.exists():
+        return ""
+    try:
+        content = _README.read_text(encoding="utf-8")
+    except Exception:
+        return ""
+
+    # Construire le préfixe à chercher : "**v6.4" à partir de "6.4.0"
+    parts = version.lstrip("v").split(".")
+    if len(parts) < 2:
+        return ""
+    version_prefix = f"**v{parts[0]}.{parts[1]}"
+
+    lines = content.splitlines()
+    in_section = False
+    collected: list[str] = []
+
+    for line in lines:
+        if not in_section:
+            if line.strip().startswith(version_prefix):
+                in_section = True
+                collected.append(line.strip())
+            continue
+
+        # Fin de section : nouvelle entrée **vX.Y ou heading de niveau 2
+        stripped = line.strip()
+        if stripped.startswith("**v") and stripped != collected[0]:
+            break
+        if stripped.startswith("## "):
+            break
+        collected.append(stripped)
+
+    return "\n".join(collected).strip()
+
+
+def notify_new_version(current_version: str) -> bool:
+    """Envoie une notification Discord lors du déploiement d'une nouvelle version majeure.
+
+    Conditions requises (toutes doivent être vraies) :
+    - discord_notifications_enabled = True et webhook valide
+    - discord_notify_new_version = True
+    - Variable d'env LEVELUP_NOTIFY_VERSIONS=1 (opt-in explicite, prod uniquement)
+    - La version courante diffère de last_notified_version sur major/minor
+
+    Retourne True si la notification a été envoyée avec succès.
+    Fonction entièrement failsafe.
+    """
+    import os
+
+    try:
+        # Guard env var : opt-in explicite (prod uniquement)
+        if os.environ.get("LEVELUP_NOTIFY_VERSIONS", "").strip() not in ("1", "true", "True"):
+            logger.debug("[Discord] LEVELUP_NOTIFY_VERSIONS non défini — notif version ignorée")
+            return False
+
+        cfg = _load_app_settings()
+        if not cfg.get("discord_notify_new_version", True):
+            logger.debug("[Discord] Notif version désactivée par discord_notify_new_version=false")
+            return False
+
+        webhook_url = _get_webhook_url()
+        if not webhook_url:
+            return False
+
+        whats_new = _extract_whats_new(current_version)
+        description = (
+            whats_new[:_MAX_DISCORD_BODY] if whats_new else (f"Version {current_version} déployée.")
+        )
+
+        payload: dict[str, Any] = {
+            "embeds": [
+                {
+                    "title": f"🚀 LevelUp v{current_version} — Nouvelle version déployée",
+                    "description": description,
+                    "color": 0x5865F2,  # Blurple Discord
+                    "footer": {"text": f"LevelUp v{current_version}"},
+                    "timestamp": datetime.now(tz=timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"),
+                }
+            ]
+        }
+
+        ok = send_discord_notification(payload, webhook_url)
+        if ok:
+            logger.info("[Discord] Notification nouvelle version v%s envoyée", current_version)
+        else:
+            logger.warning("[Discord] Notification version non reçue par Discord")
+        return ok
+
+    except Exception as exc:
+        logger.warning("[Discord] Erreur notif version : %s", exc)
+        return False
