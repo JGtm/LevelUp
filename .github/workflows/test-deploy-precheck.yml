@@ -224,6 +224,8 @@ jobs:
 
       - name: "Simulation étape 1 : rm -rf (comme dans deploy.yml)"
         run: |
+          # Reprendre la main sur data/ (appartient à 10001 après l'étape précédente)
+          sudo chown -R "$(id -u):$(id -g)" data/
           mkdir -p data/demo
           # Créer des artefacts à supprimer pour simuler un état "après regen précédent"
           mkdir -p data/demo/warehouse
@@ -240,6 +242,8 @@ jobs:
             fi
           done
           echo "  ✅ Pas de répertoire fantôme après rm -rf"
+          # Re-chown pour le container (étape 2)
+          sudo chown -R 10001:10001 data/
 
       - name: "Simulation étape 2 : docker compose run (écriture dans data/demo/)"
         run: |
