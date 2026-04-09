@@ -25,7 +25,18 @@ git fetch origin main
 git reset --hard origin/main
 git clean -fd --exclude=data/ --exclude=.env.local --exclude=app_settings.json --exclude=db_profiles.json
 
-# 2. Rebuilder et redémarrer les services (sans downtime des autres)
+# 2a. Créer les fichiers stub pour les bind-mounts "fichier" de levelup-demo
+# sans ça Docker crée automatiquement des RÉPERTOIRES à la place des fichiers attendus,
+# ce qui fait planter docker compose up avec "not a directory".
+# Les stubs sont remplacés par le vrai contenu lors du regen demo.
+mkdir -p "$DEPLOY_DIR/data/demo" "$DEPLOY_DIR/data/logs"
+[[ -e "$DEPLOY_DIR/data/demo/db_profiles.json" ]] \
+    || echo '{"profiles":{}}' > "$DEPLOY_DIR/data/demo/db_profiles.json"
+[[ -e "$DEPLOY_DIR/data/demo/app_settings.json" ]] \
+    || echo '{}' > "$DEPLOY_DIR/data/demo/app_settings.json"
+echo "[deploy] ✅ Stubs demo OK"
+
+# 2b. Rebuilder et redémarrer les services (sans downtime des autres)
 echo "[deploy] docker compose up --build..."
 docker compose up -d --build --no-deps levelup levelup-demo
 

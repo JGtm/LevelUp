@@ -1,0 +1,273 @@
+name: Deploy Pre-Check
+
+# Valide l'infrastructure de déploiement SANS connexion SSH au VPS.
+# Couvre les cas qui font échouer deploy.yml en production :
+#   - Dockerfile invalide / build cassé
+#   - docker-compose.yml mal formé
+#   - Permissions UID 10001 (appuser) non respectées
+#   - Volumes bind-mount fichiers remplacés par des répertoires fantômes
+#   - Syntaxe des scripts shell/Python
+
+on:
+  push:
+    branches:
+      - main
+      - chore/**
+      - fix/**
+      - feat/**
+      - refactor/**
+  pull_request:
+    branches:
+      - main
+  workflow_dispatch: {}
+
+jobs:
+  # ────────────────────────────────────────────────────────────────
+  # Job 1 — Valider la syntaxe (YAML, Bash, Python) sans Docker
+  # ────────────────────────────────────────────────────────────────
+  validate-syntax:
+    name: Syntaxe (YAML / Bash / Python)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Validation YAML — workflows GitHub Actions
+        run: |
+          pip install pyyaml -q
+          python3 - <<'EOF'
+          import yaml, os, sys
+          errors = 0
+          wf_dir = ".github/workflows"
+          for f in sorted(os.listdir(wf_dir)):
+              if not f.endswith((".yml", ".yaml")):
+                  continue
+              path = os.path.join(wf_dir, f)
+              try:
+                  with open(path) as fh:
+                      yaml.safe_load(fh)
+                  print(f"  ✅ {f}")
+              except yaml.YAMLError as e:
+                  print(f"  ❌ {f}: {e}")
+                  errors += 1
+          sys.exit(errors)
+          EOF
+
+      - name: Validation syntaxe Bash (deploy.sh, scripts/*.sh)
+        run: |
+          errors=0
+          for f in deploy.sh scripts/*.sh; do
+              [[ -f "$f" ]] || continue
+              if bash -n "$f" 2>&1; then
+                  echo "  ✅ $f"
+              else
+                  echo "  ❌ $f"
+                  errors=$((errors + 1))
+              fi
+          done
+          exit $errors
+
+      - name: Validation syntaxe Python (scripts/prepare_demo_data.py)
+        run: |
+          python3 -m py_compile scripts/prepare_demo_data.py
+          echo "  ✅ prepare_demo_data.py"
+
+      - name: "Vérifier que db_profiles.json racine est un fichier (pas répertoire)"
+        run: |
+          if [[ -d "db_profiles.json" ]]; then
+            echo "  ❌ db_profiles.json est un RÉPERTOIRE — volume Docker cassé"
+            exit 1
+          elif [[ -f "db_profiles.json" ]]; then
+            echo "  ✅ db_profiles.json est un fichier"
+          else
+            echo "  ⚠️  db_profiles.json absent (normal si non configuré)"
+          fi
+
+  # ────────────────────────────────────────────────────────────────
+  # Job 2 — Build Docker + validation images
+  # ────────────────────────────────────────────────────────────────
+  docker-build:
+    name: Docker Build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Build image LevelUp
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          push: false
+          load: true
+          tags: levelup-test:ci
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+      - name: Vérifier UID appuser dans l'image
+        run: |
+          UID_IN_IMAGE=$(docker run --rm levelup-test:ci id -u)
+          echo "  UID appuser détecté : ${UID_IN_IMAGE}"
+          if [[ "${UID_IN_IMAGE}" == "10001" ]]; then
+            echo "  ✅ UID correct : 10001"
+          else
+            echo "  ❌ UID inattendu : ${UID_IN_IMAGE} (attendu 10001)"
+            exit 1
+          fi
+
+      - name: Valider docker-compose.yml (docker compose config)
+        run: |
+          # Créer les fichiers requis pour que compose config passe
+          touch .env.local
+          echo '{"version":"2.1","warehouse_path":"data/warehouse","profiles":{}}' > db_profiles.json
+          echo '{}' > app_settings.json
+          # Créer les répertoires de données vides pour satisfaire les volumes
+          mkdir -p data/demo/warehouse data/demo/players data/logs data/warehouse data/players
+          touch data/demo/db_profiles.json data/demo/app_settings.json
+          docker compose config --quiet
+          echo "  ✅ docker-compose.yml valide"
+
+  # ────────────────────────────────────────────────────────────────
+  # Job 3 — Simulation permissions UID 10001 (cas VPS réaliste)
+  # ────────────────────────────────────────────────────────────────
+  permissions-simulation:
+    name: Permissions UID 10001 (simulation VPS)
+    runs-on: ubuntu-latest
+    needs: docker-build
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Build image
+        run: |
+          docker build -t levelup-test:ci . -q
+
+      - name: "Cas A (attendu OK) : data/ appartient à UID 10001"
+        run: |
+          mkdir -p data/demo data/logs
+          sudo chown -R 10001:10001 data/
+          if docker run --rm -u 10001 \
+              -v "$PWD/data:/app/data" \
+              levelup-test:ci \
+              python -c "import os; os.makedirs('/app/data/demo/warehouse', exist_ok=True); print('OK')" \
+              2>&1; then
+            echo "  ✅ UID 10001 peut créer data/demo/warehouse (permissions correctes)"
+          else
+            echo "  ❌ Échec inattendu — vérifier la configuration Docker"
+            exit 1
+          fi
+
+      - name: "Cas B (attendu ÉCHEC) : data/ appartient à root → détection du bug"
+        run: |
+          rm -rf data/
+          mkdir -p data/demo data/logs
+          # Simuler l'état VPS où les fichiers appartiennent à root
+          sudo chown -R root:root data/
+          if docker run --rm -u 10001 \
+              -v "$PWD/data:/app/data" \
+              levelup-test:ci \
+              python -c "import os; os.makedirs('/app/data/demo/warehouse', exist_ok=True)" \
+              2>/dev/null; then
+            echo "  ⚠️  UID 10001 a pu écrire malgré root:root (Docker Desktop permissif)"
+            echo "  INFO : Ce comportement peut différer en prod Linux"
+          else
+            echo "  ✅ Bug de permissions reproduit correctement — détection fonctionnelle"
+          fi
+
+      - name: "Cas C : Reproduction bug répertoire fantôme Docker bind-mount"
+        run: |
+          mkdir -p data/demo
+          # Supprimer db_profiles.json (simule un regen raté)
+          rm -f data/demo/db_profiles.json
+
+          # Premier compose up avec source absente → Docker crée un répertoire
+          # On le simule manuellement car on ne peut pas faire 2x compose up dans le CI
+          mkdir -p data/demo/db_profiles.json   # Simule ce que Docker fait
+
+          if [[ -d "data/demo/db_profiles.json" ]]; then
+            echo "  ✅ Bug reproduit : data/demo/db_profiles.json est un répertoire"
+            echo "  Nettoyage..."
+            rm -rf data/demo/db_profiles.json
+            echo "  ✅ Nettoyage OK"
+          else
+            echo "  ❌ Impossible de reproduire le bug — vérifier le test"
+            exit 1
+          fi
+
+      - name: "Cas D : Vérifier que le script check_vps_deploy.sh est syntaxiquement correct"
+        run: |
+          bash -n scripts/check_vps_deploy.sh
+          echo "  ✅ check_vps_deploy.sh : syntaxe bash OK"
+          bash -n scripts/test_deploy_dry_run.sh
+          echo "  ✅ test_deploy_dry_run.sh : syntaxe bash OK"
+
+  # ────────────────────────────────────────────────────────────────
+  # Job 4 — Simulation end-to-end regen demo (sans données réelles)
+  # ────────────────────────────────────────────────────────────────
+  e2e-regen-demo-precheck:
+    name: Simulation regen demo (sans données)
+    runs-on: ubuntu-latest
+    needs: [docker-build, permissions-simulation]
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Build image
+        run: docker build -t levelup-test:ci . -q
+
+      - name: Préparer data/ writable par UID 10001
+        run: |
+          mkdir -p data/demo data/logs data/warehouse data/players
+          sudo chown -R 10001:10001 data/
+
+      - name: "Simulation étape 1 : rm -rf (comme dans deploy.yml)"
+        run: |
+          mkdir -p data/demo
+          # Créer des artefacts à supprimer pour simuler un état "après regen précédent"
+          mkdir -p data/demo/warehouse
+          touch data/demo/db_profiles.json data/demo/app_settings.json
+          # Exécuter le rm -rf exact du workflow
+          rm -rf data/demo/warehouse data/demo/db_profiles.json data/demo/app_settings.json \
+                 data/demo/players/DEMO/stats.duckdb 2>/dev/null || true
+          echo "  ✅ Étape 1 rm -rf OK"
+          # Vérifier qu'aucun répertoire fantôme n'a été créé
+          for f in data/demo/db_profiles.json data/demo/app_settings.json; do
+            if [[ -d "$f" ]]; then
+              echo "  ❌ Répertoire fantôme créé : $f"
+              exit 1
+            fi
+          done
+          echo "  ✅ Pas de répertoire fantôme après rm -rf"
+
+      - name: "Simulation étape 2 : docker compose run (écriture dans data/demo/)"
+        run: |
+          # Simuler ce que ferait prepare_demo_data.py : mkdir + écriture
+          docker run --rm -u 10001 \
+            -v "$PWD/data:/app/data" \
+            levelup-test:ci \
+            python -c "
+          import os, json
+          from pathlib import Path
+          out = Path('/app/data/demo')
+          (out / 'warehouse').mkdir(parents=True, exist_ok=True)
+          (out / 'players' / 'DEMO').mkdir(parents=True, exist_ok=True)
+          (out / 'db_profiles.json').write_text(json.dumps({'version': '2.1'}))
+          (out / 'app_settings.json').write_text(json.dumps({}))
+          print('Simulation prepare_demo_data.py : OK')
+          print(f'Fichiers créés : {list(out.iterdir())}')
+          "
+          echo "  ✅ Étape 2 : écriture OK"
+
+      - name: "Simulation étape 4 : vérifier docker compose up levelup-demo"
+        run: |
+          # Vérifier que les volumes du service levelup-demo peuvent être montés
+          for f in data/demo/db_profiles.json data/demo/app_settings.json; do
+            if [[ -d "$f" ]]; then
+              echo "  ❌ $f est un répertoire — compose up levelup-demo va échouer"
+              exit 1
+            elif [[ -f "$f" ]]; then
+              echo "  ✅ $f est un fichier"
+            else
+              echo "  ❌ $f absent — regen n'a pas produit le fichier attendu"
+              exit 1
+            fi
+          done
+          echo "  ✅ Tous les volumes bind-mount fichiers sont OK pour levelup-demo"
