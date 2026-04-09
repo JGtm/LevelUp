@@ -22,7 +22,6 @@ from src.ui.components.info_note import render_info_note
 from src.ui.i18n import t
 from src.ui.streamlit_modern import PLOTLY_CLEAN_CONFIG, PLOTLY_STATIC_CONFIG
 from src.visualization import (
-    plot_map_outcome_timeline,
     plot_map_perf_vs_history,
     plot_map_winrate_bullet,
     plot_squad_map_heatmap,
@@ -56,7 +55,6 @@ def render_map_charts_section(
 
     view = bd_all.head(20).reverse()
     logger.debug("render_map_charts_section: %d cartes, %d matchs session", len(view), len(sub_pl))
-    session_ids = sub_pl["match_id"].cast(pl.Utf8).to_list() if not sub_pl.is_empty() else []
 
     # Ordre chronologique des cartes (oldest first) depuis la sélection courante
     map_order: list[str] | None = None
@@ -68,15 +66,6 @@ def render_map_charts_section(
             .filter(pl.col(_map_col).is_not_null())[_map_col]
             .to_list()
         )
-
-    # B — Timeline chronologique par carte
-    st.markdown(f"##### {t('tm_map_timeline_title')}")
-    if hints_visible():
-        st.caption(t("tm_map_timeline_caption"))
-    with safe_chart_render():
-        fig_tl = plot_map_outcome_timeline(full_pl, session_match_ids=session_ids, lang=lang)
-        if fig_tl is not None:
-            st.plotly_chart(fig_tl, width="stretch", config=PLOTLY_CLEAN_CONFIG)
 
     # C — Bullet win rate vs historique
     if not full_pl.is_empty():
@@ -137,7 +126,6 @@ def render_single_map_section(
 
     st.subheader(t("tm_by_map"))
     view = bd_current.sort("win_rate").head(20).reverse()
-    session_ids = sub_pl["match_id"].cast(pl.Utf8).to_list()
 
     # Ordre chronologique des cartes (oldest first) depuis la sélection courante
     map_order_single: list[str] | None = None
@@ -149,15 +137,6 @@ def render_single_map_section(
             .filter(pl.col(_map_col).is_not_null())[_map_col]
             .to_list()
         )
-
-    # B — Timeline chronologique par carte
-    st.markdown(f"##### {t('tm_map_timeline_title')}")
-    if hints_visible():
-        st.caption(t("tm_map_timeline_caption"))
-    with safe_chart_render():
-        fig_tl = plot_map_outcome_timeline(dfr_pl, session_match_ids=session_ids, lang=lang)
-        if fig_tl is not None:
-            st.plotly_chart(fig_tl, width="stretch", config=PLOTLY_CLEAN_CONFIG)
 
     # C + Feature 2 — vs historique (seulement si assez de données)
     if not dfr_pl.is_empty():

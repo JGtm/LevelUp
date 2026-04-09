@@ -17,7 +17,6 @@ from src.ui.streamlit_modern import PLOTLY_CLEAN_CONFIG, PLOTLY_STATIC_CONFIG, f
 from src.ui.tz import get_tz_name
 from src.visualization import (
     plot_map_comparison,
-    plot_map_outcome_timeline,
     plot_map_perf_vs_history,
     plot_map_winrate_bullet,
     plot_matches_at_top_by_week,
@@ -357,19 +356,7 @@ def _render_ratio_by_map_section(
         return
 
     view = map_result.breakdown.head(20).reverse()
-    session_ids = dff["match_id"].cast(pl.Utf8).to_list()
     lang = get_lang()
-
-    # B — Timeline chronologique (DISABLED: désactivé temporairement, conserver le code)
-    if False:  # noqa: SIM210
-        st.markdown(f"##### {t('wl_map_timeline_title')}")
-        st.caption(t("wl_map_timeline_caption"))
-        with safe_chart_render():
-            fig_tl = plot_map_outcome_timeline(base, session_match_ids=session_ids, lang=lang)
-            if fig_tl is not None:
-                st.plotly_chart(fig_tl, width="stretch", config=PLOTLY_CLEAN_CONFIG)
-            else:
-                st.info(t("insufficient_data_chart"))
 
     if is_session_scope:
         return

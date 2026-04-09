@@ -1,11 +1,85 @@
-"""Tests des composants UI : checkbox_filter et duckdb_analytics.
+"""Tests des composants UI : checkbox_filter, duckdb_analytics, info_note.
 
 Sprint 7bis – Tâche 7b.7
 """
 
 from __future__ import annotations
 
-from unittest.mock import MagicMock
+from unittest.mock import MagicMock, patch
+
+# ═══════════════════════════════════════════════════════════════════
+# render_info_note – composant partagé post-graphe
+# ═══════════════════════════════════════════════════════════════════
+
+
+class TestRenderInfoNote:
+    """Tests pour src/ui/components/info_note.render_info_note."""
+
+    def _call(self, text: str, hints: bool = True) -> str:
+        """Appelle render_info_note et retourne le HTML injecté via st.markdown."""
+        import src.ui.components.info_note as mod
+
+        captured: list[str] = []
+
+        def fake_markdown(html, **_kw):
+            captured.append(html)
+
+        with (
+            patch.object(mod, "hints_visible", return_value=hints),
+            patch("streamlit.markdown", side_effect=fake_markdown),
+        ):
+            mod.render_info_note(text)
+
+        return captured[0] if captured else ""
+
+    def test_ne_rend_rien_si_hints_invisible(self) -> None:
+        html = self._call("Texte ignoré", hints=False)
+        assert html == ""
+
+    def test_rend_div_ts_note(self) -> None:
+        html = self._call("Simple phrase.")
+        assert '<div class="ts-note">' in html
+
+    def test_texte_simple_enveloppe_en_paragraphe(self) -> None:
+        html = self._call("Simple phrase.")
+        assert "<p>Simple phrase.</p>" in html
+
+    def test_ligne_liste_produit_ul_li(self) -> None:
+        html = self._call("- Premier élément")
+        assert "<ul>" in html
+        assert "<li>Premier élément</li>" in html
+
+    def test_plusieurs_lignes_liste(self) -> None:
+        html = self._call("- Item A\n- Item B")
+        assert html.count("<li>") == 2
+        assert html.count("</ul>") == 1
+
+    def test_gras_converti_en_strong(self) -> None:
+        html = self._call("- Un **mot** important")
+        assert "<strong>mot</strong>" in html
+
+    def test_gras_dans_paragraphe(self) -> None:
+        html = self._call("Phrase avec **accent**.")
+        assert "<strong>accent</strong>" in html
+
+    def test_liste_puis_paragraphe_ferme_ul(self) -> None:
+        html = self._call("- Item A\nSuite non listée.")
+        assert "</ul>" in html
+        assert "<p>Suite non listée.</p>" in html
+
+    def test_lignes_vides_ignorees(self) -> None:
+        html = self._call("Ligne 1\n\nLigne 2")
+        assert html.count("<p>") == 2
+        # Pas de <p></p> pour la ligne vide
+        assert "<p></p>" not in html
+
+    def test_texte_multilignes_complet(self) -> None:
+        text = "- **Surface** large → fort\n- Profils **superposés** → même style"
+        html = self._call(text)
+        assert "<strong>Surface</strong>" in html
+        assert "<strong>superposés</strong>" in html
+        assert html.count("<li>") == 2
+
 
 # ═══════════════════════════════════════════════════════════════════
 # checkbox_filter – fonctions pures
