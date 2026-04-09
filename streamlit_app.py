@@ -508,9 +508,10 @@ def _render_main_sidebar(db_path: str, xuid: str, settings: AppSettings) -> tupl
             # le paramètre `settings` (potentiellement périmé si un on_change a
             # créé un nouvel objet via model_copy depuis le dernier rerun).
             _ss_settings = st.session_state.get(SK.APP_SETTINGS, settings)
-            if not isinstance(_ss_settings, type(settings)):
+            if not isinstance(_ss_settings, AppSettings):
                 _ss_settings = settings
-            _ss_settings.lang = new_lang
+            # model_copy pour éviter de muter l'objet partagé en session_state
+            _ss_settings = _ss_settings.model_copy(update={"lang": new_lang})
             save_settings(_ss_settings)
             st.session_state[SK.APP_SETTINGS] = _ss_settings
             persist_browser_prefs(lang=new_lang)
