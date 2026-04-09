@@ -4,7 +4,7 @@ name: Deploy Pre-Check
 # Couvre les cas qui font échouer deploy.yml en production :
 #   - Dockerfile invalide / build cassé
 #   - docker-compose.yml mal formé
-#   - Permissions UID 10001 (appuser) non respectées
+#   - Permissions UID 1000 (appuser = même UID que deploy sur VPS)
 #   - Volumes bind-mount fichiers remplacés par des répertoires fantômes
 #   - Syntaxe des scripts shell/Python
 
@@ -106,12 +106,14 @@ jobs:
 
       - name: Vérifier UID appuser dans l'image
         run: |
-          UID_IN_IMAGE=$(docker run --rm levelup-test:ci id -u)
+          # L'image démarre root (entrypoint gosu), mais appuser doit être UID 1000
+          UID_IN_IMAGE=$(docker run --rm --entrypoint id levelup-test:ci -u appuser 2>/dev/null \
+            || docker run --rm levelup-test:ci id -u)
           echo "  UID appuser détecté : ${UID_IN_IMAGE}"
-          if [[ "${UID_IN_IMAGE}" == "10001" ]]; then
-            echo "  ✅ UID correct : 10001"
+          if [[ "${UID_IN_IMAGE}" == "1000" ]]; then
+            echo "  ✅ UID correct : 1000 (même que deploy sur VPS)"
           else
-            echo "  ❌ UID inattendu : ${UID_IN_IMAGE} (attendu 10001)"
+            echo "  ❌ UID inattendu : ${UID_IN_IMAGE} (attendu 1000)"
             exit 1
           fi
 
@@ -128,10 +130,10 @@ jobs:
           echo "  ✅ docker-compose.yml valide"
 
   # ────────────────────────────────────────────────────────────────
-  # Job 3 — Simulation permissions UID 10001 (cas VPS réaliste)
+  # Job 3 — Simulation permissions (entrypoint gosu + cas VPS réaliste)
   # ────────────────────────────────────────────────────────────────
   permissions-simulation:
-    name: Permissions UID 10001 (simulation VPS)
+    name: Permissions entrypoint gosu (simulation VPS)
     runs-on: ubuntu-latest
     needs: docker-build
     steps:
@@ -141,39 +143,26 @@ jobs:
         run: |
           docker build -t levelup-test:ci . -q
 
-      - name: "Cas A (attendu OK) : data/ appartient à UID 10001"
+      - name: "Cas A : data/ appartient à deploy (UID 1000) → entrypoint fixe les perms"
         run: |
           mkdir -p data/demo data/logs
-          sudo chown -R 10001:10001 data/
-          if docker run --rm -u 10001 \
+          # Simuler l'état VPS : fichiers appartenant au user host (pas au container)
+          sudo chown -R 1000:1000 data/
+          # L'entrypoint (root → chown → gosu appuser) doit corriger automatiquement
+          docker run --rm \
               -v "$PWD/data:/app/data" \
               levelup-test:ci \
-              python -c "import os; os.makedirs('/app/data/demo/warehouse', exist_ok=True); print('OK')" \
-              2>&1; then
-            echo "  ✅ UID 10001 peut créer data/demo/warehouse (permissions correctes)"
-          else
-            echo "  ❌ Échec inattendu — vérifier la configuration Docker"
-            exit 1
-          fi
+              python -c "import os; os.makedirs('/app/data/demo/warehouse', exist_ok=True); print('OK')"
+          echo "  ✅ Entrypoint a corrigé les permissions automatiquement"
 
-      - name: "Cas B (attendu ÉCHEC) : data/ appartient à root → détection du bug"
+      - name: "Cas B : data/ appartient à root → entrypoint fixe aussi"
         run: |
-          # Reprendre la main sur data/ créé par le Cas A (appartient à UID 10001)
-          sudo chown -R "$(id -u):$(id -g)" data/
-          rm -rf data/demo data/logs
-          mkdir -p data/demo data/logs
-          # Simuler l'état VPS où les fichiers appartiennent à root
           sudo chown -R root:root data/
-          if docker run --rm -u 10001 \
+          docker run --rm \
               -v "$PWD/data:/app/data" \
               levelup-test:ci \
-              python -c "import os; os.makedirs('/app/data/demo/warehouse', exist_ok=True)" \
-              2>/dev/null; then
-            echo "  ⚠️  UID 10001 a pu écrire malgré root:root (Docker Desktop permissif)"
-            echo "  INFO : Ce comportement peut différer en prod Linux"
-          else
-            echo "  ✅ Bug de permissions reproduit correctement — détection fonctionnelle"
-          fi
+              python -c "import os; os.makedirs('/app/data/demo/test_root', exist_ok=True); print('OK')"
+          echo "  ✅ Entrypoint a corrigé les permissions root:root"
 
       - name: "Cas C : Reproduction bug répertoire fantôme Docker bind-mount"
         run: |
@@ -217,16 +206,9 @@ jobs:
       - name: Build image
         run: docker build -t levelup-test:ci . -q
 
-      - name: Préparer data/ writable par UID 10001
-        run: |
-          mkdir -p data/demo data/logs data/warehouse data/players
-          sudo chown -R 10001:10001 data/
-
       - name: "Simulation étape 1 : rm -rf (comme dans deploy.yml)"
         run: |
-          # Reprendre la main sur data/ (appartient à 10001 après l'étape précédente)
-          sudo chown -R "$(id -u):$(id -g)" data/
-          mkdir -p data/demo
+          mkdir -p data/demo data/logs data/warehouse data/players
           # Créer des artefacts à supprimer pour simuler un état "après regen précédent"
           mkdir -p data/demo/warehouse
           touch data/demo/db_profiles.json data/demo/app_settings.json
@@ -242,13 +224,11 @@ jobs:
             fi
           done
           echo "  ✅ Pas de répertoire fantôme après rm -rf"
-          # Re-chown pour le container (étape 2)
-          sudo chown -R 10001:10001 data/
 
       - name: "Simulation étape 2 : docker compose run (écriture dans data/demo/)"
         run: |
-          # Simuler ce que ferait prepare_demo_data.py : mkdir + écriture
-          docker run --rm -u 10001 \
+          # L'entrypoint fait le chown automatiquement — pas de -u ni chown manuel
+          docker run --rm \
             -v "$PWD/data:/app/data" \
             levelup-test:ci \
             python -c "

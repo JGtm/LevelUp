@@ -9,6 +9,7 @@ WORKDIR /app
 # --- Étape 0 : Paquets système ---
 RUN apt-get update && apt-get install -y --no-install-recommends \
     ffmpeg \
+    gosu \
     && rm -rf /var/lib/apt/lists/*
 
 # --- Étape 1 : Dépendances (cache Docker maximisé) ---
@@ -40,10 +41,16 @@ RUN echo '{"version":"2.1","warehouse_path":"data/warehouse","profiles":{}}' > /
 RUN mkdir -p /app/data/players /app/data/warehouse /app/data/logs /app/data/cache
 
 # --- Étape 3 : Utilisateur non-root ---
-RUN adduser --disabled-password --gecos "" --uid 10001 appuser \
+# UID 1000 = même UID que le user "deploy" sur le VPS.
+# Élimine les problèmes de permissions sur les bind-mounts (data/, *.json).
+# L'entrypoint (gosu) sert de filet de sécurité si les UIDs divergent.
+RUN adduser --disabled-password --gecos "" --uid 1000 appuser \
     && chown -R appuser:appuser /app
 
-USER appuser
+COPY scripts/docker-entrypoint.sh /usr/local/bin/docker-entrypoint.sh
+RUN chmod +x /usr/local/bin/docker-entrypoint.sh
+
+# PAS de USER appuser ici — l'entrypoint démarre root, drop vers appuser après chown
 
 EXPOSE 8501
 
@@ -59,5 +66,6 @@ ENV LEVELUP_DB="" \
 HEALTHCHECK --interval=30s --timeout=3s --start-period=20s --retries=3 \
     CMD ["python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8501/_stcore/health').read()"]
 
+ENTRYPOINT ["docker-entrypoint.sh"]
 CMD ["python", "-m", "streamlit", "run", "streamlit_app.py", \
      "--server.address=0.0.0.0", "--server.port=8501", "--server.headless=true"]
