@@ -9,6 +9,8 @@ services:
       - LEVELUP_ROOT=/app
       # Chemin des données dans le conteneur (obligatoire : sans .venv, _is_dev_mode()=False)
       - LEVELUP_DATA=/app/data
+      # Opt-in : notif Discord lors d'un nouveau déploiement (vX.Y). Absent sur demo/local.
+      - LEVELUP_NOTIFY_VERSIONS=1
     # Secrets et tokens API (sync Halo, Discord, Tailscale)
     # Créer .env.local depuis .env.local.example avant le premier `docker compose up`.
     # Si absent, le dashboard fonctionne en lecture seule (pas de sync API).

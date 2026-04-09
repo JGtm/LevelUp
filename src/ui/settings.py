@@ -40,6 +40,9 @@ class AppSettings(BaseModel):
     # Discord
     discord_notifications_enabled: bool = False
     discord_webhook_url: str = ""  # Fallback si DISCORD_WEBHOOK_URL absent de l'env
+    discord_notify_sync: bool = True  # Notif après chaque sync/backfill
+    discord_notify_new_version: bool = True  # Notif lors d'une nouvelle version majeure (vX.Y)
+    last_notified_version: str = ""  # Version lors du dernier envoi de notif déploiement
 
     # Médias
     media_enabled: bool = True
