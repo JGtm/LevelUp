@@ -167,5 +167,21 @@ STRINGS: dict[str, dict[str, str] | str] = {
         "fr": "Langue des messages Discord",
         "en": "Discord message language",
     },
+    "set_discord_notify_types_label": {
+        "fr": "Types de notifications",
+        "en": "Notification types",
+    },
+    "set_discord_notify_sync": {
+        "fr": "Après chaque sync / backfill",
+        "en": "After each sync / backfill",
+    },
+    "set_discord_notify_new_version": {
+        "fr": "Nouvelle version majeure déployée",
+        "en": "New major version deployed",
+    },
+    "set_discord_notify_new_version_help": {
+        "fr": "Envoie un message Discord avec les nouveautés (README) quand X ou Y changent dans vX.Y.Z. Nécessite LEVELUP_NOTIFY_VERSIONS=1 dans l'environnement (opt-in prod).",
+        "en": "Sends a Discord message with release notes (README) when X or Y change in vX.Y.Z. Requires LEVELUP_NOTIFY_VERSIONS=1 in the environment (prod opt-in).",
+    },
     # ── Match view helpers (Phase 3) ─────────────────────────────────────────
 }

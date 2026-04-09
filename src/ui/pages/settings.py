@@ -58,16 +58,14 @@ def _get_preserved_settings(settings: AppSettings) -> dict:
         "profile_rank_label": _s("profile_rank_label"),
         "profile_rank_subtitle": _s("profile_rank_subtitle"),
         "cli_lang": _s("cli_lang", "fr"),
+        "last_notified_version": _s("last_notified_version"),
         "tailscale_funnel_enabled": _b("tailscale_funnel_enabled"),
         "doppler_enabled": _b("doppler_enabled"),
         "doppler_project": _s("doppler_project"),
         "doppler_config": _s("doppler_config"),
-        # Auth
         "auth_method": _s("auth_method", "refresh_token"),
-        # Médias — non exposés dans l'UI, préservés tels quels
         "media_indexing_interval_hours": _i("media_indexing_interval_hours", 4),
         "media_reindex_after_sync": _b("media_reindex_after_sync", True),
-        # Sync — optimisé, non exposé, préservé tel quel
         "prefer_spnkr_db_if_available": _b("prefer_spnkr_db_if_available", True),
         "spnkr_refresh_on_start": _b("spnkr_refresh_on_start", True),
         "spnkr_refresh_on_manual_refresh": _b("spnkr_refresh_on_manual_refresh", True),
@@ -103,6 +101,8 @@ def _build_settings_from_ui(  # noqa: PLR0913
     discord_notifications_enabled: bool,
     discord_webhook_url: str,
     discord_lang: str,
+    discord_notify_sync: bool,
+    discord_notify_new_version: bool,
 ) -> AppSettings:
     """Construit un AppSettings à partir des valeurs UI actuelles."""
     return AppSettings(
@@ -123,6 +123,8 @@ def _build_settings_from_ui(  # noqa: PLR0913
         discord_notifications_enabled=discord_notifications_enabled,
         discord_webhook_url=discord_webhook_url,
         discord_lang=discord_lang,
+        discord_notify_sync=discord_notify_sync,
+        discord_notify_new_version=discord_notify_new_version,
         spnkr_refresh_with_backfill=backfill_enabled,
         spnkr_refresh_backfill_medals=backfill_medals,
         spnkr_refresh_backfill_events=backfill_events,
@@ -137,18 +139,7 @@ def _build_settings_from_ui(  # noqa: PLR0913
 
 
 def render_settings_page(settings: AppSettings) -> AppSettings:
-    """Rend la page Paramètres et retourne les settings (potentiellement modifiés).
-
-    Parameters
-    ----------
-    settings : AppSettings
-        Paramètres actuels de l'application.
-
-    Returns
-    -------
-    AppSettings
-        Paramètres (modifiés ou non).
-    """
+    """Rend la page Paramètres et retourne les settings (potentiellement modifiés)."""
     st.subheader(t("settings_title"))
 
     cols = st.columns(2)
@@ -168,7 +159,13 @@ def render_settings_page(settings: AppSettings) -> AppSettings:
         media_watcher_enabled,
         media_watcher_debounce_seconds,
     ) = _render_media_section(settings)
-    discord_enabled, discord_url, discord_lang_val = _render_discord_section(settings)
+    (
+        discord_enabled,
+        discord_url,
+        discord_lang_val,
+        discord_notify_sync,
+        discord_notify_new_version,
+    ) = _render_discord_section(settings)
 
     if save_clicked:
         new_settings = _build_settings_from_ui(
@@ -186,6 +183,8 @@ def render_settings_page(settings: AppSettings) -> AppSettings:
             discord_notifications_enabled=discord_enabled,
             discord_webhook_url=str(discord_url or ""),
             discord_lang=discord_lang_val,
+            discord_notify_sync=discord_notify_sync,
+            discord_notify_new_version=discord_notify_new_version,
             **backfill_vals,
         )
         ok, err = save_settings(new_settings)
@@ -441,7 +440,7 @@ def _render_media_section(settings: AppSettings) -> tuple[str, int, bool, int]:
     )
 
 
-def _render_discord_section(settings: AppSettings) -> tuple[bool, str, str]:
+def _render_discord_section(settings: AppSettings) -> tuple[bool, str, str, bool, bool]:
     """Rend la section Notifications Discord."""
     st.subheader(t("set_discord_section"))
 
@@ -472,4 +471,28 @@ def _render_discord_section(settings: AppSettings) -> tuple[bool, str, str]:
         disabled=not discord_enabled,
     )
 
-    return bool(discord_enabled), str(discord_url or ""), str(discord_lang_val)
+    st.markdown(f"**{t('set_discord_notify_types_label')}**")
+    col1, col2 = st.columns(2)
+    with col1:
+        discord_notify_sync = st.checkbox(
+            t("set_discord_notify_sync"),
+            value=bool(getattr(settings, "discord_notify_sync", True)),
+            disabled=not discord_enabled,
+            key="setting_discord_notify_sync",
+        )
+    with col2:
+        discord_notify_new_version = st.checkbox(
+            t("set_discord_notify_new_version"),
+            value=bool(getattr(settings, "discord_notify_new_version", True)),
+            disabled=not discord_enabled,
+            key="setting_discord_notify_new_version",
+            help=t("set_discord_notify_new_version_help"),
+        )
+
+    return (
+        bool(discord_enabled),
+        str(discord_url or ""),
+        str(discord_lang_val),
+        bool(discord_notify_sync),
+        bool(discord_notify_new_version),
+    )
