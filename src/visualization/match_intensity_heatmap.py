@@ -18,17 +18,16 @@ def _build_heatmap_trace(
     y_labels: list[str],
     lang: str,
 ) -> go.Heatmap:
-    """Construit la trace Heatmap avec colorscale Plasma."""
+    """Construit la trace Heatmap avec colorscale cyan→jaune→rouge."""
     return go.Heatmap(
         z=z_data,
         x=x_labels,
         y=y_labels,
         colorscale=[
-            [0.0, "#0D0887"],
-            [0.25, "#7E03A8"],
-            [0.5, "#CC4778"],
-            [0.75, "#F89441"],
-            [1.0, "#F0F921"],
+            [0.0, "#38C8C8"],
+            [0.4, "#FFFF00"],
+            [0.7, "#FF8000"],
+            [1.0, "#FF1A00"],
         ],
         colorbar={
             "title": {
