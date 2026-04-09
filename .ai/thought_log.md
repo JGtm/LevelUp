@@ -3,6 +3,18 @@
 > Ce fichier capture le raisonnement de l'agent entre les sessions.
 > Archivé : 2026-02-01 (logs précédents dans `.ai/archive/thought_log_pre_phase6.md`)
 
+## [2026-04-10] fix(cleanup): supprimer plot_map_outcome_timeline (dead code) — Complété
+
+**Statut** : Complété · Branche : `feat/info-layer-teammates`
+
+**Décision technique** : Option A du plan H3 appliquée rétroactivement. La réactivation initiale (Option B) était incorrecte : `win_loss.py` avait aussi son propre `if False:` sur la même fonction — le graphe était désactivé partout. Suppression complète : module `_maps_outcome_timeline.py`, re-exports dans `maps_outcome.py` + `visualization/__init__.py`, deux blocs dans `teammates_map_charts.py`, bloc dans `win_loss.py`, clés i18n `tm_map_timeline_title/caption` et `wl_map_timeline_title/caption`. Variables `session_ids` devenues inutilisées retirées (3 endroits).
+
+**Résultats observés** : 5986 tests passent. 10 nouveaux tests ajoutés pour `render_info_note` (`tests/ui/test_components.py::TestRenderInfoNote`).
+
+**Conclusion** : Aucun graphe timeline ne subsiste dans le code. Couverture tests pour le nouveau composant partagé `info_note.py`.
+
+---
+
 ## [2026-04-10] feat(info-layer): harmonisation couche informationnelle Timeseries/Teammates — Complété
 
 **Statut** : Complété · Branche : `feat/info-layer-teammates`
