@@ -177,6 +177,8 @@ jobs:
 
       - name: "Cas C : Reproduction bug répertoire fantôme Docker bind-mount"
         run: |
+          # Reprendre la main sur data/ laissé en root:root par le Cas B
+          sudo chown -R "$(id -u):$(id -g)" data/
           mkdir -p data/demo
           # Supprimer db_profiles.json (simule un regen raté)
           rm -f data/demo/db_profiles.json
