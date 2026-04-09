@@ -30,9 +30,15 @@ git clean -fd --exclude=data/ --exclude=.env.local --exclude=app_settings.json -
 # ce qui fait planter docker compose up avec "not a directory".
 # Les stubs sont remplacés par le vrai contenu lors du regen demo.
 mkdir -p "$DEPLOY_DIR/data/demo" "$DEPLOY_DIR/data/logs"
-[[ -e "$DEPLOY_DIR/data/demo/db_profiles.json" ]] \
+# Si un répertoire fantôme existe à la place d'un fichier (docker compose mount raté),
+# on le supprime avant de créer le stub — sinon docker compose up replante.
+for _stub in db_profiles.json app_settings.json; do
+    _path="$DEPLOY_DIR/data/demo/$_stub"
+    [[ -d "$_path" ]] && { rm -rf "$_path"; echo "[deploy] 🧹 Répertoire fantôme supprimé: $_stub"; }
+done
+[[ -f "$DEPLOY_DIR/data/demo/db_profiles.json" ]] \
     || echo '{"profiles":{}}' > "$DEPLOY_DIR/data/demo/db_profiles.json"
-[[ -e "$DEPLOY_DIR/data/demo/app_settings.json" ]] \
+[[ -f "$DEPLOY_DIR/data/demo/app_settings.json" ]] \
     || echo '{}' > "$DEPLOY_DIR/data/demo/app_settings.json"
 echo "[deploy] ✅ Stubs demo OK"
 

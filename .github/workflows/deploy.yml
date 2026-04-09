@@ -96,9 +96,15 @@ jobs:
             # Les stubs (créés par deploy.sh) évitent que Docker crée des répertoires
             # fantômes si le regen échoue en cours de route.
             rm -rf data/demo/warehouse data/demo/players/DEMO/stats.duckdb
-            # Supprimer les JSON seulement s'ils sont de vrais fichiers (pas des répertoires)
+            # Supprimer les JSON — fichier ou répertoire fantôme (docker crée un dossier
+            # si le fichier n'existe pas au moment du bind-mount)
             for f in data/demo/db_profiles.json data/demo/app_settings.json; do
-              [[ -f "$f" ]] && rm -f "$f"
+              if [[ -d "$f" ]]; then
+                rm -rf "$f"
+                echo "[regen] 🧹 Répertoire fantôme supprimé: $f"
+              elif [[ -f "$f" ]]; then
+                rm -f "$f"
+              fi
             done
 
             docker compose run --rm levelup \
