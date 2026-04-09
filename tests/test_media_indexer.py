@@ -410,13 +410,12 @@ def test_association_closest_match_when_multiple_candidates(tmp_path: Path) -> N
     db_path = tmp_path / "stats.duckdb"
     shared_path = tmp_path / "shared_matches_v2.duckdb"
 
-    # 2 matchs : match_A à 17:00 UTC (18:00 CET), match_B à 17:10 UTC (18:10 CET)
-    # DuckDB stocke en CET (UTC+1) — les chaînes représentent l'heure CET
+    # 2 matchs : match_A à 17:00 UTC, match_B à 17:10 UTC (stockés en UTC)
     _create_shared_db(
         shared_path,
         [
-            ("match_A", "2026-02-03 18:00:00", 720, "map1", "Aquarius", "xuid_1"),
-            ("match_B", "2026-02-03 18:10:00", 720, "map2", "Live Fire", "xuid_1"),
+            ("match_A", "2026-02-03 17:00:00", 720, "map1", "Aquarius", "xuid_1"),
+            ("match_B", "2026-02-03 17:10:00", 720, "map2", "Live Fire", "xuid_1"),
         ],
     )
 
@@ -471,6 +470,10 @@ def test_association_closest_match_when_multiple_candidates(tmp_path: Path) -> N
             "src.data.media_indexer_matchers.get_shared_matches_path_from_player",
             return_value=shared_path,
         ),
+        patch(
+            "src.data.media_helpers.db_ts_to_utc",
+            side_effect=lambda dt: dt.replace(tzinfo=timezone.utc),
+        ),
     ):
         mock_dbs.return_value = [(db_path, "xuid_1")]
         indexer.associate_with_matches(tolerance_minutes=10)
@@ -498,12 +501,12 @@ def test_association_multi_players_same_media(tmp_path: Path) -> None:
     media_epoch = epoch + 60
     media_path = str(tmp_path / "shared" / "clip.mp4")
 
-    # Shared DB v5.1 : 2 matchs, un par joueur (stocké en CET = UTC+1)
+    # Shared DB v5.1 : 2 matchs, un par joueur (stockés en UTC)
     _create_shared_db(
         shared_path,
         [
-            ("match_a", "2026-02-03 18:00:00", 720, "m1", "Aquarius", "xuid_a"),
-            ("match_b", "2026-02-03 18:00:00", 720, "m1", "Aquarius", "xuid_b"),
+            ("match_a", "2026-02-03 17:00:00", 720, "m1", "Aquarius", "xuid_a"),
+            ("match_b", "2026-02-03 17:00:00", 720, "m1", "Aquarius", "xuid_b"),
         ],
     )
 
@@ -557,6 +560,10 @@ def test_association_multi_players_same_media(tmp_path: Path) -> None:
             "src.data.media_indexer_matchers.get_shared_matches_path_from_player",
             return_value=shared_path,
         ),
+        patch(
+            "src.data.media_helpers.db_ts_to_utc",
+            side_effect=lambda dt: dt.replace(tzinfo=timezone.utc),
+        ),
     ):
         mock_dbs.return_value = [(db_a, "xuid_a"), (db_b, "xuid_b")]
         n = indexer.associate_with_matches(tolerance_minutes=5)
@@ -580,7 +587,7 @@ def test_association_map_id_map_name_stored(tmp_path: Path) -> None:
     _create_shared_db(
         shared_path,
         [
-            ("m1", "2026-02-03 18:00:00", 720, "uuid-aquarius", "Aquarius", "u1"),
+            ("m1", "2026-02-03 17:00:00", 720, "uuid-aquarius", "Aquarius", "u1"),
         ],
     )
 
@@ -632,6 +639,10 @@ def test_association_map_id_map_name_stored(tmp_path: Path) -> None:
         patch(
             "src.data.media_indexer_matchers.get_shared_matches_path_from_player",
             return_value=shared_path,
+        ),
+        patch(
+            "src.data.media_helpers.db_ts_to_utc",
+            side_effect=lambda dt: dt.replace(tzinfo=timezone.utc),
         ),
     ):
         mock_dbs.return_value = [(db_path, "u1")]
@@ -737,11 +748,11 @@ def test_association_search_all_player_dbs(tmp_path: Path) -> None:
     epoch = datetime(2026, 2, 3, 17, 0, 0, tzinfo=timezone.utc).timestamp()
     media_epoch = epoch + 120
 
-    # Shared DB : seul xuid_other a un match (stocké en CET = UTC+1)
+    # Shared DB : seul xuid_other a un match (stocké en UTC)
     _create_shared_db(
         shared_path,
         [
-            ("match_other", "2026-02-03 18:00:00", 720, "", "", "xuid_other"),
+            ("match_other", "2026-02-03 17:00:00", 720, "", "", "xuid_other"),
         ],
     )
 
@@ -794,6 +805,10 @@ def test_association_search_all_player_dbs(tmp_path: Path) -> None:
         patch(
             "src.data.media_indexer_matchers.get_shared_matches_path_from_player",
             return_value=shared_path,
+        ),
+        patch(
+            "src.data.media_helpers.db_ts_to_utc",
+            side_effect=lambda dt: dt.replace(tzinfo=timezone.utc),
         ),
     ):
         mock_dbs.return_value = [(db_current, "xuid_current"), (db_other, "xuid_other")]
