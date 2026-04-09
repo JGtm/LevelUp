@@ -31,10 +31,10 @@ COPY streamlit_app.py launcher.py /app/
 # Données de référence embarquées (petits fichiers nécessaires à l'UI)
 # Les playlists/modes sont dans metadata.duckdb (tables playlist_translations, mode_translations)
 
-# Fichiers de config par défaut (écrasés au runtime par les volumes)
-# On utilise un RUN shell pour être robuste si un fichier manque au build.
-COPY db_profiles.json /app/db_profiles.json
-RUN if [ ! -f /app/app_settings.json ]; then echo '{}' > /app/app_settings.json; fi
+# Stubs de config — écrasés au runtime par les volumes bind-mount
+# db_profiles.json est gitignored, on génère un stub valide pour le build
+RUN echo '{"version":"2.1","warehouse_path":"data/warehouse","profiles":{}}' > /app/db_profiles.json \
+    && echo '{}' > /app/app_settings.json
 
 # Dossiers attendus par le runtime
 RUN mkdir -p /app/data/players /app/data/warehouse /app/data/logs /app/data/cache

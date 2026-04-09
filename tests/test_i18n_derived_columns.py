@@ -16,7 +16,6 @@ import pytest
 from src.analysis.maps import compute_map_breakdown
 from src.ui.translations import resolve_map_display_names
 
-
 # ---------------------------------------------------------------------------
 # resolve_map_display_names — sans base de données réelle
 # ---------------------------------------------------------------------------
@@ -117,8 +116,6 @@ class TestResolveMapDisplayNames:
 
     def test_exception_in_db_returns_fallbacks(self, tmp_path) -> None:
         """En cas d'erreur DB, retourne silencieusement les valeurs fallback."""
-        import duckdb
-
         # DB corrompue / inaccessible → simule via patch de duckdb_read_only
         fallbacks = {"uuid-1": "Aquarius"}
         with patch(

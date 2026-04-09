@@ -7,6 +7,7 @@ metadata.duckdb) fonctionnent correctement.
 
 from __future__ import annotations
 
+import contextlib
 import logging
 from pathlib import Path
 
@@ -36,10 +37,8 @@ def test_v_match_full_playlist_name_is_english() -> None:
     try:
         # v_match_full référence meta.asset_translations — attacher si disponible
         if meta.exists():
-            try:
+            with contextlib.suppress(Exception):
                 conn.execute(f"ATTACH '{meta}' AS meta (READ_ONLY)")
-            except Exception:
-                pass
         sample = conn.execute(
             "SELECT DISTINCT playlist_name FROM v_match_full "
             "WHERE playlist_name IS NOT NULL LIMIT 20"
