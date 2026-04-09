@@ -6,8 +6,6 @@ Vérifie que la fonction est pure après Phase 2 : aucun accès
 
 from __future__ import annotations
 
-import pytest
-
 
 class TestNormalizeModeLabel:
     """Tests de normalize_mode_label avec paramètres explicites."""

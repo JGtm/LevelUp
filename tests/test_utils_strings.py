@@ -6,8 +6,6 @@ Couvre :
 
 from __future__ import annotations
 
-import pytest
-
 from src.utils.strings import is_uuid_like
 
 

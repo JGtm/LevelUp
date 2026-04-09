@@ -44,9 +44,24 @@ docker compose up -d --build --no-deps levelup levelup-demo
 echo "[deploy] Nettoyage des images obsolètes..."
 docker image prune -f
 
+# Helper : attendre qu'un port Streamlit soit prêt (retry sur /_stcore/health)
+_wait_for_http() {
+    local url="$1" label="$2" max_seconds="${3:-60}"
+    local elapsed=0
+    echo "[deploy] Attente démarrage $label (max ${max_seconds}s)..."
+    while ! curl -sf "$url" >/dev/null 2>&1; do
+        sleep 2
+        elapsed=$((elapsed + 2))
+        if [[ $elapsed -ge $max_seconds ]]; then
+            echo "[deploy] ⚠️  $label n'a pas répondu après ${max_seconds}s"
+            return 1
+        fi
+    done
+    echo "[deploy] ✅ $label prêt (${elapsed}s)"
+}
+
 # 4. Healthcheck DB — attendre que Streamlit soit prêt, puis vérifier les DB
-echo "[deploy] Attente démarrage Streamlit (20s)..."
-sleep 20
+_wait_for_http "http://127.0.0.1:8501/_stcore/health" "levelup" 60
 
 HC_LOG="$DEPLOY_DIR/data/logs/healthcheck_deploy.log"
 mkdir -p "$(dirname "$HC_LOG")"
@@ -90,5 +105,14 @@ case "$HC_STATUS" in
         echo "[deploy] ⚠️  DB healthcheck non concluant (${HC_STATUS})"
         ;;
 esac
+
+# 5. Vérifier que le container demo (port 8502) est également prêt
+if ls "$DEPLOY_DIR"/data/demo/warehouse/*.duckdb >/dev/null 2>&1; then
+    _wait_for_http "http://127.0.0.1:8502/_stcore/health" "levelup-demo" 60 \
+        || echo "[deploy] ⚠️  levelup-demo lent — logs : docker compose logs levelup-demo"
+else
+    echo "[deploy] ⚠️  data/demo/warehouse/ vide ou absent — demo désactivé"
+    echo "[deploy]    Pour générer les données : python scripts/prepare_demo_data.py"
+fi
 
 echo "[deploy] Déployé avec succès : $(git log -1 --oneline)"

@@ -6,22 +6,22 @@ import polars as pl
 
 
 def _query_impact_events(conn: object, match_ids: list[str], placeholders: str) -> list:
-    """Récupère les événements highlight depuis shared.highlight_events."""
+    """Récupère les événements highlight depuis shared.highlight_events.
+
+    Note : highlight_events n'a qu'une colonne ``xuid`` (acteur de l'événement :
+    killer pour 'kill', victim pour 'death').  Les colonnes killer_xuid /
+    victim_xuid n'existent pas — gamertag résolu via v_gamertag_lookup (v6).
+    """
     query = f"""
         SELECT
-            match_id,
-            CASE WHEN event_type IN ('kill', 'Kill') THEN killer_xuid::TEXT
-                 WHEN event_type IN ('death', 'Death') THEN victim_xuid::TEXT
-                 ELSE COALESCE(killer_xuid, victim_xuid)::TEXT
-            END AS xuid,
-            CASE WHEN event_type IN ('kill', 'Kill') THEN COALESCE(killer_gamertag, killer_xuid::TEXT)
-                 WHEN event_type IN ('death', 'Death') THEN COALESCE(victim_gamertag, victim_xuid::TEXT)
-                 ELSE COALESCE(killer_gamertag, victim_gamertag, 'Unknown')
-            END AS gamertag,
-            event_type,
-            COALESCE(time_ms, 0) AS time_ms
-        FROM shared.highlight_events
-        WHERE match_id IN ({placeholders})
+            he.match_id,
+            he.xuid,
+            COALESCE(vg.gamertag, he.xuid) AS gamertag,
+            he.event_type,
+            COALESCE(he.time_ms, 0) AS time_ms
+        FROM shared.highlight_events he
+        LEFT JOIN shared.v_gamertag_lookup vg ON vg.xuid = he.xuid
+        WHERE he.match_id IN ({placeholders})
     """
     return conn.execute(query, match_ids).fetchall()  # type: ignore[union-attr]
 

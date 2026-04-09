@@ -9,10 +9,7 @@ Vérifie que :
 
 from __future__ import annotations
 
-import html as html_lib
-
 import polars as pl
-import pytest
 
 # ---------------------------------------------------------------------------
 # Helpers communs

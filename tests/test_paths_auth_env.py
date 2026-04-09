@@ -64,6 +64,7 @@ class TestResolveDataRoot:
                 result = _resolve_data_root()
                 assert result == tmp_path / "data"
 
+    @pytest.mark.skipif(os.name != "nt", reason="WindowsPath: uniquement sur Windows")
     def test_portable_mode_windows(self, tmp_path: Path) -> None:
         """Mode portable utilise %APPDATA%/LevelUp."""
         with (
