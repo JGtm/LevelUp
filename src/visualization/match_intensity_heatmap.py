@@ -25,8 +25,9 @@ def _build_heatmap_trace(
         y=y_labels,
         colorscale=[
             [0.0, "#38C8C8"],
-            [0.4, "#FFFF00"],
-            [0.7, "#FF8000"],
+            [0.25, "#FFFF00"],
+            [0.5, "#FFB300"],
+            [0.75, "#FF5500"],
             [1.0, "#FF1A00"],
         ],
         colorbar={
