@@ -42,9 +42,14 @@ done
     || echo '{}' > "$DEPLOY_DIR/data/demo/app_settings.json"
 echo "[deploy] ✅ Stubs demo OK"
 
-# 2b. Rebuilder et redémarrer les services (sans downtime des autres)
+# 2b. Stopper proprement les anciens containers (évite les conflits de noms
+# quand Docker essaie de recréer un container qui existe déjà)
+echo "[deploy] docker compose down..."
+docker compose down --remove-orphans || true
+
+# 2c. Rebuilder et redémarrer les services
 echo "[deploy] docker compose up --build..."
-docker compose up -d --build --no-deps levelup levelup-demo
+docker compose up -d --build
 
 # 3. Nettoyer les images orphelines
 echo "[deploy] Nettoyage des images obsolètes..."
