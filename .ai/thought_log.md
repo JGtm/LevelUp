@@ -3,6 +3,21 @@
 > Ce fichier capture le raisonnement de l'agent entre les sessions.
 > Archivé : 2026-02-01 (logs précédents dans `.ai/archive/thought_log_pre_phase6.md`)
 
+## [2026-04-09] fix(settings): écriture atomique + cascade de récupération cross-platform — Complété
+
+**Statut** : Complété · Branche : fix/settings-atomic-write-recovery
+
+**Décision technique** : Remplacement de l'écriture `open("w")` non-atomique par `tempfile.mkstemp` + `os.replace` (même filesystem → atomique sur Linux, quasi-atomique sur Windows NTFS avec retry sur `PermissionError`). Ajout d'un backup automatique `.json.bak` après chaque save réussi. `load_settings` remplace le catch-all muet par une cascade explicite : principal → backup → defaults, avec logs WARNING/ERROR à chaque niveau. `career_top_matches_render.py` lit désormais `session_state["app_settings"]` en priorité (cohérence session) plutôt que d'appeler `load_settings()` directement. Le changement de langue dans la sidebar utilise `model_copy` pour éviter la mutation directe de l'objet partagé.
+
+**Résultats observés** :
+- 5978 tests passent, 2 skipped, 0 failures (suite complète hors integration)
+- Fix Ruff `SIM105` : `try/except/pass` → `contextlib.suppress(OSError)`
+- Comportement cross-platform validé : `os.name != "nt"` pour `fsync` (Linux seulement)
+
+**Conclusion** : Settings ne peuvent plus être mises à zéro par un crash mid-write. La cascade backup garantit un état récupérable même si le fichier principal est corrompu.
+
+---
+
 ## [2026-04-09] feat(discord): toggles notifs granulaires + notif nouvelle version — Complété
 
 **Statut** : Complété · Branche : main
