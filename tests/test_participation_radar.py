@@ -5,7 +5,6 @@ from __future__ import annotations
 import polars as pl
 import pytest
 
-
 # =============================================================================
 # Tests get_mode_family
 # =============================================================================
@@ -318,7 +317,7 @@ class TestComputeParticipationProfile:
 # =============================================================================
 
 
-def _make_df(match_ids: list[str]) -> "pl.DataFrame":
+def _make_df(match_ids: list[str]) -> pl.DataFrame:
     """DataFrame minimal avec colonne match_id."""
     import polars as pl
 
