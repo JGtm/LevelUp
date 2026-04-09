@@ -558,7 +558,7 @@ class TestNotifyOperationDone:
             patch("os.environ", {**os.environ, "DISCORD_WEBHOOK_URL": webhook}),
             patch(
                 "urllib.request.urlopen",
-                side_effect=lambda _r, _timeout=None: _mock_urlopen_ok(204),
+                side_effect=lambda _r, **_kw: _mock_urlopen_ok(204),
             ) as mock_http,
         ):
             notify_operation_done("sync_delta", t0, t1, players, success, disabled=disabled)
@@ -639,7 +639,7 @@ class TestNotifyOperationDone:
             patch("os.environ", {**os.environ, "DISCORD_WEBHOOK_URL": _WEBHOOK}),
             patch(
                 "urllib.request.urlopen",
-                side_effect=lambda _r, _timeout=None: _mock_urlopen_ok(204),
+                side_effect=lambda _r, **_kw: _mock_urlopen_ok(204),
             ) as mock_http,
         ):
             notify_operation_done(
@@ -665,7 +665,7 @@ class TestNotifyOperationDone:
             patch("os.environ", {**os.environ, "DISCORD_WEBHOOK_URL": _WEBHOOK}),
             patch(
                 "urllib.request.urlopen",
-                side_effect=lambda _r, _timeout=None: _mock_urlopen_ok(204),
+                side_effect=lambda _r, **_kw: _mock_urlopen_ok(204),
             ) as mock_http,
         ):
             notify_operation_done(
@@ -690,7 +690,7 @@ class TestNotifyOperationDone:
             patch("os.environ", {**os.environ, "DISCORD_WEBHOOK_URL": _WEBHOOK}),
             patch(
                 "urllib.request.urlopen",
-                side_effect=lambda _r, _timeout=None: _mock_urlopen_ok(204),
+                side_effect=lambda _r, **_kw: _mock_urlopen_ok(204),
             ) as mock_http,
         ):
             notify_operation_done(
@@ -708,7 +708,7 @@ class TestNotifyOperationDone:
             patch("os.environ", {**os.environ, "DISCORD_WEBHOOK_URL": _WEBHOOK}),
             patch(
                 "urllib.request.urlopen",
-                side_effect=lambda _r, _timeout=None: _mock_urlopen_ok(204),
+                side_effect=lambda _r, **_kw: _mock_urlopen_ok(204),
             ) as mock_http,
         ):
             notify_operation_done("sync_delta", t0, t1, [idle], success=True, skip_idle=False)
@@ -1210,7 +1210,7 @@ class TestNotifyNewVersion:
             patch.dict(os.environ, env, clear=True),
             patch(
                 "urllib.request.urlopen",
-                side_effect=lambda _r, _timeout=None: _mock_urlopen_ok(http_status),
+                side_effect=lambda _r, **_kw: _mock_urlopen_ok(http_status),
             ) as mock_http,
         ):
             result = notify_new_version(version)
@@ -1296,7 +1296,7 @@ class TestNotifyOperationDoneDiscordNotifySync:
             patch("os.environ", {**os.environ, "DISCORD_WEBHOOK_URL": _WEBHOOK}),
             patch(
                 "urllib.request.urlopen",
-                side_effect=lambda _r, _timeout=None: _mock_urlopen_ok(204),
+                side_effect=lambda _r, **_kw: _mock_urlopen_ok(204),
             ) as mock_http,
         ):
             notify_operation_done("sync_delta", t0, t1, [_player()], success=True)
@@ -1319,7 +1319,7 @@ class TestNotifyOperationDoneDiscordNotifySync:
             patch("os.environ", {**os.environ, "DISCORD_WEBHOOK_URL": _WEBHOOK}),
             patch(
                 "urllib.request.urlopen",
-                side_effect=lambda _r, _timeout=None: _mock_urlopen_ok(204),
+                side_effect=lambda _r, **_kw: _mock_urlopen_ok(204),
             ) as mock_http,
         ):
             notify_operation_done("sync_delta", t0, t1, [_player()], success=True)
