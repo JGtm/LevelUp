@@ -274,16 +274,20 @@ def _create_shared_db(shared_path: Path, matches: list[tuple]) -> None:
 
 
 def test_associate_with_matches_explicit_timestamps(tmp_path: Path) -> None:
-    """Test l'association avec des timestamps explicits (epoch UTC)."""
+    """Test l'association avec des timestamps explicits (epoch UTC).
+
+    Note: on stocke le match en UTC pur ('17:00:00') et on mocke db_ts_to_utc
+    pour traiter les datetimes naïfs issus de DuckDB comme UTC. Cela rend le
+    test indépendant de la timezone système (CET sur Windows, UTC sur Linux/CI).
+    """
     db_path = tmp_path / "stats.duckdb"
     shared_path = tmp_path / "shared_matches_v2.duckdb"
 
-    # Créer la shared DB v5.1
-    # DuckDB stocke les UTC datetime en CET (UTC+1) : match à 17:00 UTC → stocké "18:00"
+    # UTC pur — pas de décalage CET (qui ne s'applique qu'en prod Windows)
     _create_shared_db(
         shared_path,
         [
-            ("match_1", "2026-02-03 18:00:00", 720, "", "", "test_xuid"),
+            ("match_1", "2026-02-03 17:00:00", 720, "", "", "test_xuid"),
         ],
     )
 
@@ -352,6 +356,11 @@ def test_associate_with_matches_explicit_timestamps(tmp_path: Path) -> None:
         patch(
             "src.data.media_indexer_matchers.get_shared_matches_path_from_player",
             return_value=shared_path,
+        ),
+        # Traiter les datetimes naïfs DuckDB comme UTC (indépendant de la TZ système)
+        patch(
+            "src.data.media_helpers.db_ts_to_utc",
+            side_effect=lambda dt: dt.replace(tzinfo=timezone.utc),
         ),
     ):
         mock_dbs.return_value = [(db_path, "test_xuid")]
