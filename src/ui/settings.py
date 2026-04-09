@@ -9,6 +9,7 @@ Le chemin est configurable via LEVELUP_SETTINGS_PATH.
 
 from __future__ import annotations
 
+import contextlib
 import json
 import logging
 import os
@@ -232,36 +233,161 @@ class AppSettings(BaseModel):
         return self
 
 
-def load_settings() -> AppSettings:
-    """Charge les paramètres depuis le fichier JSON."""
-    path = get_settings_path()
-    if not os.path.exists(path):
-        try:
-            os.makedirs(os.path.dirname(path) or ".", exist_ok=True)
-            with open(path, "w", encoding="utf-8") as f:
-                f.write("{}\n")
-        except OSError:
-            pass
-        return AppSettings()
+def _settings_bak_path(path: str) -> str:
+    """Retourne le chemin du fichier de backup (.json.bak)."""
+    return path + ".bak"
+
+
+def _try_parse_settings(path: str, label: str) -> AppSettings | None:
+    """Tente de lire et valider un fichier settings. Retourne None en cas d'échec."""
     try:
         with open(path, encoding="utf-8") as f:
             obj = json.load(f) or {}
-    except Exception:
-        return AppSettings()
+    except FileNotFoundError:
+        return None
+    except json.JSONDecodeError as exc:
+        logger.warning("Settings %s : JSON invalide (%s)", label, exc)
+        return None
+    except Exception as exc:
+        logger.error("Settings %s : lecture impossible (%s)", label, exc)
+        return None
 
     if not isinstance(obj, dict):
-        return AppSettings()
+        logger.warning("Settings %s : contenu inattendu (type=%s)", label, type(obj).__name__)
+        return None
 
     try:
-        settings = AppSettings.model_validate(obj)
-        logger.info("Settings chargées depuis %s", path)
-        return settings
-    except Exception:
+        return AppSettings.model_validate(obj)
+    except Exception as exc:
+        logger.error("Settings %s : validation échouée (%s)", label, exc)
+        return None
+
+
+def load_settings() -> AppSettings:
+    """Charge les paramètres depuis le fichier JSON.
+
+    Cascade de récupération :
+    1. app_settings.json (principal)
+    2. app_settings.json.bak (backup du dernier état valide)
+    3. AppSettings() — defaults, sans écriture sur disque
+    """
+    import traceback as _tb
+
+    _caller = _tb.extract_stack()[-2]
+    path = get_settings_path()
+    bak_path = _settings_bak_path(path)
+
+    # ① Fichier principal
+    if os.path.exists(path):
+        settings = _try_parse_settings(path, "principal")
+        if settings is not None:
+            logger.info(
+                "Settings chargées depuis %s [appelé depuis %s:%d]",
+                path,
+                _caller.filename.split("\\")[-1].split("/")[-1],
+                _caller.lineno,
+            )
+            return settings
+        # Fichier corrompu/illisible → tenter le backup
+        logger.warning("Settings principal illisible — tentative backup %s", bak_path)
+    else:
+        # Première utilisation : créer un fichier vide proprement
+        try:
+            os.makedirs(os.path.dirname(path) or ".", exist_ok=True)
+            _atomic_write(path, "{}\n")
+        except Exception as exc:
+            logger.warning("Impossible de créer %s : %s", path, exc)
         return AppSettings()
+
+    # ② Backup
+    if os.path.exists(bak_path):
+        settings = _try_parse_settings(bak_path, "backup")
+        if settings is not None:
+            logger.warning(
+                "Settings récupérées depuis le backup %s — le fichier principal sera restauré",
+                bak_path,
+            )
+            # Restaurer le principal depuis le backup (écriture atomique)
+            try:
+                import shutil
+
+                shutil.copy2(bak_path, path)
+                logger.info("Fichier principal restauré depuis backup")
+            except Exception as exc:
+                logger.error("Restauration backup → principal échouée : %s", exc)
+            return settings
+        logger.error("Settings backup %s aussi illisible", bak_path)
+    else:
+        logger.warning("Pas de backup disponible (%s)", bak_path)
+
+    # ③ Defaults — ne pas écrire sur disque (ne pas écraser un fichier potentiellement récupérable)
+    logger.error(
+        "Impossible de charger les settings depuis %s ni son backup — defaults appliqués",
+        path,
+    )
+    return AppSettings()
+
+
+def _atomic_write(path: str, content: str) -> None:
+    """Écrit `content` dans `path` de façon atomique (même filesystem).
+
+    - Linux/Debian : rename() → vraiment atomique, même fichier ouvert ailleurs
+    - Windows NTFS : quasi-atomique ; retry sur PermissionError (fichier verrouillé)
+    - Le fichier temporaire est créé dans le même dossier pour garantir le même filesystem.
+    """
+    import shutil
+    import tempfile
+    import time
+
+    dir_path = os.path.dirname(path) or "."
+    os.makedirs(dir_path, exist_ok=True)
+
+    fd, tmp_path = tempfile.mkstemp(dir=dir_path, prefix=".settings_", suffix=".tmp")
+    try:
+        try:
+            with os.fdopen(fd, "w", encoding="utf-8") as f:
+                f.write(content)
+                f.flush()
+                if os.name != "nt":  # fsync utile sur Linux, superflu sur Windows NTFS
+                    os.fsync(f.fileno())
+        except Exception:
+            with contextlib.suppress(OSError):
+                os.close(fd)
+            raise
+
+        # Remplacement atomique — retry unique sur Windows si le fichier est verrouillé
+        try:
+            os.replace(tmp_path, path)
+        except PermissionError:
+            if os.name == "nt":
+                time.sleep(0.1)
+                os.replace(tmp_path, path)
+            else:
+                raise
+        tmp_path = None  # Succès : ne pas supprimer dans finally
+
+    finally:
+        if tmp_path is not None and os.path.exists(tmp_path):
+            with contextlib.suppress(OSError):
+                os.unlink(tmp_path)
+
+    # Backup du dernier bon état (non-fatal)
+    bak_path = _settings_bak_path(path)
+    try:
+        shutil.copy2(path, bak_path)
+    except Exception as exc:
+        logger.warning("Backup settings échoué (non-bloquant) : %s", exc)
 
 
 def save_settings(settings: AppSettings) -> tuple[bool, str]:
-    """Sauvegarde les paramètres dans le fichier JSON."""
+    """Sauvegarde les paramètres dans le fichier JSON de façon atomique.
+
+    Séquence :
+    1. Sérialisation en mémoire (si erreur, le fichier n'est pas touché)
+    2. Écriture dans un fichier temporaire du même dossier
+    3. Remplacement atomique (os.replace)
+    4. Copie du fichier valide en backup (.json.bak)
+    """
     import traceback as _tb
 
     _caller = _tb.extract_stack()[-2]
@@ -274,9 +400,9 @@ def save_settings(settings: AppSettings) -> tuple[bool, str]:
     )
     path = get_settings_path()
     try:
-        os.makedirs(os.path.dirname(path) or ".", exist_ok=True)
-        with open(path, "w", encoding="utf-8") as f:
-            json.dump(settings.model_dump(), f, ensure_ascii=False, indent=2)
+        content = json.dumps(settings.model_dump(), ensure_ascii=False, indent=2)
+        _atomic_write(path, content)
         return True, ""
     except Exception as e:
+        logger.error("save_settings échoué : %s", e)
         return False, f"Impossible d'écrire {path}: {e}"
