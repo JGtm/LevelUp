@@ -11,6 +11,12 @@ while IFS=' ' read -r local_ref local_sha remote_ref remote_sha; do
     if [[ "$remote_ref" == "refs/heads/main" ]]; then
         echo "🔍 [pre-push] Branche main détectée — lancement du deploy dry-run..."
         REPO_ROOT="$(git rev-parse --show-toplevel)"
+        # Si Docker n'est pas disponible, le dry-run est ignoré (non bloquant)
+        if ! command -v docker &>/dev/null || ! docker info &>/dev/null 2>&1; then
+            echo "⚠️  [pre-push] Docker non disponible — dry-run ignoré (non bloquant)."
+            echo "   Le CI GitHub Actions prendra le relais."
+            exit 0
+        fi
         if ! bash "${REPO_ROOT}/scripts/test_deploy_dry_run.sh"; then
             echo ""
             echo "❌ [pre-push] Le dry-run a détecté des erreurs."
