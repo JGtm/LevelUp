@@ -15,6 +15,7 @@ from src.analysis import (
 from src.app._page_context import TeammateCallbacks, TeammateContext, TeammateFilterOptions
 from src.data.services.teammates_service import TeammatesService
 from src.ui import display_name_from_xuid
+from src.ui.components.browser_storage import hints_visible
 from src.ui.i18n import get_lang, t
 from src.ui.pages._teammates_trio import render_trio_view
 from src.ui.pages._teammates_trio_helpers import _merge_trio_dataframes, _render_trio_medals
@@ -229,7 +230,8 @@ def _render_map_breakdown(
     render_map_charts_section(sub_all, full_squad_df, breakdown_all, lang=get_lang())
 
     st.subheader(t("tm_history"))
-    st.caption(t("tm_history_tz_caption", tz=get_tz_name()))
+    if hints_visible():
+        st.caption(t("tm_history_tz_caption", tz=get_tz_name()))
     if ensure_polars(sub_all).is_empty():
         st.info(t("tm_no_matches_filter"))
     else:

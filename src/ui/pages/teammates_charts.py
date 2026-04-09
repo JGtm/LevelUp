@@ -15,6 +15,7 @@ logger = logging.getLogger(__name__)
 
 from src.config import OKABE_ITO_PALETTE
 from src.ui.chart_utils import safe_chart_render
+from src.ui.components.browser_storage import hints_visible
 from src.ui.i18n import get_lang, t
 from src.ui.i18n.viz import viz_t
 from src.ui.streamlit_modern import PLOTLY_CLEAN_CONFIG, PLOTLY_STATIC_CONFIG, fragment_if_available
@@ -48,6 +49,8 @@ def render_metric_bar_charts(  # noqa: PLR0913
     hspk_records: dict | None = None,
 ) -> None:
     """Affiche les graphes killing spree et HS+PK pour une escouade."""
+    if hints_visible():
+        st.caption(t("tm_metrics_caption"))
     _lang = get_lang()
     for metric_col, label, key_prefix in [
         ("max_killing_spree", t("tm_killing_spree"), "friend_spree_multi"),
@@ -216,6 +219,8 @@ def render_trio_charts(  # noqa: PLR0913
     # Graphe combiné kills↑/morts↓ (remplace les deux graphes séparés)
     with safe_chart_render():
         st.subheader(t("tm_kills_deaths"))
+        if hints_visible():
+            st.caption(t("tm_kd_half_caption"))
         st.plotly_chart(
             _hide_legend(
                 plot_trio_kills_deaths(

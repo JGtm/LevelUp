@@ -139,6 +139,40 @@ STRINGS: dict[str, dict[str, str] | str] = {
         "fr": "F/M 1ère moitié → 2nde moitié des matchs affichés.",
         "en": "K/D first half → second half of displayed matches.",
     },
+    # ── Info-layer captions (ajoutés Phase 5 — harmonisation) ─────────────────
+    "tm_weapons_no_data": {
+        "fr": "Aucune donnée d'armes pour ces matchs.",
+        "en": "No weapon data available for these matches.",
+    },
+    "tm_impact_caption": {
+        "fr": "Heatmap des rôles que chaque joueur a tenus le plus souvent sur les matchs communs.",
+        "en": "Heatmap of the roles each player most frequently held across shared matches.",
+    },
+    "tm_weapons_chart_caption": {
+        "fr": "Kills par arme — côte à côte sur les matchs communs. Révèle les profils d'armement de chaque joueur.",
+        "en": "Kills by weapon — side by side across shared matches. Reveals each player's weapon preferences.",
+    },
+    "tm_metrics_caption": {
+        "fr": "Comparaison des métriques clés entre joueurs sur les matchs communs.",
+        "en": "Comparison of key metrics between players across shared matches.",
+    },
+    # ── Notes post-graphe (ajoutées Phase 6 — harmonisation) ──────────────────
+    "tm_note_radar": {
+        "fr": "- Une **surface large** sur un axe → forte implication dans ce rôle\n"
+        "- Deux profils **complémentaires** → leurs pointes couvrent des axes différents → bonne synergie\n"
+        "- Deux profils **superposés** → même style de jeu — force sur les matchs agressifs, fragilité en cas de déficit offensif",
+        "en": "- A **large area** on one axis → high involvement in that role\n"
+        "- Two **complementary profiles** → their peaks cover different axes → good synergy\n"
+        "- Two **overlapping profiles** → same playstyle — strong in aggressive matches, fragile when behind",
+    },
+    "tm_note_cadence": {
+        "fr": "- Des pics **synchronisés** → vous jouez aux mêmes moments → push coordonné\n"
+        "- Des pics **décalés** → profils complémentaires en avant-poste / couverture\n"
+        "- Courbes plates → peu de kills en dehors des phases d'objectif",
+        "en": "- **Synchronized peaks** → you fight at the same time → coordinated push\n"
+        "- **Offset peaks** → complementary front / cover split\n"
+        "- Flat curves → few kills outside objective phases",
+    },
     "tm_select_teammate": {
         "fr": "Sélectionne au moins un coéquipier.",
         "en": "Select at least one teammate.",
