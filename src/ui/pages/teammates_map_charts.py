@@ -18,6 +18,7 @@ logger = logging.getLogger(__name__)
 from src.analysis import compute_map_breakdown
 from src.ui.chart_utils import safe_chart_render
 from src.ui.components.browser_storage import hints_visible
+from src.ui.components.info_note import render_info_note
 from src.ui.i18n import t
 from src.ui.streamlit_modern import PLOTLY_CLEAN_CONFIG, PLOTLY_STATIC_CONFIG
 from src.visualization import (
@@ -68,14 +69,14 @@ def render_map_charts_section(
             .to_list()
         )
 
-    # B — Timeline (DISABLED: désactivé temporairement, conserver le code)
-    if False:  # timeline disabled — conserver le code pour usage futur  # noqa: SIM210
-        st.markdown(f"##### {t('tm_map_timeline_title')}")
+    # B — Timeline chronologique par carte
+    st.markdown(f"##### {t('tm_map_timeline_title')}")
+    if hints_visible():
         st.caption(t("tm_map_timeline_caption"))
-        with safe_chart_render():
-            fig_tl = plot_map_outcome_timeline(full_pl, session_match_ids=session_ids, lang=lang)
-            if fig_tl is not None:
-                st.plotly_chart(fig_tl, width="stretch", config=PLOTLY_CLEAN_CONFIG)
+    with safe_chart_render():
+        fig_tl = plot_map_outcome_timeline(full_pl, session_match_ids=session_ids, lang=lang)
+        if fig_tl is not None:
+            st.plotly_chart(fig_tl, width="stretch", config=PLOTLY_CLEAN_CONFIG)
 
     # C — Bullet win rate vs historique
     if not full_pl.is_empty():
@@ -149,14 +150,14 @@ def render_single_map_section(
             .to_list()
         )
 
-    # B — Timeline (DISABLED: désactivé temporairement, conserver le code)
-    if False:  # timeline disabled — conserver le code pour usage futur  # noqa: SIM210
-        st.markdown(f"##### {t('tm_map_timeline_title')}")
+    # B — Timeline chronologique par carte
+    st.markdown(f"##### {t('tm_map_timeline_title')}")
+    if hints_visible():
         st.caption(t("tm_map_timeline_caption"))
-        with safe_chart_render():
-            fig_tl = plot_map_outcome_timeline(dfr_pl, session_match_ids=session_ids, lang=lang)
-            if fig_tl is not None:
-                st.plotly_chart(fig_tl, width="stretch", config=PLOTLY_CLEAN_CONFIG)
+    with safe_chart_render():
+        fig_tl = plot_map_outcome_timeline(dfr_pl, session_match_ids=session_ids, lang=lang)
+        if fig_tl is not None:
+            st.plotly_chart(fig_tl, width="stretch", config=PLOTLY_CLEAN_CONFIG)
 
     # C + Feature 2 — vs historique (seulement si assez de données)
     if not dfr_pl.is_empty():
@@ -336,6 +337,7 @@ def render_squad_cadence_section(
         )
         if fig is not None:
             st.plotly_chart(fig, width="stretch", config=PLOTLY_CLEAN_CONFIG)
+            render_info_note(t("tm_note_cadence"))
         else:
             st.info(t("tm_squad_cadence_no_data"))
 

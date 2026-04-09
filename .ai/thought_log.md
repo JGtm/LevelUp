@@ -3,6 +3,22 @@
 > Ce fichier capture le raisonnement de l'agent entre les sessions.
 > Archivé : 2026-02-01 (logs précédents dans `.ai/archive/thought_log_pre_phase6.md`)
 
+## [2026-04-10] feat(info-layer): harmonisation couche informationnelle Timeseries/Teammates — Complété
+
+**Statut** : Complété · Branche : `feat/info-layer-teammates`
+
+**Décision technique** : Application intégrale du plan `PLAN_HARMONISATION_INFO_LAYER.md` (Parties A + B). Extraction de `_render_note` de `timeseries.py` vers `src/ui/components/info_note.py` (composant public `render_info_note`). Timeseries réimporte via alias. 6 nouvelles clés i18n ajoutées dans `teammates.py`. Réactivation du graphe `plot_map_outcome_timeline` (Option B — la fonction est active dans `win_loss.py`). Remplacement de `_FILM_EXCLUDED_IDS` local par import direct depuis `_weapon_data.py` (EXCLUDED_WEAPON_IDS — inclut Vehicle sentinel en plus de Grenade/Melee, cohérent avec tous les autres modules). `_BIN_SIZE_S` conservé en place (constante à usage unique, pas de module supplémentaire).
+
+**Résultats observés** :
+- 6006 tests passent, 2 skipped, 0 failures (suite hors integration)
+- Ruff : 0 violation après auto-fix isort
+- Baseline taille mise à jour : 122 violations documentées (pas de nouvelles violations fonctionnelles)
+- Changements : 9 fichiers modifiés, 1 fichier créé (`info_note.py`)
+
+**Conclusion** : Couche informationnelle Teammates alignée sur Timeseries (captions conditionnels, notes post-graphe, `hints_visible()` cohérent). Dead code `if False:` supprimé. Duplication `_FILM_EXCLUDED_IDS` éliminée. Partie C (`feat/adaptive-axis-labels`) reportée à un sprint dédié.
+
+---
+
 ## [2026-04-09] fix(settings): écriture atomique + cascade de récupération cross-platform — Complété
 
 **Statut** : Complété · Branche : fix/settings-atomic-write-recovery
