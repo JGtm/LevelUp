@@ -15,6 +15,7 @@ from src.ui.pages.career_top_matches_data import (
     load_top_worst_matches,
 )
 from src.ui.pages.win_loss_table_style import map_name_cell_html
+from src.ui.settings import AppSettings, load_settings
 from src.ui.translations import translate_pair_name
 
 logger = logging.getLogger(__name__)
@@ -253,9 +254,10 @@ def _build_top_table_html(rows: list[dict], *, best: bool, gamertag: str = "") -
 
 def render_top_matches_section(*, db_path: str, xuid: str, waypoint_player: str = "") -> None:
     """Rend la section Top 10 meilleurs / pires matchs dans la page Carrière."""
-    from src.ui.settings import load_settings
-
-    settings = load_settings()
+    # Priorité : session_state (toujours cohérent avec la dernière sauvegarde en cours de session).
+    # Fallback : lecture disque uniquement si la session est vide (ex. script hors Streamlit).
+    _ss = st.session_state.get("app_settings")
+    settings: AppSettings = _ss if isinstance(_ss, AppSettings) else load_settings()
     exclude_btb = settings.career_top_exclude_btb
 
     header = t("career_top_matches_header")
