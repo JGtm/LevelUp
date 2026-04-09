@@ -158,7 +158,9 @@ jobs:
 
       - name: "Cas B (attendu ÉCHEC) : data/ appartient à root → détection du bug"
         run: |
-          rm -rf data/
+          # Reprendre la main sur data/ créé par le Cas A (appartient à UID 10001)
+          sudo chown -R "$(id -u):$(id -g)" data/
+          rm -rf data/demo data/logs
           mkdir -p data/demo data/logs
           # Simuler l'état VPS où les fichiers appartiennent à root
           sudo chown -R root:root data/
