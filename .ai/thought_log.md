@@ -3,6 +3,24 @@
 > Ce fichier capture le raisonnement de l'agent entre les sessions.
 > Archivé : 2026-02-01 (logs précédents dans `.ai/archive/thought_log_pre_phase6.md`)
 
+## [2026-04-09] chore(deploy): guards automatiques permissions + répertoires fantômes — Complété
+
+**Statut** : Complété · Branche `chore/deploy-testing`
+
+**Problèmes diagnostiqués** :
+1. `PermissionError /app/data/logs/app.log` : `data/` appartient à `root` sur VPS, UID 10001 (appuser Docker) ne peut pas écrire
+2. `502 Bad Gateway` demo : conséquence directe du problème 3
+3. Erreur Docker "not a directory" : quand un fichier bind-mount source n'existe pas, Docker crée un répertoire à la place → `docker compose up levelup-demo` échoue
+
+**Décision technique principale** : Intégrer les corrections directement dans `deploy.sh` et `deploy.yml` plutôt que de créer des scripts manuels à lancer. Trois niveaux d'automatisation :
+- `deploy.sh` : fix permissions `chown -R 10001` via `alpine:3` + cleanup fantômes (s'exécute à chaque push main)
+- `deploy.yml` job `deploy-demo` : 3 guards (permissions avant, cleanup fantômes avant, vérification fichiers après regen)
+- `deploy.yml` job `pre-check` (nouveau) : bloque le pipeline si YAML/Bash/Python invalide
+
+**Résultats** : 2 commits sur `chore/deploy-testing` — prêts à merger dans `main`
+
+**Prochaine étape** : Merger dans `main` et observer le prochain déploiement.
+
 ## [2026-04-08] release(v6.4.0): merge feat/demo-mode → main + tag — Complété
 
 **Statut** : Complété · Tag `v6.4.0` poussé sur `origin/main`
