@@ -68,6 +68,7 @@ out/
 nul
 *.spec
 app_settings.json
+app_settings.json.bak
 db_profiles.json
 data/xuid_aliases.json
 GT-XUID.txt
