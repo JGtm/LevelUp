@@ -6,7 +6,9 @@ enableXsrfProtection = false
 
 [global]
 showWarningOnDirectExecution = false
-logLevel = "error"
+
+[logger]
+level = "error"
 
 [client]
 toolbarMode = "viewer"
