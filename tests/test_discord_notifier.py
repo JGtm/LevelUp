@@ -1031,3 +1031,296 @@ class TestCountMatchesMissingData:
         missing_db = tmp_path / "nope.duckdb"
         with patch("src.utils._discord_queries._SHARED_DB", missing_db):
             assert count_matches_missing_data(self.XUID) == 0
+
+
+# =============================================================================
+# Tests — _is_major_minor_change
+# =============================================================================
+
+
+class TestIsMajorMinorChange:
+    """Vérifie la détection de changement X.Y dans vX.Y.Z."""
+
+    from src.utils.discord_notifier import _is_major_minor_change as _fn
+
+    def test_minor_bump_detected(self):
+        from src.utils.discord_notifier import _is_major_minor_change
+
+        assert _is_major_minor_change("6.3.0", "6.4.0") is True
+
+    def test_major_bump_detected(self):
+        from src.utils.discord_notifier import _is_major_minor_change
+
+        assert _is_major_minor_change("6.4.0", "7.0.0") is True
+
+    def test_patch_only_ignored(self):
+        from src.utils.discord_notifier import _is_major_minor_change
+
+        assert _is_major_minor_change("6.4.0", "6.4.1") is False
+
+    def test_same_version_is_false(self):
+        from src.utils.discord_notifier import _is_major_minor_change
+
+        assert _is_major_minor_change("6.4.0", "6.4.0") is False
+
+    def test_empty_old_returns_false(self):
+        """Premier démarrage (last vide) → pas de spam."""
+        from src.utils.discord_notifier import _is_major_minor_change
+
+        assert _is_major_minor_change("", "6.4.0") is False
+
+    def test_v_prefix_stripped(self):
+        from src.utils.discord_notifier import _is_major_minor_change
+
+        assert _is_major_minor_change("v6.3.0", "v6.4.0") is True
+
+    def test_mixed_prefix(self):
+        from src.utils.discord_notifier import _is_major_minor_change
+
+        assert _is_major_minor_change("v6.3.0", "6.4.0") is True
+
+    def test_invalid_format_fallback(self):
+        """Formats non parsables → comparaison string directe."""
+        from src.utils.discord_notifier import _is_major_minor_change
+
+        assert _is_major_minor_change("dev", "6.4.0") is True
+
+    def test_both_invalid_same_returns_false(self):
+        from src.utils.discord_notifier import _is_major_minor_change
+
+        assert _is_major_minor_change("dev", "dev") is False
+
+
+# =============================================================================
+# Tests — _extract_whats_new
+# =============================================================================
+
+
+_SAMPLE_README = """\
+# LevelUp
+
+## What's new
+
+**v6.5 — New feature**
+- First bullet of 6.5
+- Second bullet of 6.5
+
+**v6.4 — Media filters**
+- Bullet A of 6.4
+- Bullet B of 6.4
+
+**v6.3 — Old stuff**
+- Old bullet
+
+## Installation
+Some other section.
+"""
+
+
+class TestExtractWhatsNew:
+    """Vérifie l'extraction de la section What's New depuis le README."""
+
+    def _write_readme(self, tmp_path: Path, content: str = _SAMPLE_README) -> Path:
+        readme = tmp_path / "README.md"
+        readme.write_text(content, encoding="utf-8")
+        return readme
+
+    def test_extracts_correct_version_bullets(self, tmp_path):
+        from src.utils.discord_notifier import _extract_whats_new
+
+        readme = self._write_readme(tmp_path)
+        with patch("src.utils.discord_notifier._README", readme):
+            result = _extract_whats_new("6.4.0")
+        assert "Bullet A of 6.4" in result
+        assert "Bullet B of 6.4" in result
+
+    def test_does_not_include_other_version(self, tmp_path):
+        from src.utils.discord_notifier import _extract_whats_new
+
+        readme = self._write_readme(tmp_path)
+        with patch("src.utils.discord_notifier._README", readme):
+            result = _extract_whats_new("6.4.0")
+        assert "Old bullet" not in result
+        assert "First bullet of 6.5" not in result
+
+    def test_returns_empty_when_version_not_found(self, tmp_path):
+        from src.utils.discord_notifier import _extract_whats_new
+
+        readme = self._write_readme(tmp_path)
+        with patch("src.utils.discord_notifier._README", readme):
+            result = _extract_whats_new("9.9.0")
+        assert result == ""
+
+    def test_returns_empty_when_readme_missing(self, tmp_path):
+        from src.utils.discord_notifier import _extract_whats_new
+
+        missing = tmp_path / "README.md"
+        with patch("src.utils.discord_notifier._README", missing):
+            result = _extract_whats_new("6.4.0")
+        assert result == ""
+
+    def test_returns_empty_for_invalid_version_format(self, tmp_path):
+        from src.utils.discord_notifier import _extract_whats_new
+
+        readme = self._write_readme(tmp_path)
+        with patch("src.utils.discord_notifier._README", readme):
+            result = _extract_whats_new("dev")
+        assert result == ""
+
+    def test_stops_at_next_heading(self, tmp_path):
+        """La section ## Installation ne doit pas être incluse."""
+        from src.utils.discord_notifier import _extract_whats_new
+
+        readme = self._write_readme(tmp_path)
+        with patch("src.utils.discord_notifier._README", readme):
+            result = _extract_whats_new("6.3.0")
+        assert "Installation" not in result
+
+
+# =============================================================================
+# Tests — notify_new_version
+# =============================================================================
+
+
+class TestNotifyNewVersion:
+    """Vérifie la logique de la notif Discord lors d'un déploiement."""
+
+    _MOCK_SETTINGS = {
+        "discord_notifications_enabled": True,
+        "discord_notify_new_version": True,
+    }
+
+    def _call(
+        self,
+        version: str = "6.5.0",
+        env_opt_in: bool = True,
+        settings: dict | None = None,
+        http_status: int = 204,
+    ) -> tuple[bool, MagicMock]:
+        from src.utils.discord_notifier import notify_new_version
+
+        cfg = settings if settings is not None else self._MOCK_SETTINGS
+        env = {
+            **{k: v for k, v in os.environ.items() if k != "LEVELUP_NOTIFY_VERSIONS"},
+            **({"LEVELUP_NOTIFY_VERSIONS": "1"} if env_opt_in else {}),
+            "DISCORD_WEBHOOK_URL": _WEBHOOK,
+        }
+        with (
+            patch("src.utils.discord_notifier._load_app_settings", return_value=cfg),
+            patch.dict(os.environ, env, clear=True),
+            patch(
+                "urllib.request.urlopen",
+                side_effect=lambda _r, _timeout=None: _mock_urlopen_ok(http_status),
+            ) as mock_http,
+        ):
+            result = notify_new_version(version)
+        return result, mock_http
+
+    def test_sends_when_all_conditions_met(self):
+        ok, mock_http = self._call()
+        assert ok is True
+        mock_http.assert_called_once()
+
+    def test_env_var_missing_skips_send(self):
+        ok, mock_http = self._call(env_opt_in=False)
+        assert ok is False
+        mock_http.assert_not_called()
+
+    def test_setting_disabled_skips_send(self):
+        ok, mock_http = self._call(
+            settings={**self._MOCK_SETTINGS, "discord_notify_new_version": False}
+        )
+        assert ok is False
+        mock_http.assert_not_called()
+
+    def test_embed_title_contains_version(self):
+        from src.utils.discord_notifier import notify_new_version
+
+        captured: list[bytes] = []
+
+        def capture(req, timeout=None):
+            captured.append(req.data)
+            return _mock_urlopen_ok(204)
+
+        env = {
+            **{k: v for k, v in os.environ.items() if k != "LEVELUP_NOTIFY_VERSIONS"},
+            "LEVELUP_NOTIFY_VERSIONS": "1",
+            "DISCORD_WEBHOOK_URL": _WEBHOOK,
+        }
+        with (
+            patch(
+                "src.utils.discord_notifier._load_app_settings", return_value=self._MOCK_SETTINGS
+            ),
+            patch.dict(os.environ, env, clear=True),
+            patch("urllib.request.urlopen", side_effect=capture),
+        ):
+            notify_new_version("6.5.0")
+
+        assert len(captured) == 1
+        body = json.loads(captured[0].decode("utf-8"))
+        title = body["embeds"][0]["title"]
+        assert "6.5.0" in title
+
+    def test_failsafe_on_exception(self):
+        """Une exception interne ne doit jamais remonter."""
+        from src.utils.discord_notifier import notify_new_version
+
+        env = {
+            **{k: v for k, v in os.environ.items() if k != "LEVELUP_NOTIFY_VERSIONS"},
+            "LEVELUP_NOTIFY_VERSIONS": "1",
+            "DISCORD_WEBHOOK_URL": _WEBHOOK,
+        }
+        with (
+            patch(
+                "src.utils.discord_notifier._load_app_settings", side_effect=RuntimeError("crash")
+            ),
+            patch.dict(os.environ, env, clear=True),
+        ):
+            result = notify_new_version("6.5.0")
+        assert result is False
+
+
+# =============================================================================
+# Tests — notify_operation_done + discord_notify_sync
+# =============================================================================
+
+
+class TestNotifyOperationDoneDiscordNotifySync:
+    """Vérifie que discord_notify_sync=false inhibe les notifications sync."""
+
+    def _call_with_sync_flag(self, sync_enabled: bool) -> MagicMock:
+        t0, t1 = _NOW - timedelta(minutes=1), _NOW
+        cfg = {"discord_notifications_enabled": True, "discord_notify_sync": sync_enabled}
+        with (
+            patch("src.utils.discord_notifier._load_app_settings", return_value=cfg),
+            patch("os.environ", {**os.environ, "DISCORD_WEBHOOK_URL": _WEBHOOK}),
+            patch(
+                "urllib.request.urlopen",
+                side_effect=lambda _r, _timeout=None: _mock_urlopen_ok(204),
+            ) as mock_http,
+        ):
+            notify_operation_done("sync_delta", t0, t1, [_player()], success=True)
+        return mock_http
+
+    def test_sync_enabled_sends(self):
+        mock_http = self._call_with_sync_flag(True)
+        mock_http.assert_called_once()
+
+    def test_sync_disabled_skips_http(self):
+        mock_http = self._call_with_sync_flag(False)
+        mock_http.assert_not_called()
+
+    def test_sync_flag_absent_defaults_to_enabled(self):
+        """discord_notify_sync absent du JSON → True par défaut (rétrocompat)."""
+        t0, t1 = _NOW - timedelta(minutes=1), _NOW
+        cfg = {"discord_notifications_enabled": True}  # pas de discord_notify_sync
+        with (
+            patch("src.utils.discord_notifier._load_app_settings", return_value=cfg),
+            patch("os.environ", {**os.environ, "DISCORD_WEBHOOK_URL": _WEBHOOK}),
+            patch(
+                "urllib.request.urlopen",
+                side_effect=lambda _r, _timeout=None: _mock_urlopen_ok(204),
+            ) as mock_http,
+        ):
+            notify_operation_done("sync_delta", t0, t1, [_player()], success=True)
+        mock_http.assert_called_once()

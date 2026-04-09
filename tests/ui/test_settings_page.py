@@ -58,6 +58,8 @@ def _full_build_kwargs(**overrides):
         "discord_notifications_enabled": False,
         "discord_webhook_url": "",
         "discord_lang": "fr",
+        "discord_notify_sync": True,
+        "discord_notify_new_version": True,
     }
     defaults.update(overrides)
     return defaults
@@ -226,7 +228,7 @@ class TestBuildSettingsFromUI:
         assert result.career_top_exclude_btb is True
 
     def test_discord_fields_saved(self) -> None:
-        """discord_notifications_enabled, webhook_url et discord_lang sont sauvegardés."""
+        """discord_notifications_enabled, webhook_url, lang et toggles granulaires sauvegardés."""
         from src.ui.pages.settings import _build_settings_from_ui
 
         result = _build_settings_from_ui(
@@ -234,11 +236,15 @@ class TestBuildSettingsFromUI:
                 discord_notifications_enabled=True,
                 discord_webhook_url="https://discord.com/api/webhooks/test",
                 discord_lang="en",
+                discord_notify_sync=False,
+                discord_notify_new_version=False,
             )
         )
         assert result.discord_notifications_enabled is True
         assert result.discord_webhook_url == "https://discord.com/api/webhooks/test"
         assert result.discord_lang == "en"
+        assert result.discord_notify_sync is False
+        assert result.discord_notify_new_version is False
 
     def test_sync_params_preserved_from_settings(self) -> None:
         """max_matches et rps sont préservés depuis les settings, pas réinitialisés."""
@@ -493,8 +499,8 @@ class TestRenderDiscordSection:
         url_call = ms.calls["text_input"].call_args_list[0]
         assert url_call.kwargs.get("disabled") is False
 
-    def test_returns_three_values(self, mock_st) -> None:
-        """La fonction retourne (bool, str, str)."""
+    def test_returns_five_values(self, mock_st) -> None:
+        """La fonction retourne (bool, str, str, bool, bool)."""
         from src.ui import AppSettings
         from src.ui.pages import settings as mod
 
@@ -504,11 +510,13 @@ class TestRenderDiscordSection:
         ms.calls["text_input"].return_value = ""
         ms.calls["selectbox"].return_value = "fr"
 
-        enabled, url, lang = mod._render_discord_section(AppSettings())
+        enabled, url, lang, notify_sync, notify_version = mod._render_discord_section(AppSettings())
 
         assert isinstance(enabled, bool)
         assert isinstance(url, str)
         assert isinstance(lang, str)
+        assert isinstance(notify_sync, bool)
+        assert isinstance(notify_version, bool)
 
     def test_existing_webhook_url_prefilled(self, mock_st) -> None:
         """L'URL webhook existante est utilisée comme valeur par défaut."""

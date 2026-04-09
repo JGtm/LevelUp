@@ -3,6 +3,27 @@
 > Ce fichier capture le raisonnement de l'agent entre les sessions.
 > Archivé : 2026-02-01 (logs précédents dans `.ai/archive/thought_log_pre_phase6.md`)
 
+## [2026-04-09] feat(discord): toggles notifs granulaires + notif nouvelle version — Complété
+
+**Statut** : Complété · Branche : main
+
+**Décision technique** : Ajout de 2 toggles Discord dans Settings (`discord_notify_sync`, `discord_notify_new_version`) + champ interne `last_notified_version` préservé hors UI. Détection de déploiement au démarrage Streamlit via guard `_version_check_done` en session_state. Opt-in prod via `LEVELUP_NOTIFY_VERSIONS=1` pour isoler main / demo / local.
+
+**Résultats observés** :
+- `_is_major_minor_change('6.3.0', '6.4.0')` → True ✓
+- `_is_major_minor_change('6.4.0', '6.4.1')` → False (patch seul) ✓
+- `_is_major_minor_change('', '6.4.0')` → False (premier démarrage, pas de spam) ✓
+- Extraction README What's New v6.4 → 100 chars OK ✓
+
+**Fichiers modifiés** :
+- `src/ui/settings.py` — +3 champs AppSettings
+- `src/ui/pages/settings.py` — `_render_discord_section` +2 checkboxes, `_build_settings_from_ui` mis à jour, `_get_preserved_settings` +`last_notified_version`
+- `src/utils/discord_notifier.py` — +`_is_major_minor_change`, `_extract_whats_new`, `notify_new_version` ; `notify_operation_done` conditionné sur `discord_notify_sync`
+- `streamlit_app.py` — +`_check_and_notify_new_version` + guard session_state
+- `src/ui/i18n/pages/settings.py` — +4 clés FR/EN
+
+**Prochaine étape** : Ajouter `LEVELUP_NOTIFY_VERSIONS=1` dans le docker-compose de l'instance principale VPS.
+
 ## [2026-04-09] fix(highlight_events): bug silencieux killer_xuid + logging first_event — Complété
 
 **Statut** : Complété · Branche courante

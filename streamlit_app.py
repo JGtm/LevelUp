@@ -233,7 +233,45 @@ def _tailscale_worker() -> None:
         print(f"[Tailscale] worker erreur inattendue : {_e}", flush=True)
 
 
-def _initialize_app() -> tuple[AppSettings, str, list[str], list[str]]:  # noqa: PLR0912
+def _check_and_notify_new_version(settings: AppSettings) -> AppSettings:
+    """Envoie une notif Discord si la version majeure/mineure a changé depuis le dernier démarrage.
+
+    Met à jour last_notified_version dans app_settings.json après envoi (ou si même version).
+    Retourne les settings potentiellement mis à jour.
+    """
+    try:
+        from src.utils.discord_notifier import _is_major_minor_change, notify_new_version
+
+        current = __version__
+        last = str(getattr(settings, "last_notified_version", "") or "")
+
+        if not _is_major_minor_change(last, current):
+            # Pas de changement major/minor — mettre à jour silencieusement si last est vide
+            if not last:
+                updated = settings.model_copy(update={"last_notified_version": current})
+                ok, _ = save_settings(updated)
+                if ok:
+                    st.session_state[SK.APP_SETTINGS] = updated
+                    return updated
+            return settings
+
+        logger.info("[Version] Changement détecté : %s → %s, envoi notif Discord", last, current)
+        notify_new_version(current)
+
+        # Toujours mettre à jour last_notified_version (même si la notif échoue)
+        # pour éviter le spam au prochain redémarrage
+        updated = settings.model_copy(update={"last_notified_version": current})
+        ok, err = save_settings(updated)
+        if ok:
+            st.session_state[SK.APP_SETTINGS] = updated
+            return updated
+        logger.warning("[Version] Impossible de sauvegarder last_notified_version : %s", err)
+    except Exception as exc:
+        logger.warning("[Version] Erreur lors du check de version : %s", exc)
+    return settings
+
+
+def _initialize_app() -> tuple[AppSettings, str, list[str], list[str]]:  # noqa: PLR0912, C901
     """Configure la page Streamlit, charge les settings et valide la config.
 
     Returns:
@@ -325,6 +363,11 @@ def _initialize_app() -> tuple[AppSettings, str, list[str], list[str]]:  # noqa:
         st.session_state[SK.IS_SYNCING] = False
         st.session_state["_app_session_init_done"] = True
         logger.debug("Session init: IS_SYNCING réinitialisé à False")
+
+    # Détection nouvelle version — une seule fois par démarrage de session
+    if "_version_check_done" not in st.session_state:
+        st.session_state["_version_check_done"] = True
+        settings = _check_and_notify_new_version(settings)
 
     return settings, DEFAULT_DB, cfg_warnings, cfg_errors
 
