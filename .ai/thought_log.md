@@ -3,7 +3,28 @@
 > Ce fichier capture le raisonnement de l'agent entre les sessions.
 > Archivé : 2026-02-01 (logs précédents dans `.ai/archive/thought_log_pre_phase6.md`)
 
-## [2026-04-09] chore(deploy): guards automatiques permissions + répertoires fantômes — Complété
+## [2026-04-09] fix(highlight_events): bug silencieux killer_xuid + logging first_event — Complété
+
+**Statut** : Complété · Branche courante
+
+**Symptôme signalé** : Graphe "Temps du premier frag / première mort" affiche "Données d'événements non disponibles" malgré des données présentes en DB.
+
+**Diagnostic** :
+1. **Bug certain** (`_teammates_impact_queries.py`) : la requête `_query_impact_events` utilisait `killer_xuid`, `victim_xuid`, `killer_gamertag`, `victim_gamertag` — colonnes inexistantes dans `highlight_events` (schéma réel : `xuid` unique, actor-centric). Introduit dans commit `ede7b2e3` lors de l'extraction de helpers. Cause : la section "Impact coéquipiers" (page Coéquipiers) échouait silencieusement à 100% des appels, aucun badge/impact affiché.
+
+2. **Cause racine graphe timeseries** : `except Exception: pass` dans `timeseries_service.py:load_first_event_times` avale tout. Scénario probable : pendant/après un sync (`_sync_mode` actif), `shared` n'est pas attaché → `FROM shared.highlight_events` échoue → dicts vides → `available=False` → message "no data". Confirmé : données présentes pour tous les joueurs (6929–8314 kills/deaths dans highlight_events), requête retourne 709 kills / 717 deaths sur 744 matchs testés directement.
+
+**Décision technique** :
+- Fix `_teammates_impact_queries.py` : `xuid` direct + `LEFT JOIN shared.v_gamertag_lookup` pour gamertag
+- `timeseries_service.py` : remplacer `except Exception: pass` par `logger.debug(..., exc_info=True)` pour traçabilité
+
+**Résultats** :
+- `_query_impact_events` retourne 734 rows sur 2 matchs test ✓
+- `load_first_event_times` logge désormais les exceptions en DEBUG
+
+**Conclusion** : Le message "no data" sur le graphe timeseries est légitimement temporaire (sync en cours) ou permanent si les matchs filtrés sont antérieurs au backfill events. Pas de bug structurel dans la logique de requête du graphe lui-même.
+
+
 
 **Statut** : Complété · Branche `chore/deploy-testing`
 

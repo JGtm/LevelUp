@@ -259,7 +259,10 @@ class TimeseriesService:
                 repo = DuckDBRepository(db_path, str(xuid).strip())
                 first_kills, first_deaths = repo.get_first_kill_death_times(match_ids)
         except Exception:
-            pass
+            logger.debug(
+                "load_first_event_times: échec (shared indisponible ou sync en cours)",
+                exc_info=True,
+            )
 
         available = bool(first_kills or first_deaths)
         return FirstEventData(
