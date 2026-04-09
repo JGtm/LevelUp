@@ -107,6 +107,10 @@ jobs:
               fi
             done
 
+            # S'assurer que data/demo/ est writable par UID 10001 (appuser dans le container)
+            mkdir -p data/demo
+            chown -R 10001:10001 data/demo
+
             docker compose run --rm levelup \
               python scripts/prepare_demo_data.py \
                 --gamertag JGtm --max-matches 50 --service-tag SPTA --out data/demo
