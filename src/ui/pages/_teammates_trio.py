@@ -261,7 +261,7 @@ def render_trio_view(  # noqa: PLR0913, PLR0915, C901, PLR0912
 
     # ── Records depuis l'historique COMPLET (pas filtré à l'escouade) ────────
     # Conditionnés par le setting show_records (page Paramètres).
-    _show_records = bool(getattr(st.session_state.get("app_settings"), "show_records", True))
+    _show_records = bool(getattr(st.session_state.get("app_settings"), "show_records", False))
 
     _squad_record_set: SquadRecordSet | None = None
     _pm_records: dict[str, tuple[float | None, float | None, float | None]] | None = None

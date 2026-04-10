@@ -338,7 +338,6 @@ def _atomic_write(path: str, content: str) -> None:
     """
     import shutil
     import tempfile
-    import time
 
     dir_path = os.path.dirname(path) or "."
     os.makedirs(dir_path, exist_ok=True)
@@ -356,15 +355,22 @@ def _atomic_write(path: str, content: str) -> None:
                 os.close(fd)
             raise
 
-        # Remplacement atomique — retry unique sur Windows si le fichier est verrouillé
-        try:
+        # Remplacement atomique — retry multiple sur Windows (verrou antivirus / Streamlit)
+        _replaced = False
+        if os.name == "nt":
+            for _attempt, _delay in enumerate([0.05, 0.1, 0.2, 0.5], start=1):
+                try:
+                    os.replace(tmp_path, path)
+                    _replaced = True
+                    break
+                except PermissionError:
+                    import time as _time
+
+                    _time.sleep(_delay)
+            if not _replaced:
+                os.replace(tmp_path, path)  # dernière tentative — lève si toujours bloqué
+        else:
             os.replace(tmp_path, path)
-        except PermissionError:
-            if os.name == "nt":
-                time.sleep(0.1)
-                os.replace(tmp_path, path)
-            else:
-                raise
         tmp_path = None  # Succès : ne pas supprimer dans finally
 
     finally:
@@ -391,13 +397,16 @@ def save_settings(settings: AppSettings) -> tuple[bool, str]:
     """
     import traceback as _tb
 
-    _caller = _tb.extract_stack()[-2]
+    _stack = _tb.extract_stack()
+    _caller = _stack[-2]
+    # Traceback complet pour tracer tout écrasement non-intentionnel de show_records
+    _callers_str = " → ".join(
+        f"{f.filename.split(chr(92))[-1].split('/')[-1]}:{f.lineno}" for f in _stack[-5:-1]
+    )
     logger.info(
-        "save_settings: show_records=%s  [appelé depuis %s:%d %s()]",
+        "save_settings: show_records=%s  [%s]",
         getattr(settings, "show_records", "?"),
-        _caller.filename.split("\\")[-1].split("/")[-1],
-        _caller.lineno,
-        _caller.name,
+        _callers_str,
     )
     path = get_settings_path()
     try:
