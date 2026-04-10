@@ -45,13 +45,14 @@ def _on_change_setting(field: str, widget_key: str) -> None:
 
 
 def _on_change_lang() -> None:
-    """Handler dédié lang : persist, set_lang global et rerun immédiat."""
+    """Handler dédié lang : persist disque + browser storage, set_lang, rerun."""
     new_val = str(st.session_state.get("setting_lang") or "fr")
     _, ok, err = patch_settings("lang", new_val)
     if not ok:
         st.toast(f"⚠️ Sauvegarde échouée : {err}", icon="⚠️")
         return
     set_lang(new_val)
+    persist_browser_prefs(lang=new_val)
     st.rerun()
 
 
