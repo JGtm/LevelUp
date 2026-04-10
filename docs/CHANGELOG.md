@@ -6,6 +6,57 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 > French version: [FR/CHANGELOG.md](FR/CHANGELOG.md)
 
+## [6.5.0] - 2026-04-10
+
+### Added
+
+- **Teammates — per-player intensity heatmap** — a new section after "Squad complementarity" renders a match × phase (early/mid/late) heatmap for each squad member's kill profile. A segmented-control toggle (All / per player) switches views without re-querying the DB — data is loaded in a single pass. Reuses `compute_match_intensity_profiles` + `plot_match_intensity_heatmap`.
+
+- **Discord — separate sync/backfill notifications** — a new independent toggle `discord_notify_backfill` is distinct from `discord_notify_sync`. Both checkboxes are now laid out vertically (one per line). `notify_operation_done` routes to the correct flag based on `operation.startswith("backfill")`. The Backfill section in Settings has been moved to last position, under a `st.subheader` with a warning caption and collapsed expander by default.
+
+- **Shared info-layer component** — `_render_note` extracted into a public `render_info_note(key, lang)` function in `src/ui/components/info_note.py`, shared by Teammates and Timeseries pages.
+  - 6 new i18n keys in `teammates.py`: `tm_no_data`, `tm_impact_caption`, `tm_weapons_chart_caption`, `tm_metrics_caption`, `tm_note_radar`, `tm_note_cadence`.
+  - Captions added: impact heatmap, weapons bar chart, metric bar charts.
+  - Post-chart notes added after the synergy radar and cadence map charts.
+  - All conditional captions wrapped in `hints_visible()` across Teammates and Timeseries.
+  - `EXCLUDED_WEAPON_IDS` import unified from `_weapon_data.py` (replaces the local `_FILM_EXCLUDED_IDS` constant).
+
+### Changed
+
+- **Settings V3 — `frozen=True`, `patch_settings`, atomic write** — major internal overhaul of the settings layer:
+  - `AppSettings` is now `frozen=True` — no silent in-memory mutation.
+  - `patch_settings(key, value)` replaces direct `save_settings()` calls across the codebase (`streamlit_app.py`, `sidebar.py`, all page sections).
+  - `_WRITE_LOCK` ensures thread-safe writes; `_PROCESS_CACHE` deduplicates content to skip needless I/O.
+  - Settings UI pages fully migrated to `on_change` callbacks — `_auto_save_show_*` and `_build_settings_from_ui` removed.
+  - `_render_backfill_checkboxes` extracted; `_check_settings_consistency` made non-blocking.
+  - `save_settings()` kept as a CLI-only wrapper.
+  - `path_picker.directory_input` now supports `on_change` / `args`.
+  - `__init__.py` exports `patch_settings`.
+
+### Fixed
+
+- **Settings — atomic write + cross-platform recovery cascade** — settings are now written atomically via `os.replace()` after writing to a temporary file. Recovery cascade: valid backup restore → factory reset → empty file protection. Prevents corrupted `app_settings.json` on crash or forced kill.
+  - `_atomic_write`: retry `os.replace()` up to 4 attempts (50/100/200/500 ms) for Windows file locking.
+  - `save_settings()`: full traceback logged (5 levels) to trace any future accidental overwrite.
+
+- **Settings — `show_records` silently reset to `True`** — default fallback corrected from `True` → `False` in 3 files; `app_settings.json` and its backup updated in place.
+
+- **`plot_map_outcome_timeline` removed** — the chart was disabled via `if False:` in all call sites (`teammates_map_charts.py` ×2, `win_loss.py`). The function and its source file (`_maps_outcome_timeline.py`) have been deleted; orphan i18n keys `tm_map_timeline_title/caption` and `wl_map_timeline_title/caption` also removed. Note: the chart was re-evaluated as option B and remains active in `win_loss.py` via its own implementation.
+
+- **`app_settings.json.bak` excluded from version control** — contains the same sensitive data as `app_settings.json` (Discord webhook, local paths); added to `.gitignore`.
+
+### Tests
+
+- **Settings V3 + atomic write** — 76 new tests (31 + 45); settings coverage: 77.5 % → 87.7 %.
+  - `TestGetSettingsPath` (5 cases): `LEVELUP_SETTINGS_PATH` override.
+  - `TestApplyLegacyMigrations` (6 cases): `screens/videos` → `captures_base_dir` migration.
+  - `TestPatchSettings*` (13 cases): persistence, session_state, no-op dedup, fallback, rollback.
+  - `TestOnChangeSetting` / `TestOnChangeShowHints` (5 cases): toast, browser prefs.
+  - Recovery cascade: valid backup, factory reset, retry Windows, empty file protection.
+- `TestRenderInfoNote` — 10 new cases: `hints_visible`, lists, bold text, paragraphs, empty input.
+
+---
+
 ## [6.4.0] - 2026-04-07
 
 ### Added
