@@ -57,10 +57,11 @@ _SCROLL_OBSERVER_JS: str = """<script>
       var s=d.getElementById('llp-squad-start');
       if(!p||!s){if(T++<30)setTimeout(run,150);return;}
       var e=d.getElementById('llp-impact-end');
+      function isActive(el){return el&&el.offsetParent!==null;}
       function upd(){
         var iH=window.parent.innerHeight||768;
         var ok=s.getBoundingClientRect().top<iH;
-        if(ok&&e)ok=e.getBoundingClientRect().top>50;
+        if(ok&&e&&isActive(e))ok=e.getBoundingClientRect().top>50;
         p.style.display=ok?'block':'none';
       }
       var mc=d.querySelector('[data-testid="stMain"]')||d.querySelector('.main');
