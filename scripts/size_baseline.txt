@@ -19,7 +19,7 @@ FUNC:src/app/filters_render.py:392:render_filters_sidebar:102L
 FUNC:src/app/i18n_columns.py:36:add_i18n_display_columns:85L
 FUNC:src/app/main_helpers.py:151:render_profile_hero:83L
 FUNC:src/app/profile.py:183:load_profile_assets:89L
-FUNC:src/app/sidebar.py:178:render_sync_button:124L
+FUNC:src/app/sidebar.py:177:render_sync_button:124L
 FUNC:src/data/media_indexer.py:238:scan_and_index:91L
 FUNC:src/data/media_indexer.py:94:ensure_schema:138L
 FUNC:src/data/repositories/_archives_repo.py:135:load_matches_from_archives:102L
@@ -52,7 +52,7 @@ FUNC:src/ui/components/checkbox_filter.py:97:render_checkbox_filter:111L
 FUNC:src/ui/filter_state.py:104:save_filter_preferences:145L
 FUNC:src/ui/filter_state.py:279:apply_filter_preferences:166L
 FUNC:src/ui/medals.py:128:render_medals_grid:81L
-FUNC:src/ui/pages/_teammates_trio.py:144:render_trio_view:309L
+FUNC:src/ui/pages/_teammates_trio.py:144:render_trio_view:310L
 FUNC:src/ui/pages/_teammates_trio_helpers.py:91:_render_per_minute_stats:82L
 FUNC:src/ui/pages/career.py:107:_render_rank_header:89L
 FUNC:src/ui/pages/citations.py:25:render_citations_page:172L
@@ -124,6 +124,5 @@ MODULE:src/ui/pages/match_view_helpers.py:506L
 MODULE:src/ui/pages/match_view_scoreboard_detail.py:625L
 MODULE:src/ui/pages/session_compare.py:530L
 MODULE:src/ui/pages/session_compare_charts.py:502L
-MODULE:src/ui/pages/settings.py:507L
 MODULE:src/ui/pages/teammates_charts.py:536L
 MODULE:src/visualization/trio.py:507L

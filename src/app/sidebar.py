@@ -69,10 +69,9 @@ def _render_lang_selector(settings: AppSettings) -> bool:
 
     if selected_lang != current:
         set_lang(selected_lang)
-        settings.lang = selected_lang
-        from src.ui.settings import save_settings
+        from src.ui.settings import patch_settings
 
-        save_settings(settings)
+        patch_settings("lang", selected_lang)
         return True
     return False
 

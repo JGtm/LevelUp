@@ -58,10 +58,11 @@ class TestAppSettingsBackfillPersistence:
         settings_file = tmp_path / "test_settings.json"
 
         # Créer des settings avec backfill activé
-        original_settings = AppSettings()
-        original_settings.spnkr_refresh_with_backfill = True
-        original_settings.spnkr_refresh_backfill_medals = True
-        original_settings.spnkr_refresh_backfill_performance_scores = True
+        original_settings = AppSettings(
+            spnkr_refresh_with_backfill=True,
+            spnkr_refresh_backfill_medals=True,
+            spnkr_refresh_backfill_performance_scores=True,
+        )
 
         # Sauvegarder
         with patch("src.ui.settings.get_settings_path", return_value=str(settings_file)):
@@ -102,14 +103,15 @@ class TestAppSettingsBackfillPersistence:
         """Test que toutes les options de backfill sont sauvegardées."""
         settings_file = tmp_path / "test_settings.json"
 
-        settings = AppSettings()
-        settings.spnkr_refresh_with_backfill = True
-        settings.spnkr_refresh_backfill_medals = True
-        settings.spnkr_refresh_backfill_events = True
-        settings.spnkr_refresh_backfill_skill = True
-        settings.spnkr_refresh_backfill_personal_scores = True
-        settings.spnkr_refresh_backfill_performance_scores = True
-        settings.spnkr_refresh_backfill_aliases = True
+        settings = AppSettings(
+            spnkr_refresh_with_backfill=True,
+            spnkr_refresh_backfill_medals=True,
+            spnkr_refresh_backfill_events=True,
+            spnkr_refresh_backfill_skill=True,
+            spnkr_refresh_backfill_personal_scores=True,
+            spnkr_refresh_backfill_performance_scores=True,
+            spnkr_refresh_backfill_aliases=True,
+        )
 
         with patch("src.ui.settings.get_settings_path", return_value=str(settings_file)):
             save_settings(settings)
@@ -131,9 +133,10 @@ class TestSettingsPageBackfillIntegration:
     def test_settings_page_reads_backfill_options(self):
         """Test que render_settings_page lit correctement les options de backfill."""
 
-        test_settings = AppSettings()
-        test_settings.spnkr_refresh_with_backfill = True
-        test_settings.spnkr_refresh_backfill_performance_scores = True
+        test_settings = AppSettings(
+            spnkr_refresh_with_backfill=True,
+            spnkr_refresh_backfill_performance_scores=True,
+        )
 
         # Mock Streamlit pour éviter d'exécuter réellement le rendu
         with (
@@ -154,7 +157,7 @@ class TestSettingsPageBackfillIntegration:
         """Test que render_settings_page sauvegarde correctement les options de backfill."""
         # Simuler des valeurs modifiées dans l'UI
         with (
-            patch("src.ui.pages.settings.save_settings"),
+            patch("src.ui.settings._write_settings"),
             patch("streamlit.toggle", return_value=True),
             patch("streamlit.checkbox", return_value=True),
             patch("streamlit.expander") as mock_expander,
@@ -174,9 +177,10 @@ class TestSidebarBackfillIntegration:
     def test_sidebar_reads_backfill_settings(self):
         """Test que render_sync_button lit correctement les paramètres de backfill."""
 
-        test_settings = AppSettings()
-        test_settings.spnkr_refresh_with_backfill = True
-        test_settings.spnkr_refresh_backfill_performance_scores = True
+        test_settings = AppSettings(
+            spnkr_refresh_with_backfill=True,
+            spnkr_refresh_backfill_performance_scores=True,
+        )
 
         # Vérifier que les settings sont accessibles via getattr
         backfill_enabled = bool(getattr(test_settings, "spnkr_refresh_with_backfill", False))
@@ -190,9 +194,10 @@ class TestSidebarBackfillIntegration:
     def test_sidebar_checks_all_backfill_options(self):
         """Test que render_sync_button vérifie toutes les options de backfill."""
 
-        test_settings = AppSettings()
-        test_settings.spnkr_refresh_backfill_medals = True
-        test_settings.spnkr_refresh_backfill_performance_scores = True
+        test_settings = AppSettings(
+            spnkr_refresh_backfill_medals=True,
+            spnkr_refresh_backfill_performance_scores=True,
+        )
 
         # Simuler la logique de has_any_backfill_option
         has_any_backfill_option = any(
@@ -222,8 +227,12 @@ class TestSidebarBackfillIntegration:
         assert performance_scores is True  # Défaut
 
         # Avec les valeurs modifiées
-        test_settings.spnkr_refresh_backfill_medals = True
-        test_settings.spnkr_refresh_backfill_performance_scores = True
+        test_settings = test_settings.model_copy(
+            update={
+                "spnkr_refresh_backfill_medals": True,
+                "spnkr_refresh_backfill_performance_scores": True,
+            }
+        )
         medals = bool(getattr(test_settings, "spnkr_refresh_backfill_medals", False))
         assert medals is True
 
@@ -233,9 +242,10 @@ class TestBackfillSettingsValidation:
 
     def test_performance_scores_can_be_enabled_independently(self):
         """Test que performance_scores peut être activé sans backfill général."""
-        settings = AppSettings()
-        settings.spnkr_refresh_with_backfill = False
-        settings.spnkr_refresh_backfill_performance_scores = True
+        settings = AppSettings(
+            spnkr_refresh_with_backfill=False,
+            spnkr_refresh_backfill_performance_scores=True,
+        )
 
         # Vérifier que c'est valide
         assert settings.spnkr_refresh_with_backfill is False
@@ -243,8 +253,7 @@ class TestBackfillSettingsValidation:
 
     def test_backfill_all_enables_all_options(self):
         """Test que backfill_all active toutes les options individuelles."""
-        settings = AppSettings()
-        settings.spnkr_refresh_with_backfill = True
+        settings = AppSettings(spnkr_refresh_with_backfill=True)
 
         # Simuler la logique "backfill_all"
         all_enabled = (
@@ -259,13 +268,17 @@ class TestBackfillSettingsValidation:
         # Par défaut, seul performance_scores est activé
         assert all_enabled is False
 
-        # Activer toutes les options
-        settings.spnkr_refresh_backfill_medals = True
-        settings.spnkr_refresh_backfill_events = True
-        settings.spnkr_refresh_backfill_skill = True
-        settings.spnkr_refresh_backfill_personal_scores = True
-        settings.spnkr_refresh_backfill_performance_scores = True
-        settings.spnkr_refresh_backfill_aliases = True
+        # Activer toutes les options via model_copy
+        settings = settings.model_copy(
+            update={
+                "spnkr_refresh_backfill_medals": True,
+                "spnkr_refresh_backfill_events": True,
+                "spnkr_refresh_backfill_skill": True,
+                "spnkr_refresh_backfill_personal_scores": True,
+                "spnkr_refresh_backfill_performance_scores": True,
+                "spnkr_refresh_backfill_aliases": True,
+            }
+        )
 
         all_enabled = (
             settings.spnkr_refresh_backfill_medals

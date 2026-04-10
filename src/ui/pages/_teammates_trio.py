@@ -340,6 +340,7 @@ def render_trio_view(  # noqa: PLR0913, PLR0915, C901, PLR0912
         xuid_name_map=_intensity_xuid_name,
         match_ids_ordered=_intensity_match_ids,
         lang=get_lang(),
+        me_df=me_df,
     )
 
     # Si f2 était attendu mais vide, on le retire silencieusement

@@ -7,7 +7,7 @@ On implémente donc un petit navigateur de dossiers, utile quand l'app tourne en
 from __future__ import annotations
 
 import os
-from collections.abc import Iterable
+from collections.abc import Callable, Iterable
 from pathlib import Path
 
 import streamlit as st
@@ -82,6 +82,8 @@ def directory_input(  # noqa: PLR0913
     help: str | None = None,
     placeholder: str = "",
     start_path: str | None = None,
+    on_change: Callable | None = None,
+    args: tuple | None = None,
 ) -> str:
     """Champ de saisie simple pour un dossier.
 
@@ -92,6 +94,8 @@ def directory_input(  # noqa: PLR0913
         help: Texte d'aide.
         placeholder: Placeholder du champ.
         start_path: Non utilisé (compatibilité).
+        on_change: Callback appelé lorsque la valeur change.
+        args: Arguments positionnels passés à on_change.
 
     Returns:
         Chemin choisi (string).
@@ -108,6 +112,8 @@ def directory_input(  # noqa: PLR0913
         key=text_key,
         help=help or "Collez le chemin absolu du dossier (ex: C:\\Users\\...\\Videos)",
         placeholder=placeholder or "C:\\Users\\...\\Videos",
+        on_change=on_change,
+        args=args,
     )
 
     return str(path_value or "").strip()

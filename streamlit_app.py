@@ -87,7 +87,6 @@ from src.ui import (
     display_name_from_xuid,
     load_css,
     load_settings,
-    save_settings,
 )
 from src.ui.cache import (
     cached_compute_sessions_db,
@@ -125,6 +124,7 @@ from src.ui.multiplayer import (
 # render_match_view est toujours nécessaire pour build_match_view_params
 from src.ui.pages.match_view import render_match_view
 from src.ui.perf import perf_reset_run, perf_section
+from src.ui.settings import patch_settings
 from src.ui.sync import (
     cleanup_orphan_tmp_dbs,
     is_spnkr_db_path,
@@ -248,11 +248,9 @@ def _check_and_notify_new_version(settings: AppSettings) -> AppSettings:
         if not _is_major_minor_change(last, current):
             # Pas de changement major/minor — mettre à jour silencieusement si last est vide
             if not last:
-                updated = settings.model_copy(update={"last_notified_version": current})
-                ok, _ = save_settings(updated)
+                new_settings, ok, _ = patch_settings("last_notified_version", current)
                 if ok:
-                    st.session_state[SK.APP_SETTINGS] = updated
-                    return updated
+                    return new_settings
             return settings
 
         logger.info("[Version] Changement détecté : %s → %s, envoi notif Discord", last, current)
@@ -260,11 +258,9 @@ def _check_and_notify_new_version(settings: AppSettings) -> AppSettings:
 
         # Toujours mettre à jour last_notified_version (même si la notif échoue)
         # pour éviter le spam au prochain redémarrage
-        updated = settings.model_copy(update={"last_notified_version": current})
-        ok, err = save_settings(updated)
+        new_settings, ok, err = patch_settings("last_notified_version", current)
         if ok:
-            st.session_state[SK.APP_SETTINGS] = updated
-            return updated
+            return new_settings
         logger.warning("[Version] Impossible de sauvegarder last_notified_version : %s", err)
     except Exception as exc:
         logger.warning("[Version] Erreur lors du check de version : %s", exc)
@@ -504,16 +500,7 @@ def _render_main_sidebar(db_path: str, xuid: str, settings: AppSettings) -> tupl
         new_lang = "fr" if picked_lang == "🇫🇷" else "en"
         if new_lang != current_lang:
             set_lang(new_lang)
-            # Lire session_state["app_settings"] en direct plutôt que d'utiliser
-            # le paramètre `settings` (potentiellement périmé si un on_change a
-            # créé un nouvel objet via model_copy depuis le dernier rerun).
-            _ss_settings = st.session_state.get(SK.APP_SETTINGS, settings)
-            if not isinstance(_ss_settings, AppSettings):
-                _ss_settings = settings
-            # model_copy pour éviter de muter l'objet partagé en session_state
-            _ss_settings = _ss_settings.model_copy(update={"lang": new_lang})
-            save_settings(_ss_settings)
-            st.session_state[SK.APP_SETTINGS] = _ss_settings
+            patch_settings("lang", new_lang)
             persist_browser_prefs(lang=new_lang)
             st.rerun()
 
