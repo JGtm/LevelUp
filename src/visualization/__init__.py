@@ -1,5 +1,6 @@
 """Module de visualisation (graphiques Plotly)."""
 
+from src.visualization._form_score import plot_form_score_history
 from src.visualization._squad_timeline import plot_squad_performance_timeline
 from src.visualization.antagonist_charts import (
     create_kd_indicator,
@@ -163,4 +164,6 @@ __all__ = [
     "get_radar_thresholds",
     # Squad timeline
     "plot_squad_performance_timeline",
+    # Score de forme
+    "plot_form_score_history",
 ]
