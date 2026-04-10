@@ -3,6 +3,29 @@
 > Ce fichier capture le raisonnement de l'agent entre les sessions.
 > Archivé : 2026-02-01 (logs précédents dans `.ai/archive/thought_log_pre_phase6.md`)
 
+## [2026-04-10] fix(settings): show_records persistance brisée — Complété
+
+**Statut** : Complété · Branche : `feat/info-layer-teammates`
+
+**Problème** : `show_records` revenait à `True` à chaque redémarrage de session malgré les tentatives de fix. Le fichier `app_settings.json` conservait `"show_records": true` sur disque.
+
+**Décision technique** :
+- **Cause racine** : trois `getattr(..., "show_records", True)` avec `True` comme fallback hardcodé (au lieu de `False`). Lors d'un hot-reload Streamlit ou d'une reconnexion WebSocket, si `app_settings` en session_state est temporairement None, le toggle se réinitialisait à `True`. Toute sauvegarde ultérieure écrasait alors `False` par `True`.
+- Secondairement : la logique de retry `os.replace` sur Windows n'avait qu'une seule tentative (sleep 0.1s), insuffisant si l'antivirus ou le file watcher verrouillait le fichier.
+- Correction immédiate : `app_settings.json` corrigé à `false` en direct + backup synchronisé.
+
+**Corrections apportées** :
+1. `src/ui/pages/settings.py:362` — `getattr(..., True)` → `False`
+2. `src/ui/pages/teammates_views.py:183` — idem
+3. `src/ui/pages/_teammates_trio.py:264` — idem
+4. `src/ui/settings.py` — retry `os.replace` : 1 → 4 tentatives (50ms, 100ms, 200ms, 500ms)
+5. `save_settings` — traceback complet (5 niveaux) dans les logs pour tracer tout futur écrasement
+6. `app_settings.json` + `.json.bak` — `show_records: false` écrit directement
+
+**Résultats** : Le fichier JSON est maintenant à `false`. La prochaine session (ou hot-reload) chargera correctement `False`. Les fallbacks hardcodés `True` sont éliminés.
+
+**Prochaine étape** : Vérifier en session que l'affichage des records reste désactivé après navigation + redémarrage.
+
 ## [2026-04-10] feat(teammates): heatmap d'intensité interactive par joueur — Complété
 
 **Statut** : Complété · Branche : `feat/info-layer-teammates`

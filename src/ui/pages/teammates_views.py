@@ -180,7 +180,7 @@ def _render_bottom_charts(  # noqa: PLR0913
         )
     from src.visualization._chart_series import SquadRecordSet
 
-    _show_records = bool(getattr(st.session_state.get("app_settings"), "show_records", True))
+    _show_records = bool(getattr(st.session_state.get("app_settings"), "show_records", False))
     _spree_record_set: SquadRecordSet | None = None
     _hspk_dict: dict | None = None
     if _show_records:

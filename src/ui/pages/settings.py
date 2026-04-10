@@ -359,7 +359,7 @@ def _render_display_section(settings: AppSettings) -> tuple[bool, bool, bool, bo
     )
     show_records = st.toggle(
         t("set_show_records"),
-        value=bool(getattr(settings, "show_records", True)),
+        value=bool(getattr(settings, "show_records", False)),
         help=t("set_show_records_help"),
         key="setting_show_records",
         on_change=_auto_save_show_records,
