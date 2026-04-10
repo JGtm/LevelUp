@@ -447,6 +447,7 @@ def patch_settings(key: str, value: Any) -> tuple[AppSettings, bool, str]:
 
     current: AppSettings | None = st.session_state.get("app_settings")
     if current is None or not isinstance(current, AppSettings):
+        logger.debug("patch_settings: session_state vide, chargement depuis disque")
         current = load_settings()
 
     if getattr(current, key, _SENTINEL) == value:
@@ -456,7 +457,10 @@ def patch_settings(key: str, value: Any) -> tuple[AppSettings, bool, str]:
     st.session_state["app_settings"] = updated  # Mettre à jour AVANT l'écriture
     ok, err = _write_settings(updated)
     if not ok:
+        logger.error("patch_settings: rollback %s=%r — %s", key, value, err)
         st.session_state["app_settings"] = current  # Rollback
+    else:
+        logger.debug("patch_settings: %s=%r persisté", key, value)
     return updated, ok, err
 
 
