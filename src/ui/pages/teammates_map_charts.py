@@ -16,10 +16,12 @@ import streamlit as st
 logger = logging.getLogger(__name__)
 
 from src.analysis import compute_map_breakdown
+from src.analysis._performance_form import compute_form_score_history
+from src.data.services._form_score_queries import load_full_performance_history
 from src.ui.chart_utils import safe_chart_render
 from src.ui.components.browser_storage import hints_visible
 from src.ui.components.info_note import render_info_note
-from src.ui.i18n import t
+from src.ui.i18n import get_lang, t
 from src.ui.streamlit_modern import PLOTLY_CLEAN_CONFIG, PLOTLY_STATIC_CONFIG
 from src.visualization import (
     plot_map_perf_vs_history,
@@ -28,6 +30,7 @@ from src.visualization import (
     plot_squad_performance_timeline,
 )
 from src.visualization._compat import DataFrameLike, ensure_polars
+from src.visualization._form_score import plot_form_score_history
 
 
 def render_map_charts_section(
@@ -319,6 +322,88 @@ def render_squad_cadence_section(
             render_info_note(t("tm_note_cadence"))
         else:
             st.info(t("tm_squad_cadence_no_data"))
+
+
+def render_squad_form_score_section(
+    series: list[tuple[str, DataFrameLike]],
+    db_path: str,
+    sub_all: DataFrameLike,
+    colors_by_name: dict[str, str] | None,
+) -> None:
+    """Affiche le graphe de forme récente pour chaque joueur de l'escouade.
+
+    Calcul sur l'historique complet individuel (rolling 14 vs 90 matchs),
+    affichage filtré aux matchs de sub_all uniquement.
+
+    Args:
+        series: Liste (gamertag, df) des joueurs de l'escouade.
+        db_path: Chemin vers la DB du joueur principal (pour dériver les chemins coéquipiers).
+        sub_all: DataFrame des matchs filtrés (sélection courante).
+        colors_by_name: Couleurs par gamertag.
+    """
+    if not series:
+        return
+    sub_pl = ensure_polars(sub_all)
+    sub_match_ids: set[str] = (
+        set(sub_pl["match_id"].cast(pl.Utf8).to_list())
+        if not sub_pl.is_empty() and "match_id" in sub_pl.columns
+        else set()
+    )
+
+    base_dir = Path(db_path).parent.parent
+    main_player_name = series[0][0]
+    series_with_form: dict[str, pl.DataFrame] = {}
+
+    for name, df_series in series:
+        player_db = db_path if name == main_player_name else str(base_dir / name / "stats.duckdb")
+        hist = load_full_performance_history(player_db)
+
+        # Fallback : utiliser les données de la série (matchs d'escouade seulement)
+        if hist.is_empty():
+            df_pl = ensure_polars(df_series)
+            if (
+                not df_pl.is_empty()
+                and "performance_score" in df_pl.columns
+                and "start_time" in df_pl.columns
+            ):
+                _cols = [
+                    c for c in ["match_id", "start_time", "performance_score"] if c in df_pl.columns
+                ]
+                hist = df_pl.select(_cols).drop_nulls(subset=["performance_score"])
+            logger.debug("form_score fallback series pour %s (%d lignes).", name, len(hist))
+
+        if hist.is_empty():
+            continue
+
+        form_full = compute_form_score_history(hist)
+        if "form_score" not in form_full.columns:
+            continue
+
+        # Filtrer l'affichage aux matchs de sub_all
+        if sub_match_ids and "match_id" in form_full.columns:
+            display = form_full.filter(pl.col("match_id").cast(pl.Utf8).is_in(sub_match_ids))
+        else:
+            display = form_full
+
+        if not display.is_empty():
+            series_with_form[name] = display
+
+    if not series_with_form:
+        return
+
+    st.subheader(t("tm_form_score_title"))
+    if hints_visible():
+        st.caption(t("tm_form_score_caption"))
+
+    with safe_chart_render():
+        fig = plot_form_score_history(
+            series_with_form,
+            highlight_match_ids=set(),
+            colors_by_name=colors_by_name,
+            lang=get_lang(),
+        )
+        if fig is not None:
+            st.plotly_chart(fig, width="stretch", config=PLOTLY_CLEAN_CONFIG)
 
 
 def _compute_history_breakdown(full_df: pl.DataFrame) -> pl.DataFrame:
