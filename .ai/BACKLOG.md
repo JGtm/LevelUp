@@ -12,6 +12,23 @@
 
 ---
 
+### [QoL] Sync non-bloquante — subprocess + polling fragment
+
+**Noté le** : 2026-04-10 | **Priorité** : Basse (QoL, rien ne casse actuellement)
+
+**Problème** : Le sync (et le backfill optionnel) tournent dans le thread Streamlit ([sidebar.py L213-266](src/app/sidebar.py#L213-L266)), ce qui gèle l'UI pour l'utilisateur qui a lancé l'opération.
+
+**Solution** : Lancer le sync via `subprocess.Popen` (non-bloquant), tracker le process dans `st.session_state`, et utiliser `@st.fragment(run_every=2)` (Streamlit 1.54+) pour poller l'état et mettre à jour la sidebar sans bloquer.
+
+**Changements ciblés** :
+1. `render_sync_button` : remplacer l'appel bloquant par `Popen(["python", "scripts/sync.py", "--delta", ...])` + stockage PID dans `session_state`
+2. Nouveau fragment `_render_sync_status` : poll `process.poll()` toutes les 2s, affiche état en cours / succès / erreur
+3. Mapping settings → args CLI (backfill flags déjà exposés dans `scripts/sync.py`)
+
+**Point de vigilance** : en subprocess, deux process accèdent aux mêmes fichiers `.duckdb`. DuckDB 1.4.4 supporte WAL multi-process (un writer + lecteurs), à valider si des `database is locked` apparaissent.
+
+---
+
 ###  Amélioration v8++ — Backfill multi-flags : vectoriser le calcul per-match des performance scores (v8+)
 
 **Noté le** : 2026-03-26

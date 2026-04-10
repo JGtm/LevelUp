@@ -53,12 +53,15 @@ def _build_heatmap_trace(
 def plot_match_intensity_heatmap(
     profile: IntensityProfile,
     opts: PlotOptions | None = None,
+    match_labels: list[str] | None = None,
 ) -> go.Figure | None:
     """Construit la heatmap d'intensité matches × phases.
 
     Args:
         profile: IntensityProfile avec colonnes match_id + phase_0…phase_9.
         opts: Options de rendu V3.
+        match_labels: Étiquettes explicites pour l'axe Y (une par match,
+            dans le même ordre que profile.df). Si None, génère ``#1``, ``#2``…
 
     Returns:
         Figure Plotly ou None si données insuffisantes.
@@ -73,26 +76,35 @@ def plot_match_intensity_heatmap(
 
     phase_cols = [f"phase_{i}" for i in range(n)]
     z_data = profile.df.select(phase_cols).to_numpy()
-    y_labels = [f"#{i + 1}" for i in range(len(profile.df))]
+
+    n_rows = len(profile.df)
+    if match_labels and len(match_labels) == n_rows:
+        y_labels = match_labels
+    else:
+        y_labels = [f"#{i + 1}" for i in range(n_rows)]
+
     pct_step = 100 // n
     x_labels = [f"{i * pct_step}–{(i + 1) * pct_step}%" for i in range(n)]
 
     fig = go.Figure(_build_heatmap_trace(z_data, x_labels, y_labels, lang))
-    height = min(max(200, len(profile.df) * 22 + 80), 600)
+    height = min(max(200, n_rows * 22 + 80), 600)
+
+    # Marge gauche adaptative selon la longueur des étiquettes Y
+    max_label_len = max((len(lbl) for lbl in y_labels), default=3)
+    left_margin = max(55, min(max_label_len * 7, 200))
 
     fig.update_layout(
         height=height,
         plot_bgcolor=theme.bg_plot,
         paper_bgcolor=theme.bg_plot,
         font={"color": theme.font_color, "size": 12},
-        margin={"l": 50, "r": 20, "t": 10, "b": 40},
+        margin={"l": left_margin, "r": 20, "t": 10, "b": 40},
         xaxis={
             "title": viz_t("axis_intensity_phase", lang),
             "side": "bottom",
         },
         yaxis={
             "title": "",
-            "autorange": "reversed",
         },
     )
 

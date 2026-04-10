@@ -3,6 +3,37 @@
 > Ce fichier capture le raisonnement de l'agent entre les sessions.
 > Archivé : 2026-02-01 (logs précédents dans `.ai/archive/thought_log_pre_phase6.md`)
 
+## [2026-05-26] refactor(settings): Implémentation complète V3 — Complété
+
+**Statut** : Complété · Branche : `refactor/settings-v3`
+
+**Contexte** : Suite d'une session planificatrice (phases 1 à 5 de `PLAN_SETTINGS_V2.md` renommé V3). Phase 1 (`settings.py`) et début de phase 2 (`pages/settings.py`) étaient déjà réalisés.
+
+**Décision technique** :
+- `frozen=True` sur `AppSettings` : les mutations directes lèvent `ValidationError`, forçant `model_copy()` → alignement total avec l'architecture immutable Pydantic V3.
+- `patch_settings(key, value)` : API publique unique pour tout write en session, remplace `model_copy() + save_settings() + session_state[...] = updated` partout dans le code.
+- `_write_settings` + `_WRITE_LOCK` + `_PROCESS_CACHE` : e/s thread-safe avec déduplication de contenu pour éviter les writes redondants.
+- `on_change=_on_change_setting, args=(field, widget_key)` : pattern générique sur tous les widgets settings (sauf `show_hints` qui a un handler dédié pour le browser storage).
+- `directory_input` étendu avec `on_change` + `args` pour se brancher sur le même pattern.
+
+**Résultats** :
+- 5972 tests passent, 24 skip, 0 régression.
+- 2 violations de taille pré-existantes (sessions antérieures) ajoutées au baseline.
+- `_get_preserved_settings` + `_build_settings_from_ui` supprimés → tests V2 correspondants supprimés.
+- `save_settings` conservé comme thin wrapper CLI uniquement.
+
+**Fichiers modifiés (V3)** :
+- `src/ui/settings.py` (Phase 1 précédente + thin wrapper save_settings)
+- `src/ui/pages/settings.py` (Phase 2 : void sections, on_change, split backfill)
+- `src/ui/path_picker.py` (on_change + args ajoutés à directory_input)
+- `streamlit_app.py` (3 call sites: import + 2 notify + sidebar lang)
+- `src/app/sidebar.py` (lang change → patch_settings)
+- `src/ui/__init__.py` (ajout export patch_settings)
+- `tests/test_settings_backfill.py` (frozen=True → AppSettings(...) kwargs)
+- `tests/test_settings_robustness.py` (patch _PROCESS_CACHE pour test write error)
+- `tests/ui/test_settings_page.py` (suppr. classes V2 + fix expander assertion)
+- `scripts/size_baseline.txt` (sidebar.py 178→177, +2 entrées pré-existantes)
+
 ## [2026-04-10] fix(settings): show_records persistance brisée — Complété
 
 **Statut** : Complété · Branche : `feat/info-layer-teammates`

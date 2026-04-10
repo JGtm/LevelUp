@@ -46,6 +46,39 @@ def _sort_profile_by_match_order(
     return IntensityProfile(df=sorted_df, n_buckets=profile.n_buckets)
 
 
+def _build_y_labels_from_me_df(
+    profile_match_ids: list[str],
+    me_df: pl.DataFrame | None,
+) -> list[str]:
+    """Étiquettes axe Y via prepare_time_axis (carte si dispo, sinon date).
+
+    Filtre me_df aux seuls matchs présents dans profile_match_ids et les
+    ordonne selon cet ordre avant d'appeler prepare_time_axis.
+    """
+    from src.visualization._timeseries_helpers import prepare_time_axis
+
+    if me_df is None or me_df.is_empty() or not profile_match_ids:
+        return [f"#{i + 1}" for i in range(len(profile_match_ids))]
+
+    order_map = {mid: i for i, mid in enumerate(profile_match_ids)}
+    filtered = (
+        me_df.filter(pl.col("match_id").cast(pl.Utf8).is_in(profile_match_ids))
+        .with_columns(
+            pl.col("match_id")
+            .cast(pl.Utf8)
+            .replace_strict(order_map, default=9999, return_dtype=pl.Int32)
+            .alias("_prof_order")
+        )
+        .sort("_prof_order")
+        .drop("_prof_order")
+    )
+    if filtered.is_empty():
+        return [f"#{i + 1}" for i in range(len(profile_match_ids))]
+
+    _, labels, _ = prepare_time_axis(filtered)
+    return labels
+
+
 def _compute_player_profile(
     events_df: pl.DataFrame,
     xuid: str | None,
@@ -71,6 +104,7 @@ def render_squad_intensity_heatmap(
     xuid_name_map: dict[str, str],
     match_ids_ordered: list[str],
     lang: str = "fr",
+    me_df: pl.DataFrame | None = None,
 ) -> None:
     """Heatmap d'intensité de kills par joueur — toggle via segmented_control.
 
@@ -79,6 +113,9 @@ def render_squad_intensity_heatmap(
         xuid_name_map: {xuid: display_name} des joueurs de l'escouade.
         match_ids_ordered: match_ids dans l'ordre chronologique.
         lang: Langue d'affichage.
+        me_df: DataFrame du joueur principal avec ``match_id``, ``start_time``
+            et optionnellement ``map_ui``/``map_name`` — utilisé pour les
+            étiquettes de l'axe Y (carte si disponible, sinon date).
     """
     if len(match_ids_ordered) < 3 or not xuid_name_map:
         return
@@ -131,8 +168,12 @@ def render_squad_intensity_heatmap(
 
     from src.visualization.match_intensity_heatmap import plot_match_intensity_heatmap
 
+    y_labels = _build_y_labels_from_me_df(profile.df["match_id"].to_list(), me_df)
+
     with safe_chart_render():
-        fig = plot_match_intensity_heatmap(profile, opts=PlotOptions(lang=lang))
+        fig = plot_match_intensity_heatmap(
+            profile, opts=PlotOptions(lang=lang), match_labels=y_labels
+        )
         if fig is not None:
             st.plotly_chart(fig, width="stretch", config=PLOTLY_CLEAN_CONFIG)
         else:
