@@ -3,6 +3,27 @@
 > Ce fichier capture le raisonnement de l'agent entre les sessions.
 > Archivé : 2026-02-01 (logs précédents dans `.ai/archive/thought_log_pre_phase6.md`)
 
+## [2026-04-10] feat(teammates): heatmap d'intensité interactive par joueur — Complété
+
+**Statut** : Complété · Branche : `feat/info-layer-teammates`
+
+**Décision technique** :
+- Nouvelle section "Profil d'intensité par joueur" dans la vue escouade (après Complémentarité)
+- Toggle `st.segmented_control` pour basculer entre joueurs (jusqu'à 4) — une seule heatmap, colorscale partagée
+- Chargement des kill timings en une seule requête pour tous les xuids (via `cached_load_kill_timing_for_matches`)
+- Ordonnancement chronologique des matchs via `start_time` de `me_df` passé en `match_ids_ordered`
+- Architecture en couches respectée : 0 logique métier ajoutée — réutilisation de `compute_match_intensity_profiles` + `plot_match_intensity_heatmap`
+
+**Fichiers créés/modifiés** :
+- `src/ui/pages/teammates_intensity.py` (nouveau — couche UI)
+- `src/ui/i18n/pages/teammates.py` — 5 clés `tm_intensity_*`
+- `src/ui/pages/_teammates_trio.py` — import + appel après alignment check
+- `scripts/size_baseline.txt` — mis à jour (`render_trio_view` : 289L → 309L, dette documentée)
+
+**Résultats** : Ruff OK · tests en cours
+
+**Prochaine étape** : valider tests puis commit
+
 ## [2026-04-10] feat(settings): UX Discord + section Backfill en expander — Complété
 
 **Statut** : Complété · Branche : `feat/info-layer-teammates`
