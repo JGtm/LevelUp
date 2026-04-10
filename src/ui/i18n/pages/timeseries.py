@@ -99,6 +99,23 @@ STRINGS: dict[str, dict[str, str] | str] = {
         "fr": "Tendance de session : au moins 4 matchs requis.",
         "en": "Session trend: at least 4 matches required.",
     },
+    # ── Score de forme ────────────────────────────────────────────────────────
+    "ts_form_score_title": {
+        "fr": "Forme récente",
+        "en": "Recent form",
+    },
+    "ts_form_score_caption": {
+        "fr": "Moyenne glissante 14 matchs vs 90 matchs. Positif → en forme, négatif → creux.",
+        "en": "14-match rolling average vs 90-match average. Positive → in form, negative → slump.",
+    },
+    "ts_form_score_no_data": {
+        "fr": "Forme récente indisponible (performance_score manquant).",
+        "en": "Recent form unavailable (missing performance_score).",
+    },
+    "ts_form_score_current": {
+        "fr": "Forme sur cette sélection",
+        "en": "Form on this selection",
+    },
     # ── Notes explicatives sous les graphes de progression ───────────────────
     "ts_note_nph": {
         "fr": "- 🟢 **Zone verte** → tu fragges plus que tu ne meurs\n"

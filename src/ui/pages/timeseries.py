@@ -19,6 +19,7 @@ from src.ui.components.browser_storage import hints_visible
 from src.ui.components.info_note import render_info_note as _render_note
 from src.ui.i18n import get_lang, t
 from src.ui.pages._timeseries_distributions import render_correlations, render_distributions
+from src.ui.pages._timeseries_form import render_form_score_section as _render_form_score_section
 from src.ui.pages._timeseries_intensity import render_intensity_heatmap as _render_intensity_heatmap
 from src.ui.pages._timeseries_weapons import render_weapon_kills_chart as _render_weapon_kills_chart
 from src.ui.pages.timeseries_skill_rank import render_skill_rank_progression
@@ -77,6 +78,8 @@ def _render_summary_tab(  # noqa: PLR0913
 ) -> None:
     """Affiche l'onglet Résumé (KPIs, KDA, résultats, séries)."""
     render_kpis_section(dff, df_full)
+    st.divider()
+    _render_form_score_section(df_full, dff)
     st.divider()
     _render_kda_section(dff, lang=lang, db_path=db_path, xuid=xuid)
     _render_outcomes_over_time(dff, is_session_scope)
