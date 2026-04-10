@@ -301,7 +301,7 @@ Je propose une hiérarchie de décision en trois niveaux :
 
 ### Phase D — Vues nouvelles (liste fermée)
 
-13. **D1 — Forme récente** (`Stats > Vue d'ensemble`) — sparklines 2 métriques sur 10–20 derniers matchs — données existantes dans `ctx_stats`
+13. **D1 — Forme récente** (`Stats > Vue d'ensemble`) — sparklines 2 métriques sur 10–20 derniers matchs — données existantes dans `ctx_stats` — source : `src/analysis/_performance_form.py` (`avg_14`, `avg_90`, `form_score`)
 14. **D2 — Stabilité par session** (`Stats > Sessions`) — bandes min/médiane/max par session — agrégats session sur `ctx_stats`
 15. **D3 — Delta perf escouade vs global** (`Escouade > Mes stats`) — cartes KD/précision/V-D comparatives entre `ctx_squad` et agrégat global
 16. **D4 — Résumé session solo/escouade** (`Accueil > Blocs A2/A3`) — volume + KPI + variation contextuelle — données `ctx_stats` / `ctx_squad` session courante
