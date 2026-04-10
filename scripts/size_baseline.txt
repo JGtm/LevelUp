@@ -52,7 +52,7 @@ FUNC:src/ui/components/checkbox_filter.py:97:render_checkbox_filter:111L
 FUNC:src/ui/filter_state.py:104:save_filter_preferences:145L
 FUNC:src/ui/filter_state.py:279:apply_filter_preferences:166L
 FUNC:src/ui/medals.py:128:render_medals_grid:81L
-FUNC:src/ui/pages/_teammates_trio.py:144:render_trio_view:310L
+FUNC:src/ui/pages/_teammates_trio.py:144:render_trio_view:307L
 FUNC:src/ui/pages/_teammates_trio_helpers.py:91:_render_per_minute_stats:82L
 FUNC:src/ui/pages/career.py:107:_render_rank_header:89L
 FUNC:src/ui/pages/citations.py:25:render_citations_page:172L
@@ -73,8 +73,8 @@ FUNC:src/ui/pages/teammates_charts.py:343:_build_first_events_fig:160L
 FUNC:src/ui/pages/teammates_helpers.py:153:_prepare_friends_table_data:92L
 FUNC:src/ui/pages/teammates_impact.py:305:_render_impact_from_events:88L
 FUNC:src/ui/pages/teammates_synergy.py:82:_compute_player_profile:96L
-FUNC:src/ui/pages/teammates_views.py:259:_load_squad_data:91L
-FUNC:src/ui/pages/teammates_views.py:51:render_multi_teammate_view:116L
+FUNC:src/ui/pages/teammates_views.py:264:_load_squad_data:91L
+FUNC:src/ui/pages/teammates_views.py:51:render_multi_teammate_view:121L
 FUNC:src/ui/sync.py:59:refresh_spnkr_db_via_api:86L
 FUNC:src/utils/_discord_queries.py:88:fetch_last_match_info:81L
 FUNC:src/visualization/_antagonist_duels.py:17:plot_duel_history:102L

@@ -78,6 +78,11 @@ def render_multi_teammate_view(  # noqa: PLR0913
         df=df, dff=dff, ctx=ctx, filters=filters, callbacks=callbacks
     )
 
+    # ── Légende joueurs (avant les onglets = flux permanent, toujours visible) ─
+    from src.ui.pages.teammates_legend import render_player_legend_panel
+
+    render_player_legend_panel(colors_by_name)
+
     # ── Onglets ───────────────────────────────────────────────────────────────
     tab_syn, tab_con = st.tabs([t("tab_synergies"), t("tab_contributions")])
 
