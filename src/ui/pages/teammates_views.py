@@ -156,6 +156,12 @@ def render_multi_teammate_view(  # noqa: PLR0913
             f1_name = display_name_from_xuid(f1_xuid, db_path=db_path)
             f2_name = display_name_from_xuid(f2_xuid, db_path=db_path) if f2_xuid else None
             f3_name = display_name_from_xuid(f3_xuid, db_path=db_path) if f3_xuid else None
+            # Sentinelle de fin légende : cacher le panneau juste avant les médailles
+            st.markdown(
+                '<div id="llp-medals-start" style="height:0;line-height:0;overflow:hidden;'
+                'padding:0;margin:0;border:0;"></div>',
+                unsafe_allow_html=True,
+            )
             _render_trio_medals(
                 _medal_match_ids,
                 db_path,

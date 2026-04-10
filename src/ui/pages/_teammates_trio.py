@@ -289,6 +289,12 @@ def render_trio_view(  # noqa: PLR0913, PLR0915, C901, PLR0912
         f3_name=f3_name,
         pm_records=_pm_records,
     )
+    # Sentinelle de début légende : visible après les stats/min (dans l'onglet Contributions)
+    st.markdown(
+        '<div id="llp-squad-start" style="height:0;line-height:0;overflow:hidden;'
+        'padding:0;margin:0;border:0;"></div>',
+        unsafe_allow_html=True,
+    )
 
     # Radar de complémentarité escouade — filtré par la session/période courante
     radar_ids_str = {str(x) for x in squad_ids}
