@@ -52,7 +52,7 @@ FUNC:src/ui/components/checkbox_filter.py:97:render_checkbox_filter:111L
 FUNC:src/ui/filter_state.py:104:save_filter_preferences:145L
 FUNC:src/ui/filter_state.py:279:apply_filter_preferences:166L
 FUNC:src/ui/medals.py:128:render_medals_grid:81L
-FUNC:src/ui/pages/_teammates_trio.py:143:render_trio_view:289L
+FUNC:src/ui/pages/_teammates_trio.py:144:render_trio_view:309L
 FUNC:src/ui/pages/_teammates_trio_helpers.py:91:_render_per_minute_stats:82L
 FUNC:src/ui/pages/career.py:107:_render_rank_header:89L
 FUNC:src/ui/pages/citations.py:25:render_citations_page:172L

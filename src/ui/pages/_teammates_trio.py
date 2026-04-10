@@ -22,13 +22,14 @@ from src.analysis.squad_records import (
 from src.data.services.teammates_service import TeammatesService
 from src.ui import display_name_from_xuid
 from src.ui.cache import cached_same_team_match_ids_with_friend
-from src.ui.i18n import t
+from src.ui.i18n import get_lang, t
 from src.ui.pages._teammates_trio_helpers import (
     _detect_trio_session,
     _render_per_minute_stats,
     _render_trio_performance_charts,
 )
 from src.ui.pages.teammates_charts import render_first_events_chart, render_metric_bar_charts
+from src.ui.pages.teammates_intensity import render_squad_intensity_heatmap
 from src.ui.pages.teammates_synergy import render_trio_synergy_radar
 from src.ui.pages.teammates_weapons import render_weapon_kills_bar_chart
 from src.visualization._chart_series import SquadRecordSet
@@ -320,6 +321,26 @@ def render_trio_view(  # noqa: PLR0913, PLR0915, C901, PLR0912
     if me_df.is_empty() or f1_df.is_empty():
         st.warning(t("tm_trio_warning"))
         return False
+
+    # Heatmap d'intensité par joueur — toggle segmented_control
+    _intensity_xuid_name: dict[str, str] = {xuid: me_name}
+    if f1_xuid:
+        _intensity_xuid_name[f1_xuid] = f1_name
+    if f2_xuid and f2_name:
+        _intensity_xuid_name[f2_xuid] = f2_name
+    if f3_xuid and f3_name:
+        _intensity_xuid_name[f3_xuid] = f3_name
+    _intensity_match_ids = (
+        me_df.sort("start_time")["match_id"].cast(pl.Utf8).to_list()
+        if "start_time" in me_df.columns
+        else me_df["match_id"].cast(pl.Utf8).to_list()
+    )
+    render_squad_intensity_heatmap(
+        db_path=db_path,
+        xuid_name_map=_intensity_xuid_name,
+        match_ids_ordered=_intensity_match_ids,
+        lang=get_lang(),
+    )
 
     # Si f2 était attendu mais vide, on le retire silencieusement
     if f2_xuid and (f2_df is None or f2_df.is_empty()):

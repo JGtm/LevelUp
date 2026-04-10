@@ -350,6 +350,31 @@ STRINGS: dict[str, dict[str, str] | str] = {
         "fr": "Pas assez de matchs avec données de timeline pour afficher le profil de tempo.",
         "en": "Not enough matches with timeline data to display the tempo profile.",
     },
+    # ── Heatmap d'intensité par joueur ────────────────────────────────────────
+    "tm_intensity_title": {
+        "fr": "Profil d'intensité par joueur",
+        "en": "Intensity profile per player",
+    },
+    "tm_intensity_caption": {
+        "fr": "Chaque ligne = un match. Les colonnes découpent le match en 10 phases égales. La couleur indique le nombre de kills dans chaque phase. Sélectionne un joueur pour comparer les profils.",
+        "en": "Each row = a match. Columns split the match into 10 equal phases. Color indicates the number of kills in each phase. Select a player to compare profiles.",
+    },
+    "tm_intensity_all": {
+        "fr": "Tous",
+        "en": "All",
+    },
+    "tm_intensity_player_select": {
+        "fr": "Joueur",
+        "en": "Player",
+    },
+    "tm_intensity_no_data": {
+        "fr": "Pas assez de matchs avec données de timeline pour ce joueur.",
+        "en": "Not enough matches with timeline data for this player.",
+    },
+    "tm_intensity_match_count": {
+        "fr": "{n} matchs avec données de timeline",
+        "en": "{n} matches with timeline data",
+    },
     # ── Sections de la page escouade ─────────────────────────────────────────
     "tm_my_stats_section": {
         "fr": "Mes stats sur cette session",
