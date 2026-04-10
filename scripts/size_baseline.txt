@@ -73,8 +73,8 @@ FUNC:src/ui/pages/teammates_charts.py:343:_build_first_events_fig:160L
 FUNC:src/ui/pages/teammates_helpers.py:153:_prepare_friends_table_data:92L
 FUNC:src/ui/pages/teammates_impact.py:305:_render_impact_from_events:88L
 FUNC:src/ui/pages/teammates_synergy.py:82:_compute_player_profile:96L
-FUNC:src/ui/pages/teammates_views.py:243:_render_map_history_section:106L
-FUNC:src/ui/pages/teammates_views.py:50:render_multi_teammate_view:101L
+FUNC:src/ui/pages/teammates_views.py:259:_load_squad_data:91L
+FUNC:src/ui/pages/teammates_views.py:51:render_multi_teammate_view:116L
 FUNC:src/ui/sync.py:59:refresh_spnkr_db_via_api:86L
 FUNC:src/utils/_discord_queries.py:88:fetch_last_match_info:81L
 FUNC:src/visualization/_antagonist_duels.py:17:plot_duel_history:102L

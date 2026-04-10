@@ -28,6 +28,7 @@ from src.ui.pages.teammates_helpers import (
 from src.ui.pages.teammates_impact import render_impact_taquinerie
 from src.ui.pages.teammates_map_charts import (
     render_map_charts_section,
+    render_squad_form_score_section,
     render_squad_heatmap,
     render_squad_timeline,
 )
@@ -72,83 +73,98 @@ def render_multi_teammate_view(  # noqa: PLR0913
     dff = ensure_polars(dff)
     base = ensure_polars(base)
 
-    sub_all, series, colors_by_name, rendered_bottom_charts = _render_map_history_section(
-        df=df,
-        dff=dff,
-        ctx=ctx,
-        filters=filters,
-        callbacks=callbacks,
+    # ── Chargement des données (avant les onglets, spinners visibles) ─────────
+    sub_all, series, colors_by_name, breakdown_all, full_squad_df, all_match_ids = _load_squad_data(
+        df=df, dff=dff, ctx=ctx, filters=filters, callbacks=callbacks
     )
 
-    rendered_bottom_charts = render_trio_view(
-        df=df,
-        dff=dff,
-        base=base,
-        me_name=ctx["me_name"],
-        xuid=ctx["xuid"],
-        db_path=db_path,
-        db_key=db_key,
-        aliases_key=aliases_key,
-        picked_xuids=picked_xuids,
-        apply_current_filters=filters["apply_current_filters"],
-        include_firefight=include_firefight,
-        series=series,
-        colors_by_name=colors_by_name,
-        show_smooth=show_smooth,
-        assign_player_colors_fn=assign_player_colors_fn,
-        plot_multi_metric_bars_fn=plot_multi_metric_bars_fn,
-        top_medals_fn=top_medals_fn,
-        load_teammate_stats_fn=load_teammate_stats_fn,
-        enrich_series_fn=enrich_series_fn,
-    )
+    # ── Onglets ───────────────────────────────────────────────────────────────
+    tab_syn, tab_con = st.tabs([t("tab_synergies"), t("tab_contributions")])
 
-    if len(picked_xuids) >= 1:
-        impact_match_ids = (
-            sub_all.sort("start_time")["match_id"]
-            .cast(pl.Utf8)
-            .unique(maintain_order=True)
-            .to_list()
-            if not sub_all.is_empty() and "start_time" in sub_all.columns
-            else sub_all["match_id"].cast(pl.Utf8).unique().to_list()
-            if not sub_all.is_empty()
-            else []
-        )
-        render_impact_taquinerie(
+    # ── Synergies : dynamique collective ─────────────────────────────────────
+    with tab_syn:
+        _render_map_breakdown(sub_all, full_squad_df, breakdown_all, ctx)
+        render_squad_heatmap(series, lang=get_lang())
+        render_squad_timeline(
             db_path=db_path,
+            me_name=ctx["me_name"],
+            friend_names=[display_name_from_xuid(str(fx), db_path=db_path) for fx in picked_xuids],
+            all_match_ids=list(all_match_ids),
+            lang=get_lang(),
+        )
+        render_squad_form_score_section(series, db_path, sub_all, colors_by_name)
+
+        if len(picked_xuids) >= 1:
+            impact_match_ids = (
+                sub_all.sort("start_time")["match_id"]
+                .cast(pl.Utf8)
+                .unique(maintain_order=True)
+                .to_list()
+                if not sub_all.is_empty() and "start_time" in sub_all.columns
+                else sub_all["match_id"].cast(pl.Utf8).unique().to_list()
+                if not sub_all.is_empty()
+                else []
+            )
+            render_impact_taquinerie(
+                db_path=db_path,
+                xuid=ctx["xuid"],
+                match_ids=impact_match_ids,
+                friend_xuids=picked_xuids,
+                db_key=db_key,
+            )
+
+    # ── Contributions : stats individuelles comparées ─────────────────────────
+    with tab_con:
+        rendered_bottom_charts = render_trio_view(
+            df=df,
+            dff=dff,
+            base=base,
+            me_name=ctx["me_name"],
             xuid=ctx["xuid"],
-            match_ids=impact_match_ids,
-            friend_xuids=picked_xuids,
+            db_path=db_path,
             db_key=db_key,
+            aliases_key=aliases_key,
+            picked_xuids=picked_xuids,
+            apply_current_filters=filters["apply_current_filters"],
+            include_firefight=include_firefight,
+            series=series,
+            colors_by_name=colors_by_name,
+            show_smooth=show_smooth,
+            assign_player_colors_fn=assign_player_colors_fn,
+            plot_multi_metric_bars_fn=plot_multi_metric_bars_fn,
+            top_medals_fn=top_medals_fn,
+            load_teammate_stats_fn=load_teammate_stats_fn,
+            enrich_series_fn=enrich_series_fn,
         )
 
-    if not rendered_bottom_charts:
-        _render_bottom_charts(sub_all, series, colors_by_name, ctx, filters, callbacks)
+        if not rendered_bottom_charts:
+            _render_bottom_charts(sub_all, series, colors_by_name, ctx, filters, callbacks)
 
-    # Médailles — toujours en dernier
-    if rendered_bottom_charts and picked_xuids:
-        _medal_match_ids = (
-            sub_all["match_id"].cast(pl.Utf8).to_list() if not sub_all.is_empty() else []
-        )
-        f1_xuid = picked_xuids[0]
-        f2_xuid = picked_xuids[1] if len(picked_xuids) >= 2 else None
-        f3_xuid = picked_xuids[2] if len(picked_xuids) >= 3 else None
-        f1_name = display_name_from_xuid(f1_xuid, db_path=db_path)
-        f2_name = display_name_from_xuid(f2_xuid, db_path=db_path) if f2_xuid else None
-        f3_name = display_name_from_xuid(f3_xuid, db_path=db_path) if f3_xuid else None
-        _render_trio_medals(
-            _medal_match_ids,
-            db_path,
-            ctx["xuid"],
-            f1_xuid,
-            f2_xuid,
-            ctx["me_name"],
-            f1_name,
-            f2_name,
-            db_key,
-            top_medals_fn,
-            f3_xuid=f3_xuid,
-            f3_name=f3_name,
-        )
+        # Médailles — toujours en dernier dans Contributions
+        if rendered_bottom_charts and picked_xuids:
+            _medal_match_ids = (
+                sub_all["match_id"].cast(pl.Utf8).to_list() if not sub_all.is_empty() else []
+            )
+            f1_xuid = picked_xuids[0]
+            f2_xuid = picked_xuids[1] if len(picked_xuids) >= 2 else None
+            f3_xuid = picked_xuids[2] if len(picked_xuids) >= 3 else None
+            f1_name = display_name_from_xuid(f1_xuid, db_path=db_path)
+            f2_name = display_name_from_xuid(f2_xuid, db_path=db_path) if f2_xuid else None
+            f3_name = display_name_from_xuid(f3_xuid, db_path=db_path) if f3_xuid else None
+            _render_trio_medals(
+                _medal_match_ids,
+                db_path,
+                ctx["xuid"],
+                f1_xuid,
+                f2_xuid,
+                ctx["me_name"],
+                f1_name,
+                f2_name,
+                db_key,
+                top_medals_fn,
+                f3_xuid=f3_xuid,
+                f3_name=f3_name,
+            )
 
 
 def _render_bottom_charts(  # noqa: PLR0913
@@ -240,16 +256,16 @@ def _render_map_breakdown(
         )
 
 
-def _render_map_history_section(
+def _load_squad_data(
     df: DataFrameLike,
     dff: DataFrameLike,
     ctx: TeammateContext,
     filters: TeammateFilterOptions,
     callbacks: TeammateCallbacks,
-) -> tuple[DataFrameLike, list, dict, bool]:
-    """Rend la carte W/L et l'historique multi-coéquipiers.
+) -> tuple[DataFrameLike, list, dict, DataFrameLike, DataFrameLike, set]:
+    """Charge les données partagées sans rien afficher.
 
-    Retourne (sub_all, series, colors_by_name, rendered_bottom_charts).
+    Retourne (sub_all, series, colors_by_name, breakdown_all, full_squad_df, all_match_ids).
     """
     me_name = ctx["me_name"]
     xuid = ctx["xuid"]
@@ -263,7 +279,6 @@ def _render_map_history_section(
 
     df = ensure_polars(df)
     dff = ensure_polars(dff)
-    rendered_bottom_charts = False
 
     with st.spinner(t("tm_computing_map")):
         base_for_friends_all = dff if apply_current_filters else df
@@ -329,24 +344,10 @@ def _render_map_history_section(
                         )
                 series.append((fx_gamertag, fr_sub))
 
-        colors_by_name = assign_player_colors_fn([n for n, _ in series])
-        breakdown_all = ensure_polars(compute_map_breakdown(sub_all))
-
-        # full_squad_df = tous les matchs avec ces amis (non filtré par session/date)
-        full_squad_df = df.filter(pl.col("match_id").cast(pl.Utf8).is_in(list(all_match_ids)))
-        _render_map_breakdown(sub_all, full_squad_df, breakdown_all, ctx)
-        render_squad_heatmap(series, lang=get_lang())
-        render_squad_timeline(
-            db_path=db_path,
-            me_name=me_name,
-            friend_names=[display_name_from_xuid(str(fx), db_path=db_path) for fx in picked_xuids],
-            all_match_ids=list(all_match_ids),
-            lang=get_lang(),
-        )
-        # Désactivé temporairement: ne plus afficher ni charger les données
-        # du profil de tempo synchronisé, tout en conservant le code en place.
-
-    return sub_all, series, colors_by_name, rendered_bottom_charts
+    colors_by_name = assign_player_colors_fn([n for n, _ in series])
+    breakdown_all = ensure_polars(compute_map_breakdown(sub_all))
+    full_squad_df = df.filter(pl.col("match_id").cast(pl.Utf8).is_in(list(all_match_ids)))
+    return sub_all, series, colors_by_name, breakdown_all, full_squad_df, all_match_ids
 
 
 # ---------------------------------------------------------------------------

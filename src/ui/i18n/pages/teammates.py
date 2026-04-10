@@ -312,6 +312,15 @@ STRINGS: dict[str, dict[str, str] | str] = {
         "fr": "V/D par carte",
         "en": "W/L by map",
     },
+    # ── Score de forme escouade ───────────────────────────────────────────────
+    "tm_form_score_title": {
+        "fr": "Forme récente",
+        "en": "Recent form",
+    },
+    "tm_form_score_caption": {
+        "fr": "Moyenne glissante 14 matchs vs 90 matchs (historique individuel de chaque joueur). Positif → en forme, négatif → creux.",
+        "en": "14-match rolling average vs 90-match average (each player's individual history). Positive → in form, negative → slump.",
+    },
     "tm_map_bullet_title": {
         "fr": "Taux de victoires vs historique",
         "en": "Session win rate vs history",
@@ -383,5 +392,14 @@ STRINGS: dict[str, dict[str, str] | str] = {
     "tm_squad_section": {
         "fr": "Statistiques d'escouade",
         "en": "Squad statistics",
+    },
+    # ── Onglets de la vue escouade ────────────────────────────────────────────
+    "tab_synergies": {
+        "fr": "Synergies",
+        "en": "Synergies",
+    },
+    "tab_contributions": {
+        "fr": "Contributions",
+        "en": "Contributions",
     },
 }

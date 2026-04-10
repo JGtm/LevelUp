@@ -1,7 +1,114 @@
-# Thought Log - Journal de Raisonnement
+# Thought Log
+
+## [2026-04-10] feat(teammates): deux onglets Synergies / Contributions
+
+**Statut** : Complété  
+**Branche** : `feat/teammates-tabs` (depuis `refactor/settings-v3`)
+
+**Décision technique** :
+- Split de `_render_map_history_section` en `_load_squad_data` (données pures, sans rendu) + rendu inline dans l'onglet Synergies
+- Deux onglets `st.tabs` dans `render_multi_teammate_view` :
+  - **Synergies** : map breakdown, squad heatmap, squad timeline, form score, impact/taquinerie
+  - **Contributions** : trio view (stats/min, radar, intensité, perf charts), armes, métriques barres, médailles
+- Clés i18n ajoutées : `tab_synergies`, `tab_contributions`
+
+**Résultat** : 2/2 tests passent, ruff OK, py_compile OK, taille fichier inchangée (357L) - Journal de Raisonnement
 
 > Ce fichier capture le raisonnement de l'agent entre les sessions.
 > Archivé : 2026-02-01 (logs précédents dans `.ai/archive/thought_log_pre_phase6.md`)
+
+## [2026-04-10] fix: forme récente — filtrage, placement, étiquettes, traduction — Complété
+
+**Statut** : Complété · Branche : `refactor/settings-v3`
+
+**Décision technique** :
+- Calcul rolling sur historique complet (df_full), affichage filtré aux matchs dff/sub_all
+- Timeseries : placement après KPIs, métrique col droite [4:1], delta vs 14 matchs précédents
+- Teammates : appel dans `render_multi_teammate_view` (hors spinner), avant `render_trio_view`
+- Étiquettes sur 4 points clés (premier, dernier, min, max) via `_key_label_indices`
+- Traduction : "Score de forme" → "Forme récente" dans 3 fichiers i18n
+- Fix ATTACH : `READ ONLY` → `(READ_ONLY)` + path SQL-escaped
+- Fallback : si DB vide, utilise `series` data (matchs escouade)
+
+**Résultats observés** :
+- 45 tests dédiés passent (`tests/test_form_score.py`)
+- Nouvelles classes : TestKeyLabelIndices (6), TestRenderFormScoreSectionFiltering (3), TestSquadFormScoreFallback (3)
+- 0 régression suite complète
+
+**Conclusion** :
+Graphe fonctionnel sur les deux surfaces avec valeurs non-triviales grâce au calcul sur historique complet.
+
+## [2026-04-10] feat: score de forme individuel (v7.1) — Complété
+
+**Statut** : Complété · Branche : `refactor/settings-v3`
+
+**Décision technique** :
+Implémentation du score de forme `avg_14 - avg_90` sur l'historique complet de performance_score.
+Calcul pur dans `src/analysis/_performance_form.py` (0 DB, 0 Streamlit).
+Chargement DB dans `src/data/services/_form_score_queries.py` (JOIN player_match_enrichment × match_registry).
+Visualisation dans `src/visualization/_form_score.py` (fill vert/rouge, points highlight, multi-ligne).
+Section UI dans `src/ui/pages/_timeseries_form.py` (individuel, onglet Résumé).
+Section UI escouade dans `src/ui/pages/teammates_map_charts.py::render_squad_form_score_section`.
+
+**Résultats observés** :
+- 33 tests dédiés passent (`tests/test_form_score.py`)
+- Suite complète : pas de régression (2 failures pré-existantes inchangées)
+- Bug corrigé : guard `if not series: return` + variable `main_player_name` évite `series[0][0]` avec liste vide
+- Logging ajouté dans `_performance_form.py` et `_timeseries_form.py`
+
+**Conclusion** :
+Score de forme fonctionnel sur les deux surfaces (Timeseries + Teammates). Prochaine étape : items backlog v7.2+.
+
+## [2026-04-10] docs: mise à jour CHANGELOG + README pour v6.5.0 — Complété
+
+**Statut** : Complété · Branche : `refactor/settings-v3` (HEAD)
+
+**Décision technique** :
+- Identification des 11 commits non documentés depuis la v6.4.0 (2026-04-07) via `git log 4b5d769e..HEAD`
+- Regroupement en une nouvelle version **6.5.0** (2026-04-10) couvrant : Settings V3 (frozen=True, patch_settings, écriture atomique), heatmap d'intensité par joueur (Teammates), Discord notifications séparées sync/backfill, couche informationnelle harmonisée (render_info_note), fixes silencieux (show_records, dead code, gitignore)
+- Pas de section V7/V8 incluse conformément à la demande
+- README badge mis à jour 6.4.0 → 6.5.0 ; section "What's new" enrichie en tête
+
+**Résultats** : CHANGELOG.md + README.md mis à jour ; 76 nouveaux tests settings documentés (couverture 77.5 % → 87.7 %)
+
+**Prochaine étape** : Merger les branches feat/info-layer-teammates et refactor/settings-v3 dans main
+
+## [2026-04-10] feat(form-score): score de forme individuel + escouade — Complété
+
+**Statut** : Complété · Branche : `refactor/settings-v3`
+
+**Décision technique** :
+- `form_score = rolling_mean(perf, 14) - rolling_mean(perf, 90)` — différentiel court/long terme
+- Calcul pur dans `src/analysis/_performance_form.py` (Polars, 0 accès DB)
+- Chargement historique complet via `src/data/services/_form_score_queries.py` (ATTACH shared pour start_time)
+- Visualisation dans `src/visualization/_form_score.py` : ligne + fill vert/rouge (individuel), multi-lignes (escouade), points encerclés pour la session sélectionnée
+- Intégration Timeseries : `_timeseries_form.py` extrait pour ne pas dépasser 500L dans `timeseries.py` — positionné en tête de l'onglet Résumé avec `st.metric` + graphe historique
+- Intégration Teammates : `render_squad_form_score_section` dans `teammates_map_charts.py` — chargement DB individuelle par joueur (main → `db_path`, coéquipiers → `base_dir/gamertag/stats.duckdb`), rendu avant "Taux de victoires vs historique"
+- Baseline size mise à jour (`_render_map_history_section` : 106L → 108L)
+
+**Résultats** : 6010 tests passent, 2 failures pré-existantes (test_intensity_heatmap_viz, e2e_003), 0 regression
+
+**Prochaine étape** : Valider visuellement sur l'app Streamlit
+
+## [2026-04-10] feat(teammates): axe Y heatmap intensité adaptatif + ordre chronologique — Complété
+
+**Statut** : Complété · Branche : `refactor/settings-v3`
+
+**Décision technique** :
+- Suppression de `"autorange": "reversed"` dans `plot_match_intensity_heatmap` → premier match en bas (ordre naturel Plotly)
+- Ajout du paramètre `match_labels: list[str] | None` dans `plot_match_intensity_heatmap` pour des étiquettes Y explicites
+- Marge gauche adaptative selon longueur max des étiquettes Y
+- Réutilisation de `prepare_time_axis` (déjà utilisé dans tous les graphes timeseries Teammates) via `_build_y_labels_from_me_df` — élimine une réinvention de roue (~70 lignes supprimées)
+- `render_squad_intensity_heatmap` accepte un nouveau param `me_df` (optionnel) pour calculer les étiquettes
+
+**Fichiers modifiés** :
+- `src/visualization/match_intensity_heatmap.py` : param `match_labels`, suppression `autorange`, marge adaptative
+- `src/ui/pages/teammates_intensity.py` : `_build_y_labels_from_me_df` → délègue à `prepare_time_axis`, nouveau param `me_df`
+- `src/ui/pages/_teammates_trio.py` : passage de `me_df=me_df`
+
+**Résultats** : Axe Y affiche `#N<br>MapName` (ou date si pas de carte), cohérent avec le reste de la page Teammates.
+
+---
 
 ## [2026-05-26] refactor(settings): Implémentation complète V3 — Complété
 
