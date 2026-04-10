@@ -48,4 +48,12 @@ if ! "$VENV_PYTHON" -c "import streamlit, duckdb, polars" 2>/dev/null; then
     exit 1
 fi
 
+# ── Re-sync egg-info si la version dans pyproject.toml a changé ───────────────
+TOML_VERSION=$(grep '^version' "$SCRIPT_DIR/pyproject.toml" | head -1 | sed 's/.*= *"\(.*\)"/\1/')
+PKG_VERSION=$("$VENV_PYTHON" -c "from importlib.metadata import version; print(version('levelup-halo'))" 2>/dev/null || echo "")
+if [ -n "$TOML_VERSION" ] && [ "$TOML_VERSION" != "$PKG_VERSION" ]; then
+    echo "  ↻  Version pyproject.toml ($TOML_VERSION) ≠ package installé ($PKG_VERSION) — mise à jour..."
+    "$VENV_PYTHON" -m pip install -e . -q
+fi
+
 exec "$VENV_PYTHON" "$SCRIPT_DIR/launcher.py" "$@"
