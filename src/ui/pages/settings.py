@@ -19,7 +19,7 @@ from src.ui.components.browser_storage import (
     hints_visible,
     persist_browser_prefs,
 )
-from src.ui.i18n import t
+from src.ui.i18n import set_lang, t
 from src.ui.settings import _write_settings, patch_settings
 from src.ui.tz import CURATED_TZ_LIST
 
@@ -42,6 +42,17 @@ def _on_change_setting(field: str, widget_key: str) -> None:
     _, ok, err = patch_settings(field, new_val)
     if not ok:
         st.toast(f"⚠️ Sauvegarde échouée : {err}", icon="⚠️")
+
+
+def _on_change_lang() -> None:
+    """Handler dédié lang : persist, set_lang global et rerun immédiat."""
+    new_val = str(st.session_state.get("setting_lang") or "fr")
+    _, ok, err = patch_settings("lang", new_val)
+    if not ok:
+        st.toast(f"⚠️ Sauvegarde échouée : {err}", icon="⚠️")
+        return
+    set_lang(new_val)
+    st.rerun()
 
 
 def _on_change_show_hints() -> None:
@@ -126,8 +137,7 @@ def _render_language_section(settings: AppSettings) -> None:
         index=["fr", "en"].index(_lang_current),
         format_func=lambda x: "Français" if x == "fr" else "English",
         key="setting_lang",
-        on_change=_on_change_setting,
-        args=("lang", "setting_lang"),
+        on_change=_on_change_lang,
     )
 
     _tz_current = str(getattr(settings, "user_timezone", "Europe/Paris") or "Europe/Paris")
