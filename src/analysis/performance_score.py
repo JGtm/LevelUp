@@ -7,6 +7,9 @@ Ce module re-exporte les fonctions des sous-modules :
 
 from __future__ import annotations
 
+# ── Re-exports : score de forme ───────────────────────────────────────────────
+from src.analysis._performance_form import compute_form_score_history  # noqa: F401
+
 # ── Re-exports : score relatif (par match) ────────────────────────────────────
 # Alias interne exporté pour les tests
 from src.analysis._performance_relative import (  # noqa: F401
