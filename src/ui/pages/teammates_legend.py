@@ -56,10 +56,11 @@ _SCROLL_OBSERVER_JS: str = """<script>
       var p=d.getElementById('llp-fixed-panel');
       var s=d.getElementById('llp-squad-start');
       if(!p||!s){if(T++<30)setTimeout(run,150);return;}
-      var e=d.getElementById('llp-impact-end');
+      var e=d.getElementById('llp-medals-start');
       function isActive(el){return el&&el.offsetParent!==null;}
       function upd(){
         var iH=window.parent.innerHeight||768;
+        if(!isActive(s)){p.style.display='none';return;}
         var ok=s.getBoundingClientRect().top<iH;
         if(ok&&e&&isActive(e))ok=e.getBoundingClientRect().top>50;
         p.style.display=ok?'block':'none';
@@ -119,12 +120,8 @@ def _render_fixed(colors_by_name: dict[str, str], label: str) -> None:
         f'letter-spacing:.08em;color:rgba(255,255,255,.5);margin-bottom:6px;">'
         f"{label}</div>"
     )
-    # Sentinelle de d\u00e9but + panneau cach\u00e9 initialement (le JS g\u00e8re la visibilit\u00e9)
-    html = (
-        '<div id="llp-squad-start" style="height:0;line-height:0;overflow:hidden;'
-        'padding:0;margin:0;border:0;"></div>'
-        f'<div id="llp-fixed-panel" style="display:none;{_FIXED_STYLE}">{header}{dots}</div>'
-    )
+    # Panneau caché initialement (le JS gère la visibilité via les sentinelles DOM)
+    html = f'<div id="llp-fixed-panel" style="display:none;{_FIXED_STYLE}">{header}{dots}</div>'
     st.markdown(html, unsafe_allow_html=True)
     components.html(_SCROLL_OBSERVER_JS, height=0)
 
