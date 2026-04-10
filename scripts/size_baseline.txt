@@ -124,5 +124,6 @@ MODULE:src/ui/pages/match_view_helpers.py:506L
 MODULE:src/ui/pages/match_view_scoreboard_detail.py:625L
 MODULE:src/ui/pages/session_compare.py:530L
 MODULE:src/ui/pages/session_compare_charts.py:502L
+MODULE:src/ui/pages/settings.py:507L
 MODULE:src/ui/pages/teammates_charts.py:536L
 MODULE:src/visualization/trio.py:507L

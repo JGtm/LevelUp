@@ -177,7 +177,7 @@ def send_discord_notification(
 # =============================================================================
 
 
-def notify_operation_done(  # noqa: PLR0913
+def notify_operation_done(  # noqa: PLR0913, PLR0912
     operation: str,
     started_at: datetime,
     finished_at: datetime,
@@ -196,7 +196,13 @@ def notify_operation_done(  # noqa: PLR0913
 
     try:
         cfg = _load_app_settings()
-        if not cfg.get("discord_notify_sync", True):
+        if operation.startswith("backfill"):
+            if not cfg.get("discord_notify_backfill", True):
+                logger.debug(
+                    "[Discord] Notif backfill désactivée par discord_notify_backfill=false"
+                )
+                return
+        elif not cfg.get("discord_notify_sync", True):
             logger.debug("[Discord] Notif sync désactivée par discord_notify_sync=false")
             return
 

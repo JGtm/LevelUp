@@ -35,7 +35,15 @@ STRINGS: dict[str, dict[str, str] | str] = {
     "set_sync_source": {"fr": "Source de données", "en": "Data source"},
     "set_sync_max_matches": {"fr": "Max matchs à récupérer", "en": "Max matches to fetch"},
     "set_sync_rate": {"fr": "Délai entre appels API (sec)", "en": "API rate limit (sec)"},
-    "set_refresh_options": {"fr": "Options du bouton Actualiser", "en": "Refresh button options"},
+    "set_refresh_options": {"fr": "Backfill (avancé)", "en": "Backfill (advanced)"},
+    "settings_backfill_warning": {
+        "fr": "⚠️ Section expérimentale — le backfill via l'app n'a pas été pleinement testé. Préférer la CLI (`scripts/backfill_data.py`).",
+        "en": "⚠️ Experimental section — backfill via the app has not been fully tested. Prefer the CLI (`scripts/backfill_data.py`).",
+    },
+    "settings_backfill_expand_label": {
+        "fr": "Afficher les options de backfill",
+        "en": "Show backfill options",
+    },
     "set_backfill_medals": {"fr": "Médailles", "en": "Medals"},
     "set_backfill_events": {"fr": "Événements", "en": "Events"},
     "set_backfill_scores": {"fr": "Scores de performance", "en": "Performance scores"},
@@ -172,8 +180,12 @@ STRINGS: dict[str, dict[str, str] | str] = {
         "en": "Notification types",
     },
     "set_discord_notify_sync": {
-        "fr": "Après chaque sync / backfill",
-        "en": "After each sync / backfill",
+        "fr": "Après chaque sync",
+        "en": "After each sync",
+    },
+    "set_discord_notify_backfill": {
+        "fr": "Après chaque backfill",
+        "en": "After each backfill",
     },
     "set_discord_notify_new_version": {
         "fr": "Nouvelle version majeure déployée",

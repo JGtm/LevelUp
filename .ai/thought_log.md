@@ -3,6 +3,21 @@
 > Ce fichier capture le raisonnement de l'agent entre les sessions.
 > Archivé : 2026-02-01 (logs précédents dans `.ai/archive/thought_log_pre_phase6.md`)
 
+## [2026-04-10] feat(settings): UX Discord + section Backfill en expander — Complété
+
+**Statut** : Complété · Branche : `feat/info-layer-teammates`
+
+**Décision technique** :
+- Checkboxes Discord passés de layout 2 colonnes à liste verticale (un par ligne)
+- Ajout de `discord_notify_backfill: bool = True` dans AppSettings, séparant la notif sync de la notif backfill
+- `discord_notifier.py` : branchement conditionnel sur `operation.startswith("backfill")` pour choisir le bon flag
+- Section Backfill déplacée en dernière position dans la page Settings, encapsulée dans `st.expander(expanded=False)`
+- 3 fichiers modifiés : `src/ui/settings.py`, `src/ui/pages/settings.py`, `src/utils/discord_notifier.py`, `src/ui/i18n/pages/settings.py`
+
+**Résultats** : Aucun test cassé attendu (changement UI + ajout champ Pydantic avec valeur par défaut)
+
+**Prochaine étape** : Aucune tâche en cours
+
 ## [2026-04-10] fix(cleanup): supprimer plot_map_outcome_timeline (dead code) — Complété
 
 **Statut** : Complété · Branche : `feat/info-layer-teammates`

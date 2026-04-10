@@ -102,6 +102,7 @@ def _build_settings_from_ui(  # noqa: PLR0913
     discord_webhook_url: str,
     discord_lang: str,
     discord_notify_sync: bool,
+    discord_notify_backfill: bool,
     discord_notify_new_version: bool,
 ) -> AppSettings:
     """Construit un AppSettings à partir des valeurs UI actuelles."""
@@ -124,6 +125,7 @@ def _build_settings_from_ui(  # noqa: PLR0913
         discord_webhook_url=discord_webhook_url,
         discord_lang=discord_lang,
         discord_notify_sync=discord_notify_sync,
+        discord_notify_backfill=discord_notify_backfill,
         discord_notify_new_version=discord_notify_new_version,
         spnkr_refresh_with_backfill=backfill_enabled,
         spnkr_refresh_backfill_medals=backfill_medals,
@@ -149,7 +151,6 @@ def render_settings_page(settings: AppSettings) -> AppSettings:
     st.divider()
 
     lang, user_timezone = _render_language_section(settings)
-    backfill_vals = _render_backfill_section(settings)
     refresh_clears_caches, normalize_mode_labels, career_top_exclude_btb, show_records = (
         _render_display_section(settings)
     )
@@ -164,8 +165,10 @@ def render_settings_page(settings: AppSettings) -> AppSettings:
         discord_url,
         discord_lang_val,
         discord_notify_sync,
+        discord_notify_backfill,
         discord_notify_new_version,
     ) = _render_discord_section(settings)
+    backfill_vals = _render_backfill_section(settings)
 
     if save_clicked:
         new_settings = _build_settings_from_ui(
@@ -184,6 +187,7 @@ def render_settings_page(settings: AppSettings) -> AppSettings:
             discord_webhook_url=str(discord_url or ""),
             discord_lang=discord_lang_val,
             discord_notify_sync=discord_notify_sync,
+            discord_notify_backfill=discord_notify_backfill,
             discord_notify_new_version=discord_notify_new_version,
             **backfill_vals,
         )
@@ -234,65 +238,64 @@ def _render_language_section(settings: AppSettings) -> tuple[str, str]:
 
 
 def _render_backfill_section(settings: AppSettings) -> dict:
-    """Rend la section Backfill (données manquantes)."""
+    """Rend la section Backfill (données manquantes), collapsée par défaut."""
     st.subheader(t("set_refresh_options"))
-    st.caption(t("settings_backfill_caption"))
-
-    backfill_enabled = st.toggle(
-        t("settings_backfill_enable"),
-        value=bool(getattr(settings, "spnkr_refresh_with_backfill", False)),
-    )
-
-    st.markdown(f"**{t('settings_backfill_data_label')}**")
-    col1, col2, col3 = st.columns(3)
-    with col1:
-        backfill_medals = st.checkbox(
-            t("set_backfill_medals"),
-            value=bool(getattr(settings, "spnkr_refresh_backfill_medals", False)),
-            disabled=not backfill_enabled,
-        )
-        backfill_skill = st.checkbox(
-            t("set_backfill_skill"),
-            value=bool(getattr(settings, "spnkr_refresh_backfill_skill", False)),
-            disabled=not backfill_enabled,
-        )
-        backfill_aliases = st.checkbox(
-            t("set_backfill_aliases"),
-            value=bool(getattr(settings, "spnkr_refresh_backfill_aliases", False)),
-            disabled=not backfill_enabled,
-        )
-    with col2:
-        backfill_personal_scores = st.checkbox(
-            t("set_backfill_personal_scores"),
-            value=bool(getattr(settings, "spnkr_refresh_backfill_personal_scores", False)),
-            disabled=not backfill_enabled,
-        )
-        backfill_performance_scores = st.checkbox(
-            t("set_backfill_scores"),
-            value=bool(getattr(settings, "spnkr_refresh_backfill_performance_scores", True)),
-            help=t("set_backfill_score_help"),
-        )
-        backfill_lusr = st.checkbox(
-            t("set_backfill_lusr"),
-            value=bool(getattr(settings, "spnkr_refresh_backfill_lusr", True)),
-            disabled=not backfill_enabled,
-            help=t("set_backfill_lusr_help"),
-        )
-    with col3:
-        backfill_events = st.checkbox(
-            t("set_backfill_events"),
-            value=bool(getattr(settings, "spnkr_refresh_backfill_events", False)),
-            disabled=not backfill_enabled,
-            help=t("set_backfill_events_help"),
-        )
-        backfill_weapons = st.checkbox(
-            t("set_backfill_weapons"),
-            value=bool(getattr(settings, "spnkr_refresh_backfill_weapons", False)),
-            disabled=not backfill_enabled,
-            help=t("set_backfill_weapons_help"),
+    st.caption(t("settings_backfill_warning"))
+    with st.expander(t("settings_backfill_expand_label"), expanded=False):
+        backfill_enabled = st.toggle(
+            t("settings_backfill_enable"),
+            value=bool(getattr(settings, "spnkr_refresh_with_backfill", False)),
         )
 
-    st.divider()
+        st.markdown(f"**{t('settings_backfill_data_label')}**")
+        col1, col2, col3 = st.columns(3)
+        with col1:
+            backfill_medals = st.checkbox(
+                t("set_backfill_medals"),
+                value=bool(getattr(settings, "spnkr_refresh_backfill_medals", False)),
+                disabled=not backfill_enabled,
+            )
+            backfill_skill = st.checkbox(
+                t("set_backfill_skill"),
+                value=bool(getattr(settings, "spnkr_refresh_backfill_skill", False)),
+                disabled=not backfill_enabled,
+            )
+            backfill_aliases = st.checkbox(
+                t("set_backfill_aliases"),
+                value=bool(getattr(settings, "spnkr_refresh_backfill_aliases", False)),
+                disabled=not backfill_enabled,
+            )
+        with col2:
+            backfill_personal_scores = st.checkbox(
+                t("set_backfill_personal_scores"),
+                value=bool(getattr(settings, "spnkr_refresh_backfill_personal_scores", False)),
+                disabled=not backfill_enabled,
+            )
+            backfill_performance_scores = st.checkbox(
+                t("set_backfill_scores"),
+                value=bool(getattr(settings, "spnkr_refresh_backfill_performance_scores", True)),
+                help=t("set_backfill_score_help"),
+            )
+            backfill_lusr = st.checkbox(
+                t("set_backfill_lusr"),
+                value=bool(getattr(settings, "spnkr_refresh_backfill_lusr", True)),
+                disabled=not backfill_enabled,
+                help=t("set_backfill_lusr_help"),
+            )
+        with col3:
+            backfill_events = st.checkbox(
+                t("set_backfill_events"),
+                value=bool(getattr(settings, "spnkr_refresh_backfill_events", False)),
+                disabled=not backfill_enabled,
+                help=t("set_backfill_events_help"),
+            )
+            backfill_weapons = st.checkbox(
+                t("set_backfill_weapons"),
+                value=bool(getattr(settings, "spnkr_refresh_backfill_weapons", False)),
+                disabled=not backfill_enabled,
+                help=t("set_backfill_weapons_help"),
+            )
+
     return {
         "backfill_enabled": bool(backfill_enabled),
         "backfill_medals": bool(backfill_medals),
@@ -440,7 +443,7 @@ def _render_media_section(settings: AppSettings) -> tuple[str, int, bool, int]:
     )
 
 
-def _render_discord_section(settings: AppSettings) -> tuple[bool, str, str, bool, bool]:
+def _render_discord_section(settings: AppSettings) -> tuple[bool, str, str, bool, bool, bool]:
     """Rend la section Notifications Discord."""
     st.subheader(t("set_discord_section"))
 
@@ -472,27 +475,32 @@ def _render_discord_section(settings: AppSettings) -> tuple[bool, str, str, bool
     )
 
     st.markdown(f"**{t('set_discord_notify_types_label')}**")
-    col1, col2 = st.columns(2)
-    with col1:
-        discord_notify_sync = st.checkbox(
-            t("set_discord_notify_sync"),
-            value=bool(getattr(settings, "discord_notify_sync", True)),
-            disabled=not discord_enabled,
-            key="setting_discord_notify_sync",
-        )
-    with col2:
-        discord_notify_new_version = st.checkbox(
-            t("set_discord_notify_new_version"),
-            value=bool(getattr(settings, "discord_notify_new_version", True)),
-            disabled=not discord_enabled,
-            key="setting_discord_notify_new_version",
-            help=t("set_discord_notify_new_version_help"),
-        )
+    discord_notify_sync = st.checkbox(
+        t("set_discord_notify_sync"),
+        value=bool(getattr(settings, "discord_notify_sync", True)),
+        disabled=not discord_enabled,
+        key="setting_discord_notify_sync",
+    )
+    discord_notify_backfill = st.checkbox(
+        t("set_discord_notify_backfill"),
+        value=bool(getattr(settings, "discord_notify_backfill", True)),
+        disabled=not discord_enabled,
+        key="setting_discord_notify_backfill",
+    )
+    discord_notify_new_version = st.checkbox(
+        t("set_discord_notify_new_version"),
+        value=bool(getattr(settings, "discord_notify_new_version", True)),
+        disabled=not discord_enabled,
+        key="setting_discord_notify_new_version",
+        help=t("set_discord_notify_new_version_help"),
+    )
 
+    st.divider()
     return (
         bool(discord_enabled),
         str(discord_url or ""),
         str(discord_lang_val),
         bool(discord_notify_sync),
+        bool(discord_notify_backfill),
         bool(discord_notify_new_version),
     )
