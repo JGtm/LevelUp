@@ -281,6 +281,9 @@ def get_gamertag_from_duckdb_v4_path(db_path: str) -> str | None:
 def render_duckdb_v4_player_selector(
     current_db_path: str,
     key: str = "duckdb_v4_player_selector",
+    *,
+    show_heading: bool = True,
+    show_sync_indicator: bool = True,
 ) -> str | None:
     """Affiche un sélecteur de joueur pour l'architecture DuckDB v4.
 
@@ -316,14 +319,21 @@ def render_duckdb_v4_player_selector(
     if key not in st.session_state:
         st.session_state[key] = labels[current_idx] if labels else None
 
-    # Afficher le sélecteur avec indicateur sync sur la même ligne
-    _col_heading, _col_sync = st.columns([1, 1])
-    with _col_heading:
+    if show_heading and show_sync_indicator:
+        _col_heading, _col_sync = st.columns([1, 1])
+        with _col_heading:
+            st.markdown(f"#### {t('sidebar_player_heading')}")
+        with _col_sync:
+            from src.ui._sync_indicator import render_sync_indicator as _render_sync
+
+            _render_sync(current_db_path)
+    elif show_heading:
         st.markdown(f"#### {t('sidebar_player_heading')}")
-    with _col_sync:
+    elif show_sync_indicator:
         from src.ui._sync_indicator import render_sync_indicator as _render_sync
 
         _render_sync(current_db_path)
+
     selected_label = st.selectbox(
         t("sidebar_player_label"),
         options=labels,
@@ -354,6 +364,9 @@ def render_player_selector_unified(
     db_path: str,
     current_xuid: str,
     key: str = "player_selector",
+    *,
+    show_heading: bool = True,
+    show_sync_indicator: bool = True,
 ) -> tuple[str | None, str | None]:
     """Sélecteur de joueur unifié (Legacy SQLite + DuckDB v4).
 
@@ -375,7 +388,12 @@ def render_player_selector_unified(
 
     # Cas 1: Architecture DuckDB v4
     if is_duckdb_v4_path(db_path):
-        new_db_path = render_duckdb_v4_player_selector(db_path, key=f"{key}_v4")
+        new_db_path = render_duckdb_v4_player_selector(
+            db_path,
+            key=f"{key}_v4",
+            show_heading=show_heading,
+            show_sync_indicator=show_sync_indicator,
+        )
         if new_db_path:
             # Récupérer le XUID du nouveau joueur avec fallback intelligent
             new_xuid = None

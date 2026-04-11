@@ -32,6 +32,9 @@ class SK:
     # Navigation
     # ------------------------------------------------------------------
     CURRENT_PAGE: str = "current_page"
+    V7_CURRENT_SECTION: str = "v7_current_section"
+    V7_STATS_VIEW: str = "v7_stats_view"
+    V7_PROFILE_VIEW: str = "v7_profile_view"
     PENDING_PAGE: str = "_pending_page"
     PENDING_MATCH_ID: str = "_pending_match_id"
     PENDING_GAMERTAG: str = "_pending_gamertag"

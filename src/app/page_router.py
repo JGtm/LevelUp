@@ -167,6 +167,73 @@ _PAGE_ICONS: dict[str, str] = {
     "settings": "⚙️",
 }
 
+V7_SECTION_KEYS: list[str] = [
+    "home",
+    "stats",
+    "squad",
+    "explorer",
+    "media",
+    "profile",
+]
+
+_V7_SECTION_I18N_KEYS: dict[str, str] = {
+    "home": "v7_nav_home",
+    "stats": "v7_nav_stats",
+    "squad": "page_teammates",
+    "explorer": "page_explorer",
+    "media": "page_media",
+    "profile": "v7_nav_profile",
+}
+
+_URL_PATH_TO_PAGE: dict[str, str] = {url_path: slug for slug, url_path in _PAGE_URL_PATHS.items()}
+
+_V7_LEGACY_PAGE_TO_SECTION: dict[str, str] = {
+    "last_match": "home",
+    "timeseries": "stats",
+    "session_compare": "stats",
+    "match_history": "stats",
+    "teammates": "squad",
+    "explorer": "explorer",
+    "media": "media",
+    "career": "profile",
+    "citations": "profile",
+    "settings": "profile",
+}
+
+_V7_LEGACY_PAGE_TO_SUBVIEW: dict[str, str] = {
+    "timeseries": "timeseries",
+    "session_compare": "session_compare",
+    "match_history": "match_history",
+    "career": "career",
+    "citations": "citations",
+    "settings": "settings",
+}
+
+
+def get_v7_section_label(section: str) -> str:
+    """Retourne le label traduit d'une section v7."""
+    i18n_key = _V7_SECTION_I18N_KEYS.get(section, "")
+    return t(i18n_key) if i18n_key else section
+
+
+def normalize_v7_section(section: str | None) -> str:
+    """Normalise une section v7 ou retourne la section par défaut."""
+    candidate = str(section or "").strip().lower()
+    return candidate if candidate in V7_SECTION_KEYS else "home"
+
+
+def map_legacy_page_to_v7_location(value: str | None) -> tuple[str, str | None]:
+    """Mappe une page legacy ou un url_path vers une section/sous-vue v7."""
+    raw = str(value or "").strip()
+    if not raw:
+        return "home", None
+
+    slug = _LEGACY_NAME_TO_SLUG.get(raw, raw)
+    slug = _URL_PATH_TO_PAGE.get(slug, slug)
+    section = _V7_LEGACY_PAGE_TO_SECTION.get(slug, "home")
+    subview = _V7_LEGACY_PAGE_TO_SUBVIEW.get(slug)
+    return section, subview
+
 
 def build_navigation(
     page_callables: dict[str, Callable[[], None]],

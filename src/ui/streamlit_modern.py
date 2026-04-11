@@ -15,6 +15,8 @@ from typing import Any, TypeVar
 
 import streamlit as st
 
+from src.config import THEME_COLORS_V7
+
 F = TypeVar("F", bound=Callable[..., Any])
 
 # ---------------------------------------------------------------------------
@@ -74,8 +76,49 @@ def fragment_if_available(func: F) -> F:
 PLOTLY_CLEAN_CONFIG: dict[str, Any] = {
     "displayModeBar": False,
     "staticPlot": False,
+    "displaylogo": False,
 }
 # Config Plotly pour masquer la barre d'outils en gardant le zoom/pan.
+
+PLOTLY_V7_CONFIG: dict[str, Any] = {
+    **PLOTLY_CLEAN_CONFIG,
+    "responsive": True,
+    # Le rendu visuel reste pilote par le layout des figures.
+    # Cette config V7 fixe surtout le comportement de la toolbar.
+    "toImageButtonOptions": {
+        "format": "png",
+        "filename": "levelup-v7-chart",
+        "scale": 2,
+        "height": 720,
+        "width": 1280,
+    },
+}
+
+
+def get_v7_plotly_layout() -> dict[str, Any]:
+    """Retourne un layout Plotly léger aligné sur la palette v7.
+
+    Cette fonction ne change pas les couleurs de traces existantes. Elle fixe
+    uniquement les fonds, la typographie et les contrastes de base.
+    """
+    return {
+        "paper_bgcolor": THEME_COLORS_V7.bg_plot_rgba(1.0),
+        "plot_bgcolor": THEME_COLORS_V7.bg_plot_rgba(1.0),
+        "font": {
+            "color": THEME_COLORS_V7.text_primary,
+            "size": 13,
+            "family": "IBM Plex Sans, Segoe UI, sans-serif",
+        },
+        "hoverlabel": {
+            "bgcolor": THEME_COLORS_V7.bg_surface_alt_css(),
+            "bordercolor": THEME_COLORS_V7.border,
+            "font": {
+                "color": THEME_COLORS_V7.text_primary,
+                "family": "IBM Plex Mono, Cascadia Code, monospace",
+            },
+        },
+    }
+
 
 PLOTLY_STATIC_CONFIG: dict[str, Any] = {
     "staticPlot": True,

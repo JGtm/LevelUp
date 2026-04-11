@@ -1,5 +1,47 @@
 # Thought Log
 
+## [2026-04-11] test(v7): audit final shell cockpit + logs + regressions
+
+**Statut** : Complété  
+**Branche** : `v7/cockpit`
+
+**Décision technique** :
+- Ajout de loggers module-level et de logs d'interaction ciblés sur le shell V7 : changement de section L1, changement de joueur, reset global des filtres, navigation secondaire des sous-vues, hydratation depuis deep links legacy
+- Ajout d'une suite de non-régression dédiée `tests/test_v7_shell_regressions.py` couvrant le mapping des sections V7, les helpers de chips, le chargement du thème et les comportements de logging introduits
+- Vérification volontairement ciblée sur les surfaces réellement modifiées, complétée par les tests existants du routeur pour sécuriser les helpers déjà étendus
+
+**Résultats observés** :
+- 39 tests passent sur `test_v7_shell_regressions.py`, `test_page_router_smoke.py` et `test_page_router_regressions.py`
+- `ruff check` passe sur `header_l1.py`, `header_l2.py`, `v7_sections.py`, `streamlit_app_v7.py` et le nouveau fichier de tests
+- `streamlit_app_v7.py` redémarre correctement en headless via `.venv/Scripts/python.exe -m streamlit run ...`
+
+**Conclusion** :
+La tranche V7 livrée est maintenant couverte par des logs actionnables et un filet de tests dédié sur ses helpers critiques. Le point d'entrée V7 reste exécutable après cette passe de durcissement.
+
+## [2026-04-11] feat(v7): première tranche d'implémentation du cockpit v7
+
+**Statut** : Complété  
+**Branche** : `v7/cockpit`
+
+**Décision technique** :
+- Création d'un point d'entrée dédié `streamlit_app_v7.py` sans toucher au flux principal de `streamlit_app.py`
+- Réutilisation pragmatique du bootstrap existant (`_initialize_app`, `_load_and_prepare_data`, query params, setup wizard) avec surcharge visuelle v7 au-dessus du CSS legacy
+- Mise en place d'un shell L1 v7 avec 6 sections persistées en `session_state`, sélecteur joueur déplacé dans le header, sync compact et sidebar masquée côté CSS
+- Ajout d'une bande de contexte légère pour `Stats` et `Escouade`, avec chips de filtres et reset global
+- Ajout d'une barre KPI compacte v7 basée sur `compute_kpi_stats`
+- Regroupement temporaire des pages existantes dans `src/ui/pages/v7_sections.py` pour obtenir un cockpit navigable sans refonte complète des hubs
+- Introduction d'une palette v7 en code (`THEME_COLORS_V7`) + feuille `src/ui/theme/v7_theme.css`
+- Extension de `page_router.py` pour mapper les deep links legacy vers les sections v7
+
+**Résultats observés** :
+- `ruff check` passe sur tous les fichiers modifiés
+- `py_compile` passe sur les nouveaux modules et le point d'entrée v7
+- `streamlit_app_v7.py` démarre correctement en headless via `.venv/Scripts/python.exe -m streamlit run ...`
+- La V7 est exécutable localement sur un shell moderne avec pages legacy regroupées par domaine
+
+**Conclusion** :
+La base technique de la V7 est désormais en place. La prochaine étape logique est d'itérer sur le rendu réel des hubs et de remplacer progressivement les wrappers temporaires par les vrais composants Mission Control / Stats Hub / Squad Hub.
+
 ## [2026-04-11] test: vérification finale + couverture migrations (post-housekeeping)
 
 **Statut** : Complété  
