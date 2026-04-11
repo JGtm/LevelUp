@@ -6,6 +6,10 @@ Couvre :
   - Migration highlight_events (séquence auto-increment)
   - Migration medals_earned (INT32 → BIGINT)
   - Backfill bitmask
+  - Migrations player : ensure_end_time_column, ensure_career_progression_autoincrement,
+    ensure_skill_history_table
+  - Migrations shared : ensure_match_participants_backfill_bits, ensure_fix_bot_xuid_shared,
+    ensure_team_ps_scores
 """
 
 from __future__ import annotations
@@ -22,6 +26,7 @@ from src.data.sync.migrations import (
     ensure_backfill_completed_column,
     ensure_bot_teammate_column,
     ensure_highlight_events_autoincrement,
+    ensure_match_participants_backfill_bits,
     ensure_match_participants_columns,
     ensure_match_stats_columns,
     ensure_medals_earned_bigint,
@@ -29,6 +34,15 @@ from src.data.sync.migrations import (
     ensure_weapon_kills_table,
     get_table_columns,
     table_exists,
+)
+from src.data.sync.migrations_player import (
+    ensure_career_progression_autoincrement,
+    ensure_end_time_column,
+    ensure_skill_history_table,
+)
+from src.data.sync.migrations_shared import (
+    ensure_fix_bot_xuid_shared,
+    ensure_team_ps_scores,
 )
 
 
@@ -672,3 +686,217 @@ class TestDropLegacyTranslationTables:
                     f"SELECT 1 FROM information_schema.tables WHERE table_name='{table}' LIMIT 1"  # noqa: S608
                 ).fetchone()
                 assert has is None, f"{table} aurait dû être supprimée"
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# migrations_player.py — fonctions précédemment non couvertes
+# ─────────────────────────────────────────────────────────────────────────────
+
+
+class TestEnsureEndTimeColumn:
+    """Tests ensure_end_time_column."""
+
+    def test_noop_no_table(self, conn):
+        """Pas de match_stats → no-op silencieux."""
+        ensure_end_time_column(conn)
+
+    def test_adds_end_time(self, conn):
+        """Ajoute la colonne end_time à match_stats si absente."""
+        conn.execute("CREATE TABLE match_stats (match_id VARCHAR PRIMARY KEY)")
+        ensure_end_time_column(conn)
+        assert column_exists(conn, "match_stats", "end_time")
+
+    def test_idempotent(self, conn):
+        """Double appel → pas d'erreur."""
+        conn.execute("CREATE TABLE match_stats (match_id VARCHAR PRIMARY KEY)")
+        ensure_end_time_column(conn)
+        ensure_end_time_column(conn)
+        assert column_exists(conn, "match_stats", "end_time")
+
+
+_CAREER_PROGRESSION_LEGACY_DDL = """
+    CREATE TABLE career_progression (
+        id INTEGER PRIMARY KEY,
+        xuid VARCHAR NOT NULL,
+        rank INTEGER NOT NULL,
+        rank_name VARCHAR,
+        rank_tier VARCHAR,
+        current_xp INTEGER,
+        xp_for_next_rank INTEGER,
+        xp_total INTEGER,
+        is_max_rank BOOLEAN DEFAULT FALSE,
+        adornment_path VARCHAR,
+        recorded_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    )
+"""
+
+
+class TestEnsureCareerProgressionAutoincrement:
+    """Tests ensure_career_progression_autoincrement."""
+
+    def test_noop_no_table(self, conn):
+        """Pas de table → no-op silencieux."""
+        ensure_career_progression_autoincrement(conn)
+
+    def test_migrates_legacy_table(self, conn):
+        """Table sans nextval → migrée avec séquence ; INSERT sans id fonctionne."""
+        conn.execute(_CAREER_PROGRESSION_LEGACY_DDL)
+        conn.execute("INSERT INTO career_progression (id, xuid, rank) VALUES (1, 'xuid1', 5)")
+        ensure_career_progression_autoincrement(conn)
+        conn.execute("INSERT INTO career_progression (xuid, rank) VALUES ('xuid2', 10)")
+        count = conn.execute("SELECT COUNT(*) FROM career_progression").fetchone()[0]
+        assert count == 2
+
+    def test_data_preserved_after_migration(self, conn):
+        """Les données existantes sont conservées après la migration."""
+        conn.execute(_CAREER_PROGRESSION_LEGACY_DDL)
+        conn.execute("INSERT INTO career_progression (id, xuid, rank) VALUES (3, 'xuid1', 7)")
+        ensure_career_progression_autoincrement(conn)
+        row = conn.execute("SELECT xuid, rank FROM career_progression WHERE id = 3").fetchone()
+        assert row is not None
+        assert row[0] == "xuid1"
+        assert row[1] == 7
+
+    def test_idempotent_already_has_nextval(self, conn):
+        """Table avec nextval → pas de re-migration, données préservées."""
+        conn.execute("CREATE SEQUENCE career_progression_id_seq START WITH 1")
+        conn.execute("""
+            CREATE TABLE career_progression (
+                id INTEGER PRIMARY KEY DEFAULT nextval('career_progression_id_seq'),
+                xuid VARCHAR NOT NULL,
+                rank INTEGER NOT NULL,
+                recorded_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            )
+        """)
+        conn.execute("INSERT INTO career_progression (xuid, rank) VALUES ('x1', 3)")
+        ensure_career_progression_autoincrement(conn)
+        count = conn.execute("SELECT COUNT(*) FROM career_progression").fetchone()[0]
+        assert count == 1
+
+
+class TestEnsureSkillHistoryTable:
+    """Tests ensure_skill_history_table."""
+
+    def test_creates_table(self, conn):
+        """Crée la table skill_history avec les colonnes attendues."""
+        ensure_skill_history_table(conn)
+        assert table_exists(conn, "skill_history")
+        cols = get_table_columns(conn, "skill_history")
+        expected = {"playlist_id", "recorded_at", "csr", "tier", "division", "matches_played"}
+        assert expected == cols
+
+    def test_idempotent(self, conn):
+        """Double appel → pas d'erreur, données préservées."""
+        ensure_skill_history_table(conn)
+        conn.execute("INSERT INTO skill_history (playlist_id, csr) VALUES ('abc', 1500)")
+        ensure_skill_history_table(conn)
+        count = conn.execute("SELECT COUNT(*) FROM skill_history").fetchone()[0]
+        assert count == 1
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# migrations_shared.py — fonctions précédemment non couvertes
+# ─────────────────────────────────────────────────────────────────────────────
+
+
+class TestEnsureMatchParticipantsBackfillBits:
+    """Tests ensure_match_participants_backfill_bits."""
+
+    def test_noop_no_table(self, conn):
+        """Pas de match_participants → no-op silencieux."""
+        ensure_match_participants_backfill_bits(conn)
+
+    def test_adds_backfill_bits_column(self, conn):
+        """Ajoute backfill_bits INTEGER DEFAULT 0 si absent."""
+        conn.execute("CREATE TABLE match_participants (match_id VARCHAR, xuid VARCHAR)")
+        ensure_match_participants_backfill_bits(conn)
+        assert column_exists(conn, "match_participants", "backfill_bits")
+
+    def test_default_value_zero(self, conn):
+        """Les lignes insérées après migration ont backfill_bits = 0."""
+        conn.execute("CREATE TABLE match_participants (match_id VARCHAR, xuid VARCHAR)")
+        ensure_match_participants_backfill_bits(conn)
+        conn.execute("INSERT INTO match_participants (match_id, xuid) VALUES ('m1', 'x1')")
+        val = conn.execute(
+            "SELECT backfill_bits FROM match_participants WHERE match_id = 'm1'"
+        ).fetchone()[0]
+        assert val == 0
+
+    def test_idempotent(self, conn):
+        """Double appel → pas d'erreur, schéma identique."""
+        conn.execute("CREATE TABLE match_participants (match_id VARCHAR, xuid VARCHAR)")
+        ensure_match_participants_backfill_bits(conn)
+        ensure_match_participants_backfill_bits(conn)
+        assert column_exists(conn, "match_participants", "backfill_bits")
+
+
+class TestEnsureFixBotXuidShared:
+    """Tests ensure_fix_bot_xuid_shared."""
+
+    def test_noop_no_table(self, conn):
+        """Pas de match_participants → no-op silencieux."""
+        ensure_fix_bot_xuid_shared(conn)
+
+    def test_fixes_malformed_bids(self, conn):
+        """Corrige bid(0.0 → bid(0.0) en ajoutant la parenthèse fermante."""
+        conn.execute("CREATE TABLE match_participants (match_id VARCHAR, xuid VARCHAR)")
+        conn.execute("INSERT INTO match_participants VALUES ('m1', 'bid(0.0'), ('m1', 'bid(1.0')")
+        ensure_fix_bot_xuid_shared(conn)
+        rows = conn.execute("SELECT xuid FROM match_participants ORDER BY xuid").fetchall()
+        xuids = {r[0] for r in rows}
+        assert "bid(0.0)" in xuids
+        assert "bid(1.0)" in xuids
+        assert "bid(0.0" not in xuids
+
+    def test_leaves_correct_bids_alone(self, conn):
+        """Ne touche pas les bids déjà corrects bid(...)."""
+        conn.execute("CREATE TABLE match_participants (match_id VARCHAR, xuid VARCHAR)")
+        conn.execute("INSERT INTO match_participants VALUES ('m1', 'bid(0.0)'), ('m1', 'xuid123')")
+        ensure_fix_bot_xuid_shared(conn)
+        rows = conn.execute("SELECT xuid FROM match_participants ORDER BY xuid").fetchall()
+        xuids = {r[0] for r in rows}
+        assert "bid(0.0)" in xuids
+        assert "xuid123" in xuids
+        assert len(xuids) == 2
+
+    def test_idempotent(self, conn):
+        """Double appel → pas de double-fixage (bid(0.0) ne devient pas bid(0.0))."""
+        conn.execute("CREATE TABLE match_participants (match_id VARCHAR, xuid VARCHAR)")
+        conn.execute("INSERT INTO match_participants VALUES ('m1', 'bid(0.0')")
+        ensure_fix_bot_xuid_shared(conn)
+        ensure_fix_bot_xuid_shared(conn)
+        xuid = conn.execute("SELECT xuid FROM match_participants").fetchone()[0]
+        assert xuid == "bid(0.0)"
+
+
+class TestEnsureTeamPsScores:
+    """Tests ensure_team_ps_scores."""
+
+    def test_noop_no_table(self, conn):
+        """Pas de match_registry → no-op silencieux."""
+        ensure_team_ps_scores(conn)
+
+    def test_adds_both_columns(self, conn):
+        """Ajoute team_0_ps_score et team_1_ps_score à match_registry."""
+        conn.execute("CREATE TABLE match_registry (match_id VARCHAR PRIMARY KEY)")
+        ensure_team_ps_scores(conn)
+        cols = get_table_columns(conn, "match_registry")
+        assert "team_0_ps_score" in cols
+        assert "team_1_ps_score" in cols
+
+    def test_idempotent(self, conn):
+        """Double appel → pas d'erreur, colonnes présentes une seule fois."""
+        conn.execute("CREATE TABLE match_registry (match_id VARCHAR PRIMARY KEY)")
+        ensure_team_ps_scores(conn)
+        ensure_team_ps_scores(conn)
+        cols = get_table_columns(conn, "match_registry")
+        assert "team_0_ps_score" in cols
+        assert "team_1_ps_score" in cols
+
+    def test_data_preserved(self, conn):
+        """Les données existantes ne sont pas perdues."""
+        conn.execute("CREATE TABLE match_registry (match_id VARCHAR PRIMARY KEY)")
+        conn.execute("INSERT INTO match_registry VALUES ('m1')")
+        ensure_team_ps_scores(conn)
+        count = conn.execute("SELECT COUNT(*) FROM match_registry").fetchone()[0]
+        assert count == 1
