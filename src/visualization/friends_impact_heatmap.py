@@ -241,7 +241,6 @@ def plot_friends_impact_heatmap(  # noqa: C901, PLR0912, PLR0915
         margin={"l": 120, "r": 40, "t": 30, "b": 50},
         xaxis_title=viz_t("axis_matches", lang),
         yaxis_title="",
-        plot_bgcolor="rgba(245, 245, 245, 0.5)",  # Background clair
     )
     fig.update_yaxes(autorange="reversed")  # Premier en haut
 

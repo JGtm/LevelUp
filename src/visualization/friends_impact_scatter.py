@@ -181,7 +181,6 @@ def _apply_scatter_layout(  # noqa: PLR0913
             "tickvals": list(range(n_matches)),
             "ticktext": [f"#{i + 1}" for i in range(n_matches)],
             "showgrid": True,
-            "gridcolor": "rgba(200,200,200,0.3)",
             "zeroline": False,
             "range": [-0.5, n_matches - 0.5],
         },
@@ -189,11 +188,9 @@ def _apply_scatter_layout(  # noqa: PLR0913
             "tickvals": list(range(n_players)),
             "ticktext": gamertags,
             "showgrid": True,
-            "gridcolor": "rgba(160,160,160,0.16)",
             "zeroline": False,
             "range": [-0.5, n_players - 0.5],
         },
-        plot_bgcolor="rgba(248,250,252,0.92)",
     )
 
 
