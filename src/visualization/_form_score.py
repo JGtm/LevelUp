@@ -1,12 +1,14 @@
 """Graphe historique du score de forme (rolling avg_14 - avg_90).
 
 Deux modes :
-- Standard  : courbe form_score lissée, 1 point par match.
-- Détail    : courbe form_score + scatter buckets intra-match (≤ DETAIL_THRESHOLD matchs).
-  Les buckets orbitent autour du form_score du match parent (même axe Y, même unité).
+- Standard : courbe form_score lissée, 1 point par match.
+- Détail   : courbe unique fusionnant les points match et les buckets intra-match
+  (≤ DETAIL_THRESHOLD matchs). Les buckets sont triés dans la timeline globale.
 """
 
 from __future__ import annotations
+
+import contextlib
 
 import plotly.graph_objects as go
 import polars as pl
@@ -16,64 +18,28 @@ from src.visualization._plot_options import DEFAULT_THEME
 from src.visualization.theme import apply_halo_plot_style
 
 
-def _add_bucket_scatter(
-    fig: go.Figure,
+def _merge_series_with_buckets(
+    match_data: list[dict],
     bucket_df: pl.DataFrame,
-    color: str,
-    name: str,
-    lang: str,
-) -> None:
-    """Ajoute les points bucket intra-match comme scatter semi-transparent.
+) -> tuple[list, list, list]:
+    """Fusionne les points match et les buckets intra-match en une courbe unique.
 
-    Les buckets orbitent autour du form_score de leur match parent.
-    Affichés avec opacité réduite et taille plus petite pour rester en arrière-plan.
-
-    Args:
-        fig: Figure Plotly à enrichir.
-        bucket_df: DataFrame avec bucket_start, bucket_value, bucket_label, kills, deaths.
-        color: Couleur de la trace principale (même teinte, opacity réduite).
-        name: Nom du joueur (pour la légende).
-        lang: Langue d'affichage.
+    Returns:
+        Tuple (x_vals, y_vals, match_ids) triés chronologiquement.
+        Les bucket points ont un match_id vide (non surlignés).
     """
-    if bucket_df.is_empty() or "bucket_start" not in bucket_df.columns:
-        return
-    data = bucket_df.sort("bucket_start").to_dicts()
-    x_vals = [d["bucket_start"] for d in data]
-    y_vals = [d.get("bucket_value") for d in data]
-    labels = [d.get("bucket_label", "") for d in data]
-    kills = [d.get("kills", 0) for d in data]
-    deaths = [d.get("deaths", 0) for d in data]
-
-    hover = [
-        f"<b>{lab}</b><br>K: {k} / D: {d}<br>Score: {v:+.2f}" if v is not None else ""
-        for lab, k, d, v in zip(labels, kills, deaths, y_vals, strict=False)
+    combined = [
+        {"t": d["start_time"], "v": d.get("form_score"), "mid": str(d.get("match_id", ""))}
+        for d in match_data
     ]
-
-    # Demi-opacité sur la couleur de base
-    fill_color = (
-        color.replace("rgb(", "rgba(").replace(")", ", 0.35)") if "rgb(" in color else color
-    )
-
-    fig.add_trace(
-        go.Scatter(
-            x=x_vals,
-            y=y_vals,
-            mode="markers",
-            name=viz_t("label_bucket_detail", lang)
-            if name == ""
-            else f"{name} ({viz_t('label_bucket_detail', lang)})",
-            marker={
-                "size": 5,
-                "color": fill_color,
-                "symbol": "circle",
-                "line": {"width": 0},
-            },
-            hovertemplate="%{customdata}<extra></extra>",
-            customdata=hover,
-            showlegend=True,
-            legendgroup=f"bucket_{name}",
-            opacity=0.6,
-        )
+    for row in bucket_df.sort("bucket_start").to_dicts():
+        combined.append({"t": row["bucket_start"], "v": row.get("bucket_value"), "mid": ""})
+    with contextlib.suppress(TypeError):
+        combined.sort(key=lambda r: r["t"] if r["t"] is not None else "")
+    return (
+        [r["t"] for r in combined],
+        [r["v"] for r in combined],
+        [r["mid"] for r in combined],
     )
 
 
@@ -231,12 +197,13 @@ def plot_form_score_history(  # noqa: PLR0913
         y_vals = [d.get("form_score") for d in data]
         match_ids = [str(d.get("match_id", "")) for d in data]
 
+        # Mode détail : fusion buckets + matchs en courbe unique
+        if bucket_series_by_name:
+            bucket_df = bucket_series_by_name.get(name)
+            if bucket_df is not None and not bucket_df.is_empty():
+                x_vals, y_vals, match_ids = _merge_series_with_buckets(data, bucket_df)
         if is_single:
             _add_fill_traces(fig, x_vals, y_vals)
-        # Buckets d'abord (en arrière-plan) puis la ligne de forme par-dessus
-        if bucket_series_by_name:
-            bucket_df = bucket_series_by_name.get(name, pl.DataFrame())
-            _add_bucket_scatter(fig, bucket_df, color, name, lang)
         _add_player_line(fig, name, x_vals, y_vals, color, highlight_match_ids, match_ids)
 
     fig.add_hline(
