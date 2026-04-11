@@ -130,7 +130,8 @@ def _rows_for_match(
         bd = deaths_per_bucket[b_idx]
         total_kd = bk + bd
         kd_score = (bk / total_kd) if total_kd > 0 else 0.5
-        bucket_composite = 0.6 * kd_score + 0.25 * dmg_eff + 0.15 * min(accuracy / 100, 1.0)
+        # bucket_composite en [0,100] pour correspondre à l'échelle de performance_score
+        bucket_composite = 100 * (0.6 * kd_score + 0.25 * dmg_eff + 0.15 * min(accuracy / 100, 1.0))
         bucket_display = form_score_match + (bucket_composite - avg_14_match)
         bucket_ms_offset = b_idx * BUCKET_MS
         minutes = bucket_ms_offset // 60000
