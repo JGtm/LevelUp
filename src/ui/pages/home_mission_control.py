@@ -10,15 +10,18 @@ import streamlit as st
 
 from src.ui.formatting import format_datetime_fr_hm, format_duration_dhm
 from src.ui.i18n import get_lang, t
+from src.ui.pages.home_mission_control_api import (
+    HomeBattlepassInfo,
+    HomeChallengeSummary,
+    fetch_home_progressions,
+)
 from src.ui.pages.home_mission_control_logic import (
     HomeActionCard,
-    HomeHighlight,
     HomeMediaEntry,
     HomeRecentMatch,
     HomeSessionSummary,
     SessionCardConfig,
     _build_navigation_state,
-    _build_recent_highlights,
     _build_session_summary,
     _compute_trend_snapshot,
     _format_percent,
@@ -134,17 +137,15 @@ def _build_action_cards(
     ]
 
 
-def _render_mission_briefing(matches_df: Any) -> None:
-    """Affiche le briefing principal de l'accueil."""
+def _render_recent_form_card(matches_df: Any) -> None:
+    """Affiche la carte de forme récente (5 derniers matchs) pour l'accueil."""
     recent_matches = _select_recent_matches(matches_df, limit=1)
     trend_snapshot = _compute_trend_snapshot(matches_df)
+
     latest_line = t("v7_home_hero_summary_empty")
     if recent_matches:
         latest = recent_matches[0]
-        latest_line = (
-            f"{latest.title} · {latest.detail} · "
-            f"{format_datetime_fr_hm(latest.started_at, lang=get_lang())}"
-        )
+        latest_line = f"{latest.title} · {latest.detail}"
 
     stats_html = ""
     trend_line = t("v7_home_trend_na")
@@ -152,12 +153,10 @@ def _render_mission_briefing(matches_df: Any) -> None:
         stats = trend_snapshot.current_kpis
         stats_html = "".join(
             [
-                "<div class='v7-home-hero-stats'>",
-                f"<span class='v7-home-hero-stat'><strong>{stats.total_matches}</strong>{escape(t('lbl_parties'))}</span>",
-                f"<span class='v7-home-hero-stat'><strong>{escape(format_duration_dhm(stats.total_play_seconds, lang=get_lang()))}</strong>{escape(t('col_total_duration'))}</span>",
-                f"<span class='v7-home-hero-stat'><strong>{_format_ratio(stats.global_ratio)}</strong>KD</span>",
-                f"<span class='v7-home-hero-stat'><strong>{_format_percent(stats.avg_accuracy)}</strong>{escape(t('col_avg_accuracy'))}</span>",
-                f"<span class='v7-home-hero-stat'><strong>{_format_percent(stats.win_rate * 100)}</strong>WR</span>",
+                "<div class='v7-home-stats'>",
+                f"<span class='v7-home-stat'><strong>{_format_ratio(stats.global_ratio)}</strong> KD</span>",
+                f"<span class='v7-home-stat'><strong>{_format_percent(stats.avg_accuracy)}</strong> {escape(t('col_avg_accuracy'))}</span>",
+                f"<span class='v7-home-stat'><strong>{_format_percent(stats.win_rate * 100)}</strong> WR</span>",
                 "</div>",
             ]
         )
@@ -171,15 +170,77 @@ def _render_mission_briefing(matches_df: Any) -> None:
     _render_home_card(
         "".join(
             [
-                "<div class='v7-home-hero-kicker'>Mission Control</div>",
-                f"<div class='v7-home-hero-title'>{escape(t('v7_home_hero_title'))}</div>",
-                f"<div class='v7-home-hero-summary'>{escape(latest_line)}</div>",
+                f"<div class='v7-subshell-title'>{escape(t('v7_home_recent_form'))}</div>",
+                f"<div class='v7-home-meta'>{escape(latest_line)}</div>",
                 f"<div class='v7-home-hero-trend'>{escape(trend_line)}</div>",
                 stats_html,
             ]
         ),
-        extra_class="v7-home-hero",
     )
+
+
+def _render_battlepass_card(info: HomeBattlepassInfo | None) -> None:
+    """Affiche la carte de progression du pass de combat."""
+    title = t("v7_home_battlepass")
+    if info is None:
+        _render_home_card(
+            "".join(
+                [
+                    f"<div class='v7-subshell-title'>{escape(title)}</div>",
+                    f"<div class='v7-inline-note'>{escape(t('v7_home_api_unavailable'))}</div>",
+                ]
+            )
+        )
+        return
+    tier_label = t("v7_home_battlepass_premium") if info.is_owned else t("v7_home_battlepass_free")
+    _render_home_card(
+        "".join(
+            [
+                f"<div class='v7-subshell-title'>{escape(title)}</div>",
+                f"<div class='v7-home-meta'>{escape(info.track_name)}</div>",
+                "<div class='v7-home-stats'>",
+                f"<span class='v7-home-stat'><strong>{info.current_progress:,}</strong> XP</span>",
+                f"<span class='v7-home-stat'><strong>{escape(tier_label)}</strong></span>",
+                "</div>",
+            ]
+        )
+    )
+
+
+def _render_challenges_card(summary: HomeChallengeSummary | None) -> None:
+    """Affiche la carte des défis actifs."""
+    title = t("v7_home_challenges")
+    if summary is None:
+        _render_home_card(
+            "".join(
+                [
+                    f"<div class='v7-subshell-title'>{escape(title)}</div>",
+                    f"<div class='v7-inline-note'>{escape(t('v7_home_api_unavailable'))}</div>",
+                ]
+            )
+        )
+        return
+    if summary.total == 0:
+        _render_home_card(
+            "".join(
+                [
+                    f"<div class='v7-subshell-title'>{escape(title)}</div>",
+                    f"<div class='v7-inline-note'>{escape(t('v7_home_challenges_empty'))}</div>",
+                ]
+            )
+        )
+        return
+    rows = [
+        f"<div class='v7-subshell-title'>{escape(title)}</div>",
+        "<div class='v7-home-stats'>",
+        f"<span class='v7-home-stat'><strong>{summary.completed}/{summary.total}</strong> {escape(t('v7_home_challenges_done'))}</span>",
+        f"<span class='v7-home-stat'><strong>+{summary.xp_available:,}</strong> XP</span>",
+        "</div>",
+    ]
+    if summary.next_expiry:
+        expiry_txt = t("v7_home_challenges_expiry").format(date=summary.next_expiry)
+        rows.append(f"<div class='v7-home-meta'>{escape(expiry_txt)}</div>")
+    _render_home_card("".join(rows))
 
 
 def _render_action_cards(cards: list[HomeActionCard]) -> None:
@@ -254,65 +315,6 @@ def _render_session_summary_card(
         )
 
 
-def _render_highlights(highlights: list[HomeHighlight]) -> None:
-    """Affiche les faits saillants récents."""
-    st.markdown(
-        f"<div class='v7-section-title'>{escape(t('v7_home_recent_highlights'))}</div>",
-        unsafe_allow_html=True,
-    )
-    if not highlights:
-        _render_home_card(f"<div class='v7-inline-note'>{escape(t('no_data_filter'))}</div>")
-        return
-
-    rows = ["<div class='v7-home-highlight-list'>"]
-    for item in highlights:
-        rows.append(
-            "<div class='v7-home-highlight-item'>"
-            f"<span class='v7-home-highlight-title'>{escape(item.title)}</span>"
-            f"<strong>{escape(item.value)}</strong>"
-            f"<span>{escape(item.detail)}</span>"
-            "</div>"
-        )
-    rows.append("</div>")
-    _render_home_card("".join(rows))
-
-
-def _render_recent_activity(entries: list[HomeRecentMatch]) -> None:
-    """Affiche la timeline compacte des derniers matchs."""
-    st.markdown(
-        f"<div class='v7-section-title'>{escape(t('v7_home_recent_activity'))}</div>",
-        unsafe_allow_html=True,
-    )
-    if not entries:
-        _render_home_card(
-            f"<div class='v7-inline-note'>{escape(t('v7_home_no_recent_activity'))}</div>"
-        )
-        return
-
-    for entry in entries:
-        info_col, button_col = st.columns([5.4, 1.2])
-        with info_col:
-            _render_home_card(
-                "".join(
-                    [
-                        "<div class='v7-home-timeline-item'>",
-                        f"<span class='v7-home-timeline-pill v7-home-timeline-pill--{escape(entry.outcome_tone)}'>{escape(entry.outcome_label)}</span>",
-                        f"<div class='v7-home-timeline-main'>{escape(entry.title)}</div>",
-                        f"<div class='v7-home-timeline-meta'>{escape(format_datetime_fr_hm(entry.started_at, lang=get_lang()))} · {escape(entry.detail)}</div>",
-                        "</div>",
-                    ]
-                ),
-                extra_class="v7-home-timeline-card",
-            )
-        with button_col:
-            if st.button(
-                t("v7_home_open_match"),
-                key=f"v7_home_match_{entry.match_id}",
-                width="stretch",
-            ):
-                _set_section("explorer", pending_match_id=entry.match_id)
-
-
 def _render_recent_media_block(entries: list[HomeMediaEntry]) -> None:
     """Affiche les médias récents liés au joueur courant."""
     st.markdown(
@@ -342,7 +344,7 @@ def _render_recent_media_block(entries: list[HomeMediaEntry]) -> None:
 
 
 def render_home_mission_control(ctx: Any) -> None:
-    """Rend l'accueil V7 enrichi autour du dernier match."""
+    """Rend l'accueil V7 Mission Control."""
     media_df = load_media_from_db(
         ctx.db_path,
         xuid=ctx.xuid,
@@ -352,24 +354,14 @@ def render_home_mission_control(ctx: Any) -> None:
     recent_matches = _select_recent_matches(ctx.df)
     solo_summary = _build_session_summary(ctx.df, ctx.base_s_ui, squad_mode=False)
     squad_summary = _build_session_summary(ctx.df, ctx.base_s_ui, squad_mode=True)
-    highlights = _build_recent_highlights(ctx.df, ctx.base_s_ui)
 
-    _render_mission_briefing(ctx.df)
+    # Accès rapides
     _render_action_cards(_build_action_cards(solo_summary, squad_summary, recent_matches))
 
-    solo_col, squad_col, highlight_col = st.columns([1.1, 1.1, 1.3])
-    with solo_col:
-        _render_session_summary_card(
-            solo_summary,
-            SessionCardConfig(
-                title=t("v7_home_recent_solo"),
-                empty_text=t("v7_home_no_recent_solo"),
-                button_label=t("v7_home_open_scope"),
-                button_key="v7_home_open_stats",
-                target_section="stats",
-                squad_mode=False,
-            ),
-        )
+    # Row 1 : Forme récente | Dernière session escouade
+    form_col, squad_col = st.columns(2)
+    with form_col:
+        _render_recent_form_card(ctx.df)
     with squad_col:
         _render_session_summary_card(
             squad_summary,
@@ -382,17 +374,21 @@ def render_home_mission_control(ctx: Any) -> None:
                 squad_mode=True,
             ),
         )
-    with highlight_col:
-        _render_highlights(highlights)
 
-    activity_col, media_col = st.columns([1.45, 1.0])
-    with activity_col:
-        _render_recent_activity(recent_matches)
-    with media_col:
-        _render_recent_media_block(media_entries)
+    # Row 2 : Pass de combat | Défis actifs (live API, dégradation gracieuse)
+    bp_info, challenges = fetch_home_progressions(ctx.db_path, ctx.xuid)
+    bp_col, chal_col = st.columns(2)
+    with bp_col:
+        _render_battlepass_card(bp_info)
+    with chal_col:
+        _render_challenges_card(challenges)
 
+    # Row 3 : Dernier match
     st.markdown(
         f"<div class='v7-section-title'>{escape(t('v7_home_last_match'))}</div>",
         unsafe_allow_html=True,
     )
     render_last_match_page(dff=ctx.df, params=ctx.match_view_params)
+
+    # Row 4 : Médias récents
+    _render_recent_media_block(media_entries)
