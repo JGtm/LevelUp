@@ -20,7 +20,7 @@ from src.ui.pages.media_disk_index import index_media_dir
 logger = logging.getLogger(__name__)
 
 from src.config import get_repo_root
-from src.ui import AppSettings
+from src.ui.settings import AppSettings
 
 # =============================================================================
 # Utilitaires de conversion date/heure

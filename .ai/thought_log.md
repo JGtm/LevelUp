@@ -1,5 +1,21 @@
 # Thought Log
 
+## [2026-04-12] feat(media-v2): réécriture page Médias + refactor API home (career rank)
+
+**Statut** : Complété  
+**Branche** : `v7/cockpit`
+
+**Décision technique** :
+- **Media V2** : réécriture complète de la page Médias en 3 modules (`media_v2.py`, `media_v2_filters.py`, `media_v2_grid.py`) — filtre groupby (auteur/date/carte/mode/session/expérience), lightbox navigation prev/next, bouton drill-down match. Remplace `render_media_tab` dans `v7_sections.py` et `streamlit_app.py`. Nouvelles clés i18n dans `media.py`.
+- **API home — career rank** : `HomeBattlepassInfo` refactorisé — `current_progress`/`is_owned` remplacés par `career_rank`/`career_rank_label`. `home_mission_control_api.py` migré vers appels HTTP directs (`aiohttp`) sur les endpoints `economy.svc.halowaypoint.com/hi/players/.../careerranks/careerrank1` et `/challenges`, au lieu de `EconomyServiceExtension` (modèles `spnkr_pr`). Artwork via `_fetch_operation_artwork()` extrait.
+- Fix import `match_view_helpers.py` : `from src.ui import AppSettings` → `from src.ui.settings import AppSettings`.
+- Seuil `st.rerun()` mis à jour 41 → 43 (4 nouveaux dans `media_v2_grid.py` : lightbox nav ×2 + view-full + open-match).
+
+**Résultats** :
+- 6103 tests passants, 0 failures. Ruff clean. Taille fichiers sous 500L.
+
+**Prochaine étape** : Tests visuels en runtime Streamlit.
+
 ## [2026-04-11] feat(home-v7): refonte accueil Mission Control — layout 4 blocs + API live
 
 **Statut** : Complété  
