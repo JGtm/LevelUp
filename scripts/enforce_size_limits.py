@@ -21,7 +21,6 @@ MAX_MODULE_LINES = 500
 # Chemins exclus du check (dictionnaires de traduction, migrations séquentielles, archives)
 WHITELIST_PATHS: tuple[str, ...] = (
     "src/ui/i18n/",
-    "src/utils/launcher_i18n.py",
     "src/data/sync/migrations.py",
     "src/data/sync/migrations_player.py",  # DDL séquentiel — exempté taille (H3)
     "src/data/sync/migrations_shared.py",  # DDL séquentiel — exempté taille (H3)
