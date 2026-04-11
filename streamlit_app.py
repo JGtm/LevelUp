@@ -882,9 +882,9 @@ def _dispatch_navigation(ctx: PageContext) -> None:  # noqa: C901, PLR0915
         render_explorer_page(df=ctx.df, dff=ctx.df, params=ctx.match_view_params)
 
     def _page_media() -> None:
-        from src.ui.pages import render_media_tab
+        from src.ui.pages import render_media_v2
 
-        render_media_tab(df_full=ctx.df, settings=ctx.settings)
+        render_media_v2(df_full=ctx.df, settings=ctx.settings)
 
     def _page_citations() -> None:
         from src.ui.pages import render_citations_page

@@ -20,7 +20,7 @@ from src.ui.pages import (
     render_citations_page,
     render_explorer_page,
     render_match_history_page,
-    render_media_tab,
+    render_media_v2,
     render_session_comparison_page,
     render_settings_page,
     render_teammates_page,
@@ -224,7 +224,7 @@ def render_v7_section(active_section: str, ctx: Any) -> None:
     if active_section == "media":
         _render_section_title(get_page_label("media"))
         with st.container(border=True):
-            render_media_tab(df_full=ctx.df, settings=ctx.settings)
+            render_media_v2(df_full=ctx.df, settings=ctx.settings)
         return
 
     render_profile_section(ctx)
