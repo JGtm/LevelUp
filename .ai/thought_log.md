@@ -1,5 +1,38 @@
 # Thought Log
 
+## [2026-04-11] chore(pre-v7): housekeeping architecture — Blocs F + H (branche v7/cockpit)
+
+**Statut** : Complété  
+**Branche** : `v7/cockpit`
+
+**Décision technique** :
+Exécution complète du plan `.ai/PLAN_ARCH_HOUSEKEEPING.md` en 10 commits séquentiels :
+
+**Bloc F (structure/fichiers)** :
+- F0 : déplacement `_exp_spawn_*.py` + archivage `experimental/` → `_archive/`
+- F1–F3 : non applicables (code déjà nettoyé)
+- F4 : archivage scripts one-shot obsolètes dans `scripts/_archive/`
+- F5 : CHANGELOG FR v6.5.0 + règle sync `docs/FR/` ajoutée dans CLAUDE.md
+- F6 : README dans dossiers archive
+- packaging : `thumbnails-watcher.service` déplacé → `packaging/`, configuré avec `user=deploy`
+
+**Bloc H (qualité code)** :
+- H1a : test `test_intensity_heatmap_viz.py` — assertion `autorange` supprimée (refonte visuelle v6.5)
+- H1b : `teammates_legend.py` — restauration sentinel DOM `llp-squad-start` manquant
+- H2 : `find_matches_missing_data` → `DeprecationWarning` sur legacy kwargs, 26 tests migrés vers `scope=SyncScope(...)`
+- H3 : `migrations.py` (1800L) découpé en 4 modules par domaine DB (`_migrations_utils`, `migrations_player`, `migrations_shared`, `migrations_metadata`). Façade de re-exports préserve 133 sites d'import existants.
+- H4 : `launcher_i18n.py` (813L) → `launcher_i18n.json` (184 clés) + module réduit à 34L
+
+**Résultats** :
+- 6047 tests passent, 24 skipped, 42 warnings (DeprecationWarning attendus des callers legacy)
+- `scripts/enforce_size_limits.py` : `launcher_i18n.py` retiré de la whitelist ; `migrations_player/shared` exemptés (DDL séquentiel)
+- Aucune régression ; hooks pre-commit passent
+
+**Conclusion** :
+Base pré-v7 assainie. Branche `v7/cockpit` prête pour le développement du cockpit v7.
+
+---
+
 ## [2026-04-11] fix(i18n): clés warn_media_no_dir et warn_discord_no_webhook manquantes
 
 **Statut** : Complété  
