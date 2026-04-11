@@ -61,6 +61,23 @@ STRINGS: dict[str, dict[str, str] | str] = {
     "v7_chip_period": {"fr": "Période", "en": "Period"},
     "v7_chip_sessions": {"fr": "Sessions", "en": "Sessions"},
     "v7_chip_scope": {"fr": "Scope", "en": "Scope"},
+    "v7_home_quick_actions": {"fr": "Accès rapides", "en": "Quick actions"},
+    "v7_home_recent_solo": {"fr": "Dernière session solo", "en": "Latest solo session"},
+    "v7_home_recent_squad": {"fr": "Dernière session escouade", "en": "Latest squad session"},
+    "v7_home_no_recent_solo": {
+        "fr": "Aucune session solo récente disponible.",
+        "en": "No recent solo session available.",
+    },
+    "v7_home_no_recent_squad": {
+        "fr": "Aucune session escouade récente disponible.",
+        "en": "No recent squad session available.",
+    },
+    "v7_home_recent_media": {"fr": "Derniers médias liés", "en": "Latest linked media"},
+    "v7_home_no_recent_media": {
+        "fr": "Aucun média récent associé.",
+        "en": "No recent linked media.",
+    },
+    "v7_home_last_match": {"fr": "Dernier match", "en": "Latest match"},
     # ── KPIs ─────────────────────────────────────────────────────────────────
     "kpi_matches_header": "lbl_parties",  # alias → common
     "kpi_career_header": {"fr": "Carrière", "en": "Career"},

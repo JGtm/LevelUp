@@ -36,6 +36,7 @@ logger = logging.getLogger("streamlit_app")
 # Phase 4 refactoring: Main helpers
 # Imports depuis la nouvelle architecture
 from src import __version__
+from src.app._page_context import FilterSidebarCallbacks
 from src.app.cache_control import invalidate_after_sync
 from src.app.data_loader import (
     ensure_h5g_commendations_repo,
@@ -717,11 +718,11 @@ def _load_and_prepare_data(  # noqa: PLR0913
             xuid=xuid,
             db_key=db_key,
             aliases_key=aliases_key,
-            callbacks={
-                "date_range_fn": date_range,
-                "clean_asset_label_fn": clean_asset_label,
-                "build_friends_opts_map_fn": build_friends_opts_map,
-            },
+            callbacks=FilterSidebarCallbacks(
+                date_range_fn=date_range,
+                clean_asset_label_fn=clean_asset_label,
+                build_friends_opts_map_fn=build_friends_opts_map,
+            ),
         )
 
     # Base "globale" : toutes les parties (après inclusion/exclusion Firefight)

@@ -24,68 +24,50 @@
 
 > Objectif : une app qui tourne avec la nouvelle navigation, le nouveau design, et zéro fonctionnalité cassée. La sidebar est masquée, les pages existantes restent accessibles.
 
-### A0 — Initialisation
+### A0 — Initialisation ✅
 
-- [ ] Créer la branche de travail depuis `main` (nom à confirmer en Phase F)
-- [ ] Créer `streamlit_app_v7.py` à la racine — point d'entrée dédié v7, ne pas toucher `streamlit_app.py`
-- [ ] Vérifier que l'app démarre sans erreur sur ce nouveau point d'entrée
-- [ ] **Créer le package `src/ui/layout/`** (nouveau) — contiendra `header_l1.py`, `header_l2.py`, `kpi_bar.py`, `filter_chips.py`. Ne pas répartir ces modules dans `src/ui/components/` (déjà un autre rôle). Ajouter un `__init__.py` vide.
-- [ ] **Palette : fork propre confirmé** — la v7 abandonne la palette Halo Waypoint (`rgb(25, 36, 41)` / accent `#33d6ff`) en faveur d'une palette GitHub-dark. Les variables CSS actuelles dans `static/styles.css` et la dataclass `ThemeColors` dans `src/config.py` restent en place pour `streamlit_app.py` (v6). `streamlit_app_v7.py` charge exclusivement `src/ui/theme/v7_theme.css` et utilise `PLOTLY_V7_CONFIG`.
+- [x] Créer la branche de travail depuis `main` — `v7/cockpit`
+- [x] Créer `streamlit_app_v7.py` à la racine
+- [x] Vérifier que l'app démarre sans erreur sur ce nouveau point d'entrée
+- [x] **Créer le package `src/ui/layout/`** — `header_l1.py`, `header_l2.py`, `kpi_bar.py`, `filter_chips.py` + `__init__.py`
+- [x] **Palette : fork propre confirmé** — `THEME_COLORS_V7` dans `src/config.py`, CSS dans `src/ui/theme/v7_theme.css`
 
-### A1 — Design system CSS
+### A1 — Design system CSS ✅
 
-- [ ] Créer `src/ui/theme/v7_theme.css` avec les variables CSS de la palette
-- [ ] Appliquer via `st.markdown(<style>, unsafe_allow_html=True)` dans le shell
-- [ ] Variables à définir dans `v7_theme.css` : `--bg-main #0b0f14` · `--bg-surface #121820` · `--bg-surface-alt #161d26` · `--border-subtle #202938` · `--border-strong #273241` · `--text-primary #e8eef5` · `--text-secondary #93a1b2` · `--text-muted #6f7c8a` · `--accent #4b8db8` · `--accent-soft #7fb3d5` · `--win #49b36b` · `--loss #d95c5c` · `--neutral #6f7c8a`
-- [ ] Rattacher chaque token a un usage explicite : `bg-main` = fond app, `bg-surface` = cards/panneaux, `bg-surface-alt` = zones secondaires/onglets actifs, `border-subtle` = separateurs courants, `border-strong` = etats actifs, `text-primary` = titres/KPI, `text-secondary` = labels/captions, `text-muted` = metadonnees, `accent` = selection/action principale, `accent-soft` = focus/hover leger, `win`/`loss`/`neutral` = semantique uniquement
-- [ ] Regles de palette v7 : aucun fond translucide, aucun gradient decoratif, une seule vraie couleur d'accent visible, vert/rouge reserves aux etats, pas de carte blanche ni de glow
-- [ ] Créer constante `PLOTLY_V7_CONFIG` dans `src/ui/streamlit_modern.py` : `paper_bgcolor`/`plot_bgcolor` alignes sur la palette v7, `font.color` lisible sur fond sombre, `gridcolor` discret mais visible
-- [ ] **`PLOTLY_V7_CONFIG` doit être branché sur `ThemeColors` de `src/config.py`** — ne pas dupliquer les valeurs couleur en dur. Pattern : `PLOTLY_V7_CONFIG` lit `THEME_COLORS_V7` (nouvelle instance `ThemeColors` avec la palette fork) pour le fond, la police et les gridlines. Cela garantit que Python et CSS partagent une seule source de vérité pour les couleurs v7.
-- [ ] Les couleurs de donnees Plotly restent ouvertes a ce stade : par defaut conserver les couleurs existantes des barres, courbes, axes et traces tant qu'elles restent lisibles dans le theme v7 ; ne figer une palette data qu'apres validation visuelle dans l'app
-- [ ] Remplacer `PLOTLY_CLEAN_CONFIG` par `PLOTLY_V7_CONFIG` dans `streamlit_app_v7.py`
+- [x] Créer `src/ui/theme/v7_theme.css` avec toutes les variables CSS de la palette
+- [x] Appliquer via `load_v7_theme_css()` dans le shell
+- [x] Variables définies : `--v7-bg-main` · `--v7-bg-surface` · `--v7-bg-surface-alt` · `--v7-border-subtle` · `--v7-border-strong` · `--v7-text-primary` · `--v7-text-secondary` · `--v7-text-muted` · `--v7-accent` · `--v7-accent-soft` · `--v7-success` · `--v7-danger` · `--v7-neutral` · `--v7-radius` · `--v7-mono` · `--v7-sans`
+- [x] Règles palette v7 : aucun fond translucide, aucun gradient décoratif, accent unique visible
+- [x] `PLOTLY_V7_CONFIG` + `get_v7_plotly_layout()` dans `src/ui/streamlit_modern.py` — branché sur `THEME_COLORS_V7`
+- [x] `THEME_COLORS_V7` dans `src/config.py` — source de vérité partagée CSS+Python
 
-### A1bis — Polish visuel des graphes
+### A1bis — Polish visuel des graphes 🔲 en cours
 
-> Objectif : harmoniser le rendu des charts sans changer leur logique analytique ni leur structure.
+- [x] `get_v7_plotly_layout()` définie dans `streamlit_modern.py` — charte Plotly légère (fond, police, hover labels)
+- [ ] **Corriger les deux graphes à fond clair hérités** :
+  - `src/visualization/friends_impact_heatmap.py` L244 : `plot_bgcolor="rgba(245, 245, 245, 0.5)"` → thème sombre
+  - `src/visualization/friends_impact_scatter.py` L196 : `plot_bgcolor="rgba(248,250,252,0.92)"` → thème sombre
+- [ ] Vérifier rendu sur graphes représentatifs après correction
 
-- [ ] Définir une charte Plotly légère au-dessus de `PLOTLY_V7_CONFIG` : police, tailles de titres, labels axes, ticks, légendes, hover labels, marges, fonds `paper`/`plot`, contraste des gridlines
-- [ ] Ne pas modifier les graphes en eux-mêmes : mêmes métriques, mêmes types de charts, même hiérarchie d'information
-- [ ] Aligner les charts avec le shell v7 : fond cohérent avec les cards, texte secondaire lisible, accents visuels sobres, pas d'effet décoratif supplémentaire
-- [ ] Vérifier le rendu sur 5 à 10 graphes représentatifs : timeseries, radar, heatmap, distribution, timeline, cartes delta
-- [ ] Autoriser des exceptions locales uniquement si le thème global dégrade la lisibilité d'un chart précis
-- [ ] **Corriger les deux graphes à fond clair hérités avant intégration dans les hubs** — ces fichiers cassent déjà le thème sombre actuel et seront encore plus visibles en v7 :
-  - `src/visualization/friends_impact_heatmap.py` L244 : `plot_bgcolor="rgba(245, 245, 245, 0.5)"` → remplacer par `THEME_COLORS.bg_plot_rgba(1.0)`
-  - `src/visualization/friends_impact_scatter.py` L196 : `plot_bgcolor="rgba(248,250,252,0.92)"` + L184 gridcolor clair → aligner sur le thème sombre
+### A2 — Shell global L1 ✅
 
-**Risques A1bis :**
-- Un thème Plotly trop global peut dégrader les heatmaps, radars ou annotations si leurs contrastes actuels sont déjà fins
-- Certains modules peuvent déjà surcharger leur `layout` localement ; recenser ces exceptions avant d'imposer le thème partout
+- [x] `src/ui/layout/header_l1.py` — navigation 6 sections via `st.segmented_control`
+- [x] Sync : `render_sync_indicator` compact dans le shell
+- [x] Sélecteur Gamertag : single player ou multi-player via `render_player_selector_unified`
+- [x] Logo / clic → Accueil
+- [x] Section active dans `SK.V7_CURRENT_SECTION`
 
-### A2 — Shell global L1
+### A3 — Routing 6 sections ✅
 
-- [ ] Créer `src/ui/layout/header_l1.py`
-- [ ] Navigation 6 sections : Accueil · Stats · Escouade · Explorer · Médias · Profil
-- [ ] Sync : icône/statut compact dans le shell, pas une section primaire
-- [ ] Sélecteur Gamertag actif (reprendre la logique existante de sélection joueur)
-- [ ] Logo / clic → Accueil
-- [ ] Section active persistée dans `st.session_state` avec clé dédiée dans `src/app/session_keys.py`
+- [x] `page_router.py` : `V7_SECTION_KEYS`, `_V7_SECTION_I18N_KEYS`, `normalize_v7_section`, `get_v7_section_label`, `map_legacy_page_to_v7_location`
+- [x] Dispatch v7 dans `v7_sections.py` — 6 sections (home/stats/squad/explorer/media/profile)
+- [x] Compatibilité deep links : `map_legacy_page_to_v7_location` + `_hydrate_v7_navigation`
+- [x] Fallback : section inconnue → home
 
-### A3 — Routing 6 sections
+### A4 — Masquage sidebar ✅
 
-**Fichiers sources à lire avant :** `src/app/page_router.py` (routing actuel), `streamlit_app.py` (dispatch actuel)
-
-- [ ] **Rendre `page_router.py` déclaratif avant de le refondre** — l'actuel est une liste plate de 10 slugs avec labels i18n. Avant d'ajouter les 6 sections parent + hubs imbriqués, extraire les pages dans une structure de données (`dict` ou `dataclass SectionDef`) qui sépare slug / label i18n / module / section parente. Cela évite une réécriture monolithique.
-- [ ] Créer ou adapter `src/app/page_router.py` pour le dispatch v7 — 6 sections
-- [ ] Chaque section pointe vers son module existant pour l'instant (hubs créés en Phase C)
-- [ ] Compatibilité deep links existants : paramètres URL legacy honorés et redirigés
-- [ ] Fallback : section inconnue → Accueil
-
-### A4 — Masquage sidebar
-
-- [ ] Masquer la sidebar via CSS (`[data-testid="stSidebar"] { display: none; }`)
-- [ ] Vérifier qu'aucun widget dans la sidebar n'alimente un `session_state` utilisé ailleurs
-- [ ] Les pages existantes continuent de fonctionner dans le nouveau shell (test manuel des 6 sections)
-- [ ] **Isoler les règles CSS sidebar orphelines dans `static/styles.css`** — baliser toutes les règles ciblant `[data-testid="stSidebar"]` et ses enfants avec un bloc commentaire `/* SIDEBAR — orphan en v7, retrait en Phase E3 */`. `static/styles.css` fait 2292L ; identifier et borner ces règles maintenant évite de les chercher au moment du retrait en E3.
+- [x] Sidebar masquée via CSS dans `v7_theme.css` : `[data-testid="stSidebar"] { display: none !important; }`
+- [ ] **Isoler les règles CSS sidebar orphelines dans `static/styles.css`** — baliser avec `/* SIDEBAR — orphan en v7, retrait en Phase E3 */` (différé Phase E3)
 
 ### A5 — Smoke tests Phase A
 
@@ -109,45 +91,34 @@
 - `src/app/session_keys.py` — clés session_state existantes
 - `src/utils/paths.py` — pour comprendre les chemins de données utilisés par les contextes
 
-### B1 — Bandeau de contexte L2
+### B1 — Bandeau de contexte L2 ✅
 
-- [ ] Créer `src/ui/layout/header_l2.py`
-- [ ] Composants : indicateur scope actif · navigation session (◀ Précédente / ⚡ Dernière) · chips filtres actifs · bouton Réinitialiser
-- [ ] L2 s'affiche uniquement dans Stats et Escouade — absent des autres sections (condition sur section active)
-- [ ] Raccourci "Modifier mon escouade" dans le L2 Escouade → lien vers `Profil > Paramètres`
-
-**Risque B1 :** L2 doit connaître le scope courant (solo/squad/all) pour afficher les bons libellés — s'assurer que ce scope est dans `session_state` et accessible depuis `header_l2.py` sans import circulaire.
+- [x] `src/ui/layout/header_l2.py` — s'affiche uniquement dans Stats et Escouade
+- [x] Bouton Réinitialiser filtres + `render_filter_chips()`
+- [ ] Navigation session (◀ Précédente / ⚡ Dernière) — différé Phase C
+- [ ] Raccourci "Modifier mon escouade" dans L2 Escouade — différé Phase C
 
 ### B2 — Filtres découplés de la sidebar
 
-**Prérequis B2 (à faire avant de modifier quoi que ce soit) :**
-- `filters_render.py` fait 494L (quasi à la limite des 500L). Il ne sépare pas « quoi filtrer » de « où rendre » — tout est couplé sidebar. Avant de déplacer les filtres dans un drawer L2, **extraire la logique pure de filtrage** dans `_filters_logic.py` (calcul des options, reconciliation, application) et garder `filters_render.py` pour le rendu uniquement. Si ce découpage n'est pas fait, le fichier dépassera 500L puis le drawer et le sidebar seront mélangés dans le même module.
-- `filter_state.py` (459L) n'a pas le concept de **scope** (solo/squad/all) comme dimension persistée — l'ajouter ici avant B3 (KPI bar en dépend).
+**Prérequis B2 :**
+- `filters_render.py` fait 494L. Découpage `_filters_logic.py` + scope dimension à faire avant d'aller plus loin.
 
 - [ ] Lire `filters_render.py` en entier avant de toucher quoi que ce soit
 - [ ] Identifier tous les widgets qui écrivent dans `session_state` depuis la sidebar
-- [ ] Déplacer le rendu des filtres dans un panneau accessible depuis L2 (drawer ou expander compact sous le bandeau)
-- [ ] Conserver les mêmes clés `session_state` pour ne pas casser les pages existantes encore actives
-- [ ] Persistance enrichie dans `src/ui/filter_state.py` : scope (solo/squad/all) comme nouvelle dimension
+- [ ] Déplacer le rendu des filtres dans un panneau accessible depuis L2 (drawer ou expander compact)
+- [ ] Conserver les mêmes clés `session_state` pour ne pas casser les pages existantes
+- [ ] `filter_state.py` : scope (solo/squad/all) comme nouvelle dimension
 
-**Risque B2 :** `filters_render.py` a peut-être des dépendances sur la largeur de la sidebar (widgets à largeur fixe). Vérifier le rendu dans un contexte full-width.
+### B3 — KPI bar ✅
 
-### B3 — KPI bar
+- [x] `src/ui/layout/kpi_bar.py` — KD · Précision · V% · volume matchs · durée (HTML compact)
+- [x] Valeurs calculées depuis `compute_kpi_stats(dff)`
+- [x] Affiché uniquement dans Stats et Escouade (`if active_section in {"stats", "squad"}`)
 
-- [ ] Créer `src/ui/layout/kpi_bar.py`
-- [ ] Métriques affichées : **uniquement les métriques communes Stats/Escouade** — KD · Précision · V% · volume matchs · durée
-- [ ] Les métriques exclusives squad (roster dominant, issue par composition) restent dans le corps des onglets — jamais dans le KPI bar
-- [ ] Valeurs calculées depuis le contexte filtré courant (scope + filtres actifs)
-- [ ] Affichage compact sur une ligne : `42 matchs · 38h   KD 1.84   Précision 47%   V 58% · D 32%`
+### B4 — Filter chips ✅
 
-### B4 — Filter chips
-
-- [ ] Créer `src/ui/layout/filter_chips.py`
-- [ ] Une chip par filtre actif (playlist, mode, map, période, scope)
-- [ ] Suppression unitaire par chip (×) + bouton Réinitialiser global
-- [ ] Synchronisation avec `filter_state.py`
-
-**Risque B4 :** s'assurer que la suppression d'une chip met à jour l'état ET re-rend correctement L2 + KPI bar + le workspace — tester le cycle complet sur un onglet Stats.
+- [x] `src/ui/layout/filter_chips.py` — chips filtres actifs avec suppression unitaire
+- [x] Synchronisation avec `filter_state.py`
 
 ---
 

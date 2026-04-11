@@ -177,6 +177,60 @@ div[data-baseweb="base-input"] input {
     padding: 0.7rem 0.8rem;
 }
 
+.v7-home-card {
+    min-height: 100%;
+    margin-bottom: 0.55rem;
+}
+
+.v7-home-meta {
+    color: var(--v7-text-secondary);
+    font-size: 0.82rem;
+    margin-bottom: 0.6rem;
+}
+
+.v7-home-stats {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.55rem 0.8rem;
+}
+
+.v7-home-stat {
+    color: var(--v7-text-secondary);
+    font-size: 0.84rem;
+}
+
+.v7-home-stat strong {
+    color: var(--v7-text-primary);
+    font-family: var(--v7-mono);
+    margin-right: 0.2rem;
+}
+
+.v7-home-media-list {
+    display: flex;
+    flex-direction: column;
+    gap: 0.55rem;
+}
+
+.v7-home-media-item {
+    display: flex;
+    flex-direction: column;
+    gap: 0.15rem;
+    padding: 0.65rem 0.75rem;
+    background: var(--v7-bg-surface-alt);
+    border: 1px solid var(--v7-border-strong);
+    border-radius: 4px;
+}
+
+.v7-home-media-item strong {
+    color: var(--v7-text-primary);
+    font-size: 0.9rem;
+}
+
+.v7-home-media-item span {
+    color: var(--v7-text-secondary);
+    font-size: 0.8rem;
+}
+
 .v7-chip {
     display: inline-flex;
     align-items: center;
