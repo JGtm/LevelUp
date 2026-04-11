@@ -55,6 +55,21 @@ class ItemCommonData(PascalCaseModel, frozen=True):
     season_unicode_icon: str | None = Field(alias="SeasonUnicodeIcon", default=None)
 
 
+class OperationRewardTrackMeta(PascalCaseModel, frozen=True):
+    """Métadonnées minimales d'un reward track d'opération (battlepass).
+
+    Seul ``summary_image_path`` est modélisé — les autres champs (ranks, name,
+    description…) varient selon l'opération et ne sont pas utiles ici.
+    L'extra JSON est silencieusement ignoré par Pydantic v2.
+
+    Attributes:
+        summary_image_path: Chemin relatif passable à
+            ``GameCmsHacsService.get_image()`` pour récupérer l'artwork.
+    """
+
+    summary_image_path: str
+
+
 class InventoryItem(PascalCaseModel, frozen=True):
     """Metadata for any inventory item fetched from gamecms_hacs.
 

@@ -193,6 +193,8 @@ def _render_battlepass_card(info: HomeBattlepassInfo | None) -> None:
         )
         return
     tier_label = t("v7_home_battlepass_premium") if info.is_owned else t("v7_home_battlepass_free")
+    if info.track_image_bytes:
+        st.image(info.track_image_bytes, width="stretch")
     _render_home_card(
         "".join(
             [
