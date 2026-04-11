@@ -90,6 +90,27 @@ class TestMediaGuardProcessLevel:
 
         mod._PERIODIC_STARTED = False
 
+    def test_watcher_ignores_events_from_thumbs(self, tmp_path: Path) -> None:
+        """Le watcher ne doit pas relancer un scan quand un thumbnail est généré."""
+        from src.app.media_watcher import _MediaEventHandler
+
+        settings = self._make_settings()
+        event_path = tmp_path / "SomePlayer" / "thumbs" / "generated.png"
+        event_path.parent.mkdir(parents=True)
+
+        handler = _MediaEventHandler(tmp_path, settings, debounce_s=1)
+        event = MagicMock(
+            is_directory=False,
+            event_type="created",
+            src_path=str(event_path),
+            dest_path=None,
+        )
+
+        with patch.object(handler, "_schedule") as mock_schedule:
+            handler.dispatch(event)
+
+        mock_schedule.assert_not_called()
+
 
 # ─────────────────────────────────────────────────────────────────────────────
 # P0.3 — Guard migrations success-based

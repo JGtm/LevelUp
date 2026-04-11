@@ -23,6 +23,7 @@ logger = logging.getLogger(__name__)
 # Extensions supportées
 IMAGE_EXTENSIONS = {".png", ".jpg", ".jpeg", ".webp"}
 VIDEO_EXTENSIONS = {".mp4", ".webm", ".mkv", ".mov", ".avi"}
+THUMBS_DIRNAME = "thumbs"
 
 # Version du schéma pour migrations
 SCAN_VERSION = 2
@@ -55,6 +56,14 @@ def get_gamertag_from_db_path(db_path: Path | str) -> str | None:
     except Exception:
         pass
     return None
+
+
+def is_generated_thumbnail_path(path: Path | str) -> bool:
+    """Retourne True si le chemin pointe vers un thumbnail généré dans thumbs/."""
+    try:
+        return THUMBS_DIRNAME in {part.lower() for part in Path(path).parts}
+    except Exception:
+        return False
 
 
 def match_start_to_epoch(start_time: datetime | str | float) -> float | None:

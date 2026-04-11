@@ -57,6 +57,46 @@ def temp_media_dir(tmp_path: Path) -> Path:
     return media_dir
 
 
+def _insert_active_media_row(
+    db_path: Path,
+    media_path: Path,
+    *,
+    thumbnail_path: str | None = None,
+) -> None:
+    """Insère une ligne media_files active pour simuler une base déjà polluée."""
+    meta = get_file_metadata(media_path)
+    assert meta is not None
+
+    with duckdb.connect(str(db_path), read_only=False) as conn:
+        conn.execute(
+            """
+            INSERT INTO media_files (
+                file_path, file_hash, file_name, file_size, file_ext, kind,
+                capture_start_utc, capture_end_utc, duration_seconds, title,
+                thumbnail_path, mtime, mtime_paris_epoch, status,
+                first_seen_at, last_scan_at, scan_version
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'active', CURRENT_TIMESTAMP,
+                CURRENT_TIMESTAMP, 2)
+            """,
+            [
+                meta["file_path"],
+                compute_file_hash(media_path),
+                meta["file_name"],
+                meta["file_size"],
+                meta["file_ext"],
+                meta["kind"],
+                meta["capture_start_utc"],
+                meta["capture_end_utc"],
+                meta["duration_seconds"],
+                meta["title"],
+                thumbnail_path,
+                meta["mtime"],
+                meta["mtime"],
+            ],
+        )
+        conn.commit()
+
+
 def test_media_indexer_init(temp_db: Path) -> None:
     """Test l'initialisation de MediaIndexer."""
     indexer = MediaIndexer(temp_db)
@@ -127,6 +167,62 @@ def test_scan_and_index(temp_db: Path, temp_media_dir: Path) -> None:
         video_files = [f for f in files if f[1] == "video"]
         assert len(video_files) >= 1
         assert all(f[2] == "active" for f in files)
+    finally:
+        conn.close()
+
+
+def test_scan_ignores_generated_thumbs_subdir(temp_db: Path, temp_media_dir: Path) -> None:
+    """Les fichiers sous thumbs/ ne doivent jamais être indexés comme médias source."""
+    indexer = MediaIndexer(temp_db)
+    indexer.ensure_schema()
+
+    thumb_path = temp_media_dir / "thumbs" / "test_image_thumb.png"
+    thumb_path.parent.mkdir(exist_ok=True)
+    thumb_path.write_bytes((temp_media_dir / "test_image.png").read_bytes())
+
+    result = indexer.scan_and_index(
+        videos_dir=None,
+        screens_dir=temp_media_dir,
+        force_rescan=False,
+    )
+
+    assert result.n_new == 1
+
+    conn = duckdb.connect(str(temp_db), read_only=True)
+    try:
+        rows = conn.execute(
+            "SELECT file_path FROM media_files WHERE status = 'active' ORDER BY file_path"
+        ).fetchall()
+        assert rows == [(str((temp_media_dir / "test_image.png").resolve()),)]
+    finally:
+        conn.close()
+
+
+def test_scan_marks_existing_thumbnail_rows_deleted(temp_db: Path, temp_media_dir: Path) -> None:
+    """Un ancien thumbnail déjà indexé doit être auto-nettoyé au scan suivant."""
+    indexer = MediaIndexer(temp_db)
+    indexer.ensure_schema()
+
+    thumb_path = temp_media_dir / "thumbs" / "orphan_thumb.png"
+    thumb_path.parent.mkdir(exist_ok=True)
+    thumb_path.write_bytes((temp_media_dir / "test_image.png").read_bytes())
+    _insert_active_media_row(temp_db, thumb_path)
+
+    result = indexer.scan_and_index(
+        videos_dir=None,
+        screens_dir=temp_media_dir,
+        force_rescan=False,
+    )
+
+    assert result.n_deleted >= 1
+
+    conn = duckdb.connect(str(temp_db), read_only=True)
+    try:
+        row = conn.execute(
+            "SELECT status FROM media_files WHERE file_path = ?",
+            [str(thumb_path.resolve())],
+        ).fetchone()
+        assert row == ("deleted",)
     finally:
         conn.close()
 
@@ -688,6 +784,32 @@ def test_generate_image_thumbnails(temp_db: Path, temp_media_dir: Path) -> None:
     finally:
         conn.close()
     assert gen >= 1 or err == 0
+
+
+def test_generate_image_thumbnails_skips_thumbnail_sources(
+    temp_db: Path, temp_media_dir: Path
+) -> None:
+    """La génération ne doit jamais produire un thumb de thumb déjà indexé."""
+    indexer = MediaIndexer(temp_db)
+    indexer.ensure_schema()
+
+    thumb_path = temp_media_dir / "thumbs" / "polluted_thumb.png"
+    thumb_path.parent.mkdir(exist_ok=True)
+    thumb_path.write_bytes((temp_media_dir / "test_image.png").read_bytes())
+    _insert_active_media_row(temp_db, thumb_path)
+
+    with (
+        patch("src.data.media_thumbnails.importlib.util.find_spec", return_value=object()),
+        patch("src.data.media_thumbnails.generate_image_thumbnail") as mock_generate,
+    ):
+        gen, err = indexer.generate_thumbnails_for_new(
+            videos_dir=None,
+            screens_dir=temp_media_dir,
+        )
+
+    assert gen == 0
+    assert err == 0
+    mock_generate.assert_not_called()
 
 
 def test_generate_thumbnails_no_ffmpeg_skips_videos(temp_db: Path, temp_media_dir: Path) -> None:
