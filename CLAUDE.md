@@ -178,6 +178,7 @@ python scripts/backfill_data.py --player MonGT --participants-shots --force-part
 15. **Arguments max** : 5 par fonction. Au-delà → `TypedDict`, `dataclass` ou `SyncScope`. Violations existantes annotées `# noqa: PLR0913`.
 16. **Complexité cyclomatique** : max 12 (McCabe C901, enforced via Ruff). Violations existantes annotées `# noqa: C901`. Chaque `# noqa` restant = dette à réduire.
 17. **Responsabilité unique** : le nom d'une fonction doit tenir en 1 verbe + 1 complément. `render_and_compute_X()` → 2 responsabilités → diviser en `compute_X()` + `render_X()`. Indicateurs suspects : `_and_`, `_with_`, `_then_` dans un nom de fonction. Test automatique : `tests/test_code_quality.py::test_no_srp_violation_in_function_names`.
+18. **docs/FR/ — règle de synchronisation** : tout commit qui modifie un fichier dans `docs/` doit inclure la mise à jour du fichier correspondant dans `docs/FR/` si ce fichier existe. Les deux commits peuvent être séparés mais doivent être dans le même PR.
 
 ## ⛔ Pandas interdit (règle critique)
 

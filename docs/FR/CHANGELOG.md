@@ -6,6 +6,52 @@ Toutes les modifications notables de ce projet sont documentées ici.
 
 Le format est basé sur [Keep a Changelog](https://keepachangelog.fr/fr/1.1.0/).
 
+## [6.5.0] - 2026-04-10
+
+### Ajouté
+
+- **Coéquipiers — heatmap d'intensité par joueur** — une nouvelle section après "Complémentarité de l'escouade" affiche une heatmap match × phase (début/milieu/fin) du profil de kills de chaque membre. Un sélecteur bascule (Tous / par joueur) change de vue sans re-requêter la DB — les données sont chargées en une seule passe. Réutilise `compute_match_intensity_profiles` + `plot_match_intensity_heatmap`.
+
+- **Discord — notifications sync/backfill séparées** — un nouveau toggle indépendant `discord_notify_backfill` distinct de `discord_notify_sync`. Les deux cases sont maintenant affichées verticalement. `notify_operation_done` route vers le bon flag selon `operation.startswith("backfill")`. La section Backfill dans les Paramètres est déplacée en dernière position, sous un `st.subheader` avec une légende d'avertissement et un expander réduit par défaut.
+
+- **Composant info-layer partagé** — `_render_note` extrait en fonction publique `render_info_note(key, lang)` dans `src/ui/components/info_note.py`, partagée par les pages Coéquipiers et Séries temporelles.
+  - 6 nouvelles clés i18n dans `teammates.py` : `tm_no_data`, `tm_impact_caption`, `tm_weapons_chart_caption`, `tm_metrics_caption`, `tm_note_radar`, `tm_note_cadence`.
+  - Légendes ajoutées : heatmap d'impact, graphique barres armes, graphiques barres métriques.
+  - Notes post-graphique ajoutées après le radar de synergie et la carte de cadence.
+  - Toutes les légendes conditionnelles enveloppées dans `hints_visible()` sur Coéquipiers et Séries temporelles.
+  - Import `EXCLUDED_WEAPON_IDS` unifié depuis `_weapon_data.py` (remplace la constante locale `_FILM_EXCLUDED_IDS`).
+
+### Modifié
+
+- **Paramètres V3 — `frozen=True`, `patch_settings`, écriture atomique** — refonte interne majeure de la couche paramètres :
+  - `AppSettings` est désormais `frozen=True` — plus de mutation silencieuse en mémoire.
+  - `patch_settings(key, value)` remplace les appels directs à `save_settings()` dans toute la base de code.
+  - `_WRITE_LOCK` garantit les écritures thread-safe ; `_PROCESS_CACHE` déduplique le contenu pour éviter les I/O inutiles.
+  - Pages UI de paramètres entièrement migrées vers des callbacks `on_change` — `_auto_save_show_*` et `_build_settings_from_ui` supprimés.
+  - `_render_backfill_checkboxes` extrait ; `_check_settings_consistency` rendu non-bloquant.
+  - `save_settings()` conservé comme wrapper CLI uniquement.
+  - `path_picker.directory_input` supporte maintenant `on_change` / `args`.
+  - `__init__.py` exporte `patch_settings`.
+
+### Corrigé
+
+- **Paramètres — écriture atomique + cascade de récupération multiplateforme** — les paramètres sont désormais écrits atomiquement via `os.replace()` après écriture dans un fichier temporaire. Cascade de récupération : restauration de sauvegarde valide → réinitialisation usine → protection fichier vide. Prévient la corruption de `app_settings.json` en cas de crash.
+  - `_atomic_write` : retry `os.replace()` jusqu'à 4 tentatives (50/100/200/500 ms) pour le verrouillage de fichiers Windows.
+  - `save_settings()` : traceback complet journalisé (5 niveaux) pour tracer tout écrasement accidentel futur.
+
+- **Paramètres — `show_records` réinitialisé silencieusement à `True`** — valeur par défaut de repli corrigée de `True` → `False` dans 3 fichiers.
+
+- **`plot_map_outcome_timeline` supprimé** — le graphique était désactivé via `if False:` dans tous les points d'appel. La fonction et son fichier source (`_maps_outcome_timeline.py`) ont été supprimés ; les clés i18n orphelines également retirées.
+
+- **`app_settings.json.bak` exclu du contrôle de version** — contient les mêmes données sensibles que `app_settings.json` (webhook Discord, chemins locaux) ; ajouté au `.gitignore`.
+
+### Tests
+
+- **Paramètres V3 + écriture atomique** — 76 nouveaux tests (31 + 45) ; couverture paramètres : 77,5 % → 87,7 %.
+- `TestRenderInfoNote` — 10 nouveaux cas : `hints_visible`, listes, texte gras, paragraphes, entrée vide.
+
+---
+
 ## [6.4.0] - 2026-04-07
 
 ### Ajouté
