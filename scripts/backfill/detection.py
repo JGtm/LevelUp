@@ -15,6 +15,7 @@ Note architecture (v5.2+) :
 from __future__ import annotations
 
 import logging
+import warnings
 from typing import TYPE_CHECKING, Any
 
 from src.data.sync.migrations import BACKFILL_FLAGS, compute_backfill_mask  # noqa: F401
@@ -104,6 +105,34 @@ def find_matches_missing_data(
     Returns:
         Liste des match_id manquants.
     """
+    # ── Avertir si kwargs LEGACY utilisés directement ──
+    _LEGACY_KWARGS = (
+        medals,
+        events,
+        skill,
+        personal_scores,
+        performance_scores,
+        accuracy,
+        enemy_mmr,
+        assets,
+        participants,
+        participants_scores,
+        participants_kda,
+        participants_shots,
+        participants_damage,
+        participants_avg_life,
+        shots,
+        all_data,
+    )
+    if scope is None and any(_LEGACY_KWARGS):
+        warnings.warn(
+            "find_matches_missing_data: les kwargs individuels (medals=, events=, …) "
+            "sont LEGACY. Utilisez scope=SyncScope(...) à la place. "
+            "Ces kwargs seront supprimés dans une future version.",
+            DeprecationWarning,
+            stacklevel=2,
+        )
+
     # ── Extraire les valeurs depuis le scope si fourni ──
     if scope is not None:
         medals = scope.medals
