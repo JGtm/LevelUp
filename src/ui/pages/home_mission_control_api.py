@@ -8,6 +8,7 @@ from __future__ import annotations
 
 import asyncio
 import logging
+import threading
 import time
 from dataclasses import dataclass
 from pathlib import Path
@@ -16,6 +17,11 @@ from typing import Any
 logger = logging.getLogger(__name__)
 
 _CACHE_TTL_S: int = 300  # 5 minutes
+
+# Cache process-level (survit aux reruns Streamlit, partagé entre sessions)
+# Clé : xuid → {ts: float, loading: bool, bp: ..., ch: ...}
+_process_cache: dict[str, dict] = {}
+_cache_lock = threading.Lock()
 
 
 # =============================================================================
@@ -219,8 +225,52 @@ async def _async_fetch_progressions(
 
 
 # =============================================================================
-# API publique (synchrone, cachée)
+# API publique (synchrone, cachée + prefetch background)
 # =============================================================================
+
+
+def prefetch_home_progressions(
+    db_path: str | Path,
+    xuid: str,
+    gamertag: str | None = None,
+) -> None:
+    """Déclenche le fetch battlepass/défis en arrière-plan (thread daemon).
+
+    Sans effet si le cache est encore frais ou si un fetch est déjà en cours.
+    Appeler le plus tôt possible dans le cycle de rendu Streamlit pour que
+    les données soient prêtes quand l'utilisateur arrive sur l'accueil.
+    """
+    now = time.monotonic()
+    with _cache_lock:
+        cached = _process_cache.get(xuid)
+        if cached is not None and (cached.get("loading") or now - cached["ts"] < _CACHE_TTL_S):
+            return
+        # Réserver l'entrée pour éviter les lancements concurrents
+        _process_cache[xuid] = {"ts": now, "loading": True, "bp": None, "ch": None}
+
+    _db_path = Path(db_path)
+
+    def _run() -> None:
+        loop = asyncio.new_event_loop()
+        asyncio.set_event_loop(loop)
+        try:
+            bp, ch = loop.run_until_complete(_async_fetch_progressions(_db_path, xuid, gamertag))
+        except Exception as exc:
+            logger.debug("prefetch: erreur (%s): %s", gamertag or xuid[:8], exc)
+            bp, ch = None, None
+        finally:
+            loop.close()
+            asyncio.set_event_loop(None)
+        with _cache_lock:
+            _process_cache[xuid] = {
+                "ts": time.monotonic(),
+                "loading": False,
+                "bp": bp,
+                "ch": ch,
+            }
+        logger.debug("prefetch: terminé pour %s (bp=%s)", gamertag or xuid[:8], bp is not None)
+
+    threading.Thread(target=_run, daemon=True, name=f"home_prefetch_{xuid[:8]}").start()
 
 
 def fetch_home_progressions(
@@ -228,19 +278,19 @@ def fetch_home_progressions(
     xuid: str,
     gamertag: str | None = None,
 ) -> tuple[HomeBattlepassInfo | None, HomeChallengeSummary | None]:
-    """Récupère battlepass + défis avec cache session de 5 min.
+    """Récupère battlepass + défis — retourne immédiatement si prefetch dispo.
 
     Dégradation gracieuse : retourne ``(None, None)`` si l'API est indisponible
     ou si l'authentification est requise.
     """
-    import streamlit as st
-
-    cache_key = f"_home_prog_{xuid}"
-    cached = st.session_state.get(cache_key)
     now = time.monotonic()
-    if cached is not None and now - cached["ts"] < _CACHE_TTL_S:
+    with _cache_lock:
+        cached = _process_cache.get(xuid)
+
+    if cached is not None and not cached.get("loading") and now - cached["ts"] < _CACHE_TTL_S:
         return cached["bp"], cached["ch"]
 
+    # Pas de cache frais : fetch synchrone (prefetch non terminé ou non déclenché)
     db_path = Path(db_path)
     loop = asyncio.new_event_loop()
     asyncio.set_event_loop(loop)
@@ -253,5 +303,6 @@ def fetch_home_progressions(
         loop.close()
         asyncio.set_event_loop(None)
 
-    st.session_state[cache_key] = {"ts": now, "bp": bp, "ch": ch}
+    with _cache_lock:
+        _process_cache[xuid] = {"ts": time.monotonic(), "loading": False, "bp": bp, "ch": ch}
     return bp, ch
