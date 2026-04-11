@@ -17,7 +17,6 @@ Sous-modules extraits :
 from __future__ import annotations
 
 import logging
-import os
 from datetime import datetime
 from pathlib import Path
 from typing import Any
@@ -26,13 +25,9 @@ import duckdb
 import polars as pl
 
 from src.data.media_helpers import (
-    IMAGE_EXTENSIONS,
-    VIDEO_EXTENSIONS,
     ScanResult,
-    compute_file_hash,
     get_all_player_dbs,
     get_existing_columns,
-    get_file_metadata,
     get_gamertag_from_db_path,
     get_image_thumbnail_path,
     insert_new_media,
@@ -42,6 +37,12 @@ from src.data.media_helpers import (
 from src.data.media_indexer_matchers import (  # noqa: F401
     _associate_single_media,
     _load_matches_by_xuid,
+)
+from src.data.media_indexer_scan import (
+    load_existing_media,
+    mark_deleted_media,
+    resolve_scan_targets,
+    scan_media_dirs,
 )
 from src.data.media_loaders import load_media_for_match as _load_media_for_match
 from src.data.media_loaders import load_media_for_ui as _load_media_for_ui
@@ -105,131 +106,148 @@ class MediaIndexer:
         with conn:
             from src.utils.db import has_table
 
-            has_mf = has_table(conn, "media_files")
-            has_mma = has_table(conn, "media_match_associations")
+            self._ensure_media_files_schema(conn, has_table(conn, "media_files"))
+            self._ensure_media_match_associations_schema(
+                conn,
+                has_table(conn, "media_match_associations"),
+            )
 
-            if has_mf:
-                cols = get_existing_columns(conn, "media_files")
-                migrations = []
-                if "capture_start_utc" not in cols:
-                    migrations.append(
-                        (
-                            "capture_start_utc",
-                            "ALTER TABLE media_files ADD COLUMN capture_start_utc TIMESTAMP",
-                        )
-                    )
-                if "capture_end_utc" not in cols:
-                    migrations.append(
-                        (
-                            "capture_end_utc",
-                            "ALTER TABLE media_files ADD COLUMN capture_end_utc TIMESTAMP",
-                        )
-                    )
-                if "duration_seconds" not in cols:
-                    migrations.append(
-                        (
-                            "duration_seconds",
-                            "ALTER TABLE media_files ADD COLUMN duration_seconds DOUBLE",
-                        )
-                    )
-                if "title" not in cols:
-                    migrations.append(("title", "ALTER TABLE media_files ADD COLUMN title VARCHAR"))
-                if "status" not in cols:
-                    migrations.append(
-                        (
-                            "status",
-                            "ALTER TABLE media_files ADD COLUMN status VARCHAR DEFAULT 'active'",
-                        )
-                    )
-                if "mtime_paris_epoch" not in cols and "mtime" in cols:
-                    migrations.append(
-                        (
-                            "mtime_paris_epoch",
-                            "ALTER TABLE media_files ADD COLUMN mtime_paris_epoch DOUBLE",
-                        )
-                    )
-                for _name, sql in migrations:
-                    try:
-                        conn.execute(sql)
-                        conn.commit()
-                    except Exception as e:
-                        logger.warning("Migration %s: %s", _name, e)
-                try:
-                    conn.execute("UPDATE media_files SET status = 'active' WHERE status IS NULL")
-                    conn.execute(
-                        "UPDATE media_files SET mtime_paris_epoch = mtime WHERE mtime_paris_epoch IS NULL"
-                    )
-                    conn.commit()
-                except Exception:
-                    pass
-            else:
-                conn.execute("""
-                    CREATE TABLE media_files (
-                        file_path VARCHAR PRIMARY KEY,
-                        file_hash VARCHAR NOT NULL,
-                        file_name VARCHAR NOT NULL,
-                        file_size BIGINT NOT NULL,
-                        file_ext VARCHAR NOT NULL,
-                        kind VARCHAR NOT NULL,
-                        capture_start_utc TIMESTAMP,
-                        capture_end_utc TIMESTAMP NOT NULL,
-                        duration_seconds DOUBLE,
-                        title VARCHAR,
-                        thumbnail_path VARCHAR,
-                        mtime DOUBLE NOT NULL,
-                        mtime_paris_epoch DOUBLE,
-                        status VARCHAR NOT NULL DEFAULT 'active',
-                        first_seen_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-                        last_scan_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-                        scan_version INTEGER DEFAULT 2
-                    )
-                """)
-                conn.execute(
-                    "CREATE INDEX IF NOT EXISTS idx_media_mtime ON media_files(mtime DESC)"
-                )
-                conn.execute("CREATE INDEX IF NOT EXISTS idx_media_status ON media_files(status)")
-                conn.execute("CREATE INDEX IF NOT EXISTS idx_media_kind ON media_files(kind)")
+    @staticmethod
+    def _ensure_media_files_schema(conn: duckdb.DuckDBPyConnection, exists: bool) -> None:
+        """Crée ou migre la table media_files."""
+        if exists:
+            cols = get_existing_columns(conn, "media_files")
+            MediaIndexer._apply_media_files_migrations(conn, cols)
+            MediaIndexer._normalize_media_files_rows(conn)
+            return
+        MediaIndexer._create_media_files_table(conn)
+
+    @staticmethod
+    def _apply_media_files_migrations(
+        conn: duckdb.DuckDBPyConnection,
+        cols: set[str],
+    ) -> None:
+        """Applique les migrations de colonnes manquantes pour media_files."""
+        for name, sql in MediaIndexer._build_media_files_migrations(cols):
+            try:
+                conn.execute(sql)
                 conn.commit()
+            except Exception as exc:
+                logger.warning("Migration %s: %s", name, exc)
 
-            if has_mma:
-                cols = get_existing_columns(conn, "media_match_associations")
-                if "map_id" not in cols:
-                    try:
-                        conn.execute(
-                            "ALTER TABLE media_match_associations ADD COLUMN map_id VARCHAR"
-                        )
-                        conn.commit()
-                    except Exception:
-                        pass
-                if "map_name" not in cols:
-                    try:
-                        conn.execute(
-                            "ALTER TABLE media_match_associations ADD COLUMN map_name VARCHAR"
-                        )
-                        conn.commit()
-                    except Exception:
-                        pass
-            else:
-                conn.execute("""
-                    CREATE TABLE media_match_associations (
-                        media_path VARCHAR NOT NULL,
-                        match_id VARCHAR NOT NULL,
-                        xuid VARCHAR NOT NULL,
-                        match_start_time TIMESTAMP NOT NULL,
-                        map_id VARCHAR,
-                        map_name VARCHAR,
-                        association_confidence DOUBLE DEFAULT 1.0,
-                        associated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-                        PRIMARY KEY (media_path, match_id, xuid)
-                    )
-                """)
-                conn.execute(
-                    "CREATE INDEX IF NOT EXISTS idx_assoc_media ON media_match_associations(media_path)"
+    @staticmethod
+    def _build_media_files_migrations(cols: set[str]) -> list[tuple[str, str]]:
+        """Construit la liste des migrations media_files à exécuter."""
+        migrations: list[tuple[str, str]] = []
+        column_sql = {
+            "capture_start_utc": "ALTER TABLE media_files ADD COLUMN capture_start_utc TIMESTAMP",
+            "capture_end_utc": "ALTER TABLE media_files ADD COLUMN capture_end_utc TIMESTAMP",
+            "duration_seconds": "ALTER TABLE media_files ADD COLUMN duration_seconds DOUBLE",
+            "title": "ALTER TABLE media_files ADD COLUMN title VARCHAR",
+            "status": "ALTER TABLE media_files ADD COLUMN status VARCHAR DEFAULT 'active'",
+        }
+        for column_name, sql in column_sql.items():
+            if column_name not in cols:
+                migrations.append((column_name, sql))
+        if "mtime_paris_epoch" not in cols and "mtime" in cols:
+            migrations.append(
+                (
+                    "mtime_paris_epoch",
+                    "ALTER TABLE media_files ADD COLUMN mtime_paris_epoch DOUBLE",
                 )
+            )
+        return migrations
+
+    @staticmethod
+    def _normalize_media_files_rows(conn: duckdb.DuckDBPyConnection) -> None:
+        """Backfill les colonnes media_files ajoutées après création initiale."""
+        try:
+            conn.execute("UPDATE media_files SET status = 'active' WHERE status IS NULL")
+            conn.execute(
+                "UPDATE media_files SET mtime_paris_epoch = mtime WHERE mtime_paris_epoch IS NULL"
+            )
+            conn.commit()
+        except Exception:
+            pass
+
+    @staticmethod
+    def _create_media_files_table(conn: duckdb.DuckDBPyConnection) -> None:
+        """Crée la table media_files et ses index."""
+        conn.execute("""
+            CREATE TABLE media_files (
+                file_path VARCHAR PRIMARY KEY,
+                file_hash VARCHAR NOT NULL,
+                file_name VARCHAR NOT NULL,
+                file_size BIGINT NOT NULL,
+                file_ext VARCHAR NOT NULL,
+                kind VARCHAR NOT NULL,
+                capture_start_utc TIMESTAMP,
+                capture_end_utc TIMESTAMP NOT NULL,
+                duration_seconds DOUBLE,
+                title VARCHAR,
+                thumbnail_path VARCHAR,
+                mtime DOUBLE NOT NULL,
+                mtime_paris_epoch DOUBLE,
+                status VARCHAR NOT NULL DEFAULT 'active',
+                first_seen_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                last_scan_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                scan_version INTEGER DEFAULT 2
+            )
+        """)
+        conn.execute("CREATE INDEX IF NOT EXISTS idx_media_mtime ON media_files(mtime DESC)")
+        conn.execute("CREATE INDEX IF NOT EXISTS idx_media_status ON media_files(status)")
+        conn.execute("CREATE INDEX IF NOT EXISTS idx_media_kind ON media_files(kind)")
+        conn.commit()
+
+    @staticmethod
+    def _ensure_media_match_associations_schema(
+        conn: duckdb.DuckDBPyConnection,
+        exists: bool,
+    ) -> None:
+        """Crée ou migre la table media_match_associations."""
+        if exists:
+            MediaIndexer._ensure_media_match_association_columns(conn)
+            return
+        MediaIndexer._create_media_match_associations_table(conn)
+
+    @staticmethod
+    def _ensure_media_match_association_columns(conn: duckdb.DuckDBPyConnection) -> None:
+        """Ajoute les colonnes manquantes sur media_match_associations."""
+        cols = get_existing_columns(conn, "media_match_associations")
+        for column_name in ("map_id", "map_name"):
+            if column_name in cols:
+                continue
+            try:
                 conn.execute(
-                    "CREATE INDEX IF NOT EXISTS idx_assoc_match ON media_match_associations(match_id, xuid)"
+                    f"ALTER TABLE media_match_associations ADD COLUMN {column_name} VARCHAR"
                 )
                 conn.commit()
+            except Exception:
+                pass
+
+    @staticmethod
+    def _create_media_match_associations_table(conn: duckdb.DuckDBPyConnection) -> None:
+        """Crée la table media_match_associations et ses index."""
+        conn.execute("""
+            CREATE TABLE media_match_associations (
+                media_path VARCHAR NOT NULL,
+                match_id VARCHAR NOT NULL,
+                xuid VARCHAR NOT NULL,
+                match_start_time TIMESTAMP NOT NULL,
+                map_id VARCHAR,
+                map_name VARCHAR,
+                association_confidence DOUBLE DEFAULT 1.0,
+                associated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                PRIMARY KEY (media_path, match_id, xuid)
+            )
+        """)
+        conn.execute(
+            "CREATE INDEX IF NOT EXISTS idx_assoc_media ON media_match_associations(media_path)"
+        )
+        conn.execute(
+            "CREATE INDEX IF NOT EXISTS idx_assoc_match ON media_match_associations(match_id, xuid)"
+        )
+        conn.commit()
 
     # ------------------------------------------------------------------
     #  Scan
@@ -249,56 +267,14 @@ class MediaIndexer:
         now = datetime.now()
 
         with duckdb.connect(str(self.db_path), read_only=False) as conn:
-            # Toujours charger existing pour distinguer INSERT vs UPDATE ;
-            # force_rescan contourne uniquement le filtre delta sur mtime (ligne ci-dessous).
-            rows = conn.execute(
-                "SELECT file_path, file_hash, mtime FROM media_files WHERE status != 'deleted'"
-            ).fetchall()
-            existing = {row[0]: {"hash": row[1], "mtime": row[2]} for row in rows}
-
-            paths_on_disk: set[str] = set()
-            files_to_process: list[dict[str, Any]] = []
-
-            if player_captures_dir and Path(player_captures_dir).exists():
-                dirs_exts = [(player_captures_dir, VIDEO_EXTENSIONS | IMAGE_EXTENSIONS)]
-            else:
-                dirs_exts = [(videos_dir, VIDEO_EXTENSIONS), (screens_dir, IMAGE_EXTENSIONS)]
-
-            for media_dir, exts in dirs_exts:
-                if not media_dir or not Path(media_dir).exists():
-                    continue
-                try:
-                    walk_iter = os.walk(media_dir)
-                except OSError as e:
-                    result.errors.append(f"Dossier inaccessible {media_dir}: {e}")
-                    logger.warning("Scan dossier %s: %s", media_dir, e)
-                    continue
-                for root, _dirs, files in walk_iter:
-                    for name in files:
-                        fp = Path(root) / name
-                        if fp.suffix.lower() not in exts:
-                            continue
-                        result.n_scanned += 1
-                        try:
-                            meta = get_file_metadata(fp)
-                        except Exception as e:
-                            result.errors.append(f"Métadonnées {fp}: {e}")
-                            logger.debug("Métadonnées %s: %s", fp, e)
-                            continue
-                        if not meta:
-                            continue
-                        path_str = meta["file_path"]
-                        paths_on_disk.add(path_str)
-                        if path_str in existing:
-                            ex = existing[path_str]
-                            if not force_rescan and abs(meta["mtime"] - ex["mtime"]) < 1.0:
-                                continue
-                        h = compute_file_hash(fp)
-                        if not h:
-                            result.errors.append(f"Hash impossible: {path_str}")
-                            continue
-                        meta["file_hash"] = h
-                        files_to_process.append(meta)
+            existing = load_existing_media(conn)
+            dirs_exts = resolve_scan_targets(player_captures_dir, videos_dir, screens_dir)
+            paths_on_disk, files_to_process = scan_media_dirs(
+                dirs_exts,
+                existing,
+                force_rescan,
+                result,
+            )
 
             has_owner_xuid = "owner_xuid" in get_existing_columns(conn, "media_files")
             owner_xuid_val = get_gamertag_from_db_path(self.db_path) or ""
@@ -307,16 +283,7 @@ class MediaIndexer:
                 conn, files_to_process, existing, has_owner_xuid, owner_xuid_val, now, result
             )
 
-            for path_str in existing:
-                if path_str not in paths_on_disk:
-                    try:
-                        conn.execute(
-                            "UPDATE media_files SET status = 'deleted' WHERE file_path = ?",
-                            [path_str],
-                        )
-                        result.n_deleted += 1
-                    except Exception as e:
-                        result.errors.append(f"Delete {path_str}: {e}")
+            mark_deleted_media(conn, existing, paths_on_disk, result)
 
             conn.commit()
             logger.info(
