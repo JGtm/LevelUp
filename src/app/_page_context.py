@@ -6,15 +6,17 @@ Extrait de streamlit_app.py pour éviter le recours à Any dans PageContext.
 from __future__ import annotations
 
 from collections.abc import Callable
+from dataclasses import dataclass
 from datetime import date
-from typing import Any, TypedDict
+from typing import Any
 
 
-class MatchViewParams(TypedDict):
+@dataclass(frozen=True)
+class MatchViewParams:
     """Paramètres communs passés aux pages de visualisation de match.
 
     Retourné par ``build_match_view_params()`` dans page_router.py.
-    Les clés correspondent aux kwargs attendus par ``render_match_view_fn``
+    Les champs correspondent aux kwargs attendus par ``render_match_view_fn``
     et ``render_last_match_page_fn``.
     """
 
@@ -36,7 +38,8 @@ class MatchViewParams(TypedDict):
     paris_tz: Any  # ZoneInfo | pytz.timezone
 
 
-class FilterSidebarCallbacks(TypedDict):
+@dataclass(frozen=True)
+class FilterSidebarCallbacks:
     """Callbacks injectées dans render_filters_sidebar."""
 
     date_range_fn: Callable[..., tuple[date, date]]
@@ -44,7 +47,8 @@ class FilterSidebarCallbacks(TypedDict):
     build_friends_opts_map_fn: Callable[..., Any]
 
 
-class TeammateContext(TypedDict):
+@dataclass(frozen=True)
+class TeammateContext:
     """Contexte de données pour les vues coéquipiers."""
 
     me_name: str
@@ -58,7 +62,8 @@ class TeammateContext(TypedDict):
     waypoint_player: str
 
 
-class TeammateFilterOptions(TypedDict):
+@dataclass(frozen=True)
+class TeammateFilterOptions:
     """Options de filtrage pour les vues coéquipiers."""
 
     apply_current_filters: bool
@@ -66,7 +71,8 @@ class TeammateFilterOptions(TypedDict):
     show_smooth: bool
 
 
-class TeammateCallbacks(TypedDict):
+@dataclass(frozen=True)
+class TeammateCallbacks:
     """Callbacks injectées dans les vues coéquipiers."""
 
     assign_player_colors_fn: Callable[..., Any]

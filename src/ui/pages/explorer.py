@@ -60,13 +60,13 @@ def render_explorer_page(
 
     filtered, selected_mid = _render_match_filters(
         dff,
-        params["db_path"],
-        params["xuid"],
-        params["format_datetime_fn"],
+        params.db_path,
+        params.xuid,
+        params.format_datetime_fn,
     )
 
     st.divider()
-    player_gt, player_xuid = _render_player_search(params["db_path"], params["xuid"], pending_gt)
+    player_gt, player_xuid = _render_player_search(params.db_path, params.xuid, pending_gt)
 
     search_clicked = st.button(t("btn_search"), width="stretch", type="primary")
 

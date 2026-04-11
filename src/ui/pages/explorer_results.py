@@ -49,8 +49,8 @@ def render_filter_results(
         return
 
     # Aucun match précis → tableau de tous les résultats filtrés
-    waypoint_player = params["waypoint_player"]
-    df_full = params.get("df_full")
+    waypoint_player = params.waypoint_player
+    df_full = params.df_full
     enriched = enrich_for_table(filtered, waypoint_player, df_full)
     st.subheader(t("exp_results_title", count=len(enriched)))
 
@@ -72,10 +72,10 @@ def render_player_results(
     """Affiche les résultats de recherche par joueur avec bilan encounter."""
     from src.ui.pages.explorer_data import load_common_matches
 
-    self_xuid = params["xuid"]
-    db_path = params["db_path"]
-    waypoint_player = params["waypoint_player"]
-    df_full = params.get("df_full")
+    self_xuid = params.xuid
+    db_path = params.db_path
+    waypoint_player = params.waypoint_player
+    df_full = params.df_full
 
     common = load_common_matches(db_path, self_xuid, target_xuid)
     if common.is_empty():
@@ -180,7 +180,7 @@ def show_single_match(
         return
 
     row = rows.sort("start_time").row(-1, named=True)
-    params["render_match_view_fn"](
+    params.render_match_view_fn(
         row=row,
         match_id=match_id,
         params=params,

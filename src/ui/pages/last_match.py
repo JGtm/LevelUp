@@ -130,7 +130,7 @@ def render_last_match_page(
     match_id = str(row.get("match_id", "")).strip()
     logger.debug("Match nav [%d/%d]: %s", idx + 1, total, match_id)
 
-    params["render_match_view_fn"](
+    params.render_match_view_fn(
         row=row,
         match_id=match_id,
         params=params,

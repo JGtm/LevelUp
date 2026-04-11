@@ -175,7 +175,12 @@ python scripts/backfill_data.py --player MonGT --participants-shots --force-part
 12. **SyncScope** : Ne jamais passer 30+ kwargs individuels aux fonctions backfill/sync. Toujours construire un `SyncScope` et le passer via `scope=`. Les kwargs legacy sont marqués `LEGACY` et seront supprimés.
 13. **Taille max fonctions** : 80 lignes (docstring incluse). Au-delà → extraire une sous-fonction nommée. Pas d'exception sans `# noqa: PLR0915` + commentaire justificatif. Violations existantes dans `scripts/size_baseline.txt` (dette documentée).
 14. **Taille max modules** : 500 lignes. Whitelist dans `scripts/check_code_size.py` (`src/ui/i18n/`, `src/data/sync/migrations.py`). Si un module approche 500L → créer un sous-module **avant** d'atteindre la limite.
-15. **Arguments max** : 5 par fonction. Au-delà → `TypedDict`, `dataclass` ou `SyncScope`. Violations existantes annotées `# noqa: PLR0913`.
+15. **Arguments max** : 5 par fonction. Au-delà → `dataclass`, `TypedDict` ou `SyncScope`. Violations existantes annotées `# noqa: PLR0913`.
+19. **Typage structuré** — règle de décision :
+    - `BaseModel` (Pydantic v2) → données qui traversent une frontière externe (API, JSON, CSV) et nécessitent validation/coercion
+    - `@dataclass(frozen=True)` → structures internes entre modules avec types explicites et immuabilité souhaitée (contextes UI, paramètres de page, résultats d'analyse)
+    - `TypedDict` → uniquement pour annoter des dicts dont la structure est imposée par une lib externe (plotly layout, kwargs d'API tierce…)
+    - Dict nu → uniquement dans du code throwaway ou des fonctions locales < 10L
 16. **Complexité cyclomatique** : max 12 (McCabe C901, enforced via Ruff). Violations existantes annotées `# noqa: C901`. Chaque `# noqa` restant = dette à réduire.
 17. **Responsabilité unique** : le nom d'une fonction doit tenir en 1 verbe + 1 complément. `render_and_compute_X()` → 2 responsabilités → diviser en `compute_X()` + `render_X()`. Indicateurs suspects : `_and_`, `_with_`, `_then_` dans un nom de fonction. Test automatique : `tests/test_code_quality.py::test_no_srp_violation_in_function_names`.
 18. **docs/FR/ — règle de synchronisation** : tout commit qui modifie un fichier dans `docs/` doit inclure la mise à jour du fichier correspondant dans `docs/FR/` si ce fichier existe. Les deux commits peuvent être séparés mais doivent être dans le même PR.
