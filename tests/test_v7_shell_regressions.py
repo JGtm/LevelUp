@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 import logging
-from datetime import date
 from unittest.mock import MagicMock
 
 
@@ -65,18 +64,20 @@ class TestV7FilterChipHelpers:
         result = _summarize_values(["Arena", "Ranked", "Doubles"])
         assert result == "Arena, Ranked +1"
 
-    def test_format_period_formats_date_range(self) -> None:
-        """Une plage de dates doit etre formatee au format court FR."""
-        from src.ui.layout.filter_chips import _format_period
+    def test_summarize_collection_formats_set(self) -> None:
+        """Un set doit etre trie et tronque correctement."""
+        from src.ui.layout.filter_chips import _summarize_collection
 
-        result = _format_period(date(2026, 4, 1), date(2026, 4, 15))
-        assert result == "01/04/2026 -> 15/04/2026"
+        result = _summarize_collection({"Ranked Slayer", "CTF", "Fiesta", "Attrition"})
+        assert result is not None
+        assert "+1" in result  # 4 items, max=3 -> +1
 
-    def test_format_period_supports_open_range(self) -> None:
-        """Une borne unique doit etre retournee telle quelle apres trim."""
-        from src.ui.layout.filter_chips import _format_period
+    def test_summarize_collection_none_on_empty(self) -> None:
+        """Un set vide doit retourner None."""
+        from src.ui.layout.filter_chips import _summarize_collection
 
-        assert _format_period(None, "  2026-04  ") == "2026-04"
+        assert _summarize_collection(set()) is None
+        assert _summarize_collection([]) is None
 
 
 class TestV7ThemeLoader:
@@ -90,6 +91,25 @@ class TestV7ThemeLoader:
         assert css.startswith("<style>")
         assert css.endswith("</style>")
         assert "--v7-bg-main" in css
+
+    def test_load_v7_theme_css_includes_workspace_surface_overrides(self) -> None:
+        """Le theme V7 doit surcharger les primitives de contenu legacy."""
+        from src.ui.theme import load_v7_theme_css
+
+        css = load_v7_theme_css()
+        assert '[data-testid="stTabs"] [data-baseweb="tab-panel"]' in css
+        assert '[data-testid="stVerticalBlockBorderWrapper"]' in css
+        assert '[data-testid="stExpander"]' in css
+
+    def test_load_v7_theme_css_includes_widget_toolbar_overrides(self) -> None:
+        """Le theme V7 doit aussi couvrir les widgets internes encore visibles."""
+        from src.ui.theme import load_v7_theme_css
+
+        css = load_v7_theme_css()
+        assert 'div[data-baseweb="tag"]' in css
+        assert '[data-testid="stCheckbox"]' in css
+        assert '[data-testid="stSlider"]' in css
+        assert ".v7-toolbar-divider" in css
 
 
 class TestV7LoggingContracts:
@@ -195,3 +215,53 @@ class TestV7LoggingContracts:
             and "match_history" in rec.message
             for rec in caplog.records
         )
+
+
+class TestV7SessionContextBar:
+    """Verifie la logique de navigation de session dans la L2 V7."""
+
+    def test_normalize_scope_value_prefers_known_option(self) -> None:
+        """Une valeur inconnue doit retomber sur la session la plus recente."""
+        from src.ui.layout.header_l2 import _normalize_scope_value
+
+        assert _normalize_scope_value("inconnue", ["Session #3", "Session #2"]) == "Session #3"
+        assert _normalize_scope_value("(toutes)", ["Session #3"]) == "(toutes)"
+
+    def test_previous_session_target_steps_back_in_order(self) -> None:
+        """Le bouton precedent doit avancer vers une session plus ancienne."""
+        from src.ui.layout.header_l2 import _get_previous_session_target
+
+        options = ["Session #5", "Session #4", "Session #3"]
+        assert _get_previous_session_target("Session #5", options) == "Session #4"
+        assert _get_previous_session_target("Session #3", options) == "Session #3"
+        assert _get_previous_session_target("(toutes)", options) == "Session #5"
+
+    def test_apply_session_scope_updates_stats_keys(self, monkeypatch) -> None:
+        """Le scope Stats doit poser la session solo active et vider l'escouade."""
+        import src.ui.layout.header_l2 as mod
+
+        session_state = {}
+        monkeypatch.setattr(mod.st, "session_state", session_state)
+
+        mod._apply_session_scope("stats", "Session #8")
+
+        assert session_state[mod.SK.FILTER_MODE] == "Sessions"
+        assert session_state[mod.SK.PICKED_SOLO_SESSION_LABEL] == "Session #8"
+        assert session_state[mod.SK.PICKED_SQUAD_SESSION_LABEL] == "(toutes)"
+        assert session_state[mod.SK.PICKED_SESSION_LABEL] == "Session #8"
+        assert session_state[mod.SK.PICKED_SESSIONS] == ["Session #8"]
+
+    def test_apply_session_scope_updates_squad_keys(self, monkeypatch) -> None:
+        """Le scope Escouade doit poser la session escouade active et vider le solo."""
+        import src.ui.layout.header_l2 as mod
+
+        session_state = {}
+        monkeypatch.setattr(mod.st, "session_state", session_state)
+
+        mod._apply_session_scope("squad", "Carnage #2")
+
+        assert session_state[mod.SK.FILTER_MODE] == "Sessions"
+        assert session_state[mod.SK.PICKED_SQUAD_SESSION_LABEL] == "Carnage #2"
+        assert session_state[mod.SK.PICKED_SOLO_SESSION_LABEL] == "(toutes)"
+        assert session_state[mod.SK.PICKED_SESSION_LABEL] == "Carnage #2"
+        assert session_state[mod.SK.PICKED_SESSIONS] == ["Carnage #2"]

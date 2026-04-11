@@ -220,63 +220,65 @@ def _build_media_filter_ui(media_df: pl.DataFrame) -> dict:
     section_options = [t(_SECTION_I18N[s]) for s in ["mine", "teammate", "unassigned"]]
     all_label = t("media_filter_all")
 
-    # ── Barre unique ──────────────────────────────────────────────────────
-    # [Proprio][Carte][Mode][Contexte] │ [Trier][Ordre]
-    c1, c2, c3, c4, _s1, c6, c7 = st.columns([1.3, 1.7, 1.7, 1.1, 0.07, 1.7, 1.1])
+    with st.container(border=True):
+        st.markdown(
+            f"<div class='v7-context-toolbar-label'>{t('exp_filters')}</div>",
+            unsafe_allow_html=True,
+        )
 
-    with c1:
-        section_sel = st.selectbox(
-            t("media_filter_owner"),
-            options=[all_label] + section_options,
-            index=0,
-            key="mf_sections",
-            label_visibility="collapsed",
-        )
-    with c2:
-        map_sel = st.selectbox(
-            t("media_filter_map"),
-            options=[all_label] + all_maps,
-            key="mf_map",
-            label_visibility="collapsed",
-        )
-    with c3:
-        mode_sel = st.selectbox(
-            t("media_filter_mode"),
-            options=[all_label] + all_modes,
-            key="mf_mode",
-            label_visibility="collapsed",
-        )
-    with c4:
-        squad_opts = [t("media_squad_all"), t("media_squad_solo"), t("media_squad_squad")]
-        squad_sel = st.selectbox(
-            t("media_filter_squad"),
-            options=squad_opts,
-            index=0,
-            key="mf_squad",
-            label_visibility="collapsed",
-        )
-    _s1.markdown(
-        "<div style='border-left:1px solid rgba(255,255,255,0.15);"
-        "height:38px;margin-top:4px'></div>",
-        unsafe_allow_html=True,
-    )
+        # ── Barre unique ──────────────────────────────────────────────────────
+        # [Proprio][Carte][Mode][Contexte] │ [Trier][Ordre]
+        c1, c2, c3, c4, _s1, c6, c7 = st.columns([1.3, 1.7, 1.7, 1.1, 0.07, 1.7, 1.1])
 
-    with c6:
-        sort_label = st.selectbox(
-            t("media_sort_by"),
-            options=sort_labels,
-            index=0,
-            key="mf_sort",
-            label_visibility="collapsed",
-        )
-    with c7:
-        sort_order = st.selectbox(
-            t("media_sort_order"),
-            options=[t("media_sort_desc"), t("media_sort_asc")],
-            index=0,
-            key="mf_sort_order",
-            label_visibility="collapsed",
-        )
+        with c1:
+            section_sel = st.selectbox(
+                t("media_filter_owner"),
+                options=[all_label] + section_options,
+                index=0,
+                key="mf_sections",
+                label_visibility="collapsed",
+            )
+        with c2:
+            map_sel = st.selectbox(
+                t("media_filter_map"),
+                options=[all_label] + all_maps,
+                key="mf_map",
+                label_visibility="collapsed",
+            )
+        with c3:
+            mode_sel = st.selectbox(
+                t("media_filter_mode"),
+                options=[all_label] + all_modes,
+                key="mf_mode",
+                label_visibility="collapsed",
+            )
+        with c4:
+            squad_opts = [t("media_squad_all"), t("media_squad_solo"), t("media_squad_squad")]
+            squad_sel = st.selectbox(
+                t("media_filter_squad"),
+                options=squad_opts,
+                index=0,
+                key="mf_squad",
+                label_visibility="collapsed",
+            )
+        _s1.markdown("<div class='v7-toolbar-divider'></div>", unsafe_allow_html=True)
+
+        with c6:
+            sort_label = st.selectbox(
+                t("media_sort_by"),
+                options=sort_labels,
+                index=0,
+                key="mf_sort",
+                label_visibility="collapsed",
+            )
+        with c7:
+            sort_order = st.selectbox(
+                t("media_sort_order"),
+                options=[t("media_sort_desc"), t("media_sort_asc")],
+                index=0,
+                key="mf_sort_order",
+                label_visibility="collapsed",
+            )
     cols_per_row = 5
 
     section_map_inv = {t(v): k for k, v in _SECTION_I18N.items()}

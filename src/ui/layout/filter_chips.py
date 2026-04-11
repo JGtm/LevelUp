@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-from datetime import date
 from html import escape
 from typing import Any
 
@@ -32,51 +31,87 @@ def _summarize_values(values: Any, max_items: int = 2) -> str | None:
     return f"{', '.join(items[:max_items])} +{remaining}"
 
 
-def _format_period(start_value: Any, end_value: Any) -> str | None:
-    """Formate une période en texte court."""
-    if not start_value and not end_value:
+def _summarize_collection(values: Any, max_items: int = 3) -> str | None:
+    """Résume une collection (set, list, tuple) en texte compact."""
+    if not values:
         return None
+    items = sorted(str(v).strip() for v in values if str(v).strip())
+    if not items:
+        return None
+    if len(items) <= max_items:
+        return ", ".join(items)
+    remaining = len(items) - max_items
+    return f"{', '.join(items[:max_items])} +{remaining}"
 
-    def _fmt(value: Any) -> str | None:
-        if value is None:
-            return None
-        if isinstance(value, date):
-            return value.strftime("%d/%m/%Y")
-        text = str(value).strip()
-        return text or None
 
-    start_txt = _fmt(start_value)
-    end_txt = _fmt(end_value)
-    if start_txt and end_txt:
-        return f"{start_txt} -> {end_txt}"
-    return start_txt or end_txt
+def _is_dimension_filter_active(
+    mode_key: str,
+    excl_key: str,
+    ss_key: str,
+) -> tuple[bool, str | None]:
+    """Détermine si un filtre dimension est actif et construit son résumé.
+
+    Un filtre est actif quand :
+    - mode "exclude" ET des exclusions explicites existent
+    - mode "include" ET le set sélectionné n'est pas vide (sélection manuelle)
+
+    Returns:
+        (actif, résumé) — résumé est None si inactif.
+    """
+    mode = str(st.session_state.get(mode_key) or "exclude")
+    if mode == "exclude":
+        exclusions: set = st.session_state.get(excl_key) or set()
+        if not exclusions:
+            return False, None
+        summary = _summarize_collection(exclusions)
+        return True, summary
+    else:
+        selected = st.session_state.get(ss_key)
+        if not selected:
+            return False, None
+        summary = _summarize_collection(
+            selected if isinstance(selected, (set, list, tuple)) else [selected]
+        )
+        return bool(summary), summary
 
 
 def get_active_filter_chips() -> list[tuple[str, str]]:
-    """Retourne les filtres actifs sous forme de couples (label, valeur)."""
-    chips: list[tuple[str, str]] = []
-    mappings = [
-        (SK.FILTER_PLAYLISTS, t("v7_chip_playlists")),
-        (SK.FILTER_MODES, t("v7_chip_modes")),
-        (SK.FILTER_MAPS, t("v7_chip_maps")),
-        (SK.PICKED_SESSIONS, t("v7_chip_sessions")),
-    ]
+    """Retourne les filtres actifs sous forme de couples (label, valeur).
 
-    for state_key, label in mappings:
-        summary = _summarize_values(st.session_state.get(state_key))
-        if summary:
+    N'affiche pas de chip quand un filtre dimension est à "tout sélectionné"
+    (exclusions vides = aucune contrainte), ni la chip Scope (redondante avec
+    la caption du bandeau).
+    """
+    chips: list[tuple[str, str]] = []
+
+    dimension_configs = [
+        (
+            SK.FILTER_PLAYLISTS,
+            "_playlists_filter_mode",
+            "_playlists_exclusions",
+            t("v7_chip_playlists"),
+        ),
+        (SK.FILTER_MODES, "_modes_filter_mode", "_modes_exclusions", t("v7_chip_modes")),
+        (SK.FILTER_MAPS, "_maps_filter_mode", "_maps_exclusions", t("v7_chip_maps")),
+    ]
+    for ss_key, mode_key, excl_key, label in dimension_configs:
+        active, summary = _is_dimension_filter_active(mode_key, excl_key, ss_key)
+        if active and summary:
             chips.append((label, summary))
 
-    period = _format_period(
-        st.session_state.get(SK.START_DATE),
-        st.session_state.get(SK.END_DATE),
-    )
-    if period:
-        chips.append((t("v7_chip_period"), period))
+    picked_sessions = st.session_state.get(SK.PICKED_SESSIONS)
+    if picked_sessions:
+        summary = (
+            _summarize_collection(picked_sessions)
+            if isinstance(picked_sessions, (set, list, tuple))
+            else _summarize_values(picked_sessions)
+        )
+        if summary:
+            chips.append((t("v7_chip_sessions"), summary))
 
-    scope = _summarize_values(st.session_state.get(SK.FILTER_MODE))
-    if scope:
-        chips.append((t("v7_chip_scope"), scope))
+    # Période et Scope (Période/Sessions) ne sont pas tracées en chips L2 :
+    # - la période est toujours initialisée aux bornes du dataset (sidebar)
+    # - le mode est déjà visible via le segmented_control du bandeau
 
     return chips
 

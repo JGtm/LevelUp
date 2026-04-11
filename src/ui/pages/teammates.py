@@ -108,12 +108,18 @@ def _select_picked_teammates(
     if "teammates_picked_labels" not in st.session_state:
         st.session_state["teammates_picked_labels"] = effective_default
 
-    picked_labels = st.multiselect(
-        label=t("tm_select_teammates"),
-        options=list(opts_map.keys()),
-        key="teammates_picked_labels",
-        max_selections=3,
-    )
+    with st.container(border=True):
+        st.markdown(
+            f"<div class='v7-context-toolbar-label'>{t('tm_select_teammates')}</div>",
+            unsafe_allow_html=True,
+        )
+        picked_labels = st.multiselect(
+            label=t("tm_select_teammates"),
+            options=list(opts_map.keys()),
+            key="teammates_picked_labels",
+            max_selections=3,
+            label_visibility="collapsed",
+        )
     return [opts_map[label] for label in picked_labels if label in opts_map]
 
 

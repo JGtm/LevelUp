@@ -172,22 +172,27 @@ def _select_sessions(
     def _fmt(label: str) -> str:
         return f"[Classé] {label}" if ranked_map.get(label) else label
 
-    col_sel_a, col_sel_b = st.columns(2)
-    with col_sel_a:
-        # Pas d'index= : session_state est déjà initialisé, évite le warning Streamlit
-        session_a_label = st.selectbox(
-            t("sc_session_a_ref"),
-            options=session_labels,
-            key="compare_session_a",
-            format_func=_fmt,
+    with st.container(border=True):
+        st.markdown(
+            f"<div class='v7-context-toolbar-label'>{t('filter_selection')}</div>",
+            unsafe_allow_html=True,
         )
-    with col_sel_b:
-        session_b_label = st.selectbox(
-            t("sc_session_b_cmp"),
-            options=session_labels,
-            key="compare_session_b",
-            format_func=_fmt,
-        )
+        col_sel_a, col_sel_b = st.columns(2)
+        with col_sel_a:
+            # Pas d'index= : session_state est déjà initialisé, évite le warning Streamlit
+            session_a_label = st.selectbox(
+                t("sc_session_a_ref"),
+                options=session_labels,
+                key="compare_session_a",
+                format_func=_fmt,
+            )
+        with col_sel_b:
+            session_b_label = st.selectbox(
+                t("sc_session_b_cmp"),
+                options=session_labels,
+                key="compare_session_b",
+                format_func=_fmt,
+            )
     return session_a_label, session_b_label
 
 

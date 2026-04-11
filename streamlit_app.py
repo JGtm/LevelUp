@@ -643,8 +643,14 @@ def _load_and_prepare_data(  # noqa: PLR0913
     waypoint_player: str,
     cfg_warnings: list[str],
     cfg_errors: list[str],
+    v7_filter_callbacks: Any = None,
 ) -> PageContext | None:
     """Charge les données, applique les filtres et rend les KPIs.
+
+    Args:
+        v7_filter_callbacks: Si fourni (``FilterSidebarCallbacks``), mode V7 actif :
+            les filtres ne sont pas rendus dans la sidebar mais lus depuis
+            ``session_state`` via ``build_filter_state_from_session``.
 
     Returns:
         ``PageContext`` si des données existent, sinon ``None`` (page settings affichée).
@@ -706,24 +712,38 @@ def _load_and_prepare_data(  # noqa: PLR0913
         return None
 
     # Sidebar - Filtres
-    with st.sidebar:
-        for _err_msg in cfg_errors:
-            st.error(_err_msg)
-        for _warn_msg in cfg_warnings:
-            st.warning(_warn_msg)
+    _std_callbacks = FilterSidebarCallbacks(
+        date_range_fn=date_range,
+        clean_asset_label_fn=clean_asset_label,
+        build_friends_opts_map_fn=build_friends_opts_map,
+    )
+    if v7_filter_callbacks is not None:
+        # Mode V7 : filtres différés dans le popover L2, on lit l'état depuis session_state.
+        from src.app.filters_render import build_filter_state_from_session
 
-        filter_state = render_filters_sidebar(
+        filter_state = build_filter_state_from_session(
             df=df,
             db_path=db_path,
             xuid=xuid,
             db_key=db_key,
             aliases_key=aliases_key,
-            callbacks=FilterSidebarCallbacks(
-                date_range_fn=date_range,
-                clean_asset_label_fn=clean_asset_label,
-                build_friends_opts_map_fn=build_friends_opts_map,
-            ),
+            callbacks=v7_filter_callbacks,
         )
+    else:
+        with st.sidebar:
+            for _err_msg in cfg_errors:
+                st.error(_err_msg)
+            for _warn_msg in cfg_warnings:
+                st.warning(_warn_msg)
+
+            filter_state = render_filters_sidebar(
+                df=df,
+                db_path=db_path,
+                xuid=xuid,
+                db_key=db_key,
+                aliases_key=aliases_key,
+                callbacks=_std_callbacks,
+            )
 
     # Base "globale" : toutes les parties (après inclusion/exclusion Firefight)
     base = df.clone()

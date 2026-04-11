@@ -198,65 +198,71 @@ def _render_match_filters(
         st.info(t("no_data_filter"))
         return dff, None
 
-    # Ajouter mode_ui si absent (ctx.df brut sans enrichissement _vectorize_ui_columns)
-    if "mode_ui" not in dff.columns and "pair_name" in dff.columns:
-        _lang = get_lang()
-        dff = dff.with_columns(
-            pl.col("pair_name")
-            .cast(pl.Utf8)
-            .map_elements(lambda x: normalize_mode_label(x, lang=_lang), return_dtype=pl.Utf8)
-            .alias("mode_ui")
+    with st.container(border=True):
+        st.markdown(
+            f"<div class='v7-context-toolbar-label'>{t('exp_filters')}</div>",
+            unsafe_allow_html=True,
         )
 
-    dates = get_distinct_dates(dff)
-    last_date = dates[-1] if dates else date.today()
-
-    # Ligne 1 : Date + Escouade
-    col_date, col_squad = st.columns([2, 1])
-    with col_date:
-        selected_date = st.date_input(
-            t("exp_filter_date"),
-            value=last_date,
-            min_value=dates[0] if dates else None,
-            max_value=dates[-1] if dates else None,
-            format="DD/MM/YYYY",
-            key="_exp_date",
-        )
-    with col_squad:
-        squad_opts = [
-            t("exp_squad_all"),
-            t("exp_squad_solo"),
-            t("exp_squad_squad"),
-        ]
-        squad_pick = st.selectbox(
-            t("exp_filter_squad"),
-            squad_opts,
-            key="_exp_squad",
-        )
-
-    # Filtrage par date
-    day_df = filter_by_date(dff, selected_date)
-    if day_df.is_empty() and dates:
-        closest = find_closest_date(dff, selected_date)
-        if closest:
-            logger.debug("Aucun match le %s, fallback vers %s", selected_date, closest)
-            st.info(
-                t("exp_no_match_date", date=closest.strftime("%d/%m/%Y")),
+        # Ajouter mode_ui si absent (ctx.df brut sans enrichissement _vectorize_ui_columns)
+        if "mode_ui" not in dff.columns and "pair_name" in dff.columns:
+            _lang = get_lang()
+            dff = dff.with_columns(
+                pl.col("pair_name")
+                .cast(pl.Utf8)
+                .map_elements(lambda x: normalize_mode_label(x, lang=_lang), return_dtype=pl.Utf8)
+                .alias("mode_ui")
             )
-        day_df = dff  # Fallback : garder tout
 
-    # Filtrage escouade / solo
-    squad_mode = _resolve_squad_mode(squad_pick)
-    if squad_mode != "all" and "match_id" in day_df.columns:
-        ids = day_df["match_id"].cast(pl.Utf8).to_list()
-        friends_map = load_is_with_friends(db_path, xuid, ids)
-        day_df = filter_by_squad(day_df, friends_map, squad_mode)
+        dates = get_distinct_dates(dff)
+        last_date = dates[-1] if dates else date.today()
 
-    # Ligne 2 : Type + Playlist + Mode + Carte
-    filtered = _render_cascade_filters(day_df)
+        # Ligne 1 : Date + Escouade
+        col_date, col_squad = st.columns([2, 1])
+        with col_date:
+            selected_date = st.date_input(
+                t("exp_filter_date"),
+                value=last_date,
+                min_value=dates[0] if dates else None,
+                max_value=dates[-1] if dates else None,
+                format="DD/MM/YYYY",
+                key="_exp_date",
+            )
+        with col_squad:
+            squad_opts = [
+                t("exp_squad_all"),
+                t("exp_squad_solo"),
+                t("exp_squad_squad"),
+            ]
+            squad_pick = st.selectbox(
+                t("exp_filter_squad"),
+                squad_opts,
+                key="_exp_squad",
+            )
 
-    # Ligne 3 : Sélection de match
-    selected_mid = _render_match_selector(filtered, format_datetime_fn)
+        # Filtrage par date
+        day_df = filter_by_date(dff, selected_date)
+        if day_df.is_empty() and dates:
+            closest = find_closest_date(dff, selected_date)
+            if closest:
+                logger.debug("Aucun match le %s, fallback vers %s", selected_date, closest)
+                st.info(
+                    t("exp_no_match_date", date=closest.strftime("%d/%m/%Y")),
+                )
+            day_df = dff  # Fallback : garder tout
+
+        # Filtrage escouade / solo
+        squad_mode = _resolve_squad_mode(squad_pick)
+        if squad_mode != "all" and "match_id" in day_df.columns:
+            ids = day_df["match_id"].cast(pl.Utf8).to_list()
+            friends_map = load_is_with_friends(db_path, xuid, ids)
+            day_df = filter_by_squad(day_df, friends_map, squad_mode)
+
+        # Ligne 2 : Type + Playlist + Mode + Carte
+        filtered = _render_cascade_filters(day_df)
+
+        # Ligne 3 : Sélection de match
+        selected_mid = _render_match_selector(filtered, format_datetime_fn)
 
     return filtered, selected_mid
 
@@ -409,20 +415,21 @@ def _render_player_search(
     pending_gt: str | None,
 ) -> tuple[str, str | None]:
     """Rend la section recherche joueur. Retourne (gamertag, xuid|None)."""
-    st.subheader(t("exp_player_search"))
-    all_gts = _cached_all_gamertags(db_path, xuid)
+    with st.container(border=True):
+        st.subheader(t("exp_player_search"))
+        all_gts = _cached_all_gamertags(db_path, xuid)
 
-    # Pré-remplir si un gamertag est passé en paramètre (deep link)
-    # Forcer le session_state du widget pour écraser la valeur persistée
-    if pending_gt:
-        st.session_state["_exp_player_input"] = pending_gt
+        # Pré-remplir si un gamertag est passé en paramètre (deep link)
+        # Forcer le session_state du widget pour écraser la valeur persistée
+        if pending_gt:
+            st.session_state["_exp_player_input"] = pending_gt
 
-    query = st.text_input(
-        t("exp_player_hint"),
-        key="_exp_player_input",
-        label_visibility="collapsed",
-        placeholder=t("exp_player_hint"),
-    )
+        query = st.text_input(
+            t("exp_player_hint"),
+            key="_exp_player_input",
+            label_visibility="collapsed",
+            placeholder=t("exp_player_hint"),
+        )
 
     query = (query or "").strip()
     if not query:
