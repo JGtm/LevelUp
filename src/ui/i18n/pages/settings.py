@@ -195,5 +195,30 @@ STRINGS: dict[str, dict[str, str] | str] = {
         "fr": "Envoie un message Discord avec les nouveautés (README) quand X ou Y changent dans vX.Y.Z. Nécessite LEVELUP_NOTIFY_VERSIONS=1 dans l'environnement (opt-in prod).",
         "en": "Sends a Discord message with release notes (README) when X or Y change in vX.Y.Z. Requires LEVELUP_NOTIFY_VERSIONS=1 in the environment (prod opt-in).",
     },
+    "set_media_watcher_label": {
+        "fr": "Watcher automatique (Linux/inotify)",
+        "en": "Automatic watcher (Linux/inotify)",
+    },
+    "set_media_watcher_help": {
+        "fr": "Sur Linux, surveille le dossier captures en temps réel (inotify). Désactiver pour revenir au scan périodique.",
+        "en": "On Linux, watches the captures folder in real time (inotify). Disable to fall back to periodic scanning.",
+    },
+    "set_media_debounce_label": {
+        "fr": "Délai avant indexation (secondes)",
+        "en": "Indexing delay (seconds)",
+    },
+    "set_media_debounce_help": {
+        "fr": "Attend N secondes d'inactivité après le dernier fichier détecté avant d'indexer. Utile pour les copies de gros fichiers vidéo.",
+        "en": "Waits N seconds of inactivity after the last detected file before indexing. Useful for large video file copies.",
+    },
+    # ── Avertissements de cohérence (Settings) ──────────────────────────────
+    "warn_discord_no_webhook": {
+        "fr": "Les notifications Discord sont activées mais aucun webhook n'est configuré (champ vide et variable DISCORD_WEBHOOK_URL absente).",
+        "en": "Discord notifications are enabled but no webhook is configured (empty field and DISCORD_WEBHOOK_URL not set).",
+    },
+    "warn_media_no_dir": {
+        "fr": "Le dossier de captures n'est pas configuré. Le watcher et la ré-indexation ne fonctionneront pas — les médias déjà indexés en base restent visibles.",
+        "en": "No captures folder is configured. The watcher and re-indexing won't work — media already indexed in the database remains visible.",
+    },
     # ── Match view helpers (Phase 3) ─────────────────────────────────────────
 }

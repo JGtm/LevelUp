@@ -331,11 +331,10 @@ def _render_media_section(settings: AppSettings) -> None:
         args=("media_tolerance_minutes", "setting_media_tolerance_minutes"),
     )
     st.toggle(
-        "Watcher automatique (Linux/inotify)",
+        t("set_media_watcher_label"),
         value=bool(getattr(settings, "media_watcher_enabled", True)),
         key="setting_media_watcher_enabled",
-        help="Sur Linux, surveille le dossier captures en temps réel (inotify). "
-        "Désactiver pour revenir au scan périodique.",
+        help=t("set_media_watcher_help"),
         on_change=_on_change_setting,
         args=("media_watcher_enabled", "setting_media_watcher_enabled"),
     )
@@ -345,14 +344,13 @@ def _render_media_section(settings: AppSettings) -> None:
         )
     )
     st.slider(
-        "Délai avant indexation (secondes)",
+        t("set_media_debounce_label"),
         min_value=1,
         max_value=60,
         value=int(getattr(settings, "media_watcher_debounce_seconds", 5) or 5),
         step=1,
         disabled=not _watcher_on,
-        help="Attend N secondes d'inactivité après le dernier fichier détecté avant d'indexer. "
-        "Utile pour les copies de gros fichiers vidéo.",
+        help=t("set_media_debounce_help"),
         key="setting_media_watcher_debounce_seconds",
         on_change=_on_change_setting,
         args=("media_watcher_debounce_seconds", "setting_media_watcher_debounce_seconds"),
