@@ -53,7 +53,8 @@ class TestPlotMatchIntensityHeatmap:
         profile = _make_profile(n_matches=5)
         fig = plot_match_intensity_heatmap(profile)
         assert isinstance(fig, go.Figure)
-        assert fig.layout.yaxis.autorange == "reversed"
+        # autorange="reversed" retiré intentionnellement (refonte visuelle v6.5)
+        assert fig.layout.yaxis.title.text == ""
 
     def test_custom_options(self):
         profile = _make_profile(n_matches=3)
