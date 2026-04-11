@@ -118,6 +118,7 @@ MODULE:src/data/sync/api_client.py:557L
 MODULE:src/data/sync/engine.py:701L
 MODULE:src/data/sync/transformers/_helpers.py:515L
 MODULE:src/data/sync/transformers/_match.py:580L
+MODULE:src/ui/pages/home_mission_control.py:756L
 MODULE:src/ui/pages/match_view_scoreboard_detail.py:625L
 MODULE:src/ui/pages/session_compare.py:530L
 MODULE:src/ui/pages/session_compare_charts.py:502L
