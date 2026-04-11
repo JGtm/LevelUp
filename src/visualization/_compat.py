@@ -60,7 +60,10 @@ def ensure_polars(df: DataFrameLike) -> pl.DataFrame:
     Accepte indifféremment un ``pl.DataFrame`` ou un ``pd.DataFrame``.
     Pendant la migration progressive, certains appelants passent encore
     du Pandas — cette fonction normalise sans casser.
+    Retourne un ``pl.DataFrame()`` vide si ``df`` est ``None``.
     """
+    if df is None:
+        return pl.DataFrame()
     if isinstance(df, pl.DataFrame):
         return df
     # pd.DataFrame → pl.DataFrame
