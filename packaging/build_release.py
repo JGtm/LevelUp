@@ -37,6 +37,7 @@ PYTHON_EMBED_MD5 = "fe8ef205f2e9c3ba44d0cf9954e1abd3"  # pragma: allowlist secre
 INCLUDE_FILES = [
     "launcher.py",
     "streamlit_app.py",
+    "streamlit_app_v7.py",
     "LevelUp.bat",
     "pyproject.toml",
     "db_profiles.json",
@@ -48,6 +49,7 @@ INCLUDE_FILES = [
 INCLUDE_FILES_UNIX = [
     "launcher.py",
     "streamlit_app.py",
+    "streamlit_app_v7.py",
     "LevelUp.sh",
     "pyproject.toml",
     "db_profiles.json",

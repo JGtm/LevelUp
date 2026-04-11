@@ -19,7 +19,6 @@ from src.ui.pages import (
     render_career_page,
     render_citations_page,
     render_explorer_page,
-    render_last_match_page,
     render_match_history_page,
     render_media_tab,
     render_session_comparison_page,
@@ -27,6 +26,7 @@ from src.ui.pages import (
     render_teammates_page,
     render_timeseries_page,
 )
+from src.ui.pages.home_mission_control import render_home_mission_control
 from src.visualization import plot_multi_metric_bars_by_match
 
 logger = logging.getLogger(__name__)
@@ -182,7 +182,7 @@ def render_v7_section(active_section: str, ctx: Any) -> None:
     logger.debug("Dispatch section V7: %s", active_section)
     if active_section == "home":
         _render_section_title(t("v7_nav_home"))
-        render_last_match_page(dff=ctx.dff, params=ctx.match_view_params)
+        render_home_mission_control(ctx)
         return
 
     if active_section == "stats":

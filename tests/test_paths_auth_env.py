@@ -258,6 +258,7 @@ class TestBuildRelease:
 
         assert (target / "launcher.py").exists()
         assert (target / "streamlit_app.py").exists()
+        assert (target / "streamlit_app_v7.py").exists()
         assert (target / "src").is_dir()
         assert (target / "data" / "players").is_dir()
         assert (target / "data" / "warehouse").is_dir()

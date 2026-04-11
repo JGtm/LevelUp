@@ -84,6 +84,7 @@ data/
 
 ### UI
 - `src/ui/pages/` : Pages du dashboard
+- `src/ui/pages/home_mission_control.py` : Accueil Mission Control V7 (raccourcis, résumés de sessions, médias récents)
 - `src/ui/pages/v7_sections.py` : Couche de composition temporaire du cockpit V7 (regroupement des pages legacy par section)
 - `src/ui/layout/` : Shell V7 (header L1/L2, KPI bar, chips de filtres)
 - `src/ui/theme/` : Thème V7 (chargement CSS + feuille dédiée)
