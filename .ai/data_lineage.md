@@ -186,6 +186,8 @@ Thumbnails: generate_thumbnails_for_new() → thumbs/ (GIF vidéo, miniatures im
 UI: media_tab.py (load_media_for_ui → sections Mes captures / Captures de XXX / Sans correspondance)
 ```
 
+Note 2026-04-11 : le scan, le watcher et le fallback UI ignorent explicitement `thumbs/`. Les miniatures générées ne doivent jamais réentrer dans `media_files`, sinon elles se transforment en nouvelles sources et provoquent une récursion infinie de miniatures d'images.
+
 Lancement : thread en arrière-plan au démarrage de l’app (`_background_media_indexing` dans streamlit_app.py).
 
 ## Tables PvE (shared_pve.duckdb)

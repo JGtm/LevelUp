@@ -15,6 +15,8 @@ import logging
 import threading
 from pathlib import Path
 
+from src.data.media_helpers import is_generated_thumbnail_path
+
 logger = logging.getLogger(__name__)
 
 _WATCHED_EXTENSIONS = {
@@ -74,6 +76,8 @@ class _MediaEventHandler:
             return
         event_type = getattr(event, "event_type", "")
         if event_type not in ("created", "moved"):
+            return
+        if is_generated_thumbnail_path(src):
             return
         if Path(src).suffix.lower() not in _WATCHED_EXTENSIONS:
             return
