@@ -1,5 +1,25 @@
 # Thought Log
 
+## [2026-04-11] feat(home-v7): refonte accueil Mission Control — layout 4 blocs + API live
+
+**Statut** : Complété  
+**Branche** : `v7/cockpit`  
+**Commit** : `58f2a579`
+
+**Décision technique** :
+- Nouveau layout en 4 rangs : Forme récente | Session escouade / Pass de combat | Défis actifs / Dernier match (full width) / Médias (full width)
+- Création de `home_mission_control_api.py` : fetch battlepass (`PlayerRewardTracksSummary`) + défis (`PlayerChallenges`) via les nouvelles extensions SPNKr (`spnkr_pr/`), avec cache `st.session_state` de 5 min (TTL) et dégradation gracieuse si API indisponible ou auth requise
+- Appel async via `asyncio.new_event_loop()` (pattern safe pour Streamlit multi-threading)
+- Suppression de `_render_mission_briefing`, `_render_highlights`, `_render_recent_activity` (remplacés par les nouveaux blocs)
+- `_render_recent_form_card` : reprise du trend KD/ACC/WR avec dernière ligne du match sans la mise en page "hero"
+- Nouvelles clés i18n dans `shared.py` : `v7_home_recent_form`, `v7_home_battlepass_*`, `v7_home_challenges_*`, `v7_home_api_unavailable`
+
+**Résultats** :
+- 11/11 tests d'imports et qualité passants. Ruff clean. Hooks pre-commit ✓.
+- Fichiers sous 500L : `home_mission_control.py` (395L), `home_mission_control_api.py` (206L), logique inchangée (414L).
+
+**Prochaine étape** : Tests visuels en runtime Streamlit, ajustements CSS si nécessaire.
+
 ## [2026-04-11] feat(v7): routing URL propres via st.navigation
 
 **Statut** : Complété  
