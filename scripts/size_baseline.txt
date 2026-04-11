@@ -22,7 +22,6 @@ FUNC:src/app/profile.py:183:load_profile_assets:89L
 FUNC:src/app/sidebar.py:177:render_sync_button:124L
 FUNC:src/data/repositories/_archives_repo.py:135:load_matches_from_archives:102L
 FUNC:src/data/repositories/_weapon_kills_reconcile.py:93:insert_weapon_kill_rows_v2:85L
-FUNC:src/data/repositories/_weapon_kills_repo.py:276:insert_weapon_kill_rows_v2:85L
 FUNC:src/data/services/win_loss_service.py:64:compute_period_table:109L
 FUNC:src/data/sync/_engine_connections.py:356:_load_existing_match_ids:83L
 FUNC:src/data/sync/_match_processing.py:304:_backfill_known_match_shared:82L
@@ -90,7 +89,7 @@ FUNC:src/visualization/distributions.py:33:plot_kda_distribution:87L
 FUNC:src/visualization/distributions_outcomes.py:175:plot_win_ratio_heatmap:104L
 FUNC:src/visualization/distributions_outcomes.py:287:plot_matches_at_top_by_week:116L
 FUNC:src/visualization/distributions_outcomes.py:29:plot_outcomes_over_time:90L
-FUNC:src/visualization/friends_impact_heatmap.py:61:plot_friends_impact_heatmap:187L
+FUNC:src/visualization/friends_impact_heatmap.py:61:plot_friends_impact_heatmap:186L
 FUNC:src/visualization/match_bars.py:131:plot_multi_metric_bars_by_match:262L
 FUNC:src/visualization/match_bars.py:20:plot_metric_bars_by_match:108L
 FUNC:src/visualization/match_impact_timeline.py:281:plot_all_players_frags_timeline:188L
@@ -109,8 +108,6 @@ FUNC:src/visualization/timeseries_combat.py:189:plot_streak_chart:81L
 FUNC:src/visualization/timeseries_combat.py:93:plot_spree_headshots_accuracy:93L
 FUNC:src/visualization/trio.py:343:plot_trio_kills_deaths:163L
 FUNC:src/visualization/trio.py:40:plot_trio_metric:232L
-MODULE:src/data/repositories/_materialized_views.py:512L
-MODULE:src/data/repositories/_weapon_kills_repo.py:567L
 MODULE:src/analysis/spawn_detection.py:562L
 MODULE:src/analysis/weapon_parser.py:502L
 MODULE:src/data/services/teammates_service.py:539L
