@@ -29,7 +29,9 @@ from src.analysis.weapon_parser import (
     detect_player_indices,
     scan_fire_events_all,
 )
-from src.data.repositories._weapon_kills_repo import WeaponKillsMixin
+from src.data.repositories._weapon_kills_reconcile import (
+    WeaponKillsReconcileMixin as WeaponKillsMixin,
+)
 from src.data.services._film_manifest_cache import (
     compute_needed_chunks,
     load_manifest_cache,

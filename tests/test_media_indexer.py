@@ -298,7 +298,8 @@ def test_scan_handles_inaccessible_directory(temp_db: Path, tmp_path: Path) -> N
     bad_dir = tmp_path / "inaccessible"
     bad_dir.mkdir()
 
-    with patch("src.data.media_indexer.os.walk") as m_walk:
+    # os.walk est dans media_indexer_scan (module extrait de media_indexer)
+    with patch("src.data.media_indexer_scan.os.walk") as m_walk:
         m_walk.side_effect = OSError(13, "Permission denied")
         result = indexer.scan_and_index(videos_dir=bad_dir, screens_dir=None)
     assert len(result.errors) >= 1
