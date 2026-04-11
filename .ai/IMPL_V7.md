@@ -29,14 +29,37 @@
 - [ ] Créer la branche de travail depuis `main` (nom à confirmer en Phase F)
 - [ ] Créer `streamlit_app_v7.py` à la racine — point d'entrée dédié v7, ne pas toucher `streamlit_app.py`
 - [ ] Vérifier que l'app démarre sans erreur sur ce nouveau point d'entrée
+- [ ] **Créer le package `src/ui/layout/`** (nouveau) — contiendra `header_l1.py`, `header_l2.py`, `kpi_bar.py`, `filter_chips.py`. Ne pas répartir ces modules dans `src/ui/components/` (déjà un autre rôle). Ajouter un `__init__.py` vide.
+- [ ] **Palette : fork propre confirmé** — la v7 abandonne la palette Halo Waypoint (`rgb(25, 36, 41)` / accent `#33d6ff`) en faveur d'une palette GitHub-dark. Les variables CSS actuelles dans `static/styles.css` et la dataclass `ThemeColors` dans `src/config.py` restent en place pour `streamlit_app.py` (v6). `streamlit_app_v7.py` charge exclusivement `src/ui/theme/v7_theme.css` et utilise `PLOTLY_V7_CONFIG`.
 
 ### A1 — Design system CSS
 
 - [ ] Créer `src/ui/theme/v7_theme.css` avec les variables CSS de la palette
 - [ ] Appliquer via `st.markdown(<style>, unsafe_allow_html=True)` dans le shell
-- [ ] Variables à définir : `--bg-main #0d1117` · `--bg-surface #161b22` · `--border #21262d` · `--text-primary #e6edf3` · `--text-muted #8b949e` · `--accent #3d8eb9` · `--win #3fb950` · `--loss #f85149` · `--neutral #6e7681`
-- [ ] Créer constante `PLOTLY_V7_CONFIG` dans `src/ui/streamlit_modern.py` : background `#0d1117`, gridcolor `#21262d`, font color `#e6edf3`, couleur série par défaut `#3d8eb9`
+- [ ] Variables à définir dans `v7_theme.css` : `--bg-main #0b0f14` · `--bg-surface #121820` · `--bg-surface-alt #161d26` · `--border-subtle #202938` · `--border-strong #273241` · `--text-primary #e8eef5` · `--text-secondary #93a1b2` · `--text-muted #6f7c8a` · `--accent #4b8db8` · `--accent-soft #7fb3d5` · `--win #49b36b` · `--loss #d95c5c` · `--neutral #6f7c8a`
+- [ ] Rattacher chaque token a un usage explicite : `bg-main` = fond app, `bg-surface` = cards/panneaux, `bg-surface-alt` = zones secondaires/onglets actifs, `border-subtle` = separateurs courants, `border-strong` = etats actifs, `text-primary` = titres/KPI, `text-secondary` = labels/captions, `text-muted` = metadonnees, `accent` = selection/action principale, `accent-soft` = focus/hover leger, `win`/`loss`/`neutral` = semantique uniquement
+- [ ] Regles de palette v7 : aucun fond translucide, aucun gradient decoratif, une seule vraie couleur d'accent visible, vert/rouge reserves aux etats, pas de carte blanche ni de glow
+- [ ] Créer constante `PLOTLY_V7_CONFIG` dans `src/ui/streamlit_modern.py` : `paper_bgcolor`/`plot_bgcolor` alignes sur la palette v7, `font.color` lisible sur fond sombre, `gridcolor` discret mais visible
+- [ ] **`PLOTLY_V7_CONFIG` doit être branché sur `ThemeColors` de `src/config.py`** — ne pas dupliquer les valeurs couleur en dur. Pattern : `PLOTLY_V7_CONFIG` lit `THEME_COLORS_V7` (nouvelle instance `ThemeColors` avec la palette fork) pour le fond, la police et les gridlines. Cela garantit que Python et CSS partagent une seule source de vérité pour les couleurs v7.
+- [ ] Les couleurs de donnees Plotly restent ouvertes a ce stade : par defaut conserver les couleurs existantes des barres, courbes, axes et traces tant qu'elles restent lisibles dans le theme v7 ; ne figer une palette data qu'apres validation visuelle dans l'app
 - [ ] Remplacer `PLOTLY_CLEAN_CONFIG` par `PLOTLY_V7_CONFIG` dans `streamlit_app_v7.py`
+
+### A1bis — Polish visuel des graphes
+
+> Objectif : harmoniser le rendu des charts sans changer leur logique analytique ni leur structure.
+
+- [ ] Définir une charte Plotly légère au-dessus de `PLOTLY_V7_CONFIG` : police, tailles de titres, labels axes, ticks, légendes, hover labels, marges, fonds `paper`/`plot`, contraste des gridlines
+- [ ] Ne pas modifier les graphes en eux-mêmes : mêmes métriques, mêmes types de charts, même hiérarchie d'information
+- [ ] Aligner les charts avec le shell v7 : fond cohérent avec les cards, texte secondaire lisible, accents visuels sobres, pas d'effet décoratif supplémentaire
+- [ ] Vérifier le rendu sur 5 à 10 graphes représentatifs : timeseries, radar, heatmap, distribution, timeline, cartes delta
+- [ ] Autoriser des exceptions locales uniquement si le thème global dégrade la lisibilité d'un chart précis
+- [ ] **Corriger les deux graphes à fond clair hérités avant intégration dans les hubs** — ces fichiers cassent déjà le thème sombre actuel et seront encore plus visibles en v7 :
+  - `src/visualization/friends_impact_heatmap.py` L244 : `plot_bgcolor="rgba(245, 245, 245, 0.5)"` → remplacer par `THEME_COLORS.bg_plot_rgba(1.0)`
+  - `src/visualization/friends_impact_scatter.py` L196 : `plot_bgcolor="rgba(248,250,252,0.92)"` + L184 gridcolor clair → aligner sur le thème sombre
+
+**Risques A1bis :**
+- Un thème Plotly trop global peut dégrader les heatmaps, radars ou annotations si leurs contrastes actuels sont déjà fins
+- Certains modules peuvent déjà surcharger leur `layout` localement ; recenser ces exceptions avant d'imposer le thème partout
 
 ### A2 — Shell global L1
 
@@ -51,6 +74,7 @@
 
 **Fichiers sources à lire avant :** `src/app/page_router.py` (routing actuel), `streamlit_app.py` (dispatch actuel)
 
+- [ ] **Rendre `page_router.py` déclaratif avant de le refondre** — l'actuel est une liste plate de 10 slugs avec labels i18n. Avant d'ajouter les 6 sections parent + hubs imbriqués, extraire les pages dans une structure de données (`dict` ou `dataclass SectionDef`) qui sépare slug / label i18n / module / section parente. Cela évite une réécriture monolithique.
 - [ ] Créer ou adapter `src/app/page_router.py` pour le dispatch v7 — 6 sections
 - [ ] Chaque section pointe vers son module existant pour l'instant (hubs créés en Phase C)
 - [ ] Compatibilité deep links existants : paramètres URL legacy honorés et redirigés
@@ -61,6 +85,7 @@
 - [ ] Masquer la sidebar via CSS (`[data-testid="stSidebar"] { display: none; }`)
 - [ ] Vérifier qu'aucun widget dans la sidebar n'alimente un `session_state` utilisé ailleurs
 - [ ] Les pages existantes continuent de fonctionner dans le nouveau shell (test manuel des 6 sections)
+- [ ] **Isoler les règles CSS sidebar orphelines dans `static/styles.css`** — baliser toutes les règles ciblant `[data-testid="stSidebar"]` et ses enfants avec un bloc commentaire `/* SIDEBAR — orphan en v7, retrait en Phase E3 */`. `static/styles.css` fait 2292L ; identifier et borner ces règles maintenant évite de les chercher au moment du retrait en E3.
 
 ### A5 — Smoke tests Phase A
 
@@ -95,6 +120,10 @@
 
 ### B2 — Filtres découplés de la sidebar
 
+**Prérequis B2 (à faire avant de modifier quoi que ce soit) :**
+- `filters_render.py` fait 494L (quasi à la limite des 500L). Il ne sépare pas « quoi filtrer » de « où rendre » — tout est couplé sidebar. Avant de déplacer les filtres dans un drawer L2, **extraire la logique pure de filtrage** dans `_filters_logic.py` (calcul des options, reconciliation, application) et garder `filters_render.py` pour le rendu uniquement. Si ce découpage n'est pas fait, le fichier dépassera 500L puis le drawer et le sidebar seront mélangés dans le même module.
+- `filter_state.py` (459L) n'a pas le concept de **scope** (solo/squad/all) comme dimension persistée — l'ajouter ici avant B3 (KPI bar en dépend).
+
 - [ ] Lire `filters_render.py` en entier avant de toucher quoi que ce soit
 - [ ] Identifier tous les widgets qui écrivent dans `session_state` depuis la sidebar
 - [ ] Déplacer le rendu des filtres dans un panneau accessible depuis L2 (drawer ou expander compact sous le bandeau)
@@ -119,6 +148,24 @@
 - [ ] Synchronisation avec `filter_state.py`
 
 **Risque B4 :** s'assurer que la suppression d'une chip met à jour l'état ET re-rend correctement L2 + KPI bar + le workspace — tester le cycle complet sur un onglet Stats.
+
+---
+
+## Prérequis Phase C — Découpe des god files
+
+> À traiter avant d'intégrer quoi que ce soit dans les hubs. Ces 5 fichiers dépassent ou frôlent 500L et seront réintégrés dans plusieurs hubs — les intégrer tels quels traînerait la dette dans la nouvelle archi.
+
+| Fichier | Lignes | Action |
+|---|---|---|
+| `src/ui/pages/match_view_scoreboard_detail.py` | 624L | Extraire la logique de scoring en `match_view_scoreboard_logic.py` |
+| `src/ui/pages/teammates_charts.py` | 535L | Séparer fragment wrappers / builders de figures / helpers en sous-modules |
+| `src/ui/pages/session_compare.py` | 529L | Logique state inline → extraire dans `_session_compare_state.py` |
+| `src/ui/pages/match_view_helpers.py` | 505L | Séparer helpers rendu / helpers données |
+| `src/ui/pages/session_compare_charts.py` | 501L | Extraire les builders figure dans `_session_compare_figures.py` |
+
+- [ ] Chaque découpe doit laisser le fichier source sous 400L après split
+- [ ] Vérifier que les tests existants passent après chaque split (aucun test cassé)
+- [ ] Ne pas modifier la logique fonctionnelle — seule la répartition de code change
 
 ---
 
@@ -307,6 +354,9 @@ Pour chaque item ci-dessous, vérifier que l'information est accessible en v7 :
 
 - [ ] Palette cohérente sur toutes les sections (backgrounds, textes, accent)
 - [ ] Tous les `st.plotly_chart` utilisent `PLOTLY_V7_CONFIG`
+- [ ] Police, tailles, ticks, légendes et hover labels cohérents sur les graphes clés
+- [ ] Contraste suffisant entre fonds, gridlines, axes et annotations sur desktop et mobile
+- [ ] Les exceptions locales au thème global sont documentées et justifiées par la lisibilité
 - [ ] Aucun `border-radius` > 8px sur les cards
 - [ ] Aucun emoji dans les titres de sections
 - [ ] Typographie : 3 niveaux max, pas de hero metric géant
@@ -330,16 +380,43 @@ Pour chaque item ci-dessous, vérifier que l'information est accessible en v7 :
 ### F0 — Décisions d'architecture
 
 - [x] **Nom de branche confirmé** : `v7/cockpit`
-- [ ] **Stratégie données** : le service preview monte les mêmes volumes DuckDB que le service principal — en **read-only** pour le preview (pas de sync depuis le preview, évite les conflits d'écriture concurrente sur les mêmes fichiers DuckDB)
+- [x] **Stratégie déploiement** : répertoire séparé `/opt/levelup-preview/` + `docker-compose.override.yml` — ne pas modifier `docker-compose.yml` du service principal
+- [ ] **Stratégie données** : le service preview monte `/opt/levelup/data` en **read-only** (`data:ro`) — pas de sync depuis le preview, évite les conflits d'écriture concurrente sur les mêmes fichiers DuckDB
 - [ ] **Sync** : reste exclusivement sur le service principal (v6) — le preview consomme les données produites par v6
+- [ ] **Bouton Sync UI** : vérifier si le disabler explicitement dans `streamlit_app_v7.py` (le volume `:ro` empêche les écritures DuckDB, mais les appels API Halo se déclencheraient quand même si l'utilisateur clique). Option : réutiliser `LEVELUP_DEMO_MODE=true` qui masque déjà le bouton sync via `is_demo_mode()` — vérifier que cela ne force pas des données de démo dans le contexte preview
 
-### F1 — Service Docker preview
+### F1 — Mise en place initiale du service preview (VPS)
 
-- [ ] Ajouter le service `levelup-preview` dans `docker-compose.yml`
-- [ ] Port dédié (ex: `127.0.0.1:8503:8501`)
-- [ ] Point d'entrée : `streamlit_app_v7.py`
-- [ ] Volumes data en read-only (même chemin que le service principal)
-- [ ] Variables d'environnement identiques au service principal sauf sync désactivé
+> À faire une seule fois via SSH sur le VPS.
+
+- [ ] **Clone initial** : `git clone <repo> /opt/levelup-preview && cd /opt/levelup-preview && git checkout v7/cockpit`
+- [ ] **Copier les configs depuis la prod** (une seule fois) :
+  ```bash
+  cp /opt/levelup/.env.local /opt/levelup-preview/
+  cp /opt/levelup/app_settings.json /opt/levelup-preview/
+  cp /opt/levelup/db_profiles.json /opt/levelup-preview/
+  ```
+- [ ] **Créer `/opt/levelup-preview/docker-compose.override.yml`** :
+  ```yaml
+  services:
+    levelup:
+      container_name: levelup-preview
+      command: ["streamlit", "run", "streamlit_app_v7.py", "--server.port=8501"]
+      ports:
+        - "127.0.0.1:8502:8501"
+      volumes:
+        - /opt/levelup/data:/app/data:ro
+        - ./db_profiles.json:/app/db_profiles.json
+        - ./app_settings.json:/app/app_settings.json
+        - ./.env.local:/app/.env.local
+  ```
+- [ ] **Lancer** : `docker compose up -d --build`
+- [ ] Vérifier que le container démarre sur `streamlit_app_v7.py` (logs : `docker compose logs -f`)
+
+**Mise à jour du preview après un push :**
+```bash
+cd /opt/levelup-preview && git pull && docker compose up -d --build
+```
 
 ### F2 — CI/CD workflow preview
 
@@ -385,6 +462,6 @@ A0 → A1 → A2 → A3 → A4 → A5
                                     F0 → F1 → F2 → F3 → F4 → F5
 ```
 
-**Point de synchronisation clé :** A1 (design system + `PLOTLY_V7_CONFIG`) doit être stable avant d'attaquer B et C — tous les hubs s'appuient sur ces variables.
+**Point de synchronisation clé :** A1/A1bis (design system + `PLOTLY_V7_CONFIG` + polish visuel des charts) doivent être stables avant d'attaquer B et C — tous les hubs s'appuient sur ces variables.
 
 **Point de synchronisation clé :** A3 (routing) doit supporter le passage de contexte (filtre ou match_id) dès le départ — C5 (Explorer) et C6 (Médias) en dépendent.

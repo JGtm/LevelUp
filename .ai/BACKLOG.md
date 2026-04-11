@@ -1,6 +1,6 @@
 ﻿— Tâches et TODO centralisés
 
-> Mis à jour le 2026-04-10.
+> Mis à jour le 2026-04-11.
 
 ---
 
@@ -9,6 +9,30 @@
 ---
 
 ## 📋 Backlog
+
+---
+
+### [Auth] Simplifier l'onboarding et sortir le wizard in-app du parcours principal
+
+**Noté le** : 2026-04-11 | **Priorité** : Haute (clarification produit + réduction de dette visible)
+
+**Référence plan** : `.ai/PLAN_AUTH_WIZARD_SIMPLIFICATION.md`
+
+**Problème** : Le produit expose encore deux portes d'entrée de setup (`launcher` + wizard in-app), plusieurs vocabulaires auth (Device Code moderne vs Azure manuel / refresh token legacy), et une surface UI/doc plus technique que nécessaire alors que le client ID est désormais intégré.
+
+**Décision cible** : Faire de `launcher + Device Code Flow + stockage token en base joueur` la seule voie standard pour l'utilisateur final. Le wizard in-app ne doit plus être un onboarding complet ; il doit soit disparaître du flux principal, soit être réduit à un écran minimal de connexion / récupération.
+
+**Solution** : Appliquer le plan dédié de simplification auth/onboarding, avec priorité aux surfaces visibles avant purge profonde du legacy.
+
+**Changements ciblés** :
+1. UI : retirer le mode Azure, la saisie manuelle du client ID et le collage manuel du refresh token du parcours standard
+2. UX app : remplacer le wizard complet par un écran minimal de connexion / recovery autour du Device Code Flow
+3. Auth : déclarer explicitement la couche auth moderne comme source de vérité produit
+4. CLI : garder un fallback headless moderne, centré sur le Device Code Flow uniquement
+5. Docs : aligner installation / configuration / FAQ sur une seule voie recommandée, sans Azure manuel dans le parcours standard
+6. Validation : tester réellement les scénarios first-run, reconnexion, headless et multi-joueurs
+
+**Point de vigilance** : ne pas casser trop tôt les chemins legacy encore utiles au dev et aux endpoints player-gated ; commencer par retirer la confusion visible (UI + docs), puis nettoyer le legacy profond dans un second temps.
 
 ---
 

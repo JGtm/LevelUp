@@ -284,6 +284,7 @@ Je propose une hiérarchie de décision en trois niveaux :
 2. Navigation primaire 6 sections
 3. Compatibilité complète avec les deep links existants
 4. Sidebar masquée mais non supprimée
+5. Polish visuel léger des charts : typographie, fonds, gridlines, légendes, hover labels, sans changer la structure des graphes
 
 ### Phase B — Contextes analytiques
 
@@ -342,6 +343,7 @@ Je propose une hiérarchie de décision en trois niveaux :
 - Nouvelles vues autorisées uniquement via la liste fermée D1–D5 (Phase D) — tout ajout hors liste est différé en v8
 - L'objectif n'est pas de préserver la géographie actuelle des pages, mais la profondeur d'information
 - `Accueil` devient un espace de pilotage, pas une simple page `Dernier match`
+- Le rendu des charts est revu à la marge en Phase A : police, couleurs de fond, gridlines, légendes, hover labels et marges peuvent être harmonisés sans refonte des graphes eux-mêmes
 - Accueil Mission Control : chargement progressif Option B — A1 (hero) + A5 (raccourcis) synchrones, A2 (session solo) + A3 (session escouade) en `@st.fragment`
 - `Stats` et `Escouade` deviennent de vrais hubs, chacun avec sa logique propre
 - Onglet `Synergies` = réorganisation d'existants (`render_synergy_radar`, `render_impact_taquinerie`, `render_squad_cadence_section`) — pas de création
