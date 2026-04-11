@@ -8,7 +8,6 @@ Graphes d'évolution des statistiques dans le temps.
 from __future__ import annotations
 
 import logging
-import re
 
 import polars as pl
 import streamlit as st
@@ -17,8 +16,10 @@ from src.app.kpis_render import render_kpis_section
 from src.data.services.timeseries_service import TimeseriesService
 from src.ui.chart_utils import safe_chart_render
 from src.ui.components.browser_storage import hints_visible
+from src.ui.components.info_note import render_info_note as _render_note
 from src.ui.i18n import get_lang, t
 from src.ui.pages._timeseries_distributions import render_correlations, render_distributions
+from src.ui.pages._timeseries_form import render_form_score_section as _render_form_score_section
 from src.ui.pages._timeseries_intensity import render_intensity_heatmap as _render_intensity_heatmap
 from src.ui.pages._timeseries_weapons import render_weapon_kills_chart as _render_weapon_kills_chart
 from src.ui.pages.timeseries_skill_rank import render_skill_rank_progression
@@ -77,6 +78,8 @@ def _render_summary_tab(  # noqa: PLR0913
 ) -> None:
     """Affiche l'onglet Résumé (KPIs, KDA, résultats, séries)."""
     render_kpis_section(dff, df_full)
+    st.divider()
+    _render_form_score_section(df_full, dff)
     st.divider()
     _render_kda_section(dff, lang=lang, db_path=db_path, xuid=xuid)
     _render_outcomes_over_time(dff, is_session_scope)
@@ -189,35 +192,6 @@ def _render_cumulative_performance(dff: pl.DataFrame, lang: str = "fr") -> None:
         _render_note(t("ts_note_regression"))
     else:
         st.info(t("ts_trend_min_matches"))
-
-
-def _render_note(text: str) -> None:
-    """Encadré conclusif discret sous chaque graphe (thème Halo)."""
-    if not hints_visible():
-        return
-    lines = text.split("\n")
-    parts: list[str] = []
-    in_list = False
-    for line in lines:
-        if line.startswith("- "):
-            if not in_list:
-                parts.append("<ul>")
-                in_list = True
-            item = re.sub(r"\*\*(.+?)\*\*", r"<strong>\1</strong>", line[2:])
-            parts.append(f"<li>{item}</li>")
-        else:
-            if in_list:
-                parts.append("</ul>")
-                in_list = False
-            if line.strip():
-                item = re.sub(r"\*\*(.+?)\*\*", r"<strong>\1</strong>", line)
-                parts.append(f"<p>{item}</p>")
-    if in_list:
-        parts.append("</ul>")
-    st.markdown(
-        f'<div class="ts-note">{"".join(parts)}</div>',
-        unsafe_allow_html=True,
-    )
 
 
 @fragment_if_available

@@ -13,6 +13,7 @@ import contextlib
 import json
 import logging
 import os
+import threading
 from typing import Any, Literal
 
 from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
@@ -36,12 +37,13 @@ class AppSettings(BaseModel):
     et ignore les clés inconnues (extra='ignore') comme ``_comment``.
     """
 
-    model_config = ConfigDict(extra="ignore", str_strip_whitespace=True)
+    model_config = ConfigDict(extra="ignore", str_strip_whitespace=True, frozen=True)
 
     # Discord
     discord_notifications_enabled: bool = False
     discord_webhook_url: str = ""  # Fallback si DISCORD_WEBHOOK_URL absent de l'env
-    discord_notify_sync: bool = True  # Notif après chaque sync/backfill
+    discord_notify_sync: bool = True  # Notif après chaque sync
+    discord_notify_backfill: bool = True  # Notif après chaque backfill
     discord_notify_new_version: bool = True  # Notif lors d'une nouvelle version majeure (vX.Y)
     last_notified_version: str = ""  # Version lors du dernier envoi de notif déploiement
 
@@ -214,23 +216,31 @@ class AppSettings(BaseModel):
         except (ValueError, TypeError):
             return cls.model_fields[info.field_name].default
 
-    @model_validator(mode="after")
-    def _migrate_legacy_media_dirs(self) -> AppSettings:
-        """Migration : si base vide mais anciens champs renseignés, propose le parent commun."""
-        if not self.media_captures_base_dir and (self.media_screens_dir or self.media_videos_dir):
-            from pathlib import Path
 
-            paths = [Path(p) for p in [self.media_screens_dir, self.media_videos_dir] if p]
-            if paths:
-                try:
-                    common = paths[0].parent
-                    for p in paths[1:]:
-                        common = Path(os.path.commonpath([str(common), str(p)]))
-                    if str(common).strip():
-                        self.media_captures_base_dir = str(common)
-                except (ValueError, TypeError):
-                    pass
-        return self
+def _apply_legacy_migrations(data: dict) -> dict:
+    """Transformations de schéma one-time appliquées uniquement au chargement disque.
+
+    N'est jamais appelé sur model_copy ou patch_settings.
+    Pour les migrations futures : ajouter un bloc ici, jamais un @model_validator.
+    """
+    # Migration media_captures_base_dir (anciens champs media_screens_dir / media_videos_dir)
+    if not data.get("media_captures_base_dir") and (
+        data.get("media_screens_dir") or data.get("media_videos_dir")
+    ):
+        from pathlib import Path
+
+        paths = [
+            Path(p)
+            for p in [data.get("media_screens_dir", ""), data.get("media_videos_dir", "")]
+            if p
+        ]
+        with contextlib.suppress(ValueError, TypeError):
+            common = paths[0].parent
+            for p in paths[1:]:
+                common = Path(os.path.commonpath([str(common), str(p)]))
+            if str(common).strip():
+                data["media_captures_base_dir"] = str(common)
+    return data
 
 
 def _settings_bak_path(path: str) -> str:
@@ -257,7 +267,7 @@ def _try_parse_settings(path: str, label: str) -> AppSettings | None:
         return None
 
     try:
-        return AppSettings.model_validate(obj)
+        return AppSettings.model_validate(_apply_legacy_migrations(obj))
     except Exception as exc:
         logger.error("Settings %s : validation échouée (%s)", label, exc)
         return None
@@ -337,7 +347,6 @@ def _atomic_write(path: str, content: str) -> None:
     """
     import shutil
     import tempfile
-    import time
 
     dir_path = os.path.dirname(path) or "."
     os.makedirs(dir_path, exist_ok=True)
@@ -355,15 +364,22 @@ def _atomic_write(path: str, content: str) -> None:
                 os.close(fd)
             raise
 
-        # Remplacement atomique — retry unique sur Windows si le fichier est verrouillé
-        try:
+        # Remplacement atomique — retry multiple sur Windows (verrou antivirus / Streamlit)
+        _replaced = False
+        if os.name == "nt":
+            for _attempt, _delay in enumerate([0.05, 0.1, 0.2, 0.5], start=1):
+                try:
+                    os.replace(tmp_path, path)
+                    _replaced = True
+                    break
+                except PermissionError:
+                    import time as _time
+
+                    _time.sleep(_delay)
+            if not _replaced:
+                os.replace(tmp_path, path)  # dernière tentative — lève si toujours bloqué
+        else:
             os.replace(tmp_path, path)
-        except PermissionError:
-            if os.name == "nt":
-                time.sleep(0.1)
-                os.replace(tmp_path, path)
-            else:
-                raise
         tmp_path = None  # Succès : ne pas supprimer dans finally
 
     finally:
@@ -379,30 +395,79 @@ def _atomic_write(path: str, content: str) -> None:
         logger.warning("Backup settings échoué (non-bloquant) : %s", exc)
 
 
+# ---------------------------------------------------------------------------
+# V3 — sources de vérité unifiées
+# ---------------------------------------------------------------------------
+
+_SENTINEL = object()  # Valeur sentinelle « aucun changement »
+_WRITE_LOCK: threading.Lock = threading.Lock()  # Sérialise les I/O disque (multi-tab)
+_PROCESS_CACHE: dict[str, str | None] = {"last_content": None}  # Dédup par contenu
+
+
+def _write_settings(settings: AppSettings) -> tuple[bool, str]:
+    """Sauvegarde atomique + thread-safe. Usage interne uniquement.
+
+    L'API publique est patch_settings().
+    """
+    with _WRITE_LOCK:
+        try:
+            content = json.dumps(settings.model_dump(), ensure_ascii=False, indent=2)
+            if content == _PROCESS_CACHE["last_content"]:
+                return True, ""  # dédup — contenu identique
+            _atomic_write(get_settings_path(), content)
+            _PROCESS_CACHE["last_content"] = content
+
+            if __debug__:
+                _verify = _try_parse_settings(get_settings_path(), "post-write verify")
+                if _verify is not None:
+                    for _field in ("show_records", "lang", "discord_notify_sync"):
+                        _w = getattr(settings, _field, None)
+                        _d = getattr(_verify, _field, None)
+                        if _w != _d:
+                            logger.error(
+                                "_write_settings MISMATCH: field=%s wrote=%r disk=%r",
+                                _field,
+                                _w,
+                                _d,
+                            )
+
+            return True, ""
+        except Exception as exc:
+            logger.error("_write_settings échoué : %s", exc)
+            return False, f"Impossible d'écrire {get_settings_path()}: {exc}"
+
+
+def patch_settings(key: str, value: Any) -> tuple[AppSettings, bool, str]:
+    """Met à jour un champ dans session_state et persiste sur disque.
+
+    Toujours lire depuis session_state — jamais depuis un paramètre local.
+    Retourne (nouvel_objet, succès, message_erreur).
+    """
+    import streamlit as st
+
+    current: AppSettings | None = st.session_state.get("app_settings")
+    if current is None or not isinstance(current, AppSettings):
+        logger.debug("patch_settings: session_state vide, chargement depuis disque")
+        current = load_settings()
+
+    if getattr(current, key, _SENTINEL) == value:
+        return current, True, ""  # Aucun changement, pas d'écriture inutile
+
+    updated = current.model_copy(update={key: value})
+    st.session_state["app_settings"] = updated  # Mettre à jour AVANT l'écriture
+    ok, err = _write_settings(updated)
+    if not ok:
+        logger.error("patch_settings: rollback %s=%r — %s", key, value, err)
+        st.session_state["app_settings"] = current  # Rollback
+    else:
+        logger.debug("patch_settings: %s=%r persisté", key, value)
+    return updated, ok, err
+
+
 def save_settings(settings: AppSettings) -> tuple[bool, str]:
     """Sauvegarde les paramètres dans le fichier JSON de façon atomique.
 
-    Séquence :
-    1. Sérialisation en mémoire (si erreur, le fichier n'est pas touché)
-    2. Écriture dans un fichier temporaire du même dossier
-    3. Remplacement atomique (os.replace)
-    4. Copie du fichier valide en backup (.json.bak)
+    Conservé pour compatibilité avec les scripts CLI.
+    Dans le code UI, préférer patch_settings().
     """
-    import traceback as _tb
-
-    _caller = _tb.extract_stack()[-2]
-    logger.info(
-        "save_settings: show_records=%s  [appelé depuis %s:%d %s()]",
-        getattr(settings, "show_records", "?"),
-        _caller.filename.split("\\")[-1].split("/")[-1],
-        _caller.lineno,
-        _caller.name,
-    )
-    path = get_settings_path()
-    try:
-        content = json.dumps(settings.model_dump(), ensure_ascii=False, indent=2)
-        _atomic_write(path, content)
-        return True, ""
-    except Exception as e:
-        logger.error("save_settings échoué : %s", e)
-        return False, f"Impossible d'écrire {path}: {e}"
+    return _write_settings(settings)

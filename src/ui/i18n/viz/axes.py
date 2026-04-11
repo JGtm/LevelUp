@@ -126,4 +126,6 @@ STRINGS: dict[str, dict[str, str] | str] = {
     "axis_cadence_kills": {"fr": "Kills", "en": "Kills"},
     "axis_intensity_phase": {"fr": "Phase du match (%)", "en": "Match phase (%)"},
     "axis_intensity_match": {"fr": "Match", "en": "Match"},
+    # ── Score de forme ────────────────────────────────────────────────────────
+    "axis_form_score": {"fr": "Forme récente", "en": "Recent form"},
 }

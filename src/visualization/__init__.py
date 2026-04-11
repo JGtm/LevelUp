@@ -1,5 +1,6 @@
 """Module de visualisation (graphiques Plotly)."""
 
+from src.visualization._form_score import plot_form_score_history
 from src.visualization._squad_timeline import plot_squad_performance_timeline
 from src.visualization.antagonist_charts import (
     create_kd_indicator,
@@ -30,7 +31,6 @@ from src.visualization.maps import (
 )
 from src.visualization.maps_outcome import (
     plot_map_lollipop,
-    plot_map_outcome_timeline,
     plot_map_perf_vs_history,
     plot_map_winrate_bullet,
 )
@@ -116,7 +116,6 @@ __all__ = [
     "plot_map_comparison",
     "plot_map_ratio_with_winloss",
     "plot_map_lollipop",
-    "plot_map_outcome_timeline",
     "plot_map_winrate_bullet",
     "plot_map_perf_vs_history",
     "plot_squad_map_heatmap",
@@ -165,4 +164,6 @@ __all__ = [
     "get_radar_thresholds",
     # Squad timeline
     "plot_squad_performance_timeline",
+    # Score de forme
+    "plot_form_score_history",
 ]

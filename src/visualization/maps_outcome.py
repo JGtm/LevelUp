@@ -19,14 +19,10 @@ from src.visualization._maps_outcome_bullet import (  # noqa: F401 — re-export
 from src.visualization._maps_outcome_history import (  # noqa: F401 — re-export
     plot_map_perf_vs_history,
 )
-from src.visualization._maps_outcome_timeline import (  # noqa: F401 — re-export
-    plot_map_outcome_timeline,
-)
 from src.visualization.theme import apply_halo_plot_style
 
 __all__ = [
     "plot_map_lollipop",
-    "plot_map_outcome_timeline",
     "plot_map_perf_vs_history",
     "plot_map_winrate_bullet",
 ]

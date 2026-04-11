@@ -178,6 +178,7 @@ class TestSaveSettings:
         with (
             patch("src.ui.settings.get_settings_path", return_value=str(settings_file)),
             patch("src.ui.settings._atomic_write", side_effect=OSError("disk full")),
+            patch.dict("src.ui.settings._PROCESS_CACHE", {"last_content": None}),
         ):
             ok, err = save_settings(AppSettings())
         assert ok is False

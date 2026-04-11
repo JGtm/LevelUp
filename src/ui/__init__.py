@@ -16,7 +16,7 @@ from src.ui.medals import (
 from src.ui.path_picker import directory_input, file_input
 from src.ui.profile_api import ProfileAppearance, get_profile_appearance, get_xuid_for_gamertag
 from src.ui.profile_api_tokens import ensure_spnkr_tokens
-from src.ui.settings import AppSettings, load_settings, save_settings
+from src.ui.settings import AppSettings, load_settings, patch_settings, save_settings
 from src.ui.spartan_id import SpartanIdCard, render_spartan_id
 from src.ui.styles import get_hero_html, load_css
 from src.ui.translations import translate_pair_name, translate_playlist_name
@@ -46,6 +46,7 @@ __all__ = [
     # settings
     "AppSettings",
     "load_settings",
+    "patch_settings",
     "save_settings",
     # profile api
     "ProfileAppearance",

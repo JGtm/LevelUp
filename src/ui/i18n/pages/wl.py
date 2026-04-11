@@ -161,14 +161,6 @@ STRINGS: dict[str, dict[str, str] | str] = {
         "fr": "V/D par carte",
         "en": "W/L by map",
     },
-    "wl_map_timeline_title": {
-        "fr": "Évolution chronologique par carte",
-        "en": "Chronological map evolution",
-    },
-    "wl_map_timeline_caption": {
-        "fr": "Chaque cercle = 1 match. Les matchs de la sélection courante sont mis en évidence (plus grands, contour blanc).",
-        "en": "Each dot = 1 match. Current selection highlighted (larger, white border).",
-    },
     "wl_map_bullet_title": {
         "fr": "Taux de victoires vs historique",
         "en": "Session win rate vs history",

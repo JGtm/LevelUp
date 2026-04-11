@@ -10,17 +10,21 @@ import plotly.graph_objects as go
 import polars as pl
 import streamlit as st
 
+from src.analysis._weapon_data import (
+    EXCLUDED_WEAPON_IDS as _FILM_EXCLUDED_IDS,
+)
+from src.analysis._weapon_data import (
+    GRENADE_WEAPON_ID as _GRENADE_WEAPON_ID,
+)
+from src.analysis._weapon_data import (
+    MELEE_WEAPON_ID as _MELEE_WEAPON_ID,
+)
 from src.config import OKABE_ITO_PALETTE
+from src.ui.components.browser_storage import hints_visible
 from src.ui.i18n import t
 from src.ui.streamlit_modern import PLOTLY_CLEAN_CONFIG
 
 logger = logging.getLogger(__name__)
-
-# IDs sentinel pour grenades/mêlée (définis dans EXCLUDED_WEAPON_IDS, ici réutilisés)
-_GRENADE_WEAPON_ID = 0
-_MELEE_WEAPON_ID = 1
-# weapon_ids à exclure du film (incomplet) avant réinjection API
-_FILM_EXCLUDED_IDS = {_GRENADE_WEAPON_ID, _MELEE_WEAPON_ID}
 
 
 def _resolve_weapon_name(wid: int, lang: str) -> str:
@@ -299,7 +303,7 @@ def render_weapon_kills_bar_chart(
     data = load_weapon_kills_data(player_infos, db_path)
 
     if not data:
-        st.caption("ℹ Aucune donnée d'armes pour ces matchs")
+        st.caption(t("tm_weapons_no_data"))
         return
 
     from src.ui.i18n import get_lang
@@ -329,6 +333,8 @@ def render_weapon_kills_bar_chart(
         showlegend=False,
     )
     fig.update_xaxes(showgrid=False, visible=False)
+    if hints_visible():
+        st.caption(t("tm_weapons_chart_caption"))
     st.plotly_chart(
         fig,
         width="stretch",
