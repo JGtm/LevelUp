@@ -31,11 +31,17 @@ _cache_lock = threading.Lock()
 
 @dataclass(frozen=True)
 class HomeBattlepassInfo:
-    """Info de progression battlepass pour l'accueil."""
+    """Info d'opération/saison courante pour l'accueil.
+
+    career_rank : rang carrière actuel (ex: 174)
+    career_rank_label : label lisible (ex: "Caporal d'élite IV")
+    track_name : identifiant de l'opération (ex: "S13Op01")
+    track_image_bytes : artwork de l'opération (BattlePassImage)
+    """
 
     track_name: str
-    current_progress: int
-    is_owned: bool
+    career_rank: int
+    career_rank_label: str | None = None
     track_image_bytes: bytes | None = None
 
 
@@ -54,63 +60,35 @@ class HomeChallengeSummary:
 # =============================================================================
 
 
-def _build_battlepass_info(tracks_data: Any) -> tuple[HomeBattlepassInfo | None, str | None]:
-    """Construit HomeBattlepassInfo + reward_track_path depuis PlayerRewardTracksSummary.
-
-    Retourne ``(None, None)`` si les données sont absentes ou invalides.
-    """
-    try:
-        from spnkr_pr.models.economy_additions import PlayerRewardTracksSummary
-    except ImportError:
-        return None, None
-
-    if not isinstance(tracks_data, PlayerRewardTracksSummary):
-        return None, None
-
-    ops = tracks_data.operation_reward_tracks
-    if not ops:
-        return None, None
-
-    # Opération la plus récemment mise à jour = saison/opération en cours
-    current_op = max(ops, key=lambda t: t.date_last_updated.value)
-    raw_path = current_op.reward_track_path
-    #  "Operations/Season6Operations-1.json" → "Season6Operations-1"
-    track_name = raw_path.split("/")[-1].replace(".json", "")
-
-    return HomeBattlepassInfo(
-        track_name=track_name,
-        current_progress=current_op.current_progress,
-        is_owned=current_op.is_owned,
-    ), current_op.reward_track_path
-
-
-def _build_challenge_summary(challenges_data: Any) -> HomeChallengeSummary | None:
-    """Construit HomeChallengeSummary depuis un PlayerChallenges parsé."""
-    try:
-        from spnkr_pr.models.economy_additions import PlayerChallenges
-    except ImportError:
+def _build_challenge_summary_from_json(data: dict) -> HomeChallengeSummary | None:
+    """Construit HomeChallengeSummary depuis le JSON brut de l'API /challenges."""
+    cats = data.get("CategoryProgress") or data.get("ChallengeDecks") or []
+    if not cats:
         return None
-
-    if not isinstance(challenges_data, PlayerChallenges):
-        return None
-
-    all_challenges = [ch for cat in challenges_data.categories for ch in cat.challenges]
-    if not all_challenges:
+    all_ch: list[dict] = []
+    for cat in cats:
+        for ch in cat.get("ActiveChallenges") or cat.get("Challenges") or []:
+            all_ch.append(ch)
+    if not all_ch:
         return HomeChallengeSummary(total=0, completed=0, xp_available=0, next_expiry=None)
-
-    completed = sum(1 for ch in all_challenges if ch.is_completed)
-    xp_available = sum(ch.xp_reward for ch in all_challenges if not ch.is_completed)
-
-    expiring = [
-        ch for ch in all_challenges if not ch.is_completed and ch.expiration_time is not None
-    ]
-    next_expiry: str | None = None
-    if expiring:
-        soonest = min(expiring, key=lambda c: c.expiration_time.value)
-        next_expiry = soonest.expiration_time.value.strftime("%d/%m %H:%M")
-
+    completed = sum(
+        1
+        for ch in all_ch
+        if ch.get("CompletionThreshold")
+        and ch.get("CurrentProgress", 0) >= ch["CompletionThreshold"]
+    )
+    xp_available = sum(
+        ch.get(
+            "XpReward",
+            ch.get("Reward", {}).get("InventoryRewards", [{}])[0].get("Quantity", 0)
+            if isinstance(ch.get("Reward"), dict)
+            else 0,
+        )
+        for ch in all_ch
+    )
+    next_expiry = None
     return HomeChallengeSummary(
-        total=len(all_challenges),
+        total=len(all_ch),
         completed=completed,
         xp_available=xp_available,
         next_expiry=next_expiry,
@@ -152,63 +130,117 @@ async def _resolve_tokens(
     return None
 
 
+async def _fetch_current_operation_track_path(session: Any) -> str | None:
+    """Retourne le reward_track_path de l'opération en cours via GameCMS."""
+    from datetime import datetime, timezone
+
+    from spnkr.services.gamecms_hacs import GameCmsHacsService
+
+    svc = GameCmsHacsService(session)
+    try:
+        cal_resp = await svc.get_season_calendar()
+        cal = await cal_resp.parse()
+        now = datetime.now(timezone.utc)
+        current = next(
+            (s for s in cal.seasons if s.start_date.value <= now <= s.end_date.value),
+            None,
+        )
+        if current is None and cal.seasons:
+            current = cal.seasons[-1]
+        return getattr(current, "operation_track_path", None) if current else None
+    except Exception as exc:
+        logger.debug("home_api: calendrier saison indisponible: %s", exc)
+        return None
+
+
 async def _fetch_economy_data(
     tokens: Any,
     xuid: str,
 ) -> tuple[HomeBattlepassInfo | None, HomeChallengeSummary | None]:
-    """Appels réseau Economy + GameCMS avec un token déjà résolu."""
+    """Appels réseau Economy + GameCMS avec des endpoints valides.
+
+    - Career rank     : /hi/players/xuid({xuid})/rewardtracks/careerranks/careerrank1
+    - Défis           : /hi/players/xuid({xuid})/challenges
+    - Opération       : GameCMS season_calendar + fichier JSON de l'opération
+    - Artwork         : GameCMS /hi/images/file/{BattlePassImage}
+    """
     try:
         from aiohttp import ClientSession, ClientTimeout  # noqa: I001
-        from spnkr_pr.services.economy_additions import EconomyServiceExtension
-        from spnkr_pr.services.gamecms_hacs_additions import GameCmsHacsServiceExtension
     except ImportError as exc:
-        logger.debug("home_api: dépendances manquantes: %s", exc)
+        logger.debug("home_api: aiohttp manquant: %s", exc)
         return None, None
+
+    economy_host = "https://economy.svc.halowaypoint.com"
+    gamecms_host = "https://gamecms-hacs.svc.halowaypoint.com"
+    xuid_clean = xuid.lstrip("xuid(").rstrip(")")
+
+    hdr = {
+        "Accept": "application/json",
+        "x-343-authorization-spartan": tokens.spartan_token,
+        "343-clearance": tokens.clearance_token,
+    }
 
     try:
-        async with ClientSession(timeout=ClientTimeout(total=10)) as session:
-            session.headers.update(
-                {
-                    "Accept": "application/json",
-                    "x-343-authorization-spartan": tokens.spartan_token,
-                    "343-clearance": tokens.clearance_token,
-                }
+        async with ClientSession(timeout=ClientTimeout(total=15), headers=hdr) as session:
+            career_url = (
+                f"{economy_host}/hi/players/xuid({xuid_clean})/rewardtracks/careerranks/careerrank1"
             )
-            economy_svc = EconomyServiceExtension(session)
-            tracks_resp, chal_resp = await asyncio.gather(
-                economy_svc.get_player_reward_tracks(xuid),
-                economy_svc.get_player_challenges(xuid),
+            chal_url = f"{economy_host}/hi/players/xuid({xuid_clean})/challenges"
+            op_path = await _fetch_current_operation_track_path(session)
+
+            career_resp, chal_resp = await asyncio.gather(
+                session.get(career_url),
+                session.get(chal_url),
                 return_exceptions=True,
             )
-            tracks_data = (
-                await tracks_resp.parse() if not isinstance(tracks_resp, BaseException) else None
-            )
-            chal_data = (
-                await chal_resp.parse() if not isinstance(chal_resp, BaseException) else None
-            )
-            bp_info, reward_track_path = _build_battlepass_info(tracks_data)
 
-            if bp_info is not None and reward_track_path is not None:
-                gamecms_svc = GameCmsHacsServiceExtension(session)
-                try:
-                    track_meta_resp = await gamecms_svc.get_operation_reward_track(
-                        reward_track_path
-                    )
-                    track_meta = await track_meta_resp.parse()
-                    image_bytes = await gamecms_svc.get_image_bytes(track_meta.summary_image_path)
-                    bp_info = HomeBattlepassInfo(
-                        track_name=bp_info.track_name,
-                        current_progress=bp_info.current_progress,
-                        is_owned=bp_info.is_owned,
-                        track_image_bytes=image_bytes,
-                    )
-                except Exception as exc:
-                    logger.debug("home_api: artwork opération indisponible: %s", exc)
+            career_rank = 0
+            career_rank_label = None
+            if not isinstance(career_resp, BaseException) and career_resp.status == 200:
+                career_data = await career_resp.json()
+                career_rank = career_data.get("CurrentProgress", {}).get("Rank", 0)
 
-        return bp_info, _build_challenge_summary(chal_data)
+            challenge_summary = None
+            if not isinstance(chal_resp, BaseException) and chal_resp.status == 200:
+                chal_data = await chal_resp.json()
+                challenge_summary = _build_challenge_summary_from_json(chal_data)
+
+            bp_info = None
+            if op_path:
+                track_name = op_path.split("/")[-1].replace(".json", "")
+                image_bytes = await _fetch_operation_artwork(session, gamecms_host, op_path)
+                bp_info = HomeBattlepassInfo(
+                    track_name=track_name,
+                    career_rank=career_rank,
+                    career_rank_label=career_rank_label,
+                    track_image_bytes=image_bytes,
+                )
+
+        return bp_info, challenge_summary
     except Exception as exc:
-        logger.debug("home_api: erreur fetch progressions: %s", exc)
+        logger.debug("home_api: erreur fetch economy: %s", exc)
         return None, None
+
+
+async def _fetch_operation_artwork(session: Any, gamecms_host: str, op_path: str) -> bytes | None:
+    """Télécharge l'artwork (BattlePassImage) d'une opération GameCMS."""
+    try:
+        meta_url = f"{gamecms_host}/hi/Progression/file/{op_path}"
+        async with session.get(meta_url) as r:
+            if r.status != 200:
+                return None
+            meta = await r.json(content_type=None)
+        img_path = meta.get("BattlePassImage") or meta.get("BackgroundImagePath")
+        if not img_path:
+            return None
+        img_url = f"{gamecms_host}/hi/images/file/{img_path.lstrip('/')}"
+        async with session.get(img_url) as r:
+            if r.status != 200:
+                return None
+            return await r.read()
+    except Exception as exc:
+        logger.debug("home_api: artwork opération indisponible: %s", exc)
+        return None
 
 
 async def _async_fetch_progressions(
