@@ -119,29 +119,30 @@ def render_stats_section(ctx: Any) -> None:
     )
     logger.debug("Rendu section V7 stats: vue=%s", view)
 
-    if view == "session_compare":
-        render_session_comparison_page(_build_sessions_for_compare(ctx), df_full=ctx.dff)
-        return
-    if view == "match_history":
-        render_match_history_page(
-            dff=ctx.dff,
-            waypoint_player=ctx.waypoint_player,
+    with st.container(border=True):
+        if view == "session_compare":
+            render_session_comparison_page(_build_sessions_for_compare(ctx), df_full=ctx.dff)
+            return
+        if view == "match_history":
+            render_match_history_page(
+                dff=ctx.dff,
+                waypoint_player=ctx.waypoint_player,
+                db_path=ctx.db_path,
+                xuid=ctx.xuid,
+                db_key=ctx.db_key,
+                df_full=ctx.df,
+            )
+            return
+
+        render_timeseries_page(
+            ctx.dff,
+            df_full=ctx.df,
+            base=ctx.base,
+            picked_session_labels=ctx.picked_session_labels,
             db_path=ctx.db_path,
             xuid=ctx.xuid,
             db_key=ctx.db_key,
-            df_full=ctx.df,
         )
-        return
-
-    render_timeseries_page(
-        ctx.dff,
-        df_full=ctx.df,
-        base=ctx.base,
-        picked_session_labels=ctx.picked_session_labels,
-        db_path=ctx.db_path,
-        xuid=ctx.xuid,
-        db_key=ctx.db_key,
-    )
 
 
 def render_profile_section(ctx: Any) -> None:
@@ -154,27 +155,28 @@ def render_profile_section(ctx: Any) -> None:
     )
     logger.debug("Rendu section V7 profile: vue=%s", view)
 
-    if view == "citations":
-        render_citations_page(
-            dff=ctx.dff,
-            df_full=ctx.df,
-            xuid=ctx.xuid,
+    with st.container(border=True):
+        if view == "citations":
+            render_citations_page(
+                dff=ctx.dff,
+                df_full=ctx.df,
+                xuid=ctx.xuid,
+                db_path=ctx.db_path,
+                db_key=ctx.db_key,
+                top_medals_fn=top_medals_smart,
+            )
+            return
+
+        if view == "settings":
+            render_settings_page(ctx.settings)
+            return
+
+        render_career_page(
             db_path=ctx.db_path,
+            xuid=ctx.xuid,
             db_key=ctx.db_key,
-            top_medals_fn=top_medals_smart,
+            waypoint_player=ctx.waypoint_player,
         )
-        return
-
-    if view == "settings":
-        render_settings_page(ctx.settings)
-        return
-
-    render_career_page(
-        db_path=ctx.db_path,
-        xuid=ctx.xuid,
-        db_key=ctx.db_key,
-        waypoint_player=ctx.waypoint_player,
-    )
 
 
 def render_v7_section(active_section: str, ctx: Any) -> None:
@@ -191,35 +193,38 @@ def render_v7_section(active_section: str, ctx: Any) -> None:
 
     if active_section == "squad":
         _render_section_title(get_page_label("teammates"))
-        render_teammates_page(
-            df=ctx.df,
-            dff=ctx.dff,
-            base=ctx.base,
-            me_name=ctx.me_name,
-            xuid=ctx.xuid,
-            db_path=ctx.db_path,
-            db_key=ctx.db_key,
-            aliases_key=ctx.aliases_key,
-            settings=ctx.settings,
-            picked_session_labels=ctx.picked_session_labels,
-            base_s_ui=ctx.base_s_ui,
-            include_firefight=True,
-            waypoint_player=ctx.waypoint_player,
-            build_friends_opts_map_fn=build_friends_opts_map,
-            assign_player_colors_fn=assign_player_colors,
-            plot_multi_metric_bars_fn=plot_multi_metric_bars_by_match,
-            top_medals_fn=top_medals_smart,
-        )
+        with st.container(border=True):
+            render_teammates_page(
+                df=ctx.df,
+                dff=ctx.dff,
+                base=ctx.base,
+                me_name=ctx.me_name,
+                xuid=ctx.xuid,
+                db_path=ctx.db_path,
+                db_key=ctx.db_key,
+                aliases_key=ctx.aliases_key,
+                settings=ctx.settings,
+                picked_session_labels=ctx.picked_session_labels,
+                base_s_ui=ctx.base_s_ui,
+                include_firefight=True,
+                waypoint_player=ctx.waypoint_player,
+                build_friends_opts_map_fn=build_friends_opts_map,
+                assign_player_colors_fn=assign_player_colors,
+                plot_multi_metric_bars_fn=plot_multi_metric_bars_by_match,
+                top_medals_fn=top_medals_smart,
+            )
         return
 
     if active_section == "explorer":
         _render_section_title(get_page_label("explorer"))
-        render_explorer_page(df=ctx.df, dff=ctx.df, params=ctx.match_view_params)
+        with st.container(border=True):
+            render_explorer_page(df=ctx.df, dff=ctx.df, params=ctx.match_view_params)
         return
 
     if active_section == "media":
         _render_section_title(get_page_label("media"))
-        render_media_tab(df_full=ctx.df, settings=ctx.settings)
+        with st.container(border=True):
+            render_media_tab(df_full=ctx.df, settings=ctx.settings)
         return
 
     render_profile_section(ctx)

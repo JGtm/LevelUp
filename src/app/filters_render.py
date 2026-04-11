@@ -492,3 +492,102 @@ def render_filters_sidebar(  # noqa: PLR0913
         friends_tuple=friends_tuple,
         experience_types_selected=experience_selected,
     )
+
+
+def build_filter_state_from_session(  # noqa: PLR0913
+    df: pl.DataFrame,
+    db_path: str,
+    xuid: str,
+    db_key: tuple[int, int] | None,
+    aliases_key: int | None,
+    callbacks: FilterSidebarCallbacks,
+) -> FilterState:
+    """Reconstruit FilterState depuis session_state sans rendre de widgets.
+
+    Utilisé en mode V7 où les widgets de filtres sont différés dans un popover.
+    Exécute le bookkeeping (init préférences, shadow keys, pending states)
+    mais ne rend aucun widget interactif.
+    """
+    df = _to_polars(df)
+    dmin, dmax = callbacks.date_range_fn(df)
+    player_key = _get_player_key(xuid, db_path)
+    all_options = _compute_all_filter_options(df, callbacks.clean_asset_label_fn)
+    playlist_values, mode_values, map_values, _ = all_options
+
+    _restore_shadow_keys()
+    _init_filter_preferences(
+        xuid,
+        db_path,
+        db_key,
+        aliases_key,
+        f"_filters_loaded_{player_key}",
+        f"_filters_db_key_{player_key}",
+        all_options,
+    )
+    _consume_pending_states()
+
+    filter_mode = str(st.session_state.get("filter_mode") or "Période").strip()
+
+    start_raw = st.session_state.get("start_date_cal")
+    start_d: date = start_raw if isinstance(start_raw, date) else dmin
+    end_raw = st.session_state.get("end_date_cal")
+    end_d: date = end_raw if isinstance(end_raw, date) else dmax
+
+    gap_minutes = GAP_MINUTES_FIXED
+    picked_session_labels: list[str] | None = None
+    base_s_ui: pl.DataFrame | None = None
+    friends_tuple: tuple[str, ...] | None = None
+
+    if filter_mode == "Sessions":
+        raw_sessions = st.session_state.get(SK.PICKED_SESSIONS)
+        if isinstance(raw_sessions, list) and raw_sessions:
+            picked_session_labels = raw_sessions
+        try:
+            from src.app.filters import get_friends_xuids_for_sessions
+
+            friends_tuple = get_friends_xuids_for_sessions(
+                db_path, xuid.strip(), db_key, aliases_key
+            )
+            base_s_ui = cached_compute_sessions_db(
+                db_path,
+                xuid.strip(),
+                db_key,
+                True,
+                gap_minutes,
+                friends_xuids=friends_tuple,
+            )
+        except Exception:
+            logger.warning(
+                "build_filter_state_from_session: sessions non disponibles", exc_info=True
+            )
+
+    playlists_raw = st.session_state.get(SK.FILTER_PLAYLISTS)
+    modes_raw = st.session_state.get(SK.FILTER_MODES)
+    maps_raw = st.session_state.get(SK.FILTER_MAPS)
+    exp_raw = st.session_state.get(SK.FILTER_EXPERIENCE_TYPES)
+
+    playlists_selected = (
+        sorted(playlists_raw) if isinstance(playlists_raw, (set, list)) else list(playlist_values)
+    )
+    modes_selected = sorted(modes_raw) if isinstance(modes_raw, (set, list)) else list(mode_values)
+    maps_selected = sorted(maps_raw) if isinstance(maps_raw, (set, list)) else list(map_values)
+    experience_types_selected: list[str] | None = (
+        sorted(exp_raw) if isinstance(exp_raw, (set, list)) else None
+    )
+
+    _auto_save_preferences(xuid, db_path, player_key, (playlist_values, mode_values, map_values))
+    _write_shadow_keys()
+
+    return FilterState(
+        filter_mode=filter_mode,
+        start_d=start_d,
+        end_d=end_d,
+        gap_minutes=gap_minutes,
+        picked_session_labels=picked_session_labels,
+        playlists_selected=playlists_selected,
+        modes_selected=modes_selected,
+        maps_selected=maps_selected,
+        base_s_ui=base_s_ui,
+        friends_tuple=friends_tuple,
+        experience_types_selected=experience_types_selected,
+    )

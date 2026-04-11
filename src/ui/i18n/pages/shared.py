@@ -78,6 +78,75 @@ STRINGS: dict[str, dict[str, str] | str] = {
         "en": "No recent linked media.",
     },
     "v7_home_last_match": {"fr": "Dernier match", "en": "Latest match"},
+    "v7_home_hero_title": {
+        "fr": "Ce qui mérite ton attention maintenant",
+        "en": "What deserves your attention now",
+    },
+    "v7_home_hero_summary_empty": {
+        "fr": "Aucun signal récent exploitable pour le moment.",
+        "en": "No recent signal available yet.",
+    },
+    "v7_home_trend_na": {
+        "fr": "Fenêtre récente trop courte pour calculer une tendance fiable.",
+        "en": "Recent window is too short for a reliable trend.",
+    },
+    "v7_home_recent_highlights": {
+        "fr": "Faits saillants récents",
+        "en": "Recent highlights",
+    },
+    "v7_home_recent_activity": {"fr": "Activité récente", "en": "Recent activity"},
+    "v7_home_no_recent_activity": {
+        "fr": "Aucun match récent à afficher.",
+        "en": "No recent matches to display.",
+    },
+    "v7_home_open_match": {"fr": "Ouvrir", "en": "Open"},
+    "v7_home_open_scope": {
+        "fr": "Analyser ce scope",
+        "en": "Inspect this scope",
+    },
+    "v7_home_open_section": {
+        "fr": "Ouvrir la section",
+        "en": "Open section",
+    },
+    "v7_home_highlight_peak": {"fr": "Pic récent", "en": "Recent peak"},
+    "v7_home_highlight_trend": {"fr": "Tendance", "en": "Trend"},
+    "v7_home_highlight_squad": {
+        "fr": "Dernière escouade",
+        "en": "Latest squad run",
+    },
+    "v7_home_highlight_volume": {"fr": "Volume récent", "en": "Recent volume"},
+    "v7_home_action_stats_hint": {
+        "fr": "Reprendre la lecture de ta forme récente.",
+        "en": "Resume your recent form analysis.",
+    },
+    "v7_home_action_squad_hint": {
+        "fr": "Revenir sur la dernière séquence d'escouade.",
+        "en": "Jump back to the latest squad sequence.",
+    },
+    "v7_home_action_explorer_hint": {
+        "fr": "Revenir directement sur le match le plus récent.",
+        "en": "Jump directly to the latest match.",
+    },
+    "v7_home_action_media_hint": {
+        "fr": "Retrouver rapidement les derniers médias associés.",
+        "en": "Quickly revisit the latest linked media.",
+    },
+    "v7_context_period_mode": {
+        "fr": "Lecture globale par période en cours.",
+        "en": "Global period-based view is active.",
+    },
+    "v7_filters_button": {
+        "fr": "Filtres ⚙",
+        "en": "Filters ⚙",
+    },
+    "v7_context_session_mode": {
+        "fr": "Lecture par sessions active, sans scope précis sélectionné.",
+        "en": "Session-based mode is active without a precise scope selected.",
+    },
+    "v7_context_session_active": {
+        "fr": "Scope actif : {session}",
+        "en": "Active scope: {session}",
+    },
     # ── KPIs ─────────────────────────────────────────────────────────────────
     "kpi_matches_header": "lbl_parties",  # alias → common
     "kpi_career_header": {"fr": "Carrière", "en": "Career"},
