@@ -18,6 +18,7 @@ from scripts.backfill.detection import (
     compute_backfill_mask,
     find_matches_missing_data,
 )
+from src.data.sync.scope import SyncScope
 
 # ─────────────────────────────────────────────────────────────────────────────
 # Fixtures
@@ -215,28 +216,34 @@ def test_compute_backfill_mask_all():
 
 def test_detects_missing_medals(shared_conn, player_conn):
     """Détecte les matchs sans médailles."""
-    result = find_matches_missing_data(player_conn, XUID, shared_conn=shared_conn, medals=True)
+    result = find_matches_missing_data(
+        player_conn, XUID, shared_conn=shared_conn, scope=SyncScope(medals=True)
+    )
     # match-002 et match-003 n'ont pas de médailles
     assert set(result) == {"match-002", "match-003"}
 
 
 def test_detects_missing_events(shared_conn, player_conn):
     """Détecte les matchs sans events."""
-    result = find_matches_missing_data(player_conn, XUID, shared_conn=shared_conn, events=True)
+    result = find_matches_missing_data(
+        player_conn, XUID, shared_conn=shared_conn, scope=SyncScope(events=True)
+    )
     # Seul match-003 n'a pas d'events
     assert result == ["match-003"]
 
 
 def test_detects_missing_skill(shared_conn, player_conn):
     """Détecte les matchs sans skill (team_mmr NULL)."""
-    result = find_matches_missing_data(player_conn, XUID, shared_conn=shared_conn, skill=True)
+    result = find_matches_missing_data(
+        player_conn, XUID, shared_conn=shared_conn, scope=SyncScope(skill=True)
+    )
     assert set(result) == {"match-002", "match-003"}
 
 
 def test_detects_missing_personal_scores(shared_conn, player_conn):
     """Détecte les matchs sans personal scores (per-player check)."""
     result = find_matches_missing_data(
-        player_conn, XUID, shared_conn=shared_conn, personal_scores=True
+        player_conn, XUID, shared_conn=shared_conn, scope=SyncScope(personal_scores=True)
     )
     # V5.5 : per-player — match-001 exclu (déjà dans personal_score_awards)
     assert set(result) == {"match-002", "match-003"}
@@ -245,7 +252,10 @@ def test_detects_missing_personal_scores(shared_conn, player_conn):
 def test_or_mode_union(shared_conn, player_conn):
     """Mode OR : union des conditions."""
     result = find_matches_missing_data(
-        player_conn, XUID, shared_conn=shared_conn, detection_mode="or", medals=True, events=True
+        player_conn,
+        XUID,
+        shared_conn=shared_conn,
+        scope=SyncScope(detection_mode="or", medals=True, events=True),
     )
     assert set(result) == {"match-002", "match-003"}
 
@@ -253,7 +263,10 @@ def test_or_mode_union(shared_conn, player_conn):
 def test_and_mode_intersection(shared_conn, player_conn):
     """Mode AND : en V5, détection utilise OR (AND non implémenté dans _find_matches_in_shared_all)."""
     result = find_matches_missing_data(
-        player_conn, XUID, shared_conn=shared_conn, detection_mode="and", medals=True, events=True
+        player_conn,
+        XUID,
+        shared_conn=shared_conn,
+        scope=SyncScope(detection_mode="and", medals=True, events=True),
     )
     # V5 : toujours OR → union des conditions
     assert set(result) == {"match-002", "match-003"}
@@ -270,7 +283,9 @@ def test_bitmask_excludes_completed_matches(shared_conn, player_conn):
     for mid in ["match-002", "match-003"]:
         shared_conn.execute("INSERT INTO medals_earned VALUES (?, 200, 1, ?)", [mid, XUID])
 
-    result = find_matches_missing_data(player_conn, XUID, shared_conn=shared_conn, medals=True)
+    result = find_matches_missing_data(
+        player_conn, XUID, shared_conn=shared_conn, scope=SyncScope(medals=True)
+    )
     assert result == []
 
 
@@ -281,13 +296,13 @@ def test_bitmask_per_type_independent(shared_conn, player_conn):
 
     # medals : match-002 exclu (a des médailles), match-003 toujours détecté
     result_medals = find_matches_missing_data(
-        player_conn, XUID, shared_conn=shared_conn, medals=True
+        player_conn, XUID, shared_conn=shared_conn, scope=SyncScope(medals=True)
     )
     assert result_medals == ["match-003"]
 
     # events : match-003 n'a pas d'events (indépendant des medals)
     result_events = find_matches_missing_data(
-        player_conn, XUID, shared_conn=shared_conn, events=True
+        player_conn, XUID, shared_conn=shared_conn, scope=SyncScope(events=True)
     )
     assert result_events == ["match-003"]
 
@@ -299,7 +314,9 @@ def test_bitmask_events_excludes_after_marking(shared_conn, player_conn):
         "UPDATE match_registry SET events_loaded = TRUE WHERE match_id = 'match-003'"
     )
 
-    result = find_matches_missing_data(player_conn, XUID, shared_conn=shared_conn, events=True)
+    result = find_matches_missing_data(
+        player_conn, XUID, shared_conn=shared_conn, scope=SyncScope(events=True)
+    )
     assert result == []
 
 
@@ -312,12 +329,12 @@ def test_bitmask_combined_types(shared_conn, player_conn):
     )
 
     result_medals = find_matches_missing_data(
-        player_conn, XUID, shared_conn=shared_conn, medals=True
+        player_conn, XUID, shared_conn=shared_conn, scope=SyncScope(medals=True)
     )
     assert result_medals == ["match-002"]
 
     result_events = find_matches_missing_data(
-        player_conn, XUID, shared_conn=shared_conn, events=True
+        player_conn, XUID, shared_conn=shared_conn, scope=SyncScope(events=True)
     )
     assert result_events == []
 
@@ -341,14 +358,14 @@ def test_force_medals_detects_despite_existing_data(shared_conn, player_conn):
 
     # Sans force : 0 résultats (tous les matchs ont des médailles)
     result_normal = find_matches_missing_data(
-        player_conn, XUID, shared_conn=shared_conn, medals=True
+        player_conn, XUID, shared_conn=shared_conn, scope=SyncScope(medals=True)
     )
     assert result_normal == []
 
     # Avec force : même condition (NOT IN medals_earned WHERE xuid = ?)
     # → 0 résultats aussi car les données existent réellement
     result_force = find_matches_missing_data(
-        player_conn, XUID, shared_conn=shared_conn, medals=True, force_medals=True
+        player_conn, XUID, shared_conn=shared_conn, scope=SyncScope(medals=True, force_medals=True)
     )
     assert result_force == []
 
@@ -361,7 +378,7 @@ def test_force_medals_detects_despite_existing_data(shared_conn, player_conn):
 def test_max_matches_limits_results(shared_conn, player_conn):
     """max_matches limite le nombre de résultats."""
     result = find_matches_missing_data(
-        player_conn, XUID, shared_conn=shared_conn, medals=True, max_matches=1
+        player_conn, XUID, shared_conn=shared_conn, scope=SyncScope(medals=True, max_matches=1)
     )
     assert len(result) == 1
 
@@ -375,7 +392,10 @@ def test_full_scenario_single_run(shared_conn, player_conn):
     """Scénario complet : détection → traitement → rerun = 0."""
     # ÉTAPE 1 : Détection initiale
     missing = find_matches_missing_data(
-        player_conn, XUID, shared_conn=shared_conn, medals=True, events=True, skill=True
+        player_conn,
+        XUID,
+        shared_conn=shared_conn,
+        scope=SyncScope(medals=True, events=True, skill=True),
     )
     assert len(missing) > 0, "Il devrait y avoir des matchs manquants"
 
@@ -407,7 +427,10 @@ def test_full_scenario_single_run(shared_conn, player_conn):
 
     # ÉTAPE 3 : Rerun — DOIT trouver 0 matchs manquants
     missing_rerun = find_matches_missing_data(
-        player_conn, XUID, shared_conn=shared_conn, medals=True, events=True, skill=True
+        player_conn,
+        XUID,
+        shared_conn=shared_conn,
+        scope=SyncScope(medals=True, events=True, skill=True),
     )
     assert missing_rerun == [], (
         f"Le rerun devrait trouver 0 matchs manquants, trouvé: {missing_rerun}"
@@ -418,7 +441,7 @@ def test_full_scenario_incremental(shared_conn, player_conn):
     """Scénario incrémental : run medals → run events → tout est couvert."""
     # RUN 1 : --medals seulement
     missing_medals = find_matches_missing_data(
-        player_conn, XUID, shared_conn=shared_conn, medals=True
+        player_conn, XUID, shared_conn=shared_conn, scope=SyncScope(medals=True)
     )
     assert set(missing_medals) == {"match-002", "match-003"}
 
@@ -427,11 +450,16 @@ def test_full_scenario_incremental(shared_conn, player_conn):
         shared_conn.execute("INSERT INTO medals_earned VALUES (?, 300, 1, ?)", [mid, XUID])
 
     # Rerun medals → 0
-    assert find_matches_missing_data(player_conn, XUID, shared_conn=shared_conn, medals=True) == []
+    assert (
+        find_matches_missing_data(
+            player_conn, XUID, shared_conn=shared_conn, scope=SyncScope(medals=True)
+        )
+        == []
+    )
 
     # RUN 2 : --events seulement
     missing_events = find_matches_missing_data(
-        player_conn, XUID, shared_conn=shared_conn, events=True
+        player_conn, XUID, shared_conn=shared_conn, scope=SyncScope(events=True)
     )
     assert missing_events == ["match-003"]
 
@@ -443,7 +471,12 @@ def test_full_scenario_incremental(shared_conn, player_conn):
         )
 
     # Rerun events → 0
-    assert find_matches_missing_data(player_conn, XUID, shared_conn=shared_conn, events=True) == []
+    assert (
+        find_matches_missing_data(
+            player_conn, XUID, shared_conn=shared_conn, scope=SyncScope(events=True)
+        )
+        == []
+    )
 
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -475,7 +508,9 @@ def test_works_without_backfill_completed_column():
     shared.execute("INSERT INTO match_participants VALUES ('m1', ?)", [XUID])
 
     player = duckdb.connect(":memory:")
-    result = find_matches_missing_data(player, XUID, shared_conn=shared, medals=True)
+    result = find_matches_missing_data(
+        player, XUID, shared_conn=shared, scope=SyncScope(medals=True)
+    )
     assert result == ["m1"]
     shared.close()
     player.close()
@@ -593,11 +628,13 @@ class TestSyncEngineBackfillBitmask:
             player_conn,
             XUID,
             shared_conn=shared_conn,
-            medals=True,
-            events=True,
-            skill=True,
-            personal_scores=True,
-            performance_scores=True,
+            scope=SyncScope(
+                medals=True,
+                events=True,
+                skill=True,
+                personal_scores=True,
+                performance_scores=True,
+            ),
         )
         assert result == []
 
@@ -611,14 +648,14 @@ class TestSyncEngineBackfillBitmask:
 
         # Le backfill doit détecter les matchs manquant d'events
         result_events = find_matches_missing_data(
-            player_conn, XUID, shared_conn=shared_conn, events=True
+            player_conn, XUID, shared_conn=shared_conn, scope=SyncScope(events=True)
         )
         assert len(result_events) > 0
 
         # V5.5 : medals est per-player → le bitmask n'affecte plus la détection
         # Avec medal pour match-001 seul (fixture), match-002/003 restent détectés
         result_medals = find_matches_missing_data(
-            player_conn, XUID, shared_conn=shared_conn, medals=True
+            player_conn, XUID, shared_conn=shared_conn, scope=SyncScope(medals=True)
         )
         assert set(result_medals) == {"match-002", "match-003"}
 
