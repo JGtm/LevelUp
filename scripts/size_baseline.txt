@@ -20,11 +20,9 @@ FUNC:src/app/i18n_columns.py:36:add_i18n_display_columns:85L
 FUNC:src/app/main_helpers.py:151:render_profile_hero:83L
 FUNC:src/app/profile.py:183:load_profile_assets:89L
 FUNC:src/app/sidebar.py:177:render_sync_button:124L
-FUNC:src/data/media_indexer.py:238:scan_and_index:91L
-FUNC:src/data/media_indexer.py:94:ensure_schema:138L
 FUNC:src/data/repositories/_archives_repo.py:135:load_matches_from_archives:102L
-FUNC:src/data/repositories/_weapon_kills_repo.py:276:insert_weapon_kill_rows_v2:85L
 FUNC:src/data/repositories/_weapon_kills_reconcile.py:93:insert_weapon_kill_rows_v2:85L
+FUNC:src/data/repositories/_weapon_kills_repo.py:276:insert_weapon_kill_rows_v2:85L
 FUNC:src/data/services/win_loss_service.py:64:compute_period_table:109L
 FUNC:src/data/sync/_engine_connections.py:356:_load_existing_match_ids:83L
 FUNC:src/data/sync/_match_processing.py:304:_backfill_known_match_shared:82L
@@ -78,6 +76,8 @@ FUNC:src/ui/pages/teammates_views.py:270:_load_squad_data:91L
 FUNC:src/ui/pages/teammates_views.py:51:render_multi_teammate_view:127L
 FUNC:src/ui/sync.py:59:refresh_spnkr_db_via_api:86L
 FUNC:src/utils/_discord_queries.py:88:fetch_last_match_info:81L
+FUNC:src/utils/launcher_onboarding.py:173:_onboard_first_player:225L
+FUNC:src/utils/launcher_players.py:247:_cmd_doctor:89L
 FUNC:src/visualization/_antagonist_duels.py:17:plot_duel_history:102L
 FUNC:src/visualization/_antagonist_kv.py:17:plot_killer_victim_stacked_bars:102L
 FUNC:src/visualization/_distributions_advanced.py:153:plot_first_event_distribution:106L
@@ -109,10 +109,10 @@ FUNC:src/visualization/timeseries_combat.py:189:plot_streak_chart:81L
 FUNC:src/visualization/timeseries_combat.py:93:plot_spree_headshots_accuracy:93L
 FUNC:src/visualization/trio.py:343:plot_trio_kills_deaths:163L
 FUNC:src/visualization/trio.py:40:plot_trio_metric:232L
-MODULE:src/analysis/spawn_detection.py:562L
-MODULE:src/analysis/weapon_parser.py:502L
 MODULE:src/data/repositories/_materialized_views.py:512L
 MODULE:src/data/repositories/_weapon_kills_repo.py:567L
+MODULE:src/analysis/spawn_detection.py:562L
+MODULE:src/analysis/weapon_parser.py:502L
 MODULE:src/data/services/teammates_service.py:539L
 MODULE:src/data/sessions_backfill.py:551L
 MODULE:src/data/sync/_engine_connections.py:533L
@@ -121,7 +121,6 @@ MODULE:src/data/sync/api_client.py:557L
 MODULE:src/data/sync/engine.py:701L
 MODULE:src/data/sync/transformers/_helpers.py:515L
 MODULE:src/data/sync/transformers/_match.py:580L
-MODULE:src/ui/pages/match_view_helpers.py:506L
 MODULE:src/ui/pages/match_view_scoreboard_detail.py:625L
 MODULE:src/ui/pages/session_compare.py:530L
 MODULE:src/ui/pages/session_compare_charts.py:502L

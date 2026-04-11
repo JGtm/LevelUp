@@ -1,5 +1,68 @@
 # Thought Log
 
+## [2026-04-11] refactor(F8): splitter launcher.py (2084L) en 6 sous-modules focalisés
+
+**Statut** : Complété  
+**Branche** : `v7/cockpit`
+
+**Décision technique** :
+- `launcher.py` avait atteint 2084L : trop grand pour être maintenu, impossible à tester unitairement, et en violation de la règle 500L.
+- Découpage en 6 modules selon la responsabilité unique : `launcher_env`, `launcher_players`, `launcher_migrations`, `launcher_startup`, `launcher_sync`, `launcher_onboarding`.
+- `launcher.py` réduit à ~440L (point d'entrée + menu interactif + argparse + re-exports compatibilité).
+- Re-exports ajoutés dans `launcher.py` (`import subprocess`, `REPO_ROOT`, `_find_system_python`, `_transfer_msal_cache`, etc.) pour que les tests via `importlib` continuent de fonctionner avec `launcher_mod.attr`.
+- Cibles de patches mises à jour dans les tests pour pointer vers les sous-modules source (règle Python : patcher là où la fonction est utilisée, pas là où elle est importée).
+- Violations C901/PLR0912 documentées avec `# noqa` : fonctions héritées de launcher.py qui étaient déjà en dette (`_find_system_python`, `_run_migrations`, `_onboard_first_player`, `_cmd_doctor`).
+- I001 (import order) corrigé automatiquement via `ruff --fix` dans les nouveaux modules.
+- Baseline taille mise à jour : 119 violations (dette existante documentée).
+
+**Résultats observés** :
+- `python launcher.py --help` fonctionnel après découpage.
+- `ruff check src/` : 0 erreur.
+- `pytest tests/test_launcher_commands.py` : 17/17 passent (était 0/17 avant fixes).
+- `pytest tests/test_media_indexer.py::test_scan_handles_inaccessible_directory` : corrigé (patch pointait vers l'ancien module avant extraction de `media_indexer_scan.py`).
+- Suite complète : 6092 passent, 1 skipped, 0 failures (hors intégration).
+
+**Conclusion** :
+F8 terminé. La base de code launcher est maintenant découpée, testable et conforme aux règles de taille. Prochaine étape : commit H8+H9+F8 sur `v7/cockpit`.
+
+## [2026-04-11] feat(v7): enrichir l'accueil avec un Mission Control minimal
+
+**Statut** : Complété  
+**Branche** : `v7/cockpit`
+
+**Décision technique** :
+- L'accueil V7 ne devait plus être un simple alias de `last_match`, mais la première tranche implémentée n'avait encore livré que ce wrapper
+- Ajout d'un module dédié `src/ui/pages/home_mission_control.py` pour enrichir la section `home` sans grossir `v7_sections.py`
+- L'accueil affiche désormais quatre accès rapides, un résumé de dernière session solo, un résumé de dernière session escouade, un bloc médias récents, puis le hero `Dernier match`
+- Réutilisation stricte des données déjà chargées dans le contexte V7 : `ctx.df`, `ctx.base_s_ui`, `compute_kpi_stats()` et `load_media_from_db()`
+
+**Résultats observés** :
+- `ruff check` passe sur `home_mission_control.py`, `v7_sections.py`, `shared.py` et `test_home_mission_control.py`
+- `pytest tests/test_home_mission_control.py -q` passe (4 tests)
+- `streamlit_app_v7.py` redémarre sans erreur en headless après intégration du nouvel accueil
+
+**Conclusion** :
+L'accueil V7 apporte maintenant une vraie valeur de cockpit dès l'atterrissage, au lieu d'exposer uniquement la page legacy `Dernier match`.
+
+## [2026-04-11] fix(v7): lancer le cockpit V7 par défaut depuis run.sh / launcher
+
+**Statut** : Complété  
+**Branche** : `v7/cockpit`
+
+**Décision technique** :
+- Le problème ne venait pas du CSS V7 mais du point d'entrée réellement lancé : `run.sh` délègue à `launcher.py`, lui-même branché sur `_launch_streamlit()` dans `src/utils/launcher_startup.py`
+- `_launch_streamlit()` pointait encore en dur vers `streamlit_app.py`, donc l'utilisateur retombait systématiquement sur l'UI legacy malgré la présence de `streamlit_app_v7.py`
+- Correction minimale : sélectionner `streamlit_app_v7.py` par défaut si le fichier existe, avec fallback automatique vers `streamlit_app.py` pour garder une dégradation propre
+- Mise à jour du packaging portable pour embarquer aussi `streamlit_app_v7.py`
+
+**Résultats observés** :
+- `ruff check` passe sur `launcher_startup.py`, `packaging/build_release.py` et `tests/test_paths_auth_env.py`
+- `pytest tests/test_paths_auth_env.py -k TestBuildRelease -q` passe (3 tests)
+- `python launcher.py run` affiche maintenant explicitement `App Streamlit: streamlit_app_v7.py` avant le démarrage du dashboard
+
+**Conclusion** :
+Le nouveau design V7 est désormais visible via le chemin de lancement normal (`run.sh`, `launcher.py run`, `LevelUp.bat`/`LevelUp.sh`) sans devoir lancer manuellement un point d'entrée alternatif.
+
 ## [2026-04-11] fix(media): bloquer la récursion infinie des thumbnails d'images
 
 **Statut** : Complété  

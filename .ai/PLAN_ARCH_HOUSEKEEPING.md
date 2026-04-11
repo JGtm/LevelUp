@@ -5,6 +5,32 @@
 
 ---
 
+## Statut d'avancement — 2026-04-11
+
+| ID | Item | Statut | Commit |
+|---|---|---|---|
+| F0 | Nettoyage git .tmp.* + .bak | ✅ Fait | branche `v7/cockpit` |
+| F1 | Déplacer _exp_spawn_*.py | ✅ Fait | `77646df3` |
+| F2 | Configurer thumbnails-watcher.service | ✅ Fait | `bdbd2be9` |
+| F3 | Archiver experimental/ → _archive/ | ✅ Fait | `77646df3` |
+| F4 | Archiver scripts one-shot | ✅ Fait | `a7950a6d` |
+| F5 | docs/FR/ mise à jour + règle CLAUDE.md | ✅ Fait | `bd0689bf` |
+| F6 | README dans dossiers archive | ✅ Fait | `e252ae8c` |
+| F7 | Règle docs/FR/ dans CLAUDE.md | ✅ Fait | fusionné en F5 |
+| F8 | Refactoring launcher.py (split 6 modules) | ✅ Fait | branche `v7/cockpit` |
+| H1a | Fix test yaxis.autorange | ✅ Fait | `66db6b53` |
+| H1b | Fix test llp-squad-start | ✅ Fait | `66db6b53` |
+| H2 | Legacy kwargs → DeprecationWarning + audit | ✅ Fait | `7c987dc7` |
+| H3 | Split migrations.py par domaine DB | ✅ Fait | `78ae2f42` |
+| H4 | launcher_i18n.py → JSON | ✅ Fait | `a9e8ab55` |
+| H5 | Stratégie cache unifiée | 🔲 Post-v7 | — |
+| H6 | Extraire logique API de profile_api.py | 🔲 Post-v7 | — |
+| H7 | Enforcer src/ports/ comme frontière | 🔲 Post-v7 | — |
+| H8 | Règle TypedDict/dataclass + migration _page_context.py | ✅ Fait | branche `v7/cockpit` |
+| H9 | Split _weapon_kills_repo.py + _materialized_views.py | ✅ Fait | branche `v7/cockpit` |
+
+---
+
 ## Recommandation de timing : Pre-v7 ET Post-v7
 
 Deux fenêtres distinctes. La règle de découpe est simple :
@@ -255,30 +281,21 @@ Couvert en F5 (règle à ajouter dans CLAUDE.md).
 
 ---
 
-### F8 — Refactoring `launcher.py` (post-v7)
+### F8 — Refactoring `launcher.py` (post-v7) ✅ COMPLÉTÉ
 
-**Priorité : post-v7.**
+**Statut : Complété le 2026-04-11 sur la branche `v7/cockpit`.**
 
-`launcher.py` fait **2084L** avec 49 fonctions. Il gère : migrations, vérifications
-environnement, démarrage Streamlit, mode sync CLI, nettoyage, monitoring OOM, i18n
-entière. C'est un god-file qui correspond au pattern "Swiss-army function" listé dans
-les anti-patterns.
+`launcher.py` faisait **2084L** avec 49 fonctions. Découpé en 6 modules :
 
-**Pourquoi post-v7 :** la v7 introduira possiblement `streamlit_app_v7.py` et un
-entrypoint différent. Refactorer `launcher.py` avant de connaître la forme finale de
-ce split serait du travail perdu.
-
-**Plan post-v7 :**
-
-| Module extrait | Contenu | Taille estimée |
+| Module extrait | Contenu réel | Taille |
 |---|---|---|
-| `src/utils/launcher_env.py` | `_check_env()`, `_check_duckdb()`, `_check_dependencies()` | ~150L |
-| `src/utils/launcher_migrations.py` | `_run_migrations()`, `_apply_migration()` | ~200L |
-| `src/utils/launcher_startup.py` | `_configure_streamlit()`, `_build_streamlit_cmd()`, `_start_streamlit()` | ~200L |
-| `src/utils/launcher_sync_cli.py` | `_handle_sync_mode()`, `_handle_backfill_mode()` | ~250L |
-| `launcher.py` résiduel | `main()`, parsing args, dispatch | ~100L |
-
-**Pré-requis :** H4 (conversion `launcher_i18n.py` → JSON) doit être fait avant ce split.
+| `src/utils/launcher_env.py` | détection langue, venv, `_find_system_python`, `_cmd_setup` | 325L |
+| `src/utils/launcher_players.py` | `PlayerInfo`, `_list_players`, `_cmd_doctor` | 333L |
+| `src/utils/launcher_migrations.py` | `_run_migrations()`, `_run_db_healthcheck()` | 142L |
+| `src/utils/launcher_startup.py` | signal handlers, `_launch_streamlit()` | 189L |
+| `src/utils/launcher_sync.py` | `_sync_player_duckdb`, `_cmd_sync`, `_cmd_info` | 265L |
+| `src/utils/launcher_onboarding.py` | `_onboard_first_player`, `_cmd_add_player`, MSAL | 462L |
+| `launcher.py` résiduel | menu interactif, argparse, re-exports compat tests | ~440L |
 
 ---
 
