@@ -57,17 +57,17 @@ def render_multi_teammate_view(  # noqa: PLR0913
     callbacks: TeammateCallbacks,
 ) -> None:
     """Vue pour plusieurs coéquipiers sélectionnés."""
-    db_path = ctx["db_path"]
-    db_key = ctx["db_key"]
-    picked_xuids = ctx["picked_xuids"]
-    aliases_key = ctx["aliases_key"]
-    include_firefight = ctx["include_firefight"]
-    show_smooth = filters["show_smooth"]
-    assign_player_colors_fn = callbacks["assign_player_colors_fn"]
-    plot_multi_metric_bars_fn = callbacks["plot_multi_metric_bars_fn"]
-    top_medals_fn = callbacks["top_medals_fn"]
-    load_teammate_stats_fn = callbacks["load_teammate_stats_fn"]
-    enrich_series_fn = callbacks["enrich_series_fn"]
+    db_path = ctx.db_path
+    db_key = ctx.db_key
+    picked_xuids = ctx.picked_xuids
+    aliases_key = ctx.aliases_key
+    include_firefight = ctx.include_firefight
+    show_smooth = filters.show_smooth
+    assign_player_colors_fn = callbacks.assign_player_colors_fn
+    plot_multi_metric_bars_fn = callbacks.plot_multi_metric_bars_fn
+    top_medals_fn = callbacks.top_medals_fn
+    load_teammate_stats_fn = callbacks.load_teammate_stats_fn
+    enrich_series_fn = callbacks.enrich_series_fn
 
     df = ensure_polars(df)
     dff = ensure_polars(dff)
@@ -92,12 +92,12 @@ def render_multi_teammate_view(  # noqa: PLR0913
         render_squad_heatmap(series, lang=get_lang())
         render_squad_timeline(
             db_path=db_path,
-            me_name=ctx["me_name"],
+            me_name=ctx.me_name,
             friend_names=[display_name_from_xuid(str(fx), db_path=db_path) for fx in picked_xuids],
             all_match_ids=list(all_match_ids),
             lang=get_lang(),
         )
-        render_squad_form_score_section(series, db_path, sub_all, colors_by_name)
+        render_squad_form_score_section(series, db_path, sub_all, colors_by_name, xuid=ctx.xuid)
 
         if len(picked_xuids) >= 1:
             impact_match_ids = (
@@ -112,7 +112,7 @@ def render_multi_teammate_view(  # noqa: PLR0913
             )
             render_impact_taquinerie(
                 db_path=db_path,
-                xuid=ctx["xuid"],
+                xuid=ctx.xuid,
                 match_ids=impact_match_ids,
                 friend_xuids=picked_xuids,
                 db_key=db_key,
@@ -124,13 +124,13 @@ def render_multi_teammate_view(  # noqa: PLR0913
             df=df,
             dff=dff,
             base=base,
-            me_name=ctx["me_name"],
-            xuid=ctx["xuid"],
+            me_name=ctx.me_name,
+            xuid=ctx.xuid,
             db_path=db_path,
             db_key=db_key,
             aliases_key=aliases_key,
             picked_xuids=picked_xuids,
-            apply_current_filters=filters["apply_current_filters"],
+            apply_current_filters=filters.apply_current_filters,
             include_firefight=include_firefight,
             series=series,
             colors_by_name=colors_by_name,
@@ -165,10 +165,10 @@ def render_multi_teammate_view(  # noqa: PLR0913
             _render_trio_medals(
                 _medal_match_ids,
                 db_path,
-                ctx["xuid"],
+                ctx.xuid,
                 f1_xuid,
                 f2_xuid,
-                ctx["me_name"],
+                ctx.me_name,
                 f1_name,
                 f2_name,
                 db_key,
@@ -187,16 +187,16 @@ def _render_bottom_charts(  # noqa: PLR0913
     callbacks: TeammateCallbacks,
 ) -> None:
     """Affiche les graphes d'armes et de métriques en bas de la vue multi."""
-    db_path = ctx["db_path"]
-    show_smooth = filters["show_smooth"]
-    enrich_series_fn = callbacks["enrich_series_fn"]
-    plot_multi_metric_bars_fn = callbacks["plot_multi_metric_bars_fn"]
+    db_path = ctx.db_path
+    show_smooth = filters.show_smooth
+    enrich_series_fn = callbacks.enrich_series_fn
+    plot_multi_metric_bars_fn = callbacks.plot_multi_metric_bars_fn
 
     series = enrich_series_fn(series, db_path)
     _match_ids = sub_all["match_id"].cast(pl.Utf8).to_list() if not sub_all.is_empty() else []
     if _match_ids:
-        _player_infos = [(ctx["me_name"], ctx["xuid"], _match_ids)]
-        for fx in ctx["picked_xuids"]:
+        _player_infos = [(ctx.me_name, ctx.xuid, _match_ids)]
+        for fx in ctx.picked_xuids:
             fx_name = display_name_from_xuid(str(fx), db_path=db_path)
             _player_infos.append((fx_name, str(fx), _match_ids))
         render_weapon_kills_bar_chart(
@@ -249,10 +249,10 @@ def _render_map_breakdown(
     ctx: TeammateContext,
 ) -> None:
     """Affiche lollipop + timeline + bullet + perf vs historique, puis tableau d'historique."""
-    db_path = ctx["db_path"]
-    xuid = ctx["xuid"]
-    db_key = ctx["db_key"]
-    waypoint_player = ctx["waypoint_player"]
+    db_path = ctx.db_path
+    xuid = ctx.xuid
+    db_key = ctx.db_key
+    waypoint_player = ctx.waypoint_player
 
     render_map_charts_section(sub_all, full_squad_df, breakdown_all, lang=get_lang())
 
@@ -278,15 +278,15 @@ def _load_squad_data(
 
     Retourne (sub_all, series, colors_by_name, breakdown_all, full_squad_df, all_match_ids).
     """
-    me_name = ctx["me_name"]
-    xuid = ctx["xuid"]
-    db_path = ctx["db_path"]
-    db_key = ctx["db_key"]
-    picked_xuids = ctx["picked_xuids"]
-    apply_current_filters = filters["apply_current_filters"]
-    same_team_only = filters["same_team_only"]
-    assign_player_colors_fn = callbacks["assign_player_colors_fn"]
-    load_teammate_stats_fn = callbacks["load_teammate_stats_fn"]
+    me_name = ctx.me_name
+    xuid = ctx.xuid
+    db_path = ctx.db_path
+    db_key = ctx.db_key
+    picked_xuids = ctx.picked_xuids
+    apply_current_filters = filters.apply_current_filters
+    same_team_only = filters.same_team_only
+    assign_player_colors_fn = callbacks.assign_player_colors_fn
+    load_teammate_stats_fn = callbacks.load_teammate_stats_fn
 
     df = ensure_polars(df)
     dff = ensure_polars(dff)

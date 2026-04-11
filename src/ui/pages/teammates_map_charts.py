@@ -16,7 +16,7 @@ import streamlit as st
 logger = logging.getLogger(__name__)
 
 from src.analysis import compute_map_breakdown
-from src.analysis._performance_form import compute_form_score_history
+from src.analysis._performance_form import DETAIL_THRESHOLD, compute_form_score_history
 from src.data.services._form_score_queries import load_full_performance_history
 from src.ui.chart_utils import safe_chart_render
 from src.ui.components.browser_storage import hints_visible
@@ -324,32 +324,42 @@ def render_squad_cadence_section(
             st.info(t("tm_squad_cadence_no_data"))
 
 
-def render_squad_form_score_section(
+def _build_bucket_series_for_main(
+    db_path: str,
+    xuid: str,
+    main_name: str,
+    series_with_form: dict[str, pl.DataFrame],
+    sub_match_ids: set[str],
+) -> dict[str, pl.DataFrame] | None:
+    """Calcule les buckets intra-match pour le joueur principal si disponible."""
+    from src.analysis._performance_form import compute_bucket_form_score
+    from src.data.services._form_bucket_queries import load_bucket_data
+
+    main_history = series_with_form.get(main_name)
+    if main_history is None:
+        return None
+
+    loaded = load_full_performance_history(db_path)
+    anchor_df = compute_form_score_history(loaded) if not loaded.is_empty() else main_history
+
+    events_by_match, match_meta = load_bucket_data(db_path, xuid, list(sub_match_ids))
+    if not events_by_match:
+        return None
+
+    bucket_df = compute_bucket_form_score(anchor_df, events_by_match, match_meta)
+    if bucket_df.is_empty():
+        return None
+
+    logger.debug("_build_bucket_series_for_main: %d buckets pour %s.", len(bucket_df), main_name)
+    return {main_name: bucket_df}
+
+
+def _build_series_with_form(
     series: list[tuple[str, DataFrameLike]],
     db_path: str,
-    sub_all: DataFrameLike,
-    colors_by_name: dict[str, str] | None,
-) -> None:
-    """Affiche le graphe de forme récente pour chaque joueur de l'escouade.
-
-    Calcul sur l'historique complet individuel (rolling 14 vs 90 matchs),
-    affichage filtré aux matchs de sub_all uniquement.
-
-    Args:
-        series: Liste (gamertag, df) des joueurs de l'escouade.
-        db_path: Chemin vers la DB du joueur principal (pour dériver les chemins coéquipiers).
-        sub_all: DataFrame des matchs filtrés (sélection courante).
-        colors_by_name: Couleurs par gamertag.
-    """
-    if not series:
-        return
-    sub_pl = ensure_polars(sub_all)
-    sub_match_ids: set[str] = (
-        set(sub_pl["match_id"].cast(pl.Utf8).to_list())
-        if not sub_pl.is_empty() and "match_id" in sub_pl.columns
-        else set()
-    )
-
+    sub_match_ids: set[str],
+) -> dict[str, pl.DataFrame]:
+    """Calcule l'historique de forme par joueur filtré sur sub_match_ids."""
     base_dir = Path(db_path).parent.parent
     main_player_name = series[0][0]
     series_with_form: dict[str, pl.DataFrame] = {}
@@ -358,7 +368,6 @@ def render_squad_form_score_section(
         player_db = db_path if name == main_player_name else str(base_dir / name / "stats.duckdb")
         hist = load_full_performance_history(player_db)
 
-        # Fallback : utiliser les données de la série (matchs d'escouade seulement)
         if hist.is_empty():
             df_pl = ensure_polars(df_series)
             if (
@@ -379,7 +388,6 @@ def render_squad_form_score_section(
         if "form_score" not in form_full.columns:
             continue
 
-        # Filtrer l'affichage aux matchs de sub_all
         if sub_match_ids and "match_id" in form_full.columns:
             display = form_full.filter(pl.col("match_id").cast(pl.Utf8).is_in(sub_match_ids))
         else:
@@ -388,8 +396,58 @@ def render_squad_form_score_section(
         if not display.is_empty():
             series_with_form[name] = display
 
+    return series_with_form
+
+
+def render_squad_form_score_section(  # noqa: PLR0912
+    series: list[tuple[str, DataFrameLike]],
+    db_path: str,
+    sub_all: DataFrameLike,
+    colors_by_name: dict[str, str] | None,
+    xuid: str | None = None,
+) -> None:
+    """Affiche le graphe de forme récente pour chaque joueur de l'escouade.
+
+    Calcul sur l'historique complet individuel (rolling 14 vs 90 matchs),
+    affichage filtré aux matchs de sub_all uniquement.
+
+    En mode détail (≤ DETAIL_THRESHOLD matchs dans sub_all), ajoute des buckets
+    intra-match pour le joueur principal uniquement (db_path + xuid requis).
+
+    Args:
+        series: Liste (gamertag, df) des joueurs de l'escouade.
+        db_path: Chemin vers la DB du joueur principal (pour dériver les chemins coéquipiers).
+        sub_all: DataFrame des matchs filtrés (sélection courante).
+        colors_by_name: Couleurs par gamertag.
+        xuid: XUID du joueur principal (optionnel, pour mode détail buckets).
+    """
+    if not series:
+        return
+    sub_pl = ensure_polars(sub_all)
+    sub_match_ids: set[str] = (
+        set(sub_pl["match_id"].cast(pl.Utf8).to_list())
+        if not sub_pl.is_empty() and "match_id" in sub_pl.columns
+        else set()
+    )
+
+    series_with_form = _build_series_with_form(series, db_path, sub_match_ids)
     if not series_with_form:
         return
+
+    # Mode détail buckets — joueur principal uniquement si sélection courte
+    bucket_series: dict[str, pl.DataFrame] | None = None
+    main_name = series[0][0] if series else ""
+    detail_active = (
+        len(sub_match_ids) <= DETAIL_THRESHOLD and bool(xuid) and main_name in series_with_form
+    )
+    if detail_active:
+        bucket_series = _build_bucket_series_for_main(
+            db_path,
+            xuid,
+            main_name,
+            series_with_form,
+            sub_match_ids,  # type: ignore[arg-type]
+        )
 
     st.subheader(t("tm_form_score_title"))
     if hints_visible():
@@ -401,6 +459,7 @@ def render_squad_form_score_section(
             highlight_match_ids=set(),
             colors_by_name=colors_by_name,
             lang=get_lang(),
+            bucket_series_by_name=bucket_series,
         )
         if fig is not None:
             st.plotly_chart(fig, width="stretch", config=PLOTLY_CLEAN_CONFIG)

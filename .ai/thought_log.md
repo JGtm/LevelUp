@@ -1,5 +1,30 @@
 # Thought Log
 
+## [2026-04-11] feat(form): buckets intra-match sur score de forme (mode détail)
+
+**Statut** : Complété  
+**Branche** : `v7/cockpit`
+
+**Décision technique** :
+Ajout d'une couche de détail intra-match sur les graphes de score de forme (timeseries + teammates), activée automatiquement quand la sélection courante contient ≤ 30 matchs.
+
+Algorithme de cohérence : chaque bucket est ancré sur le form_score du match parent via `bucket_display = form_score_du_match + (bucket_composite - avg_14_du_match)`. Les buckets orbitent autour de la courbe de forme sans créer de ruptures entre matchs.
+
+Score bucket : 0.6 × kill_score_bucket + 0.25 × damage_efficiency_match + 0.15 × accuracy_match. Les deux derniers sont des constantes de match (stables) ; seul kills/deaths est horodaté via highlight_events.
+
+**Fichiers créés/modifiés** :
+- `src/analysis/_performance_form.py` : + `DETAIL_THRESHOLD`, `BUCKET_MS`, `compute_bucket_form_score()`, `_offset_datetime()`
+- `src/data/services/_form_bucket_queries.py` : NEW — `load_bucket_data()` (highlight_events + match_participants)
+- `src/visualization/_form_score.py` : + `_add_bucket_scatter()`, param `bucket_series_by_name` dans `plot_form_score_history()`
+- `src/ui/pages/_timeseries_form.py` : param `db_path`/`xuid`, logique mode détail
+- `src/ui/pages/teammates_map_charts.py` : + `_build_bucket_series_for_main()`, param `xuid` dans `render_squad_form_score_section()`
+- `src/ui/pages/teammates_views.py` : passage de `xuid=ctx.xuid`
+- `src/ui/i18n/viz/labels.py` : clé `label_bucket_detail`
+
+**Résultats** : 45 tests `test_form_score.py` passent. Ruff clean.
+
+**Conclusion** : Mode détail transparent — aucun changement visible sur sélections longues. Sur sélections courtes (session, quelques matchs), scatter de points intra-match cohérent avec la courbe principale.
+
 ## [2026-04-11] test(v7): audit final shell cockpit + logs + regressions
 
 **Statut** : Complété  

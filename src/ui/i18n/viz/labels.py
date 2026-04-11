@@ -22,6 +22,10 @@ STRINGS: dict[str, dict[str, str] | str] = {
         "fr": "Équilibre",
         "en": "Balance",
     },
+    "label_bucket_detail": {
+        "fr": "Détail buckets",
+        "en": "Bucket detail",
+    },
     "label_target": {
         "fr": "Cible : {value}",
         "en": "Target: {value}",
