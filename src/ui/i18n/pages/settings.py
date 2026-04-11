@@ -35,7 +35,15 @@ STRINGS: dict[str, dict[str, str] | str] = {
     "set_sync_source": {"fr": "Source de données", "en": "Data source"},
     "set_sync_max_matches": {"fr": "Max matchs à récupérer", "en": "Max matches to fetch"},
     "set_sync_rate": {"fr": "Délai entre appels API (sec)", "en": "API rate limit (sec)"},
-    "set_refresh_options": {"fr": "Options du bouton Actualiser", "en": "Refresh button options"},
+    "set_refresh_options": {"fr": "Backfill (avancé)", "en": "Backfill (advanced)"},
+    "settings_backfill_warning": {
+        "fr": "⚠️ Section expérimentale — le backfill via l'app n'a pas été pleinement testé. Préférer la CLI (`scripts/backfill_data.py`).",
+        "en": "⚠️ Experimental section — backfill via the app has not been fully tested. Prefer the CLI (`scripts/backfill_data.py`).",
+    },
+    "settings_backfill_expand_label": {
+        "fr": "Afficher les options de backfill",
+        "en": "Show backfill options",
+    },
     "set_backfill_medals": {"fr": "Médailles", "en": "Medals"},
     "set_backfill_events": {"fr": "Événements", "en": "Events"},
     "set_backfill_scores": {"fr": "Scores de performance", "en": "Performance scores"},
@@ -172,8 +180,12 @@ STRINGS: dict[str, dict[str, str] | str] = {
         "en": "Notification types",
     },
     "set_discord_notify_sync": {
-        "fr": "Après chaque sync / backfill",
-        "en": "After each sync / backfill",
+        "fr": "Après chaque sync",
+        "en": "After each sync",
+    },
+    "set_discord_notify_backfill": {
+        "fr": "Après chaque backfill",
+        "en": "After each backfill",
     },
     "set_discord_notify_new_version": {
         "fr": "Nouvelle version majeure déployée",
@@ -182,6 +194,31 @@ STRINGS: dict[str, dict[str, str] | str] = {
     "set_discord_notify_new_version_help": {
         "fr": "Envoie un message Discord avec les nouveautés (README) quand X ou Y changent dans vX.Y.Z. Nécessite LEVELUP_NOTIFY_VERSIONS=1 dans l'environnement (opt-in prod).",
         "en": "Sends a Discord message with release notes (README) when X or Y change in vX.Y.Z. Requires LEVELUP_NOTIFY_VERSIONS=1 in the environment (prod opt-in).",
+    },
+    "set_media_watcher_label": {
+        "fr": "Watcher automatique (Linux/inotify)",
+        "en": "Automatic watcher (Linux/inotify)",
+    },
+    "set_media_watcher_help": {
+        "fr": "Sur Linux, surveille le dossier captures en temps réel (inotify). Désactiver pour revenir au scan périodique.",
+        "en": "On Linux, watches the captures folder in real time (inotify). Disable to fall back to periodic scanning.",
+    },
+    "set_media_debounce_label": {
+        "fr": "Délai avant indexation (secondes)",
+        "en": "Indexing delay (seconds)",
+    },
+    "set_media_debounce_help": {
+        "fr": "Attend N secondes d'inactivité après le dernier fichier détecté avant d'indexer. Utile pour les copies de gros fichiers vidéo.",
+        "en": "Waits N seconds of inactivity after the last detected file before indexing. Useful for large video file copies.",
+    },
+    # ── Avertissements de cohérence (Settings) ──────────────────────────────
+    "warn_discord_no_webhook": {
+        "fr": "Les notifications Discord sont activées mais aucun webhook n'est configuré (champ vide et variable DISCORD_WEBHOOK_URL absente).",
+        "en": "Discord notifications are enabled but no webhook is configured (empty field and DISCORD_WEBHOOK_URL not set).",
+    },
+    "warn_media_no_dir": {
+        "fr": "Le dossier de captures n'est pas configuré. Le watcher et la ré-indexation ne fonctionneront pas — les médias déjà indexés en base restent visibles.",
+        "en": "No captures folder is configured. The watcher and re-indexing won't work — media already indexed in the database remains visible.",
     },
     # ── Match view helpers (Phase 3) ─────────────────────────────────────────
 }

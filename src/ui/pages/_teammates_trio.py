@@ -22,13 +22,14 @@ from src.analysis.squad_records import (
 from src.data.services.teammates_service import TeammatesService
 from src.ui import display_name_from_xuid
 from src.ui.cache import cached_same_team_match_ids_with_friend
-from src.ui.i18n import t
+from src.ui.i18n import get_lang, t
 from src.ui.pages._teammates_trio_helpers import (
     _detect_trio_session,
     _render_per_minute_stats,
     _render_trio_performance_charts,
 )
 from src.ui.pages.teammates_charts import render_first_events_chart, render_metric_bar_charts
+from src.ui.pages.teammates_intensity import render_squad_intensity_heatmap
 from src.ui.pages.teammates_synergy import render_trio_synergy_radar
 from src.ui.pages.teammates_weapons import render_weapon_kills_bar_chart
 from src.visualization._chart_series import SquadRecordSet
@@ -182,9 +183,6 @@ def render_trio_view(  # noqa: PLR0913, PLR0915, C901, PLR0912
 
     friend_names_all = [f1_name] + ([f2_name] if f2_name else []) + ([f3_name] if f3_name else [])
     st.subheader(t("tm_squad_header", names=" + ".join(friend_names_all)))
-    from src.ui.pages.teammates_legend import render_player_legend_panel
-
-    render_player_legend_panel(colors_by_name)
 
     squad_ids = set(
         cached_same_team_match_ids_with_friend(db_path, xuid.strip(), f1_xuid, db_key=db_key)
@@ -260,7 +258,7 @@ def render_trio_view(  # noqa: PLR0913, PLR0915, C901, PLR0912
 
     # ── Records depuis l'historique COMPLET (pas filtré à l'escouade) ────────
     # Conditionnés par le setting show_records (page Paramètres).
-    _show_records = bool(getattr(st.session_state.get("app_settings"), "show_records", True))
+    _show_records = bool(getattr(st.session_state.get("app_settings"), "show_records", False))
 
     _squad_record_set: SquadRecordSet | None = None
     _pm_records: dict[str, tuple[float | None, float | None, float | None]] | None = None
@@ -291,6 +289,12 @@ def render_trio_view(  # noqa: PLR0913, PLR0915, C901, PLR0912
         f3_name=f3_name,
         pm_records=_pm_records,
     )
+    # Sentinelle de début légende : visible après les stats/min (dans l'onglet Contributions)
+    st.markdown(
+        '<div id="llp-squad-start" style="height:0;line-height:0;overflow:hidden;'
+        'padding:0;margin:0;border:0;"></div>',
+        unsafe_allow_html=True,
+    )
 
     # Radar de complémentarité escouade — filtré par la session/période courante
     radar_ids_str = {str(x) for x in squad_ids}
@@ -320,6 +324,27 @@ def render_trio_view(  # noqa: PLR0913, PLR0915, C901, PLR0912
     if me_df.is_empty() or f1_df.is_empty():
         st.warning(t("tm_trio_warning"))
         return False
+
+    # Heatmap d'intensité par joueur — toggle segmented_control
+    _intensity_xuid_name: dict[str, str] = {xuid: me_name}
+    if f1_xuid:
+        _intensity_xuid_name[f1_xuid] = f1_name
+    if f2_xuid and f2_name:
+        _intensity_xuid_name[f2_xuid] = f2_name
+    if f3_xuid and f3_name:
+        _intensity_xuid_name[f3_xuid] = f3_name
+    _intensity_match_ids = (
+        me_df.sort("start_time")["match_id"].cast(pl.Utf8).to_list()
+        if "start_time" in me_df.columns
+        else me_df["match_id"].cast(pl.Utf8).to_list()
+    )
+    render_squad_intensity_heatmap(
+        db_path=db_path,
+        xuid_name_map=_intensity_xuid_name,
+        match_ids_ordered=_intensity_match_ids,
+        lang=get_lang(),
+        me_df=me_df,
+    )
 
     # Si f2 était attendu mais vide, on le retire silencieusement
     if f2_xuid and (f2_df is None or f2_df.is_empty()):

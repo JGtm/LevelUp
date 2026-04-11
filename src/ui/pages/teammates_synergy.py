@@ -23,6 +23,7 @@ from src.config import OKABE_ITO_PALETTE
 from src.data.repositories import DuckDBRepository
 from src.ui.chart_utils import safe_chart_render
 from src.ui.components.browser_storage import hints_visible
+from src.ui.components.info_note import render_info_note
 from src.ui.components.radar_chart import create_participation_profile_radar
 from src.ui.i18n import t
 from src.ui.streamlit_modern import PLOTLY_CLEAN_CONFIG, PLOTLY_STATIC_CONFIG
@@ -227,6 +228,7 @@ def _render_radar_display(
                 st.plotly_chart(fig, width="stretch", config=config)
             else:
                 st.info(t("insufficient_data_chart"))
+    render_info_note(t("tm_note_radar"))
 
 
 def render_synergy_radar(  # noqa: PLR0913

@@ -1,7 +1,322 @@
-# Thought Log - Journal de Raisonnement
+# Thought Log
+
+## [2026-04-11] fix(i18n): clés warn_media_no_dir et warn_discord_no_webhook manquantes
+
+**Statut** : Complété  
+**Branche** : `feat/teammates-tabs`
+
+**Décision technique** :
+- Ajout des deux clés i18n manquantes dans `src/ui/i18n/pages/settings.py`
+- Message `warn_media_no_dir` amélioré : précise que les médias déjà indexés en DB restent visibles, seul le watcher/ré-indexation est bloqué sans `media_captures_base_dir`
+- `media_captures_base_dir` est vide dans `app_settings.json` car les anciens champs `media_screens_dir`/`media_videos_dir` étaient aussi vides → la migration auto n'a pas pu déduire le chemin
+
+**Résultats** :
+- `t("warn_media_no_dir")` retourne maintenant le texte FR/EN correct au lieu de `[warn_media_no_dir]`
+- `t("warn_discord_no_webhook")` idem
+
+**Conclusion** :
+- L'utilisateur doit toujours configurer `media_captures_base_dir` en Settings pour que le watcher fonctionne, mais le warning est maintenant lisible et explicatif
+- La tolérance d'association à 10 min est un paramètre utilisateur modifiable via le slider (défaut : 3 min)
+
+## [2026-04-11] docs(backlog): ajouter la tâche auth/wizard au backlog central
+
+**Statut** : Complété  
+**Branche** : `feat/teammates-tabs`
+
+**Décision technique** :
+- Ajout d'une entrée backlog prioritaire dans `.ai/BACKLOG.md` pour porter explicitement le chantier de simplification auth / onboarding
+- Référence directe au plan `.ai/PLAN_AUTH_WIZARD_SIMPLIFICATION.md`
+- Positionnement clair du chantier : réduction de la surface visible (wizard, Azure manuel, refresh token exposé) avant nettoyage profond du legacy
+
+**Résultats observés** :
+- Le backlog central contient maintenant une tâche explicite, priorisée et exploitable pour le chantier auth/wizard
+- Le lien entre la décision d'architecture et la planification backlog est désormais traçable
+
+**Conclusion** :
+Le sujet auth/onboarding est maintenant correctement inscrit dans la roadmap interne avec son document de référence.
+
+## [2026-04-11] docs(auth): planifier la simplification du wizard in-app et du parcours d'authentification
+
+**Statut** : Complété  
+**Branche** : `feat/teammates-tabs`
+
+**Décision technique** :
+- Création d'un document dédié `.ai/PLAN_AUTH_WIZARD_SIMPLIFICATION.md`
+- Recommandation explicite : sortir le wizard in-app du parcours principal et faire de `launcher + Device Code Flow + stockage DB` la voie standard
+- Conservation du fallback CLI headless, mais comme outil de recovery moderne et non comme parcours utilisateur normal
+- Clarification du rôle du refresh token : détail interne de persistance, plus une étape visible du produit
+
+**Résultats observés** :
+- Le cadrage distingue clairement le parcours officiel, les fallback techniques et le legacy à purger progressivement
+- Le plan couvre la cible UX, les phases d'exécution, les risques, les critères de succès et l'ordre recommandé des travaux
+- La décision produit devient lisible : le launcher garde le setup, l'app se recentre sur connexion / recovery simple
+
+**Conclusion** :
+Le chantier de simplification auth est désormais documenté de manière exploitable avant implémentation. La prochaine étape logique est un refacto minimal de l'UI pour retirer le mode Azure et les formulaires manuels du wizard.
+
+## [2026-04-11] docs(v7): ajouter une passe de polish visuel des charts au plan cockpit
+
+**Statut** : Complété  
+**Branche** : `feat/teammates-tabs`
+
+**Décision technique** :
+- Ajout d'un bloc `A1bis — Polish visuel des graphes` dans `.ai/IMPL_V7.md`
+- Le périmètre est volontairement léger : police, tailles, fonds, gridlines, légendes, hover labels, marges
+- Pas de refonte analytique des graphes existants : même structure, mêmes métriques, mêmes types de chart
+- Extension de la checklist design E2 pour valider la cohérence visuelle et les exceptions locales
+- Alignement du plan directeur `.ai/PLAN_V7_ALTERNATIVE_COCKPIT.md` avec cette décision
+
+**Résultats observés** :
+- Le plan couvre maintenant explicitement la revue de rendu des charts, pas seulement le theming global de l'app
+- La limite de périmètre est claire : harmonisation visuelle, pas redesign fonctionnel des visualisations
+
+**Conclusion** :
+La V7 prévoit désormais une passe dédiée de polish graphique sur les visualisations, suffisamment cadrée pour être appliquée tôt sans dériver en refonte des charts.
+
+## [2026-04-11] docs(v7): definir la palette v7 dans le plan d'implementation
+
+**Statut** : Complété  
+**Branche** : `feat/teammates-tabs`
+
+**Décision technique** :
+- La palette v7 est maintenant explicitee dans `.ai/IMPL_V7.md` avec tokens nommes et usages associes
+- Direction retenue : cockpit sombre mat, sans transparence, sans gradients decoratifs, avec un accent bleu unique et des couleurs semantiques reservees aux statuts
+- `PLOTLY_V7_CONFIG` est cadre sur les fonds, la lisibilite typographique et les gridlines, mais les couleurs internes des series/traces restent deliberement ouvertes
+
+**Résultats observés** :
+- Le plan d'implementation est plus exploitable pour le CSS et les composants sans figer trop tot les couleurs de donnees Plotly
+- La distinction entre palette UI et palette data est maintenant claire dans le document
+
+**Conclusion** :
+La v7 a des tokens visuels suffisamment precis pour etre implementee proprement, tout en gardant la flexibilite necessaire pour ajuster les couleurs des graphiques a l'usage.
+
+## [2026-04-10] feat(teammates): deux onglets Synergies / Contributions
+
+**Statut** : Complété  
+**Branche** : `feat/teammates-tabs` (depuis `refactor/settings-v3`)
+
+**Décision technique** :
+- Split de `_render_map_history_section` en `_load_squad_data` (données pures, sans rendu) + rendu inline dans l'onglet Synergies
+- Deux onglets `st.tabs` dans `render_multi_teammate_view` :
+  - **Synergies** : map breakdown, squad heatmap, squad timeline, form score, impact/taquinerie
+  - **Contributions** : trio view (stats/min, radar, intensité, perf charts), armes, métriques barres, médailles
+- Clés i18n ajoutées : `tab_synergies`, `tab_contributions`
+
+**Résultat** : 2/2 tests passent, ruff OK, py_compile OK, taille fichier inchangée (357L) - Journal de Raisonnement
 
 > Ce fichier capture le raisonnement de l'agent entre les sessions.
 > Archivé : 2026-02-01 (logs précédents dans `.ai/archive/thought_log_pre_phase6.md`)
+
+## [2026-04-10] fix: forme récente — filtrage, placement, étiquettes, traduction — Complété
+
+**Statut** : Complété · Branche : `refactor/settings-v3`
+
+**Décision technique** :
+- Calcul rolling sur historique complet (df_full), affichage filtré aux matchs dff/sub_all
+- Timeseries : placement après KPIs, métrique col droite [4:1], delta vs 14 matchs précédents
+- Teammates : appel dans `render_multi_teammate_view` (hors spinner), avant `render_trio_view`
+- Étiquettes sur 4 points clés (premier, dernier, min, max) via `_key_label_indices`
+- Traduction : "Score de forme" → "Forme récente" dans 3 fichiers i18n
+- Fix ATTACH : `READ ONLY` → `(READ_ONLY)` + path SQL-escaped
+- Fallback : si DB vide, utilise `series` data (matchs escouade)
+
+**Résultats observés** :
+- 45 tests dédiés passent (`tests/test_form_score.py`)
+- Nouvelles classes : TestKeyLabelIndices (6), TestRenderFormScoreSectionFiltering (3), TestSquadFormScoreFallback (3)
+- 0 régression suite complète
+
+**Conclusion** :
+Graphe fonctionnel sur les deux surfaces avec valeurs non-triviales grâce au calcul sur historique complet.
+
+## [2026-04-10] feat: score de forme individuel (v7.1) — Complété
+
+**Statut** : Complété · Branche : `refactor/settings-v3`
+
+**Décision technique** :
+Implémentation du score de forme `avg_14 - avg_90` sur l'historique complet de performance_score.
+Calcul pur dans `src/analysis/_performance_form.py` (0 DB, 0 Streamlit).
+Chargement DB dans `src/data/services/_form_score_queries.py` (JOIN player_match_enrichment × match_registry).
+Visualisation dans `src/visualization/_form_score.py` (fill vert/rouge, points highlight, multi-ligne).
+Section UI dans `src/ui/pages/_timeseries_form.py` (individuel, onglet Résumé).
+Section UI escouade dans `src/ui/pages/teammates_map_charts.py::render_squad_form_score_section`.
+
+**Résultats observés** :
+- 33 tests dédiés passent (`tests/test_form_score.py`)
+- Suite complète : pas de régression (2 failures pré-existantes inchangées)
+- Bug corrigé : guard `if not series: return` + variable `main_player_name` évite `series[0][0]` avec liste vide
+- Logging ajouté dans `_performance_form.py` et `_timeseries_form.py`
+
+**Conclusion** :
+Score de forme fonctionnel sur les deux surfaces (Timeseries + Teammates). Prochaine étape : items backlog v7.2+.
+
+## [2026-04-10] docs: mise à jour CHANGELOG + README pour v6.5.0 — Complété
+
+**Statut** : Complété · Branche : `refactor/settings-v3` (HEAD)
+
+**Décision technique** :
+- Identification des 11 commits non documentés depuis la v6.4.0 (2026-04-07) via `git log 4b5d769e..HEAD`
+- Regroupement en une nouvelle version **6.5.0** (2026-04-10) couvrant : Settings V3 (frozen=True, patch_settings, écriture atomique), heatmap d'intensité par joueur (Teammates), Discord notifications séparées sync/backfill, couche informationnelle harmonisée (render_info_note), fixes silencieux (show_records, dead code, gitignore)
+- Pas de section V7/V8 incluse conformément à la demande
+- README badge mis à jour 6.4.0 → 6.5.0 ; section "What's new" enrichie en tête
+
+**Résultats** : CHANGELOG.md + README.md mis à jour ; 76 nouveaux tests settings documentés (couverture 77.5 % → 87.7 %)
+
+**Prochaine étape** : Merger les branches feat/info-layer-teammates et refactor/settings-v3 dans main
+
+## [2026-04-10] feat(form-score): score de forme individuel + escouade — Complété
+
+**Statut** : Complété · Branche : `refactor/settings-v3`
+
+**Décision technique** :
+- `form_score = rolling_mean(perf, 14) - rolling_mean(perf, 90)` — différentiel court/long terme
+- Calcul pur dans `src/analysis/_performance_form.py` (Polars, 0 accès DB)
+- Chargement historique complet via `src/data/services/_form_score_queries.py` (ATTACH shared pour start_time)
+- Visualisation dans `src/visualization/_form_score.py` : ligne + fill vert/rouge (individuel), multi-lignes (escouade), points encerclés pour la session sélectionnée
+- Intégration Timeseries : `_timeseries_form.py` extrait pour ne pas dépasser 500L dans `timeseries.py` — positionné en tête de l'onglet Résumé avec `st.metric` + graphe historique
+- Intégration Teammates : `render_squad_form_score_section` dans `teammates_map_charts.py` — chargement DB individuelle par joueur (main → `db_path`, coéquipiers → `base_dir/gamertag/stats.duckdb`), rendu avant "Taux de victoires vs historique"
+- Baseline size mise à jour (`_render_map_history_section` : 106L → 108L)
+
+**Résultats** : 6010 tests passent, 2 failures pré-existantes (test_intensity_heatmap_viz, e2e_003), 0 regression
+
+**Prochaine étape** : Valider visuellement sur l'app Streamlit
+
+## [2026-04-10] feat(teammates): axe Y heatmap intensité adaptatif + ordre chronologique — Complété
+
+**Statut** : Complété · Branche : `refactor/settings-v3`
+
+**Décision technique** :
+- Suppression de `"autorange": "reversed"` dans `plot_match_intensity_heatmap` → premier match en bas (ordre naturel Plotly)
+- Ajout du paramètre `match_labels: list[str] | None` dans `plot_match_intensity_heatmap` pour des étiquettes Y explicites
+- Marge gauche adaptative selon longueur max des étiquettes Y
+- Réutilisation de `prepare_time_axis` (déjà utilisé dans tous les graphes timeseries Teammates) via `_build_y_labels_from_me_df` — élimine une réinvention de roue (~70 lignes supprimées)
+- `render_squad_intensity_heatmap` accepte un nouveau param `me_df` (optionnel) pour calculer les étiquettes
+
+**Fichiers modifiés** :
+- `src/visualization/match_intensity_heatmap.py` : param `match_labels`, suppression `autorange`, marge adaptative
+- `src/ui/pages/teammates_intensity.py` : `_build_y_labels_from_me_df` → délègue à `prepare_time_axis`, nouveau param `me_df`
+- `src/ui/pages/_teammates_trio.py` : passage de `me_df=me_df`
+
+**Résultats** : Axe Y affiche `#N<br>MapName` (ou date si pas de carte), cohérent avec le reste de la page Teammates.
+
+---
+
+## [2026-05-26] refactor(settings): Implémentation complète V3 — Complété
+
+**Statut** : Complété · Branche : `refactor/settings-v3`
+
+**Contexte** : Suite d'une session planificatrice (phases 1 à 5 de `PLAN_SETTINGS_V2.md` renommé V3). Phase 1 (`settings.py`) et début de phase 2 (`pages/settings.py`) étaient déjà réalisés.
+
+**Décision technique** :
+- `frozen=True` sur `AppSettings` : les mutations directes lèvent `ValidationError`, forçant `model_copy()` → alignement total avec l'architecture immutable Pydantic V3.
+- `patch_settings(key, value)` : API publique unique pour tout write en session, remplace `model_copy() + save_settings() + session_state[...] = updated` partout dans le code.
+- `_write_settings` + `_WRITE_LOCK` + `_PROCESS_CACHE` : e/s thread-safe avec déduplication de contenu pour éviter les writes redondants.
+- `on_change=_on_change_setting, args=(field, widget_key)` : pattern générique sur tous les widgets settings (sauf `show_hints` qui a un handler dédié pour le browser storage).
+- `directory_input` étendu avec `on_change` + `args` pour se brancher sur le même pattern.
+
+**Résultats** :
+- 5972 tests passent, 24 skip, 0 régression.
+- 2 violations de taille pré-existantes (sessions antérieures) ajoutées au baseline.
+- `_get_preserved_settings` + `_build_settings_from_ui` supprimés → tests V2 correspondants supprimés.
+- `save_settings` conservé comme thin wrapper CLI uniquement.
+
+**Fichiers modifiés (V3)** :
+- `src/ui/settings.py` (Phase 1 précédente + thin wrapper save_settings)
+- `src/ui/pages/settings.py` (Phase 2 : void sections, on_change, split backfill)
+- `src/ui/path_picker.py` (on_change + args ajoutés à directory_input)
+- `streamlit_app.py` (3 call sites: import + 2 notify + sidebar lang)
+- `src/app/sidebar.py` (lang change → patch_settings)
+- `src/ui/__init__.py` (ajout export patch_settings)
+- `tests/test_settings_backfill.py` (frozen=True → AppSettings(...) kwargs)
+- `tests/test_settings_robustness.py` (patch _PROCESS_CACHE pour test write error)
+- `tests/ui/test_settings_page.py` (suppr. classes V2 + fix expander assertion)
+- `scripts/size_baseline.txt` (sidebar.py 178→177, +2 entrées pré-existantes)
+
+## [2026-04-10] fix(settings): show_records persistance brisée — Complété
+
+**Statut** : Complété · Branche : `feat/info-layer-teammates`
+
+**Problème** : `show_records` revenait à `True` à chaque redémarrage de session malgré les tentatives de fix. Le fichier `app_settings.json` conservait `"show_records": true` sur disque.
+
+**Décision technique** :
+- **Cause racine** : trois `getattr(..., "show_records", True)` avec `True` comme fallback hardcodé (au lieu de `False`). Lors d'un hot-reload Streamlit ou d'une reconnexion WebSocket, si `app_settings` en session_state est temporairement None, le toggle se réinitialisait à `True`. Toute sauvegarde ultérieure écrasait alors `False` par `True`.
+- Secondairement : la logique de retry `os.replace` sur Windows n'avait qu'une seule tentative (sleep 0.1s), insuffisant si l'antivirus ou le file watcher verrouillait le fichier.
+- Correction immédiate : `app_settings.json` corrigé à `false` en direct + backup synchronisé.
+
+**Corrections apportées** :
+1. `src/ui/pages/settings.py:362` — `getattr(..., True)` → `False`
+2. `src/ui/pages/teammates_views.py:183` — idem
+3. `src/ui/pages/_teammates_trio.py:264` — idem
+4. `src/ui/settings.py` — retry `os.replace` : 1 → 4 tentatives (50ms, 100ms, 200ms, 500ms)
+5. `save_settings` — traceback complet (5 niveaux) dans les logs pour tracer tout futur écrasement
+6. `app_settings.json` + `.json.bak` — `show_records: false` écrit directement
+
+**Résultats** : Le fichier JSON est maintenant à `false`. La prochaine session (ou hot-reload) chargera correctement `False`. Les fallbacks hardcodés `True` sont éliminés.
+
+**Prochaine étape** : Vérifier en session que l'affichage des records reste désactivé après navigation + redémarrage.
+
+## [2026-04-10] feat(teammates): heatmap d'intensité interactive par joueur — Complété
+
+**Statut** : Complété · Branche : `feat/info-layer-teammates`
+
+**Décision technique** :
+- Nouvelle section "Profil d'intensité par joueur" dans la vue escouade (après Complémentarité)
+- Toggle `st.segmented_control` pour basculer entre joueurs (jusqu'à 4) — une seule heatmap, colorscale partagée
+- Chargement des kill timings en une seule requête pour tous les xuids (via `cached_load_kill_timing_for_matches`)
+- Ordonnancement chronologique des matchs via `start_time` de `me_df` passé en `match_ids_ordered`
+- Architecture en couches respectée : 0 logique métier ajoutée — réutilisation de `compute_match_intensity_profiles` + `plot_match_intensity_heatmap`
+
+**Fichiers créés/modifiés** :
+- `src/ui/pages/teammates_intensity.py` (nouveau — couche UI)
+- `src/ui/i18n/pages/teammates.py` — 5 clés `tm_intensity_*`
+- `src/ui/pages/_teammates_trio.py` — import + appel après alignment check
+- `scripts/size_baseline.txt` — mis à jour (`render_trio_view` : 289L → 309L, dette documentée)
+
+**Résultats** : Ruff OK · tests en cours
+
+**Prochaine étape** : valider tests puis commit
+
+## [2026-04-10] feat(settings): UX Discord + section Backfill en expander — Complété
+
+**Statut** : Complété · Branche : `feat/info-layer-teammates`
+
+**Décision technique** :
+- Checkboxes Discord passés de layout 2 colonnes à liste verticale (un par ligne)
+- Ajout de `discord_notify_backfill: bool = True` dans AppSettings, séparant la notif sync de la notif backfill
+- `discord_notifier.py` : branchement conditionnel sur `operation.startswith("backfill")` pour choisir le bon flag
+- Section Backfill déplacée en dernière position dans la page Settings, encapsulée dans `st.expander(expanded=False)`
+- 3 fichiers modifiés : `src/ui/settings.py`, `src/ui/pages/settings.py`, `src/utils/discord_notifier.py`, `src/ui/i18n/pages/settings.py`
+
+**Résultats** : Aucun test cassé attendu (changement UI + ajout champ Pydantic avec valeur par défaut)
+
+**Prochaine étape** : Aucune tâche en cours
+
+## [2026-04-10] fix(cleanup): supprimer plot_map_outcome_timeline (dead code) — Complété
+
+**Statut** : Complété · Branche : `feat/info-layer-teammates`
+
+**Décision technique** : Option A du plan H3 appliquée rétroactivement. La réactivation initiale (Option B) était incorrecte : `win_loss.py` avait aussi son propre `if False:` sur la même fonction — le graphe était désactivé partout. Suppression complète : module `_maps_outcome_timeline.py`, re-exports dans `maps_outcome.py` + `visualization/__init__.py`, deux blocs dans `teammates_map_charts.py`, bloc dans `win_loss.py`, clés i18n `tm_map_timeline_title/caption` et `wl_map_timeline_title/caption`. Variables `session_ids` devenues inutilisées retirées (3 endroits).
+
+**Résultats observés** : 5986 tests passent. 10 nouveaux tests ajoutés pour `render_info_note` (`tests/ui/test_components.py::TestRenderInfoNote`).
+
+**Conclusion** : Aucun graphe timeline ne subsiste dans le code. Couverture tests pour le nouveau composant partagé `info_note.py`.
+
+---
+
+## [2026-04-10] feat(info-layer): harmonisation couche informationnelle Timeseries/Teammates — Complété
+
+**Statut** : Complété · Branche : `feat/info-layer-teammates`
+
+**Décision technique** : Application intégrale du plan `PLAN_HARMONISATION_INFO_LAYER.md` (Parties A + B). Extraction de `_render_note` de `timeseries.py` vers `src/ui/components/info_note.py` (composant public `render_info_note`). Timeseries réimporte via alias. 6 nouvelles clés i18n ajoutées dans `teammates.py`. Réactivation du graphe `plot_map_outcome_timeline` (Option B — la fonction est active dans `win_loss.py`). Remplacement de `_FILM_EXCLUDED_IDS` local par import direct depuis `_weapon_data.py` (EXCLUDED_WEAPON_IDS — inclut Vehicle sentinel en plus de Grenade/Melee, cohérent avec tous les autres modules). `_BIN_SIZE_S` conservé en place (constante à usage unique, pas de module supplémentaire).
+
+**Résultats observés** :
+- 6006 tests passent, 2 skipped, 0 failures (suite hors integration)
+- Ruff : 0 violation après auto-fix isort
+- Baseline taille mise à jour : 122 violations documentées (pas de nouvelles violations fonctionnelles)
+- Changements : 9 fichiers modifiés, 1 fichier créé (`info_note.py`)
+
+**Conclusion** : Couche informationnelle Teammates alignée sur Timeseries (captions conditionnels, notes post-graphe, `hints_visible()` cohérent). Dead code `if False:` supprimé. Duplication `_FILM_EXCLUDED_IDS` éliminée. Partie C (`feat/adaptive-axis-labels`) reportée à un sprint dédié.
+
+---
 
 ## [2026-04-09] fix(settings): écriture atomique + cascade de récupération cross-platform — Complété
 

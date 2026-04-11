@@ -23,6 +23,7 @@ from src.analysis.friends_impact import (
     identify_top_killer_multi,
 )
 from src.data.repositories import DuckDBRepository
+from src.ui.components.browser_storage import hints_visible
 from src.ui.i18n import get_lang, t
 from src.utils.db import ensure_shared_attached
 from src.utils.paths import get_shared_matches_path_from_player
@@ -384,6 +385,8 @@ def _render_impact_from_events(  # noqa: PLR0913
         match_outcomes=match_outcomes,
     )
 
+    if hints_visible():
+        st.caption(t("tm_impact_caption"))
     _render_impact_ranking_html(impact_matrix, scores, sorted_match_ids)
     _legend_label = "ℹ️ Légende" if get_lang() == "fr" else "ℹ️ Legend"
     with st.popover(_legend_label):

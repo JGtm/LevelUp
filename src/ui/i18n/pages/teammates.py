@@ -139,6 +139,40 @@ STRINGS: dict[str, dict[str, str] | str] = {
         "fr": "F/M 1ère moitié → 2nde moitié des matchs affichés.",
         "en": "K/D first half → second half of displayed matches.",
     },
+    # ── Info-layer captions (ajoutés Phase 5 — harmonisation) ─────────────────
+    "tm_weapons_no_data": {
+        "fr": "Aucune donnée d'armes pour ces matchs.",
+        "en": "No weapon data available for these matches.",
+    },
+    "tm_impact_caption": {
+        "fr": "Heatmap des rôles que chaque joueur a tenus le plus souvent sur les matchs communs.",
+        "en": "Heatmap of the roles each player most frequently held across shared matches.",
+    },
+    "tm_weapons_chart_caption": {
+        "fr": "Kills par arme — côte à côte sur les matchs communs. Révèle les profils d'armement de chaque joueur.",
+        "en": "Kills by weapon — side by side across shared matches. Reveals each player's weapon preferences.",
+    },
+    "tm_metrics_caption": {
+        "fr": "Comparaison des métriques clés entre joueurs sur les matchs communs.",
+        "en": "Comparison of key metrics between players across shared matches.",
+    },
+    # ── Notes post-graphe (ajoutées Phase 6 — harmonisation) ──────────────────
+    "tm_note_radar": {
+        "fr": "- Une **surface large** sur un axe → forte implication dans ce rôle\n"
+        "- Deux profils **complémentaires** → leurs pointes couvrent des axes différents → bonne synergie\n"
+        "- Deux profils **superposés** → même style de jeu — force sur les matchs agressifs, fragilité en cas de déficit offensif",
+        "en": "- A **large area** on one axis → high involvement in that role\n"
+        "- Two **complementary profiles** → their peaks cover different axes → good synergy\n"
+        "- Two **overlapping profiles** → same playstyle — strong in aggressive matches, fragile when behind",
+    },
+    "tm_note_cadence": {
+        "fr": "- Des pics **synchronisés** → vous jouez aux mêmes moments → push coordonné\n"
+        "- Des pics **décalés** → profils complémentaires en avant-poste / couverture\n"
+        "- Courbes plates → peu de kills en dehors des phases d'objectif",
+        "en": "- **Synchronized peaks** → you fight at the same time → coordinated push\n"
+        "- **Offset peaks** → complementary front / cover split\n"
+        "- Flat curves → few kills outside objective phases",
+    },
     "tm_select_teammate": {
         "fr": "Sélectionne au moins un coéquipier.",
         "en": "Select at least one teammate.",
@@ -278,13 +312,14 @@ STRINGS: dict[str, dict[str, str] | str] = {
         "fr": "V/D par carte",
         "en": "W/L by map",
     },
-    "tm_map_timeline_title": {
-        "fr": "Évolution chronologique par carte",
-        "en": "Chronological map evolution",
+    # ── Score de forme escouade ───────────────────────────────────────────────
+    "tm_form_score_title": {
+        "fr": "Forme récente",
+        "en": "Recent form",
     },
-    "tm_map_timeline_caption": {
-        "fr": "Chaque cercle = 1 match ensemble. La sélection courante est mise en évidence.",
-        "en": "Each dot = 1 match together. Current selection highlighted.",
+    "tm_form_score_caption": {
+        "fr": "Moyenne glissante 14 matchs vs 90 matchs (historique individuel de chaque joueur). Positif → en forme, négatif → creux.",
+        "en": "14-match rolling average vs 90-match average (each player's individual history). Positive → in form, negative → slump.",
     },
     "tm_map_bullet_title": {
         "fr": "Taux de victoires vs historique",
@@ -324,6 +359,31 @@ STRINGS: dict[str, dict[str, str] | str] = {
         "fr": "Pas assez de matchs avec données de timeline pour afficher le profil de tempo.",
         "en": "Not enough matches with timeline data to display the tempo profile.",
     },
+    # ── Heatmap d'intensité par joueur ────────────────────────────────────────
+    "tm_intensity_title": {
+        "fr": "Profil d'intensité par joueur",
+        "en": "Intensity profile per player",
+    },
+    "tm_intensity_caption": {
+        "fr": "Chaque ligne = un match. Les colonnes découpent le match en 10 phases égales. La couleur indique le nombre de kills dans chaque phase. Sélectionne un joueur pour comparer les profils.",
+        "en": "Each row = a match. Columns split the match into 10 equal phases. Color indicates the number of kills in each phase. Select a player to compare profiles.",
+    },
+    "tm_intensity_all": {
+        "fr": "Tous",
+        "en": "All",
+    },
+    "tm_intensity_player_select": {
+        "fr": "Joueur",
+        "en": "Player",
+    },
+    "tm_intensity_no_data": {
+        "fr": "Pas assez de matchs avec données de timeline pour ce joueur.",
+        "en": "Not enough matches with timeline data for this player.",
+    },
+    "tm_intensity_match_count": {
+        "fr": "{n} matchs avec données de timeline",
+        "en": "{n} matches with timeline data",
+    },
     # ── Sections de la page escouade ─────────────────────────────────────────
     "tm_my_stats_section": {
         "fr": "Mes stats sur cette session",
@@ -332,5 +392,14 @@ STRINGS: dict[str, dict[str, str] | str] = {
     "tm_squad_section": {
         "fr": "Statistiques d'escouade",
         "en": "Squad statistics",
+    },
+    # ── Onglets de la vue escouade ────────────────────────────────────────────
+    "tab_synergies": {
+        "fr": "Synergies",
+        "en": "Synergies",
+    },
+    "tab_contributions": {
+        "fr": "Contributions",
+        "en": "Contributions",
     },
 }

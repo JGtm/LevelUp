@@ -1,6 +1,6 @@
 ﻿— Tâches et TODO centralisés
 
-> Mis à jour le 2026-03-30.
+> Mis à jour le 2026-04-11.
 
 ---
 
@@ -9,6 +9,47 @@
 ---
 
 ## 📋 Backlog
+
+---
+
+### [Auth] Simplifier l'onboarding et sortir le wizard in-app du parcours principal
+
+**Noté le** : 2026-04-11 | **Priorité** : Haute (clarification produit + réduction de dette visible)
+
+**Référence plan** : `.ai/PLAN_AUTH_WIZARD_SIMPLIFICATION.md`
+
+**Problème** : Le produit expose encore deux portes d'entrée de setup (`launcher` + wizard in-app), plusieurs vocabulaires auth (Device Code moderne vs Azure manuel / refresh token legacy), et une surface UI/doc plus technique que nécessaire alors que le client ID est désormais intégré.
+
+**Décision cible** : Faire de `launcher + Device Code Flow + stockage token en base joueur` la seule voie standard pour l'utilisateur final. Le wizard in-app ne doit plus être un onboarding complet ; il doit soit disparaître du flux principal, soit être réduit à un écran minimal de connexion / récupération.
+
+**Solution** : Appliquer le plan dédié de simplification auth/onboarding, avec priorité aux surfaces visibles avant purge profonde du legacy.
+
+**Changements ciblés** :
+1. UI : retirer le mode Azure, la saisie manuelle du client ID et le collage manuel du refresh token du parcours standard
+2. UX app : remplacer le wizard complet par un écran minimal de connexion / recovery autour du Device Code Flow
+3. Auth : déclarer explicitement la couche auth moderne comme source de vérité produit
+4. CLI : garder un fallback headless moderne, centré sur le Device Code Flow uniquement
+5. Docs : aligner installation / configuration / FAQ sur une seule voie recommandée, sans Azure manuel dans le parcours standard
+6. Validation : tester réellement les scénarios first-run, reconnexion, headless et multi-joueurs
+
+**Point de vigilance** : ne pas casser trop tôt les chemins legacy encore utiles au dev et aux endpoints player-gated ; commencer par retirer la confusion visible (UI + docs), puis nettoyer le legacy profond dans un second temps.
+
+---
+
+### [QoL] Sync non-bloquante — subprocess + polling fragment
+
+**Noté le** : 2026-04-10 | **Priorité** : Basse (QoL, rien ne casse actuellement)
+
+**Problème** : Le sync (et le backfill optionnel) tournent dans le thread Streamlit ([sidebar.py L213-266](src/app/sidebar.py#L213-L266)), ce qui gèle l'UI pour l'utilisateur qui a lancé l'opération.
+
+**Solution** : Lancer le sync via `subprocess.Popen` (non-bloquant), tracker le process dans `st.session_state`, et utiliser `@st.fragment(run_every=2)` (Streamlit 1.54+) pour poller l'état et mettre à jour la sidebar sans bloquer.
+
+**Changements ciblés** :
+1. `render_sync_button` : remplacer l'appel bloquant par `Popen(["python", "scripts/sync.py", "--delta", ...])` + stockage PID dans `session_state`
+2. Nouveau fragment `_render_sync_status` : poll `process.poll()` toutes les 2s, affiche état en cours / succès / erreur
+3. Mapping settings → args CLI (backfill flags déjà exposés dans `scripts/sync.py`)
+
+**Point de vigilance** : en subprocess, deux process accèdent aux mêmes fichiers `.duckdb`. DuckDB 1.4.4 supporte WAL multi-process (un writer + lecteurs), à valider si des `database is locked` apparaissent.
 
 ---
 
@@ -76,122 +117,11 @@ Le shortcut `_perf_force_only` (v6) bypasse cette boucle quand `--force-performa
 
 ---
 
-## 🔮 Roadmap v7.1+
-
----
-
-### [v7.1] Score de forme — indice de progression court terme
-
-**Noté le** : 2026-03-28 | **Priorité** : Moyenne
-
-```
-form_score = moy_perf_score(14 derniers matchs) - moy_perf_score(90 derniers matchs)
-```
-
-- Positif → en forme / Négatif → creux de forme
-- Calculable par `mode_category` (Arena, BTB, Ranked)
-- Données : `player_match_enrichment.performance_score` déjà disponible
-
-**Implémentation** :
-1. `compute_form_score(gamertag, anchor_date)` dans `src/analysis/performance_score.py`
-2. Colonne `form_score FLOAT` dans `sessions` (migration)
-3. Calculé au post-sync, affiché sur la page d'accueil / profil (sparkline 30j + indicateur ↑↓)
-
----
-
-### [v7.1] Détection de changement de niveau (breakpoints)
-
-**Noté le** : 2026-03-28 | **Priorité** : Basse
-
-Moyenne mobile double (14j vs 90j) — croisements ascendant/descendant = pallier détecté.
-
-**Implémentation** :
-1. `detect_level_breakpoints(df: pl.DataFrame) -> list[Breakpoint]` dans `src/analysis/progression.py`
-2. `Breakpoint(date, direction: "up"|"down", delta_perf, n_matches_confirmed)` — seuil ≥10 matchs consécutifs
-3. Table `progression_breakpoints` dans `stats.duckdb`
-4. Overlay "cap franchi" sur les courbes de tendance
-
----
-
-### [v7.1] Page Adversaires — Head-to-head, Nemesis, Proie
-
-**Noté le** : 2026-03-28 | **Priorité** : Moyenne
-
-Nouvelle page dédiée aux adversaires récurrents.
-
-**Données** : tout dans `shared_matches_v2.duckdb` — `match_participants`, `killer_victim_pairs`, `match_registry`, `v_gamertag_lookup`.
-
-| Métrique | Source |
-|----------|--------|
-| `matches_vs` | `match_participants` |
-| `win_rate_vs` | `match_registry.outcome` |
-| `kills_on` / `deaths_from` | `killer_victim_pairs` |
-| `nemesis_score` = `deaths_from / max(1, kills_on)` pondéré | dérivé |
-| `prey_score` = `kills_on / max(1, deaths_from)` pondéré | dérivé |
-
-**Implémentation** :
-1. `src/data/services/rivals_service.py` — `load_rivals_stats(gamertag, min_matches=3, limit=50)`
-2. Nouvelle page `src/ui/pages/rivals.py`
-3. Filtres : mode_category, fenêtre temporelle (30j/90j/all)
-4. Exclure bots (`xuid LIKE 'bid(%'`), min_matches configurable
-
----
-
-### [v7.1] Discord — Résumé de session post-sync
-
-**Noté le** : 2026-03-28 | **Priorité** : Basse
-
-Bouton `📤` dans la sidebar, actif ≥5 min après `last_match_end_time` (configurable).
-
-**Contenu embed** : W-L/win rate, meilleur match, top médaille, badge comeback, composition escouade, rôles de soirée (Champion 🏆 / Maillon Faible 🍌 via `compute_impact_scores()`).
-
-**Données** :
-- Colonne `discord_notified_at TIMESTAMP DEFAULT NULL` dans `sessions` (migration)
-- `discord_session_notify_delay_minutes` dans `app_settings.json` (défaut : 5)
-- `src/utils/discord_notifier.py` à étendre
-
-**Opt-in** : visible uniquement si `discord_session_notify = true` ET webhook configuré.
-
----
-
-### [v7.1] Clutch moments — kills décisifs
-
-**Noté le** : 2026-03-28 | **Priorité** : Basse
-
-Trois types de kills clutch, par ordre de fiabilité :
-
-| Type | Définition | Données |
-|------|-----------|---------|
-| **Spree-stopper** | Kill sur joueur avec médaille de série dans ce match | `medals_earned` × `killer_victim_pairs` |
-| **Comeback clutch** | Kill en match `DominanceFlag.COMEBACK` / `COUNTER_COMEBACK`, joueur top-2 killers | `match_registry.comeback_flag` × `match_participants` |
-| **Last-minute** | Kill dans les 60 dernières secondes d'un Slayer à ≤2 pts d'écart | `killer_victim_pairs.timestamp_ms` × `match_registry` |
-
-**Stockage** : colonnes `clutch_kills INTEGER` + `clutch_type TEXT` dans `player_match_enrichment`.
-**Backfill** : `--clutch-kills` dans `scripts/backfill_data.py`, logique dans `src/analysis/clutch_analysis.py`.
-**Limites** : spree-stopper approximatif (pas de timestamp par médaille) ; last-minute dépend de la couverture filmshell.
-
----
-
-### [v7.1] [feat/teammates] Précision du timer premier frag/mort
-
-**Noté le** : 2026-04-02 | **Priorité** : Basse
-
-**Problème** : `time_ms` dans `highlight_events` est relatif au début du **lobby** (chargement inclus), pas au coup d'envoi du combat. Ce décalage est variable selon maps/modes (~30–45s), ce qui rend les tranches de 0–15s quasi vides et décale tout vers la droite.
-
-**Solutions envisagées** :
-
-1. **Normalisation par premier event du match** — soustraire `MIN(time_ms) OVER (PARTITION BY match_id)` (tous joueurs confondus) pour aligner sur le "premier sang". Simple, mais biaise : le joueur mort en premier aura toujours `adjusted = 0s`.
-
-2. **Capturer le timing du premier mouvement** — utiliser un event de type "premier déplacement" ou "spawn" comme temps 0. Non disponible aujourd'hui dans l'API SPNKr/filmshell ; nécessiterait une investigation sur les event_types non exploités (ex: `mode` events déjà présents dans `highlight_events`).
-
-**Aucune action immédiate** — documenter pour investigation future.
-
----
-
 ## ✅ Récemment complété (référence)
 
 | Date | Item |
 |------|------|
+| 2026-04-10 | **Score de forme individuel + escouade** : `compute_form_score_history()` (Polars rolling avg_14 - avg_90), `load_full_performance_history()` (DB query), `plot_form_score_history()` (Plotly multi-lignes + fill). Intégré en tête de l'onglet Résumé (Timeseries) et avant "Taux de victoires vs historique" (Teammates). st.metric + graphe historique avec points session surlignés. |
 | 2026-04-06 | **Discord i18n — assets résolus par ID dans l'embed** : `fetch_last_match_info()` remonte `map_id`/`playlist_id`/`pair_id`/`game_variant_id` + libellés EN bruts ; `src/utils/_discord_embed.py` résout désormais les traductions via `asset_translations` selon `discord_lang`, avec fallback unique vers l'anglais en BDD. Les colonnes `*_fr` de `v_match_full` ne sont plus utilisées dans ce flux. Tests ciblés : 138 passés (`test_discord_notifier.py`, `test_translations.py`, `test_delta_sync.py`). |
 | 2026-03-30 | **i18n — Table `asset_translations` peuplée dans `metadata.duckdb`** : 9 674 traductions (698 assets × 14 langues BCP-47). Script `populate_asset_translations.py` réécrit avec `_build_version_id_cache()` (version_id SPNKr requis, `""` → 404), parallélisme `asyncio.gather` sur les 14 langues, reprise possible. |
 | 2026-03-30 | **Fix critique — `v_match_full` sans traductions en prod** : `_try_attach_meta_for_views()` cherchait `meta.maps` (table absente en v6) → toujours `None` → vue créée sans JOINs i18n. Fix : vérifier `meta.asset_translations`. `_create_v_match_full()` : suppression des 4 JOINs legacy (`meta.maps/playlists/playlist_map_mode_pairs/game_variants`), 8 JOINs `asset_translations` (en-US + fr-FR × 4 types). Vue recréée en prod : "Starboard"→"Tribord", "The Pit"→"La fosse", etc. |
