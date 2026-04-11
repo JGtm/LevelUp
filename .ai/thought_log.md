@@ -1,5 +1,177 @@
 # Thought Log
 
+## [2026-04-11] feat(v7): routing URL propres via st.navigation
+
+**Statut** : Complété  
+**Branche** : `v7/cockpit`
+
+**Cause** : URL unique (`/`) pour toutes les sections — navigation non bookmarkable, pas de deep-link.
+
+**Décision technique** :
+- `V7_SECTION_URL_PATHS` + `get_v7_section_i18n_key` ajoutés dans `page_router.py`
+- `streamlit_app_v7.py` : `_build_v7_pages()` crée un `st.Page` par section avec son url_path ; `_pg_to_section(pg, pages_dict)` dérive la section active depuis l'URL (source de vérité) ; `_make_section_callable(section)` lit `ctx` depuis session_state et fait le rendu L2+KPI+section ; `st.navigation(pages, position="hidden")` + `pg.run()` remplacent le dispatch `render_v7_section(active_section, ctx)`
+- `header_l1.py` : `st.switch_page(target)` ajouté dans le brand button et le segmented_control pour synchroniser URL lors des changements de section
+- `home_mission_control.py` : `_set_section()` utilise `st.switch_page` (avec fallback `st.rerun()`) au lieu d'un `st.rerun()` seul
+- Home (`url_path=""`) accessible à la racine `/` ; stats à `/stats` ; squad à `/squad` ; explorer à `/explorer` ; media à `/media` ; profile à `/profile`
+
+**Résultats** :
+- Ruff clean. 26 tests V7 + code quality passants (0 régressions).
+- URLs propres opérationnelles ; L2/KPI déplacés dans les callables des pages concernées.
+
+
+
+**Statut** : Complété  
+**Branche** : `v7/cockpit`
+
+**Cause** : Le `st.popover` (panneau flottant) rejeté par l'utilisateur comme "contre les standards d'UX moderne". Le plan V7 spécifiait un panneau inline, extensible sous le L2 (ligne 32 du plan : `│  [Slayer ×] [Ranked ×]   Filtres   Réinitialiser  │`).
+
+**Décision technique** :
+- Suppression de `_render_filter_popover` et de la 5e colonne `filters_col` dans `_render_context_controls`.
+- Nouvelle fonction `_render_v7_filter_expander(ctx)` avec `st.expander(t("v7_filters_button"), expanded=False)`.
+- Le panel n'instancie **pas** `st.radio(key="filter_mode")` (évite le conflit clé avec le `segmented_control` L2 qui écrit dans `SK.FILTER_MODE` via callback).
+- Appelle uniquement `_render_period_filter(dmin, dmax)` (si mode Période) + `_render_cascade_filters(...)`.
+- Placé dans `render_header_l2 > left_col`, entre `_render_context_controls` et `render_filter_chips`.
+- `_V7_FILTER_CALLBACKS_KEY` supprimée (inutilisée maintenant que le popover est remplacé).
+
+**Résultats** :
+- Ruff clean. 23 V7 tests + 259 tests filtres passants (0 régressions).
+
+
+**Conclusion** : Filtres accessibles via le bouton "Filtres ⚙" dans le L2 pour Stats et Escouade. Aligné avec le plan V7 (bandeau de contexte avec point d'entrée filtres).
+
+## [2026-04-11] fix(v7): filter_chips L2 — chips parasites corrigées
+
+**Statut** : Complété  
+**Branche** : `v7/cockpit`
+
+**Décision technique** :
+- Les chips affichaient les playlists/modes/maps en notation `{...}` Python brut (set non géré), et s'affichaient même quand rien n'était filtré (tout coché = exclusions vides).
+- La chip "Scope Période" était redondante avec la caption du bandeau.
+- La chip "Période 22/11/2021 → 06/04/2026" affichait toujours la plage complète (aucune information utile).
+
+**Corrections** :
+- `_summarize_collection` : nouveau helper gérant `set`/`list`/`tuple` avec tri et troncature `N items → "A, B +N-2"`.
+- `_is_dimension_filter_active` : chip dimension ne s'affiche que si `_playlists_exclusions` est non vide (mode exclude) ou si une sélection include est présente.
+- `_format_period` et `from datetime import date` retirés (dead code).
+- Chips Scope (Période/Sessions) et Période supprimées du L2 — redondantes.
+- Tests `test_format_period_*` remplacés par `test_summarize_collection_*`.
+
+**Résultats** :
+- Ruff clean. 23/23 tests passants.
+
+**Conclusion** : L2 n'affiche désormais des chips que pour les filtres vraiment actifs (exclusions non vides ou session choisie).
+
+## [2026-04-11] fix(v7): StreamlitAPIException filter_mode widget-bound key — header_l2
+
+**Statut** : Complété  
+**Branche** : `v7/cockpit`
+
+**Décision technique** :
+- `_load_and_prepare_data` crée `st.radio(key="filter_mode")` (dans `render_filters_sidebar`) avant `render_header_l2`. Streamlit lie alors `"filter_mode"` au widget radio.
+- Tout write direct sur `st.session_state["filter_mode"]` depuis du code inline (ligne 147, et les appels `_apply_session_scope` depuis les boutons) lève `StreamlitAPIException`.
+- Correction : trois callbacks `_on_v7_filter_mode_change`, `_on_v7_scope_select`, `_on_v7_scope_button` ajoutés. Les writes vers `SK.FILTER_MODE` se font uniquement dans ces callbacks (exécutés avant le prochain run, avant que les widgets soient instanciés).
+- Les `if st.button(): ... st.rerun()` et `if selected != current: session_state[key] = ...` inline → remplacés par `on_change=`/`on_click=` + `args=`.
+
+**Résultats** :
+- Ruff clean. 23/23 tests V7 passants.
+
+**Conclusion** : Exception corrigée pour le segmented_control ET les boutons (bug latent).
+
+## [2026-04-11] fix(v7): TypeError ensure_polars None — home_mission_control crash au démarrage
+
+**Statut** : Complété  
+**Branche** : `v7/cockpit`
+
+**Décision technique** :
+- `ctx.base_s_ui` (sessions DataFrame) peut être `None` si le joueur n'a pas encore de données de session (DB fraîche, sync non lancée).
+- `ensure_polars(None)` appelait `pl.from_pandas(None)` → `TypeError`.
+- Correction centralisée dans `src/visualization/_compat.py :: ensure_polars` : guard `if df is None: return pl.DataFrame()` ajouté en début de fonction — protège tous les appelants.
+- Guard secondaire conservé dans `_get_scope_sessions` (défense en profondeur, appliqué lors de la session précédente).
+
+**Résultats** :
+- Ruff clean sur les deux fichiers modifiés.
+- 23 tests V7 + 26 tests supplémentaires (`compat`, `ensure_polars`, `home_mission`) — 0 régression.
+
+**Conclusion** : Crash résolu. La correction est centralisée et robuste.
+
+## [2026-04-11] fix(v7): ajouter des panneaux cockpit aux filtres et au workspace des pages héritées
+
+**Statut** : Complété  
+**Branche** : `v7/cockpit`
+
+**Décision technique** :
+- La passe précédente avait corrigé les surfaces de base, mais les workflows les plus visibles restaient encore trop legacy dans leurs toolbars internes : Explorer, Médias, Comparaison de sessions et sélection des coéquipiers.
+- Correction en deux niveaux : `src/ui/pages/v7_sections.py` enveloppe désormais les sections héritées dans une surface `st.container(border=True)` pour matérialiser un vrai workspace cockpit, puis les pages les plus exposées ajoutent leurs propres panneaux de contrôle dédiés.
+- `src/ui/theme/v7_theme.css` a été étendu pour couvrir les widgets restants qui trahissaient l'ancien rendu : tags de multiselect, popovers/listbox, checkboxes, sliders et séparateurs de toolbar.
+- Les barres de filtres Explorer et Médias, le sélecteur de sessions de `session_compare` et le multiselect coéquipiers sont maintenant rendus dans des panneaux visuels cohérents avec la V7.
+
+**Résultats observés** :
+- `ruff check` passe sur `streamlit_app_v7.py`, `src/ui/pages/v7_sections.py`, `src/ui/pages/explorer.py`, `src/ui/pages/media_tab.py`, `src/ui/pages/session_compare.py`, `src/ui/pages/teammates.py` et `tests/test_v7_shell_regressions.py`.
+- `pytest tests/test_v7_shell_regressions.py` passe (23 tests).
+- `streamlit_app_v7.py` redémarre correctement en headless après cette passe (`http://localhost:8530`).
+
+**Conclusion** :
+Le cockpit V7 ne se contente plus d'un shell moderne ; ses zones de pilotage internes et ses sections héritées disposent maintenant de surfaces et de toolbars cohérentes avec la direction visuelle cockpit.
+
+## [2026-04-11] fix(v7): appliquer le style cockpit aux cartes et onglets du contenu
+
+**Statut** : Complété  
+**Branche** : `v7/cockpit`
+
+**Décision technique** :
+- Le shell V7 était en place, mais les primitives Streamlit internes aux pages conservaient encore un rendu legacy sur les onglets, panneaux, expanders et conteneurs bordés.
+- Correction au niveau du thème global V7 dans `src/ui/theme/v7_theme.css`, plutôt que page par page, pour traiter la cause racine sur les surfaces réellement réutilisées par `timeseries`, `teammates`, `career`, `session_compare` et les autres vues héritées.
+- Le thème surcharge maintenant explicitement les panneaux d'onglets, les cartes `st.container(border=True)`, les expanders et les métriques afin de les faire entrer dans la grammaire graphite du cockpit.
+- Une régression dédiée a été ajoutée dans `tests/test_v7_shell_regressions.py` pour garantir que ces overrides de surface restent présents dans le CSS V7.
+
+**Résultats observés** :
+- `ruff check` passe sur `streamlit_app_v7.py`, `src/ui/layout/header_l2.py` et `tests/test_v7_shell_regressions.py`.
+- `pytest tests/test_v7_shell_regressions.py` passe (22 tests).
+- `streamlit_app_v7.py` redémarre correctement en headless après le restylage (`http://localhost:8529`).
+
+**Conclusion** :
+Le contenu des pages V7 n'hérite plus seulement du shell ; ses onglets et cartes principales utilisent maintenant un rendu cohérent avec le cockpit au lieu de conserver les surfaces legacy.
+
+## [2026-04-11] fix(v7): restaurer la barre de filtres visible et la navigation de sessions dans la L2
+
+**Statut** : Complété  
+**Branche** : `v7/cockpit`
+
+**Décision technique** :
+- La barre L2 V7 pour Stats et Escouade ne devait plus se limiter au titre, aux chips et au reset ; elle devait exposer le vrai contexte de navigation prévu dans le plan cockpit.
+- Au lieu de réinventer un moteur de filtres, `src/ui/layout/header_l2.py` a été relié au contrat existant de `session_state` pour rester compatible avec le backend de filtres legacy encore actif.
+- La L2 charge désormais les options de sessions depuis le cache applicatif et la classification solo/escouade existante, puis affiche un sélecteur `Période` / `Sessions`, un scope visible, et les actions `précédente` / `dernière session`.
+- `streamlit_app_v7.py` passe maintenant `ctx` à `render_header_l2(...)` pour rendre la L2 contextuelle aux données réellement chargées.
+
+**Résultats observés** :
+- `ruff check` passe sur `src/ui/layout/header_l2.py`, `streamlit_app_v7.py` et `tests/test_v7_shell_regressions.py`.
+- `pytest tests/test_v7_shell_regressions.py` passe (21 tests).
+- `streamlit_app_v7.py` redémarre correctement en headless après ce correctif (`http://localhost:8528`).
+- Les régressions ajoutées couvrent la normalisation du scope, la navigation vers la session précédente et l'application du scope solo/escouade dans `session_state`.
+
+**Conclusion** :
+Le cockpit V7 expose maintenant la barre de contexte attendue sur les vues sessions, avec une navigation explicite entre sessions et un filtre visible au lieu de dépendre uniquement de la sidebar legacy masquée.
+
+## [2026-04-11] feat(v7): finaliser l'accueil Mission Control et la direction visuelle du cockpit
+
+**Statut** : Complété  
+**Branche** : `v7/cockpit`
+
+**Décision technique** :
+- L'accueil V7 ne devait plus seulement être "plus rempli" mais réellement raconter l'état récent du joueur ; j'ai donc remplacé le wrapper léger par un Mission Control structuré : briefing principal, cartes d'action, résumés solo/escouade, faits saillants, timeline récente et médias récents.
+- Les CTA de l'accueil propagent maintenant un vrai contexte V7 (section cible, session active, jump Explorer sur match précis) au lieu d'une simple navigation de shell.
+- Le style V7 a été repris en profondeur dans `src/ui/theme/v7_theme.css` pour coller à la cible discutée : graphite mat, panneaux plus denses, séparations fines, accent bleu froid maîtrisé, typographie plus éditoriale et moins "boilerplate Streamlit".
+- Le fichier `home_mission_control.py` dépassait la limite de taille après enrichissement ; split propre en `home_mission_control.py` (rendu Streamlit) + `home_mission_control_logic.py` (dataclasses + helpers purs) pour rester sous 500 lignes par module.
+
+**Résultats observés** :
+- `ruff check` passe sur `home_mission_control.py`, `home_mission_control_logic.py`, `header_l2.py`, `shared.py` et `test_home_mission_control.py`.
+- `pytest tests/test_home_mission_control.py tests/test_v7_shell_regressions.py` passe (25 tests).
+- `streamlit_app_v7.py` démarre correctement en headless après la passe finale de styling (`http://localhost:8527`).
+- Les modules Mission Control respectent désormais la règle de taille : `home_mission_control.py` = 390 lignes, `home_mission_control_logic.py` = 412 lignes.
+
+**Conclusion** :
+Le cockpit V7 a maintenant une page d'accueil cohérente avec la cible Mission Control et une base visuelle nettement plus sobre et construite. Les prochains écarts à fermer restent la transformation complète des hubs Stats/Escouade, mais l'atterrissage V7 n'est plus un simple habillage du legacy.
+
 ## [2026-04-11] refactor(F8): splitter launcher.py (2084L) en 6 sous-modules focalisés
 
 **Statut** : Complété  
