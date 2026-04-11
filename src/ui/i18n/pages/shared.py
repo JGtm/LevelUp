@@ -131,6 +131,18 @@ STRINGS: dict[str, dict[str, str] | str] = {
         "fr": "Retrouver rapidement les derniers médias associés.",
         "en": "Quickly revisit the latest linked media.",
     },
+    "v7_home_recent_form": {"fr": "Forme récente", "en": "Recent form"},
+    "v7_home_battlepass": {"fr": "Pass de combat", "en": "Battle Pass"},
+    "v7_home_battlepass_premium": {"fr": "Premium ✓", "en": "Premium ✓"},
+    "v7_home_battlepass_free": {"fr": "Gratuit", "en": "Free"},
+    "v7_home_api_unavailable": {
+        "fr": "Connexion requise pour les données live.",
+        "en": "Sign-in required for live data.",
+    },
+    "v7_home_challenges": {"fr": "Défis actifs", "en": "Active challenges"},
+    "v7_home_challenges_empty": {"fr": "Aucun défi actif.", "en": "No active challenges."},
+    "v7_home_challenges_done": {"fr": "complétés", "en": "completed"},
+    "v7_home_challenges_expiry": {"fr": "Expire le {date}", "en": "Expires {date}"},
     "v7_context_period_mode": {
         "fr": "Lecture globale par période en cours.",
         "en": "Global period-based view is active.",
