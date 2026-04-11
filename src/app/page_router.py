@@ -187,6 +187,17 @@ _V7_SECTION_I18N_KEYS: dict[str, str] = {
 
 _URL_PATH_TO_PAGE: dict[str, str] = {url_path: slug for slug, url_path in _PAGE_URL_PATHS.items()}
 
+# URLs propres pour les sections v7 (st.navigation)
+# La section "home" utilise url_path="" pour être à la racine (/).
+V7_SECTION_URL_PATHS: dict[str, str] = {
+    "home": "",
+    "stats": "stats",
+    "squad": "squad",
+    "explorer": "explorer",
+    "media": "media",
+    "profile": "profile",
+}
+
 _V7_LEGACY_PAGE_TO_SECTION: dict[str, str] = {
     "last_match": "home",
     "timeseries": "stats",
@@ -214,6 +225,11 @@ def get_v7_section_label(section: str) -> str:
     """Retourne le label traduit d'une section v7."""
     i18n_key = _V7_SECTION_I18N_KEYS.get(section, "")
     return t(i18n_key) if i18n_key else section
+
+
+def get_v7_section_i18n_key(section: str) -> str:
+    """Retourne la clé i18n du libellé d'une section v7."""
+    return _V7_SECTION_I18N_KEYS.get(section, section)
 
 
 def normalize_v7_section(section: str | None) -> str:

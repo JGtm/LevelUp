@@ -148,6 +148,10 @@ def render_header_l1(*, db_path: str, xuid: str) -> tuple[str, str, str]:
                 logger.info(
                     "Navigation V7: section %s -> %s via brand", initial_section, current_section
                 )
+            pages_dict = st.session_state.get("_v7_pages", {})
+            target = pages_dict.get("home")
+            if target is not None:
+                st.switch_page(target)
 
     with nav_col:
         labels = {section: get_v7_section_label(section) for section in V7_SECTION_KEYS}
@@ -164,6 +168,10 @@ def render_header_l1(*, db_path: str, xuid: str) -> tuple[str, str, str]:
         st.session_state[SK.V7_CURRENT_SECTION] = current_section
         if current_section != initial_section:
             logger.info("Navigation V7: section %s -> %s", initial_section, current_section)
+            pages_dict = st.session_state.get("_v7_pages", {})
+            target = pages_dict.get(current_section)
+            if target is not None:
+                st.switch_page(target)
 
     with player_col:
         db_path, xuid = _render_player_block(db_path, xuid)
