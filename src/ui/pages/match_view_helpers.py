@@ -15,6 +15,7 @@ import polars as pl
 import streamlit as st
 
 from src.ui.i18n import t
+from src.ui.pages.media_disk_index import index_media_dir
 
 logger = logging.getLogger(__name__)
 
@@ -95,51 +96,6 @@ def paris_epoch_seconds_local(dt: datetime | None, paris_tz) -> float | None:
         return aware.timestamp()
     except Exception:
         return None
-
-
-# =============================================================================
-# Indexation des médias (legacy – fallback si BDD non indexée)
-# =============================================================================
-
-
-@st.cache_data(show_spinner=False, ttl=600)
-def index_media_dir(dir_path: str, exts: tuple[str, ...]) -> pl.DataFrame:
-    """Indexe un répertoire de médias par extension et date de modification."""
-    _empty = pl.DataFrame(schema={"path": pl.Utf8, "mtime": pl.Float64, "ext": pl.Utf8})
-    rows: list[dict[str, object]] = []
-    p = str(dir_path or "").strip()
-    if not p or not os.path.isdir(p):
-        return _empty
-
-    wanted = {e.lower().lstrip(".") for e in (exts or ()) if isinstance(e, str) and e.strip()}
-    if not wanted:
-        return _empty
-
-    max_files = 12000
-    try:
-        for root, _dirs, files in os.walk(p):
-            for fn in files:
-                if len(rows) >= max_files:
-                    break
-                ext = os.path.splitext(fn)[1].lower().lstrip(".")
-                if ext not in wanted:
-                    continue
-                full = os.path.join(root, fn)
-                try:
-                    st_ = os.stat(full)
-                    mtime = float(st_.st_mtime)
-                except Exception:
-                    continue
-                rows.append({"path": full, "mtime": mtime, "ext": ext})
-            if len(rows) >= max_files:
-                break
-    except Exception:
-        return _empty
-
-    df = pl.DataFrame(rows)
-    if df.is_empty():
-        return df
-    return df.sort("mtime", descending=True)
 
 
 def _filter_media_by_gamertag(df: pl.DataFrame, gamertag: str | None) -> pl.DataFrame:

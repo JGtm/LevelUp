@@ -12,7 +12,11 @@ from pathlib import Path
 
 import duckdb
 
-from src.data.media_helpers import generate_image_thumbnail, get_image_thumbnail_path
+from src.data.media_helpers import (
+    generate_image_thumbnail,
+    get_image_thumbnail_path,
+    is_generated_thumbnail_path,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -92,6 +96,8 @@ def _generate_video_thumbnails(  # noqa: PLR0912
         generated = errors = 0
         for path_str, _fname in to_process:
             p = Path(path_str)
+            if is_generated_thumbnail_path(p):
+                continue
             if not p.exists():
                 continue
             thumb = get_thumbnail_path(p, thumbs_dir)
@@ -144,6 +150,8 @@ def _generate_image_thumbnails(
         max_width = 320
         for path_str, _fname in images:
             p = Path(path_str)
+            if is_generated_thumbnail_path(p):
+                continue
             if not p.exists():
                 continue
             thumb = get_image_thumbnail_path(p, thumbs_dir)

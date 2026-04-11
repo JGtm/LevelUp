@@ -55,7 +55,7 @@ data/
 - `src/data/sync/engine.py` : Moteur de synchronisation (8 mixins MRO : `_shared_writes`, `_performance`, `_skill_rating`, `_career`, `_aggregates`, `_match_processing`, `_engine_connections`, `_engine_schema` + `_protocol.py`)
 - `src/data/sync/_engine_weapon_kills.py` : Mixin extraction armes depuis films (`WeaponKillsEngineMixin`) — v5.6
 - `src/data/services/weapon_extraction_service.py` : Service hexagonal extraction armes (`WeaponExtractionService`) — v5.6
-- `src/data/media_indexer.py` : Indexation médias (splitté: `media_helpers`, `media_loaders`, `media_thumbnails`)
+- `src/data/media_indexer.py` : Indexation médias (splitté: `media_helpers`, `media_loaders`, `media_thumbnails`) ; le scan ignore désormais `thumbs/` pour éviter la récursion thumbnails d'images
 
 ### Analyse
 - `src/analysis/killer_victim.py` : Calcul antagonistes (splitté: `_killer_victim_polars`, `_kv_types`)

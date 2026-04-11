@@ -1,5 +1,23 @@
 # Thought Log
 
+## [2026-04-11] fix(media): bloquer la récursion infinie des thumbnails d'images
+
+**Statut** : Complété  
+**Branche** : `v7/cockpit`
+
+**Décision technique** :
+- Le problème venait du scan récursif des dossiers captures joueur : `thumbs/` était rescanné comme source média.
+- Les miniatures d'images (`.png` / `.jpg`) étaient donc réindexées dans `media_files`, puis retraitées par `generate_thumbnails_for_new()`, ce qui créait des thumbnails de thumbnails sans fin.
+- Correction centralisée via `is_generated_thumbnail_path()` et exclusion de `thumbs/` dans trois points d'entrée : scan DB (`media_indexer.py`), watcher (`media_watcher.py`) et fallback UI disque (`match_view_helpers.py`).
+- Protection supplémentaire dans `media_thumbnails.py` pour ignorer les anciennes lignes déjà polluées si la génération est lancée avant un nouveau scan.
+
+**Résultats observés** :
+- Les anciens rows `media_files` pointant vers `thumbs/` sont maintenant marqués `deleted` au scan suivant, car ils ne font plus partie du disque source surveillé.
+- 37 tests ciblés passent (`test_media_indexer.py`, `test_remediation_post_v621.py`).
+- Les nouveaux tests couvrent : exclusion de `thumbs/`, auto-nettoyage des anciennes lignes polluées, blocage de la génération sur un thumb source, et ignorance des events watcher venant de `thumbs/`.
+
+**Conclusion** :
+Le flux média est maintenant robuste contre la récursion infinie des miniatures d'images. Il reste uniquement à supprimer les fichiers déjà créés sur disque si l'utilisateur veut récupérer l'espace occupé.
 ## [2026-04-11] fix(i18n): clés warn_media_no_dir et warn_discord_no_webhook manquantes
 
 **Statut** : Complété  
