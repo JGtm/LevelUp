@@ -1,5 +1,35 @@
 # Thought Log
 
+## [2026-04-11] test: vérification finale + couverture migrations (post-housekeeping)
+
+**Statut** : Complété  
+**Branche** : `v7/cockpit`
+
+**Décision technique** :
+Audit complet du travail pre-v7 après demande de vérification utilisateur.
+
+**Logging** : 4 modules migrations totalisant 55 appels `logger.*` (debug/info/warning/error)
+couvrant tous les chemins d'erreur et les succès de migration. `launcher_i18n.py` sans logger
+est intentionnel (pure lookup function).
+
+**Gaps de tests identifiés et comblés** :
+- `ensure_end_time_column` — 3 cas
+- `ensure_career_progression_autoincrement` — 4 cas (migration legacy, préservation données, idempotence nextval)
+- `ensure_skill_history_table` — 2 cas
+- `ensure_match_participants_backfill_bits` — 4 cas
+- `ensure_fix_bot_xuid_shared` — 4 cas (correction bid(, idempotence)
+- `ensure_team_ps_scores` — 4 cas
+
+**Résultats** :
+- 6068 tests passent (vs 6047 avant), 24 skipped, 42 warnings DeprecationWarning (legacy kwargs)
+- `test_migrations.py` : 50 → 71 cas de test
+- Aucune régression
+
+**Conclusion** :
+Branche `v7/cockpit` saine, base de code documentée, tests complets. Prête pour v7.
+
+---
+
 ## [2026-04-11] chore(pre-v7): housekeeping architecture — Blocs F + H (branche v7/cockpit)
 
 **Statut** : Complété  
