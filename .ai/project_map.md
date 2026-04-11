@@ -84,6 +84,9 @@ data/
 
 ### UI
 - `src/ui/pages/` : Pages du dashboard
+- `src/ui/pages/v7_sections.py` : Couche de composition temporaire du cockpit V7 (regroupement des pages legacy par section)
+- `src/ui/layout/` : Shell V7 (header L1/L2, KPI bar, chips de filtres)
+- `src/ui/theme/` : Thème V7 (chargement CSS + feuille dédiée)
 - `src/ui/pages/career_top_matches_data.py` + `career_top_matches_render.py` : Top 10 meilleures/pires performances (Carrière) — v5.7
 - `src/ui/pages/match_view_weapon_kills.py` : Section armes dans vue match — v5.6
 - `src/ui/pages/match_view_scoreboard_detail.py` : Détails inline du scoreboard match (POC CSS-only, ligne dépliable) — v5.7
@@ -168,6 +171,7 @@ data/
 ## Points d'Entrée
 
 - `streamlit_app.py` : Application principale
+- `streamlit_app_v7.py` : Entrée dédiée du cockpit V7, basée sur le bootstrap legacy
 - `launcher.py` : Lanceur CLI
 
 ## Documentation

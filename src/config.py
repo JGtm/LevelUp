@@ -156,19 +156,29 @@ class ThemeColors:
     bg_main: tuple[int, int, int] = (25, 36, 41)  # Fond principal de l'app
     bg_plot: tuple[int, int, int] = (29, 35, 40)  # Fond des graphiques (Waypoint news section)
     bg_surface: tuple[int, int, int] = (28, 38, 50)  # Surfaces (cards, panels)
+    bg_surface_alt: tuple[int, int, int] = (22, 31, 41)  # Surfaces secondaires / onglets actifs
     bg_dark: tuple[int, int, int] = (16, 22, 30)  # Fond sombre (gradients)
 
     # Accent
     accent: str = "#33d6ff"
     accent_rgb: tuple[int, int, int] = (51, 214, 255)
+    accent_soft: str = "rgba(51, 214, 255, 0.18)"
 
     # Text
     text_primary: str = "rgba(245, 248, 255, 0.92)"
+    text_secondary: str = "rgba(182, 196, 214, 0.88)"
     text_muted: str = "rgba(182, 196, 214, 0.82)"
 
     # Borders
     border: str = "rgba(255, 255, 255, 0.12)"
+    border_subtle: str = "rgba(255, 255, 255, 0.08)"
+    border_strong: str = "rgba(255, 255, 255, 0.18)"
     border_accent: str = "rgba(51, 214, 255, 0.25)"
+
+    # Semantic colors
+    success: str = "#3fb950"
+    danger: str = "#f85149"
+    neutral: str = "#6e7681"
 
     def bg_main_css(self) -> str:
         """Retourne bg_main en format CSS rgb()."""
@@ -186,8 +196,32 @@ class ThemeColors:
         """Retourne bg_surface en format CSS rgb()."""
         return f"rgb({self.bg_surface[0]}, {self.bg_surface[1]}, {self.bg_surface[2]})"
 
+    def bg_surface_alt_css(self) -> str:
+        """Retourne bg_surface_alt en format CSS rgb()."""
+        return f"rgb({self.bg_surface_alt[0]}, {self.bg_surface_alt[1]}, {self.bg_surface_alt[2]})"
+
 
 THEME_COLORS = ThemeColors()
+THEME_COLORS_V7 = ThemeColors(
+    bg_main=(11, 15, 20),
+    bg_plot=(18, 24, 32),
+    bg_surface=(18, 24, 32),
+    bg_surface_alt=(22, 29, 38),
+    bg_dark=(11, 15, 20),
+    accent="#4b8db8",
+    accent_rgb=(75, 141, 184),
+    accent_soft="rgba(127, 179, 213, 0.18)",
+    text_primary="rgba(232, 238, 245, 0.96)",
+    text_secondary="rgba(147, 161, 178, 0.88)",
+    text_muted="rgba(111, 124, 138, 0.82)",
+    border="rgba(39, 50, 65, 0.92)",
+    border_subtle="rgba(32, 41, 56, 0.9)",
+    border_strong="rgba(39, 50, 65, 0.98)",
+    border_accent="rgba(75, 141, 184, 0.35)",
+    success="#49b36b",
+    danger="#d95c5c",
+    neutral="#6f7c8a",
+)
 
 
 # =============================================================================
