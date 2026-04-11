@@ -1,0 +1,10 @@
+{
+  "RewardTrackPath": "RewardTracks/Operations/Season6Operations-1.json",
+  "TrackType": "Operations",
+  "CurrentProgress": 28500,
+  "PreviousProgress": 25000,
+  "IsOwned": true,
+  "DateLastUpdated": {
+    "ISO8601Date": "2024-11-12T21:34:00Z"
+  }
+}

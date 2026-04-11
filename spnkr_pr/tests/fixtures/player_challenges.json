@@ -1,0 +1,58 @@
+{
+  "ChallengeDeckId": "ChallengeDecks/Season6-Weekly-2024-11-12.json",
+  "Categories": [
+    {
+      "CampaignId": "ChallengeDecks/Daily",
+      "Title": "Daily Challenges",
+      "Challenges": [
+        {
+          "TrackingId": "a1b2c3d4-0001-0001-0001-000000000001",
+          "XpReward": 1000,
+          "ItemRewards": [],
+          "Threshold": 3,
+          "CurrentProgress": 1,
+          "IsCompleted": false,
+          "ExpirationTime": {
+            "ISO8601Date": "2024-11-13T17:00:00Z"
+          },
+          "ParticipationChallenge": false
+        },
+        {
+          "TrackingId": "a1b2c3d4-0001-0001-0001-000000000002",
+          "XpReward": 500,
+          "ItemRewards": [],
+          "Threshold": 1,
+          "CurrentProgress": 1,
+          "IsCompleted": true,
+          "ExpirationTime": {
+            "ISO8601Date": "2024-11-13T17:00:00Z"
+          },
+          "ParticipationChallenge": true
+        }
+      ]
+    },
+    {
+      "CampaignId": "ChallengeDecks/Weekly",
+      "Title": "Weekly Challenges",
+      "Challenges": [
+        {
+          "TrackingId": "b2c3d4e5-0002-0002-0002-000000000001",
+          "XpReward": 4000,
+          "ItemRewards": [
+            {
+              "InventoryItemPath": "Inventory/Armor/Coatings/007-001-placeholder.json",
+              "Amount": 1
+            }
+          ],
+          "Threshold": 10,
+          "CurrentProgress": 7,
+          "IsCompleted": false,
+          "ExpirationTime": {
+            "ISO8601Date": "2024-11-19T17:00:00Z"
+          },
+          "ParticipationChallenge": false
+        }
+      ]
+    }
+  ]
+}

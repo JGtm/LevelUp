@@ -1,0 +1,35 @@
+{
+  "OperationRewardTracks": [
+    {
+      "RewardTrackPath": "RewardTracks/Operations/Season6Operations-1.json",
+      "TrackType": "Operations",
+      "CurrentProgress": 28500,
+      "PreviousProgress": 25000,
+      "IsOwned": true,
+      "DateLastUpdated": {
+        "ISO8601Date": "2024-11-12T21:34:00Z"
+      }
+    },
+    {
+      "RewardTrackPath": "RewardTracks/Operations/Season5Operations-1.json",
+      "TrackType": "Operations",
+      "CurrentProgress": 100000,
+      "PreviousProgress": 100000,
+      "IsOwned": true,
+      "DateLastUpdated": {
+        "ISO8601Date": "2024-09-09T12:00:00Z"
+      }
+    }
+  ],
+  "EventRewardTracks": [],
+  "CareerRank": {
+    "RewardTrackPath": "RewardTracks/CareerRanks/careerRank1.json",
+    "TrackType": "CareerRanks",
+    "CurrentProgress": 87,
+    "PreviousProgress": 85,
+    "IsOwned": true,
+    "DateLastUpdated": {
+      "ISO8601Date": "2024-11-12T21:34:00Z"
+    }
+  }
+}
