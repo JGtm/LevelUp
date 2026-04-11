@@ -121,7 +121,12 @@ def _render_fixed(colors_by_name: dict[str, str], label: str) -> None:
         f"{label}</div>"
     )
     # Panneau caché initialement (le JS gère la visibilité via les sentinelles DOM)
-    html = f'<div id="llp-fixed-panel" style="display:none;{_FIXED_STYLE}">{header}{dots}</div>'
+    # #llp-squad-start : marqueur DOM utilisé par _SCROLL_OBSERVER_JS pour détecter
+    # la position de l'en-tête Escouade — doit rester présent dans ce HTML.
+    html = (
+        f'<div id="llp-squad-start" style="display:none;"></div>'
+        f'<div id="llp-fixed-panel" style="display:none;{_FIXED_STYLE}">{header}{dots}</div>'
+    )
     st.markdown(html, unsafe_allow_html=True)
     components.html(_SCROLL_OBSERVER_JS, height=0)
 
