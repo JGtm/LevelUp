@@ -1,4 +1,10 @@
-"""Graphe historique du score de forme (rolling avg_14 - avg_90)."""
+"""Graphe historique du score de forme (rolling avg_14 - avg_90).
+
+Deux modes :
+- Standard  : courbe form_score lissée, 1 point par match.
+- Détail    : courbe form_score + scatter buckets intra-match (≤ DETAIL_THRESHOLD matchs).
+  Les buckets orbitent autour du form_score du match parent (même axe Y, même unité).
+"""
 
 from __future__ import annotations
 
@@ -8,6 +14,67 @@ import polars as pl
 from src.ui.i18n.viz import viz_t
 from src.visualization._plot_options import DEFAULT_THEME
 from src.visualization.theme import apply_halo_plot_style
+
+
+def _add_bucket_scatter(
+    fig: go.Figure,
+    bucket_df: pl.DataFrame,
+    color: str,
+    name: str,
+    lang: str,
+) -> None:
+    """Ajoute les points bucket intra-match comme scatter semi-transparent.
+
+    Les buckets orbitent autour du form_score de leur match parent.
+    Affichés avec opacité réduite et taille plus petite pour rester en arrière-plan.
+
+    Args:
+        fig: Figure Plotly à enrichir.
+        bucket_df: DataFrame avec bucket_start, bucket_value, bucket_label, kills, deaths.
+        color: Couleur de la trace principale (même teinte, opacity réduite).
+        name: Nom du joueur (pour la légende).
+        lang: Langue d'affichage.
+    """
+    if bucket_df.is_empty() or "bucket_start" not in bucket_df.columns:
+        return
+    data = bucket_df.sort("bucket_start").to_dicts()
+    x_vals = [d["bucket_start"] for d in data]
+    y_vals = [d.get("bucket_value") for d in data]
+    labels = [d.get("bucket_label", "") for d in data]
+    kills = [d.get("kills", 0) for d in data]
+    deaths = [d.get("deaths", 0) for d in data]
+
+    hover = [
+        f"<b>{lab}</b><br>K: {k} / D: {d}<br>Score: {v:+.2f}" if v is not None else ""
+        for lab, k, d, v in zip(labels, kills, deaths, y_vals, strict=False)
+    ]
+
+    # Demi-opacité sur la couleur de base
+    fill_color = (
+        color.replace("rgb(", "rgba(").replace(")", ", 0.35)") if "rgb(" in color else color
+    )
+
+    fig.add_trace(
+        go.Scatter(
+            x=x_vals,
+            y=y_vals,
+            mode="markers",
+            name=viz_t("label_bucket_detail", lang)
+            if name == ""
+            else f"{name} ({viz_t('label_bucket_detail', lang)})",
+            marker={
+                "size": 5,
+                "color": fill_color,
+                "symbol": "circle",
+                "line": {"width": 0},
+            },
+            hovertemplate="%{customdata}<extra></extra>",
+            customdata=hover,
+            showlegend=True,
+            legendgroup=f"bucket_{name}",
+            opacity=0.6,
+        )
+    )
 
 
 def _add_fill_traces(fig: go.Figure, x_vals: list, y_vals: list) -> None:
@@ -116,13 +183,14 @@ def _add_player_line(  # noqa: PLR0913
         )
 
 
-def plot_form_score_history(
+def plot_form_score_history(  # noqa: PLR0913
     series_by_name: dict[str, pl.DataFrame],
     *,
     highlight_match_ids: set[str] | None = None,
     colors_by_name: dict[str, str] | None = None,
     lang: str = "fr",
     height: int = 280,
+    bucket_series_by_name: dict[str, pl.DataFrame] | None = None,
 ) -> go.Figure | None:
     """Graphe de l'évolution du score de forme dans le temps.
 
@@ -130,12 +198,17 @@ def plot_form_score_history(
     Pour une escouade : une ligne colorée par joueur.
     La session sélectionnée est mise en évidence par des points encerclés.
 
+    En mode détail (bucket_series_by_name non vide), ajoute un scatter de points
+    intra-match ancrés sur le form_score du match parent.
+
     Args:
         series_by_name: Mapping nom → DataFrame avec start_time + form_score + match_id.
         highlight_match_ids: Match IDs à surcharger (session courante).
         colors_by_name: Couleur par nom de joueur.
         lang: Langue d'affichage.
         height: Hauteur du graphe en pixels.
+        bucket_series_by_name: Mapping nom → DataFrame buckets (bucket_start, bucket_value).
+            Si None ou vide, mode standard sans buckets.
 
     Returns:
         Figure Plotly ou None si toutes les séries sont vides / sans form_score.
@@ -160,6 +233,10 @@ def plot_form_score_history(
 
         if is_single:
             _add_fill_traces(fig, x_vals, y_vals)
+        # Buckets d'abord (en arrière-plan) puis la ligne de forme par-dessus
+        if bucket_series_by_name:
+            bucket_df = bucket_series_by_name.get(name, pl.DataFrame())
+            _add_bucket_scatter(fig, bucket_df, color, name, lang)
         _add_player_line(fig, name, x_vals, y_vals, color, highlight_match_ids, match_ids)
 
     fig.add_hline(
