@@ -34,7 +34,7 @@ from spnkr_pr.models.economy_additions import (
     PlayerRewardTracksSummary,
     SpartanPoints,
 )
-from spnkr_pr.models.gamecms_hacs_additions import InventoryItem
+from spnkr_pr.models.gamecms_hacs_additions import InventoryItem, OperationRewardTrackMeta
 from spnkr_pr.services.economy_additions import EconomyServiceExtension
 from spnkr_pr.services.gamecms_hacs_additions import GameCmsHacsServiceExtension
 
@@ -373,6 +373,59 @@ async def test_get_item_metadata_extra_fields_ignored():
 
     parsed = await (
         await svc.get_item_metadata("Inventory/Armor/Cores/013-001-olympus-c13d0f2f.json")
+    ).parse()
+
+    assert parsed is not None
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# GameCmsHacsServiceExtension — get_operation_reward_track
+# ─────────────────────────────────────────────────────────────────────────────
+
+
+@pytest.mark.asyncio
+async def test_get_operation_reward_track_returns_meta():
+    payload = _load_fixture("operation_reward_track.json")
+    svc = _make_service(GameCmsHacsServiceExtension, _make_mock_response(payload))
+
+    parsed = await (
+        await svc.get_operation_reward_track("Operations/Season6Operations-1.json")
+    ).parse()
+
+    assert isinstance(parsed, OperationRewardTrackMeta)
+
+
+@pytest.mark.asyncio
+async def test_get_operation_reward_track_summary_image_path():
+    payload = _load_fixture("operation_reward_track.json")
+    svc = _make_service(GameCmsHacsServiceExtension, _make_mock_response(payload))
+
+    parsed = await (
+        await svc.get_operation_reward_track("Operations/Season6Operations-1.json")
+    ).parse()
+
+    assert parsed.summary_image_path == "career_rank/Operations/Season6/summary_background.png"
+
+
+@pytest.mark.asyncio
+async def test_get_operation_reward_track_url():
+    payload = _load_fixture("operation_reward_track.json")
+    svc = _make_service(GameCmsHacsServiceExtension, _make_mock_response(payload))
+
+    await svc.get_operation_reward_track("Operations/Season6Operations-1.json")
+
+    url = svc._get.call_args[0][0]
+    assert "Progression/file/Operations/Season6Operations-1.json" in url
+
+
+@pytest.mark.asyncio
+async def test_get_operation_reward_track_extra_fields_ignored():
+    """Les champs inconnus (Ranks, Name, etc.) ne font pas planter le parsing."""
+    payload = _load_fixture("operation_reward_track.json")
+    svc = _make_service(GameCmsHacsServiceExtension, _make_mock_response(payload))
+
+    parsed = await (
+        await svc.get_operation_reward_track("Operations/Season6Operations-1.json")
     ).parse()
 
     assert parsed is not None

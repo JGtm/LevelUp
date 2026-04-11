@@ -30,6 +30,7 @@ class HomeBattlepassInfo:
     track_name: str
     current_progress: int
     is_owned: bool
+    track_image_bytes: bytes | None = None
 
 
 @dataclass(frozen=True)
@@ -47,19 +48,22 @@ class HomeChallengeSummary:
 # =============================================================================
 
 
-def _build_battlepass_info(tracks_data: Any) -> HomeBattlepassInfo | None:
-    """Construit HomeBattlepassInfo depuis un PlayerRewardTracksSummary parsé."""
+def _build_battlepass_info(tracks_data: Any) -> tuple[HomeBattlepassInfo | None, str | None]:
+    """Construit HomeBattlepassInfo + reward_track_path depuis PlayerRewardTracksSummary.
+
+    Retourne ``(None, None)`` si les données sont absentes ou invalides.
+    """
     try:
         from spnkr_pr.models.economy_additions import PlayerRewardTracksSummary
     except ImportError:
-        return None
+        return None, None
 
     if not isinstance(tracks_data, PlayerRewardTracksSummary):
-        return None
+        return None, None
 
     ops = tracks_data.operation_reward_tracks
     if not ops:
-        return None
+        return None, None
 
     # Opération la plus récemment mise à jour = saison/opération en cours
     current_op = max(ops, key=lambda t: t.date_last_updated.value)
@@ -71,7 +75,7 @@ def _build_battlepass_info(tracks_data: Any) -> HomeBattlepassInfo | None:
         track_name=track_name,
         current_progress=current_op.current_progress,
         is_owned=current_op.is_owned,
-    )
+    ), current_op.reward_track_path
 
 
 def _build_challenge_summary(challenges_data: Any) -> HomeChallengeSummary | None:
@@ -132,6 +136,7 @@ async def _async_fetch_progressions(
     try:
         from aiohttp import ClientSession, ClientTimeout  # noqa: I001
         from spnkr_pr.services.economy_additions import EconomyServiceExtension
+        from spnkr_pr.services.gamecms_hacs_additions import GameCmsHacsServiceExtension
     except ImportError as exc:
         logger.debug("home_api: dépendances manquantes: %s", exc)
         return None, None
@@ -145,10 +150,10 @@ async def _async_fetch_progressions(
                     "343-clearance": tokens.clearance_token,
                 }
             )
-            svc = EconomyServiceExtension(session)
+            economy_svc = EconomyServiceExtension(session)
             tracks_resp, chal_resp = await asyncio.gather(
-                svc.get_player_reward_tracks(xuid),
-                svc.get_player_challenges(xuid),
+                economy_svc.get_player_reward_tracks(xuid),
+                economy_svc.get_player_challenges(xuid),
                 return_exceptions=True,
             )
 
@@ -159,7 +164,27 @@ async def _async_fetch_progressions(
                 await chal_resp.parse() if not isinstance(chal_resp, BaseException) else None
             )
 
-        return _build_battlepass_info(tracks_data), _build_challenge_summary(chal_data)
+            bp_info, reward_track_path = _build_battlepass_info(tracks_data)
+
+            # Fetch artwork de l'opération en cours (2 appels : metadata → image)
+            if bp_info is not None and reward_track_path is not None:
+                gamecms_svc = GameCmsHacsServiceExtension(session)
+                try:
+                    track_meta_resp = await gamecms_svc.get_operation_reward_track(
+                        reward_track_path
+                    )
+                    track_meta = await track_meta_resp.parse()
+                    image_bytes = await gamecms_svc.get_image_bytes(track_meta.summary_image_path)
+                    bp_info = HomeBattlepassInfo(
+                        track_name=bp_info.track_name,
+                        current_progress=bp_info.current_progress,
+                        is_owned=bp_info.is_owned,
+                        track_image_bytes=image_bytes,
+                    )
+                except Exception as exc:
+                    logger.debug("home_api: artwork opération indisponible: %s", exc)
+
+        return bp_info, _build_challenge_summary(chal_data)
 
     except Exception as exc:
         logger.debug("home_api: erreur fetch progressions: %s", exc)

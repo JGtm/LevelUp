@@ -1,0 +1,21 @@
+{
+  "TrackId": "Season6Operations-1",
+  "Ranks": [],
+  "Name": {
+    "Value": "Spirit of Fire",
+    "Status": "Resolved"
+  },
+  "Description": {
+    "Value": "Operations Season 6 — Spirit of Fire",
+    "Status": "Resolved"
+  },
+  "OperationNumber": 6,
+  "DateRange": {
+    "Value": "Oct 2024 – Jan 2025",
+    "Status": "Resolved"
+  },
+  "IsRitual": false,
+  "SummaryImagePath": "career_rank/Operations/Season6/summary_background.png",
+  "WeekNumber": null,
+  "XpPerRank": 1000
+}
