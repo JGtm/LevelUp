@@ -16,7 +16,7 @@ FUNC:src/app/_filters_cascade.py:274:_render_cascade_filters:93L
 FUNC:src/app/_filters_session.py:64:_classify_sessions_solo_squad:118L
 FUNC:src/app/filters.py:141:render_session_filters:94L
 FUNC:src/app/filters_render.py:392:render_filters_sidebar:102L
-FUNC:src/app/filters_render.py:497:build_filter_state_from_session:100L
+FUNC:src/app/filters_render.py:497:build_filter_state_from_session:96L
 FUNC:src/app/i18n_columns.py:36:add_i18n_display_columns:85L
 FUNC:src/app/main_helpers.py:151:render_profile_hero:83L
 FUNC:src/app/profile.py:183:load_profile_assets:89L
@@ -111,7 +111,7 @@ FUNC:src/visualization/trio.py:343:plot_trio_kills_deaths:163L
 FUNC:src/visualization/trio.py:40:plot_trio_metric:232L
 MODULE:src/analysis/spawn_detection.py:562L
 MODULE:src/analysis/weapon_parser.py:502L
-MODULE:src/app/filters_render.py:599L
+MODULE:src/app/filters_render.py:594L
 MODULE:src/data/services/teammates_service.py:539L
 MODULE:src/data/sessions_backfill.py:551L
 MODULE:src/data/sync/_engine_connections.py:533L

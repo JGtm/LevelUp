@@ -84,10 +84,11 @@ data/
 
 ### UI
 - `src/ui/pages/` : Pages du dashboard
-- `src/ui/pages/home_mission_control.py` : Accueil Mission Control V7 (raccourcis, résumés de sessions, médias récents)
-- `src/ui/pages/v7_sections.py` : Couche de composition temporaire du cockpit V7 (regroupement des pages legacy par section)
-- `src/ui/layout/` : Shell V7 (header L1/L2, KPI bar, chips de filtres)
-- `src/ui/theme/` : Thème V7 (chargement CSS + feuille dédiée)
+- `src/ui/pages/home_mission_control.py` : Rendu Streamlit de l'accueil Mission Control V7 (briefing, CTA, timeline, sections)
+- `src/ui/pages/home_mission_control_logic.py` : Logique pure du Mission Control V7 (dataclasses, navigation contextuelle, highlights, résumés, sélection des matchs/médias récents)
+- `src/ui/pages/v7_sections.py` : Couche de composition temporaire du cockpit V7 (regroupement des pages legacy par section) ; enveloppe aussi désormais Stats/Escouade/Explorer/Médias/Profil dans une vraie surface de workspace
+- `src/ui/layout/` : Shell V7 (header L1/L2, KPI bar, chips de filtres) ; la L2 pilote désormais le contexte Stats/Escouade avec filtre visible, scope de session et navigation précédente / dernière session
+- `src/ui/theme/` : Thème V7 (chargement CSS + feuille dédiée) ; surcharge aussi désormais les panneaux d'onglets, cartes bordées, expanders, métriques, tags de multiselect, popovers, checkboxes et sliders des pages legacy réutilisées dans le cockpit
 - `src/ui/pages/career_top_matches_data.py` + `career_top_matches_render.py` : Top 10 meilleures/pires performances (Carrière) — v5.7
 - `src/ui/pages/match_view_weapon_kills.py` : Section armes dans vue match — v5.6
 - `src/ui/pages/match_view_scoreboard_detail.py` : Détails inline du scoreboard match (POC CSS-only, ligne dépliable) — v5.7
