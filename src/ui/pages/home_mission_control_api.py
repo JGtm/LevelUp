@@ -116,23 +116,41 @@ def _build_challenge_summary(challenges_data: Any) -> HomeChallengeSummary | Non
 # =============================================================================
 
 
-async def _async_fetch_progressions(
+async def _resolve_tokens(
     db_path: Path,
-    xuid: str,
-) -> tuple[HomeBattlepassInfo | None, HomeChallengeSummary | None]:
-    """Appel API async (battlepass + défis) avec gestion AuthRequiredError."""
+    gamertag: str | None,
+) -> Any | None:
+    """Résout les tokens Halo : MSAL silent d'abord, puis refresh token OAuth env."""
+    # 1. Tentative MSAL (cache process + silent)
     try:
         from src.auth.provider import get_halo_tokens_or_raise
+
+        return await get_halo_tokens_or_raise(db_path)
     except ImportError as exc:
         logger.debug("home_api: auth module indisponible: %s", exc)
-        return None, None
+    except Exception:
+        pass  # On tente le fallback refresh token ci-dessous
 
-    try:
-        tokens = await get_halo_tokens_or_raise(db_path)
-    except Exception as exc:
-        logger.debug("home_api: tokens indisponibles: %s", exc)
-        return None, None
+    # 2. Fallback : refresh token OAuth par joueur (SPNKR_OAUTH_REFRESH_TOKEN_<GT>)
+    if gamertag:
+        try:
+            from src.data.sync._tokens import get_tokens_for_player
 
+            player_tokens = await get_tokens_for_player(gamertag)
+            if player_tokens is not None:
+                logger.debug("home_api: tokens obtenus via refresh token env (%s)", gamertag)
+                return player_tokens
+        except Exception as exc:
+            logger.debug("home_api: fallback refresh token échoué (%s): %s", gamertag, exc)
+
+    return None
+
+
+async def _fetch_economy_data(
+    tokens: Any,
+    xuid: str,
+) -> tuple[HomeBattlepassInfo | None, HomeChallengeSummary | None]:
+    """Appels réseau Economy + GameCMS avec un token déjà résolu."""
     try:
         from aiohttp import ClientSession, ClientTimeout  # noqa: I001
         from spnkr_pr.services.economy_additions import EconomyServiceExtension
@@ -156,17 +174,14 @@ async def _async_fetch_progressions(
                 economy_svc.get_player_challenges(xuid),
                 return_exceptions=True,
             )
-
             tracks_data = (
                 await tracks_resp.parse() if not isinstance(tracks_resp, BaseException) else None
             )
             chal_data = (
                 await chal_resp.parse() if not isinstance(chal_resp, BaseException) else None
             )
-
             bp_info, reward_track_path = _build_battlepass_info(tracks_data)
 
-            # Fetch artwork de l'opération en cours (2 appels : metadata → image)
             if bp_info is not None and reward_track_path is not None:
                 gamecms_svc = GameCmsHacsServiceExtension(session)
                 try:
@@ -185,10 +200,22 @@ async def _async_fetch_progressions(
                     logger.debug("home_api: artwork opération indisponible: %s", exc)
 
         return bp_info, _build_challenge_summary(chal_data)
-
     except Exception as exc:
         logger.debug("home_api: erreur fetch progressions: %s", exc)
         return None, None
+
+
+async def _async_fetch_progressions(
+    db_path: Path,
+    xuid: str,
+    gamertag: str | None = None,
+) -> tuple[HomeBattlepassInfo | None, HomeChallengeSummary | None]:
+    """Orchestre résolution des tokens puis appels API Economy/GameCMS."""
+    tokens = await _resolve_tokens(db_path, gamertag)
+    if tokens is None:
+        logger.debug("home_api: aucun token disponible pour %s", gamertag or db_path.name)
+        return None, None
+    return await _fetch_economy_data(tokens, xuid)
 
 
 # =============================================================================
@@ -199,6 +226,7 @@ async def _async_fetch_progressions(
 def fetch_home_progressions(
     db_path: str | Path,
     xuid: str,
+    gamertag: str | None = None,
 ) -> tuple[HomeBattlepassInfo | None, HomeChallengeSummary | None]:
     """Récupère battlepass + défis avec cache session de 5 min.
 
@@ -217,7 +245,7 @@ def fetch_home_progressions(
     loop = asyncio.new_event_loop()
     asyncio.set_event_loop(loop)
     try:
-        bp, ch = loop.run_until_complete(_async_fetch_progressions(db_path, xuid))
+        bp, ch = loop.run_until_complete(_async_fetch_progressions(db_path, xuid, gamertag))
     except Exception as exc:
         logger.debug("home_api: fetch_home_progressions échoué: %s", exc)
         bp, ch = None, None

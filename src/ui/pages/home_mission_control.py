@@ -378,7 +378,9 @@ def render_home_mission_control(ctx: Any) -> None:
         )
 
     # Row 2 : Pass de combat | Défis actifs (live API, dégradation gracieuse)
-    bp_info, challenges = fetch_home_progressions(ctx.db_path, ctx.xuid)
+    bp_info, challenges = fetch_home_progressions(
+        ctx.db_path, ctx.xuid, gamertag=gamertag_from_db_path(ctx.db_path)
+    )
     bp_col, chal_col = st.columns(2)
     with bp_col:
         _render_battlepass_card(bp_info)
