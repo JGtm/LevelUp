@@ -31,6 +31,9 @@ from src.app.session_keys import SK  # noqa: E402
 from src.ui.components.browser_storage import restore_browser_prefs  # noqa: E402
 from src.ui.i18n import t  # noqa: E402
 from src.ui.layout import render_header_l1, render_header_l2, render_kpi_bar  # noqa: E402
+from src.ui.pages.home_mission_control_api import (  # noqa: E402
+    prefetch_home_progressions,
+)
 from src.ui.pages.setup_wizard import render_setup_wizard_page  # noqa: E402
 from src.ui.pages.setup_wizard_logic import get_setup_status  # noqa: E402
 from src.ui.pages.v7_sections import render_v7_section  # noqa: E402
@@ -166,6 +169,13 @@ def main() -> None:
     xuid = str(st.session_state.get(SK.XUID_INPUT, "") or "").strip()
     db_path, xuid, _ = render_header_l1(db_path=db_path, xuid=xuid)  # peut appeler st.switch_page
     waypoint_player = str(st.session_state.get(SK.WAYPOINT_PLAYER, "") or "").strip()
+
+    # Pré-fetch battlepass/défis en arrière-plan dès que le joueur est connu
+    if db_path and xuid:
+        from pathlib import Path as _Path
+
+        _gamertag = _Path(db_path).parent.name or None
+        prefetch_home_progressions(db_path, xuid, _gamertag)
 
     v7_callbacks = _make_v7_filter_callbacks()
     st.session_state["_v7_filter_callbacks_ref"] = v7_callbacks
