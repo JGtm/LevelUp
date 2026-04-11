@@ -1,5 +1,95 @@
 # Thought Log
 
+## [2026-04-11] fix(i18n): clés warn_media_no_dir et warn_discord_no_webhook manquantes
+
+**Statut** : Complété  
+**Branche** : `feat/teammates-tabs`
+
+**Décision technique** :
+- Ajout des deux clés i18n manquantes dans `src/ui/i18n/pages/settings.py`
+- Message `warn_media_no_dir` amélioré : précise que les médias déjà indexés en DB restent visibles, seul le watcher/ré-indexation est bloqué sans `media_captures_base_dir`
+- `media_captures_base_dir` est vide dans `app_settings.json` car les anciens champs `media_screens_dir`/`media_videos_dir` étaient aussi vides → la migration auto n'a pas pu déduire le chemin
+
+**Résultats** :
+- `t("warn_media_no_dir")` retourne maintenant le texte FR/EN correct au lieu de `[warn_media_no_dir]`
+- `t("warn_discord_no_webhook")` idem
+
+**Conclusion** :
+- L'utilisateur doit toujours configurer `media_captures_base_dir` en Settings pour que le watcher fonctionne, mais le warning est maintenant lisible et explicatif
+- La tolérance d'association à 10 min est un paramètre utilisateur modifiable via le slider (défaut : 3 min)
+
+## [2026-04-11] docs(backlog): ajouter la tâche auth/wizard au backlog central
+
+**Statut** : Complété  
+**Branche** : `feat/teammates-tabs`
+
+**Décision technique** :
+- Ajout d'une entrée backlog prioritaire dans `.ai/BACKLOG.md` pour porter explicitement le chantier de simplification auth / onboarding
+- Référence directe au plan `.ai/PLAN_AUTH_WIZARD_SIMPLIFICATION.md`
+- Positionnement clair du chantier : réduction de la surface visible (wizard, Azure manuel, refresh token exposé) avant nettoyage profond du legacy
+
+**Résultats observés** :
+- Le backlog central contient maintenant une tâche explicite, priorisée et exploitable pour le chantier auth/wizard
+- Le lien entre la décision d'architecture et la planification backlog est désormais traçable
+
+**Conclusion** :
+Le sujet auth/onboarding est maintenant correctement inscrit dans la roadmap interne avec son document de référence.
+
+## [2026-04-11] docs(auth): planifier la simplification du wizard in-app et du parcours d'authentification
+
+**Statut** : Complété  
+**Branche** : `feat/teammates-tabs`
+
+**Décision technique** :
+- Création d'un document dédié `.ai/PLAN_AUTH_WIZARD_SIMPLIFICATION.md`
+- Recommandation explicite : sortir le wizard in-app du parcours principal et faire de `launcher + Device Code Flow + stockage DB` la voie standard
+- Conservation du fallback CLI headless, mais comme outil de recovery moderne et non comme parcours utilisateur normal
+- Clarification du rôle du refresh token : détail interne de persistance, plus une étape visible du produit
+
+**Résultats observés** :
+- Le cadrage distingue clairement le parcours officiel, les fallback techniques et le legacy à purger progressivement
+- Le plan couvre la cible UX, les phases d'exécution, les risques, les critères de succès et l'ordre recommandé des travaux
+- La décision produit devient lisible : le launcher garde le setup, l'app se recentre sur connexion / recovery simple
+
+**Conclusion** :
+Le chantier de simplification auth est désormais documenté de manière exploitable avant implémentation. La prochaine étape logique est un refacto minimal de l'UI pour retirer le mode Azure et les formulaires manuels du wizard.
+
+## [2026-04-11] docs(v7): ajouter une passe de polish visuel des charts au plan cockpit
+
+**Statut** : Complété  
+**Branche** : `feat/teammates-tabs`
+
+**Décision technique** :
+- Ajout d'un bloc `A1bis — Polish visuel des graphes` dans `.ai/IMPL_V7.md`
+- Le périmètre est volontairement léger : police, tailles, fonds, gridlines, légendes, hover labels, marges
+- Pas de refonte analytique des graphes existants : même structure, mêmes métriques, mêmes types de chart
+- Extension de la checklist design E2 pour valider la cohérence visuelle et les exceptions locales
+- Alignement du plan directeur `.ai/PLAN_V7_ALTERNATIVE_COCKPIT.md` avec cette décision
+
+**Résultats observés** :
+- Le plan couvre maintenant explicitement la revue de rendu des charts, pas seulement le theming global de l'app
+- La limite de périmètre est claire : harmonisation visuelle, pas redesign fonctionnel des visualisations
+
+**Conclusion** :
+La V7 prévoit désormais une passe dédiée de polish graphique sur les visualisations, suffisamment cadrée pour être appliquée tôt sans dériver en refonte des charts.
+
+## [2026-04-11] docs(v7): definir la palette v7 dans le plan d'implementation
+
+**Statut** : Complété  
+**Branche** : `feat/teammates-tabs`
+
+**Décision technique** :
+- La palette v7 est maintenant explicitee dans `.ai/IMPL_V7.md` avec tokens nommes et usages associes
+- Direction retenue : cockpit sombre mat, sans transparence, sans gradients decoratifs, avec un accent bleu unique et des couleurs semantiques reservees aux statuts
+- `PLOTLY_V7_CONFIG` est cadre sur les fonds, la lisibilite typographique et les gridlines, mais les couleurs internes des series/traces restent deliberement ouvertes
+
+**Résultats observés** :
+- Le plan d'implementation est plus exploitable pour le CSS et les composants sans figer trop tot les couleurs de donnees Plotly
+- La distinction entre palette UI et palette data est maintenant claire dans le document
+
+**Conclusion** :
+La v7 a des tokens visuels suffisamment precis pour etre implementee proprement, tout en gardant la flexibilite necessaire pour ajuster les couleurs des graphiques a l'usage.
+
 ## [2026-04-10] feat(teammates): deux onglets Synergies / Contributions
 
 **Statut** : Complété  
