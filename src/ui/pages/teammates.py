@@ -21,6 +21,7 @@ import streamlit as st
 logger = logging.getLogger(__name__)
 
 from src.app._filters_friends import build_teammates_opts_map
+from src.app._page_context import TeammateCallbacks, TeammateContext, TeammateFilterOptions
 from src.app.kpis_render import render_kpis_section
 from src.data.services.teammates_service import TeammatesService
 from src.ui.cache import cached_has_cache_tables
@@ -121,16 +122,16 @@ def _render_teammate_views(
     df: pl.DataFrame,
     dff: pl.DataFrame,
     base: pl.DataFrame,
-    ctx: dict[str, object],
-    callbacks: dict[str, object],
+    ctx: TeammateContext,
+    callbacks: TeammateCallbacks,
 ) -> None:
     """Affiche la vue single ou multi selon le nombre de coéquipiers sélectionnés."""
-    filters = {
-        "apply_current_filters": True,
-        "same_team_only": True,
-        "show_smooth": True,
-    }
-    picked_xuids = ctx["picked_xuids"]
+    filters = TeammateFilterOptions(
+        apply_current_filters=True,
+        same_team_only=True,
+        show_smooth=True,
+    )
+    picked_xuids = ctx.picked_xuids
 
     if len(picked_xuids) < 1:
         st.info(t("tm_select_teammate"))
@@ -175,15 +176,15 @@ def _build_teammates_callbacks(
     assign_player_colors_fn,
     plot_multi_metric_bars_fn,
     top_medals_fn,
-) -> dict[str, object]:
+) -> TeammateCallbacks:
     """Construit les callbacks de rendu pour les vues coéquipiers."""
-    return {
-        "assign_player_colors_fn": assign_player_colors_fn,
-        "plot_multi_metric_bars_fn": plot_multi_metric_bars_fn,
-        "top_medals_fn": top_medals_fn,
-        "load_teammate_stats_fn": _load_teammate_stats_from_own_db,
-        "enrich_series_fn": _enrich_series_with_perfect_kills,
-    }
+    return TeammateCallbacks(
+        assign_player_colors_fn=assign_player_colors_fn,
+        plot_multi_metric_bars_fn=plot_multi_metric_bars_fn,
+        top_medals_fn=top_medals_fn,
+        load_teammate_stats_fn=_load_teammate_stats_from_own_db,
+        enrich_series_fn=_enrich_series_with_perfect_kills,
+    )
 
 
 # =============================================================================
@@ -249,17 +250,17 @@ def render_teammates_page(  # noqa: PLR0912, PLR0913, PLR0915
         },
     )
 
-    ctx = {
-        "me_name": me_name,
-        "xuid": xuid,
-        "db_path": db_path,
-        "db_key": db_key,
-        "picked_xuids": picked_xuids,
-        "aliases_key": aliases_key,
-        "picked_session_labels": picked_session_labels,
-        "include_firefight": include_firefight,
-        "waypoint_player": waypoint_player,
-    }
+    ctx = TeammateContext(
+        me_name=me_name,
+        xuid=xuid,
+        db_path=db_path,
+        db_key=db_key,
+        picked_xuids=picked_xuids,
+        aliases_key=aliases_key,
+        picked_session_labels=picked_session_labels,
+        include_firefight=include_firefight,
+        waypoint_player=waypoint_player,
+    )
     callbacks = _build_teammates_callbacks(
         assign_player_colors_fn,
         plot_multi_metric_bars_fn,

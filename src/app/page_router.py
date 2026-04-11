@@ -108,24 +108,24 @@ def build_match_view_params(  # noqa: PLR0913
     paris_tz,
 ) -> MatchViewParams:
     """Construit les paramètres communs pour les pages de match."""
-    return {
-        "db_path": db_path,
-        "xuid": xuid,
-        "waypoint_player": waypoint_player,
-        "db_key": db_key,
-        "settings": settings,
-        "df_full": df_full,
-        "render_match_view_fn": render_match_view_fn,
-        "format_score_label_fn": format_score_label_fn,
-        "score_css_color_fn": score_css_color_fn,
-        "format_datetime_fn": format_datetime_fn,
-        "load_player_match_result_fn": load_player_match_result_fn,
-        "load_match_medals_fn": load_match_medals_fn,
-        "load_highlight_events_fn": load_highlight_events_fn,
-        "load_match_gamertags_fn": load_match_gamertags_fn,
-        "load_match_rosters_fn": load_match_rosters_fn,
-        "paris_tz": paris_tz,
-    }
+    return MatchViewParams(
+        db_path=db_path,
+        xuid=xuid,
+        waypoint_player=waypoint_player,
+        db_key=db_key,
+        settings=settings,
+        df_full=df_full,
+        render_match_view_fn=render_match_view_fn,
+        format_score_label_fn=format_score_label_fn,
+        score_css_color_fn=score_css_color_fn,
+        format_datetime_fn=format_datetime_fn,
+        load_player_match_result_fn=load_player_match_result_fn,
+        load_match_medals_fn=load_match_medals_fn,
+        load_highlight_events_fn=load_highlight_events_fn,
+        load_match_gamertags_fn=load_match_gamertags_fn,
+        load_match_rosters_fn=load_match_rosters_fn,
+        paris_tz=paris_tz,
+    )
 
 
 def consume_pending_match_id() -> None:

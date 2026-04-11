@@ -79,7 +79,7 @@ def _render_summary_tab(  # noqa: PLR0913
     """Affiche l'onglet Résumé (KPIs, KDA, résultats, séries)."""
     render_kpis_section(dff, df_full)
     st.divider()
-    _render_form_score_section(df_full, dff)
+    _render_form_score_section(df_full, dff, db_path=db_path, xuid=xuid)
     st.divider()
     _render_kda_section(dff, lang=lang, db_path=db_path, xuid=xuid)
     _render_outcomes_over_time(dff, is_session_scope)

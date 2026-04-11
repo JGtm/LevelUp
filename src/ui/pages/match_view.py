@@ -229,11 +229,11 @@ def render_match_view(
     params: MatchViewParams,
 ) -> None:
     """Rend la vue détaillée d'un match."""
-    db_path = params["db_path"]
-    xuid = params["xuid"]
-    db_key = params["db_key"]
-    settings = params["settings"]
-    df_full = params.get("df_full")
+    db_path = params.db_path
+    xuid = params.xuid
+    db_key = params.db_key
+    settings = params.settings
+    df_full = params.df_full
     if df_full is not None:
         df_full = ensure_polars(df_full)
 
@@ -250,10 +250,10 @@ def render_match_view(
 
     outcome_code, outcome_label, outcome_color = resolve_outcome(row)
     colors = HALO_COLORS.as_dict()
-    score_label = params["format_score_label_fn"](
+    score_label = params.format_score_label_fn(
         row.get("my_team_score"), row.get("enemy_team_score")
     )
-    match_url = _build_waypoint_url(params["waypoint_player"], match_id)
+    match_url = _build_waypoint_url(params.waypoint_player, match_id)
     _had_bot, _stored_perf, _dominance_flag = repo.load_player_match_enrichment(match_id)
     _perf_score, perf_display, perf_color = compute_perf_display(
         row, df_full, _stored_perf, _had_bot
@@ -282,8 +282,8 @@ def render_match_view(
         )
 
     with st.spinner(t("mv_loading")):
-        pm = params["load_player_match_result_fn"](db_path, match_id, xuid.strip(), db_key=db_key)
-        medals_last = params["load_match_medals_fn"](db_path, match_id, xuid.strip(), db_key=db_key)
+        pm = params.load_player_match_result_fn(db_path, match_id, xuid.strip(), db_key=db_key)
+        medals_last = params.load_match_medals_fn(db_path, match_id, xuid.strip(), db_key=db_key)
     if pm:
         enrich_pm_from_row(pm, row)
 
@@ -412,22 +412,22 @@ def _render_match_tabs(  # noqa: PLR0913
             db_key,
             outcome_code,
             row,
-            params["load_highlight_events_fn"],
-            params["load_match_gamertags_fn"],
+            params.load_highlight_events_fn,
+            params.load_match_gamertags_fn,
             colors,
             is_abandoned=is_abandoned,
         )
     with tabs[2]:
-        _render_team_tab(match_id, db_path, xuid, db_key, params["load_match_gamertags_fn"])
+        _render_team_tab(match_id, db_path, xuid, db_key, params.load_match_gamertags_fn)
     with tabs[3]:
         _render_citations_tab(match_id, db_path, xuid, medals_last)
     with tabs[4]:
         _render_media_tab(
             row,
             settings,
-            params["format_datetime_fn"],
-            params["paris_tz"],
-            params["waypoint_player"],
+            params.format_datetime_fn,
+            params.paris_tz,
+            params.waypoint_player,
             db_path,
             xuid,
             match_url,

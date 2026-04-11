@@ -398,9 +398,9 @@ def render_filters_sidebar(  # noqa: PLR0913
     callbacks: FilterSidebarCallbacks,
 ) -> FilterState:
     """Rend la section complète des filtres dans la sidebar."""
-    date_range_fn = callbacks["date_range_fn"]
-    clean_asset_label_fn = callbacks["clean_asset_label_fn"]
-    build_friends_opts_map_fn = callbacks["build_friends_opts_map_fn"]
+    date_range_fn = callbacks.date_range_fn
+    clean_asset_label_fn = callbacks.clean_asset_label_fn
+    build_friends_opts_map_fn = callbacks.build_friends_opts_map_fn
 
     df = _to_polars(df)
     st.header(t("filter_header"))
