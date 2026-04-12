@@ -440,6 +440,64 @@ class TestMatchTableHTML:
         assert "<table" in html
         assert "<tbody></tbody>" in html
 
+    def test_render_match_table_html_start_row_paginates(self) -> None:
+        from src.ui.pages.match_table_html import render_match_table_html
+
+        df = pl.DataFrame(
+            {
+                "match_id": ["old", "new"],
+                "start_time": [datetime(2025, 1, 9, 14, 0), datetime(2025, 1, 10, 14, 0)],
+                "start_time_fr": ["09/01/2025 14:00", "10/01/2025 14:00"],
+                "map_name": ["Aquarius", "Live Fire"],
+                "playlist_fr": ["Quick Play", "Quick Play"],
+                "mode_ui": ["Slayer", "Slayer"],
+                "outcome": [2, 2],
+                "outcome_label": ["Victoire", "Victoire"],
+                "score": ["50 - 40", "50 - 45"],
+                "performance": [70, 80],
+                "team_mmr": [1200.0, 1210.0],
+                "enemy_mmr": [1150.0, 1190.0],
+                "delta_mmr": [50.0, 20.0],
+                "kda": [2.0, 2.5],
+                "kills": [14, 15],
+                "deaths": [7, 6],
+                "max_killing_spree": [4, 5],
+                "headshot_kills": [6, 8],
+                "average_life_mmss": ["1:20", "1:30"],
+                "assists": [3, 4],
+                "accuracy": [0.42, 0.45],
+                "ratio": [2.0, 2.5],
+            }
+        )
+
+        html = render_match_table_html(df, max_rows=1, start_row=1)
+
+        assert "old" in html
+        assert "new" not in html
+
+
+class TestExplorerResultsPagination:
+    """Tests du calcul de pagination pour les tableaux Explorer."""
+
+    def test_compute_table_window_clamps_page(self) -> None:
+        from src.ui.pages.explorer_results import _compute_table_window
+
+        page, start_row, end_row = _compute_table_window(
+            total_rows=230,
+            page_size=100,
+            current_page=99,
+        )
+
+        assert page == 3
+        assert start_row == 200
+        assert end_row == 230
+
+    def test_page_size_options_include_total(self) -> None:
+        from src.ui.pages.explorer_results import _page_size_options
+
+        assert _page_size_options(80) == [50, 80]
+        assert _page_size_options(250) == [50, 100, 250]
+
     # ------------------------------------------------------------------
     # map_thumb_url
     # ------------------------------------------------------------------

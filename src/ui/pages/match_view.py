@@ -2,17 +2,15 @@
 
 from __future__ import annotations
 
-import contextlib
 import html
 import logging
 from typing import Any
 
 import streamlit as st
-import streamlit.components.v1 as components
 
 from src.app._page_context import MatchViewParams
 from src.app.helpers import normalize_map_label, normalize_mode_label
-from src.config import HALO_COLORS, OUTCOME_CODES
+from src.config import HALO_COLORS
 from src.ui import (
     translate_pair_name,
     translate_playlist_name,
@@ -69,15 +67,35 @@ _KPI_TEXT_STYLE = (
 )
 
 
-def _simple_kpi_card(text: str) -> str:
-    """Carte KPI simple avec texte centré."""
-    return (
-        f"<div class='os-card' style='flex:1;margin-bottom:10px;"
-        f"display:flex;flex-direction:column;justify-content:center;align-items:center;"
-        f"text-align:center;padding:9px 15px;'>"
-        f"<div style='{_KPI_TEXT_STYLE}'>{html.escape(str(text))}</div>"
-        f"</div>"
-    )
+def _render_simple_kpi_tile(text: str) -> None:
+    """Affiche une carte KPI simple avec un container natif."""
+    with st.container(border=True):
+        st.markdown(
+            f"<div style='text-align:center;padding:9px 15px;{_KPI_TEXT_STYLE}'>"
+            f"{html.escape(str(text))}</div>",
+            unsafe_allow_html=True,
+        )
+
+
+def _render_score_kpi_tile(
+    score_label: str,
+    outcome_color: str,
+    dominance_flag: int | None,
+) -> None:
+    """Affiche la carte KPI du score avec badge optionnel."""
+    score_escaped = html.escape(str(score_label))
+    badge_html = _dominance_badge_html(dominance_flag)
+    score_color = outcome_color if str(outcome_color).strip() else "rgba(255,255,255,0.98)"
+
+    with st.container(border=True):
+        st.markdown(
+            f"<div style='text-align:center;padding:9px 15px'>"
+            f"<div style='font-family:var(--font-display);font-size:38px;font-weight:700;line-height:1;color:{score_color}'>"
+            f"{score_escaped}</div>"
+            f"{badge_html}"
+            f"</div>",
+            unsafe_allow_html=True,
+        )
 
 
 def _render_kpi_cards(  # noqa: PLR0913
@@ -112,45 +130,17 @@ def _render_kpi_cards(  # noqa: PLR0913
     _sep = " sur " if lang == "fr" else " on "
     mode_map_display = f"{mode_display}{_sep}{map_display}"
 
-    outcome_class = (
-        "text-win"
-        if outcome_code == OUTCOME_CODES.WIN
-        else ("text-loss" if outcome_code == OUTCOME_CODES.LOSS else "text-tie")
-    )
-    score_escaped = html.escape(str(score_label))
-    dominance_badge = _dominance_badge_html(dominance_flag)
-    badge_html = f"<div style='margin-top:1px'>{dominance_badge}</div>" if dominance_badge else ""
-
-    _accent66 = f"{outcome_color}66" if str(outcome_color).startswith("#") else outcome_color
-    _clip = (
-        "clip-path:polygon(0 var(--corner-size),var(--corner-size) 0,100% 0,"
-        "100% calc(100% - var(--corner-size)),calc(100% - var(--corner-size)) 100%,0 100%);"
-    )
-    _card_inner_style = (
-        "display:flex;flex-direction:column;justify-content:center;align-items:center;"
-        f"text-align:center;padding:9px 15px;background:rgba(21,50,62,0.7);height:100%;{_clip}"
-    )
-    _score_kpi = f"<span class='{outcome_class} fw-bold' style='font-family:var(--font-display);font-size:38px;line-height:1'>{score_escaped}</span>"
-
     date_display = format_date_fr(last_time, lang=lang)
+    date_col, score_col, playlist_col, mode_col = st.columns(4)
 
-    _score_card = (
-        f"<div class='os-card' style='flex:1;margin-bottom:10px;"
-        f"--card-border-color:{_accent66};"
-        f"display:flex;flex-direction:column;justify-content:center;align-items:center;text-align:center;padding:9px 15px;'>"
-        f"{_score_kpi}{badge_html}"
-        f"</div>"
-    )
-
-    st.markdown(
-        f"<div style='display:flex;gap:8px;align-items:stretch;margin-bottom:0'>"
-        f"{_simple_kpi_card(date_display)}"
-        f"{_score_card}"
-        f"{_simple_kpi_card(playlist_display)}"
-        f"{_simple_kpi_card(mode_map_display)}"
-        f"</div>",
-        unsafe_allow_html=True,
-    )
+    with date_col:
+        _render_simple_kpi_tile(date_display)
+    with score_col:
+        _render_score_kpi_tile(score_label, outcome_color, dominance_flag)
+    with playlist_col:
+        _render_simple_kpi_tile(playlist_display)
+    with mode_col:
+        _render_simple_kpi_tile(mode_map_display)
 
 
 def _render_map_and_rank(  # noqa: PLR0913
@@ -169,13 +159,6 @@ def _render_map_and_rank(  # noqa: PLR0913
     map_id = row.get("map_id")
     thumb = map_thumb_path(row, str(map_id) if map_id else None)
 
-    from src.ui.player_assets import file_to_data_url as _f2du
-
-    thumb_data_url = None
-    if thumb:
-        with contextlib.suppress(Exception):
-            thumb_data_url = _f2du(str(thumb))
-
     rank_html = _build_match_rank_html(
         match_id=match_id,
         db_path=db_path,
@@ -184,42 +167,44 @@ def _render_map_and_rank(  # noqa: PLR0913
         bot_outcome=outcome_code,
     )
 
-    if thumb_data_url:
-        map_img_html = (
-            f"<img src='{thumb_data_url}' "
-            f"style='width:100%;max-width:480px;height:auto;border-radius:4px;object-fit:cover'>"
-        )
-    else:
-        map_img_html = (
-            "<div style='padding:16px;color:#888;font-style:italic'>"
-            f"{t('mv_thumbnail_unavailable')}</div>"
-        )
+    if not rank_html:
+        _render_map_thumbnail(thumb)
+        return
 
-    # Bloc performance (label + score coloré)
-    import html as _html
+    map_col, perf_col, rank_col = st.columns([1.8, 0.7, 1.2])
+    with map_col:
+        _render_map_thumbnail(thumb)
+    with perf_col:
+        _render_performance_block(perf_display, perf_color)
+    with rank_col:
+        st.markdown(rank_html, unsafe_allow_html=True)
 
-    _score_color = perf_color if (perf_color and perf_display != "-") else "#888888"
-    _score_escaped = _html.escape(perf_display)
-    _label_escaped = _html.escape(t("mv_performance"))
-    perf_html = (
-        f"<div style='text-align:center;white-space:nowrap'>"
-        f"<div style='font-size:1.4em;font-weight:700;line-height:1.2;color:#dddddd'>{_label_escaped}</div>"
-        f"<div style='font-size:4.2em;font-weight:700;color:{_score_color};margin-top:4px;line-height:1'>{_score_escaped}</div>"
-        f"</div>"
-    )
 
-    if rank_html:
-        st.markdown(
-            f"""<div style='display:flex;align-items:center;gap:20px;flex-wrap:wrap;margin-bottom:1.5rem'>
-  <div style='flex:1 1 45%;min-width:180px;max-width:420px'>{map_img_html}</div>
-  <div style='flex:0 0 auto;min-width:90px'>{perf_html}</div>
-  <div style='flex:0 0 1px;align-self:stretch;background:rgba(255,255,255,0.12);border-radius:1px'></div>
-  <div style='flex:0 0 auto;width:320px;max-width:320px;overflow:hidden'>{rank_html}</div>
+def _render_map_thumbnail(thumb: Any) -> None:
+    """Affiche la miniature de carte avec un fallback natif si absente."""
+    if thumb:
+        st.image(str(thumb), width="stretch")
+        return
+    st.info(t("mv_thumbnail_unavailable"))
+
+
+def _render_performance_block(perf_display: str, perf_color: str | None) -> None:
+    """Affiche le score de performance dans un bloc compact."""
+    score_color = perf_color if (perf_color and perf_display != "-") else "#888888"
+    score_display = html.escape(perf_display)
+    label = html.escape(t("mv_performance"))
+    st.markdown(
+        """<div style='text-align:center;white-space:nowrap'>
+<div style='font-size:1.4em;font-weight:700;line-height:1.2;color:#dddddd'>"""
+        f"{label}"
+        """</div>
+<div style='font-size:4.2em;font-weight:700;margin-top:4px;line-height:1;color:"""
+        f"{score_color}'>"
+        f"{score_display}"
+        """</div>
 </div>""",
-            unsafe_allow_html=True,
-        )
-    else:
-        st.markdown(map_img_html, unsafe_allow_html=True)
+        unsafe_allow_html=True,
+    )
 
 
 def render_match_view(
@@ -344,32 +329,19 @@ def _render_match_header(  # noqa: PLR0913
     )
 
 
+def _short_match_id(match_id: str) -> str:
+    """Retourne une version courte du match_id pour l'UI."""
+    return match_id[:8] if len(match_id) >= 8 else match_id
+
+
 def _render_match_id_badge(match_id: str) -> None:
-    """Affiche un badge discret avec le match ID court et un bouton copier."""
+    """Affiche un accès discret au match ID complet sans iframe HTML."""
     if not match_id:
         return
-    short_id = match_id[:8] if len(match_id) >= 8 else match_id
-    badge_html = f"""<!DOCTYPE html>
-<html><head><style>
-html,body{{margin:0;padding:0;background:transparent;overflow:hidden;}}
-.badge{{display:inline-flex;align-items:center;gap:7px;padding:1px 0;}}
-.mid{{font-size:11px;color:#8a8a8a;font-family:'Courier New',monospace;user-select:none;}}
-.mid-val{{color:#c0c0c0;}}
-.btn{{background:transparent;border:1px solid #484848;border-radius:4px;
-  color:#888;cursor:pointer;font-size:10px;padding:0 6px;line-height:1.75;
-  transition:all 0.15s;font-family:sans-serif;}}
-.btn:hover{{border-color:#888;color:#ccc;}}
-</style></head>
-<body><div class="badge">
-  <span class="mid">ID&thinsp;<span class="mid-val">{short_id}&hellip;</span></span>
-  <button class="btn" id="b" title="Copier le match ID complet"
-    onclick="navigator.clipboard.writeText('{match_id}').then(()=>{{
-      var b=document.getElementById('b');
-      b.textContent='&#x2713;';b.style.color='#4caf50';b.style.borderColor='#4caf50';
-      setTimeout(()=>{{b.textContent='&#x1F4CB;';b.style.color='#888';b.style.borderColor='#484848';}},1500);
-    }});">&#x1F4CB;</button>
-</div></body></html>"""
-    components.html(badge_html, height=26, scrolling=False)
+    short_id = _short_match_id(match_id)
+    with st.popover(t("mv_match_id_popover", short_id=short_id)):
+        st.caption(t("mv_match_id_copy_hint"))
+        st.code(match_id, language=None)
 
 
 def _render_match_tabs(  # noqa: PLR0913

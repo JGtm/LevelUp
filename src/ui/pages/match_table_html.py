@@ -264,6 +264,7 @@ def render_match_table_html(  # noqa: PLR0913 — kwargs keyword-only, interface
     page_slug: str = "Explorer",
     page_params: dict[str, str] | None = None,
     max_rows: int = 250,
+    start_row: int = 0,
     hide_empty_cols: bool = False,
 ) -> str:
     """Génère le HTML d'un tableau de matchs.
@@ -275,12 +276,14 @@ def render_match_table_html(  # noqa: PLR0913 — kwargs keyword-only, interface
         page_slug: Slug de la page cible pour le lien "Ouvrir".
         page_params: Paramètres query string supplémentaires pour les liens internes.
         max_rows: Nombre maximum de lignes à afficher.
+        start_row: Décalage 0-based à appliquer après tri pour paginer le tableau.
         hide_empty_cols: Si True, masque les colonnes entièrement nulles (inconnus).
 
     Returns:
         Chaîne HTML complète (``<div class='os-table-wrap'>…</div>``).
     """
-    view = view.sort("start_time", descending=True).head(max_rows)
+    start_row = max(0, int(start_row or 0))
+    view = view.sort("start_time", descending=True).slice(start_row, max_rows)
     cols = _build_default_columns()
     if hide_empty_cols:
         cols = [

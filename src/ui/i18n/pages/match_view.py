@@ -215,6 +215,14 @@ STRINGS: dict[str, dict[str, str] | str] = {
         "fr": "MatchId manquant.",
         "en": "MatchId missing.",
     },
+    "mv_match_id_popover": {
+        "fr": "ID {short_id}…",
+        "en": "ID {short_id}...",
+    },
+    "mv_match_id_copy_hint": {
+        "fr": "ID complet du match. Le bloc peut être copié depuis l'UI native Streamlit.",
+        "en": "Full match ID. The block can be copied from Streamlit's native UI.",
+    },
     # ── Teammates ─────────────────────────────────────────────────────────────
     "mv_vs_expected": {
         "fr": "Réel vs attendu",
