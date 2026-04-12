@@ -171,6 +171,7 @@ V7_SECTION_KEYS: list[str] = [
     "home",
     "stats",
     "squad",
+    "synthesis",
     "explorer",
     "media",
     "profile",
@@ -181,6 +182,7 @@ _V7_SECTION_I18N_KEYS: dict[str, str] = {
     "stats": "v7_nav_stats",
     "squad": "page_teammates",
     "explorer": "page_explorer",
+    "synthesis": "v7_nav_synthesis",
     "media": "page_media",
     "profile": "v7_nav_profile",
 }
@@ -195,6 +197,7 @@ V7_SECTION_URL_PATHS: dict[str, str] = {
     "squad": "squad",
     "explorer": "explorer",
     "media": "media",
+    "synthesis": "synthesis",
     "profile": "profile",
 }
 

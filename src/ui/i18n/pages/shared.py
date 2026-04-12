@@ -50,6 +50,7 @@ STRINGS: dict[str, dict[str, str] | str] = {
     "page_settings": {"fr": "Paramètres", "en": "Settings"},
     "v7_nav_home": {"fr": "Accueil", "en": "Home"},
     "v7_nav_stats": {"fr": "Stats", "en": "Stats"},
+    "v7_nav_synthesis": {"fr": "Synthèse", "en": "Overview"},
     "v7_nav_profile": {"fr": "Profil", "en": "Profile"},
     "v7_section_context_stats": {"fr": "Contexte Stats", "en": "Stats Context"},
     "v7_section_context_squad": {"fr": "Contexte Escouade", "en": "Squad Context"},

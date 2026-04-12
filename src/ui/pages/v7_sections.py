@@ -27,6 +27,7 @@ from src.ui.pages import (
     render_timeseries_page,
 )
 from src.ui.pages.home_mission_control import render_home_mission_control
+from src.ui.pages.synthesis import render_synthesis_page
 from src.visualization import plot_multi_metric_bars_by_match
 
 logger = logging.getLogger(__name__)
@@ -212,6 +213,17 @@ def render_v7_section(active_section: str, ctx: Any) -> None:
                 assign_player_colors_fn=assign_player_colors,
                 plot_multi_metric_bars_fn=plot_multi_metric_bars_by_match,
                 top_medals_fn=top_medals_smart,
+            )
+        return
+
+    if active_section == "synthesis":
+        with st.container(border=True):
+            render_synthesis_page(
+                dff=ctx.dff,
+                base=ctx.base,
+                db_path=ctx.db_path,
+                xuid=ctx.xuid,
+                db_key=ctx.db_key,
             )
         return
 
