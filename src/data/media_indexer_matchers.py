@@ -8,7 +8,6 @@ from typing import Any
 
 import duckdb
 
-from src.data.media_helpers import match_start_to_epoch
 from src.utils.paths import get_shared_matches_path_from_player
 
 logger = logging.getLogger(__name__)
@@ -18,7 +17,11 @@ def _load_matches_by_xuid(
     db_path: Path,
     player_dbs: list[tuple[Path, str]],
 ) -> dict[str, list[tuple[Any, ...]]]:
-    """Charge les matchs de chaque joueur depuis shared_matches_v2.duckdb."""
+    """Charge les matchs de chaque joueur depuis shared_matches_v2.duckdb.
+
+    L'epoch SQL est pré-calculé dans DuckDB pour éviter toute dérive CET/CEST
+    lors de la conversion des TIMESTAMP naïfs côté Python.
+    """
     matches_by_xuid: dict[str, list[tuple[Any, ...]]] = {}
     shared_path = get_shared_matches_path_from_player(db_path)
     if shared_path and shared_path.exists():
@@ -29,7 +32,8 @@ def _load_matches_by_xuid(
                         rows = c.execute(
                             """
                             SELECT mp.match_id, mr.start_time,
-                                   COALESCE(mr.duration_seconds, 720),
+                                epoch(mr.start_time) AS start_epoch,
+                                COALESCE(mr.duration_seconds, 720),
                                    COALESCE(mr.map_id, ''), COALESCE(mr.map_name, '')
                             FROM match_participants mp
                             JOIN match_registry mr ON mp.match_id = mr.match_id
@@ -59,12 +63,9 @@ def _associate_single_media(  # noqa: PLR0913
     for xuid, matches in matches_by_xuid.items():
         candidates: list[tuple[str, Any, Any, str, str, float]] = []
         for row in matches:
-            match_id, st, dur = row[0], row[1], row[2]
-            map_id = row[3] if len(row) > 3 else ""
-            map_name = row[4] if len(row) > 4 else ""
-            start_epoch = match_start_to_epoch(st)
-            if start_epoch is None:
-                continue
+            match_id, st, start_epoch, dur = row[0], row[1], row[2], row[3]
+            map_id = row[4] if len(row) > 4 else ""
+            map_name = row[5] if len(row) > 5 else ""
             d = float(dur or 0) if dur else 12 * 60
             end_epoch = start_epoch + d
             if start_epoch - tol_seconds <= mtime_epoch <= end_epoch + tol_seconds:
