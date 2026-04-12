@@ -51,8 +51,9 @@ from src.utils.paths import PLAYER_DB_FILENAME, PLAYERS_DIR
 
 logger = logging.getLogger(__name__)
 
-# Re-exports pour rétrocompatibilité
+# Re-exports pour retrocompatibilite
 _get_image_thumbnail_path = get_image_thumbnail_path
+# Deprecated: conserver uniquement pour d'eventuels imports legacy externes.
 _match_start_to_epoch = match_start_to_epoch
 
 __all__ = [

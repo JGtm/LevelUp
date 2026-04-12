@@ -8,6 +8,7 @@ from __future__ import annotations
 import hashlib
 import logging
 import subprocess
+import warnings
 from dataclasses import dataclass
 from datetime import datetime, timezone
 from pathlib import Path
@@ -19,6 +20,11 @@ from src.ui.tz import db_ts_to_utc
 from src.utils.paths import PLAYER_DB_FILENAME, PLAYERS_DIR, get_shared_matches_path_from_player
 
 logger = logging.getLogger(__name__)
+
+_MATCH_START_TO_EPOCH_DEPRECATION = (
+    "match_start_to_epoch() est depreciee; utiliser epoch(start_time) en SQL "
+    "ou _load_matches_by_xuid() pour l'association media->match."
+)
 
 # Extensions supportées
 IMAGE_EXTENSIONS = {".png", ".jpg", ".jpeg", ".webp"}
@@ -67,7 +73,16 @@ def is_generated_thumbnail_path(path: Path | str) -> bool:
 
 
 def match_start_to_epoch(start_time: datetime | str | float) -> float | None:
-    """Convertit start_time (DB/API) en epoch seconds."""
+    """Convertit start_time (DB/API) en epoch seconds.
+
+    Deprecated: l'association media->match doit utiliser l'epoch calculee en SQL
+    pour eviter les derives CET/CEST sur les TIMESTAMP DuckDB naifs.
+    """
+    warnings.warn(
+        _MATCH_START_TO_EPOCH_DEPRECATION,
+        DeprecationWarning,
+        stacklevel=2,
+    )
     try:
         if isinstance(start_time, int | float):
             return float(start_time)

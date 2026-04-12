@@ -93,6 +93,9 @@ class TestDbTsToUtc:
 # =============================================================================
 
 
+@pytest.mark.filterwarnings(
+    r"ignore:match_start_to_epoch\(\) est depreciee; utiliser epoch\(start_time\) en SQL .*:DeprecationWarning"
+)
 class TestMatchStartToEpoch:
     """Tests pour match_start_to_epoch().
 
@@ -155,6 +158,14 @@ class TestMatchStartToEpoch:
         # Selon l'implémentation : naive string → epoch UTC (via +00:00 convention)
         assert result is not None
         assert isinstance(result, float)
+
+
+def test_match_start_to_epoch_emits_deprecation_warning() -> None:
+    """Le helper legacy doit signaler explicitement sa deprecation."""
+    import src.data.media_helpers as media_helpers
+
+    with pytest.deprecated_call(match=r"match_start_to_epoch\(\) est depreciee"):
+        media_helpers.match_start_to_epoch("2026-02-03T17:00:00Z")
 
 
 # =============================================================================
