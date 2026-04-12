@@ -38,6 +38,7 @@ class SK:
     PENDING_PAGE: str = "_pending_page"
     PENDING_MATCH_ID: str = "_pending_match_id"
     PENDING_GAMERTAG: str = "_pending_gamertag"
+    PENDING_PLAYER: str = "_pending_player"
     MATCH_ID_INPUT: str = "match_id_input"
     LAST_MATCH_NAV_INDEX: str = "_last_match_nav_index"
     LAST_MATCH_NAV_TOTAL: str = "_last_match_nav_total"

@@ -102,6 +102,7 @@ from src.ui.cache import (
 )
 from src.ui.components.browser_storage import (
     persist_browser_prefs,
+    resolve_browser_pref_lang,
     restore_browser_prefs,
     restore_hints_from_prefs,
 )
@@ -235,34 +236,15 @@ def _tailscale_worker() -> None:
 
 
 def _check_and_notify_new_version(settings: AppSettings) -> AppSettings:
-    """Envoie une notif Discord si la version majeure/mineure a changé depuis le dernier démarrage.
+    """Déclenche la notif Discord de nouvelle version si applicable.
 
-    Met à jour last_notified_version dans app_settings.json après envoi (ou si même version).
-    Retourne les settings potentiellement mis à jour.
+    La déduplication (exact version match), la détection major/minor et la persistance
+    de last_notified_version sont entièrement gérées dans notify_new_version (sans Streamlit).
     """
     try:
-        from src.utils.discord_notifier import _is_major_minor_change, notify_new_version
+        from src.utils.discord_notifier import notify_new_version
 
-        current = __version__
-        last = str(getattr(settings, "last_notified_version", "") or "")
-
-        if not _is_major_minor_change(last, current):
-            # Pas de changement major/minor — mettre à jour silencieusement si last est vide
-            if not last:
-                new_settings, ok, _ = patch_settings("last_notified_version", current)
-                if ok:
-                    return new_settings
-            return settings
-
-        logger.info("[Version] Changement détecté : %s → %s, envoi notif Discord", last, current)
-        notify_new_version(current)
-
-        # Toujours mettre à jour last_notified_version (même si la notif échoue)
-        # pour éviter le spam au prochain redémarrage
-        new_settings, ok, err = patch_settings("last_notified_version", current)
-        if ok:
-            return new_settings
-        logger.warning("[Version] Impossible de sauvegarder last_notified_version : %s", err)
+        notify_new_version(__version__)
     except Exception as exc:
         logger.warning("[Version] Erreur lors du check de version : %s", exc)
     return settings
@@ -382,42 +364,83 @@ def _start_background_services(settings: AppSettings, DEFAULT_DB: str) -> None:
             logger.info("Tailscale funnel thread lancé (port 8501)")
 
 
-def _parse_query_params() -> None:
-    """Consomme les query params (?page=...&match_id=...) pour navigation interne."""
+def _read_query_params() -> tuple[str, str, str, str, str, str, str]:
+    """Lit et normalise les query params pilotant la navigation interne."""
+    keys = ("page", "match_id", "gamertag", "player", "stats_view", "session", "scope")
     try:
         qp = dict(st.query_params)
-        qp_page = _qp_first(qp.get("page"))
-        qp_mid = _qp_first(qp.get("match_id"))
-        qp_gt = _qp_first(qp.get("gamertag"))
     except Exception:
-        qp_page = None
-        qp_mid = None
-        qp_gt = None
-    qp_params = (str(qp_page or "").strip(), str(qp_mid or "").strip(), str(qp_gt or "").strip())
-    if any(qp_params) and st.session_state.get("_consumed_query_params") != qp_params:
-        st.session_state[SK.CONSUMED_QUERY_PARAMS] = qp_params
-        if qp_params[0]:
-            st.session_state[SK.PENDING_PAGE] = qp_params[0]
-        if qp_params[1]:
-            st.session_state[SK.PENDING_MATCH_ID] = qp_params[1]
-        if qp_params[2]:
-            st.session_state[SK.PENDING_GAMERTAG] = qp_params[2]
-            # Auto-navigate to Explorer for gamertag deep links
-            if not qp_params[0]:
-                st.session_state[SK.PENDING_PAGE] = "Explorer"
-        if any(qp_params):
-            logger.info(
-                "Deep link consommé: page=%r, match_id=%r, gamertag=%r",
-                qp_params[0] or None,
-                qp_params[1] or None,
-                qp_params[2] or None,
-            )
-        # Nettoie l'URL après consommation
-        try:
-            st.query_params.clear()
-        except Exception:
-            with contextlib.suppress(Exception):
-                st.experimental_set_query_params()
+        return ("", "", "", "", "", "", "")
+    return tuple(str(_qp_first(qp.get(key)) or "").strip() for key in keys)
+
+
+def _apply_session_query_context(session_label: str, scope: str) -> None:
+    """Applique le contexte session/solo/escouade issu des query params."""
+    if not session_label:
+        return
+
+    st.session_state[SK.FILTER_MODE] = "Sessions"
+    st.session_state[SK.PICKED_SESSION_LABEL] = session_label
+    st.session_state[SK.PICKED_SESSIONS] = [session_label]
+
+    scope_updates = {
+        "squad": {
+            SK.PICKED_SQUAD_SESSION_LABEL: session_label,
+            SK.PICKED_SOLO_SESSION_LABEL: "(toutes)",
+        },
+        "solo": {
+            SK.PICKED_SOLO_SESSION_LABEL: session_label,
+            SK.PICKED_SQUAD_SESSION_LABEL: "(toutes)",
+        },
+    }
+    for key, value in scope_updates.get(scope.lower(), {}).items():
+        st.session_state[key] = value
+
+
+def _clear_query_params_safe() -> None:
+    """Nettoie les query params sans dépendre d'une API Streamlit précise."""
+    try:
+        st.query_params.clear()
+    except Exception:
+        with contextlib.suppress(Exception):
+            st.experimental_set_query_params()
+
+
+def _parse_query_params() -> None:
+    """Consomme les query params (?page=...&match_id=...) pour navigation interne."""
+    qp_params = _read_query_params()
+    if not any(qp_params) or st.session_state.get("_consumed_query_params") == qp_params:
+        return
+
+    st.session_state[SK.CONSUMED_QUERY_PARAMS] = qp_params
+    qp_page, qp_mid, qp_gt, qp_player, qp_stats_view, qp_session, qp_scope = qp_params
+
+    if qp_page:
+        st.session_state[SK.PENDING_PAGE] = qp_page
+    if qp_mid:
+        st.session_state[SK.PENDING_MATCH_ID] = qp_mid
+    if qp_gt:
+        st.session_state[SK.PENDING_GAMERTAG] = qp_gt
+        if not qp_page:
+            st.session_state[SK.PENDING_PAGE] = "Explorer"
+    if qp_player:
+        st.session_state[SK.PENDING_PLAYER] = qp_player
+    if qp_stats_view:
+        st.session_state[SK.V7_STATS_VIEW] = qp_stats_view
+
+    _apply_session_query_context(qp_session, qp_scope)
+
+    logger.info(
+        "Deep link consommé: page=%r, match_id=%r, gamertag=%r, player=%r, stats_view=%r, session=%r, scope=%r",
+        qp_page or None,
+        qp_mid or None,
+        qp_gt or None,
+        qp_player or None,
+        qp_stats_view or None,
+        qp_session or None,
+        qp_scope or None,
+    )
+    _clear_query_params_safe()
 
 
 def _send_sync_discord_notification(
@@ -996,12 +1019,12 @@ def _maybe_apply_browser_prefs(browser_prefs: dict) -> None:
     ls_slug = str(browser_prefs.get("last_db_path") or "").strip()
     ls_lang = str(browser_prefs.get("lang") or "").strip()
 
-    # Restauration de la langue (si différente de la session courante)
-    if ls_lang in ("fr", "en"):
-        current_lang = str(st.session_state.get(SK.LANG) or "fr").strip()
-        if ls_lang != current_lang:
-            set_lang(ls_lang)
-            st.session_state[SK.LANG] = ls_lang
+    # Restauration de la langue : appliquer aussi le cas d'une session neuve
+    # sans langue explicite, même si la préférence vaut "fr".
+    lang_to_apply = resolve_browser_pref_lang(ls_lang, st.session_state.get(SK.LANG))
+    if lang_to_apply is not None:
+        set_lang(lang_to_apply)
+        st.session_state[SK.LANG] = lang_to_apply
 
     # Restauration du joueur (si le slug LS diffère du joueur actuel)
     current_db = str(st.session_state.get(SK.DB_PATH) or "").strip()

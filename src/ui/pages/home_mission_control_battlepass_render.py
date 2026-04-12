@@ -17,6 +17,14 @@ RenderCard = Callable[[str], None]
 _TIER_WINDOW_REWARD_BUDGET = 10
 
 
+def _image_data_url(image_bytes: bytes | None) -> str | None:
+    """Encode une image en data URL pour un rendu HTML inline."""
+    if not image_bytes:
+        return None
+    encoded = base64.b64encode(image_bytes).decode("ascii")
+    return f"data:image/png;base64,{encoded}"
+
+
 def render_battlepass_card(info: HomeBattlepassInfo | None, render_card: RenderCard) -> None:
     """Affiche la carte de progression du pass de combat."""
     title = t("v7_home_battlepass")
@@ -31,20 +39,27 @@ def render_battlepass_card(info: HomeBattlepassInfo | None, render_card: RenderC
         )
         return
 
-    if info.track_image_bytes:
-        st.image(info.track_image_bytes, width="stretch")
-
     tiers = _resolve_browser_tiers(info)
     focus_index = _resolve_focus_index(info, tiers)
     tier_label = t("v7_home_battlepass_premium") if info.is_owned else t("v7_home_battlepass_free")
-    rows = [
-        f"<div class='v7-subshell-title'>{escape(title)}</div>",
-        f"<div class='v7-home-meta'>{escape(info.track_name)} · {escape(tier_label)}</div>",
-        "<div class='v7-home-stats'>",
-        f"<span class='v7-home-stat'><strong>Niv. {info.op_rank}</strong></span>",
-        "</div>",
-        _battlepass_progress_html(info),
-    ]
+    rows = []
+    track_image_url = _image_data_url(info.track_image_bytes)
+    if track_image_url is not None:
+        rows.append(f"<div class='v7-bp-track-hero'><img src='{track_image_url}' alt=''></div>")
+    rows.extend(
+        [
+            f"<div class='v7-subshell-title'>{escape(title)}</div>",
+            f"<div class='v7-home-meta'>{escape(info.track_name)} · {escape(tier_label)}</div>",
+        ]
+    )
+    rows.extend(
+        [
+            "<div class='v7-home-stats'>",
+            f"<span class='v7-home-stat'><strong>Niv. {info.op_rank}</strong></span>",
+            "</div>",
+            _battlepass_progress_html(info),
+        ]
+    )
     rows.extend(_battlepass_detail_rows(info, tiers=tiers, focus_index=focus_index))
     render_card("".join(rows))
     _render_battlepass_navigation(info, tiers, focus_index)
@@ -110,9 +125,7 @@ def _battlepass_browser_panel_html(
     focus_index: int,
 ) -> str:
     window = _select_tier_window(tiers, focus_index)
-    parts = [
-        "<div class='bp-browser-window' style='display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:10px;'>"
-    ]
+    parts = ["<div class='v7-bp-tier-grid'>"]
     for tier in window:
         parts.append(
             _battlepass_tier_html(
@@ -131,7 +144,7 @@ def _battlepass_browser_status_html(
 ) -> str:
     max_rank = tiers[-1].rank if tiers else 0
     return (
-        "<span style='font-size:12px;color:rgba(250,250,250,0.68);'>"
+        "<span class='v7-bp-browser-status'>"
         f"{escape(t('v7_home_battlepass_focus', rank=tiers[focus_index].rank, max_rank=max_rank))}"
         "</span>"
     )
@@ -143,23 +156,20 @@ def _battlepass_progress_html(info: HomeBattlepassInfo) -> str:
     if info.has_reached_max_rank:
         label = escape(t("v7_home_battlepass_max"))
         return (
-            "<div style='margin:10px 0 4px;'>"
-            f"<div style='font-size:12px;color:rgba(250,250,250,0.72);margin-bottom:6px;'>{label}</div>"
-            "<div style='height:10px;border-radius:999px;background:rgba(255,255,255,0.14);overflow:hidden;'>"
-            "<div style='width:100%;height:100%;background:linear-gradient(90deg,#ffffff 0%,#f1f5f9 100%);'></div>"
+            "<div class='v7-bp-progress'>"
+            f"<div class='v7-bp-progress-head'><span>{label}</span><strong>MAX</strong></div>"
+            "<div class='v7-bp-progress-track'>"
+            "<div class='v7-bp-progress-fill' style='width:100%'></div>"
             "</div></div>"
         )
     current_xp = max(0, min(info.partial_progress or 0, info.xp_per_rank))
     fill_pct = (current_xp / info.xp_per_rank) * 100 if info.xp_per_rank > 0 else 0
     label = escape(t("v7_home_battlepass_tier_progress"))
     return (
-        "<div style='margin:10px 0 4px;'>"
-        f"<div style='display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:6px;'>"
-        f"<span style='font-size:12px;color:rgba(250,250,250,0.72);'>{label}</span>"
-        f"<span style='font-size:12px;color:#ffffff;'><strong>{current_xp}/{info.xp_per_rank}</strong> XP</span>"
-        "</div>"
-        "<div style='height:10px;border-radius:999px;background:rgba(255,255,255,0.12);overflow:hidden;box-shadow:inset 0 0 0 1px rgba(255,255,255,0.06);'>"
-        f"<div style='width:{fill_pct:.1f}%;height:100%;background:linear-gradient(90deg,#ffffff 0%,#e2e8f0 100%);'></div>"
+        "<div class='v7-bp-progress'>"
+        f"<div class='v7-bp-progress-head'><span>{label}</span><strong>{current_xp}/{info.xp_per_rank} XP</strong></div>"
+        "<div class='v7-bp-progress-track'>"
+        f"<div class='v7-bp-progress-fill' style='width:{fill_pct:.1f}%'></div>"
         "</div></div>"
     )
 
@@ -240,12 +250,13 @@ def _battlepass_tier_html(
     is_focus: bool,
     is_current: bool,
 ) -> str:
-    container_border = "rgba(255,255,255,0.30)" if is_focus else "rgba(255,255,255,0.10)"
-    container_bg = "rgba(255,255,255,0.09)" if is_focus else "rgba(255,255,255,0.03)"
+    tier_classes = "v7-bp-tier"
+    if is_focus:
+        tier_classes = f"{tier_classes} v7-bp-tier--focus"
     badges = []
     if is_current:
         badges.append(
-            f"<span style='display:inline-flex;align-items:center;height:18px;padding:0 7px;border-radius:999px;background:rgba(255,255,255,0.14);color:#ffffff;font-size:10px;font-weight:700;'>{escape(t('v7_home_battlepass_current'))}</span>"
+            f"<span class='v7-bp-tier-current'>{escape(t('v7_home_battlepass_current'))}</span>"
         )
     rewards_html = []
     for reward in tier.free_rewards:
@@ -254,16 +265,16 @@ def _battlepass_tier_html(
         rewards_html.append(_battlepass_reward_html(reward, premium=True))
     if not rewards_html:
         rewards_html.append(
-            f"<div style='font-size:11px;color:rgba(250,250,250,0.58);padding:4px 0;'>{escape(t('v7_home_battlepass_empty'))}</div>"
+            f"<div class='v7-bp-empty'>{escape(t('v7_home_battlepass_empty'))}</div>"
         )
     return "".join(
         [
-            f"<div style='padding:10px;border-radius:14px;border:1px solid {container_border};background:{container_bg};min-width:0;'>",
-            "<div style='display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:8px;'>",
-            f"<div style='font-size:12px;color:rgba(250,250,250,0.78);'><strong>Palier {tier.rank}</strong></div>",
-            f"<div style='display:flex;align-items:center;gap:6px;'>{''.join(badges)}</div>",
+            f"<div class='{tier_classes}'>",
+            "<div class='v7-bp-tier-head'>",
+            f"<div class='v7-bp-tier-label'><strong>Palier {tier.rank}</strong></div>",
+            f"<div class='v7-bp-tier-badges'>{''.join(badges)}</div>",
             "</div>",
-            "<div style='display:flex;gap:8px;flex-wrap:wrap;padding:2px 0 0;'>",
+            "<div class='v7-bp-tier-rewards'>",
             *rewards_html,
             "</div>",
             "</div>",
@@ -272,28 +283,20 @@ def _battlepass_tier_html(
 
 
 def _battlepass_reward_html(reward: object, *, premium: bool) -> str:
-    border = "rgba(241, 196, 15, 0.85)" if premium else "rgba(96, 165, 250, 0.8)"
-    background = "rgba(241, 196, 15, 0.10)" if premium else "rgba(96, 165, 250, 0.10)"
-    badge_background = "rgba(241, 196, 15, 0.92)" if premium else "rgba(96, 165, 250, 0.92)"
     badge_text = "P" if premium else "F"
+    reward_classes = (
+        "v7-bp-reward v7-bp-reward--premium" if premium else "v7-bp-reward v7-bp-reward--free"
+    )
     tooltip = escape(_battlepass_reward_tooltip(reward), quote=True)
     if reward.image_bytes:
         encoded = base64.b64encode(reward.image_bytes).decode()
-        body = (
-            f"<img src='data:image/png;base64,{encoded}' alt='' "
-            "style='width:100%;height:100%;display:block;object-fit:cover;'>"
-        )
+        body = f"<img src='data:image/png;base64,{encoded}' alt='' class='v7-bp-reward-body'>"
     else:
         label = escape(reward.tile_label or reward.label)
-        body = (
-            "<div style='width:100%;height:100%;display:flex;align-items:center;justify-content:center;"
-            "padding:6px;font-size:11px;font-weight:700;line-height:1.05;text-align:center;color:#f8fafc;'>"
-            f"{label}</div>"
-        )
+        body = f"<div class='v7-bp-reward-fallback'>{label}</div>"
     return (
-        f"<div title='{tooltip}' style='position:relative;flex:0 0 auto;width:56px;height:56px;border-radius:12px;"
-        f"overflow:hidden;border:1px solid {border};background:{background};box-shadow:inset 0 0 0 1px rgba(255,255,255,0.04);'>"
-        f"<div style='position:absolute;top:4px;right:4px;z-index:1;min-width:16px;height:16px;padding:0 4px;border-radius:999px;background:{badge_background};color:#081018;font-size:9px;font-weight:800;display:flex;align-items:center;justify-content:center;'>{badge_text}</div>"
+        f"<div title='{tooltip}' class='{reward_classes}'>"
+        f"<div class='v7-bp-reward-badge'>{badge_text}</div>"
         f"{body}</div>"
     )
 

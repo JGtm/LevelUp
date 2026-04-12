@@ -52,6 +52,8 @@ data/
 ### Accès aux Données
 - `src/data/repositories/duckdb_repo.py` : Repository principal DuckDB (splitté: `_awards_repo`, `_diagnostic_repo`, `_legacy_compat`, `_match_queries_helpers`, `_match_queries_polars`, `_metadata_resolution`, `_schema_introspection`, `_archives_repo`, `_events_repo`, `_medals_repo`, `_gamertag_resolver`)
 - `src/data/repositories/factory.py` : Factory pattern
+- `src/data/challenges.py` : Façade publique des défis Halo ; délègue le catalogue metadata à `src/data/_challenge_catalog.py` et les snapshots joueur à `src/data/_challenge_snapshots.py`
+- `src/data/battlepass.py` : Façade publique du catalogue metadata battle pass ; délègue les reward tracks et items partagés à `src/data/_battlepass_catalog.py` dans `metadata.duckdb`
 - `src/data/sync/engine.py` : Moteur de synchronisation (8 mixins MRO : `_shared_writes`, `_performance`, `_skill_rating`, `_career`, `_aggregates`, `_match_processing`, `_engine_connections`, `_engine_schema` + `_protocol.py`)
 - `src/data/sync/_engine_weapon_kills.py` : Mixin extraction armes depuis films (`WeaponKillsEngineMixin`) — v5.6
 - `src/data/services/weapon_extraction_service.py` : Service hexagonal extraction armes (`WeaponExtractionService`) — v5.6
@@ -84,8 +86,15 @@ data/
 
 ### UI
 - `src/ui/pages/` : Pages du dashboard
+- `src/ui/pages/media_v2.py` + `media_v2_grid.py` : Page Médias V2 ; lightbox Streamlit partagée, miniatures désormais rendues nativement via `st.image` pour éviter les iframes par carte
+- `src/ui/components/media_thumbnail.py` : Composant thumbnail HTML legacy (survol GIF + lightbox optionnelle) ; expose aussi `load_native_thumbnail_source()` pour le rendu léger de Media V2
 - `src/ui/pages/home_mission_control.py` : Rendu Streamlit de l'accueil Mission Control V7 (briefing, CTA, timeline, sections)
+- `src/ui/pages/home_mission_control_cards.py` : Builders HTML de la home V7 (hero, highlights, actions, cartes session, timeline récente, bloc médias)
 - `src/ui/pages/home_mission_control_logic.py` : Logique pure du Mission Control V7 (dataclasses, navigation contextuelle, highlights, résumés, sélection des matchs/médias récents)
+- `src/ui/pages/home_mission_control_challenges.py` : Helpers défis live pour la home V7 (résumé `/decks`, fallback metadata, dérivation + cache des badges Waypoint)
+- `src/ui/pages/home_mission_control_battlepass.py` + `home_mission_control_battlepass_render.py` + `home_mission_control_battlepass_assets.py` : pass actif joueur de la home V7, navigateur unique de paliers sur tout le track (fenêtre précédente/courante/suivante extensible), barre XP composite, cache metadata partagé reward track ou item dans `metadata.duckdb`, cache lazy d'assets et fallback repo statique pour `xpboost` / `rerollcurrency`
+- `src/ui/pages/explorer_results.py` + `match_table_html.py` : résultats Explorer avec pagination légère des gros tableaux HTML (filtres / alliés / adversaires) pour réduire le DOM injecté
+- `src/ui/pages/match_view.py` : Vue match détaillée ; le badge Match ID utilise désormais un popover Streamlit natif, le bloc carte/rang s'appuie sur des colonnes Streamlit + `st.image`, et la rangée KPI utilise une structure native `st.columns` au lieu d'un wrapper HTML unique
 - `src/ui/pages/v7_sections.py` : Couche de composition temporaire du cockpit V7 (regroupement des pages legacy par section) ; enveloppe aussi désormais Stats/Escouade/Explorer/Médias/Profil dans une vraie surface de workspace
 - `src/ui/layout/` : Shell V7 (header L1/L2, KPI bar, chips de filtres) ; la L2 pilote désormais le contexte Stats/Escouade avec filtre visible, scope de session et navigation précédente / dernière session
 - `src/ui/theme/` : Thème V7 (chargement CSS + feuille dédiée) ; surcharge aussi désormais les panneaux d'onglets, cartes bordées, expanders, métriques, tags de multiselect, popovers, checkboxes et sliders des pages legacy réutilisées dans le cockpit
@@ -109,6 +118,7 @@ data/
 - `src/visualization/timeseries_combat.py` : Séries temporelles (splitté: `_timeseries_helpers`, `_timeseries_progression`)
 - `src/visualization/friends_impact_heatmap.py` : Friends Impact Matrix (séparateurs verticaux, renommé depuis Heatmap) — v5.6
 - `src/ui/i18n/ranks.py` : Traductions FR des rangs Halo (17 rangs + 6 tiers CSR) — v5.7
+- `static/battlepass-assets/` : visuels repo-tracked des monnaies battle pass non exposées par GameCMS (`xpboost.png`, `rerollcurrency.png`)
 
 ## Tables DuckDB
 
@@ -140,6 +150,7 @@ data/
 | `sessions` | Sessions groupées |
 | `sync_meta` | Métadonnées sync |
 | `match_skill_rank` | Rating LUSR/CSR par match (PK=match_id — exclusif LUSR ou CSR) — **v5.3** |
+| `challenge_snapshots` | Historique append-only dédupliqué des défis joueur (active/completed/upcoming, progression, XP, expiry) |
 | `mv_*` | Vues matérialisées (mv_player_matches, mv_map_stats, etc.) |
 
 ### Base Métadonnées (metadata.duckdb)
@@ -149,6 +160,8 @@ data/
 | `playlists` | Définitions playlists |
 | `game_modes` | Modes de jeu (FR/EN) |
 | `medal_definitions` | Référentiel médailles |
+| `challenge_definitions` | Définitions versionnées des défis Halo (category, difficulty, seuil, XP, hash de contenu) |
+| `challenge_translations` | Titres + descriptions multi-langues des défis (BCP-47, fallback EN) |
 | `career_ranks` | Rangs de carrière |
 
 ## Scripts Utilitaires

@@ -3,12 +3,19 @@
 from __future__ import annotations
 
 import contextlib
+import html
 import logging
 from pathlib import Path
+from urllib.parse import quote
 
 import streamlit as st
 
-from src.app.page_router import V7_SECTION_KEYS, get_v7_section_label, normalize_v7_section
+from src.app.page_router import (
+    V7_SECTION_KEYS,
+    V7_SECTION_URL_PATHS,
+    get_v7_section_label,
+    normalize_v7_section,
+)
 from src.app.session_keys import SK
 from src.ui import display_name_from_xuid
 from src.ui._sync_indicator import render_sync_indicator
@@ -24,10 +31,32 @@ from src.ui.multiplayer import (
     get_gamertag_from_duckdb_v4_path,
     is_duckdb_v4_path,
     list_duckdb_v4_players,
-    render_player_selector_unified,
 )
 
 logger = logging.getLogger(__name__)
+
+
+def _get_current_player_label(db_path: str, xuid: str) -> str:
+    """Retourne le libellé joueur affiché dans le header L1."""
+    if _has_multiple_players(db_path):
+        gamertag = get_gamertag_from_duckdb_v4_path(db_path)
+        if gamertag:
+            return gamertag
+
+    if str(xuid or "").strip():
+        return display_name_from_xuid(xuid.strip(), db_path=db_path)
+    return "-"
+
+
+def _get_player_widget_width(player_label: str) -> int:
+    """Calcule une largeur compacte pour le sélecteur joueur du header."""
+    label = str(player_label or "-").strip() or "-"
+    return max(104, min(188, 28 + len(label) * 7))
+
+
+def _get_player_column_ratio(player_width_px: int) -> float:
+    """Convertit la largeur souhaitée du sélecteur en poids de colonne Streamlit."""
+    return max(0.76, min(1.18, player_width_px / 164.0))
 
 
 def _has_multiple_players(db_path: str) -> bool:
@@ -101,83 +130,161 @@ def _apply_player_change(
     return db_path, xuid
 
 
-def _render_player_block(db_path: str, xuid: str) -> tuple[str, str]:
-    """Rend le bloc joueur actif / sélecteur multi-joueurs."""
-    st.markdown(f"<div class='v7-brand-title'>{t('col_player')}</div>", unsafe_allow_html=True)
+def _render_inline_player_selector(db_path: str, xuid: str, *, width_px: int) -> tuple[str, str]:
+    """Rend un menu joueur HTML compact pour le header L1."""
+    del width_px
+    player_markup = _build_player_menu_html(db_path, xuid)
+    st.markdown(player_markup, unsafe_allow_html=True)
+    return db_path, xuid
 
-    if _has_multiple_players(db_path):
-        new_db_path, new_xuid = render_player_selector_unified(
-            db_path,
-            xuid,
-            key="v7_header_player_selector",
-            show_heading=False,
-            show_sync_indicator=False,
+
+def _resolve_player_xuid_for_db(db_path: str) -> str | None:
+    """Résout l'XUID d'une DB joueur si disponible."""
+    try:
+        from src.ui.cache_loaders import _resolve_player_xuid
+
+        resolved = _resolve_player_xuid(db_path)
+        if resolved:
+            return resolved
+    except Exception:
+        pass
+    return None
+
+
+def _section_href(section: str) -> str:
+    """Retourne l'URL relative d'une section V7."""
+    url_path = V7_SECTION_URL_PATHS.get(section, "")
+    return "/" if not url_path else f"/{url_path}"
+
+
+def _player_href(section: str, gamertag: str) -> str:
+    """Construit l'URL interne d'un switch joueur pour la section courante."""
+    base = _section_href(section)
+    return f"{base}?player={quote(gamertag)}"
+
+
+def _build_tab_links(labels: dict[str, str], nav_sections: list[str], current_section: str) -> str:
+    """Construit le markup des tabs L1 en liens HTML internes."""
+    links: list[str] = []
+    for section in nav_sections:
+        class_name = "v7-l1-tab v7-l1-tab--active" if current_section == section else "v7-l1-tab"
+        links.append(
+            f"<a class='{class_name}' href='{html.escape(_section_href(section), quote=True)}' "
+            f"target='_self'>{html.escape(labels[section])}</a>"
         )
-        if new_db_path or new_xuid:
-            db_path, xuid = _apply_player_change(
-                current_db_path=db_path,
-                current_xuid=xuid,
-                new_db_path=new_db_path,
-                new_xuid=new_xuid,
-            )
-            st.rerun()
+    return "<nav class='v7-l1-tabs'>" + "".join(links) + "</nav>"
+
+
+def _build_player_menu_html(db_path: str, xuid: str) -> str:
+    """Construit le dropdown joueur en HTML pur pour éviter le selectbox Streamlit."""
+    current_label = _get_current_player_label(db_path, xuid)
+    current_section = normalize_v7_section(st.session_state.get(SK.V7_CURRENT_SECTION))
+    if not _has_multiple_players(db_path):
+        return f"<div class='v7-l1-player-text'>{html.escape(current_label)}</div>"
+
+    current_gamertag = get_gamertag_from_duckdb_v4_path(db_path)
+    items: list[str] = []
+    for player in list_duckdb_v4_players():
+        item_class = "v7-l1-player-option"
+        if player.gamertag == current_gamertag:
+            item_class = f"{item_class} v7-l1-player-option--active"
+        items.append(
+            f"<a class='{item_class}' href='{html.escape(_player_href(current_section, player.gamertag), quote=True)}' "
+            f"target='_self'>{html.escape(player.gamertag)}</a>"
+        )
+
+    return (
+        "<details class='v7-l1-player-menu'>"
+        "<summary class='v7-l1-player-summary'>"
+        f"<span>{html.escape(current_label)}</span>"
+        "<span class='v7-l1-player-chevron'>⌄</span>"
+        "</summary>"
+        f"<div class='v7-l1-player-popover'>{''.join(items)}</div>"
+        "</details>"
+    )
+
+
+def _consume_pending_player_switch(db_path: str, xuid: str) -> tuple[str, str]:
+    """Applique un switch joueur déclenché via query param `player`."""
+    pending_player = str(st.session_state.pop(SK.PENDING_PLAYER, "") or "").strip()
+    if not pending_player or not _has_multiple_players(db_path):
         return db_path, xuid
 
-    player_name = (
-        display_name_from_xuid(xuid.strip(), db_path=db_path) if str(xuid or "").strip() else "-"
+    current_gamertag = str(get_gamertag_from_duckdb_v4_path(db_path) or "").strip()
+    if pending_player.casefold() == current_gamertag.casefold():
+        return db_path, xuid
+
+    selected_player = next(
+        (p for p in list_duckdb_v4_players() if p.gamertag.casefold() == pending_player.casefold()),
+        None,
     )
-    st.markdown(
-        f"<div class='v7-active-player'>{player_name}</div>",
-        unsafe_allow_html=True,
+    if selected_player is None:
+        return db_path, xuid
+
+    db_path, xuid = _apply_player_change(
+        current_db_path=db_path,
+        current_xuid=xuid,
+        new_db_path=str(selected_player.db_path),
+        new_xuid=_resolve_player_xuid_for_db(str(selected_player.db_path)),
     )
+    st.rerun()
     return db_path, xuid
 
 
 def render_header_l1(*, db_path: str, xuid: str) -> tuple[str, str, str]:
     """Affiche le shell global L1 et retourne l'etat de navigation."""
+    db_path, xuid = _consume_pending_player_switch(db_path, xuid)
     current_section = normalize_v7_section(st.session_state.get(SK.V7_CURRENT_SECTION))
-    initial_section = current_section
+    labels = {section: get_v7_section_label(section) for section in V7_SECTION_KEYS}
+    nav_sections = [section for section in V7_SECTION_KEYS if section != "settings"]
+    player_label = _get_current_player_label(db_path, xuid)
+    player_width_px = _get_player_widget_width(player_label)
+    player_col_ratio = _get_player_column_ratio(player_width_px)
+    nav_col_ratio = max(2.75, 3.35 - player_col_ratio * 0.12)
 
-    brand_col, nav_col, player_col, sync_col = st.columns([0.9, 2.7, 1.7, 1.1])
+    brand_col, shell_col = st.columns([0.55, 4.45], gap="medium")
+
     with brand_col:
-        st.markdown("<div class='v7-brand-title'>LevelUp</div>", unsafe_allow_html=True)
-        if st.button("LevelUp", key="v7_brand_home", width="stretch"):
-            current_section = "home"
-            st.session_state[SK.V7_CURRENT_SECTION] = current_section
-            if initial_section != current_section:
-                logger.info(
-                    "Navigation V7: section %s -> %s via brand", initial_section, current_section
-                )
-            pages_dict = st.session_state.get("_v7_pages", {})
-            target = pages_dict.get("home")
-            if target is not None:
-                st.switch_page(target)
+        st.markdown("<div class='v7-l1-brand'>LevelUp</div>", unsafe_allow_html=True)
 
-    with nav_col:
-        labels = {section: get_v7_section_label(section) for section in V7_SECTION_KEYS}
-        selected_label = st.segmented_control(
-            "Sections",
-            options=list(labels.values()),
-            default=labels[current_section],
-            key="v7_header_nav_widget",
-            label_visibility="collapsed",
-            width="stretch",
+    with shell_col:
+        st.markdown("<div class='v7-l1-shell-anchor'></div>", unsafe_allow_html=True)
+        tabs_col, player_col, sync_col, settings_col = st.columns(
+            [nav_col_ratio, player_col_ratio, 0.18, 0.18],
+            gap="small",
         )
-        reverse_map = {label: section for section, label in labels.items()}
-        current_section = reverse_map.get(selected_label, current_section)
-        st.session_state[SK.V7_CURRENT_SECTION] = current_section
-        if current_section != initial_section:
-            logger.info("Navigation V7: section %s -> %s", initial_section, current_section)
-            pages_dict = st.session_state.get("_v7_pages", {})
-            target = pages_dict.get(current_section)
-            if target is not None:
-                st.switch_page(target)
 
-    with player_col:
-        db_path, xuid = _render_player_block(db_path, xuid)
+        with tabs_col:
+            st.markdown(
+                "<div class='v7-l1-tabs-anchor'>"
+                + _build_tab_links(labels, nav_sections, current_section)
+                + "</div>",
+                unsafe_allow_html=True,
+            )
 
-    with sync_col:
-        st.markdown(f"<div class='v7-brand-title'>{t('exp_sync')}</div>", unsafe_allow_html=True)
-        render_sync_indicator(db_path, xuid=xuid)
+        with player_col:
+            db_path, xuid = _render_inline_player_selector(
+                db_path,
+                xuid,
+                width_px=player_width_px,
+            )
+
+        with sync_col:
+            render_sync_indicator(db_path, xuid=xuid, dot_only=True)
+
+        with settings_col:
+            settings_class = (
+                "v7-l1-tool-link v7-l1-tool-link--active"
+                if current_section == "settings"
+                else "v7-l1-tool-link"
+            )
+            st.markdown(
+                (
+                    f"<a class='{settings_class}' href='{html.escape(_section_href('settings'), quote=True)}' "
+                    f"target='_self' aria-label='{html.escape(t('page_settings'), quote=True)}'>"
+                    f"{html.escape(labels['settings'])}</a>"
+                ),
+                unsafe_allow_html=True,
+            )
 
     return db_path, xuid, current_section

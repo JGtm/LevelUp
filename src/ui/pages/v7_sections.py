@@ -14,7 +14,6 @@ from src.app.helpers import assign_player_colors
 from src.app.page_router import get_page_label
 from src.app.session_keys import SK
 from src.ui.cache import cached_compute_sessions_db, top_medals_smart
-from src.ui.i18n import t
 from src.ui.pages import (
     render_career_page,
     render_citations_page,
@@ -31,11 +30,6 @@ from src.ui.pages.synthesis import render_synthesis_page
 from src.visualization import plot_multi_metric_bars_by_match
 
 logger = logging.getLogger(__name__)
-
-
-def _render_section_title(title: str) -> None:
-    """Affiche un intertitre discret de section."""
-    st.markdown(f"<div class='v7-section-title'>{title}</div>", unsafe_allow_html=True)
 
 
 def _render_segmented_view(
@@ -112,7 +106,6 @@ def _build_sessions_for_compare(ctx: Any):
 
 def render_stats_section(ctx: Any) -> None:
     """Rend la section Stats v7 a partir des vues existantes."""
-    _render_section_title(t("v7_nav_stats"))
     view = _render_segmented_view(
         state_key=SK.V7_STATS_VIEW,
         options=["timeseries", "session_compare", "match_history"],
@@ -148,10 +141,9 @@ def render_stats_section(ctx: Any) -> None:
 
 def render_profile_section(ctx: Any) -> None:
     """Rend la section Profil v7 a partir des vues existantes."""
-    _render_section_title(t("v7_nav_profile"))
     view = _render_segmented_view(
         state_key=SK.V7_PROFILE_VIEW,
-        options=["career", "citations", "settings"],
+        options=["career", "citations"],
         label_fn=get_page_label,
     )
     logger.debug("Rendu section V7 profile: vue=%s", view)
@@ -168,10 +160,6 @@ def render_profile_section(ctx: Any) -> None:
             )
             return
 
-        if view == "settings":
-            render_settings_page(ctx.settings)
-            return
-
         render_career_page(
             db_path=ctx.db_path,
             xuid=ctx.xuid,
@@ -184,7 +172,6 @@ def render_v7_section(active_section: str, ctx: Any) -> None:
     """Dispatch principal des six sections v7."""
     logger.debug("Dispatch section V7: %s", active_section)
     if active_section == "home":
-        _render_section_title(t("v7_nav_home"))
         render_home_mission_control(ctx)
         return
 
@@ -193,7 +180,6 @@ def render_v7_section(active_section: str, ctx: Any) -> None:
         return
 
     if active_section == "squad":
-        _render_section_title(get_page_label("teammates"))
         with st.container(border=True):
             render_teammates_page(
                 df=ctx.df,
@@ -228,15 +214,18 @@ def render_v7_section(active_section: str, ctx: Any) -> None:
         return
 
     if active_section == "explorer":
-        _render_section_title(get_page_label("explorer"))
         with st.container(border=True):
             render_explorer_page(df=ctx.df, dff=ctx.df, params=ctx.match_view_params)
         return
 
     if active_section == "media":
-        _render_section_title(get_page_label("media"))
         with st.container(border=True):
             render_media_v2(df_full=ctx.df, settings=ctx.settings)
+        return
+
+    if active_section == "settings":
+        with st.container(border=True):
+            render_settings_page(ctx.settings)
         return
 
     render_profile_section(ctx)

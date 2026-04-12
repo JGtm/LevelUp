@@ -175,16 +175,18 @@ V7_SECTION_KEYS: list[str] = [
     "explorer",
     "media",
     "profile",
+    "settings",
 ]
 
 _V7_SECTION_I18N_KEYS: dict[str, str] = {
     "home": "v7_nav_home",
     "stats": "v7_nav_stats",
     "squad": "page_teammates",
-    "explorer": "page_explorer",
     "synthesis": "v7_nav_synthesis",
+    "explorer": "page_explorer",
     "media": "page_media",
     "profile": "v7_nav_profile",
+    "settings": "v7_nav_settings",
 }
 
 _URL_PATH_TO_PAGE: dict[str, str] = {url_path: slug for slug, url_path in _PAGE_URL_PATHS.items()}
@@ -195,10 +197,11 @@ V7_SECTION_URL_PATHS: dict[str, str] = {
     "home": "",
     "stats": "stats",
     "squad": "squad",
+    "synthesis": "synthesis",
     "explorer": "explorer",
     "media": "media",
-    "synthesis": "synthesis",
     "profile": "profile",
+    "settings": "settings",
 }
 
 _V7_LEGACY_PAGE_TO_SECTION: dict[str, str] = {
@@ -211,7 +214,7 @@ _V7_LEGACY_PAGE_TO_SECTION: dict[str, str] = {
     "media": "media",
     "career": "profile",
     "citations": "profile",
-    "settings": "profile",
+    "settings": "settings",
 }
 
 _V7_LEGACY_PAGE_TO_SUBVIEW: dict[str, str] = {

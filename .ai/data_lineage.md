@@ -190,6 +190,66 @@ Note 2026-04-11 : le scan, le watcher et le fallback UI ignorent explicitement `
 
 Lancement : thread en arrière-plan au démarrage de l’app (`_background_media_indexing` dans streamlit_app.py).
 
+### 10. Home Challenges live → metadata.duckdb + stats.duckdb — v7
+
+```
+Source: HaloStats /hi/players/xuid(...)/decks + CMS ChallengeContent/ClientChallengeDefinitions/*.json
+     ↓
+src/ui/pages/home_mission_control_api.py
+     ↓
+src/ui/pages/home_mission_control_challenges.py
+  - résumé deck actif
+  - badge Waypoint
+  - progression x/y
+     ↓
+src/data/challenges.py
+  - persist_challenge_catalog()
+  - persist_challenge_snapshots()
+  - load_challenge_metadata_map() (fallback local)
+     ↓
+Destinations:
+  - data/warehouse/metadata.duckdb
+      • challenge_definitions (versionnées via content_hash)
+      • challenge_translations (toutes langues disponibles, BCP-47)
+  - data/players/{gamertag}/stats.duckdb
+      • challenge_snapshots (active/completed/upcoming, progression, expiry, XP)
+```
+
+Note 2026-04-12 : la persistance des défis est best-effort. Si `metadata.duckdb` est verrouillée
+par un autre process, la home continue de fonctionner en live et le stockage est simplement ignoré.
+
+### 11. Home Battle Pass live → Mission Control V7 — v7
+
+```
+Source: Economy /hi/players/xuid(...)/rewardtracks/operations
+     ↓
+ActiveOperationRewardTrackPath (source de vérité joueur)
+     ↓
+metadata.duckdb (`battlepass_track_definitions` / `battlepass_track_translations`)
+     ↓ cache miss seulement
+GameCMS /hi/Progression/file/{RewardTrackPath}
+     ↓
+src/ui/pages/home_mission_control_battlepass.py
+  - nom localisé du pass actif
+  - progression courante / premium ownership
+  - liste complète des paliers du track (y compris paliers vides pour navigation 0 → max)
+  - fenêtrage précédent / courant / suivants selon le volume de rewards affichables
+  - résolution des items inventaire via metadata.duckdb (`battlepass_item_definitions` / `battlepass_item_translations`) puis GameCMS en cache miss
+  - fallback repo statique pour les monnaies sans image CMS (`static/battlepass-assets/xpboost.png`, `rerollcurrency.png`)
+     ↓
+src/ui/pages/home_mission_control_api.py
+     ↓
+src/ui/pages/home_mission_control.py
+     ↓
+Destination: carte Home Mission Control (pass réel du joueur, plus basée sur le calendrier saisonnier, avec navigateur unique `Paliers` et barre XP du palier)
+```
+
+Note 2026-04-12 : la home n'utilise plus le calendrier GameCMS comme source primaire pour le pass affiché. Le track courant du calendrier peut diverger du pass réellement actif côté joueur.
+
+Note 2026-04-12 : les rewards `xpboost` et `rerollcurrency` utilisent désormais des PNG embarqués dans le repo quand GameCMS ne fournit pas de `DisplayPath`; ces assets sont référencés via `battlepass_asset_refs` avec origine `repo-static`.
+
+Note 2026-04-12 : les définitions GameCMS de reward tracks et d'items battle pass sont désormais persistées dans `metadata.duckdb` pour mutualiser le cache entre joueurs partageant le même season pass ; seuls l'appel Economy joueur et la progression personnelle restent spécifiques au joueur.
+
 ## Tables PvE (shared_pve.duckdb)
 
 | Table | Cardinalité | Description |

@@ -6,6 +6,7 @@ depuis la dernière sync.
 
 from __future__ import annotations
 
+import html
 import os
 from datetime import datetime, timezone
 
@@ -14,7 +15,7 @@ import streamlit as st
 from src.ui._sync_utils import _get_sync_metadata_smart
 
 
-def render_sync_indicator(db_path: str, xuid: str | None = None) -> None:
+def render_sync_indicator(db_path: str, xuid: str | None = None, *, dot_only: bool = False) -> None:
     """Affiche l'indicateur de dernière synchronisation dans la sidebar.
 
     Couleurs:
@@ -25,6 +26,7 @@ def render_sync_indicator(db_path: str, xuid: str | None = None) -> None:
     Args:
         db_path: Chemin vers la base de données.
         xuid: XUID du joueur (permet d'utiliser le repo caché).
+        dot_only: Si True, affiche uniquement l'emoji indicateur sans texte.
     """
     if not db_path or not os.path.exists(db_path):
         return
@@ -33,6 +35,7 @@ def render_sync_indicator(db_path: str, xuid: str | None = None) -> None:
     last_sync_raw = meta.get("last_sync_at")
     now = datetime.now(timezone.utc)
     sync_text = ""
+    sync_status = "stale"
 
     last_sync: datetime | None = None
     if isinstance(last_sync_raw, datetime):
@@ -48,24 +51,35 @@ def render_sync_indicator(db_path: str, xuid: str | None = None) -> None:
             last_sync = None
 
     if last_sync:
-        sync_text = _format_sync_time(now, last_sync, prefix="Sync")
+        sync_text, sync_status = _format_sync_time(now, last_sync, prefix="Sync")
     else:
         # Pas de métadonnées de sync, on utilise la date de modification du fichier
         try:
             mtime = os.path.getmtime(db_path)
             mtime_dt = datetime.fromtimestamp(mtime, tz=timezone.utc)
-            sync_text = _format_sync_time(now, mtime_dt, prefix="Modifié")
+            sync_text, sync_status = _format_sync_time(now, mtime_dt, prefix="Modifié")
         except Exception:
             return
 
     if sync_text:
-        st.markdown(
-            f"<div style='font-size: 0.85em; color: #888; margin: 4px 0 8px 0;'>{sync_text}</div>",
-            unsafe_allow_html=True,
-        )
+        if dot_only:
+            safe_title = html.escape(sync_text, quote=True)
+            st.markdown(
+                (
+                    "<div "
+                    f"class='v7-l1-sync-dot v7-l1-sync-dot--{sync_status}' "
+                    f"title='{safe_title}' aria-label='{safe_title}'></div>"
+                ),
+                unsafe_allow_html=True,
+            )
+        else:
+            st.markdown(
+                f"<div style='font-size: 0.85em; color: #888; margin: 4px 0 8px 0;'>{sync_text}</div>",
+                unsafe_allow_html=True,
+            )
 
 
-def _format_sync_time(now: datetime, ref_time: datetime, *, prefix: str) -> str:
+def _format_sync_time(now: datetime, ref_time: datetime, *, prefix: str) -> tuple[str, str]:
     """Formate le temps écoulé avec indicateur coloré.
 
     Args:
@@ -74,7 +88,7 @@ def _format_sync_time(now: datetime, ref_time: datetime, *, prefix: str) -> str:
         prefix: Préfixe du texte (ex: 'Sync', 'Modifié').
 
     Returns:
-        Texte formaté avec emoji indicateur, ou chaîne vide.
+        Tuple (texte formaté, statut CSS).
     """
     delta = now - ref_time
     hours = delta.total_seconds() / 3600
@@ -82,14 +96,17 @@ def _format_sync_time(now: datetime, ref_time: datetime, *, prefix: str) -> str:
     if hours < 1:
         minutes = int(delta.total_seconds() / 60)
         indicator = "🟢"
+        status = "fresh"
         time_str = f"il y a {minutes} min" if minutes > 0 else "à l'instant"
     elif hours < 24:
         indicator = "🟡"
+        status = "recent"
         h = int(hours)
         time_str = f"il y a {h}h"
     else:
         indicator = "🔴"
+        status = "stale"
         days = int(hours / 24)
         time_str = f"il y a {days} jour{'s' if days > 1 else ''}"
 
-    return f"{indicator} {prefix} {time_str}"
+    return f"{indicator} {prefix} {time_str}", status
