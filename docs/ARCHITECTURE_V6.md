@@ -2,7 +2,7 @@
 
 French version: [FR/ARCHITECTURE_V6.md](FR/ARCHITECTURE_V6.md)
 
-> **Version** : 6.3.0 — **Mise à jour** : 2026-03-30
+> **Version** : 6.3.0 — **Mise à jour** : 2026-04-12
 
 LevelUp uses a DuckDB v6 architecture based on **shared matches** and **centralized i18n via `asset_translations`**:
 
@@ -28,6 +28,8 @@ data/
 ### metadata.duckdb
 
 - `asset_translations`: localized names for maps, playlists, pairs and game variants — 14 BCP-47 languages (`en-US`, `fr-FR`, …) — **added v6.3** — populated by `scripts/populate_asset_translations.py`
+- `challenge_definitions`: versioned Halo challenge definitions (`challenge_path` + `content_hash`) with category, difficulty, threshold and XP rewards
+- `challenge_translations`: localized challenge titles and descriptions in all languages exposed by the CMS (BCP-47, `en-US` fallback)
 - `weapon_labels`: weapon_id (filmshell UBIGINT) → `name_en`, `name_fr` — added v5.4
 - `career_ranks`: rank tier definitions
 - `citation_mappings`: medal → citation mappings
@@ -49,3 +51,4 @@ SQL views (`ensure_resolution_views()`):
 ### stats.duckdb (per player)
 
 - `player_match_enrichment`: performance_score, session_id, etc.
+- `challenge_snapshots`: append-only per-player challenge state history (active/completed/upcoming, progress, XP, expiry), deduplicated on state change

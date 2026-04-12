@@ -142,6 +142,7 @@ STRINGS: dict[str, dict[str, str] | str] = {
     "v7_home_challenges": {"fr": "Défis actifs", "en": "Active challenges"},
     "v7_home_challenges_empty": {"fr": "Aucun défi actif.", "en": "No active challenges."},
     "v7_home_challenges_done": {"fr": "complétés", "en": "completed"},
+    "v7_home_challenges_progress": {"fr": "progression", "en": "progress"},
     "v7_home_challenges_expiry": {"fr": "Expire le {date}", "en": "Expires {date}"},
     "v7_context_period_mode": {
         "fr": "Lecture globale par période en cours.",

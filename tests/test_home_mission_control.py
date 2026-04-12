@@ -202,3 +202,37 @@ class TestTrendSnapshot:
         assert snapshot.ratio_delta is not None and snapshot.ratio_delta > 0
         assert snapshot.accuracy_delta is not None and snapshot.accuracy_delta > 0
         assert snapshot.win_rate_delta is not None and snapshot.win_rate_delta > 0
+
+
+class TestChallengeProgressFormatting:
+    """Valide le formatage de la progression du défi home."""
+
+    def test_formats_current_over_target(self) -> None:
+        """Le ratio de progression doit être rendu en x/y."""
+        from src.ui.pages.home_mission_control import _format_challenge_progress
+        from src.ui.pages.home_mission_control_api import HomeChallengeSummary
+
+        summary = HomeChallengeSummary(
+            total=3,
+            completed=1,
+            xp_available=200,
+            next_expiry="12/04 18:00 UTC",
+            progress_current=3,
+            progress_target=5,
+        )
+
+        assert _format_challenge_progress(summary) == "3/5"
+
+    def test_returns_dash_when_target_missing(self) -> None:
+        """Sans cible, la carte ne doit pas inventer de progression."""
+        from src.ui.pages.home_mission_control import _format_challenge_progress
+        from src.ui.pages.home_mission_control_api import HomeChallengeSummary
+
+        summary = HomeChallengeSummary(
+            total=1,
+            completed=0,
+            xp_available=50,
+            next_expiry=None,
+        )
+
+        assert _format_challenge_progress(summary) == "-"

@@ -197,11 +197,9 @@ def apply_pending_migrations(
 
 def _load_migration_steps() -> None:
     """Charge les modules de steps pour qu'ils appellent register()."""
-    if _load_migration_steps._loaded:
-        return
-    _load_migration_steps._loaded = True
+    from src.data.migration.loader import load_all_migration_steps
 
-    from src.data.migration import steps  # noqa: F401
+    load_all_migration_steps()
 
 
 _load_migration_steps._loaded = False  # type: ignore[attr-defined]
