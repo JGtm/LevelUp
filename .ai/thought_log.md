@@ -1,5 +1,194 @@
 # Thought Log
 
+## [2025-07-26] docs(migration): alignement complet des docs migration sur les sections V7
+
+**Statut** : Complété  
+**Branche** : `feature/remove-streamlit-ui`
+
+**Décision technique** :
+- Audit croisé de 6 docs migration (SLICES, PARITY_MATRIX, API_CONTRACTS, INVARIANTS, DECISIONS, FUNCTIONAL_SPECS) — 13 incohérences identifiées (4 🔴 structurelles, 6 🟡 manquantes, 3 🟠 à clarifier).
+- Réalignement systématique de tous les docs sur les 8 sections V7 réelles au lieu de l'ancien découpage par pages Streamlit.
+
+**Résultats** :
+- **SLICES.md** : Slices 2-8 restructurés par section V7 avec phases (A/B/C), table de correspondance Slices↔V7, query keys complètes, DoD V7
+- **PARITY_MATRIX.md** : matrice synthétique V7, fiches regroupées sous headers V7 (Profil, Stats, Explorer, Accueil, Escouade, Synthèse, Médias), duplicatas supprimés (Citations/Timeseries/Session Compare standalone), Objective Analysis marqué absorbé, tests de parité par section V7
+- **API_CONTRACTS.md** : sections renommées V7, Slice 5 fusionné dans Slice 4 (Explorer Phase B/C), 7 contrats placeholder ajoutés (Citations, Timeseries, Session Compare, Accueil+BattlePass+Challenges, Escouade, Synthèse, Médias), note `v_weapon_kills`, décision KPI Bar, `objective-analysis` query key supprimée, `battlepass`/`challenges` query keys ajoutées
+- **INVARIANTS.md** : routes canoniques V7 (`/profile/career`, `/stats/history`, `/squad`, `/synthesis`, `/media`)
+- **DECISIONS.md** : arbre routes V7 + features V7 dans §4 Structure repo
+- **MIGRATION_MASTER.md** : listes de lecture réalignées, scope MVP corrigé (Accueil P2 pas P1), refs post-MVP enrichies
+
+**Issues audit résolues** : 13/13
+- 🔴 #1 SLICES old pages → ✅ V7 sections
+- 🔴 #2 PARITY_MATRIX old structure → ✅ V7 sections
+- 🔴 #3 API_CONTRACTS old slices → ✅ V7 sections
+- 🔴 #4 DoD divergence → ✅ unifié V7
+- 🟡 #5 Post-MVP no contracts → ✅ 7 placeholders
+- 🟡 #6 L2 Header contract → ✅ KPI Bar décision dans API_CONTRACTS
+- 🟡 #7 weapon_kills dep → ✅ note v_weapon_kills
+- 🟡 #8 Battle Pass/Challenges → ✅ endpoints + query keys
+- 🟡 #9 KPI Bar → ✅ décision provisoire (FilterContextResolved)
+- 🟡 #10 Likes localStorage → ✅ documenté dans Slice 8
+- 🟠 #11 Objective Analysis → ✅ absorbé (Escouade radar + Synthèse)
+- 🟠 #12 Explorer includes Match View → ✅ phases A/B/C
+- 🟠 #13 Routes V7 → ✅ toutes les routes mises à jour
+
+**Prochaine étape** : constituer le corpus `tests/fixtures/ref_player/` + `tests/parity/`, puis scaffolder `apps/api/` et `apps/web/`
+
+## [2026-04-12] docs(migration): fermer les zones grises avant Slice 0 et Slice 1
+
+**Statut** : Complete  
+**Branche** : `feature/remove-streamlit-ui`
+
+**Decision technique** :
+- Le plan de migration etait deja solide au niveau du cap, mais encore trop ouvert sur plusieurs points qui peuvent faire diverger l'implementation : contrat web auth/session, algorithme canonique `filters/resolve`, formes URL/deep links, machine d'etat setup/auth/smoke test, types API nommes mais non definis, et gates reelles avant preview React.
+- La decision a ete de completer directement les sous-docs de migration plutot que d'ajouter un nouveau meta-plan. Les precisions ont ete ajoutees au plus proche de leur usage : decisions d'architecture dans `migration/DECISIONS.md`, invariants dans `migration/INVARIANTS.md`, schemas et regles HTTP dans `migration/API_CONTRACTS.md`, gates de delivery dans `migration/SLICES.md`, navigation de lecture dans `MIGRATION_MASTER.md`.
+- Le but est de rendre Slice 0 et Slice 1 implementables sans reinterpretation locale des zones sensibles, tout en gardant le format et la granularite documentaires deja choisis.
+
+**Resultats** :
+- `migration/DECISIONS.md` precise maintenant la clarification "shell V7 != home MVP immediate", le contrat web de session multi-processus, les contraintes cookies/CORS/CSRF et le choix polling-first pour les jobs longs.
+- `migration/INVARIANTS.md` documente l'algorithme de resolution des filtres, le cycle URL -> store -> API -> queries, les formes canoniques de deep links, la machine d'etat minimale du setup, la priorite de la locale, le modele d'identite joueur et l'extraction des callbacks injectes via `PageContext`.
+- `migration/API_CONTRACTS.md` contient maintenant les schemas transverses manquants (`FieldError`, `LabelValue`, `SortSpec`, `CapabilityMap`), les reponses bootstrap/session/players, les regles de cycle de vie des jobs, les types nommes auparavant implicites et une strategie explicite de chargement pour Match View.
+- `migration/SLICES.md` ajoute des blocages explicites avant toute preview React, renforce Slice 0 et Slice 1, et documente les pre-extractions/clarifications requises pour Timeseries, Session Compare et Teammates.
+- `MIGRATION_MASTER.md` et `.ai/project_map.md` pointent maintenant vers les verrous documentaires utiles avant demarrage effectif.
+
+**Prochaine étape** : creer reellement le corpus `tests/fixtures/ref_player/` + `tests/parity/`, puis scaffolder `apps/api/` et `apps/web/` en appliquant ces contrats sans les rediscuter.
+
+## [2026-04-12] docs(migration): detailler les etapes 6 a 10 du plan FastAPI/React
+
+**Statut** : Complete  
+**Branche** : `feature/remove-streamlit-ui`
+
+**Decision technique** :
+- Les etapes critiques 6 a 10 ne devaient plus rester de simples slogans de gouvernance. Elles ont ete transformees en sections operables couvrant le modele de delivery par vertical slices, la cohabitation Streamlit/React, le cadrage auth/session/permissions, les tests de parite et le pilotage par metriques.
+- Le plan precise maintenant l'unite de livraison acceptable, les regles de bascule par surface, les frontieres de session et de secrets, le corpus de reference de parite et un tableau minimal de suivi produit.
+- L'objectif est de reduire les causes d'echec les plus classiques des migrations UI : multi-front sans proprietaire clair, auth traitee trop tard, validation au ressenti et absence de criteres de pilotage.
+
+**Resultats** :
+- `.ai/PLAN_MIGRATION_FASTAPI_REACT.md` contient maintenant des sections detaillees pour les etapes 6, 7, 8, 9 et 10.
+- Le plan couvre desormais non seulement le "quoi migrer" et le "comment brancher", mais aussi le "comment livrer, cohabiter, valider et piloter".
+- La migration peut etre pilotee avec des gates plus explicites avant la decommission progressive de Streamlit.
+
+**Prochaine étape** : detailler l'etape 11 si elle apparait, ou convertir ces nouvelles sections en checklist de gouvernance concrete par slice.
+
+## [2026-04-12] docs(migration): figer l'etape 5 comme structure cible du repo
+
+**Statut** : Complete  
+**Branche** : `feature/remove-streamlit-ui`
+
+**Decision technique** :
+- L'etape critique 5 ne devait pas se limiter a une arborescence illustrative deja esquisse plus haut dans le plan. Elle devait devenir une decision d'implantation exploitable dans le worktree courant.
+- La structure retenue garde `src/` comme noyau Python unique, introduit `apps/api/` pour FastAPI et `apps/web/` pour React/Vite, et maintient explicitement `streamlit_app.py`, `streamlit_app_v7.py`, `src/ui/` et `src/app/` comme zone legacy de reference pendant la cohabitation.
+- Le plan interdit maintenant plusieurs derives probables : dupliquer la logique metier dans `apps/api/`, disperser du TypeScript dans `src/ui/`, ou ouvrir un second projet Python inutile dans `apps/api/`.
+
+**Resultats** :
+- `.ai/PLAN_MIGRATION_FASTAPI_REACT.md` contient maintenant une vraie section "Etape critique 5 detaillee" avec arborescence cible, repartition des responsabilites, regles de placement, mapping des slices et definition de done.
+- Le repo cible est maintenant pense comme une cohabitation structuree plutot qu'une reorganisation massive immediate.
+- Les Slices 0 a 5 disposent d'un point d'atterrissage clair cote API, web et noyau Python.
+
+**Prochaine étape** : scaffold minimalement `apps/api/` et `apps/web/` a partir de cette structure, en commencant par le shell, le bootstrap et le contrat de filtres.
+
+## [2026-04-12] docs(migration): expliciter l'etape 4 comme extraction du state model Streamlit
+
+**Statut** : Complete  
+**Branche** : `feature/remove-streamlit-ui`
+
+**Decision technique** :
+- L'etape critique 4 devait devenir un chantier lisible en soi, pas un simple rappel generique sur `session_state` et les reruns.
+- Le plan documente maintenant les categories de logique cachee a sortir : navigation, filtres, etat de page, bootstrap, caches, jobs longs et dependances au rerun.
+- La regle structurante retenue est qu'un etat ne doit avoir qu'un seul proprietaire legitime : URL, store front, session backend, localStorage ou cache serveur selon le cas.
+
+**Resultats** :
+- `.ai/PLAN_MIGRATION_FASTAPI_REACT.md` contient maintenant une vraie section "Etape critique 4 detaillee" avec inventaire, matrice de remplacement, anti-patterns et definition de done.
+- Le passage Streamlit -> React/FastAPI est mieux decoupe entre contrat d'API et extraction du state model, ce qui reduit le risque de melanger rendu, navigation et orchestration.
+- Le backlog qui suit peut maintenant s'appuyer sur une cartographie explicite de ce qui doit quitter `st.session_state`, les query params legacy et les caches Streamlit.
+
+**Prochaine étape** : preparer l'etape 5 en derivant la structure cible du repo directement a partir des etats et contrats deja figes.
+
+## [2026-04-12] docs(migration): expliciter l'etape 3 comme contrat d'API stable
+
+**Statut** : Complete  
+**Branche** : `feature/remove-streamlit-ui`
+
+**Decision technique** :
+- Le document contenait deja les details des endpoints MVP, mais l'etape critique 3 restait exprimee seulement comme un point de liste et non comme un livrable autonome.
+- Une section dediee a ete ajoutee pour figer la frontiere backend/UI, les conventions de contrat communes et la definition de done de l'extraction API.
+- Le plan tranche maintenant explicitement plusieurs decisions structurantes du MVP : `snake_case` sur le wire, `/api/v1` comme base path, `FilterContextInput` comme contrat canonique des filtres, `PaginatedResponse` pour les tables et une session backend opaque pour l'auth.
+
+**Resultats** :
+- `.ai/PLAN_MIGRATION_FASTAPI_REACT.md` contient maintenant une vraie section "Etape critique 3 detaillee" reliee au bloc de contrats API existant.
+- Le document distingue mieux ce qui releve du cadrage de contrat et ce qui releve du detail endpoint par endpoint.
+- La suite du chantier peut s'appuyer sur un cadre API plus explicite avant de preparer la structure cible du repo et le squelette FastAPI.
+
+**Prochaine étape** : traduire cette etape 3 en structure de packages et en premiers schemas FastAPI/Pydantic pour le Slice 0.
+
+## [2026-04-12] docs(migration): deriver les contrats API MVP et le backlog executable
+
+**Statut** : Complete  
+**Branche** : `feature/remove-streamlit-ui`
+
+**Decision technique** :
+- Le plan de migration ne devait plus seulement dire quoi migrer, mais definir comment brancher concretement le lot prioritaire sur FastAPI et React.
+- Les contrats API ont ete rediges en priorite pour Setup/Auth/Settings, Career, Match History, Explorer, Match View et Last Match, avec schemas transverses, endpoints, stores front et query keys cibles.
+- Le backlog a ete transforme en slices executables avec sorties tangibles, dependances explicites et criteres de recette, afin d'eviter un chantier "par couches" sans fin.
+
+**Resultats** :
+- `.ai/PLAN_MIGRATION_FASTAPI_REACT.md` contient maintenant une section API MVP exploitable comme base de travail pour FastAPI et le shell React.
+- Les slices 0 a 13 ont une definition plus operationnelle, avec separation backend/frontend/stores/recette.
+- Le lot prioritaire est desormais suffisamment cadre pour lancer l'implementation sans rediscuter la structure de l'API a chaque page.
+
+**Prochaine étape** : convertir ces contrats en structure de repo cible et lancer le squelette FastAPI + web avec les premiers schemas et routers du Slice 0.
+
+## [2026-04-12] docs(migration): figer l'etape 2 critique avec matrice de parite
+
+**Statut** : Complete  
+**Branche** : `feature/remove-streamlit-ui`
+
+**Decision technique** :
+- L'etape critique 2 du plan de migration ne devait pas rester au niveau du principe. Elle devait devenir un livrable de travail directement exploitable pour piloter la migration UI.
+- Le plan contient maintenant une section dediee qui fige les invariants transverses (state model, deep links, filtres, auth, caches), documente les surfaces de reference ecran par ecran et distingue explicitement les pages a migrer, a absorber ou a sortir plus tard.
+- La migration est maintenant ordonnee par vertical slices metier plutot que par blocs techniques generiques.
+
+**Resultats** :
+- `.ai/PLAN_MIGRATION_FASTAPI_REACT.md` contient une matrice de parite Streamlit -> React couvrant les ecrans de production, les sections V7 et les flux hors navigation principale.
+- Le document inclut un backlog priorise allant des fondations transverses jusqu'a la decommission progressive de la UI Streamlit.
+- Les surfaces absorbees (`win_loss`, `media_tab`, `media_library`) sont desormais explicites, ce qui reduit le risque de sur-migration inutile.
+
+**Prochaine étape** : deriver les contrats API par page a partir de cette matrice, en commencant par Setup/Auth/Settings, Career, Match History, Explorer et Match View.
+
+## [2026-04-12] docs(migration): cadrer explicitement le perimetre FastAPI/React
+
+**Statut** : Complete  
+**Branche** : `feature/remove-streamlit-ui`
+
+**Decision technique** :
+- Le point critique prioritaire n'etait pas de decrire encore plus la cible technique, mais de figer le perimetre produit pour eviter qu'une migration UI derive en refonte globale.
+- Le plan de migration inclut maintenant une section dediee qui tranche explicitement : invariants metier, ameliorations autorisees, exclusions claires, MVP cible et regle de decision pour les ajouts futurs.
+- Le cadrage retient V7 comme reference produit, garde Python/DuckDB/Polars/Pydantic comme source de verite backend et pose une migration progressive par vertical slices.
+
+**Resultats** :
+- `.ai/PLAN_MIGRATION_FASTAPI_REACT.md` contient maintenant une section de perimetre exploitable comme garde-fou de scope.
+- Le MVP cible est borne a un shell moderne + auth minimale + Carriere + Explorer/Historique + Match View, avec cohabitation assumee de Streamlit pour le reste.
+- Les chantiers hors scope sont explicites : reecriture backend, refonte metier, big bang complet, nouvelles features non necessaires a la parite.
+
+**Prochaine étape** : deriver a partir de ce perimetre les premiers contrats API et les schemas de page pour le MVP.
+
+## [2026-04-12] docs(arch): recopier le plan de migration dans le worktree no-streamlit
+
+**Statut** : Complété  
+**Branche** : `feature/remove-streamlit-ui`
+
+**Décision technique** :
+- Le worktree `feature/remove-streamlit-ui` a ete cree depuis le `HEAD` committé, donc il ne recuperait pas automatiquement les documents d'architecture ajoutes localement dans le worktree source.
+- Le plan de migration Streamlit -> FastAPI/React a ete recopie tel quel dans ce worktree pour garder le chantier autonome et coherent.
+- La cartographie `.ai/project_map.md` a aussi ete alignee pour pointer vers ce nouveau document de reference.
+
+**Résultats** :
+- `.ai/PLAN_MIGRATION_FASTAPI_REACT.md` est maintenant present dans ce worktree.
+- `project_map.md` reference ce plan.
+- Le worktree dedie dispose de son contexte de migration sans dependre du worktree source.
+
+**Prochaine étape** : definir la structure cible du repo dans ce worktree puis lancer le squelette FastAPI + React.
+
 ## [2026-04-12] refactor(v7-home): home Mission Control plus HTML-first et moins Streamlit
 
 **Statut** : Complété  
