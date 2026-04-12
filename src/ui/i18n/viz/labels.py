@@ -101,6 +101,10 @@ STRINGS: dict[str, dict[str, str] | str] = {
         "fr": "Semaine",
         "en": "Week",
     },
+    "bucket_cap_month": {
+        "fr": "Mois",
+        "en": "Month",
+    },
     # ── Catégories de participation ────────────────────────────────────────────
     "cat_label_kill": "col_kills",
     "cat_label_assist": {"fr": "Assists", "en": "Assists"},

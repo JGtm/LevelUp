@@ -15,6 +15,10 @@ from src.config import OUTCOME_CODES, SESSION_CONFIG
 from src.ui.date_formats import FMT_DATE_ISO
 from src.ui.i18n.viz import viz_t
 
+_TOP_PERIOD_WEEK_MAX_DAYS = 548
+_TOP_PERIOD_MIN_MATCHES_PER_YEAR = 12
+_TOP_PERIOD_MIN_ACTIVE_WEEKS_PER_YEAR = 4
+
 
 def ensure_datetime(df: pl.DataFrame, col: str) -> pl.DataFrame:
     """Convertit *col* en Datetime si nécessaire (tolérance String)."""
@@ -211,6 +215,34 @@ def determine_top_period(d: pl.DataFrame, lang: str = "fr") -> tuple[pl.DataFram
     dt_range = tmax - tmin if tmin is not None and tmax is not None else timedelta(days=999)
     days = dt_range.total_seconds() / 86400.0
 
+    if days > _TOP_PERIOD_WEEK_MAX_DAYS:
+        years_df = d.with_columns(
+            pl.col("start_time").dt.year().alias("_year"),
+            pl.col("start_time").dt.truncate("1w").alias("_week"),
+        )
+        year_stats = years_df.group_by("_year").agg(
+            pl.len().alias("_total_matches"),
+            pl.col("_week").n_unique().alias("_active_weeks"),
+        )
+        keep_years = (
+            year_stats.filter(
+                (pl.col("_total_matches") >= _TOP_PERIOD_MIN_MATCHES_PER_YEAR)
+                & (pl.col("_active_weeks") >= _TOP_PERIOD_MIN_ACTIVE_WEEKS_PER_YEAR)
+            )
+            .get_column("_year")
+            .to_list()
+        )
+        d = (
+            years_df.filter(pl.col("_year").is_in(keep_years)).drop("_year", "_week")
+            if keep_years
+            else years_df.drop("_year", "_week")
+        )
+        ts = d["start_time"]
+        tmin = ts.min() if ts.len() > 0 else None
+        tmax = ts.max() if ts.len() > 0 else None
+        dt_range = tmax - tmin if tmin is not None and tmax is not None else timedelta(days=999)
+        days = dt_range.total_seconds() / 86400.0
+
     if days < 2:
         d = d.sort("start_time")
         d = d.with_row_index("period").with_columns(pl.col("period").cast(pl.String))
@@ -218,7 +250,10 @@ def determine_top_period(d: pl.DataFrame, lang: str = "fr") -> tuple[pl.DataFram
     if days < 7:
         d = d.with_columns(pl.col("start_time").dt.strftime(FMT_DATE_ISO).alias("period"))
         return d, viz_t("bucket_cap_day", lang)
-    d = d.with_columns(
-        pl.col("start_time").dt.truncate("1w").dt.strftime(FMT_DATE_ISO).alias("period")
-    )
-    return d, viz_t("bucket_cap_week", lang)
+    if days <= _TOP_PERIOD_WEEK_MAX_DAYS:
+        d = d.with_columns(
+            pl.col("start_time").dt.truncate("1w").dt.strftime(FMT_DATE_ISO).alias("period")
+        )
+        return d, viz_t("bucket_cap_week", lang)
+    d = d.with_columns(pl.col("start_time").dt.strftime("%Y-%m").alias("period"))
+    return d, viz_t("bucket_cap_month", lang)

@@ -8,6 +8,10 @@ STRINGS: dict[str, dict[str, str] | str] = {
         "fr": "Comparaison des métriques clés selon le type de session.",
         "en": "Key metrics comparison by session type.",
     },
+    "syn_sample_split": {
+        "fr": "Solo : {solo} matchs • Escouade : {squad} matchs",
+        "en": "Solo: {solo} matches • Squad: {squad} matches",
+    },
     "syn_solo": {"fr": "Solo", "en": "Solo"},
     "syn_squad": {"fr": "Escouade", "en": "Squad"},
     "syn_no_data": {
