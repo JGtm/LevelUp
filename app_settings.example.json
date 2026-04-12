@@ -41,6 +41,7 @@
   "discord_lang": "fr",
   "cli_lang": "fr",
   "discord_notifications_enabled": false,
+  "discord_notify_new_media": true,
   "tailscale_funnel_enabled": false,
   "doppler_enabled": false,
   "doppler_project": "levelup",

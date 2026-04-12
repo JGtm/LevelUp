@@ -141,6 +141,10 @@ def main() -> int:
                 videos_dir=player_captures,
                 screens_dir=player_captures,
             )
+            if result.n_new > 0:
+                from src.utils._discord_media import notify_new_media
+
+                notify_new_media(db_file, gamertag)
             print(
                 f"✅ {gamertag}: {result.n_new + result.n_updated} médias, {n_assoc} assoc., {n_thumb} thumbs"
             )
@@ -219,6 +223,11 @@ def main() -> int:
         f"   - {result.n_scanned} scannés, {result.n_new} nouveaux, {result.n_updated} mis à jour"
     )
     print(f"   - {n_assoc} association(s), {n_thumb} thumbnail(s)")
+
+    if result.n_new > 0:
+        from src.utils._discord_media import notify_new_media
+
+        notify_new_media(db_path_obj, gamertag)
 
     print("\n✅ Indexation terminée!")
     return 0

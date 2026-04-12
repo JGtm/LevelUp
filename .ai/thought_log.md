@@ -1,5 +1,376 @@
 # Thought Log
 
+## [2026-04-12] fix(media-likes): persistance robuste + anti double-toggle
+
+**Statut** : Complété  
+**Branche** : `v7/cockpit`
+
+**Décision technique** :
+- Le bug provenait de deux sources distinctes mais cumulatives :
+   1. le coeur utilisait `on_click=toggle_media_like` puis un fallback local qui pouvait retoggler au même clic ;
+   2. `data/ui_prefs.json` mélange des prefs scalaires et `media_likes`, alors que `_read_prefs()` / `_write_prefs()` coerçaient tout en chaînes.
+- `src/ui/pages/media_v2_grid.py` marque désormais explicitement l'exécution du callback like dans `session_state`, puis ne déclenche le fallback que pour les tests/mocks où le callback n'a pas réellement tourné.
+- `src/ui/components/browser_storage/__init__.py` ne réécrit plus les structures JSON en `str(...)` lors des merges de prefs ; `load_media_likes()` normalise et répare aussi les anciens formats stringifiés déjà présents sur disque.
+
+**Résultats** :
+- Le like redevient symétrique : liker puis unlike fonctionne sans double bascule implicite.
+- Les likes survivent au reload, y compris si `ui_prefs.json` contenait encore un ancien `media_likes` stringifié.
+- Vérifications passantes : `tests/test_ui_persistence_v64.py`, `tests/test_media_v2_grid_interactions.py` (54 tests) + `ruff check` sur les 4 fichiers modifiés.
+
+**Prochaine étape** : néant.
+
+## [2026-04-12] refactor(explorer): pagination légère des gros tableaux HTML
+
+**Statut** : Complété  
+**Branche** : `v7/cockpit`
+
+**Décision technique** :
+- Le hotspot Explorer venait surtout du rendu d'un tableau HTML complet pouvant monter à 250 lignes en un seul `st.markdown`.
+- `src/ui/pages/match_table_html.py` supporte maintenant un décalage `start_row`, ce qui permet de paginer sans dupliquer la logique de tri, de colonnes et de liens.
+- `src/ui/pages/explorer_results.py` ajoute une pagination légère par tableau (filtres, alliés, adversaires) avec taille de page par défaut limitée à 100 lignes et contrôles Streamlit simples (`Lignes`, `Page`).
+- Le rendu HTML existant est conservé, ce qui minimise le risque visuel et comportemental tout en réduisant nettement le volume DOM injecté d'un coup.
+
+**Résultats** :
+- Explorer n'injecte plus systématiquement jusqu'à 250 lignes HTML par tableau ; les gros ensembles sont paginés.
+- Vérifications passantes : `tests/test_explorer_logic.py`, `tests/test_media_to_explorer_navigation.py`.
+- Ruff OK sur les fichiers modifiés.
+
+**Prochaine étape** : la cible UI suivante reste Match View, surtout le mini composant HTML du badge copy, qui a un coût faible mais un ROI simplification correct.
+
+## [2026-04-12] refactor(media-v2): suppression des iframes de thumbnails sur la grille
+
+**Statut** : Complété  
+**Branche** : `v7/cockpit`
+
+**Décision technique** :
+- Après la suppression de la lightbox embarquée, la grille Media V2 conservait encore un coût notable parce que chaque carte passait toujours par `st.components.v1.html` pour le thumbnail.
+- `src/ui/pages/media_v2_grid.py` utilise désormais un rendu natif `st.image(...)` pour les miniatures V2, ce qui supprime les iframes restantes sur cette page.
+- `src/ui/components/media_thumbnail.py` expose `load_native_thumbnail_source()`, qui retourne soit le chemin de l'image, soit la première frame PNG d'un GIF vidéo pour garder un aperçu statique sans animation permanente.
+- Le composant HTML legacy `render_media_thumbnail()` est conservé pour `media_tab.py`, afin de limiter ce refactor au hotspot perf identifié.
+
+**Résultats** :
+- La grille Media V2 n'utilise plus `render_media_thumbnail()` ; les cartes s'affichent via `st.image`, avec lightbox partagée et actions inchangées.
+- Vérifications passantes : `tests/test_media_components_sprint4.py`, `tests/test_media_v2_grid_interactions.py`, `tests/test_media_to_explorer_navigation.py`, `tests/test_media_regression_sprint6.py`, `tests/test_media_tab_sprint5.py`.
+- Ruff OK sur les fichiers modifiés.
+
+**Prochaine étape** : hors Media, la cible rationnelle suivante reste Explorer (gros tableaux HTML), puis Match View.
+
+## [2026-04-12] tweak(media-like-asset): coeur non liké en contour blanc
+
+**Statut** : Complété  
+**Branche** : `v7/cockpit`
+
+**Décision technique** :
+- L'état `not liked` ne doit plus être une version atténuée du cœur plein.
+- `static/ui-icons/heart_16_not_liked.png` a été régénéré comme contour blanc uniquement, avec intérieur et extérieur transparents.
+- Aucun changement de code requis dans la grille : le composant continue de charger l'asset dédié selon l'état du like.
+
+**Résultats** : le cœur non liké repose désormais sur un vrai sprite contour blanc, plus lisible et plus fidèle à l'intention UI.
+
+**Prochaine étape** : néant.
+
+## [2026-04-12] feat(challenges): persistance multi-langue des défis Halo
+
+**Statut** : Complété  
+**Branche** : `v7/cockpit`
+
+**Décision technique** :
+- Ajout d'un module central `src/data/challenges.py` pour éviter de disperser la logique entre UI et migrations : extraction CMS, normalisation BCP-47, persistance metadata, snapshots joueur et fallback local.
+- Le module a ensuite été scindé en façade publique + sous-modules internes `src/data/_challenge_catalog.py` et `src/data/_challenge_snapshots.py` pour rester sous la limite repo de 500 lignes sans casser l'API publique ni les monkeypatchs de tests.
+- Nouvelles tables dans `metadata.duckdb` : `challenge_definitions` (versionnées par `content_hash`) et `challenge_translations` (titres/descriptions multi-langues).
+- Nouvelle table dans `stats.duckdb` : `challenge_snapshots`, append-only dédupliquée par `state_hash` afin de conserver une timeline sans spammer la base à chaque refresh home.
+- Le fetch home V7 persiste désormais les définitions et snapshots en best-effort ; si `metadata.duckdb` est verrouillée par un autre process, le live continue sans erreur et la persistance est simplement sautée.
+
+**Résultats** :
+- Tests ciblés passants : `tests/test_challenges_data.py`, `tests/test_home_mission_control_challenges.py`, `tests/test_home_mission_control.py` (22 tests).
+- Validation live : le fetch home remonte toujours `title`, `progress_current`, `progress_target`, `xp` même avec un lock concurrent sur `metadata.duckdb`.
+- Les traductions de défis sont stockées à partir de toutes les langues exposées par le CMS, avec normalisation BCP-47 et fallback `en-US`.
+
+**Prochaine étape** : exploiter `challenge_snapshots` et `challenge_translations` dans une vue historique dédiée si besoin.
+
+## [2026-04-12] fix(media-like-latency): suppression du rerun explicite + asset not liked local
+
+**Statut** : Complété  
+**Branche** : `v7/cockpit`
+
+**Décision technique** :
+- Le premier clic sur le like restait plus lent car le contrôle déclenchait encore un rerun explicite après le rerun naturel du bouton Streamlit.
+- Le bouton like passe maintenant par `on_click=toggle_media_like` et ne force plus de rerun supplémentaire en usage normal ; seul le groupement par likes conserve un rerun complet volontaire pour déplacer la carte entre sections.
+- L'état non liké utilise désormais un vrai asset local `static/ui-icons/heart_16_not_liked.png` au lieu d'un simple filtre CSS appliqué à l'asset plein.
+- Le `heart_16.png` redondant à la racine du repo a été retiré ; la source d'assets UI est désormais uniquement `static/ui-icons/`.
+
+**Résultats** : premier clic plus léger, et les deux états du cœur sont explicitement présents dans `static/ui-icons/`.
+
+**Prochaine étape** : validation visuelle fine du contraste de l'icône non likée si nécessaire.
+
+## [2026-04-12] refactor(media-v2): suppression de la lightbox embarquée par miniature
+
+**Statut** : Complété  
+**Branche** : `v7/cockpit`
+
+**Décision technique** :
+- Le vrai coût de la grille Media V2 ne venait pas seulement des wrappers HTML, mais surtout du fait que chaque carte embarquait son propre composant thumbnail avec overlay lightbox et média complet encodé en data URI.
+- `src/ui/components/media_thumbnail.py` expose désormais une lightbox optionnelle via `include_lightbox`; quand elle est désactivée, le composant ne construit plus l'overlay HTML ni l'encodage du média complet.
+- `src/ui/pages/media_v2_grid.py` utilise ce mode allégé et s'appuie uniquement sur la lightbox Streamlit partagée déjà présente au niveau de la page.
+- Le CSS de base du contrôle like n'est plus réinjecté dans chaque fragment : il est posé une fois par rendu de grille.
+
+**Résultats** :
+- La page Media V2 ne crée plus une lightbox HTML par miniature et n'encode plus inutilement l'asset complet dans chaque iframe de thumbnail.
+- Vérifications passantes : `tests/test_media_components_sprint4.py`, `tests/test_media_v2_grid_interactions.py`, `tests/test_media_to_explorer_navigation.py`, `tests/test_media_regression_sprint6.py`, `tests/test_media_tab_sprint5.py`.
+- Ruff OK sur les fichiers modifiés.
+
+**Prochaine étape** : mesurer en runtime si une seconde passe est utile pour réduire encore le nombre d'iframes thumbnail sur les très grosses grilles.
+
+## [2026-04-12] fix(media-like-asset): adoption de heart_16.png
+
+**Statut** : Complété  
+**Branche** : `v7/cockpit`
+
+**Décision technique** :
+- L'utilisateur voulait explicitement l'asset local `heart_16.png`, présent à la racine du repo.
+- L'image source contenait une grande toile et plusieurs composantes visuelles ; un crop de la composante principale a été généré sous `static/ui-icons/heart_16.png` pour obtenir un vrai sprite UI exploitable.
+- Le contrôle like utilise maintenant ce PNG exact comme source d'icône, en data URI CSS. L'état non liké est obtenu en désaturant et en atténuant le même asset, au lieu d'utiliser des SVG maison.
+- Les SVG temporaires précédents ont été supprimés.
+
+**Résultats** : le cœur affiché dans la grille provient bien de `heart_16.png` et non d'un fallback maison.
+
+**Prochaine étape** : validation visuelle fine des filtres CSS sur l'état non liké si besoin.
+
+## [2026-04-12] feat(discord): notifications Discord pour nouveaux médias indexés
+
+**Statut** : Complété  
+**Branche** : `v7/cockpit`
+
+**Décision technique** :
+- Nouveau module `src/utils/_discord_media.py` — entièrement failsafe, découplé du reste du notifier.
+- Anti-spam via colonne `discord_notified_at TIMESTAMP` dans `media_files` (migration player `add_media_discord_notified`). Chaque média n'est notifié qu'une seule fois, indépendamment des re-scans.
+- Thumbnail envoyé en pièce jointe `multipart/form-data` (GIF vidéo ou miniature image), avec fallback JSON sans image si le fichier dépasse 8 Mo ou est illisible.
+- Nouveau setting `discord_notify_new_media: bool = True` dans `AppSettings` + toggle dans la page Paramètres (FR + EN), désactivable sans couper les autres notifs Discord.
+- Intégration dans `media_background._index_media_for_player` (arrière-plan) et `_index_media_legacy`, ainsi que dans `scripts/index_media.py` (CLI) — déclenché uniquement si `result.n_new > 0`.
+
+**Résultats** :
+- Aucune erreur de type / lint sur les fichiers modifiés.
+- Migration idempotente : `_add_column_if_missing` avec guard `table_exists`.
+- Pattern multipart stdlib pur (pas de dépendance externe).
+
+**Prochaine étape** : test manuel avec un webhook Discord réel et quelques fichiers exemple.
+
+## [2026-04-12] refactor(media-like-control): icônes SVG locales dans static/
+
+**Statut** : Complété  
+**Branche** : `v7/cockpit`
+
+**Décision technique** :
+- Aucun asset utilisateur exploitable n'était visible dans le repo au moment de l'intégration ; plutôt que de dépendre d'un fichier introuvable ou d'une URL externe, deux SVG locaux ont été ajoutés sous `static/ui-icons/`.
+- Le like reste un seul bouton Streamlit, mais l'icône est désormais injectée via CSS ciblé par clé (`::before`), avec une data URI chargée depuis les SVG locaux.
+- Le label du bouton ne contient plus que le compteur (`0` / `1`), ce qui supprime l'alignement fragile entre caractère cœur et texte.
+
+**Résultats** : un seul contrôle inline, moins de wrappers visibles, et une base propre pour remplacer facilement les SVG si l'utilisateur fournit son asset exact plus tard.
+
+**Prochaine étape** : validation visuelle du rendu des deux états (plein / contour) dans la grille médias.
+
+## [2026-04-12] feat(home): affichage de la progression du défi actif
+
+**Statut** : Complété  
+**Branche** : `v7/cockpit`
+
+**Décision technique** :
+- Le endpoint HaloStats `/decks` expose déjà la progression joueur via `ActiveChallenges[].Progress` ; il n'était pas nécessaire d'ajouter une nouvelle requête côté joueur.
+- Le seuil de réussite est résolu depuis la définition CMS du défi via `ThresholdForSuccess`, dans la même couche d'enrichissement que le titre, la description et le badge.
+- `HomeChallengeSummary` transporte désormais `progress_current` et `progress_target`, puis la carte home affiche un ratio simple `x/y` dans la rangée des stats.
+- Une petite structure interne immuable `ActiveChallengeEntry` a été introduite pour garder ensemble `path` et `progress` sans réinjecter de dicts ad hoc dans l'API home.
+
+**Résultats** :
+- La home peut maintenant afficher une progression réelle du défi principal, par exemple `0/1` pour le défi quotidien courant.
+- Vérification ciblée OK : 18 tests passants sur `tests/test_home_mission_control.py` et `tests/test_home_mission_control_challenges.py`.
+
+**Prochaine étape** : validation visuelle Streamlit de la carte home avec le ratio de progression.
+
+## [2026-04-12] feat(home): enrichissement défi actif avec badge Waypoint
+
+**Statut** : Complété  
+**Branche** : `v7/cockpit`
+
+**Décision technique** :
+- Extraction de la logique d'enrichissement des défis home dans `src/ui/pages/home_mission_control_challenges.py` pour garder `home_mission_control_api.py` sous les seuils de taille.
+- Les définitions CMS de défis fournissent bien `Title` et `Description` localisés ; la home résout désormais ces textes dans la langue UI (`fr` / `en`) et les ajoute au résumé défi.
+- Les visuels ne sont pas référencés dans les définitions CMS, mais les badges Waypoint protégés sont dérivés depuis `Category` + `Difficulty` et, pour les weekly, la famille de path (`action` / `gametype` / `weapon`).
+- Mise en cache disque des badges sous `data/cache/challenge_badges/` pour éviter un aller-retour CMS à chaque rendu.
+
+**Résultats** :
+- Validation runtime : défi actif courant enrichi avec `title="La pratique fait la perfection"`, `description="Disputez une partie."`, `badge_bytes=3485`, `xp=200`.
+- Préchauffage local réussi des badges connus disponibles : `daily-normal`, `daily-heroic`, `daily-legendary`, `capstone-mythic`.
+- Tests ciblés passants : `tests/test_home_mission_control.py`, `tests/test_home_mission_control_challenges.py`.
+
+**Prochaine étape** : validation visuelle Streamlit de la carte home enrichie.
+
+## [2026-04-12] fix(home): restauration des défis actifs via halostats /decks
+
+**Statut** : Complété  
+**Branche** : `v7/cockpit`
+
+**Décision technique** :
+- L'endpoint `economy ... /challenges` testé précédemment retournait 404, mais l'investigation Waypoint a mis en évidence une autre source joueur : `https://halostats.svc.halowaypoint.com/hi/players/xuid(...)/decks`.
+- Cette route requiert **uniquement** `x-343-authorization-spartan` ; fournir `343-clearance` provoque un `403 Not authorized to specify clearance`.
+- `home_mission_control_api.py` utilise désormais `/decks` pour les défis actifs, puis résout l'XP des défis actifs via les définitions CMS `ChallengeContent/ClientChallengeDefinitions/...` sur `gamecms-hacs`.
+- Le résumé home calcule `completed/total` à partir des decks actifs (`CompletedChallenges + ActiveChallenges`) et réutilise l'expiration du deck actif comme échéance affichée.
+- La carte Défis actifs est restaurée dans `home_mission_control.py` en seconde colonne à côté du Pass de combat.
+
+**Résultats** :
+- Endpoint joueur de défis validé en local : `spartan-only => 200`, `spartan+clearance => 403`.
+- Le JSON `/decks` contient `AssignedDecks[].ActiveChallenges/UpcomingChallenges/CompletedChallenges/Expiration`.
+- Les définitions CMS de défis fournissent `Reward.SoftExperience`, exploité pour le `+XP` de la carte home.
+
+**Prochaine étape** : validation runtime Streamlit et commit du fix.
+
+## [2026-04-12] refactor(media-like-control): un seul bouton inline
+
+**Statut** : Complété  
+**Branche** : `v7/cockpit`
+
+**Décision technique** :
+- Le rendu cœur + compteur en deux sous-colonnes créait trop de wrappers Streamlit et compliquait l'alignement.
+- Simplification du contrôle en un seul bouton inline (`❤️ 1` / `♡ 0`) dans le fragment de like.
+- Le CSS reste minimal et ne sert plus qu'à neutraliser le chrome du bouton et la marge du paragraphe interne.
+
+**Résultats** : moins de structure générée, plus de compteur séparé à aligner, contrôle visuellement plus stable.
+
+**Prochaine étape** : néant.
+
+## [2026-04-12] fix(media-v2): suppression du double rerun sur Agrandir/Match
+
+**Statut** : Complété  
+**Branche** : `v7/cockpit`
+
+**Décision technique** :
+- Le flash venait du pattern `st.button(...) -> poser session_state -> st.rerun()`, qui ajoutait un second rerun complet après le rerun naturel du clic.
+- `src/ui/pages/media_v2_grid.py` utilise désormais des callbacks `on_click` pour préparer `_lb_state`, `_pending_page` et `_pending_match_id` avant le rerun standard.
+- La lightbox ne `pop()` plus son état à l'entrée : elle relit `session_state` à chaque rerun du dialog, borne l'index localement, et nettoie l'état via `on_dismiss`.
+- Les boutons prev/next du dialog passent aussi par callbacks, sans `st.rerun()` explicite.
+- Tests ajoutés dans `tests/test_media_v2_grid_interactions.py` pour couvrir les callbacks lightbox/navigation.
+
+**Résultats** :
+- Le clic sur `Match` peut être traité dès le rerun déclenché par le bouton, sans run intermédiaire qui reconstruit visiblement la grille médias.
+- Le clic sur `Agrandir` n'ajoute plus de rerun forcé supplémentaire avant l'ouverture du dialog.
+- Tests ciblés passants : `tests/test_media_v2_grid_interactions.py`, `tests/test_media_to_explorer_navigation.py`.
+
+**Prochaine étape** : validation visuelle Streamlit du ressenti sur une grille médias volumineuse.
+
+## [2026-04-12] fix(media-card-header): suppression de l'effet "blocs"
+
+**Statut** : Complété  
+**Branche** : `v7/cockpit`
+
+**Décision technique** :
+- Le `st.caption()` du titre/date conservait sa propre métrique et sa propre hauteur, ce qui accentuait le contraste avec la zone like rendue dans des colonnes Streamlit.
+- Remplacement du caption par un header HTML contrôlé (`display:flex; align-items:center; min-height:42px`) pour partager la même hauteur visuelle que la zone like.
+- Le compteur a reçu la même logique de centrage vertical (`min-height:42px`, `align-items:center`, `line-height:1`) afin d'éviter l'impression de sous-blocs empilés.
+
+**Résultats** : le header de carte ressemble davantage à une seule ligne unifiée titre/date + like.
+
+**Prochaine étape** : néant.
+
+## [2026-04-12] fix(i18n): restauration langue FR au relaunch
+
+**Statut** : Complété  
+**Branche** : `v7/cockpit`
+
+**Décision technique** :
+- La langue sauvegardée dans `data/ui_prefs.json` était bien relue, mais le bootstrap la comparait à un faux défaut `"fr"` au lieu de distinguer une session neuve d'une langue déjà explicitement posée.
+- Extraction d'un helper pur `resolve_browser_pref_lang()` dans `src/ui/components/browser_storage/__init__.py` pour décider quand appliquer la préférence persistée.
+- `_maybe_apply_browser_prefs()` dans `streamlit_app.py` utilise désormais ce helper et applique `fr` aussi quand `st.session_state[lang]` n'existe pas encore.
+- Test de régression ajouté pour le cas exact : préférence `fr` + session neuve + `app_settings.lang=en`.
+
+**Résultats** : la langue persistée n'est plus écrasée par `app_settings.json` au redémarrage.
+
+**Recommandations si on y revient** :
+- Garder `ui_prefs.json` comme préférence utilisateur/session et `app_settings.json` comme configuration globale ; éviter un réalignement automatique silencieux au bootstrap.
+- Si un réalignement est souhaité plus tard, préférer une action explicite (page Paramètres ou commande de réparation) plutôt qu'une écriture automatique au démarrage.
+- Incohérence résiduelle acceptée : la page Paramètres peut refléter `app_settings.lang` tant qu'elle diverge de `ui_prefs.lang`, mais cela n'affecte plus la langue runtime après relaunch.
+
+**Prochaine étape** : validation runtime Streamlit et éventuel réalignement des sources de vérité si souhaité (`app_settings.json` vs `ui_prefs.json`).
+
+## [2026-04-12] fix(media-likes-ui): centrage vertical du header
+
+**Statut** : Complété  
+**Branche** : `v7/cockpit`
+
+**Décision technique** :
+- Le désalignement venait surtout du layout Streamlit lui-même : plusieurs colonnes imbriquées sans alignement vertical explicite.
+- Utilisation de `st.columns(..., vertical_alignment="center")` sur la ligne titre/like et sur la sous-ligne cœur/compteur.
+- Pas de nouveau hack CSS ajouté : le centrage est maintenant géré nativement par Streamlit, ce qui réduit l'effet de "blocs empilés".
+
+**Résultats** : la zone like est visuellement centrée par rapport au bloc titre/date.
+
+**Prochaine étape** : néant.
+
+## [2026-04-12] fix(media-likes-ui): alignement inline + cœur agrandi
+
+**Statut** : Complété  
+**Branche** : `v7/cockpit`
+
+**Décision technique** :
+- Le header de carte garde une seule ligne : label complet à gauche, zone like à droite.
+- Le cœur a été significativement agrandi (`42px`) pour cesser d'être visuellement perdu dans le header.
+- Le like actif utilise désormais `❤️` au lieu d'un glyphe blanc recoloré, afin d'obtenir un cœur réellement rempli en rouge sans dépendre du rendu CSS des polices.
+- Le compteur a été rapproché du cœur en resserrant les ratios internes et en réduisant son décalage visuel.
+
+**Résultats** : cœur et compteur plus lisibles, plus proches, et mieux intégrés à la ligne titre/date.
+
+**Prochaine étape** : néant.
+
+## [2026-04-12] fix(media-likes): cœur minimaliste + rerun local stable
+
+**Statut** : Complété  
+**Branche** : `v7/cockpit`
+
+**Décision technique** :
+- Abandon des essais via navigation URL/query params : provoquaient une vraie navigation navigateur et un ressenti de reload complet.
+- Remplacement par un fragment Streamlit dédié (`@fragment_if_available`) pour chaque cœur, avec `toggle_media_like(file_path)` puis rerun local du fragment.
+- Exception volontaire : si l’utilisateur groupe par likes, on force un rerun complet afin que la carte change immédiatement de groupe après le clic.
+- Le cœur redevient minimaliste : widget `type="tertiary"` neutralisé par CSS agressif (`all: unset`, pas de fond, pas de bordure, pas d’ombre, pas de padding), compteur séparé sur la même ligne.
+- Correction collatérale dans `media_v2_grid.py` : import manquant de `streamlit.components.v1 as components` pour l’autoadvance vidéo.
+
+**Résultats** : le clic sur le cœur ne dépend plus de l’URL, le compteur 0/1 est visible, et les likes restent persistés dans `ui_prefs.json`.
+
+**Prochaine étape** : validation visuelle runtime Streamlit du ressenti exact du rerun fragment.
+
+## [2026-04-12] refactor(media-filters): toolbar compacte + normalisation des modes
+
+**Statut** : Complété  
+**Branche** : `v7/cockpit`
+
+**Décision technique** :
+- **Compacité** : le toggle `mv2_autoplay` (précédemment dans `_render_options_row()` sur une 2e ligne) fusionné comme 8e colonne (`c7`, ratio 0.9) dans le `container(border=True)` — suppression de `_render_options_row()`. Label raccourci à `"▶"` avec help tooltip complet.
+- **Labels courts** : deux clés i18n ajoutées (`media_group_by_short` → "Groupe", `media_sort_by_short` → "Tri") pour réduire l'espace des colonnes droite de la toolbar.
+- **Ratios colonnes** ajustés : `[1.5, 2, 2.5, 0.05, 1.8, 1.5, 1.3, 0.9]` — Mode légèrement élargi (noms peuvent être longs après normalisation), Groupe/Tri réduits.
+- **Normalisation modes** : `_normalize_mode_ui()` ajouté dans `media_v2.py`, appelé avant `render_media_filters`. Applique `normalize_mode_label(lang=session_state.lang)` sur `mode_ui` — aligne le comportement sur `_filters_apply.py` (valeurs comme `"Arena:Slayer"` → `"Arène : Assassin"`). Cohérence garantie entre les options du filtre et les valeurs du DataFrame.
+
+**Résultats** : toolbar passe de 2 blocs à 1 seul, modes correctement normalisés dans la liste déroulante.
+
+**Prochaine étape** : néant.
+
+---
+
+## [2026-04-12] feat(media-lightbox): avance auto vidéos + toggle dans toolbar
+
+**Statut** : Complété  
+**Branche** : `v7/cockpit`
+
+**Décision technique** :
+- Toggle `mv2_autoplay` (label "Avance auto") ajouté via `_render_options_row()` (helper extrait de `render_media_filters` pour respecter la limite 80L) — affiché sous la toolbar principale.
+- `MediaFilterState` étendu avec `autoplay_videos: bool = True`.
+- `st.video(..., autoplay=True)` toujours actif (démarrage auto cohérent avec l'avance auto).
+- Avance automatique : `_inject_autoadvance_js()` injecte via `st.components.v1.html(height=0)` un script JS qui écoute `video.ended` sur `[data-testid="stDialog"] video` et clique sur le bouton ▶ (`\u25b6`) — déclenché uniquement si `idx < n-1`.
+- Extracteurs `_build_header_meta(row)` et `_inject_autoadvance_js()` sortis en module-level pour maintenir `render_lightbox_if_pending` ≤ 80L (79L final).
+- Correction ruff I001 (ordre d'imports) dans `media_v2_grid.py` (pré-existant).
+
+**Résultats** : tests OK, ruff OK.
+
+**Prochaine étape** : néant.
+
+---
+
 ## [2026-04-12] feat(media-v2): réécriture page Médias + refactor API home (career rank)
 
 **Statut** : Complété  

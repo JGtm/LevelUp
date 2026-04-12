@@ -440,5 +440,14 @@ def _render_discord_section(settings: AppSettings) -> None:
         on_change=_on_change_setting,
         args=("discord_notify_new_version", "setting_discord_notify_new_version"),
     )
+    st.checkbox(
+        t("set_discord_notify_new_media"),
+        value=bool(getattr(settings, "discord_notify_new_media", True)),
+        disabled=not _discord_on,
+        key="setting_discord_notify_new_media",
+        help=t("set_discord_notify_new_media_help"),
+        on_change=_on_change_setting,
+        args=("discord_notify_new_media", "setting_discord_notify_new_media"),
+    )
 
     st.divider()

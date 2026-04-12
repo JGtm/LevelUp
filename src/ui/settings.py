@@ -45,6 +45,7 @@ class AppSettings(BaseModel):
     discord_notify_sync: bool = True  # Notif après chaque sync
     discord_notify_backfill: bool = True  # Notif après chaque backfill
     discord_notify_new_version: bool = True  # Notif lors d'une nouvelle version majeure (vX.Y)
+    discord_notify_new_media: bool = True  # Notif quand de nouveaux médias sont indexés
     last_notified_version: str = ""  # Version lors du dernier envoi de notif déploiement
 
     # Médias
