@@ -12,6 +12,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 - **Home V7 — active challenges restored from HaloStats `/decks`** — the Mission Control home now displays the active challenge card again, with deck completion counts, real expiry, localized title/description, Waypoint badge lookup, and the player's actual progress ratio (`x/y`).
 
+- **Media V2 — persistent likes and richer grouping** — screenshots and videos can now be liked directly from the Media V2 grid, grouped by liked state, session, or solo/squad context, and rendered with the user-provided local heart assets.
+
 - **Challenge persistence layer** — new domain module `src/data/challenges.py` with internal split between `src/data/_challenge_catalog.py` and `src/data/_challenge_snapshots.py`:
   - `challenge_definitions` + `challenge_translations` added to `metadata.duckdb`
   - `challenge_snapshots` added to each player `stats.duckdb`
@@ -26,13 +28,19 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 - **Migration loading** — migration steps are now loaded dynamically, so new step modules such as `add_challenge_metadata` and `add_challenge_snapshots` do not depend on a hand-maintained import list.
 
+- **Media V2 rendering path** — the media grid now uses native Streamlit thumbnails instead of a per-card iframe lightbox, plus a shared dialog lightbox with optional auto-advance for videos.
+
 ### Fixed
 
 - **Home challenges are now live-first and failsafe** — if `metadata.duckdb` is temporarily locked by another Python process, the Home V7 challenge card still renders from live API data and simply skips persistence for that refresh instead of returning `None`.
 
+- **Media likes survive reruns and reloads** — `data/ui_prefs.json` now preserves structured `media_likes` values during preference merges, auto-repairs legacy stringified likes, and avoids the double-toggle edge case on the heart control.
+
 ### Tests
 
 - Added targeted coverage for challenge persistence and Home V7 enrichment in `tests/test_challenges_data.py`, `tests/test_home_mission_control_challenges.py`, and `tests/test_home_mission_control.py`.
+
+- Added targeted coverage for Media V2 thumbnail rendering, like persistence, and button callback fallback behavior in `tests/test_media_components_sprint4.py`, `tests/test_media_v2_grid_interactions.py`, and `tests/test_ui_persistence_v64.py`.
 
 ## [6.5.0] - 2026-04-10
 

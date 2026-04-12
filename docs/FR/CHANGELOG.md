@@ -12,6 +12,8 @@ Le format est basé sur [Keep a Changelog](https://keepachangelog.fr/fr/1.1.0/).
 
 - **Home V7 — défis actifs restaurés via HaloStats `/decks`** — la home Mission Control réaffiche la carte des défis actifs, avec compteurs de deck, échéance réelle, titre/description localisés, dérivation du badge Waypoint et vraie progression joueur au format `x/y`.
 
+- **Media V2 — likes persistants et groupements enrichis** — les captures et vidéos peuvent désormais être likées directement dans la grille Media V2, groupées par état aimé, session ou contexte solo/escouade, avec les vrais assets coeur fournis localement.
+
 - **Couche de persistance des défis** — nouveau module de domaine `src/data/challenges.py`, scindé en interne entre `src/data/_challenge_catalog.py` et `src/data/_challenge_snapshots.py` :
   - `challenge_definitions` + `challenge_translations` dans `metadata.duckdb`
   - `challenge_snapshots` dans chaque `stats.duckdb` joueur
@@ -24,13 +26,19 @@ Le format est basé sur [Keep a Changelog](https://keepachangelog.fr/fr/1.1.0/).
 
 - **Chargement des migrations** — les steps de migration sont maintenant chargés dynamiquement ; les nouveaux modules `add_challenge_metadata` et `add_challenge_snapshots` ne dépendent plus d'une liste d'imports maintenue à la main.
 
+- **Pipeline de rendu Media V2** — la grille médias utilise maintenant des thumbnails Streamlit natifs au lieu d'une iframe par carte, avec une lightbox partagée et une avance automatique optionnelle en fin de vidéo.
+
 ### Corrigé
 
 - **Défis home en mode live-first et failsafe** — si `metadata.duckdb` est temporairement verrouillée par un autre process Python, la carte de défis V7 continue de s'afficher depuis l'API live et saute simplement la persistance pour ce refresh, au lieu de retourner `None`.
 
+- **Likes médias persistants au rerun et au reload** — `data/ui_prefs.json` préserve désormais correctement `media_likes` lors des merges de préférences, répare les anciens formats stringifiés et évite le cas de double bascule sur le contrôle coeur.
+
 ### Tests
 
 - Couverture ciblée ajoutée pour la persistance des défis et l'enrichissement Home V7 dans `tests/test_challenges_data.py`, `tests/test_home_mission_control_challenges.py` et `tests/test_home_mission_control.py`.
+
+- Couverture ciblée ajoutée pour le rendu natif des thumbnails Media V2, la persistance des likes et le fallback des callbacks de bouton dans `tests/test_media_components_sprint4.py`, `tests/test_media_v2_grid_interactions.py` et `tests/test_ui_persistence_v64.py`.
 
 ## [6.5.0] - 2026-04-10
 

@@ -8,21 +8,187 @@ from pathlib import Path
 
 import polars as pl
 import streamlit as st
+import streamlit.components.v1 as components
 
-from src.ui.components.media_thumbnail import render_media_thumbnail
+from src.ui.components.media_thumbnail import load_native_thumbnail_source
 from src.ui.i18n import t
 from src.ui.pages.media_v2_filters import MediaFilterState
+from src.ui.pages.media_v2_likes import HEART_BUTTON_BASE_CSS, render_media_like_button
 
 logger = logging.getLogger(__name__)
 
-# Dimensions de référence pour les thumbnails (ratio 16:9)
-_THUMB_W: int = 320
-_THUMB_H: int = 180
-# Largeur estimée de la zone principale Streamlit (hors sidebar)
-_MAIN_W: int = 960
-
 
 # ── Lightbox ─────────────────────────────────────────────────────────────────
+
+_NEXT_BTN = "\u25b6"  # ▶ — doit correspondre exactement au label du bouton lb_next
+_LIGHTBOX_STATE_KEY = "_lb_state"
+
+
+def _build_header_meta(row: dict) -> tuple[str, str]:
+    """Retourne (meta, date_long) pour l'en-tête de la lightbox."""
+    map_name = row.get("map_ui") or row.get("map_name") or "—"
+    mode_name = row.get("mode_ui") or row.get("pair_name") or "—"
+    return f"{map_name} · {mode_name}", _fmt_date_long(row.get("capture_end_utc"))
+
+
+def _inject_autoadvance_js() -> None:
+    """Injecte du JS pour avancer automatiquement au média suivant en fin de vidéo."""
+    components.html(
+        f"""<script>
+(function waitForVideo() {{
+    var doc = window.parent.document;
+    var dlg = doc.querySelector('[data-testid="stDialog"]');
+    if (!dlg) {{ setTimeout(waitForVideo, 250); return; }}
+    var vid = dlg.querySelector('video');
+    if (!vid) {{ setTimeout(waitForVideo, 250); return; }}
+    vid.addEventListener('ended', function onEnded() {{
+        vid.removeEventListener('ended', onEnded);
+        var btns = dlg.querySelectorAll('button');
+        for (var i = 0; i < btns.length; i++) {{
+            if (btns[i].textContent.trim() === '{_NEXT_BTN}') {{ btns[i].click(); return; }}
+        }}
+    }});
+}})();
+</script>""",
+        height=0,
+    )
+
+
+def _queue_lightbox_open(rows: list[dict], idx: int) -> None:
+    """Enregistre l'état lightbox avant le rerun naturel du clic."""
+    st.session_state[_LIGHTBOX_STATE_KEY] = {"rows": rows, "idx": max(0, int(idx))}
+
+
+def _set_lightbox_index(idx: int) -> None:
+    """Met à jour l'index courant de la lightbox en le bornant."""
+    lb = st.session_state.get(_LIGHTBOX_STATE_KEY)
+    if not isinstance(lb, dict):
+        return
+    rows = lb.get("rows") or []
+    if not rows:
+        st.session_state.pop(_LIGHTBOX_STATE_KEY, None)
+        return
+    bounded_idx = max(0, min(int(idx), len(rows) - 1))
+    st.session_state[_LIGHTBOX_STATE_KEY] = {**lb, "idx": bounded_idx}
+
+
+def _clear_lightbox_state() -> None:
+    """Ferme la lightbox en supprimant son état persistant."""
+    st.session_state.pop(_LIGHTBOX_STATE_KEY, None)
+
+
+def _queue_match_navigation(match_id: str) -> None:
+    """Prépare la navigation vers Explorer avant le rerun naturel du clic."""
+    mid = str(match_id or "").strip()
+    if not mid:
+        return
+    st.session_state["_pending_page"] = "Match"
+    st.session_state["_pending_match_id"] = mid
+
+
+def _get_lightbox_state() -> tuple[list[dict], int] | None:
+    """Retourne l'état courant de la lightbox, déjà borné."""
+    lb = st.session_state.get(_LIGHTBOX_STATE_KEY)
+    if not isinstance(lb, dict):
+        return None
+    rows: list[dict] = lb.get("rows") or []
+    if not rows:
+        _clear_lightbox_state()
+        return None
+    idx = max(0, min(int(lb.get("idx", 0) or 0), len(rows) - 1))
+    return rows, idx
+
+
+def _render_lightbox_nav_button(
+    *,
+    symbol: str,
+    disabled: bool,
+    key: str,
+    target_idx: int,
+    current_idx: int,
+) -> None:
+    """Rend un bouton prev/next de la lightbox avec fallback pour les tests."""
+    clicked = st.button(
+        symbol,
+        disabled=disabled,
+        key=key,
+        width="stretch",
+        on_click=_set_lightbox_index,
+        args=(target_idx,),
+    )
+    if clicked and (st.session_state.get(_LIGHTBOX_STATE_KEY) or {}).get("idx") == current_idx:
+        _set_lightbox_index(target_idx)
+
+
+def _render_lightbox_dialog_body() -> None:
+    """Rend le contenu du dialog lightbox à partir du session_state courant."""
+    state = _get_lightbox_state()
+    if state is None:
+        return
+    rows, idx = state
+    n = len(rows)
+    row = rows[idx]
+    kind = row.get("kind") or "image"
+    file_path = row.get("file_path") or ""
+    thumb = row.get("thumbnail_path") or ""
+    display_path = _resolve_display_path(file_path, thumb, kind)
+    meta, date_long = _build_header_meta(row)
+    st.markdown(
+        "<style>"
+        "[data-testid='stDialog'] h2, [data-testid='stDialog'] [data-testid='stHeadingWithActionElements']"
+        " { display:none !important; }"
+        "[data-testid='stDialog'] [data-testid='stVerticalBlockBorderWrapper']"
+        " { max-height:82vh; overflow:hidden; }"
+        "[data-testid='stDialog'] img, [data-testid='stDialog'] video"
+        " { max-width:100%; width:100%; height:auto; max-height:72vh; object-fit:contain; }"
+        ".lb-nav button { height:100% !important; min-height:180px; }"
+        "</style>",
+        unsafe_allow_html=True,
+    )
+    has_nav = n > 1
+    counter = f"{idx + 1} / {n}" if has_nav else ""
+    st.caption(f"{meta} · {date_long}  {counter}")
+
+    if has_nav:
+        prev_c, media_c, next_c = st.columns([1, 14, 1])
+    else:
+        media_c = st.container()
+
+    autoadvance: bool = st.session_state.get("mv2_autoplay", True)
+    with media_c:
+        if display_path:
+            if kind == "video":
+                st.video(str(display_path), autoplay=True)
+                if autoadvance and idx < n - 1:
+                    _inject_autoadvance_js()
+            else:
+                st.image(str(display_path), width="stretch")
+        else:
+            st.warning(t("media_file_missing", file_name=row.get("file_name", "?")))
+
+    if not has_nav:
+        return
+
+    with prev_c:
+        st.markdown("<div class='lb-nav'>", unsafe_allow_html=True)
+        _render_lightbox_nav_button(
+            symbol="◀",
+            disabled=(idx == 0),
+            key="lb_prev",
+            target_idx=idx - 1,
+            current_idx=idx,
+        )
+        st.markdown("</div>", unsafe_allow_html=True)
+    with next_c:
+        st.markdown("<div class='lb-nav'>", unsafe_allow_html=True)
+        _render_lightbox_nav_button(
+            symbol="▶",
+            disabled=(idx == n - 1),
+            key="lb_next",
+            target_idx=idx + 1,
+            current_idx=idx,
+        )
+        st.markdown("</div>", unsafe_allow_html=True)
 
 
 def render_lightbox_if_pending() -> None:
@@ -31,87 +197,32 @@ def render_lightbox_if_pending() -> None:
     Doit être appelée AVANT tout autre rendu st.* dans la page.
     État attendu : st.session_state["_lb_state"] = {"rows": list[dict], "idx": int}
     """
-    lb: dict | None = st.session_state.pop("_lb_state", None)
-    if not lb:
+    if _get_lightbox_state() is None:
         return
 
-    rows: list[dict] = lb["rows"]
-    idx: int = max(0, min(lb["idx"], len(rows) - 1))
-    n = len(rows)
-    row = rows[idx]
-
-    kind = row.get("kind") or "image"
-    file_path = row.get("file_path") or ""
-    thumb = row.get("thumbnail_path") or ""
-    display_path = _resolve_display_path(file_path, thumb, kind)
-
-    map_name = row.get("map_ui") or row.get("map_name") or "—"
-    mode_name = row.get("mode_ui") or row.get("pair_name") or "—"
-    meta = f"{map_name} · {mode_name}"
-    date_long = _fmt_date_long(row.get("capture_end_utc"))
-
-    @st.dialog(" ", width="large")
+    @st.dialog(" ", width="large", on_dismiss=_clear_lightbox_state)
     def _show() -> None:
-        st.markdown(
-            "<style>"
-            "[data-testid='stDialog'] h2, [data-testid='stDialog'] [data-testid='stHeadingWithActionElements']"
-            " { display:none !important; }"
-            "[data-testid='stDialog'] [data-testid='stVerticalBlockBorderWrapper']"
-            " { max-height:82vh; overflow:hidden; }"
-            "[data-testid='stDialog'] img, [data-testid='stDialog'] video"
-            " { max-width:100%; width:100%; height:auto; max-height:72vh; object-fit:contain; }"
-            ".lb-nav button { height:100% !important; min-height:180px; }"
-            "</style>",
-            unsafe_allow_html=True,
-        )
-        has_nav = n > 1
-        # En-tête : label + compteur
-        counter = f"{idx + 1} / {n}" if has_nav else ""
-        header = f"{meta} · {date_long}  {counter}"
-        st.caption(header)
-
-        if has_nav:
-            prev_c, media_c, next_c = st.columns([1, 14, 1])
-        else:
-            media_c = st.container()
-
-        with media_c:
-            if display_path:
-                if kind == "video":
-                    st.video(str(display_path))
-                else:
-                    st.image(str(display_path), width="stretch")
-            else:
-                st.warning(t("media_file_missing", file_name=row.get("file_name", "?")))
-
-        if has_nav:
-            with prev_c:
-                st.markdown("<div class='lb-nav'>", unsafe_allow_html=True)
-                if st.button("◀", disabled=(idx == 0), key="lb_prev", use_container_width=True):
-                    st.session_state["_lb_state"] = {**lb, "idx": idx - 1}
-                    st.rerun()
-                st.markdown("</div>", unsafe_allow_html=True)
-            with next_c:
-                st.markdown("<div class='lb-nav'>", unsafe_allow_html=True)
-                if st.button("▶", disabled=(idx == n - 1), key="lb_next", use_container_width=True):
-                    st.session_state["_lb_state"] = {**lb, "idx": idx + 1}
-                    st.rerun()
-                st.markdown("</div>", unsafe_allow_html=True)
+        _render_lightbox_dialog_body()
 
     _show()
 
 
 # ── Grille ───────────────────────────────────────────────────────────────────
 
+_HEADER_LABEL_CSS = (
+    "display:flex;align-items:center;min-height:42px;"
+    "white-space:nowrap;overflow:hidden;text-overflow:ellipsis;"
+    "font-size:0.95rem;line-height:1;color:#98a2b3;"
+)
+
 
 def render_media_grid(df: pl.DataFrame, state: MediaFilterState) -> None:
     """Affiche la grille de cartes média (label + thumbnail + boutons)."""
     if df.is_empty():
         return
-    col_w = _MAIN_W / state.cols_per_row  # noqa: F841  (conservé pour référence future)
-    iframe_h = _THUMB_H + 24  # marge suffisante pour le container iframe Streamlit
     rows = df.to_dicts()
 
+    st.markdown(HEART_BUTTON_BASE_CSS, unsafe_allow_html=True)
     st.markdown(
         "<style>div[data-testid='stButton'] p { font-size:12px !important; }</style>",
         unsafe_allow_html=True,
@@ -126,8 +237,22 @@ def render_media_grid(df: pl.DataFrame, state: MediaFilterState) -> None:
         for j, col in enumerate(th_cols):
             with col:
                 row = chunk[j]
-                st.caption(f"{_type_badge(row)}  {_format_label(row)}")
-                _render_thumb(row, iframe_h)
+                file_path = row.get("file_path") or ""
+                lbl_col, heart_col = st.columns(
+                    [14, 2.8],
+                    gap="small",
+                    vertical_alignment="center",
+                )
+                lbl_col.markdown(
+                    f"<div style='{_HEADER_LABEL_CSS}'>{_type_badge(row)}&nbsp;&nbsp;{_format_label(row)}</div>",
+                    unsafe_allow_html=True,
+                )
+                with heart_col:
+                    render_media_like_button(
+                        file_path,
+                        force_full_rerun=state.group_by == "liked",
+                    )
+                _render_thumb(row)
 
         # Rangée B : [Agrandir] [Match] — 2 boutons par item, alignés sur les n colonnes
         btn_cols = st.columns([1] * (n * 2))
@@ -141,9 +266,18 @@ def render_media_grid(df: pl.DataFrame, state: MediaFilterState) -> None:
             with btn_cols[j * 2]:
                 if _resolve_display_path(file_path, thumb, kind):
                     lb_key = hashlib.md5(f"lb_{file_path}_{i}_{j}".encode()).hexdigest()[:12]
-                    if st.button(t("media_view_full"), key=f"mv2_lb_{lb_key}", width="stretch"):
-                        st.session_state["_lb_state"] = {"rows": rows, "idx": i + j}
-                        st.rerun()
+                    lb_clicked = st.button(
+                        t("media_view_full"),
+                        key=f"mv2_lb_{lb_key}",
+                        width="stretch",
+                        on_click=_queue_lightbox_open,
+                        args=(rows, i + j),
+                    )
+                    if (
+                        lb_clicked
+                        and (st.session_state.get(_LIGHTBOX_STATE_KEY) or {}).get("idx") != i + j
+                    ):
+                        _queue_lightbox_open(rows, i + j)
 
             with btn_cols[j * 2 + 1]:
                 if match_id and str(match_id).strip():
@@ -236,8 +370,8 @@ def _type_badge(row: dict) -> str:
     return "📷"
 
 
-def _render_thumb(row: dict, iframe_h: int) -> None:
-    """Affiche le thumbnail d'une carte (statique + survol GIF pour les vidéos)."""
+def _render_thumb(row: dict) -> None:
+    """Affiche le thumbnail d'une carte via un rendu natif Streamlit sans iframe."""
     file_path = row.get("file_path")
     thumbnail_path = row.get("thumbnail_path") or ""
     kind = row.get("kind") or "image"
@@ -250,16 +384,18 @@ def _render_thumb(row: dict, iframe_h: int) -> None:
         hover_path = None
         if kind == "video" and thumb_ok and str(thumbnail_path).lower().endswith(".gif"):
             hover_path = thumbnail_path
-        render_media_thumbnail(
-            static_path=Path(static_path),
+        native_source = load_native_thumbnail_source(
+            Path(static_path),
             hover_path=Path(hover_path) if hover_path else None,
-            full_media_path=Path(file_path) if file_path else None,
-            kind=kind,
-            width=_THUMB_W,
-            height=_THUMB_H,
-            media_id=file_path,
-            height_iframe=iframe_h,
         )
+        if native_source is None:
+            st.caption(t("media_file_missing", file_name=file_name))
+            return
+        try:
+            st.image(native_source, width="stretch")
+        except Exception:
+            logger.debug("Thumbnail natif impossible pour %s", file_name, exc_info=True)
+            st.caption(t("media_file_missing", file_name=file_name))
     else:
         st.caption(t("media_file_missing", file_name=file_name))
 
@@ -279,7 +415,18 @@ def _resolve_display_path(
 
 def _open_match_button(match_id: str, suffix: str) -> None:
     """Bouton de navigation vers la page Match."""
-    if st.button(t("ml_open_match"), key=f"mv2_match_{match_id}_{suffix}", width="stretch"):
-        st.session_state["_pending_page"] = "Match"
-        st.session_state["_pending_match_id"] = match_id
-        st.rerun()
+    mid = str(match_id or "").strip()
+    if not mid:
+        return
+    clicked = st.button(
+        t("ml_open_match"),
+        key=f"mv2_match_{mid}_{suffix}",
+        width="stretch",
+        on_click=_queue_match_navigation,
+        args=(mid,),
+    )
+    if clicked and (
+        st.session_state.get("_pending_page") != "Match"
+        or st.session_state.get("_pending_match_id") != mid
+    ):
+        _queue_match_navigation(mid)
