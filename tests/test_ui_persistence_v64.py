@@ -354,6 +354,103 @@ class TestBrowserStorageLogic:
 
         assert "_browser_prefs_loaded" not in fake_st.session_state
 
+    def test_persist_preserves_media_likes_list(
+        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        """persist_browser_prefs ne doit pas convertir media_likes en chaîne."""
+        import src.ui.components.browser_storage as bs
+
+        fake_st = self._make_fake_st()
+        prefs_path = tmp_path / "ui_prefs.json"
+        prefs_path.write_text(
+            json.dumps({"lang": "fr", "media_likes": ["capture.mp4"]}, ensure_ascii=False),
+            encoding="utf-8",
+        )
+        monkeypatch.setattr(bs, "_PREFS_FILE", prefs_path)
+
+        with patch("streamlit.session_state", fake_st.session_state):
+            import streamlit as st_real
+
+            monkeypatch.setattr(st_real, "session_state", fake_st.session_state)
+            bs.persist_browser_prefs(last_gamertag="JGtm")
+
+        written = json.loads(prefs_path.read_text(encoding="utf-8"))
+        assert written["last_gamertag"] == "JGtm"
+        assert written["media_likes"] == ["capture.mp4"]
+
+    def test_load_media_likes_repairs_legacy_string_value(
+        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        """load_media_likes doit réparer l'ancien format stringifié en liste réelle."""
+        import src.ui.components.browser_storage as bs
+
+        fake_st = self._make_fake_st()
+        prefs_path = tmp_path / "ui_prefs.json"
+        prefs_path.write_text(
+            json.dumps({"media_likes": "['b.png', 'a.mp4']"}, ensure_ascii=False),
+            encoding="utf-8",
+        )
+        monkeypatch.setattr(bs, "_PREFS_FILE", prefs_path)
+
+        with patch("streamlit.session_state", fake_st.session_state):
+            import streamlit as st_real
+
+            monkeypatch.setattr(st_real, "session_state", fake_st.session_state)
+            likes = bs.load_media_likes()
+
+        repaired = json.loads(prefs_path.read_text(encoding="utf-8"))
+        assert likes == {"a.mp4", "b.png"}
+        assert repaired["media_likes"] == ["a.mp4", "b.png"]
+
+    def test_toggle_media_like_persists_and_can_unlike(
+        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        """Un like doit survivre au reload puis pouvoir être retiré."""
+        import src.ui.components.browser_storage as bs
+
+        fake_st = self._make_fake_st()
+        prefs_path = tmp_path / "ui_prefs.json"
+        prefs_path.write_text("{}", encoding="utf-8")
+        monkeypatch.setattr(bs, "_PREFS_FILE", prefs_path)
+
+        with patch("streamlit.session_state", fake_st.session_state):
+            import streamlit as st_real
+
+            monkeypatch.setattr(st_real, "session_state", fake_st.session_state)
+
+            assert bs.toggle_media_like("capture.mp4") is True
+            fake_st.session_state.pop("_media_likes", None)
+            assert bs.load_media_likes() == {"capture.mp4"}
+
+            assert bs.toggle_media_like("capture.mp4") is False
+            fake_st.session_state.pop("_media_likes", None)
+            assert bs.load_media_likes() == set()
+
+        written = json.loads(prefs_path.read_text(encoding="utf-8"))
+        assert written["media_likes"] == []
+
+
+class TestResolveBrowserPrefLang:
+    """Tests du helper de restauration de langue au bootstrap."""
+
+    def test_applies_french_on_new_session(self) -> None:
+        """Une préférence fr doit être appliquée même sans langue déjà en session."""
+        from src.ui.components.browser_storage import resolve_browser_pref_lang
+
+        assert resolve_browser_pref_lang("fr", None) == "fr"
+
+    def test_does_not_reapply_same_explicit_lang(self) -> None:
+        """Si la session porte déjà la même langue valide, rien à faire."""
+        from src.ui.components.browser_storage import resolve_browser_pref_lang
+
+        assert resolve_browser_pref_lang("fr", "fr") is None
+
+    def test_applies_lang_when_pref_differs(self) -> None:
+        """Une préférence différente doit remplacer la langue courante."""
+        from src.ui.components.browser_storage import resolve_browser_pref_lang
+
+        assert resolve_browser_pref_lang("en", "fr") == "en"
+
 
 # ===========================================================================
 # Tests : _maybe_apply_browser_prefs (logique de restauration au démarrage)

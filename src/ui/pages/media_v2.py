@@ -9,6 +9,7 @@ import polars as pl
 import streamlit as st
 
 from src.data.media_indexer import MediaIndexer
+from src.ui.components.browser_storage import load_media_likes
 from src.ui.i18n import t
 from src.ui.pages.media_v2_filters import (
     MediaFilterState,
@@ -55,6 +56,8 @@ def render_media_v2(
 
     media_df = _enrich_with_match_data(media_df, df_full)
     media_df = _enrich_from_enrichment_table(media_df, db_path)
+    media_df = _enrich_with_likes(media_df)
+    media_df = _normalize_mode_ui(media_df)
     state = render_media_filters(media_df)
     _render_sections(media_df, state)
 
@@ -66,6 +69,7 @@ _GROUP_COL: dict[str, str] = {
     "mode": "mode_ui",
     "session": "session_label",
     "experience": "_experience_label",
+    "liked": "liked",
 }
 
 # ── Sections ─────────────────────────────────────────────────────────────────
@@ -127,6 +131,9 @@ def _render_grouped(df: pl.DataFrame, state: MediaFilterState) -> None:
     # Calculer la clé de groupe : date = jour, map/mode = valeur brute
     if state.group_by == "date" and actual_col in df.columns:
         df = df.with_columns(pl.col(actual_col).cast(pl.Date).alias("_group_key"))
+    elif state.group_by == "liked" and actual_col in df.columns:
+        # liked = booléen : afficher les aimés en premier (desc)
+        df = df.with_columns(pl.col(actual_col).fill_null(False).alias("_group_key"))
     elif actual_col in df.columns:
         df = df.with_columns(pl.col(actual_col).fill_null("—").alias("_group_key"))
     else:
@@ -136,8 +143,10 @@ def _render_grouped(df: pl.DataFrame, state: MediaFilterState) -> None:
     if filtered.is_empty():
         return
 
+    # Pour liked : toujours les aimés (True) en premier
+    sort_desc = True if state.group_by == "liked" else state.sort_desc
     group_keys = (
-        filtered.sort("_group_key", descending=state.sort_desc, nulls_last=True)["_group_key"]
+        filtered.sort("_group_key", descending=sort_desc, nulls_last=True)["_group_key"]
         .unique(maintain_order=True)
         .to_list()
     )
@@ -173,6 +182,8 @@ def _format_group_label(group_by: str | None, key: object) -> str:
         return raw
     if group_by in {"experience", "map", "mode"}:
         return str(key) if key and str(key) != "—" else "—"
+    if group_by == "liked":
+        return t("media_liked_yes") if key is True else t("media_liked_no")
     return str(key) if key else "—"
 
 
@@ -208,6 +219,18 @@ def _render_by_auteur(media_df: pl.DataFrame, state: MediaFilterState) -> None:
 
 
 # ── Helpers privés ────────────────────────────────────────────────────────────
+
+
+def _enrich_with_likes(media_df: pl.DataFrame) -> pl.DataFrame:
+    """Ajoute une colonne booléenne 'liked' issue des préférences utilisateur."""
+    likes = load_media_likes()
+    if "file_path" not in media_df.columns:
+        return media_df.with_columns(pl.lit(False).alias("liked"))
+    return media_df.with_columns(
+        pl.col("file_path")
+        .map_elements(lambda p: p in likes, return_dtype=pl.Boolean)
+        .alias("liked")
+    )
 
 
 def _dedup_section(df: pl.DataFrame, section: str) -> pl.DataFrame:
@@ -266,6 +289,24 @@ def _enrich_from_enrichment_table(
         return media_df.join(enrich.select(join_cols), on="match_id", how="left")
     except Exception:
         logger.debug("_enrich_from_enrichment_table: impossible d'enrichir", exc_info=True)
+        return media_df
+
+
+def _normalize_mode_ui(media_df: pl.DataFrame) -> pl.DataFrame:
+    """Normalise mode_ui via normalize_mode_label (même logique que _filters_apply)."""
+    if "mode_ui" not in media_df.columns:
+        return media_df
+    try:
+        from src.app.helpers import normalize_mode_label
+
+        lang = st.session_state.get("lang", "fr")
+        return media_df.with_columns(
+            pl.col("mode_ui")
+            .map_elements(lambda x: normalize_mode_label(x, lang=lang), return_dtype=pl.Utf8)
+            .alias("mode_ui")
+        )
+    except Exception:
+        logger.debug("_normalize_mode_ui: impossible de normaliser", exc_info=True)
         return media_df
 
 

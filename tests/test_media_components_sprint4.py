@@ -10,6 +10,7 @@ from src.ui.components.media_thumbnail import (
     _mime_for_path,
     _path_to_data_uri,
     build_thumbnail_html,
+    load_native_thumbnail_source,
     render_media_thumbnail,
 )
 
@@ -85,6 +86,28 @@ def test_path_to_data_uri_too_large(tmp_path: Path) -> None:
     assert _path_to_data_uri(f, 500, "application/octet-stream") is None
 
 
+def test_load_native_thumbnail_source_returns_path_for_regular_image(tmp_path: Path) -> None:
+    img = tmp_path / "thumb.png"
+    img.write_bytes(b"\x89PNG\r\n\x1a\n" + b"\x00" * 50)
+
+    source = load_native_thumbnail_source(img)
+
+    assert source == str(img)
+
+
+def test_load_native_thumbnail_source_uses_first_frame_bytes_for_gif(tmp_path: Path) -> None:
+    gif = tmp_path / "thumb.gif"
+    gif.write_bytes(b"GIF89a")
+
+    with patch(
+        "src.ui.components.media_thumbnail._gif_first_frame_png_bytes",
+        return_value=b"png-bytes",
+    ):
+        source = load_native_thumbnail_source(gif, hover_path=gif)
+
+    assert source == b"png-bytes"
+
+
 # -----------------------------------------------------------------------------
 # Thumbnail – build_thumbnail_html
 # -----------------------------------------------------------------------------
@@ -123,6 +146,22 @@ def test_build_thumbnail_html_with_hover() -> None:
     assert "data:image/gif;base64,g" in html or "g" in html
 
 
+def test_build_thumbnail_html_can_skip_lightbox() -> None:
+    html = build_thumbnail_html(
+        static_src="data:image/png;base64,s",
+        hover_src=None,
+        lightbox_src="data:image/png;base64,l",
+        kind="image",
+        width=160,
+        height=120,
+        element_id="t3",
+        include_lightbox=False,
+    )
+    assert "media-thumb-t3" in html
+    assert "media-lightbox-overlay" not in html
+    assert "overlay.style.display = 'flex'" not in html
+
+
 # -----------------------------------------------------------------------------
 # Thumbnail – render_media_thumbnail (intégration Streamlit)
 # -----------------------------------------------------------------------------
@@ -158,3 +197,26 @@ def test_render_media_thumbnail_with_real_file(tmp_path: Path) -> None:
         assert "media-thumb-test-render" in html
         assert "media-lightbox-overlay" in html
         assert "data:image/png;base64," in html
+
+
+def test_render_media_thumbnail_without_lightbox(tmp_path: Path) -> None:
+    """Le mode sans lightbox n'embarque pas d'overlay HTML par miniature."""
+    thumb = tmp_path / "thumb.png"
+    thumb.write_bytes(b"\x89PNG\r\n\x1a\n" + b"\x00" * 200)
+    with (
+        patch("src.ui.components.media_thumbnail.st"),
+        patch("src.ui.components.media_thumbnail.st.components.v1.html") as m_html,
+    ):
+        render_media_thumbnail(
+            static_path=thumb,
+            kind="image",
+            width=180,
+            height=180,
+            media_id="test-no-lightbox",
+            include_lightbox=False,
+        )
+        m_html.assert_called_once()
+        html = m_html.call_args[0][0]
+        assert "media-thumb-test-no-lightbox" in html
+        assert "media-lightbox-overlay" not in html
+        assert "overlay.style.display = 'flex'" not in html
