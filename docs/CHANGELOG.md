@@ -12,6 +12,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 - **Home V7 — active challenges restored from HaloStats `/decks`** — the Mission Control home now displays the active challenge card again, with deck completion counts, real expiry, localized title/description, Waypoint badge lookup, and the player's actual progress ratio (`x/y`).
 
+- **V7 Synthesis page** — a new top-level section after Squad aggregates the existing high-signal overview charts in one place: results by map/mode, win-rate by day/hour, top matches vs total per week, plus a solo-vs-squad KPI comparison.
+
 - **Media V2 — persistent likes and richer grouping** — screenshots and videos can now be liked directly from the Media V2 grid, grouped by liked state, session, or solo/squad context, and rendered with the user-provided local heart assets.
 
 - **Challenge persistence layer** — new domain module `src/data/challenges.py` with internal split between `src/data/_challenge_catalog.py` and `src/data/_challenge_snapshots.py`:

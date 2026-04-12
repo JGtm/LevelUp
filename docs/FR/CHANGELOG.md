@@ -12,6 +12,8 @@ Le format est basé sur [Keep a Changelog](https://keepachangelog.fr/fr/1.1.0/).
 
 - **Home V7 — défis actifs restaurés via HaloStats `/decks`** — la home Mission Control réaffiche la carte des défis actifs, avec compteurs de deck, échéance réelle, titre/description localisés, dérivation du badge Waypoint et vraie progression joueur au format `x/y`.
 
+- **Page Synthèse V7** — une nouvelle section de premier niveau après Escouade regroupe les graphes de vue d'ensemble déjà existants au même endroit : résultats par carte/mode, taux de victoire par jour/heure, top matchs vs total par semaine, plus une comparaison Solo vs Escouade sur les KPIs clés.
+
 - **Media V2 — likes persistants et groupements enrichis** — les captures et vidéos peuvent désormais être likées directement dans la grille Media V2, groupées par état aimé, session ou contexte solo/escouade, avec les vrais assets coeur fournis localement.
 
 - **Couche de persistance des défis** — nouveau module de domaine `src/data/challenges.py`, scindé en interne entre `src/data/_challenge_catalog.py` et `src/data/_challenge_snapshots.py` :
