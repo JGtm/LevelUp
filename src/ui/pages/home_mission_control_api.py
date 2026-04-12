@@ -33,14 +33,18 @@ _cache_lock = threading.Lock()
 class HomeBattlepassInfo:
     """Info d'opération/saison courante pour l'accueil.
 
-    career_rank : rang carrière actuel (ex: 174)
+    track_name        : identifiant de l'opération (ex: "S13Op01")
+    op_rank           : rang dans l'opération actuelle (ex: 8)
+    is_owned          : pass premium acheté
+    career_rank       : rang carrière global (ex: 174)
     career_rank_label : label lisible (ex: "Caporal d'élite IV")
-    track_name : identifiant de l'opération (ex: "S13Op01")
     track_image_bytes : artwork de l'opération (BattlePassImage)
     """
 
     track_name: str
-    career_rank: int
+    op_rank: int = 0
+    is_owned: bool = False
+    career_rank: int = 0
     career_rank_label: str | None = None
     track_image_bytes: bytes | None = None
 
@@ -153,16 +157,37 @@ async def _fetch_current_operation_track_path(session: Any) -> str | None:
         return None
 
 
+async def _parse_career_rank(resp: Any) -> int:
+    """Extrait le career rank depuis la réponse /rewardtracks/careerranks/careerrank1."""
+    if isinstance(resp, BaseException) or resp.status != 200:
+        return 0
+    data = await resp.json()
+    return data.get("CurrentProgress", {}).get("Rank", 0)
+
+
+async def _parse_op_progression(resp: Any | None) -> tuple[int, bool]:
+    """Extrait (op_rank, is_owned) depuis la réponse /rewardtracks/operations/{id}."""
+    if resp is None or isinstance(resp, BaseException) or resp.status != 200:
+        return 0, False
+    data = await resp.json()
+    prog = data.get("CurrentProgress", {})
+    op_rank = prog.get("Rank", 0)
+    is_owned = data.get("IsOwned", False) or prog.get("IsOwned", False)
+    return op_rank, is_owned
+
+
 async def _fetch_economy_data(
     tokens: Any,
     xuid: str,
 ) -> tuple[HomeBattlepassInfo | None, HomeChallengeSummary | None]:
     """Appels réseau Economy + GameCMS avec des endpoints valides.
 
-    - Career rank     : /hi/players/xuid({xuid})/rewardtracks/careerranks/careerrank1
-    - Défis           : /hi/players/xuid({xuid})/challenges
-    - Opération       : GameCMS season_calendar + fichier JSON de l'opération
-    - Artwork         : GameCMS /hi/images/file/{BattlePassImage}
+    - Career rank    : /hi/players/xuid({xuid})/rewardtracks/careerranks/careerrank1
+    - Op progression : /hi/players/xuid({xuid})/rewardtracks/operations/{season_id}
+    - Opération      : GameCMS season_calendar + fichier JSON de l'opération
+    - Artwork        : GameCMS /hi/images/file/{BattlePassImage}
+
+    Note : l'endpoint /challenges retourne 404 — non disponible en V6 API.
     """
     try:
         from aiohttp import ClientSession, ClientTimeout  # noqa: I001
@@ -173,7 +198,6 @@ async def _fetch_economy_data(
     economy_host = "https://economy.svc.halowaypoint.com"
     gamecms_host = "https://gamecms-hacs.svc.halowaypoint.com"
     xuid_clean = xuid.lstrip("xuid(").rstrip(")")
-
     hdr = {
         "Accept": "application/json",
         "x-343-authorization-spartan": tokens.spartan_token,
@@ -182,41 +206,38 @@ async def _fetch_economy_data(
 
     try:
         async with ClientSession(timeout=ClientTimeout(total=15), headers=hdr) as session:
+            op_path = await _fetch_current_operation_track_path(session)
+            season_id = op_path.split("/")[-1].replace(".json", "") if op_path else None
+
             career_url = (
                 f"{economy_host}/hi/players/xuid({xuid_clean})/rewardtracks/careerranks/careerrank1"
             )
-            chal_url = f"{economy_host}/hi/players/xuid({xuid_clean})/challenges"
-            op_path = await _fetch_current_operation_track_path(session)
+            reqs: list[Any] = [session.get(career_url)]
+            if season_id:
+                op_url = (
+                    f"{economy_host}/hi/players/xuid({xuid_clean})"
+                    f"/rewardtracks/operations/{season_id}"
+                )
+                reqs.append(session.get(op_url))
 
-            career_resp, chal_resp = await asyncio.gather(
-                session.get(career_url),
-                session.get(chal_url),
-                return_exceptions=True,
+            responses = await asyncio.gather(*reqs, return_exceptions=True)
+            career_rank = await _parse_career_rank(responses[0])
+            op_rank, is_owned = await _parse_op_progression(
+                responses[1] if len(responses) > 1 else None
             )
 
-            career_rank = 0
-            career_rank_label = None
-            if not isinstance(career_resp, BaseException) and career_resp.status == 200:
-                career_data = await career_resp.json()
-                career_rank = career_data.get("CurrentProgress", {}).get("Rank", 0)
-
-            challenge_summary = None
-            if not isinstance(chal_resp, BaseException) and chal_resp.status == 200:
-                chal_data = await chal_resp.json()
-                challenge_summary = _build_challenge_summary_from_json(chal_data)
-
             bp_info = None
-            if op_path:
-                track_name = op_path.split("/")[-1].replace(".json", "")
-                image_bytes = await _fetch_operation_artwork(session, gamecms_host, op_path)
+            if season_id:
+                image_bytes = await _fetch_operation_artwork(session, gamecms_host, op_path)  # type: ignore[arg-type]
                 bp_info = HomeBattlepassInfo(
-                    track_name=track_name,
+                    track_name=season_id,
+                    op_rank=op_rank,
+                    is_owned=is_owned,
                     career_rank=career_rank,
-                    career_rank_label=career_rank_label,
                     track_image_bytes=image_bytes,
                 )
 
-        return bp_info, challenge_summary
+        return bp_info, None  # challenges non disponibles (endpoint 404 en V6)
     except Exception as exc:
         logger.debug("home_api: erreur fetch economy: %s", exc)
         return None, None
