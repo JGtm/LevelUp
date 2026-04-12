@@ -77,7 +77,7 @@ def _make_section_callable(section: str) -> Callable[[], None]:
         if ctx is None:
             st.info(t("v7_loading") if "v7_loading" in dir(t) else "Chargement en cours...")
             return
-        if section in {"stats", "squad", "synthesis"}:
+        if section in {"stats", "squad"}:
             render_header_l2(section, ctx)
             render_kpi_bar(ctx.dff)
         consume_pending_match_id()
