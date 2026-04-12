@@ -194,14 +194,16 @@ def _render_battlepass_card(info: HomeBattlepassInfo | None) -> None:
         return
     if info.track_image_bytes:
         st.image(info.track_image_bytes, width="stretch")
-    rank_str = info.career_rank_label or f"Rang {info.career_rank}"
+    tier_label = t("v7_home_battlepass_premium") if info.is_owned else t("v7_home_battlepass_free")
+    career_str = info.career_rank_label or f"Rang {info.career_rank}"
     _render_home_card(
         "".join(
             [
                 f"<div class='v7-subshell-title'>{escape(title)}</div>",
-                f"<div class='v7-home-meta'>{escape(info.track_name)}</div>",
+                f"<div class='v7-home-meta'>{escape(info.track_name)} · {escape(tier_label)}</div>",
                 "<div class='v7-home-stats'>",
-                f"<span class='v7-home-stat'><strong>{escape(rank_str)}</strong></span>",
+                f"<span class='v7-home-stat'><strong>Niv. {info.op_rank}</strong></span>",
+                f"<span class='v7-home-stat'>{escape(career_str)}</span>",
                 "</div>",
             ]
         )
