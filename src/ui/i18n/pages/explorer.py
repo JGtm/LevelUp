@@ -34,6 +34,12 @@ STRINGS: dict[str, dict[str, str] | str] = {
         "fr": "Matchs en adversaires ({count})",
         "en": "Matches as opponents ({count})",
     },
+    "exp_table_rows_per_page": {"fr": "Lignes", "en": "Rows"},
+    "exp_table_page": {"fr": "Page", "en": "Page"},
+    "exp_table_showing_rows": {
+        "fr": "Lignes {start}-{end} sur {total}",
+        "en": "Rows {start}-{end} of {total}",
+    },
     "exp_player_summary": {
         "fr": "Bilan avec {gamertag}",
         "en": "Summary with {gamertag}",
