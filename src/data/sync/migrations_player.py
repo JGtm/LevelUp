@@ -608,6 +608,48 @@ def ensure_pme_session_index(conn: duckdb.DuckDBPyConnection) -> None:
     )
 
 
+def ensure_media_discord_notified_column(conn: duckdb.DuckDBPyConnection) -> None:
+    """Ajoute la colonne discord_notified_at à media_files si elle est absente.
+
+    Permet de tracer quels médias ont déjà fait l'objet d'une notification
+    Discord, pour éviter le spam lors des re-scans.
+    """
+    if not table_exists(conn, "media_files"):
+        return
+    _add_column_if_missing(conn, "media_files", "discord_notified_at", "TIMESTAMP")
+
+
+_CHALLENGE_SNAPSHOTS_DDL = """
+CREATE TABLE IF NOT EXISTS challenge_snapshots (
+    snapshot_at       TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    xuid              VARCHAR NOT NULL,
+    challenge_path    VARCHAR NOT NULL,
+    challenge_id      VARCHAR,
+    content_hash      VARCHAR,
+    status            VARCHAR NOT NULL,
+    progress_current  INTEGER,
+    progress_target   INTEGER,
+    xp_reward         INTEGER DEFAULT 0,
+    can_reroll        BOOLEAN,
+    expires_at        TIMESTAMP,
+    deck_index        INTEGER,
+    state_hash        VARCHAR NOT NULL
+);
+CREATE INDEX IF NOT EXISTS idx_challenge_snapshots_xuid_time
+    ON challenge_snapshots(xuid, snapshot_at DESC);
+CREATE INDEX IF NOT EXISTS idx_challenge_snapshots_path_time
+    ON challenge_snapshots(challenge_path, snapshot_at DESC);
+"""
+
+
+def ensure_challenge_snapshots_table(conn: duckdb.DuckDBPyConnection) -> None:
+    """Crée ``challenge_snapshots`` dans stats.duckdb (idempotente).
+
+    Historise les états des défis d'un joueur en mode append-only dédupliqué.
+    """
+    conn.execute(_CHALLENGE_SNAPSHOTS_DDL)
+
+
 def ensure_mv_session_stats_varchar(conn: duckdb.DuckDBPyConnection) -> None:
     """Migre mv_session_stats.session_id de INTEGER vers VARCHAR si nécessaire.
 

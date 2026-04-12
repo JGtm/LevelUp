@@ -195,6 +195,14 @@ STRINGS: dict[str, dict[str, str] | str] = {
         "fr": "Envoie un message Discord avec les nouveautés (README) quand X ou Y changent dans vX.Y.Z. Nécessite LEVELUP_NOTIFY_VERSIONS=1 dans l'environnement (opt-in prod).",
         "en": "Sends a Discord message with release notes (README) when X or Y change in vX.Y.Z. Requires LEVELUP_NOTIFY_VERSIONS=1 in the environment (prod opt-in).",
     },
+    "set_discord_notify_new_media": {
+        "fr": "Nouveaux médias indexés",
+        "en": "New media indexed",
+    },
+    "set_discord_notify_new_media_help": {
+        "fr": "Envoie une notification Discord avec thumbnail (GIF/image) à chaque nouvelle vidéo ou capture indexée. Chaque média n'est notifié qu'une seule fois.",
+        "en": "Sends a Discord notification with thumbnail (GIF/image) for each newly indexed video or screenshot. Each media is notified only once.",
+    },
     "set_media_watcher_label": {
         "fr": "Watcher automatique (Linux/inotify)",
         "en": "Automatic watcher (Linux/inotify)",

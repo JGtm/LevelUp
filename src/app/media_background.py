@@ -53,6 +53,12 @@ def _index_media_for_player(
         n_thumb_gen,
     )
 
+    # Phase 3 : notification Discord (hors write lease — lecture seule)
+    if result.n_new > 0:
+        from src.utils._discord_media import notify_new_media
+
+        notify_new_media(db_file, gamertag)
+
 
 def _index_media_legacy(db_path: str, videos_dir: str, screens_dir: str, tolerance: int) -> None:
     """Indexe les médias en mode legacy (deux dossiers globaux, DB courante)."""
@@ -90,6 +96,14 @@ def _index_media_legacy(db_path: str, videos_dir: str, screens_dir: str, toleran
         n_associated,
         n_thumb_gen,
     )
+
+    # Notification Discord (hors write lease)
+    if result.n_new > 0:
+        from src.data.media_helpers import get_gamertag_from_db_path
+        from src.utils._discord_media import notify_new_media
+
+        gamertag_legacy = get_gamertag_from_db_path(legacy_db_file) or legacy_db_file.parent.name
+        notify_new_media(legacy_db_file, gamertag_legacy)
 
 
 def _index_with_retry(db_file: Path, gamertag: str, captures_dir: Path, tolerance: int) -> None:

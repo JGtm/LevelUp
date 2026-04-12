@@ -25,6 +25,8 @@ from src.data.sync._migrations_utils import (  # noqa: F401
 )
 from src.data.sync.migrations_metadata import (  # noqa: F401
     ensure_asset_translations_table,
+    ensure_challenge_definitions_table,
+    ensure_challenge_translations_table,
     ensure_medal_definitions_table,
     ensure_medal_translations_table,
     ensure_pve_schema,
@@ -33,9 +35,11 @@ from src.data.sync.migrations_metadata import (  # noqa: F401
 from src.data.sync.migrations_player import (  # noqa: F401
     add_spartan_id_to_career_progression,
     ensure_career_progression_autoincrement,
+    ensure_challenge_snapshots_table,
     ensure_end_time_column,
     ensure_match_skill_rank_table,
     ensure_match_stats_columns,
+    ensure_media_discord_notified_column,
     ensure_mv_player_matches_view,
     ensure_mv_session_stats_varchar,
     ensure_performance_indexes,

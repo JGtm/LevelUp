@@ -18,6 +18,7 @@
 - **Challenge data persisted cleanly** — current player challenge states are now historized in each player DB via `challenge_snapshots`, while shared challenge definitions live in `metadata.duckdb`
 - **Multi-language challenge catalog** — challenge titles and descriptions are stored from all CMS-exposed languages, normalized to BCP-47, with `en-US` fallback when the requested locale is missing
 - **Live-first, failsafe behavior** — if `metadata.duckdb` is locked by another process, the Home page still renders challenge data live and simply skips persistence for that refresh
+- **Discord — new media notifications** — a Discord embed with GIF or screenshot thumbnail is sent whenever new captures are indexed; each file is notified once (anti-spam via `discord_notified_at`); toggle `discord_notify_new_media` in Settings
 
 **v6.5 — Heatmap escouade & paramètres fiabilisés**
 - **Heatmap d'intensité par joueur** (Teammates) — nouvelle visualisation : heatmap match × phase (début/milieu/fin) pour chaque membre de l'escouade. Voir qui frappe tôt, qui accélère en fin de match. Toggle pour afficher tous ensemble ou joueur par joueur

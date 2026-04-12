@@ -20,6 +20,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 - **Multi-language challenge catalog** — all challenge title/description translations exposed by the CMS are now persisted locally, normalized to BCP-47, with `en-US` fallback if the requested locale is unavailable.
 
+- **Discord notifications for new indexed media** — a new failsafe module `src/utils/_discord_media.py` sends a rich embed (with GIF/image thumbnail attached) to the Discord webhook whenever new media files are indexed. Anti-spam via a `discord_notified_at` column in `media_files` — each file is notified exactly once regardless of re-scans. New `discord_notify_new_media` toggle in Settings (independent of sync/backfill notifs). Thumbnail is sent as a `multipart/form-data` attachment (≤ 8 MB); graceful JSON fallback if the file exceeds the limit or is unreadable.
+
 ### Changed
 
 - **Migration loading** — migration steps are now loaded dynamically, so new step modules such as `add_challenge_metadata` and `add_challenge_snapshots` do not depend on a hand-maintained import list.
