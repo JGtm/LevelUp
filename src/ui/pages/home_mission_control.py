@@ -5,17 +5,29 @@ from __future__ import annotations
 import logging
 from html import escape
 from typing import Any
+from urllib.parse import urlencode
 
 import streamlit as st
 
-from src.ui.formatting import format_datetime_fr_hm, format_duration_dhm
+from src.app.page_router import V7_SECTION_URL_PATHS
 from src.ui.i18n import get_lang, t
+from src.ui.layout.kpi_bar import render_kpi_bar
 from src.ui.pages.home_mission_control_api import (
     HomeBattlepassInfo,
     HomeChallengeSummary,
     fetch_home_progressions,
 )
 from src.ui.pages.home_mission_control_battlepass_render import render_battlepass_card
+from src.ui.pages.home_mission_control_cards import (
+    build_action_grid_html,
+    build_challenges_card_html,
+    build_home_hero_html,
+    build_media_block_html,
+    build_recent_activity_html,
+    build_recent_form_card_html,
+    build_recent_highlights_html,
+    build_session_summary_card_html,
+)
 from src.ui.pages.home_mission_control_logic import (
     HomeActionCard,
     HomeMediaEntry,
@@ -23,10 +35,9 @@ from src.ui.pages.home_mission_control_logic import (
     HomeSessionSummary,
     SessionCardConfig,
     _build_navigation_state,
+    _build_recent_highlights,
     _build_session_summary,
-    _compute_trend_snapshot,
     _format_percent,
-    _format_ratio,
     _select_recent_matches,
     _select_recent_media,
 )
@@ -34,6 +45,37 @@ from src.ui.pages.last_match import render_last_match_page
 from src.ui.pages.media_library_data import gamertag_from_db_path, load_media_from_db
 
 logger = logging.getLogger(__name__)
+
+
+def _section_href(section: str) -> str:
+    """Construit le chemin URL d'une section v7."""
+    url_path = V7_SECTION_URL_PATHS.get(section, "")
+    return "/" if not url_path else f"/{url_path}"
+
+
+def _home_href(
+    section: str,
+    *,
+    stats_view: str | None = None,
+    session_label: str | None = None,
+    squad_mode: bool | None = None,
+    pending_match_id: str | None = None,
+) -> str:
+    """Construit une URL interne pour les CTA HTML de la home."""
+    params: dict[str, str] = {}
+    if stats_view:
+        params["stats_view"] = stats_view
+    if session_label:
+        params["session"] = session_label
+        if squad_mode is True:
+            params["scope"] = "squad"
+        elif squad_mode is False:
+            params["scope"] = "solo"
+    if pending_match_id:
+        params["match_id"] = pending_match_id
+    query = urlencode(params)
+    base = _section_href(section)
+    return base if not query else f"{base}?{query}"
 
 
 def _set_section(
@@ -140,44 +182,7 @@ def _build_action_cards(
 
 def _render_recent_form_card(matches_df: Any) -> None:
     """Affiche la carte de forme récente (5 derniers matchs) pour l'accueil."""
-    recent_matches = _select_recent_matches(matches_df, limit=1)
-    trend_snapshot = _compute_trend_snapshot(matches_df)
-
-    latest_line = t("v7_home_hero_summary_empty")
-    if recent_matches:
-        latest = recent_matches[0]
-        latest_line = f"{latest.title} · {latest.detail}"
-
-    stats_html = ""
-    trend_line = t("v7_home_trend_na")
-    if trend_snapshot is not None:
-        stats = trend_snapshot.current_kpis
-        stats_html = "".join(
-            [
-                "<div class='v7-home-stats'>",
-                f"<span class='v7-home-stat'><strong>{_format_ratio(stats.global_ratio)}</strong> KD</span>",
-                f"<span class='v7-home-stat'><strong>{_format_percent(stats.avg_accuracy)}</strong> {escape(t('col_avg_accuracy'))}</span>",
-                f"<span class='v7-home-stat'><strong>{_format_percent(stats.win_rate * 100)}</strong> WR</span>",
-                "</div>",
-            ]
-        )
-        if trend_snapshot.ratio_delta is not None:
-            trend_line = (
-                f"KD {trend_snapshot.ratio_delta:+.2f} · "
-                f"ACC {trend_snapshot.accuracy_delta:+.0f}% · "
-                f"WR {trend_snapshot.win_rate_delta * 100:+.0f}%"
-            )
-
-    _render_home_card(
-        "".join(
-            [
-                f"<div class='v7-subshell-title'>{escape(t('v7_home_recent_form'))}</div>",
-                f"<div class='v7-home-meta'>{escape(latest_line)}</div>",
-                f"<div class='v7-home-hero-trend'>{escape(trend_line)}</div>",
-                stats_html,
-            ]
-        ),
-    )
+    _render_home_card(build_recent_form_card_html(matches_df))
 
 
 def _render_battlepass_card(info: HomeBattlepassInfo | None) -> None:
@@ -187,129 +192,63 @@ def _render_battlepass_card(info: HomeBattlepassInfo | None) -> None:
 
 def _render_challenges_card(summary: HomeChallengeSummary | None) -> None:
     """Affiche la carte des défis actifs."""
-    title = t("v7_home_challenges")
-    if summary is None:
-        _render_home_card(
-            "".join(
-                [
-                    f"<div class='v7-subshell-title'>{escape(title)}</div>",
-                    f"<div class='v7-inline-note'>{escape(t('v7_home_api_unavailable'))}</div>",
-                ]
-            )
-        )
-        return
-    if summary.total == 0:
-        _render_home_card(
-            "".join(
-                [
-                    f"<div class='v7-subshell-title'>{escape(title)}</div>",
-                    f"<div class='v7-inline-note'>{escape(t('v7_home_challenges_empty'))}</div>",
-                ]
-            )
-        )
-        return
-    if summary.badge_bytes:
-        st.image(summary.badge_bytes, width=88)
-    rows = [
-        f"<div class='v7-subshell-title'>{escape(title)}</div>",
-    ]
-    if summary.title:
-        rows.append(f"<div class='v7-home-meta'><strong>{escape(summary.title)}</strong></div>")
-    if summary.description:
-        rows.append(f"<div class='v7-home-meta'>{escape(summary.description)}</div>")
-    rows.extend(
-        [
-            "<div class='v7-home-stats'>",
-            f"<span class='v7-home-stat'><strong>{summary.completed}/{summary.total}</strong> {escape(t('v7_home_challenges_done'))}</span>",
-            f"<span class='v7-home-stat'><strong>{_format_challenge_progress(summary)}</strong> {escape(t('v7_home_challenges_progress'))}</span>",
-            f"<span class='v7-home-stat'><strong>+{summary.xp_available:,}</strong> XP</span>",
-            "</div>",
-        ]
-    )
-    if summary.next_expiry:
-        expiry_txt = t("v7_home_challenges_expiry").format(date=summary.next_expiry)
-        rows.append(f"<div class='v7-home-meta'>{escape(expiry_txt)}</div>")
-    _render_home_card("".join(rows))
+    _render_home_card(build_challenges_card_html(summary))
 
 
 def _format_challenge_progress(summary: HomeChallengeSummary) -> str:
-    """Formate la progression du défi principal pour la carte home."""
-    if summary.progress_target is None:
-        return "-"
-    current = summary.progress_current or 0
-    return f"{current}/{summary.progress_target}"
+    """Compatibilité tests: délègue le formatage au module de cartes home."""
+    from src.ui.pages.home_mission_control_cards import _format_challenge_progress as _delegate
+
+    return _delegate(summary)
 
 
 def _render_action_cards(cards: list[HomeActionCard]) -> None:
     """Affiche les cartes d'action rapide."""
+
+    def _card_href(card: HomeActionCard) -> str:
+        return _home_href(
+            card.target_section,
+            stats_view=card.stats_view,
+            session_label=card.session_label,
+            squad_mode=card.squad_mode,
+            pending_match_id=card.pending_match_id,
+        )
+
     st.markdown(
         f"<div class='v7-section-title'>{escape(t('v7_home_quick_actions'))}</div>",
         unsafe_allow_html=True,
     )
-    for column, card in zip(st.columns(len(cards)), cards, strict=False):
-        with column:
-            _render_home_card(
-                "".join(
-                    [
-                        f"<div class='v7-home-action-kicker'>{escape(card.title)}</div>",
-                        f"<div class='v7-home-action-title'>{escape(card.title)}</div>",
-                        f"<div class='v7-home-action-body'>{escape(card.description)}</div>",
-                    ]
-                ),
-                extra_class="v7-home-action-card",
-            )
-            if st.button(card.button_label, key=card.button_key, width="stretch"):
-                _set_section(
-                    card.target_section,
-                    stats_view=card.stats_view,
-                    session_label=card.session_label,
-                    squad_mode=card.squad_mode,
-                    pending_match_id=card.pending_match_id,
-                )
-
-
-def _session_card_html(title: str, summary: HomeSessionSummary) -> str:
-    """Construit le HTML d'une carte session."""
-    started_at = format_datetime_fr_hm(summary.started_at, lang=get_lang())
-    duration_txt = format_duration_dhm(summary.kpis.total_play_seconds, lang=get_lang())
-    return "".join(
-        [
-            f"<div class='v7-subshell-title'>{escape(title)}</div>",
-            f"<div class='v7-home-meta'>{escape(summary.session_label)} · {escape(started_at)}</div>",
-            "<div class='v7-home-stats'>",
-            f"<span class='v7-home-stat'><strong>{summary.match_count}</strong> {escape(t('lbl_parties'))}</span>",
-            f"<span class='v7-home-stat'><strong>{escape(duration_txt)}</strong> {escape(t('col_total_duration'))}</span>",
-            f"<span class='v7-home-stat'><strong>{_format_ratio(summary.kpis.global_ratio)}</strong> KD</span>",
-            f"<span class='v7-home-stat'><strong>{_format_percent(summary.kpis.avg_accuracy)}</strong> {escape(t('col_avg_accuracy'))}</span>",
-            f"<span class='v7-home-stat'><strong>{_format_percent(summary.kpis.win_rate * 100)}</strong> WR</span>",
-            "</div>",
-        ]
-    )
+    _render_home_card(build_action_grid_html(cards, _card_href), extra_class="v7-home-action-shell")
 
 
 def _render_session_summary_card(
     summary: HomeSessionSummary | None, config: SessionCardConfig
 ) -> None:
     """Affiche une carte de session récente avec CTA."""
-    if summary is None:
-        _render_home_card(
-            "".join(
-                [
-                    f"<div class='v7-subshell-title'>{escape(config.title)}</div>",
-                    f"<div class='v7-inline-note'>{escape(config.empty_text)}</div>",
-                ]
-            )
+    href = _home_href(
+        config.target_section,
+        stats_view="timeseries" if config.target_section == "stats" else None,
+        session_label=summary.session_label if summary else None,
+        squad_mode=config.squad_mode,
+    )
+    _render_home_card(
+        build_session_summary_card_html(
+            title=config.title,
+            summary=summary,
+            empty_text=config.empty_text,
+            cta_label=config.button_label,
+            href=href,
         )
-    else:
-        _render_home_card(_session_card_html(config.title, summary))
+    )
 
-    if st.button(config.button_label, key=config.button_key, width="stretch"):
-        _set_section(
-            config.target_section,
-            stats_view="timeseries" if config.target_section == "stats" else None,
-            session_label=summary.session_label if summary else None,
-            squad_mode=config.squad_mode,
-        )
+
+def _render_recent_activity_card(matches: list[HomeRecentMatch]) -> None:
+    """Affiche une timeline compacte des derniers matchs."""
+
+    def _match_href(match: HomeRecentMatch) -> str:
+        return _home_href("explorer", pending_match_id=match.match_id)
+
+    _render_home_card(build_recent_activity_html(matches, _match_href))
 
 
 def _render_recent_media_block(entries: list[HomeMediaEntry]) -> None:
@@ -318,26 +257,7 @@ def _render_recent_media_block(entries: list[HomeMediaEntry]) -> None:
         f"<div class='v7-section-title'>{escape(t('v7_home_recent_media'))}</div>",
         unsafe_allow_html=True,
     )
-    if not entries:
-        _render_home_card(
-            f"<div class='v7-inline-note'>{escape(t('v7_home_no_recent_media'))}</div>"
-        )
-    else:
-        rows = ["<div class='v7-home-media-list'>"]
-        for entry in entries:
-            date_txt = format_datetime_fr_hm(entry.match_start_time, lang=get_lang())
-            match_txt = entry.match_id or "-"
-            rows.append(
-                "<div class='v7-home-media-item'>"
-                f"<strong>{escape(entry.basename)}</strong>"
-                f"<span>{escape(date_txt)} · {escape(match_txt)}</span>"
-                "</div>"
-            )
-        rows.append("</div>")
-        _render_home_card("".join(rows))
-
-    if st.button(t("v7_home_open_section"), key="v7_home_open_media", width="stretch"):
-        _set_section("media")
+    _render_home_card(build_media_block_html(entries, _home_href("media")))
 
 
 def render_home_mission_control(ctx: Any) -> None:
@@ -347,16 +267,37 @@ def render_home_mission_control(ctx: Any) -> None:
         xuid=ctx.xuid,
         gamertag=gamertag_from_db_path(ctx.db_path),
     )
+    player_name = gamertag_from_db_path(ctx.db_path) or str(ctx.xuid or "-")
     media_entries = _select_recent_media(media_df)
     recent_matches = _select_recent_matches(ctx.df)
     solo_summary = _build_session_summary(ctx.df, ctx.base_s_ui, squad_mode=False)
     squad_summary = _build_session_summary(ctx.df, ctx.base_s_ui, squad_mode=True)
+    highlights = _build_recent_highlights(ctx.df, ctx.base_s_ui)
+
+    hero_col, signal_col = st.columns([1.7, 1.0], gap="large")
+    with hero_col:
+        _render_home_card(
+            build_home_hero_html(
+                player_name=player_name,
+                matches_df=ctx.df,
+                solo_summary=solo_summary,
+                squad_summary=squad_summary,
+            ),
+            extra_class="v7-home-hero",
+        )
+    with signal_col:
+        _render_home_card(
+            build_recent_highlights_html(highlights),
+            extra_class="v7-home-signals-card",
+        )
+
+    render_kpi_bar(ctx.df)
 
     # Accès rapides
     _render_action_cards(_build_action_cards(solo_summary, squad_summary, recent_matches))
 
-    # Row 1 : Forme récente | Dernière session escouade
-    form_col, squad_col = st.columns(2)
+    # Row 1 : Forme récente | Dernière session escouade | Activité récente
+    form_col, squad_col, activity_col = st.columns([1.0, 1.0, 1.2], gap="large")
     with form_col:
         _render_recent_form_card(ctx.df)
     with squad_col:
@@ -371,6 +312,8 @@ def render_home_mission_control(ctx: Any) -> None:
                 squad_mode=True,
             ),
         )
+    with activity_col:
+        _render_recent_activity_card(recent_matches)
 
     # Row 2 : Pass de combat | Défis actifs
     bp_info, challenges = fetch_home_progressions(

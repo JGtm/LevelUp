@@ -1,23 +1,571 @@
 # Thought Log
 
-## [2026-04-12] fix(media-likes): persistance robuste + anti double-toggle
+## [2026-04-12] refactor(v7-home): home Mission Control plus HTML-first et moins Streamlit
 
 **Statut** : Complété  
 **Branche** : `v7/cockpit`
 
 **Décision technique** :
-- Le bug provenait de deux sources distinctes mais cumulatives :
-   1. le coeur utilisait `on_click=toggle_media_like` puis un fallback local qui pouvait retoggler au même clic ;
-   2. `data/ui_prefs.json` mélange des prefs scalaires et `media_likes`, alors que `_read_prefs()` / `_write_prefs()` coerçaient tout en chaînes.
-- `src/ui/pages/media_v2_grid.py` marque désormais explicitement l'exécution du callback like dans `session_state`, puis ne déclenche le fallback que pour les tests/mocks où le callback n'a pas réellement tourné.
-- `src/ui/components/browser_storage/__init__.py` ne réécrit plus les structures JSON en `str(...)` lors des merges de prefs ; `load_media_likes()` normalise et répare aussi les anciens formats stringifiés déjà présents sur disque.
+- La home V7 gardait encore trop de chrome Streamlit sur les surfaces les plus visibles: cartes d'action, CTA de session et bloc médias.
+- Les CTA principaux passent maintenant par des builders HTML dédiés dans `home_mission_control_cards.py`, branchés depuis `home_mission_control.py` via des liens internes au cockpit plutôt que des `st.button`.
+- Une carte `activité récente` a été ajoutée à la première rangée de synthèse pour densifier l'accueil avec une timeline courte des derniers matchs et des liens directs vers Explorer.
+- Les liens HTML conservent le contexte utile (`match_id`, `stats_view`, `session`, `scope`) et `streamlit_app.py::_parse_query_params()` consomme désormais aussi ces paramètres pour retrouver le comportement des anciens boutons.
+- `v7_theme.css` a été étendu pour styliser la nouvelle grille d'actions, les CTA pill et la timeline, de façon cohérente avec le langage GitHub dark déjà engagé sur le L1.
 
 **Résultats** :
-- Le like redevient symétrique : liker puis unlike fonctionne sans double bascule implicite.
-- Les likes survivent au reload, y compris si `ui_prefs.json` contenait encore un ancien `media_likes` stringifié.
-- Vérifications passantes : `tests/test_ui_persistence_v64.py`, `tests/test_media_v2_grid_interactions.py` (54 tests) + `ruff check` sur les 4 fichiers modifiés.
+- L'accueil Mission Control n'utilise plus de boutons Streamlit visibles pour ses accès rapides, ses cartes session et son bloc médias récents.
+- La home gagne une structure plus éditoriale avec une colonne d'activité récente plutôt qu'une simple succession de cartes CTA.
+- Validation OK : diagnostics VS Code propres sur `home_mission_control.py`, `home_mission_control_cards.py`, `v7_theme.css`, `streamlit_app.py`, et suite ciblée `tests/test_home_mission_control.py`, `tests/test_home_mission_control_battlepass.py`, `tests/test_home_mission_control_challenges.py`, `tests/test_v7_shell_regressions.py` (49 tests).
 
-**Prochaine étape** : néant.
+**Prochaine étape** : si on veut pousser encore plus loin le retrait du chrome natif, le prochain gros candidat reste le navigateur battle pass et, plus tard, le bloc dernier match.
+
+## [2026-04-12] refactor(v7-nav): retrait du selectbox Streamlit du L1
+
+**Statut** : Complété  
+**Branche** : `v7/cockpit`
+
+**Décision technique** :
+- Le point encore vraiment bloquant dans le L1 était le sélecteur joueur natif Streamlit, qui imposait son DOM et ses contraintes de layout au milieu d'une nav déjà sortie en HTML.
+- Le sélecteur joueur du L1 a été remplacé par un menu HTML pur (`details/summary` + liens) rendu dans `header_l1.py`, ce qui supprime le `selectbox` de cette barre uniquement.
+- Le changement de joueur est désormais piloté via un query param dédié `player`, consommé par `_parse_query_params()` puis appliqué dans le header avant rendu via `SK.PENDING_PLAYER`.
+- Les tabs, le menu joueur, le dot de sync et `⚙` vivent maintenant sur la même shell row sans dépendre d'un widget select BaseWeb dans le L1.
+
+**Résultats** :
+- Le L1 n'utilise plus de `st.selectbox` pour le joueur.
+- Validation OK : diagnostics VS Code propres sur `header_l1.py`, `v7_theme.css`, `streamlit_app.py`, `session_keys.py`, et démarrage `streamlit_app_v7.py` sans erreur serveur.
+
+**Prochaine étape** : si nécessaire, on peut encore sortir le shell complet dans un composant HTML unique, mais le principal point de friction Streamlit du L1 a déjà été retiré.
+
+## [2026-04-12] refactor(v7-nav): bascule du L1 vers une UnderlineNav HTML
+
+**Statut** : Complété  
+**Branche** : `v7/cockpit`
+
+**Décision technique** :
+- Le L1 reconstruit juste avant restait encore prisonnier du rendu bouton Streamlit, donc il ne pouvait pas vraiment ressembler aux tabs GitHub.
+- La navigation principale abandonne maintenant totalement les widgets Streamlit pour les tabs: elle est rendue en liens HTML internes basés sur `V7_SECTION_URL_PATHS`, avec état actif calculé depuis la section courante.
+- Le style GitHub-like ne dépend plus du DOM interne des boutons ; il s'appuie sur des classes explicites `v7-l1-tabs`, `v7-l1-tab`, `v7-l1-tab--active`.
+- Le bloc utilitaire joueur + sync + settings est conservé à part, mais le lien `⚙` suit maintenant la même logique de lien interne plutôt qu'un bouton primaire/secondaire.
+
+**Résultats** :
+- La L1 est désormais une vraie UnderlineNav HTML au lieu d'un faux tab control.
+- Validation OK : pas d'erreurs VS Code sur `src/ui/layout/header_l1.py` et `src/ui/theme/v7_theme.css`, démarrage `streamlit_app_v7.py` sans erreur serveur.
+
+**Prochaine étape** : valider visuellement si l'espacement horizontal et le ton de l'underline doivent encore être calés au plus près du GitHub dark repo nav.
+
+## [2026-04-12] refactor(v7-nav): remplacement complet du L1 par une vraie barre de tabs
+
+**Statut** : Complété  
+**Branche** : `v7/cockpit`
+
+**Décision technique** :
+- Le précédent L1 reposait encore sur un `segmented_control` remaquillé en tabs, avec un groupe joueur/sync mal intégré ; la demande a été traitée comme une suppression complète de cette approche.
+- `header_l1.py` n'utilise plus du tout de `segmented_control` pour la navigation principale : les sections sont rendues comme une vraie rangée de boutons-tab avec état actif explicite.
+- Le sélecteur joueur, le dot de sync et `⚙` sont maintenant rendus dans un cluster utilitaire dédié, visuellement fusionné en une seule capsule latérale.
+- Le CSS du L1 a été reciblé sur cette nouvelle structure (`v7-l1-root-anchor`, `v7-l1-tabs-anchor`, `v7-l1-tools-anchor`) au lieu d'essayer de sauver l'ancien DOM du segmented control.
+
+**Résultats** :
+- La nav L1 est maintenant une vraie barre tabulaire, plus simple et plus pilotable visuellement.
+- Le bloc joueur + sync est enfin groupé proprement au lieu de flotter à côté du reste.
+- Validation OK : diagnostics VS Code propres sur `src/ui/layout/header_l1.py` et `src/ui/theme/v7_theme.css`, démarrage runtime de `streamlit_app_v7.py` sans erreur serveur.
+
+**Prochaine étape** : vérifier visuellement si la densité des tabs et la largeur du cluster utilitaire doivent encore être ajustées après usage réel.
+
+## [2026-04-12] tweak(home): refonte Mission Control + harmonisation visuelle V7
+
+**Statut** : Complété  
+**Branche** : `v7/cockpit`
+
+**Décision technique** :
+- La home V7 ne devait plus se contenter d'empiler des cartes homogènes ; elle passe à une composition plus lisible avec un vrai hero joueur, une colonne de signaux récents, puis une barre KPI avant les cartes d'action.
+- Les highlights déjà calculés dans `home_mission_control_logic.py` sont désormais exploités dans l'UI au lieu de rester inutilisés.
+- Les cartes défis et battle pass n'affichent plus leurs images comme des blocs Streamlit séparés au-dessus du contenu ; les visuels sont intégrés dans le HTML des cartes pour obtenir une surface plus cohérente.
+- Le fichier `home_mission_control.py` ayant dépassé le seuil repo de 500 lignes pendant la refonte, les builders HTML ont été extraits dans `home_mission_control_cards.py` pour rester dans la discipline de découpage du cockpit.
+- La feuille `v7_theme.css` a aussi été retouchée pour rapprocher davantage l'ensemble du cockpit d'un langage GitHub dark plus propre : surfaces plus plates, bordures plus nettes, boutons moins "gradient demo".
+
+**Résultats** :
+- L'accueil Mission Control expose maintenant un briefing principal, des signaux récents explicites et une hiérarchie visuelle plus nette.
+- Les cartes battle pass et défis paraissent moins bricolées grâce à l'intégration native des visuels dans les cartes.
+- Validation OK : `tests/test_home_mission_control.py` + `tests/test_home_mission_control_battlepass.py` (18 tests), diagnostics VS Code sans erreur, démarrage runtime `streamlit_app_v7.py` sans plantage.
+
+**Prochaine étape** : vérifier en usage réel si le hero home doit encore être densifié ou si certaines sections doivent être réordonnées après feedback visuel.
+
+## [2026-04-12] refactor(media): deprecier le helper Python match_start_to_epoch
+
+**Statut** : Complété  
+**Branche** : `v7/cockpit`
+
+**Décision technique** :
+- Le bug DST etait corrige dans le matcher, mais le helper legacy `match_start_to_epoch()` restait disponible tel quel et pouvait etre reutilise plus tard au mauvais endroit.
+- Le helper est maintenant explicitement deprecie avec `DeprecationWarning` et sa docstring renvoie vers l'epoch SQL / `_load_matches_by_xuid()` pour les associations media->match.
+- Le re-export legacy dans `src/data/media_indexer.py` est conserve pour ne pas casser d'imports externes, mais il est marque comme compatibilite historique.
+- Les tests timezone ignorent desormais le warning attendu sur la suite legacy et couvrent explicitement l'emission de la deprecation.
+
+**Résultats** :
+- Le chemin de code corrige reste intact et le helper historique devient plus difficile a reutiliser sans signal explicite.
+- Validation ciblee attendue sur `tests/test_tz_db_ts.py` et `tests/test_media_indexer_matchers.py`.
+
+**Prochaine étape** : laisser la reindexation automatique reparer les associations au prochain lancement de l'app.
+
+## [2026-04-12] tweak(v7-nav): refonte visuelle du L1 en style GitHub dark
+
+**Statut** : Complété  
+**Branche** : `v7/cockpit`
+
+**Décision technique** :
+- Le style précédent du L1 restait trop "widget Streamlit relooké" ; l'objectif a été recentré sur une esthétique proche de GitHub dark : barre plane, tabs sobres, état actif par underline, dropdown sombre type bouton et dot de statut minimal.
+- La structure actuelle du bloc nav a été conservée, mais tout le CSS scoped du L1 a été réécrit pour abandonner les effets de carte, gradients et pills accentués.
+- Les sections utilisent maintenant une grammaire tabulaire inspirée de GitHub : texte muted, hover discret, section active avec texte clair et underline orange.
+- Le sélecteur joueur adopte un rendu type bouton sombre GitHub (`#21262d`, bordure `#30363d`) et le dot de sync reste très minimal.
+
+**Résultats** :
+- Le L1 ne ressemble plus à une suite de boutons encapsulés mais à une vraie barre de navigation sombre et plate.
+- Validation Python OK sur `src/ui/layout/header_l1.py` et `src/ui/_sync_indicator.py`.
+
+**Prochaine étape** : si besoin, ajuster ensuite la densité ou la taille des labels, mais sur une base visuelle désormais cohérente.
+
+## [2026-04-12] fix(media): corriger l'association media->match affectee par le decalage CET/CEST
+
+**Statut** : Complété  
+**Branche** : `v7/cockpit`
+
+**Décision technique** :
+- Le diagnostic initial etait faux : les medias sans correlation de JGtm n'etaient pas hors fenetre de match, mais victimes d'une derive de conversion temporelle.
+- Dans `src/data/media_indexer_matchers.py`, l'association recalculait l'epoch des `match_registry.start_time` cote Python a partir d'un `TIMESTAMP` DuckDB naif, ce qui introduisait un decalage de `-3600s` en hiver et `-7200s` en ete.
+- Le correctif le plus sur et le plus local consiste a calculer `epoch(mr.start_time)` directement en SQL au chargement des matchs, puis a reutiliser cette valeur sans reinterpretation Python.
+- Des tests de non-regression couvrent maintenant un cas hiver et un cas ete pour verrouiller ce comportement.
+
+**Résultats** :
+- Verification sur donnees reelles JGtm : les 13 medias precedemment "sans correlation" retombent bien dans une fenetre de match valide une fois l'epoch SQL utilise.
+- Le matcher n'applique plus de derive liee au fuseau/DST sur cette phase d'association.
+- Validation statique OK sur `src/data/media_indexer_matchers.py` et `tests/test_media_indexer_matchers.py`.
+
+**Prochaine étape** : relancer l'association des medias deja indexes pour reparer les lignes historiques de `media_match_associations`.
+
+## [2026-04-12] fix(v7-nav): suppression du conflit default/session_state sur le segmented control L1
+
+**Statut** : Complété  
+**Branche** : `v7/cockpit`
+
+**Décision technique** :
+- Le warning Streamlit venait d'un conflit explicite : le widget `v7_header_nav_widget` recevait à la fois une valeur pilotée via `st.session_state` et un argument `default=`.
+- La logique de synchronisation par `session_state` est conservée, mais le `default=` du `st.segmented_control(...)` a été supprimé.
+- Le widget reste donc contrôlé par une seule source de vérité, ce qui évite l'avertissement sans changer le comportement voulu du header.
+
+**Résultats** :
+- Le warning "created with a default value but also had its value set via the Session State API" est supprimé pour `v7_header_nav_widget`.
+- Validation Python OK sur `src/ui/layout/header_l1.py`.
+
+**Prochaine étape** : si un warning analogue apparaît côté sélecteur joueur, appliquer la même règle de source unique sur ce widget.
+
+## [2026-04-12] fix(v7-nav): joueur, statut et paramètres déplacés dans le bloc nav existant
+
+**Statut** : Complété  
+**Branche** : `v7/cockpit`
+
+**Décision technique** :
+- Le bon niveau de regroupement n'était pas la rangée complète du header ni un conteneur ajouté, mais le bloc `nav_col`, juste au-dessus du `segmented_control` qui contient déjà les sections L1.
+- Le header garde sa structure existante `brand_col + nav_col`, puis rend à l'intérieur de `nav_col` une unique rangée interne contenant successivement : sections, joueur, statut, paramètres.
+- Le CSS L1 vise désormais ce bloc interne ancré par `v7-l1-shell-anchor`, ce qui place `Médias`, `Profil`, le dropdown, le dot et `⚙` sous le même parent immédiat côté navigation.
+
+**Résultats** :
+- Le sélecteur joueur et le statut sont maintenant au niveau du bloc nav existant, pas dans des colonnes sœurs externes.
+- Validation Python OK sur `src/ui/layout/header_l1.py` et `src/ui/_sync_indicator.py`.
+
+**Prochaine étape** : si le rendu doit encore être affiné, le travail portera sur ce bloc nav unique désormais correctement structuré.
+
+## [2026-04-12] fix(v7-nav): retour à la structure L1 existante sans conteneur ajouté
+
+**Statut** : Complété  
+**Branche** : `v7/cockpit`
+
+**Décision technique** :
+- Le dernier essai avait réintroduit un conteneur bordé dédié dans le shell L1, ce qui allait explicitement à l'encontre de la demande et ajoutait encore un wrapper DOM inutile.
+- Le header est revenu à une seule rangée `st.columns(...)` existante pour toute la L1 : branding, navigation, joueur, statut, paramètres.
+- Le CSS du L1 recible cette rangée existante (`stHorizontalBlock`) au lieu de dépendre d'un wrapper `st.container(border=True)` ajouté artificiellement.
+
+**Résultats** :
+- Le dropdown joueur, le dot de statut et `⚙` sont maintenant rendus dans la structure existante de la barre, sans conteneur supplémentaire.
+- Validation Python OK sur `src/ui/layout/header_l1.py` et `src/ui/_sync_indicator.py`.
+
+**Prochaine étape** : si un problème visuel subsiste encore, il faudra corriger le style de cette rangée unique, pas changer à nouveau sa structure.
+
+## [2026-04-12] feat(home): cache metadata partagé du battle pass dans metadata.duckdb
+
+**Statut** : Complété  
+**Branche** : `v7/cockpit`
+
+**Décision technique** :
+- Le cache battle pass existant mutualisait déjà les visuels sur disque, mais pas les définitions GameCMS des reward tracks et des items entre joueurs différents.
+- Une nouvelle façade data `src/data/battlepass.py` délègue à `src/data/_battlepass_catalog.py`, calquée sur le pattern du catalogue des défis : tables metadata versionnées + tables de traductions dans `metadata.duckdb`.
+- La home battle pass lit désormais d'abord `battlepass_track_definitions` et `battlepass_item_definitions` avant de retomber sur GameCMS en cache miss, puis persiste les définitions manquantes dans metadata pour les joueurs suivants.
+- Les blobs image restent hors DB et continuent d'être gérés via le cache disque et `battlepass_asset_refs`.
+
+**Résultats** :
+- Deux joueurs sur le même season pass réutilisent maintenant le même cache metadata pour la structure du track et les définitions d'items ; seul l'appel Economy et la progression du joueur restent spécifiques.
+- Validation ciblée OK : `tests/test_battlepass_data.py` + `tests/test_home_mission_control_battlepass.py` (11 tests) et `ruff check` sur la couche data, migrations, helper home et tests associés.
+
+**Prochaine étape** : si nécessaire, mesurer en runtime la baisse du nombre d'appels GameCMS sur un second joueur et ajouter plus tard une politique de refresh explicite si 343 fait évoluer un track déjà vu.
+
+## [2026-04-12] fix(v7-nav): nav, joueur, statut et paramètres forcés dans un conteneur unique
+
+**Statut** : Complété  
+**Branche** : `v7/cockpit`
+
+**Décision technique** :
+- Le problème n'était pas seulement du CSS raté : la structure Streamlit laissait encore plusieurs wrappers horizontaux concurrents, ce qui empêchait un vrai shell unique autour des boutons de section, du sélecteur joueur, du dot de sync et de `⚙`.
+- Le header utilise maintenant explicitement `st.container(border=True)` dans la zone shell ; la navigation, le joueur, le statut et les paramètres sont donc physiquement rendus dans le même conteneur natif Streamlit.
+- Le CSS du L1 cible désormais ce wrapper bordé (`stVerticalBlockBorderWrapper`) au lieu de viser une rangée horizontale fragile.
+
+**Résultats** :
+- `Médias`, `Profil`, la liste déroulante joueur, le statut et `⚙` vivent maintenant dans le même bloc structurel.
+- Le travail restant éventuel est du polish visuel, plus un problème de composition HTML.
+- Validation Python OK sur `src/ui/layout/header_l1.py` et `src/ui/_sync_indicator.py`.
+
+**Prochaine étape** : si le rendu doit encore être resserré, le faire à partir de ce shell unique désormais stable.
+
+## [2026-04-12] fix(v7-nav): CSS du L1 reciblé sur la vraie rangée DOM
+
+**Statut** : Complété  
+**Branche** : `v7/cockpit`
+
+**Décision technique** :
+- L'absence de différence visible venait du fait que le CSS de compaction et d'intégration visait l'ancienne rangée interne du header, pas la vraie rangée DOM qui contient l'ensemble de la L1.
+- Une ancre dédiée `v7-l1-row-anchor` est maintenant injectée juste avant la vraie rangée de colonnes, et tous les sélecteurs CSS du L1 ont été reciblés sur cette rangée.
+- Le style compact, la bordure de shell, le segmented control, le selectbox joueur et le bouton paramètres s'appliquent donc enfin au bon niveau structurel.
+
+**Résultats** :
+- Le CSS du L1 s'applique maintenant à la vraie barre, pas à un sous-bloc interne sans effet visible.
+- Validation Python OK sur `src/ui/layout/header_l1.py` et `src/ui/_sync_indicator.py`.
+
+**Prochaine étape** : si le rendu doit encore évoluer, le travail portera désormais sur des choix de design, pas sur un problème de ciblage DOM.
+
+## [2026-04-12] fix(v7-nav): joueur et statut réinsérés entre Profil et Paramètres
+
+**Statut** : Complété  
+**Branche** : `v7/cockpit`
+
+**Décision technique** :
+- La précédente compaction avait bien réduit la largeur globale, mais gardait `⚙` dans le segmented control principal, ce qui laissait le sélecteur joueur et le statut visuellement après la navigation au lieu d'être insérés avant Paramètres.
+- Le header L1 sépare maintenant explicitement la nav de section (`Accueil` → `Profil`) du bouton `⚙`, puis insère le sélecteur joueur et le dot de sync entre les deux dans le même shell visuel.
+- La cohérence visuelle est assurée par un style scoped du bouton Paramètres dans le shell L1 pour qu'il parle le même langage que la nav compacte et le selectbox joueur.
+
+**Résultats** :
+- L'ordre du bandeau est maintenant : sections, joueur, statut, paramètres.
+- Le joueur et le statut ne sont plus rejetés après Paramètres ; ils vivent dans la même barre, à l'endroit demandé.
+- Validation Python OK sur `src/ui/layout/header_l1.py` et `src/ui/_sync_indicator.py`.
+
+**Prochaine étape** : si besoin, peaufiner encore la densité avec des libellés plus courts, mais la structure du L1 est désormais conforme à l'ordre attendu.
+
+## [2026-04-12] fix(home): réduire le payload Streamlit du navigateur battle pass
+
+**Statut** : Complété  
+**Branche** : `v7/cockpit`
+
+**Décision technique** :
+- Le navigateur `Paliers` du battle pass rendait une slide HTML complète pour chaque palier du track, avec les mêmes vignettes récompenses réencodées en base64 dans chaque slide.
+- Ce design multipliait artificiellement le payload envoyé au navigateur et déclenchait `MessageSizeError` côté Streamlit sur les passes longs.
+- Le renderer n'émet plus qu'une seule fenêtre de paliers à la fois ; la navigation `Prec.` / `Suiv.` est pilotée nativement via `st.button` + `st.session_state` au lieu d'un carrousel HTML pré-rendu intégralement.
+
+**Résultats** :
+- Le payload HTML du battle pass ne duplique plus toutes les images du track à chaque rerun.
+- Validation ciblée OK : `tests/test_home_mission_control_battlepass.py` (6 tests) et `ruff check` sur `src/ui/pages/home_mission_control_battlepass_render.py`.
+
+**Prochaine étape** : valider en runtime sur un profil avec pass long que l'erreur `server.maxMessageSize` a bien disparu et surveiller la taille des images unitaires si un autre hotspot apparaît.
+
+## [2026-04-12] tweak(v7-synthesis): duel chart Solo vs Escouade
+
+**Statut** : Complété  
+**Branche** : `v7/cockpit`
+
+**Décision technique** :
+- Le rendu précédent en deux colonnes de métriques était trop pauvre visuellement, mais un radar aurait nécessité une normalisation peu auto-suffisante.
+- La Synthèse utilise maintenant un duel chart horizontal : une ligne par KPI, Solo à gauche, Escouade à droite, avec labels de valeurs brutes directement sur les barres.
+- Les métriques retenues sont auto-portantes : K/D, taux de victoire, précision, frags/min, durée de vie moyenne et score de performance quand disponible.
+
+**Résultats** :
+- Le comparatif Solo vs Escouade se lit comme un bloc autonome, sans avoir besoin d'une seconde couche d'explication ou d'un radar complémentaire.
+- Une légende explicite le volume d'échantillon `Solo / Escouade` juste au-dessus du chart.
+- Validation `ruff check` OK sur `src/ui/pages/synthesis.py` et `src/ui/i18n/pages/synthesis.py`.
+
+**Prochaine étape** : si nécessaire, affiner plus tard le choix exact des KPIs ou l'ordre des lignes en fonction du feedback visuel in-app.
+
+## [2026-04-12] tweak(home): navigateur battle pass unique sur tous les paliers
+
+**Statut** : Complété  
+**Branche** : `v7/cockpit`
+
+**Décision technique** :
+- Le split `paliers débloqués` / `prochain palier` a été remplacé par une seule section `Paliers`, alimentée par la liste complète des ranks du reward track plutôt que par un sous-ensemble récent.
+- Les previews conservent désormais aussi les paliers vides pour permettre une navigation continue du palier 0 jusqu'au dernier palier du track.
+- Le renderer ouvre par défaut sur le rang courant du joueur, affiche une fenêtre `précédent / courant / suivant` extensible vers l'avant selon le volume de rewards, masque le rang carrière et remplace le texte XP par une barre composite à remplissage blanc.
+- La récupération des détails GameCMS des rewards inventaire est limitée par sémaphore pour éviter un fan-out excessif lors de l'hydratation de tous les paliers.
+
+**Résultats** :
+- Le battle pass Home V7 expose maintenant un navigateur complet de paliers avec boutons `Prec.` / `Suiv.` sur tout le track.
+- Validation ciblée OK : `tests/test_home_mission_control_battlepass.py` (6 tests) et `ruff check` sur les fichiers battle pass/i18n/tests modifiés.
+
+**Prochaine étape** : valider visuellement en runtime que la fenêtre de paliers reste lisible sur desktop intermédiaire et mobile étroit, puis ajuster le budget d'extension si nécessaire.
+
+## [2026-04-12] tweak(synthesis): lisibilité du top-vs-total long terme
+
+**Statut** : Complété  
+**Branche** : `v7/cockpit`
+
+**Décision technique** :
+- Le graphe `Matchs Top vs Total` restait en buckets hebdomadaires même sur plusieurs années, ce qui dégradait fortement la lecture pour les profils avec historique irrégulier.
+- La détermination de période passe désormais en mensuel au-delà d'environ 18 mois d'historique.
+- Sur ces longues fenêtres, les années trop creuses sont automatiquement écartées si elles n'atteignent pas un minimum de 12 matchs et 4 semaines actives.
+
+**Résultats** :
+- Les profils comme `JGtm` ou `Chocoboflor` n'étalent plus des bouts d'années quasi vides qui cassent la lecture du graphe.
+- Validation `ruff check` OK sur `src/visualization/_distributions_outcomes_helpers.py` et `src/ui/i18n/viz/labels.py`.
+
+**Prochaine étape** : si besoin, exposer un toggle explicite `hebdo / mensuel` plus tard, mais la règle auto suffit pour la Synthèse actuelle.
+
+## [2026-04-12] tweak(v7-nav): compaction structurelle du L1 via segmented control au contenu
+
+**Statut** : Complété  
+**Branche** : `v7/cockpit`
+
+**Décision technique** :
+- Les micro-ajustements de paddings ne suffisaient pas, car la vraie largeur venait surtout de la rangée de boutons étirés et du shell qui occupait toute la ligne.
+- Le L1 revient à un `st.segmented_control` pour les sections, avec `width="content"`, ce qui permet enfin à la navigation de prendre seulement la largeur de ses libellés.
+- Le shell L1 lui-même passe en `width: fit-content` côté CSS, aligné à gauche, ce qui compacte visuellement tout le bandeau au lieu de seulement ses sous-éléments.
+- Le sélecteur joueur reste compact, le point de sync garde son dot CSS centré, et `⚙` est réintégré dans la navigation principale plutôt qu'isolé dans une colonne dédiée.
+
+**Résultats** :
+- La compaction porte maintenant sur toute la barre L1, pas uniquement sur l'icône paramètres ou un sous-contrôle.
+- L'état actif de la section est stylé directement sur le segmented control du L1 avec un ciblage CSS scoped au shell.
+- Validation Python OK sur `src/ui/layout/header_l1.py` et `src/ui/_sync_indicator.py`.
+
+**Prochaine étape** : si le bandeau doit encore rétrécir, le prochain levier sera la longueur des labels eux-mêmes, pas la structure.
+
+## [2026-04-12] fix(v7-synthesis): fallback solo/escouade via player_match_enrichment
+
+**Statut** : Complété  
+**Branche** : `v7/cockpit`
+
+**Décision technique** :
+- Le DataFrame global des matchs utilisé par la Synthèse ne contient pas `is_with_friends`, car `load_matches()` n'expose pas ce champ dans sa sélection standard.
+- La comparaison Solo vs Escouade enrichit maintenant le DataFrame local avec un fallback par `match_id` vers `player_match_enrichment.is_with_friends`.
+- Les matchs non classés ne sont plus implicitement forcés en solo ; seuls les booléens explicites `True` / `False` entrent dans la comparaison.
+
+**Résultats** :
+- Le message "Pas assez de données" ne se déclenche plus à tort quand les matchs existent mais que le flag n'était simplement pas présent dans le DataFrame.
+- Validation `ruff check` OK sur `src/ui/pages/synthesis.py`.
+
+**Prochaine étape** : si besoin, exposer plus tard un message distinct entre "classification indisponible" et "vraiment pas assez de matchs".
+
+## [2026-04-12] tweak(v7-nav): densification du L1 et dot de sync centré
+
+**Statut** : Complété  
+**Branche** : `v7/cockpit`
+
+**Décision technique** :
+- Le bandeau L1 restait encore un peu trop haut et le point de sync rouge restait visuellement décentré à cause du rendu d'emoji natif.
+- Le statut de sync `dot_only` n'utilise plus l'emoji comme glyphe ; il rend maintenant un dot CSS centré avec variantes `fresh`, `recent` et `stale`, tout en gardant le texte complet dans le tooltip.
+- Le shell L1 a été densifié par petits pas : paddings réduits, `min-height` plus faible, typographie légèrement resserrée, largeurs sync/settings abaissées et largeur du sélecteur joueur rendue plus compacte.
+
+**Résultats** :
+- Le dot de sync est centré proprement dans sa colonne, quel que soit l'état.
+- Le header prend moins de place visuelle sans changer sa structure ni sa lisibilité.
+- Validation Python OK sur `src/ui/layout/header_l1.py` et `src/ui/_sync_indicator.py`.
+
+**Prochaine étape** : si le L1 doit encore gagner en densité, l'étape suivante sera de raccourcir certains labels de navigation, pas de compresser davantage les paddings.
+
+## [2026-04-12] fix(v7-synthesis): scope local sur tous les matchs
+
+**Statut** : Complété  
+**Branche** : `v7/cockpit`
+
+**Décision technique** :
+- La page Synthèse utilisait le DataFrame `dff` filtré par la barre L2 globale, ce qui la rendait trompeuse sur des profils comme `JGtm` quand peu de matchs restaient visibles.
+- La Synthèse lit maintenant `base`, c'est-à-dire l'ensemble des matchs après inclusion/exclusion Firefight mais avant les filtres globaux.
+- Les filtres L2/KPI globaux sont retirés pour cette section ; un sélecteur local de période reprend le pattern de la page Carrière (`Tout`, `2 dernières années`, `Dernière année`, `Dernier mois`, `Dernière semaine`).
+
+**Résultats** :
+- Les graphes de Synthèse repartent bien de tous les matchs par défaut.
+- La période éventuelle est pilotée localement par la page, sans interaction avec le header L2.
+- Validation `ruff check` OK sur `src/ui/pages/synthesis.py` et `streamlit_app_v7.py`.
+
+**Prochaine étape** : si besoin, ajouter plus tard des filtres locaux supplémentaires (ex. groupe/mode), mais pas avant d'avoir validé la lisibilité sur le scope complet.
+
+## [2026-04-12] tweak(v7-nav): sélecteur joueur L1 rapproché des boutons et largeur pilotée par le gamertag
+
+**Statut** : Complété  
+**Branche** : `v7/cockpit`
+
+**Décision technique** :
+- Le selectbox joueur du header restait visuellement trop différent des boutons L1 et occupait une largeur trop statique par rapport au contenu réel.
+- Le header calcule maintenant une largeur cible en pixels à partir du gamertag courant, puis l'injecte dans `st.selectbox(..., width=int)`.
+- Comme Streamlit ne propose pas un vrai mode `width="content"` pour `selectbox`, la largeur est pilotée par une estimation volontairement compacte plutôt qu'un auto-fit DOM natif.
+- Le CSS du shell L1 donne au selectbox un rendu plus proche des boutons : même hauteur, bordure légère, poids typographique similaire, hover discret et débordement tronqué côté texte statique mono-joueur.
+
+**Résultats** :
+- Le sélecteur joueur suit mieux la longueur du gamertag sélectionné au lieu de conserver une boîte trop large.
+- Le contrôle s'intègre visuellement beaucoup mieux au reste du bandeau L1.
+- Validation Python OK sur `src/ui/layout/header_l1.py`.
+
+**Prochaine étape** : si un auto-fit pixel perfect reste souhaité, il faudra passer par un composant front custom, car le widget Streamlit natif ne sait pas s'ajuster exactement au contenu.
+
+## [2026-04-12] fix(home): assets statiques pour XP boost et échange de défi
+
+**Statut** : Complété  
+**Branche** : `v7/cockpit`
+
+**Décision technique** :
+- Les visuels `XP Boost.png` et `Reroll Challenge.png` ajoutés au repo ont été déplacés dans `static/battlepass-assets/` avec des noms canoniques `xpboost.png` et `rerollcurrency.png`.
+- La home battle pass charge désormais ces deux PNG comme fallback prioritaire pour les rewards currency non illustrées par GameCMS, au lieu de rester sur une tuile texte seule.
+- Le helper de cache battle pass persiste aussi les références metadata correspondantes via `battlepass_asset_refs`, avec origine `repo-static`, pour garder une indexation homogène entre assets CMS et assets embarqués.
+
+**Résultats** :
+- Les tuiles XP boost et échange de défi de la home V7 affichent maintenant les PNG embarqués du projet.
+- Validation ciblée OK : `tests/test_home_mission_control_battlepass.py` (4 tests) et `ruff check` sur les fichiers battle pass.
+
+**Prochaine étape** : valider visuellement en runtime que le cadrage des deux PNG reste propre dans les tuiles 56x56 du carousel.
+
+## [2026-04-12] feat(v7): page Synthèse de vue d'ensemble
+
+**Statut** : Complété  
+**Branche** : `v7/cockpit`
+
+**Décision technique** :
+- Ajout d'une nouvelle section V7 `synthesis` dans le routing top-level, positionnée après `squad`.
+- La page réutilise les visualisations existantes au lieu de recréer de nouveaux graphes : résultats par carte/mode, heatmap de taux de victoire, top matchs vs total hebdo.
+- Une petite section dédiée ajoute uniquement la comparaison Solo vs Escouade à partir de `is_with_friends` et des KPIs déjà disponibles.
+- La doc produit est alignée dans le changelog EN/FR et dans le bloc "Dernières nouveautés" du README FR.
+
+**Résultats** :
+- Nouvelle page `src/ui/pages/synthesis.py` avec traduction dédiée.
+- La navigation V7 expose désormais `Synthèse` comme section top-level.
+- Validation statique ciblée prévue sur les fichiers du routage V7 et de la page Synthèse.
+
+**Prochaine étape** : commit ciblé uniquement sur les fichiers de la feature Synthèse et sa documentation.
+
+## [2026-04-12] fix(v7-nav): refonte du shell L1 pour supprimer les doubles cadres
+
+**Statut** : Complété  
+**Branche** : `v7/cockpit`
+
+**Décision technique** :
+- Le problème principal du header venait d'une composition en widgets Streamlit séparés, chacun gardant sa propre boîte visuelle, ce qui produisait un effet de doubles encadrements et d'éléments rapportés.
+- Le L1 repose maintenant sur un shell visuel unique ciblé par CSS, avec marqueur dédié `.v7-l1-shell-anchor` puis stylage scoped du bloc horizontal suivant.
+- Le bouton LevelUp séparé a été supprimé du shell ; il devient un simple branding texte pour éviter une boîte supplémentaire inutile.
+- La navigation de section revient à une rangée de boutons plats dans le shell, avec état actif sobre mais clairement visible via `primary`, et le joueur, le point de sync et le bouton paramètres sont intégrés dans la même ligne.
+- Le point de sync minimal utilise un rendu `dot_only` avec tooltip texte complet.
+
+**Résultats** :
+- Le header n'empile plus un bouton distinct puis un second conteneur bordé ; il affiche un seul bandeau L1 cohérent.
+- Le joueur n'affiche que le gamertag et n'ajoute plus de carte dédiée quand il n'y a qu'un seul profil.
+- Validation Python OK : `ruff check` et diagnostics VS Code propres sur `src/ui/layout/header_l1.py` et `src/ui/_sync_indicator.py`.
+
+**Prochaine étape** : valider en runtime fin le comportement sur gamertags très longs et, si besoin, tronquer visuellement le label dans le sélecteur.
+
+## [2026-04-12] revert(v7-nav): annulation du style global boutons L1
+
+**Statut** : Complété  
+**Branche** : `v7/cockpit`
+
+**Décision technique** :
+- Le passage de la navigation L1 à une rangée de boutons `primary/secondary` modifiait trop largement le rendu global des boutons du thème V7.
+- Retour au `segmented_control` dans la zone centrale du header pour préserver le shell existant sans propager de style sur tous les boutons de l'application.
+- Suppression du CSS global ajouté sur `button[kind="primary"]`.
+
+**Résultats** :
+- La L1 n'utilise plus de boutons `primary/secondary` pour les sections.
+- Le thème global des boutons V7 revient à son comportement antérieur.
+- `ruff check` reste OK sur `src/ui/layout/header_l1.py`.
+
+**Prochaine étape** : si un état actif plus visible est souhaité, le faire via un ciblage CSS strictement limité au header L1.
+
+## [2026-04-12] tweak(v7-nav): shell L1 unique avec joueur inline, sync minimal et settings intégré
+
+**Statut** : Complété  
+**Branche** : `v7/cockpit`
+
+**Décision technique** :
+- Le problème UX venait du fait que la navigation, le sélecteur joueur et les actions d'entête étaient rendus dans des colonnes séparées sans shell commun, ce qui donnait visuellement un élément à côté du L1 au lieu d'un composant unique.
+- Le header L1 utilise maintenant un conteneur bordé unique côté navigation ; les onglets de section, la liste déroulante joueur, le point de sync et le bouton paramètres vivent dans le même bloc.
+- Le sélecteur joueur reste volontairement sobre : gamertag seul, sans compteur de matchs.
+- L'indicateur de sync supporte un mode `dot_only` pour n'afficher que l'emoji d'état dans le header.
+
+**Résultats** :
+- Le shell L1 porte désormais un seul conteneur visuel pour nav + joueur + sync + paramètres.
+- Validation statique visée sur `src/ui/layout/header_l1.py` et `src/ui/_sync_indicator.py`.
+
+**Prochaine étape** : valider visuellement en runtime le ratio de largeurs sur desktop intermédiaire pour éviter qu'un gamertag long comprime trop les boutons L1.
+
+## [2026-04-12] refactor(match-view): rangée KPI en colonnes natives
+
+**Statut** : Complété  
+**Branche** : `v7/cockpit`
+
+**Décision technique** :
+- La rangée KPI de `match_view.py` était encore assemblée en une seule grosse chaîne HTML avec wrapper flex et quatre cartes concaténées.
+- Elle utilise maintenant `st.columns(4)` et des containers Streamlit natifs pour la structure ; seul le contenu stylé interne reste rendu en HTML léger pour conserver la typographie et le badge de domination.
+- Les helpers `_render_simple_kpi_tile()` et `_render_score_kpi_tile()` isolent le rendu unitaire, ce qui rend la structure plus testable et réduit le HTML généré d'un bloc.
+
+**Résultats** :
+- Match View n'injecte plus un wrapper HTML unique pour toute la rangée KPI.
+- Vérifications passantes : `tests/test_match_view_render.py`, `tests/test_match_view_logic.py`.
+- Ruff OK sur `src/ui/pages/match_view.py` et `tests/test_match_view_render.py`.
+
+**Prochaine étape** : côté Match View, le HTML restant est désormais localisé aux sous-blocs visuels eux-mêmes ; le gain marginal suivant serait faible sans refonte visuelle plus large.
+
+## [2026-04-12] refactor(match-view): layout natif pour carte et rang
+
+**Statut** : Complété  
+**Branche** : `v7/cockpit`
+
+**Décision technique** :
+- Le helper `_render_map_and_rank()` reposait encore sur un wrapper HTML flex et sur une miniature de carte encodée en data URI via `file_to_data_url()`.
+- Le bloc passe maintenant par des colonnes Streamlit natives quand le rang est disponible, avec `st.image(...)` pour la carte et un petit bloc HTML local uniquement pour le score de performance.
+- Quand aucun rang n'est disponible, la vue conserve le comportement minimal attendu : miniature seule, sans colonne ni wrapper HTML supplémentaire.
+- Le bloc rang HTML existant est conservé tel quel pour éviter un refactor transversal de la logique LUSR/CSR.
+
+**Résultats** :
+- Match View n'encode plus la miniature de carte en data URI dans ce header et n'utilise plus de wrapper flex HTML pour assembler carte, performance et rang.
+- Vérifications passantes : `tests/test_match_view_render.py`, `tests/test_match_view_logic.py`.
+- Ruff OK sur `src/ui/pages/match_view.py` et `tests/test_match_view_render.py`.
+
+**Prochaine étape** : le HTML restant de Match View est surtout cosmétique dans la rangée KPI et peut attendre un redesign plus global si nécessaire.
+
+## [2026-04-12] tweak(home): battle pass visuel + ordre des paliers
+
+**Statut** : Complété  
+**Branche** : `v7/cockpit`
+
+**Décision technique** :
+- Les paliers débloqués de la home battle pass sont maintenant affichés dans l'ordre chronologique croissant pour éviter une lecture inversée.
+- Les récompenses de pass sont rendues comme vignettes horizontales compactes plutôt qu'en liste texte ; les items inventaire utilisent leur visuel `DisplayPath` GameCMS et les monnaies sans image tombent sur une tuile texte compacte.
+- Le survol repose sur le tooltip natif HTML avec titre + description localisée quand elle existe, ce qui évite d'alourdir le composant avec une mécanique de popover dédiée.
+- Les visuels sont maintenant stockés en cache lazy sous `data/cache/battlepass_assets/` au fil des chargements (`tracks/`, `rewards/`) ; aucun préfetch global n'est déclenché.
+
+**Résultats** :
+- Validation live ciblée : ordre récent `[48, 49, 50]` pour `JGtm`, miniature disponible pour `Point de terminaison de sous-espace` et `Équipe Cerberus`.
+- Validation outillage : `ruff check` OK sur `home_mission_control.py`, `home_mission_control_battlepass.py`, `test_home_mission_control_battlepass.py`.
+- Validation tests : `tests/test_home_mission_control.py` + `tests/test_home_mission_control_battlepass.py` passent (13 tests).
+
+**Prochaine étape** : validation visuelle Streamlit si un vrai carousel avec navigation explicite est souhaité.
+
+## [2026-04-12] refactor(match-view): suppression de l'iframe du badge match id
+
+**Statut** : Complété  
+**Branche** : `v7/cockpit`
+
+**Décision technique** :
+- `src/ui/pages/match_view.py` utilisait encore un mini composant `components.html(...)` uniquement pour afficher un match ID court avec bouton copier.
+- Ce coût UI restait modeste, mais c'était le dernier iframe évident de Match View et un bon candidat de simplification après Media V2 et Explorer.
+- Le badge est maintenant rendu nativement via `st.popover(...)`, avec un label court basé sur les 8 premiers caractères et un `st.code(...)` pour exposer l'ID complet dans l'UI Streamlit.
+- Un helper `_short_match_id()` a été isolé pour garder la logique triviale et testable.
+
+**Résultats** :
+- Match View n'embarque plus d'iframe HTML pour le badge de copie du match ID.
+- Vérifications passantes : `tests/test_match_view_render.py`, `tests/test_match_view_logic.py`.
+- Ruff OK sur `src/ui/pages/match_view.py`, `src/ui/i18n/pages/match_view.py`, `tests/test_match_view_render.py`.
+
+**Prochaine étape** : les usages HTML restants de Match View relèvent surtout du layout et peuvent rester en l'état tant qu'il n'y a pas de besoin de redesign plus large.
 
 ## [2026-04-12] refactor(explorer): pagination légère des gros tableaux HTML
 
@@ -11390,3 +11938,39 @@ Ajout de 3 règles ciblant `div[data-testid="stSegmentedControl"]` :
 **Résultat** : Barre de navigation (st.segmented_control) occupe toute la largeur disponible, onglets équidistants.
 
 **Conclusion** : Modification minimaliste et non-invasive. CSS appliqué globalement via le mécanisme existant.
+
+---
+
+## [2026-04-12] Complément PR SPNKr sur les assets localisés — Complété
+
+**Statut** : Complété
+
+**Tâche** : Ajouter au clone sibling SPNKr le point manquant pour récupérer les noms d'assets Discovery UGC récemment introduits dans toutes les langues, afin de l'inclure dans la PR déjà préparée.
+
+**Décision technique** : Au lieu d'ajouter une couche batch spécifique LevelUp, exposer proprement le besoin upstream côté SDK via un paramètre optionnel `language` sur les getters Discovery UGC (`get_map`, `get_playlist`, `get_map_mode_pair`, `get_ugc_game_variant`). La locale est transmise par requête via l'en-tête `Accept-Language`, ce qui permet de récupérer `PublicName` et `Description` localisés sans casser le comportement par défaut.
+
+**Résultats** :
+- Commit SPNKr créé sur la branche `feat/player-progression-and-decks-services` : `5d80d63` (`feat(discovery): add localized asset lookups`)
+- Tests ajoutés pour vérifier l'injection du header `Accept-Language` sur les 4 endpoints Discovery UGC
+- Validation réussie : `ruff check` OK ; `pytest` ciblé OK (`31 passed`)
+- Fork GitHub toujours absent côté `origin`, donc push/PR impossible à finaliser automatiquement à cette étape
+
+**Conclusion** : Le complément upstream est prêt et validé localement. La seule étape restante pour mettre la PR en ligne est la création du fork GitHub puis le push de la branche SPNKr.
+
+---
+
+## [2026-04-12] Revue pré-push SPNKr — garde cache pour assets localisés — Complété
+
+**Statut** : Complété
+
+**Tâche** : Faire une revue rapide du diff SPNKr avant push et corriger tout point bloquant détecté sur l'ajout des lookups Discovery UGC localisés.
+
+**Décision technique** : La revue a mis en évidence un risque réel avec `aiohttp-client-cache` : des requêtes qui ne diffèrent que par `Accept-Language` partagent la même clé de cache tant que `include_headers=False`. Le correctif appliqué dans `spnkr/services/discovery_ugc.py` conserve le header par requête, mais désactive lecture et écriture du cache (`expire_after=0`) uniquement quand une locale est demandée sur une session cache qui ne différencie pas les headers. Si `include_headers=True`, le cache reste actif normalement.
+
+**Résultats** :
+- Commit SPNKr supplémentaire créé : `d1347d6` (`fix(discovery): guard cached localized asset lookups`)
+- `CHANGES.md` complété pour refléter l'ensemble du périmètre de la PR (progression joueur + lookups localisés)
+- Validation réussie après correctif : `ruff check` OK ; `pytest` ciblé OK (`33 passed`)
+- Le clone SPNKr est propre et prêt au push sur le fork `JGtm/SPNKr`
+
+**Conclusion** : Le diff SPNKr ne présente plus de finding bloquant avant push. Le prochain geste logique est de pousser la branche puis d'ouvrir la PR avec le texte préparé.

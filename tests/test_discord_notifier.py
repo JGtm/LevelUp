@@ -1188,6 +1188,7 @@ class TestNotifyNewVersion:
     _MOCK_SETTINGS = {
         "discord_notifications_enabled": True,
         "discord_notify_new_version": True,
+        "last_notified_version": "6.4.0",  # version précédente pour activer la détection
     }
 
     def _call(
@@ -1207,6 +1208,7 @@ class TestNotifyNewVersion:
         }
         with (
             patch("src.utils.discord_notifier._load_app_settings", return_value=cfg),
+            patch("src.utils.discord_notifier._update_last_notified_version"),
             patch.dict(os.environ, env, clear=True),
             patch(
                 "urllib.request.urlopen",
@@ -1251,6 +1253,7 @@ class TestNotifyNewVersion:
             patch(
                 "src.utils.discord_notifier._load_app_settings", return_value=self._MOCK_SETTINGS
             ),
+            patch("src.utils.discord_notifier._update_last_notified_version"),
             patch.dict(os.environ, env, clear=True),
             patch("urllib.request.urlopen", side_effect=capture),
         ):
@@ -1260,6 +1263,66 @@ class TestNotifyNewVersion:
         body = json.loads(captured[0].decode("utf-8"))
         title = body["embeds"][0]["title"]
         assert "6.5.0" in title
+
+    def test_already_notified_same_version_skips(self):
+        """Si last_notified_version == version courante, aucune notif ne doit être envoyée."""
+        settings = {**self._MOCK_SETTINGS, "last_notified_version": "6.5.0"}
+        ok, mock_http = self._call(version="6.5.0", settings=settings)
+        assert ok is False
+        mock_http.assert_not_called()
+
+    def test_first_startup_saves_silently_without_send(self):
+        """Au premier démarrage (last_notified_version vide), sauvegarder sans envoyer."""
+        from src.utils.discord_notifier import notify_new_version
+
+        settings = {**self._MOCK_SETTINGS, "last_notified_version": ""}
+        env = {
+            **{k: v for k, v in os.environ.items() if k != "LEVELUP_NOTIFY_VERSIONS"},
+            "LEVELUP_NOTIFY_VERSIONS": "1",
+            "DISCORD_WEBHOOK_URL": _WEBHOOK,
+        }
+        with (
+            patch("src.utils.discord_notifier._load_app_settings", return_value=settings),
+            patch("src.utils.discord_notifier._update_last_notified_version") as mock_save,
+            patch.dict(os.environ, env, clear=True),
+            patch("urllib.request.urlopen") as mock_http,
+        ):
+            result = notify_new_version("6.5.0")
+
+        assert result is False
+        mock_http.assert_not_called()
+        mock_save.assert_called_once_with("6.5.0")
+
+    def test_patch_only_change_skips_send(self):
+        """Un bump de patch seul (6.5.0 → 6.5.1) ne doit pas déclencher de notif."""
+        settings = {**self._MOCK_SETTINGS, "last_notified_version": "6.5.0"}
+        ok, mock_http = self._call(version="6.5.1", settings=settings)
+        assert ok is False
+        mock_http.assert_not_called()
+
+    def test_saves_version_after_successful_send(self):
+        """Après un envoi réussi, last_notified_version doit être persisté."""
+        from src.utils.discord_notifier import notify_new_version
+
+        settings = {**self._MOCK_SETTINGS, "last_notified_version": "6.4.0"}
+        env = {
+            **{k: v for k, v in os.environ.items() if k != "LEVELUP_NOTIFY_VERSIONS"},
+            "LEVELUP_NOTIFY_VERSIONS": "1",
+            "DISCORD_WEBHOOK_URL": _WEBHOOK,
+        }
+        with (
+            patch("src.utils.discord_notifier._load_app_settings", return_value=settings),
+            patch("src.utils.discord_notifier._update_last_notified_version") as mock_save,
+            patch.dict(os.environ, env, clear=True),
+            patch(
+                "urllib.request.urlopen",
+                side_effect=lambda _r, **_kw: _mock_urlopen_ok(204),
+            ),
+        ):
+            result = notify_new_version("6.5.0")
+
+        assert result is True
+        mock_save.assert_called_once_with("6.5.0")
 
     def test_failsafe_on_exception(self):
         """Une exception interne ne doit jamais remonter."""

@@ -320,8 +320,68 @@ def _extract_whats_new(version: str) -> str:
     return "\n".join(collected).strip()
 
 
+def _update_last_notified_version(version: str) -> None:
+    """Persiste last_notified_version dans app_settings.json sans Streamlit.
+
+    Utilise une écriture atomique (tmp → rename) pour éviter toute corruption.
+    Failsafe : ne lève jamais d'exception.
+    """
+    import os
+    import tempfile
+
+    try:
+        cfg: dict[str, Any] = {}
+        if _APP_SETTINGS.exists():
+            with open(_APP_SETTINGS, encoding="utf-8") as fh:
+                cfg = json.load(fh)
+        cfg["last_notified_version"] = version
+        content = json.dumps(cfg, ensure_ascii=False, indent=2)
+        dir_path = str(_APP_SETTINGS.parent)
+        os.makedirs(dir_path, exist_ok=True)
+        fd, tmp = tempfile.mkstemp(dir=dir_path, prefix=".notif_", suffix=".tmp")
+        try:
+            with os.fdopen(fd, "w", encoding="utf-8") as fh:
+                fh.write(content)
+                fh.flush()
+                if os.name != "nt":
+                    os.fsync(fh.fileno())
+        except Exception:
+            import contextlib
+
+            with contextlib.suppress(OSError):
+                os.close(fd)
+            raise
+        os.replace(tmp, str(_APP_SETTINGS))
+        logger.debug("[Discord] last_notified_version=%s persisté sur disque", version)
+    except Exception as exc:
+        logger.warning("[Discord] Impossible de sauvegarder last_notified_version : %s", exc)
+
+
+def _build_version_payload(current_version: str) -> dict[str, Any]:
+    """Construit le payload Discord pour la notif de nouvelle version."""
+    whats_new = _extract_whats_new(current_version)
+    description = (
+        whats_new[:_MAX_DISCORD_BODY] if whats_new else f"Version {current_version} déployée."
+    )
+    return {
+        "embeds": [
+            {
+                "title": f"🚀 LevelUp v{current_version} — Nouvelle version déployée",
+                "description": description,
+                "color": 0x5865F2,  # Blurple Discord
+                "footer": {"text": f"LevelUp v{current_version}"},
+                "timestamp": datetime.now(tz=timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"),
+            }
+        ]
+    }
+
+
 def notify_new_version(current_version: str) -> bool:
     """Envoie une notification Discord lors du déploiement d'une nouvelle version majeure.
+
+    Idempotent — ne renvoie jamais deux fois pour la même version exacte.
+    La déduplication et la persistance de last_notified_version sont gérées ici,
+    sans dépendre de Streamlit.
 
     Conditions requises (toutes doivent être vraies) :
     - discord_notifications_enabled = True et webhook valide
@@ -349,26 +409,34 @@ def notify_new_version(current_version: str) -> bool:
         if not webhook_url:
             return False
 
-        whats_new = _extract_whats_new(current_version)
-        description = (
-            whats_new[:_MAX_DISCORD_BODY] if whats_new else (f"Version {current_version} déployée.")
-        )
+        last_notified = str(cfg.get("last_notified_version", "") or "").strip()
 
-        payload: dict[str, Any] = {
-            "embeds": [
-                {
-                    "title": f"🚀 LevelUp v{current_version} — Nouvelle version déployée",
-                    "description": description,
-                    "color": 0x5865F2,  # Blurple Discord
-                    "footer": {"text": f"LevelUp v{current_version}"},
-                    "timestamp": datetime.now(tz=timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"),
-                }
-            ]
-        }
+        # Premier démarrage (aucun historique) : initialiser sans envoyer
+        if not last_notified:
+            logger.debug(
+                "[Discord] Initialisation last_notified_version=%s (sans notif)", current_version
+            )
+            _update_last_notified_version(current_version)
+            return False
 
-        ok = send_discord_notification(payload, webhook_url)
+        # Déduplication exacte : même version → déjà notifié
+        if last_notified == current_version:
+            logger.debug("[Discord] Notif v%s déjà envoyée — skip", current_version)
+            return False
+
+        # Filtrage : notifier uniquement sur changement major/minor (pas les patches)
+        if not _is_major_minor_change(last_notified, current_version):
+            logger.debug(
+                "[Discord] Changement patch uniquement (%s → %s) — skip",
+                last_notified,
+                current_version,
+            )
+            return False
+
+        ok = send_discord_notification(_build_version_payload(current_version), webhook_url)
         if ok:
             logger.info("[Discord] Notification nouvelle version v%s envoyée", current_version)
+            _update_last_notified_version(current_version)
         else:
             logger.warning("[Discord] Notification version non reçue par Discord")
         return ok
