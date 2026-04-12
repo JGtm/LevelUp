@@ -1,6 +1,6 @@
 # Architecture LevelUp v6 — DuckDB Shared Matches + i18n Assets
 
-> **Date** : 2026-03-30
+> **Date** : 2026-04-12
 > **Version** : 6.3.0
 > **Évolution depuis** : v5.1 (Shared Matches) → v6.0 (couche résolution ID) → v6.3 (asset_translations)
 
@@ -81,7 +81,7 @@ LevelUp v6 étend l'architecture **Shared Matches** avec une **couche d'abstract
 ```
 data/
 ├── warehouse/
-│   ├── metadata.duckdb            # Référentiels (asset_translations 14 langues, weapon_labels, career_ranks, citation_mappings)
+│   ├── metadata.duckdb            # Référentiels (asset_translations 14 langues, weapon_labels, career_ranks, citation_mappings, challenge_*)
 │   ├── shared_matches.duckdb      # Base partagée - TOUS les matchs
 │   │   ├── match_registry         # Registre central (1 ligne par match unique)
 │   │   ├── match_participants     # Stats de TOUS les joueurs de TOUS les matchs
@@ -102,7 +102,8 @@ data/
 │       │   ├── career_progression       # Historique rangs
 │       │   ├── media_files              # Fichiers médias
 │       │   ├── media_match_associations # Associations média↔match
-│       │   └── match_skill_rank         # Rating LUSR ou CSR par match — v5.3
+│       │   ├── match_skill_rank         # Rating LUSR ou CSR par match — v5.3
+│       │   └── challenge_snapshots      # Historique des défis joueur (active/completed/upcoming)
 │       └── archive/               # Archives Parquet (saisons)
 │
 └── cache/                         # Cache temporaire (thumbnails, etc.)
@@ -189,6 +190,15 @@ LIMIT 10;
 ```
 
 `DuckDBRepository` attache automatiquement `metadata.duckdb` en `meta` à l'ouverture de chaque connexion. Aucune configuration manuelle requise.
+
+### 6bis. challenge_definitions / challenge_translations — Défis Halo (v7)
+
+Les définitions CMS de défis Halo sont désormais historisées dans `metadata.duckdb` :
+
+- `challenge_definitions` : versionnement par couple `(challenge_path, content_hash)` avec `category`, `difficulty`, `threshold_for_success`, `reward_xp`
+- `challenge_translations` : titres et descriptions dans toutes les langues exposées par le CMS, normalisées en BCP-47 avec fallback `en-US`
+
+Les états joueur vus en live (`/decks`) sont stockés dans `stats.duckdb` via `challenge_snapshots` en mode append-only dédupliqué, afin de conserver une timeline exploitable sans réécrire la même ligne à chaque refresh.
 
 #### Langues disponibles
 

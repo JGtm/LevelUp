@@ -14,12 +14,24 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
 
+from src.data.challenges import (
+    collect_challenge_paths_from_decks,
+    load_challenge_metadata_map,
+    persist_challenge_catalog,
+    persist_challenge_snapshots,
+)
+from src.ui.pages.home_mission_control_challenges import (
+    build_challenge_summary_from_decks,
+    enrich_active_challenges,
+    fetch_challenge_definitions,
+)
+
 logger = logging.getLogger(__name__)
 
 _CACHE_TTL_S: int = 300  # 5 minutes
 
 # Cache process-level (survit aux reruns Streamlit, partagé entre sessions)
-# Clé : xuid → {ts: float, loading: bool, bp: ..., ch: ...}
+# Clé : xuid:lang → {ts: float, loading: bool, bp: ..., ch: ...}
 _process_cache: dict[str, dict] = {}
 _cache_lock = threading.Lock()
 
@@ -57,46 +69,23 @@ class HomeChallengeSummary:
     completed: int
     xp_available: int
     next_expiry: str | None
+    title: str | None = None
+    description: str | None = None
+    badge_bytes: bytes | None = None
+    progress_current: int | None = None
+    progress_target: int | None = None
 
 
-# =============================================================================
-# Builders (API data → dataclasses)
-# =============================================================================
+@dataclass(frozen=True)
+class HomeChallengeFetchContext:
+    """Contexte de récupération live des défis home."""
 
-
-def _build_challenge_summary_from_json(data: dict) -> HomeChallengeSummary | None:
-    """Construit HomeChallengeSummary depuis le JSON brut de l'API /challenges."""
-    cats = data.get("CategoryProgress") or data.get("ChallengeDecks") or []
-    if not cats:
-        return None
-    all_ch: list[dict] = []
-    for cat in cats:
-        for ch in cat.get("ActiveChallenges") or cat.get("Challenges") or []:
-            all_ch.append(ch)
-    if not all_ch:
-        return HomeChallengeSummary(total=0, completed=0, xp_available=0, next_expiry=None)
-    completed = sum(
-        1
-        for ch in all_ch
-        if ch.get("CompletionThreshold")
-        and ch.get("CurrentProgress", 0) >= ch["CompletionThreshold"]
-    )
-    xp_available = sum(
-        ch.get(
-            "XpReward",
-            ch.get("Reward", {}).get("InventoryRewards", [{}])[0].get("Quantity", 0)
-            if isinstance(ch.get("Reward"), dict)
-            else 0,
-        )
-        for ch in all_ch
-    )
-    next_expiry = None
-    return HomeChallengeSummary(
-        total=len(all_ch),
-        completed=completed,
-        xp_available=xp_available,
-        next_expiry=next_expiry,
-    )
+    db_path: Path
+    tokens: Any
+    xuid_clean: str
+    session: Any
+    gamecms_host: str
+    lang: str
 
 
 # =============================================================================
@@ -176,18 +165,99 @@ async def _parse_op_progression(resp: Any | None) -> tuple[int, bool]:
     return op_rank, is_owned
 
 
+async def _fetch_challenge_summary(
+    context: HomeChallengeFetchContext,
+) -> HomeChallengeSummary | None:
+    """Récupère les défis actifs via halostats /decks (Spartan token seul)."""
+    from aiohttp import ClientSession, ClientTimeout
+
+    decks_host = "https://halostats.svc.halowaypoint.com"
+    deck_headers = {
+        "Accept": "application/json",
+        "x-343-authorization-spartan": context.tokens.spartan_token,
+    }
+    decks_url = f"{decks_host}/hi/players/xuid({context.xuid_clean})/decks"
+
+    async with (
+        ClientSession(
+            timeout=ClientTimeout(total=15),
+            headers=deck_headers,
+        ) as deck_session,
+        deck_session.get(decks_url) as resp,
+    ):
+        if resp.status != 200:
+            logger.debug("home_api: decks indisponible (%s)", resp.status)
+            return None
+        decks_data = await resp.json(content_type=None)
+
+    summary_data, active_challenges = build_challenge_summary_from_decks(decks_data)
+    if summary_data is None:
+        return None
+    all_challenge_paths = collect_challenge_paths_from_decks(decks_data)
+    if not active_challenges:
+        persist_challenge_snapshots(context.db_path, context.xuid_clean, decks_data)
+        return HomeChallengeSummary(
+            total=summary_data["total"],
+            completed=summary_data["completed"],
+            xp_available=0,
+            next_expiry=summary_data["next_expiry"],
+        )
+
+    enrichment = await enrich_active_challenges(
+        context.session,
+        context.gamecms_host,
+        active_challenges,
+        context.lang,
+        challenge_paths=all_challenge_paths,
+    )
+    definitions = dict(enrichment.get("definitions") or {})
+    stored_metadata = load_challenge_metadata_map(all_challenge_paths, context.lang)
+    missing_paths = [
+        path
+        for path in all_challenge_paths
+        if path not in definitions and path not in stored_metadata
+    ]
+    if missing_paths:
+        extra_definitions = await fetch_challenge_definitions(
+            context.session,
+            context.gamecms_host,
+            missing_paths,
+        )
+        definitions.update(extra_definitions)
+    definition_hashes = persist_challenge_catalog(definitions)
+    persist_challenge_snapshots(
+        context.db_path,
+        context.xuid_clean,
+        decks_data,
+        definitions=definitions,
+        definition_hashes=definition_hashes,
+    )
+    return HomeChallengeSummary(
+        total=summary_data["total"],
+        completed=summary_data["completed"],
+        xp_available=enrichment["xp_available"],
+        next_expiry=summary_data["next_expiry"],
+        title=enrichment["title"],
+        description=enrichment["description"],
+        badge_bytes=enrichment["badge_bytes"],
+        progress_current=enrichment["progress_current"],
+        progress_target=enrichment["progress_target"],
+    )
+
+
 async def _fetch_economy_data(
+    db_path: Path,
     tokens: Any,
     xuid: str,
+    lang: str,
 ) -> tuple[HomeBattlepassInfo | None, HomeChallengeSummary | None]:
     """Appels réseau Economy + GameCMS avec des endpoints valides.
 
     - Career rank    : /hi/players/xuid({xuid})/rewardtracks/careerranks/careerrank1
     - Op progression : /hi/players/xuid({xuid})/rewardtracks/operations/{season_id}
+    - Défis actifs   : halostats /hi/players/xuid({xuid})/decks (sans clearance)
     - Opération      : GameCMS season_calendar + fichier JSON de l'opération
     - Artwork        : GameCMS /hi/images/file/{BattlePassImage}
-
-    Note : l'endpoint /challenges retourne 404 — non disponible en V6 API.
     """
     try:
         from aiohttp import ClientSession, ClientTimeout  # noqa: I001
@@ -225,6 +295,16 @@ async def _fetch_economy_data(
             op_rank, is_owned = await _parse_op_progression(
                 responses[1] if len(responses) > 1 else None
             )
+            challenge_summary = await _fetch_challenge_summary(
+                HomeChallengeFetchContext(
+                    db_path=db_path,
+                    tokens=tokens,
+                    xuid_clean=xuid_clean,
+                    session=session,
+                    gamecms_host=gamecms_host,
+                    lang=lang,
+                )
+            )
 
             bp_info = None
             if season_id:
@@ -237,7 +317,7 @@ async def _fetch_economy_data(
                     track_image_bytes=image_bytes,
                 )
 
-        return bp_info, None  # challenges non disponibles (endpoint 404 en V6)
+        return bp_info, challenge_summary
     except Exception as exc:
         logger.debug("home_api: erreur fetch economy: %s", exc)
         return None, None
@@ -268,13 +348,14 @@ async def _async_fetch_progressions(
     db_path: Path,
     xuid: str,
     gamertag: str | None = None,
+    lang: str = "fr",
 ) -> tuple[HomeBattlepassInfo | None, HomeChallengeSummary | None]:
     """Orchestre résolution des tokens puis appels API Economy/GameCMS."""
     tokens = await _resolve_tokens(db_path, gamertag)
     if tokens is None:
         logger.debug("home_api: aucun token disponible pour %s", gamertag or db_path.name)
         return None, None
-    return await _fetch_economy_data(tokens, xuid)
+    return await _fetch_economy_data(db_path, tokens, xuid, lang)
 
 
 # =============================================================================
@@ -286,6 +367,7 @@ def prefetch_home_progressions(
     db_path: str | Path,
     xuid: str,
     gamertag: str | None = None,
+    lang: str = "fr",
 ) -> None:
     """Déclenche le fetch battlepass/défis en arrière-plan (thread daemon).
 
@@ -294,12 +376,13 @@ def prefetch_home_progressions(
     les données soient prêtes quand l'utilisateur arrive sur l'accueil.
     """
     now = time.monotonic()
+    cache_key = _make_cache_key(xuid, lang)
     with _cache_lock:
-        cached = _process_cache.get(xuid)
+        cached = _process_cache.get(cache_key)
         if cached is not None and (cached.get("loading") or now - cached["ts"] < _CACHE_TTL_S):
             return
         # Réserver l'entrée pour éviter les lancements concurrents
-        _process_cache[xuid] = {"ts": now, "loading": True, "bp": None, "ch": None}
+        _process_cache[cache_key] = {"ts": now, "loading": True, "bp": None, "ch": None}
 
     _db_path = Path(db_path)
 
@@ -307,7 +390,9 @@ def prefetch_home_progressions(
         loop = asyncio.new_event_loop()
         asyncio.set_event_loop(loop)
         try:
-            bp, ch = loop.run_until_complete(_async_fetch_progressions(_db_path, xuid, gamertag))
+            bp, ch = loop.run_until_complete(
+                _async_fetch_progressions(_db_path, xuid, gamertag, lang)
+            )
         except Exception as exc:
             logger.debug("prefetch: erreur (%s): %s", gamertag or xuid[:8], exc)
             bp, ch = None, None
@@ -315,7 +400,7 @@ def prefetch_home_progressions(
             loop.close()
             asyncio.set_event_loop(None)
         with _cache_lock:
-            _process_cache[xuid] = {
+            _process_cache[cache_key] = {
                 "ts": time.monotonic(),
                 "loading": False,
                 "bp": bp,
@@ -330,6 +415,7 @@ def fetch_home_progressions(
     db_path: str | Path,
     xuid: str,
     gamertag: str | None = None,
+    lang: str = "fr",
 ) -> tuple[HomeBattlepassInfo | None, HomeChallengeSummary | None]:
     """Récupère battlepass + défis — retourne immédiatement si prefetch dispo.
 
@@ -337,8 +423,9 @@ def fetch_home_progressions(
     ou si l'authentification est requise.
     """
     now = time.monotonic()
+    cache_key = _make_cache_key(xuid, lang)
     with _cache_lock:
-        cached = _process_cache.get(xuid)
+        cached = _process_cache.get(cache_key)
 
     if cached is not None and not cached.get("loading") and now - cached["ts"] < _CACHE_TTL_S:
         return cached["bp"], cached["ch"]
@@ -348,7 +435,7 @@ def fetch_home_progressions(
     loop = asyncio.new_event_loop()
     asyncio.set_event_loop(loop)
     try:
-        bp, ch = loop.run_until_complete(_async_fetch_progressions(db_path, xuid, gamertag))
+        bp, ch = loop.run_until_complete(_async_fetch_progressions(db_path, xuid, gamertag, lang))
     except Exception as exc:
         logger.debug("home_api: fetch_home_progressions échoué: %s", exc)
         bp, ch = None, None
@@ -357,5 +444,16 @@ def fetch_home_progressions(
         asyncio.set_event_loop(None)
 
     with _cache_lock:
-        _process_cache[xuid] = {"ts": time.monotonic(), "loading": False, "bp": bp, "ch": ch}
+        _process_cache[cache_key] = {
+            "ts": time.monotonic(),
+            "loading": False,
+            "bp": bp,
+            "ch": ch,
+        }
     return bp, ch
+
+
+def _make_cache_key(xuid: str, lang: str) -> str:
+    """Construit une clé de cache sensible à la langue UI."""
+    normalized_lang = str(lang or "fr").strip().lower() or "fr"
+    return f"{xuid}:{normalized_lang}"

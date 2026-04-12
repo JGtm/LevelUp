@@ -6,6 +6,32 @@ Toutes les modifications notables de ce projet sont documentées ici.
 
 Le format est basé sur [Keep a Changelog](https://keepachangelog.fr/fr/1.1.0/).
 
+## [7.0.0] - 2026-04-12
+
+### Ajouté
+
+- **Home V7 — défis actifs restaurés via HaloStats `/decks`** — la home Mission Control réaffiche la carte des défis actifs, avec compteurs de deck, échéance réelle, titre/description localisés, dérivation du badge Waypoint et vraie progression joueur au format `x/y`.
+
+- **Couche de persistance des défis** — nouveau module de domaine `src/data/challenges.py`, scindé en interne entre `src/data/_challenge_catalog.py` et `src/data/_challenge_snapshots.py` :
+  - `challenge_definitions` + `challenge_translations` dans `metadata.duckdb`
+  - `challenge_snapshots` dans chaque `stats.duckdb` joueur
+  - versionnement des définitions par `content_hash`
+  - snapshots joueur append-only, dédupliqués sur changement d'état via `state_hash`
+
+- **Catalogue multi-langue des défis** — toutes les traductions titre/description exposées par le CMS sont stockées localement, normalisées en BCP-47, avec fallback `en-US` si la langue demandée n'est pas disponible.
+
+### Modifié
+
+- **Chargement des migrations** — les steps de migration sont maintenant chargés dynamiquement ; les nouveaux modules `add_challenge_metadata` et `add_challenge_snapshots` ne dépendent plus d'une liste d'imports maintenue à la main.
+
+### Corrigé
+
+- **Défis home en mode live-first et failsafe** — si `metadata.duckdb` est temporairement verrouillée par un autre process Python, la carte de défis V7 continue de s'afficher depuis l'API live et saute simplement la persistance pour ce refresh, au lieu de retourner `None`.
+
+### Tests
+
+- Couverture ciblée ajoutée pour la persistance des défis et l'enrichissement Home V7 dans `tests/test_challenges_data.py`, `tests/test_home_mission_control_challenges.py` et `tests/test_home_mission_control.py`.
+
 ## [6.5.0] - 2026-04-10
 
 ### Ajouté

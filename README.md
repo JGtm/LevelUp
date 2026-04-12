@@ -13,6 +13,12 @@
 
 ## What's new
 
+**v7.0 — Mission Control challenges, live + persisted**
+- **Active challenges back on Home V7** — the Mission Control home now restores the active challenge card from HaloStats `/decks`, with the real deck expiry, badge, localized title/description and the player's actual `x/y` progress
+- **Challenge data persisted cleanly** — current player challenge states are now historized in each player DB via `challenge_snapshots`, while shared challenge definitions live in `metadata.duckdb`
+- **Multi-language challenge catalog** — challenge titles and descriptions are stored from all CMS-exposed languages, normalized to BCP-47, with `en-US` fallback when the requested locale is missing
+- **Live-first, failsafe behavior** — if `metadata.duckdb` is locked by another process, the Home page still renders challenge data live and simply skips persistence for that refresh
+
 **v6.5 — Heatmap escouade & paramètres fiabilisés**
 - **Heatmap d'intensité par joueur** (Teammates) — nouvelle visualisation : heatmap match × phase (début/milieu/fin) pour chaque membre de l'escouade. Voir qui frappe tôt, qui accélère en fin de match. Toggle pour afficher tous ensemble ou joueur par joueur
 - **Notifications Discord séparées** — les alertes sync et backfill ont maintenant chacune leur propre toggle ; désactiver l'une n'affecte pas l'autre

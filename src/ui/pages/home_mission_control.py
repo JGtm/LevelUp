@@ -233,17 +233,36 @@ def _render_challenges_card(summary: HomeChallengeSummary | None) -> None:
             )
         )
         return
+    if summary.badge_bytes:
+        st.image(summary.badge_bytes, width=88)
     rows = [
         f"<div class='v7-subshell-title'>{escape(title)}</div>",
-        "<div class='v7-home-stats'>",
-        f"<span class='v7-home-stat'><strong>{summary.completed}/{summary.total}</strong> {escape(t('v7_home_challenges_done'))}</span>",
-        f"<span class='v7-home-stat'><strong>+{summary.xp_available:,}</strong> XP</span>",
-        "</div>",
     ]
+    if summary.title:
+        rows.append(f"<div class='v7-home-meta'><strong>{escape(summary.title)}</strong></div>")
+    if summary.description:
+        rows.append(f"<div class='v7-home-meta'>{escape(summary.description)}</div>")
+    rows.extend(
+        [
+            "<div class='v7-home-stats'>",
+            f"<span class='v7-home-stat'><strong>{summary.completed}/{summary.total}</strong> {escape(t('v7_home_challenges_done'))}</span>",
+            f"<span class='v7-home-stat'><strong>{_format_challenge_progress(summary)}</strong> {escape(t('v7_home_challenges_progress'))}</span>",
+            f"<span class='v7-home-stat'><strong>+{summary.xp_available:,}</strong> XP</span>",
+            "</div>",
+        ]
+    )
     if summary.next_expiry:
         expiry_txt = t("v7_home_challenges_expiry").format(date=summary.next_expiry)
         rows.append(f"<div class='v7-home-meta'>{escape(expiry_txt)}</div>")
     _render_home_card("".join(rows))
+
+
+def _format_challenge_progress(summary: HomeChallengeSummary) -> str:
+    """Formate la progression du défi principal pour la carte home."""
+    if summary.progress_target is None:
+        return "-"
+    current = summary.progress_current or 0
+    return f"{current}/{summary.progress_target}"
 
 
 def _render_action_cards(cards: list[HomeActionCard]) -> None:
@@ -378,11 +397,18 @@ def render_home_mission_control(ctx: Any) -> None:
             ),
         )
 
-    # Row 2 : Pass de combat (pleine largeur — endpoint /challenges = 404 en API V6)
-    bp_info, _challenges = fetch_home_progressions(
-        ctx.db_path, ctx.xuid, gamertag=gamertag_from_db_path(ctx.db_path)
+    # Row 2 : Pass de combat | Défis actifs
+    bp_info, challenges = fetch_home_progressions(
+        ctx.db_path,
+        ctx.xuid,
+        gamertag=gamertag_from_db_path(ctx.db_path),
+        lang=get_lang(),
     )
-    _render_battlepass_card(bp_info)
+    bp_col, chal_col = st.columns(2)
+    with bp_col:
+        _render_battlepass_card(bp_info)
+    with chal_col:
+        _render_challenges_card(challenges)
 
     # Row 3 : Dernier match
     st.markdown(

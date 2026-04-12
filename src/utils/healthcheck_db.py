@@ -147,10 +147,10 @@ def _get_applied_migrations(conn) -> set[str]:
 
 def _get_known_migrations(target_db: str) -> set[str]:
     """Retourne les noms des migrations connues pour un type de DB."""
-    # Charger les steps pour peupler le registre
-    from src.data.migration import steps  # noqa: F401
+    from src.data.migration.loader import load_all_migration_steps
     from src.data.migration.registry import MIGRATIONS
 
+    load_all_migration_steps()
     return {m.name for m in MIGRATIONS if m.target_db == target_db}
 
 
