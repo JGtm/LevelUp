@@ -201,6 +201,123 @@ CREATE TABLE IF NOT EXISTS medal_translations (
 );
 """
 
+_CHALLENGE_DEFINITIONS_DDL = """
+CREATE TABLE IF NOT EXISTS challenge_definitions (
+    challenge_path         VARCHAR NOT NULL,
+    content_hash           VARCHAR NOT NULL,
+    category               VARCHAR,
+    difficulty             VARCHAR,
+    threshold_for_success  INTEGER,
+    reward_xp              INTEGER DEFAULT 0,
+    secondary_reward_xp    INTEGER DEFAULT 0,
+    first_seen_at          TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    last_seen_at           TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    is_current             BOOLEAN DEFAULT TRUE,
+    PRIMARY KEY (challenge_path, content_hash)
+);
+CREATE INDEX IF NOT EXISTS idx_challenge_definitions_current
+    ON challenge_definitions(challenge_path, is_current);
+CREATE INDEX IF NOT EXISTS idx_challenge_definitions_category
+    ON challenge_definitions(category, difficulty);
+"""
+
+_CHALLENGE_TRANSLATIONS_DDL = """
+CREATE TABLE IF NOT EXISTS challenge_translations (
+    challenge_path  VARCHAR NOT NULL,
+    content_hash    VARCHAR NOT NULL,
+    lang            VARCHAR NOT NULL,
+    title           VARCHAR,
+    description     VARCHAR,
+    first_seen_at   TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    last_seen_at    TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    PRIMARY KEY (challenge_path, content_hash, lang)
+);
+CREATE INDEX IF NOT EXISTS idx_challenge_translations_lookup
+    ON challenge_translations(challenge_path, lang);
+"""
+
+_BATTLEPASS_TRACK_DEFINITIONS_DDL = """
+CREATE TABLE IF NOT EXISTS battlepass_track_definitions (
+    reward_track_path      VARCHAR NOT NULL,
+    content_hash           VARCHAR NOT NULL,
+    xp_per_rank            INTEGER,
+    battlepass_image_path  VARCHAR,
+    background_image_path  VARCHAR,
+    raw_payload_json       VARCHAR NOT NULL,
+    first_seen_at          TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    last_seen_at           TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    is_current             BOOLEAN NOT NULL DEFAULT TRUE,
+    PRIMARY KEY (reward_track_path, content_hash)
+);
+CREATE INDEX IF NOT EXISTS idx_battlepass_track_definitions_lookup
+    ON battlepass_track_definitions(reward_track_path, is_current);
+"""
+
+_BATTLEPASS_TRACK_TRANSLATIONS_DDL = """
+CREATE TABLE IF NOT EXISTS battlepass_track_translations (
+    reward_track_path  VARCHAR NOT NULL,
+    content_hash       VARCHAR NOT NULL,
+    lang               VARCHAR NOT NULL,
+    track_name         VARCHAR,
+    first_seen_at      TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    last_seen_at       TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    PRIMARY KEY (reward_track_path, content_hash, lang)
+);
+CREATE INDEX IF NOT EXISTS idx_battlepass_track_translations_lookup
+    ON battlepass_track_translations(reward_track_path, lang);
+"""
+
+_BATTLEPASS_ITEM_DEFINITIONS_DDL = """
+CREATE TABLE IF NOT EXISTS battlepass_item_definitions (
+    inventory_item_path  VARCHAR NOT NULL,
+    content_hash         VARCHAR NOT NULL,
+    quality              VARCHAR,
+    item_type            VARCHAR,
+    display_path         VARCHAR,
+    raw_payload_json     VARCHAR NOT NULL,
+    first_seen_at        TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    last_seen_at         TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    is_current           BOOLEAN NOT NULL DEFAULT TRUE,
+    PRIMARY KEY (inventory_item_path, content_hash)
+);
+CREATE INDEX IF NOT EXISTS idx_battlepass_item_definitions_lookup
+    ON battlepass_item_definitions(inventory_item_path, is_current);
+"""
+
+_BATTLEPASS_ITEM_TRANSLATIONS_DDL = """
+CREATE TABLE IF NOT EXISTS battlepass_item_translations (
+    inventory_item_path  VARCHAR NOT NULL,
+    content_hash         VARCHAR NOT NULL,
+    lang                 VARCHAR NOT NULL,
+    title                VARCHAR,
+    description          VARCHAR,
+    first_seen_at        TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    last_seen_at         TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    PRIMARY KEY (inventory_item_path, content_hash, lang)
+);
+CREATE INDEX IF NOT EXISTS idx_battlepass_item_translations_lookup
+    ON battlepass_item_translations(inventory_item_path, lang);
+"""
+
+_BATTLEPASS_ASSET_REFS_DDL = """
+CREATE TABLE IF NOT EXISTS battlepass_asset_refs (
+    asset_key         VARCHAR PRIMARY KEY,
+    asset_kind        VARCHAR NOT NULL,
+    source_path       VARCHAR NOT NULL,
+    cache_rel_path    VARCHAR NOT NULL,
+    mime_type         VARCHAR NOT NULL DEFAULT 'image/png',
+    image_source_path VARCHAR,
+    source_origin     VARCHAR NOT NULL DEFAULT 'cms',
+    first_cached_at   TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    last_cached_at    TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    last_accessed_at  TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+CREATE UNIQUE INDEX IF NOT EXISTS idx_battlepass_asset_refs_kind_source
+    ON battlepass_asset_refs(asset_kind, source_path);
+CREATE INDEX IF NOT EXISTS idx_battlepass_asset_refs_accessed
+    ON battlepass_asset_refs(last_accessed_at);
+"""
+
 
 def ensure_asset_translations_table(conn: duckdb.DuckDBPyConnection) -> None:
     """Crée ``asset_translations`` dans metadata.duckdb (idempotente).
@@ -220,6 +337,66 @@ def ensure_medal_translations_table(conn: duckdb.DuckDBPyConnection) -> None:
     de l'API + migration depuis medal_definitions pour les médailles custom).
     """
     conn.execute(_MEDAL_TRANSLATIONS_DDL)
+
+
+def ensure_challenge_definitions_table(conn: duckdb.DuckDBPyConnection) -> None:
+    """Crée ``challenge_definitions`` dans metadata.duckdb (idempotente).
+
+    Référentiel versionné des définitions CMS de défis Halo Infinite.
+    Chaque ligne représente un contenu unique identifié par ``content_hash``.
+    """
+    conn.execute(_CHALLENGE_DEFINITIONS_DDL)
+
+
+def ensure_challenge_translations_table(conn: duckdb.DuckDBPyConnection) -> None:
+    """Crée ``challenge_translations`` dans metadata.duckdb (idempotente).
+
+    Table pivot multi-langue pour les titres et descriptions de défis.
+    Les langues sont stockées au format BCP-47 quand elles sont connues.
+    """
+    conn.execute(_CHALLENGE_TRANSLATIONS_DDL)
+
+
+def ensure_battlepass_track_definitions_table(conn: duckdb.DuckDBPyConnection) -> None:
+    """Crée ``battlepass_track_definitions`` dans metadata.duckdb (idempotente).
+
+    Référentiel versionné des reward tracks GameCMS du battle pass.
+    Le payload brut est conservé pour reconstruire la structure des ranks.
+    """
+    conn.execute(_BATTLEPASS_TRACK_DEFINITIONS_DDL)
+
+
+def ensure_battlepass_track_translations_table(conn: duckdb.DuckDBPyConnection) -> None:
+    """Crée ``battlepass_track_translations`` dans metadata.duckdb (idempotente).
+
+    Table pivot multi-langue pour les noms des reward tracks battle pass.
+    """
+    conn.execute(_BATTLEPASS_TRACK_TRANSLATIONS_DDL)
+
+
+def ensure_battlepass_item_definitions_table(conn: duckdb.DuckDBPyConnection) -> None:
+    """Crée ``battlepass_item_definitions`` dans metadata.duckdb (idempotente).
+
+    Référentiel versionné des items inventaire utilisés par les rewards battle pass.
+    """
+    conn.execute(_BATTLEPASS_ITEM_DEFINITIONS_DDL)
+
+
+def ensure_battlepass_item_translations_table(conn: duckdb.DuckDBPyConnection) -> None:
+    """Crée ``battlepass_item_translations`` dans metadata.duckdb (idempotente).
+
+    Table pivot multi-langue pour les titres et descriptions des items battle pass.
+    """
+    conn.execute(_BATTLEPASS_ITEM_TRANSLATIONS_DDL)
+
+
+def ensure_battlepass_asset_refs_table(conn: duckdb.DuckDBPyConnection) -> None:
+    """Crée ``battlepass_asset_refs`` dans metadata.duckdb (idempotente).
+
+    Référence les visuels de pass de combat stockés sur disque local
+    (tracks, rewards, placeholders currency) sans stocker les blobs en DB.
+    """
+    conn.execute(_BATTLEPASS_ASSET_REFS_DDL)
 
 
 # ─────────────────────────────────────────────────────────────────────────────

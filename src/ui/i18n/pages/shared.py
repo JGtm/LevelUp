@@ -52,6 +52,7 @@ STRINGS: dict[str, dict[str, str] | str] = {
     "v7_nav_stats": {"fr": "Stats", "en": "Stats"},
     "v7_nav_synthesis": {"fr": "Synthèse", "en": "Overview"},
     "v7_nav_profile": {"fr": "Profil", "en": "Profile"},
+    "v7_nav_settings": {"fr": "⚙", "en": "⚙"},
     "v7_section_context_stats": {"fr": "Contexte Stats", "en": "Stats Context"},
     "v7_section_context_squad": {"fr": "Contexte Escouade", "en": "Squad Context"},
     "v7_filters_none": {"fr": "Aucun filtre actif", "en": "No active filters"},
@@ -136,6 +137,31 @@ STRINGS: dict[str, dict[str, str] | str] = {
     "v7_home_battlepass": {"fr": "Pass de combat", "en": "Battle Pass"},
     "v7_home_battlepass_premium": {"fr": "Premium ✓", "en": "Premium ✓"},
     "v7_home_battlepass_free": {"fr": "Gratuit", "en": "Free"},
+    "v7_home_battlepass_tiers": {"fr": "Paliers", "en": "Tiers"},
+    "v7_home_battlepass_recent_unlocks": {
+        "fr": "Paliers débloqués",
+        "en": "Unlocked tiers",
+    },
+    "v7_home_battlepass_next_unlock": {
+        "fr": "Prochain palier",
+        "en": "Next tier",
+    },
+    "v7_home_battlepass_current": {"fr": "Actuel", "en": "Current"},
+    "v7_home_battlepass_empty": {
+        "fr": "Aucune récompense",
+        "en": "No rewards",
+    },
+    "v7_home_battlepass_tier_progress": {
+        "fr": "XP du palier",
+        "en": "Tier XP",
+    },
+    "v7_home_battlepass_focus": {
+        "fr": "Palier {rank}/{max_rank}",
+        "en": "Tier {rank}/{max_rank}",
+    },
+    "v7_home_battlepass_max": {"fr": "Palier max", "en": "Max tier"},
+    "v7_home_battlepass_prev": {"fr": "Prec.", "en": "Prev"},
+    "v7_home_battlepass_next": {"fr": "Suiv.", "en": "Next"},
     "v7_home_api_unavailable": {
         "fr": "Connexion requise pour les données live.",
         "en": "Sign-in required for live data.",

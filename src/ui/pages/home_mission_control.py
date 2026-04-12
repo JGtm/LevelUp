@@ -15,6 +15,7 @@ from src.ui.pages.home_mission_control_api import (
     HomeChallengeSummary,
     fetch_home_progressions,
 )
+from src.ui.pages.home_mission_control_battlepass_render import render_battlepass_card
 from src.ui.pages.home_mission_control_logic import (
     HomeActionCard,
     HomeMediaEntry,
@@ -181,33 +182,7 @@ def _render_recent_form_card(matches_df: Any) -> None:
 
 def _render_battlepass_card(info: HomeBattlepassInfo | None) -> None:
     """Affiche la carte de progression du pass de combat."""
-    title = t("v7_home_battlepass")
-    if info is None:
-        _render_home_card(
-            "".join(
-                [
-                    f"<div class='v7-subshell-title'>{escape(title)}</div>",
-                    f"<div class='v7-inline-note'>{escape(t('v7_home_api_unavailable'))}</div>",
-                ]
-            )
-        )
-        return
-    if info.track_image_bytes:
-        st.image(info.track_image_bytes, width="stretch")
-    tier_label = t("v7_home_battlepass_premium") if info.is_owned else t("v7_home_battlepass_free")
-    career_str = info.career_rank_label or f"Rang {info.career_rank}"
-    _render_home_card(
-        "".join(
-            [
-                f"<div class='v7-subshell-title'>{escape(title)}</div>",
-                f"<div class='v7-home-meta'>{escape(info.track_name)} · {escape(tier_label)}</div>",
-                "<div class='v7-home-stats'>",
-                f"<span class='v7-home-stat'><strong>Niv. {info.op_rank}</strong></span>",
-                f"<span class='v7-home-stat'>{escape(career_str)}</span>",
-                "</div>",
-            ]
-        )
-    )
+    render_battlepass_card(info, _render_home_card)
 
 
 def _render_challenges_card(summary: HomeChallengeSummary | None) -> None:
