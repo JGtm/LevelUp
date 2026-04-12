@@ -215,6 +215,9 @@ data/
 |----------|---------|
 | `.ai/DATA_KILLER_VICTIM.md` | Guide killer/victim et antagonistes |
 | `.ai/DATA_MATCH_RANK.md` | Rang d'un joueur lors d'un match (API vs recalcul, tie-breaker) |
+| `.ai/MIGRATION_MASTER.md` | Point d'entrée unique du chantier FastAPI/React, avec état courant, priorités MVP et navigation vers les sous-docs de migration |
+| `.ai/migration/` | Corpus de migration FastAPI/React découpé par sujet : décisions, invariants, parité, slices, contrats API, audit de codebase |
+| `.ai/PLAN_MIGRATION_FASTAPI_REACT.md` | Audit exhaustif + plan de migration Streamlit vers FastAPI/React, avec perimetre fige, matrice de parite, contrats API MVP, extraction du state model, structure cible du repo, delivery par slices, cohabitation front, auth/session, tests de parite et pilotage par metriques |
 | `.ai/sprints/SPRINT_GAMERTAG_ROSTER_FIX.md` | Sprint correction gamertags et roster |
 | `.ai/API_LIMITATIONS.md` | Limitations connues de l'API |
 

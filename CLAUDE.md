@@ -4,7 +4,7 @@
 
 ## Contexte Projet
 
-**LevelUp** - Dashboard de statistiques Halo Infinite avec architecture DuckDB v5 (shared matches).
+**LevelUp** - Dashboard de statistiques Halo Infinite avec architecture DuckDB v6 (shared matches + SQL views).
 
 ## Workflow Agentique
 
