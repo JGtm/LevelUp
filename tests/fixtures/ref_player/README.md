@@ -24,6 +24,7 @@ Généré le 2026-04-13 depuis le gamertag `Chocoboflor` (limit=500).
 | `player.player_match_enrichment` | 364 |
 | `player.personal_score_awards` | 1064 |
 | `player.match_citations` | 5137 |
+| `player.match_skill_rank` | 364 |
 | `player.career_progression` | 56 |
 | `player.sessions` | 214 |
 | `player.sync_meta` | 8 |
