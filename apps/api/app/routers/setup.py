@@ -14,7 +14,9 @@ import structlog
 from fastapi import APIRouter, Depends, Request, Response
 
 from apps.api.app.core.config import get_settings
+from apps.api.app.core.csrf import require_same_origin
 from apps.api.app.core.errors import ApiError
+from apps.api.app.core.rate_limit import check_rate_limit
 from apps.api.app.deps.auth import SessionData, _get_store, get_or_create_session
 from apps.api.app.schemas.common import AsyncJobStatus
 from apps.api.app.schemas.setup import (
@@ -61,7 +63,10 @@ def get_setup_status() -> SetupStatusResponse:
 
 
 @router.post("/auth/device-flow/start", response_model=DeviceFlowStartResponse)
-def start_device_flow() -> DeviceFlowStartResponse:
+def start_device_flow(
+    _csrf: None = Depends(require_same_origin),
+    _rl: None = Depends(check_rate_limit),
+) -> DeviceFlowStartResponse:
     """Initie un Device Code Flow Microsoft pour l'authentification Halo.
 
     Non disponible en DEMO_MODE.
@@ -117,7 +122,11 @@ def get_device_flow_status(
 
 
 @router.post("/setup/players", response_model=CreatePlayerProfileResponse, status_code=201)
-def create_player_profile(body: CreatePlayerProfileRequest) -> CreatePlayerProfileResponse:
+def create_player_profile(
+    body: CreatePlayerProfileRequest,
+    _csrf: None = Depends(require_same_origin),
+    _rl: None = Depends(check_rate_limit),
+) -> CreatePlayerProfileResponse:
     """Crée un profil joueur dans db_profiles.json.
 
     Validations :

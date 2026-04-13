@@ -12,9 +12,10 @@ seul ``discord_webhook_url_present`` (bool) est exposé.
 from __future__ import annotations
 
 import structlog
-from fastapi import APIRouter
+from fastapi import APIRouter, Depends
 
 from apps.api.app.core.config import get_settings
+from apps.api.app.core.csrf import require_same_origin
 from apps.api.app.schemas.common import AsyncJobStatus
 from apps.api.app.schemas.settings import (
     MediaResetRequest,
@@ -47,7 +48,10 @@ def get_settings_endpoint() -> SettingsResponse:
 
 
 @router.patch("/settings", response_model=SettingsResponse)
-def patch_settings(body: UpdateSettingsRequest) -> SettingsResponse:
+def patch_settings(
+    body: UpdateSettingsRequest,
+    _csrf: None = Depends(require_same_origin),
+) -> SettingsResponse:
     """Met à jour partiellement les paramètres utilisateur.
 
     Seuls les champs présents dans le corps sont mis à jour.
