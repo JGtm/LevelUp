@@ -166,7 +166,7 @@ class AsyncJobStatus(BaseModel):
     """Statut d'un job long (smoke test, sync, backfill, reindex…)."""
 
     job_id: str
-    job_type: str  # "setup_smoke_test" | "sync" | "backfill" | "reindex_media" | "other"
+    job_type: str  # "setup_smoke_test" | "initial_sync" | "backfill" | "reindex_media" | "other"
     status: str  # "queued" | "running" | "succeeded" | "failed" | "cancelled"
     progress_pct: int | None = None
     current_step: str | None = None
@@ -174,6 +174,15 @@ class AsyncJobStatus(BaseModel):
     finished_at: datetime | None = None
     result: dict | None = None
     error: ApiErrorSchema | None = None
+    # Champs enrichis pour la sync initiale (Sprint 3)
+    phase_key: str | None = None
+    phase_label: str | None = None
+    matches_done: int | None = None
+    matches_total: int | None = None
+    subtasks_done: int | None = None
+    subtasks_total: int | None = None
+    eta_seconds: int | None = None
+    warnings: list[str] = Field(default_factory=list)
 
 
 # ---------------------------------------------------------------------------

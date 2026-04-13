@@ -12,6 +12,7 @@ import type {
   CreatePlayerProfileResponse,
   SmokeTestStartRequest,
   AsyncJobStatus,
+  InitialSyncStartRequest,
   SettingsResponse,
   UpdateSettingsRequest,
 } from '@/lib/api/types'
@@ -51,6 +52,13 @@ export function useStartSmokeTest() {
   return useMutation({
     mutationFn: (req: SmokeTestStartRequest) =>
       api.post<AsyncJobStatus>('/setup/smoke-test', req),
+  })
+}
+
+export function useStartInitialSync() {
+  return useMutation({
+    mutationFn: (req: InitialSyncStartRequest) =>
+      api.post<AsyncJobStatus>('/sync/initial', req),
   })
 }
 

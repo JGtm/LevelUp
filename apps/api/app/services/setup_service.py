@@ -96,8 +96,13 @@ def get_setup_status() -> SetupStatusResponse:
         default_player_slug=default_slug,
     )
 
-    needs_setup = not (auth_status.has_refresh_token and player_count > 0)
-    next_step = _compute_next_step(auth_status.has_refresh_token, player_count > 0)
+    has_matches = _has_any_synced_matches() if player_count > 0 else True
+    needs_setup = not (auth_status.has_refresh_token and player_count > 0 and has_matches)
+    next_step = _compute_next_step(
+        auth_status.has_refresh_token,
+        player_count > 0,
+        has_matches=has_matches,
+    )
 
     return SetupStatusResponse(
         needs_setup=needs_setup,
@@ -512,10 +517,39 @@ def _has_any_msal_cache() -> bool:
     return False
 
 
-def _compute_next_step(has_refresh_token: bool, has_players: bool) -> str:
+def _has_any_synced_matches() -> bool:
+    """Retourne True si des matchs sont présents dans shared_matches_v2.duckdb.
+
+    Fail-open : retourne True en cas d'erreur (évite de bloquer le wizard).
+    """
+    try:
+        from pathlib import Path
+
+        import duckdb
+
+        db_path = (
+            Path(__file__).resolve().parents[4] / "data" / "warehouse" / "shared_matches_v2.duckdb"
+        )
+        if not db_path.exists():
+            return False
+        with duckdb.connect(str(db_path), read_only=True) as con:
+            row = con.execute("SELECT COUNT(*) FROM match_registry").fetchone()
+            return bool(row and row[0] > 0)
+    except Exception:  # noqa: BLE001
+        return True  # fail-open
+
+
+def _compute_next_step(
+    has_refresh_token: bool,
+    has_players: bool,
+    *,
+    has_matches: bool = True,
+) -> str:
     """Calcule la prochaine étape bloquante du wizard."""
     if not has_refresh_token:
         return "auth"
     if not has_players:
         return "player"
+    if not has_matches:
+        return "initial_sync"
     return "done"

@@ -70,7 +70,7 @@ def _build_capabilities(app_cfg: dict) -> CapabilityMap:
         can_reset_media_index=True,
         can_view_media=bool(app_cfg.get("media_enabled", True)),
         can_self_provision=bool(app_cfg.get("can_self_provision", True)),
-        can_start_initial_sync=not settings.demo_mode,
+        can_start_initial_sync=bool(app_cfg.get("can_start_initial_sync", not settings.demo_mode)),
         can_manage_instance=True,
     )
 
