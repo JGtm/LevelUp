@@ -1,5 +1,28 @@
 # Thought Log
 
+## [2026-04-15] feat(migration): MIGRATION_MASTER — corpus, parité, frontend MVP et E2E
+
+**Statut** : Complété  
+**Branche** : `feature/remove-streamlit-ui`
+
+**Décision technique** :
+- **Corpus** : `scripts/create_test_corpus.py` enrichi de `_generate_golden_values()` qui génère `tests/fixtures/golden_values/career.json` et `match_history_full.json` depuis les DuckDB figés. Permet tests de parité reproductibles.
+- **Tests de parité** (`tests/parity/`) : conftest avec `requires_corpus` (skip propre si pas de corpus) + 3 fichiers (20 tests au total) couvrant `filters/resolve`, `career` et `match_history`. Tolérances : ±1% sur les counts, ±0.1% sur l'XP.
+- **CareerPage.tsx** : refonte complète — lazy loading top matchs (`useCareerTopMatches` activé par `showAllTopMatches`), section LUSR enrichie (`current_playlist_group`), `CareerEncountersSection` avec `useCareerEncounters` et bouton "Voir toutes les rencontres".
+- **MatchHistoryTable.tsx** : 4 colonnes ajoutées — `playlist_label` (sous map/mode, même cellule), `team_mmr`+`enemy_mmr` (colonne combinée "MMR T/A"), `win_rate_hist_total` (affiché entre parenthèses), lien "Détail →" via `match_url`. `colSpan` mis à 10.
+- **E2E Playwright** (`tests/e2e/test_shell_react_demo.py`) : 7 tests marqués `@pytest.mark.e2e_browser`. Démarre FastAPI en DEMO_MODE (subprocess uvicorn) puis teste health, bootstrap schema, demo_mode flag, players list, current_player. 2 tests Playwright (shell mount + player selector) activés conditionnellement si Vite est sur 5173.
+- **SLICES.md** : statuts resynchronisés — 0a/0b/1 → `in-progress` (backend 100%), 2 (Career) et 3 (MatchHistory) → `preview` (frontend complet, tests de parité présents, corpus manquant).
+
+**Résultats observés** :
+- Les fichiers créés/modifiés ne dépassent pas les seuils (500L module / 80L fonction).
+- `tests/parity/` : 20 tests, tous `@requires_corpus` → skip propre en CI avant génération du corpus.
+- `tests/e2e/test_shell_react_demo.py` : 7 tests, activation via `--run-e2e-browser`.
+
+**Conclusion / prochaine étape** :
+- Toutes les tâches MIGRATION_MASTER sont complètes.
+- Prochaine priorité : générer le corpus de référence (`python scripts/create_test_corpus.py --gamertag ...`), committer les fixtures et valider les 20 tests de parité au vert.
+- Ensuite : lancer `make dev` et vérifier la parité visuelle CareerPage + MatchHistoryPage.
+
 ## [2026-04-13] feat(security): Sprint 4 — CSRF, rate limiting, structured logging
 
 **Statut** : Complété  

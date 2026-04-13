@@ -99,7 +99,7 @@ Les points suivants sont bloquants avant d'ouvrir une première surface React en
 
 ## Slice 0a — Shell, bootstrap et plomberie
 
-**Statut** : `todo`  
+**Statut** : `in-progress`  
 **Dépendances** : aucune (mais corpus de référence prérequis)
 
 > **Objectif** : valider que la plomberie bout en bout fonctionne — FastAPI démarre, le shell React se monte, le bootstrap renvoie un joueur, le DEMO_MODE est utilisable.
@@ -153,7 +153,7 @@ Les points suivants sont bloquants avant d'ouvrir une première surface React en
 
 ## Slice 0b — Contrat de filtres (spike dédié)
 
-**Statut** : `todo`  
+**Statut** : `in-progress`  
 **Dépendances** : Slice 0a
 
 > ⚠ **C'est le vrai test d'architecture de toute la migration, pas bootstrap.**
@@ -198,7 +198,7 @@ Les points suivants sont bloquants avant d'ouvrir une première surface React en
 
 ## Slice 1 — Setup / Auth / Settings
 
-**Statut** : `todo`  
+**Statut** : `in-progress`  
 **Dépendances** : Slice 0a + 0b
 
 ### Backend
@@ -244,7 +244,7 @@ Les points suivants sont bloquants avant d'ouvrir une première surface React en
 
 ## Slice 2 — Profil [V7 §7 : Carrière + Citations]
 
-**Statut** : `todo`  
+**Statut** : `preview`  
 **Dépendances** : Slices 0a, 0b et 1  
 **Ref specs** : [FUNCTIONAL_SPECS.md § 7 Profil](FUNCTIONAL_SPECS.md#7-profil)
 
@@ -301,7 +301,7 @@ Les points suivants sont bloquants avant d'ouvrir une première surface React en
 
 ## Slice 3 — Stats [V7 §2 : Séries + Sessions + Historique]
 
-**Statut** : `todo`  
+**Statut** : `preview`  
 **Dépendances** : Slices 0a et 0b  
 **Ref specs** : [FUNCTIONAL_SPECS.md § 2 Stats](FUNCTIONAL_SPECS.md#2-stats)
 
