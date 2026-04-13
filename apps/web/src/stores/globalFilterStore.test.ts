@@ -6,6 +6,7 @@
  */
 import { describe, it, expect, beforeEach } from 'vitest'
 import { useGlobalFilterStore, DEFAULT_GAP_MINUTES, DEFAULT_FILTER_CONTEXT } from '@/stores/globalFilterStore'
+import type { FilterContextResolved } from '@/lib/api/types'
 
 describe('GlobalFilterStore', () => {
   beforeEach(() => {
@@ -18,7 +19,7 @@ describe('GlobalFilterStore', () => {
 
   it('démarre avec gap_minutes=120', () => {
     const ctx = useGlobalFilterStore.getState().filterContext
-    expect(ctx.sessions.gap_minutes).toBe(DEFAULT_GAP_MINUTES)
+    expect(ctx.sessions!.gap_minutes).toBe(DEFAULT_GAP_MINUTES)
   })
 
   it('resolvedContext est null au départ', () => {
@@ -33,8 +34,8 @@ describe('GlobalFilterStore', () => {
   it('setPeriod met à jour la période', () => {
     useGlobalFilterStore.getState().setPeriod({ start_date: '2025-01-01', end_date: '2025-01-31' })
     const period = useGlobalFilterStore.getState().filterContext.period
-    expect(period.start_date).toBe('2025-01-01')
-    expect(period.end_date).toBe('2025-01-31')
+    expect(period!.start_date).toBe('2025-01-01')
+    expect(period!.end_date).toBe('2025-01-31')
   })
 
   it('setSessions préserve gap_minutes=120', () => {
@@ -44,7 +45,7 @@ describe('GlobalFilterStore', () => {
     })
     // La règle métier impose gap_minutes=120 — vérifier selon l'impl du store
     const ctx = useGlobalFilterStore.getState().filterContext
-    expect(ctx.sessions.picked_sessions).toContain('sess-1')
+    expect(ctx.sessions!.picked_sessions).toContain('sess-1')
   })
 
   it('setCascade met à jour la cascade', () => {
@@ -55,8 +56,8 @@ describe('GlobalFilterStore', () => {
       maps: [],
     })
     const cascade = useGlobalFilterStore.getState().filterContext.cascade
-    expect(cascade.experience_types).toContain('pvp')
-    expect(cascade.playlists).toContain('ranked')
+    expect(cascade!.experience_types).toContain('pvp')
+    expect(cascade!.playlists).toContain('ranked')
   })
 
   it('resetFilters restaure le contexte par défaut', () => {
@@ -65,7 +66,7 @@ describe('GlobalFilterStore', () => {
     useGlobalFilterStore.getState().resetFilters()
     const ctx = useGlobalFilterStore.getState().filterContext
     expect(ctx.filter_mode).toBe(DEFAULT_FILTER_CONTEXT.filter_mode)
-    expect(ctx.period.start_date).toBeNull()
+    expect(ctx.period!.start_date).toBeNull()
   })
 
   it('filterContextHash change quand le contexte change', () => {
@@ -76,16 +77,26 @@ describe('GlobalFilterStore', () => {
   })
 
   it('setResolvedContext stocke la réponse résolue', () => {
-    const resolved = {
-      filter_mode: 'period',
-      effective: { start_date: null, end_date: null, picked_sessions: [], experience_types: [], playlists: [], modes: [], maps: [] },
-      scoped_match_count: 42,
-      total_match_count: 100,
-      period_options: [],
-      session_options: [],
-      cascade_options: { experience_types: [], playlists: [], modes: [], maps: [] },
+    const resolved: FilterContextResolved = {
+      effective: {
+        filter_mode: 'period',
+        period: { start_date: null, end_date: null },
+        sessions: { picked_sessions: [], gap_minutes: DEFAULT_GAP_MINUTES },
+        cascade: { experience_types: [], playlists: [], modes: [], maps: [] },
+      },
+      available_options: {
+        experience_types: [],
+        playlists: [],
+        modes: [],
+        maps: [],
+      },
+      session_options: { all_sessions: [], solo_labels: [], squad_labels: [] },
+      counts: {
+        total_matches_before_filters: 100,
+        total_matches_after_filters: 42,
+      },
     }
-    useGlobalFilterStore.getState().setResolvedContext(resolved as never)
-    expect(useGlobalFilterStore.getState().resolvedContext?.scoped_match_count).toBe(42)
+    useGlobalFilterStore.getState().setResolvedContext(resolved)
+    expect(useGlobalFilterStore.getState().resolvedContext?.counts.total_matches_after_filters).toBe(42)
   })
 })

@@ -173,7 +173,7 @@ export interface SetupPlayerInfo {
   default_player_slug: string | null
 }
 
-export type SetupNextStep = 'choose_mode' | 'auth' | 'player' | 'smoke_test' | 'done'
+export type SetupNextStep = 'choose_mode' | 'auth' | 'player' | 'initial_sync' | 'smoke_test' | 'done'
 
 export interface SetupStatusResponse {
   needs_setup: boolean
