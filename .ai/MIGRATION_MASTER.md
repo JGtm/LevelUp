@@ -23,16 +23,13 @@ Référence complète → [migration/DECISIONS.md](migration/DECISIONS.md)
 
 ## État courant
 
-**Phase active** : Slice 0b → `canonical` (filtres) / démarrage Slice 2 Phase A (Carrière)
+**Phase active** : Slice 2 Phase A `canonical` ✅ — démarrage Slice 2 Phase B (Citations) ou Slice 3 (Stats)
 
-**Slice en cours** : 0b + 2
+**Slice en cours** : 2 (Phase A terminée)
 
-**Dernière action** : Slice 0a passée `canonical` — 5 tests E2E Playwright verts (shell/bootstrap/redirect/NavBar/no-crash), `generated.ts` 3232 lignes depuis OpenAPI, `index.tsx` corrigé (Navigate), `make check-types`=0. Total : 171 Python + 55 Vitest + 5 E2E Playwright ✅
+**Dernière action** : Slice 2 Phase A passée `canonical` — fix DEMO_MODE xuid (lecture xuid.txt), 8/8 tests parité verts, 5/5 Vitest CareerPage verts, 5/5 E2E Playwright verts. Total : 171 Python + 55 Vitest + 10 E2E Playwright ✅
 
-**Prochaine étape concrète** : Démarrer Slice 2 Phase A — Profil/Carrière (premier écran métier avec données réelles)
-- Backend : `GET /api/v1/players/{player_slug}/pages/career` → déjà implémenté à vérifier
-- Frontend : route `/players/:playerSlug/career` branchée sur le vrai endpoint (pas MSW stub)
-- Tests de parité : rang, XP, LUSR contre golden values `tests/fixtures/`
+**Prochaine étape concrète** : Slice 0b → `canonical` (filtres) OU Slice 2 Phase B (Citations)
 
 ---
 
@@ -53,7 +50,7 @@ Référence complète → [migration/DECISIONS.md](migration/DECISIONS.md)
 | **Synthèse** | Solo vs Escouade, heatmap, top semaine, breakdown carte/mode | `preview` | — | ✅ Slice 7 livrée — 8/8 tests ∑ 122/122 |
 | **Explorer** | Filtres cascade, recherche joueur, Match View (4 onglets, scoreboard 19 col) | `preview` | — | ✅ Slice 4 livrée — 16/16 tests ∑ 93/93 |
 | **Médias** | Galerie, filtres, groupement, lightbox, likes | `preview` | — | ✅ Slice 8 livrée — 10/10 tests ∑ 132/132 |
-| **Profil** | Carrière (rang+XP+LUSR/CSR+encounters) + Citations (commendations+médailles) | `preview` | — | ✅ Slice 2 livrée — 13/13 tests ∑ 63/63 |
+| **Profil** | Carrière (rang+XP+LUSR/CSR+encounters) + Citations (commendations+médailles) | `canonical` ✅ (Phase A) | — | ✅ Slice 2 Phase A canonique — fix xuid DEMO_MODE, 8 parité + 5 Vitest + 5 E2E |
 
 ---
 
