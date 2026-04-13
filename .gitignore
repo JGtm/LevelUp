@@ -89,6 +89,8 @@ data/players/
 # Sessions runtime (API FastAPI + tests)
 data/sessions/
 tests/api/_sessions_test/
+# Corpus de test (fichiers binaires DuckDB lourds — générer via create_test_corpus.py)
+tests/fixtures/ref_player/*.duckdb
 data/warehouse/match_facts/
 data/warehouse/*.duckdb
 data/warehouse/*.wal

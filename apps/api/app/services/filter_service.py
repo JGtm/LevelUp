@@ -216,7 +216,7 @@ def _build_source_sql(has_mv: bool) -> str:
                    is_firefight, is_ranked
             FROM shared.mv_player_matches
             WHERE xuid = ?
-        ) AS ms"""
+        )"""
     return """(
         SELECT r.match_id, r.start_time, r.map_id, r.map_name,
                NULL AS map_name_fr,
@@ -231,7 +231,7 @@ def _build_source_sql(has_mv: bool) -> str:
         FROM shared.match_registry r
         JOIN shared.match_participants p ON r.match_id = p.match_id
         WHERE p.xuid = ?
-    ) AS ms"""
+    )"""
 
 
 # ---------------------------------------------------------------------------

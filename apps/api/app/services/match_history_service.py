@@ -184,8 +184,8 @@ def _load_matches_full(player: PlayerContext):  # type: ignore[return]
                 pme.session_label,
                 COALESCE(pme.is_with_friends, FALSE)                AS is_with_friends,
                 COALESCE(p.outcome, 0)                              AS outcome,
-                p.my_team_score,
-                p.enemy_team_score,
+                NULL                                                AS my_team_score,
+                NULL                                                AS enemy_team_score,
                 p.team_mmr,
                 p.enemy_mmr,
                 COALESCE(p.kills, 0)                                AS kills,
@@ -194,7 +194,7 @@ def _load_matches_full(player: PlayerContext):  # type: ignore[return]
                 p.kda,
                 p.accuracy,
                 p.personal_score,
-                p.average_life_seconds,
+                p.avg_life_seconds                                  AS average_life_seconds,
                 p.time_played_seconds
             FROM {source_sql} ms
             LEFT JOIN shared.match_participants p
@@ -250,7 +250,7 @@ def _build_source_sql(has_mv: bool) -> str:
                    is_firefight, is_ranked
             FROM shared.mv_player_matches
             WHERE xuid = ?
-        ) AS ms"""
+        )"""
     return """(
         SELECT r.match_id, r.start_time, r.map_id, r.map_name,
                NULL AS map_name_fr,
@@ -263,7 +263,7 @@ def _build_source_sql(has_mv: bool) -> str:
         FROM shared.match_registry r
         JOIN shared.match_participants p ON r.match_id = p.match_id
         WHERE p.xuid = ?
-    ) AS ms"""
+    )"""
 
 
 def _add_display_columns(df):  # type: ignore[return]
