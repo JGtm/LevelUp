@@ -94,18 +94,51 @@ def _setup_required() -> bool:
     return len(profiles) == 0
 
 
-def _compute_setup_state(auth_state: str, available: list) -> str:
+def _has_any_synced_matches(available: list[PlayerSummary]) -> bool:
+    """Vérifie si au moins un joueur a des matchs dans shared_matches_v2.duckdb.
+
+    Utilisé pour distinguer ``profile_ready_no_sync`` de ``ready``.
+    Retourne True en cas d'erreur (fail-open — ne bloque pas le démarrage).
+    """
+    if not available:
+        return False
+    settings = get_settings()
+    shared_path = Path(settings.repo_root) / "data" / "warehouse" / "shared_matches_v2.duckdb"
+    if not shared_path.exists():
+        return False
+    xuids = [p.xuid for p in available if p.xuid]
+    if not xuids:
+        return False
+    try:
+        import duckdb
+
+        placeholders = ", ".join("?" * len(xuids))
+        with duckdb.connect(str(shared_path), read_only=True) as conn:
+            row = conn.execute(
+                f"SELECT COUNT(*) FROM match_participants WHERE xuid IN ({placeholders}) LIMIT 1",
+                xuids,
+            ).fetchone()
+            return bool(row and row[0] > 0)
+    except Exception:
+        logger.warning("has_any_synced_matches_error", exc_info=True)
+        return True  # fail-open : ne pas bloquer le bootstrap
+
+
+def _compute_setup_state(auth_state: str, available: list, *, has_matches: bool = True) -> str:
     """Déduit l'état de l'onboarding depuis auth + joueurs disponibles.
 
     Returns:
-        "no_halo_link"           → aucun token Halo connu
-        "halo_linked_no_profile" → auth OK mais aucun joueur local
-        "ready"                  → auth OK + joueur(s) créé(s)
+        "no_halo_link"             → aucun token Halo connu
+        "halo_linked_no_profile"   → auth OK mais aucun joueur local
+        "profile_ready_no_sync"    → joueur créé mais aucun match synchronisé
+        "ready"                    → auth OK + joueur(s) avec matchs
     """
     if auth_state == "missing":
         return "no_halo_link"
     if not available:
         return "halo_linked_no_profile"
+    if not has_matches:
+        return "profile_ready_no_sync"
     return "ready"
 
 
@@ -130,10 +163,11 @@ def build_bootstrap_response(session: SessionData) -> BootstrapResponse:
         current = available[0]
 
     auth_state = _resolve_auth_state(session)
+    has_matches = _has_any_synced_matches(available)
     return BootstrapResponse(
         setup_required=_setup_required(),
         auth_state=auth_state,
-        setup_state=_compute_setup_state(auth_state, available),
+        setup_state=_compute_setup_state(auth_state, available, has_matches=has_matches),
         current_player=current,
         available_players=available,
         locale=session.locale,

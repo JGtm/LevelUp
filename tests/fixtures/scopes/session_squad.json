@@ -1,0 +1,10 @@
+{
+  "_comment": "Session escouade connue — à remplacer avec un session_id d'une session jouée en squad.",
+  "player_slug": "demo-player",
+  "period_start": null,
+  "period_end": null,
+  "playlists": [],
+  "modes": [],
+  "maps": [],
+  "session_ids": ["REPLACE_WITH_REAL_SQUAD_SESSION_ID"]
+}

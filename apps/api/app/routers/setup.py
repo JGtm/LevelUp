@@ -11,10 +11,11 @@ Endpoints :
 from __future__ import annotations
 
 import structlog
-from fastapi import APIRouter
+from fastapi import APIRouter, Depends, Request, Response
 
 from apps.api.app.core.config import get_settings
 from apps.api.app.core.errors import ApiError
+from apps.api.app.deps.auth import SessionData, _get_store, get_or_create_session
 from apps.api.app.schemas.common import AsyncJobStatus
 from apps.api.app.schemas.setup import (
     CreatePlayerProfileRequest,
@@ -84,15 +85,30 @@ def start_device_flow() -> DeviceFlowStartResponse:
     "/auth/device-flow/{attempt_id}",
     response_model=DeviceFlowStatusResponse,
 )
-def get_device_flow_status(attempt_id: str) -> DeviceFlowStatusResponse:
+def get_device_flow_status(
+    attempt_id: str,
+    request: Request,
+    response: Response,
+    session_tuple: tuple[SessionData, bool] = Depends(get_or_create_session),
+) -> DeviceFlowStatusResponse:
     """Retourne le statut d'un Device Code Flow en cours.
 
     Polling attendu toutes les ``poll_interval_seconds`` secondes (5s par défaut).
     Retourne 404 si l'attempt est inconnu ou a expiré.
+
+    Quand ``status == "provisioned"``, met à jour ``session.auth_ready = True``
+    pour que le prochain appel à ``GET /bootstrap`` retourne ``auth_state="ready"``.
     """
     from apps.api.app.services.setup_service import get_device_flow_status as _get_status
 
-    return _get_status(attempt_id)
+    result = _get_status(attempt_id)
+
+    session, _ = session_tuple
+    if result.status in ("authorized", "provisioned") and not session.auth_ready:
+        session.auth_ready = True
+        _get_store().save(session)
+
+    return result
 
 
 # ---------------------------------------------------------------------------
