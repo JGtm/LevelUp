@@ -53,8 +53,10 @@ export function MatchHistoryTable({
     { key: 'score_label', label: 'Score', sortable: false },
     { key: 'performance_score_relative', label: 'Perf.' },
     { key: 'delta_mmr', label: 'ΔMMR' },
+    { key: 'team_enemy_mmr', label: 'MMR T/A', sortable: false },
     { key: 'win_rate_hist', label: 'Win%' },
     { key: 'average_life_mmss', label: 'Vie moy.', sortable: false },
+    { key: 'detail', label: '', sortable: false },
   ] as const
 
   return (
@@ -101,6 +103,9 @@ export function MatchHistoryTable({
                 <td className="px-4 py-2">
                   <span className="font-medium text-gray-800">{row.map_ui}</span>
                   <span className="ml-1 text-xs text-gray-400">· {row.mode_ui}</span>
+                  {row.playlist_label && (
+                    <div className="text-xs text-gray-400 mt-0.5">{row.playlist_label}</div>
+                  )}
                 </td>
                 <td className="px-4 py-2">
                   <Badge variant={(OUTCOME_TONE[row.outcome_code ?? 0] as 'success' | 'destructive' | 'secondary' | 'outline') ?? 'secondary'}>
@@ -118,15 +123,43 @@ export function MatchHistoryTable({
                     </span>
                   ) : '—'}
                 </td>
+                <td className="px-4 py-2 text-right font-mono text-xs text-gray-500">
+                  {row.team_mmr != null || row.enemy_mmr != null ? (
+                    <span>
+                      {row.team_mmr != null ? row.team_mmr.toFixed(0) : '?'}
+                      <span className="text-gray-300">/</span>
+                      {row.enemy_mmr != null ? row.enemy_mmr.toFixed(0) : '?'}
+                    </span>
+                  ) : '—'}
+                </td>
                 <td className="px-4 py-2 text-right text-gray-600">
-                  {row.win_rate_hist != null ? `${(row.win_rate_hist * 100).toFixed(0)}%` : '—'}
+                  {row.win_rate_hist != null ? (
+                    <span>
+                      {(row.win_rate_hist * 100).toFixed(0)}%
+                      {row.win_rate_hist_total != null && (
+                        <span className="text-xs text-gray-400 ml-1">({row.win_rate_hist_total})</span>
+                      )}
+                    </span>
+                  ) : '—'}
                 </td>
                 <td className="px-4 py-2 text-right text-gray-500">{row.average_life_mmss}</td>
+                <td className="px-4 py-2 text-center">
+                  {row.match_url ? (
+                    <a
+                      href={row.match_url}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="text-purple-500 hover:text-purple-700 text-xs font-medium"
+                    >
+                      Détail →
+                    </a>
+                  ) : null}
+                </td>
               </tr>
             ))}
             {rows.length === 0 && (
               <tr>
-                <td colSpan={8} className="px-4 py-8 text-center text-gray-400">
+                <td colSpan={10} className="px-4 py-8 text-center text-gray-400">
                   Aucun match trouvé.
                 </td>
               </tr>

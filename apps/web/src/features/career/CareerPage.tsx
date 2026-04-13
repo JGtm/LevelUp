@@ -1,18 +1,26 @@
 /**
  * CareerPage — page principale de la carrière du joueur.
  */
+import { useState } from 'react'
 import { useParams } from '@tanstack/react-router'
 import { PageHeader } from '@/components/shell/PageHeader'
 import { Spinner } from '@/components/ui/spinner'
-import { Card, CardContent } from '@/components/ui/card'
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+import { Button } from '@/components/ui/button'
 import { CareerSummaryCard } from './CareerSummaryCard'
 import { CareerChartsSection } from './CareerChartsSection'
 import { CareerTopMatchesTable } from './CareerTopMatchesTable'
-import { useCareerPage } from './queries'
+import { CareerEncountersSection } from './CareerEncountersSection'
+import { useCareerPage, useCareerTopMatches } from './queries'
 
 export function CareerPage() {
   const { playerSlug } = useParams({ strict: false }) as { playerSlug: string }
   const { data, isLoading, isError, refetch } = useCareerPage(playerSlug)
+  const [showAllTopMatches, setShowAllTopMatches] = useState(false)
+  const { data: fullTopMatches, isLoading: loadingTopMatches } = useCareerTopMatches(
+    playerSlug,
+    showAllTopMatches,
+  )
 
   if (isLoading) {
     return (
@@ -42,11 +50,16 @@ export function CareerPage() {
 
   if (!data) return null
 
+  const topMatchesItems =
+    showAllTopMatches && fullTopMatches
+      ? fullTopMatches.items
+      : data.top_matches_preview
+
   return (
     <div className="flex flex-col">
       <PageHeader
         title="Carrière"
-        subtitle={`Progression de rang et statistiques globales`}
+        subtitle="Progression de rang et statistiques globales"
       />
 
       <div className="space-y-6 p-6">
@@ -63,27 +76,67 @@ export function CareerPage() {
         {/* Section LUSR */}
         {data.lusr && (
           <Card>
-            <CardContent className="py-4">
+            <CardHeader>
+              <CardTitle className="text-base">Rating LUSR</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-1">
               <p className="text-sm font-medium text-gray-700">
-                Rating LUSR actuel :{' '}
+                Actuel :{' '}
                 <span className="text-purple-700 font-bold">
                   {data.lusr.current_rating ?? '—'}
                 </span>
                 {data.lusr.current_tier_label && (
-                  <> · {data.lusr.current_tier_label}</>
+                  <> · <span className="text-gray-600">{data.lusr.current_tier_label}</span></>
+                )}
+                {data.lusr.current_playlist_group && (
+                  <span className="ml-2 text-xs text-gray-400">
+                    ({data.lusr.current_playlist_group})
+                  </span>
                 )}
               </p>
               {data.lusr.trend_label && (
-                <p className="text-xs text-gray-500 mt-1">{data.lusr.trend_label}</p>
+                <p className="text-xs text-gray-500">{data.lusr.trend_label}</p>
               )}
             </CardContent>
           </Card>
         )}
 
-        {/* Top matchs preview */}
-        {data.top_matches_preview.length > 0 && (
-          <CareerTopMatchesTable items={data.top_matches_preview} />
+        {/* Top matchs */}
+        {topMatchesItems.length > 0 && (
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-base">Meilleurs matchs</CardTitle>
+            </CardHeader>
+            <CardContent>
+              {loadingTopMatches ? (
+                <div className="flex justify-center py-4">
+                  <Spinner size="sm" label="Chargement…" />
+                </div>
+              ) : (
+                <>
+                  <CareerTopMatchesTable items={topMatchesItems} />
+                  {!showAllTopMatches && (
+                    <div className="mt-4 flex justify-center">
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => setShowAllTopMatches(true)}
+                      >
+                        Voir tous les top matchs
+                      </Button>
+                    </div>
+                  )}
+                </>
+              )}
+            </CardContent>
+          </Card>
         )}
+
+        {/* Rencontres fréquentes */}
+        <CareerEncountersSection
+          playerSlug={playerSlug}
+          preview={data.encounters_preview}
+        />
       </div>
     </div>
   )
