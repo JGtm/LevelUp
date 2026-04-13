@@ -399,6 +399,29 @@ async def test_create_player_empty_gamertag_returns_422(
 
 
 @pytest.mark.anyio
+async def test_create_player_blocked_when_cant_self_provision(
+    client: AsyncClient,
+    no_demo_env: None,
+) -> None:
+    """POST /setup/players → 403 si can_self_provision=false dans app_settings."""
+    from apps.api.app.core.config import get_settings
+
+    get_settings.cache_clear()  # type: ignore[attr-defined]
+
+    with patch(
+        "apps.api.app.services.bootstrap_service._load_app_settings",
+        return_value={"can_self_provision": False},
+    ):
+        resp = await client.post(
+            "/api/v1/setup/players",
+            json={"gamertag": "TestGamertag"},
+        )
+
+    assert resp.status_code == 403
+    assert resp.json()["code"] == "provisioning_disabled"
+
+
+@pytest.mark.anyio
 async def test_create_player_invalid_gamertag_returns_400(
     client: AsyncClient,
     no_demo_env: None,

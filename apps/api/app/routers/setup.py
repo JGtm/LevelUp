@@ -123,9 +123,21 @@ def create_player_profile(body: CreatePlayerProfileRequest) -> CreatePlayerProfi
     Validations :
     - gamertag requis, 1-50 caractères, alphanum+tirets+espaces
     - Si xuid fourni, il est enregistré directement (évite une résolution API)
+    - Retourne 403 si can_self_provision=false dans app_settings.json
 
     Retourne 201 avec le PlayerSummary créé.
     """
+    from apps.api.app.services.bootstrap_service import _build_capabilities, _load_app_settings
+
+    capabilities = _build_capabilities(_load_app_settings())
+    if not capabilities.can_self_provision:
+        raise ApiError(
+            403,
+            "provisioning_disabled",
+            "L'auto-provisioning est désactivé sur cette instance.",
+            retryable=False,
+        )
+
     from apps.api.app.services.setup_service import create_player_profile as _create
 
     return _create(body)
