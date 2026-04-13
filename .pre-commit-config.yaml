@@ -39,6 +39,7 @@ repos:
       # Validation de syntaxe
       - id: check-yaml
       - id: check-json
+        exclude: ^apps/web/tsconfig.*\.json$
       - id: check-toml
 
       # Sécurité et erreurs courantes
