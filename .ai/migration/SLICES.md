@@ -597,7 +597,8 @@ L'ancienne page autonome Objective Analysis (P4) **n'est pas migrée en tant que
 
 ## Slice 9 — Décommission Streamlit UI
 
-**Statut** : `todo`  
+**Statut** : `canonical` ✅  
+**Date** : 2026-04-13  
 **Dépendances** : Toutes les slices MVP/P2/P3 canonical
 
 ### Backend / produit
@@ -689,7 +690,7 @@ Concrètement :
 | 6 | **Escouade** (Synergies + Contributions) | §3 | P2 |
 | 7 | **Synthèse** (Solo vs Escouade) | §4 | P3 |
 | 8 | **Médias** (Galerie + Lightbox) | §6 | P2 |
-| 9 | Décommission Streamlit | — | Final |
+| 9 | Décommission Streamlit | — | Final | `canonical` ✅ 2026-04-13 |
 
 ## Query keys TanStack normalisées (référence complète)
 

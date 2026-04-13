@@ -2,9 +2,10 @@
 
 > **Analyze your Halo Infinite stats match by match, track your progress over time, and compare your performance with your squad.**
 
-[![Version](https://img.shields.io/badge/Version-6.5.0-blue.svg)](https://github.com/JGtm/LevelUp/releases/tag/v6.5.0)
+[![Version](https://img.shields.io/badge/Version-7.0.0-blue.svg)](https://github.com/JGtm/LevelUp/releases/tag/v7.0.0)
 [![Python 3.12+](https://img.shields.io/badge/Python-3.12%2B-blue.svg)](https://www.python.org/downloads/)
-[![Streamlit](https://img.shields.io/badge/Streamlit-1.28%2B-FF4B4B.svg)](https://streamlit.io/)
+[![React](https://img.shields.io/badge/React-19-61DAFB.svg)](https://react.dev/)
+[![FastAPI](https://img.shields.io/badge/FastAPI-0.110%2B-009688.svg)](https://fastapi.tiangolo.com/)
 [![DuckDB](https://img.shields.io/badge/DuckDB-1.4%2B-FEE14E.svg)](https://duckdb.org/)
 [![Polars](https://img.shields.io/badge/Polars-1.38%2B-blue.svg)](https://pola.rs/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
@@ -211,7 +212,8 @@
 2. Double-click LevelUp.bat
    → Python is installed automatically if missing
    → .venv created, dependencies installed
-   → browser opens at http://localhost:8501
+   → API starts on http://localhost:8000
+   → browser opens at http://localhost:5173
 3. In the browser: enter your gamertag
 4. Go to https://xbox.com/activate and enter the displayed code
    → LevelUp retrieves your profile and starts the initial sync
@@ -225,7 +227,8 @@
 git clone https://github.com/JGtm/LevelUp.git
 cd LevelUp
 python3 -m venv .venv && source .venv/bin/activate
-pip install -e ".[spnkr]"
+pip install -e ".[spnkr,api]"
+cd apps/web && npm install && cd ../..
 python launcher.py run
 ```
 
