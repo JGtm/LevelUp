@@ -110,14 +110,13 @@ test-web:
 	cd apps/web && npm run test
 
 ## Génère le fichier de types TypeScript depuis le schéma OpenAPI FastAPI
-## Nécessite que l'API soit démarrée sur :8000 et que openapi-typescript soit installé
-generate-types: _check_venv
+## Prérequis : l'API doit être démarrée (make api ou make dev)
+## Usage : make generate-types
+generate-types:
 	@command -v npx >/dev/null 2>&1 || (echo "npx requis" && exit 1)
-	$(VENV_PY) -m uvicorn apps.api.app.main:app --host 127.0.0.1 --port 8000 &
-	@sleep 2
-	npx openapi-typescript http://127.0.0.1:8000/api/openapi.json \
-		-o apps/web/src/lib/api/generated.ts
-	@pkill -f "uvicorn apps.api.app.main:app" || true
+	@curl -s http://127.0.0.1:8000/api/v1/health > /dev/null 2>&1 || \
+		(echo "❌ API non joignable — lancez 'make api' d'abord." && exit 1)
+	cd apps/web && npm run generate-types
 	@echo "✓ Types générés dans apps/web/src/lib/api/generated.ts"
 
 ## Installe les dépendances npm dans apps/web/

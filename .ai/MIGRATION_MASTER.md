@@ -23,13 +23,16 @@ Référence complète → [migration/DECISIONS.md](migration/DECISIONS.md)
 
 ## État courant
 
-**Phase active** : ✅ Toutes les slices MVP livrées
+**Phase active** : Slice 0a → `canonical` (derniers critères à valider)
 
-**Slice en cours** : —
+**Slice en cours** : 0a — Shell + Bootstrap
 
-**Dernière action** : 55 tests Vitest React créés et passants (11 fichiers — stores + features) + jsdom installé + SLICES.md synchronisé. Total : 171 Python (151 API + 20 parity) + 55 Vitest ✅
+**Dernière action** : Connexion frontend réelle complète — API DEMO_MODE :8000 + Vite proxy :5173, `index.tsx` corrigé (Navigate TanStack Router), Playwright installé, 5 tests E2E Slice 0a verts (`shell se monte`, `bootstrap joueur démo`, `redirection /`, `NavBar visible`, `pas de crash`). Total : 171 Python + 55 Vitest + 5 E2E ✅
 
-**Prochaine étape concrète** : Connexion frontend réelle — brancher le bootstrap sur l'API dev, valider E2E en DEMO_MODE
+**Prochaine étape concrète** : Passer Slice 0a à `canonical` — critères restants :
+1. `generate-types` : vérifier que `apps/web/src/lib/api/generated.ts` est à jour depuis le schéma OpenAPI réel
+2. Valider que le sélecteur de joueur recharge proprement le contexte (multi-joueurs)
+3. Si (1) et (2) OK → marquer Slice 0a `canonical` dans SLICES.md + démarrer Slice 2 Phase A (Carrière)
 
 ---
 
