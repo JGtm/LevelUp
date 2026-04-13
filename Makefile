@@ -77,6 +77,51 @@ clean:
 help:
 	@grep -E '^##' Makefile | sed 's/^## //'
 
+# =============================================================================
+# Migration FastAPI + React — cibles Slice 0a
+# =============================================================================
+
+## Lance l'API FastAPI en mode dev (port 8000, hot-reload)
+api: _check_venv
+	$(VENV_PY) -m uvicorn apps.api.app.main:app --host 127.0.0.1 --port 8000 --reload
+
+## Lance le frontend React/Vite en mode dev (port 5173)
+web:
+	cd apps/web && npm run dev
+
+## Lance API + frontend en parallèle (nécessite un terminal avec support job control)
+dev: _check_venv
+	@echo "▶ Démarrage API (port 8000) + Web (port 5173)…"
+	$(VENV_PY) -m uvicorn apps.api.app.main:app --host 127.0.0.1 --port 8000 --reload & \
+	cd apps/web && npm run dev
+
+## Lance uniquement les tests API (tests/api/)
+test-api: _check_venv
+	$(VENV_PY) -m pytest tests/api/ -v
+
+## Lance les tests de parité backend (tests/parity/)
+test-parity: _check_venv
+	$(VENV_PY) -m pytest tests/parity/ -v
+
+## Lance les tests unitaires front (Vitest)
+test-web:
+	cd apps/web && npm run test
+
+## Génère le fichier de types TypeScript depuis le schéma OpenAPI FastAPI
+## Nécessite que l'API soit démarrée sur :8000 et que openapi-typescript soit installé
+generate-types: _check_venv
+	@command -v npx >/dev/null 2>&1 || (echo "npx requis" && exit 1)
+	$(VENV_PY) -m uvicorn apps.api.app.main:app --host 127.0.0.1 --port 8000 &
+	@sleep 2
+	npx openapi-typescript http://127.0.0.1:8000/api/openapi.json \
+		-o apps/web/src/lib/api/generated.ts
+	@pkill -f "uvicorn apps.api.app.main:app" || true
+	@echo "✓ Types générés dans apps/web/src/lib/api/generated.ts"
+
+## Installe les dépendances npm dans apps/web/
+install-web:
+	cd apps/web && npm install
+
 # ── Cible interne ─────────────────────────────────────────────────────────────
 _check_venv:
 	@if [ ! -f "$(VENV_PY)" ]; then \
