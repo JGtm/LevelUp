@@ -18,7 +18,9 @@ PYTHON   := $(shell command -v python3 2>/dev/null || command -v python 2>/dev/n
 VENV_PY  := .venv/bin/python
 LAUNCHER := $(VENV_PY) launcher.py
 
-.PHONY: install run sync add-player doctor update check test test-all clean help
+.PHONY: install run sync add-player doctor update check test test-all clean help \
+        api web dev test-api test-parity test-web test-e2e test-e2e-ui check-types \
+        generate-types install-web _check_venv
 
 ## Installe le venv et les dépendances (idempotent)
 install:
@@ -129,6 +131,15 @@ check-types:
 ## Lance les tests Vitest du frontend (mode run = pas de watch)
 test-web:
 	cd apps/web && npm run test:run
+
+## Lance les tests E2E Playwright (prérequis : make dev en cours dans un autre terminal)
+## Usage : make test-e2e
+test-e2e:
+	cd apps/web && npm run test:e2e
+
+## Lance les tests E2E avec l'UI Playwright (mode interactif)
+test-e2e-ui:
+	cd apps/web && npm run test:e2e:ui
 
 # ── Cible interne ─────────────────────────────────────────────────────────────
 _check_venv:
