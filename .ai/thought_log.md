@@ -1,5 +1,207 @@
 # Thought Log
 
+## [2026-04-14] feat(setup): Sprint 2 — guard can_self_provision sur POST /setup/players
+
+**Statut** : Complété  
+**Branche** : `feature/remove-streamlit-ui`  
+**Commit** : `5ddb6c1f`
+
+**Décision technique** :
+- **2.1** — `routers/setup.py` : `create_player_profile` appelle désormais `_build_capabilities(_load_app_settings())` avant d'invoquer le service. Si `can_self_provision=false`, lève `ApiError(403, "provisioning_disabled", ...)`. Imports lazys conservés pour éviter les effets de bord au chargement.
+- **2.2** — Frontend déjà livré en Phase 1 : `StepPlayer` affiche une carte de confirmation avec le gamertag pré-rempli quand `resolvedGamertag` est défini.
+- Test `test_create_player_blocked_when_cant_self_provision` ajouté : patch `_load_app_settings → {"can_self_provision": False}`, vérifie 403 + code `provisioning_disabled`.
+
+**Résultats observés** :
+- 19/19 tests `test_setup.py` passent (dont le nouveau).
+- Pre-commit hooks : ✅ ruff + detect-secrets.
+
+**Conclusion / prochaine étape** :
+- Sprint 2 terminé. Sprint 3 : enrichissement `AsyncJobStatus` + persistance `JobStore` + `POST /api/v1/sync/initial` + écran progression frontend.
+
+## [2026-04-13] feat(api): Sprint 1 onboarding — auth_ready + profile_ready_no_sync
+
+**Statut** : Complété  
+**Branche** : `feature/remove-streamlit-ui`  
+**Commit** : `a929a820`
+
+**Décision technique** :
+- **1.1** — `routers/setup.py` : `get_device_flow_status` prend désormais la session en dépendance FastAPI (`Depends(get_or_create_session)`). Quand `status in ("authorized", "provisioned")` et `not session.auth_ready`, fixe `auth_ready = True` et persiste la session → le prochain `GET /bootstrap` retourne `auth_state="ready"`.
+- **1.2** — Gamertag/xuid déjà correctement remplis dans `_complete_device_flow_bg` + `get_device_flow_status` → aucune modification nécessaire.
+- **1.3** — `bootstrap_service.py` : nouvelle fonction `_has_any_synced_matches(available)` qui interroge `shared_matches_v2.duckdb` ; `_compute_setup_state()` reçoit `has_matches: bool` et retourne désormais `"profile_ready_no_sync"` si aucun match synchronisé. Fail-open : retourne `True` si la DB est inaccessible.
+- Test `test_device_flow_provisioned_sets_auth_ready` ajouté — vérifie la session fichier après le poll.
+
+**Résultats observés** :
+- 29/29 tests setup + 11/11 tests bootstrap passent.
+- Suite complète : 282/283 (1 échec pré-existant `TestNormalizeModeLabel`, hors périmètre).
+- Pre-commit hooks : ✅ (ruff auto-fix + SIM117 corrigé manuellement).
+
+**Conclusion / prochaine étape** :
+- Sprint 1 terminé. Sprint 2 : guard `can_self_provision` backend sur `POST /setup/players` + auto-provision frontend.
+
+## [2026-04-13] docs(migration): cadrer la stratégie V7 accès, onboarding et première sync
+
+**Statut** : Complété  
+**Branche** : `feature/remove-streamlit-ui`
+
+**Décision technique** :
+- Rédaction d'un document dédié `.ai/PLAN_V7_AUTH_SECURITY_ONBOARDING.md` pour séparer clairement quatre sujets souvent mélangés : contrôle d'accès à l'instance, session web applicative, liaison du compte Halo et provisioning local.
+- Recommandation formalisée : conserver un garde-barrière externe au court terme, construire un onboarding V7 moderne dans l'app, et modéliser la première sync comme un job asynchrone avec progression métier.
+- Le document cadre aussi l'auto-provisioning admin (`can_self_provision`) et explicite pourquoi le setup web actuel ne remplace pas encore une vraie auth applicative complète.
+
+**Résultats observés** :
+- Nouveau plan de référence ajouté dans `.ai/PLAN_V7_AUTH_SECURITY_ONBOARDING.md`.
+- `MIGRATION_MASTER.md` pointe désormais vers ce document dans la table de navigation.
+
+**Conclusion / prochaine étape** :
+- Utiliser ce plan pour fiabiliser le flux setup React/FastAPI : affichage réel du Device Code, suppression de la ressaisie du gamertag, politique de provisioning admin et vrai job de sync initiale.
+
+## [2026-07-14] feat(migration): Slices 5-8 — Accueil, Coéquipiers, Synthèse, Médias (39 tests ✅, total 132/132)
+
+**Statut** : Complété  
+**Branche** : `feature/remove-streamlit-ui`
+
+**Décision technique** :
+- Slice 5 (Accueil) : 3 endpoints (`GET /pages/home`, `GET /battlepass`, `GET /challenges`). Service `home_service.py` avec hero card (KPIs + trend fenêtre glissante 5), highlights (pic KD récent, tendance, volume), recent_matches, session summary solo/squad, médias via MediaIndexer. BattlePass / Challenges = best-effort via SPNKr avec graceful fallback `available=False`.
+- Slice 6 (Coéquipiers) : `POST /pages/teammates`. Service `teammates_service.py` : top 50 équipiers via `shared.match_participants` JOIN même équipe, KPIs with/without par sous-requête EXISTS / NOT EXISTS, solo_reference depuis `player_match_enrichment.is_with_friends=False`.
+- Slice 7 (Synthèse) : `POST /pages/synthesis`. Service `synthesis_service.py` : split solo/squad sur `is_with_friends`, filtre temporel (`_PERIOD_DAYS`), KPIs (KD, WR, accuracy, kills/min, avg_life, perf_score), `ComparisonMetricItem` générique avec valeurs numériques + texte formaté.
+- Slice 8 (Médias) : `GET /pages/media`. Service `media_service.py` via `MediaIndexer.load_media_for_ui`, filtres kind/section, tri date_desc/date_asc, pagination `PaginationMeta`, comptages par section.
+- Correction `PaginatedResponse` : utilise `PaginationMeta(total, page, page_size, has_next, has_prev)` — les tests initiaux utilisaient une signature plate incorrecte.
+
+**Résultats observés** :
+- Slices 5-8 : 39/39 tests ✅ (test_home.py×13 + test_teammates.py×8 + test_synthesis.py×8 + test_media.py×10)
+- Cumul total : 132/132 tests API ✅
+- Fichiers créés : schemas/home.py, schemas/teammates.py, schemas/synthesis.py, schemas/media.py, services/home_service.py, services/teammates_service.py, services/synthesis_service.py, services/media_service.py, routers/home.py, routers/teammates.py, routers/synthesis.py, routers/media.py, tests/api/test_home.py, tests/api/test_teammates.py, tests/api/test_synthesis.py, tests/api/test_media.py
+- main.py : 4 imports + 4 `include_router`
+
+**Conclusion** : Toutes les slices MVP (0a, 0b, 1, 2, 3, 4, 5, 6, 7, 8) livrées. API FastAPI complète. MIGRATION_MASTER.md mis à jour.
+
+---
+
+## [2026-07-14] feat(migration): Slice 4 — Explorer (16 tests ✅, total 93/93)
+
+**Statut** : Complété  
+**Branche** : `feature/remove-streamlit-ui`
+
+**Décision technique** :
+- 3 endpoints Explorer : `GET /directory/gamertags/search` (global, sans player_slug), `POST /players/{slug}/pages/explorer/matches-query`, `POST /players/{slug}/pages/explorer/player-query`.
+- `directory_router` + `player_router` séparés dans `routers/explorer.py` pour distinguer les endpoints globaux des endpoints joueur.
+- `search_gamertags` : charge tous les gamertags depuis `shared.v_gamertag_lookup` → fuzzy search via difflib (cutoff 0.4 + substring). DEMO_MODE: fixtures_dir; normal: repo_root/data/warehouse.
+- `get_explorer_matches` : filtre global FilterContextInput (réutilise filter_service._apply_period/cascade/session_filter) + filtres locaux ExplorerMatchFilters (date, squad_scope, experience, playlist, mode, map, match_id). Enrich UI + pagination en mémoire.
+- `get_explorer_player` : résoud target_gamertag → target_xuid, charge matchs communs (SQL INNER JOIN match_participants×2 + match_registry), split alliés/adversaires, build ExplorerEncounterRow + ExplorerPlayerSummary.
+- Correction bug import: `apps.api.app.config` → `apps.api.app.core.config`.
+
+**Résultats observés** :
+- Slice 4 : 16/16 tests ✅ (test_explorer.py)
+- Cumul total : 93/93 tests API ✅ (0a×11 + 0b×14 + 1×25 + 2×13 + 3×14 + 4×16)
+- Fichiers créés : schemas/explorer.py, services/explorer_service.py, routers/explorer.py, tests/api/test_explorer.py
+- main.py : ajout import + enregistrement directory_router + player_router
+- MIGRATION_MASTER.md : Explorer → `preview`, phase active → Slice 5
+
+**Conclusion / prochaine étape** :
+- Slice 5 : Accueil — hero stats, signaux, dernier match, Battle Pass, challenges, timeline
+
+
+## [2026-07-14] feat(migration): Slices 2+3 — Profil/Carrière + Historique parties (77 tests ✅)
+
+**Statut** : Complété  
+**Branche** : `feature/remove-streamlit-ui`
+
+**Décision technique** :
+- Slice 2 (Profil/Carrière) : 3 endpoints GET carrière (page, top-matches, encounters). Données DuckDB via lazy imports src.*. CareerService reuse `_load_career_data`, `_load_career_history` de src/ui/pages/career_data.py.
+- Slice 3 (Historique parties) : 2 endpoints POST (query + export). Architecture séparée : service réutilise filtres de filter_service via imports internes (_apply_period_filter, _apply_cascade_filter, _normalize_filter_input). SQL enrichi avec colonnes de stats (kills, deaths, kda, mmr, personal_score, etc.). win_rate_hist calculé sur df_full (non filtré). performance_score_relative via compute_performance_series (lazy import). Tri + pagination en mémoire.
+- `PaginationRequest` ajouté dans common.py (page, page_size).
+- Pattern export : FileTokenResponse avec token éphémère secrets.token_urlsafe (CSV généré via jeton, pas inline dans la réponse).
+
+**Résultats observés** :
+- Slice 2 : 13/13 tests ✅ (test_career.py)
+- Slice 3 : 14/14 tests ✅ (test_match_history.py)
+- Cumul total : 77/77 tests API ✅ (0a×11 + 0b×14 + 1×25 + 2×13 + 3×14)
+- Fichiers créés : schemas/career.py, schemas/match_history.py, services/career_service.py, services/match_history_service.py, routers/career.py, routers/match_history.py, tests/api/test_career.py, tests/api/test_match_history.py
+
+**Conclusion / prochaine étape** :
+- Slice 4 : Explorer — `GET /directory/gamertags/search` + `POST /players/{slug}/pages/explorer/matches-query` + `POST /players/{slug}/pages/explorer/player-query`
+
+
+- Lire `src/app/career.py`, `career_data.py`, `career_logic.py` pour identifier les données nécessaires.
+
+## [2026-04-12] docs(migration): backloger une cible desktop Tauri sans Rust métier
+
+**Statut** : Complété  
+**Branche** : `feature/remove-streamlit-ui`
+
+**Décision technique** :
+- La migration React/FastAPI reste explicitement **web-first**. La cible desktop potentielle doit venir comme couche de distribution supplémentaire, pas comme nouveau centre de gravité de l'application.
+- Tauri est retenu comme piste de packaging desktop à explorer, mais **sans réécriture Rust métier**. Le rôle de Rust est limité à la coque desktop et à son cycle de vie technique.
+- Le backend canonique reste `apps/api/` en Python/FastAPI, afin de préserver la compatibilité navigateur, le déploiement VPS et la réutilisation maximale du noyau existant.
+
+**Résultats observés** :
+- `.ai/BACKLOG.md` contient maintenant une entrée dédiée au spike desktop Tauri, avec objectifs, garde-fous et critères go/no-go.
+- Le backlog explicite que l'app doit rester exécutable à la fois en mode web/VPS et en mode desktop local, sans introduire de dépendances produit au runtime Tauri.
+- Le risque de dérive vers une réécriture Rust globale est maintenant documenté et repoussé dès le backlog.
+
+**Conclusion / prochaine étape** :
+- Poursuivre les slices MVP React/FastAPI sans couplage desktop.
+- Quand le shell web sera suffisamment stable, lancer un spike Tauri limité au packaging, au lifecycle du backend local et aux chemins de données utilisateur.
+
+## [2026-04-12] feat(migration): Slice 0b — Contrat de filtres POST /filters/resolve
+
+**Statut** : Complété  
+**Branche** : `feature/remove-streamlit-ui`
+
+**Décision technique** :
+- Slice 0b = pièce centrale de la migration. `POST /api/v1/players/{slug}/filters/resolve` remplace entièrement `session_state`, `GAP_MINUTES_FIXED`, shadow keys, `filters_render.py` + `filter_state.py`.
+- Service **stateless** : aucun import Streamlit, aucun accès `st.session_state`. Entrée = `FilterContextInput`, sortie = `FilterContextResolved`.
+- Algorithme de résolution : (1) load DuckDB → (2) i18n columns → (3) normaliser input (dates only, options invalides conservées fidèlement) → (4) filtre temporel (période ou sessions) → (5) options disponibles (cascade expérience→playlist→mode→carte) → (6) filtre cascade → (7) comptes.
+- Normalisation : dates inversées sont retournées silencieusement — les options invalides (ex: playlist absente du dataset) sont conservées dans l'input (comportement fidèle au Streamlit).
+- DEMO_MODE : `resolve_player` accepte uniquement "demo" et "demo-player" comme slugs valides (plus strict que Slice 0a).
+- `globalFilterStore.ts` : Zustand + sync URL via query param `?f=` (base64 JSON) — hydratable depuis l'URL.
+- `scripts/create_test_corpus.py` : script pour extraire les fixtures depuis la DB de production.
+
+**Résultats observés** :
+- `apps/api/app/schemas/filters.py` : schemas `FilterContextInput`, `FilterContextResolved`, `SessionOption`, `AvailableOptions`, `FilterCounts`
+- `apps/api/app/services/filter_service.py` : `resolve_filters()` stateless, `_add_display_columns()`, `_apply_experience_filter()`, `_build_session_options()`, `_build_available_options()`
+- `apps/api/app/routers/filters.py` : `POST /api/v1/players/{player_slug}/filters/resolve`
+- `apps/web/src/stores/globalFilterStore.ts` : `useGlobalFilterStore` avec `filterContext`, `filterContextHash`, `hydrateFromUrl()`, `setFilterMode/Period/Sessions/Cascade()`
+- `apps/web/src/lib/api/types.ts` : types TS ajoutés pour filtres
+- `scripts/create_test_corpus.py` : extraction prod → `tests/fixtures/ref_player/`
+- **25/25 tests verts** (11 bootstrap + 14 filters)
+
+**Conclusion / prochaine étape** :
+- Slice 0b livrée. Les deux contrats fondamentaux (bootstrap + filtres) sont en place.
+- Prochaine : Slice 1 — Setup/Onboarding (wizard de configuration, smoke test).
+- Corpus `tests/fixtures/ref_player/` toujours vide — à remplir avec `create_test_corpus.py` avant les tests de parité.
+
+---
+
+## [2026-04-12] feat(migration): Slice 0a — Bootstrap FastAPI + scaffold React (plomberie bout en bout)
+
+**Statut** : Complété  
+**Branche** : `feature/remove-streamlit-ui`
+
+**Décision technique** :
+- Démarrage de la migration effective après la phase cadrage. Slice 0a implémentée entièrement.
+- Architecture choisie : `apps/api/` (FastAPI) + `apps/web/` (Vite + React + TS) coexistent avec le legacy Streamlit.
+- Session web : `itsdangerous` + fichiers JSON (pas Redis — single-user/small-scale, cf. DECISIONS.md §3).
+- DEMO_MODE activable via `LEVELUP_DEMO_MODE=true` — bypass auth, fixtures dans `tests/fixtures/ref_player/`.
+- Types TypeScript écrits manuellement pour Slice 0a — seront remplacés par `openapi-typescript` dès le pipeline `make generate-types` opérationnel.
+
+**Résultats observés** :
+- `apps/api/` créé : main.py, core/, deps/, routers/, schemas/, services/ (tous dans la structure DECISIONS.md §4)
+- Endpoints implémentés : `GET /api/v1/health`, `GET /api/v1/bootstrap`, `GET /api/v1/players`, `POST /api/v1/session/context`
+- `apps/web/` scaffoldé : Vite 8 + React 19 + TanStack Router + TanStack Query + Zustand + Tailwind v4 + MSW + Vitest
+- Proxy dev `/api/*` → `127.0.0.1:8000` configuré dans vite.config.ts
+- `tests/fixtures/` structure créée (ref_player, scopes, golden_values) — DBs à remplir via `scripts/create_test_corpus.py`
+- Makefile enrichi : `make api`, `make web`, `make dev`, `make test-api`, `make test-parity`, `make test-web`, `make generate-types`
+- pyproject.toml : fastapi, uvicorn[standard], itsdangerous, structlog, python-multipart, httpx ajoutés
+- **11/11 tests `tests/api/test_bootstrap.py` passent**
+
+**Prochaine étape** :
+- Remplir `tests/fixtures/ref_player/` : lancer `scripts/create_test_corpus.py` avec le joueur de référence
+- Remplir `tests/fixtures/golden_values/` depuis la surface Streamlit actuelle
+- Slice 0b : implémenter `POST /api/v1/players/{player_slug}/filters/resolve` + `useGlobalFilterStore`
+
+---
+
 ## [2025-07-26] docs(migration): alignement complet des docs migration sur les sections V7
 
 **Statut** : Complété  
