@@ -293,7 +293,10 @@ SPNKR_OAUTH_REFRESH_TOKEN_SPARTANC=votre_refresh_token
 }
 ```
 
-### Paramètres Streamlit (.streamlit/config.toml)
+### Paramètres Streamlit (.streamlit/config.toml) — *Archivé (Slice 9)*
+
+> Cette section concerne l’ancienne interface Streamlit (décommissionée). Le dashboard
+> React/Vite tourne sur le port **5173** (API FastAPI sur **8000**).
 
 ```toml
 [server]

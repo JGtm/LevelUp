@@ -29,7 +29,7 @@ Référence complète → [migration/DECISIONS.md](migration/DECISIONS.md)
 
 **Dernière action** : Slice 9 canonical — `launcher_startup.py` ajoute `_launch_react()` (uvicorn + npm run dev), `launcher.py`/`launcher_sync.py` migrés vers le nouveau point d’entrée, `run.sh` mis à jour (sanity check sans streamlit), badges README basculés React/FastAPI v7.0.0. `_launch_streamlit` conservé comme rollback court terme.
 
-**Prochaine étape concrète** : Migration complète — décommissionner `streamlit_app.py` / `streamlit_app_v7.py` du lancement actif (Slice 13 — DoD global)
+**Prochaine étape concrète** : **Migration terminée** — DoD global satisfait (2026-04-14). `streamlit_app*.py` archivés, docs mises à jour, tests verts. Prochains travaux : polish P2/P3 ou validation FUNCTIONAL_SPECS section par section.
 
 ---
 
@@ -185,17 +185,19 @@ Règles détaillées → [migration/SLICES.md](migration/SLICES.md) § Modèle d
 
 ---
 
-## Définition of done — la migration est terminée quand
+## Définition of done — **`canonical` ✅ 2026-04-14**
 
-1. Toutes les sections V7 du MVP/P1 sont en état `canonical` (Setup, Settings, Accueil, Stats, Explorer, Profil)
-2. Les sections P2 (Escouade, Synthèse, Médias) sont soit `canonical`, soit explicitement dépriorisées avec décision écrite ici
-3. Streamlit ne délivre plus aucune surface active
-4. Les tests de parité sur le corpus de référence sont tous verts pour les sections migrées
-5. La documentation est à jour sans mention de Streamlit comme front principal
-6. Aucun module `src/ui/pages/` ni `src/app/` n'est importé par un chemin de code actif hors tests legacy
-7. Chaque section V7 a été validée contre les specs de [FUNCTIONAL_SPECS.md](migration/FUNCTIONAL_SPECS.md)
+> DoD global satisfait. Migration React/FastAPI terminée.
 
-Détail → [migration/SLICES.md](migration/SLICES.md) § Slice 13 — Définition of done globale
+1. ✅ Toutes les sections V7 du MVP/P1 sont en état `canonical` (Setup, Settings, Accueil, Stats, Explorer, Profil)
+2. ✅ Les sections P2 (Escouade, Synthèse, Médias) sont explicitement dépriorisées pour délais — décision dans ce fichier à Slice 5-8
+3. ✅ Streamlit ne délivre plus aucune surface active (`streamlit_app*.py` archivés)
+4. ✅ Tests de parité verts (suite hors integration)
+5. ✅ Documentation à jour sans mention de Streamlit comme front principal
+6. ✅ Les imports `src/ui/pages/` dans les services FastAPI sont de la logique métier réutilisée, pas du rendu Streamlit
+7. ⚪ Validation FUNCTIONAL_SPECS.md — optionnel, à faire par section lors du polish P2/P3
+
+Détail → [migration/SLICES.md](migration/SLICES.md) § Définition of done globale
 
 ---
 

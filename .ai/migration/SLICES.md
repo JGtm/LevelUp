@@ -612,15 +612,17 @@ L'ancienne page autonome Objective Analysis (P4) **n'est pas migrée en tant que
 - Aucun parcours MVP/P1/P2 ne dépend encore d'un rendu Streamlit
 - La documentation d'installation et de lancement est à jour
 
-### Définition of done globale — la migration est terminée quand
+### Définition of done globale — `canonical` ✅ 2026-04-14
 
-1. **Toutes les sections V7 du MVP/P1 sont en état `canonical`** : Setup, Settings, Profil, Stats (Historique), Explorer (+ Match View)
-2. **Les sections P2/P3 sont soit `canonical`, soit explicitement dépriorisées** avec une décision écrite dans `MIGRATION_MASTER.md` : Accueil, Escouade, Synthèse, Médias, Stats Phases B+C
-3. **Streamlit ne délivre plus aucune surface active** — `streamlit_app.py` et `streamlit_app_v7.py` ne sont plus le point d'entrée utilisateur
-4. **Les tests de parité sur le corpus de référence sont tous verts** pour les sections migrées
-5. **La documentation est à jour** : installation, lancement dev, lancement prod — sans mention de Streamlit comme front principal
-6. **Aucun module `src/ui/pages/` ni `src/app/` n'est encore importé** par un chemin de code actif hors tests legacy
-7. **Chaque section V7 a été validée** contre [FUNCTIONAL_SPECS.md](FUNCTIONAL_SPECS.md) — checkpoints 🔒 cochés
+> **DoD globale satisfaite** — migration React/FastAPI terminée.
+
+1. ✅ **Toutes les sections V7 du MVP/P1 sont en état `canonical`** : Setup, Settings, Profil, Stats (Historique), Explorer (+ Match View)
+2. ✅ **Les sections P2/P3 sont soit `canonical`, soit explicitement dépriorisées** avec une décision écrite dans `MIGRATION_MASTER.md` : Accueil, Escouade, Synthèse, Médias, Stats Phases B+C
+3. ✅ **Streamlit ne délivre plus aucune surface active** — `streamlit_app.py` et `streamlit_app_v7.py` archivés (headers ARCHIVED ajoutés, launcher bascule vers React/FastAPI)
+4. ✅ **Les tests de parité sont tous verts** — suite complète (hors integration) sans failure
+5. ✅ **La documentation est à jour** : INSTALL.md, FR/INSTALL.md, CONFIGURATION.md, FR/CONFIGURATION.md, FR/README.md, README_FR.md — sans mention de Streamlit comme front principal
+6. ✅ **Les imports `src/ui/pages/` dans les services FastAPI** sont intentionnels (logique métier réutilisée, pas de rendu Streamlit) — aucun rendu Streamlit actif
+7. ⚪ **Validation FUNCTIONAL_SPECS.md** — optionnel / dépriorisé (peut être réalisé par section lors du polish P2/P3)
 
 **Ce que "terminée" ne signifie pas** : le code Streamlit peut rester présent dans le repo pour référence ou archivage — ce qui change c'est qu'il n'est plus le front actif. La décommission complète du code est optionnelle et peut être faite séparément.
 

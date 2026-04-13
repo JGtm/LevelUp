@@ -7,6 +7,7 @@ Contrats :
 from __future__ import annotations
 
 from datetime import datetime
+from typing import Literal
 
 from pydantic import BaseModel
 
@@ -32,7 +33,7 @@ class MediaQueryRequest(BaseModel):
     """Paramètres de filtrage et tri de la galerie médias."""
 
     sort: str = "date_desc"
-    kind_filter: str | None = None
+    kind_filter: Literal["screenshot", "video", "thumbnail"] | None = None
     section_filter: str | None = None
     pagination: PaginationRequest = PaginationRequest()
 

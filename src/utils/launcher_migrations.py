@@ -28,20 +28,8 @@ from src.utils.launcher_env import LANG as _LANG  # noqa: E402
 def _run_migrations() -> None:  # noqa: C901, PLR0912
     """Applique les migrations de schéma pendantes sur toutes les DB.
 
-    Exécuté avant le lancement de Streamlit. Non-bloquant en cas d'erreur.
+    Exécuté avant le lancement du dashboard React/FastAPI. Non-bloquant en cas d'erreur.
     """
-    # Streamlit réinitialise son logger lors de son premier import — on le pré-importe
-    # et on re-silence avant les imports qui appliquent @st.cache_data.
-    try:
-        import logging as _lg  # noqa: PLC0415
-
-        import streamlit  # noqa: F401, PLC0415
-
-        _lg.getLogger("streamlit.runtime.caching.cache_data_api").setLevel(_lg.ERROR)
-        _lg.getLogger("streamlit.runtime.caching").setLevel(_lg.ERROR)
-    except Exception:
-        pass
-
     from src.data.migration.runner import apply_pending_migrations  # noqa: PLC0415
 
     players = _list_players()

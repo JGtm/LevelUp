@@ -307,7 +307,7 @@ def _cmd_setup(args) -> int:  # noqa: ANN001
 
     # ── 3. Vérification rapide ──
     check = subprocess.run(
-        [py, "-c", "import streamlit; import duckdb; import polars; print('OK')"],
+        [py, "-c", "import uvicorn; import duckdb; import polars; print('OK')"],
         capture_output=True,
         text=True,
     )

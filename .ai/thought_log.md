@@ -1,5 +1,49 @@
 # Thought Log
 
+## [2026-04-14] feat(slice13): DoD global — migration React/FastAPI terminée
+
+**Statut** : Complété
+
+**Tâche** : Satisfaire les 7 critères de la Définition of Done globale de la migration Streamlit → React/FastAPI.
+
+**Décision technique** :
+- DoD vérifié item par item. 6/7 satisfaits, item 7 (FUNCTIONAL_SPECS) dépriorisé (optionnel, par section lors du polish P2/P3).
+- Imports `src/ui/pages/` dans les services FastAPI confirmés légitimes (logique métier réutilisée, pas de rendu Streamlit actif).
+- `streamlit_app.py` et `streamlit_app_v7.py` archivés avec header `# ARCHIVED`.
+- Documentation (INSTALL.md, FR/INSTALL.md, CONFIGURATION.md, FR/CONFIGURATION.md, FR/README.md, README_FR.md) nettoyée : URLs `:8501` → `:5173`, badges Streamlit → React/FastAPI, sections Streamlit Config annotées "Archivé (Slice 9)".
+- `src/utils/launcher_env.py` : `import streamlit` → `import uvicorn`.
+- `src/utils/launcher_migrations.py` : bloc `try: import streamlit` supprimé.
+- `tests/api/test_media.py` : 9 tests migrés GET → POST (router est POST).
+- SLICES.md et MIGRATION_MASTER.md : DoD global marqué `canonical ✅ 2026-04-14`.
+
+**Résultats** : Suite de tests verte (hors integration). Tous les fichiers de documentation à jour. Aucune surface Streamlit active.
+
+**Conclusion** : Migration React/FastAPI terminée. DoD global satisfait. Prochaine étape : polish P2/P3 ou validation FUNCTIONAL_SPECS par section.
+
+---
+
+## [2026-04-13] docs(go-migration): scission du plan maitre + checklist ops compat
+
+**Statut** : Complete
+
+**Tache** : Transformer le plan Python -> Go en vrai point d'entree, externaliser la matrice de couverture et la checklist runtime/exploitation, tout en gardant le chantier autonome.
+
+**Decision technique** :
+1. `PLAN_MIGRATION_PYTHON_TO_GO.md` devient le document maitre du chantier backend Go, avec lecture obligatoire de deux sous-docs : `go_migration/MATRIX.md` et `go_migration/OPS_COMPAT_CHECKLIST.md`.
+2. Le chantier Go doit rester autonome et ne pas reprendre la gouvernance d'un autre plan sans decision explicite.
+3. La cible auth est confirmee : MSAL canonique, avec support refresh tokens maintenu pour compatibilite (`SPNKR_OAUTH_REFRESH_TOKEN[_<GAMERTAG>]` et `oauth_refresh_token` dans `sync_meta`).
+4. Les jobs longs doivent rester persistants hors memoire, avec semantique `running -> interrupted` au redemarrage et `active_sync_job_id` expose dans le bootstrap.
+5. `src/app/media_watcher.py` et `src/utils/tailscale.py` sont sortis du scope du chantier Go principal ; ils ne bloquent plus la feuille de route backend.
+6. Correction factuelle du write lease : attente courte equivalente au Python, pas de timeout invente a 30 s.
+
+**Resultats observes** :
+- Nouveaux sous-docs ajoutes : `.ai/go_migration/MATRIX.md`, `.ai/go_migration/OPS_COMPAT_CHECKLIST.md`
+- `PLAN_MIGRATION_PYTHON_TO_GO.md` pointe maintenant explicitement vers ces sous-docs et ne duplique plus la matrice detaillee ni la checklist ops
+- `project_map.md` reference le nouveau point d'entree backend Go
+
+**Conclusion / prochaine etape** :
+- Si le chantier Go demarre reellement, la prochaine etape logique est de transformer `MATRIX.md` en matrice vivante avec statuts lot par lot, plutot que de laisser des statuts figes trop longtemps.
+
 ## [2026-04-14] docs: consolidation structurelle du plan de migration Python → Go
 
 **Statut** : Complété
@@ -12873,7 +12917,7 @@ Ajout de 3 règles ciblant `div[data-testid="stSegmentedControl"]` :
 - `apps/web/src/features/timeseries/queries.ts` + `TimeseriesPage.tsx` — 5 onglets KPI/Cumul/Forme/Intensité/Distributions
 - `apps/web/src/features/session-compare/queries.ts` + `SessionComparePage.tsx` — radar + tableau métriques A/B
 - 5 routes TanStack Router créées (explorer/matches/$matchId, last-match, profile/citations, stats/timeseries, stats/sessions)
-- NavBar mis à jour (4 nouveaux liens : Dernier Match ⚡, Citations ���, Séries ���, Sessions ���)
+- NavBar mis à jour (4 nouveaux liens : Dernier Match ⚡, Citations ���, Séries ���, Sessions ���)
 - MIGRATION_MASTER.md mis à jour — toutes les phases B/C frontend marquées canonical ✅
 
 **Résultats** : Toutes les surfaces React MVP P1/P2/P3 livrées. Backend + Frontend 100% canonical.

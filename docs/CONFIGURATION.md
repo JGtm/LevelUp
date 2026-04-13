@@ -19,7 +19,7 @@ French version: [FR/CONFIGURATION.md](FR/CONFIGURATION.md)
 ## Setup Wizard (recommended)
 
 The easiest way to configure LevelUp is through the **Setup Wizard**, available automatically
-on first launch in the browser at `http://localhost:8501`.
+on first launch in the browser at `http://localhost:5173`.
 
 **v6 — Zero configuration for standard users.** LevelUp bundles its own Azure client ID.
 The wizard only needs two things from you:
@@ -390,7 +390,10 @@ cp app_settings.example.json app_settings.json
 | `repository_mode` | string | `"duckdb"` | Data backend (always `duckdb`) |
 | `enable_duckdb_analytics` | bool | `true` | Enable DuckDB analytics features |
 
-### Streamlit Config (`.streamlit/config.toml`)
+### Streamlit Config (`.streamlit/config.toml`) — *Archivé (Slice 9)*
+
+> Cette section concerne l’ancienne interface Streamlit (décommissionée). Le dashboard
+> React/Vite tourne sur le port **5173** (API FastAPI sur **8000**).
 
 ```toml
 [server]
