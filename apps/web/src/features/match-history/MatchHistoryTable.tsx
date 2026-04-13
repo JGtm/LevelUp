@@ -1,0 +1,164 @@
+/**
+ * MatchHistoryTable — tableau paginé de l'historique des parties.
+ */
+import { Badge } from '@/components/ui/badge'
+import { Button } from '@/components/ui/button'
+import type { MatchHistoryRow, PaginationMeta } from '@/lib/api/types'
+
+interface Props {
+  rows: MatchHistoryRow[]
+  pagination: PaginationMeta
+  sortField: string
+  sortDirection: 'asc' | 'desc'
+  onSort: (field: string) => void
+  onPage: (page: number) => void
+  onExport?: () => void
+  exporting?: boolean
+}
+
+const OUTCOME_TONE: Record<number, string> = {
+  1: 'secondary', // Égalité
+  2: 'success',   // Victoire
+  3: 'destructive', // Défaite
+  4: 'outline',   // DNF
+}
+
+function SortIndicator({
+  field,
+  activeField,
+  direction,
+}: {
+  field: string
+  activeField: string
+  direction: 'asc' | 'desc'
+}) {
+  if (field !== activeField) return <span className="ml-1 text-gray-300">⇅</span>
+  return <span className="ml-1 text-purple-500">{direction === 'asc' ? '↑' : '↓'}</span>
+}
+
+export function MatchHistoryTable({
+  rows,
+  pagination,
+  sortField,
+  sortDirection,
+  onSort,
+  onPage,
+  onExport,
+  exporting,
+}: Props) {
+  const columns = [
+    { key: 'start_time', label: 'Date' },
+    { key: 'map_mode', label: 'Carte / Mode', sortable: false },
+    { key: 'outcome_label', label: 'Résultat', sortable: false },
+    { key: 'score_label', label: 'Score', sortable: false },
+    { key: 'performance_score_relative', label: 'Perf.' },
+    { key: 'delta_mmr', label: 'ΔMMR' },
+    { key: 'win_rate_hist', label: 'Win%' },
+    { key: 'average_life_mmss', label: 'Vie moy.', sortable: false },
+  ] as const
+
+  return (
+    <div className="flex flex-col gap-2">
+      {/* Barre d'actions */}
+      <div className="flex items-center justify-between">
+        <p className="text-sm text-gray-500">
+          {pagination.total.toLocaleString('fr-FR')} partie{pagination.total !== 1 ? 's' : ''}
+        </p>
+        {onExport && (
+          <Button variant="outline" size="sm" onClick={onExport} loading={exporting}>
+            Exporter CSV
+          </Button>
+        )}
+      </div>
+
+      {/* Tableau */}
+      <div className="overflow-x-auto rounded-lg border border-gray-200 bg-white">
+        <table className="w-full text-sm">
+          <thead>
+            <tr className="border-b border-gray-100 bg-gray-50 text-xs font-medium text-gray-500">
+              {columns.map((col) => (
+                <th
+                  key={col.key}
+                  className={`px-4 py-2.5 text-left whitespace-nowrap ${
+                    (col as { sortable?: boolean }).sortable !== false ? 'cursor-pointer hover:text-gray-900' : ''
+                  }`}
+                  onClick={() => (col as { sortable?: boolean }).sortable !== false && onSort(col.key)}
+                >
+                  {col.label}
+                  {(col as { sortable?: boolean }).sortable !== false && (
+                    <SortIndicator field={col.key} activeField={sortField} direction={sortDirection} />
+                  )}
+                </th>
+              ))}
+            </tr>
+          </thead>
+          <tbody className="divide-y divide-gray-50">
+            {rows.map((row) => (
+              <tr key={row.match_id} className="hover:bg-purple-50/30 transition-colors">
+                <td className="px-4 py-2 text-gray-400">
+                  {new Date(row.start_time).toLocaleDateString('fr-FR')}
+                </td>
+                <td className="px-4 py-2">
+                  <span className="font-medium text-gray-800">{row.map_ui}</span>
+                  <span className="ml-1 text-xs text-gray-400">· {row.mode_ui}</span>
+                </td>
+                <td className="px-4 py-2">
+                  <Badge variant={(OUTCOME_TONE[row.outcome_code ?? 0] as 'success' | 'destructive' | 'secondary' | 'outline') ?? 'secondary'}>
+                    {row.outcome_label}
+                  </Badge>
+                </td>
+                <td className="px-4 py-2 text-gray-700">{row.score_label}</td>
+                <td className="px-4 py-2 text-right font-mono text-purple-700">
+                  {row.performance_score_relative != null ? row.performance_score_relative : '—'}
+                </td>
+                <td className="px-4 py-2 text-right font-mono text-sm">
+                  {row.delta_mmr != null ? (
+                    <span className={row.delta_mmr >= 0 ? 'text-green-600' : 'text-red-500'}>
+                      {row.delta_mmr >= 0 ? '+' : ''}{row.delta_mmr.toFixed(0)}
+                    </span>
+                  ) : '—'}
+                </td>
+                <td className="px-4 py-2 text-right text-gray-600">
+                  {row.win_rate_hist != null ? `${(row.win_rate_hist * 100).toFixed(0)}%` : '—'}
+                </td>
+                <td className="px-4 py-2 text-right text-gray-500">{row.average_life_mmss}</td>
+              </tr>
+            ))}
+            {rows.length === 0 && (
+              <tr>
+                <td colSpan={8} className="px-4 py-8 text-center text-gray-400">
+                  Aucun match trouvé.
+                </td>
+              </tr>
+            )}
+          </tbody>
+        </table>
+      </div>
+
+      {/* Pagination */}
+      <div className="flex items-center justify-between text-sm">
+        <span className="text-gray-500">
+          Page {pagination.page} / {Math.ceil(pagination.total / pagination.page_size)}
+        </span>
+        <div className="flex items-center gap-2">
+          <Button
+            variant="outline"
+            size="sm"
+            disabled={!pagination.has_prev}
+            onClick={() => onPage(pagination.page - 1)}
+          >
+            ← Précédent
+          </Button>
+          <Button
+            variant="outline"
+            size="sm"
+            disabled={!pagination.has_next}
+            onClick={() => onPage(pagination.page + 1)}
+          >
+            Suivant →
+          </Button>
+        </div>
+      </div>
+    </div>
+  )
+}
