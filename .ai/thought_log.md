@@ -1,5 +1,25 @@
 # Thought Log
 
+## [2026-04-13] feat(security): Sprint 4 — CSRF, rate limiting, structured logging
+
+**Statut** : Complété  
+**Branche** : `feature/remove-streamlit-ui`  
+**Commit** : `eeec3a85`
+
+**Décision technique** :
+- **4.1** `trusted_proxies` config + avertissement insecure_session_secret au démarrage en prod. `ProxyHeadersMiddleware` retiré de l'app (géré par `uvicorn --proxy-headers` côté déploiement).
+- **4.2** `core/csrf.py` → `require_same_origin(Request)` : valide `Origin` (puis `Referer` en fallback) contre `settings.cors_origins`. Absent = autorisation (CLI/serveur). 403 `csrf_origin_mismatch` si origine inconnue. Branché sur : `POST device-flow/start`, `POST setup/players`, `POST sync/initial`, `PATCH settings`.
+- **4.3** `core/rate_limit.py` → sliding window in-memory 5 req/min par IP. Lit `X-Forwarded-For`/`X-Real-IP`. Désactivé en DEMO_MODE. `conftest.py` reset le store entre chaque test pour éviter les faux 429.
+- **4.4** `setup_service.py` migré `logging.getLogger` → `structlog`. Événements traçables : `device_flow_started`, `device_flow_succeeded`, `device_flow_failed`, `player_profile_created`, `create_player_profile_failed`, `smoke_test_bg_error`. `job_store.py` : `job_store_restart_cancelled` au rechargement.
+
+**Résultats observés** :
+- 151/151 tests passent.
+- Pre-commit hooks : ✅ ruff (7 auto-fixes) + mixed-line-ending.
+
+**Conclusion / prochaine étape** :
+- Sprint 4 terminé. Tous les 4 sprints V7 Onboarding sont implémentés et testés.
+- Prochaine session : Sprint 1 (P0) — faire de bootstrap la source de vérité produit, stocker `linked_halo_identity` en session.
+
 ## [2026-04-14] feat(sync): Sprint 3 — sync initiale avec progression métier
 
 **Statut** : Complété  
