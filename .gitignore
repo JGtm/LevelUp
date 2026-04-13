@@ -86,6 +86,9 @@ data/rag/
 data/demo/
 data/logs/
 data/players/
+# Sessions runtime (API FastAPI + tests)
+data/sessions/
+tests/api/_sessions_test/
 data/warehouse/match_facts/
 data/warehouse/*.duckdb
 data/warehouse/*.wal
