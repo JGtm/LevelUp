@@ -1,5 +1,28 @@
 # Thought Log
 
+## [2026-04-13] fix(connexion-réelle): TypeScript 0 erreur + API DEMO_MODE E2E — Complété
+
+**Statut** : Complété
+
+**Tâche** : Connexion frontend réelle — brancher le bootstrap sur l'API dev, valider E2E en DEMO_MODE. Corriger les erreurs TypeScript bloquantes avant de tester.
+
+**Décision technique** :
+1. **`SetupNextStep` manquait `"initial_sync"`** : le backend émet cette valeur dans `_compute_next_step()` au niveau 583, mais le type TypeScript n'incluait que `'choose_mode' | 'auth' | 'player' | 'smoke_test' | 'done'`. Ajout de `'initial_sync'` dans `types.ts`.
+2. **`globalFilterStore.test.ts` utilisait un objet fictif** : le test `setResolvedContext` passait un objet avec `scoped_match_count`, `period_options`, etc. qui n'existent pas sur `FilterContextResolved`. La vraie structure est `{ effective, available_options, session_options, counts }`. Test réécrit avec la vraie structure typée.
+3. **Non-null assertions** : `FilterContextInput.period`, `sessions`, `cascade` sont optionnels (`?`). 6 accès directs dans les tests corrigés avec `field!.property`.
+4. **`structlog.stdlib.add_logger_name` incompatible** avec `PrintLoggerFactory` : ce processor exige que le logger ait un attribut `.name` (stdlib logger), mais `PrintLogger` n'en a pas. Suppression de `add_logger_name` dans `configure_logging()`.
+5. **`.env.local` créé** : `LEVELUP_DEMO_MODE=true` + `LEVELUP_LOG_LEVEL=DEBUG` — ignoré par git (règle `*.local` dans apps/web/.gitignore).
+
+**Résultats** :
+- `make check-types` : **0 erreur TypeScript** (était 9)
+- **55/55** tests Vitest passent toujours
+- API DEMO_MODE démarre sur :8000, `GET /api/v1/bootstrap` retourne `demo_mode=True`, `current_player=DemoPlayer`
+- Proxy Vite :5173 → :8000 validé via `curl localhost:5173/api/v1/bootstrap`
+
+**Conclusion** : La connexion frontend réelle est validée. L'API répond en DEMO_MODE, le proxy fonctionne. Prochaine étape : fixer `index.tsx` (meta refresh → useNavigate) puis valider la navigation complète dans le navigateur.
+
+---
+
 ## [2026-04-13] feat(frontend): Vitest 55/55 + jsdom + corrections assertions — Complété
 
 **Statut** : Complété
