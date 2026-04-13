@@ -1,6 +1,26 @@
 # Thought Log
 
-## [2026-04-13] feat(slice-0a-canonical): Playwright E2E + generated.ts + canonical — Complété
+## [2026-04-13] fix(demo-mode): xuid DEMO_MODE + Slice 2 Phase A canonical — Complété
+
+**Statut** : Complété
+
+**Tâche** : Passer Slice 2 Phase A (Carrière) de `preview` à `canonical` — correction du 500 en DEMO_MODE, 5 E2E Playwright verts.
+
+**Décision technique** :
+1. **Bug racine** : `resolve_player()` en DEMO_MODE hardcodait `xuid="0000000000000000"`. La base DuckDB de fixtures appartient à `xuid="2535469190789936"`. Résultat : `career_service.get_career_page()` retournait `summary=None` → FastAPI tentait de sérialiser un `CareerPageResponse` avec champs requis à `None` → HTTP 500.
+2. **Fix** : `_read_demo_xuid(fixtures_dir)` lit `xuid.txt` dans les fixtures. Si absent, fallback sur `"0000000000000000"`. La fonction est appelée dans `_demo_players()` et `resolve_player()` pour avoir un xuid cohérent.
+3. **Tests E2E Playwright** : créé `apps/web/e2e/slice-2-career.spec.ts` avec 5 tests : no JS error, API HTTP 200 + rank > 0, "Gold" visible, pas d'erreur fatale, titre "Carrière". Correction du test `not.toContainText('500')` → `not.toContainText('Internal Server Error')` (la page contient "500" dans les données légitimes).
+
+**Résultats** :
+- `GET /api/v1/players/demo-player/pages/career` → HTTP 200, rank=133, xp=791970
+- **8/8** tests parité backend
+- **5/5** tests Vitest CareerPage  
+- **5/5** tests E2E Playwright Career (Chromium, DEMO_MODE)
+- Slice 2 Phase A → `canonical` ✅ dans SLICES.md
+
+**Conclusion** : Slice 2 Phase A canonique. Phase B (Citations) est post-MVP. Prochaine étape : Slice 0b `canonical` (filtres) ou autre slice déjà en `preview`.
+
+
 
 **Statut** : Complété
 

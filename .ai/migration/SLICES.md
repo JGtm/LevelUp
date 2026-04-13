@@ -244,7 +244,7 @@ Les points suivants sont bloquants avant d'ouvrir une première surface React en
 
 ## Slice 2 — Profil [V7 §7 : Carrière + Citations]
 
-**Statut** : `preview`  
+**Statut** : `canonical` ✅ — 2026-04-13 (Phase A)  
 **Dépendances** : Slices 0a, 0b et 1  
 **Ref specs** : [FUNCTIONAL_SPECS.md § 7 Profil](FUNCTIONAL_SPECS.md#7-profil)
 

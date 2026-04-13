@@ -87,13 +87,26 @@ def get_available_players() -> list[PlayerSummary]:
     return players
 
 
+def _read_demo_xuid(fixtures_dir: Path) -> str:
+    """Lit le vrai xuid depuis xuid.txt dans les fixtures, ou retourne le sentinel."""
+    xuid_file = fixtures_dir / "xuid.txt"
+    if xuid_file.exists():
+        return xuid_file.read_text(encoding="utf-8").strip()
+    return "0000000000000000"
+
+
 def _demo_players() -> list[PlayerSummary]:
     """Retourne une liste de joueurs de démo pointant sur les fixtures."""
+    from apps.api.app.core.config import get_settings
+
+    settings = get_settings()
+    fixtures_dir = Path(settings.demo_fixtures_dir)
+    xuid = _read_demo_xuid(fixtures_dir)
     return [
         PlayerSummary(
             player_slug="demo-player",
             gamertag="DemoPlayer",
-            xuid="0000000000000000",
+            xuid=xuid,
             waypoint_player="DemoPlayer",
             is_demo=True,
         )
@@ -115,10 +128,11 @@ def resolve_player(
         if player_slug not in _valid_demo_slugs:
             raise ApiError.not_found("Joueur", player_slug)
         fixtures_dir = Path(settings.demo_fixtures_dir)
+        xuid = _read_demo_xuid(fixtures_dir)
         return PlayerContext(
             player_slug=player_slug,
             gamertag="DemoPlayer",
-            xuid="0000000000000000",
+            xuid=xuid,
             waypoint_player="DemoPlayer",
             db_path=str(fixtures_dir / "stats.duckdb"),
             shared_db_path=str(fixtures_dir / "shared_matches_v2.duckdb"),
