@@ -1,7 +1,7 @@
 /**
  * SetupPage — wizard de configuration initiale.
  *
- * Machine d'état : choose_mode → auth → player → smoke_test → done
+ * Machine d'état : choose_mode → auth → player → initial_sync → done
  */
 import { useState, useEffect } from 'react'
 import { useNavigate } from '@tanstack/react-router'
@@ -18,6 +18,7 @@ import {
   useDeviceFlowStatus,
   useCreatePlayer,
   useStartSmokeTest,
+  useStartInitialSync,
   useJobStatus,
 } from './queries'
 
@@ -238,7 +239,125 @@ function StepPlayer() {
 }
 
 // ---------------------------------------------------------------------------
-// Étape 4 — Smoke test
+// Étape 4 — Sync initiale
+// ---------------------------------------------------------------------------
+function StepInitialSync({ playerSlug }: { playerSlug: string }) {
+  const currentJobId = useSetupFlowStore((s) => s.currentJobId)
+  const setCurrentJobId = useSetupFlowStore((s) => s.setCurrentJobId)
+  const startSync = useStartInitialSync()
+  const queryClient = useQueryClient()
+
+  const { data: job } = useJobStatus(currentJobId ?? '', !!currentJobId)
+
+  function handleStart() {
+    startSync.mutate(
+      { player_slug: playerSlug, max_matches: 200 },
+      { onSuccess: (j) => setCurrentJobId(j.job_id) },
+    )
+  }
+
+  // Quand la sync réussit : invalider le statut setup pour passer à "done"
+  useEffect(() => {
+    if (job?.status === 'succeeded') {
+      queryClient.invalidateQueries({ queryKey: queryKeys.setupStatus })
+    }
+  }, [job?.status]) // eslint-disable-line react-hooks/exhaustive-deps
+
+  return (
+    <div className="space-y-4">
+      <h2 className="text-lg font-semibold">Synchronisation initiale</h2>
+      <p className="text-sm text-gray-500">
+        Nous allons télécharger vos matchs Halo Infinite et calculer vos statistiques.
+        Cela prend environ 2–4 minutes selon votre historique.
+      </p>
+
+      {!currentJobId && (
+        <Button onClick={handleStart} loading={startSync.isPending}>
+          Lancer la synchronisation
+        </Button>
+      )}
+
+      {job && (
+        <div className="space-y-3">
+          {/* Barre de progression */}
+          {job.progress_pct != null && (
+            <div className="space-y-1">
+              <div className="flex justify-between text-xs text-gray-500">
+                <span>{job.phase_label ?? job.current_step ?? '…'}</span>
+                <span>{job.progress_pct} %</span>
+              </div>
+              <div className="h-2 w-full rounded-full bg-gray-100">
+                <div
+                  className="h-full rounded-full bg-purple-500 transition-all duration-500"
+                  style={{ width: `${job.progress_pct}%` }}
+                />
+              </div>
+            </div>
+          )}
+
+          {/* Compteurs métier */}
+          {job.matches_done != null && job.matches_total != null && (
+            <p className="text-sm text-gray-600">
+              {job.matches_done} / {job.matches_total} matchs récupérés
+            </p>
+          )}
+
+          {/* Eta */}
+          {job.eta_seconds != null && job.status === 'running' && (
+            <p className="text-xs text-gray-400">
+              Temps restant estimé : environ {Math.ceil(job.eta_seconds / 60)} min
+            </p>
+          )}
+
+          {/* Warnings */}
+          {job.warnings.length > 0 && (
+            <ul className="text-xs text-amber-600 space-y-0.5">
+              {job.warnings.map((w) => (
+                <li key={w}>⚠️ {w}</li>
+              ))}
+            </ul>
+          )}
+
+          {/* Résultat */}
+          {job.status === 'succeeded' && (
+            <div className="space-y-2">
+              <p className="text-green-600 font-medium">
+                ✓ Synchronisation terminée&thinsp;!
+                {job.result?.matches_imported != null && (
+                  <span className="font-normal text-gray-600">
+                    {' '}{Number(job.result.matches_imported)} matchs importés.
+                  </span>
+                )}
+              </p>
+              <Button onClick={() => queryClient.invalidateQueries({ queryKey: queryKeys.setupStatus })}>
+                Ouvrir l’application
+              </Button>
+            </div>
+          )}
+          {job.status === 'failed' && (
+            <div className="space-y-2">
+              <p className="text-red-600 font-medium">
+                ✗ Échec de la synchronisation. {job.error?.message}
+              </p>
+              <Button
+                variant="outline"
+                onClick={() => {
+                  setCurrentJobId(null)
+                  handleStart()
+                }}
+              >
+                Réessayer
+              </Button>
+            </div>
+          )}
+        </div>
+      )}
+    </div>
+  )
+}
+
+// ---------------------------------------------------------------------------
+// Étape 5 — Smoke test
 // ---------------------------------------------------------------------------
 function StepSmokeTest({ playerSlug }: { playerSlug: string }) {
   const currentJobId = useSetupFlowStore((s) => s.currentJobId)
@@ -336,6 +455,9 @@ export function SetupPage() {
           )}
           {step === 'auth' && !selectedMode && <StepChooseMode />}
           {step === 'player' && <StepPlayer />}
+          {step === 'initial_sync' && status?.player.default_player_slug && (
+            <StepInitialSync playerSlug={status.player.default_player_slug} />
+          )}
           {step === 'smoke_test' && status?.player.default_player_slug && (
             <StepSmokeTest playerSlug={status.player.default_player_slug} />
           )}
