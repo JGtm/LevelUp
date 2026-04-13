@@ -40,6 +40,12 @@ dependencies = [
     "bitstring>=4.0.0",  # scan fire events weapon parser (import top-level)
     "filelock>=3.12.0",  # verrou fichier sync
     "watchdog>=4.0.0",  # watcher inotify Linux pour l'indexation auto des médias
+    # --- API FastAPI (migration Slice 0a) ---
+    "fastapi>=0.115.0",
+    "uvicorn[standard]>=0.30.0",
+    "itsdangerous>=2.2.0",   # signature des cookies de session
+    "structlog>=24.0.0",     # logging structuré JSON
+    "python-multipart>=0.0.9",  # form data FastAPI
 ]
 
 [project.optional-dependencies]
@@ -63,6 +69,8 @@ dev = [
     "aiosqlite>=0.19.0",
     # Requis par certains tests de timezone (ex. test_media_indexer)
     "pytz>=2023.3",
+    # Tests API FastAPI
+    "httpx>=0.27.0",  # TestClient + requêtes async
 ]
 spnkr = [
     "spnkr>=0.10.1",
