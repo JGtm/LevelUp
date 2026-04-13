@@ -21,6 +21,7 @@ const playerFixture = {
 const bootstrapFixture = {
   setup_required: false,
   auth_state: 'ready',
+  setup_state: 'ready',
   current_player: playerFixture,
   available_players: [playerFixture],
   locale: 'fr',
@@ -39,6 +40,9 @@ const bootstrapFixture = {
     can_manage_settings: true,
     can_reset_media_index: true,
     can_view_media: true,
+    can_self_provision: true,
+    can_start_initial_sync: true,
+    can_manage_instance: true,
   },
   settings_excerpt: {
     lang: 'fr',

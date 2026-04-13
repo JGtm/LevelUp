@@ -24,6 +24,7 @@ interface AppShellState {
   // État app
   setupRequired: boolean
   authState: 'missing' | 'partial' | 'ready'
+  setupState: 'no_halo_link' | 'halo_linked_no_profile' | 'profile_ready_no_sync' | 'ready'
   isBootstrapped: boolean
 
   // Actions
@@ -40,6 +41,9 @@ const DEFAULT_CAPABILITIES: CapabilityMap = {
   can_manage_settings: false,
   can_reset_media_index: false,
   can_view_media: false,
+  can_self_provision: false,
+  can_start_initial_sync: false,
+  can_manage_instance: false,
 }
 
 export const useAppShellStore = create<AppShellState>((set) => ({
@@ -50,6 +54,7 @@ export const useAppShellStore = create<AppShellState>((set) => ({
   capabilities: null,
   setupRequired: false,
   authState: 'missing',
+  setupState: 'no_halo_link',
   isBootstrapped: false,
 
   hydrateFromBootstrap: (data: BootstrapResponse) =>
@@ -61,6 +66,7 @@ export const useAppShellStore = create<AppShellState>((set) => ({
       capabilities: data.capabilities ?? DEFAULT_CAPABILITIES,
       setupRequired: data.setup_required,
       authState: data.auth_state,
+      setupState: data.setup_state ?? 'no_halo_link',
       isBootstrapped: true,
     }),
 
