@@ -1,5 +1,30 @@
 # Thought Log
 
+## [2026-04-13] feat(slice-0a-canonical): Playwright E2E + generated.ts + canonical — Complété
+
+**Statut** : Complété
+
+**Tâche** : Passer Slice 0a de `preview` à `canonical` — E2E Playwright, generated.ts, index.tsx corrigé.
+
+**Décision technique** :
+1. **`index.tsx`** : `<meta httpEquiv="refresh">` → `<Navigate to=... replace />` (composant TanStack Router natif, pas de HTML hack)
+2. **Playwright** : installé avec `@playwright/test` + navigateur Chromium headless (111 Mo). Config : `e2e/` dans `apps/web/`, `baseURL :5173`, `workers=1` (concurrence DuckDB). 5 tests : console errors, bootstrap response, redirection /, NavBar, pas de crash.
+3. **`generated.ts`** : `openapi-typescript` génère 3232 lignes depuis `/api/openapi.json`. Installé avec `--legacy-peer-deps` (TS 6.0 vs peer dep TS ^5.x). `@testing-library/dom` réinstallé après régression (retiré par npm peer resolution).
+4. **`.gitignore`** : règle Python `lib/` trop large → exception `!apps/web/src/lib/` ajoutée.
+5. **Vitest exclusion** : `exclude: ['**/e2e/**']` dans `vite.config.ts` pour éviter que Vitest exécute les tests Playwright.
+6. **`make generate-types`** : simplifié (ne redémarre plus uvicorn — prérequis API en cours).
+
+**Résultats** :
+- `make check-types` : 0 erreur TypeScript
+- **55/55** tests Vitest 
+- **5/5** tests E2E Playwright (Chromium, DEMO_MODE, :5173→:8000)
+- `generated.ts` présent et versionné
+- Slice 0a → `canonical` ✅ dans SLICES.md
+
+**Conclusion** : Slice 0a canonique. Prochaine étape : Slice 2 Phase A (Carrière) — premier écran métier avec données réelles depuis l'API Python.
+
+---
+
 ## [2026-04-13] fix(connexion-réelle): TypeScript 0 erreur + API DEMO_MODE E2E — Complété
 
 **Statut** : Complété

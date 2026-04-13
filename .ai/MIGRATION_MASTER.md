@@ -23,16 +23,16 @@ Référence complète → [migration/DECISIONS.md](migration/DECISIONS.md)
 
 ## État courant
 
-**Phase active** : Slice 0a → `canonical` (derniers critères à valider)
+**Phase active** : Slice 0b → `canonical` (filtres) / démarrage Slice 2 Phase A (Carrière)
 
-**Slice en cours** : 0a — Shell + Bootstrap
+**Slice en cours** : 0b + 2
 
-**Dernière action** : Connexion frontend réelle complète — API DEMO_MODE :8000 + Vite proxy :5173, `index.tsx` corrigé (Navigate TanStack Router), Playwright installé, 5 tests E2E Slice 0a verts (`shell se monte`, `bootstrap joueur démo`, `redirection /`, `NavBar visible`, `pas de crash`). Total : 171 Python + 55 Vitest + 5 E2E ✅
+**Dernière action** : Slice 0a passée `canonical` — 5 tests E2E Playwright verts (shell/bootstrap/redirect/NavBar/no-crash), `generated.ts` 3232 lignes depuis OpenAPI, `index.tsx` corrigé (Navigate), `make check-types`=0. Total : 171 Python + 55 Vitest + 5 E2E Playwright ✅
 
-**Prochaine étape concrète** : Passer Slice 0a à `canonical` — critères restants :
-1. `generate-types` : vérifier que `apps/web/src/lib/api/generated.ts` est à jour depuis le schéma OpenAPI réel
-2. Valider que le sélecteur de joueur recharge proprement le contexte (multi-joueurs)
-3. Si (1) et (2) OK → marquer Slice 0a `canonical` dans SLICES.md + démarrer Slice 2 Phase A (Carrière)
+**Prochaine étape concrète** : Démarrer Slice 2 Phase A — Profil/Carrière (premier écran métier avec données réelles)
+- Backend : `GET /api/v1/players/{player_slug}/pages/career` → déjà implémenté à vérifier
+- Frontend : route `/players/:playerSlug/career` branchée sur le vrai endpoint (pas MSW stub)
+- Tests de parité : rang, XP, LUSR contre golden values `tests/fixtures/`
 
 ---
 
@@ -43,7 +43,7 @@ Référence complète → [migration/DECISIONS.md](migration/DECISIONS.md)
 
 | Section V7 | Contenu regroupé | Statut | Gel Streamlit | Notes |
 |------------|-----------------|--------|---------------|-------|
-| Shell + Bootstrap (0a) | Layout L1/L2/KPI, routing, PageContext | `preview` | — | ✅ Slice 0a livrée — 11/11 tests |
+| Shell + Bootstrap (0a) | Layout L1/L2/KPI, routing, PageContext | `canonical` ✅ | — | ✅ Slice 0a canonique — 5 E2E Playwright, generated.ts, proxy :5173→:8000 |
 | Filtres resolve (0b) | Filtres cascade, chips, scope sessions | `preview` | — | ✅ Slice 0b livrée — 14/14 tests ∑ 25/25 |
 | Setup / Onboarding | Wizard configuration | `preview` | — | ✅ Slice 1 livrée — 25/25 tests ∑ 50/50 |
 | **Settings** | Langue, affichage, médias, Discord, backfill | `preview` | — | ✅ Slice 1 (idem) |
