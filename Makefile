@@ -122,6 +122,14 @@ generate-types: _check_venv
 install-web:
 	cd apps/web && npm install
 
+## Vérifie les types TypeScript du frontend (sans compilation)
+check-types:
+	cd apps/web && npm run typecheck
+
+## Lance les tests Vitest du frontend (mode run = pas de watch)
+test-web:
+	cd apps/web && npm run test:run
+
 # ── Cible interne ─────────────────────────────────────────────────────────────
 _check_venv:
 	@if [ ! -f "$(VENV_PY)" ]; then \

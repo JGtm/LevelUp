@@ -55,6 +55,8 @@ class SessionData:
     hints_visible: bool = True
     # Contexte auth Halo — stocké côté serveur uniquement
     auth_ready: bool = False
+    # Identité Halo liée après Device Code Flow — jamais exposée au navigateur
+    linked_halo_identity: dict[str, str] | None = None
     _extra: dict[str, Any] = field(default_factory=dict)
 
     def touch(self) -> None:

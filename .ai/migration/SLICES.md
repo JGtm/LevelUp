@@ -99,7 +99,7 @@ Les points suivants sont bloquants avant d'ouvrir une première surface React en
 
 ## Slice 0a — Shell, bootstrap et plomberie
 
-**Statut** : `in-progress`  
+**Statut** : `preview`  
 **Dépendances** : aucune (mais corpus de référence prérequis)
 
 > **Objectif** : valider que la plomberie bout en bout fonctionne — FastAPI démarre, le shell React se monte, le bootstrap renvoie un joueur, le DEMO_MODE est utilisable.
@@ -153,7 +153,7 @@ Les points suivants sont bloquants avant d'ouvrir une première surface React en
 
 ## Slice 0b — Contrat de filtres (spike dédié)
 
-**Statut** : `in-progress`  
+**Statut** : `preview`  
 **Dépendances** : Slice 0a
 
 > ⚠ **C'est le vrai test d'architecture de toute la migration, pas bootstrap.**
@@ -198,7 +198,7 @@ Les points suivants sont bloquants avant d'ouvrir une première surface React en
 
 ## Slice 1 — Setup / Auth / Settings
 
-**Statut** : `in-progress`  
+**Statut** : `preview`  
 **Dépendances** : Slice 0a + 0b
 
 ### Backend
@@ -369,7 +369,7 @@ Les points suivants sont bloquants avant d'ouvrir une première surface React en
 
 ## Slice 4 — Explorer [V7 §5 : Filtres + Match View + Last Match]
 
-**Statut** : `todo`  
+**Statut** : `preview`  
 **Dépendances** : Slices 0a, 0b et 3  
 **Ref specs** : [FUNCTIONAL_SPECS.md § 5 Explorer](FUNCTIONAL_SPECS.md#5-explorer)
 
@@ -439,7 +439,7 @@ Les points suivants sont bloquants avant d'ouvrir une première surface React en
 
 ## Slice 5 — Accueil [V7 §1 : Home Mission Control]
 
-**Statut** : `todo`  
+**Statut** : `preview`  
 **Dépendances** : Slices 2, 4 (Phase B) et 8  
 **Ref specs** : [FUNCTIONAL_SPECS.md § 1 Accueil](FUNCTIONAL_SPECS.md#1-accueil-home-mission-control)
 
@@ -481,7 +481,7 @@ Les points suivants sont bloquants avant d'ouvrir une première surface React en
 
 ## Slice 6 — Escouade [V7 §3 : Synergies + Contributions]
 
-**Statut** : `todo`  
+**Statut** : `preview`  
 **Dépendances** : Slices 0a, 0b, 4 (Phase B)  
 **Ref specs** : [FUNCTIONAL_SPECS.md § 3 Escouade](FUNCTIONAL_SPECS.md#3-escouade)
 
@@ -516,7 +516,7 @@ Les points suivants sont bloquants avant d'ouvrir une première surface React en
 
 ## Slice 7 — Synthèse [V7 §4 : Solo vs Escouade]
 
-**Statut** : `todo`  
+**Statut** : `preview`  
 **Dépendances** : Slices 0a, 0b  
 **Ref specs** : [FUNCTIONAL_SPECS.md § 4 Synthèse](FUNCTIONAL_SPECS.md#4-synthèse)
 
@@ -553,7 +553,7 @@ L'ancienne page autonome Objective Analysis (P4) **n'est pas migrée en tant que
 
 ## Slice 8 — Médias [V7 §6 : Galerie + Lightbox]
 
-**Statut** : `todo`  
+**Statut** : `preview`  
 **Dépendances** : Slice 4 (Phase B)  
 **Ref specs** : [FUNCTIONAL_SPECS.md § 6 Médias](FUNCTIONAL_SPECS.md#6-médias)
 
