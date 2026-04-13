@@ -1,3 +1,6 @@
+# ARCHIVED — Interface Streamlit (v6). Décommissioné dans Slice 9.
+# Le front actif est React/Vite sur :5173 (API FastAPI sur :8000).
+# Ce fichier est conservé pour référence historique uniquement.
 """LevelUp - Dashboard Streamlit.
 
 Application de visualisation des statistiques Halo Infinite

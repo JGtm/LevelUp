@@ -25,7 +25,7 @@ Le lanceur fait **tout automatiquement** :
 2. Si absent → le télécharge et l'installe via `winget` (Windows 10/11 — vous répondez `O`)
 3. Crée un environnement isolé (`.venv`)
 4. Installe toutes les dépendances
-5. Lance le dashboard et ouvre votre navigateur sur `http://localhost:8501`
+5. Lance le dashboard et ouvre votre navigateur sur `http://localhost:5173`
 
 > **Au premier lancement** : 2–5 minutes (téléchargements). Les suivants : quelques secondes.
 

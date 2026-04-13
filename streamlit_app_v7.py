@@ -1,3 +1,6 @@
+# ARCHIVED — Interface Streamlit v7. Décommissioné dans Slice 9.
+# Le front actif est React/Vite sur :5173 (API FastAPI sur :8000).
+# Ce fichier est conservé pour référence historique uniquement.
 """Point d'entree v7 du cockpit analytique."""
 
 from __future__ import annotations

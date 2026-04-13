@@ -29,7 +29,7 @@ The launcher does **everything automatically**:
 2. If not found → downloads and installs it via `winget` (Windows 10/11 — answer `Y`)
 3. Creates an isolated environment (`.venv`)
 4. Installs all dependencies
-5. Starts the dashboard and opens your browser at `http://localhost:8501`
+5. Starts the API (port 8000) and opens your browser at `http://localhost:5173`
 
 > **First launch**: 2–5 minutes (downloads). Subsequent launches: a few seconds.
 
@@ -133,8 +133,8 @@ If any check fails, the test offers to **retry**. When everything is green, two 
    ```bash
    python launcher.py run
    ```
-4. The browser opens at `http://localhost:8501` — the **Setup Wizard** appears and guides you
-   through the same steps (Azure + Xbox sign-in + smoke test) as on Windows.
+4. The browser opens at `http://localhost:5173` — the **Setup Wizard** appears and guides you
+   through the same steps (Xbox sign-in + smoke test) as on Windows.
 
 > **Note:** The automatic Python installer (`winget`) only works on Windows 10/11.
 > On macOS/Linux you manage Python yourself, but everything after that (wizard, sync, dashboard)

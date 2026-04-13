@@ -1,10 +1,10 @@
 """Tests unitaires — endpoints Médiathèque (Slice 8).
 
 Couvre :
-- GET /players/{slug}/pages/media (200, schéma, items, pagination, comptages)
-- GET avec filtre kind_filter et section_filter
+- POST /players/{slug}/pages/media (200, schéma, items, pagination, comptages)
+- POST avec filtre kind_filter et section_filter
 - Réponse vide graceful
-- GET /players/unknown/pages/media (404)
+- POST /players/unknown/pages/media (404)
 """
 
 from __future__ import annotations
@@ -94,7 +94,7 @@ async def client() -> AsyncClient:
 
 
 # ===========================================================================
-# GET /players/{slug}/pages/media
+# POST /players/{slug}/pages/media
 # ===========================================================================
 
 
@@ -103,7 +103,7 @@ async def test_media_page_returns_200(client: AsyncClient) -> None:
     """En DEMO_MODE, l'endpoint media retourne 200."""
     mock_resp = _make_media_response()
     with patch("apps.api.app.services.media_service.get_media_page", return_value=mock_resp):
-        resp = await client.get("/api/v1/players/demo/pages/media")
+        resp = await client.post("/api/v1/players/demo/pages/media", json={})
     assert resp.status_code == 200
 
 
@@ -112,7 +112,7 @@ async def test_media_schema_complete(client: AsyncClient) -> None:
     """La réponse contient tous les champs de MediaPageResponse."""
     mock_resp = _make_media_response()
     with patch("apps.api.app.services.media_service.get_media_page", return_value=mock_resp):
-        resp = await client.get("/api/v1/players/demo/pages/media")
+        resp = await client.post("/api/v1/players/demo/pages/media", json={})
 
     assert resp.status_code == 200
     data = resp.json()
@@ -125,7 +125,7 @@ async def test_media_items_fields(client: AsyncClient) -> None:
     """Les items MediaItemRow contiennent basename, kind et section."""
     mock_resp = _make_media_response()
     with patch("apps.api.app.services.media_service.get_media_page", return_value=mock_resp):
-        resp = await client.get("/api/v1/players/demo/pages/media")
+        resp = await client.post("/api/v1/players/demo/pages/media", json={})
 
     items_data = resp.json()["items"]["items"]
     assert len(items_data) == 3
@@ -141,7 +141,7 @@ async def test_media_pagination_metadata(client: AsyncClient) -> None:
     """Les métadonnées de pagination (total, page, page_size) sont présentes."""
     mock_resp = _make_media_response(count=3)
     with patch("apps.api.app.services.media_service.get_media_page", return_value=mock_resp):
-        resp = await client.get("/api/v1/players/demo/pages/media")
+        resp = await client.post("/api/v1/players/demo/pages/media", json={})
 
     items_wrapper = resp.json()["items"]
     assert items_wrapper["pagination"]["total"] == 3
@@ -154,7 +154,7 @@ async def test_media_section_counts(client: AsyncClient) -> None:
     """Les comptages par section sont présents et corrects."""
     mock_resp = _make_media_response(count=3)
     with patch("apps.api.app.services.media_service.get_media_page", return_value=mock_resp):
-        resp = await client.get("/api/v1/players/demo/pages/media")
+        resp = await client.post("/api/v1/players/demo/pages/media", json={})
 
     data = resp.json()
     assert data["total_mine"] == 3
@@ -167,7 +167,7 @@ async def test_media_empty_graceful(client: AsyncClient) -> None:
     """Quand il n'y a pas de médias, la réponse est vide mais valide."""
     mock_resp = _make_empty_media_response()
     with patch("apps.api.app.services.media_service.get_media_page", return_value=mock_resp):
-        resp = await client.get("/api/v1/players/demo/pages/media")
+        resp = await client.post("/api/v1/players/demo/pages/media", json={})
 
     assert resp.status_code == 200
     data = resp.json()
@@ -180,7 +180,7 @@ async def test_media_kind_filter_accepted(client: AsyncClient) -> None:
     """Le paramètre kind_filter=video est accepté sans erreur 422."""
     mock_resp = _make_media_response()
     with patch("apps.api.app.services.media_service.get_media_page", return_value=mock_resp):
-        resp = await client.get("/api/v1/players/demo/pages/media?kind_filter=video")
+        resp = await client.post("/api/v1/players/demo/pages/media", json={"kind_filter": "video"})
     assert resp.status_code == 200
 
 
@@ -189,19 +189,21 @@ async def test_media_section_filter_accepted(client: AsyncClient) -> None:
     """Le paramètre section_filter=mine est accepté sans erreur 422."""
     mock_resp = _make_media_response()
     with patch("apps.api.app.services.media_service.get_media_page", return_value=mock_resp):
-        resp = await client.get("/api/v1/players/demo/pages/media?section_filter=mine")
+        resp = await client.post(
+            "/api/v1/players/demo/pages/media", json={"section_filter": "mine"}
+        )
     assert resp.status_code == 200
 
 
 @pytest.mark.anyio
 async def test_media_invalid_kind_rejected(client: AsyncClient) -> None:
     """Un kind_filter invalide retourne 422."""
-    resp = await client.get("/api/v1/players/demo/pages/media?kind_filter=audio")
+    resp = await client.post("/api/v1/players/demo/pages/media", json={"kind_filter": "audio"})
     assert resp.status_code == 422
 
 
 @pytest.mark.anyio
 async def test_media_slug_not_found(client: AsyncClient) -> None:
     """Slug inconnu → 404."""
-    resp = await client.get("/api/v1/players/unknown-xyz/pages/media")
+    resp = await client.post("/api/v1/players/unknown-xyz/pages/media", json={})
     assert resp.status_code == 404
