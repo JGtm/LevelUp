@@ -1,0 +1,146 @@
+"""Application FastAPI LevelUp — point d'entrée principal.
+
+Initialise :
+- Logging structuré
+- Middlewares (CORS, request_id)
+- Handlers d'erreurs normalisés
+- Router `/api/v1`
+- Purge des sessions expirées au démarrage
+
+DEMO_MODE : activé via `LEVELUP_DEMO_MODE=true` dans l'environnement ou .env.local.
+  - Auth bypassée
+  - Données pointent sur tests/fixtures/ref_player/
+  - Mêmes schémas que le mode normal
+"""
+
+from __future__ import annotations
+
+from collections.abc import AsyncGenerator
+from contextlib import asynccontextmanager
+
+import structlog
+from fastapi import FastAPI
+from fastapi.middleware.cors import CORSMiddleware
+
+from apps.api.app.core.config import get_settings
+from apps.api.app.core.errors import (
+    ApiError,
+    RequestIdMiddleware,
+    api_error_handler,
+    unhandled_error_handler,
+)
+from apps.api.app.core.logging import configure_logging
+from apps.api.app.routers import bootstrap as bootstrap_router
+from apps.api.app.routers import career as career_router
+from apps.api.app.routers import filters as filters_router
+from apps.api.app.routers import health as health_router
+from apps.api.app.routers import home as home_router
+from apps.api.app.routers import jobs as jobs_router
+from apps.api.app.routers import match_history as match_history_router
+from apps.api.app.routers import media as media_router
+from apps.api.app.routers import settings_router
+from apps.api.app.routers import setup as setup_router
+from apps.api.app.routers import synthesis as synthesis_router
+from apps.api.app.routers import teammates as teammates_router
+from apps.api.app.routers.explorer import directory_router as explorer_directory_router
+from apps.api.app.routers.explorer import player_router as explorer_player_router
+
+logger = structlog.get_logger(__name__)
+
+
+# ---------------------------------------------------------------------------
+# Lifespan (startup / shutdown)
+# ---------------------------------------------------------------------------
+
+
+@asynccontextmanager
+async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
+    """Hook de démarrage / arrêt de l'application."""
+    settings = get_settings()
+    configure_logging()
+
+    # Purge des sessions expirées au démarrage
+    from apps.api.app.deps.auth import SessionStore
+
+    store = SessionStore(settings.session_storage_dir, settings.session_ttl_seconds)
+    purged = store.purge_expired()
+    logger.info(
+        "api_startup",
+        version=settings.app_version,
+        demo_mode=settings.demo_mode,
+        sessions_purged=purged,
+    )
+
+    yield
+
+    logger.info("api_shutdown")
+
+
+# ---------------------------------------------------------------------------
+# Création de l'app
+# ---------------------------------------------------------------------------
+
+
+def create_app() -> FastAPI:
+    """Factory de l'application FastAPI."""
+    settings = get_settings()
+
+    app = FastAPI(
+        title="LevelUp API",
+        description="API FastAPI pour le dashboard de statistiques Halo Infinite LevelUp.",
+        version=settings.app_version,
+        docs_url="/api/docs",
+        redoc_url="/api/redoc",
+        openapi_url="/api/openapi.json",
+        lifespan=lifespan,
+    )
+
+    # --- Middlewares --------------------------------------------------------
+    app.add_middleware(
+        CORSMiddleware,
+        allow_origins=settings.cors_origins,
+        allow_credentials=True,
+        allow_methods=["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
+        allow_headers=["*"],
+        expose_headers=["X-Request-ID"],
+    )
+    app.add_middleware(RequestIdMiddleware)
+
+    # --- Handlers d'erreurs -------------------------------------------------
+    app.add_exception_handler(ApiError, api_error_handler)  # type: ignore[arg-type]
+    app.add_exception_handler(Exception, unhandled_error_handler)  # type: ignore[arg-type]
+
+    # --- Routers ------------------------------------------------------------
+    v1 = _create_v1_router()
+    app.include_router(v1, prefix="/api/v1")
+
+    return app
+
+
+def _create_v1_router():  # type: ignore[return]
+    """Assemble le router `/api/v1`."""
+    from fastapi import APIRouter
+
+    v1 = APIRouter()
+    v1.include_router(health_router.router)
+    v1.include_router(bootstrap_router.router)
+    v1.include_router(filters_router.router)
+    v1.include_router(setup_router.router)
+    v1.include_router(settings_router.router)
+    v1.include_router(jobs_router.router)
+    v1.include_router(career_router.router)
+    v1.include_router(match_history_router.router)
+    v1.include_router(explorer_directory_router)
+    v1.include_router(explorer_player_router)
+    v1.include_router(home_router.router)
+    v1.include_router(teammates_router.router)
+    v1.include_router(synthesis_router.router)
+    v1.include_router(media_router.router)
+    return v1
+
+
+# ---------------------------------------------------------------------------
+# Singleton exposé à uvicorn
+# ---------------------------------------------------------------------------
+
+app = create_app()

@@ -35,12 +35,26 @@ interface SetupFlowState {
   /** attempt_id du Device Code Flow courant (null si aucun en cours) */
   currentAttemptId: string | null
 
+  /** Code affiché à l'utilisateur (ex: "ABCD-1234") — depuis DeviceFlowStartResponse */
+  deviceFlowUserCode: string | null
+
+  /** URL de vérification (https://microsoft.com/devicelogin) */
+  deviceFlowVerificationUri: string | null
+
+  /** Gamertag résolu après succès du Device Code Flow */
+  resolvedGamertag: string | null
+
+  /** XUID résolu après succès du Device Code Flow */
+  resolvedXuid: string | null
+
   /** job_id du smoke test courant (null si aucun en cours) */
   currentJobId: string | null
 
   // --- Actions ---
   setSelectedMode: (mode: SetupAuthMode) => void
   setCurrentAttemptId: (id: string | null) => void
+  setDeviceFlowCodes: (userCode: string, verificationUri: string) => void
+  setResolvedIdentity: (gamertag: string, xuid: string | null) => void
   setCurrentJobId: (id: string | null) => void
   reset: () => void
 }
@@ -52,6 +66,10 @@ interface SetupFlowState {
 const INITIAL_STATE = {
   selectedMode: null as SetupAuthMode | null,
   currentAttemptId: null as string | null,
+  deviceFlowUserCode: null as string | null,
+  deviceFlowVerificationUri: null as string | null,
+  resolvedGamertag: null as string | null,
+  resolvedXuid: null as string | null,
   currentJobId: null as string | null,
 }
 
@@ -65,6 +83,12 @@ export const useSetupFlowStore = create<SetupFlowState>((set) => ({
   setSelectedMode: (mode) => set({ selectedMode: mode }),
 
   setCurrentAttemptId: (id) => set({ currentAttemptId: id }),
+
+  setDeviceFlowCodes: (userCode, verificationUri) =>
+    set({ deviceFlowUserCode: userCode, deviceFlowVerificationUri: verificationUri }),
+
+  setResolvedIdentity: (gamertag, xuid) =>
+    set({ resolvedGamertag: gamertag, resolvedXuid: xuid }),
 
   setCurrentJobId: (id) => set({ currentJobId: id }),
 

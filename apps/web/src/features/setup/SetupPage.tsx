@@ -5,11 +5,13 @@
  */
 import { useState, useEffect } from 'react'
 import { useNavigate } from '@tanstack/react-router'
+import { useQueryClient } from '@tanstack/react-query'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Spinner } from '@/components/ui/spinner'
 import { useSetupFlowStore } from '@/stores/setupFlowStore'
+import { queryKeys } from '@/lib/query/keys'
 import {
   useSetupStatus,
   useStartDeviceFlow,
@@ -64,6 +66,11 @@ function StepChooseMode() {
 function StepDeviceCode() {
   const currentAttemptId = useSetupFlowStore((s) => s.currentAttemptId)
   const setCurrentAttemptId = useSetupFlowStore((s) => s.setCurrentAttemptId)
+  const deviceFlowUserCode = useSetupFlowStore((s) => s.deviceFlowUserCode)
+  const deviceFlowVerificationUri = useSetupFlowStore((s) => s.deviceFlowVerificationUri)
+  const setDeviceFlowCodes = useSetupFlowStore((s) => s.setDeviceFlowCodes)
+  const setResolvedIdentity = useSetupFlowStore((s) => s.setResolvedIdentity)
+  const queryClient = useQueryClient()
   const startFlow = useStartDeviceFlow()
 
   const { data: status } = useDeviceFlowStatus(
@@ -71,65 +78,91 @@ function StepDeviceCode() {
     !!currentAttemptId,
   )
 
+  // Démarrer le flow au montage si pas encore en cours
   useEffect(() => {
     if (!currentAttemptId) {
       startFlow.mutate(undefined, {
-        onSuccess: (data) => setCurrentAttemptId(data.attempt_id),
+        onSuccess: (data) => {
+          setCurrentAttemptId(data.attempt_id)
+          setDeviceFlowCodes(data.user_code, data.verification_uri)
+        },
       })
     }
   }, []) // eslint-disable-line react-hooks/exhaustive-deps
 
-  if (startFlow.isPending || !status) {
+  // Quand le flow réussit : enregistrer l'identité et avancer
+  useEffect(() => {
+    if (status?.status === 'authorized' || status?.status === 'provisioned') {
+      if (status.gamertag) {
+        setResolvedIdentity(status.gamertag, status.xuid ?? null)
+      }
+      queryClient.invalidateQueries({ queryKey: queryKeys.setupStatus })
+    }
+  }, [status?.status]) // eslint-disable-line react-hooks/exhaustive-deps
+
+  function handleRetry() {
+    setCurrentAttemptId(null)
+    startFlow.mutate(undefined, {
+      onSuccess: (data) => {
+        setCurrentAttemptId(data.attempt_id)
+        setDeviceFlowCodes(data.user_code, data.verification_uri)
+      },
+    })
+  }
+
+  if (startFlow.isPending || (!status && !deviceFlowUserCode)) {
     return <Spinner label="Démarrage du Device Code Flow…" />
   }
 
-  if (status.status === 'failed' || status.status === 'expired') {
+  if (status?.status === 'failed' || status?.status === 'expired') {
     return (
       <div className="space-y-3">
         <p className="text-red-600 font-medium">
-          {status.status === 'expired' ? 'Le code a expiré.' : 'Échec de l\'authentification.'}
+          {status.status === 'expired' ? 'Le code a expiré.' : "Échec de l'authentification."}
         </p>
-        <Button onClick={() => {
-          setCurrentAttemptId(null)
-          startFlow.mutate(undefined, {
-            onSuccess: (data) => setCurrentAttemptId(data.attempt_id),
-          })
-        }}>
-          Réessayer
-        </Button>
+        <Button onClick={handleRetry}>Réessayer</Button>
       </div>
     )
   }
 
-  if (status.status === 'authorized' || status.status === 'provisioned') {
+  if (status?.status === 'authorized' || status?.status === 'provisioned') {
     return (
       <div className="space-y-2">
         <p className="text-green-600 font-semibold">✓ Authentification réussie !</p>
         {status.gamertag && (
-          <p className="text-sm text-gray-600">Connecté en tant que : <strong>{status.gamertag}</strong></p>
+          <p className="text-sm text-gray-600">
+            Connecté en tant que : <strong>{status.gamertag}</strong>
+          </p>
         )}
-        <Spinner size="sm" label="Finalisation…" />
+        <Spinner size="sm" label="Finalisation du profil…" />
       </div>
     )
   }
+
+  const uri = deviceFlowVerificationUri ?? 'https://microsoft.com/devicelogin'
 
   return (
     <div className="space-y-4">
       <h2 className="text-lg font-semibold">Connexion Microsoft</h2>
       <p className="text-sm text-gray-500">
         Rendez-vous sur{' '}
-        <a href="https://microsoft.com/devicelogin" target="_blank" rel="noopener" className="text-purple-600 underline">
-          microsoft.com/devicelogin
+        <a href={uri} target="_blank" rel="noopener noreferrer" className="text-purple-600 underline">
+          {uri.replace('https://', '')}
         </a>{' '}
         et entrez ce code :
       </p>
       <div className="rounded-lg bg-gray-900 px-6 py-4 text-center">
-        <span className="text-3xl font-mono font-bold tracking-widest text-white">
-          {/* status.user_code would come from start response, not status poll */}
-          {status.status === 'pending' ? '⏳' : '—'}
-        </span>
+        {deviceFlowUserCode ? (
+          <span className="text-3xl font-mono font-bold tracking-widest text-white select-all">
+            {deviceFlowUserCode}
+          </span>
+        ) : (
+          <Spinner size="sm" />
+        )}
       </div>
-      <p className="text-xs text-gray-400 text-center animate-pulse">En attente de l'authentification…</p>
+      <p className="text-xs text-gray-400 text-center animate-pulse">
+        En attente de l'authentification…
+      </p>
     </div>
   )
 }
@@ -138,34 +171,60 @@ function StepDeviceCode() {
 // Étape 3 — Ajout joueur
 // ---------------------------------------------------------------------------
 function StepPlayer() {
-  const [gamertag, setGamertag] = useState('')
+  const resolvedGamertag = useSetupFlowStore((s) => s.resolvedGamertag)
+  const resolvedXuid = useSetupFlowStore((s) => s.resolvedXuid)
+  const [gamertag, setGamertag] = useState(resolvedGamertag ?? '')
+  const queryClient = useQueryClient()
   const createPlayer = useCreatePlayer()
+
+  function handleCreate() {
+    if (!gamertag.trim()) return
+    createPlayer.mutate(
+      { gamertag: gamertag.trim(), xuid: resolvedXuid ?? undefined },
+      {
+        onSuccess: () =>
+          queryClient.invalidateQueries({ queryKey: queryKeys.setupStatus }),
+      },
+    )
+  }
 
   return (
     <div className="space-y-4">
       <h2 className="text-lg font-semibold">Ajouter votre joueur</h2>
-      <p className="text-sm text-gray-500">
-        Entrez votre Gamertag Xbox pour créer votre profil.
-      </p>
-      <div className="flex gap-2">
-        <Input
-          value={gamertag}
-          onChange={(e) => setGamertag(e.target.value)}
-          placeholder="MonGamertag"
-          onKeyDown={(e) => {
-            if (e.key === 'Enter' && gamertag.trim()) {
-              createPlayer.mutate({ gamertag: gamertag.trim() })
-            }
-          }}
-        />
-        <Button
-          onClick={() => createPlayer.mutate({ gamertag: gamertag.trim() })}
-          loading={createPlayer.isPending}
-          disabled={!gamertag.trim()}
-        >
-          Ajouter
-        </Button>
-      </div>
+
+      {resolvedGamertag ? (
+        <div className="rounded-lg border border-green-200 bg-green-50 p-4">
+          <p className="text-xs text-gray-500">Identité Halo détectée :</p>
+          <p className="mt-1 text-xl font-bold text-green-700">{resolvedGamertag}</p>
+          {resolvedXuid && (
+            <p className="mt-0.5 text-xs text-gray-400">XUID : {resolvedXuid}</p>
+          )}
+          <p className="mt-2 text-xs text-gray-500">
+            Un profil local va être créé pour ce compte.
+          </p>
+        </div>
+      ) : (
+        <>
+          <p className="text-sm text-gray-500">
+            Entrez votre Gamertag Xbox pour créer votre profil.
+          </p>
+          <Input
+            value={gamertag}
+            onChange={(e) => setGamertag(e.target.value)}
+            placeholder="MonGamertag"
+            onKeyDown={(e) => { if (e.key === 'Enter') handleCreate() }}
+          />
+        </>
+      )}
+
+      <Button
+        onClick={handleCreate}
+        loading={createPlayer.isPending}
+        disabled={!gamertag.trim()}
+      >
+        {resolvedGamertag ? 'Confirmer et créer mon profil' : 'Ajouter'}
+      </Button>
+
       {createPlayer.isSuccess && (
         <p className="text-green-600 text-sm">
           ✓ Joueur <strong>{createPlayer.data.player.gamertag}</strong> ajouté.
