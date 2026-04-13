@@ -1,7 +1,8 @@
-"""Démarrage Streamlit et gestion des signaux pour le lanceur LevelUp.
+"""Démarrage React/FastAPI (et Streamlit legacy) pour le lanceur LevelUp.
 
 Contient : état global (processus actif, shutdown), gestionnaire de signal,
-et ``_launch_streamlit`` qui lance le dashboard.
+``_launch_react`` (point d'entrée principal — FastAPI + Vite) et
+``_launch_streamlit`` (conservé comme archive/rollback uniquement).
 Extrait de launcher.py (F8 post-v7 housekeeping).
 """
 
@@ -25,6 +26,7 @@ from src.utils.launcher_migrations import _run_db_healthcheck, _run_migrations
 
 _shutdown_event = threading.Event()
 _active_process: subprocess.Popen | None = None
+_active_process_web: subprocess.Popen | None = None
 _shutdown_lock = threading.Lock()
 _ctrl_c_count = 0
 
@@ -43,23 +45,20 @@ def _subprocess_creation_flags() -> int:
 
 
 def _kill_active_process() -> None:
-    """Termine le processus enfant actif."""
-    proc = _active_process
-    if proc is None:
-        return
-
-    if sys.platform == "win32":
+    """Termine le(s) processus enfant(s) actif(s)."""
+    procs = [p for p in (_active_process, _active_process_web) if p is not None]
+    for proc in procs:
+        if sys.platform == "win32":
+            with contextlib.suppress(Exception):
+                subprocess.run(
+                    ["taskkill", "/F", "/T", "/PID", str(proc.pid)],
+                    capture_output=True,
+                    timeout=5,
+                )
         with contextlib.suppress(Exception):
-            subprocess.run(
-                ["taskkill", "/F", "/T", "/PID", str(proc.pid)],
-                capture_output=True,
-                timeout=5,
-            )
-
-    with contextlib.suppress(Exception):
-        proc.terminate()
-    with contextlib.suppress(Exception):
-        proc.kill()
+            proc.terminate()
+        with contextlib.suppress(Exception):
+            proc.kill()
 
 
 def _signal_handler(signum: int, frame) -> None:  # noqa: ANN001
@@ -190,3 +189,108 @@ def _launch_streamlit(
                 proc.wait(timeout=3)
             with contextlib.suppress(Exception):
                 proc.kill()
+
+
+# =============================================================================
+# Lancement React + FastAPI (point d'entrée principal depuis Slice 9)
+# =============================================================================
+
+_REACT_API_PORT_DEFAULT = 8000
+_REACT_WEB_PORT_DEFAULT = 5173
+_REACT_STARTUP_DELAY_SECONDS = 3.0
+
+
+def _launch_react(
+    *,
+    db_path=None,  # ignoré — conservé pour compatibilité signature avec _launch_streamlit
+    port: int | None = None,
+    no_browser: bool = False,
+) -> int:
+    """Lance le dashboard React + API FastAPI.
+
+    Démarre deux sous-processus en parallèle :
+    - uvicorn apps.api.app.main:app (port ``port`` ou 8000)
+    - npm run dev dans apps/web/ (port 5173)
+
+    Ouvre le navigateur sur http://localhost:5173 après démarrage.
+    """
+    global _active_process, _active_process_web
+
+    from src.utils.paths import REPO_ROOT  # noqa: PLC0415
+
+    _require_module("uvicorn", install_hint=".venv/Scripts/python.exe -m pip install -e .[api]")
+
+    _run_migrations()
+    _run_db_healthcheck()
+
+    api_port = int(port) if port else _REACT_API_PORT_DEFAULT
+    web_port = _REACT_WEB_PORT_DEFAULT
+    api_url = f"http://localhost:{api_port}"
+    web_url = f"http://localhost:{web_port}"
+
+    npm_cmd = "npm.cmd" if sys.platform == "win32" else "npm"
+
+    cmd_api = [
+        sys.executable,
+        "-m",
+        "uvicorn",
+        "apps.api.app.main:app",
+        "--host",
+        "127.0.0.1",
+        "--port",
+        str(api_port),
+        "--reload",
+    ]
+    cmd_web = [npm_cmd, "run", "dev"]
+    web_dir = REPO_ROOT / "apps" / "web"
+
+    print(_t("launching_dashboard", LANG), flush=True)
+    print(f"  → API  : {api_url}", flush=True)
+    print(f"  → Web  : {web_url}", flush=True)
+
+    proc_api = subprocess.Popen(
+        cmd_api,
+        cwd=str(REPO_ROOT),
+        stdin=subprocess.DEVNULL,
+        creationflags=_subprocess_creation_flags(),
+    )
+    proc_web = subprocess.Popen(
+        cmd_web,
+        cwd=str(web_dir),
+        stdin=subprocess.DEVNULL,
+        creationflags=_subprocess_creation_flags(),
+    )
+
+    _active_process = proc_api
+    _active_process_web = proc_web
+
+    if not no_browser:
+        time.sleep(_REACT_STARTUP_DELAY_SECONDS)
+        with contextlib.suppress(Exception):
+            webbrowser.open(web_url)
+
+    try:
+        while True:
+            if proc_api.poll() is not None or proc_web.poll() is not None:
+                break
+            time.sleep(0.5)
+        return 0
+    except KeyboardInterrupt:
+        return 0
+    finally:
+        _active_process = None
+        _active_process_web = None
+        for proc in (proc_api, proc_web):
+            if proc.poll() is None:
+                if sys.platform == "win32":
+                    with contextlib.suppress(Exception):
+                        subprocess.run(
+                            ["taskkill", "/F", "/T", "/PID", str(proc.pid)],
+                            capture_output=True,
+                            timeout=5,
+                        )
+                with contextlib.suppress(Exception):
+                    proc.terminate()
+                    proc.wait(timeout=3)
+                with contextlib.suppress(Exception):
+                    proc.kill()

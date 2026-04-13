@@ -16,10 +16,15 @@ import { Route as PlayersPlayerSlugRouteImport } from './routes/players/$playerS
 import { Route as PlayersPlayerSlugSynthesisRouteImport } from './routes/players/$playerSlug/synthesis'
 import { Route as PlayersPlayerSlugSquadRouteImport } from './routes/players/$playerSlug/squad'
 import { Route as PlayersPlayerSlugMediaRouteImport } from './routes/players/$playerSlug/media'
+import { Route as PlayersPlayerSlugLastMatchRouteImport } from './routes/players/$playerSlug/last-match'
 import { Route as PlayersPlayerSlugHomeRouteImport } from './routes/players/$playerSlug/home'
 import { Route as PlayersPlayerSlugCareerRouteImport } from './routes/players/$playerSlug/career'
 import { Route as PlayersPlayerSlugExplorerIndexRouteImport } from './routes/players/$playerSlug/explorer/index'
+import { Route as PlayersPlayerSlugStatsTimeseriesRouteImport } from './routes/players/$playerSlug/stats/timeseries'
+import { Route as PlayersPlayerSlugStatsSessionsRouteImport } from './routes/players/$playerSlug/stats/sessions'
 import { Route as PlayersPlayerSlugStatsHistoryRouteImport } from './routes/players/$playerSlug/stats/history'
+import { Route as PlayersPlayerSlugProfileCitationsRouteImport } from './routes/players/$playerSlug/profile/citations'
+import { Route as PlayersPlayerSlugExplorerMatchesMatchIdRouteImport } from './routes/players/$playerSlug/explorer/matches/$matchId'
 
 const SetupRoute = SetupRouteImport.update({
   id: '/setup',
@@ -57,6 +62,12 @@ const PlayersPlayerSlugMediaRoute = PlayersPlayerSlugMediaRouteImport.update({
   path: '/media',
   getParentRoute: () => PlayersPlayerSlugRoute,
 } as any)
+const PlayersPlayerSlugLastMatchRoute =
+  PlayersPlayerSlugLastMatchRouteImport.update({
+    id: '/last-match',
+    path: '/last-match',
+    getParentRoute: () => PlayersPlayerSlugRoute,
+  } as any)
 const PlayersPlayerSlugHomeRoute = PlayersPlayerSlugHomeRouteImport.update({
   id: '/home',
   path: '/home',
@@ -73,10 +84,34 @@ const PlayersPlayerSlugExplorerIndexRoute =
     path: '/explorer/',
     getParentRoute: () => PlayersPlayerSlugRoute,
   } as any)
+const PlayersPlayerSlugStatsTimeseriesRoute =
+  PlayersPlayerSlugStatsTimeseriesRouteImport.update({
+    id: '/stats/timeseries',
+    path: '/stats/timeseries',
+    getParentRoute: () => PlayersPlayerSlugRoute,
+  } as any)
+const PlayersPlayerSlugStatsSessionsRoute =
+  PlayersPlayerSlugStatsSessionsRouteImport.update({
+    id: '/stats/sessions',
+    path: '/stats/sessions',
+    getParentRoute: () => PlayersPlayerSlugRoute,
+  } as any)
 const PlayersPlayerSlugStatsHistoryRoute =
   PlayersPlayerSlugStatsHistoryRouteImport.update({
     id: '/stats/history',
     path: '/stats/history',
+    getParentRoute: () => PlayersPlayerSlugRoute,
+  } as any)
+const PlayersPlayerSlugProfileCitationsRoute =
+  PlayersPlayerSlugProfileCitationsRouteImport.update({
+    id: '/profile/citations',
+    path: '/profile/citations',
+    getParentRoute: () => PlayersPlayerSlugRoute,
+  } as any)
+const PlayersPlayerSlugExplorerMatchesMatchIdRoute =
+  PlayersPlayerSlugExplorerMatchesMatchIdRouteImport.update({
+    id: '/explorer/matches/$matchId',
+    path: '/explorer/matches/$matchId',
     getParentRoute: () => PlayersPlayerSlugRoute,
   } as any)
 
@@ -87,11 +122,16 @@ export interface FileRoutesByFullPath {
   '/players/$playerSlug': typeof PlayersPlayerSlugRouteWithChildren
   '/players/$playerSlug/career': typeof PlayersPlayerSlugCareerRoute
   '/players/$playerSlug/home': typeof PlayersPlayerSlugHomeRoute
+  '/players/$playerSlug/last-match': typeof PlayersPlayerSlugLastMatchRoute
   '/players/$playerSlug/media': typeof PlayersPlayerSlugMediaRoute
   '/players/$playerSlug/squad': typeof PlayersPlayerSlugSquadRoute
   '/players/$playerSlug/synthesis': typeof PlayersPlayerSlugSynthesisRoute
+  '/players/$playerSlug/profile/citations': typeof PlayersPlayerSlugProfileCitationsRoute
   '/players/$playerSlug/stats/history': typeof PlayersPlayerSlugStatsHistoryRoute
+  '/players/$playerSlug/stats/sessions': typeof PlayersPlayerSlugStatsSessionsRoute
+  '/players/$playerSlug/stats/timeseries': typeof PlayersPlayerSlugStatsTimeseriesRoute
   '/players/$playerSlug/explorer/': typeof PlayersPlayerSlugExplorerIndexRoute
+  '/players/$playerSlug/explorer/matches/$matchId': typeof PlayersPlayerSlugExplorerMatchesMatchIdRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
@@ -100,11 +140,16 @@ export interface FileRoutesByTo {
   '/players/$playerSlug': typeof PlayersPlayerSlugRouteWithChildren
   '/players/$playerSlug/career': typeof PlayersPlayerSlugCareerRoute
   '/players/$playerSlug/home': typeof PlayersPlayerSlugHomeRoute
+  '/players/$playerSlug/last-match': typeof PlayersPlayerSlugLastMatchRoute
   '/players/$playerSlug/media': typeof PlayersPlayerSlugMediaRoute
   '/players/$playerSlug/squad': typeof PlayersPlayerSlugSquadRoute
   '/players/$playerSlug/synthesis': typeof PlayersPlayerSlugSynthesisRoute
+  '/players/$playerSlug/profile/citations': typeof PlayersPlayerSlugProfileCitationsRoute
   '/players/$playerSlug/stats/history': typeof PlayersPlayerSlugStatsHistoryRoute
+  '/players/$playerSlug/stats/sessions': typeof PlayersPlayerSlugStatsSessionsRoute
+  '/players/$playerSlug/stats/timeseries': typeof PlayersPlayerSlugStatsTimeseriesRoute
   '/players/$playerSlug/explorer': typeof PlayersPlayerSlugExplorerIndexRoute
+  '/players/$playerSlug/explorer/matches/$matchId': typeof PlayersPlayerSlugExplorerMatchesMatchIdRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -114,11 +159,16 @@ export interface FileRoutesById {
   '/players/$playerSlug': typeof PlayersPlayerSlugRouteWithChildren
   '/players/$playerSlug/career': typeof PlayersPlayerSlugCareerRoute
   '/players/$playerSlug/home': typeof PlayersPlayerSlugHomeRoute
+  '/players/$playerSlug/last-match': typeof PlayersPlayerSlugLastMatchRoute
   '/players/$playerSlug/media': typeof PlayersPlayerSlugMediaRoute
   '/players/$playerSlug/squad': typeof PlayersPlayerSlugSquadRoute
   '/players/$playerSlug/synthesis': typeof PlayersPlayerSlugSynthesisRoute
+  '/players/$playerSlug/profile/citations': typeof PlayersPlayerSlugProfileCitationsRoute
   '/players/$playerSlug/stats/history': typeof PlayersPlayerSlugStatsHistoryRoute
+  '/players/$playerSlug/stats/sessions': typeof PlayersPlayerSlugStatsSessionsRoute
+  '/players/$playerSlug/stats/timeseries': typeof PlayersPlayerSlugStatsTimeseriesRoute
   '/players/$playerSlug/explorer/': typeof PlayersPlayerSlugExplorerIndexRoute
+  '/players/$playerSlug/explorer/matches/$matchId': typeof PlayersPlayerSlugExplorerMatchesMatchIdRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -129,11 +179,16 @@ export interface FileRouteTypes {
     | '/players/$playerSlug'
     | '/players/$playerSlug/career'
     | '/players/$playerSlug/home'
+    | '/players/$playerSlug/last-match'
     | '/players/$playerSlug/media'
     | '/players/$playerSlug/squad'
     | '/players/$playerSlug/synthesis'
+    | '/players/$playerSlug/profile/citations'
     | '/players/$playerSlug/stats/history'
+    | '/players/$playerSlug/stats/sessions'
+    | '/players/$playerSlug/stats/timeseries'
     | '/players/$playerSlug/explorer/'
+    | '/players/$playerSlug/explorer/matches/$matchId'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
@@ -142,11 +197,16 @@ export interface FileRouteTypes {
     | '/players/$playerSlug'
     | '/players/$playerSlug/career'
     | '/players/$playerSlug/home'
+    | '/players/$playerSlug/last-match'
     | '/players/$playerSlug/media'
     | '/players/$playerSlug/squad'
     | '/players/$playerSlug/synthesis'
+    | '/players/$playerSlug/profile/citations'
     | '/players/$playerSlug/stats/history'
+    | '/players/$playerSlug/stats/sessions'
+    | '/players/$playerSlug/stats/timeseries'
     | '/players/$playerSlug/explorer'
+    | '/players/$playerSlug/explorer/matches/$matchId'
   id:
     | '__root__'
     | '/'
@@ -155,11 +215,16 @@ export interface FileRouteTypes {
     | '/players/$playerSlug'
     | '/players/$playerSlug/career'
     | '/players/$playerSlug/home'
+    | '/players/$playerSlug/last-match'
     | '/players/$playerSlug/media'
     | '/players/$playerSlug/squad'
     | '/players/$playerSlug/synthesis'
+    | '/players/$playerSlug/profile/citations'
     | '/players/$playerSlug/stats/history'
+    | '/players/$playerSlug/stats/sessions'
+    | '/players/$playerSlug/stats/timeseries'
     | '/players/$playerSlug/explorer/'
+    | '/players/$playerSlug/explorer/matches/$matchId'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -220,6 +285,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof PlayersPlayerSlugMediaRouteImport
       parentRoute: typeof PlayersPlayerSlugRoute
     }
+    '/players/$playerSlug/last-match': {
+      id: '/players/$playerSlug/last-match'
+      path: '/last-match'
+      fullPath: '/players/$playerSlug/last-match'
+      preLoaderRoute: typeof PlayersPlayerSlugLastMatchRouteImport
+      parentRoute: typeof PlayersPlayerSlugRoute
+    }
     '/players/$playerSlug/home': {
       id: '/players/$playerSlug/home'
       path: '/home'
@@ -241,11 +313,39 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof PlayersPlayerSlugExplorerIndexRouteImport
       parentRoute: typeof PlayersPlayerSlugRoute
     }
+    '/players/$playerSlug/stats/timeseries': {
+      id: '/players/$playerSlug/stats/timeseries'
+      path: '/stats/timeseries'
+      fullPath: '/players/$playerSlug/stats/timeseries'
+      preLoaderRoute: typeof PlayersPlayerSlugStatsTimeseriesRouteImport
+      parentRoute: typeof PlayersPlayerSlugRoute
+    }
+    '/players/$playerSlug/stats/sessions': {
+      id: '/players/$playerSlug/stats/sessions'
+      path: '/stats/sessions'
+      fullPath: '/players/$playerSlug/stats/sessions'
+      preLoaderRoute: typeof PlayersPlayerSlugStatsSessionsRouteImport
+      parentRoute: typeof PlayersPlayerSlugRoute
+    }
     '/players/$playerSlug/stats/history': {
       id: '/players/$playerSlug/stats/history'
       path: '/stats/history'
       fullPath: '/players/$playerSlug/stats/history'
       preLoaderRoute: typeof PlayersPlayerSlugStatsHistoryRouteImport
+      parentRoute: typeof PlayersPlayerSlugRoute
+    }
+    '/players/$playerSlug/profile/citations': {
+      id: '/players/$playerSlug/profile/citations'
+      path: '/profile/citations'
+      fullPath: '/players/$playerSlug/profile/citations'
+      preLoaderRoute: typeof PlayersPlayerSlugProfileCitationsRouteImport
+      parentRoute: typeof PlayersPlayerSlugRoute
+    }
+    '/players/$playerSlug/explorer/matches/$matchId': {
+      id: '/players/$playerSlug/explorer/matches/$matchId'
+      path: '/explorer/matches/$matchId'
+      fullPath: '/players/$playerSlug/explorer/matches/$matchId'
+      preLoaderRoute: typeof PlayersPlayerSlugExplorerMatchesMatchIdRouteImport
       parentRoute: typeof PlayersPlayerSlugRoute
     }
   }
@@ -254,21 +354,33 @@ declare module '@tanstack/react-router' {
 interface PlayersPlayerSlugRouteChildren {
   PlayersPlayerSlugCareerRoute: typeof PlayersPlayerSlugCareerRoute
   PlayersPlayerSlugHomeRoute: typeof PlayersPlayerSlugHomeRoute
+  PlayersPlayerSlugLastMatchRoute: typeof PlayersPlayerSlugLastMatchRoute
   PlayersPlayerSlugMediaRoute: typeof PlayersPlayerSlugMediaRoute
   PlayersPlayerSlugSquadRoute: typeof PlayersPlayerSlugSquadRoute
   PlayersPlayerSlugSynthesisRoute: typeof PlayersPlayerSlugSynthesisRoute
+  PlayersPlayerSlugProfileCitationsRoute: typeof PlayersPlayerSlugProfileCitationsRoute
   PlayersPlayerSlugStatsHistoryRoute: typeof PlayersPlayerSlugStatsHistoryRoute
+  PlayersPlayerSlugStatsSessionsRoute: typeof PlayersPlayerSlugStatsSessionsRoute
+  PlayersPlayerSlugStatsTimeseriesRoute: typeof PlayersPlayerSlugStatsTimeseriesRoute
   PlayersPlayerSlugExplorerIndexRoute: typeof PlayersPlayerSlugExplorerIndexRoute
+  PlayersPlayerSlugExplorerMatchesMatchIdRoute: typeof PlayersPlayerSlugExplorerMatchesMatchIdRoute
 }
 
 const PlayersPlayerSlugRouteChildren: PlayersPlayerSlugRouteChildren = {
   PlayersPlayerSlugCareerRoute: PlayersPlayerSlugCareerRoute,
   PlayersPlayerSlugHomeRoute: PlayersPlayerSlugHomeRoute,
+  PlayersPlayerSlugLastMatchRoute: PlayersPlayerSlugLastMatchRoute,
   PlayersPlayerSlugMediaRoute: PlayersPlayerSlugMediaRoute,
   PlayersPlayerSlugSquadRoute: PlayersPlayerSlugSquadRoute,
   PlayersPlayerSlugSynthesisRoute: PlayersPlayerSlugSynthesisRoute,
+  PlayersPlayerSlugProfileCitationsRoute:
+    PlayersPlayerSlugProfileCitationsRoute,
   PlayersPlayerSlugStatsHistoryRoute: PlayersPlayerSlugStatsHistoryRoute,
+  PlayersPlayerSlugStatsSessionsRoute: PlayersPlayerSlugStatsSessionsRoute,
+  PlayersPlayerSlugStatsTimeseriesRoute: PlayersPlayerSlugStatsTimeseriesRoute,
   PlayersPlayerSlugExplorerIndexRoute: PlayersPlayerSlugExplorerIndexRoute,
+  PlayersPlayerSlugExplorerMatchesMatchIdRoute:
+    PlayersPlayerSlugExplorerMatchesMatchIdRoute,
 }
 
 const PlayersPlayerSlugRouteWithChildren =

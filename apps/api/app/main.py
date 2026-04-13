@@ -38,11 +38,13 @@ from apps.api.app.routers import home as home_router
 from apps.api.app.routers import jobs as jobs_router
 from apps.api.app.routers import match_history as match_history_router
 from apps.api.app.routers import media as media_router
+from apps.api.app.routers import session_compare as session_compare_router
 from apps.api.app.routers import settings_router
 from apps.api.app.routers import setup as setup_router
 from apps.api.app.routers import sync as sync_router
 from apps.api.app.routers import synthesis as synthesis_router
 from apps.api.app.routers import teammates as teammates_router
+from apps.api.app.routers import timeseries as timeseries_router
 from apps.api.app.routers.explorer import directory_router as explorer_directory_router
 from apps.api.app.routers.explorer import player_router as explorer_player_router
 
@@ -150,6 +152,8 @@ def _create_v1_router():  # type: ignore[return]
     v1.include_router(teammates_router.router)
     v1.include_router(synthesis_router.router)
     v1.include_router(media_router.router)
+    v1.include_router(timeseries_router.router)
+    v1.include_router(session_compare_router.router)
     return v1
 
 

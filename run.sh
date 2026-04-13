@@ -42,7 +42,7 @@ if ! "$VENV_PYTHON" -c "import sys; sys.exit(0)" 2>/dev/null; then
     exit 1
 fi
 
-if ! "$VENV_PYTHON" -c "import streamlit, duckdb, polars" 2>/dev/null; then
+if ! "$VENV_PYTHON" -c "import duckdb, polars, uvicorn" 2>/dev/null; then
     echo "  ⚠  Environnement incomplet ou corrompu."
     echo "     Relancez le setup : ./LevelUp.sh --reinstall"
     exit 1

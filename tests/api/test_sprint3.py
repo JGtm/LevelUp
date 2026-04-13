@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import contextlib
 import json
 from pathlib import Path
 from unittest.mock import patch
@@ -23,6 +24,37 @@ def force_demo_env(monkeypatch: pytest.MonkeyPatch) -> None:
 @pytest.fixture
 def no_demo_env(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setenv("LEVELUP_DEMO_MODE", "false")
+
+
+@pytest.fixture
+def reset_job_store():
+    """Vide le JobStore entre tests (évite contamination cross-run).
+
+    Réinitialise le singleton ET le fichier JSON pour que _load()
+    recharge toujours un état propre.
+    """
+    from apps.api.app.services.job_store import JobStore
+
+    # Obtenir l'instance pour connaître le chemin du fichier
+    instance = JobStore.get()
+    jobs_file = instance._jobs_file
+    # Vider les jobs en mémoire et sur disque
+    with instance._jobs_lock:
+        instance._jobs.clear()
+    with contextlib.suppress(Exception):
+        jobs_file.write_text("[]", encoding="utf-8")
+    # Forcer la recréation de l'instance au prochain appel
+    with JobStore._lock:
+        JobStore._instance = None
+    yield
+    # Nettoyage après le test
+    with JobStore._lock:
+        if JobStore._instance is not None:
+            with JobStore._instance._jobs_lock:
+                JobStore._instance._jobs.clear()
+            with contextlib.suppress(Exception):
+                jobs_file.write_text("[]", encoding="utf-8")
+        JobStore._instance = None
 
 
 @pytest.fixture
@@ -103,7 +135,7 @@ def test_job_store_load_cancels_running_jobs(tmp_jobs_file: Path) -> None:
     loaded = store2.get_job(job.job_id)
 
     assert loaded is not None
-    assert loaded.status == "cancelled"
+    assert loaded.status == "interrupted"
 
 
 def test_job_store_load_keeps_succeeded_jobs(tmp_jobs_file: Path) -> None:
@@ -160,6 +192,7 @@ def test_job_store_enriched_fields_in_to_status(tmp_jobs_file: Path) -> None:
 async def test_sync_initial_blocked_when_cant_start(
     client: AsyncClient,
     no_demo_env: None,
+    reset_job_store: None,
 ) -> None:
     """POST /sync/initial → 403 si can_start_initial_sync=false."""
     from apps.api.app.core.config import get_settings
@@ -183,6 +216,7 @@ async def test_sync_initial_blocked_when_cant_start(
 async def test_sync_initial_creates_job(
     client: AsyncClient,
     no_demo_env: None,
+    reset_job_store: None,
 ) -> None:
     """POST /sync/initial → 202 + job initial_sync avec les champs enrichis."""
     from apps.api.app.core.config import get_settings

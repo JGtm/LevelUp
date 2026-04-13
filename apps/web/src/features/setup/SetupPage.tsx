@@ -1,83 +1,60 @@
 /**
- * SetupPage — wizard de configuration initiale.
+ * SetupPage — wizard de configuration initiale piloté par ``setupState``.
  *
- * Machine d'état : choose_mode → auth → player → initial_sync → done
+ * Machine d'état (source : GET /bootstrap, champ setup_state) :
+ *   no_halo_link            → StepDeviceCode
+ *   halo_linked_no_profile  → StepPlayer (carte de confirmation si linkedHaloIdentity)
+ *   profile_ready_no_sync   → StepInitialSync
+ *   ready                   → redirect vers /
  */
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { useNavigate } from '@tanstack/react-router'
 import { useQueryClient } from '@tanstack/react-query'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Spinner } from '@/components/ui/spinner'
+import { useAppShellStore } from '@/stores/appShellStore'
 import { useSetupFlowStore } from '@/stores/setupFlowStore'
 import { queryKeys } from '@/lib/query/keys'
 import {
-  useSetupStatus,
   useStartDeviceFlow,
   useDeviceFlowStatus,
   useCreatePlayer,
-  useStartSmokeTest,
   useStartInitialSync,
   useJobStatus,
 } from './queries'
 
 // ---------------------------------------------------------------------------
-// Étape 1 — Choix du mode auth
-// ---------------------------------------------------------------------------
-function StepChooseMode() {
-  const setSelectedMode = useSetupFlowStore((s) => s.setSelectedMode)
-  return (
-    <div className="space-y-4">
-      <h2 className="text-lg font-semibold">Mode d'authentification</h2>
-      <p className="text-sm text-gray-500">
-        Comment souhaitez-vous vous connecter à l'API Halo ?
-      </p>
-      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-        <Card
-          className="cursor-pointer hover:border-purple-400 transition-colors"
-          onClick={() => setSelectedMode('device_code')}
-        >
-          <CardContent className="py-4">
-            <p className="font-medium">Device Code Flow</p>
-            <p className="text-xs text-gray-400 mt-1">
-              Connexion via Microsoft en scannant un QR code (recommandé)
-            </p>
-          </CardContent>
-        </Card>
-        <Card
-          className="cursor-pointer hover:border-purple-400 transition-colors"
-          onClick={() => setSelectedMode('refresh_token')}
-        >
-          <CardContent className="py-4">
-            <p className="font-medium">Refresh Token</p>
-            <p className="text-xs text-gray-400 mt-1">
-              Entrez un refresh token existant (avancé)
-            </p>
-          </CardContent>
-        </Card>
-      </div>
-    </div>
-  )
-}
-
-// ---------------------------------------------------------------------------
-// Étape 2 — Device Code Flow
+// Étape 1 — Device Code Flow (Halo Link)
 // ---------------------------------------------------------------------------
 function StepDeviceCode() {
   const currentAttemptId = useSetupFlowStore((s) => s.currentAttemptId)
   const setCurrentAttemptId = useSetupFlowStore((s) => s.setCurrentAttemptId)
   const deviceFlowUserCode = useSetupFlowStore((s) => s.deviceFlowUserCode)
   const deviceFlowVerificationUri = useSetupFlowStore((s) => s.deviceFlowVerificationUri)
+  const deviceFlowExpiresAt = useSetupFlowStore((s) => s.deviceFlowExpiresAt)
   const setDeviceFlowCodes = useSetupFlowStore((s) => s.setDeviceFlowCodes)
-  const setResolvedIdentity = useSetupFlowStore((s) => s.setResolvedIdentity)
   const queryClient = useQueryClient()
   const startFlow = useStartDeviceFlow()
 
-  const { data: status } = useDeviceFlowStatus(
-    currentAttemptId ?? '',
-    !!currentAttemptId,
-  )
+  // Countdown
+  const [secondsLeft, setSecondsLeft] = useState<number | null>(null)
+  const timerRef = useRef<ReturnType<typeof setInterval> | null>(null)
+
+  useEffect(() => {
+    if (!deviceFlowExpiresAt) return
+    const update = () => {
+      const diff = Math.max(0, Math.floor((deviceFlowExpiresAt - Date.now()) / 1000))
+      setSecondsLeft(diff)
+      if (diff <= 0 && timerRef.current) clearInterval(timerRef.current)
+    }
+    update()
+    timerRef.current = setInterval(update, 1000)
+    return () => { if (timerRef.current) clearInterval(timerRef.current) }
+  }, [deviceFlowExpiresAt])
+
+  const { data: status } = useDeviceFlowStatus(currentAttemptId ?? '', !!currentAttemptId)
 
   // Démarrer le flow au montage si pas encore en cours
   useEffect(() => {
@@ -85,28 +62,33 @@ function StepDeviceCode() {
       startFlow.mutate(undefined, {
         onSuccess: (data) => {
           setCurrentAttemptId(data.attempt_id)
-          setDeviceFlowCodes(data.user_code, data.verification_uri)
+          setDeviceFlowCodes(
+            data.user_code,
+            data.verification_uri,
+            data.expires_in ? Date.now() + data.expires_in * 1000 : null,
+          )
         },
       })
     }
   }, []) // eslint-disable-line react-hooks/exhaustive-deps
 
-  // Quand le flow réussit : enregistrer l'identité et avancer
+  // Quand le flow réussit : invalider le bootstrap pour que setupState avance
   useEffect(() => {
     if (status?.status === 'authorized' || status?.status === 'provisioned') {
-      if (status.gamertag) {
-        setResolvedIdentity(status.gamertag, status.xuid ?? null)
-      }
-      queryClient.invalidateQueries({ queryKey: queryKeys.setupStatus })
+      queryClient.invalidateQueries({ queryKey: queryKeys.bootstrap })
     }
-  }, [status?.status]) // eslint-disable-line react-hooks/exhaustive-deps
+  }, [status?.status, queryClient])
 
   function handleRetry() {
     setCurrentAttemptId(null)
     startFlow.mutate(undefined, {
       onSuccess: (data) => {
         setCurrentAttemptId(data.attempt_id)
-        setDeviceFlowCodes(data.user_code, data.verification_uri)
+        setDeviceFlowCodes(
+          data.user_code,
+          data.verification_uri,
+          data.expires_in ? Date.now() + data.expires_in * 1000 : null,
+        )
       },
     })
   }
@@ -115,11 +97,22 @@ function StepDeviceCode() {
     return <Spinner label="Démarrage du Device Code Flow…" />
   }
 
-  if (status?.status === 'failed' || status?.status === 'expired') {
+  // Codes d'erreur structurés
+  const errorCode = status?.status === 'failed' ? (status as any).error_code : null
+
+  if (status?.status === 'failed' || status?.status === 'expired' || (secondsLeft !== null && secondsLeft <= 0)) {
+    const errorMessage: Record<string, string> = {
+      device_flow_denied: "Vous avez refusé ou annulé la demande Microsoft.",
+      device_flow_error: "Erreur lors de l'authentification Microsoft.",
+      halo_exchange_failed: "Impossible d'obtenir un accès Halo. Veuillez réessayer.",
+      identity_resolution_failed: "Impossible de résoudre votre Gamertag. Réessayez dans quelques instants.",
+    }
     return (
       <div className="space-y-3">
         <p className="text-red-600 font-medium">
-          {status.status === 'expired' ? 'Le code a expiré.' : "Échec de l'authentification."}
+          {status?.status === 'expired' || (secondsLeft !== null && secondsLeft <= 0)
+            ? 'Le code a expiré.'
+            : (errorCode && errorMessage[errorCode]) ?? "Échec de l'authentification."}
         </p>
         <Button onClick={handleRetry}>Réessayer</Button>
       </div>
@@ -131,16 +124,19 @@ function StepDeviceCode() {
       <div className="space-y-2">
         <p className="text-green-600 font-semibold">✓ Authentification réussie !</p>
         {status.gamertag && (
-          <p className="text-sm text-gray-600">
-            Connecté en tant que : <strong>{status.gamertag}</strong>
-          </p>
+          <div className="rounded-lg border border-green-200 bg-green-50 p-3">
+            <p className="text-xs text-gray-500">Compte Microsoft identifié :</p>
+            <p className="mt-0.5 text-lg font-bold text-green-700">{status.gamertag}</p>
+          </div>
         )}
-        <Spinner size="sm" label="Finalisation du profil…" />
+        <Spinner size="sm" label="Chargement du profil…" />
       </div>
     )
   }
 
   const uri = deviceFlowVerificationUri ?? 'https://microsoft.com/devicelogin'
+  const mins = secondsLeft != null ? Math.floor(secondsLeft / 60) : null
+  const secs = secondsLeft != null ? secondsLeft % 60 : null
 
   return (
     <div className="space-y-4">
@@ -161,6 +157,14 @@ function StepDeviceCode() {
           <Spinner size="sm" />
         )}
       </div>
+      {secondsLeft != null && secondsLeft > 0 && (
+        <p className="text-center text-xs text-gray-400">
+          Code valide encore{' '}
+          <span className={secondsLeft < 60 ? 'text-amber-500 font-semibold' : ''}>
+            {mins}:{String(secs).padStart(2, '0')}
+          </span>
+        </p>
+      )}
       <p className="text-xs text-gray-400 text-center animate-pulse">
         En attente de l'authentification…
       </p>
@@ -169,39 +173,50 @@ function StepDeviceCode() {
 }
 
 // ---------------------------------------------------------------------------
-// Étape 3 — Ajout joueur
+// Étape 2 — Création du profil joueur
 // ---------------------------------------------------------------------------
 function StepPlayer() {
-  const resolvedGamertag = useSetupFlowStore((s) => s.resolvedGamertag)
-  const resolvedXuid = useSetupFlowStore((s) => s.resolvedXuid)
-  const [gamertag, setGamertag] = useState(resolvedGamertag ?? '')
+  const linkedHaloIdentity = useAppShellStore((s) => s.linkedHaloIdentity)
+  const [gamertag, setGamertag] = useState(linkedHaloIdentity?.gamertag ?? '')
   const queryClient = useQueryClient()
   const createPlayer = useCreatePlayer()
+
+  // Sync si l'identité est chargée après le montage
+  useEffect(() => {
+    if (linkedHaloIdentity?.gamertag && !gamertag) {
+      setGamertag(linkedHaloIdentity.gamertag)
+    }
+  }, [linkedHaloIdentity?.gamertag]) // eslint-disable-line react-hooks/exhaustive-deps
 
   function handleCreate() {
     if (!gamertag.trim()) return
     createPlayer.mutate(
-      { gamertag: gamertag.trim(), xuid: resolvedXuid ?? undefined },
       {
-        onSuccess: () =>
-          queryClient.invalidateQueries({ queryKey: queryKeys.setupStatus }),
+        gamertag: gamertag.trim(),
+        xuid: linkedHaloIdentity?.xuid ?? undefined,
+      },
+      {
+        onSuccess: () => queryClient.invalidateQueries({ queryKey: queryKeys.bootstrap }),
       },
     )
   }
 
   return (
     <div className="space-y-4">
-      <h2 className="text-lg font-semibold">Ajouter votre joueur</h2>
+      <h2 className="text-lg font-semibold">Créer votre profil joueur</h2>
 
-      {resolvedGamertag ? (
-        <div className="rounded-lg border border-green-200 bg-green-50 p-4">
-          <p className="text-xs text-gray-500">Identité Halo détectée :</p>
-          <p className="mt-1 text-xl font-bold text-green-700">{resolvedGamertag}</p>
-          {resolvedXuid && (
-            <p className="mt-0.5 text-xs text-gray-400">XUID : {resolvedXuid}</p>
-          )}
+      {linkedHaloIdentity ? (
+        /* Carte de confirmation — identité résolue depuis la session */
+        <div className="rounded-lg border border-purple-200 bg-purple-50 p-4">
+          <p className="text-xs text-gray-500">Identité Halo liée à cette session :</p>
+          <p className="mt-1 text-2xl font-bold text-purple-700">
+            {linkedHaloIdentity.gamertag}
+          </p>
+          <p className="text-xs text-gray-400 mt-0.5 font-mono">
+            XUID {linkedHaloIdentity.xuid}
+          </p>
           <p className="mt-2 text-xs text-gray-500">
-            Un profil local va être créé pour ce compte.
+            Un profil local sera créé pour ce compte.
           </p>
         </div>
       ) : (
@@ -218,50 +233,67 @@ function StepPlayer() {
         </>
       )}
 
-      <Button
-        onClick={handleCreate}
-        loading={createPlayer.isPending}
-        disabled={!gamertag.trim()}
-      >
-        {resolvedGamertag ? 'Confirmer et créer mon profil' : 'Ajouter'}
-      </Button>
-
-      {createPlayer.isSuccess && (
-        <p className="text-green-600 text-sm">
-          ✓ Joueur <strong>{createPlayer.data.player.gamertag}</strong> ajouté.
+      {createPlayer.isError && (
+        <p className="text-red-600 text-sm">
+          {(createPlayer.error as any)?.detail?.message ?? 'Erreur lors de la création du profil.'}
         </p>
       )}
-      {createPlayer.isError && (
-        <p className="text-red-600 text-sm">Erreur lors de la création du profil.</p>
-      )}
+
+      <Button
+        onClick={handleCreate}
+        disabled={!gamertag.trim() || createPlayer.isPending || createPlayer.isSuccess}
+      >
+        {createPlayer.isPending
+          ? 'Création…'
+          : linkedHaloIdentity
+          ? 'Confirmer et créer mon profil'
+          : 'Ajouter'}
+      </Button>
     </div>
   )
 }
 
 // ---------------------------------------------------------------------------
-// Étape 4 — Sync initiale
+// Étape 3 — Synchronisation initiale
 // ---------------------------------------------------------------------------
 function StepInitialSync({ playerSlug }: { playerSlug: string }) {
+  const activeSyncJobId = useAppShellStore((s) => s.activeSyncJobId)
   const currentJobId = useSetupFlowStore((s) => s.currentJobId)
   const setCurrentJobId = useSetupFlowStore((s) => s.setCurrentJobId)
   const startSync = useStartInitialSync()
   const queryClient = useQueryClient()
 
-  const { data: job } = useJobStatus(currentJobId ?? '', !!currentJobId)
+  // Reprendre depuis le job actif connu (session serveur) ou le job local du store
+  const resolvedJobId = activeSyncJobId ?? currentJobId
+
+  const { data: job } = useJobStatus(resolvedJobId ?? '', !!resolvedJobId)
 
   function handleStart() {
     startSync.mutate(
       { player_slug: playerSlug, max_matches: 200 },
-      { onSuccess: (j) => setCurrentJobId(j.job_id) },
+      {
+        onSuccess: (j) => {
+          setCurrentJobId(j.job_id)
+          queryClient.invalidateQueries({ queryKey: queryKeys.bootstrap })
+        },
+      },
     )
   }
 
-  // Quand la sync réussit : invalider le statut setup pour passer à "done"
+  // Quand la sync réussit : invalider le bootstrap pour passer à "ready"
   useEffect(() => {
     if (job?.status === 'succeeded') {
-      queryClient.invalidateQueries({ queryKey: queryKeys.setupStatus })
+      queryClient.invalidateQueries({ queryKey: queryKeys.bootstrap })
     }
-  }, [job?.status]) // eslint-disable-line react-hooks/exhaustive-deps
+  }, [job?.status, queryClient])
+
+  const errorMessages: Record<string, string> = {
+    sync_auth_expired: "Votre session Halo a expiré. Relancez pour renouveler l'authentification.",
+    sync_halo_api_error: "L'API Halo est temporairement indisponible. Veuillez réessayer.",
+    sync_db_error: "Erreur interne lors de l'enregistrement des données. Contactez le support.",
+    sync_aborted: "La synchronisation a été interrompue. Vous pouvez relancer.",
+    internal_error: "Erreur inattendue. Veuillez réessayer.",
+  }
 
   return (
     <div className="space-y-4">
@@ -271,9 +303,9 @@ function StepInitialSync({ playerSlug }: { playerSlug: string }) {
         Cela prend environ 2–4 minutes selon votre historique.
       </p>
 
-      {!currentJobId && (
-        <Button onClick={handleStart} loading={startSync.isPending}>
-          Lancer la synchronisation
+      {!resolvedJobId && (
+        <Button onClick={handleStart} disabled={startSync.isPending}>
+          {startSync.isPending ? 'Démarrage…' : 'Lancer la synchronisation'}
         </Button>
       )}
 
@@ -284,7 +316,7 @@ function StepInitialSync({ playerSlug }: { playerSlug: string }) {
             <div className="space-y-1">
               <div className="flex justify-between text-xs text-gray-500">
                 <span>{job.phase_label ?? job.current_step ?? '…'}</span>
-                <span>{job.progress_pct} %</span>
+                <span>{job.progress_pct} %</span>
               </div>
               <div className="h-2 w-full rounded-full bg-gray-100">
                 <div
@@ -298,27 +330,25 @@ function StepInitialSync({ playerSlug }: { playerSlug: string }) {
           {/* Compteurs métier */}
           {job.matches_done != null && job.matches_total != null && (
             <p className="text-sm text-gray-600">
-              {job.matches_done} / {job.matches_total} matchs récupérés
+              {job.matches_done} / {job.matches_total} matchs récupérés
             </p>
           )}
 
-          {/* Eta */}
+          {/* ETA */}
           {job.eta_seconds != null && job.status === 'running' && (
             <p className="text-xs text-gray-400">
-              Temps restant estimé : environ {Math.ceil(job.eta_seconds / 60)} min
+              Temps restant estimé : environ {Math.ceil(job.eta_seconds / 60)} min
             </p>
           )}
 
           {/* Warnings */}
           {job.warnings.length > 0 && (
             <ul className="text-xs text-amber-600 space-y-0.5">
-              {job.warnings.map((w) => (
-                <li key={w}>⚠️ {w}</li>
-              ))}
+              {job.warnings.map((w) => <li key={w}>⚠️ {w}</li>)}
             </ul>
           )}
 
-          {/* Résultat */}
+          {/* Résultat réussi */}
           {job.status === 'succeeded' && (
             <div className="space-y-2">
               <p className="text-green-600 font-medium">
@@ -329,15 +359,17 @@ function StepInitialSync({ playerSlug }: { playerSlug: string }) {
                   </span>
                 )}
               </p>
-              <Button onClick={() => queryClient.invalidateQueries({ queryKey: queryKeys.setupStatus })}>
-                Ouvrir l’application
+              <Button onClick={() => queryClient.invalidateQueries({ queryKey: queryKeys.bootstrap })}>
+                Ouvrir l'application
               </Button>
             </div>
           )}
-          {job.status === 'failed' && (
+
+          {/* Interrompu (redémarrage serveur) */}
+          {job.status === 'interrupted' && (
             <div className="space-y-2">
-              <p className="text-red-600 font-medium">
-                ✗ Échec de la synchronisation. {job.error?.message}
+              <p className="text-amber-600 font-medium">
+                ⚡ Synchronisation interrompue (redémarrage serveur).
               </p>
               <Button
                 variant="outline"
@@ -346,64 +378,33 @@ function StepInitialSync({ playerSlug }: { playerSlug: string }) {
                   handleStart()
                 }}
               >
-                Réessayer
+                Reprendre la synchronisation
               </Button>
             </div>
           )}
-        </div>
-      )}
-    </div>
-  )
-}
 
-// ---------------------------------------------------------------------------
-// Étape 5 — Smoke test
-// ---------------------------------------------------------------------------
-function StepSmokeTest({ playerSlug }: { playerSlug: string }) {
-  const currentJobId = useSetupFlowStore((s) => s.currentJobId)
-  const setCurrentJobId = useSetupFlowStore((s) => s.setCurrentJobId)
-  const startTest = useStartSmokeTest()
-
-  const { data: job } = useJobStatus(currentJobId ?? '', !!currentJobId)
-
-  return (
-    <div className="space-y-4">
-      <h2 className="text-lg font-semibold">Test de connexion</h2>
-      <p className="text-sm text-gray-500">
-        Vérifie que LevelUp peut récupérer vos données Halo.
-      </p>
-
-      {!currentJobId && (
-        <Button
-          onClick={() => {
-            startTest.mutate(
-              { player_slug: playerSlug, max_matches: 5 },
-              { onSuccess: (j) => setCurrentJobId(j.job_id) },
-            )
-          }}
-          loading={startTest.isPending}
-        >
-          Lancer le test
-        </Button>
-      )}
-
-      {job && (
-        <div className="space-y-2">
-          {job.progress_pct != null && (
-            <div className="h-2 w-full rounded-full bg-gray-100">
-              <div
-                className="h-full rounded-full bg-purple-500 transition-all"
-                style={{ width: `${job.progress_pct}%` }}
-              />
+          {/* Erreur */}
+          {job.status === 'failed' && (
+            <div className="space-y-2">
+              <p className="text-red-600 font-medium">✗ Échec de la synchronisation.</p>
+              {job.error?.code && (
+                <p className="text-sm text-gray-500">
+                  {errorMessages[job.error.code] ?? job.error.message}
+                </p>
+              )}
+              {job.error?.retryable !== false && (
+                <Button
+                  variant="outline"
+                  onClick={() => {
+                    setCurrentJobId(null)
+                    handleStart()
+                  }}
+                >
+                  Réessayer
+                </Button>
+              )}
             </div>
           )}
-          <p className="text-sm text-gray-600">{job.current_step ?? '…'}</p>
-          {job.status === 'succeeded' && (
-            <p className="text-green-600 font-medium">✓ Test réussi ! LevelUp est prêt.</p>
-          )}
-          {job.status === 'failed' && (
-            <p className="text-red-600 font-medium">✗ Échec du test. {job.error?.message}</p>
-          )}
         </div>
       )}
     </div>
@@ -411,28 +412,28 @@ function StepSmokeTest({ playerSlug }: { playerSlug: string }) {
 }
 
 // ---------------------------------------------------------------------------
-// SetupPage orchestrateur
+// SetupPage — orchestrateur piloté par setupState (source : /bootstrap)
 // ---------------------------------------------------------------------------
 export function SetupPage() {
   const navigate = useNavigate()
-  const { data: status, isLoading } = useSetupStatus()
-  const selectedMode = useSetupFlowStore((s) => s.selectedMode)
+  const setupState = useAppShellStore((s) => s.setupState)
+  const isBootstrapped = useAppShellStore((s) => s.isBootstrapped)
+  const currentPlayer = useAppShellStore((s) => s.currentPlayer)
 
+  // Rediriger vers l'accueil dès que l'onboarding est terminé
   useEffect(() => {
-    if (status && !status.needs_setup) {
+    if (isBootstrapped && setupState === 'ready') {
       navigate({ to: '/' })
     }
-  }, [status, navigate])
+  }, [isBootstrapped, setupState, navigate])
 
-  if (isLoading) {
+  if (!isBootstrapped) {
     return (
       <div className="flex min-h-screen items-center justify-center">
         <Spinner size="lg" label="Vérification de la configuration…" />
       </div>
     )
   }
-
-  const step = status?.next_blocking_step ?? 'choose_mode'
 
   return (
     <div className="flex min-h-screen items-center justify-center bg-gray-50">
@@ -444,24 +445,16 @@ export function SetupPage() {
           </div>
         </CardHeader>
         <CardContent>
-          {step === 'choose_mode' && <StepChooseMode />}
-          {step === 'auth' && selectedMode === 'device_code' && <StepDeviceCode />}
-          {step === 'auth' && selectedMode === 'refresh_token' && (
-            <div>
-              <p className="text-sm text-gray-500">
-                Entrez votre refresh token dans <code>.env.local</code> puis redémarrez l'application.
-              </p>
-            </div>
+          {setupState === 'no_halo_link' && <StepDeviceCode />}
+          {setupState === 'halo_linked_no_profile' && <StepPlayer />}
+          {setupState === 'profile_ready_no_sync' && currentPlayer && (
+            <StepInitialSync playerSlug={currentPlayer.player_slug} />
           )}
-          {step === 'auth' && !selectedMode && <StepChooseMode />}
-          {step === 'player' && <StepPlayer />}
-          {step === 'initial_sync' && status?.player.default_player_slug && (
-            <StepInitialSync playerSlug={status.player.default_player_slug} />
+          {setupState === 'profile_ready_no_sync' && !currentPlayer && (
+            /* Joueur pas encore connu localement mais provisioning en cours */
+            <Spinner label="Chargement du profil joueur…" />
           )}
-          {step === 'smoke_test' && status?.player.default_player_slug && (
-            <StepSmokeTest playerSlug={status.player.default_player_slug} />
-          )}
-          {step === 'done' && (
+          {setupState === 'ready' && (
             <div className="space-y-4">
               <p className="text-green-600 font-semibold">✓ Configuration terminée !</p>
               <Button onClick={() => navigate({ to: '/' })}>Accéder à l'application</Button>

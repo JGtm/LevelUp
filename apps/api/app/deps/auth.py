@@ -57,6 +57,8 @@ class SessionData:
     auth_ready: bool = False
     # Identité Halo liée après Device Code Flow — jamais exposée au navigateur
     linked_halo_identity: dict[str, str] | None = None
+    # Job sync initiale actif — permet de reprendre le polling après refresh
+    active_sync_job_id: str | None = None
     _extra: dict[str, Any] = field(default_factory=dict)
 
     def touch(self) -> None:

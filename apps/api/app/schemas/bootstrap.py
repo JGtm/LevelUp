@@ -26,6 +26,13 @@ class SettingsExcerpt(BaseModel):
     normalize_mode_labels: bool = True
 
 
+class HaloIdentitySummary(BaseModel):
+    """Identité Halo résolue côté backend — confirmée au provisioning."""
+
+    gamertag: str
+    xuid: str
+
+
 class BootstrapResponse(BaseModel):
     """Réponse de `GET /api/v1/bootstrap` — point d'entrée du shell React.
 
@@ -45,6 +52,10 @@ class BootstrapResponse(BaseModel):
     feature_flags: FeatureFlags
     capabilities: CapabilityMap
     settings_excerpt: SettingsExcerpt
+    # Sprint 1 — identité Halo liée côté serveur (jamais saisie libre côté client)
+    linked_halo_identity: HaloIdentitySummary | None = None
+    # Sprint 3 — job sync actif (reprise du polling après refresh navigateur)
+    active_sync_job_id: str | None = None
 
 
 class PlayersListResponse(BaseModel):

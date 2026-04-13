@@ -10,6 +10,7 @@ Phases :
 from __future__ import annotations
 
 import threading
+import time
 
 import structlog
 
@@ -30,19 +31,37 @@ _PHASE_LABELS: dict[str, str] = {
 }
 
 
-def start_initial_sync(body: InitialSyncStartRequest) -> AsyncJobStatus:
+def start_initial_sync(
+    body: InitialSyncStartRequest,
+    session_id: str | None = None,
+) -> AsyncJobStatus:
     """Crée un job ``initial_sync`` et lance la synchronisation en arrière-plan.
 
     Retourne immédiatement le statut initial du job (``queued``).
     """
     store = JobStore.get()
-    job = store.create("initial_sync")
+    job = store.create(
+        "initial_sync",
+        metadata={"player_slug": body.player_slug},
+    )
+    # Persister l'ID du job sync dans la session pour reprise après refresh
+    if session_id:
+        _store_active_sync_job_id(session_id, job.job_id)
     thread = threading.Thread(
         target=_run_initial_sync_bg,
-        args=(job.job_id, body.player_slug, body.max_matches),
+        args=(job.job_id, body.player_slug, body.max_matches, session_id),
         daemon=True,
     )
     thread.start()
+
+    logger.info(
+        "initial_sync_started",
+        job_id=job.job_id,
+        player_slug=body.player_slug,
+        max_matches=body.max_matches,
+        session_id=session_id,
+    )
+
     return store.get_job(job.job_id) or job
 
 
@@ -51,10 +70,16 @@ def start_initial_sync(body: InitialSyncStartRequest) -> AsyncJobStatus:
 # ---------------------------------------------------------------------------
 
 
-def _run_initial_sync_bg(job_id: str, player_slug: str, max_matches: int) -> None:
+def _run_initial_sync_bg(
+    job_id: str,
+    player_slug: str,
+    max_matches: int,
+    session_id: str | None = None,
+) -> None:
     """Exécute la sync initiale dans un thread background.
 
-    Met à jour le job à chaque changement de phase.
+    Met à jour le job à chaque changement de phase et écrit le marqueur
+    ``initial_sync_completed_at`` en fin de sync réussie.
     """
     store = JobStore.get()
 
@@ -88,6 +113,16 @@ def _run_initial_sync_bg(job_id: str, player_slug: str, max_matches: int) -> Non
         _set_phase("finalize", 97, "Finalisation des index…")
         _run_finalize(player_slug)
 
+        # Marqueur persistant de sync initiale (Sprint 3.1)
+        _write_initial_sync_marker(player_slug)
+
+        logger.info(
+            "initial_sync_succeeded",
+            job_id=job_id,
+            player_slug=player_slug,
+            matches_imported=match_count,
+        )
+
         store.update(
             job_id,
             status="succeeded",
@@ -98,6 +133,43 @@ def _run_initial_sync_bg(job_id: str, player_slug: str, max_matches: int) -> Non
             result={"matches_imported": match_count},
         )
 
+        # Nettoyer l'ID de job sync actif dans la session
+        if session_id:
+            _clear_active_sync_job_id(session_id)
+
+    except _SyncAuthError as exc:
+        logger.warning("initial_sync_auth_expired", job_id=job_id, reason=str(exc))
+        store.update(
+            job_id,
+            status="failed",
+            error=ApiErrorSchema(
+                code="sync_auth_expired",
+                message=str(exc),
+                retryable=True,
+            ),
+        )
+    except _SyncHaloApiError as exc:
+        logger.warning("initial_sync_halo_api_error", job_id=job_id, reason=str(exc))
+        store.update(
+            job_id,
+            status="failed",
+            error=ApiErrorSchema(
+                code="sync_halo_api_error",
+                message=str(exc),
+                retryable=True,
+            ),
+        )
+    except _SyncDbError as exc:
+        logger.error("initial_sync_db_error", job_id=job_id, reason=str(exc))
+        store.update(
+            job_id,
+            status="failed",
+            error=ApiErrorSchema(
+                code="sync_db_error",
+                message=str(exc),
+                retryable=True,
+            ),
+        )
     except _SyncAbortError as exc:
         logger.warning("initial_sync_aborted", job_id=job_id, reason=str(exc))
         store.update(
@@ -106,7 +178,7 @@ def _run_initial_sync_bg(job_id: str, player_slug: str, max_matches: int) -> Non
             error=ApiErrorSchema(
                 code="sync_aborted",
                 message=str(exc),
-                retryable=True,
+                retryable=False,
             ),
         )
     except Exception as exc:  # noqa: BLE001
@@ -115,7 +187,7 @@ def _run_initial_sync_bg(job_id: str, player_slug: str, max_matches: int) -> Non
             job_id,
             status="failed",
             error=ApiErrorSchema(
-                code="sync_failed",
+                code="internal_error",
                 message=f"Erreur inattendue : {exc}",
                 retryable=True,
             ),
@@ -129,6 +201,98 @@ def _run_initial_sync_bg(job_id: str, player_slug: str, max_matches: int) -> Non
 
 class _SyncAbortError(Exception):
     """Erreur métier bloquante (config manquante, joueur introuvable…)."""
+
+
+class _SyncAuthError(Exception):
+    """Tokens Halo expirés ou absents."""
+
+
+class _SyncHaloApiError(Exception):
+    """Erreur API Halo (5xx, timeout, quota)."""
+
+
+# Délais de retry en secondes (3 tentatives : 1s, 2s, 4s)
+_HALO_RETRY_DELAYS: tuple[int, ...] = (1, 2, 4)
+
+# Modules / noms d'exception courants signalant une erreur réseau/API Halo
+_HALO_ERROR_MODULES: frozenset[str] = frozenset({"aiohttp", "httpx", "spnkr"})
+_HALO_ERROR_NAMES: frozenset[str] = frozenset(
+    {
+        "ClientError",
+        "ClientResponseError",
+        "ServerTimeoutError",
+        "ClientConnectorError",
+        "ServerConnectionError",
+    }
+)
+
+
+def _is_transient_halo_error(exc: BaseException) -> bool:
+    """Retourne True si l'exception semble être une erreur transitoire de l'API Halo."""
+    mod = (type(exc).__module__ or "").lower()
+    return (
+        any(name in mod for name in _HALO_ERROR_MODULES) or type(exc).__name__ in _HALO_ERROR_NAMES
+    )
+
+
+class _SyncDbError(Exception):
+    """Erreur d'écriture DuckDB."""
+
+
+def _write_initial_sync_marker(player_slug: str) -> None:
+    """Persiste ``initial_sync_completed_at`` dans sync_meta de la player DB."""
+    try:
+        from datetime import datetime, timezone
+        from pathlib import Path
+
+        import duckdb
+
+        from apps.api.app.core.config import get_settings
+
+        settings = get_settings()
+        player_db = Path(settings.repo_root) / "data" / "players" / player_slug / "stats.duckdb"
+        if not player_db.exists():
+            logger.warning("initial_sync_marker_db_absent", player_slug=player_slug)
+            return
+        with duckdb.connect(str(player_db)) as conn:
+            conn.execute(
+                """
+                INSERT OR IGNORE INTO sync_meta (key, value, updated_at)
+                VALUES ('initial_sync_completed_at', ?, CURRENT_TIMESTAMP)
+                """,
+                [datetime.now(timezone.utc).isoformat()],
+            )
+        logger.info("initial_sync_marker_written", player_slug=player_slug)
+    except Exception:
+        logger.warning("initial_sync_marker_write_failed", player_slug=player_slug, exc_info=True)
+
+
+def _store_active_sync_job_id(session_id: str, job_id: str) -> None:
+    """Persiste l'ID du job sync actif dans la session."""
+    try:
+        from apps.api.app.deps.auth import _get_store
+
+        store = _get_store()
+        session = store.load(session_id)
+        if session is not None:
+            session.active_sync_job_id = job_id
+            store.save(session)
+    except Exception:
+        logger.warning("store_active_sync_job_id_failed", exc_info=True)
+
+
+def _clear_active_sync_job_id(session_id: str) -> None:
+    """Efface l'ID du job sync actif de la session."""
+    try:
+        from apps.api.app.deps.auth import _get_store
+
+        store = _get_store()
+        session = store.load(session_id)
+        if session is not None:
+            session.active_sync_job_id = None
+            store.save(session)
+    except Exception:
+        logger.warning("clear_active_sync_job_id_failed", exc_info=True)
 
 
 def _validate_player(player_slug: str) -> None:
@@ -204,7 +368,30 @@ def _fetch_and_sync(  # noqa: PLR0913
 
         from src.data.sync.backfill import backfill_player_data  # type: ignore[import-untyped]
 
-        asyncio.run(backfill_player_data(player_slug, scope=scope))
+        # Retry 3× avec backoff exponentiel sur erreurs API Halo transitoires
+        last_halo_exc: BaseException | None = None
+        for attempt, delay in enumerate(_HALO_RETRY_DELAYS):
+            try:
+                asyncio.run(backfill_player_data(player_slug, scope=scope))
+                last_halo_exc = None
+                break
+            except Exception as exc:  # noqa: BLE001
+                if _is_transient_halo_error(exc):
+                    last_halo_exc = exc
+                    logger.warning(
+                        "initial_sync_halo_api_retry",
+                        attempt=attempt + 1,
+                        max_attempts=len(_HALO_RETRY_DELAYS),
+                        reason=str(exc),
+                        retry_in=delay,
+                    )
+                    time.sleep(delay)
+                else:
+                    raise _SyncAbortError(f"Échec de la synchronisation : {exc}") from exc
+        else:
+            raise _SyncHaloApiError(
+                f"Échec API Halo après {len(_HALO_RETRY_DELAYS)} tentatives : {last_halo_exc}"
+            ) from last_halo_exc
 
         # Compter les matchs importés (best-effort)
         return _count_player_matches(player_slug)
@@ -220,6 +407,8 @@ def _fetch_and_sync(  # noqa: PLR0913
             warnings=["sync_modules_unavailable"],
         )
         return 0
+    except (_SyncAbortError, _SyncHaloApiError):
+        raise
     except Exception as exc:  # noqa: BLE001
         raise _SyncAbortError(f"Échec de la synchronisation : {exc}") from exc
 

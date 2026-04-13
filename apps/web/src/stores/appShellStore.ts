@@ -9,7 +9,7 @@
  */
 
 import { create } from 'zustand'
-import type { BootstrapResponse, CapabilityMap, PlayerSummary } from '@/lib/api/types'
+import type { BootstrapResponse, CapabilityMap, HaloIdentitySummary, PlayerSummary } from '@/lib/api/types'
 
 interface AppShellState {
   // Joueur courant
@@ -26,6 +26,11 @@ interface AppShellState {
   authState: 'missing' | 'partial' | 'ready'
   setupState: 'no_halo_link' | 'halo_linked_no_profile' | 'profile_ready_no_sync' | 'ready'
   isBootstrapped: boolean
+
+  /** Identité Halo liée à cette session (gamertag + xuid). Null si auth pas encore faite. */
+  linkedHaloIdentity: HaloIdentitySummary | null
+  /** ID de job de sync initiale actif pour cette session. Null si aucun. */
+  activeSyncJobId: string | null
 
   // Actions
   hydrateFromBootstrap: (data: BootstrapResponse) => void
@@ -56,6 +61,8 @@ export const useAppShellStore = create<AppShellState>((set) => ({
   authState: 'missing',
   setupState: 'no_halo_link',
   isBootstrapped: false,
+  linkedHaloIdentity: null,
+  activeSyncJobId: null,
 
   hydrateFromBootstrap: (data: BootstrapResponse) =>
     set({
@@ -68,6 +75,8 @@ export const useAppShellStore = create<AppShellState>((set) => ({
       authState: data.auth_state,
       setupState: data.setup_state ?? 'no_halo_link',
       isBootstrapped: true,
+      linkedHaloIdentity: data.linked_halo_identity ?? null,
+      activeSyncJobId: data.active_sync_job_id ?? null,
     }),
 
   setCurrentPlayer: (player) => set({ currentPlayer: player }),

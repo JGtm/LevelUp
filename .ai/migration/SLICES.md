@@ -270,6 +270,8 @@ Les points suivants sont bloquants avant d'ouvrir une première surface React en
 
 ### Phase B — Citations (post-MVP P2)
 
+**Statut Phase B** : `canonical` ✅ — 2026-04-13
+
 #### Backend
 - Implémenter l'endpoint page-oriented citations avec filtered vs full
 
@@ -329,6 +331,8 @@ Les points suivants sont bloquants avant d'ouvrir une première surface React en
 
 ### Phase B — Séries temporelles (post-MVP P3)
 
+**Statut Phase B** : `canonical` ✅ — 2026-04-13
+
 #### Backend
 - Endpoint page-oriented timeseries + figures Plotly JSON
 - Extraire au préalable toute logique métier encore piégée dans `src/ui/pages/timeseries.py` si elle n'est pas déjà couverte par un service stable
@@ -338,6 +342,8 @@ Les points suivants sont bloquants avant d'ouvrir une première surface React en
 - Page analytics à 5 onglets (KPIs, Cumul, Forme, Intensité, Distributions), sans recalcul métier client
 
 ### Phase C — Comparaison de sessions (post-MVP P3)
+
+**Statut Phase C** : `canonical` ✅ — 2026-04-13
 
 #### Backend
 - Endpoint page-oriented compare sessions + sélection A/B + contexte historique
@@ -392,6 +398,8 @@ Les points suivants sont bloquants avant d'ouvrir une première surface React en
 
 ### Phase B — Match View (4 onglets)
 
+**Statut Phase B** : `canonical` ✅ — 2026-04-13
+
 #### Backend
 - Implémenter `GET /api/v1/players/{player_slug}/matches/{match_id}`
 - Payload composé : header, rank, résumé, combat, équipe, médias, citations
@@ -402,6 +410,8 @@ Les points suivants sont bloquants avant d'ouvrir une première surface React en
 - Scoreboard 19 colonnes, armes via `v_weapon_kills`, labels via `weapon_labels`
 
 ### Phase C — Last Match (navigation prev/next)
+
+**Statut Phase C** : `canonical` ✅ — 2026-04-13
 
 #### Backend
 - Implémenter `POST /api/v1/players/{player_slug}/pages/last-match/resolve`
