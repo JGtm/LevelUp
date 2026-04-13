@@ -6,11 +6,15 @@ import { useAppShellStore } from '@/stores/appShellStore'
 
 const PLAYER_NAV_ITEMS = [
   { to: '/players/$playerSlug/home', label: 'Accueil', icon: '🏠' },
+  { to: '/players/$playerSlug/last-match', label: 'Dernier Match', icon: '⚡' },
   { to: '/players/$playerSlug/career', label: 'Carrière', icon: '🎖️' },
+  { to: '/players/$playerSlug/profile/citations', label: 'Citations', icon: '🏅' },
   { to: '/players/$playerSlug/stats/history', label: 'Historique', icon: '📊' },
+  { to: '/players/$playerSlug/stats/timeseries', label: 'Séries', icon: '📈' },
+  { to: '/players/$playerSlug/stats/sessions', label: 'Sessions', icon: '🔄' },
   { to: '/players/$playerSlug/explorer', label: 'Explorer', icon: '🔍' },
   { to: '/players/$playerSlug/squad', label: 'Escouade', icon: '👥' },
-  { to: '/players/$playerSlug/synthesis', label: 'Synthèse', icon: '📈' },
+  { to: '/players/$playerSlug/synthesis', label: 'Synthèse', icon: '🗂️' },
   { to: '/players/$playerSlug/media', label: 'Médias', icon: '🎬' },
 ] as const
 

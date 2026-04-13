@@ -4,6 +4,8 @@ Endpoints :
   GET  /api/v1/directory/gamertags/search                             → GamertagSearchResponse
   POST /api/v1/players/{player_slug}/pages/explorer/matches-query     → ExplorerMatchesQueryResponse
   POST /api/v1/players/{player_slug}/pages/explorer/player-query      → ExplorerPlayerQueryResponse
+  GET  /api/v1/players/{player_slug}/matches/{match_id}               → MatchViewResponse [Phase B]
+  POST /api/v1/players/{player_slug}/pages/last-match/resolve         → LastMatchResolveResponse [Phase C]
 """
 
 from __future__ import annotations
@@ -18,6 +20,11 @@ from apps.api.app.schemas.explorer import (
     ExplorerPlayerQueryRequest,
     ExplorerPlayerQueryResponse,
     GamertagSearchResponse,
+)
+from apps.api.app.schemas.match_view import (
+    LastMatchResolveRequest,
+    LastMatchResolveResponse,
+    MatchViewResponse,
 )
 
 logger = structlog.get_logger(__name__)
@@ -81,3 +88,58 @@ def query_explorer_player(
     from apps.api.app.services.explorer_service import get_explorer_player
 
     return get_explorer_player(player, body)
+
+
+# ---------------------------------------------------------------------------
+# Slice 4 Phase B — Match View
+# ---------------------------------------------------------------------------
+
+
+@player_router.get("/matches/{match_id}", response_model=MatchViewResponse)
+def get_match_view(
+    match_id: str,
+    player: PlayerContext = Depends(resolve_player),
+) -> MatchViewResponse:
+    """Retourne le détail complet d'un match (4 onglets + header + rank)."""
+    from apps.api.app.core.errors import ApiError
+    from apps.api.app.services.match_view_service import get_match_view as _get_view
+
+    try:
+        return _get_view(player, match_id)
+    except Exception as exc:
+        logger.error("match_view_error", match_id=match_id, error=str(exc))
+        raise ApiError(
+            status_code=404,
+            code="match_not_found",
+            message=f"Match {match_id} introuvable ou inaccessible.",
+        ) from exc
+
+
+# ---------------------------------------------------------------------------
+# Slice 4 Phase C — Last Match
+# ---------------------------------------------------------------------------
+
+
+@player_router.post("/pages/last-match/resolve", response_model=LastMatchResolveResponse)
+def resolve_last_match(
+    body: LastMatchResolveRequest,
+    player: PlayerContext = Depends(resolve_player),
+) -> LastMatchResolveResponse:
+    """Résout le dernier match du scope filtré et retourne la navigation prev/next."""
+    from apps.api.app.core.errors import ApiError
+    from apps.api.app.services.match_view_service import resolve_last_match as _resolve
+
+    try:
+        return _resolve(player, body)
+    except ValueError as exc:
+        if "no_matches_in_scope" in str(exc):
+            raise ApiError(
+                status_code=404,
+                code="no_matches_in_scope",
+                message="Aucun match dans le scope filtré courant.",
+            ) from exc
+        raise ApiError(
+            status_code=400,
+            code="last_match_resolve_error",
+            message=str(exc),
+        ) from exc

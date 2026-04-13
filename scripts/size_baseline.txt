@@ -78,6 +78,7 @@ FUNC:src/ui/sync.py:59:refresh_spnkr_db_via_api:86L
 FUNC:src/utils/_discord_queries.py:88:fetch_last_match_info:81L
 FUNC:src/utils/launcher_onboarding.py:173:_onboard_first_player:225L
 FUNC:src/utils/launcher_players.py:247:_cmd_doctor:89L
+FUNC:src/utils/launcher_startup.py:203:_launch_react:93L
 FUNC:src/visualization/_antagonist_duels.py:17:plot_duel_history:102L
 FUNC:src/visualization/_antagonist_kv.py:17:plot_killer_victim_stacked_bars:102L
 FUNC:src/visualization/_distributions_advanced.py:153:plot_first_event_distribution:106L

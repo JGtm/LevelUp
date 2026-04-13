@@ -47,6 +47,11 @@ export interface SettingsExcerpt {
   normalize_mode_labels: boolean
 }
 
+export interface HaloIdentitySummary {
+  gamertag: string
+  xuid: string
+}
+
 export interface BootstrapResponse {
   setup_required: boolean
   auth_state: 'missing' | 'partial' | 'ready'
@@ -58,6 +63,10 @@ export interface BootstrapResponse {
   feature_flags: FeatureFlags
   capabilities: CapabilityMap
   settings_excerpt: SettingsExcerpt
+  /** Identité Halo liée (gamertag + xuid) — absente si auth non complétée. */
+  linked_halo_identity?: HaloIdentitySummary | null
+  /** ID du job de sync initial actif pour cette session (null si aucun). */
+  active_sync_job_id?: string | null
 }
 
 export interface PlayersListResponse {
@@ -187,7 +196,10 @@ export interface DeviceFlowStartResponse {
   user_code: string
   verification_uri: string
   verification_uri_complete: string | null
-  expires_in_seconds: number
+  /** Durée de validité en secondes depuis l'émission. */
+  expires_in: number
+  /** @deprecated Alias de expires_in pour compatibilité backend. */
+  expires_in_seconds?: number
   poll_interval_seconds: number
 }
 
@@ -780,4 +792,331 @@ export interface MediaPageResponse {
   total_mine: number
   total_teammates: number
   total_unassigned: number
+}
+
+// ---------------------------------------------------------------------------
+// Match View (Slice 4B)
+// ---------------------------------------------------------------------------
+
+export interface MatchViewHeader {
+  match_id: string
+  start_time: string | null
+  start_time_label: string
+  outcome_code: number | null
+  outcome_label: string
+  outcome_color: string
+  score_label: string
+  dominance_flag: boolean
+  had_bot_teammate: boolean
+  map_ui: string
+  map_id: string | null
+  mode_ui: string
+  playlist_label: string
+  performance_display: string
+  performance_color: string | null
+}
+
+export interface MatchViewRank {
+  rating_type: string
+  tier_label: string | null
+  numeric_value: number | null
+  delta_value: number | null
+  icon_url: string | null
+}
+
+export interface MatchMedal {
+  medal_name_id: number
+  name: string
+  count: number
+  description: string | null
+}
+
+export interface MatchCitation {
+  key: string
+  label: string
+  color: string | null
+  value: number | null
+}
+
+export interface MatchSummaryKpis {
+  kills: number | null
+  deaths: number | null
+  assists: number | null
+  kda: number | null
+  damage_dealt: number | null
+  average_life: string | null
+}
+
+export interface MatchPersonalResult {
+  outcome_label: string
+  outcome_color: string
+  score: number | null
+  rank_in_team: number | null
+}
+
+export interface MatchSummaryTab {
+  kpis: MatchSummaryKpis
+  personal_result: MatchPersonalResult
+  medals: MatchMedal[]
+  citations: MatchCitation[]
+}
+
+export interface MatchWeaponKill {
+  weapon_id: number
+  weapon_label: string
+  effective_weapon_id: number | null
+  kill_count: number
+}
+
+export interface MatchHighlightEvent {
+  event_time_ms: number | null
+  event_type: string
+  actor_xuid: string | null
+  target_xuid: string | null
+  weapon_id: number | null
+}
+
+export interface MatchCombatTab {
+  weapon_kills: MatchWeaponKill[]
+  highlight_events: MatchHighlightEvent[]
+  charts: PlotlyFigurePayload[]
+}
+
+export interface MatchScoreboardRow {
+  xuid: string
+  gamertag: string
+  team_side: string | null
+  is_me: boolean
+  rank: number | null
+  kills: number | null
+  deaths: number | null
+  assists: number | null
+  betrayals: number | null
+  suicides: number | null
+  shots_fired: number | null
+  shots_hit: number | null
+  shots_accuracy: number | null
+  damage_dealt: number | null
+  damage_taken: number | null
+  damage_efficiency: number | null
+  average_life: string | null
+  objectives_stolen: number | null
+  outcome_label: string
+}
+
+export interface MatchRosterRow {
+  xuid: string
+  gamertag: string
+  team_side: string | null
+  is_me: boolean
+  is_bot: boolean
+  kills: number | null
+  deaths: number | null
+  assists: number | null
+  kda: number | null
+  damage_dealt: number | null
+  damage_taken: number | null
+}
+
+export interface MatchNemesisRow {
+  xuid: string
+  gamertag: string
+  killed_me: number
+  i_killed: number
+}
+
+export interface MatchEncounterRow {
+  xuid: string
+  gamertag: string
+  count_together: number
+  is_ally: boolean
+}
+
+export interface MatchTeamTab {
+  roster: MatchRosterRow[]
+  scoreboard: MatchScoreboardRow[]
+  nemesis: MatchNemesisRow[]
+  encounters: MatchEncounterRow[]
+}
+
+export interface AssociatedMediaItem {
+  file_id: string
+  file_name: string
+  file_path: string
+  thumbnail_url: string | null
+  duration_seconds: number | null
+  capture_time: string | null
+  liked: boolean
+}
+
+export interface MatchMediaTab {
+  media_items: AssociatedMediaItem[]
+}
+
+export interface MatchCitationsTab {
+  commendations: MatchCitation[]
+  medals: MatchMedal[]
+}
+
+export interface MatchViewResponse {
+  header: MatchViewHeader
+  rank: MatchViewRank
+  summary_tab: MatchSummaryTab
+  combat_tab: MatchCombatTab
+  team_tab: MatchTeamTab
+  media_tab: MatchMediaTab
+  citations_tab: MatchCitationsTab
+}
+
+export interface LastMatchResolveRequest {
+  filters: FilterContextInput
+  current_index?: number | null
+}
+
+export interface LastMatchResolveResponse {
+  current_match_id: string
+  total_matches_in_scope: number
+  current_index: number
+  previous_match_id: string | null
+  next_match_id: string | null
+  session_tracking_key: string
+}
+
+// ---------------------------------------------------------------------------
+// Citations (Slice 2B)
+// ---------------------------------------------------------------------------
+
+export interface CommendationSummary {
+  key: string
+  label: string
+  category: string | null
+  current_value: number
+  color: string | null
+  icon_path: string | null
+  tier_label: string | null
+  mastery_pct: number | null
+}
+
+export interface MedalSummary {
+  medal_name_id: number
+  name: string
+  count_filtered: number
+  count_total: number
+  description: string | null
+}
+
+export interface CitationsDeltas {
+  filtered_total: number
+  unfiltered_total: number
+  delta_count: number
+}
+
+export interface CitationsQueryRequest {
+  filters: FilterContextInput
+}
+
+export interface CitationsPageResponse {
+  commendations: CommendationSummary[]
+  medals_summary: MedalSummary[]
+  deltas: CitationsDeltas
+  distribution_chart: PlotlyFigurePayload | null
+}
+
+// ---------------------------------------------------------------------------
+// Timeseries (Slice 3B)
+// ---------------------------------------------------------------------------
+
+export interface TimeseriesKpiCard {
+  key: string
+  label: string
+  value: string
+  delta: string | null
+  color: string | null
+}
+
+export interface TimeseriesSummaryTab {
+  kpi_cards: TimeseriesKpiCard[]
+  win_rate_chart: PlotlyFigurePayload | null
+  score_chart: PlotlyFigurePayload | null
+  kda_dist_chart: PlotlyFigurePayload | null
+}
+
+export interface TimeseriesCumulTab {
+  cumul_net_chart: PlotlyFigurePayload | null
+  cumul_kd_chart: PlotlyFigurePayload | null
+  rolling_kd_chart: PlotlyFigurePayload | null
+}
+
+export interface TimeseriesFormTab {
+  ewma_kd_chart: PlotlyFigurePayload | null
+  regression_chart: PlotlyFigurePayload | null
+  net_score_per_hour_chart: PlotlyFigurePayload | null
+}
+
+export interface TimeseriesIntensityTab {
+  intensity_heatmap: PlotlyFigurePayload | null
+  score_per_minute_chart: PlotlyFigurePayload | null
+}
+
+export interface TimeseriesDistributionsTab {
+  kda_distribution: PlotlyFigurePayload | null
+  first_kill_dist: PlotlyFigurePayload | null
+  correlations: PlotlyFigurePayload[]
+}
+
+export interface TimeseriesQueryRequest {
+  filters: FilterContextInput
+}
+
+export interface TimeseriesPageResponse {
+  total_matches: number
+  summary_tab: TimeseriesSummaryTab
+  cumul_tab: TimeseriesCumulTab
+  form_tab: TimeseriesFormTab
+  intensity_tab: TimeseriesIntensityTab
+  distributions_tab: TimeseriesDistributionsTab
+}
+
+// ---------------------------------------------------------------------------
+// Session Compare (Slice 3C)
+// ---------------------------------------------------------------------------
+
+export interface SessionCompareEntry {
+  session_label: string
+  start_time: string | null
+  end_time: string | null
+  total_matches: number
+  wins: number
+  losses: number
+  kda: number | null
+  performance_score: number | null
+  with_friends: boolean
+  dominant_category: string | null
+}
+
+export interface SessionCompareMetricRow {
+  key: string
+  label: string
+  value_a: string
+  value_b: string
+  delta: string | null
+  winner: string | null
+}
+
+export interface SessionCompareRequest {
+  filters: FilterContextInput
+  session_a?: string | null
+  session_b?: string | null
+}
+
+export interface SessionCompareResponse {
+  session_a: SessionCompareEntry | null
+  session_b: SessionCompareEntry | null
+  available_sessions: string[]
+  metrics: SessionCompareMetricRow[]
+  radar_chart: PlotlyFigurePayload | null
+  kd_progression_chart: PlotlyFigurePayload | null
+  outcomes_chart: PlotlyFigurePayload | null
+  maps_table: Record<string, unknown>[]
+  modes_table: Record<string, unknown>[]
 }

@@ -69,7 +69,8 @@ from src.utils.launcher_players import (  # noqa: E402
 from src.utils.launcher_startup import (  # noqa: E402
     _flush_stdin,
     _install_signal_handler,
-    _launch_streamlit,
+    _launch_react,
+    _launch_streamlit,  # noqa: F401 — conservé pour rollback Streamlit
 )
 from src.utils.launcher_sync import (  # noqa: E402
     _cmd_info,
@@ -190,7 +191,7 @@ def _recovery_menu(state: _ConfigState) -> int:  # noqa: PLR0912
         return _interactive()
 
     if action == "launch":
-        return _launch_streamlit(db_path=None, port=None, no_browser=False)
+        return _launch_react(db_path=None, port=None, no_browser=False)
 
     print(_t("recovery_invalid_choice", _LANG))
     return 2
@@ -243,7 +244,7 @@ def _interactive() -> int:
             except (EOFError, KeyboardInterrupt):
                 return 0
             if go not in ("n", "non", "no"):
-                return _launch_streamlit(db_path=None, port=None, no_browser=False)
+                return _launch_react(db_path=None, port=None, no_browser=False)
             return 0
 
         print(_t("interactive_invalid_choice", _LANG))
@@ -266,7 +267,7 @@ def _interactive() -> int:
         return _recovery_menu(state)
 
     print(_t("interactive_all_ok", _LANG))
-    return _launch_streamlit(db_path=None, port=None, no_browser=False)
+    return _launch_react(db_path=None, port=None, no_browser=False)
 
 
 # =============================================================================
@@ -291,7 +292,7 @@ def _cmd_run(args: argparse.Namespace) -> int:
                 if rc == 0:
                     players = _list_players()
                     if players:
-                        return _launch_streamlit(
+                        return _launch_react(
                             db_path=None, port=args.port, no_browser=args.no_browser
                         )
         else:
@@ -303,7 +304,7 @@ def _cmd_run(args: argparse.Namespace) -> int:
     for p in players:
         print(_t("run_player_row", _LANG, gamertag=p.gamertag, matches=p.total_matches), flush=True)
 
-    return _launch_streamlit(db_path=None, port=args.port, no_browser=args.no_browser)
+    return _launch_react(db_path=None, port=args.port, no_browser=args.no_browser)
 
 
 # =============================================================================
@@ -320,9 +321,9 @@ def _build_parser() -> argparse.ArgumentParser:
         epilog="""
 Exemples:
   python launcher.py                           # Mode interactif
-  python launcher.py run                       # Dashboard seul
+  python launcher.py run                       # Dashboard React + API (http://localhost:5173)
   python launcher.py sync                      # Sync tous les joueurs
-  python launcher.py sync --run                # Sync + dashboard
+  python launcher.py sync --run                # Sync + dashboard React
   python launcher.py add-player                # Ajouter un joueur (guidé)
   python launcher.py add-player --gamertag JGtm  # Ajouter un joueur spécifique
   python launcher.py setup                     # Installer venv + dépendances

@@ -32,7 +32,12 @@ def get_media_page(player: PlayerContext, request: MediaQueryRequest) -> MediaPa
 
     if raw_df is None or (hasattr(raw_df, "is_empty") and raw_df.is_empty()):
         return MediaPageResponse(
-            items=PaginatedResponse(items=[], total=0, page=1, page_size=50),
+            items=PaginatedResponse(
+                items=[],
+                pagination=PaginationMeta(
+                    total=0, page=1, page_size=50, has_next=False, has_prev=False
+                ),
+            ),
             total_mine=0,
             total_teammates=0,
             total_unassigned=0,

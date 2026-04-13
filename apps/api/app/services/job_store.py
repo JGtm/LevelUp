@@ -70,7 +70,7 @@ class JobStore:
     # CRUD
     # ------------------------------------------------------------------
 
-    def create(self, job_type: str) -> AsyncJobStatus:
+    def create(self, job_type: str, metadata: dict | None = None) -> AsyncJobStatus:
         """Crée un nouveau job en statut ``queued``, retourne son statut initial."""
         self._purge_expired()
         job_id = str(uuid.uuid4())
@@ -80,6 +80,7 @@ class JobStore:
             job_type=job_type,
             status="queued",
             created_at=now,
+            metadata=metadata or {},
         )
         with self._jobs_lock:
             self._jobs[job_id] = entry
@@ -140,6 +141,18 @@ class JobStore:
         self._save()
         return True
 
+    def find_active_initial_sync(self, player_slug: str) -> AsyncJobStatus | None:
+        """Retourne le job ``initial_sync`` actif pour un joueur, ou None."""
+        with self._jobs_lock:
+            for entry in self._jobs.values():
+                if (
+                    entry.job_type == "initial_sync"
+                    and entry.status in ("queued", "running")
+                    and entry.metadata.get("player_slug") == player_slug
+                ):
+                    return entry.to_status()
+        return None
+
     # ------------------------------------------------------------------
     # Purge
     # ------------------------------------------------------------------
@@ -174,28 +187,30 @@ class JobStore:
     def _load(self) -> None:
         """Recharge les jobs depuis ``_jobs_file``.
 
-        Les jobs ``running`` au moment du rechargement sont marqués ``cancelled``
-        (le process qui les exécutait est mort).
+        Les jobs ``running`` au moment du rechargement sont marqués ``interrupted``
+        (sémantique distincte de ``cancelled`` qui est une annulation explicite).
         """
         if not self._jobs_file.exists():
             return
         try:
             raw = json.loads(self._jobs_file.read_text(encoding="utf-8"))
-            cancelled_count = 0
+            interrupted_count = 0
             for d in raw:
                 entry = _JobEntry.from_dict(d)
                 if entry.status == "running":
-                    entry.status = "cancelled"
+                    entry.status = "interrupted"
                     now = datetime.now(timezone.utc)
                     entry.finished_at = entry.finished_at or now
-                    cancelled_count += 1
+                    if "Rédémarrage du serveur" not in (entry.warnings or []):
+                        entry.warnings.append("Interrompu par redémarrage du serveur")
+                    interrupted_count += 1
                 if not entry.is_expired():
                     self._jobs[entry.job_id] = entry
-            if cancelled_count:
+            if interrupted_count:
                 logger.info(
-                    "job_store_restart_cancelled",
-                    count=cancelled_count,
-                    hint="Jobs interrompus au redémarrage du processus.",
+                    "job_store_restart_interrupted",
+                    count=interrupted_count,
+                    hint="Jobs interrompus au redémarrage — relancez via l'interface.",
                 )
         except Exception:  # noqa: BLE001
             logger.warning("job_store_load_failed", path=str(self._jobs_file))
@@ -210,6 +225,7 @@ class _JobEntry:
         job_type: str,
         status: str,
         created_at: datetime,
+        metadata: dict | None = None,
     ) -> None:
         self.job_id = job_id
         self.job_type = job_type
@@ -221,6 +237,7 @@ class _JobEntry:
         self.result: dict | None = None
         self.error: ApiErrorSchema | None = None
         self.created_at = created_at
+        self.metadata: dict = metadata or {}
         # Champs enrichis (Sprint 3)
         self.phase_key: str | None = None
         self.phase_label: str | None = None
@@ -233,7 +250,7 @@ class _JobEntry:
 
     def is_expired(self) -> bool:
         """Retourne True si le job est terminal ET a dépassé la rétention."""
-        if self.status not in ("succeeded", "failed", "cancelled"):
+        if self.status not in ("succeeded", "failed", "cancelled", "interrupted"):
             return False
         if self.finished_at is None:
             return False
@@ -283,6 +300,7 @@ class _JobEntry:
             "result": self.result,
             "error": self.error.model_dump() if self.error else None,
             "created_at": self.created_at.isoformat(),
+            "metadata": self.metadata,
         }
 
     @classmethod
@@ -293,6 +311,7 @@ class _JobEntry:
             job_type=d["job_type"],
             status=d["status"],
             created_at=datetime.fromisoformat(d["created_at"]),
+            metadata=d.get("metadata") or {},
         )
         entry.progress_pct = d.get("progress_pct")
         entry.current_step = d.get("current_step")
@@ -324,8 +343,8 @@ def _apply_status(entry: _JobEntry, status: str | None) -> None:
     if status is None:
         return
     entry.status = status
-    if status in ("succeeded", "failed", "cancelled"):
-        entry.finished_at = datetime.now(timezone.utc)
+    if status in ("succeeded", "failed", "cancelled", "interrupted"):
+        entry.finished_at = entry.finished_at or datetime.now(timezone.utc)
     elif status == "running" and entry.started_at is None:
         entry.started_at = datetime.now(timezone.utc)
 

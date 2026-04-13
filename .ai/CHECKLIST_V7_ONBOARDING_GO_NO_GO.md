@@ -33,8 +33,10 @@ Cette checklist sert à répondre rapidement à trois questions :
 - [ ] Une tentative Device Code est liée à une session backend
 - [ ] Une session étrangère ne peut pas lire une tentative qu'elle n'a pas créée
 - [ ] L'expiration et la purge des tentatives sont explicites
-- [ ] Le retry UX est clair côté frontend
+- [ ] Le retry UX est clair côté frontend (compte à rebours visible, CTA "Recommencer")
 - [ ] Après auth réussie, l'identité Halo liée est récupérable après refresh navigateur
+- [ ] Les erreurs async Device Flow (`expired`, `failed`) ont chacune un `error.code` distinct et un CTA frontend documenté (SPEC §9.2)
+- [ ] Le polling frontend s'arrête à tout statut terminal (pas de polling infini)
 
 ---
 
@@ -52,10 +54,14 @@ Cette checklist sert à répondre rapidement à trois questions :
 ## D. Sync initiale
 
 - [ ] Un endpoint dédié `POST /api/v1/sync/initial` existe
-- [ ] Une seule sync initiale active par joueur est possible
+- [ ] Une seule sync initiale active par joueur est possible (single-flight → 409 avec `active_job_id`)
 - [ ] La progression expose phases + compteurs métier + warnings
 - [ ] La fin de sync écrit le marqueur persistant attendu
 - [ ] Les profils existants ont une stratégie de migration / backfill
+- [ ] Le worker sync capture les erreurs par type (`sync_auth_expired`, `sync_halo_api_error`, `sync_halo_api_quota`, `sync_db_error`, `internal_error`) — voir SPEC §9.4
+- [ ] Le retry unitaire API Halo (3×, backoff) est implémenté dans le worker
+- [ ] `active_sync_job_id` expose dans bootstrap le job actif (recovery après refresh navigateur)
+- [ ] Les données partielles après échec ne causent pas de corruption (dédoublication par `match_id`)
 
 ---
 
@@ -99,7 +105,12 @@ Cette checklist sert à répondre rapidement à trois questions :
 - [ ] Test API : création profil met à jour le joueur courant en session (`tests/api/test_setup_guards.py`)
 - [ ] Test API : sync initiale active unique par joueur (`tests/api/test_sync_initial.py`)
 - [ ] Test API : restart job → statut `interrupted`, pas faux `running` (`tests/api/test_job_store.py`)
-- [ ] Test E2E : parcours non-technique complet “connecter Xbox → confirmer profil → lancer sync → entrer dans l'app”
+- [ ] Test API : erreur API Halo mockée → job `failed` + `error.code="sync_halo_api_error"` + `retryable=true` (`tests/api/test_sync_initial.py`)
+- [ ] Test API : erreur auth Halo mockée → job `failed` + `error.code="sync_auth_expired"` (`tests/api/test_sync_initial.py`)
+- [ ] Test API : `active_sync_job_id` présent dans bootstrap pendant sync, absent après fin (`tests/api/test_sync_initial.py`)
+- [ ] Test E2E : parcours non-technique complet "connecter Xbox → confirmer profil → lancer sync → entrer dans l'app"
+- [ ] Test E2E : Device Code Flow expire → message d'erreur affiché + bouton "Recommencer" fonctionnel
+- [ ] Test E2E : sync échoue → message d'erreur + bouton "Relancer" → deuxième tentative réussit
 
 ---
 
@@ -118,3 +129,5 @@ Cette checklist sert à répondre rapidement à trois questions :
 - [ ] La première sync n'a pas de marqueur persistant clair
 - [ ] Un restart serveur laisse l'UI croire qu'une sync tourne encore alors qu'elle est morte
 - [ ] Une route mutante sensible reste protégée uniquement par l'affichage d'un bouton frontend
+- [ ] Une erreur API (Device Flow, sync, provisioning) arrive au frontend sans `error.code` ni `retryable` → l'utilisateur ne sait pas quoi faire
+- [ ] Le frontend n'a aucun mécanisme de recovery après refresh navigateur pendant la sync (pas de `active_sync_job_id`)

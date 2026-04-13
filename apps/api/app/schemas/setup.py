@@ -1,10 +1,8 @@
-"""Schémas Pydantic pour les endpoints Setup / Auth (Slice 1).
+"""Schémas Pydantic pour les endpoints Setup / Auth — V7.
 
 Couvre :
-- Machine d'état du wizard d'installation (SetupStatusResponse)
 - Device Code Flow Microsoft (DeviceFlow*)
 - Création de profil joueur (CreatePlayerProfile*)
-- Smoke test post-installation (SmokeTestStartRequest)
 """
 
 from __future__ import annotations
@@ -12,43 +10,6 @@ from __future__ import annotations
 from pydantic import BaseModel, Field
 
 from apps.api.app.schemas.common import ApiErrorSchema, PlayerSummary
-
-# ---------------------------------------------------------------------------
-# Setup status
-# ---------------------------------------------------------------------------
-
-
-class SetupAuthInfo(BaseModel):
-    """État de l'authentification Halo."""
-
-    has_client_id: bool
-    has_refresh_token: bool
-    has_msal_cache: bool
-    preferred_method: str  # "refresh_token" | "device_code" | "unknown"
-
-
-class SetupPlayerInfo(BaseModel):
-    """État des profils joueurs configurés."""
-
-    has_any_profile: bool
-    default_player_slug: str | None = None
-
-
-class SetupStatusResponse(BaseModel):
-    """Réponse de GET /setup/status — machine d'état setup.
-
-    ``next_blocking_step`` contrôle la navigation dans le wizard :
-    - ``"auth"``      → pas de refresh_token → afficher le Device Code Flow
-    - ``"player"``    → auth OK mais aucun joueur configuré
-    - ``"smoke_test"``→ joueur créé mais smoke test jamais lancé (optionnel)
-    - ``"done"``      → tout configuré, accès aux routes protégées autorisé
-    """
-
-    needs_setup: bool
-    auth: SetupAuthInfo
-    player: SetupPlayerInfo
-    next_blocking_step: str  # "choose_mode" | "auth" | "player" | "smoke_test" | "done"
-
 
 # ---------------------------------------------------------------------------
 # Device Code Flow
@@ -62,7 +23,9 @@ class DeviceFlowStartResponse(BaseModel):
     user_code: str
     verification_uri: str
     verification_uri_complete: str | None = None
-    expires_in_seconds: int
+    # Durée de validité en secondes depuis l'émission (two names for compatibility)
+    expires_in: int = 900
+    expires_in_seconds: int = 900
     poll_interval_seconds: int = 5
 
 
@@ -95,16 +58,3 @@ class CreatePlayerProfileResponse(BaseModel):
     player: PlayerSummary
     db_created: bool
     warnings: list[str] = Field(default_factory=list)
-
-
-# ---------------------------------------------------------------------------
-# Smoke test
-# ---------------------------------------------------------------------------
-
-
-class SmokeTestStartRequest(BaseModel):
-    """Corps de POST /setup/smoke-test."""
-
-    player_slug: str
-    max_matches: int = Field(default=20, ge=1, le=500)
-    run_backfill: bool = True

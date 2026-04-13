@@ -69,7 +69,7 @@ export function useJobStatus(jobId: string, enabled: boolean) {
     enabled: enabled && !!jobId,
     refetchInterval: (query) => {
       const status = query.state.data?.status
-      if (status === 'succeeded' || status === 'failed' || status === 'cancelled') return false
+      if (status === 'succeeded' || status === 'failed' || status === 'cancelled' || status === 'interrupted') return false
       return 3_000
     },
     staleTime: 0,

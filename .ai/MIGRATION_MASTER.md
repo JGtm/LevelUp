@@ -23,13 +23,13 @@ Référence complète → [migration/DECISIONS.md](migration/DECISIONS.md)
 
 ## État courant
 
-**Phase active** : Toutes les slices MVP (0b, 1, 3, 4, 5, 6, 7, 8) `canonical` ✅ — 2026-04-13
+**Phase active** : Toutes les slices MVP (0b, 1, 2, 3, 4, 5, 6, 7, 8) Phases A/B/C `canonical` ✅ — 2026-04-13
 
 **Slice en cours** : —
 
-**Dernière action** : Batch canonical MVP — 41/41 E2E Playwright verts (slices 0a–8), fix router media GET→POST (alignement frontend), tests de parité 20/20 verts. Total : toutes les surfaces V7 MVP en état canonical.
+**Dernière action** : Frontend React complet — 5 pages React livrées (MatchViewPage, LastMatchPage, CitationsPage, TimeseriesPage, SessionComparePage) + 5 routes TanStack Router créées + NavBar mise à jour avec Dernier Match, Citations, Séries, Sessions. Types TS + query keys + hooks useQuery implémentés pour chaque feature. Backend + Frontend 100% canonical pour toutes les slices MVP.
 
-**Prochaine étape concrète** : Slice 2 Phase B (Citations) ou Slice 4 Phase B (Match View) ou Slice 9 (Décommissionnement Streamlit UI)
+**Prochaine étape concrète** : Slice 9 (Décommissionnement Streamlit UI) — toutes les surfaces React P1/P2/P3 sont livrées
 
 ---
 
@@ -45,12 +45,12 @@ Référence complète → [migration/DECISIONS.md](migration/DECISIONS.md)
 | Setup / Onboarding | Wizard configuration | `canonical` ✅ | — | ✅ Slice 1 canonique — 4 E2E, setup/status + settings |
 | **Settings** | Langue, affichage, médias, Discord, backfill | `canonical` ✅ | — | ✅ Slice 1 (idem) |
 | **Accueil** | Hero, signaux, Battle Pass, challenges, timeline, dernier match, médias récents | `canonical` ✅ | — | ✅ Slice 5 canonique — 4 E2E, home page + DemoPlayer |
-| **Stats** | Séries (5 onglets) + Sessions (15 composants) + Historique (17 col) | `canonical` ✅ (Phase A) | — | ✅ Slice 3 Phase A canonique — 4 E2E, match-history/query |
+| **Stats** | Séries (5 onglets) + Sessions (15 composants) + Historique (17 col) | `canonical` ✅ (Phases A+B+C) | — | ✅ Phase A : 4 E2E, match-history/query · Phase B : timeseries_api_service + router + 5 tests + TimeseriesPage React + route stats/timeseries · Phase C : session_compare_service + router + 5 tests + SessionComparePage React + route stats/sessions |
 | **Escouade** | Synergies + Contributions, sélecteur 3 coéquipiers, impact ranking | `canonical` ✅ (Phase A) | — | ✅ Slice 6 canonique — 4 E2E, pages/teammates |
 | **Synthèse** | Solo vs Escouade, heatmap, top semaine, breakdown carte/mode | `canonical` ✅ (Phase A) | — | ✅ Slice 7 canonique — 4 E2E, pages/synthesis |
-| **Explorer** | Filtres cascade, recherche joueur, Match View (4 onglets, scoreboard 19 col) | `canonical` ✅ (Phase A) | — | ✅ Slice 4 canonique — 4 E2E, explorer/matches-query |
+| **Explorer** | Filtres cascade, recherche joueur, Match View (4 onglets, scoreboard 19 col) | `canonical` ✅ (Phases A+B+C) | — | ✅ Phase A : 4 E2E, explorer/matches-query · Phase B : match_view_service + router explorer (GET /matches/:id) + 4 tests + MatchViewPage React + route explorer/matches/$matchId · Phase C : router last-match (POST /pages/last-match/resolve) + 3 tests + LastMatchPage React + route last-match |
 | **Médias** | Galerie, filtres, groupement, lightbox, likes | `canonical` ✅ (Phase A) | — | ✅ Slice 8 canonique — 4 E2E, POST pages/media (fix GET→POST) |
-| **Profil** | Carrière (rang+XP+LUSR/CSR+encounters) + Citations (commendations+médailles) | `canonical` ✅ (Phase A) | — | ✅ Slice 2 Phase A canonique — fix xuid DEMO_MODE, 8 parité + 5 Vitest + 5 E2E |
+| **Profil** | Carrière (rang+XP+LUSR/CSR+encounters) + Citations (commendations+médailles) | `canonical` ✅ (Phases A+B) | — | ✅ Phase A : fix xuid DEMO_MODE, 8 parité + 5 Vitest + 5 E2E · Phase B : citations_service + router career (POST /pages/citations) + 4 tests + CitationsPage React + route profile/citations |
 
 ---
 

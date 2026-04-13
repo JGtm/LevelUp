@@ -8,6 +8,8 @@
 > Date : 2026-04-13
 > Rôle : **tâches concrètes** — fichiers à modifier, état fait/à faire, ordre d'exécution
 
+> ⚠️ **Révision majeure le 2026-04-13** : ajout des §9 erreurs/recovery dans SPEC, nouvelles tâches 1.5, 3.6, 3.7, 3.8 dans IMPL, précisions sur SessionData (§1.2), transfert MSAL (§2.3), backfill concret (§3.2), `active_sync_job_id` dans bootstrap. **Tout agent IA reprenant ce chantier doit relire SPEC §9 + IMPL complet avant de coder.**
+
 ---
 
 ## État des briques existantes
@@ -25,25 +27,25 @@ Avant de coder, vérifier ce qui est **déjà implémenté** :
 | Device Code Flow complet (start + poll + résolution gamertag) | `apps/api/app/services/setup_service.py` | ✅ |
 | `DeviceFlowStatusResponse` avec `gamertag` / `xuid` | `apps/api/app/schemas/setup.py` | ✅ |
 | `session.auth_ready = True` au polling `GET /auth/device-flow/{attempt_id}` | `apps/api/app/routers/setup.py` | ✅ |
-| Ownership de tentative Device Code par session | `apps/api/app/services/setup_service.py` + `apps/api/app/routers/setup.py` | ❌ pas implémenté |
-| `linked_halo_identity` en session / bootstrap | `apps/api/app/deps/auth.py` + `apps/api/app/schemas/bootstrap.py` | ❌ pas implémenté |
+| Ownership de tentative Device Code par session | `apps/api/app/services/setup_service.py` + `apps/api/app/routers/setup.py` | ✅ implémenté |
+| `linked_halo_identity` en session / bootstrap | `apps/api/app/deps/auth.py` + `apps/api/app/schemas/bootstrap.py` | ✅ implémenté |
 | Création de profil (`POST /setup/players`) | `apps/api/app/routers/setup.py` | ✅ |
 | Guard `can_self_provision` sur `POST /setup/players` | `apps/api/app/routers/setup.py` | ✅ implémenté |
-| Vérification backend de cohérence entre identité liée et corps de requête | `apps/api/app/routers/setup.py` + `apps/api/app/services/setup_service.py` | ❌ pas implémenté |
-| Mise à jour `session.current_player_slug` après provisioning | `apps/api/app/routers/setup.py` | ❌ pas implémenté |
-| Persistance / transfert du cache MSAL après création du profil | `apps/api/app/services/setup_service.py` | ❌ pas implémenté |
-| `GET /setup/status` pilote encore le wizard React | `apps/web/src/features/setup/` | ⚠️ legacy encore active |
-| `POST /setup/smoke-test` encore utilisé comme étape produit | `apps/web/src/features/setup/` | ⚠️ legacy encore active |
-| `JobStore` singleton thread-safe + **persistant JSON** (`data/cache/jobs.json`) | `apps/api/app/services/job_store.py` | ✅ persistant + recovery `running→cancelled` au reload |
+| Vérification backend de cohérence entre identité liée et corps de requête | `apps/api/app/routers/setup.py` + `apps/api/app/services/setup_service.py` | ✅ implémenté |
+| Mise à jour `session.current_player_slug` après provisioning | `apps/api/app/routers/setup.py` | ✅ implémenté |
+| Persistance / transfert du cache MSAL après création du profil | `apps/api/app/services/setup_service.py` | ✅ implémenté |
+| `GET /setup/status` pilote encore le wizard React | `apps/web/src/features/setup/` | ✅ endpoint supprimé (Sprint 5.2) |
+| `POST /setup/smoke-test` encore utilisé comme étape produit | `apps/web/src/features/setup/` | ✅ endpoint supprimé (Sprint 5.2) |
+| `JobStore` singleton thread-safe + **persistant JSON** (`data/cache/jobs.json`) | `apps/api/app/services/job_store.py` | ✅ persistant + recovery `running→interrupted` au reload |
 | `AsyncJobStatus` schéma enrichi (`phase_key`, `matches_done/total`, `warnings`, etc.) | `apps/api/app/schemas/common.py` | ✅ complet |
-| Valeur `status="interrupted"` dans le code (distinct de `cancelled`) | `apps/api/app/services/job_store.py` | ❌ à ajouter |
-| Marqueur persistant de sync initiale côté player DB | player DB / `sync_meta` | ❌ pas implémenté |
-| Backfill des profils existants pour ce marqueur | migration dédiée | ❌ pas implémenté |
-| Endpoint `POST /sync/initial` | — | ❌ pas implémenté |
-| Frontend onboarding piloté par bootstrap | `apps/web/src/features/setup/` | ❌ pas implémenté |
-| Rate limiting routes sensibles | — | ❌ pas implémenté |
-| Vérification same-origin / CSRF des routes mutantes | — | ❌ pas implémenté |
-| Logs structurés actions sensibles | — | ⚠️ partiel |
+| Valeur `status="interrupted"` dans le code (distinct de `cancelled`) | `apps/api/app/services/job_store.py` | ✅ implémenté |
+| Marqueur persistant de sync initiale côté player DB | player DB / `sync_meta` (`initial_sync_completed_at`) | ✅ implémenté |
+| Backfill des profils existants pour ce marqueur | migration `add_initial_sync_completed_at` | ✅ migration créée |
+| Endpoint `POST /sync/initial` | `apps/api/app/routers/sync.py` | ✅ implémenté |
+| Frontend onboarding piloté par bootstrap | `apps/web/src/features/setup/SetupPage.tsx` | ✅ implémenté — wizard legacy supprimé |
+| Rate limiting routes sensibles | `apps/api/app/deps/rate_limit.py` | ✅ implémenté |
+| Vérification same-origin / CSRF des routes mutantes | `apps/api/app/deps/csrf.py` | ✅ implémenté |
+| Logs structurés actions sensibles | `sync_service.py`, `setup_service.py` | ✅ `initial_sync_started`, `initial_sync_succeeded`, `device_flow_*` |
 
 ---
 
@@ -61,7 +63,7 @@ Avant de coder, vérifier ce qui est **déjà implémenté** :
 | **Action** | Brancher l'onboarding React final sur bootstrap. Reclasser `GET /setup/status` comme surface legacy / transitoire. |
 | **Test** | L'écran d'onboarding route correctement à partir d'un seul `GET /bootstrap` |
 | **Fichier de test** | `tests/api/test_bootstrap_setup_state.py` |
-| **État** | 🔲 À faire |
+| **État** | � En cours |
 
 **Stratégie de transition frontend** : le wizard React legacy (5 étapes via `next_blocking_step`) est remplacé par le nouveau parcours piloté par `setup_state`. L'ancien wizard est **supprimé à la fin du plan** (Sprint 4 ou nettoyage post-Sprint 4) — pas de coexistence durable. Pendant la transition, les tests legacy restent opérationnels mais ne pilotent plus l'UX de production.
 
@@ -77,6 +79,29 @@ Avant de coder, vérifier ce qui est **déjà implémenté** :
 | **Test** | Après succès du Device Code Flow puis refresh navigateur, le bootstrap renvoie toujours l'identité Halo liée |
 | **Fichier de test** | `tests/api/test_bootstrap_setup_state.py` |
 | **État** | 🔲 À faire |
+
+**État actuel de `SessionData`** (dans `apps/api/app/deps/auth.py`) :
+
+```python
+@dataclass
+class SessionData:
+    session_id: str                           # UUID auto-généré
+    created_at: float                         # time.time()
+    last_seen_at: float                       # mis à jour par .touch()
+    current_player_slug: str | None = None    # joueur actif
+    locale: str = "fr"
+    hints_visible: bool = True
+    auth_ready: bool = False                  # ← True après Device Code Flow réussi
+    linked_halo_identity: dict[str, str] | None = None  # ← EXISTE DÉJÀ mais jamais écrit
+    _extra: dict[str, Any]                    # champs inconnus préservés au désérialisé
+```
+
+Le champ `linked_halo_identity` **existe déjà** dans le dataclass. Le problème n'est pas le schéma — c'est que personne ne l'écrit. La tâche concrète est :
+
+1. Dans `setup_service.py` → `_complete_device_flow_bg()` : après résolution `gamertag` + `xuid`, **écrire dans la session** `linked_halo_identity = {"gamertag": gamertag, "xuid": xuid}` et sauvegarder la session via `SessionStore.save()`
+2. Dans `bootstrap_service.py` → `_build_bootstrap()` : lire `session.linked_halo_identity` et le mapper vers `HaloIdentitySummary` dans la réponse
+
+**Persistance** : `SessionStore` stocke chaque session dans un fichier JSON dans `data/sessions/{session_id}.json`, avec TTL configurable. Le champ `linked_halo_identity` sera automatiquement sérialisé/désérialisé via `to_dict()` / `from_dict()` — aucune modification du `SessionStore` n'est nécessaire.
 
 ### 1.3 — Lier chaque tentative Device Code à la session qui l'a créée
 
@@ -98,6 +123,18 @@ Avant de coder, vérifier ce qui est **déjà implémenté** :
 | **Action** | Afficher une carte de confirmation à partir de `linked_halo_identity`, pas un champ vide |
 | **Test** | Après auth réussie, l'utilisateur ne ressaisit pas son gamertag |
 | **Fichier de test** | Test E2E (Playwright ou manuel) |
+| **État** | 🔲 À faire |
+
+### 1.5 — Contrat d'erreur et UX de timeout du Device Code Flow
+
+| | |
+|-|-|
+| **Fichiers** | `apps/web/src/features/setup/` (composant Device Code Flow) |
+| **Problème** | Le backend gère les erreurs async (attempt → `failed`/`expired`), mais le frontend n'a pas de contrat pour : afficher le compte à rebours, arrêter le polling, permettre le retry |
+| **Action** | Implémenter dans le frontend : (1) compte à rebours visible basé sur `expires_in_seconds`, (2) arrêt du polling quand `status ∉ {"pending"}`, (3) message d'erreur contextuel selon `error.code` (voir SPEC §9.2), (4) bouton "Recommencer" qui relance `POST /auth/device-flow/start` |
+| **Contrat** | Voir SPEC §9.2 — table des `error.code` et CTA frontend attendus |
+| **Test** | (1) Le compte à rebours est visible et décrémente. (2) À expiration, le message "Code expiré" s'affiche sans attendre le backend. (3) Après `status=failed`, le bon message d'erreur s'affiche. (4) "Recommencer" lance un nouveau flow. |
+| **Fichier de test** | Test E2E / Playwright |
 | **État** | 🔲 À faire |
 
 ---
@@ -129,14 +166,16 @@ Avant de coder, vérifier ce qui est **déjà implémenté** :
 | **Fichier de test** | `tests/api/test_setup_guards.py` |
 | **État** | 🔲 À faire |
 
-### 2.3 — Assurer la continuité auth après création du profil
+### 2.3 — Transférer le cache MSAL dans la player DB au provisioning
 
 | | |
 |-|-|
-| **Fichiers** | `apps/api/app/routers/setup.py`, `apps/api/app/services/setup_service.py`, éventuels helpers auth |
-| **Problème** | Le cache MSAL éphémère de l'attempt n'est pas transféré dans la player DB, alors que le service prétend déjà cette continuité dans sa docstring |
-| **Action** | Persister explicitement le cache MSAL utile dans la player DB au moment du provisioning ou documenter un autre mécanisme serveur équivalent |
-| **Test** | Profil créé puis première sync immédiate sans redemande d'auth |
+| **Fichiers** | `apps/api/app/services/setup_service.py`, `src/auth/_msal.py` |
+| **Problème** | Le Device Code Flow dans `setup_service.py` crée un `SerializableTokenCache` éphémère en mémoire (`_msal_module.SerializableTokenCache()`). Ce cache contient le refresh token Microsoft obtenu. Mais il est stocké uniquement dans l'objet `_DeviceFlowAttempt` en mémoire process — il n'est **jamais persisté**. Si le serveur redémarre ou si la sync arrive plus tard, le refresh token est perdu et l'utilisateur doit refaire le Device Code Flow. |
+| **Patron existant** | Le projet dispose déjà des fonctions `load_msal_cache(db_path)` et `save_msal_cache_if_changed(db_path, cache)` dans `src/auth/_msal.py`. Elles sérialisent le cache dans la table `sync_meta` de la player DB (clé `msal_token_cache`). C'est exactement le pattern utilisé par le moteur de sync Streamlit. |
+| **Action** | Au moment du provisioning (`POST /setup/players`), après création/récupération de la player DB : (1) récupérer le `SerializableTokenCache` depuis l'attempt Device Code Flow actif de la session, (2) appeler `save_msal_cache_if_changed(player_db_path, cache)` pour persister le refresh token dans `sync_meta`. Le cache est alors disponible pour la sync initiale (Sprint 3.5) via `load_msal_cache(player_db_path)`. |
+| **Implémentation concrète** | Dans `_DeviceFlowAttempt`, le cache est déjà stocké dans `attempt._cache`. Au provisioning : `from src.auth._msal import save_msal_cache_if_changed` → `save_msal_cache_if_changed(player_db_path, attempt._cache)`. |
+| **Test** | Profil créé puis première sync immédiate sans redemande d'auth. Vérifier que `sync_meta` contient la clé `msal_token_cache` après provisioning. |
 | **Fichier de test** | `tests/api/test_provisioning_continuity.py` |
 | **État** | 🔲 À faire |
 
@@ -188,12 +227,61 @@ Le fallback `_has_any_synced_matches()` est conservé comme filet de sécurité 
 
 | | |
 |-|-|
-| **Fichiers** | migration dédiée / script de backfill / lecture bootstrap |
-| **Problème** | Sans migration, les profils historiques risquent d'être reclassés comme non synchronisés |
-| **Action** | Backfiller le marqueur à partir des données historiques existantes avant rollout complet du nouvel onboarding |
+| **Fichiers** | script de migration + `src/data/sync/migrations.py` |
+| **Problème** | Sans migration, les profils historiques qui ont déjà des matchs seraient reclassés à tort comme `profile_ready_no_sync` au lieu de `ready` |
+| **Action** | Créer une migration idempotente qui initialise `initial_sync_completed_at` pour tous les profils existants ayant un historique de sync |
 | **Test** | Un profil existant avec historique pertinent arrive directement en `ready` |
 | **Fichier de test** | `tests/api/test_bootstrap_setup_state.py` |
 | **État** | 🔲 À faire |
+
+**Schéma cible** : le marqueur est une clé dans la table `sync_meta` (key-value VARCHAR) de chaque player DB :
+
+| Clé | Valeur | Signification |
+|-----|--------|--------------|
+| `initial_sync_completed_at` | ISO8601 timestamp | Première sync terminée avec succès |
+
+**Script de backfill** (pseudo-SQL exécuté sur chaque `data/players/{gamertag}/stats.duckdb`) :
+
+```sql
+-- Condition : la clé n'existe pas encore ET le joueur a déjà une sync réussie
+INSERT INTO sync_meta (key, value, updated_at)
+SELECT
+    'initial_sync_completed_at',
+    sm.value,                    -- copier la valeur de last_sync_at
+    CURRENT_TIMESTAMP
+FROM sync_meta sm
+WHERE sm.key = 'last_sync_at'
+  AND sm.value IS NOT NULL
+  AND NOT EXISTS (
+    SELECT 1 FROM sync_meta WHERE key = 'initial_sync_completed_at'
+  );
+```
+
+**Logique Python** (dans le système de migration existant `src/data/migration/`) :
+
+```python
+def apply_schema(conn: duckdb.DuckDBPyConnection) -> None:
+    """Migration : backfill initial_sync_completed_at pour profils existants."""
+    conn.execute("""
+        INSERT INTO sync_meta (key, value, updated_at)
+        SELECT 'initial_sync_completed_at', value, CURRENT_TIMESTAMP
+        FROM sync_meta
+        WHERE key = 'last_sync_at' AND value IS NOT NULL
+          AND NOT EXISTS (
+            SELECT 1 FROM sync_meta WHERE key = 'initial_sync_completed_at'
+          )
+    """)
+```
+
+**Critères de validation après backfill** :
+
+1. Pour chaque player DB dans `data/players/*/stats.duckdb` :
+   - Si `sync_meta` contient `last_sync_at` non null → `initial_sync_completed_at` doit aussi exister
+   - Si `sync_meta` ne contient pas `last_sync_at` → profil neuf, pas de marqueur attendu
+2. Script de vérification : `SELECT key, value FROM sync_meta WHERE key IN ('last_sync_at', 'initial_sync_completed_at')` sur chaque player DB
+3. **Critère Go/No-Go** : 100% des player DBs ayant `last_sync_at` ont aussi `initial_sync_completed_at` après exécution de la migration
+
+**Déploiement** : cette migration est exécutée **avant** que le nouveau code de bootstrap ne soit activé, via le système de migration automatique existant (`launcher.py → _run_migrations()`). Elle est idempotente — exécuter 2 fois ne produit aucun effet (clause `NOT EXISTS`).
 
 ### 3.3 — Ajouter le statut `interrupted` dans le code
 
@@ -224,18 +312,41 @@ Le fallback `_has_any_synced_matches()` est conservé comme filet de sécurité 
 | **Fichiers** | nouveau router `apps/api/app/routers/sync.py` + service `apps/api/app/services/sync_service.py` |
 | **Action** | Créer un job `initial_sync`, lancer l'orchestrateur sync, mettre à jour le job avec les compteurs métier, écrire le marqueur de fin |
 | **Guard** | Vérifier `can_start_initial_sync` → 403 si `false` |
-| **Contrainte** | Single-flight par `player_slug` |
+| **Contrainte** | Single-flight par `player_slug`. Si un job `initial_sync` actif existe pour ce joueur → retourner `409` avec `details.active_job_id` |
 | **Réponse** | 202 + `AsyncJobStatus` |
 | **Fichier de test** | `tests/api/test_sync_initial.py` |
 | **État** | 🔲 À faire |
 
-### 3.6 — Écran de progression frontend
+### 3.6 — Gestion des erreurs dans le worker sync
+
+| | |
+|-|-|
+| **Fichiers** | `apps/api/app/services/sync_service.py` (worker background) |
+| **Problème** | Le worker sync doit capturer les erreurs, les classer par type, et les persister dans le job avec le bon `error.code` |
+| **Action** | Implémenter dans le worker : (1) try/except par phase, (2) retry automatique unitaire (3×, backoff exponentiel) pour les appels API Halo, (3) classification de l'erreur (`sync_auth_expired`, `sync_halo_api_error`, `sync_halo_api_quota`, `sync_db_error`, `internal_error`) selon le type d'exception, (4) écriture dans le `JobStore` via `store.update(job_id, status="failed", error=ApiErrorSchema(code=..., retryable=True))` |
+| **Contrat** | Voir SPEC §9.4 — table des `error.code` et politique de retry |
+| **Test** | (1) Erreur API Halo mockée → job `failed` avec `error.code="sync_halo_api_error"`. (2) Erreur auth → job `failed` avec `error.code="sync_auth_expired"`. (3) Exception inattendue → job `failed` avec `error.code="internal_error"`. |
+| **Fichier de test** | `tests/api/test_sync_initial.py` |
+| **État** | 🔲 À faire |
+
+### 3.7 — Retrouver le job sync actif après refresh navigateur
+
+| | |
+|-|-|
+| **Fichiers** | `apps/api/app/deps/auth.py`, `apps/api/app/services/bootstrap_service.py`, `apps/api/app/schemas/bootstrap.py` |
+| **Problème** | Si l'utilisateur rafraîchit le navigateur pendant la sync, le frontend perd le `job_id` et ne peut plus afficher la progression |
+| **Action** | Stocker `active_sync_job_id` dans la session quand un job sync est lancé. L'exposer dans `BootstrapResponse` (champ optionnel). Le frontend le récupère au rechargement et reprend le polling. Le champ est remis à `null` quand le job atteint un statut terminal. |
+| **Test** | Lancer sync → refresh navigateur → `GET /bootstrap` renvoie `active_sync_job_id` → le frontend reprend le polling |
+| **Fichier de test** | `tests/api/test_sync_initial.py` |
+| **État** | 🔲 À faire |
+
+### 3.8 — Écran de progression frontend avec gestion d'erreur
 
 | | |
 |-|-|
 | **Fichiers** | nouveau composant dans `apps/web/src/features/setup/` |
-| **Action** | Après création profil → lancer sync → afficher progression avec compteurs métier. Réutiliser `useJobStatus` existant (poll 3s). |
-| **Contrat UX** | Voir SPEC §8 |
+| **Action** | Après création profil → lancer sync → afficher progression avec compteurs métier. Réutiliser `useJobStatus` existant (poll 3s). **Ajouter** : (1) affichage du message d'erreur basé sur `error.code` si `status="failed"`, (2) bouton "Relancer la sync" si `error.retryable=true`, (3) message spécifique si `status="interrupted"` ("Synchronisation interrompue — redémarrage serveur"), (4) récupération du job actif via `active_sync_job_id` de bootstrap au rechargement de page |
+| **Contrat UX** | Voir SPEC §8 + §9.4 |
 | **État** | 🔲 À faire |
 
 ---
@@ -287,9 +398,10 @@ Le fallback `_has_any_synced_matches()` est conservé comme filet de sécurité 
 
 ```
 1.1  Bootstrap = source produit         ──┐
-1.2  linked_halo_identity en session    ──┼── Sprint 1 (P0)
-1.3  ownership des attempts             ──┤
-1.4  confirmation UI sans ressaisie     ──┘
+1.2  linked_halo_identity en session    ──┤
+1.3  ownership des attempts             ──┼── Sprint 1 (P0)
+1.4  confirmation UI sans ressaisie     ──┤
+1.5  UX erreur/timeout Device Flow      ──┘
            │
 2.1  Guard can_self_provision (✅)      ──┐
 2.2  Cohérence identité liée            ──┤
@@ -299,9 +411,11 @@ Le fallback `_has_any_synced_matches()` est conservé comme filet de sécurité 
 3.1  Marqueur sync explicite            ──┐
 3.2  Backfill profils existants         ──┤
 3.3  Statut interrupted (schéma ✅)     ──┤
-3.4  JobStore interrupted (persist. ✅) ──┼── Sprint 3 (P1)
-3.5  POST /sync/initial                 ──┤
-3.6  Écran progression frontend         ──┘
+3.4  JobStore interrupted (persist. ✅) ──┤
+3.5  POST /sync/initial + single-flight ──┼── Sprint 3 (P1)
+3.6  Erreurs worker sync (retry+codes)  ──┤
+3.7  active_sync_job_id en bootstrap    ──┤
+3.8  Écran progression + erreur         ──┘
            │
 4.1  Cookies prod derrière proxy        ──┐
 4.2  Same-origin / CSRF                 ──┤

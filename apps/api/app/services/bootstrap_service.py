@@ -23,6 +23,7 @@ from apps.api.app.deps.players import get_available_players, load_db_profiles
 from apps.api.app.schemas.bootstrap import (
     BootstrapResponse,
     FeatureFlags,
+    HaloIdentitySummary,
     PlayersListResponse,
     SessionContextResponse,
     SettingsExcerpt,
@@ -94,6 +95,62 @@ def _setup_required() -> bool:
     return len(profiles) == 0
 
 
+def _check_initial_sync_marker(available: list[PlayerSummary]) -> bool:
+    """Vérifie si le marqueur ``initial_sync_completed_at`` exist dans sync_meta.
+
+    Source de vérité persistante pour distinguer ``profile_ready_no_sync``
+    de ``ready``. Cherche sur le premier joueur disponible (MVP single-user).
+
+    Retourne True si le marqueur est trouvé. Fail-open (True) en cas d'erreur.
+    """
+    if not available:
+        return False
+    settings = get_settings()
+    player_slug = available[0].player_slug
+    player_db = Path(settings.repo_root) / "data" / "players" / player_slug / "stats.duckdb"
+    if not player_db.exists():
+        return False
+    try:
+        import duckdb
+
+        with duckdb.connect(str(player_db), read_only=True) as conn:
+            row = conn.execute(
+                "SELECT value FROM sync_meta WHERE key = 'initial_sync_completed_at' LIMIT 1"
+            ).fetchone()
+            return bool(row and row[0])
+    except Exception:
+        logger.debug("initial_sync_marker_check_failed", player_slug=player_slug)
+        return False
+
+
+def _check_initial_sync_marker(available: list[PlayerSummary]) -> bool:
+    """Vérifie si le marqueur ``initial_sync_completed_at`` exist dans sync_meta.
+
+    Source de vérité persistante pour distinguer ``profile_ready_no_sync``
+    de ``ready``. Cherche sur le premier joueur disponible (MVP single-user).
+
+    Retourne True si le marqueur est trouvé. Fail-open (True) en cas d'erreur.
+    """
+    if not available:
+        return False
+    settings = get_settings()
+    player_slug = available[0].player_slug
+    player_db = Path(settings.repo_root) / "data" / "players" / player_slug / "stats.duckdb"
+    if not player_db.exists():
+        return False
+    try:
+        import duckdb
+
+        with duckdb.connect(str(player_db), read_only=True) as conn:
+            row = conn.execute(
+                "SELECT value FROM sync_meta WHERE key = 'initial_sync_completed_at' LIMIT 1"
+            ).fetchone()
+            return bool(row and row[0])
+    except Exception:
+        logger.debug("initial_sync_marker_check_failed", player_slug=player_slug)
+        return False
+
+
 def _has_any_synced_matches(available: list[PlayerSummary]) -> bool:
     """Vérifie si au moins un joueur a des matchs dans shared_matches_v2.duckdb.
 
@@ -124,26 +181,36 @@ def _has_any_synced_matches(available: list[PlayerSummary]) -> bool:
         return True  # fail-open : ne pas bloquer le bootstrap
 
 
-def _compute_setup_state(auth_state: str, available: list, *, has_matches: bool = True) -> str:
-    """Déduit l'état de l'onboarding depuis auth + joueurs disponibles.
+def _compute_setup_state(
+    auth_state: str,
+    available: list,
+    *,
+    has_initial_sync_marker: bool = False,
+    has_matches: bool = True,
+) -> str:
+    """Déduit l'état de l'onboarding depuis auth + joueurs + marqueur sync.
 
-    Returns:
-        "no_halo_link"             → aucun token Halo connu
-        "halo_linked_no_profile"   → auth OK mais aucun joueur local
-        "profile_ready_no_sync"    → joueur créé mais aucun match synchronisé
-        "ready"                    → auth OK + joueur(s) avec matchs
+    Logique de dérivation :
+    - ``no_halo_link``             → aucun token Halo connu
+    - ``halo_linked_no_profile``   → auth OK mais aucun joueur local
+    - ``profile_ready_no_sync``    → joueur créé mais aucun match synchronisé
+    - ``ready``                    → auth OK + joueur(s) avec marqueur ou matchs
+
+    Le marqueur ``initial_sync_completed_at`` est la source de vérité principale.
+    ``has_matches`` sert de fallback pour les profils historiques non encore
+    migrés (sera supprimé una fois le backfill de migration terminé).
     """
     if auth_state == "missing":
         return "no_halo_link"
     if not available:
         return "halo_linked_no_profile"
-    if not has_matches:
-        return "profile_ready_no_sync"
-    return "ready"
+    if has_initial_sync_marker or has_matches:
+        return "ready"
+    return "profile_ready_no_sync"
 
 
 def build_bootstrap_response(session: SessionData) -> BootstrapResponse:
-    """Construit le `BootstrapResponse` complet.
+    """Construit le ``BootstrapResponse`` complet.
 
     Args:
         session: Session web courante (peut être une session vide toute nouvelle).
@@ -155,6 +222,29 @@ def build_bootstrap_response(session: SessionData) -> BootstrapResponse:
     app_cfg = _load_app_settings()
     available = get_available_players()
 
+    # Mode démo : court-circuit complet de l'onboarding
+    if settings.demo_mode:
+        return BootstrapResponse(
+            setup_required=False,
+            auth_state="ready",
+            setup_state="ready",
+            current_player=available[0] if available else None,
+            available_players=available,
+            locale=session.locale,
+            hints_visible_default=session.hints_visible,
+            feature_flags=FeatureFlags(
+                v7_enabled=True,
+                media_enabled=bool(app_cfg.get("media_enabled", True)),
+                demo_mode=True,
+                discord_configured=False,
+                tailscale_enabled=False,
+            ),
+            capabilities=_build_capabilities(app_cfg),
+            settings_excerpt=_build_settings_excerpt(app_cfg),
+            linked_halo_identity=None,
+            active_sync_job_id=None,
+        )
+
     # Joueur courant depuis la session, sinon premier joueur disponible
     current: PlayerSummary | None = None
     if session.current_player_slug:
@@ -163,11 +253,32 @@ def build_bootstrap_response(session: SessionData) -> BootstrapResponse:
         current = available[0]
 
     auth_state = _resolve_auth_state(session)
+    has_initial_sync_marker = _check_initial_sync_marker(available)
     has_matches = _has_any_synced_matches(available)
+
+    # Identité Halo liée — depuis la session (jamais inventée)
+    linked_identity: HaloIdentitySummary | None = None
+    if session.linked_halo_identity:
+        linked_identity = HaloIdentitySummary(
+            gamertag=session.linked_halo_identity.get("gamertag", ""),
+            xuid=session.linked_halo_identity.get("xuid", ""),
+        )
+
+    # Vérifier que le job sync actif enregistré dans la session est encore valide
+    active_sync_job_id: str | None = _resolve_active_sync_job_id(session)
+
+    # setup_state est la source de vérité unique V7 — setup_required en est dérivé
+    setup_state = _compute_setup_state(
+        auth_state,
+        available,
+        has_initial_sync_marker=has_initial_sync_marker,
+        has_matches=has_matches,
+    )
+
     return BootstrapResponse(
-        setup_required=_setup_required(),
+        setup_required=setup_state != "ready",
         auth_state=auth_state,
-        setup_state=_compute_setup_state(auth_state, available, has_matches=has_matches),
+        setup_state=setup_state,
         current_player=current,
         available_players=available,
         locale=session.locale,
@@ -181,7 +292,27 @@ def build_bootstrap_response(session: SessionData) -> BootstrapResponse:
         ),
         capabilities=_build_capabilities(app_cfg),
         settings_excerpt=_build_settings_excerpt(app_cfg),
+        linked_halo_identity=linked_identity,
+        active_sync_job_id=active_sync_job_id,
     )
+
+
+def _resolve_active_sync_job_id(session: SessionData) -> str | None:
+    """Retourne l'ID du job sync actif de la session s'il est encore en cours."""
+    if not session.active_sync_job_id:
+        return None
+    try:
+        from apps.api.app.services.job_store import JobStore
+
+        job = JobStore.get().get_job(session.active_sync_job_id)
+        if job is None:
+            return None
+        if job.status in ("queued", "running"):
+            return session.active_sync_job_id
+        # Job terminal — plus pertinent à exposer
+        return None
+    except Exception:
+        return None
 
 
 def build_players_list_response() -> PlayersListResponse:

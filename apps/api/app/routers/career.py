@@ -1,9 +1,10 @@
 """Router Carrière (Slice 2).
 
 Endpoints :
-  GET /api/v1/players/{player_slug}/pages/career
-  GET /api/v1/players/{player_slug}/pages/career/top-matches
-  GET /api/v1/players/{player_slug}/pages/career/encounters
+  GET  /api/v1/players/{player_slug}/pages/career
+  GET  /api/v1/players/{player_slug}/pages/career/top-matches
+  GET  /api/v1/players/{player_slug}/pages/career/encounters
+  POST /api/v1/players/{player_slug}/pages/citations   [Phase B]
 """
 
 from __future__ import annotations
@@ -18,6 +19,7 @@ from apps.api.app.schemas.career import (
     CareerPageResponse,
     CareerTopMatchesResponse,
 )
+from apps.api.app.schemas.citations import CitationsPageResponse, CitationsQueryRequest
 
 logger = structlog.get_logger(__name__)
 
@@ -61,3 +63,19 @@ def get_career_encounters(
     from apps.api.app.services.career_service import get_encounters as _get_encounters
 
     return _get_encounters(player)
+
+
+# ---------------------------------------------------------------------------
+# Slice 2 Phase B — Citations
+# ---------------------------------------------------------------------------
+
+
+@router.post("/pages/citations", response_model=CitationsPageResponse)
+def get_citations_page(
+    body: CitationsQueryRequest,
+    player: PlayerContext = Depends(resolve_player),
+) -> CitationsPageResponse:
+    """Retourne la page Citations : commendations H5G + médailles filtrées."""
+    from apps.api.app.services.citations_service import get_citations_page as _get_citations
+
+    return _get_citations(player, body)

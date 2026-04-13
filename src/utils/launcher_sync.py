@@ -17,7 +17,7 @@ from src.utils.launcher_players import (
     _get_player_db_path,
     _list_players,
 )
-from src.utils.launcher_startup import _check_shutdown, _launch_streamlit
+from src.utils.launcher_startup import _check_shutdown, _launch_react
 from src.utils.paths import METADATA_DB_FILENAME, PLAYERS_DIR, WAREHOUSE_DIR
 
 
@@ -224,7 +224,7 @@ def _cmd_sync(args) -> int:  # noqa: ANN001
         print(_t("sync_summary_failures", LANG, n=failures))
 
     if getattr(args, "run", False):
-        return _launch_streamlit(db_path=None, port=None, no_browser=False)
+        return _launch_react(db_path=None, port=None, no_browser=False)
 
     return 0
 

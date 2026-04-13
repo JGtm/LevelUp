@@ -1,12 +1,10 @@
-"""Tests unitaires — endpoints Setup / Auth / Jobs (Slice 1).
+"""Tests unitaires — endpoints Setup / Auth / Jobs (V7).
 
 Couvre :
-- GET /setup/status (DEMO_MODE + modes sans credentials)
-- POST /auth/device-flow/start (mock MSAL)
-- GET /auth/device-flow/{attempt_id} (polling statut, 404 inconnu)
-- POST /setup/players (création profil, validation gamertag)
-- POST /setup/smoke-test (job asynchrone)
-- GET /jobs/{job_id} (polling, 404 expiré)
+- POST /api/v1/auth/device-flow/start (mock MSAL)
+- GET  /api/v1/auth/device-flow/{attempt_id} (polling statut, 404 inconnu)
+- POST /api/v1/setup/players (création profil, validation gamertag)
+- GET  /api/v1/jobs/{job_id} (polling, 404 expiré)
 """
 
 from __future__ import annotations
@@ -46,129 +44,18 @@ async def client() -> AsyncClient:
         yield c
 
 
-# ===========================================================================
-# GET /setup/status
-# ===========================================================================
+def _make_session_cookie(
+    gamertag: str = "TestGamertag", xuid: str = "0000", session_id: str = "test-setup"
+) -> str:
+    """Crée une session avec identité Halo et retourne le cookie signé (V7 guard)."""
+    from apps.api.app.deps.auth import SessionData, _get_store, _sign_session_id
 
-
-@pytest.mark.anyio
-async def test_setup_status_demo_mode_returns_done(client: AsyncClient) -> None:
-    """En DEMO_MODE, setup est toujours terminé."""
-    resp = await client.get("/api/v1/setup/status")
-    assert resp.status_code == 200
-    data = resp.json()
-    assert data["needs_setup"] is False
-    assert data["next_blocking_step"] == "done"
-    assert data["auth"]["has_client_id"] is True
-    assert data["auth"]["has_refresh_token"] is True
-    assert data["player"]["has_any_profile"] is True
-
-
-@pytest.mark.anyio
-async def test_setup_status_no_refresh_token(
-    client: AsyncClient,
-    no_demo_env: None,
-) -> None:
-    """Sans refresh_token, next_blocking_step = auth."""
-    from apps.api.app.core.config import get_settings
-    from apps.api.app.schemas.setup import SetupAuthInfo, SetupPlayerInfo, SetupStatusResponse
-
-    get_settings.cache_clear()  # type: ignore[attr-defined]
-
-    mock_response = SetupStatusResponse(
-        needs_setup=True,
-        auth=SetupAuthInfo(
-            has_client_id=True,
-            has_refresh_token=False,
-            has_msal_cache=False,
-            preferred_method="refresh_token",
-        ),
-        player=SetupPlayerInfo(has_any_profile=False, default_player_slug=None),
-        next_blocking_step="auth",
-    )
-
-    with patch(
-        "apps.api.app.services.setup_service.get_setup_status",
-        return_value=mock_response,
-    ):
-        resp = await client.get("/api/v1/setup/status")
-
-    assert resp.status_code == 200
-    data = resp.json()
-    assert data["needs_setup"] is True
-    assert data["next_blocking_step"] == "auth"
-    assert data["auth"]["has_refresh_token"] is False
-
-
-@pytest.mark.anyio
-async def test_setup_status_has_token_no_player(
-    client: AsyncClient,
-    no_demo_env: None,
-) -> None:
-    """Avec refresh_token mais sans joueur, next_blocking_step = player."""
-    from apps.api.app.core.config import get_settings
-    from apps.api.app.schemas.setup import SetupAuthInfo, SetupPlayerInfo, SetupStatusResponse
-
-    get_settings.cache_clear()  # type: ignore[attr-defined]
-
-    mock_response = SetupStatusResponse(
-        needs_setup=True,
-        auth=SetupAuthInfo(
-            has_client_id=True,
-            has_refresh_token=True,
-            has_msal_cache=False,
-            preferred_method="refresh_token",
-        ),
-        player=SetupPlayerInfo(has_any_profile=False, default_player_slug=None),
-        next_blocking_step="player",
-    )
-
-    with patch(
-        "apps.api.app.services.setup_service.get_setup_status",
-        return_value=mock_response,
-    ):
-        resp = await client.get("/api/v1/setup/status")
-
-    assert resp.status_code == 200
-    data = resp.json()
-    assert data["needs_setup"] is True
-    assert data["next_blocking_step"] == "player"
-
-
-@pytest.mark.anyio
-async def test_setup_status_fully_configured(
-    client: AsyncClient,
-    no_demo_env: None,
-) -> None:
-    """Tout configuré → next_blocking_step = done."""
-    from apps.api.app.core.config import get_settings
-    from apps.api.app.schemas.setup import SetupAuthInfo, SetupPlayerInfo, SetupStatusResponse
-
-    get_settings.cache_clear()  # type: ignore[attr-defined]
-
-    mock_response = SetupStatusResponse(
-        needs_setup=False,
-        auth=SetupAuthInfo(
-            has_client_id=True,
-            has_refresh_token=True,
-            has_msal_cache=False,
-            preferred_method="refresh_token",
-        ),
-        player=SetupPlayerInfo(has_any_profile=True, default_player_slug="MyGamertag"),
-        next_blocking_step="done",
-    )
-
-    with patch(
-        "apps.api.app.services.setup_service.get_setup_status",
-        return_value=mock_response,
-    ):
-        resp = await client.get("/api/v1/setup/status")
-
-    assert resp.status_code == 200
-    data = resp.json()
-    assert data["needs_setup"] is False
-    assert data["next_blocking_step"] == "done"
-    assert data["player"]["default_player_slug"] == "MyGamertag"
+    store = _get_store()
+    session = SessionData(session_id=session_id)
+    session.linked_halo_identity = {"gamertag": gamertag, "xuid": xuid}
+    session.auth_ready = True
+    store.save(session)
+    return _sign_session_id(session_id)
 
 
 # ===========================================================================
@@ -376,6 +263,7 @@ async def test_create_player_valid_gamertag(client: AsyncClient, no_demo_env: No
         resp = await client.post(
             "/api/v1/setup/players",
             json={"gamertag": "TestGamertag"},
+            cookies={"levelup_session": _make_session_cookie("TestGamertag")},
         )
 
     assert resp.status_code == 201
@@ -440,67 +328,13 @@ async def test_create_player_invalid_gamertag_returns_400(
         resp = await client.post(
             "/api/v1/setup/players",
             json={"gamertag": "invalid@#$gamertag"},
+            cookies={
+                "levelup_session": _make_session_cookie("invalid@#$gamertag", session_id="bad-gt")
+            },
         )
 
     assert resp.status_code == 400
     assert "gamertag" in resp.json()["code"]
-
-
-# ===========================================================================
-# POST /setup/smoke-test
-# ===========================================================================
-
-
-@pytest.mark.anyio
-async def test_smoke_test_demo_mode_returns_succeeded_job(client: AsyncClient) -> None:
-    """En DEMO_MODE, le smoke test retourne un job terminé immédiatement."""
-    resp = await client.post(
-        "/api/v1/setup/smoke-test",
-        json={"player_slug": "demo", "max_matches": 10},
-    )
-    assert resp.status_code == 202
-    data = resp.json()
-    assert data["status"] == "succeeded"
-    assert data["job_type"] == "setup_smoke_test"
-    assert data["result"]["all_ok"] is True
-
-
-@pytest.mark.anyio
-async def test_smoke_test_no_demo_creates_queued_job(
-    client: AsyncClient,
-    no_demo_env: None,
-) -> None:
-    """En mode normal, le smoke test crée un job en statut queued ou running."""
-    from apps.api.app.core.config import get_settings
-    from apps.api.app.schemas.common import AsyncJobStatus
-
-    get_settings.cache_clear()  # type: ignore[attr-defined]
-
-    dummy_job = AsyncJobStatus(
-        job_id=str(uuid.uuid4()),
-        job_type="setup_smoke_test",
-        status="queued",
-        progress_pct=None,
-        current_step=None,
-        started_at=None,
-        finished_at=None,
-        result=None,
-        error=None,
-    )
-
-    with patch(
-        "apps.api.app.routers.setup.start_smoke_test",
-        return_value=dummy_job,
-    ):
-        resp = await client.post(
-            "/api/v1/setup/smoke-test",
-            json={"player_slug": "MyPlayer", "max_matches": 20},
-        )
-
-    assert resp.status_code == 202
-    data = resp.json()
-    assert data["status"] in ("queued", "running")
-    assert "job_id" in data
 
 
 # ===========================================================================

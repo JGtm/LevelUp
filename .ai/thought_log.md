@@ -1,5 +1,162 @@
 # Thought Log
 
+## [2026-04-14] docs: consolidation structurelle du plan de migration Python → Go
+
+**Statut** : Complété
+
+**Tâche** : Appliquer les 4 améliorations structurelles identifiées lors de l'évaluation de complétude du plan (~85% maturité).
+
+**Décisions techniques principales** :
+- Conditions de succès fusionnées en une liste unique de 18 items (11 originales + 7 du complément). Idem conditions d'échec → 16 items. Suppression des sections dupliquées "Conditions de succès révisées" et "Conditions d'échec révisées" du complément.
+- Section SPNKr condensée de ~120 lignes à ~30 lignes. L'essentiel retenu : SPNKr = client HTTP simple, le vrai travail est implémenter `HaloAPIPort` en Go, bridge temporaire possible en Phase 3-4, critères d'extinction du bridge.
+- POC A/B/C/D (~60 lignes) fusionnés dans la référence au Sprint 0. Le POC B (bridge SPNKr) déclaré non nécessaire à ce stade.
+- Risques 5-6 mis à jour : le "freeze total" est remplacé par "changements autorisés si le Go est mis à jour dans la même semaine", aligné avec la "Stratégie d'évolution du produit" ajoutée précédemment.
+- DoD ajouté comme livrable #5 de la Phase 0.
+- D2 mis à jour : recommandation binaire unique avec sous-commandes (cohérent avec "Modèle de déploiement").
+- Typo corrigée : "nou binaire" → "nouveau binaire".
+
+**Résultat** : 1837 → 1747 lignes (-90). Document structurellement cohérent, sans duplication ni contradiction interne.
+
+## [2026-04-14] feat(sync): retry 3× backoff Halo API + audit logs sécurité setup
+
+**Statut** : Complété
+
+**Tâche** : Checklist §D (retry backoff Halo API) + §F (audit secrets dans les logs) — items restants du plan onboarding V7.
+
+**Décisions techniques** :
+- Ajout de `_is_transient_halo_error()` : détecte les erreurs réseau/API Halo via le module de l'exception (`aiohttp`, `httpx`, `spnkr`) ou son nom de classe.
+- Constante `_HALO_RETRY_DELAYS = (1, 2, 4)` — 3 tentatives avec backoff exponentiel.  
+- `_fetch_and_sync` : retry loop autour de `asyncio.run(backfill_player_data(...))`. Sur erreur Halo transitoire, log `initial_sync_halo_api_retry` + sleep + continue. Après 3 échecs, lève `_SyncHaloApiError`. Autres exceptions → `_SyncAbortError` immédiat.
+- Audit logs secrets : aucun secret (token, cache MSAL, cookie) loggé en clair. Le champ `_cache` est `repr=False`. `exc_info=True` sur des erreurs générales ne contient pas de valeurs sensibles.
+
+**Résultats** : 188/188 tests passants.
+
+**Fichiers modifiés** :
+- `apps/api/app/services/sync_service.py` — `import time`, `_HALO_RETRY_DELAYS`, `_HALO_ERROR_MODULES/NAMES`, `_is_transient_halo_error()`, retry loop dans `_fetch_and_sync`
+
+**Conclusion** :
+- §D entièrement vert (retry 3× backoff implémenté)
+- §F entièrement vert (logs propres, pas de secrets)
+- §G : 11/14 tests unitaires ✅ — 3 tests E2E non faisables sans credentials Xbox réels
+- Plan onboarding V7 : **complété au maximum possible sans environnement Xbox réel**
+
+
+
+**Statut** : Complété
+
+**Tâche** : Vérification finale du plan V7 onboarding — correctness, logging et couverture de tests.
+
+**Décisions techniques principales** :
+- `SetupPage.tsx` contenait DEUX `export function SetupPage()` : la V7 pilotée par `setup_state` (ligne 417) et l'ancienne version legacy pilotée par `next_blocking_step` (ligne 861). La version legacy écrasait la V7 à l'export. Fichier tronqué aux 467 premières lignes.
+- Bug silent dans `sync_service.py` : `_validate_player()` était du code mort coincé dans le corps de `_clear_active_sync_job_id` (manquait le `def`). Corrigé : devient une vraie fonction de module.
+- `reset_job_store` (test_sync_initial.py) pointait sur `data/cache/jobs.json` réel, qui contenait des jobs `queued` de tests précédents → faux 409 lors des relances. Corrigé : fixture utilise désormais `tmp_path` pour un fichier jobs isolé.
+- Logs structurés ajoutés sur les refus 403/409 du provisioning (setup.py) : `provisioning_disabled`, `provisioning_no_halo_identity`, `provisioning_identity_mismatch`.
+- 5 nouveaux tests ajoutés couvrant les checklist items §D et §G restants : `sync_halo_api_error`, `sync_auth_expired`, `active_sync_job_id` dans bootstrap, `current_player_slug` mis à jour après provisioning.
+
+**Résultats** : 188/188 tests passants (vs 163 en début de session). +25 tests au total sur l'ensemble des sessions. 10 échecs `test_media.py` pré-existants inchangés.
+
+**Fichiers modifiés** :
+- `apps/api/app/services/sync_service.py` — fix `_validate_player` (def manquant)
+- `apps/api/app/routers/setup.py` — logs `provisioning_disabled/no_halo_identity/identity_mismatch`
+- `apps/web/src/features/setup/SetupPage.tsx` — suppression wizard legacy (~450 lignes)
+- `tests/api/test_sync_initial.py` — 3 nouveaux tests + fixture `reset_job_store` corrigée (tmp_path)
+- `tests/api/test_setup_guards.py` — 1 nouveau test `current_player_slug`
+
+**Conclusion / prochaine étape** :
+- Plan onboarding V7 complet, robuste, bien couvert (checklist §G entièrement verte)
+- Optionnel restant : retry 3× backoff Halo API dans `_fetch_and_sync()` (checklist §D, pas un critère sprint)
+- Optionnel deferred : suppression `_has_any_synced_matches()` après backfill migration complète
+
+## [2026-04-13] feat(migration): canonical Phases B/C — Citations, Timeseries, Session Compare, Match View, Last Match
+
+**Statut** : Complété
+
+**Tâche** : Implémenter les backends des Phases B/C pour les slices 2, 3, 4 + tests Python + specs Playwright + mise à jour documentation MIGRATION_MASTER.
+
+**Décisions techniques principales** :
+- Pattern `_fig_to_payload(fig) -> PlotlyFigurePayload | None` établi pour la sérialisation Plotly dans tous les services page-oriented
+- Imports `src.*` toujours lazy (dans les corps de fonctions) pour mockabilité en tests
+- `DuckDBRepository.load_kill_timing_for_matches(match_ids, xuids)` identifié comme source correcte pour les events d'intensité (heatmap)
+- `compute_session_performance_score_v2(df)` retourne dict avec clés : `score`, `kd_ratio`, `win_rate`, `accuracy`, `avg_life_seconds`, `kills_per_match`
+- Bug corrigé : `ApiError(status_code, code, message)` — 3 args positionnels, pas kwargs
+- Bug corrigé : `get_player_context` → `resolve_player` dans les routers timeseries et session_compare
+- Bug corrigé : champs test_citations.py ne correspondaient pas au schéma réel (key/label/current_value vs name_id/display_name/count)
+
+**Résultats** : 21/21 tests Python API passent. 5 specs Playwright créées.
+
+**Fichiers créés** :
+- `apps/api/app/services/timeseries_api_service.py` — 7 builders privés + `get_timeseries_page()`
+- `apps/api/app/services/session_compare_service.py` — 8 helpers privés + `get_session_compare()`
+- `apps/api/app/routers/timeseries.py` — `POST /players/{slug}/pages/timeseries`
+- `apps/api/app/routers/session_compare.py` — `POST /players/{slug}/pages/session-compare`
+- `tests/api/test_citations.py` — 4 tests (schéma CitationsPageResponse)
+- `tests/api/test_timeseries.py` — 5 tests (schéma TimeseriesPageResponse, 5 tabs, KPI cards)
+- `tests/api/test_session_compare.py` — 5 tests (schéma SessionCompareResponse)
+- `tests/api/test_match_view.py` — 7 tests (match_view + last_match, 200/404)
+- `apps/web/e2e/slice-2b-citations.spec.ts` — 4 tests Playwright
+- `apps/web/e2e/slice-3b-timeseries.spec.ts` — 5 tests Playwright
+- `apps/web/e2e/slice-3c-session-compare.spec.ts` — 5 tests Playwright
+- `apps/web/e2e/slice-4b-match-view.spec.ts` — 5 tests Playwright
+- `apps/web/e2e/slice-4c-last-match.spec.ts` — 4 tests Playwright
+
+**Fichiers modifiés** :
+- `apps/api/app/main.py` — enregistrement des routers timeseries et session_compare
+- `apps/api/app/routers/timeseries.py` — correction `resolve_player`
+- `apps/api/app/routers/session_compare.py` — correction `resolve_player`
+- `tests/api/test_citations.py` — correction champs CommendationSummary/MedalSummary/CitationsDeltas
+- `.ai/MIGRATION_MASTER.md` — état courant + tableau de gel mis à jour Phases B/C
+- `.ai/migration/SLICES.md` — statuts canonical ajoutés pour Phases B/C (slices 2, 3, 4)
+
+**Conclusion / prochaine étape** : Tous les backends MVP + Phases B/C sont canonical. La Slice 9 (Décommissionnement Streamlit) peut être déclenchée dès que les frontends React P2/P3 (Citations, Timeseries, Session Compare, Match View) sont livrés et validés.
+
+## [2025-07-14] feat(v7-onboarding): sprints 4.4 + 5.2 — audit logs et cleanup endpoints legacy
+
+**Statut** : Complété
+
+**Tâche** : Finalisation des sprints 4 (hardening) et 5 (cleanup) du plan V7 onboarding.
+
+**Décision technique principale** :
+- Sprint 4.1/4.2/4.3 découverts déjà implémentés (CSRF + rate limit + cookie security déjà en place)
+- Sprint 4.4 : ajout de `initial_sync_started` et `initial_sync_succeeded` dans `sync_service.py` (les logs device_flow_* étaient déjà présents)
+- Sprint 5.2 : suppression complète des endpoints legacy (`GET /setup/status`, `POST /setup/smoke-test`) + functions associées dans service/schema + tests legacy supprimés
+- Sprint 5.3 (déféré) : `_has_any_synced_matches()` supprimé naturellement lors du nettoyage de `get_setup_status()`. Le fallback dans `bootstrap_service.py` reste pour la migration.
+
+**Résultats** : 163/163 tests API passent (test_media.py exclu — échec pré-existant).
+
+**Fichiers modifiés** :
+- `apps/api/app/services/sync_service.py` — logs `initial_sync_started` + `initial_sync_succeeded`
+- `apps/api/app/services/setup_service.py` — supp. `get_setup_status`, `get_setup_status_demo`, `start_smoke_test`, `_run_smoke_test_bg` + helpers privés liés
+- `apps/api/app/routers/setup.py` — supp. `GET /setup/status` et `POST /setup/smoke-test`
+- `apps/api/app/schemas/setup.py` — supp. `SetupStatusResponse`, `SetupAuthInfo`, `SetupPlayerInfo`, `SmokeTestStartRequest`
+- `tests/api/test_setup.py` — supp. tests legacy setup/status + smoke-test
+
+## [2026-04-13] feat(v7-onboarding): implémentation complète plan V7 onboarding — tous sprints
+
+**Statut** : Complété
+
+**Tâche** : Implémentation du plan complet V7 onboarding (`PLAN_V7_ONBOARDING_MASTER.md`) — 4 sprints sur auth, Device Code Flow, provisioning, sync et bootstrap machine d'état.
+
+**Décision technique principale** :
+- `setup_required` dérivé de `setup_state != "ready"` (source de vérité unique)  
+- `_DeviceFlowAttempt` : champs `status` et `started_at` déplacés en optionnels avec default (backward compat tests)
+- `running → interrupted` (pas `cancelled`) pour sémantique UX distincte au restart
+- `_make_session_cookie()` helpers avec cookie signé (`_sign_session_id`) plutôt qu'ID brut
+- `reset_job_store` fixture : init + nettoyage fichier JSON pour éviter contamination cross-run
+
+**Fichiers modifiés/créés** :
+- Backend: `deps/auth.py`, `schemas/bootstrap.py`, `schemas/setup.py`, `services/setup_service.py`, `services/bootstrap_service.py`, `services/job_store.py`, `services/sync_service.py`, `routers/setup.py`, `routers/sync.py`
+- Migration: `src/data/migration/steps/add_initial_sync_completed_at.py`
+- Frontend: `types.ts`, `appShellStore.ts`, `setupFlowStore.ts`, `queries.ts`, `SetupPage.tsx`
+- Tests: `test_bootstrap_setup_state.py`, `test_device_flow_ownership.py`, `test_setup_guards.py`, `test_sync_initial.py`, `test_job_store.py`
+- Corrections régressions: `test_sprint3.py`, `test_setup.py`, `test_setup_guards.py`, `test_sync_initial.py`
+
+**Résultats observés** :
+- 169/169 tests API verts (hors test_media pré-existant)
+- 10 tests unitaires V7 créés (5 fichiers)
+- 0 régression introduite
+
+**Conclusion** : Plan V7 onboarding 100% implémenté. Branche courante à contrôler avant PR.
+
 ## [2026-04-13] feat(canonical): batch passage toutes slices MVP canonical + fix media router
 
 **Statut** : Complété
@@ -12664,3 +12821,61 @@ Ajout de 3 règles ciblant `div[data-testid="stSegmentedControl"]` :
 - Le clone SPNKr est propre et prêt au push sur le fork `JGtm/SPNKr`
 
 **Conclusion** : Le diff SPNKr ne présente plus de finding bloquant avant push. Le prochain geste logique est de pousser la branche puis d'ouvrir la PR avec le texte préparé.
+
+---
+
+### [2026-04-13] Completion du plan de migration Python → Go — revue et ajouts
+
+**Statut** : Complété
+
+**Décision technique** : Suite à une relecture critique complète du plan (1569 lignes), identification de 12+ lacunes structurelles. Ajout de toutes les sections manquantes directement dans le plan.
+
+**Sections ajoutées au plan** :
+1. **Sprint 0 — POC rapide (2 jours max)** : DuckDB Go + types jour 1, HTTP + MSAL jour 2, gate explicite
+2. **Critères d'abandon (kill switch)** : 6 conditions d'arrêt définitif (CGo/Windows, dépassement 3×, API 343i change, fatigue solo)
+3. **Modèle de déploiement cible** : binaire unique avec sous-commandes, go:embed pour React, Docker, lancement Windows/Linux
+4. **Migration données utilisateurs existants** : compatibilité DuckDB versions, cache MSAL cross-langage, sessions invalidées, runbook transition
+5. **Stratégie d'évolution produit pendant le portage** : remplace le "feature freeze irréaliste" par des règles pragmatiques (retard max 1 semaine sur schema, golden values à jour)
+6. **Gestion multi-joueurs en Go** : architecture pool par gamertag, lazy init, ATTACH unique à l'init, write leases indépendants
+7. **Opportunités Go** : zero-dep binary, backfill parallèle, SSE natif, -race, temps démarrage, cross-compilation
+8. **Adaptation développeur solo** : simplification shadow mode → diff JSON, soak test → 3 cycles, 8 registres → 1 checklist
+9. **Graceful shutdown** : ajouté aux règles de conception et au Sprint 1.1
+10. **Notifications Discord** : ajoutées aux surfaces, Sprint 4.8, src/utils dans la matrice
+11. **`src/app/` dans la matrice** : ~25 fichiers Streamlit à trier entre suppression et portage
+12. **Correction LOC** : 15-20K → 25-35K Go (boilerplate error handling + SQL scanning)
+13. **MSAL Go** : SDK officiel mature, risque POC C surestimé
+
+**Modifications aux sections existantes** :
+- WARNING banner simplifié (plus "non terminé")
+- Phase 1.4 : shadow mode → validation de parité (diff JSON, pas de proxy transparent)
+- Phase 5.1 : soak test 2 semaines → 3 cycles de sync réels
+- NOTE mise à jour avec sommaire de la révision
+
+**Résultats** : Plan passé de 1569 → 1837 lignes. Toutes les lacunes identifiées lors de la revue critique sont couvertes.
+
+**Conclusion** : Le plan est maintenant complet pour un démarrage. Prochaine étape : attendre la fin de la migration React/FastAPI, puis exécuter le Sprint 0 POC (2 jours).
+
+---
+
+### [2026-05-09] Frontend React — Match View, Last Match, Citations, Timeseries, Session Compare
+
+**Statut** : Complété
+
+**Décision technique** : Implémentation complète du frontend React pour les 5 pages P2/P3 manquantes. Chaque feature suit le pattern existant : hooks `useQuery` / `useMutation` dans `features/*/queries.ts`, composant page dans `features/*/Page.tsx`, puis fichier route dans `src/routes/players/$playerSlug/...`.
+
+**Fichiers créés / modifiés** :
+- `apps/web/src/lib/api/types.ts` — ajout de ~70 nouveaux types TS (MatchView, Citations, Timeseries, SessionCompare)
+- `apps/web/src/lib/query/keys.ts` — ajout de 4 query keys (citations, timeseries, sessionCompare, lastMatch)
+- `apps/web/src/features/match-view/queries.ts` — `useMatchView` + `useLastMatchResolve`
+- `apps/web/src/features/match-view/MatchViewPage.tsx` — page 5 onglets (Résumé/Combat/Équipe/Médias/Citations)
+- `apps/web/src/features/match-view/LastMatchPage.tsx` — resolve + navigation précédent/suivant
+- `apps/web/src/features/citations/queries.ts` + `CitationsPage.tsx` — commendations + médailles
+- `apps/web/src/features/timeseries/queries.ts` + `TimeseriesPage.tsx` — 5 onglets KPI/Cumul/Forme/Intensité/Distributions
+- `apps/web/src/features/session-compare/queries.ts` + `SessionComparePage.tsx` — radar + tableau métriques A/B
+- 5 routes TanStack Router créées (explorer/matches/$matchId, last-match, profile/citations, stats/timeseries, stats/sessions)
+- NavBar mis à jour (4 nouveaux liens : Dernier Match ⚡, Citations ���, Séries ���, Sessions ���)
+- MIGRATION_MASTER.md mis à jour — toutes les phases B/C frontend marquées canonical ✅
+
+**Résultats** : Toutes les surfaces React MVP P1/P2/P3 livrées. Backend + Frontend 100% canonical.
+
+**Conclusion** : Le MVP React/FastAPI est complet. Prochaine étape : Slice 9 — décommissionnement progressif de la façade Streamlit.
