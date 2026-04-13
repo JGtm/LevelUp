@@ -1,5 +1,26 @@
 # Thought Log
 
+## [2026-04-14] feat(sync): Sprint 3 — sync initiale avec progression métier
+
+**Statut** : Complété  
+**Branche** : `feature/remove-streamlit-ui`  
+**Commit** : `2b5b2955`
+
+**Décision technique** :
+- **3.1** `AsyncJobStatus` enrichi de 8 champs : `phase_key`, `phase_label`, `matches_done/total`, `subtasks_done/total`, `eta_seconds`, `warnings`.
+- **3.2** `JobStore` persistant : sauvegarde dans `data/cache/jobs.json` après chaque mutation ; rechargement au démarrage avec transition `running → cancelled`. `__init__` accepte `jobs_file` pour testabilité.
+- **3.3** `POST /api/v1/sync/initial` — 6 phases (prepare/auth/fetch_matches/enrich/verify/finalize), guard `can_start_initial_sync`. `bootstrap_service._build_capabilities()` lit désormais `app_cfg` au lieu du flag `demo_mode` hardcodé.
+- **3.4** Frontend `StepInitialSync` : progress bar, compteurs matchs, ETA, liste de warnings, bouton Retry. `_compute_next_step()` retourne `"initial_sync"` quand joueur créé mais aucun match en base. `_has_any_synced_matches()` en fail-open.
+- Fix complexité cyclomatique : `_apply_fields` → loop `setattr` (C901 13→1).
+- `apps/web/src/lib/` est gitignorée → `git add -f types.ts` requis.
+
+**Résultats observés** :
+- 142/142 tests passent (`tests/api/`).
+- Pre-commit hooks : ✅ ruff + detect-secrets + mixed-line-ending.
+
+**Conclusion / prochaine étape** :
+- Sprint 3 terminé. Sprint 4 : cookies prod (SameSite/Secure), rate limiting sur routes sensibles, structured logging.
+
 ## [2026-04-14] feat(setup): Sprint 2 — guard can_self_provision sur POST /setup/players
 
 **Statut** : Complété  
@@ -12308,6 +12329,28 @@ Ajout d'un panneau de filtres complet sur la page Médias, en exploitant `df_ful
 |---|---|---|---|
 | Chocoboflor | 103 MB | 8.8 MB | −94 MB |
 | JGtm | 89.5 MB | 12 MB | −77.5 MB |
+
+---
+
+## [2026-04-13] Revue et recadrage du corpus V7 onboarding/auth — Complété
+
+**Statut** : Complété
+
+**Tâche** : Revoir le plan maître et les sous-documents V7 onboarding/auth/sync, puis réécrire le corpus pour corriger les ambiguïtés de contrat avant démarrage d'une migration FastAPI/React de grande ampleur.
+
+**Décision technique** :
+- `GET /api/v1/bootstrap` devient la machine d'état produit unique de l'onboarding ; `GET /api/v1/setup/status` et `POST /api/v1/setup/smoke-test` sont reclassés en surfaces legacy / transitoires.
+- L'identité Halo liée devient un état serveur explicite (`linked_halo_identity`) utilisé par bootstrap et par le provisioning ; `POST /setup/players` ne doit plus faire confiance à un `gamertag` / `xuid` librement fourni par le client en mode Xbox.
+- La réussite de première sync est définie via un marqueur persistant côté player DB (`sync_meta`) avec backfill des profils existants, et les jobs longs rechargés au restart doivent passer dans une sémantique explicite de type `interrupted` / relançable tant qu'une vraie reprise n'est pas implémentée.
+- Le parcours auth → provisioning → première sync doit couvrir explicitement la continuité du cache MSAL / de l'état auth côté serveur ou player DB.
+
+**Résultats** :
+- Les 4 documents coeur ont été réécrits : `.ai/PLAN_V7_ONBOARDING_MASTER.md`, `.ai/PLAN_V7_AUTH_SECURITY_PRINCIPLES.md`, `.ai/SPEC_V7_BOOTSTRAP_CONTRACT.md`, `.ai/IMPL_V7_ONBOARDING.md`.
+- Deux livrables complémentaires ont été ajoutés au même format documentaire : `.ai/TABLE_V7_ONBOARDING_CONTRACTS.md` et `.ai/CHECKLIST_V7_ONBOARDING_GO_NO_GO.md`.
+- Le corpus couvre désormais explicitement les angles morts relevés pendant la revue : double machine d'état, provisioning trop trust-client, absence de source de vérité robuste pour `profile_ready_no_sync`, sémantique de restart incomplète, continuité auth insuffisamment formalisée.
+- Le document maître a ensuite été enrichi avec une section "Facteurs de réussite et d'échec" par domaine, ainsi qu'une matrice de risques opérationnels (`ID`, domaine, gravité, probabilité, mitigation) pour faciliter les revues de sprint et les décisions Go / No-Go.
+
+**Conclusion** : Le corpus V7 est désormais plus exécutable et plus défendable pour une migration de cette envergure. La prochaine étape recommandée est de lancer le Sprint 1 en suivant la matrice de contrats, puis d'utiliser la checklist Go / No-Go avant d'ouvrir plusieurs sous-chantiers en parallèle.
 | Madina97294 | 72.8 MB | 10.3 MB | −62.5 MB |
 | XxDaemonGamerxX | 10 MB | 6 MB | −4 MB |
 | **Total** | **275 MB** | **37 MB** | **−238 MB** |
