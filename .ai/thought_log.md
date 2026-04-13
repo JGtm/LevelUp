@@ -1,5 +1,101 @@
 # Thought Log
 
+## [2026-04-13] feat(canonical): batch passage toutes slices MVP canonical + fix media router
+
+**Statut** : Complété
+
+**Tâche** : Passer en état `canonical` toutes les slices MVP restantes (0b, 1, 3, 4, 5, 6, 7, 8) successivement, sans interruption.
+
+**Décision technique principale** :
+1. Créé 8 fichiers E2E Playwright (`slice-0b` à `slice-8`) pour toutes les surfaces V7 MVP.
+2. Identifié et corrigé un mismatch API : le router `media` était déclaré `GET` côté backend (query params) mais le frontend appelait `POST` avec un body `MediaQueryRequest`. Aligné le backend sur POST (cohérent avec le pattern `match-history/query`, `explorer/matches-query`).
+3. Corrigé 4 tests E2E écrits avec de mauvaises hypothèses sur les calls automatiques : `filters/resolve`, `setup/status` ne sont pas appelés automatiquement au chargement — migré vers `request` fixture (appel direct API) pour ces cas.
+4. Corrigé les assertions sur la structure de réponse : `data.counts.total_matches_before_filters` (pas `total_matches`), `data.session_options.all_sessions` (objet, pas tableau), `data.summary.total_matches_scoped` (pas `data.total_matches`).
+
+**Résultats observés** :
+- 41/41 tests E2E Playwright verts (batch complet slices 0a–8)
+- 20/20 tests de parité Python verts (inchangés)
+- router `media.py` : `@router.get` → `@router.post`, suppression des 5 Query params, ajout body `MediaQueryRequest`
+- SLICES.md : 8 sections passées de `preview` → `canonical ✅ — 2026-04-13`
+- MIGRATION_MASTER.md : tableau mis à jour, phase active mise à jour
+
+**Conclusion / prochaine étape** :
+- Toutes les surfaces V7 MVP sont canonical. Les phases B/C (Match View, Citations, Compare Sessions, etc.) et Slice 9 (décommissionnement Streamlit UI) sont les prochaines étapes.
+
+
+## [2026-04-13] docs(migration): ajouter workflow de chantier, matrice initiale et POC non exhaustifs
+
+**Statut** : Complete
+
+**Tache** : Enrichir le plan Python -> Go avec un workflow concret de travail en worktree, une matrice Python -> Go initiale et un plan POC prioritaire, tout en assumant explicitement qu'ils ne peuvent pas etre exhaustifs a ce stade.
+
+**Decision technique** :
+1. Le document contient maintenant un workflow par lots pour le worktree : ouverture du lot, refactor libre, checkpoint structurel, remise en etat avant integration et gate pre-merge.
+2. Une matrice Python -> Go initiale a ete ajoutee avec un principe assume de non-exhaustivite, afin de couvrir les surfaces majeures sans pretendre clore l'inventaire alors que deux gros chantiers restent actifs.
+3. Un plan POC prioritaire a ete ajoute pour DuckDB Go, le bridge SPNKr et l'auth, avec criteres de succes et signaux de replanning plutot qu'une promesse de couverture totale immediate.
+
+**Resultats observes** :
+- `.ai/PLAN_MIGRATION_PYTHON_TO_GO.md` contient maintenant une section de workflow concret en worktree, une matrice initiale Python -> Go et un plan POC DuckDB Go + SPNKr + auth.
+- Le plan dit explicitement que ces deux derniers ajouts sont volontaires non exhaustifs, compte tenu des migrations majeures deja en cours.
+
+**Conclusion / prochaine etape** :
+- Prochaine etape logique : si besoin, transformer la matrice initiale en artefact separé quand le chantier Go commencera vraiment, pour eviter que le plan principal devienne trop volumineux.
+
+## [2026-04-13] docs(migration): requalifier le plan Go pour un worktree dedie
+
+**Statut** : Complete
+
+**Tache** : Ajuster le plan Python -> Go pour integrer explicitement l'hypothese d'un worktree dedie, afin de ne pas surcontraindre l'implementation locale avec une exigence de fonctionnement permanent.
+
+**Decision technique** :
+1. Le plan distingue maintenant deux niveaux : la liberte locale dans le worktree et la rigueur obligatoire avant integration, merge ou bascule.
+2. Les mecanismes de strangler, shadow mode, feature flags et rollback restent exiges, mais comme garde-fous d'integration et de production, pas comme contrainte de chaque commit intermediaire dans le worktree.
+3. Le document autorise explicitement les gros refactors temporairement cassants dans le worktree, a condition de revenir a un etat testable avant revue structuree.
+
+**Resultats observes** :
+- `.ai/PLAN_MIGRATION_PYTHON_TO_GO.md` contient maintenant une section `Hypothese de travail : worktree dedie`.
+- Les phases et conditions de succes / d'echec ont ete reformulees pour separer ce qui releve du confort de developpement local et ce qui releve des gates de validation.
+
+**Conclusion / prochaine etape** :
+- Prochaine etape logique : transformer cette hypothese en workflow concret de chantier, par exemple avec des checkpoints de remise en etat avant merge et une matrice des lots autorises a casser localement.
+
+## [2026-04-13] docs(migration): renforcer le plan Go avec bandeau, couverture anti-oubli et strategie SPNKr
+
+**Statut** : Complete
+
+**Tache** : Completer le document de migration Python -> Go avec des garde-fous d'usage, une methode explicite pour ne rien oublier et une position tranchee sur la gestion de SPNKr Python.
+
+**Decision technique** :
+1. Le plan est maintenant explicitement marque comme non termine via un bandeau en tete : il ne doit pas etre traite comme plan d'execution ferme tant que les sections critiques ne sont pas validees.
+2. La prevention de l'oubli est formalisee comme un systeme de registres obligatoires : matrice Python -> Go, dependances externes, contrats HTTP, acces DB, jobs, scripts d'exploitation et decommission.
+3. La position sur SPNKr est rendue explicite : ne pas le migrer en premier, mais ne pas le laisser en dette permanente si la cible est reellement zero Python en production. Le bridge Python n'est acceptable que comme etape transitoire etroite.
+
+**Resultats observes** :
+- `.ai/PLAN_MIGRATION_PYTHON_TO_GO.md` contient maintenant un bandeau de non-utilisation, une section `Comment etre sur de ne rien oublier` et une section `Strategie SPNKr Python`.
+- Le plan donne une reponse nuancee mais tranchee a l'idee "SPNKr ne sert a rien a migrer" : vrai a court terme pour aller vite, faux si l'objectif final est une pile Go complete.
+
+**Conclusion / prochaine etape** :
+- Prochaine etape logique : transformer la section anti-oubli en artefacts concrets du repo, en commencant par une matrice Python -> Go et un registre des dependances externes.
+
+## [2026-04-13] docs(migration): cadrer la migration preliminaire Python -> Go
+
+**Statut** : Complete
+
+**Tache** : Produire un document dedie de cadrage pour une migration complete du runtime Python vers Go, en tenant compte de la migration Streamlit -> FastAPI/React deja engagee.
+
+**Decision technique** :
+1. La migration Go est formalisee comme un programme progressif de type strangler, pas comme une reecriture big bang.
+2. Le frontend React/TypeScript, DuckDB v6 et les contrats fonctionnels existants sont conserves comme references ; seuls les services backend, l'auth, les jobs, la sync et l'outillage doivent etre portes.
+3. L'ordre recommande est volontairement prudent : read-only d'abord, auth/settings/jobs ensuite, sync/backfill/CLI en dernier. Les calculs Polars doivent etre remplaces par du SQL ou des pipelines Go verifies contre des golden values.
+
+**Resultats observes** :
+- Nouveau document ajoute : `.ai/PLAN_MIGRATION_PYTHON_TO_GO.md`
+- Le document contient le perimetre, l'architecture cible Go, les phases de migration, les chantiers transverses, les gates Go/No-Go et les conditions de succes / d'echec.
+- `.ai/project_map.md` reference maintenant ce nouveau plan dans la cartographie documentaire.
+
+**Conclusion / prochaine etape** :
+- Prochaine etape logique : lancer un POC court sur DuckDB Go + parite read-only (bootstrap, filters, career) avant toute decision d'engagement complet.
+
 ## [2026-04-13] fix(demo-mode): xuid DEMO_MODE + Slice 2 Phase A canonical — Complété
 
 **Statut** : Complété

@@ -153,7 +153,7 @@ Les points suivants sont bloquants avant d'ouvrir une première surface React en
 
 ## Slice 0b — Contrat de filtres (spike dédié)
 
-**Statut** : `preview`  
+**Statut** : `canonical` ✅ — 2026-04-13  
 **Dépendances** : Slice 0a
 
 > ⚠ **C'est le vrai test d'architecture de toute la migration, pas bootstrap.**
@@ -198,7 +198,7 @@ Les points suivants sont bloquants avant d'ouvrir une première surface React en
 
 ## Slice 1 — Setup / Auth / Settings
 
-**Statut** : `preview`  
+**Statut** : `canonical` ✅ — 2026-04-13  
 **Dépendances** : Slice 0a + 0b
 
 ### Backend
@@ -301,7 +301,7 @@ Les points suivants sont bloquants avant d'ouvrir une première surface React en
 
 ## Slice 3 — Stats [V7 §2 : Séries + Sessions + Historique]
 
-**Statut** : `preview`  
+**Statut** : `canonical` ✅ — 2026-04-13 (Phase A)  
 **Dépendances** : Slices 0a et 0b  
 **Ref specs** : [FUNCTIONAL_SPECS.md § 2 Stats](FUNCTIONAL_SPECS.md#2-stats)
 
@@ -369,7 +369,7 @@ Les points suivants sont bloquants avant d'ouvrir une première surface React en
 
 ## Slice 4 — Explorer [V7 §5 : Filtres + Match View + Last Match]
 
-**Statut** : `preview`  
+**Statut** : `canonical` ✅ — 2026-04-13 (Phase A)  
 **Dépendances** : Slices 0a, 0b et 3  
 **Ref specs** : [FUNCTIONAL_SPECS.md § 5 Explorer](FUNCTIONAL_SPECS.md#5-explorer)
 
@@ -439,7 +439,7 @@ Les points suivants sont bloquants avant d'ouvrir une première surface React en
 
 ## Slice 5 — Accueil [V7 §1 : Home Mission Control]
 
-**Statut** : `preview`  
+**Statut** : `canonical` ✅ — 2026-04-13 (Phase A)  
 **Dépendances** : Slices 2, 4 (Phase B) et 8  
 **Ref specs** : [FUNCTIONAL_SPECS.md § 1 Accueil](FUNCTIONAL_SPECS.md#1-accueil-home-mission-control)
 
@@ -481,7 +481,7 @@ Les points suivants sont bloquants avant d'ouvrir une première surface React en
 
 ## Slice 6 — Escouade [V7 §3 : Synergies + Contributions]
 
-**Statut** : `preview`  
+**Statut** : `canonical` ✅ — 2026-04-13 (Phase A)  
 **Dépendances** : Slices 0a, 0b, 4 (Phase B)  
 **Ref specs** : [FUNCTIONAL_SPECS.md § 3 Escouade](FUNCTIONAL_SPECS.md#3-escouade)
 
@@ -516,7 +516,7 @@ Les points suivants sont bloquants avant d'ouvrir une première surface React en
 
 ## Slice 7 — Synthèse [V7 §4 : Solo vs Escouade]
 
-**Statut** : `preview`  
+**Statut** : `canonical` ✅ — 2026-04-13 (Phase A)  
 **Dépendances** : Slices 0a, 0b  
 **Ref specs** : [FUNCTIONAL_SPECS.md § 4 Synthèse](FUNCTIONAL_SPECS.md#4-synthèse)
 
@@ -553,13 +553,13 @@ L'ancienne page autonome Objective Analysis (P4) **n'est pas migrée en tant que
 
 ## Slice 8 — Médias [V7 §6 : Galerie + Lightbox]
 
-**Statut** : `preview`  
+**Statut** : `canonical` ✅ — 2026-04-13 (Phase A)  
 **Dépendances** : Slice 4 (Phase B)  
 **Ref specs** : [FUNCTIONAL_SPECS.md § 6 Médias](FUNCTIONAL_SPECS.md#6-médias)
 
 ### Backend
 - Exposer l'index media, les enrichissements, les thumbs et les jobs de reset/reindex
-- Endpoint galerie : `GET /api/v1/players/{player_slug}/pages/media`
+- Endpoint galerie : `POST /api/v1/players/{player_slug}/pages/media` (body `MediaQueryRequest`)
 - Endpoint reindex : `POST /api/v1/settings/media/reset-index`
 
 ### Frontend

@@ -23,13 +23,13 @@ Référence complète → [migration/DECISIONS.md](migration/DECISIONS.md)
 
 ## État courant
 
-**Phase active** : Slice 2 Phase A `canonical` ✅ — démarrage Slice 2 Phase B (Citations) ou Slice 3 (Stats)
+**Phase active** : Toutes les slices MVP (0b, 1, 3, 4, 5, 6, 7, 8) `canonical` ✅ — 2026-04-13
 
-**Slice en cours** : 2 (Phase A terminée)
+**Slice en cours** : —
 
-**Dernière action** : Slice 2 Phase A passée `canonical` — fix DEMO_MODE xuid (lecture xuid.txt), 8/8 tests parité verts, 5/5 Vitest CareerPage verts, 5/5 E2E Playwright verts. Total : 171 Python + 55 Vitest + 10 E2E Playwright ✅
+**Dernière action** : Batch canonical MVP — 41/41 E2E Playwright verts (slices 0a–8), fix router media GET→POST (alignement frontend), tests de parité 20/20 verts. Total : toutes les surfaces V7 MVP en état canonical.
 
-**Prochaine étape concrète** : Slice 0b → `canonical` (filtres) OU Slice 2 Phase B (Citations)
+**Prochaine étape concrète** : Slice 2 Phase B (Citations) ou Slice 4 Phase B (Match View) ou Slice 9 (Décommissionnement Streamlit UI)
 
 ---
 
@@ -41,15 +41,15 @@ Référence complète → [migration/DECISIONS.md](migration/DECISIONS.md)
 | Section V7 | Contenu regroupé | Statut | Gel Streamlit | Notes |
 |------------|-----------------|--------|---------------|-------|
 | Shell + Bootstrap (0a) | Layout L1/L2/KPI, routing, PageContext | `canonical` ✅ | — | ✅ Slice 0a canonique — 5 E2E Playwright, generated.ts, proxy :5173→:8000 |
-| Filtres resolve (0b) | Filtres cascade, chips, scope sessions | `preview` | — | ✅ Slice 0b livrée — 14/14 tests ∑ 25/25 |
-| Setup / Onboarding | Wizard configuration | `preview` | — | ✅ Slice 1 livrée — 25/25 tests ∑ 50/50 |
-| **Settings** | Langue, affichage, médias, Discord, backfill | `preview` | — | ✅ Slice 1 (idem) |
-| **Accueil** | Hero, signaux, Battle Pass, challenges, timeline, dernier match, médias récents | `preview` | — | ✅ Slice 5 livrée — 13/13 tests ∑ 106/106 |
-| **Stats** | Séries (5 onglets) + Sessions (15 composants) + Historique (17 col) | `preview` | — | ✅ Slice 3 Phase A livrée — 14/14 tests ∑ 77/77 |
-| **Escouade** | Synergies + Contributions, sélecteur 3 coéquipiers, impact ranking | `preview` | — | ✅ Slice 6 livrée — 8/8 tests ∑ 114/114 |
-| **Synthèse** | Solo vs Escouade, heatmap, top semaine, breakdown carte/mode | `preview` | — | ✅ Slice 7 livrée — 8/8 tests ∑ 122/122 |
-| **Explorer** | Filtres cascade, recherche joueur, Match View (4 onglets, scoreboard 19 col) | `preview` | — | ✅ Slice 4 livrée — 16/16 tests ∑ 93/93 |
-| **Médias** | Galerie, filtres, groupement, lightbox, likes | `preview` | — | ✅ Slice 8 livrée — 10/10 tests ∑ 132/132 |
+| Filtres resolve (0b) | Filtres cascade, chips, scope sessions | `canonical` ✅ | — | ✅ Slice 0b canonique — 3 E2E, API contract validé |
+| Setup / Onboarding | Wizard configuration | `canonical` ✅ | — | ✅ Slice 1 canonique — 4 E2E, setup/status + settings |
+| **Settings** | Langue, affichage, médias, Discord, backfill | `canonical` ✅ | — | ✅ Slice 1 (idem) |
+| **Accueil** | Hero, signaux, Battle Pass, challenges, timeline, dernier match, médias récents | `canonical` ✅ | — | ✅ Slice 5 canonique — 4 E2E, home page + DemoPlayer |
+| **Stats** | Séries (5 onglets) + Sessions (15 composants) + Historique (17 col) | `canonical` ✅ (Phase A) | — | ✅ Slice 3 Phase A canonique — 4 E2E, match-history/query |
+| **Escouade** | Synergies + Contributions, sélecteur 3 coéquipiers, impact ranking | `canonical` ✅ (Phase A) | — | ✅ Slice 6 canonique — 4 E2E, pages/teammates |
+| **Synthèse** | Solo vs Escouade, heatmap, top semaine, breakdown carte/mode | `canonical` ✅ (Phase A) | — | ✅ Slice 7 canonique — 4 E2E, pages/synthesis |
+| **Explorer** | Filtres cascade, recherche joueur, Match View (4 onglets, scoreboard 19 col) | `canonical` ✅ (Phase A) | — | ✅ Slice 4 canonique — 4 E2E, explorer/matches-query |
+| **Médias** | Galerie, filtres, groupement, lightbox, likes | `canonical` ✅ (Phase A) | — | ✅ Slice 8 canonique — 4 E2E, POST pages/media (fix GET→POST) |
 | **Profil** | Carrière (rang+XP+LUSR/CSR+encounters) + Citations (commendations+médailles) | `canonical` ✅ (Phase A) | — | ✅ Slice 2 Phase A canonique — fix xuid DEMO_MODE, 8 parité + 5 Vitest + 5 E2E |
 
 ---
