@@ -7,9 +7,11 @@ Endpoints :
 from __future__ import annotations
 
 import structlog
-from fastapi import APIRouter
+from fastapi import APIRouter, Depends
 
+from apps.api.app.core.csrf import require_same_origin
 from apps.api.app.core.errors import ApiError
+from apps.api.app.core.rate_limit import check_rate_limit
 from apps.api.app.schemas.common import AsyncJobStatus
 from apps.api.app.schemas.sync import InitialSyncStartRequest
 
@@ -19,7 +21,11 @@ router = APIRouter(tags=["sync"])
 
 
 @router.post("/sync/initial", response_model=AsyncJobStatus, status_code=202)
-def start_initial_sync(body: InitialSyncStartRequest) -> AsyncJobStatus:
+def start_initial_sync(
+    body: InitialSyncStartRequest,
+    _csrf: None = Depends(require_same_origin),
+    _rl: None = Depends(check_rate_limit),
+) -> AsyncJobStatus:
     """Lance la synchronisation initiale des données Halo pour un joueur.
 
     Crée un job asynchrone ``initial_sync`` et retourne immédiatement.

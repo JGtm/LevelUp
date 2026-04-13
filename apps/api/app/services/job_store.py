@@ -181,14 +181,22 @@ class JobStore:
             return
         try:
             raw = json.loads(self._jobs_file.read_text(encoding="utf-8"))
+            cancelled_count = 0
             for d in raw:
                 entry = _JobEntry.from_dict(d)
                 if entry.status == "running":
                     entry.status = "cancelled"
                     now = datetime.now(timezone.utc)
                     entry.finished_at = entry.finished_at or now
+                    cancelled_count += 1
                 if not entry.is_expired():
                     self._jobs[entry.job_id] = entry
+            if cancelled_count:
+                logger.info(
+                    "job_store_restart_cancelled",
+                    count=cancelled_count,
+                    hint="Jobs interrompus au redémarrage du processus.",
+                )
         except Exception:  # noqa: BLE001
             logger.warning("job_store_load_failed", path=str(self._jobs_file))
 

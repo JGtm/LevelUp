@@ -19,12 +19,13 @@ En DEMO_MODE :
 
 from __future__ import annotations
 
-import logging
 import threading
 import uuid
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
 from pathlib import Path
+
+import structlog
 
 from apps.api.app.schemas.common import ApiErrorSchema, AsyncJobStatus, PlayerSummary
 from apps.api.app.schemas.setup import (
@@ -39,7 +40,7 @@ from apps.api.app.schemas.setup import (
 )
 from apps.api.app.services.job_store import JobStore
 
-logger = logging.getLogger(__name__)
+logger = structlog.get_logger(__name__)
 
 # ---------------------------------------------------------------------------
 # Store d'attempts Device Code Flow (process-level, thread-safe)
@@ -186,6 +187,12 @@ def start_device_flow() -> DeviceFlowStartResponse:
     with _ATTEMPTS_LOCK:
         _device_flow_attempts[attempt_id] = attempt
 
+    logger.info(
+        "device_flow_started",
+        attempt_id=attempt_id,
+        expires_in=info.expires_in,
+    )
+
     # Lancer le polling en background
     t = threading.Thread(
         target=_complete_device_flow_bg,
@@ -273,10 +280,18 @@ def _complete_device_flow_bg(attempt_id: str) -> None:
             attempt.gamertag = gamertag
             attempt.xuid = xuid
 
-        logger.info("device_flow_completed: gamertag=%s xuid=%s", gamertag, xuid)
+        logger.info(
+            "device_flow_succeeded",
+            attempt_id=attempt_id,
+            gamertag=gamertag,
+        )
 
     except Exception as exc:
-        logger.exception("device_flow_bg_error: %s", exc)
+        logger.error(
+            "device_flow_failed",
+            attempt_id=attempt_id,
+            exc=str(exc),
+        )
         with _ATTEMPTS_LOCK:
             if _device_flow_attempts.get(attempt_id):
                 _device_flow_attempts[attempt_id].status = "failed"
@@ -307,8 +322,18 @@ def create_player_profile(req: CreatePlayerProfileRequest) -> CreatePlayerProfil
     try:
         player_key = _create(req.gamertag, xuid=req.xuid or "")
     except Exception as exc:
-        logger.exception("create_player_profile: erreur")
+        logger.error(
+            "create_player_profile_failed",
+            gamertag=req.gamertag,
+            exc=str(exc),
+        )
         raise ApiError.internal(f"Impossible de créer le profil joueur : {exc}") from exc
+
+    logger.info(
+        "player_profile_created",
+        player_slug=player_key,
+        gamertag=req.gamertag.strip(),
+    )
 
     db_path = f"data/players/{player_key}/stats.duckdb"
     db_created = Path(db_path).exists()
@@ -442,7 +467,11 @@ def _run_smoke_test_bg(job_id: str, req: SmokeTestStartRequest) -> None:
         )
 
     except Exception as exc:
-        logger.exception("smoke_test_bg_error: %s", exc)
+        logger.error(
+            "smoke_test_bg_error",
+            job_id=job_id,
+            exc=str(exc),
+        )
         store.update(
             job_id,
             status="failed",

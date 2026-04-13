@@ -60,6 +60,14 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
     settings = get_settings()
     configure_logging()
 
+    # Avertissement si clé de session par défaut en production
+    _INSECURE_DEFAULT = "CHANGE_ME_IN_PRODUCTION"
+    if settings.is_production and settings.session_secret_key == _INSECURE_DEFAULT:
+        logger.warning(
+            "insecure_session_secret",
+            hint="Définir LEVELUP_SESSION_SECRET dans l'environnement de production.",
+        )
+
     # Purge des sessions expirées au démarrage
     from apps.api.app.deps.auth import SessionStore
 
@@ -97,6 +105,10 @@ def create_app() -> FastAPI:
     )
 
     # --- Middlewares --------------------------------------------------------
+    # Note : en production derrière un reverse-proxy, lancer uvicorn avec
+    # --proxy-headers --forwarded-allow-ips=<ip_proxy> pour que le middleware
+    # ProxyHeadersMiddleware d'uvicorn résout correctement request.client.host
+    # depuis X-Forwarded-For.
     app.add_middleware(
         CORSMiddleware,
         allow_origins=settings.cors_origins,

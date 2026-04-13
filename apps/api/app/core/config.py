@@ -69,6 +69,14 @@ class ApiSettings(BaseSettings):
         alias="LEVELUP_APP_SETTINGS",
     )
 
+    # --- Proxy / réseau -------------------------------------------------
+    # IPs des reverse-proxies de confiance pour X-Forwarded-For.
+    # Valeur spéciale "trust" : faire confiance à tous les proxies (dev local seulement).
+    trusted_proxies: str = Field(
+        default="127.0.0.1",
+        alias="LEVELUP_TRUSTED_PROXIES",
+    )
+
     # --- Observabilité --------------------------------------------------
     log_level: str = Field(default="INFO", alias="LEVELUP_LOG_LEVEL")
     log_json: bool = Field(default=False, alias="LEVELUP_LOG_JSON")
@@ -80,6 +88,11 @@ class ApiSettings(BaseSettings):
     def is_production(self) -> bool:
         """True si l'environnement n'est pas local/dev."""
         return os.getenv("LEVELUP_ENV", "dev").lower() == "production"
+
+    @property
+    def trusted_proxy_list(self) -> list[str]:
+        """Retourne la liste des IPs proxy de confiance."""
+        return [ip.strip() for ip in self.trusted_proxies.split(",") if ip.strip()]
 
 
 @lru_cache(maxsize=1)
