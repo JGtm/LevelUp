@@ -1,7 +1,7 @@
 /**
  * Route index — redirige vers la page d'accueil du joueur actif.
  */
-import { createFileRoute } from '@tanstack/react-router'
+import { createFileRoute, Navigate } from '@tanstack/react-router'
 import { useAppShellStore } from '@/stores/appShellStore'
 
 export const Route = createFileRoute('/')({
@@ -26,11 +26,11 @@ function IndexPage() {
   const slug = currentPlayer?.player_slug ?? availablePlayers[0]?.player_slug
 
   if (slug) {
-    // Redirection vers la page d'accueil du joueur
     return (
-      <meta
-        httpEquiv="refresh"
-        content={`0; url=/players/${slug}/home`}
+      <Navigate
+        to="/players/$playerSlug/home"
+        params={{ playerSlug: slug }}
+        replace
       />
     )
   }
