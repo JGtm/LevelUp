@@ -99,7 +99,7 @@ Les points suivants sont bloquants avant d'ouvrir une première surface React en
 
 ## Slice 0a — Shell, bootstrap et plomberie
 
-**Statut** : `preview`  
+**Statut** : `canonical` ✅ — 2026-04-13  
 **Dépendances** : aucune (mais corpus de référence prérequis)
 
 > **Objectif** : valider que la plomberie bout en bout fonctionne — FastAPI démarre, le shell React se monte, le bootstrap renvoie un joueur, le DEMO_MODE est utilisable.
