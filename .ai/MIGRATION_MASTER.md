@@ -23,19 +23,13 @@ Référence complète → [migration/DECISIONS.md](migration/DECISIONS.md)
 
 ## État courant
 
-**Phase active** : Cadrage — aucun code de migration écrit
+**Phase active** : ✅ Toutes les slices MVP livrées
 
-**Slice en cours** : Aucune (Slice 0 pas encore démarrée)
+**Slice en cours** : —
 
-**Dernière action** : Rédaction du plan initial + restructuration en sous-docs
+**Dernière action** : Slices 5-8 livrées — schemas+services+routers+tests pour Accueil, Coéquipiers, Synthèse, Médias. Total API: 132/132 ✅
 
-**Prochaine étape concrète** : Constituer le corpus de référence (voir `SLICES.md` § Prérequis avant Slice 0), puis créer `apps/api/` + `apps/web/` (Slice 0a)
-
-**Verrous à lever avant Slice 0a** :
-- Contrat web auth/session et sécurité cookies : voir `DECISIONS.md`
-- Algorithme canonique `filters/resolve` + cycle URL/store/API : voir `INVARIANTS.md`
-- Machine d'état setup/auth/smoke test : voir `INVARIANTS.md` et `API_CONTRACTS.md`
-- Corpus figé + `DEMO_MODE` + tests de parité réellement présents : voir `SLICES.md`
+**Prochaine étape concrète** : Revue de parité Streamlit → React, connexion frontend
 
 ---
 
@@ -46,17 +40,17 @@ Référence complète → [migration/DECISIONS.md](migration/DECISIONS.md)
 
 | Section V7 | Contenu regroupé | Statut | Gel Streamlit | Notes |
 |------------|-----------------|--------|---------------|-------|
-| Shell + Bootstrap (0a) | Layout L1/L2/KPI, routing, PageContext | `todo` | — | Plomberie bout en bout |
-| Filtres resolve (0b) | Filtres cascade, chips, scope sessions | `todo` | — | Spike dédié — risque n°1 |
-| Setup / Onboarding | Wizard configuration | `todo` | — | |
-| **Settings** | Langue, affichage, médias, Discord, backfill | `todo` | — | |
-| **Accueil** | Hero, signaux, Battle Pass, challenges, timeline, dernier match, médias récents | `todo` | — | |
-| **Stats** | Séries (5 onglets) + Sessions (15 composants) + Historique (17 col) | `todo` | — | |
-| **Escouade** | Synergies + Contributions, sélecteur 3 coéquipiers, impact ranking | `todo` | — | |
-| **Synthèse** | Solo vs Escouade, heatmap, top semaine, breakdown carte/mode | `todo` | — | |
-| **Explorer** | Filtres cascade, recherche joueur, Match View (4 onglets, scoreboard 19 col) | `todo` | — | |
-| **Médias** | Galerie, filtres, groupement, lightbox, likes | `todo` | — | |
-| **Profil** | Carrière (rang+XP+LUSR/CSR+encounters) + Citations (commendations+médailles) | `todo` | — | |
+| Shell + Bootstrap (0a) | Layout L1/L2/KPI, routing, PageContext | `preview` | — | ✅ Slice 0a livrée — 11/11 tests |
+| Filtres resolve (0b) | Filtres cascade, chips, scope sessions | `preview` | — | ✅ Slice 0b livrée — 14/14 tests ∑ 25/25 |
+| Setup / Onboarding | Wizard configuration | `preview` | — | ✅ Slice 1 livrée — 25/25 tests ∑ 50/50 |
+| **Settings** | Langue, affichage, médias, Discord, backfill | `preview` | — | ✅ Slice 1 (idem) |
+| **Accueil** | Hero, signaux, Battle Pass, challenges, timeline, dernier match, médias récents | `preview` | — | ✅ Slice 5 livrée — 13/13 tests ∑ 106/106 |
+| **Stats** | Séries (5 onglets) + Sessions (15 composants) + Historique (17 col) | `preview` | — | ✅ Slice 3 Phase A livrée — 14/14 tests ∑ 77/77 |
+| **Escouade** | Synergies + Contributions, sélecteur 3 coéquipiers, impact ranking | `preview` | — | ✅ Slice 6 livrée — 8/8 tests ∑ 114/114 |
+| **Synthèse** | Solo vs Escouade, heatmap, top semaine, breakdown carte/mode | `preview` | — | ✅ Slice 7 livrée — 8/8 tests ∑ 122/122 |
+| **Explorer** | Filtres cascade, recherche joueur, Match View (4 onglets, scoreboard 19 col) | `preview` | — | ✅ Slice 4 livrée — 16/16 tests ∑ 93/93 |
+| **Médias** | Galerie, filtres, groupement, lightbox, likes | `preview` | — | ✅ Slice 8 livrée — 10/10 tests ∑ 132/132 |
+| **Profil** | Carrière (rang+XP+LUSR/CSR+encounters) + Citations (commendations+médailles) | `preview` | — | ✅ Slice 2 livrée — 13/13 tests ∑ 63/63 |
 
 ---
 
