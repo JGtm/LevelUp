@@ -5,6 +5,12 @@
 import '@testing-library/jest-dom'
 import { setupServer } from 'msw/node'
 import { handlers } from './handlers'
+import { vi } from 'vitest'
+
+// react-plotly.js requiert canvas/WebGL absent en jsdom — on le mocke globalement
+vi.mock('react-plotly.js', () => ({
+  default: () => null,
+}))
 
 // Serveur MSW partagé pour tous les tests
 export const server = setupServer(...handlers)

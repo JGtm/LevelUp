@@ -27,9 +27,9 @@ Référence complète → [migration/DECISIONS.md](migration/DECISIONS.md)
 
 **Slice en cours** : —
 
-**Dernière action** : Slices 5-8 livrées — schemas+services+routers+tests pour Accueil, Coéquipiers, Synthèse, Médias. Total API: 132/132 ✅
+**Dernière action** : 55 tests Vitest React créés et passants (11 fichiers — stores + features) + jsdom installé + SLICES.md synchronisé. Total : 171 Python (151 API + 20 parity) + 55 Vitest ✅
 
-**Prochaine étape concrète** : Revue de parité Streamlit → React, connexion frontend
+**Prochaine étape concrète** : Connexion frontend réelle — brancher le bootstrap sur l'API dev, valider E2E en DEMO_MODE
 
 ---
 

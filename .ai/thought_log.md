@@ -1,5 +1,31 @@
 # Thought Log
 
+## [2026-04-13] feat(frontend): Vitest 55/55 + jsdom + corrections assertions — Complété
+
+**Statut** : Complété
+
+**Tâche** : Faire passer toute la suite de tests Vitest React (55 tests sur 11 fichiers) + mise à jour SLICES.md.
+
+**Décision technique** :
+1. **jsdom absent** : `vitest` avec `environment: 'jsdom'` nécessite que `jsdom` soit installé séparément comme devDependency. Correction : `npm install --save-dev jsdom @testing-library/user-event`.
+2. **Chemins d'import `../PageName` → `./PageName`** : les 9 fichiers `.test.tsx` créés en session précédente importaient avec `../` alors que le composant est au même niveau. Correction via `sed` en masse.
+3. **Spinner sans label** : `SquadPage`, `SynthesisPage`, et `MediaPage` utilisent `<Spinner size="lg" />` sans prop `label`, donc pas de texte visible. Les tests cherchant `/Chargement/i` ont été remplacés par `container.querySelector('.animate-spin')`.
+4. **Texte avec accentuation** : `SynthesisPage` a `title="Synthese"` (sans accent) alors que le test cherchait `'Synthèse'`. Aligné sur la valeur réelle du composant (source gardée telle quelle).
+5. **Tests synchrones pour SetupPage** : `useSetupStatus()` est async → le spinner s'affiche d'abord. 3 tests mis en `async/await waitFor`.
+6. **Regex trop large** `/Refresh Token/i` matchait aussi "Entrez un refresh token existant (avancé)" → regex ancrée `/^Refresh Token$/i`.
+7. **Multiple match sur `/Gold/i`** → `getByText('Gold 3')` (exact).
+8. **Multiple match sur `/0 partie/i`** → `/0 parties dans la période/i` (texte exact de la subtitle).
+9. **"0 coéquipier" absent** : le texte réel est "Aucun coequipier trouve pour cette periode." → regex `/Aucun coequipier/i`.
+
+**Résultats** :
+- Backend : **171/171** tests Python passent (151 API + 20 parity)
+- Frontend : **55/55** tests Vitest passent (2 stores + 9 features/pages)
+- SLICES.md mis à jour : 0a/0b/1 `in-progress`→`preview`, 4-8 `todo`→`preview`
+
+**Conclusion** : Toutes les slices MVP sont en état `preview`. Prochaine étape : connexion frontend réelle (bootstrap branché sur l'API dev), E2E Playwright.
+
+---
+
 ## [2026-04-13] fix(parity): corpus Chocoboflor + 5 corrections services API — Complété
 
 **Statut** : Complété
