@@ -1,6 +1,7 @@
 {
-  "_comment": "Golden values Match History (scope complet) — à renseigner depuis Streamlit.",
-  "total_matches": 0,
-  "first_match_id": "REPLACE_WITH_REAL_MATCH_ID",
-  "_instructions": "Lire le nombre total de lignes et le match_id le plus récent depuis l'historique Streamlit (scope plein, joueur de référence)."
+  "_comment": "Golden values Match History (scope complet) — générés par create_test_corpus.py.",
+  "gamertag": "Chocoboflor",
+  "generated_at": "2026-04-13T14:02:30.987183+00:00",
+  "total_matches": 364,
+  "first_match_id": "9b191a7f-72ae-417b-9789-cd0d870a43cf"
 }

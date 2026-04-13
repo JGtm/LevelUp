@@ -1,9 +1,8 @@
 {
-  "_comment": "Golden values Carrière — à renseigner depuis la surface Streamlit actuelle.",
-  "gamertag": "REPLACE_WITH_GAMERTAG",
-  "career_rank_label": "REPLACE",
-  "xp_total": 0,
-  "lusr_rating": null,
-  "csr_value": null,
-  "_instructions": "Lire ces valeurs depuis la page Profil Streamlit (joueur de référence) et les figer ici."
+  "_comment": "Golden values Carrière — générés par create_test_corpus.py.",
+  "gamertag": "Chocoboflor",
+  "generated_at": "2026-04-13T14:02:30.961592+00:00",
+  "rank_number": 133,
+  "xp_total": 791970,
+  "lusr_rating": null
 }

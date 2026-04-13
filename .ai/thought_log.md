@@ -1,5 +1,28 @@
 # Thought Log
 
+## [2026-04-13] fix(parity): corpus Chocoboflor + 5 corrections services API — Complété
+
+**Statut** : Complété
+
+**Tâche** : Générer le corpus de tests de parité (500 matchs Chocoboflor) et valider les 20 tests de parité.
+
+**Décision technique** :
+1. **Double alias SQL** (`AS ms ms`) : `_build_source_sql()` retournait `... ) AS ms` et le template SQL ajoutait aussi `ms`. Correction : supprimer le `AS ms` dans le retour de `_build_source_sql()` dans `filter_service.py` et `match_history_service.py`.
+2. **`shared_db_path` non propagé** dans `_build_top_matches_preview` : `load_top_best_matches` passait par `get_cached_repository_st` sans indiquer le chemin shared du corpus. Correction : ajout du paramètre `shared_db_path: str | None` dans `_load_top_matches`, `load_top_best_matches`, `load_top_worst_matches`, et propagation depuis `career_service.py`.
+3. **Colonne `my_team_score` absente** dans `match_participants` : la requête `_TOP_MATCHES_SQL` et `match_history_service` référençaient `p.my_team_score` / `p.enemy_team_score` (inexistants dans la table). Pour `match_history_service` : remplacement par `NULL AS my_team_score` / `NULL AS enemy_team_score`. Pour `_TOP_MATCHES_SQL` : enrichissement de la VIEW `mv_player_matches` dans le corpus avec `CASE WHEN team_id = 0 THEN team_0_score ELSE team_1_score END AS my_team_score` etc.
+4. **`average_life_seconds` → `avg_life_seconds`** dans `match_history_service` : renommage conforme aux colonnes `match_participants`.
+5. **`def _add_display_columns` et `def _build_session_options` effacées** par multi_replace défaillant : restauration manuelle des définitions de fonctions manquantes dans `match_history_service.py` et `filter_service.py`.
+6. **VIEW `mv_player_matches` incomplète dans le corpus** : la VIEW copiée depuis LevelUp ne contenait pas `time_played_seconds`, `my_team_score`, `enemy_team_score`, `my_team_ps_score`, `enemy_team_ps_score`. Enrichissement de `create_test_corpus.py` pour la recréer avec les colonnes complètes.
+
+**Résultats** :
+- Corpus généré : 364 matchs, rang 133, XP 791970 (Chocoboflor)
+- Tests parité : **19 passés, 1 skipped** (skip légitime : lusr_rating=None pour Chocoboflor)
+- 0 test failed
+
+**Conclusion** : Tous les tests de parité fonctionnellement actifs passent. La suite logique est de corriger les mêmes colonnes manquantes dans les vraies vues matérialisées Streamlit (LevelUp repo) si elles y sont aussi incomplètes.
+
+---
+
 ## [2026-04-15] feat(migration): MIGRATION_MASTER — corpus, parité, frontend MVP et E2E
 
 **Statut** : Complété  

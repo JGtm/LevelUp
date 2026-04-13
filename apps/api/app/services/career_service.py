@@ -84,8 +84,12 @@ def get_top_matches(
     """Charge les top 10 meilleurs et pires matchs."""
     from src.ui.pages.career_top_matches_data import load_top_best_matches, load_top_worst_matches
 
-    best = load_top_best_matches(player.db_path, player.xuid, exclude_btb=exclude_btb)
-    worst = load_top_worst_matches(player.db_path, player.xuid, exclude_btb=exclude_btb)
+    best = load_top_best_matches(
+        player.db_path, player.xuid, exclude_btb=exclude_btb, shared_db_path=player.shared_db_path
+    )
+    worst = load_top_worst_matches(
+        player.db_path, player.xuid, exclude_btb=exclude_btb, shared_db_path=player.shared_db_path
+    )
     items = [_match_dict_to_top_match(d) for d in best + worst]
     return CareerTopMatchesResponse(items=items)
 
@@ -285,7 +289,12 @@ def _build_top_matches_preview(
     try:
         from src.ui.pages.career_top_matches_data import load_top_best_matches
 
-        matches = load_top_best_matches(player.db_path, player.xuid, exclude_btb=exclude_btb)
+        matches = load_top_best_matches(
+            player.db_path,
+            player.xuid,
+            exclude_btb=exclude_btb,
+            shared_db_path=player.shared_db_path,
+        )
         return [_match_dict_to_top_match(d) for d in matches[:5]]
     except Exception:
         logger.warning("Erreur chargement top matches preview", exc_info=True)

@@ -28,6 +28,7 @@ def _load_top_matches(
     *,
     best: bool,
     exclude_btb: bool = False,
+    shared_db_path: str | None = None,
 ) -> list[dict]:
     """Charge le Top 10 meilleurs ou pires matchs.
 
@@ -36,13 +37,20 @@ def _load_top_matches(
         xuid: XUID du joueur.
         best: True pour les meilleures perf, False pour les pires.
         exclude_btb: Si True, exclut les matchs BTB.
+        shared_db_path: Chemin explicite vers shared_matches_v2.duckdb (optionnel).
 
     Returns:
         Liste de dicts avec les colonnes du match.
     """
-    from src.ui._cache_core import get_cached_repository_st
+    if shared_db_path is not None:
+        from src.data.repositories.duckdb_repo import DuckDBRepository
 
-    repo = get_cached_repository_st(db_path, xuid)
+        repo = DuckDBRepository(db_path, xuid, read_only=True, shared_db_path=shared_db_path)
+        repo._get_connection()
+    else:
+        from src.ui._cache_core import get_cached_repository_st
+
+        repo = get_cached_repository_st(db_path, xuid)
     matches = repo.load_top_match_list(best=best, exclude_btb=exclude_btb)
     logger.debug(
         "Top matches chargés (best=%s, exclude_btb=%s): %d résultats",
@@ -53,11 +61,27 @@ def _load_top_matches(
     return matches
 
 
-def load_top_best_matches(db_path: str, xuid: str, *, exclude_btb: bool = False) -> list[dict]:
+def load_top_best_matches(
+    db_path: str,
+    xuid: str,
+    *,
+    exclude_btb: bool = False,
+    shared_db_path: str | None = None,
+) -> list[dict]:
     """Top 10 meilleures performances (victoires dominantes)."""
-    return _load_top_matches(db_path, xuid, best=True, exclude_btb=exclude_btb)
+    return _load_top_matches(
+        db_path, xuid, best=True, exclude_btb=exclude_btb, shared_db_path=shared_db_path
+    )
 
 
-def load_top_worst_matches(db_path: str, xuid: str, *, exclude_btb: bool = False) -> list[dict]:
+def load_top_worst_matches(
+    db_path: str,
+    xuid: str,
+    *,
+    exclude_btb: bool = False,
+    shared_db_path: str | None = None,
+) -> list[dict]:
     """Top 10 pires performances (défaites humiliantes)."""
-    return _load_top_matches(db_path, xuid, best=False, exclude_btb=exclude_btb)
+    return _load_top_matches(
+        db_path, xuid, best=False, exclude_btb=exclude_btb, shared_db_path=shared_db_path
+    )

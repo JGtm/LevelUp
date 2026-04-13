@@ -41,28 +41,45 @@ DEFAULT_LIMIT = 500
 # ---------------------------------------------------------------------------
 
 
-def _resolve_player_db(gamertag: str) -> Path:
-    """Retrouve le chemin stats.duckdb pour un gamertag donné."""
+def _resolve_player_db(gamertag: str, profiles_path: Path | None = None) -> Path:
+    """Retrouve le chemin stats.duckdb pour un gamertag donné.
+
+    Supporte les deux formats db_profiles.json :
+    - Format liste   : [{"gamertag": "...", "db_path": "..."}, ...]
+    - Format dict v2 : {"profiles": {"Gamertag": {"db_path": "..."}}, ...}
+    """
     import json
 
-    profiles_path = Path(__file__).parent.parent / "db_profiles.json"
+    if profiles_path is None:
+        profiles_path = Path(__file__).parent.parent / "db_profiles.json"
     if not profiles_path.exists():
         raise FileNotFoundError(f"db_profiles.json introuvable : {profiles_path}")
 
+    repo_root = profiles_path.parent
     with open(profiles_path, encoding="utf-8") as f:
-        profiles = json.load(f)
+        raw = json.load(f)
 
-    for profile in profiles:
-        gt = profile.get("gamertag", "")
+    # Normalisation : produire un itérable de (gamertag_key, db_path_str)
+    if isinstance(raw, list):
+        # Format legacy liste
+        items = [(p.get("gamertag", ""), p.get("db_path", "")) for p in raw]
+    elif isinstance(raw, dict) and "profiles" in raw:
+        # Format dict v2
+        items = [(gt, info.get("db_path", "")) for gt, info in raw["profiles"].items()]
+    else:
+        raise ValueError(f"Format db_profiles.json non reconnu dans {profiles_path}")
+
+    for gt, db_path_str in items:
         if gt.lower() == gamertag.lower():
-            db_path = Path(profile.get("db_path", ""))
+            db_path = Path(db_path_str)
             if not db_path.is_absolute():
-                db_path = Path(__file__).parent.parent / db_path
+                db_path = repo_root / db_path
             return db_path
 
+    available = [gt for gt, _ in items]
     raise ValueError(
         f"Gamertag '{gamertag}' non trouvé dans db_profiles.json. "
-        f"Gamertags disponibles : {[p.get('gamertag') for p in profiles]}"
+        f"Gamertags disponibles : {available}"
     )
 
 
@@ -155,30 +172,32 @@ def _extract_player_corpus(
             "match_participants",
             "highlight_events",
             "medals_earned",
-            "xuid_aliases",
             "weapon_kills",
         ):
             try:
-                shared_src.execute(
-                    f"CREATE TABLE {table} AS SELECT * FROM {table} "
-                    f"WHERE match_id IN ({placeholders})",
+                df = shared_src.execute(
+                    f"SELECT * FROM {table} WHERE match_id IN ({placeholders})",
                     match_ids,
-                )
-                shared_dst.execute(f"CREATE TABLE {table} AS SELECT * FROM shared_src.{table}")
-            except Exception:
-                # Certaines tables peuvent être absentes
-                try:
-                    df = shared_src.execute(
-                        f"SELECT * FROM {table} WHERE match_id IN ({placeholders})",
-                        match_ids,
-                    ).fetch_arrow_table()
-                    shared_dst.register("_tmp", df)
-                    shared_dst.execute(f"CREATE TABLE {table} AS SELECT * FROM _tmp")
-                    cnt = shared_dst.execute(f"SELECT COUNT(*) FROM {table}").fetchone()[0]
-                    counts[f"shared.{table}"] = cnt
-                    logger.info("  shared.%s : %d lignes", table, cnt)
-                except Exception as e2:
-                    logger.warning("  shared.%s ignorée : %s", table, e2)
+                ).to_arrow_table()
+                shared_dst.register("_tmp", df)
+                shared_dst.execute(f"CREATE TABLE {table} AS SELECT * FROM _tmp")
+                cnt = shared_dst.execute(f"SELECT COUNT(*) FROM {table}").fetchone()[0]
+                counts[f"shared.{table}"] = cnt
+                logger.info("  shared.%s : %d lignes", table, cnt)
+            except Exception as e:
+                logger.warning("  shared.%s ignorée : %s", table, e)
+
+        # Tables sans match_id : copie complète
+        for table in ("xuid_aliases",):
+            try:
+                df = shared_src.execute(f"SELECT * FROM {table}").to_arrow_table()
+                shared_dst.register("_tmp", df)
+                shared_dst.execute(f"CREATE TABLE {table} AS SELECT * FROM _tmp")
+                cnt = shared_dst.execute(f"SELECT COUNT(*) FROM {table}").fetchone()[0]
+                counts[f"shared.{table}"] = cnt
+                logger.info("  shared.%s : %d lignes", table, cnt)
+            except Exception as e:
+                logger.warning("  shared.%s ignorée : %s", table, e)
 
         # Vues v6 essentielles: xuid_aliases + mv_player_matches
         try:
@@ -199,18 +218,24 @@ def _extract_player_corpus(
             "player_match_enrichment",
             "personal_score_awards",
             "match_citations",
-            "career_progression",
-            "sessions",
-            "sync_meta",
         ):
             try:
-                if table in ("sync_meta", "career_progression"):
-                    df = player_src.execute(f"SELECT * FROM {table}").fetch_arrow_table()
-                else:
-                    df = player_src.execute(
-                        f"SELECT * FROM {table} WHERE match_id IN ({placeholders})",
-                        match_ids,
-                    ).fetch_arrow_table()
+                df = player_src.execute(
+                    f"SELECT * FROM {table} WHERE match_id IN ({placeholders})",
+                    match_ids,
+                ).to_arrow_table()
+                player_dst.register("_tmp", df)
+                player_dst.execute(f"CREATE TABLE {table} AS SELECT * FROM _tmp")
+                cnt = player_dst.execute(f"SELECT COUNT(*) FROM {table}").fetchone()[0]
+                counts[f"player.{table}"] = cnt
+                logger.info("  player.%s : %d lignes", table, cnt)
+            except Exception as e:
+                logger.warning("  player.%s ignorée : %s", table, e)
+
+        # Tables sans match_id : copie complète
+        for table in ("career_progression", "sessions", "sync_meta"):
+            try:
+                df = player_src.execute(f"SELECT * FROM {table}").to_arrow_table()
                 player_dst.register("_tmp", df)
                 player_dst.execute(f"CREATE TABLE {table} AS SELECT * FROM _tmp")
                 cnt = player_dst.execute(f"SELECT COUNT(*) FROM {table}").fetchone()[0]
@@ -271,6 +296,11 @@ def _create_shared_views(conn: duckdb.DuckDBPyConnection) -> None:
             p.assists,
             p.accuracy,
             p.personal_score,
+            p.time_played_seconds,
+            CASE WHEN p.team_id = 0 THEN r.team_0_score ELSE r.team_1_score END AS my_team_score,
+            CASE WHEN p.team_id = 0 THEN r.team_1_score ELSE r.team_0_score END AS enemy_team_score,
+            CASE WHEN p.team_id = 0 THEN r.team_0_ps_score ELSE r.team_1_ps_score END AS my_team_ps_score,
+            CASE WHEN p.team_id = 0 THEN r.team_1_ps_score ELSE r.team_0_ps_score END AS enemy_team_ps_score,
             COALESCE(r.is_firefight, FALSE) AS is_firefight,
             COALESCE(r.is_ranked, FALSE) AS is_ranked
         FROM match_registry r
@@ -307,10 +337,10 @@ def _generate_golden_values(
     try:
         with duckdb.connect(str(stats_db), read_only=True) as con:
             row = con.execute(
-                "SELECT rank_number, xp_total FROM career_progression ORDER BY recorded_at DESC LIMIT 1"
+                "SELECT rank, xp_total FROM career_progression ORDER BY recorded_at DESC LIMIT 1"
             ).fetchone()
             career_gv["rank_number"] = int(row[0]) if row else None
-            career_gv["xp_total"] = int(row[1]) if row else 0
+            career_gv["xp_total"] = int(row[1]) if row and row[1] is not None else 0
     except Exception as exc:
         logger.warning("career golden values inaccessibles : %s", exc)
         career_gv["rank_number"] = None
@@ -396,9 +426,16 @@ def main() -> None:
         default=FIXTURES_DIR,
         help=f"Répertoire de sortie (défaut: {FIXTURES_DIR})",
     )
+    parser.add_argument(
+        "--profiles",
+        type=Path,
+        default=None,
+        help="Chemin vers db_profiles.json (défaut: db_profiles.json à la racine du repo). "
+        "Utile pour pointer sur un repo externe.",
+    )
     args = parser.parse_args()
 
-    player_db = _resolve_player_db(args.gamertag)
+    player_db = _resolve_player_db(args.gamertag, args.profiles)
     shared_db = get_shared_matches_path_from_player(str(player_db))
     if shared_db:
         shared_db = Path(shared_db)
