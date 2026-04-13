@@ -218,6 +218,7 @@ def _extract_player_corpus(
             "player_match_enrichment",
             "personal_score_awards",
             "match_citations",
+            "match_skill_rank",
         ):
             try:
                 df = player_src.execute(
