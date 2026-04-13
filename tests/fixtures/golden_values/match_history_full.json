@@ -1,0 +1,6 @@
+{
+  "_comment": "Golden values Match History (scope complet) — à renseigner depuis Streamlit.",
+  "total_matches": 0,
+  "first_match_id": "REPLACE_WITH_REAL_MATCH_ID",
+  "_instructions": "Lire le nombre total de lignes et le match_id le plus récent depuis l'historique Streamlit (scope plein, joueur de référence)."
+}

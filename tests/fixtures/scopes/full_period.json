@@ -1,0 +1,10 @@
+{
+  "_comment": "Scope complet — aucun filtre actif. Utilisé pour tester les compteurs globaux.",
+  "player_slug": "demo-player",
+  "period_start": null,
+  "period_end": null,
+  "playlists": [],
+  "modes": [],
+  "maps": [],
+  "session_ids": []
+}

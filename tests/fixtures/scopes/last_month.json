@@ -1,0 +1,10 @@
+{
+  "_comment": "Période courte — à renseigner avec des dates fixes connues de la DB de référence.",
+  "player_slug": "demo-player",
+  "period_start": "2024-01-01T00:00:00Z",
+  "period_end": "2024-01-31T23:59:59Z",
+  "playlists": [],
+  "modes": [],
+  "maps": [],
+  "session_ids": []
+}
