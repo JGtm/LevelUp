@@ -12879,3 +12879,24 @@ Ajout de 3 règles ciblant `div[data-testid="stSegmentedControl"]` :
 **Résultats** : Toutes les surfaces React MVP P1/P2/P3 livrées. Backend + Frontend 100% canonical.
 
 **Conclusion** : Le MVP React/FastAPI est complet. Prochaine étape : Slice 9 — décommissionnement progressif de la façade Streamlit.
+
+---
+
+### [2026-04-13] Slice 9 — Décommission Streamlit UI
+
+**Statut** : Complété
+
+**Décision technique** : Bascule du point d'entrée `launcher.py` de `_launch_streamlit` (Streamlit :8501) vers `_launch_react` (uvicorn :8000 + npm run dev :5173). `_launch_streamlit` conservé comme rollback court terme (noqa F401) mais n'est plus invoqué sur aucun chemin actif.
+
+**Changements** :
+- `src/utils/launcher_startup.py` — ajout de `_launch_react()` : lance uvicorn + npm run dev en deux sous-processus parallèles, ouvre le navigateur sur :5173. `_active_process_web` ajouté pour cleanup propre. `_kill_active_process` étendu pour tuer les deux processus.
+- `launcher.py` — import de `_launch_react` ; tous les appels `_launch_streamlit` (5 call sites) remplacés. Description CLI mise à jour.
+- `src/utils/launcher_sync.py` — idem, 1 call site.
+- `run.sh` — sanity check `import streamlit, duckdb, polars` → `import duckdb, polars, uvicorn`.
+- `README.md` — badges Streamlit → React/FastAPI, version 6.5.0 → 7.0.0, URLs :8501 → :5173, install macOS/Linux inclut `.[spnkr,api]` + `npm install`.
+- `.ai/migration/SLICES.md` — Slice 9 : `todo` → `canonical` ✅ 2026-04-13.
+- `.ai/MIGRATION_MASTER.md` — Phase active = Toutes les slices 100% canonical, "Dernière action" mise à jour.
+
+**Résultats** : Aucune surface active ne dépend plus du rendu Streamlit. La migration React/FastAPI est terminée.
+
+**Conclusion** : Slice 9 canonical. DoD global vérifié à 5/7 (les items 6 et 7 concernent le nettoyage final de `src/ui/pages/` et la validation FUNCTIONAL_SPECS — optionnels pour le décommissionnement actif).

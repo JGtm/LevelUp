@@ -23,13 +23,13 @@ Référence complète → [migration/DECISIONS.md](migration/DECISIONS.md)
 
 ## État courant
 
-**Phase active** : Toutes les slices MVP (0b, 1, 2, 3, 4, 5, 6, 7, 8) Phases A/B/C `canonical` ✅ — 2026-04-13
+**Phase active** : Toutes les slices MVP (0b, 1, 2, 3, 4, 5, 6, 7, 8, **9**) **100% `canonical`** ✅ — 2026-04-13
 
 **Slice en cours** : —
 
-**Dernière action** : Frontend React complet — 5 pages React livrées (MatchViewPage, LastMatchPage, CitationsPage, TimeseriesPage, SessionComparePage) + 5 routes TanStack Router créées + NavBar mise à jour avec Dernier Match, Citations, Séries, Sessions. Types TS + query keys + hooks useQuery implémentés pour chaque feature. Backend + Frontend 100% canonical pour toutes les slices MVP.
+**Dernière action** : Slice 9 canonical — `launcher_startup.py` ajoute `_launch_react()` (uvicorn + npm run dev), `launcher.py`/`launcher_sync.py` migrés vers le nouveau point d’entrée, `run.sh` mis à jour (sanity check sans streamlit), badges README basculés React/FastAPI v7.0.0. `_launch_streamlit` conservé comme rollback court terme.
 
-**Prochaine étape concrète** : Slice 9 (Décommissionnement Streamlit UI) — toutes les surfaces React P1/P2/P3 sont livrées
+**Prochaine étape concrète** : Migration complète — décommissionner `streamlit_app.py` / `streamlit_app_v7.py` du lancement actif (Slice 13 — DoD global)
 
 ---
 
