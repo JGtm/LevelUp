@@ -1,5 +1,31 @@
 # Thought Log
 
+## [2026-04-14] chore(cleanup): Task 10 — suppression du code Streamlit résiduel
+
+**Statut** : Complété  
+**Branche** : `feature/remove-streamlit-ui`  
+**Commit** : `0abef2c0` (215 fichiers, -50 848 lignes)
+
+**Décision technique principale** :
+- Suppression complète de tous les fichiers Streamlit résiduels dans `src/ui/pages/` (~80 modules de pages) et `src/ui/` (~19 modules cache/sync/styles).
+- Nettoyage des points d'entrée cassés suite aux suppressions : `src/ui/__init__.py`, `src/ui/pages/__init__.py` (God-imports remplacés par un docstring minimal).
+- Corrections d'imports dans les fichiers sources survivants : `src/app/profile.py` (get_hero_html + render_profile_header supprimés), `src/app/_filters_apply.py` (import lazy), `src/data/sync/api_port.py` (tabs → spaces W191), `src/utils/launcher_startup.py` (imports inutilisés retirés).
+- Suppression de ~80 fichiers tests orphelins testant du code Streamlit supprimé.
+- Fix API lru_cache : `.clear()` → `.cache_clear()` dans 3 fichiers tests medals.
+- Mise à jour du baseline de taille (91 violations documentées).
+
+**Résultats observés** :
+- Suite tests : 4726 passed, 25 failed (tous pré-existants confirmés), 102 skipped.
+- Ruff : All checks passed.
+- Tous les hooks pre-commit passent (ruff, detect-secrets, circular-imports, size ratchet).
+- DoD item 3 vérifié : Streamlit ne délivre plus aucune surface active.
+
+**Conclusion / prochaine étape** :
+- La migration React/FastAPI est entièrement terminée. DoD global satisfait (6/7 items ✅, item 7 ⚪ optionnel).
+- Reste facultatif : validation FUNCTIONAL_SPECS.md section par section lors du polish P2/P3, et PR/merge de `feature/remove-streamlit-ui` vers `main`.
+
+---
+
 ## [2026-04-14] docs(go-migration-v2): contrat bootstrap Halo et blueprint de types Go
 
 **Statut** : Complété
