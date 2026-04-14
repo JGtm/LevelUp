@@ -4,6 +4,8 @@
 
 > 📋 **Tâches et TODO centralisés** : voir `.ai/BACKLOG.md`
 
+> 🧭 **Chantier Go — corpus restructuré** : point d'entrée dans `.ai/go_migration_v2/README.md` ; le corpus historique détaillé reste dans `.ai/go_migration/`.
+
 ## ⚠️ Limitations Connues
 
 **IMPORTANT** : Consulter `.ai/API_LIMITATIONS.md` avant d'implémenter des fonctionnalités liées aux armes.
@@ -218,9 +220,12 @@ data/
 | `.ai/MIGRATION_MASTER.md` | Point d'entrée unique du chantier FastAPI/React, avec état courant, priorités MVP et navigation vers les sous-docs de migration |
 | `.ai/migration/` | Corpus de migration FastAPI/React découpé par sujet : décisions, invariants, parité, slices, contrats API, audit de codebase |
 | `.ai/PLAN_MIGRATION_FASTAPI_REACT.md` | Audit exhaustif + plan de migration Streamlit vers FastAPI/React, avec perimetre fige, matrice de parite, contrats API MVP, extraction du state model, structure cible du repo, delivery par slices, cohabitation front, auth/session, tests de parite et pilotage par metriques |
+| `.ai/go_migration/` | Corpus isole du chantier Python -> Go : plan maitre, checklist, matrice, compat ops et strategie zero Python |
+| `.ai/go_migration/GO_MIGRATION_CHECKLIST.md` | Suivi vivant du chantier Python -> Go : ordre des lots, statuts d'avancement, preuves attendues, blocages et prochaine action |
 | `.ai/go_migration/MATRIX.md` | Matrice de couverture Python -> Go : packages, scripts, surfaces hors scope, bitmask et priorites de portage |
 | `.ai/go_migration/OPS_COMPAT_CHECKLIST.md` | Checklist runtime/exploitation : auth, refresh tokens, jobs persistants, mode de test, packaging, migration utilisateur |
-| `.ai/PLAN_MIGRATION_PYTHON_TO_GO.md` | Plan de migration complete du runtime Python vers Go : perimetre, architecture cible, phasage, gates Go/No-Go, conditions de succes et d'echec ; a lire avec `go_migration/` |
+| `.ai/go_migration/ZERO_PYTHON_STRATEGY.md` | Cible terminale zero Python : destin de chaque module, perimetre d'extinction et contraintes de livraison |
+| `.ai/go_migration/PLAN_MIGRATION_PYTHON_TO_GO.md` | Plan de migration complete du runtime Python vers Go : perimetre, architecture cible, phasage, gates Go/No-Go, conditions de succes et d'echec ; isole avec son corpus `go_migration/` |
 | `.ai/sprints/SPRINT_GAMERTAG_ROSTER_FIX.md` | Sprint correction gamertags et roster |
 | `.ai/API_LIMITATIONS.md` | Limitations connues de l'API |
 

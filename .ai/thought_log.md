@@ -1,5 +1,80 @@
 # Thought Log
 
+## [2026-04-14] docs(go-migration): rétablissement du niveau de détail complet dans le corpus v2
+
+**Statut** : Complété
+
+**Tâche** : Corriger un défaut de conception du dossier `.ai/go_migration_v2/` : la couche restructurée condensait trop l'information par rapport au corpus source, ce qui créait un risque réel d'oubli pendant le portage.
+
+**Décisions techniques principales** :
+- Abandon d'une stratégie v2 purement synthétique : le v2 contient désormais, en plus des docs de cadrage, des copies exhaustives locales de `PLAN_MIGRATION_PYTHON_TO_GO.md`, `ZERO_PYTHON_STRATEGY.md`, `SPRINT_ROADMAP.md`, `GO_MIGRATION_CHECKLIST.md`, `MATRIX.md` et `OPS_COMPAT_CHECKLIST.md`.
+- Repositionnement de `README.md`, `DOC_GOVERNANCE.md`, `PROGRAM_CHARTER.md`, `PORTING_REFERENCE.md` et `ZERO_PYTHON_TARGET.md` comme couche d'entrée et de navigation, pas comme substitut appauvri au détail.
+- Les liens internes du v2 pointent maintenant d'abord vers les références exhaustives locales ; les originaux restent conservés comme archive historique.
+
+**Résultats observés** :
+- Le risque principal signalé par l'utilisateur est traité à la racine : le dossier v2 ne dépend plus d'un résumé pour piloter un chantier complexe.
+- Le corpus v2 garde sa lisibilité, mais sans sacrifier la densité documentaire du corpus d'origine.
+
+**Conclusion / prochaine étape** :
+- Toute évolution future du programme Go doit maintenant maintenir l'alignement entre la couche d'entrée et les références exhaustives locales du v2, l'ancien dossier servant d'archive et de point de comparaison seulement.
+
+## [2026-04-14] docs(go-migration): dossier v2 rendu autosuffisant avec matrice et ops locales
+
+**Statut** : Complété
+
+**Tâche** : Effectuer une dernière vérification de couverture contre les originaux, puis supprimer les dernières dépendances structurelles du dossier `.ai/go_migration_v2/` vers `MATRIX.md` et `OPS_COMPAT_CHECKLIST.md` d'origine.
+
+**Décisions techniques principales** :
+- Création de `MATRIX.md` dans `.ai/go_migration_v2/` comme matrice locale de couverture : statuts homogénéisés, surfaces prioritaires, scripts, hors-scope et bitmask reproduit localement.
+- Création de `OPS_COMPAT_CHECKLIST.md` dans `.ai/go_migration_v2/` comme référence locale pour auth, jobs, write lease, mode démo/test, packaging, migration utilisateur, discipline d'évolution et gates ops.
+- `README.md`, `PROGRAM_CHARTER.md`, `GO_MIGRATION_CHECKLIST.md` et `DOC_GOVERNANCE.md` reroutés vers les nouvelles docs locales v2 ; les originaux ne restent plus que comme références historiques détaillées.
+- Correction dans la matrice v2 d'une incohérence du document source historique : les statuts réellement utilisés (`a_conserver`, `a_adapter`, `a_analyser`, `a_auditer`) sont désormais définis explicitement.
+
+**Résultats observés** :
+- Le dossier `.ai/go_migration_v2/` est désormais autosuffisant pour le pilotage, la couverture, l'ops, la roadmap, la checklist et la cible zéro Python.
+- Les renvois vers `.ai/go_migration/` sont conservés uniquement comme sources historiques et de vérification, plus comme dépendances structurelles.
+
+**Conclusion / prochaine étape** :
+- Sauf volonté de fusion ou de suppression future des originaux, le corpus v2 peut maintenant être traité comme point d'entrée principal et autonome du chantier Go.
+
+## [2026-04-14] docs(go-migration): autonomie du corpus v2 et intégration de la cible zéro Python
+
+**Statut** : Complété
+
+**Tâche** : Comparer le corpus v2 à `ZERO_PYTHON_STRATEGY.md`, remonter les invariants terminaux manquants, et rendre le pilotage du dossier v2 autonome avec sa propre roadmap et sa propre checklist.
+
+**Décisions techniques principales** :
+- Création de `ZERO_PYTHON_TARGET.md` comme version condensée v2 de la cible finale : runtime Python = 0, aucun `.py` dans le chemin produit, aucun `pip` ou `venv` requis, bridge SPNKr supprimé avant la Phase 5, `src/ai/` hors scope produit.
+- Création de `SPRINT_ROADMAP.md` dans `.ai/go_migration_v2/` comme feuille de route primaire du dossier v2, avec un jalon explicite `ZP` entre Phase 4 et Phase 5.
+- Création de `GO_MIGRATION_CHECKLIST.md` dans `.ai/go_migration_v2/` comme checklist vivante primaire du dossier v2, incluant une checklist dédiée au jalon zéro Python.
+- `README.md`, `PROGRAM_CHARTER.md` et `DOC_GOVERNANCE.md` mis à jour pour faire du corpus v2 la façade et le point de pilotage principal, tout en gardant les documents originaux comme références historiques ou spécialisées.
+
+**Résultats observés** :
+- Le corpus v2 ne dépend plus des roadmaps et checklists du dossier original pour son pilotage quotidien.
+- Les invariants finaux du programme n'ont plus besoin d'être relus uniquement dans `ZERO_PYTHON_STRATEGY.md` pour rester visibles.
+- Le jalon de sortie du runtime Python est désormais explicite dans la charte, la roadmap et la checklist v2.
+
+**Conclusion / prochaine étape** :
+- Si une prochaine passe de consolidation est souhaitée, le candidat logique est le duo `MATRIX.md` et `OPS_COMPAT_CHECKLIST.md` : soit les garder définitivement comme docs spécialisées partagées, soit créer plus tard leurs équivalents v2 si le dossier devient la seule façade durable du chantier.
+
+## [2026-04-14] docs(go-migration): correction des trous de couverture du corpus v2
+
+**Statut** : Complété
+
+**Tâche** : Corriger les omissions relevées lors du diff de couverture entre le plan Go original et le nouveau corpus `.ai/go_migration_v2/`.
+
+**Décisions techniques principales** :
+- `README.md` enrichi avec une section explicite sur les sujets spécialisés à ne pas perdre : worktree, déploiement, migration utilisateur, multi-joueurs, i18n, PvE, bitmask, Discord, media indexing, zéro Python, arbitrages solo.
+- `PROGRAM_CHARTER.md` complété avec trois zones qui manquaient comme point d'entrée v2 : architecture cible minimale, mode de travail en worktree, et règles de pilotage solo.
+- `PORTING_REFERENCE.md` complété avec une section de couverture métier complémentaire obligatoire et des invariants de robustesse pour éviter un portage centré uniquement sur les surfaces read-only visibles.
+
+**Résultats observés** :
+- Les thèmes structurants auparavant seulement visibles dans le grand plan historique ont désormais un point d'atterrissage explicite dans le corpus v2.
+- Le corpus v2 reste court, mais il n'escamote plus les sujets spécialisés du programme.
+
+**Conclusion / prochaine étape** :
+- Le prochain travail utile, si souhaité, est de faire la même vérification de couverture entre `go_migration_v2` et `ZERO_PYTHON_STRATEGY.md` pour voir s'il faut encore sortir 1 ou 2 invariants de cible finale dans le v2.
+
 ## [2025-07-15] feat(polish): composants natifs react A2/A3/A5/B3/C3/C4/C5/D1/D2/E1
 
 **Statut** : Complété
