@@ -391,6 +391,11 @@ export interface CareerTopMatch {
   badge_type: string | null
   score_label: string | null
   outcome_label: string | null
+  kills: number | null
+  deaths: number | null
+  assists: number | null
+  kd_ratio: number | null
+  variant: 'best' | 'worst' | null
 }
 
 export interface CareerEncounter {
@@ -854,11 +859,19 @@ export interface MatchPersonalResult {
   rank_in_team: number | null
 }
 
+export interface MatchExpectedStats {
+  has_expected_data: boolean
+  expected_kills: number | null
+  expected_deaths: number | null
+  expected_assists: number | null
+}
+
 export interface MatchSummaryTab {
   kpis: MatchSummaryKpis
   personal_result: MatchPersonalResult
   medals: MatchMedal[]
   citations: MatchCitation[]
+  expected_stats: MatchExpectedStats
 }
 
 export interface MatchWeaponKill {
@@ -1047,10 +1060,19 @@ export interface TimeseriesCumulTab {
   rolling_kd_chart: PlotlyFigurePayload | null
 }
 
+export interface TimeseriesRegressionStats {
+  kd_slope: number | null
+  winrate_slope: number | null
+  r_squared: number | null
+  has_enough_for_trend: boolean
+  trend: 'improving' | 'declining' | 'stable' | null
+}
+
 export interface TimeseriesFormTab {
   ewma_kd_chart: PlotlyFigurePayload | null
   regression_chart: PlotlyFigurePayload | null
   net_score_per_hour_chart: PlotlyFigurePayload | null
+  regression_stats: TimeseriesRegressionStats
 }
 
 export interface TimeseriesIntensityTab {

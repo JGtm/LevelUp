@@ -103,33 +103,43 @@ export function CareerPage() {
 
         {/* Top matchs */}
         {topMatchesItems.length > 0 && (
-          <Card>
-            <CardHeader>
-              <CardTitle className="text-base">Meilleurs matchs</CardTitle>
-            </CardHeader>
-            <CardContent>
-              {loadingTopMatches ? (
-                <div className="flex justify-center py-4">
-                  <Spinner size="sm" label="Chargement…" />
+          <div className="space-y-4">
+            {loadingTopMatches ? (
+              <div className="flex justify-center py-4">
+                <Spinner size="sm" label="Chargement…" />
+              </div>
+            ) : showAllTopMatches ? (
+              <>
+                <CareerTopMatchesTable
+                  items={topMatchesItems}
+                  variant="best"
+                  playerSlug={playerSlug}
+                />
+                <CareerTopMatchesTable
+                  items={topMatchesItems}
+                  variant="worst"
+                  playerSlug={playerSlug}
+                />
+              </>
+            ) : (
+              <>
+                <CareerTopMatchesTable
+                  items={topMatchesItems}
+                  title="Meilleurs matchs récents"
+                  playerSlug={playerSlug}
+                />
+                <div className="flex justify-center">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setShowAllTopMatches(true)}
+                  >
+                    Voir tous les top matchs
+                  </Button>
                 </div>
-              ) : (
-                <>
-                  <CareerTopMatchesTable items={topMatchesItems} />
-                  {!showAllTopMatches && (
-                    <div className="mt-4 flex justify-center">
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() => setShowAllTopMatches(true)}
-                      >
-                        Voir tous les top matchs
-                      </Button>
-                    </div>
-                  )}
-                </>
-              )}
-            </CardContent>
-          </Card>
+              </>
+            )}
+          </div>
         )}
 
         {/* Rencontres fréquentes */}

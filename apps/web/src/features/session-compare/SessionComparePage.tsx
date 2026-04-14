@@ -10,6 +10,7 @@ import { Badge } from '@/components/ui/badge'
 import { PlotlyChart } from '@/components/ui/plotly-chart'
 import { useSessionComparePage } from './queries'
 import { useGlobalFilterStore } from '@/stores/globalFilterStore'
+import { DeltaCard } from '@/components/ui/delta-card'
 import type { SessionCompareEntry, SessionCompareMetricRow } from '@/lib/api/types'
 
 function SessionCard({
@@ -192,6 +193,27 @@ export function SessionComparePage() {
               <PlotlyChart figure={data.radar_chart} />
             </CardContent>
           </Card>
+        )}
+
+        {/* D2 — Delta cards K/D / Win Rate / Kills/match / Score (A vs B) */}
+        {data.metrics.length > 0 && data.session_a && data.session_b && (
+          <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+            {(['kd_ratio', 'win_rate', 'kills_per_match', 'score'] as const).flatMap((key) => {
+              const row = data.metrics.find((m) => m.key === key)
+              if (!row) return []
+              const delta = row.delta ? parseFloat(row.delta) : null
+              const lowerIsBetter = false
+              return [
+                <DeltaCard
+                  key={key}
+                  label={row.label}
+                  value={row.value_a}
+                  delta={delta}
+                  lowerIsBetter={lowerIsBetter}
+                />,
+              ]
+            })}
+          </div>
         )}
 
         {/* Tableau de métriques */}

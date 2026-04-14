@@ -50,12 +50,23 @@ class TimeseriesCumulTab(BaseModel):
     rolling_kd_chart: PlotlyFigurePayload | None = None
 
 
+class TimeseriesRegressionStats(BaseModel):
+    """Statistiques de régression K/D exposées pour les delta cards D1."""
+
+    kd_slope: float | None = None
+    winrate_slope: float | None = None
+    r_squared: float | None = None
+    has_enough_for_trend: bool = False
+    trend: str | None = None  # "improving" | "declining" | "stable"
+
+
 class TimeseriesFormTab(BaseModel):
     """Onglet Forme récente (EWMA, régression, streaks)."""
 
     ewma_kd_chart: PlotlyFigurePayload | None = None
     regression_chart: PlotlyFigurePayload | None = None
     net_score_per_hour_chart: PlotlyFigurePayload | None = None
+    regression_stats: TimeseriesRegressionStats = TimeseriesRegressionStats()
 
 
 class TimeseriesIntensityTab(BaseModel):

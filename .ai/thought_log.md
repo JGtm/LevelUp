@@ -1,131 +1,111 @@
 # Thought Log
 
-## [2026-04-14] docs(go-migration): recommandations Go/DuckDB et write lease
-
-**Statut** : Complete
-
-**Tache** : Durcir le plan Go sur DuckDB, la semantique write lease et les contraintes de connexions.
-
-**Decision technique** :
-1. La premiere implementation Go doit reproduire la semantique Python actuelle du write lease avant tout durcissement.
-2. Le write lease est documente comme coordination process-locale par DB path, pas comme verrou inter-process implicite.
-3. Le pool read-only n'est plus decrit comme illimite ; il doit etre borne explicitement.
-4. Tous les opens `read_write` Go doivent passer par un composant central unique.
-5. Le POC DuckDB doit verifier les collisions writers meme path, l'independance inter-path, et l'absence de migration implicite non voulue.
-
-**Resultats observes** :
-- `OPS_COMPAT_CHECKLIST.md` contient maintenant une section DuckDB / write lease avec semantique, architecture et POC minimal
-- `PLAN_MIGRATION_PYTHON_TO_GO.md` n'affirme plus un pool read-only illimite et precise la portee reelle du write lease
-
-**Conclusion / prochaine etape** :
-- Le prochain travail utile est de traduire ces recommandations en lot technique P0/P1 dans `MATRIX.md` et en checklist de POC executable.
-
-## [2026-04-14] feat(prod+polish): Option C prod prep + Option A/PX polish P2/P3
+## [2025-07-15] feat(polish): composants natifs react A2/A3/A5/B3/C3/C4/C5/D1/D2/E1
 
 **Statut** : Complété
 
-**Tâche** : Implémentation des Options A (polish pages), B (validation FUNCTIONAL_SPECS) et C (prod prep React/FastAPI).
+**Tâche** : Finaliser les composants UI/UX natifs listés dans `NATIVE_COMPONENTS.md` pour le dashboard React (LevelUp-no-streamlit).
 
-**Décisions techniques** :
-
-### Option C — Prod prep
-1. **Dockerfile** (session précédente) : multi-stage Node.js 22 → Python 3.12-slim, EXPOSE 8000, `uvicorn apps.api.app.main:app`.
-2. **docker-compose.yml** : ports `8501` → `8000` (+ `8001` pour demo), ajout `LEVELUP_WEB_DIST=/app/apps/web/dist`, healthcheck FastAPI, commentaires clarifiés.
-3. **packaging/nginx/levelup.conf** : réécriture complète. Suppression proxy Streamlit WebSocket. Ajout : `location /api/` → proxy :8000 sans auth_basic ; `location /assets/` → proxy :8000 + cache immutable 1 an ; `location /` → proxy :8000 + no-store pour `index.html`.
-4. **apps/api/app/main.py** : ajout `StaticFiles` pour `/assets` + catch-all `/{full_path:path}` retournant `index.html` (SPA routing). Conditionnel sur `LEVELUP_WEB_DIST` existant (dev sans dist = non activé).
-5. **CI/CD** : remplacement du job `streamlit-smoke` par `frontend` (Node.js 22, `npm ci`, `npm run typecheck`, `npm run lint`, `npm run build`, `npm run test`).
-
-### Option A/PX — Polish pages
-
-6. **SynthesisPage.tsx** : ajout du graphe bipolaire Solo ↔ Escouade (§4.7). Construit en frontend depuis `comparison_metrics.solo_value` + `squad_value` (pas de changement API). Traces barres horizontales Plotly, Solo négatif cyan, Escouade positif vert, ligne zéro slate, légende horizontale. Empty state si métriques vides.
-7. **MediaPage.tsx** : réécriture complète (350 lignes). Ajout : lightbox avec navigation ◀▶ clavier + autoplay clip vidéo (`onEnded → next`) + header carte/mode/date/idx ; système de likes `♥` persisté en `localStorage` via `useLikes()` hook ; tri par date/nom ; icônes emoji correctes ; click sur carte → lightbox à l'index.
-8. **SquadPage.tsx** : réécriture (~270 lignes). Ajout : 2 onglets (Synergies/Contributions) visibles sur sélection d'un coéquipier. Onglet Synergies = barres groupées Avec/Sans/Solo (4 métriques, Plotly). Onglet Contributions = radar normalisé 5 axes (Win Rate, K/D, Kills/partie, Assists/partie, Précision). Graphes construits en frontend sans changement API.
-
-### Option B — Validation FUNCTIONAL_SPECS
-- Toutes les slices MVP (0b, 1, 2, 3, 4, 5, 6, 7, 8, 9) sont `canonical ✅` depuis le 2026-04-14.
-- Les items P2/P3 couverts cette session : §4.7 bipolaire ✅, §6.6 lightbox ✅, §6.7 likes localStorage ✅, §3 2 onglets Squad ✅.
-- Restants en backlog : §6.3 toolbar 8 contrôles (partial, 3 implementés), §3.6.1–3.6.4 charts Synergies avancés (nécessitent données API additionnelles).
+**Décisions techniques principales** :
+- A2/A3 : `CareerTopMatchesTable` réécrit avec colonnes K/D/A, badges DOM/HUMILIATION/etc., navigation clic, split `variant="best"|"worst"`, thème Halo dark.
+- A5 : `MatchScoreboard` créé — highlight min/max (vert=max, rouge=min, inversé pour `deaths`/`damage_taken`), badges MVP/LVP, tri par équipe.
+- E1 : `PlayerDetailPanel` — panneau collapsible par clic ligne (▸/▾) dans `MatchScoreboard`, affiche 14 stats + armes/médailles/citations si `is_me=true`.
+- C3/C4/C5 : `MatchStatCards` (`StatExpectedCard`, `MatchRankBadge`, `KdIndicatorCard`) — stats attendues vs réelles, badge de rang, ratio K/D vs nemesis.
+- B3 : `CitationsPage` — grille responsive CSS (`grid-cols-4 sm:grid-cols-6 lg:grid-cols-8`) remplace la `<table>`, triée par `count_filtered DESC`.
+- D1 : `TimeseriesPage` — 3 `DeltaCard` dans l'onglet Forme (pente K/D, pente Win Rate, R²) depuis `regression_stats` calculées dans le service backend.
+- D2 : `SessionComparePage` — 4 `DeltaCard` au-dessus du tableau de métriques (K/D, Win Rate, Kills/match, Score).
+- Composant transversal `delta-card.tsx` créé dans `components/ui/`.
+- Backend : ajout de `MatchExpectedStats` dans `match_view.py`, `TimeseriesRegressionStats` dans `timeseries.py`, population dans `timeseries_api_service.py`.
+- Import dupliqué `TimeseriesRegressionStats` nettoyé (retiré du niveau fonction → hissé dans l'import top-level).
 
 **Résultats observés** :
-- `docker-compose.yml` : ports corrigés, env `LEVELUP_WEB_DIST` ajouté, healthcheck fonctionnel
-- `nginx/levelup.conf` : WebSocket Streamlit supprimé, SPA + API proxy correct
-- `main.py` : SPA fallback conditionnel sur dist existant
-- CI : job `streamlit-smoke` retiré, `frontend` Node.js 22 ajouté
-- `SynthesisPage.tsx` : bipolaire chart visible, coloration Solo/Escouade, caption
-- `MediaPage.tsx` : lightbox fonctionnelle, likes localStorage, tri, icônes
-- `SquadPage.tsx` : 2 onglets Synergies/Contributions avec Plotly
+- 12 fichiers TypeScript modifiés/créés — 0 erreur de compilation.
+- 3 schémas backend Pydantic mis à jour sans breaking change (champs optionnels avec defaults).
+- Task 10 (suppression fichiers Streamlit résiduels) reportée — nécessite validation manuelle.
 
 **Conclusion / prochaine étape** :
-- Prod prête à déployer (`docker compose up --build`)
-- Polish P2/P3 substantiellement avancé. Phase B en attente : toolbar Media complète (sort/group), charts Synergies avancés (nécessitent nouvelles données API backend).
-- Prochain PR : merge `feature/remove-streamlit-ui` → `main`, puis tag vX.Y.
+- Task 10 (optionnelle) : supprimer `streamlit_app.py`, `streamlit_app_v7.py` à la racine de `LevelUp-no-streamlit` et les pages Streamlit pures dans `src/ui/pages/` (garder les modules `_data.py`, `_logic.py` importés par les services API).
+- Prochaine feature : implémenter A4, A6, B1, B2, D3, D4 (non prioritaires, post-MVP).
 
-
-
-**Statut** : Complete
-
-**Tache** : Integrer les arbitrages de cadrage fournis par l'utilisateur dans le plan Go et l'annexe ops.
-
-**Decision technique** :
-1. Le chantier Go ne demarre pas tant que [MIGRATION_MASTER.md](MIGRATION_MASTER.md) n'est pas termine et gele.
-2. Le scope du chantier est clarifie : remplacer Python derriere la facade V7, pas reouvrir un chantier frontend ou produit.
-3. La reference contractuelle de depart est explicitee : facade V7, contrats HTTP/OpenAPI, suites de validation et schema DuckDB v6.
-4. Le "rollback" est reformule pour coller au modele worktree : pas de retour strategique durable vers Python apres bascule finale ; tant que Go n'est pas merge, Python reste simplement la baseline non fusionnee.
-5. Le mode de demo/test est detaille dans `go_migration/OPS_COMPAT_CHECKLIST.md` : objectifs, jeux de donnees minimaux, surfaces couvertes, invariants de parite et regles d'execution.
-
-**Resultats observes** :
-- `PLAN_MIGRATION_PYTHON_TO_GO.md` recale sur un prerequis explicite : cloture de `MIGRATION_MASTER.md`
-- Les sections ambigues sur le frontend, le packaging et le rollback sont recadrees
-- `OPS_COMPAT_CHECKLIST.md` contient maintenant une specification explicite de la reference contractuelle et du mode de demo/test
-- La regle auth est precisee : MSAL par defaut, sauf si un refresh token exploitable existe deja
-- Les syncs persistantes sont maintenant explicitement exclusives a l'echelle de l'application
-
-**Conclusion / prochaine etape** :
-- Le prochain travail utile sur ce plan est de detailler lot par lot les surfaces exactes a porter dans `MATRIX.md`, avec priorites P0/P1/P2 et criteres de sortie.
-
-## [2026-04-14] feat(slice13): DoD global — migration React/FastAPI terminée
+## [2026-04-14] docs(go-migration): création d'un corpus v2 avec document maître séparé
 
 **Statut** : Complété
 
-**Tâche** : Satisfaire les 7 critères de la Définition of Done globale de la migration Streamlit → React/FastAPI.
+**Tâche** : Créer un nouveau dossier documentaire sous `.ai/` pour restructurer le chantier Python -> Go sans modifier ni déplacer les documents originaux.
 
-**Décision technique** :
-- DoD vérifié item par item. 6/7 satisfaits, item 7 (FUNCTIONAL_SPECS) dépriorisé (optionnel, par section lors du polish P2/P3).
-- Imports `src/ui/pages/` dans les services FastAPI confirmés légitimes (logique métier réutilisée, pas de rendu Streamlit actif).
-- `streamlit_app.py` et `streamlit_app_v7.py` archivés avec header `# ARCHIVED`.
-- Documentation (INSTALL.md, FR/INSTALL.md, CONFIGURATION.md, FR/CONFIGURATION.md, FR/README.md, README_FR.md) nettoyée : URLs `:8501` → `:5173`, badges Streamlit → React/FastAPI, sections Streamlit Config annotées "Archivé (Slice 9)".
-- `src/utils/launcher_env.py` : `import streamlit` → `import uvicorn`.
-- `src/utils/launcher_migrations.py` : bloc `try: import streamlit` supprimé.
-- `tests/api/test_media.py` : 9 tests migrés GET → POST (router est POST).
-- SLICES.md et MIGRATION_MASTER.md : DoD global marqué `canonical ✅ 2026-04-14`.
+**Décisions techniques principales** :
+- Création du dossier `.ai/go_migration_v2/` comme façade documentaire au-dessus du corpus existant `.ai/go_migration/`.
+- Création de `README.md` comme vrai point d'entrée court : statut global, ordre de lecture, sources de vérité par sujet, prochaine action utile.
+- Extraction du rôle de charte dans `PROGRAM_CHARTER.md` : objectif, périmètre, méthode, phases, gates, décisions ouvertes et kill switches.
+- Extraction du rôle de référence technique dans `PORTING_REFERENCE.md` : surfaces prioritaires, algorithmes critiques, familles de requêtes, validations et stratégie de tests.
+- Ajout de `DOC_GOVERNANCE.md` pour figer la hiérarchie documentaire et éviter les duplications futures.
+- Conservation explicite des documents détaillés existants comme sources de vérité opérationnelles pour la matrice, l'ops, la roadmap et le suivi vivant.
 
-**Résultats** : Suite de tests verte (hors integration). Tous les fichiers de documentation à jour. Aucune surface Streamlit active.
+**Résultats observés** :
+- Le chantier Go a désormais un point d'entrée lisible sans réécrire intégralement le plan historique.
+- Les originaux sont inchangés et peuvent continuer à servir de références détaillées.
+- `.ai/project_map.md` pointe maintenant vers le nouveau corpus restructuré.
 
-**Conclusion** : Migration React/FastAPI terminée. DoD global satisfait. Prochaine étape : polish P2/P3 ou validation FUNCTIONAL_SPECS par section.
+**Conclusion / prochaine étape** :
+- Si le chantier Go s'active réellement, utiliser `.ai/go_migration_v2/README.md` comme entrée principale, puis maintenir les statuts et détails dans les docs opérationnels d'origine.
 
----
+## [2026-04-14] docs(go-migration): isolation du corpus documentaire Go
 
-## [2026-04-13] docs(go-migration): scission du plan maitre + checklist ops compat
+**Statut** : Complété
 
-**Statut** : Complete
+**Tâche** : Isoler la documentation du chantier Python -> Go dans `.ai/go_migration/` et retirer les références externes non pertinentes au plan Go.
 
-**Tache** : Transformer le plan Python -> Go en vrai point d'entree, externaliser la matrice de couverture et la checklist runtime/exploitation, tout en gardant le chantier autonome.
+**Décisions techniques principales** :
+- Déplacement du document maître Go vers `.ai/go_migration/PLAN_MIGRATION_PYTHON_TO_GO.md` pour regrouper tout le corpus associé.
+- Création de `.ai/go_migration/GO_MIGRATION_CHECKLIST.md` afin de résoudre les liens existants vers une checklist qui n'était pas encore matérialisée.
+- Nettoyage des références internes du corpus Go : liens `go_migration/...` remplacés par des liens locaux, suppression de la dépendance documentaire à `MIGRATION_MASTER.md`, conservation uniquement des références transverses pertinentes comme `thought_log.md`.
+- Mise à jour de `.ai/project_map.md` pour refléter le nouveau point d'entrée documentaire du chantier Go.
 
-**Decision technique** :
-1. `PLAN_MIGRATION_PYTHON_TO_GO.md` devient le document maitre du chantier backend Go, avec lecture obligatoire de deux sous-docs : `go_migration/MATRIX.md` et `go_migration/OPS_COMPAT_CHECKLIST.md`.
-2. Le chantier Go doit rester autonome et ne pas reprendre la gouvernance d'un autre plan sans decision explicite.
-3. La cible auth est confirmee : MSAL canonique, avec support refresh tokens maintenu pour compatibilite (`SPNKR_OAUTH_REFRESH_TOKEN[_<GAMERTAG>]` et `oauth_refresh_token` dans `sync_meta`).
-4. Les jobs longs doivent rester persistants hors memoire, avec semantique `running -> interrupted` au redemarrage et `active_sync_job_id` expose dans le bootstrap.
-5. `src/app/media_watcher.py` et `src/utils/tailscale.py` sont sortis du scope du chantier Go principal ; ils ne bloquent plus la feuille de route backend.
-6. Correction factuelle du write lease : attente courte equivalente au Python, pas de timeout invente a 30 s.
+**Résultats observés** :
+- Le dossier `.ai/go_migration/` contient désormais le plan maître, la checklist de suivi, la matrice, la checklist ops et la stratégie zéro Python.
+- Le corpus Go est navigable de manière autonome, sans renvoi structurel vers le chantier FastAPI/React.
 
-**Resultats observes** :
-- Nouveaux sous-docs ajoutes : `.ai/go_migration/MATRIX.md`, `.ai/go_migration/OPS_COMPAT_CHECKLIST.md`
-- `PLAN_MIGRATION_PYTHON_TO_GO.md` pointe maintenant explicitement vers ces sous-docs et ne duplique plus la matrice detaillee ni la checklist ops
-- `project_map.md` reference le nouveau point d'entree backend Go
+**Conclusion / prochaine étape** :
+- Toute nouvelle documentation spécifique au portage Go doit désormais être créée directement dans `.ai/go_migration/`.
 
-**Conclusion / prochaine etape** :
-- Si le chantier Go demarre reellement, la prochaine etape logique est de transformer `MATRIX.md` en matrice vivante avec statuts lot par lot, plutot que de laisser des statuts figes trop longtemps.
+## [2026-04-14] docs(go-migration): client API Halo = package public + endpoints configurables
+
+**Statut** : Complété
+
+**Tâche** : Ajouter au plan la décision de faire du client API Halo un package Go public (`pkg/haloinfinite/`), pas un module interne, avec endpoints centralisés et configurables.
+
+**Décisions techniques principales** :
+1. Le client Go remplaçant SPNKr vit dans `pkg/haloinfinite/` (public), pas `internal/` (privé). Conçu pour extraction future en module Go indépendant.
+2. Registre d'endpoints centralisé (`ServiceEndpoints` struct) : toutes les URLs et paths 343i sont modifiables, jamais hardcodés dans les méthodes.
+3. Construction par options fonctionnelles (`WithEndpoints()`, `WithRateLimiter()`, etc.) — extensible sans casser l'API.
+4. Séparation stricte : `pkg/haloinfinite/` (client HTTP pur, 0 dépendance LevelUp) vs `internal/halo/adapter.go` (cache tokens DuckDB, politiques métier LevelUp).
+5. Phase D ajoutée : extraction optionnelle post-Gate 4 vers `haloinfinite-go` (module Go indépendant).
+
+**Résultats observés** :
+- `ZERO_PYTHON_STRATEGY.md` mis à jour (~700 lignes) avec architecture détaillée, code Go, et relation pkg/ vs internal/.
+- `PLAN_MIGRATION_PYTHON_TO_GO.md` : structure repo mise à jour avec `pkg/haloinfinite/`.
+
+**Conclusion / prochaine étape** :
+- Aligner `MATRIX.md` avec les statuts révisés (SPNKr = `a_porter`, pas `a_porter_plus_tard`).
+
+## [2026-04-14] docs(go-migration): règles de suivi de projet et checklist vivante
+
+**Statut** : Complété
+
+**Tâche** : Ajouter au plan Go une discipline explicite de suivi de projet pour contrôler l'ordre, la couverture et l'avancement réel du chantier.
+
+**Décisions techniques principales** :
+- Le plan Go inclut maintenant une section de suivi de projet obligatoire avec sources de vérité, statuts d'avancement, règles d'ouverture/fermeture des lots et cadence de mise à jour.
+- La matrice reste le document de couverture ; elle n'est pas surchargée avec le suivi quotidien.
+- Un document dédié `GO_MIGRATION_CHECKLIST.md` devient le support vivant pour marquer ce qui est fait, bloqué ou terminé au fil du chantier.
+
+**Résultats observés** :
+- `PLAN_MIGRATION_PYTHON_TO_GO.md` contient maintenant des règles explicites de pilotage et de suivi.
+- `go_migration/MATRIX.md` distingue couverture et avancement.
+- `GO_MIGRATION_CHECKLIST.md` existe comme support de suivi ordonné du programme.
+
+**Conclusion / prochaine étape** :
+- Le prochain travail utile est de remplir la checklist lot par lot à partir du vrai backlog P0/P1/P2 de `MATRIX.md`.
 
 ## [2026-04-14] docs: consolidation structurelle du plan de migration Python → Go
 
