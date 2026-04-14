@@ -1,3 +1,23 @@
+# ============================================================================
+# Stage 1 — Build React (Vite)
+# ============================================================================
+FROM node:22-slim AS web-builder
+
+WORKDIR /build/web
+
+# Cache npm : installer les dépendances séparément du code source
+COPY apps/web/package.json apps/web/package-lock.json ./
+RUN npm ci --prefer-offline
+
+# Code source
+COPY apps/web/ ./
+
+# Build Vite (output : /build/web/dist)
+RUN npm run build
+
+# ============================================================================
+# Stage 2 — Runtime Python + FastAPI
+# ============================================================================
 FROM python:3.12-slim
 
 ENV PYTHONDONTWRITEBYTECODE=1 \
@@ -12,38 +32,31 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     gosu \
     && rm -rf /var/lib/apt/lists/*
 
-# --- Étape 1 : Dépendances (cache Docker maximisé) ---
-# On copie pyproject.toml en premier pour ne pas
-# réinstaller à chaque changement de code source.
+# --- Étape 1 : Dépendances Python (cache Docker maximisé) ---
 COPY pyproject.toml /app/
-# setup.py stub minimal pour que pip install -e fonctionne sans le code src/
 RUN mkdir -p /app/src && touch /app/src/__init__.py
 
 RUN python -m pip install --no-cache-dir --upgrade pip \
-    && python -m pip install --no-cache-dir -e ".[spnkr]"
+    && python -m pip install --no-cache-dir -e ".[spnkr,api]"
 
-# --- Étape 2 : Code et assets ---
+# --- Étape 2 : Code Python ---
 COPY src /app/src
-COPY static /app/static
+COPY apps/api /app/apps/api
 COPY scripts /app/scripts
-COPY .streamlit /app/.streamlit
-COPY streamlit_app.py launcher.py /app/
+COPY launcher.py /app/
 
-# Données de référence embarquées (petits fichiers nécessaires à l'UI)
-# Les playlists/modes sont dans metadata.duckdb (tables playlist_translations, mode_translations)
+# --- Étape 3 : Assets React (build Vite depuis stage 1) ---
+COPY --from=web-builder /build/web/dist /app/apps/web/dist
 
 # Stubs de config — écrasés au runtime par les volumes bind-mount
-# db_profiles.json est gitignored, on génère un stub valide pour le build
 RUN echo '{"version":"2.1","warehouse_path":"data/warehouse","profiles":{}}' > /app/db_profiles.json \
     && echo '{}' > /app/app_settings.json
 
 # Dossiers attendus par le runtime
 RUN mkdir -p /app/data/players /app/data/warehouse /app/data/logs /app/data/cache
 
-# --- Étape 3 : Utilisateur non-root ---
+# --- Étape 4 : Utilisateur non-root ---
 # UID 1000 = même UID que le user "deploy" sur le VPS.
-# Élimine les problèmes de permissions sur les bind-mounts (data/, *.json).
-# L'entrypoint (gosu) sert de filet de sécurité si les UIDs divergent.
 RUN adduser --disabled-password --gecos "" --uid 1000 appuser \
     && chown -R appuser:appuser /app
 
@@ -52,20 +65,19 @@ RUN chmod +x /usr/local/bin/docker-entrypoint.sh
 
 # PAS de USER appuser ici — l'entrypoint démarre root, drop vers appuser après chown
 
-EXPOSE 8501
+EXPOSE 8000
 
 # Variables d'environnement par défaut
-# LEVELUP_DB : optionnel, force un chemin DB précis
-# LEVELUP_ROOT : indique la racine du projet au runtime
-# LEVELUP_DATA : obligatoire en conteneur (pas de .venv → _is_dev_mode()=False)
 ENV LEVELUP_DB="" \
     LEVELUP_ROOT=/app \
-    LEVELUP_DATA=/app/data
+    LEVELUP_DATA=/app/data \
+    LEVELUP_WEB_DIST=/app/apps/web/dist
 
-# Healthcheck Streamlit (endpoint officiel /_stcore/health)
-HEALTHCHECK --interval=30s --timeout=3s --start-period=20s --retries=3 \
-    CMD ["python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8501/_stcore/health').read()"]
+# Healthcheck FastAPI
+HEALTHCHECK --interval=30s --timeout=5s --start-period=30s --retries=3 \
+    CMD ["python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/api/v1/health').read()"]
 
 ENTRYPOINT ["docker-entrypoint.sh"]
-CMD ["python", "-m", "streamlit", "run", "streamlit_app.py", \
-     "--server.address=0.0.0.0", "--server.port=8501", "--server.headless=true"]
+CMD ["python", "-m", "uvicorn", "apps.api.app.main:app", \
+     "--host", "0.0.0.0", "--port", "8000", \
+     "--proxy-headers", "--forwarded-allow-ips=*"]
