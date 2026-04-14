@@ -1,5 +1,41 @@
 # Thought Log
 
+## [2026-04-15] refactor(arch): P0+P1+P2 — remédiation architecture API (4/10 → 8+/10)
+
+**Statut** : Complété
+
+**Tâche** : Éliminer les violations d'architecture hexagonale détectées par l'audit :
+- A: 17 `from src.ui` dans les services API, 6 services contournant DuckDBRepository, violations `_get_connection()`
+- B: Guards `except ImportError` inutiles, fonctions bootstrap dupliquées
+- C: 5× copies de `_resolve_xuid`, 4× copies de `_has_mv`/`_build_source_sql`, 6× copies de constantes `_OUTCOME_*`
+
+**Décisions techniques principales** :
+
+1. **`_db_helpers.py` créé** — centralise `Outcome` IntEnum, `OUTCOME_LABELS`, `OUTCOME_TONES`, `FMT_DATETIME_FR`, `resolve_xuid()`, `has_mv_player_matches()`, `build_match_source_sql()`, `add_display_columns()`, et les regex de strip mode/suffix.
+2. **`_pure_bridge.py` créé** — pont entre API et `src.ui.*` pour medals, settings, career_ranks, career_data, career_logic, commendations, session_compare, setup. Certaines fonctions réimplémentées avec DuckDBRepository directement.
+3. **`DuckDBRepository.conn` property** ajoutée pour exposer la connexion publiquement (remplace `_get_connection()`).
+4. **Build SQL** : `build_match_source_sql()` retourne `(...)` sans alias — les appelants ajoutent `ms` eux-mêmes. Fix SQL double alias `AS ms ms` qui causait `ParserException`.
+
+**Résultats observés** :
+
+| Métrique | Avant | Après |
+|----------|-------|-------|
+| `from src.ui` dans API | 17 | 2 (async Halo API, acceptables) |
+| Fonctions helpers dupliquées | 5×5 | 0 |
+| Constantes `_OUTCOME_*/_FMT_*` locales | 6 fichiers | 0 (sauf `_OUTCOME_COLORS` spécifique) |
+| `duckdb.connect()` bare hors sync | 3 | 0 |
+| `repo._get_connection()` | 3 | 0 |
+| `except ImportError` workarounds | 10+ | 0 |
+
+- 18 fichiers modifiés, 625 insertions, 559 suppressions.
+- 5 tests qui échouaient corrigés (SQL + taille module).
+- 4720 tests passent (24 échecs pré-existants, non liés).
+
+**Conclusion / prochaine étape** :
+- Score architecture estimé : 8-9/10 (vs 4/10 avant).
+- Les 2 imports `src.ui` restants (`home_mission_control_battlepass`, `home_mission_control_api`) sont des appels async vers l'API Halo, pas de la logique UI.
+- Prochaine étape : audit complet de la suite de tests (24 échecs pré-existants : traductions pair_name, médailles, mode categories).
+
 ## [2026-04-14] feat(ui): couverture complète FUNCTIONAL_SPECS — 11 tâches implémentées
 
 **Statut** : Complété
