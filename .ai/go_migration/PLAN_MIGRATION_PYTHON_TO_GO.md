@@ -298,6 +298,11 @@ apps/
       settings/
       auth/
       jobs/
+      halo/
+        adapter/
+        canonical/
+        titles/
+          haloinfinite/
       media/
       sync/
       platform/
@@ -312,12 +317,52 @@ apps/
 ## Regles de conception
 
 1. Le service Go expose des contrats de page stables, pas des details internes de tables.
-2. Les calculs critiques restent cote backend, jamais reimplementes dans le frontend.
-3. Les graphes doivent sortir sous forme de donnees ou de series pretes a tracer, pas comme une imitation de la stack Plotly Python.
-4. Les jobs longs doivent avoir un modele explicite : start, status, cancel si necessaire, result, warnings, erreurs.
-5. Les migrations DuckDB doivent rester idempotentes et automatisees.
-6. Graceful shutdown obligatoire : intercepter `SIGTERM`/`SIGINT` (ou `os.Interrupt` sur Windows), drainer les requetes HTTP en cours, fermer proprement les connexions DuckDB, et ne jamais interrompre un sync en pleine ecriture (attendre le commit ou rollback).
-7. Notifications Discord : le backend Go doit etre capable d'envoyer des embeds Discord (webhook) apres sync/backfill, exactement comme le Python actuel (`src/utils/discord_notifier.py`). Inclure : embeds bilingues, thumbnail upload, anti-spam via `discord_notified_at`, notifications new version.
+2. La facade API reste orientee produit : bootstrap, history, explorer, match view, settings, sync. Elle ne reflète jamais directement les endpoints d'un titre Halo particulier.
+3. L'integration Halo suit une architecture a 2 niveaux : un socle provider generique (transport, auth, rate limiting, erreurs, registre d'endpoints), puis un adaptateur par titre.
+4. Chaque adaptateur de titre mappe les payloads natifs vers un modele canonique LevelUp avant toute logique metier ou exposition HTTP.
+5. Les zones specifiques au jeu doivent rester isolees : auth Waypoint/XSTS, refdata, assets discovery/economy, films, skill, labels et URLs Waypoint.
+6. Les calculs critiques restent cote backend, jamais reimplementes dans le frontend.
+7. Les graphes doivent sortir sous forme de donnees ou de series pretes a tracer, pas comme une imitation de la stack Plotly Python.
+8. Les jobs longs doivent avoir un modele explicite : start, status, cancel si necessaire, result, warnings, erreurs.
+9. Les migrations DuckDB doivent rester idempotentes et automatisees.
+10. Graceful shutdown obligatoire : intercepter `SIGTERM`/`SIGINT` (ou `os.Interrupt` sur Windows), drainer les requetes HTTP en cours, fermer proprement les connexions DuckDB, et ne jamais interrompre un sync en pleine ecriture (attendre le commit ou rollback).
+11. Notifications Discord : le backend Go doit etre capable d'envoyer des embeds Discord (webhook) apres sync/backfill, exactement comme le Python actuel (`src/utils/discord_notifier.py`). Inclure : embeds bilingues, thumbnail upload, anti-spam via `discord_notified_at`, notifications new version.
+
+## Preparation documentaire immediate pour l'API multi-titre
+
+Avant toute implementation Go reelle sur la couche Halo :
+
+1. figer un modele canonique Halo produit (identite, history, match, career, assets, films, erreurs) ;
+2. figer une matrice de capabilities par titre et par surface produit ;
+3. documenter les zones specifiques au jeu a isoler ;
+4. documenter la politique de degradation si une surface est absente ou partielle sur un titre donne.
+
+### Portee acceptable si l'on ne connait que Halo Infinite
+
+Oui, les points 2 et 3 restent pertinents meme si l'on ne dispose aujourd'hui d'informations solides que pour Halo Infinite, mais ils doivent etre cadrees de facon non speculative.
+
+1. La matrice de capabilities ne doit pas inventer des lignes pour d'autres titres. Dans l'immediat, elle documente uniquement `halo_infinite` et les surfaces produit que nous savons reellement alimenter.
+2. Son role n'est pas de predire le prochain Halo ; son role est d'eviter que le produit Go se couple implicitement a des specificites Halo Infinite non nommees.
+3. La premiere version acceptable est donc une capability map mono-titre, extensible plus tard, avec des statuts simples : supporte, degrade, non expose, hors scope.
+4. Toute case inconnue pour un autre titre reste absente du document ; on n'introduit aucun faux contrat juste pour "faire multi-titre".
+
+### Pourquoi documenter aussi l'exposition via bootstrap
+
+La definition documentaire d'une exposition minimale des capabilities dans le bootstrap reste utile meme en mono-titre.
+
+1. Elle force a distinguer ce qui releve du contrat produit de ce qui releve du provider Halo Infinite.
+2. Elle permet d'organiser proprement la degradation pendant la migration Go : une surface peut etre annoncee comme absente ou partielle sans casser le reste du produit.
+3. Elle evite de hardcoder dans le frontend ou dans les handlers l'hypothese "tout Halo Infinite est toujours disponible partout".
+4. Elle ne doit pas exposer les details internes des endpoints 343i ; elle expose seulement le titre courant, le provider courant et les capabilities produit utiles au consommateur.
+
+### Decision de cadrage pour cette migration
+
+Dans ce chantier Go, on documente donc :
+
+1. un modele canonique Halo ;
+2. une capability map initiale limitee a Halo Infinite ;
+3. une forme de bootstrap cible capable d'annoncer le titre courant et les capabilities produit utiles ;
+4. sans speculation sur d'autres titres tant qu'aucune information fiable n'existe.
 
 ## Decisions techniques a prendre avant la premiere ligne de Go
 
@@ -440,6 +485,7 @@ Travaux :
 3. Constituer un corpus figé pour Career, Match History, Explorer, Match View, Setup et Settings.
 4. Ecrire une matrice Python -> Go par package avec proprietaire, criticite et dependances.
 5. Definir des golden values chiffrées pour les parcours prioritaires.
+6. Definir la capability map initiale pour `halo_infinite` uniquement, ainsi que la forme cible de son exposition dans le bootstrap produit.
 
 Livrables :
 
@@ -448,6 +494,7 @@ Livrables :
 3. Corpus de tests rejouable sous Windows et Linux.
 4. Premier Go/No-Go technique sur DuckDB et auth.
 5. **Definition of Done par sprint** : pour chaque sprint des phases 1-5, definir les criteres de sortie explicites (ex : "Sprint 1.2 termine quand Q1, Q2, Q3, Q5 passent en Go avec golden values identiques a < 0.01").
+6. Contrat documentaire du bootstrap : titre courant, provider courant, capabilities produit, surfaces degradees si necessaire.
 
 ### Phase 1 - Socle Go read-only
 
@@ -458,13 +505,15 @@ Travaux :
 1. Monter le service Go, le healthcheck, le request_id, le logging et la config.
 2. Implementer bootstrap, players et resolveur de filtres.
 3. Valider la compatibilite avec la facade V7 via shadow mode ou feature flag au moment de l'integration ; le frontend n'est pas un chantier a refaire.
-4. Comparer les payloads Go contre les payloads Python sur le corpus de reference.
+4. Faire porter par le bootstrap les metadonnees produit necessaires : titre courant, provider courant et capability map utile au consommateur.
+5. Comparer les payloads Go contre les payloads Python sur le corpus de reference.
 
 Livrables :
 
 1. Service Go runnable localement.
 2. Endpoints read-only equivalents sur bootstrap, players, filters.
-3. Suite de tests de parite backend Go vs golden values.
+3. Bootstrap capable d'annoncer explicitement les capabilities produit sans exposer les details 343i.
+4. Suite de tests de parite backend Go vs golden values.
 
 ### Phase 2 - Portage des parcours read-only prioritaires
 

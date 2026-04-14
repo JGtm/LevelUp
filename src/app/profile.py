@@ -21,9 +21,7 @@ from src.config import (
 )
 from src.ui import (
     AppSettings,
-    display_name_from_xuid,
     ensure_spnkr_tokens,
-    get_hero_html,
     get_profile_appearance,
 )
 from src.ui.player_assets import ensure_local_image_path
@@ -270,41 +268,3 @@ def load_profile_assets(
     )
 
     return assets, api_err
-
-
-# =============================================================================
-# Profile header rendering
-# =============================================================================
-
-
-def render_profile_header(
-    xuid: str,
-    settings: AppSettings,
-    assets: ProfileAssets,
-    db_path: str | None = None,
-) -> None:
-    """Rend le header/hero du profil joueur.
-
-    Args:
-        xuid: XUID du joueur.
-        settings: Paramètres de l'application.
-        assets: Assets du profil.
-        db_path: Chemin vers la DB joueur pour résolution du gamertag.
-    """
-    me_name = (
-        display_name_from_xuid(xuid.strip(), db_path=db_path)
-        if str(xuid or "").strip()
-        else "(joueur)"
-    )
-
-    st.markdown(
-        get_hero_html(
-            player_name=me_name,
-            service_tag=assets.service_tag,
-            adornment_path=assets.adornment_path,
-            backdrop_path=assets.backdrop_path,
-            nameplate_path=assets.nameplate_path,
-            emblem_path=assets.emblem_path,
-        ),
-        unsafe_allow_html=True,
-    )

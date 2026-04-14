@@ -8,7 +8,7 @@ Architecture Ports & Adapters (hexagonale) :
 
 Exports :
     DataRepository  — contrat lecture données joueur
-    HaloAPIPort     — contrat client API Halo Infinite
+  HaloAPIPort     — contrat client API Halo Infinite
 """
 
 from src.ports.api import HaloAPIPort

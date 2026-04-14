@@ -2,7 +2,7 @@
 
 > [!WARNING]
 > Ne pas utiliser ce document seul.
-> Lire aussi [PLAN_MIGRATION_PYTHON_TO_GO.md](PLAN_MIGRATION_PYTHON_TO_GO.md), [MATRIX.md](MATRIX.md), [OPS_COMPAT_CHECKLIST.md](OPS_COMPAT_CHECKLIST.md) et [ZERO_PYTHON_STRATEGY.md](ZERO_PYTHON_STRATEGY.md).
+> Lire aussi [PLAN_MIGRATION_PYTHON_TO_GO_V2.md](PLAN_MIGRATION_PYTHON_TO_GO_V2.md), [MATRIX.md](MATRIX.md), [OPS_COMPAT_CHECKLIST.md](OPS_COMPAT_CHECKLIST.md) et [ZERO_PYTHON_STRATEGY.md](ZERO_PYTHON_STRATEGY.md).
 
 ## Role du document
 
@@ -47,15 +47,16 @@ Cette checklist suit l'avancement reel du chantier Go :
 | Ordre | Lot | Phase | Statut | Preuve attendue | Derniere mise a jour | Blocage / prochaine action |
 |------:|-----|-------|--------|-----------------|----------------------|----------------------------|
 | 0 | Prerequis : corpus de reference Go gele | Prerequis | `non_demarre` | facade web cible + contrats + golden values + matrice geles | 2026-04-14 | Formaliser le corpus de depart avant tout lot technique |
-| 1 | Sprint 0 : POC DuckDB, HTTP, MSAL | Sprint 0 | `non_demarre` | POC Windows/Linux valide + JSON bootstrap coherent | 2026-04-14 | Demarrer une fois le prerequis 0 explicite |
-| 2 | Phase 0.1 : freeze OpenAPI et contrats de reference | Phase 0 | `non_demarre` | schema versionne + contrats documentes | 2026-04-14 | Dependance : lot 1 |
-| 3 | Phase 0.2 : corpus golden values complet | Phase 0 | `non_demarre` | corpus rejouable couvrant surfaces prioritaires | 2026-04-14 | Dependance : lot 2 |
-| 4 | Phase 1.1-1.2 : squelette HTTP + repositories read-only | Phase 1 | `non_demarre` | service Go runnable + requetes critiques sous test | 2026-04-14 | Dependance : lots 2-3 |
-| 5 | Phase 1.3-1.4 : bootstrap, players, filters + verif parite | Phase 1 | `non_demarre` | 0 ecart non justifie sur le corpus Phase 1 | 2026-04-14 | Dependance : lot 4 |
-| 6 | Phase 2 : Career, History, Explorer, Match View | Phase 2 | `non_demarre` | parcours read-only prioritaires en parite utile | 2026-04-14 | Dependance : gate phase 1 |
-| 7 | Phase 3 : auth, session, settings, jobs persistants | Phase 3 | `non_demarre` | onboarding complet sans Python | 2026-04-14 | Dependance : gate phase 2 |
-| 8 | Phase 4 : sync, backfill, migrations, CLI, media | Phase 4 | `non_demarre` | cycle complet sync/backfill equivalent Python | 2026-04-14 | Dependance : gate phase 3 |
-| 9 | Phase 5 : bascule et extinction Python | Phase 5 | `non_demarre` | 3 cycles reels clean + runbook prod sans Python | 2026-04-14 | Dependance : gate phase 4 |
+| 1 | Phase 0.0 : modele canonique Halo + capability map par titre | Phase 0 | `non_demarre` | contrat canonique + matrice de capabilities versionnes | 2026-04-14 | A cadrer avant toute vraie implementation provider |
+| 2 | Sprint 0 : POC DuckDB, HTTP, MSAL | Sprint 0 | `non_demarre` | POC Windows/Linux valide + JSON bootstrap coherent | 2026-04-14 | Demarrer une fois le prerequis 0 explicite |
+| 3 | Phase 0.1 : freeze OpenAPI et contrats de reference | Phase 0 | `non_demarre` | schema versionne + contrats documentes | 2026-04-14 | Dependance : lots 1-2 |
+| 4 | Phase 0.2 : corpus golden values complet | Phase 0 | `non_demarre` | corpus rejouable couvrant surfaces prioritaires | 2026-04-14 | Dependance : lot 3 |
+| 5 | Phase 1.1-1.2 : squelette HTTP + repositories read-only | Phase 1 | `non_demarre` | service Go runnable + requetes critiques sous test | 2026-04-14 | Dependance : lots 3-4 |
+| 6 | Phase 1.3-1.4 : bootstrap, players, filters + verif parite | Phase 1 | `non_demarre` | 0 ecart non justifie sur le corpus Phase 1 | 2026-04-14 | Dependance : lot 5 |
+| 7 | Phase 2 : Career, History, Explorer, Match View | Phase 2 | `non_demarre` | parcours read-only prioritaires en parite utile | 2026-04-14 | Dependance : gate phase 1 |
+| 8 | Phase 3 : auth, session, settings, jobs persistants | Phase 3 | `non_demarre` | onboarding complet sans Python | 2026-04-14 | Dependance : gate phase 2 |
+| 9 | Phase 4 : sync, backfill, migrations, CLI, media | Phase 4 | `non_demarre` | cycle complet sync/backfill equivalent Python | 2026-04-14 | Dependance : gate phase 3 |
+| 10 | Phase 5 : bascule et extinction Python | Phase 5 | `non_demarre` | 3 cycles reels clean + runbook prod sans Python | 2026-04-14 | Dependance : gate phase 4 |
 
 ## Detail des lots par sprint (a derouler a l'ouverture de chaque phase)
 
@@ -63,13 +64,14 @@ Les lots ci-dessus sont a gros grain. Au moment de l'ouverture de chaque phase, 
 
 | Lot | Sprint | Statut | Preuve attendue | Derniere MAJ |
 |-----|--------|--------|-----------------|--------------|
+| Phase 0.0 : modele canonique Halo + capability map produit | Phase 0 | `non_demarre` | contrat canonique + capability map versionnes | 2026-04-14 |
 | Sprint 1.1 : squelette HTTP + config + middleware | Phase 1 | `non_demarre` | service Go runnable, `/health` OK | 2026-04-14 |
 | Sprint 1.2 : repositories read-only + pool DuckDB | Phase 1 | `non_demarre` | requetes Q1-Q16 sous test golden values | 2026-04-14 |
 | Sprint 1.3 : bootstrap, players, filters, career, history | Phase 1 | `non_demarre` | endpoints fonctionnels et compares | 2026-04-14 |
 | Sprint 1.4 : validation parite Phase 1 | Phase 1 | `non_demarre` | 0 ecart non justifie sur corpus | 2026-04-14 |
 | Sprint 2.1 : Explorer + Match View + killer/victim | Phase 2 | `non_demarre` | parcours explorer en parite | 2026-04-14 |
 | Sprint 2.2 : Stats/Series + sessions + perf score | Phase 2 | `non_demarre` | 5 onglets × 2 modes en parite | 2026-04-14 |
-| Sprint 2.3 : Accueil/Home + client HTTP 343i | Phase 2 | `non_demarre` | hero card + battle pass fonctionnels | 2026-04-14 |
+| Sprint 2.3 : Accueil/Home + socle provider Halo | Phase 2 | `non_demarre` | hero card + provider Halo live fonctionnels | 2026-04-14 |
 | Sprint 2.4 : Escouade + Synthese | Phase 2 | `non_demarre` | 13 sous-modules en parite | 2026-04-14 |
 | Sprint 2.5 : Citations + Medias | Phase 2 | `non_demarre` | galerie + citations en parite | 2026-04-14 |
 | Sprint 3.1 : session/cookies | Phase 3 | `non_demarre` | sessions persistantes fonctionnelles | 2026-04-14 |
@@ -88,8 +90,9 @@ Les lots ci-dessus sont a gros grain. Au moment de l'ouverture de chaque phase, 
 ## Blocages ouverts
 
 1. Aucun lot Go n'est ouvert tant que les preuves de faisabilite du Sprint 0 ne sont pas capturees.
-2. Le corpus de parite n'est pas encore centralise dans ce dossier.
-3. Les references documentaires ont ete isolees ici, mais les statuts doivent etre maintenus a partir du premier lot reel.
+2. Le modele canonique Halo et la capability map par titre ne sont pas encore figes dans le corpus de cadrage.
+3. Le corpus de parite n'est pas encore centralise dans ce dossier.
+4. Les references documentaires ont ete isolees ici, mais les statuts doivent etre maintenus a partir du premier lot reel.
 
 ## Regles de maintenance
 

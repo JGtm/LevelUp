@@ -32,10 +32,14 @@ Ce dossier introduit une hiérarchie plus lisible sans perdre le niveau de déta
 2. [DOC_GOVERNANCE.md](DOC_GOVERNANCE.md)
 3. [ZERO_PYTHON_TARGET.md](ZERO_PYTHON_TARGET.md)
 4. [PORTING_REFERENCE.md](PORTING_REFERENCE.md)
+5. [HALO_CANONICAL_MODEL.md](HALO_CANONICAL_MODEL.md)
+6. [HALO_INFINITE_CAPABILITY_MAP.md](HALO_INFINITE_CAPABILITY_MAP.md)
+7. [HALO_BOOTSTRAP_CONTRACT.md](HALO_BOOTSTRAP_CONTRACT.md)
+8. [HALO_GO_TYPE_BLUEPRINT.md](HALO_GO_TYPE_BLUEPRINT.md)
 
 ### Références exhaustives locales
 
-1. [PLAN_MIGRATION_PYTHON_TO_GO.md](PLAN_MIGRATION_PYTHON_TO_GO.md)
+1. [PLAN_MIGRATION_PYTHON_TO_GO_V2.md](PLAN_MIGRATION_PYTHON_TO_GO_V2.md)
 2. [ZERO_PYTHON_STRATEGY.md](ZERO_PYTHON_STRATEGY.md)
 3. [MATRIX.md](MATRIX.md)
 4. [OPS_COMPAT_CHECKLIST.md](OPS_COMPAT_CHECKLIST.md)
@@ -55,10 +59,14 @@ Les fichiers originaux sont conservés comme archive de la première itération 
 
 | Sujet | Vue d'ensemble | Référence exhaustive locale |
 |-------|----------------|----------------------------|
-| Vision, périmètre, méthode, phases, gates | [PROGRAM_CHARTER.md](PROGRAM_CHARTER.md) | [PLAN_MIGRATION_PYTHON_TO_GO.md](PLAN_MIGRATION_PYTHON_TO_GO.md) |
+| Vision, périmètre, méthode, phases, gates | [PROGRAM_CHARTER.md](PROGRAM_CHARTER.md) | [PLAN_MIGRATION_PYTHON_TO_GO_V2.md](PLAN_MIGRATION_PYTHON_TO_GO_V2.md) |
 | Gouvernance documentaire | [DOC_GOVERNANCE.md](DOC_GOVERNANCE.md) | ce dossier |
 | Cible finale zéro Python | [ZERO_PYTHON_TARGET.md](ZERO_PYTHON_TARGET.md) | [ZERO_PYTHON_STRATEGY.md](ZERO_PYTHON_STRATEGY.md) |
-| Inventaire métier et oracles de parité | [PORTING_REFERENCE.md](PORTING_REFERENCE.md) | [PLAN_MIGRATION_PYTHON_TO_GO.md](PLAN_MIGRATION_PYTHON_TO_GO.md) |
+| Inventaire métier et oracles de parité | [PORTING_REFERENCE.md](PORTING_REFERENCE.md) | [PLAN_MIGRATION_PYTHON_TO_GO_V2.md](PLAN_MIGRATION_PYTHON_TO_GO_V2.md) |
+| Modèle canonique Halo | [HALO_CANONICAL_MODEL.md](HALO_CANONICAL_MODEL.md) | [HALO_CANONICAL_MODEL.md](HALO_CANONICAL_MODEL.md) |
+| Capability map Halo Infinite | [HALO_INFINITE_CAPABILITY_MAP.md](HALO_INFINITE_CAPABILITY_MAP.md) | [HALO_INFINITE_CAPABILITY_MAP.md](HALO_INFINITE_CAPABILITY_MAP.md) |
+| Contrat bootstrap Halo | [HALO_BOOTSTRAP_CONTRACT.md](HALO_BOOTSTRAP_CONTRACT.md) | [HALO_BOOTSTRAP_CONTRACT.md](HALO_BOOTSTRAP_CONTRACT.md) |
+| Blueprint types Go canoniques | [HALO_GO_TYPE_BLUEPRINT.md](HALO_GO_TYPE_BLUEPRINT.md) | [HALO_GO_TYPE_BLUEPRINT.md](HALO_GO_TYPE_BLUEPRINT.md) |
 | Couverture package/script/commande | [MATRIX.md](MATRIX.md) | [MATRIX.md](MATRIX.md) |
 | Compat runtime, auth, jobs, packaging | [OPS_COMPAT_CHECKLIST.md](OPS_COMPAT_CHECKLIST.md) | [OPS_COMPAT_CHECKLIST.md](OPS_COMPAT_CHECKLIST.md) |
 | Ordre d'exécution détaillé par sprint | [SPRINT_ROADMAP.md](SPRINT_ROADMAP.md) | [SPRINT_ROADMAP.md](SPRINT_ROADMAP.md) |
@@ -72,6 +80,11 @@ Les fichiers originaux sont conservés comme archive de la première itération 
 | Déploiement cible, runbook et migration utilisateur | [OPS_COMPAT_CHECKLIST.md](OPS_COMPAT_CHECKLIST.md) | packaging, sessions, cache MSAL, compat utilisateur existante |
 | Multi-joueurs et pools par gamertag | [PORTING_REFERENCE.md](PORTING_REFERENCE.md) | isole correctement les DB player et les write leases |
 | Couverture métier complémentaire : i18n, PvE, bitmask, Discord, media indexing | [PORTING_REFERENCE.md](PORTING_REFERENCE.md) | évite un portage concentré uniquement sur les écrans P1 |
+| Architecture API multi-titre Halo | [PORTING_REFERENCE.md](PORTING_REFERENCE.md) | garde une façade produit stable si un nouveau jeu Halo remplace Infinite |
+| Modèle canonique Halo | [HALO_CANONICAL_MODEL.md](HALO_CANONICAL_MODEL.md) | fixe la frontière entre provider, produit et analytics métier |
+| Capability map `halo_infinite` | [HALO_INFINITE_CAPABILITY_MAP.md](HALO_INFINITE_CAPABILITY_MAP.md) | rend explicites les surfaces supportées, dégradées ou absentes |
+| Contrat bootstrap Halo | [HALO_BOOTSTRAP_CONTRACT.md](HALO_BOOTSTRAP_CONTRACT.md) | fixe ce que le consommateur doit savoir au démarrage, sans exposer la mécanique 343i |
+| Blueprint types Go | [HALO_GO_TYPE_BLUEPRINT.md](HALO_GO_TYPE_BLUEPRINT.md) | prépare les structs et interfaces cibles sans coder trop tôt |
 | Zéro Python et extinction des bridges | [ZERO_PYTHON_TARGET.md](ZERO_PYTHON_TARGET.md) | garde la cible finale visible pendant tout le programme |
 | Arbitrages de pilotage solo et kill switches | [PROGRAM_CHARTER.md](PROGRAM_CHARTER.md) | évite de transformer le chantier en tunnel sans preuve ni seuil d'arrêt |
 
@@ -80,14 +93,17 @@ Les fichiers originaux sont conservés comme archive de la première itération 
 1. Vérifier qu'une ligne existe dans [MATRIX.md](MATRIX.md) et dans [GO_MIGRATION_CHECKLIST.md](GO_MIGRATION_CHECKLIST.md).
 2. Identifier le contrat observable, l'oracle Python et le corpus de vérification.
 3. Vérifier [OPS_COMPAT_CHECKLIST.md](OPS_COMPAT_CHECKLIST.md) si le lot touche auth, jobs, runtime, packaging ou migration utilisateur.
-4. N'ouvrir un lot qu'avec un gate de sortie explicite.
-5. Reporter toute décision structurante dans [../thought_log.md](../thought_log.md).
+4. Si le lot touche l'intégration Halo, vérifier aussi le modèle canonique, la matrice de capabilities par titre et la politique de dégradation dans [PORTING_REFERENCE.md](PORTING_REFERENCE.md).
+5. N'ouvrir un lot qu'avec un gate de sortie explicite.
+6. Reporter toute décision structurante dans [../thought_log.md](../thought_log.md).
 
 ## Prochaines actions concrètes
 
 1. Rendre explicite le prérequis 0 : corpus de référence Go gelé, contrats, golden values, matrice.
-2. Exécuter le Sprint 0 comme filtre de faisabilité, pas comme début de production.
-3. Ne lancer aucun lot de Phase 1 tant que le résultat du Sprint 0 n'est pas capturé noir sur blanc.
+2. Détailler le mapping documentaire `titles/haloinfinite -> canonical` pour préparer le futur provider sans écrire encore de code.
+3. Détailler l'adaptateur `canonical -> bootstrap/OpenAPI` pour éviter que les handlers Go n'inventent leur propre contrat.
+4. Exécuter le Sprint 0 comme filtre de faisabilité, pas comme début de production.
+5. Ne lancer aucun lot de Phase 1 tant que le résultat du Sprint 0 n'est pas capturé noir sur blanc.
 
 ## Règle de maintenance
 
@@ -96,6 +112,6 @@ Le dossier v2 assume désormais deux couches distinctes.
 La règle est simple :
 
 1. les vues d'ensemble vivent dans [PROGRAM_CHARTER.md](PROGRAM_CHARTER.md), [PORTING_REFERENCE.md](PORTING_REFERENCE.md) et [ZERO_PYTHON_TARGET.md](ZERO_PYTHON_TARGET.md) ;
-2. les références exhaustives locales vivent dans [PLAN_MIGRATION_PYTHON_TO_GO.md](PLAN_MIGRATION_PYTHON_TO_GO.md), [ZERO_PYTHON_STRATEGY.md](ZERO_PYTHON_STRATEGY.md), [MATRIX.md](MATRIX.md), [OPS_COMPAT_CHECKLIST.md](OPS_COMPAT_CHECKLIST.md), [SPRINT_ROADMAP.md](SPRINT_ROADMAP.md) et [GO_MIGRATION_CHECKLIST.md](GO_MIGRATION_CHECKLIST.md) ;
+2. les références exhaustives locales vivent dans [PLAN_MIGRATION_PYTHON_TO_GO_V2.md](PLAN_MIGRATION_PYTHON_TO_GO_V2.md), [ZERO_PYTHON_STRATEGY.md](ZERO_PYTHON_STRATEGY.md), [MATRIX.md](MATRIX.md), [OPS_COMPAT_CHECKLIST.md](OPS_COMPAT_CHECKLIST.md), [SPRINT_ROADMAP.md](SPRINT_ROADMAP.md) et [GO_MIGRATION_CHECKLIST.md](GO_MIGRATION_CHECKLIST.md) ;
 3. l'archive d'origine reste conservée dans [../go_migration](../go_migration), mais ne doit plus être nécessaire pour travailler ;
 4. si une information change les invariants du programme, la vue d'ensemble et la référence exhaustive locale doivent être réalignées ensemble.

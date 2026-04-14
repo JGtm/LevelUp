@@ -25,6 +25,7 @@ Il vise un produit exécutable sans runtime Python dans son chemin critique.
 3. Le packaging final repose sur un binaire Go et ses artefacts web, pas sur une stack Python embarquée.
 4. Les tests de parité peuvent rester en Python pendant la transition, tant qu'ils ne font pas partie du chemin d'exécution du produit.
 5. `src/ai/` peut rester Python comme outillage développeur, mais ne doit jamais redevenir une dépendance du runtime produit.
+6. Le remplacement de SPNKr ne doit pas durcir le produit sur Halo Infinite uniquement : le runtime Go garde un socle provider Halo générique et des adaptateurs par titre.
 
 ## Surfaces à faire sortir du chemin produit
 

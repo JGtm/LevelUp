@@ -10,6 +10,7 @@ Usage:
     # Backend explicite
     async with create_api_client(backend="spnkr", tokens=tokens) as client:
         ...
+
 """
 
 from __future__ import annotations

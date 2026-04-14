@@ -15,9 +15,8 @@ import json as _json
 import logging
 import os
 import unicodedata
+from functools import lru_cache
 from typing import Any
-
-import streamlit as st
 
 from src.ui.i18n import get_lang, t
 from src.utils.paths import REPO_ROOT
@@ -68,12 +67,11 @@ def _parse_tier_targets(csv_targets: str | None) -> list[dict[str, Any]]:
     return result
 
 
-@st.cache_data(show_spinner=False, ttl=300)
+@lru_cache(maxsize=1)
 def _load_citations_from_db() -> list[dict[str, Any]]:
     """Charge toutes les citations activées depuis ``citation_mappings``.
 
-    Délègue à ``src.data.citation_definitions.load_citation_definitions()``
-    avec un cache Streamlit (TTL 300s).
+    Délègue à ``src.data.citation_definitions.load_citation_definitions()``.
     """
     from src.data.citation_definitions import load_citation_definitions
 
@@ -149,7 +147,7 @@ def _img_src(image_path: str | None) -> str | None:
     return None
 
 
-@st.cache_data(show_spinner=False)
+@lru_cache(maxsize=512)
 def _img_data_uri(abs_path: str, mtime: float | None = None) -> str | None:
     """Génère un data-URI base64 pour une image locale."""
     _ = mtime
@@ -205,6 +203,8 @@ def _render_citation_row(
     is_filtered: bool,
 ) -> None:
     """Affiche une grille de citations (cols_per_row colonnes par rangée)."""
+    import streamlit as st  # lazy — rendu Streamlit uniquement
+
     cols = st.columns(cols_per_row)
     for i, item in enumerate(items):
         col = cols[i % cols_per_row]
@@ -297,6 +297,8 @@ def render_h5g_commendations_section(  # noqa: C901, PLR0912, PLR0915
         filtered_match_ids: IDs des matchs filtrés (pour delta). ``None`` = pas de filtre.
         all_match_ids: IDs de tous les matchs. ``None`` = agrège tout sans filtre.
     """
+    import streamlit as st  # lazy — rendu Streamlit uniquement
+
     from src.analysis.citations.engine import CitationEngine
 
     # ── 1. Charger les citations depuis metadata.duckdb ─────────────────

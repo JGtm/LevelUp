@@ -218,6 +218,10 @@ data/
 | `.ai/DATA_KILLER_VICTIM.md` | Guide killer/victim et antagonistes |
 | `.ai/DATA_MATCH_RANK.md` | Rang d'un joueur lors d'un match (API vs recalcul, tie-breaker) |
 | `.ai/MIGRATION_MASTER.md` | Point d'entrée unique du chantier FastAPI/React, avec état courant, priorités MVP et navigation vers les sous-docs de migration |
+| `.ai/go_migration_v2/HALO_CANONICAL_MODEL.md` | Contrat canonique Halo entre provider de titre, produit LevelUp et analytics métier |
+| `.ai/go_migration_v2/HALO_INFINITE_CAPABILITY_MAP.md` | Capability map initiale mono-titre pour `halo_infinite`, avec projection bootstrap minimale |
+| `.ai/go_migration_v2/HALO_BOOTSTRAP_CONTRACT.md` | Contrat produit du bloc `halo` dans le bootstrap : titre, provider, capabilities et limitations utiles au consommateur |
+| `.ai/go_migration_v2/HALO_GO_TYPE_BLUEPRINT.md` | Projection documentaire des structs, enums et interfaces Go canoniques avant implémentation |
 | `.ai/migration/` | Corpus de migration FastAPI/React découpé par sujet : décisions, invariants, parité, slices, contrats API, audit de codebase |
 | `.ai/PLAN_MIGRATION_FASTAPI_REACT.md` | Audit exhaustif + plan de migration Streamlit vers FastAPI/React, avec perimetre fige, matrice de parite, contrats API MVP, extraction du state model, structure cible du repo, delivery par slices, cohabitation front, auth/session, tests de parite et pilotage par metriques |
 | `.ai/go_migration/` | Corpus isole du chantier Python -> Go : plan maitre, checklist, matrice, compat ops et strategie zero Python |

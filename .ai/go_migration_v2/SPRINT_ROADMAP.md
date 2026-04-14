@@ -37,7 +37,7 @@
 | 7 | Validation de parité Phase 1 | Phase 1 | 2-3j | ⬜ | Sprint 6 |
 | 8 | Explorer + Match View + killer/victim | Phase 2 | 5-7j | ⬜ | Gate Phase 1 |
 | 9 | Stats/Séries + sessions + perf score | Phase 2 | 7-10j | ⬜ | Sprint 8 |
-| 10 | Accueil/Home + client HTTP 343i | Phase 2 | 5-7j | ⬜ | Sprint 8 |
+| 10 | Accueil/Home + socle provider Halo | Phase 2 | 5-7j | ⬜ | Sprint 8 |
 | 11 | Escouade + Synthèse | Phase 2 | 7-10j | ⬜ | Sprint 8 |
 | 12 | Citations + Médias | Phase 2 | 4-6j | ⬜ | Sprint 8 |
 | 13 | Session / cookies | Phase 3 | 3-4j | ⬜ | Gate Phase 2 |
@@ -114,10 +114,14 @@
 | 3 | Identifier les cas limites (0 match, joueur sans médailles, match PvE) | ⬜ |
 | 4 | Lister les 28+ endpoints à porter avec leur priorité | ⬜ |
 | 5 | Définir les DoD (Definition of Done) par sprint pour Phases 1–5 | ⬜ |
+| 6 | Définir le modèle canonique Halo produit (identity, history, match, career, assets, films, erreurs) | ⬜ |
+| 7 | Définir la matrice de capabilities par titre pour chaque surface produit | ⬜ |
+| 8 | Documenter la politique de dégradation si une capability est absente ou partielle | ⬜ |
 
 ### Critère de sortie
 - Schéma OpenAPI versionné et committé
 - Chaque endpoint a un contrat explicite (entrée/sortie/erreurs)
+- Modèle canonique Halo et capability map versionnés
 
 ---
 
@@ -219,11 +223,13 @@
 | 3 | POST /players/{slug}/filters/resolve : résolution cascade complète | ⬜ |
 | 4 | GET /pages/career, /career/top-matches, /career/encounters | ⬜ |
 | 5 | POST /pages/match-history/query : paginé, trié, filtré | ⬜ |
-| 6 | Tests de parité endpoint par endpoint (JSON diff) | ⬜ |
+| 6 | Exposer dans le bootstrap le titre courant et la capability map produit | ⬜ |
+| 7 | Tests de parité endpoint par endpoint (JSON diff) | ⬜ |
 
 ### Critère de sortie
 - Endpoints fonctionnels, JSON de sortie comparé au Python
 - Résolution cascade identique (mêmes match_ids retournés)
+- Bootstrap capable d'annoncer proprement les capabilities du titre courant
 
 ---
 
@@ -293,15 +299,15 @@
 
 ---
 
-## Sprint 10 — Accueil/Home + client HTTP 343i (5–7 jours)
+## Sprint 10 — Accueil/Home + socle provider Halo (5–7 jours)
 
 > **Phase 2 — Parcours read-only complets**
-> **Objectif** : premier appel API live 343i depuis Go.
+> **Objectif** : premier appel live via le socle provider Halo et le provider du titre courant.
 
 | # | Tâche | Statut |
 |--:|-------|:------:|
 | 1 | Hero card (agglomération career + last match) | ⬜ |
-| 2 | Client HTTP Go vers 343i : `pkg/haloinfinite/` squelette | ⬜ |
+| 2 | Socle provider Go + provider Halo Infinite : squelette réseau, auth et endpoints | ⬜ |
 | 3 | Rate limiting 60 req/min + retry exponentiel | ⬜ |
 | 4 | Battle Pass + Challenges via API live | ⬜ |
 | 5 | Timeline (5 derniers matchs) | ⬜ |
@@ -310,7 +316,7 @@
 
 ### Critère de sortie
 - Page Accueil fonctionnelle
-- Client HTTP 343i avec rate limit + retry testé sur fixtures
+- Socle provider Halo avec rate limit + retry testé sur fixtures
 
 ---
 
@@ -352,7 +358,7 @@
 ### Gate Phase 2
 - [ ] 41 tests Playwright passent avec le backend Go
 - [ ] Tous les parcours read-only en parité
-- [ ] Client HTTP 343i fonctionnel avec rate limit
+- [ ] Socle provider Halo fonctionnel avec rate limit
 - [ ] → **Passage à Phase 3 autorisé**
 
 ---

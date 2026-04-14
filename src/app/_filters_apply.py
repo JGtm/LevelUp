@@ -13,7 +13,6 @@ from src.app._filters_shared import safe_to_date as _safe_to_date
 from src.app.helpers import normalize_map_label, normalize_mode_label
 from src.app.session_keys import SK
 from src.ui import translate_pair_name, translate_playlist_name
-from src.ui.cache import cached_compute_sessions_db
 from src.ui.i18n import get_lang
 from src.ui.translations import resolve_map_display_names
 from src.ui.vectorize_helpers import build_mapping
@@ -95,6 +94,8 @@ def apply_filters(  # noqa: C901, PLR0912, PLR0913, PLR0915
             if _bsu is not None and not _bsu.is_empty():
                 base_s = _bsu
             elif db_path and xuid:
+                from src.ui.cache import cached_compute_sessions_db  # noqa: PLC0415
+
                 base_s = _to_polars(
                     cached_compute_sessions_db(
                         db_path,

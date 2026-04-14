@@ -1,5 +1,120 @@
 # Thought Log
 
+## [2026-04-14] docs(go-migration-v2): contrat bootstrap Halo et blueprint de types Go
+
+**Statut** : Complété
+
+**Tâche** : Continuer le cadrage documentaire après le modèle canonique et la capability map, en matérialisant la projection bootstrap et la forme cible des types Go canoniques.
+
+**Décisions techniques principales** :
+- Création de `HALO_BOOTSTRAP_CONTRACT.md` pour définir la portion `halo` du bootstrap produit : titre, provider, version de schéma, capabilities et limitations utiles au consommateur.
+- Le bootstrap Halo reste volontairement produit-oriented : il n'expose ni endpoints Waypoint, ni URLs externes, ni détails de mécanique provider sans impact consommateur.
+- Création de `HALO_GO_TYPE_BLUEPRINT.md` pour figer la forme cible des structs, enums et interfaces Go canoniques avant toute implémentation.
+- Correction en parallèle d'une incohérence structurelle du corpus v2 : les liens internes pointaient encore vers `PLAN_MIGRATION_PYTHON_TO_GO.md` alors que le fichier local réel est `PLAN_MIGRATION_PYTHON_TO_GO_V2.md`.
+
+**Résultats observés** :
+- Le prérequis documentaire Phase 0 est désormais plus opérationnel : modèle, capabilities, bootstrap et types Go sont tous matérialisés.
+- Le corpus v2 est plus cohérent et navigable, sans liens cassés vers un plan local inexistant.
+
+**Conclusion / prochaine étape** :
+- La suite utile est de décliner soit les adapters OpenAPI depuis ces types canoniques, soit la stratégie de mapping `titles/haloinfinite -> canonical` toujours au niveau documentaire.
+
+## [2026-04-14] docs(go-migration-v2): création du modèle canonique Halo et de la capability map Halo Infinite
+
+**Statut** : Complété
+
+**Tâche** : Produire les deux livrables documentaires annoncés dans le plan v2 : le modèle canonique Halo et la capability map initiale limitée à Halo Infinite.
+
+**Décisions techniques principales** :
+- Création de `HALO_CANONICAL_MODEL.md` comme contrat de frontière entre provider Halo, services produit et analytics métier.
+- Le modèle canonique reste orienté produit, sépare explicitement les surfaces natives des dérivés LevelUp et formalise les objets minimaux : identité, assets, history, match detail, skill snapshot, films, carrière, limitations.
+- Création de `HALO_INFINITE_CAPABILITY_MAP.md` comme capability map mono-titre non spéculative pour `halo_infinite`.
+- La map distingue `supporte`, `degrade`, `non_expose` et `hors_scope`, puis formalise une projection bootstrap minimale annonçant titre, provider et capabilities produit.
+- Le corpus v2 a été raccordé à ces deux nouveaux documents depuis `README.md`, `PORTING_REFERENCE.md` et le plan principal v2.
+
+**Résultats observés** :
+- Le prérequis Phase 0.0 n'est plus seulement mentionné dans le plan ; il existe maintenant comme deux documents de travail concrets.
+- Le cadrage multi-titre reste prudent : aucune hypothèse sur un autre Halo n'a été inventée.
+- Les limitations connues de Halo Infinite sont désormais traduites en statuts explicites au niveau capability map.
+
+**Conclusion / prochaine étape** :
+- La suite utile est soit de décliner cette capability map dans le bootstrap contractuel cible, soit de commencer à identifier les types Go concrets qui implémenteront le modèle canonique lors du vrai démarrage du chantier.
+
+## [2026-04-14] docs(go-migration-v2): correction du plan principal v2 sur capability map et bootstrap
+
+**Statut** : Complété
+
+**Tâche** : Corriger un décalage documentaire : les ajouts sur la capability map mono-titre et le bootstrap minimal avaient été posés sur le plan original au lieu du plan principal v2.
+
+**Décisions techniques principales** :
+- Le plan principal v2 intègre désormais explicitement la préparation documentaire multi-titre en version non spéculative.
+- La capability map y est cadrée comme mono-titre `halo_infinite` tant qu'aucune information fiable n'existe sur un autre jeu.
+- Le bootstrap cible y est défini comme un contrat produit minimal annonçant titre courant, provider courant et capabilities utiles, sans exposer la mécanique 343i.
+
+**Résultats observés** :
+- Le corpus v2 redevient cohérent avec les décisions déjà prises, sans dépendre d'un ajout resté seulement dans l'original.
+- La source de vérité documentaire du chantier Go côté v2 est de nouveau alignée avec l'intention du user.
+
+**Conclusion / prochaine étape** :
+- Si l'on poursuit, la prochaine production utile reste un document dédié au modèle canonique Halo, puis une capability map Halo Infinite uniquement.
+
+## [2026-04-14] docs(go-migration): capability map et bootstrap gardes, mais sans speculation hors Halo Infinite
+
+**Statut** : Complété
+
+**Tâche** : Trancher si la matrice de capabilities et sa future exposition via bootstrap restent pertinentes alors que seule la surface Halo Infinite est connue de façon fiable.
+
+**Décisions techniques principales** :
+- Oui, les deux restent pertinents dans le plan Go, mais sous une forme strictement non spéculative.
+- La capability map initiale documente uniquement `halo_infinite` et les surfaces produit effectivement connues ; aucun tableau fictif pour d'autres titres n'est ajouté.
+- L'exposition via bootstrap est conservée comme contrat produit minimal, pour annoncer le titre courant, le provider courant et les capabilities utiles sans exposer les détails 343i.
+- Le plan principal intègre maintenant explicitement cette règle de cadrage ainsi que son rattachement aux phases 0 et 1.
+
+**Résultats observés** :
+- Le plan garde le bénéfice architectural recherché sans prétendre connaître le prochain Halo.
+- Le futur backend Go pourra dégrader proprement certaines surfaces sans recoder des hypothèses implicites partout.
+
+**Conclusion / prochaine étape** :
+- La suite logique est de produire le document concret du modèle canonique Halo, puis la capability map mono-titre associée à `halo_infinite`.
+
+## [2026-04-14] docs(go-migration): recentrage en preparation documentaire pure pour l'API multi-titre
+
+**Statut** : Complété
+
+**Tâche** : Préparer l'adaptation future au prochain Halo uniquement au niveau du plan de migration, sans engager de changements code sur l'API Python actuelle.
+
+**Décisions techniques principales** :
+- Recentrage explicite sur de la documentation et de la préparation : les abstractions code envisagées ne sont pas poursuivies dans cette passe.
+- Le corpus Go v1/v2 intègre maintenant un prérequis Phase 0.0 dédié au modèle canonique Halo et à la matrice de capabilities par titre.
+- La roadmap et la checklist sont alignées sur trois livrables de cadrage avant tout vrai code provider : modèle canonique, capability map et politique de dégradation.
+- Le Sprint 10 est renommé autour d'un socle provider Halo plutôt que d'un simple client HTTP 343i pour refléter le design visé.
+
+**Résultats observés** :
+- Le plan de migration prépare maintenant explicitement l'arrivée d'un futur titre Halo sans imposer de modification prématurée du code Python existant.
+- Les prochaines étapes sont mieux séquencées : d'abord cadrer le contrat canonique et les capabilities, ensuite seulement implémenter le provider Go.
+
+**Conclusion / prochaine étape** :
+- La prochaine passe utile est documentaire ou de design : produire le document concret du modèle canonique Halo et la capability map par surface produit avant l'ouverture d'un lot Go réel.
+
+## [2026-04-14] arch(api): préparation multi-titre Halo avec couche provider à 2 niveaux
+
+**Statut** : Complété
+
+**Tâche** : Préparer l'API LevelUp pour supporter un futur titre Halo sans casser la façade produit actuelle : orientation produit, provider de titre, mapping vers modèle canonique et isolation explicite des zones spécifiques au jeu.
+
+**Décisions techniques principales** :
+- Ajout dans le code Python d'une abstraction explicite de titre/provider : `HaloTitle`, `HaloTitleCapabilities`, `HaloProviderMetadata` et `HaloTitleProviderPort`.
+- `HaloAPIPort` reste le contrat produit canonique, mais il est désormais documenté comme port provider-agnostic ; `SPNKrAPIClient` déclare explicitement qu'il est un provider `spnkr` pour `halo_infinite`.
+- `create_api_client()` est préparée pour un dispatch à deux niveaux (`title` + `backend`) tout en restant compatible avec les call sites existants.
+- Le plan Go et la stratégie zéro Python sont alignés sur une architecture en 2 niveaux : socle public `pkg/haloapi/` + provider de titre `titles/haloinfinite/` + adaptateur interne LevelUp orienté produit.
+
+**Résultats observés** :
+- La façade API produit est mieux protégée contre un futur changement de jeu, d'endpoints ou de shape externe.
+- Les zones de variabilité sont maintenant nommées explicitement : auth Waypoint/XSTS, refdata, endpoints, films, skill, assets et constantes gameplay.
+
+**Conclusion / prochaine étape** :
+- Si le chantier Go s'ouvre réellement, l'étape naturelle suivante est d'extraire aussi les modèles canoniques hors de `src.data.sync.models` pour couper totalement la dépendance du port vers la couche sync.
+
 ## [2026-04-14] docs(go-migration): rétablissement du niveau de détail complet dans le corpus v2
 
 **Statut** : Complété

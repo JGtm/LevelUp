@@ -4,13 +4,13 @@
 > **Objectif dur** : le produit final ne contient **aucun runtime Python**, sauf un bridge
 > temporaire SPNKr qui sera éliminé avant la fin du programme.
 >
-> Ce document complète [PLAN_MIGRATION_PYTHON_TO_GO.md](PLAN_MIGRATION_PYTHON_TO_GO.md),
+> Ce document complète [PLAN_MIGRATION_PYTHON_TO_GO_V2.md](PLAN_MIGRATION_PYTHON_TO_GO_V2.md),
 > [MATRIX.md](MATRIX.md) et [OPS_COMPAT_CHECKLIST.md](OPS_COMPAT_CHECKLIST.md).
 > Il ne les remplace pas — il durcit la cible finale.
 
 ## Lecture obligatoire
 
-1. [PLAN_MIGRATION_PYTHON_TO_GO.md](PLAN_MIGRATION_PYTHON_TO_GO.md) — trajectoire, phases, gates, risques, décisions.
+1. [PLAN_MIGRATION_PYTHON_TO_GO_V2.md](PLAN_MIGRATION_PYTHON_TO_GO_V2.md) — trajectoire, phases, gates, risques, décisions.
 2. [MATRIX.md](MATRIX.md) — couverture package/script/commande.
 3. [OPS_COMPAT_CHECKLIST.md](OPS_COMPAT_CHECKLIST.md) — compat auth/jobs/packaging.
 
@@ -204,59 +204,78 @@ Des appels HTTP REST classiques avec :
 
 **SPNKr n'a rien de magique** — c'est un client HTTP Python avec retry et parsing JSON. Tout est reproductible en ~500-800 lignes de Go.
 
-### Décision d'architecture : client API Halo = package public séparé
+### Décision d'architecture : API Halo en 2 niveaux
 
-> **Décision** : le client Go qui remplace SPNKr est un **package public** (`pkg/haloinfinite/`),
-> pas un package `internal/`. Il est conçu dès le départ pour être extractible en module Go
-> indépendant (équivalent Go de SPNKr pour la communauté Halo).
+> **Décision** : le remplacement de SPNKr est structuré en deux niveaux :
+> un **socle provider public** (`pkg/haloapi/`) et des **providers de titre**
+> (`pkg/haloapi/titles/haloinfinite/`, puis d'autres titres si nécessaire).
+> LevelUp consomme ensuite ces providers via un adaptateur interne orienté produit.
 
 #### Pourquoi un package public
 
-1. **Évolutivité** : quand 343i ajoute ou modifie des endpoints, le client évolue indépendamment de LevelUp.
-2. **Réutilisabilité** : le client peut être utilisé par d'autres projets Go Halo (bots Discord, outils stats, etc.).
-3. **Séparation des responsabilités** : le client ne connaît ni DuckDB ni LevelUp. Il fait du HTTP vers 343i, point.
-4. **Publication future** : le package peut devenir `github.com/{user}/haloinfinite-go` sans restructuration.
+1. **Évolutivité produit** : LevelUp garde une API interne stable même si Halo Infinite est remplacé par un autre titre.
+2. **Réutilisabilité** : le socle provider peut être utilisé par d'autres projets Go Halo sans embarquer LevelUp.
+3. **Séparation des responsabilités** : le socle gère le HTTP, l'auth et les endpoints ; le provider de titre gère le mapping ; LevelUp gère DuckDB et la logique métier.
+4. **Publication future** : le socle provider peut devenir un module public sans dépendance LevelUp.
 
 #### Architecture du package
 
 ```
 pkg/
-  haloinfinite/
-    client.go           # Client principal, rate limiter, retry
-    client_options.go   # Options fonctionnelles (WithHTTPClient, WithRateLimiter, etc.)
-    endpoints.go        # Registre centralisé d'endpoints (URLs, paths, versions)
-    auth.go             # Échange tokens : MSAL → XBL → XSTS → Spartan → Clearance
-    auth_models.go      # TokenSet, DeviceCodePending, etc.
-    stats.go            # Endpoints stats (match history, match details, skill)
-    discovery.go        # Endpoints discovery (maps, playlists, game variants)
-    economy.go          # Endpoints economy (battle pass, challenges, customization)
-    ugc.go              # Endpoints UGC (films, chunks)
-    models.go           # Structs de réponse partagées
-    errors.go           # Types d'erreur (RateLimited, Unauthorized, etc.)
+   haloapi/
+      client.go           # Client principal, rate limiter, retry
+      client_options.go   # Options fonctionnelles (WithHTTPClient, WithRateLimiter, etc.)
+      endpoints.go        # Registre centralisé d'endpoints (URLs, paths, versions)
+      auth.go             # Échange tokens : MSAL → XBL → XSTS → Spartan → Clearance
+      auth_models.go      # TokenSet, DeviceCodePending, etc.
+      provider.go         # Interface TitleProvider + capabilities
+      canonical.go        # Modèles canoniques (match, identity, career, assets)
+      errors.go           # Types d'erreur (RateLimited, Unauthorized, etc.)
+      titles/
+         haloinfinite/
+            provider.go     # Mapping Halo Infinite -> canonical
+            endpoints.go    # Endpoints et versions Halo Infinite
+            stats.go        # Match history, match details, skill
+            discovery.go    # Maps, playlists, game variants
+            economy.go      # Battle pass, challenges, customization
+            ugc.go          # Films, chunks
+            refdata.go      # Constantes et enums propres au titre
 ```
 
 #### Principes d'architecture du package
 
 1. **Registre d'endpoints centralisé** : toutes les URLs et paths 343i dans une struct `ServiceEndpoints` unique, modifiable pour tests (mock server) et overridable partiellement. Jamais de constantes magiques dispersées.
 2. **Options fonctionnelles** : construction du client via `NewClient(opts ...Option)` — extensible sans casser l'API.
-3. **Pas de DuckDB** — aucune persistance, aucun import de base de données.
-4. **Pas de logique LevelUp** — pas de performance score, pas de sessions, pas de citations.
-5. **Pas de cache applicatif** — le cache de tokens est géré par le consommateur (LevelUp), pas par le client.
-6. **Pas d'opinion sur le framework web** — utilisable avec Chi, Echo, Gin, ou sans framework.
+3. **Provider de titre explicite** : chaque titre mappe vers un modèle canonique unique avant exposition au produit.
+4. **Pas de DuckDB** — aucune persistance, aucun import de base de données.
+5. **Pas de logique LevelUp** — pas de performance score, pas de sessions, pas de citations.
+6. **Pas de cache applicatif** — le cache de tokens est géré par le consommateur (LevelUp), pas par le client.
+7. **Pas d'opinion sur le framework web** — utilisable avec Chi, Echo, Gin, ou sans framework.
 
 > Note : les exemples de code Go détaillés (structs, constructeurs, méthodes) seront produits au moment de l'implémentation (Sprint 3.2–4.1), pas dans ce document de cadrage.
 
 #### Relation avec LevelUp (`internal/`)
 
 ```
-pkg/haloinfinite/          ← Package public (client API Halo pur)
-internal/halo/             ← Adaptateur LevelUp (consomme le package public)
-  adapter.go               ← Implémente HaloAPIPort via pkg/haloinfinite
+pkg/haloapi/               ← Socle provider Halo public
+internal/halo/             ← Adaptateur LevelUp orienté produit
+   adapter.go               ← Implémente HaloAPIPort via pkg/haloapi
   token_cache.go           ← Gère le cache MSAL → DuckDB sync_meta
   rate_policy.go           ← Politiques retry spécifiques LevelUp
+   titles/
+      haloinfinite.go        ← Sélection du provider Halo Infinite
 ```
 
-L'adaptateur fait le pont : il gère le cache de tokens (DuckDB) et délègue les appels réseau au package public.
+L'adaptateur fait le pont : il gère le cache de tokens (DuckDB), sélectionne le provider de titre et délègue les appels réseau au socle public.
+
+### Préparation documentaire avant toute implémentation multi-titre
+
+Avant d'écrire le provider Go réel, cadrer et versionner :
+
+1. le modèle canonique Halo consommé par LevelUp ;
+2. la matrice de capabilities par titre et par surface produit ;
+3. le registre des zones spécifiques au jeu à isoler ;
+4. la politique de dégradation quand une surface n'est pas disponible sur un titre donné.
 
 ### Stratégie de remplacement en 3 phases
 
@@ -285,21 +304,22 @@ Temporaire. Utilisé uniquement pour les premiers appels API Halo live pendant q
 4. Le Go est propriétaire de l'auth (tokens) et les passe au bridge.
 5. Si le bridge tombe, Go doit signaler l'erreur clairement — pas de fallback silencieux.
 
-#### Phase B — Client Go `pkg/haloinfinite/` (Sprint 3.2–4.1)
+#### Phase B — Client Go `pkg/haloapi/` + provider `titles/haloinfinite/` (Sprint 3.2–4.1)
 
 Remplacement du bridge par le package Go public.
 
 **Modules à implémenter** :
-1. `pkg/haloinfinite/client.go` — Client HTTP avec rate limiter + retry exponentiel + options fonctionnelles
-2. `pkg/haloinfinite/endpoints.go` — Registre d'endpoints centralisé et modifiable
-3. `pkg/haloinfinite/auth.go` — Échange `access_token → XBL → XSTS → spartan + clearance`
-4. `pkg/haloinfinite/stats.go` — Match history, match stats, match skill, career rank
-5. `pkg/haloinfinite/discovery.go` — Maps, playlists, game variants
-6. `pkg/haloinfinite/economy.go` — Battle Pass, challenges, customization
-7. `pkg/haloinfinite/ugc.go` — Films, chunks binaires
-8. `pkg/haloinfinite/models.go` — Structs de réponse
-9. `pkg/haloinfinite/errors.go` — Types d'erreur typés (RateLimited, Unauthorized, etc.)
-10. `internal/halo/adapter.go` — Adaptateur LevelUp (cache tokens DuckDB, politiques métier)
+1. `pkg/haloapi/client.go` — Client HTTP avec rate limiter + retry exponentiel + options fonctionnelles
+2. `pkg/haloapi/endpoints.go` — Registre d'endpoints centralisé et modifiable
+3. `pkg/haloapi/auth.go` — Échange `access_token → XBL → XSTS → spartan + clearance`
+4. `pkg/haloapi/provider.go` — Interface provider + capability map
+5. `pkg/haloapi/canonical.go` — Modèles canoniques consommés par LevelUp
+6. `pkg/haloapi/titles/haloinfinite/stats.go` — Match history, match stats, match skill, career rank
+7. `pkg/haloapi/titles/haloinfinite/discovery.go` — Maps, playlists, game variants
+8. `pkg/haloapi/titles/haloinfinite/economy.go` — Battle Pass, challenges, customization
+9. `pkg/haloapi/titles/haloinfinite/ugc.go` — Films, chunks binaires
+10. `pkg/haloapi/titles/haloinfinite/refdata.go` — Constantes et spécificités du titre
+11. `internal/halo/adapter.go` — Adaptateur LevelUp (cache tokens DuckDB, politiques métier)
 
 **LOC estimées** : 800–1 200 lignes Go pour le package public + ~200 lignes pour l'adaptateur LevelUp.
 
@@ -328,9 +348,9 @@ Le bridge Python SPNKr est supprimé quand :
 
 Une fois le client stabilisé par l'usage LevelUp :
 
-1. Extraire `pkg/haloinfinite/` vers un repo `github.com/{user}/haloinfinite-go`
+1. Extraire `pkg/haloapi/` vers un repo `github.com/{user}/haloapi-go`
 2. Publier avec `go.mod` propre, README, exemples et tests
-3. LevelUp devient un consommateur du module via `go get github.com/{user}/haloinfinite-go`
+3. LevelUp devient un consommateur du module via `go get github.com/{user}/haloapi-go`
 4. Le repo LevelUp conserve uniquement `internal/halo/adapter.go`
 
 Cette extraction n'est **pas un prérequis** de la migration — c'est une opportunité post-migration.
@@ -370,7 +390,7 @@ La partie complexe n'est pas d'appeler les endpoints 343i — c'est d'obtenir le
 
 ### Implémentation Go
 
-L'implémentation Go reproduira cette chaîne à 5 étapes dans `pkg/haloinfinite/auth.go` : struct `TokenSet` (SpartanToken, ClearanceToken, ExpiresAt, XUID), méthode `ExchangeAccessToken(ctx, accessToken) → (*TokenSet, error)` qui enchaîne XBL → XSTS → Spartan → Clearance. Chaque méthode interne utilise `c.endpoints` pour résoudre les URLs — jamais de hardcode.
+L'implémentation Go reproduira cette chaîne à 5 étapes dans `pkg/haloapi/auth.go` : struct `TokenSet` (SpartanToken, ClearanceToken, ExpiresAt, XUID), méthode `ExchangeAccessToken(ctx, accessToken) → (*TokenSet, error)` qui enchaîne XBL → XSTS → Spartan → Clearance. Chaque méthode interne utilise `c.endpoints` pour résoudre les URLs — jamais de hardcode.
 
 > Note : le code Go détaillé sera produit au Sprint 3.2, pas dans ce document de cadrage.
 
@@ -561,7 +581,7 @@ Porter **tout** en Go (y compris les algorithmes complexes et SPNKr) demande plu
 |----------|----------|
 | Python en prod ? | **Non — zéro** |
 | SPNKr en prod ? | **Temporaire** — bridge étroit, éliminé Phase 4 |
-| SPNKr sera remplacé par quoi ? | Package Go public `pkg/haloinfinite/` (~1 000 LOC) |
+| SPNKr sera remplacé par quoi ? | Socle Go public `pkg/haloapi/` + provider `titles/haloinfinite/` |
 | Client API Halo : interne ou public ? | **Public** (`pkg/`) — extractible en module Go indépendant |
 | Endpoints 343i : hardcodés ? | **Non** — registre centralisé `ServiceEndpoints` modifiable |
 | Polars remplacé par quoi ? | SQL DuckDB natif + structs Go |

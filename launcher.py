@@ -70,7 +70,6 @@ from src.utils.launcher_startup import (  # noqa: E402
     _flush_stdin,
     _install_signal_handler,
     _launch_react,
-    _launch_streamlit,  # noqa: F401 — conservé pour rollback Streamlit
 )
 from src.utils.launcher_sync import (  # noqa: E402
     _cmd_info,

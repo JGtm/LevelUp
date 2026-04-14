@@ -24,7 +24,7 @@ Quand un document joue tous ces rôles, il devient précis mais difficile à pil
 | Charte du programme | [PROGRAM_CHARTER.md](PROGRAM_CHARTER.md) | backlog vivant, matrices, tables exhaustives |
 | Cible terminale zéro Python | [ZERO_PYTHON_TARGET.md](ZERO_PYTHON_TARGET.md) | détail module par module exhaustif |
 | Référence de portage | [PORTING_REFERENCE.md](PORTING_REFERENCE.md) | statut quotidien des lots |
-| Plan exhaustif du programme | [PLAN_MIGRATION_PYTHON_TO_GO.md](PLAN_MIGRATION_PYTHON_TO_GO.md) | micro-suivi quotidien |
+| Plan exhaustif du programme | [PLAN_MIGRATION_PYTHON_TO_GO_V2.md](PLAN_MIGRATION_PYTHON_TO_GO_V2.md) | micro-suivi quotidien |
 | Stratégie zéro Python exhaustive | [ZERO_PYTHON_STRATEGY.md](ZERO_PYTHON_STRATEGY.md) | résumé très court de position |
 | Couverture complète | [MATRIX.md](MATRIX.md) | suivi d'avancement détaillé |
 | Compat runtime / ops | [OPS_COMPAT_CHECKLIST.md](OPS_COMPAT_CHECKLIST.md) | reformulation générale des phases |
@@ -71,7 +71,7 @@ Il sert à :
 Si le chantier Go démarre réellement, la consolidation devrait suivre cet ordre :
 
 1. garder [README.md](README.md), [PROGRAM_CHARTER.md](PROGRAM_CHARTER.md), [ZERO_PYTHON_TARGET.md](ZERO_PYTHON_TARGET.md) et [PORTING_REFERENCE.md](PORTING_REFERENCE.md) comme couche d'entrée ;
-2. utiliser [PLAN_MIGRATION_PYTHON_TO_GO.md](PLAN_MIGRATION_PYTHON_TO_GO.md), [ZERO_PYTHON_STRATEGY.md](ZERO_PYTHON_STRATEGY.md), [MATRIX.md](MATRIX.md), [OPS_COMPAT_CHECKLIST.md](OPS_COMPAT_CHECKLIST.md), [SPRINT_ROADMAP.md](SPRINT_ROADMAP.md) et [GO_MIGRATION_CHECKLIST.md](GO_MIGRATION_CHECKLIST.md) comme références de travail détaillées ;
+2. utiliser [PLAN_MIGRATION_PYTHON_TO_GO_V2.md](PLAN_MIGRATION_PYTHON_TO_GO_V2.md), [ZERO_PYTHON_STRATEGY.md](ZERO_PYTHON_STRATEGY.md), [MATRIX.md](MATRIX.md), [OPS_COMPAT_CHECKLIST.md](OPS_COMPAT_CHECKLIST.md), [SPRINT_ROADMAP.md](SPRINT_ROADMAP.md) et [GO_MIGRATION_CHECKLIST.md](GO_MIGRATION_CHECKLIST.md) comme références de travail détaillées ;
 3. garder les originaux pour l'historique et la vérification, pas comme dépendances structurelles ;
 4. ne jamais réintroduire une version condensée comme seule source de vérité.
 

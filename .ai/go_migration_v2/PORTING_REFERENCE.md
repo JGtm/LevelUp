@@ -10,8 +10,10 @@ Il sert de mémo technique de haut niveau pour éviter deux écueils :
 1. replanifier le chantier à partir d'intuitions vagues ;
 2. enfouir les vrais invariants de portage au milieu d'un plan stratégique trop long.
 
-Le détail exhaustif local est dans [PLAN_MIGRATION_PYTHON_TO_GO.md](PLAN_MIGRATION_PYTHON_TO_GO.md).
+Le détail exhaustif local est dans [PLAN_MIGRATION_PYTHON_TO_GO_V2.md](PLAN_MIGRATION_PYTHON_TO_GO_V2.md).
 La cible runtime finale du produit est détaillée dans [ZERO_PYTHON_TARGET.md](ZERO_PYTHON_TARGET.md).
+Le modèle canonique et la capability map initiale sont figés dans [HALO_CANONICAL_MODEL.md](HALO_CANONICAL_MODEL.md) et [HALO_INFINITE_CAPABILITY_MAP.md](HALO_INFINITE_CAPABILITY_MAP.md).
+Le contrat bootstrap et le blueprint types Go sont détaillés dans [HALO_BOOTSTRAP_CONTRACT.md](HALO_BOOTSTRAP_CONTRACT.md) et [HALO_GO_TYPE_BLUEPRINT.md](HALO_GO_TYPE_BLUEPRINT.md).
 
 ## Surfaces produit prioritaires
 
@@ -39,6 +41,70 @@ Ces sujets ne doivent pas être perdus parce qu'ils ne sont pas tous visibles da
 | Media indexing | le produit dépend aussi du pipeline média, pas seulement des pages de stats | hash, ffprobe, association match, indexation et miniatures vérifiés |
 | Multi-joueurs | l'architecture réelle est organisée par joueur et par DB dédiée | pools par gamertag, isolation des lectures et write leases indépendants |
 | Archive Parquet | le cold storage reste une surface technique utile | lecture et écriture archive couvertes ou stratégie de report explicitement tracée |
+
+## Architecture API multi-titre à préserver
+
+Le remplacement de Halo Infinite par un futur titre ne doit pas forcer une réécriture de l'API produit.
+
+1. Orientation produit : les routes internes restent organisées par parcours utilisateur (bootstrap, history, explorer, match view, settings, sync), jamais par endpoints Waypoint.
+2. Provider de titre : l'intégration externe est en deux niveaux, avec un socle Halo générique pour transport/auth/rate limit/erreurs/registre d'endpoints, puis un provider par titre.
+3. Mapping canonique : chaque provider mappe son payload natif vers les modèles canoniques LevelUp avant toute logique métier ou exposition HTTP.
+4. Zones à isoler : auth Xbox/XSTS/Waypoint, refdata, assets discovery/economy, formules skill, films/chunks, événements, labels et URLs Waypoint spécifiques au jeu.
+5. Dégradation maîtrisée : si un futur titre n'expose pas exactement la même surface, l'API produit doit pouvoir désactiver ou dégrader une capability sans casser tout le contrat restant.
+
+## Préparation immédiate avant implémentation multi-titre
+
+Ces livrables doivent être figés pendant le cadrage, avant tout vrai code Go sur la couche Halo.
+
+Ils sont maintenant matérialisés dans :
+
+1. [HALO_CANONICAL_MODEL.md](HALO_CANONICAL_MODEL.md)
+2. [HALO_INFINITE_CAPABILITY_MAP.md](HALO_INFINITE_CAPABILITY_MAP.md)
+3. [HALO_BOOTSTRAP_CONTRACT.md](HALO_BOOTSTRAP_CONTRACT.md)
+4. [HALO_GO_TYPE_BLUEPRINT.md](HALO_GO_TYPE_BLUEPRINT.md)
+
+| Livrable | Contenu attendu | Rôle |
+|----------|-----------------|------|
+| Modèle canonique Halo | types produit stables pour identité, history, match detail, career, assets, films, erreurs | éviter qu'un provider dicte la forme du produit |
+| Matrice de capabilities | table titre × surfaces produit × niveau de support | décider ce qui est supporté, dégradé ou masqué |
+| Registre d'isolation | auth, refdata, endpoints, assets, skill, films, PvE, economy, URLs externes | empêcher la diffusion de détails Halo Infinite dans l'API produit |
+| Politique de dégradation | règles pour retourner une capability absente, partielle ou différée | garder l'API stable si un titre expose moins de données |
+
+### Contours du modèle canonique à préparer
+
+Le modèle canonique du futur portage Go doit au minimum couvrir :
+
+1. identité joueur et résolutions gamertag/xuid ;
+2. historique de matchs et pagination ;
+3. match détaillé avec skill, events et assets utiles ;
+4. progression carrière et compteurs agrégés ;
+5. accès films et chunks ;
+6. erreurs et limitations de provider exploitables côté produit.
+
+Le détail de ce cadrage est désormais figé dans [HALO_CANONICAL_MODEL.md](HALO_CANONICAL_MODEL.md).
+
+### Capability map à figer
+
+La capability map doit être versionnée et lisible avant la Phase 1. Elle doit au minimum décrire :
+
+1. historique de matchs ;
+2. détails match ;
+3. skill/MMR ;
+4. assets discovery ;
+5. customization/economy ;
+6. career rank ;
+7. films et extraction d'armes ;
+8. PvE / Firefight ;
+9. lookups d'identité bulk.
+
+La première version mono-titre de cette map est désormais figée dans [HALO_INFINITE_CAPABILITY_MAP.md](HALO_INFINITE_CAPABILITY_MAP.md).
+
+## Déclinaison documentaire du bootstrap et des types Go
+
+Deux documents complémentaires prolongent maintenant ce cadrage :
+
+1. [HALO_BOOTSTRAP_CONTRACT.md](HALO_BOOTSTRAP_CONTRACT.md) pour la projection produit de la capability map dans le bootstrap ;
+2. [HALO_GO_TYPE_BLUEPRINT.md](HALO_GO_TYPE_BLUEPRINT.md) pour la forme cible des structs et interfaces Go canoniques.
 
 ## Algorithmes critiques à porter avec oracle
 
@@ -135,7 +201,7 @@ La parité doit être démontrée avant le remplacement, pas discutée après co
 
 ## Quand relire le plan complet d'origine
 
-Relire [PLAN_MIGRATION_PYTHON_TO_GO.md](PLAN_MIGRATION_PYTHON_TO_GO.md) si tu as besoin :
+Relire [PLAN_MIGRATION_PYTHON_TO_GO_V2.md](PLAN_MIGRATION_PYTHON_TO_GO_V2.md) si tu as besoin :
 
 1. de la liste exhaustive des surfaces produit ;
 2. du détail complet des algorithmes et tables ;
