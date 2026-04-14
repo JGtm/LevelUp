@@ -83,6 +83,7 @@ export function MatchHistoryPage() {
             onPage={(p) => setPage(p)}
             onExport={handleExport}
             exporting={exportMutation.isPending}
+            playerSlug={playerSlug}
           />
         ) : null}
       </div>

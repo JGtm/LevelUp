@@ -1,60 +1,133 @@
 /**
  * CareerTopMatchesTable — tableau des meilleurs/pires matchs.
+ * A2/A3 NATIVE_COMPONENTS — colonnes K/D/A, badge typé, clic → Match View.
  */
+import { useNavigate, useParams } from '@tanstack/react-router'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import type { CareerTopMatch } from '@/lib/api/types'
 
 interface Props {
   items: CareerTopMatch[]
+  /** Si défini, n'affiche que ce variant */
+  variant?: 'best' | 'worst'
+  title?: string
+  playerSlug?: string
 }
 
-export function CareerTopMatchesTable({ items }: Props) {
+const BADGE_STYLE: Record<string, { label: string; color: string }> = {
+  dominant: { label: 'DOMINATION', color: '#00DC82' },
+  humiliation: { label: 'HUMILIATION', color: '#8B5CF6' },
+  remontada: { label: 'REMONTADA', color: '#0072B2' },
+  debacle: { label: 'DÉBÂCLE', color: '#D55E00' },
+  contre_remontada: { label: 'CONTRE-REMONTADA', color: '#33D6FF' },
+}
+
+function MatchBadge({ type }: { type: string | null }) {
+  if (!type) return null
+  const style = BADGE_STYLE[type]
+  if (!style) return <span className="text-xs text-gray-500">{type}</span>
+  return (
+    <span
+      className="rounded px-1.5 py-0.5 text-xs font-semibold text-white"
+      style={{ backgroundColor: style.color }}
+    >
+      {style.label}
+    </span>
+  )
+}
+
+export function CareerTopMatchesTable({ items, variant, title, playerSlug: slugProp }: Props) {
+  const navigate = useNavigate()
+  const params = useParams({ strict: false }) as { playerSlug?: string }
+  const playerSlug = slugProp ?? params.playerSlug ?? ''
+
+  const filtered = variant ? items.filter((m) => m.variant === variant) : items
+  const defaultTitle =
+    variant === 'worst' ? 'Pires matchs' : variant === 'best' ? 'Meilleurs matchs' : 'Top matchs'
+
+  function goToMatch(matchId: string) {
+    void navigate({
+      to: '/players/$playerSlug/explorer/matches/$matchId',
+      params: { playerSlug, matchId },
+    })
+  }
+
+  if (filtered.length === 0) {
+    return null
+  }
+
   return (
     <Card>
       <CardHeader>
-        <CardTitle className="text-base">Meilleurs matchs récents</CardTitle>
+        <CardTitle className="text-base">{title ?? defaultTitle}</CardTitle>
       </CardHeader>
       <CardContent>
         <div className="overflow-x-auto">
           <table className="w-full text-sm">
             <thead>
-              <tr className="border-b border-gray-100 text-xs font-medium text-gray-500">
+              <tr className="border-b border-gray-700 text-xs font-medium text-gray-400">
+                <th className="pb-2 text-left">#</th>
                 <th className="pb-2 text-left">Date</th>
                 <th className="pb-2 text-left">Carte / Mode</th>
+                <th className="pb-2 text-right">K</th>
+                <th className="pb-2 text-right">D</th>
+                <th className="pb-2 text-right">A</th>
+                <th className="pb-2 text-right">K/D</th>
                 <th className="pb-2 text-right">Score</th>
                 <th className="pb-2 text-right">Résultat</th>
-                <th className="pb-2 text-right">Perf.</th>
+                <th className="pb-2 text-left pl-3">Badge</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-gray-50">
-              {items.map((m) => (
-                <tr key={m.match_id} className="hover:bg-gray-50">
-                  <td className="py-1.5 text-gray-400">
-                    {m.start_time ? new Date(m.start_time).toLocaleDateString('fr-FR') : '—'}
+            <tbody className="divide-y divide-gray-800">
+              {filtered.map((m, idx) => (
+                <tr
+                  key={m.match_id}
+                  className="cursor-pointer transition-colors hover:bg-white/5"
+                  onClick={() => goToMatch(m.match_id)}
+                >
+                  <td className="py-1.5 text-gray-500 font-mono text-xs">{idx + 1}</td>
+                  <td className="py-1.5 text-gray-400 whitespace-nowrap">
+                    {m.start_time
+                      ? new Date(m.start_time).toLocaleDateString('fr-FR')
+                      : '—'}
                   </td>
                   <td className="py-1.5">
-                    <span className="font-medium text-gray-800">{m.map_ui ?? '—'}</span>
+                    <span className="font-medium text-white">{m.map_ui ?? '—'}</span>
                     {m.mode_ui && (
                       <span className="ml-1 text-xs text-gray-400">· {m.mode_ui}</span>
                     )}
                   </td>
-                  <td className="py-1.5 text-right text-gray-700">{m.score_label}</td>
-                  <td className="py-1.5 text-right">
-                    <Badge
-                      variant={
-                        m.outcome_label?.toLowerCase().includes('victoire')
-                          ? 'success'
-                          : m.outcome_label?.toLowerCase().includes('défaite')
-                          ? 'destructive'
-                          : 'secondary'
-                      }
-                    >
-                      {m.outcome_label}
-                    </Badge>
+                  <td className="py-1.5 text-right text-[#33D6FF] font-mono">
+                    {m.kills ?? '—'}
                   </td>
-                  <td className="py-1.5 text-right font-mono text-purple-700">
-                    {m.performance_score != null ? m.performance_score.toFixed(0) : '—'}
+                  <td className="py-1.5 text-right text-[#FF4B4B] font-mono">
+                    {m.deaths ?? '—'}
+                  </td>
+                  <td className="py-1.5 text-right text-gray-300 font-mono">
+                    {m.assists ?? '—'}
+                  </td>
+                  <td className="py-1.5 text-right font-mono text-gray-200">
+                    {m.kd_ratio != null ? m.kd_ratio.toFixed(1) : '—'}
+                  </td>
+                  <td className="py-1.5 text-right text-gray-300">{m.score_label ?? '—'}</td>
+                  <td className="py-1.5 text-right">
+                    {m.outcome_label && (
+                      <Badge
+                        variant={
+                          m.outcome_label.toLowerCase().includes('victoire')
+                            ? 'success'
+                            : m.outcome_label.toLowerCase().includes('défaite')
+                            ? 'destructive'
+                            : 'secondary'
+                        }
+                      >
+                        {m.outcome_label}
+                      </Badge>
+                    )}
+                  </td>
+                  <td className="py-1.5 pl-3">
+                    <MatchBadge type={m.badge_type} />
                   </td>
                 </tr>
               ))}

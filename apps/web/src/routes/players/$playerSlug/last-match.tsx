@@ -1,9 +1,9 @@
+/**
+ * Route /players/$playerSlug/last-match — Dernier match.
+ */
 import { createFileRoute } from '@tanstack/react-router'
+import { LastMatchPage } from '@/features/match-view/LastMatchPage'
 
 export const Route = createFileRoute('/players/$playerSlug/last-match')({
-  component: RouteComponent,
+  component: LastMatchPage,
 })
-
-function RouteComponent() {
-  return <div>Hello "/players/$playerSlug/last-match"!</div>
-}

@@ -90,8 +90,9 @@ def get_top_matches(
     worst = load_top_worst_matches(
         player.db_path, player.xuid, exclude_btb=exclude_btb, shared_db_path=player.shared_db_path
     )
-    items = [_match_dict_to_top_match(d) for d in best + worst]
-    return CareerTopMatchesResponse(items=items)
+    items_best = [_match_dict_to_top_match(d, variant="best") for d in best]
+    items_worst = [_match_dict_to_top_match(d, variant="worst") for d in worst]
+    return CareerTopMatchesResponse(items=items_best + items_worst)
 
 
 def get_encounters(player: PlayerContext) -> CareerEncountersResponse:
@@ -295,7 +296,7 @@ def _build_top_matches_preview(
             exclude_btb=exclude_btb,
             shared_db_path=player.shared_db_path,
         )
-        return [_match_dict_to_top_match(d) for d in matches[:5]]
+        return [_match_dict_to_top_match(d, variant="best") for d in matches[:5]]
     except Exception:
         logger.warning("Erreur chargement top matches preview", exc_info=True)
         return []
@@ -315,7 +316,7 @@ def _build_encounters_preview(player: PlayerContext) -> list[CareerEncounter]:
         return []
 
 
-def _match_dict_to_top_match(d: dict) -> CareerTopMatch:
+def _match_dict_to_top_match(d: dict, *, variant: str | None = None) -> CareerTopMatch:
     """Convertit un dict de match brut en CareerTopMatch."""
     outcome_code = d.get("outcome") or 0
     outcome_label = _OUTCOME_LABELS.get(int(outcome_code)) if outcome_code else None
@@ -328,6 +329,13 @@ def _match_dict_to_top_match(d: dict) -> CareerTopMatch:
     if my_score is not None and enemy_score is not None:
         score_label = f"{int(my_score)}-{int(enemy_score)}"
 
+    kills = d.get("kills")
+    deaths = d.get("deaths")
+    assists = d.get("assists")
+    kd_ratio: float | None = None
+    if kills is not None:
+        kd_ratio = kills / max(1, int(deaths or 0))
+
     return CareerTopMatch(
         match_id=str(d.get("match_id", "")),
         start_time=d.get("start_time"),
@@ -338,6 +346,11 @@ def _match_dict_to_top_match(d: dict) -> CareerTopMatch:
         badge_type=badge_type,
         score_label=score_label,
         outcome_label=outcome_label,
+        kills=int(kills) if kills is not None else None,
+        deaths=int(deaths) if deaths is not None else None,
+        assists=int(assists) if assists is not None else None,
+        kd_ratio=round(kd_ratio, 2) if kd_ratio is not None else None,
+        variant=variant,
     )
 
 

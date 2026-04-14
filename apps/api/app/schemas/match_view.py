@@ -92,6 +92,15 @@ class MatchPersonalResult(BaseModel):
     rank_in_team: int | None = None
 
 
+class MatchExpectedStats(BaseModel):
+    """Comparaison réel vs attendu (CSR/LUSR) — C3 NATIVE_COMPONENTS."""
+
+    has_expected_data: bool = False
+    expected_kills: float | None = None
+    expected_deaths: float | None = None
+    expected_assists: float | None = None
+
+
 class MatchSummaryTab(BaseModel):
     """Contenu de l'onglet Résumé."""
 
@@ -99,6 +108,7 @@ class MatchSummaryTab(BaseModel):
     personal_result: MatchPersonalResult
     medals: list[MatchMedal]
     citations: list[MatchCitation]
+    expected_stats: MatchExpectedStats = MatchExpectedStats()
 
 
 # ---------------------------------------------------------------------------

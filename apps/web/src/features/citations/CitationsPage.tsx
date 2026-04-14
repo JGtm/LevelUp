@@ -132,7 +132,7 @@ export function CitationsPage() {
           </Card>
         )}
 
-        {/* Médailles */}
+        {/* Médailles — B3 NATIVE_COMPONENTS : grille responsive triée par count */}
         {medals_summary.length > 0 && (
           <Card>
             <CardHeader>
@@ -140,32 +140,24 @@ export function CitationsPage() {
                 Médailles ({medals_summary.length})
               </CardTitle>
             </CardHeader>
-            <CardContent className="pb-4 overflow-x-auto">
-              <table className="w-full text-sm">
-                <thead>
-                  <tr className="border-b text-left text-xs text-gray-500">
-                    <th className="py-2 pr-4">Médaille</th>
-                    <th className="py-2 pr-4 text-right">Filtré</th>
-                    <th className="py-2 text-right">Total</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {medals_summary.map((m) => (
-                    <tr key={m.medal_name_id} className="border-b last:border-0">
-                      <td className="py-1.5 pr-4">
-                        <p className="font-medium text-gray-800">{m.name}</p>
-                        {m.description && (
-                          <p className="text-xs text-gray-400">{m.description}</p>
-                        )}
-                      </td>
-                      <td className="py-1.5 pr-4 text-right font-semibold text-purple-700">
-                        {m.count_filtered}
-                      </td>
-                      <td className="py-1.5 text-right text-gray-500">{m.count_total}</td>
-                    </tr>
+            <CardContent className="pb-4">
+              <div className="grid grid-cols-4 gap-2 sm:grid-cols-6 lg:grid-cols-8">
+                {[...medals_summary]
+                  .sort((a, b) => b.count_filtered - a.count_filtered)
+                  .map((m) => (
+                    <div
+                      key={m.medal_name_id}
+                      className="flex flex-col items-center rounded-lg bg-gray-800/40 p-2 text-center"
+                      title={m.description ?? m.name}
+                    >
+                      <span className="text-lg font-bold text-[#33D6FF]">{m.count_filtered}</span>
+                      <span className="mt-0.5 text-[10px] leading-tight text-gray-300 line-clamp-2">{m.name}</span>
+                      {m.count_total !== m.count_filtered && (
+                        <span className="text-[9px] text-gray-500">/{m.count_total}</span>
+                      )}
+                    </div>
                   ))}
-                </tbody>
-              </table>
+              </div>
             </CardContent>
           </Card>
         )}

@@ -109,6 +109,11 @@ class CareerTopMatch(BaseModel):
     badge_type: str | None
     score_label: str | None
     outcome_label: str | None
+    kills: int | None = None
+    deaths: int | None = None
+    assists: int | None = None
+    kd_ratio: float | None = None
+    variant: str | None = None  # "best" | "worst"
 
 
 class CareerEncounter(BaseModel):

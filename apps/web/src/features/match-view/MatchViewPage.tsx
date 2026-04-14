@@ -10,7 +10,8 @@ import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { PlotlyChart } from '@/components/ui/plotly-chart'
 import { useMatchView } from './queries'
-import type { MatchScoreboardRow } from '@/lib/api/types'
+import { MatchScoreboard } from './MatchScoreboard'
+import { ExpectedCardsSection, MatchRankBadge, KdIndicatorCard } from './MatchStatCards'
 
 type TabId = 'summary' | 'combat' | 'team' | 'media' | 'citations'
 
@@ -108,6 +109,7 @@ export function MatchViewPage() {
         {/* Onglet Résumé */}
         {activeTab === 'summary' && (
           <div className="space-y-6">
+            {/* KPI grid principale */}
             <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-6">
               {[
                 { label: 'Kills', value: summary_tab.kpis.kills },
@@ -124,6 +126,18 @@ export function MatchViewPage() {
                   </CardContent>
                 </Card>
               ))}
+            </div>
+
+            {/* C3 — Expected vs Actual */}
+            <ExpectedCardsSection
+              kpis={summary_tab.kpis}
+              expectedStats={summary_tab.expected_stats}
+            />
+
+            {/* C4 — Rang après match + C5 — K/D vs nemesis */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <MatchRankBadge rank={rank} hadBotTeammate={header.had_bot_teammate} />
+              <KdIndicatorCard nemesis={team_tab.nemesis[0] ?? null} />
             </div>
 
             {summary_tab.medals.length > 0 && (
@@ -193,50 +207,12 @@ export function MatchViewPage() {
         {/* Onglet Équipe */}
         {activeTab === 'team' && (
           <div className="space-y-6">
-            <Card>
-              <CardContent className="py-4 overflow-x-auto">
-                <p className="mb-3 text-sm font-semibold text-gray-700">Scoreboard</p>
-                <table className="w-full text-xs">
-                  <thead>
-                    <tr className="border-b text-left text-gray-500">
-                      <th className="py-1 pr-3">Joueur</th>
-                      <th className="py-1 pr-3 text-right">K</th>
-                      <th className="py-1 pr-3 text-right">D</th>
-                      <th className="py-1 pr-3 text-right">A</th>
-                      <th className="py-1 pr-3 text-right">KDA</th>
-                      <th className="py-1 pr-3 text-right">Dmg</th>
-                      <th className="py-1 pr-3 text-right">Précision</th>
-                      <th className="py-1 text-right">Résultat</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {team_tab.scoreboard.map((row: MatchScoreboardRow) => (
-                      <tr
-                        key={row.xuid}
-                        className={`border-b ${row.is_me ? 'bg-purple-50 font-semibold' : ''}`}
-                      >
-                        <td className="py-1 pr-3">{row.gamertag}</td>
-                        <td className="py-1 pr-3 text-right">{row.kills ?? '-'}</td>
-                        <td className="py-1 pr-3 text-right">{row.deaths ?? '-'}</td>
-                        <td className="py-1 pr-3 text-right">{row.assists ?? '-'}</td>
-                        <td className="py-1 pr-3 text-right">
-                          {row.kills != null && row.deaths != null
-                            ? ((row.kills + (row.assists ?? 0)) / Math.max(1, row.deaths)).toFixed(2)
-                            : '-'}
-                        </td>
-                        <td className="py-1 pr-3 text-right">{row.damage_dealt?.toFixed(0) ?? '-'}</td>
-                        <td className="py-1 pr-3 text-right">
-                          {row.shots_accuracy != null
-                            ? `${(row.shots_accuracy * 100).toFixed(1)}%`
-                            : '-'}
-                        </td>
-                        <td className="py-1 text-right">{row.outcome_label}</td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </CardContent>
-            </Card>
+            <MatchScoreboard
+              rows={team_tab.scoreboard}
+              weaponKills={combat_tab.weapon_kills}
+              medals={summary_tab.medals}
+              citations={summary_tab.citations}
+            />
 
             {team_tab.nemesis.length > 0 && (
               <Card>

@@ -19,6 +19,7 @@ from apps.api.app.schemas.timeseries import (
     TimeseriesKpiCard,
     TimeseriesPageResponse,
     TimeseriesQueryRequest,
+    TimeseriesRegressionStats,
     TimeseriesSummaryTab,
 )
 
@@ -214,6 +215,7 @@ def _build_form_tab(dff) -> TimeseriesFormTab:
     ewma_kd_chart: PlotlyFigurePayload | None = None
     regression_chart: PlotlyFigurePayload | None = None
     net_score_per_hour_chart: PlotlyFigurePayload | None = None
+    regression_stats = TimeseriesRegressionStats()
 
     try:
         from src.data.services.timeseries_service import TimeseriesService
@@ -238,6 +240,13 @@ def _build_form_tab(dff) -> TimeseriesFormTab:
             if reg_data:
                 fig_reg = plot_regression_trend(reg_data)
                 regression_chart = _fig_to_payload(fig_reg)
+                regression_stats = TimeseriesRegressionStats(
+                    kd_slope=reg_data.get("slope"),
+                    winrate_slope=reg_data.get("win_rate_slope"),
+                    r_squared=reg_data.get("r_squared"),
+                    has_enough_for_trend=bool(reg_data.get("is_significant", False)),
+                    trend=reg_data.get("trend"),
+                )
 
         nph_df = TimeseriesService.compute_rolling_net_score_per_hour(dff)
         if nph_df is not None and not nph_df.is_empty():
@@ -251,6 +260,7 @@ def _build_form_tab(dff) -> TimeseriesFormTab:
         ewma_kd_chart=ewma_kd_chart,
         regression_chart=regression_chart,
         net_score_per_hour_chart=net_score_per_hour_chart,
+        regression_stats=regression_stats,
     )
 
 

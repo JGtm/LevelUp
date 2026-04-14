@@ -10,6 +10,7 @@ import { Button } from '@/components/ui/button'
 import { PlotlyChart } from '@/components/ui/plotly-chart'
 import { useTimeseriesPage } from './queries'
 import { useGlobalFilterStore } from '@/stores/globalFilterStore'
+import { DeltaCard } from '@/components/ui/delta-card'
 import type { PlotlyFigurePayload, TimeseriesKpiCard } from '@/lib/api/types'
 
 type TabId = 'summary' | 'cumul' | 'form' | 'intensity' | 'distributions'
@@ -141,6 +142,35 @@ export function TimeseriesPage() {
         {/* Forme */}
         {activeTab === 'form' && (
           <div className="space-y-6">
+            {/* D1 — Cartes régression K/D */}
+            {form_tab.regression_stats.has_enough_for_trend && (
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                <DeltaCard
+                  label="Pente K/D"
+                  value={form_tab.regression_stats.kd_slope?.toFixed(4) ?? '—'}
+                  unit="/match"
+                  delta={form_tab.regression_stats.kd_slope}
+                  warning={
+                    (form_tab.regression_stats.r_squared ?? 0) < 0.3
+                  }
+                  warningText="R² < 0.3 — tendance non significative"
+                />
+                <DeltaCard
+                  label="Pente Win Rate"
+                  value={form_tab.regression_stats.winrate_slope != null
+                    ? `${(form_tab.regression_stats.winrate_slope * 100).toFixed(2)}%`
+                    : '—'}
+                  unit="/match"
+                  delta={form_tab.regression_stats.winrate_slope}
+                />
+                <DeltaCard
+                  label="R²"
+                  value={form_tab.regression_stats.r_squared?.toFixed(3) ?? '—'}
+                  warning={(form_tab.regression_stats.r_squared ?? 0) < 0.3}
+                  warningText="Tendance peu fiable"
+                />
+              </div>
+            )}
             <ChartCard title="EWMA K/D" figure={form_tab.ewma_kd_chart} />
             <ChartCard title="Tendance (régression)" figure={form_tab.regression_chart} />
             <ChartCard title="Score net / heure" figure={form_tab.net_score_per_hour_chart} />

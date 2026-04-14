@@ -1,27 +1,16 @@
 /**
  * CareerSummaryCard — carte de résumé rang + XP.
+ * Jauges arc SVG (C1/C2 NATIVE_COMPONENTS.md).
  */
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
+import { RankProgressGauge } from '@/components/ui/rank-progress-gauge'
 import type { CareerSummary, HeroProgress, CareerProjections } from '@/lib/api/types'
 
 interface Props {
   summary: CareerSummary | null
   heroProgress: HeroProgress | null
   projections: CareerProjections | null
-}
-
-function ProgressBar({ pct, color = 'bg-purple-500' }: { pct: number; color?: string }) {
-  return (
-    <div className="h-2 w-full overflow-hidden rounded-full bg-gray-100">
-      <div
-        className={`h-full rounded-full transition-all ${color}`}
-        style={{ width: `${Math.min(100, Math.max(0, pct))}%` }}
-      />
-    </div>
-  )
-}
-
 export function CareerSummaryCard({ summary, heroProgress, projections }: Props) {
   if (!summary) {
     return (
@@ -41,46 +30,34 @@ export function CareerSummaryCard({ summary, heroProgress, projections }: Props)
           <Badge variant="default">{summary.rank_label}</Badge>
         </div>
       </CardHeader>
-      <CardContent className="space-y-4">
-        {/* Rang actuel */}
-        <div>
-          <div className="mb-1 flex items-center justify-between text-sm">
-            <span className="font-medium text-gray-900">{summary.rank_name_raw}</span>
-            <span className="text-gray-500">Rang #{summary.rank_number}</span>
-          </div>
-          <ProgressBar pct={summary.progress_pct} />
-          <p className="mt-1 text-xs text-gray-400">
-            {summary.xp_total.toLocaleString('fr-FR')} XP cumulés
-            {!summary.is_max_rank && (
-              <> · {summary.xp_for_next_rank.toLocaleString('fr-FR')} XP pour le prochain</>
-            )}
-          </p>
-        </div>
+      <CardContent>
+        {/* Jauges arc C1 + C2 côte à côte */}
+        <div className="flex flex-wrap justify-around gap-4">
+          {/* C1 — Progression rang XP actuel */}
+          <RankProgressGauge
+            title={summary.rank_name_raw ?? summary.rank_label}
+            progressPct={summary.progress_pct / 100}
+            subtitle={
+              summary.is_max_rank
+                ? 'Rang maximum atteint'
+                : `${summary.xp_total.toLocaleString('fr-FR')} / ${summary.xp_for_next_rank.toLocaleString('fr-FR')} XP`
+            }
+            size={200}
+          />
 
-        {/* Progression Héros */}
-        {heroProgress && (
-          <div>
-            <div className="mb-1 flex items-center justify-between text-sm">
-              <span className="font-medium text-gray-700">Progression Héros</span>
-              <span className="text-gray-500">{heroProgress.percentage.toFixed(1)} %</span>
-            </div>
-            <ProgressBar pct={heroProgress.percentage} color="bg-amber-500" />
-            <p className="mt-1 text-xs text-gray-400">
-              Rang {heroProgress.current_rank} · {heroProgress.xp_remaining.toLocaleString('fr-FR')} XP restants
-            </p>
-          </div>
-        )}
+          {/* C2 — Progression Héros */}
+          {heroProgress && (
+            <RankProgressGauge
+              title="Héros"
+              progressPct={heroProgress.percentage / 100}
+              subtitle={`Rang ${heroProgress.current_rank} · ${heroProgress.xp_remaining.toLocaleString('fr-FR')} XP restants`}
+              size={200}
+            />
+          )}
+        </div>
 
         {/* Projections */}
         {projections?.estimated_hero_date && (
-          <p className="text-xs text-gray-500">
-            Héros estim. le{' '}
-            <span className="font-medium text-gray-700">
-              {new Date(projections.estimated_hero_date).toLocaleDateString('fr-FR')}
-            </span>
-          </p>
-        )}
-      </CardContent>
-    </Card>
+          <p className="mt-3 text-center text-xs text-gray-500">
   )
 }

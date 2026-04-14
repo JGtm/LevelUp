@@ -1,9 +1,9 @@
+/**
+ * Route /players/$playerSlug/stats/sessions — Comparaison de sessions.
+ */
 import { createFileRoute } from '@tanstack/react-router'
+import { SessionComparePage } from '@/features/session-compare/SessionComparePage'
 
 export const Route = createFileRoute('/players/$playerSlug/stats/sessions')({
-  component: RouteComponent,
+  component: SessionComparePage,
 })
-
-function RouteComponent() {
-  return <div>Hello "/players/$playerSlug/stats/sessions"!</div>
-}
