@@ -12,7 +12,7 @@ requires-python = ">=3.11,<3.14"
 authors = [
     {name = "Guillaume", email = "guillaume@example.com"}
 ]
-keywords = ["halo", "infinite", "stats", "visualization", "streamlit", "duckdb", "analytics"]
+keywords = ["halo", "infinite", "stats", "visualization", "duckdb", "analytics"]
 classifiers = [
     "Development Status :: 5 - Production/Stable",
     "Environment :: Web Environment",
@@ -28,7 +28,6 @@ classifiers = [
 ]
 
 dependencies = [
-    "streamlit>=1.37.0",
     "plotly>=5.18.0",
     "pandas>=2.0.0",
     "numpy>=1.24.0",

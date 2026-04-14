@@ -168,7 +168,8 @@ Les contributions sont les bienvenues ! Voir [CONTRIBUTING.md](CONTRIBUTING.md) 
 | Technologie | Usage |
 |-------------|-------|
 | **Python 3.12+** | Langage principal |
-| **Streamlit** | Interface utilisateur |
+| **React 19 + Vite** | Interface utilisateur |
+| **FastAPI** | API REST backend |
 | **DuckDB 1.4** | Moteur de requêtes OLAP |
 | **Polars 1.38** | DataFrames haute performance |
 | **PyArrow 23** | Passerelle données |

@@ -236,7 +236,7 @@ L'image Docker :
 - Installe les dépendances via `pip install -e ".[spnkr]"` (pyproject.toml), incluant SPNKr + aiohttp pour la synchronisation API
 - Embarque les données de référence minimales (traductions playlists, wiki commendations)
 - Tourne en utilisateur non-root (`appuser`, UID 10001)
-- Expose le healthcheck Streamlit sur `/_stcore/health`
+- Expose le healthcheck FastAPI sur `/api/v1/health`
 
 ### Configuration Docker
 

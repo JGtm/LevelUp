@@ -113,7 +113,7 @@ def test_load_medal_name_maps_uses_db(caplog):
     from src.ui.medals import load_medal_name_maps
 
     with caplog.at_level(logging.DEBUG, logger="src.ui.medals"):
-        load_medal_name_maps.clear()
+        load_medal_name_maps.cache_clear()
         fr_map, en_map = load_medal_name_maps()
 
     assert len(fr_map) >= 100, f"Seulement {len(fr_map)} labels FR depuis DB"

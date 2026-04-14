@@ -4,13 +4,13 @@
 > **Objectif dur** : le produit final ne contient **aucun runtime Python**, sauf un bridge
 > temporaire SPNKr qui sera éliminé avant la fin du programme.
 >
-> Ce document complète [PLAN_MIGRATION_PYTHON_TO_GO_V2.md](PLAN_MIGRATION_PYTHON_TO_GO_V2.md),
+> Ce document complète [PLAN_MIGRATION_PYTHON_TO_GO.md](PLAN_MIGRATION_PYTHON_TO_GO.md),
 > [MATRIX.md](MATRIX.md) et [OPS_COMPAT_CHECKLIST.md](OPS_COMPAT_CHECKLIST.md).
 > Il ne les remplace pas — il durcit la cible finale.
 
 ## Lecture obligatoire
 
-1. [PLAN_MIGRATION_PYTHON_TO_GO_V2.md](PLAN_MIGRATION_PYTHON_TO_GO_V2.md) — trajectoire, phases, gates, risques, décisions.
+1. [PLAN_MIGRATION_PYTHON_TO_GO.md](PLAN_MIGRATION_PYTHON_TO_GO.md) — trajectoire, phases, gates, risques, décisions.
 2. [MATRIX.md](MATRIX.md) — couverture package/script/commande.
 3. [OPS_COMPAT_CHECKLIST.md](OPS_COMPAT_CHECKLIST.md) — compat auth/jobs/packaging.
 
@@ -268,14 +268,14 @@ internal/halo/             ← Adaptateur LevelUp orienté produit
 
 L'adaptateur fait le pont : il gère le cache de tokens (DuckDB), sélectionne le provider de titre et délègue les appels réseau au socle public.
 
-### Préparation documentaire avant toute implémentation multi-titre
+### Preparation documentaire avant toute implementation multi-titre
 
-Avant d'écrire le provider Go réel, cadrer et versionner :
+Avant d'ecrire le provider Go reel, cadrer et versionner :
 
-1. le modèle canonique Halo consommé par LevelUp ;
+1. le modele canonique Halo consomme par LevelUp ;
 2. la matrice de capabilities par titre et par surface produit ;
-3. le registre des zones spécifiques au jeu à isoler ;
-4. la politique de dégradation quand une surface n'est pas disponible sur un titre donné.
+3. le registre des zones specifiques au jeu a isoler ;
+4. la politique de degradation quand une surface n'est pas disponible sur un titre donne.
 
 ### Stratégie de remplacement en 3 phases
 

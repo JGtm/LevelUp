@@ -306,7 +306,8 @@ Contributions are welcome! See [CONTRIBUTING.md](docs/CONTRIBUTING.md) for guide
 | Technology | Usage |
 |------------|-------|
 | **Python 3.12+** | Main language |
-| **Streamlit** | UI |
+| **React 19 + Vite** | Frontend UI |
+| **FastAPI** | REST API backend |
 | **DuckDB 1.4** | OLAP query engine |
 | **Polars 1.38** | High-performance DataFrames |
 | **PyArrow 23** | Data interoperability |

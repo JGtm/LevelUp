@@ -30,7 +30,7 @@
 
 ## Lecture obligatoire avant toute action
 
-1. [PLAN_MIGRATION_PYTHON_TO_GO.md](PLAN_MIGRATION_PYTHON_TO_GO.md) — trajectoire, phases, gates, risques, decisions.
+1. [PLAN_MIGRATION_PYTHON_TO_GO_V2.md](PLAN_MIGRATION_PYTHON_TO_GO_V2.md) — trajectoire, phases, gates, risques, decisions.
 2. [SPRINT_ROADMAP.md](SPRINT_ROADMAP.md) — decoupage lineaire de A a Z en 28 sprints, pour repartir les taches et suivre l'avancement.
 3. [MATRIX.md](MATRIX.md) — couverture package/script/commande/bitmask, surfaces hors scope et statut de chaque zone.
 4. [OPS_COMPAT_CHECKLIST.md](OPS_COMPAT_CHECKLIST.md) — compat auth/jobs/mode de test, exploitation, packaging et migration utilisateur.
@@ -105,7 +105,7 @@ Le plan ne doit pas seulement definir quoi porter. Il doit aussi imposer comment
 
 #### Sources de verite du suivi
 
-1. [PLAN_MIGRATION_PYTHON_TO_GO.md](PLAN_MIGRATION_PYTHON_TO_GO.md) fixe l'ordre macro, les phases, les gates et les conditions d'ouverture/fermeture.
+1. [PLAN_MIGRATION_PYTHON_TO_GO_V2.md](PLAN_MIGRATION_PYTHON_TO_GO_V2.md) fixe l'ordre macro, les phases, les gates et les conditions d'ouverture/fermeture.
 2. [MATRIX.md](MATRIX.md) porte la couverture exhaustive : quelles surfaces existent, si elles sont a porter, a supprimer, hors scope ou a garder temporairement.
 3. [OPS_COMPAT_CHECKLIST.md](OPS_COMPAT_CHECKLIST.md) porte les contraintes runtime/exploitation : auth, jobs, mode de test, packaging, migration utilisateur.
 4. [GO_MIGRATION_CHECKLIST.md](GO_MIGRATION_CHECKLIST.md) porte l'avancement vivant du chantier lot par lot : non demarre, en cours, bloque, termine, prochaine preuve attendue.
@@ -339,7 +339,7 @@ Avant toute implementation Go reelle sur la couche Halo :
 
 ### Portee acceptable si l'on ne connait que Halo Infinite
 
-Oui, les points 2 et 3 restent pertinents meme si l'on ne dispose aujourd'hui d'informations solides que pour Halo Infinite, mais ils doivent etre cadrees de facon non speculative.
+Oui, les points 2 et 3 restent pertinents meme si l'on ne dispose aujourd'hui d'informations solides que pour Halo Infinite, mais ils doivent etre cadres de facon non speculative.
 
 1. La matrice de capabilities ne doit pas inventer des lignes pour d'autres titres. Dans l'immediat, elle documente uniquement `halo_infinite` et les surfaces produit que nous savons reellement alimenter.
 2. Son role n'est pas de predire le prochain Halo ; son role est d'eviter que le produit Go se couple implicitement a des specificites Halo Infinite non nommees.
@@ -363,6 +363,16 @@ Dans ce chantier Go, on documente donc :
 2. une capability map initiale limitee a Halo Infinite ;
 3. une forme de bootstrap cible capable d'annoncer le titre courant et les capabilities produit utiles ;
 4. sans speculation sur d'autres titres tant qu'aucune information fiable n'existe.
+
+Ces deux livrables sont desormais materialises dans :
+
+1. [HALO_CANONICAL_MODEL.md](HALO_CANONICAL_MODEL.md)
+2. [HALO_INFINITE_CAPABILITY_MAP.md](HALO_INFINITE_CAPABILITY_MAP.md)
+
+Leur declinaison de travail est maintenant detaillee dans :
+
+1. [HALO_BOOTSTRAP_CONTRACT.md](HALO_BOOTSTRAP_CONTRACT.md)
+2. [HALO_GO_TYPE_BLUEPRINT.md](HALO_GO_TYPE_BLUEPRINT.md)
 
 ## Decisions techniques a prendre avant la premiere ligne de Go
 
@@ -811,7 +821,7 @@ Ce plan est ecrit dans un style "programme d'entreprise". Pour un developpeur so
 
 1. **Shadow mode complet** (Phase 1.4 du complement) : remplacer par une comparaison manuelle sur 10-20 requetes representant les golden values. Un `diff` JSON des reponses Python vs Go suffit. Pas besoin d'un proxy transparent.
 2. **Soak test 2 semaines** (Phase 5.1) : remplacer par 2-3 cycles de sync reels sur les vrais joueurs. Si 3 syncs passent sans divergence, c'est suffisant.
-3. **8 registres anti-oubli** : fusionner en une seule checklist dans un fichier `.ai/go_migration/GO_MIGRATION_CHECKLIST.md`. 8 fichiers separes c'est de la bureaucratie pour une personne.
+3. **8 registres anti-oubli** : fusionner en une seule checklist dans un fichier `GO_MIGRATION_CHECKLIST.md`. 8 fichiers separes c'est de la bureaucratie pour une personne.
 4. **Rapport d'ecarts documente** : un commentaire dans le code ou un TODO suffit. Pas besoin d'un document formel par phase.
 
 ### Ce qui reste obligatoire meme en solo

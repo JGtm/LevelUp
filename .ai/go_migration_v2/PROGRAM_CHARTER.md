@@ -77,6 +77,20 @@ Le corpus v2 ne remplace pas le détail d'architecture existant, mais il fixe le
 4. Les migrations DuckDB restent idempotentes et automatiques.
 5. Le service doit supporter un graceful shutdown propre : drain HTTP, fermeture des connexions et aucune interruption d'un sync en pleine écriture.
 6. Le packaging cible reste orienté vers un binaire principal à sous-commandes, avec build Windows et Linux reproductible.
+7. La façade API reste orientée parcours produit ; elle ne reflète jamais directement les endpoints d'un titre Halo particulier.
+8. L'intégration Halo est structurée en deux niveaux : un socle provider générique, puis un adaptateur par titre mappant vers un modèle canonique LevelUp.
+9. Les zones spécifiques au jeu restent isolées : auth Waypoint/XSTS, registre d'endpoints, refdata, films, skill, assets et constantes gameplay.
+10. Le modèle canonique Halo doit être défini hors de toute couche d'orchestration sync legacy, pour pouvoir accueillir plusieurs titres sans héritage implicite du pipeline Python actuel.
+11. Les capabilities produit par titre doivent être explicites, versionnées et consultables avant tout lot touchant la façade API.
+
+## Préparation documentaire immédiate du chantier multi-titre
+
+Avant d'écrire la première ligne de Go spécifique au provider Halo, le corpus doit contenir :
+
+1. un modèle canonique Halo produit : identité joueur, historique de matchs, match détaillé, progression carrière, assets, films et erreurs ;
+2. une matrice de capabilities par titre et par surface produit ;
+3. un registre des zones spécifiques au jeu à isoler ;
+4. une politique de dégradation des surfaces absentes ou incomplètes.
 
 ## Découpage du programme
 
@@ -191,6 +205,8 @@ Les opportunités spécifiques de Go, comme la distribution simplifiée, la conc
 | D8 | Pool DuckDB | stratégie ATTACH avec `database/sql` |
 | D9 | Feature flags | pilotage de bascule surface par surface |
 | D10 | Observabilité | niveau minimal utile pour un dev solo |
+| D11 | Modèle canonique Halo | emplacement, granularité et ownership du contrat produit multi-titre |
+| D12 | Capability map produit | forme, exposition bootstrap et politique de dégradation |
 
 Le détail vivant de ces points reste dans le corpus opérationnel d'origine.
 

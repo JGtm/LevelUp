@@ -3,7 +3,6 @@
 Ce module centralise les fonctions UI liées aux médailles Halo Infinite :
 - Chargement des labels depuis ``medal_definitions`` (metadata.duckdb)
 - Récupération des icônes embarquées (static/medals/icons/)
-- Affichage d'une grille de médailles dans Streamlit
 """
 
 from __future__ import annotations
@@ -12,8 +11,7 @@ import base64
 import html
 import logging
 import os
-
-import streamlit as st
+from functools import lru_cache
 
 from src.data.medal_definitions import (
     load_medal_description_map as _load_medal_description_map,
@@ -35,15 +33,15 @@ __all__ = [
 logger = logging.getLogger(__name__)
 
 
-@st.cache_data(show_spinner=False)
+@lru_cache(maxsize=8)
 def load_medal_description_map(lang: str = "fr") -> dict[str, str]:
-    """Charge la map {str(medal_name_id): description} (wrapper Streamlit cache)."""
+    """Charge la map {str(medal_name_id): description}."""
     return _load_medal_description_map(lang)
 
 
-@st.cache_data(show_spinner=False)
+@lru_cache(maxsize=1)
 def load_medal_name_maps() -> tuple[dict[str, str], dict[str, str]]:
-    """Charge les labels de médailles (wrapper Streamlit cache).
+    """Charge les labels de médailles.
 
     Délègue à ``src.data.medal_definitions.load_medal_name_maps()``.
 
@@ -94,7 +92,7 @@ def medal_label(nid: int, lang: str = "fr") -> str:
     return fr_map.get(key) or en_map.get(key) or f"Médaille #{nid}"
 
 
-@st.cache_data(show_spinner=False)
+@lru_cache(maxsize=512)
 def _medal_icon_b64(path: str) -> str:
     """Encode une icône PNG en data URI base64 (mis en cache)."""
     with open(path, "rb") as f:
@@ -142,12 +140,11 @@ def render_medals_grid(  # noqa: PLR0913
         center: Si True et que le nombre de médailles < cols_per_row, centre la grille.
         descriptions: Dict {medal_id: description} pour les tooltips au survol.
     """
+    import streamlit as st  # lazy — rendu Streamlit uniquement
+
     if not medals:
         st.info("Aucune médaille.")
         return
-
-    # Note: on n'affiche plus de warning pour les médailles inconnues
-    # (certaines comme #590706932 sont des médailles internes/test à ignorer)
 
     local_dir = get_local_medals_icons_dir()
     if not os.path.isdir(local_dir):

@@ -47,7 +47,7 @@ class TestLoadMedalNameMaps:
         from src.ui.medals import load_medal_name_maps
 
         with patch("src.data.medal_definitions.get_metadata_db_path", return_value=tmp_medal_db):
-            load_medal_name_maps.clear()
+            load_medal_name_maps.cache_clear()
             fr_map, en_map = load_medal_name_maps()
 
         assert isinstance(fr_map, dict)
@@ -61,7 +61,7 @@ class TestLoadMedalNameMaps:
 
         absent = tmp_path / "absent.duckdb"
         with patch("src.data.medal_definitions.get_metadata_db_path", return_value=absent):
-            load_medal_name_maps.clear()
+            load_medal_name_maps.cache_clear()
             fr_map, en_map = load_medal_name_maps()
 
         assert fr_map == {}
@@ -77,7 +77,7 @@ class TestMedalLabel:
         with patch("src.data.medal_definitions.get_metadata_db_path", return_value=tmp_medal_db):
             from src.ui.medals import load_medal_name_maps
 
-            load_medal_name_maps.clear()
+            load_medal_name_maps.cache_clear()
             result = medal_label(17866865, lang="fr")
 
         assert result == "Affection"
@@ -88,7 +88,7 @@ class TestMedalLabel:
         with patch("src.data.medal_definitions.get_metadata_db_path", return_value=tmp_medal_db):
             from src.ui.medals import load_medal_name_maps
 
-            load_medal_name_maps.clear()
+            load_medal_name_maps.cache_clear()
             result = medal_label(17866865, lang="en")
 
         assert result == "Infected"
@@ -99,7 +99,7 @@ class TestMedalLabel:
         with patch("src.data.medal_definitions.get_metadata_db_path", return_value=tmp_medal_db):
             from src.ui.medals import load_medal_name_maps
 
-            load_medal_name_maps.clear()
+            load_medal_name_maps.cache_clear()
             result = medal_label(999999999, lang="fr")
 
         assert result == "Médaille #999999999"
@@ -110,7 +110,7 @@ class TestMedalLabel:
         with patch("src.data.medal_definitions.get_metadata_db_path", return_value=tmp_medal_db):
             from src.ui.medals import load_medal_name_maps
 
-            load_medal_name_maps.clear()
+            load_medal_name_maps.cache_clear()
             assert medal_has_known_label(17866865) is True
             assert medal_has_known_label(999999999) is False
 
@@ -157,7 +157,7 @@ class TestNewMedalsLabels:
         """Chaque ID du fixture a un label connu via medal_has_known_label."""
         from src.ui.medals import load_medal_name_maps, medal_has_known_label
 
-        load_medal_name_maps.clear()
+        load_medal_name_maps.cache_clear()
         for nid in expected_new_medal_ids:
             assert medal_has_known_label(nid), f"Médaille {nid} doit avoir un label en DB"
 
@@ -165,7 +165,7 @@ class TestNewMedalsLabels:
         """medal_label() ne renvoie pas le placeholder pour les IDs du fixture."""
         from src.ui.medals import load_medal_name_maps, medal_label
 
-        load_medal_name_maps.clear()
+        load_medal_name_maps.cache_clear()
         for nid in expected_new_medal_ids:
             label = medal_label(nid)
             assert label != f"Médaille #{nid}", f"Médaille {nid} ne doit pas être un placeholder"
