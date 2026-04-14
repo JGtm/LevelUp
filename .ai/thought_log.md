@@ -1,5 +1,68 @@
 # Thought Log
 
+## [2026-04-14] feat(prod+polish): Option C prod prep + Option A/PX polish P2/P3
+
+**Statut** : Complété
+
+**Tâche** : Implémentation des Options A (polish pages), B (validation FUNCTIONAL_SPECS) et C (prod prep React/FastAPI).
+
+**Décisions techniques** :
+
+### Option C — Prod prep
+1. **Dockerfile** (session précédente) : multi-stage Node.js 22 → Python 3.12-slim, EXPOSE 8000, `uvicorn apps.api.app.main:app`.
+2. **docker-compose.yml** : ports `8501` → `8000` (+ `8001` pour demo), ajout `LEVELUP_WEB_DIST=/app/apps/web/dist`, healthcheck FastAPI, commentaires clarifiés.
+3. **packaging/nginx/levelup.conf** : réécriture complète. Suppression proxy Streamlit WebSocket. Ajout : `location /api/` → proxy :8000 sans auth_basic ; `location /assets/` → proxy :8000 + cache immutable 1 an ; `location /` → proxy :8000 + no-store pour `index.html`.
+4. **apps/api/app/main.py** : ajout `StaticFiles` pour `/assets` + catch-all `/{full_path:path}` retournant `index.html` (SPA routing). Conditionnel sur `LEVELUP_WEB_DIST` existant (dev sans dist = non activé).
+5. **CI/CD** : remplacement du job `streamlit-smoke` par `frontend` (Node.js 22, `npm ci`, `npm run typecheck`, `npm run lint`, `npm run build`, `npm run test`).
+
+### Option A/PX — Polish pages
+
+6. **SynthesisPage.tsx** : ajout du graphe bipolaire Solo ↔ Escouade (§4.7). Construit en frontend depuis `comparison_metrics.solo_value` + `squad_value` (pas de changement API). Traces barres horizontales Plotly, Solo négatif cyan, Escouade positif vert, ligne zéro slate, légende horizontale. Empty state si métriques vides.
+7. **MediaPage.tsx** : réécriture complète (350 lignes). Ajout : lightbox avec navigation ◀▶ clavier + autoplay clip vidéo (`onEnded → next`) + header carte/mode/date/idx ; système de likes `♥` persisté en `localStorage` via `useLikes()` hook ; tri par date/nom ; icônes emoji correctes ; click sur carte → lightbox à l'index.
+8. **SquadPage.tsx** : réécriture (~270 lignes). Ajout : 2 onglets (Synergies/Contributions) visibles sur sélection d'un coéquipier. Onglet Synergies = barres groupées Avec/Sans/Solo (4 métriques, Plotly). Onglet Contributions = radar normalisé 5 axes (Win Rate, K/D, Kills/partie, Assists/partie, Précision). Graphes construits en frontend sans changement API.
+
+### Option B — Validation FUNCTIONAL_SPECS
+- Toutes les slices MVP (0b, 1, 2, 3, 4, 5, 6, 7, 8, 9) sont `canonical ✅` depuis le 2026-04-14.
+- Les items P2/P3 couverts cette session : §4.7 bipolaire ✅, §6.6 lightbox ✅, §6.7 likes localStorage ✅, §3 2 onglets Squad ✅.
+- Restants en backlog : §6.3 toolbar 8 contrôles (partial, 3 implementés), §3.6.1–3.6.4 charts Synergies avancés (nécessitent données API additionnelles).
+
+**Résultats observés** :
+- `docker-compose.yml` : ports corrigés, env `LEVELUP_WEB_DIST` ajouté, healthcheck fonctionnel
+- `nginx/levelup.conf` : WebSocket Streamlit supprimé, SPA + API proxy correct
+- `main.py` : SPA fallback conditionnel sur dist existant
+- CI : job `streamlit-smoke` retiré, `frontend` Node.js 22 ajouté
+- `SynthesisPage.tsx` : bipolaire chart visible, coloration Solo/Escouade, caption
+- `MediaPage.tsx` : lightbox fonctionnelle, likes localStorage, tri, icônes
+- `SquadPage.tsx` : 2 onglets Synergies/Contributions avec Plotly
+
+**Conclusion / prochaine étape** :
+- Prod prête à déployer (`docker compose up --build`)
+- Polish P2/P3 substantiellement avancé. Phase B en attente : toolbar Media complète (sort/group), charts Synergies avancés (nécessitent nouvelles données API backend).
+- Prochain PR : merge `feature/remove-streamlit-ui` → `main`, puis tag vX.Y.
+
+
+
+**Statut** : Complete
+
+**Tache** : Integrer les arbitrages de cadrage fournis par l'utilisateur dans le plan Go et l'annexe ops.
+
+**Decision technique** :
+1. Le chantier Go ne demarre pas tant que [MIGRATION_MASTER.md](MIGRATION_MASTER.md) n'est pas termine et gele.
+2. Le scope du chantier est clarifie : remplacer Python derriere la facade V7, pas reouvrir un chantier frontend ou produit.
+3. La reference contractuelle de depart est explicitee : facade V7, contrats HTTP/OpenAPI, suites de validation et schema DuckDB v6.
+4. Le "rollback" est reformule pour coller au modele worktree : pas de retour strategique durable vers Python apres bascule finale ; tant que Go n'est pas merge, Python reste simplement la baseline non fusionnee.
+5. Le mode de demo/test est detaille dans `go_migration/OPS_COMPAT_CHECKLIST.md` : objectifs, jeux de donnees minimaux, surfaces couvertes, invariants de parite et regles d'execution.
+
+**Resultats observes** :
+- `PLAN_MIGRATION_PYTHON_TO_GO.md` recale sur un prerequis explicite : cloture de `MIGRATION_MASTER.md`
+- Les sections ambigues sur le frontend, le packaging et le rollback sont recadrees
+- `OPS_COMPAT_CHECKLIST.md` contient maintenant une specification explicite de la reference contractuelle et du mode de demo/test
+- La regle auth est precisee : MSAL par defaut, sauf si un refresh token exploitable existe deja
+- Les syncs persistantes sont maintenant explicitement exclusives a l'echelle de l'application
+
+**Conclusion / prochaine etape** :
+- Le prochain travail utile sur ce plan est de detailler lot par lot les surfaces exactes a porter dans `MATRIX.md`, avec priorites P0/P1/P2 et criteres de sortie.
+
 ## [2026-04-14] feat(slice13): DoD global — migration React/FastAPI terminée
 
 **Statut** : Complété

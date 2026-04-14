@@ -5,6 +5,7 @@ Initialise :
 - Middlewares (CORS, request_id)
 - Handlers d'erreurs normalisés
 - Router `/api/v1`
+- Fichiers statiques React (dist Vite) + SPA fallback
 - Purge des sessions expirées au démarrage
 
 DEMO_MODE : activé via `LEVELUP_DEMO_MODE=true` dans l'environnement ou .env.local.
@@ -15,12 +16,16 @@ DEMO_MODE : activé via `LEVELUP_DEMO_MODE=true` dans l'environnement ou .env.lo
 
 from __future__ import annotations
 
+import os
 from collections.abc import AsyncGenerator
 from contextlib import asynccontextmanager
+from pathlib import Path
 
 import structlog
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import FileResponse
+from fastapi.staticfiles import StaticFiles
 
 from apps.api.app.core.config import get_settings
 from apps.api.app.core.errors import (
@@ -128,6 +133,20 @@ def create_app() -> FastAPI:
     # --- Routers ------------------------------------------------------------
     v1 = _create_v1_router()
     app.include_router(v1, prefix="/api/v1")
+
+    # --- Fichiers statiques React (production) ------------------------------
+    # En développement, Vite tourne sur :5173 — ce bloc est ignoré si le dist
+    # est absent (ce qui est toujours le cas sans `npm run build`).
+    _web_dist = Path(os.getenv("LEVELUP_WEB_DIST", "apps/web/dist"))
+    if _web_dist.exists():
+        _assets = _web_dist / "assets"
+        if _assets.exists():
+            app.mount("/assets", StaticFiles(directory=str(_assets)), name="web-assets")
+
+        @app.get("/{full_path:path}", include_in_schema=False)
+        async def _spa_fallback(full_path: str) -> FileResponse:  # noqa: RUF029
+            """Retourne index.html pour toutes les routes React (SPA routing)."""
+            return FileResponse(str(_web_dist / "index.html"))
 
     return app
 

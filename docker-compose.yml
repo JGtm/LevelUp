@@ -2,13 +2,16 @@ services:
   levelup:
     build: .
     ports:
-      - "127.0.0.1:8501:8501"
+      # API FastAPI exposée en local uniquement — nginx fait le reverse proxy en prod
+      - "127.0.0.1:8000:8000"
     environment:
       # Optionnel: forcer une base explicite (sinon sélection via profils/UI)
       # - LEVELUP_DB=/app/data/players/MonGamertag/stats.duckdb
       - LEVELUP_ROOT=/app
       # Chemin des données dans le conteneur (obligatoire : sans .venv, _is_dev_mode()=False)
       - LEVELUP_DATA=/app/data
+      # React static files (dist Vite buildé dans l'image)
+      - LEVELUP_WEB_DIST=/app/apps/web/dist
       # Opt-in : notif Discord lors d'un nouveau déploiement (vX.Y). Absent sur demo/local.
       - LEVELUP_NOTIFY_VERSIONS=1
     # Secrets et tokens API (sync Halo, Discord, Tailscale)
@@ -26,14 +29,21 @@ services:
       - ./app_settings.json:/app/app_settings.json
 
     restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/api/v1/health').read()"]
+      interval: 30s
+      timeout: 5s
+      start_period: 30s
+      retries: 3
 
   levelup-demo:
     build: .
     ports:
-      - "127.0.0.1:8502:8501"
+      - "127.0.0.1:8001:8000"
     environment:
       - LEVELUP_ROOT=/app
       - LEVELUP_DATA=/app/data
+      - LEVELUP_WEB_DIST=/app/apps/web/dist
       - LEVELUP_DEMO_MODE=true
     volumes:
       # Données de démo en lecture seule (générées par scripts/prepare_demo_data.py)
