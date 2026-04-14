@@ -9,13 +9,18 @@ from __future__ import annotations
 
 import contextlib
 import logging
-import re
 from dataclasses import dataclass
 from datetime import datetime
 from pathlib import Path
 
 import polars as pl
 
+from apps.api.app._db_helpers import (
+    add_display_columns,
+    build_match_source_sql,
+    has_mv_player_matches,
+    resolve_xuid,
+)
 from apps.api.app.deps.players import PlayerContext
 from apps.api.app.schemas.filters import (
     AvailableOptions,
@@ -43,59 +48,6 @@ _FIREFIGHT_KEYWORDS = frozenset({"firefight", "fire fight", "pve", "spartan ops"
 # ---------------------------------------------------------------------------
 # Helpers i18n inline (sans accès DB, même logique que i18n_columns.py)
 # ---------------------------------------------------------------------------
-
-
-def _strip_mode_map_suffix(s: str | None) -> str | None:
-    """Supprime ' on NomCarte' et variantes Forge/Ranked d'un label de mode."""
-    if not s:
-        return None
-    s = str(s).strip()
-    if " on " in s:
-        s = s.split(" on ", 1)[0].strip()
-    s = re.sub(r"\s*-\s*Forge\b", "", s, flags=re.IGNORECASE).strip()
-    s = re.sub(r"\s*-\s*Ranked\b", "", s, flags=re.IGNORECASE).strip()
-    return s or None
-
-
-def _add_display_columns(df: pl.DataFrame) -> pl.DataFrame:
-    """Ajoute map_ui, mode_ui, playlist_ui idiomatiques (fr) au DataFrame.
-
-    Reproduit la logique de ``src.app.i18n_columns.add_i18n_display_columns``
-    sans import Streamlit.
-    """
-    if df.is_empty():
-        return df
-    exprs: list[pl.Expr] = []
-
-    if "map_ui" not in df.columns and "map_name" in df.columns:
-        src = (
-            pl.coalesce([pl.col("map_name_fr").cast(pl.Utf8), pl.col("map_name").cast(pl.Utf8)])
-            if "map_name_fr" in df.columns
-            else pl.col("map_name").cast(pl.Utf8)
-        )
-        exprs.append(src.alias("map_ui"))
-
-    if "mode_ui" not in df.columns and "pair_name" in df.columns:
-        src = (
-            pl.coalesce([pl.col("pair_name_fr").cast(pl.Utf8), pl.col("pair_name").cast(pl.Utf8)])
-            if "pair_name_fr" in df.columns
-            else pl.col("pair_name").cast(pl.Utf8)
-        )
-        exprs.append(
-            src.map_elements(_strip_mode_map_suffix, return_dtype=pl.Utf8).alias("mode_ui")
-        )
-
-    if "playlist_ui" not in df.columns and "playlist_name" in df.columns:
-        src = (
-            pl.coalesce(
-                [pl.col("playlist_name_fr").cast(pl.Utf8), pl.col("playlist_name").cast(pl.Utf8)]
-            )
-            if "playlist_name_fr" in df.columns
-            else pl.col("playlist_name").cast(pl.Utf8)
-        )
-        exprs.append(src.alias("playlist_ui"))
-
-    return df.with_columns(exprs) if exprs else df
 
 
 # ---------------------------------------------------------------------------
@@ -126,11 +78,7 @@ def _load_matches_for_filters(player: PlayerContext) -> pl.DataFrame:
     des filtres. Ne lève pas d'exception : retourne un DataFrame vide si la DB
     est inaccessible.
     """
-    try:
-        from src.utils.db import duckdb_read_only
-    except ImportError:
-        logger.warning("src.utils.db non disponible — filtres désactivés")
-        return pl.DataFrame()
+    from src.utils.db import duckdb_read_only
 
     db_path = Path(player.db_path)
     shared_path = Path(player.shared_db_path)
@@ -146,12 +94,12 @@ def _load_matches_for_filters(player: PlayerContext) -> pl.DataFrame:
                 with contextlib.suppress(Exception):  # déjà attachée ou indisponible
                     conn.execute(f"ATTACH '{shared_path}' AS shared (READ_ONLY)")
 
-            xuid = _resolve_xuid(conn)
+            xuid = resolve_xuid(conn)
             if not xuid:
                 return pl.DataFrame()
 
-            has_mv = _has_mv_player_matches(conn)
-            source_sql = _build_source_sql(has_mv)
+            has_mv = has_mv_player_matches(conn)
+            source_sql = build_match_source_sql(has_mv)
 
             sql = f"""
             SELECT
@@ -181,57 +129,11 @@ def _load_matches_for_filters(player: PlayerContext) -> pl.DataFrame:
             return pl.DataFrame()
 
         df = pl.DataFrame(rows, schema=columns, orient="row")
-        return _add_display_columns(df)
+        return add_display_columns(df)
 
     except Exception:
         logger.exception("Erreur lors du chargement des matchs pour les filtres")
         return pl.DataFrame()
-
-
-def _resolve_xuid(conn) -> str:  # type: ignore[no-untyped-def]
-    """Extrait le xuid depuis sync_meta."""
-    try:
-        row = conn.execute("SELECT value FROM sync_meta WHERE key = 'xuid'").fetchone()
-        return str(row[0]).strip() if row else ""
-    except Exception:
-        return ""
-
-
-def _has_mv_player_matches(conn) -> bool:  # type: ignore[no-untyped-def]
-    """Vérifie si shared.mv_player_matches est disponible."""
-    try:
-        conn.execute("SELECT 1 FROM shared.mv_player_matches LIMIT 0")
-        return True
-    except Exception:
-        return False
-
-
-def _build_source_sql(has_mv: bool) -> str:
-    """Retourne le sous-SELECT approprié selon la disponibilité de la vue matérialisée."""
-    if has_mv:
-        return """(
-            SELECT match_id, start_time, map_id, map_name, map_name_fr,
-                   pair_name, pair_name_fr, playlist_name, playlist_name_fr,
-                   game_variant_name, game_variant_name_fr,
-                   is_firefight, is_ranked
-            FROM shared.mv_player_matches
-            WHERE xuid = ?
-        )"""
-    return """(
-        SELECT r.match_id, r.start_time, r.map_id, r.map_name,
-               NULL AS map_name_fr,
-               r.pair_name,
-               NULL AS pair_name_fr,
-               r.playlist_name,
-               NULL AS playlist_name_fr,
-               r.game_variant_name,
-               NULL AS game_variant_name_fr,
-               COALESCE(r.is_firefight, FALSE) AS is_firefight,
-               COALESCE(r.is_ranked, FALSE)    AS is_ranked
-        FROM shared.match_registry r
-        JOIN shared.match_participants p ON r.match_id = p.match_id
-        WHERE p.xuid = ?
-    )"""
 
 
 # ---------------------------------------------------------------------------

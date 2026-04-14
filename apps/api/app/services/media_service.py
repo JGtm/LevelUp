@@ -6,6 +6,8 @@ import logging
 from datetime import datetime
 from pathlib import Path
 
+import polars as pl
+
 from apps.api.app.deps.players import PlayerContext
 from apps.api.app.schemas.common import PaginatedResponse, PaginationMeta
 from apps.api.app.schemas.media import (
@@ -94,12 +96,7 @@ def _load_media_raw(player: PlayerContext):
         return MediaIndexer.load_media_for_ui(db_path, player.xuid or "")
     except Exception:
         logger.debug("_load_media_raw(%s): erreur", player.player_slug, exc_info=True)
-        try:
-            import polars as pl
-
-            return pl.DataFrame()
-        except ImportError:
-            return None
+        return pl.DataFrame()
 
 
 # ---------------------------------------------------------------------------

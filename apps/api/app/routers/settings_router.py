@@ -37,8 +37,10 @@ def get_settings_endpoint() -> SettingsResponse:
     cfg = get_settings()
 
     if cfg.demo_mode:
+        from apps.api.app._pure_bridge import get_app_settings_class
         from apps.api.app.services.settings_service import _to_response
-        from src.ui.settings import AppSettings
+
+        AppSettings = get_app_settings_class()
 
         return _to_response(AppSettings())
 

@@ -13,6 +13,14 @@ import logging
 from datetime import datetime
 from pathlib import Path
 
+from apps.api.app._db_helpers import (
+    OUTCOME_LABELS,
+    OUTCOME_TONES,
+    Outcome,
+    build_match_source_sql,
+    has_mv_player_matches,
+    resolve_xuid,
+)
 from apps.api.app.deps.players import PlayerContext
 from apps.api.app.schemas.home import (
     BattlePassResponse,
@@ -28,11 +36,6 @@ from apps.api.app.schemas.home import (
 )
 
 logger = logging.getLogger(__name__)
-
-_OUTCOME_WIN = 2
-_FMT_DATETIME_FR = "%d/%m/%Y %H:%M"
-_OUTCOME_LABELS: dict[int, str] = {2: "Victoire", 3: "Défaite", 1: "Égalité", 4: "Abandon"}
-_OUTCOME_TONES: dict[int, str] = {2: "win", 3: "loss", 1: "tie", 4: "dnf"}
 
 
 # ---------------------------------------------------------------------------
@@ -103,12 +106,12 @@ def _load_matches_home(player: PlayerContext):  # type: ignore[return]
                 with contextlib.suppress(Exception):
                     conn.execute(f"ATTACH '{shared_path}' AS shared (READ_ONLY)")
 
-            xuid = _resolve_xuid(conn)
+            xuid = resolve_xuid(conn)
             if not xuid:
                 return pl.DataFrame()
 
-            has_mv = _has_mv(conn)
-            source_sql = _build_source_sql(has_mv)
+            has_mv = has_mv_player_matches(conn)
+            source_sql = build_match_source_sql(has_mv)
 
             result = conn.execute(
                 f"""
@@ -155,12 +158,7 @@ def _load_matches_home(player: PlayerContext):  # type: ignore[return]
 
     except Exception:
         logger.exception("_load_matches_home(%s)", player.player_slug)
-        try:
-            import polars as pl
-
-            return pl.DataFrame()
-        except ImportError:
-            return []
+        return pl.DataFrame()
 
 
 def _load_sessions(player: PlayerContext):  # type: ignore[return]
@@ -200,12 +198,7 @@ def _load_sessions(player: PlayerContext):  # type: ignore[return]
                 return pl.DataFrame()
     except Exception:
         logger.debug("_load_sessions(%s): erreur", player.player_slug, exc_info=True)
-        try:
-            import polars as pl
-
-            return pl.DataFrame()
-        except ImportError:
-            return []
+        return pl.DataFrame()
 
 
 def _load_recent_media(player: PlayerContext, limit: int = 4) -> list[RecentMediaItem]:
@@ -273,7 +266,7 @@ def _compute_kpis(matches_df) -> HeroKPIs:  # type: ignore[return]
         total = len(matches_df)
         wins = 0
         if "outcome" in matches_df.columns:
-            wins = int(matches_df["outcome"].cast(pl.Int64, strict=False).eq(_OUTCOME_WIN).sum())
+            wins = int(matches_df["outcome"].cast(pl.Int64, strict=False).eq(Outcome.WIN).sum())
         win_rate = wins / total if total else 0.0
 
         global_ratio = None
@@ -329,9 +322,7 @@ def _compute_trend(matches_df, window: int = 5) -> HeroTrend | None:
         def _wr(df) -> float:
             if "outcome" not in df.columns or df.is_empty():
                 return 0.0
-            return float(df["outcome"].cast(pl.Int64, strict=False).eq(_OUTCOME_WIN).sum()) / len(
-                df
-            )
+            return float(df["outcome"].cast(pl.Int64, strict=False).eq(Outcome.WIN).sum()) / len(df)
 
         ratio_delta = None
         cr, pr = _mean(current, "ratio"), _mean(previous, "ratio")
@@ -432,8 +423,8 @@ def _build_recent_matches(matches_df, limit: int = 6) -> list[RecentMatchItem]:
             if not match_id:
                 continue
             outcome_code = int(row.get("outcome") or 0)
-            outcome_label = _OUTCOME_LABELS.get(outcome_code, "DNF")
-            outcome_tone = _OUTCOME_TONES.get(outcome_code, "dnf")
+            outcome_label = OUTCOME_LABELS.get(outcome_code, "DNF")
+            outcome_tone = OUTCOME_TONES.get(outcome_code, "dnf")
             map_l = str(row.get("map_name_fr") or row.get("map_name") or "-")
             mode_l = str(row.get("pair_name_fr") or row.get("pair_name") or "-")
             ratio = row.get("ratio")
@@ -604,14 +595,6 @@ def _fetch_challenges_live(player: PlayerContext) -> ChallengesResponse:
 # ---------------------------------------------------------------------------
 
 
-def _resolve_xuid(conn) -> str:  # type: ignore[no-untyped-def]
-    try:
-        row = conn.execute("SELECT value FROM sync_meta WHERE key = 'xuid'").fetchone()
-        return str(row[0]).strip() if row else ""
-    except Exception:
-        return ""
-
-
 def _resolve_gamertag(player: PlayerContext) -> str:
     """Retourne le gamertag affichable du joueur."""
     if player.gamertag:
@@ -626,31 +609,3 @@ def _resolve_gamertag(player: PlayerContext) -> str:
     except Exception:
         pass
     return player.player_slug
-
-
-def _has_mv(conn) -> bool:  # type: ignore[no-untyped-def]
-    try:
-        conn.execute("SELECT 1 FROM shared.mv_player_matches LIMIT 0")
-        return True
-    except Exception:
-        return False
-
-
-def _build_source_sql(has_mv: bool) -> str:
-    if has_mv:
-        return """(
-            SELECT match_id, start_time, map_name, map_name_fr,
-                   pair_name, pair_name_fr, playlist_name, is_firefight, is_ranked
-            FROM shared.mv_player_matches
-            WHERE xuid = ?
-        ) AS ms"""
-    return """(
-        SELECT r.match_id, r.start_time, r.map_name,
-               NULL AS map_name_fr, r.pair_name, NULL AS pair_name_fr,
-               r.playlist_name,
-               COALESCE(r.is_firefight, FALSE) AS is_firefight,
-               COALESCE(r.is_ranked, FALSE) AS is_ranked
-        FROM shared.match_registry r
-        JOIN shared.match_participants p ON r.match_id = p.match_id
-        WHERE p.xuid = ?
-    ) AS ms"""

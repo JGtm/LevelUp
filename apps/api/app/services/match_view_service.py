@@ -10,6 +10,8 @@ import logging
 from datetime import datetime
 from typing import Any
 
+from apps.api.app._db_helpers import FMT_DATETIME_FR, OUTCOME_LABELS
+from apps.api.app._pure_bridge import load_medal_description_map, load_medal_name_maps
 from apps.api.app.deps.players import PlayerContext
 from apps.api.app.schemas.filters import FilterContextInput
 from apps.api.app.schemas.match_view import (
@@ -37,14 +39,12 @@ from apps.api.app.schemas.match_view import (
 
 logger = logging.getLogger(__name__)
 
-_OUTCOME_LABELS: dict[int, str] = {2: "Victoire", 3: "Défaite", 1: "Égalité", 4: "Abandon"}
 _OUTCOME_COLORS: dict[int, str] = {
     2: "#22c55e",
     3: "#ef4444",
     1: "#8b5cf6",
     4: "#8b5cf6",
 }
-_FMT_DATETIME_FR = "%d/%m/%Y %H:%M"
 
 
 # ---------------------------------------------------------------------------
@@ -96,7 +96,7 @@ def get_match_view(player: PlayerContext, match_id: str) -> MatchViewResponse:
 def _load_match_row(repo: Any, match_id: str, xuid: str) -> dict[str, Any]:
     """Charge la ligne de base du match depuis shared.match_registry + match_participants."""
     try:
-        conn = repo._get_connection()
+        conn = repo.conn
         row = conn.execute(
             """
             SELECT
@@ -173,7 +173,7 @@ def _build_header(
     start_time_label = ""
     if start_time:
         with contextlib.suppress(Exception):
-            start_time_label = start_time.strftime(_FMT_DATETIME_FR)
+            start_time_label = start_time.strftime(FMT_DATETIME_FR)
 
     outcome_code = row.get("outcome_code")
     if outcome_code is not None:
@@ -182,7 +182,7 @@ def _build_header(
         except (TypeError, ValueError):
             outcome_code = None
 
-    outcome_label = _OUTCOME_LABELS.get(outcome_code, "-") if outcome_code else "-"
+    outcome_label = OUTCOME_LABELS.get(outcome_code, "-") if outcome_code else "-"
     outcome_color = _OUTCOME_COLORS.get(outcome_code, "#94a3b8") if outcome_code else "#94a3b8"
 
     perf_display = "-"
@@ -289,7 +289,7 @@ def _build_summary_tab(
         except (TypeError, ValueError):
             outcome_code = None
     personal_result = MatchPersonalResult(
-        outcome_label=_OUTCOME_LABELS.get(outcome_code, "-") if outcome_code else "-",
+        outcome_label=OUTCOME_LABELS.get(outcome_code, "-") if outcome_code else "-",
         outcome_color=_OUTCOME_COLORS.get(outcome_code, "#94a3b8") if outcome_code else "#94a3b8",
         score=_safe_int(row.get("score")),
         rank_in_team=_safe_int(row.get("rank")),
@@ -319,8 +319,6 @@ def _load_medals(repo: Any, match_id: str, metadata_db_path: str) -> list[MatchM
     name_map: dict[int, str] = {}
     desc_map: dict[int, str] = {}
     try:
-        from src.ui.medals import load_medal_description_map, load_medal_name_maps
-
         name_map_raw, _ = load_medal_name_maps("fr")
         name_map = {int(k): v for k, v in (name_map_raw or {}).items()}
         desc_raw = load_medal_description_map("fr")
@@ -509,7 +507,7 @@ def _build_scoreboard(repo: Any, match_id: str, xuid: str) -> list[MatchScoreboa
                 perfect_kills=_safe_int(p.get("perfect_kills")),
                 power_weapon_kills=_safe_int(p.get("power_weapon_kills")),
                 melee_kills=_safe_int(p.get("melee_kills")),
-                outcome_label=_OUTCOME_LABELS.get(outcome_code, "-") if outcome_code else "-",
+                outcome_label=OUTCOME_LABELS.get(outcome_code, "-") if outcome_code else "-",
             )
         )
     return result
@@ -520,7 +518,7 @@ def _build_nemesis(
 ) -> list[MatchNemesisRow]:
     """Charge les paires killer/victim pour ce match (focus sur le joueur)."""
     try:
-        conn = repo._get_connection()
+        conn = repo.conn
         rows = conn.execute(
             """
             SELECT killer_xuid, victim_xuid, COUNT(*) AS n
@@ -568,7 +566,7 @@ def _build_nemesis(
 def _build_media_tab(repo: Any, match_id: str) -> MatchMediaTab:
     """Charge les médias associés au match depuis media_match_associations."""
     try:
-        conn = repo._get_connection()
+        conn = repo.conn
         rows = conn.execute(
             """
             SELECT mf.file_path, mf.file_name, mf.thumbnail_path, mf.mtime,

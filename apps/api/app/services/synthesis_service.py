@@ -7,6 +7,7 @@ import logging
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
+from apps.api.app._db_helpers import Outcome, resolve_xuid
 from apps.api.app.deps.players import PlayerContext
 from apps.api.app.schemas.synthesis import (
     ComparisonMetricItem,
@@ -19,7 +20,6 @@ from apps.api.app.schemas.synthesis import (
 
 logger = logging.getLogger(__name__)
 
-_OUTCOME_WIN = 2
 _PERIOD_DAYS: dict[str, int] = {"1w": 7, "1m": 30, "1y": 365, "2y": 730}
 
 # ---------------------------------------------------------------------------
@@ -84,7 +84,7 @@ def _load_matches_synthesis(player: PlayerContext):
                 with contextlib.suppress(Exception):
                     conn.execute(f"ATTACH '{shared_path}' AS shared (READ_ONLY)")
 
-            xuid = _resolve_xuid(conn)
+            xuid = resolve_xuid(conn)
             if not xuid:
                 return pl.DataFrame()
 
@@ -133,12 +133,7 @@ def _load_matches_synthesis(player: PlayerContext):
             return pl.DataFrame(rows, schema=columns, orient="row")
     except Exception:
         logger.exception("_load_matches_synthesis(%s)", player.player_slug)
-        try:
-            import polars as pl
-
-            return pl.DataFrame()
-        except ImportError:
-            return None
+        return pl.DataFrame()
 
 
 # ---------------------------------------------------------------------------
@@ -197,7 +192,7 @@ def _compute_synthesis_kpis(df) -> SynthesisKPIs:
         total = len(df)
         wins = 0
         if "outcome" in df.columns:
-            wins = int(df["outcome"].cast(pl.Int64, strict=False).eq(_OUTCOME_WIN).sum())
+            wins = int(df["outcome"].cast(pl.Int64, strict=False).eq(Outcome.WIN).sum())
 
         kd_ratio = None
         if "kills" in df.columns and "deaths" in df.columns:
@@ -394,7 +389,7 @@ def _build_top_weeks(df, top_n: int = 5) -> list[TopWeekItem]:
             tmp.group_by("week_label")
             .agg(
                 pl.len().alias("match_count"),
-                (outcome_col == _OUTCOME_WIN).sum().alias("wins"),
+                (outcome_col == Outcome.WIN).sum().alias("wins"),
                 kills_col.fill_null(0).sum().alias("kills_sum"),
                 deaths_col.fill_null(0).sum().alias("deaths_sum"),
             )
@@ -426,14 +421,6 @@ def _build_top_weeks(df, top_n: int = 5) -> list[TopWeekItem]:
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------
-
-
-def _resolve_xuid(conn) -> str:
-    try:
-        row = conn.execute("SELECT value FROM sync_meta WHERE key = 'xuid'").fetchone()
-        return str(row[0]).strip() if row else ""
-    except Exception:
-        return ""
 
 
 def _is_empty(df) -> bool:

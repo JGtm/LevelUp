@@ -22,7 +22,7 @@ def load_api_settings() -> SettingsResponse:
     Utilise le même ``load_settings()`` que l'UI Streamlit — source de vérité unique.
     ``discord_webhook_url`` est masqué ; seule sa présence est exposée.
     """
-    from src.ui.settings import load_settings
+    from apps.api.app._pure_bridge import load_settings
 
     s = load_settings()
     return _to_response(s)
@@ -36,8 +36,8 @@ def update_api_settings(req: UpdateSettingsRequest) -> SettingsResponse:
     Raises:
         ApiError: 500 si la persistance échoue.
     """
+    from apps.api.app._pure_bridge import load_settings, save_settings
     from apps.api.app.core.errors import ApiError
-    from src.ui.settings import load_settings, save_settings
 
     current = load_settings()
 

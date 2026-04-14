@@ -10,6 +10,17 @@ import logging
 from datetime import datetime
 from os.path import exists as path_exists
 
+from apps.api.app._db_helpers import OUTCOME_LABELS, Outcome
+from apps.api.app._pure_bridge import (
+    compute_career_projections,
+    get_rank_info,
+    load_career_data,
+    load_career_history,
+    load_lusr_history,
+    load_lusr_snapshot,
+    load_top_encountered,
+    load_top_matches,
+)
 from apps.api.app.deps.players import PlayerContext
 from apps.api.app.schemas.career import (
     CareerCharts,
@@ -30,9 +41,6 @@ logger = logging.getLogger(__name__)
 
 XP_HERO_TOTAL: int = 9_319_350
 RANK_MAX: int = 272
-_OUTCOME_WIN: int = 2
-_OUTCOME_LOSS: int = 3
-_OUTCOME_LABELS: dict[int, str] = {2: "Victoire", 3: "Défaite", 1: "Égalité", 4: "Abandon"}
 
 
 # ---------------------------------------------------------------------------
@@ -42,17 +50,12 @@ _OUTCOME_LABELS: dict[int, str] = {2: "Victoire", 3: "Défaite", 1: "Égalité",
 
 def get_career_page(player: PlayerContext, *, exclude_btb: bool = False) -> CareerPageResponse:
     """Construit la réponse complète pour la page Carrière."""
-    from src.ui.pages.career_data import (
-        _load_career_data,
-        _load_career_history,
-        _load_lusr_history,
-        _load_lusr_snapshot,
-    )
+    # career data functions imported at module level from _pure_bridge
 
-    career_data = _load_career_data(player.db_path, player.xuid)
-    history = _load_career_history(player.db_path, player.xuid)
-    lusr_snapshot = _load_lusr_snapshot(player.db_path, player.xuid)
-    lusr_history = _load_lusr_history(player.db_path, player.xuid)
+    career_data = load_career_data(player.db_path, player.xuid)
+    history = load_career_history(player.db_path, player.xuid)
+    lusr_snapshot = load_lusr_snapshot(player.db_path, player.xuid)
+    lusr_history = load_lusr_history(player.db_path, player.xuid)
 
     summary = _build_summary(career_data)
     xp_total = (career_data or {}).get("xp_total") or 0
@@ -82,13 +85,20 @@ def get_top_matches(
     player: PlayerContext, *, exclude_btb: bool = False
 ) -> CareerTopMatchesResponse:
     """Charge les top 10 meilleurs et pires matchs."""
-    from src.ui.pages.career_top_matches_data import load_top_best_matches, load_top_worst_matches
 
-    best = load_top_best_matches(
-        player.db_path, player.xuid, exclude_btb=exclude_btb, shared_db_path=player.shared_db_path
+    best = load_top_matches(
+        player.db_path,
+        player.xuid,
+        best=True,
+        exclude_btb=exclude_btb,
+        shared_db_path=player.shared_db_path,
     )
-    worst = load_top_worst_matches(
-        player.db_path, player.xuid, exclude_btb=exclude_btb, shared_db_path=player.shared_db_path
+    worst = load_top_matches(
+        player.db_path,
+        player.xuid,
+        best=False,
+        exclude_btb=exclude_btb,
+        shared_db_path=player.shared_db_path,
     )
     items_best = [_match_dict_to_top_match(d, variant="best") for d in best]
     items_worst = [_match_dict_to_top_match(d, variant="worst") for d in worst]
@@ -140,8 +150,6 @@ def _build_summary(career_data: dict | None) -> CareerSummary | None:
 def _format_rank_label(rank_number: int, rank_name_raw: str, rank_tier: str) -> str:
     """Formate le libellé FR du rang via career_ranks ou fallback."""
     try:
-        from src.ui.career_ranks import get_rank_info
-
         info = get_rank_info(rank_number)
         if info:
             return info.full_label_fr
@@ -179,27 +187,11 @@ def _build_projections(
 ) -> CareerProjections:
     """Calcule les projections XP vers le rang Héros."""
     try:
-        from src.ui.pages.career_logic import (
-            CAREER_XP_LAUNCH_DATE,
-            _compute_active_xp_per_day,
-            _compute_fallback_xp_per_day,
-            _compute_hero_projections,
-        )
-
-        xp_per_active = _compute_active_xp_per_day(history)
-        ref_date = history[0]["recorded_at"] if history else CAREER_XP_LAUNCH_DATE
-        xp_per_fallback = _compute_fallback_xp_per_day(xp_total, ref_date)
-
-        hero_date = None
-        if xp_total < XP_HERO_TOTAL and last_date and xp_per_active > 0:
-            normal_proj, _ = _compute_hero_projections(xp_total, last_date, xp_per_active)
-            if normal_proj:
-                hero_date = normal_proj[-1][0].date()
-
+        result = compute_career_projections(history, xp_total, last_date)
         return CareerProjections(
-            xp_per_day_active=round(xp_per_active, 2),
-            xp_per_day_fallback=round(xp_per_fallback, 2),
-            estimated_hero_date=hero_date,
+            xp_per_day_active=result.get("xp_per_day_active", 0.0),
+            xp_per_day_fallback=result.get("xp_per_day_fallback", 0.0),
+            estimated_hero_date=result.get("hero_date"),
             estimated_rank_cap_date=None,
         )
     except Exception:
@@ -288,11 +280,10 @@ def _build_top_matches_preview(
     if not path_exists(player.shared_db_path):
         return []
     try:
-        from src.ui.pages.career_top_matches_data import load_top_best_matches
-
-        matches = load_top_best_matches(
+        matches = load_top_matches(
             player.db_path,
             player.xuid,
+            best=True,
             exclude_btb=exclude_btb,
             shared_db_path=player.shared_db_path,
         )
@@ -307,9 +298,7 @@ def _build_encounters_preview(player: PlayerContext) -> list[CareerEncounter]:
     if not path_exists(player.shared_db_path):
         return []
     try:
-        from src.ui.pages.career_encounters_data import _load_top_encountered
-
-        rows = _load_top_encountered(player.xuid, player.db_path, limit=5)
+        rows = load_top_encountered(player.xuid, player.db_path, limit=5)
         return [_encounter_dict_to_encounter(d) for d in rows]
     except Exception:
         logger.warning("Erreur chargement encounters preview", exc_info=True)
@@ -319,9 +308,9 @@ def _build_encounters_preview(player: PlayerContext) -> list[CareerEncounter]:
 def _match_dict_to_top_match(d: dict, *, variant: str | None = None) -> CareerTopMatch:
     """Convertit un dict de match brut en CareerTopMatch."""
     outcome_code = d.get("outcome") or 0
-    outcome_label = _OUTCOME_LABELS.get(int(outcome_code)) if outcome_code else None
+    outcome_label = OUTCOME_LABELS.get(int(outcome_code)) if outcome_code else None
     dominance = d.get("dominance_flag") or 0
-    badge_type = "dominant" if dominance and outcome_code == _OUTCOME_WIN else None
+    badge_type = "dominant" if dominance and outcome_code == Outcome.WIN else None
 
     my_score = d.get("my_team_score")
     enemy_score = d.get("enemy_team_score")
