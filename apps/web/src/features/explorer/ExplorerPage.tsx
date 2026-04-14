@@ -22,7 +22,23 @@ export function ExplorerPage() {
 
   const [mode, setMode] = useState<SearchMode>('matches')
   const [targetGamertag, setTargetGamertag] = useState('')
-  const [matchFilters] = useState<ExplorerMatchFilters>({})
+
+  // Filtres cascade mode Matchs
+  const [dateFilter, setDateFilter] = useState('')
+  const [squadScope, setSquadScope] = useState<'' | 'all' | 'solo' | 'squad'>('')
+  const [expType, setExpType] = useState('')
+  const [playlistFilter, setPlaylistFilter] = useState('')
+  const [modeFilter, setModeFilter] = useState('')
+  const [mapFilter, setMapFilter] = useState('')
+
+  const matchFilters: ExplorerMatchFilters = {
+    selected_date: dateFilter || null,
+    squad_scope: squadScope || undefined,
+    experience_type: expType || null,
+    playlist: playlistFilter || null,
+    mode: modeFilter || null,
+    map: mapFilter || null,
+  }
 
   const matchesQuery = useExplorerMatches(
     playerSlug,
@@ -119,7 +135,88 @@ export function ExplorerPage() {
 
         {/* Mode Matchs */}
         {mode === 'matches' && (
-          <div className="space-y-2">
+          <div className="space-y-4">
+            {/* Filtres cascade */}
+            <Card>
+              <CardContent className="py-3">
+                <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 md:grid-cols-6">
+                  <div>
+                    <label className="block text-xs text-gray-500 mb-1">Date</label>
+                    <input
+                      type="date"
+                      value={dateFilter}
+                      onChange={(e) => setDateFilter(e.target.value)}
+                      className="w-full rounded border border-gray-300 px-2 py-1 text-sm"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-xs text-gray-500 mb-1">Contexte</label>
+                    <select
+                      value={squadScope}
+                      onChange={(e) => setSquadScope(e.target.value as '' | 'all' | 'solo' | 'squad')}
+                      className="w-full rounded border border-gray-300 px-2 py-1 text-sm"
+                    >
+                      <option value="">Tous</option>
+                      <option value="solo">Solo</option>
+                      <option value="squad">Escouade</option>
+                    </select>
+                  </div>
+                  <div>
+                    <label className="block text-xs text-gray-500 mb-1">Type d'expérience</label>
+                    <input
+                      type="text"
+                      placeholder="PvP, PvE…"
+                      value={expType}
+                      onChange={(e) => setExpType(e.target.value)}
+                      className="w-full rounded border border-gray-300 px-2 py-1 text-sm"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-xs text-gray-500 mb-1">Playlist</label>
+                    <input
+                      type="text"
+                      placeholder="Filtrer playlist…"
+                      value={playlistFilter}
+                      onChange={(e) => setPlaylistFilter(e.target.value)}
+                      className="w-full rounded border border-gray-300 px-2 py-1 text-sm"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-xs text-gray-500 mb-1">Mode</label>
+                    <input
+                      type="text"
+                      placeholder="Filtrer mode…"
+                      value={modeFilter}
+                      onChange={(e) => setModeFilter(e.target.value)}
+                      className="w-full rounded border border-gray-300 px-2 py-1 text-sm"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-xs text-gray-500 mb-1">Carte</label>
+                    <input
+                      type="text"
+                      placeholder="Filtrer carte…"
+                      value={mapFilter}
+                      onChange={(e) => setMapFilter(e.target.value)}
+                      className="w-full rounded border border-gray-300 px-2 py-1 text-sm"
+                    />
+                  </div>
+                </div>
+                {(dateFilter || squadScope || expType || playlistFilter || modeFilter || mapFilter) && (
+                  <div className="mt-2 flex justify-end">
+                    <button
+                      className="text-xs text-purple-600 hover:underline"
+                      onClick={() => { setDateFilter(''); setSquadScope(''); setExpType(''); setPlaylistFilter(''); setModeFilter(''); setMapFilter('') }}
+                    >
+                      Réinitialiser les filtres
+                    </button>
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+
+            {/* Résultats */}
+            <div className="space-y-2">
             {matchesQuery.isLoading ? (
               <div className="flex justify-center py-16">
                 <Spinner label="Chargement des matchs…" />
@@ -183,6 +280,7 @@ export function ExplorerPage() {
                 </div>
               </>
             ) : null}
+            </div>
           </div>
         )}
       </div>

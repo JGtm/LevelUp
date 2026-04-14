@@ -35,6 +35,9 @@ class MediaQueryRequest(BaseModel):
     sort: str = "date_desc"
     kind_filter: Literal["screenshot", "video", "thumbnail"] | None = None
     section_filter: str | None = None
+    map_filter: str | None = None
+    mode_filter: str | None = None
+    group_by: Literal["map", "mode", "week", "section", "owner"] | None = None
     pagination: PaginationRequest = PaginationRequest()
 
 

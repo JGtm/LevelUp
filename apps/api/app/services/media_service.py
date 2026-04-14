@@ -50,6 +50,8 @@ def get_media_page(player: PlayerContext, request: MediaQueryRequest) -> MediaPa
 
     df = _apply_kind_filter(raw_df, request.kind_filter)
     df = _apply_section_filter(df, request.section_filter)
+    df = _apply_map_filter(df, request.map_filter)
+    df = _apply_mode_filter(df, request.mode_filter)
     df = _sort_df(df, request.sort or "date_desc")
     df, total = _paginate(df, request.pagination)
 
@@ -129,6 +131,38 @@ def _apply_section_filter(df, section_filter: str | None):
         if "section" not in df.columns:
             return df
         return df.filter(pl.col("section").cast(pl.Utf8) == section_filter)
+    except Exception:
+        return df
+
+
+def _apply_map_filter(df, map_filter: str | None):
+    """Filtre par nom de carte."""
+    try:
+        import polars as pl
+
+        if not map_filter:
+            return df
+        if "map_name" not in df.columns:
+            return df
+        return df.filter(pl.col("map_name").cast(pl.Utf8).str.contains(map_filter, literal=True))
+    except Exception:
+        return df
+
+
+def _apply_mode_filter(df, mode_filter: str | None):
+    """Filtre par mode de jeu."""
+    try:
+        import polars as pl
+
+        if not mode_filter:
+            return df
+        mode_col = next(
+            (c for c in ["mode_name", "game_variant_name", "playlist_name"] if c in df.columns),
+            None,
+        )
+        if mode_col is None:
+            return df
+        return df.filter(pl.col(mode_col).cast(pl.Utf8).str.contains(mode_filter, literal=True))
     except Exception:
         return df
 

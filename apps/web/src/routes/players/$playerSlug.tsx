@@ -7,6 +7,7 @@
 import { createFileRoute, Outlet } from '@tanstack/react-router'
 import { useAppShellStore } from '@/stores/appShellStore'
 import { useEffect } from 'react'
+import { KPIBar } from '@/components/shell/KPIBar'
 
 export const Route = createFileRoute('/players/$playerSlug')({
   component: PlayerLayout,
@@ -25,5 +26,10 @@ function PlayerLayout() {
     if (player) setCurrentPlayer(player)
   }, [playerSlug, availablePlayers, currentPlayer, setCurrentPlayer])
 
-  return <Outlet />
+  return (
+    <div className="flex flex-col h-full">
+      <KPIBar />
+      <Outlet />
+    </div>
+  )
 }

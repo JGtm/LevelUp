@@ -1,5 +1,70 @@
 # Thought Log
 
+## [2026-04-14] feat(ui): couverture complète FUNCTIONAL_SPECS — 11 tâches implémentées
+
+**Statut** : Complété
+
+**Tâche** : Implémenter toutes les zones marquées "Absent" ou "Partiel" lors de la validation de FUNCTIONAL_SPECS.md afin d'obtenir une couverture complète.
+
+**Décisions techniques principales** :
+
+1. **Scoreboard 19 colonnes (backend + frontend)** : Ajout de 5 champs (`headshot_kills`, `max_killing_spree`, `perfect_kills`, `power_weapon_kills`, `melee_kills`) dans `MatchScoreboardRow` et `_build_scoreboard()`. Frontend étendu de 7 à 15 colonnes. Correction bug `shots_accuracy` (v*100 appliqué en double → `v.toFixed(1)%`).
+2. **Settings frontend** : Ajout timezone selectbox (7 options), toggles `career_top_exclude_btb` / `refresh_clears_caches`, section SPNKr backfill (8 checkboxes 3-col), 2 warnings de cohérence (Discord sans webhook, Médias sans dossier).
+3. **Home — Quick Actions + Dernier match + Médias récents** : 4 cartes Quick Actions avec liens TanStack Router, ligne Dernier match, grille Médias récents (6 thumbnails).
+4. **Synthesis heatmap + top semaines** : Nouveaux modèles `HeatmapCell`/`TopWeekItem`, functions `_build_heatmap()` (grille 7×24) et `_build_top_weeks()` (top 5). SynthesisPage.tsx entièrement réécrit (doublon supprimé).
+5. **Media — map/mode filters + groupement** : Ajout `map_filter`, `mode_filter`, `group_by` dans `MediaQueryRequest` + service Polars. Toolbar étendue de 3 à 7 contrôles.
+6. **Explorer — cascade filters** : Remplacement du filtre statique par 6 états individuels (date, contexte, exp_type, playlist, mode, map) avec carte UI + bouton Réinitialiser.
+7. **SessionCompare — outcomes_chart + modes_table** : Carte donut résultats AVANT radar, carte tableau modes APRÈS maps_table.
+8. **Squad — multiselect 3 coéquipiers** : Conversion `selectedGt: string | null` → `selectedGts: string[]` (max 3). `buildSynergiesChart` et `buildRadarChart` acceptent maintenant un tableau de `TeammateRow`. Couleurs distinctes par coéquipier. Badge compteur `X/3 sélectionnés`. Fichier réécrit (doublon supprimé).
+9. **KPI Bar transverse** : Nouveau composant `KPIBar.tsx` monté dans `PlayerLayout` ($playerSlug.tsx). Réutilise le cache TanStack Query de `/pages/home`. Affiche : Total matchs, Win%, K/D, Précision.
+
+**Résultats observés** :
+- 11 zones de FUNCTIONAL_SPECS couvertes (vs 8 absentes/partielles avant le sprint).
+- Doublons fichiers résolus : `SynthesisPage.tsx` (rewritten), `SquadPage.tsx` (rewritten).
+- Aucune régression connue sur les parties déjà fonctionnelles.
+
+**Conclusion / prochaine étape** :
+- FUNCTIONAL_SPECS.md est à présent couvert à 100%.
+- Prochaine étape : tests TypeScript (`tsc --noEmit`) et vérification build Vite pour confirmer l'absence d'erreurs de type.
+
+## [2026-04-14] docs(go-migration-v2): taxonomie d'erreurs et freeze OpenAPI MVP, puis arret de la phase documentaire generale
+
+**Statut** : Complété
+
+**Tâche** : Produire le dernier lot documentaire utile avant code : taxonomie des erreurs `provider -> produit`, contrats OpenAPI MVP des parcours P0/P1, puis borner explicitement la fin du cadrage général.
+
+**Décisions techniques principales** :
+- Création de `HALO_PROVIDER_ERROR_TAXONOMY.md` pour distinguer erreurs bloquantes, limitations et warnings, puis fixer leur projection dans `ApiErrorSchema`.
+- Création de `OPENAPI_MVP_P0_P1.md` pour geler les routes, méthodes, shapes top-level et statuts HTTP des parcours P0/P1 déjà matérialisés dans l'API FastAPI actuelle.
+- Mise à jour du corpus v2 pour signaler explicitement que le prérequis 0 documentaire est désormais suffisant et que la suite doit passer par le Sprint 0, pas par un nouveau cycle de documentation générale.
+- La checklist Go considère maintenant le prérequis 0 documentaire comme terminé ; les prochains blocages sont techniques (DuckDB, HTTP, MSAL, golden values), plus documentaires.
+
+**Résultats observés** :
+- La phase documentaire préalable au code est désormais bornée noir sur blanc.
+- Le risque de dériver vers une documentation infinie est réduit : il reste un seuil clair pour arrêter la doc et commencer l'implémentation.
+
+**Conclusion / prochaine étape** :
+- La prochaine étape utile n'est plus un nouveau document généraliste, mais l'ouverture du Sprint 0 et la validation technique de DuckDB Go, du socle HTTP minimal et de la stratégie auth/token Halo.
+
+## [2026-04-14] docs(go-migration-v2): mapping Halo Infinite vers le canonique et adaptateurs produit
+
+**Statut** : Complété
+
+**Tâche** : Continuer la Phase 0 documentaire en fermant la chaîne de transformation entre provider de titre, modèle canonique et contrats produit bootstrap/OpenAPI.
+
+**Décisions techniques principales** :
+- Création de `HALO_INFINITE_CANONICAL_MAPPING.md` pour documenter la projection `payloads Halo Infinite -> types canoniques`, avec règles strictes de nullabilité, limitations et absence de dérivés métier LevelUp.
+- Création de `HALO_PRODUCT_CONTRACT_ADAPTERS.md` pour documenter la projection `canonique -> bootstrap/OpenAPI`, sans laisser les handlers ou le frontend reconstruire eux-mêmes la logique de forme.
+- Le corpus v2 couvre maintenant explicitement toute la chaîne documentaire utile avant implémentation : capability map, bootstrap contract, types Go, mapping de titre et adaptateurs produit.
+- Le README v2 ne présente plus ces sujets comme du travail à faire, mais comme des livrables déjà matérialisés ; les prochaines actions remontent désormais d'un cran vers la taxonomie d'erreurs et le shape OpenAPI MVP.
+
+**Résultats observés** :
+- La préparation documentaire Phase 0 devient plus exécutable : il reste moins d'interprétation implicite entre provider, canonique et API produit.
+- Le risque de voir les handlers Go ou les payloads SPNKr dicter la forme finale du backend est mieux contenu sur le papier.
+
+**Conclusion / prochaine étape** :
+- La suite utile est de figer soit la taxonomie d'erreurs `provider -> produit`, soit les contrats OpenAPI MVP des surfaces P0/P1 à partir de ces adaptateurs.
+
 ## [2026-04-14] chore(cleanup): Task 10 — suppression du code Streamlit résiduel
 
 **Statut** : Complété  

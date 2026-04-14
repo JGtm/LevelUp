@@ -504,6 +504,11 @@ def _build_scoreboard(repo: Any, match_id: str, xuid: str) -> list[MatchScoreboa
                 damage_taken=_safe_float(p.get("damage_taken")),
                 average_life=avg_life,
                 objectives_stolen=_safe_int(p.get("objectives_stolen")),
+                headshot_kills=_safe_int(p.get("headshot_kills")),
+                max_killing_spree=_safe_int(p.get("max_killing_spree")),
+                perfect_kills=_safe_int(p.get("perfect_kills")),
+                power_weapon_kills=_safe_int(p.get("power_weapon_kills")),
+                melee_kills=_safe_int(p.get("melee_kills")),
                 outcome_label=_OUTCOME_LABELS.get(outcome_code, "-") if outcome_code else "-",
             )
         )

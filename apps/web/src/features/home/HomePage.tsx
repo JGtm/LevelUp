@@ -2,6 +2,7 @@
  * HomePage — Accueil Mission Control (Slice 5).
  */
 import { useParams } from '@tanstack/react-router'
+import { Link } from '@tanstack/react-router'
 import { PageHeader } from '@/components/shell/PageHeader'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
@@ -31,7 +32,7 @@ export function HomePage() {
     )
   }
 
-  const { hero, highlights, recent_matches, solo_session, squad_session } = data
+  const { hero, highlights, recent_matches, recent_media, solo_session, squad_session } = data
 
   return (
     <div className="flex flex-col">
@@ -171,6 +172,85 @@ export function HomePage() {
             </div>
           </CardContent>
         </Card>
+
+        {/* Quick Actions */}
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-base">Accès rapide</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+              {[
+                { to: `/players/${playerSlug}/stats/timeseries`, label: 'Statistiques', icon: '📈' },
+                { to: `/players/${playerSlug}/squad`, label: 'Escouade', icon: '👥' },
+                { to: `/players/${playerSlug}/explorer`, label: 'Explorer', icon: '🔍' },
+                { to: `/players/${playerSlug}/media`, label: 'Médias', icon: '🖼' },
+              ].map((item) => (
+                <Link
+                  key={item.to}
+                  to={item.to}
+                  className="flex flex-col items-center justify-center gap-1 rounded-lg border border-gray-200 bg-gray-50 px-4 py-4 text-center hover:bg-purple-50 hover:border-purple-300 transition-colors"
+                >
+                  <span className="text-2xl">{item.icon}</span>
+                  <span className="text-xs font-medium text-gray-700">{item.label}</span>
+                </Link>
+              ))}
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* Dernier match — lien rapide */}
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-base">Dernier match</CardTitle>
+          </CardHeader>
+          <CardContent>
+            {recent_matches.length > 0 ? (
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-sm font-medium text-gray-800">{recent_matches[0].title}</p>
+                  <p className="text-xs text-gray-400">{recent_matches[0].detail}</p>
+                </div>
+                <Link
+                  to={`/players/${playerSlug}/last-match`}
+                  className="ml-4 inline-flex items-center gap-1 rounded-md bg-purple-600 px-3 py-1.5 text-xs font-medium text-white hover:bg-purple-700 transition-colors"
+                >
+                  Voir →
+                </Link>
+              </div>
+            ) : (
+              <p className="text-sm text-gray-400">Aucun match récent.</p>
+            )}
+          </CardContent>
+        </Card>
+
+        {/* Médias récents */}
+        {recent_media.length > 0 && (
+          <Card>
+            <CardHeader className="flex flex-row items-center justify-between">
+              <CardTitle className="text-base">Médias récents</CardTitle>
+              <Link
+                to={`/players/${playerSlug}/media`}
+                className="text-xs text-purple-600 hover:underline"
+              >
+                Voir tout →
+              </Link>
+            </CardHeader>
+            <CardContent>
+              <div className="grid grid-cols-3 gap-2 sm:grid-cols-6">
+                {recent_media.slice(0, 6).map((m) => (
+                  <div
+                    key={m.basename}
+                    className="aspect-video rounded-md bg-gray-200 flex items-center justify-center overflow-hidden"
+                    title={m.basename}
+                  >
+                    <span className="text-xl text-gray-500">🖼</span>
+                  </div>
+                ))}
+              </div>
+            </CardContent>
+          </Card>
+        )}
       </div>
     </div>
   )

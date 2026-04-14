@@ -10,9 +10,11 @@ from pathlib import Path
 from apps.api.app.deps.players import PlayerContext
 from apps.api.app.schemas.synthesis import (
     ComparisonMetricItem,
+    HeatmapCell,
     SynthesisKPIs,
     SynthesisPageResponse,
     SynthesisQueryRequest,
+    TopWeekItem,
 )
 
 logger = logging.getLogger(__name__)
@@ -46,6 +48,8 @@ def get_synthesis_page(
     solo_kpis = _compute_synthesis_kpis(solo_df) if not _is_empty(solo_df) else None
     squad_kpis = _compute_synthesis_kpis(squad_df) if not _is_empty(squad_df) else None
     comparison = _build_comparison_metrics(solo_kpis, squad_kpis)
+    heatmap = _build_heatmap(df_filtered)
+    top_weeks = _build_top_weeks(df_filtered)
 
     return SynthesisPageResponse(
         period=request.period,
@@ -53,6 +57,8 @@ def get_synthesis_page(
         solo_kpis=solo_kpis,
         squad_kpis=squad_kpis,
         comparison_metrics=comparison,
+        heatmap_data=heatmap,
+        top_weeks=top_weeks,
     )
 
 
@@ -301,6 +307,120 @@ def _build_comparison_metrics(
         ".1f",
     )
     return metrics
+
+
+# ---------------------------------------------------------------------------
+# Heatmap temporelle (jour × heure)
+# ---------------------------------------------------------------------------
+
+
+def _build_heatmap(df) -> list[HeatmapCell]:
+    """Construit la heatmap jour-de-semaine × heure depuis start_time."""
+    try:
+        import polars as pl
+
+        if df is None or _is_empty(df):
+            return []
+        if "start_time" not in df.columns:
+            return []
+
+        col = df["start_time"]
+        if col.dtype == pl.Utf8 or col.dtype == pl.String:
+            col = col.cast(pl.Datetime, strict=False)
+
+        tmp = df.select(col.alias("ts")).filter(pl.col("ts").is_not_null())
+        if tmp.is_empty():
+            return []
+
+        tmp = tmp.with_columns(
+            pl.col("ts").dt.weekday().alias("dow"),
+            pl.col("ts").dt.hour().alias("hour"),
+        )
+        grouped = tmp.group_by(["dow", "hour"]).agg(pl.len().alias("count"))
+        return [
+            HeatmapCell(dow=int(r["dow"]), hour=int(r["hour"]), count=int(r["count"]))
+            for r in grouped.to_dicts()
+        ]
+    except Exception:
+        logger.debug("_build_heatmap: erreur", exc_info=True)
+        return []
+
+
+# ---------------------------------------------------------------------------
+# Top semaines
+# ---------------------------------------------------------------------------
+
+
+def _build_top_weeks(df, top_n: int = 5) -> list[TopWeekItem]:
+    """Retourne les N semaines avec le plus de matchs."""
+    try:
+        import polars as pl
+
+        if df is None or _is_empty(df):
+            return []
+        if "start_time" not in df.columns:
+            return []
+
+        col = df["start_time"]
+        if col.dtype == pl.Utf8 or col.dtype == pl.String:
+            col = col.cast(pl.Datetime, strict=False)
+
+        tmp = df.with_columns(col.alias("ts_dt"))
+        tmp = tmp.filter(pl.col("ts_dt").is_not_null())
+        if tmp.is_empty():
+            return []
+
+        tmp = tmp.with_columns(
+            pl.col("ts_dt").dt.strftime("%G-W%V").alias("week_label"),
+        )
+
+        outcome_col = (
+            pl.col("outcome").cast(pl.Int64, strict=False)
+            if "outcome" in tmp.columns
+            else pl.lit(0).cast(pl.Int64)
+        )
+        kills_col = (
+            pl.col("kills").cast(pl.Float64, strict=False)
+            if "kills" in tmp.columns
+            else pl.lit(0.0)
+        )
+        deaths_col = (
+            pl.col("deaths").cast(pl.Float64, strict=False)
+            if "deaths" in tmp.columns
+            else pl.lit(0.0)
+        )
+
+        grouped = (
+            tmp.group_by("week_label")
+            .agg(
+                pl.len().alias("match_count"),
+                (outcome_col == _OUTCOME_WIN).sum().alias("wins"),
+                kills_col.fill_null(0).sum().alias("kills_sum"),
+                deaths_col.fill_null(0).sum().alias("deaths_sum"),
+            )
+            .sort("match_count", descending=True)
+            .head(top_n)
+        )
+
+        result = []
+        for r in grouped.to_dicts():
+            mc = int(r["match_count"])
+            wins = int(r["wins"])
+            wr = round(wins / mc, 4) if mc else 0.0
+            d = float(r["deaths_sum"])
+            kd = round(float(r["kills_sum"]) / d, 3) if d > 0 else None
+            result.append(
+                TopWeekItem(
+                    week_label=str(r["week_label"]),
+                    match_count=mc,
+                    win_rate=wr,
+                    kd_ratio=kd,
+                )
+            )
+        return result
+    except Exception:
+        logger.debug("_build_top_weeks: erreur", exc_info=True)
+        return []
 
 
 # ---------------------------------------------------------------------------
