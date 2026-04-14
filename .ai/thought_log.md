@@ -1,5 +1,25 @@
 # Thought Log
 
+## [2026-04-14] docs(go-migration): recommandations Go/DuckDB et write lease
+
+**Statut** : Complete
+
+**Tache** : Durcir le plan Go sur DuckDB, la semantique write lease et les contraintes de connexions.
+
+**Decision technique** :
+1. La premiere implementation Go doit reproduire la semantique Python actuelle du write lease avant tout durcissement.
+2. Le write lease est documente comme coordination process-locale par DB path, pas comme verrou inter-process implicite.
+3. Le pool read-only n'est plus decrit comme illimite ; il doit etre borne explicitement.
+4. Tous les opens `read_write` Go doivent passer par un composant central unique.
+5. Le POC DuckDB doit verifier les collisions writers meme path, l'independance inter-path, et l'absence de migration implicite non voulue.
+
+**Resultats observes** :
+- `OPS_COMPAT_CHECKLIST.md` contient maintenant une section DuckDB / write lease avec semantique, architecture et POC minimal
+- `PLAN_MIGRATION_PYTHON_TO_GO.md` n'affirme plus un pool read-only illimite et precise la portee reelle du write lease
+
+**Conclusion / prochaine etape** :
+- Le prochain travail utile est de traduire ces recommandations en lot technique P0/P1 dans `MATRIX.md` et en checklist de POC executable.
+
 ## [2026-04-14] feat(prod+polish): Option C prod prep + Option A/PX polish P2/P3
 
 **Statut** : Complété

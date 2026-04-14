@@ -90,6 +90,9 @@ data/players/
 # Sessions runtime (API FastAPI + tests)
 data/sessions/
 tests/api/_sessions_test/
+tests/api/_sessions_guards_test/[0-9a-f]*-*.json
+tests/api/_sessions_sync_test/[0-9a-f]*-*.json
+tests/api/_sessions_v7_test/[0-9a-f]*-*.json
 # Corpus de test (fichiers binaires DuckDB lourds — générer via create_test_corpus.py)
 tests/fixtures/ref_player/*.duckdb
 data/warehouse/match_facts/

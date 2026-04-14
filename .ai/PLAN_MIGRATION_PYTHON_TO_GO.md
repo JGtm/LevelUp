@@ -1,6 +1,6 @@
 > [!WARNING]
 > DOCUMENT DE CADRAGE — a valider avant execution.
-> Les decisions D1-D7 doivent etre tranchees, le POC initial (2 jours) doit passer, et la migration React/FastAPI doit etre stabilisee avant de demarrer la Phase 1.
+> Les decisions D1-D7 doivent etre tranchees, le POC initial (2 jours) doit passer, et ce chantier ne demarre pas tant que [MIGRATION_MASTER.md](MIGRATION_MASTER.md) n'est pas termine et gele.
 
 > [!NOTE]
 > **Revision du 2026-04-13** — Plan complete avec : inventaire fonctionnel complet, catalogue
@@ -21,20 +21,42 @@
 
 # Plan de migration Python -> Go
 
+> [!IMPORTANT]
+> **Statut documentaire** — ce plan cadre le chantier de remplacement du runtime backend Python par Go.
+> - Il ne supersede pas automatiquement des documents d'un autre chantier ou d'un autre projet.
+> - Prerequis dur : le chantier documente dans [MIGRATION_MASTER.md](MIGRATION_MASTER.md) doit etre termine avant l'ouverture effective du Sprint 0 Go.
+> - La reference contractuelle de depart du portage Go est le produit V7 issu de ce chantier une fois gele : facade web, contrats API, fixtures et suites de validation associees.
+> - Aucun agent ne doit utiliser ce document seul.
+
+## Lecture obligatoire avant toute action
+
+1. [PLAN_MIGRATION_PYTHON_TO_GO.md](PLAN_MIGRATION_PYTHON_TO_GO.md) — trajectoire, phases, gates, risques, decisions.
+2. [go_migration/MATRIX.md](go_migration/MATRIX.md) — couverture package/script/commande/bitmask, surfaces hors scope et statut de chaque zone.
+3. [go_migration/OPS_COMPAT_CHECKLIST.md](go_migration/OPS_COMPAT_CHECKLIST.md) — compat auth/jobs/mode de test, exploitation, packaging et migration utilisateur.
+4. [MIGRATION_MASTER.md](MIGRATION_MASTER.md) et [migration/](migration/) — prerequis documentaire gele avant lancement du chantier Go.
+5. Regle simple : si une surface n'apparait ni dans la matrice ni dans la checklist ops, elle est consideree comme non couverte.
+
 ## Objectif
 
-Remplacer progressivement le runtime Python de LevelUp par un backend et des outils Go, sans casser les invariants metier existants : DuckDB v6, auth Halo, sync/backfill, logique analytique et parcours produits deja engages via React.
+Remplacer progressivement le runtime Python de LevelUp par un backend et des outils Go, sans casser les invariants metier existants : DuckDB v6, auth Halo, sync/backfill, logique analytique et parcours produits V7 deja geles.
 
-Ce plan part d'un constat simple : la migration Streamlit -> FastAPI/React est deja entamee dans le depot. Une migration Python -> Go ne doit donc pas devenir une seconde reecriture big bang. Elle doit s'appuyer sur les contrats API, les fixtures de parite et les parcours deja identifies.
+Ce plan part d'un constat simple : une migration Python -> Go ne doit pas devenir une reecriture big bang. Elle doit s'appuyer sur la facade V7 et les contrats deja stabilises par le chantier precedent, puis remplacer Python derriere cette reference sans reouvrir un chantier produit en parallele.
 
 ## Resume executif
 
 - La migration complete vers Go est faisable, mais elle doit etre menee comme un programme de remplacement progressif, pas comme une reecriture simultanee.
-- Le frontend React/TypeScript doit rester en place. Il n'y a pas de raison de refaire aussi la couche web.
+- Le but est de remplacer Python, pas de relancer une migration frontend ou une refonte produit.
 - DuckDB doit rester la source de verite. Revoir en meme temps le schema, le moteur et le runtime multiplierait inutilement le risque.
 - Les ecrans read-only doivent etre portes avant l'auth, les jobs et le moteur de sync.
 - Les calculs aujourd'hui portes par Polars ne doivent pas etre recodes "a l'intuition" en Go. Il faut basculer soit vers SQL explicite, soit vers des pipelines Go verifies contre des golden values.
 - Le programme doit utiliser une approche strangler au moment de l'integration et de la bascule : Python et Go cohabitent a ce niveau, meme si l'implementation locale se fait tranquillement dans un worktree dedie.
+
+## Ce que "remplacer Python" veut dire
+
+1. Remplacer l'API backend Python, les jobs longs, la sync/backfill et les CLI d'exploitation par des equivalents Go.
+2. Garder la facade V7 issue de [MIGRATION_MASTER.md](MIGRATION_MASTER.md) comme consommateur de reference, pas comme chantier a reouvrir.
+3. Garder par defaut le schema DuckDB, le contrat HTTP et les fixtures de validation tant qu'une divergence n'est pas explicitement decidee et tracee.
+4. Sortent du scope : refonte frontend, redesign produit, changement gratuit des payloads, et double maintenance durable Python/Go apres bascule finale.
 
 ## Hypothese de travail : worktree dedie
 
@@ -50,7 +72,7 @@ Ce plan suppose explicitement que l'implementation se fait dans un worktree dedi
 ## Ce que cela ne change pas
 
 1. Avant merge, revue formelle ou bascule, le lot doit revenir a un etat testable et explicable.
-2. Les contrats React, les golden values et la parite metier restent la reference obligatoire.
+2. Les contrats cibles, les golden values et la parite metier restent la reference obligatoire.
 3. Les migrations DuckDB, les jobs longs, l'auth et les scripts d'exploitation doivent toujours avoir une strategie claire.
 4. Le worktree dedie ne justifie pas de perdre la traçabilite, d'ignorer les registres anti-oubli ou de supprimer du Python sans plan de remplacement.
 
@@ -108,14 +130,14 @@ Ce workflow est volontairement pragmatique : il assume que le worktree peut etre
 
 1. Tout ce qui touche les schemas DuckDB ou leurs migrations.
 2. Tout ce qui touche l'auth, les secrets, les cookies ou les caches de tokens.
-3. Tout ce qui touche les endpoints deja consommes par React.
+3. Tout ce qui touche les endpoints deja consommes par la facade V7.
 4. Tout ce qui touche sync, backfill, smoke test, backup, restore ou media indexing.
 
 ## Decision de cadrage
 
 ### Ce que le plan assume
 
-- Le frontend React/TypeScript deja en cours reste la facade cible.
+- La facade V7 issue de [MIGRATION_MASTER.md](MIGRATION_MASTER.md) reste le consommateur cible et la reference contractuelle de depart.
 - L'architecture de donnees v6 reste intacte : metadata, shared matches, player DBs, vues SQL garanties.
 - Les contrats fonctionnels existants restent la reference : filtres, sessions, carriere, match history, explorer, match view, settings, setup.
 - Les scripts d'exploitation et la sync finissent eux aussi en Go, mais seulement apres stabilisation de la couche API read-only.
@@ -228,109 +250,29 @@ apps/
 
 ## Comment etre sur de ne rien oublier
 
-Tu ne peux pas le garantir par memoire ou par intuition. Il faut remplacer la memoire humaine par des registres obligatoires, des tests de couverture et des gates de suppression.
+Ce document n'est volontairement plus autosuffisant.
 
-## Registre anti-oubli obligatoire
-
-1. Tenir une matrice Python -> Go vivante pour chaque package, script et point d'entree.
-2. Donner a chaque element exactement un statut : a migrer, a garder temporairement, a encapsuler derriere un bridge, a retirer, ou hors scope.
-3. Tenir un registre des dependances externes : DuckDB, SPNKr, auth Halo, MSAL, ffprobe, Discord, systeme de thumbnails, CI, OS cibles.
-4. Tenir un registre des contrats HTTP : route, payload, consommateur React, golden test associe, proprietaire.
-5. Tenir un registre des acces DB : quelles tables et vues sont lues, ecrites, migrees, verrouillees, et par quel binaire.
-6. Tenir un registre des jobs de fond : sync, backfill, smoke test, media indexing, reindex, cron, retries, side effects.
-7. Tenir un registre des scripts d'exploitation : sync, restore, backup, check_env, diagnostic, migration, release, Docker, CI.
-8. Tenir un registre de decommission : ce qui peut etre supprime, ce qui doit cohabiter, et ce qui bloque encore la suppression d'un morceau Python.
+- La couverture package/script/commande/bitmask est maintenue dans [go_migration/MATRIX.md](go_migration/MATRIX.md).
+- Les exigences de compatibilite runtime et d'exploitation sont maintenues dans [go_migration/OPS_COMPAT_CHECKLIST.md](go_migration/OPS_COMPAT_CHECKLIST.md).
+- Les contrats applicatifs a preserver doivent etre documentes dans ce chantier ou ses sous-docs dedies.
 
 ## Regle simple
 
-Si un fichier Python n'apparait dans aucun registre, il est considere comme non couvert et la migration n'est pas assez mature pour le toucher.
+Si une surface Python, un script, une route ou un comportement runtime n'apparait dans aucun de ces sous-docs, il est considere comme non couvert.
 
 ## Routine de couverture obligatoire avant chaque phase
 
-1. Verifier qu'aucun package Python actif n'est sans statut explicite.
-2. Verifier qu'aucun endpoint React critique ne depend d'un comportement Python non documente.
-3. Verifier qu'aucune ecriture DuckDB n'existe sans plan de migration idempotent.
-4. Verifier qu'aucun script d'exploitation Python critique n'est oublie hors backlog.
-5. Verifier qu'aucune variable d'environnement, secret ou cache disque n'est implicitement requise par un service Python restant.
-6. Verifier qu'aucune tache de fond ne depend encore d'un rerun UI ou d'un processus Python non inventorie.
-7. Verifier qu'aucune suppression de code Python n'est faite sans test de parite, runbook et rollback.
+1. Mettre a jour la matrice avant de toucher une nouvelle surface.
+2. Mettre a jour la checklist ops avant de modifier auth, jobs, mode de test, packaging ou runbook.
+3. Verifier que les contrats applicatifs cibles restent couverts par les tests et golden values existants.
 
 ## Definition operationnelle de rien oublier
 
-Tu peux considerer que la couverture est suffisante seulement si :
+La couverture est suffisante seulement si :
 
-1. Chaque dossier Python encore vivant a un proprietaire, un statut et un remplacant cible.
-2. Chaque commande utilisateur ou operateur a une contrepartie Go, ou une decision explicite de maintien temporaire en Python.
-3. Chaque integration externe a une strategie documentee : migration, bridge temporaire ou maintien assume.
-4. Chaque contrat de page React est relie a des golden values et a un test de parite.
-5. Chaque chemin de production et de maintenance peut etre rejoue sans connaissance implicite du repo.
-
-## Matrice Python -> Go initiale
-
-Cette matrice est volontairement non exhaustive. Compte tenu des deux grosses migrations en cours sur le depot, elle sert a couvrir les angles morts majeurs des maintenant, pas a pretendre fournir un inventaire final complet du premier coup.
-
-### Surfaces prioritaires deja visibles
-
-1. apps/api/
-  Statut : a remplacer progressivement par go-api.
-  Strategie : port direct des routes et schemas utiles au frontend React.
-2. src/data/repositories/
-  Statut : a porter partiellement puis largement en Go.
-  Strategie : extraire les requetes critiques d'abord, SQL-first quand possible.
-3. src/data/services/
-  Statut : a porter par parcours metier, pas en bloc.
-  Strategie : career, history, explorer, match view d'abord.
-4. src/analysis/
-  Statut : a auditer avant portage.
-  Strategie : ne porter que ce qui ne peut pas vivre proprement en SQL DuckDB.
-5. src/auth/
-  Statut : a garder temporairement puis a porter.
-  Strategie : bridge ou adapter temporaire, puis portage Go des flux retenus.
-6. spnkr_pr/
-  Statut : a isoler immediatement, a porter plus tard.
-  Strategie : anti-corruption layer, puis remplacement progressif des appels utiles.
-7. src/app/
-  Statut : a analyser puis distribuer entre Go et suppression.
-  Strategie : `src/app/` contient la logique applicative Streamlit (page routing, filtres cascade, KPIs, state management, sidebar, cache control, player provisioning, session keys — ~25 fichiers). La majorite de cette logique est deja portee dans `apps/api/` (FastAPI) et `apps/web/` (React). Le portage Go doit identifier ce qui reste uniquement dans `src/app/` et n'a pas d'equivalent API/React (notamment `_filters_cascade.py`, `_filters_friends.py`, `player_provisioning.py`). Le reste est du code Streamlit mort une fois la migration React terminee.
-8. src/utils/ (partiellement)
-  Statut : a auditer module par module.
-  Strategie : `discord_notifier.py`, `_discord_embed.py`, `_discord_queries.py` et `_discord_media.py` sont a porter en Go (webhook HTTP + embed JSON). `radar_chart.py`, `teammates_views.py` et autres helpers UI seront supprimes avec Streamlit.
-
-### Surfaces a traiter tard ou a remplacer plutot qu'a porter
-
-1. src/data/sync/
-  Statut : a porter tardivement.
-  Strategie : une fois les couches read-only, settings et auth stabilisees.
-2. scripts/sync.py et scripts/backfill_data.py
-  Statut : a reconstituer en Go a la fin du coeur backend.
-  Strategie : repartir des usages reels, pas d'une traduction ligne a ligne.
-3. scripts/backup_player.py, scripts/restore_player.py, scripts/check_env.py, scripts/diagnose_player_db.py
-  Statut : a recenser puis a reimplementer selectivement.
-  Strategie : prioriser ce qui est necessaire a l'exploitation et au support.
-4. launcher.py, LevelUp.sh, LevelUp.bat, packaging/
-  Statut : a adapter, pas a porter tel quel.
-  Strategie : les faire converger vers les nouveaux binaires Go et le frontend conserve.
-
-### Surfaces qui ne doivent pas etre "portees vers Go" au sens litteral
-
-1. src/ui/, streamlit_app.py, streamlit_app_v7.py
-  Statut : a retirer via la migration React, pas a reimplementer en Go.
-2. apps/web/
-  Statut : a conserver.
-  Strategie : stabiliser les contrats, pas changer de pile web.
-3. tests/parity/, fixtures, golden values
-  Statut : a conserver comme reference.
-  Strategie : les enrichir si besoin, jamais les traiter comme du legacy a supprimer trop tot.
-
-### Surfaces encore floues et volontairement laissees non exhaustives
-
-1. scripts auxiliaires de maintenance, d'investigation et de migration ponctuelle.
-2. sous-modules peu utilises de src/utils/ et de src/ports/.
-3. outillage documentaire et scripts de release non encore relies a la future chaine Go.
-4. src/app/ — couche applicative Streamlit (~25 fichiers : routing, filtres, state, sidebar, KPIs). La plupart sera supprimee avec Streamlit ; les logiques metier non dupliquees dans apps/api/ doivent etre identifiees en Phase 0.
-5. Notifications Discord — `src/utils/discord_notifier.py` et ses sous-modules (`_discord_embed.py`, `_discord_queries.py`, `_discord_media.py`). Fonctionnalites : embed bilingue post-sync/backfill, notification de nouveaux medias (avec thumbnail GIF/image, anti-spam via `discord_notified_at`), notification de nouvelle version. Le webhook URL est configurable via `app_settings.json`.
-
-Regle : toute zone absente de cette matrice initiale doit etre ajoutee avant qu'un lot de migration la modifie profondement.
+1. Chaque surface active a un statut explicite dans la matrice.
+2. Chaque comportement runtime critique a une exigence explicite dans la checklist ops.
+3. Chaque contrat applicatif touche par le portage renvoie a un corpus de parite ou a une decision documentee.
 
 ## Strategie SPNKr / Client API Halo
 
@@ -429,7 +371,7 @@ Travaux :
 
 1. Monter le service Go, le healthcheck, le request_id, le logging et la config.
 2. Implementer bootstrap, players et resolveur de filtres.
-3. Brancher le frontend React sur des endpoints Go en mode shadow ou via feature flag au moment de l'integration ; dans le worktree, un remplacement plus direct est acceptable tant qu'il est reverifie avant merge.
+3. Valider la compatibilite avec la facade V7 via shadow mode ou feature flag au moment de l'integration ; le frontend n'est pas un chantier a refaire.
 4. Comparer les payloads Go contre les payloads Python sur le corpus de reference.
 
 Livrables :
@@ -452,7 +394,7 @@ Ordre recommande :
 
 Travaux :
 
-1. Porter les services de page en respectant les contrats React deja en place.
+1. Porter les services de page en respectant les contrats deja figes de la facade V7.
 2. Transformer les calculs Polars en SQL ou en pipelines Go verifies.
 3. Exposer des payloads de page ou de sous-ressources stables.
 4. Mettre ces routes en shadow mode sur des fixtures puis sur des donnees reelles avant integration ; dans le worktree, il est acceptable de court-circuiter temporairement la version Python pour accelerer le refactor.
@@ -505,12 +447,12 @@ Objectif : retirer Python seulement quand Go a deja prouve sa tenue sur la duree
 Travaux :
 
 1. Passer les surfaces React une par une sur le backend Go.
-2. Garder Python en rollback court terme, jamais comme double canonique durable.
+2. Tant que le worktree Go n'est pas valide pour integration, la branche principale Python reste simplement la baseline non fusionnee ; apres bascule finale, pas de retour strategique durable vers Python.
 3. Mesurer erreurs, latence, ecarts de calcul et issues de jobs.
 4. Retirer progressivement les endpoints Python devenus redondants.
 5. Supprimer les scripts Python restants seulement apres soak test de plusieurs cycles reels.
 
-Note : le rollback court terme est une exigence de branche integree ou de production. Il n'a pas besoin d'exister a chaque instant dans le worktree de developpement.
+Note : dans ce plan, le "rollback" ne veut pas dire maintenir Python comme solution cible de secours apres bascule finale. Cela veut seulement dire : ne rien merger ni supprimer irreversiblement tant que le gate de validation n'est pas passe.
 
 Livrables :
 
@@ -564,7 +506,7 @@ Traiter les conditions de succes comme une check-list d'actions a executer, pas 
 12. Chaque algorithme metier (performance score, LUSR, sessions, citations, killer/victim) a des golden values **chiffrees** et les tolerances sont documentees (ε < 0.01 pour les scores, ε < 0.1 pour mu/sigma).
 13. Le systeme de backfill bitmask (22 bits) est numeriquement identique entre Python et Go — pas "equivalent", identique.
 14. Le modele de concurrence Go (pool read-only + write lease) est teste sous charge avec au moins 10 requetes read paralleles + 1 sync write.
-15. Le frontend React continue a fonctionner sans modification de code pendant tout le portage.
+15. La facade V7 continue a fonctionner sans changement de semantique pendant tout le portage.
 16. Les 14 langues i18n fonctionnent identiquement (traductions dynamiques via DuckDB).
 17. Le mode PvE/Firefight est couvert (pas seulement le PvP).
 18. Le media indexing fonctionne bout en bout (ffprobe, hash, association match).
@@ -588,7 +530,7 @@ Traiter ces conditions comme des signaux d'arret ou de replanification.
 13. Oublier le backfill bitmask et casser la detection de donnees manquantes.
 14. Ne pas tester le driver DuckDB Go sur Windows et decouvrir un probleme de build CGo au moment du deploiement.
 15. Ignorer le mode PvE et n'en prendre conscience qu'au moment du retrait de Python.
-16. Lancer le portage Go pendant que la migration React est encore en cours (deux migrations simultanees = double risque d'incoherence contractuelle).
+16. Lancer le portage Go avant la cloture effective de [MIGRATION_MASTER.md](MIGRATION_MASTER.md).
 
 ## Gates Go/No-Go recommandes
 
@@ -605,7 +547,7 @@ Passer ce gate seulement si :
 Passer ce gate seulement si :
 
 1. Les parcours Career, History, Explorer et Match View tournent en Go avec parite acceptable.
-2. Le frontend React consomme les endpoints Go sans changement de semantique.
+2. La facade V7 consomme les endpoints Go sans changement de semantique.
 3. Les ecarts restants sont documentes et volontaires.
 
 ### Gate 3 - Viabilite d'exploitation
@@ -651,152 +593,56 @@ Le plan a des gates Go/No-Go par phase. Il faut aussi des criteres d'abandon def
 5. **Le produit evolue plus vite que le portage** : si apres 3 mois les golden values les sont obsoletes parce que le produit Python a trop bouge.
 6. **Fatigue / motivation** : pour un developpeur solo, 6-10 mois de portage sans feature visible est un risque reel. Si le portage devient une corvee, il vaut mieux rester sur Python+FastAPI qui fonctionne.
 
-**Consequence d'un arret** : revenir sur Python+FastAPI sans dette. Le travail Go reste dans une branche archivee. Les golden values et les POC enrichissent le projet meme sans migration.
+**Consequence d'un arret** : le worktree Go est abandonne ou archive sans merge. Il n'y a pas de "retour" a organiser apres coup puisque Python reste la baseline tant que Go n'a pas franchi les gates d'integration.
 
 ---
 
 ## Modele de deploiement cible
 
-Le plan decrit **quoi** porter mais jamais **comment** le resultat final est lance et deploye. Cette section comble ce manque.
+Le detail runtime, packaging, Docker, jobs persistants et contraintes ffprobe/ffmpeg est maintenu dans [go_migration/OPS_COMPAT_CHECKLIST.md](go_migration/OPS_COMPAT_CHECKLIST.md).
 
-### Architecture runtime cible
+Principes retenus :
 
-```
-Utilisateur
-    |
-    v
-[levelup-api]          ← Binaire Go unique
-  ├── Sert l'API REST (net/http)
-  ├── Sert les fichiers statiques React (embed via go:embed ou serveur de fichiers)
-  ├── Healthcheck, metrics, logging
-  └── Gere les jobs longs (sync, backfill) en goroutines internes
-    |
-    v
-[DuckDB files]         ← Meme layout qu'aujourd'hui (data/warehouse/, data/players/)
-```
-
-### Lancement
-
-- **Local Windows** : `levelup-api.exe serve` (remplace `python launcher.py run`)
-- **Local Linux** : `./levelup-api serve`
-- **Docker** : `docker run -v ./data:/data levelup-api serve` (un seul binaire, image FROM scratch ou distroless)
-- **Scripts CLI** : `levelup-api sync --delta --gamertag X` (remplace `python scripts/sync.py`)
-- **Outils** : `levelup-api tools backup --gamertag X` (remplace `python scripts/backup_player.py`)
-
-### Un binaire ou plusieurs ?
-
-Recommandation : **un seul binaire avec sous-commandes** (pattern `kubectl`-like). Avantages : une seule chose a distribuer, pas de confusion sur les versions, Go supporte bien les sous-commandes via `cobra` ou `urfave/cli`.
-
-```
-levelup-api serve              → lance le serveur HTTP
-levelup-api sync --delta       → lance un sync delta
-levelup-api sync --full        → lance un sync complet
-levelup-api tools backup       → backup DB joueur
-levelup-api tools restore      → restore DB joueur
-levelup-api tools healthcheck  → diagnostic integrite
-levelup-api tools seed         → seed metadata
-levelup-api version            → affiche la version
-```
-
-### Frontend React
-
-2 options :
-1. **Embed via `go:embed`** : les fichiers build React sont embarques dans le binaire Go. Zero dependance externe. Distribution = 1 fichier. C'est l'option recommandee pour un outil solo.
-2. **Servi separement** : nginx/caddy sert le React, Go sert l'API. Plus standard pour du cloud, mais ajoute une dependance.
-
-### Service systeme
-
-- **Windows** : `levelup-api.exe` peut etre lance au demarrage via Task Scheduler, un raccourci startup, ou un service NSSM. Le fichier `LevelUp.bat` actuel est remplace par un lancement direct du binaire.
-- **Linux** : fichier systemd unit dans `packaging/`, analogue au service actuel mais sans Python/venv.
+1. La cible preferee reste un binaire principal avec sous-commandes, sous reserve de validation packaging et CI.
+2. "Zero Python" ne veut pas dire "zero binaire auxiliaire" si media indexing est conserve.
+3. L'integration de la facade web peut etre embarquee ou servie a part ; ce point ne doit pas etre fige avant validation packaging.
+4. Le packaging final doit rester compatible avec les contraintes d'exploitation reelles du repo, pas avec une promesse abstraite de binaire seul.
 
 ---
 
 ## Migration des donnees utilisateurs existants
 
-Un utilisateur qui utilise LevelUp aujourd'hui a des fichiers DuckDB crees par le Python actuel. Le passage a Go ne doit pas casser leur installation.
+Le runbook de compatibilite DuckDB, cache MSAL, sessions HTTP, configuration et transition utilisateur est maintenu dans [go_migration/OPS_COMPAT_CHECKLIST.md](go_migration/OPS_COMPAT_CHECKLIST.md).
 
-### Compatibilite DuckDB
+Regle de base :
 
-- Le driver `go-duckdb` utilise `libduckdb` (la lib C de DuckDB). Il faut que la version de libduckdb dans go-duckdb soit compatible avec les fichiers crees par DuckDB 1.4.4 (Python).
-- **DuckDB n'a PAS de garantie de compatibilite binaire entre versions majeures** (ex: un fichier DuckDB 0.x ne s'ouvre pas en 1.x). Il faut imperativement que go-duckdb utilise DuckDB 1.x.
-- **Validation** : pendant le Sprint 0, ouvrir un fichier DuckDB cree par le Python actuel avec go-duckdb et verifier qu'il s'ouvre sans erreur, que les types/schema sont intacts, et qu'aucune migration implicite ne se declenche.
-
-### Cache MSAL
-
-- Le cache MSAL est serialise en JSON dans la table `sync_meta` de chaque `stats.duckdb` via `SerializableTokenCache`. Ce JSON est un format MSAL standard.
-- **MSAL Go** utilise le meme format de serialisation (`ExportAuthResult` / `ImportAuthResult`). Le cache devrait etre compatible directement.
-- **Validation** : pendant le Sprint 0, deserialiser un cache MSAL cree par Python MSAL avec MSAL Go et verifier que le token refresh fonctionne.
-
-### Sessions HTTP
-
-- Les sessions actuelles utilisent des fichiers filesystem dans `data/sessions/` (serialises par l'API FastAPI Python).
-- **Strategie** : au premier demarrage du Go, les sessions existantes sont invalidees. L'utilisateur devra se re-logger. C'est acceptable pour un outil perso (pas pour un SaaS).
-- Alternative : lire le format de session FastAPI et le migrer. Non recommande (complexe pour un gain minime).
-
-### Configuration
-
-- `db_profiles.json`, `app_settings.json`, `.env.local` : format JSON/env, lisibles tels quels depuis Go.
-- Aucune migration de config necessaire.
-
-### Runbook de transition pour les utilisateurs
-
-```
-1. Telecharger le nouveau binaire levelup-api (ou levelup-api.exe)
-2. L'installer a cote du repo existant (meme dossier data/)
-3. Lancer `levelup-api serve` → il ouvre les memes fichiers DuckDB
-4. Se re-authentifier (device code flow) au premier lancement
-5. Verifier que les donnees sont intactes (memes matchs, memes stats)
-6. Supprimer l'ancien Python/venv quand tout fonctionne
-```
+1. Les fichiers DuckDB existants doivent s'ouvrir sans migration implicite non voulue.
+2. MSAL reste la cible canonique, avec support refresh tokens de compatibilite.
+3. Les sessions FastAPI existantes peuvent etre invalidees au premier demarrage Go, mais cette decision doit rester explicite dans le runbook.
 
 ---
 
 ## Strategie d'evolution du produit pendant le portage
 
-Le plan initial implique un gel des contrats OpenAPI, des migrations DuckDB et du frontend pendant 6-10 mois. C'est irrealiste pour un projet personnel actif. Halo Infinite va continuer a evoluer (nouvelles saisons, maps, modes).
+La version maintenue de cette discipline est dans [go_migration/OPS_COMPAT_CHECKLIST.md](go_migration/OPS_COMPAT_CHECKLIST.md).
 
-### Regles pragmatiques
+Regles retenues :
 
-1. **Changements schema DuckDB** : autorises si la migration Go correspondante est ajoutee dans la meme semaine. Le Go ne doit jamais etre a plus d'une semaine de retard sur le schema.
-2. **Nouveaux endpoints API** : autorises si le contrat OpenAPI est mis a jour et un golden value est ajoute simultanement. Le Go les implemente au prochain sprint de la phase en cours.
-3. **Changements frontend React** : autorises s'ils sont client-only (pas de modification du contrat backend). Si un nouveau contrat backend est necessaire, il doit etre ajoute en Python ET documente pour portage Go.
-4. **Nouvelles features metier** : implementees d'abord en Python (c'est la reference), puis portees en Go comme partie du backlog normal. Le Go ne doit jamais "rattraper" une feature surprise — elle doit etre planifiee.
-5. **Corrections de bugs** : toujours en Python d'abord (c'est la prod). Le Go herite du fix via les golden values mis a jour.
-
-### Discipline de synchronisation
-
-Chaque semaine, verifier :
-- [ ] Le schema OpenAPI Go est a jour par rapport au Python
-- [ ] Les golden values refletent l'etat actuel du Python
-- [ ] Aucune migration DuckDB Python n'est sans equivalent Go planifie
+1. Pas de freeze total du produit.
+2. Pas de dette silencieuse de plusieurs semaines entre Python et Go sur OpenAPI, golden values ou schema DuckDB.
+3. Chaque ecart volontaire doit etre visible dans la checklist ops avant de devenir acceptable.
 
 ---
 
 ## Gestion multi-joueurs en Go
 
-`db_profiles.json` peut contenir N joueurs. Chaque joueur a sa propre DB (`data/players/{gamertag}/stats.duckdb`). Cela a un impact direct sur le pool de connexions.
+Le detail du modele multi-joueurs, des pools par gamertag et des contraintes de shutdown est maintenu dans [go_migration/OPS_COMPAT_CHECKLIST.md](go_migration/OPS_COMPAT_CHECKLIST.md).
 
-### Architecture du pool
+Regles retenues :
 
-```
-ConnectionManager
-  ├── metadata_pool       → 1 pool read-only, shared global
-  ├── shared_pool         → 1 pool read-only + 1 write lease (sync.Mutex)
-  ├── shared_pve_pool     → 1 pool read-only + 1 write lease
-  └── player_pools        → map[gamertag]*PlayerPool
-       ├── "PlayerA" → read-only pool + write lease + ATTACH shared (RO)
-       ├── "PlayerB" → read-only pool + write lease + ATTACH shared (RO)
-       └── "PlayerC" → ...
-```
-
-### Regles
-
-1. Les pools player sont crees **a la demande** (lazy init au premier acces) et fermes proprement au shutdown.
-2. Chaque pool player fait ATTACH de shared_matches_v2 en read-only une seule fois a l'init (pas a chaque requete — sinon la latence explose).
-3. Un sync sur PlayerA n'impacte pas les lectures sur PlayerB (write leases sont par DB path).
-4. Si un joueur est ajoute via Setup, son pool est cree dynamiquement.
-5. Si un joueur est supprime, son pool est ferme et les fichiers DuckDB peuvent etre archives.
-6. Taille de pool read-only par player : bornee a ~5 connexions (un outil perso n'a pas besoin de plus).
+1. Le multi-joueur reste une exigence de premier ordre, pas un embellissement post-migration.
+2. Les connexions player doivent rester isolees par chemin DB et par write lease.
+3. L'ajout/suppression dynamique de joueurs via Setup doit rester explicable des la conception du pool.
 
 ---
 
@@ -804,7 +650,7 @@ ConnectionManager
 
 Le portage Go n'est pas qu'une reecriture isometrique. Certaines choses deviennent possibles ou naturelles en Go :
 
-1. **Distribution zero-dependency** : un seul binaire statique avec le frontend React embarque (`go:embed`). Plus besoin de Python, venv, pip, ou d'instructions d'installation complexes. Le "onboarding" utilisateur passe de "installe Python, cree un venv, pip install, configure Azure, lance streamlit" a "telecharge levelup-api.exe, lance-le".
+1. **Distribution simplifiee** : un binaire principal, avec facade web embarquee ou distribuee a part selon le packaging retenu, peut reduire fortement la complexite d'installation, meme si certains outils auxiliaires comme ffprobe/ffmpeg peuvent rester necessaires selon le perimetre retenu.
 
 2. **Concurrence native pour le backfill** : en Python, le backfill de plusieurs joueurs est sequentiel (un seul process, un seul writer). En Go, on peut lancer N goroutines de backfill en parallele (un writer par DB player, independants entre eux), ce qui divise le temps de backfill initial par N.
 
@@ -853,11 +699,18 @@ Ce plan est ecrit dans un style "programme d'entreprise". Pour un developpeur so
 
 ## Errata et corrections sur le plan initial
 
-### 1. Incoherence avec la migration React/FastAPI declaree canonique
+### 1. Prerequis de lancement : MIGRATION_MASTER termine
 
-Le document `.ai/MIGRATION_MASTER.md` declare la migration Streamlit -> FastAPI/React **canonique** (41 tests Playwright passants, 8 slices verifices). Le backend de reference est FastAPI Python. Ce plan Go ne contredit pas cette decision, mais il faut etre explicite :
+Ce plan Go reste en attente tant que le chantier documente dans [MIGRATION_MASTER.md](MIGRATION_MASTER.md) n'est pas termine et gele.
 
-**La migration Go ne commence qu'APRES la stabilisation complete de la migration React/FastAPI.** Le backend FastAPI est la reference contractuelle. Le Go le remplace, il ne le double pas.
+Une fois ce prerequis valide, la reference contractuelle de depart du portage Go devient explicitement :
+
+1. la facade V7 (consommateur web) ;
+2. les contrats HTTP/OpenAPI exposes par le backend Python ;
+3. les fixtures, golden values et suites de validation associees ;
+4. le schema DuckDB et les comportements metier deja stabilises.
+
+La migration Go remplace Python derriere cette reference. Elle ne reouvre pas un nouveau chantier frontend ou produit.
 
 ### 2. L'estimation d'effort est sous-evaluee
 
@@ -892,7 +745,7 @@ Ces interfaces sont la frontiere naturelle pour le portage Go. Le plan devrait s
 
 ### 5. Le write lease system n'est pas mentionne
 
-`src/data/repositories/_write_lease.py` implementge un semaphore global par chemin DB pour eviter la corruption DuckDB multi-writer. Le plan Go doit reproduire ce mecanisme exactement (timeout 30s, un seul writer par DB a la fois).
+`src/data/repositories/_write_lease.py` implemente une coordination process-locale par chemin DB pour eviter la collision entre ouvertures `read_write` et `read_only`. Le plan Go doit reproduire explicitement cette semantique avant tout durcissement : un seul writer logique par DB path, attente courte equivalente au Python (~5 s), warning explicite puis tentative d'ouverture quand meme si le lease persiste. Il ne faut pas presenter cela comme un verrou inter-process plus fort sans decision d'architecture separee.
 
 ### 6. Les vues materialisees ne sont pas couvertes
 
@@ -1388,10 +1241,11 @@ Cela garantit une chaine de verificabilite tracable Python ↔ Go.
 ```
 
 **Regles** :
-1. Pool de connexions read-only : illimite (goroutine-safe via sync.Pool ou equivalent)
-2. Write lease : 1 seul writer par DB a la fois (sync.Mutex par path, timeout 30s)
-3. ATTACH shared_matches_v2 en read-only depuis chaque connexion player
+1. Pool de connexions read-only : borne et explicite, pas illimite.
+2. Write lease : 1 seul writer par DB a la fois (sync.Mutex par path, attente courte equivalente au Python plutot qu'un blocage long)
+3. ATTACH shared_matches_v2 en read-only depuis chaque connexion player, une fois par connexion et pas par requete.
 4. Si sync en cours : les lectures continuent mais peuvent voir un etat intermediaire (acceptable, meme comportement que Python)
+5. Tous les opens `read_write` passent par un composant central unique ; pas d'ouverture writer ad hoc dans les handlers ou helpers.
 
 ### Gestion multi-joueurs
 
@@ -1405,90 +1259,16 @@ Cela garantit une chaine de verificabilite tracable Python ↔ Go.
 ---
 
 ## Matrice detaillee Python → Go (mise a jour)
+La version maintenue de cette matrice a ete sortie dans [go_migration/MATRIX.md](go_migration/MATRIX.md).
 
-### Packages Python actifs et statut de portage
+Regle de pilotage :
 
-| Package | Fichiers | LOC approx | Statut | Cible Go | Difficulte |
-|---------|:--------:|:----------:|--------|----------|:----------:|
-| `apps/api/` | ~30 | ~3000 | A remplacer | `go-api/internal/api/` | Moyenne |
-| `src/data/repositories/` | ~15 | ~4000 | A porter | `go-api/internal/platform/duckdb/` | Haute |
-| `src/data/services/` | ~8 | ~1500 | A porter | `go-api/internal/{domain}/` | Moyenne |
-| `src/data/sync/` | ~20 | ~5000 | A porter (P4) | `go-api/internal/sync/` | Tres haute |
-| `src/data/migration/` | ~40 | ~2000 | A porter | `go-api/internal/platform/migrations/` | Haute |
-| `src/analysis/` | ~12 | ~3000 | A porter | `go-api/internal/analysis/` | Tres haute |
-| `src/auth/` | ~6 | ~1000 | A porter | `go-api/internal/auth/` | Haute |
-| `src/app/` | ~25 | ~2000 | A analyser + distribuer | Majoritairement supprime (Streamlit) | Basse |
-| `src/ports/` | 2 | ~200 | Interfaces de reference | Interfaces Go equivalentes | Basse |
-| `src/config.py` | 1 | ~150 | A porter | `go-api/internal/platform/config/` | Basse |
-| `src/ui/` | ~40 | ~6000 | A supprimer (React) | N/A | N/A |
-| `src/ai/` | ~6 | ~1200 | Hors scope | Reste Python ou separe | N/A |
-| `src/utils/` (Discord) | ~4 | ~600 | A porter | `go-api/internal/platform/discord/` | Basse |
-| `scripts/` | ~25 | ~3000 | A reconstituer | `go-api/cmd/` | Haute |
-| `spnkr_pr/` | ~8 | ~800 | A remplacer | Client HTTP Go direct | Moyenne |
-| `launcher.py` | 1 | ~500 | A remplacer | `go-api/cmd/levelup-api/` | Moyenne |
-
-**Total a porter** : ~25 000 LOC Python → ~25-35 000 LOC Go. Le boilerplate Go (error handling explicite `if err != nil`, struct marshaling/unmarshaling, SQL row scanning) est significativement plus verbeux que Python+Pydantic+FastAPI. La logique pure est plus concise en Go, mais les handlers HTTP et l'acces DB compensent largement.
-
-### Scripts et outillage
-
-| Script Python | Usage | Portage Go | Priorite |
-|---------------|-------|------------|:--------:|
-| `scripts/sync.py` | Sync delta/full | `cmd/levelup-sync/` | P4 |
-| `scripts/backfill_data.py` | Backfill selectif (80+ flags) | `cmd/levelup-sync/ --backfill` | P4 |
-| `scripts/backup_player.py` | Backup DB joueur | `cmd/levelup-tools backup` | P3 |
-| `scripts/restore_player.py` | Restore DB joueur | `cmd/levelup-tools restore` | P3 |
-| `scripts/healthcheck_db.py` | Diagnostic integrite | `cmd/levelup-tools healthcheck` | P3 |
-| `scripts/index_media.py` | Indexation videos | `cmd/levelup-tools index-media` | P3 |
-| `scripts/check_env.py` | Validation environnement | `cmd/levelup-tools check-env` | P2 |
-| `scripts/diagnose_player_db.py` | Debug schemas | `cmd/levelup-tools diagnose` | P3 |
-| `scripts/post_sync_compute.py` | Post-sync pipeline | Integre dans sync | P4 |
-| `scripts/archive_season.py` | Archivage Parquet | `cmd/levelup-tools archive` | P4 |
-| `scripts/populate_*.py` | Seed metadata | `cmd/levelup-tools seed` | P2 |
-| `launcher.py` | Orchestrateur principal | `cmd/levelup-api/` | P1 |
-
----
+1. Aucun package, script, helper runtime ou surface hors scope ne doit etre touche sans statut explicite dans la matrice.
+2. La strategie de portage du bitmask backfill est maintenue avec les valeurs exactes dans la matrice, pas dans ce document maitre.
 
 ## Backfill bitmask : strategie de portage
 
-Le systeme de bitmask (22 bits) est central pour le sync :
-
-```
-Bit 0  : medals            (1)
-Bit 1  : events            (2)
-Bit 2  : skill             (4)
-Bit 3  : personal_scores   (8)
-Bit 5  : accuracy          (32)
-Bit 6  : shots             (64)
-Bit 7  : enemy_mmr         (128)
-Bit 8  : assets            (256)
-Bit 9  : participants      (512)
-Bit 10 : participants_scores (1024)
-Bit 11 : participants_kda  (2048)
-Bit 12 : participants_shots (4096)
-Bit 13 : participants_damage (8192)
-Bit 14 : aliases           (16384)
-Bit 15 : participants_avg_life (32768)
-Bit 19 : killer_victim     (524288)
-Bit 20 : pve_stats         (1048576)
-Bit 21 : weapon_kills      (2097152)
-Bit 22 : weapon_kills_no_film (4194304)
-```
-
-**Attention** : les bits 4, 16, 17, 18 sont absents (lacunes intentionnelles dans la numerotation). Le portage Go doit reproduire exactement les memes valeurs de bits car les bitmasks sont persistees en DB.
-
-En Go, utiliser des constantes `iota`-like mais avec valeurs explicites :
-
-```go
-const (
-    BackfillMedals           = 1 << 0   // 1
-    BackfillEvents           = 1 << 1   // 2
-    BackfillSkill            = 1 << 2   // 4
-    BackfillPersonalScores   = 1 << 3   // 8
-    // Bit 4 intentionnellement absent
-    BackfillAccuracy         = 1 << 5   // 32
-    // ... etc, valeurs EXACTES
-)
-```
+Voir [go_migration/MATRIX.md](go_migration/MATRIX.md) pour les valeurs exactes, les lacunes intentionnelles de numerotation et les surfaces outillage associees.
 
 ---
 
@@ -1498,7 +1278,7 @@ const (
 
 **Livrable 0.1 — Gel des contrats API** :
 - Executer `openapi-typescript http://127.0.0.1:8000/api/openapi.json` et versionner
-- Freeze du schema OpenAPI (pas de changement cote Python pendant le portage)
+- Precondition : chantier [MIGRATION_MASTER.md](MIGRATION_MASTER.md) termine, facade V7 gelee, puis freeze du schema OpenAPI pour le lancement du chantier Go
 - Documenter chaque endpoint : methode, path, payload in/out, middleware
 
 **Livrable 0.2 — Corpus de golden values** :
@@ -1512,6 +1292,7 @@ const (
 **Livrable 0.4 — POC DuckDB Go** :
 - Valider go-duckdb sur Windows 10/11 et Linux
 - Tester : open read-only, ATTACH, write lease, lock behavior
+- Verifier explicitement : 2 writers meme path, 2 writers paths differents, et absence de migration implicite non voulue a l'ouverture
 - Tester les types critiques : UBIGINT (weapon_id), TIMESTAMP WITH TIME ZONE, VARCHAR, BOOLEAN
 - Tester COALESCE, CASE WHEN, GROUP BY, window functions
 
@@ -1519,6 +1300,7 @@ const (
 
 **Sprint 1.1 — Squelette HTTP** :
 - `go-api/cmd/levelup-api/main.go` : server, config, healthcheck, request_id middleware
+- Un mode de demo/test doit exister des le socle : fixtures stables, schemas maitrises et bypass auth si necessaire
 - Routing : Chi ou Echo (pas Gin — trop opinionne pour ce cas)
 - OpenAPI : generation depuis le meme schema que Python (`oapi-codegen` ou `ogen`)
 - Middleware : CORS (memes origines), rate limit, logging structure (slog)
@@ -1528,6 +1310,7 @@ const (
 - `internal/platform/duckdb/pool.go` : connexion pool read-only + write lease
 - `internal/platform/duckdb/queries/` : toutes les requetes Q1-Q16 du catalogue
 - Tests : chaque requete comparee au golden value
+- Regle d'implementation : aucun open `read_write` hors du composant central DuckDB
 
 **Sprint 1.3 — Endpoints read-only** :
 - Bootstrap (GET /bootstrap, GET /players)
@@ -1550,6 +1333,8 @@ const (
 - Rencontres croises (matchs communs entre 2 joueurs)
 - Match View (4 onglets)
 - Portage de la resolution killer/victim pour l'onglet Events
+
+Note de perimetre : la facade V7 reste le consommateur de reference ; elle n'est pas reimplementee dans ce chantier.
 
 **Sprint 2.2 — Stats/Series** :
 - Port des 5 onglets × 2 modes (Periode/Sessions)
@@ -1585,10 +1370,14 @@ const (
 
 **Sprint 3.2 — Device Code Flow** :
 - POC MSAL Go (ou portage HTTP direct du flux OAuth2 device code)
+- Cible canonique : MSAL Go
+- Compatibilite obligatoire : support refresh tokens (`SPNKR_OAUTH_REFRESH_TOKEN[_<GAMERTAG>]` + `oauth_refresh_token` dans `sync_meta`) tant que le runbook et les jobs en dependent
+- Regle de priorite : MSAL par defaut, mais un refresh token deja exploitable est prioritaire sur l'ouverture d'un nouveau Device Code Flow interactif
 - POST /auth/device-flow/start → user_code + verification_url
 - GET /auth/device-flow/{attempt_id} → polling
 - Echange access_token → spartan_token + clearance_token
 - Persistance cache MSAL dans sync_meta (DuckDB write)
+- Cas d'echec a couvrir : cache MSAL invalide, refresh token revoque, echec d'echange Halo, absence totale de chemin auth valide
 
 **Sprint 3.3 — Settings** :
 - GET /settings, PATCH /settings
@@ -1596,9 +1385,11 @@ const (
 - POST /setup/players, POST /setup/smoke-test
 
 **Sprint 3.4 — Jobs longs** :
-- Modele : start → poll status → result
+- Modele : start → poll status → result, avec persistance hors memoire
 - GET /jobs/{job_id}
 - POST /sync/initial (retourne AsyncJobStatus)
+- Redemarrage : `running` → `interrupted`, et exposition de `active_sync_job_id` dans le bootstrap
+- Exclusivite stricte : une seule sync a la fois pour toute l'application ; si une sync est deja active, la suivante est refusee avec reference au job existant
 
 **Gate phase 3** : onboarding complet fonctionne sans Python.
 
@@ -1664,7 +1455,7 @@ C'est la phase la plus longue et la plus risquee.
 **Sprint 5.2 — Bascule progressive** :
 - Feature flag par surface (cote reverse proxy ou deployment)
 - Surface par surface : Career → History → Explorer → ...
-- Rollback : re-pointer vers Python en < 1 min
+- Reversibilite avant suppression finale : tant que Python n'est pas retire du trunk, la bascule ne doit pas etre irreversible
 
 **Sprint 5.3 — Nettoyage** :
 - Supprimer le code Python devenu mort
@@ -1727,7 +1518,7 @@ Beaucoup de code Python a des `if metric is None: skip` ou `try/except: return N
 | D2 | Un binaire ou plusieurs ? | `levelup-api` + `levelup-sync` + `levelup-tools` vs tout-en-un | Binaire unique avec sous-commandes (voir "Modele de deploiement") | Packaging |
 | D3 | Generation OpenAPI : code-first ou schema-first ? | Generer le schema depuis le Go vs utiliser le schema Python existant | Schema-first (garantit la parite contractuelle) | DX |
 | D4 | Sessions : filesystem ou Redis ? | Garder le filesystem actuel vs introduire Redis | Filesystem (pas de nouvelle dependance pour un outil solo) | Infra |
-| D5 | Cache MSAL : bridge Python temporaire ou portage direct ? | Garder un microservice Python pour l'auth vs tout porter | Portage direct (MSAL Go existe) | Complexite |
+| D5 | Cache MSAL : bridge Python temporaire ou portage direct ? | Garder un microservice Python pour l'auth vs tout porter | MSAL canonique + support refresh tokens (env + sync_meta) | Complexite |
 | D6 | Weapon parser : porter ou bridge ? | Reecrire le parser binaire en Go vs subprocess Python | Bridge temporaire puis portage (module le plus risque) | Risque |
 | D7 | CI : build DuckDB depuis les sources ou pre-built ? | Compiler libduckdb.a vs telecharger les releases | Pre-built (plus rapide, moins fragile) | CI |
 
@@ -1735,14 +1526,13 @@ Beaucoup de code Python a des `if metric is None: skip` ou `try/except: return N
 
 ## Checklist pre-lancement (a valider AVANT d'ecrire du Go)
 
-- [ ] Migration React/FastAPI terminee et stable en production (plus de changements de contrats)
-- [ ] Schema OpenAPI versionne et gele
-- [ ] Corpus de golden values couvrant les 16 surfaces read-only
-- [ ] Baselines de performance mesurees et documentees (p50/p95 par endpoint)
-- [ ] POC A valide (DuckDB Go read-only + ATTACH + types UBIGINT/TIMESTAMP)
-- [ ] POC C valide (MSAL Go device code flow ou preuve que le bridge est viable)
-- [ ] Build CGo Windows valide (go-duckdb compile et passe les tests sur Windows)
-- [ ] Decisions D1-D7 tranchees
-- [ ] Worktree dedie cree, branche dediee, registres anti-oubli initialises
-- [ ] Aucune autre migration majeure en cours
-- [ ] Aucune autre migration majeure en cours
+La checklist exhaustive et maintenue est desormais dans [go_migration/OPS_COMPAT_CHECKLIST.md](go_migration/OPS_COMPAT_CHECKLIST.md).
+
+Minimum incompressible :
+
+- [ ] Schema OpenAPI versionne, golden values a jour et perimetre contractuel de depart explicitement nomme
+- [ ] POC DuckDB Go valide sur Windows et Linux
+- [ ] MSAL Go valide, avec strategie explicite de support refresh tokens
+- [ ] Mode de demo/test defini des le socle
+- [ ] Modele de jobs persistants defini avant tout portage de sync/setup
+- [ ] Matrice et checklist ops initialisees avant toute suppression de code Python
