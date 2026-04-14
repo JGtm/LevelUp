@@ -1,6 +1,6 @@
 /**
  * SynthesisPage --- Vue synthese / bilan periodique (Slice 7).
- * Types ref: SynthesisPageResponse, SynthesisKPIs, ComparisonMetricItem
+ * Types ref: SynthesisPageResponse, SynthesisKPIs, ComparisonMetricItem, HeatmapCell, TopWeekItem
  */
 import { useState } from 'react'
 import { useParams } from '@tanstack/react-router'
@@ -10,7 +10,14 @@ import { PageHeader } from '@/components/shell/PageHeader'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Spinner } from '@/components/ui/spinner'
 import { PlotlyChart } from '@/components/ui/plotly-chart'
-import type { ComparisonMetricItem, PlotlyFigurePayload, SynthesisKPIs, SynthesisQueryRequest } from '@/lib/api/types'
+import type {
+  ComparisonMetricItem,
+  HeatmapCell,
+  PlotlyFigurePayload,
+  SynthesisKPIs,
+  SynthesisQueryRequest,
+  TopWeekItem,
+} from '@/lib/api/types'
 
 const PERIOD_OPTIONS = [
   { value: 'all', label: 'Tout' },
@@ -21,73 +28,83 @@ const PERIOD_OPTIONS = [
 ] as const
 type Period = typeof PERIOD_OPTIONS[number]['value']
 
-/** Construit le graphique bipolaire Solo ← / → Escouade depuis les ComparisonMetricItem. */
+const DOW_LABELS = ['Lun', 'Mar', 'Mer', 'Jeu', 'Ven', 'Sam', 'Dim']
+
+// ─── Graphique bipolaire Solo ← / → Escouade ─────────────────────────────────
+
 function buildBipolaireChart(metrics: ComparisonMetricItem[]): PlotlyFigurePayload {
-  // Ordre inversé : métrique la plus importante en haut
   const reversed = [...metrics].reverse()
   const labels = reversed.map((m) => m.label)
-  const soloVals = reversed.map((m) => -Math.abs(m.solo_value))   // Solo à gauche (négatif)
-  const squadVals = reversed.map((m) => Math.abs(m.squad_value))  // Escouade à droite (positif)
+  const soloVals = reversed.map((m) => -Math.abs(m.solo_value))
+  const squadVals = reversed.map((m) => Math.abs(m.squad_value))
   const soloTexts = reversed.map((m) => m.solo_text)
   const squadTexts = reversed.map((m) => m.squad_text)
-
   const height = Math.max(320, 70 * metrics.length)
 
   return {
     data: [
       {
-        type: 'bar',
-        name: 'Solo',
-        orientation: 'h',
-        x: soloVals,
-        y: labels,
-        text: soloTexts,
-        textposition: 'outside',
-        marker: { color: '#06B6D4' },   // cyan-500
+        type: 'bar', name: 'Solo', orientation: 'h',
+        x: soloVals, y: labels, text: soloTexts, textposition: 'outside',
+        marker: { color: '#06B6D4' },
         hovertemplate: '<b>Solo</b>: %{text}<extra></extra>',
       },
       {
-        type: 'bar',
-        name: 'Escouade',
-        orientation: 'h',
-        x: squadVals,
-        y: labels,
-        text: squadTexts,
-        textposition: 'outside',
-        marker: { color: '#22C55E' },   // green-500
+        type: 'bar', name: 'Escouade', orientation: 'h',
+        x: squadVals, y: labels, text: squadTexts, textposition: 'outside',
+        marker: { color: '#22C55E' },
         hovertemplate: '<b>Escouade</b>: %{text}<extra></extra>',
       },
     ],
     layout: {
-      height,
-      barmode: 'overlay',
-      bargap: 0.3,
+      height, barmode: 'overlay', bargap: 0.3,
       margin: { l: 110, r: 80, t: 20, b: 40 },
       xaxis: {
-        tickformat: '.2f',
-        zeroline: true,
-        zerolinewidth: 2,
-        zerolinecolor: 'rgba(100,116,139,0.8)',  // slate opacity 0.8
-        showticklabels: false,
-        fixedrange: true,
+        tickformat: '.2f', zeroline: true, zerolinewidth: 2,
+        zerolinecolor: 'rgba(100,116,139,0.8)', showticklabels: false, fixedrange: true,
       },
       yaxis: { automargin: true, fixedrange: true },
       legend: { orientation: 'h', x: 0.5, xanchor: 'center', y: -0.08 },
-      plot_bgcolor: 'rgba(0,0,0,0)',
-      paper_bgcolor: 'rgba(0,0,0,0)',
-      font: { size: 12 },
-      shapes: [
-        {
-          type: 'line',
-          x0: 0, x1: 0,
-          y0: -0.5, y1: labels.length - 0.5,
-          xref: 'x', yref: 'y',
-          line: { color: 'rgba(100,116,139,0.8)', width: 2 },
-        },
-      ],
+      plot_bgcolor: 'rgba(0,0,0,0)', paper_bgcolor: 'rgba(0,0,0,0)', font: { size: 12 },
+      shapes: [{
+        type: 'line', x0: 0, x1: 0, y0: -0.5, y1: labels.length - 0.5,
+        xref: 'x', yref: 'y', line: { color: 'rgba(100,116,139,0.8)', width: 2 },
+      }],
     },
   }
 }
+
+// ─── Heatmap temporelle ───────────────────────────────────────────────────────
+
+function buildHeatmapChart(cells: HeatmapCell[]): PlotlyFigurePayload {
+  // Construire une matrice 7 lignes (jours) × 24 colonnes (heures)
+  const matrix: number[][] = Array.from({ length: 7 }, () => new Array(24).fill(0))
+  for (const c of cells) {
+    if (c.dow >= 0 && c.dow < 7 && c.hour >= 0 && c.hour < 24) {
+      matrix[c.dow][c.hour] = c.count
+    }
+  }
+  return {
+    data: [{
+      type: 'heatmap',
+      z: matrix,
+      x: Array.from({ length: 24 }, (_, i) => `${i}h`),
+      y: DOW_LABELS,
+      colorscale: 'Blues',
+      showscale: true,
+      hovertemplate: '%{y} %{x} : %{z} matchs<extra></extra>',
+    }],
+    layout: {
+      height: 220,
+      margin: { l: 50, r: 20, t: 10, b: 40 },
+      xaxis: { title: 'Heure', fixedrange: true },
+      yaxis: { title: '', fixedrange: true },
+      plot_bgcolor: 'rgba(0,0,0,0)', paper_bgcolor: 'rgba(0,0,0,0)', font: { size: 11 },
+    },
+  }
+}
+
+// ─── Sous-composants ──────────────────────────────────────────────────────────
 
 interface MetricRowProps { item: ComparisonMetricItem }
 function MetricRow({ item }: MetricRowProps) {
@@ -104,7 +121,7 @@ interface KPISectionProps { title: string; kpis: SynthesisKPIs }
 function KPISection({ title, kpis }: KPISectionProps) {
   return (
     <div>
-      <h3 className="text-sm font-semibold text-gray-600 mb-2">{title}</h3>
+      {title && <h3 className="text-sm font-semibold text-gray-600 mb-2">{title}</h3>}
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
         <div className="rounded-lg border p-3"><span className="text-xs text-gray-500 block">Win Rate</span><span className="text-xl font-bold">{(kpis.win_rate * 100).toFixed(1)}%</span></div>
         <div className="rounded-lg border p-3"><span className="text-xs text-gray-500 block">K/D</span><span className="text-xl font-bold">{kpis.kd_ratio?.toFixed(2) ?? '-'}</span></div>
@@ -114,6 +131,21 @@ function KPISection({ title, kpis }: KPISectionProps) {
     </div>
   )
 }
+
+interface TopWeekRowProps { item: TopWeekItem; rank: number }
+function TopWeekRow({ item, rank }: TopWeekRowProps) {
+  return (
+    <tr className="border-b last:border-0">
+      <td className="px-4 py-2 text-sm text-gray-500">{rank}</td>
+      <td className="px-4 py-2 text-sm font-mono font-medium">{item.week_label}</td>
+      <td className="px-4 py-2 text-center text-sm font-bold">{item.match_count}</td>
+      <td className="px-4 py-2 text-center text-sm">{(item.win_rate * 100).toFixed(0)}%</td>
+      <td className="px-4 py-2 text-center text-sm">{item.kd_ratio?.toFixed(2) ?? '-'}</td>
+    </tr>
+  )
+}
+
+// ─── Page principale ──────────────────────────────────────────────────────────
 
 export function SynthesisPage() {
   const { playerSlug } = useParams({ from: '/players/$playerSlug/synthesis' })
@@ -130,19 +162,31 @@ export function SynthesisPage() {
     ? buildBipolaireChart(data.comparison_metrics)
     : null
 
+  const heatmapChart = data.heatmap_data.length > 0
+    ? buildHeatmapChart(data.heatmap_data)
+    : null
+
   return (
     <div className="flex flex-col gap-6">
       <PageHeader
-        title="Synthese"
+        title="Synthèse"
         subtitle="Bilan global et comparaison solo / escouade"
         actions={
           <div className="flex gap-1 rounded-lg border p-1">
             {PERIOD_OPTIONS.map((opt) => (
-              <button key={opt.value} onClick={() => setPeriod(opt.value)} className={`rounded px-3 py-1 text-sm transition-colors ${period === opt.value ? 'bg-blue-600 text-white' : 'text-gray-600 hover:bg-gray-100'}`}>{opt.label}</button>
+              <button
+                key={opt.value}
+                onClick={() => setPeriod(opt.value)}
+                className={`rounded px-3 py-1 text-sm transition-colors ${period === opt.value ? 'bg-blue-600 text-white' : 'text-gray-600 hover:bg-gray-100'}`}
+              >
+                {opt.label}
+              </button>
             ))}
           </div>
         }
       />
+
+      {/* KPIs Solo / Escouade */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         <Card>
           <CardHeader><CardTitle>Solo ({data.solo_kpis.match_count} matchs)</CardTitle></CardHeader>
@@ -154,16 +198,12 @@ export function SynthesisPage() {
         </Card>
       </div>
 
-      {/* Graphique bipolaire Solo vs Escouade */}
+      {/* Graphique bipolaire */}
       {bipolaireChart ? (
         <Card>
           <CardHeader>
             <CardTitle>
-              Solo
-              <span className="mx-2 text-cyan-500">←</span>
-              vs
-              <span className="mx-2 text-green-500">→</span>
-              Escouade
+              Solo <span className="mx-2 text-cyan-500">←</span> vs <span className="mx-2 text-green-500">→</span> Escouade
             </CardTitle>
           </CardHeader>
           <CardContent>
@@ -181,17 +221,18 @@ export function SynthesisPage() {
         </Card>
       )}
 
+      {/* Comparaison détaillée */}
       <Card>
-        <CardHeader><CardTitle>Comparaison detaillee</CardTitle></CardHeader>
+        <CardHeader><CardTitle>Comparaison détaillée</CardTitle></CardHeader>
         <CardContent className="p-0">
           {data.comparison_metrics.length === 0 ? (
-            <p className="p-6 text-center text-gray-500">Pas assez de donnees pour cette periode.</p>
+            <p className="p-6 text-center text-gray-500">Pas assez de données pour cette période.</p>
           ) : (
             <div className="overflow-x-auto">
               <table className="w-full text-sm">
                 <thead className="bg-gray-50 border-b">
                   <tr>
-                    <th className="px-4 py-3 text-left">Metrique</th>
+                    <th className="px-4 py-3 text-left">Métrique</th>
                     <th className="px-4 py-3 text-center text-cyan-600">Solo</th>
                     <th className="px-4 py-3 text-center text-green-600">Escouade</th>
                   </tr>
@@ -204,103 +245,41 @@ export function SynthesisPage() {
           )}
         </CardContent>
       </Card>
-    </div>
-  )
-}
 
-
-const PERIOD_OPTIONS = [
-  { value: 'all', label: 'Tout' },
-  { value: '2y', label: '2 ans' },
-  { value: '1y', label: '1 an' },
-  { value: '1m', label: '1 mois' },
-  { value: '1w', label: '1 semaine' },
-] as const
-type Period = typeof PERIOD_OPTIONS[number]['value']
-
-interface MetricRowProps { item: ComparisonMetricItem }
-function MetricRow({ item }: MetricRowProps) {
-  return (
-    <tr className="border-b last:border-0">
-      <td className="px-4 py-3 text-sm font-medium text-gray-700">{item.label}</td>
-      <td className="px-4 py-3 text-center text-sm">{item.solo_text}</td>
-      <td className="px-4 py-3 text-center text-sm">{item.squad_text}</td>
-    </tr>
-  )
-}
-
-interface KPISectionProps { title: string; kpis: SynthesisKPIs }
-function KPISection({ title, kpis }: KPISectionProps) {
-  return (
-    <div>
-      <h3 className="text-sm font-semibold text-gray-600 mb-2">{title}</h3>
-      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-        <div className="rounded-lg border p-3"><span className="text-xs text-gray-500 block">Win Rate</span><span className="text-xl font-bold">{(kpis.win_rate * 100).toFixed(1)}%</span></div>
-        <div className="rounded-lg border p-3"><span className="text-xs text-gray-500 block">K/D</span><span className="text-xl font-bold">{kpis.kd_ratio?.toFixed(2) ?? '-'}</span></div>
-        <div className="rounded-lg border p-3"><span className="text-xs text-gray-500 block">Matchs</span><span className="text-xl font-bold">{kpis.match_count}</span></div>
-        <div className="rounded-lg border p-3"><span className="text-xs text-gray-500 block">Perf.</span><span className="text-xl font-bold">{kpis.performance_score?.toFixed(0) ?? '-'}</span></div>
-      </div>
-    </div>
-  )
-}
-
-export function SynthesisPage() {
-  const { playerSlug } = useParams({ from: '/players/$playerSlug/synthesis' })
-  const { filterContext } = useGlobalFilterStore()
-  const [period, setPeriod] = useState<Period>('all')
-  const request: SynthesisQueryRequest = { filters: filterContext, period }
-  const { data, isLoading, isError, error } = useSynthesisPage(playerSlug, period, request)
-
-  if (isLoading) return <div className="flex items-center justify-center min-h-64"><Spinner size="lg" /></div>
-  if (isError) return <div className="p-8 text-center text-red-600">Erreur : {String(error)}</div>
-  if (!data) return null
-
-  return (
-    <div className="flex flex-col gap-6">
-      <PageHeader
-        title="Synthese"
-        subtitle="Bilan global et comparaison solo / escouade"
-        actions={
-          <div className="flex gap-1 rounded-lg border p-1">
-            {PERIOD_OPTIONS.map((opt) => (
-              <button key={opt.value} onClick={() => setPeriod(opt.value)} className={`rounded px-3 py-1 text-sm transition-colors ${period === opt.value ? 'bg-blue-600 text-white' : 'text-gray-600 hover:bg-gray-100'}`}>{opt.label}</button>
-            ))}
-          </div>
-        }
-      />
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+      {/* Heatmap temporelle */}
+      {heatmapChart && (
         <Card>
-          <CardHeader><CardTitle>Solo ({data.solo_kpis.match_count} matchs)</CardTitle></CardHeader>
-          <CardContent><KPISection title="" kpis={data.solo_kpis} /></CardContent>
+          <CardHeader><CardTitle>Activité par jour et heure</CardTitle></CardHeader>
+          <CardContent>
+            <PlotlyChart figure={heatmapChart} />
+          </CardContent>
         </Card>
+      )}
+
+      {/* Top semaines */}
+      {data.top_weeks.length > 0 && (
         <Card>
-          <CardHeader><CardTitle>Escouade ({data.squad_kpis.match_count} matchs)</CardTitle></CardHeader>
-          <CardContent><KPISection title="" kpis={data.squad_kpis} /></CardContent>
-        </Card>
-      </div>
-      <Card>
-        <CardHeader><CardTitle>Comparaison detaillee</CardTitle></CardHeader>
-        <CardContent className="p-0">
-          {data.comparison_metrics.length === 0 ? (
-            <p className="p-6 text-center text-gray-500">Pas assez de donnees pour cette periode.</p>
-          ) : (
+          <CardHeader><CardTitle>Top {data.top_weeks.length} semaines</CardTitle></CardHeader>
+          <CardContent className="p-0">
             <div className="overflow-x-auto">
               <table className="w-full text-sm">
                 <thead className="bg-gray-50 border-b">
                   <tr>
-                    <th className="px-4 py-3 text-left">Metrique</th>
-                    <th className="px-4 py-3 text-center">Solo</th>
-                    <th className="px-4 py-3 text-center">Escouade</th>
+                    <th className="px-4 py-2 text-left text-gray-500">#</th>
+                    <th className="px-4 py-2 text-left">Semaine</th>
+                    <th className="px-4 py-2 text-center">Matchs</th>
+                    <th className="px-4 py-2 text-center">Win%</th>
+                    <th className="px-4 py-2 text-center">K/D</th>
                   </tr>
                 </thead>
                 <tbody>
-                  {data.comparison_metrics.map((item, idx) => <MetricRow key={idx} item={item} />)}
+                  {data.top_weeks.map((w, i) => <TopWeekRow key={w.week_label} item={w} rank={i + 1} />)}
                 </tbody>
               </table>
             </div>
-          )}
-        </CardContent>
-      </Card>
+          </CardContent>
+        </Card>
+      )}
     </div>
   )
 }

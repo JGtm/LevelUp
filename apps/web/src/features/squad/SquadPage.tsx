@@ -1,11 +1,6 @@
 /**
- * SquadPage --- Vue coequipiers / escouade (Slice 6).
- * Types ref: TeammateRow, TeammateKPIs, TeammatesPageResponse
- *
- * Features :
- * - Table de coéquipiers avec sélection
- * - Onglet Synergies : comparaison Avec/Sans/Solo en barres groupées
- * - Onglet Contributions : radar de performance
+ * SquadPage — Vue coéquipiers / escouade (Slice 6).
+ * Multiselect jusqu'à 3 coéquipiers pour comparaison synergies/contributions.
  */
 import { useState } from 'react'
 import { useParams } from '@tanstack/react-router'
@@ -18,6 +13,8 @@ import { Spinner } from '@/components/ui/spinner'
 import { PlotlyChart } from '@/components/ui/plotly-chart'
 import type { TeammateRow, TeammateKPIs, TeammatesQueryRequest, PlotlyFigurePayload } from '@/lib/api/types'
 
+const MAX_SELECTION = 3
+
 type TabId = 'synergies' | 'contributions'
 const TABS: { id: TabId; label: string }[] = [
   { id: 'synergies', label: 'Synergies' },
@@ -26,51 +23,37 @@ const TABS: { id: TabId; label: string }[] = [
 
 // ─── Helpers graphiques ───────────────────────────────────────────────────────
 
+const CHART_COLORS = ['#7C3AED', '#F59E0B', '#10B981']
+
 function buildSynergiesChart(
-  gamertag: string,
-  withKpis: TeammateKPIs,
-  withoutKpis: TeammateKPIs | null,
+  rows: TeammateRow[],
   soloRef: TeammateKPIs | null,
 ): PlotlyFigurePayload {
   const metrics = ['Win Rate', 'K/D', 'Kills/partie', 'Assists/partie']
-
-  const extract = (k: TeammateKPIs | null) => k ? [
+  const extract = (k: TeammateKPIs) => [
     k.win_rate * 100,
     k.kd_ratio ?? 0,
     k.kills_per_game ?? 0,
     k.assists_per_game ?? 0,
-  ] : null
-
-  const withVals = extract(withKpis)
-  const withoutVals = extract(withoutKpis)
-  const soloVals = extract(soloRef)
-
-  const traces: PlotlyFigurePayload['data'] = [
-    {
-      type: 'bar', name: `Avec ${gamertag}`, orientation: 'v',
-      x: metrics, y: withVals,
-      marker: { color: '#7C3AED' },
-    },
   ]
-  if (withoutVals) traces.push({
-    type: 'bar', name: 'Sans ce coéquipier', orientation: 'v',
-    x: metrics, y: withoutVals,
+
+  const traces: PlotlyFigurePayload['data'] = rows.map((row, i) => ({
+    type: 'bar', name: `Avec ${row.gamertag}`,
+    x: metrics, y: extract(row.with_kpis),
+    marker: { color: CHART_COLORS[i % CHART_COLORS.length] },
+  }))
+
+  if (soloRef) traces.push({
+    type: 'bar', name: 'Référence solo',
+    x: metrics, y: extract(soloRef),
     marker: { color: '#94A3B8' },
-  })
-  if (soloVals) traces.push({
-    type: 'bar', name: 'Référence solo', orientation: 'v',
-    x: metrics, y: soloVals,
-    marker: { color: '#06B6D4' },
   })
 
   return {
     data: traces,
     layout: {
-      barmode: 'group',
-      height: 320,
+      barmode: 'group', height: 320,
       margin: { l: 40, r: 20, t: 20, b: 60 },
-      xaxis: { automargin: true },
-      yaxis: { automargin: true },
       legend: { orientation: 'h', x: 0, y: -0.2 },
       plot_bgcolor: 'rgba(0,0,0,0)',
       paper_bgcolor: 'rgba(0,0,0,0)',
@@ -79,52 +62,44 @@ function buildSynergiesChart(
 }
 
 function buildRadarChart(
-  gamertag: string,
-  withKpis: TeammateKPIs,
+  rows: TeammateRow[],
   soloRef: TeammateKPIs | null,
 ): PlotlyFigurePayload {
   const axes = ['Win Rate', 'K/D', 'Kills/partie', 'Assists/partie', 'Précision']
   const norm = (v: number | null, max: number) => v != null ? Math.min(100, (v / max) * 100) : 0
 
-  const withVals = [
-    withKpis.win_rate * 100,
-    norm(withKpis.kd_ratio, 3),
-    norm(withKpis.kills_per_game, 20),
-    norm(withKpis.assists_per_game, 10),
-    norm(withKpis.accuracy, 1) * 100,
+  const makeVals = (k: TeammateKPIs) => [
+    k.win_rate * 100,
+    norm(k.kd_ratio, 3),
+    norm(k.kills_per_game, 20),
+    norm(k.assists_per_game, 10),
+    norm(k.accuracy, 1) * 100,
   ]
-  const soloVals = soloRef ? [
-    soloRef.win_rate * 100,
-    norm(soloRef.kd_ratio, 3),
-    norm(soloRef.kills_per_game, 20),
-    norm(soloRef.assists_per_game, 10),
-    norm(soloRef.accuracy, 1) * 100,
-  ] : null
 
-  const data: PlotlyFigurePayload['data'] = [
-    {
-      type: 'scatterpolar',
-      name: `Avec ${gamertag}`,
-      r: [...withVals, withVals[0]],
-      theta: [...axes, axes[0]],
+  const traces: PlotlyFigurePayload['data'] = rows.map((row, i) => {
+    const vals = makeVals(row.with_kpis)
+    return {
+      type: 'scatterpolar', name: `Avec ${row.gamertag}`,
+      r: [...vals, vals[0]], theta: [...axes, axes[0]],
       fill: 'toself',
-      marker: { color: '#7C3AED' },
-      line: { color: '#7C3AED' },
-    },
-  ]
-  if (soloVals) data.push({
-    type: 'scatterpolar',
-    name: 'Solo ref',
-    r: [...soloVals, soloVals[0]],
-    theta: [...axes, axes[0]],
-    fill: 'toself',
-    opacity: 0.4,
-    marker: { color: '#06B6D4' },
-    line: { color: '#06B6D4', dash: 'dot' },
+      marker: { color: CHART_COLORS[i % CHART_COLORS.length] },
+      line: { color: CHART_COLORS[i % CHART_COLORS.length] },
+    }
   })
 
+  if (soloRef) {
+    const vals = makeVals(soloRef)
+    traces.push({
+      type: 'scatterpolar', name: 'Solo ref',
+      r: [...vals, vals[0]], theta: [...axes, axes[0]],
+      fill: 'toself', opacity: 0.4,
+      marker: { color: '#06B6D4' },
+      line: { color: '#06B6D4', dash: 'dot' },
+    })
+  }
+
   return {
-    data,
+    data: traces,
     layout: {
       height: 380,
       polar: { radialaxis: { visible: true, range: [0, 100] } },
@@ -149,11 +124,11 @@ function KPICard({ label, value, unit = '' }: KPICardProps) {
   )
 }
 
-interface KPIBlockProps { title: string; kpis: TeammateKPIs }
-function KPIBlock({ title, kpis }: KPIBlockProps) {
+interface KPIBlockProps { title: string; kpis: TeammateKPIs; color?: string }
+function KPIBlock({ title, kpis, color = 'text-gray-600' }: KPIBlockProps) {
   return (
     <div>
-      <h3 className="text-sm font-medium text-gray-600 mb-2">{title}</h3>
+      <h3 className={`text-sm font-medium mb-2 ${color}`}>{title}</h3>
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
         <KPICard label="Matchs" value={kpis.match_count} />
         <KPICard label="Win Rate" value={kpis.win_rate * 100} unit="%" />
@@ -166,13 +141,21 @@ function KPIBlock({ title, kpis }: KPIBlockProps) {
 
 // ─── Tableau coéquipiers ──────────────────────────────────────────────────────
 
-interface TeammateRowItemProps { row: TeammateRow; isSelected: boolean; onSelect: () => void }
-function TeammateRowItem({ row, isSelected, onSelect }: TeammateRowItemProps) {
+interface TeammateRowItemProps { row: TeammateRow; selectionIndex: number; onSelect: () => void }
+function TeammateRowItem({ row, selectionIndex, onSelect }: TeammateRowItemProps) {
+  const isSelected = selectionIndex >= 0
   const wr = (row.with_kpis.win_rate * 100).toFixed(0)
   const kd = row.with_kpis.kd_ratio?.toFixed(2) ?? '-'
+  const dotColor = isSelected ? CHART_COLORS[selectionIndex % CHART_COLORS.length] : undefined
   return (
-    <tr onClick={onSelect} className={`cursor-pointer transition-colors hover:bg-gray-50 ${isSelected ? 'bg-purple-50 border-l-2 border-purple-500' : ''}`}>
-      <td className="px-4 py-3 font-medium">{row.gamertag}</td>
+    <tr
+      onClick={onSelect}
+      className={`cursor-pointer transition-colors hover:bg-gray-50 ${isSelected ? 'bg-purple-50' : ''}`}
+    >
+      <td className="px-4 py-3 font-medium flex items-center gap-2">
+        {dotColor && <span className="inline-block w-2 h-2 rounded-full" style={{ backgroundColor: dotColor }} />}
+        {row.gamertag}
+      </td>
       <td className="px-4 py-3 text-center">{row.encounter_count}</td>
       <td className="px-4 py-3 text-center">{row.with_kpis.wins}</td>
       <td className="px-4 py-3 text-center">{wr}%</td>
@@ -189,53 +172,65 @@ function TeammateRowItem({ row, isSelected, onSelect }: TeammateRowItemProps) {
 export function SquadPage() {
   const { playerSlug } = useParams({ from: '/players/$playerSlug/squad' })
   const { filterContext, filterContextHash } = useGlobalFilterStore()
-  const [selectedGt, setSelectedGt] = useState<string | null>(null)
+  const [selectedGts, setSelectedGts] = useState<string[]>([])
   const [activeTab, setActiveTab] = useState<TabId>('synergies')
 
   const request: TeammatesQueryRequest = {
     filters: filterContext,
-    selected_gamertags: selectedGt ? [selectedGt] : undefined,
+    selected_gamertags: selectedGts.length > 0 ? selectedGts : undefined,
   }
   const { data, isLoading, isError, error } = useTeammates(playerSlug, request, filterContextHash)
+
+  const toggleSelect = (gamertag: string) => {
+    setSelectedGts((prev) => {
+      if (prev.includes(gamertag)) return prev.filter((g) => g !== gamertag)
+      if (prev.length >= MAX_SELECTION) return prev
+      return [...prev, gamertag]
+    })
+  }
 
   if (isLoading) return <div className="flex items-center justify-center min-h-64"><Spinner size="lg" /></div>
   if (isError) return <div className="p-8 text-center text-red-600">Erreur : {String(error)}</div>
   if (!data) return null
 
   const { teammates, solo_reference } = data
-  const selectedRow = selectedGt ? teammates.find((t) => t.gamertag === selectedGt) : null
+  const selectedRows = selectedGts.map((gt) => teammates.find((t) => t.gamertag === gt)).filter(Boolean) as TeammateRow[]
 
-  const synergiesChart = selectedRow
-    ? buildSynergiesChart(selectedRow.gamertag, selectedRow.with_kpis, selectedRow.without_kpis, solo_reference)
-    : null
-  const radarChart = selectedRow
-    ? buildRadarChart(selectedRow.gamertag, selectedRow.with_kpis, solo_reference)
-    : null
+  const synergiesChart = selectedRows.length > 0 ? buildSynergiesChart(selectedRows, solo_reference) : null
+  const radarChart = selectedRows.length > 0 ? buildRadarChart(selectedRows, solo_reference) : null
 
   return (
     <div className="flex flex-col gap-6">
-      <PageHeader title="Escouade" subtitle={`${teammates.length} coequipiers · ${data.total_matches} matchs`} />
+      <PageHeader
+        title="Escouade"
+        subtitle={`${teammates.length} coéquipiers · ${data.total_matches} matchs`}
+      />
 
-      {/* KPI rapides si joueur sélectionné */}
-      {selectedRow && (
+      {/* KPI rapides si coéquipier(s) sélectionné(s) */}
+      {selectedRows.length > 0 && (
         <Card>
           <CardHeader>
             <CardTitle>
-              Statistiques avec <span className="text-purple-600">{selectedRow.gamertag}</span>
+              Stats avec les coéquipiers sélectionnés
             </CardTitle>
           </CardHeader>
           <CardContent className="flex flex-col gap-4">
-            <KPIBlock title="Avec ce coéquipier" kpis={selectedRow.with_kpis} />
-            {selectedRow.without_kpis && <KPIBlock title="Sans ce coéquipier" kpis={selectedRow.without_kpis} />}
-            {solo_reference && <KPIBlock title="Référence solo" kpis={solo_reference} />}
+            {selectedRows.map((row, i) => (
+              <KPIBlock
+                key={row.gamertag}
+                title={`Avec ${row.gamertag}`}
+                kpis={row.with_kpis}
+                color={`text-[${CHART_COLORS[i % CHART_COLORS.length]}]`}
+              />
+            ))}
+            {solo_reference && <KPIBlock title="Référence solo" kpis={solo_reference} color="text-cyan-600" />}
           </CardContent>
         </Card>
       )}
 
-      {/* Onglets Synergies / Contributions — visibles seulement si un joueur est sélectionné */}
-      {selectedRow && (
+      {/* Onglets Synergies / Contributions */}
+      {selectedRows.length > 0 && (
         <Card>
-          {/* Tab bar */}
           <div className="flex gap-0 border-b px-4">
             {TABS.map((tab) => (
               <Button
@@ -253,12 +248,11 @@ export function SquadPage() {
               </Button>
             ))}
           </div>
-
           <CardContent className="pt-4">
             {activeTab === 'synergies' && synergiesChart && (
               <div className="space-y-4">
                 <p className="text-sm text-gray-500">
-                  Comparaison de tes stats <em>avec</em> {selectedRow.gamertag} vs <em>sans</em> lui vs ta référence solo.
+                  Comparaison de tes stats <em>avec</em> chaque coéquipier vs ta référence solo.
                 </p>
                 <PlotlyChart figure={synergiesChart} />
               </div>
@@ -266,7 +260,7 @@ export function SquadPage() {
             {activeTab === 'contributions' && radarChart && (
               <div className="space-y-4">
                 <p className="text-sm text-gray-500">
-                  Profil de contribution normalisé de <em>{selectedRow.gamertag}</em> (violet) vs ta référence solo (cyan pointillé).
+                  Profil de contribution normalisé (violet) vs ta référence solo (cyan pointillé).
                 </p>
                 <PlotlyChart figure={radarChart} />
               </div>
@@ -278,13 +272,21 @@ export function SquadPage() {
       {/* Table principale coéquipiers */}
       <Card>
         <CardHeader>
-          <CardTitle>
-            Coéquipiers
-            {selectedGt && (
-              <button className="ml-3 text-xs text-gray-400 hover:text-gray-700" onClick={() => setSelectedGt(null)}>
-                ✕ Effacer
-              </button>
-            )}
+          <CardTitle className="flex items-center justify-between">
+            <span>Coéquipiers</span>
+            <div className="flex items-center gap-3">
+              <span className="text-sm font-normal text-gray-500">
+                {selectedGts.length}/{MAX_SELECTION} sélectionnés
+              </span>
+              {selectedGts.length > 0 && (
+                <button
+                  className="text-xs text-gray-400 hover:text-gray-700"
+                  onClick={() => setSelectedGts([])}
+                >
+                  ✕ Effacer
+                </button>
+              )}
+            </div>
           </CardTitle>
         </CardHeader>
         <CardContent className="p-0">
@@ -304,131 +306,17 @@ export function SquadPage() {
                   </tr>
                 </thead>
                 <tbody className="divide-y">
-                  {teammates.map((row) => (
-                    <TeammateRowItem
-                      key={row.xuid ?? row.gamertag}
-                      row={row}
-                      isSelected={row.gamertag === selectedGt}
-                      onSelect={() => setSelectedGt(row.gamertag === selectedGt ? null : row.gamertag)}
-                    />
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          )}
-        </CardContent>
-      </Card>
-    </div>
-  )
-}
-
-import { useState } from 'react'
-import { useParams } from '@tanstack/react-router'
-import { useGlobalFilterStore } from '@/stores/globalFilterStore'
-import { useTeammates } from './queries'
-import { PageHeader } from '@/components/shell/PageHeader'
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
-import { Spinner } from '@/components/ui/spinner'
-import type { TeammateRow, TeammateKPIs, TeammatesQueryRequest } from '@/lib/api/types'
-
-interface KPICardProps { label: string; value: number | null; unit?: string }
-function KPICard({ label, value, unit = '' }: KPICardProps) {
-  const display = value == null ? '-' : `${Number.isInteger(value) ? value : value.toFixed(2)}${unit}`
-  return (
-    <div className="flex flex-col gap-1 rounded-lg border p-3">
-      <span className="text-xs text-gray-500 uppercase tracking-wide">{label}</span>
-      <span className="text-xl font-bold">{display}</span>
-    </div>
-  )
-}
-
-interface KPIBlockProps { title: string; kpis: TeammateKPIs }
-function KPIBlock({ title, kpis }: KPIBlockProps) {
-  return (
-    <div>
-      <h3 className="text-sm font-medium text-gray-600 mb-2">{title}</h3>
-      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-        <KPICard label="Matchs" value={kpis.match_count} />
-        <KPICard label="Win Rate" value={kpis.win_rate * 100} unit="%" />
-        <KPICard label="K/D" value={kpis.kd_ratio} />
-        <KPICard label="Kills / match" value={kpis.kills_per_game} />
-      </div>
-    </div>
-  )
-}
-
-interface TeammateRowItemProps { row: TeammateRow; isSelected: boolean; onSelect: () => void }
-function TeammateRowItem({ row, isSelected, onSelect }: TeammateRowItemProps) {
-  const wr = (row.with_kpis.win_rate * 100).toFixed(0)
-  const kd = row.with_kpis.kd_ratio?.toFixed(2) ?? '-'
-  return (
-    <tr onClick={onSelect} className={`cursor-pointer transition-colors hover:bg-gray-50 ${isSelected ? 'bg-blue-50 border-l-2 border-blue-500' : ''}`}>
-      <td className="px-4 py-3 font-medium">{row.gamertag}</td>
-      <td className="px-4 py-3 text-center">{row.encounter_count}</td>
-      <td className="px-4 py-3 text-center">{row.with_kpis.wins}</td>
-      <td className="px-4 py-3 text-center">{wr}%</td>
-      <td className="px-4 py-3 text-center">{kd}</td>
-      <td className="px-4 py-3 text-center text-xs text-gray-400">
-        {row.last_seen_at ? new Date(row.last_seen_at).toLocaleDateString('fr-FR') : '-'}
-      </td>
-    </tr>
-  )
-}
-
-export function SquadPage() {
-  const { playerSlug } = useParams({ from: '/players/$playerSlug/squad' })
-  const { filterContext, filterContextHash } = useGlobalFilterStore()
-  const [selectedGt, setSelectedGt] = useState<string | null>(null)
-  const request: TeammatesQueryRequest = { filters: filterContext, selected_gamertags: selectedGt ? [selectedGt] : undefined }
-  const { data, isLoading, isError, error } = useTeammates(playerSlug, request, filterContextHash)
-
-  if (isLoading) return <div className="flex items-center justify-center min-h-64"><Spinner size="lg" /></div>
-  if (isError) return <div className="p-8 text-center text-red-600">Erreur : {String(error)}</div>
-  if (!data) return null
-
-  const { teammates, solo_reference } = data
-  const selectedRow = selectedGt ? teammates.find((t) => t.gamertag === selectedGt) : null
-
-  return (
-    <div className="flex flex-col gap-6">
-      <PageHeader title="Escouade" subtitle={`${teammates.length} coequipiers - ${data.total_matches} matchs`} />
-      {selectedRow && (
-        <Card>
-          <CardHeader><CardTitle>Statistiques avec <span className="text-blue-600">{selectedRow.gamertag}</span></CardTitle></CardHeader>
-          <CardContent className="flex flex-col gap-4">
-            <KPIBlock title="Avec ce coequipier" kpis={selectedRow.with_kpis} />
-            {selectedRow.without_kpis && <KPIBlock title="Sans ce coequipier" kpis={selectedRow.without_kpis} />}
-            {solo_reference && <KPIBlock title="Reference solo" kpis={solo_reference} />}
-          </CardContent>
-        </Card>
-      )}
-      <Card>
-        <CardHeader>
-          <CardTitle>
-            Coequipiers
-            {selectedGt && <button className="ml-3 text-xs text-gray-400 hover:text-gray-700" onClick={() => setSelectedGt(null)}>x Effacer</button>}
-          </CardTitle>
-        </CardHeader>
-        <CardContent className="p-0">
-          {teammates.length === 0 ? (
-            <p className="p-6 text-center text-gray-500">Aucun coequipier trouve pour cette periode.</p>
-          ) : (
-            <div className="overflow-x-auto">
-              <table className="w-full text-sm">
-                <thead className="bg-gray-50 border-b">
-                  <tr>
-                    <th className="px-4 py-3 text-left">Gamertag</th>
-                    <th className="px-4 py-3 text-center">Matchs</th>
-                    <th className="px-4 py-3 text-center">Victoires</th>
-                    <th className="px-4 py-3 text-center">Win%</th>
-                    <th className="px-4 py-3 text-center">K/D</th>
-                    <th className="px-4 py-3 text-center">Derniere rencontre</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y">
-                  {teammates.map((row) => (
-                    <TeammateRowItem key={row.xuid ?? row.gamertag} row={row} isSelected={row.gamertag === selectedGt} onSelect={() => setSelectedGt(row.gamertag === selectedGt ? null : row.gamertag)} />
-                  ))}
+                  {teammates.map((row) => {
+                    const idx = selectedGts.indexOf(row.gamertag)
+                    return (
+                      <TeammateRowItem
+                        key={row.xuid ?? row.gamertag}
+                        row={row}
+                        selectionIndex={idx}
+                        onSelect={() => toggleSelect(row.gamertag)}
+                      />
+                    )
+                  })}
                 </tbody>
               </table>
             </div>

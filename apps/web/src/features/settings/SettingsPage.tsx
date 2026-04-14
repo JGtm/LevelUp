@@ -74,7 +74,7 @@ export function SettingsPage() {
       />
 
       <div className="space-y-6 p-6">
-        {/* Langue */}
+        {/* Langue & Interface */}
         <Card>
           <CardHeader>
             <CardTitle className="text-base">Interface</CardTitle>
@@ -91,6 +91,22 @@ export function SettingsPage() {
                 <option value="en">English</option>
               </select>
             </div>
+            <div className="flex items-center justify-between py-2">
+              <span className="text-sm text-gray-700">Fuseau horaire</span>
+              <select
+                value={merged.user_timezone ?? 'Europe/Paris'}
+                onChange={(e) => setDirtyField('user_timezone', e.target.value)}
+                className="rounded border border-gray-300 px-2 py-1 text-sm"
+              >
+                <option value="Europe/Paris">Europe/Paris</option>
+                <option value="Europe/London">Europe/London</option>
+                <option value="America/New_York">America/New_York</option>
+                <option value="America/Los_Angeles">America/Los_Angeles</option>
+                <option value="America/Chicago">America/Chicago</option>
+                <option value="Asia/Tokyo">Asia/Tokyo</option>
+                <option value="UTC">UTC</option>
+              </select>
+            </div>
             <ToggleRow
               label="Afficher les records"
               value={merged.show_records ?? false}
@@ -100,6 +116,16 @@ export function SettingsPage() {
               label="Normaliser les libellés de modes"
               value={merged.normalize_mode_labels ?? true}
               onChange={(v) => setDirtyField('normalize_mode_labels', v)}
+            />
+            <ToggleRow
+              label="Exclure BTB du classement carrière"
+              value={merged.career_top_exclude_btb ?? false}
+              onChange={(v) => setDirtyField('career_top_exclude_btb', v)}
+            />
+            <ToggleRow
+              label="Vider les caches à l'actualisation"
+              value={merged.refresh_clears_caches ?? false}
+              onChange={(v) => setDirtyField('refresh_clears_caches', v)}
             />
           </CardContent>
         </Card>
@@ -157,6 +183,62 @@ export function SettingsPage() {
             </div>
           </CardContent>
         </Card>
+
+        {/* Synchronisation SPNKr */}
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-base">Synchronisation SPNKr</CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-1 divide-y divide-gray-50">
+            <ToggleRow
+              label="Lancer un backfill après chaque synchronisation"
+              value={merged.spnkr_refresh_with_backfill ?? false}
+              onChange={(v) => setDirtyField('spnkr_refresh_with_backfill', v)}
+            />
+          </CardContent>
+        </Card>
+
+        {/* Backfill — éléments à inclure */}
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-base">Données à inclure dans le backfill</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="grid grid-cols-2 sm:grid-cols-3 gap-x-6 gap-y-1 py-1">
+              {(
+                [
+                  ['spnkr_refresh_backfill_medals', 'Médailles'],
+                  ['spnkr_refresh_backfill_skill', 'Classement (CSR/MMR)'],
+                  ['spnkr_refresh_backfill_aliases', 'Alias gamertag'],
+                  ['spnkr_refresh_backfill_personal_scores', 'Scores personnels'],
+                  ['spnkr_refresh_backfill_performance_scores', 'Scores performance'],
+                  ['spnkr_refresh_backfill_lusr', 'LUSR'],
+                  ['spnkr_refresh_backfill_events', 'Événements'],
+                  ['spnkr_refresh_backfill_weapons', 'Armes'],
+                ] as const
+              ).map(([field, label]) => (
+                <ToggleRow
+                  key={field}
+                  label={label}
+                  value={(merged as Record<string, boolean>)[field] ?? false}
+                  onChange={(v) => setDirtyField(field, v)}
+                />
+              ))}
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* Avertissements de cohérence */}
+        {merged.discord_notifications_enabled && !merged.discord_webhook_url_present && (
+          <div className="rounded-lg border border-yellow-300 bg-yellow-50 px-4 py-3 text-sm text-yellow-800">
+            ⚠️ Les notifications Discord sont activées mais aucun webhook URL n'est configuré.
+          </div>
+        )}
+        {merged.media_watcher_enabled && !merged.media_captures_base_dir && (
+          <div className="rounded-lg border border-yellow-300 bg-yellow-50 px-4 py-3 text-sm text-yellow-800">
+            ⚠️ La surveillance des médias est activée mais aucun dossier source n'est défini.
+          </div>
+        )}
 
         {mutation.isError && (
           <p className="text-sm text-red-600">

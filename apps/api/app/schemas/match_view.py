@@ -185,6 +185,11 @@ class MatchScoreboardRow(BaseModel):
     damage_efficiency: float | None = None
     average_life: str | None = None
     objectives_stolen: int | None = None
+    headshot_kills: int | None = None
+    max_killing_spree: int | None = None
+    perfect_kills: int | None = None
+    power_weapon_kills: int | None = None
+    melee_kills: int | None = None
     outcome_label: str = "-"
 
 

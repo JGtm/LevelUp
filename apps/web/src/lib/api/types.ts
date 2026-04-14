@@ -760,12 +760,27 @@ export interface SynthesisQueryRequest {
   filters?: FilterContextInput | null
 }
 
+export interface HeatmapCell {
+  dow: number   // 0 = lundi … 6 = dimanche
+  hour: number
+  count: number
+}
+
+export interface TopWeekItem {
+  week_label: string
+  match_count: number
+  win_rate: number
+  kd_ratio: number | null
+}
+
 export interface SynthesisPageResponse {
   period: string
   total_matches: number
   solo_kpis: SynthesisKPIs
   squad_kpis: SynthesisKPIs
   comparison_metrics: ComparisonMetricItem[]
+  heatmap_data: HeatmapCell[]
+  top_weeks: TopWeekItem[]
 }
 
 // ---------------------------------------------------------------------------
@@ -789,6 +804,9 @@ export interface MediaQueryRequest {
   sort?: string
   kind_filter?: string | null
   section_filter?: string | null
+  map_filter?: string | null
+  mode_filter?: string | null
+  group_by?: string | null
   pagination?: PaginationRequest
 }
 
@@ -914,6 +932,11 @@ export interface MatchScoreboardRow {
   damage_efficiency: number | null
   average_life: string | null
   objectives_stolen: number | null
+  headshot_kills: number | null
+  max_killing_spree: number | null
+  perfect_kills: number | null
+  power_weapon_kills: number | null
+  melee_kills: number | null
   outcome_label: string
 }
 

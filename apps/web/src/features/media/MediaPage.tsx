@@ -37,6 +37,14 @@ const SORT_OPTIONS = [
   { value: 'date_asc', label: 'Date ↑' },
   { value: 'name_asc', label: 'Nom A→Z' },
 ]
+const GROUP_OPTIONS = [
+  { value: '', label: 'Sans groupement' },
+  { value: 'map', label: 'Par carte' },
+  { value: 'mode', label: 'Par mode' },
+  { value: 'week', label: 'Par semaine' },
+  { value: 'section', label: 'Par section' },
+  { value: 'owner', label: 'Par auteur' },
+]
 const PAGE_SIZE = 24
 
 // ─── Hook likes localStorage ──────────────────────────────────────────────────
@@ -258,6 +266,9 @@ export function MediaPage() {
   const [page, setPage] = useState(1)
   const [kindFilter, setKindFilter] = useState('')
   const [sectionFilter, setSectionFilter] = useState('')
+  const [mapFilter, setMapFilter] = useState('')
+  const [modeFilter, setModeFilter] = useState('')
+  const [groupBy, setGroupBy] = useState('')
   const [sortKey, setSortKey] = useState('date_desc')
   const [lightboxIdx, setLightboxIdx] = useState<number | null>(null)
 
@@ -265,6 +276,9 @@ export function MediaPage() {
     sort: sortKey,
     kind_filter: kindFilter || null,
     section_filter: sectionFilter || null,
+    map_filter: mapFilter || null,
+    mode_filter: modeFilter || null,
+    group_by: groupBy || null,
     pagination: { page, page_size: PAGE_SIZE },
   }
 
@@ -300,9 +314,27 @@ export function MediaPage() {
               onChange={(e) => { setSectionFilter(e.target.value); setPage(1) }}>
               {SECTION_OPTIONS.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
             </select>
+            <input
+              type="text"
+              placeholder="Filtrer carte…"
+              value={mapFilter}
+              onChange={(e) => { setMapFilter(e.target.value); setPage(1) }}
+              className="rounded border px-2 py-1 text-sm w-28"
+            />
+            <input
+              type="text"
+              placeholder="Filtrer mode…"
+              value={modeFilter}
+              onChange={(e) => { setModeFilter(e.target.value); setPage(1) }}
+              className="rounded border px-2 py-1 text-sm w-28"
+            />
             <select className="rounded border px-2 py-1 text-sm" value={sortKey}
               onChange={(e) => { setSortKey(e.target.value); setPage(1) }}>
               {SORT_OPTIONS.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
+            </select>
+            <select className="rounded border px-2 py-1 text-sm" value={groupBy}
+              onChange={(e) => { setGroupBy(e.target.value); setPage(1) }}>
+              {GROUP_OPTIONS.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
             </select>
           </div>
         }

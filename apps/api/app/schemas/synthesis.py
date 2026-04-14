@@ -43,6 +43,23 @@ class SynthesisQueryRequest(BaseModel):
     filters: FilterContextInput | None = None
 
 
+class HeatmapCell(BaseModel):
+    """Cellule de la heatmap temporelle (jour × heure)."""
+
+    dow: int  # 0 = lundi … 6 = dimanche
+    hour: int  # 0 – 23
+    count: int
+
+
+class TopWeekItem(BaseModel):
+    """Résumé d'une semaine parmi les plus actives."""
+
+    week_label: str  # ex: "2025-W03"
+    match_count: int
+    win_rate: float
+    kd_ratio: float | None = None
+
+
 class SynthesisPageResponse(BaseModel):
     """Réponse de la page Synthèse."""
 
@@ -51,3 +68,5 @@ class SynthesisPageResponse(BaseModel):
     solo_kpis: SynthesisKPIs
     squad_kpis: SynthesisKPIs
     comparison_metrics: list[ComparisonMetricItem]
+    heatmap_data: list[HeatmapCell] = []
+    top_weeks: list[TopWeekItem] = []

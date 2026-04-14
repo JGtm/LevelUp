@@ -183,6 +183,18 @@ export function SessionComparePage() {
           <SessionCard label={data.session_b?.session_label ?? ''} entry={data.session_b} side="B" />
         </div>
 
+        {/* Donuts résultats */}
+        {data.outcomes_chart && (
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-base">Répartition des résultats</CardTitle>
+            </CardHeader>
+            <CardContent className="pb-4">
+              <PlotlyChart figure={data.outcomes_chart} />
+            </CardContent>
+          </Card>
+        )}
+
         {/* Radar */}
         {data.radar_chart && (
           <Card>
@@ -271,6 +283,37 @@ export function SessionComparePage() {
                 </thead>
                 <tbody>
                   {data.maps_table.map((row, i) => (
+                    <tr key={i} className="border-b last:border-0">
+                      {Object.values(row).map((v, j) => (
+                        <td key={j} className="py-1.5 pr-4 text-gray-700">
+                          {String(v ?? '-')}
+                        </td>
+                      ))}
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </CardContent>
+          </Card>
+        )}
+
+        {/* Tableau par mode */}
+        {data.modes_table.length > 0 && (
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-base">Par mode de jeu</CardTitle>
+            </CardHeader>
+            <CardContent className="pb-4 overflow-x-auto">
+              <table className="w-full text-sm">
+                <thead>
+                  <tr className="border-b text-left text-xs text-gray-500">
+                    {Object.keys(data.modes_table[0]).map((k) => (
+                      <th key={k} className="py-2 pr-4">{k}</th>
+                    ))}
+                  </tr>
+                </thead>
+                <tbody>
+                  {data.modes_table.map((row, i) => (
                     <tr key={i} className="border-b last:border-0">
                       {Object.values(row).map((v, j) => (
                         <td key={j} className="py-1.5 pr-4 text-gray-700">
