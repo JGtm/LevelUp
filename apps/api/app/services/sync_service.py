@@ -245,16 +245,15 @@ def _write_initial_sync_marker(player_slug: str) -> None:
         from datetime import datetime, timezone
         from pathlib import Path
 
-        import duckdb
-
         from apps.api.app.core.config import get_settings
+        from src.utils.db import duckdb_read_write
 
         settings = get_settings()
         player_db = Path(settings.repo_root) / "data" / "players" / player_slug / "stats.duckdb"
         if not player_db.exists():
             logger.warning("initial_sync_marker_db_absent", player_slug=player_slug)
             return
-        with duckdb.connect(str(player_db)) as conn:
+        with duckdb_read_write(player_db) as conn:
             conn.execute(
                 """
                 INSERT OR IGNORE INTO sync_meta (key, value, updated_at)
@@ -303,8 +302,8 @@ def _validate_player(player_slug: str) -> None:
         profiles = load_profiles()
         if player_slug not in profiles:
             raise _SyncAbortError(f"Joueur « {player_slug} » introuvable dans db_profiles.json")
-    except ImportError:
-        pass  # module optionnel — continuer
+    except ImportError:  # guard env partiel (tests) — supprimer quand API autonome
+        pass
 
 
 def _check_auth() -> None:
@@ -320,8 +319,8 @@ def _check_auth() -> None:
             raise _SyncAbortError(
                 "Aucun token d'authentification disponible. Effectuez d'abord le Device Code Flow."
             )
-    except ImportError:
-        pass  # module optionnel — continuer
+    except ImportError:  # guard env partiel (tests) \u2014 supprimer quand API autonome
+        pass
 
 
 def _fetch_and_sync(  # noqa: PLR0913
@@ -396,7 +395,7 @@ def _fetch_and_sync(  # noqa: PLR0913
         # Compter les matchs importés (best-effort)
         return _count_player_matches(player_slug)
 
-    except ImportError:
+    except ImportError:  # guard env partiel (tests) \u2014 supprimer quand API autonome
         # Modules src/ non disponibles (tests, env partiel) — simuler la progression
         store.update(
             job_id,
@@ -430,14 +429,14 @@ def _count_player_matches(player_slug: str) -> int:
     try:
         from pathlib import Path
 
-        import duckdb
+        from src.utils.db import duckdb_read_only
 
         db_path = (
             Path(__file__).resolve().parents[4] / "data" / "warehouse" / "shared_matches_v2.duckdb"
         )
         if not db_path.exists():
             return 0
-        with duckdb.connect(str(db_path), read_only=True) as con:
+        with duckdb_read_only(db_path) as con:
             row = con.execute("SELECT COUNT(*) FROM match_registry").fetchone()
             return int(row[0]) if row else 0
     except Exception:  # noqa: BLE001

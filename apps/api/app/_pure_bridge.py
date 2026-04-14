@@ -280,3 +280,22 @@ def create_player_profile(gamertag: str, xuid: str = "") -> str:
     from src.ui.pages.setup_wizard_logic import create_player_profile as _create
 
     return _create(gamertag, xuid)
+
+
+# ---------------------------------------------------------------------------
+# Battlepass / Challenges — async Halo API calls (aucune dép. Streamlit)
+# ---------------------------------------------------------------------------
+
+
+async def fetch_battlepass_info(session: Any, *args: Any, **kwargs: Any) -> Any:
+    """Proxy vers ``home_mission_control_battlepass.fetch_battlepass_info``."""
+    from src.ui.pages.home_mission_control_battlepass import fetch_battlepass_info as _fetch
+
+    return await _fetch(session, *args, **kwargs)
+
+
+async def fetch_home_progressions(*args: Any, **kwargs: Any) -> Any:
+    """Proxy vers ``home_mission_control_api.fetch_home_progressions``."""
+    from src.ui.pages.home_mission_control_api import fetch_home_progressions as _fetch
+
+    return _fetch(*args, **kwargs)

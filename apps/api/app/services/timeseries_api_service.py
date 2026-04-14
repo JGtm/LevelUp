@@ -56,12 +56,9 @@ def _load_df_full(player: PlayerContext):  # type: ignore[return]
         return _load_matches_full(player)
     except Exception:
         logger.warning("_load_df_full: impossible de charger les matchs", exc_info=True)
-        try:
-            import polars as pl
+        import polars as pl
 
-            return pl.DataFrame()
-        except ImportError:
-            return []
+        return pl.DataFrame()
 
 
 def _apply_filters(df_full, player: PlayerContext, filters: FilterContextInput):  # type: ignore[return]
@@ -82,11 +79,6 @@ def _apply_filters(df_full, player: PlayerContext, filters: FilterContextInput):
 
 def _build_kpi_cards(dff, df_full) -> list[TimeseriesKpiCard]:
     """Construit les KPI cards depuis le DataFrame filtré."""
-    try:
-        import polars  # noqa: F401 — vérification disponibilité
-    except ImportError:
-        return []
-
     if dff is None or (hasattr(dff, "is_empty") and dff.is_empty()):
         return []
 
@@ -405,12 +397,9 @@ def get_timeseries_page(
     """Construit la réponse complète pour la page Séries temporelles."""
     df_full = _load_df_full(player)
 
-    try:
-        import polars as pl
+    import polars as pl
 
-        is_polars = isinstance(df_full, pl.DataFrame)
-    except ImportError:
-        is_polars = False
+    is_polars = isinstance(df_full, pl.DataFrame)
 
     if not is_polars or (hasattr(df_full, "is_empty") and df_full.is_empty()):
         return _empty_response()
