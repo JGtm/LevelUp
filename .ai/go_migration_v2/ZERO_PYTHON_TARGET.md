@@ -15,7 +15,7 @@ Il vise un produit exécutable sans runtime Python dans son chemin critique.
 | Runtime Python en production | `0` |
 | Fichiers `.py` exécutés dans le chemin produit | `0` |
 | Dépendance `pip` ou `venv` pour installer l'application | `0` |
-| Bridge Python SPNKr | temporaire, puis supprimé avant l'entrée en Phase 5 |
+| Bridge Python SPNKr | supprimé — client Go direct dès S11 |
 | `src/ai/` | hors scope produit, hors build et hors packaging |
 
 ## Ce que cela signifie concrètement
@@ -45,15 +45,15 @@ Il vise un produit exécutable sans runtime Python dans son chemin critique.
 2. les outils développeur sous `src/ai/` ;
 3. des documents ou scripts archivés explicitement hors build, hors packaging et hors runbook produit.
 
-## Règles sur le bridge Python SPNKr
+## Règles sur le client Go Halo (ex-SPNKr)
 
-Si un bridge Python existe temporairement pendant la transition :
+SPNKr est remplacé directement par un client Go natif (`pkg/haloapi/`) dès le Sprint 11 — pas de bridge Python transitoire.
 
-1. il reste étroit ;
+1. le client Go porte uniquement le transport HTTP, retry et parsing JSON ;
 2. il ne porte aucune logique métier LevelUp ;
 3. il ne touche aucune base DuckDB ;
 4. il ne conserve aucun état applicatif ;
-5. il doit être supprimé avant l'entrée en Phase 5.
+5. seule exception : si le weapon parser (D6) échoue en Go, un subprocess Python étroit est toléré pour cette seule fonction.
 
 ## Jalon ZP — avant la Phase 5
 
@@ -61,7 +61,7 @@ Le programme ne doit pas entrer en Phase 5 tant que les conditions suivantes ne 
 
 1. aucun fichier `.py` n'est exécuté dans le chemin produit ;
 2. aucun `pip install` ou bootstrap `venv` n'est requis dans le packaging final ;
-3. le bridge Python SPNKr est supprimé ;
+3. le client Go Halo est validé (tous endpoints, 3 cycles sync clean) ;
 4. le build et le déploiement produit ne dépendent plus d'un artefact Python ;
 5. `src/ai/` est explicitement exclu du build et du packaging produit.
 
@@ -70,7 +70,7 @@ Le programme ne doit pas entrer en Phase 5 tant que les conditions suivantes ne 
 Pendant le programme :
 
 1. aucun nouveau `.py` ne doit être ajouté au chemin produit ;
-2. le bridge SPNKr ne doit pas s'étendre au-delà de son périmètre transitoire ;
+2. le client Go Halo ne doit pas être remplacé par un bridge Python ;
 3. aucun nouveau besoin d'installation Python ne doit réapparaître dans Docker, les launchers ou le runbook.
 
 ## Pour aller plus loin

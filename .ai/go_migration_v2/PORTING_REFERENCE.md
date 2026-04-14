@@ -14,6 +14,8 @@ Le détail exhaustif local est dans [PLAN_MIGRATION_PYTHON_TO_GO_V2.md](PLAN_MIG
 La cible runtime finale du produit est détaillée dans [ZERO_PYTHON_TARGET.md](ZERO_PYTHON_TARGET.md).
 Le modèle canonique et la capability map initiale sont figés dans [HALO_CANONICAL_MODEL.md](HALO_CANONICAL_MODEL.md) et [HALO_INFINITE_CAPABILITY_MAP.md](HALO_INFINITE_CAPABILITY_MAP.md).
 Le contrat bootstrap et le blueprint types Go sont détaillés dans [HALO_BOOTSTRAP_CONTRACT.md](HALO_BOOTSTRAP_CONTRACT.md) et [HALO_GO_TYPE_BLUEPRINT.md](HALO_GO_TYPE_BLUEPRINT.md).
+La discipline de mapping et d'adaptation produit est désormais détaillée dans [HALO_INFINITE_CANONICAL_MAPPING.md](HALO_INFINITE_CANONICAL_MAPPING.md) et [HALO_PRODUCT_CONTRACT_ADAPTERS.md](HALO_PRODUCT_CONTRACT_ADAPTERS.md).
+La taxonomie d'erreurs et le freeze OpenAPI MVP des parcours P0/P1 sont maintenant détaillés dans [HALO_PROVIDER_ERROR_TAXONOMY.md](HALO_PROVIDER_ERROR_TAXONOMY.md) et [OPENAPI_MVP_P0_P1.md](OPENAPI_MVP_P0_P1.md).
 
 ## Surfaces produit prioritaires
 
@@ -34,7 +36,7 @@ Ces sujets ne doivent pas être perdus parce qu'ils ne sont pas tous visibles da
 
 | Sujet | Pourquoi | Preuve minimale |
 |-------|----------|-----------------|
-| Bitmask de backfill | la détection des données manquantes dépend d'une identité exacte, pas d'une simple équivalence logique | identité numérique stricte des 22 bits et des flags associés |
+| Bitmask de backfill | la détection des données manquantes dépend d'une identité exacte, pas d'une simple équivalence logique | identité numérique stricte des `BACKFILL_FLAGS` historiques et des `MatchBits` associés |
 | i18n dynamique | les labels Halo et les filtres traduits font partie du contrat utile | traductions et fallback identiques via DuckDB et comportement cohérent selon la langue |
 | PvE / Firefight | le programme ne couvre pas seulement le PvP | lecture et écriture de `shared_pve.duckdb` et requêtes PvE validées |
 | Notifications Discord | le runbook réel inclut les notifications post-sync et post-backfill | embeds, anti-spam, thumbnails et langue correctement reproduits |
@@ -62,6 +64,10 @@ Ils sont maintenant matérialisés dans :
 2. [HALO_INFINITE_CAPABILITY_MAP.md](HALO_INFINITE_CAPABILITY_MAP.md)
 3. [HALO_BOOTSTRAP_CONTRACT.md](HALO_BOOTSTRAP_CONTRACT.md)
 4. [HALO_GO_TYPE_BLUEPRINT.md](HALO_GO_TYPE_BLUEPRINT.md)
+5. [HALO_INFINITE_CANONICAL_MAPPING.md](HALO_INFINITE_CANONICAL_MAPPING.md)
+6. [HALO_PRODUCT_CONTRACT_ADAPTERS.md](HALO_PRODUCT_CONTRACT_ADAPTERS.md)
+ 7. [HALO_PROVIDER_ERROR_TAXONOMY.md](HALO_PROVIDER_ERROR_TAXONOMY.md)
+ 8. [OPENAPI_MVP_P0_P1.md](OPENAPI_MVP_P0_P1.md)
 
 | Livrable | Contenu attendu | Rôle |
 |----------|-----------------|------|
@@ -106,6 +112,16 @@ Deux documents complémentaires prolongent maintenant ce cadrage :
 1. [HALO_BOOTSTRAP_CONTRACT.md](HALO_BOOTSTRAP_CONTRACT.md) pour la projection produit de la capability map dans le bootstrap ;
 2. [HALO_GO_TYPE_BLUEPRINT.md](HALO_GO_TYPE_BLUEPRINT.md) pour la forme cible des structs et interfaces Go canoniques.
 
+Deux documents supplémentaires verrouillent la chaîne complète de transformation :
+
+1. [HALO_INFINITE_CANONICAL_MAPPING.md](HALO_INFINITE_CANONICAL_MAPPING.md) pour la projection `payloads Halo Infinite -> canonique` ;
+2. [HALO_PRODUCT_CONTRACT_ADAPTERS.md](HALO_PRODUCT_CONTRACT_ADAPTERS.md) pour la projection `canonique -> bootstrap/OpenAPI`.
+
+Le dernier lot documentaire utile avant le code est maintenant matérialisé par :
+
+1. [HALO_PROVIDER_ERROR_TAXONOMY.md](HALO_PROVIDER_ERROR_TAXONOMY.md) pour la traduction `provider -> erreur/limitation produit` ;
+2. [OPENAPI_MVP_P0_P1.md](OPENAPI_MVP_P0_P1.md) pour le gel contractuel des premières routes HTTP à préserver.
+
 ## Algorithmes critiques à porter avec oracle
 
 | Algorithme | Risque | Oracle attendu | Tolérance cible |
@@ -115,7 +131,7 @@ Deux documents complémentaires prolongent maintenant ce cadrage :
 | Sessions | Moyenne | IDs de session + labels + cas limites temporels | identité exacte des groupes |
 | Killer / Victim | Haute | paires confirmées/estimées sur corpus de matchs | identité exacte des comptages |
 | Citations custom | Haute | sorties par match sur corpus représentatif | identité exacte des règles déclenchées |
-| Weapon parser | Très haute | corpus binaire figé + sorties reconciliées | identité exacte ou bridge Python assumé |
+| Weapon parser | Très haute | corpus binaire figé + sorties reconciliées | identité exacte (portage `encoding/binary`) ; fallback subprocess Python uniquement si échec (D6) |
 | Spawn detection | Haute | corpus multi-modes avec sorties attendues | identité exacte des zones/événements capturés |
 
 ## Familles de requêtes SQL à traiter en premier

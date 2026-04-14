@@ -21,7 +21,7 @@ Les invariants minimaux sont les suivants :
 1. aucun runtime Python dans le chemin produit ;
 2. aucun fichier `.py` exécuté par le produit final ;
 3. aucun `pip` ou `venv` requis pour l'installation du produit ;
-4. bridge Python SPNKr uniquement transitoire, puis supprimé avant la Phase 5 ;
+4. aucun bridge Python dans le chemin produit final ;
 5. `src/ai/` hors scope du packaging et du runtime produit.
 
 ## Ce que le programme couvre
@@ -69,7 +69,13 @@ Les invariants minimaux sont les suivants :
 
 ## Architecture cible minimale
 
-Le corpus v2 ne remplace pas le détail d'architecture existant, mais il fixe les garde-fous suivants :
+Le corpus v2 ne remplace pas le détail d'architecture existant, mais il fixe les garde-fous suivants.
+
+> [!IMPORTANT]
+> L'architecture logicielle formelle (hexagonale, couches, interfaces Go, injection de dépendances,
+> pare-feu linter) est définie dans [GO_ARCHITECTURE_RULES.md](GO_ARCHITECTURE_RULES.md).
+> Ce document-ci fixe les principes produit ; GO_ARCHITECTURE_RULES fixe les contraintes de code.
+> Les deux sont contraignants.
 
 1. Le service Go expose des contrats stables pour la façade web existante ; il ne redéfinit pas le produit.
 2. Les accès DuckDB passent par un composant central avec pool read-only borné et write lease explicite.
@@ -137,7 +143,7 @@ Passage requis avant l'entrée en Phase 5 :
 
 1. aucun `.py` n'est exécuté dans le chemin produit ;
 2. aucun `pip install` ou bootstrap `venv` n'est requis dans le packaging final ;
-3. le bridge SPNKr est supprimé ;
+3. le client Go Halo est validé (tous endpoints testés sur fixtures, 3 cycles sync clean) ;
 4. `src/ai/` est explicitement exclu du build et du packaging produit.
 
 ### Gate 4 — Extinction Python
@@ -191,24 +197,19 @@ Le chantier peut être allégé pour un seul développeur, mais pas vidé de ses
 
 Les opportunités spécifiques de Go, comme la distribution simplifiée, la concurrence native ou les outils de détection de race, sont des bonus à capturer pendant le portage, pas une justification suffisante pour lancer le programme sans gates.
 
-## Décisions techniques encore ouvertes
+## Décisions structurantes gelées
 
-| ID | Sujet | Point à trancher |
-|----|-------|------------------|
-| D1 | Structure dépôt | monorepo vs séparation logique du corpus Go |
-| D2 | Packaging | binaire unique à sous-commandes vs plusieurs binaires |
-| D3 | Contrats API | schema-first à partir de Python existant |
-| D4 | Sessions | mode de persistance minimal et reproductible |
-| D5 | Auth | stratégie MSAL canonique + compat refresh tokens |
-| D6 | Weapon parser | portage natif Go vs bridge Python temporaire |
-| D7 | CI DuckDB | stratégie build CGo Windows/Linux |
-| D8 | Pool DuckDB | stratégie ATTACH avec `database/sql` |
-| D9 | Feature flags | pilotage de bascule surface par surface |
-| D10 | Observabilité | niveau minimal utile pour un dev solo |
-| D11 | Modèle canonique Halo | emplacement, granularité et ownership du contrat produit multi-titre |
-| D12 | Capability map produit | forme, exposition bootstrap et politique de dégradation |
+1. packaging : binaire unique `levelup` à sous-commandes ;
+2. contrats API : schema-first à partir de la surface Python existante ;
+3. sessions : fichiers JSON + cookie signé HMAC-SHA256, sans JWT ;
+4. auth : MSAL Go natif + support refresh tokens de compatibilité ;
+5. charting : séparation stricte entre `ChartPayload` renderer-agnostic et rendu frontend.
 
-Le détail vivant de ces points reste dans le corpus opérationnel d'origine.
+## Points de pilotage restants
+
+1. weapon parser : portage natif Go ou fallback subprocess étroit si échec ;
+2. stratégie ATTACH avec `database/sql` au Sprint 0 ;
+3. feature flags de bascule et observabilité minimale.
 
 ## Critères d'abandon
 

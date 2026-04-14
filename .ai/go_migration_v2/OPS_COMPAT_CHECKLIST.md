@@ -139,7 +139,7 @@ Regle : un modele "goroutine seule + map memoire" n'est pas acceptable comme eta
 ### POC DuckDB minimal a exiger
 
 1. Ouvrir metadata/shared/player sans migration implicite non voulue.
-2. **Verifier la version DuckDB embarquee par go-duckdb** : doit etre compatible avec les fichiers crees par DuckDB Python 1.4.4 (meme majeure+mineure). Si l'ouverture declenche une migration de format, c'est un risque bloquant.
+2. **Verifier la version DuckDB embarquee par `duckdb-go`** : doit etre compatible avec les fichiers crees par DuckDB Python 1.4.4 (meme majeure+mineure). Si l'ouverture declenche une migration de format, c'est un risque bloquant.
 3. **Verifier le comportement de `database/sql` avec ATTACH** : `database/sql` gere son pool de connections de facon transparente. Une requete suivante peut s'executer sur une connection differente de celle qui a fait l'ATTACH. Valider la strategie choisie (`sql.Conn` pinee, `ConnInitFunc`, ou pool custom).
 4. Verifier `ATTACH` player -> shared en read-only.
 5. Verifier 10 lectures paralleles + 1 writer sur le meme path.
@@ -207,9 +207,114 @@ Sorti du scope ne veut pas dire oublie : la decision doit rester explicite dans 
 ## Packaging et deploiement - realites a respecter
 
 1. Binaire unique avec sous-commandes : recommandation valide.
-2. Si media indexing est conserve, le systeme n'est pas "zero dependance runtime" au sens strict : ffprobe/ffmpeg restent a traiter.
-3. Si Docker reste supporte, la strategie permissions/bind-mount doit rester explicite.
-4. Pas de promesse de `scratch`/`distroless` si le runtime final a encore besoin de binaires auxiliaires ou d'un filesystem mutable non trivial.
+2. **Taille binaire** : le binaire CGo+DuckDB+web embarque pese **100-200 MB** (`duckdb-go` lie DuckDB en statique, plus `go:embed` des assets React). C'est normal pour ce type de stack ; ne pas cibler <50 MB.
+3. Si media indexing est conserve, le systeme n'est pas "zero dependance runtime" au sens strict : ffprobe/ffmpeg restent a traiter.
+4. Si Docker reste supporte, la strategie permissions/bind-mount doit rester explicite.
+5. Pas de promesse de `scratch`/`distroless` si le runtime final a encore besoin de binaires auxiliaires ou d'un filesystem mutable non trivial.
+6. **Versioning** : injecter version, commit SHA et date de build via `-ldflags` (`-X main.version=... -X main.commit=... -X main.buildDate=...`). Exposer dans `/health` et `--version`.
+
+## CI/CD - strategie de build
+
+### Contraintes CGo
+
+Le build Go+DuckDB utilise CGo (`#cgo LDFLAGS: -lduckdb`). Cela impose :
+
+1. **Build matrix** : GitHub Actions avec matrix `os: [ubuntu-latest, windows-latest]` × `arch: [amd64]`.
+2. **Windows** : installer un compilateur C (MinGW via `w64devkit` ou `tdm-gcc`) dans le step de build. Documenter la version exacte.
+3. **Linux** : `gcc` et `g++` suffisent (pre-installes sur `ubuntu-latest`).
+4. **Pre-built DuckDB** : telecharger `libduckdb.a` + headers depuis les releases DuckDB plutot que compiler depuis les sources (D7). Matcher la version 1.4.4.
+
+### Pipeline cible
+
+```yaml
+# Simplifie - structure a adapter
+jobs:
+  build:
+    strategy:
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with: { go-version: '1.23' }
+      - name: Install DuckDB pre-built
+        run: # telecharger libduckdb.a + headers pour la plateforme
+      - name: Build
+        run: go build -ldflags="-X main.version=${{ github.ref_name }}" -o levelup ./cmd/levelup
+      - name: Test
+        run: go test ./...
+      - uses: actions/upload-artifact@v4
+```
+
+### Regles CI
+
+1. Pas de merge sans build vert sur les deux OS.
+2. Tests unitaires + golden values dans le pipeline.
+3. Tests E2E Playwright en job separe (sur Linux uniquement, contre le binaire Go).
+4. Cache des modules Go et du pre-built DuckDB entre runs.
+
+## Configuration - strategie native Go
+
+La configuration du produit Go utilise un modele natif sans dependance `viper` :
+
+### Ordre de resolution
+
+1. **Struct Go avec valeurs par defaut** : `type Config struct` avec tags JSON, valeurs par defaut dans le constructeur.
+2. **Fichier JSON** : `app_settings.json` lu au demarrage — meme format que Python pour la compatibilite.
+3. **Variables d'environnement** : surcharge du fichier par `os.Getenv()` avec prefixe `LEVELUP_` (ex : `LEVELUP_PORT`, `LEVELUP_DATA_DIR`).
+4. **CLI flags** : `flag.StringVar` pour les sous-commandes sync/backfill.
+
+### Regles
+
+1. Pas de `viper`, pas de `envconfig`, pas de YAML. Struct Go + JSON + env vars = suffisant.
+2. Le parsing JSON utilise `encoding/json` de la stdlib.
+3. La validation se fait dans un `Validate() error` sur la struct Config.
+4. Si le nombre de variables d'environnement depasse 15, reconsiderer `envconfig` (pas avant).
+5. `db_profiles.json` et `.env.local` restent compatibles avec le format Python actuel.
+
+## CORS - liste d'origines explicite
+
+### Regles
+
+1. La liste des origines CORS autorisees est **explicite** dans `app_settings.json`, pas wildcardee.
+2. Origines actuelles Python a reproduire : `http://localhost:3000`, `http://localhost:5173` (dev Vite), plus les origines de prod si deployees.
+3. En mode dev (`LEVELUP_ENV=dev`), ajouter automatiquement `http://localhost:*`.
+4. En mode prod, n'autoriser que les origines nommees dans la config.
+5. Middleware CORS dans Chi : `github.com/go-chi/cors` avec `AllowedOrigins`, `AllowCredentials: true`, `AllowedMethods: GET, POST, PATCH, DELETE, OPTIONS`.
+
+## Hot reload - workflow developpeur
+
+### En developpement
+
+1. **Air** (`github.com/air-verse/air`) pour le hot reload du binaire Go. Configuration `.air.toml` a la racine.
+2. Surveiller `cmd/`, `internal/`, `pkg/` — ignorer `apps/web/`, `data/`, `*.duckdb`.
+3. Temps de rebuild cible : <5s (le CGo ralentit le build ; pre-compiler `libduckdb.a` une fois).
+
+### En production
+
+1. Pas de hot reload. Binaire statique, restart propre via le graceful shutdown existant.
+2. Le binaire expose `--version` pour verifier la version deployee.
+
+## Pool multi-joueurs - degradation explicite
+
+### Probleme
+
+LevelUp gere N joueurs, chacun avec sa propre `stats.duckdb`. En Python, chaque `DuckDBRepository` ouvre une connexion dediee. En Go avec un pool `database/sql`, il faut gerer la scalabilite.
+
+### Regles de degradation
+
+1. **Limite de connexions simultanees** : borner a `max_open_conns` par DB path (defaut : 4 read-only, 1 read-write).
+2. **Limite de joueurs actifs** : si >10 joueurs sont accedes dans les 5 dernieres minutes, les connexions des joueurs les moins recemment accedes sont fermees (LRU eviction).
+3. **Timeout d'acquisition** : si aucune connexion n'est disponible dans le pool en <2s, retourner HTTP 503 `"too many concurrent requests"` plutot que bloquer indefiniment.
+4. **Monitoring** : exposer dans `/debug/stats` le nombre de connexions actives par DB path, le nombre de joueurs charges et le nombre d'evictions LRU.
+5. **ATTACH shared** : la connexion ATTACH vers `shared_matches_v2.duckdb` est partagee par toutes les connexions read-only, initialisee une seule fois dans `ConnInitFunc` du pool.
+
+### Scenarios de stress a tester
+
+1. 5 joueurs accedes simultanement en read-only → pas de degradation visible.
+2. 15 joueurs accedes → eviction LRU des moins actifs, latence <100ms supplementaire.
+3. Sync active + 3 lecteurs sur la meme DB player → write lease respecte, lecteurs non bloques.
+4. Pool sature → 503 explicite, pas de deadlock.
 
 ## Migration des donnees utilisateurs
 
@@ -246,7 +351,7 @@ Sorti du scope ne veut pas dire oublie : la decision doit rester explicite dans 
 - [ ] La reference contractuelle de depart est nommee explicitement et relue
 - [ ] `MATRIX.md` initialise avec les surfaces touchees par le premier lot
 - [ ] POC DuckDB Go valide sur Windows et Linux
-- [ ] Version DuckDB go-duckdb compatible avec les fichiers Python 1.4.4 (pas de migration implicite)
+- [ ] Version DuckDB `duckdb-go` compatible avec les fichiers Python 1.4.4 (pas de migration implicite)
 - [ ] Strategie pool `database/sql` + ATTACH validee
 - [ ] Toolchain CGo Windows documente et reproductible en CI
 - [ ] Strategie auth confirmee : MSAL canonique + refresh tokens supportes
