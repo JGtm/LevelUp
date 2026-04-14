@@ -1,5 +1,156 @@
 # Thought Log
 
+## [2026-04-14] docs(go-migration-v2): verrouillage D1/D4, bitmask source-of-truth et exécution cohérente
+
+**Statut** : Complété
+
+**Tâche** : Nettoyer le corpus Go v2 après revue critique pour supprimer les contradictions encore actives entre plan maître, roadmap, matrice, charte et stratégie zéro-Python.
+
+**Décisions techniques principales** :
+
+1. **D4 reste la source de vérité** : sessions sur fichiers JSON + cookie signé HMAC-SHA256 ; suppression des mentions JWT, `scs` et `gorilla/sessions` dans le plan opérationnel.
+2. **D1 reste la source de vérité** : standardisation sur `github.com/duckdb/duckdb-go` ; retrait des références `marcboeker/go-duckdb` comme package cible.
+3. **Packaging verrouillé** : binaire unique `levelup` à sous-commandes (`api`, `sync`, `backfill`, `tools`) dans le corpus d'exécution.
+4. **Home/auth re-séquencé** : Home prépare le provider et les états dégradés en Phase 2 ; Battle Pass/Challenges live ne s'activent qu'après auth en Sprint 15.
+5. **Charting clarifié** : séparation stricte renderer/backend vs frontend ; les figures déjà assemblées dans React restent data-only côté Go.
+6. **Bitmask recalé sur le code source** : distinction explicite entre `BACKFILL_FLAGS` historiques et `MatchBits` modernes, avec bit 18 legacy obsolète non réécrit.
+
+**Résultats observés** :
+- contradictions retirées dans `PLAN_MIGRATION_PYTHON_TO_GO_V2.md`, `SPRINT_ROADMAP.md`, `MATRIX.md`, `ZERO_PYTHON_STRATEGY.md`, `PROGRAM_CHARTER.md`, `OPS_COMPAT_CHECKLIST.md` et `GO_MIGRATION_CHECKLIST.md` ;
+- roadmap nettoyée des tâches dupliquées sur charting et réalignée sur le binaire unique ;
+- matrice de couverture réalignée sur des statuts déclarés et sur la source de vérité bitmask côté Python.
+
+**Conclusion / prochaine étape** : Le corpus v2 redevient exploitable comme base d'ouverture du Sprint 0. Prochaine étape utile : lancer une vérification résiduelle des anciennes formulations (`JWT`, `go-duckdb`, bitmask 22 bits contigus) puis ouvrir le Sprint 0 technique.
+
+## [2026-07-21] docs(go-migration): Résolution des 6 décisions techniques pré-Sprint 0
+
+**Statut** : Complété
+
+**Tâche** : Prendre les 6 décisions techniques restantes (D1, D2, D4, D5, D6, D7) nécessaires avant d'écrire la première ligne de Go. D3 (charting) était déjà résolu.
+
+**Méthode** : Analyse du codebase Python existant (FastAPI, structlog, itsdangerous, MSAL, DuckDB patterns) + recherche écosystème Go (packages, APIs, compatibilité).
+
+**Décisions prises** :
+
+1. **D1 — DuckDB driver** : `github.com/duckdb/duckdb-go` v2 (officiel, anciennement `marcboeker/go-duckdb` archivé oct. 2025). Stratégie : read pool (`sql.DB` read_only) + single writer (`sync.Mutex`), ATTACH databases dans `NewConnector` boot query. CGO requis.
+2. **D2 — HTTP framework** : `chi` v5 (routeur) + `go-playground/validator` v10 (validation). Rejet de Echo/Gin (trop opinionés), Huma (trop jeune/couplé), stdlib seul (boilerplate middleware). Middleware stack reproduisant exactement l'ordre Python (RequestID → RealIP → Logger → CORS → Session → CSRF → Recoverer).
+3. **D4 — Sessions** : Fichiers JSON dans `data/sessions/` (idem Python) + cookie HMAC-SHA256 (remplacement `itsdangerous`). SessionData struct miroir du dataclass Python. CSRF via Origin header.
+4. **D5 — Logging** : `log/slog` stdlib (Go 1.21+) — équivalent direct de structlog. JSON en prod, text en dev. Request ID via context. Rejet de zerolog/zap (slog suffit, zéro dépendance).
+5. **D6 — Token cache** : MSAL Go SDK officiel (`AzureAD/microsoft-authentication-library-for-go` v1.7+). Device Code Flow natif. Cache persisté dans DuckDB `sync_meta` via `cache.ExportReplace`. Pas de partage cache Python↔Go (clés séparées). Échange spartan/clearance via HTTP direct.
+6. **D7 — OpenAPI** : Spec-first avec `oapi-codegen` v2 (types Go + interfaces) + `openapi-typescript` (types TS). Spec YAML portée depuis l'export FastAPI existant. Le spec est la source de vérité partagée backend/frontend.
+
+**Découverte critique** : `go-duckdb` a été migré vers `github.com/duckdb/duckdb-go` (maintenu par l'équipe DuckDB). Le plan référençait encore `marcboeker/go-duckdb` — corrigé.
+
+**Fichiers modifiés** : PLAN_MIGRATION_PYTHON_TO_GO_V2.md (section décisions, 7 items tous RÉSOLU), thought_log.md.
+
+**Conclusion** : Les 7/7 décisions techniques pré-Sprint 0 sont maintenant résolues. Aucun bloqueur documentaire ne persiste — le Sprint 0 peut démarrer.
+
+## [2026-04-14] docs(go-migration): Abstraction charting — port ChartPayload + adapter Plotly
+
+**Statut** : Complété
+
+**Tâche** : Suite au retour d'un collègue ("génère une interface ChartPayload propre dès le départ, et fais un adapter qui produit le PlotlyFigurePayload compatible"), découpler la couche charting du format Plotly pour anticiper une migration frontend potentielle (Recharts/Nivo).
+
+**Constat initial** :
+- Le §11 couplait les ~80 builders directement à Plotly (`map[string]any`, `PlotlyFigurePayload` en sortie directe)
+- Aucun port/interface entre logique de construction et format de rendu
+- Migration frontend = changement backend + frontend simultané (risque élevé)
+
+**Décisions techniques** :
+
+1. **Port `ChartPayload`** (`domain/chart/payload.go`) — struct renderer-agnostic : `ChartType`, `Series`, `Annotations`, `Thresholds`, `Records`, `Options`
+2. **Port `ChartRenderer`** (`domain/chart/renderer.go`) — interface `Render(*ChartPayload) (any, error)`
+3. **`adapter/plotly/`** (3 fichiers) — convertit `ChartPayload` → `PlotlyFigurePayload`, injecté par DI
+4. 9 règles charting (ajout : "domain/chart/ ne connaît pas Plotly" + test de découplage compilation)
+5. Layout §9 enrichi : `adapter/plotly/` + `chart_renderer.go` dans `port/`
+6. Checklist §10 : vérification compilation sans adapter
+
+**Fichiers modifiés** : GO_ARCHITECTURE_RULES.md (§9, §10, §11), PLAN (règle 7, décision #3, FAQ #13), thought_log.md.
+
+**Conclusion** : Le coût de migration frontend passe de "refonte backend + frontend simultanée" à "nouvel adapter + refonte frontend uniquement".
+
+## [2026-04-14] docs(go-migration): Couche d'abstraction charting — §11 + MATRIX + SPRINT_ROADMAP
+
+**Statut** : Complété
+
+**Tâche** : Identifier et formaliser la couche d'abstraction charting (graphiques/tableaux) absente du plan de migration Go.
+
+**Constat initial** :
+- `src/visualization/` (47 fichiers, ~12K LOC, ~80 fonctions `plot_*`) n'apparaissait dans aucun document de migration
+- La MATRIX classait Plotly "N/A (frontend React)" — **faux** : le backend Python construit les figures JSON complètes
+- Le SPRINT_ROADMAP ne mentionnait pas le portage des fonctions de charting
+- Le PLAN avait une "décision à prendre" non résolue sur le format des graphes
+- Data models structurants ignorés : `ChartData`, `MatchSeries`, `ChartTheme`, `PlotOptions`, `SingleSeriesChartData`, `PlotlyFigurePayload`
+
+**Décisions techniques** :
+
+1. **Architecture charting 3 couches** : `domain/chart/` (logique pure, types, ~10 fichiers Go) → `service/charts/` (orchestration repo+builders) → `api/dto/chart.go` (PlotlyFigurePayload)
+2. **§11 ajouté dans GO_ARCHITECTURE_RULES.md** : inventaire Python, architecture Go, data models Go, sérialisation API, 7 règles, correspondance ~80 fonctions par surface
+3. **MATRIX.md corrigé** : `src/visualization/` ajouté (47 fichiers, ~12K LOC, priorité Très haute), `src/ui/components/` ajouté (13 fichiers, ~1.2K LOC), `src/ui/` splitté en 2 lignes
+4. **SPRINT_ROADMAP.md enrichi** : charting distribué dans S06 (foundation + career), S08 (explorer), S10 (timeseries ~30 fonctions), S12 (escouade heatmap/radar/cadence)
+5. **PLAN corrigé** : Plotly reclassé "Très haute" priorité (pas N/A), règle 7 précisée, décision technique #3 marquée RÉSOLUE, FAQ #13 complétée
+
+**Fichiers modifiés** : GO_ARCHITECTURE_RULES.md (§9 layout + §11 nouveau), MATRIX.md, SPRINT_ROADMAP.md (4 sprints + table récap), PLAN_MIGRATION_PYTHON_TO_GO_V2.md (4 endroits), thought_log.md.
+
+**Conclusion** : Le charting était un angle mort majeur du plan — ~12K LOC de logique serveur ignorés. La couche est maintenant formalisée avec une architecture claire et des tâches planifiées.
+
+## [2026-04-14] docs(go-migration): Synchro couche d'abstraction Python → GO_ARCHITECTURE_RULES.md
+
+**Statut** : Complété
+
+**Tâche** : Mettre à jour GO_ARCHITECTURE_RULES.md pour refléter la couche d'abstraction API Python récemment construite (HaloAPIPort 14 méthodes, factory `create_api_client`, modèles `src/data/sync/models.py`).
+
+**Décisions techniques** :
+
+1. **`HaloClient` interface Go** : étendue à 14 méthodes (ajout `GetMatchData` composite et `GetPlayerCustomization`), commentaires de correspondance Python méthode par méthode, `io.Closer` pour le cleanup.
+2. **Options typées** : `HistoryOpts` et `MatchDataOpts` dans `domain/` au lieu de paramètres positionnels — plus idiomatique Go.
+3. **Factory `halo.NewClient`** (§2.3b) : équivalent Go de `create_api_client()`, vit dans `platform/halo/factory.go`, dispatch par backend.
+4. **Domain models enrichis** : `match_data.go`, `match_stats_row.go`, `skill.go`, `career.go`, `pve.go`, `customization.go` — correspondance directe avec `src/data/sync/models.py`.
+5. **Table de mapping §5** : ligne factory ajoutée.
+
+**Fichiers modifiés** : GO_ARCHITECTURE_RULES.md (sections 2.3, 5, 6, 9), thought_log.md.
+
+## [2025-07-18] docs(go-migration): Architecture hexagonale formelle — GO_ARCHITECTURE_RULES.md
+
+**Statut** : Complété
+
+**Tâche** : Créer un document d'architecture logicielle contraignant pour le backend Go, suite à l'audit qui a révélé que l'architecture hexagonale n'était pas formalisée dans le corpus.
+
+**Décisions techniques principales** :
+
+1. **5 couches formalisées** : `domain/` (pur, 0 IO) → `port/` (interfaces) → `service/` (orchestration) → `api/` (transport) ← `platform/` (implémentations) ← `cmd/` (composition root).
+2. **Matrice d'imports** : direction des dépendances enforced par linter `depguard` en CI. Règle fondamentale : les dépendances pointent vers l'intérieur.
+3. **5 interfaces Go obligatoires** mappées depuis les 3 protocols Python : `PlayerRepository` (DataRepository), `SharedRepository` (nouveau), `HaloClient` (HaloAPIPort), `SyncEngine` (_SyncProtocol), `TokenStore` (éclaté MSAL+sync_meta). Plus 3 additionnelles : `MigrationRunner`, `JobStore`, `MediaIndexer`.
+4. **Constructor injection stricte** : zéro globales métier, mocks via constructeurs, `cmd/` seul point d'instanciation concrète.
+5. **Config `.golangci.yml`** prête avec rules `depguard` par couche (domain-purity, port-purity, service-no-platform, api-no-platform).
+6. **Layout Go révisé** : `cmd/levelup/` (binaire unique), `internal/{domain,port,service,api,platform}/`.
+7. **Exceptions documentées** : uniquement via `// ARCH-EXCEPTION: <raison>` — toute dérogation doit modifier le doc.
+
+**Résultats** :
+- [GO_ARCHITECTURE_RULES.md](.ai/go_migration_v2/GO_ARCHITECTURE_RULES.md) créé (~370 lignes, 10 sections)
+- Référencé dans PLAN (lecture obligatoire #7 + encart dans Règles de conception), CHARTER (encart dans Architecture cible minimale), README (table source de vérité + liste de lecture #2 + références exhaustives #7)
+
+**Conclusion** : Les 6 lacunes identifiées par l'audit sont désormais comblées. L'architecture hexagonale est contraignante, enforced en CI, et vérifiable par sprint.
+
+## [2025-07-18] docs(go-migration): Revue et correction exhaustive du corpus v2 (19 documents)
+
+**Statut** : Complété
+
+**Tâche** : Revue de l'intégralité du plan de migration Python→Go (19 documents dans `.ai/go_migration_v2/`), identification des erreurs factuelles, et correction masse.
+
+**Décisions techniques principales** :
+
+1. **LOC vérifiés vs codebase réelle** : les estimations initiales étaient sous-évaluées de 2-5×. Total corrigé : ~55K LOC Python (analysis=14K, sync=13K, api=12K vs plan initial ~25K).
+2. **12 mixins** (pas 11) : `MatchProcessingHelpersMixin` manquait. **96 champs SyncScope** (pas 94).
+3. **Bridge SPNKr supprimé** : décision utilisateur de passer directement au client Go natif dès S11, sans bridge Python transitoire.
+4. **Sprint 9 splitté** en S09 (Sessions) + S10 (Stats/Séries + perf score + LUSR). Réindexation S00-S28 (29 sprints).
+5. **Config native Go** : struct Go + JSON + env vars, pas de viper. Binary size : 100-200 MB (CGo+DuckDB statique).
+6. **9 items manquants ajoutés** : CI/CD (GH Actions build matrix CGo), config native Go, SSE sync progress, pagination cursor-based, CORS, hot reload (Air), binary size, pool multi-joueurs dégradation, versioning `-ldflags`.
+
+**Documents modifiés** : MATRIX.md, SPRINT_ROADMAP.md, GO_MIGRATION_CHECKLIST.md, ZERO_PYTHON_STRATEGY.md, PLAN_MIGRATION_PYTHON_TO_GO_V2.md, OPS_COMPAT_CHECKLIST.md, PROGRAM_CHARTER.md, PORTING_REFERENCE.md, ZERO_PYTHON_TARGET.md, HALO_PROVIDER_ERROR_TAXONOMY.md (10/19).
+
+**Conclusion** : Le corpus est maintenant cohérent avec la codebase réelle et les décisions utilisateur. Prêt pour Sprint 0.
+
 ## [2026-04-15] refactor(arch): P0+P1+P2 — remédiation architecture API (4/10 → 8+/10)
 
 **Statut** : Complété

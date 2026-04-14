@@ -222,6 +222,10 @@ data/
 | `.ai/go_migration_v2/HALO_INFINITE_CAPABILITY_MAP.md` | Capability map initiale mono-titre pour `halo_infinite`, avec projection bootstrap minimale |
 | `.ai/go_migration_v2/HALO_BOOTSTRAP_CONTRACT.md` | Contrat produit du bloc `halo` dans le bootstrap : titre, provider, capabilities et limitations utiles au consommateur |
 | `.ai/go_migration_v2/HALO_GO_TYPE_BLUEPRINT.md` | Projection documentaire des structs, enums et interfaces Go canoniques avant implémentation |
+| `.ai/go_migration_v2/HALO_INFINITE_CANONICAL_MAPPING.md` | Discipline de projection des payloads Halo Infinite vers le modèle canonique, sans mélanger analytics ni contrats HTTP |
+| `.ai/go_migration_v2/HALO_PRODUCT_CONTRACT_ADAPTERS.md` | Cadrage de la projection du canonique Halo vers les read models produit et les DTO OpenAPI |
+| `.ai/go_migration_v2/HALO_PROVIDER_ERROR_TAXONOMY.md` | Taxonomie des erreurs et limitations entre provider Halo et API produit, avec projection HTTP normalisée |
+| `.ai/go_migration_v2/OPENAPI_MVP_P0_P1.md` | Gel des contrats HTTP MVP P0/P1 à préserver avant le démarrage du backend Go |
 | `.ai/migration/` | Corpus de migration FastAPI/React découpé par sujet : décisions, invariants, parité, slices, contrats API, audit de codebase |
 | `.ai/PLAN_MIGRATION_FASTAPI_REACT.md` | Audit exhaustif + plan de migration Streamlit vers FastAPI/React, avec perimetre fige, matrice de parite, contrats API MVP, extraction du state model, structure cible du repo, delivery par slices, cohabitation front, auth/session, tests de parite et pilotage par metriques |
 | `.ai/go_migration/` | Corpus isole du chantier Python -> Go : plan maitre, checklist, matrice, compat ops et strategie zero Python |
