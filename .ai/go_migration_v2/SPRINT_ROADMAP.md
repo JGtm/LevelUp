@@ -4,7 +4,7 @@
 > Chaque sprint a un objectif, des tâches, un critère de sortie et une estimation.
 >
 > Dernière mise à jour : 2026-04-14
-> Statut global : **Pas démarré** — en attente de validation du cadrage.
+> Statut global : **Pas démarré** — cadrage gelé, prêt pour le Sprint 0.
 
 ---
 
@@ -33,30 +33,35 @@
 | 3 | Baselines de performance | Phase 0 | 1-2j | ⬜ | Sprint 1 |
 | 4 | Squelette HTTP + config + middleware | Phase 1 | 3-5j | ⬜ | Phase 0 terminée |
 | 5 | Repositories read-only + pool DuckDB | Phase 1 | 5-8j | ⬜ | Sprint 4 |
-| 6 | Bootstrap, players, filtres, career, history | Phase 1 | 5-7j | ⬜ | Sprint 5 |
+| 6 | Bootstrap, players, filtres, career, history + **charting foundation** | Phase 1 | 5-7j | ⬜ | Sprint 5 |
 | 7 | Validation de parité Phase 1 | Phase 1 | 2-3j | ⬜ | Sprint 6 |
-| 8 | Explorer + Match View + killer/victim | Phase 2 | 5-7j | ⬜ | Gate Phase 1 |
-| 9 | Stats/Séries + sessions + perf score | Phase 2 | 7-10j | ⬜ | Sprint 8 |
-| 10 | Accueil/Home + socle provider Halo | Phase 2 | 5-7j | ⬜ | Sprint 8 |
-| 11 | Escouade + Synthèse | Phase 2 | 7-10j | ⬜ | Sprint 8 |
-| 12 | Citations + Médias | Phase 2 | 4-6j | ⬜ | Sprint 8 |
-| 13 | Session / cookies | Phase 3 | 3-4j | ⬜ | Gate Phase 2 |
-| 14 | Device Code Flow + MSAL Go | Phase 3 | 5-7j | ⬜ | Sprint 13 |
-| 15 | Settings / Setup | Phase 3 | 3-4j | ⬜ | Sprint 14 |
-| 16 | Jobs longs persistants | Phase 3 | 4-6j | ⬜ | Sprint 14 |
-| 17 | Moteur sync minimal (11 mixins) | Phase 4 | 10-15j | ⬜ | Gate Phase 3 |
-| 18 | Pipeline post-sync | Phase 4 | 5-7j | ⬜ | Sprint 17 |
-| 19 | Backfill complet (94 champs, ~120 args) | Phase 4 | 7-10j | ⬜ | Sprint 18 |
-| 20 | Migrations DuckDB (35 steps) | Phase 4 | 5-7j | ⬜ | Sprint 17 |
-| 21 | Weapon parsing | Phase 4 | 5-8j | ⬜ | Sprint 17 |
-| 22 | PvE Firefight | Phase 4 | 2-3j | ⬜ | Sprint 17 |
-| 23 | Scripts d'exploitation | Phase 4 | 5-7j | ⬜ | Sprint 17 |
-| 24 | Notifications Discord | Phase 4 | 2-3j | ⬜ | Sprint 17 |
-| 25 | Validation conditions réelles | Phase 5 | 3-5j | ⬜ | Gate Phase 4 |
-| 26 | Bascule progressive | Phase 5 | 3-5j | ⬜ | Sprint 25 |
-| 27 | Toolchain qualité Go + nettoyage Python | Phase 5 | 4-6j | ⬜ | Sprint 26 |
+| 8 | Explorer + Match View + killer/victim + **charting explorer** | Phase 2 | 5-7j | ⬜ | Gate Phase 1 |
+| 9 | Sessions (algorithme 6, 2 modes) | Phase 2 | 3-5j | ⬜ | Sprint 8 |
+| 10 | Stats/Séries + perf score + LUSR + **charting timeseries** (~30 fonctions) | Phase 2 | 5-7j | ⬜ | Sprint 9 |
+| 11 | Accueil/Home read-only + socle provider Halo | Phase 2 | 5-7j | ⬜ | Sprint 8 |
+| 12 | Escouade + Synthèse + **charting escouade** (heatmap, radar, cadence) | Phase 2 | 7-10j | ⬜ | Sprint 8 |
+| 13 | Citations + Médias | Phase 2 | 4-6j | ⬜ | Sprint 8 |
+| 14 | Session / cookies | Phase 3 | 3-4j | ⬜ | Gate Phase 2 |
+| 15 | Device Code Flow + MSAL Go | Phase 3 | 5-7j | ⬜ | Sprint 14 |
+| 16 | Settings / Setup | Phase 3 | 3-4j | ⬜ | Sprint 15 |
+| 17 | Jobs longs persistants | Phase 3 | 4-6j | ⬜ | Sprint 15 |
+| 18 | Moteur sync minimal (12 mixins, ~13K LOC) | Phase 4 | 10-15j | ⬜ | Gate Phase 3 |
+| 19 | Pipeline post-sync | Phase 4 | 5-7j | ⬜ | Sprint 18 |
+| 20 | Backfill complet (96 champs, ~120 args) | Phase 4 | 7-10j | ⬜ | Sprint 19 |
+| 21 | Migrations DuckDB (35 steps) | Phase 4 | 5-7j | ⬜ | Sprint 18 |
+| 22 | Weapon parsing | Phase 4 | 5-8j | ⬜ | Sprint 18 |
+| 23 | PvE Firefight | Phase 4 | 2-3j | ⬜ | Sprint 18 |
+| 24 | Scripts d'exploitation | Phase 4 | 5-7j | ⬜ | Sprint 18 |
+| 25 | Notifications Discord | Phase 4 | 2-3j | ⬜ | Sprint 18 |
+| 26 | Validation conditions réelles | Phase 5 | 3-5j | ⬜ | Gate Phase 4 |
+| 27 | Bascule progressive | Phase 5 | 3-5j | ⬜ | Sprint 26 |
+| 28 | Toolchain qualité Go + nettoyage Python | Phase 5 | 4-6j | ⬜ | Sprint 27 |
 
-**Total estimé** : 125–185 jours (~6–9 mois) pour 1 dev senior temps plein.
+**Total estimé** : 130–195 jours (~7–10 mois) pour 1 dev senior temps plein.
+
+> **Note** : les estimations sont basées sur ~55 000 LOC Python réels à porter
+> (vérifié : analysis=14K, sync=13K, api=12K, repos+services+auth+scripts ≈16K).
+> Les estimations initiales sous-estimaient de ~2× le volume réel.
 
 ---
 
@@ -69,7 +74,7 @@
 
 | # | Tâche | Statut |
 |--:|-------|:------:|
-| 1 | `go mod init` + ajouter `go-duckdb` | ⬜ |
+| 1 | `go mod init` + ajouter `github.com/duckdb/duckdb-go` | ⬜ |
 | 2 | Vérifier version DuckDB embarquée vs Python 1.4.4 (compatibilité format) | ⬜ |
 | 3 | Ouvrir `metadata.duckdb` read-only, `SELECT * FROM career_ranks LIMIT 5` | ⬜ |
 | 4 | Ouvrir `shared_matches_v2.duckdb` read-only, exécuter requête bootstrap (Q1) | ⬜ |
@@ -86,12 +91,12 @@
 | 10 | Handler GET `/api/bootstrap` avec mêmes données que Python | ⬜ |
 | 11 | Comparer JSON de sortie avec golden value Python | ⬜ |
 | 12 | Tester MSAL Go : `AcquireTokenByDeviceCode()` → user_code + verification_url | ⬜ |
-| 13 | Tester désérialisation du cache MSAL Python existant → documenter compatibilité ou stratégie de migration | ⬜ |
+| 13 | Documenter la coexistence des caches MSAL Python/Go (`sync_meta`, clés séparées, pas de désérialisation croisée) | ⬜ |
 
 ### Gate Sprint 0
 
 - [ ] DuckDB Go lit les 3 types de DB sans erreur sur Windows
-- [ ] Version DuckDB go-duckdb compatible fichiers Python 1.4.4 (pas de migration implicite)
+- [ ] Version DuckDB `duckdb-go` compatible fichiers Python 1.4.4 (pas de migration implicite)
 - [ ] ATTACH fonctionne avec la stratégie de pool choisie
 - [ ] Types UBIGINT/TIMESTAMP correctement mappés
 - [ ] CGo compile sur Windows avec toolchain documenté et reproductible
@@ -175,7 +180,7 @@
 
 | # | Tâche | Statut |
 |--:|-------|:------:|
-| 1 | `go-api/cmd/levelup-api/main.go` : serveur, config, healthcheck | ⬜ |
+| 1 | `go-api/cmd/levelup/main.go` : serveur, config, healthcheck | ⬜ |
 | 2 | Routing Chi + middleware CORS (mêmes origines que Python) | ⬜ |
 | 3 | Middleware : request_id, rate limit, logging structuré (slog) | ⬜ |
 | 4 | Génération OpenAPI : `oapi-codegen` depuis le schéma figé en Sprint 1 | ⬜ |
@@ -224,7 +229,10 @@
 | 4 | GET /pages/career, /career/top-matches, /career/encounters | ⬜ |
 | 5 | POST /pages/match-history/query : paginé, trié, filtré | ⬜ |
 | 6 | Exposer dans le bootstrap le titre courant et la capability map produit | ⬜ |
-| 7 | Tests de parité endpoint par endpoint (JSON diff) | ⬜ |
+| 7 | **Charting foundation** : porter `domain/chart/types.go` (ChartData, MatchSeries, SingleSeriesChartData), `theme.go` (ChartTheme, HaloColors, ThemeColors, palettes Okabe-Ito), `options.go` (PlotOptions), `layout.go` (ApplyHaloStyle), `downsample.go` | ⬜ |
+| 8 | **Charting career** : porter `plot_career_xp_chart`, `plot_lusr_progression` → `domain/chart/career.go` | ⬜ |
+| 9 | DTO `PlotlyFigurePayload` (`api/dto/chart.go`) + adaptateurs figure → payload pour les seules surfaces backend-rendered | ⬜ |
+| 10 | Tests de parité endpoint par endpoint (JSON diff) | ⬜ |
 
 ### Critère de sortie
 - Endpoints fonctionnels, JSON de sortie comparé au Python
@@ -264,10 +272,10 @@
 | 2 | Rencontres croisées (matchs communs entre 2 joueurs) | ⬜ |
 | 3 | Match View : onglet Scoreboard (19 colonnes) | ⬜ |
 | 4 | Match View : onglet Événements (timeline) | ⬜ |
-| 5 | Match View : onglet Statistiques | ⬜ |
+| 5 | **Charting explorer** : porter `plot_antagonist_bars`, `plot_antagonist_duels`, `plot_match_impact_timeline`, `plot_team_dominance` → `domain/chart/antagonists.go` + `matchview.go` | ⬜ |
 | 6 | Match View : onglet Détails | ⬜ |
 | 7 | Portage résolution killer/victim (algorithme 3 — tolérance ±5ms) | ⬜ |
-| 8 | Tests de parité sur golden values Explorer | ⬜ |
+| 8 | Tests de parité sur golden values Explorer (dont figures JSON) | ⬜ |
 
 ### Critère de sortie
 - Parcours Explorer complet en parité
@@ -275,41 +283,57 @@
 
 ---
 
-## Sprint 9 — Stats/Séries + sessions + perf score (7–10 jours)
+## Sprint 9 — Sessions (3–5 jours)
 
 > **Phase 2 — Parcours read-only complets**
-> **Objectif** : porter le cœur analytique (algorithmes 1 et 6).
+> **Objectif** : porter l'algorithme de découpage en sessions (algorithme 6).
 
 | # | Tâche | Statut |
 |--:|-------|:------:|
 | 1 | Portage algorithme 6 — Sessions (2 modes : gap-based + context-based) | ⬜ |
-| 2 | Portage algorithme 1 — Performance Score (10 métriques pondérées, fenêtre glissante 50 matchs) | ⬜ |
+| 2 | Golden values sessions sur 1 mois (IDs + labels identiques) | ⬜ |
+| 3 | Session grouping : affectation session_id aux matchs | ⬜ |
+| 4 | Session labeling : génération des labels (date + contexte) | ⬜ |
+
+### Critère de sortie
+- Sessions : découpage identique au Python
+- Golden values sessions vérifiées
+
+---
+
+## Sprint 10 — Stats/Séries + perf score + LUSR (5–7 jours)
+
+> **Phase 2 — Parcours read-only complets**
+> **Objectif** : porter le cœur analytique (algorithmes 1 et 2) et les séries temporelles.
+
+| # | Tâche | Statut |
+|--:|-------|:------:|
+| 1 | Portage algorithme 1 — Performance Score (10 métriques pondérées, fenêtre glissante 50 matchs) | ⬜ |
+| 2 | Portage algorithme 2 — LUSR/TrueSkill historique | ⬜ |
 | 3 | Onglet Win/Loss × 2 modes (Période/Sessions) | ⬜ |
-| 4 | Onglet KDA × 2 modes | ⬜ |
-| 5 | Onglet Précision × 2 modes | ⬜ |
-| 6 | Onglet Objectif × 2 modes | ⬜ |
-| 7 | Onglet Forme × 2 modes | ⬜ |
-| 8 | Golden values perf score sur 100 matchs (ε < 0.01) | ⬜ |
-| 9 | Golden values sessions sur 1 mois (IDs + labels identiques) | ⬜ |
+| 4 | Onglet Précision × 2 modes | ⬜ |
+| 5 | Onglet Objectif × 2 modes | ⬜ |
+| 6 | Onglet Forme × 2 modes | ⬜ |
+| 7 | **Charting timeseries** : porter toutes les fonctions `plot_*` de `src/visualization/timeseries*.py` + `performance.py` + `distributions*.py` → `domain/chart/timeseries.go` + `performance.go` + `distributions.go` (~30 fonctions, ~4K LOC Python) | ⬜ |
+| 8 | Golden values perf score + LUSR sur 100 matchs (ε < 0.01) + golden values figures JSON | ⬜ |
 
 ### Critère de sortie
 - 5 onglets × 2 modes en parité
 - Performance score : ε < 0.01 sur 100 matchs
-- Sessions : découpage identique
 
 ---
 
-## Sprint 10 — Accueil/Home + socle provider Halo (5–7 jours)
+## Sprint 11 — Accueil/Home read-only + socle provider Halo (5–7 jours)
 
 > **Phase 2 — Parcours read-only complets**
-> **Objectif** : premier appel live via le socle provider Halo et le provider du titre courant.
+> **Objectif** : rendre Home en read-only, préparer le provider Halo et afficher explicitement les blocs live indisponibles avant auth.
 
 | # | Tâche | Statut |
 |--:|-------|:------:|
 | 1 | Hero card (agglomération career + last match) | ⬜ |
-| 2 | Socle provider Go + provider Halo Infinite : squelette réseau, auth et endpoints | ⬜ |
+| 2 | Socle provider Go + provider Halo Infinite : squelette réseau, endpoints et capability map | ⬜ |
 | 3 | Rate limiting 60 req/min + retry exponentiel | ⬜ |
-| 4 | Battle Pass + Challenges via API live | ⬜ |
+| 4 | Battle Pass + Challenges : états `auth_required` / `unavailable` exposés proprement tant que l'auth n'est pas portée | ⬜ |
 | 5 | Timeline (5 derniers matchs) | ⬜ |
 | 6 | Médias récents (3 derniers) | ⬜ |
 | 7 | Tests sur fixtures (mock HTTP 343i) | ⬜ |
@@ -317,22 +341,24 @@
 ### Critère de sortie
 - Page Accueil fonctionnelle
 - Socle provider Halo avec rate limit + retry testé sur fixtures
+- Blocs live Home explicitement dégradés avant auth
 
 ---
 
-## Sprint 11 — Escouade + Synthèse (7–10 jours)
+## Sprint 12 — Escouade + Synthèse (7–10 jours)
 
 > **Phase 2 — Parcours read-only complets**
 > **Objectif** : porter le module le plus complexe en sous-analyses.
 
 | # | Tâche | Statut |
 |--:|-------|:------:|
-| 1 | Top coéquipiers (Q5 — self-join match_participants excl. bots) | ⬜ |
-| 2 | Onglet Synergies : radar, first blood, clutch, etc. | ⬜ |
-| 3 | Onglet Impact : 13 sous-modules d'analyse | ⬜ |
-| 4 | Solo vs Squad breakdown | ⬜ |
-| 5 | Heatmap, top semaine | ⬜ |
-| 6 | Golden values Escouade : top 3 + 13 sous-métriques | ⬜ |
+| 1 | Onglet Synergies : radar, first blood, clutch, etc. | ⬜ |
+| 2 | Onglet Impact : 13 sous-modules d'analyse | ⬜ |
+| 3 | Solo vs Squad breakdown | ⬜ |
+| 4 | Synthèse : `comparison_metrics`, `heatmap_data`, `top_weeks` en parité | ⬜ |
+| 5 | Règle renderer/frontend : les figures déjà assemblées dans React restent data-only côté Go ; ne pas réimposer un payload Plotly backend sans contrat explicite | ⬜ |
+| 6 | Porter uniquement les primitives chart backend réellement mutualisées (radar/heatmap/cadence) sous forme renderer-agnostic | ⬜ |
+| 7 | Golden values Escouade + Synthèse : top 3, 13 sous-métriques, datasets et payloads concernés | ⬜ |
 
 ### Critère de sortie
 - 13 sous-modules en parité
@@ -340,7 +366,7 @@
 
 ---
 
-## Sprint 12 — Citations + Médias (4–6 jours)
+## Sprint 13 — Citations + Médias (4–6 jours)
 
 > **Phase 2 — Parcours read-only complets**
 > **Objectif** : derniers parcours read-only.
@@ -358,20 +384,20 @@
 ### Gate Phase 2
 - [ ] 41 tests Playwright passent avec le backend Go
 - [ ] Tous les parcours read-only en parité
-- [ ] Socle provider Halo fonctionnel avec rate limit
+- [ ] Socle provider Halo + dégradation pré-auth validés
 - [ ] → **Passage à Phase 3 autorisé**
 
 ---
 
-## Sprint 13 — Session / cookies (3–4 jours)
+## Sprint 14 — Session / cookies (3–4 jours)
 
 > **Phase 3 — Auth, session, settings, jobs**
 > **Objectif** : gérer les sessions utilisateur côté Go.
 
 | # | Tâche | Statut |
 |--:|-------|:------:|
-| 1 | Cookies httpOnly + JWT signing (`golang-jwt/jwt` v5) | ⬜ |
-| 2 | Librairie sessions : `scs` (préféré) ou `gorilla/sessions` | ⬜ |
+| 1 | Fichiers JSON dans `data/sessions/` + cookie signé HMAC-SHA256 (pas de JWT) | ⬜ |
+| 2 | `SessionData` miroir du modèle Python : player context, locale, active job, expiration | ⬜ |
 | 3 | POST /session/context : player context, session context | ⬜ |
 | 4 | Tests : reprise de session, expiration | ⬜ |
 
@@ -381,7 +407,7 @@
 
 ---
 
-## Sprint 14 — Device Code Flow + MSAL Go (5–7 jours)
+## Sprint 15 — Device Code Flow + MSAL Go (5–7 jours)
 
 > **Phase 3 — Auth, session, settings, jobs**
 > **Objectif** : auth complète sans Python.
@@ -395,14 +421,16 @@
 | 5 | Persistance cache MSAL dans sync_meta (DuckDB write) | ⬜ |
 | 6 | Support refresh tokens (`SPNKR_OAUTH_REFRESH_TOKEN` env + `sync_meta`) comme fallback | ⬜ |
 | 7 | Cas d'échec : cache invalide, refresh révoqué, échec échange Halo | ⬜ |
+| 8 | Activer Battle Pass + Challenges live sur Home après auth, avec dégradation explicite si la session Halo manque | ⬜ |
 
 ### Critère de sortie
 - Auth complète sans Python
 - Refresh token supporté comme fallback
+- Battle Pass + Challenges live fonctionnels après auth
 
 ---
 
-## Sprint 15 — Settings / Setup (3–4 jours)
+## Sprint 16 — Settings / Setup (3–4 jours)
 
 > **Phase 3 — Auth, session, settings, jobs**
 > **Objectif** : mutations de configuration.
@@ -420,7 +448,7 @@
 
 ---
 
-## Sprint 16 — Jobs longs persistants (4–6 jours)
+## Sprint 17 — Jobs longs persistants (4–6 jours)
 
 > **Phase 3 — Auth, session, settings, jobs**
 > **Objectif** : modèle de jobs start/poll/cancel avec persistance.
@@ -447,7 +475,7 @@
 
 ---
 
-## Sprint 17 — Moteur sync minimal (10–15 jours)
+## Sprint 18 — Moteur sync minimal (10–15 jours)
 
 > **Phase 4 — Sync, backfill, outillage**
 > **Objectif** : delta sync fonctionnel. C'est le sprint le plus long et le plus risqué.
@@ -461,13 +489,22 @@
 | 2 | ConnectionMixin : gestion connexions read/write + ATTACH | ⬜ |
 | 3 | SchemaMixin : vérification/création des tables | ⬜ |
 | 4 | SharedWritesMixin : insert match_registry, match_participants (31 cols), médailles, events | ⬜ |
-| 5 | MatchProcessingMixin : orchestration du traitement d'un match | ⬜ |
+| 5 | MatchProcessingMixin + MatchProcessingHelpersMixin : orchestration du traitement d'un match | ⬜ |
 | 6 | EnrichedWritesMixin : insert player_match_enrichment | ⬜ |
 | 7 | FanoutEnrichmentMixin : distribution des enrichissements | ⬜ |
 | 8 | WeaponKillsEngineMixin : insert weapon_kills avec réconciliation | ⬜ |
-| 9 | Write lease identique au Python (~5s timeout, 1 writer par DB path) | ⬜ |
-| 10 | Delta sync complet : fetch nouveaux matchs → insert shared + player | ⬜ |
-| 11 | Tests : delta sync sur corpus figé, comparaison avec résultat Python | ⬜ |
+| 9 | PerformanceMixin, SkillRatingMixin, CareerMixin, AggregatesMixin : post-sync | ⬜ |
+| 10 | Portage `transformers/` (2 400 LOC) : normalisation, nettoyage, transformations batch | ⬜ |
+| 11 | Portage `_batch_audit.py`, `_batch_columns.py` : audit batch et gestion colonnes | ⬜ |
+| 12 | Write lease identique au Python (~5s timeout, 1 writer par DB path) | ⬜ |
+| 13 | Delta sync complet : fetch nouveaux matchs → insert shared + player | ⬜ |
+| 14 | Tests : delta sync sur corpus figé, comparaison avec résultat Python | ⬜ |
+
+> **Inventaire exhaustif** : 12 mixins réels (`ConnectionMixin`, `SchemaMixin`, `SharedWritesMixin`,
+> `MatchProcessingMixin`, `MatchProcessingHelpersMixin`, `EnrichedWritesMixin`,
+> `FanoutEnrichmentMixin`, `WeaponKillsEngineMixin`, `PerformanceMixin`, `SkillRatingMixin`,
+> `CareerMixin`, `AggregatesMixin`) + `transformers/` (sous-répertoire 2 400 LOC)
+> + `_batch_audit.py`, `_batch_columns.py`, `_career_rank_api.py`, `_tokens.py`, `_asset_langs.py`.
 
 ### Critère de sortie
 - Delta sync fonctionnel
@@ -476,7 +513,7 @@
 
 ---
 
-## Sprint 18 — Pipeline post-sync (5–7 jours)
+## Sprint 19 — Pipeline post-sync (5–7 jours)
 
 > **Phase 4 — Sync, backfill, outillage**
 > **Objectif** : tous les traitements qui suivent un sync.
@@ -495,27 +532,27 @@
 
 ---
 
-## Sprint 19 — Backfill complet (7–10 jours)
+## Sprint 20 — Backfill complet (7–10 jours)
 
 > **Phase 4 — Sync, backfill, outillage**
 > **Objectif** : reproduire fidèlement SyncScope et le bitmask.
 
 | # | Tâche | Statut |
 |--:|-------|:------:|
-| 1 | Port de SyncScope (94 champs) en struct Go | ⬜ |
-| 2 | Port du bitmask backfill (22 bits, valeurs numériques exactes, lacunes bits 4/16/17/18) | ⬜ |
-| 3 | CLI : ~120 arguments (`cmd/levelup-sync --backfill --player X --medals --force-medals`) | ⬜ |
+| 1 | Port de SyncScope (96 champs) en struct Go | ⬜ |
+| 2 | Port des `BACKFILL_FLAGS` historiques (0-15) + `MatchBits` (16-22), en respectant le bit 18 legacy obsolète | ⬜ |
+| 3 | CLI : ~120 arguments (`levelup backfill --player X --medals --force-medals`) | ⬜ |
 | 4 | `find_matches_missing_data` — détection des données manquantes via bitmask | ⬜ |
 | 5 | Tests : bitmask numériquement identique entre Python et Go | ⬜ |
 | 6 | Full backfill sur corpus : résultat identique | ⬜ |
 
 ### Critère de sortie
 - Backfill identique au Python
-- Bitmask 22 bits identique (pas "équivalent" — identique)
+- Bitmask/backfill flags identiques à la source Python (pas "équivalent" — identique)
 
 ---
 
-## Sprint 20 — Migrations DuckDB (5–7 jours)
+## Sprint 21 — Migrations DuckDB (5–7 jours)
 
 > **Phase 4 — Sync, backfill, outillage**
 > **Objectif** : reproduire le registre de migrations idempotentes.
@@ -533,7 +570,7 @@
 
 ---
 
-## Sprint 21 — Weapon parsing (5–8 jours)
+## Sprint 22 — Weapon parsing (5–8 jours)
 
 > **Phase 4 — Sync, backfill, outillage**
 > **Objectif** : porter le parser binaire de films Halo (algorithme 4). Module le plus risqué.
@@ -553,7 +590,7 @@
 
 ---
 
-## Sprint 22 — PvE Firefight (2–3 jours)
+## Sprint 23 — PvE Firefight (2–3 jours)
 
 > **Phase 4 — Sync, backfill, outillage**
 > **Objectif** : sync mode PvE.
@@ -570,21 +607,21 @@
 
 ---
 
-## Sprint 23 — Scripts d'exploitation (5–7 jours)
+## Sprint 24 — Scripts d'exploitation (5–7 jours)
 
 > **Phase 4 — Sync, backfill, outillage**
 > **Objectif** : reconstituer les outils de maintenance.
 
 | # | Tâche | Statut |
 |--:|-------|:------:|
-| 1 | `cmd/levelup-tools backup` : backup DB joueur | ⬜ |
-| 2 | `cmd/levelup-tools restore` : restore DB joueur | ⬜ |
-| 3 | `cmd/levelup-tools healthcheck` : diagnostic intégrité | ⬜ |
-| 4 | `cmd/levelup-tools diagnose` : debug schémas | ⬜ |
-| 5 | `cmd/levelup-tools check-env` : validation environnement | ⬜ |
-| 6 | `cmd/levelup-tools archive` : archivage Parquet (arrow-go) | ⬜ |
-| 7 | `cmd/levelup-tools index-media` : indexation vidéos (ffprobe subprocess) | ⬜ |
-| 8 | `cmd/levelup-tools seed` : seed metadata (populate_*) | ⬜ |
+| 1 | `levelup backup` : backup DB joueur | ⬜ |
+| 2 | `levelup restore` : restore DB joueur | ⬜ |
+| 3 | `levelup healthcheck` : diagnostic intégrité | ⬜ |
+| 4 | `levelup diagnose` : debug schémas | ⬜ |
+| 5 | `levelup check-env` : validation environnement | ⬜ |
+| 6 | `levelup archive` : archivage Parquet (arrow-go) | ⬜ |
+| 7 | `levelup index-media` : indexation vidéos (ffprobe subprocess) | ⬜ |
+| 8 | `levelup seed` : seed metadata (populate_*) | ⬜ |
 | 9 | Portage spawn detection (algorithme 7, ~700 LOC) — golden values sur ≥20 matchs | ⬜ |
 
 ### Critère de sortie
@@ -593,7 +630,7 @@
 
 ---
 
-## Sprint 24 — Notifications Discord (2–3 jours)
+## Sprint 25 — Notifications Discord (2–3 jours)
 
 > **Phase 4 — Sync, backfill, outillage**
 > **Objectif** : embeds Discord post-sync.
@@ -610,8 +647,8 @@
 - Embeds post-sync fonctionnels, anti-spam vérifié
 
 ### Gate Phase 4
-- [ ] `cmd/levelup-sync --full --gamertag X --max-matches 500` = résultat identique à Python
-- [ ] Backfill bitmask 22 bits identique
+- [ ] `levelup sync --full --gamertag X --max-matches 500` = résultat identique à Python
+- [ ] Backfill flags + MatchBits identiques à la source Python
 - [ ] 35 migrations idempotentes
 - [ ] Scripts d'exploitation portés
 - [ ] Discord notifications fonctionnelles
@@ -619,7 +656,7 @@
 
 ---
 
-## Sprint 25 — Validation conditions réelles (3–5 jours)
+## Sprint 26 — Validation conditions réelles (3–5 jours)
 
 > **Phase 5 — Bascule et extinction Python**
 > **Objectif** : prouver la tenue en conditions réelles.
@@ -637,7 +674,7 @@
 
 ---
 
-## Sprint 26 — Bascule progressive (3–5 jours)
+## Sprint 27 — Bascule progressive (3–5 jours)
 
 > **Phase 5 — Bascule et extinction Python**
 > **Objectif** : basculer surface par surface.
@@ -656,7 +693,7 @@
 
 ---
 
-## Sprint 27 — Toolchain qualité Go + nettoyage Python (4–6 jours)
+## Sprint 28 — Toolchain qualité Go + nettoyage Python (4–6 jours)
 
 > **Phase 5 — Bascule et extinction Python**
 > **Objectif** : remplacer toute la toolchain qualité Python par son équivalent Go,
@@ -735,10 +772,10 @@
 
 La migration **s'arrête** (pas ralentit — s'arrête) si :
 
-1. **Sprint 0 échoue** : go-duckdb ne fonctionne pas sur Windows ou CGo trop fragile
+1. **Sprint 0 échoue** : `duckdb-go` ne fonctionne pas sur Windows ou CGo trop fragile
 2. **Phase 1 dépasse 3× l'estimation** : 15+ semaines sans read-only fonctionnel
 3. **343i change fondamentalement l'API Halo** : nouveau système d'auth, endpoints supprimés
-4. **go-duckdb est abandonné** : plus maintenu, pas d'alternative crédible
+4. **`duckdb-go` devient non maintenable** : plus maintenu ou plus compatible avec DuckDB prod, sans alternative crédible
 5. **Le produit évolue plus vite que le portage** : golden values obsolètes après 3 mois
 6. **Fatigue / motivation** : 6–10 mois de portage sans feature visible = risque réel pour un dev solo
 

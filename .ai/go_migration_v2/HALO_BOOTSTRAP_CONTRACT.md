@@ -142,7 +142,9 @@ Exemples à exclure :
 
 1. [HALO_CANONICAL_MODEL.md](HALO_CANONICAL_MODEL.md) fixe les objets canoniques derrière ce bootstrap.
 2. [HALO_INFINITE_CAPABILITY_MAP.md](HALO_INFINITE_CAPABILITY_MAP.md) fixe la première map mono-titre à projeter ici.
-3. [PLAN_MIGRATION_PYTHON_TO_GO_V2.md](PLAN_MIGRATION_PYTHON_TO_GO_V2.md) rattache ce contrat à la Phase 0 et à la Phase 1.
+3. [HALO_INFINITE_CANONICAL_MAPPING.md](HALO_INFINITE_CANONICAL_MAPPING.md) documente la projection `halo_infinite -> canonique` dont ce bootstrap dépend indirectement.
+4. [HALO_PRODUCT_CONTRACT_ADAPTERS.md](HALO_PRODUCT_CONTRACT_ADAPTERS.md) décrit la projection `canonique -> bootstrap/OpenAPI`.
+5. [PLAN_MIGRATION_PYTHON_TO_GO_V2.md](PLAN_MIGRATION_PYTHON_TO_GO_V2.md) rattache ce contrat à la Phase 0 et à la Phase 1.
 
 ## Règle de maintenance
 

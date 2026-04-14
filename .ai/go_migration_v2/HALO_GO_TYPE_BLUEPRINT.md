@@ -320,4 +320,6 @@ Ces surfaces appartiennent aux couches produit, pas au provider Halo.
 1. [HALO_CANONICAL_MODEL.md](HALO_CANONICAL_MODEL.md) pour le cadre conceptuel.
 2. [HALO_INFINITE_CAPABILITY_MAP.md](HALO_INFINITE_CAPABILITY_MAP.md) pour les surfaces réellement supportées aujourd'hui.
 3. [HALO_BOOTSTRAP_CONTRACT.md](HALO_BOOTSTRAP_CONTRACT.md) pour la projection bootstrap côté produit.
-4. [PLAN_MIGRATION_PYTHON_TO_GO_V2.md](PLAN_MIGRATION_PYTHON_TO_GO_V2.md) pour le rattachement aux phases du programme.
+4. [HALO_INFINITE_CANONICAL_MAPPING.md](HALO_INFINITE_CANONICAL_MAPPING.md) pour la discipline de mapping depuis Halo Infinite.
+5. [HALO_PRODUCT_CONTRACT_ADAPTERS.md](HALO_PRODUCT_CONTRACT_ADAPTERS.md) pour la projection canonique vers les contrats produit.
+6. [PLAN_MIGRATION_PYTHON_TO_GO_V2.md](PLAN_MIGRATION_PYTHON_TO_GO_V2.md) pour le rattachement aux phases du programme.

@@ -1,6 +1,6 @@
 > [!WARNING]
-> DOCUMENT DE CADRAGE — a valider avant execution.
-> Les decisions D1-D7 doivent etre tranchees, le POC initial (2 jours) doit passer, et le corpus de reference Go doit etre gele avant execution.
+> DOCUMENT DE CADRAGE — a verrouiller avant execution.
+> Les decisions structurantes deja tranchees dans ce corpus sont la source de verite. Restent a prouver techniquement le Sprint 0, la strategie de pool DuckDB et les derniers choix de bascule/outillage.
 
 > [!NOTE]
 > **Revision du 2026-04-13** — Plan complete avec : inventaire fonctionnel complet, catalogue
@@ -24,19 +24,20 @@
 > [!IMPORTANT]
 > **Statut documentaire** — ce plan cadre le chantier de remplacement du runtime backend Python par Go.
 > - Il ne supersede pas automatiquement des documents d'un autre chantier ou d'un autre projet.
-> - Prerequis dur : le corpus de reference Go doit etre gele avant l'ouverture effective du Sprint 0 Go : facade web cible, contrats API, fixtures, golden values et matrice de couverture.
+> - Prerequis dur : les decisions structurantes, la facade web cible, les contrats API P0/P1 et la matrice de couverture doivent etre geles avant l'ouverture effective du Sprint 0 Go. Les golden values completes doivent etre consolidees avant l'ouverture de la Phase 1.
 > - La reference contractuelle de depart du portage Go est le produit actuel gele : facade web, contrats API, fixtures et suites de validation associees.
 > - Aucun agent ne doit utiliser ce document seul.
 
 ## Lecture obligatoire avant toute action
 
 1. [PLAN_MIGRATION_PYTHON_TO_GO_V2.md](PLAN_MIGRATION_PYTHON_TO_GO_V2.md) — trajectoire, phases, gates, risques, decisions.
-2. [SPRINT_ROADMAP.md](SPRINT_ROADMAP.md) — decoupage lineaire de A a Z en 28 sprints, pour repartir les taches et suivre l'avancement.
+2. [SPRINT_ROADMAP.md](SPRINT_ROADMAP.md) — decoupage lineaire de A a Z en 29 sprints (S00–S28), pour repartir les taches et suivre l'avancement.
 3. [MATRIX.md](MATRIX.md) — couverture package/script/commande/bitmask, surfaces hors scope et statut de chaque zone.
 4. [OPS_COMPAT_CHECKLIST.md](OPS_COMPAT_CHECKLIST.md) — compat auth/jobs/mode de test, exploitation, packaging et migration utilisateur.
 5. [ZERO_PYTHON_STRATEGY.md](ZERO_PYTHON_STRATEGY.md) — objectif zero Python, inventaire module par module, strategie d'extinction SPNKr.
 6. [GO_MIGRATION_CHECKLIST.md](GO_MIGRATION_CHECKLIST.md) — suivi vivant du chantier, statuts d'avancement, preuves attendues et blocages.
-7. Regle simple : si une surface n'apparait ni dans la matrice ni dans la checklist ops, elle est consideree comme non couverte.
+7. [GO_ARCHITECTURE_RULES.md](GO_ARCHITECTURE_RULES.md) — architecture hexagonale formelle, interfaces Go obligatoires, direction des dépendances, pare-feu linter `depguard`, mapping Python ports → Go interfaces.
+8. Regle simple : si une surface n'apparait ni dans la matrice ni dans la checklist ops, elle est consideree comme non couverte.
 
 ## Objectif
 
@@ -283,9 +284,7 @@ apps/
   web/              # Frontend React/TypeScript conserve
   go-api/
     cmd/
-      levelup-api/
-      levelup-jobs/
-      levelup-sync/
+      levelup/      # binaire unique : api, sync, backfill, tools
     internal/
       api/
       bootstrap/
@@ -316,13 +315,17 @@ apps/
 
 ## Regles de conception
 
+> [!IMPORTANT]
+> Les règles d'architecture logicielle formelles (couches, interfaces, DI, linter) sont dans
+> [GO_ARCHITECTURE_RULES.md](GO_ARCHITECTURE_RULES.md). Ce qui suit concerne la conception produit.
+
 1. Le service Go expose des contrats de page stables, pas des details internes de tables.
 2. La facade API reste orientee produit : bootstrap, history, explorer, match view, settings, sync. Elle ne reflète jamais directement les endpoints d'un titre Halo particulier.
 3. L'integration Halo suit une architecture a 2 niveaux : un socle provider generique (transport, auth, rate limiting, erreurs, registre d'endpoints), puis un adaptateur par titre.
 4. Chaque adaptateur de titre mappe les payloads natifs vers un modele canonique LevelUp avant toute logique metier ou exposition HTTP.
 5. Les zones specifiques au jeu doivent rester isolees : auth Waypoint/XSTS, refdata, assets discovery/economy, films, skill, labels et URLs Waypoint.
 6. Les calculs critiques restent cote backend, jamais reimplementes dans le frontend.
-7. Les graphes doivent sortir sous forme de donnees ou de series pretes a tracer, pas comme une imitation de la stack Plotly Python.
+7. **Charting decouple du renderer** — Les ~80 fonctions `plot_*` de `src/visualization/` (47 fichiers, ~12K LOC) sont portees dans `domain/chart/` (logique pure, 0 import Plotly). Les builders produisent un `ChartPayload` **renderer-agnostic** (series + metadata + annotations). Un `adapter/plotly/` convertit ce payload en `PlotlyFigurePayload` JSON pour le frontend React actuel (`react-plotly.js`). Ce decouplage permet de migrer le frontend vers Recharts/Nivo/ECharts **sans modifier le backend** — il suffit d'un nouvel adapter. Voir [GO_ARCHITECTURE_RULES.md §11](GO_ARCHITECTURE_RULES.md).
 8. Les jobs longs doivent avoir un modele explicite : start, status, cancel si necessaire, result, warnings, erreurs.
 9. Les migrations DuckDB doivent rester idempotentes et automatisees.
 10. Graceful shutdown obligatoire : intercepter `SIGTERM`/`SIGINT` (ou `os.Interrupt` sur Windows), drainer les requetes HTTP en cours, fermer proprement les connexions DuckDB, et ne jamais interrompre un sync en pleine ecriture (attendre le commit ou rollback).
@@ -373,16 +376,327 @@ Leur declinaison de travail est maintenant detaillee dans :
 
 1. [HALO_BOOTSTRAP_CONTRACT.md](HALO_BOOTSTRAP_CONTRACT.md)
 2. [HALO_GO_TYPE_BLUEPRINT.md](HALO_GO_TYPE_BLUEPRINT.md)
+3. [HALO_INFINITE_CANONICAL_MAPPING.md](HALO_INFINITE_CANONICAL_MAPPING.md)
+4. [HALO_PRODUCT_CONTRACT_ADAPTERS.md](HALO_PRODUCT_CONTRACT_ADAPTERS.md)
+ 5. [HALO_PROVIDER_ERROR_TAXONOMY.md](HALO_PROVIDER_ERROR_TAXONOMY.md)
+ 6. [OPENAPI_MVP_P0_P1.md](OPENAPI_MVP_P0_P1.md)
+
+Avec ces deux derniers documents, le prerequis 0 documentaire est considere comme suffisant.
+
+La regle de travail devient alors :
+
+1. ne plus ouvrir de nouveau cycle de documentation generale avant code ;
+2. lancer le Sprint 0 ;
+3. ne documenter ensuite que les ecarts reels rencontres pendant les spikes, la parite ou l'implementation.
 
 ## Decisions techniques a prendre avant la premiere ligne de Go
 
-1. Valider un driver DuckDB compatible Windows/Linux et le comportement de lock associe.
-2. Choisir le socle HTTP Go et la strategie de validation des payloads.
-3. Choisir la forme des contrats de charting : series JSON, points, buckets, annotations, jamais des widgets Python encodes.
-4. Choisir la strategie de session et de cookies pour remplacer le modele actuel.
-5. Choisir la strategie de logging, trace, request_id et observabilite.
-6. Decider si le cache de tokens Halo est porte nativement en Go des la phase auth, ou transite provisoirement par un bridge Python a eteindre ensuite.
-7. Decider la strategie de generation OpenAPI et de types frontend.
+1. ~~Valider un driver DuckDB compatible Windows/Linux et le comportement de lock associe.~~ **RÉSOLU** — voir D1 ci-dessous.
+2. ~~Choisir le socle HTTP Go et la strategie de validation des payloads.~~ **RÉSOLU** — voir D2 ci-dessous.
+3. ~~Choisir la forme des contrats de charting~~ : **RÉSOLU** — architecture découplée : `domain/chart/` produit des `ChartPayload` renderer-agnostic (séries + metadata + annotations), `adapter/plotly/` convertit en `PlotlyFigurePayload` pour le frontend actuel (`react-plotly.js`). Ce découplage permet de migrer le frontend vers Recharts/Nivo sans modifier le backend (nouvel adapter = suffisant). Voir [GO_ARCHITECTURE_RULES.md §11](GO_ARCHITECTURE_RULES.md).
+4. ~~Choisir la strategie de session et de cookies pour remplacer le modele actuel.~~ **RÉSOLU** — voir D4 ci-dessous.
+5. ~~Choisir la strategie de logging, trace, request_id et observabilite.~~ **RÉSOLU** — voir D5 ci-dessous.
+6. ~~Le cache de tokens Halo est porte nativement en Go des la phase auth (pas de bridge Python).~~ **RÉSOLU** — voir D6 ci-dessous.
+7. ~~Decider la strategie de generation OpenAPI et de types frontend.~~ **RÉSOLU** — voir D7 ci-dessous.
+
+---
+
+### D1 — Driver DuckDB Go et stratégie de concurrence
+
+**Choix : `github.com/duckdb/duckdb-go` v2** (anciennement `marcboeker/go-duckdb`, migré officiellement le 20/10/2025, licence MIT inchangée).
+
+| Critère | Décision |
+|---------|----------|
+| **Package** | `github.com/duckdb/duckdb-go` v2.4+ (DuckDB 1.4.x, parité avec Python prod 1.4.4) |
+| **Interface** | `database/sql` standard — `sql.Open("duckdb", dsn)` |
+| **CGO** | Requis. Libs statiques pré-compilées fournies pour Linux amd64/arm64, Windows amd64 |
+| **Windows build** | MinGW gcc via msys64 (`pacman -S mingw-w64-ucrt-x86_64-gcc`), `CGO_ENABLED=1` |
+| **Arrow** | Opt-in via `-tags=duckdb_arrow` (pas nécessaire pour MVP) |
+
+**Stratégie de connexion et ATTACH :**
+
+```text
+                    ┌─────────────────────┐
+                    │   NewConnector(dsn)  │
+                    │  connInitFn: ATTACH  │
+                    │  shared + metadata   │
+                    └──────────┬──────────┘
+                               │
+              ┌────────────────┼────────────────┐
+              │                │                │
+        ┌─────▼──────┐  ┌─────▼──────┐  ┌──────▼─────┐
+        │  Read Pool  │  │  Read Pool  │  │   Writer   │
+        │ (sql.DB,    │  │ (sql.DB,    │  │ sync.Mutex │
+        │  read_only) │  │  read_only) │  │  1 conn    │
+        └────────────┘  └────────────┘  └────────────┘
+```
+
+- **Lecture** : `NewConnector(dsn + "?access_mode=read_only", initFn)` → `sql.OpenDB(connector)`. Le pool `sql.DB` gère N connexions read-only en parallèle. Le `initFn` exécute `ATTACH 'shared_matches_v2.duckdb' AS shared (READ_ONLY)` et `ATTACH 'metadata.duckdb' AS meta (READ_ONLY)` au boot de chaque connexion.
+- **Écriture** : Pattern write-lease reproduisant `_write_lease.py` — un `sync.Mutex` global par DB protège un writer unique. `db.Conn(ctx)` donne une `*sql.Conn` pinnée pour la durée de la transaction. Pas de pool d'écriture (DuckDB = single writer de toute façon).
+- **Idle connections** : `db.SetMaxIdleConns(0)` pour éviter que les tables temporaires persistent (recommandation upstream).
+- **Close** : Appeler `db.Close()` (ou `connector.Close()`) à l'arrêt pour flusher le WAL.
+
+**Risques identifiés :**
+- CGO impose un toolchain C sur le CI (résolu : images Docker avec gcc, GitHub Actions `apt-get install build-essential`).
+- Le driver est un primary DuckDB client maintenu par l'équipe DuckDB elle-même (faible risque de stale).
+- La version 2 introduit des breaking changes (Arrow opt-in, JSON scanning) — à intégrer dès le Sprint 0.
+
+---
+
+### D2 — Socle HTTP Go et validation des payloads
+
+**Choix : `chi` v5 (routeur) + `go-playground/validator` v10 (validation struct tags)**
+
+| Critère | Décision | Justification |
+|---------|----------|---------------|
+| **Routeur** | `github.com/go-chi/chi/v5` | Léger (~600 LOC), 100% compatible `net/http`, middleware chain idiomatique, utilisé en production par Cloudflare/Heroku. Correspond aux 16 routers FastAPI existants. |
+| **Validation** | `github.com/go-playground/validator/v10` | Struct tags (`validate:"required,min=1"`), custom validators, équivalent direct des validators Pydantic. |
+| **Sérialisation JSON** | `encoding/json` stdlib (+ migration vers `go-json` si benchmark le justifie) | Suffisant pour le volume de données LevelUp. |
+| **Erreurs HTTP** | Struct `ApiError` custom → JSON `ApiErrorSchema` | Reproduction exacte du contrat Python : `{code, message, retryable, details, field_errors}` |
+
+**Correspondance FastAPI → chi :**
+
+| FastAPI | chi Go |
+|---------|--------|
+| `app = FastAPI()` | `r := chi.NewRouter()` |
+| `@app.get("/api/v1/...")` | `r.Get("/api/v1/...", handler)` |
+| `app.add_middleware(CORSMiddleware)` | `r.Use(cors.Handler(cors.Options{...}))` |
+| `@app.on_event("startup")` | Code dans `main()` avant `http.ListenAndServe` |
+| `Depends(get_session)` | Middleware chi injecte session dans `context.Context` |
+| `HTTPException(status_code=...)` | `render.Status(r, code); render.JSON(w, r, apiErr)` |
+
+**Middleware stack (ordre = celui de Python) :**
+
+1. `middleware.RequestID` (chi built-in — UUID par requête, header X-Request-ID)
+2. `middleware.RealIP` (proxy-aware)
+3. `middleware.Logger` (structuré via slog — cf. D5)
+4. `cors.Handler(cors.Options{...})` (mêmes origins que Python : localhost:5173)
+5. `SessionMiddleware` (custom — cf. D4)
+6. `CSRFMiddleware` (validation Origin header — reproduction de `require_same_origin()`)
+7. `middleware.Recoverer` (panic → 500 JSON)
+
+**Pourquoi pas les alternatives :**
+- **Stdlib seul** (`net/http` 1.22+) : le pattern routing est suffisant mais le middleware chaining demande du boilerplate. Avec 16+ routers et 7 middlewares, chi apporte un gain net.
+- **Echo/Gin** : trop opinionés, créent leur propre `Context` type — friction avec l'architecture hexagonale (nos handlers prennent `http.ResponseWriter, *http.Request`).
+- **Fiber** : non compatible `net/http` (basé sur fasthttp) — interdit par §1 architecture.
+- **Huma** : intéressant (OpenAPI auto) mais trop jeune et couple routeur+validation+OpenAPI — on préfère composer.
+
+---
+
+### D4 — Sessions et cookies
+
+**Choix : sessions fichiers JSON + signature HMAC-SHA256 du cookie**
+
+| Critère | Décision |
+|---------|----------|
+| **Stockage** | Fichiers JSON dans `data/sessions/` (idem Python) |
+| **Cookie** | `levelup_session`, signé HMAC-SHA256 (stdlib `crypto/hmac` + `crypto/sha256`) |
+| **Format cookie** | `base64url(sessionID \| timestamp \| hmac)` — équivalent fonctionnel de `itsdangerous.URLSafeTimedSerializer` |
+| **Attributs cookie** | `HttpOnly=true`, `SameSite=Lax`, `Secure=production_only`, `Max-Age=604800` (7j), `Path=/` |
+| **CSRF** | Validation header `Origin` (reproduction exacte de `require_same_origin()`) |
+| **Secret** | `LEVELUP_SESSION_SECRET` env var (fail-fast si absent en production) |
+| **TTL** | 7 jours (configurable via `LEVELUP_SESSION_TTL`) |
+| **Purge** | Au startup + goroutine `time.Ticker` toutes les 1 h (corrige bug Python : purge uniquement au startup) |
+| **Écriture atomique** | `os.CreateTemp()` → `os.Rename()` (corrige bug Python : `write_text()` direct = JSON corrompu si crash mid-write) |
+| **Verrouillage** | `sync.RWMutex` par session ID dans une `sync.Map` (corrige bug Python : read-modify-write sans lock = last-write-wins) |
+
+**3 correctifs vs implémentation Python actuelle :**
+
+| Bug Python (`apps/api/app/deps/auth.py`) | Impact | Correctif Go |
+|-------------------------------------------|--------|-------------|
+| `path.write_text(json.dumps(...))` — écriture directe | Crash mid-write → JSON corrompu | `os.CreateTemp(dir)` + `f.Write(data)` + `f.Close()` + `os.Rename(tmp, target)` — atomique sur POSIX et Windows (même volume) |
+| `load() → touch() → save()` sans lock | 2 requêtes concurrentes → la 2e écrase les changements de la 1re | `sessionLocks sync.Map` de `*sync.RWMutex` par session ID — `RLock` pour les lectures, `Lock` pour les écritures |
+| Purge uniquement dans `lifespan startup` | Fichiers expirés s'accumulent indéfiniment entre redémarrages | Goroutine `purgeLoop()` avec `time.NewTicker(1 * time.Hour)` — itère `os.ReadDir`, parse + supprime si expiré |
+
+**Struct SessionData Go :**
+
+```go
+// internal/domain/session.go
+type SessionData struct {
+    ID                  string    `json:"session_id"`
+    CreatedAt           time.Time `json:"created_at"`
+    LastSeenAt          time.Time `json:"last_seen_at"`
+    CurrentPlayerSlug   string    `json:"current_player_slug"`
+    Locale              string    `json:"locale"`
+    HintsVisible        bool      `json:"hints_visible"`
+    AuthReady           bool      `json:"auth_ready"`
+    LinkedHaloIdentity  string    `json:"linked_halo_identity"`
+    ActiveSyncJobID     string    `json:"active_sync_job_id,omitempty"`
+}
+```
+
+**Écriture atomique — pattern :**
+
+```go
+// internal/platform/session/filestore.go
+func (s *FileStore) atomicWrite(path string, data []byte) error {
+    tmp, err := os.CreateTemp(filepath.Dir(path), ".session-*.tmp")
+    if err != nil { return err }
+    if _, err := tmp.Write(data); err != nil {
+        tmp.Close(); os.Remove(tmp.Name()); return err
+    }
+    if err := tmp.Close(); err != nil {
+        os.Remove(tmp.Name()); return err
+    }
+    return os.Rename(tmp.Name(), path)
+}
+```
+
+**D4-bis — Élimination de la fragmentation session/settings (dette Python)**
+
+L'implémentation Python souffre d'une fragmentation majeure : la même notion est stockée dans jusqu'à **5 endroits** avec des noms différents et aucune source de vérité unique.
+
+**Diagnostic Python — état actuel :**
+
+| Concept | `app_settings.json` | `SessionData` (JSON files) | `ui_prefs.json` | `st.session_state` | `BootstrapResponse` |
+|---------|:---:|:---:|:---:|:---:|:---:|
+| Langue | `lang` | `locale` | `lang` | `lang` | `locale` + `settings_excerpt.lang` |
+| Hints | — | `hints_visible` | `show_hints` | `_hints_visible` | `hints_visible_default` |
+| Joueur courant | — | `current_player_slug` | `last_gamertag` | — | `current_player` |
+
+Conséquences : `POST /session/context` écrit `locale` dans la session mais ne touche pas `app_settings.json`. `PATCH /settings` écrit `lang` dans `app_settings.json` mais ne touche pas la session. Le bootstrap renvoie les deux, potentiellement divergents. Le frontend devine.
+
+**Règle Go — source de vérité unique :**
+
+| Concept | Source de vérité Go | Anciens emplacements Python éliminés |
+|---------|--------------------|--------------------------------------|
+| **Langue** (`locale`) | `SessionData.Locale` | `app_settings.lang`, `ui_prefs.lang`, `st.session_state["lang"]` |
+| **Hints** (`hints_visible`) | `SessionData.HintsVisible` | `ui_prefs.show_hints`, `st.session_state["_hints_visible"]` |
+| **Joueur courant** | `SessionData.CurrentPlayerSlug` | `ui_prefs.last_gamertag`, `db_profiles.json` default |
+| **Timezone** | `app_settings.json` (seul) | Reste inchangé — config serveur, pas préférence utilisateur |
+| **Feature flags** (`media_enabled`, etc.) | `app_settings.json` (seul) | Reste inchangé — config déploiement |
+
+**Principe : la session porte les préférences utilisateur, `app_settings.json` porte la config serveur. Pas de chevauchement.**
+
+**Nommage unifié Go :** le terme est `locale` partout (pas `lang`). Le champ s'appelle `Locale` dans `SessionData`, `locale` dans l'API JSON, `locale` dans le Zustand store React. Zéro alias.
+
+**API simplifiée :**
+
+```
+GET  /api/bootstrap   → { session: { locale, hints_visible, current_player_slug, ... }, config: { timezone, features, ... } }
+POST /api/session      → met à jour SessionData (locale, hints, player)
+PUT  /api/settings     → met à jour app_settings.json (timezone, features)
+```
+
+Plus de `settings_excerpt.lang` qui doublonne `session.locale`. Plus de `hints_visible_default` séparé de `hints_visible`. Un seul endroit par concept.
+
+**Fichier `ui_prefs.json` : supprimé.** Tout ce qu'il contenait (`lang`, `show_hints`, `last_gamertag`) migre dans `SessionData`. Streamlit est supprimé dans la migration Go, donc `st.session_state` disparaît de facto.
+
+**Pourquoi pas JWT :** les données de session changent fréquemment (`current_player_slug`, `locale`, `active_sync_job_id`) et nécessitent une révocation côté serveur — JWT ne convient pas.
+
+**Pourquoi pas Redis/BoltDB :** le déploiement est single-instance, les sessions sont légères (<1 KB), le filesystem suffit. L'interface `port/SessionStore` permettra de swapper l'implémentation (Redis, DuckDB) si nécessaire.
+
+---
+
+### D5 — Logging, tracing, request_id et observabilité
+
+**Choix : `log/slog` (stdlib Go 1.21+)**
+
+| Critère | Décision |
+|---------|----------|
+| **Logger** | `log/slog` (stdlib) — équivalent direct de structlog |
+| **Handler prod** | `slog.NewJSONHandler(os.Stdout, &slog.HandlerOptions{Level: level})` |
+| **Handler dev** | `slog.NewTextHandler(os.Stdout, &slog.HandlerOptions{Level: slog.LevelDebug})` |
+| **Request ID** | Middleware chi `middleware.RequestID` (UUID v4) → stocké dans `context.Context` via `slog.With("request_id", id)` |
+| **Header** | `X-Request-ID` propagé en réponse (idem Python `RequestIdMiddleware`) |
+| **Config** | `LEVELUP_LOG_LEVEL` (INFO par défaut), `LEVELUP_LOG_JSON` (false par défaut) |
+| **Rotation fichiers** | `gopkg.in/natefinished/lumberjack.v2` (si file logging requis — pattern 5MB×3 identique) |
+| **Métriques futures** | Réserver un slot pour OpenTelemetry (`go.opentelemetry.io/otel`) mais ne PAS l'ajouter au Sprint 0 |
+
+**Correspondance structlog → slog :**
+
+| structlog (Python) | slog (Go) |
+|---------------------|-----------|
+| `merge_contextvars` | `slog.With()` dans le context |
+| `add_log_level` | Natif (`slog.LevelInfo`, etc.) |
+| `TimeStamper(iso)` | Natif (timestamp RFC3339 en JSON) |
+| `JSONRenderer` | `slog.NewJSONHandler` |
+| `ConsoleRenderer` | `slog.NewTextHandler` |
+| `structlog.get_logger()` | `slog.Default()` ou `slog.With(attrs...)` |
+
+**Pourquoi pas zerolog/zap :** `slog` est stdlib depuis Go 1.21, zéro dépendance, suffisant pour les besoins LevelUp. Si un benchmark montre des bottlenecks (improbable pour un dashboard), on peut brancher un handler zerolog sous slog sans changer le code appelant.
+
+---
+
+### D6 — Cache de tokens Halo natif en Go
+
+**Choix : MSAL Go SDK (`github.com/AzureAD/microsoft-authentication-library-for-go`) + cache DuckDB `sync_meta`**
+
+| Critère | Décision |
+|---------|----------|
+| **SDK** | `github.com/AzureAD/microsoft-authentication-library-for-go` v1.7+ (MIT, officiel Microsoft) |
+| **Client type** | `public.Client` (app publique = device code flow, pas de client secret) |
+| **Device Code Flow** | `client.AcquireTokenByDeviceCode(ctx, scopes)` → `DeviceCode.Result` (user_code, verification_url) → `DeviceCode.AuthenticationResult(ctx)` |
+| **Silent refresh** | `client.AcquireTokenSilent(ctx, scopes, public.WithSilentAccount(account))` |
+| **Cache persistence** | `public.WithCache(accessor)` — implémentation custom de `cache.ExportReplace` qui lit/écrit dans DuckDB `sync_meta` |
+| **Table** | `sync_meta (key VARCHAR PK, value VARCHAR, updated_at TIMESTAMP)` — clé `msal_token_cache`, valeur = JSON sérialisé du cache MSAL |
+| **Process cache** | `sync.Map` keyed par `db_path` — tokens spartan/clearance (~1h TTL) stockés en mémoire, pas en DB |
+| **Échange Halo** | `access_token → spartan_token + clearance` via HTTP direct (port `_halo_exchange.py` → Go `platform/halo/exchange.go`) |
+
+**Architecture token flow Go :**
+
+```text
+MSAL Go (public.Client)          Halo Exchange (HTTP)
+   │                                    │
+   ├─ AcquireTokenByDeviceCode ─►       │
+   │   (user_code, url)                 │
+   │                                    │
+   ├─ AuthenticationResult() ─►         │
+   │   access_token (Azure AD)          │
+   │       │                            │
+   │       └──────────────────────►  ExchangeToken()
+   │                                  spartan_token
+   │                                  clearance_token
+   │                                    │
+   ├─ AcquireTokenSilent ─►            │
+   │   (refresh via MSAL cache)         │
+   │                                    │
+   └─ WithCache(duckdbAccessor) ─►  sync_meta (DuckDB)
+       Export/Replace JSON cache
+```
+
+**Risque majeur — compatibilité de cache Python↔Go :**
+- MSAL Python et MSAL Go utilisent tous deux un format JSON pour le cache, mais la structure interne diffère (clés, namespaces).
+- **Décision : pas de partage de cache.** Au premier démarrage Go, si aucun cache Go n'existe, déclencher un nouveau Device Code Flow. Le cache Python n'est pas migré — les deux stacks (Python et Go) maintiennent chacune leur propre cache dans `sync_meta` avec des clés différentes (`msal_token_cache` pour Python, `msal_token_cache_go` pour Go).
+- Pendant la phase de coexistence Python/Go, les deux caches cohabitent dans `sync_meta`.
+
+**Pourquoi pas un bridge Python :** ajouter un subprocess Python pour l'auth crée une dépendance runtime sur Python — contraire à l'objectif d'autonomie du backend Go. MSAL Go est complet et officiel.
+
+---
+
+### D7 — Génération OpenAPI et types frontend
+
+**Choix : spec-first avec `oapi-codegen` + `openapi-typescript`**
+
+| Critère | Décision |
+|---------|----------|
+| **Approche** | **Spec-first** : l'`openapi.yaml` est la source de vérité |
+| **Source initiale** | Export du `/api/openapi.json` Python actuel, nettoyé et versionné dans `docs/api/openapi.yaml` |
+| **Génération Go** | `github.com/oapi-codegen/oapi-codegen` v2 — génère types Go + interfaces handlers chi |
+| **Génération TS** | `openapi-typescript` (npm) — génère types TypeScript zero-runtime depuis le spec |
+| **Validation runtime** | `oapi-codegen` avec middleware de validation chi (vérifie request/response contre le spec) |
+| **Documentation** | `/api/docs` (Scalar UI ou Swagger UI) servi statiquement depuis le spec YAML |
+
+**Pipeline CI :**
+
+```text
+openapi.yaml (source de vérité, versionné dans le repo)
+      │
+      ├──► oapi-codegen ──► internal/api/gen/      (types + interfaces Go)
+      │                      ↳ handlers implémentent les interfaces
+      │
+  ├──► openapi-typescript ──► apps/web/src/lib/api/types.ts
+      │
+      └──► Scalar/Swagger UI ──► /api/docs (servi par le backend)
+```
+
+**Pourquoi spec-first et pas code-first :**
+- La migration est un **portage** — le spec API existe déjà (Python FastAPI). Partir du spec existant garantit la parité.
+- `oapi-codegen` génère des **interfaces Go** que les handlers doivent implémenter — le compilateur vérifie que chaque endpoint est couvert.
+- Le spec devient le **contrat partagé** entre backend (Go) et frontend (TypeScript) — pas de dérive.
+- Les alternatives code-first (`swaggo/swag` : commentaires Go, `huma` : framework opinonné) sont mieux adaptées aux projets greenfield, pas à un portage avec contrat existant.
+
+**Rétrospective quand utiliser code-first :** si plus tard de nouvelles routes sont créées en Go sans équivalent Python, on peut toujours les ajouter au spec manuellement d'abord (1 minute par endpoint), puis regénérer. Le surcoût est négligeable comparé à la garantie de parité.
 
 ## Comment etre sur de ne rien oublier
 
@@ -428,14 +742,14 @@ SPNKr est une librairie Python tierce qui fait des appels HTTP vers les endpoint
 - Circuit breaker sur 3 echecs consecutifs
 - Parsing des reponses JSON (modeles Pydantic → structs Go)
 
-### Temporaire : bridge Python etroit (Phase 3-4)
+### Pas de bridge Python transitoire
 
-Si le portage complet du client HTTP est trop risque a un moment donne, garder un adapter Python minimal (1-2 operations) derriere un contrat explicite : entrees, sorties, erreurs, timeouts. Le bridge doit etre etroit et remplacable — jamais une dependance diffuse.
+SPNKr est un client HTTP simple (retry + parsing JSON) — il n'y a pas de raison d'introduire un bridge Python temporaire. Le client Go `pkg/haloapi/` est implémenté directement dès le Sprint 11. La seule exception potentielle reste le weapon parser (D6) : si le portage binaire échoue, un subprocess Python étroit est toléré pour cette seule fonction.
 
-### Criteres d'extinction du bridge
+### Criteres de validation du client Go Halo
 
 1. Tous les endpoints Halo utiles ont un equivalent Go teste sur fixtures.
-2. 3 cycles de sync passent sans recours au bridge Python.
+2. 3 cycles de sync passent avec le client Go natif.
 3. Les secrets et caches ne dependent plus d'un processus Python.
 
 ## POC et validation initiale
@@ -444,11 +758,11 @@ Le Sprint 0 (2 jours — voir section "Ordre de migration recommande") couvre le
 
 - **DuckDB Go read-only** : ouvrir les 3 types de DB, executer des requetes representatives, verifier types et locks.
 - **Client HTTP Go** : MSAL Go device code flow (`AcquireTokenByDeviceCode`), endpoint `/health` + `/bootstrap`.
-- **Compatibilite** : fichiers DuckDB crees par Python ouverts par go-duckdb, cache MSAL Python deserialise en Go.
+- **Compatibilite** : fichiers DuckDB crees par Python ouverts par `duckdb-go`, coexistence explicite des caches MSAL Python/Go documentee (cles separees, pas de deserialisation croisee).
 
 **Gate** : si un de ces points echoue de facon non contournable, la migration est re-evaluee.
 
-> Note : le plan initial contenait des POC A/B/C/D separes. Ils ont ete fusionnes dans le Sprint 0 pour eviter la duplication. Le POC B (bridge SPNKr) n'est plus necessaire a ce stade — SPNKr est un client HTTP simple a reimplementer directement en Go (voir "Strategie SPNKr").
+> Note : le plan initial contenait des POC A/B/C/D separes. Ils ont ete fusionnes dans le Sprint 0 pour eviter la duplication. SPNKr est un client HTTP simple a reimplementer directement en Go — pas de bridge transitoire (voir "Pas de bridge Python transitoire").
 
 ## Ordre de migration recommande
 
@@ -457,8 +771,8 @@ Le Sprint 0 (2 jours — voir section "Ordre de migration recommande") couvre le
 Objectif : valider en 2 jours que les briques fondamentales Go fonctionnent, avant tout travail de cadrage detaille. C'est un test de faisabilite, pas un prototype. Si ca ne passe pas, le plan s'arrete la.
 
 **Jour 1 — DuckDB Go + types** :
-1. `go mod init`, ajouter `github.com/marcboeker/go-duckdb`
-2. **Verifier la version DuckDB embarquee par go-duckdb** : elle doit etre compatible avec les fichiers crees par DuckDB Python 1.4.4 (meme majeure+mineure). Si go-duckdb embarque une version differente, tester l'ouverture et verifier qu'aucune migration implicite du format de stockage ne se produit (`PRAGMA database_size` avant/apres).
+1. `go mod init`, ajouter `github.com/duckdb/duckdb-go`
+2. **Verifier la version DuckDB embarquee par `duckdb-go`** : elle doit etre compatible avec les fichiers crees par DuckDB Python 1.4.4 (meme majeure+mineure). Si `duckdb-go` embarque une version differente, tester l'ouverture et verifier qu'aucune migration implicite du format de stockage ne se produit (`PRAGMA database_size` avant/apres).
 3. Ouvrir `metadata.duckdb` en read-only, executer `SELECT * FROM career_ranks LIMIT 5`
 4. Ouvrir `shared_matches_v2.duckdb` en read-only, executer une requete bootstrap joueur (Q1 du catalogue)
 5. **Tester ATTACH via `database/sql`** : `database/sql` gere son pool de connections de facon transparente — il n'y a aucune garantie qu'une requete suivante s'execute sur la meme connection que l'ATTACH. Valider une des strategies suivantes : `sql.Conn` (connexion pinee), `ConnInitFunc` du driver, ou pool custom hors `database/sql`.
@@ -471,17 +785,17 @@ Objectif : valider en 2 jours que les briques fondamentales Go fonctionnent, ava
 2. Ajouter un handler GET `/api/bootstrap` qui lit les memes donnees que le Python
 3. Comparer le JSON de sortie avec la golden value Python
 4. Tester `github.com/AzureAD/microsoft-authentication-library-for-go` : instancier un `PublicClientApplication`, appeler `AcquireTokenByDeviceCode()`, verifier que le user_code + verification_url arrivent
-5. **Tester la deserialisation du cache MSAL existant** : MSAL Python et MSAL Go peuvent avoir des formats de serialisation de cache differents. Lire le cache JSON cree par `SerializableTokenCache` Python et verifier que MSAL Go le comprend, ou documenter la strategie de migration (ex : invalidation explicite au premier demarrage Go).
+5. **Valider la strategie de coexistence du cache MSAL** : MSAL Python et MSAL Go ont des formats de cache differents. Documenter les cles separees dans `sync_meta`, l'invalidation explicite eventuelle du cache Python au premier demarrage Go, et l'absence de deserialisation croisee.
 
 **Gate Sprint 0** :
 - ✅ DuckDB Go lit les 3 types de DB sans erreur sur Windows
-- ✅ La version DuckDB embarquee par go-duckdb est compatible avec les fichiers Python 1.4.4 (pas de migration implicite)
+- ✅ La version DuckDB embarquee par `duckdb-go` est compatible avec les fichiers Python 1.4.4 (pas de migration implicite)
 - ✅ ATTACH fonctionne correctement avec la strategie de pool choisie (`sql.Conn`, `ConnInitFunc` ou pool custom)
 - ✅ Les types UBIGINT/TIMESTAMP sont correctement mappes
 - ✅ CGo compile sur Windows avec un toolchain documente et reproductible
 - ✅ Un endpoint HTTP retourne un JSON coherent avec le Python
 - ✅ MSAL Go device code flow fonctionne (au moins jusqu'au user_code)
-- ✅ La strategie sur le cache MSAL existant est documentee (lecture directe ou invalidation)
+- ✅ La strategie de coexistence du cache MSAL est documentee (cles separees + invalidation explicite si necessaire)
 - ❌ Si un de ces points echoue de facon non contournable → re-evaluer le plan
 
 ### Phase 0 - Cadrage, inventaire et corpus
@@ -623,13 +937,39 @@ Il faut suivre : latence p50/p95, erreurs, ecarts de parite, statut des jobs, in
 
 Le programme doit prevoir tres tot : Docker, Windows, lancement local, CI, generation OpenAPI, binaire API, binaire sync, variables d'environnement et secrets.
 
+### 5. SSE pour le suivi de sync en temps reel
+
+Le frontend a besoin de savoir ou en est un sync en cours. En Python, c'est du polling (`GET /jobs/{id}`). En Go, passer aux **Server-Sent Events** (SSE) :
+
+1. **Endpoint** : `GET /api/sync/events` — stream SSE (Content-Type: `text/event-stream`).
+2. **Events a emettre** :
+   - `sync:started` (job_id, gamertag, scope)
+   - `sync:progress` (phase, current_match, total_matches, elapsed_ms)
+   - `sync:match_processed` (match_id, enrichments_applied)
+   - `sync:error` (message, is_fatal)
+   - `sync:completed` (job_id, matches_synced, duration_ms)
+3. **Implementation** : goroutine de sync ecrit dans un channel, le handler SSE lit le channel et flush vers le client.
+4. **Fallback** : si le client ne supporte pas SSE, `GET /jobs/{id}` reste disponible (polling classique).
+5. **Timeout** : couper la connexion SSE apres 30 min d'inactivite (heartbeat `ping` toutes les 15s pour garder la connexion vivante).
+6. **Sprint cible** : S22 (Jobs persistants) — le SSE s'ajoute apres que le modele de jobs est en place.
+
+### 6. Pagination cursor-based pour l'historique de matchs
+
+Le Python utilise une pagination offset+limit. En Go, passer a une **pagination cursor-based** :
+
+1. **Pourquoi** : l'offset-based devient lent et instable quand des matchs sont inseres pendant la navigation (l'offset se decale). Le cursor garantit une navigation stable.
+2. **Contrat** : `GET /api/players/{xuid}/matches?cursor={opaque}&limit=25` → reponse avec `next_cursor` et `has_more`.
+3. **Implementation du cursor** : encoder `(started_at, match_id)` en base64url comme curseur opaque. La requete SQL utilise `WHERE (started_at, match_id) < (?, ?)` pour la page suivante.
+4. **Compatibilite** : le frontend React doit consommer le cursor au lieu de `page=N`. Le contrat OpenAPI garde un champ `page` optionnel pour la compatibilite temporaire, marque comme deprecated.
+5. **Sprint cible** : S06 (Match History) — c'est la premiere surface qui pagine.
+
 ## Estimation d'effort
 
 Ordre de grandeur realiste, sous reserve qu'il n'y ait pas de refonte produit parallele :
 
-- 1 ingenieur backend principal : 4 a 7 mois.
-- 2 ingenieurs backend + 1 support frontend : 3 a 5 mois.
-- 1 seule personne a temps partiel : risque eleve de glissement au-dela de 8 mois.
+- 1 ingenieur backend principal : 7 a 10 mois (~55 000 LOC Python verifie, dont analysis=14K, sync=13K, api=12K).
+- 2 ingenieurs backend + 1 support frontend : 4 a 6 mois.
+- 1 seule personne a temps partiel : risque eleve de glissement au-dela de 12 mois.
 
 Le vrai determinant n'est pas la taille du code Python seule. C'est la vitesse a laquelle les golden values, le driver DuckDB, l'auth Halo et le moteur de sync seront stabilises en Go.
 
@@ -649,7 +989,7 @@ Traiter les conditions de succes comme une check-list d'actions a executer, pas 
 10. Retirer Python uniquement quand Go couvre aussi les chemins d'exploitation, de maintenance et de reprise incident.
 11. Autoriser un worktree local temporairement casse pendant les gros refactors, mais imposer un retour a un etat testable avant revue, merge ou bascule.
 12. Chaque algorithme metier (performance score, LUSR, sessions, citations, killer/victim) a des golden values **chiffrees** et les tolerances sont documentees (ε < 0.01 pour les scores, ε < 0.1 pour mu/sigma).
-13. Le systeme de backfill bitmask (22 bits) est numeriquement identique entre Python et Go — pas "equivalent", identique.
+13. Le systeme de backfill (`BACKFILL_FLAGS` historiques + `MatchBits`) est numeriquement identique entre Python et Go — pas "equivalent", identique.
 14. Le modele de concurrence Go (pool read-only + write lease) est teste sous charge avec au moins 10 requetes read paralleles + 1 sync write.
 15. La facade V7 continue a fonctionner sans changement de semantique pendant tout le portage.
 16. Les 14 langues i18n fonctionnent identiquement (traductions dynamiques via DuckDB).
@@ -699,7 +1039,7 @@ Passer ce gate seulement si :
 
 Passer ce gate seulement si :
 
-1. Settings, session, auth et jobs tournent sans bridge Python sur le chemin nominal.
+1. Settings, session, auth et jobs tournent sans Python sur le chemin nominal.
 2. La supervision et le rollback sont testes.
 3. Les procedures de build, de deploy et de diagnostic sont reproductibles.
 
@@ -731,10 +1071,10 @@ La bonne trajectoire est :
 
 Le plan a des gates Go/No-Go par phase. Il faut aussi des criteres d'abandon definitif. La migration Go doit etre **arretee** (pas ralentie — arretee) si :
 
-1. **POC Sprint 0 echoue** : go-duckdb ne fonctionne pas sur Windows, ou CGo est trop fragile pour un build reproductible.
+1. **POC Sprint 0 echoue** : `duckdb-go` ne fonctionne pas sur Windows, ou CGo est trop fragile pour un build reproductible.
 2. **Phase 1 depasse 3× l'estimation** : si 4-6 semaines prevues deviennent 15+ semaines sans parcours read-only fonctionnel.
 3. **343 Industries change fondamentalement l'API Halo** : nouveau systeme d'auth, changement radical des endpoints, deprecation de l'API stats. Le portage Go cible un contrat API qui n'existe plus.
-4. **DuckDB Go driver est abandonne** : le driver `go-duckdb` n'est plus maintenu et aucune alternative credible n'emerge.
+4. **DuckDB Go driver est abandonne** : le driver `duckdb-go` n'est plus maintenu et aucune alternative credible n'emerge.
 5. **Le produit evolue plus vite que le portage** : si apres 3 mois les golden values les sont obsoletes parce que le produit Python a trop bouge.
 6. **Fatigue / motivation** : pour un developpeur solo, 6-10 mois de portage sans feature visible est un risque reel. Si le portage devient une corvee, il vaut mieux rester sur Python+FastAPI qui fonctionne.
 
@@ -748,7 +1088,7 @@ Le detail runtime, packaging, Docker, jobs persistants et contraintes ffprobe/ff
 
 Principes retenus :
 
-1. La cible preferee reste un binaire principal avec sous-commandes, sous reserve de validation packaging et CI.
+1. La cible retenue est un binaire unique `levelup` avec sous-commandes (`api`, `sync`, `backfill`, `tools`) ; le packaging, la CI et les exemples de commandes doivent s'aligner dessus.
 2. "Zero Python" ne veut pas dire "zero binaire auxiliaire" si media indexing est conserve.
 3. L'integration de la facade web peut etre embarquee ou servie a part ; ce point ne doit pas etre fige avant validation packaging.
 4. Le packaging final doit rester compatible avec les contraintes d'exploitation reelles du repo, pas avec une promesse abstraite de binaire seul.
@@ -805,7 +1145,7 @@ Le portage Go n'est pas qu'une reecriture isometrique. Certaines choses devienne
 
 5. **Temps de demarrage** : Go demarre en ~50ms vs ~2-5s pour Python+uvicorn+imports. L'experience "lance l'app" est significativement meilleure.
 
-6. **Cross-compilation triviale** : `GOOS=linux GOARCH=amd64 go build` produit un binaire Linux depuis Windows, sans VM ni Docker.
+6. **Build matrix simplifiee par OS** : le code Go reste portable, mais avec CGO + DuckDB il faut construire et tester chaque OS cible en CI ; pas de promesse de cross-compilation triviale depuis Windows.
 
 7. **Tests de performance integres** : `go test -bench` est natif. Les benchmarks de regression sur les requetes critiques s'integrent naturellement dans la CI.
 
@@ -860,16 +1200,16 @@ La migration Go remplace Python derriere cette reference. Elle ne reouvre pas un
 ### 2. L'estimation d'effort est sous-evaluee
 
 Le plan initial estime "4 a 7 mois pour 1 ingenieur backend". C'est optimiste compte tenu de :
-- 94 champs SyncScope a reproduire fidelement
+- 96 champs SyncScope a reproduire fidelement
 - 35 migrations DuckDB a rendre idempotentes en Go
-- 11 mixins sync engine (certains avec de la logique film/bitstream complexe)
+- 12 mixins sync engine (certains avec de la logique film/bitstream complexe) + transformers/ (~2 400 LOC)
 - 2 algorithmes de scoring non triviaux (performance relative percentile + TrueSkill2 adapte)
 - ~120 arguments CLI a reconstituer
 - 28+ endpoints API a porter avec middleware, injection de dependances, rate limiting
 - ~550 fichiers de tests a traduire ou reconstituer
 - Gestion des accents/i18n (14 langues dans metadata)
 
-**Estimation revisee** : 6 a 10 mois pour 1 ingenieur backend senior a temps plein. 4 a 6 mois avec 2 ingenieurs. Le risque principal n'est pas la quantite de code mais la densite des invariants metier a verifier.
+**Estimation revisee** : 7 a 10 mois pour 1 ingenieur backend senior a temps plein (~55 000 LOC Python verifie : analysis=14K, sync=13K, api=12K, repos+services+auth+scripts≈16K). 4 a 6 mois avec 2 ingenieurs. Le risque principal n'est pas la quantite de code mais la densite des invariants metier a verifier.
 
 ### 3. La section SPNKr est surdimensionnee
 
@@ -1168,7 +1508,7 @@ Reconciliation :
   v_weapon_kills utilise COALESCE(reconciled_as, weapon_id) = effective_weapon_id
 ```
 
-**Portage Go** : C'est le module le plus risque. Le parsing binaire est fragile et mal documente. **Recommandation : porter en dernier, conserver un bridge Python si necessaire.**
+**Portage Go** : C'est le module le plus risque. Le parsing binaire est fragile et mal documente. **Recommandation : porter avec `encoding/binary` (Go est naturellement fort pour le parsing binaire) ; fallback subprocess Python uniquement si le portage echoue (voir D6).**
 
 ### Algorithme 5 — Participation Objective
 
@@ -1262,7 +1602,7 @@ Les requetes suivantes sont actuellement executees via `DuckDBRepository` et ses
 | W11 | Insert skill rating | match_skill_rank | Basse |
 | W12 | Insert PvE stats | pve_match_stats | Basse |
 | W13 | Refresh materialized views | mv_* (DROP + CREATE) | Moyenne |
-| W14 | Mise a jour backfill bitmask | sync_meta / match_registry | Haute (flags 22 bits) |
+| W14 | Mise a jour backfill bitmask | sync_meta / match_registry | Haute (flags historiques + `MatchBits`) |
 | W15 | Sauvegarde cache MSAL | sync_meta | Haute (auth) |
 
 ---
@@ -1271,23 +1611,23 @@ Les requetes suivantes sont actuellement executees via `DuckDBRepository` et ses
 
 | Dependance Python | Fonction | Equivalent Go | Maturite |
 |-------------------|----------|---------------|:--------:|
-| `duckdb` | Moteur OLAP | `github.com/marcboeker/go-duckdb` | ⚠️ A valider (POC A) |
+| `duckdb` | Moteur OLAP | `github.com/duckdb/duckdb-go` | Haute |
 | `polars` | DataFrames/Series | SQL DuckDB natif + structs Go | N/A |
 | `pydantic` v2 | Validation/serialisation | Structs Go + `go-playground/validator` | Haute |
-| `fastapi` | Framework HTTP | `chi` ou `echo` ou `gin` | Haute |
+| `fastapi` | Framework HTTP | `chi` + `go-playground/validator` | Haute |
 | `uvicorn` | Serveur ASGI | Serveur net/http natif | Haute |
 | `msal` | Auth Microsoft | Client MSAL Go ou HTTP direct | ⚠️ A valider (POC C) |
 | `aiohttp` | Client HTTP async | `net/http` + goroutines | Haute |
 | `pyarrow` | Parquet | `apache/arrow-go` | Haute |
-| `plotly` | Graphiques | N/A (frontend React) | N/A |
+| `plotly` | Construction de figures server-side (47 fichiers, ~12K LOC) | `domain/chart/` — JSON Plotly construit en Go, rendu par `react-plotly.js` frontend | **Tres haute** |
 | `streamlit` | UI | N/A (elimine par migration React) | N/A |
-| `jwt` / `itsdangerous` | Sessions/tokens | `github.com/golang-jwt/jwt` | Haute |
+| `itsdangerous` | Cookie de session signe | `github.com/gorilla/securecookie` ou HMAC maison compatible D4 | Haute |
 | `ffprobe` (subprocess) | Metadata video | Meme approche (exec ffprobe) | Haute |
 | `chromadb` (`src/ai/`) | RAG vectoriel | Hors scope (outillage dev) | N/A |
 
 ### Dependance critique : DuckDB Go driver
 
-Le driver `go-duckdb` (github.com/marcboeker/go-duckdb) utilise CGo pour wrapper la lib C de DuckDB.
+Le driver `duckdb-go` (`github.com/duckdb/duckdb-go`) utilise CGo pour wrapper la lib C de DuckDB.
 
 **Risques specifiques** :
 - Cross-compilation Windows/Linux necessite les headers DuckDB C
@@ -1445,7 +1785,7 @@ Voir [MATRIX.md](MATRIX.md) pour les valeurs exactes, les lacunes intentionnelle
 - Sauvegarder comme reference : si Go est > 2× plus lent, c'est un bug
 
 **Livrable 0.4 — POC DuckDB Go** :
-- Valider go-duckdb sur Windows 10/11 et Linux
+- Valider `duckdb-go` sur Windows 10/11 et Linux
 - Tester : open read-only, ATTACH, write lease, lock behavior
 - Verifier explicitement : 2 writers meme path, 2 writers paths differents, et absence de migration implicite non voulue a l'ouverture
 - Tester les types critiques : UBIGINT (weapon_id), TIMESTAMP WITH TIME ZONE, VARCHAR, BOOLEAN
@@ -1454,7 +1794,7 @@ Voir [MATRIX.md](MATRIX.md) pour les valeurs exactes, les lacunes intentionnelle
 ### Phase 1 — Socle Go read-only (4-6 semaines)
 
 **Sprint 1.1 — Squelette HTTP** :
-- `go-api/cmd/levelup-api/main.go` : server, config, healthcheck, request_id middleware
+- `go-api/cmd/levelup/main.go` : server, config, healthcheck, request_id middleware
 - Un mode de demo/test doit exister des le socle : fixtures stables, schemas maitrises et bypass auth si necessaire
 - Routing : Chi ou Echo (pas Gin — trop opinionne pour ce cas)
 - OpenAPI : generation depuis le meme schema que Python (`oapi-codegen` ou `ogen`)
@@ -1499,8 +1839,8 @@ Note de perimetre : la facade V7 reste le consommateur de reference ; elle n'est
 
 **Sprint 2.3 — Accueil/Home** :
 - Hero card (agglomeration career + last match)
-- Battle Pass + Challenges : appels API Halo live (SPNKr equivalent)
-  → Premiere utilisation du client HTTP Go vers 343i
+- Socle provider Halo sur fixtures + etats de degradation explicites pour les blocs live
+- Battle Pass + Challenges : contrats et etats "auth requise / indisponible" prepares ici ; activation live reportee apres la phase auth
 - Timeline (5 derniers matchs)
 - Media recents (3 derniers)
 
@@ -1509,6 +1849,7 @@ Note de perimetre : la facade V7 reste le consommateur de reference ; elle n'est
 - 13 sous-modules d'analyse — certains sont complexes (radar, first blood, clutch)
 - Solo vs Squad breakdown
 - Heatmap, top semaine
+- Regle de separation renderer/frontend : si une figure est deja construite dans React, le backend Go expose les datasets et primitives renderer-agnostic, pas un nouveau payload Plotly impose.
 
 **Sprint 2.5 — Profil Citations + Medias** :
 - Citations : portage du CitationEngine (regles custom)
@@ -1519,8 +1860,8 @@ Note de perimetre : la facade V7 reste le consommateur de reference ; elle n'est
 ### Phase 3 — Auth, session, settings, jobs (3-4 semaines)
 
 **Sprint 3.1 — Modele de session** :
-- Port des cookies httpOnly + JWT signing
-- Zustand state : player context, session context
+- Fichiers JSON dans `data/sessions/` + cookie signe HMAC-SHA256 (pas de JWT)
+- `SessionData` miroir du modele Python, revocation et expiration cote serveur
 - POST /session/context
 
 **Sprint 3.2 — Device Code Flow** :
@@ -1556,7 +1897,9 @@ C'est la phase la plus longue et la plus risquee.
 
 **Sprint 4.1 — Moteur sync minimal** :
 - Delta sync (fetch nouveaux matchs, insert dans shared + player)
-- Reproduction des 11 mixins du SyncEngine en packages Go (ConnectionMixin, SchemaMixin, SharedWritesMixin, PerformanceMixin, SkillRatingMixin, CareerMixin, AggregatesMixin, WeaponKillsEngineMixin, MatchProcessingMixin, EnrichedWritesMixin, FanoutEnrichmentMixin)
+- Reproduction des 12 mixins du SyncEngine en packages Go (ConnectionMixin, SchemaMixin, SharedWritesMixin, PerformanceMixin, SkillRatingMixin, CareerMixin, AggregatesMixin, WeaponKillsEngineMixin, MatchProcessingMixin, MatchProcessingHelpersMixin, EnrichedWritesMixin, FanoutEnrichmentMixin)
+- Portage de `transformers/` (~2 400 LOC : normalisation, nettoyage, transformations batch)
+- Portage de `_batch_audit.py`, `_batch_columns.py`, `_career_rank_api.py`, `_tokens.py`, `_asset_langs.py`
 - Write lease identique au Python
 
 **Sprint 4.2 — Pipeline post-sync** :
@@ -1566,10 +1909,10 @@ C'est la phase la plus longue et la plus risquee.
 - Fanout enrichments
 
 **Sprint 4.3 — Backfill complet** :
-- Port de SyncScope (94 champs)
-- Port du bitmask (22 bits, valeurs exactes)
+- Port de SyncScope (96 champs)
+- Port des `BACKFILL_FLAGS` historiques (bits 0-15) + `MatchBits` (bits 16-22), y compris le bit legacy obsolet a ne jamais reecrire
 - CLI : ~120 arguments
-- `cmd/levelup-sync --backfill --player X --medals --force-medals`
+- `levelup backfill --player X --medals --force-medals`
 
 **Sprint 4.4 — Migrations DuckDB** :
 - Port du registre de migrations (35 steps)
@@ -1578,7 +1921,7 @@ C'est la phase la plus longue et la plus risquee.
 
 **Sprint 4.5 — Weapon parsing** :
 - Portage du parser de chunks film (binaire)
-- Si trop risque : conserver un bridge Python pour cette seule fonction
+- Si le portage echoue : subprocess Python uniquement pour le weapon parser (fallback D6)
 - Reconciliation weapon_id
 
 **Sprint 4.6 — PvE Firefight** :
@@ -1598,7 +1941,7 @@ C'est la phase la plus longue et la plus risquee.
 - Webhook URL configurable via `app_settings.json`
 - Embeds bilingues (FR/EN) selon `discord_lang`
 
-**Gate phase 4** : `cmd/levelup-sync --full --gamertag X --max-matches 500` produit un resultat identique a Python.
+**Gate phase 4** : `levelup sync --full --gamertag X --max-matches 500` produit un resultat identique a Python.
 
 ### Phase 5 — Bascule et extinction Python (2-4 semaines)
 
@@ -1633,7 +1976,7 @@ Si le frontend evolue pendant le portage Go, les contrats API peuvent changer. *
 
 ### Risque 7 — CGo sur Windows
 
-Le driver go-duckdb utilise CGo. Sur Windows, cela necessite un compilateur C (MinGW ou MSVC). Cela complique le build et le CI. **Mitigation** : tester le build Windows des le POC A, pas apres.
+Le driver `duckdb-go` utilise CGo. Sur Windows, cela necessite un compilateur C (MinGW ou MSVC). Cela complique le build et le CI. **Mitigation** : tester le build Windows des le Sprint 0, pas apres.
 
 ### Risque 8 — Mapping de types DuckDB ↔ Go
 
@@ -1649,38 +1992,31 @@ Beaucoup de code Python a des `if metric is None: skip` ou `try/except: return N
 
 ---
 
-## Decisions techniques a prendre AVANT la premiere ligne de Go (mises a jour)
+## Decisions structurantes gelees avant la premiere ligne de Go
 
-1. **Driver DuckDB Go** : valider `go-duckdb` v1.x sur Windows et Linux (POC A)
-2. **Framework HTTP** : Chi vs Echo (recommandation : Chi — plus proche de net/http standard)
-3. **Generation OpenAPI** : `oapi-codegen` (types + server stubs depuis le schema existant)
-4. **Validation payloads** : `go-playground/validator` ou validation manuelle
-5. **Session/cookies** : `gorilla/sessions` ou `scs` (SCS prefere — plus moderne)
-6. **JWT** : `golang-jwt/jwt` v5
-7. **Logging** : `log/slog` (stdlib Go 1.21+)
-8. **Config** : `envconfig` ou `viper` (envconfig prefere — plus simple)
-9. **MSAL Go** : `github.com/AzureAD/microsoft-authentication-library-for-go` est un SDK Microsoft officiel avec support device code flow natif (`AcquireTokenByDeviceCode`). Le risque est plus faible que le plan initial le laissait entendre. Un test de ~50 lignes suffit a le valider dans le Sprint 0.
-10. **Parquet** : `apache/arrow-go` pour le cold storage archive
-11. **Tests** : `testing` stdlib + `testify/assert` pour les assertions
-12. **CI** : GitHub Actions avec build matrix (Windows, Linux, amd64)
-13. **Charting** : le backend retourne des series JSON, `react-plotly.js` cote frontend (aucun changement)
+1. **Driver DuckDB Go** : `github.com/duckdb/duckdb-go` v2.x. Le Sprint 0 prouve la compatibilite Windows/Linux, il ne re-decide pas le package.
+2. **Framework HTTP** : `chi` + `go-playground/validator`.
+3. **Generation OpenAPI** : spec-first avec `oapi-codegen` + `openapi-typescript`.
+4. **Session/cookies** : fichiers JSON + cookie signe HMAC-SHA256 ; pas de JWT, pas de `scs`, pas de `gorilla/sessions`.
+5. **Logging** : `log/slog` (stdlib Go 1.21+).
+6. **Config** : struct Go natif + `os.Getenv` + parsing JSON `app_settings.json`.
+7. **MSAL Go** : SDK Microsoft officiel + support refresh tokens de compatibilite (env + `sync_meta`).
+8. **Parquet** : `apache/arrow-go` pour le cold storage archive.
+9. **Tests** : `testing` stdlib + `testify/assert` pour les assertions.
+10. **CI** : GitHub Actions avec build matrix par OS cible (Windows, Linux, amd64) ; pas de promesse de cross-build CGO magique.
+11. **Charting** : architecture decouplee — `domain/chart/` produit des `ChartPayload` renderer-agnostic, `adapter/plotly/` convertit vers `PlotlyFigurePayload` uniquement pour les surfaces backend-rendered. Les figures deja assemblees dans React restent cote frontend. Voir [GO_ARCHITECTURE_RULES.md §11](GO_ARCHITECTURE_RULES.md).
 
 ---
 
-## Points de decision ouverts (a trancher avant le lancement)
+## Points de pilotage restants
 
-| # | Question | Options | Recommandation | Impact |
-|---|----------|---------|----------------|--------|
-| D1 | Monorepo ou polyrepo ? | Go dans le meme repo vs repo separe | Monorepo (memes fixtures, memes golden values) | Structure repo |
-| D2 | Un binaire ou plusieurs ? | `levelup-api` + `levelup-sync` + `levelup-tools` vs tout-en-un | Binaire unique avec sous-commandes (voir "Modele de deploiement") | Packaging |
-| D3 | Generation OpenAPI : code-first ou schema-first ? | Generer le schema depuis le Go vs utiliser le schema Python existant | Schema-first (garantit la parite contractuelle) | DX |
-| D4 | Sessions : filesystem ou Redis ? | Garder le filesystem actuel vs introduire Redis | Filesystem (pas de nouvelle dependance pour un outil solo) | Infra |
-| D5 | Cache MSAL : bridge Python temporaire ou portage direct ? | Garder un microservice Python pour l'auth vs tout porter | MSAL canonique + support refresh tokens (env + sync_meta) | Complexite |
-| D6 | Weapon parser : porter ou bridge ? | Reecrire le parser binaire en Go vs subprocess Python | Bridge temporaire puis portage (module le plus risque) | Risque |
-| D7 | CI : build DuckDB depuis les sources ou pre-built ? | Compiler libduckdb.a vs telecharger les releases | Pre-built (plus rapide, moins fragile) | CI |
-| D8 | Strategie pool `database/sql` + ATTACH ? | `sql.Conn` pinee par gamertag vs `ConnInitFunc` vs pool custom hors `database/sql` | A valider dans Sprint 0 — impacte toute l'architecture du pool DuckDB | Architecture |
-| D9 | Mecanisme de feature flags pour la bascule ? | Variable d'env, champ `app_settings.json`, ou header HTTP | Variable d'env + champ `app_settings.json` (simple, pas de dependance) | Bascule |
-| D10 | Observabilite : outils de monitoring ? | Prometheus + `/metrics`, ou logs structures seuls | Logs structures `slog` + endpoint `/debug/stats` (suffisant pour solo dev) | Ops |
+| # | Question | Recommandation actuelle | Impact |
+|---|----------|-------------------------|--------|
+| P1 | Structure exacte du module Go dans le monorepo | Go reste dans le meme repo, module `go-api/` ou equivalent ; ne pas re-ouvrir le debat monorepo/polyrepo | Structure repo |
+| P2 | Weapon parser : portage natif ou fallback etroit ? | Porter en Go ; bridge Python uniquement si le portage echoue | Risque |
+| P3 | Strategie pool `database/sql` + ATTACH | A prouver au Sprint 0 (`sql.Conn` pinee, `ConnInitFunc` ou pool custom) | Architecture |
+| P4 | Feature flags de bascule | Variable d'env + champ `app_settings.json` | Bascule |
+| P5 | Observabilite minimale | Logs structures `slog` + endpoint `/debug/stats` | Ops |
 
 ---
 
@@ -1692,7 +2028,7 @@ Minimum incompressible :
 
 - [ ] Schema OpenAPI versionne, golden values a jour et perimetre contractuel de depart explicitement nomme
 - [ ] POC DuckDB Go valide sur Windows et Linux
-- [ ] Version DuckDB go-duckdb compatible avec les fichiers Python 1.4.4 (pas de migration implicite)
+- [ ] Version DuckDB `duckdb-go` compatible avec les fichiers Python 1.4.4 (pas de migration implicite)
 - [ ] Strategie pool `database/sql` + ATTACH validee (D8)
 - [ ] Toolchain CGo Windows documente et reproductible en CI
 - [ ] MSAL Go valide, avec strategie explicite de support refresh tokens

@@ -20,7 +20,12 @@ L'avancement vivant du chantier ne se suit pas ici mais dans [GO_MIGRATION_CHECK
 | Statut | Sens |
 |--------|------|
 | `a_porter` | doit avoir un equivalent Go explicite |
+| `a_remplacer` | disparait en tant que code Python et est remplace par une implementation Go plus adaptee |
 | `a_porter_plus_tard` | porte apres les surfaces plus critiques |
+| `a_analyser` | surface mixte dont le destin final doit etre tranche entre portage, remplacement ou suppression |
+| `a_auditer` | surface auxiliaire a inventorier finement avant decision de portage |
+| `a_adapter` | enveloppe, packaging ou scripts a realigner sur la cible Go, sans portage 1:1 |
+| `a_conserver` | reste en place telle quelle pendant et apres la migration Go |
 | `a_garder_temporairement` | reste Python pendant une phase transitoire assume |
 | `a_supprimer` | disparait avec la fin de Streamlit / du legacy |
 | `hors_scope` | n'entre pas dans le chantier Go principal |
@@ -62,8 +67,8 @@ Si un fichier, un package, une commande ou un comportement n'apparait pas ici, i
    Statut : `a_porter`
    Strategie : MSAL canonique + support refresh tokens de compatibilite.
 6. `spnkr_pr/`
-   Statut : `a_porter_plus_tard`
-   Strategie : anti-corruption layer, puis remplacement progressif par client HTTP Go.
+   Statut : `a_remplacer`
+   Strategie : supprimer la dependance Python et la remplacer directement par un client HTTP Go natif.
 7. `src/app/`
    Statut : `a_analyser`
    Strategie : distribuer entre suppression legacy et portage des rares logiques encore actives.
@@ -111,86 +116,85 @@ Si un fichier, un package, une commande ou un comportement n'apparait pas ici, i
 
 | Package | Fichiers | LOC approx | Statut | Cible Go | Difficulte |
 |---------|:--------:|:----------:|--------|----------|:----------:|
-| `apps/api/` | ~30 | ~3000 | A remplacer | `go-api/internal/api/` | Moyenne |
-| `src/data/repositories/` | ~15 | ~4000 | A porter | `go-api/internal/platform/duckdb/` | Haute |
-| `src/data/services/` | ~8 | ~1500 | A porter | `go-api/internal/{domain}/` | Moyenne |
-| `src/data/sync/` | ~20 | ~6000-7000 | A porter (P4) | `go-api/internal/sync/` | Tres haute |
-| `src/data/migration/` | ~40 | ~2000 | A porter | `go-api/internal/platform/migrations/` | Haute |
-| `src/analysis/` | ~12 | ~3000 | A porter | `go-api/internal/analysis/` | Tres haute |
-| `src/auth/` | ~6 | ~1000 | A porter | `go-api/internal/auth/` | Haute |
-| `src/app/` | ~25 | ~2000 | A analyser + distribuer | Majoritairement supprime (Streamlit) | Basse |
+| `apps/api/` | ~65 | ~12 000 | `a_remplacer` | `go-api/internal/api/` | Haute |
+| `src/data/repositories/` | ~15 | ~4000 | `a_porter` | `go-api/internal/platform/duckdb/` | Haute |
+| `src/data/services/` | ~8 | ~1500 | `a_porter` | `go-api/internal/{domain}/` | Moyenne |
+| `src/data/sync/` (dont `transformers/` ~2 400 LOC) | ~46 | ~13 000 | `a_porter_plus_tard` | `go-api/internal/sync/` | Tres haute |
+| `src/data/migration/` | ~40 | ~2000 | `a_porter` | `go-api/internal/platform/migrations/` | Haute |
+| `src/analysis/` | ~62 | ~14 000 | `a_porter` | `go-api/internal/analysis/` | Tres haute |
+| `src/auth/` | 5 | ~900 | `a_porter` | `go-api/internal/auth/` | Haute |
+| `src/app/` | ~25 | ~2000 | `a_analyser` | Majoritairement supprime (Streamlit) | Basse |
 | `src/ports/` | 2 | ~200 | Interfaces de reference | Interfaces Go equivalentes | Basse |
-| `src/config.py` | 1 | ~150 | A porter | `go-api/internal/platform/config/` | Basse |
-| `src/ui/` | ~40 | ~6000 | A supprimer (React) | N/A | N/A |
-| `src/ai/` | ~6 | ~1200 | Hors scope | Reste Python ou separe | N/A |
-| `src/utils/` (Discord + helpers runtime utiles) | ~4 | ~600 | A porter partiellement | `go-api/internal/platform/` | Basse |
-| `scripts/` | ~25 | ~3000 | A reconstituer | `go-api/cmd/` | Haute |
-| `spnkr_pr/` | ~8 | ~800 | A remplacer | Client HTTP Go direct | Moyenne |
-| `launcher.py` | 1 | ~500 | A remplacer | `go-api/cmd/levelup-api/` | Moyenne |
+| `src/config.py` | 1 | ~150 | `a_porter` | `go-api/internal/platform/config/` | Basse |
+| `src/visualization/` | 47 | ~12 000 | `a_porter` (charting server-side) | `go-api/internal/domain/chart/` + `service/charts/` | Tres haute |
+| `src/ui/components/` (radars, KPI, annotations) | 13 | ~1 200 | `a_porter` partiellement | `go-api/internal/domain/chart/` + `api/dto/` | Moyenne |
+| `src/ui/` (hors components/) | ~27 | ~4 800 | `a_supprimer` | N/A | N/A |
+| `src/ai/` | ~6 | ~1200 | `hors_scope` | Reste Python ou separe | N/A |
+| `src/utils/` (Discord + helpers runtime utiles) | ~4 | ~600 | `a_auditer` | `go-api/internal/platform/` | Basse |
+| `scripts/` | ~25 | ~3000 | `a_porter_plus_tard` | `go-api/cmd/` | Haute |
+| `spnkr_pr/` | ~8 | ~800 | `a_remplacer` | Client HTTP Go direct | Moyenne |
+| `launcher.py` | 1 | ~500 | `a_adapter` | `go-api/cmd/levelup/` | Moyenne |
 
-**Ordre de grandeur** : ~25 000 LOC Python -> ~25-35 000 LOC Go.
+**Ordre de grandeur** : ~55 000 LOC Python à porter (dont ~12K LOC `src/visualization/` charting server-side, auparavant classé "N/A") → ~45-65 000 LOC Go estimés.
+
+> **Note** : les estimations précédentes (~25K LOC) sous-estimaient sévèrement `src/analysis/` (14K, pas 3K),
+> `apps/api/` (12K, pas 3K), `src/data/sync/` (13K, pas 6-7K) et omettaient `src/visualization/` (12K).
+> Chiffres vérifiés le 2026-04-14.
 
 ## Scripts et outillage
 
 | Script Python | Usage | Portage Go | Priorite |
 |---------------|-------|------------|:--------:|
-| `scripts/sync.py` | Sync delta/full | `cmd/levelup-sync/` | P4 |
-| `scripts/backfill_data.py` | Backfill selectif (~120 flags) | `cmd/levelup-sync/ --backfill` | P4 |
-| `scripts/backup_player.py` | Backup DB joueur | `cmd/levelup-tools backup` | P3 |
-| `scripts/restore_player.py` | Restore DB joueur | `cmd/levelup-tools restore` | P3 |
-| `scripts/healthcheck_db.py` | Diagnostic integrite | `cmd/levelup-tools healthcheck` | P3 |
-| `scripts/index_media.py` | Indexation videos | `cmd/levelup-tools index-media` | P3 |
-| `scripts/check_env.py` | Validation environnement | `cmd/levelup-tools check-env` | P2 |
-| `scripts/diagnose_player_db.py` | Debug schemas | `cmd/levelup-tools diagnose` | P3 |
+| `scripts/sync.py` | Sync delta/full | `levelup sync` | P4 |
+| `scripts/backfill_data.py` | Backfill selectif (~120 flags) | `levelup backfill` | P4 |
+| `scripts/backup_player.py` | Backup DB joueur | `levelup backup` | P3 |
+| `scripts/restore_player.py` | Restore DB joueur | `levelup restore` | P3 |
+| `scripts/healthcheck_db.py` | Diagnostic integrite | `levelup healthcheck` | P3 |
+| `scripts/index_media.py` | Indexation videos | `levelup index-media` | P3 |
+| `scripts/check_env.py` | Validation environnement | `levelup check-env` | P2 |
+| `scripts/diagnose_player_db.py` | Debug schemas | `levelup diagnose` | P3 |
 | `scripts/post_sync_compute.py` | Post-sync pipeline | Integre dans sync | P4 |
-| `scripts/archive_season.py` | Archivage Parquet | `cmd/levelup-tools archive` | P4 |
-| `scripts/populate_*.py` | Seed metadata | `cmd/levelup-tools seed` | P2 |
-| `launcher.py` | Orchestrateur principal | `cmd/levelup-api/` | P1 |
+| `scripts/archive_season.py` | Archivage Parquet | `levelup archive` | P4 |
+| `scripts/populate_*.py` | Seed metadata | `levelup seed` | P2 |
+| `launcher.py` | Orchestrateur principal | `levelup api` | P1 |
 
 ## Backfill bitmask : valeurs a reproduire exactement
 
-Le systeme de bitmask est persiste en DB. Le portage Go doit reprendre exactement les memes valeurs, sans "equivalent" approximatif.
+Le systeme de bitmask est persiste en DB. Le portage Go doit reprendre exactement les memes valeurs, sans "equivalent" approximatif. La source de verite est double :
 
-```go
-const (
-    BackfillMedals           = 1 << 0   // 1
-    BackfillEvents           = 1 << 1   // 2
-    BackfillSkill            = 1 << 2   // 4
-    BackfillPersonalScores   = 1 << 3   // 8
-    // Bit 4 intentionnellement absent
-    BackfillAccuracy         = 1 << 5   // 32
-    BackfillShots            = 1 << 6   // 64
-    BackfillEnemyMmr         = 1 << 7   // 128
-    BackfillAssets           = 1 << 8   // 256
-    BackfillParticipants     = 1 << 9   // 512
-)
-```
+1. `BACKFILL_FLAGS` historiques dans `src/data/sync/migrations.py` pour les bits 0-15 et un bit 18 legacy obsolet.
+2. `MatchBits` dans `src/data/sync/constants.py` pour les bits 16-22 effectivement utilises en production au niveau match.
 
-Valeurs critiques deja identifiees :
+| Bit | Source | Champ | Valeur | Note |
+|-----|--------|-------|--------|------|
+| 0 | `BACKFILL_FLAGS` | medals | 1 | historique |
+| 1 | `BACKFILL_FLAGS` | events | 2 | historique |
+| 2 | `BACKFILL_FLAGS` | skill | 4 | historique |
+| 3 | `BACKFILL_FLAGS` | personal_scores | 8 | historique |
+| 5 | `BACKFILL_FLAGS` | accuracy | 32 | bit 4 absent intentionnellement |
+| 6 | `BACKFILL_FLAGS` | shots | 64 | historique |
+| 7 | `BACKFILL_FLAGS` | enemy_mmr | 128 | historique |
+| 8 | `BACKFILL_FLAGS` | assets | 256 | historique, distinct de `MatchBits.ASSETS` |
+| 9 | `BACKFILL_FLAGS` | participants | 512 | historique |
+| 10 | `BACKFILL_FLAGS` | participants_scores | 1024 | historique |
+| 11 | `BACKFILL_FLAGS` | participants_kda | 2048 | historique |
+| 12 | `BACKFILL_FLAGS` | participants_shots | 4096 | historique |
+| 13 | `BACKFILL_FLAGS` | participants_damage | 8192 | historique |
+| 14 | `BACKFILL_FLAGS` | aliases | 16384 | historique, distinct de `MatchBits.ALIASES` |
+| 15 | `BACKFILL_FLAGS` | participants_avg_life | 32768 | historique |
+| 16 | `MatchBits` | events_loaded | 65536 | `highlight_events` charges |
+| 17 | `MatchBits` | assets_loaded | 131072 | metadonnees match resolues |
+| 18 | `MatchBits` | aliases_loaded | 262144 | `xuid_aliases` extraits |
+| 19 | `MatchBits` | killer_victim_loaded | 524288 | global |
+| 20 | `MatchBits` | pve_stats | 1048576 | tentative PvE effectuee |
+| 21 | `MatchBits` | weapon_kills | 2097152 | source de verite moderne |
+| 22 | `MatchBits` | weapon_kills_no_film | 4194304 | chunks indisponibles |
 
-| Bit | Champ | Valeur |
-|-----|-------|--------|
-| 0 | medals | 1 |
-| 1 | events | 2 |
-| 2 | skill | 4 |
-| 3 | personal_scores | 8 |
-| 5 | accuracy | 32 |
-| 6 | shots | 64 |
-| 7 | enemy_mmr | 128 |
-| 8 | assets | 256 |
-| 9 | participants | 512 |
-| 10 | participants_scores | 1024 |
-| 11 | participants_kda | 2048 |
-| 12 | participants_shots | 4096 |
-| 13 | participants_damage | 8192 |
-| 14 | aliases | 16384 |
-| 15 | participants_avg_life | 32768 |
-| 19 | killer_victim | 524288 |
-| 20 | pve_stats | 1048576 |
-| 21 | weapon_kills | 2097152 |
-| 22 | weapon_kills_no_film | 4194304 |
+**Attention** :
 
-**Attention** : les bits 4, 16, 17, 18 sont absents intentionnellement.
+- le bit 4 reste absent intentionnellement ;
+- `migrations.py` conserve un ancien `weapon_kills = 1 << 18` uniquement pour retrocompatibilite des tests ; ce bit legacy ne doit jamais etre re-ecrit comme s'il etait la source de verite moderne ;
+- les bits 16, 17 et 18 existent bel et bien en production via `MatchBits`.
 
 ## Regle de maintenance
 
