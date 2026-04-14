@@ -1,6 +1,4 @@
-"""
-Repository DuckDB natif pour les données joueur.
-(Native DuckDB repository for player data)
+"""Repository DuckDB natif pour les données joueur.
 
 HOW IT WORKS:
 Ce repository utilise exclusivement DuckDB :
@@ -263,6 +261,10 @@ class DuckDBRepository(
     def has_shared(self) -> bool:
         """Indique si shared_matches_v2.duckdb est attaché et disponible."""
         return "shared" in self._attached_dbs
+
+    @property
+    def conn(self) -> duckdb.DuckDBPyConnection:
+        return self._get_connection()
 
     def _get_connection(self) -> duckdb.DuckDBPyConnection:  # noqa: C901, PLR0912
         """

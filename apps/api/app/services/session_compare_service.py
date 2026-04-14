@@ -8,6 +8,8 @@ from __future__ import annotations
 
 import logging
 
+from apps.api.app._db_helpers import Outcome
+from apps.api.app._pure_bridge import infer_session_dominant_category
 from apps.api.app.deps.players import PlayerContext
 from apps.api.app.schemas.career import PlotlyFigurePayload
 from apps.api.app.schemas.timeseries import (
@@ -18,9 +20,6 @@ from apps.api.app.schemas.timeseries import (
 )
 
 logger = logging.getLogger(__name__)
-
-_WIN_OUTCOME: int = 2
-_LOSS_OUTCOME: int = 3
 
 
 # ---------------------------------------------------------------------------
@@ -53,12 +52,9 @@ def _load_df_full(player: PlayerContext):  # type: ignore[return]
         return _load_matches_full(player)
     except Exception:
         logger.warning("_load_df_full: impossible de charger les matchs", exc_info=True)
-        try:
-            import polars as pl
+        import polars as pl
 
-            return pl.DataFrame()
-        except ImportError:
-            return []
+        return pl.DataFrame()
 
 
 def _get_available_sessions(df_full) -> list[str]:
@@ -112,8 +108,8 @@ def _build_session_entry(df_session, label: str) -> SessionCompareEntry:
 
     try:
         if "outcome" in df_session.columns:
-            wins = int((df_session["outcome"] == _WIN_OUTCOME).sum())
-            losses = int((df_session["outcome"] == _LOSS_OUTCOME).sum())
+            wins = int((df_session["outcome"] == Outcome.WIN).sum())
+            losses = int((df_session["outcome"] == Outcome.LOSS).sum())
 
         if "kills" in df_session.columns and "deaths" in df_session.columns:
             kills = float(df_session["kills"].sum())
@@ -128,8 +124,6 @@ def _build_session_entry(df_session, label: str) -> SessionCompareEntry:
 
         if "is_with_friends" in df_session.columns:
             with_friends = bool(df_session["is_with_friends"].max())
-
-        from src.ui.pages.session_compare_logic import infer_session_dominant_category
 
         dominant_category = infer_session_dominant_category(df_session)
 
@@ -307,10 +301,10 @@ def _build_maps_table(df_a, df_b) -> list[dict]:
                     "map": m,
                     "count_a": len(da),
                     "count_b": len(db),
-                    "wins_a": int((da["outcome"] == _WIN_OUTCOME).sum())
+                    "wins_a": int((da["outcome"] == Outcome.WIN).sum())
                     if "outcome" in da.columns
                     else 0,
-                    "wins_b": int((db["outcome"] == _WIN_OUTCOME).sum())
+                    "wins_b": int((db["outcome"] == Outcome.WIN).sum())
                     if "outcome" in db.columns
                     else 0,
                 }
@@ -363,12 +357,9 @@ def get_session_compare(
     """Construit la réponse complète pour la page Comparaison de sessions."""
     df_full = _load_df_full(player)
 
-    try:
-        import polars as pl
+    import polars as pl
 
-        if not isinstance(df_full, pl.DataFrame) or df_full.is_empty():
-            return SessionCompareResponse(available_sessions=[], metrics=[])
-    except ImportError:
+    if not isinstance(df_full, pl.DataFrame) or df_full.is_empty():
         return SessionCompareResponse(available_sessions=[], metrics=[])
 
     available = _get_available_sessions(df_full)
@@ -384,13 +375,8 @@ def get_session_compare(
     df_a = _filter_by_session(df_full, label_a)
     df_b = _filter_by_session(df_full, label_b)
 
-    try:
-        import polars as pl
-
-        is_a_empty = not isinstance(df_a, pl.DataFrame) or df_a.is_empty()
-        is_b_empty = not isinstance(df_b, pl.DataFrame) or df_b.is_empty()
-    except ImportError:
-        is_a_empty = is_b_empty = True
+    is_a_empty = not isinstance(df_a, pl.DataFrame) or df_a.is_empty()
+    is_b_empty = not isinstance(df_b, pl.DataFrame) or df_b.is_empty()
 
     if is_a_empty or is_b_empty:
         return SessionCompareResponse(available_sessions=available, metrics=[])

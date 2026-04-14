@@ -347,9 +347,9 @@ def create_player_profile(req: CreatePlayerProfileRequest) -> CreatePlayerProfil
     Raises:
         ApiError: 400 si le gamertag est invalide.
     """
+    from apps.api.app._pure_bridge import create_player_profile as _create
+    from apps.api.app._pure_bridge import validate_gamertag
     from apps.api.app.core.errors import ApiError
-    from src.ui.pages.setup_wizard_logic import create_player_profile as _create
-    from src.ui.pages.setup_wizard_logic import validate_gamertag
 
     errors = validate_gamertag(req.gamertag)
     if errors:

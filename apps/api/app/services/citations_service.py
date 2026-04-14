@@ -115,9 +115,9 @@ def _build_commendations(
         # Calcul du taux de maîtrise si on a une valeur cible
         tier_targets_raw = defn.get("tier_targets") or defn.get("targets") or ""
         try:
-            from src.ui.commendations import _parse_tier_targets
+            from apps.api.app._pure_bridge import parse_tier_targets
 
-            tiers = _parse_tier_targets(str(tier_targets_raw))
+            tiers = parse_tier_targets(str(tier_targets_raw))
             if tiers:
                 max_tier = max(t.get("target", 0) for t in tiers)
                 if max_tier > 0:
@@ -175,7 +175,7 @@ def _merge_medal_summaries(
     name_map: dict[int, str] = {}
     desc_map: dict[int, str] = {}
     try:
-        from src.ui.medals import load_medal_description_map, load_medal_name_maps
+        from apps.api.app._pure_bridge import load_medal_description_map, load_medal_name_maps
 
         raw_names, _ = load_medal_name_maps("fr")
         name_map = {int(k): v for k, v in (raw_names or {}).items()}

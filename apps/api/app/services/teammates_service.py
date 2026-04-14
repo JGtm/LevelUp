@@ -7,6 +7,7 @@ import logging
 from datetime import datetime
 from pathlib import Path
 
+from apps.api.app._db_helpers import Outcome
 from apps.api.app.deps.players import PlayerContext
 from apps.api.app.schemas.teammates import (
     TeammateKPIs,
@@ -18,7 +19,6 @@ from apps.api.app.schemas.teammates import (
 
 logger = logging.getLogger(__name__)
 
-_OUTCOME_WIN = 2
 _TOP_TEAMMATES_LIMIT = 50
 
 
@@ -239,12 +239,7 @@ def _load_matches_with_filter(
             return pl.DataFrame(rows, schema=columns, orient="row")
     except Exception:
         logger.debug("_load_matches_with_filter: erreur", exc_info=True)
-        try:
-            import polars as pl
-
-            return pl.DataFrame()
-        except ImportError:
-            return None
+        return pl.DataFrame()
 
 
 def _compute_teammate_kpis(df) -> TeammateKPIs:
@@ -255,7 +250,7 @@ def _compute_teammate_kpis(df) -> TeammateKPIs:
         total = len(df)
         wins = 0
         if "outcome" in df.columns:
-            wins = int(df["outcome"].cast(pl.Int64, strict=False).eq(_OUTCOME_WIN).sum())
+            wins = int(df["outcome"].cast(pl.Int64, strict=False).eq(Outcome.WIN).sum())
 
         kd_ratio = None
         if "kills" in df.columns and "deaths" in df.columns:

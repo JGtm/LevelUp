@@ -16,6 +16,14 @@ import logging
 from datetime import datetime
 from pathlib import Path
 
+from apps.api.app._db_helpers import (
+    FMT_DATETIME_FR,
+    OUTCOME_LABELS,
+    Outcome,
+    build_match_source_sql,
+    has_mv_player_matches,
+    resolve_xuid,
+)
 from apps.api.app.deps.players import PlayerContext
 from apps.api.app.schemas.common import PaginatedResponse, PaginationMeta, PaginationRequest
 from apps.api.app.schemas.explorer import (
@@ -35,10 +43,6 @@ from apps.api.app.schemas.explorer import (
 from apps.api.app.schemas.filters import FilterContextInput
 
 logger = logging.getLogger(__name__)
-
-_FMT_DATETIME_FR = "%d/%m/%Y %H:%M"
-_OUTCOME_LABELS: dict[int, str] = {2: "Victoire", 3: "Défaite", 1: "Égalité", 4: "Abandon"}
-_OUTCOME_WIN = 2
 
 
 # ---------------------------------------------------------------------------
@@ -168,11 +172,7 @@ def get_explorer_player(
 
 def _load_all_gamertags(shared_db_path: str) -> list[str]:
     """Charge tous les gamertags depuis shared.v_gamertag_lookup."""
-    try:
-        from src.utils.db import duckdb_read_only
-    except ImportError:
-        logger.warning("src.utils.db non disponible — gamertag search désactivé")
-        return []
+    from src.utils.db import duckdb_read_only
 
     db_path = Path(shared_db_path)
     if not db_path.exists():
@@ -192,13 +192,13 @@ def _load_all_gamertags(shared_db_path: str) -> list[str]:
 
 def _resolve_xuid_for_gamertag(player: PlayerContext, gamertag: str) -> str | None:
     """Résout un gamertag → xuid via shared.v_gamertag_lookup."""
+    from src.utils.db import duckdb_read_only
+
+    shared_path = Path(player.shared_db_path)
+    if not shared_path.exists():
+        return None
+
     try:
-        from src.utils.db import duckdb_read_only
-
-        shared_path = Path(player.shared_db_path)
-        if not shared_path.exists():
-            return None
-
         with duckdb_read_only(str(Path(player.db_path))) as conn:
             with contextlib.suppress(Exception):
                 conn.execute(f"ATTACH '{shared_path}' AS shared (READ_ONLY)")
@@ -214,41 +214,28 @@ def _resolve_xuid_for_gamertag(player: PlayerContext, gamertag: str) -> str | No
 
 def _load_matches_explorer(player: PlayerContext):  # type: ignore[return]
     """Charge les matchs avec les colonnes nécessaires pour l'Explorer."""
-    try:
-        import polars as pl
+    import polars as pl
 
-        from src.utils.db import duckdb_read_only
-    except ImportError:
-        import polars as pl
-
-        return pl.DataFrame()
+    from src.utils.db import duckdb_read_only
 
     db_path = Path(player.db_path)
     shared_path = Path(player.shared_db_path)
 
     if not db_path.exists():
-        try:  # noqa: SIM105
-            import polars as pl
-        except ImportError:
-            pass
-        return _empty_df()
+        return pl.DataFrame()
 
     try:
-        import polars as pl
-
-        from src.utils.db import duckdb_read_only
-
         with duckdb_read_only(str(db_path)) as conn:
             if shared_path.exists():
                 with contextlib.suppress(Exception):
                     conn.execute(f"ATTACH '{shared_path}' AS shared (READ_ONLY)")
 
-            xuid = _resolve_xuid(conn)
+            xuid = resolve_xuid(conn)
             if not xuid:
                 return pl.DataFrame()
 
-            has_mv = _has_mv(conn)
-            source_sql = _build_source_sql(has_mv)
+            has_mv = has_mv_player_matches(conn)
+            source_sql = build_match_source_sql(has_mv)
 
             sql = f"""
             SELECT
@@ -286,33 +273,28 @@ def _load_matches_explorer(player: PlayerContext):  # type: ignore[return]
 
     except Exception:
         logger.exception("Erreur chargement matchs Explorer pour %s", player.player_slug)
-        try:
-            import polars as pl
-
-            return pl.DataFrame()
-        except ImportError:
-            return _empty_df()
+        return pl.DataFrame()
 
 
 def _load_common_matches(player: PlayerContext, target_xuid: str):  # type: ignore[return]
     """Charge les matchs communs entre le joueur courant et target_xuid."""
+    import polars as pl
+
+    from src.utils.db import duckdb_read_only
+
+    db_path = Path(player.db_path)
+    shared_path = Path(player.shared_db_path)
+
+    if not db_path.exists():
+        return pl.DataFrame()
+
     try:
-        import polars as pl
-
-        from src.utils.db import duckdb_read_only
-
-        db_path = Path(player.db_path)
-        shared_path = Path(player.shared_db_path)
-
-        if not db_path.exists():
-            return pl.DataFrame()
-
         with duckdb_read_only(str(db_path)) as conn:
             if shared_path.exists():
                 with contextlib.suppress(Exception):
                     conn.execute(f"ATTACH '{shared_path}' AS shared (READ_ONLY)")
 
-            xuid = _resolve_xuid(conn)
+            xuid = resolve_xuid(conn)
             if not xuid:
                 return pl.DataFrame()
 
@@ -348,64 +330,14 @@ def _load_common_matches(player: PlayerContext, target_xuid: str):  # type: igno
 
     except Exception:
         logger.debug("_load_common_matches: erreur", exc_info=True)
-        try:
-            import polars as pl
-
-            return pl.DataFrame()
-        except ImportError:
-            return _empty_df()
+        return pl.DataFrame()
 
 
 def _empty_df():  # type: ignore[return]
     """Retourne un DataFrame vide Polars."""
-    try:
-        import polars as pl
+    import polars as pl
 
-        return pl.DataFrame()
-    except ImportError:
-        return []
-
-
-# ---------------------------------------------------------------------------
-# Helpers SQL
-# ---------------------------------------------------------------------------
-
-
-def _resolve_xuid(conn) -> str:  # type: ignore[no-untyped-def]
-    try:
-        row = conn.execute("SELECT value FROM sync_meta WHERE key = 'xuid'").fetchone()
-        return str(row[0]).strip() if row else ""
-    except Exception:
-        return ""
-
-
-def _has_mv(conn) -> bool:  # type: ignore[no-untyped-def]
-    try:
-        conn.execute("SELECT 1 FROM shared.mv_player_matches LIMIT 0")
-        return True
-    except Exception:
-        return False
-
-
-def _build_source_sql(has_mv: bool) -> str:
-    if has_mv:
-        return """(
-            SELECT match_id, start_time, map_id, map_name, map_name_fr,
-                   pair_name, pair_name_fr, playlist_name, playlist_name_fr,
-                   is_firefight, is_ranked
-            FROM shared.mv_player_matches
-            WHERE xuid = ?
-        ) AS ms"""
-    return """(
-        SELECT r.match_id, r.start_time, r.map_id, r.map_name,
-               NULL AS map_name_fr, r.pair_name, NULL AS pair_name_fr,
-               r.playlist_name, NULL AS playlist_name_fr,
-               COALESCE(r.is_firefight, FALSE) AS is_firefight,
-               COALESCE(r.is_ranked, FALSE)    AS is_ranked
-        FROM shared.match_registry r
-        JOIN shared.match_participants p ON r.match_id = p.match_id
-        WHERE p.xuid = ?
-    ) AS ms"""
+    return pl.DataFrame()
 
 
 # ---------------------------------------------------------------------------
@@ -525,7 +457,7 @@ def _enrich_for_explorer(dff):  # type: ignore[return]
         dff = dff.with_columns(
             pl.col("outcome")
             .cast(pl.Int64, strict=False)
-            .replace_strict(_OUTCOME_LABELS, default=pl.lit("-"))
+            .replace_strict(OUTCOME_LABELS, default=pl.lit("-"))
             .alias("outcome_label")
         )
 
@@ -564,7 +496,7 @@ def _enrich_for_explorer(dff):  # type: ignore[return]
     if "start_time_label" not in dff.columns and "start_time" in dff.columns:
         dff = dff.with_columns(
             pl.col("start_time")
-            .dt.strftime(_FMT_DATETIME_FR)
+            .dt.strftime(FMT_DATETIME_FR)
             .fill_null("-")
             .alias("start_time_label")
         )
@@ -604,7 +536,7 @@ def _enrich_common_for_explorer(dff):  # type: ignore[return]
         dff = dff.with_columns(
             pl.col("outcome")
             .cast(pl.Int64, strict=False)
-            .replace_strict(_OUTCOME_LABELS, default=pl.lit("-"))
+            .replace_strict(OUTCOME_LABELS, default=pl.lit("-"))
             .alias("outcome_label")
         )
     if "score_label" not in dff.columns:
@@ -639,7 +571,7 @@ def _enrich_common_for_explorer(dff):  # type: ignore[return]
     if "start_time_label" not in dff.columns and "start_time" in dff.columns:
         dff = dff.with_columns(
             pl.col("start_time")
-            .dt.strftime(_FMT_DATETIME_FR)
+            .dt.strftime(FMT_DATETIME_FR)
             .fill_null("-")
             .alias("start_time_label")
         )
@@ -720,7 +652,7 @@ def _build_encounter_row(
         last_seen: datetime | None = None
 
         if "outcome" in df.columns:
-            wins = int(df["outcome"].cast(pl.Int64, strict=False).eq(_OUTCOME_WIN).sum())
+            wins = int(df["outcome"].cast(pl.Int64, strict=False).eq(Outcome.WIN).sum())
             losses = count - wins
 
         if "start_time" in df.columns:
@@ -756,7 +688,7 @@ def _build_player_summary(ally_df, enemy_df, common_df) -> ExplorerPlayerSummary
 
         if hasattr(common_df, "is_empty") and not common_df.is_empty():
             if "outcome" in common_df.columns:
-                wins = int(common_df["outcome"].cast(pl.Int64, strict=False).eq(_OUTCOME_WIN).sum())
+                wins = int(common_df["outcome"].cast(pl.Int64, strict=False).eq(Outcome.WIN).sum())
                 losses = total - wins
 
             if "start_time" in common_df.columns:

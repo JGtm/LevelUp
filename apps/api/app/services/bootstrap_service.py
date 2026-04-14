@@ -111,37 +111,9 @@ def _check_initial_sync_marker(available: list[PlayerSummary]) -> bool:
     if not player_db.exists():
         return False
     try:
-        import duckdb
+        from src.utils.db import duckdb_read_only
 
-        with duckdb.connect(str(player_db), read_only=True) as conn:
-            row = conn.execute(
-                "SELECT value FROM sync_meta WHERE key = 'initial_sync_completed_at' LIMIT 1"
-            ).fetchone()
-            return bool(row and row[0])
-    except Exception:
-        logger.debug("initial_sync_marker_check_failed", player_slug=player_slug)
-        return False
-
-
-def _check_initial_sync_marker(available: list[PlayerSummary]) -> bool:
-    """Vérifie si le marqueur ``initial_sync_completed_at`` exist dans sync_meta.
-
-    Source de vérité persistante pour distinguer ``profile_ready_no_sync``
-    de ``ready``. Cherche sur le premier joueur disponible (MVP single-user).
-
-    Retourne True si le marqueur est trouvé. Fail-open (True) en cas d'erreur.
-    """
-    if not available:
-        return False
-    settings = get_settings()
-    player_slug = available[0].player_slug
-    player_db = Path(settings.repo_root) / "data" / "players" / player_slug / "stats.duckdb"
-    if not player_db.exists():
-        return False
-    try:
-        import duckdb
-
-        with duckdb.connect(str(player_db), read_only=True) as conn:
+        with duckdb_read_only(str(player_db)) as conn:
             row = conn.execute(
                 "SELECT value FROM sync_meta WHERE key = 'initial_sync_completed_at' LIMIT 1"
             ).fetchone()
@@ -167,10 +139,10 @@ def _has_any_synced_matches(available: list[PlayerSummary]) -> bool:
     if not xuids:
         return False
     try:
-        import duckdb
+        from src.utils.db import duckdb_read_only
 
         placeholders = ", ".join("?" * len(xuids))
-        with duckdb.connect(str(shared_path), read_only=True) as conn:
+        with duckdb_read_only(str(shared_path)) as conn:
             row = conn.execute(
                 f"SELECT COUNT(*) FROM match_participants WHERE xuid IN ({placeholders}) LIMIT 1",
                 xuids,

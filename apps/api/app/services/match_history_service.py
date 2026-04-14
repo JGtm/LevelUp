@@ -17,6 +17,14 @@ import logging
 from datetime import datetime
 from pathlib import Path
 
+from apps.api.app._db_helpers import (
+    FMT_DATETIME_FR,
+    OUTCOME_LABELS,
+    add_display_columns,
+    build_match_source_sql,
+    has_mv_player_matches,
+    resolve_xuid,
+)
 from apps.api.app.deps.players import PlayerContext
 from apps.api.app.schemas.common import PaginatedResponse, PaginationMeta, PaginationRequest
 from apps.api.app.schemas.filters import FilterContextInput
@@ -32,8 +40,6 @@ from apps.api.app.schemas.match_history import (
 
 logger = logging.getLogger(__name__)
 
-_OUTCOME_LABELS: dict[int, str] = {2: "Victoire", 3: "Défaite", 1: "Égalité", 4: "Abandon"}
-_FMT_DATETIME_FR = "%d/%m/%Y %H:%M"
 _DEFAULT_SORT_FIELD = "start_time"
 _DEFAULT_SORT_DIR = "desc"
 _AVAILABLE_SORT_FIELDS = [
@@ -136,17 +142,9 @@ def _load_matches_full(player: PlayerContext):  # type: ignore[return]
 
     Retourne un ``pl.DataFrame`` vide en cas d'erreur.
     """
-    try:
-        import polars as pl
+    import polars as pl
 
-        from src.utils.db import duckdb_read_only
-    except ImportError:
-        logger.warning("src.utils.db non disponible — match history désactivé")
-        try:
-            import polars as pl
-        except ImportError:
-            return []
-        return pl.DataFrame()
+    from src.utils.db import duckdb_read_only
 
     db_path = Path(player.db_path)
     shared_path = Path(player.shared_db_path)
@@ -161,12 +159,12 @@ def _load_matches_full(player: PlayerContext):  # type: ignore[return]
                 with contextlib.suppress(Exception):
                     conn.execute(f"ATTACH '{shared_path}' AS shared (READ_ONLY)")
 
-            xuid = _resolve_xuid(conn)
+            xuid = resolve_xuid(conn)
             if not xuid:
                 return pl.DataFrame()
 
-            has_mv = _has_mv_player_matches(conn)
-            source_sql = _build_source_sql(has_mv)
+            has_mv = has_mv_player_matches(conn)
+            source_sql = build_match_source_sql(has_mv)
 
             sql = f"""
             SELECT
@@ -211,114 +209,11 @@ def _load_matches_full(player: PlayerContext):  # type: ignore[return]
             return pl.DataFrame()
 
         df = pl.DataFrame(rows, schema=columns, orient="row")
-        return _add_display_columns(df)
+        return add_display_columns(df)
 
     except Exception:
         logger.exception("Erreur chargement matchs historique pour %s", player.player_slug)
-        try:
-            import polars as pl
-
-            return pl.DataFrame()
-        except ImportError:
-            return []
-
-
-def _resolve_xuid(conn) -> str:  # type: ignore[no-untyped-def]
-    """Extrait le xuid depuis sync_meta."""
-    try:
-        row = conn.execute("SELECT value FROM sync_meta WHERE key = 'xuid'").fetchone()
-        return str(row[0]).strip() if row else ""
-    except Exception:
-        return ""
-
-
-def _has_mv_player_matches(conn) -> bool:  # type: ignore[no-untyped-def]
-    """Vérifie si shared.mv_player_matches est disponible."""
-    try:
-        conn.execute("SELECT 1 FROM shared.mv_player_matches LIMIT 0")
-        return True
-    except Exception:
-        return False
-
-
-def _build_source_sql(has_mv: bool) -> str:
-    """Retourne le sous-SELECT approprié selon la disponibilité de la vue matérialisée."""
-    if has_mv:
-        return """(
-            SELECT match_id, start_time, map_id, map_name, map_name_fr,
-                   pair_name, pair_name_fr, playlist_name, playlist_name_fr,
-                   is_firefight, is_ranked
-            FROM shared.mv_player_matches
-            WHERE xuid = ?
-        )"""
-    return """(
-        SELECT r.match_id, r.start_time, r.map_id, r.map_name,
-               NULL AS map_name_fr,
-               r.pair_name,
-               NULL AS pair_name_fr,
-               r.playlist_name,
-               NULL AS playlist_name_fr,
-               COALESCE(r.is_firefight, FALSE) AS is_firefight,
-               COALESCE(r.is_ranked, FALSE)    AS is_ranked
-        FROM shared.match_registry r
-        JOIN shared.match_participants p ON r.match_id = p.match_id
-        WHERE p.xuid = ?
-    )"""
-
-
-def _add_display_columns(df):  # type: ignore[return]
-    """Ajoute map_ui, mode_ui, playlist_ui au DataFrame si absentes."""
-    try:
-        import re
-
-        import polars as pl
-
-        exprs = []
-        if "map_ui" not in df.columns and "map_name" in df.columns:
-            src = (
-                pl.coalesce([pl.col("map_name_fr").cast(pl.Utf8), pl.col("map_name").cast(pl.Utf8)])
-                if "map_name_fr" in df.columns
-                else pl.col("map_name").cast(pl.Utf8)
-            )
-            exprs.append(src.alias("map_ui"))
-
-        if "mode_ui" not in df.columns and "pair_name" in df.columns:
-            src = (
-                pl.coalesce(
-                    [pl.col("pair_name_fr").cast(pl.Utf8), pl.col("pair_name").cast(pl.Utf8)]
-                )
-                if "pair_name_fr" in df.columns
-                else pl.col("pair_name").cast(pl.Utf8)
-            )
-
-            def _strip_suffix(s: str | None) -> str | None:
-                if not s:
-                    return None
-                s = str(s).strip()
-                if " on " in s:
-                    s = s.split(" on ", 1)[0].strip()
-                s = re.sub(r"\s*-\s*Forge\b", "", s, flags=re.IGNORECASE).strip()
-                s = re.sub(r"\s*-\s*Ranked\b", "", s, flags=re.IGNORECASE).strip()
-                return s or None
-
-            exprs.append(src.map_elements(_strip_suffix, return_dtype=pl.Utf8).alias("mode_ui"))
-
-        if "playlist_ui" not in df.columns and "playlist_name" in df.columns:
-            src = (
-                pl.coalesce(
-                    [
-                        pl.col("playlist_name_fr").cast(pl.Utf8),
-                        pl.col("playlist_name").cast(pl.Utf8),
-                    ]
-                )
-                if "playlist_name_fr" in df.columns
-                else pl.col("playlist_name").cast(pl.Utf8)
-            )
-            exprs.append(src.alias("playlist_ui"))
-
-        return df.with_columns(exprs) if exprs else df
-    except Exception:
-        return df
+        return pl.DataFrame()
 
 
 # ---------------------------------------------------------------------------
@@ -380,7 +275,7 @@ def _add_score_columns(dff):  # type: ignore[return]
     if "outcome" not in dff.columns:
         dff = dff.with_columns(pl.lit(0).alias("outcome"))
 
-    outcome_map = dict(_OUTCOME_LABELS)
+    outcome_map = dict(OUTCOME_LABELS)
     dff = dff.with_columns(
         pl.col("outcome")
         .cast(pl.Int64, strict=False)
@@ -437,7 +332,7 @@ def _add_time_columns(dff):  # type: ignore[return]
         )
 
     dff = dff.with_columns(
-        pl.col("start_time").dt.strftime(_FMT_DATETIME_FR).fill_null("-").alias("start_time_label")
+        pl.col("start_time").dt.strftime(FMT_DATETIME_FR).fill_null("-").alias("start_time_label")
     )
 
     avg_life_col = "average_life_seconds" if "average_life_seconds" in dff.columns else None
