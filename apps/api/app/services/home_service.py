@@ -533,10 +533,7 @@ def _fetch_battlepass_live(player: PlayerContext) -> BattlePassResponse:
     """Tente un appel SPNKr pour récupérer les infos Battle Pass."""
     import asyncio
 
-    from src.ui.pages.home_mission_control_battlepass import (
-        HomeBattlepassInfo,
-        fetch_battlepass_info,
-    )
+    from apps.api.app._pure_bridge import fetch_battlepass_info
 
     db_path = Path(player.db_path)
 
@@ -544,7 +541,7 @@ def _fetch_battlepass_live(player: PlayerContext) -> BattlePassResponse:
         from src.auth.provider import get_halo_tokens_or_raise
 
         tokens = await get_halo_tokens_or_raise(db_path)
-        bp: HomeBattlepassInfo = await fetch_battlepass_info(tokens)
+        bp = await fetch_battlepass_info(tokens)
         return BattlePassResponse(
             available=True,
             rank=getattr(bp, "rank", None),
@@ -563,7 +560,7 @@ def _fetch_challenges_live(player: PlayerContext) -> ChallengesResponse:
     """Tente un appel SPNKr pour récupérer les défis actifs."""
     import asyncio
 
-    from src.ui.pages.home_mission_control_api import fetch_home_progressions
+    from apps.api.app._pure_bridge import fetch_home_progressions
 
     db_path = Path(player.db_path)
 
