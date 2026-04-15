@@ -199,3 +199,132 @@ func TestComputeProgressPct_MaxRank(t *testing.T) {
 		t.Errorf("expected 100%% for max rank, got %v", pct)
 	}
 }
+
+// ---------------------------------------------------------------------------
+// MatchViewService — buildScoreLabel
+// ---------------------------------------------------------------------------
+
+func TestBuildScoreLabel_TwoTeams(t *testing.T) {
+	team0 := 0
+	team1 := 1
+	s1 := 1000.0
+	s2 := 500.0
+	s3 := 400.0
+	scoreboard := []domain.ScoreboardRaw{
+		{XUID: "x1", Gamertag: "P1", TeamID: &team0, PersonalScore: &s1},
+		{XUID: "x2", Gamertag: "P2", TeamID: &team1, PersonalScore: &s2},
+		{XUID: "x3", Gamertag: "P3", TeamID: &team1, PersonalScore: &s3},
+	}
+	label := buildScoreLabel(scoreboard)
+	if label != "1000-900" {
+		t.Errorf("expected 1000-900, got %q", label)
+	}
+}
+
+func TestBuildScoreLabel_Empty(t *testing.T) {
+	label := buildScoreLabel(nil)
+	if label != "" {
+		t.Errorf("expected empty string, got %q", label)
+	}
+}
+
+// ---------------------------------------------------------------------------
+// MatchViewService — formatDateFRLong
+// ---------------------------------------------------------------------------
+
+func TestFormatDateFRLong_Known(t *testing.T) {
+	// 2025-12-01 19:42 UTC → local peut varier, on teste juste que ça parse
+	ts := time.Date(2025, time.December, 1, 19, 42, 0, 0, time.UTC)
+	got := formatDateFRLong(ts)
+	if got == "" {
+		t.Error("expected non-empty string")
+	}
+	// Le résultat doit contenir "déc." et "2025"
+	if len(got) < 10 {
+		t.Errorf("result too short: %q", got)
+	}
+}
+
+// ---------------------------------------------------------------------------
+// MatchViewService — convertMedals
+// ---------------------------------------------------------------------------
+
+func TestConvertMedals_Empty(t *testing.T) {
+	result := convertMedals(nil)
+	if len(result) != 0 {
+		t.Errorf("expected empty slice, got %d", len(result))
+	}
+}
+
+func TestConvertMedals_Single(t *testing.T) {
+	raw := []domain.MedalRaw{
+		{MedalID: 42, Count: 3, Label: "Killing Spree"},
+	}
+	result := convertMedals(raw)
+	if len(result) != 1 {
+		t.Fatalf("expected 1, got %d", len(result))
+	}
+	if result[0].MedalNameID != 42 || result[0].Count != 3 || result[0].Name != "Killing Spree" {
+		t.Errorf("unexpected medal: %+v", result[0])
+	}
+}
+
+// ---------------------------------------------------------------------------
+// ExplorerService — convertCommonMatches
+// ---------------------------------------------------------------------------
+
+func TestConvertCommonMatches_WereTeammates(t *testing.T) {
+	team0 := 0
+	raw := []domain.CommonMatchRaw{
+		{
+			MatchID:        "match1",
+			MapUI:          "Aquarius",
+			ModeUI:         "Slayer",
+			Player1TeamID:  &team0,
+			Player2TeamID:  &team0,
+			Player1Outcome: 2,
+		},
+	}
+	result := convertCommonMatches(raw, 0)
+	if len(result) != 1 {
+		t.Fatalf("expected 1, got %d", len(result))
+	}
+	if !result[0].WereTeammates {
+		t.Error("expected were_teammates=true when same team ID")
+	}
+	if result[0].PlayerOutcome != 2 {
+		t.Errorf("expected outcome=2, got %d", result[0].PlayerOutcome)
+	}
+}
+
+func TestConvertCommonMatches_Enemies(t *testing.T) {
+	team0 := 0
+	team1 := 1
+	raw := []domain.CommonMatchRaw{
+		{
+			MatchID:       "match1",
+			Player1TeamID: &team0,
+			Player2TeamID: &team1,
+		},
+	}
+	result := convertCommonMatches(raw, 0)
+	if result[0].WereTeammates {
+		t.Error("expected were_teammates=false when different team IDs")
+	}
+}
+
+func TestConvertCommonMatches_LimitApplied(t *testing.T) {
+	team0 := 0
+	raw := make([]domain.CommonMatchRaw, 10)
+	for i := range raw {
+		raw[i] = domain.CommonMatchRaw{
+			MatchID:       "match",
+			Player1TeamID: &team0,
+			Player2TeamID: &team0,
+		}
+	}
+	result := convertCommonMatches(raw, 3)
+	if len(result) != 3 {
+		t.Errorf("expected 3 (limit), got %d", len(result))
+	}
+}

@@ -37,6 +37,8 @@ type PlayerRepository interface {
 var (
 	_ BootstrapRepository = (*noopBootstrapRepo)(nil)
 	_ PlayerRepository    = (*noopPlayerRepo)(nil)
+	_ MatchViewRepository = (*noopMatchViewRepo)(nil)
+	_ ExplorerRepository  = (*noopExplorerRepo)(nil)
 )
 
 // noopBootstrapRepo — impl nulle pour le check de compilation uniquement.
@@ -77,6 +79,44 @@ type CareerRepository interface {
 	GetLUSRHistory(ctx context.Context) ([]domain.LUSRCheckpointDTO, error)
 	GetTopMatches(ctx context.Context) ([]domain.TopMatchRawRow, error)
 	GetEncounters(ctx context.Context) ([]domain.EncounterRawRow, error)
+}
+
+// MatchViewRepository fournit toutes les données d'un match pour la vue détail.
+// Implémenté par platform/duckdb.MatchViewRepo.
+type MatchViewRepository interface {
+	// GetMatchMeta retourne les métadonnées du match (Q13).
+	GetMatchMeta(ctx context.Context, matchID string) (*domain.MatchMetaRaw, error)
+
+	// GetPlayerMatchStats retourne les stats du joueur pour ce match (Q17).
+	GetPlayerMatchStats(ctx context.Context, xuid, matchID string) (*domain.PlayerMatchStatsRaw, error)
+
+	// GetMatchEnrichment retourne l'enrichissement joueur pour ce match (Q18).
+	GetMatchEnrichment(ctx context.Context, matchID string) (*domain.MatchEnrichmentRaw, error)
+
+	// GetMatchScoreboard retourne les stats de tous les joueurs (Q12).
+	GetMatchScoreboard(ctx context.Context, matchID string) ([]domain.ScoreboardRaw, error)
+
+	// GetMatchMedals retourne les médailles du joueur dans ce match (Q14).
+	GetMatchMedals(ctx context.Context, xuid, matchID string) ([]domain.MedalRaw, error)
+
+	// GetMatchEvents retourne les events highlight du match (Q21).
+	GetMatchEvents(ctx context.Context, matchID string) ([]domain.EventRaw, error)
+
+	// GetMatchWeaponKills retourne les kills par arme du joueur (Q16).
+	GetMatchWeaponKills(ctx context.Context, xuid, matchID string) ([]domain.WeaponKillRaw, error)
+
+	// GetMatchKVPairs retourne les paires killer→victim du match (Q20).
+	GetMatchKVPairs(ctx context.Context, matchID string) ([]domain.KVPairRaw, error)
+}
+
+// ExplorerRepository fournit les données pour l'explorer.
+// Implémenté par platform/duckdb.ExplorerRepo.
+type ExplorerRepository interface {
+	// GetCommonMatches retourne les matchs joués par 2 joueurs (Q19).
+	GetCommonMatches(ctx context.Context, xuid1, xuid2 string) ([]domain.CommonMatchRaw, error)
+
+	// ResolveXUIDByGamertag retourne le XUID pour un gamertag donné.
+	ResolveXUIDByGamertag(ctx context.Context, gamertag string) (string, error)
 }
 
 // GamertagRepository fournit la recherche de gamertags.
@@ -142,6 +182,44 @@ type noopGamertagRepo struct{}
 
 func (n *noopGamertagRepo) Search(_ context.Context, _ string) ([]domain.GamertagSearchResult, error) {
 	return nil, nil
+}
+
+// noopMatchViewRepo — impl nulle pour le check de compilation uniquement.
+type noopMatchViewRepo struct{}
+
+func (n *noopMatchViewRepo) GetMatchMeta(_ context.Context, _ string) (*domain.MatchMetaRaw, error) {
+	return nil, nil
+}
+func (n *noopMatchViewRepo) GetPlayerMatchStats(_ context.Context, _, _ string) (*domain.PlayerMatchStatsRaw, error) {
+	return nil, nil
+}
+func (n *noopMatchViewRepo) GetMatchEnrichment(_ context.Context, _ string) (*domain.MatchEnrichmentRaw, error) {
+	return nil, nil
+}
+func (n *noopMatchViewRepo) GetMatchScoreboard(_ context.Context, _ string) ([]domain.ScoreboardRaw, error) {
+	return nil, nil
+}
+func (n *noopMatchViewRepo) GetMatchMedals(_ context.Context, _, _ string) ([]domain.MedalRaw, error) {
+	return nil, nil
+}
+func (n *noopMatchViewRepo) GetMatchEvents(_ context.Context, _ string) ([]domain.EventRaw, error) {
+	return nil, nil
+}
+func (n *noopMatchViewRepo) GetMatchWeaponKills(_ context.Context, _, _ string) ([]domain.WeaponKillRaw, error) {
+	return nil, nil
+}
+func (n *noopMatchViewRepo) GetMatchKVPairs(_ context.Context, _ string) ([]domain.KVPairRaw, error) {
+	return nil, nil
+}
+
+// noopExplorerRepo — impl nulle pour le check de compilation uniquement.
+type noopExplorerRepo struct{}
+
+func (n *noopExplorerRepo) GetCommonMatches(_ context.Context, _, _ string) ([]domain.CommonMatchRaw, error) {
+	return nil, nil
+}
+func (n *noopExplorerRepo) ResolveXUIDByGamertag(_ context.Context, _ string) (string, error) {
+	return "", nil
 }
 
 // ConfigProvider fournit la configuration de l'application.
