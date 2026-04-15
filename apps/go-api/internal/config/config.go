@@ -1,0 +1,187 @@
+// Package config lit la configuration de l'application LevelUp.
+// Sources : db_profiles.json, app_settings.json, variables d'environnement.
+package config
+
+import (
+	"encoding/json"
+	"fmt"
+	"os"
+	"path/filepath"
+	"strings"
+
+	"levelup/go-api/internal/domain"
+)
+
+// AppConfig centralise la configuration de l'application.
+type AppConfig struct {
+	RepoRoot        string
+	DBProfilesPath  string
+	AppSettingsPath string
+	SessionDir      string
+	DemoMode        bool
+	DemoFixturesDir string
+	APIHost         string
+	APIPort         int
+	SessionSecret   string
+	CORSOrigins     []string
+	Lang            string
+}
+
+// Load charge la configuration depuis les variables d'environnement.
+// Les valeurs par défaut correspondent au développement local.
+func Load() (*AppConfig, error) {
+	repoRoot := getEnvOrDefault("LEVELUP_REPO_ROOT", autoDetectRepoRoot())
+	demoMode := strings.ToLower(getEnvOrDefault("LEVELUP_DEMO_MODE", "false")) == "true"
+
+	cfg := &AppConfig{
+		RepoRoot:        repoRoot,
+		DBProfilesPath:  getEnvOrDefault("LEVELUP_DB_PROFILES", filepath.Join(repoRoot, "db_profiles.json")),
+		AppSettingsPath: getEnvOrDefault("LEVELUP_APP_SETTINGS", filepath.Join(repoRoot, "app_settings.json")),
+		SessionDir:      getEnvOrDefault("LEVELUP_SESSION_DIR", filepath.Join(repoRoot, "data", "sessions")),
+		DemoMode:        demoMode,
+		DemoFixturesDir: getEnvOrDefault("LEVELUP_DEMO_FIXTURES_DIR", filepath.Join(repoRoot, "tests", "fixtures", "ref_player")),
+		APIHost:         getEnvOrDefault("LEVELUP_API_HOST", "127.0.0.1"),
+		APIPort:         getEnvInt("LEVELUP_API_PORT", 8000),
+		SessionSecret:   getEnvOrDefault("LEVELUP_SESSION_SECRET", "CHANGE_ME_IN_PRODUCTION"),
+		CORSOrigins:     parseCORSOrigins(getEnvOrDefault("LEVELUP_CORS_ORIGINS", "")),
+		Lang:            getEnvOrDefault("LEVELUP_LANG", "fr"),
+	}
+	return cfg, nil
+}
+
+// dbProfilesFile représente le format du fichier db_profiles.json (v2.1).
+// Structure : { "version": "2.1", "profiles": { "<gamertag>": {...} } }
+type dbProfilesFile struct {
+	Version string                    `json:"version"`
+	Profiles map[string]dbProfileEntry `json:"profiles"`
+}
+
+// dbProfileEntry représente une entrée dans la map "profiles" de db_profiles.json.
+type dbProfileEntry struct {
+	DBPath         string `json:"db_path"`
+	XUID           string `json:"xuid"`
+	WaypointPlayer string `json:"waypoint_player,omitempty"`
+}
+
+// LoadPlayers charge db_profiles.json et retourne la liste des joueurs.
+func (c *AppConfig) LoadPlayers() ([]domain.PlayerSummary, error) {
+	if c.DemoMode {
+		return []domain.PlayerSummary{{
+			PlayerSlug:     "DEMO",
+			Gamertag:       "DEMO",
+			XUID:           "0",
+			WaypointPlayer: "DEMO",
+			IsDemo:         true,
+		}}, nil
+	}
+
+	data, err := os.ReadFile(c.DBProfilesPath)
+	if err != nil {
+		if os.IsNotExist(err) {
+			return []domain.PlayerSummary{}, nil
+		}
+		return nil, fmt.Errorf("lecture db_profiles.json : %w", err)
+	}
+
+	var file dbProfilesFile
+	if err := json.Unmarshal(data, &file); err != nil {
+		return nil, fmt.Errorf("parsing db_profiles.json : %w", err)
+	}
+
+	players := make([]domain.PlayerSummary, 0, len(file.Profiles))
+	for gamertag, p := range file.Profiles {
+		wp := p.WaypointPlayer
+		if wp == "" {
+			wp = gamertag
+		}
+		players = append(players, domain.PlayerSummary{
+			PlayerSlug:     gamertag,
+			Gamertag:       gamertag,
+			XUID:           p.XUID,
+			WaypointPlayer: wp,
+			IsDemo:         false,
+		})
+	}
+	return players, nil
+}
+
+// LoadAppSettings charge app_settings.json. Retourne une map vide si absent.
+func (c *AppConfig) LoadAppSettings() (map[string]interface{}, error) {
+	data, err := os.ReadFile(c.AppSettingsPath)
+	if err != nil {
+		if os.IsNotExist(err) {
+			return map[string]interface{}{}, nil
+		}
+		return nil, fmt.Errorf("lecture app_settings.json : %w", err)
+	}
+
+	var settings map[string]interface{}
+	if err := json.Unmarshal(data, &settings); err != nil {
+		return nil, fmt.Errorf("parsing app_settings.json : %w", err)
+	}
+	return settings, nil
+}
+
+// ServerAddr retourne l'adresse d'écoute au format "host:port".
+func (c *AppConfig) ServerAddr() string {
+	return fmt.Sprintf("%s:%d", c.APIHost, c.APIPort)
+}
+
+// --- helpers ---
+
+func getEnvOrDefault(key, def string) string {
+	if v := os.Getenv(key); v != "" {
+		return v
+	}
+	return def
+}
+
+func getEnvInt(key string, def int) int {
+	v := os.Getenv(key)
+	if v == "" {
+		return def
+	}
+	var n int
+	if _, err := fmt.Sscanf(v, "%d", &n); err != nil {
+		return def
+	}
+	return n
+}
+
+func parseCORSOrigins(s string) []string {
+	if s == "" {
+		return []string{"http://localhost:5173", "http://127.0.0.1:5173"}
+	}
+	parts := strings.Split(s, ",")
+	out := make([]string, 0, len(parts))
+	for _, p := range parts {
+		if trimmed := strings.TrimSpace(p); trimmed != "" {
+			out = append(out, trimmed)
+		}
+	}
+	return out
+}
+
+// autoDetectRepoRoot remonte depuis le binaire pour trouver la racine du repo.
+// Cherche la présence de db_profiles.json ou db_profiles.example.json.
+func autoDetectRepoRoot() string {
+	// Dans le worktree go-migration, le binaire sera dans apps/go-api/cmd/server/
+	// La racine est 4 niveaux au-dessus.
+	exe, err := os.Executable()
+	if err != nil {
+		return "."
+	}
+	dir := filepath.Dir(exe)
+	// Remonte jusqu'à trouver db_profiles.example.json (marqueur de la racine repo)
+	for i := 0; i < 8; i++ {
+		if _, err := os.Stat(filepath.Join(dir, "db_profiles.example.json")); err == nil {
+			return dir
+		}
+		parent := filepath.Dir(dir)
+		if parent == dir {
+			break
+		}
+		dir = parent
+	}
+	return "."
+}
