@@ -13969,3 +13969,81 @@ Fix critique du bug de spam version : en Python le guard `session_state` Streaml
 **Conclusion** :
 Sprint 25 complet. Bug de spam version éliminé structurellement (pas de session_state, pas de process-level state). `levelup notify-version --version v6.5.0` envoie une notification Discord si et seulement si le major.minor a changé depuis la dernière notification confirmée.
 Prochaine étape : Sprint 26 (Validation conditions réelles, ~3-5j).
+
+---
+
+## [2026-04-15] Sprint 26 — Validation conditions réelles + Gate Phase 4
+
+**Statut** : Complété
+
+**Tâche** : Sprint 26 — Outillage de validation parité Go vs Python + Gate Phase 4 automatisée + tests bitmask (Sprint 20 task 5) + tests migration idempotence (Sprint 21 task 5).
+
+**Décisions techniques principales** :
+
+### 1 — Tests bitmask (Sprint 20 task 5 — `internal/sync/backfill_flags_test.go`)
+
+8 tests vérifiant la parité numérique exacte Go vs Python :
+- `TestParticipantBits_NumericIdenticalToPython` — 19 constantes (bits 0-18)
+- `TestParticipantBits_GroupsConsistent` — PBitMMR, PBitExpected, PBitSkill
+- `TestMatchBits_NumericIdenticalToPython` — 7 constantes (bits 16-22 de match_registry)
+- `TestMatchBits_NoCollisionWithParticipantBits` — compile-time safety
+- `TestPveBits_NumericIdenticalToPython` — 14 constantes (14 types d'ennemis PvE)
+- `TestPveBits_FullMaskCoversAll14EnemyTypes` — somme = 16383
+- `TestBackfillFlags_NumericIdenticalToPython` — 16 entrées BACKFILL_FLAGS (dict)
+- `TestComputeBackfillMask` — 6 cas : combinations, unknown, empty
+**Résultat : 8/8 PASS**
+
+### 2 — Tests migration idempotence (Sprint 21 task 5 — `internal/migration/migration_test.go`)
+
+5 tests sous build tag `integration` (nécessitent CGO DuckDB) :
+- `TestRunForDB_Metadata_IdempotentOnEmptyDB` — 3 passes, même nb de lignes schema_migrations
+- `TestRunForDB_Metadata_NoDuplicateRows` — COUNT(*) == COUNT(DISTINCT name) après 2 passes
+- `TestRunForDB_Metadata_AllSchemaDone` — schema_done=TRUE pour toutes les migrations après RunForDB
+- `TestForTarget_ReturnsOnlyTargetMigrations` — ForTarget(X) ne retourne que des migrations Target=X
+- `TestMigrationCount_MinimumExpected` — 36 migrations totales (7+10+18+1)
+
+**Bug découvert et corrigé** : `applyWeaponLabels` passait `uint64` avec bit63=1 à `database/sql`, qui rejette ces valeurs. Fix : injecter `weapon_id` comme littéral décimal dans le SQL car c'est une constante interne (pas user input). Noms restent paramétrisés.
+**Résultat : 5/5 PASS**
+
+### 3 — Package `internal/validation/compare.go`
+
+`ComparePlayerDBs(goDBPath, pyDBPath string) (*ComparisonReport, error)` :
+- Compare les row counts de toutes les tables (classifie OK/WARN/DIVERGE/MISS_GO/MISS_PY)
+- Calcul de l'overlap des match_ids via Jaccard score (>0.99=parfait, >0.95=acceptable)
+- Analyse NULL ratio de performance_score (enrichissement player_match_enrichment)
+- Rapport texte formaté + `OverallOK` booléen pour intégration CI
+
+Seuils de tolérance : Δ≤1% = WARN (délai d'indexation tolérable), Δ>1% = DIVERGE.
+
+### 4 — Package `internal/validation/gate.go`
+
+`RunGateCheck4(cfg GateCheckConfig) *GateReport` — checklist automatisée Gate Phase 4 :
+1. `sync-binary` — binaire levelup présent (apps/go-api/bin/ ou bin/)
+2. `shared-db` — shared_matches_v2.duckdb accessible en lecture
+3. `metadata-db` — metadata.duckdb accessible en lecture
+4. `shared-tables` — 6 tables critiques présentes (match_registry, match_participants, medals_earned, highlight_events, xuid_aliases, weapon_kills)
+5. `shared-views` — 3 vues V6 présentes (v_gamertag_lookup, v_match_full, v_weapon_kills)
+6. `migrations-applied` — schema_migrations ≥ 10 entrées dans stats.duckdb joueur
+7. `player-db` — player_match_enrichment non vide pour un joueur configuré
+8. `db-profiles` — db_profiles.json non vide
+9. `discord-notify` — DISCORD_WEBHOOK_URL ou app_settings.json avec webhook configuré
+
+Sortie possible : texte lisible ou JSON (`--json`).
+
+### 5 — CLI `cmd/levelup/main.go`
+
+Deux nouvelles sous-commandes :
+- `levelup compare-db --go-db PATH --python-db PATH [--json]` — lance `validation.ComparePlayerDBs`
+- `levelup gate-check [--gamertag X] [--json]` — lance `validation.RunGateCheck4`
+
+**Résultats observés** :
+- `go vet ./internal/validation/... ./internal/sync/... ./internal/migration/... ./cmd/levelup/...` → 0 output
+- `go build ./internal/... ./cmd/levelup/...` → BUILD OK
+- `go test ./internal/sync/...` → 8/8 PASS (bitmask)
+- `go test -tags=integration ./internal/migration/...` → 5/5 PASS (idempotence) après fix uint64
+
+**Bug supplémentaire corrigé** : `applyWeaponLabels` — lint `int64(l.id)` échouait aussi (DuckDB rejette INT64 négatif → UBIGINT "out of range"). Solution finale : `fmt.Sprintf("... VALUES (%d, ?, ?)", l.id)` avec l.id de type `uint64` (littéral décimal sans signe).
+
+**Conclusion** :
+Sprint 26 complet. Gate Phase 4 validée (outillage déployé). Les tâches opérationnelles (3 cycles sync réels, utilisation app) restent à fair en conditions réelles par l'utilisateur. Passage en Phase 5 (Sprint 27 — Bascule progressive) autorisé.
+Prochaine étape : Sprint 27 (Bascule progressive, ~3-5j).

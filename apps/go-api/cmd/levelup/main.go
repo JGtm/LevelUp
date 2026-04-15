@@ -12,6 +12,8 @@
 //	levelup seed           career-ranks | citation-mappings | medals
 //	levelup notify-version --version v1.2.3
 //	levelup notify-sync    --gamertag X --op sync_delta --duration 120s [--matches N]
+//	levelup compare-db     --go-db PATH --python-db PATH [--json]
+//	levelup gate-check     [--gamertag X] [--json]
 //
 // Variables d'environnement : LEVELUP_REPO_ROOT (auto-détecté si absent).
 package main
@@ -24,9 +26,12 @@ import (
 	"strings"
 	"time"
 
+	"encoding/json"
+
 	"levelup/go-api/internal/config"
 	"levelup/go-api/internal/notify"
 	"levelup/go-api/internal/ops"
+	"levelup/go-api/internal/validation"
 )
 
 func main() {
@@ -66,6 +71,10 @@ func main() {
 		exitErr = runNotifyVersion(cfg, args)
 	case "notify-sync":
 		exitErr = runNotifySync(cfg, args)
+	case "compare-db":
+		exitErr = runCompareDB(cfg, args)
+	case "gate-check":
+		exitErr = runGateCheck(cfg, args)
 	case "help", "--help", "-h":
 		printUsage()
 	default:
@@ -377,6 +386,70 @@ func runNotifySync(cfg *config.AppConfig, args []string) error {
 // Usage
 // ─────────────────────────────────────────────────────────────────────────────
 
+// ─────────────────────────────────────────────────────────────────────────────
+// compare-db
+// ─────────────────────────────────────────────────────────────────────────────
+
+func runCompareDB(_ *config.AppConfig, args []string) error {
+	fs := flag.NewFlagSet("compare-db", flag.ExitOnError)
+	goPath := fs.String("go-db", "", "Chemin vers la DB Go stats.duckdb (obligatoire)")
+	pyPath := fs.String("python-db", "", "Chemin vers la DB Python stats.duckdb (obligatoire)")
+	asJSON := fs.Bool("json", false, "Sortie JSON")
+	if err := fs.Parse(args); err != nil {
+		return err
+	}
+	if *goPath == "" || *pyPath == "" {
+		return fmt.Errorf("--go-db et --python-db sont obligatoires")
+	}
+	report, err := validation.ComparePlayerDBs(*goPath, *pyPath)
+	if err != nil {
+		return err
+	}
+	if *asJSON {
+		enc := json.NewEncoder(os.Stdout)
+		enc.SetIndent("", "  ")
+		return enc.Encode(report)
+	}
+	fmt.Print(report.Summary)
+	if !report.OverallOK {
+		return fmt.Errorf("divergences détectées")
+	}
+	return nil
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// gate-check
+// ─────────────────────────────────────────────────────────────────────────────
+
+func runGateCheck(cfg *config.AppConfig, args []string) error {
+	fs := flag.NewFlagSet("gate-check", flag.ExitOnError)
+	gamertag := fs.String("gamertag", "", "Gamertag du joueur de référence (optionnel)")
+	asJSON := fs.Bool("json", false, "Sortie JSON")
+	if err := fs.Parse(args); err != nil {
+		return err
+	}
+	gateCfg := validation.GateCheckConfig{
+		RepoRoot:       cfg.RepoRoot,
+		DBProfilesPath: cfg.DBProfilesPath,
+		Gamertag:       *gamertag,
+	}
+	report := validation.RunGateCheck4(gateCfg)
+	if *asJSON {
+		enc := json.NewEncoder(os.Stdout)
+		enc.SetIndent("", "  ")
+		return enc.Encode(report)
+	}
+	fmt.Print(report.Format())
+	if !report.AllPassed {
+		return fmt.Errorf("gate phase 4 non validée")
+	}
+	return nil
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Usage
+// ─────────────────────────────────────────────────────────────────────────────
+
 func printUsage() {
 	fmt.Print(`levelup — Outil d'exploitation LevelUp (backend Go)
 
@@ -394,6 +467,8 @@ Commandes:
   seed            Peupler les référentiels metadata.duckdb
   notify-version  Envoyer une notification Discord de nouvelle version
   notify-sync     Envoyer une notification Discord de fin de sync (test/debug)
+  compare-db      Comparer la parité Go vs Python (DB joueur)
+  gate-check      Vérifier la checklist Gate Phase 4
 
 Options globales:
   LEVELUP_REPO_ROOT        Racine du repo (auto-détecté si absent)

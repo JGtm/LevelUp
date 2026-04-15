@@ -5,7 +5,10 @@ package migration
 // add_challenge_metadata.py, add_medal_definitions.py, add_weapon_labels.py,
 // drop_legacy_translation_tables.py.
 
-import "database/sql"
+import (
+	"database/sql"
+	"fmt"
+)
 
 func init() {
 	Register(Migration{
@@ -177,7 +180,15 @@ func applyWeaponLabels(db *sql.DB) error {
 	}
 
 	// Sentinels + confirmed weapons (portage de WEAPON_INT_TO_NAME + WEAPON_NAME_FR)
-	type label struct{ id uint64; en, fr string }
+	//
+	// Contrainte driver : database/sql ne supporte pas uint64 avec bit63=1.
+	// Contournement : injecter weapon_id comme littéral décimal (valeur constante),
+	// les noms restent paramétrisés.
+	type label struct {
+		id   uint64
+		en   string
+		fr   string
+	}
 	labels := []label{
 		{0, "Grenade", "Grenade"},
 		{1, "Melee", "Corps à corps"},
@@ -223,13 +234,14 @@ func applyWeaponLabels(db *sql.DB) error {
 		{0x3ad55da442c9679f, "Dynamo Grenade", "Grenade dynamo"},
 	}
 
-	stmt, err := db.Prepare("INSERT OR IGNORE INTO weapon_labels (weapon_id, name_en, name_fr) VALUES (?, ?, ?)")
-	if err != nil {
-		return err
-	}
-	defer stmt.Close()
 	for _, l := range labels {
-		if _, err := stmt.Exec(l.id, l.en, l.fr); err != nil {
+		// Contournement driver : database/sql ne supporte pas uint64 avec bit63=1.
+		// weapon_id est une constante interne (pas user input) → littéral décimal sûr.
+		q := fmt.Sprintf( //nolint:gosec
+			"INSERT OR IGNORE INTO weapon_labels (weapon_id, name_en, name_fr) VALUES (%d, ?, ?)",
+			l.id,
+		)
+		if _, err := db.Exec(q, l.en, l.fr); err != nil {
 			return err
 		}
 	}
