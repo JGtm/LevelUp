@@ -1,0 +1,10 @@
+{
+  "status": "ok",
+  "match_count": 1544,
+  "db_version": "v1.5.2",
+  "checks": {
+    "db_profiles": "ok (4 joueur(s))",
+    "metadata_db": "ok",
+    "shared_db": "ok"
+  }
+}

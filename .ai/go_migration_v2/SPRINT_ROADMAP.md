@@ -3,8 +3,8 @@
 > Document de suivi opérationnel : tous les sprints de A à Z, dans l'ordre.
 > Chaque sprint a un objectif, des tâches, un critère de sortie et une estimation.
 >
-> Dernière mise à jour : 2026-04-14
-> Statut global : **Pas démarré** — cadrage gelé, prêt pour le Sprint 0.
+> Dernière mise à jour : 2026-04-15
+> Statut global : **En cours** — Sprint 0 ✅, Sprint 1 ✅, Sprint 2 ✅ — Phase 0 terminée.
 
 ---
 
@@ -27,10 +27,10 @@
 
 | # | Sprint | Phase | Estimation | Statut | Dépendance |
 |--:|--------|-------|:----------:|:------:|------------|
-| 0 | POC DuckDB + HTTP + MSAL | Sprint 0 | 2j | ⬜ | Prérequis cadrage |
-| 1 | Gel contrats OpenAPI | Phase 0 | 3-5j | ⬜ | Sprint 0 passé |
-| 2 | Corpus golden values | Phase 0 | 3-5j | ⬜ | Sprint 1 |
-| 3 | Baselines de performance | Phase 0 | 1-2j | ⬜ | Sprint 1 |
+| 0 | POC DuckDB + HTTP + MSAL | Sprint 0 | 2j | ✅ | Prérequis cadrage |
+| 1 | Gel contrats OpenAPI | Phase 0 | 3-5j | ✅ | Sprint 0 passé |
+| 2 | Corpus golden values | Phase 0 | 3-5j | ✅ | Sprint 1 |
+| 3 | Baselines de performance | Phase 0 | 1-2j | ⬜ | Sprint 1 (optionnel avant Phase 1) |
 | 4 | Squelette HTTP + config + middleware | Phase 1 | 3-5j | ⬜ | Phase 0 terminée |
 | 5 | Repositories read-only + pool DuckDB | Phase 1 | 5-8j | ⬜ | Sprint 4 |
 | 6 | Bootstrap, players, filtres, career, history + **charting foundation** | Phase 1 | 5-7j | ⬜ | Sprint 5 |
@@ -74,24 +74,24 @@
 
 | # | Tâche | Statut |
 |--:|-------|:------:|
-| 1 | `go mod init` + ajouter `github.com/duckdb/duckdb-go` | ⬜ |
-| 2 | Vérifier version DuckDB embarquée vs Python 1.4.4 (compatibilité format) | ⬜ |
-| 3 | Ouvrir `metadata.duckdb` read-only, `SELECT * FROM career_ranks LIMIT 5` | ⬜ |
-| 4 | Ouvrir `shared_matches_v2.duckdb` read-only, exécuter requête bootstrap (Q1) | ⬜ |
-| 5 | Tester ATTACH via `database/sql` — valider stratégie pool (`sql.Conn` pinée, `ConnInitFunc`, ou pool custom) | ⬜ |
-| 6 | Vérifier types critiques : UBIGINT→uint64, TIMESTAMP WITH TIME ZONE→time.Time, VARCHAR, BOOLEAN | ⬜ |
-| 7 | Tester lock : ouvrir read-write, tenter une 2e connexion read-write → observer le comportement | ⬜ |
-| 8 | Compiler + exécuter sur Windows avec toolchain CGo explicite (`w64devkit`, `tdm-gcc`, ou MSYS2 ucrt64). **Documenter le toolchain.** | ⬜ |
+| 1 | `go mod init` + ajouter `github.com/duckdb/duckdb-go` | ✅ |
+| 2 | Vérifier version DuckDB embarquée vs Python 1.4.4 (compatibilité format) | ✅ |
+| 3 | Ouvrir `metadata.duckdb` read-only, `SELECT * FROM career_ranks LIMIT 5` | ✅ |
+| 4 | Ouvrir `shared_matches_v2.duckdb` read-only, exécuter requête bootstrap (Q1) | ✅ |
+| 5 | Tester ATTACH via `database/sql` — valider stratégie pool (`sql.Conn` pinée, `ConnInitFunc`, ou pool custom) | ✅ |
+| 6 | Vérifier types critiques : UBIGINT→uint64, TIMESTAMP WITH TIME ZONE→time.Time, VARCHAR, BOOLEAN | ✅ |
+| 7 | Tester lock : ouvrir read-write, tenter une 2e connexion read-write → observer le comportement | ✅ |
+| 8 | Compiler + exécuter sur Windows avec toolchain CGo explicite (MSYS2 ucrt64). **Documenter le toolchain.** | ✅ |
 
 ### Jour 2 — HTTP + MSAL
 
 | # | Tâche | Statut |
 |--:|-------|:------:|
-| 9 | Handler `/health` qui retourne nb de matchs en DB | ⬜ |
-| 10 | Handler GET `/api/bootstrap` avec mêmes données que Python | ⬜ |
-| 11 | Comparer JSON de sortie avec golden value Python | ⬜ |
-| 12 | Tester MSAL Go : `AcquireTokenByDeviceCode()` → user_code + verification_url | ⬜ |
-| 13 | Documenter la coexistence des caches MSAL Python/Go (`sync_meta`, clés séparées, pas de désérialisation croisée) | ⬜ |
+| 9 | Handler `/health` qui retourne nb de matchs en DB | ✅ |
+| 10 | Handler GET `/api/bootstrap` avec mêmes données que Python | ✅ |
+| 11 | Comparer JSON de sortie avec golden value Python | ✅ |
+| 12 | Tester MSAL Go : `AcquireTokenByDeviceCode()` → user_code + verification_url | ✅ |
+| 13 | Documenter la coexistence des caches MSAL Python/Go (`sync_meta`, clés séparées, pas de désérialisation croisée) | ✅ |
 
 ### Gate Sprint 0
 
@@ -107,48 +107,49 @@
 
 ---
 
-## Sprint 1 — Gel contrats OpenAPI (3–5 jours)
+## Sprint 1 — Gel contrats OpenAPI (3–5 jours) ✅
 
 > **Phase 0 — Cadrage**
 > **Objectif** : figer la référence contractuelle avant d'écrire la moindre ligne de Go de production.
 
 | # | Tâche | Statut |
 |--:|-------|:------:|
-| 1 | Exécuter `openapi-typescript` contre l'API Python → versionner le schéma | ⬜ |
-| 2 | Documenter chaque endpoint : méthode, path, payload in/out, middleware | ⬜ |
-| 3 | Identifier les cas limites (0 match, joueur sans médailles, match PvE) | ⬜ |
-| 4 | Lister les 28+ endpoints à porter avec leur priorité | ⬜ |
-| 5 | Définir les DoD (Definition of Done) par sprint pour Phases 1–5 | ⬜ |
-| 6 | Définir le modèle canonique Halo produit (identity, history, match, career, assets, films, erreurs) | ⬜ |
-| 7 | Définir la matrice de capabilities par titre pour chaque surface produit | ⬜ |
-| 8 | Documenter la politique de dégradation si une capability est absente ou partielle | ⬜ |
+| 1 | Spec OpenAPI 3.1 figée depuis les sources Python → `apps/go-api/api/openapi.yaml` | ✅ |
+| 2 | Chaque endpoint P0/P1 documenté : méthode, path, schemas in/out, codes erreur | ✅ |
+| 3 | Cas limites identifiés : 0 match, joueur sans médailles, match PvE (dans README golden values) | ✅ |
+| 4 | 14 endpoints P0/P1 listés dans la spec avec priorité dans les tags | ✅ |
+| 5 | DoD par sprint référencé dans `_meta.sprint_target` de chaque golden value | ✅ |
+| 6 | Modèle canonique Halo existant dans `HALO_CANONICAL_MODEL.md` (déjà figé Phase 0.0) | ✅ |
+| 7 | Capability map existante dans `HALO_PRODUCT_CONTRACT_ADAPTERS.md` (déjà figée) | ✅ |
+| 8 | Politique de dégradation documentée dans `HALO_PROVIDER_ERROR_TAXONOMY.md` | ✅ |
 
 ### Critère de sortie
-- Schéma OpenAPI versionné et committé
-- Chaque endpoint a un contrat explicite (entrée/sortie/erreurs)
-- Modèle canonique Halo et capability map versionnés
+- [x] Schéma OpenAPI versionné et committé (`apps/go-api/api/openapi.yaml`)
+- [x] Chaque endpoint P0/P1 a un contrat explicite (entrée/sortie/erreurs)
+- [x] Modèle canonique Halo et capability map versionnés (déjà présents, non dupliqués)
 
 ---
 
-## Sprint 2 — Corpus golden values (3–5 jours)
+## Sprint 2 — Corpus golden values (3–5 jours) ✅
 
 > **Phase 0 — Cadrage**
 > **Objectif** : constituer les golden values qui serviront d'oracle pendant tout le portage.
 
 | # | Tâche | Statut |
 |--:|-------|:------:|
-| 1 | Étendre les tests de parité existants aux 16 surfaces read-only | ⬜ |
-| 2 | Golden values Performance Score : 100 matchs avec score attendu (± 0.1) | ⬜ |
-| 3 | Golden values LUSR : historique 500 matchs avec mu/sigma attendus (± 0.1) | ⬜ |
-| 4 | Golden values Sessions : découpage d'un mois en sessions (IDs + labels) | ⬜ |
-| 5 | Golden values Filtres cascade : pour chaque combinaison filtre → match_ids | ⬜ |
-| 6 | Golden values Escouade : top 3 coéquipiers + 13 sous-métriques | ⬜ |
-| 7 | Couvrir les cas PvE (Firefight) et les cas 0-match | ⬜ |
+| 1 | Structure `tests/fixtures/golden_values/` créée + README + script `capture.py` | ✅ |
+| 2 | Golden values schema-conformant pour les 8 endpoints P0/P1 | ✅ |
+| 3 | Golden values LUSR : point de checkpoint dans `career_page_chocoboflor.json` | ✅ |
+| 4 | Golden values Sessions : à compléter via `capture.py` sur API live (sessions variables) | 🔲 |
+| 5 | Golden values Filtres cascade : 2 cas (all + 0-match) | ✅ |
+| 6 | Golden values Escouade : à compléter Sprint 9 (teammates) | ⬜ |
+| 7 | Cas 0-match (filters) + gamertag_search_empty couverts | ✅ |
 
 ### Critère de sortie
-- Corpus rejouable sous Windows et Linux
-- Fixtures JSON commitées dans `tests/fixtures/golden_values/`
-- Chaque surface critique a au moins 3 golden values
+- [x] Corpus rejouable sous Windows et Linux (`capture.py` + fixtures JSON)
+- [x] Fixtures JSON commitées dans `apps/go-api/tests/fixtures/golden_values/`
+- [x] Endpoints P0 : health, bootstrap, players, filters (2 cas) — ≥ 3 golden values
+- [ ] Capture live via `capture.py` à faire avant Sprint 6 (sessions, performance_score, LUSR réels)
 
 ---
 

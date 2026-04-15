@@ -1,5 +1,32 @@
 # Thought Log
 
+## [2026-04-15] feat(go-api): Sprint 1+2 — Spec OpenAPI 3.1 + Corpus golden values
+
+**Statut** : Complété
+
+**Tâche** : Sprint 1 (Gel contrats OpenAPI) puis Sprint 2 (Corpus golden values) du plan de migration Go. Lire toutes les sources Python (17 routers, 15+ schémas Pydantic v2) et en extraire la spec OpenAPI 3.1 et les fixtures d'oracle.
+
+**Décisions techniques principales** :
+
+1. **OpenAPI 3.1.0 plutôt que 3.0** — requis pour `oapi-codegen` v2 en Sprint 4. Format `nullable` en 3.1 : `oneOf: [type, null]` remplacé par champ `nullable: true` (compromis pour compatibilité tooling).
+2. **PaginatedResponse générique Python → schemas nommés OpenAPI** — Python utilise `PaginatedResponse[MatchHistoryRow]` (generic). OpenAPI 3.1 ne supporte pas les génériques inlinés avec oapi-codegen v2. Solution : schemas nommés dédiés (`PaginatedMatchHistoryResponse`, `PaginatedExplorerMatchesResponse`).
+3. **PlotlyFigurePayload** — champ `figure: object` avec `additionalProperties: true` → `map[string]any` en Go. Acceptable car Plotly est opaque en backend (transmis tel quel au frontend React).
+4. **14 endpoints dans la spec** (pas 28+) — seuls les endpoints P0 et P1 marqués dans `OPENAPI_MVP_P0_P1.md` sont portés en Phase 1. Les endpoints P2 (synthesis, media, session_compare, timeseries…) seront ajoutés en Phase 2.
+5. **Fixtures schema-conformant vs captured_live** — les 10 fixtures Sprint 2 sont construites depuis les schémas (API Python non démarrée pendant la session). Elles définissent la *forme* attendue. Le champ `_meta.source: "schema-conformant"` distingue ces fixtures des vraies valeurs. **Avant Sprint 6** : remplacer via `capture.py` (httpx, `uvicorn app.main:app --port 8000`).
+6. **Bloc `_meta` dans chaque fixture** — clé spéciale ignorée par les assertions métier du runner Go. Contient : `version`, `captured_at`, `source`, `tolerances` (champs flottants avec delta acceptable), `sprint_target`.
+7. **Cas limites couverts au Sprint 2** : 0 match après filtre (`filters_resolve_zero_matches.json`), gamertag search sans résultat (`gamertag_search_empty.json`). Cas PvE et escouade renvoyés à Sprint 9.
+
+**Résultats observés** :
+- `apps/go-api/api/openapi.yaml` : 14 endpoints, 50+ schemas, ~850 lignes — 0 erreur yaml
+- `apps/go-api/tests/fixtures/golden_values/` : 10 fixtures JSON + capture.py (httpx) + README.md
+- SPRINT_ROADMAP.md : Sprint 1 + Sprint 2 → ✅
+- GO_MIGRATION_CHECKLIST.md : lots 3+4 → `pret_integration`
+
+**Conclusion / prochaine étape** :
+Phase 0 terminée. Ouvrir Sprint 4 (squelette HTTP Go + `oapi-codegen` + CI GitHub Actions). Gates à valider avant Sprint 6 : lancer `capture.py` avec Python API active pour avoir des golden values réelles.
+
+---
+
 ## [2026-04-15] feat(go-api): Sprint 0 terminé — DuckDB, HTTP, MSAL validés sur Windows
 
 **Statut** : Complété

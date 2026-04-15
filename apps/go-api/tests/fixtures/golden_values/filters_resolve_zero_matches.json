@@ -1,0 +1,50 @@
+{
+  "effective": {
+    "filter_mode": "period",
+    "period": {
+      "start_date": null,
+      "end_date": null
+    },
+    "sessions": {
+      "picked_session_label": null,
+      "picked_solo_session_label": null,
+      "picked_squad_session_label": null,
+      "picked_sessions": [],
+      "gap_minutes": 120
+    },
+    "cascade": {
+      "experience_types": [],
+      "playlists": ["ranked_arena"],
+      "modes": [],
+      "maps": []
+    }
+  },
+  "available_options": {
+    "experience_types": [
+      {"label": "PvP", "value": "pvp"},
+      {"label": "PvE (Firefight)", "value": "pve"}
+    ],
+    "playlists": [],
+    "modes": [],
+    "maps": []
+  },
+  "session_options": {
+    "all_sessions": [],
+    "solo_labels": [],
+    "squad_labels": []
+  },
+  "counts": {
+    "total_matches_before_filters": 1544,
+    "total_matches_after_filters": 0
+  },
+
+  "_meta": {
+    "golden_value_version": "sprint1",
+    "captured_at": "2026-04-15",
+    "source": "schema-conformant — cas limite : aucun match après filtre",
+    "tolerances": {
+      "counts.total_matches_after_filters": "0 attendu si aucun match Ranked Arena"
+    },
+    "sprint_target": "Sprint 6 — tester le cas 0-match"
+  }
+}

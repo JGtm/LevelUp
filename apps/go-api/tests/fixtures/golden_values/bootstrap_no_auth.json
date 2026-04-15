@@ -1,0 +1,75 @@
+{
+  "setup_required": false,
+  "auth_state": "missing",
+  "setup_state": "profile_ready_no_sync",
+  "current_player": null,
+  "available_players": [
+    {
+      "player_slug": "Chocoboflor",
+      "gamertag": "Chocoboflor",
+      "xuid": "2535412781684883",
+      "waypoint_player": "Chocoboflor",
+      "is_demo": false
+    },
+    {
+      "player_slug": "JGtm",
+      "gamertag": "JGtm",
+      "xuid": "2533274981317184",
+      "waypoint_player": "JGtm",
+      "is_demo": false
+    },
+    {
+      "player_slug": "Madina97294",
+      "gamertag": "Madina97294",
+      "xuid": "2535468670218350",
+      "waypoint_player": "Madina97294",
+      "is_demo": false
+    },
+    {
+      "player_slug": "XxDaemonGamerxX",
+      "gamertag": "XxDaemonGamerxX",
+      "xuid": "2533274981317185",
+      "waypoint_player": "XxDaemonGamerxX",
+      "is_demo": false
+    }
+  ],
+  "locale": "fr",
+  "hints_visible_default": true,
+  "feature_flags": {
+    "v7_enabled": true,
+    "media_enabled": true,
+    "demo_mode": false,
+    "discord_configured": false,
+    "tailscale_enabled": false
+  },
+  "capabilities": {
+    "can_read_local_data": true,
+    "can_run_sync": true,
+    "can_use_live_halo": false,
+    "can_manage_settings": true,
+    "can_reset_media_index": true,
+    "can_view_media": true,
+    "can_self_provision": false,
+    "can_start_initial_sync": false,
+    "can_manage_instance": false
+  },
+  "settings_excerpt": {
+    "lang": "fr",
+    "user_timezone": "Europe/Paris",
+    "show_records": true,
+    "normalize_mode_labels": true
+  },
+  "linked_halo_identity": null,
+  "active_sync_job_id": null,
+
+  "_meta": {
+    "golden_value_version": "sprint1",
+    "captured_at": "2026-04-15",
+    "source": "schema-conformant — à remplacer par capture live depuis Python API",
+    "tolerances": {
+      "available_players_order": "order may vary — check as set",
+      "current_player": "null acceptable au Sprint 0/1 (auth non portée)"
+    },
+    "sprint_target": "Sprint 6 — vérifier parité endpoint par endpoint"
+  }
+}

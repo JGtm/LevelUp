@@ -1,0 +1,60 @@
+{
+  "summary": {
+    "total_matches_scoped": 1544,
+    "total_matches_unfiltered": 1544,
+    "period_label": null,
+    "active_filter_mode": "period"
+  },
+  "table": {
+    "items": [
+      {
+        "match_id": "00000000-0000-0000-0000-000000000001",
+        "start_time": "2025-12-01T18:42:00Z",
+        "start_time_label": "01 déc. 2025, 19:42",
+        "outcome_code": 2,
+        "outcome_label": "Victoire",
+        "score_label": "50-45",
+        "map_ui": "Aquarius",
+        "mode_ui": "Slayer",
+        "playlist_label": "Quick Play",
+        "team_mmr": 1450.2,
+        "enemy_mmr": 1398.1,
+        "delta_mmr": 52.1,
+        "win_rate_hist": 0.54,
+        "win_rate_hist_total": 50,
+        "performance_score_relative": 72,
+        "average_life_mmss": "1:42",
+        "match_url": "/players/Chocoboflor/matches/00000000-0000-0000-0000-000000000001"
+      }
+    ],
+    "pagination": {
+      "total": 1544,
+      "page": 1,
+      "page_size": 50,
+      "has_next": true,
+      "has_prev": false
+    },
+    "freshness": null
+  },
+  "available_sort_fields": [
+    "start_time",
+    "outcome_code",
+    "performance_score_relative",
+    "team_mmr",
+    "delta_mmr",
+    "win_rate_hist"
+  ],
+  "export_hint": null,
+
+  "_meta": {
+    "golden_value_version": "sprint1",
+    "captured_at": "2026-04-15",
+    "source": "schema-conformant — 1 ligne d'exemple, valeurs synthétiques",
+    "tolerances": {
+      "table.pagination.total": "± stable mais peut changer si nouvelle sync",
+      "table.items": "ordre par start_time DESC par défaut",
+      "table.items[0].match_id": "à remplacer par un vrai match_id de la DB"
+    },
+    "sprint_target": "Sprint 6 — POST /pages/match-history/query (page 1, no filter)"
+  }
+}

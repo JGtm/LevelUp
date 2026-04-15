@@ -1,0 +1,121 @@
+{
+  "header": {
+    "match_id": "00000000-0000-0000-0000-000000000001",
+    "start_time": "2025-12-01T18:42:00Z",
+    "start_time_label": "01 déc. 2025, 19:42",
+    "outcome_code": 2,
+    "outcome_label": "Victoire",
+    "outcome_color": "#22c55e",
+    "score_label": "50-45",
+    "dominance_flag": false,
+    "had_bot_teammate": false,
+    "map_ui": "Aquarius",
+    "map_id": "aquarius",
+    "mode_ui": "Slayer",
+    "playlist_label": "Quick Play",
+    "performance_display": "72",
+    "performance_color": "#3b82f6"
+  },
+  "rank": {
+    "rating_type": "LUSR",
+    "tier_label": "Platinum",
+    "numeric_value": 1412.7,
+    "delta_value": 8.2,
+    "icon_url": null
+  },
+  "summary_tab": {
+    "kpis": {
+      "kills": 18,
+      "deaths": 4,
+      "assists": 3,
+      "kda": 5.25,
+      "damage_dealt": 8245.0,
+      "average_life": "1:42"
+    },
+    "personal_result": {
+      "outcome_label": "Victoire",
+      "outcome_color": "#22c55e",
+      "score": 50,
+      "rank_in_team": 1
+    },
+    "medals": [
+      {
+        "medal_name_id": 1260896751,
+        "name": "Killing Spree",
+        "count": 2,
+        "description": "Kill 5 enemies in a row without dying."
+      }
+    ],
+    "citations": [],
+    "expected_stats": {
+      "has_expected_data": false,
+      "expected_kills": null,
+      "expected_deaths": null,
+      "expected_assists": null
+    }
+  },
+  "combat_tab": {
+    "weapon_kills": [
+      {
+        "weapon_id": 196,
+        "weapon_label": "Battle Rifle",
+        "effective_weapon_id": 196,
+        "kill_count": 10
+      },
+      {
+        "weapon_id": 1,
+        "weapon_label": "Melee",
+        "effective_weapon_id": null,
+        "kill_count": 2
+      }
+    ],
+    "highlight_events": [],
+    "charts": []
+  },
+  "team_tab": {
+    "roster": [
+      {
+        "xuid": "2535412781684883",
+        "gamertag": "Chocoboflor",
+        "team_side": "Eagle",
+        "is_me": true,
+        "is_bot": false,
+        "kills": 18,
+        "deaths": 4,
+        "assists": 3,
+        "kda": 5.25,
+        "damage_dealt": 8245.0,
+        "damage_taken": 3100.0
+      }
+    ],
+    "scoreboard": [],
+    "nemesis": [],
+    "encounters": []
+  },
+  "media_tab": {
+    "media_items": []
+  },
+  "citations_tab": {
+    "commendations": [],
+    "medals": [
+      {
+        "medal_name_id": 1260896751,
+        "name": "Killing Spree",
+        "count": 2,
+        "description": "Kill 5 enemies in a row without dying."
+      }
+    ]
+  },
+
+  "_meta": {
+    "golden_value_version": "sprint1",
+    "captured_at": "2026-04-15",
+    "source": "schema-conformant — valeurs synthétiques réalistes pour match Slayer",
+    "tolerances": {
+      "combat_tab.charts": "[] acceptable en Sprint 0/1 — charts portés en Sprint 8",
+      "team_tab.scoreboard": "[] acceptable — à remplir avec données réelles Sprint 8",
+      "header.match_id": "remplacer par un vrai match_id de la DB"
+    },
+    "sprint_target": "Sprint 8 — GET /players/{slug}/matches/{match_id}"
+  }
+}
