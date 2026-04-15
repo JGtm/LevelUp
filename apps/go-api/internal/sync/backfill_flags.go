@@ -89,12 +89,17 @@ const (
 	PveBitBrute      = 1 << 5 // 32   — brute_kills
 	PveBitHunter     = 1 << 6 // 64   — hunter_kills
 	PveBitSkimmer    = 1 << 7 // 128  — skimmer_kills
-	PveBitSentinel   = 1 << 8 // 256  — sentinel_kills
-	PveBitMarine     = 1 << 9 // 512  — marine_kills
+PveBitCrawler    = 1 << 8  // 256  — crawler_kills  (Forerunner)
+        PveBitSoldier    = 1 << 9  // 512  — soldier_kills  (Forerunner)
+        PveBitKnight     = 1 << 10 // 1024 — knight_kills   (Forerunner)
+        PveBitWarden     = 1 << 11 // 2048 — warden_kills   (Forerunner)
+        PveBitSentinel   = 1 << 12 // 4096 — sentinel_kills (Forerunner, rare)
+        PveBitMarine     = 1 << 13 // 8192 — marine_kills   (alliés, rare)
 
-	PveBitAllEnemies = PveBitGrunt | PveBitElite | PveBitJackal | PveBitBrute |
-		PveBitHunter | PveBitSkimmer | PveBitSentinel | PveBitMarine
-	PveBitFullPVE = PveBitTotalKills | PveBitBossKills | PveBitAllEnemies
+        PveBitAllEnemies = PveBitGrunt | PveBitElite | PveBitJackal | PveBitBrute |
+                PveBitHunter | PveBitSkimmer | PveBitCrawler | PveBitSoldier |
+                PveBitKnight | PveBitWarden | PveBitSentinel | PveBitMarine
+        PveBitFullPVE = PveBitTotalKills | PveBitBossKills | PveBitAllEnemies
 )
 
 // ─────────────────────────────────────────────────────────────────────────────

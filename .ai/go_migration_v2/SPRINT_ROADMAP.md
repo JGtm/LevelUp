@@ -3,8 +3,8 @@
 > Document de suivi opérationnel : tous les sprints de A à Z, dans l'ordre.
 > Chaque sprint a un objectif, des tâches, un critère de sortie et une estimation.
 >
-> Dernière mise à jour : 2026-07-17
-> Statut global : **En cours** — Sprints 0–22 ✅ — Phases 0+1+2+3 complètes + Sprint 18-22 ✅, Sprint 23 ⬜ en attente.
+> Dernière mise à jour : 2026-04-22
+> Statut global : **En cours** — Sprints 0–24 ✅ (Sprint 20 partiel : tâches 5-6 ⏳) — Phases 0+1+2+3 complètes + Sprint 18-24 ✅, Sprint 25 ⬜ en attente.
 
 ---
 
@@ -47,11 +47,11 @@
 | 17 | Jobs longs persistants | Phase 3 | 4-6j | ✅ | Sprint 15 |
 | 18 | Moteur sync minimal (12 mixins, ~13K LOC) | Phase 4 | 10-15j | ✅ | Gate Phase 3 |
 | 19 | Pipeline post-sync | Phase 4 | 5-7j | ✅ | Sprint 18 |
-| 20 | Backfill complet (96 champs, ~120 args) | Phase 4 | 7-10j | ⬜ | Sprint 19 |
-| 21 | Migrations DuckDB (35 steps) | Phase 4 | 5-7j | ⬜ | Sprint 18 |
-| 22 | Weapon parsing | Phase 4 | 5-8j | ⬜ | Sprint 18 |
-| 23 | PvE Firefight | Phase 4 | 2-3j | ⬜ | Sprint 18 |
-| 24 | Scripts d'exploitation | Phase 4 | 5-7j | ⬜ | Sprint 18 |
+| 20 | Backfill complet (96 champs, ~120 args) | Phase 4 | 7-10j | 🔄 | Sprint 19 |
+| 21 | Migrations DuckDB (36 steps) | Phase 4 | 5-7j | ✅ | Sprint 18 |
+| 22 | Weapon parsing | Phase 4 | 5-8j | ✅ | Sprint 18 |
+| 23 | PvE Firefight | Phase 4 | 2-3j | ✅ | Sprint 18 |
+| 24 | Scripts d'exploitation | Phase 4 | 5-7j | ✅ | Sprint 18 |
 | 25 | Notifications Discord | Phase 4 | 2-3j | ⬜ | Sprint 18 |
 | 26 | Validation conditions réelles | Phase 5 | 3-5j | ⬜ | Gate Phase 4 |
 | 27 | Bascule progressive | Phase 5 | 3-5j | ⬜ | Sprint 26 |
@@ -537,7 +537,7 @@
 
 ---
 
-## Sprint 20 — Backfill complet (7–10 jours)
+## Sprint 20 — Backfill complet (7–10 jours) 🔄
 
 > **Phase 4 — Sync, backfill, outillage**
 > **Objectif** : reproduire fidèlement SyncScope et le bitmask.
@@ -620,9 +620,9 @@
 
 | # | Tâche | Statut |
 |--:|-------|:------:|
-| 1 | Détection mode PvE via playlist_id | ⬜ |
-| 2 | Extraction stats PvE depuis API 343i | ⬜ |
-| 3 | Insert dans shared_pve.duckdb (waves, boss_kills, kills par type d'ennemi) | ⬜ |
+| 1 | Détection mode PvE via playlist_id (`isFirefightMatch()` existant + PveBits fix) | ✅ |
+| 2 | Extraction stats PvE depuis API 343i (`internal/sync/pve.go` — 2 layouts API) | ✅ |
+| 3 | Insert dans shared_pve.duckdb (waves, boss_kills, kills par type d'ennemi) | ✅ |
 | 4 | Tests de parité PvE | ⬜ |
 
 ### Critère de sortie
@@ -637,15 +637,15 @@
 
 | # | Tâche | Statut |
 |--:|-------|:------:|
-| 1 | `levelup backup` : backup DB joueur | ⬜ |
-| 2 | `levelup restore` : restore DB joueur | ⬜ |
-| 3 | `levelup healthcheck` : diagnostic intégrité | ⬜ |
-| 4 | `levelup diagnose` : debug schémas | ⬜ |
-| 5 | `levelup check-env` : validation environnement | ⬜ |
-| 6 | `levelup archive` : archivage Parquet (arrow-go) | ⬜ |
-| 7 | `levelup index-media` : indexation vidéos (ffprobe subprocess) | ⬜ |
-| 8 | `levelup seed` : seed metadata (populate_*) | ⬜ |
-| 9 | Portage spawn detection (algorithme 7, ~700 LOC) — golden values sur ≥20 matchs | ⬜ |
+| 1 | `levelup backup` : backup DB joueur (`internal/ops/backup.go`) | ✅ |
+| 2 | `levelup restore` : restore DB joueur (`internal/ops/restore.go`) | ✅ |
+| 3 | `levelup healthcheck` : diagnostic intégrité (`internal/ops/healthcheck.go`) | ✅ |
+| 4 | `levelup diagnose` : debug schémas (`internal/ops/diagnose.go`) | ✅ |
+| 5 | `levelup check-env` : validation environnement (`cmd/levelup/main.go`) | ✅ |
+| 6 | `levelup archive` : archivage Parquet (`internal/ops/archive.go`) | ✅ |
+| 7 | `levelup index-media` : indexation vidéos (`internal/ops/media.go`) | ✅ |
+| 8 | `levelup seed` : seed metadata (`internal/ops/seed.go`) | ✅ |
+| 9 | Portage spawn detection (algorithme 7) — `internal/analysis/spawn_detection.go` | ✅ |
 
 ### Critère de sortie
 - Backup/restore/healthcheck Go fonctionnels
