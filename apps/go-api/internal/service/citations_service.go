@@ -36,7 +36,7 @@ func (s *CitationsService) GetCitationsPage(ctx context.Context) (*domain.Citati
 	categories := analysis.ExtractCategories(items)
 
 	return &domain.CitationsPageResponse{
-		Items:      items,
+		Citations:  items,
 		Categories: categories,
 	}, nil
 }
@@ -62,7 +62,7 @@ func (s *CitationsService) GetCommendationsPage(
 
 	return &domain.CommendationsPageResponse{
 		Categories: grouped,
-		TotalMedals: countTotalMedals(grouped),
+		TotalCount: countTotalMedals(grouped),
 	}, nil
 }
 
