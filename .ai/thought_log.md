@@ -13934,3 +13934,38 @@ Prochaine étape selon SPRINT_ROADMAP : Sprint 12 (Escouade + Synthèse, ~7-10j)
 **Conclusion** :
 Sprints 23+24 entièrement complétés. PvE Firefight sync fonctionnel (14 bits PveBitmask parité Python). Tous les scripts d'exploitation portés en Go avec CLI unifiée. Spawn detection (algorithme 7) disponible dans `internal/analysis/`.
 Prochaine étape : Sprint 25 (Notifications Discord, ~2-3j).
+
+---
+
+## [2026-04-22] Sprint 25 — Notifications Discord + fix bug spam version
+
+**Statut** : Complété ✅
+
+**Décision technique principale** :
+Portage complet du système Discord Python (4 fichiers ~1 400 LOC) en Go dans `internal/notify/` (4 fichiers).
+Fix critique du bug de spam version : en Python le guard `session_state` Streamlit était per-session et se remettait à zéro à chaque refresh navigateur → spam infini. En Go, pas de session_state : on lit TOUJOURS `last_notified_version` depuis `app_settings.json` à chaque appel, et on n'écrit QUE si Discord confirme (HTTP 200/204).
+
+**Fichiers créés** :
+- `internal/notify/discord.go` — types Embed/Field/Payload + NotifyConfig + LoadNotifyConfig + SendWebhook + T() i18n bilingue inline (35 clés FR/EN)
+- `internal/notify/embeds.go` — BuildSyncEmbed, PlayerSyncResult, LastMatchInfo, BackfillCounts, helpers field joueur
+- `internal/notify/version.go` — NotifyNewVersion (anti-spam 5 guards) + BuildVersionEmbed + isMajorMinorChange + extractWhatsNew + writeLastNotifiedVersion (atomique)
+- `internal/notify/notifiers.go` — NotifySync (failsafe) + NotifyNewMedia (anti-spam DuckDB discord_notified_at) + buildMediaEmbed
+
+**Fichiers modifiés** :
+- `cmd/levelup/main.go` — +2 sous-commandes : `notify-version --version vX.Y.Z` et `notify-sync --gamertag X`
+
+**Résultats observés** :
+- `go vet ./internal/notify/ ./cmd/levelup/` → PASS
+- `go build ./internal/notify/ ./cmd/levelup/` → PASS
+
+**Anti-spam complet par type** :
+| Type | Mécanisme Go |
+|------|-------------|
+| Sync/Backfill | Aucun (comportement attendu) |
+| Idle | skipIdle=true → embed allégé si 0 matchs |
+| Médias | `WHERE discord_notified_at IS NULL` → UPDATE après envoi |
+| Version | 5 guards : NotifyVersion flag + LEVELUP_NOTIFY_VERSIONS=1 + last_notified_version + isMajorMinorChange + update QUE si HTTP 200/204 |
+
+**Conclusion** :
+Sprint 25 complet. Bug de spam version éliminé structurellement (pas de session_state, pas de process-level state). `levelup notify-version --version v6.5.0` envoie une notification Discord si et seulement si le major.minor a changé depuis la dernière notification confirmée.
+Prochaine étape : Sprint 26 (Validation conditions réelles, ~3-5j).

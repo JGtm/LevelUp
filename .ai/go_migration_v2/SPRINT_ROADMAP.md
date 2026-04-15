@@ -4,7 +4,7 @@
 > Chaque sprint a un objectif, des tâches, un critère de sortie et une estimation.
 >
 > Dernière mise à jour : 2026-04-22
-> Statut global : **En cours** — Sprints 0–24 ✅ (Sprint 20 partiel : tâches 5-6 ⏳) — Phases 0+1+2+3 complètes + Sprint 18-24 ✅, Sprint 25 ⬜ en attente.
+> Statut global : **En cours** — Sprints 0–25 ✅ (Sprint 20 partiel : tâches 5-6 ⏳) — Phases 0+1+2+3 complètes + Sprint 18-25 ✅, Sprint 26 ⬜ en attente.
 
 ---
 
@@ -52,7 +52,7 @@
 | 22 | Weapon parsing | Phase 4 | 5-8j | ✅ | Sprint 18 |
 | 23 | PvE Firefight | Phase 4 | 2-3j | ✅ | Sprint 18 |
 | 24 | Scripts d'exploitation | Phase 4 | 5-7j | ✅ | Sprint 18 |
-| 25 | Notifications Discord | Phase 4 | 2-3j | ⬜ | Sprint 18 |
+| 25 | Notifications Discord | Phase 4 | 2-3j | ✅ | Sprint 18 |
 | 26 | Validation conditions réelles | Phase 5 | 3-5j | ⬜ | Gate Phase 4 |
 | 27 | Bascule progressive | Phase 5 | 3-5j | ⬜ | Sprint 26 |
 | 28 | Toolchain qualité Go + nettoyage Python | Phase 5 | 4-6j | ⬜ | Sprint 27 |
@@ -660,11 +660,13 @@
 
 | # | Tâche | Statut |
 |--:|-------|:------:|
-| 1 | Port du `discord_notifier.py` (fichier unique) | ⬜ |
-| 2 | Embeds bilingues (FR/EN) selon `discord_lang` | ⬜ |
-| 3 | Thumbnail upload + anti-spam `discord_notified_at` | ⬜ |
-| 4 | Notification nouvelle version | ⬜ |
-| 5 | Webhook URL configurable via `app_settings.json` | ⬜ |
+| 1 | Port de `discord_notifier.py` → `internal/notify/discord.go` (client + i18n inline) | ✅ |
+| 2 | Embeds bilingues FR/EN (`internal/notify/embeds.go`) | ✅ |
+| 3 | Thumbnail upload + anti-spam `discord_notified_at` (`internal/notify/notifiers.go`) | ✅ |
+| 4 | Notification nouvelle version + **fix bug spam** (`internal/notify/version.go`) | ✅ |
+| 5 | CLI `levelup notify-version` + `levelup notify-sync` intégrées | ✅ |
+
+**Fix bug critique** : le guard Python était `session_state` Streamlit (per-session) — réinitialisé à chaque refresh → spam. En Go : lecture systématique de `last_notified_version` depuis `app_settings.json`, mise à jour **uniquement si Discord HTTP 200/204**, écriture atomique (tmp → rename), opt-in `LEVELUP_NOTIFY_VERSIONS=1`.
 
 ### Critère de sortie
 - Embeds post-sync fonctionnels, anti-spam vérifié

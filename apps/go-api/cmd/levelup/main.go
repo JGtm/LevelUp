@@ -2,14 +2,16 @@
 //
 // Sous-commandes disponibles :
 //
-//	levelup backup    --gamertag X [--output-dir D] [--compression-level N]
-//	levelup restore   --gamertag X --backup-dir D [--replace] [--dry-run] [--tables T1,T2]
-//	levelup healthcheck [--verbose]
-//	levelup diagnose  --db PATH [--verbose]
+//	levelup backup         --gamertag X [--output-dir D] [--compression-level N]
+//	levelup restore        --gamertag X --backup-dir D [--replace] [--dry-run] [--tables T1,T2]
+//	levelup healthcheck    [--verbose]
+//	levelup diagnose       --db PATH [--verbose]
 //	levelup check-env
-//	levelup archive   --gamertag X --xuid U --cutoff YYYY-MM-DD [--delete-after] [--dry-run]
-//	levelup index-media --gamertag X [--force-rescan] [--tolerance-min N]
-//	levelup seed career-ranks | citation-mappings | medals
+//	levelup archive        --gamertag X --xuid U --cutoff YYYY-MM-DD [--delete-after] [--dry-run]
+//	levelup index-media    --gamertag X [--force-rescan] [--tolerance-min N]
+//	levelup seed           career-ranks | citation-mappings | medals
+//	levelup notify-version --version v1.2.3
+//	levelup notify-sync    --gamertag X --op sync_delta --duration 120s [--matches N]
 //
 // Variables d'environnement : LEVELUP_REPO_ROOT (auto-détecté si absent).
 package main
@@ -23,6 +25,7 @@ import (
 	"time"
 
 	"levelup/go-api/internal/config"
+	"levelup/go-api/internal/notify"
 	"levelup/go-api/internal/ops"
 )
 
@@ -59,6 +62,10 @@ func main() {
 		exitErr = runIndexMedia(cfg, args)
 	case "seed":
 		exitErr = runSeed(cfg, args)
+	case "notify-version":
+		exitErr = runNotifyVersion(cfg, args)
+	case "notify-sync":
+		exitErr = runNotifySync(cfg, args)
 	case "help", "--help", "-h":
 		printUsage()
 	default:
@@ -317,6 +324,56 @@ func runSeed(cfg *config.AppConfig, args []string) error {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
+// notify-version
+// ─────────────────────────────────────────────────────────────────────────────
+
+func runNotifyVersion(cfg *config.AppConfig, args []string) error {
+	fs := flag.NewFlagSet("notify-version", flag.ExitOnError)
+	version := fs.String("version", "", "Version à notifier ex: v6.5.0 (obligatoire)")
+	if err := fs.Parse(args); err != nil {
+		return err
+	}
+	if *version == "" {
+		return fmt.Errorf("--version est obligatoire")
+	}
+	notifyCfg := notify.LoadNotifyConfig(cfg.AppSettingsPath)
+	sent := notify.NotifyNewVersion(notifyCfg, *version)
+	if sent {
+		fmt.Printf("✅ Notification version %s envoyée\n", *version)
+	} else {
+		fmt.Printf("ℹ️  Notification version %s ignorée (déjà notifiée, patch seul, ou désactivée)\n", *version)
+	}
+	return nil
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// notify-sync  (test / debug)
+// ─────────────────────────────────────────────────────────────────────────────
+
+func runNotifySync(cfg *config.AppConfig, args []string) error {
+	fs := flag.NewFlagSet("notify-sync", flag.ExitOnError)
+	gamertag := fs.String("gamertag", "", "Gamertag du joueur (obligatoire)")
+	op := fs.String("op", "sync_delta", "Opération : sync_delta | sync_full | backfill")
+	durationSec := fs.Int("duration", 0, "Durée de l'opération en secondes")
+	matches := fs.Int("matches", 0, "Nombre de matchs synchronisés")
+	if err := fs.Parse(args); err != nil {
+		return err
+	}
+	if *gamertag == "" {
+		return fmt.Errorf("--gamertag est obligatoire")
+	}
+	notifyCfg := notify.LoadNotifyConfig(cfg.AppSettingsPath)
+	finishedAt := time.Now()
+	startedAt := finishedAt.Add(-time.Duration(*durationSec) * time.Second)
+	players := []notify.PlayerSyncResult{
+		{Gamertag: *gamertag, MatchesSynced: *matches},
+	}
+	notify.NotifySync(notifyCfg, *op, startedAt, finishedAt, players, true, false)
+	fmt.Printf("✅ Notification sync envoyée pour %s\n", *gamertag)
+	return nil
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
 // Usage
 // ─────────────────────────────────────────────────────────────────────────────
 
@@ -327,17 +384,21 @@ Usage:
   levelup <commande> [options]
 
 Commandes:
-  backup        Sauvegarder une DB joueur en Parquet Zstd
-  restore       Restaurer une DB joueur depuis un backup Parquet
-  healthcheck   Diagnostic d'intégrité des bases DuckDB
-  diagnose      Inspecter le schéma d'une DB DuckDB
-  check-env     Vérifier l'environnement et la configuration
-  archive       Archiver les matchs anciens en Parquet
-  index-media   Indexer et associer les médias au joueur
-  seed          Peupler les référentiels metadata.duckdb
+  backup          Sauvegarder une DB joueur en Parquet Zstd
+  restore         Restaurer une DB joueur depuis un backup Parquet
+  healthcheck     Diagnostic d'intégrité des bases DuckDB
+  diagnose        Inspecter le schéma d'une DB DuckDB
+  check-env       Vérifier l'environnement et la configuration
+  archive         Archiver les matchs anciens en Parquet
+  index-media     Indexer et associer les médias au joueur
+  seed            Peupler les référentiels metadata.duckdb
+  notify-version  Envoyer une notification Discord de nouvelle version
+  notify-sync     Envoyer une notification Discord de fin de sync (test/debug)
 
 Options globales:
-  LEVELUP_REPO_ROOT     Racine du repo (auto-détecté si absent)
+  LEVELUP_REPO_ROOT        Racine du repo (auto-détecté si absent)
+  LEVELUP_NOTIFY_VERSIONS  Mettre à '1' pour activer les notifs de version en prod
+  DISCORD_WEBHOOK_URL      URL webhook Discord (prévaut sur app_settings.json)
 
 Aide par commande:
   levelup <commande> --help
