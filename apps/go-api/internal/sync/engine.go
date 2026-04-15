@@ -71,6 +71,27 @@ func (e *SyncEngine) RunFull(ctx context.Context, opts domain.SyncOptions) (doma
 	return e.run(ctx, opts, false)
 }
 
+// RunBackfill détecte les matchs avec données manquantes et retourne la liste.
+// Le scope doit être Resolve() avant appel. Retourne la liste des match_ids manquants.
+func (e *SyncEngine) RunBackfill(ctx context.Context, scope *SyncScope) ([]string, error) {
+	_ = ctx // reserved for future cancellation support
+
+	// ─── Write leases (lecture seule suffit pour la détection) ───────────
+	playerDB, err := OpenPlayerDB(e.playerDBPath)
+	if err != nil {
+		return nil, fmt.Errorf("RunBackfill OpenPlayerDB: %w", err)
+	}
+	defer playerDB.Close()
+
+	sharedDB, err := OpenSharedDB(e.sharedDBPath)
+	if err != nil {
+		return nil, fmt.Errorf("RunBackfill OpenSharedDB: %w", err)
+	}
+	defer sharedDB.Close()
+
+	return FindMatchesMissingData(playerDB, sharedDB, e.xuid, scope)
+}
+
 // run est le cœur du moteur de sync. isDelta=true → stop dès un match connu.
 func (e *SyncEngine) run(ctx context.Context, opts domain.SyncOptions, isDelta bool) (domain.SyncResult, error) {
 	result := domain.SyncResult{StartedAt: time.Now()}
