@@ -13565,3 +13565,36 @@ Ajout de 3 règles ciblant `div[data-testid="stSegmentedControl"]` :
 **Résultats** : Aucune surface active ne dépend plus du rendu Streamlit. La migration React/FastAPI est terminée.
 
 **Conclusion** : Slice 9 canonical. DoD global vérifié à 5/7 (les items 6 et 7 concernent le nettoyage final de `src/ui/pages/` et la validation FUNCTIONAL_SPECS — optionnels pour le décommissionnement actif).
+
+---
+
+### [2026-05-24] Sprint 5+6 — Backend Go : Pool DuckDB, Q1-Q16, Services, Handlers
+
+**Statut** : Complété
+
+**Décision technique** : Implémentation complète des couches repository, service et handler pour les 5 endpoints P1 (filters/resolve, match-history/query, career, top-matches, encounters) + gamertag search. Chaque couche respecte l'architecture hexagonale via port interfaces.
+
+**Changements Sprint 5 (repository layer)** :
+- `internal/platform/duckdb/pool.go` — PlayerPool sync.Map, GetOrOpen, CloseAll, attachShared, ResolveXUID
+- `internal/platform/duckdb/queries.go` — Q1-Q16 SQL corrects (column count validé : Q4/Q4MV 12 cols, Q5 23 cols)
+- `internal/platform/duckdb/filters_repo.go` — LoadMatchesForFilters (auto-detect mv), GetMatchCount, GetAvailablePlaylists, GetAvailableMaps
+- `internal/platform/duckdb/match_history_repo.go` — LoadAll (23-col scan), LoadMapWinRates
+- `internal/platform/duckdb/career_repo.go` — GetLatestRank, GetXPHistory, GetLUSRHistory, GetTopMatches, GetEncounters
+- `internal/platform/duckdb/gamertag_repo.go` — Search → []domain.GamertagSearchResult (XUID, Gamertag, Score, ExactMatch)
+- `internal/domain/{filters,match_history,career}.go` — types domaine propres (dédupliqués)
+- `internal/port/repository.go` — 4 interfaces + noop impls (FiltersRepository, MatchHistoryRepository, CareerRepository, GamertagRepository)
+
+**Changements Sprint 6 (service + handler layer)** :
+- `internal/config/player_resolver.go` — ResolvePlayer, SharedDBPath helper
+- `internal/service/filters_service.go` — FiltersService + ResolveFiltersFromRows (pure), stripModeSuffix, cascade/period/session filters
+- `internal/service/match_history_service.go` — MatchHistoryService : enrichissement (outcome_label, win_rate_hist, average_life_mmss, match_url), tri, pagination
+- `internal/service/career_service.go` — CareerService : GetCareerPage / GetTopMatches / GetEncounters, projection XP (computeActiveXPPerDay), buildLUSRSummary
+- `internal/api/handlers/{filters,match_history,career,gamertag}.go` — 4 handlers (7 méthodes)
+- `internal/api/server.go` — routes P1 ajoutées via chi.Route("/players/{player_slug}", ...)
+- `internal/service/service_test.go` — 15 tests unitaires purs (0 DB)
+
+**Résultats** :
+- `go build ./...` → PASS (silence = succès)
+- `go test ./internal/service/ -v` → 15/15 PASS
+
+**Conclusion** : Sprint 5+6 complets. Prochaine étape : Sprint 7 (match view endpoint Q12-Q16) ou Sprint 8 (gamertag search live tests + fixtures ref_player).
