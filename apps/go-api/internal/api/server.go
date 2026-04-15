@@ -12,6 +12,8 @@ import (
 	"levelup/go-api/internal/api/middleware"
 	"levelup/go-api/internal/config"
 	"levelup/go-api/internal/port"
+	auth_platform "levelup/go-api/internal/platform/auth"
+	session_platform "levelup/go-api/internal/platform/session"
 	"levelup/go-api/internal/service"
 )
 
@@ -22,6 +24,11 @@ func NewRouter(
 	bootRepo port.BootstrapRepository,
 	bootSvc *service.BootstrapService,
 ) http.Handler {
+	// Sprint 14 : session store + Sprint 15 : attempt store auth
+	isProduction := cfg.SessionSecret != "CHANGE_ME_IN_PRODUCTION" // pragma: allowlist secret
+	sessionStore := session_platform.NewStore(cfg.SessionDir, session_platform.DefaultTTL, cfg.SessionSecret)
+	attemptStore := auth_platform.NewAttemptStore()
+
 	r := chi.NewRouter()
 
 	// Middlewares transverses (ordre important)
@@ -32,6 +39,7 @@ func NewRouter(
 	r.Use(middleware.RateLimit(cfg.DemoMode))
 	r.Use(middleware.SlogLogger)
 	r.Use(chimiddleware.Compress(5))
+	r.Use(middleware.WithSession(sessionStore, isProduction))
 
 	// Health check (pas de préfixe /api/v1 — sondage infrastructurel)
 	r.Get("/health", handlers.NewHealthHandler(bootRepo).ServeHTTP)
@@ -41,6 +49,15 @@ func NewRouter(
 		// Endpoints P0 : bootstrap + liste joueurs
 		r.Get("/bootstrap", handlers.NewBootstrapHandler(bootSvc).ServeHTTP)
 		r.Get("/players", handlers.NewPlayersHandler(bootSvc).ServeHTTP)
+
+		// Sprint 14 : contexte de session
+		sessionHandler := handlers.NewSessionHandler(sessionStore)
+		r.Post("/session/context", sessionHandler.PostContext)
+
+		// Sprint 15 : Device Code Flow + authentification Halo
+		authHandler := handlers.NewAuthHandler(sessionStore, attemptStore, cfg.DemoMode)
+		r.Post("/auth/device-flow/start", authHandler.StartDeviceFlow)
+		r.Get("/auth/device-flow/{attempt_id}", authHandler.GetDeviceFlowStatus)
 
 		// Endpoints P1 : pages par joueur
 		r.Route("/players/{player_slug}", func(r chi.Router) {

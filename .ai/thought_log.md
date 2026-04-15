@@ -1,5 +1,40 @@
 # Thought Log
 
+## [2026-05-29] feat(go-api): Sprint 14+15 — Session/cookies + Device Code Flow MSAL
+
+**Statut** : Complété
+
+**Tâche** : Sprint 14 (gestion des sessions web avec cookies HMAC-SHA256) et Sprint 15 (Device Code Flow Microsoft + chaîne d'échange Halo Infinite).
+
+**Décisions techniques principales** :
+
+1. **Cookie HMAC-SHA256 (pas JWT)** — format `<session_id>.<hex(HMAC-SHA256(secret, session_id))>` ; comparaison en temps constant via `hmac.Equal`. Portage fidèle de `itsdangerous.URLSafeTimedSerializer`.
+2. **Session Store fichiers JSON** — un fichier `{session_id}.json` par session dans `data/sessions/`. TTL basé sur `last_seen_at` (défaut 7 jours). `sanitizeID` protège contre le path traversal.
+3. **Middleware session global** — `middleware.WithSession(store, isProduction)` injecté dans tous les middlewares chi ; charge/crée la session pour chaque requête et rafraîchit le cookie.
+4. **AttemptStore single-flight** — `GetOrCreate(sessionID)` garantit qu'une seule tentative MSAL "pending" existe par session. Goroutine dédiée pour `AuthenticationResult(ctx)` (bloquant).
+5. **API MSAL v1.7.1 réelle** — `app.AcquireTokenByDeviceCode(ctx, scopes)` initie le flow (pas `InitDeviceCode`), et `deviceCode.AuthenticationResult(ctx)` attend la complétion. `InMemoryCacheAccessor` implémente `cache.ExportReplace`.
+6. **Chaîne Halo sans état** — `ExchangeAccessToken` en HTTP pur (pas de MSAL) : XBL user → XSTS Halo (audience `prod.xsts.halowaypoint.com`) → Spartan Token → Clearance Token. Portage exact de SPNKr Python.
+7. **`// pragma: allowlist secret`** — commentaire sur le client_id pour désactiver les alertes de scanner de secrets.
+
+**Résultats observés** :
+- `go vet ./internal/domain/... ./internal/platform/session/... ./internal/platform/auth/...` : **0 erreur**
+- `go build ./internal/platform/session/... ./internal/platform/auth/... ./internal/api/middleware/...` : **OK**
+- `go build ./internal/api/handlers/...` : bloqué sur CGO DuckDB (contrainte préexistante)
+
+**Fichiers créés** :
+- `internal/domain/session.go` — types `SessionData`, `HaloIdentity`, `SessionContextRequest/Response`
+- `internal/domain/auth.go` — types `DeviceFlowStartResponse`, `DeviceFlowStatusResponse`, `HaloTokens`
+- `internal/platform/session/store.go` — `Store` (JSON files + HMAC signing)
+- `internal/platform/auth/halo_exchange.go` — chaîne d'échange 4 étapes (stateless)
+- `internal/platform/auth/msal_client.go` — `InitDeviceFlow`, `AcquireTokenSilent`, `InMemoryCacheAccessor`
+- `internal/platform/auth/attempt_store.go` — `AttemptStore` thread-safe + `Attempt`
+- `internal/api/middleware/session.go` — `WithSession`, `GetSession`
+- `internal/api/handlers/session_context.go` — `SessionHandler.PostContext`
+- `internal/api/handlers/auth.go` — `AuthHandler.StartDeviceFlow`, `GetDeviceFlowStatus`
+
+**Fichiers modifiés** :
+- `internal/api/server.go` — `WithSession` middleware + routes `/session/context` + `/auth/device-flow/*`
+
 ## [2026-05-28] feat(go-api): Sprint 12+13 — Escouade, Synthèse, Citations, Commendations, Médias
 
 **Statut** : Complété
