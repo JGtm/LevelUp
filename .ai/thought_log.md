@@ -13900,4 +13900,37 @@ Routes actives :
   GET /api/v1/players/{slug}/pages/home
   GET /api/v1/players/{slug}/battlepass
   GET /api/v1/players/{slug}/challenges
-Prochaine étape selon SPRINT_ROADMAP : Sprint 12 (Escouade + Synthèse, ~7-10j).
+Prochaine étape selon SPRINT_ROADMAP : Sprint 12 (Escouade + Synthèse, ~7-10j). 
+
+---
+
+## [2026-04-22] Sprint 23 — PvE Firefight + Sprint 24 — Scripts d'exploitation
+
+**Statut** : Complété ✅
+
+**Décision technique principale** :
+- Sprint 23 : port du pipeline PvE Python → `internal/sync/pve.go`. Correction critique `backfill_flags.go` : les 6 bits PvE (Crawler/Soldier/Knight/Warden/Sentinel/Marine = bits 8–13) étaient tronqués à 2 (Sentinel=8, Marine=9). Fix aligné exactement sur Python.
+- Sprint 24 : création du package `internal/ops/` (6 fichiers) + `internal/analysis/spawn_detection.go` + `cmd/levelup/main.go`. CLI stdlib `flag` sans cobra (cohérent avec `backfill_cli.go`). Pas de dépendance externe ajoutée.
+
+**Fichiers créés** :
+- `internal/sync/pve.go` — PveMatchStatsRow (20 champs), ExtractPveStats, InsertPveStats, MarkPveStatsDone
+- `internal/sync/backfill_flags.go` — PveBitCrawler/Soldier/Knight/Warden/Sentinel/Marine (bits 8-13) fixés
+- `internal/ops/backup.go` — BackupPlayer (COPY table TO parquet COMPRESSION zstd)
+- `internal/ops/restore.go` — RestorePlayer (CREATE TABLE AS SELECT * FROM read_parquet)
+- `internal/ops/healthcheck.go` — RunHealthcheck (OS + config + DuckDB connectivity)
+- `internal/ops/diagnose.go` — DiagnoseDB (information_schema tables/views/indexes)
+- `internal/ops/archive.go` — ArchiveMatches (par année, Parquet, DELETE optionnel)
+- `internal/ops/seed.go` — SeedCareerRanks/SeedCitationMappings/SeedMedalDefinitions
+- `internal/ops/media.go` — IndexMedia + AssociateMediaWithMatches + GenerateThumbnails (ffmpeg)
+- `internal/analysis/spawn_detection.go` — EstimateFilmMatchStartMS (algo 7) + ScanFirstMovements + FindPeakActivityWindow
+- `cmd/levelup/main.go` — CLI 9 sous-commandes : backup/restore/healthcheck/diagnose/check-env/archive/index-media/seed
+
+**Résultats observés** :
+- `go vet ./internal/sync/ ./internal/ops/ ./internal/analysis/ ./cmd/levelup/` → PASS (0 erreurs)
+- `go build ./internal/sync/ ./internal/ops/ ./internal/analysis/ ./cmd/levelup/` → PASS
+- `go build ./cmd/levelup/ -o bin/levelup.exe` → PASS
+- Erreur pré-existante `config.Config` dans `cmd/server/main.go` (hors scope Sprint 23/24)
+
+**Conclusion** :
+Sprints 23+24 entièrement complétés. PvE Firefight sync fonctionnel (14 bits PveBitmask parité Python). Tous les scripts d'exploitation portés en Go avec CLI unifiée. Spawn detection (algorithme 7) disponible dans `internal/analysis/`.
+Prochaine étape : Sprint 25 (Notifications Discord, ~2-3j).
