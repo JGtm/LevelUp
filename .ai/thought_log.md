@@ -13637,3 +13637,44 @@ Ajout de 3 règles ciblant `div[data-testid="stSegmentedControl"]` :
 
 **Conclusion** :
 Sprint 7+8 complets. Phase 1 entière terminée. Phase 2 démarrée (Explorer + Match View opérationnels). Prochaine étape : Sprint 9 (Sessions) ou Sprint 10 (Stats/Séries + perf score).
+
+---
+
+## [2025-07-16] Sprint 9 + Sprint 10 — Sessions + Performance Score + LUSR + Stats Series
+
+**Statut** : Complété
+
+**Décision technique principale** :
+Port complet des algorithmes Python en Go dans le package `analysis/` :
+- `ComputeSessions` (gap-based) + `ComputeSessionsWithContext` (friends+ranked) depuis `src/analysis/sessions.py`
+- `ComputeRelativePerformanceScore` v5-relative (10 métriques, percentile rank) depuis `src/analysis/_performance_relative.py`
+- `ComputeSkillRatingsBatch` (TrueSkill-inspired LUSR) depuis `src/analysis/skill_rating.py`
+Note critique : utiliser `create_file` plutôt que heredoc bash pour les fichiers Go → les heredoc corrompent les lignes contenant des commentaires français ou des patterns `if v, ok := ...`.
+
+**Fichiers créés** :
+- `internal/domain/sessions.go` — SessionMatchRow, SessionComputeOptions (renommé depuis SessionOptions pour éviter conflit avec filters.go), BucketType, SessionsResponse
+- `internal/domain/stats.go` — StatsMatchRow, LUSRMatchRating, ParticipantRow, 5 types tab response, StatsPageResponse
+- `internal/analysis/sessions.go` — 2 modes de calcul + grouping + labeling + GetBucketInfo
+- `internal/analysis/sessions_test.go` — 11 tests unitaires (tous verts)
+- `internal/analysis/performance_score.go` — score relatif percentile + fallback KDA
+- `internal/analysis/skill_rating.go` — TrueSkill update + composite score + normCDF/PDF/InvCDF
+- `internal/platform/duckdb/sessions_repo.go` — LoadSessionMatches (Q22)
+- `internal/platform/duckdb/stats_repo.go` — LoadStatsMatches (Q23) + LoadLUSRHistory (Q24) + LoadMatchParticipants (Q25)
+- `internal/service/sessions_service.go` — GetSessions (2 modes)
+- `internal/service/stats_service.go` — GetPage (5 onglets : win_loss, accuracy, objective, form, lusr)
+- `internal/api/handlers/sessions.go` — GET /pages/sessions
+- `internal/api/handlers/stats.go` — POST /pages/stats/query
+
+**Fichiers modifiés** :
+- `internal/api/server.go` — routes Sprint 9+10 ajoutées
+- `internal/platform/duckdb/queries.go` — Q22-Q25 ajoutés
+- `internal/port/repository.go` — SessionsRepository + StatsRepository interfaces + noop impls
+
+**Résultats observés** :
+- `go build ./...` → PASS (0 erreurs)
+- `go test ./internal/analysis/...` → 11/11 PASS
+- Commit : `fd721220` sur `feature/go-migration`
+
+**Conclusion** :
+Sprint 9+10 complets. Architecture clean layer: domain → analysis → platform/duckdb → service → handlers.
+Prochaine étape selon SPRINT_ROADMAP : Sprint 11 (charting timeseries = ~30 fonctions, à planifier séparément).
