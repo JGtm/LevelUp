@@ -1,0 +1,162 @@
+// Package domain — home.go : types pour la page d'accueil Mission Control.
+//
+// Correspond à l'endpoint GET /api/v1/players/{slug}/pages/home.
+// Les types BattlePassResponse et ChallengesResponse sont retournés
+// directement par leurs propres endpoints (best-effort, nécessite auth Sprint 15).
+package domain
+
+import "time"
+
+// ---------------------------------------------------------------------------
+// Lignes brutes DuckDB
+// ---------------------------------------------------------------------------
+
+// HomeMatchRow est une ligne brute chargée depuis Q26 (matchs du home).
+type HomeMatchRow struct {
+	MatchID        string
+	StartTime      time.Time
+	MapName        string
+	PairName       string
+	PlaylistName   string
+	IsFirefight    bool
+	IsRanked       bool
+	SessionLabel   *string
+	IsWithFriends  bool
+	Outcome        int
+	Kills          int
+	Deaths         int
+	Assists        int
+	KDA            *float64
+	Ratio          *float64
+	Accuracy       *float64
+	TimePlayedSecs *int
+}
+
+// HomeSessionRow est une ligne brute chargée depuis Q27 (sessions enrichment).
+type HomeSessionRow struct {
+	MatchID       string
+	SessionID     *int
+	SessionLabel  *string
+	IsWithFriends bool
+	StartTime     *time.Time
+}
+
+// HomeMediaRow est une ligne brute chargée depuis Q28 (médias récents).
+type HomeMediaRow struct {
+	FileName       string
+	MatchID        *string
+	MatchStartTime *time.Time
+}
+
+// ---------------------------------------------------------------------------
+// Blocs Hero Card
+// ---------------------------------------------------------------------------
+
+// HeroKPIs contient les KPIs globaux du joueur affichés dans le hero card.
+type HeroKPIs struct {
+	WinRate      float64  `json:"win_rate"`
+	GlobalRatio  *float64 `json:"global_ratio,omitempty"`
+	AvgAccuracy  *float64 `json:"avg_accuracy,omitempty"`
+	TotalMatches int      `json:"total_matches"`
+	Wins         int      `json:"wins"`
+	Losses       int      `json:"losses"`
+}
+
+// HeroTrend représente la variation des métriques clés sur une fenêtre glissante.
+// Calcul : 5 derniers matchs vs 5 précédents.
+type HeroTrend struct {
+	RatioDelta    *float64 `json:"ratio_delta,omitempty"`
+	AccuracyDelta *float64 `json:"accuracy_delta,omitempty"`
+	WinRateDelta  *float64 `json:"win_rate_delta,omitempty"`
+}
+
+// HomeHeroCard est la carte briefing principale affichée en haut de l'accueil.
+type HomeHeroCard struct {
+	PlayerName string     `json:"player_name"`
+	KPIs       HeroKPIs   `json:"kpis"`
+	Trend      *HeroTrend `json:"trend,omitempty"`
+}
+
+// ---------------------------------------------------------------------------
+// Signaux et highlights
+// ---------------------------------------------------------------------------
+
+// HighlightItem est un fait saillant synthétique pour la zone signaux.
+type HighlightItem struct {
+	Title  string `json:"title"`
+	Value  string `json:"value"`
+	Detail string `json:"detail"`
+}
+
+// ---------------------------------------------------------------------------
+// Matchs récents
+// ---------------------------------------------------------------------------
+
+// RecentMatchItem représente un match récent dans la timeline.
+type RecentMatchItem struct {
+	MatchID      string     `json:"match_id"`
+	Title        string     `json:"title"`
+	Detail       string     `json:"detail"`
+	StartedAt    *time.Time `json:"started_at,omitempty"`
+	OutcomeLabel string     `json:"outcome_label"`
+	OutcomeTone  string     `json:"outcome_tone"`
+}
+
+// ---------------------------------------------------------------------------
+// Résumé de session
+// ---------------------------------------------------------------------------
+
+// SessionSummaryItem est le résumé d'une session (solo ou escouade).
+type SessionSummaryItem struct {
+	SessionLabel string     `json:"session_label"`
+	MatchCount   int        `json:"match_count"`
+	WinRate      float64    `json:"win_rate"`
+	GlobalRatio  *float64   `json:"global_ratio,omitempty"`
+	StartedAt    *time.Time `json:"started_at,omitempty"`
+}
+
+// ---------------------------------------------------------------------------
+// Médias récents
+// ---------------------------------------------------------------------------
+
+// RecentMediaItem est une entrée compacte d'un média récent.
+type RecentMediaItem struct {
+	Basename       string     `json:"basename"`
+	MatchID        *string    `json:"match_id,omitempty"`
+	MatchStartTime *time.Time `json:"match_start_time,omitempty"`
+}
+
+// ---------------------------------------------------------------------------
+// Réponses API
+// ---------------------------------------------------------------------------
+
+// HomePageResponse est la réponse agrégée de la page d'accueil Mission Control.
+type HomePageResponse struct {
+	Hero          HomeHeroCard        `json:"hero"`
+	Highlights    []HighlightItem     `json:"highlights"`
+	RecentMatches []RecentMatchItem   `json:"recent_matches"`
+	RecentMedia   []RecentMediaItem   `json:"recent_media"`
+	SoloSession   *SessionSummaryItem `json:"solo_session,omitempty"`
+	SquadSession  *SessionSummaryItem `json:"squad_session,omitempty"`
+}
+
+// BattlePassResponse contient les informations Battle Pass live.
+// available=false avec error_hint="auth_required" tant que l'auth n'est pas portée (Sprint 15).
+type BattlePassResponse struct {
+	Available   bool    `json:"available"`
+	Rank        *int    `json:"rank,omitempty"`
+	RewardTrack *string `json:"reward_track,omitempty"`
+	Progress    *int    `json:"progress,omitempty"`
+	ErrorHint   *string `json:"error_hint,omitempty"`
+}
+
+// ChallengesResponse contient le résumé des défis actifs.
+// available=false avec error_hint="auth_required" tant que l'auth n'est pas portée (Sprint 15).
+type ChallengesResponse struct {
+	Available   bool    `json:"available"`
+	Total       *int    `json:"total,omitempty"`
+	Completed   *int    `json:"completed,omitempty"`
+	XPAvailable *int    `json:"xp_available,omitempty"`
+	NextExpiry  *string `json:"next_expiry,omitempty"`
+	ErrorHint   *string `json:"error_hint,omitempty"`
+}
