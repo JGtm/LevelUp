@@ -1,5 +1,30 @@
 # Thought Log
 
+## [2025-12-15] feat(sprint16+17): Settings/Setup + Jobs longs persistants
+
+**Statut** : Complété (commit d2ac4565)
+
+**Tâche** : Sprint 16 (Settings/Setup — mutations de configuration + création profil joueur) et Sprint 17 (Jobs longs persistants — JobStore + GET /jobs/{job_id} + POST /sync/initial).
+
+**Décisions techniques principales** :
+
+1. **AppSettings struct avec champs `raw`** — `platform/settings/store.go` charge le JSON brut dans `map[string]json.RawMessage` en plus du struct typé, puis re-merge à la sauvegarde. Garantit que les champs inconnus (ex. `doppler_enabled`) ne sont jamais effacés par un PATCH partiel.
+2. **`discord_webhook_url` masqué** — stocké dans `AppSettings.DiscordWebhookURL` (internal) mais jamais sérialisé dans `SettingsResponse` — seulement `DiscordWebhookURLPresent: bool`. Règle de sécurité identique au Python.
+3. **JobStore thread-safe + persistance JSON** — `platform/jobs/store.go` utilise `sync.RWMutex` + `data/cache/jobs.json`. À l'init, tous les jobs `running`/`queued` → `interrupted` (le process qui les exécutait est mort). TTL 1h pour les jobs terminaux. `newJobID()` basé sur `UnixNano` (simple et efficace).
+4. **Single-flight initial_sync** — `FindActiveInitialSync(playerSlug)` cherche un job non terminal par `JobType == "initial_sync"` et `PlayerSlug == slug`. Retourne 409 si actif.
+5. **`POST /setup/players` guards** — 403 `can_self_provision`, 409 `no_halo_identity`, 409 `identity_mismatch`. Compare `strings.ToLower()` pour la case-insensitive. Crée/merge dans `db_profiles.json` v2.1.
+6. **Handlers stubs Phase 4** — `PostMediaResetIndex` et `StartInitialSync` créent le job et lancent une goroutine stub. Le vrai moteur sera branché en Sprint 18/19. Commentaire `// TODO Sprint 19` explicite.
+7. **Bug pré-existant corrigé** — `citations_service.go` : `Items→Citations` et `TotalMedals→TotalCount` (champs domain inexistants, build cassé depuis Sprint 13).
+
+**Résultats observés** :
+- `go build ./...` : **0 erreur** (avec toolchain CGo ucrt64)
+- `go vet ./...` : **0 warning**
+- 11 fichiers modifiés, 1257 insertions, 86 suppressions
+
+**Prochaine étape** : Sprint 18 — Moteur sync minimal (12 mixins, ~13K LOC Python)
+
+---
+
 ## [2026-05-29] feat(go-api): Sprint 14+15 — Session/cookies + Device Code Flow MSAL
 
 **Statut** : Complété
