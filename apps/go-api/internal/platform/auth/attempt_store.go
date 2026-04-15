@@ -34,6 +34,11 @@ type Attempt struct {
 
 	// Référence interne au Device Code Flow MSAL (jamais exposé)
 	DevFlow *DeviceCodeFlow
+
+	// HaloTokens contient les tokens Halo obtenus après ExchangeAccessToken.
+	// Transférés en session lors du prochain GetDeviceFlowStatus.
+	SpartanToken   string
+	ClearanceToken string
 }
 
 // AttemptStore est le registre en mémoire des tentatives Device Code Flow.

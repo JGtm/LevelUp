@@ -23,6 +23,9 @@ type SessionData struct {
 	AuthReady          bool          `json:"auth_ready"`
 	LinkedHaloIdentity *HaloIdentity `json:"linked_halo_identity,omitempty"`
 	ActiveSyncJobID    *string       `json:"active_sync_job_id,omitempty"`
+	// HaloTokens contient les tokens Halo obtenus après échange (Sprint 18).
+	// Jamais exposés au navigateur. TTL ~4h (Spartan token).
+	HaloTokens *HaloTokens `json:"halo_tokens,omitempty"`
 }
 
 // SessionContextRequest est le body de POST /session/context.

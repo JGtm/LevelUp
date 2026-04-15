@@ -105,13 +105,20 @@ func (h *AuthHandler) GetDeviceFlowStatus(w http.ResponseWriter, r *http.Request
 		return
 	}
 
-	// Si l'auth a réussi, mettre à jour la session.
+	// Si l'auth a réussi, transférer les données Halo dans la session.
 	if snapshot.Status == "authorized" || snapshot.Status == "provisioned" {
 		sess.AuthReady = true
 		if snapshot.Gamertag != "" {
 			sess.LinkedHaloIdentity = &domain.HaloIdentity{
 				Gamertag: snapshot.Gamertag,
 				XUID:     snapshot.XUID,
+			}
+		}
+		// Stocker les tokens Halo dans la session (jamais exposés au navigateur).
+		if snapshot.SpartanToken != "" {
+			sess.HaloTokens = &domain.HaloTokens{
+				SpartanToken:   snapshot.SpartanToken,
+				ClearanceToken: snapshot.ClearanceToken,
 			}
 		}
 		_ = h.sessionStore.Save(sess)
@@ -151,10 +158,12 @@ func (h *AuthHandler) pollDeviceFlow(attemptID string, flow *auth_platform.Devic
 		return
 	}
 
-	// Marquer comme autorisé avec les informations Halo.
+	// Marquer comme autorisé et stocker les tokens dans l'attempt store.
+	// GetDeviceFlowStatus les transférera dans la session lors du prochain poll.
 	h.attempts.Update(attemptID, func(a *auth_platform.Attempt) {
 		a.Status = "authorized"
-		_ = tokens // Les tokens sont stockés en session — pas dans l'attempt store.
+		a.SpartanToken = tokens.SpartanToken
+		a.ClearanceToken = tokens.ClearanceToken
 	})
 }
 

@@ -3,8 +3,8 @@
 > Document de suivi opérationnel : tous les sprints de A à Z, dans l'ordre.
 > Chaque sprint a un objectif, des tâches, un critère de sortie et une estimation.
 >
-> Dernière mise à jour : 2025-12-15
-> Statut global : **En cours** — Sprints 0–15 ✅ — Phases 0+1+2+3 (partielle) complètes, Sprint 16 prochain.
+> Dernière mise à jour : 2026-04-15
+> Statut global : **En cours** — Sprints 0–17 ✅ — Phases 0+1+2+3 complètes, Sprint 18 🔄 en cours.
 
 ---
 
@@ -43,9 +43,9 @@
 | 13 | Citations + Médias | Phase 2 | 4-6j | ✅ | Sprint 8 |
 | 14 | Session / cookies | Phase 3 | 3-4j | ✅ | Gate Phase 2 |
 | 15 | Device Code Flow + MSAL Go | Phase 3 | 5-7j | ✅ | Sprint 14 |
-| 16 | Settings / Setup | Phase 3 | 3-4j | ⬜ | Sprint 15 |
-| 17 | Jobs longs persistants | Phase 3 | 4-6j | ⬜ | Sprint 15 |
-| 18 | Moteur sync minimal (12 mixins, ~13K LOC) | Phase 4 | 10-15j | ⬜ | Gate Phase 3 |
+| 16 | Settings / Setup | Phase 3 | 3-4j | ✅ | Sprint 15 |
+| 17 | Jobs longs persistants | Phase 3 | 4-6j | ✅ | Sprint 15 |
+| 18 | Moteur sync minimal (12 mixins, ~13K LOC) | Phase 4 | 10-15j | 🔄 | Gate Phase 3 |
 | 19 | Pipeline post-sync | Phase 4 | 5-7j | ⬜ | Sprint 18 |
 | 20 | Backfill complet (96 champs, ~120 args) | Phase 4 | 7-10j | ⬜ | Sprint 19 |
 | 21 | Migrations DuckDB (35 steps) | Phase 4 | 5-7j | ⬜ | Sprint 18 |
@@ -435,48 +435,48 @@
 
 ---
 
-## Sprint 16 — Settings / Setup (3–4 jours)
+## Sprint 16 ✅ — Settings / Setup (3–4 jours)
 
 > **Phase 3 — Auth, session, settings, jobs**
 > **Objectif** : mutations de configuration.
 
 | # | Tâche | Statut |
 |--:|-------|:------:|
-| 1 | GET /settings, PATCH /settings | ⬜ |
-| 2 | POST /settings/media/reset-index (destructif) | ⬜ |
-| 3 | POST /setup/players : ajout de joueur | ⬜ |
-| 4 | POST /setup/smoke-test | ⬜ |
-| 5 | Tests de parité settings | ⬜ |
+| 1 | GET /settings, PATCH /settings | ✅ |
+| 2 | POST /settings/media/reset-index (destructif) | ✅ |
+| 3 | POST /setup/players : ajout de joueur | ✅ |
+| 4 | POST /setup/smoke-test | ✅ |
+| 5 | Tests de parité settings | ✅ |
 
 ### Critère de sortie
 - GET/PATCH settings fonctionnels, smoke test ok
 
 ---
 
-## Sprint 17 — Jobs longs persistants (4–6 jours)
+## Sprint 17 ✅ — Jobs longs persistants (4–6 jours)
 
 > **Phase 3 — Auth, session, settings, jobs**
 > **Objectif** : modèle de jobs start/poll/cancel avec persistance.
 
 | # | Tâche | Statut |
 |--:|-------|:------:|
-| 1 | Modèle : start → poll status → result, persistance hors mémoire | ⬜ |
-| 2 | GET /jobs/{job_id} : statut, progression, warnings, erreurs | ⬜ |
-| 3 | POST /sync/initial → AsyncJobStatus | ⬜ |
-| 4 | Redémarrage : `running` → `interrupted`, `active_sync_job_id` dans bootstrap | ⬜ |
-| 5 | Exclusivité stricte : 1 seule sync à la fois | ⬜ |
-| 6 | Tests : job persisté au redémarrage, annulation | ⬜ |
+| 1 | Modèle : start → poll status → result, persistance hors mémoire | ✅ |
+| 2 | GET /jobs/{job_id} : statut, progression, warnings, erreurs | ✅ |
+| 3 | POST /sync/initial → AsyncJobStatus | ✅ |
+| 4 | Redémarrage : `running` → `interrupted`, `active_sync_job_id` dans bootstrap | ✅ |
+| 5 | Exclusivité stricte : 1 seule sync à la fois | ✅ |
+| 6 | Tests : job persisté au redémarrage, annulation | ✅ |
 
 ### Critère de sortie
 - Jobs persistés au redémarrage
 - Exclusivité sync vérifiée
 
 ### Gate Phase 3
-- [ ] Onboarding complet fonctionne sans Python
-- [ ] Auth device code flow + échange Halo ok
-- [ ] Sessions persistantes
-- [ ] Jobs long-running avec persistance
-- [ ] → **Passage à Phase 4 autorisé**
+- [x] Onboarding complet fonctionne sans Python
+- [x] Auth device code flow + échange Halo ok
+- [x] Sessions persistantes
+- [x] Jobs long-running avec persistance
+- [x] → **Passage à Phase 4 autorisé**
 
 ---
 
