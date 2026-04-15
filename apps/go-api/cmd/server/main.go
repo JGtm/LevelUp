@@ -1,16 +1,18 @@
 // cmd/server — point d'entrée du backend Go LevelUp.
 //
 // Sprint 0 : POC DuckDB + HTTP.
-// Ce binaire démarre un serveur HTTP minimal qui :
+// Sprint 4 : CORS, rate-limit, slog JSON, oapi-codegen types.
+// Ce binaire démarre un serveur HTTP qui :
 //   - ouvre metadata.duckdb et shared_matches_v2.duckdb en read-only
 //   - expose GET /health (nb de matchs + version DuckDB)
 //   - expose GET /api/v1/bootstrap (réponse structurée, parité Python cible)
 //   - expose GET /api/v1/players
 //
-// Variables d'environnement utiles (sprint 0) :
+// Variables d'environnement :
 //   LEVELUP_REPO_ROOT    — racine du repo (par défaut : auto-détection)
 //   LEVELUP_API_PORT     — port d'écoute (défaut : 8000)
 //   LEVELUP_DEMO_MODE    — "true" pour activer le mode démo
+//   LEVELUP_LOG_JSON     — "true" pour JSON logging (prod), défaut: text (dev)
 package main
 
 import (
@@ -21,6 +23,7 @@ import (
 	"os"
 	"os/signal"
 	"path/filepath"
+	"strings"
 	"syscall"
 	"time"
 
@@ -32,9 +35,15 @@ import (
 
 func main() {
 	// --- 1. Logging structuré ---
-	slog.SetDefault(slog.New(slog.NewTextHandler(os.Stderr, &slog.HandlerOptions{
-		Level: slog.LevelDebug,
-	})))
+	// En production (LEVELUP_LOG_JSON=true) : JSON. En dev : texte lisible.
+	logJSON := strings.ToLower(os.Getenv("LEVELUP_LOG_JSON")) == "true"
+	var logHandler slog.Handler
+	if logJSON {
+		logHandler = slog.NewJSONHandler(os.Stderr, &slog.HandlerOptions{Level: slog.LevelInfo})
+	} else {
+		logHandler = slog.NewTextHandler(os.Stderr, &slog.HandlerOptions{Level: slog.LevelDebug})
+	}
+	slog.SetDefault(slog.New(logHandler))
 
 	// --- 2. Configuration ---
 	cfg, err := config.Load()
@@ -103,7 +112,7 @@ func main() {
 	}
 
 	// --- 6. Routeur HTTP ---
-	router := api.NewRouter(bootRepo, bootSvc)
+	router := api.NewRouter(cfg, bootRepo, bootSvc)
 
 	srv := &http.Server{
 		Addr:         cfg.ServerAddr(),

@@ -1,5 +1,32 @@
 # Thought Log
 
+## [2026-04-15] feat(go-api): Sprint 3+4 — Baselines perf + Squelette HTTP Sprint 4
+
+**Statut** : Complété
+
+**Tâche** : Sprint 3 (baselines de performance Python) et Sprint 4 (squelette HTTP, CORS, rate-limit, slog, oapi-codegen, CI).
+
+**Décisions techniques principales** :
+
+1. **Sprint 3 — benchmarks sur API démo** — `db_profiles.json` absent dans LevelUp-no-streamlit. L'API tourne en `LEVELUP_DEMO_MODE=true` avec les fixtures `tests/fixtures/ref_player/`. Slug joueur = `demo-player`. Les baselines reflètent les latences réelles de l'API Python avec les fixtures de démo (364 matchs). À remesurer avec l'API prod avant Sprint 7.
+2. **Route health Python = `/api/v1/health`** — pas `/health` (la racine est interceptée par le SPA React). Le serveur Go utilise `/health` (hors préfixe `/api/v1`) — différence documentée dans `baselines.json` (`GET /api/v1/health`).
+3. **oapi-codegen v2.6.0 + OpenAPI 3.1** — warning "not yet supported" mais génération fonctionnelle : 1125 lignes de types Go, tous les enums et structs dérivés de la spec Python. Dépendance `github.com/oapi-codegen/runtime v1.4.0` ajoutée au `go.mod`.
+4. **CORS middleware** — `github.com/go-chi/cors v1.2.2`, configuré depuis `cfg.CORSOrigins` (injection de dépendance). Origins par défaut : `localhost:5173` / `127.0.0.1:5173` (Vite dev server).
+5. **Rate limit** — `github.com/go-chi/httprate v0.15.0`, 120 req/min par IP. En mode démo : 1200 req/min pour éviter de bloquer les benchmarks CI.
+6. **slog JSON logging** — variable `LEVELUP_LOG_JSON=true` pour passer en JSON (prod). Dev = text handler avec Level=Debug. Middleware `SlogLogger` remplace `chimiddleware.Logger`.
+7. **`NewRouter` reçoit `*config.AppConfig`** — refactoring de signature pour injecter CORS origins et demo mode depuis la config. Breaking change interne (cmd/server mis à jour).
+8. **CI GitHub Actions** — 2 nouveaux jobs : `go-build` (ubuntu + windows, `go build + go test`) et `go-openapi-lint` (spectral, continue-on-error). Ajoutés en fin de `.github/workflows/ci.yml`.
+
+**Résultats observés** :
+- `go build ./...` + `go vet ./...` avec CGO_ENABLED=1 : **0 erreur**
+- Baselines capturées : health=0.6ms p50, bootstrap=4.6ms, career=43ms, match-history=220ms
+- Types générés : 1125 lignes, 50+ structs/enums compilent sans erreur
+
+**Conclusion / prochaine étape** :
+Ouvrir Sprint 5 : `internal/platform/duckdb/pool.go` + implémentation des 16 requêtes critiques Q1-Q16 + tests golden values.
+
+---
+
 ## [2026-04-15] feat(go-api): Sprint 1+2 — Spec OpenAPI 3.1 + Corpus golden values
 
 **Statut** : Complété

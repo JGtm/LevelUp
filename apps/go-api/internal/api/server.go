@@ -1,4 +1,5 @@
 // Package api assemble le routeur HTTP et le serveur.
+// Sprint 4 : CORS, rate-limit, slog logging, mode démo.
 package api
 
 import (
@@ -9,6 +10,7 @@ import (
 
 	"levelup/go-api/internal/api/handlers"
 	"levelup/go-api/internal/api/middleware"
+	"levelup/go-api/internal/config"
 	"levelup/go-api/internal/port"
 	"levelup/go-api/internal/service"
 )
@@ -16,16 +18,19 @@ import (
 // NewRouter construit le routeur chi avec tous les endpoints.
 // Construction par injection de dépendances — pas d'état global.
 func NewRouter(
+	cfg *config.AppConfig,
 	bootRepo port.BootstrapRepository,
 	bootSvc *service.BootstrapService,
 ) http.Handler {
 	r := chi.NewRouter()
 
-	// Middlewares transverses
+	// Middlewares transverses (ordre important)
 	r.Use(chimiddleware.Recoverer)
 	r.Use(chimiddleware.RealIP)
 	r.Use(middleware.RequestID)
-	r.Use(chimiddleware.Logger)
+	r.Use(middleware.CORS(cfg.CORSOrigins))
+	r.Use(middleware.RateLimit(cfg.DemoMode))
+	r.Use(middleware.SlogLogger)
 	r.Use(chimiddleware.Compress(5))
 
 	// Health check (pas de préfixe /api/v1 — sondage infrastructurel)
