@@ -1,5 +1,29 @@
 # Thought Log
 
+## [2026-04-15] feat(sprint20): Backfill complet — SyncScope, bitmask, détection, CLI
+
+**Statut** : Complété (commit 3a76aa30)
+
+**Tâche** : Sprint 20 — Port complet du système de backfill : SyncScope (~96 champs), bitmask flags numériquement identiques, détection des matchs manquants, CLI ~120 arguments.
+
+**Décisions techniques principales** :
+
+1. **scope.go** — SyncScope struct Go avec ~96 champs booléens + Resolve() appliquant les implications (AllData→champs, groupes→sous-champs, ForceX→X). Ordre identique au Python (CoreStats→Combat→KillsDetail→MMR→Expected→Force). Méthodes utilitaires : NewScopeAll(), HasAnyOption(), NeedsAPI(), NeedsLocalOnly(), RequestedTypes().
+2. **backfill_flags.go** — Trois niveaux de bitmask : ParticipantBits (bits 0-18 = 19 bits individuels + 7 groupes), MatchBits (bits 16-22, ≥16 pour éviter collision legacy), PveBits (bits 0-9 IntFlag). BackfillFlags map legacy (bits 0-15 + bit 18 obsolète). Valeurs numériquement identiques au Python. ComputeBackfillMask() et ComputeParticipantBitsFromData().
+3. **backfill.go** — FindMatchesMissingData() porte detection.py : détection OR/AND via shared DB, fusion résultats locaux + shared (dédoublonnage ordonné). findMatchesInSharedAll() avec guards per-player (backfill_bits, player DB) et guards globaux (backfill_completed). findMatchesInSharedDB() pour détection participants-only. FindMatchesMissingParticipantBits() pour bitmask granulaire. Helpers : getMatchSource(), hasBackfillCompletedColumn(), doneGuard(), playerDoneGuard().
+4. **backfill_cli.go** — NewBackfillFlagSet() retourne (FlagSet, BackfillCLI, *SyncScope). Utilise flag stdlib (léger, testable). ~120 flags bindés directement sur les champs du SyncScope. L'appelant doit invoquer scope.Resolve() après Parse().
+5. **engine.go** — RunBackfill() ajouté : ouvre les DBs, délègue à FindMatchesMissingData(), retourne la liste des match_ids manquants.
+
+**Résultats observés** :
+- `go build ./...` : **0 erreur**
+- `go vet ./...` : **0 warning**
+- 5 fichiers modifiés (4 créés + engine.go modifié), 1258 insertions
+- Tests d'intégrité bitmask (tâches 5-6) reportés : nécessitent corpus de test
+
+**Prochaine étape** : Sprint 21 (Migrations DuckDB) — 35 steps idempotentes, auto-apply au démarrage
+
+---
+
 ## [2026-07-15] feat(sprint19): Pipeline post-sync — perf score, LUSR, career, aggregates
 
 **Statut** : Complété (commit a5ecff46)
