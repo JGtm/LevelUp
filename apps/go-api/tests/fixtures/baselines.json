@@ -1,0 +1,83 @@
+{
+  "_meta": {
+    "version": "1.0",
+    "captured_at": "2026-04-15T10:27:33.410779+00:00",
+    "base_url": "http://127.0.0.1:8000",
+    "player": "demo-player",
+    "samples_per_endpoint": 10,
+    "match_id": "9b191a7f-72ae-417b-9789-cd0d870a43cf",
+    "note": "Baseline Python. Règle : si Go > 2× p95 Python sur un endpoint = bug de performance à investiguer (hors cold-start)."
+  },
+  "GET /api/v1/health": {
+    "p50_ms": 0.59,
+    "p95_ms": 1.31,
+    "p99_ms": 1.31,
+    "mean_ms": 0.62,
+    "min_ms": 0.44,
+    "max_ms": 1.31,
+    "samples": 10
+  },
+  "GET /api/v1/bootstrap": {
+    "p50_ms": 4.58,
+    "p95_ms": 5.85,
+    "p99_ms": 5.85,
+    "mean_ms": 4.48,
+    "min_ms": 2.25,
+    "max_ms": 5.85,
+    "samples": 10
+  },
+  "GET /api/v1/players": {
+    "p50_ms": 4.59,
+    "p95_ms": 4.82,
+    "p99_ms": 4.82,
+    "mean_ms": 4.57,
+    "min_ms": 4.37,
+    "max_ms": 4.82,
+    "samples": 10
+  },
+  "POST /api/v1/players/demo-player/filters/resolve": {
+    "p50_ms": 15.94,
+    "p95_ms": 18.34,
+    "p99_ms": 18.34,
+    "mean_ms": 16.19,
+    "min_ms": 14.97,
+    "max_ms": 18.34,
+    "samples": 10
+  },
+  "GET /api/v1/players/demo-player/pages/career": {
+    "p50_ms": 43.09,
+    "p95_ms": 46.38,
+    "p99_ms": 46.38,
+    "mean_ms": 43.05,
+    "min_ms": 41.52,
+    "max_ms": 46.38,
+    "samples": 10
+  },
+  "POST /api/v1/players/demo-player/pages/match-history/query": {
+    "p50_ms": 220.07,
+    "p95_ms": 254.32,
+    "p99_ms": 254.32,
+    "mean_ms": 224.62,
+    "min_ms": 215.75,
+    "max_ms": 254.32,
+    "samples": 10
+  },
+  "GET /api/v1/directory/gamertags/search?q=ref": {
+    "p50_ms": 31.82,
+    "p95_ms": 37.14,
+    "p99_ms": 37.14,
+    "mean_ms": 32.19,
+    "min_ms": 30.42,
+    "max_ms": 37.14,
+    "samples": 10
+  },
+  "GET /api/v1/players/demo-player/matches/9b191a7f-72ae-417b-9789-cd0d870a43cf": {
+    "p50_ms": 40.12,
+    "p95_ms": 47.74,
+    "p99_ms": 47.74,
+    "mean_ms": 40.85,
+    "min_ms": 38.07,
+    "max_ms": 47.74,
+    "samples": 10
+  }
+}

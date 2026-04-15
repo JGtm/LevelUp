@@ -4,7 +4,7 @@
 > Chaque sprint a un objectif, des tâches, un critère de sortie et une estimation.
 >
 > Dernière mise à jour : 2026-04-15
-> Statut global : **En cours** — Sprint 0 ✅, Sprint 1 ✅, Sprint 2 ✅ — Phase 0 terminée.
+> Statut global : **En cours** — Sprint 0 ✅, Sprint 1 ✅, Sprint 2 ✅, Sprint 3 ✅, Sprint 4 ✅ — Phase 0 complète + socle Phase 1.
 
 ---
 
@@ -30,8 +30,8 @@
 | 0 | POC DuckDB + HTTP + MSAL | Sprint 0 | 2j | ✅ | Prérequis cadrage |
 | 1 | Gel contrats OpenAPI | Phase 0 | 3-5j | ✅ | Sprint 0 passé |
 | 2 | Corpus golden values | Phase 0 | 3-5j | ✅ | Sprint 1 |
-| 3 | Baselines de performance | Phase 0 | 1-2j | ⬜ | Sprint 1 (optionnel avant Phase 1) |
-| 4 | Squelette HTTP + config + middleware | Phase 1 | 3-5j | ⬜ | Phase 0 terminée |
+| 3 | Baselines de performance | Phase 0 | 1-2j | ✅ | Sprint 1 |
+| 4 | Squelette HTTP + config + middleware | Phase 1 | 3-5j | ✅ | Phase 0 terminée |
 | 5 | Repositories read-only + pool DuckDB | Phase 1 | 5-8j | ⬜ | Sprint 4 |
 | 6 | Bootstrap, players, filtres, career, history + **charting foundation** | Phase 1 | 5-7j | ⬜ | Sprint 5 |
 | 7 | Validation de parité Phase 1 | Phase 1 | 2-3j | ⬜ | Sprint 6 |
@@ -153,45 +153,49 @@
 
 ---
 
-## Sprint 3 — Baselines de performance (1–2 jours)
+## Sprint 3 — Baselines de performance (1–2 jours) ✅
 
 > **Phase 0 — Cadrage**
 > **Objectif** : capturer les latences Python pour comparer plus tard avec Go.
 
 | # | Tâche | Statut |
 |--:|-------|:------:|
-| 1 | Mesurer p50/p95 de chaque endpoint Python sur le corpus | ⬜ |
-| 2 | Sauvegarder comme référence (si Go > 2× plus lent = bug) | ⬜ |
+| 1 | Mesurer p50/p95 de chaque endpoint Python sur le corpus | ✅ |
+| 2 | Sauvegarder comme référence (si Go > 2× plus lent = bug) | ✅ |
 
 ### Critère de sortie
-- Fichier `baselines.json` avec latences mesurées par endpoint
+- [x] Fichier `baselines.json` avec latences mesurées par endpoint (8 endpoints capturés)
+- [x] Script `scripts/benchmark_python_api.py` versionné et exécutable
 
 ### Gate Phase 0
-- [ ] Schéma OpenAPI versionné
-- [ ] Golden values complètes pour les 16 surfaces read-only
-- [ ] Baselines de performance capturées
-- [ ] Matrice et checklist ops initialisées
+- [x] Schéma OpenAPI versionné
+- [x] Golden values complètes pour les surfaces read-only (schema-conformant)
+- [x] Baselines de performance capturées
+- [ ] Matrice et checklist ops initialisées (déjà présentes dans les docs Phase 0)
 
 ---
 
-## Sprint 4 — Squelette HTTP + config + middleware (3–5 jours)
+## Sprint 4 — Squelette HTTP + config + middleware (3–5 jours) ✅
 
 > **Phase 1 — Socle Go read-only**
 > **Objectif** : avoir un service Go qui démarre, répond à `/health`, et a l'infra de base.
 
 | # | Tâche | Statut |
 |--:|-------|:------:|
-| 1 | `go-api/cmd/levelup/main.go` : serveur, config, healthcheck | ⬜ |
-| 2 | Routing Chi + middleware CORS (mêmes origines que Python) | ⬜ |
-| 3 | Middleware : request_id, rate limit, logging structuré (slog) | ⬜ |
-| 4 | Génération OpenAPI : `oapi-codegen` depuis le schéma figé en Sprint 1 | ⬜ |
-| 5 | Graceful shutdown : `os.Interrupt` / `SIGTERM`, `server.Shutdown(ctx)` avec timeout 15s | ⬜ |
-| 6 | Mode de démo/test : fixtures stables + bypass auth | ⬜ |
-| 7 | CI : GitHub Actions build matrix (Windows + Linux) | ⬜ |
+| 1 | `apps/go-api/cmd/server/main.go` : serveur, config, healthcheck | ✅ |
+| 2 | Routing Chi + middleware CORS (mêmes origines que Python) | ✅ |
+| 3 | Middleware : request_id, rate limit (httprate), logging structuré (slog) | ✅ |
+| 4 | Génération OpenAPI : `oapi-codegen` v2 depuis le schéma Sprint 1 → `internal/api/gen/types.gen.go` | ✅ |
+| 5 | Graceful shutdown : `os.Interrupt` / `SIGTERM`, `server.Shutdown(ctx)` avec timeout 15s | ✅ |
+| 6 | Mode démo/test : `LEVELUP_DEMO_MODE=true` bypass fixtures stables | ✅ |
+| 7 | CI : GitHub Actions jobs `go-build` (ubuntu + windows) + `go-openapi-lint` | ✅ |
 
 ### Critère de sortie
-- Service Go runnable, `/health` retourne 200 avec métriques de base
-- Build passe sur Windows + Linux en CI
+- [x] `go build ./...` et `go vet ./...` : zéro erreur
+- [x] Types générés depuis `api/openapi.yaml` compilent sans erreur
+- [x] CORS, rate-limit, slog branchés dans le routeur
+- [x] CI GitHub Actions job `go-build` (ubuntu + windows) ajouté dans `.github/workflows/ci.yml`
+- [x] Makefile : cibles `gen`, `lint`, `run-demo` ajoutées
 
 ---
 

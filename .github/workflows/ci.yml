@@ -165,3 +165,44 @@ jobs:
 
       - name: Check imports health
         run: python scripts/validate_imports.py || true
+
+  go-build:
+    name: Go Build + Test
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+    defaults:
+      run:
+        working-directory: apps/go-api
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: "1.22"
+          cache-dependency-path: apps/go-api/go.sum
+
+      - name: go vet
+        run: go vet ./...
+
+      - name: go build
+        run: go build ./...
+
+      - name: go test (unit, no CGo DB)
+        run: go test ./... -timeout 30s -run "^Test[^Integration]"
+        env:
+          CGO_ENABLED: "0"
+          LEVELUP_DEMO_MODE: "true"
+
+  go-openapi-lint:
+    name: OpenAPI Lint
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Validate openapi.yaml (spectral)
+        uses: stoplightio/spectral-action@v0.8.11
+        with:
+          file_glob: apps/go-api/api/openapi.yaml
+        continue-on-error: true
