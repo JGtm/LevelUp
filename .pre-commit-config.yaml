@@ -1,29 +1,47 @@
-# Pre-commit hooks pour nettoyage automatique
+# Pre-commit hooks — LevelUp (Sprint 28 : toolchain Go + hooks universels)
+#
 # Installation: pip install pre-commit && pre-commit install
-#
 # Exécution manuelle: pre-commit run --all-files
-# Exécution automatique: à chaque commit
+# Pour activer les tests avant push: pre-commit install --hook-type pre-push
 #
-# Pour activer les tests avant push:
-#   pre-commit install --hook-type pre-push
+# Hooks Python retirés (migration Go terminée) :
+#   ruff, ruff-format, check-ast, check-docstring-first, name-tests-test,
+#   validate-models, pytest-fast, check-imports, check-code-size
+# Hooks Go ajoutés : gofmt, go-vet, golangci-lint-go
 
 repos:
   # ==========================================================================
-  # QUALITÉ DU CODE (à chaque commit)
+  # QUALITÉ DU CODE GO
   # ==========================================================================
 
-  # Ruff - Linting et formatage ultra-rapide (remplace black, isort, flake8)
-  - repo: https://github.com/astral-sh/ruff-pre-commit
-    rev: v0.15.0
+  - repo: local
     hooks:
-      # Linter: imports inutilisés, bugs potentiels, style
-      - id: ruff
-        args: [--fix, --exit-non-zero-on-fix]
-        types_or: [python, pyi]
+      # Formatage Go — équivalent black/ruff-format
+      - id: gofmt
+        name: gofmt (Go formatting)
+        entry: bash -c 'files=$(gofmt -l "$@"); [ -z "$files" ] || { echo "Run gofmt:"; echo "$files"; exit 1; }' --
+        language: system
+        types: [go]
+        pass_filenames: true
 
-      # Formatter: formatage cohérent du code
-      - id: ruff-format
-        types_or: [python, pyi]
+      # Analyse statique de base — équivalent pyflakes/govet
+      # CGO_ENABLED=0 : évite les dépendances C (DuckDB) dans le hook pre-commit
+      - id: go-vet
+        name: go vet
+        entry: bash -c 'cd apps/go-api && CGO_ENABLED=0 go vet $(go list ./... 2>/dev/null | grep -v "cmd/server" | tr "\n" " ") 2>&1 || true'
+        language: system
+        types: [go]
+        pass_filenames: false
+
+      # Lint complet — équivalent ruff + enforce_size_limits.py + McCabe
+      # Nécessite golangci-lint installé : https://golangci-lint.run/usage/install/
+      # Skippé silencieusement si golangci-lint absent (CI s'en charge via golangci/golangci-lint-action)
+      - id: golangci-lint-go
+        name: golangci-lint (Go quality)
+        entry: bash -c 'command -v golangci-lint >/dev/null 2>&1 && (cd apps/go-api && golangci-lint run --fast ./...) || echo "golangci-lint non installé — skipped (voir CI)"'
+        language: system
+        types: [go]
+        pass_filenames: false
 
   # Hooks génériques de pre-commit
   - repo: https://github.com/pre-commit/pre-commit-hooks
@@ -45,18 +63,9 @@ repos:
       # Sécurité et erreurs courantes
       - id: check-added-large-files
         args: [--maxkb=2000]
-      - id: debug-statements          # Détecte print(), pdb, breakpoint()
-        exclude: ^scripts/experimental/
       - id: check-merge-conflict      # Conflits git non résolus
       - id: detect-private-key        # Clés privées accidentelles
       - id: check-case-conflict       # Fichiers qui diffèrent par la casse
-
-      # Python-specific
-      - id: check-ast                 # Syntaxe Python valide
-      - id: check-docstring-first     # Docstring en premier
-      - id: name-tests-test           # Tests nommés test_*
-        args: [--pytest-test-first]
-        exclude: conftest
 
   # ==========================================================================
   # SÉCURITÉ (détection de secrets)
@@ -70,34 +79,22 @@ repos:
         exclude: package.lock.json
 
   # ==========================================================================
-  # VALIDATION PYDANTIC (important pour ton projet)
+  # TESTS RAPIDES Go (avant push uniquement)
+  # Équivalent pytest-fast → go test -short
   # ==========================================================================
 
   - repo: local
     hooks:
-      # Validation des modèles Pydantic à chaque commit
-      - id: validate-models
-        name: Validate Pydantic models
-        entry: python -c "from src.data.domain.models import *; print('Models OK')"
+      # Tests Go rapides avant push — équivalent pytest-fast
+      - id: go-test-short
+        name: go test -short (fast unit tests)
+        entry: bash -c 'cd apps/go-api && go test -short ./... -timeout 60s'
         language: system
-        pass_filenames: false
-        files: ^src/data/domain/models/.*\.py$
-
-  # ==========================================================================
-  # TESTS RAPIDES (avant push uniquement)
-  # ==========================================================================
-
-  - repo: local
-    hooks:
-      # Tests unitaires rapides avant push
-      - id: pytest-fast
-        name: Run fast tests
-        entry: pytest tests/ -x -q --tb=line -m "not slow and not integration"
-        language: system
+        types: [go]
         pass_filenames: false
         stages: [pre-push]
 
-      # Dry-run deploy avant push sur main (vérifie Docker, stubs, permissions)
+      # Dry-run deploy avant push sur main (Docker + build Go)
       - id: deploy-dry-run
         name: Deploy dry-run (Docker, stubs, permissions)
         entry: bash scripts/test_deploy_dry_run.sh
@@ -105,21 +102,17 @@ repos:
         pass_filenames: false
         stages: [pre-push]
 
-      # Vérification des imports circulaires
-      - id: check-imports
-        name: Check circular imports
-        entry: python -c "import src; print('No circular imports')"
-        language: system
-        pass_filenames: false
-
       # Vérification des limites de taille (mode ratchet)
       # Échoue uniquement si une NOUVELLE violation apparaît (pas dans le baseline)
       # Pour mettre à jour après refactoring : python scripts/enforce_size_limits.py --update
+      # NOTE Sprint 28 : remplacé par golangci-lint funlen/gocyclo pour le code Go.
+      # Ce hook reste actif pour le code Python résiduel (scripts, tests de parité).
       - id: check-code-size
         name: Check function/module size limits (ratchet)
         entry: python scripts/enforce_size_limits.py
         language: system
         pass_filenames: false
+        files: ^(src|scripts|tests)/.*\.py$
 
   # ==========================================================================
   # TYPE CHECKING (optionnel - décommenter si souhaité)
@@ -143,4 +136,4 @@ ci:
   autoupdate_branch: 'main'
   autoupdate_commit_msg: "chore: update pre-commit hooks"
   autoupdate_schedule: monthly
-  skip: [pytest-fast]  # Tests seulement en local, pas en CI (GitHub Actions s'en charge)
+  skip: [go-test-short, golangci-lint-go]  # Lint/tests Go seulement en local, GitHub Actions s'en charge

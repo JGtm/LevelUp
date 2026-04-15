@@ -14047,3 +14047,37 @@ Deux nouvelles sous-commandes :
 **Conclusion** :
 Sprint 26 complet. Gate Phase 4 validée (outillage déployé). Les tâches opérationnelles (3 cycles sync réels, utilisation app) restent à fair en conditions réelles par l'utilisateur. Passage en Phase 5 (Sprint 27 — Bascule progressive) autorisé.
 Prochaine étape : Sprint 27 (Bascule progressive, ~3-5j).
+
+---
+
+## [2026-04-15] Sprints 27 & 28 — Bascule progressive + Toolchain qualité Go
+
+**Statut** : Complété ✅
+
+### Sprint 27 — Bascule progressive
+
+**Décision technique** : Créer un système de feature flags par surface pour permettre rollback immédiat vers Python en cas d'incident, avec 3 sources de configuration par priorité croissante (défauts → app_settings.json → env vars).
+
+**Fichiers créés/modifiés :**
+- `internal/config/feature_flags.go` : `FeatureFlags` struct (12 surfaces), `LoadFeatureFlags()`, `BackendFor()`, `AllOnGo()`, `parseBackend()`
+- `internal/config/feature_flags_test.go` : 7 tests (défauts Go, AllOnGo, parseBackend, app_settings JSON, env var priorité, fichier absent, couverture complète)
+- `internal/config/config.go` : ajout champ `FeatureFlags FeatureFlags` dans `AppConfig` + chargement dans `Load()`
+- `cmd/levelup/main.go` : sous-commande `surface-status [--json]` — liste chaque surface avec son backend et un indicateur ✅/⚠️
+
+**Résultats** : 7/7 tests PASS, build OK.
+
+**Rollback d'urgence** : `LEVELUP_FF_SYNC=python` ou `app_settings.json` → `"feature_flags": {"sync": "python"}`
+
+### Sprint 28 — Toolchain qualité Go
+
+**Décision technique** : Remplacer la toolchain Python (ruff, black, isort, enforce_size_limits.py, pytest-fast) par des équivalents Go. Seuils identiques à Python : funlen=80L, gocyclo=12, revive argument-limit=5, lll=100c.
+
+**Fichiers créés/modifiés :**
+- `apps/go-api/.golangci.yml` : config golangci-lint complète (15 linters activés, exclusions pour gen/, steps_metadata, cmd/levelup, tests)
+- `apps/go-api/Makefile` : cible `lint-go` (golangci-lint) + `lint` = vet + build + lint-go
+- `.pre-commit-config.yaml` : hooks Go ajoutés (gofmt, go-vet, golangci-lint, go-test-short pre-push) ; hooks Python-only retirés (ruff, ruff-format, check-ast, check-docstring-first, name-tests-test, validate-models, pytest-fast, check-imports)
+- `.github/workflows/ci.yml` : jobs `go-lint` (golangci-lint-action v6) + `go-coverage` (seuil 30%)
+
+**Résultats** : `go vet ./internal/... ./cmd/levelup/...` → 0 erreur, build OK.
+
+**Gate Phase 5** : ✅ toutes checkboxes cochées. **Migration Python → Go terminée 🎉**

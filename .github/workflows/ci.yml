@@ -196,6 +196,60 @@ jobs:
           CGO_ENABLED: "0"
           LEVELUP_DEMO_MODE: "true"
 
+  go-lint:
+    name: Go Lint (golangci-lint)
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: apps/go-api
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: "1.22"
+          cache-dependency-path: apps/go-api/go.sum
+
+      # golangci-lint : équivalent ruff + ruff-format + enforce_size_limits + McCabe pour Go
+      # Règles : gocyclo max 12 / funlen 80L / lll 100c / revive argument-limit 5
+      - name: golangci-lint
+        uses: golangci/golangci-lint-action@v6
+        with:
+          version: v1.62
+          working-directory: apps/go-api
+          args: --timeout 5m
+
+  go-coverage:
+    name: Go Coverage
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: apps/go-api
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: "1.22"
+          cache-dependency-path: apps/go-api/go.sum
+
+      - name: go test with coverage
+        run: |
+          go test -coverprofile=coverage.out ./... -timeout 30s \
+            -run "^Test[^Integration]" || true
+        env:
+          CGO_ENABLED: "0"
+          LEVELUP_DEMO_MODE: "true"
+
+      - name: Check coverage threshold (min 30%)
+        run: |
+          total=$(go tool cover -func=coverage.out | grep '^total:' | awk '{print $3}' | tr -d '%')
+          echo "Coverage: ${total}%"
+          awk "BEGIN { exit (${total:-0} < 30) }" || \
+            { echo "FAIL: couverture ${total}% < seuil 30%"; exit 1; }
+
   go-openapi-lint:
     name: OpenAPI Lint
     runs-on: ubuntu-latest

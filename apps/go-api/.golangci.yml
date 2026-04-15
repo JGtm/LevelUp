@@ -1,0 +1,127 @@
+# golangci-lint configuration — LevelUp Go API
+#
+# Équivalences Python → Go :
+#   ruff (lint)                → golangci-lint + staticcheck
+#   black / ruff-format        → gofmt (standard Go, pas de config)
+#   pyright / mypy             → compilateur Go (vérification statique à la compile)
+#   McCabe C901 max 12         → gocyclo max-complexity 12
+#   PLR0913 max 5 args         → revive argument-limit 5
+#   enforce_size_limits.py     → funlen (80 lignes) + lll (100 chars)
+#   isort                      → goimports (no config needed)
+#   detect-secrets             → hook pre-commit universel (inchangé)
+#
+# Seuils (identiques Python) :
+#   Complexité cyclomatique : 12
+#   Longueur de fonction     : 80 lignes  / 60 statements
+#   Longueur de ligne        : 100 caractères
+#   Nombre d'arguments       : 5
+
+version: "1"
+
+linters-settings:
+  gocyclo:
+    min-complexity: 12
+
+  funlen:
+    lines: 80
+    statements: 60
+
+  lll:
+    line-length: 100
+
+  revive:
+    rules:
+      - name: argument-limit
+        arguments: [5]
+      - name: exported
+        arguments: ["checkPrivateReceivers", "sayRepetitiveInsteadOfStutters"]
+      - name: var-naming
+
+  goconst:
+    min-len: 3
+    min-occurrences: 3
+
+  misspell:
+    locale: US
+
+  staticcheck:
+    checks: ["all", "-SA1019"]  # Tout sauf "deprecated" (migration progressive)
+
+linters:
+  enable:
+    - govet           # Équivalent go vet (vérifications de base)
+    - errcheck        # Erreurs non vérifiées (anti-pattern critique)
+    - staticcheck     # Analyse statique avancée (équivalent ruff flagged errors)
+    - revive          # Règles de style (équivalent ruff lint)
+    - gocyclo         # Complexité cyclomatique (équivalent McCabe C901)
+    - funlen          # Longueur de fonction (équivalent enforce_size_limits.py)
+    - lll             # Longueur de ligne (équivalent line-length=100)
+    - gofmt           # Formatage standard Go (équivalent black)
+    - goimports       # Imports organisés (équivalent isort)
+    - goconst         # Constantes répétées (équivalent ruff A001/A002)
+    - misspell        # Fautes d'orthographe
+    - unconvert       # Conversions de type inutiles
+    - unparam         # Paramètres de fonction inutilisés
+    - unused          # Code mort (fonctions, variables, imports)
+    - bodyclose       # Body HTTP non fermé (fuite de ressource)
+    - noctx           # Requêtes HTTP sans context.Context
+    - prealloc        # Slices non pré-allouées (perf)
+
+  disable:
+    - godot           # Ponctuation des commentaires — désactivé (commentaires FR acceptés)
+    - wsl             # Whitespace stricte — trop verbeux pour migration
+    - nlreturn        # Lignes vides avant return — cosmétique, désactivé
+    - gci             # Groupes d'imports — géré par goimports
+
+issues:
+  max-same-issues: 0
+  max-issues-per-linter: 0
+  exclude-use-default: false
+
+  exclude-rules:
+    # Tests : funlen + lll permissifs (tables de valeurs longues acceptées)
+    - path: "_test\\.go"
+      linters:
+        - funlen
+        - lll
+        - gocyclo
+
+    # Fichiers générés par oapi-codegen : pas de lint
+    - path: "internal/api/gen/"
+      linters:
+        - lll
+        - revive
+        - funlen
+        - gocyclo
+        - unused
+
+    # Steps de migration : SQL verbeux, funlen + gocyclo permissifs
+    - path: "internal/migration/steps_"
+      linters:
+        - funlen
+        - gocyclo
+        - lll
+
+    # Backfill : 96 champs → argument-limit non applicable
+    - path: "internal/sync/backfill"
+      linters:
+        - revive
+
+    # main.go CLI : switch volumineux accepté
+    - path: "cmd/levelup/main\\.go"
+      linters:
+        - funlen
+        - gocyclo
+
+run:
+  timeout: 5m
+  modules-download-mode: readonly
+  skip-dirs:
+    - vendor
+    - bin
+    - scripts
+
+output:
+  formats:
+    - format: colored-line-number
+  sort-results: true

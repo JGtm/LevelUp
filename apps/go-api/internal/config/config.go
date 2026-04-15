@@ -25,6 +25,7 @@ type AppConfig struct {
 	SessionSecret   string
 	CORSOrigins     []string
 	Lang            string
+	FeatureFlags    FeatureFlags
 }
 
 // Load charge la configuration depuis les variables d'environnement.
@@ -46,13 +47,15 @@ func Load() (*AppConfig, error) {
 		CORSOrigins:     parseCORSOrigins(getEnvOrDefault("LEVELUP_CORS_ORIGINS", "")),
 		Lang:            getEnvOrDefault("LEVELUP_LANG", "fr"),
 	}
+	appSettingsPath := getEnvOrDefault("LEVELUP_APP_SETTINGS", filepath.Join(repoRoot, "app_settings.json"))
+	cfg.FeatureFlags = LoadFeatureFlags(appSettingsPath)
 	return cfg, nil
 }
 
 // dbProfilesFile représente le format du fichier db_profiles.json (v2.1).
 // Structure : { "version": "2.1", "profiles": { "<gamertag>": {...} } }
 type dbProfilesFile struct {
-	Version string                    `json:"version"`
+	Version  string                    `json:"version"`
 	Profiles map[string]dbProfileEntry `json:"profiles"`
 }
 

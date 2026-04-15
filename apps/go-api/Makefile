@@ -12,7 +12,7 @@
 #   make tidy        — go mod tidy
 #   make lint        — go vet + build
 
-.PHONY: build gen run test msal-poc vet tidy lint
+.PHONY: build gen run test msal-poc vet tidy lint lint-go
 
 # Toolchain CGo (Windows MinGW ucrt64)
 CC      := /c/msys64/ucrt64/bin/gcc.exe
@@ -47,7 +47,12 @@ msal-poc:
 vet:
 	$(CGO_ENV) go vet ./...
 
-lint: vet build
+# lint-go : golangci-lint (équivalent ruff + enforce_size_limits + McCabe pour Go)
+# Installation : https://golangci-lint.run/usage/install/
+lint-go:
+	golangci-lint run ./...
+
+lint: vet build lint-go
 	@echo "lint OK"
 
 tidy:
