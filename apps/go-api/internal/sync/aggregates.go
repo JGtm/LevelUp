@@ -1,0 +1,120 @@
+// Package sync — aggregates.go : rafraîchissement des vues matérialisées.
+//
+// Portage de src/data/sync/_aggregates.py.
+// Recrée (DROP+CREATE) les vues matérialisées dans la player DB
+// et les vues SQL garanties dans la shared DB.
+package sync
+
+import (
+	"database/sql"
+	"fmt"
+	"log"
+)
+
+// MaterializedView décrit une vue matérialisée à recréer.
+type MaterializedView struct {
+	Name  string
+	Query string
+}
+
+// playerMaterializedViews contient les vues matérialisées joueur (mv_*).
+var playerMaterializedViews = []MaterializedView{
+	{
+		Name: "mv_player_matches",
+		Query: `
+		SELECT
+			pme.match_id,
+			pme.performance_score,
+			pme.session_id,
+			pme.session_label,
+			pme.is_with_friends
+		FROM player_match_enrichment pme
+		WHERE pme.performance_score IS NOT NULL`,
+	},
+	{
+		Name: "mv_map_stats",
+		Query: `
+		SELECT
+			msr.playlist_group,
+			COUNT(*) AS match_count,
+			AVG(msr.rating_value) AS avg_rating,
+			MAX(msr.rating_value) AS peak_rating
+		FROM match_skill_rank msr
+		WHERE msr.rating_type = 'LUSR'
+		GROUP BY msr.playlist_group`,
+	},
+}
+
+// sharedSQLViews contient les vues SQL à recréer dans shared DB.
+var sharedSQLViews = []MaterializedView{
+	{
+		Name: "v_gamertag_lookup",
+		Query: `
+		SELECT
+			COALESCE(xa.xuid, mp.xuid) AS xuid,
+			COALESCE(xa.gamertag, mp.gamertag) AS gamertag,
+			xa.last_seen
+		FROM xuid_aliases xa
+		FULL OUTER JOIN (
+			SELECT DISTINCT xuid, gamertag
+			FROM match_participants
+			WHERE gamertag IS NOT NULL
+		) mp ON xa.xuid = mp.xuid`,
+	},
+	{
+		Name: "v_match_full",
+		Query: `
+		SELECT
+			mr.*
+		FROM match_registry mr`,
+	},
+}
+
+// refreshAggregates recrée les vues matérialisées dans la player DB.
+// Retourne le nombre de vues créées.
+func refreshAggregates(playerDB *sql.DB) (int, error) {
+	count := 0
+	for _, mv := range playerMaterializedViews {
+		if err := recreateMaterializedView(playerDB, mv); err != nil {
+			log.Printf("[aggregates] WARN: %s — %v", mv.Name, err)
+			continue
+		}
+		count++
+	}
+	return count, nil
+}
+
+// refreshSharedViews recrée les vues SQL dans la shared DB (idempotent).
+func refreshSharedViews(sharedDB *sql.DB) (int, error) {
+	count := 0
+	for _, v := range sharedSQLViews {
+		if err := recreateSQLView(sharedDB, v); err != nil {
+			log.Printf("[aggregates] WARN shared view %s — %v", v.Name, err)
+			continue
+		}
+		count++
+	}
+	return count, nil
+}
+
+// recreateMaterializedView exécute DROP TABLE IF EXISTS + CREATE TABLE AS SELECT.
+func recreateMaterializedView(db *sql.DB, mv MaterializedView) error {
+	drop := fmt.Sprintf("DROP TABLE IF EXISTS %s", mv.Name)
+	if _, err := db.Exec(drop); err != nil {
+		return fmt.Errorf("drop %s: %w", mv.Name, err)
+	}
+	create := fmt.Sprintf("CREATE TABLE %s AS %s", mv.Name, mv.Query)
+	if _, err := db.Exec(create); err != nil {
+		return fmt.Errorf("create %s: %w", mv.Name, err)
+	}
+	return nil
+}
+
+// recreateSQLView exécute CREATE OR REPLACE VIEW.
+func recreateSQLView(db *sql.DB, v MaterializedView) error {
+	stmt := fmt.Sprintf("CREATE OR REPLACE VIEW %s AS %s", v.Name, v.Query)
+	if _, err := db.Exec(stmt); err != nil {
+		return fmt.Errorf("view %s: %w", v.Name, err)
+	}
+	return nil
+}

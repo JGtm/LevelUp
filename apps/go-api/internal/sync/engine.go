@@ -16,6 +16,7 @@ import (
 	"context"
 	"database/sql"
 	"fmt"
+	"log"
 	"path/filepath"
 	"time"
 
@@ -157,6 +158,12 @@ func (e *SyncEngine) run(ctx context.Context, opts domain.SyncOptions, isDelta b
 	}
 
 done:
+	// ─── Pipeline post-sync ─────────────────────────────────────────────────────
+	if result.MatchesInserted > 0 {
+		postResult := e.runPostSyncPipeline(ctx, playerDB, sharedDB, client)
+		result.PostSync = &postResult
+	}
+
 	// ─── sync_meta ──────────────────────────────────────────────────────────────
 	if err := SetSyncMeta(playerDB, "last_delta_sync", time.Now().UTC().Format(time.RFC3339)); err != nil {
 		result.AddWarning(fmt.Sprintf("SetSyncMeta: %v", err))
@@ -243,4 +250,56 @@ func loadKnownMatchIDs(db *sql.DB) (map[string]bool, error) {
 		}
 	}
 	return known, rows.Err()
+}
+
+// runPostSyncPipeline exécute le pipeline post-sync :
+// 1. Performance scores
+// 2. LUSR (TrueSkill 2)
+// 3. Career rank
+// 4. Aggregates (materialized views)
+func (e *SyncEngine) runPostSyncPipeline(
+	ctx context.Context,
+	playerDB, sharedDB *sql.DB,
+	client *HaloAPIClient,
+) domain.PostSyncResult {
+	var r domain.PostSyncResult
+
+	// 1. Performance scores
+	if n, err := batchComputePerformanceScores(playerDB, sharedDB, e.xuid); err != nil {
+		log.Printf("[post-sync] WARN perf scores: %v", err)
+	} else {
+		r.PerfScoresComputed = n
+	}
+
+	// 2. LUSR (TrueSkill 2)
+	if n, err := batchComputeLUSR(playerDB, sharedDB, e.xuid); err != nil {
+		log.Printf("[post-sync] WARN LUSR: %v", err)
+	} else {
+		r.LUSRUpdated = n
+	}
+
+	// 3. Career rank
+	if data, err := syncCareerRank(ctx, client, e.xuid); err != nil {
+		log.Printf("[post-sync] WARN career: %v", err)
+	} else if data != nil {
+		if err := saveCareerRank(playerDB, data); err != nil {
+			log.Printf("[post-sync] WARN career save: %v", err)
+		} else {
+			r.CareerSynced = true
+		}
+	}
+
+	// 4. Aggregates (materialized views)
+	if n, err := refreshAggregates(playerDB); err != nil {
+		log.Printf("[post-sync] WARN aggregates: %v", err)
+	} else {
+		r.ViewsRefreshed = n
+	}
+	if n, err := refreshSharedViews(sharedDB); err != nil {
+		log.Printf("[post-sync] WARN shared views: %v", err)
+	} else {
+		r.ViewsRefreshed += n
+	}
+
+	return r
 }
