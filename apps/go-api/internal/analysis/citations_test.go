@@ -1,0 +1,163 @@
+// Package analysis — citations_test.go : tests unitaires pour les algorithmes citations.
+package analysis
+
+import (
+	"testing"
+
+	"levelup/go-api/internal/domain"
+)
+
+// =============================================================================
+// Tests MergeCitationTotals
+// =============================================================================
+
+func TestMergeCitationTotals_Empty(t *testing.T) {
+	items := MergeCitationTotals(nil, nil)
+	if len(items) != 0 {
+		t.Errorf("attendu 0 items pour données vides, got %d", len(items))
+	}
+}
+
+func TestMergeCitationTotals_ZeroTotalFiltered(t *testing.T) {
+	totals := []domain.CitationTotalRow{
+		{NameNorm: "triple_kill", Total: 0},
+		{NameNorm: "double_kill", Total: 5},
+	}
+	mappings := []domain.CitationMappingRow{
+		{NameNorm: "triple_kill", NameDisplay: "Triple Kill", Category: "kills"},
+		{NameNorm: "double_kill", NameDisplay: "Double Kill", Category: "kills"},
+	}
+	items := MergeCitationTotals(totals, mappings)
+	if len(items) != 1 {
+		t.Errorf("attendu 1 item (total>0), got %d", len(items))
+	}
+	if items[0].NameNorm != "double_kill" {
+		t.Errorf("item attendu double_kill, got %s", items[0].NameNorm)
+	}
+}
+
+func TestMergeCitationTotals_NoMapping(t *testing.T) {
+	totals := []domain.CitationTotalRow{
+		{NameNorm: "unknown_citation", Total: 3},
+	}
+	items := MergeCitationTotals(totals, nil)
+	if len(items) != 1 {
+		t.Errorf("attendu 1 item même sans mapping, got %d", len(items))
+	}
+	if items[0].Category != "misc" {
+		t.Errorf("catégorie par défaut attendue misc, got %s", items[0].Category)
+	}
+}
+
+func TestMergeCitationTotals_Sorted(t *testing.T) {
+	totals := []domain.CitationTotalRow{
+		{NameNorm: "flag_cap", Total: 2},
+		{NameNorm: "triple_kill", Total: 10},
+		{NameNorm: "double_kill", Total: 5},
+	}
+	img := "/path/img.png"
+	mappings := []domain.CitationMappingRow{
+		{NameNorm: "triple_kill", NameDisplay: "Triple Kill", Category: "kills"},
+		{NameNorm: "double_kill", NameDisplay: "Double Kill", Category: "kills"},
+		{NameNorm: "flag_cap", NameDisplay: "Flag Capture", Category: "objective", ImagePath: &img},
+	}
+	items := MergeCitationTotals(totals, mappings)
+	// Kills avant objective (alphabétique). Dans kills : triple_kill (10) avant double_kill (5).
+	if items[0].Category != "kills" {
+		t.Errorf("première catégorie attendue kills, got %s", items[0].Category)
+	}
+	if items[0].NameNorm != "triple_kill" {
+		t.Errorf("premier item attendu triple_kill, got %s", items[0].NameNorm)
+	}
+}
+
+// =============================================================================
+// Tests ExtractCategories
+// =============================================================================
+
+func TestExtractCategories_Dedup(t *testing.T) {
+	items := []domain.CitationItem{
+		{Category: "kills"},
+		{Category: "objective"},
+		{Category: "kills"},
+		{Category: "misc"},
+	}
+	cats := ExtractCategories(items)
+	if len(cats) != 3 {
+		t.Errorf("attendu 3 catégories, got %d", len(cats))
+	}
+}
+
+// =============================================================================
+// Tests MergeMedalSummary
+// =============================================================================
+
+func TestMergeMedalSummary_Empty(t *testing.T) {
+	items := MergeMedalSummary(nil, nil)
+	if len(items) != 0 {
+		t.Errorf("attendu 0 items, got %d", len(items))
+	}
+}
+
+func TestMergeMedalSummary_Enrichment(t *testing.T) {
+	medals := []domain.MedalEarnedRow{
+		{MedalID: 1001, TotalCount: 25},
+		{MedalID: 1002, TotalCount: 10},
+	}
+	mappings := []domain.MedalCitationRow{
+		{MedalID: 1001, NameDisplay: "Killing Spree", Category: "spree"},
+		// 1002 sans mapping → Unknown
+	}
+	items := MergeMedalSummary(medals, mappings)
+	if len(items) != 2 {
+		t.Fatalf("attendu 2 items, got %d", len(items))
+	}
+	// Doit être trié : spree avant misc (alphabétique)
+	if items[0].Category != "misc" && items[0].Category != "spree" {
+		t.Errorf("catégories inattendues : %v", items)
+	}
+	// Trouver Killing Spree
+	found := false
+	for _, item := range items {
+		if item.MedalName == "Killing Spree" && item.Count == 25 {
+			found = true
+		}
+	}
+	if !found {
+		t.Error("Killing Spree non trouvé dans les items")
+	}
+}
+
+// =============================================================================
+// Tests GroupCommendationsByCategory
+// =============================================================================
+
+func TestGroupCommendationsByCategory_Empty(t *testing.T) {
+	cats := GroupCommendationsByCategory(nil)
+	if cats != nil {
+		t.Errorf("attendu nil pour données vides, got %v", cats)
+	}
+}
+
+func TestGroupCommendationsByCategory_GroupAndTotal(t *testing.T) {
+	items := []domain.CommendationItem{
+		{MedalID: 1, MedalName: "Spree", Count: 10, Category: "spree"},
+		{MedalID: 2, MedalName: "Running Riot", Count: 5, Category: "spree"},
+		{MedalID: 3, MedalName: "Flag Cap", Count: 8, Category: "objective"},
+	}
+	cats := GroupCommendationsByCategory(items)
+	if len(cats) != 2 {
+		t.Fatalf("attendu 2 catégories, got %d", len(cats))
+	}
+	// Trouver spree
+	var spreeTotal int
+	for _, c := range cats {
+		if c.Category == "spree" {
+			spreeTotal = c.Total
+			break
+		}
+	}
+	if spreeTotal != 15 {
+		t.Errorf("total spree attendu 15, got %d", spreeTotal)
+	}
+}

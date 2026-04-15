@@ -309,3 +309,98 @@ func (n *noopHomeRepo) LoadHomeSessions(_ context.Context) ([]domain.HomeSession
 func (n *noopHomeRepo) LoadRecentMedia(_ context.Context, _ int) ([]domain.HomeMediaRow, error) {
 	return nil, nil
 }
+
+// SquadRepository fournit les données pour la page Escouade.
+// Implémenté par platform/duckdb.SquadRepo.
+type SquadRepository interface {
+	// LoadTopTeammates charge les 10 coéquipiers les plus fréquents en escouade (Q29).
+	LoadTopTeammates(ctx context.Context, xuid string) ([]domain.TopTeammateRow, error)
+
+	// LoadSquadMatches charge les matchs communs avec un coéquipier spécifique (Q30).
+	LoadSquadMatches(ctx context.Context, playerXUID, teammateXUID string) ([]domain.SquadMatchRow, error)
+
+	// LoadTeammateMatches charge les stats d'un coéquipier sur les matchs communs (Q31).
+	LoadTeammateMatches(ctx context.Context, playerXUID, teammateXUID string) ([]domain.TeammateMatchRow, error)
+
+	// LoadImpactEvents charge les événements highlight pour une liste de match_ids (Q32).
+	LoadImpactEvents(ctx context.Context, matchIDs []string) ([]domain.ImpactEventRow, error)
+
+	// LoadSynthesisHeatmap charge les données heatmap carte × mode (Q33).
+	LoadSynthesisHeatmap(ctx context.Context, xuid string) ([]domain.SynthesisHeatmapRow, error)
+}
+
+// CitationsRepository fournit les données pour les pages Citations et Commendations.
+// Implémenté par platform/duckdb.CitationsRepo.
+type CitationsRepository interface {
+	// LoadCitationMappings charge les mappings de citations depuis metadata.duckdb (Q34).
+	LoadCitationMappings(ctx context.Context) ([]domain.CitationMappingRow, error)
+
+	// LoadCitationTotals charge les totaux agrégés depuis match_citations (Q35).
+	LoadCitationTotals(ctx context.Context) ([]domain.CitationTotalRow, error)
+
+	// LoadMedalTotals charge les totaux de médailles depuis shared.medals_earned (Q36a).
+	LoadMedalTotals(ctx context.Context, xuid string) ([]domain.MedalEarnedRow, error)
+
+	// LoadMedalCitationMappings charge les mappings médaille→citation depuis metadata (Q36b).
+	LoadMedalCitationMappings(ctx context.Context) ([]domain.MedalCitationRow, error)
+}
+
+// MediaRepository fournit les données pour la galerie médias.
+// Implémenté par platform/duckdb.MediaRepo.
+type MediaRepository interface {
+	// LoadMediaFiles charge les médias actifs paginés (Q37).
+	LoadMediaFiles(ctx context.Context, limit, offset int) ([]domain.MediaFileRow, error)
+
+	// CountMediaFiles retourne le nombre total de médias actifs (Q37Count).
+	CountMediaFiles(ctx context.Context) (int, error)
+}
+
+// Ensure compile-time checks pour les nouveaux repos Sprint 12+13.
+var (
+	_ SquadRepository     = (*noopSquadRepo)(nil)
+	_ CitationsRepository = (*noopCitationsRepo)(nil)
+	_ MediaRepository     = (*noopMediaRepo)(nil)
+)
+
+// noopSquadRepo — impl nulle pour le check de compilation uniquement.
+type noopSquadRepo struct{}
+
+func (n *noopSquadRepo) LoadTopTeammates(_ context.Context, _ string) ([]domain.TopTeammateRow, error) {
+	return nil, nil
+}
+func (n *noopSquadRepo) LoadSquadMatches(_ context.Context, _, _ string) ([]domain.SquadMatchRow, error) {
+	return nil, nil
+}
+func (n *noopSquadRepo) LoadTeammateMatches(_ context.Context, _, _ string) ([]domain.TeammateMatchRow, error) {
+	return nil, nil
+}
+func (n *noopSquadRepo) LoadImpactEvents(_ context.Context, _ []string) ([]domain.ImpactEventRow, error) {
+	return nil, nil
+}
+func (n *noopSquadRepo) LoadSynthesisHeatmap(_ context.Context, _ string) ([]domain.SynthesisHeatmapRow, error) {
+	return nil, nil
+}
+
+// noopCitationsRepo — impl nulle pour le check de compilation uniquement.
+type noopCitationsRepo struct{}
+
+func (n *noopCitationsRepo) LoadCitationMappings(_ context.Context) ([]domain.CitationMappingRow, error) {
+	return nil, nil
+}
+func (n *noopCitationsRepo) LoadCitationTotals(_ context.Context) ([]domain.CitationTotalRow, error) {
+	return nil, nil
+}
+func (n *noopCitationsRepo) LoadMedalTotals(_ context.Context, _ string) ([]domain.MedalEarnedRow, error) {
+	return nil, nil
+}
+func (n *noopCitationsRepo) LoadMedalCitationMappings(_ context.Context) ([]domain.MedalCitationRow, error) {
+	return nil, nil
+}
+
+// noopMediaRepo — impl nulle pour le check de compilation uniquement.
+type noopMediaRepo struct{}
+
+func (n *noopMediaRepo) LoadMediaFiles(_ context.Context, _, _ int) ([]domain.MediaFileRow, error) {
+	return nil, nil
+}
+func (n *noopMediaRepo) CountMediaFiles(_ context.Context) (int, error) { return 0, nil }

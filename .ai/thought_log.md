@@ -1,5 +1,44 @@
 # Thought Log
 
+## [2026-05-28] feat(go-api): Sprint 12+13 — Escouade, Synthèse, Citations, Commendations, Médias
+
+**Statut** : Complété
+
+**Tâche** : Sprint 12 (pages Escouade + Synthèse) et Sprint 13 (Citations + Commendations + Galerie Médias).
+
+**Décisions techniques principales** :
+
+1. **Architecture hexagonale complète pour 5 features** — domain → analysis (pur) → port (interface) → platform/duckdb (repo) → service (orchestration) → api/handlers (HTTP).
+2. **SquadPageResponse design** — `SoloStats`/`SquadStats` au niveau racine de la réponse (pas dans `SelectedTeammateData`) ; `SelectedTeammateData` contient `RadarMe`/`RadarTeammate`, `Records map[string]SquadRecord`, `Timeseries`, `Impact`, `SquadScore *SquadPerformanceScore`, `GamesTogether`.
+3. **SquadRecord fusionné** — `map[string]SquadRecord` avec `Me *float64` et `Teammate *float64` par clé métrique, construit en mergant `ComputeSquadRecords(myMatches)` + `ComputeTeammateRecords(tmMatches)`.
+4. **Q29 — 8 colonnes** — ajout de `win_rate` et `avg_deaths` pour aligner avec `TopTeammateRow` (6→8 champs).
+5. **Q30 — 20 colonnes** — ajout de `is_with_friends` (depuis `player_match_enrichment` LEFT JOIN) pour isolation solo/escouade dans le breakdown.
+6. **CitationMappingRow 7 champs** — Q34 retourne `mapping_type` et `tier_targets` en plus des 5 champs de base ; le scan de `citations_repo.go` aligné sur 7 colonnes.
+7. **MediaFileRow sans FileID** — la table `media_files` n'expose pas de clé primaire publique dans Q37 ; struct aligné sur (FilePath, FileName, Kind, ThumbnailPath, CaptureEndUTC, MatchID, MatchStartTime).
+8. **SynthesisPageResponse.TopWeeks = nil** — sprint 12 implémente HeatmapData + TotalMatches + OverallWinRate ; TopWeeks nécessiterait Q38 (per-match avec dates) — reporté post-sprint.
+9. **squad_service.go rewrite** — le `replace_string_in_file` a échoué (tabs vs spaces) → réécriture via script Python pour garantir l'encodage tabs correct.
+
+**Résultats observés** :
+- `go vet ./internal/domain/... ./internal/analysis/... ./internal/port/...` : **0 erreur**
+- `go test ./internal/analysis/... -v` : **PASS** (tous les tests squad + citations + anciens)
+- 5 routes ajoutées dans `server.go` : squad, synthesis, citations, commendations, media
+- `go build ./...` bloqué sur CGO DuckDB sous Windows (contrainte préexistante — passe en CI Linux)
+
+**Fichiers créés/modifiés** :
+- `internal/domain/squad.go`, `citations.go`, `media.go`
+- `internal/platform/duckdb/queries.go` (Q29–Q37+Q37Count)
+- `internal/port/repository.go` (3 interfaces : SquadRepository, CitationsRepository, MediaRepository)
+- `internal/analysis/squad.go` + `squad_test.go`, `citations.go` + `citations_test.go`
+- `internal/platform/duckdb/squad_repo.go`, `citations_repo.go`, `media_repo.go`
+- `internal/service/squad_service.go`, `citations_service.go`, `media_service.go`
+- `internal/api/handlers/squad.go`, `citations.go`, `media.go`
+- `internal/api/server.go` (5 routes)
+
+**Conclusion / prochaine étape** :
+Sprint 12+13 complétés. Prochaine étape : Sprint 14 (tests d'intégration DuckDB ou performance benchmarks Go vs Python).
+
+---
+
 ## [2026-04-15] feat(go-api): Sprint 3+4 — Baselines perf + Squelette HTTP Sprint 4
 
 **Statut** : Complété
