@@ -47,20 +47,30 @@ type MatchRegistryRow struct {
 
 // ParticipantRow représente une ligne dans match_participants (shared).
 type ParticipantRow struct {
-	MatchID     string
-	XUID        string
-	Gamertag    *string
-	TeamID      *int
-	Outcome     *int
-	Rank        *int
-	Score       *int
-	Kills       *int
-	Deaths      *int
-	Assists     *int
-	ShotsFired  *int
-	ShotsHit    *int
-	DamageDealt *float64
-	DamageTaken *float64
+	MatchID          string
+	XUID             string
+	Gamertag         *string
+	TeamID           *int
+	Outcome          *int
+	Rank             *int
+	Score            *int
+	Kills            *int
+	Deaths           *int
+	Assists          *int
+	ShotsFired       *int
+	ShotsHit         *int
+	DamageDealt      *float64
+	DamageTaken      *float64
+	KDA              *float64
+	Accuracy         *float64
+	PersonalScore    *int
+	TimePlayedSeconds *int
+	AvgLifeSeconds   *float64
+	KillsExpected    *float64
+	DeathsExpected   *float64
+	KillsStddev      *float64
+	TeamMMR          *float64
+	EnemyMMR         *float64
 }
 
 // MedalRow représente une ligne dans medals_earned (shared).
@@ -218,6 +228,38 @@ func ExtractParticipants(matchJSON map[string]any) []ParticipantRow {
 			row.ShotsHit    = intPtrFrom(core, "ShotsHit")
 			row.DamageDealt = floatPtrFrom(core, "DamageDealt")
 			row.DamageTaken = floatPtrFrom(core, "DamageTaken")
+			row.PersonalScore = intPtrFrom(core, "PersonalScore")
+			row.AvgLifeSeconds = floatPtrFrom(core, "AverageLifeDuration")
+
+			// KDA dérivé
+			if row.Kills != nil && row.Deaths != nil && row.Assists != nil {
+				k, d, a := float64(*row.Kills), float64(*row.Deaths), float64(*row.Assists)
+				if d == 0 {
+					d = 1
+				}
+				kda := (k + a) / d
+				row.KDA = &kda
+			}
+
+			// Accuracy dérivée
+			if row.ShotsFired != nil && *row.ShotsFired > 0 && row.ShotsHit != nil {
+				acc := float64(*row.ShotsHit) / float64(*row.ShotsFired) * 100.0
+				row.Accuracy = &acc
+			}
+		}
+
+		// Gamertag
+		gt := asString(player["Gamertag"])
+		if gt == "" {
+			gt = asString(player["PlayerName"])
+		}
+		if gt != "" {
+			row.Gamertag = &gt
+		}
+
+		// time_played_seconds (depuis MatchInfo ou PlayerTeamStats duration)
+		if dur := parsePTDuration(asString(player["ParticipationInfo.TimePlayed"])); dur != nil {
+			row.TimePlayedSeconds = dur
 		}
 
 		rows = append(rows, row)

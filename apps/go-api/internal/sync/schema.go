@@ -50,6 +50,39 @@ CREATE TABLE IF NOT EXISTS sync_meta (
     value      VARCHAR,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
+
+CREATE TABLE IF NOT EXISTS match_skill_rank (
+    match_id          VARCHAR PRIMARY KEY,
+    rating_type       VARCHAR NOT NULL,
+    rating_value      FLOAT,
+    rating_deviation  FLOAT,
+    tier              VARCHAR,
+    tier_fr           VARCHAR,
+    sub_tier          SMALLINT DEFAULT 0,
+    tier_label        VARCHAR,
+    rating_delta      FLOAT,
+    playlist_group    VARCHAR,
+    start_time        TIMESTAMP,
+    created_at        TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at        TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE SEQUENCE IF NOT EXISTS career_progression_id_seq;
+CREATE TABLE IF NOT EXISTS career_progression (
+    id              INTEGER PRIMARY KEY DEFAULT nextval('career_progression_id_seq'),
+    xuid            VARCHAR NOT NULL,
+    rank            INTEGER,
+    rank_name       VARCHAR,
+    rank_tier       VARCHAR,
+    current_xp      INTEGER,
+    xp_for_next_rank INTEGER,
+    xp_total        INTEGER,
+    is_max_rank     BOOLEAN DEFAULT FALSE,
+    adornment_path  VARCHAR,
+    spartan_id      VARCHAR,
+    recorded_at     TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+CREATE INDEX IF NOT EXISTS idx_career_xuid ON career_progression(xuid);
 `
 
 // sharedSchemaSQL crée les tables minimales dans shared_matches_v2.duckdb.
@@ -90,21 +123,31 @@ CREATE TABLE IF NOT EXISTS match_registry (
 );
 
 CREATE TABLE IF NOT EXISTS match_participants (
-    match_id     VARCHAR NOT NULL,
-    xuid         VARCHAR NOT NULL,
-    gamertag     VARCHAR,
-    team_id      INTEGER,
-    outcome      INTEGER,
-    rank         SMALLINT,
-    score        INTEGER,
-    kills        SMALLINT,
-    deaths       SMALLINT,
-    assists      SMALLINT,
-    shots_fired  INTEGER,
-    shots_hit    INTEGER,
-    damage_dealt FLOAT,
-    damage_taken FLOAT,
-    created_at   TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    match_id             VARCHAR NOT NULL,
+    xuid                 VARCHAR NOT NULL,
+    gamertag             VARCHAR,
+    team_id              INTEGER,
+    outcome              INTEGER,
+    rank                 SMALLINT,
+    score                INTEGER,
+    kills                SMALLINT,
+    deaths               SMALLINT,
+    assists              SMALLINT,
+    kda                  FLOAT,
+    accuracy             FLOAT,
+    shots_fired          INTEGER,
+    shots_hit            INTEGER,
+    damage_dealt         FLOAT,
+    damage_taken         FLOAT,
+    personal_score       INTEGER,
+    time_played_seconds  INTEGER,
+    avg_life_seconds     FLOAT,
+    kills_expected       FLOAT,
+    deaths_expected      FLOAT,
+    kills_stddev         FLOAT,
+    team_mmr             FLOAT,
+    enemy_mmr            FLOAT,
+    created_at           TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     PRIMARY KEY (match_id, xuid)
 );
 

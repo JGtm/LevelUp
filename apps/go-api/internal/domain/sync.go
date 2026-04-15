@@ -46,6 +46,7 @@ type SyncResult struct {
 	StartedAt        time.Time
 	FinishedAt       time.Time
 	DurationSeconds  float64
+	PostSync         *PostSyncResult
 }
 
 // Status retourne "success", "partial_success" ou "failure".
@@ -67,4 +68,12 @@ func (r *SyncResult) AddError(msg string) {
 // AddWarning ajoute un avertissement au résultat.
 func (r *SyncResult) AddWarning(msg string) {
 	r.Warnings = append(r.Warnings, msg)
+}
+
+// PostSyncResult agrège les compteurs du pipeline post-sync.
+type PostSyncResult struct {
+	PerfScoresComputed int
+	LUSRUpdated        int
+	CareerSynced       bool
+	ViewsRefreshed     int
 }
