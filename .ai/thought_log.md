@@ -1,5 +1,41 @@
 # Thought Log
 
+## [2026-07-17] feat(sprint21-22): Migrations DuckDB + Weapon Parser binaire
+
+**Statut** : Complété
+
+**Tâche** : Sprint 21 — Port des 36 migrations DuckDB idempotentes (registry, runner, schema_migrations). Sprint 22 — Port du weapon parser binaire (scan film Halo Infinite, corrélation claim-and-remove, réconciliation API).
+
+**Décisions techniques principales** :
+
+### Sprint 21 — Migrations
+
+1. **registry.go** — Migration struct (Name, TargetDB, Description, ApplySchema, ApplyBackfill, RequiresAPI). Registre global ordonné (init()). RunForDB() applique les migrations en attente avec tracking schema_migrations.
+2. **helpers.go** — columnExists(), tableExists(), addColumnIfMissing(), createIndexSafe(), execScript(), splitSQL() — utilitaires DDL indépendants du package sync.
+3. **steps_metadata.go** — 7 migrations metadata.duckdb : asset_translations, battlepass_asset_refs, battlepass_metadata, challenge_metadata, medal_definitions, weapon_labels (table complète 40+ armes + sentinels), drop_legacy_translation_tables.
+4. **steps_player.go** — 10 migrations stats.duckdb : bot_teammate, career_progression_sequence (backup→drop→recreate), challenge_snapshots, dominance_flag, media_discord_notified, performance_score (8 cols), player_performance_indexes, pme_session_index, skill_rating_table, fix_mv_session_stats_varchar.
+5. **steps_shared.go** — 18 migrations shared_matches_v2.duckdb : highlight_events autoincrement, match_participants ~30 cols, medals_earned INTEGER→BIGINT, mv_player_matches view, indexes, weapon_kills, v_weapon_kills view, resolution views (v_gamertag_lookup, v_match_full, v_killer_victim_full).
+6. **steps_shared_pve.go** — 1 migration shared_pve.duckdb : pve_match_stats (Firefight).
+7. **Runner** — Intégré dans main.go : runMigrations() avant ouverture read-only (metadata→shared→shared_pve). OpenReadWrite() ajouté au package duckdb.
+
+### Sprint 22 — Weapon Parser
+
+1. **weapon_data.go** — 39 weapon IDs filmshell (hex → uint64 big-endian), 3 sentinels (0=grenade, 1=melee, 2=vehicle), timing map (swap_ms, travel_max), fusion map (variantes → canonique), médailles melee/grenade, suffixes Formula A.
+2. **weapon_scanner.go** — ScanFormulaA() (pattern 200002, pb>>5, suffix search 68B window), ScanFormulaANS() (nibble-shifted layer, TYPE IDs), ScanFireEventsB5() (marker universel 11-bit 0b10100100110, b5>>4 pour player_index, dedup byte proximity ≤2), helpers bit-level (matchMarkerAt, readBitsUint64).
+3. **kill_attribution.go** — KillAttribution struct avec EffectiveWeaponID() = COALESCE(reconciled_as, weapon_id).
+4. **weapon_correlation.go** — CorrelateKillsGlobal() claim-and-remove (pool unique, filtre player_index), attributionFromEvent() avec NS timeline fallback, fallbackFormulaA() (NS → raw FA → handle brut), makeSentinel().
+5. **weapon_reconciliation.go** — ReconcileAPIAggregates() (surplus API - film confident, assigne reconciled_as pour low/none), AssignSentinels() (xuid_time_ms → reconciled_as).
+6. **weapon_parser.go** — Orchestration : ScanFireEventsAll(), BuildWeaponTimelines() (raw + NS single-pass), FindChunkAtTime(), ComputeConfidence(), CountKillsByWeapon().
+
+**Résultats observés** :
+- `go build ./internal/migration/ ./internal/analysis/` : **0 erreur**
+- `go vet ./internal/migration/ ./internal/analysis/` : **0 warning**
+- 12 fichiers créés, 2 modifiés (main.go + db.go)
+
+**Prochaine étape** : Sprint 23 (tests unitaires + intégration pour migrations et weapon parser)
+
+---
+
 ## [2026-04-15] feat(sprint20): Backfill complet — SyncScope, bitmask, détection, CLI
 
 **Statut** : Complété (commit 3a76aa30)

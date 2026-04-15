@@ -1,0 +1,276 @@
+package migration
+
+// steps_player.go — migrations ciblant stats.duckdb (par joueur).
+// Portage de add_bot_teammate_column, add_career_progression_sequence,
+// add_challenge_snapshots, add_dominance_flag_column, add_media_discord_notified,
+// add_performance_score, add_player_performance_indexes, add_pme_session_index,
+// add_skill_rating_table, fix_mv_session_stats_varchar.
+
+import (
+	"database/sql"
+	"fmt"
+)
+
+func init() {
+	Register(Migration{
+		Name:        "add_bot_teammate_column",
+		TargetDB:    TargetPlayer,
+		Description: "Colonne had_bot_teammate sur player_match_enrichment",
+		ApplySchema: func(db *sql.DB) error {
+			return addColumnIfMissing(db, "player_match_enrichment", "had_bot_teammate", "BOOLEAN")
+		},
+	})
+
+	Register(Migration{
+		Name:        "add_career_progression_sequence",
+		TargetDB:    TargetPlayer,
+		Description: "Séquence auto-increment + spartan_id sur career_progression",
+		ApplySchema: applyCareerProgressionSequence,
+	})
+
+	Register(Migration{
+		Name:        "add_challenge_snapshots",
+		TargetDB:    TargetPlayer,
+		Description: "Table challenge_snapshots pour historiser défis joueur",
+		ApplySchema: func(db *sql.DB) error {
+			return execScript(db, `
+				CREATE TABLE IF NOT EXISTS challenge_snapshots (
+					snapshot_at      TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+					xuid             VARCHAR NOT NULL,
+					challenge_path   VARCHAR NOT NULL,
+					challenge_id     VARCHAR,
+					content_hash     VARCHAR,
+					status           VARCHAR NOT NULL,
+					progress_current INTEGER,
+					progress_target  INTEGER,
+					xp_reward        INTEGER DEFAULT 0,
+					can_reroll       BOOLEAN,
+					expires_at       TIMESTAMP,
+					deck_index       INTEGER,
+					state_hash       VARCHAR NOT NULL
+				);
+				CREATE INDEX IF NOT EXISTS idx_challenge_snapshots_xuid_time ON challenge_snapshots(xuid, snapshot_at DESC);
+				CREATE INDEX IF NOT EXISTS idx_challenge_snapshots_path_time ON challenge_snapshots(challenge_path, snapshot_at DESC);
+			`)
+		},
+	})
+
+	Register(Migration{
+		Name:        "add_dominance_flag_column",
+		TargetDB:    TargetPlayer,
+		Description: "Colonne dominance_flag (TINYINT) sur player_match_enrichment",
+		ApplySchema: func(db *sql.DB) error {
+			return addColumnIfMissing(db, "player_match_enrichment", "dominance_flag", "TINYINT")
+		},
+	})
+
+	Register(Migration{
+		Name:        "add_media_discord_notified",
+		TargetDB:    TargetPlayer,
+		Description: "Colonne discord_notified_at sur media_files",
+		ApplySchema: func(db *sql.DB) error {
+			// media_files peut ne pas exister si jamais indexées
+			exists, err := tableExists(db, "media_files")
+			if err != nil || !exists {
+				return err
+			}
+			return addColumnIfMissing(db, "media_files", "discord_notified_at", "TIMESTAMP")
+		},
+	})
+
+	Register(Migration{
+		Name:        "add_performance_score",
+		TargetDB:    TargetPlayer,
+		Description: "Colonnes optionnelles sur match_stats (accuracy, session_id, perf...)",
+		ApplySchema: func(db *sql.DB) error {
+			// match_stats peut ne pas exister dans les DBs player v5.1+ allégées
+			exists, err := tableExists(db, "match_stats")
+			if err != nil || !exists {
+				return err
+			}
+			cols := []struct{ name, typ string }{
+				{"accuracy", "FLOAT"},
+				{"end_time", "TIMESTAMP"},
+				{"session_id", "INTEGER"},
+				{"session_label", "VARCHAR"},
+				{"rank", "SMALLINT"},
+				{"damage_dealt", "FLOAT"},
+				{"personal_score", "INTEGER"},
+				{"performance_score", "FLOAT"},
+			}
+			for _, c := range cols {
+				if err := addColumnIfMissing(db, "match_stats", c.name, c.typ); err != nil {
+					return err
+				}
+			}
+			return nil
+		},
+	})
+
+	Register(Migration{
+		Name:        "add_player_performance_indexes",
+		TargetDB:    TargetPlayer,
+		Description: "Index sur match_stats et personal_score_awards",
+		ApplySchema: func(db *sql.DB) error {
+			// match_stats peut ne pas exister
+			if exists, _ := tableExists(db, "match_stats"); exists {
+				indexes := []string{
+					"CREATE INDEX IF NOT EXISTS idx_ms_start_time ON match_stats(start_time)",
+					"CREATE INDEX IF NOT EXISTS idx_ms_session_id ON match_stats(session_id)",
+					"CREATE INDEX IF NOT EXISTS idx_ms_playlist_id ON match_stats(playlist_id)",
+					"CREATE INDEX IF NOT EXISTS idx_ms_map_id ON match_stats(map_id)",
+					"CREATE INDEX IF NOT EXISTS idx_ms_outcome ON match_stats(outcome)",
+					"CREATE INDEX IF NOT EXISTS idx_ms_is_firefight ON match_stats(is_firefight)",
+				}
+				for _, ddl := range indexes {
+					_ = createIndexSafe(db, ddl)
+				}
+			}
+			_ = createIndexSafe(db, "CREATE INDEX IF NOT EXISTS idx_psa_match_xuid ON personal_score_awards(match_id, xuid)")
+			return nil
+		},
+	})
+
+	Register(Migration{
+		Name:        "add_pme_session_index",
+		TargetDB:    TargetPlayer,
+		Description: "Index idx_pme_session sur player_match_enrichment(session_id)",
+		ApplySchema: func(db *sql.DB) error {
+			return createIndexSafe(db, "CREATE INDEX IF NOT EXISTS idx_pme_session ON player_match_enrichment(session_id)")
+		},
+	})
+
+	Register(Migration{
+		Name:        "add_skill_rating_table",
+		TargetDB:    TargetPlayer,
+		Description: "Tables match_skill_rank + skill_history",
+		ApplySchema: func(db *sql.DB) error {
+			if err := execScript(db, `
+				CREATE TABLE IF NOT EXISTS skill_history (
+					playlist_id  VARCHAR,
+					recorded_at  TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+					csr          INTEGER,
+					tier         VARCHAR,
+					division     INTEGER,
+					matches_played INTEGER
+				);
+				CREATE TABLE IF NOT EXISTS match_skill_rank (
+					match_id          VARCHAR PRIMARY KEY,
+					rating_type       VARCHAR NOT NULL,
+					rating_value      FLOAT,
+					rating_deviation  FLOAT,
+					tier              VARCHAR,
+					tier_fr           VARCHAR,
+					sub_tier          SMALLINT DEFAULT 0,
+					tier_label        VARCHAR,
+					rating_delta      FLOAT,
+					playlist_group    VARCHAR,
+					start_time        TIMESTAMP,
+					created_at        TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+					updated_at        TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+				);
+				CREATE INDEX IF NOT EXISTS idx_msr_rating_type ON match_skill_rank(rating_type);
+				CREATE INDEX IF NOT EXISTS idx_msr_playlist ON match_skill_rank(playlist_group);
+			`); err != nil {
+				return err
+			}
+			// Colonnes ajoutées après la création initiale
+			for _, c := range []struct{ name, typ string }{
+				{"start_time", "TIMESTAMP"},
+				{"rating_deviation", "FLOAT"},
+				{"playlist_group", "VARCHAR"},
+			} {
+				_ = addColumnIfMissing(db, "match_skill_rank", c.name, c.typ)
+			}
+			return nil
+		},
+	})
+
+	Register(Migration{
+		Name:        "fix_mv_session_stats_varchar",
+		TargetDB:    TargetPlayer,
+		Description: "mv_session_stats.session_id INTEGER → VARCHAR",
+		ApplySchema: applyFixMvSessionStats,
+	})
+}
+
+// applyCareerProgressionSequence recrée career_progression avec séquence auto-increment.
+func applyCareerProgressionSequence(db *sql.DB) error {
+	// Vérifier si la séquence est déjà présente
+	var colDefault sql.NullString
+	err := db.QueryRow(
+		"SELECT column_default FROM information_schema.columns WHERE table_schema = 'main' AND table_name = 'career_progression' AND column_name = 'id'",
+	).Scan(&colDefault)
+	if err == nil && colDefault.Valid && len(colDefault.String) > 0 {
+		// Séquence déjà configurée
+		_ = addColumnIfMissing(db, "career_progression", "spartan_id", "VARCHAR")
+		return nil
+	}
+
+	// Backup → drop → recreate avec séquence
+	var maxID int
+	if err := db.QueryRow("SELECT COALESCE(MAX(id), 0) FROM career_progression").Scan(&maxID); err != nil {
+		// Table vide ou inexistante — créer directement
+		return execScript(db, `
+			CREATE SEQUENCE IF NOT EXISTS career_progression_id_seq;
+			CREATE TABLE IF NOT EXISTS career_progression (
+				id INTEGER PRIMARY KEY DEFAULT nextval('career_progression_id_seq'),
+				xuid VARCHAR NOT NULL, rank INTEGER, rank_name VARCHAR,
+				rank_tier VARCHAR, current_xp INTEGER, xp_for_next_rank INTEGER,
+				xp_total INTEGER, is_max_rank BOOLEAN DEFAULT FALSE,
+				adornment_path VARCHAR, spartan_id VARCHAR,
+				recorded_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+			);
+			CREATE INDEX IF NOT EXISTS idx_career_xuid ON career_progression(xuid);
+		`)
+	}
+
+	startVal := maxID + 1
+	return execScript(db, fmt.Sprintf(`
+		CREATE TABLE IF NOT EXISTS _career_backup AS SELECT * FROM career_progression;
+		DROP TABLE IF EXISTS career_progression CASCADE;
+		CREATE SEQUENCE IF NOT EXISTS career_progression_id_seq START WITH %d;
+		CREATE TABLE career_progression (
+			id INTEGER PRIMARY KEY DEFAULT nextval('career_progression_id_seq'),
+			xuid VARCHAR NOT NULL, rank INTEGER, rank_name VARCHAR,
+			rank_tier VARCHAR, current_xp INTEGER, xp_for_next_rank INTEGER,
+			xp_total INTEGER, is_max_rank BOOLEAN DEFAULT FALSE,
+			adornment_path VARCHAR, spartan_id VARCHAR,
+			recorded_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+		);
+		INSERT INTO career_progression SELECT * FROM _career_backup;
+		DROP TABLE IF EXISTS _career_backup;
+		CREATE INDEX IF NOT EXISTS idx_career_xuid ON career_progression(xuid);
+	`, startVal))
+}
+
+// applyFixMvSessionStats recrée mv_session_stats avec session_id VARCHAR.
+func applyFixMvSessionStats(db *sql.DB) error {
+	exists, err := tableExists(db, "mv_session_stats")
+	if err != nil || !exists {
+		return err // Table absente = rien à corriger
+	}
+
+	// Vérifier le type actuel
+	var dataType string
+	err = db.QueryRow(
+		"SELECT data_type FROM information_schema.columns WHERE table_schema = 'main' AND table_name = 'mv_session_stats' AND column_name = 'session_id'",
+	).Scan(&dataType)
+	if err != nil || dataType == "VARCHAR" {
+		return nil // Déjà VARCHAR ou erreur bénigne
+	}
+
+	return execScript(db, `
+		CREATE TABLE IF NOT EXISTS _mv_ss_backup AS SELECT CAST(session_id AS VARCHAR) AS session_id, match_count, start_time, end_time, total_kills, total_deaths, total_assists, kd_ratio, win_rate, avg_accuracy, avg_life_seconds, updated_at FROM mv_session_stats;
+		DROP TABLE mv_session_stats;
+		CREATE TABLE mv_session_stats (
+			session_id VARCHAR PRIMARY KEY, match_count INTEGER,
+			start_time TIMESTAMP, end_time TIMESTAMP,
+			total_kills INTEGER, total_deaths INTEGER, total_assists INTEGER,
+			kd_ratio DOUBLE, win_rate DOUBLE,
+			avg_accuracy DOUBLE, avg_life_seconds DOUBLE, updated_at TIMESTAMP
+		);
+		INSERT INTO mv_session_stats SELECT * FROM _mv_ss_backup;
+		DROP TABLE IF EXISTS _mv_ss_backup;
+	`)
+}

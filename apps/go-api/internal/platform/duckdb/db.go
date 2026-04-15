@@ -61,11 +61,39 @@ func OpenReadOnly(path string) (*DB, error) {
 	return db, nil
 }
 
+// OpenReadWrite ouvre une base DuckDB en lecture-écriture.
+// Utilisé pour les migrations au démarrage. UNE seule connexion : pas de pool.
+func OpenReadWrite(path string) (*DB, error) {
+	openDBsMu.Lock()
+	defer openDBsMu.Unlock()
+
+	key := "rw:" + path
+	if db, ok := openDBs[key]; ok {
+		return db, nil
+	}
+
+	sqlDB, err := sql.Open("duckdb", path)
+	if err != nil {
+		return nil, fmt.Errorf("duckdb.OpenReadWrite(%s): %w", path, err)
+	}
+	if err := sqlDB.Ping(); err != nil {
+		sqlDB.Close()
+		return nil, fmt.Errorf("duckdb.OpenReadWrite ping(%s): %w", path, err)
+	}
+	sqlDB.SetMaxOpenConns(1)
+	sqlDB.SetMaxIdleConns(1)
+
+	db := &DB{sqlDB: sqlDB, path: path}
+	openDBs[key] = db
+	return db, nil
+}
+
 // Close ferme la connexion DuckDB. À appeler au shutdown.
 func (db *DB) Close() error {
 	openDBsMu.Lock()
 	defer openDBsMu.Unlock()
 	delete(openDBs, "ro:"+db.path)
+	delete(openDBs, "rw:"+db.path)
 	return db.sqlDB.Close()
 }
 
