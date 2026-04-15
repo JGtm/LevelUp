@@ -29,6 +29,7 @@ import (
 
 	"levelup/go-api/internal/api"
 	"levelup/go-api/internal/config"
+	"levelup/go-api/internal/migration"
 	"levelup/go-api/internal/platform/duckdb"
 	"levelup/go-api/internal/service"
 )
@@ -79,6 +80,13 @@ func main() {
 	}
 
 	slog.Info("ouverture DuckDB", "shared", sharedPath, "metadata", metaPath)
+
+	// --- 3a. Migrations (read-write, avant l'ouverture read-only) ---
+	if err := runMigrations(metaPath, sharedPath, cfg); err != nil {
+		slog.Error("migrations échouées", "err", err)
+		os.Exit(1)
+	}
+	slog.Info("migrations appliquées ✓")
 
 	sharedDB, err := duckdb.OpenReadOnly(sharedPath)
 	if err != nil {
@@ -154,3 +162,60 @@ func main() {
 }
 
 func strPtr(s string) *string { return &s }
+
+// runMigrations applique les migrations DuckDB dans l'ordre :
+// metadata → shared → shared_pve.
+// Les migrations player sont gérées à l'ouverture de chaque player DB.
+func runMigrations(metaPath, sharedPath string, cfg *config.Config) error {
+	// Ensure all step init() have been registered (side-effect imports).
+	_ = migration.All()
+
+	// 1. metadata.duckdb
+	metaDB, err := duckdb.OpenReadWrite(metaPath)
+	if err != nil {
+		return fmt.Errorf("open metadata rw: %w", err)
+	}
+	if err := migration.RunForDB(metaDB.SQLDb(), migration.TargetMetadata); err != nil {
+		metaDB.Close()
+		return fmt.Errorf("metadata migrations: %w", err)
+	}
+	metaDB.Close()
+
+	// 2. shared_matches_v2.duckdb
+	sharedDB, err := duckdb.OpenReadWrite(sharedPath)
+	if err != nil {
+		return fmt.Errorf("open shared rw: %w", err)
+	}
+	if err := migration.RunForDB(sharedDB.SQLDb(), migration.TargetShared); err != nil {
+		sharedDB.Close()
+		return fmt.Errorf("shared migrations: %w", err)
+	}
+	sharedDB.Close()
+
+	// 3. shared_pve.duckdb (optionnel, fichier peut ne pas exister)
+	pvePath := filepath.Join(cfg.RepoRoot, "data", "warehouse", "shared_pve.duckdb")
+	if _, err := os.Stat(pvePath); err == nil {
+		pveDB, err := duckdb.OpenReadWrite(pvePath)
+		if err != nil {
+			return fmt.Errorf("open shared_pve rw: %w", err)
+		}
+		if err := migration.RunForDB(pveDB.SQLDb(), migration.TargetSharedPvE); err != nil {
+			pveDB.Close()
+			return fmt.Errorf("shared_pve migrations: %w", err)
+		}
+		pveDB.Close()
+	}
+
+	return nil
+}
+
+// RunPlayerMigrations applique les migrations player pour une DB individuelle.
+// Appelé lors de l'ouverture d'une player DB.
+func RunPlayerMigrations(playerDBPath string) error {
+	db, err := duckdb.OpenReadWrite(playerDBPath)
+	if err != nil {
+		return fmt.Errorf("open player rw: %w", err)
+	}
+	defer db.Close()
+	return migration.RunForDB(db.SQLDb(), migration.TargetPlayer)
+}

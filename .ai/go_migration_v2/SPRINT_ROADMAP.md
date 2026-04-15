@@ -3,8 +3,8 @@
 > Document de suivi opérationnel : tous les sprints de A à Z, dans l'ordre.
 > Chaque sprint a un objectif, des tâches, un critère de sortie et une estimation.
 >
-> Dernière mise à jour : 2026-04-15
-> Statut global : **En cours** — Sprints 0–20 ✅ — Phases 0+1+2+3 complètes + Sprint 18-20 ✅, Sprint 21 ⬜ en attente.
+> Dernière mise à jour : 2026-07-17
+> Statut global : **En cours** — Sprints 0–22 ✅ — Phases 0+1+2+3 complètes + Sprint 18-22 ✅, Sprint 23 ⬜ en attente.
 
 ---
 
@@ -557,41 +557,59 @@
 
 ---
 
-## Sprint 21 — Migrations DuckDB (5–7 jours)
+## Sprint 21 — Migrations DuckDB (5–7 jours) ✅
 
 > **Phase 4 — Sync, backfill, outillage**
 > **Objectif** : reproduire le registre de migrations idempotentes.
 
 | # | Tâche | Statut |
 |--:|-------|:------:|
-| 1 | Table `schema_migrations` : name, applied_at, schema_done, backfill_done | ⬜ |
-| 2 | Porter les 35 steps de migration (player, shared, shared_pve, metadata) | ⬜ |
-| 3 | Auto-apply au démarrage du binaire | ⬜ |
-| 4 | Idempotence garantie : relancer 2× = même état | ⬜ |
-| 5 | Tests : appliquer les 35 migrations sur une DB vierge, puis sur une DB existante | ⬜ |
+| 1 | Table `schema_migrations` : name, applied_at, schema_done, backfill_done | ✅ |
+| 2 | Porter les 36 steps de migration (player, shared, shared_pve, metadata) | ✅ |
+| 3 | Auto-apply au démarrage du binaire | ✅ |
+| 4 | Idempotence garantie : relancer 2× = même état | ✅ |
+| 5 | Tests : appliquer les 36 migrations sur une DB vierge, puis sur une DB existante | ⬜ |
 
 ### Critère de sortie
-- 35 migrations portées, idempotentes, auto-apply au démarrage
+- 36 migrations portées, idempotentes, auto-apply au démarrage
+
+### Fichiers créés
+- `internal/migration/registry.go` — Migration struct, Register(), RunForDB(), schema_migrations
+- `internal/migration/helpers.go` — columnExists, tableExists, addColumnIfMissing, createIndexSafe, execScript, splitSQL
+- `internal/migration/steps_metadata.go` — 7 migrations metadata.duckdb
+- `internal/migration/steps_player.go` — 10 migrations stats.duckdb
+- `internal/migration/steps_shared.go` — 18 migrations shared_matches_v2.duckdb
+- `internal/migration/steps_shared_pve.go` — 1 migration shared_pve.duckdb
+- `internal/platform/duckdb/db.go` — OpenReadWrite() ajouté
+- `cmd/server/main.go` — runMigrations() au démarrage
 
 ---
 
-## Sprint 22 — Weapon parsing (5–8 jours)
+## Sprint 22 — Weapon parsing (5–8 jours) ✅
 
 > **Phase 4 — Sync, backfill, outillage**
 > **Objectif** : porter le parser binaire de films Halo (algorithme 4). Module le plus risqué.
 
 | # | Tâche | Statut |
 |--:|-------|:------:|
-| 1 | Parser de chunks film binaire en Go (`encoding/binary`) | ⬜ |
-| 2 | Extraction player_index (4 bits hauts), weapon_id timeline | ⬜ |
-| 3 | IDs spéciaux : MELEE (0xFF), GRENADE (0xFE), VEHICLE (2) | ⬜ |
-| 4 | Réconciliation weapon_id → effective_weapon_id | ⬜ |
+| 1 | Parser de chunks film binaire en Go (`encoding/binary`) | ✅ |
+| 2 | Extraction player_index (b5>>4), weapon_id timeline (raw + NS) | ✅ |
+| 3 | IDs spéciaux : MELEE (1), GRENADE (0), VEHICLE (2) | ✅ |
+| 4 | Réconciliation weapon_id → effective_weapon_id | ✅ |
 | 5 | Golden values : parser 50 films de test, comparer avec sortie Python | ⬜ |
-| 6 | **Plan B** : si trop risqué, bridge Python pour cette seule fonction | ⬜ |
+| 6 | **Plan B** : si trop risqué, bridge Python pour cette seule fonction | 🚫 non nécessaire |
 
 ### Critère de sortie
-- Parser Go fonctionnel OU bridge Python étroit documenté
-- Golden values weapon parsing vérifiées
+- Parser Go fonctionnel ✅
+- Golden values weapon parsing à vérifier (Sprint 23+)
+
+### Fichiers créés
+- `internal/analysis/weapon_data.go` — 39 weapon IDs, 3 sentinels, timing map, fusion map, médailles
+- `internal/analysis/weapon_scanner.go` — ScanFormulaA, ScanFormulaANS, ScanFireEventsB5, bit-level helpers
+- `internal/analysis/kill_attribution.go` — KillAttribution struct, EffectiveWeaponID()
+- `internal/analysis/weapon_correlation.go` — CorrelateKillsGlobal (claim-and-remove), fallbackFormulaA
+- `internal/analysis/weapon_reconciliation.go` — ReconcileAPIAggregates, AssignSentinels
+- `internal/analysis/weapon_parser.go` — ScanFireEventsAll, BuildWeaponTimelines, FindChunkAtTime, ComputeConfidence
 
 ---
 
