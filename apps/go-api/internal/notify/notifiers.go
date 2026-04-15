@@ -1,0 +1,268 @@
+// notifiers.go — Points d'entrée publics failsafe pour les notifications Discord.
+//
+// Toutes les fonctions sont failsafe : elles ne paniquent jamais et ne
+// propagent jamais d'erreur à la couche appelante.
+package notify
+
+import (
+	"database/sql"
+	"fmt"
+	"log"
+	"os"
+	"strings"
+	"time"
+
+	_ "github.com/duckdb/duckdb-go/v2"
+)
+
+// ─────────────────────────────────────────────────────────────────────────────
+// NotifySync — fin de sync ou backfill
+// ─────────────────────────────────────────────────────────────────────────────
+
+// NotifySync envoie la notification Discord de fin d'opération sync ou backfill.
+//
+// op accepte : "sync_delta", "sync_full", "backfill" (ou tout préfixe).
+// skipIdle=true envoie un embed allégé si aucun joueur n'a de nouveaux matchs.
+func NotifySync(
+	cfg NotifyConfig,
+	op string,
+	startedAt, finishedAt time.Time,
+	players []PlayerSyncResult,
+	success bool,
+	skipIdle bool,
+) {
+	defer func() {
+		if r := recover(); r != nil {
+			log.Printf("[Discord:sync] panic récupéré: %v", r)
+		}
+	}()
+
+	if cfg.WebhookURL == "" {
+		return
+	}
+	if strings.HasPrefix(op, "backfill") && !cfg.NotifyBackfill {
+		log.Printf("[Discord:sync] notif backfill désactivée")
+		return
+	}
+	if !strings.HasPrefix(op, "backfill") && !cfg.NotifySync {
+		log.Printf("[Discord:sync] notif sync désactivée")
+		return
+	}
+	if len(players) == 0 {
+		log.Printf("[Discord:sync] aucun joueur à notifier, skip")
+		return
+	}
+
+	// Mode skipIdle : embed allégé si tous les joueurs sont à jour
+	if skipIdle && allIdle(players) {
+		log.Printf("[Discord:sync] tous les joueurs à jour, embed allégé")
+		embed := BuildSyncEmbed(op, startedAt, finishedAt, players, success, cfg.Lang)
+		if SendWebhook(cfg.WebhookURL, WebhookPayload{Embeds: []Embed{embed}}) {
+			log.Printf("[Discord:sync] notification 'déjà à jour' envoyée")
+		}
+		return
+	}
+
+	embed := BuildSyncEmbed(op, startedAt, finishedAt, players, success, cfg.Lang)
+	if SendWebhook(cfg.WebhookURL, WebhookPayload{Embeds: []Embed{embed}}) {
+		log.Printf("[Discord:sync] notification envoyée avec succès")
+	} else {
+		log.Printf("[Discord:sync] notification non reçue par Discord")
+	}
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// NotifyNewMedia — nouveaux médias avec anti-spam DuckDB
+// ─────────────────────────────────────────────────────────────────────────────
+
+// NotifyNewMedia envoie une notification Discord pour les médias indexés
+// mais pas encore notifiés (discord_notified_at IS NULL dans media_files).
+//
+// Anti-spam DuckDB : seuls les médias avec discord_notified_at IS NULL sont
+// notifiés. Après envoi réussi, discord_notified_at est mis à jour dans la DB.
+func NotifyNewMedia(cfg NotifyConfig, dbPath, gamertag string) {
+	defer func() {
+		if r := recover(); r != nil {
+			log.Printf("[Discord:media] panic récupéré pour %s: %v", gamertag, r)
+		}
+	}()
+
+	if cfg.WebhookURL == "" || !cfg.NotifyNewMedia {
+		return
+	}
+
+	db, err := sql.Open("duckdb", dbPath)
+	if err != nil {
+		log.Printf("[Discord:media] connexion DB échouée pour %s: %v", gamertag, err)
+		return
+	}
+	defer db.Close()
+
+	rows, err := queryUnnotifiedMedia(db)
+	if err != nil || len(rows) == 0 {
+		return
+	}
+
+	log.Printf("[Discord:media] %d nouveau(x) média(s) pour %s", len(rows), gamertag)
+
+	embed := buildMediaEmbed(rows, gamertag, cfg.Lang)
+	if !SendWebhook(cfg.WebhookURL, WebhookPayload{Embeds: []Embed{embed}}) {
+		log.Printf("[Discord:media] envoi échoué pour %s", gamertag)
+		return
+	}
+
+	paths := make([]string, len(rows))
+	for i, r := range rows {
+		paths[i] = r.FilePath
+	}
+	if err := markMediaNotified(db, paths); err != nil {
+		log.Printf("[Discord:media] impossible de marquer les médias notifiés: %v", err)
+	}
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Types + requêtes médias
+// ─────────────────────────────────────────────────────────────────────────────
+
+type mediaRow struct {
+	FilePath  string
+	FileName  string
+	Kind      string // "video" | "image"
+	MatchID   string
+}
+
+func queryUnnotifiedMedia(db *sql.DB) ([]mediaRow, error) {
+	q := `
+		SELECT
+			mf.file_path,
+			mf.file_name,
+			mf.kind,
+			COALESCE(mma.match_id, '') AS match_id
+		FROM media_files mf
+		LEFT JOIN media_match_associations mma
+			ON mma.media_file_id = mf.id
+		WHERE mf.discord_notified_at IS NULL
+		ORDER BY mf.indexed_at DESC
+		LIMIT 10
+	`
+	rows, err := db.Query(q)
+	if err != nil {
+		// Table absente ou vide : pas une erreur critique
+		return nil, nil //nolint:nilerr
+	}
+	defer rows.Close()
+
+	var result []mediaRow
+	for rows.Next() {
+		var r mediaRow
+		if err := rows.Scan(&r.FilePath, &r.FileName, &r.Kind, &r.MatchID); err != nil {
+			continue
+		}
+		result = append(result, r)
+	}
+	return result, rows.Err()
+}
+
+func markMediaNotified(db *sql.DB, filePaths []string) error {
+	if len(filePaths) == 0 {
+		return nil
+	}
+	now := time.Now().UTC().Format("2006-01-02 15:04:05")
+	placeholders := make([]string, len(filePaths))
+	args := make([]any, len(filePaths)+1)
+	args[0] = now
+	for i, p := range filePaths {
+		placeholders[i] = "?"
+		args[i+1] = p
+	}
+	q := fmt.Sprintf(
+		"UPDATE media_files SET discord_notified_at = ? WHERE file_path IN (%s)",
+		strings.Join(placeholders, ", "),
+	)
+	_, err := db.Exec(q, args...)
+	return err
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// BuildMediaEmbed — embed pour les médias
+// ─────────────────────────────────────────────────────────────────────────────
+
+func buildMediaEmbed(rows []mediaRow, gamertag, lang string) Embed {
+	nVideos, nImages := 0, 0
+	for _, r := range rows {
+		if r.Kind == "video" {
+			nVideos++
+		} else {
+			nImages++
+		}
+	}
+
+	title := T("discord_media_title_fr", lang, "gamertag", gamertag)
+
+	var desc string
+	switch {
+	case nVideos > 0 && nImages > 0:
+		desc = T("discord_media_desc_both", lang, "nv", nVideos, "ni", nImages)
+	case nVideos > 0:
+		desc = T("discord_media_desc_video", lang, "n", nVideos)
+	default:
+		desc = T("discord_media_desc_image", lang, "n", nImages)
+	}
+
+	embed := Embed{
+		Title:       title,
+		Description: desc,
+		Color:       colorBlurple,
+		Footer:      &EmbedFooter{Text: T("discord_footer", lang)},
+		Timestamp:   time.Now().UTC().Format(time.RFC3339),
+	}
+
+	// Max 6 fields + overflow
+	maxFields := 6
+	for i, r := range rows {
+		if i >= maxFields {
+			remaining := len(rows) - maxFields
+			embed.Fields = append(embed.Fields, EmbedField{
+				Name:  "…",
+				Value: fmt.Sprintf("%d autre(s)", remaining),
+			})
+			break
+		}
+		icon := "📸"
+		if r.Kind == "video" {
+			icon = "🎬"
+		}
+		value := r.FileName
+		if r.MatchID != "" {
+			value += fmt.Sprintf("\n🎮 `%s`", r.MatchID[:min(len(r.MatchID), 16)])
+		}
+		embed.Fields = append(embed.Fields, EmbedField{
+			Name:   icon + " " + truncate(r.FileName, 50),
+			Value:  truncate(value, 256),
+			Inline: true,
+		})
+	}
+
+	return embed
+}
+
+func min(a, b int) int {
+	if a < b {
+		return a
+	}
+	return b
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// EnvWebhookURL — résolution depuis env var (pour les scripts CLI)
+// ─────────────────────────────────────────────────────────────────────────────
+
+// EnvWebhookURL retourne DISCORD_WEBHOOK_URL depuis l'environnement si valide.
+// Utile pour les scripts CLI qui n'ont pas app_settings.json.
+func EnvWebhookURL() string {
+	url := strings.TrimSpace(os.Getenv("DISCORD_WEBHOOK_URL"))
+	if strings.HasPrefix(url, "https://discord.com/api/webhooks/") {
+		return url
+	}
+	return ""
+}
