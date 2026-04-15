@@ -13678,3 +13678,41 @@ Note critique : utiliser `create_file` plutôt que heredoc bash pour les fichier
 **Conclusion** :
 Sprint 9+10 complets. Architecture clean layer: domain → analysis → platform/duckdb → service → handlers.
 Prochaine étape selon SPRINT_ROADMAP : Sprint 11 (charting timeseries = ~30 fonctions, à planifier séparément).
+
+---
+
+## [2025-04-16] Sprint 11 — Accueil/Home + socle provider Halo
+
+**Statut** : Complété
+
+**Décision technique principale** :
+- Page Home entièrement read-only depuis DuckDB (Q26/Q27/Q28) — pas de live calls avant Sprint 15.
+- `BattlePassResponse` et `ChallengesResponse` retournent `available=false, error_hint="auth_required"` : dégradation explicite et documentée jusqu'au portage MSAL (Sprint 15).
+- Provider Halo (`platform/halo/provider.go`) : squelette avec token bucket 60 req/min + retry exponentiel x3. Méthodes `doRequest` prêtes pour Sprint 15.
+
+**Fichiers créés** :
+- `internal/domain/home.go` — 12 types domaine (HomeMatchRow, HomeSessionRow, HomeMediaRow, HeroKPIs, HeroTrend, HomeHeroCard, HighlightItem, RecentMatchItem, SessionSummaryItem, RecentMediaItem, HomePageResponse, BattlePassResponse, ChallengesResponse)
+- `internal/platform/duckdb/home_repo.go` — HomeRepo (LoadHomeMatches/Q26, LoadHomeSessions/Q27, LoadRecentMedia/Q28)
+- `internal/analysis/home.go` — 7 algos stateless (ComputeKPIs, ComputeTrend, BuildHeroCard, BuildHighlights, BuildRecentMatches, BuildSessionSummary, BuildRecentMedia)
+- `internal/analysis/home_test.go` — 10 tests
+- `internal/platform/halo/provider.go` — HaloProvider skeleton (rate limiter + retry + GetBattlePass/GetChallenges)
+- `internal/service/home_service.go` — HomeService.GetHomePage/GetBattlePass/GetChallenges
+- `internal/api/handlers/home.go` — 3 handlers GET /pages/home, GET /battlepass, GET /challenges
+
+**Fichiers modifiés** :
+- `internal/platform/duckdb/queries.go` — Q26/Q27/Q28 ajoutés
+- `internal/port/repository.go` — HomeRepository interface + noopHomeRepo
+- `internal/api/server.go` — 3 routes Sprint 11
+
+**Résultats observés** :
+- `go build ./...` → PASS (0 erreurs)
+- `go test ./internal/analysis/...` → 21/21 PASS (11 sessions + 10 home)
+- Commit : `7467e977` sur `feature/go-migration`
+
+**Conclusion** :
+Sprint 11 complet. Architecture home : Q26/Q27/Q28 → HomeRepo → HomeService → HomeHandler. Provider Halo prêt pour Sprint 15.
+Routes actives :
+  GET /api/v1/players/{slug}/pages/home
+  GET /api/v1/players/{slug}/battlepass
+  GET /api/v1/players/{slug}/challenges
+Prochaine étape selon SPRINT_ROADMAP : Sprint 12 (Escouade + Synthèse, ~7-10j).
