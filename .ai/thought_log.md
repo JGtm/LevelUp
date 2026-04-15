@@ -1,5 +1,31 @@
 # Thought Log
 
+## [2026-07-15] feat(sprint19): Pipeline post-sync — perf score, LUSR, career, aggregates
+
+**Statut** : Complété (commit a5ecff46)
+
+**Tâche** : Sprint 19 — Pipeline post-sync complet : performance score relatif, LUSR TrueSkill 2, career progression, vues matérialisées.
+
+**Décisions techniques principales** :
+
+1. **performance.go** — Score relatif 0-100 : 10 métriques pondérées (kpm, dpm_deaths, apm, kda, accuracy, pspm, dpm_damage, rank_perf, kills_vs_expected, deaths_vs_expected). Fenêtre glissante 50 matchs. Percentile rank/inverse pour métriques standard/inversées. Renormalisation gracieuse si certaines métriques manquent (< 10 matchs → nil).
+2. **skill_rating.go** — LUSR TrueSkill 2 séquentiel par playlist_group. Elo-style continu (K=32), score composite [0,1] via 5 composants pondérés. Inactivity decay sigma. Mode incrémental (reprend les states depuis le dernier match LUSR existant). Guard-rail ±100 pts/match.
+3. **skill_config.go** — Toutes les constantes centralisées (TrueSkill params, composite weights, relative weights, playlist groups, 6 tiers Bronze→Onyx). Helpers math (clampF, sigmoidRatio, drawMargin, etc.).
+4. **career.go** — Appel API economy.svc.halowaypoint.com avec Spartan/Clearance tokens. Skip gracieux si 401/403. Parse JSON réponse → INSERT career_progression.
+5. **aggregates.go** — DROP+CREATE materialized views (player) + CREATE OR REPLACE views (shared). Pattern idempotent.
+6. **schema.go** — match_participants étendu (+10 colonnes : kda, accuracy, personal_score, time_played_seconds, avg_life_seconds, kills_expected, deaths_expected, kills_stddev, team_mmr, enemy_mmr). Tables match_skill_rank et career_progression ajoutées.
+7. **engine.go** — `runPostSyncPipeline()` câblé après la boucle sync : perf → LUSR → career → aggregates. Exécuté uniquement si MatchesInserted > 0.
+8. **transforms.go** — ParticipantRow étendu avec KDA et accuracy calculés depuis kills/deaths/assists et shots_fired/shots_hit.
+
+**Résultats observés** :
+- `go build ./...` : **0 erreur**
+- `go vet ./...` : **0 warning**
+- 10 fichiers modifiés, 1891 insertions, 30 suppressions
+
+**Prochaine étape** : Sprint 20 (Backfill complet) ou Sprint 21 (Migrations DuckDB)
+
+---
+
 ## [2025-12-15] feat(sprint16+17): Settings/Setup + Jobs longs persistants
 
 **Statut** : Complété (commit d2ac4565)
