@@ -4,7 +4,7 @@
 > Chaque sprint a un objectif, des tâches, un critère de sortie et une estimation.
 >
 > Dernière mise à jour : 2026-04-15
-> Statut global : **En cours** — Sprints 0–17 ✅ — Phases 0+1+2+3 complètes, Sprint 18 🔄 en cours.
+> Statut global : **En cours** — Sprints 0–18 ✅ — Phases 0+1+2+3 complètes + Sprint 18 ✅, Sprint 19 ⬜ en attente.
 
 ---
 
@@ -45,7 +45,7 @@
 | 15 | Device Code Flow + MSAL Go | Phase 3 | 5-7j | ✅ | Sprint 14 |
 | 16 | Settings / Setup | Phase 3 | 3-4j | ✅ | Sprint 15 |
 | 17 | Jobs longs persistants | Phase 3 | 4-6j | ✅ | Sprint 15 |
-| 18 | Moteur sync minimal (12 mixins, ~13K LOC) | Phase 4 | 10-15j | 🔄 | Gate Phase 3 |
+| 18 | Moteur sync minimal (12 mixins, ~13K LOC) | Phase 4 | 10-15j | ✅ | Gate Phase 3 |
 | 19 | Pipeline post-sync | Phase 4 | 5-7j | ⬜ | Sprint 18 |
 | 20 | Backfill complet (96 champs, ~120 args) | Phase 4 | 7-10j | ⬜ | Sprint 19 |
 | 21 | Migrations DuckDB (35 steps) | Phase 4 | 5-7j | ⬜ | Sprint 18 |
@@ -480,7 +480,7 @@
 
 ---
 
-## Sprint 18 — Moteur sync minimal (10–15 jours)
+## Sprint 18 ✅ — Moteur sync minimal (10–15 jours)
 
 > **Phase 4 — Sync, backfill, outillage**
 > **Objectif** : delta sync fonctionnel. C'est le sprint le plus long et le plus risqué.
@@ -490,20 +490,20 @@
 
 | # | Tâche | Statut |
 |--:|-------|:------:|
-| 1 | Script/commande backup avant premier test réel | ⬜ |
-| 2 | ConnectionMixin : gestion connexions read/write + ATTACH | ⬜ |
-| 3 | SchemaMixin : vérification/création des tables | ⬜ |
-| 4 | SharedWritesMixin : insert match_registry, match_participants (31 cols), médailles, events | ⬜ |
-| 5 | MatchProcessingMixin + MatchProcessingHelpersMixin : orchestration du traitement d'un match | ⬜ |
-| 6 | EnrichedWritesMixin : insert player_match_enrichment | ⬜ |
-| 7 | FanoutEnrichmentMixin : distribution des enrichissements | ⬜ |
-| 8 | WeaponKillsEngineMixin : insert weapon_kills avec réconciliation | ⬜ |
-| 9 | PerformanceMixin, SkillRatingMixin, CareerMixin, AggregatesMixin : post-sync | ⬜ |
-| 10 | Portage `transformers/` (2 400 LOC) : normalisation, nettoyage, transformations batch | ⬜ |
-| 11 | Portage `_batch_audit.py`, `_batch_columns.py` : audit batch et gestion colonnes | ⬜ |
-| 12 | Write lease identique au Python (~5s timeout, 1 writer par DB path) | ⬜ |
-| 13 | Delta sync complet : fetch nouveaux matchs → insert shared + player | ⬜ |
-| 14 | Tests : delta sync sur corpus figé, comparaison avec résultat Python | ⬜ |
+| 1 | Script/commande backup avant premier test réel | ✅ |
+| 2 | ConnectionMixin : gestion connexions read/write + ATTACH | ✅ |
+| 3 | SchemaMixin : vérification/création des tables | ✅ |
+| 4 | SharedWritesMixin : insert match_registry, match_participants (31 cols), médailles, events | ✅ |
+| 5 | MatchProcessingMixin + MatchProcessingHelpersMixin : orchestration du traitement d'un match | ✅ |
+| 6 | EnrichedWritesMixin : insert player_match_enrichment | ✅ |
+| 7 | FanoutEnrichmentMixin : distribution des enrichissements | ✅ |
+| 8 | WeaponKillsEngineMixin : insert weapon_kills avec réconciliation | ✅ |
+| 9 | PerformanceMixin, SkillRatingMixin, CareerMixin, AggregatesMixin : post-sync | ✅ |
+| 10 | Portage `transformers/` (2 400 LOC) : normalisation, nettoyage, transformations batch | ✅ |
+| 11 | Portage `_batch_audit.py`, `_batch_columns.py` : audit batch et gestion colonnes | ✅ |
+| 12 | Write lease identique au Python (~5s timeout, 1 writer par DB path) | ✅ |
+| 13 | Delta sync complet : fetch nouveaux matchs → insert shared + player | ✅ |
+| 14 | Tests : delta sync sur corpus figé, comparaison avec résultat Python | ✅ |
 
 > **Inventaire exhaustif** : 12 mixins réels (`ConnectionMixin`, `SchemaMixin`, `SharedWritesMixin`,
 > `MatchProcessingMixin`, `MatchProcessingHelpersMixin`, `EnrichedWritesMixin`,
