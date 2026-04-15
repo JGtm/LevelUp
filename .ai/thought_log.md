@@ -13598,3 +13598,42 @@ Ajout de 3 règles ciblant `div[data-testid="stSegmentedControl"]` :
 - `go test ./internal/service/ -v` → 15/15 PASS
 
 **Conclusion** : Sprint 5+6 complets. Prochaine étape : Sprint 7 (match view endpoint Q12-Q16) ou Sprint 8 (gamertag search live tests + fixtures ref_player).
+
+---
+
+## [2025-12-01] Sprint 7 + Sprint 8 — Parity script + Explorer + Match View + KV
+
+**Statut** : Complété
+
+**Décision technique principale** :
+- Sprint 7 : Script `scripts/parity_check.py` qui compare les 6 endpoints Phase 1 entre le serveur Go et les golden values JSON. Génère `tests/fixtures/parity_report.json` avec diff tolérant (DEFAULT_FLOAT_TOL=0.01).
+- Sprint 8 : Port complet de l'Explorer + Match View. Architecture : repos DuckDB → services purs → handlers chi. KV pairs résolus via `shared.v_killer_victim_full` (vue v6 garantie). Algorithme KV pur dans `internal/analysis/killer_victim.go` pour les cas sans vue.
+- `formatDateFRLong` ajouté (distinct de `formatDateFR` de match_history_service.go) pour le format "JJ mois AAAA, HH:MM".
+
+**Fichiers créés** :
+- `scripts/parity_check.py` (Sprint 7 — script Python de validation de parité)
+- `internal/platform/duckdb/queries.go` — Q17-Q21 ajoutées
+- `internal/domain/match_view.go` — types JSON response + types raw DB
+- `internal/domain/explorer.go` — ExplorerPlayerQueryRequest, CommonMatchRow, CommonMatchRaw
+- `internal/domain/chart/base.go` — HaloColors, OkabeIto, OutcomeColor, PerfColor
+- `internal/domain/chart/antagonists.go` — AntagonistBarChartData, DuelChartData, ImpactTimelineData, DominanceChartData
+- `internal/analysis/killer_victim.go` — ComputeKillerVictimPairs (algo bisect ±toleranceMS), ComputeAntagonistCounts
+- `internal/platform/duckdb/match_view_repo.go` — implémente MatchViewRepository (8 méthodes)
+- `internal/platform/duckdb/explorer_repo.go` — implémente ExplorerRepository (GetCommonMatches, ResolveXUIDByGamertag)
+- `internal/service/match_view_service.go` — GetMatchView : assemble header (outcome+perf colors), summary (KPIs, medals), combat (weapons, events), team (scoreboard, nemesis)
+- `internal/service/explorer_service.go` — GetCommonMatches : résolution gamertag → Q19 → were_teammates
+- `internal/api/handlers/match_view.go` — GET /players/{slug}/matches/{match_id}
+- `internal/api/handlers/explorer.go` — POST /players/{slug}/pages/explorer/player-query
+- `internal/port/repository.go` — MatchViewRepository + ExplorerRepository interfaces + noop impls
+
+**Fichiers modifiés** :
+- `internal/api/server.go` — routes Sprint 8 ajoutées (matches/{match_id}, pages/explorer/player-query)
+- `internal/service/service_test.go` — 10 nouveaux tests (buildScoreLabel, convertMedals, convertCommonMatches, formatDateFRLong)
+- `.ai/go_migration_v2/SPRINT_ROADMAP.md` — Sprints 5-8 marqués ✅
+
+**Résultats observés** :
+- `go build ./...` → PASS
+- `go test ./internal/service/` → 25/25 PASS (15 anciens + 10 nouveaux)
+
+**Conclusion** :
+Sprint 7+8 complets. Phase 1 entière terminée. Phase 2 démarrée (Explorer + Match View opérationnels). Prochaine étape : Sprint 9 (Sessions) ou Sprint 10 (Stats/Séries + perf score).

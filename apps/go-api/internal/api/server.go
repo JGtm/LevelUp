@@ -53,7 +53,14 @@ func NewRouter(
 			career := handlers.NewCareerHandler(cfg)
 			r.Get("/pages/career", career.GetCareer)
 			r.Get("/pages/career/top-matches", career.GetTopMatches)
-			r.Get("/pages/career/encounters", career.GetEncounters)
+                        r.Get("/pages/career/encounters", career.GetEncounters)
+
+			// Sprint 8 : Match View + Explorer
+			mv := handlers.NewMatchViewHandler(cfg)
+			r.Get("/matches/{match_id}", mv.GetMatchView)
+
+			explorer := handlers.NewExplorerHandler(cfg)
+			r.Post("/pages/explorer/player-query", explorer.QueryPlayer)
 		})
 
 		// Endpoints P1 : répertoire gamertags

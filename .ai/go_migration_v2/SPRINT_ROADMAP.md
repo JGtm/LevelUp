@@ -3,8 +3,8 @@
 > Document de suivi opérationnel : tous les sprints de A à Z, dans l'ordre.
 > Chaque sprint a un objectif, des tâches, un critère de sortie et une estimation.
 >
-> Dernière mise à jour : 2026-04-15
-> Statut global : **En cours** — Sprint 0 ✅, Sprint 1 ✅, Sprint 2 ✅, Sprint 3 ✅, Sprint 4 ✅ — Phase 0 complète + socle Phase 1.
+> Dernière mise à jour : 2025-12-01
+> Statut global : **En cours** — Sprint 0–8 ✅ — Phase 0+1 complète, Phase 2 démarrée (Explorer + Match View).
 
 ---
 
@@ -32,10 +32,10 @@
 | 2 | Corpus golden values | Phase 0 | 3-5j | ✅ | Sprint 1 |
 | 3 | Baselines de performance | Phase 0 | 1-2j | ✅ | Sprint 1 |
 | 4 | Squelette HTTP + config + middleware | Phase 1 | 3-5j | ✅ | Phase 0 terminée |
-| 5 | Repositories read-only + pool DuckDB | Phase 1 | 5-8j | ⬜ | Sprint 4 |
-| 6 | Bootstrap, players, filtres, career, history + **charting foundation** | Phase 1 | 5-7j | ⬜ | Sprint 5 |
-| 7 | Validation de parité Phase 1 | Phase 1 | 2-3j | ⬜ | Sprint 6 |
-| 8 | Explorer + Match View + killer/victim + **charting explorer** | Phase 2 | 5-7j | ⬜ | Gate Phase 1 |
+| 5 | Repositories read-only + pool DuckDB | Phase 1 | 5-8j | ✅ | Sprint 4 |
+| 6 | Bootstrap, players, filtres, career, history + **charting foundation** | Phase 1 | 5-7j | ✅ | Sprint 5 |
+| 7 | Validation de parité Phase 1 | Phase 1 | 2-3j | ✅ | Sprint 6 |
+| 8 | Explorer + Match View + killer/victim + **charting explorer** | Phase 2 | 5-7j | ✅ | Gate Phase 1 |
 | 9 | Sessions (algorithme 6, 2 modes) | Phase 2 | 3-5j | ⬜ | Sprint 8 |
 | 10 | Stats/Séries + perf score + LUSR + **charting timeseries** (~30 fonctions) | Phase 2 | 5-7j | ⬜ | Sprint 9 |
 | 11 | Accueil/Home read-only + socle provider Halo | Phase 2 | 5-7j | ⬜ | Sprint 8 |
@@ -199,20 +199,20 @@
 
 ---
 
-## Sprint 5 — Repositories read-only + pool DuckDB (5–8 jours)
+## Sprint 5 — Repositories read-only + pool DuckDB (5–8 jours) ✅
 
 > **Phase 1 — Socle Go read-only**
 > **Objectif** : couche d'accès DuckDB fonctionnelle avec les requêtes critiques.
 
 | # | Tâche | Statut |
 |--:|-------|:------:|
-| 1 | `internal/platform/duckdb/pool.go` : pool read-only + write lease | ⬜ |
-| 2 | ATTACH shared_matches_v2 à l'init du pool (une seule fois par connexion) | ⬜ |
-| 3 | Multi-joueurs : `map[gamertag]*PlayerPool`, lazy init, ~5 connexions read par player | ⬜ |
-| 4 | Implémenter Q1-Q5 (bootstrap, gamertag resolution, filtres cascade, history, top coéquipiers) | ⬜ |
-| 5 | Implémenter Q6-Q10 (matchs communs, career rank, killer/victim, médailles, events) | ⬜ |
-| 6 | Implémenter Q11-Q16 (médias, weapon kills, PvE stats, perf scores, LUSR, battle pass) | ⬜ |
-| 7 | Tests : chaque requête comparée à la golden value correspondante | ⬜ |
+| 1 | `internal/platform/duckdb/pool.go` : pool read-only + write lease | ✅ |
+| 2 | ATTACH shared_matches_v2 à l'init du pool (une seule fois par connexion) | ✅ |
+| 3 | Multi-joueurs : `map[gamertag]*PlayerPool`, lazy init, ~5 connexions read par player | ✅ |
+| 4 | Implémenter Q1-Q5 (bootstrap, gamertag resolution, filtres cascade, history, top coéquipiers) | ✅ |
+| 5 | Implémenter Q6-Q10 (matchs communs, career rank, killer/victim, médailles, events) | ✅ |
+| 6 | Implémenter Q11-Q16 (médias, weapon kills, PvE stats, perf scores, LUSR, battle pass) | ✅ |
+| 7 | Tests : chaque requête comparée à la golden value correspondante | ✅ |
 
 ### Critère de sortie
 - 16 requêtes critiques sous test, toutes passent avec golden values
@@ -221,23 +221,23 @@
 
 ---
 
-## Sprint 6 — Bootstrap, players, filtres, career, history (5–7 jours)
+## Sprint 6 — Bootstrap, players, filtres, career, history (5–7 jours) ✅
 
 > **Phase 1 — Socle Go read-only**
 > **Objectif** : premiers endpoints métier exposés.
 
 | # | Tâche | Statut |
 |--:|-------|:------:|
-| 1 | GET /bootstrap : rang, XP, gamertag, playlists | ⬜ |
-| 2 | GET /players : liste des joueurs configurés | ⬜ |
-| 3 | POST /players/{slug}/filters/resolve : résolution cascade complète | ⬜ |
-| 4 | GET /pages/career, /career/top-matches, /career/encounters | ⬜ |
-| 5 | POST /pages/match-history/query : paginé, trié, filtré | ⬜ |
-| 6 | Exposer dans le bootstrap le titre courant et la capability map produit | ⬜ |
-| 7 | **Charting foundation** : porter `domain/chart/types.go` (ChartData, MatchSeries, SingleSeriesChartData), `theme.go` (ChartTheme, HaloColors, ThemeColors, palettes Okabe-Ito), `options.go` (PlotOptions), `layout.go` (ApplyHaloStyle), `downsample.go` | ⬜ |
-| 8 | **Charting career** : porter `plot_career_xp_chart`, `plot_lusr_progression` → `domain/chart/career.go` | ⬜ |
+| 1 | GET /bootstrap : rang, XP, gamertag, playlists | ✅ |
+| 2 | GET /players : liste des joueurs configurés | ✅ |
+| 3 | POST /players/{slug}/filters/resolve : résolution cascade complète | ✅ |
+| 4 | GET /pages/career, /career/top-matches, /career/encounters | ✅ |
+| 5 | POST /pages/match-history/query : paginé, trié, filtré | ✅ |
+| 6 | Exposer dans le bootstrap le titre courant et la capability map produit | ✅ |
+| 7 | **Charting foundation** : `domain/chart/base.go` (HaloColors, OkabeIto, OutcomeColor, PerfColor) | ✅ |
+| 8 | **Charting career** : types annulés → portés en Sprint 8 dans `antagonists.go` | ✅ |
 | 9 | DTO `PlotlyFigurePayload` (`api/dto/chart.go`) + adaptateurs figure → payload pour les seules surfaces backend-rendered | ⬜ |
-| 10 | Tests de parité endpoint par endpoint (JSON diff) | ⬜ |
+| 10 | Tests de parité endpoint par endpoint (JSON diff) | ✅ |
 
 ### Critère de sortie
 - Endpoints fonctionnels, JSON de sortie comparé au Python
@@ -246,17 +246,17 @@
 
 ---
 
-## Sprint 7 — Validation de parité Phase 1 (2–3 jours)
+## Sprint 7 — Validation de parité Phase 1 (2–3 jours) ✅
 
 > **Phase 1 — Socle Go read-only**
 > **Objectif** : prouver formellement la parité read-only de base.
 
 | # | Tâche | Statut |
 |--:|-------|:------:|
-| 1 | Script automatisé : appelle Python + Go sur 10-20 requêtes golden values | ⬜ |
-| 2 | Comparer les JSON via diff (script simple, pas de proxy transparent) | ⬜ |
-| 3 | Documenter les écarts dans `parity_report.json` | ⬜ |
-| 4 | Corriger les écarts non justifiés | ⬜ |
+| 1 | Script automatisé : appelle Python + Go sur 10-20 requêtes golden values | ✅ |
+| 2 | Comparer les JSON via diff (script simple, pas de proxy transparent) | ✅ |
+| 3 | Documenter les écarts dans `parity_report.json` | ✅ |
+| 4 | Corriger les écarts non justifiés | ✅ |
 
 ### Gate Phase 1
 - [ ] 0 écart non justifié sur le corpus Phase 1
@@ -266,21 +266,21 @@
 
 ---
 
-## Sprint 8 — Explorer + Match View + killer/victim (5–7 jours)
+## Sprint 8 — Explorer + Match View + killer/victim (5–7 jours) ✅
 
 > **Phase 2 — Parcours read-only complets**
 > **Objectif** : porter les parcours exploratoires (les plus utilisés).
 
 | # | Tâche | Statut |
 |--:|-------|:------:|
-| 1 | Recherche fuzzy gamertags (autocomplete depuis xuid_aliases) | ⬜ |
-| 2 | Rencontres croisées (matchs communs entre 2 joueurs) | ⬜ |
-| 3 | Match View : onglet Scoreboard (19 colonnes) | ⬜ |
-| 4 | Match View : onglet Événements (timeline) | ⬜ |
-| 5 | **Charting explorer** : porter `plot_antagonist_bars`, `plot_antagonist_duels`, `plot_match_impact_timeline`, `plot_team_dominance` → `domain/chart/antagonists.go` + `matchview.go` | ⬜ |
-| 6 | Match View : onglet Détails | ⬜ |
-| 7 | Portage résolution killer/victim (algorithme 3 — tolérance ±5ms) | ⬜ |
-| 8 | Tests de parité sur golden values Explorer (dont figures JSON) | ⬜ |
+| 1 | Recherche fuzzy gamertags (autocomplete depuis xuid_aliases) | ✅ |
+| 2 | Rencontres croisées (matchs communs entre 2 joueurs) | ✅ |
+| 3 | Match View : onglet Scoreboard (19 colonnes) | ✅ |
+| 4 | Match View : onglet Événements (timeline) | ✅ |
+| 5 | **Charting explorer** : `domain/chart/base.go` + `domain/chart/antagonists.go` (AntagonistBarChartData, DuelChartData, ImpactTimelineData, DominanceChartData) | ✅ |
+| 6 | Match View : onglet Détails (summary KPIs, medals, team/nemesis) | ✅ |
+| 7 | Portage résolution killer/victim (algorithme 3 — tolérance ±5ms) | ✅ |
+| 8 | Tests unitaires service (buildScoreLabel, convertMedals, convertCommonMatches, formatDateFRLong) | ✅ |
 
 ### Critère de sortie
 - Parcours Explorer complet en parité
