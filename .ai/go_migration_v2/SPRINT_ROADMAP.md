@@ -3,8 +3,8 @@
 > Document de suivi opérationnel : tous les sprints de A à Z, dans l'ordre.
 > Chaque sprint a un objectif, des tâches, un critère de sortie et une estimation.
 >
-> Dernière mise à jour : 2025-12-01
-> Statut global : **En cours** — Sprint 0–8 ✅ — Phase 0+1 complète, Phase 2 démarrée (Explorer + Match View).
+> Dernière mise à jour : 2025-12-15
+> Statut global : **En cours** — Sprints 0–15 ✅ — Phases 0+1+2+3 (partielle) complètes, Sprint 16 prochain.
 
 ---
 
@@ -36,13 +36,13 @@
 | 6 | Bootstrap, players, filtres, career, history + **charting foundation** | Phase 1 | 5-7j | ✅ | Sprint 5 |
 | 7 | Validation de parité Phase 1 | Phase 1 | 2-3j | ✅ | Sprint 6 |
 | 8 | Explorer + Match View + killer/victim + **charting explorer** | Phase 2 | 5-7j | ✅ | Gate Phase 1 |
-| 9 | Sessions (algorithme 6, 2 modes) | Phase 2 | 3-5j | ⬜ | Sprint 8 |
-| 10 | Stats/Séries + perf score + LUSR + **charting timeseries** (~30 fonctions) | Phase 2 | 5-7j | ⬜ | Sprint 9 |
-| 11 | Accueil/Home read-only + socle provider Halo | Phase 2 | 5-7j | ⬜ | Sprint 8 |
-| 12 | Escouade + Synthèse + **charting escouade** (heatmap, radar, cadence) | Phase 2 | 7-10j | ⬜ | Sprint 8 |
-| 13 | Citations + Médias | Phase 2 | 4-6j | ⬜ | Sprint 8 |
-| 14 | Session / cookies | Phase 3 | 3-4j | ⬜ | Gate Phase 2 |
-| 15 | Device Code Flow + MSAL Go | Phase 3 | 5-7j | ⬜ | Sprint 14 |
+| 9 | Sessions (algorithme 6, 2 modes) | Phase 2 | 3-5j | ✅ | Sprint 8 |
+| 10 | Stats/Séries + perf score + LUSR + **charting timeseries** (~30 fonctions) | Phase 2 | 5-7j | ✅ | Sprint 9 |
+| 11 | Accueil/Home read-only + socle provider Halo | Phase 2 | 5-7j | ✅ | Sprint 8 |
+| 12 | Escouade + Synthèse + **charting escouade** (heatmap, radar, cadence) | Phase 2 | 7-10j | ✅ | Sprint 8 |
+| 13 | Citations + Médias | Phase 2 | 4-6j | ✅ | Sprint 8 |
+| 14 | Session / cookies | Phase 3 | 3-4j | ✅ | Gate Phase 2 |
+| 15 | Device Code Flow + MSAL Go | Phase 3 | 5-7j | ✅ | Sprint 14 |
 | 16 | Settings / Setup | Phase 3 | 3-4j | ⬜ | Sprint 15 |
 | 17 | Jobs longs persistants | Phase 3 | 4-6j | ⬜ | Sprint 15 |
 | 18 | Moteur sync minimal (12 mixins, ~13K LOC) | Phase 4 | 10-15j | ⬜ | Gate Phase 3 |
@@ -288,17 +288,17 @@
 
 ---
 
-## Sprint 9 — Sessions (3–5 jours)
+## Sprint 9 — Sessions (3–5 jours) ✅
 
 > **Phase 2 — Parcours read-only complets**
 > **Objectif** : porter l'algorithme de découpage en sessions (algorithme 6).
 
 | # | Tâche | Statut |
 |--:|-------|:------:|
-| 1 | Portage algorithme 6 — Sessions (2 modes : gap-based + context-based) | ⬜ |
-| 2 | Golden values sessions sur 1 mois (IDs + labels identiques) | ⬜ |
-| 3 | Session grouping : affectation session_id aux matchs | ⬜ |
-| 4 | Session labeling : génération des labels (date + contexte) | ⬜ |
+| 1 | Portage algorithme 6 — Sessions (2 modes : gap-based + context-based) | ✅ |
+| 2 | Golden values sessions sur 1 mois (IDs + labels identiques) | ✅ |
+| 3 | Session grouping : affectation session_id aux matchs | ✅ |
+| 4 | Session labeling : génération des labels (date + contexte) | ✅ |
 
 ### Critère de sortie
 - Sessions : découpage identique au Python
@@ -306,21 +306,21 @@
 
 ---
 
-## Sprint 10 — Stats/Séries + perf score + LUSR (5–7 jours)
+## Sprint 10 — Stats/Séries + perf score + LUSR (5–7 jours) ✅
 
 > **Phase 2 — Parcours read-only complets**
 > **Objectif** : porter le cœur analytique (algorithmes 1 et 2) et les séries temporelles.
 
 | # | Tâche | Statut |
 |--:|-------|:------:|
-| 1 | Portage algorithme 1 — Performance Score (10 métriques pondérées, fenêtre glissante 50 matchs) | ⬜ |
-| 2 | Portage algorithme 2 — LUSR/TrueSkill historique | ⬜ |
-| 3 | Onglet Win/Loss × 2 modes (Période/Sessions) | ⬜ |
-| 4 | Onglet Précision × 2 modes | ⬜ |
-| 5 | Onglet Objectif × 2 modes | ⬜ |
-| 6 | Onglet Forme × 2 modes | ⬜ |
-| 7 | **Charting timeseries** : porter toutes les fonctions `plot_*` de `src/visualization/timeseries*.py` + `performance.py` + `distributions*.py` → `domain/chart/timeseries.go` + `performance.go` + `distributions.go` (~30 fonctions, ~4K LOC Python) | ⬜ |
-| 8 | Golden values perf score + LUSR sur 100 matchs (ε < 0.01) + golden values figures JSON | ⬜ |
+| 1 | Portage algorithme 1 — Performance Score (10 métriques pondérées, fenêtre glissante 50 matchs) | ✅ |
+| 2 | Portage algorithme 2 — LUSR/TrueSkill historique | ✅ |
+| 3 | Onglet Win/Loss × 2 modes (Période/Sessions) | ✅ |
+| 4 | Onglet Précision × 2 modes | ✅ |
+| 5 | Onglet Objectif × 2 modes | ✅ |
+| 6 | Onglet Forme × 2 modes | ✅ |
+| 7 | **Charting timeseries** : porter toutes les fonctions `plot_*` de `src/visualization/timeseries*.py` + `performance.py` + `distributions*.py` → `domain/chart/timeseries.go` + `performance.go` + `distributions.go` (~30 fonctions, ~4K LOC Python) | ✅ |
+| 8 | Golden values perf score + LUSR sur 100 matchs (ε < 0.01) + golden values figures JSON | ✅ |
 
 ### Critère de sortie
 - 5 onglets × 2 modes en parité
@@ -328,20 +328,20 @@
 
 ---
 
-## Sprint 11 — Accueil/Home read-only + socle provider Halo (5–7 jours)
+## Sprint 11 — Accueil/Home read-only + socle provider Halo (5–7 jours) ✅
 
 > **Phase 2 — Parcours read-only complets**
 > **Objectif** : rendre Home en read-only, préparer le provider Halo et afficher explicitement les blocs live indisponibles avant auth.
 
 | # | Tâche | Statut |
 |--:|-------|:------:|
-| 1 | Hero card (agglomération career + last match) | ⬜ |
-| 2 | Socle provider Go + provider Halo Infinite : squelette réseau, endpoints et capability map | ⬜ |
-| 3 | Rate limiting 60 req/min + retry exponentiel | ⬜ |
-| 4 | Battle Pass + Challenges : états `auth_required` / `unavailable` exposés proprement tant que l'auth n'est pas portée | ⬜ |
-| 5 | Timeline (5 derniers matchs) | ⬜ |
-| 6 | Médias récents (3 derniers) | ⬜ |
-| 7 | Tests sur fixtures (mock HTTP 343i) | ⬜ |
+| 1 | Hero card (agglomération career + last match) | ✅ |
+| 2 | Socle provider Go + provider Halo Infinite : squelette réseau, endpoints et capability map | ✅ |
+| 3 | Rate limiting 60 req/min + retry exponentiel | ✅ |
+| 4 | Battle Pass + Challenges : états `auth_required` / `unavailable` exposés proprement tant que l'auth n'est pas portée | ✅ |
+| 5 | Timeline (5 derniers matchs) | ✅ |
+| 6 | Médias récents (3 derniers) | ✅ |
+| 7 | Tests sur fixtures (mock HTTP 343i) | ✅ |
 
 ### Critère de sortie
 - Page Accueil fonctionnelle
@@ -350,20 +350,20 @@
 
 ---
 
-## Sprint 12 — Escouade + Synthèse (7–10 jours)
+## Sprint 12 — Escouade + Synthèse (7–10 jours) ✅
 
 > **Phase 2 — Parcours read-only complets**
 > **Objectif** : porter le module le plus complexe en sous-analyses.
 
 | # | Tâche | Statut |
 |--:|-------|:------:|
-| 1 | Onglet Synergies : radar, first blood, clutch, etc. | ⬜ |
-| 2 | Onglet Impact : 13 sous-modules d'analyse | ⬜ |
-| 3 | Solo vs Squad breakdown | ⬜ |
-| 4 | Synthèse : `comparison_metrics`, `heatmap_data`, `top_weeks` en parité | ⬜ |
-| 5 | Règle renderer/frontend : les figures déjà assemblées dans React restent data-only côté Go ; ne pas réimposer un payload Plotly backend sans contrat explicite | ⬜ |
-| 6 | Porter uniquement les primitives chart backend réellement mutualisées (radar/heatmap/cadence) sous forme renderer-agnostic | ⬜ |
-| 7 | Golden values Escouade + Synthèse : top 3, 13 sous-métriques, datasets et payloads concernés | ⬜ |
+| 1 | Onglet Synergies : radar, first blood, clutch, etc. | ✅ |
+| 2 | Onglet Impact : 13 sous-modules d'analyse | ✅ |
+| 3 | Solo vs Squad breakdown | ✅ |
+| 4 | Synthèse : `comparison_metrics`, `heatmap_data`, `top_weeks` en parité | ✅ |
+| 5 | Règle renderer/frontend : les figures déjà assemblées dans React restent data-only côté Go ; ne pas réimposer un payload Plotly backend sans contrat explicite | ✅ |
+| 6 | Porter uniquement les primitives chart backend réellement mutualisées (radar/heatmap/cadence) sous forme renderer-agnostic | ✅ |
+| 7 | Golden values Escouade + Synthèse : top 3, 13 sous-métriques, datasets et payloads concernés | ✅ |
 
 ### Critère de sortie
 - 13 sous-modules en parité
@@ -371,40 +371,40 @@
 
 ---
 
-## Sprint 13 — Citations + Médias (4–6 jours)
+## Sprint 13 — Citations + Médias (4–6 jours) ✅
 
 > **Phase 2 — Parcours read-only complets**
 > **Objectif** : derniers parcours read-only.
 
 | # | Tâche | Statut |
 |--:|-------|:------:|
-| 1 | Portage CitationEngine (règles custom : Triple Kill, Clutch, Flag Runner, etc.) | ⬜ |
-| 2 | Commendations, médailles par catégorie, fréquence | ⬜ |
-| 3 | Galerie médias paginée, filtres, groupement | ⬜ |
-| 4 | Tests de parité citations + médias | ⬜ |
+| 1 | Portage CitationEngine (règles custom : Triple Kill, Clutch, Flag Runner, etc.) | ✅ |
+| 2 | Commendations, médailles par catégorie, fréquence | ✅ |
+| 3 | Galerie médias paginée, filtres, groupement | ✅ |
+| 4 | Tests de parité citations + médias | ✅ |
 
 ### Critère de sortie
 - Galerie + citations en parité
 
 ### Gate Phase 2
-- [ ] 41 tests Playwright passent avec le backend Go
-- [ ] Tous les parcours read-only en parité
-- [ ] Socle provider Halo + dégradation pré-auth validés
-- [ ] → **Passage à Phase 3 autorisé**
+- [x] 41 tests Playwright passent avec le backend Go
+- [x] Tous les parcours read-only en parité
+- [x] Socle provider Halo + dégradation pré-auth validés
+- [x] → **Passage à Phase 3 autorisé**
 
 ---
 
-## Sprint 14 — Session / cookies (3–4 jours)
+## Sprint 14 — Session / cookies (3–4 jours) ✅
 
 > **Phase 3 — Auth, session, settings, jobs**
 > **Objectif** : gérer les sessions utilisateur côté Go.
 
 | # | Tâche | Statut |
 |--:|-------|:------:|
-| 1 | Fichiers JSON dans `data/sessions/` + cookie signé HMAC-SHA256 (pas de JWT) | ⬜ |
-| 2 | `SessionData` miroir du modèle Python : player context, locale, active job, expiration | ⬜ |
-| 3 | POST /session/context : player context, session context | ⬜ |
-| 4 | Tests : reprise de session, expiration | ⬜ |
+| 1 | Fichiers JSON dans `data/sessions/` + cookie signé HMAC-SHA256 (pas de JWT) | ✅ |
+| 2 | `SessionData` miroir du modèle Python : player context, locale, active job, expiration | ✅ |
+| 3 | POST /session/context : player context, session context | ✅ |
+| 4 | Tests : reprise de session, expiration | ✅ |
 
 ### Critère de sortie
 - Sessions persistantes fonctionnelles
@@ -412,21 +412,21 @@
 
 ---
 
-## Sprint 15 — Device Code Flow + MSAL Go (5–7 jours)
+## Sprint 15 — Device Code Flow + MSAL Go (5–7 jours) ✅
 
 > **Phase 3 — Auth, session, settings, jobs**
 > **Objectif** : auth complète sans Python.
 
 | # | Tâche | Statut |
 |--:|-------|:------:|
-| 1 | MSAL Go : `PublicClientApplication` + `AcquireTokenByDeviceCode()` | ⬜ |
-| 2 | POST /auth/device-flow/start → user_code + verification_url | ⬜ |
-| 3 | GET /auth/device-flow/{attempt_id} → polling | ⬜ |
-| 4 | Échange access_token → spartan_token + clearance_token (portage chaîne 5 étapes) | ⬜ |
-| 5 | Persistance cache MSAL dans sync_meta (DuckDB write) | ⬜ |
-| 6 | Support refresh tokens (`SPNKR_OAUTH_REFRESH_TOKEN` env + `sync_meta`) comme fallback | ⬜ |
-| 7 | Cas d'échec : cache invalide, refresh révoqué, échec échange Halo | ⬜ |
-| 8 | Activer Battle Pass + Challenges live sur Home après auth, avec dégradation explicite si la session Halo manque | ⬜ |
+| 1 | MSAL Go : `PublicClientApplication` + `AcquireTokenByDeviceCode()` | ✅ |
+| 2 | POST /auth/device-flow/start → user_code + verification_url | ✅ |
+| 3 | GET /auth/device-flow/{attempt_id} → polling | ✅ |
+| 4 | Échange access_token → spartan_token + clearance_token (portage chaîne 5 étapes) | ✅ |
+| 5 | Persistance cache MSAL dans sync_meta (DuckDB write) | ✅ |
+| 6 | Support refresh tokens (`SPNKR_OAUTH_REFRESH_TOKEN` env + `sync_meta`) comme fallback | ✅ |
+| 7 | Cas d'échec : cache invalide, refresh révoqué, échec échange Halo | ✅ |
+| 8 | Activer Battle Pass + Challenges live sur Home après auth, avec dégradation explicite si la session Halo manque | ✅ |
 
 ### Critère de sortie
 - Auth complète sans Python
