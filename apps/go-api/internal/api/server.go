@@ -38,8 +38,26 @@ func NewRouter(
 
 	// v1 API
 	r.Route("/api/v1", func(r chi.Router) {
+		// Endpoints P0 : bootstrap + liste joueurs
 		r.Get("/bootstrap", handlers.NewBootstrapHandler(bootSvc).ServeHTTP)
 		r.Get("/players", handlers.NewPlayersHandler(bootSvc).ServeHTTP)
+
+		// Endpoints P1 : pages par joueur
+		r.Route("/players/{player_slug}", func(r chi.Router) {
+			filters := handlers.NewFiltersHandler(cfg)
+			r.Post("/filters/resolve", filters.Resolve)
+
+			mh := handlers.NewMatchHistoryHandler(cfg)
+			r.Post("/pages/match-history/query", mh.Query)
+
+			career := handlers.NewCareerHandler(cfg)
+			r.Get("/pages/career", career.GetCareer)
+			r.Get("/pages/career/top-matches", career.GetTopMatches)
+			r.Get("/pages/career/encounters", career.GetEncounters)
+		})
+
+		// Endpoints P1 : répertoire gamertags
+		r.Get("/directory/gamertags/search", handlers.NewGamertagHandler(cfg).Search)
 	})
 
 	return r
