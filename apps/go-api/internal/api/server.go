@@ -69,6 +69,12 @@ func NewRouter(
                         // Sprint 10 : Stats/Séries temporelles
                         stats := handlers.NewStatsHandler(cfg)
                         r.Post("/pages/stats/query", stats.GetPage)
+
+                        // Sprint 11 : Accueil/Home + Battle Pass + Challenges
+                        home := handlers.NewHomeHandler(cfg)
+                        r.Get("/pages/home", home.GetHomePage)
+                        r.Get("/battlepass", home.GetBattlePass)
+                        r.Get("/challenges", home.GetChallenges)
 		})
 
 		// Endpoints P1 : répertoire gamertags

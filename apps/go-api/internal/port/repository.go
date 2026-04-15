@@ -279,3 +279,33 @@ type ConfigProvider interface {
 	// IsDemoMode retourne true si le mode démo est activé.
 	IsDemoMode() bool
 }
+
+// HomeRepository fournit les données pour la page d'accueil Mission Control.
+// Implémenté par platform/duckdb.HomeRepo.
+type HomeRepository interface {
+	// LoadHomeMatches charge les 200 derniers matchs du joueur avec les KPIs (Q26).
+	LoadHomeMatches(ctx context.Context) ([]domain.HomeMatchRow, error)
+
+	// LoadHomeSessions charge les sessions depuis player_match_enrichment (Q27).
+	LoadHomeSessions(ctx context.Context) ([]domain.HomeSessionRow, error)
+
+	// LoadRecentMedia charge les médias récents du joueur (Q28).
+	// Si la table media_files n'existe pas, retourne (nil, nil) sans erreur.
+	LoadRecentMedia(ctx context.Context, limit int) ([]domain.HomeMediaRow, error)
+}
+
+// Ensure compile-time check pour HomeRepository.
+var _ HomeRepository = (*noopHomeRepo)(nil)
+
+// noopHomeRepo — impl nulle pour le check de compilation uniquement.
+type noopHomeRepo struct{}
+
+func (n *noopHomeRepo) LoadHomeMatches(_ context.Context) ([]domain.HomeMatchRow, error) {
+	return nil, nil
+}
+func (n *noopHomeRepo) LoadHomeSessions(_ context.Context) ([]domain.HomeSessionRow, error) {
+	return nil, nil
+}
+func (n *noopHomeRepo) LoadRecentMedia(_ context.Context, _ int) ([]domain.HomeMediaRow, error) {
+	return nil, nil
+}
