@@ -1,0 +1,2121 @@
+openapi: "3.1.0"
+info:
+  title: LevelUp API
+  version: "1.0.0"
+  description: |
+    API backend Go pour le dashboard LevelUp Halo Infinite.
+
+    Ce fichier est la **source de vérité contractuelle** entre le backend Go et le frontend React.
+    Il est dérivé des contrats FastAPI Python figés au Sprint 1 (2026-04-15).
+    Toute évolution de contrat doit passer par ce fichier en premier.
+
+    Priorités d'endpoints :
+    - **P0** : bootstrap, players, session/context, filters/resolve
+    - **P1** : career, match-history, explorer, match-view
+    - **P2+** : home, timeseries, teammates, synthesis, citations, settings, setup, sync (Sprints 8+)
+
+servers:
+  - url: /api/v1
+    description: "Préfixe API v1 (tous les endpoints métier)"
+  - url: /
+    description: "Racine (health, static)"
+
+# ---------------------------------------------------------------------------
+# Tags
+# ---------------------------------------------------------------------------
+tags:
+  - name: health
+    description: Health check du service
+  - name: bootstrap
+    description: "Bootstrap shell React (P0)"
+  - name: filters
+    description: "Résolution de filtres cascade (P0)"
+  - name: career
+    description: "Page Carrière (P1)"
+  - name: match-history
+    description: "Historique des parties (P1)"
+  - name: explorer
+    description: "Explorer matchs + joueurs (P1)"
+  - name: match-view
+    description: "Détail d'un match (P1)"
+
+# ---------------------------------------------------------------------------
+# Paths
+# ---------------------------------------------------------------------------
+paths:
+
+  # -------------------------------------------------------------------------
+  # Health
+  # -------------------------------------------------------------------------
+  /health:
+    get:
+      tags: [health]
+      operationId: getHealth
+      summary: Health check
+      description: |
+        Vérifie l'état du service et de ses dépendances critiques
+        (metadata.duckdb, shared_matches_v2.duckdb, db_profiles.json).
+      responses:
+        "200":
+          description: Service opérationnel ou dégradé
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/HealthResponse"
+              examples:
+                ok:
+                  summary: Tout opérationnel
+                  value:
+                    status: ok
+                    match_count: 1544
+                    db_version: "v1.5.2"
+                degraded:
+                  summary: DB manquante
+                  value:
+                    status: degraded
+                    match_count: 0
+                    db_version: "v1.5.2"
+
+  # -------------------------------------------------------------------------
+  # Bootstrap / Players / Session
+  # -------------------------------------------------------------------------
+  /bootstrap:
+    get:
+      tags: [bootstrap]
+      operationId: getBootstrap
+      summary: "Bootstrap du shell React"
+      description: |
+        Point d'entrée unique du shell React. Retourne l'état complet de l'application :
+        configuration du setup, état auth, joueur courant, capacités, feature flags.
+
+        Le frontend appelle cet endpoint au démarrage et après chaque action
+        susceptible de changer l'état global (auth, changement de joueur, etc.).
+
+        **Invariants :**
+        - `auth_state` ∈ {missing, partial, ready}
+        - `setup_state` ∈ {no_halo_link, halo_linked_no_profile, profile_ready_no_sync, ready}
+        - `available_players` ne doit jamais être null si la liste est connue
+        - `current_player` peut être null
+      responses:
+        "200":
+          description: Bootstrap complet
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/BootstrapResponse"
+        "500":
+          $ref: "#/components/responses/InternalError"
+
+  /players:
+    get:
+      tags: [bootstrap]
+      operationId: getPlayers
+      summary: "Liste des joueurs disponibles"
+      description: |
+        Retourne la liste de tous les joueurs configurés dans db_profiles.json.
+        En DEMO_MODE, retourne le joueur de démo pointant sur les fixtures.
+      responses:
+        "200":
+          description: Liste des joueurs
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PlayersListResponse"
+        "500":
+          $ref: "#/components/responses/InternalError"
+
+  /session/context:
+    post:
+      tags: [bootstrap]
+      operationId: updateSessionContext
+      summary: "Mise à jour du contexte de session"
+      description: |
+        Met à jour le joueur courant, la locale ou les hints dans la session web.
+        N'expose jamais le contenu complet de session.
+
+        **Invariants :**
+        - `locale` ∈ {fr, en} si fourni
+        - `player_slug` doit référencer un slug existant
+        - Retourne 404 si le slug est inconnu
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/SessionContextRequest"
+      responses:
+        "200":
+          description: Contexte de session mis à jour
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SessionContextResponse"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "500":
+          $ref: "#/components/responses/InternalError"
+
+  # -------------------------------------------------------------------------
+  # Filters
+  # -------------------------------------------------------------------------
+  /players/{player_slug}/filters/resolve:
+    post:
+      tags: [filters]
+      operationId: resolveFilters
+      summary: "Résoudre le contexte de filtres"
+      description: |
+        Normalise FilterContextInput, calcule les options disponibles
+        (playlists/modes/cartes/sessions) et retourne le contexte résolu.
+
+        **Invariants :**
+        - `filter_mode` ∈ {period, sessions}
+        - `effective` est le FilterContextInput normalisé, pas un echo brut
+        - Les listes vides dans cascade = « tout coché » (pas de filtre restrictif)
+      parameters:
+        - $ref: "#/components/parameters/PlayerSlug"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/FilterContextInput"
+      responses:
+        "200":
+          description: Contexte de filtres résolu
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/FilterContextResolved"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "500":
+          $ref: "#/components/responses/InternalError"
+
+  # -------------------------------------------------------------------------
+  # Career (P1)
+  # -------------------------------------------------------------------------
+  /players/{player_slug}/pages/career:
+    get:
+      tags: [career]
+      operationId: getCareerPage
+      summary: "Page Carrière complète"
+      description: |
+        Retourne la page Carrière complète pour un joueur :
+        rang, XP, projections, graphes, historique, rating LUSR, top matchs, encounters.
+
+        **Invariants :**
+        - `charts` peut contenir des valeurs null ciblées
+        - `summary` et `lusr` restent optionnels si la donnée manque
+        - Le contrat est page-oriented, pas une projection brute du canonique Halo
+      parameters:
+        - $ref: "#/components/parameters/PlayerSlug"
+      responses:
+        "200":
+          description: Page Carrière
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CareerPageResponse"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "500":
+          $ref: "#/components/responses/InternalError"
+
+  /players/{player_slug}/pages/career/top-matches:
+    get:
+      tags: [career]
+      operationId: getCareerTopMatches
+      summary: "Top matchs du joueur"
+      description: Retourne les meilleurs et pires matchs du joueur (tous critères confondus).
+      parameters:
+        - $ref: "#/components/parameters/PlayerSlug"
+      responses:
+        "200":
+          description: Top matchs
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CareerTopMatchesResponse"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "500":
+          $ref: "#/components/responses/InternalError"
+
+  /players/{player_slug}/pages/career/encounters:
+    get:
+      tags: [career]
+      operationId: getCareerEncounters
+      summary: "Encounters du joueur"
+      description: Retourne les adversaires et coéquipiers fréquents.
+      parameters:
+        - $ref: "#/components/parameters/PlayerSlug"
+      responses:
+        "200":
+          description: Encounters
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CareerEncountersResponse"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "500":
+          $ref: "#/components/responses/InternalError"
+
+  # -------------------------------------------------------------------------
+  # Match History (P1)
+  # -------------------------------------------------------------------------
+  /players/{player_slug}/pages/match-history/query:
+    post:
+      tags: [match-history]
+      operationId: queryMatchHistory
+      summary: "Requête paginée de l'historique des parties"
+      description: |
+        Retourne la page paginée de l'historique des parties pour un joueur.
+
+        **Invariants :**
+        - `table` est une PaginatedResponse avec `items` et `pagination`
+        - `export_hint` est optionnel
+        - `match_url` est porté par chaque ligne, pas reconstruit côté frontend
+      parameters:
+        - $ref: "#/components/parameters/PlayerSlug"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/MatchHistoryQueryRequest"
+      responses:
+        "200":
+          description: Historique paginé
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MatchHistoryPageResponse"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "500":
+          $ref: "#/components/responses/InternalError"
+
+  /players/{player_slug}/pages/match-history/export:
+    post:
+      tags: [match-history]
+      operationId: exportMatchHistory
+      summary: "Export CSV de l'historique"
+      description: |
+        Génère un jeton d'export CSV pour l'historique filtré des parties.
+        Le MVP renvoie un token/tunnel d'export, pas un flux fichier direct sur cette route.
+      parameters:
+        - $ref: "#/components/parameters/PlayerSlug"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/MatchHistoryExportRequest"
+      responses:
+        "200":
+          description: Jeton d'export
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/FileTokenResponse"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "500":
+          $ref: "#/components/responses/InternalError"
+
+  # -------------------------------------------------------------------------
+  # Explorer (P1)
+  # -------------------------------------------------------------------------
+  /directory/gamertags/search:
+    get:
+      tags: [explorer]
+      operationId: searchGamertags
+      summary: "Recherche floue de gamertags"
+      description: |
+        Recherche floue de gamertags dans la base partagée.
+        Accessible sans joueur courant (endpoint global).
+
+        **Invariants :**
+        - Une recherche sans résultat renvoie 200 avec items = []
+        - q minimum 2 caractères pour retourner des résultats
+      parameters:
+        - name: q
+          in: query
+          description: Requête de recherche (min. 2 caractères)
+          schema:
+            type: string
+            default: ""
+        - name: limit
+          in: query
+          description: Nombre maximal de suggestions
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 50
+            default: 8
+      responses:
+        "200":
+          description: Suggestions de gamertags
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GamertagSearchResponse"
+        "500":
+          $ref: "#/components/responses/InternalError"
+
+  /players/{player_slug}/pages/explorer/matches-query:
+    post:
+      tags: [explorer]
+      operationId: queryExplorerMatches
+      summary: "Requête paginée des matchs Explorer"
+      description: Retourne la liste paginée et filtrée des matchs pour la vue Explorer.
+      parameters:
+        - $ref: "#/components/parameters/PlayerSlug"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ExplorerMatchesQueryRequest"
+      responses:
+        "200":
+          description: Matchs Explorer
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ExplorerMatchesQueryResponse"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "500":
+          $ref: "#/components/responses/InternalError"
+
+  /players/{player_slug}/pages/explorer/player-query:
+    post:
+      tags: [explorer]
+      operationId: queryExplorerPlayer
+      summary: "Profil d'encounter avec un joueur cible"
+      description: Retourne le profil d'encounter et les matchs communs avec un joueur cible.
+      parameters:
+        - $ref: "#/components/parameters/PlayerSlug"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ExplorerPlayerQueryRequest"
+      responses:
+        "200":
+          description: Profil encounter
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ExplorerPlayerQueryResponse"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "500":
+          $ref: "#/components/responses/InternalError"
+
+  # -------------------------------------------------------------------------
+  # Match View (P1)
+  # -------------------------------------------------------------------------
+  /players/{player_slug}/matches/{match_id}:
+    get:
+      tags: [match-view]
+      operationId: getMatchView
+      summary: "Détail complet d'un match"
+      description: |
+        Retourne le détail complet d'un match (header + rank + 5 onglets).
+
+        **Invariants :**
+        - La vue match est un contrat par onglets/blocs métier, pas un dump du MatchDetail canonique
+        - Un match introuvable renvoie 404 avec code = match_not_found
+        - Les blocs partiels sont autorisés si le contrat principal est servable
+      parameters:
+        - $ref: "#/components/parameters/PlayerSlug"
+        - name: match_id
+          in: path
+          required: true
+          description: UUID du match Halo Infinite
+          schema:
+            type: string
+            format: uuid
+      responses:
+        "200":
+          description: Détail du match
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MatchViewResponse"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "500":
+          $ref: "#/components/responses/InternalError"
+
+# ---------------------------------------------------------------------------
+# Components
+# ---------------------------------------------------------------------------
+components:
+
+  # -------------------------------------------------------------------------
+  # Parameters
+  # -------------------------------------------------------------------------
+  parameters:
+    PlayerSlug:
+      name: player_slug
+      in: path
+      required: true
+      description: Slug du joueur (dérivé du gamertag, ex. "Chocoboflor")
+      schema:
+        type: string
+
+  # -------------------------------------------------------------------------
+  # Responses réutilisables
+  # -------------------------------------------------------------------------
+  responses:
+    BadRequest:
+      description: Requête invalide
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ApiErrorSchema"
+          example:
+            code: bad_request
+            message: "Paramètre invalide."
+            retryable: false
+    NotFound:
+      description: Ressource introuvable
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ApiErrorSchema"
+          example:
+            code: player_not_found
+            message: "Joueur introuvable."
+            retryable: false
+    InternalError:
+      description: Erreur interne
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ApiErrorSchema"
+          example:
+            code: internal_error
+            message: "Erreur interne du serveur."
+            retryable: true
+
+  # -------------------------------------------------------------------------
+  # Schemas
+  # -------------------------------------------------------------------------
+  schemas:
+
+    # --- Erreurs ---
+    FieldErrorSchema:
+      type: object
+      required: [field, message]
+      properties:
+        field:
+          type: string
+        message:
+          type: string
+        code:
+          type: string
+          nullable: true
+
+    ApiErrorSchema:
+      type: object
+      required: [code, message, retryable]
+      properties:
+        code:
+          type: string
+          description: Code d'erreur stable (snake_case)
+          example: player_not_found
+        message:
+          type: string
+          description: Message humain localisé
+        retryable:
+          type: boolean
+          default: false
+        details:
+          nullable: true
+          oneOf:
+            - type: object
+            - type: array
+        field_errors:
+          type: array
+          nullable: true
+          items:
+            $ref: "#/components/schemas/FieldErrorSchema"
+
+    # --- Health ---
+    HealthResponse:
+      type: object
+      required: [status, match_count, db_version]
+      properties:
+        status:
+          type: string
+          enum: [ok, degraded, down]
+        match_count:
+          type: integer
+          description: Nombre de matchs dans shared_matches_v2
+        db_version:
+          type: string
+          description: Version DuckDB embarquée
+        checks:
+          type: object
+          additionalProperties:
+            type: string
+          description: Résultats individuels par dépendance
+
+    # --- Common ---
+    PlayerSummary:
+      type: object
+      required: [player_slug, gamertag, xuid, waypoint_player]
+      properties:
+        player_slug:
+          type: string
+          example: Chocoboflor
+        gamertag:
+          type: string
+          example: Chocoboflor
+        xuid:
+          type: string
+          example: "2535412781684883"
+        waypoint_player:
+          type: string
+        is_demo:
+          type: boolean
+          default: false
+
+    CapabilityMap:
+      type: object
+      required:
+        - can_read_local_data
+        - can_run_sync
+        - can_use_live_halo
+        - can_manage_settings
+        - can_reset_media_index
+        - can_view_media
+      properties:
+        can_read_local_data:
+          type: boolean
+        can_run_sync:
+          type: boolean
+        can_use_live_halo:
+          type: boolean
+        can_manage_settings:
+          type: boolean
+        can_reset_media_index:
+          type: boolean
+        can_view_media:
+          type: boolean
+        can_self_provision:
+          type: boolean
+          default: false
+        can_start_initial_sync:
+          type: boolean
+          default: false
+        can_manage_instance:
+          type: boolean
+          default: false
+
+    LabelValue:
+      type: object
+      required: [label, value]
+      properties:
+        label:
+          type: string
+        value:
+          type: string
+        disabled:
+          type: boolean
+          nullable: true
+        count:
+          type: integer
+          nullable: true
+
+    SortSpec:
+      type: object
+      required: [field]
+      properties:
+        field:
+          type: string
+        direction:
+          type: string
+          enum: [asc, desc]
+          default: desc
+
+    PaginationRequest:
+      type: object
+      properties:
+        page:
+          type: integer
+          minimum: 1
+          default: 1
+        page_size:
+          type: integer
+          minimum: 1
+          maximum: 500
+          default: 50
+
+    PaginationMeta:
+      type: object
+      required: [total, page, page_size, has_next, has_prev]
+      properties:
+        total:
+          type: integer
+        page:
+          type: integer
+        page_size:
+          type: integer
+        has_next:
+          type: boolean
+        has_prev:
+          type: boolean
+
+    FreshnessInfo:
+      type: object
+      properties:
+        source:
+          type: string
+          enum: [live, cached, mixed]
+          default: cached
+        sync_status:
+          type: string
+          enum: [fresh, stale, unknown]
+          default: unknown
+        warnings:
+          type: array
+          items:
+            type: string
+
+    PlotlyFigurePayload:
+      type: object
+      required: [figure]
+      properties:
+        figure:
+          type: object
+          description: fig.to_plotly_json() — data + layout + frames
+        config_key:
+          type: string
+          enum: [clean, static]
+          default: clean
+        revision_key:
+          type: string
+          nullable: true
+
+    # --- Bootstrap ---
+    FeatureFlags:
+      type: object
+      properties:
+        v7_enabled:
+          type: boolean
+          default: true
+        media_enabled:
+          type: boolean
+          default: true
+        demo_mode:
+          type: boolean
+          default: false
+        discord_configured:
+          type: boolean
+          default: false
+        tailscale_enabled:
+          type: boolean
+          default: false
+
+    SettingsExcerpt:
+      type: object
+      properties:
+        lang:
+          type: string
+          default: fr
+        user_timezone:
+          type: string
+          default: "Europe/Paris"
+        show_records:
+          type: boolean
+          default: true
+        normalize_mode_labels:
+          type: boolean
+          default: true
+
+    HaloIdentitySummary:
+      type: object
+      required: [gamertag, xuid]
+      properties:
+        gamertag:
+          type: string
+        xuid:
+          type: string
+
+    BootstrapResponse:
+      type: object
+      required:
+        - setup_required
+        - auth_state
+        - setup_state
+        - available_players
+        - feature_flags
+        - capabilities
+        - settings_excerpt
+      properties:
+        setup_required:
+          type: boolean
+        auth_state:
+          type: string
+          enum: [missing, partial, ready]
+        setup_state:
+          type: string
+          enum:
+            - no_halo_link
+            - halo_linked_no_profile
+            - profile_ready_no_sync
+            - ready
+        current_player:
+          nullable: true
+          allOf:
+            - $ref: "#/components/schemas/PlayerSummary"
+        available_players:
+          type: array
+          items:
+            $ref: "#/components/schemas/PlayerSummary"
+        locale:
+          type: string
+          default: fr
+        hints_visible_default:
+          type: boolean
+          default: true
+        feature_flags:
+          $ref: "#/components/schemas/FeatureFlags"
+        capabilities:
+          $ref: "#/components/schemas/CapabilityMap"
+        settings_excerpt:
+          $ref: "#/components/schemas/SettingsExcerpt"
+        linked_halo_identity:
+          nullable: true
+          allOf:
+            - $ref: "#/components/schemas/HaloIdentitySummary"
+        active_sync_job_id:
+          type: string
+          nullable: true
+
+    PlayersListResponse:
+      type: object
+      required: [items]
+      properties:
+        items:
+          type: array
+          items:
+            $ref: "#/components/schemas/PlayerSummary"
+        default_player_slug:
+          type: string
+          nullable: true
+
+    SessionContextRequest:
+      type: object
+      properties:
+        player_slug:
+          type: string
+          nullable: true
+        locale:
+          type: string
+          enum: [fr, en]
+          nullable: true
+        hints_visible:
+          type: boolean
+          nullable: true
+
+    SessionContextResponse:
+      type: object
+      required: [locale, hints_visible, capabilities]
+      properties:
+        current_player:
+          nullable: true
+          allOf:
+            - $ref: "#/components/schemas/PlayerSummary"
+        locale:
+          type: string
+          default: fr
+        hints_visible:
+          type: boolean
+          default: true
+        capabilities:
+          $ref: "#/components/schemas/CapabilityMap"
+
+    # --- Filters ---
+    PeriodInput:
+      type: object
+      properties:
+        start_date:
+          type: string
+          format: date
+          nullable: true
+        end_date:
+          type: string
+          format: date
+          nullable: true
+
+    SessionsInput:
+      type: object
+      properties:
+        picked_session_label:
+          type: string
+          nullable: true
+        picked_solo_session_label:
+          type: string
+          nullable: true
+        picked_squad_session_label:
+          type: string
+          nullable: true
+        picked_sessions:
+          type: array
+          items:
+            type: string
+        gap_minutes:
+          type: integer
+          minimum: 1
+          maximum: 1440
+          default: 120
+          description: "Invariant: toujours 120 dans le code actuel."
+
+    CascadeInput:
+      type: object
+      description: Listes vides = « tout coché » (pas de filtre restrictif)
+      properties:
+        experience_types:
+          type: array
+          items:
+            type: string
+        playlists:
+          type: array
+          items:
+            type: string
+        modes:
+          type: array
+          items:
+            type: string
+        maps:
+          type: array
+          items:
+            type: string
+
+    FilterContextInput:
+      type: object
+      properties:
+        filter_mode:
+          type: string
+          enum: [period, sessions]
+          default: period
+        period:
+          $ref: "#/components/schemas/PeriodInput"
+        sessions:
+          $ref: "#/components/schemas/SessionsInput"
+        cascade:
+          $ref: "#/components/schemas/CascadeInput"
+
+    AvailableOptions:
+      type: object
+      properties:
+        experience_types:
+          type: array
+          items:
+            $ref: "#/components/schemas/LabelValue"
+        playlists:
+          type: array
+          items:
+            $ref: "#/components/schemas/LabelValue"
+        modes:
+          type: array
+          items:
+            $ref: "#/components/schemas/LabelValue"
+        maps:
+          type: array
+          items:
+            $ref: "#/components/schemas/LabelValue"
+
+    SessionOption:
+      type: object
+      required: [label, session_id, match_count, is_squad]
+      properties:
+        label:
+          type: string
+        session_id:
+          type: string
+        match_count:
+          type: integer
+        is_squad:
+          type: boolean
+
+    SessionOptions:
+      type: object
+      properties:
+        all_sessions:
+          type: array
+          items:
+            $ref: "#/components/schemas/SessionOption"
+        solo_labels:
+          type: array
+          items:
+            type: string
+        squad_labels:
+          type: array
+          items:
+            type: string
+
+    FilterCounts:
+      type: object
+      required: [total_matches_before_filters, total_matches_after_filters]
+      properties:
+        total_matches_before_filters:
+          type: integer
+        total_matches_after_filters:
+          type: integer
+
+    FilterContextResolved:
+      type: object
+      required: [effective, available_options, session_options, counts]
+      properties:
+        effective:
+          $ref: "#/components/schemas/FilterContextInput"
+        available_options:
+          $ref: "#/components/schemas/AvailableOptions"
+        session_options:
+          $ref: "#/components/schemas/SessionOptions"
+        counts:
+          $ref: "#/components/schemas/FilterCounts"
+
+    # --- Career ---
+    CareerSummary:
+      type: object
+      required:
+        - rank_number
+        - rank_label
+        - rank_name_raw
+        - rank_tier
+        - current_xp
+        - xp_for_next_rank
+        - xp_total
+        - progress_pct
+        - is_max_rank
+      properties:
+        rank_number:
+          type: integer
+        rank_label:
+          type: string
+        rank_name_raw:
+          type: string
+        rank_tier:
+          type: string
+        current_xp:
+          type: integer
+        xp_for_next_rank:
+          type: integer
+        xp_total:
+          type: integer
+        progress_pct:
+          type: number
+          format: float
+        is_max_rank:
+          type: boolean
+        recorded_at:
+          type: string
+          format: date-time
+          nullable: true
+
+    HeroProgress:
+      type: object
+      required: [xp_total_required, xp_remaining, percentage, current_rank]
+      properties:
+        xp_total_required:
+          type: integer
+        xp_remaining:
+          type: integer
+        percentage:
+          type: number
+          format: float
+        current_rank:
+          type: integer
+
+    CareerProjections:
+      type: object
+      required: [xp_per_day_active, xp_per_day_fallback]
+      properties:
+        xp_per_day_active:
+          type: number
+          format: float
+        xp_per_day_fallback:
+          type: number
+          format: float
+        estimated_hero_date:
+          type: string
+          format: date
+          nullable: true
+        estimated_rank_cap_date:
+          type: string
+          format: date
+          nullable: true
+
+    CareerCharts:
+      type: object
+      description: Graphes Plotly serialisés — peut contenir des null ciblés
+      properties:
+        rank_progress_gauge:
+          nullable: true
+          allOf:
+            - $ref: "#/components/schemas/PlotlyFigurePayload"
+        hero_progress_gauge:
+          nullable: true
+          allOf:
+            - $ref: "#/components/schemas/PlotlyFigurePayload"
+        xp_history_figure:
+          nullable: true
+          allOf:
+            - $ref: "#/components/schemas/PlotlyFigurePayload"
+        lusr_rating_figure:
+          nullable: true
+          allOf:
+            - $ref: "#/components/schemas/PlotlyFigurePayload"
+
+    CareerHistoryPoint:
+      type: object
+      required: [recorded_at, rank, xp_total]
+      properties:
+        recorded_at:
+          type: string
+          format: date-time
+        rank:
+          type: integer
+        xp_total:
+          type: integer
+
+    CareerLusrCheckpoint:
+      type: object
+      required: [recorded_at, rating_value, playlist_group]
+      properties:
+        recorded_at:
+          type: string
+          format: date-time
+        rating_value:
+          type: number
+          format: float
+        playlist_group:
+          type: string
+
+    CareerLusrSection:
+      type: object
+      required: [checkpoints]
+      properties:
+        current_rating:
+          type: number
+          format: float
+          nullable: true
+        current_tier_label:
+          type: string
+          nullable: true
+        current_playlist_group:
+          type: string
+          nullable: true
+        trend_label:
+          type: string
+          nullable: true
+        checkpoints:
+          type: array
+          items:
+            $ref: "#/components/schemas/CareerLusrCheckpoint"
+
+    CareerTopMatch:
+      type: object
+      required: [match_id]
+      properties:
+        match_id:
+          type: string
+          format: uuid
+        start_time:
+          type: string
+          format: date-time
+          nullable: true
+        map_ui:
+          type: string
+          nullable: true
+        mode_ui:
+          type: string
+          nullable: true
+        playlist_label:
+          type: string
+          nullable: true
+        performance_score:
+          type: number
+          format: float
+          nullable: true
+        badge_type:
+          type: string
+          nullable: true
+        score_label:
+          type: string
+          nullable: true
+        outcome_label:
+          type: string
+          nullable: true
+        kills:
+          type: integer
+          nullable: true
+        deaths:
+          type: integer
+          nullable: true
+        assists:
+          type: integer
+          nullable: true
+        kd_ratio:
+          type: number
+          format: float
+          nullable: true
+        variant:
+          type: string
+          enum: [best, worst]
+          nullable: true
+
+    CareerEncounter:
+      type: object
+      required: [encounter_key, opponent_gamertag, count_matches, wins, losses]
+      properties:
+        encounter_key:
+          type: string
+        opponent_gamertag:
+          type: string
+        count_matches:
+          type: integer
+        wins:
+          type: integer
+        losses:
+          type: integer
+        last_seen_at:
+          type: string
+          format: date-time
+          nullable: true
+
+    CareerPageResponse:
+      type: object
+      required: [charts, xp_history, top_matches_preview, encounters_preview]
+      properties:
+        summary:
+          nullable: true
+          allOf:
+            - $ref: "#/components/schemas/CareerSummary"
+        hero_progress:
+          nullable: true
+          allOf:
+            - $ref: "#/components/schemas/HeroProgress"
+        projections:
+          nullable: true
+          allOf:
+            - $ref: "#/components/schemas/CareerProjections"
+        charts:
+          $ref: "#/components/schemas/CareerCharts"
+        xp_history:
+          type: array
+          items:
+            $ref: "#/components/schemas/CareerHistoryPoint"
+        lusr:
+          nullable: true
+          allOf:
+            - $ref: "#/components/schemas/CareerLusrSection"
+        top_matches_preview:
+          type: array
+          items:
+            $ref: "#/components/schemas/CareerTopMatch"
+        encounters_preview:
+          type: array
+          items:
+            $ref: "#/components/schemas/CareerEncounter"
+
+    CareerTopMatchesResponse:
+      type: object
+      required: [items]
+      properties:
+        items:
+          type: array
+          items:
+            $ref: "#/components/schemas/CareerTopMatch"
+
+    CareerEncountersResponse:
+      type: object
+      required: [items]
+      properties:
+        items:
+          type: array
+          items:
+            $ref: "#/components/schemas/CareerEncounter"
+
+    # --- Match History ---
+    MatchHistoryRow:
+      type: object
+      required:
+        - match_id
+        - start_time
+        - start_time_label
+        - outcome_label
+        - score_label
+        - map_ui
+        - mode_ui
+        - playlist_label
+        - average_life_mmss
+        - match_url
+      properties:
+        match_id:
+          type: string
+          format: uuid
+        start_time:
+          type: string
+          format: date-time
+        start_time_label:
+          type: string
+        outcome_code:
+          type: integer
+          nullable: true
+        outcome_label:
+          type: string
+        score_label:
+          type: string
+        map_ui:
+          type: string
+        mode_ui:
+          type: string
+        playlist_label:
+          type: string
+        team_mmr:
+          type: number
+          format: float
+          nullable: true
+        enemy_mmr:
+          type: number
+          format: float
+          nullable: true
+        delta_mmr:
+          type: number
+          format: float
+          nullable: true
+        win_rate_hist:
+          type: number
+          format: float
+          nullable: true
+        win_rate_hist_total:
+          type: integer
+          nullable: true
+        performance_score_relative:
+          type: integer
+          nullable: true
+        average_life_mmss:
+          type: string
+        match_url:
+          type: string
+
+    MatchHistoryQuerySummary:
+      type: object
+      required:
+        - total_matches_scoped
+        - total_matches_unfiltered
+        - active_filter_mode
+      properties:
+        total_matches_scoped:
+          type: integer
+        total_matches_unfiltered:
+          type: integer
+        period_label:
+          type: string
+          nullable: true
+        active_filter_mode:
+          type: string
+
+    ExportHint:
+      type: object
+      required: [file_name, estimated_rows]
+      properties:
+        file_name:
+          type: string
+        estimated_rows:
+          type: integer
+        token:
+          type: string
+          nullable: true
+
+    PaginatedMatchHistoryResponse:
+      type: object
+      required: [items, pagination]
+      properties:
+        items:
+          type: array
+          items:
+            $ref: "#/components/schemas/MatchHistoryRow"
+        pagination:
+          $ref: "#/components/schemas/PaginationMeta"
+        freshness:
+          nullable: true
+          allOf:
+            - $ref: "#/components/schemas/FreshnessInfo"
+
+    MatchHistoryPageResponse:
+      type: object
+      required: [summary, table, available_sort_fields]
+      properties:
+        summary:
+          $ref: "#/components/schemas/MatchHistoryQuerySummary"
+        table:
+          $ref: "#/components/schemas/PaginatedMatchHistoryResponse"
+        available_sort_fields:
+          type: array
+          items:
+            type: string
+        export_hint:
+          nullable: true
+          allOf:
+            - $ref: "#/components/schemas/ExportHint"
+
+    MatchHistoryQueryRequest:
+      type: object
+      properties:
+        filters:
+          $ref: "#/components/schemas/FilterContextInput"
+        pagination:
+          $ref: "#/components/schemas/PaginationRequest"
+        columns:
+          type: array
+          items:
+            type: string
+          nullable: true
+        include_export_hint:
+          type: boolean
+          default: false
+
+    MatchHistoryExportRequest:
+      type: object
+      properties:
+        filters:
+          $ref: "#/components/schemas/FilterContextInput"
+        sort:
+          type: array
+          items:
+            $ref: "#/components/schemas/SortSpec"
+          nullable: true
+        columns:
+          type: array
+          items:
+            type: string
+          nullable: true
+        format:
+          type: string
+          default: csv
+
+    FileTokenResponse:
+      type: object
+      required: [file_token, file_name, content_type, download_path, expires_at]
+      properties:
+        file_token:
+          type: string
+        file_name:
+          type: string
+        content_type:
+          type: string
+        download_path:
+          type: string
+        expires_at:
+          type: string
+          format: date-time
+        estimated_rows:
+          type: integer
+          nullable: true
+
+    # --- Explorer ---
+    GamertagSuggestion:
+      type: object
+      required: [gamertag]
+      properties:
+        gamertag:
+          type: string
+        xuid:
+          type: string
+          nullable: true
+        score:
+          type: number
+          format: float
+          default: 1.0
+        exact_match:
+          type: boolean
+          default: false
+
+    GamertagSearchResponse:
+      type: object
+      required: [query, items]
+      properties:
+        query:
+          type: string
+        items:
+          type: array
+          items:
+            $ref: "#/components/schemas/GamertagSuggestion"
+
+    ExplorerMatchRow:
+      type: object
+      required:
+        - match_id
+        - start_time
+        - start_time_label
+        - map_ui
+        - mode_ui
+        - playlist_label
+        - outcome_label
+        - score_label
+      properties:
+        match_id:
+          type: string
+          format: uuid
+        start_time:
+          type: string
+          format: date-time
+        start_time_label:
+          type: string
+        map_ui:
+          type: string
+        mode_ui:
+          type: string
+        playlist_label:
+          type: string
+        outcome_label:
+          type: string
+        score_label:
+          type: string
+        is_with_friends:
+          type: boolean
+          default: false
+        experience_type_label:
+          type: string
+          default: "Non classé"
+
+    ExplorerEncounterRow:
+      type: object
+      required: [gamertag, count_matches, wins, losses]
+      properties:
+        gamertag:
+          type: string
+        xuid:
+          type: string
+          nullable: true
+        count_matches:
+          type: integer
+        wins:
+          type: integer
+        losses:
+          type: integer
+        last_seen_at:
+          type: string
+          format: date-time
+          nullable: true
+        same_team:
+          type: boolean
+          nullable: true
+
+    ExplorerMatchesQuerySummary:
+      type: object
+      required: [total_matches]
+      properties:
+        total_matches:
+          type: integer
+        selected_match_id:
+          type: string
+          nullable: true
+
+    ExplorerPlayerTarget:
+      type: object
+      required: [gamertag]
+      properties:
+        gamertag:
+          type: string
+        xuid:
+          type: string
+          nullable: true
+
+    ExplorerPlayerSummary:
+      type: object
+      required: [matches_together, wins_together, losses_together]
+      properties:
+        matches_together:
+          type: integer
+        wins_together:
+          type: integer
+        losses_together:
+          type: integer
+        last_seen_at:
+          type: string
+          format: date-time
+          nullable: true
+
+    ExplorerMatchFilters:
+      type: object
+      properties:
+        selected_date:
+          type: string
+          format: date
+          nullable: true
+        squad_scope:
+          type: string
+          enum: [all, solo, squad]
+          default: all
+        experience_type:
+          type: string
+          nullable: true
+        playlist:
+          type: string
+          nullable: true
+        mode:
+          type: string
+          nullable: true
+        map:
+          type: string
+          nullable: true
+        selected_match_id:
+          type: string
+          nullable: true
+
+    ExplorerMatchesQueryRequest:
+      type: object
+      properties:
+        filters:
+          $ref: "#/components/schemas/FilterContextInput"
+        match_filters:
+          $ref: "#/components/schemas/ExplorerMatchFilters"
+        pagination:
+          $ref: "#/components/schemas/PaginationRequest"
+
+    PaginatedExplorerMatchesResponse:
+      type: object
+      required: [items, pagination]
+      properties:
+        items:
+          type: array
+          items:
+            $ref: "#/components/schemas/ExplorerMatchRow"
+        pagination:
+          $ref: "#/components/schemas/PaginationMeta"
+
+    ExplorerMatchesQueryResponse:
+      type: object
+      required: [summary, table]
+      properties:
+        summary:
+          $ref: "#/components/schemas/ExplorerMatchesQuerySummary"
+        table:
+          $ref: "#/components/schemas/PaginatedExplorerMatchesResponse"
+
+    ExplorerPlayerQueryRequest:
+      type: object
+      required: [target_gamertag]
+      properties:
+        target_gamertag:
+          type: string
+        filters:
+          nullable: true
+          allOf:
+            - $ref: "#/components/schemas/FilterContextInput"
+
+    ExplorerPlayerQueryResponse:
+      type: object
+      required: [target, summary, allies_table, enemies_table, common_matches]
+      properties:
+        target:
+          $ref: "#/components/schemas/ExplorerPlayerTarget"
+        summary:
+          $ref: "#/components/schemas/ExplorerPlayerSummary"
+        allies_table:
+          type: array
+          items:
+            $ref: "#/components/schemas/ExplorerEncounterRow"
+        enemies_table:
+          type: array
+          items:
+            $ref: "#/components/schemas/ExplorerEncounterRow"
+        common_matches:
+          type: array
+          items:
+            $ref: "#/components/schemas/ExplorerMatchRow"
+
+    # --- Match View ---
+    MatchViewHeader:
+      type: object
+      required: [match_id]
+      properties:
+        match_id:
+          type: string
+          format: uuid
+        start_time:
+          type: string
+          format: date-time
+          nullable: true
+        start_time_label:
+          type: string
+          default: ""
+        outcome_code:
+          type: integer
+          nullable: true
+        outcome_label:
+          type: string
+          default: "-"
+        outcome_color:
+          type: string
+          default: "#94a3b8"
+        score_label:
+          type: string
+          default: ""
+        dominance_flag:
+          type: boolean
+          default: false
+        had_bot_teammate:
+          type: boolean
+          default: false
+        map_ui:
+          type: string
+          default: ""
+        map_id:
+          type: string
+          nullable: true
+        mode_ui:
+          type: string
+          default: ""
+        playlist_label:
+          type: string
+          default: ""
+        performance_display:
+          type: string
+          default: "-"
+        performance_color:
+          type: string
+          nullable: true
+
+    MatchViewRank:
+      type: object
+      properties:
+        rating_type:
+          type: string
+          enum: [CSR, LUSR, none]
+          default: none
+        tier_label:
+          type: string
+          nullable: true
+        numeric_value:
+          type: number
+          format: float
+          nullable: true
+        delta_value:
+          type: number
+          format: float
+          nullable: true
+        icon_url:
+          type: string
+          nullable: true
+
+    MatchMedal:
+      type: object
+      required: [medal_name_id, name, count]
+      properties:
+        medal_name_id:
+          type: integer
+        name:
+          type: string
+        count:
+          type: integer
+        description:
+          type: string
+          nullable: true
+
+    MatchCitation:
+      type: object
+      required: [key, label]
+      properties:
+        key:
+          type: string
+        label:
+          type: string
+        color:
+          type: string
+          nullable: true
+        value:
+          type: number
+          format: float
+          nullable: true
+
+    MatchSummaryKpis:
+      type: object
+      properties:
+        kills:
+          type: integer
+          nullable: true
+        deaths:
+          type: integer
+          nullable: true
+        assists:
+          type: integer
+          nullable: true
+        kda:
+          type: number
+          format: float
+          nullable: true
+        damage_dealt:
+          type: number
+          format: float
+          nullable: true
+        average_life:
+          type: string
+          nullable: true
+
+    MatchPersonalResult:
+      type: object
+      properties:
+        outcome_label:
+          type: string
+          default: "-"
+        outcome_color:
+          type: string
+          default: "#94a3b8"
+        score:
+          type: integer
+          nullable: true
+        rank_in_team:
+          type: integer
+          nullable: true
+
+    MatchExpectedStats:
+      type: object
+      properties:
+        has_expected_data:
+          type: boolean
+          default: false
+        expected_kills:
+          type: number
+          format: float
+          nullable: true
+        expected_deaths:
+          type: number
+          format: float
+          nullable: true
+        expected_assists:
+          type: number
+          format: float
+          nullable: true
+
+    MatchSummaryTab:
+      type: object
+      required: [kpis, personal_result, medals, citations]
+      properties:
+        kpis:
+          $ref: "#/components/schemas/MatchSummaryKpis"
+        personal_result:
+          $ref: "#/components/schemas/MatchPersonalResult"
+        medals:
+          type: array
+          items:
+            $ref: "#/components/schemas/MatchMedal"
+        citations:
+          type: array
+          items:
+            $ref: "#/components/schemas/MatchCitation"
+        expected_stats:
+          $ref: "#/components/schemas/MatchExpectedStats"
+
+    MatchWeaponKill:
+      type: object
+      required: [weapon_id, weapon_label, kill_count]
+      properties:
+        weapon_id:
+          type: integer
+        weapon_label:
+          type: string
+        effective_weapon_id:
+          type: integer
+          nullable: true
+        kill_count:
+          type: integer
+
+    MatchHighlightEvent:
+      type: object
+      required: [event_type]
+      properties:
+        event_time_ms:
+          type: integer
+          nullable: true
+        event_type:
+          type: string
+        actor_xuid:
+          type: string
+          nullable: true
+        target_xuid:
+          type: string
+          nullable: true
+        weapon_id:
+          type: integer
+          nullable: true
+
+    MatchCombatTab:
+      type: object
+      required: [weapon_kills, highlight_events, charts]
+      properties:
+        weapon_kills:
+          type: array
+          items:
+            $ref: "#/components/schemas/MatchWeaponKill"
+        highlight_events:
+          type: array
+          items:
+            $ref: "#/components/schemas/MatchHighlightEvent"
+        charts:
+          type: array
+          items:
+            $ref: "#/components/schemas/PlotlyFigurePayload"
+
+    MatchRosterRow:
+      type: object
+      required: [xuid, gamertag]
+      properties:
+        xuid:
+          type: string
+        gamertag:
+          type: string
+        team_side:
+          type: string
+          nullable: true
+        is_me:
+          type: boolean
+          default: false
+        is_bot:
+          type: boolean
+          default: false
+        kills:
+          type: integer
+          nullable: true
+        deaths:
+          type: integer
+          nullable: true
+        assists:
+          type: integer
+          nullable: true
+        kda:
+          type: number
+          format: float
+          nullable: true
+        damage_dealt:
+          type: number
+          format: float
+          nullable: true
+        damage_taken:
+          type: number
+          format: float
+          nullable: true
+
+    MatchScoreboardRow:
+      type: object
+      required: [xuid, gamertag]
+      properties:
+        xuid:
+          type: string
+        gamertag:
+          type: string
+        team_side:
+          type: string
+          nullable: true
+        is_me:
+          type: boolean
+          default: false
+        rank:
+          type: integer
+          nullable: true
+        kills:
+          type: integer
+          nullable: true
+        deaths:
+          type: integer
+          nullable: true
+        assists:
+          type: integer
+          nullable: true
+        betrayals:
+          type: integer
+          nullable: true
+        suicides:
+          type: integer
+          nullable: true
+        shots_fired:
+          type: integer
+          nullable: true
+        shots_hit:
+          type: integer
+          nullable: true
+        shots_accuracy:
+          type: number
+          format: float
+          nullable: true
+        damage_dealt:
+          type: number
+          format: float
+          nullable: true
+        damage_taken:
+          type: number
+          format: float
+          nullable: true
+        damage_efficiency:
+          type: number
+          format: float
+          nullable: true
+        average_life:
+          type: string
+          nullable: true
+        objectives_stolen:
+          type: integer
+          nullable: true
+        headshot_kills:
+          type: integer
+          nullable: true
+        max_killing_spree:
+          type: integer
+          nullable: true
+        perfect_kills:
+          type: integer
+          nullable: true
+        power_weapon_kills:
+          type: integer
+          nullable: true
+        melee_kills:
+          type: integer
+          nullable: true
+        outcome_label:
+          type: string
+          default: "-"
+
+    MatchNemesisRow:
+      type: object
+      required: [xuid, gamertag, killed_me, i_killed]
+      properties:
+        xuid:
+          type: string
+        gamertag:
+          type: string
+        killed_me:
+          type: integer
+        i_killed:
+          type: integer
+
+    MatchEncounterRow:
+      type: object
+      required: [xuid, gamertag, count_together, is_ally]
+      properties:
+        xuid:
+          type: string
+        gamertag:
+          type: string
+        count_together:
+          type: integer
+        is_ally:
+          type: boolean
+
+    MatchTeamTab:
+      type: object
+      required: [roster, scoreboard, nemesis, encounters]
+      properties:
+        roster:
+          type: array
+          items:
+            $ref: "#/components/schemas/MatchRosterRow"
+        scoreboard:
+          type: array
+          items:
+            $ref: "#/components/schemas/MatchScoreboardRow"
+        nemesis:
+          type: array
+          items:
+            $ref: "#/components/schemas/MatchNemesisRow"
+        encounters:
+          type: array
+          items:
+            $ref: "#/components/schemas/MatchEncounterRow"
+
+    AssociatedMediaItem:
+      type: object
+      required: [file_id, file_name, file_path]
+      properties:
+        file_id:
+          type: string
+        file_name:
+          type: string
+        file_path:
+          type: string
+        thumbnail_url:
+          type: string
+          nullable: true
+        duration_seconds:
+          type: number
+          format: float
+          nullable: true
+        capture_time:
+          type: string
+          format: date-time
+          nullable: true
+        liked:
+          type: boolean
+          default: false
+
+    MatchMediaTab:
+      type: object
+      required: [media_items]
+      properties:
+        media_items:
+          type: array
+          items:
+            $ref: "#/components/schemas/AssociatedMediaItem"
+
+    MatchCitationsTab:
+      type: object
+      required: [commendations, medals]
+      properties:
+        commendations:
+          type: array
+          items:
+            $ref: "#/components/schemas/MatchCitation"
+        medals:
+          type: array
+          items:
+            $ref: "#/components/schemas/MatchMedal"
+
+    MatchViewResponse:
+      type: object
+      required:
+        - header
+        - rank
+        - summary_tab
+        - combat_tab
+        - team_tab
+        - media_tab
+        - citations_tab
+      properties:
+        header:
+          $ref: "#/components/schemas/MatchViewHeader"
+        rank:
+          $ref: "#/components/schemas/MatchViewRank"
+        summary_tab:
+          $ref: "#/components/schemas/MatchSummaryTab"
+        combat_tab:
+          $ref: "#/components/schemas/MatchCombatTab"
+        team_tab:
+          $ref: "#/components/schemas/MatchTeamTab"
+        media_tab:
+          $ref: "#/components/schemas/MatchMediaTab"
+        citations_tab:
+          $ref: "#/components/schemas/MatchCitationsTab"

@@ -1,0 +1,21 @@
+{
+  "query": "cho",
+  "items": [
+    {
+      "gamertag": "Chocoboflor",
+      "xuid": "2535412781684883",
+      "score": 1.0,
+      "exact_match": false
+    }
+  ],
+
+  "_meta": {
+    "golden_value_version": "sprint1",
+    "captured_at": "2026-04-15",
+    "source": "schema-conformant — recherche partielle 'cho'",
+    "tolerances": {
+      "items": "ordre par score DESC — vérifier que Chocoboflor est dans les résultats"
+    },
+    "sprint_target": "Sprint 8 — GET /directory/gamertags/search?q=cho"
+  }
+}

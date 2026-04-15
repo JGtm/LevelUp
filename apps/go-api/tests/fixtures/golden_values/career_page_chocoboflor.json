@@ -1,0 +1,109 @@
+{
+  "summary": {
+    "rank_number": 152,
+    "rank_label": "Sergeant — Grade 2",
+    "rank_name_raw": "Sergeant",
+    "rank_tier": "Sergeant",
+    "current_xp": 38210,
+    "xp_for_next_rank": 1000,
+    "xp_total": 152210,
+    "progress_pct": 38.21,
+    "is_max_rank": false,
+    "recorded_at": "2025-12-01T18:42:00Z"
+  },
+  "hero_progress": {
+    "xp_total_required": 272000,
+    "xp_remaining": 119790,
+    "percentage": 56.0,
+    "current_rank": 152
+  },
+  "projections": {
+    "xp_per_day_active": 850.5,
+    "xp_per_day_fallback": 400.0,
+    "estimated_hero_date": "2026-09-15",
+    "estimated_rank_cap_date": null
+  },
+  "charts": {
+    "rank_progress_gauge": null,
+    "hero_progress_gauge": null,
+    "xp_history_figure": null,
+    "lusr_rating_figure": null
+  },
+  "xp_history": [
+    {
+      "recorded_at": "2025-10-01T12:00:00Z",
+      "rank": 140,
+      "xp_total": 140000
+    },
+    {
+      "recorded_at": "2025-11-01T12:00:00Z",
+      "rank": 148,
+      "xp_total": 148000
+    },
+    {
+      "recorded_at": "2025-12-01T18:42:00Z",
+      "rank": 152,
+      "xp_total": 152210
+    }
+  ],
+  "lusr": {
+    "current_rating": 1412.7,
+    "current_tier_label": "Platinum",
+    "current_playlist_group": "ranked_arena",
+    "trend_label": "+8.2 sur 20 derniers matchs",
+    "checkpoints": [
+      {
+        "recorded_at": "2025-11-15T20:00:00Z",
+        "rating_value": 1398.3,
+        "playlist_group": "ranked_arena"
+      },
+      {
+        "recorded_at": "2025-12-01T18:42:00Z",
+        "rating_value": 1412.7,
+        "playlist_group": "ranked_arena"
+      }
+    ]
+  },
+  "top_matches_preview": [
+    {
+      "match_id": "00000000-0000-0000-0000-000000000001",
+      "start_time": "2025-11-20T19:30:00Z",
+      "map_ui": "Aquarius",
+      "mode_ui": "Slayer",
+      "playlist_label": "Quick Play",
+      "performance_score": 95.2,
+      "badge_type": "best",
+      "score_label": "18-4",
+      "outcome_label": "Victoire",
+      "kills": 18,
+      "deaths": 4,
+      "assists": 3,
+      "kd_ratio": 4.5,
+      "variant": "best"
+    }
+  ],
+  "encounters_preview": [
+    {
+      "encounter_key": "encounter_someXUID",
+      "opponent_gamertag": "SomeEnemy42",
+      "count_matches": 7,
+      "wins": 5,
+      "losses": 2,
+      "last_seen_at": "2025-12-01T18:42:00Z"
+    }
+  ],
+
+  "_meta": {
+    "golden_value_version": "sprint1",
+    "captured_at": "2026-04-15",
+    "source": "schema-conformant — valeurs synthétiques réalistes",
+    "tolerances": {
+      "charts": "null acceptable — charts portés en Sprint 6",
+      "xp_history": "longueur variable",
+      "summary.progress_pct": "± 0.5",
+      "lusr.current_rating": "± 1.0",
+      "projections.xp_per_day_active": "± 50"
+    },
+    "sprint_target": "Sprint 6 — vérifier parité endpoint GET /pages/career"
+  }
+}
