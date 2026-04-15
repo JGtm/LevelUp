@@ -4,7 +4,7 @@
 > Chaque sprint a un objectif, des tâches, un critère de sortie et une estimation.
 >
 > Dernière mise à jour : 2026-04-15
-> Statut global : **En cours** — Sprints 0–19 ✅ — Phases 0+1+2+3 complètes + Sprint 18-19 ✅, Sprint 20 ⬜ en attente.
+> Statut global : **En cours** — Sprints 0–20 ✅ — Phases 0+1+2+3 complètes + Sprint 18-20 ✅, Sprint 21 ⬜ en attente.
 
 ---
 
@@ -544,12 +544,12 @@
 
 | # | Tâche | Statut |
 |--:|-------|:------:|
-| 1 | Port de SyncScope (96 champs) en struct Go | ⬜ |
-| 2 | Port des `BACKFILL_FLAGS` historiques (0-15) + `MatchBits` (16-22), en respectant le bit 18 legacy obsolète | ⬜ |
-| 3 | CLI : ~120 arguments (`levelup backfill --player X --medals --force-medals`) | ⬜ |
-| 4 | `find_matches_missing_data` — détection des données manquantes via bitmask | ⬜ |
-| 5 | Tests : bitmask numériquement identique entre Python et Go | ⬜ |
-| 6 | Full backfill sur corpus : résultat identique | ⬜ |
+| 1 | Port de SyncScope (96 champs) en struct Go | ✅ |
+| 2 | Port des `BACKFILL_FLAGS` historiques (0-15) + `MatchBits` (16-22), en respectant le bit 18 legacy obsolète | ✅ |
+| 3 | CLI : ~120 arguments (`levelup backfill --player X --medals --force-medals`) | ✅ |
+| 4 | `find_matches_missing_data` — détection des données manquantes via bitmask | ✅ |
+| 5 | Tests : bitmask numériquement identique entre Python et Go | ⏳ |
+| 6 | Full backfill sur corpus : résultat identique | ⏳ |
 
 ### Critère de sortie
 - Backfill identique au Python
