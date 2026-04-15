@@ -4,7 +4,7 @@
 > Chaque sprint a un objectif, des tâches, un critère de sortie et une estimation.
 >
 > Dernière mise à jour : 2026-04-15
-> Statut global : **En cours** — Sprints 0–18 ✅ — Phases 0+1+2+3 complètes + Sprint 18 ✅, Sprint 19 ⬜ en attente.
+> Statut global : **En cours** — Sprints 0–19 ✅ — Phases 0+1+2+3 complètes + Sprint 18-19 ✅, Sprint 20 ⬜ en attente.
 
 ---
 
@@ -46,7 +46,7 @@
 | 16 | Settings / Setup | Phase 3 | 3-4j | ✅ | Sprint 15 |
 | 17 | Jobs longs persistants | Phase 3 | 4-6j | ✅ | Sprint 15 |
 | 18 | Moteur sync minimal (12 mixins, ~13K LOC) | Phase 4 | 10-15j | ✅ | Gate Phase 3 |
-| 19 | Pipeline post-sync | Phase 4 | 5-7j | ⬜ | Sprint 18 |
+| 19 | Pipeline post-sync | Phase 4 | 5-7j | ✅ | Sprint 18 |
 | 20 | Backfill complet (96 champs, ~120 args) | Phase 4 | 7-10j | ⬜ | Sprint 19 |
 | 21 | Migrations DuckDB (35 steps) | Phase 4 | 5-7j | ⬜ | Sprint 18 |
 | 22 | Weapon parsing | Phase 4 | 5-8j | ⬜ | Sprint 18 |
@@ -525,10 +525,10 @@
 
 | # | Tâche | Statut |
 |--:|-------|:------:|
-| 1 | PerformanceMixin : calcul performance score post-sync (algorithme 1) | ⬜ |
-| 2 | SkillRatingMixin : calcul LUSR/TrueSkill post-sync (algorithme 2) | ⬜ |
-| 3 | CareerMixin : mise à jour career_progression | ⬜ |
-| 4 | AggregatesMixin : refresh materialized views (DROP + CREATE) | ⬜ |
+| 1 | PerformanceMixin : calcul performance score post-sync (algorithme 1) | ✅ |
+| 2 | SkillRatingMixin : calcul LUSR/TrueSkill post-sync (algorithme 2) | ✅ |
+| 3 | CareerMixin : mise à jour career_progression | ✅ |
+| 4 | AggregatesMixin : refresh materialized views (DROP + CREATE) | ✅ |
 | 5 | Golden values LUSR sur historique complet (500+ matchs, ε < 0.1 sur mu/sigma) | ⬜ |
 
 ### Critère de sortie
