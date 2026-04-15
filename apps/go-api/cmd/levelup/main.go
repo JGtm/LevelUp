@@ -12,8 +12,9 @@
 //	levelup seed           career-ranks | citation-mappings | medals
 //	levelup notify-version --version v1.2.3
 //	levelup notify-sync    --gamertag X --op sync_delta --duration 120s [--matches N]
-//	levelup compare-db     --go-db PATH --python-db PATH [--json]
-//	levelup gate-check     [--gamertag X] [--json]
+//	levelup compare-db      --go-db PATH --python-db PATH [--json]
+//	levelup gate-check      [--gamertag X] [--json]
+//	levelup surface-status  [--json]
 //
 // Variables d'environnement : LEVELUP_REPO_ROOT (auto-détecté si absent).
 package main
@@ -75,6 +76,8 @@ func main() {
 		exitErr = runCompareDB(cfg, args)
 	case "gate-check":
 		exitErr = runGateCheck(cfg, args)
+	case "surface-status":
+		exitErr = runSurfaceStatus(cfg, args)
 	case "help", "--help", "-h":
 		printUsage()
 	default:
@@ -447,6 +450,53 @@ func runGateCheck(cfg *config.AppConfig, args []string) error {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
+// surface-status
+// ─────────────────────────────────────────────────────────────────────────────
+
+func runSurfaceStatus(cfg *config.AppConfig, args []string) error {
+	fs := flag.NewFlagSet("surface-status", flag.ExitOnError)
+	asJSON := fs.Bool("json", false, "Sortie JSON")
+	if err := fs.Parse(args); err != nil {
+		return err
+	}
+
+	ff := &cfg.FeatureFlags
+
+	type surfaceEntry struct {
+		Surface string `json:"surface"`
+		Backend string `json:"backend"`
+	}
+
+	entries := make([]surfaceEntry, 0, len(config.AllSurfaces))
+	for _, s := range config.AllSurfaces {
+		entries = append(entries, surfaceEntry{
+			Surface: string(s),
+			Backend: string(ff.BackendFor(s)),
+		})
+	}
+
+	if *asJSON {
+		return json.NewEncoder(os.Stdout).Encode(entries)
+	}
+
+	allGo := ff.AllOnGo()
+	status := "✅ Migration complète"
+	if !allGo {
+		status = "⚠️  Bascule partielle — certaines surfaces sur Python"
+	}
+	fmt.Printf("LevelUp — Statut des surfaces\n%s\n\n", status)
+	for _, e := range entries {
+		indicator := "✅"
+		if e.Backend == "python" {
+			indicator = "⚠️ "
+		}
+		fmt.Printf("  %s %-14s → %s\n", indicator, e.Surface, e.Backend)
+	}
+	fmt.Printf("\nVar env de rollback : LEVELUP_FF_<SURFACE>=python\n")
+	return nil
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
 // Usage
 // ─────────────────────────────────────────────────────────────────────────────
 
@@ -469,6 +519,7 @@ Commandes:
   notify-sync     Envoyer une notification Discord de fin de sync (test/debug)
   compare-db      Comparer la parité Go vs Python (DB joueur)
   gate-check      Vérifier la checklist Gate Phase 4
+  surface-status  Afficher le backend actif par surface (feature flags)
 
 Options globales:
   LEVELUP_REPO_ROOT        Racine du repo (auto-détecté si absent)

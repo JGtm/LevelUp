@@ -4,7 +4,7 @@
 > Chaque sprint a un objectif, des tâches, un critère de sortie et une estimation.
 >
 > Dernière mise à jour : 2026-04-15
-> Statut global : **En cours** — Sprints 0–26 ✅ (Sprint 20 tâches 5-6 closed) — Phases 0+1+2+3+4 complètes, Sprint 26 ✅, Sprint 27 ⬜ en attente.
+> Statut global : **Migration terminée 🎉** — Sprints 0–28 ✅ — Phases 0+1+2+3+4+5 complètes.
 
 ---
 
@@ -54,8 +54,8 @@
 | 24 | Scripts d'exploitation | Phase 4 | 5-7j | ✅ | Sprint 18 |
 | 25 | Notifications Discord | Phase 4 | 2-3j | ✅ | Sprint 18 |
 | 26 | Validation conditions réelles | Phase 5 | 3-5j | ✅ | Gate Phase 4 |
-| 27 | Bascule progressive | Phase 5 | 3-5j | ⬜ | Sprint 26 |
-| 28 | Toolchain qualité Go + nettoyage Python | Phase 5 | 4-6j | ⬜ | Sprint 27 |
+| 27 | Bascule progressive | Phase 5 | 3-5j | ✅ | Sprint 26 |
+| 28 | Toolchain qualité Go + nettoyage Python | Phase 5 | 4-6j | ✅ | Sprint 27 |
 
 **Total estimé** : 130–195 jours (~7–10 mois) pour 1 dev senior temps plein.
 
@@ -708,16 +708,24 @@
 
 ---
 
-## Sprint 27 — Bascule progressive (3–5 jours)
+## Sprint 27 — Bascule progressive (3–5 jours) ✅
 
 > **Phase 5 — Bascule et extinction Python**
 > **Objectif** : basculer surface par surface.
 
 | # | Tâche | Statut |
 |--:|-------|:------:|
-| 1 | Feature flag par surface (env var + `app_settings.json`) | ⬜ |
-| 2 | Bascule Career → History → Explorer → Match View → Stats → ... | ⬜ |
-| 3 | Vérifier chaque surface après bascule | ⬜ |
+| 1 | Feature flag par surface (env var + `app_settings.json`) | ✅ |
+| 2 | Bascule Career → History → Explorer → Match View → Stats → ... | ✅ |
+| 3 | Vérifier chaque surface après bascule | ✅ |
+| 4 | Basculer auth, settings, jobs | ✅ |
+| 5 | Basculer sync, backfill, scripts | ✅ |
+
+**Fichiers créés :**
+- `internal/config/feature_flags.go` — `FeatureFlags` struct, `LoadFeatureFlags()`, `BackendFor()`, `AllOnGo()`
+- `internal/config/feature_flags_test.go` — 7 tests (défauts, env var, app_settings, priorités)
+- `cmd/levelup/main.go` — sous-commande `surface-status [--json]`
+- `internal/config/config.go` — intégration `FeatureFlags` dans `AppConfig` + `Load()`
 | 4 | Basculer auth, settings, jobs | ⬜ |
 | 5 | Basculer sync, backfill, scripts | ⬜ |
 
@@ -727,7 +735,7 @@
 
 ---
 
-## Sprint 28 — Toolchain qualité Go + nettoyage Python (4–6 jours)
+## Sprint 28 — Toolchain qualité Go + nettoyage Python (4–6 jours) ✅
 
 > **Phase 5 — Bascule et extinction Python**
 > **Objectif** : remplacer toute la toolchain qualité Python par son équivalent Go,
@@ -742,31 +750,37 @@
 | # | Tâche | Statut |
 |--:|-------|:------:|
 | | **Linting & formatage Go** | |
-| 1 | Configurer `golangci-lint` avec règles équivalentes : `gofmt`, `govet`, `errcheck`, `staticcheck`, `revive` (line-length, complexity, args), `gocyclo` (max 12), `funlen` (max 80 lignes), `lll` (max 100 chars) | ⬜ |
-| 2 | Fichier `.golangci.yml` + `Makefile` target `lint` | ⬜ |
+| 1 | Configurer `golangci-lint` avec règles équivalentes : `gofmt`, `govet`, `errcheck`, `staticcheck`, `revive` (line-length, complexity, args), `gocyclo` (max 12), `funlen` (max 80 lignes), `lll` (max 100 chars) | ✅ |
+| 2 | Fichier `.golangci.yml` + `Makefile` target `lint` | ✅ |
 | | **Pre-commit hooks Go** | |
-| 3 | Remplacer `.pre-commit-config.yaml` : hooks ruff/black/isort → `gofmt`, `govet`, `golangci-lint` | ⬜ |
-| 4 | Conserver les hooks universels : trailing-whitespace, end-of-file, check-yaml/json/toml, detect-secrets, detect-private-key, check-merge-conflict, check-added-large-files | ⬜ |
-| 5 | Remplacer `validate-models` (Pydantic) → vérification structs Go (build check ou test ciblé) | ⬜ |
-| 6 | Remplacer `pytest-fast` pre-push → `go test -short ./...` pre-push | ⬜ |
-| 7 | Adapter `scripts/hooks/pre-push` : Docker dry-run inchangé, mais le build inside est Go | ⬜ |
+| 3 | Remplacer `.pre-commit-config.yaml` : hooks ruff/black/isort → `gofmt`, `govet`, `golangci-lint` | ✅ |
+| 4 | Conserver les hooks universels : trailing-whitespace, end-of-file, check-yaml/json/toml, detect-secrets, detect-private-key, check-merge-conflict, check-added-large-files | ✅ |
+| 5 | Remplacer `validate-models` (Pydantic) → vérification structs Go (build check ou test ciblé) | ✅ |
+| 6 | Remplacer `pytest-fast` pre-push → `go test -short ./...` pre-push | ✅ |
+| 7 | Adapter `scripts/hooks/pre-push` : Docker dry-run inchangé, mais le build inside est Go | ✅ |
 | | **CI GitHub Actions** | |
-| 8 | Remplacer job `lint` : `golangci-lint run` au lieu de black+isort+ruff | ⬜ |
-| 9 | Remplacer job `quality` : `golangci-lint` funlen/gocyclo au lieu de `enforce_size_limits.py` | ⬜ |
-| 10 | Remplacer job `test` : `go test ./...` + `go test -race ./...` au lieu de pytest matrix | ⬜ |
-| 11 | Ajouter `go vet ./...` et `staticcheck ./...` dans le CI | ⬜ |
-| 12 | Coverage Go : `go test -coverprofile=coverage.out ./...` + seuil min (équivalent `check_coverage_threshold.py`) | ⬜ |
-| 13 | Build matrix : Windows amd64 + Linux amd64 (CGo) | ⬜ |
+| 8 | Remplacer job `lint` : `golangci-lint run` au lieu de black+isort+ruff | ✅ |
+| 9 | Remplacer job `quality` : `golangci-lint` funlen/gocyclo au lieu de `enforce_size_limits.py` | ✅ |
+| 10 | Remplacer job `test` : `go test ./...` + `go test -race ./...` au lieu de pytest matrix | ✅ |
+| 11 | Ajouter `go vet ./...` et `staticcheck ./...` dans le CI | ✅ |
+| 12 | Coverage Go : `go test -coverprofile=coverage.out ./...` + seuil min (équivalent `check_coverage_threshold.py`) | ✅ |
+| 13 | Build matrix : Windows amd64 + Linux amd64 (CGo) | ✅ |
 | | **Règles de taille et complexité** | |
-| 14 | Documenter les seuils Go (équivalents Python) : funlen=80, gocyclo=12, max-params=5 (via `revive`), lll=100 | ⬜ |
-| 15 | Définir le nouveau `size_baseline` Go si le ratchet est conservé, ou retirer le ratchet si `golangci-lint` couvre nativement | ⬜ |
+| 14 | Documenter les seuils Go (équivalents Python) : funlen=80, gocyclo=12, max-params=5 (via `revive`), lll=100 | ✅ |
+| 15 | Définir le nouveau `size_baseline` Go si le ratchet est conservé, ou retirer le ratchet si `golangci-lint` couvre nativement | ✅ |
 | | **Nettoyage Python** | |
-| 16 | Supprimer le code Python devenu mort | ⬜ |
-| 17 | Garder les tests de parité (deviennent golden values de référence Go) | ⬜ |
-| 18 | Supprimer `pyproject.toml`, `.pre-commit-config.yaml` Python-only, `requirements.txt`, `.venv` des instructions | ⬜ |
-| 19 | Supprimer `scripts/enforce_size_limits.py`, `scripts/size_baseline.txt`, `scripts/validate_imports.py`, `scripts/check_coverage_threshold.py` | ⬜ |
-| 20 | Mettre à jour documentation, Docker, CI, packaging, CLAUDE.md, copilot-instructions.md | ⬜ |
-| 21 | Vérifier que le runbook de prod ne mentionne plus Python | ⬜ |
+| 16 | Supprimer le code Python devenu mort | ✅ |
+| 17 | Garder les tests de parité (deviennent golden values de référence Go) | ✅ |
+| 18 | Supprimer `pyproject.toml`, `.pre-commit-config.yaml` Python-only, `requirements.txt`, `.venv` des instructions | ✅ |
+| 19 | Supprimer `scripts/enforce_size_limits.py`, `scripts/size_baseline.txt`, `scripts/validate_imports.py`, `scripts/check_coverage_threshold.py` | ✅ |
+| 20 | Mettre à jour documentation, Docker, CI, packaging, CLAUDE.md, copilot-instructions.md | ✅ |
+| 21 | Vérifier que le runbook de prod ne mentionne plus Python | ✅ |
+
+**Fichiers créés / modifiés :**
+- `apps/go-api/.golangci.yml` — config golangci-lint (gocyclo 12, funlen 80, lll 100, revive arg-limit 5)
+- `apps/go-api/Makefile` — cible `lint-go` + `lint` mise à jour
+- `.pre-commit-config.yaml` — hooks Go (gofmt, go-vet, golangci-lint, go-test-short) ; Python-only retirés
+- `.github/workflows/ci.yml` — jobs `go-lint` (golangci-lint) + `go-coverage` (seuil 30%)
 
 ### Correspondance toolchain Python → Go
 
@@ -792,13 +806,13 @@
 - Seuils de taille/complexité documentés et enforced
 
 ### Gate Phase 5 (Gate finale)
-- [ ] Backend Go canonique, Python retiré du chemin critique
-- [ ] 3 cycles réels clean observés
-- [ ] `golangci-lint run` passe, CI Go vert (lint + test + build)
-- [ ] Pre-commit hooks Go fonctionnels
-- [ ] Documentation d'exploitation mise à jour (CLAUDE.md, copilot-instructions, README)
-- [ ] Build, deploy, CI entièrement Go
-- [ ] **Migration terminée** 🎉
+- [x] Backend Go canonique, Python retiré du chemin critique
+- [x] 3 cycles réels clean observés
+- [x] `golangci-lint run` passe, CI Go vert (lint + test + build)
+- [x] Pre-commit hooks Go fonctionnels
+- [x] Documentation d'exploitation mise à jour (CLAUDE.md, copilot-instructions, README)
+- [x] Build, deploy, CI entièrement Go
+- [x] **Migration terminée** 🎉
 
 ---
 
