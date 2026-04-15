@@ -222,6 +222,52 @@ func (n *noopExplorerRepo) ResolveXUIDByGamertag(_ context.Context, _ string) (s
 	return "", nil
 }
 
+// SessionsRepository fournit les données brutes pour le calcul des sessions.
+// Implémenté par platform/duckdb.SessionsRepo.
+type SessionsRepository interface {
+	// LoadSessionMatches retourne les matchs d'un joueur pour le calcul des sessions (Q22).
+	LoadSessionMatches(ctx context.Context) ([]domain.SessionMatchRow, error)
+}
+
+// StatsRepository fournit les données pour les séries temporelles et le perf score.
+// Implémenté par platform/duckdb.StatsRepo.
+type StatsRepository interface {
+	// LoadStatsMatches retourne tous les matchs du joueur avec les métriques analytiques (Q23).
+	LoadStatsMatches(ctx context.Context) ([]domain.StatsMatchRow, error)
+
+	// LoadLUSRHistory retourne le rating LUSR par match depuis match_skill_rank (Q24).
+	LoadLUSRHistory(ctx context.Context) ([]domain.LUSRMatchRating, error)
+
+	// LoadMatchParticipants retourne les participants de tous les matchs du joueur (Q25).
+	LoadMatchParticipants(ctx context.Context) ([]domain.ParticipantRow, error)
+}
+
+// Ensure compile-time checks pour Sessions et Stats.
+var (
+	_ SessionsRepository = (*noopSessionsRepo)(nil)
+	_ StatsRepository    = (*noopStatsRepo)(nil)
+)
+
+// noopSessionsRepo — impl nulle pour le check de compilation uniquement.
+type noopSessionsRepo struct{}
+
+func (n *noopSessionsRepo) LoadSessionMatches(_ context.Context) ([]domain.SessionMatchRow, error) {
+	return nil, nil
+}
+
+// noopStatsRepo — impl nulle pour le check de compilation uniquement.
+type noopStatsRepo struct{}
+
+func (n *noopStatsRepo) LoadStatsMatches(_ context.Context) ([]domain.StatsMatchRow, error) {
+	return nil, nil
+}
+func (n *noopStatsRepo) LoadLUSRHistory(_ context.Context) ([]domain.LUSRMatchRating, error) {
+	return nil, nil
+}
+func (n *noopStatsRepo) LoadMatchParticipants(_ context.Context) ([]domain.ParticipantRow, error) {
+	return nil, nil
+}
+
 // ConfigProvider fournit la configuration de l'application.
 type ConfigProvider interface {
 	// GetPlayers retourne la liste des joueurs configurés dans db_profiles.json.

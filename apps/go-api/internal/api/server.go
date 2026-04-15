@@ -61,6 +61,14 @@ func NewRouter(
 
 			explorer := handlers.NewExplorerHandler(cfg)
 			r.Post("/pages/explorer/player-query", explorer.QueryPlayer)
+
+                        // Sprint 9 : Sessions
+                        sessions := handlers.NewSessionsHandler(cfg)
+                        r.Get("/pages/sessions", sessions.GetSessions)
+
+                        // Sprint 10 : Stats/Séries temporelles
+                        stats := handlers.NewStatsHandler(cfg)
+                        r.Post("/pages/stats/query", stats.GetPage)
 		})
 
 		// Endpoints P1 : répertoire gamertags
