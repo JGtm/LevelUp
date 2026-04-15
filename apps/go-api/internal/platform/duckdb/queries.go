@@ -369,3 +369,92 @@ SELECT
 FROM shared.highlight_events he
 WHERE he.match_id = ?
 ORDER BY he.tick_count ASC`
+
+
+// Q22 : Sessions — chargement des matchs pour le calcul des sessions.
+// Parametre : ?1 = xuid du joueur.
+// Retourne 6 colonnes : match_id, start_time, teammates_sig, is_ranked,
+// time_played_seconds, end_time (NULL si absent).
+const Q22SessionMatches = `
+SELECT
+    mp.match_id,
+    r.start_time,
+    -- Signature des coeequipiers : XUIDs tries concatenes (hors joueur lui-meme)
+    (SELECT string_agg(t.xuid, ',' ORDER BY t.xuid)
+     FROM shared.match_participants t
+     WHERE t.match_id = mp.match_id AND t.team_id = mp.team_id AND t.xuid <> ?
+    )                                                   AS teammates_sig,
+    COALESCE(mp.is_ranked, FALSE)                       AS is_ranked,
+    mp.time_played_seconds,
+    CASE WHEN mp.time_played_seconds IS NOT NULL
+         THEN r.start_time + INTERVAL (mp.time_played_seconds || ' seconds')
+         ELSE NULL
+    END                                                 AS end_time
+FROM shared.match_participants mp
+JOIN shared.match_registry r ON r.match_id = mp.match_id
+WHERE mp.xuid = ?
+ORDER BY r.start_time ASC`
+
+// Q23 : Stats series — chargement des matchs avec metriques pour perf score.
+// Parametre : ?1 = xuid du joueur.
+// Retourne toutes les colonnes necessaires a compute_relative_performance_score.
+const Q23StatsMatches = `
+SELECT
+    mp.match_id,
+    r.start_time,
+    mp.outcome,
+    COALESCE(mp.kills, 0)              AS kills,
+    COALESCE(mp.deaths, 0)             AS deaths,
+    COALESCE(mp.assists, 0)            AS assists,
+    mp.kda,
+    mp.accuracy,
+    mp.personal_score,
+    mp.damage_dealt,
+    mp.damage_taken,
+    mp.time_played_seconds,
+    mp.team_mmr,
+    mp.enemy_mmr,
+    mp.kills_expected,
+    mp.deaths_expected,
+    mp.rank,
+    mp.is_ranked,
+    COALESCE(r.playlist_name, '')    AS playlist_name,
+    COALESCE(r.pair_name, '')        AS pair_name,
+    mp.team_id,
+    pme.performance_score             AS performance_score_computed,
+    pme.session_id,
+    pme.session_label
+FROM shared.match_participants mp
+JOIN shared.match_registry r ON r.match_id = mp.match_id
+LEFT JOIN player_match_enrichment pme ON pme.match_id = mp.match_id
+WHERE mp.xuid = ?
+ORDER BY r.start_time ASC`
+
+// Q24 : LUSR — chargement du rating par match depuis match_skill_rank.
+// Parametre : ?1 = xuid du joueur (filtre via player_match_enrichment).
+const Q24LUSRHistory = `
+SELECT
+    msr.match_id,
+    msr.rating_value,
+    msr.rating_deviation,
+    msr.playlist_group
+FROM match_skill_rank msr
+ORDER BY msr.match_id ASC`
+
+// Q25 : Stats series — participants d un ensemble de matchs (pour LUSR enemy strength).
+// Parametre : ?1 = xuid joueur (pour filtrer son equipe).
+// Utilise les matchs de Q23 comme sous-requete.
+const Q25MatchParticipants = `
+SELECT
+    mp.match_id,
+    mp.xuid,
+    mp.team_id,
+    mp.kills_expected,
+    mp.deaths_expected
+FROM shared.match_participants mp
+WHERE mp.match_id IN (
+    SELECT DISTINCT mp2.match_id
+    FROM shared.match_participants mp2
+    WHERE mp2.xuid = ?
+)
+ORDER BY mp.match_id, mp.xuid`
