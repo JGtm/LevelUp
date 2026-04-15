@@ -37,9 +37,9 @@ Cette checklist suit l'avancement reel du chantier Go :
 
 | Champ | Valeur |
 |-------|--------|
-| Statut programme | `cadre` |
-| Lot actif | Aucun |
-| Derniere mise a jour | 2026-04-14 |
+| Statut programme | `en_cours` |
+| Lot actif | Sprint 0 terminé — Phase 0.2 corpus golden values (lot 4) à ouvrir |
+| Derniere mise a jour | 2026-04-15 |
 | Journal technique | [../thought_log.md](../thought_log.md) |
 
 ## Decision d'arret documentaire
@@ -54,9 +54,9 @@ Cette checklist suit l'avancement reel du chantier Go :
 |------:|-----|-------|--------|-----------------|----------------------|----------------------------|
 | 0 | Prerequis 0 : corpus documentaire Go gele | Prerequis | `termine` | charte + contrats Halo + taxonomie erreurs + OpenAPI MVP P0/P1 + matrice documentes | 2026-04-14 | Ouvrir le Sprint 0 ; plus de doc prealable generale |
 | 1 | Phase 0.0 : modele canonique Halo + capability map par titre | Phase 0 | `termine` | contrat canonique + capability map + bootstrap + mapping/adapters materialises | 2026-04-14 | Lot documentaire clos ; reference a utiliser telle quelle |
-| 2 | Sprint 0 : POC DuckDB, HTTP, MSAL | Sprint 0 | `non_demarre` | POC Windows/Linux valide + JSON bootstrap coherent | 2026-04-14 | Demarrer maintenant : prerequis 0 explicite et gele |
+| 2 | Sprint 0 : POC DuckDB, HTTP, MSAL | Sprint 0 | `pret_integration` | DuckDB Go + HTTP chi + MSAL device code flow validés Windows — `/health`, `/api/v1/bootstrap`, `/api/v1/players` cohérents avec Python — toolchain ucrt64 documentée dans Makefile — build `go build ./...` 0 erreur | 2026-04-15 | Lot clos. Ouvrir Phase 0.2 corpus golden values (lot 4) |
 | 3 | Phase 0.1 : freeze OpenAPI MVP et taxonomie d'erreurs | Phase 0 | `termine` | contrats P0/P1 + taxonomie erreurs documentes et geles | 2026-04-14 | Versionner le schema a l'implementation, pas dans un nouveau cycle de doc |
-| 4 | Phase 0.2 : corpus golden values complet | Phase 0 | `non_demarre` | corpus rejouable couvrant surfaces prioritaires | 2026-04-14 | Dependance : lot 3 |
+| 4 | Phase 0.2 : corpus golden values complet | Phase 0 | `a_ouvrir` | corpus rejouable couvrant surfaces prioritaires | 2026-04-15 | Sprint 0 terminé — peut démarrer. Dépendance lot 3 (Phase 0.1) considérée implicitement close |
 | 5 | Phase 1 (S04-S07) : squelette HTTP + repositories read-only + parite | Phase 1 | `non_demarre` | service Go runnable + requetes critiques sous test + 0 ecart | 2026-04-14 | Dependance : lots 3-4 |
 | 6 | Phase 2 (S08-S13) : parcours read-only complets | Phase 2 | `non_demarre` | tous parcours read-only en parite utile | 2026-04-14 | Dependance : gate phase 1 |
 | 7 | Phase 3 (S14-S17) : auth, session, settings, jobs persistants | Phase 3 | `non_demarre` | onboarding complet sans Python | 2026-04-14 | Dependance : gate phase 2 |

@@ -1,5 +1,41 @@
 # Thought Log
 
+## [2026-04-15] feat(go-api): Sprint 0 terminé — DuckDB, HTTP, MSAL validés sur Windows
+
+**Statut** : Complété
+
+**Tâche** : Exécuter le Sprint 0 de la roadmap (POC DuckDB + HTTP + MSAL Go) sur Windows. Lire tous les documents de référence, valider les gates, créer la structure hexagonale et committer.
+
+**Décisions techniques principales** :
+
+1. **DuckDB Go v1.5.2 lit les fichiers Python 1.4.4 sans migration** — compatibilité ascendante confirmée sur `metadata.duckdb` (272 career_ranks), `shared_matches_v2.duckdb` (1544 matchs), et les DBs joueurs. Pas de migration implicite lors de l'ouverture en read-only.
+2. **Pool `sql.DB` + `SetMaxOpenConns(4)` pour read-only** — DSN `path?access_mode=read_only`, une instance par chemin de fichier dans une map process-global avec mutex. Pas d'ATTACH nécessaire en Sprint 0 (chaque fichier DB = son propre pool).
+3. **Format `db_profiles.json` v2.1** — ce n'est PAS un tableau JSON. Format réel : `{version, warehouse_path, profiles: {gamertag: {db_path, xuid, waypoint_player}}}`. Fix dans `internal/config/config.go` — `LoadPlayers()` itère sur la map.
+4. **Toolchain CGo Windows** — MinGW ucrt64 via MSYS2 (`/c/msys64/ucrt64/bin/gcc.exe`). Build env : `PATH="/c/msys64/ucrt64/bin:$PATH" CC=gcc CGO_ENABLED=1`. Documenté dans `apps/go-api/Makefile`.
+5. **MSAL Go — API DeviceCode** — `dc.Result.UserCode`, `dc.Result.VerificationURL`, `dc.Result.ExpiresOn` (time.Time). `dc` est `public.DeviceCode`, `.Result` est `accesstokens.DeviceCodeResult`. POC validé : user_code `F5KJ56F9` obtenu depuis Microsoft.
+6. **Séparation cache MSAL** — clé Python = `msal_token_cache`, clé Go = `msal_go_token_cache` dans DuckDB `sync_meta`. Pas de désérialisation croisée (format go-msal ≠ MSAL Python). Les deux caches coexistent en DuckDB.
+7. **Écarts volontaires Sprint 0** — `setup_state` = `"profile_ready_no_sync"` pour tous les joueurs (pas encore de lecture `initial_sync_completed_at` — Sprint 15) ; `auth_state` = `"missing"` hardcodé (auth non portée — Sprint 15).
+8. **Architecture hexagonale** — `domain/` ← `port/` ← `service/` + `platform/duckdb/` ← `api/` ← `cmd/`. 0 dépendance Streamlit, 0 pandas, 0 sqlite.
+
+**Résultats observés** :
+- `go build ./...` : 0 erreur
+- `GET /health` → `{"status":"ok","match_count":1544,"db_version":"v1.5.2"}`
+- `GET /api/v1/bootstrap` → `setup_required:false`, 4 joueurs réels (Chocoboflor, JGtm, Madina97294, XxDaemonGamerxX)
+- `GET /api/v1/players` → `{items:[4], default_player_slug:"Chocoboflor"}`
+- MSAL poc → `user_code:F5KJ56F9`, `verification_uri:https://www.microsoft.com/link` ✓
+
+**Gates Sprint 0 — tous verts ✅** :
+- DuckDB Go lit 3 types de DB sur Windows ✅
+- Compatible 1.4.4 → 1.5.2 sans migration ✅
+- Pool `sql.DB` validé ✅
+- Types UBIGINT/TIMESTAMPTZ/BOOLEAN mappés ✅
+- CGo compile Windows ucrt64 ✅
+- JSON endpoints cohérents avec Python ✅
+- MSAL device code user_code obtenu depuis Microsoft ✅
+- Stratégie cache documentée ✅
+
+**Conclusion / prochaine étape** : Sprint 0 clos. GO_MIGRATION_CHECKLIST.md → lot Sprint 0 = `pret_integration`. Prochain lot : Phase 0.2 corpus golden values (lot 4) — capturer les réponses de référence depuis le Python (Python API à démarrer, `openapi-typescript` + corpus rejouable).
+
 ## [2026-04-14] docs(go-migration-v2): verrouillage D1/D4, bitmask source-of-truth et exécution cohérente
 
 **Statut** : Complété
