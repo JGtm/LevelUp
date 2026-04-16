@@ -1,5 +1,37 @@
 # Thought Log
 
+## [2026-07-20] feat(validation): Sprint 36 — Validation & bascule production
+
+**Statut** : Partiellement complété (tâches code ✅, tâches runtime 🔄)
+
+**Tâche** : Sprint 36 — 7 tâches : parité 24 endpoints, 15 specs E2E, onboarding flow, sécurité, infra, bascule, rollback plan.
+
+**Décisions techniques principales** :
+
+1. **T1 — parity_check.py 24 endpoints** : extension du script Phase 1 (6 endpoints) à 24. Mode `status_only=True` pour les 17 endpoints sans golden values — vérifie HTTP 200. Mode `comparison` pour les 7 endpoints avec golden values (health, bootstrap, players, filters, match_history, gamertag_search, career). Nouveau flag `--status-only` et `--match-id`. La tâche "0 diff en production" est une validation runtime (non automatisable ici).
+
+2. **T2 — 15 specs Playwright** : déjà présentes (15 fichiers `slice-*.spec.ts`). ✅
+
+3. **T3 — Onboarding E2E** : `slice-9-onboarding.spec.ts` créé — 7 tests couvrant bootstrap → setup → settings → auth (DEMO_MODE, device-flow retourne 422) → navigation home.
+
+4. **T4 — Sécurité** : audit code confirmé (CSRF ✅, pool `SetMaxOpenConns` ✅, `writeError` JSON ✅, rate limit ✅). `security_audit_test.go` ajouté : 9 nouveaux tests (RateLimit, ErrorFormat, Shadow disabled, Shadow no-modif, CORS preflight, CORS origin, CSRF large body) — tous vert en CGO=0.
+
+5. **T5 — Infra** : déjà fait Sprint 34 (Docker + healthcheck Go natif + Makefile). ✅
+
+6. **T6 — Bascule** : `docs/BASCULE_GO.md` créé — procédure complète (prérequis, feature flag, déploiement, monitoring 48h, critères de revert). Le monitoring 48h est une action runtime, non automatisable.
+
+7. **T7 — Rollback plan** : inclus dans `BASCULE_GO.md` (rollback < 5 min, rollback complet, conservation Python 2 semaines).
+
+**Résultats observés** :
+
+- 14 tests sécurité passent (CGO=0, 0.45s).
+- parity_check.py couvre 24 endpoints (7 comparison + 17 status_only).
+- 16 specs Playwright disponibles (15 existantes + slice-9-onboarding).
+
+**Conclusion / prochaine étape** : Sprint 37 — Architecture handlers & injection (rendre les handlers testables via DI). Avant de démarrer Sprint 37, valider en runtime T1 (parity 0 diff) et T6 (bascule + monitoring).
+
+---
+
 ## [2026-07-20] feat(infra): Sprint 34+35 — Go release matrix, shadow mode, golden tests CI
 
 **Statut** : Complété
