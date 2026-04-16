@@ -148,7 +148,7 @@ type filmChunk struct {
 	FileSize                         int    `json:"FileSize"`
 	ChunkStartTimeOffsetMilliseconds int    `json:"ChunkStartTimeOffsetMilliseconds"`
 	DurationMilliseconds             int    `json:"DurationMilliseconds"`
-	ChunkUrl                         string `json:"ChunkUrl"`
+	ChunkURL                         string `json:"ChunkUrl"`
 }
 
 // GetMatchFilm télécharge le manifest film d'un match et retourne les chunks indexés.
@@ -177,7 +177,7 @@ func (c *HaloAPIClient) GetMatchFilm(ctx context.Context, matchID string) (map[i
 
 	result := make(map[int]filmChunkData, len(chunks))
 	for i, chunk := range chunks {
-		data, err := c.downloadBlob(ctx, chunk.ChunkUrl)
+		data, err := c.downloadBlob(ctx, chunk.ChunkURL)
 		if err != nil {
 			return nil, false, fmt.Errorf("GetMatchFilm chunk %d(%s): %w", i, matchID, err)
 		}

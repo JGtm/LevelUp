@@ -133,7 +133,7 @@ func ComputeTopWeeks(rows []domain.SquadMatchRow) []domain.TopWeekEntry {
 		entry domain.TopWeekEntry
 		wr    float64
 	}
-	var candidates []weekScore
+	var candidates []weekScore //nolint:prealloc
 	for _, agg := range byWeek {
 		if agg.count < 3 {
 			continue
@@ -224,7 +224,7 @@ func ComputeSynthesisTopWeeks(rows []domain.SynthesisMatchRow) []domain.TopWeekE
 		entry domain.TopWeekEntry
 		wr    float64
 	}
-	var candidates []weekScore
+	var candidates []weekScore //nolint:prealloc
 	for _, agg := range byWeek {
 		if agg.count < 3 {
 			continue

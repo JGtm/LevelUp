@@ -154,7 +154,7 @@ func buildSessionOptions(rows []domain.FilterMatchRow) domain.SessionOptions {
 	}
 	sort.Sort(sort.Reverse(sort.StringSlice(labels)))
 
-	var all []domain.SessionOption
+	var all []domain.SessionOption //nolint:prealloc
 	var soloLabels, squadLabels []string
 	for _, lbl := range labels {
 		e := agg[lbl]

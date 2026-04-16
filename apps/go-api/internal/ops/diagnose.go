@@ -95,7 +95,7 @@ func describeAllTables(db *sql.DB, verbose bool) ([]TableSchema, error) {
 		return nil, err
 	}
 
-	var tables []TableSchema
+	var tables []TableSchema //nolint:prealloc
 	for _, name := range tableNames {
 		ts, err := describeTable(db, name, verbose)
 		if err != nil {

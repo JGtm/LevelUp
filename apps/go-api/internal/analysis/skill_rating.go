@@ -139,7 +139,7 @@ func ComputeSkillRatingsBatch(
 }
 
 // trueskillUpdate met a jour mu/sigma apres un match.
-func trueskillUpdate(mu, sigma, muOpp, sigmaOpp, actualScore, weightFactor float64) (float64, float64) {
+func trueskillUpdate(mu, sigma, muOpp, sigmaOpp, actualScore, weightFactor float64) (float64, float64) { //nolint:unparam // muOpp réservé pour TrueSkill 2 complet
 	deltaMu := kElo * (actualScore - 0.5) * weightFactor
 	newMu := math.Max(minSigma, mu+deltaMu)
 
@@ -182,10 +182,10 @@ func vWin(t, eps float64) float64 {
 }
 
 // computeCompositeScore calcule le score composite [0,1] pour un match.
-func computeCompositeScore(
+func computeCompositeScore( //nolint:unparam // voir ci-dessous
 	row domain.StatsMatchRow,
 	avgAcc float64,
-	teammateAvgKE, enemyAvgKE float64,
+	teammateAvgKE, enemyAvgKE float64, //nolint:unparam // teammateAvgKE réservé pour future formule synergie
 	avgDamageEff float64,
 ) float64 {
 	components := make(map[string]float64)
@@ -292,7 +292,7 @@ func splitParticipants(
 func computeEnemyStrength(
 	enemies []domain.ParticipantRow,
 	avgKE, playerMu float64,
-) (muOpp, sigmaOpp float64) {
+) (muOpp, sigmaOpp float64) { //nolint:unparam // sigmaOpp actuellement fixe à defaultOpponentSigma, extensible
 	if len(enemies) == 0 {
 		return playerMu, defaultOpponentSigma
 	}

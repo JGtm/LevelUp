@@ -17,8 +17,9 @@ import (
 	"strings"
 	"time"
 
-	_ "github.com/duckdb/duckdb-go/v2"
 	titlePkg "levelup/go-api/internal/domain/title"
+
+	_ "github.com/duckdb/duckdb-go/v2"
 )
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -50,7 +51,7 @@ type HealthCheck struct {
 // Utilise PathResolver pour les chemins title-aware (Sprint 44).
 func RunHealthcheck(opts HealthcheckOptions) HealthReport {
 	start := time.Now()
-	var checks []HealthCheck
+	var checks []HealthCheck //nolint:prealloc
 
 	pr := titlePkg.NewPathResolver(opts.RepoRoot)
 

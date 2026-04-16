@@ -328,7 +328,7 @@ func readBitsUint64(data []byte, bitPos, n int) uint64 {
 }
 
 // readBitsUint8 lit n bits (≤8) depuis bitPos en big-endian.
-func readBitsUint8(data []byte, bitPos, n int) uint8 {
+func readBitsUint8(data []byte, bitPos, n int) uint8 { //nolint:unparam // n=8 actuellement, paramètre générique conservé
 	var result uint8
 	for i := 0; i < n; i++ {
 		byteIdx := (bitPos + i) / 8
