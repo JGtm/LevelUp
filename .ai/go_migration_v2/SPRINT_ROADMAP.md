@@ -3,9 +3,9 @@
 > Document de suivi opérationnel : tous les sprints de A à Z, dans l'ordre.
 > Chaque sprint a un objectif, des tâches, un critère de sortie et une estimation.
 >
-> Dernière mise à jour : 2026-05-16
+> Dernière mise à jour : 2026-06-16
 > Statut global : **Migration portage terminée** — Sprints 0–28 ✅ (Phases 0–5).
-> **Sprints 29–33 terminés ✅** — Sprints 34–44 ⬜ (Phases 7–9) — voir `IMPLEMENTATION_PLAN.md` pour le détail.
+> **Sprints 29–41 terminés ✅** (sauf S20 🔄, S36 🔄) — Sprints 42–44 ⬜ (Phase 9) — voir `IMPLEMENTATION_PLAN.md` pour le détail.
 
 ---
 
@@ -62,13 +62,13 @@
 | 30 | Bugs sécurité & error handling | Phase 6 | 3-5j | ✅ | Sprint 29 |
 | 31 | Onboarding Go & cookies session | Phase 6 | 3-4j | ✅ | Sprint 29 |
 | 32 | Contrat API : Lots 1-3 (conformes + POST) | Phase 6 | 5-8j | ✅ | Sprint 29 |
-| 33 | Contrat API : Lots 4-5 (réécriture + absents) | Phase 6 | 5-8j | ⬜ | Sprint 32 |
-| **34** | **Infra release/deploy Go** | **Phase 7** | **5-8j** | **⬜** | Sprint 33 |
-| 35 | Golden tests CI + shadow mode | Phase 7 | 4-6j | ⬜ | Sprint 34 |
-| 36 | Validation & bascule production | Phase 7 | 3-5j | ⬜ | Sprint 35 |
+| 33 | Contrat API : Lots 4-5 (réécriture + absents) | Phase 6 | 5-8j | ✅ | Sprint 32 |
+| **34** | **Infra release/deploy Go** | **Phase 7** | **5-8j** | **✅** | Sprint 33 |
+| 35 | Golden tests CI + shadow mode | Phase 7 | 4-6j | ✅ | Sprint 34 |
+| 36 | Validation & bascule production | Phase 7 | 3-5j | 🔄 | Sprint 35 |
 | **37** | **Architecture handlers & injection** | **Phase 8** | **4-6j** | **✅** | Sprint 36 |
 | 38 | DRY + split fichiers >500L | Phase 8 | 4-6j | ✅ | Sprint 37 |
-| 39 | Tests couches manquantes + couverture 50% | Phase 8 | 4-6j | 🔄 | Sprint 37 |
+| 39 | Tests couches manquantes + couverture 50% | Phase 8 | 4-6j | ✅ | Sprint 37 |
 | 40 | Observabilité & monitoring | Phase 8 | 2-3j | ✅ | Sprint 36 |
 | **41** | **Scoreboard + weapon parsing + healthcheck** | **Phase 9** | **5-8j** | **✅** | Sprint 36 |
 | 42 | Analyse UI avancée + fanout multi-joueur | Phase 9 | 5-8j | ⬜ | Sprint 41 |
@@ -1050,10 +1050,10 @@
 | # | Tâche | Statut |
 |--:|-------|:------:|
 | 1 | Tests `httptest` : `filters_test`, `match_view_test`, `stats_test`, `gamertag_test`, `squad_test` — patterns OK/404/500 pour chaque handler (+ `career_test` Sprint 37) | ✅ |
-| 2 | Tests repository DuckDB in-memory + fixtures | ⬜ |
+| 2 | Tests repository DuckDB in-memory + fixtures | ✅ |
 | 3 | Tests TrueSkill purs (`skill_rating_test.go`) : PDF, CDF, vWin, wWin, trueskillUpdate ; tests transforms (`transforms_test.go`) : extractXUID, parsePTDuration, parseISO, determineModeCategory | ✅ |
-| 4 | Tests FastAPI minimal (`apps/api/tests/`) : TestClient + snapshot 5 endpoints | ⬜ |
-| 5 | Couverture Go ≥ 50% vérifié | ⬜ |
+| 4 | Tests FastAPI minimal (`apps/api/tests/`) : TestClient + snapshot 5 endpoints | ✅ |
+| 5 | Couverture Go ≥ 50% vérifié | ✅ |
 
 ---
 
