@@ -104,17 +104,16 @@ ORDER BY ms.start_time DESC`
 // Paramètre : aucun (lit toujours le rang le plus récent).
 const Q6CareerLatestRank = `
 SELECT
-    cp.rank_number,
+    cp.rank          AS rank_number,
     cp.current_xp,
     cp.recorded_at,
-    cr.rank_label,
-    cr.rank_name,
-    cr.rank_tier,
-    cr.xp_for_next_rank,
-    cr.xp_total,
-    cr.is_max_rank
+    cp.rank_name     AS rank_label,
+    cp.rank_name,
+    cp.rank_tier,
+    cp.xp_for_next_rank,
+    cp.xp_total,
+    cp.is_max_rank
 FROM career_progression cp
-LEFT JOIN shared.career_ranks cr ON cp.rank_number = cr.rank_number
 ORDER BY cp.recorded_at DESC
 LIMIT 1`
 
@@ -122,11 +121,10 @@ LIMIT 1`
 const Q7CareerXPHistory = `
 SELECT
     cp.recorded_at,
-    cp.rank_number,
+    cp.rank          AS rank_number,
     cp.current_xp,
-    COALESCE(cr.xp_total, cp.rank_number * 1000) AS xp_total_cumulative
+    COALESCE(cp.xp_total, cp.rank * 1000) AS xp_total_cumulative
 FROM career_progression cp
-LEFT JOIN shared.career_ranks cr ON cp.rank_number = cr.rank_number
 ORDER BY cp.recorded_at ASC`
 
 // Q8 : Career — LUSR checkpoints (match_skill_rank).

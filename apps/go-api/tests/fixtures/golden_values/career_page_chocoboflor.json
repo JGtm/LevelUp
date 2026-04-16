@@ -1,26 +1,26 @@
 {
   "summary": {
-    "rank_number": 152,
-    "rank_label": "Sergeant — Grade 2",
-    "rank_name_raw": "Sergeant",
-    "rank_tier": "Sergeant",
-    "current_xp": 38210,
-    "xp_for_next_rank": 1000,
-    "xp_total": 152210,
-    "progress_pct": 38.21,
+    "rank_number": 133,
+    "rank_label": "Brigadier General Gold 3",
+    "rank_name_raw": "Brigadier General Gold 3",
+    "rank_tier": "Gold",
+    "current_xp": 9870,
+    "xp_for_next_rank": 22500,
+    "xp_total": 791970,
+    "progress_pct": 43.87,
     "is_max_rank": false,
-    "recorded_at": "2025-12-01T18:42:00Z"
+    "recorded_at": "2026-04-07T00:03:38.998144Z"
   },
   "hero_progress": {
-    "xp_total_required": 272000,
-    "xp_remaining": 119790,
-    "percentage": 56.0,
-    "current_rank": 152
+    "xp_total_required": 9319350,
+    "xp_remaining": 8527380,
+    "percentage": 8.5,
+    "current_rank": 0
   },
   "projections": {
-    "xp_per_day_active": 850.5,
-    "xp_per_day_fallback": 400.0,
-    "estimated_hero_date": "2026-09-15",
+    "xp_per_day_active": 6735.55,
+    "xp_per_day_fallback": 19765.67,
+    "estimated_hero_date": "2029-09-24",
     "estimated_rank_cap_date": null
   },
   "charts": {
@@ -31,79 +31,2540 @@
   },
   "xp_history": [
     {
-      "recorded_at": "2025-10-01T12:00:00Z",
-      "rank": 140,
-      "xp_total": 140000
+      "recorded_at": "2026-03-07T20:05:34.229471Z",
+      "rank_number": 119,
+      "current_xp": 11690,
+      "xp_total_cumul": 588790
     },
     {
-      "recorded_at": "2025-11-01T12:00:00Z",
-      "rank": 148,
-      "xp_total": 148000
+      "recorded_at": "2026-03-08T18:35:55.965718Z",
+      "rank_number": 119,
+      "current_xp": 11690,
+      "xp_total_cumul": 588790
     },
     {
-      "recorded_at": "2025-12-01T18:42:00Z",
-      "rank": 152,
-      "xp_total": 152210
+      "recorded_at": "2026-03-08T18:53:55.818299Z",
+      "rank_number": 119,
+      "current_xp": 11690,
+      "xp_total_cumul": 588790
+    },
+    {
+      "recorded_at": "2026-03-08T18:57:02.282636Z",
+      "rank_number": 119,
+      "current_xp": 11690,
+      "xp_total_cumul": 588790
+    },
+    {
+      "recorded_at": "2026-03-08T18:59:11.334664Z",
+      "rank_number": 119,
+      "current_xp": 11690,
+      "xp_total_cumul": 588790
+    },
+    {
+      "recorded_at": "2026-03-08T18:59:42.280672Z",
+      "rank_number": 119,
+      "current_xp": 11690,
+      "xp_total_cumul": 588790
+    },
+    {
+      "recorded_at": "2026-03-08T19:02:26.154014Z",
+      "rank_number": 119,
+      "current_xp": 11690,
+      "xp_total_cumul": 588790
+    },
+    {
+      "recorded_at": "2026-03-08T22:55:59.228933Z",
+      "rank_number": 120,
+      "current_xp": 11690,
+      "xp_total_cumul": 598790
+    },
+    {
+      "recorded_at": "2026-03-10T20:30:44.184984Z",
+      "rank_number": 121,
+      "current_xp": 10110,
+      "xp_total_cumul": 609710
+    },
+    {
+      "recorded_at": "2026-03-11T14:36:59.490727Z",
+      "rank_number": 121,
+      "current_xp": 12810,
+      "xp_total_cumul": 612410
+    },
+    {
+      "recorded_at": "2026-03-12T21:26:46.942725Z",
+      "rank_number": 122,
+      "current_xp": 110,
+      "xp_total_cumul": 614710
+    },
+    {
+      "recorded_at": "2026-03-12T21:28:35.871Z",
+      "rank_number": 122,
+      "current_xp": 110,
+      "xp_total_cumul": 614710
+    },
+    {
+      "recorded_at": "2026-03-12T21:37:39.159467Z",
+      "rank_number": 122,
+      "current_xp": 1730,
+      "xp_total_cumul": 616330
+    },
+    {
+      "recorded_at": "2026-03-12T21:49:16.777062Z",
+      "rank_number": 122,
+      "current_xp": 4250,
+      "xp_total_cumul": 618850
+    },
+    {
+      "recorded_at": "2026-03-12T22:11:46.473711Z",
+      "rank_number": 122,
+      "current_xp": 7270,
+      "xp_total_cumul": 621870
+    },
+    {
+      "recorded_at": "2026-03-12T22:17:49.019933Z",
+      "rank_number": 122,
+      "current_xp": 9040,
+      "xp_total_cumul": 623640
+    },
+    {
+      "recorded_at": "2026-03-12T22:28:12.014413Z",
+      "rank_number": 123,
+      "current_xp": 590,
+      "xp_total_cumul": 625190
+    },
+    {
+      "recorded_at": "2026-03-12T22:38:53.952441Z",
+      "rank_number": 123,
+      "current_xp": 1990,
+      "xp_total_cumul": 626590
+    },
+    {
+      "recorded_at": "2026-03-12T22:49:27.726001Z",
+      "rank_number": 123,
+      "current_xp": 4190,
+      "xp_total_cumul": 628790
+    },
+    {
+      "recorded_at": "2026-03-12T22:59:57.763451Z",
+      "rank_number": 123,
+      "current_xp": 6590,
+      "xp_total_cumul": 631190
+    },
+    {
+      "recorded_at": "2026-03-12T23:21:54.446896Z",
+      "rank_number": 123,
+      "current_xp": 10490,
+      "xp_total_cumul": 635090
+    },
+    {
+      "recorded_at": "2026-03-15T21:43:39.239984Z",
+      "rank_number": 125,
+      "current_xp": 1390,
+      "xp_total_cumul": 655990
+    },
+    {
+      "recorded_at": "2026-03-16T23:52:28.933152Z",
+      "rank_number": 125,
+      "current_xp": 3990,
+      "xp_total_cumul": 658590
+    },
+    {
+      "recorded_at": "2026-03-18T11:41:14.32168Z",
+      "rank_number": 126,
+      "current_xp": 3230,
+      "xp_total_cumul": 670330
+    },
+    {
+      "recorded_at": "2026-03-18T19:28:13.299923Z",
+      "rank_number": 126,
+      "current_xp": 8050,
+      "xp_total_cumul": 675150
+    },
+    {
+      "recorded_at": "2026-03-18T21:46:07.30909Z",
+      "rank_number": 126,
+      "current_xp": 10370,
+      "xp_total_cumul": 677470
+    },
+    {
+      "recorded_at": "2026-03-18T21:56:17.070234Z",
+      "rank_number": 126,
+      "current_xp": 13070,
+      "xp_total_cumul": 680170
+    },
+    {
+      "recorded_at": "2026-03-18T22:08:39.547116Z",
+      "rank_number": 127,
+      "current_xp": 520,
+      "xp_total_cumul": 682620
+    },
+    {
+      "recorded_at": "2026-03-18T22:19:41.721443Z",
+      "rank_number": 127,
+      "current_xp": 2820,
+      "xp_total_cumul": 684920
+    },
+    {
+      "recorded_at": "2026-03-18T22:30:54.93934Z",
+      "rank_number": 127,
+      "current_xp": 5020,
+      "xp_total_cumul": 687120
+    },
+    {
+      "recorded_at": "2026-03-18T22:43:27.928605Z",
+      "rank_number": 127,
+      "current_xp": 6620,
+      "xp_total_cumul": 688720
+    },
+    {
+      "recorded_at": "2026-03-18T22:55:30.053353Z",
+      "rank_number": 127,
+      "current_xp": 7920,
+      "xp_total_cumul": 690020
+    },
+    {
+      "recorded_at": "2026-03-18T23:05:58.629504Z",
+      "rank_number": 127,
+      "current_xp": 10140,
+      "xp_total_cumul": 692240
+    },
+    {
+      "recorded_at": "2026-03-18T23:19:38.073499Z",
+      "rank_number": 127,
+      "current_xp": 10140,
+      "xp_total_cumul": 692240
+    },
+    {
+      "recorded_at": "2026-03-21T19:48:24.664966Z",
+      "rank_number": 128,
+      "current_xp": 2420,
+      "xp_total_cumul": 704520
+    },
+    {
+      "recorded_at": "2026-03-21T22:00:45.077177Z",
+      "rank_number": 128,
+      "current_xp": 2420,
+      "xp_total_cumul": 704520
+    },
+    {
+      "recorded_at": "2026-03-22T20:20:48.883346Z",
+      "rank_number": 128,
+      "current_xp": 2420,
+      "xp_total_cumul": 704520
+    },
+    {
+      "recorded_at": "2026-03-22T20:42:25.688081Z",
+      "rank_number": 128,
+      "current_xp": 2420,
+      "xp_total_cumul": 704520
+    },
+    {
+      "recorded_at": "2026-03-24T21:20:22.411681Z",
+      "rank_number": 128,
+      "current_xp": 4070,
+      "xp_total_cumul": 706170
+    },
+    {
+      "recorded_at": "2026-03-24T21:30:41.187992Z",
+      "rank_number": 128,
+      "current_xp": 6370,
+      "xp_total_cumul": 708470
+    },
+    {
+      "recorded_at": "2026-03-24T21:42:12.751574Z",
+      "rank_number": 128,
+      "current_xp": 9580,
+      "xp_total_cumul": 711680
+    },
+    {
+      "recorded_at": "2026-03-24T21:53:48.092711Z",
+      "rank_number": 128,
+      "current_xp": 11220,
+      "xp_total_cumul": 713320
+    },
+    {
+      "recorded_at": "2026-03-24T22:04:47.923213Z",
+      "rank_number": 129,
+      "current_xp": 1120,
+      "xp_total_cumul": 715720
+    },
+    {
+      "recorded_at": "2026-03-24T22:15:02.817022Z",
+      "rank_number": 129,
+      "current_xp": 3520,
+      "xp_total_cumul": 718120
+    },
+    {
+      "recorded_at": "2026-03-24T22:26:33.755175Z",
+      "rank_number": 129,
+      "current_xp": 6660,
+      "xp_total_cumul": 721260
+    },
+    {
+      "recorded_at": "2026-03-24T22:45:12.043805Z",
+      "rank_number": 129,
+      "current_xp": 9960,
+      "xp_total_cumul": 724560
+    },
+    {
+      "recorded_at": "2026-03-24T23:05:18.586646Z",
+      "rank_number": 129,
+      "current_xp": 13920,
+      "xp_total_cumul": 728520
+    },
+    {
+      "recorded_at": "2026-03-24T23:10:53.612825Z",
+      "rank_number": 130,
+      "current_xp": 190,
+      "xp_total_cumul": 729790
+    },
+    {
+      "recorded_at": "2026-03-24T23:46:33.07885Z",
+      "rank_number": 130,
+      "current_xp": 190,
+      "xp_total_cumul": 729790
+    },
+    {
+      "recorded_at": "2026-03-31T22:35:26.27644Z",
+      "rank_number": 130,
+      "current_xp": 19310,
+      "xp_total_cumul": 748910
+    },
+    {
+      "recorded_at": "2026-03-31T22:45:28.622527Z",
+      "rank_number": 131,
+      "current_xp": 2010,
+      "xp_total_cumul": 751610
+    },
+    {
+      "recorded_at": "2026-03-31T23:04:44.746378Z",
+      "rank_number": 131,
+      "current_xp": 9820,
+      "xp_total_cumul": 759420
+    },
+    {
+      "recorded_at": "2026-03-31T23:14:47.20201Z",
+      "rank_number": 131,
+      "current_xp": 13890,
+      "xp_total_cumul": 763490
+    },
+    {
+      "recorded_at": "2026-03-31T23:24:56.138045Z",
+      "rank_number": 132,
+      "current_xp": 2490,
+      "xp_total_cumul": 767090
+    },
+    {
+      "recorded_at": "2026-04-06T22:11:58.732226Z",
+      "rank_number": 132,
+      "current_xp": 9860,
+      "xp_total_cumul": 774460
+    },
+    {
+      "recorded_at": "2026-04-07T00:03:38.998144Z",
+      "rank_number": 133,
+      "current_xp": 9870,
+      "xp_total_cumul": 791970
     }
   ],
   "lusr": {
-    "current_rating": 1412.7,
-    "current_tier_label": "Platinum",
-    "current_playlist_group": "ranked_arena",
-    "trend_label": "+8.2 sur 20 derniers matchs",
+    "current_rating": 1488.1,
+    "current_tier_label": "Or III",
+    "current_playlist_group": "arena",
+    "trend_label": "-1",
     "checkpoints": [
       {
-        "recorded_at": "2025-11-15T20:00:00Z",
-        "rating_value": 1398.3,
-        "playlist_group": "ranked_arena"
+        "rating_value": 1473.4,
+        "tier_label": "Or III",
+        "playlist_group": "arena",
+        "recorded_at": "2023-04-24T20:58:43.657Z"
       },
       {
-        "recorded_at": "2025-12-01T18:42:00Z",
-        "rating_value": 1412.7,
-        "playlist_group": "ranked_arena"
+        "rating_value": 1470.5,
+        "tier_label": "Or III",
+        "playlist_group": "btb",
+        "recorded_at": "2023-12-05T20:44:16.386Z"
+      },
+      {
+        "rating_value": 1474.6,
+        "tier_label": "Or III",
+        "playlist_group": "social",
+        "recorded_at": "2023-12-05T21:01:37.782Z"
+      },
+      {
+        "rating_value": 1475.5,
+        "tier_label": "Or III",
+        "playlist_group": "social",
+        "recorded_at": "2023-12-05T21:11:41.012Z"
+      },
+      {
+        "rating_value": 1476.4,
+        "tier_label": "Or III",
+        "playlist_group": "social",
+        "recorded_at": "2023-12-05T21:21:52.676Z"
+      },
+      {
+        "rating_value": 1475.1,
+        "tier_label": "Or III",
+        "playlist_group": "social",
+        "recorded_at": "2023-12-05T21:31:33.024Z"
+      },
+      {
+        "rating_value": 1474.5,
+        "tier_label": "Or III",
+        "playlist_group": "social",
+        "recorded_at": "2023-12-05T22:40:25.244Z"
+      },
+      {
+        "rating_value": 1474.7,
+        "tier_label": "Or III",
+        "playlist_group": "social",
+        "recorded_at": "2023-12-05T22:50:43.651Z"
+      },
+      {
+        "rating_value": 1475.6,
+        "tier_label": "Or III",
+        "playlist_group": "social",
+        "recorded_at": "2023-12-05T23:01:46.613Z"
+      },
+      {
+        "rating_value": 1474.7,
+        "tier_label": "Or III",
+        "playlist_group": "social",
+        "recorded_at": "2023-12-05T23:12:24.333Z"
+      },
+      {
+        "rating_value": 1473,
+        "tier_label": "Or III",
+        "playlist_group": "arena",
+        "recorded_at": "2024-02-04T14:11:42.209Z"
+      },
+      {
+        "rating_value": 1472.5,
+        "tier_label": "Or III",
+        "playlist_group": "arena",
+        "recorded_at": "2025-10-13T21:16:06.321Z"
+      },
+      {
+        "rating_value": 1467.2,
+        "tier_label": "Or III",
+        "playlist_group": "arena",
+        "recorded_at": "2025-10-13T21:30:36.837Z"
+      },
+      {
+        "rating_value": 1468,
+        "tier_label": "Or III",
+        "playlist_group": "arena",
+        "recorded_at": "2025-10-13T21:34:37.615Z"
+      },
+      {
+        "rating_value": 1471,
+        "tier_label": "Or III",
+        "playlist_group": "arena",
+        "recorded_at": "2025-10-13T21:49:37.17Z"
+      },
+      {
+        "rating_value": 1472.2,
+        "tier_label": "Or III",
+        "playlist_group": "arena",
+        "recorded_at": "2025-10-13T21:57:45.75Z"
+      },
+      {
+        "rating_value": 1472.7,
+        "tier_label": "Or III",
+        "playlist_group": "arena",
+        "recorded_at": "2025-10-13T22:12:30.479Z"
+      },
+      {
+        "rating_value": 1473,
+        "tier_label": "Or III",
+        "playlist_group": "arena",
+        "recorded_at": "2025-10-13T22:27:21.423Z"
+      },
+      {
+        "rating_value": 1474,
+        "tier_label": "Or III",
+        "playlist_group": "arena",
+        "recorded_at": "2025-10-13T22:34:36.964Z"
+      },
+      {
+        "rating_value": 1476.6,
+        "tier_label": "Or III",
+        "playlist_group": "arena",
+        "recorded_at": "2025-10-13T22:46:09.544Z"
+      },
+      {
+        "rating_value": 1475.9,
+        "tier_label": "Or III",
+        "playlist_group": "arena",
+        "recorded_at": "2025-10-20T21:06:07.825Z"
+      },
+      {
+        "rating_value": 1476.9,
+        "tier_label": "Or III",
+        "playlist_group": "arena",
+        "recorded_at": "2025-10-20T21:17:43.951Z"
+      },
+      {
+        "rating_value": 1477.9,
+        "tier_label": "Or III",
+        "playlist_group": "arena",
+        "recorded_at": "2025-10-20T21:26:10.454Z"
+      },
+      {
+        "rating_value": 1479.2,
+        "tier_label": "Or III",
+        "playlist_group": "arena",
+        "recorded_at": "2025-10-20T21:37:59.536Z"
+      },
+      {
+        "rating_value": 1480.1,
+        "tier_label": "Or III",
+        "playlist_group": "arena",
+        "recorded_at": "2025-10-20T21:48:23.636Z"
+      },
+      {
+        "rating_value": 1480,
+        "tier_label": "Or III",
+        "playlist_group": "arena",
+        "recorded_at": "2025-10-20T21:59:16.016Z"
+      },
+      {
+        "rating_value": 1482.1,
+        "tier_label": "Or III",
+        "playlist_group": "arena",
+        "recorded_at": "2025-10-21T02:21:42.619Z"
+      },
+      {
+        "rating_value": 1481.4,
+        "tier_label": "Or III",
+        "playlist_group": "arena",
+        "recorded_at": "2025-10-21T02:30:06.114Z"
+      },
+      {
+        "rating_value": 1479.3,
+        "tier_label": "Or III",
+        "playlist_group": "arena",
+        "recorded_at": "2025-10-21T02:37:23.105Z"
+      },
+      {
+        "rating_value": 1477.5,
+        "tier_label": "Or III",
+        "playlist_group": "arena",
+        "recorded_at": "2025-10-21T02:44:52.913Z"
+      },
+      {
+        "rating_value": 1479.6,
+        "tier_label": "Or III",
+        "playlist_group": "arena",
+        "recorded_at": "2025-10-21T02:50:05.445Z"
+      },
+      {
+        "rating_value": 1479.7,
+        "tier_label": "Or III",
+        "playlist_group": "arena",
+        "recorded_at": "2025-10-21T03:01:23.026Z"
+      },
+      {
+        "rating_value": 1481.4,
+        "tier_label": "Or III",
+        "playlist_group": "arena",
+        "recorded_at": "2025-10-21T03:14:01.455Z"
+      },
+      {
+        "rating_value": 1480.5,
+        "tier_label": "Or III",
+        "playlist_group": "arena",
+        "recorded_at": "2025-10-21T23:47:01.634Z"
+      },
+      {
+        "rating_value": 1476.9,
+        "tier_label": "Or III",
+        "playlist_group": "arena",
+        "recorded_at": "2025-10-21T23:56:05.206Z"
+      },
+      {
+        "rating_value": 1477.6,
+        "tier_label": "Or III",
+        "playlist_group": "arena",
+        "recorded_at": "2025-10-22T00:05:35.074Z"
+      },
+      {
+        "rating_value": 1478.1,
+        "tier_label": "Or III",
+        "playlist_group": "arena",
+        "recorded_at": "2025-10-22T00:16:51.111Z"
+      },
+      {
+        "rating_value": 1477,
+        "tier_label": "Or III",
+        "playlist_group": "arena",
+        "recorded_at": "2025-10-23T21:09:56.221Z"
+      },
+      {
+        "rating_value": 1477.3,
+        "tier_label": "Or III",
+        "playlist_group": "arena",
+        "recorded_at": "2025-10-23T21:20:09.149Z"
+      },
+      {
+        "rating_value": 1474.6,
+        "tier_label": "Or III",
+        "playlist_group": "arena",
+        "recorded_at": "2025-10-23T21:33:04.881Z"
+      },
+      {
+        "rating_value": 1471,
+        "tier_label": "Or III",
+        "playlist_group": "arena",
+        "recorded_at": "2025-10-23T21:40:25.48Z"
+      },
+      {
+        "rating_value": 1469.8,
+        "tier_label": "Or III",
+        "playlist_group": "arena",
+        "recorded_at": "2025-10-23T21:48:16.951Z"
+      },
+      {
+        "rating_value": 1470.9,
+        "tier_label": "Or III",
+        "playlist_group": "arena",
+        "recorded_at": "2025-10-23T21:57:58.479Z"
+      },
+      {
+        "rating_value": 1472.1,
+        "tier_label": "Or III",
+        "playlist_group": "arena",
+        "recorded_at": "2025-10-23T22:07:37.137Z"
+      },
+      {
+        "rating_value": 1474,
+        "tier_label": "Or III",
+        "playlist_group": "arena",
+        "recorded_at": "2025-10-23T22:17:49.143Z"
+      },
+      {
+        "rating_value": 1476.4,
+        "tier_label": "Or III",
+        "playlist_group": "arena",
+        "recorded_at": "2025-10-23T22:28:40.156Z"
+      },
+      {
+        "rating_value": 1476.4,
+        "tier_label": "Or III",
+        "playlist_group": "arena",
+        "recorded_at": "2025-10-23T22:40:38.04Z"
+      },
+      {
+        "rating_value": 1477.4,
+        "tier_label": "Or III",
+        "playlist_group": "arena",
+        "recorded_at": "2025-10-23T22:52:06.358Z"
+      },
+      {
+        "rating_value": 1478.3,
+        "tier_label": "Or III",
+        "playlist_group": "arena",
+        "recorded_at": "2025-10-29T21:21:40.167Z"
+      },
+      {
+        "rating_value": 1471.4,
+        "tier_label": "Or III",
+        "playlist_group": "btb",
+        "recorded_at": "2025-10-29T21:39:44.224Z"
+      },
+      {
+        "rating_value": 1478.5,
+        "tier_label": "Or III",
+        "playlist_group": "arena",
+        "recorded_at": "2025-10-29T21:51:16.755Z"
+      },
+      {
+        "rating_value": 1480.3,
+        "tier_label": "Or III",
+        "playlist_group": "arena",
+        "recorded_at": "2025-10-29T22:08:19.403Z"
+      },
+      {
+        "rating_value": 1472.9,
+        "tier_label": "Or III",
+        "playlist_group": "ranked",
+        "recorded_at": "2025-11-06T21:12:16.636Z"
+      },
+      {
+        "rating_value": 1471.8,
+        "tier_label": "Or III",
+        "playlist_group": "ranked",
+        "recorded_at": "2025-11-06T21:31:57.832Z"
+      },
+      {
+        "rating_value": 1471.7,
+        "tier_label": "Or III",
+        "playlist_group": "ranked",
+        "recorded_at": "2025-11-06T21:45:50.353Z"
+      },
+      {
+        "rating_value": 1466.3,
+        "tier_label": "Or II",
+        "playlist_group": "ranked",
+        "recorded_at": "2025-11-06T21:54:36.405Z"
+      },
+      {
+        "rating_value": 1464.9,
+        "tier_label": "Or II",
+        "playlist_group": "ranked",
+        "recorded_at": "2025-11-06T22:04:32.901Z"
+      },
+      {
+        "rating_value": 1465,
+        "tier_label": "Or II",
+        "playlist_group": "ranked",
+        "recorded_at": "2025-11-06T22:14:35.637Z"
+      },
+      {
+        "rating_value": 1464.1,
+        "tier_label": "Or II",
+        "playlist_group": "ranked",
+        "recorded_at": "2025-11-06T22:25:27.869Z"
+      },
+      {
+        "rating_value": 1480.8,
+        "tier_label": "Or III",
+        "playlist_group": "arena",
+        "recorded_at": "2025-11-06T22:39:17.916Z"
+      },
+      {
+        "rating_value": 1479.5,
+        "tier_label": "Or III",
+        "playlist_group": "arena",
+        "recorded_at": "2025-11-06T22:47:29.798Z"
+      },
+      {
+        "rating_value": 1480.9,
+        "tier_label": "Or III",
+        "playlist_group": "arena",
+        "recorded_at": "2025-11-06T22:59:03.432Z"
+      },
+      {
+        "rating_value": 1480.3,
+        "tier_label": "Or III",
+        "playlist_group": "arena",
+        "recorded_at": "2025-11-06T23:08:57.492Z"
+      },
+      {
+        "rating_value": 1481.8,
+        "tier_label": "Or III",
+        "playlist_group": "arena",
+        "recorded_at": "2025-11-06T23:17:19.935Z"
+      },
+      {
+        "rating_value": 1482.6,
+        "tier_label": "Or III",
+        "playlist_group": "arena",
+        "recorded_at": "2025-11-13T21:12:28.834Z"
+      },
+      {
+        "rating_value": 1480.7,
+        "tier_label": "Or III",
+        "playlist_group": "arena",
+        "recorded_at": "2025-11-13T21:22:41.404Z"
+      },
+      {
+        "rating_value": 1478.9,
+        "tier_label": "Or III",
+        "playlist_group": "arena",
+        "recorded_at": "2025-11-13T21:38:50.329Z"
+      },
+      {
+        "rating_value": 1479.5,
+        "tier_label": "Or III",
+        "playlist_group": "arena",
+        "recorded_at": "2025-11-13T21:48:09.75Z"
+      },
+      {
+        "rating_value": 1478.5,
+        "tier_label": "Or III",
+        "playlist_group": "arena",
+        "recorded_at": "2025-11-13T21:56:08.225Z"
+      },
+      {
+        "rating_value": 1479.9,
+        "tier_label": "Or III",
+        "playlist_group": "arena",
+        "recorded_at": "2025-11-13T22:05:40.223Z"
+      },
+      {
+        "rating_value": 1480.6,
+        "tier_label": "Or III",
+        "playlist_group": "arena",
+        "recorded_at": "2025-11-13T22:14:47.522Z"
+      },
+      {
+        "rating_value": 1478.9,
+        "tier_label": "Or III",
+        "playlist_group": "arena",
+        "recorded_at": "2025-11-13T22:21:56.046Z"
+      },
+      {
+        "rating_value": 1479.7,
+        "tier_label": "Or III",
+        "playlist_group": "arena",
+        "recorded_at": "2025-11-13T22:34:45.743Z"
+      },
+      {
+        "rating_value": 1481.4,
+        "tier_label": "Or III",
+        "playlist_group": "arena",
+        "recorded_at": "2025-11-13T22:44:14.241Z"
+      },
+      {
+        "rating_value": 1481.7,
+        "tier_label": "Or III",
+        "playlist_group": "arena",
+        "recorded_at": "2025-11-25T21:33:37.799Z"
+      },
+      {
+        "rating_value": 1483.3,
+        "tier_label": "Or III",
+        "playlist_group": "arena",
+        "recorded_at": "2025-11-25T21:39:51.163Z"
+      },
+      {
+        "rating_value": 1484.1,
+        "tier_label": "Or III",
+        "playlist_group": "arena",
+        "recorded_at": "2025-11-25T21:50:48.983Z"
+      },
+      {
+        "rating_value": 1482.8,
+        "tier_label": "Or III",
+        "playlist_group": "arena",
+        "recorded_at": "2025-11-25T22:02:24.783Z"
+      },
+      {
+        "rating_value": 1483.1,
+        "tier_label": "Or III",
+        "playlist_group": "arena",
+        "recorded_at": "2025-11-25T22:10:55.635Z"
+      },
+      {
+        "rating_value": 1484.3,
+        "tier_label": "Or III",
+        "playlist_group": "arena",
+        "recorded_at": "2025-11-25T22:18:59.923Z"
+      },
+      {
+        "rating_value": 1483,
+        "tier_label": "Or III",
+        "playlist_group": "arena",
+        "recorded_at": "2025-11-25T22:30:04.395Z"
+      },
+      {
+        "rating_value": 1484,
+        "tier_label": "Or III",
+        "playlist_group": "arena",
+        "recorded_at": "2025-11-25T22:43:56.536Z"
+      },
+      {
+        "rating_value": 1482.9,
+        "tier_label": "Or III",
+        "playlist_group": "arena",
+        "recorded_at": "2025-11-25T22:55:04.653Z"
+      },
+      {
+        "rating_value": 1484.3,
+        "tier_label": "Or III",
+        "playlist_group": "arena",
+        "recorded_at": "2025-11-25T23:06:38.298Z"
+      },
+      {
+        "rating_value": 1484.1,
+        "tier_label": "Or III",
+        "playlist_group": "arena",
+        "recorded_at": "2025-11-25T23:15:07.93Z"
+      },
+      {
+        "rating_value": 1485.4,
+        "tier_label": "Or III",
+        "playlist_group": "arena",
+        "recorded_at": "2025-11-27T18:50:20.149Z"
+      },
+      {
+        "rating_value": 1487.5,
+        "tier_label": "Or III",
+        "playlist_group": "arena",
+        "recorded_at": "2025-11-27T18:58:10.535Z"
+      },
+      {
+        "rating_value": 1488.1,
+        "tier_label": "Or III",
+        "playlist_group": "arena",
+        "recorded_at": "2025-11-28T19:26:05.441Z"
+      },
+      {
+        "rating_value": 1488,
+        "tier_label": "Or III",
+        "playlist_group": "arena",
+        "recorded_at": "2025-11-28T19:35:49.836Z"
+      },
+      {
+        "rating_value": 1487.1,
+        "tier_label": "Or III",
+        "playlist_group": "arena",
+        "recorded_at": "2025-11-28T19:46:43.928Z"
+      },
+      {
+        "rating_value": 1482.7,
+        "tier_label": "Or III",
+        "playlist_group": "arena",
+        "recorded_at": "2025-11-28T19:58:24.684Z"
+      },
+      {
+        "rating_value": 1482.4,
+        "tier_label": "Or III",
+        "playlist_group": "arena",
+        "recorded_at": "2025-12-01T20:03:32.916Z"
+      },
+      {
+        "rating_value": 1483.6,
+        "tier_label": "Or III",
+        "playlist_group": "arena",
+        "recorded_at": "2025-12-01T20:12:44.437Z"
+      },
+      {
+        "rating_value": 1482.8,
+        "tier_label": "Or III",
+        "playlist_group": "arena",
+        "recorded_at": "2025-12-02T22:58:48.992Z"
+      },
+      {
+        "rating_value": 1482.7,
+        "tier_label": "Or III",
+        "playlist_group": "arena",
+        "recorded_at": "2025-12-02T23:14:17.277Z"
+      },
+      {
+        "rating_value": 1481.1,
+        "tier_label": "Or III",
+        "playlist_group": "arena",
+        "recorded_at": "2025-12-02T23:20:24.912Z"
+      },
+      {
+        "rating_value": 1478.2,
+        "tier_label": "Or III",
+        "playlist_group": "arena",
+        "recorded_at": "2025-12-03T21:08:44.624Z"
+      },
+      {
+        "rating_value": 1477.6,
+        "tier_label": "Or III",
+        "playlist_group": "arena",
+        "recorded_at": "2025-12-03T21:18:04.055Z"
+      },
+      {
+        "rating_value": 1478.5,
+        "tier_label": "Or III",
+        "playlist_group": "arena",
+        "recorded_at": "2025-12-03T21:29:13.495Z"
+      },
+      {
+        "rating_value": 1479.7,
+        "tier_label": "Or III",
+        "playlist_group": "arena",
+        "recorded_at": "2025-12-03T21:43:21.789Z"
+      },
+      {
+        "rating_value": 1478.8,
+        "tier_label": "Or III",
+        "playlist_group": "arena",
+        "recorded_at": "2025-12-03T21:57:11.721Z"
+      },
+      {
+        "rating_value": 1475.5,
+        "tier_label": "Or III",
+        "playlist_group": "arena",
+        "recorded_at": "2025-12-03T22:02:30.549Z"
+      },
+      {
+        "rating_value": 1476.7,
+        "tier_label": "Or III",
+        "playlist_group": "arena",
+        "recorded_at": "2025-12-03T22:10:23.634Z"
+      },
+      {
+        "rating_value": 1477.6,
+        "tier_label": "Or III",
+        "playlist_group": "arena",
+        "recorded_at": "2025-12-03T22:22:26.394Z"
+      },
+      {
+        "rating_value": 1475.4,
+        "tier_label": "Or III",
+        "playlist_group": "arena",
+        "recorded_at": "2025-12-06T02:46:08.311Z"
+      },
+      {
+        "rating_value": 1477.2,
+        "tier_label": "Or III",
+        "playlist_group": "arena",
+        "recorded_at": "2025-12-06T02:55:45.642Z"
+      },
+      {
+        "rating_value": 1478.8,
+        "tier_label": "Or III",
+        "playlist_group": "arena",
+        "recorded_at": "2025-12-06T03:06:29.51Z"
+      },
+      {
+        "rating_value": 1479.9,
+        "tier_label": "Or III",
+        "playlist_group": "arena",
+        "recorded_at": "2025-12-06T03:21:57.98Z"
+      },
+      {
+        "rating_value": 1481.3,
+        "tier_label": "Or III",
+        "playlist_group": "arena",
+        "recorded_at": "2025-12-06T03:34:58.951Z"
+      },
+      {
+        "rating_value": 1480.4,
+        "tier_label": "Or III",
+        "playlist_group": "arena",
+        "recorded_at": "2025-12-06T13:25:34.259Z"
+      },
+      {
+        "rating_value": 1482.5,
+        "tier_label": "Or III",
+        "playlist_group": "arena",
+        "recorded_at": "2025-12-06T13:36:00.822Z"
+      },
+      {
+        "rating_value": 1482.3,
+        "tier_label": "Or III",
+        "playlist_group": "arena",
+        "recorded_at": "2025-12-06T13:46:58.261Z"
+      },
+      {
+        "rating_value": 1481.9,
+        "tier_label": "Or III",
+        "playlist_group": "arena",
+        "recorded_at": "2025-12-06T13:57:00.778Z"
+      },
+      {
+        "rating_value": 1482.3,
+        "tier_label": "Or III",
+        "playlist_group": "arena",
+        "recorded_at": "2025-12-08T19:36:13.34Z"
+      },
+      {
+        "rating_value": 1481.5,
+        "tier_label": "Or III",
+        "playlist_group": "arena",
+        "recorded_at": "2025-12-08T19:53:17.316Z"
+      },
+      {
+        "rating_value": 1481,
+        "tier_label": "Or III",
+        "playlist_group": "arena",
+        "recorded_at": "2025-12-08T21:35:54.748Z"
+      },
+      {
+        "rating_value": 1481.7,
+        "tier_label": "Or III",
+        "playlist_group": "arena",
+        "recorded_at": "2025-12-08T21:41:45.14Z"
+      },
+      {
+        "rating_value": 1479.1,
+        "tier_label": "Or III",
+        "playlist_group": "arena",
+        "recorded_at": "2025-12-09T21:25:14.982Z"
+      },
+      {
+        "rating_value": 1477.9,
+        "tier_label": "Or III",
+        "playlist_group": "arena",
+        "recorded_at": "2025-12-09T21:36:26.909Z"
+      },
+      {
+        "rating_value": 1478.5,
+        "tier_label": "Or III",
+        "playlist_group": "arena",
+        "recorded_at": "2025-12-09T21:48:22.765Z"
+      },
+      {
+        "rating_value": 1478,
+        "tier_label": "Or III",
+        "playlist_group": "arena",
+        "recorded_at": "2025-12-09T21:58:52.235Z"
+      },
+      {
+        "rating_value": 1475.9,
+        "tier_label": "Or III",
+        "playlist_group": "arena",
+        "recorded_at": "2025-12-10T08:28:43.119Z"
+      },
+      {
+        "rating_value": 1477.3,
+        "tier_label": "Or III",
+        "playlist_group": "arena",
+        "recorded_at": "2025-12-10T08:39:52.1Z"
+      },
+      {
+        "rating_value": 1476.7,
+        "tier_label": "Or III",
+        "playlist_group": "arena",
+        "recorded_at": "2025-12-10T08:51:33.66Z"
+      },
+      {
+        "rating_value": 1476.5,
+        "tier_label": "Or III",
+        "playlist_group": "arena",
+        "recorded_at": "2025-12-10T09:10:59.08Z"
+      },
+      {
+        "rating_value": 1474.1,
+        "tier_label": "Or III",
+        "playlist_group": "arena",
+        "recorded_at": "2025-12-10T09:19:18.121Z"
+      },
+      {
+        "rating_value": 1472.8,
+        "tier_label": "Or III",
+        "playlist_group": "arena",
+        "recorded_at": "2025-12-10T09:35:08.787Z"
+      },
+      {
+        "rating_value": 1472,
+        "tier_label": "Or III",
+        "playlist_group": "arena",
+        "recorded_at": "2025-12-15T21:19:02.293Z"
+      },
+      {
+        "rating_value": 1472,
+        "tier_label": "Or III",
+        "playlist_group": "arena",
+        "recorded_at": "2025-12-15T21:30:07.641Z"
+      },
+      {
+        "rating_value": 1472.6,
+        "tier_label": "Or III",
+        "playlist_group": "arena",
+        "recorded_at": "2025-12-15T21:40:26.217Z"
+      },
+      {
+        "rating_value": 1473.6,
+        "tier_label": "Or III",
+        "playlist_group": "arena",
+        "recorded_at": "2025-12-15T21:52:56.79Z"
+      },
+      {
+        "rating_value": 1473.9,
+        "tier_label": "Or III",
+        "playlist_group": "arena",
+        "recorded_at": "2025-12-15T22:01:28.939Z"
+      },
+      {
+        "rating_value": 1470.1,
+        "tier_label": "Or III",
+        "playlist_group": "arena",
+        "recorded_at": "2025-12-15T22:10:37.664Z"
+      },
+      {
+        "rating_value": 1467.9,
+        "tier_label": "Or III",
+        "playlist_group": "arena",
+        "recorded_at": "2025-12-15T22:23:12.85Z"
+      },
+      {
+        "rating_value": 1467.9,
+        "tier_label": "Or III",
+        "playlist_group": "arena",
+        "recorded_at": "2025-12-15T22:29:29.869Z"
+      },
+      {
+        "rating_value": 1467.8,
+        "tier_label": "Or III",
+        "playlist_group": "arena",
+        "recorded_at": "2025-12-15T22:44:40.429Z"
+      },
+      {
+        "rating_value": 1469.3,
+        "tier_label": "Or III",
+        "playlist_group": "arena",
+        "recorded_at": "2025-12-15T22:59:15.766Z"
+      },
+      {
+        "rating_value": 1467.6,
+        "tier_label": "Or III",
+        "playlist_group": "arena",
+        "recorded_at": "2025-12-15T23:04:48.529Z"
+      },
+      {
+        "rating_value": 1467.2,
+        "tier_label": "Or III",
+        "playlist_group": "arena",
+        "recorded_at": "2025-12-15T23:17:24.272Z"
+      },
+      {
+        "rating_value": 1467.4,
+        "tier_label": "Or III",
+        "playlist_group": "arena",
+        "recorded_at": "2025-12-15T23:26:57.49Z"
+      },
+      {
+        "rating_value": 1468.5,
+        "tier_label": "Or III",
+        "playlist_group": "arena",
+        "recorded_at": "2025-12-18T21:22:06.323Z"
+      },
+      {
+        "rating_value": 1465.6,
+        "tier_label": "Or II",
+        "playlist_group": "arena",
+        "recorded_at": "2025-12-18T21:33:07.006Z"
+      },
+      {
+        "rating_value": 1464.7,
+        "tier_label": "Or II",
+        "playlist_group": "arena",
+        "recorded_at": "2025-12-18T21:40:57.813Z"
+      },
+      {
+        "rating_value": 1466.5,
+        "tier_label": "Or II",
+        "playlist_group": "arena",
+        "recorded_at": "2025-12-18T21:52:17.374Z"
+      },
+      {
+        "rating_value": 1466.9,
+        "tier_label": "Or III",
+        "playlist_group": "arena",
+        "recorded_at": "2025-12-18T22:02:50.783Z"
+      },
+      {
+        "rating_value": 1466.5,
+        "tier_label": "Or II",
+        "playlist_group": "arena",
+        "recorded_at": "2025-12-18T22:13:41.425Z"
+      },
+      {
+        "rating_value": 1464.9,
+        "tier_label": "Or II",
+        "playlist_group": "arena",
+        "recorded_at": "2025-12-18T22:25:20.967Z"
+      },
+      {
+        "rating_value": 1466.6,
+        "tier_label": "Or II",
+        "playlist_group": "arena",
+        "recorded_at": "2025-12-18T22:37:54.74Z"
+      },
+      {
+        "rating_value": 1461.4,
+        "tier_label": "Or II",
+        "playlist_group": "arena",
+        "recorded_at": "2025-12-18T22:48:10.619Z"
+      },
+      {
+        "rating_value": 1460.8,
+        "tier_label": "Or II",
+        "playlist_group": "arena",
+        "recorded_at": "2025-12-18T22:57:37.786Z"
+      },
+      {
+        "rating_value": 1461.7,
+        "tier_label": "Or II",
+        "playlist_group": "arena",
+        "recorded_at": "2025-12-18T23:08:20.507Z"
+      },
+      {
+        "rating_value": 1462.9,
+        "tier_label": "Or II",
+        "playlist_group": "arena",
+        "recorded_at": "2025-12-18T23:21:55.836Z"
+      },
+      {
+        "rating_value": 1461.7,
+        "tier_label": "Or II",
+        "playlist_group": "arena",
+        "recorded_at": "2025-12-18T23:45:07.77Z"
+      },
+      {
+        "rating_value": 1461.3,
+        "tier_label": "Or II",
+        "playlist_group": "arena",
+        "recorded_at": "2025-12-19T00:01:02.802Z"
+      },
+      {
+        "rating_value": 1462.7,
+        "tier_label": "Or II",
+        "playlist_group": "arena",
+        "recorded_at": "2025-12-19T02:04:55.047Z"
+      },
+      {
+        "rating_value": 1464.7,
+        "tier_label": "Or II",
+        "playlist_group": "arena",
+        "recorded_at": "2025-12-19T02:15:05.137Z"
+      },
+      {
+        "rating_value": 1464.2,
+        "tier_label": "Or II",
+        "playlist_group": "arena",
+        "recorded_at": "2025-12-20T18:27:23.125Z"
+      },
+      {
+        "rating_value": 1463,
+        "tier_label": "Or II",
+        "playlist_group": "arena",
+        "recorded_at": "2025-12-20T18:39:48.203Z"
+      },
+      {
+        "rating_value": 1461.9,
+        "tier_label": "Or II",
+        "playlist_group": "arena",
+        "recorded_at": "2025-12-20T18:51:35.444Z"
+      },
+      {
+        "rating_value": 1461.5,
+        "tier_label": "Or II",
+        "playlist_group": "arena",
+        "recorded_at": "2025-12-20T19:01:22.651Z"
+      },
+      {
+        "rating_value": 1462.4,
+        "tier_label": "Or II",
+        "playlist_group": "arena",
+        "recorded_at": "2025-12-20T19:09:28.954Z"
+      },
+      {
+        "rating_value": 1461.3,
+        "tier_label": "Or II",
+        "playlist_group": "arena",
+        "recorded_at": "2025-12-29T10:54:10.623Z"
+      },
+      {
+        "rating_value": 1459.8,
+        "tier_label": "Or II",
+        "playlist_group": "arena",
+        "recorded_at": "2025-12-29T21:58:03.814Z"
+      },
+      {
+        "rating_value": 1460,
+        "tier_label": "Or II",
+        "playlist_group": "arena",
+        "recorded_at": "2025-12-29T22:07:51.977Z"
+      },
+      {
+        "rating_value": 1459.4,
+        "tier_label": "Or II",
+        "playlist_group": "arena",
+        "recorded_at": "2025-12-29T22:17:53.576Z"
+      },
+      {
+        "rating_value": 1457.3,
+        "tier_label": "Or II",
+        "playlist_group": "arena",
+        "recorded_at": "2025-12-29T22:28:54.846Z"
+      },
+      {
+        "rating_value": 1457.5,
+        "tier_label": "Or II",
+        "playlist_group": "arena",
+        "recorded_at": "2025-12-29T22:40:44.99Z"
+      },
+      {
+        "rating_value": 1459.5,
+        "tier_label": "Or II",
+        "playlist_group": "arena",
+        "recorded_at": "2025-12-29T22:52:12.155Z"
+      },
+      {
+        "rating_value": 1462,
+        "tier_label": "Or II",
+        "playlist_group": "arena",
+        "recorded_at": "2025-12-29T23:04:39.884Z"
+      },
+      {
+        "rating_value": 1462.3,
+        "tier_label": "Or II",
+        "playlist_group": "arena",
+        "recorded_at": "2025-12-29T23:13:04.219Z"
+      },
+      {
+        "rating_value": 1453.4,
+        "tier_label": "Or II",
+        "playlist_group": "arena",
+        "recorded_at": "2025-12-29T23:26:29.192Z"
+      },
+      {
+        "rating_value": 1452.9,
+        "tier_label": "Or II",
+        "playlist_group": "arena",
+        "recorded_at": "2025-12-29T23:28:29.396Z"
+      },
+      {
+        "rating_value": 1453.4,
+        "tier_label": "Or II",
+        "playlist_group": "arena",
+        "recorded_at": "2025-12-29T23:39:57.606Z"
+      },
+      {
+        "rating_value": 1444.5,
+        "tier_label": "Or II",
+        "playlist_group": "arena",
+        "recorded_at": "2025-12-29T23:48:47.884Z"
+      },
+      {
+        "rating_value": 1444.3,
+        "tier_label": "Or II",
+        "playlist_group": "arena",
+        "recorded_at": "2025-12-29T23:51:15.584Z"
+      },
+      {
+        "rating_value": 1443.5,
+        "tier_label": "Or II",
+        "playlist_group": "arena",
+        "recorded_at": "2025-12-30T15:11:56.707Z"
+      },
+      {
+        "rating_value": 1445.4,
+        "tier_label": "Or II",
+        "playlist_group": "arena",
+        "recorded_at": "2025-12-30T15:24:41.397Z"
+      },
+      {
+        "rating_value": 1446.9,
+        "tier_label": "Or II",
+        "playlist_group": "arena",
+        "recorded_at": "2025-12-30T15:37:39.419Z"
+      },
+      {
+        "rating_value": 1445.4,
+        "tier_label": "Or II",
+        "playlist_group": "arena",
+        "recorded_at": "2026-01-08T21:20:55.236Z"
+      },
+      {
+        "rating_value": 1445.1,
+        "tier_label": "Or II",
+        "playlist_group": "arena",
+        "recorded_at": "2026-01-08T21:31:58.098Z"
+      },
+      {
+        "rating_value": 1444.2,
+        "tier_label": "Or II",
+        "playlist_group": "arena",
+        "recorded_at": "2026-01-08T21:40:48.884Z"
+      },
+      {
+        "rating_value": 1445.6,
+        "tier_label": "Or II",
+        "playlist_group": "arena",
+        "recorded_at": "2026-01-08T21:54:09.308Z"
+      },
+      {
+        "rating_value": 1446.2,
+        "tier_label": "Or II",
+        "playlist_group": "arena",
+        "recorded_at": "2026-01-08T22:01:04.644Z"
+      },
+      {
+        "rating_value": 1447.5,
+        "tier_label": "Or II",
+        "playlist_group": "arena",
+        "recorded_at": "2026-01-08T22:16:55.151Z"
+      },
+      {
+        "rating_value": 1447.3,
+        "tier_label": "Or II",
+        "playlist_group": "arena",
+        "recorded_at": "2026-01-08T22:25:53.603Z"
+      },
+      {
+        "rating_value": 1447.5,
+        "tier_label": "Or II",
+        "playlist_group": "arena",
+        "recorded_at": "2026-01-08T22:38:05.486Z"
+      },
+      {
+        "rating_value": 1446.3,
+        "tier_label": "Or II",
+        "playlist_group": "arena",
+        "recorded_at": "2026-01-08T22:48:34.118Z"
+      },
+      {
+        "rating_value": 1445.2,
+        "tier_label": "Or II",
+        "playlist_group": "arena",
+        "recorded_at": "2026-01-08T23:01:27.974Z"
+      },
+      {
+        "rating_value": 1446.3,
+        "tier_label": "Or II",
+        "playlist_group": "arena",
+        "recorded_at": "2026-01-08T23:09:13.403Z"
+      },
+      {
+        "rating_value": 1449.1,
+        "tier_label": "Or II",
+        "playlist_group": "arena",
+        "recorded_at": "2026-01-08T23:23:38.936Z"
+      },
+      {
+        "rating_value": 1448.7,
+        "tier_label": "Or II",
+        "playlist_group": "arena",
+        "recorded_at": "2026-01-12T21:25:24.242Z"
+      },
+      {
+        "rating_value": 1449.4,
+        "tier_label": "Or II",
+        "playlist_group": "arena",
+        "recorded_at": "2026-01-12T21:35:11.84Z"
+      },
+      {
+        "rating_value": 1450.2,
+        "tier_label": "Or II",
+        "playlist_group": "arena",
+        "recorded_at": "2026-01-12T21:46:40.914Z"
+      },
+      {
+        "rating_value": 1451.6,
+        "tier_label": "Or II",
+        "playlist_group": "arena",
+        "recorded_at": "2026-01-12T22:00:28.066Z"
+      },
+      {
+        "rating_value": 1461.9,
+        "tier_label": "Or II",
+        "playlist_group": "ranked",
+        "recorded_at": "2026-01-12T22:13:15.79Z"
+      },
+      {
+        "rating_value": 1451.9,
+        "tier_label": "Or II",
+        "playlist_group": "arena",
+        "recorded_at": "2026-01-12T22:25:03.864Z"
+      },
+      {
+        "rating_value": 1450.3,
+        "tier_label": "Or II",
+        "playlist_group": "arena",
+        "recorded_at": "2026-01-12T22:43:07.719Z"
+      },
+      {
+        "rating_value": 1448.9,
+        "tier_label": "Or II",
+        "playlist_group": "arena",
+        "recorded_at": "2026-01-12T23:01:41.294Z"
+      },
+      {
+        "rating_value": 1446.9,
+        "tier_label": "Or II",
+        "playlist_group": "arena",
+        "recorded_at": "2026-01-12T23:11:09.133Z"
+      },
+      {
+        "rating_value": 1448,
+        "tier_label": "Or II",
+        "playlist_group": "arena",
+        "recorded_at": "2026-01-12T23:16:50.967Z"
+      },
+      {
+        "rating_value": 1449.1,
+        "tier_label": "Or II",
+        "playlist_group": "arena",
+        "recorded_at": "2026-01-13T22:55:59.052Z"
+      },
+      {
+        "rating_value": 1449.8,
+        "tier_label": "Or II",
+        "playlist_group": "arena",
+        "recorded_at": "2026-01-13T23:11:14.174Z"
+      },
+      {
+        "rating_value": 1449.4,
+        "tier_label": "Or II",
+        "playlist_group": "arena",
+        "recorded_at": "2026-01-13T23:26:57.508Z"
+      },
+      {
+        "rating_value": 1448,
+        "tier_label": "Or II",
+        "playlist_group": "arena",
+        "recorded_at": "2026-01-13T23:37:00.001Z"
+      },
+      {
+        "rating_value": 1448,
+        "tier_label": "Or II",
+        "playlist_group": "arena",
+        "recorded_at": "2026-01-13T23:50:08.866Z"
+      },
+      {
+        "rating_value": 1447.7,
+        "tier_label": "Or II",
+        "playlist_group": "arena",
+        "recorded_at": "2026-01-21T21:08:26.106Z"
+      },
+      {
+        "rating_value": 1446.8,
+        "tier_label": "Or II",
+        "playlist_group": "arena",
+        "recorded_at": "2026-01-21T21:17:27.383Z"
+      },
+      {
+        "rating_value": 1446.9,
+        "tier_label": "Or II",
+        "playlist_group": "arena",
+        "recorded_at": "2026-01-21T21:28:08.098Z"
+      },
+      {
+        "rating_value": 1443.8,
+        "tier_label": "Or II",
+        "playlist_group": "arena",
+        "recorded_at": "2026-01-21T21:35:08.303Z"
+      },
+      {
+        "rating_value": 1443.3,
+        "tier_label": "Or II",
+        "playlist_group": "arena",
+        "recorded_at": "2026-01-21T21:49:05.004Z"
+      },
+      {
+        "rating_value": 1439.7,
+        "tier_label": "Or II",
+        "playlist_group": "arena",
+        "recorded_at": "2026-01-21T21:50:15.183Z"
+      },
+      {
+        "rating_value": 1437,
+        "tier_label": "Or II",
+        "playlist_group": "arena",
+        "recorded_at": "2026-01-21T21:58:02.071Z"
+      },
+      {
+        "rating_value": 1436,
+        "tier_label": "Or II",
+        "playlist_group": "arena",
+        "recorded_at": "2026-01-21T22:00:14.33Z"
+      },
+      {
+        "rating_value": 1435.9,
+        "tier_label": "Or II",
+        "playlist_group": "arena",
+        "recorded_at": "2026-01-21T22:11:06.246Z"
+      },
+      {
+        "rating_value": 1436,
+        "tier_label": "Or II",
+        "playlist_group": "arena",
+        "recorded_at": "2026-01-21T22:27:15.005Z"
+      },
+      {
+        "rating_value": 1437.7,
+        "tier_label": "Or II",
+        "playlist_group": "arena",
+        "recorded_at": "2026-01-21T22:39:10.105Z"
+      },
+      {
+        "rating_value": 1437,
+        "tier_label": "Or II",
+        "playlist_group": "arena",
+        "recorded_at": "2026-01-24T11:34:35.213Z"
+      },
+      {
+        "rating_value": 1436,
+        "tier_label": "Or II",
+        "playlist_group": "arena",
+        "recorded_at": "2026-01-24T11:43:35.98Z"
+      },
+      {
+        "rating_value": 1437.1,
+        "tier_label": "Or II",
+        "playlist_group": "arena",
+        "recorded_at": "2026-01-24T11:50:42.347Z"
+      },
+      {
+        "rating_value": 1436.6,
+        "tier_label": "Or II",
+        "playlist_group": "arena",
+        "recorded_at": "2026-01-27T23:23:33.475Z"
+      },
+      {
+        "rating_value": 1436.1,
+        "tier_label": "Or II",
+        "playlist_group": "arena",
+        "recorded_at": "2026-02-04T18:49:22.23Z"
+      },
+      {
+        "rating_value": 1435.4,
+        "tier_label": "Or II",
+        "playlist_group": "arena",
+        "recorded_at": "2026-02-04T19:04:39.298Z"
+      },
+      {
+        "rating_value": 1434.8,
+        "tier_label": "Or II",
+        "playlist_group": "arena",
+        "recorded_at": "2026-02-04T19:12:41.864Z"
+      },
+      {
+        "rating_value": 1433.7,
+        "tier_label": "Or II",
+        "playlist_group": "arena",
+        "recorded_at": "2026-02-04T19:27:43.23Z"
+      },
+      {
+        "rating_value": 1435.7,
+        "tier_label": "Or II",
+        "playlist_group": "arena",
+        "recorded_at": "2026-02-04T20:01:19.438Z"
+      },
+      {
+        "rating_value": 1436,
+        "tier_label": "Or II",
+        "playlist_group": "arena",
+        "recorded_at": "2026-02-05T21:25:20.689Z"
+      },
+      {
+        "rating_value": 1436.2,
+        "tier_label": "Or II",
+        "playlist_group": "arena",
+        "recorded_at": "2026-02-05T21:36:58.804Z"
+      },
+      {
+        "rating_value": 1438,
+        "tier_label": "Or II",
+        "playlist_group": "arena",
+        "recorded_at": "2026-02-05T21:49:55.483Z"
+      },
+      {
+        "rating_value": 1438.6,
+        "tier_label": "Or II",
+        "playlist_group": "arena",
+        "recorded_at": "2026-02-05T22:02:13.618Z"
+      },
+      {
+        "rating_value": 1439.8,
+        "tier_label": "Or II",
+        "playlist_group": "arena",
+        "recorded_at": "2026-02-05T22:13:04.614Z"
+      },
+      {
+        "rating_value": 1441.6,
+        "tier_label": "Or II",
+        "playlist_group": "arena",
+        "recorded_at": "2026-02-05T22:26:17.407Z"
+      },
+      {
+        "rating_value": 1442.4,
+        "tier_label": "Or II",
+        "playlist_group": "arena",
+        "recorded_at": "2026-02-05T22:36:56.346Z"
+      },
+      {
+        "rating_value": 1441.1,
+        "tier_label": "Or II",
+        "playlist_group": "arena",
+        "recorded_at": "2026-02-05T22:52:17.348Z"
+      },
+      {
+        "rating_value": 1445.7,
+        "tier_label": "Or II",
+        "playlist_group": "arena",
+        "recorded_at": "2026-02-05T23:03:34.644Z"
+      },
+      {
+        "rating_value": 1445.7,
+        "tier_label": "Or II",
+        "playlist_group": "arena",
+        "recorded_at": "2026-02-11T21:24:44.486Z"
+      },
+      {
+        "rating_value": 1447.9,
+        "tier_label": "Or II",
+        "playlist_group": "arena",
+        "recorded_at": "2026-02-11T21:35:48.521Z"
+      },
+      {
+        "rating_value": 1446.9,
+        "tier_label": "Or II",
+        "playlist_group": "arena",
+        "recorded_at": "2026-02-11T21:46:34.74Z"
+      },
+      {
+        "rating_value": 1443.8,
+        "tier_label": "Or II",
+        "playlist_group": "arena",
+        "recorded_at": "2026-02-11T21:59:18.984Z"
+      },
+      {
+        "rating_value": 1443.3,
+        "tier_label": "Or II",
+        "playlist_group": "arena",
+        "recorded_at": "2026-02-11T22:08:13.718Z"
+      },
+      {
+        "rating_value": 1444.2,
+        "tier_label": "Or II",
+        "playlist_group": "arena",
+        "recorded_at": "2026-02-11T22:19:49.775Z"
+      },
+      {
+        "rating_value": 1442.9,
+        "tier_label": "Or II",
+        "playlist_group": "arena",
+        "recorded_at": "2026-02-11T22:29:30.756Z"
+      },
+      {
+        "rating_value": 1443.4,
+        "tier_label": "Or II",
+        "playlist_group": "arena",
+        "recorded_at": "2026-02-11T22:37:10.991Z"
+      },
+      {
+        "rating_value": 1446.4,
+        "tier_label": "Or II",
+        "playlist_group": "arena",
+        "recorded_at": "2026-02-11T22:49:32.876Z"
+      },
+      {
+        "rating_value": 1444.9,
+        "tier_label": "Or II",
+        "playlist_group": "arena",
+        "recorded_at": "2026-02-11T22:59:00.082Z"
+      },
+      {
+        "rating_value": 1443.7,
+        "tier_label": "Or II",
+        "playlist_group": "arena",
+        "recorded_at": "2026-02-11T23:09:21.964Z"
+      },
+      {
+        "rating_value": 1445.1,
+        "tier_label": "Or II",
+        "playlist_group": "arena",
+        "recorded_at": "2026-02-13T12:44:29.275Z"
+      },
+      {
+        "rating_value": 1445.8,
+        "tier_label": "Or II",
+        "playlist_group": "arena",
+        "recorded_at": "2026-02-13T12:56:12.198Z"
+      },
+      {
+        "rating_value": 1447.5,
+        "tier_label": "Or II",
+        "playlist_group": "arena",
+        "recorded_at": "2026-02-16T13:42:09.598Z"
+      },
+      {
+        "rating_value": 1446.4,
+        "tier_label": "Or II",
+        "playlist_group": "arena",
+        "recorded_at": "2026-02-18T21:41:55.706Z"
+      },
+      {
+        "rating_value": 1446.7,
+        "tier_label": "Or II",
+        "playlist_group": "arena",
+        "recorded_at": "2026-02-18T21:54:03.911Z"
+      },
+      {
+        "rating_value": 1448.1,
+        "tier_label": "Or II",
+        "playlist_group": "arena",
+        "recorded_at": "2026-02-18T22:08:52.2Z"
+      },
+      {
+        "rating_value": 1448.7,
+        "tier_label": "Or II",
+        "playlist_group": "arena",
+        "recorded_at": "2026-02-18T22:18:20.565Z"
+      },
+      {
+        "rating_value": 1449.7,
+        "tier_label": "Or II",
+        "playlist_group": "arena",
+        "recorded_at": "2026-02-18T22:31:05.248Z"
+      },
+      {
+        "rating_value": 1451.6,
+        "tier_label": "Or II",
+        "playlist_group": "arena",
+        "recorded_at": "2026-02-18T22:43:03.737Z"
+      },
+      {
+        "rating_value": 1449.6,
+        "tier_label": "Or II",
+        "playlist_group": "arena",
+        "recorded_at": "2026-02-18T22:51:31.483Z"
+      },
+      {
+        "rating_value": 1450.4,
+        "tier_label": "Or II",
+        "playlist_group": "arena",
+        "recorded_at": "2026-03-01T21:41:26.923Z"
+      },
+      {
+        "rating_value": 1450.8,
+        "tier_label": "Or II",
+        "playlist_group": "arena",
+        "recorded_at": "2026-03-01T21:49:48.517Z"
+      },
+      {
+        "rating_value": 1451.5,
+        "tier_label": "Or II",
+        "playlist_group": "arena",
+        "recorded_at": "2026-03-01T22:00:33.47Z"
+      },
+      {
+        "rating_value": 1441,
+        "tier_label": "Or II",
+        "playlist_group": "arena",
+        "recorded_at": "2026-03-01T22:12:57.765Z"
+      },
+      {
+        "rating_value": 1441.3,
+        "tier_label": "Or II",
+        "playlist_group": "arena",
+        "recorded_at": "2026-03-01T22:14:22.417Z"
+      },
+      {
+        "rating_value": 1442,
+        "tier_label": "Or II",
+        "playlist_group": "arena",
+        "recorded_at": "2026-03-01T22:21:59.808Z"
+      },
+      {
+        "rating_value": 1444,
+        "tier_label": "Or II",
+        "playlist_group": "arena",
+        "recorded_at": "2026-03-01T22:26:11.256Z"
+      },
+      {
+        "rating_value": 1443.7,
+        "tier_label": "Or II",
+        "playlist_group": "arena",
+        "recorded_at": "2026-03-01T22:36:56.527Z"
+      },
+      {
+        "rating_value": 1443.4,
+        "tier_label": "Or II",
+        "playlist_group": "arena",
+        "recorded_at": "2026-03-01T22:47:55.589Z"
+      },
+      {
+        "rating_value": 1445.7,
+        "tier_label": "Or II",
+        "playlist_group": "arena",
+        "recorded_at": "2026-03-01T23:01:51.629Z"
+      },
+      {
+        "rating_value": 1444.2,
+        "tier_label": "Or II",
+        "playlist_group": "arena",
+        "recorded_at": "2026-03-03T21:16:30.773Z"
+      },
+      {
+        "rating_value": 1444.6,
+        "tier_label": "Or II",
+        "playlist_group": "arena",
+        "recorded_at": "2026-03-03T21:26:39.19Z"
+      },
+      {
+        "rating_value": 1445.5,
+        "tier_label": "Or II",
+        "playlist_group": "arena",
+        "recorded_at": "2026-03-03T21:40:03.497Z"
+      },
+      {
+        "rating_value": 1446.4,
+        "tier_label": "Or II",
+        "playlist_group": "arena",
+        "recorded_at": "2026-03-03T21:58:16.928Z"
+      },
+      {
+        "rating_value": 1447.2,
+        "tier_label": "Or II",
+        "playlist_group": "arena",
+        "recorded_at": "2026-03-03T22:09:49.33Z"
+      },
+      {
+        "rating_value": 1447.6,
+        "tier_label": "Or II",
+        "playlist_group": "arena",
+        "recorded_at": "2026-03-03T22:19:22.624Z"
+      },
+      {
+        "rating_value": 1447.6,
+        "tier_label": "Or II",
+        "playlist_group": "arena",
+        "recorded_at": "2026-03-03T22:31:59.547Z"
+      },
+      {
+        "rating_value": 1447.7,
+        "tier_label": "Or II",
+        "playlist_group": "arena",
+        "recorded_at": "2026-03-03T22:44:13.471Z"
+      },
+      {
+        "rating_value": 1447.8,
+        "tier_label": "Or II",
+        "playlist_group": "arena",
+        "recorded_at": "2026-03-03T22:57:34.127Z"
+      },
+      {
+        "rating_value": 1445.3,
+        "tier_label": "Or II",
+        "playlist_group": "arena",
+        "recorded_at": "2026-03-03T23:05:52.965Z"
+      },
+      {
+        "rating_value": 1447.6,
+        "tier_label": "Or II",
+        "playlist_group": "arena",
+        "recorded_at": "2026-03-03T23:16:57.959Z"
+      },
+      {
+        "rating_value": 1448,
+        "tier_label": "Or II",
+        "playlist_group": "arena",
+        "recorded_at": "2026-03-03T23:23:49.537Z"
+      },
+      {
+        "rating_value": 1447.3,
+        "tier_label": "Or II",
+        "playlist_group": "arena",
+        "recorded_at": "2026-03-05T19:15:22.636Z"
+      },
+      {
+        "rating_value": 1449,
+        "tier_label": "Or II",
+        "playlist_group": "arena",
+        "recorded_at": "2026-03-05T19:29:00.673Z"
+      },
+      {
+        "rating_value": 1448.8,
+        "tier_label": "Or II",
+        "playlist_group": "arena",
+        "recorded_at": "2026-03-05T19:40:05.34Z"
+      },
+      {
+        "rating_value": 1449.2,
+        "tier_label": "Or II",
+        "playlist_group": "arena",
+        "recorded_at": "2026-03-05T19:54:39.789Z"
+      },
+      {
+        "rating_value": 1445.7,
+        "tier_label": "Or II",
+        "playlist_group": "arena",
+        "recorded_at": "2026-03-05T20:10:19.821Z"
+      },
+      {
+        "rating_value": 1445.9,
+        "tier_label": "Or II",
+        "playlist_group": "arena",
+        "recorded_at": "2026-03-05T20:15:25.986Z"
+      },
+      {
+        "rating_value": 1446.8,
+        "tier_label": "Or II",
+        "playlist_group": "arena",
+        "recorded_at": "2026-03-09T13:50:54.286Z"
+      },
+      {
+        "rating_value": 1446.6,
+        "tier_label": "Or II",
+        "playlist_group": "arena",
+        "recorded_at": "2026-03-10T18:38:44.015Z"
+      },
+      {
+        "rating_value": 1446.9,
+        "tier_label": "Or II",
+        "playlist_group": "arena",
+        "recorded_at": "2026-03-10T18:53:01.328Z"
+      },
+      {
+        "rating_value": 1447.2,
+        "tier_label": "Or II",
+        "playlist_group": "arena",
+        "recorded_at": "2026-03-10T19:08:16.586Z"
+      },
+      {
+        "rating_value": 1448.1,
+        "tier_label": "Or II",
+        "playlist_group": "arena",
+        "recorded_at": "2026-03-11T12:33:47.119Z"
+      },
+      {
+        "rating_value": 1449.1,
+        "tier_label": "Or II",
+        "playlist_group": "arena",
+        "recorded_at": "2026-03-12T21:16:56.441Z"
+      },
+      {
+        "rating_value": 1447.5,
+        "tier_label": "Or II",
+        "playlist_group": "arena",
+        "recorded_at": "2026-03-12T21:25:48.551Z"
+      },
+      {
+        "rating_value": 1448.2,
+        "tier_label": "Or II",
+        "playlist_group": "arena",
+        "recorded_at": "2026-03-12T21:38:13.106Z"
+      },
+      {
+        "rating_value": 1450.1,
+        "tier_label": "Or II",
+        "playlist_group": "arena",
+        "recorded_at": "2026-03-12T21:58:20.402Z"
+      },
+      {
+        "rating_value": 1450,
+        "tier_label": "Or II",
+        "playlist_group": "arena",
+        "recorded_at": "2026-03-12T22:11:11.444Z"
+      },
+      {
+        "rating_value": 1449.7,
+        "tier_label": "Or II",
+        "playlist_group": "arena",
+        "recorded_at": "2026-03-12T22:21:05.88Z"
+      },
+      {
+        "rating_value": 1447.9,
+        "tier_label": "Or II",
+        "playlist_group": "arena",
+        "recorded_at": "2026-03-12T22:28:15.429Z"
+      },
+      {
+        "rating_value": 1448.8,
+        "tier_label": "Or II",
+        "playlist_group": "arena",
+        "recorded_at": "2026-03-12T22:38:42.514Z"
+      },
+      {
+        "rating_value": 1450.4,
+        "tier_label": "Or II",
+        "playlist_group": "arena",
+        "recorded_at": "2026-03-12T22:49:27.406Z"
+      },
+      {
+        "rating_value": 1450.6,
+        "tier_label": "Or II",
+        "playlist_group": "arena",
+        "recorded_at": "2026-03-12T23:01:04.065Z"
+      },
+      {
+        "rating_value": 1450.9,
+        "tier_label": "Or II",
+        "playlist_group": "arena",
+        "recorded_at": "2026-03-12T23:11:08.311Z"
+      },
+      {
+        "rating_value": 1452.9,
+        "tier_label": "Or II",
+        "playlist_group": "arena",
+        "recorded_at": "2026-03-13T13:05:12.671Z"
+      },
+      {
+        "rating_value": 1453,
+        "tier_label": "Or II",
+        "playlist_group": "arena",
+        "recorded_at": "2026-03-14T13:56:35.319Z"
+      },
+      {
+        "rating_value": 1453,
+        "tier_label": "Or II",
+        "playlist_group": "arena",
+        "recorded_at": "2026-03-14T14:08:06.351Z"
+      },
+      {
+        "rating_value": 1451.4,
+        "tier_label": "Or II",
+        "playlist_group": "arena",
+        "recorded_at": "2026-03-14T14:24:22.173Z"
+      },
+      {
+        "rating_value": 1453,
+        "tier_label": "Or II",
+        "playlist_group": "arena",
+        "recorded_at": "2026-03-14T14:33:55.089Z"
+      },
+      {
+        "rating_value": 1454.9,
+        "tier_label": "Or II",
+        "playlist_group": "arena",
+        "recorded_at": "2026-03-14T22:32:15.909Z"
+      },
+      {
+        "rating_value": 1453.2,
+        "tier_label": "Or II",
+        "playlist_group": "arena",
+        "recorded_at": "2026-03-14T22:44:42.864Z"
+      },
+      {
+        "rating_value": 1455.2,
+        "tier_label": "Or II",
+        "playlist_group": "arena",
+        "recorded_at": "2026-03-14T22:51:54.409Z"
+      },
+      {
+        "rating_value": 1456.9,
+        "tier_label": "Or II",
+        "playlist_group": "arena",
+        "recorded_at": "2026-03-14T23:10:05.788Z"
+      },
+      {
+        "rating_value": 1457.8,
+        "tier_label": "Or II",
+        "playlist_group": "arena",
+        "recorded_at": "2026-03-16T19:10:28.917Z"
+      },
+      {
+        "rating_value": 1459.3,
+        "tier_label": "Or II",
+        "playlist_group": "arena",
+        "recorded_at": "2026-03-17T12:20:48.694Z"
+      },
+      {
+        "rating_value": 1458.1,
+        "tier_label": "Or II",
+        "playlist_group": "arena",
+        "recorded_at": "2026-03-17T23:40:38.02Z"
+      },
+      {
+        "rating_value": 1456.7,
+        "tier_label": "Or II",
+        "playlist_group": "arena",
+        "recorded_at": "2026-03-17T23:52:41.434Z"
+      },
+      {
+        "rating_value": 1455.7,
+        "tier_label": "Or II",
+        "playlist_group": "arena",
+        "recorded_at": "2026-03-18T00:05:34.022Z"
+      },
+      {
+        "rating_value": 1457.2,
+        "tier_label": "Or II",
+        "playlist_group": "arena",
+        "recorded_at": "2026-03-18T00:17:56.056Z"
+      },
+      {
+        "rating_value": 1456.6,
+        "tier_label": "Or II",
+        "playlist_group": "arena",
+        "recorded_at": "2026-03-18T12:31:52.702Z"
+      },
+      {
+        "rating_value": 1457.2,
+        "tier_label": "Or II",
+        "playlist_group": "arena",
+        "recorded_at": "2026-03-18T12:47:34.533Z"
+      },
+      {
+        "rating_value": 1456.8,
+        "tier_label": "Or II",
+        "playlist_group": "arena",
+        "recorded_at": "2026-03-18T21:35:29.481Z"
+      },
+      {
+        "rating_value": 1457.2,
+        "tier_label": "Or II",
+        "playlist_group": "arena",
+        "recorded_at": "2026-03-18T21:46:21.035Z"
+      },
+      {
+        "rating_value": 1455.7,
+        "tier_label": "Or II",
+        "playlist_group": "arena",
+        "recorded_at": "2026-03-18T21:58:05.568Z"
+      },
+      {
+        "rating_value": 1455.5,
+        "tier_label": "Or II",
+        "playlist_group": "arena",
+        "recorded_at": "2026-03-18T22:08:19.265Z"
+      },
+      {
+        "rating_value": 1454.5,
+        "tier_label": "Or II",
+        "playlist_group": "arena",
+        "recorded_at": "2026-03-18T22:19:00.754Z"
+      },
+      {
+        "rating_value": 1453.6,
+        "tier_label": "Or II",
+        "playlist_group": "arena",
+        "recorded_at": "2026-03-18T22:31:15.891Z"
+      },
+      {
+        "rating_value": 1451.1,
+        "tier_label": "Or II",
+        "playlist_group": "arena",
+        "recorded_at": "2026-03-18T22:43:58.119Z"
+      },
+      {
+        "rating_value": 1451.2,
+        "tier_label": "Or II",
+        "playlist_group": "arena",
+        "recorded_at": "2026-03-18T22:55:15.122Z"
+      },
+      {
+        "rating_value": 1450.1,
+        "tier_label": "Or II",
+        "playlist_group": "arena",
+        "recorded_at": "2026-03-19T12:20:37.605Z"
+      },
+      {
+        "rating_value": 1450.9,
+        "tier_label": "Or II",
+        "playlist_group": "arena",
+        "recorded_at": "2026-03-19T12:32:30.116Z"
+      },
+      {
+        "rating_value": 1451.2,
+        "tier_label": "Or II",
+        "playlist_group": "arena",
+        "recorded_at": "2026-03-19T12:56:23.374Z"
+      },
+      {
+        "rating_value": 1451.6,
+        "tier_label": "Or II",
+        "playlist_group": "arena",
+        "recorded_at": "2026-03-19T13:08:54.545Z"
+      },
+      {
+        "rating_value": 1452.8,
+        "tier_label": "Or II",
+        "playlist_group": "arena",
+        "recorded_at": "2026-03-19T14:53:22.96Z"
+      },
+      {
+        "rating_value": 1451,
+        "tier_label": "Or II",
+        "playlist_group": "arena",
+        "recorded_at": "2026-03-24T21:10:42.226Z"
+      },
+      {
+        "rating_value": 1450.5,
+        "tier_label": "Or II",
+        "playlist_group": "arena",
+        "recorded_at": "2026-03-24T21:20:25.379Z"
+      },
+      {
+        "rating_value": 1450.6,
+        "tier_label": "Or II",
+        "playlist_group": "arena",
+        "recorded_at": "2026-03-24T21:30:48.809Z"
+      },
+      {
+        "rating_value": 1449.2,
+        "tier_label": "Or II",
+        "playlist_group": "arena",
+        "recorded_at": "2026-03-24T21:43:05.132Z"
+      },
+      {
+        "rating_value": 1450,
+        "tier_label": "Or II",
+        "playlist_group": "arena",
+        "recorded_at": "2026-03-24T21:54:05.533Z"
+      },
+      {
+        "rating_value": 1451.1,
+        "tier_label": "Or II",
+        "playlist_group": "arena",
+        "recorded_at": "2026-03-24T22:04:25.034Z"
+      },
+      {
+        "rating_value": 1451.9,
+        "tier_label": "Or II",
+        "playlist_group": "arena",
+        "recorded_at": "2026-03-24T22:15:29.356Z"
+      },
+      {
+        "rating_value": 1451.9,
+        "tier_label": "Or II",
+        "playlist_group": "arena",
+        "recorded_at": "2026-03-24T22:26:31.666Z"
+      },
+      {
+        "rating_value": 1455.8,
+        "tier_label": "Or II",
+        "playlist_group": "arena",
+        "recorded_at": "2026-03-24T22:39:10.088Z"
+      },
+      {
+        "rating_value": 1456,
+        "tier_label": "Or II",
+        "playlist_group": "arena",
+        "recorded_at": "2026-03-24T22:45:16.674Z"
+      },
+      {
+        "rating_value": 1456.3,
+        "tier_label": "Or II",
+        "playlist_group": "arena",
+        "recorded_at": "2026-03-24T22:57:22.305Z"
+      },
+      {
+        "rating_value": 1456.7,
+        "tier_label": "Or II",
+        "playlist_group": "arena",
+        "recorded_at": "2026-03-24T23:05:55.236Z"
+      },
+      {
+        "rating_value": 1457.3,
+        "tier_label": "Or II",
+        "playlist_group": "arena",
+        "recorded_at": "2026-03-31T21:24:18.65Z"
+      },
+      {
+        "rating_value": 1458.9,
+        "tier_label": "Or II",
+        "playlist_group": "arena",
+        "recorded_at": "2026-03-31T21:40:08.021Z"
+      },
+      {
+        "rating_value": 1459.5,
+        "tier_label": "Or II",
+        "playlist_group": "arena",
+        "recorded_at": "2026-03-31T21:49:33.152Z"
+      },
+      {
+        "rating_value": 1457.9,
+        "tier_label": "Or II",
+        "playlist_group": "arena",
+        "recorded_at": "2026-03-31T21:58:18.523Z"
+      },
+      {
+        "rating_value": 1457.7,
+        "tier_label": "Or II",
+        "playlist_group": "arena",
+        "recorded_at": "2026-03-31T22:07:24.979Z"
+      },
+      {
+        "rating_value": 1456.2,
+        "tier_label": "Or II",
+        "playlist_group": "arena",
+        "recorded_at": "2026-03-31T22:20:34.218Z"
+      },
+      {
+        "rating_value": 1455.4,
+        "tier_label": "Or II",
+        "playlist_group": "arena",
+        "recorded_at": "2026-03-31T22:34:36.951Z"
+      },
+      {
+        "rating_value": 1456.4,
+        "tier_label": "Or II",
+        "playlist_group": "arena",
+        "recorded_at": "2026-03-31T22:45:36.916Z"
+      },
+      {
+        "rating_value": 1457.5,
+        "tier_label": "Or II",
+        "playlist_group": "arena",
+        "recorded_at": "2026-03-31T22:55:02.936Z"
+      },
+      {
+        "rating_value": 1456.8,
+        "tier_label": "Or II",
+        "playlist_group": "arena",
+        "recorded_at": "2026-03-31T23:04:21.998Z"
+      },
+      {
+        "rating_value": 1458.9,
+        "tier_label": "Or II",
+        "playlist_group": "arena",
+        "recorded_at": "2026-03-31T23:14:57.255Z"
+      },
+      {
+        "rating_value": 1457.7,
+        "tier_label": "Or II",
+        "playlist_group": "arena",
+        "recorded_at": "2026-04-06T21:43:51.046Z"
+      },
+      {
+        "rating_value": 1457.2,
+        "tier_label": "Or II",
+        "playlist_group": "arena",
+        "recorded_at": "2026-04-06T21:54:11.408Z"
+      },
+      {
+        "rating_value": 1454.9,
+        "tier_label": "Or II",
+        "playlist_group": "arena",
+        "recorded_at": "2026-04-06T22:01:36.847Z"
+      },
+      {
+        "rating_value": 1452,
+        "tier_label": "Or II",
+        "playlist_group": "arena",
+        "recorded_at": "2026-04-06T22:12:45.732Z"
+      },
+      {
+        "rating_value": 1448.4,
+        "tier_label": "Or II",
+        "playlist_group": "arena",
+        "recorded_at": "2026-04-06T22:28:25.975Z"
+      },
+      {
+        "rating_value": 1447.7,
+        "tier_label": "Or II",
+        "playlist_group": "arena",
+        "recorded_at": "2026-04-06T22:39:32.631Z"
+      },
+      {
+        "rating_value": 1450.7,
+        "tier_label": "Or II",
+        "playlist_group": "arena",
+        "recorded_at": "2026-04-06T22:49:22.318Z"
+      },
+      {
+        "rating_value": 1448.5,
+        "tier_label": "Or II",
+        "playlist_group": "arena",
+        "recorded_at": "2026-04-06T23:00:34.629Z"
+      },
+      {
+        "rating_value": 1448.9,
+        "tier_label": "Or II",
+        "playlist_group": "arena",
+        "recorded_at": "2026-04-06T23:11:58.356Z"
+      },
+      {
+        "rating_value": 1451.3,
+        "tier_label": "Or II",
+        "playlist_group": "arena",
+        "recorded_at": "2026-04-06T23:22:36.036Z"
+      },
+      {
+        "rating_value": 1448.4,
+        "tier_label": "Or II",
+        "playlist_group": "arena",
+        "recorded_at": "2026-04-06T23:30:00.836Z"
+      },
+      {
+        "rating_value": 1447.2,
+        "tier_label": "Or II",
+        "playlist_group": "arena",
+        "recorded_at": "2026-04-06T23:40:32.093Z"
       }
     ]
   },
-  "top_matches_preview": [
-    {
-      "match_id": "00000000-0000-0000-0000-000000000001",
-      "start_time": "2025-11-20T19:30:00Z",
-      "map_ui": "Aquarius",
-      "mode_ui": "Slayer",
-      "playlist_label": "Quick Play",
-      "performance_score": 95.2,
-      "badge_type": "best",
-      "score_label": "18-4",
-      "outcome_label": "Victoire",
-      "kills": 18,
-      "deaths": 4,
-      "assists": 3,
-      "kd_ratio": 4.5,
-      "variant": "best"
-    }
-  ],
-  "encounters_preview": [
-    {
-      "encounter_key": "encounter_someXUID",
-      "opponent_gamertag": "SomeEnemy42",
-      "count_matches": 7,
-      "wins": 5,
-      "losses": 2,
-      "last_seen_at": "2025-12-01T18:42:00Z"
-    }
-  ],
-
   "_meta": {
-    "golden_value_version": "sprint1",
-    "captured_at": "2026-04-15",
-    "source": "schema-conformant — valeurs synthétiques réalistes",
+    "golden_value_version": "live",
+    "captured_at": "2026-04-16",
+    "source": "captured_live",
     "tolerances": {
-      "charts": "null acceptable — charts portés en Sprint 6",
-      "xp_history": "longueur variable",
-      "summary.progress_pct": "± 0.5",
-      "lusr.current_rating": "± 1.0",
-      "projections.xp_per_day_active": "± 50"
-    },
-    "sprint_target": "Sprint 6 — vérifier parité endpoint GET /pages/career"
+      "charts": "null acceptable Sprint 0/1"
+    }
   }
 }

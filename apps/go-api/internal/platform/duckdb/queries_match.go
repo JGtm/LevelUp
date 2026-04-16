@@ -11,13 +11,13 @@ SELECT
     SUM(CASE WHEN p2.team_id = p1.team_id THEN 1 ELSE 0 END) AS as_teammate,
     SUM(CASE WHEN p2.team_id != p1.team_id THEN 1 ELSE 0 END) AS as_enemy,
     AVG(p2.kda)                                               AS avg_kda
-FROM shared.match_participants p1
-JOIN shared.match_participants p2
+FROM match_participants p1
+JOIN match_participants p2
     ON p1.match_id = p2.match_id AND p2.xuid != p1.xuid
-LEFT JOIN shared.xuid_aliases xa ON p2.xuid = xa.xuid
+LEFT JOIN xuid_aliases xa ON p2.xuid = xa.xuid
 WHERE p1.xuid = ?
-GROUP BY p2.xuid, gamertag
-HAVING match_count >= 2
+GROUP BY p2.xuid, COALESCE(xa.gamertag, p2.xuid)
+HAVING COUNT(*) >= 2
 ORDER BY match_count DESC
 LIMIT 50`
 
@@ -28,7 +28,7 @@ SELECT
     p.xuid,
     COALESCE(xa.gamertag, p.xuid)  AS gamertag,
     p.team_id,
-    p.rank_in_team,
+    p.rank              AS rank_in_team,
     COALESCE(p.outcome, 0)         AS outcome,
     p.personal_score,
     COALESCE(p.kills, 0)           AS kills,
@@ -52,7 +52,7 @@ SELECT
 FROM shared.match_participants p
 LEFT JOIN shared.xuid_aliases xa ON p.xuid = xa.xuid
 WHERE p.match_id = ?
-ORDER BY p.team_id, p.rank_in_team NULLS LAST`
+ORDER BY p.team_id, p.rank NULLS LAST`
 
 // Q13 : Match view — métadonnées du match.
 // Paramètre : ? = match_id.
@@ -73,11 +73,11 @@ WHERE r.match_id = ?`
 // Paramètres : ?1 = xuid, ?2 = match_id.
 const Q14MatchMedals = `
 SELECT
-    me.medal_id,
+    me.medal_name_id,
     me.count,
-    COALESCE(cm.citation_label, me.medal_id) AS label
+    COALESCE(cm.citation_name_display, CAST(me.medal_name_id AS VARCHAR)) AS label
 FROM shared.medals_earned me
-LEFT JOIN shared.citation_mappings cm ON me.medal_id = cm.medal_id
+LEFT JOIN meta.citation_mappings cm ON me.medal_name_id = cm.medal_id
 WHERE me.xuid = ? AND me.match_id = ?
 ORDER BY me.count DESC`
 
@@ -100,7 +100,7 @@ SELECT
     COALESCE(wl.label_fr, wl.label_en, CAST(wk.weapon_id AS VARCHAR)) AS weapon_label,
     SUM(wk.kill_count) AS kills
 FROM shared.weapon_kills wk
-LEFT JOIN metadata.weapon_labels wl ON wk.weapon_id = wl.weapon_id
+LEFT JOIN meta.weapon_labels wl ON wk.weapon_id = wl.weapon_id
 WHERE wk.xuid = ? AND wk.match_id = ?
 GROUP BY wk.weapon_id, weapon_label
 ORDER BY kills DESC`
@@ -114,7 +114,7 @@ const Q17PlayerMatchStats = `
 SELECT
     COALESCE(p.outcome, 0)         AS outcome_code,
     p.team_id,
-    p.rank_in_team,
+    p.rank                         AS rank_in_team,
     COALESCE(p.kills, 0)           AS kills,
     COALESCE(p.deaths, 0)          AS deaths,
     COALESCE(p.assists, 0)         AS assists,

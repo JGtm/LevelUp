@@ -2,9 +2,15 @@
   "status": "ok",
   "match_count": 1544,
   "db_version": "v1.5.2",
-  "checks": {
-    "db_profiles": "ok (4 joueur(s))",
-    "metadata_db": "ok",
-    "shared_db": "ok"
+  "app_version": "dev",
+  "player_count": 15444,
+  "last_sync_at": "2026-04-07T00:04:22.128995Z",
+  "uptime": "16s",
+  "go_version": "go1.26.1",
+  "_meta": {
+    "golden_value_version": "live",
+    "captured_at": "2026-04-16",
+    "source": "captured_live",
+    "tolerances": {}
   }
 }

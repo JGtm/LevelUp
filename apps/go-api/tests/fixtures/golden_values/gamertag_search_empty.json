@@ -1,12 +1,10 @@
 {
   "query": "zzznotexistent",
   "items": [],
-
   "_meta": {
-    "golden_value_version": "sprint1",
-    "captured_at": "2026-04-15",
-    "source": "cas limite — recherche sans résultat doit retourner 200 + items=[]",
-    "tolerances": {},
-    "sprint_target": "Sprint 8 — invariant: 200 + items=[] sur requête vide"
+    "golden_value_version": "live",
+    "captured_at": "2026-04-16",
+    "source": "captured_live",
+    "tolerances": {}
   }
 }

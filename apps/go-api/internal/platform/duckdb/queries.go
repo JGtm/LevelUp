@@ -12,7 +12,7 @@
 package duckdb
 
 // Q1 : Bootstrap — nombre de matchs dans shared_matches_v2.
-const Q1MatchCount = `SELECT COUNT(*) FROM shared.match_registry`
+const Q1MatchCount = `SELECT COUNT(*) FROM match_registry`
 
 // Q2 : Bootstrap — version DuckDB embarquée.
 const Q2DBVersion = `SELECT version()`
@@ -27,8 +27,8 @@ SELECT
     xa.gamertag,
     xa.xuid,
     COUNT(DISTINCT mp.match_id) AS match_count
-FROM shared.xuid_aliases xa
-LEFT JOIN shared.match_participants mp ON xa.xuid = mp.xuid
+FROM xuid_aliases xa
+LEFT JOIN match_participants mp ON xa.xuid = mp.xuid
 WHERE xa.gamertag ILIKE '%' || ? || '%'
 GROUP BY xa.gamertag, xa.xuid
 ORDER BY match_count DESC, xa.gamertag ASC

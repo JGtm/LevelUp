@@ -194,7 +194,7 @@ func strPtr(s string) *string { return &s }
 // runMigrations applique les migrations DuckDB dans l'ordre :
 // metadata → shared → shared_pve.
 // Les migrations player sont gérées à l'ouverture de chaque player DB.
-func runMigrations(metaPath, sharedPath string, cfg *config.Config) error {
+func runMigrations(metaPath, sharedPath string, cfg *config.AppConfig) error {
 	// Ensure all step init() have been registered (side-effect imports).
 	_ = migration.All()
 

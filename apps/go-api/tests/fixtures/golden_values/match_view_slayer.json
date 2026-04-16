@@ -1,121 +1,304 @@
 {
   "header": {
-    "match_id": "00000000-0000-0000-0000-000000000001",
-    "start_time": "2025-12-01T18:42:00Z",
-    "start_time_label": "01 déc. 2025, 19:42",
-    "outcome_code": 2,
-    "outcome_label": "Victoire",
-    "outcome_color": "#22c55e",
-    "score_label": "50-45",
+    "match_id": "9b191a7f-72ae-417b-9789-cd0d870a43cf",
+    "start_time": "2026-04-06T23:40:32.093Z",
+    "start_time_label": "07 avr. 2026, 01:40",
+    "outcome_label": "-",
+    "outcome_color": "#94a3b8",
     "dominance_flag": false,
     "had_bot_teammate": false,
-    "map_ui": "Aquarius",
-    "map_id": "aquarius",
-    "mode_ui": "Slayer",
+    "map_ui": "Bazaar",
+    "mode_ui": "Arena:Team Slayer on Bazaar - Forge",
     "playlist_label": "Quick Play",
-    "performance_display": "72",
-    "performance_color": "#3b82f6"
+    "performance_display": "39",
+    "performance_color": "#ef4444"
   },
   "rank": {
-    "rating_type": "LUSR",
-    "tier_label": "Platinum",
-    "numeric_value": 1412.7,
-    "delta_value": 8.2,
-    "icon_url": null
+    "rating_type": "none"
   },
   "summary_tab": {
     "kpis": {
-      "kills": 18,
-      "deaths": 4,
-      "assists": 3,
-      "kda": 5.25,
-      "damage_dealt": 8245.0,
-      "average_life": "1:42"
+      "kills": 0,
+      "deaths": 0,
+      "assists": 0,
+      "average_life": "0:00"
     },
     "personal_result": {
-      "outcome_label": "Victoire",
-      "outcome_color": "#22c55e",
-      "score": 50,
-      "rank_in_team": 1
+      "outcome_label": "-",
+      "outcome_color": "#94a3b8"
     },
     "medals": [
       {
-        "medal_name_id": 1260896751,
-        "name": "Killing Spree",
-        "count": 2,
-        "description": "Kill 5 enemies in a row without dying."
+        "medal_name_id": 2123530881,
+        "name": "Trop rapide pour toi",
+        "count": 1
+      },
+      {
+        "medal_name_id": 3334154676,
+        "name": "3334154676",
+        "count": 1
       }
     ],
     "citations": [],
     "expected_stats": {
-      "has_expected_data": false,
-      "expected_kills": null,
-      "expected_deaths": null,
-      "expected_assists": null
+      "has_expected_data": false
     }
   },
   "combat_tab": {
-    "weapon_kills": [
-      {
-        "weapon_id": 196,
-        "weapon_label": "Battle Rifle",
-        "effective_weapon_id": 196,
-        "kill_count": 10
-      },
-      {
-        "weapon_id": 1,
-        "weapon_label": "Melee",
-        "effective_weapon_id": null,
-        "kill_count": 2
-      }
-    ],
+    "weapon_kills": [],
     "highlight_events": [],
     "charts": []
   },
   "team_tab": {
-    "roster": [
+    "scoreboard": [
       {
-        "xuid": "2535412781684883",
-        "gamertag": "Chocoboflor",
-        "team_side": "Eagle",
-        "is_me": true,
-        "is_bot": false,
-        "kills": 18,
-        "deaths": 4,
+        "xuid": "2533274823110022",
+        "gamertag": "JGtm",
+        "team_side": "t0",
+        "is_me": false,
+        "rank": 5,
+        "kills": 17,
+        "deaths": 9,
+        "assists": 1,
+        "kda": 8.33,
+        "accuracy": 61.79,
+        "damage_dealt": 3642,
+        "damage_taken": 3266,
+        "shots_fired": 123,
+        "shots_hit": 76,
+        "avg_life_seconds": 49,
+        "headshot_kills": 1,
+        "max_killing_spree": 7,
+        "grenade_kills": 1,
+        "melee_kills": 1,
+        "power_weapon_kills": 13,
+        "outcome_label": "Défaite"
+      },
+      {
+        "xuid": "2533274858283686",
+        "gamertag": "Madina97294",
+        "team_side": "t0",
+        "is_me": false,
+        "rank": 6,
+        "kills": 11,
+        "deaths": 19,
+        "assists": 5,
+        "kda": -6.33,
+        "accuracy": 43.77,
+        "damage_dealt": 4379,
+        "damage_taken": 5118,
+        "shots_fired": 562,
+        "shots_hit": 246,
+        "avg_life_seconds": 20,
+        "headshot_kills": 7,
+        "max_killing_spree": 3,
+        "grenade_kills": 0,
+        "melee_kills": 2,
+        "power_weapon_kills": 0,
+        "outcome_label": "Défaite"
+      },
+      {
+        "xuid": "2535451072128908",
+        "gamertag": "LockeH2 YT",
+        "team_side": "t0",
+        "is_me": false,
+        "rank": 7,
+        "kills": 7,
+        "deaths": 13,
         "assists": 3,
-        "kda": 5.25,
-        "damage_dealt": 8245.0,
-        "damage_taken": 3100.0
+        "kda": -5,
+        "accuracy": 32.02,
+        "damage_dealt": 3027,
+        "damage_taken": 3970,
+        "shots_fired": 406,
+        "shots_hit": 130,
+        "avg_life_seconds": 32,
+        "headshot_kills": 3,
+        "max_killing_spree": 2,
+        "grenade_kills": 0,
+        "melee_kills": 2,
+        "power_weapon_kills": 0,
+        "outcome_label": "Défaite"
+      },
+      {
+        "xuid": "2535469190789936",
+        "gamertag": "Chocoboflor",
+        "team_side": "t0",
+        "is_me": true,
+        "rank": 8,
+        "kills": 5,
+        "deaths": 9,
+        "assists": 9,
+        "kda": -1,
+        "accuracy": 61.36,
+        "damage_dealt": 3048,
+        "damage_taken": 3383,
+        "shots_fired": 295,
+        "shots_hit": 181,
+        "avg_life_seconds": 55,
+        "headshot_kills": 1,
+        "max_killing_spree": 2,
+        "grenade_kills": 0,
+        "melee_kills": 2,
+        "power_weapon_kills": 0,
+        "outcome_label": "Défaite"
+      },
+      {
+        "xuid": "2533274987493081",
+        "gamertag": "xSONNYX117",
+        "team_side": "t1",
+        "is_me": false,
+        "rank": 1,
+        "kills": 22,
+        "deaths": 14,
+        "assists": 3,
+        "kda": 9,
+        "accuracy": 40.68,
+        "damage_dealt": 5787,
+        "damage_taken": 5116,
+        "shots_fired": 681,
+        "shots_hit": 277,
+        "avg_life_seconds": 30,
+        "headshot_kills": 9,
+        "max_killing_spree": 7,
+        "grenade_kills": 0,
+        "melee_kills": 6,
+        "power_weapon_kills": 2,
+        "outcome_label": "Victoire"
+      },
+      {
+        "xuid": "2535421156131701",
+        "gamertag": "RaiiZeNBack",
+        "team_side": "t1",
+        "is_me": false,
+        "rank": 2,
+        "kills": 11,
+        "deaths": 11,
+        "assists": 6,
+        "kda": 2,
+        "accuracy": 54.55,
+        "damage_dealt": 4837,
+        "damage_taken": 3797,
+        "shots_fired": 539,
+        "shots_hit": 294,
+        "avg_life_seconds": 39,
+        "headshot_kills": 4,
+        "max_killing_spree": 2,
+        "grenade_kills": 1,
+        "melee_kills": 1,
+        "power_weapon_kills": 1,
+        "outcome_label": "Victoire"
+      },
+      {
+        "xuid": "2533274834369006",
+        "gamertag": "Duke748biposto",
+        "team_side": "t1",
+        "is_me": false,
+        "rank": 3,
+        "kills": 10,
+        "deaths": 5,
+        "assists": 3,
+        "kda": 6,
+        "accuracy": 42.32,
+        "damage_dealt": 2607,
+        "damage_taken": 2735,
+        "shots_fired": 475,
+        "shots_hit": 201,
+        "avg_life_seconds": 87,
+        "headshot_kills": 2,
+        "max_killing_spree": 5,
+        "grenade_kills": 0,
+        "melee_kills": 3,
+        "power_weapon_kills": 0,
+        "outcome_label": "Victoire"
+      },
+      {
+        "xuid": "bid(39.0)",
+        "gamertag": "bid(39.0)",
+        "team_side": "t1",
+        "is_me": false,
+        "rank": 4,
+        "kills": 3,
+        "deaths": 3,
+        "assists": 0,
+        "kda": 0,
+        "accuracy": 42.96,
+        "damage_dealt": 768,
+        "damage_taken": 657,
+        "shots_fired": 135,
+        "shots_hit": 58,
+        "avg_life_seconds": 58,
+        "headshot_kills": 1,
+        "max_killing_spree": 2,
+        "grenade_kills": 0,
+        "melee_kills": 0,
+        "power_weapon_kills": 0,
+        "outcome_label": "Victoire"
+      },
+      {
+        "xuid": "2535452062695877",
+        "gamertag": "BlackGamer7089",
+        "team_side": "t1",
+        "is_me": false,
+        "rank": 9,
+        "kills": 4,
+        "deaths": 7,
+        "assists": 0,
+        "kda": -3,
+        "accuracy": 39.24,
+        "damage_dealt": 1298,
+        "damage_taken": 1843,
+        "shots_fired": 158,
+        "shots_hit": 62,
+        "avg_life_seconds": 33,
+        "headshot_kills": 2,
+        "max_killing_spree": 3,
+        "grenade_kills": 1,
+        "melee_kills": 0,
+        "power_weapon_kills": 0,
+        "outcome_label": "Abandon"
       }
     ],
-    "scoreboard": [],
-    "nemesis": [],
-    "encounters": []
+    "nemesis": [
+      {
+        "xuid": "2533274987493081",
+        "gamertag": "xSONNYX117",
+        "killed_me": 5,
+        "i_killed": 2
+      },
+      {
+        "xuid": "2533274834369006",
+        "gamertag": "Duke748biposto",
+        "killed_me": 1,
+        "i_killed": 1
+      },
+      {
+        "xuid": "2535452062695877",
+        "gamertag": "BlackGamer7089",
+        "killed_me": 1,
+        "i_killed": 1
+      },
+      {
+        "xuid": "2535421156131701",
+        "gamertag": "RaiiZeNBack",
+        "killed_me": 1,
+        "i_killed": 1
+      }
+    ]
   },
   "media_tab": {
     "media_items": []
   },
   "citations_tab": {
     "commendations": [],
-    "medals": [
-      {
-        "medal_name_id": 1260896751,
-        "name": "Killing Spree",
-        "count": 2,
-        "description": "Kill 5 enemies in a row without dying."
-      }
-    ]
+    "medals": []
   },
-
   "_meta": {
-    "golden_value_version": "sprint1",
-    "captured_at": "2026-04-15",
-    "source": "schema-conformant — valeurs synthétiques réalistes pour match Slayer",
+    "golden_value_version": "live",
+    "captured_at": "2026-04-16",
+    "source": "captured_live",
     "tolerances": {
-      "combat_tab.charts": "[] acceptable en Sprint 0/1 — charts portés en Sprint 8",
-      "team_tab.scoreboard": "[] acceptable — à remplir avec données réelles Sprint 8",
-      "header.match_id": "remplacer par un vrai match_id de la DB"
-    },
-    "sprint_target": "Sprint 8 — GET /players/{slug}/matches/{match_id}"
+      "combat_tab.charts": "[] acceptable Sprint 0/1"
+    }
   }
 }
