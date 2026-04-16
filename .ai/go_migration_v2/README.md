@@ -59,6 +59,8 @@ Le cadrage documentaire préalable au code est désormais considéré comme suff
 5. [SPRINT_ROADMAP.md](SPRINT_ROADMAP.md)
 6. [GO_MIGRATION_CHECKLIST.md](GO_MIGRATION_CHECKLIST.md)
 7. [GO_ARCHITECTURE_RULES.md](GO_ARCHITECTURE_RULES.md)
+8. [SPRINT_44_WORKPACKAGES.md](SPRINT_44_WORKPACKAGES.md)
+9. [ADR_S44_MULTI_TITLE_NAMESPACE.md](ADR_S44_MULTI_TITLE_NAMESPACE.md)
 
 ## Sources historiques utiles
 
@@ -90,6 +92,8 @@ Les fichiers originaux sont conservés comme archive de la première itération 
 | Compat runtime, auth, jobs, packaging | [OPS_COMPAT_CHECKLIST.md](OPS_COMPAT_CHECKLIST.md) | [OPS_COMPAT_CHECKLIST.md](OPS_COMPAT_CHECKLIST.md) |
 | Ordre d'exécution détaillé par sprint | [SPRINT_ROADMAP.md](SPRINT_ROADMAP.md) | [SPRINT_ROADMAP.md](SPRINT_ROADMAP.md) |
 | Avancement vivant et preuves attendues | [GO_MIGRATION_CHECKLIST.md](GO_MIGRATION_CHECKLIST.md) | [GO_MIGRATION_CHECKLIST.md](GO_MIGRATION_CHECKLIST.md) |
+| Exécution détaillée du Sprint 44 | [SPRINT_44_WORKPACKAGES.md](SPRINT_44_WORKPACKAGES.md) | [SPRINT_44_WORKPACKAGES.md](SPRINT_44_WORKPACKAGES.md) |
+| Décision d'architecture multi-titres | [ADR_S44_MULTI_TITLE_NAMESPACE.md](ADR_S44_MULTI_TITLE_NAMESPACE.md) | [ADR_S44_MULTI_TITLE_NAMESPACE.md](ADR_S44_MULTI_TITLE_NAMESPACE.md) |
 
 ## Sujets spécialisés à ne pas perdre de vue
 
