@@ -1,7 +1,8 @@
 #!/usr/bin/env python3
-"""Validation de parité Phase 1 — Sprint 7.
+"""Validation de parité Phase 1 → Sprint 36 — 24 endpoints.
 
 Compare les réponses du serveur Go contre les golden values capturées.
+Les endpoints sans golden values sont testés en mode `status_only` (HTTP 200).
 Génère un rapport 'parity_report.json' dans le répertoire courant.
 
 Usage :
@@ -12,10 +13,12 @@ Usage :
     python scripts/parity_check.py
     python scripts/parity_check.py --go-url http://localhost:8000 --player Chocoboflor
     python scripts/parity_check.py --only health bootstrap
+    python scripts/parity_check.py --status-only    # teste uniquement HTTP 200 partout
 
 Variables d'environnement :
     LEVELUP_GO_URL  : URL de base du serveur Go (défaut : http://localhost:8000)
     LEVELUP_PLAYER  : Slug du joueur (défaut : Chocoboflor)
+    LEVELUP_MATCH_ID : match_id Slayer pour match_view (facultatif)
 """
 
 from __future__ import annotations
@@ -41,15 +44,21 @@ except ImportError:
 
 GO_URL = os.environ.get("LEVELUP_GO_URL", "http://localhost:8000")
 PLAYER = os.environ.get("LEVELUP_PLAYER", "Chocoboflor")
+MATCH_ID = os.environ.get("LEVELUP_MATCH_ID", "")
 FIXTURES_DIR = Path(__file__).parent.parent / "tests" / "fixtures" / "golden_values"
 REPORT_PATH = Path(__file__).parent.parent / "tests" / "fixtures" / "parity_report.json"
 DEFAULT_FLOAT_TOL = 0.01
 
 # ---------------------------------------------------------------------------
-# Endpoints Phase 1
+# Endpoints — 24 au total (Sprint 36)
+#
+# status_only=True  : vérifie uniquement HTTP 200 (pas de golden value)
+# status_only=False : comparaison complète avec la fixture golden
 # ---------------------------------------------------------------------------
 
+
 ENDPOINTS: list[dict[str, Any]] = [
+    # --- Endpoints avec golden values complètes (Phase 1) ---
     {
         "name": "health",
         "fixture": "health_ok.json",
@@ -90,6 +99,128 @@ ENDPOINTS: list[dict[str, Any]] = [
         "method": "GET",
         "url": f"{GO_URL}/api/v1/directory/gamertags/search",
         "params": {"q": "Cho"},
+    },
+    {
+        "name": "career",
+        "fixture": "career_page_chocoboflor.json",
+        "method": "GET",
+        "url": f"{GO_URL}/api/v1/players/{PLAYER}/pages/career",
+        "ignore_fields": ["_meta"],
+    },
+    {
+        "name": "match_view",
+        "fixture": "match_view_slayer.json",
+        "method": "GET",
+        "url": f"{GO_URL}/api/v1/players/{PLAYER}/matches/{MATCH_ID or '_PLACEHOLDER_'}",
+        "ignore_fields": ["_meta"],
+        "skip_if_placeholder": True,  # ignoré si LEVELUP_MATCH_ID non défini
+    },
+
+    # --- Endpoints status_only (Sprint 36 — golden values non encore capturées) ---
+    {
+        "name": "settings",
+        "method": "GET",
+        "url": f"{GO_URL}/api/v1/settings",
+        "status_only": True,
+    },
+    {
+        "name": "career_top_matches",
+        "method": "GET",
+        "url": f"{GO_URL}/api/v1/players/{PLAYER}/pages/career/top-matches",
+        "status_only": True,
+    },
+    {
+        "name": "career_encounters",
+        "method": "GET",
+        "url": f"{GO_URL}/api/v1/players/{PLAYER}/pages/career/encounters",
+        "status_only": True,
+    },
+    {
+        "name": "sessions",
+        "method": "GET",
+        "url": f"{GO_URL}/api/v1/players/{PLAYER}/pages/sessions",
+        "status_only": True,
+    },
+    {
+        "name": "home",
+        "method": "GET",
+        "url": f"{GO_URL}/api/v1/players/{PLAYER}/pages/home",
+        "status_only": True,
+    },
+    {
+        "name": "battlepass",
+        "method": "GET",
+        "url": f"{GO_URL}/api/v1/players/{PLAYER}/battlepass",
+        "status_only": True,
+    },
+    {
+        "name": "squad",
+        "method": "GET",
+        "url": f"{GO_URL}/api/v1/players/{PLAYER}/pages/squad",
+        "status_only": True,
+    },
+    {
+        "name": "explorer_player",
+        "method": "POST",
+        "url": f"{GO_URL}/api/v1/players/{PLAYER}/pages/explorer/player-query",
+        "body": {"target_gamertag": PLAYER, "page": 1},
+        "status_only": True,
+    },
+    {
+        "name": "stats_query",
+        "method": "POST",
+        "url": f"{GO_URL}/api/v1/players/{PLAYER}/pages/stats/query",
+        "body": {},
+        "status_only": True,
+    },
+    {
+        "name": "synthesis",
+        "method": "POST",
+        "url": f"{GO_URL}/api/v1/players/{PLAYER}/pages/synthesis",
+        "body": {},
+        "status_only": True,
+    },
+    {
+        "name": "citations",
+        "method": "POST",
+        "url": f"{GO_URL}/api/v1/players/{PLAYER}/pages/citations",
+        "body": {},
+        "status_only": True,
+    },
+    {
+        "name": "commendations",
+        "method": "POST",
+        "url": f"{GO_URL}/api/v1/players/{PLAYER}/pages/commendations",
+        "body": {},
+        "status_only": True,
+    },
+    {
+        "name": "media",
+        "method": "POST",
+        "url": f"{GO_URL}/api/v1/players/{PLAYER}/pages/media",
+        "body": {},
+        "status_only": True,
+    },
+    {
+        "name": "teammates",
+        "method": "POST",
+        "url": f"{GO_URL}/api/v1/players/{PLAYER}/pages/teammates",
+        "body": {},
+        "status_only": True,
+    },
+    {
+        "name": "timeseries",
+        "method": "POST",
+        "url": f"{GO_URL}/api/v1/players/{PLAYER}/pages/timeseries",
+        "body": {},
+        "status_only": True,
+    },
+    {
+        "name": "last_match_resolve",
+        "method": "POST",
+        "url": f"{GO_URL}/api/v1/players/{PLAYER}/pages/last-match/resolve",
+        "body": {},
+        "status_only": True,
     },
 ]
 
@@ -195,7 +326,7 @@ def _call(client: httpx.Client, ep: dict[str, Any]) -> tuple[int, Any]:
 # ---------------------------------------------------------------------------
 
 
-def run_parity_check(only: list[str] | None = None) -> dict[str, Any]:
+def run_parity_check(only: list[str] | None = None, force_status_only: bool = False) -> dict[str, Any]:
     report: dict[str, Any] = {
         "generated_at": datetime.now(timezone.utc).isoformat(),
         "go_url": GO_URL,
@@ -209,8 +340,35 @@ def run_parity_check(only: list[str] | None = None) -> dict[str, Any]:
     with httpx.Client() as client:
         for ep in endpoints:
             name = ep["name"]
-            fixture_data = _load_fixture(ep.get("fixture", ""))
             report["summary"]["total"] += 1
+
+            # skip_if_placeholder : ignorer si une valeur sentinelle est dans l'URL
+            if ep.get("skip_if_placeholder") and "_PLACEHOLDER_" in ep.get("url", ""):
+                print(f"  [SKIP] {name} — LEVELUP_MATCH_ID non défini")
+                report["summary"]["skipped"] += 1
+                report["results"].append(
+                    {"name": name, "status": "skipped", "reason": "match_id_missing"}
+                )
+                continue
+
+            # Mode status_only : vérifie uniquement HTTP 200, pas de diffing
+            if ep.get("status_only") or force_status_only:
+                status_code, _ = _call(client, ep)
+                if status_code == -1:
+                    print(f"  [FAIL] {name} — connexion refusée")
+                    report["summary"]["failed"] += 1
+                    report["results"].append({"name": name, "status": "failed", "error": "connection_refused"})
+                elif status_code not in (200, 201):
+                    print(f"  [FAIL] {name} — HTTP {status_code}")
+                    report["summary"]["failed"] += 1
+                    report["results"].append({"name": name, "status": "failed", "http_status": status_code})
+                else:
+                    print(f"  [PASS] {name} (status_only)")
+                    report["summary"]["passed"] += 1
+                    report["results"].append({"name": name, "status": "passed", "http_status": status_code, "mode": "status_only"})
+                continue
+
+            fixture_data = _load_fixture(ep.get("fixture", ""))
 
             if fixture_data is None:
                 print(f"  [SKIP] {name} — fixture introuvable")
@@ -284,22 +442,31 @@ def main() -> int:
     parser.add_argument("--go-url", default=GO_URL, help="URL de base du serveur Go")
     parser.add_argument("--player", default=PLAYER, help="Slug du joueur")
     parser.add_argument("--only", nargs="+", metavar="NAME", help="Noms d'endpoints à tester")
+    parser.add_argument(
+        "--status-only",
+        action="store_true",
+        default=False,
+        help="Tester uniquement le HTTP 200 pour tous les endpoints (pas de diffing)",
+    )
     parser.add_argument("--report", default=str(REPORT_PATH), help="Chemin du rapport JSON")
     args = parser.parse_args()
 
-    global GO_URL, PLAYER
+    global GO_URL, PLAYER, MATCH_ID
     GO_URL = args.go_url
     PLAYER = args.player
+    MATCH_ID = os.environ.get("LEVELUP_MATCH_ID", "")
     # Mettre à jour les URLs dans ENDPOINTS
     for ep in ENDPOINTS:
         ep["url"] = (
-            ep["url"].replace("http://localhost:8000", GO_URL).replace("Chocoboflor", PLAYER)
+            ep["url"]
+            .replace("http://localhost:8000", GO_URL)
+            .replace("Chocoboflor", PLAYER)
         )
 
-    print(f"Parité Phase 1 — {GO_URL} / joueur={PLAYER}")
+    print(f"Parité Sprint 36 — {GO_URL} / joueur={PLAYER} / {len(ENDPOINTS)} endpoints")
     print("-" * 60)
 
-    report = run_parity_check(only=args.only)
+    report = run_parity_check(only=args.only, force_status_only=args.status_only)
 
     report_path = Path(args.report)
     report_path.parent.mkdir(parents=True, exist_ok=True)
