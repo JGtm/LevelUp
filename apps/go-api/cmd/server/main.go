@@ -9,10 +9,11 @@
 //   - expose GET /api/v1/players
 //
 // Variables d'environnement :
-//   LEVELUP_REPO_ROOT    — racine du repo (par défaut : auto-détection)
-//   LEVELUP_API_PORT     — port d'écoute (défaut : 8000)
-//   LEVELUP_DEMO_MODE    — "true" pour activer le mode démo
-//   LEVELUP_LOG_JSON     — "true" pour JSON logging (prod), défaut: text (dev)
+//
+//	LEVELUP_REPO_ROOT    — racine du repo (par défaut : auto-détection)
+//	LEVELUP_API_PORT     — port d'écoute (défaut : 8000)
+//	LEVELUP_DEMO_MODE    — "true" pour activer le mode démo
+//	LEVELUP_LOG_JSON     — "true" pour JSON logging (prod), défaut: text (dev)
 package main
 
 import (
@@ -34,7 +35,29 @@ import (
 	"levelup/go-api/internal/service"
 )
 
+// version est injectée au build via -ldflags "-X main.version=X.Y.Z".
+var version = "dev"
+
 func main() {
+	// --- 0. Health-check mode (Docker HEALTHCHECK) ---
+	if len(os.Args) == 2 && os.Args[1] == "-health-check" {
+		resp, err := http.Get("http://127.0.0.1:" + os.Getenv("LEVELUP_API_PORT_OR_DEFAULT") + "/health")
+		if err != nil {
+			// Fallback sur le port par défaut 8000
+			resp, err = http.Get("http://127.0.0.1:8000/health")
+		}
+		if err != nil {
+			fmt.Fprintln(os.Stderr, "health-check failed:", err)
+			os.Exit(1)
+		}
+		defer resp.Body.Close()
+		if resp.StatusCode != http.StatusOK {
+			fmt.Fprintf(os.Stderr, "health-check status: %d\n", resp.StatusCode)
+			os.Exit(1)
+		}
+		os.Exit(0)
+	}
+
 	// --- 1. Logging structuré ---
 	// En production (LEVELUP_LOG_JSON=true) : JSON. En dev : texte lisible.
 	logJSON := strings.ToLower(os.Getenv("LEVELUP_LOG_JSON")) == "true"
@@ -52,9 +75,14 @@ func main() {
 		slog.Error("chargement config", "err", err)
 		os.Exit(1)
 	}
+	// Injecter la version buildée (ldflags) si LEVELUP_APP_VERSION non défini.
+	if cfg.AppVersion == "dev" && version != "dev" {
+		cfg.AppVersion = version
+	}
 	slog.Info("config chargée",
 		"repo_root", cfg.RepoRoot,
 		"demo_mode", cfg.DemoMode,
+		"version", cfg.AppVersion,
 		"addr", cfg.ServerAddr(),
 	)
 
