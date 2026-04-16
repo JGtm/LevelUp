@@ -5,7 +5,6 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { api } from '@/lib/api/client'
 import { queryKeys } from '@/lib/query/keys'
 import type {
-  SetupStatusResponse,
   DeviceFlowStartResponse,
   DeviceFlowStatusResponse,
   CreatePlayerProfileRequest,
@@ -17,13 +16,8 @@ import type {
   UpdateSettingsRequest,
 } from '@/lib/api/types'
 
-export function useSetupStatus() {
-  return useQuery({
-    queryKey: queryKeys.setupStatus,
-    queryFn: () => api.get<SetupStatusResponse>('/setup/status'),
-    staleTime: 30 * 1000,
-  })
-}
+// useSetupStatus() supprimé (sprint 29) : GET /setup/status est un artefact mort.
+// Utiliser BootstrapResponse.setup_state à la place.
 
 export function useStartDeviceFlow() {
   return useMutation({

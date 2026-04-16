@@ -184,6 +184,9 @@ export interface SetupPlayerInfo {
 
 export type SetupNextStep = 'choose_mode' | 'auth' | 'player' | 'initial_sync' | 'smoke_test' | 'done'
 
+// @deprecated sprint 29 — GET /setup/status est un artefact mort (absent FastAPI + Go).
+// Conserver temporairement pour ne pas casser les imports existants.
+// À supprimer avec useSetupStatus() au Sprint 32.
 export interface SetupStatusResponse {
   needs_setup: boolean
   auth: SetupAuthInfo

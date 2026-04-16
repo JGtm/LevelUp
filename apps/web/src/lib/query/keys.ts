@@ -13,7 +13,7 @@ export const queryKeys = {
   health: ['health'] as const,
 
   // Setup & auth (Slice 1)
-  setupStatus: ['setup-status'] as const,
+  // setupStatus supprimé (sprint 29) : GET /setup/status n'existe ni en FastAPI ni en Go
   deviceFlow: (attemptId: string) => ['device-flow', attemptId] as const,
   job: (jobId: string) => ['job', jobId] as const,
   settings: ['settings'] as const,

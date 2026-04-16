@@ -1,0 +1,489 @@
+# openapi_fastapi_reference.yaml — Export de référence FastAPI (Sprint 29)
+#
+# Source : apps/api/app/ (routers analysés le 2026-04-16)
+# Ce fichier liste les routes FastAPI telles qu'elles existent réellement.
+# Il sert de référence pour `diff_openapi.py` et pour aligner `openapi.yaml` Go.
+#
+# Routes FastAPI (sous /api/v1) :
+#   - GET  /health
+#   - GET  /bootstrap
+#   - GET  /players
+#   - POST /session/context
+#   - POST /auth/device-flow/start
+#   - GET  /auth/device-flow/{attempt_id}
+#   - POST /setup/players
+#   - POST /sync/initial
+#   - GET  /settings
+#   - PATCH /settings
+#   - POST /settings/media/reset-index
+#   - GET  /jobs/{job_id}
+#   - GET  /directory/gamertags/search
+#   - POST /players/{player_slug}/filters/resolve
+#   - POST /players/{player_slug}/pages/match-history/query
+#   - POST /players/{player_slug}/pages/match-history/export
+#   - GET  /players/{player_slug}/pages/career
+#   - GET  /players/{player_slug}/pages/career/top-matches
+#   - GET  /players/{player_slug}/pages/career/encounters
+#   - POST /players/{player_slug}/pages/citations
+#   - GET  /players/{player_slug}/pages/home
+#   - GET  /players/{player_slug}/battlepass
+#   - GET  /players/{player_slug}/challenges
+#   - POST /players/{player_slug}/pages/media
+#   - POST /players/{player_slug}/pages/session-compare
+#   - POST /players/{player_slug}/pages/synthesis
+#   - POST /players/{player_slug}/pages/teammates
+#   - POST /players/{player_slug}/pages/timeseries
+#   - POST /players/{player_slug}/pages/explorer/matches-query
+#   - POST /players/{player_slug}/pages/explorer/player-query
+#   - GET  /players/{player_slug}/matches/{match_id}
+#   - POST /players/{player_slug}/pages/last-match/resolve
+#
+# Divergences Go vs FastAPI à corriger (Sprint 32-33) :
+#
+#   Manquants en Go :
+#     POST /players/{player_slug}/pages/match-history/export
+#     POST /players/{player_slug}/pages/session-compare
+#     POST /players/{player_slug}/pages/explorer/matches-query
+#     POST /players/{player_slug}/pages/last-match/resolve
+#
+#   Méthode incorrecte en Go (GET au lieu de POST) :
+#     /players/{player_slug}/pages/citations   (FastAPI: POST, Go: GET)
+#     /players/{player_slug}/pages/media       (FastAPI: POST, Go: GET)
+#     /players/{player_slug}/pages/synthesis   (FastAPI: POST, Go: GET)
+#
+#   Routes Go sans équivalent FastAPI (intentionnels ou à valider) :
+#     POST /setup/smoke-test                    (Go-only, à évaluer Sprint 31)
+#     GET  /players/{player_slug}/pages/sessions (Go = /timeseries côté FastAPI ?)
+#     GET  /players/{player_slug}/pages/squad    (Go = /teammates côté FastAPI ?)
+#     GET  /players/{player_slug}/pages/stats/query vs POST /pages/timeseries ?
+#     GET  /players/{player_slug}/pages/commendations (sous-route de /citations FastAPI ?)
+
+openapi: "3.1.0"
+info:
+  title: LevelUp API — Référence FastAPI (Sprint 29)
+  version: "1.0.0"
+  description: |
+    Fichier de référence généré depuis l'analyse des routers FastAPI (`apps/api/app/routers/`).
+    Utilisé par `diff_openapi.py` pour détecter les divergences avec `openapi.yaml` Go.
+    À regénérer automatiquement lors du Sprint 32 via `export_fastapi_openapi.py`.
+
+servers:
+  - url: /api/v1
+
+paths:
+  /health:
+    get:
+      operationId: getHealth
+      summary: Health check
+      tags: [health]
+      responses:
+        "200":
+          description: OK
+
+  /bootstrap:
+    get:
+      operationId: getBootstrap
+      summary: Bootstrap shell React
+      tags: [bootstrap]
+      responses:
+        "200":
+          description: OK
+
+  /players:
+    get:
+      operationId: getPlayers
+      summary: Liste des joueurs
+      tags: [bootstrap]
+      responses:
+        "200":
+          description: OK
+
+  /session/context:
+    post:
+      operationId: postSessionContext
+      summary: Mise à jour du contexte de session
+      tags: [bootstrap]
+      responses:
+        "200":
+          description: OK
+
+  /auth/device-flow/start:
+    post:
+      operationId: postAuthDeviceFlowStart
+      summary: Initier Device Code Flow
+      tags: [setup]
+      responses:
+        "200":
+          description: OK
+
+  /auth/device-flow/{attempt_id}:
+    get:
+      operationId: getAuthDeviceFlowStatus
+      summary: Statut du Device Code Flow
+      tags: [setup]
+      parameters:
+        - name: attempt_id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: OK
+
+  /setup/players:
+    post:
+      operationId: postSetupPlayers
+      summary: Créer un profil joueur
+      tags: [setup]
+      responses:
+        "201":
+          description: Created
+
+  /sync/initial:
+    post:
+      operationId: postSyncInitial
+      summary: Lancer la synchronisation initiale
+      tags: [sync]
+      responses:
+        "202":
+          description: Accepted
+
+  /settings:
+    get:
+      operationId: getSettings
+      summary: Lire la configuration
+      tags: [settings]
+      responses:
+        "200":
+          description: OK
+    patch:
+      operationId: patchSettings
+      summary: Mettre à jour la configuration
+      tags: [settings]
+      responses:
+        "200":
+          description: OK
+
+  /settings/media/reset-index:
+    post:
+      operationId: postSettingsMediaResetIndex
+      summary: Réinitialiser l'index médias
+      tags: [settings]
+      responses:
+        "202":
+          description: Accepted
+
+  /jobs/{job_id}:
+    get:
+      operationId: getJob
+      summary: Statut d'un job
+      tags: [jobs]
+      parameters:
+        - name: job_id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: OK
+
+  /directory/gamertags/search:
+    get:
+      operationId: getGamertagsSearch
+      summary: Recherche fuzzy de gamertags
+      tags: [explorer]
+      responses:
+        "200":
+          description: OK
+
+  /players/{player_slug}/filters/resolve:
+    post:
+      operationId: postFiltersResolve
+      summary: Résolution des filtres cascade
+      tags: [filters]
+      parameters:
+        - name: player_slug
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: OK
+
+  /players/{player_slug}/pages/match-history/query:
+    post:
+      operationId: postMatchHistoryQuery
+      summary: Historique des parties (paginé)
+      tags: [match-history]
+      parameters:
+        - name: player_slug
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: OK
+
+  /players/{player_slug}/pages/match-history/export:
+    post:
+      operationId: postMatchHistoryExport
+      summary: Export CSV de l'historique
+      tags: [match-history]
+      parameters:
+        - name: player_slug
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: OK
+
+  /players/{player_slug}/pages/career:
+    get:
+      operationId: getCareer
+      summary: Page Carrière
+      tags: [career]
+      parameters:
+        - name: player_slug
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: OK
+
+  /players/{player_slug}/pages/career/top-matches:
+    get:
+      operationId: getCareerTopMatches
+      summary: Top matchs de carrière
+      tags: [career]
+      parameters:
+        - name: player_slug
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: OK
+
+  /players/{player_slug}/pages/career/encounters:
+    get:
+      operationId: getCareerEncounters
+      summary: Rencontres de carrière
+      tags: [career]
+      parameters:
+        - name: player_slug
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: OK
+
+  /players/{player_slug}/pages/citations:
+    post:
+      operationId: postCitations
+      summary: Citations + commendations
+      tags: [career]
+      parameters:
+        - name: player_slug
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: OK
+
+  /players/{player_slug}/pages/home:
+    get:
+      operationId: getHome
+      summary: Page accueil
+      tags: [home]
+      parameters:
+        - name: player_slug
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: OK
+
+  /players/{player_slug}/battlepass:
+    get:
+      operationId: getBattlePass
+      summary: Battle Pass
+      tags: [home]
+      parameters:
+        - name: player_slug
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: OK
+
+  /players/{player_slug}/challenges:
+    get:
+      operationId: getChallenges
+      summary: Challenges
+      tags: [home]
+      parameters:
+        - name: player_slug
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: OK
+
+  /players/{player_slug}/pages/media:
+    post:
+      operationId: postMedia
+      summary: Galerie médias
+      tags: [media]
+      parameters:
+        - name: player_slug
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: OK
+
+  /players/{player_slug}/pages/session-compare:
+    post:
+      operationId: postSessionCompare
+      summary: Comparaison de sessions A/B
+      tags: [session-compare]
+      parameters:
+        - name: player_slug
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: OK
+
+  /players/{player_slug}/pages/synthesis:
+    post:
+      operationId: postSynthesis
+      summary: Synthèse globale
+      tags: [synthesis]
+      parameters:
+        - name: player_slug
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: OK
+
+  /players/{player_slug}/pages/teammates:
+    post:
+      operationId: postTeammates
+      summary: Escouade / coéquipiers
+      tags: [teammates]
+      parameters:
+        - name: player_slug
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: OK
+
+  /players/{player_slug}/pages/timeseries:
+    post:
+      operationId: postTimeseries
+      summary: Page séries temporelles
+      tags: [timeseries]
+      parameters:
+        - name: player_slug
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: OK
+
+  /players/{player_slug}/pages/explorer/matches-query:
+    post:
+      operationId: postExplorerMatchesQuery
+      summary: Requête matchs explorateur
+      tags: [explorer]
+      parameters:
+        - name: player_slug
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: OK
+
+  /players/{player_slug}/pages/explorer/player-query:
+    post:
+      operationId: postExplorerPlayerQuery
+      summary: Requête joueur explorateur
+      tags: [explorer]
+      parameters:
+        - name: player_slug
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: OK
+
+  /players/{player_slug}/matches/{match_id}:
+    get:
+      operationId: getMatchView
+      summary: Détail d'un match
+      tags: [match-view]
+      parameters:
+        - name: player_slug
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: match_id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: OK
+
+  /players/{player_slug}/pages/last-match/resolve:
+    post:
+      operationId: postLastMatchResolve
+      summary: Résoudre le dernier match
+      tags: [explorer]
+      parameters:
+        - name: player_slug
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: OK

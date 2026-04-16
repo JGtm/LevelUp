@@ -1,5 +1,69 @@
 # Thought Log
 
+## [2026-04-16] audit(go-migration): Recalibrage du document consolidé après revue du runtime React
+
+**Statut** : Complété
+
+**Tâche** : Mettre à jour `AUDIT_CONSOLIDE.md` pour corriger les points trop affirmatifs, distinguer runtime produit vs artefacts de test/codegen, et resserrer le plan d'action sur le bon ordre d'exécution.
+
+**Décisions techniques principales** :
+
+1. Le cas `/setup/status` a été requalifié : ce n'est pas un blocage runtime prouvé dans `SetupPage`, mais un artefact mort / drift de hook, codegen, MSW et Playwright à purger explicitement.
+2. Les compteurs de parité ont été conservés comme indicateurs de drift global, avec un caveat explicite : ils mélangent runtime, codegen, tests et endpoints Go-only.
+3. Le plan P0 a été réordonné pour mettre les garde-fous automatiques avant le portage lourd des endpoints : purge des surfaces mortes, vérité unique, contract tests, golden tests, Playwright React en CI, lint OpenAPI bloquant.
+4. La section recommandations a été élargie pour ajouter un lot autonome de purge des doubles sources de vérité (`types.ts`, `generated.ts`, MSW/E2E, docs de migration).
+
+**Résultats observés** :
+
+- `AUDIT_CONSOLIDE.md` est désormais plus précis sur le statut réel de `/setup/status`.
+- Le document distingue mieux les problèmes runtime réels des contradictions documentaires et des fixtures obsolètes.
+- Le plan d'action force désormais un assainissement de surface avant les gros travaux de réalignement Go ↔ FastAPI.
+
+**Conclusion / prochaine étape** : utiliser la nouvelle version du document comme base de travail, puis purger rapidement les artefacts morts (`setup/status`, docs/tests/codegen) avant de relancer les comptages et le plan de portage des endpoints.
+
+## [2026-04-16] audit(go-migration): Consolidation de l'audit de parité et seconde passe ciblée
+
+**Statut** : Complété
+
+**Tâche** : Fusionner les constats du document `AUDIT_GO_VS_PYTHON.md` dans `AUDIT_PARITE_GO_VS_PYTHON.md`, puis refaire une seconde passe de vérification pour éliminer les faux positifs et remonter les angles morts réellement bloquants.
+
+**Décisions techniques principales** :
+
+1. Le document de référence reste `AUDIT_PARITE_GO_VS_PYTHON.md`. Le second audit a été traité comme une source complémentaire, pas comme une seconde vérité concurrente.
+2. La consolidation distingue explicitement deux sujets que la première lecture mélangeait parfois : la richesse interne du portage Go et sa substituabilité réelle comme backend du frontend React.
+3. Les points initialement trop pessimistes ont été nuancés : le helper MSAL silencieux existe, la sérialisation mémoire du cache existe et les briques du weapon parser Go existent. Le problème porte surtout sur l'intégration produit, la persistance et le wiring.
+4. La seconde passe a ajouté plusieurs constats concrets de qualité interne au document de parité : fuite potentielle du pool DuckDB, concaténation SQL dans le backfill, erreurs silencieuses dans MatchView, fallback silencieux de StatsHandler, gros fichiers et logique métier encore dans certains handlers.
+
+**Résultats observés** :
+
+- Le document de parité couvre désormais à la fois la parité produit, la situation runtime réelle et les défauts internes les plus actionnables du code Go.
+- Un drift de contrat existe déjà entre le frontend et les backends inspectés sur `/setup/status`, en plus des écarts React -> Go déjà identifiés.
+- Le diagnostic principal est confirmé : le backend Go est techniquement avancé mais non encore substituable au backend courant sans réalignement de contrat et fermeture des parcours d'onboarding.
+
+**Conclusion / prochaine étape** : utiliser `AUDIT_PARITE_GO_VS_PYTHON.md` comme base unique pour prioriser la fermeture des écarts de contrat, l'onboarding Go et le nettoyage du wiring hexagonal.
+
+## [2026-04-15] audit(go-migration): Parité Python vs Go et qualité d'architecture
+
+**Statut** : Complété
+
+**Tâche** : Produire un audit dédié comparant la parité fonctionnelle entre le legacy Python et la cible Go, puis évaluer la qualité réelle de l'architecture Go par rapport aux règles hexagonales du repo.
+
+**Décisions techniques principales** :
+
+1. L'audit a été rédigé dans `.ai/go_migration_v2/AUDIT_PARITE_GO_VS_PYTHON.md` pour rester au même niveau que la documentation de migration et ne pas polluer les docs produit.
+2. La comparaison a été faite sur quatre surfaces distinctes : legacy Streamlit, frontend React, backend FastAPI transitoire, backend Go. Cela évite de confondre une parité produit avec une simple parité de packages.
+3. Les constats ont été classés par sévérité et ramenés à leurs causes racines : bascule runtime non faite, drift de contrat API, onboarding Go incohérent, violation des dépendances hexagonales, multiplicité des sources de vérité DTO.
+
+**Résultats observés** :
+
+- La surface produit React couvre globalement les pages legacy majeures.
+- Le runtime réel reste Python/FastAPI (Dockerfile, compose, Makefile, codegen frontend).
+- Le backend Go n'est pas substituable au backend courant : plusieurs routes/méthodes/DTO attendus par le frontend sont absents ou incompatibles.
+- Les handlers Go violent encore les règles d'architecture formelles en important `config` et `platform/duckdb` puis en assemblant eux-mêmes les services.
+- Le parcours d'onboarding Go n'est pas cohérent de bout en bout : `AuthState` bootstrap en dur, identité Halo non provisionnée, création de profil bloquée par la guard Xbox.
+
+**Conclusion / prochaine étape** : utiliser cet audit comme gate avant toute annonce de bascule complète Go et avant toute suppression de la chaîne FastAPI Python.
+
 ## [2026-07-17] feat(sprint21-22): Migrations DuckDB + Weapon Parser binaire
 
 **Statut** : Complété
@@ -14081,3 +14145,32 @@ Prochaine étape : Sprint 27 (Bascule progressive, ~3-5j).
 **Résultats** : `go vet ./internal/... ./cmd/levelup/...` → 0 erreur, build OK.
 
 **Gate Phase 5** : ✅ toutes checkboxes cochées. **Migration Python → Go terminée 🎉**
+
+### Sprint 29 — Assainissement surface + garde-fous CI
+
+**Date** : 2026-04-17
+
+**Décision technique** : Purge de l'artefact mort `/setup/status` (absent de FastAPI ET de Go), figeage du contrat OpenAPI avec une source de vérité unique (`openapi_fastapi_reference.yaml`), et création de garde-fous CI pour valider la coherence OpenAPI/chi à chaque push.
+
+**Choix architectural clé — tests de contrat** : Les handlers Go importent transitivement `platform/duckdb` (CGO). Pour des tests de contrat exécutables avec `CGO_ENABLED=0` en CI, creation d'un package dédié `contracttest/` sans dépendance CGO. Les tests de routage chi (avec buildTestRouter) sont conservés dans `internal/api/contract_test.go` avec build tag `//go:build cgo`.
+
+**Fichiers créés/modifiés :**
+- `apps/web/src/lib/query/keys.ts` : suppression `setupStatus`
+- `apps/web/src/features/setup/queries.ts` : suppression `useSetupStatus()`
+- `apps/web/src/test/handlers.ts` : suppression handler MSW `/setup/status`
+- `apps/web/e2e/slice-1-setup-settings.spec.ts` : remplacement test `/setup/status` par test bootstrap `setup_state`
+- `apps/web/src/lib/api/generated.ts` + `types.ts` : annotations `@deprecated sprint 29`
+- `apps/go-api/api/openapi.yaml` : ajout ~15 routes manquantes + 5 schemas (Auth, Setup, Sync, Settings, Jobs, Home, Sessions, Stats, Squad, Synthesis, Citations, Media)
+- `apps/go-api/api/openapi_fastapi_reference.yaml` : NOUVEAU — source de vérité des 32 routes FastAPI + divergences documentées
+- `apps/go-api/scripts/diff_openapi.py` : NOUVEAU — comparateur FastAPI vs Go
+- `apps/go-api/scripts/export_fastapi_openapi.py` : NOUVEAU — export YAML FastAPI
+- `apps/go-api/contracttest/contract_yaml_test.go` : NOUVEAU — 4 tests YAML-only (CGO=0)
+- `apps/go-api/internal/api/contract_test.go` : NOUVEAU (build tag cgo) — tests routage chi
+- `apps/go-api/internal/api/contract_helpers_test.go` : NOUVEAU (build tag cgo) — buildTestRouter avec mockBootstrapRepo
+- `apps/go-api/go.mod` : ajout `gopkg.in/yaml.v3 v3.0.1`
+- `.github/workflows/ci.yml` : suppression `continue-on-error: true` sur go-openapi-lint, ajout jobs `go-contract-test` + `e2e-react`
+- `.ai/go_migration_v2/SPRINT_ROADMAP.md` : Sprint 29 → ✅
+
+**Résultats** : 4/4 tests contracttest PASS avec CGO_ENABLED=0, openapi.yaml valide (34 paths, 55167 bytes JSON), go vet 0 erreur.
+
+**Statut** : Complété ✅ — Sprint 30 (bugs sécurité & error handling) peut démarrer.

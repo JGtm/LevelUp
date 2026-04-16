@@ -115,6 +115,9 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    // @deprecated sprint 29 — GET /setup/status est un artefact mort (absent FastAPI + Go).
+    // Conserver la définition pour éviter de casser la compilation ; sera supprimé lors
+    // de la prochaine régénération au Sprint 32.
     "/api/v1/setup/status": {
         parameters: {
             query?: never;
@@ -2034,12 +2037,7 @@ export interface components {
         /**
          * SetupStatusResponse
          * @description Réponse de GET /setup/status — machine d'état setup.
-         *
-         *     ``next_blocking_step`` contrôle la navigation dans le wizard :
-         *     - ``"auth"``      → pas de refresh_token → afficher le Device Code Flow
-         *     - ``"player"``    → auth OK mais aucun joueur configuré
-         *     - ``"smoke_test"``→ joueur créé mais smoke test jamais lancé (optionnel)
-         *     - ``"done"``      → tout configuré, accès aux routes protégées autorisé
+         * @deprecated sprint 29 — endpoint absent de FastAPI et Go. À supprimer au Sprint 32.
          */
         SetupStatusResponse: {
             /** Needs Setup */
@@ -2460,6 +2458,7 @@ export interface operations {
             };
         };
     };
+    // @deprecated sprint 29 — operation liée à l'artefact mort /setup/status. À supprimer au Sprint 32.
     get_setup_status_api_v1_setup_status_get: {
         parameters: {
             query?: never;
