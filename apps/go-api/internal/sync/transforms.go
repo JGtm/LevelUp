@@ -175,7 +175,7 @@ func ExtractParticipants(matchJSON map[string]any) []ParticipantRow {
 	}
 
 	players, _ := matchJSON["Players"].([]any)
-	var rows []ParticipantRow
+	var rows []ParticipantRow //nolint:prealloc
 	seen := map[string]bool{}
 
 	for _, p := range players {
@@ -271,7 +271,7 @@ func ExtractMedals(matchJSON map[string]any) []MedalRow {
 	}
 
 	players, _ := matchJSON["Players"].([]any)
-	var rows []MedalRow
+	var rows []MedalRow //nolint:prealloc
 
 	for _, p := range players {
 		player, ok := p.(map[string]any)

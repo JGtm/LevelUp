@@ -123,7 +123,7 @@ func determineModeCategory(pairName string) string {
 		return "Ranked"
 	case strings.Contains(lower, "firefight"):
 		return "Firefight"
-	case strings.Contains(lower, "btb") || strings.Contains(lower, "big team"):
+	case strings.Contains(lower, "btb") || strings.Contains(lower, "big team") || strings.Contains(lower, "big-team"):
 		return "BTB"
 	case strings.Contains(lower, "fiesta"):
 		return "Fiesta"
