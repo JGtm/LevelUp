@@ -55,11 +55,11 @@ func newTestRouter(factory handlers.ServiceFactory[port.CareerService]) *chi.Mux
 func TestCareerHandler_GetCareer_OK(t *testing.T) {
 	mock := &mockCareerService{
 		careerPage: domain.CareerPageResponse{
-			Summary: domain.CareerRankSummary{CurrentRankName: "Diamond 1"},
+			Summary: domain.CareerRankSummary{RankLabel: "Diamond 1"},
 		},
 	}
 	factory := func(_ context.Context, slug string) (port.CareerService, error) {
-		if slug != "test-player" {
+		if slug != testPlayerSlug {
 			return nil, errors.New("player_not_found")
 		}
 		return mock, nil
@@ -78,8 +78,8 @@ func TestCareerHandler_GetCareer_OK(t *testing.T) {
 	if err := json.Unmarshal(w.Body.Bytes(), &resp); err != nil {
 		t.Fatalf("unmarshal: %v", err)
 	}
-	if resp.Summary.CurrentRankName != "Diamond 1" {
-		t.Errorf("expected rank 'Diamond 1', got %q", resp.Summary.CurrentRankName)
+	if resp.Summary.RankLabel != "Diamond 1" {
+		t.Errorf("expected rank 'Diamond 1', got %q", resp.Summary.RankLabel)
 	}
 }
 
