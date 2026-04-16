@@ -137,7 +137,6 @@ func containsSegment(path, segment string) bool {
 	}
 	// Fallback : vérification simple de sous-chaîne pour les chemins non-séparés par SplitList
 	return len(path) > 0 && len(segment) > 0 &&
-		filepath.Clean(path) != filepath.Clean(path) || // toujours false, placeholder
 		containsSubstring(path, string(filepath.Separator)+segment+string(filepath.Separator))
 }
 

@@ -10,9 +10,15 @@ func TestBuildPlan_LegacyExists(t *testing.T) {
 	root := t.TempDir()
 
 	// Créer les répertoires legacy.
-	os.MkdirAll(filepath.Join(root, "data", "warehouse"), 0o755)
-	os.MkdirAll(filepath.Join(root, "data", "players", "TestGT"), 0o755)
-	os.MkdirAll(filepath.Join(root, "data", "players", "OtherGT"), 0o755)
+	if err := os.MkdirAll(filepath.Join(root, "data", "warehouse"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.MkdirAll(filepath.Join(root, "data", "players", "TestGT"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.MkdirAll(filepath.Join(root, "data", "players", "OtherGT"), 0o755); err != nil {
+		t.Fatal(err)
+	}
 
 	plan, err := BuildPlan(root, "halo_infinite")
 	if err != nil {
@@ -47,12 +53,20 @@ func TestApplyAndRollback(t *testing.T) {
 
 	// Créer structure legacy avec un fichier.
 	warehouseDir := filepath.Join(root, "data", "warehouse")
-	os.MkdirAll(warehouseDir, 0o755)
-	os.WriteFile(filepath.Join(warehouseDir, "test.duckdb"), []byte("fake"), 0o644)
+	if err := os.MkdirAll(warehouseDir, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(warehouseDir, "test.duckdb"), []byte("fake"), 0o644); err != nil {
+		t.Fatal(err)
+	}
 
 	playerDir := filepath.Join(root, "data", "players", "TestGT")
-	os.MkdirAll(playerDir, 0o755)
-	os.WriteFile(filepath.Join(playerDir, "stats.duckdb"), []byte("fake"), 0o644)
+	if err := os.MkdirAll(playerDir, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(playerDir, "stats.duckdb"), []byte("fake"), 0o644); err != nil {
+		t.Fatal(err)
+	}
 
 	plan, err := BuildPlan(root, "halo_infinite")
 	if err != nil {
@@ -99,11 +113,17 @@ func TestRollback_AlreadyRolledBack(t *testing.T) {
 
 	// Simulate: apply then rollback twice.
 	warehouseDir := filepath.Join(root, "data", "warehouse")
-	os.MkdirAll(warehouseDir, 0o755)
+	if err := os.MkdirAll(warehouseDir, 0o755); err != nil {
+		t.Fatal(err)
+	}
 
 	plan, _ := BuildPlan(root, "halo_infinite")
-	Apply(root, plan)
-	Rollback(root, "halo_infinite")
+	if _, err := Apply(root, plan); err != nil {
+		t.Fatal(err)
+	}
+	if err := Rollback(root, "halo_infinite"); err != nil {
+		t.Fatal(err)
+	}
 
 	// Second rollback should fail.
 	err := Rollback(root, "halo_infinite")

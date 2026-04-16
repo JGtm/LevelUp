@@ -12,7 +12,7 @@ import (
 // Helpers
 // ---------------------------------------------------------------------------
 
-func makeHomeMatch(matchID string, outcome int, ratio, accuracy *float64, isWithFriends bool) domain.HomeMatchRow {
+func makeHomeMatch(matchID string, outcome int, ratio, accuracy *float64, isWithFriends bool) domain.HomeMatchRow { //nolint:unparam
 	t := time.Now()
 	return domain.HomeMatchRow{
 		MatchID:       matchID,
