@@ -58,6 +58,10 @@ type TimeseriesCumulTab struct {
 	CumulNetChart  *PlotlyFigurePayload `json:"cumul_net_chart"`
 	CumulKDChart   *PlotlyFigurePayload `json:"cumul_kd_chart"`
 	RollingKDChart *PlotlyFigurePayload `json:"rolling_kd_chart"`
+	// Data points bruts pour le frontend (Sprint 42).
+	CumulativeKD  []CumulativePoint `json:"cumulative_kd"`
+	CumulativeNet []CumulativePoint `json:"cumulative_net"`
+	RollingKD     []CumulativePoint `json:"rolling_kd"`
 }
 
 // TimeseriesRegressionStats contient les stats de régression.
@@ -75,12 +79,25 @@ type TimeseriesFormTab struct {
 	RegressionChart      *PlotlyFigurePayload      `json:"regression_chart"`
 	NetScorePerHourChart *PlotlyFigurePayload      `json:"net_score_per_hour_chart"`
 	RegressionStats      TimeseriesRegressionStats `json:"regression_stats"`
+	// Data points bruts pour le frontend (Sprint 42).
+	EWMAKDPoints []CumulativePoint `json:"ewma_kd_points"`
 }
 
 // TimeseriesIntensityTab est l'onglet Intensité.
 type TimeseriesIntensityTab struct {
 	IntensityHeatmap    *PlotlyFigurePayload `json:"intensity_heatmap"`
 	ScorePerMinuteChart *PlotlyFigurePayload `json:"score_per_minute_chart"`
+	// Data points bruts pour le frontend (Sprint 42).
+	HeatmapData     []IntensityHeatmapPoint `json:"heatmap_data"`
+	ScorePerMinData []CumulativePoint       `json:"score_per_min_data"`
+}
+
+// IntensityHeatmapPoint est un point de la heatmap jour×heure.
+type IntensityHeatmapPoint struct {
+	DayOfWeek int     `json:"day_of_week"` // 0=lundi, 6=dimanche
+	Hour      int     `json:"hour"`        // 0-23
+	Count     int     `json:"count"`
+	AvgKD     float64 `json:"avg_kd"`
 }
 
 // TimeseriesDistributionsTab est l'onglet Distributions.
@@ -88,6 +105,24 @@ type TimeseriesDistributionsTab struct {
 	KDADistribution *PlotlyFigurePayload  `json:"kda_distribution"`
 	FirstKillDist   *PlotlyFigurePayload  `json:"first_kill_dist"`
 	Correlations    []PlotlyFigurePayload `json:"correlations"`
+	// Data points bruts pour le frontend (Sprint 42).
+	KDABuckets        []DistributionBucket  `json:"kda_buckets"`
+	KillsBuckets      []DistributionBucket  `json:"kills_buckets"`
+	CorrelationPoints []CorrelationDataPair `json:"correlation_points"`
+}
+
+// DistributionBucket est un bucket pour un histogramme de distribution.
+type DistributionBucket struct {
+	BinStart float64 `json:"bin_start"`
+	BinEnd   float64 `json:"bin_end"`
+	Count    int     `json:"count"`
+}
+
+// CorrelationDataPair est une paire (x, y) pour un scatter plot de corrélation.
+type CorrelationDataPair struct {
+	Label string  `json:"label"` // ex: "kills_vs_kd"
+	X     float64 `json:"x"`
+	Y     float64 `json:"y"`
 }
 
 // ---------------------------------------------------------------------------

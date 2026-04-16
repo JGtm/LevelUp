@@ -3,7 +3,6 @@ package service
 
 import (
 	"context"
-	"math"
 
 	"levelup/go-api/internal/analysis"
 	"levelup/go-api/internal/domain"
@@ -88,40 +87,31 @@ func (s *SquadService) GetSquadPage(
 }
 
 // GetSynthesisPage construit la réponse de la page Synthèse.
+// Sprint 43 : enrichi avec KPIs détaillés, comparison_metrics et heatmap temporelle.
 func (s *SquadService) GetSynthesisPage(
 	ctx context.Context,
 	playerXUID string,
 ) (*domain.SynthesisPageResponse, error) {
-	heatmapRows, err := s.repo.LoadSynthesisHeatmap(ctx, playerXUID)
+	// Chargement des matchs pour les top semaines, KPIs et bipolaire.
+	synthMatches, err := s.repo.LoadSynthesisMatches(ctx, playerXUID)
 	if err != nil {
 		return nil, err
 	}
 
-	cells := analysis.ComputeSynthesisHeatmap(heatmapRows)
-
-	var totalMatches, totalWins int
-	for _, r := range heatmapRows {
-		totalMatches += r.MatchCount
-		totalWins += r.Wins
-	}
-	var overallWinRate float64
-	if totalMatches > 0 {
-		overallWinRate = math.Round(float64(totalWins)/float64(totalMatches)*1000) / 10
-	}
-
-	// Chargement des matchs pour les top semaines et le breakdown solo/squad.
-	synthMatches, _ := s.repo.LoadSynthesisMatches(ctx, playerXUID)
+	soloKPIs := analysis.ComputeSynthesisKPIs(synthMatches, false)
+	squadKPIs := analysis.ComputeSynthesisKPIs(synthMatches, true)
+	comparison := analysis.ComputeComparisonMetrics(soloKPIs, squadKPIs)
 	topWeeks := analysis.ComputeSynthesisTopWeeks(synthMatches)
-	soloStats := analysis.ComputeSynthesisBreakdown(synthMatches, false)
-	squadStats := analysis.ComputeSynthesisBreakdown(synthMatches, true)
+	heatmap := analysis.ComputeTemporalHeatmap(synthMatches)
 
 	return &domain.SynthesisPageResponse{
-		HeatmapData:    cells,
-		TopWeeks:       topWeeks,
-		TotalMatches:   totalMatches,
-		OverallWinRate: overallWinRate,
-		SoloStats:      soloStats,
-		SquadStats:     squadStats,
+		Period:            "all",
+		TotalMatches:      len(synthMatches),
+		SoloKPIs:          soloKPIs,
+		SquadKPIs:         squadKPIs,
+		ComparisonMetrics: comparison,
+		HeatmapData:       heatmap,
+		TopWeeks:          topWeeks,
 	}, nil
 }
 

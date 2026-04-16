@@ -219,6 +219,9 @@ func (r *SquadRepo) LoadSynthesisMatches(ctx context.Context, xuid string) ([]do
 			&row.Deaths,
 			&row.KDA,
 			&row.IsWithFriends,
+			&row.Accuracy,
+			&row.TimePlayedSecs,
+			&row.PerformanceScore,
 		); err != nil {
 			return nil, fmt.Errorf("LoadSynthesisMatches scan: %w", err)
 		}

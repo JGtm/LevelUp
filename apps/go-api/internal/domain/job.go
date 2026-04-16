@@ -68,6 +68,24 @@ type AsyncJobStatus struct {
 // JobMeta contient les métadonnées arbitraires associées à un job.
 type JobMeta map[string]any
 
+// TitleSlug extrait le title_slug depuis les métadonnées du job.
+// Retourne "halo_infinite" si absent (rétrocompatibilité).
+func (m JobMeta) TitleSlug() string {
+	if v, ok := m["title_slug"].(string); ok && v != "" {
+		return v
+	}
+	return "halo_infinite"
+}
+
+// WithTitleSlug ajoute le title_slug aux métadonnées du job.
+func (m JobMeta) WithTitleSlug(slug string) JobMeta {
+	if m == nil {
+		m = JobMeta{}
+	}
+	m["title_slug"] = slug
+	return m
+}
+
 // IsTerminal retourne vrai si le job est dans un état terminal (fini).
 func (j *AsyncJobStatus) IsTerminal() bool {
 	switch j.Status {

@@ -8,6 +8,7 @@ import (
 
 	"levelup/go-api/internal/config"
 	"levelup/go-api/internal/domain"
+	titlePkg "levelup/go-api/internal/domain/title"
 	"levelup/go-api/internal/port"
 )
 
@@ -50,6 +51,12 @@ func (s *BootstrapService) Build(ctx context.Context, sess *domain.SessionData) 
 		currentPlayer = &p
 	}
 
+	// Sprint 44 : titre courant depuis la session, fallback halo_infinite.
+	currentTitleSlug := titlePkg.DefaultSlug
+	if sess != nil && sess.CurrentTitleSlug != "" {
+		currentTitleSlug = sess.CurrentTitleSlug
+	}
+
 	return &domain.BootstrapResponse{
 		SetupRequired:       setupRequired,
 		AuthState:           ResolveAuthState(sess),
@@ -57,6 +64,8 @@ func (s *BootstrapService) Build(ctx context.Context, sess *domain.SessionData) 
 		LinkedHaloIdentity:  ResolveLinkedIdentity(sess),
 		CurrentPlayer:       currentPlayer,
 		AvailablePlayers:    players,
+		CurrentTitleSlug:    currentTitleSlug,
+		AvailableTitles:     buildAvailableTitles(),
 		Locale:              settingsExcerpt.Lang,
 		HintsVisibleDefault: true,
 		FeatureFlags:        flags,
@@ -165,4 +174,26 @@ func getStringSetting(settings map[string]interface{}, key, def string) string {
 		}
 	}
 	return def
+}
+
+// buildAvailableTitles construit la liste des titres depuis le registre.
+func buildAvailableTitles() []domain.TitleSummary {
+	reg := titlePkg.NewRegistry()
+	all := reg.All()
+	out := make([]domain.TitleSummary, 0, len(all))
+	for _, t := range all {
+		caps := make([]string, len(t.Capabilities))
+		for i, c := range t.Capabilities {
+			caps[i] = string(c)
+		}
+		out = append(out, domain.TitleSummary{
+			Slug:         t.Slug,
+			Name:         t.Name,
+			IconURL:      t.IconURL,
+			Status:       string(t.Status),
+			Capabilities: caps,
+			IsDefault:    t.IsDefault,
+		})
+	}
+	return out
 }

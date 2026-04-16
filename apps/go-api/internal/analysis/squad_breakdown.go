@@ -2,6 +2,7 @@
 package analysis
 
 import (
+	"fmt"
 	"math"
 	"sort"
 	"time"
@@ -304,4 +305,152 @@ func ComputeSynthesisBreakdown(rows []domain.SynthesisMatchRow, isSquad bool) do
 		AvgKDA:     avgKDA,
 		AvgKills:   avgKills,
 	}
+}
+
+// =============================================================================
+// Sprint 43 — Bipolaire enrichie
+// =============================================================================
+
+// ComputeSynthesisKPIs calcule les KPIs détaillés pour un sous-ensemble solo ou squad.
+func ComputeSynthesisKPIs(rows []domain.SynthesisMatchRow, isSquad bool) domain.SynthesisKPIs {
+	var kpis domain.SynthesisKPIs
+	var totalWL, wins int
+	var sumKDA, sumAcc, sumPerf float64
+	var nKDA, nAcc, nPerf int
+	var sumKills, sumTimePlayed float64
+	var nTime int
+
+	for _, r := range rows {
+		if r.IsWithFriends != isSquad {
+			continue
+		}
+		kpis.MatchCount++
+		if r.Outcome == domain.OutcomeWin || r.Outcome == domain.OutcomeLoss {
+			totalWL++
+			if r.Outcome == domain.OutcomeWin {
+				wins++
+			}
+		}
+		if r.KDA != nil {
+			sumKDA += *r.KDA
+			nKDA++
+		}
+		if r.Accuracy != nil {
+			sumAcc += *r.Accuracy
+			nAcc++
+		}
+		if r.PerformanceScore != nil {
+			sumPerf += *r.PerformanceScore
+			nPerf++
+		}
+		sumKills += float64(r.Kills)
+		if r.TimePlayedSecs != nil && *r.TimePlayedSecs > 0 {
+			sumTimePlayed += float64(*r.TimePlayedSecs)
+			nTime++
+		}
+	}
+
+	if kpis.MatchCount == 0 {
+		return kpis
+	}
+	kpis.Wins = wins
+	if totalWL > 0 {
+		kpis.WinRate = math.Round(float64(wins)/float64(totalWL)*1000) / 1000
+	}
+	if nKDA > 0 {
+		v := math.Round(sumKDA/float64(nKDA)*100) / 100
+		kpis.KDRatio = &v
+	}
+	if nAcc > 0 {
+		v := math.Round(sumAcc/float64(nAcc)*1000) / 1000
+		kpis.Accuracy = &v
+	}
+	if nPerf > 0 {
+		v := math.Round(sumPerf / float64(nPerf))
+		kpis.PerformanceScore = &v
+	}
+	if nTime > 0 {
+		avgLife := math.Round(sumTimePlayed/float64(nTime)*10) / 10
+		kpis.AvgLifeSeconds = &avgLife
+		totalMinutes := sumTimePlayed / 60.0
+		if totalMinutes > 0 {
+			kpm := math.Round(sumKills/totalMinutes*100) / 100
+			kpis.KillsPerMin = &kpm
+		}
+	}
+	return kpis
+}
+
+// ComputeComparisonMetrics construit les métriques bipolaires solo/escouade.
+func ComputeComparisonMetrics(solo, squad domain.SynthesisKPIs) []domain.ComparisonMetricItem {
+	items := make([]domain.ComparisonMetricItem, 0, 5)
+
+	items = append(items, domain.ComparisonMetricItem{
+		Label: "Win Rate", SoloValue: solo.WinRate, SquadValue: squad.WinRate,
+		SoloText: fmtPct(solo.WinRate), SquadText: fmtPct(squad.WinRate),
+	})
+	items = append(items, domain.ComparisonMetricItem{
+		Label: "K/D", SoloValue: deref(solo.KDRatio), SquadValue: deref(squad.KDRatio),
+		SoloText: fmtFloat2(solo.KDRatio), SquadText: fmtFloat2(squad.KDRatio),
+	})
+	items = append(items, domain.ComparisonMetricItem{
+		Label: "Précision", SoloValue: deref(solo.Accuracy), SquadValue: deref(squad.Accuracy),
+		SoloText: fmtPct(deref(solo.Accuracy)), SquadText: fmtPct(deref(squad.Accuracy)),
+	})
+	items = append(items, domain.ComparisonMetricItem{
+		Label: "Kills/min", SoloValue: deref(solo.KillsPerMin), SquadValue: deref(squad.KillsPerMin),
+		SoloText: fmtFloat2(solo.KillsPerMin), SquadText: fmtFloat2(squad.KillsPerMin),
+	})
+	items = append(items, domain.ComparisonMetricItem{
+		Label: "Perf. Score", SoloValue: deref(solo.PerformanceScore), SquadValue: deref(squad.PerformanceScore),
+		SoloText: fmtFloat0(solo.PerformanceScore), SquadText: fmtFloat0(squad.PerformanceScore),
+	})
+	return items
+}
+
+// ComputeTemporalHeatmap construit la heatmap jour × heure depuis les matchs.
+func ComputeTemporalHeatmap(rows []domain.SynthesisMatchRow) []domain.TemporalHeatmapCell {
+	counts := [7][24]int{}
+	for _, r := range rows {
+		// Go Weekday: Sunday=0, Monday=1 … Saturday=6
+		// Frontend: lundi=0 … dimanche=6
+		goDow := int(r.StartTime.Weekday())
+		dow := (goDow + 6) % 7 // convertir: lundi=0
+		hour := r.StartTime.Hour()
+		counts[dow][hour]++
+	}
+	var cells []domain.TemporalHeatmapCell
+	for d := 0; d < 7; d++ {
+		for h := 0; h < 24; h++ {
+			if counts[d][h] > 0 {
+				cells = append(cells, domain.TemporalHeatmapCell{DOW: d, Hour: h, Count: counts[d][h]})
+			}
+		}
+	}
+	return cells
+}
+
+func deref(p *float64) float64 {
+	if p == nil {
+		return 0
+	}
+	return *p
+}
+
+func fmtPct(v float64) string {
+	return fmt.Sprintf("%.1f%%", v*100)
+}
+
+func fmtFloat2(p *float64) string {
+	if p == nil {
+		return "-"
+	}
+	return fmt.Sprintf("%.2f", *p)
+}
+
+func fmtFloat0(p *float64) string {
+	if p == nil {
+		return "-"
+	}
+	return fmt.Sprintf("%.0f", *p)
 }

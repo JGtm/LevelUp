@@ -1,2 +1,3 @@
 /* Tailwind v4 — import global */
 @import "tailwindcss";
+@plugin "@tailwindcss/typography";

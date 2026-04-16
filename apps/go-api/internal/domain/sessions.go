@@ -18,9 +18,11 @@ type SessionMatchRow struct {
 
 // SessionGroup représente un groupe de matchs formant une session.
 type SessionGroup struct {
-	SessionID    int    // 0-based
-	SessionLabel string // "DD/MM/YYYY HH:MM–HH:MM (N)"
-	MatchIDs     []string
+	SessionID          int      `json:"session_id"`
+	SessionLabel       string   `json:"session_label"`
+	MatchIDs           []string `json:"match_ids"`
+	DurationSeconds    int      `json:"duration_seconds"`     // span (dernier start_time − premier start_time)
+	TotalPlayedSeconds int      `json:"total_played_seconds"` // somme des time_played_seconds
 }
 
 // SessionAssignment associe chaque match à un session_id et un label.

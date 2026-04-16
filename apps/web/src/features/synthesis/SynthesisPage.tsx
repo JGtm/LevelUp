@@ -10,6 +10,7 @@ import { PageHeader } from '@/components/shell/PageHeader'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Spinner } from '@/components/ui/spinner'
 import { PlotlyChart } from '@/components/ui/plotly-chart'
+import { InfoTooltip } from '@/components/ui/info-tooltip'
 import type {
   ComparisonMetricItem,
   HeatmapCell,
@@ -126,7 +127,7 @@ function KPISection({ title, kpis }: KPISectionProps) {
         <div className="rounded-lg border p-3"><span className="text-xs text-gray-500 block">Win Rate</span><span className="text-xl font-bold">{(kpis.win_rate * 100).toFixed(1)}%</span></div>
         <div className="rounded-lg border p-3"><span className="text-xs text-gray-500 block">K/D</span><span className="text-xl font-bold">{kpis.kd_ratio?.toFixed(2) ?? '-'}</span></div>
         <div className="rounded-lg border p-3"><span className="text-xs text-gray-500 block">Matchs</span><span className="text-xl font-bold">{kpis.match_count}</span></div>
-        <div className="rounded-lg border p-3"><span className="text-xs text-gray-500 block">Perf.</span><span className="text-xl font-bold">{kpis.performance_score?.toFixed(0) ?? '-'}</span></div>
+        <div className="rounded-lg border p-3"><span className="text-xs text-gray-500 block">Perf. <InfoTooltip content="Le Performance Score est un indice composite calculé par LevelUp à partir des kills, assists, objectifs et dégâts. Plus il est élevé, meilleure est la contribution globale au match." /></span><span className="text-xl font-bold">{kpis.performance_score?.toFixed(0) ?? '-'}</span></div>
       </div>
     </div>
   )

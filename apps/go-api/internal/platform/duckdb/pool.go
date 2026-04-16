@@ -15,13 +15,33 @@ import (
 	"golang.org/x/sync/singleflight"
 )
 
+// PlayerPoolConfig contient les chemins nécessaires pour ouvrir un PlayerDB.
+type PlayerPoolConfig struct {
+	Gamertag     string
+	XUID         string
+	TitleSlug    string // Sprint 44 : namespace titre (ex: "halo_infinite")
+	PlayerDBPath string
+	SharedDBPath string
+	MetaDBPath   string
+}
+
+// PoolKey retourne la clé unique du pool pour ce joueur.
+// Format : "{title_slug}:{gamertag}" ou "{gamertag}" si TitleSlug vide (legacy).
+func (c PlayerPoolConfig) PoolKey() string {
+	if c.TitleSlug != "" {
+		return c.TitleSlug + ":" + c.Gamertag
+	}
+	return c.Gamertag
+}
+
 // PlayerDB regroupe les connexions DB nécessaires pour un joueur.
 type PlayerDB struct {
-	Player   *DB // stats.duckdb du joueur (avec shared attaché)
-	Shared   *DB // shared_matches_v2.duckdb
-	Metadata *DB // metadata.duckdb
-	XUID     string
-	Gamertag string
+	Player    *DB // stats.duckdb du joueur (avec shared attaché)
+	Shared    *DB // shared_matches_v2.duckdb
+	Metadata  *DB // metadata.duckdb
+	XUID      string
+	Gamertag  string
+	TitleSlug string // Sprint 44 : titre associé
 }
 
 // GlobalPool est le registre process-level des PlayerDB par gamertag (slug).
@@ -31,23 +51,25 @@ var globalPool sync.Map // map[string]*PlayerDB
 var sfGroup singleflight.Group
 
 // GetOrOpen retourne le PlayerDB existant pour ce joueur, ou l'ouvre.
-// Thread-safe : singleflight garantit qu'un seul openPlayerDB par gamertag.
+// Thread-safe : singleflight garantit qu'un seul openPlayerDB par clé de pool.
+// Clé de pool : "{title_slug}:{gamertag}" (Sprint 44) ou "{gamertag}" (legacy).
 func GetOrOpen(ctx context.Context, cfg PlayerPoolConfig) (*PlayerDB, error) {
-	if pdb, ok := globalPool.Load(cfg.Gamertag); ok {
+	key := cfg.PoolKey()
+	if pdb, ok := globalPool.Load(key); ok {
 		return pdb.(*PlayerDB), nil
 	}
 
 	// singleflight : une seule goroutine ouvre; les autres attendent le résultat.
-	result, err, _ := sfGroup.Do(cfg.Gamertag, func() (interface{}, error) {
+	result, err, _ := sfGroup.Do(key, func() (interface{}, error) {
 		// Vérifier à nouveau après avoir gagné le lock singleflight.
-		if pdb, ok := globalPool.Load(cfg.Gamertag); ok {
+		if pdb, ok := globalPool.Load(key); ok {
 			return pdb.(*PlayerDB), nil
 		}
 		pdb, openErr := openPlayerDB(ctx, cfg)
 		if openErr != nil {
 			return nil, openErr
 		}
-		globalPool.Store(cfg.Gamertag, pdb)
+		globalPool.Store(key, pdb)
 		return pdb, nil
 	})
 	if err != nil {
@@ -97,11 +119,12 @@ func openPlayerDB(ctx context.Context, cfg PlayerPoolConfig) (*PlayerDB, error) 
 	}
 
 	return &PlayerDB{
-		Player:   playerDB,
-		Shared:   sharedDB,
-		Metadata: metaDB,
-		XUID:     cfg.XUID,
-		Gamertag: cfg.Gamertag,
+		Player:    playerDB,
+		Shared:    sharedDB,
+		Metadata:  metaDB,
+		XUID:      cfg.XUID,
+		Gamertag:  cfg.Gamertag,
+		TitleSlug: cfg.TitleSlug,
 	}, nil
 }
 

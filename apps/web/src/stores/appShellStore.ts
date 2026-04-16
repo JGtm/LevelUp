@@ -9,12 +9,17 @@
  */
 
 import { create } from 'zustand'
-import type { BootstrapResponse, CapabilityMap, HaloIdentitySummary, PlayerSummary } from '@/lib/api/types'
+import type { BootstrapResponse, CapabilityMap, HaloIdentitySummary, PlayerSummary, TitleSummary } from '@/lib/api/types'
+import { setApiTitleSlug } from '@/lib/api/client'
 
 interface AppShellState {
   // Joueur courant
   currentPlayer: PlayerSummary | null
   availablePlayers: PlayerSummary[]
+
+  // Sprint 44 : Titre courant
+  currentTitleSlug: string
+  availableTitles: TitleSummary[]
 
   // Configuration
   locale: 'fr' | 'en'
@@ -35,6 +40,7 @@ interface AppShellState {
   // Actions
   hydrateFromBootstrap: (data: BootstrapResponse) => void
   setCurrentPlayer: (player: PlayerSummary) => void
+  setCurrentTitle: (titleSlug: string) => void
   setLocale: (locale: 'fr' | 'en') => void
   setHintsVisible: (visible: boolean) => void
 }
@@ -54,6 +60,8 @@ const DEFAULT_CAPABILITIES: CapabilityMap = {
 export const useAppShellStore = create<AppShellState>((set) => ({
   currentPlayer: null,
   availablePlayers: [],
+  currentTitleSlug: 'halo_infinite',
+  availableTitles: [],
   locale: 'fr',
   hintsVisible: true,
   capabilities: null,
@@ -64,10 +72,14 @@ export const useAppShellStore = create<AppShellState>((set) => ({
   linkedHaloIdentity: null,
   activeSyncJobId: null,
 
-  hydrateFromBootstrap: (data: BootstrapResponse) =>
+  hydrateFromBootstrap: (data: BootstrapResponse) => {
+    const titleSlug = data.current_title_slug ?? 'halo_infinite'
+    setApiTitleSlug(titleSlug)
     set({
       currentPlayer: data.current_player,
       availablePlayers: data.available_players,
+      currentTitleSlug: titleSlug,
+      availableTitles: data.available_titles ?? [],
       locale: (data.locale as 'fr' | 'en') ?? 'fr',
       hintsVisible: data.hints_visible_default,
       capabilities: data.capabilities ?? DEFAULT_CAPABILITIES,
@@ -77,9 +89,14 @@ export const useAppShellStore = create<AppShellState>((set) => ({
       isBootstrapped: true,
       linkedHaloIdentity: data.linked_halo_identity ?? null,
       activeSyncJobId: data.active_sync_job_id ?? null,
-    }),
+    })
+  },
 
   setCurrentPlayer: (player) => set({ currentPlayer: player }),
+  setCurrentTitle: (titleSlug) => {
+    setApiTitleSlug(titleSlug)
+    set({ currentTitleSlug: titleSlug })
+  },
   setLocale: (locale) => set({ locale }),
   setHintsVisible: (visible) => set({ hintsVisible: visible }),
 }))
