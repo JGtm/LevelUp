@@ -46,6 +46,7 @@ Thumbs.db
 # Tests & Coverage
 .coverage
 coverage.json
+apps/go-api/coverage.out
 htmlcov/
 .pytest_cache/
 test_*.log
