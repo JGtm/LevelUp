@@ -1,5 +1,6 @@
 // Package middleware fournit les middlewares HTTP transverses.
 // Sprint 4 : logging structuré slog avec durée de requête et request_id.
+// Sprint 35 : ajout response_bytes dans chaque log de requête.
 package middleware
 
 import (
@@ -22,17 +23,19 @@ func SlogLogger(next http.Handler) http.Handler {
 			"path", r.URL.Path,
 			"status", ww.status,
 			"duration_ms", time.Since(start).Milliseconds(),
+			"response_bytes", ww.bytesWritten,
 			"request_id", w.Header().Get(headerRequestID),
 			"remote_addr", r.RemoteAddr,
 		)
 	})
 }
 
-// statusResponseWriter capture le status code de la réponse.
+// statusResponseWriter capture le status code et le nombre d'octets écrits.
 type statusResponseWriter struct {
 	http.ResponseWriter
-	status      int
-	wroteHeader bool
+	status       int
+	bytesWritten int64
+	wroteHeader  bool
 }
 
 func (sw *statusResponseWriter) WriteHeader(code int) {
@@ -41,4 +44,10 @@ func (sw *statusResponseWriter) WriteHeader(code int) {
 		sw.wroteHeader = true
 	}
 	sw.ResponseWriter.WriteHeader(code)
+}
+
+func (sw *statusResponseWriter) Write(b []byte) (int, error) {
+	n, err := sw.ResponseWriter.Write(b)
+	sw.bytesWritten += int64(n)
+	return n, err
 }

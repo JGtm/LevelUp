@@ -1117,10 +1117,11 @@
 > **Documents d'exécution** : [SPRINT_44_WORKPACKAGES.md](SPRINT_44_WORKPACKAGES.md) et [ADR_S44_MULTI_TITLE_NAMESPACE.md](ADR_S44_MULTI_TITLE_NAMESPACE.md)
 >
 > **Note** : l'estimation initiale de 6–9j a été revue à 10–14j après audit du code Go.
-> Le refactor touche toutes les couches (config, pool DuckDB 14 repos, session, bootstrap,
-> OpenAPI, types frontend, stores React, migration physique, corpus synthétique, CI).
-> La sous-estimation venait principalement de WP3 (migration physique DuckDB sur Windows)
-> et WP4 (réalignement frontend React). L'auth n'est pas impactée (flow MSAL titre-agnostique).
+> Le refactor touche toutes les couches : 29 références de chemins hardcodés dans 15 fichiers,
+> pool DuckDB (13 repos), 23 endpoints OpenAPI, 8 sous-commandes CLI, 5 stores React, demo mode.
+> La sous-estimation venait principalement de WP3 (migration physique DuckDB sur Windows),
+> WP4 (réalignement frontend + décision routage OpenAPI) et WP1 (ops/validation/sync/demo paths).
+> L'auth n'est pas impactée (flow MSAL titre-agnostique).
 >
 > **Coexistence Python** : le projet Python LevelUp n'est plus maintenu à ce stade.
 > Le Go est la seule baseline. Aucune rétrocompatibilité Python n'est requise.
@@ -1129,24 +1130,33 @@
 |--:|-------|:------:|
 | 1 | Rédiger l'ADR et figer le namespace par titre comme stratégie de référence | ⬜ |
 | 2 | Introduire `TitleRegistry` / `TitleDescriptor` et `PathResolver` title-aware pour centraliser titres, capabilities et chemins runtime | ⬜ |
-| 3 | Refactorer `PlayerResolver` pour accepter `(title_slug, player_slug)` et propager au pool DuckDB (clé `{title}:{gamertag}` au lieu de `gamertag` seul — impacte 14 fichiers `*_repo.go`) | ⬜ |
+| 3 | Refactorer `PlayerResolver` pour accepter `(title_slug, player_slug)` et propager au pool DuckDB (clé `{title}:{gamertag}` au lieu de `gamertag` seul — impacte 13 fichiers `*_repo.go`) | ⬜ |
 | 4 | Rendre config, session, bootstrap, jobs et sélection joueur explicitement title-aware (auth non impactée — flow MSAL titre-agnostique) | ⬜ |
 | 5 | Migrer `db_profiles.json` vers un format v3 title-aware, avec lecture rétro-compatible du format actuel | ⬜ |
-| 6 | Mettre en place le namespace `data/titles/{title_slug}/warehouse/...` et `data/titles/{title_slug}/players/{gamertag}/...` | ⬜ |
+| 6 | Rendre demo mode title-aware (`DemoFixturesDir` namespacé) + migrer les 6 fichiers `internal/ops/` et `internal/validation/gate.go` vers `PathResolver` | ⬜ |
+| 7 | Mettre en place le namespace `data/titles/{title_slug}/warehouse/...` et `data/titles/{title_slug}/players/{gamertag}/...` | ⬜ |
 | 7 | Ajouter une migration idempotente avec modes dry-run, apply et rollback via manifest JSON (`operations.json` traçant chaque `(source, dest)`), journal de migration et backup automatique | ⬜ |
 | 8 | Créer le corpus synthétique second titre (~0.5–1j) : `metadata.duckdb` minimal + `shared_matches_v2.duckdb` avec quelques matchs, schémas compatibles | ⬜ |
 | 9 | Créer fixtures multi-titres (Halo Infinite namespacé + titre synthétique), golden values et smoke E2E de non-régression | ⬜ |
-| 10 | Tests unitaires ciblés : `TitleRegistry`, `PathResolver`, `PlayerResolver` title-aware, config v3, pool keying `{title}:{gamertag}` | ⬜ |
-| 11 | Tests d'intégration : migration dry-run/apply/rollback, dépôt legacy HI-only, dépôt déjà migré, isolement inter-titres (deux titres même gamertag ne partagent pas de pool) | ⬜ |
-| 12 | Golden tests et smoke E2E : zéro diff HI pré/post migration + smoke React sur changement de titre | ⬜ |
-| 13 | Observabilité : logs `title_slug` + `response_bytes`, validation contrat bootstrap title-aware en dev | ⬜ |
-| 14 | Documentation finale : README, CLAUDE.md, copilot-instructions, runbook d'exploitation, rollback plan | ⬜ |
+| 10 | Décider et implémenter le routage OpenAPI `{title_slug}` (23 endpoints) + middleware Chi d'extraction + fallback anciennes routes | ⬜ |
+| 11 | Ajouter `--title` flag aux 8 sous-commandes CLI (backup, restore, archive, media, diagnose, seed, healthcheck, server) | ⬜ |
+| 12 | Brancher `appShellStore.currentTitleSlug` côté frontend React + types générés OpenAPI | ⬜ |
+| 13 | Tests unitaires ciblés : `TitleRegistry`, `PathResolver`, `PlayerResolver` title-aware (mode réel + mode démo), config v3, pool keying `{title}:{gamertag}` | ⬜ |
+| 14 | Tests d'intégration : migration dry-run/apply/rollback, dépôt legacy HI-only, dépôt déjà migré, isolement inter-titres (deux titres même gamertag ne partagent pas de pool) | ⬜ |
+| 15 | Golden tests et smoke E2E : zéro diff HI pré/post migration + smoke React sur changement de titre | ⬜ |
+| 16 | Observabilité : logs `title_slug` + `response_bytes`, validation contrat bootstrap title-aware en dev | ⬜ |
+| 17 | Documentation finale : README, CLAUDE.md, copilot-instructions, runbook d'exploitation, rollback plan | ⬜ |
 
 **Sous-plan de réussite 10/10**
 
 - **Design** : `title_slug` ne doit pas vivre comme une string opportuniste. Le sprint doit introduire un point central de vérité pour les titres supportés, les capacités associées et la résolution des chemins/runtime context.
-- **PlayerResolver** : pivot central du refactor. C'est la première brique à modifier car elle résout `player_slug` → gamertag → chemins DB. Le pool DuckDB doit passer d'une clé `gamertag` à `{title}:{gamertag}` (14 fichiers `*_repo.go` impactés).
+- **PlayerResolver** : pivot central du refactor. C'est la première brique à modifier car elle résout `player_slug` → gamertag → chemins DB. Le pool DuckDB doit passer d'une clé `gamertag` à `{title}:{gamertag}` (13 fichiers `*_repo.go` impactés, changement transparent via `PlayerDB` enrichie).
+- **Chemins hardcodés** : 29 références dans 15 fichiers (`cmd/server`, `config/player_resolver`, `ops/`, `validation/gate`, `sync/engine`). Toutes doivent passer par le `PathResolver`.
+- **Demo mode** : `resolveDemoPlayer()` et `DemoFixturesDir` doivent devenir title-aware.
 - **Config** : `db_profiles.json` v3 title-aware avec rétrocompatibilité lecture du format actuel.
+- **OpenAPI** : 23 endpoints avec `{player_slug}` doivent intégrer `{title_slug}` (recommandation : préfixe path + fallback anciennes routes).
+- **CLI** : 8 sous-commandes doivent accepter `--title` (défaut `halo_infinite`).
+- **Frontend** : `appShellStore.currentTitleSlug` + types générés OpenAPI + 5 stores React.
 - **Migration** : la transition depuis l'arborescence HI-only doit être réversible et vérifiable. Mécanisme retenu : manifest JSON (`operations.json`) traçant chaque opération `(source, dest)`, rollback = exécution inverse. Aucun déplacement destructif sans dry-run et backup.
 - **Corpus synthétique** : budget dédié de 0.5–1 jour pour créer un jeu de données minimal mais significatif pour un second titre.
 - **Validation** : la non-régression Halo Infinite doit être prouvée avant/après migration. L'isolement inter-titres doit être testé (deux titres, même gamertag ≠ mêmes données).
@@ -1156,9 +1166,14 @@
 - [ ] Scoreboard complet, weapon parser branché
 - [ ] UX améliorée (tooltips, changelog, durées)
 - [ ] Support multi-titres namespacé en place (`title_slug` + `data/titles/{title_slug}/...`)
-- [ ] `PlayerResolver` title-aware, pool DuckDB clé `{title}:{gamertag}`
+- [ ] `PlayerResolver` title-aware (mode réel + mode démo), pool DuckDB clé `{title}:{gamertag}`
 - [ ] `db_profiles.json` v3 title-aware avec rétrocompatibilité lecture
+- [ ] 29 chemins hardcodés dans 15 fichiers migrés vers `PathResolver`
+- [ ] Demo mode title-aware
 - [ ] Migration HI-only → namespace par titre validée en dry-run/apply/rollback (manifest JSON)
+- [ ] Routage OpenAPI `{title_slug}` décidé et implémenté (23 endpoints)
+- [ ] 8 sous-commandes CLI acceptent `--title`
+- [ ] Frontend `appShellStore.currentTitleSlug` branché
 - [ ] Zéro régression Halo Infinite sur corpus golden après migration
 - [ ] Isolement inter-titres validé sur un corpus synthétique (deux titres, même gamertag)
 - [ ] Tests unitaires + intégration + golden + smoke E2E couvrent les parcours title-aware

@@ -9,8 +9,100 @@ permissions:
   contents: write
 
 jobs:
+  # ─────────────────────────────────────────────────────────────────────────────
+  # Job 1 : Build Go server — matrice Linux / macOS / Windows (Sprint 34)
+  # ─────────────────────────────────────────────────────────────────────────────
+  build-go:
+    name: Build Go ${{ matrix.goos }}-${{ matrix.goarch }}
+    runs-on: ${{ matrix.runner }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - goos: linux
+            goarch: amd64
+            runner: ubuntu-latest
+            ext: ""
+          - goos: darwin
+            goarch: arm64
+            runner: macos-latest
+            ext: ""
+          - goos: windows
+            goarch: amd64
+            runner: windows-latest
+            ext: ".exe"
+    defaults:
+      run:
+        working-directory: apps/go-api
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version-file: apps/go-api/go.mod
+          cache-dependency-path: apps/go-api/go.sum
+
+      - name: Extract version from tag
+        id: ver
+        shell: bash
+        run: echo "version=${GITHUB_REF_NAME#v}" >> "$GITHUB_OUTPUT"
+
+      - name: Build Go server (CGo enabled — DuckDB bindings)
+        shell: bash
+        env:
+          CGO_ENABLED: "1"
+          GOOS: ${{ matrix.goos }}
+          GOARCH: ${{ matrix.goarch }}
+        run: |
+          mkdir -p dist
+          go build \
+            -ldflags "-X main.version=${{ steps.ver.outputs.version }}" \
+            -o dist/levelup-server-${{ matrix.goos }}-${{ matrix.goarch }}${{ matrix.ext }} \
+            ./cmd/server/
+
+      - name: Upload Go binary
+        uses: actions/upload-artifact@v4
+        with:
+          name: go-binary-${{ matrix.goos }}-${{ matrix.goarch }}
+          path: apps/go-api/dist/levelup-server-${{ matrix.goos }}-${{ matrix.goarch }}${{ matrix.ext }}
+
+  # ─────────────────────────────────────────────────────────────────────────────
+  # Job 2 : Build web dist (Vite) — partagé entre les artefacts Go
+  # ─────────────────────────────────────────────────────────────────────────────
+  build-web:
+    name: Build Web (Vite)
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: apps/web
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: "npm"
+          cache-dependency-path: apps/web/package-lock.json
+
+      - name: Install dependencies
+        run: npm ci --prefer-offline
+
+      - name: Build Vite
+        run: npm run build
+
+      - name: Upload web dist
+        uses: actions/upload-artifact@v4
+        with:
+          name: web-dist
+          path: apps/web/dist/
+
+  # ─────────────────────────────────────────────────────────────────────────────
+  # Job 3 : Build archives Python portable (compatibilité — inchangé)
+  # ─────────────────────────────────────────────────────────────────────────────
   build-releases:
-    name: Build Release Artifacts
+    name: Build Python Portable Archives
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -50,18 +142,24 @@ jobs:
           name: unix-release
           path: dist/LevelUp-v${{ steps.version.outputs.version }}-unix.tar.gz
 
+  # ─────────────────────────────────────────────────────────────────────────────
+  # Job 4 : Publish GitHub Release
+  # ─────────────────────────────────────────────────────────────────────────────
   publish:
     name: Publish GitHub Release
-    needs: build-releases
+    needs: [build-go, build-web, build-releases]
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
 
-      - name: Download artifacts
+      - name: Download all artifacts
         uses: actions/download-artifact@v4
         with:
           path: dist/
           merge-multiple: true
+
+      - name: List artifacts
+        run: ls -lh dist/
 
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v2
@@ -70,25 +168,33 @@ jobs:
           files: |
             dist/LevelUp-v*-win64-portable.zip
             dist/LevelUp-v*-unix.tar.gz
+            dist/levelup-server-linux-amd64
+            dist/levelup-server-darwin-arm64
+            dist/levelup-server-windows-amd64.exe
           body: |
             ## Installation
 
-            ### Windows — Portable (recommandée)
-            1. Téléchargez `LevelUp-v*-win64-portable.zip`
-            2. Extrayez-le où vous voulez
-            3. Double-cliquez sur `LevelUp.bat`
-            4. Premier lancement : les dépendances s'installent automatiquement (~2 min)
-
-            ### macOS / Linux
-            1. Téléchargez `LevelUp-v*-unix.tar.gz`
-            2. Extrayez : `tar xzf LevelUp-v*-unix.tar.gz`
-            3. Lancez : `./LevelUp.sh`
-            4. Premier lancement : l'environnement Python est créé automatiquement
-
-            ### Depuis les sources (développeurs)
+            ### Docker (recommandé — serveur Go natif)
             ```bash
-            git clone https://github.com/${{ github.repository }}.git
-            cd LevelUp
-            python launcher.py setup
-            python launcher.py run
+            docker compose up -d
+            ```
+
+            ### Binaires Go natifs
+            Téléchargez le binaire correspondant à votre plateforme :
+            - **Linux (x86_64)** : `levelup-server-linux-amd64`
+            - **macOS (Apple Silicon)** : `levelup-server-darwin-arm64`
+            - **Windows (x86_64)** : `levelup-server-windows-amd64.exe`
+
+            ```bash
+            chmod +x levelup-server-linux-amd64
+            LEVELUP_REPO_ROOT=/chemin/vers/levelup ./levelup-server-linux-amd64
+            ```
+
+            ### Windows — Portable Python (compatibilité)
+            1. Téléchargez `LevelUp-v*-win64-portable.zip`
+            2. Extrayez et double-cliquez sur `LevelUp.bat`
+
+            ### macOS / Linux — Archive Python (compatibilité)
+            ```bash
+            tar xzf LevelUp-v*-unix.tar.gz && ./LevelUp.sh
             ```

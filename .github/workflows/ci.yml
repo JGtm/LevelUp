@@ -181,17 +181,21 @@ jobs:
       - name: Set up Go
         uses: actions/setup-go@v5
         with:
-          go-version: "1.22"
+          go-version-file: apps/go-api/go.mod
           cache-dependency-path: apps/go-api/go.sum
 
-      - name: go vet
-        run: go vet ./...
+      - name: go vet (domain + analysis — sans CGo)
+        run: go vet ./internal/domain/... ./internal/analysis/...
+        env:
+          CGO_ENABLED: "0"
 
-      - name: go build
-        run: go build ./...
+      - name: go build (contracttest — sans CGo)
+        run: go build ./contracttest/...
+        env:
+          CGO_ENABLED: "0"
 
       - name: go test (unit, no CGo DB)
-        run: go test ./... -timeout 30s -run "^Test[^Integration]"
+        run: go test ./internal/domain/... ./internal/analysis/... ./contracttest/... -timeout 60s -count=1
         env:
           CGO_ENABLED: "0"
           LEVELUP_DEMO_MODE: "true"
@@ -208,7 +212,7 @@ jobs:
       - name: Set up Go
         uses: actions/setup-go@v5
         with:
-          go-version: "1.22"
+          go-version-file: apps/go-api/go.mod
           cache-dependency-path: apps/go-api/go.sum
 
       # golangci-lint : équivalent ruff + ruff-format + enforce_size_limits + McCabe pour Go
@@ -221,7 +225,7 @@ jobs:
           args: --timeout 5m
 
   go-coverage:
-    name: Go Coverage
+    name: Go Coverage (seuil 50%)
     runs-on: ubuntu-latest
     defaults:
       run:
@@ -232,23 +236,111 @@ jobs:
       - name: Set up Go
         uses: actions/setup-go@v5
         with:
-          go-version: "1.22"
+          go-version-file: apps/go-api/go.mod
           cache-dependency-path: apps/go-api/go.sum
 
-      - name: go test with coverage
+      - name: go test with coverage (domain + analysis + contracttest)
         run: |
-          go test -coverprofile=coverage.out ./... -timeout 30s \
-            -run "^Test[^Integration]" || true
+          go test -coverprofile=coverage.out -covermode=atomic \
+            ./internal/domain/... ./internal/analysis/... ./contracttest/... \
+            -timeout 60s -count=1
         env:
           CGO_ENABLED: "0"
           LEVELUP_DEMO_MODE: "true"
 
-      - name: Check coverage threshold (min 30%)
+      - name: Check coverage threshold (min 50% — Sprint 35)
         run: |
           total=$(go tool cover -func=coverage.out | grep '^total:' | awk '{print $3}' | tr -d '%')
           echo "Coverage: ${total}%"
-          awk "BEGIN { exit (${total:-0} < 30) }" || \
-            { echo "FAIL: couverture ${total}% < seuil 30%"; exit 1; }
+          awk "BEGIN { exit (${total:-0} < 50) }" || \
+            { echo "FAIL: couverture ${total:-0}% < seuil 50%"; exit 1; }
+
+      - name: Upload coverage report
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: go-coverage-report
+          path: apps/go-api/coverage.out
+
+  go-golden-test:
+    name: Go Golden Test (parité endpoints)
+    runs-on: ubuntu-latest
+    # CGo requis pour DuckDB — ubuntu-latest dispose de gcc
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version-file: apps/go-api/go.mod
+          cache-dependency-path: apps/go-api/go.sum
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install Python deps (duckdb + httpx)
+        run: pip install duckdb httpx
+
+      - name: Create test fixtures DuckDB
+        env:
+          LEVELUP_REPO_ROOT: ${{ github.workspace }}
+        run: python apps/go-api/tests/create_test_fixture.py
+
+      - name: Build Go server (CGo DuckDB)
+        working-directory: apps/go-api
+        run: |
+          go build \
+            -ldflags "-X main.version=ci-golden" \
+            -o bin/levelup-server \
+            ./cmd/server/
+        env:
+          CGO_ENABLED: "1"
+
+      - name: Start Go server (mode démo)
+        run: |
+          LEVELUP_DEMO_MODE=true \
+          LEVELUP_REPO_ROOT=${{ github.workspace }} \
+          apps/go-api/bin/levelup-server &
+          # Attendre que l'API réponde (max 20s)
+          for i in $(seq 1 20); do
+            curl -sf http://localhost:8000/health && echo "Server ready" && break
+            sleep 1
+          done
+
+      - name: Run parity check vs golden values
+        working-directory: apps/go-api
+        env:
+          LEVELUP_GO_URL: "http://localhost:8000"
+          LEVELUP_PLAYER: "DEMO"
+        run: python scripts/parity_check.py --go-url http://localhost:8000
+
+      - name: Assert zéro diffs critiques
+        run: |
+          python - <<'EOF'
+          import json, sys, pathlib
+          report = pathlib.Path("apps/go-api/tests/fixtures/parity_report.json")
+          if not report.exists():
+              print("Rapport parity_report.json absent — parity_check.py n'a pas tourné")
+              sys.exit(1)
+          data = json.loads(report.read_text())
+          failed = [r for r in data.get("results", []) if r.get("status") == "fail"]
+          print(f"Résultats : {len(data.get('results', []))} tests, {len(failed)} échecs")
+          if failed:
+              for f in failed:
+                  print(f"  FAIL: {f.get('name')} — {f.get('error', '')[:120]}")
+              sys.exit(1)
+          print("OK — tous les golden tests passent")
+          EOF
+
+      - name: Upload parity report (si échec)
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: parity-report
+          path: apps/go-api/tests/fixtures/parity_report.json
+          retention-days: 7
 
   go-openapi-lint:
     name: OpenAPI Lint
@@ -272,7 +364,7 @@ jobs:
       - name: Set up Go
         uses: actions/setup-go@v5
         with:
-          go-version: "1.22"
+          go-version-file: apps/go-api/go.mod
           cache-dependency-path: apps/go-api/go.sum
 
       # Tests YAML-only : vérifie que openapi.yaml est valide, complet (≥20 paths)
@@ -310,7 +402,7 @@ jobs:
       - name: Set up Go (backend démo)
         uses: actions/setup-go@v5
         with:
-          go-version: "1.22"
+          go-version-file: apps/go-api/go.mod
           cache-dependency-path: apps/go-api/go.sum
 
       - name: Build Go backend

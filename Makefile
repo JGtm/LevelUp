@@ -146,3 +146,51 @@ _check_venv:
 		echo "❌ .venv introuvable — lancez 'make install' d'abord."; \
 		exit 1; \
 	fi
+
+# =============================================================================
+# Go API — cibles build/run/test (Sprint 34)
+# =============================================================================
+
+GO_API_DIR := apps/go-api
+# Injection de la version depuis pyproject.toml ou tag Git (fallback "dev")
+GO_VERSION := $(shell python3 -c "import re,pathlib; m=re.search(r'version\s*=\s*\"([^\"]+)\"', pathlib.Path('pyproject.toml').read_text()); print(m.group(1) if m else 'dev')" 2>/dev/null || echo "dev")
+GO_LDFLAGS := -ldflags "-X main.version=$(GO_VERSION)"
+
+## Go API: compile le binaire server (Linux — requiert CGo/DuckDB)
+go-api-build:
+	cd $(GO_API_DIR) && CGO_ENABLED=1 go build $(GO_LDFLAGS) -o bin/server ./cmd/server/
+
+## Go API: démarre le serveur Go en mode dev (localhost:8000)
+go-api-run:
+	cd $(GO_API_DIR) && CGO_ENABLED=1 \
+		LEVELUP_REPO_ROOT="$(shell pwd)" \
+		go run ./cmd/server/
+
+## Go API: démarre le serveur Go + frontend Vite en parallèle
+go-api-dev:
+	@echo "▶ Go API (port 8000) + Web (port 5173)…"
+	cd $(GO_API_DIR) && CGO_ENABLED=1 \
+		LEVELUP_REPO_ROOT="$(shell pwd)" \
+		go run ./cmd/server/ & \
+	cd apps/web && npm run dev
+
+## Go API: lance les tests (sans CGo — domain/analysis/contract)
+go-api-test:
+	cd $(GO_API_DIR) && CGO_ENABLED=0 LEVELUP_DEMO_MODE=true \
+		go test ./internal/domain/... ./internal/analysis/... ./contracttest/... \
+		-v -timeout 60s -count=1
+
+## Go API: lance les tests avec rapport de couverture
+go-api-coverage:
+	cd $(GO_API_DIR) && CGO_ENABLED=0 LEVELUP_DEMO_MODE=true \
+		go test ./internal/domain/... ./internal/analysis/... ./contracttest/... \
+		-coverprofile=coverage.out -covermode=atomic -timeout 60s
+	cd $(GO_API_DIR) && go tool cover -func=coverage.out | tail -1
+
+## Go API: vet + lint
+go-api-lint:
+	cd $(GO_API_DIR) && go vet ./internal/domain/... ./internal/analysis/...
+
+## Go API: génère les types depuis openapi.yaml
+go-api-gen:
+	cd $(GO_API_DIR) && make gen
