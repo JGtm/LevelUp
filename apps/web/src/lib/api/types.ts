@@ -52,12 +52,26 @@ export interface HaloIdentitySummary {
   xuid: string
 }
 
+/** Sprint 44 : résumé d'un titre supporté pour le frontend. */
+export interface TitleSummary {
+  slug: string
+  name: string
+  icon_url?: string
+  status: 'active' | 'coming_soon' | 'archived'
+  capabilities: string[]
+  is_default: boolean
+}
+
 export interface BootstrapResponse {
   setup_required: boolean
   auth_state: 'missing' | 'partial' | 'ready'
   setup_state: 'no_halo_link' | 'halo_linked_no_profile' | 'profile_ready_no_sync' | 'ready'
   current_player: PlayerSummary | null
   available_players: PlayerSummary[]
+  /** Sprint 44 : titre courant */
+  current_title_slug: string
+  /** Sprint 44 : titres disponibles */
+  available_titles: TitleSummary[]
   locale: string
   hints_visible_default: boolean
   feature_flags: FeatureFlags
@@ -76,12 +90,14 @@ export interface PlayersListResponse {
 
 export interface SessionContextRequest {
   player_slug?: string | null
+  title_slug?: string | null  // Sprint 44 : switch titre
   locale?: string | null
   hints_visible?: boolean | null
 }
 
 export interface SessionContextResponse {
   current_player: PlayerSummary | null
+  current_title_slug: string  // Sprint 44
   locale: string
   hints_visible: boolean
   capabilities: CapabilityMap

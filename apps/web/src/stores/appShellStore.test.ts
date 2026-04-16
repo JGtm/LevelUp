@@ -22,6 +22,10 @@ const BOOTSTRAP_READY = {
   setup_state: 'ready' as const,
   current_player: PLAYER,
   available_players: [PLAYER],
+  current_title_slug: 'halo_infinite',
+  available_titles: [
+    { slug: 'halo_infinite', name: 'Halo Infinite', status: 'active' as const, capabilities: ['matchmaking'], is_default: true },
+  ],
   locale: 'fr',
   hints_visible_default: true,
   feature_flags: {
@@ -56,6 +60,8 @@ describe('AppShellStore', () => {
     useAppShellStore.setState({
       currentPlayer: null,
       availablePlayers: [],
+      currentTitleSlug: 'halo_infinite',
+      availableTitles: [],
       locale: 'fr',
       hintsVisible: true,
       capabilities: null,
@@ -113,5 +119,18 @@ describe('AppShellStore', () => {
     const caps = useAppShellStore.getState().capabilities
     expect(caps?.can_read_local_data).toBe(true)
     expect(caps?.can_manage_instance).toBe(true)
+  })
+
+  it('hydrate depuis bootstrap — titre courant', () => {
+    useAppShellStore.getState().hydrateFromBootstrap(BOOTSTRAP_READY)
+    const s = useAppShellStore.getState()
+    expect(s.currentTitleSlug).toBe('halo_infinite')
+    expect(s.availableTitles).toHaveLength(1)
+    expect(s.availableTitles[0].slug).toBe('halo_infinite')
+  })
+
+  it('setCurrentTitle change le titre courant', () => {
+    useAppShellStore.getState().setCurrentTitle('halo_mcc')
+    expect(useAppShellStore.getState().currentTitleSlug).toBe('halo_mcc')
   })
 })

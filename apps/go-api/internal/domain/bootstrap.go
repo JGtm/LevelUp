@@ -46,6 +46,16 @@ type HaloIdentitySummary struct {
 	XUID     string `json:"xuid"`
 }
 
+// TitleSummary résume un titre supporté pour le frontend.
+type TitleSummary struct {
+	Slug         string   `json:"slug"`
+	Name         string   `json:"name"`
+	IconURL      string   `json:"icon_url,omitempty"`
+	Status       string   `json:"status"` // "active" | "coming_soon" | "archived"
+	Capabilities []string `json:"capabilities"`
+	IsDefault    bool     `json:"is_default"`
+}
+
 // BootstrapResponse est la réponse de GET /api/v1/bootstrap.
 // Contient tout ce dont le shell React a besoin pour s'initialiser.
 type BootstrapResponse struct {
@@ -54,6 +64,8 @@ type BootstrapResponse struct {
 	SetupState          string               `json:"setup_state"` // "no_halo_link" | "halo_linked_no_profile" | "profile_ready_no_sync" | "ready"
 	CurrentPlayer       *PlayerSummary       `json:"current_player"`
 	AvailablePlayers    []PlayerSummary      `json:"available_players"`
+	CurrentTitleSlug    string               `json:"current_title_slug"` // Sprint 44
+	AvailableTitles     []TitleSummary       `json:"available_titles"`   // Sprint 44
 	Locale              string               `json:"locale"`
 	HintsVisibleDefault bool                 `json:"hints_visible_default"`
 	FeatureFlags        FeatureFlags         `json:"feature_flags"`

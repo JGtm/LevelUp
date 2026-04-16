@@ -17,6 +17,7 @@ import (
 	"levelup/go-api/internal/api/handlers"
 	"levelup/go-api/internal/api/middleware"
 	"levelup/go-api/internal/config"
+	titlePkg "levelup/go-api/internal/domain/title"
 	auth_platform "levelup/go-api/internal/platform/auth"
 	platform_duckdb "levelup/go-api/internal/platform/duckdb"
 	jobs_platform "levelup/go-api/internal/platform/jobs"
@@ -56,6 +57,10 @@ func NewRouter(
 	r.Use(chimiddleware.Compress(5))
 	r.Use(middleware.WithSession(sessionStore, isProduction))
 
+	// Sprint 44 : TitleExtractor — injecte title_slug dans le contexte.
+	titleRegistry := titlePkg.NewRegistry()
+	r.Use(middleware.TitleExtractor(titleRegistry))
+
 	// Sprint 40 T1 : validation de contrat (dev mode, no-op si LEVELUP_CONTRACT_VALIDATE != 1).
 	r.Use(middleware.ContractValidate)
 
@@ -75,7 +80,7 @@ func NewRouter(
 
 	// Gamertag search — service global (shared DB, pas de résolution joueur).
 	var gamertagSvc port.GamertagSearchService
-	if sharedDB, err := platform_duckdb.OpenReadOnly(config.SharedDBPath(cfg)); err != nil {
+	if sharedDB, err := platform_duckdb.OpenReadOnly(config.SharedDBPath(cfg, "")); err != nil {
 		slog.Warn("shared DB unavailable for gamertag search", "err", err)
 	} else {
 		gamertagSvc = platform_duckdb.NewGamertagRepo(sharedDB)
@@ -89,6 +94,10 @@ func NewRouter(
 		// Endpoints P0 : bootstrap + liste joueurs
 		r.Get("/bootstrap", handlers.NewBootstrapHandler(bootSvc).ServeHTTP)
 		r.Get("/players", handlers.NewPlayersHandler(bootSvc).ServeHTTP)
+
+		// Sprint 43 : changelog (markdown brut)
+		changelog := handlers.NewChangelogHandler(cfg.RepoRoot)
+		r.Get("/changelog", changelog.GetChangelog)
 
 		// Sprint 14 : contexte de session
 		sessionHandler := handlers.NewSessionHandler(sessionStore)

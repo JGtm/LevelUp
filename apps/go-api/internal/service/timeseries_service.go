@@ -44,8 +44,8 @@ func (s *TimeseriesService) GetPage(
 		SummaryTab:       buildSummaryTab(matches),
 		CumulTab:         buildCumulTab(matches),
 		FormTab:          buildTimeseriesFormTab(matches),
-		IntensityTab:     domain.TimeseriesIntensityTab{},
-		DistributionsTab: domain.TimeseriesDistributionsTab{Correlations: []domain.PlotlyFigurePayload{}},
+		IntensityTab:     buildIntensityTab(matches),
+		DistributionsTab: buildDistributionsTab(matches),
 	}
 
 	return resp, nil
@@ -103,10 +103,61 @@ func buildSummaryTab(matches []domain.StatsMatchRow) domain.TimeseriesSummaryTab
 // Onglet Cumul
 // ---------------------------------------------------------------------------
 
-func buildCumulTab(_ []domain.StatsMatchRow) domain.TimeseriesCumulTab {
-	// Les charts Plotly sont construits côté frontend à partir de stats/query.
-	// Le Go ne génère pas de PlotlyFigurePayload server-side.
-	return domain.TimeseriesCumulTab{}
+func buildCumulTab(matches []domain.StatsMatchRow) domain.TimeseriesCumulTab {
+	n := len(matches)
+	if n == 0 {
+		return domain.TimeseriesCumulTab{}
+	}
+
+	cumulKD := make([]domain.CumulativePoint, 0, n)
+	cumulNet := make([]domain.CumulativePoint, 0, n)
+	rollingKD := make([]domain.CumulativePoint, 0, n)
+
+	totalKills, totalDeaths, cumulNetVal := 0, 0, 0
+	const rollingWindow = 20
+
+	for i, m := range matches {
+		totalKills += m.Kills
+		totalDeaths += m.Deaths
+
+		kd := 0.0
+		if totalDeaths > 0 {
+			kd = float64(totalKills) / float64(totalDeaths)
+		}
+		cumulKD = append(cumulKD, domain.CumulativePoint{
+			Index: i, StartTime: m.StartTime, Value: math.Round(kd*100) / 100,
+		})
+
+		net := m.Kills - m.Deaths
+		cumulNetVal += net
+		cumulNet = append(cumulNet, domain.CumulativePoint{
+			Index: i, StartTime: m.StartTime, Value: float64(cumulNetVal),
+		})
+
+		// Rolling K/D sur fenêtre glissante.
+		start := i - rollingWindow + 1
+		if start < 0 {
+			start = 0
+		}
+		rk, rd := 0, 0
+		for j := start; j <= i; j++ {
+			rk += matches[j].Kills
+			rd += matches[j].Deaths
+		}
+		rkd := 0.0
+		if rd > 0 {
+			rkd = float64(rk) / float64(rd)
+		}
+		rollingKD = append(rollingKD, domain.CumulativePoint{
+			Index: i, StartTime: m.StartTime, Value: math.Round(rkd*100) / 100,
+		})
+	}
+
+	return domain.TimeseriesCumulTab{
+		CumulativeKD:  cumulKD,
+		CumulativeNet: cumulNet,
+		RollingKD:     rollingKD,
+	}
 }
 
 // ---------------------------------------------------------------------------
@@ -115,8 +166,30 @@ func buildCumulTab(_ []domain.StatsMatchRow) domain.TimeseriesCumulTab {
 
 func buildTimeseriesFormTab(matches []domain.StatsMatchRow) domain.TimeseriesFormTab {
 	regStats := computeRegressionStats(matches)
+
+	// EWMA K/D (exponentially weighted moving average).
+	const alpha = 0.1
+	ewmaPoints := make([]domain.CumulativePoint, 0, len(matches))
+	var ewma float64
+	for i, m := range matches {
+		kd := 0.0
+		if m.Deaths > 0 {
+			kd = float64(m.Kills) / float64(m.Deaths)
+		}
+		if i == 0 {
+			ewma = kd
+		} else {
+			ewma = alpha*kd + (1-alpha)*ewma
+		}
+		ewmaPoints = append(ewmaPoints, domain.CumulativePoint{
+			Index: i, StartTime: m.StartTime,
+			Value: math.Round(ewma*100) / 100,
+		})
+	}
+
 	return domain.TimeseriesFormTab{
 		RegressionStats: regStats,
+		EWMAKDPoints:    ewmaPoints,
 	}
 }
 
@@ -198,4 +271,191 @@ func computeRegressionStats(matches []domain.StatsMatchRow) domain.TimeseriesReg
 		HasEnoughForTrend: true,
 		Trend:             trend,
 	}
+}
+
+// ---------------------------------------------------------------------------
+// Onglet Intensité (Sprint 42)
+// ---------------------------------------------------------------------------
+
+// buildIntensityTab construit la heatmap jour×heure et le score/min.
+func buildIntensityTab(matches []domain.StatsMatchRow) domain.TimeseriesIntensityTab {
+	if len(matches) == 0 {
+		return domain.TimeseriesIntensityTab{
+			HeatmapData:     []domain.IntensityHeatmapPoint{},
+			ScorePerMinData: []domain.CumulativePoint{},
+		}
+	}
+
+	// Heatmap jour × heure.
+	type cell struct {
+		kills, deaths, count int
+	}
+	heatmap := make(map[[2]int]*cell) // [day, hour]
+
+	scorePerMin := make([]domain.CumulativePoint, 0, len(matches))
+
+	for i, m := range matches {
+		day := int(m.StartTime.Weekday())
+		// Convertir Sunday=0 → Monday=0..Sunday=6
+		day = (day + 6) % 7
+		hour := m.StartTime.Hour()
+		key := [2]int{day, hour}
+		c, ok := heatmap[key]
+		if !ok {
+			c = &cell{}
+			heatmap[key] = c
+		}
+		c.kills += m.Kills
+		c.deaths += m.Deaths
+		c.count++
+
+		// Score per minute.
+		spm := 0.0
+		if m.PersonalScore != nil && m.TimePlayedSeconds != nil && *m.TimePlayedSeconds > 0 {
+			spm = float64(*m.PersonalScore) / (float64(*m.TimePlayedSeconds) / 60.0)
+		}
+		scorePerMin = append(scorePerMin, domain.CumulativePoint{
+			Index: i, StartTime: m.StartTime,
+			Value: math.Round(spm*100) / 100,
+		})
+	}
+
+	points := make([]domain.IntensityHeatmapPoint, 0, len(heatmap))
+	for key, c := range heatmap {
+		avgKD := 0.0
+		if c.deaths > 0 {
+			avgKD = float64(c.kills) / float64(c.deaths)
+		}
+		points = append(points, domain.IntensityHeatmapPoint{
+			DayOfWeek: key[0],
+			Hour:      key[1],
+			Count:     c.count,
+			AvgKD:     math.Round(avgKD*100) / 100,
+		})
+	}
+
+	return domain.TimeseriesIntensityTab{
+		HeatmapData:     points,
+		ScorePerMinData: scorePerMin,
+	}
+}
+
+// ---------------------------------------------------------------------------
+// Onglet Distributions (Sprint 42)
+// ---------------------------------------------------------------------------
+
+// buildDistributionsTab construit les histogrammes KDA/kills et les corrélations.
+func buildDistributionsTab(matches []domain.StatsMatchRow) domain.TimeseriesDistributionsTab {
+	if len(matches) == 0 {
+		return domain.TimeseriesDistributionsTab{
+			KDABuckets:        []domain.DistributionBucket{},
+			KillsBuckets:      []domain.DistributionBucket{},
+			CorrelationPoints: []domain.CorrelationDataPair{},
+			Correlations:      []domain.PlotlyFigurePayload{},
+		}
+	}
+
+	kdaBuckets := buildKDABuckets(matches)
+	killsBuckets := buildKillsBuckets(matches)
+	correlations := buildCorrelationPoints(matches)
+
+	return domain.TimeseriesDistributionsTab{
+		KDABuckets:        kdaBuckets,
+		KillsBuckets:      killsBuckets,
+		CorrelationPoints: correlations,
+		Correlations:      []domain.PlotlyFigurePayload{},
+	}
+}
+
+// buildKDABuckets crée des buckets pour la distribution K/D.
+func buildKDABuckets(matches []domain.StatsMatchRow) []domain.DistributionBucket {
+	const (
+		binWidth = 0.25
+		maxBin   = 5.0
+	)
+	numBins := int(maxBin / binWidth)
+	counts := make([]int, numBins+1) // dernier = overflow
+
+	for _, m := range matches {
+		kd := 0.0
+		if m.Deaths > 0 {
+			kd = float64(m.Kills) / float64(m.Deaths)
+		}
+		idx := int(kd / binWidth)
+		if idx >= numBins {
+			idx = numBins
+		}
+		counts[idx]++
+	}
+
+	buckets := make([]domain.DistributionBucket, 0, numBins+1)
+	for i, c := range counts {
+		if c == 0 {
+			continue
+		}
+		start := float64(i) * binWidth
+		end := start + binWidth
+		if i == numBins {
+			end = maxBin + binWidth
+		}
+		buckets = append(buckets, domain.DistributionBucket{
+			BinStart: math.Round(start*100) / 100,
+			BinEnd:   math.Round(end*100) / 100,
+			Count:    c,
+		})
+	}
+	return buckets
+}
+
+// buildKillsBuckets crée des buckets pour la distribution des kills par match.
+func buildKillsBuckets(matches []domain.StatsMatchRow) []domain.DistributionBucket {
+	const binWidth = 5.0
+	maxKills := 0
+	for _, m := range matches {
+		if m.Kills > maxKills {
+			maxKills = m.Kills
+		}
+	}
+	numBins := maxKills/int(binWidth) + 1
+	counts := make([]int, numBins+1)
+
+	for _, m := range matches {
+		idx := m.Kills / int(binWidth)
+		if idx > numBins {
+			idx = numBins
+		}
+		counts[idx]++
+	}
+
+	buckets := make([]domain.DistributionBucket, 0, numBins+1)
+	for i, c := range counts {
+		if c == 0 {
+			continue
+		}
+		start := float64(i) * binWidth
+		end := start + binWidth
+		buckets = append(buckets, domain.DistributionBucket{
+			BinStart: start,
+			BinEnd:   end,
+			Count:    c,
+		})
+	}
+	return buckets
+}
+
+// buildCorrelationPoints construit les paires de corrélation kills↔K/D.
+func buildCorrelationPoints(matches []domain.StatsMatchRow) []domain.CorrelationDataPair {
+	points := make([]domain.CorrelationDataPair, 0, len(matches))
+	for _, m := range matches {
+		kd := 0.0
+		if m.Deaths > 0 {
+			kd = float64(m.Kills) / float64(m.Deaths)
+		}
+		points = append(points, domain.CorrelationDataPair{
+			Label: "kills_vs_kd",
+			X:     float64(m.Kills),
+			Y:     math.Round(kd*100) / 100,
+		})
+	}
+	return points
 }

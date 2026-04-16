@@ -118,8 +118,8 @@ WHERE p.xuid = ?
 GROUP BY map_name, mode_name
 ORDER BY match_count DESC`
 
-// Q33b : Synthèse — matchs du joueur pour le calcul top_weeks et breakdown solo/squad.
-// Retourne les champs minimaux nécessaires : outcome, kills, deaths, kda, is_with_friends.
+// Q33b : Synthèse — matchs du joueur pour le calcul top_weeks, KPIs et bipolaire.
+// Sprint 43 : enrichi avec accuracy, time_played_seconds, performance_score.
 // Paramètre : ?1 = xuid du joueur.
 const Q33bSynthesisMatches = `
 SELECT
@@ -129,7 +129,10 @@ SELECT
     p.kills,
     p.deaths,
     p.kda,
-    COALESCE(pme.is_with_friends, FALSE) AS is_with_friends
+    COALESCE(pme.is_with_friends, FALSE) AS is_with_friends,
+    p.accuracy,
+    p.time_played_seconds,
+    pme.performance_score
 FROM shared.match_participants p
 JOIN shared.match_registry r ON r.match_id = p.match_id
 LEFT JOIN player_match_enrichment pme ON r.match_id = pme.match_id

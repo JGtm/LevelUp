@@ -24,6 +24,25 @@ export interface FieldError {
 
 const BASE_URL = import.meta.env.VITE_API_BASE_URL ?? '/api/v1'
 
+/**
+ * Sprint 44 : titre courant pour les requêtes API.
+ * Mis à jour par le store appShell lors du bootstrap et des switchs de titre.
+ * Si "halo_infinite" (défaut), le header n'est pas envoyé (rétrocompatibilité).
+ */
+let _currentTitleSlug = 'halo_infinite'
+
+/** Appelé par le store pour mettre à jour le titre courant. */
+export function setApiTitleSlug(slug: string): void {
+  _currentTitleSlug = slug
+}
+
+function getTitleHeader(): Record<string, string> {
+  if (_currentTitleSlug && _currentTitleSlug !== 'halo_infinite') {
+    return { 'X-LevelUp-Title': _currentTitleSlug }
+  }
+  return {}
+}
+
 async function request<T>(
   method: string,
   path: string,
@@ -39,6 +58,7 @@ async function request<T>(
     headers: {
       'Content-Type': 'application/json',
       Accept: 'application/json',
+      ...getTitleHeader(),
       ...options?.headers,
     },
     body: options?.body != null ? JSON.stringify(options.body) : undefined,

@@ -14485,3 +14485,30 @@ Prochaine étape : Sprint 27 (Bascule progressive, ~3-5j).
 **Résultats** : go vet OK sur domain, analysis, middleware, port (api/service bloqués par CGo DuckDB Windows — attendu). gofmt appliqué sur tous les fichiers.
 
 **Conclusion** : Sprints 40+41 terminés. Sprint 36 T1 (parity_check = 0 diff) reste ��� — nécessite un run en prod. Prochaine étape : Sprint 42 (Analyse UI avancée + fanout multi-joueur).
+
+---
+
+## [2025-07-11] Sprint 43 — Améliorations UX produit
+
+**Statut** : Complété (4/4 tâches)
+
+### T1 — Bipolaire solo/escouade : enrichissement payload synthesis Go
+- **Décision** : enrichir SynthesisPageResponse avec SynthesisKPIs (performance_score, accuracy, kills_per_min, avg_life_seconds), ComparisonMetricItem (bipolaire), et TemporalHeatmapCell (dow x hour au lieu de map x mode)
+- **Fichiers modifiés** : domain/squad.go, queries_squad.go (Q33b +3 colonnes), squad_repo.go (scan 10 cols), squad_breakdown.go (+3 fonctions), squad_service.go (GetSynthesisPage réécrit)
+- **Résultat** : go vet OK, tous tests analysis passent (42/42)
+
+### T2 — Composant InfoTooltip React
+- **Décision** : composant pur CSS/state (aucune dépendance Radix/Headless), hover+focus+click
+- **Fichiers créés** : components/ui/info-tooltip.tsx
+- **Intégré** : SynthesisPage (Performance Score) + CareerPage (LUSR)
+
+### T3 — Page /changelog
+- **Décision** : endpoint Go GET /api/v1/changelog lisant docs/CHANGELOG.md avec cache mémoire 5min. Frontend avec react-markdown + @tailwindcss/typography
+- **Fichiers créés** : handlers/changelog.go, features/changelog/ (queries.ts + ChangelogPage.tsx), routes/changelog.tsx
+
+### T4 — Durée session : deux métriques
+- **Décision** : ajouter DurationSeconds (span) et TotalPlayedSeconds (somme time_played_seconds) à SessionGroup
+- **Fichiers modifiés** : domain/sessions.go, analysis/sessions.go (BuildSessionGroups enrichi)
+- **Résultat** : go vet OK, tous tests analysis passent (42/42)
+
+**Conclusion** : Sprint 43 complet.

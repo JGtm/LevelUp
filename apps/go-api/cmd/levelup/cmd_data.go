@@ -11,6 +11,7 @@ import (
 	"time"
 
 	"levelup/go-api/internal/config"
+	"levelup/go-api/internal/domain/title"
 	"levelup/go-api/internal/ops"
 )
 
@@ -21,6 +22,7 @@ import (
 func runBackup(cfg *config.AppConfig, args []string) error {
 	fs := flag.NewFlagSet("backup", flag.ExitOnError)
 	gamertag := fs.String("gamertag", "", "Gamertag du joueur (obligatoire)")
+	titleSlug := fs.String("title", title.DefaultSlug, "Slug du titre (ex: halo_infinite)")
 	outputDir := fs.String("output-dir", "", "Répertoire de sortie (défaut: data/backups/<gamertag>)")
 	level := fs.Int("compression-level", 9, "Niveau compression Zstd (1-22)")
 	if err := fs.Parse(args); err != nil {
@@ -29,10 +31,11 @@ func runBackup(cfg *config.AppConfig, args []string) error {
 	if *gamertag == "" {
 		return fmt.Errorf("--gamertag est obligatoire")
 	}
-	dbPath := filepath.Join(cfg.RepoRoot, "data", "players", *gamertag, "stats.duckdb")
+	pr := title.NewPathResolver(cfg.RepoRoot)
+	dbPath := pr.PlayerDBPath(*titleSlug, *gamertag)
 	outDir := *outputDir
 	if outDir == "" {
-		outDir = filepath.Join(cfg.RepoRoot, "data", "backups", *gamertag)
+		outDir = pr.BackupDir(*titleSlug, *gamertag)
 	}
 	result, err := ops.BackupPlayer(ops.BackupOptions{
 		Gamertag:         *gamertag,
@@ -59,6 +62,7 @@ func runBackup(cfg *config.AppConfig, args []string) error {
 func runRestore(cfg *config.AppConfig, args []string) error {
 	fs := flag.NewFlagSet("restore", flag.ExitOnError)
 	gamertag := fs.String("gamertag", "", "Gamertag du joueur (obligatoire)")
+	titleSlug := fs.String("title", title.DefaultSlug, "Slug du titre (ex: halo_infinite)")
 	backupDir := fs.String("backup-dir", "", "Répertoire du backup (obligatoire)")
 	tables := fs.String("tables", "", "Tables à restaurer (CSV, vide = toutes)")
 	replace := fs.Bool("replace", false, "DROP TABLE avant restauration")
@@ -69,7 +73,8 @@ func runRestore(cfg *config.AppConfig, args []string) error {
 	if *gamertag == "" || *backupDir == "" {
 		return fmt.Errorf("--gamertag et --backup-dir sont obligatoires")
 	}
-	dbPath := filepath.Join(cfg.RepoRoot, "data", "players", *gamertag, "stats.duckdb")
+	pr := title.NewPathResolver(cfg.RepoRoot)
+	dbPath := pr.PlayerDBPath(*titleSlug, *gamertag)
 	var tableList []string
 	if *tables != "" {
 		tableList = strings.Split(*tables, ",")
@@ -98,6 +103,7 @@ func runArchive(cfg *config.AppConfig, args []string) error {
 	fs := flag.NewFlagSet("archive", flag.ExitOnError)
 	gamertag := fs.String("gamertag", "", "Gamertag du joueur (obligatoire)")
 	xuid := fs.String("xuid", "", "XUID du joueur (obligatoire)")
+	titleSlug := fs.String("title", title.DefaultSlug, "Slug du titre (ex: halo_infinite)")
 	cutoffStr := fs.String("cutoff", "", "Date limite YYYY-MM-DD (obligatoire)")
 	deleteAfter := fs.Bool("delete-after", false, "Supprimer les matchs après archivage")
 	dryRun := fs.Bool("dry-run", false, "Lister sans archiver")
@@ -111,12 +117,13 @@ func runArchive(cfg *config.AppConfig, args []string) error {
 	if err != nil {
 		return fmt.Errorf("format --cutoff invalide (attendu: YYYY-MM-DD): %w", err)
 	}
+	pr := title.NewPathResolver(cfg.RepoRoot)
 	result, err := ops.ArchiveMatches(ops.ArchiveOptions{
 		Gamertag:     *gamertag,
 		XUID:         *xuid,
-		PlayerDBPath: filepath.Join(cfg.RepoRoot, "data", "players", *gamertag, "stats.duckdb"),
-		SharedDBPath: filepath.Join(cfg.RepoRoot, "data", "warehouse", "shared_matches_v2.duckdb"),
-		ArchiveDir:   filepath.Join(cfg.RepoRoot, "data", "players", *gamertag, "archive"),
+		PlayerDBPath: pr.PlayerDBPath(*titleSlug, *gamertag),
+		SharedDBPath: pr.SharedDBPath(*titleSlug),
+		ArchiveDir:   pr.PlayerArchiveDir(*titleSlug, *gamertag),
 		CutoffDate:   cutoff,
 		DeleteAfter:  *deleteAfter,
 		DryRun:       *dryRun,
@@ -136,6 +143,7 @@ func runArchive(cfg *config.AppConfig, args []string) error {
 func runIndexMedia(cfg *config.AppConfig, args []string) error {
 	fs := flag.NewFlagSet("index-media", flag.ExitOnError)
 	gamertag := fs.String("gamertag", "", "Gamertag du joueur (obligatoire)")
+	titleSlug := fs.String("title", title.DefaultSlug, "Slug du titre (ex: halo_infinite)")
 	force := fs.Bool("force-rescan", false, "Réindexer tous les fichiers")
 	tolMin := fs.Int("tolerance-min", 5, "Tolérance association match (minutes)")
 	if err := fs.Parse(args); err != nil {
@@ -144,10 +152,11 @@ func runIndexMedia(cfg *config.AppConfig, args []string) error {
 	if *gamertag == "" {
 		return fmt.Errorf("--gamertag est obligatoire")
 	}
+	pr := title.NewPathResolver(cfg.RepoRoot)
 	result, err := ops.IndexMedia(ops.MediaIndexOptions{
 		Gamertag:     *gamertag,
-		PlayerDBPath: filepath.Join(cfg.RepoRoot, "data", "players", *gamertag, "stats.duckdb"),
-		CapturesDir:  filepath.Join(cfg.RepoRoot, "data", "players", *gamertag, "captures"),
+		PlayerDBPath: pr.PlayerDBPath(*titleSlug, *gamertag),
+		CapturesDir:  pr.PlayerCapturesDir(*titleSlug, *gamertag),
 		ForceRescan:  *force,
 		ToleranceMin: *tolMin,
 	})
@@ -172,8 +181,10 @@ func runSeed(cfg *config.AppConfig, args []string) error {
 	if len(args) == 0 {
 		return fmt.Errorf("composant requis: career-ranks | citation-mappings | medals")
 	}
+	// seed utilise toujours metadata.duckdb du titre par défaut
+	pr := title.NewPathResolver(cfg.RepoRoot)
 	opts := ops.SeedOptions{
-		MetaDBPath: filepath.Join(cfg.RepoRoot, "data", "warehouse", "metadata.duckdb"),
+		MetaDBPath: pr.MetadataDBPath(title.DefaultSlug),
 		DataDir:    filepath.Join(cfg.RepoRoot, "data"),
 	}
 	var result ops.SeedResult

@@ -74,6 +74,8 @@ func main() {
 		exitErr = runGateCheck(cfg, args)
 	case "surface-status":
 		exitErr = runSurfaceStatus(cfg, args)
+	case "migrate":
+		exitErr = runMigrate(cfg, args)
 	case "help", "--help", "-h":
 		printUsage()
 	default:
@@ -108,6 +110,7 @@ Commandes:
   compare-db      Comparer la parite Go vs Python (DB joueur)
   gate-check      Verifier la checklist Gate Phase 4
   surface-status  Afficher le backend actif par surface (feature flags)
+  migrate         Migrer les donnees vers le namespace multi-titres
 
 Options globales:
   LEVELUP_REPO_ROOT        Racine du repo (auto-detecte si absent)

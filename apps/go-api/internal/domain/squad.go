@@ -194,14 +194,44 @@ type TopWeekEntry struct {
 	MatchCount int     `json:"match_count"`
 }
 
+// SynthesisKPIs contient les métriques agrégées solo ou escouade (Sprint 43).
+type SynthesisKPIs struct {
+	MatchCount       int      `json:"match_count"`
+	Wins             int      `json:"wins"`
+	KDRatio          *float64 `json:"kd_ratio"`
+	WinRate          float64  `json:"win_rate"`
+	Accuracy         *float64 `json:"accuracy"`
+	KillsPerMin      *float64 `json:"kills_per_min"`
+	AvgLifeSeconds   *float64 `json:"avg_life_seconds"`
+	PerformanceScore *float64 `json:"performance_score"`
+}
+
+// ComparisonMetricItem est une métrique bipolaire solo / escouade.
+type ComparisonMetricItem struct {
+	Label      string  `json:"label"`
+	SoloValue  float64 `json:"solo_value"`
+	SquadValue float64 `json:"squad_value"`
+	SoloText   string  `json:"solo_text"`
+	SquadText  string  `json:"squad_text"`
+}
+
+// TemporalHeatmapCell est une cellule de la heatmap jour × heure (Sprint 43).
+type TemporalHeatmapCell struct {
+	DOW   int `json:"dow"`  // 0 = lundi … 6 = dimanche
+	Hour  int `json:"hour"` // 0–23
+	Count int `json:"count"`
+}
+
 // SynthesisPageResponse est la réponse de la page Synthèse.
+// Sprint 43 : enrichi avec KPIs détaillés, comparison_metrics et heatmap temporelle.
 type SynthesisPageResponse struct {
-	HeatmapData    []HeatmapCell       `json:"heatmap_data"`
-	TopWeeks       []TopWeekEntry      `json:"top_weeks"`
-	TotalMatches   int                 `json:"total_matches"`
-	OverallWinRate float64             `json:"overall_win_rate"`
-	SoloStats      SquadBreakdownStats `json:"solo_stats"`
-	SquadStats     SquadBreakdownStats `json:"squad_stats"`
+	Period            string                 `json:"period"`
+	TotalMatches      int                    `json:"total_matches"`
+	SoloKPIs          SynthesisKPIs          `json:"solo_kpis"`
+	SquadKPIs         SynthesisKPIs          `json:"squad_kpis"`
+	ComparisonMetrics []ComparisonMetricItem `json:"comparison_metrics"`
+	HeatmapData       []TemporalHeatmapCell  `json:"heatmap_data"`
+	TopWeeks          []TopWeekEntry         `json:"top_weeks"`
 }
 
 // ---------------------------------------------------------------------------
@@ -219,13 +249,16 @@ type SynthesisPageRequest struct {
 // ---------------------------------------------------------------------------
 
 // SynthesisMatchRow est une ligne brute chargée depuis Q33b.
-// N'inclut que les champs nécessaires au calcul top_weeks et breakdown.
+// Sprint 43 : enrichi avec accuracy, time_played, performance_score pour les KPIs bipolaires.
 type SynthesisMatchRow struct {
-	MatchID       string
-	StartTime     time.Time
-	Outcome       int
-	Kills         int
-	Deaths        int
-	KDA           *float64
-	IsWithFriends bool
+	MatchID          string
+	StartTime        time.Time
+	Outcome          int
+	Kills            int
+	Deaths           int
+	KDA              *float64
+	IsWithFriends    bool
+	Accuracy         *float64
+	TimePlayedSecs   *int
+	PerformanceScore *float64
 }

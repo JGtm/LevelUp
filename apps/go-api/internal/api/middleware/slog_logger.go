@@ -7,6 +7,8 @@ import (
 	"log/slog"
 	"net/http"
 	"time"
+
+	"levelup/go-api/internal/ctxkeys"
 )
 
 // SlogLogger est un middleware chi qui log chaque requête via slog.
@@ -26,6 +28,7 @@ func SlogLogger(next http.Handler) http.Handler {
 			"response_bytes", ww.bytesWritten,
 			"request_id", w.Header().Get(headerRequestID),
 			"remote_addr", r.RemoteAddr,
+			"title_slug", ctxkeys.TitleSlug(r.Context()),
 		)
 	})
 }

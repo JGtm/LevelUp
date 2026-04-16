@@ -9,6 +9,7 @@ import (
 	"context"
 
 	"levelup/go-api/internal/config"
+	"levelup/go-api/internal/ctxkeys"
 	"levelup/go-api/internal/platform/duckdb"
 	"levelup/go-api/internal/port"
 	"levelup/go-api/internal/service"
@@ -24,10 +25,12 @@ type ServiceRegistry struct {
 }
 
 // NewServiceRegistry crée un ServiceRegistry câblé avec config.ResolvePlayer.
+// Le titleSlug est lu depuis le contexte (ctxkeys.TitleSlug), fallback "halo_infinite".
 func NewServiceRegistry(cfg *config.AppConfig) *ServiceRegistry {
 	return &ServiceRegistry{
 		resolve: func(ctx context.Context, slug string) (*duckdb.PlayerDB, error) {
-			return config.ResolvePlayer(ctx, cfg, slug)
+			titleSlug := ctxkeys.TitleSlug(ctx)
+			return config.ResolvePlayer(ctx, cfg, slug, titleSlug)
 		},
 	}
 }

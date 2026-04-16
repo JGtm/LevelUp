@@ -11,6 +11,7 @@ import (
 
 	"levelup/go-api/internal/api/middleware"
 	"levelup/go-api/internal/domain"
+	titlePkg "levelup/go-api/internal/domain/title"
 	"levelup/go-api/internal/platform/session"
 )
 
@@ -42,6 +43,16 @@ func (h *SessionHandler) PostContext(w http.ResponseWriter, r *http.Request) {
 	if req.PlayerSlug != nil {
 		sess.CurrentPlayerSlug = req.PlayerSlug
 	}
+	if req.TitleSlug != nil && *req.TitleSlug != "" {
+		// Sprint 44 : switch titre — valider que le slug est connu.
+		reg := titlePkg.NewRegistry()
+		if reg.Exists(*req.TitleSlug) {
+			sess.CurrentTitleSlug = *req.TitleSlug
+			// Invalider le joueur courant lors d'un switch de titre
+			// (le frontend devra re-sélectionner).
+			sess.CurrentPlayerSlug = nil
+		}
+	}
 	if req.Locale != nil {
 		sess.Locale = *req.Locale
 	}
@@ -53,6 +64,7 @@ func (h *SessionHandler) PostContext(w http.ResponseWriter, r *http.Request) {
 
 	writeJSON(w, http.StatusOK, domain.SessionContextResponse{
 		CurrentPlayerSlug: sess.CurrentPlayerSlug,
+		CurrentTitleSlug:  sess.CurrentTitleSlug,
 		Locale:            sess.Locale,
 		HintsVisible:      sess.HintsVisible,
 		AuthReady:         sess.AuthReady,

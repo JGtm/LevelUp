@@ -82,22 +82,29 @@ func BuildSessionGroups(rows []domain.SessionMatchRow, assignments []domain.Sess
 		return nil
 	}
 	timeByID := make(map[string]time.Time, len(rows))
+	playedByID := make(map[string]int, len(rows))
 	for _, r := range rows {
 		timeByID[r.MatchID] = r.StartTime
+		if r.TimePlayedSecs != nil {
+			playedByID[r.MatchID] = *r.TimePlayedSecs
+		}
 	}
 	type bucket struct {
-		matchIDs  []string
-		startTime time.Time
-		endTime   time.Time
+		matchIDs    []string
+		startTime   time.Time
+		endTime     time.Time
+		totalPlayed int
 	}
 	groupMap := make(map[int]*bucket)
 	maxID := 0
 	for _, a := range assignments {
 		t := timeByID[a.MatchID]
+		played := playedByID[a.MatchID]
 		if b, ok := groupMap[a.SessionID]; !ok {
-			groupMap[a.SessionID] = &bucket{matchIDs: []string{a.MatchID}, startTime: t, endTime: t}
+			groupMap[a.SessionID] = &bucket{matchIDs: []string{a.MatchID}, startTime: t, endTime: t, totalPlayed: played}
 		} else {
 			b.matchIDs = append(b.matchIDs, a.MatchID)
+			b.totalPlayed += played
 			if t.Before(b.startTime) {
 				b.startTime = t
 			}
@@ -115,10 +122,13 @@ func BuildSessionGroups(rows []domain.SessionMatchRow, assignments []domain.Sess
 		if !ok {
 			continue
 		}
+		span := int(b.endTime.Sub(b.startTime).Seconds())
 		groups = append(groups, domain.SessionGroup{
-			SessionID:    sid,
-			SessionLabel: buildSessionLabel(b.startTime, b.endTime, len(b.matchIDs)),
-			MatchIDs:     b.matchIDs,
+			SessionID:          sid,
+			SessionLabel:       buildSessionLabel(b.startTime, b.endTime, len(b.matchIDs)),
+			MatchIDs:           b.matchIDs,
+			DurationSeconds:    span,
+			TotalPlayedSeconds: b.totalPlayed,
 		})
 	}
 	return groups

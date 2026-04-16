@@ -19,6 +19,7 @@ type SessionData struct {
 	CreatedAt          int64         `json:"created_at"`   // unix timestamp
 	LastSeenAt         int64         `json:"last_seen_at"` // unix timestamp
 	CurrentPlayerSlug  *string       `json:"current_player_slug,omitempty"`
+	CurrentTitleSlug   string        `json:"current_title_slug"` // Sprint 44 : titre courant (default: "halo_infinite")
 	Locale             string        `json:"locale"`
 	HintsVisible       bool          `json:"hints_visible"`
 	AuthReady          bool          `json:"auth_ready"`
@@ -32,6 +33,7 @@ type SessionData struct {
 // SessionContextRequest est le body de POST /session/context.
 type SessionContextRequest struct {
 	PlayerSlug *string `json:"player_slug"`
+	TitleSlug  *string `json:"title_slug"` // Sprint 44 : switch titre
 	Locale     *string `json:"locale"`
 }
 
@@ -39,6 +41,7 @@ type SessionContextRequest struct {
 // Expose uniquement les données non sensibles de la session.
 type SessionContextResponse struct {
 	CurrentPlayerSlug *string `json:"current_player_slug,omitempty"`
+	CurrentTitleSlug  string  `json:"current_title_slug"` // Sprint 44
 	Locale            string  `json:"locale"`
 	HintsVisible      bool    `json:"hints_visible"`
 	AuthReady         bool    `json:"auth_ready"`

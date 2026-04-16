@@ -7,6 +7,7 @@ import { PageHeader } from '@/components/shell/PageHeader'
 import { Spinner } from '@/components/ui/spinner'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
+import { InfoTooltip } from '@/components/ui/info-tooltip'
 import { CareerSummaryCard } from './CareerSummaryCard'
 import { CareerChartsSection } from './CareerChartsSection'
 import { CareerTopMatchesTable } from './CareerTopMatchesTable'
@@ -77,7 +78,7 @@ export function CareerPage() {
         {data.lusr && (
           <Card>
             <CardHeader>
-              <CardTitle className="text-base">Rating LUSR</CardTitle>
+              <CardTitle className="text-base">Rating LUSR <InfoTooltip content="Le LUSR (LevelUp Skill Rating) est un rating calculé localement à partir de vos résultats récents. Il reflète votre niveau indépendamment du CSR officiel, en pondérant victoires, KDA et régularité." /></CardTitle>
             </CardHeader>
             <CardContent className="space-y-1">
               <p className="text-sm font-medium text-gray-700">
