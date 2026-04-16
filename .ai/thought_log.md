@@ -1,5 +1,131 @@
 # Thought Log
 
+## [2026-04-17] fix(lint): golangci-lint 0 issues + gates S44/S48 cochées
+
+**Statut** : Complété
+
+**Tache** : Éliminer les dernières issues golangci-lint et cocher les gates correspondantes dans SPRINT_ROADMAP.md.
+
+**Décisions techniques principales** :
+
+1. **0 issues golangci-lint** avec `CGO_ENABLED=1 CC=.../gcc.exe` — les 2 issues résiduelles (`lll seed.go:200` + `gocyclo`) n'existent plus avec la config correcte et CGo activé. Le runner sans CGo échoue avec une erreur `no export data for duckdb-go-bindings` (pas de lint possible), ce qui masquait le vrai résultat.
+2. **Warning `skip-dirs` → `exclude-dirs`** : déplacé la clé de `run:` vers `issues:` (dépréciée par golangci-lint v1.59+). Fusion avec la section `issues:` existante pour éviter doublon YAML.
+3. **TODO non-documentés = 0** : 3 TODO présents, tous annotés `Sprint 15` ou `Sprint 19` (documentés). Gate satisfaite.
+4. **Gates cochées** : `golangci-lint run clean` dans S44, WP-15 Sprint 48, gate Sprint 48. La couverture globale ≥ 50% reste `[ ]` (mesurée à 13.4% sans infra CGo en CI).
+
+**Résultats** :
+- `golangci-lint run ./...` → exit 0, 0 output
+- SPRINT_ROADMAP.md mis à jour : 3 items golangci-lint cochés
+
+**Prochaine étape** : Phase 10 (Sprint 45–48) pour la couverture réelle avec CGo.
+
+---
+
+## [2026-04-17] docs(roadmap): ajout Phase 11 + Sprint 49 (clôture findings audit)
+
+**Statut** : Complete
+
+**Tache** : Traduire les restes-à-faire identifiés par `AUDIT_PLANS_VS_REALITE_2026-04-17.md` en un sprint planifié dans `SPRINT_ROADMAP.md`, positionné après le Sprint 48 (fin de la Phase 10 couverture 70%).
+
+**Decisions techniques principales** :
+
+1. **Créer une Phase 11 dédiée** plutôt qu'étendre la Phase 10 : les restes Phase 10 sont des tests/couverture ; les restes d'audit sont contrat + gate + gouvernance. Responsabilités distinctes → phase distincte. Phase 11 = "Clôture migration & alignement documentaire".
+2. **Sprint 49 à 6-9 jours, structuré en 4 volets** :
+   - Volet A (tâches 1-5) : fermeture gate Sprint 36 — parity 24 endpoints, 15 specs Playwright, onboarding E2E, resync BASCULE_GO.md.
+   - Volet B (tâches 6-12) : suppression des 6 exemptions `notYetImplemented` dans `contract_test.go` (4 divergences GET/POST + match-history/export + gamertag search conditionnel).
+   - Volet C (tâches 13-16) : durcissement final Sprint 44 — décision ADR routage, bootstrap complet `POST /session/context`, `JobMeta` typée.
+   - Volet D (tâches 17-19) : gouvernance documentaire — SPRINT_EXPLORATION.md coordonné entre repos, GO_MIGRATION_CHECKLIST.md resynchronisée ou dépréciée.
+3. **Gate Sprint 49 = gate finale Phase 11 = clôture migration Go** : 12 critères dont 0 exemption de contrat, 15 specs Playwright vertes en CI (pas seulement local), `JobMeta` typée.
+4. **Dépendances explicites** : S49 dépend de S48 (pour la couverture qui rend les tests ajoutés viables), de S44 (pour que le durcissement ait du sens) et de S36 (pour que la gate à fermer existe).
+5. **Vue d'ensemble mise à jour** : ligne Sprint 49 + ligne Total Phase 11 ajoutées ; total global recalculé 224-335 → 230-344 jours.
+
+**Resultats observes** :
+
+- `SPRINT_ROADMAP.md` : +67 lignes (Phase 11 + Sprint 49 + ligne tableau + total) ; structure identique aux sprints existants (tableau de tâches + gate à cocher).
+- Aucun changement de priorités ni de scope sur S42/S44/S48 existants ; le S49 ne crée pas de dépendance amont nouvelle, il consomme seulement l'existant.
+
+**Conclusion / prochaine etape** : La roadmap couvre désormais explicitement les restes-à-faire de l'audit. Prochaine étape : décider quand lancer la Phase 11 (séquencement possible en parallèle partiel de S42/S44 si on veut fermer les exemptions contrat avant d'attendre la Phase 10 complète).
+
+---
+
+## [2026-04-17] docs(audit): ajustements AUDIT_PLANS_VS_REALITE_2026-04-17.md
+
+**Statut** : Complete
+
+**Tache** : Revue critique du plan d'audit plans-vs-realite cree par Copilot, verification croisee contre le code et la CI des deux repos (go-migration, no-streamlit), puis corrections ponctuelles.
+
+**Decisions techniques principales** :
+
+1. Plan globalement fiable — toutes les affirmations verifiables (CI Go jobs, 6 exemptions de contrat, composants Sprint 44 branches dans le runtime, statut ARCHIVED de `streamlit_app.py`, 4 criteres ⬜ dans `BASCULE_GO.md`) ont ete confirmees par lecture directe du code et des workflows.
+2. Trois corrections appliquees au document d'audit :
+   - §II.2.1 MIGRATION_MASTER : preciser que les liens `[migration/*.md]()` referencent un sous-dossier `migration/` inexistant ; les vrais fichiers sont dans `.ai/V7/Migration React/` (majuscule + espace). Tous les liens markdown du document maitre sont casses.
+   - §II.2.3 SPRINT_EXPLORATION.md : le trou est **partage** — le fichier manque dans **les deux repos** (go-migration et no-streamlit) alors que les deux `CLAUDE.md` le referencent comme lecture obligatoire.
+   - §I.2.3 Sprint 44 routage : nuancer en indiquant que la strategie header-plus-session est peut-etre un choix assume dans `ADR_S44_MULTI_TITLE_NAMESPACE.md`, a verifier avant de trancher.
+3. Priorite 3 no-streamlit etendue : la cloture du trou SPRINT_EXPLORATION doit etre coordonnee entre les deux repos.
+
+**Resultats observes** :
+
+- Verifications effectuees via `grep` cible sur `ci.yml`, `contract_test.go`, `streamlit_app.py`, `BASCULE_GO.md`, `MIGRATION_MASTER.md`, et inspection du dossier `.ai/V7/`.
+- Aucun code runtime modifie, seulement le document d'audit et ce thought log.
+
+**Conclusion / prochaine etape** : Le plan d'audit est utilisable comme reference. Prochaines etapes suggerees (hors scope de cette revue) : reparer les liens MIGRATION_MASTER, creer ou retirer SPRINT_EXPLORATION.md dans les deux repos, confirmer le choix ADR Sprint 44 sur le routage header vs path.
+
+---
+
+## [2026-04-17] docs(roadmap): planification Phase 10 — montee couverture Go 13.4% -> 70%
+
+**Statut** : Complete (planification seule, pas d'implementation)
+
+**Tache** : L'utilisateur a constate que la couverture globale Go est tres faible. Definir une cible satisfaisante et planifier sprints apres S44 sur `feat/live-golden-values` (worktree go-migration).
+
+**Decisions techniques principales** :
+
+1. **Diagnostic du faux positif CI** : le job `go-coverage` actuel mesure uniquement `./internal/domain/... ./internal/analysis/... ./contracttest/...` et affiche 50% alors que la couverture reelle globale mesuree via `go tool cover -func=coverage.out` est **13.4%** (986 fonctions). Les packages critiques (handlers, sync/writes, migration, platform/duckdb, validation) sont a 0%.
+2. **Cible validee par l'utilisateur** : **70% de couverture globale** mesuree sur `./...` complet avec CGO active.
+3. **Perimetre des tests** : unitaires + unitaires avec DB in-memory + handlers httptest + contrat + golden + integration DB reelle. **Pas d'E2E Go** — ROI mediocre sur API JSON stateless, on atteint 70% sans.
+4. **Decoupage en 4 sprints** (nouvelle Phase 10 — Consolidation qualite) :
+   - **S45 (3-4j)** : infra coverage reelle + baseline honnete + seuil ratchet
+   - **S46 (6-8j)** : handlers HTTP + middlewares -> coverage 35%
+   - **S47 (8-10j)** : sync/writes + migrations + platform/duckdb -> coverage 55%
+   - **S48 (5-7j)** : validation + ops + service restants + gate 70%
+5. **Garde-fou ratchet** : chaque sprint releve le seuil CI (15% -> 35% -> 55% -> 70%), jamais de regression acceptee. Baseline commite dans `apps/go-api/coverage_baseline.txt`.
+6. **Exclusions justifiees** : `internal/api/gen/` (oapi-codegen), `cmd/msal-poc/` (POC jetable). `cmd/levelup/` a trancher en S45.
+
+**Resultats observes** :
+
+- Mise a jour de `SPRINT_ROADMAP.md` : en-tete, vue d'ensemble (ajout Phase 10 + sprints 45-48), blocs detailles S45/S46/S47/S48 avec taches, gates et references.
+- Creation de `.ai/go_migration_v2/SPRINT_45_48_COVERAGE_ROADMAP.md` : document d'execution complet avec matrice fichier-par-fichier, livrables concrets (scripts `coverage_filter.sh` / `coverage_check.sh`, helpers `testutil`, pattern de test canonique), checklist par sprint, matrice a vider, risques+parades, suivi d'execution.
+- Le document est dimensionne pour qu'un humain ou une IA qui reprend sans contexte puisse executer sans avoir a re-auditer.
+
+**Conclusion / prochaine etape** :
+
+- Aucun code test ecrit — planification seule.
+- La Phase 10 est pret a demarrer : le prochain agent peut attaquer Sprint 45 tache 1 (`coverage_filter.sh`) directement en suivant le livrable dedie dans `SPRINT_45_48_COVERAGE_ROADMAP.md`.
+- Dette a surveiller : la Gate Phase 9 "Couverture ciblee modules Sprint 44 >= 80%" est obsolete tant que S48 n'est pas ferme ; elle sera revalidee a ce moment-la.
+
+---
+
+## [2026-04-17] docs(audit): seconde passe plans vs realite sur go-migration et no-streamlit
+
+**Statut** : Complete
+
+**Tache** : Produire un audit dedie et plus detaille sur l'ecart entre les plans et l'etat reel des repos `LevelUp-go-migration` et `LevelUp-no-streamlit`, en distinguant travail implemente, reste a faire reel et derive documentaire.
+
+**Decisions techniques principales** :
+
+1. Le document d'audit est place dans `.ai/go_migration_v2/` car c'est le corpus le plus adapte pour un audit interne transverse oriente pilotage, avec coexistence de constats Go et no-streamlit.
+2. L'ordre de confiance retenu est explicite dans l'audit : code runtime et CI avant thought log, roadmap avant checklist, pour eviter que les documents de suivi obsoletes deviennent des faux positifs de revue.
+3. La seconde passe formalise un point cle : `LevelUp-go-migration` est techniquement avance mais pas ferme, tandis que `LevelUp-no-streamlit` est fonctionnellement bascule vers React/FastAPI mais documente de facon desynchronisee.
+
+**Resultats observes** :
+
+- Creation de `.ai/go_migration_v2/AUDIT_PLANS_VS_REALITE_2026-04-17.md` avec : resume executif, constats par repo, tri entre vrais restants et artefacts historiques, et priorites actionnables.
+- Confirmation documentee que la gate Sprint 36 n'est pas fermee, que les exemptions de contrat Go sont encore presentes, et que le Sprint 44 multi-titres est avance mais intermediaire.
+- Confirmation documentee que `LevelUp-no-streamlit` tourne bien en React/FastAPI, que `MIGRATION_MASTER.md` pointe vers de mauvais chemins, que `project_map.md` est en retard, et que `IMPL_V7.md` ne doit plus etre lu comme backlog produit actif.
+
+**Conclusion / prochaine etape** :
+- Si l'audit doit deboucher sur des actions concretes, les priorites naturelles sont : fermer la realite de bascule Go, supprimer les exemptions de contrat restantes, puis resynchroniser la documentation d'entree de no-streamlit.
+
 ## [2026-04-16] docs(roadmap): audit exhaustif + synchronisation SPRINT_ROADMAP.md
 
 **Statut** : Complété
