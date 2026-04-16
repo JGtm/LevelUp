@@ -134,6 +134,22 @@ func NewRouter(
 			// Sprint 32 : Explorer matches-query + Match History export
 			r.Post("/pages/explorer/matches-query", explorer.QueryMatches)
 			r.Get("/pages/match-history/export", mh.Export)
+
+			// Sprint 33 : Teammates (contrat FastAPI)
+			teammates := handlers.NewTeammatesHandler(cfg)
+			r.Post("/pages/teammates", teammates.GetPage)
+
+			// Sprint 33 : Timeseries (contrat FastAPI)
+			timeseries := handlers.NewTimeseriesHandler(cfg)
+			r.Post("/pages/timeseries", timeseries.GetPage)
+
+			// Sprint 33 : Session Compare
+			sc := handlers.NewSessionCompareHandler(cfg)
+			r.Post("/pages/session-compare", sc.Compare)
+
+			// Sprint 33 : Last Match Resolve
+			lm := handlers.NewLastMatchHandler(cfg)
+			r.Post("/pages/last-match/resolve", lm.Resolve)
 		})
 
 		// Endpoints P1 : répertoire gamertags
