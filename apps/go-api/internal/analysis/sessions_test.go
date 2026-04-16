@@ -9,7 +9,7 @@ import (
 
 // helpers de test
 
-func makeMatch(id string, start time.Time, duration int, teammates string, isRanked bool) domain.SessionMatchRow {
+func makeMatch(id string, start time.Time, duration int, teammates string, isRanked bool) domain.SessionMatchRow { //nolint:unparam
 	var teammatesPtr *string
 	if teammates != "" {
 		teammatesPtr = &teammates
