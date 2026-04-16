@@ -95,6 +95,13 @@ type dbProfilesFile struct {
 	Profiles map[string]dbProfileEntry `json:"profiles"`
 }
 
+// dbProfilesFileV3 représente le format v3 title-aware de db_profiles.json.
+// Structure : { "version": "3.0", "profiles": { "<title_slug>": { "<gamertag>": {...} } } }
+type dbProfilesFileV3 struct {
+	Version  string                               `json:"version"`
+	Profiles map[string]map[string]dbProfileEntry `json:"profiles"`
+}
+
 // dbProfileEntry représente une entrée dans la map "profiles" de db_profiles.json.
 type dbProfileEntry struct {
 	DBPath         string `json:"db_path"`
@@ -103,7 +110,9 @@ type dbProfileEntry struct {
 }
 
 // LoadPlayers charge db_profiles.json et retourne la liste des joueurs.
-func (c *AppConfig) LoadPlayers() ([]domain.PlayerSummary, error) {
+// Supporte les formats v2.1 (flat) et v3.0 (title-scoped).
+// Si titleFilter est non vide, ne retourne que les joueurs de ce titre.
+func (c *AppConfig) LoadPlayers(titleFilter ...string) ([]domain.PlayerSummary, error) {
 	if c.DemoMode {
 		return []domain.PlayerSummary{{
 			PlayerSlug:     "DEMO",
@@ -122,9 +131,34 @@ func (c *AppConfig) LoadPlayers() ([]domain.PlayerSummary, error) {
 		return nil, fmt.Errorf("lecture db_profiles.json : %w", err)
 	}
 
+	// Détecter la version pour choisir le parser.
+	var versionProbe struct {
+		Version string `json:"version"`
+	}
+	if err := json.Unmarshal(data, &versionProbe); err != nil {
+		return nil, fmt.Errorf("parsing db_profiles.json : %w", err)
+	}
+
+	if versionProbe.Version == "3.0" {
+		return c.loadPlayersV3(data, titleFilter...)
+	}
+	return c.loadPlayersV2(data, titleFilter...)
+}
+
+// loadPlayersV2 parse le format v2.1 (flat map gamertag → entry).
+func (c *AppConfig) loadPlayersV2(data []byte, titleFilter ...string) ([]domain.PlayerSummary, error) {
 	var file dbProfilesFile
 	if err := json.Unmarshal(data, &file); err != nil {
-		return nil, fmt.Errorf("parsing db_profiles.json : %w", err)
+		return nil, fmt.Errorf("parsing db_profiles.json v2 : %w", err)
+	}
+
+	// En v2.1, tous les profils sont implicitement halo_infinite.
+	filter := ""
+	if len(titleFilter) > 0 {
+		filter = titleFilter[0]
+	}
+	if filter != "" && filter != "halo_infinite" {
+		return []domain.PlayerSummary{}, nil
 	}
 
 	players := make([]domain.PlayerSummary, 0, len(file.Profiles))
@@ -140,6 +174,40 @@ func (c *AppConfig) LoadPlayers() ([]domain.PlayerSummary, error) {
 			WaypointPlayer: wp,
 			IsDemo:         false,
 		})
+	}
+	return players, nil
+}
+
+// loadPlayersV3 parse le format v3.0 (title_slug → gamertag → entry).
+func (c *AppConfig) loadPlayersV3(data []byte, titleFilter ...string) ([]domain.PlayerSummary, error) {
+	var file dbProfilesFileV3
+	if err := json.Unmarshal(data, &file); err != nil {
+		return nil, fmt.Errorf("parsing db_profiles.json v3 : %w", err)
+	}
+
+	filter := ""
+	if len(titleFilter) > 0 {
+		filter = titleFilter[0]
+	}
+
+	var players []domain.PlayerSummary
+	for titleSlug, titleProfiles := range file.Profiles {
+		if filter != "" && titleSlug != filter {
+			continue
+		}
+		for gamertag, p := range titleProfiles {
+			wp := p.WaypointPlayer
+			if wp == "" {
+				wp = gamertag
+			}
+			players = append(players, domain.PlayerSummary{
+				PlayerSlug:     gamertag,
+				Gamertag:       gamertag,
+				XUID:           p.XUID,
+				WaypointPlayer: wp,
+				IsDemo:         false,
+			})
+		}
 	}
 	return players, nil
 }

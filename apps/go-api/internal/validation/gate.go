@@ -16,6 +16,8 @@ import (
 	"path/filepath"
 	"strings"
 	"time"
+
+	titlePkg "levelup/go-api/internal/domain/title"
 )
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -82,10 +84,13 @@ type GateCheckConfig struct {
 // ─────────────────────────────────────────────────────────────────────────────
 
 // RunGateCheck4 exécute la checklist automatisée de la Gate Phase 4.
+// Sprint 44 : utilise PathResolver pour les chemins.
 func RunGateCheck4(cfg GateCheckConfig) *GateReport {
 	report := &GateReport{
 		GeneratedAt: time.Now(),
 	}
+
+	pr := titlePkg.NewPathResolver(cfg.RepoRoot)
 
 	type check struct {
 		id    string
@@ -105,28 +110,28 @@ func RunGateCheck4(cfg GateCheckConfig) *GateReport {
 			"shared-db",
 			"shared_matches_v2.duckdb accessible en lecture",
 			func() (bool, string) {
-				return checkDBAccessible(filepath.Join(cfg.RepoRoot, "data", "warehouse", "shared_matches_v2.duckdb"))
+				return checkDBAccessible(pr.LegacySharedDBPath())
 			},
 		},
 		{
 			"metadata-db",
 			"metadata.duckdb accessible en lecture",
 			func() (bool, string) {
-				return checkDBAccessible(filepath.Join(cfg.RepoRoot, "data", "warehouse", "metadata.duckdb"))
+				return checkDBAccessible(pr.LegacyMetadataDBPath())
 			},
 		},
 		{
 			"shared-tables",
 			"Tables critiques présentes dans shared_matches_v2.duckdb",
 			func() (bool, string) {
-				return checkSharedTables(filepath.Join(cfg.RepoRoot, "data", "warehouse", "shared_matches_v2.duckdb"))
+				return checkSharedTables(pr.LegacySharedDBPath())
 			},
 		},
 		{
 			"shared-views",
 			"Vues V6 présentes (v_gamertag_lookup, v_match_full, v_weapon_kills)",
 			func() (bool, string) {
-				return checkSharedViews(filepath.Join(cfg.RepoRoot, "data", "warehouse", "shared_matches_v2.duckdb"))
+				return checkSharedViews(pr.LegacySharedDBPath())
 			},
 		},
 		{
@@ -266,7 +271,8 @@ func checkSharedViews(dbPath string) (bool, string) {
 }
 
 func checkMigrationsApplied(repoRoot, gamertag string) (bool, string) {
-	dbPath := filepath.Join(repoRoot, "data", "players", gamertag, "stats.duckdb")
+	pr := titlePkg.NewPathResolver(repoRoot)
+	dbPath := filepath.Join(pr.LegacyPlayerDir(gamertag), "stats.duckdb")
 	if _, err := os.Stat(dbPath); err != nil {
 		return false, fmt.Sprintf("DB joueur absente: %s", dbPath)
 	}

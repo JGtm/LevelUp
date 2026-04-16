@@ -52,3 +52,58 @@ SQL views (`ensure_resolution_views()`):
 
 - `player_match_enrichment`: performance_score, session_id, etc.
 - `challenge_snapshots`: append-only per-player challenge state history (active/completed/upcoming, progress, XP, expiry), deduplicated on state change
+
+---
+
+## Multi-Title Architecture (Sprint 44)
+
+LevelUp supports multiple game titles via a **title-aware data layout**. Each title has its own isolated data tree:
+
+```text
+data/
+  titles/
+    halo_infinite/          # default title
+      warehouse/
+        metadata.duckdb
+        shared_matches_v2.duckdb
+      players/
+        {gamertag}/
+          stats.duckdb
+    halo_mcc/               # second title (example)
+      warehouse/
+        metadata.duckdb
+        shared_matches_v2.duckdb
+      players/
+        {gamertag}/
+          stats.duckdb
+  warehouse/                # legacy flat layout (backward compat)
+  players/                  # legacy flat layout (backward compat)
+```
+
+### Key components
+
+| Component | Role |
+|-----------|------|
+| `TitleRegistry` | In-memory registry of known titles (slug, name, status, capabilities) |
+| `PathResolver` | Resolves all file paths relative to a title slug (`TitleDataDir`, `SharedDBPath`, `PlayerDBPath`, etc.) |
+| `TitleExtractor` middleware | Reads `X-LevelUp-Title` header / session / fallback → injects `title_slug` into request context |
+| `db_profiles.json` v3 | Title-scoped player profiles: `{ "version": "3.0", "profiles": { "<title_slug>": { "<gamertag>": {...} } } }` |
+
+### Routing strategy
+
+The API uses **header-based** title selection (`X-LevelUp-Title`). URLs remain unchanged (`/api/v1/players/{slug}/...`). The middleware injects the title into the request context, and all downstream services (PlayerResolver, ProfileService, etc.) use it to scope data access.
+
+### Frontend
+
+The `appShellStore` tracks `currentTitleSlug` and provides `switchTitle()` which:
+1. POSTs `/session/context` with the new title
+2. Re-bootstraps the app
+3. Resets player-scoped caches
+
+The API client sends `X-LevelUp-Title` header for non-default titles.
+
+### Backward compatibility
+
+- `PathResolver` provides `Legacy*` methods (`LegacySharedDBPath`, `LegacyPlayerDir`, etc.) for the flat `data/warehouse/` layout
+- `db_profiles.json` v2.1 files are auto-detected and read as implicit `halo_infinite` profiles
+- `LoadPlayers()` without a title filter returns players from all titles

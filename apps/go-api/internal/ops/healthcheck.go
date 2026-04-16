@@ -18,6 +18,7 @@ import (
 	"time"
 
 	_ "github.com/duckdb/duckdb-go/v2"
+	titlePkg "levelup/go-api/internal/domain/title"
 )
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -46,9 +47,12 @@ type HealthCheck struct {
 
 // RunHealthcheck effectue tous les contrôles d'intégrité.
 // Portage de check_env.py + logique Python healthcheck.
+// Utilise PathResolver pour les chemins title-aware (Sprint 44).
 func RunHealthcheck(opts HealthcheckOptions) HealthReport {
 	start := time.Now()
 	var checks []HealthCheck
+
+	pr := titlePkg.NewPathResolver(opts.RepoRoot)
 
 	// 1. Système d'exploitation
 	checks = append(checks, HealthCheck{
@@ -61,28 +65,28 @@ func RunHealthcheck(opts HealthcheckOptions) HealthReport {
 	checks = append(checks, checkDirExists("repo_root", opts.RepoRoot))
 
 	// 3. Fichiers de configuration
-	for _, cfg := range []string{"db_profiles.json", "app_settings.json"} {
-		checks = append(checks, checkFileExists(cfg, filepath.Join(opts.RepoRoot, cfg)))
+	for _, cfg := range []string{pr.DBProfilesPath(), pr.AppSettingsPath()} {
+		checks = append(checks, checkFileExists(filepath.Base(cfg), cfg))
 	}
 
-	// 4. Répertoires de données
+	// 4. Répertoires de données (legacy + title-aware)
 	for _, dir := range []string{
-		filepath.Join(opts.RepoRoot, "data", "warehouse"),
+		pr.LegacyWarehouseDir(),
 		filepath.Join(opts.RepoRoot, "data", "players"),
 	} {
 		checks = append(checks, checkDirExists(filepath.Base(dir), dir))
 	}
 
-	// 5. Bases DuckDB critiques
+	// 5. Bases DuckDB critiques (legacy paths — rétrocompatibilité)
 	for _, db := range []struct{ name, path string }{
-		{"shared_matches_v2", filepath.Join(opts.RepoRoot, "data", "warehouse", "shared_matches_v2.duckdb")},
-		{"metadata", filepath.Join(opts.RepoRoot, "data", "warehouse", "metadata.duckdb")},
+		{"shared_matches_v2", pr.LegacySharedDBPath()},
+		{"metadata", pr.LegacyMetadataDBPath()},
 	} {
 		checks = append(checks, checkDuckDB(db.name, db.path))
 	}
 
-	// 6. shared_pve.duckdb (optionnel)
-	pvePath := filepath.Join(opts.RepoRoot, "data", "warehouse", "shared_pve.duckdb")
+	// 6. shared_pve.duckdb (optionnel, legacy path)
+	pvePath := filepath.Join(pr.LegacyWarehouseDir(), "shared_pve.duckdb")
 	if _, err := os.Stat(pvePath); err == nil {
 		checks = append(checks, checkDuckDB("shared_pve", pvePath))
 	}

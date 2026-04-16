@@ -26,8 +26,8 @@ import type { UpdateSettingsRequest } from '@/lib/api/types'
 interface LocalUiPrefs {
   /** Afficher les hints contextuels dans l'UI */
   showHints: boolean
-  /** Dernier slug joueur sélectionné (restaure le contexte au rechargement) */
-  lastPlayerSlug: string | null
+  /** Dernier slug joueur sélectionné par titre (restaure le contexte au rechargement) */
+  lastPlayerSlugByTitle: Record<string, string | null>
 }
 
 interface SettingsDraftState {
@@ -51,7 +51,12 @@ interface SettingsDraftState {
 
   // --- Actions prefs locales ---
   setShowHints: (value: boolean) => void
+  /** @deprecated Utiliser setLastPlayerSlugForTitle */
   setLastPlayerSlug: (slug: string | null) => void
+  /** Définit le dernier slug joueur pour un titre donné */
+  setLastPlayerSlugForTitle: (titleSlug: string, slug: string | null) => void
+  /** Récupère le dernier slug joueur pour un titre donné */
+  getLastPlayerSlugForTitle: (titleSlug: string) => string | null
 }
 
 // ---------------------------------------------------------------------------
@@ -60,7 +65,7 @@ interface SettingsDraftState {
 
 const DEFAULT_LOCAL_UI_PREFS: LocalUiPrefs = {
   showHints: true,
-  lastPlayerSlug: null,
+  lastPlayerSlugByTitle: {},
 }
 
 // ---------------------------------------------------------------------------
@@ -95,8 +100,30 @@ export const useSettingsDraftStore = create<SettingsDraftState>()(
 
       setLastPlayerSlug: (slug) =>
         set((state) => ({
-          localUiPrefs: { ...state.localUiPrefs, lastPlayerSlug: slug },
+          localUiPrefs: {
+            ...state.localUiPrefs,
+            lastPlayerSlugByTitle: {
+              ...state.localUiPrefs.lastPlayerSlugByTitle,
+              halo_infinite: slug,
+            },
+          },
         })),
+
+      setLastPlayerSlugForTitle: (titleSlug, slug) =>
+        set((state) => ({
+          localUiPrefs: {
+            ...state.localUiPrefs,
+            lastPlayerSlugByTitle: {
+              ...state.localUiPrefs.lastPlayerSlugByTitle,
+              [titleSlug]: slug,
+            },
+          },
+        })),
+
+      getLastPlayerSlugForTitle: (titleSlug) => {
+        const state = useSettingsDraftStore.getState()
+        return state.localUiPrefs.lastPlayerSlugByTitle[titleSlug] ?? null
+      },
     }),
     {
       name: 'levelup-ui-prefs',

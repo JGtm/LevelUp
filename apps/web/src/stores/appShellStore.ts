@@ -10,7 +10,7 @@
 
 import { create } from 'zustand'
 import type { BootstrapResponse, CapabilityMap, HaloIdentitySummary, PlayerSummary, TitleSummary } from '@/lib/api/types'
-import { setApiTitleSlug } from '@/lib/api/client'
+import { api, setApiTitleSlug } from '@/lib/api/client'
 
 interface AppShellState {
   // Joueur courant
@@ -20,6 +20,7 @@ interface AppShellState {
   // Sprint 44 : Titre courant
   currentTitleSlug: string
   availableTitles: TitleSummary[]
+  isTitleSwitching: boolean
 
   // Configuration
   locale: 'fr' | 'en'
@@ -41,8 +42,12 @@ interface AppShellState {
   hydrateFromBootstrap: (data: BootstrapResponse) => void
   setCurrentPlayer: (player: PlayerSummary) => void
   setCurrentTitle: (titleSlug: string) => void
+  /** Switch de titre complet : POST /session/context + re-bootstrap + flush stores */
+  switchTitle: (titleSlug: string) => Promise<void>
   setLocale: (locale: 'fr' | 'en') => void
   setHintsVisible: (visible: boolean) => void
+  /** Reset des données joueur (appelé lors d'un switch titre) */
+  resetPlayerData: () => void
 }
 
 const DEFAULT_CAPABILITIES: CapabilityMap = {
@@ -57,11 +62,12 @@ const DEFAULT_CAPABILITIES: CapabilityMap = {
   can_manage_instance: false,
 }
 
-export const useAppShellStore = create<AppShellState>((set) => ({
+export const useAppShellStore = create<AppShellState>((set, get) => ({
   currentPlayer: null,
   availablePlayers: [],
   currentTitleSlug: 'halo_infinite',
   availableTitles: [],
+  isTitleSwitching: false,
   locale: 'fr',
   hintsVisible: true,
   capabilities: null,
@@ -97,6 +103,39 @@ export const useAppShellStore = create<AppShellState>((set) => ({
     setApiTitleSlug(titleSlug)
     set({ currentTitleSlug: titleSlug })
   },
+
+  switchTitle: async (titleSlug) => {
+    const current = get().currentTitleSlug
+    if (titleSlug === current) return
+
+    set({ isTitleSwitching: true })
+    try {
+      // 1. Informer le backend du changement de titre
+      await api.post('/session/context', { title_slug: titleSlug })
+      // 2. Mettre à jour le client API
+      setApiTitleSlug(titleSlug)
+      // 3. Re-bootstrap pour obtenir les données du nouveau titre
+      const bootstrap = await api.get<BootstrapResponse>('/bootstrap')
+      // 4. Réhydrater le store avec les nouvelles données
+      get().hydrateFromBootstrap(bootstrap)
+      // 5. Reset des données joueur en cache
+      get().resetPlayerData()
+    } catch {
+      // Rollback silencieux : restaurer l'ancien titre
+      setApiTitleSlug(current)
+      set({ currentTitleSlug: current })
+    } finally {
+      set({ isTitleSwitching: false })
+    }
+  },
+
   setLocale: (locale) => set({ locale }),
   setHintsVisible: (visible) => set({ hintsVisible: visible }),
+
+  resetPlayerData: () => {
+    set({
+      currentPlayer: null,
+      availablePlayers: [],
+    })
+  },
 }))

@@ -76,7 +76,8 @@ type MediaResetRequest struct {
 type CreatePlayerProfileRequest struct {
 	Gamertag    string `json:"gamertag"`
 	XUID        string `json:"xuid,omitempty"`
-	ProfileMode string `json:"profile_mode"` // "xbox" | "azure_manual"
+	ProfileMode string `json:"profile_mode"`         // "xbox" | "azure_manual"
+	TitleSlug   string `json:"title_slug,omitempty"` // Sprint 44 : titre cible (défaut: "halo_infinite")
 }
 
 // CreatePlayerProfileResponse est la réponse de POST /setup/players (201).
