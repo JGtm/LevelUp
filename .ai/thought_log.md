@@ -1,5 +1,39 @@
 # Thought Log
 
+## [2026-07-20] feat(infra): Sprint 34+35 — Go release matrix, shadow mode, golden tests CI
+
+**Statut** : Complété
+
+**Tâche** : Sprint 34 (Infra release/deploy Go) + Sprint 35 (Golden tests CI + shadow mode) — 10 tâches en 2 sprints.
+
+**Décisions techniques principales** :
+
+1. **docker-compose.yml** : healthcheck Python (`urllib.request`) → binaire natif Go (`/app/levelup-server -health-check`). Plus de dépendance Python dans le container de production.
+
+2. **Makefile racine** : ajout des cibles Go (`go-api-build`, `go-api-run`, `go-api-dev`, `go-api-test`, `go-api-coverage`, `go-api-lint`). `GO_VERSION` extrait dynamiquement depuis `pyproject.toml` via Python one-liner.
+
+3. **release.yml** (réécriture complète) : job `build-go` (matrice linux/darwin/windows, `go-version-file`), job `build-web` (Vite dist), job `build-releases` (Python portable, backward compat), job `publish` unifié. Binaires Go inclus dans les assets GitHub Release.
+
+4. **ci.yml** — corrections critiques : `go-version: "1.22"` → `go-version-file: apps/go-api/go.mod` dans tous les jobs Go (go-build, go-lint, go-coverage, go-contract-test, e2e-react). Seuil couverture 30% → 50%.
+
+5. **Shadow mode** (`internal/api/middleware/shadow.go`) : middleware chi fire-and-forget. Si `LEVELUP_SHADOW_MODE=both`, duplique chaque requête vers `LEVELUP_PYTHON_URL`, compare status + SHA256(body), log `slog.Warn("shadow: divergence")` si diff. N'affecte pas la réponse Go.
+
+6. **response_bytes** (`slog_logger.go`) : champ ajouté au middleware SlogLogger via `statusResponseWriter.Write()` qui compte les octets.
+
+7. **create_test_fixture.py** (`apps/go-api/tests/`) : crée metadata.duckdb + shared_matches_v2.duckdb + stats.duckdb joueur avec 10 matchs fictifs. Utilisé dans le job CI `go-golden-test` sans données réelles.
+
+8. **Job CI `go-golden-test`** : build Go avec CGo (linux DuckDB), crée fixtures, démarre serveur, appelle `parity_check.py`, assert 0 diffs.
+
+**Résultats observés** :
+
+- Tous les fichiers modifiés/créés, aucune régression sur les tests unitaires existants (CGO=0).
+- Le shadow mode est opt-in via env var — pas de changement de comportement par défaut.
+- La fixture CI est auto-suffisante : pas besoin de données réelles pour vérifier la parité des endpoints.
+
+**Conclusion / prochaine étape** : Sprint 36 — Validation & bascule production (parity_check = 0 diff sur 24 endpoints, 15 specs Playwright, 48h monitoring).
+
+---
+
 ## [2026-04-16] docs(go-migration-v2): work packages Sprint 44 et ADR finale multi-titres
 
 **Statut** : Complété

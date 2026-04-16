@@ -52,8 +52,13 @@ func NewRouter(
 	r.Use(chimiddleware.Compress(5))
 	r.Use(middleware.WithSession(sessionStore, isProduction))
 
+	// Sprint 35 : shadow mode — compare Go vs Python en parallèle si activé.
+	if cfg.ShadowMode == "both" {
+		r.Use(middleware.Shadow(middleware.ShadowConfig{PythonURL: cfg.PythonURL}))
+	}
+
 	// Health check (pas de préfixe /api/v1 — sondage infrastructurel)
-	r.Get("/health", handlers.NewHealthHandler(bootRepo).ServeHTTP)
+	r.Get("/health", handlers.NewHealthHandlerWithVersion(bootRepo, cfg.AppVersion).ServeHTTP)
 
 	// v1 API
 	r.Route("/api/v1", func(r chi.Router) {

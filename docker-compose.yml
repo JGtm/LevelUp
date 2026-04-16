@@ -29,11 +29,12 @@ services:
       - ./app_settings.json:/app/app_settings.json
 
     restart: unless-stopped
+    # Healthcheck Go natif — utilise le flag -health-check du binaire (pas Python)
     healthcheck:
-      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/api/v1/health').read()"]
+      test: ["CMD", "/app/levelup-server", "-health-check"]
       interval: 30s
       timeout: 5s
-      start_period: 30s
+      start_period: 20s
       retries: 3
 
   levelup-demo:
@@ -52,3 +53,9 @@ services:
       - ./data/demo/db_profiles.json:/app/db_profiles.json:ro
       - ./data/demo/app_settings.json:/app/app_settings.json:ro
     restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "/app/levelup-server", "-health-check"]
+      interval: 30s
+      timeout: 5s
+      start_period: 20s
+      retries: 3
