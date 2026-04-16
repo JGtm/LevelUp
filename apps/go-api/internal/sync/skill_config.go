@@ -201,23 +201,6 @@ func sigmoidRatio(num, denom float64) float64 {
 	return clampF(r/(1.0+r), 0.0, 1.0)
 }
 
-func safeFloat(v interface{}) (float64, bool) {
-	switch x := v.(type) {
-	case float64:
-		return x, true
-	case float32:
-		return float64(x), true
-	case int:
-		return float64(x), true
-	case int64:
-		return float64(x), true
-	case nil:
-		return 0, false
-	default:
-		return 0, false
-	}
-}
-
 // containsI est un contains case-insensitive simplifié.
 func containsI(s, substr string) bool {
 	if len(substr) == 0 {
