@@ -1,5 +1,38 @@
 # Thought Log
 
+## [2026-07-18] fix(security)+feat(onboarding): Sprint 30-31 — Sécurité, error handling, onboarding Go
+
+**Statut** : Complété
+
+**Tâche** : Sprint 30 (Bugs sécurité & error handling, 18 tâches) + Sprint 31 (Onboarding Go & cookies session, 11 tâches).
+
+**Décisions techniques principales** :
+
+### Sprint 30 — Sécurité & error handling
+
+1. **pool.go** : Remplacé `LoadOrStore` par `singleflight.Group.Do()` → élimine la race condition qui ouvrait des connexions DuckDB jamais fermées. `CloseAll` ferme maintenant les 3 DBs (Player, Shared, Metadata) au lieu de Player seul.
+2. **backfill.go** : Ajout de `isValidMatchID()` (regex hex UUID ≤ 64 chars) pour valider les IDs avant insertion dans une clause SQL — élimine le risque d'injection SQL via concaténation `"'" + id + "'"`.
+3. **match_view_service.go** : Les 7 `_, _ =` (erreurs silencieuses) remplacés par `slog.Warn` avec dégradation gracieuse (sections partielles si sub-data manquante, seul `meta` est bloquant).
+4. **csrf.go** : Nouveau middleware vérifiant Origin/Referer sur POST/PUT/PATCH/DELETE. Intégré au routeur chi après CORS. 5 tests unitaires couvrant GET passthrough, POST sans/avec/mauvaise origine, fallback Referer.
+5. **home.go, stats.go, sessions.go** : Tous les `http.Error(w, err.Error(), ...)` remplacés par `writeError()` JSON structuré — plus jamais de `err.Error()` exposé au client.
+6. **stats.go** : `http.MaxBytesReader(w, r.Body, 1MB)` + rejet 400 au lieu de fallback silencieux sur JSON malformé.
+7. **gamertag.go** : Champ `Query` ajouté aux deux sites de réponse `GamertagSearchResponse`.
+
+### Sprint 31 — Onboarding Go
+
+1. **halo_exchange.go** : Nouveau type `ExchangeResult` retournant tokens + gamertag + XUID extraits de `DisplayClaims.xui[0]` dans la réponse XSTS. `extractDisplayClaims()` fait le parsing.
+2. **auth.go** : `pollDeviceFlow` stocke maintenant `a.Gamertag` et `a.XUID` depuis `ExchangeResult`. `GetDeviceFlowStatus` les propage déjà en session.
+3. **bootstrap_service.go** : `Build()` accepte `*domain.SessionData`. `ResolveAuthState()` : missing/partial/ready selon session. `ResolveLinkedIdentity()` extrait l'identité Halo. `DiscordConfigured` lu depuis `discord_webhook_url` settings. `TailscaleEnabled` lu depuis settings.
+4. **bootstrap_test.go** : 8 cas de test (AuthState 5 cas + LinkedIdentity 3 cas), tagged `//go:build cgo`.
+5. **Cookie session** : Config déjà compatible (Path=/, SameSite=Lax, HttpOnly, Secure prod, MaxAge 7j).
+
+**Résultats observés** :
+- 47 tests passent (5 CSRF + 42 existants), 0 régressions
+- golangci-lint, go vet, gofmt : tous PASS
+- Commits : `8b4d70f1` (Sprint 30) + `92709243` (Sprint 31)
+
+**Conclusion** : Sprint 30 et 31 terminés. Le parcours d'onboarding Go est maintenant fonctionnel de bout en bout : device code flow → gamertag+XUID → session → bootstrap dynamique. Les 7 vulnérabilités de sécurité identifiées dans l'audit sont corrigées.
+
 ## [2026-04-16] audit(go-migration): Recalibrage du document consolidé après revue du runtime React
 
 **Statut** : Complété
