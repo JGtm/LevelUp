@@ -9,12 +9,13 @@ import (
 	"log/slog"
 	"net/http"
 	"os"
-	"path/filepath"
 	"strings"
 
 	"levelup/go-api/internal/api/middleware"
 	"levelup/go-api/internal/config"
+	"levelup/go-api/internal/ctxkeys"
 	"levelup/go-api/internal/domain"
+	"levelup/go-api/internal/domain/title"
 	"levelup/go-api/internal/platform/jobs"
 	session_platform "levelup/go-api/internal/platform/session"
 	settings_platform "levelup/go-api/internal/platform/settings"
@@ -82,6 +83,13 @@ func (h *SetupHandler) CreatePlayer(w http.ResponseWriter, r *http.Request) {
 		req.ProfileMode = "xbox"
 	}
 
+	// Sprint 44 : injecter le titre courant depuis le contexte.
+	titleSlug := ctxkeys.TitleSlug(r.Context())
+	if titleSlug == "" {
+		titleSlug = title.DefaultSlug
+	}
+	req.TitleSlug = titleSlug
+
 	// Guard : identité Xbox liée (mode xbox uniquement)
 	if req.ProfileMode == "xbox" {
 		sess := middleware.GetSession(r.Context())
@@ -121,7 +129,9 @@ func (h *SetupHandler) CreatePlayer(w http.ResponseWriter, r *http.Request) {
 		_ = h.sessionStore.Touch(sess)
 	}
 
-	dbPath := filepath.Join(h.cfg.RepoRoot, "data", "players", playerKey, "stats.duckdb")
+	// Sprint 44 : chemin DB title-aware via PathResolver.
+	pr := title.NewPathResolver(h.cfg.RepoRoot)
+	dbPath := pr.PlayerDBPath(titleSlug, playerKey)
 	dbCreated := fileExists(dbPath)
 
 	player := domain.PlayerSummary{

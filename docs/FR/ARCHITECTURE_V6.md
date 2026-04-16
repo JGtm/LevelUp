@@ -449,3 +449,47 @@ Configuration de l'application Streamlit (thème, langue, options d'affichage).
 - [SYNC_OPTIMIZATIONS_V5.md](SYNC_OPTIMIZATIONS_V5.md) — Optimisations sync
 - [TESTING_V5.md](TESTING_V5.md) — Stratégie de tests
 - [ARCHITECTURE.md](ARCHITECTURE.md) — Architecture v4 (référence historique)
+
+---
+
+## Architecture Multi-Titre (Sprint 44)
+
+LevelUp supporte plusieurs jeux (titres) via une **arborescence de données par titre**. Chaque titre possède son propre arbre isolé :
+
+```text
+data/
+  titles/
+    halo_infinite/          # titre par défaut
+      warehouse/
+        metadata.duckdb
+        shared_matches_v2.duckdb
+      players/
+        {gamertag}/
+          stats.duckdb
+    halo_mcc/               # second titre (exemple)
+      warehouse/
+        ...
+      players/
+        ...
+  warehouse/                # layout legacy flat (rétrocompatibilité)
+  players/                  # layout legacy flat (rétrocompatibilité)
+```
+
+### Composants clés
+
+| Composant | Rôle |
+|-----------|------|
+| `TitleRegistry` | Registre en mémoire des titres connus (slug, nom, statut, capacités) |
+| `PathResolver` | Résolution de tous les chemins fichier par titre (`TitleDataDir`, `SharedDBPath`, `PlayerDBPath`, etc.) |
+| Middleware `TitleExtractor` | Lit le header `X-LevelUp-Title` / session / fallback → injecte `title_slug` dans le contexte de requête |
+| `db_profiles.json` v3 | Profils joueurs scopés par titre : `{ "version": "3.0", "profiles": { "<slug>": { "<gamertag>": {...} } } }` |
+
+### Stratégie de routage
+
+L'API utilise une sélection de titre **par header** (`X-LevelUp-Title`). Les URLs restent inchangées (`/api/v1/players/{slug}/...`). Le middleware injecte le titre dans le contexte, et tous les services en aval (PlayerResolver, ProfileService, etc.) l'utilisent pour scoper l'accès aux données.
+
+### Rétrocompatibilité
+
+- `PathResolver` fournit des méthodes `Legacy*` (`LegacySharedDBPath`, `LegacyPlayerDir`, etc.) pour le layout plat `data/warehouse/`
+- Les fichiers `db_profiles.json` v2.1 sont auto-détectés et lus comme profils `halo_infinite` implicites
+- `LoadPlayers()` sans filtre de titre retourne les joueurs de tous les titres

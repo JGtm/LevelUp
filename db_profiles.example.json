@@ -1,12 +1,12 @@
 {
-  "version": "2.1",
-  "warehouse_path": "data/warehouse",
-  "metadata_db": "data/warehouse/metadata.duckdb",
+  "version": "3.0",
   "profiles": {
-    "VotreGamertag": {
-      "db_path": "data/players/VotreGamertag/stats.duckdb",
-      "xuid": "0000000000000000",
-      "waypoint_player": "VotreGamertag"
+    "halo_infinite": {
+      "VotreGamertag": {
+        "db_path": "data/titles/halo_infinite/players/VotreGamertag/stats.duckdb",
+        "xuid": "0000000000000000",
+        "waypoint_player": "VotreGamertag"
+      }
     }
   }
 }

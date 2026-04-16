@@ -14530,3 +14530,52 @@ Prochaine étape : Sprint 27 (Bascule progressive, ~3-5j).
 - **Résultat** : go vet OK, tous tests analysis passent (42/42)
 
 **Conclusion** : Sprint 43 complet.
+
+---
+
+## [2025-07-11] Sprint 44 — Implémentation multi-titres (tâches T6-T20)
+
+**Statut** : Complété (T6, T7, T8, T11, T12, T13, T15, T18, T20)
+
+### T6 — db_profiles.json v3 title-aware
+- **Décision** : format v3 avec structure `{ "version": "3.0", "profiles": { "<title_slug>": { "<gamertag>": {...} } } }`. Rétrocompatibilité v2.1 via détection automatique de version dans `LoadPlayers()`.
+- **Fichiers modifiés** : `config/config.go` (types v3 + version probe + loadPlayersV2/V3), `service/profile_service.go` (réécriture complète v3 : `parseOrMigrateProfiles`, `CreatePlayer` title-scoped), `db_profiles.example.json` (v3), `domain/settings.go` (TitleSlug field)
+- **Résultat** : config backward-compatible, profile_service écrit toujours en v3
+
+### T7 — Setup/players handlers title-aware
+- **Décision** : `POST /setup/players` lit `titleSlug` depuis le contexte (middleware TitleExtractor), le passe à `ProfileService.CreatePlayer`. PathResolver pour chemins DB joueur.
+- **Fichiers modifiés** : `handlers/setup.go` (imports ctxkeys/title, injection titleSlug, PathResolver pour dbPath)
+
+### T8 — Ops PathResolver migration
+- **Décision** : migrer `healthcheck.go` et `gate.go` de `filepath.Join(root, "data", ...)` vers `PathResolver.Legacy*` methods (rétrocompatibilité layout plat).
+- **Fichiers modifiés** : `ops/healthcheck.go` (PathResolver pour config/warehouse), `validation/gate.go` (PathResolver pour shared DB, metadata DB, player DB)
+
+### T13 — Routage OpenAPI {title_slug}
+- **Décision** : approche **header-only** (`X-LevelUp-Title`). Le middleware `TitleExtractor` est déjà en place au niveau du router racine. URLs inchangées. Pas de segments `{title_slug}` dans les routes — architecture moins disruptive et déjà fonctionnelle.
+- **Fichiers** : aucune modification nécessaire (middleware déjà appliqué globalement dans `server.go`)
+
+### T15 — Frontend stores/routes title-aware
+- **Décision** : `settingsDraftStore.lastPlayerSlug` → `lastPlayerSlugByTitle: Record<string, string | null>` (migration transparente). `appShellStore` enrichi avec `switchTitle()` (POST /session/context + re-bootstrap + resetPlayerData + rollback on error), `isTitleSwitching`, `resetPlayerData()`.
+- **Fichiers modifiés** : `stores/settingsDraftStore.ts` (interface + actions + default), `stores/appShellStore.ts` (switchTitle, isTitleSwitching, resetPlayerData, import api)
+
+### T11 — Corpus synthétique second titre
+- **Décision** : script Python `create_multititle_fixture.py` créant un titre `halo_mcc` avec 5 matchs dans `data/titles/halo_mcc/warehouse/` + `data/titles/halo_mcc/players/MCCTestPlayer/stats.duckdb`
+- **Fichiers créés** : `tests/create_multititle_fixture.py`
+
+### T12 — Fixtures multi-titres
+- **Décision** : 3 fichiers tests Go pour l'isolation multi-titre — PathResolver isolation (6 cas : SharedDB, MetadataDB, PlayerDB, PlayerDir, WarehouseDir, BackupDir), structure arborescence, même gamertag dans deux titres, registry isolation. Config tests v3 : title isolation, backward compat v2, empty title.
+- **Fichiers créés** : `domain/title/multititle_test.go`, `config/config_test.go`
+
+### T18 — Golden tests skeleton
+- **Décision** : squelette Go natif chargeant les fixtures JSON existantes et assertant leur structure (clés requises, types). Tests de validation structurelle (pas de serveur requis) + test `AllFixturesLoadable` itérant tous les .json.
+- **Fichiers créés** : `tests/golden/golden_test.go`
+
+### T20 — Documentation finale
+- **Décision** : ajout section « Multi-Title Architecture (Sprint 44) » dans `docs/ARCHITECTURE_V6.md` (EN) et `docs/FR/ARCHITECTURE_V6.md` (FR). Arborescence, composants clés, stratégie routage, frontend, rétrocompatibilité.
+- **Fichiers modifiés** : `docs/ARCHITECTURE_V6.md`, `docs/FR/ARCHITECTURE_V6.md`
+
+### Roadmap update
+- Sprint 44 : 9 tâches passées à ✅ (T6, T7, T8, T11, T12, T13, T15, T18, T20)
+- Gate Phase 9 : 22 items cochés sur 24 (restent coverage ≥ 50% et lint clean — à vérifier en CI)
+
+**Conclusion** : Sprint 44 implémentation multi-titres complétée. Toutes les couches sont title-aware : backend (config, handlers, ops, validation), frontend (stores, API client), données (v3 format, PathResolver), tests (isolation, fixtures, golden skeleton), documentation. Les items restants (coverage, lint) dépendent d'un run CI complet.
