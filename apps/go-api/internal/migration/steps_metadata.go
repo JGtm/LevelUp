@@ -12,8 +12,8 @@ import (
 
 func init() {
 	Register(Migration{
-		Name:     "add_asset_translations",
-		TargetDB: TargetMetadata,
+		Name:        "add_asset_translations",
+		TargetDB:    TargetMetadata,
 		Description: "Tables asset_translations + medal_translations (pivot multi-langue)",
 		ApplySchema: func(db *sql.DB) error {
 			return execScript(db, `
@@ -39,8 +39,8 @@ func init() {
 	})
 
 	Register(Migration{
-		Name:     "add_battlepass_asset_refs",
-		TargetDB: TargetMetadata,
+		Name:        "add_battlepass_asset_refs",
+		TargetDB:    TargetMetadata,
 		Description: "Table battlepass_asset_refs pour visuels battle pass",
 		ApplySchema: func(db *sql.DB) error {
 			return execScript(db, `
@@ -63,8 +63,8 @@ func init() {
 	})
 
 	Register(Migration{
-		Name:     "add_battlepass_metadata",
-		TargetDB: TargetMetadata,
+		Name:        "add_battlepass_metadata",
+		TargetDB:    TargetMetadata,
 		Description: "Tables battlepass_track_definitions/translations + battlepass_item_definitions/translations",
 		ApplySchema: func(db *sql.DB) error {
 			return execScript(db, `
@@ -103,8 +103,8 @@ func init() {
 	})
 
 	Register(Migration{
-		Name:     "add_challenge_metadata",
-		TargetDB: TargetMetadata,
+		Name:        "add_challenge_metadata",
+		TargetDB:    TargetMetadata,
 		Description: "Tables challenge_definitions + challenge_translations",
 		ApplySchema: func(db *sql.DB) error {
 			return execScript(db, `
@@ -185,9 +185,9 @@ func applyWeaponLabels(db *sql.DB) error {
 	// Contournement : injecter weapon_id comme littéral décimal (valeur constante),
 	// les noms restent paramétrisés.
 	type label struct {
-		id   uint64
-		en   string
-		fr   string
+		id uint64
+		en string
+		fr string
 	}
 	labels := []label{
 		{0, "Grenade", "Grenade"},

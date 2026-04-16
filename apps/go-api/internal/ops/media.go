@@ -37,11 +37,11 @@ type MediaIndexOptions struct {
 
 // MediaIndexResult résume le résultat de l'indexation.
 type MediaIndexResult struct {
-	Scanned     int
-	NewFiles    int
-	Associated  int
-	Thumbnails  int
-	Errors      []string
+	Scanned    int
+	NewFiles   int
+	Associated int
+	Thumbnails int
+	Errors     []string
 }
 
 // supportedExtensions sont les formats vidéo/image reconnus.

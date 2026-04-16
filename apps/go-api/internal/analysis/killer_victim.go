@@ -3,11 +3,11 @@
 // Port Go de src/analysis/killer_victim.py (compute_killer_victim_pairs).
 //
 // Stratégie :
-//  - Séparer les événements en kills et deaths.
-//  - Trier les deaths par timestamp.
-//  - Pour chaque kill au temps T, chercher le death le plus proche
-//    dans l'intervalle [T-toleranceMS, T+toleranceMS].
-//  - Éviter de réutiliser le même death (bijection 1→1).
+//   - Séparer les événements en kills et deaths.
+//   - Trier les deaths par timestamp.
+//   - Pour chaque kill au temps T, chercher le death le plus proche
+//     dans l'intervalle [T-toleranceMS, T+toleranceMS].
+//   - Éviter de réutiliser le même death (bijection 1→1).
 //
 // Ce package est stateless (aucune DB, aucune dépendance platform/).
 package analysis

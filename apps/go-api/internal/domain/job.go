@@ -42,8 +42,8 @@ type AsyncJobStatus struct {
 	Status   JobStatus `json:"status"`
 	Metadata JobMeta   `json:"metadata,omitempty"`
 
-	ProgressPct   *int    `json:"progress_pct,omitempty"`
-	CurrentStep   *string `json:"current_step,omitempty"`
+	ProgressPct *int    `json:"progress_pct,omitempty"`
+	CurrentStep *string `json:"current_step,omitempty"`
 
 	StartedAt  *time.Time `json:"started_at,omitempty"`
 	FinishedAt *time.Time `json:"finished_at,omitempty"`
@@ -52,13 +52,13 @@ type AsyncJobStatus struct {
 	Error  *JobErrorDetail `json:"error,omitempty"`
 
 	// Enrichissements sync initiale (Sprint 3)
-	PhaseKey      *string `json:"phase_key,omitempty"`
-	PhaseLabel    *string `json:"phase_label,omitempty"`
-	MatchesDone   *int    `json:"matches_done,omitempty"`
-	MatchesTotal  *int    `json:"matches_total,omitempty"`
-	SubtasksDone  *int    `json:"subtasks_done,omitempty"`
-	SubtasksTotal *int    `json:"subtasks_total,omitempty"`
-	ETASeconds    *int    `json:"eta_seconds,omitempty"`
+	PhaseKey      *string  `json:"phase_key,omitempty"`
+	PhaseLabel    *string  `json:"phase_label,omitempty"`
+	MatchesDone   *int     `json:"matches_done,omitempty"`
+	MatchesTotal  *int     `json:"matches_total,omitempty"`
+	SubtasksDone  *int     `json:"subtasks_done,omitempty"`
+	SubtasksTotal *int     `json:"subtasks_total,omitempty"`
+	ETASeconds    *int     `json:"eta_seconds,omitempty"`
 	Warnings      []string `json:"warnings,omitempty"`
 
 	// Champs internes (non exposés via JSON dans la réponse API)

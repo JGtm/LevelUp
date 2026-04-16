@@ -219,7 +219,7 @@ func compareBitmasks(goDb, pyDb *sql.DB) ([]BitmaskStats, error) {
 		column string
 	}
 	queries := []bitmaskQuery{
-		{"player_match_enrichment", ""},     // pas de bitmask propre dans cette table v6
+		{"player_match_enrichment", ""}, // pas de bitmask propre dans cette table v6
 		{"sync_meta", ""},
 	}
 	_ = queries // placeholder — les vraies stats bitmask sont dans shared (match_registry)

@@ -23,9 +23,9 @@ type AntagonistEntry struct {
 
 // AntagonistBarChartData contient les données pour le graphique en barres antagoniste.
 type AntagonistBarChartData struct {
-	TopKilledByMe  []AntagonistEntry `json:"top_killed_by_me"`
-	TopKilledMe    []AntagonistEntry `json:"top_killed_me"`
-	TopN           int               `json:"top_n"`
+	TopKilledByMe []AntagonistEntry `json:"top_killed_by_me"`
+	TopKilledMe   []AntagonistEntry `json:"top_killed_me"`
+	TopN          int               `json:"top_n"`
 }
 
 // ---------------------------------------------------------------------------
@@ -61,10 +61,10 @@ type DuelChartData struct {
 
 // TimelinePoint représente un point de la timeline d'impact.
 type TimelinePoint struct {
-	MinuteMS int     `json:"minute_ms"` // début de la fenêtre en ms
-	Kills    int     `json:"kills"`
-	Deaths   int     `json:"deaths"`
-	Balance  int     `json:"balance"`
+	MinuteMS int `json:"minute_ms"` // début de la fenêtre en ms
+	Kills    int `json:"kills"`
+	Deaths   int `json:"deaths"`
+	Balance  int `json:"balance"`
 }
 
 // ImpactTimelineData contient la timeline d'un match.
@@ -79,10 +79,10 @@ type ImpactTimelineData struct {
 
 // TeamSnapshot capture l'état d'une équipe à un instant.
 type TeamSnapshot struct {
-	TimeMS   int `json:"time_ms"`
-	TeamID   int `json:"team_id"`
-	Score    int `json:"score"`
-	LeadBy   int `json:"lead_by"` // score_team - score_opponent
+	TimeMS int `json:"time_ms"`
+	TeamID int `json:"team_id"`
+	Score  int `json:"score"`
+	LeadBy int `json:"lead_by"` // score_team - score_opponent
 }
 
 // DominanceChartData contient la série temporelle de dominance.

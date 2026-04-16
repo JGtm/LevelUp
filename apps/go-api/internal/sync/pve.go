@@ -188,20 +188,48 @@ func fillEnemyKills(row *PveMatchStatsRow, pveDict map[string]any) {
 // computePveBits calcule le bitmask PveBits pour une ligne PvE.
 func computePveBits(row PveMatchStatsRow) int64 {
 	var bits int64
-	if row.TotalKills > 0  { bits |= PveBitTotalKills }
-	if row.BossKills > 0   { bits |= PveBitBossKills }
-	if row.GruntKills > 0  { bits |= PveBitGrunt }
-	if row.EliteKills > 0  { bits |= PveBitElite }
-	if row.JackalKills > 0 { bits |= PveBitJackal }
-	if row.BruteKills > 0  { bits |= PveBitBrute }
-	if row.HunterKills > 0 { bits |= PveBitHunter }
-	if row.SkimmerKills > 0 { bits |= PveBitSkimmer }
-	if row.CrawlerKills > 0 { bits |= PveBitCrawler }
-	if row.SoldierKills > 0 { bits |= PveBitSoldier }
-	if row.KnightKills > 0 { bits |= PveBitKnight }
-	if row.WardenKills > 0 { bits |= PveBitWarden }
-	if row.SentinelKills > 0 { bits |= PveBitSentinel }
-	if row.MarineKills > 0 { bits |= PveBitMarine }
+	if row.TotalKills > 0 {
+		bits |= PveBitTotalKills
+	}
+	if row.BossKills > 0 {
+		bits |= PveBitBossKills
+	}
+	if row.GruntKills > 0 {
+		bits |= PveBitGrunt
+	}
+	if row.EliteKills > 0 {
+		bits |= PveBitElite
+	}
+	if row.JackalKills > 0 {
+		bits |= PveBitJackal
+	}
+	if row.BruteKills > 0 {
+		bits |= PveBitBrute
+	}
+	if row.HunterKills > 0 {
+		bits |= PveBitHunter
+	}
+	if row.SkimmerKills > 0 {
+		bits |= PveBitSkimmer
+	}
+	if row.CrawlerKills > 0 {
+		bits |= PveBitCrawler
+	}
+	if row.SoldierKills > 0 {
+		bits |= PveBitSoldier
+	}
+	if row.KnightKills > 0 {
+		bits |= PveBitKnight
+	}
+	if row.WardenKills > 0 {
+		bits |= PveBitWarden
+	}
+	if row.SentinelKills > 0 {
+		bits |= PveBitSentinel
+	}
+	if row.MarineKills > 0 {
+		bits |= PveBitMarine
+	}
 	return bits
 }
 

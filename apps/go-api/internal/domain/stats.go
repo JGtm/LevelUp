@@ -10,30 +10,30 @@ import "time"
 // StatsMatchRow est le type de transfert entre platform/duckdb et les services de stats.
 // Contient toutes les métriques nécessaires au calcul du performance score (Q23).
 type StatsMatchRow struct {
-	MatchID            string
-	StartTime          time.Time
-	Outcome            *int
-	Kills              int
-	Deaths             int
-	Assists            int
-	KDA                *float64
-	Accuracy           *float64
-	PersonalScore      *int
-	DamageDealt        *float64
-	DamageTaken        *float64
-	TimePlayedSeconds  *int
-	TeamMMR            *float64
-	EnemyMMR           *float64
-	KillsExpected      *float64
-	DeathsExpected     *float64
-	Rank               *int
-	IsRanked           bool
-	PlaylistName       string
-	PairName           string
-	TeamID             *int
-	PerfScoreComputed  *float64 // score stocké en DB (player_match_enrichment)
-	SessionID          *string
-	SessionLabel       *string
+	MatchID           string
+	StartTime         time.Time
+	Outcome           *int
+	Kills             int
+	Deaths            int
+	Assists           int
+	KDA               *float64
+	Accuracy          *float64
+	PersonalScore     *int
+	DamageDealt       *float64
+	DamageTaken       *float64
+	TimePlayedSeconds *int
+	TeamMMR           *float64
+	EnemyMMR          *float64
+	KillsExpected     *float64
+	DeathsExpected    *float64
+	Rank              *int
+	IsRanked          bool
+	PlaylistName      string
+	PairName          string
+	TeamID            *int
+	PerfScoreComputed *float64 // score stocké en DB (player_match_enrichment)
+	SessionID         *string
+	SessionLabel      *string
 }
 
 // LUSRMatchRating est le type de transfert pour un checkpoint LUSR.
@@ -58,31 +58,31 @@ type ParticipantRow struct {
 // MatchMetrics regroupe les métriques normalisées par minute pour une seule partie.
 // Utilisé en entrée de ComputeRelativePerformanceScore.
 type MatchMetrics struct {
-	MatchID            string
-	StartTime          time.Time
-	Outcome            *int
-	KillsPerMin        float64
-	DeathsPerMin       float64  // inverse : moins = mieux
-	AssistsPerMin      float64
-	KDA                float64
-	Accuracy           *float64 // nil si absent
-	ScorePerMin        *float64 // nil si absent
-	DamagePerMin       *float64 // nil si absent
-	RankPerfDiff       *float64 // (expected_rank - actual_rank), nil si absent
-	KillsVsExpected    *float64 // actual / expected, nil si absent
-	DeathsVsExpected   *float64 // expected / actual (inversé), nil si absent
+	MatchID          string
+	StartTime        time.Time
+	Outcome          *int
+	KillsPerMin      float64
+	DeathsPerMin     float64 // inverse : moins = mieux
+	AssistsPerMin    float64
+	KDA              float64
+	Accuracy         *float64 // nil si absent
+	ScorePerMin      *float64 // nil si absent
+	DamagePerMin     *float64 // nil si absent
+	RankPerfDiff     *float64 // (expected_rank - actual_rank), nil si absent
+	KillsVsExpected  *float64 // actual / expected, nil si absent
+	DeathsVsExpected *float64 // expected / actual (inversé), nil si absent
 	// Champs pour LUSR/TrueSkill
-	DamageDealtRaw     *float64
-	DamageTakenRaw     *float64
-	KillsExpected      *float64
-	DeathsExpected     *float64
-	TeamMMR            *float64
-	EnemyMMR           *float64
-	Rank               *int
-	IsRanked           bool
-	PlaylistName       string
-	PairName           string
-	TeamID             *int
+	DamageDealtRaw *float64
+	DamageTakenRaw *float64
+	KillsExpected  *float64
+	DeathsExpected *float64
+	TeamMMR        *float64
+	EnemyMMR       *float64
+	Rank           *int
+	IsRanked       bool
+	PlaylistName   string
+	PairName       string
+	TeamID         *int
 }
 
 // ─── Résultats des onglets ───────────────────────────────────────────────────
@@ -103,9 +103,9 @@ type CumulativePoint struct {
 
 // WinLossPoint est un point de la série victoires/défaites.
 type WinLossPoint struct {
-	StartTime  time.Time `json:"start_time"`
-	Outcome    int       `json:"outcome"`
-	SessionID  *string   `json:"session_id,omitempty"`
+	StartTime time.Time `json:"start_time"`
+	Outcome   int       `json:"outcome"`
+	SessionID *string   `json:"session_id,omitempty"`
 }
 
 // AccuracyPoint est un point de la série précision.
@@ -137,25 +137,25 @@ type StatsQueryRequest struct {
 	// soit "sessions" (groupé par sessions).
 	Mode string `json:"mode"`
 	// Tab sélectionne l'onglet : "win_loss", "accuracy", "objective", "form", "lusr".
-	Tab  string `json:"tab"`
+	Tab string `json:"tab"`
 }
 
 // WinLossTabResponse est la réponse de l'onglet Win/Loss.
 type WinLossTabResponse struct {
-	Points         []WinLossPoint   `json:"points"`
-	WinRate        float64          `json:"win_rate"`
-	TotalMatches   int              `json:"total_matches"`
-	RollingWinRate []float64        `json:"rolling_win_rate"`
+	Points         []WinLossPoint    `json:"points"`
+	WinRate        float64           `json:"win_rate"`
+	TotalMatches   int               `json:"total_matches"`
+	RollingWinRate []float64         `json:"rolling_win_rate"`
 	CumulativeKD   []CumulativePoint `json:"cumulative_kd"`
 	CumulativeNet  []CumulativePoint `json:"cumulative_net"`
 }
 
 // AccuracyTabResponse est la réponse de l'onglet Précision.
 type AccuracyTabResponse struct {
-	Points       []AccuracyPoint `json:"points"`
-	Mean         float64         `json:"mean"`
-	HasData      bool            `json:"has_data"`
-	ScorePerMin  []float64       `json:"score_per_min"`
+	Points      []AccuracyPoint `json:"points"`
+	Mean        float64         `json:"mean"`
+	HasData     bool            `json:"has_data"`
+	ScorePerMin []float64       `json:"score_per_min"`
 }
 
 // ObjectiveTabResponse est la réponse de l'onglet Objectif.
@@ -182,11 +182,11 @@ type LUSRTabResponse struct {
 
 // StatsPageResponse est la réponse complète de la page stats/séries.
 type StatsPageResponse struct {
-	WinLoss   *WinLossTabResponse   `json:"win_loss,omitempty"`
-	Accuracy  *AccuracyTabResponse  `json:"accuracy,omitempty"`
-	Objective *ObjectiveTabResponse `json:"objective,omitempty"`
-	Form      *FormTabResponse      `json:"form,omitempty"`
-	LUSR      *LUSRTabResponse      `json:"lusr,omitempty"`
-	BucketInfo BucketInfo           `json:"bucket_info"`
-	TotalMatches int                `json:"total_matches"`
+	WinLoss      *WinLossTabResponse   `json:"win_loss,omitempty"`
+	Accuracy     *AccuracyTabResponse  `json:"accuracy,omitempty"`
+	Objective    *ObjectiveTabResponse `json:"objective,omitempty"`
+	Form         *FormTabResponse      `json:"form,omitempty"`
+	LUSR         *LUSRTabResponse      `json:"lusr,omitempty"`
+	BucketInfo   BucketInfo            `json:"bucket_info"`
+	TotalMatches int                   `json:"total_matches"`
 }

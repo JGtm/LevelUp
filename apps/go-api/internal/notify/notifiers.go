@@ -125,10 +125,10 @@ func NotifyNewMedia(cfg NotifyConfig, dbPath, gamertag string) {
 // ─────────────────────────────────────────────────────────────────────────────
 
 type mediaRow struct {
-	FilePath  string
-	FileName  string
-	Kind      string // "video" | "image"
-	MatchID   string
+	FilePath string
+	FileName string
+	Kind     string // "video" | "image"
+	MatchID  string
 }
 
 func queryUnnotifiedMedia(db *sql.DB) ([]mediaRow, error) {

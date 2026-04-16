@@ -33,8 +33,8 @@ const (
 // Packed in 2 bytes : bits [0..10] = 101_00100110.
 // We search bit-by-bit, so we store as uint16 and mask length.
 const (
-	universalMarkerBits  = 0b10100100110
-	universalMarkerLen   = 11
+	universalMarkerBits = 0b10100100110
+	universalMarkerLen  = 11
 )
 
 // ══════════════════════════════════════════════════════════════════════════════

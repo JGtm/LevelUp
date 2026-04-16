@@ -43,11 +43,11 @@ var winFactors = map[int]float64{
 }
 
 var playlistGroupPrefixes = map[string]string{
-	"ranked":    "ranked",
+	"ranked":           "ranked",
 	"ranked challenge": "ranked",
-	"big team":  "big_team_battle",
-	"firefight": "firefight",
-	"custom":    "custom",
+	"big team":         "big_team_battle",
+	"firefight":        "firefight",
+	"custom":           "custom",
 }
 
 type playerState struct {
@@ -147,7 +147,7 @@ func trueskillUpdate(mu, sigma, muOpp, sigmaOpp, actualScore, weightFactor float
 	c := math.Sqrt(c2)
 	eps := drawMarginFromProbability(drawProbability, betaTS)
 	w := wWin(0.0, eps/c)
-	deltaSigma2 := sigma * sigma * (sigma*sigma/c2) * w * weightFactor
+	deltaSigma2 := sigma * sigma * (sigma * sigma / c2) * w * weightFactor
 	newSigma := math.Max(minSigma, math.Sqrt(sigma*sigma-deltaSigma2))
 	newSigma = math.Min(math.Sqrt(newSigma*newSigma+tauTS*tauTS), maxSigma)
 

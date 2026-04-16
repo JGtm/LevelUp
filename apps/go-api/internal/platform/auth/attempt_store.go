@@ -4,9 +4,10 @@
 // si une tentative "pending" existe déjà pour une session, elle est renvoyée.
 //
 // Cycle de vie d'une tentative :
-//   pending → authorized (MS a validé) → provisioned (gamertag récupéré)
-//   pending → failed (erreur MSAL ou Halo)
-//   pending → expired (expirée avant autorisation)
+//
+//	pending → authorized (MS a validé) → provisioned (gamertag récupéré)
+//	pending → failed (erreur MSAL ou Halo)
+//	pending → expired (expirée avant autorisation)
 package auth
 
 import (
@@ -44,9 +45,9 @@ type Attempt struct {
 // AttemptStore est le registre en mémoire des tentatives Device Code Flow.
 // Toutes les méthodes sont thread-safe.
 type AttemptStore struct {
-	mu       sync.RWMutex
-	attempts map[string]*Attempt // clé : attempt_id
-	bySession map[string]string  // session_id → attempt_id (pour single-flight)
+	mu        sync.RWMutex
+	attempts  map[string]*Attempt // clé : attempt_id
+	bySession map[string]string   // session_id → attempt_id (pour single-flight)
 }
 
 // NewAttemptStore crée un AttemptStore vide.

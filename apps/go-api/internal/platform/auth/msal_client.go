@@ -5,9 +5,9 @@
 // Scopes : Xboxlive.signin, Xboxlive.offline_access
 //
 // API MSAL v1.7.1 :
-//   1. app.AcquireTokenByDeviceCode(ctx, scopes) → (DeviceCode, error)
-//   2. deviceCode.Result.UserCode / VerificationURL / ExpiresOn / Message
-//   3. deviceCode.AuthenticationResult(ctx) → (AuthResult, error)  — bloquant
+//  1. app.AcquireTokenByDeviceCode(ctx, scopes) → (DeviceCode, error)
+//  2. deviceCode.Result.UserCode / VerificationURL / ExpiresOn / Message
+//  3. deviceCode.AuthenticationResult(ctx) → (AuthResult, error)  — bloquant
 //
 // Le cache MSAL est maintenu en mémoire pendant le setup initial.
 // Une fois le profil créé, il peut être persisté dans sync_meta.duckdb.
@@ -46,7 +46,7 @@ type DeviceCodeFlow struct {
 	// ExpiresIn est le nombre de secondes avant expiration.
 	ExpiresIn int
 	// internal field for AuthenticationResult
-	dc  public.DeviceCode
+	dc public.DeviceCode
 }
 
 // AcquireToken attend la complétion du Device Code Flow et retourne l'access_token.

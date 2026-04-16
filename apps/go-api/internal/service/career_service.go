@@ -16,9 +16,9 @@ import (
 
 // Constantes domaine Halo Infinite.
 const (
-	xpHeroTotal        = 9_319_350
-	rankMax            = 272
-	inactivityGapDays  = 14.0
+	xpHeroTotal       = 9_319_350
+	rankMax           = 272
+	inactivityGapDays = 14.0
 )
 
 // CareerService construit les réponses pour la page Carrière.

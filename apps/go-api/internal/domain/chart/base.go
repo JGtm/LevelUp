@@ -39,7 +39,7 @@ type SingleSeriesChartData struct {
 
 // MultiSeriesChartData regroupe plusieurs séries nommées.
 type MultiSeriesChartData struct {
-	Labels []string     `json:"labels"`
+	Labels []string      `json:"labels"`
 	Series []NamedSeries `json:"series"`
 }
 
@@ -55,11 +55,11 @@ type NamedSeries struct {
 
 // HaloColors définit la palette d'outcomes Halo Infinite.
 var HaloColors = struct {
-	Win   string
-	Loss  string
-	Tie   string
-	DNF   string
-	Perf  struct{ High, Mid, Low, Bad string }
+	Win  string
+	Loss string
+	Tie  string
+	DNF  string
+	Perf struct{ High, Mid, Low, Bad string }
 }{
 	Win:  "#22c55e",
 	Loss: "#ef4444",

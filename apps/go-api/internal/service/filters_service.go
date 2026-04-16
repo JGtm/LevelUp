@@ -357,9 +357,9 @@ func emptyResolved(effective domain.FilterContextInput, sess domain.SessionOptio
 		expOpts[i] = domain.LabelValue{Label: lbl, Value: lbl}
 	}
 	return domain.FilterContextResolved{
-		Effective:      effective,
+		Effective:        effective,
 		AvailableOptions: domain.AvailableFilterOptions{ExperienceTypes: expOpts},
-		SessionOptions: sess,
-		Counts:         domain.FilterCounts{},
+		SessionOptions:   sess,
+		Counts:           domain.FilterCounts{},
 	}
 }

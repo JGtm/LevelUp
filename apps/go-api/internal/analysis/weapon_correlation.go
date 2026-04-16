@@ -27,7 +27,7 @@ type Kill struct {
 //  2. Pour chaque kill :
 //     - melee/grenade → sentinel
 //     - sinon : chercher le fire event non-claimé le plus proche dans [t-5s, t]
-//       dont player_index == killer_pi
+//     dont player_index == killer_pi
 //     - si trouvé → claim (retirer), path="fire_event"
 //     - sinon → fallback Formula A
 func CorrelateKillsGlobal(

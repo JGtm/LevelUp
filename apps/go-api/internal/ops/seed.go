@@ -38,14 +38,14 @@ type SeedResult struct {
 
 // careerRankJSON représente une entrée dans career_ranks_metadata.json.
 type careerRankJSON struct {
-	RankID    int    `json:"rank_id"`
-	TitleEN   string `json:"title_en"`
-	TitleFR   string `json:"title_fr"`
-	Subtitle  string `json:"subtitle"`
-	Tier      string `json:"tier"`
-	Grade     int    `json:"grade"`
-	XPRequired int64 `json:"xp_required"`
-	IconPath  string `json:"icon_path"`
+	RankID     int    `json:"rank_id"`
+	TitleEN    string `json:"title_en"`
+	TitleFR    string `json:"title_fr"`
+	Subtitle   string `json:"subtitle"`
+	Tier       string `json:"tier"`
+	Grade      int    `json:"grade"`
+	XPRequired int64  `json:"xp_required"`
+	IconPath   string `json:"icon_path"`
 }
 
 // SeedCareerRanks peuple la table career_ranks depuis le JSON source.

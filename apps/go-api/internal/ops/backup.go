@@ -43,9 +43,9 @@ type BackupResult struct {
 
 // TableBackupInfo contient les stats de backup d'une table.
 type TableBackupInfo struct {
-	Rows         int64  `json:"rows"`
-	FileSizeBytes int64 `json:"file_size_bytes"`
-	ParquetPath  string `json:"parquet_path"`
+	Rows          int64  `json:"rows"`
+	FileSizeBytes int64  `json:"file_size_bytes"`
+	ParquetPath   string `json:"parquet_path"`
 }
 
 // BackupPlayer sauvegarde toutes les tables d'une DB joueur en Parquet Zstd.

@@ -15,32 +15,32 @@ import (
 // Seuls les champs exposés par l'API sont typés — les champs inconnus sont
 // préservés dans Extra pour ne pas les effacer lors d'un PATCH.
 type AppSettings struct {
-	Lang                              string `json:"lang"`
-	DiscordLang                       string `json:"discord_lang"`
-	UserTimezone                      string `json:"user_timezone"`
-	NormalizeModeLabels               bool   `json:"normalize_mode_labels"`
-	ShowRecords                       bool   `json:"show_records"`
-	RefreshClearsCaches               bool   `json:"refresh_clears_caches"`
-	CareerTopExcludeBTB               bool   `json:"career_top_exclude_btb"`
-	MediaCapturesBaseDir              string `json:"media_captures_base_dir"`
-	MediaToleranceMinutes             int    `json:"media_tolerance_minutes"`
-	MediaWatcherEnabled               bool   `json:"media_watcher_enabled"`
-	MediaWatcherDebounceSeconds       int    `json:"media_watcher_debounce_seconds"`
-	DiscordNotificationsEnabled       bool   `json:"discord_notifications_enabled"`
-	DiscordWebhookURL                 string `json:"discord_webhook_url"` // jamais exposé côté API
-	DiscordNotifySync                 bool   `json:"discord_notify_sync"`
-	DiscordNotifyBackfill             bool   `json:"discord_notify_backfill"`
-	DiscordNotifyNewVersion           bool   `json:"discord_notify_new_version"`
-	DiscordNotifyNewMedia             bool   `json:"discord_notify_new_media"`
-	SpnkrRefreshWithBackfill          bool   `json:"spnkr_refresh_with_backfill"`
-	SpnkrRefreshBackfillMedals        bool   `json:"spnkr_refresh_backfill_medals"`
-	SpnkrRefreshBackfillSkill         bool   `json:"spnkr_refresh_backfill_skill"`
-	SpnkrRefreshBackfillAliases       bool   `json:"spnkr_refresh_backfill_aliases"`
-	SpnkrRefreshBackfillPersonalScores bool  `json:"spnkr_refresh_backfill_personal_scores"`
-	SpnkrRefreshBackfillPerfScores    bool   `json:"spnkr_refresh_backfill_performance_scores"`
-	SpnkrRefreshBackfillLUSR          bool   `json:"spnkr_refresh_backfill_lusr"`
-	SpnkrRefreshBackfillEvents        bool   `json:"spnkr_refresh_backfill_events"`
-	SpnkrRefreshBackfillWeapons       bool   `json:"spnkr_refresh_backfill_weapons"`
+	Lang                               string `json:"lang"`
+	DiscordLang                        string `json:"discord_lang"`
+	UserTimezone                       string `json:"user_timezone"`
+	NormalizeModeLabels                bool   `json:"normalize_mode_labels"`
+	ShowRecords                        bool   `json:"show_records"`
+	RefreshClearsCaches                bool   `json:"refresh_clears_caches"`
+	CareerTopExcludeBTB                bool   `json:"career_top_exclude_btb"`
+	MediaCapturesBaseDir               string `json:"media_captures_base_dir"`
+	MediaToleranceMinutes              int    `json:"media_tolerance_minutes"`
+	MediaWatcherEnabled                bool   `json:"media_watcher_enabled"`
+	MediaWatcherDebounceSeconds        int    `json:"media_watcher_debounce_seconds"`
+	DiscordNotificationsEnabled        bool   `json:"discord_notifications_enabled"`
+	DiscordWebhookURL                  string `json:"discord_webhook_url"` // jamais exposé côté API
+	DiscordNotifySync                  bool   `json:"discord_notify_sync"`
+	DiscordNotifyBackfill              bool   `json:"discord_notify_backfill"`
+	DiscordNotifyNewVersion            bool   `json:"discord_notify_new_version"`
+	DiscordNotifyNewMedia              bool   `json:"discord_notify_new_media"`
+	SpnkrRefreshWithBackfill           bool   `json:"spnkr_refresh_with_backfill"`
+	SpnkrRefreshBackfillMedals         bool   `json:"spnkr_refresh_backfill_medals"`
+	SpnkrRefreshBackfillSkill          bool   `json:"spnkr_refresh_backfill_skill"`
+	SpnkrRefreshBackfillAliases        bool   `json:"spnkr_refresh_backfill_aliases"`
+	SpnkrRefreshBackfillPersonalScores bool   `json:"spnkr_refresh_backfill_personal_scores"`
+	SpnkrRefreshBackfillPerfScores     bool   `json:"spnkr_refresh_backfill_performance_scores"`
+	SpnkrRefreshBackfillLUSR           bool   `json:"spnkr_refresh_backfill_lusr"`
+	SpnkrRefreshBackfillEvents         bool   `json:"spnkr_refresh_backfill_events"`
+	SpnkrRefreshBackfillWeapons        bool   `json:"spnkr_refresh_backfill_weapons"`
 
 	// Capabilities (défaut : true)
 	CanSelfProvision    bool `json:"can_self_provision"`
@@ -220,32 +220,32 @@ func Apply(cfg *AppSettings, req *domain.UpdateSettingsRequest) {
 // ToResponse convertit AppSettings en SettingsResponse (sans discord_webhook_url).
 func ToResponse(cfg *AppSettings) *domain.SettingsResponse {
 	return &domain.SettingsResponse{
-		Lang:                              cfg.Lang,
-		DiscordLang:                       cfg.DiscordLang,
-		UserTimezone:                      cfg.UserTimezone,
-		NormalizeModeLabels:               cfg.NormalizeModeLabels,
-		ShowRecords:                       cfg.ShowRecords,
-		RefreshClearsCaches:               cfg.RefreshClearsCaches,
-		CareerTopExcludeBTB:               cfg.CareerTopExcludeBTB,
-		MediaCapturesBaseDir:              cfg.MediaCapturesBaseDir,
-		MediaToleranceMinutes:             cfg.MediaToleranceMinutes,
-		MediaWatcherEnabled:               cfg.MediaWatcherEnabled,
-		MediaWatcherDebounceSeconds:       cfg.MediaWatcherDebounceSeconds,
-		DiscordNotificationsEnabled:       cfg.DiscordNotificationsEnabled,
-		DiscordWebhookURLPresent:          cfg.DiscordWebhookURL != "",
-		DiscordNotifySync:                 cfg.DiscordNotifySync,
-		DiscordNotifyBackfill:             cfg.DiscordNotifyBackfill,
-		DiscordNotifyNewVersion:           cfg.DiscordNotifyNewVersion,
-		DiscordNotifyNewMedia:             cfg.DiscordNotifyNewMedia,
-		SpnkrRefreshWithBackfill:          cfg.SpnkrRefreshWithBackfill,
-		SpnkrRefreshBackfillMedals:        cfg.SpnkrRefreshBackfillMedals,
-		SpnkrRefreshBackfillSkill:         cfg.SpnkrRefreshBackfillSkill,
-		SpnkrRefreshBackfillAliases:       cfg.SpnkrRefreshBackfillAliases,
+		Lang:                               cfg.Lang,
+		DiscordLang:                        cfg.DiscordLang,
+		UserTimezone:                       cfg.UserTimezone,
+		NormalizeModeLabels:                cfg.NormalizeModeLabels,
+		ShowRecords:                        cfg.ShowRecords,
+		RefreshClearsCaches:                cfg.RefreshClearsCaches,
+		CareerTopExcludeBTB:                cfg.CareerTopExcludeBTB,
+		MediaCapturesBaseDir:               cfg.MediaCapturesBaseDir,
+		MediaToleranceMinutes:              cfg.MediaToleranceMinutes,
+		MediaWatcherEnabled:                cfg.MediaWatcherEnabled,
+		MediaWatcherDebounceSeconds:        cfg.MediaWatcherDebounceSeconds,
+		DiscordNotificationsEnabled:        cfg.DiscordNotificationsEnabled,
+		DiscordWebhookURLPresent:           cfg.DiscordWebhookURL != "",
+		DiscordNotifySync:                  cfg.DiscordNotifySync,
+		DiscordNotifyBackfill:              cfg.DiscordNotifyBackfill,
+		DiscordNotifyNewVersion:            cfg.DiscordNotifyNewVersion,
+		DiscordNotifyNewMedia:              cfg.DiscordNotifyNewMedia,
+		SpnkrRefreshWithBackfill:           cfg.SpnkrRefreshWithBackfill,
+		SpnkrRefreshBackfillMedals:         cfg.SpnkrRefreshBackfillMedals,
+		SpnkrRefreshBackfillSkill:          cfg.SpnkrRefreshBackfillSkill,
+		SpnkrRefreshBackfillAliases:        cfg.SpnkrRefreshBackfillAliases,
 		SpnkrRefreshBackfillPersonalScores: cfg.SpnkrRefreshBackfillPersonalScores,
-		SpnkrRefreshBackfillPerfScores:    cfg.SpnkrRefreshBackfillPerfScores,
-		SpnkrRefreshBackfillLUSR:          cfg.SpnkrRefreshBackfillLUSR,
-		SpnkrRefreshBackfillEvents:        cfg.SpnkrRefreshBackfillEvents,
-		SpnkrRefreshBackfillWeapons:       cfg.SpnkrRefreshBackfillWeapons,
+		SpnkrRefreshBackfillPerfScores:     cfg.SpnkrRefreshBackfillPerfScores,
+		SpnkrRefreshBackfillLUSR:           cfg.SpnkrRefreshBackfillLUSR,
+		SpnkrRefreshBackfillEvents:         cfg.SpnkrRefreshBackfillEvents,
+		SpnkrRefreshBackfillWeapons:        cfg.SpnkrRefreshBackfillWeapons,
 	}
 }
 
