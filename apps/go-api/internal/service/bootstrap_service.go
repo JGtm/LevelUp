@@ -23,7 +23,8 @@ func NewBootstrapService(cfg *config.AppConfig, bootRepo port.BootstrapRepositor
 }
 
 // Build construit la réponse bootstrap complète.
-func (s *BootstrapService) Build(ctx context.Context) (*domain.BootstrapResponse, error) {
+// sess peut être nil si la session n'est pas encore initialisée.
+func (s *BootstrapService) Build(ctx context.Context, sess *domain.SessionData) (*domain.BootstrapResponse, error) {
 	players, err := s.cfg.LoadPlayers()
 	if err != nil {
 		slog.WarnContext(ctx, "bootstrap: erreur chargement joueurs", "err", err)
@@ -51,8 +52,9 @@ func (s *BootstrapService) Build(ctx context.Context) (*domain.BootstrapResponse
 
 	return &domain.BootstrapResponse{
 		SetupRequired:       setupRequired,
-		AuthState:           "missing", // Sprint 0 : auth pas encore portée
+		AuthState:           ResolveAuthState(sess),
 		SetupState:          setupState,
+		LinkedHaloIdentity:  ResolveLinkedIdentity(sess),
 		CurrentPlayer:       currentPlayer,
 		AvailablePlayers:    players,
 		Locale:              settingsExcerpt.Lang,
@@ -112,8 +114,8 @@ func buildFeatureFlags(cfg *config.AppConfig, settings map[string]interface{}) d
 		V7Enabled:         true,
 		MediaEnabled:      getBoolSetting(settings, "media_enabled", true),
 		DemoMode:          cfg.DemoMode,
-		DiscordConfigured: false, // TODO Sprint 25
-		TailscaleEnabled:  false, // hors scope Go principal
+		DiscordConfigured: getStringSetting(settings, "discord_webhook_url", "") != "",
+		TailscaleEnabled:  getBoolSetting(settings, "tailscale_enabled", false),
 	}
 }
 
@@ -121,9 +123,30 @@ func resolveSetupState(players []domain.PlayerSummary) string {
 	if len(players) == 0 {
 		return "no_halo_link"
 	}
-	// Sprint 0 : pas d'auth portée, donc toujours "profile_ready_no_sync" si joueurs présents.
-	// Sprint 15+ : vérifier sync_meta.initial_sync_completed_at.
+	// Sprint 31 : vérifier sync_meta.initial_sync_completed_at à terme.
 	return "profile_ready_no_sync"
+}
+
+// ResolveAuthState déduit l'état d'authentification depuis la session.
+func ResolveAuthState(sess *domain.SessionData) string {
+	if sess == nil || !sess.AuthReady {
+		return "missing"
+	}
+	if sess.LinkedHaloIdentity == nil || sess.LinkedHaloIdentity.Gamertag == "" {
+		return "partial"
+	}
+	return "ready"
+}
+
+// ResolveLinkedIdentity extrait l'identité Halo liée si présente dans la session.
+func ResolveLinkedIdentity(sess *domain.SessionData) *domain.HaloIdentitySummary {
+	if sess == nil || sess.LinkedHaloIdentity == nil {
+		return nil
+	}
+	return &domain.HaloIdentitySummary{
+		Gamertag: sess.LinkedHaloIdentity.Gamertag,
+		XUID:     sess.LinkedHaloIdentity.XUID,
+	}
 }
 
 func getBoolSetting(settings map[string]interface{}, key string, def bool) bool {

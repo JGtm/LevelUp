@@ -4,6 +4,7 @@ package handlers
 import (
 	"net/http"
 
+	"levelup/go-api/internal/api/middleware"
 	"levelup/go-api/internal/service"
 )
 
@@ -19,7 +20,8 @@ func NewBootstrapHandler(svc *service.BootstrapService) *BootstrapHandler {
 
 // ServeHTTP retourne le BootstrapResponse au shell React.
 func (h *BootstrapHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
-	resp, err := h.svc.Build(r.Context())
+	sess := middleware.GetSession(r.Context())
+	resp, err := h.svc.Build(r.Context(), sess)
 	if err != nil {
 		writeError(w, http.StatusInternalServerError, "bootstrap_error", err.Error())
 		return

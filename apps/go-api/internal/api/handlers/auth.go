@@ -147,8 +147,8 @@ func (h *AuthHandler) pollDeviceFlow(attemptID string, flow *auth_platform.Devic
 		return
 	}
 
-	// Chaîne d'échange : access_token → tokens Halo.
-	tokens, err := auth_platform.ExchangeAccessToken(ctx, accessToken)
+	// Chaîne d'échange : access_token → tokens Halo + identité.
+	result, err := auth_platform.ExchangeAccessToken(ctx, accessToken)
 	if err != nil {
 		h.attempts.Update(attemptID, func(a *auth_platform.Attempt) {
 			a.Status = "failed"
@@ -158,12 +158,14 @@ func (h *AuthHandler) pollDeviceFlow(attemptID string, flow *auth_platform.Devic
 		return
 	}
 
-	// Marquer comme autorisé et stocker les tokens dans l'attempt store.
+	// Marquer comme autorisé et stocker tokens + identité dans l'attempt store.
 	// GetDeviceFlowStatus les transférera dans la session lors du prochain poll.
 	h.attempts.Update(attemptID, func(a *auth_platform.Attempt) {
 		a.Status = "authorized"
-		a.SpartanToken = tokens.SpartanToken
-		a.ClearanceToken = tokens.ClearanceToken
+		a.SpartanToken = result.Tokens.SpartanToken
+		a.ClearanceToken = result.Tokens.ClearanceToken
+		a.Gamertag = result.Gamertag
+		a.XUID = result.XUID
 	})
 }
 
