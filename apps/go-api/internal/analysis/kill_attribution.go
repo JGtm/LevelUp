@@ -27,9 +27,3 @@ func (ka *KillAttribution) EffectiveWeaponID() *uint64 {
 	}
 	return ka.WeaponID
 }
-
-// intPtr retourne un pointeur vers v.
-func intPtr(v int) *int { return &v }
-
-// uint64Ptr retourne un pointeur vers v.
-func uint64Ptr(v uint64) *uint64 { return &v }
