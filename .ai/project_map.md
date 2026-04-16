@@ -228,6 +228,7 @@ data/
 | `.ai/go_migration_v2/OPENAPI_MVP_P0_P1.md` | Gel des contrats HTTP MVP P0/P1 à préserver avant le démarrage du backend Go |
 | `.ai/go_migration_v2/SPRINT_44_WORKPACKAGES.md` | Découpage technique par couches du Sprint 44 multi-titres : design, config, migration, validation, observabilité |
 | `.ai/go_migration_v2/ADR_S44_MULTI_TITLE_NAMESPACE.md` | ADR actant le namespace par titre et l'introduction explicite de `title_slug` dans le runtime Go |
+| `.ai/go_migration_v2/AUDIT_PLANS_VS_REALITE_2026-04-17.md` | Audit transverse plans vs réalité : Go migration, no-streamlit, écarts documentaires, vrais restants et priorités actionnables |
 | `.ai/migration/` | Corpus de migration FastAPI/React découpé par sujet : décisions, invariants, parité, slices, contrats API, audit de codebase |
 | `.ai/PLAN_MIGRATION_FASTAPI_REACT.md` | Audit exhaustif + plan de migration Streamlit vers FastAPI/React, avec perimetre fige, matrice de parite, contrats API MVP, extraction du state model, structure cible du repo, delivery par slices, cohabitation front, auth/session, tests de parite et pilotage par metriques |
 | `.ai/go_migration/` | Corpus isole du chantier Python -> Go : plan maitre, checklist, matrice, compat ops et strategie zero Python |
