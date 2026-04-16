@@ -14,11 +14,11 @@ import (
 	"levelup/go-api/internal/api/handlers"
 	"levelup/go-api/internal/api/middleware"
 	"levelup/go-api/internal/config"
-	"levelup/go-api/internal/port"
 	auth_platform "levelup/go-api/internal/platform/auth"
 	jobs_platform "levelup/go-api/internal/platform/jobs"
 	session_platform "levelup/go-api/internal/platform/session"
 	settings_platform "levelup/go-api/internal/platform/settings"
+	"levelup/go-api/internal/port"
 	"levelup/go-api/internal/service"
 )
 
@@ -46,6 +46,7 @@ func NewRouter(
 	r.Use(chimiddleware.RealIP)
 	r.Use(middleware.RequestID)
 	r.Use(middleware.CORS(cfg.CORSOrigins))
+	r.Use(middleware.CSRF(cfg.CORSOrigins))
 	r.Use(middleware.RateLimit(cfg.DemoMode))
 	r.Use(middleware.SlogLogger)
 	r.Use(chimiddleware.Compress(5))

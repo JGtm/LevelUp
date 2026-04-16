@@ -2,7 +2,6 @@
 package handlers
 
 import (
-	"encoding/json"
 	"fmt"
 	"net/http"
 
@@ -29,7 +28,7 @@ func NewSessionsHandler(cfg *config.AppConfig) *SessionsHandler {
 func (h *SessionsHandler) GetSessions(w http.ResponseWriter, r *http.Request) {
 	pdb, err := h.resolvePlayer(r)
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusBadRequest)
+		writeError(w, http.StatusBadRequest, "player_not_found", "joueur introuvable")
 		return
 	}
 
@@ -53,12 +52,11 @@ func (h *SessionsHandler) GetSessions(w http.ResponseWriter, r *http.Request) {
 
 	resp, svcErr := svc.GetSessions(r.Context(), opts)
 	if svcErr != nil {
-		http.Error(w, svcErr.Error(), http.StatusInternalServerError)
+		writeError(w, http.StatusInternalServerError, "sessions_error", "erreur calcul sessions")
 		return
 	}
 
-	w.Header().Set("Content-Type", "application/json")
-	_ = json.NewEncoder(w).Encode(resp)
+	writeJSON(w, http.StatusOK, resp)
 }
 
 func (h *SessionsHandler) resolvePlayer(r *http.Request) (*duckdb.PlayerDB, error) {

@@ -3,7 +3,7 @@
 // Architecture :
 //   - Une connexion read-only par base (player stats.duckdb + shared_matches_v2.duckdb).
 //   - ATTACH shared_matches_v2 est réalisé une seule fois à l'init du pool.
-//   - Le pool est global au processus et threadsafe (sync.Map).
+//   - Le pool est global au processus et threadsafe (sync.Map + singleflight).
 //   - Aucun appel à duckdb.Connect() hors de ce package.
 package duckdb
 
@@ -11,6 +11,8 @@ import (
 	"context"
 	"fmt"
 	"sync"
+
+	"golang.org/x/sync/singleflight"
 )
 
 // PlayerDB regroupe les connexions DB nécessaires pour un joueur.
@@ -25,35 +27,33 @@ type PlayerDB struct {
 // GlobalPool est le registre process-level des PlayerDB par gamertag (slug).
 var globalPool sync.Map // map[string]*PlayerDB
 
-// PlayerPoolConfig contient les chemins résolus pour un joueur.
-type PlayerPoolConfig struct {
-	Gamertag    string
-	XUID        string
-	PlayerDBPath string // abs path vers stats.duckdb
-	SharedDBPath string // abs path vers shared_matches_v2.duckdb
-	MetaDBPath   string // abs path vers metadata.duckdb
-}
+// sfGroup empêche les créations concurrentes de pools pour un même joueur.
+var sfGroup singleflight.Group
 
 // GetOrOpen retourne le PlayerDB existant pour ce joueur, ou l'ouvre.
-// Thread-safe : deux goroutines concurrentes obtiennent la même instance.
+// Thread-safe : singleflight garantit qu'un seul openPlayerDB par gamertag.
 func GetOrOpen(ctx context.Context, cfg PlayerPoolConfig) (*PlayerDB, error) {
 	if pdb, ok := globalPool.Load(cfg.Gamertag); ok {
 		return pdb.(*PlayerDB), nil
 	}
 
-	// Double-checked locking via sync.Map.LoadOrStore
-	pdb, err := openPlayerDB(ctx, cfg)
+	// singleflight : une seule goroutine ouvre; les autres attendent le résultat.
+	result, err, _ := sfGroup.Do(cfg.Gamertag, func() (interface{}, error) {
+		// Vérifier à nouveau après avoir gagné le lock singleflight.
+		if pdb, ok := globalPool.Load(cfg.Gamertag); ok {
+			return pdb.(*PlayerDB), nil
+		}
+		pdb, openErr := openPlayerDB(ctx, cfg)
+		if openErr != nil {
+			return nil, openErr
+		}
+		globalPool.Store(cfg.Gamertag, pdb)
+		return pdb, nil
+	})
 	if err != nil {
 		return nil, err
 	}
-
-	actual, loaded := globalPool.LoadOrStore(cfg.Gamertag, pdb)
-	if loaded {
-		// Une autre goroutine a déjà ouvert — fermer notre doublon.
-		_ = pdb.Player.Close()
-		return actual.(*PlayerDB), nil
-	}
-	return pdb, nil
+	return result.(*PlayerDB), nil
 }
 
 // CloseAll ferme toutes les connexions du pool. À appeler au shutdown.
@@ -61,6 +61,8 @@ func CloseAll() {
 	globalPool.Range(func(key, value any) bool {
 		pdb := value.(*PlayerDB)
 		_ = pdb.Player.Close()
+		_ = pdb.Shared.Close()
+		_ = pdb.Metadata.Close()
 		globalPool.Delete(key)
 		return true
 	})
