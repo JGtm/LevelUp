@@ -24,8 +24,9 @@ import (
 	"time"
 	"unicode"
 
-	"github.com/google/uuid"
 	"levelup/go-api/internal/domain"
+
+	"github.com/google/uuid"
 )
 
 const (

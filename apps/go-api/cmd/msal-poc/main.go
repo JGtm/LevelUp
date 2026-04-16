@@ -2,9 +2,9 @@
 //
 // Ce programme n'effectue PAS la connexion complète.
 // Il prouve uniquement que :
-//   1. Le PublicClientApplication MSAL Go se crée sans erreur.
-//   2. InitiateDeviceFlow() retourne un user_code et une verification_url.
-//   3. Le format de cache Go est séparé du cache Python (clé différente dans sync_meta).
+//  1. Le PublicClientApplication MSAL Go se crée sans erreur.
+//  2. InitiateDeviceFlow() retourne un user_code et une verification_url.
+//  3. Le format de cache Go est séparé du cache Python (clé différente dans sync_meta).
 //
 // Usage :
 //
