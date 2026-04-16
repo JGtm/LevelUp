@@ -11,6 +11,7 @@ package middleware
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
 	"fmt"
 	"log/slog"
@@ -37,8 +38,6 @@ type ErrorTracker struct {
 
 	mu          sync.Mutex
 	windowStart time.Time
-	totalCount  int64
-	errorCount  int64
 	lastAlertAt time.Time
 
 	// Compteurs atomiques pour la fenêtre courante (lecture sans verrou).
@@ -132,7 +131,7 @@ func (et *ErrorTracker) postDiscord(payload map[string]any) {
 	}
 
 	client := &http.Client{Timeout: 5 * time.Second}
-	req, err := http.NewRequest(http.MethodPost, et.cfg.WebhookURL, bytes.NewReader(data))
+	req, err := http.NewRequestWithContext(context.Background(), http.MethodPost, et.cfg.WebhookURL, bytes.NewReader(data))
 	if err != nil {
 		slog.Warn("error_tracker: create webhook request", "err", err)
 		return

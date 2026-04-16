@@ -6,6 +6,7 @@ package notify
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
 	"fmt"
 	"log"
@@ -130,7 +131,7 @@ func SendWebhook(webhookURL string, payload WebhookPayload) bool {
 		log.Printf("[Discord] marshal payload: %v", err)
 		return false
 	}
-	req, err := http.NewRequest(http.MethodPost, webhookURL, bytes.NewReader(data))
+	req, err := http.NewRequestWithContext(context.Background(), http.MethodPost, webhookURL, bytes.NewReader(data))
 	if err != nil {
 		log.Printf("[Discord] build request: %v", err)
 		return false
@@ -279,7 +280,7 @@ func boolVal(m map[string]any, key string) bool {
 	return ok && b
 }
 
-func boolValDefault(m map[string]any, key string, def bool) bool {
+func boolValDefault(m map[string]any, key string, def bool) bool { //nolint:unparam // def=true actuellement, conserver pour flexibilité
 	v, ok := m[key]
 	if !ok {
 		return def

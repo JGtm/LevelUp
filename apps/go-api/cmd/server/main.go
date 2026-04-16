@@ -41,10 +41,19 @@ var version = "dev"
 func main() {
 	// --- 0. Health-check mode (Docker HEALTHCHECK) ---
 	if len(os.Args) == 2 && os.Args[1] == "-health-check" {
-		resp, err := http.Get("http://127.0.0.1:" + os.Getenv("LEVELUP_API_PORT_OR_DEFAULT") + "/health")
+		hcClient := &http.Client{Timeout: 5 * time.Second}
+		hcDo := func(url string) (*http.Response, error) {
+			req, err := http.NewRequestWithContext(context.Background(), http.MethodGet, url, nil)
+			if err != nil {
+				return nil, err
+			}
+			return hcClient.Do(req) //nolint:bodyclose // body fermé par le caller via defer resp.Body.Close()
+		}
+		port := os.Getenv("LEVELUP_API_PORT_OR_DEFAULT")
+		resp, err := hcDo("http://127.0.0.1:" + port + "/health") //nolint:bodyclose // body fermé via defer resp.Body.Close()
 		if err != nil {
 			// Fallback sur le port par défaut 8000
-			resp, err = http.Get("http://127.0.0.1:8000/health")
+			resp, err = hcDo("http://127.0.0.1:8000/health") //nolint:bodyclose // body fermé via defer resp.Body.Close()
 		}
 		if err != nil {
 			fmt.Fprintln(os.Stderr, "health-check failed:", err)
