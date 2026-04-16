@@ -16,46 +16,54 @@ COPY apps/web/ ./
 RUN npm run build
 
 # ============================================================================
-# Stage 2 — Runtime Python + FastAPI
+# Stage 2 — Build Go (CGo activé pour DuckDB bindings)
 # ============================================================================
-FROM python:3.12-slim
+FROM golang:1.24-bookworm AS go-builder
 
-ENV PYTHONDONTWRITEBYTECODE=1 \
-    PYTHONUNBUFFERED=1 \
-    PIP_DISABLE_PIP_VERSION_CHECK=1
+WORKDIR /build/go
+
+# Dépendances Go (cache Docker — séparé du code source)
+COPY apps/go-api/go.mod apps/go-api/go.sum ./
+RUN go mod download
+
+# Code source Go
+COPY apps/go-api/ ./
+
+# Lire la version depuis VERSION (injectée via ldflags)
+ARG VERSION=dev
+RUN CGO_ENABLED=1 GOOS=linux go build \
+    -ldflags "-X main.version=${VERSION} -extldflags '-static'" \
+    -o /build/levelup-server \
+    ./cmd/server/
+
+# ============================================================================
+# Stage 3 — Runtime minimal (Debian slim)
+# ============================================================================
+FROM debian:bookworm-slim
+
+# gosu : switch user non-root (même pattern que l'ancienne image Python)
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    gosu \
+    ca-certificates \
+    && rm -rf /var/lib/apt/lists/*
 
 WORKDIR /app
 
-# --- Étape 0 : Paquets système ---
-RUN apt-get update && apt-get install -y --no-install-recommends \
-    ffmpeg \
-    gosu \
-    && rm -rf /var/lib/apt/lists/*
+# Binaire Go + assets web
+COPY --from=go-builder /build/levelup-server /app/levelup-server
+COPY --from=web-builder /build/web/dist       /app/apps/web/dist
 
-# --- Étape 1 : Dépendances Python (cache Docker maximisé) ---
-COPY pyproject.toml /app/
-RUN mkdir -p /app/src && touch /app/src/__init__.py
-
-RUN python -m pip install --no-cache-dir --upgrade pip \
-    && python -m pip install --no-cache-dir -e ".[spnkr,api]"
-
-# --- Étape 2 : Code Python ---
-COPY src /app/src
-COPY apps/api /app/apps/api
+# Scripts d'exploitation (backfill, seed, etc.)
 COPY scripts /app/scripts
-COPY launcher.py /app/
-
-# --- Étape 3 : Assets React (build Vite depuis stage 1) ---
-COPY --from=web-builder /build/web/dist /app/apps/web/dist
 
 # Stubs de config — écrasés au runtime par les volumes bind-mount
 RUN echo '{"version":"2.1","warehouse_path":"data/warehouse","profiles":{}}' > /app/db_profiles.json \
     && echo '{}' > /app/app_settings.json
 
 # Dossiers attendus par le runtime
-RUN mkdir -p /app/data/players /app/data/warehouse /app/data/logs /app/data/cache
+RUN mkdir -p /app/data/players /app/data/warehouse /app/data/logs /app/data/cache /app/data/sessions
 
-# --- Étape 4 : Utilisateur non-root ---
+# --- Utilisateur non-root ---
 # UID 1000 = même UID que le user "deploy" sur le VPS.
 RUN adduser --disabled-password --gecos "" --uid 1000 appuser \
     && chown -R appuser:appuser /app
@@ -67,17 +75,15 @@ RUN chmod +x /usr/local/bin/docker-entrypoint.sh
 
 EXPOSE 8000
 
-# Variables d'environnement par défaut
-ENV LEVELUP_DB="" \
-    LEVELUP_ROOT=/app \
+# Variables d'environnement par défaut (runtime Go)
+ENV LEVELUP_ROOT=/app \
     LEVELUP_DATA=/app/data \
-    LEVELUP_WEB_DIST=/app/apps/web/dist
+    LEVELUP_WEB_DIST=/app/apps/web/dist \
+    LEVELUP_LOG_JSON=true
 
-# Healthcheck FastAPI
-HEALTHCHECK --interval=30s --timeout=5s --start-period=30s --retries=3 \
-    CMD ["python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/api/v1/health').read()"]
+# Healthcheck Go (endpoint natif)
+HEALTHCHECK --interval=30s --timeout=5s --start-period=15s --retries=3 \
+    CMD ["/app/levelup-server", "-health-check"]
 
 ENTRYPOINT ["docker-entrypoint.sh"]
-CMD ["python", "-m", "uvicorn", "apps.api.app.main:app", \
-     "--host", "0.0.0.0", "--port", "8000", \
-     "--proxy-headers", "--forwarded-allow-ips=*"]
+CMD ["/app/levelup-server"]
