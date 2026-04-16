@@ -65,8 +65,9 @@ func TestWWin_InRange(t *testing.T) {
 
 func TestTrueskillUpdate_Winner(t *testing.T) {
 	// Un joueur qui gagne (actualScore > 0.5) doit voir sa mu augmenter.
-	mu, sigma := 25.0, 8.333
-	muOpp, sigmaOpp := 25.0, 8.333
+	// Valeurs issues des constantes de production : InitialMU=1500, InitialSigma=350.
+	mu, sigma := InitialMU, InitialSigma
+	muOpp, sigmaOpp := InitialMU, InitialSigma
 	newMu, newSigma := trueskillUpdate(mu, sigma, muOpp, sigmaOpp, 1.0, 1.0)
 
 	if newMu <= mu {
@@ -79,8 +80,9 @@ func TestTrueskillUpdate_Winner(t *testing.T) {
 
 func TestTrueskillUpdate_Loser(t *testing.T) {
 	// Un joueur qui perd (actualScore = 0.0) doit voir sa mu diminuer.
-	mu, sigma := 25.0, 8.333
-	muOpp, sigmaOpp := 25.0, 8.333
+	// Valeurs issues des constantes de production : InitialMU=1500, InitialSigma=350.
+	mu, sigma := InitialMU, InitialSigma
+	muOpp, sigmaOpp := InitialMU, InitialSigma
 	newMu, newSigma := trueskillUpdate(mu, sigma, muOpp, sigmaOpp, 0.0, 1.0)
 
 	if newMu >= mu {
@@ -93,8 +95,9 @@ func TestTrueskillUpdate_Loser(t *testing.T) {
 
 func TestTrueskillUpdate_SigmaPositive(t *testing.T) {
 	// sigma ne doit jamais être négatif ou nul.
-	mu, sigma := 25.0, 8.333
-	newMu, newSigma := trueskillUpdate(mu, sigma, 30.0, 5.0, 0.5, 1.0)
+	// Valeurs issues des constantes de production.
+	mu, sigma := InitialMU, InitialSigma
+	newMu, newSigma := trueskillUpdate(mu, sigma, 1600.0, 300.0, 0.5, 1.0)
 	if newSigma <= 0 {
 		t.Errorf("sigma doit être > 0, got %v", newSigma)
 	}
