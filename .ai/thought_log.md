@@ -1,5 +1,23 @@
 # Thought Log
 
+## [2026-04-16] docs(roadmap): audit exhaustif + synchronisation SPRINT_ROADMAP.md
+
+**Statut** : Complété
+
+**Décision** : Audit complet de SPRINT_ROADMAP.md avec vérification codebase, puis synchronisation de tous les statuts désynchronisés.
+
+**Résultats** :
+- 30+ checkmarks ⬜→✅ corrigés dans S29-S35 (code vérifié : CSRF middleware, singleflight pool, contract tests, Dockerfile multi-stage, shadow mode, CI golden tests)
+- Vue d'ensemble synchronisée : S20 🔄→✅, S42 ⬜→🔄, S43 ⬜→✅, S44 ⬜→🔄
+- Doublon T4-T5 dans S27 supprimé (artefact copier-coller)
+- Header mis à jour : retrait S20 des exceptions, statuts S42/S43/S44 corrects
+- Footer : Phases 6-8 marquées ✅, Phase 9 🔄 en cours
+- Gate Phase 7 : 2/5 critères cochés (Playwright ✅, Onboarding/sécurité/infra ✅)
+- Headers de section S29-S35 : suffixe ✅ ajouté, S42 🔄, S43 ✅, S44 🔄
+- Identifié : 7 sets de golden values jamais capturés (Sessions, Escouade, LUSR 500+, Weapon 50 films, PvE, lots 4-5, diff par onglet), S29-T4 OpenAPI lint CI absent, S36-T1 parity_check 0 diff pas encore exécuté
+
+**Prochaine étape** : Continuer Sprint 44 multi-titres (8 tâches ⬜/🔄 restantes)
+
 ## [2026-06-16] test(sprint39): compléter les tests couches manquantes
 
 **Statut** : Complété

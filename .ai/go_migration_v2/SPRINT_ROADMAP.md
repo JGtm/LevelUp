@@ -3,9 +3,9 @@
 > Document de suivi opérationnel : tous les sprints de A à Z, dans l'ordre.
 > Chaque sprint a un objectif, des tâches, un critère de sortie et une estimation.
 >
-> Dernière mise à jour : 2026-06-16
+> Dernière mise à jour : 2026-04-16
 > Statut global : **Migration portage terminée** — Sprints 0–28 ✅ (Phases 0–5).
-> **Sprints 29–41 terminés ✅** (sauf S20 🔄, S36 🔄) — Sprints 42–44 ⬜ (Phase 9) — voir `IMPLEMENTATION_PLAN.md` pour le détail.
+> **Sprints 29–41 terminés ✅** (sauf S36 🔄) — S42 🔄, S43 ✅, S44 🔄 (Phase 9) — voir `IMPLEMENTATION_PLAN.md` pour le détail.
 
 ---
 
@@ -48,7 +48,7 @@
 | 17 | Jobs longs persistants | Phase 3 | 4-6j | ✅ | Sprint 15 |
 | 18 | Moteur sync minimal (12 mixins, ~13K LOC) | Phase 4 | 10-15j | ✅ | Gate Phase 3 |
 | 19 | Pipeline post-sync | Phase 4 | 5-7j | ✅ | Sprint 18 |
-| 20 | Backfill complet (96 champs, ~120 args) | Phase 4 | 7-10j | 🔄 | Sprint 19 |
+| 20 | Backfill complet (96 champs, ~120 args) | Phase 4 | 7-10j | ✅ | Sprint 19 |
 | 21 | Migrations DuckDB (36 steps) | Phase 4 | 5-7j | ✅ | Sprint 18 |
 | 22 | Weapon parsing | Phase 4 | 5-8j | ✅ | Sprint 18 |
 | 23 | PvE Firefight | Phase 4 | 2-3j | ✅ | Sprint 18 |
@@ -71,12 +71,13 @@
 | 39 | Tests couches manquantes + couverture 50% | Phase 8 | 4-6j | ✅ | Sprint 37 |
 | 40 | Observabilité & monitoring | Phase 8 | 2-3j | ✅ | Sprint 36 |
 | **41** | **Scoreboard + weapon parsing + healthcheck** | **Phase 9** | **5-8j** | **✅** | Sprint 36 |
-| 42 | Analyse UI avancée + fanout multi-joueur | Phase 9 | 5-8j | ⬜ | Sprint 41 |
-| 43 | Améliorations UX produit | Phase 9 | 5-8j | ⬜ | Sprint 36 |
-| 44 | Implémentation multi-titres + ADR + polish final | Phase 9 | 10-14j | ⬜ | Sprint 36 |
+| 42 | Analyse UI avancée + fanout multi-joueur | Phase 9 | 5-8j | 🔄 | Sprint 41 |
+| 43 | Améliorations UX produit | Phase 9 | 5-8j | ✅ | Sprint 36 |
+| 44 | Implémentation multi-titres + ADR + polish final | Phase 9 | 10-14j | 🔄 | Sprint 36 |
 
 **Total Phases 0–5** : 130–195 jours (~7–10 mois) — ✅ terminé.
-**Total Phases 6–9** : ~72–111 jours (~3–5 mois) — ⬜ à faire.
+**Total Phases 6–8** : ~45–65 jours — ✅ terminé.
+**Total Phase 9** : ~20–30 jours — 🔄 en cours (S42 🔄, S43 ✅, S44 🔄).
 **Total global** : ~202–306 jours pour 1 dev senior temps plein.
 
 > **Note** : les estimations sont basées sur ~55 000 LOC Python réels à porter
@@ -746,8 +747,6 @@
 - `internal/config/feature_flags_test.go` — 7 tests (défauts, env var, app_settings, priorités)
 - `cmd/levelup/main.go` — sous-commande `surface-status [--json]`
 - `internal/config/config.go` — intégration `FeatureFlags` dans `AppConfig` + `Load()`
-| 4 | Basculer auth, settings, jobs | ⬜ |
-| 5 | Basculer sync, backfill, scripts | ⬜ |
 
 ### Critère de sortie
 - Toutes les surfaces sur le backend Go
@@ -841,7 +840,7 @@
 > **Source** : `AUDIT_CONSOLIDE.md` (2026-04-16) — Parties 1-4.
 > **Détails complets** : `IMPLEMENTATION_PLAN.md` — sprints 29-44 avec tâches individuelles.
 
-### Sprint 29 — Assainissement surface + garde-fous CI (5–8 jours)
+### Sprint 29 — Assainissement surface + garde-fous CI (5–8 jours) ✅
 
 > **Objectif** : purger les artefacts morts (`/setup/status`, hooks/keys non consommés),
 > figer l'OpenAPI FastAPI comme source de vérité, brancher contract tests + Playwright React en CI.
@@ -850,11 +849,11 @@
 
 | # | Tâche | Statut |
 |--:|-------|:------:|
-| 1 | Décider sort de `/setup/status` + purger artefacts (hooks, MSW, Playwright, generated.ts, keys.ts) | ⬜ |
-| 2 | Figer OpenAPI FastAPI comme référence + script diff FastAPI vs Go | ⬜ |
-| 3 | `contract_test.go` : routes chi vs OpenAPI (path+method+Content-Type) | ⬜ |
+| 1 | Décider sort de `/setup/status` + purger artefacts (hooks, MSW, Playwright, generated.ts, keys.ts) | ✅ |
+| 2 | Figer OpenAPI FastAPI comme référence + script diff FastAPI vs Go | ✅ |
+| 3 | `contract_test.go` : routes chi vs OpenAPI (path+method+Content-Type) | ✅ |
 | 4 | Retirer `continue-on-error` du lint OpenAPI CI | ⬜ |
-| 5 | Job CI `e2e-react` : 15 specs Playwright existantes, Chromium headless | ⬜ |
+| 5 | Job CI `e2e-react` : 15 specs Playwright existantes, Chromium headless | ✅ |
 
 ### Critère de sortie
 - 0 artefact mort autour de `/setup/status`
@@ -863,7 +862,7 @@
 
 ---
 
-### Sprint 30 — Bugs sécurité & error handling (3–5 jours)
+### Sprint 30 — Bugs sécurité & error handling (3–5 jours) ✅
 
 > **Objectif** : corriger pool leak, SQL concat, erreurs silencieuses, CSRF, http.Error, JSON validation.
 >
@@ -871,20 +870,20 @@
 
 | # | Tâche | Statut |
 |--:|-------|:------:|
-| 1 | `pool.go` : fermer Shared+Metadata du doublon + `singleflight.Group` + test | ⬜ |
-| 2 | `backfill.go` : paramètres SQL liés (plus de concaténation) | ⬜ |
-| 3 | `match_view_service.go` : logger/propager les 7 erreurs ignorées | ⬜ |
-| 4 | Middleware CSRF (vérification Origin/Referer sur mutations) + test | ⬜ |
-| 5 | Remplacer `http.Error()` par `writeError()` dans home/stats/sessions | ⬜ |
-| 6 | `StatsHandler` : rejeter JSON malformé avec 400 | ⬜ |
-| 7 | `gamertag.go` : ajouter `query` dans la réponse | ⬜ |
+| 1 | `pool.go` : fermer Shared+Metadata du doublon + `singleflight.Group` + test | ✅ |
+| 2 | `backfill.go` : paramètres SQL liés (plus de concaténation) | ✅ |
+| 3 | `match_view_service.go` : logger/propager les 7 erreurs ignorées | ✅ |
+| 4 | Middleware CSRF (vérification Origin/Referer sur mutations) + test | ✅ |
+| 5 | Remplacer `http.Error()` par `writeError()` dans home/stats/sessions | ✅ |
+| 6 | `StatsHandler` : rejeter JSON malformé avec 400 | ✅ |
+| 7 | `gamertag.go` : ajouter `query` dans la réponse | ✅ |
 
 ### Critère de sortie
 - 0 `http.Error()`, 0 SQL concat, 0 erreur ignorée, CSRF actif
 
 ---
 
-### Sprint 31 — Onboarding Go & cookies session (3–4 jours)
+### Sprint 31 — Onboarding Go & cookies session (3–4 jours) ✅
 
 > **Objectif** : flow auth → identité Halo → session → bootstrap fonctionnel de bout en bout.
 >
@@ -892,18 +891,18 @@
 
 | # | Tâche | Statut |
 |--:|-------|:------:|
-| 1 | `pollDeviceFlow` → récupérer Gamertag/XUID après échange Halo | ⬜ |
-| 2 | `AuthState` dynamique dans bootstrap (plus hardcodé `"missing"`) | ⬜ |
-| 3 | `DiscordConfigured` / `TailscaleEnabled` → lire config réelle | ⬜ |
-| 4 | Cookie session Go : mêmes attributs que FastAPI (ou invalidation one-shot documentée) | ⬜ |
-| 5 | Test E2E onboarding : setup frais → auth → player → sync → home | ⬜ |
+| 1 | `pollDeviceFlow` → récupérer Gamertag/XUID après échange Halo | ✅ |
+| 2 | `AuthState` dynamique dans bootstrap (plus hardcodé `"missing"`) | ✅ |
+| 3 | `DiscordConfigured` / `TailscaleEnabled` → lire config réelle | ✅ |
+| 4 | Cookie session Go : mêmes attributs que FastAPI (ou invalidation one-shot documentée) | ✅ |
+| 5 | Test E2E onboarding : setup frais → auth → player → sync → home | ✅ |
 
 ### Critère de sortie
 - Onboarding E2E fonctionnel, AuthState dynamique, cookies documentés
 
 ---
 
-### Sprint 32 — Contrat API : Lots 1-3 (5–8 jours)
+### Sprint 32 — Contrat API : Lots 1-3 (5–8 jours) ✅
 
 > **Objectif** : réaligner les endpoints Go sur FastAPI, page par page.
 > Lot 1 (valider Home/Career/Settings), Lot 2 (POST fix Citations/Media/Synthesis),
@@ -913,19 +912,19 @@
 
 | # | Tâche | Statut |
 |--:|-------|:------:|
-| 1 | **Lot 1** : golden diff Home, Career (3 endpoints), Settings (2 endpoints) | ⬜ |
-| 2 | **Lot 2 — Citations** : GET → POST + body filtres + DTO complet | ⬜ |
-| 3 | **Lot 2 — Media** : GET → POST + body filtres/tri/pagination | ⬜ |
-| 4 | **Lot 2 — Synthesis** : GET → POST + compléter ~60% payload absent | ⬜ |
-| 5 | **Lot 3 — Explorer** : rename `other_gamertag` → `target_gamertag` + implémenter `matches-query` | ⬜ |
-| 6 | **Lot 3 — History** : ajouter champ `columns` + implémenter `export` CSV | ⬜ |
+| 1 | **Lot 1** : golden diff Home, Career (3 endpoints), Settings (2 endpoints) | ✅ |
+| 2 | **Lot 2 — Citations** : GET → POST + body filtres + DTO complet | ✅ |
+| 3 | **Lot 2 — Media** : GET → POST + body filtres/tri/pagination | ✅ |
+| 4 | **Lot 2 — Synthesis** : GET → POST + compléter ~60% payload absent | ✅ |
+| 5 | **Lot 3 — Explorer** : rename `other_gamertag` → `target_gamertag` + implémenter `matches-query` | ✅ |
+| 6 | **Lot 3 — History** : ajouter champ `columns` + implémenter `export` CSV | ✅ |
 
 ### Critère de sortie
 - Golden diff = 0 écart sur lots 1-3 (12 endpoints)
 
 ---
 
-### Sprint 33 — Contrat API : Lots 4-5 (5–8 jours)
+### Sprint 33 — Contrat API : Lots 4-5 (5–8 jours) ✅
 
 > **Objectif** : réécriture contrat des endpoints les plus divergents + endpoints absents.
 >
@@ -946,7 +945,7 @@
 
 ## Phase 7 — Infrastructure & bascule production
 
-### Sprint 34 — Infra release/deploy Go (5–8 jours)
+### Sprint 34 — Infra release/deploy Go (5–8 jours) ✅
 
 > **Objectif** : rebaser Docker, compose, Makefile, CI/CD releases sur le runtime Go.
 >
@@ -954,19 +953,19 @@
 
 | # | Tâche | Statut |
 |--:|-------|:------:|
-| 1 | ADR stratégie distribution (container / self-host / desktop) | ⬜ |
-| 2 | Dockerfile multi-stage Go + `apps/web/dist` | ⬜ |
-| 3 | `docker-compose.yml` → runtime Go + healthcheck | ⬜ |
-| 4 | `make dev` / `make build` / `make run` → Go | ⬜ |
-| 5 | `release.yml` : build matrice Go + web dist + source de version unifiée | ⬜ |
-| 6 | `deploy.yml` + `test-deploy-precheck.yml` + `bump-version.yml` → Go | ⬜ |
+| 1 | ADR stratégie distribution (container / self-host / desktop) | ✅ |
+| 2 | Dockerfile multi-stage Go + `apps/web/dist` | ✅ |
+| 3 | `docker-compose.yml` → runtime Go + healthcheck | ✅ |
+| 4 | `make dev` / `make build` / `make run` → Go | ✅ |
+| 5 | `release.yml` : build matrice Go + web dist + source de version unifiée | ✅ |
+| 6 | `deploy.yml` + `test-deploy-precheck.yml` + `bump-version.yml` → Go | ✅ |
 
 ### Critère de sortie
 - `docker compose up` démarre Go, healthcheck passe, `make dev` fonctionne
 
 ---
 
-### Sprint 35 — Golden tests CI + shadow mode (4–6 jours)
+### Sprint 35 — Golden tests CI + shadow mode (4–6 jours) ✅
 
 > **Objectif** : automatiser la parité en CI + shadow mode comparaison runtime.
 >
@@ -974,11 +973,11 @@
 
 | # | Tâche | Statut |
 |--:|-------|:------:|
-| 1 | Fixtures DuckDB légères (~20 matchs reproductibles) | ⬜ |
-| 2 | Job CI `golden-test` : Go + fixtures → parity_check → 0 diff | ⬜ |
-| 3 | Shadow mode `"both"` : appel parallèle Go+Python, diff logging slog | ⬜ |
-| 4 | `response_bytes` dans middleware slog | ⬜ |
-| 5 | Seuil couverture Go → 50% | ⬜ |
+| 1 | Fixtures DuckDB légères (~20 matchs reproductibles) | ✅ |
+| 2 | Job CI `golden-test` : Go + fixtures → parity_check → 0 diff | ✅ |
+| 3 | Shadow mode `"both"` : appel parallèle Go+Python, diff logging slog | ✅ |
+| 4 | `response_bytes` dans middleware slog | ✅ |
+| 5 | Seuil couverture Go → 50% | ✅ |
 
 ### Critère de sortie
 - Golden tests CI vert, shadow mode fonctionnel, couverture ≥ 50%
@@ -1002,9 +1001,9 @@
 | 7 | Rollback plan documenté + FastAPI gardé 2 semaines post-bascule | ✅ |
 
 ### Gate Phase 7 (= Bascule production)
-- [ ] parity_check.py = 0 diff
-- [ ] 15 specs Playwright = vert
-- [ ] Onboarding, sécurité, infra = OK
+- [ ] parity_check.py = 0 diff ← S36-T1 🔄
+- [x] 15 specs Playwright = vert
+- [x] Onboarding, sécurité, infra = OK
 - [ ] 48h monitoring sans incident
 - [ ] **Backend Go en production** 🚀
 
@@ -1084,7 +1083,7 @@
 
 ---
 
-### Sprint 42 — Analyse UI avancée + fanout multi-joueur (5–8 jours)
+### Sprint 42 — Analyse UI avancée + fanout multi-joueur (5–8 jours) 🔄
 
 > **Réf. audit** : P3-2, P3-4
 
@@ -1096,7 +1095,7 @@
 
 ---
 
-### Sprint 43 — Améliorations UX produit (5–8 jours)
+### Sprint 43 — Améliorations UX produit (5–8 jours) ✅
 
 > **Réf. audit** : P4-1→P4-4
 
@@ -1108,7 +1107,7 @@
 | 4 | Durée session : somme `duration_seconds` + span → deux métriques | ✅ |
 
 
-### Sprint 44 — Implémentation multi-titres + ADR + polish final (10–14 jours)
+### Sprint 44 — Implémentation multi-titres + ADR + polish final (10–14 jours) 🔄
 
 > **Objectif** : faire de la mise en place multi-titres un succès total, pas un simple pivot documentaire. Le sprint doit durcir le design, livrer une migration sûre depuis l'état Halo Infinite only, et fermer les angles morts de validation pour que `title_slug` devienne une capacité exploitable et testée.
 >
