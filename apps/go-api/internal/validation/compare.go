@@ -18,6 +18,18 @@ import (
 )
 
 // ─────────────────────────────────────────────────────────────────────────────
+// Statuts de comparaison (constantes)
+// ─────────────────────────────────────────────────────────────────────────────
+
+const (
+	statusOK      = "OK"
+	statusWarn    = "WARN"
+	statusMissGo  = "MISS_GO"
+	statusMissPy  = "MISS_PY"
+	statusDiverge = "DIVERGE"
+)
+
+// ─────────────────────────────────────────────────────────────────────────────
 // Types
 // ─────────────────────────────────────────────────────────────────────────────
 
@@ -164,7 +176,7 @@ func compareTableCounts(goDb, pyDb *sql.DB, goTables, pyTables map[string]bool) 
 		"schema_migrations": true,
 	}
 
-	var result []TableComparison
+	var result []TableComparison //nolint:prealloc
 	for table := range allTables {
 		if skip[table] {
 			continue
@@ -178,11 +190,11 @@ func compareTableCounts(goDb, pyDb *sql.DB, goTables, pyTables map[string]bool) 
 		case !inGo && !inPy:
 			continue
 		case inGo && !inPy:
-			tc.Status = "MISS_PY"
+			tc.Status = statusMissPy
 			tc.Notes = append(tc.Notes, "table absente côté Python")
 			tc.RowsGo, _ = countRows(goDb, table)
 		case !inGo && inPy:
-			tc.Status = "MISS_GO"
+			tc.Status = statusMissGo
 			tc.Notes = append(tc.Notes, "table absente côté Go")
 			tc.RowsPython, _ = countRows(pyDb, table)
 		default:
@@ -204,13 +216,13 @@ func classifyDelta(delta, pyRows int64) string {
 		return "OK"
 	}
 	if pyRows == 0 {
-		return "WARN"
+		return statusWarn
 	}
 	pct := math.Abs(float64(delta) / float64(pyRows) * 100)
 	if pct <= 1.0 {
-		return "WARN" // ≤ 1% de différence : toléré (délai d'indexation)
+		return statusWarn // ≤ 1% de différence : toléré (délai d'indexation)
 	}
-	return "DIVERGE"
+	return statusDiverge
 }
 
 func compareBitmasks(goDb, pyDb *sql.DB) ([]BitmaskStats, error) {
@@ -254,7 +266,7 @@ func compareBitmasks(goDb, pyDb *sql.DB) ([]BitmaskStats, error) {
 
 	status := "OK"
 	if math.Abs(goPct-pyPct) > 5 {
-		status = "WARN"
+		status = statusWarn
 	}
 	if math.Abs(goPct-pyPct) > 20 {
 		status = "ERROR"
@@ -327,7 +339,7 @@ func loadMatchIDs(db *sql.DB) (map[string]bool, error) {
 
 func isReportOK(r *ComparisonReport) bool {
 	for _, tc := range r.Tables {
-		if tc.Status == "DIVERGE" || tc.Status == "MISS_GO" {
+		if tc.Status == statusDiverge || tc.Status == statusMissGo {
 			return false
 		}
 	}
@@ -356,11 +368,11 @@ func buildSummary(r *ComparisonReport) string {
 		switch tc.Status {
 		case "OK":
 			ok++
-		case "WARN":
+		case statusWarn:
 			warn++
-		case "DIVERGE":
+		case statusDiverge:
 			diverge++
-		case "MISS_GO", "MISS_PY":
+		case statusMissGo, statusMissPy:
 			miss++
 		}
 		icon := statusIcon(tc.Status)
@@ -408,13 +420,13 @@ func statusIcon(status string) string {
 	switch status {
 	case "OK":
 		return "✅"
-	case "WARN":
+	case statusWarn:
 		return "⚠️ "
-	case "DIVERGE":
+	case statusDiverge:
 		return "❌"
-	case "MISS_GO":
+	case statusMissGo:
 		return "🔍"
-	case "MISS_PY":
+	case statusMissPy:
 		return "📭"
 	default:
 		return "  "
