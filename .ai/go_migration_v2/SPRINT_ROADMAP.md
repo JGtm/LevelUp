@@ -5,7 +5,7 @@
 >
 > Dernière mise à jour : 2026-05-16
 > Statut global : **Migration portage terminée** — Sprints 0–28 ✅ (Phases 0–5).
-> **Sprints 29–32 terminés ✅** — Sprint 33 ⬜ — Sprints 34–44 ⬜ (Phases 6–9) — voir `IMPLEMENTATION_PLAN.md` pour le détail.
+> **Sprints 29–33 terminés ✅** — Sprints 34–44 ⬜ (Phases 7–9) — voir `IMPLEMENTATION_PLAN.md` pour le détail.
 
 ---
 
@@ -73,11 +73,11 @@
 | **41** | **Scoreboard + weapon parsing + healthcheck** | **Phase 9** | **5-8j** | **⬜** | Sprint 36 |
 | 42 | Analyse UI avancée + fanout multi-joueur | Phase 9 | 5-8j | ⬜ | Sprint 41 |
 | 43 | Améliorations UX produit | Phase 9 | 5-8j | ⬜ | Sprint 36 |
-| 44 | Implémentation multi-titres + ADR + polish final | Phase 9 | 6-9j | ⬜ | Sprint 43 |
+| 44 | Implémentation multi-titres + ADR + polish final | Phase 9 | 10-14j | ⬜ | Sprint 36 |
 
 **Total Phases 0–5** : 130–195 jours (~7–10 mois) — ✅ terminé.
-**Total Phases 6–9** : ~68–106 jours (~3–5 mois) — ⬜ à faire.
-**Total global** : ~198–301 jours pour 1 dev senior temps plein.
+**Total Phases 6–9** : ~72–111 jours (~3–5 mois) — ⬜ à faire.
+**Total global** : ~202–306 jours pour 1 dev senior temps plein.
 
 > **Note** : les estimations sont basées sur ~55 000 LOC Python réels à porter
 > (vérifié : analysis=14K, sync=13K, api=12K, repos+services+auth+scripts ≈16K).
@@ -933,10 +933,10 @@
 
 | # | Tâche | Statut |
 |--:|-------|:------:|
-| 1 | **Teammates** : `POST /pages/teammates` (route FastAPI), body filtres, DTO aligné | ⬜ |
-| 2 | **Timeseries** : `POST /pages/timeseries`, 5 onglets + décision Plotly compat | ⬜ |
-| 3 | **Last Match Resolve** : implémenter `POST /pages/last-match/resolve` | ⬜ |
-| 4 | **Session Compare** : implémenter `POST /pages/session-compare` | ⬜ |
+| 1 | **Teammates** : `POST /pages/teammates` (route FastAPI), body filtres, DTO aligné | ✅ |
+| 2 | **Timeseries** : `POST /pages/timeseries`, 5 onglets + décision Plotly compat | ✅ |
+| 3 | **Last Match Resolve** : implémenter `POST /pages/last-match/resolve` | ✅ |
+| 4 | **Session Compare** : implémenter `POST /pages/session-compare` | ✅ |
 | 5 | Golden diff = 0 sur les 4 endpoints | ⬜ |
 
 ### Critère de sortie
@@ -1108,38 +1108,63 @@
 | 4 | Durée session : somme `duration_seconds` + span → deux métriques | ⬜ |
 
 
-### Sprint 44 — Implémentation multi-titres + ADR + polish final (6–9 jours)
+### Sprint 44 — Implémentation multi-titres + ADR + polish final (10–14 jours)
 
 > **Objectif** : faire de la mise en place multi-titres un succès total, pas un simple pivot documentaire. Le sprint doit durcir le design, livrer une migration sûre depuis l'état Halo Infinite only, et fermer les angles morts de validation pour que `title_slug` devienne une capacité exploitable et testée.
 >
 > **Réf. audit** : P2-9, P3-6
+>
+> **Documents d'exécution** : [SPRINT_44_WORKPACKAGES.md](SPRINT_44_WORKPACKAGES.md) et [ADR_S44_MULTI_TITLE_NAMESPACE.md](ADR_S44_MULTI_TITLE_NAMESPACE.md)
+>
+> **Note** : l'estimation initiale de 6–9j a été revue à 10–14j après audit du code Go.
+> Le refactor touche toutes les couches (config, pool DuckDB 14 repos, session, bootstrap,
+> OpenAPI, types frontend, stores React, migration physique, corpus synthétique, CI).
+> La sous-estimation venait principalement de WP3 (migration physique DuckDB sur Windows)
+> et WP4 (réalignement frontend React). L'auth n'est pas impactée (flow MSAL titre-agnostique).
+>
+> **Coexistence Python** : le projet Python LevelUp n'est plus maintenu à ce stade.
+> Le Go est la seule baseline. Aucune rétrocompatibilité Python n'est requise.
 
 | # | Tâche | Statut |
 |--:|-------|:------:|
 | 1 | Rédiger l'ADR et figer le namespace par titre comme stratégie de référence | ⬜ |
-| 2 | Introduire un registre de titres et un résolveur de chemins title-aware pour éviter la propagation ad hoc de `title_slug` | ⬜ |
-| 3 | Rendre config, session, bootstrap, auth, jobs et sélection joueur explicitement title-aware | ⬜ |
-| 4 | Mettre en place le namespace `data/titles/{title_slug}/warehouse/...` et `data/titles/{title_slug}/players/{gamertag}/...` avec compatibilité legacy Halo Infinite only | ⬜ |
-| 5 | Ajouter une migration idempotente avec modes dry-run, apply et rollback, plus un journal de migration / backup | ⬜ |
-| 6 | Créer des fixtures multi-titres (Halo Infinite + titre synthétique), golden values et smoke E2E de non-régression | ⬜ |
-| 7 | Ajouter les tests ciblés sur les nouveaux points sensibles : paths, config, session, bootstrap, auth, handlers title-aware, isolement inter-titres | ⬜ |
-| 8 | Finaliser observabilité, docs, runbook et qualité globale du lot | ⬜ |
+| 2 | Introduire `TitleRegistry` / `TitleDescriptor` et `PathResolver` title-aware pour centraliser titres, capabilities et chemins runtime | ⬜ |
+| 3 | Refactorer `PlayerResolver` pour accepter `(title_slug, player_slug)` et propager au pool DuckDB (clé `{title}:{gamertag}` au lieu de `gamertag` seul — impacte 14 fichiers `*_repo.go`) | ⬜ |
+| 4 | Rendre config, session, bootstrap, jobs et sélection joueur explicitement title-aware (auth non impactée — flow MSAL titre-agnostique) | ⬜ |
+| 5 | Migrer `db_profiles.json` vers un format v3 title-aware, avec lecture rétro-compatible du format actuel | ⬜ |
+| 6 | Mettre en place le namespace `data/titles/{title_slug}/warehouse/...` et `data/titles/{title_slug}/players/{gamertag}/...` | ⬜ |
+| 7 | Ajouter une migration idempotente avec modes dry-run, apply et rollback via manifest JSON (`operations.json` traçant chaque `(source, dest)`), journal de migration et backup automatique | ⬜ |
+| 8 | Créer le corpus synthétique second titre (~0.5–1j) : `metadata.duckdb` minimal + `shared_matches_v2.duckdb` avec quelques matchs, schémas compatibles | ⬜ |
+| 9 | Créer fixtures multi-titres (Halo Infinite namespacé + titre synthétique), golden values et smoke E2E de non-régression | ⬜ |
+| 10 | Tests unitaires ciblés : `TitleRegistry`, `PathResolver`, `PlayerResolver` title-aware, config v3, pool keying `{title}:{gamertag}` | ⬜ |
+| 11 | Tests d'intégration : migration dry-run/apply/rollback, dépôt legacy HI-only, dépôt déjà migré, isolement inter-titres (deux titres même gamertag ne partagent pas de pool) | ⬜ |
+| 12 | Golden tests et smoke E2E : zéro diff HI pré/post migration + smoke React sur changement de titre | ⬜ |
+| 13 | Observabilité : logs `title_slug` + `response_bytes`, validation contrat bootstrap title-aware en dev | ⬜ |
+| 14 | Documentation finale : README, CLAUDE.md, copilot-instructions, runbook d'exploitation, rollback plan | ⬜ |
 
 **Sous-plan de réussite 10/10**
 
 - **Design** : `title_slug` ne doit pas vivre comme une string opportuniste. Le sprint doit introduire un point central de vérité pour les titres supportés, les capacités associées et la résolution des chemins/runtime context.
-- **Migration** : la transition depuis l'arborescence HI-only doit être réversible et vérifiable. Aucun déplacement destructif sans dry-run, backup manifest, et procédure de rollback.
-- **Validation** : la non-régression Halo Infinite doit être prouvée avant/après migration, et l'isolement inter-titres doit être testé avec au moins un corpus synthétique distinct.
+- **PlayerResolver** : pivot central du refactor. C'est la première brique à modifier car elle résout `player_slug` → gamertag → chemins DB. Le pool DuckDB doit passer d'une clé `gamertag` à `{title}:{gamertag}` (14 fichiers `*_repo.go` impactés).
+- **Config** : `db_profiles.json` v3 title-aware avec rétrocompatibilité lecture du format actuel.
+- **Migration** : la transition depuis l'arborescence HI-only doit être réversible et vérifiable. Mécanisme retenu : manifest JSON (`operations.json`) traçant chaque opération `(source, dest)`, rollback = exécution inverse. Aucun déplacement destructif sans dry-run et backup.
+- **Corpus synthétique** : budget dédié de 0.5–1 jour pour créer un jeu de données minimal mais significatif pour un second titre.
+- **Validation** : la non-régression Halo Infinite doit être prouvée avant/après migration. L'isolement inter-titres doit être testé (deux titres, même gamertag ≠ mêmes données).
+- **Auth** : explicitement hors périmètre (flow MSAL titre-agnostique confirmé par audit).
 
 ### Gate Phase 9 (Gate finale post-migration)
 - [ ] Scoreboard complet, weapon parser branché
 - [ ] UX améliorée (tooltips, changelog, durées)
 - [ ] Support multi-titres namespacé en place (`title_slug` + `data/titles/{title_slug}/...`)
-- [ ] Migration HI-only → namespace par titre validée en dry-run/apply/rollback
+- [ ] `PlayerResolver` title-aware, pool DuckDB clé `{title}:{gamertag}`
+- [ ] `db_profiles.json` v3 title-aware avec rétrocompatibilité lecture
+- [ ] Migration HI-only → namespace par titre validée en dry-run/apply/rollback (manifest JSON)
 - [ ] Zéro régression Halo Infinite sur corpus golden après migration
-- [ ] Isolement inter-titres validé sur un corpus synthétique ou un second corpus dédié
+- [ ] Isolement inter-titres validé sur un corpus synthétique (deux titres, même gamertag)
+- [ ] Tests unitaires + intégration + golden + smoke E2E couvrent les parcours title-aware
+- [ ] Couverture ciblée modules Sprint 44 ≥ 80%, couverture Go globale ≥ 50%
 - [ ] ADR multi-titres rédigée et alignée avec l'implémentation
-- [ ] `golangci-lint run` clean, couverture ≥ 50%, 0 TODO non-documenté
+- [ ] `golangci-lint run` clean, 0 TODO non-documenté
 - [ ] **Projet complet** ✨
 
 ---

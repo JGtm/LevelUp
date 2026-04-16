@@ -1,5 +1,24 @@
 # Thought Log
 
+## [2026-04-16] docs(go-migration-v2): work packages Sprint 44 et ADR finale multi-titres
+
+**Statut** : Complété
+
+**Tâche** : Produire les deux livrables concrets demandés pour le Sprint 44 : un découpage technique par couches du runtime Go et une ADR finale actant le namespace par titre.
+
+**Décisions techniques principales** :
+
+1. Le Sprint 44 est désormais supporté par un document d'exécution dédié, structuré en work packages par couche (`design`, `config`, `session/auth/jobs`, `stockage/migration`, `API/frontend`, `observabilité/ops`).
+2. L'ADR multi-titres est actée en statut `Acceptée` et verrouille le choix du namespace par titre plutôt qu'un `title_slug` injecté dans toutes les tables existantes.
+3. Les documents de pilotage (`README`, `SPRINT_ROADMAP`, `IMPLEMENTATION_PLAN`, `project_map`) pointent maintenant explicitement vers ces deux nouvelles références pour éviter qu'elles restent cachées.
+
+**Résultats observés** :
+
+- Le Sprint 44 dispose maintenant d'un document d'exécution actionnable et non plus seulement d'un bloc dans le plan.
+- La décision d'architecture est formalisée dans une ADR autonome, directement alignée avec le sous-plan 10/10 déjà ajouté.
+
+**Conclusion / prochaine étape** : la prochaine étape utile sera de transformer ces work packages en tickets techniques ou en checklist d'implémentation par package Go / route frontend avant de commencer le code.
+
 ## [2026-07-19] feat(contract): Sprint 32 — Réalignement contrat API Lots 1-3
 
 **Statut** : Complété
@@ -14271,3 +14290,37 @@ Prochaine étape : Sprint 27 (Bascule progressive, ~3-5j).
 **Résultats** : 4/4 tests contracttest PASS avec CGO_ENABLED=0, openapi.yaml valide (34 paths, 55167 bytes JSON), go vet 0 erreur.
 
 **Statut** : Complété ✅ — Sprint 30 (bugs sécurité & error handling) peut démarrer.
+
+---
+
+### [2025-07-15] Sprint 33 — Contrat API : Lots 4-5 (teammates, timeseries, session-compare, last-match)
+
+**Statut** : Complété ✅
+
+**Décision technique** :
+- **Plotly compat = null** : Go envoie `PlotlyFigurePayload = nil` pour tous les champs chart. Le frontend React construit les visualisations depuis les données brutes fournies par `POST /pages/stats/query`. Pas de génération Plotly côté serveur en Go.
+- **Teammates** réutilise `SquadRepository` (requêtes Q29-Q31) avec une projection différente alignée sur le contrat FastAPI.
+- **OutcomeLoss = 3** ajouté dans `analysis/performance_score.go` à côté de `OutcomeWin = 2`.
+
+**Fichiers créés** (14 fichiers) :
+- `domain/teammates.go` — TeammatesQueryRequest, TeammateOption, TeammateKPIs, TeammateRow, TeammatesPageResponse
+- `domain/timeseries.go` — PlotlyFigurePayload (opaque, nil), TimeseriesQueryRequest, 5 types d'onglets, TimeseriesPageResponse
+- `domain/session_compare.go` — SessionCompareRequest, SessionCompareEntry, SessionCompareMetricRow, SessionCompareResponse
+- `domain/last_match.go` — LastMatchResolveRequest, LastMatchResolveResponse
+- `service/teammates_service.go` — TeammatesService (GetPage, KPI computation, solo reference)
+- `service/timeseries_service.go` — TimeseriesService (5 tabs, regression stats, linear regression K/D)
+- `service/session_compare_service.go` — SessionCompareService (session extraction, entry building, metric comparison)
+- `service/last_match_service.go` — LastMatchService (match navigation prev/next)
+- `handlers/teammates.go` — POST /pages/teammates
+- `handlers/timeseries.go` — POST /pages/timeseries
+- `handlers/session_compare.go` — POST /pages/session-compare
+- `handlers/last_match.go` — POST /pages/last-match/resolve
+
+**Fichiers modifiés** :
+- `api/server.go` — 4 nouvelles routes Sprint 33
+- `api/contract_test.go` — `notYetImplemented` vidé (session-compare + last-match/resolve retirés)
+- `analysis/performance_score.go` — ajout `OutcomeLoss = 3`
+
+**Résultats** : gofmt OK, go vet domain+analysis 0 erreur (api/service bloqués par CGo DuckDB sur Windows — attendu).
+
+**Conclusion** : Sprint 33 terminé. Phase 6 (Contrat API) complète. Prochaine étape : Sprint 34 (Infra release/deploy Go).

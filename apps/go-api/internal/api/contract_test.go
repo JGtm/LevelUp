@@ -112,10 +112,8 @@ func TestContractRoutesRegistered(t *testing.T) {
 
 	// Endpoints intentionnellement absents de chi (501 déclarés dans l'OpenAPI)
 	// = routes FastAPI portées dans le YAML pour visibilité mais pas encore impl. Go.
-	notYetImplemented := map[string]bool{
-		"POST /api/v1/players/{player_slug}/pages/session-compare":    true,
-		"POST /api/v1/players/{player_slug}/pages/last-match/resolve": true,
-	}
+	// Sprint 33 : session-compare et last-match/resolve migrés → map vide.
+	notYetImplemented := map[string]bool{}
 
 	for path, pathItem := range doc.Paths {
 		for method := range pathItem {
