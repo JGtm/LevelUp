@@ -44,15 +44,15 @@ var (
 // noopBootstrapRepo — impl nulle pour le check de compilation uniquement.
 type noopBootstrapRepo struct{}
 
-func (n *noopBootstrapRepo) GetMatchCount(_ context.Context) (int, error)    { return 0, nil }
-func (n *noopBootstrapRepo) GetDBVersion(_ context.Context) (string, error)  { return "", nil }
+func (n *noopBootstrapRepo) GetMatchCount(_ context.Context) (int, error)   { return 0, nil }
+func (n *noopBootstrapRepo) GetDBVersion(_ context.Context) (string, error) { return "", nil }
 
 // noopPlayerRepo — impl nulle pour le check de compilation uniquement.
 type noopPlayerRepo struct{ xuid, dbPath string }
 
-func (n *noopPlayerRepo) XUID() string                                           { return n.xuid }
-func (n *noopPlayerRepo) DBPath() string                                         { return n.dbPath }
-func (n *noopPlayerRepo) GetInitialSyncDone(_ context.Context) (bool, error)     { return false, nil }
+func (n *noopPlayerRepo) XUID() string                                       { return n.xuid }
+func (n *noopPlayerRepo) DBPath() string                                     { return n.dbPath }
+func (n *noopPlayerRepo) GetInitialSyncDone(_ context.Context) (bool, error) { return false, nil }
 
 // FiltersRepository fournit les données pour la résolution des filtres.
 // Implémenté par platform/duckdb.FiltersRepo.
@@ -139,8 +139,8 @@ type noopFiltersRepo struct{}
 func (n *noopFiltersRepo) LoadMatchesForFilters(_ context.Context) ([]domain.FilterMatchRow, error) {
 	return nil, nil
 }
-func (n *noopFiltersRepo) GetMatchCount(_ context.Context) (int, error)          { return 0, nil }
-func (n *noopFiltersRepo) GetPlayerMatchCount(_ context.Context) (int, error)    { return 0, nil }
+func (n *noopFiltersRepo) GetMatchCount(_ context.Context) (int, error)       { return 0, nil }
+func (n *noopFiltersRepo) GetPlayerMatchCount(_ context.Context) (int, error) { return 0, nil }
 func (n *noopFiltersRepo) GetAvailablePlaylists(_ context.Context) ([]domain.LabelValue, error) {
 	return nil, nil
 }
@@ -327,6 +327,9 @@ type SquadRepository interface {
 
 	// LoadSynthesisHeatmap charge les données heatmap carte × mode (Q33).
 	LoadSynthesisHeatmap(ctx context.Context, xuid string) ([]domain.SynthesisHeatmapRow, error)
+
+	// LoadSynthesisMatches charge les matchs du joueur pour le calcul top_weeks (Q33b).
+	LoadSynthesisMatches(ctx context.Context, xuid string) ([]domain.SynthesisMatchRow, error)
 }
 
 // CitationsRepository fournit les données pour les pages Citations et Commendations.
@@ -378,6 +381,9 @@ func (n *noopSquadRepo) LoadImpactEvents(_ context.Context, _ []string) ([]domai
 	return nil, nil
 }
 func (n *noopSquadRepo) LoadSynthesisHeatmap(_ context.Context, _ string) ([]domain.SynthesisHeatmapRow, error) {
+	return nil, nil
+}
+func (n *noopSquadRepo) LoadSynthesisMatches(_ context.Context, _ string) ([]domain.SynthesisMatchRow, error) {
 	return nil, nil
 }
 

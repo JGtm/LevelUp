@@ -1,9 +1,10 @@
 // Package analysis — squad.go : algorithmes purs pour la page Escouade et Synthèse.
 //
 // Miroir Go de :
-//   src/analysis/_performance_squad.py   → ComputeSquadPerformanceScore, ComputeSquadTimeseries
-//   src/analysis/squad_records.py        → ComputeParticipationProfile, ComputeSquadRecords
-//   src/data/services/teammates_service.py (impact) → ComputeImpactSummary
+//
+//	src/analysis/_performance_squad.py   → ComputeSquadPerformanceScore, ComputeSquadTimeseries
+//	src/analysis/squad_records.py        → ComputeParticipationProfile, ComputeSquadRecords
+//	src/data/services/teammates_service.py (impact) → ComputeImpactSummary
 //
 // Règle architecture : 0 accès DB, 0 import Streamlit — entrée domain.*, sortie domain.*.
 package analysis
@@ -186,12 +187,12 @@ func ComputeParticipationProfile(rows []domain.SquadMatchRow, name, color string
 		Name:  name,
 		Color: color,
 		Values: map[string]float64{
-			"kills":        avg(sumKills, nKills),
-			"deaths":       avg(sumDeaths, nDeaths),
-			"assists":      avg(sumAssists, nAssists),
-			"accuracy":     avg(sumAccuracy, nAccuracy),
+			"kills":         avg(sumKills, nKills),
+			"deaths":        avg(sumDeaths, nDeaths),
+			"assists":       avg(sumAssists, nAssists),
+			"accuracy":      avg(sumAccuracy, nAccuracy),
 			"kills_per_min": avg(sumKPM, nKPM),
-			"kda":          avg(sumKDA, nKDA),
+			"kda":           avg(sumKDA, nKDA),
 		},
 	}
 }
@@ -479,13 +480,13 @@ func groupSquadBySession(rows []domain.SquadMatchRow) []domain.SquadTimeseriesPo
 	}
 
 	type sessionAgg struct {
-		label      string
-		sortKey    int
-		totalPerf  float64
-		totalMMR   float64
+		label        string
+		sortKey      int
+		totalPerf    float64
+		totalMMR     float64
 		wins, losses int
-		count      int
-		countPerf  int
+		count        int
+		countPerf    int
 	}
 	bySession := make(map[int]*sessionAgg)
 
@@ -563,13 +564,13 @@ func groupSquadByTime(rows []domain.SquadMatchRow, maxBuckets int) []domain.Squa
 // bucketByTime groupe les rows par période (week ou month).
 func bucketByTime(rows []domain.SquadMatchRow, period string) []domain.SquadTimeseriesPoint {
 	type bucketAgg struct {
-		bucketTime time.Time
-		label      string
-		totalPerf  float64
-		totalMMR   float64
+		bucketTime   time.Time
+		label        string
+		totalPerf    float64
+		totalMMR     float64
 		wins, losses int
-		count      int
-		countPerf  int
+		count        int
+		countPerf    int
 	}
 	byBucket := make(map[time.Time]*bucketAgg)
 
@@ -720,11 +721,14 @@ func ComputeTopWeeks(rows []domain.SquadMatchRow) []domain.TopWeekEntry {
 	}
 
 	type weekAgg struct {
-		label    string
-		wins     int
-		total    int
-		sumKills float64
-		count    int
+		label     string
+		wins      int
+		total     int
+		sumKills  float64
+		sumDeaths float64
+		sumKDA    float64
+		nKDA      int
+		count     int
 	}
 	byWeek := make(map[time.Time]*weekAgg)
 
@@ -733,7 +737,7 @@ func ComputeTopWeeks(rows []domain.SquadMatchRow) []domain.TopWeekEntry {
 		if wd == 0 {
 			wd = 7
 		}
-		weekStart := r.StartTime.AddDate(0, 0, -(wd-1)).Truncate(24 * time.Hour)
+		weekStart := r.StartTime.AddDate(0, 0, -(wd - 1)).Truncate(24 * time.Hour)
 		agg, ok := byWeek[weekStart]
 		if !ok {
 			agg = &weekAgg{label: weekStart.Format("02/01")}
@@ -746,6 +750,11 @@ func ComputeTopWeeks(rows []domain.SquadMatchRow) []domain.TopWeekEntry {
 			}
 		}
 		agg.sumKills += float64(r.Kills)
+		agg.sumDeaths += float64(r.Deaths)
+		if r.KDA != nil {
+			agg.sumKDA += *r.KDA
+			agg.nKDA++
+		}
 		agg.count++
 	}
 
@@ -763,9 +772,13 @@ func ComputeTopWeeks(rows []domain.SquadMatchRow) []domain.TopWeekEntry {
 		if agg.total > 0 {
 			wr = math.Round(float64(agg.wins)/float64(agg.total)*1000) / 10
 		}
-		var avgKills float64
+		var avgKills, avgDeaths, avgKDA float64
 		if agg.count > 0 {
 			avgKills = math.Round(agg.sumKills/float64(agg.count)*10) / 10
+			avgDeaths = math.Round(agg.sumDeaths/float64(agg.count)*10) / 10
+		}
+		if agg.nKDA > 0 {
+			avgKDA = math.Round(agg.sumKDA/float64(agg.nKDA)*100) / 100
 		}
 		candidates = append(candidates, weekScore{
 			wr: wr,
@@ -773,6 +786,8 @@ func ComputeTopWeeks(rows []domain.SquadMatchRow) []domain.TopWeekEntry {
 				WeekLabel:  agg.label,
 				WinRate:    wr,
 				AvgKills:   avgKills,
+				AvgDeaths:  avgDeaths,
+				AvgKDA:     avgKDA,
 				MatchCount: agg.count,
 			},
 		})
@@ -788,6 +803,138 @@ func ComputeTopWeeks(rows []domain.SquadMatchRow) []domain.TopWeekEntry {
 		result = append(result, c.entry)
 	}
 	return result
+}
+
+// ComputeSynthesisTopWeeks calcule les 5 meilleures semaines depuis les lignes SynthesisMatchRow.
+// Même logique que ComputeTopWeeks mais depuis un dataset allégé (LoadSynthesisMatches).
+func ComputeSynthesisTopWeeks(rows []domain.SynthesisMatchRow) []domain.TopWeekEntry {
+	if len(rows) == 0 {
+		return nil
+	}
+
+	type weekAgg struct {
+		label     string
+		wins      int
+		total     int
+		sumKills  float64
+		sumDeaths float64
+		sumKDA    float64
+		nKDA      int
+		count     int
+	}
+	byWeek := make(map[time.Time]*weekAgg)
+
+	for _, r := range rows {
+		wd := int(r.StartTime.Weekday())
+		if wd == 0 {
+			wd = 7
+		}
+		weekStart := r.StartTime.AddDate(0, 0, -(wd - 1)).Truncate(24 * time.Hour)
+		agg, ok := byWeek[weekStart]
+		if !ok {
+			agg = &weekAgg{label: weekStart.Format("02/01")}
+			byWeek[weekStart] = agg
+		}
+		if r.Outcome == 2 || r.Outcome == 3 {
+			agg.total++
+			if r.Outcome == 2 {
+				agg.wins++
+			}
+		}
+		agg.sumKills += float64(r.Kills)
+		agg.sumDeaths += float64(r.Deaths)
+		if r.KDA != nil {
+			agg.sumKDA += *r.KDA
+			agg.nKDA++
+		}
+		agg.count++
+	}
+
+	type weekScore struct {
+		entry domain.TopWeekEntry
+		wr    float64
+	}
+	var candidates []weekScore
+	for _, agg := range byWeek {
+		if agg.count < 3 {
+			continue
+		}
+		var wr, avgKills, avgDeaths, avgKDA float64
+		if agg.total > 0 {
+			wr = math.Round(float64(agg.wins)/float64(agg.total)*1000) / 10
+		}
+		if agg.count > 0 {
+			avgKills = math.Round(agg.sumKills/float64(agg.count)*10) / 10
+			avgDeaths = math.Round(agg.sumDeaths/float64(agg.count)*10) / 10
+		}
+		if agg.nKDA > 0 {
+			avgKDA = math.Round(agg.sumKDA/float64(agg.nKDA)*100) / 100
+		}
+		candidates = append(candidates, weekScore{
+			wr: wr,
+			entry: domain.TopWeekEntry{
+				WeekLabel:  agg.label,
+				WinRate:    wr,
+				AvgKills:   avgKills,
+				AvgDeaths:  avgDeaths,
+				AvgKDA:     avgKDA,
+				MatchCount: agg.count,
+			},
+		})
+	}
+	sort.Slice(candidates, func(i, j int) bool { return candidates[i].wr > candidates[j].wr })
+
+	const maxTopWeeks = 5
+	result := make([]domain.TopWeekEntry, 0, min(len(candidates), maxTopWeeks))
+	for i, c := range candidates {
+		if i >= maxTopWeeks {
+			break
+		}
+		result = append(result, c.entry)
+	}
+	return result
+}
+
+// ComputeSynthesisBreakdown calcule les stats de breakdown solo ou squad.
+// isSquad=true → matchs avec amis (is_with_friends=true), false → matchs solo.
+func ComputeSynthesisBreakdown(rows []domain.SynthesisMatchRow, isSquad bool) domain.SquadBreakdownStats {
+	var matchCount, wins, total int
+	var sumKills, sumKDA float64
+	var nKDA int
+	for _, r := range rows {
+		if r.IsWithFriends != isSquad {
+			continue
+		}
+		matchCount++
+		if r.Outcome == 2 || r.Outcome == 3 {
+			total++
+			if r.Outcome == 2 {
+				wins++
+			}
+		}
+		sumKills += float64(r.Kills)
+		if r.KDA != nil {
+			sumKDA += *r.KDA
+			nKDA++
+		}
+	}
+	if matchCount == 0 {
+		return domain.SquadBreakdownStats{}
+	}
+	var winRate, avgKDA, avgKills float64
+	if total > 0 {
+		winRate = math.Round(float64(wins)/float64(total)*1000) / 10
+	}
+	avgKills = math.Round(sumKills/float64(matchCount)*10) / 10
+	if nKDA > 0 {
+		avgKDA = math.Round(sumKDA/float64(nKDA)*100) / 100
+	}
+	return domain.SquadBreakdownStats{
+		MatchCount: matchCount,
+		WinRate:    winRate,
+		AvgKDA:     avgKDA,
+		AvgKills:   avgKills,
+	}
 }
 
 // =============================================================================

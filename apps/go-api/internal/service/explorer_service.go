@@ -43,10 +43,10 @@ func (s *ExplorerService) GetCommonMatches(
 
 	matches := convertCommonMatches(rawMatches, limit)
 	return domain.ExplorerPlayerQueryResponse{
-		OtherGamertag: otherGamertag,
-		OtherXUID:     otherXUID,
-		CommonMatches: matches,
-		Total:         len(matches),
+		TargetGamertag: otherGamertag,
+		TargetXUID:     otherXUID,
+		CommonMatches:  matches,
+		Total:          len(matches),
 	}, nil
 }
 

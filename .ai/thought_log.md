@@ -1,5 +1,69 @@
 # Thought Log
 
+## [2026-07-19] feat(contract): Sprint 32 — Réalignement contrat API Lots 1-3
+
+**Statut** : Complété
+
+**Tâche** : Sprint 32 — 14 tâches réparties en 3 lots : validation conformité Lot 1 (Home/Career/Settings), conversions GET→POST Lot 2 (Citations/Media/Synthesis), nouveaux endpoints Lot 3 (Explorer matches-query, Match History export + colonnes disponibles).
+
+**Décisions techniques principales** :
+
+1. **Lot 1 (Home/Career/Settings)** : Validation de conformité — aucun changement de code nécessaire, ces endpoints étaient déjà conformes depuis Sprint 30.
+2. **Citations/Commendations/Media → POST** : Les handlers décodent maintenant un body JSON optionnel avec filtres (category, pagination, kind). Filtrage post-requête dans le handler pour simplifier (pas de changement SQL).
+3. **Synthesis → POST + enrichissement** : `SynthesisPageRequest` avec filtres, `TopWeekEntry` enrichi (AvgKDA, AvgDeaths), `SynthesisPageResponse` enrichi (SoloStats, SquadStats). Nouveau `LoadSynthesisMatches` en DB, `ComputeSynthesisTopWeeks` et `ComputeSynthesisBreakdown` en analysis.
+4. **Explorer target_gamertag** : Renommage `OtherGamertag` → `TargetGamertag` / `OtherXUID` → `TargetXUID` dans domain + service pour alignement contrat. Nouveau `ExplorerMatchesQueryRequest/Row/Response` + handler `QueryMatches` qui délègue à `MatchHistoryService.GetPage`.
+5. **Match History : AvailableColumns** : Listing des 14 colonnes disponibles dans chaque réponse page. Nouveau `ExportCSV` dans le service (sans pagination). Handler `Export` avec token stateless base64url-JSON.
+6. **Export token** : Approche stateless — le token est `base64url(JSON(MatchHistoryQueryRequest))` généré dans le handler Query et décodé dans Export. Aucune persistance serveur.
+
+**Résultats observés** :
+
+- `go test ./internal/analysis/... ./internal/api/middleware/...` → OK (2 suites vertes)
+- `go vet ./internal/domain/... ./internal/analysis/...` → aucune erreur
+- Build CGo impossible sur Windows (contrainte DuckDB pré-existante, non introduite par ce commit)
+- 21 fichiers modifiés couvrant domain, port, platform/duckdb, analysis, service, handlers, server
+
+**Conclusion / prochaine étape** : Sprint 32 terminé. Sprint 33 à venir : enrichissement `ExplorerMatchesRow` avec kills/deaths réels (actuellement 0/placeholder), possiblement enrichissement du `MatchHistoryRow` en DB pour exposer kills directement.
+
+## [2026-04-16] docs(go-migration-v2): sous-plan 10/10 design/tests/migration pour le Sprint 44
+
+**Statut** : Complété
+
+**Tâche** : Renforcer le Sprint 44 pour que la mise en place multi-titres soit traitée comme un lot de réussite totale, avec sous-plan explicite design, migration, validation et rollback.
+
+**Décisions techniques principales** :
+
+1. Le Sprint 44 n'est plus seulement un pivot d'architecture ; il impose désormais un sous-plan explicite sur trois axes : design runtime, migration opérable et validation forte.
+2. Le design vise une source de vérité centrale (`TitleRegistry` / `PathResolver`) afin d'éviter de disséminer `title_slug` dans tout le code sans garde-fous.
+3. La migration doit être livrée avec des modes `dry-run`, `apply`, `rollback`, un manifest de backup et des tests d'idempotence sur dépôt legacy.
+4. La validation est relevée : parité Halo Infinite avant/après migration, corpus synthétique inter-titres, smoke frontend title-aware et couverture ciblée élevée sur les modules touchés.
+
+**Résultats observés** :
+
+- `SPRINT_ROADMAP.md` décrit maintenant un lot Sprint 44 plus ambitieux, avec critères de sortie sur la migration et la non-régression Halo Infinite.
+- `IMPLEMENTATION_PLAN.md` contient un sous-plan détaillé design/migration/validation, plus des risques spécifiques au chantier multi-titres.
+
+**Conclusion / prochaine étape** : le Sprint 44 est maintenant cadré comme un chantier sérieux. La prochaine étape utile sera de décliner ce sous-plan en work packages concrets par couche du runtime Go avant implémentation.
+
+## [2026-04-16] docs(go-migration-v2): Sprint 44 recadré comme implémentation multi-titres concrète
+
+**Statut** : Complété
+
+**Tâche** : Mettre à jour le roadmap et le plan d'implémentation pour que le Sprint 44 ne soit plus un simple sprint d'ADR, mais le lot explicite d'introduction propre du support multi-titres.
+
+**Décisions techniques principales** :
+
+1. Le Sprint 44 est renommé en lot d'implémentation multi-titres, avec estimation relevée pour refléter un vrai travail de runtime et non une simple passe documentaire.
+2. La stratégie retenue est explicitement alignée sur la recommandation d'audit : namespace par titre via `data/titles/{title_slug}/...`, plutôt qu'une pollution immédiate de toutes les PK et vues SQL existantes.
+3. `title_slug` devient un item d'implémentation explicite du Sprint 44 dans le stockage, la configuration, la session, le bootstrap, l'auth et les jobs.
+4. Les critères de sortie du Sprint 44 demandent désormais une capacité réellement branchée côté runtime Go, plus seulement une ADR rédigée.
+
+**Résultats observés** :
+
+- `SPRINT_ROADMAP.md` et `IMPLEMENTATION_PLAN.md` cadrent maintenant le Sprint 44 comme fenêtre de mise en place concrète du multi-titres.
+- Les estimations de phase ont été ajustées pour rester cohérentes avec cette montée de périmètre.
+
+**Conclusion / prochaine étape** : si cette orientation est maintenue, le prochain travail utile n'est plus de re-discuter le principe, mais de préparer les points d'entrée techniques réels du `title_slug` dans le runtime Go avant le démarrage du Sprint 44.
+
 ## [2026-07-18] fix(security)+feat(onboarding): Sprint 30-31 — Sécurité, error handling, onboarding Go
 
 **Statut** : Complété

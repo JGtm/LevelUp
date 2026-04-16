@@ -109,11 +109,19 @@ func (s *SquadService) GetSynthesisPage(
 		overallWinRate = math.Round(float64(totalWins)/float64(totalMatches)*1000) / 10
 	}
 
+	// Chargement des matchs pour les top semaines et le breakdown solo/squad.
+	synthMatches, _ := s.repo.LoadSynthesisMatches(ctx, playerXUID)
+	topWeeks := analysis.ComputeSynthesisTopWeeks(synthMatches)
+	soloStats := analysis.ComputeSynthesisBreakdown(synthMatches, false)
+	squadStats := analysis.ComputeSynthesisBreakdown(synthMatches, true)
+
 	return &domain.SynthesisPageResponse{
 		HeatmapData:    cells,
-		TopWeeks:       nil,
+		TopWeeks:       topWeeks,
 		TotalMatches:   totalMatches,
 		OverallWinRate: overallWinRate,
+		SoloStats:      soloStats,
+		SquadStats:     squadStats,
 	}, nil
 }
 

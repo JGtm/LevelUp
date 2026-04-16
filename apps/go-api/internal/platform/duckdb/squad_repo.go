@@ -197,5 +197,35 @@ func (r *SquadRepo) LoadSynthesisHeatmap(ctx context.Context, xuid string) ([]do
 	return result, rows.Err()
 }
 
+// LoadSynthesisMatches charge les matchs du joueur pour le calcul top_weeks (Q33b).
+func (r *SquadRepo) LoadSynthesisMatches(ctx context.Context, xuid string) ([]domain.SynthesisMatchRow, error) {
+	ctx, cancel := context.WithTimeout(ctx, 30*time.Second)
+	defer cancel()
+
+	rows, err := r.pdb.Player.Query(ctx, Q33bSynthesisMatches, xuid)
+	if err != nil {
+		return nil, fmt.Errorf("LoadSynthesisMatches: %w", err)
+	}
+	defer rows.Close()
+
+	var result []domain.SynthesisMatchRow
+	for rows.Next() {
+		var row domain.SynthesisMatchRow
+		if err := rows.Scan(
+			&row.MatchID,
+			&row.StartTime,
+			&row.Outcome,
+			&row.Kills,
+			&row.Deaths,
+			&row.KDA,
+			&row.IsWithFriends,
+		); err != nil {
+			return nil, fmt.Errorf("LoadSynthesisMatches scan: %w", err)
+		}
+		result = append(result, row)
+	}
+	return result, rows.Err()
+}
+
 // Ensure SquadRepo implements port.SquadRepository at compile time.
 // (Vérification implicite via injection dans le service.)
