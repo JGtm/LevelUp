@@ -3,19 +3,19 @@ package domain
 
 // FeatureFlags représente les flags de fonctionnalités actifs sur ce déploiement.
 type FeatureFlags struct {
-	V7Enabled          bool `json:"v7_enabled"`
-	MediaEnabled       bool `json:"media_enabled"`
-	DemoMode           bool `json:"demo_mode"`
-	DiscordConfigured  bool `json:"discord_configured"`
-	TailscaleEnabled   bool `json:"tailscale_enabled"`
+	V7Enabled         bool `json:"v7_enabled"`
+	MediaEnabled      bool `json:"media_enabled"`
+	DemoMode          bool `json:"demo_mode"`
+	DiscordConfigured bool `json:"discord_configured"`
+	TailscaleEnabled  bool `json:"tailscale_enabled"`
 }
 
 // SettingsExcerpt représente l'extrait des préférences utilisateur nécessaires au shell.
 type SettingsExcerpt struct {
-	Lang                  string `json:"lang"`
-	UserTimezone          string `json:"user_timezone"`
-	ShowRecords           bool   `json:"show_records"`
-	NormalizeModeLabels   bool   `json:"normalize_mode_labels"`
+	Lang                string `json:"lang"`
+	UserTimezone        string `json:"user_timezone"`
+	ShowRecords         bool   `json:"show_records"`
+	NormalizeModeLabels bool   `json:"normalize_mode_labels"`
 }
 
 // CapabilityMap représente les capacités actives selon la configuration serveur.
@@ -33,11 +33,11 @@ type CapabilityMap struct {
 
 // PlayerSummary représente le résumé d'un profil joueur.
 type PlayerSummary struct {
-	PlayerSlug      string `json:"player_slug"`
-	Gamertag        string `json:"gamertag"`
-	XUID            string `json:"xuid"`
-	WaypointPlayer  string `json:"waypoint_player"`
-	IsDemo          bool   `json:"is_demo"`
+	PlayerSlug     string `json:"player_slug"`
+	Gamertag       string `json:"gamertag"`
+	XUID           string `json:"xuid"`
+	WaypointPlayer string `json:"waypoint_player"`
+	IsDemo         bool   `json:"is_demo"`
 }
 
 // HaloIdentitySummary représente l'identité Halo résolue côté backend.
@@ -49,22 +49,22 @@ type HaloIdentitySummary struct {
 // BootstrapResponse est la réponse de GET /api/v1/bootstrap.
 // Contient tout ce dont le shell React a besoin pour s'initialiser.
 type BootstrapResponse struct {
-	SetupRequired        bool                  `json:"setup_required"`
-	AuthState            string                `json:"auth_state"`           // "missing" | "partial" | "ready"
-	SetupState           string                `json:"setup_state"`          // "no_halo_link" | "halo_linked_no_profile" | "profile_ready_no_sync" | "ready"
-	CurrentPlayer        *PlayerSummary        `json:"current_player"`
-	AvailablePlayers     []PlayerSummary       `json:"available_players"`
-	Locale               string                `json:"locale"`
-	HintsVisibleDefault  bool                  `json:"hints_visible_default"`
-	FeatureFlags         FeatureFlags          `json:"feature_flags"`
-	Capabilities         CapabilityMap         `json:"capabilities"`
-	SettingsExcerpt      SettingsExcerpt       `json:"settings_excerpt"`
-	LinkedHaloIdentity   *HaloIdentitySummary  `json:"linked_halo_identity,omitempty"`
-	ActiveSyncJobID      *string               `json:"active_sync_job_id,omitempty"`
+	SetupRequired       bool                 `json:"setup_required"`
+	AuthState           string               `json:"auth_state"`  // "missing" | "partial" | "ready"
+	SetupState          string               `json:"setup_state"` // "no_halo_link" | "halo_linked_no_profile" | "profile_ready_no_sync" | "ready"
+	CurrentPlayer       *PlayerSummary       `json:"current_player"`
+	AvailablePlayers    []PlayerSummary      `json:"available_players"`
+	Locale              string               `json:"locale"`
+	HintsVisibleDefault bool                 `json:"hints_visible_default"`
+	FeatureFlags        FeatureFlags         `json:"feature_flags"`
+	Capabilities        CapabilityMap        `json:"capabilities"`
+	SettingsExcerpt     SettingsExcerpt      `json:"settings_excerpt"`
+	LinkedHaloIdentity  *HaloIdentitySummary `json:"linked_halo_identity,omitempty"`
+	ActiveSyncJobID     *string              `json:"active_sync_job_id,omitempty"`
 }
 
 // PlayersListResponse est la réponse de GET /api/v1/players.
 type PlayersListResponse struct {
-	Items              []PlayerSummary `json:"items"`
-	DefaultPlayerSlug  *string         `json:"default_player_slug"`
+	Items             []PlayerSummary `json:"items"`
+	DefaultPlayerSlug *string         `json:"default_player_slug"`
 }

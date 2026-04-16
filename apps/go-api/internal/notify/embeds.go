@@ -12,11 +12,11 @@ import (
 // ─────────────────────────────────────────────────────────────────────────────
 
 const (
-	colorSuccess  = 0x57F287 // vert
-	colorWarning  = 0xFEE75C // jaune
-	colorError    = 0xED4245 // rouge
-	colorBlurple  = 0x5865F2 // blurple (médias)
-	colorVersion  = 0x3498DB // bleu foncé (nouvelle version)
+	colorSuccess = 0x57F287 // vert
+	colorWarning = 0xFEE75C // jaune
+	colorError   = 0xED4245 // rouge
+	colorBlurple = 0x5865F2 // blurple (médias)
+	colorVersion = 0x3498DB // bleu foncé (nouvelle version)
 )
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -40,27 +40,27 @@ type LastMatchInfo struct {
 
 // BackfillCounts regroupe les compteurs de backfill par type de données.
 type BackfillCounts struct {
-	MedalsInserted          int
-	EventsInserted          int
-	LUSRComputed            int
-	CSRFetched              int
-	SessionsUpdated         int
-	CitationsComputed       int
-	KillerVictimPairs       int
-	PersonalScoresInserted  int
-	PerfScoresInserted      int
-	AliasesInserted         int
-	PveStatsInserted        int
+	MedalsInserted         int
+	EventsInserted         int
+	LUSRComputed           int
+	CSRFetched             int
+	SessionsUpdated        int
+	CitationsComputed      int
+	KillerVictimPairs      int
+	PersonalScoresInserted int
+	PerfScoresInserted     int
+	AliasesInserted        int
+	PveStatsInserted       int
 }
 
 // PlayerSyncResult encapsule le résultat d'une opération sync/backfill pour un joueur.
 type PlayerSyncResult struct {
-	Gamertag       string
-	MatchesSynced  int
-	MissingData    int
-	Error          string
-	Backfill       BackfillCounts
-	LastMatch      *LastMatchInfo
+	Gamertag      string
+	MatchesSynced int
+	MissingData   int
+	Error         string
+	Backfill      BackfillCounts
+	LastMatch     *LastMatchInfo
 }
 
 // ─────────────────────────────────────────────────────────────────────────────

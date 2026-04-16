@@ -44,9 +44,9 @@ func TestComputeSquadPerformanceScore_NoBonus(t *testing.T) {
 	s1, s2 := 50.0, 60.0
 	result := ComputeSquadPerformanceScore(
 		[]*float64{&s1, &s2},
-		[]float64{40.0},        // win rate ≤ 60 → pas de bonus
-		[]float64{0.8},         // min KDA ≤ 1 → pas de bonus
-		[]float64{5.0, 15.0},   // std > 3 → pas de bonus
+		[]float64{40.0},      // win rate ≤ 60 → pas de bonus
+		[]float64{0.8},       // min KDA ≤ 1 → pas de bonus
+		[]float64{5.0, 15.0}, // std > 3 → pas de bonus
 	)
 	if result.Score == nil {
 		t.Fatal("score ne doit pas être nil")
@@ -60,8 +60,8 @@ func TestComputeSquadPerformanceScore_Clamp(t *testing.T) {
 	s1, s2 := 95.0, 98.0
 	result := ComputeSquadPerformanceScore(
 		[]*float64{&s1, &s2},
-		[]float64{65.0},  // +5
-		[]float64{2.0},   // +5
+		[]float64{65.0},     // +5
+		[]float64{2.0},      // +5
 		[]float64{3.0, 4.0}, // std > 3 → pas de bonus
 	)
 	if result.Score == nil {
@@ -77,7 +77,10 @@ func TestComputeSquadPerformanceScore_Clamp(t *testing.T) {
 // =============================================================================
 
 func TestResolveSquadGrade(t *testing.T) {
-	cases := []struct{ score float64; grade string }{
+	cases := []struct {
+		score float64
+		grade string
+	}{
 		{95, "S"}, {85, "A"}, {70, "B"}, {55, "C"}, {40, "D"}, {20, "F"},
 	}
 	for _, tc := range cases {

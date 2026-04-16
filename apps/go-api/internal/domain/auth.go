@@ -1,8 +1,9 @@
 // Package domain — auth.go : types pour le Device Code Flow et l'authentification Halo.
 //
 // Sprint 15 :
-//   POST /auth/device-flow/start      → DeviceFlowStartResponse
-//   GET  /auth/device-flow/{id}       → DeviceFlowStatusResponse
+//
+//	POST /auth/device-flow/start      → DeviceFlowStartResponse
+//	GET  /auth/device-flow/{id}       → DeviceFlowStatusResponse
 package domain
 
 // DeviceFlowStartResponse est la réponse à POST /auth/device-flow/start.

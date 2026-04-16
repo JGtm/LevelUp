@@ -22,18 +22,18 @@ package sync
 
 const (
 	// Stats skill / MMR
-	PBitTeamMMR   = 1 << 0  // 1       — team_mmr
-	PBitEnemyMMR  = 1 << 1  // 2       — enemy_mmr
-	PBitKillsExp  = 1 << 2  // 4       — kills_expected, kills_stddev
-	PBitDeathsExp = 1 << 3  // 8       — deaths_expected, deaths_stddev
+	PBitTeamMMR    = 1 << 0 // 1       — team_mmr
+	PBitEnemyMMR   = 1 << 1 // 2       — enemy_mmr
+	PBitKillsExp   = 1 << 2 // 4       — kills_expected, kills_stddev
+	PBitDeathsExp  = 1 << 3 // 8       — deaths_expected, deaths_stddev
 	PBitAssistsExp = 1 << 4 // 16      — assists_expected, assists_stddev
 
 	// Stats de combat (get_match_stats)
-	PBitAccuracy = 1 << 5  // 32      — accuracy
-	PBitShots    = 1 << 6  // 64      — shots_fired, shots_hit
-	PBitDamage   = 1 << 7  // 128     — damage_dealt, damage_taken
-	PBitAvgLife  = 1 << 8  // 256     — avg_life_seconds
-	PBitMedals   = 1 << 9  // 512     — médailles dans medals_earned pour ce xuid
+	PBitAccuracy = 1 << 5 // 32      — accuracy
+	PBitShots    = 1 << 6 // 64      — shots_fired, shots_hit
+	PBitDamage   = 1 << 7 // 128     — damage_dealt, damage_taken
+	PBitAvgLife  = 1 << 8 // 256     — avg_life_seconds
+	PBitMedals   = 1 << 9 // 512     — médailles dans medals_earned pour ce xuid
 
 	// Kills détaillés
 	PBitGrenadeKills  = 1 << 10 // 1024  — grenade_kills
@@ -51,12 +51,12 @@ const (
 	PBitKillerVictim = 1 << 18 // 262144 — ce joueur est présent dans killer_victim_pairs
 
 	// ── Groupes (combinaisons logiques) ──
-	PBitMMR        = PBitTeamMMR | PBitEnemyMMR
-	PBitExpected   = PBitKillsExp | PBitDeathsExp | PBitAssistsExp
-	PBitSkill      = PBitMMR | PBitExpected
-	PBitCombat     = PBitAccuracy | PBitShots | PBitDamage
+	PBitMMR         = PBitTeamMMR | PBitEnemyMMR
+	PBitExpected    = PBitKillsExp | PBitDeathsExp | PBitAssistsExp
+	PBitSkill       = PBitMMR | PBitExpected
+	PBitCombat      = PBitAccuracy | PBitShots | PBitDamage
 	PBitKillsDetail = PBitGrenadeKills | PBitMeleeKills | PBitPowerWeapon | PBitHeadshotKills
-	PBitCoreStats  = PBitAccuracy | PBitShots | PBitDamage | PBitAvgLife |
+	PBitCoreStats   = PBitAccuracy | PBitShots | PBitDamage | PBitAvgLife |
 		PBitGrenadeKills | PBitMeleeKills | PBitPowerWeapon | PBitPersonalScore |
 		PBitHeadshotKills | PBitMaxSpree | PBitKDA | PBitTimePlayed
 	PBitAllStats = PBitSkill | PBitCoreStats | PBitMedals | PBitKillerVictim
@@ -67,12 +67,12 @@ const (
 // ─────────────────────────────────────────────────────────────────────────────
 
 const (
-	MBitEvents           = 1 << 16 // 65536   — highlight_events chargés
-	MBitAssets           = 1 << 17 // 131072  — map_name, playlist_name résolus
-	MBitAliases          = 1 << 18 // 262144  — xuid_aliases extraits
-	MBitKillerVictim     = 1 << 19 // 524288  — killer_victim_pairs chargés (global)
-	MBitPVEStats         = 1 << 20 // 1048576 — stats PvE tentées pour ce match
-	MBitWeaponKills      = 1 << 21 // 2097152 — weapon_kills chargés
+	MBitEvents            = 1 << 16 // 65536   — highlight_events chargés
+	MBitAssets            = 1 << 17 // 131072  — map_name, playlist_name résolus
+	MBitAliases           = 1 << 18 // 262144  — xuid_aliases extraits
+	MBitKillerVictim      = 1 << 19 // 524288  — killer_victim_pairs chargés (global)
+	MBitPVEStats          = 1 << 20 // 1048576 — stats PvE tentées pour ce match
+	MBitWeaponKills       = 1 << 21 // 2097152 — weapon_kills chargés
 	MBitWeaponKillsNoFilm = 1 << 22 // 4194304 — film 404/expiré, 0 chunk dispo
 )
 
@@ -81,25 +81,25 @@ const (
 // ─────────────────────────────────────────────────────────────────────────────
 
 const (
-	PveBitTotalKills = 1 << 0 // 1    — total_enemy_kills
-	PveBitBossKills  = 1 << 1 // 2    — boss_kills
-	PveBitGrunt      = 1 << 2 // 4    — grunt_kills
-	PveBitElite      = 1 << 3 // 8    — elite_kills
-	PveBitJackal     = 1 << 4 // 16   — jackal_kills
-	PveBitBrute      = 1 << 5 // 32   — brute_kills
-	PveBitHunter     = 1 << 6 // 64   — hunter_kills
-	PveBitSkimmer    = 1 << 7 // 128  — skimmer_kills
-PveBitCrawler    = 1 << 8  // 256  — crawler_kills  (Forerunner)
-        PveBitSoldier    = 1 << 9  // 512  — soldier_kills  (Forerunner)
-        PveBitKnight     = 1 << 10 // 1024 — knight_kills   (Forerunner)
-        PveBitWarden     = 1 << 11 // 2048 — warden_kills   (Forerunner)
-        PveBitSentinel   = 1 << 12 // 4096 — sentinel_kills (Forerunner, rare)
-        PveBitMarine     = 1 << 13 // 8192 — marine_kills   (alliés, rare)
+	PveBitTotalKills = 1 << 0  // 1    — total_enemy_kills
+	PveBitBossKills  = 1 << 1  // 2    — boss_kills
+	PveBitGrunt      = 1 << 2  // 4    — grunt_kills
+	PveBitElite      = 1 << 3  // 8    — elite_kills
+	PveBitJackal     = 1 << 4  // 16   — jackal_kills
+	PveBitBrute      = 1 << 5  // 32   — brute_kills
+	PveBitHunter     = 1 << 6  // 64   — hunter_kills
+	PveBitSkimmer    = 1 << 7  // 128  — skimmer_kills
+	PveBitCrawler    = 1 << 8  // 256  — crawler_kills  (Forerunner)
+	PveBitSoldier    = 1 << 9  // 512  — soldier_kills  (Forerunner)
+	PveBitKnight     = 1 << 10 // 1024 — knight_kills   (Forerunner)
+	PveBitWarden     = 1 << 11 // 2048 — warden_kills   (Forerunner)
+	PveBitSentinel   = 1 << 12 // 4096 — sentinel_kills (Forerunner, rare)
+	PveBitMarine     = 1 << 13 // 8192 — marine_kills   (alliés, rare)
 
-        PveBitAllEnemies = PveBitGrunt | PveBitElite | PveBitJackal | PveBitBrute |
-                PveBitHunter | PveBitSkimmer | PveBitCrawler | PveBitSoldier |
-                PveBitKnight | PveBitWarden | PveBitSentinel | PveBitMarine
-        PveBitFullPVE = PveBitTotalKills | PveBitBossKills | PveBitAllEnemies
+	PveBitAllEnemies = PveBitGrunt | PveBitElite | PveBitJackal | PveBitBrute |
+		PveBitHunter | PveBitSkimmer | PveBitCrawler | PveBitSoldier |
+		PveBitKnight | PveBitWarden | PveBitSentinel | PveBitMarine
+	PveBitFullPVE = PveBitTotalKills | PveBitBossKills | PveBitAllEnemies
 )
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -111,24 +111,24 @@ PveBitCrawler    = 1 << 8  // 256  — crawler_kills  (Forerunner)
 
 // BackfillFlags mappe les noms de flags legacy vers leur valeur de bit.
 var BackfillFlags = map[string]int{
-	"medals":              1 << 0,  // 1
-	"events":              1 << 1,  // 2
-	"skill":               1 << 2,  // 4
-	"personal_scores":     1 << 3,  // 8
+	"medals":          1 << 0, // 1
+	"events":          1 << 1, // 2
+	"skill":           1 << 2, // 4
+	"personal_scores": 1 << 3, // 8
 	// performance_scores supprimé : granularité joueur×match (bit 4 non utilisé)
-	"accuracy":            1 << 5,  // 32
-	"shots":               1 << 6,  // 64
-	"enemy_mmr":           1 << 7,  // 128
-	"assets":              1 << 8,  // 256
-	"participants":        1 << 9,  // 512
-	"participants_scores": 1 << 10, // 1024
-	"participants_kda":    1 << 11, // 2048
-	"participants_shots":  1 << 12, // 4096
-	"participants_damage": 1 << 13, // 8192
-	"aliases":             1 << 14, // 16384
+	"accuracy":              1 << 5,  // 32
+	"shots":                 1 << 6,  // 64
+	"enemy_mmr":             1 << 7,  // 128
+	"assets":                1 << 8,  // 256
+	"participants":          1 << 9,  // 512
+	"participants_scores":   1 << 10, // 1024
+	"participants_kda":      1 << 11, // 2048
+	"participants_shots":    1 << 12, // 4096
+	"participants_damage":   1 << 13, // 8192
+	"aliases":               1 << 14, // 16384
 	"participants_avg_life": 1 << 15, // 32768
 	// weapon_kills (bit 18 = 262144) — OBSOLÈTE, voir MBitWeaponKills (1<<21)
-	"weapon_kills":        1 << 18, // 262144
+	"weapon_kills": 1 << 18, // 262144
 }
 
 // ComputeBackfillMask calcule le masque de bits pour les types demandés.

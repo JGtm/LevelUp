@@ -83,8 +83,8 @@ type SessionsQueryRequest struct {
 
 // SessionsResponse est la réponse de la liste des sessions d'un joueur.
 type SessionsResponse struct {
-	Sessions   []SessionGroup      `json:"sessions"`
+	Sessions    []SessionGroup      `json:"sessions"`
 	Assignments []SessionAssignment `json:"assignments"`
-	BucketInfo BucketInfo          `json:"bucket_info"`
-	TotalDays  float64             `json:"total_days"`
+	BucketInfo  BucketInfo          `json:"bucket_info"`
+	TotalDays   float64             `json:"total_days"`
 }

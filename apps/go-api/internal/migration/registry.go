@@ -23,12 +23,12 @@ const (
 
 // Migration décrit une migration DuckDB idempotente.
 type Migration struct {
-	Name         string
-	TargetDB     TargetDB
-	Description  string
-	ApplySchema  func(db *sql.DB) error            // DDL obligatoire
-	ApplyBackfill func(db *sql.DB) error            // Backfill optionnel
-	RequiresAPI  bool                               // Si true, backfill ignoré sans API
+	Name          string
+	TargetDB      TargetDB
+	Description   string
+	ApplySchema   func(db *sql.DB) error // DDL obligatoire
+	ApplyBackfill func(db *sql.DB) error // Backfill optionnel
+	RequiresAPI   bool                   // Si true, backfill ignoré sans API
 }
 
 // registry est le registre ordonné (ordre d'insertion = ordre d'exécution).

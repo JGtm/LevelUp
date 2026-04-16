@@ -30,9 +30,9 @@ import (
 // ArchiveOptions configure une opération d'archivage.
 type ArchiveOptions struct {
 	Gamertag     string
-	PlayerDBPath string   // stats.duckdb du joueur
-	SharedDBPath string   // shared_matches_v2.duckdb
-	ArchiveDir   string   // ex: data/players/{gt}/archive/
+	PlayerDBPath string // stats.duckdb du joueur
+	SharedDBPath string // shared_matches_v2.duckdb
+	ArchiveDir   string // ex: data/players/{gt}/archive/
 	CutoffDate   time.Time
 	DeleteAfter  bool // supprimer les matchs de shared après archivage
 	DryRun       bool
@@ -42,11 +42,11 @@ type ArchiveOptions struct {
 
 // ArchiveResult résume le résultat de l'archivage.
 type ArchiveResult struct {
-	Success      bool
-	Message      string
-	MatchCount   int
+	Success       bool
+	Message       string
+	MatchCount    int
 	ArchivedFiles []string
-	DryRun       bool
+	DryRun        bool
 }
 
 // ArchiveMatches exporte les matchs antérieurs à cutoffDate en Parquet.

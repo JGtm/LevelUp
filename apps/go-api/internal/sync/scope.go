@@ -12,99 +12,99 @@ package sync
 // Portage 1:1 de la dataclass Python src/data/sync/scope.py.
 type SyncScope struct {
 	// ── Options générales ────────────────────────────────────────────────
-	DryRun           bool
-	MaxMatches       int
-	RequestsPerSec   int
-	DetectionMode    string // "or" (défaut) ou "and"
+	DryRun         bool
+	MaxMatches     int
+	RequestsPerSec int
+	DetectionMode  string // "or" (défaut) ou "and"
 
 	// ── Types de données ────────────────────────────────────────────────
-	Medals             bool
-	Events             bool
-	Skill              bool
-	PersonalScores     bool
-	PerformanceScores  bool
-	Aliases            bool
-	Accuracy           bool
-	EnemyMMR           bool
-	Assets             bool
-	Participants       bool
-	ParticipantsScores bool
-	ParticipantsKDA    bool
-	ParticipantsShots  bool
-	ParticipantsDamage bool
+	Medals              bool
+	Events              bool
+	Skill               bool
+	PersonalScores      bool
+	PerformanceScores   bool
+	Aliases             bool
+	Accuracy            bool
+	EnemyMMR            bool
+	Assets              bool
+	Participants        bool
+	ParticipantsScores  bool
+	ParticipantsKDA     bool
+	ParticipantsShots   bool
+	ParticipantsDamage  bool
 	ParticipantsAvgLife bool
-	KillerVictim       bool
-	EndTime            bool
-	Sessions           bool
-	Shots              bool
-	Citations          bool
-	ParticipantsEnrich bool
-	TeammatesSig       bool
+	KillerVictim        bool
+	EndTime             bool
+	Sessions            bool
+	Shots               bool
+	Citations           bool
+	ParticipantsEnrich  bool
+	TeammatesSig        bool
 
 	// ── Types granulaires v5.2 (nouveaux champs bitmask) ────────────────
 	// Skill / MMR
-	TeamMMR       bool
-	KillsExpected bool
-	DeathsExpected bool
+	TeamMMR         bool
+	KillsExpected   bool
+	DeathsExpected  bool
 	AssistsExpected bool
 	// Combat
 	Damage  bool
 	AvgLife bool
 	// Kills détaillés
-	GrenadeKills    bool
-	MeleeKills      bool
+	GrenadeKills     bool
+	MeleeKills       bool
 	PowerWeaponKills bool
-	HeadshotKills   bool
-	MaxSpree        bool
+	HeadshotKills    bool
+	MaxSpree         bool
 	// Divers
 	KDARecalc  bool
 	TimePlayed bool
 
 	// ── Groupes (alias résolus dans Resolve()) ──────────────────────────
-	MMR        bool // = TeamMMR + EnemyMMR
-	Expected   bool // = KillsExpected + DeathsExpected + AssistsExpected
-	Combat     bool // = Accuracy + Shots + Damage
+	MMR         bool // = TeamMMR + EnemyMMR
+	Expected    bool // = KillsExpected + DeathsExpected + AssistsExpected
+	Combat      bool // = Accuracy + Shots + Damage
 	KillsDetail bool // = GrenadeKills + MeleeKills + PowerWeaponKills + HeadshotKills
-	CoreStats  bool // = Combat + AvgLife + KillsDetail + KDARecalc + TimePlayed
+	CoreStats   bool // = Combat + AvgLife + KillsDetail + KDARecalc + TimePlayed
 
 	// ── Flags force ─────────────────────────────────────────────────────
-	ForceMedals            bool
-	ForceSkill             bool
-	ForceAccuracy          bool
-	ForceShots             bool
-	ForcePerformanceScores bool
-	ForceParticipantsShots  bool
-	ForceParticipantsDamage bool
+	ForceMedals              bool
+	ForceSkill               bool
+	ForceAccuracy            bool
+	ForceShots               bool
+	ForcePerformanceScores   bool
+	ForceParticipantsShots   bool
+	ForceParticipantsDamage  bool
 	ForceParticipantsAvgLife bool
-	ForceEnemyMMR          bool
-	ForceAliases           bool
-	ForceAssets            bool
-	ForceParticipants      bool
-	ForceEndTime           bool
-	ForceSessions          bool
-	ForceCitations         bool
-	ForceParticipantsEnrich bool
-	ForceTeammatesSig      bool
+	ForceEnemyMMR            bool
+	ForceAliases             bool
+	ForceAssets              bool
+	ForceParticipants        bool
+	ForceEndTime             bool
+	ForceSessions            bool
+	ForceCitations           bool
+	ForceParticipantsEnrich  bool
+	ForceTeammatesSig        bool
 
 	// ── Flags force granulaires v5.2 ────────────────────────────────────
-	ForceTeamMMR        bool
-	ForceKillsExpected  bool
-	ForceDeathsExpected bool
-	ForceAssistsExpected bool
-	ForceAvgLife        bool
-	ForceDamage         bool
-	ForceGrenadeKills   bool
-	ForceMeleeKills     bool
+	ForceTeamMMR          bool
+	ForceKillsExpected    bool
+	ForceDeathsExpected   bool
+	ForceAssistsExpected  bool
+	ForceAvgLife          bool
+	ForceDamage           bool
+	ForceGrenadeKills     bool
+	ForceMeleeKills       bool
 	ForcePowerWeaponKills bool
-	ForceHeadshotKills  bool
-	ForceMaxSpree       bool
-	ForceKDARecalc      bool
-	ForceTimePlayed     bool
-	ForceMMR            bool
-	ForceExpected       bool
-	ForceCombat         bool
-	ForceKillsDetail    bool
-	ForceCoreStats      bool
+	ForceHeadshotKills    bool
+	ForceMaxSpree         bool
+	ForceKDARecalc        bool
+	ForceTimePlayed       bool
+	ForceMMR              bool
+	ForceExpected         bool
+	ForceCombat           bool
+	ForceKillsDetail      bool
+	ForceCoreStats        bool
 
 	// ── PVE (Firefight) — v5.2 ──────────────────────────────────────────
 	PVEStats      bool
@@ -361,52 +361,52 @@ func (s *SyncScope) NeedsLocalOnly() bool {
 // requestedTypeMap maps scope field → bitmask key for backfill_completed tracking.
 // Identique à _REQUESTED_TYPE_MAP Python.
 var requestedTypeMap = map[string]string{
-	"Medals":             "medals",
-	"Events":             "events",
-	"Skill":              "skill",
-	"PersonalScores":     "personal_scores",
-	"PerformanceScores":  "performance_scores",
-	"Aliases":            "aliases",
-	"Accuracy":           "accuracy",
-	"Shots":              "shots",
-	"EnemyMMR":           "enemy_mmr",
-	"Assets":             "assets",
-	"Participants":       "participants",
-	"ParticipantsScores": "participants_scores",
-	"ParticipantsKDA":    "participants_kda",
-	"ParticipantsShots":  "participants_shots",
-	"ParticipantsDamage": "participants_damage",
+	"Medals":              "medals",
+	"Events":              "events",
+	"Skill":               "skill",
+	"PersonalScores":      "personal_scores",
+	"PerformanceScores":   "performance_scores",
+	"Aliases":             "aliases",
+	"Accuracy":            "accuracy",
+	"Shots":               "shots",
+	"EnemyMMR":            "enemy_mmr",
+	"Assets":              "assets",
+	"Participants":        "participants",
+	"ParticipantsScores":  "participants_scores",
+	"ParticipantsKDA":     "participants_kda",
+	"ParticipantsShots":   "participants_shots",
+	"ParticipantsDamage":  "participants_damage",
 	"ParticipantsAvgLife": "participants_avg_life",
-	"PVEStats":           "pve_stats",
-	"Weapons":            "weapons",
-	"LUSR":               "lusr",
-	"CSR":                "csr",
+	"PVEStats":            "pve_stats",
+	"Weapons":             "weapons",
+	"LUSR":                "lusr",
+	"CSR":                 "csr",
 }
 
 // RequestedTypes retourne la liste des noms de types demandés
 // pour le bitmask backfill_completed.
 func (s *SyncScope) RequestedTypes() []string {
 	fieldVals := map[string]bool{
-		"Medals":             s.Medals,
-		"Events":             s.Events,
-		"Skill":              s.Skill,
-		"PersonalScores":     s.PersonalScores,
-		"PerformanceScores":  s.PerformanceScores,
-		"Aliases":            s.Aliases,
-		"Accuracy":           s.Accuracy,
-		"Shots":              s.Shots,
-		"EnemyMMR":           s.EnemyMMR,
-		"Assets":             s.Assets,
-		"Participants":       s.Participants,
-		"ParticipantsScores": s.ParticipantsScores,
-		"ParticipantsKDA":    s.ParticipantsKDA,
-		"ParticipantsShots":  s.ParticipantsShots,
-		"ParticipantsDamage": s.ParticipantsDamage,
+		"Medals":              s.Medals,
+		"Events":              s.Events,
+		"Skill":               s.Skill,
+		"PersonalScores":      s.PersonalScores,
+		"PerformanceScores":   s.PerformanceScores,
+		"Aliases":             s.Aliases,
+		"Accuracy":            s.Accuracy,
+		"Shots":               s.Shots,
+		"EnemyMMR":            s.EnemyMMR,
+		"Assets":              s.Assets,
+		"Participants":        s.Participants,
+		"ParticipantsScores":  s.ParticipantsScores,
+		"ParticipantsKDA":     s.ParticipantsKDA,
+		"ParticipantsShots":   s.ParticipantsShots,
+		"ParticipantsDamage":  s.ParticipantsDamage,
 		"ParticipantsAvgLife": s.ParticipantsAvgLife,
-		"PVEStats":           s.PVEStats,
-		"Weapons":            s.Weapons,
-		"LUSR":               s.LUSR,
-		"CSR":                s.CSR,
+		"PVEStats":            s.PVEStats,
+		"Weapons":             s.Weapons,
+		"LUSR":                s.LUSR,
+		"CSR":                 s.CSR,
 	}
 	var result []string
 	for fieldName, typeKey := range requestedTypeMap {

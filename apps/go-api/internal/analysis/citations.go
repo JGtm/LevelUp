@@ -1,8 +1,9 @@
 // Package analysis — citations.go : algorithmes purs pour les pages Citations et Commendations.
 //
 // Miroir Go simplifié de :
-//   src/analysis/citations/engine.py → MergeCitationTotals, MergeMedalSummary
-//   src/data/citation_definitions.py → structure CitationMappingRow
+//
+//	src/analysis/citations/engine.py → MergeCitationTotals, MergeMedalSummary
+//	src/data/citation_definitions.py → structure CitationMappingRow
 //
 // Règle architecture : 0 accès DB — entrée domain.*, sortie domain.*.
 package analysis

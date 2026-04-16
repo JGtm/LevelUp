@@ -23,8 +23,8 @@ type DiagnoseOptions struct {
 
 // TableSchema décrit le schéma d'une table.
 type TableSchema struct {
-	Name    string
-	Columns []ColumnInfo
+	Name     string
+	Columns  []ColumnInfo
 	RowCount int64
 }
 

@@ -56,7 +56,7 @@ func TestComputeKPIs_WithMatches(t *testing.T) {
 	matches := []domain.HomeMatchRow{
 		makeHomeMatch("m1", 2, fp(2.0), fp(50.0), false), // win
 		makeHomeMatch("m2", 3, fp(0.5), fp(30.0), false), // loss
-		makeHomeMatch("m3", 2, fp(1.5), nil, false),       // win, no accuracy
+		makeHomeMatch("m3", 2, fp(1.5), nil, false),      // win, no accuracy
 	}
 	kpis := analysis.ComputeKPIs(matches)
 	if kpis.TotalMatches != 3 {

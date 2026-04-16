@@ -52,10 +52,10 @@ var validBaseTypes = map[byte]bool{
 // ChunkRef décrit un chunk de film (position + timestamps).
 // Same layout as in weapon_parser.go (ChunkData) but minimal for spawn.
 type SpawnChunk struct {
-	Index    int
-	Data     []byte
-	StartMS  float64
-	EndMS    float64
+	Index   int
+	Data    []byte
+	StartMS float64
+	EndMS   float64
 }
 
 // FirstMovement décrit le premier mouvement détecté pour un joueur.

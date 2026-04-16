@@ -1,7 +1,8 @@
 // Package domain — session.go : types pour la gestion des sessions web.
 //
 // Sprint 14 :
-//   POST /session/context → SessionContextResponse
+//
+//	POST /session/context → SessionContextResponse
 package domain
 
 // HaloIdentity est l'identité Halo liée à une session après Device Code Flow.
