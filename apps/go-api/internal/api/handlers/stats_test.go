@@ -37,7 +37,7 @@ func newStatsRouter(factory handlers.ServiceFactory[port.StatsService]) *chi.Mux
 
 func TestStatsHandler_OK(t *testing.T) {
 	factory := func(_ context.Context, slug string) (port.StatsService, error) {
-		if slug != "test-player" {
+		if slug != testPlayerSlug {
 			return nil, errors.New("player_not_found")
 		}
 		return &mockStatsService{resp: domain.StatsPageResponse{}}, nil

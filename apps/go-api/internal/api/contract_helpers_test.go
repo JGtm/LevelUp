@@ -13,6 +13,7 @@ import (
 	"os"
 	"path/filepath"
 	"testing"
+	"time"
 
 	"levelup/go-api/internal/api"
 	"levelup/go-api/internal/config"
@@ -33,6 +34,9 @@ func (m *mockBootstrapRepo) GetMatchCount(_ context.Context) (int, error) {
 func (m *mockBootstrapRepo) GetDBVersion(_ context.Context) (string, error) {
 	return "test-mock", nil
 }
+
+func (m *mockBootstrapRepo) GetPlayerCount(_ context.Context) (int, error)       { return 0, nil }
+func (m *mockBootstrapRepo) GetLastSyncAt(_ context.Context) (*time.Time, error) { return nil, nil }
 
 // ---------------------------------------------------------------------------
 // buildTestRouter — construit le routeur chi en mode démo pour les tests de contrat.

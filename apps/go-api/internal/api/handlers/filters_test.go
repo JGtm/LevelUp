@@ -37,10 +37,10 @@ func newFiltersRouter(factory handlers.ServiceFactory[port.FiltersService]) *chi
 
 func TestFiltersHandler_Resolve_OK(t *testing.T) {
 	expected := domain.FilterContextResolved{
-		TotalMatches: 42,
+		Counts: domain.FilterCounts{TotalMatchesAfterFilters: 42},
 	}
 	factory := func(_ context.Context, slug string) (port.FiltersService, error) {
-		if slug != "test-player" {
+		if slug != testPlayerSlug {
 			return nil, errors.New("player_not_found")
 		}
 		return &mockFiltersService{result: expected}, nil
@@ -60,8 +60,8 @@ func TestFiltersHandler_Resolve_OK(t *testing.T) {
 	if err := json.Unmarshal(w.Body.Bytes(), &resp); err != nil {
 		t.Fatalf("unmarshal: %v", err)
 	}
-	if resp.TotalMatches != expected.TotalMatches {
-		t.Errorf("TotalMatches: got %d, want %d", resp.TotalMatches, expected.TotalMatches)
+	if resp.Counts.TotalMatchesAfterFilters != expected.Counts.TotalMatchesAfterFilters {
+		t.Errorf("TotalMatches: got %d, want %d", resp.Counts.TotalMatchesAfterFilters, expected.Counts.TotalMatchesAfterFilters)
 	}
 }
 

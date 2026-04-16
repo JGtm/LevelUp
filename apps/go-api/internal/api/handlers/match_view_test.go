@@ -35,9 +35,9 @@ func newMatchViewRouter(factory handlers.ServiceFactory[port.MatchViewService]) 
 }
 
 func TestMatchViewHandler_OK(t *testing.T) {
-	expected := domain.MatchViewResponse{MatchID: "abc123"}
+	expected := domain.MatchViewResponse{Header: domain.MatchViewHeader{MatchID: "abc123"}}
 	factory := func(_ context.Context, slug string) (port.MatchViewService, error) {
-		if slug != "test-player" {
+		if slug != testPlayerSlug {
 			return nil, errors.New("player_not_found")
 		}
 		return &mockMatchViewService{resp: expected}, nil
@@ -55,8 +55,8 @@ func TestMatchViewHandler_OK(t *testing.T) {
 	if err := json.Unmarshal(w.Body.Bytes(), &resp); err != nil {
 		t.Fatalf("unmarshal: %v", err)
 	}
-	if resp.MatchID != expected.MatchID {
-		t.Errorf("MatchID: got %q, want %q", resp.MatchID, expected.MatchID)
+	if resp.Header.MatchID != expected.Header.MatchID {
+		t.Errorf("MatchID: got %q, want %q", resp.Header.MatchID, expected.Header.MatchID)
 	}
 }
 
