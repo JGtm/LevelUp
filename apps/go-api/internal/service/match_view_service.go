@@ -7,6 +7,7 @@ package service
 import (
 	"context"
 	"fmt"
+	"log/slog"
 	"math"
 	"time"
 
@@ -41,13 +42,34 @@ func (s *MatchViewService) GetMatchView(ctx context.Context, matchID string) (do
 		return domain.MatchViewResponse{}, fmt.Errorf("MatchViewService: meta: %w", err)
 	}
 
-	stats, _ := s.repo.GetPlayerMatchStats(ctx, s.xuid, matchID)
-	enrich, _ := s.repo.GetMatchEnrichment(ctx, matchID)
-	scoreboard, _ := s.repo.GetMatchScoreboard(ctx, matchID)
-	medals, _ := s.repo.GetMatchMedals(ctx, s.xuid, matchID)
-	events, _ := s.repo.GetMatchEvents(ctx, matchID)
-	weapons, _ := s.repo.GetMatchWeaponKills(ctx, s.xuid, matchID)
-	kvPairs, _ := s.repo.GetMatchKVPairs(ctx, matchID)
+	stats, err := s.repo.GetPlayerMatchStats(ctx, s.xuid, matchID)
+	if err != nil {
+		slog.Warn("match_view: stats indisponibles", "match_id", matchID, "err", err)
+	}
+	enrich, err := s.repo.GetMatchEnrichment(ctx, matchID)
+	if err != nil {
+		slog.Warn("match_view: enrichment indisponible", "match_id", matchID, "err", err)
+	}
+	scoreboard, err := s.repo.GetMatchScoreboard(ctx, matchID)
+	if err != nil {
+		slog.Warn("match_view: scoreboard indisponible", "match_id", matchID, "err", err)
+	}
+	medals, err := s.repo.GetMatchMedals(ctx, s.xuid, matchID)
+	if err != nil {
+		slog.Warn("match_view: medals indisponibles", "match_id", matchID, "err", err)
+	}
+	events, err := s.repo.GetMatchEvents(ctx, matchID)
+	if err != nil {
+		slog.Warn("match_view: events indisponibles", "match_id", matchID, "err", err)
+	}
+	weapons, err := s.repo.GetMatchWeaponKills(ctx, s.xuid, matchID)
+	if err != nil {
+		slog.Warn("match_view: weapons indisponibles", "match_id", matchID, "err", err)
+	}
+	kvPairs, err := s.repo.GetMatchKVPairs(ctx, matchID)
+	if err != nil {
+		slog.Warn("match_view: kv_pairs indisponibles", "match_id", matchID, "err", err)
+	}
 
 	header := buildMatchHeader(matchID, meta, stats, enrich, scoreboard)
 	rank := domain.MatchViewRank{RatingType: "none"}

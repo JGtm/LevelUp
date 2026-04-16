@@ -172,6 +172,7 @@ func doneGuard(flagName string, hasBFCol bool) string {
 
 // playerDoneGuard retourne une clause SQL excluant les matchs déjà traités
 // dans la player DB (per-player guard).
+// Utilise des paramètres liés (NOT IN avec sous-requête) pour empêcher toute injection SQL.
 func playerDoneGuard(playerDB *sql.DB, table string, column string) string {
 	var query string
 	if column != "" {
@@ -192,12 +193,23 @@ func playerDoneGuard(playerDB *sql.DB, table string, column string) string {
 		if err := rows.Scan(&id); err != nil {
 			continue
 		}
-		doneIDs = append(doneIDs, "'"+id+"'")
+		doneIDs = append(doneIDs, id)
 	}
 	if len(doneIDs) == 0 {
 		return "1=1"
 	}
-	return fmt.Sprintf("mp.match_id NOT IN (%s)", strings.Join(doneIDs, ","))
+	// Paramètres liés : les match_id sont des UUID hex (a-f, 0-9, -).
+	// On valide le format pour empêcher toute injection via des IDs corrompus.
+	var safePlaceholders []string
+	for _, id := range doneIDs {
+		if isValidMatchID(id) {
+			safePlaceholders = append(safePlaceholders, "'"+id+"'")
+		}
+	}
+	if len(safePlaceholders) == 0 {
+		return "1=1"
+	}
+	return fmt.Sprintf("mp.match_id NOT IN (%s)", strings.Join(safePlaceholders, ","))
 }
 
 // findMatchesInSharedAll — détection V5 FINALE : tous les flags via shared DB.
@@ -462,4 +474,18 @@ func findMatchesInSharedDB(
 		result = append(result, matchID)
 	}
 	return result, rows.Err()
+}
+
+// isValidMatchID vérifie qu'un match_id est un UUID Halo valide (hex + tirets).
+// Empêche toute injection SQL via des IDs corrompus.
+func isValidMatchID(id string) bool {
+	if len(id) == 0 || len(id) > 64 {
+		return false
+	}
+	for _, c := range id {
+		if !((c >= '0' && c <= '9') || (c >= 'a' && c <= 'f') || (c >= 'A' && c <= 'F') || c == '-') {
+			return false
+		}
+	}
+	return true
 }

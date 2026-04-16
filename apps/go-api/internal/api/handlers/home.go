@@ -1,13 +1,13 @@
 // Package handlers — home.go : handlers HTTP pour la page d'accueil Mission Control.
 //
 // Endpoints :
-//   GET /api/v1/players/{player_slug}/pages/home     → HomePageResponse
-//   GET /api/v1/players/{player_slug}/battlepass     → BattlePassResponse
-//   GET /api/v1/players/{player_slug}/challenges     → ChallengesResponse
+//
+//	GET /api/v1/players/{player_slug}/pages/home     → HomePageResponse
+//	GET /api/v1/players/{player_slug}/battlepass     → BattlePassResponse
+//	GET /api/v1/players/{player_slug}/challenges     → ChallengesResponse
 package handlers
 
 import (
-	"encoding/json"
 	"net/http"
 
 	"github.com/go-chi/chi/v5"
@@ -32,7 +32,7 @@ func NewHomeHandler(cfg *config.AppConfig) *HomeHandler {
 func (h *HomeHandler) GetHomePage(w http.ResponseWriter, r *http.Request) {
 	pdb, err := h.resolvePlayer(r)
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusNotFound)
+		writeError(w, http.StatusNotFound, "player_not_found", "joueur introuvable")
 		return
 	}
 
@@ -41,12 +41,11 @@ func (h *HomeHandler) GetHomePage(w http.ResponseWriter, r *http.Request) {
 
 	page, err := svc.GetHomePage(r.Context(), pdb.Gamertag)
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
+		writeError(w, http.StatusInternalServerError, "home_page_error", "erreur chargement page d'accueil")
 		return
 	}
 
-	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(page) //nolint:errcheck
+	writeJSON(w, http.StatusOK, page)
 }
 
 // GetBattlePass retourne les informations Battle Pass (best-effort).
@@ -54,7 +53,7 @@ func (h *HomeHandler) GetHomePage(w http.ResponseWriter, r *http.Request) {
 func (h *HomeHandler) GetBattlePass(w http.ResponseWriter, r *http.Request) {
 	pdb, err := h.resolvePlayer(r)
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusNotFound)
+		writeError(w, http.StatusNotFound, "player_not_found", "joueur introuvable")
 		return
 	}
 
@@ -62,8 +61,7 @@ func (h *HomeHandler) GetBattlePass(w http.ResponseWriter, r *http.Request) {
 	svc := service.NewHomeService(repo)
 
 	resp := svc.GetBattlePass(r.Context())
-	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(resp) //nolint:errcheck
+	writeJSON(w, http.StatusOK, resp)
 }
 
 // GetChallenges retourne les défis actifs (best-effort).
@@ -71,7 +69,7 @@ func (h *HomeHandler) GetBattlePass(w http.ResponseWriter, r *http.Request) {
 func (h *HomeHandler) GetChallenges(w http.ResponseWriter, r *http.Request) {
 	pdb, err := h.resolvePlayer(r)
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusNotFound)
+		writeError(w, http.StatusNotFound, "player_not_found", "joueur introuvable")
 		return
 	}
 
@@ -79,8 +77,7 @@ func (h *HomeHandler) GetChallenges(w http.ResponseWriter, r *http.Request) {
 	svc := service.NewHomeService(repo)
 
 	resp := svc.GetChallenges(r.Context())
-	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(resp) //nolint:errcheck
+	writeJSON(w, http.StatusOK, resp)
 }
 
 // resolvePlayer traduit le slug URL en PlayerDB.

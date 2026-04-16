@@ -24,7 +24,7 @@ func NewGamertagHandler(cfg *config.AppConfig) *GamertagHandler {
 func (h *GamertagHandler) Search(w http.ResponseWriter, r *http.Request) {
 	q := strings.TrimSpace(r.URL.Query().Get("q"))
 	if q == "" {
-		writeJSON(w, http.StatusOK, domain.GamertagSearchResponse{Items: []domain.GamertagSearchResult{}})
+		writeJSON(w, http.StatusOK, domain.GamertagSearchResponse{Query: q, Items: []domain.GamertagSearchResult{}})
 		return
 	}
 
@@ -45,5 +45,5 @@ func (h *GamertagHandler) Search(w http.ResponseWriter, r *http.Request) {
 	if items == nil {
 		items = []domain.GamertagSearchResult{}
 	}
-	writeJSON(w, http.StatusOK, domain.GamertagSearchResponse{Items: items})
+	writeJSON(w, http.StatusOK, domain.GamertagSearchResponse{Query: q, Items: items})
 }

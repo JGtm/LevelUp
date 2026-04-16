@@ -5,8 +5,8 @@ import (
 	"encoding/json"
 	"net/http"
 
-	"levelup/go-api/internal/domain"
 	"levelup/go-api/internal/config"
+	"levelup/go-api/internal/domain"
 	"levelup/go-api/internal/platform/duckdb"
 	"levelup/go-api/internal/service"
 
@@ -29,14 +29,14 @@ func NewStatsHandler(cfg *config.AppConfig) *StatsHandler {
 func (h *StatsHandler) GetPage(w http.ResponseWriter, r *http.Request) {
 	pdb, err := h.resolvePlayer(r)
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusBadRequest)
+		writeError(w, http.StatusBadRequest, "player_not_found", "joueur introuvable")
 		return
 	}
 
 	var req domain.StatsQueryRequest
-	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		// Requête minimale acceptable sans corps.
-		req = domain.StatsQueryRequest{Tab: "win_loss", Mode: "period"}
+	if err := json.NewDecoder(http.MaxBytesReader(w, r.Body, 1<<20)).Decode(&req); err != nil {
+		writeError(w, http.StatusBadRequest, "invalid_json", "corps JSON invalide")
+		return
 	}
 	if req.Tab == "" {
 		req.Tab = "win_loss"
@@ -47,12 +47,11 @@ func (h *StatsHandler) GetPage(w http.ResponseWriter, r *http.Request) {
 
 	resp, svcErr := svc.GetPage(r.Context(), req)
 	if svcErr != nil {
-		http.Error(w, svcErr.Error(), http.StatusInternalServerError)
+		writeError(w, http.StatusInternalServerError, "stats_error", "erreur chargement stats")
 		return
 	}
 
-	w.Header().Set("Content-Type", "application/json")
-	_ = json.NewEncoder(w).Encode(resp)
+	writeJSON(w, http.StatusOK, resp)
 }
 
 func (h *StatsHandler) resolvePlayer(r *http.Request) (*duckdb.PlayerDB, error) {
