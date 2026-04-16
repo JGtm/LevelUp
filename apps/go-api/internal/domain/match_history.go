@@ -47,23 +47,23 @@ type PaginationMeta struct {
 
 // MatchHistoryRow représente une ligne dans la table historique des parties.
 type MatchHistoryRow struct {
-	MatchID                  string   `json:"match_id"`
+	MatchID                  string    `json:"match_id"`
 	StartTime                time.Time `json:"start_time"`
-	StartTimeLabel           string   `json:"start_time_label"`
-	OutcomeCode              int      `json:"outcome_code"`
-	OutcomeLabel             string   `json:"outcome_label"`
-	ScoreLabel               string   `json:"score_label"`
-	MapUI                    *string  `json:"map_ui"`
-	ModeUI                   *string  `json:"mode_ui"`
-	PlaylistLabel            *string  `json:"playlist_label"`
-	TeamMMR                  *float64 `json:"team_mmr"`
-	EnemyMMR                 *float64 `json:"enemy_mmr"`
-	DeltaMMR                 *float64 `json:"delta_mmr"`
-	WinRateHist              *float64 `json:"win_rate_hist"`
-	WinRateHistTotal         *int     `json:"win_rate_hist_total"`
-	PerformanceScoreRelative *int     `json:"performance_score_relative"`
-	AverageLifeMMSS          string   `json:"average_life_mmss"`
-	MatchURL                 string   `json:"match_url"`
+	StartTimeLabel           string    `json:"start_time_label"`
+	OutcomeCode              int       `json:"outcome_code"`
+	OutcomeLabel             string    `json:"outcome_label"`
+	ScoreLabel               string    `json:"score_label"`
+	MapUI                    *string   `json:"map_ui"`
+	ModeUI                   *string   `json:"mode_ui"`
+	PlaylistLabel            *string   `json:"playlist_label"`
+	TeamMMR                  *float64  `json:"team_mmr"`
+	EnemyMMR                 *float64  `json:"enemy_mmr"`
+	DeltaMMR                 *float64  `json:"delta_mmr"`
+	WinRateHist              *float64  `json:"win_rate_hist"`
+	WinRateHistTotal         *int      `json:"win_rate_hist_total"`
+	PerformanceScoreRelative *int      `json:"performance_score_relative"`
+	AverageLifeMMSS          string    `json:"average_life_mmss"`
+	MatchURL                 string    `json:"match_url"`
 }
 
 // MatchHistoryQuerySummary est le résumé de la requête historique.
@@ -88,6 +88,9 @@ type MatchHistoryQueryRequest struct {
 	SortField         string             `json:"sort_field"`
 	SortDir           string             `json:"sort_dir"`
 	IncludeExportHint bool               `json:"include_export_hint"`
+	// Columns permet au client de préciser les colonnes souhaitées dans la réponse.
+	// Nil/vide = toutes les colonnes disponibles (comportement par défaut).
+	Columns []string `json:"columns,omitempty"`
 }
 
 // MatchHistoryPageResponse est la réponse de POST match-history/query.
@@ -95,6 +98,7 @@ type MatchHistoryPageResponse struct {
 	Summary             MatchHistoryQuerySummary `json:"summary"`
 	Table               MatchHistoryTable        `json:"table"`
 	AvailableSortFields []string                 `json:"available_sort_fields"`
+	AvailableColumns    []string                 `json:"available_columns"`
 	ExportHint          *ExportHint              `json:"export_hint"`
 }
 

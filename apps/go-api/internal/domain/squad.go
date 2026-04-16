@@ -1,9 +1,10 @@
 // Package domain — squad.go : types pour les pages Escouade et Synthèse.
 //
 // Sprint 12 :
-//   GET /api/v1/players/{slug}/pages/squad          → SquadPageResponse
-//   GET /api/v1/players/{slug}/pages/squad?teammate= → SquadPageResponse (filtered)
-//   GET /api/v1/players/{slug}/pages/synthesis       → SynthesisPageResponse
+//
+//	GET /api/v1/players/{slug}/pages/squad          → SquadPageResponse
+//	GET /api/v1/players/{slug}/pages/squad?teammate= → SquadPageResponse (filtered)
+//	GET /api/v1/players/{slug}/pages/synthesis       → SynthesisPageResponse
 package domain
 
 import "time"
@@ -26,22 +27,22 @@ type TopTeammateRow struct {
 
 // SquadMatchRow est une ligne brute chargée depuis Q30 (matchs communs avec coéquipier).
 type SquadMatchRow struct {
-	MatchID         string
-	StartTime       time.Time
-	MapName         string
-	MapUI           string
-	PairName        string
-	PlaylistName    string
-	IsFirefight     bool
-	IsRanked        bool
-	Outcome         int
-	Kills           int
-	Deaths          int
-	Assists         int
-	KDA             *float64
-	Accuracy        *float64
-	TimePlayedSecs  int
-	TeamMMR         float64
+	MatchID          string
+	StartTime        time.Time
+	MapName          string
+	MapUI            string
+	PairName         string
+	PlaylistName     string
+	IsFirefight      bool
+	IsRanked         bool
+	Outcome          int
+	Kills            int
+	Deaths           int
+	Assists          int
+	KDA              *float64
+	Accuracy         *float64
+	TimePlayedSecs   int
+	TeamMMR          float64
 	SessionID        *int
 	SessionLabel     *string
 	PerformanceScore *float64
@@ -152,13 +153,13 @@ type SquadBreakdownStats struct {
 
 // SelectedTeammateData contient les données calculées pour le coéquipier sélectionné.
 type SelectedTeammateData struct {
-	Gamertag      string                `json:"gamertag"`
-	XUID          string                `json:"xuid"`
-	GamesTogether int                   `json:"games_together"`
+	Gamertag      string                 `json:"gamertag"`
+	XUID          string                 `json:"xuid"`
+	GamesTogether int                    `json:"games_together"`
 	SquadScore    *SquadPerformanceScore `json:"squad_score,omitempty"`
-	RadarMe       ParticipationProfile  `json:"radar_me"`
-	RadarTeammate ParticipationProfile  `json:"radar_teammate"`
-	Impact        SquadImpact           `json:"impact"`
+	RadarMe       ParticipationProfile   `json:"radar_me"`
+	RadarTeammate ParticipationProfile   `json:"radar_teammate"`
+	Impact        SquadImpact            `json:"impact"`
 	Records       map[string]SquadRecord `json:"records"`
 	Timeseries    []SquadTimeseriesPoint `json:"timeseries"`
 }
@@ -166,9 +167,9 @@ type SelectedTeammateData struct {
 // SquadPageResponse est la réponse complète de la page Escouade.
 type SquadPageResponse struct {
 	TopTeammates     []TopTeammate         `json:"top_teammates"`
-	SelectedTeammate *SelectedTeammateData  `json:"selected_teammate,omitempty"`
-	SoloStats        SquadBreakdownStats    `json:"solo_stats"`
-	SquadStats       SquadBreakdownStats    `json:"squad_stats"`
+	SelectedTeammate *SelectedTeammateData `json:"selected_teammate,omitempty"`
+	SoloStats        SquadBreakdownStats   `json:"solo_stats"`
+	SquadStats       SquadBreakdownStats   `json:"squad_stats"`
 }
 
 // ---------------------------------------------------------------------------
@@ -177,10 +178,10 @@ type SquadPageResponse struct {
 
 // HeatmapCell est une cellule de la heatmap carte × mode de jeu.
 type HeatmapCell struct {
-	RowKey  string  `json:"row_key"`
-	ColKey  string  `json:"col_key"`
-	Value   float64 `json:"value"`
-	Count   int     `json:"count"`
+	RowKey string  `json:"row_key"`
+	ColKey string  `json:"col_key"`
+	Value  float64 `json:"value"`
+	Count  int     `json:"count"`
 }
 
 // TopWeekEntry est une semaine performante dans l'historique du joueur.
@@ -188,13 +189,43 @@ type TopWeekEntry struct {
 	WeekLabel  string  `json:"week_label"`
 	WinRate    float64 `json:"win_rate"`
 	AvgKills   float64 `json:"avg_kills"`
+	AvgDeaths  float64 `json:"avg_deaths"`
+	AvgKDA     float64 `json:"avg_kda"`
 	MatchCount int     `json:"match_count"`
 }
 
 // SynthesisPageResponse est la réponse de la page Synthèse.
 type SynthesisPageResponse struct {
-	HeatmapData []HeatmapCell `json:"heatmap_data"`
-	TopWeeks    []TopWeekEntry `json:"top_weeks"`
-	TotalMatches int           `json:"total_matches"`
-	OverallWinRate float64     `json:"overall_win_rate"`
+	HeatmapData    []HeatmapCell       `json:"heatmap_data"`
+	TopWeeks       []TopWeekEntry      `json:"top_weeks"`
+	TotalMatches   int                 `json:"total_matches"`
+	OverallWinRate float64             `json:"overall_win_rate"`
+	SoloStats      SquadBreakdownStats `json:"solo_stats"`
+	SquadStats     SquadBreakdownStats `json:"squad_stats"`
+}
+
+// ---------------------------------------------------------------------------
+// Types de requête — Synthèse (POST body)
+// ---------------------------------------------------------------------------
+
+// SynthesisPageRequest : corps de POST /pages/synthesis.
+// Contient les filtres optionnels de la requête.
+type SynthesisPageRequest struct {
+	Filters FilterContextInput `json:"filters"`
+}
+
+// ---------------------------------------------------------------------------
+// Lignes brutes DuckDB — Synthèse (simplified)
+// ---------------------------------------------------------------------------
+
+// SynthesisMatchRow est une ligne brute chargée depuis Q33b.
+// N'inclut que les champs nécessaires au calcul top_weeks et breakdown.
+type SynthesisMatchRow struct {
+	MatchID       string
+	StartTime     time.Time
+	Outcome       int
+	Kills         int
+	Deaths        int
+	KDA           *float64
+	IsWithFriends bool
 }

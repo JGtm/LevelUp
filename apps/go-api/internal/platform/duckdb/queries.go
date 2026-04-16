@@ -370,7 +370,6 @@ FROM shared.highlight_events he
 WHERE he.match_id = ?
 ORDER BY he.tick_count ASC`
 
-
 // Q22 : Sessions — chargement des matchs pour le calcul des sessions.
 // Parametre : ?1 = xuid du joueur.
 // Retourne 6 colonnes : match_id, start_time, teammates_sig, is_ranked,
@@ -639,6 +638,24 @@ JOIN shared.match_registry r ON r.match_id = p.match_id
 WHERE p.xuid = ?
 GROUP BY map_name, mode_name
 ORDER BY match_count DESC`
+
+// Q33b : Synthèse — matchs du joueur pour le calcul top_weeks et breakdown solo/squad.
+// Retourne les champs minimaux nécessaires : outcome, kills, deaths, kda, is_with_friends.
+// Paramètre : ?1 = xuid du joueur.
+const Q33bSynthesisMatches = `
+SELECT
+    r.match_id,
+    r.start_time,
+    p.outcome,
+    p.kills,
+    p.deaths,
+    p.kda,
+    COALESCE(pme.is_with_friends, FALSE) AS is_with_friends
+FROM shared.match_participants p
+JOIN shared.match_registry r ON r.match_id = p.match_id
+LEFT JOIN player_match_enrichment pme ON r.match_id = pme.match_id
+WHERE p.xuid = ?
+ORDER BY r.start_time DESC`
 
 // =============================================================================
 // Sprint 13 — Citations + Médias

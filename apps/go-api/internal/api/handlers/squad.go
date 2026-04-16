@@ -1,17 +1,20 @@
 // Package handlers — squad.go : handlers HTTP pour les pages Escouade et Synthèse.
 //
 // Endpoints :
-//   GET /api/v1/players/{player_slug}/pages/squad             → SquadPageResponse
-//   GET /api/v1/players/{player_slug}/pages/squad?teammate=xuid
-//   GET /api/v1/players/{player_slug}/pages/synthesis        → SynthesisPageResponse
+//
+//	GET  /api/v1/players/{player_slug}/pages/squad             → SquadPageResponse
+//	GET  /api/v1/players/{player_slug}/pages/squad?teammate=xuid
+//	POST /api/v1/players/{player_slug}/pages/synthesis         → SynthesisPageResponse
 package handlers
 
 import (
+	"encoding/json"
 	"net/http"
 
 	"github.com/go-chi/chi/v5"
 
 	"levelup/go-api/internal/config"
+	"levelup/go-api/internal/domain"
 	"levelup/go-api/internal/platform/duckdb"
 	"levelup/go-api/internal/service"
 )
@@ -50,13 +53,24 @@ func (h *SquadHandler) GetSquadPage(w http.ResponseWriter, r *http.Request) {
 }
 
 // GetSynthesisPage retourne la page Synthèse (heatmap + top semaines).
-// GET /api/v1/players/{player_slug}/pages/synthesis
+// POST /api/v1/players/{player_slug}/pages/synthesis
+// Body (optionnel) : { "filters": {...} }
 func (h *SquadHandler) GetSynthesisPage(w http.ResponseWriter, r *http.Request) {
 	pdb, err := h.resolvePlayer(r)
 	if err != nil {
 		writeError(w, http.StatusNotFound, "player_not_found", err.Error())
 		return
 	}
+
+	// Body optionnel — filters déclarés mais utilisés en Sprint 33.
+	var req domain.SynthesisPageRequest
+	if r.ContentLength > 0 {
+		if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+			writeError(w, http.StatusBadRequest, "invalid_body", err.Error())
+			return
+		}
+	}
+	_ = req // filtres Sprint 33
 
 	repo := duckdb.NewSquadRepo(pdb)
 	svc := service.NewSquadService(repo)

@@ -1,16 +1,18 @@
 // Package handlers — media.go : handler HTTP pour la galerie médias.
 //
 // Endpoints :
-//   GET /api/v1/players/{player_slug}/pages/media[?page=N]   → MediaPageResponse
+//
+//	POST /api/v1/players/{player_slug}/pages/media   → MediaPageResponse
 package handlers
 
 import (
+	"encoding/json"
 	"net/http"
-	"strconv"
 
 	"github.com/go-chi/chi/v5"
 
 	"levelup/go-api/internal/config"
+	"levelup/go-api/internal/domain"
 	"levelup/go-api/internal/platform/duckdb"
 	"levelup/go-api/internal/service"
 )
@@ -26,7 +28,8 @@ func NewMediaHandler(cfg *config.AppConfig) *MediaHandler {
 }
 
 // GetMediaLibrary retourne la page paginée de la galerie médias.
-// GET /api/v1/players/{player_slug}/pages/media[?page=N]
+// POST /api/v1/players/{player_slug}/pages/media
+// Body (optionnel) : { "page": 1, "page_size": 24, "kind": "clip" }
 func (h *MediaHandler) GetMediaLibrary(w http.ResponseWriter, r *http.Request) {
 	pdb, err := h.resolvePlayer(r)
 	if err != nil {
@@ -34,17 +37,22 @@ func (h *MediaHandler) GetMediaLibrary(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	page := 1
-	if p := r.URL.Query().Get("page"); p != "" {
-		if n, err := strconv.Atoi(p); err == nil && n > 0 {
-			page = n
+	// Valeurs par défaut.
+	req := domain.MediaPageRequest{Page: 1}
+	if r.ContentLength > 0 {
+		if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+			writeError(w, http.StatusBadRequest, "invalid_body", err.Error())
+			return
 		}
+	}
+	if req.Page < 1 {
+		req.Page = 1
 	}
 
 	repo := duckdb.NewMediaRepo(pdb)
 	svc := service.NewMediaService(repo)
 
-	resp, err := svc.GetMediaPage(r.Context(), page)
+	resp, err := svc.GetMediaPage(r.Context(), req.Page)
 	if err != nil {
 		writeError(w, http.StatusInternalServerError, "media_page_error", err.Error())
 		return

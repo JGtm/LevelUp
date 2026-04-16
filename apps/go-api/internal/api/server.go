@@ -118,18 +118,22 @@ func NewRouter(
 			r.Get("/battlepass", home.GetBattlePass)
 			r.Get("/challenges", home.GetChallenges)
 
-			// Sprint 12 : Escouade + Synthèse
+			// Sprint 12 : Escouade | Sprint 32 : Synthèse → POST
 			squad := handlers.NewSquadHandler(cfg)
 			r.Get("/pages/squad", squad.GetSquadPage)
-			r.Get("/pages/synthesis", squad.GetSynthesisPage)
+			r.Post("/pages/synthesis", squad.GetSynthesisPage)
 
-			// Sprint 13 : Citations + Commendations + Médias
+			// Sprint 13 → Sprint 32 : Citations + Commendations + Médias → POST
 			citations := handlers.NewCitationsHandler(cfg)
-			r.Get("/pages/citations", citations.GetCitations)
-			r.Get("/pages/commendations", citations.GetCommendations)
+			r.Post("/pages/citations", citations.GetCitations)
+			r.Post("/pages/commendations", citations.GetCommendations)
 
 			media := handlers.NewMediaHandler(cfg)
-			r.Get("/pages/media", media.GetMediaLibrary)
+			r.Post("/pages/media", media.GetMediaLibrary)
+
+			// Sprint 32 : Explorer matches-query + Match History export
+			r.Post("/pages/explorer/matches-query", explorer.QueryMatches)
+			r.Get("/pages/match-history/export", mh.Export)
 		})
 
 		// Endpoints P1 : répertoire gamertags

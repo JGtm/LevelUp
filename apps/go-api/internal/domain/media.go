@@ -1,10 +1,23 @@
 // Package domain — media.go : types pour la page Galerie Médias.
 //
 // Sprint 13 :
-//   GET /api/v1/players/{slug}/pages/media  → MediaPageResponse
+//
+//	POST /api/v1/players/{slug}/pages/media  → MediaPageResponse
 package domain
 
 import "time"
+
+// ---------------------------------------------------------------------------
+// Types de requête — Médias (POST body)
+// ---------------------------------------------------------------------------
+
+// MediaPageRequest : corps de POST /pages/media.
+// Tous les champs sont optionnels.
+type MediaPageRequest struct {
+	Page     int    `json:"page"`                // numéro de page (défaut 1)
+	PageSize int    `json:"page_size,omitempty"` // taille de page (défaut 24)
+	Kind     string `json:"kind,omitempty"`      // filtre type : "clip" | "screenshot" | "" (tous)
+}
 
 // ---------------------------------------------------------------------------
 // Lignes brutes DuckDB — Médias

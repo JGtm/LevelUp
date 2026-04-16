@@ -3,9 +3,9 @@
 > Document de suivi opérationnel : tous les sprints de A à Z, dans l'ordre.
 > Chaque sprint a un objectif, des tâches, un critère de sortie et une estimation.
 >
-> Dernière mise à jour : 2026-04-17
+> Dernière mise à jour : 2026-05-16
 > Statut global : **Migration portage terminée** — Sprints 0–28 ✅ (Phases 0–5).
-> **Sprint 29 terminé ✅** — Sprints 30–44 ⬜ (Phases 6–9) — voir `IMPLEMENTATION_PLAN.md` pour le détail.
+> **Sprints 29–32 terminés ✅** — Sprint 33 ⬜ — Sprints 34–44 ⬜ (Phases 6–9) — voir `IMPLEMENTATION_PLAN.md` pour le détail.
 
 ---
 
@@ -59,9 +59,9 @@
 | 28 | Toolchain qualité Go + nettoyage Python | Phase 5 | 4-6j | ✅ | Sprint 27 |
 | | | | | | |
 | **29** | **Assainissement surface + garde-fous CI** | **Phase 6** | **5-8j** | **✅** | Sprint 28 |
-| 30 | Bugs sécurité & error handling | Phase 6 | 3-5j | ⬜ | Sprint 29 |
-| 31 | Onboarding Go & cookies session | Phase 6 | 3-4j | ⬜ | Sprint 29 |
-| 32 | Contrat API : Lots 1-3 (conformes + POST) | Phase 6 | 5-8j | ⬜ | Sprint 29 |
+| 30 | Bugs sécurité & error handling | Phase 6 | 3-5j | ✅ | Sprint 29 |
+| 31 | Onboarding Go & cookies session | Phase 6 | 3-4j | ✅ | Sprint 29 |
+| 32 | Contrat API : Lots 1-3 (conformes + POST) | Phase 6 | 5-8j | ✅ | Sprint 29 |
 | 33 | Contrat API : Lots 4-5 (réécriture + absents) | Phase 6 | 5-8j | ⬜ | Sprint 32 |
 | **34** | **Infra release/deploy Go** | **Phase 7** | **5-8j** | **⬜** | Sprint 33 |
 | 35 | Golden tests CI + shadow mode | Phase 7 | 4-6j | ⬜ | Sprint 34 |
@@ -73,11 +73,11 @@
 | **41** | **Scoreboard + weapon parsing + healthcheck** | **Phase 9** | **5-8j** | **⬜** | Sprint 36 |
 | 42 | Analyse UI avancée + fanout multi-joueur | Phase 9 | 5-8j | ⬜ | Sprint 41 |
 | 43 | Améliorations UX produit | Phase 9 | 5-8j | ⬜ | Sprint 36 |
-| 44 | ADR multi-titres + polish final | Phase 9 | 2-3j | ⬜ | Sprint 43 |
+| 44 | Implémentation multi-titres + ADR + polish final | Phase 9 | 6-9j | ⬜ | Sprint 43 |
 
 **Total Phases 0–5** : 130–195 jours (~7–10 mois) — ✅ terminé.
-**Total Phases 6–9** : ~64–100 jours (~3–5 mois) — ⬜ à faire.
-**Total global** : ~194–295 jours pour 1 dev senior temps plein.
+**Total Phases 6–9** : ~68–106 jours (~3–5 mois) — ⬜ à faire.
+**Total global** : ~198–301 jours pour 1 dev senior temps plein.
 
 > **Note** : les estimations sont basées sur ~55 000 LOC Python réels à porter
 > (vérifié : analysis=14K, sync=13K, api=12K, repos+services+auth+scripts ≈16K).
@@ -1107,22 +1107,38 @@
 | 3 | Page `/changelog` (parse `CHANGELOG.md` ou fichier statique) | ⬜ |
 | 4 | Durée session : somme `duration_seconds` + span → deux métriques | ⬜ |
 
----
 
-### Sprint 44 — ADR multi-titres + polish final (2–3 jours)
+### Sprint 44 — Implémentation multi-titres + ADR + polish final (6–9 jours)
 
+> **Objectif** : faire de la mise en place multi-titres un succès total, pas un simple pivot documentaire. Le sprint doit durcir le design, livrer une migration sûre depuis l'état Halo Infinite only, et fermer les angles morts de validation pour que `title_slug` devienne une capacité exploitable et testée.
+>
 > **Réf. audit** : P2-9, P3-6
 
 | # | Tâche | Statut |
 |--:|-------|:------:|
-| 1 | ADR mono-titre vs multi-titres | ⬜ |
-| 2 | Si multi-titres : définir `title_slug` comme dimension d'architecture | ⬜ |
-| 3 | Dernière passe qualité + documentation finale | ⬜ |
+| 1 | Rédiger l'ADR et figer le namespace par titre comme stratégie de référence | ⬜ |
+| 2 | Introduire un registre de titres et un résolveur de chemins title-aware pour éviter la propagation ad hoc de `title_slug` | ⬜ |
+| 3 | Rendre config, session, bootstrap, auth, jobs et sélection joueur explicitement title-aware | ⬜ |
+| 4 | Mettre en place le namespace `data/titles/{title_slug}/warehouse/...` et `data/titles/{title_slug}/players/{gamertag}/...` avec compatibilité legacy Halo Infinite only | ⬜ |
+| 5 | Ajouter une migration idempotente avec modes dry-run, apply et rollback, plus un journal de migration / backup | ⬜ |
+| 6 | Créer des fixtures multi-titres (Halo Infinite + titre synthétique), golden values et smoke E2E de non-régression | ⬜ |
+| 7 | Ajouter les tests ciblés sur les nouveaux points sensibles : paths, config, session, bootstrap, auth, handlers title-aware, isolement inter-titres | ⬜ |
+| 8 | Finaliser observabilité, docs, runbook et qualité globale du lot | ⬜ |
+
+**Sous-plan de réussite 10/10**
+
+- **Design** : `title_slug` ne doit pas vivre comme une string opportuniste. Le sprint doit introduire un point central de vérité pour les titres supportés, les capacités associées et la résolution des chemins/runtime context.
+- **Migration** : la transition depuis l'arborescence HI-only doit être réversible et vérifiable. Aucun déplacement destructif sans dry-run, backup manifest, et procédure de rollback.
+- **Validation** : la non-régression Halo Infinite doit être prouvée avant/après migration, et l'isolement inter-titres doit être testé avec au moins un corpus synthétique distinct.
 
 ### Gate Phase 9 (Gate finale post-migration)
 - [ ] Scoreboard complet, weapon parser branché
 - [ ] UX améliorée (tooltips, changelog, durées)
-- [ ] ADR multi-titres rédigée
+- [ ] Support multi-titres namespacé en place (`title_slug` + `data/titles/{title_slug}/...`)
+- [ ] Migration HI-only → namespace par titre validée en dry-run/apply/rollback
+- [ ] Zéro régression Halo Infinite sur corpus golden après migration
+- [ ] Isolement inter-titres validé sur un corpus synthétique ou un second corpus dédié
+- [ ] ADR multi-titres rédigée et alignée avec l'implémentation
 - [ ] `golangci-lint run` clean, couverture ≥ 50%, 0 TODO non-documenté
 - [ ] **Projet complet** ✨
 

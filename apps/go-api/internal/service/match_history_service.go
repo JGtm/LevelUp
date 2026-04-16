@@ -29,6 +29,15 @@ var availableSortFields = []string{
 	"team_mmr", "delta_mmr", "win_rate_hist",
 }
 
+// availableColumns expose les colonnes disponibles dans MatchHistoryRow.
+var availableColumns = []string{
+	"match_id", "start_time", "outcome_label", "score_label",
+	"map_ui", "mode_ui", "playlist_label",
+	"team_mmr", "enemy_mmr", "delta_mmr",
+	"win_rate_hist", "performance_score_relative",
+	"average_life_mmss", "match_url",
+}
+
 // MatchHistoryService construit la réponse paginée pour la page historique.
 type MatchHistoryService struct {
 	repo           port.MatchHistoryRepository
@@ -87,8 +96,28 @@ func (s *MatchHistoryService) GetPage(
 			Pagination: page,
 		},
 		AvailableSortFields: availableSortFields,
+		AvailableColumns:    availableColumns,
 		ExportHint:          exportHint,
 	}, nil
+}
+
+// ExportCSV charge les matchs filtrés et retourne les lignes pour export CSV.
+// Pas de pagination — retourne tous les matchs de la requête.
+func (s *MatchHistoryService) ExportCSV(
+	ctx context.Context,
+	req domain.MatchHistoryQueryRequest,
+) ([]domain.MatchHistoryRow, error) {
+	rawRows, err := s.repo.LoadAll(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("MatchHistoryService.ExportCSV: %w", err)
+	}
+
+	filtered := filterMatchHistoryRows(rawRows, req.Filters)
+	mapWinRates := computeMapWinRates(rawRows)
+	items := enrichRows(filtered, mapWinRates, s.waypointPlayer)
+	sortItems(items, req.SortField, req.SortDir)
+
+	return items, nil
 }
 
 // ---------------------------------------------------------------------------

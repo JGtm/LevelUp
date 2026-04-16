@@ -1,8 +1,9 @@
 // Package domain — citations.go : types pour les pages Citations et Commendations.
 //
 // Sprint 13 :
-//   GET /api/v1/players/{slug}/pages/citations      → CitationsPageResponse
-//   GET /api/v1/players/{slug}/pages/commendations  → CommendationsPageResponse
+//
+//	POST /api/v1/players/{slug}/pages/citations      → CitationsPageResponse
+//	POST /api/v1/players/{slug}/pages/commendations  → CommendationsPageResponse
 package domain
 
 // ---------------------------------------------------------------------------
@@ -67,11 +68,26 @@ type CitationsPageResponse struct {
 
 // CommendationItem est une médaille avec son total et sa catégorie.
 type CommendationItem struct {
-	MedalID     int64   `json:"medal_id"`
-	MedalName   string  `json:"medal_name"`
-	Count       int     `json:"count"`
-	Category    string  `json:"category"`
-	ImagePath   *string `json:"image_path,omitempty"`
+	MedalID   int64   `json:"medal_id"`
+	MedalName string  `json:"medal_name"`
+	Count     int     `json:"count"`
+	Category  string  `json:"category"`
+	ImagePath *string `json:"image_path,omitempty"`
+}
+
+// ---------------------------------------------------------------------------
+// Types de requête — Citations / Commendations (POST body)
+// ---------------------------------------------------------------------------
+
+// CitationsPageRequest : corps de POST /pages/citations.
+// Tous les champs sont optionnels (filtre facultatif).
+type CitationsPageRequest struct {
+	Category string `json:"category,omitempty"` // filtre par catégorie (vide = toutes)
+}
+
+// CommendationsPageRequest : corps de POST /pages/commendations.
+type CommendationsPageRequest struct {
+	Category string `json:"category,omitempty"` // filtre par catégorie (vide = toutes)
 }
 
 // CommendationCategory regroupe les médailles par catégorie.
