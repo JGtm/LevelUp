@@ -16,16 +16,18 @@ import (
 	"levelup/go-api/internal/config"
 	"levelup/go-api/internal/domain"
 	"levelup/go-api/internal/platform/jobs"
-	settings_platform "levelup/go-api/internal/platform/settings"
 	session_platform "levelup/go-api/internal/platform/session"
+	settings_platform "levelup/go-api/internal/platform/settings"
+	"levelup/go-api/internal/port"
 )
 
 // SetupHandler gère les endpoints de mise en place du profil joueur.
 type SetupHandler struct {
-	cfg          *config.AppConfig
-	sessionStore *session_platform.Store
+	cfg           *config.AppConfig
+	sessionStore  *session_platform.Store
 	settingsStore *settings_platform.Store
-	jobStore     *jobs.Store
+	jobStore      *jobs.Store
+	profileSvc    port.ProfileService
 }
 
 // NewSetupHandler crée un SetupHandler.
@@ -34,12 +36,14 @@ func NewSetupHandler(
 	sessionStore *session_platform.Store,
 	settingsStore *settings_platform.Store,
 	jobStore *jobs.Store,
+	profileSvc port.ProfileService,
 ) *SetupHandler {
 	return &SetupHandler{
-		cfg:          cfg,
-		sessionStore: sessionStore,
+		cfg:           cfg,
+		sessionStore:  sessionStore,
 		settingsStore: settingsStore,
-		jobStore:     jobStore,
+		jobStore:      jobStore,
+		profileSvc:    profileSvc,
 	}
 }
 
@@ -102,7 +106,7 @@ func (h *SetupHandler) CreatePlayer(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Créer le profil dans db_profiles.json
-	playerKey, warnings, err := createPlayerInProfiles(h.cfg, req)
+	playerKey, warnings, err := h.profileSvc.CreatePlayer(req)
 	if err != nil {
 		slog.Error("setup.CreatePlayer: failed", "gamertag", req.Gamertag, "err", err)
 		writeError(w, http.StatusInternalServerError, "profile_create_error",
@@ -181,83 +185,6 @@ func (h *SetupHandler) SmokeTest(w http.ResponseWriter, r *http.Request) {
 // ---------------------------------------------------------------------------
 // Helpers internes
 // ---------------------------------------------------------------------------
-
-// dbProfilesFile représente le format de db_profiles.json v2.1.
-type dbProfilesFile struct {
-	Version  string                       `json:"version"`
-	Profiles map[string]dbProfileEntry    `json:"profiles"`
-}
-
-type dbProfileEntry struct {
-	DBPath         string `json:"db_path"`
-	WaypointPlayer string `json:"waypoint_player,omitempty"`
-	XUID           string `json:"xuid,omitempty"`
-}
-
-// createPlayerInProfiles crée ou met à jour un profil dans db_profiles.json.
-// Retourne la clé du profil et les warnings éventuels.
-func createPlayerInProfiles(cfg *config.AppConfig, req domain.CreatePlayerProfileRequest) (string, []string, error) {
-	var profiles dbProfilesFile
-
-	data, err := os.ReadFile(cfg.DBProfilesPath)
-	if err != nil && !os.IsNotExist(err) {
-		return "", nil, err
-	}
-	if len(data) > 0 {
-		if err := json.Unmarshal(data, &profiles); err != nil {
-			return "", nil, err
-		}
-	}
-	if profiles.Version == "" {
-		profiles.Version = "2.1"
-	}
-	if profiles.Profiles == nil {
-		profiles.Profiles = make(map[string]dbProfileEntry)
-	}
-
-	// Recherche insensible à la casse
-	finalKey := req.Gamertag
-	for k := range profiles.Profiles {
-		if strings.EqualFold(k, req.Gamertag) {
-			finalKey = k
-			break
-		}
-	}
-
-	dbPath := filepath.Join("data", "players", finalKey, "stats.duckdb")
-	entry := dbProfileEntry{
-		DBPath:         dbPath,
-		WaypointPlayer: req.Gamertag,
-	}
-	if req.XUID != "" {
-		entry.XUID = req.XUID
-	}
-
-	// Merge avec l'existant
-	if existing, ok := profiles.Profiles[finalKey]; ok {
-		if req.XUID == "" && existing.XUID != "" {
-			entry.XUID = existing.XUID
-		}
-	}
-	profiles.Profiles[finalKey] = entry
-
-	// Écriture
-	out, err := json.MarshalIndent(profiles, "", "  ")
-	if err != nil {
-		return "", nil, err
-	}
-	if err := os.WriteFile(cfg.DBProfilesPath, out, 0o644); err != nil {
-		return "", nil, err
-	}
-
-	// Créer le dossier joueur
-	playerDir := filepath.Join(cfg.RepoRoot, "data", "players", finalKey)
-	if err := os.MkdirAll(playerDir, 0o755); err != nil {
-		return finalKey, []string{"Dossier joueur non créé : " + err.Error()}, nil
-	}
-
-	return finalKey, nil, nil
-}
 
 // fileExists retourne vrai si le chemin existe.
 func fileExists(path string) bool {

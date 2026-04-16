@@ -7,26 +7,24 @@ import (
 
 	"github.com/go-chi/chi/v5"
 
-	"levelup/go-api/internal/config"
 	"levelup/go-api/internal/domain"
-	"levelup/go-api/internal/platform/duckdb"
-	"levelup/go-api/internal/service"
+	"levelup/go-api/internal/port"
 )
 
 // FiltersHandler gère POST .../filters/resolve.
 type FiltersHandler struct {
-	cfg *config.AppConfig
+	newSvc ServiceFactory[port.FiltersService]
 }
 
 // NewFiltersHandler crée un FiltersHandler.
-func NewFiltersHandler(cfg *config.AppConfig) *FiltersHandler {
-	return &FiltersHandler{cfg: cfg}
+func NewFiltersHandler(newSvc ServiceFactory[port.FiltersService]) *FiltersHandler {
+	return &FiltersHandler{newSvc: newSvc}
 }
 
 // Resolve applique le filtre et retourne les options disponibles.
 func (h *FiltersHandler) Resolve(w http.ResponseWriter, r *http.Request) {
 	slug := chi.URLParam(r, "player_slug")
-	pdb, err := config.ResolvePlayer(r.Context(), h.cfg, slug)
+	svc, err := h.newSvc(r.Context(), slug)
 	if err != nil {
 		writeError(w, http.StatusNotFound, "player_not_found", err.Error())
 		return
@@ -38,8 +36,6 @@ func (h *FiltersHandler) Resolve(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	repo := duckdb.NewFiltersRepo(pdb)
-	svc := service.NewFiltersService(repo)
 	result, err := svc.Resolve(r.Context(), input)
 	if err != nil {
 		writeError(w, http.StatusInternalServerError, "filters_error", err.Error())

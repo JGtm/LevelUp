@@ -13,26 +13,25 @@ import (
 
 	"github.com/go-chi/chi/v5"
 
-	"levelup/go-api/internal/config"
 	"levelup/go-api/internal/domain"
-	"levelup/go-api/internal/platform/duckdb"
-	"levelup/go-api/internal/service"
+	"levelup/go-api/internal/port"
 )
 
 // SquadHandler gère les endpoints de la page Escouade et Synthèse.
 type SquadHandler struct {
-	cfg *config.AppConfig
+	newSvc ContextFactory[port.SquadService]
 }
 
 // NewSquadHandler crée un SquadHandler.
-func NewSquadHandler(cfg *config.AppConfig) *SquadHandler {
-	return &SquadHandler{cfg: cfg}
+func NewSquadHandler(newSvc ContextFactory[port.SquadService]) *SquadHandler {
+	return &SquadHandler{newSvc: newSvc}
 }
 
 // GetSquadPage retourne la page Escouade.
 // GET /api/v1/players/{player_slug}/pages/squad[?teammate=xuid]
 func (h *SquadHandler) GetSquadPage(w http.ResponseWriter, r *http.Request) {
-	pdb, err := h.resolvePlayer(r)
+	slug := chi.URLParam(r, "player_slug")
+	svc, xuid, gamertag, err := h.newSvc(r.Context(), slug)
 	if err != nil {
 		writeError(w, http.StatusNotFound, "player_not_found", err.Error())
 		return
@@ -40,10 +39,7 @@ func (h *SquadHandler) GetSquadPage(w http.ResponseWriter, r *http.Request) {
 
 	teammateXUID := r.URL.Query().Get("teammate")
 
-	repo := duckdb.NewSquadRepo(pdb)
-	svc := service.NewSquadService(repo)
-
-	page, err := svc.GetSquadPage(r.Context(), pdb.XUID, pdb.Gamertag, teammateXUID)
+	page, err := svc.GetSquadPage(r.Context(), xuid, gamertag, teammateXUID)
 	if err != nil {
 		writeError(w, http.StatusInternalServerError, "squad_page_error", err.Error())
 		return
@@ -56,7 +52,8 @@ func (h *SquadHandler) GetSquadPage(w http.ResponseWriter, r *http.Request) {
 // POST /api/v1/players/{player_slug}/pages/synthesis
 // Body (optionnel) : { "filters": {...} }
 func (h *SquadHandler) GetSynthesisPage(w http.ResponseWriter, r *http.Request) {
-	pdb, err := h.resolvePlayer(r)
+	slug := chi.URLParam(r, "player_slug")
+	svc, xuid, _, err := h.newSvc(r.Context(), slug)
 	if err != nil {
 		writeError(w, http.StatusNotFound, "player_not_found", err.Error())
 		return
@@ -72,20 +69,11 @@ func (h *SquadHandler) GetSynthesisPage(w http.ResponseWriter, r *http.Request) 
 	}
 	_ = req // filtres Sprint 33
 
-	repo := duckdb.NewSquadRepo(pdb)
-	svc := service.NewSquadService(repo)
-
-	page, err := svc.GetSynthesisPage(r.Context(), pdb.XUID)
+	page, err := svc.GetSynthesisPage(r.Context(), xuid)
 	if err != nil {
 		writeError(w, http.StatusInternalServerError, "synthesis_page_error", err.Error())
 		return
 	}
 
 	writeJSON(w, http.StatusOK, page)
-}
-
-// resolvePlayer traduit le slug URL en PlayerDB.
-func (h *SquadHandler) resolvePlayer(r *http.Request) (*duckdb.PlayerDB, error) {
-	slug := chi.URLParam(r, "player_slug")
-	return config.ResolvePlayer(r.Context(), h.cfg, slug)
 }

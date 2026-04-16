@@ -9,25 +9,24 @@ import (
 
 	"github.com/go-chi/chi/v5"
 
-	"levelup/go-api/internal/config"
 	"levelup/go-api/internal/domain"
-	"levelup/go-api/internal/platform/duckdb"
-	"levelup/go-api/internal/service"
+	"levelup/go-api/internal/port"
 )
 
 // SessionCompareHandler gère POST /pages/session-compare.
 type SessionCompareHandler struct {
-	cfg *config.AppConfig
+	newSvc ServiceFactory[port.SessionCompareService]
 }
 
 // NewSessionCompareHandler crée un SessionCompareHandler.
-func NewSessionCompareHandler(cfg *config.AppConfig) *SessionCompareHandler {
-	return &SessionCompareHandler{cfg: cfg}
+func NewSessionCompareHandler(newSvc ServiceFactory[port.SessionCompareService]) *SessionCompareHandler {
+	return &SessionCompareHandler{newSvc: newSvc}
 }
 
 // Compare traite POST /api/v1/players/{player_slug}/pages/session-compare.
 func (h *SessionCompareHandler) Compare(w http.ResponseWriter, r *http.Request) {
-	pdb, err := h.resolvePlayer(r)
+	slug := chi.URLParam(r, "player_slug")
+	svc, err := h.newSvc(r.Context(), slug)
 	if err != nil {
 		writeError(w, http.StatusNotFound, "player_not_found", err.Error())
 		return
@@ -39,10 +38,6 @@ func (h *SessionCompareHandler) Compare(w http.ResponseWriter, r *http.Request) 
 		return
 	}
 
-	statsRepo := duckdb.NewStatsRepo(pdb)
-	sessionsRepo := duckdb.NewSessionsRepo(pdb)
-	svc := service.NewSessionCompareService(sessionsRepo, statsRepo)
-
 	resp, svcErr := svc.Compare(r.Context(), req)
 	if svcErr != nil {
 		writeError(w, http.StatusInternalServerError, "session_compare_error", svcErr.Error())
@@ -50,9 +45,4 @@ func (h *SessionCompareHandler) Compare(w http.ResponseWriter, r *http.Request) 
 	}
 
 	writeJSON(w, http.StatusOK, resp)
-}
-
-func (h *SessionCompareHandler) resolvePlayer(r *http.Request) (*duckdb.PlayerDB, error) {
-	slug := chi.URLParam(r, "player_slug")
-	return config.ResolvePlayer(r.Context(), h.cfg, slug)
 }

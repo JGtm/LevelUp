@@ -9,25 +9,24 @@ import (
 
 	"github.com/go-chi/chi/v5"
 
-	"levelup/go-api/internal/config"
 	"levelup/go-api/internal/domain"
-	"levelup/go-api/internal/platform/duckdb"
-	"levelup/go-api/internal/service"
+	"levelup/go-api/internal/port"
 )
 
 // TimeseriesHandler gère POST /pages/timeseries.
 type TimeseriesHandler struct {
-	cfg *config.AppConfig
+	newSvc ServiceFactory[port.TimeseriesService]
 }
 
 // NewTimeseriesHandler crée un TimeseriesHandler.
-func NewTimeseriesHandler(cfg *config.AppConfig) *TimeseriesHandler {
-	return &TimeseriesHandler{cfg: cfg}
+func NewTimeseriesHandler(newSvc ServiceFactory[port.TimeseriesService]) *TimeseriesHandler {
+	return &TimeseriesHandler{newSvc: newSvc}
 }
 
 // GetPage traite POST /api/v1/players/{player_slug}/pages/timeseries.
 func (h *TimeseriesHandler) GetPage(w http.ResponseWriter, r *http.Request) {
-	pdb, err := h.resolvePlayer(r)
+	slug := chi.URLParam(r, "player_slug")
+	svc, err := h.newSvc(r.Context(), slug)
 	if err != nil {
 		writeError(w, http.StatusNotFound, "player_not_found", err.Error())
 		return
@@ -39,9 +38,6 @@ func (h *TimeseriesHandler) GetPage(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	repo := duckdb.NewStatsRepo(pdb)
-	svc := service.NewTimeseriesService(repo)
-
 	resp, svcErr := svc.GetPage(r.Context(), req)
 	if svcErr != nil {
 		writeError(w, http.StatusInternalServerError, "timeseries_error", svcErr.Error())
@@ -49,9 +45,4 @@ func (h *TimeseriesHandler) GetPage(w http.ResponseWriter, r *http.Request) {
 	}
 
 	writeJSON(w, http.StatusOK, resp)
-}
-
-func (h *TimeseriesHandler) resolvePlayer(r *http.Request) (*duckdb.PlayerDB, error) {
-	slug := chi.URLParam(r, "player_slug")
-	return config.ResolvePlayer(r.Context(), h.cfg, slug)
 }

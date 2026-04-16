@@ -12,27 +12,26 @@ import (
 
 	"github.com/go-chi/chi/v5"
 
-	"levelup/go-api/internal/config"
 	"levelup/go-api/internal/domain"
-	"levelup/go-api/internal/platform/duckdb"
-	"levelup/go-api/internal/service"
+	"levelup/go-api/internal/port"
 )
 
 // CitationsHandler gère les endpoints des pages Citations et Commendations.
 type CitationsHandler struct {
-	cfg *config.AppConfig
+	newSvc ContextFactory[port.CitationsService]
 }
 
 // NewCitationsHandler crée un CitationsHandler.
-func NewCitationsHandler(cfg *config.AppConfig) *CitationsHandler {
-	return &CitationsHandler{cfg: cfg}
+func NewCitationsHandler(newSvc ContextFactory[port.CitationsService]) *CitationsHandler {
+	return &CitationsHandler{newSvc: newSvc}
 }
 
 // GetCitations retourne la page Citations (accomplissements personnels).
 // POST /api/v1/players/{player_slug}/pages/citations
 // Body (optionnel) : { "category": "..." }
 func (h *CitationsHandler) GetCitations(w http.ResponseWriter, r *http.Request) {
-	pdb, err := h.resolvePlayer(r)
+	slug := chi.URLParam(r, "player_slug")
+	svc, _, _, err := h.newSvc(r.Context(), slug)
 	if err != nil {
 		writeError(w, http.StatusNotFound, "player_not_found", err.Error())
 		return
@@ -46,9 +45,6 @@ func (h *CitationsHandler) GetCitations(w http.ResponseWriter, r *http.Request) 
 			return
 		}
 	}
-
-	repo := duckdb.NewCitationsRepo(pdb)
-	svc := service.NewCitationsService(repo)
 
 	page, err := svc.GetCitationsPage(r.Context())
 	if err != nil {
@@ -68,7 +64,8 @@ func (h *CitationsHandler) GetCitations(w http.ResponseWriter, r *http.Request) 
 // POST /api/v1/players/{player_slug}/pages/commendations
 // Body (optionnel) : { "category": "..." }
 func (h *CitationsHandler) GetCommendations(w http.ResponseWriter, r *http.Request) {
-	pdb, err := h.resolvePlayer(r)
+	slug := chi.URLParam(r, "player_slug")
+	svc, xuid, _, err := h.newSvc(r.Context(), slug)
 	if err != nil {
 		writeError(w, http.StatusNotFound, "player_not_found", err.Error())
 		return
@@ -82,10 +79,7 @@ func (h *CitationsHandler) GetCommendations(w http.ResponseWriter, r *http.Reque
 		}
 	}
 
-	repo := duckdb.NewCitationsRepo(pdb)
-	svc := service.NewCitationsService(repo)
-
-	page, err := svc.GetCommendationsPage(r.Context(), pdb.XUID)
+	page, err := svc.GetCommendationsPage(r.Context(), xuid)
 	if err != nil {
 		writeError(w, http.StatusInternalServerError, "commendations_page_error", err.Error())
 		return
@@ -97,12 +91,6 @@ func (h *CitationsHandler) GetCommendations(w http.ResponseWriter, r *http.Reque
 	}
 
 	writeJSON(w, http.StatusOK, page)
-}
-
-// resolvePlayer traduit le slug URL en PlayerDB.
-func (h *CitationsHandler) resolvePlayer(r *http.Request) (*duckdb.PlayerDB, error) {
-	slug := chi.URLParam(r, "player_slug")
-	return config.ResolvePlayer(r.Context(), h.cfg, slug)
 }
 
 // ---------------------------------------------------------------------------

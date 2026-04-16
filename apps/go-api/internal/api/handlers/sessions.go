@@ -6,27 +6,26 @@ import (
 	"net/http"
 
 	"levelup/go-api/internal/analysis"
-	"levelup/go-api/internal/config"
 	"levelup/go-api/internal/domain"
-	"levelup/go-api/internal/platform/duckdb"
-	"levelup/go-api/internal/service"
+	"levelup/go-api/internal/port"
 
 	"github.com/go-chi/chi/v5"
 )
 
 // SessionsHandler gère les requêtes de calcul des sessions.
 type SessionsHandler struct {
-	cfg *config.AppConfig
+	newSvc ServiceFactory[port.SessionsService]
 }
 
 // NewSessionsHandler crée un SessionsHandler.
-func NewSessionsHandler(cfg *config.AppConfig) *SessionsHandler {
-	return &SessionsHandler{cfg: cfg}
+func NewSessionsHandler(newSvc ServiceFactory[port.SessionsService]) *SessionsHandler {
+	return &SessionsHandler{newSvc: newSvc}
 }
 
 // GetSessions traite GET /api/v1/players/{player_slug}/pages/sessions.
 func (h *SessionsHandler) GetSessions(w http.ResponseWriter, r *http.Request) {
-	pdb, err := h.resolvePlayer(r)
+	slug := chi.URLParam(r, "player_slug")
+	svc, err := h.newSvc(r.Context(), slug)
 	if err != nil {
 		writeError(w, http.StatusBadRequest, "player_not_found", "joueur introuvable")
 		return
@@ -47,9 +46,6 @@ func (h *SessionsHandler) GetSessions(w http.ResponseWriter, r *http.Request) {
 		opts.SplitOnRankedChange = true
 	}
 
-	repo := duckdb.NewSessionsRepo(pdb)
-	svc := service.NewSessionsService(repo)
-
 	resp, svcErr := svc.GetSessions(r.Context(), opts)
 	if svcErr != nil {
 		writeError(w, http.StatusInternalServerError, "sessions_error", "erreur calcul sessions")
@@ -57,9 +53,4 @@ func (h *SessionsHandler) GetSessions(w http.ResponseWriter, r *http.Request) {
 	}
 
 	writeJSON(w, http.StatusOK, resp)
-}
-
-func (h *SessionsHandler) resolvePlayer(r *http.Request) (*duckdb.PlayerDB, error) {
-	slug := chi.URLParam(r, "player_slug")
-	return config.ResolvePlayer(r.Context(), h.cfg, slug)
 }

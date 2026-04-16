@@ -5,19 +5,18 @@ import (
 	"net/http"
 	"strings"
 
-	"levelup/go-api/internal/config"
 	"levelup/go-api/internal/domain"
-	"levelup/go-api/internal/platform/duckdb"
+	"levelup/go-api/internal/port"
 )
 
 // GamertagHandler gère GET /api/v1/directory/gamertags/search?q=.
 type GamertagHandler struct {
-	cfg *config.AppConfig
+	svc port.GamertagSearchService
 }
 
 // NewGamertagHandler crée un GamertagHandler.
-func NewGamertagHandler(cfg *config.AppConfig) *GamertagHandler {
-	return &GamertagHandler{cfg: cfg}
+func NewGamertagHandler(svc port.GamertagSearchService) *GamertagHandler {
+	return &GamertagHandler{svc: svc}
 }
 
 // Search cherche les gamertags correspondant à la query ?q=.
@@ -28,16 +27,7 @@ func (h *GamertagHandler) Search(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	sharedPath := config.SharedDBPath(h.cfg)
-	db, err := duckdb.OpenReadOnly(sharedPath)
-	if err != nil {
-		writeError(w, http.StatusInternalServerError, "db_error", err.Error())
-		return
-	}
-	defer db.Close()
-
-	repo := duckdb.NewGamertagRepo(db)
-	items, err := repo.Search(r.Context(), q)
+	items, err := h.svc.Search(r.Context(), q)
 	if err != nil {
 		writeError(w, http.StatusInternalServerError, "gamertag_search_error", err.Error())
 		return

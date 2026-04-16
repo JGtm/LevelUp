@@ -2,9 +2,11 @@
 // Sprint 4 : CORS, rate-limit, slog logging, mode démo.
 // Sprint 16 : Settings, Setup.
 // Sprint 17 : Jobs longs persistants, sync initiale.
+// Sprint 37 : Architecture handlers & injection DI via ServiceRegistry.
 package api
 
 import (
+	"log/slog"
 	"net/http"
 	"path/filepath"
 
@@ -15,6 +17,7 @@ import (
 	"levelup/go-api/internal/api/middleware"
 	"levelup/go-api/internal/config"
 	auth_platform "levelup/go-api/internal/platform/auth"
+	platform_duckdb "levelup/go-api/internal/platform/duckdb"
 	jobs_platform "levelup/go-api/internal/platform/jobs"
 	session_platform "levelup/go-api/internal/platform/session"
 	settings_platform "levelup/go-api/internal/platform/settings"
@@ -57,6 +60,17 @@ func NewRouter(
 		r.Use(middleware.Shadow(middleware.ShadowConfig{PythonURL: cfg.PythonURL}))
 	}
 
+	// Sprint 37 : ServiceRegistry — câblage par injection de dépendances.
+	reg := NewServiceRegistry(cfg)
+
+	// Gamertag search — service global (shared DB, pas de résolution joueur).
+	var gamertagSvc port.GamertagSearchService
+	if sharedDB, err := platform_duckdb.OpenReadOnly(config.SharedDBPath(cfg)); err != nil {
+		slog.Warn("shared DB unavailable for gamertag search", "err", err)
+	} else {
+		gamertagSvc = platform_duckdb.NewGamertagRepo(sharedDB)
+	}
+
 	// Health check (pas de préfixe /api/v1 — sondage infrastructurel)
 	r.Get("/health", handlers.NewHealthHandlerWithVersion(bootRepo, cfg.AppVersion).ServeHTTP)
 
@@ -81,7 +95,8 @@ func NewRouter(
 		r.Patch("/settings", settingsHandler.PatchSettings)
 		r.Post("/settings/media/reset-index", settingsHandler.PostMediaResetIndex)
 
-		setupHandler := handlers.NewSetupHandler(cfg, sessionStore, settingsStore, jobStore)
+		setupHandler := handlers.NewSetupHandler(cfg, sessionStore, settingsStore, jobStore,
+			service.NewProfileService(cfg.DBProfilesPath, cfg.RepoRoot))
 		r.Post("/setup/players", setupHandler.CreatePlayer)
 		r.Post("/setup/smoke-test", setupHandler.SmokeTest)
 
@@ -89,51 +104,51 @@ func NewRouter(
 		r.Get("/jobs/{job_id}", handlers.NewJobsHandler(jobStore).GetJob)
 		r.Post("/sync/initial", handlers.NewSyncHandler(cfg, settingsStore, jobStore).StartInitialSync)
 
-		// Endpoints P1 : pages par joueur
+		// Endpoints P1 : pages par joueur (Sprint 37 — DI via ServiceRegistry)
 		r.Route("/players/{player_slug}", func(r chi.Router) {
-			filters := handlers.NewFiltersHandler(cfg)
+			filters := handlers.NewFiltersHandler(reg.Filters)
 			r.Post("/filters/resolve", filters.Resolve)
 
-			mh := handlers.NewMatchHistoryHandler(cfg)
+			mh := handlers.NewMatchHistoryHandler(reg.MatchHistoryCtx)
 			r.Post("/pages/match-history/query", mh.Query)
 
-			career := handlers.NewCareerHandler(cfg)
+			career := handlers.NewCareerHandler(reg.Career)
 			r.Get("/pages/career", career.GetCareer)
 			r.Get("/pages/career/top-matches", career.GetTopMatches)
 			r.Get("/pages/career/encounters", career.GetEncounters)
 
 			// Sprint 8 : Match View + Explorer
-			mv := handlers.NewMatchViewHandler(cfg)
+			mv := handlers.NewMatchViewHandler(reg.MatchView)
 			r.Get("/matches/{match_id}", mv.GetMatchView)
 
-			explorer := handlers.NewExplorerHandler(cfg)
+			explorer := handlers.NewExplorerHandler(reg.ExplorerCtx, reg.MatchHistoryCtx)
 			r.Post("/pages/explorer/player-query", explorer.QueryPlayer)
 
 			// Sprint 9 : Sessions
-			sessions := handlers.NewSessionsHandler(cfg)
+			sessions := handlers.NewSessionsHandler(reg.Sessions)
 			r.Get("/pages/sessions", sessions.GetSessions)
 
 			// Sprint 10 : Stats/Séries temporelles
-			stats := handlers.NewStatsHandler(cfg)
+			stats := handlers.NewStatsHandler(reg.Stats)
 			r.Post("/pages/stats/query", stats.GetPage)
 
 			// Sprint 11 : Accueil/Home + Battle Pass + Challenges
-			home := handlers.NewHomeHandler(cfg)
+			home := handlers.NewHomeHandler(reg.HomeCtx)
 			r.Get("/pages/home", home.GetHomePage)
 			r.Get("/battlepass", home.GetBattlePass)
 			r.Get("/challenges", home.GetChallenges)
 
 			// Sprint 12 : Escouade | Sprint 32 : Synthèse → POST
-			squad := handlers.NewSquadHandler(cfg)
+			squad := handlers.NewSquadHandler(reg.SquadCtx)
 			r.Get("/pages/squad", squad.GetSquadPage)
 			r.Post("/pages/synthesis", squad.GetSynthesisPage)
 
 			// Sprint 13 → Sprint 32 : Citations + Commendations + Médias → POST
-			citations := handlers.NewCitationsHandler(cfg)
+			citations := handlers.NewCitationsHandler(reg.CitationsCtx)
 			r.Post("/pages/citations", citations.GetCitations)
 			r.Post("/pages/commendations", citations.GetCommendations)
 
-			media := handlers.NewMediaHandler(cfg)
+			media := handlers.NewMediaHandler(reg.Media)
 			r.Post("/pages/media", media.GetMediaLibrary)
 
 			// Sprint 32 : Explorer matches-query + Match History export
@@ -141,24 +156,26 @@ func NewRouter(
 			r.Get("/pages/match-history/export", mh.Export)
 
 			// Sprint 33 : Teammates (contrat FastAPI)
-			teammates := handlers.NewTeammatesHandler(cfg)
+			teammates := handlers.NewTeammatesHandler(reg.TeammatesCtx)
 			r.Post("/pages/teammates", teammates.GetPage)
 
 			// Sprint 33 : Timeseries (contrat FastAPI)
-			timeseries := handlers.NewTimeseriesHandler(cfg)
+			timeseries := handlers.NewTimeseriesHandler(reg.Timeseries)
 			r.Post("/pages/timeseries", timeseries.GetPage)
 
 			// Sprint 33 : Session Compare
-			sc := handlers.NewSessionCompareHandler(cfg)
+			sc := handlers.NewSessionCompareHandler(reg.SessionCompare)
 			r.Post("/pages/session-compare", sc.Compare)
 
 			// Sprint 33 : Last Match Resolve
-			lm := handlers.NewLastMatchHandler(cfg)
+			lm := handlers.NewLastMatchHandler(reg.LastMatch)
 			r.Post("/pages/last-match/resolve", lm.Resolve)
 		})
 
 		// Endpoints P1 : répertoire gamertags
-		r.Get("/directory/gamertags/search", handlers.NewGamertagHandler(cfg).Search)
+		if gamertagSvc != nil {
+			r.Get("/directory/gamertags/search", handlers.NewGamertagHandler(gamertagSvc).Search)
+		}
 	})
 
 	return r
