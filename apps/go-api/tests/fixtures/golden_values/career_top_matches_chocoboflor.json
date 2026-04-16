@@ -1,0 +1,232 @@
+{
+  "best_matches": [
+    {
+      "match_id": "f6315f2a-e54b-4b89-8274-bc07869d7689",
+      "performance_score": 90.1,
+      "map_ui": "Cliffhanger",
+      "mode_ui": "Arena:Slayer on Cliffhanger - Forge",
+      "outcome_code": 2,
+      "outcome_label": "Victoire",
+      "kills": 15,
+      "deaths": 6,
+      "kda": 11
+    },
+    {
+      "match_id": "d7e0d591-9232-404a-8b22-236dae97dfd0",
+      "performance_score": 89.2,
+      "map_ui": "Origin",
+      "mode_ui": "Arena:Slayer on Origin",
+      "outcome_code": 2,
+      "outcome_label": "Victoire",
+      "kills": 14,
+      "deaths": 8,
+      "kda": 8
+    },
+    {
+      "match_id": "d550a059-6bd6-441f-b6a2-df26172e2962",
+      "performance_score": 86.9,
+      "map_ui": "Empyrean",
+      "mode_ui": "Arena:Slayer on Empyrean",
+      "outcome_code": 2,
+      "outcome_label": "Victoire",
+      "kills": 14,
+      "deaths": 8,
+      "kda": 8.66
+    },
+    {
+      "match_id": "ec03fa50-5d02-421b-8503-5a60161005bc",
+      "performance_score": 85.6,
+      "map_ui": "Live Fire",
+      "mode_ui": "Arena:Slayer on Live Fire - Forge",
+      "outcome_code": 2,
+      "outcome_label": "Victoire",
+      "kills": 15,
+      "deaths": 10,
+      "kda": 8
+    },
+    {
+      "match_id": "8faf5c41-0af2-4102-b687-60b297afc1c7",
+      "performance_score": 85.5,
+      "map_ui": "Illusion",
+      "mode_ui": "Arena:CTF on Illusion",
+      "outcome_code": 2,
+      "outcome_label": "Victoire",
+      "kills": 13,
+      "deaths": 9,
+      "kda": 7
+    },
+    {
+      "match_id": "ac919b39-1654-43d0-b2bc-bc2ad19afc3c",
+      "performance_score": 85,
+      "map_ui": "Absolution",
+      "mode_ui": "Arena:King of the Hill on Absolution",
+      "outcome_code": 2,
+      "outcome_label": "Victoire",
+      "kills": 9,
+      "deaths": 4,
+      "kda": 6.33
+    },
+    {
+      "match_id": "70a1c6c6-6cf6-48dd-9b34-39df2b111a2a",
+      "performance_score": 85,
+      "map_ui": "Nemesis",
+      "mode_ui": "Arena:CTF on Nemesis",
+      "outcome_code": 2,
+      "outcome_label": "Victoire",
+      "kills": 17,
+      "deaths": 7,
+      "kda": 11.33
+    },
+    {
+      "match_id": "81c0fc99-1cfe-4047-8bb7-81ce7d51743f",
+      "performance_score": 84.9,
+      "map_ui": "Catalyst",
+      "mode_ui": "Arena:CTF on Catalyst",
+      "outcome_code": 2,
+      "outcome_label": "Victoire",
+      "kills": 7,
+      "deaths": 5,
+      "kda": 3.66
+    },
+    {
+      "match_id": "04d05635-a0c6-4121-93bd-cf8e6afefaa3",
+      "performance_score": 84.1,
+      "map_ui": "Prism",
+      "mode_ui": "Arena:Slayer on Prism - Forge",
+      "outcome_code": 2,
+      "outcome_label": "Victoire",
+      "kills": 13,
+      "deaths": 8,
+      "kda": 8
+    },
+    {
+      "match_id": "3b400ab0-8801-4dcd-9bb6-3eac1bb463c8",
+      "performance_score": 84,
+      "map_ui": "Elevation",
+      "mode_ui": "Arena:CTF on Elevation",
+      "outcome_code": 3,
+      "outcome_label": "Défaite",
+      "kills": 10,
+      "deaths": 6,
+      "kda": 5.33
+    }
+  ],
+  "worst_matches": [
+    {
+      "match_id": "4aa3a9b5-068a-4d7c-935f-46a808f545c9",
+      "performance_score": 81.3,
+      "map_ui": "Nemesis",
+      "mode_ui": "Arena:Slayer on Nemesis",
+      "outcome_code": 2,
+      "outcome_label": "Victoire",
+      "kills": 13,
+      "deaths": 9,
+      "kda": 6.33
+    },
+    {
+      "match_id": "736256f1-2101-44c2-bf19-8da503b4035c",
+      "performance_score": 81.8,
+      "map_ui": "Takamanohara",
+      "mode_ui": "Community:Slayer on Takamanohara",
+      "outcome_code": 2,
+      "outcome_label": "Victoire",
+      "kills": 12,
+      "deaths": 5,
+      "kda": 8
+    },
+    {
+      "match_id": "aaaf6c76-2a93-4e4b-abab-b9c685a7fdce",
+      "performance_score": 82.1,
+      "map_ui": "Kaiketsu",
+      "mode_ui": "Arena:Strongholds on Kaiketsu",
+      "outcome_code": 2,
+      "outcome_label": "Victoire",
+      "kills": 21,
+      "deaths": 13,
+      "kda": 10.66
+    },
+    {
+      "match_id": "5cd53279-5773-410b-9a3e-55fcaa4a1cb2",
+      "performance_score": 82.4,
+      "map_ui": "Streets",
+      "mode_ui": "Arena:Team Slayer on Streets - Forge",
+      "outcome_code": 3,
+      "outcome_label": "Défaite",
+      "kills": 16,
+      "deaths": 9,
+      "kda": 8.66
+    },
+    {
+      "match_id": "aa415da6-37b2-4a38-bd6d-1f9b63ee01b5",
+      "performance_score": 83.1,
+      "map_ui": "Opulence",
+      "mode_ui": "Community:Slayer on Opulence",
+      "outcome_code": 2,
+      "outcome_label": "Victoire",
+      "kills": 18,
+      "deaths": 9,
+      "kda": 11.33
+    },
+    {
+      "match_id": "087474d9-bbd5-40a4-a900-164a2cdd9c26",
+      "performance_score": 83.2,
+      "map_ui": "Salvation",
+      "mode_ui": "Community:Team Slayer on Salvation",
+      "outcome_code": 2,
+      "outcome_label": "Victoire",
+      "kills": 9,
+      "deaths": 5,
+      "kda": 5.33
+    },
+    {
+      "match_id": "cba488f7-2156-4c8f-ad31-ac8ef69e7533",
+      "performance_score": 83.2,
+      "map_ui": "Starboard",
+      "mode_ui": "Community:Team Slayer on Starboard",
+      "outcome_code": 2,
+      "outcome_label": "Victoire",
+      "kills": 14,
+      "deaths": 10,
+      "kda": 6
+    },
+    {
+      "match_id": "fac07bec-1e01-446c-aaab-ca2cadf96f05",
+      "performance_score": 83.3,
+      "map_ui": "Kaiketsu",
+      "mode_ui": "Community:Team Slayer on Kaiketsu",
+      "outcome_code": 2,
+      "outcome_label": "Victoire",
+      "kills": 14,
+      "deaths": 9,
+      "kda": 7.66
+    },
+    {
+      "match_id": "6cdec7c3-cf2f-4067-8155-37a438ec6d2d",
+      "performance_score": 83.6,
+      "map_ui": "Absolution",
+      "mode_ui": "Arena:King of the Hill on Absolution",
+      "outcome_code": 2,
+      "outcome_label": "Victoire",
+      "kills": 17,
+      "deaths": 10,
+      "kda": 9.66
+    },
+    {
+      "match_id": "a17e61a2-5142-4204-acdf-6f469a12d428",
+      "performance_score": 84,
+      "map_ui": "Dynasty",
+      "mode_ui": "Arena:CTF on Dynasty",
+      "outcome_code": 2,
+      "outcome_label": "Victoire",
+      "kills": 5,
+      "deaths": 1,
+      "kda": 4.66
+    }
+  ],
+  "_meta": {
+    "golden_value_version": "live",
+    "captured_at": "2026-04-16",
+    "source": "captured_live",
+    "tolerances": {}
+  }
+}

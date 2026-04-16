@@ -63,7 +63,7 @@ func (r *ServiceRegistry) LastMatch(ctx context.Context, slug string) (port.Last
 	if err != nil {
 		return nil, err
 	}
-	return service.NewLastMatchService(duckdb.NewLastMatchRepo(pdb)), nil
+	return service.NewLastMatchService(duckdb.NewStatsRepo(pdb)), nil
 }
 
 // MatchView retourne un MatchViewService pour le joueur.

@@ -3,19 +3,129 @@
   "items": [
     {
       "gamertag": "Chocoboflor",
-      "xuid": "2535412781684883",
-      "score": 1.0,
+      "xuid": "2535469190789936",
+      "score": 364,
+      "exact_match": false
+    },
+    {
+      "gamertag": "EchoSierraX",
+      "xuid": "2533274932830004",
+      "score": 4,
+      "exact_match": false
+    },
+    {
+      "gamertag": "Psycho Reed",
+      "xuid": "2533274826034829",
+      "score": 4,
+      "exact_match": false
+    },
+    {
+      "gamertag": "PsychoBadger426",
+      "xuid": "2533274827295759",
+      "score": 4,
+      "exact_match": false
+    },
+    {
+      "gamertag": "Gabricho",
+      "xuid": "2533274946553956",
+      "score": 3,
+      "exact_match": false
+    },
+    {
+      "gamertag": "TschornajaAkula",
+      "xuid": "2535428576102342",
+      "score": 3,
+      "exact_match": false
+    },
+    {
+      "gamertag": "ChoosyAnt762535",
+      "xuid": "2535406660593707",
+      "score": 2,
+      "exact_match": false
+    },
+    {
+      "gamertag": "Choukapik3156",
+      "xuid": "2533274927640199",
+      "score": 2,
+      "exact_match": false
+    },
+    {
+      "gamertag": "DrChoclatThundr",
+      "xuid": "2533274795104762",
+      "score": 2,
+      "exact_match": false
+    },
+    {
+      "gamertag": "Echo Fatalz",
+      "xuid": "2533275016023239",
+      "score": 2,
+      "exact_match": false
+    },
+    {
+      "gamertag": "Han ChoIo",
+      "xuid": "2533274833391443",
+      "score": 2,
+      "exact_match": false
+    },
+    {
+      "gamertag": "Neschola",
+      "xuid": "2535451933743931",
+      "score": 2,
+      "exact_match": false
+    },
+    {
+      "gamertag": "Psychoh90",
+      "xuid": "2535427529143456",
+      "score": 2,
+      "exact_match": false
+    },
+    {
+      "gamertag": "l Nicholas Cage",
+      "xuid": "2533274864516869",
+      "score": 2,
+      "exact_match": false
+    },
+    {
+      "gamertag": "sX PSYCHO Xs",
+      "xuid": "2533274871301345",
+      "score": 2,
+      "exact_match": false
+    },
+    {
+      "gamertag": "the Mr Nicholas",
+      "xuid": "2535470275094779",
+      "score": 2,
+      "exact_match": false
+    },
+    {
+      "gamertag": "xNT PsyChoTiC",
+      "xuid": "2533274911047104",
+      "score": 2,
+      "exact_match": false
+    },
+    {
+      "gamertag": "BichonSpectral",
+      "xuid": "2533274795464335",
+      "score": 1,
+      "exact_match": false
+    },
+    {
+      "gamertag": "BlueEcho527",
+      "xuid": "2535410089225188",
+      "score": 1,
+      "exact_match": false
+    },
+    {
+      "gamertag": "CachoCrackYT",
+      "xuid": "2535416745266971",
+      "score": 1,
       "exact_match": false
     }
   ],
-
   "_meta": {
-    "golden_value_version": "sprint1",
-    "captured_at": "2026-04-15",
-    "source": "schema-conformant — recherche partielle 'cho'",
-    "tolerances": {
-      "items": "ordre par score DESC — vérifier que Chocoboflor est dans les résultats"
-    },
-    "sprint_target": "Sprint 8 — GET /directory/gamertags/search?q=cho"
+    "golden_value_version": "live",
+    "captured_at": "2026-04-16",
+    "source": "captured_live",
+    "tolerances": {}
   }
 }

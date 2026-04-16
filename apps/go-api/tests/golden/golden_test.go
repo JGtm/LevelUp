@@ -69,7 +69,8 @@ func TestGolden_HealthOK_Structure(t *testing.T) {
 	m := loadGolden(t, "health_ok.json")
 	assertKeyExists(t, m, "status")
 	assertStringField(t, m, "status", "ok")
-	assertKeyExists(t, m, "checks")
+	assertKeyExists(t, m, "match_count")
+	assertKeyExists(t, m, "player_count")
 }
 
 func TestGolden_BootstrapNoAuth_Structure(t *testing.T) {
@@ -97,13 +98,15 @@ func TestGolden_BootstrapNoAuth_Structure(t *testing.T) {
 
 func TestGolden_PlayersList_Structure(t *testing.T) {
 	m := loadGolden(t, "players_list.json")
-	assertKeyExists(t, m, "players")
+	assertKeyExists(t, m, "items")
+	assertKeyExists(t, m, "default_player_slug")
 }
 
 func TestGolden_FiltersResolveAll_Structure(t *testing.T) {
 	m := loadGolden(t, "filters_resolve_all.json")
-	// Le filtre résolu doit contenir les options de filtrage
-	assertKeyExists(t, m, "match_count")
+	assertKeyExists(t, m, "effective")
+	assertKeyExists(t, m, "available_options")
+	assertKeyExists(t, m, "counts")
 }
 
 func TestGolden_CareerPage_Structure(t *testing.T) {
@@ -113,18 +116,20 @@ func TestGolden_CareerPage_Structure(t *testing.T) {
 
 func TestGolden_MatchHistoryPage1_Structure(t *testing.T) {
 	m := loadGolden(t, "match_history_page1_nofilter.json")
-	assertKeyExists(t, m, "matches")
-	assertKeyExists(t, m, "pagination")
+	assertKeyExists(t, m, "summary")
+	assertKeyExists(t, m, "table")
 }
 
 func TestGolden_GamertagSearchCho_Structure(t *testing.T) {
 	m := loadGolden(t, "gamertag_search_cho.json")
-	assertKeyExists(t, m, "results")
+	assertKeyExists(t, m, "query")
+	assertKeyExists(t, m, "items")
 }
 
 func TestGolden_MatchViewSlayer_Structure(t *testing.T) {
 	m := loadGolden(t, "match_view_slayer.json")
-	assertKeyExists(t, m, "match_id")
+	assertKeyExists(t, m, "header")
+	assertKeyExists(t, m, "summary_tab")
 }
 
 // ---------------------------------------------------------------------------

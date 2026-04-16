@@ -41,7 +41,7 @@ func (s *TimeseriesService) GetPage(
 
 	resp := domain.TimeseriesPageResponse{
 		TotalMatches:     len(matches),
-		SummaryTab:       buildSummaryTab(matches),
+		SummaryTab:       buildTimeseriesSummaryTab(matches),
 		CumulTab:         buildCumulTab(matches),
 		FormTab:          buildTimeseriesFormTab(matches),
 		IntensityTab:     buildIntensityTab(matches),
@@ -55,7 +55,7 @@ func (s *TimeseriesService) GetPage(
 // Onglet Summary
 // ---------------------------------------------------------------------------
 
-func buildSummaryTab(matches []domain.StatsMatchRow) domain.TimeseriesSummaryTab {
+func buildTimeseriesSummaryTab(matches []domain.StatsMatchRow) domain.TimeseriesSummaryTab {
 	cards := make([]domain.TimeseriesKpiCard, 0, 6)
 	n := len(matches)
 	if n == 0 {

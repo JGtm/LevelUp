@@ -49,7 +49,7 @@ import os
 
 API_URL = os.environ.get("LEVELUP_API_URL", "http://localhost:8000/api/v1")
 PLAYER = os.environ.get("LEVELUP_PLAYER", "Chocoboflor")
-OUT_DIR = Path(__file__).parent
+OUT_DIR = Path(__file__).resolve().parent.parent / "tests" / "fixtures" / "golden_values"
 
 # ---------------------------------------------------------------------------
 # Helpers
@@ -214,39 +214,44 @@ def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--only", nargs="*", choices=ALL_CAPTURES)
     parser.add_argument("--player", default=PLAYER)
+    parser.add_argument("--continue-on-error", action="store_true",
+                        help="Continue capture even if an endpoint fails")
     args = parser.parse_args()
 
     targets = set(args.only) if args.only else set(ALL_CAPTURES)
     player = args.player
+    errors: list[str] = []
 
     print(f"Capture golden values depuis {API_URL} pour joueur '{player}'")
 
-    with httpx.Client(base_url=API_URL, timeout=30.0) as client:
-        if "health" in targets:
-            print("→ health")
-            capture_health(client)
-        if "bootstrap" in targets:
-            print("→ bootstrap")
-            capture_bootstrap(client)
-        if "players" in targets:
-            print("→ players")
-            capture_players(client)
-        if "filters" in targets:
-            print(f"→ filters ({player})")
-            capture_filters_resolve(client, player)
-        if "career" in targets:
-            print(f"→ career ({player})")
-            capture_career(client, player)
-        if "match_history" in targets:
-            print(f"→ match_history ({player})")
-            capture_match_history(client, player)
-        if "gamertag_search" in targets:
-            print("→ gamertag_search")
-            capture_gamertag_search(client)
-        if "match_view" in targets:
-            print(f"→ match_view ({player})")
-            capture_match_view(client, player)
+    with httpx.Client(base_url=API_URL, timeout=30.0, headers={"Origin": "http://localhost:5173"}) as client:
+        for name, fn in [
+            ("health", lambda: capture_health(client)),
+            ("bootstrap", lambda: capture_bootstrap(client)),
+            ("players", lambda: capture_players(client)),
+            ("filters", lambda: capture_filters_resolve(client, player)),
+            ("career", lambda: capture_career(client, player)),
+            ("match_history", lambda: capture_match_history(client, player)),
+            ("gamertag_search", lambda: capture_gamertag_search(client)),
+            ("match_view", lambda: capture_match_view(client, player)),
+        ]:
+            if name not in targets:
+                continue
+            label = f"{name} ({player})" if "player" in fn.__code__.co_freevars else name
+            print(f"→ {name}")
+            try:
+                fn()
+            except Exception as exc:
+                msg = f"  ✗ {name}: {exc}"
+                print(msg)
+                errors.append(msg)
+                if not args.continue_on_error:
+                    raise
 
+    if errors:
+        print(f"\n⚠ {len(errors)} erreur(s) :")
+        for e in errors:
+            print(e)
     print("\nCapture terminée.")
 
 

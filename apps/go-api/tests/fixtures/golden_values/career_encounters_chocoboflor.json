@@ -1,0 +1,413 @@
+{
+  "teammates": [
+    {
+      "gamertag": "JGtm",
+      "xuid": "2533274823110022",
+      "match_count": 255,
+      "as_teammate": 255,
+      "as_enemy": 0,
+      "avg_kda": -1.2385882318019867
+    },
+    {
+      "gamertag": "Madina97294",
+      "xuid": "2533274858283686",
+      "match_count": 249,
+      "as_teammate": 249,
+      "as_enemy": 0,
+      "avg_kda": 6.122369434579788
+    },
+    {
+      "gamertag": "XxDaemonGamerxX",
+      "xuid": "2533274833178266",
+      "match_count": 22,
+      "as_teammate": 22,
+      "as_enemy": 0,
+      "avg_kda": -6.45136356760155
+    },
+    {
+      "gamertag": "Nilton410",
+      "xuid": "2535427927026623",
+      "match_count": 14,
+      "as_teammate": 8,
+      "as_enemy": 6,
+      "avg_kda": 9.567857069628579
+    },
+    {
+      "gamertag": "TheTatice",
+      "xuid": "2535438316355031",
+      "match_count": 11,
+      "as_teammate": 11,
+      "as_enemy": 0,
+      "avg_kda": -5.601818114519119
+    },
+    {
+      "gamertag": "bid(3.0)",
+      "xuid": "bid(3.0)",
+      "match_count": 7,
+      "as_teammate": 6,
+      "as_enemy": 1,
+      "avg_kda": -1.0942856924874442
+    },
+    {
+      "gamertag": "bid(15.0)",
+      "xuid": "bid(15.0)",
+      "match_count": 6,
+      "as_teammate": 3,
+      "as_enemy": 3,
+      "avg_kda": -0.2
+    },
+    {
+      "gamertag": "GrownCave800199",
+      "xuid": "2535410854435556",
+      "match_count": 6,
+      "as_teammate": 4,
+      "as_enemy": 2,
+      "avg_kda": 4.331666588783264
+    },
+    {
+      "gamertag": "TheDangerdoll",
+      "xuid": "2747731915524001",
+      "match_count": 4,
+      "as_teammate": 3,
+      "as_enemy": 1,
+      "avg_kda": 0.6674999967217445
+    },
+    {
+      "gamertag": "Brexit420Banter",
+      "xuid": "2535409561713955",
+      "match_count": 4,
+      "as_teammate": 2,
+      "as_enemy": 2,
+      "avg_kda": 5.332499921321869
+    },
+    {
+      "gamertag": "OB5CUR",
+      "xuid": "2535459831643224",
+      "match_count": 4,
+      "as_teammate": 2,
+      "as_enemy": 2,
+      "avg_kda": 1.3324999511241913
+    },
+    {
+      "gamertag": "bid(5.0)",
+      "xuid": "bid(5.0)",
+      "match_count": 4,
+      "as_teammate": 2,
+      "as_enemy": 2,
+      "avg_kda": -1
+    },
+    {
+      "gamertag": "bid(17.0)",
+      "xuid": "bid(17.0)",
+      "match_count": 4,
+      "as_teammate": 2,
+      "as_enemy": 2,
+      "avg_kda": -1.8324999809265137
+    },
+    {
+      "gamertag": "bid(7.0)",
+      "xuid": "bid(7.0)",
+      "match_count": 4,
+      "as_teammate": 3,
+      "as_enemy": 1,
+      "avg_kda": -1
+    }
+  ],
+  "enemies": [
+    {
+      "gamertag": "WaiseAbgrund449",
+      "xuid": "2533274983859511",
+      "match_count": 11,
+      "as_teammate": 1,
+      "as_enemy": 10,
+      "avg_kda": 0.2136363766410134
+    },
+    {
+      "gamertag": "GWADAPAT",
+      "xuid": "2533274826773990",
+      "match_count": 9,
+      "as_teammate": 1,
+      "as_enemy": 8,
+      "avg_kda": 6.4411110281944275
+    },
+    {
+      "gamertag": "bid(24.0)",
+      "xuid": "bid(24.0)",
+      "match_count": 9,
+      "as_teammate": 4,
+      "as_enemy": 5,
+      "avg_kda": -2.073333316379123
+    },
+    {
+      "gamertag": "bid(37.0)",
+      "xuid": "bid(37.0)",
+      "match_count": 9,
+      "as_teammate": 4,
+      "as_enemy": 5,
+      "avg_kda": -1.8324999809265137
+    },
+    {
+      "gamertag": "bid(41.0)",
+      "xuid": "bid(41.0)",
+      "match_count": 8,
+      "as_teammate": 3,
+      "as_enemy": 5,
+      "avg_kda": -1.2842857071331568
+    },
+    {
+      "gamertag": "bid(46.0)",
+      "xuid": "bid(46.0)",
+      "match_count": 7,
+      "as_teammate": 1,
+      "as_enemy": 6,
+      "avg_kda": -2.1871428063937595
+    },
+    {
+      "gamertag": "bid(35.0)",
+      "xuid": "bid(35.0)",
+      "match_count": 7,
+      "as_teammate": 2,
+      "as_enemy": 5,
+      "avg_kda": -1.7128571101597376
+    },
+    {
+      "gamertag": "bid(19.0)",
+      "xuid": "bid(19.0)",
+      "match_count": 7,
+      "as_teammate": 0,
+      "as_enemy": 7,
+      "avg_kda": -0.23714285237448557
+    },
+    {
+      "gamertag": "bid(1.0)",
+      "xuid": "bid(1.0)",
+      "match_count": 6,
+      "as_teammate": 2,
+      "as_enemy": 4,
+      "avg_kda": -1.6
+    },
+    {
+      "gamertag": "bid(2.0)",
+      "xuid": "bid(2.0)",
+      "match_count": 6,
+      "as_teammate": 2,
+      "as_enemy": 4,
+      "avg_kda": -0.7766666809717814
+    },
+    {
+      "gamertag": "bid(50.0)",
+      "xuid": "bid(50.0)",
+      "match_count": 6,
+      "as_teammate": 2,
+      "as_enemy": 4,
+      "avg_kda": -2.7199999888738
+    },
+    {
+      "gamertag": "bid(38.0)",
+      "xuid": "bid(38.0)",
+      "match_count": 6,
+      "as_teammate": 2,
+      "as_enemy": 4,
+      "avg_kda": -0.7216666539510092
+    },
+    {
+      "gamertag": "bid(56.0)",
+      "xuid": "bid(56.0)",
+      "match_count": 6,
+      "as_teammate": 0,
+      "as_enemy": 6,
+      "avg_kda": -0.6666666666666666
+    },
+    {
+      "gamertag": "bid(36.0)",
+      "xuid": "bid(36.0)",
+      "match_count": 6,
+      "as_teammate": 1,
+      "as_enemy": 5,
+      "avg_kda": -0.7320000171661377
+    },
+    {
+      "gamertag": "bid(32.0)",
+      "xuid": "bid(32.0)",
+      "match_count": 6,
+      "as_teammate": 1,
+      "as_enemy": 5,
+      "avg_kda": -0.7216666539510092
+    },
+    {
+      "gamertag": "Pavogear",
+      "xuid": "2533274869010584",
+      "match_count": 5,
+      "as_teammate": 1,
+      "as_enemy": 4,
+      "avg_kda": 9.927999877929688
+    },
+    {
+      "gamertag": "NormalKubus39",
+      "xuid": "2533274897645479",
+      "match_count": 5,
+      "as_teammate": 2,
+      "as_enemy": 3,
+      "avg_kda": 8.597999954223633
+    },
+    {
+      "gamertag": "KNEELb3foreZOD",
+      "xuid": "2533274873595385",
+      "match_count": 5,
+      "as_teammate": 0,
+      "as_enemy": 5,
+      "avg_kda": 7.531999969482422
+    },
+    {
+      "gamertag": "bid(57.0)",
+      "xuid": "bid(57.0)",
+      "match_count": 5,
+      "as_teammate": 1,
+      "as_enemy": 4,
+      "avg_kda": -1.265999984741211
+    },
+    {
+      "gamertag": "Ninja Maccers",
+      "xuid": "2533274974148269",
+      "match_count": 5,
+      "as_teammate": 0,
+      "as_enemy": 5,
+      "avg_kda": 8.729999923706055
+    },
+    {
+      "gamertag": "PutBunnyBkInBox",
+      "xuid": "2533275001807081",
+      "match_count": 5,
+      "as_teammate": 0,
+      "as_enemy": 5,
+      "avg_kda": -0.8019999742507935
+    },
+    {
+      "gamertag": "bid(51.0)",
+      "xuid": "bid(51.0)",
+      "match_count": 5,
+      "as_teammate": 0,
+      "as_enemy": 5,
+      "avg_kda": 0.06600000262260437
+    },
+    {
+      "gamertag": "Slowpoke6743",
+      "xuid": "2535469889270266",
+      "match_count": 5,
+      "as_teammate": 2,
+      "as_enemy": 3,
+      "avg_kda": 7.329999923706055
+    },
+    {
+      "gamertag": "BlackSaberR1",
+      "xuid": "2535470490035432",
+      "match_count": 5,
+      "as_teammate": 2,
+      "as_enemy": 3,
+      "avg_kda": 5.5319999873638155
+    },
+    {
+      "gamertag": "IIQuarryII",
+      "xuid": "2533274875224535",
+      "match_count": 4,
+      "as_teammate": 0,
+      "as_enemy": 4,
+      "avg_kda": 1.5024999678134918
+    },
+    {
+      "gamertag": "FoxyLoxy3812",
+      "xuid": "2535406376942100",
+      "match_count": 4,
+      "as_teammate": 0,
+      "as_enemy": 4,
+      "avg_kda": -3.9999999552965164
+    },
+    {
+      "gamertag": "bid(21.0)",
+      "xuid": "bid(21.0)",
+      "match_count": 4,
+      "as_teammate": 1,
+      "as_enemy": 3,
+      "avg_kda": -0.6649999916553497
+    },
+    {
+      "gamertag": "evilsonic665",
+      "xuid": "2533274794363089",
+      "match_count": 4,
+      "as_teammate": 1,
+      "as_enemy": 3,
+      "avg_kda": 1.1674999594688416
+    },
+    {
+      "gamertag": "bid(49.0)",
+      "xuid": "bid(49.0)",
+      "match_count": 4,
+      "as_teammate": 0,
+      "as_enemy": 4,
+      "avg_kda": 0
+    },
+    {
+      "gamertag": "HueyP Newton303",
+      "xuid": "2535437292820819",
+      "match_count": 4,
+      "as_teammate": 1,
+      "as_enemy": 3,
+      "avg_kda": 2.3299999833106995
+    },
+    {
+      "gamertag": "bid(16.0)",
+      "xuid": "bid(16.0)",
+      "match_count": 4,
+      "as_teammate": 1,
+      "as_enemy": 3,
+      "avg_kda": -0.6650000065565109
+    },
+    {
+      "gamertag": "bid(0.0)",
+      "xuid": "bid(0.0)",
+      "match_count": 4,
+      "as_teammate": 1,
+      "as_enemy": 3,
+      "avg_kda": -1
+    },
+    {
+      "gamertag": "genjo shimurder",
+      "xuid": "2535447400657785",
+      "match_count": 4,
+      "as_teammate": 1,
+      "as_enemy": 3,
+      "avg_kda": 0.9175000190734863
+    },
+    {
+      "gamertag": "L0RD S0R0S",
+      "xuid": "2535458400242651",
+      "match_count": 4,
+      "as_teammate": 0,
+      "as_enemy": 4,
+      "avg_kda": 4.497500002384186
+    },
+    {
+      "gamertag": "stoutanator",
+      "xuid": "2533274808560139",
+      "match_count": 4,
+      "as_teammate": 0,
+      "as_enemy": 4,
+      "avg_kda": 6.912499904632568
+    },
+    {
+      "gamertag": "Fadetonull",
+      "xuid": "2535406000408371",
+      "match_count": 4,
+      "as_teammate": 0,
+      "as_enemy": 4,
+      "avg_kda": 2.9149999618530273
+    }
+  ],
+  "total": 50,
+  "_meta": {
+    "golden_value_version": "live",
+    "captured_at": "2026-04-16",
+    "source": "captured_live",
+    "tolerances": {}
+  }
+}

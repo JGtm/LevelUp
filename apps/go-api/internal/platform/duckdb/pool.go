@@ -118,6 +118,14 @@ func openPlayerDB(ctx context.Context, cfg PlayerPoolConfig) (*PlayerDB, error) 
 		return nil, fmt.Errorf("pool: attach shared on player db: %w", err)
 	}
 
+	// ATTACH metadata sur la connexion player pour les JOIN career_ranks etc.
+	if err := attachMeta(ctx, playerDB, cfg.MetaDBPath); err != nil {
+		_ = playerDB.Close()
+		_ = sharedDB.Close()
+		_ = metaDB.Close()
+		return nil, fmt.Errorf("pool: attach meta on player db: %w", err)
+	}
+
 	return &PlayerDB{
 		Player:    playerDB,
 		Shared:    sharedDB,
@@ -142,6 +150,24 @@ func attachShared(ctx context.Context, db *DB, sharedPath string) error {
 			return fmt.Errorf("attach shared: %w (attach err: %v)", pingErr, err)
 		}
 		// Accessible malgré l'erreur d'ATTACH → déjà attachée, OK.
+	}
+	return nil
+}
+
+// attachMeta attache metadata.duckdb sous l'alias "meta" sur une connexion player.
+// Permet les JOIN sur meta.career_ranks, meta.weapon_labels, etc.
+// Idempotent : ignore l'erreur si déjà attachée.
+func attachMeta(ctx context.Context, db *DB, metaPath string) error {
+	_, err := db.Exec(ctx,
+		fmt.Sprintf("ATTACH '%s' AS meta (READ_ONLY)", metaPath),
+	)
+	if err != nil {
+		// Déjà attachée — vérifier si accessible.
+		var count int
+		pingErr := db.QueryRow(ctx, "SELECT COUNT(*) FROM meta.career_ranks").Scan(&count)
+		if pingErr != nil {
+			return fmt.Errorf("attach meta: %w (attach err: %v)", pingErr, err)
+		}
 	}
 	return nil
 }

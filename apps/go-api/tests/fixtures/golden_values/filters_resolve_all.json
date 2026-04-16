@@ -9,43 +9,844 @@
       "picked_session_label": null,
       "picked_solo_session_label": null,
       "picked_squad_session_label": null,
-      "picked_sessions": [],
-      "gap_minutes": 120
+      "picked_sessions": null,
+      "gap_minutes": 0
     },
     "cascade": {
-      "experience_types": [],
-      "playlists": [],
-      "modes": [],
-      "maps": []
+      "experience_types": null,
+      "playlists": null,
+      "modes": null,
+      "maps": null
     }
   },
   "available_options": {
     "experience_types": [
-      {"label": "PvP", "value": "pvp"},
-      {"label": "PvE (Firefight)", "value": "pve"}
+      {
+        "label": "PVP non classé",
+        "value": "PVP non classé"
+      },
+      {
+        "label": "PVP classé",
+        "value": "PVP classé"
+      },
+      {
+        "label": "PVE",
+        "value": "PVE"
+      }
     ],
-    "playlists": [],
-    "modes": [],
-    "maps": []
+    "playlists": [
+      {
+        "label": "Arène classée",
+        "value": "Arène classée"
+      },
+      {
+        "label": "Assassin classé",
+        "value": "Assassin classé"
+      },
+      {
+        "label": "Grand combat en équipe",
+        "value": "Grand combat en équipe"
+      },
+      {
+        "label": "Méga fiesta.",
+        "value": "Méga fiesta."
+      },
+      {
+        "label": "Partie rapide",
+        "value": "Partie rapide"
+      },
+      {
+        "label": "bdceefb3-1c52-4848-a6b7-d49acd13109d",
+        "value": "bdceefb3-1c52-4848-a6b7-d49acd13109d"
+      }
+    ],
+    "modes": [
+      {
+        "label": "Arena:CTF",
+        "value": "Arena:CTF"
+      },
+      {
+        "label": "Arena:King of the Hill",
+        "value": "Arena:King of the Hill"
+      },
+      {
+        "label": "Arena:Land Grab",
+        "value": "Arena:Land Grab"
+      },
+      {
+        "label": "Arena:Neutral Flag CTF",
+        "value": "Arena:Neutral Flag CTF"
+      },
+      {
+        "label": "Arena:Oddball",
+        "value": "Arena:Oddball"
+      },
+      {
+        "label": "Arena:One Flag CTF",
+        "value": "Arena:One Flag CTF"
+      },
+      {
+        "label": "Arena:Slayer",
+        "value": "Arena:Slayer"
+      },
+      {
+        "label": "Arena:Strongholds",
+        "value": "Arena:Strongholds"
+      },
+      {
+        "label": "Arena:Team Slayer",
+        "value": "Arena:Team Slayer"
+      },
+      {
+        "label": "Arène : CDD - Behemoth",
+        "value": "Arène : CDD - Behemoth"
+      },
+      {
+        "label": "BTB:CTF",
+        "value": "BTB:CTF"
+      },
+      {
+        "label": "BTB:Fiesta Slayer",
+        "value": "BTB:Fiesta Slayer"
+      },
+      {
+        "label": "Community:Fiesta Slayer",
+        "value": "Community:Fiesta Slayer"
+      },
+      {
+        "label": "Community:Slayer",
+        "value": "Community:Slayer"
+      },
+      {
+        "label": "Community:Team Slayer",
+        "value": "Community:Team Slayer"
+      },
+      {
+        "label": "Ranked:Oddball",
+        "value": "Ranked:Oddball"
+      },
+      {
+        "label": "Ranked:Slayer",
+        "value": "Ranked:Slayer"
+      },
+      {
+        "label": "Super Fiesta:Slayer",
+        "value": "Super Fiesta:Slayer"
+      },
+      {
+        "label": "Super Husky Raid:CTF",
+        "value": "Super Husky Raid:CTF"
+      },
+      {
+        "label": "Tactical:Slayer",
+        "value": "Tactical:Slayer"
+      }
+    ],
+    "maps": [
+      {
+        "label": "Absolution",
+        "value": "Absolution"
+      },
+      {
+        "label": "Altitude",
+        "value": "Altitude"
+      },
+      {
+        "label": "Aquarius",
+        "value": "Aquarius"
+      },
+      {
+        "label": "Argyle",
+        "value": "Argyle"
+      },
+      {
+        "label": "Bazaar",
+        "value": "Bazaar"
+      },
+      {
+        "label": "Behemoth",
+        "value": "Behemoth"
+      },
+      {
+        "label": "Blizzard",
+        "value": "Blizzard"
+      },
+      {
+        "label": "Catalyst",
+        "value": "Catalyst"
+      },
+      {
+        "label": "Couvre-feu",
+        "value": "Couvre-feu"
+      },
+      {
+        "label": "Detachment",
+        "value": "Detachment"
+      },
+      {
+        "label": "Domicile",
+        "value": "Domicile"
+      },
+      {
+        "label": "Draguer",
+        "value": "Draguer"
+      },
+      {
+        "label": "Dynasty",
+        "value": "Dynasty"
+      },
+      {
+        "label": "Débarcadère écarlate",
+        "value": "Débarcadère écarlate"
+      },
+      {
+        "label": "Dévissage",
+        "value": "Dévissage"
+      },
+      {
+        "label": "Empyréen",
+        "value": "Empyréen"
+      },
+      {
+        "label": "Esprit critique",
+        "value": "Esprit critique"
+      },
+      {
+        "label": "Forbidden",
+        "value": "Forbidden"
+      },
+      {
+        "label": "Forteresse",
+        "value": "Forteresse"
+      },
+      {
+        "label": "Forêt",
+        "value": "Forêt"
+      },
+      {
+        "label": "Goliath",
+        "value": "Goliath"
+      },
+      {
+        "label": "Gouffre",
+        "value": "Gouffre"
+      },
+      {
+        "label": "Goulet paria",
+        "value": "Goulet paria"
+      },
+      {
+        "label": "Highpower",
+        "value": "Highpower"
+      },
+      {
+        "label": "Houseki",
+        "value": "Houseki"
+      },
+      {
+        "label": "Illusion",
+        "value": "Illusion"
+      },
+      {
+        "label": "Insolence",
+        "value": "Insolence"
+      },
+      {
+        "label": "Isolement",
+        "value": "Isolement"
+      },
+      {
+        "label": "Kaiketsu",
+        "value": "Kaiketsu"
+      },
+      {
+        "label": "Kiken'na",
+        "value": "Kiken'na"
+      },
+      {
+        "label": "La fosse",
+        "value": "La fosse"
+      },
+      {
+        "label": "Live Fire",
+        "value": "Live Fire"
+      },
+      {
+        "label": "Nomade",
+        "value": "Nomade"
+      },
+      {
+        "label": "Némésis",
+        "value": "Némésis"
+      },
+      {
+        "label": "Opulence",
+        "value": "Opulence"
+      },
+      {
+        "label": "Origine",
+        "value": "Origine"
+      },
+      {
+        "label": "Origine - Classée",
+        "value": "Origine - Classée"
+      },
+      {
+        "label": "Pharaon",
+        "value": "Pharaon"
+      },
+      {
+        "label": "Prism",
+        "value": "Prism"
+      },
+      {
+        "label": "Périlleux",
+        "value": "Périlleux"
+      },
+      {
+        "label": "Raid urbain",
+        "value": "Raid urbain"
+      },
+      {
+        "label": "Recharge",
+        "value": "Recharge"
+      },
+      {
+        "label": "Recharge - Classé",
+        "value": "Recharge - Classé"
+      },
+      {
+        "label": "Salut",
+        "value": "Salut"
+      },
+      {
+        "label": "Shiro",
+        "value": "Shiro"
+      },
+      {
+        "label": "Shogun",
+        "value": "Shogun"
+      },
+      {
+        "label": "Smallhalla",
+        "value": "Smallhalla"
+      },
+      {
+        "label": "Solitude",
+        "value": "Solitude"
+      },
+      {
+        "label": "Solitude - Classé",
+        "value": "Solitude - Classé"
+      },
+      {
+        "label": "Solution",
+        "value": "Solution"
+      },
+      {
+        "label": "Streets",
+        "value": "Streets"
+      },
+      {
+        "label": "Streets - Classé",
+        "value": "Streets - Classé"
+      },
+      {
+        "label": "Sylvanus",
+        "value": "Sylvanus"
+      },
+      {
+        "label": "Takamanohara",
+        "value": "Takamanohara"
+      },
+      {
+        "label": "Treillis - Classée",
+        "value": "Treillis - Classée"
+      },
+      {
+        "label": "Tribord",
+        "value": "Tribord"
+      },
+      {
+        "label": "Versant de falaise",
+        "value": "Versant de falaise"
+      },
+      {
+        "label": "Écotone",
+        "value": "Écotone"
+      },
+      {
+        "label": "Élévation",
+        "value": "Élévation"
+      }
+    ]
   },
   "session_options": {
-    "all_sessions": [],
-    "solo_labels": [],
-    "squad_labels": []
+    "all_sessions": [
+      {
+        "label": "31/03/2026 21:24–23:14 (11)",
+        "session_id": "62",
+        "match_count": 11,
+        "is_squad": true
+      },
+      {
+        "label": "30/12/2025 15:11–15:37 (3)",
+        "session_id": "30",
+        "match_count": 3,
+        "is_squad": false
+      },
+      {
+        "label": "29/12/2025 21:58–23:51 (13)",
+        "session_id": "29",
+        "match_count": 13,
+        "is_squad": true
+      },
+      {
+        "label": "29/12/2025 10:54–10:54 (1)",
+        "session_id": "28",
+        "match_count": 1,
+        "is_squad": false
+      },
+      {
+        "label": "29/10/2025 22:08–22:08 (1)",
+        "session_id": "9",
+        "match_count": 1,
+        "is_squad": false
+      },
+      {
+        "label": "29/10/2025 21:21–21:51 (3)",
+        "session_id": "8",
+        "match_count": 3,
+        "is_squad": true
+      },
+      {
+        "label": "28/11/2025 19:26–19:58 (4)",
+        "session_id": "14",
+        "match_count": 4,
+        "is_squad": false
+      },
+      {
+        "label": "27/11/2025 18:50–18:58 (2)",
+        "session_id": "13",
+        "match_count": 2,
+        "is_squad": false
+      },
+      {
+        "label": "27/01/2026 23:23–23:23 (1)",
+        "session_id": "37",
+        "match_count": 1,
+        "is_squad": true
+      },
+      {
+        "label": "25/11/2025 21:33–23:15 (11)",
+        "session_id": "12",
+        "match_count": 11,
+        "is_squad": true
+      },
+      {
+        "label": "24/04/2023 20:58–20:58 (1)",
+        "session_id": "0",
+        "match_count": 1,
+        "is_squad": true
+      },
+      {
+        "label": "24/03/2026 21:10–23:05 (12)",
+        "session_id": "61",
+        "match_count": 12,
+        "is_squad": true
+      },
+      {
+        "label": "24/01/2026 11:34–11:50 (3)",
+        "session_id": "36",
+        "match_count": 3,
+        "is_squad": false
+      },
+      {
+        "label": "23/10/2025 21:09–22:52 (11)",
+        "session_id": "7",
+        "match_count": 11,
+        "is_squad": true
+      },
+      {
+        "label": "21/10/2025 23:47–00:16 (4)",
+        "session_id": "6",
+        "match_count": 4,
+        "is_squad": false
+      },
+      {
+        "label": "21/10/2025 02:21–03:14 (7)",
+        "session_id": "5",
+        "match_count": 7,
+        "is_squad": false
+      },
+      {
+        "label": "21/01/2026 22:27–22:39 (2)",
+        "session_id": "35",
+        "match_count": 2,
+        "is_squad": false
+      },
+      {
+        "label": "21/01/2026 21:08–22:11 (9)",
+        "session_id": "34",
+        "match_count": 9,
+        "is_squad": true
+      },
+      {
+        "label": "20/12/2025 18:27–19:09 (5)",
+        "session_id": "27",
+        "match_count": 5,
+        "is_squad": false
+      },
+      {
+        "label": "20/10/2025 21:06–21:59 (6)",
+        "session_id": "4",
+        "match_count": 6,
+        "is_squad": true
+      },
+      {
+        "label": "19/12/2025 02:04–02:15 (2)",
+        "session_id": "26",
+        "match_count": 2,
+        "is_squad": false
+      },
+      {
+        "label": "19/03/2026 12:20–14:53 (5)",
+        "session_id": "60",
+        "match_count": 5,
+        "is_squad": false
+      },
+      {
+        "label": "18/12/2025 23:45–00:01 (2)",
+        "session_id": "25",
+        "match_count": 2,
+        "is_squad": false
+      },
+      {
+        "label": "18/12/2025 21:22–23:21 (12)",
+        "session_id": "24",
+        "match_count": 12,
+        "is_squad": true
+      },
+      {
+        "label": "18/03/2026 21:35–22:55 (8)",
+        "session_id": "59",
+        "match_count": 8,
+        "is_squad": true
+      },
+      {
+        "label": "18/03/2026 12:31–12:47 (2)",
+        "session_id": "58",
+        "match_count": 2,
+        "is_squad": false
+      },
+      {
+        "label": "18/02/2026 21:41–22:51 (7)",
+        "session_id": "43",
+        "match_count": 7,
+        "is_squad": true
+      },
+      {
+        "label": "17/03/2026 23:40–00:17 (4)",
+        "session_id": "57",
+        "match_count": 4,
+        "is_squad": false
+      },
+      {
+        "label": "17/03/2026 12:20–12:20 (1)",
+        "session_id": "56",
+        "match_count": 1,
+        "is_squad": false
+      },
+      {
+        "label": "16/03/2026 19:10–19:10 (1)",
+        "session_id": "55",
+        "match_count": 1,
+        "is_squad": true
+      },
+      {
+        "label": "16/02/2026 13:42–13:42 (1)",
+        "session_id": "42",
+        "match_count": 1,
+        "is_squad": false
+      },
+      {
+        "label": "15/12/2025 21:19–23:26 (13)",
+        "session_id": "23",
+        "match_count": 13,
+        "is_squad": true
+      },
+      {
+        "label": "14/03/2026 22:32–23:10 (4)",
+        "session_id": "54",
+        "match_count": 4,
+        "is_squad": false
+      },
+      {
+        "label": "14/03/2026 13:56–14:33 (4)",
+        "session_id": "53",
+        "match_count": 4,
+        "is_squad": false
+      },
+      {
+        "label": "13/11/2025 21:12–22:44 (10)",
+        "session_id": "11",
+        "match_count": 10,
+        "is_squad": true
+      },
+      {
+        "label": "13/10/2025 21:16–22:46 (9)",
+        "session_id": "3",
+        "match_count": 9,
+        "is_squad": true
+      },
+      {
+        "label": "13/03/2026 13:05–13:05 (1)",
+        "session_id": "52",
+        "match_count": 1,
+        "is_squad": false
+      },
+      {
+        "label": "13/02/2026 12:44–12:56 (2)",
+        "session_id": "41",
+        "match_count": 2,
+        "is_squad": false
+      },
+      {
+        "label": "13/01/2026 22:55–23:50 (5)",
+        "session_id": "33",
+        "match_count": 5,
+        "is_squad": false
+      },
+      {
+        "label": "12/03/2026 21:16–23:11 (11)",
+        "session_id": "51",
+        "match_count": 11,
+        "is_squad": true
+      },
+      {
+        "label": "12/01/2026 21:25–23:16 (10)",
+        "session_id": "32",
+        "match_count": 10,
+        "is_squad": true
+      },
+      {
+        "label": "11/03/2026 12:33–12:33 (1)",
+        "session_id": "50",
+        "match_count": 1,
+        "is_squad": false
+      },
+      {
+        "label": "11/02/2026 21:24–23:09 (11)",
+        "session_id": "40",
+        "match_count": 11,
+        "is_squad": true
+      },
+      {
+        "label": "10/12/2025 08:28–09:35 (6)",
+        "session_id": "22",
+        "match_count": 6,
+        "is_squad": false
+      },
+      {
+        "label": "10/03/2026 18:38–19:08 (3)",
+        "session_id": "49",
+        "match_count": 3,
+        "is_squad": false
+      },
+      {
+        "label": "09/12/2025 21:25–21:58 (4)",
+        "session_id": "21",
+        "match_count": 4,
+        "is_squad": true
+      },
+      {
+        "label": "09/03/2026 13:50–13:50 (1)",
+        "session_id": "48",
+        "match_count": 1,
+        "is_squad": false
+      },
+      {
+        "label": "08/12/2025 19:36–21:41 (4)",
+        "session_id": "20",
+        "match_count": 4,
+        "is_squad": false
+      },
+      {
+        "label": "08/01/2026 21:20–23:23 (12)",
+        "session_id": "31",
+        "match_count": 12,
+        "is_squad": true
+      },
+      {
+        "label": "06/12/2025 13:25–13:57 (4)",
+        "session_id": "19",
+        "match_count": 4,
+        "is_squad": false
+      },
+      {
+        "label": "06/12/2025 02:46–03:34 (5)",
+        "session_id": "18",
+        "match_count": 5,
+        "is_squad": false
+      },
+      {
+        "label": "06/11/2025 21:12–23:17 (12)",
+        "session_id": "10",
+        "match_count": 12,
+        "is_squad": true
+      },
+      {
+        "label": "06/04/2026 21:43–23:40 (12)",
+        "session_id": "63",
+        "match_count": 12,
+        "is_squad": true
+      },
+      {
+        "label": "05/12/2023 20:44–23:12 (9)",
+        "session_id": "1",
+        "match_count": 9,
+        "is_squad": true
+      },
+      {
+        "label": "05/03/2026 19:15–20:15 (6)",
+        "session_id": "47",
+        "match_count": 6,
+        "is_squad": false
+      },
+      {
+        "label": "05/02/2026 21:25–23:03 (9)",
+        "session_id": "39",
+        "match_count": 9,
+        "is_squad": true
+      },
+      {
+        "label": "04/02/2026 18:49–20:01 (5)",
+        "session_id": "38",
+        "match_count": 5,
+        "is_squad": false
+      },
+      {
+        "label": "04/02/2024 14:11–14:11 (1)",
+        "session_id": "2",
+        "match_count": 1,
+        "is_squad": false
+      },
+      {
+        "label": "03/12/2025 21:08–22:22 (8)",
+        "session_id": "17",
+        "match_count": 8,
+        "is_squad": true
+      },
+      {
+        "label": "03/03/2026 21:16–23:23 (12)",
+        "session_id": "46",
+        "match_count": 12,
+        "is_squad": true
+      },
+      {
+        "label": "02/12/2025 22:58–23:20 (3)",
+        "session_id": "16",
+        "match_count": 3,
+        "is_squad": true
+      },
+      {
+        "label": "01/12/2025 20:03–20:12 (2)",
+        "session_id": "15",
+        "match_count": 2,
+        "is_squad": false
+      },
+      {
+        "label": "01/03/2026 23:01–23:01 (1)",
+        "session_id": "45",
+        "match_count": 1,
+        "is_squad": false
+      },
+      {
+        "label": "01/03/2026 21:41–22:47 (9)",
+        "session_id": "44",
+        "match_count": 9,
+        "is_squad": true
+      }
+    ],
+    "solo_labels": [
+      "30/12/2025 15:11–15:37 (3)",
+      "29/12/2025 10:54–10:54 (1)",
+      "29/10/2025 22:08–22:08 (1)",
+      "28/11/2025 19:26–19:58 (4)",
+      "27/11/2025 18:50–18:58 (2)",
+      "24/01/2026 11:34–11:50 (3)",
+      "21/10/2025 23:47–00:16 (4)",
+      "21/10/2025 02:21–03:14 (7)",
+      "21/01/2026 22:27–22:39 (2)",
+      "20/12/2025 18:27–19:09 (5)",
+      "19/12/2025 02:04–02:15 (2)",
+      "19/03/2026 12:20–14:53 (5)",
+      "18/12/2025 23:45–00:01 (2)",
+      "18/03/2026 12:31–12:47 (2)",
+      "17/03/2026 23:40–00:17 (4)",
+      "17/03/2026 12:20–12:20 (1)",
+      "16/02/2026 13:42–13:42 (1)",
+      "14/03/2026 22:32–23:10 (4)",
+      "14/03/2026 13:56–14:33 (4)",
+      "13/03/2026 13:05–13:05 (1)",
+      "13/02/2026 12:44–12:56 (2)",
+      "13/01/2026 22:55–23:50 (5)",
+      "11/03/2026 12:33–12:33 (1)",
+      "10/12/2025 08:28–09:35 (6)",
+      "10/03/2026 18:38–19:08 (3)",
+      "09/03/2026 13:50–13:50 (1)",
+      "08/12/2025 19:36–21:41 (4)",
+      "06/12/2025 13:25–13:57 (4)",
+      "06/12/2025 02:46–03:34 (5)",
+      "05/03/2026 19:15–20:15 (6)",
+      "04/02/2026 18:49–20:01 (5)",
+      "04/02/2024 14:11–14:11 (1)",
+      "01/12/2025 20:03–20:12 (2)",
+      "01/03/2026 23:01–23:01 (1)"
+    ],
+    "squad_labels": [
+      "31/03/2026 21:24–23:14 (11)",
+      "29/12/2025 21:58–23:51 (13)",
+      "29/10/2025 21:21–21:51 (3)",
+      "27/01/2026 23:23–23:23 (1)",
+      "25/11/2025 21:33–23:15 (11)",
+      "24/04/2023 20:58–20:58 (1)",
+      "24/03/2026 21:10–23:05 (12)",
+      "23/10/2025 21:09–22:52 (11)",
+      "21/01/2026 21:08–22:11 (9)",
+      "20/10/2025 21:06–21:59 (6)",
+      "18/12/2025 21:22–23:21 (12)",
+      "18/03/2026 21:35–22:55 (8)",
+      "18/02/2026 21:41–22:51 (7)",
+      "16/03/2026 19:10–19:10 (1)",
+      "15/12/2025 21:19–23:26 (13)",
+      "13/11/2025 21:12–22:44 (10)",
+      "13/10/2025 21:16–22:46 (9)",
+      "12/03/2026 21:16–23:11 (11)",
+      "12/01/2026 21:25–23:16 (10)",
+      "11/02/2026 21:24–23:09 (11)",
+      "09/12/2025 21:25–21:58 (4)",
+      "08/01/2026 21:20–23:23 (12)",
+      "06/11/2025 21:12–23:17 (12)",
+      "06/04/2026 21:43–23:40 (12)",
+      "05/12/2023 20:44–23:12 (9)",
+      "05/02/2026 21:25–23:03 (9)",
+      "03/12/2025 21:08–22:22 (8)",
+      "03/03/2026 21:16–23:23 (12)",
+      "02/12/2025 22:58–23:20 (3)",
+      "01/03/2026 21:41–22:47 (9)"
+    ]
   },
   "counts": {
-    "total_matches_before_filters": 1544,
-    "total_matches_after_filters": 1544
+    "total_matches_before_filters": 364,
+    "total_matches_after_filters": 364
   },
-
   "_meta": {
-    "golden_value_version": "sprint1",
-    "captured_at": "2026-04-15",
-    "source": "schema-conformant — valeurs à affiner avec données réelles",
+    "golden_value_version": "live",
+    "captured_at": "2026-04-16",
+    "source": "captured_live",
     "tolerances": {
-      "counts": "± selon la DB du moment",
-      "available_options.playlists": "liste variable — vérifier que la forme est correcte, pas les valeurs exactes"
-    },
-    "sprint_target": "Sprint 6 — vérifier résolution cascade identique (mêmes match_ids)"
+      "counts": "± selon la DB du moment"
+    }
   }
 }
