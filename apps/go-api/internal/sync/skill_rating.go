@@ -58,7 +58,7 @@ func wWin(t, eps float64) float64 {
 // trueskillUpdate met à jour (mu, sigma) après un match.
 // Mu : formule Elo-style continue (K_ELO × (score - 0.5) × wf).
 // Sigma : réduction TrueSkill à t=0.
-func trueskillUpdate(mu, sigma, muOpp, sigmaOpp, actualScore, weightFactor float64) (float64, float64) {
+func trueskillUpdate(mu, sigma, muOpp, sigmaOpp, actualScore, weightFactor float64) (float64, float64) { //nolint:unparam // muOpp réservé pour TrueSkill 2 complet
 	deltaMU := KElo * (actualScore - 0.5) * weightFactor
 	newMU := math.Max(MinRating, mu+deltaMU)
 
@@ -102,7 +102,7 @@ type compositeMatchRow struct {
 }
 
 // computeCompositeScore calcule le score composite [0,1] d'un match.
-func computeCompositeScore(
+func computeCompositeScore( //nolint:unparam // teammateAvgKE réservé pour future formule de synergie
 	row *compositeMatchRow,
 	avgAccuracy *float64,
 	teammateAvgKE *float64,
@@ -196,11 +196,11 @@ func estimateIndividualMU(killsExpected, matchAvgKE, matchStdKE, baseMU float64)
 }
 
 // computeEnemyStrength calcule la force estimée de l'adversaire (muOpp, sigmaOpp).
-func computeEnemyStrength(enemyKEs []float64, matchAvgKE, matchStdKE, playerMU float64) (float64, float64) {
+func computeEnemyStrength(enemyKEs []float64, matchAvgKE, matchStdKE, playerMU float64) (float64, float64) { //nolint:unparam // sigmaOpp actuellement fixe à DefaultOpponentSigma, extensible
 	if len(enemyKEs) == 0 {
 		return playerMU, DefaultOpponentSigma
 	}
-	var muEstimates []float64
+	muEstimates := make([]float64, 0, len(enemyKEs))
 	for _, ke := range enemyKEs {
 		est := estimateIndividualMU(ke, matchAvgKE, matchStdKE, playerMU)
 		muEstimates = append(muEstimates, est)
@@ -261,7 +261,7 @@ func batchComputeLUSR(playerDB, sharedDB *sql.DB, xuid string) (int, error) {
 	}
 
 	// 5. Filtrer les matchs déjà calculés.
-	var newMatches []lusrMatchData
+	newMatches := make([]lusrMatchData, 0, len(matches))
 	for _, m := range matches {
 		if existingCSR[m.MatchID] || existingLUSR[m.MatchID] {
 			continue
@@ -291,7 +291,7 @@ func computeSkillRatingsBatch(
 	if states == nil {
 		states = make(map[string]*PlayerState)
 	}
-	var results []lusrResult
+	results := make([]lusrResult, 0, len(matches))
 
 	for _, match := range matches {
 		group := GetPlaylistGroup(match.PlaylistName, match.PairName)

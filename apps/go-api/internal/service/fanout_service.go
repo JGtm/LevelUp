@@ -225,7 +225,7 @@ func insertStubEnrichments(
 	pdb *duckdb.PlayerDB,
 	xuid string,
 	matchIDs []string,
-) (int, error) {
+) (int, error) { //nolint:unparam // error toujours nil actuellement, interface-compatible
 	_ = xuid // disponible pour future extension
 
 	inserted := 0

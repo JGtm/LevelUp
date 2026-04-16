@@ -72,7 +72,7 @@ var sharedSQLViews = []MaterializedView{
 
 // refreshAggregates recrée les vues matérialisées dans la player DB.
 // Retourne le nombre de vues créées.
-func refreshAggregates(playerDB *sql.DB) (int, error) {
+func refreshAggregates(playerDB *sql.DB) (int, error) { //nolint:unparam // error toujours nil, conservé pour évolution
 	count := 0
 	for _, mv := range playerMaterializedViews {
 		if err := recreateMaterializedView(playerDB, mv); err != nil {
@@ -85,7 +85,7 @@ func refreshAggregates(playerDB *sql.DB) (int, error) {
 }
 
 // refreshSharedViews recrée les vues SQL dans la shared DB (idempotent).
-func refreshSharedViews(sharedDB *sql.DB) (int, error) {
+func refreshSharedViews(sharedDB *sql.DB) (int, error) { //nolint:unparam // error toujours nil, conservé pour évolution
 	count := 0
 	for _, v := range sharedSQLViews {
 		if err := recreateSQLView(sharedDB, v); err != nil {

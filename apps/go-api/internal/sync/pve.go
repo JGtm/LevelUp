@@ -60,7 +60,7 @@ func ExtractPveStats(matchID string, matchJSON map[string]any) []PveMatchStatsRo
 	if len(players) == 0 {
 		return nil
 	}
-	var rows []PveMatchStatsRow
+	var rows []PveMatchStatsRow //nolint:prealloc
 	for _, p := range players {
 		playerMap, ok := p.(map[string]any)
 		if !ok {

@@ -299,7 +299,7 @@ func addOptional(
 	key string,
 	value *float64,
 	series []float64,
-	inverse bool,
+	inverse bool, //nolint:unparam // inverse=false actuellement, conserver pour métriques inverses futures
 	percentiles, weightsUsed map[string]float64,
 ) {
 	if value == nil || len(series) < 2 {
