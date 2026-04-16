@@ -3,9 +3,10 @@
 > Document de suivi opérationnel : tous les sprints de A à Z, dans l'ordre.
 > Chaque sprint a un objectif, des tâches, un critère de sortie et une estimation.
 >
-> Dernière mise à jour : 2026-04-16
+> Dernière mise à jour : 2026-04-17
 > Statut global : **Migration portage terminée** — Sprints 0–28 ✅ (Phases 0–5).
-> **Sprints 29–41 terminés ✅** (sauf S36 🔄) — S42 🔄, S43 ✅, S44 🔄 (Phase 9) — voir `IMPLEMENTATION_PLAN.md` pour le détail.
+> **Sprints 29–41 terminés ✅** (sauf S36 🔄) — S42 🔄, S43 ✅, S44 🔄 (Phase 9).
+> **Phase 10 — Consolidation qualité (couverture 70%)** : Sprints 45–48 ⬜ planifiés — voir `SPRINT_45_48_COVERAGE_ROADMAP.md` pour le détail d'exécution.
 
 ---
 
@@ -74,11 +75,20 @@
 | 42 | Analyse UI avancée + fanout multi-joueur | Phase 9 | 5-8j | 🔄 | Sprint 41 |
 | 43 | Améliorations UX produit | Phase 9 | 5-8j | ✅ | Sprint 36 |
 | 44 | Implémentation multi-titres + ADR + polish final | Phase 9 | 10-14j | 🔄 | Sprint 36 |
+| | | | | | |
+| **45** | **Infra coverage réelle + baseline honnête** | **Phase 10** | **3-4j** | **⬜** | Sprint 44 |
+| 46 | Tests handlers HTTP + middlewares | Phase 10 | 6-8j | ⬜ | Sprint 45 |
+| 47 | Tests sync/writes + migrations + platform/duckdb | Phase 10 | 8-10j | ⬜ | Sprint 46 |
+| 48 | Tests validation + ops + service restants + gate 70% | Phase 10 | 5-7j | ⬜ | Sprint 47 |
+| | | | | | |
+| **49** | **Clôture gate S36 + exemptions contrat + durcissement S44** | **Phase 11** | **6-9j** | **⬜** | Sprint 48 + S44 ✅ + S36 🔄 |
 
 **Total Phases 0–5** : 130–195 jours (~7–10 mois) — ✅ terminé.
 **Total Phases 6–8** : ~45–65 jours — ✅ terminé.
 **Total Phase 9** : ~20–30 jours — 🔄 en cours (S42 🔄, S43 ✅, S44 🔄).
-**Total global** : ~202–306 jours pour 1 dev senior temps plein.
+**Total Phase 10** : ~22–29 jours — ⬜ planifié (montée couverture 13.4% → 70%).
+**Total Phase 11** : ~6–9 jours — ⬜ planifié (clôture migration + alignement contrat + gouvernance).
+**Total global** : ~230–344 jours pour 1 dev senior temps plein.
 
 > **Note** : les estimations sont basées sur ~55 000 LOC Python réels à porter
 > (vérifié : analysis=14K, sync=13K, api=12K, repos+services+auth+scripts ≈16K).
@@ -116,15 +126,15 @@
 
 ### Gate Sprint 0
 
-- [ ] DuckDB Go lit les 3 types de DB sans erreur sur Windows
-- [ ] Version DuckDB `duckdb-go` compatible fichiers Python 1.4.4 (pas de migration implicite)
-- [ ] ATTACH fonctionne avec la stratégie de pool choisie
-- [ ] Types UBIGINT/TIMESTAMP correctement mappés
-- [ ] CGo compile sur Windows avec toolchain documenté et reproductible
-- [ ] Endpoint HTTP retourne JSON cohérent avec Python
-- [ ] MSAL Go device code flow fonctionne (au moins user_code)
-- [ ] Stratégie cache MSAL documentée (lecture directe ou invalidation)
-- [ ] **Si échec non contournable → STOP, réévaluer le plan**
+- [x] DuckDB Go lit les 3 types de DB sans erreur sur Windows
+- [x] Version DuckDB `duckdb-go` compatible fichiers Python 1.4.4 (pas de migration implicite)
+- [x] ATTACH fonctionne avec la stratégie de pool choisie
+- [x] Types UBIGINT/TIMESTAMP correctement mappés
+- [x] CGo compile sur Windows avec toolchain documenté et reproductible
+- [x] Endpoint HTTP retourne JSON cohérent avec Python
+- [x] MSAL Go device code flow fonctionne (au moins user_code)
+- [x] Stratégie cache MSAL documentée (lecture directe ou invalidation)
+- [x] **Si échec non contournable → STOP, réévaluer le plan**
 
 ---
 
@@ -170,7 +180,7 @@
 - [x] Corpus rejouable sous Windows et Linux (`capture.py` + fixtures JSON)
 - [x] Fixtures JSON commitées dans `apps/go-api/tests/fixtures/golden_values/`
 - [x] Endpoints P0 : health, bootstrap, players, filters (2 cas) — ≥ 3 golden values
-- [ ] Capture live via `capture.py` à faire avant Sprint 6 (sessions, performance_score, LUSR réels)
+- [x] Capture live via `capture.py` à faire avant Sprint 6 (sessions, performance_score, LUSR réels)
 
 ---
 
@@ -192,7 +202,7 @@
 - [x] Schéma OpenAPI versionné
 - [x] Golden values complètes pour les surfaces read-only (schema-conformant)
 - [x] Baselines de performance capturées
-- [ ] Matrice et checklist ops initialisées (déjà présentes dans les docs Phase 0)
+- [x] Matrice et checklist ops initialisées (déjà présentes dans les docs Phase 0)
 
 ---
 
@@ -280,10 +290,10 @@
 | 4 | Corriger les écarts non justifiés | ✅ |
 
 ### Gate Phase 1
-- [ ] 0 écart non justifié sur le corpus Phase 1
-- [ ] Bootstrap, filtres, career, history en parité
-- [ ] Pool DuckDB multi-joueurs stable
-- [ ] → **Passage à Phase 2 autorisé**
+- [x] 0 écart non justifié sur le corpus Phase 1
+- [x] Bootstrap, filtres, career, history en parité
+- [x] Pool DuckDB multi-joueurs stable
+- [x] → **Passage à Phase 2 autorisé**
 
 ---
 
@@ -1190,8 +1200,249 @@
 - [x] Tests : 20 WP2 + 17 WP4 + golden + smoke E2E Playwright couvrent les parcours title-aware (squelettes créés)
 - [ ] Couverture ciblée modules Sprint 44 ≥ 80%, couverture Go globale ≥ 50%
 - [x] ADR multi-titres déjà acceptée et alignée avec l'implémentation
-- [ ] `golangci-lint run` clean, 0 TODO non-documenté
+- [x] `golangci-lint run` clean, 0 TODO non-documenté
 - [ ] **Projet complet** ✨
+
+---
+
+## Phase 10 — Consolidation qualité (couverture 70%)
+
+> **Contexte** : audit couverture 2026-04-17 sur `feat/live-golden-values` (worktree go-migration).
+> Coverage réel global mesuré : **13.4%** sur 986 fonctions.
+> La CI affichait 50% car elle n'exécutait que `./internal/domain/... ./internal/analysis/... ./contracttest/...` (sous-ensemble CGO-free).
+> Les packages critiques (handlers, sync/writes, migration, platform/duckdb, validation, ops) étaient à **0%**.
+>
+> **Objectif Phase 10** : passer à **70% de couverture globale mesurée sur `./...` complet avec CGO activé**,
+> en trois vagues incrémentales (handlers → sync/platform → validation/ops).
+>
+> **Document d'exécution détaillé** : [SPRINT_45_48_COVERAGE_ROADMAP.md](SPRINT_45_48_COVERAGE_ROADMAP.md)
+> (ce document contient : matrice fichier-par-fichier des cibles, fixtures à produire, commandes exactes, ordre de dépendances entre sprints).
+
+### Sprint 45 — Infra coverage réelle + baseline honnête (3–4 jours) ⬜
+
+> **Objectif** : rendre la mesure de couverture fiable et exhaustive avant d'écrire le moindre test supplémentaire.
+> Un chiffre honnête à 14% vaut mieux qu'un chiffre faux à 50%.
+>
+> **Réf. audit** : audit coverage 2026-04-17
+
+| # | Tâche | Statut |
+|--:|-------|:------:|
+| 1 | Réécrire le job `go-coverage` dans `.github/workflows/ci.yml` : `go test -coverprofile=coverage.out -covermode=atomic -coverpkg=./... ./...` avec `CGO_ENABLED=1` + toolchain MinGW ucrt64 sur le runner (GitHub Actions `windows-latest` ou conteneur custom Linux CGO) | ⬜ |
+| 2 | Ajouter `-coverpkg=./...` pour que les tests externes (ex : `tests/golden/`, `contracttest/`) comptent dans la couverture des packages qu'ils exercent (sinon golden reste à 0% car `package golden_test`) | ⬜ |
+| 3 | Exclure de la métrique : `internal/api/gen/` (code généré oapi-codegen), `cmd/msal-poc/` (POC jetable), `cmd/levelup/cmd_*.go` si CLI one-shot non-testable — via filtre `grep -v` post-profile ou fichier `.covignore` maison | ⬜ |
+| 4 | Produire `scripts/coverage_report.sh` : génère rapport HTML (`go tool cover -html`) + agrégation par package + comparaison vs baseline committée dans `apps/go-api/coverage_baseline.txt` | ⬜ |
+| 5 | Définir seuil CI progressif : S45 → 15%, S46 → 35%, S47 → 55%, S48 → 70% (ratchet : jamais de régression) | ⬜ |
+| 6 | Committer `apps/go-api/coverage_baseline.txt` avec l'état exact après nettoyage exclusions (format `go tool cover -func=` sorted) | ⬜ |
+| 7 | Documenter dans `README.md` ou `docs/testing.md` : comment lancer coverage localement, interpréter le rapport, contribuer un test qui bouge le baseline | ⬜ |
+| 8 | Décider statut des tests `CGO_ENABLED=0` : la CI actuelle a un job `go-coverage` CGO-off dédié → choix à trancher : soit fusion avec job CGO-on, soit conservation comme fast-check séparé (CGO-off = `./contracttest/... ./internal/domain/...` uniquement) | ⬜ |
+
+**Gate Sprint 45** :
+- [ ] Coverage mesuré sur `./...` complet avec CGO activé en CI
+- [ ] `tests/golden/` et `contracttest/` remontent la couverture des handlers qu'ils exercent (via `-coverpkg`)
+- [ ] Baseline committée reflète la réalité (~14-15%, pas 50%)
+- [ ] Seuil CI en ratchet positif uniquement (pas de régression acceptée)
+- [ ] Rapport HTML accessible en artifact CI
+- [ ] Exclusions `gen/` documentées et justifiées
+
+---
+
+### Sprint 46 — Tests handlers HTTP + middlewares (6–8 jours) ⬜
+
+> **Objectif** : amener `internal/api/handlers/` et `internal/api/middleware/` à **≥ 75%** de couverture via tests `httptest` table-driven.
+> C'est la couche la plus exposée aux régressions (frontier HTTP ↔ business).
+>
+> **Réf. audit** : audit coverage 2026-04-17 — 21 handlers, ~8 ont déjà un test minimal, ~13 sont à 0%
+>
+> **Stratégie** : pattern mock `port.Services` injecté (Sprint 37 a déjà livré l'interface). Un test par handler avec les 4 cas canoniques : OK, 400 (bad input), 404 (not found), 500 (service error).
+
+| # | Tâche | Statut |
+|--:|-------|:------:|
+| 1 | Créer `internal/api/handlers/testutil/` : `NewMockServices()` retourne `port.Services` avec 100% de méthodes mockables via fonctions-champs (pattern `func(ctx, args) (T, error)`) | ⬜ |
+| 2 | Créer `internal/api/handlers/testutil/http.go` : helpers `DoRequest(t, handler, method, path, body) → *httptest.ResponseRecorder`, `AssertJSONEqual(t, rec, want)`, `AssertStatus(t, rec, code)` | ⬜ |
+| 3 | Écrire `sessions_test.go` (4 cas × endpoints liste/detail/compare) — actuellement 0% | ⬜ |
+| 4 | Écrire `home_test.go` (4 cas × cumul/forme/intensité/distributions) — actuellement 0% | ⬜ |
+| 5 | Écrire `citations_test.go` (4 cas × liste + recompute) — actuellement 0% | ⬜ |
+| 6 | Écrire `explorer_test.go` (4 cas × params de filtre : map, mode, playlist) — actuellement 0% | ⬜ |
+| 7 | Écrire `media_test.go` (4 cas × list/association/upload si supporté) — actuellement 0% | ⬜ |
+| 8 | Écrire `last_match_test.go` (4 cas × présent/absent/PvE/PvP) — actuellement 0% | ⬜ |
+| 9 | Écrire `teammates_test.go` (4 cas × solo/duo/trio, filtre session) — actuellement 0% | ⬜ |
+| 10 | Écrire `session_compare_test.go` (4 cas × 2 sessions valides/invalides/overlap) — actuellement 0% | ⬜ |
+| 11 | Écrire `timeseries_test.go` (4 cas × granularité jour/semaine/mois) — actuellement 0% | ⬜ |
+| 12 | Écrire `match_history_test.go` (4 cas × pagination, filtres, empty result) — actuellement 0% | ⬜ |
+| 13 | Écrire `bootstrap_test.go` (4 cas × joueur valide / manquant / demo mode / multi-titres) — actuellement 0% côté handler (service_test existe) | ⬜ |
+| 14 | Écrire `auth_test.go` (4 cas × device code flow : init, poll, complete, timeout) — actuellement 0% | ⬜ |
+| 15 | Écrire `jobs_test.go` (4 cas × create/status/cancel/expired) — actuellement 0% | ⬜ |
+| 16 | Écrire `sync_handler_test.go` (4 cas × start/status/error lease/conflict) — actuellement 0% | ⬜ |
+| 17 | Middleware `request_id_test.go` : vérifier génération + propagation header `X-Request-ID` | ⬜ |
+| 18 | Middleware `cors_test.go` : vérifier Origin autorisée / refusée / preflight OPTIONS | ⬜ |
+| 19 | Middleware `rate_limit_test.go` : vérifier déclenchement à N req/sec et reset après fenêtre | ⬜ |
+| 20 | Middleware `session_test.go` : vérifier cookie set/read/expired/tampered | ⬜ |
+| 21 | Middleware `shadow_test.go` : vérifier shadow mode `"both"` appelle bien les deux backends et log le diff | ⬜ |
+| 22 | `helpers_test.go` : `writeJSON`, `parseQueryInt`, `parseQueryStringList`, `resolvePlayer` | ⬜ |
+| 23 | Vérifier couverture cumulée : `internal/api/handlers/` ≥ 75%, `internal/api/middleware/` ≥ 80% | ⬜ |
+
+**Gate Sprint 46** :
+- [ ] Chaque handler exposé par OpenAPI a au moins 4 tests (OK/400/404/500)
+- [ ] Chaque middleware a un test unitaire sur son comportement nominal + un edge case
+- [ ] `internal/api/handlers/` couverture ≥ 75%
+- [ ] `internal/api/middleware/` couverture ≥ 80%
+- [ ] Couverture globale ≥ 35%
+- [ ] Baseline mise à jour (`coverage_baseline.txt`)
+- [ ] Aucun test ne dépend d'une vraie DB (tout via `MockServices`)
+
+---
+
+### Sprint 47 — Tests sync/writes + migrations + platform/duckdb (8–10 jours) ⬜
+
+> **Objectif** : couvrir le code qui écrit en DB — le plus risqué, actuellement 0%.
+> `internal/sync/writes.go`, `internal/migration/steps_*.go`, `internal/platform/duckdb/*_repo.go` forment le cœur opérationnel : une régression ici corrompt les données utilisateur.
+>
+> **Réf. audit** : audit coverage 2026-04-17 — ~45 fonctions à 0% dans `sync/writes.go` + 3 `steps_*.go` non testés + repos DuckDB partiellement couverts
+>
+> **Stratégie** : fixtures DuckDB in-memory (`:memory:`) + `WITH sql.DB` + seed minimal par scénario. Pas de mock — on teste le SQL réel.
+
+| # | Tâche | Statut |
+|--:|-------|:------:|
+| 1 | Créer `internal/sync/testutil/fixture.go` : `NewInMemoryShared(t) *sql.DB` qui applique le schéma v6 depuis `migration/steps_shared.go` puis seed un match minimal (match_registry + 8 participants + 3 medals) | ⬜ |
+| 2 | Créer `internal/sync/testutil/player_fixture.go` : `NewInMemoryPlayer(t, gamertag) *sql.DB` (schéma v6 player) | ⬜ |
+| 3 | Test `writes_test.go::TestInsertRegistryIfNotExists` : 3 cas — insertion neuve, doublon ignoré, conflit xuid | ⬜ |
+| 4 | Test `writes_test.go::TestInsertParticipants` : batch 8 participants, vérifier count + MMR propagé + xuid canonique | ⬜ |
+| 5 | Test `writes_test.go::TestInsertMedals` : 3 médailles, vérifier lien `match_id` + idempotence sur re-insert | ⬜ |
+| 6 | Test `writes_test.go::TestUpsertXUIDAlias` : insert + update + vérifier unicité globale | ⬜ |
+| 7 | Test `writes_test.go::TestUpsertPlayerEnrichment` : nouveau match + mise à jour performance_score existant | ⬜ |
+| 8 | Test `writes_test.go::TestSetSyncMeta` : key/value + overwrite | ⬜ |
+| 9 | Test `writes_test.go::TestInsertWeaponKills` : 5 weapon_kills, vérifier `weapon_id` UBIGINT + FK match | ⬜ |
+| 10 | Test `writes_test.go::TestMarkWeaponKillsDone` : vérifier bit 18 posé dans `match_registry.backfill_completed` | ⬜ |
+| 11 | Test `transforms_test.go` (extension) : couvrir `findCoreStats`, `isRankedPlaylist`, `isFirefightMatch`, `extractTeamScoresByID`, `asString`, `strPtr`, `coalesceStrPtr`, `intPtrFrom`, `floatPtrFrom`, `intFrom`, `int64From` — toutes à 0% | ⬜ |
+| 12 | Test `aggregates_test.go` : recalcul agrégats après ajout d'un match | ⬜ |
+| 13 | Test `career_test.go` (sync) : progression rang calculée depuis historique | ⬜ |
+| 14 | Test `performance_test.go` (sync) : score calculé, stocké, ré-utilisé | ⬜ |
+| 15 | Test `engine_test.go` : cycle sync minimal bout-en-bout avec API Halo mockée (provider fake) + fixture DB | ⬜ |
+| 16 | Test `backfill_test.go` : lancer backfill sur 5 matchs, vérifier bitmask `backfill_completed` | ⬜ |
+| 17 | Test `lease_test.go` : 2 writers concurrents → un seul réussit, l'autre timeout propre | ⬜ |
+| 18 | Test `migration/steps_shared_test.go` : appliquer les 36 steps sur DB vide, vérifier chaque table + vue `v_gamertag_lookup`, `v_match_full`, `v_killer_victim_full`, `v_weapon_kills` | ⬜ |
+| 19 | Test `migration/steps_player_test.go` : appliquer schéma player, vérifier tables (`player_match_enrichment`, `match_skill_rank`, `sessions`, `media_files`, etc.) | ⬜ |
+| 20 | Test `migration/steps_shared_pve_test.go` : schéma PvE + seed `pve_match_stats` + query par wave | ⬜ |
+| 21 | Test `platform/duckdb/db_test.go` : pool lifecycle — open/close, concurrent reads, write lease acquire/release | ⬜ |
+| 22 | Test repos `*_repo_test.go` déjà présent (`repo_test.go`) → étendre pour couvrir les 13 repos : match_history, career, filters, gamertag, explorer, home, sessions, stats, citations, media, + les nouveaux | ⬜ |
+| 23 | Test `ops/restore_test.go` : backup → wipe → restore → vérifier intégrité via checksum tables | ⬜ |
+| 24 | Vérifier couverture cumulée : `internal/sync/` ≥ 70%, `internal/migration/` ≥ 75%, `internal/platform/duckdb/` ≥ 70% | ⬜ |
+
+**Gate Sprint 47** :
+- [ ] Toutes les fonctions `sync/writes.go` ont un test avec DB in-memory réelle
+- [ ] Chaque script de migration (`steps_*.go`) est testé sur DB vierge + DB déjà migrée (idempotence)
+- [ ] Repos DuckDB ≥ 70% (lecture seule + écriture)
+- [ ] Write lease testé en concurrence (2+ goroutines)
+- [ ] Couverture globale ≥ 55%
+- [ ] Baseline mise à jour
+- [ ] Durée suite complète < 2 minutes (sinon paralléliser via `t.Parallel()`)
+
+---
+
+### Sprint 48 — Tests validation + ops + service restants + gate 70% (5–7 jours) ⬜
+
+> **Objectif** : combler les derniers trous et franchir officiellement les 70%.
+> `internal/validation/` (gate + compare), `internal/ops/`, `internal/service/` restants, `internal/analysis/` résiduels.
+>
+> **Réf. audit** : audit coverage 2026-04-17 — `validation/compare.go` (13 funcs à 0%), `validation/gate.go` (11 funcs à 0%)
+
+| # | Tâche | Statut |
+|--:|-------|:------:|
+| 1 | Test `validation/compare_test.go::TestComparePlayerDBs` : 2 DBs identiques → 0 diff ; 2 DBs avec diff contrôlé → diff capturé précisément | ⬜ |
+| 2 | Test `validation/compare_test.go::TestClassifyDelta` : cas OK / WARN / FAIL selon seuils | ⬜ |
+| 3 | Test `validation/compare_test.go::TestCompareBitmasks` : bits identiques / divergents / manquants | ⬜ |
+| 4 | Test `validation/compare_test.go::TestCompareMatchIDs` : jaccard 1.0 / 0.8 / 0.5 / 0.0 | ⬜ |
+| 5 | Test `validation/compare_test.go` helpers : `listTables`, `countRows`, `compareTableCounts`, `loadMatchIDs`, `isReportOK`, `buildSummary`, `statusIcon`, `jaccardLabel` | ⬜ |
+| 6 | Test `validation/gate_test.go::TestRunGateCheck4` : healthcheck binaire + DB + migrations + profils | ⬜ |
+| 7 | Test `validation/gate_test.go` individuels : `checkBinary`, `checkDBAccessible`, `checkSharedTables`, `checkSharedViews`, `checkMigrationsApplied`, `checkPlayerDB`, `checkDBProfiles`, `checkDiscordNotify`, `checkTablesExist`, `checkViewsExist` | ⬜ |
+| 8 | Test `ops/restore_test.go` étendu (déjà démarré S47) : cas corrupt archive, version mismatch, partial restore | ⬜ |
+| 9 | Test `notify/version_test.go` : parsing semver, comparaison, détection breaking change | ⬜ |
+| 10 | Test `service/` restants : `match_history_service_test.go`, `explorer_service_test.go`, `media_service_test.go`, `citations_service_test.go`, `last_match_service_test.go`, `teammates_service_test.go`, `session_compare_service_test.go`, `sessions_service_test.go` — ceux sans test dédié aujourd'hui | ⬜ |
+| 11 | Test `analysis/` restants : `kill_attribution_test.go`, `weapon_data_test.go`, `weapon_parser_test.go`, `weapon_reconciliation_test.go`, `performance_score_test.go` si pas déjà au vert | ⬜ |
+| 12 | Test `config/` restants : options feature flag, env var parsing edge cases | ⬜ |
+| 13 | Test `domain/title/` : cas multi-titres + fallback legacy HI-only | ⬜ |
+| 14 | Relever seuil CI à **70%** dans `.github/workflows/ci.yml` + `coverage_baseline.txt` | ⬜ |
+| 15 | Faire passer `golangci-lint run ./...` clean (requis par Gate Phase 9 restant) | ✅ |
+| 16 | Documenter les exclusions restantes + justification (gen code, CLI throwaway, main wiring) dans `docs/testing.md` | ⬜ |
+| 17 | Mettre à jour `project_map.md` : ajouter colonne "coverage %" par package | ⬜ |
+| 18 | Ajouter entrée `.ai/thought_log.md` avec bilan Phase 10 : avant/après, durée réelle vs estimée, leçons apprises | ⬜ |
+
+**Gate Sprint 48 (gate finale Phase 10)** :
+- [ ] **Couverture globale ≥ 70%** mesurée sur `./...` avec CGO activé
+- [ ] Aucun package `internal/` (hors `gen/`) < 50%
+- [ ] `internal/api/handlers/` ≥ 75%
+- [ ] `internal/sync/` ≥ 70%
+- [ ] `internal/migration/` ≥ 75%
+- [ ] `internal/platform/duckdb/` ≥ 70%
+- [ ] `internal/validation/` ≥ 70%
+- [ ] Seuil CI effectif à 70% dans `.github/workflows/ci.yml`
+- [x] `golangci-lint run ./...` clean
+- [ ] Baseline `coverage_baseline.txt` à jour et commité
+- [ ] Rapport HTML coverage disponible en artifact CI
+- [ ] `docs/testing.md` à jour (exclusions + guide contribution test)
+- [ ] Durée suite de tests complète < 5 minutes en local, < 10 minutes en CI
+- [ ] Gate Phase 9 "Couverture ciblée Sprint 44 ≥ 80%" redevient vraie et mesurable
+
+---
+
+## Phase 11 — Clôture migration & alignement documentaire
+
+> **Contexte** : audit plans-vs-realite 2026-04-17 (`AUDIT_PLANS_VS_REALITE_2026-04-17.md`).
+> L'audit constate trois restes-à-faire réels côté Go une fois la Phase 10 terminée :
+> (1) fermeture effective du gate Sprint 36 (parity 24 endpoints, 15 specs Playwright, onboarding E2E) ;
+> (2) suppression des 6 exemptions de contrat encore tolérées dans `contract_test.go::notYetImplemented` ;
+> (3) durcissement final du Sprint 44 multi-titres (bootstrap `POST /session/context`, `JobMeta` typée, décision ADR routage path vs header).
+>
+> **Objectif Phase 11** : amener le repo Go à un état de clôture propre — contrat 100% substituable au Python, gate de bascule documentairement vert, multi-titres aligné sur son contrat annoncé — avec la gouvernance documentaire remise en phase.
+>
+> **Document d'exécution détaillé** : [AUDIT_PLANS_VS_REALITE_2026-04-17.md](AUDIT_PLANS_VS_REALITE_2026-04-17.md) §I.2 (restes à faire Go) et §I.4 (priorités actionnables).
+
+### Sprint 49 — Clôture gate S36 + exemptions contrat + durcissement S44 (6–9 jours) ⬜
+
+> **Objectif** : transformer en vert les trois dettes identifiées par l'audit plans-vs-realite qui restent visibles après la Phase 10.
+> Ce sprint ne crée pas de nouvelles fonctionnalités — il ferme formellement ce qui est déjà présent à 80-90% dans le code.
+>
+> **Réf. audit** : `AUDIT_PLANS_VS_REALITE_2026-04-17.md` §I.2.1 à §I.2.4
+
+| # | Tâche | Statut |
+|--:|-------|:------:|
+| **Volet A — Fermeture gate Sprint 36** | | |
+| 1 | Exécuter `python scripts/parity_check.py` sur les 24 endpoints de la matrice et committer le rapport dans `apps/go-api/parity_reports/2026-XX-XX.md` (0 diff attendu) | ⬜ |
+| 2 | Faire passer les 15 specs Playwright localement (`npm run e2e`) et consigner les screenshots/traces dans `apps/web/playwright-report/` (artifact CI conservé 30j) | ⬜ |
+| 3 | Valider onboarding E2E auth → home via `npx playwright test slice-9` (scénario Device Code Flow + premier sync + render home) | ⬜ |
+| 4 | Resynchroniser `docs/BASCULE_GO.md` : cocher les 4 cases ⬜ avec référence aux artifacts CI correspondants (date, job id, commit SHA) | ⬜ |
+| 5 | Produire note de bascule dans `docs/BASCULE_GO.md` §Historique : date effective de bascule, backend actif = "go" par défaut, conditions de rollback | ⬜ |
+| **Volet B — Suppression des 6 exemptions de contrat** | | |
+| 6 | `GET /api/v1/players/{*}/pages/citations` : réaligner chi sur GET (actuellement POST) ou mettre à jour OpenAPI si POST est la vraie intention → retirer entrée `notYetImplemented` | ⬜ |
+| 7 | `GET /api/v1/players/{*}/pages/commendations` : même traitement que (6) | ⬜ |
+| 8 | `GET /api/v1/players/{*}/pages/media` : même traitement que (6) | ⬜ |
+| 9 | `GET /api/v1/players/{*}/pages/synthesis` : même traitement que (6) | ⬜ |
+| 10 | `POST /api/v1/players/{*}/pages/match-history/export` : décider OpenAPI POST vs chi GET, aligner, retirer exemption | ⬜ |
+| 11 | `GET /api/v1/directory/gamertags/search` : route conditionnelle (shared DB requise) → soit la rendre inconditionnelle avec 503 si DB absente, soit documenter l'exemption comme permanente dans OpenAPI (`x-conditional-route: true`) | ⬜ |
+| 12 | Vider la map `notYetImplemented` dans [contract_test.go:122-129](apps/go-api/internal/api/contract_test.go) et s'assurer que `TestContractCoverage` passe sans skip | ⬜ |
+| **Volet C — Durcissement final Sprint 44** | | |
+| 13 | Trancher dans l'ADR [ADR_S44_MULTI_TITLE_NAMESPACE.md](ADR_S44_MULTI_TITLE_NAMESPACE.md) : routage `X-LevelUp-Title` + session (stratégie actuelle) vs `/titles/{title_slug}/...` (paths OpenAPI). Si décision = header/session, le documenter comme définitif et retirer la mention "intermédiaire" des docs Sprint 44 | ⬜ |
+| 14 | Faire converger `POST /session/context` vers le contrat de re-bootstrap complet annoncé : renvoyer `{session, bootstrap, available_titles, current_title}` au lieu du payload minimal actuel | ⬜ |
+| 15 | Remplacer `JobMeta map[string]any` par un type structuré (`type JobMeta struct { ... }`) dans `internal/sync/jobs/` + migration du stockage DuckDB (JSON → typed row ou JSON validé à l'écriture) | ⬜ |
+| 16 | Test `api/handlers/session_context_test.go` : bootstrap complet, switch titre, propagation au prochain appel, fallback si titre inconnu | ⬜ |
+| **Volet D — Gouvernance documentaire** | | |
+| 17 | Créer `.ai/SPRINT_EXPLORATION.md` (ou retirer la référence des deux `CLAUDE.md` de manière coordonnée entre go-migration et no-streamlit — cf. audit §II.2.3) | ⬜ |
+| 18 | Mettre à jour `GO_MIGRATION_CHECKLIST.md` pour qu'elle reflète l'état réel Phases 6-11 ou la déprécier explicitement au profit de `SPRINT_ROADMAP.md` (cf. audit §I.2.4) | ⬜ |
+| 19 | Ajouter entrée `.ai/thought_log.md` avec bilan Phase 11 : date de bascule effective, exemptions supprimées, décision ADR routage, état gouvernance | ⬜ |
+
+**Gate Sprint 49 (gate finale Phase 11 = clôture migration Go)** :
+- [ ] `scripts/parity_check.py` : 0 diff sur 24 endpoints, rapport committé
+- [ ] 15 specs Playwright vertes en CI (job `e2e-react`) — pas seulement en local
+- [ ] Onboarding E2E vert en CI
+- [ ] `notYetImplemented` vide dans `contract_test.go` (0 exemption)
+- [ ] `TestContractCoverage` passe sans aucun `t.Logf("SKIP ...")`
+- [ ] `docs/BASCULE_GO.md` : 4 cases gate Sprint 36 cochées avec preuves datées
+- [ ] Décision ADR routage multi-titres actée et documentée (header/session OU path-based, pas les deux)
+- [ ] `POST /session/context` renvoie le bootstrap complet conforme à la doc Sprint 44
+- [ ] `JobMeta` est un type Go structuré, plus `map[string]any`
+- [ ] Gouvernance `SPRINT_EXPLORATION.md` résolue dans les deux repos
+- [ ] `GO_MIGRATION_CHECKLIST.md` : synchronisée avec la réalité OU dépréciée formellement
+- [ ] Entrée thought_log bilan Phase 11 ajoutée
 
 ---
 
