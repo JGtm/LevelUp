@@ -1,5 +1,19 @@
 # Thought Log
 
+## [2026-06-16] test(sprint39): compléter les tests couches manquantes
+
+**Statut** : Complété
+
+**Décision** : Compléter Sprint 39 (T2+T4+T5) — tests repo DuckDB in-memory, snapshot FastAPI, couverture domain 100%.
+
+**Résultats** :
+- T2 : `repo_test.go` (284L, `//go:build integration`) — BootstrapRepo (6 tests) + GamertagRepo (4 tests) avec DuckDB `:memory:` + fixtures SQL
+- T4 : `apps/api/tests/test_snapshot.py` (5 tests) — smoke tests DEMO_MODE sur health, bootstrap, players, schema keys, openapi
+- T5 : `domain_test.go` (12 tests) — domain coverage 100%, analysis 31.4%, middleware 27.3% (packages CGo non mesurables Windows, 25+ fichiers tests en CI)
+- Correction roadmap : Sprint 33 ⬜→✅, 34 ⬜→✅, 35 ⬜→✅, 36 ⬜→🔄, 39 🔄→✅
+
+**Prochaine étape** : Sprints 42–44 (Phase 9 — évolutions fonctionnelles)
+
 ## [2025-07-17] feat(arch): Sprint 38+39 — DRY, split fichiers >500L, tests couverture
 
 **Statut** : Complété
@@ -14470,4 +14484,4 @@ Prochaine étape : Sprint 27 (Bascule progressive, ~3-5j).
 
 **Résultats** : go vet OK sur domain, analysis, middleware, port (api/service bloqués par CGo DuckDB Windows — attendu). gofmt appliqué sur tous les fichiers.
 
-**Conclusion** : Sprints 40+41 terminés. Sprint 36 T1 (parity_check = 0 diff) reste ��� — nécessite un run en prod. Prochaine étape : Sprint 42 (Analyse UI avancée + fanout multi-joueur).
+**Conclusion** : Sprints 40+41 terminés. Sprint 36 T1 (parity_check = 0 diff) reste ��� — nécessite un run en prod. Prochaine étape : Sprint 42 (Analyse UI avancée + fanout multi-joueur).
