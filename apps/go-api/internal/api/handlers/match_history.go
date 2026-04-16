@@ -13,27 +13,25 @@ import (
 
 	"github.com/go-chi/chi/v5"
 
-	"levelup/go-api/internal/config"
 	"levelup/go-api/internal/domain"
-	"levelup/go-api/internal/platform/duckdb"
-	"levelup/go-api/internal/service"
+	"levelup/go-api/internal/port"
 )
 
 // MatchHistoryHandler gère POST .../pages/match-history/query
 // et GET .../pages/match-history/export.
 type MatchHistoryHandler struct {
-	cfg *config.AppConfig
+	newSvc ContextFactory[port.MatchHistoryService]
 }
 
 // NewMatchHistoryHandler crée un MatchHistoryHandler.
-func NewMatchHistoryHandler(cfg *config.AppConfig) *MatchHistoryHandler {
-	return &MatchHistoryHandler{cfg: cfg}
+func NewMatchHistoryHandler(newSvc ContextFactory[port.MatchHistoryService]) *MatchHistoryHandler {
+	return &MatchHistoryHandler{newSvc: newSvc}
 }
 
 // Query retourne la page d'historique paginée et filtrée.
 func (h *MatchHistoryHandler) Query(w http.ResponseWriter, r *http.Request) {
 	slug := chi.URLParam(r, "player_slug")
-	pdb, err := config.ResolvePlayer(r.Context(), h.cfg, slug)
+	svc, _, _, err := h.newSvc(r.Context(), slug)
 	if err != nil {
 		writeError(w, http.StatusNotFound, "player_not_found", err.Error())
 		return
@@ -45,8 +43,6 @@ func (h *MatchHistoryHandler) Query(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	repo := duckdb.NewMatchHistoryRepo(pdb)
-	svc := service.NewMatchHistoryService(repo, pdb.Gamertag)
 	resp, err := svc.GetPage(r.Context(), req)
 	if err != nil {
 		writeError(w, http.StatusInternalServerError, "match_history_error", err.Error())
@@ -69,7 +65,7 @@ func (h *MatchHistoryHandler) Query(w http.ResponseWriter, r *http.Request) {
 // Le token est généré par Query avec include_export_hint=true.
 func (h *MatchHistoryHandler) Export(w http.ResponseWriter, r *http.Request) {
 	slug := chi.URLParam(r, "player_slug")
-	pdb, err := config.ResolvePlayer(r.Context(), h.cfg, slug)
+	svc, _, _, err := h.newSvc(r.Context(), slug)
 	if err != nil {
 		writeError(w, http.StatusNotFound, "player_not_found", err.Error())
 		return
@@ -86,9 +82,6 @@ func (h *MatchHistoryHandler) Export(w http.ResponseWriter, r *http.Request) {
 		writeError(w, http.StatusBadRequest, "invalid_token", "token invalide ou expiré")
 		return
 	}
-
-	repo := duckdb.NewMatchHistoryRepo(pdb)
-	svc := service.NewMatchHistoryService(repo, pdb.Gamertag)
 
 	rows, err := svc.ExportCSV(r.Context(), req)
 	if err != nil {

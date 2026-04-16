@@ -1,5 +1,44 @@
 # Thought Log
 
+## [2025-07-16] feat(arch): Sprint 37 — Architecture handlers & injection DI
+
+**Statut** : Complété
+
+**Décision technique** : Pattern DI avec types génériques `ServiceFactory[S]` et `ContextFactory[S]` définis dans le package handlers. Le `ServiceRegistry` (api/registry.go) centralise la construction des services à partir du `PlayerResolver`. Les handlers reçoivent des fonctions factory typées — aucun couplage direct avec `config`, `platform/duckdb` ou `service`.
+
+**Résultats** :
+- 16/21 handlers convertis au DI (tous les player-scoped). 5 handlers non convertis (infrastructure : health, bootstrap, auth, settings, sync) — ont déjà une injection propre.
+- 18 interfaces service créées dans `port/services.go`
+- `ProfileService` extrait de `setup.go` → `service/profile_service.go`
+- `server.go` câblé via `ServiceRegistry` — les handlers ne connaissent plus que les interfaces `port.*`
+- Test mock `career_test.go` démontre le pattern (3 cas : OK, 404, 500)
+- Gamertag handler reçoit directement un `port.GamertagSearchService` (service global, pas de résolution joueur)
+- Explorer handler utilise 2 factories (ExplorerService + MatchHistoryService)
+
+**Prochaine étape** : Sprint 38 — DRY + split fichiers >500L
+
+## [2026-04-16] docs(go-migration-v2): Sprint 44 aligné sur POST /session/context et scope multi-titres complet
+
+**Statut** : Complété
+
+**Tâche** : Corriger la documentation Sprint 44 après revue concrète du runtime Go/React : contrat session, périmètre frontend réel, provisioning joueur, matrice des chemins et drift de pilotage.
+
+**Décisions techniques principales** :
+
+1. Le contrat de switch titre reste aligné sur l'architecture Go existante : `POST /session/context` est conservé comme unique endpoint de mutation de session ; toutes les mentions `PATCH /session` ont été retirées des docs Sprint 44 / ADR / plan d'implémentation.
+2. Le scope frontend a été élargi explicitement : le Sprint 44 ne touche pas seulement `appShellStore`, mais aussi routes TanStack, `routeTree.gen.ts`, `queryKeys`, hooks `features/*/queries.ts`, liens de navigation, codegen OpenAPI, MSW/Playwright et `settingsDraftStore.lastPlayerSlug`.
+3. Le provisioning joueur est désormais un sous-lot explicite du Sprint 44 : `POST /setup/players`, `GET /players` et la matérialisation du layout cible doivent être title-aware.
+4. Une matrice explicite des chemins globaux vs title-aware a été ajoutée pour éviter que `PathResolver` namespace tout par erreur ; `db_profiles.json`, `app_settings.json`, `data/sessions` et `data/cache/jobs.json` restent globaux par design.
+5. Le drift de pilotage a été nettoyé : l'ADR n'est plus présentée comme à rédiger, la numérotation du sprint ne duplique plus les tâches critiques et la formulation des commandes CLI a été réalignée sur le runtime réel (`levelup` ops + binaire `server`).
+
+**Résultats observés** :
+
+- `SPRINT_44_WORKPACKAGES.md` couvre maintenant les 3 ajustements décidés et les 5 corrections relevées lors de la revue.
+- `SPRINT_ROADMAP.md`, `IMPLEMENTATION_PLAN.md` et `ADR_S44_MULTI_TITLE_NAMESPACE.md` emploient le même contrat session (`POST /session/context`) et le même périmètre multi-titres.
+- Le Sprint 44 est désormais cadré comme un lot complet de réussite technique et fonctionnelle, sans angle mort majeur documenté sur le frontend, le provisioning ou la résolution des chemins.
+
+**Conclusion / prochaine étape** : la prochaine étape utile est de transformer ce cadrage corrigé en tickets d'implémentation ordonnés par packages Go et surfaces React, puis de démarrer par `TitleRegistry` / `PathResolver` avant tout refactor applicatif.
+
 ## [2026-07-20] feat(validation): Sprint 36 — Validation & bascule production
 
 **Statut** : Partiellement complété (tâches code ✅, tâches runtime 🔄)

@@ -1020,11 +1020,11 @@
 
 | # | Tâche | Statut |
 |--:|-------|:------:|
-| 1 | `NewRouter` → accepte `ServiceRegistry` ou services injectés | ⬜ |
-| 2 | Convertir 15/21 handlers : plus de `resolvePlayer → NewRepo → NewService` inline | ⬜ |
-| 3 | Interfaces de service dans `internal/port/` | ⬜ |
-| 4 | Extraire `createPlayerInProfiles` de `setup.go` → `ProfileService` | ⬜ |
-| 5 | Test handler avec mock service (pattern de validation) | ⬜ |
+| 1 | `NewRouter` → accepte `ServiceRegistry` ou services injectés | ✅ |
+| 2 | Convertir 16/21 handlers : plus de `resolvePlayer → NewRepo → NewService` inline | ✅ |
+| 3 | Interfaces de service dans `internal/port/` | ✅ |
+| 4 | Extraire `createPlayerInProfiles` de `setup.go` → `ProfileService` | ✅ |
+| 5 | Test handler avec mock service (pattern de validation) | ✅ |
 
 ---
 
@@ -1128,36 +1128,40 @@
 
 | # | Tâche | Statut |
 |--:|-------|:------:|
-| 1 | Rédiger l'ADR et figer le namespace par titre comme stratégie de référence | ⬜ |
+| 1 | S'appuyer sur l'ADR déjà acceptée et verrouiller son alignement avec l'implémentation multi-titres | ✅ |
 | 2 | Introduire `TitleRegistry` / `TitleDescriptor` et `PathResolver` title-aware pour centraliser titres, capabilities et chemins runtime | ⬜ |
-| 3 | Refactorer `PlayerResolver` pour accepter `(title_slug, player_slug)` et propager au pool DuckDB (clé `{title}:{gamertag}` au lieu de `gamertag` seul — impacte 13 fichiers `*_repo.go`) | ⬜ |
-| 4 | Rendre config, session, bootstrap, jobs et sélection joueur explicitement title-aware — inclut le contrat de switch titre runtime (`PATCH /session` + re-bootstrap) et `TitleSummary` dans le bootstrap (auth non impactée — flow MSAL titre-agnostique) | ⬜ |
-| 5 | Migrer `db_profiles.json` vers un format v3 title-aware, avec lecture rétro-compatible du format actuel | ⬜ |
-| 6 | Rendre demo mode title-aware (`DemoFixturesDir` namespacé) + migrer les 6 fichiers `internal/ops/` et `internal/validation/gate.go` vers `PathResolver` | ⬜ |
-| 7 | Mettre en place le namespace `data/titles/{title_slug}/warehouse/...` et `data/titles/{title_slug}/players/{gamertag}/...` | ⬜ |
-| 7 | Ajouter une migration idempotente avec modes dry-run, apply et rollback via manifest JSON (`operations.json` traçant chaque `(source, dest)`), journal de migration et backup automatique | ⬜ |
-| 8 | Créer le corpus synthétique second titre (~0.5–1j) : `metadata.duckdb` minimal + `shared_matches_v2.duckdb` avec quelques matchs, schémas compatibles | ⬜ |
-| 9 | Créer fixtures multi-titres (Halo Infinite namespacé + titre synthétique), golden values et smoke E2E de non-régression | ⬜ |
-| 10 | Décider et implémenter le routage OpenAPI `{title_slug}` (23 endpoints) + middleware Chi d'extraction + fallback anciennes routes | ⬜ |
-| 11 | Ajouter `--title` flag aux 8 sous-commandes CLI (backup, restore, archive, media, diagnose, seed, healthcheck, server) | ⬜ |
-| 12 | Brancher `appShellStore.currentTitleSlug` + `switchTitle()` + `isTitleSwitching` + `reset()` stores dépendants + API client `buildUrl()` title-aware + types TS générés `TitleSummary` | ⬜ |
-| 13 | Tests unitaires ciblés : `TitleRegistry`, `PathResolver`, `PlayerResolver` title-aware (mode réel + mode démo), config v3, pool keying `{title}:{gamertag}` | ⬜ |
-| 14 | Tests d'intégration : migration dry-run/apply/rollback, dépôt legacy HI-only, dépôt déjà migré, isolement inter-titres (deux titres même gamertag ne partagent pas de pool) | ⬜ |
-| 15 | Golden tests et smoke E2E : zéro diff HI pré/post migration + smoke React sur changement de titre | ⬜ |
-| 16 | Observabilité : logs `title_slug` + `response_bytes`, validation contrat bootstrap title-aware en dev | ⬜ |
-| 17 | Documentation finale : README, CLAUDE.md, copilot-instructions, runbook d'exploitation, rollback plan | ⬜ |
+| 3 | Figer la matrice des chemins globaux vs title-aware (warehouse, players, archive, captures, backups, sessions, jobs, db_profiles, app_settings, demo fixtures) et l'encoder dans `PathResolver` | ⬜ |
+| 4 | Refactorer `PlayerResolver` pour accepter `(title_slug, player_slug)` et propager au pool DuckDB (clé `{title}:{gamertag}` au lieu de `gamertag` seul — impacte 13 fichiers `*_repo.go`) | ⬜ |
+| 5 | Rendre config, session, bootstrap, jobs et sélection joueur explicitement title-aware — inclut le contrat de switch titre runtime (`POST /session/context` + re-bootstrap) et `TitleSummary` dans le bootstrap (auth non impactée — flow MSAL titre-agnostique) | ⬜ |
+| 6 | Migrer `db_profiles.json` vers un format v3 title-aware, avec lecture rétro-compatible du format actuel | ⬜ |
+| 7 | Rendre `POST /setup/players`, `GET /players` et le provisioning de profils explicitement title-aware | ⬜ |
+| 8 | Rendre demo mode title-aware (`DemoFixturesDir` namespacé) + migrer les 6 fichiers `internal/ops/`, `internal/validation/gate.go` et `internal/sync/engine.go` vers `PathResolver` | ⬜ |
+| 9 | Mettre en place le namespace `data/titles/{title_slug}/warehouse/...` et `data/titles/{title_slug}/players/{gamertag}/...` | ⬜ |
+| 10 | Ajouter une migration idempotente avec modes dry-run, apply et rollback via manifest JSON (`operations.json` traçant chaque `(source, dest)`), journal de migration et backup automatique | ⬜ |
+| 11 | Créer le corpus synthétique second titre (~0.5–1j) : `metadata.duckdb` minimal + `shared_matches_v2.duckdb` avec quelques matchs, schémas compatibles | ⬜ |
+| 12 | Créer fixtures multi-titres (Halo Infinite namespacé + titre synthétique), golden values et smoke E2E de non-régression | ⬜ |
+| 13 | Décider et implémenter le routage OpenAPI `{title_slug}` (23 endpoints) + middleware Chi d'extraction + fallback anciennes routes + périmètre frontend complet (routes TanStack, query keys, hooks, liens, codegen) | ⬜ |
+| 14 | Ajouter `--title` aux commandes ops concernées du binaire `levelup` (`backup`, `restore`, `archive`, `index-media`, `seed`, `healthcheck`, `gate-check`) et brancher la résolution de titre au démarrage du binaire `server` | ⬜ |
+| 15 | Brancher `appShellStore.currentTitleSlug` + `switchTitle()` + `isTitleSwitching` + `reset()` stores dépendants + `settingsDraftStore.lastPlayerSlug` title-aware + API client `buildUrl()` + routes/query keys/codegen TS | ⬜ |
+| 16 | Tests unitaires ciblés : `TitleRegistry`, `PathResolver`, `PlayerResolver` title-aware (mode réel + mode démo), config v3, pool keying `{title}:{gamertag}` | ⬜ |
+| 17 | Tests d'intégration : migration dry-run/apply/rollback, dépôt legacy HI-only, dépôt déjà migré, isolement inter-titres (deux titres même gamertag ne partagent pas de pool), provisioning et matrice des chemins | ⬜ |
+| 18 | Golden tests et smoke E2E : zéro diff HI pré/post migration + smoke React sur changement de titre | ⬜ |
+| 19 | Observabilité : logs `title_slug` + `response_bytes`, validation contrat bootstrap title-aware en dev | ⬜ |
+| 20 | Documentation finale : README, CLAUDE.md, copilot-instructions, runbook d'exploitation, rollback plan | ⬜ |
 
 **Sous-plan de réussite 10/10**
 
 - **Design** : `title_slug` ne doit pas vivre comme une string opportuniste. Le sprint doit introduire un point central de vérité pour les titres supportés, les capacités associées et la résolution des chemins/runtime context.
 - **PlayerResolver** : pivot central du refactor. C'est la première brique à modifier car elle résout `player_slug` → gamertag → chemins DB. Le pool DuckDB doit passer d'une clé `gamertag` à `{title}:{gamertag}` (13 fichiers `*_repo.go` impactés, changement transparent via `PlayerDB` enrichie).
 - **Chemins hardcodés** : 29 références dans 15 fichiers (`cmd/server`, `config/player_resolver`, `ops/`, `validation/gate`, `sync/engine`). Toutes doivent passer par le `PathResolver`.
+- **Matrice des chemins** : le sprint doit figer ce qui reste global (`app_settings.json`, `db_profiles.json`, `data/sessions`, `data/cache/jobs.json`) et ce qui devient title-aware (`warehouse`, `players`, `archive`, `captures`, `backups`, fixtures démo). Pas de flou toléré sur ce point.
 - **Demo mode** : `resolveDemoPlayer()` et `DemoFixturesDir` doivent devenir title-aware.
 - **Config** : `db_profiles.json` v3 title-aware avec rétrocompatibilité lecture du format actuel.
+- **Provisioning** : `POST /setup/players`, `GET /players` et la matérialisation du layout joueur doivent suivre le titre courant. Un multi-titres qui ne sait pas créer/provisionner un joueur proprement est considéré incomplet.
 - **OpenAPI** : 23 endpoints avec `{player_slug}` doivent intégrer `{title_slug}` (recommandation : préfixe path + fallback anciennes routes).
-- **CLI** : 8 sous-commandes doivent accepter `--title` (défaut `halo_infinite`).
-- **Frontend** : `appShellStore.currentTitleSlug` + `switchTitle()` + `isTitleSwitching` (loader) + stores `reset()`. Types générés OpenAPI + API client `buildUrl()` title-aware. 5 stores React impactés.
-- **Switch titre runtime** : préparé structurellement, pas de bouton UI. Flux : `PATCH /session {title_slug}` → validation `TitleRegistry` → invalidation joueur courant → bootstrap complet retourné → frontend flush stores + re-hydratation. Lazy pool opening (connexions DuckDB du nouveau titre ouvertes à la demande, pas au switch). Erreur → rollback silencieux côté frontend.
+- **CLI** : les commandes ops concernées du binaire `levelup` doivent accepter `--title` (défaut `halo_infinite`) et le binaire `server` doit résoudre correctement le titre au démarrage.
+- **Frontend** : le blast radius ne se limite pas aux stores. `appShellStore.currentTitleSlug` + `switchTitle()` + `isTitleSwitching` (loader) + stores `reset()`, mais aussi routes TanStack, `routeTree.gen.ts`, `queryKeys`, hooks `features/*/queries.ts`, liens de navigation, codegen OpenAPI, MSW/Playwright et `settingsDraftStore.lastPlayerSlug` doivent devenir title-aware.
+- **Switch titre runtime** : préparé structurellement, pas de bouton UI. Flux : `POST /session/context {title_slug}` → validation `TitleRegistry` → invalidation joueur courant → bootstrap complet retourné → frontend flush stores + re-hydratation. Lazy pool opening (connexions DuckDB du nouveau titre ouvertes à la demande, pas au switch). Erreur → rollback silencieux côté frontend.
 - **Migration** : la transition depuis l'arborescence HI-only doit être réversible et vérifiable. Mécanisme retenu : manifest JSON (`operations.json`) traçant chaque opération `(source, dest)`, rollback = exécution inverse. Aucun déplacement destructif sans dry-run et backup.
 - **Corpus synthétique** : budget dédié de 0.5–1 jour pour créer un jeu de données minimal mais significatif pour un second titre.
 - **Validation** : la non-régression Halo Infinite doit être prouvée avant/après migration. L'isolement inter-titres doit être testé (deux titres, même gamertag ≠ mêmes données).
@@ -1173,18 +1177,20 @@
 - [ ] Demo mode title-aware
 - [ ] Migration HI-only → namespace par titre validée en dry-run/apply/rollback (manifest JSON)
 - [ ] Routage OpenAPI `{title_slug}` décidé et implémenté (23 endpoints)
-- [ ] 8 sous-commandes CLI acceptent `--title`
+- [ ] Commandes ops concernées du binaire `levelup` acceptent `--title` et le binaire `server` résout le titre au démarrage
 - [ ] Frontend `appShellStore.currentTitleSlug` + `switchTitle()` + stores `reset()` branchés
-- [ ] Switch titre runtime fonctionnel : `PATCH /session {title_slug}` → re-bootstrap complèt
+- [ ] `settingsDraftStore.lastPlayerSlug` est title-aware
+- [ ] `POST /setup/players` + `GET /players` provisionnent/listent correctement dans le titre courant
+- [ ] Switch titre runtime fonctionnel : `POST /session/context {title_slug}` → re-bootstrap complet
 - [ ] `SessionData.CurrentTitleSlug` non-nul + fallback legacy
 - [ ] `BootstrapResponse` : `current_title` + `available_titles` (`TitleSummary`)
 - [ ] `JobMeta` structuré avec `TitleSlug` obligatoire
 - [ ] Logging structuré complet (slog : `title_switched`, `legacy_session`, `bootstrap_served`, `job_created`)
 - [ ] Zéro régression Halo Infinite sur corpus golden après migration
 - [ ] Isolement inter-titres validé sur un corpus synthétique (deux titres, même gamertag)
-- [ ] Tests : 20 WP2 + 16 WP4 + golden + smoke E2E Playwright couvrent les parcours title-aware
+- [ ] Tests : 20 WP2 + 17 WP4 + golden + smoke E2E Playwright couvrent les parcours title-aware
 - [ ] Couverture ciblée modules Sprint 44 ≥ 80%, couverture Go globale ≥ 50%
-- [ ] ADR multi-titres rédigée et alignée avec l'implémentation
+- [ ] ADR multi-titres déjà acceptée et alignée avec l'implémentation
 - [ ] `golangci-lint run` clean, 0 TODO non-documenté
 - [ ] **Projet complet** ✨
 

@@ -9,25 +9,24 @@ import (
 
 	"github.com/go-chi/chi/v5"
 
-	"levelup/go-api/internal/config"
 	"levelup/go-api/internal/domain"
-	"levelup/go-api/internal/platform/duckdb"
-	"levelup/go-api/internal/service"
+	"levelup/go-api/internal/port"
 )
 
 // TeammatesHandler gère POST /pages/teammates.
 type TeammatesHandler struct {
-	cfg *config.AppConfig
+	newSvc ContextFactory[port.TeammatesService]
 }
 
 // NewTeammatesHandler crée un TeammatesHandler.
-func NewTeammatesHandler(cfg *config.AppConfig) *TeammatesHandler {
-	return &TeammatesHandler{cfg: cfg}
+func NewTeammatesHandler(newSvc ContextFactory[port.TeammatesService]) *TeammatesHandler {
+	return &TeammatesHandler{newSvc: newSvc}
 }
 
 // GetPage traite POST /api/v1/players/{player_slug}/pages/teammates.
 func (h *TeammatesHandler) GetPage(w http.ResponseWriter, r *http.Request) {
-	pdb, err := h.resolvePlayer(r)
+	slug := chi.URLParam(r, "player_slug")
+	svc, xuid, _, err := h.newSvc(r.Context(), slug)
 	if err != nil {
 		writeError(w, http.StatusNotFound, "player_not_found", err.Error())
 		return
@@ -39,19 +38,11 @@ func (h *TeammatesHandler) GetPage(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	repo := duckdb.NewSquadRepo(pdb)
-	svc := service.NewTeammatesService(repo)
-
-	resp, svcErr := svc.GetPage(r.Context(), pdb.XUID, req)
+	resp, svcErr := svc.GetPage(r.Context(), xuid, req)
 	if svcErr != nil {
 		writeError(w, http.StatusInternalServerError, "teammates_error", svcErr.Error())
 		return
 	}
 
 	writeJSON(w, http.StatusOK, resp)
-}
-
-func (h *TeammatesHandler) resolvePlayer(r *http.Request) (*duckdb.PlayerDB, error) {
-	slug := chi.URLParam(r, "player_slug")
-	return config.ResolvePlayer(r.Context(), h.cfg, slug)
 }

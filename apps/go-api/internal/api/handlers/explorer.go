@@ -9,27 +9,33 @@ import (
 
 	"github.com/go-chi/chi/v5"
 
-	"levelup/go-api/internal/config"
 	"levelup/go-api/internal/domain"
-	"levelup/go-api/internal/platform/duckdb"
-	"levelup/go-api/internal/service"
+	"levelup/go-api/internal/port"
 )
 
 // ExplorerHandler gère les endpoints de l'Explorer.
 type ExplorerHandler struct {
-	cfg *config.AppConfig
+	newExplorerSvc  ContextFactory[port.ExplorerService]
+	newMatchHistSvc ContextFactory[port.MatchHistoryService]
 }
 
 // NewExplorerHandler crée un ExplorerHandler.
-func NewExplorerHandler(cfg *config.AppConfig) *ExplorerHandler {
-	return &ExplorerHandler{cfg: cfg}
+func NewExplorerHandler(
+	newExplorerSvc ContextFactory[port.ExplorerService],
+	newMatchHistSvc ContextFactory[port.MatchHistoryService],
+) *ExplorerHandler {
+	return &ExplorerHandler{
+		newExplorerSvc:  newExplorerSvc,
+		newMatchHistSvc: newMatchHistSvc,
+	}
 }
 
 // QueryPlayer retourne les matchs en commun avec un autre joueur.
 // POST /api/v1/players/{player_slug}/pages/explorer/player-query
 // Body JSON : { "target_gamertag": "...", "limit": 50 }
 func (h *ExplorerHandler) QueryPlayer(w http.ResponseWriter, r *http.Request) {
-	pdb, err := h.resolvePlayer(r)
+	slug := chi.URLParam(r, "player_slug")
+	svc, _, _, err := h.newExplorerSvc(r.Context(), slug)
 	if err != nil {
 		writeError(w, http.StatusNotFound, "player_not_found", err.Error())
 		return
@@ -45,9 +51,6 @@ func (h *ExplorerHandler) QueryPlayer(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	repo := duckdb.NewExplorerRepo(pdb, pdb.XUID)
-	svc := service.NewExplorerService(repo, pdb.XUID)
-
 	resp, err := svc.GetCommonMatches(r.Context(), req.TargetGamertag, req.Limit)
 	if err != nil {
 		writeError(w, http.StatusInternalServerError, "explorer_error", err.Error())
@@ -61,7 +64,7 @@ func (h *ExplorerHandler) QueryPlayer(w http.ResponseWriter, r *http.Request) {
 // Body JSON : { "filters": {...}, "pagination": {...}, "sort_field": "...", "sort_dir": "..." }
 func (h *ExplorerHandler) QueryMatches(w http.ResponseWriter, r *http.Request) {
 	slug := chi.URLParam(r, "player_slug")
-	pdb, err := config.ResolvePlayer(r.Context(), h.cfg, slug)
+	mhSvc, _, _, err := h.newMatchHistSvc(r.Context(), slug)
 	if err != nil {
 		writeError(w, http.StatusNotFound, "player_not_found", err.Error())
 		return
@@ -81,10 +84,7 @@ func (h *ExplorerHandler) QueryMatches(w http.ResponseWriter, r *http.Request) {
 		SortDir:    req.SortDir,
 	}
 
-	repo := duckdb.NewMatchHistoryRepo(pdb)
-	svc := service.NewMatchHistoryService(repo, pdb.Gamertag)
-
-	mhResp, err := svc.GetPage(r.Context(), mhReq)
+	mhResp, err := mhSvc.GetPage(r.Context(), mhReq)
 	if err != nil {
 		writeError(w, http.StatusInternalServerError, "explorer_matches_error", err.Error())
 		return
@@ -113,11 +113,6 @@ func (h *ExplorerHandler) QueryMatches(w http.ResponseWriter, r *http.Request) {
 		Total:      mhResp.Summary.TotalMatchesScoped,
 	}
 	writeJSON(w, http.StatusOK, resp)
-}
-
-func (h *ExplorerHandler) resolvePlayer(r *http.Request) (*duckdb.PlayerDB, error) {
-	slug := chi.URLParam(r, "player_slug")
-	return config.ResolvePlayer(r.Context(), h.cfg, slug)
 }
 
 // extractKillsFromLabel est un placeholder — MatchHistoryRow ne stocke pas les kills séparément.
