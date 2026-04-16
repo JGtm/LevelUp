@@ -33,9 +33,17 @@ const (
 	xstsHaloAudience = "https://prod.xsts.halowaypoint.com/"
 )
 
+// ExchangeResult regroupe les tokens Halo ET l'identité extraite de la réponse XSTS.
+type ExchangeResult struct {
+	Tokens   *domain.HaloTokens
+	Gamertag string // DisplayClaims.xui[0].gtg
+	XUID     string // DisplayClaims.xui[0].xid
+}
+
 // ExchangeAccessToken échange un access_token Microsoft contre des tokens Halo Infinite.
 // Implémente la chaîne : access_token → XBL user → XSTS Halo → Spartan → Clearance.
-func ExchangeAccessToken(ctx context.Context, accessToken string) (*domain.HaloTokens, error) {
+// Retourne aussi le gamertag et le XUID extraits de la réponse XSTS.
+func ExchangeAccessToken(ctx context.Context, accessToken string) (*ExchangeResult, error) {
 	client := &http.Client{Timeout: 20 * time.Second}
 
 	// Étape 1 : User Token XBL
@@ -44,8 +52,8 @@ func ExchangeAccessToken(ctx context.Context, accessToken string) (*domain.HaloT
 		return nil, fmt.Errorf("user token XBL: %w", err)
 	}
 
-	// Étape 2 : XSTS Token Halo
-	xstsToken, err := requestXSTSToken(ctx, client, userToken, xstsHaloAudience)
+	// Étape 2 : XSTS Token Halo (+ extraction gamertag/xuid)
+	xstsToken, gamertag, xuid, err := requestXSTSToken(ctx, client, userToken, xstsHaloAudience)
 	if err != nil {
 		return nil, fmt.Errorf("XSTS token Halo: %w", err)
 	}
@@ -62,9 +70,13 @@ func ExchangeAccessToken(ctx context.Context, accessToken string) (*domain.HaloT
 		return nil, fmt.Errorf("clearance token: %w", err)
 	}
 
-	return &domain.HaloTokens{
-		SpartanToken:   spartanToken,
-		ClearanceToken: clearanceToken,
+	return &ExchangeResult{
+		Tokens: &domain.HaloTokens{
+			SpartanToken:   spartanToken,
+			ClearanceToken: clearanceToken,
+		},
+		Gamertag: gamertag,
+		XUID:     xuid,
 	}, nil
 }
 
@@ -97,7 +109,8 @@ func requestUserToken(ctx context.Context, client *http.Client, accessToken stri
 }
 
 // requestXSTSToken échange un User Token XBL contre un XSTS Token.
-func requestXSTSToken(ctx context.Context, client *http.Client, userToken, relyingParty string) (string, error) {
+// Retourne (token, gamertag, xuid, error) — gamertag/xuid extraits de DisplayClaims.xui[0].
+func requestXSTSToken(ctx context.Context, client *http.Client, userToken, relyingParty string) (string, string, string, error) {
 	body := map[string]any{
 		"RelyingParty": relyingParty,
 		"TokenType":    "JWT",
@@ -110,13 +123,35 @@ func requestXSTSToken(ctx context.Context, client *http.Client, userToken, relyi
 		"x-xbl-contract-version": "1",
 	}, body)
 	if err != nil {
-		return "", err
+		return "", "", "", err
 	}
 	token, ok := resp["Token"].(string)
 	if !ok || token == "" {
-		return "", fmt.Errorf("Token absent dans la réponse XSTS")
+		return "", "", "", fmt.Errorf("Token absent dans la réponse XSTS")
 	}
-	return token, nil
+
+	// Extraire gamertag + xuid depuis DisplayClaims.xui[0]
+	gamertag, xuid := extractDisplayClaims(resp)
+	return token, gamertag, xuid, nil
+}
+
+// extractDisplayClaims extrait gamertag (gtg) et xuid (xid) de la réponse XSTS.
+func extractDisplayClaims(resp map[string]any) (string, string) {
+	dc, ok := resp["DisplayClaims"].(map[string]any)
+	if !ok {
+		return "", ""
+	}
+	xuiRaw, ok := dc["xui"].([]any)
+	if !ok || len(xuiRaw) == 0 {
+		return "", ""
+	}
+	first, ok := xuiRaw[0].(map[string]any)
+	if !ok {
+		return "", ""
+	}
+	gamertag, _ := first["gtg"].(string)
+	xuid, _ := first["xid"].(string)
+	return gamertag, xuid
 }
 
 // requestSpartanToken échange un XSTS Token Halo contre un Spartan Token.
