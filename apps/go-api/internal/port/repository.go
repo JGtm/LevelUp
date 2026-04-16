@@ -5,6 +5,7 @@ package port
 
 import (
 	"context"
+	"time"
 
 	"levelup/go-api/internal/domain"
 )
@@ -17,6 +18,10 @@ type BootstrapRepository interface {
 
 	// GetDBVersion retourne la version DuckDB embarquée.
 	GetDBVersion(ctx context.Context) (string, error)
+
+	// Sprint 41 T3 : méthodes enrichissement healthcheck.
+	GetPlayerCount(ctx context.Context) (int, error)
+	GetLastSyncAt(ctx context.Context) (*time.Time, error)
 }
 
 // PlayerRepository fournit les données d'un joueur spécifique.
@@ -44,8 +49,10 @@ var (
 // noopBootstrapRepo — impl nulle pour le check de compilation uniquement.
 type noopBootstrapRepo struct{}
 
-func (n *noopBootstrapRepo) GetMatchCount(_ context.Context) (int, error)   { return 0, nil }
-func (n *noopBootstrapRepo) GetDBVersion(_ context.Context) (string, error) { return "", nil }
+func (n *noopBootstrapRepo) GetMatchCount(_ context.Context) (int, error)        { return 0, nil }
+func (n *noopBootstrapRepo) GetDBVersion(_ context.Context) (string, error)      { return "", nil }
+func (n *noopBootstrapRepo) GetPlayerCount(_ context.Context) (int, error)       { return 0, nil }
+func (n *noopBootstrapRepo) GetLastSyncAt(_ context.Context) (*time.Time, error) { return nil, nil }
 
 // noopPlayerRepo — impl nulle pour le check de compilation uniquement.
 type noopPlayerRepo struct{ xuid, dbPath string }

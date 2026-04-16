@@ -38,7 +38,17 @@ SELECT
     p.accuracy,
     p.time_played_seconds,
     p.team_mmr,
-    p.enemy_mmr
+    p.enemy_mmr,
+    p.shots_fired,
+    p.shots_hit,
+    p.damage_dealt,
+    p.damage_taken,
+    p.avg_life_seconds,
+    p.headshot_kills,
+    p.max_killing_spree,
+    p.grenade_kills,
+    p.melee_kills,
+    p.power_weapon_kills
 FROM shared.match_participants p
 LEFT JOIN shared.xuid_aliases xa ON p.xuid = xa.xuid
 WHERE p.match_id = ?

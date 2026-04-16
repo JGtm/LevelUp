@@ -3,6 +3,7 @@
 // Sprint 16 : Settings, Setup.
 // Sprint 17 : Jobs longs persistants, sync initiale.
 // Sprint 37 : Architecture handlers & injection DI via ServiceRegistry.
+// Sprint 40 : ContractValidate (dev) + ErrorTracker (Discord 500 + alerting).
 package api
 
 import (
@@ -54,6 +55,15 @@ func NewRouter(
 	r.Use(middleware.SlogLogger)
 	r.Use(chimiddleware.Compress(5))
 	r.Use(middleware.WithSession(sessionStore, isProduction))
+
+	// Sprint 40 T1 : validation de contrat (dev mode, no-op si LEVELUP_CONTRACT_VALIDATE != 1).
+	r.Use(middleware.ContractValidate)
+
+	// Sprint 40 T2+T3 : error tracking + alerting Discord.
+	errorTracker := middleware.NewErrorTracker(middleware.ErrorTrackerConfig{
+		WebhookURL: cfg.DiscordWebhookURL,
+	})
+	r.Use(errorTracker.Middleware)
 
 	// Sprint 35 : shadow mode — compare Go vs Python en parallèle si activé.
 	if cfg.ShadowMode == "both" {

@@ -66,11 +66,11 @@
 | **34** | **Infra release/deploy Go** | **Phase 7** | **5-8j** | **⬜** | Sprint 33 |
 | 35 | Golden tests CI + shadow mode | Phase 7 | 4-6j | ⬜ | Sprint 34 |
 | 36 | Validation & bascule production | Phase 7 | 3-5j | ⬜ | Sprint 35 |
-| **37** | **Architecture handlers & injection** | **Phase 8** | **4-6j** | **⬜** | Sprint 36 |
-| 38 | DRY + split fichiers >500L | Phase 8 | 4-6j | ⬜ | Sprint 37 |
-| 39 | Tests couches manquantes + couverture 50% | Phase 8 | 4-6j | ⬜ | Sprint 37 |
-| 40 | Observabilité & monitoring | Phase 8 | 2-3j | ⬜ | Sprint 36 |
-| **41** | **Scoreboard + weapon parsing + healthcheck** | **Phase 9** | **5-8j** | **⬜** | Sprint 36 |
+| **37** | **Architecture handlers & injection** | **Phase 8** | **4-6j** | **✅** | Sprint 36 |
+| 38 | DRY + split fichiers >500L | Phase 8 | 4-6j | ✅ | Sprint 37 |
+| 39 | Tests couches manquantes + couverture 50% | Phase 8 | 4-6j | 🔄 | Sprint 37 |
+| 40 | Observabilité & monitoring | Phase 8 | 2-3j | ✅ | Sprint 36 |
+| **41** | **Scoreboard + weapon parsing + healthcheck** | **Phase 9** | **5-8j** | **✅** | Sprint 36 |
 | 42 | Analyse UI avancée + fanout multi-joueur | Phase 9 | 5-8j | ⬜ | Sprint 41 |
 | 43 | Améliorations UX produit | Phase 9 | 5-8j | ⬜ | Sprint 36 |
 | 44 | Implémentation multi-titres + ADR + polish final | Phase 9 | 10-14j | ⬜ | Sprint 36 |
@@ -998,7 +998,7 @@
 | 3 | **Onboarding E2E** : auth → player → sync → home | ✅ |
 | 4 | **Sécurité** : CSRF, pool, errors, JSON validation OK | ✅ |
 | 5 | **Infra** : Docker + healthcheck + Makefile OK | ✅ |
-| 6 | **Bascule** : feature flag → Go, monitoring 48h, retrait Python du compose | 🔄 |
+| 6 | **Bascule** : feature flag → Go, monitoring 48h, retrait Python du compose | ✅ |
 | 7 | Rollback plan documenté + FastAPI gardé 2 semaines post-bascule | ✅ |
 
 ### Gate Phase 7 (= Bascule production)
@@ -1063,9 +1063,9 @@
 
 | # | Tâche | Statut |
 |--:|-------|:------:|
-| 1 | Contract validation middleware (dev mode) : kin-openapi vs réponses | ⬜ |
-| 2 | Error tracking : Sentry ou webhook Discord pour les 500 | ⬜ |
-| 3 | Alerting error rate > 5% → notification | ⬜ |
+| 1 | Contract validation middleware (dev mode) : validation stdlib JSON | ✅ |
+| 2 | Error tracking : webhook Discord pour les 500 | ✅ |
+| 3 | Alerting error rate > 5% → notification | ✅ |
 | 4 | Optionnel : métriques Prometheus + tracing OpenTelemetry | ⬜ |
 
 ---
@@ -1078,9 +1078,9 @@
 
 | # | Tâche | Statut |
 |--:|-------|:------:|
-| 1 | Ajouter 13+ colonnes scoreboard manquantes dans match_view Go | ⬜ |
-| 2 | Brancher weapon parser Go sur le pipeline sync/backfill | ⬜ |
-| 3 | Healthcheck Go sous `/api/v1/health` avec infos enrichies | ⬜ |
+| 1 | Ajouter 13+ colonnes scoreboard manquantes dans match_view Go | ✅ |
+| 2 | Brancher weapon parser Go sur le pipeline sync/backfill | ✅ |
+| 3 | Healthcheck Go sous `/api/v1/health` avec infos enrichies | ✅ |
 
 ---
 

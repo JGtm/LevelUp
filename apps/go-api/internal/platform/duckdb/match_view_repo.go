@@ -118,6 +118,16 @@ func (r *MatchViewRepo) GetMatchScoreboard(ctx context.Context, matchID string) 
 			&s.TimePlayed,
 			&s.TeamMMR,
 			&s.EnemyMMR,
+			&s.ShotsFired,
+			&s.ShotsHit,
+			&s.DamageDealt,
+			&s.DamageTaken,
+			&s.AvgLifeSeconds,
+			&s.HeadshotKills,
+			&s.MaxKillingSpree,
+			&s.GrenadeKills,
+			&s.MeleeKills,
+			&s.PowerWeaponKills,
 		); err != nil {
 			return nil, fmt.Errorf("MatchViewRepo.GetMatchScoreboard scan: %w", err)
 		}

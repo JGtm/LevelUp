@@ -49,6 +49,32 @@ func (r *BootstrapRepo) GetDBVersion(ctx context.Context) (string, error) {
 	return version, nil
 }
 
+// GetPlayerCount retourne le nombre de joueurs distincts dans match_participants.
+func (r *BootstrapRepo) GetPlayerCount(ctx context.Context) (int, error) {
+	ctx, cancel := context.WithTimeout(ctx, 5*time.Second)
+	defer cancel()
+
+	var count int
+	err := r.shared.QueryRow(ctx, "SELECT COUNT(DISTINCT xuid) FROM match_participants").Scan(&count)
+	if err != nil {
+		return 0, fmt.Errorf("GetPlayerCount: %w", err)
+	}
+	return count, nil
+}
+
+// GetLastSyncAt retourne le timestamp de la dernière modification dans match_registry.
+func (r *BootstrapRepo) GetLastSyncAt(ctx context.Context) (*time.Time, error) {
+	ctx, cancel := context.WithTimeout(ctx, 3*time.Second)
+	defer cancel()
+
+	var t *time.Time
+	err := r.shared.QueryRow(ctx, "SELECT MAX(last_updated_at) FROM match_registry").Scan(&t)
+	if err != nil {
+		return nil, nil //nolint:nilerr // table vide ou absente
+	}
+	return t, nil
+}
+
 // ValidateTypes vérifie que les types critiques sont correctement mappés.
 // Utilisé dans le Sprint 0 comme test de sanité — pas exposé en prod.
 func (r *BootstrapRepo) ValidateTypes(ctx context.Context) error {

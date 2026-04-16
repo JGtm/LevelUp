@@ -4,13 +4,15 @@
 // Ce client est stateless : instancié pour chaque session de sync avec les tokens du joueur.
 //
 // Endpoints utilisés :
-//   GET https://halostats.svc.halowaypoint.com:443/hi/players/{gamertag}/matches
-//   GET https://halostats.svc.halowaypoint.com:443/hi/matches/{match_id}/stats
+//
+//	GET https://halostats.svc.halowaypoint.com:443/hi/players/{gamertag}/matches
+//	GET https://halostats.svc.halowaypoint.com:443/hi/matches/{match_id}/stats
 //
 // Headers requis (portage de spnkr/client.py) :
-//   Accept: application/json
-//   x-343-authorization-spartan: {SpartanToken}
-//   343-clearance: {ClearanceToken}
+//
+//	Accept: application/json
+//	x-343-authorization-spartan: {SpartanToken}
+//	343-clearance: {ClearanceToken}
 package sync
 
 import (
@@ -42,8 +44,8 @@ type MatchHistoryEntry struct {
 // HaloAPIClient est le client HTTP pour l'API Halo Infinite stats.
 // Thread-safe : utilise net/http.Client (concurrency-safe).
 type HaloAPIClient struct {
-	http          *http.Client
-	spartanToken  string
+	http           *http.Client
+	spartanToken   string
 	clearanceToken string
 	// minInterval est l'intervalle minimum entre deux requêtes (rate limiting).
 	minInterval time.Duration
@@ -125,6 +127,114 @@ func (c *HaloAPIClient) GetMatchStats(ctx context.Context, matchID string) (map[
 		return nil, fmt.Errorf("GetMatchStats decode(%s): %w", matchID, err)
 	}
 	return result, nil
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Film API (Sprint 41 T2)
+// ─────────────────────────────────────────────────────────────────────────────
+
+const haloUGCHost = "https://discovery-infiniteugc.svc.halowaypoint.com"
+
+// filmManifest représente la réponse JSON de l'endpoint film spectate.
+type filmManifest struct {
+	CustomData struct {
+		FilmChunks []filmChunk `json:"FilmChunks"`
+	} `json:"CustomData"`
+}
+
+// filmChunk décrit un segment binaire du film Halo.
+type filmChunk struct {
+	ChunkType                        int    `json:"ChunkType"`
+	FileSize                         int    `json:"FileSize"`
+	ChunkStartTimeOffsetMilliseconds int    `json:"ChunkStartTimeOffsetMilliseconds"`
+	DurationMilliseconds             int    `json:"DurationMilliseconds"`
+	ChunkUrl                         string `json:"ChunkUrl"`
+}
+
+// GetMatchFilm télécharge le manifest film d'un match et retourne les chunks indexés.
+// Retourne (chunks, true, nil) si le film est disponible.
+// Retourne (nil, false, nil) si le film est absent (404/410) — normal pour vieux matchs.
+func (c *HaloAPIClient) GetMatchFilm(ctx context.Context, matchID string) (map[int]filmChunkData, bool, error) {
+	endpoint := fmt.Sprintf("%s/hi/films/matches/%s/spectate", haloUGCHost, url.PathEscape(matchID))
+	body, err := c.doGet(ctx, endpoint)
+	if err != nil {
+		// 404/410 = film expiré ou non disponible, pas une erreur permanente.
+		if isNotFoundErr(err) {
+			return nil, false, nil
+		}
+		return nil, false, fmt.Errorf("GetMatchFilm manifest(%s): %w", matchID, err)
+	}
+
+	var manifest filmManifest
+	if err := json.Unmarshal(body, &manifest); err != nil {
+		return nil, false, fmt.Errorf("GetMatchFilm decode(%s): %w", matchID, err)
+	}
+
+	chunks := manifest.CustomData.FilmChunks
+	if len(chunks) == 0 {
+		return nil, false, nil
+	}
+
+	result := make(map[int]filmChunkData, len(chunks))
+	for i, chunk := range chunks {
+		data, err := c.downloadBlob(ctx, chunk.ChunkUrl)
+		if err != nil {
+			return nil, false, fmt.Errorf("GetMatchFilm chunk %d(%s): %w", i, matchID, err)
+		}
+		result[i] = filmChunkData{
+			Data:       data,
+			StartMS:    chunk.ChunkStartTimeOffsetMilliseconds,
+			DurationMS: chunk.DurationMilliseconds,
+		}
+	}
+	return result, true, nil
+}
+
+// filmChunkData encapsule les données binaires d'un chunk film.
+type filmChunkData struct {
+	Data       []byte
+	StartMS    int
+	DurationMS int
+}
+
+// isNotFoundErr vérifie si l'erreur est un 404 ou 410 (film absent).
+func isNotFoundErr(err error) bool {
+	if err == nil {
+		return false
+	}
+	s := err.Error()
+	return contains(s, "HTTP 404") || contains(s, "HTTP 410") || contains(s, "ressource absente")
+}
+
+func contains(s, sub string) bool {
+	return len(s) >= len(sub) && (s == sub || len(s) > 0 && containsStr(s, sub))
+}
+
+func containsStr(s, sub string) bool {
+	for i := 0; i <= len(s)-len(sub); i++ {
+		if s[i:i+len(sub)] == sub {
+			return true
+		}
+	}
+	return false
+}
+
+// downloadBlob télécharge un blob Halo sans header d'auth (pre-signed URL).
+func (c *HaloAPIClient) downloadBlob(ctx context.Context, blobURL string) ([]byte, error) {
+	c.rateWait(ctx)
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, blobURL, nil)
+	if err != nil {
+		return nil, fmt.Errorf("downloadBlob new request: %w", err)
+	}
+	resp, err := c.http.Do(req)
+	if err != nil {
+		return nil, fmt.Errorf("downloadBlob: %w", err)
+	}
+	defer resp.Body.Close()
+	if resp.StatusCode != http.StatusOK {
+		return nil, fmt.Errorf("downloadBlob HTTP %d", resp.StatusCode)
+	}
+	return io.ReadAll(resp.Body)
 }
 
 // doGet exécute un GET authentifié avec retry + backoff exponentiel.
