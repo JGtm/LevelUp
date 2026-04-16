@@ -14447,3 +14447,27 @@ Prochaine étape : Sprint 27 (Bascule progressive, ~3-5j).
 **Résultats** : gofmt OK, go vet domain+analysis 0 erreur (api/service bloqués par CGo DuckDB sur Windows — attendu).
 
 **Conclusion** : Sprint 33 terminé. Phase 6 (Contrat API) complète. Prochaine étape : Sprint 34 (Infra release/deploy Go).
+
+---
+
+## [2025-04-16] Sprint 40+41 — Observabilité, scoreboard, weapon parser, healthcheck
+
+**Statut** : Complété
+
+**Décision technique** : Implémenter Sprint 40 (observabilité middleware) et Sprint 41 (scoreboard + weapons + health) en un seul bloc. Sprint 36 T6 (bascule Docker) vérifié déjà fait.
+
+**Sprint 40 — Observabilité (T1+T2+T3)** :
+- T1 : `middleware/contract_validate.go` — validation dev-only (LEVELUP_CONTRACT_VALIDATE=1), stdlib JSON, vérifie Content-Type + error shape {code, message, retryable}
+- T2+T3 : `middleware/error_tracker.go` — Discord webhook fire-and-forget pour 500, rolling 1-min window error rate alerting >5% avec cooldown 5min
+- `config.go` : `DiscordWebhookURL` champ struct + `loadDiscordWebhookURL()` helper (env var + fallback app_settings.json)
+
+**Sprint 41 — Scoreboard + Weapons + Health (T1+T2+T3)** :
+- T1 : +10 colonnes dans Q12/ScoreboardRaw/MatchScoreboardRow/Scan/buildTeamTab (shots_fired, shots_hit, damage_dealt, damage_taken, avg_life_seconds, headshot_kills, max_killing_spree, grenade_kills, melee_kills, power_weapon_kills)
+- T2 : `halo_client.go` → `GetMatchFilm()` (manifest + chunk download), `backfill_weapons.go` (pipeline complet analysis→DB), `writes.go` → `InsertWeaponKills()` + `MarkWeaponKillsDone()`
+- T3 : `HealthResponse` enrichi (+player_count, last_sync_at, uptime, go_version), `BootstrapRepository` interface étendue, `bootstrap_repo.go` → `GetPlayerCount()` + `GetLastSyncAt()`
+
+**Sprint 36 T6** : docker-compose.yml + Dockerfile déjà 100% Go (healthcheck = `/app/levelup-server -health-check`). Marqué ✅.
+
+**Résultats** : go vet OK sur domain, analysis, middleware, port (api/service bloqués par CGo DuckDB Windows — attendu). gofmt appliqué sur tous les fichiers.
+
+**Conclusion** : Sprints 40+41 terminés. Sprint 36 T1 (parity_check = 0 diff) reste ��� — nécessite un run en prod. Prochaine étape : Sprint 42 (Analyse UI avancée + fanout multi-joueur).

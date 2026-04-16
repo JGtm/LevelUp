@@ -186,3 +186,67 @@ func nullStr(s string) *string {
 	}
 	return &s
 }
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Weapon kills (Sprint 41 T2)
+// ─────────────────────────────────────────────────────────────────────────────
+
+// InsertWeaponKills remplace les entrées weapon_kills existantes pour (matchID, xuid)
+// par les nouvelles attributions. Opération atomique : DELETE + INSERT batch.
+func InsertWeaponKills(db *sql.DB, matchID, xuid string, attrs []weaponKillRow) error {
+	tx, err := db.Begin()
+	if err != nil {
+		return fmt.Errorf("InsertWeaponKills begin: %w", err)
+	}
+	defer tx.Rollback() //nolint:errcheck
+
+	if _, err := tx.Exec(`DELETE FROM weapon_kills WHERE match_id = ? AND xuid = ?`, matchID, xuid); err != nil {
+		return fmt.Errorf("InsertWeaponKills delete: %w", err)
+	}
+
+	for _, r := range attrs {
+		if _, err := tx.Exec(`
+			INSERT INTO weapon_kills (
+				match_id, xuid, time_ms, weapon_id, reconciled_as,
+				delta_ms, confidence, attribution_path,
+				swap_detected, delayed_damage, player_index
+			) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+			matchID, xuid, r.TimeMS, r.WeaponID, r.ReconciledAs,
+			r.DeltaMS, r.Confidence, r.AttributionPath,
+			r.SwapDetected, r.DelayedDamage, r.PlayerIndex,
+		); err != nil {
+			return fmt.Errorf("InsertWeaponKills insert: %w", err)
+		}
+	}
+	return tx.Commit()
+}
+
+// weaponKillRow est la représentation interne d'une ligne weapon_kills.
+type weaponKillRow struct {
+	TimeMS          int
+	WeaponID        *uint64
+	ReconciledAs    *uint64
+	DeltaMS         *int
+	Confidence      string
+	AttributionPath string
+	SwapDetected    bool
+	DelayedDamage   bool
+	PlayerIndex     *int
+}
+
+// MarkWeaponKillsDone met à jour le bit MBitWeaponKills ou MBitWeaponKillsNoFilm
+// dans match_registry.backfill_completed.
+func MarkWeaponKillsDone(db *sql.DB, matchID string, noFilm bool) error {
+	bit := MBitWeaponKills
+	if noFilm {
+		bit = MBitWeaponKillsNoFilm
+	}
+	_, err := db.Exec(`
+		UPDATE match_registry
+		SET backfill_completed = COALESCE(backfill_completed, 0) | ?
+		WHERE match_id = ?`, bit, matchID)
+	if err != nil {
+		return fmt.Errorf("MarkWeaponKillsDone(%s): %w", matchID, err)
+	}
+	return nil
+}

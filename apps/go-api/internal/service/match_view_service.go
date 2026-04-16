@@ -262,17 +262,26 @@ func buildTeamTab(scoreboard []domain.ScoreboardRaw, kvPairs []domain.KVPairRaw,
 	rows := make([]domain.MatchScoreboardRow, 0, len(scoreboard))
 	for _, s := range scoreboard {
 		row := domain.MatchScoreboardRow{
-			XUID:         s.XUID,
-			Gamertag:     s.Gamertag,
-			IsMe:         s.XUID == myXUID,
-			Rank:         s.RankInTeam,
-			Kills:        &s.Kills,
-			Deaths:       &s.Deaths,
-			Assists:      &s.Assists,
-			KDA:          s.KDA,
-			Accuracy:     s.Accuracy,
-			DamageDealt:  nil, // pas dans Q12 — laissé nil
-			OutcomeLabel: outcomeLabel(s.OutcomeCode),
+			XUID:             s.XUID,
+			Gamertag:         s.Gamertag,
+			IsMe:             s.XUID == myXUID,
+			Rank:             s.RankInTeam,
+			Kills:            &s.Kills,
+			Deaths:           &s.Deaths,
+			Assists:          &s.Assists,
+			KDA:              s.KDA,
+			Accuracy:         s.Accuracy,
+			DamageDealt:      s.DamageDealt,
+			DamageTaken:      s.DamageTaken,
+			ShotsFired:       s.ShotsFired,
+			ShotsHit:         s.ShotsHit,
+			AvgLifeSeconds:   s.AvgLifeSeconds,
+			HeadshotKills:    s.HeadshotKills,
+			MaxKillingSpree:  s.MaxKillingSpree,
+			GrenadeKills:     s.GrenadeKills,
+			MeleeKills:       s.MeleeKills,
+			PowerWeaponKills: s.PowerWeaponKills,
+			OutcomeLabel:     outcomeLabel(s.OutcomeCode),
 		}
 		if s.TeamID != nil {
 			team := fmt.Sprintf("t%d", *s.TeamID)

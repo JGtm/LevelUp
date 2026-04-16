@@ -33,6 +33,31 @@ type AppConfig struct {
 	// PythonURL : URL de base de l'API Python pour le shadow mode.
 	// Défaut : http://127.0.0.1:8001
 	PythonURL string
+	// Sprint 40 T2 : Discord webhook URL pour alerting 500 + taux d'erreur.
+	// Lit LEVELUP_DISCORD_WEBHOOK_URL ; fallback sur discord_webhook_url dans app_settings.json.
+	DiscordWebhookURL string
+}
+
+// loadDiscordWebhookURL lit le webhook Discord depuis LEVELUP_DISCORD_WEBHOOK_URL
+// ou le champ discord_webhook_url de app_settings.json.
+func loadDiscordWebhookURL(settingsPath string) string {
+	if url := os.Getenv("LEVELUP_DISCORD_WEBHOOK_URL"); url != "" {
+		return url
+	}
+	data, err := os.ReadFile(settingsPath)
+	if err != nil {
+		return ""
+	}
+	var m map[string]any
+	if err := json.Unmarshal(data, &m); err != nil {
+		return ""
+	}
+	if s, ok := m["discord_webhook_url"].(string); ok {
+		if strings.HasPrefix(s, "https://discord.com/api/webhooks/") {
+			return s
+		}
+	}
+	return ""
 }
 
 // Load charge la configuration depuis les variables d'environnement.
@@ -42,20 +67,21 @@ func Load() (*AppConfig, error) {
 	demoMode := strings.ToLower(getEnvOrDefault("LEVELUP_DEMO_MODE", "false")) == "true"
 
 	cfg := &AppConfig{
-		RepoRoot:        repoRoot,
-		DBProfilesPath:  getEnvOrDefault("LEVELUP_DB_PROFILES", filepath.Join(repoRoot, "db_profiles.json")),
-		AppSettingsPath: getEnvOrDefault("LEVELUP_APP_SETTINGS", filepath.Join(repoRoot, "app_settings.json")),
-		SessionDir:      getEnvOrDefault("LEVELUP_SESSION_DIR", filepath.Join(repoRoot, "data", "sessions")),
-		DemoMode:        demoMode,
-		DemoFixturesDir: getEnvOrDefault("LEVELUP_DEMO_FIXTURES_DIR", filepath.Join(repoRoot, "tests", "fixtures", "ref_player")),
-		APIHost:         getEnvOrDefault("LEVELUP_API_HOST", "127.0.0.1"),
-		APIPort:         getEnvInt("LEVELUP_API_PORT", 8000),
-		SessionSecret:   getEnvOrDefault("LEVELUP_SESSION_SECRET", "CHANGE_ME_IN_PRODUCTION"),
-		CORSOrigins:     parseCORSOrigins(getEnvOrDefault("LEVELUP_CORS_ORIGINS", "")),
-		Lang:            getEnvOrDefault("LEVELUP_LANG", "fr"),
-		AppVersion:      getEnvOrDefault("LEVELUP_APP_VERSION", "dev"),
-		ShadowMode:      getEnvOrDefault("LEVELUP_SHADOW_MODE", ""),
-		PythonURL:       getEnvOrDefault("LEVELUP_PYTHON_URL", "http://127.0.0.1:8001"),
+		RepoRoot:          repoRoot,
+		DBProfilesPath:    getEnvOrDefault("LEVELUP_DB_PROFILES", filepath.Join(repoRoot, "db_profiles.json")),
+		AppSettingsPath:   getEnvOrDefault("LEVELUP_APP_SETTINGS", filepath.Join(repoRoot, "app_settings.json")),
+		SessionDir:        getEnvOrDefault("LEVELUP_SESSION_DIR", filepath.Join(repoRoot, "data", "sessions")),
+		DemoMode:          demoMode,
+		DemoFixturesDir:   getEnvOrDefault("LEVELUP_DEMO_FIXTURES_DIR", filepath.Join(repoRoot, "tests", "fixtures", "ref_player")),
+		APIHost:           getEnvOrDefault("LEVELUP_API_HOST", "127.0.0.1"),
+		APIPort:           getEnvInt("LEVELUP_API_PORT", 8000),
+		SessionSecret:     getEnvOrDefault("LEVELUP_SESSION_SECRET", "CHANGE_ME_IN_PRODUCTION"),
+		CORSOrigins:       parseCORSOrigins(getEnvOrDefault("LEVELUP_CORS_ORIGINS", "")),
+		Lang:              getEnvOrDefault("LEVELUP_LANG", "fr"),
+		AppVersion:        getEnvOrDefault("LEVELUP_APP_VERSION", "dev"),
+		ShadowMode:        getEnvOrDefault("LEVELUP_SHADOW_MODE", ""),
+		PythonURL:         getEnvOrDefault("LEVELUP_PYTHON_URL", "http://127.0.0.1:8001"),
+		DiscordWebhookURL: loadDiscordWebhookURL(getEnvOrDefault("LEVELUP_APP_SETTINGS", filepath.Join(repoRoot, "app_settings.json"))),
 	}
 	appSettingsPath := getEnvOrDefault("LEVELUP_APP_SETTINGS", filepath.Join(repoRoot, "app_settings.json"))
 	cfg.FeatureFlags = LoadFeatureFlags(appSettingsPath)

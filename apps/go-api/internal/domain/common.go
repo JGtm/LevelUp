@@ -1,6 +1,8 @@
 // Package domain — types communs d'erreur et de pagination.
 package domain
 
+import "time"
+
 // APIError représente une erreur structurée retournée par les endpoints.
 type APIError struct {
 	Code      string      `json:"code"`
@@ -36,4 +38,9 @@ type HealthResponse struct {
 	MatchCount int    `json:"match_count"`
 	DBVersion  string `json:"db_version,omitempty"`
 	AppVersion string `json:"app_version,omitempty"`
+	// Sprint 41 T3 : enrichissement du healthcheck
+	PlayerCount int        `json:"player_count"`
+	LastSyncAt  *time.Time `json:"last_sync_at,omitempty"`
+	Uptime      string     `json:"uptime,omitempty"`
+	GoVersion   string     `json:"go_version,omitempty"`
 }
