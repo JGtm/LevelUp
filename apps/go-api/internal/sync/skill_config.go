@@ -56,6 +56,8 @@ const (
 	MinMatchesForAccuracyDelta = 5
 	IndividualMUAlpha          = 150.0
 	DefaultOpponentSigma       = 150.0
+	// LUSRMaxDelta est le guard-rail : cap ±100 pts par match (LUSR).
+	LUSRMaxDelta = 100.0
 )
 
 // ── Performance score (relatif) ─────────────────────────────────────────────

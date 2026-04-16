@@ -17,17 +17,17 @@ import (
 
 // SettingsHandler gère les endpoints de configuration.
 type SettingsHandler struct {
-	cfg          *config.AppConfig
+	cfg           *config.AppConfig
 	settingsStore *settings_platform.Store
-	jobStore     *jobs.Store
+	jobStore      *jobs.Store
 }
 
 // NewSettingsHandler crée un SettingsHandler.
 func NewSettingsHandler(cfg *config.AppConfig, settingsStore *settings_platform.Store, jobStore *jobs.Store) *SettingsHandler {
 	return &SettingsHandler{
-		cfg:          cfg,
+		cfg:           cfg,
 		settingsStore: settingsStore,
-		jobStore:     jobStore,
+		jobStore:      jobStore,
 	}
 }
 

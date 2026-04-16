@@ -10,7 +10,8 @@ import (
 
 // HealthHandler gère GET /health.
 type HealthHandler struct {
-	repo port.BootstrapRepository
+	repo       port.BootstrapRepository
+	appVersion string
 }
 
 // NewHealthHandler crée un HealthHandler.
@@ -18,7 +19,12 @@ func NewHealthHandler(repo port.BootstrapRepository) *HealthHandler {
 	return &HealthHandler{repo: repo}
 }
 
-// ServeHTTP retourne {"status": "ok", "match_count": N} en lisant shared_matches_v2.
+// NewHealthHandlerWithVersion crée un HealthHandler avec la version de l'application.
+func NewHealthHandlerWithVersion(repo port.BootstrapRepository, version string) *HealthHandler {
+	return &HealthHandler{repo: repo, appVersion: version}
+}
+
+// ServeHTTP retourne {"status": "ok", "match_count": N, "app_version": "X.Y.Z"}.
 func (h *HealthHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	count, err := h.repo.GetMatchCount(r.Context())
 	if err != nil {
@@ -33,5 +39,6 @@ func (h *HealthHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		Status:     "ok",
 		MatchCount: count,
 		DBVersion:  dbVersion,
+		AppVersion: h.appVersion,
 	})
 }

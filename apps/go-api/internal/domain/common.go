@@ -35,4 +35,5 @@ type HealthResponse struct {
 	Status     string `json:"status"`
 	MatchCount int    `json:"match_count"`
 	DBVersion  string `json:"db_version,omitempty"`
+	AppVersion string `json:"app_version,omitempty"`
 }

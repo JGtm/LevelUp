@@ -1,7 +1,8 @@
 // Package handlers — session.go : handler HTTP pour la gestion du contexte session.
 //
 // Endpoints :
-//   POST /session/context  → SessionContextResponse
+//
+//	POST /session/context  → SessionContextResponse
 package handlers
 
 import (

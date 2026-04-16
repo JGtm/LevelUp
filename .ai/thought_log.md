@@ -1,6 +1,24 @@
 # Thought Log
 
-## [2025-07-16] feat(arch): Sprint 37 — Architecture handlers & injection DI
+## [2025-07-17] feat(arch): Sprint 38+39 — DRY, split fichiers >500L, tests couverture
+
+**Statut** : Complété
+
+**Décision technique** :
+- Sprint 38 T1-T6 : découpage de 5 fichiers >500L en modules à responsabilité unique ; `domain/outcomes.go` centralise les constantes outcome ; double switch `feature_flags` éliminé via `surfaceFields()` retournant `map[Surface]*Backend` (pivot unique)
+- Sprint 39 T1 : 5 fichiers `*_test.go` handlers ajoutés (patterns OK/404/500 avec mocks DI) ; T3 : tests TrueSkill purs + transforms helpers (8 fonctions couvertes)
+- Contrainte DuckDB Windows pré-existante : packages `sync` et `handlers` ne compilent pas en local (build constraint `windows-amd64`) mais les tests sont prêts pour CI
+
+**Résultats** :
+- `go build ./internal/analysis/...` → clean ✅
+- `go test ./internal/analysis/...` → OK (0.193s) ✅
+- `go vet ./internal/sync/... ./cmd/levelup/...` → seule contrainte DuckDB attendue ✅
+- Aucun fichier créé > 310L ; `queries.go` de 731L → 5 fichiers < 280L chacun
+- Double switch feature_flags → 1 seule map lookup dans `surfaceFields()`
+
+**Conclusion** : Sprint 38 100% complété. Sprint 39 : T1+T3 ✅, T2/T4/T5 restants (DuckDB in-memory fixtures + FastAPI + coverage ≥ 50%).
+
+---
 
 **Statut** : Complété
 

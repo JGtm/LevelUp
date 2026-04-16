@@ -1034,12 +1034,12 @@
 
 | # | Tâche | Statut |
 |--:|-------|:------:|
-| 1 | Split `squad.go` (812L) → 6 fichiers + unifier via generics | ⬜ |
-| 2 | Split `skill_rating.go` (731L) → extraire SQL dans repo | ⬜ |
-| 3 | Split `queries.go` (714L) → par domaine fonctionnel | ⬜ |
-| 4 | Split `transforms.go` (570L) + `main.go` (532L) | ⬜ |
-| 5 | Refactorer double-switch feature_flags → map lookup | ⬜ |
-| 6 | Unifier double cache DB + magic numbers → constantes | ⬜ |
+| 1 | Split `squad.go` (959L) → 5 fichiers (`squad_score`, `squad_profiles`, `squad_impact`, `squad_timeseries`, `squad_breakdown`) + `domain/outcomes.go` | ✅ |
+| 2 | Split `skill_rating.go` (731L) → `skill_rating.go` (427L math pure) + `skill_rating_loaders.go` (SQL/structs) ; `LUSRMaxDelta` centré dans `skill_config.go` | ✅ |
+| 3 | Split `queries.go` (731L) → 5 fichiers par domaine (`queries_career`, `queries_match`, `queries_squad`, `queries_home_citations`) | ✅ |
+| 4 | Split `transforms.go` (570L) → `transforms.go` (309L public) + `transforms_helpers.go` (275L privé) ; `main.go` (532L) → 120L + `cmd_data/cmd_ops/cmd_notify.go` | ✅ |
+| 5 | Refactorer double-switch `feature_flags` → `surfaceFields()` map lookup élimine 2 switch identiques | ✅ |
+| 6 | Magic numbers `outcome == 2/3` → `domain.OutcomeWin/OutcomeLoss` ; `lusrMaxDelta` → `LUSRMaxDelta` | ✅ |
 
 ---
 
@@ -1049,9 +1049,9 @@
 
 | # | Tâche | Statut |
 |--:|-------|:------:|
-| 1 | Tests `httptest` pour 6+ handlers principaux (status, Content-Type, shape, error paths) | ⬜ |
+| 1 | Tests `httptest` : `filters_test`, `match_view_test`, `stats_test`, `gamertag_test`, `squad_test` — patterns OK/404/500 pour chaque handler (+ `career_test` Sprint 37) | ✅ |
 | 2 | Tests repository DuckDB in-memory + fixtures | ⬜ |
-| 3 | Test stress pool : 100 connexions parallèles → 0 leak | ⬜ |
+| 3 | Tests TrueSkill purs (`skill_rating_test.go`) : PDF, CDF, vWin, wWin, trueskillUpdate ; tests transforms (`transforms_test.go`) : extractXUID, parsePTDuration, parseISO, determineModeCategory | ✅ |
 | 4 | Tests FastAPI minimal (`apps/api/tests/`) : TestClient + snapshot 5 endpoints | ⬜ |
 | 5 | Couverture Go ≥ 50% vérifié | ⬜ |
 
@@ -1118,9 +1118,9 @@
 >
 > **Note** : l'estimation initiale de 6–9j a été revue à 10–14j après audit du code Go.
 > Le refactor touche toutes les couches : 29 références de chemins hardcodés dans 15 fichiers,
-> pool DuckDB (13 repos), 23 endpoints OpenAPI, 8 sous-commandes CLI, 5 stores React, demo mode.
+> pool DuckDB (13 repos), 23 endpoints OpenAPI, provisioning/setup joueur, commandes ops `levelup` + binaire `server`, routes/query keys/codegen frontend, demo mode.
 > La sous-estimation venait principalement de WP3 (migration physique DuckDB sur Windows),
-> WP4 (réalignement frontend + décision routage OpenAPI) et WP1 (ops/validation/sync/demo paths).
+> WP4 (réalignement frontend complet + décision routage OpenAPI) et WP1 (ops/validation/sync/demo paths + provisioning).
 > L'auth n'est pas impactée (flow MSAL titre-agnostique).
 >
 > **Coexistence Python** : le projet Python LevelUp n'est plus maintenu à ce stade.

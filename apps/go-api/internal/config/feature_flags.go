@@ -96,36 +96,31 @@ func defaultFeatureFlags() FeatureFlags {
 	}
 }
 
+// surfaceFields retourne un mapping Surface → pointeur sur le champ Backend correspondant.
+// Point de vérité unique : évite le double switch entre BackendFor et applyFlagsMap.
+func (ff *FeatureFlags) surfaceFields() map[Surface]*Backend {
+	return map[Surface]*Backend{
+		SurfaceCareer:    &ff.Career,
+		SurfaceHistory:   &ff.History,
+		SurfaceExplorer:  &ff.Explorer,
+		SurfaceMatchView: &ff.MatchView,
+		SurfaceStats:     &ff.Stats,
+		SurfaceSquad:     &ff.Squad,
+		SurfaceHome:      &ff.Home,
+		SurfaceAuth:      &ff.Auth,
+		SurfaceSettings:  &ff.Settings,
+		SurfaceJobs:      &ff.Jobs,
+		SurfaceSync:      &ff.Sync,
+		SurfaceBackfill:  &ff.Backfill,
+	}
+}
+
 // BackendFor retourne le backend associé à une surface.
 func (ff *FeatureFlags) BackendFor(s Surface) Backend {
-	switch s {
-	case SurfaceCareer:
-		return ff.Career
-	case SurfaceHistory:
-		return ff.History
-	case SurfaceExplorer:
-		return ff.Explorer
-	case SurfaceMatchView:
-		return ff.MatchView
-	case SurfaceStats:
-		return ff.Stats
-	case SurfaceSquad:
-		return ff.Squad
-	case SurfaceHome:
-		return ff.Home
-	case SurfaceAuth:
-		return ff.Auth
-	case SurfaceSettings:
-		return ff.Settings
-	case SurfaceJobs:
-		return ff.Jobs
-	case SurfaceSync:
-		return ff.Sync
-	case SurfaceBackfill:
-		return ff.Backfill
-	default:
-		return BackendGo
+	if ptr, ok := ff.surfaceFields()[s]; ok {
+		return *ptr
 	}
+	return BackendGo
 }
 
 // AllOnGo retourne true si toutes les surfaces sont sur le backend Go.
@@ -176,33 +171,10 @@ func applyEnvFlags(ff *FeatureFlags) {
 
 // applyFlagsMap met à jour ff depuis une map surface→backend.
 func applyFlagsMap(ff *FeatureFlags, m map[string]string) {
+	fields := ff.surfaceFields()
 	for surface, val := range m {
-		b := parseBackend(val)
-		switch Surface(surface) {
-		case SurfaceCareer:
-			ff.Career = b
-		case SurfaceHistory:
-			ff.History = b
-		case SurfaceExplorer:
-			ff.Explorer = b
-		case SurfaceMatchView:
-			ff.MatchView = b
-		case SurfaceStats:
-			ff.Stats = b
-		case SurfaceSquad:
-			ff.Squad = b
-		case SurfaceHome:
-			ff.Home = b
-		case SurfaceAuth:
-			ff.Auth = b
-		case SurfaceSettings:
-			ff.Settings = b
-		case SurfaceJobs:
-			ff.Jobs = b
-		case SurfaceSync:
-			ff.Sync = b
-		case SurfaceBackfill:
-			ff.Backfill = b
+		if ptr, ok := fields[Surface(surface)]; ok {
+			*ptr = parseBackend(val)
 		}
 	}
 }
