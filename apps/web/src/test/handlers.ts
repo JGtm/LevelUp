@@ -96,11 +96,8 @@ const homeFixture = {
   squad_session: null,
 }
 
-const setupStatusFixture = {
-  setup_required: false,
-  has_players: true,
-  has_credentials: true,
-}
+// setupStatusFixture supprimé (sprint 29) : GET /setup/status est un artefact mort.
+// L'état setup est porté par BootstrapResponse.setup_state.
 
 const settingsFixture = {
   lang: 'fr',
@@ -174,7 +171,7 @@ export const handlers = [
   http.get(p('/players'), () => HttpResponse.json({ items: [playerFixture], default_player_slug: 'test-player' })),
 
   // Setup
-  http.get(p('/setup/status'), () => HttpResponse.json(setupStatusFixture)),
+  // GET /setup/status supprimé (sprint 29) — artefact mort
   http.post(p('/setup/players'), () => HttpResponse.json({ player: playerFixture, db_created: true, warnings: [] })),
   http.post(p('/setup/smoke-test'), () =>
     HttpResponse.json({ job_id: 'job-1', job_type: 'smoke_test', status: 'queued', progress_pct: null, current_step: null, started_at: null, finished_at: null, result: null, error: null }),

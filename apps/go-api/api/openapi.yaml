@@ -464,6 +464,462 @@ paths:
         "500":
           $ref: "#/components/responses/InternalError"
 
+  # -------------------------------------------------------------------------
+  # Auth (Sprint 15) — ajoutés au contrat sprint 29
+  # -------------------------------------------------------------------------
+  /auth/device-flow/start:
+    post:
+      tags: [setup]
+      operationId: postAuthDeviceFlowStart
+      summary: Initier un Device Code Flow Microsoft
+      description: |
+        Lance un Device Code Flow pour l'authentification Halo (MSAL).
+        Non disponible en DEMO_MODE.
+      responses:
+        "200":
+          description: Flow initié (user_code + verification_uri)
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/DeviceFlowStartResponse"
+        "422":
+          $ref: "#/components/responses/BadRequest"
+        "500":
+          $ref: "#/components/responses/InternalError"
+
+  /auth/device-flow/{attempt_id}:
+    get:
+      tags: [setup]
+      operationId: getAuthDeviceFlowStatus
+      summary: Statut d'un Device Code Flow en cours
+      parameters:
+        - name: attempt_id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Statut du flow (pending / authorized / provisioned / failed / expired)
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/DeviceFlowStatusResponse"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "500":
+          $ref: "#/components/responses/InternalError"
+
+  # -------------------------------------------------------------------------
+  # Setup (Sprint 16) — ajoutés au contrat sprint 29
+  # -------------------------------------------------------------------------
+  /setup/players:
+    post:
+      tags: [setup]
+      operationId: postSetupPlayers
+      summary: Créer un profil joueur
+      responses:
+        "201":
+          description: Profil créé
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CreatePlayerProfileResponse"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "500":
+          $ref: "#/components/responses/InternalError"
+
+  /setup/smoke-test:
+    post:
+      tags: [setup]
+      operationId: postSetupSmokeTest
+      summary: "Lancer un smoke test (Go-only — à valider Sprint 31)"
+      description: |
+        Endpoint Go uniquement — absent de FastAPI.
+        Vérifie la configuration de bout en bout (connexion DB + API Halo).
+        Son maintien versus intégration dans `/sync/initial` sera décidé au Sprint 31.
+      responses:
+        "202":
+          description: Smoke test démarré
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AsyncJobStatus"
+        "500":
+          $ref: "#/components/responses/InternalError"
+
+  # -------------------------------------------------------------------------
+  # Sync (Sprint 17) — ajoutés au contrat sprint 29
+  # -------------------------------------------------------------------------
+  /sync/initial:
+    post:
+      tags: [sync]
+      operationId: postSyncInitial
+      summary: Lancer la synchronisation initiale
+      responses:
+        "202":
+          description: Sync démarrée
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AsyncJobStatus"
+        "409":
+          description: Une sync est déjà en cours
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiErrorSchema"
+        "500":
+          $ref: "#/components/responses/InternalError"
+
+  # -------------------------------------------------------------------------
+  # Settings (Sprint 16) — ajoutés au contrat sprint 29
+  # -------------------------------------------------------------------------
+  /settings:
+    get:
+      tags: [settings]
+      operationId: getSettings
+      summary: Lire la configuration
+      responses:
+        "200":
+          description: Configuration actuelle
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SettingsResponse"
+        "500":
+          $ref: "#/components/responses/InternalError"
+    patch:
+      tags: [settings]
+      operationId: patchSettings
+      summary: Mettre à jour la configuration
+      responses:
+        "200":
+          description: Configuration mise à jour
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SettingsResponse"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "500":
+          $ref: "#/components/responses/InternalError"
+
+  /settings/media/reset-index:
+    post:
+      tags: [settings]
+      operationId: postSettingsMediaResetIndex
+      summary: Réinitialiser l'index médias
+      responses:
+        "202":
+          description: Reset démarré
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AsyncJobStatus"
+        "500":
+          $ref: "#/components/responses/InternalError"
+
+  # -------------------------------------------------------------------------
+  # Jobs (Sprint 17) — ajoutés au contrat sprint 29
+  # -------------------------------------------------------------------------
+  /jobs/{job_id}:
+    get:
+      tags: [jobs]
+      operationId: getJob
+      summary: Statut d'un job long
+      parameters:
+        - name: job_id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Statut du job
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AsyncJobStatus"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "500":
+          $ref: "#/components/responses/InternalError"
+
+  # -------------------------------------------------------------------------
+  # Home (Sprint 11) — ajoutés au contrat sprint 29
+  # -------------------------------------------------------------------------
+  /players/{player_slug}/pages/home:
+    get:
+      tags: [home]
+      operationId: getHomePage
+      summary: Page Accueil
+      parameters:
+        - $ref: "#/components/parameters/PlayerSlug"
+      responses:
+        "200":
+          description: Page accueil (hero card, timeline, médias récents)
+          content:
+            application/json:
+              schema:
+                type: object
+                description: "TODO Sprint 32 : schéma HomePageResponse complet"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "500":
+          $ref: "#/components/responses/InternalError"
+
+  /players/{player_slug}/battlepass:
+    get:
+      tags: [home]
+      operationId: getBattlePass
+      summary: Battle Pass courant
+      parameters:
+        - $ref: "#/components/parameters/PlayerSlug"
+      responses:
+        "200":
+          description: "Battle Pass (auth_required si non connecté)"
+          content:
+            application/json:
+              schema:
+                type: object
+                description: "TODO Sprint 32 : schéma BattlePassResponse complet"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+  /players/{player_slug}/challenges:
+    get:
+      tags: [home]
+      operationId: getChallenges
+      summary: Challenges actifs
+      parameters:
+        - $ref: "#/components/parameters/PlayerSlug"
+      responses:
+        "200":
+          description: "Challenges (auth_required si non connecté)"
+          content:
+            application/json:
+              schema:
+                type: object
+                description: "TODO Sprint 32 : schéma ChallengesResponse complet"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+  # -------------------------------------------------------------------------
+  # Sessions (Sprint 9) — ajoutées au contrat sprint 29
+  # Go-only : FastAPI expose /pages/timeseries (POST) qui couvre session-compare.
+  # À réconcilier lors du Sprint 32.
+  # -------------------------------------------------------------------------
+  /players/{player_slug}/pages/sessions:
+    get:
+      tags: [timeseries]
+      operationId: getSessions
+      summary: "Sessions (Go-only — à réconcilier avec /pages/timeseries FastAPI au Sprint 32)"
+      parameters:
+        - $ref: "#/components/parameters/PlayerSlug"
+      responses:
+        "200":
+          description: Liste des sessions avec stats agrégées
+          content:
+            application/json:
+              schema:
+                type: object
+                description: "TODO Sprint 32 : aligner avec TimeseriesPageResponse FastAPI"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+  # -------------------------------------------------------------------------
+  # Stats/Séries temporelles (Sprint 10) — ajoutées au contrat sprint 29
+  # Go: POST /pages/stats/query | FastAPI: POST /pages/timeseries
+  # À réconcilier (renommage ou alias) lors du Sprint 32.
+  # -------------------------------------------------------------------------
+  /players/{player_slug}/pages/stats/query:
+    post:
+      tags: [timeseries]
+      operationId: postStatsQuery
+      summary: "Séries temporelles (Go: /pages/stats/query — à renommer /pages/timeseries au Sprint 32)"
+      parameters:
+        - $ref: "#/components/parameters/PlayerSlug"
+      responses:
+        "200":
+          description: "Données séries temporelles (win/loss, précision, forme, objectif)"
+          content:
+            application/json:
+              schema:
+                type: object
+                description: "TODO Sprint 32 : aligner avec TimeseriesPageResponse FastAPI"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+
+  # -------------------------------------------------------------------------
+  # Escouade (Sprint 12) — ajoutées au contrat sprint 29
+  # Go: GET /pages/squad | FastAPI: POST /pages/teammates
+  # À réconcilier (méthode + nom) lors du Sprint 32.
+  # -------------------------------------------------------------------------
+  /players/{player_slug}/pages/squad:
+    get:
+      tags: [teammates]
+      operationId: getSquadPage
+      summary: "Escouade (Go: GET /pages/squad — FastAPI: POST /pages/teammates, à réconcilier Sprint 32)"
+      parameters:
+        - $ref: "#/components/parameters/PlayerSlug"
+      responses:
+        "200":
+          description: Analyse escouade / coéquipiers
+          content:
+            application/json:
+              schema:
+                type: object
+                description: "TODO Sprint 32 : aligner avec TeammatesPageResponse FastAPI"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+  # -------------------------------------------------------------------------
+  # Synthèse (Sprint 12) — ajoutées au contrat sprint 29
+  # Go: GET /pages/synthesis | FastAPI: POST /pages/synthesis
+  # Divergence méthode HTTP à corriger lors du Sprint 32.
+  # -------------------------------------------------------------------------
+  /players/{player_slug}/pages/synthesis:
+    get:
+      tags: [synthesis]
+      operationId: getSynthesisPage
+      summary: "Synthèse globale (Go: GET — FastAPI: POST, divergence à corriger Sprint 32)"
+      parameters:
+        - $ref: "#/components/parameters/PlayerSlug"
+      responses:
+        "200":
+          description: Synthèse globale (heatmap, top semaines, comparaison KPIs)
+          content:
+            application/json:
+              schema:
+                type: object
+                description: "TODO Sprint 32 : aligner avec SynthesisPageResponse FastAPI"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+  # -------------------------------------------------------------------------
+  # Citations + Commendations (Sprint 13) — ajoutées au contrat sprint 29
+  # Go: GET /pages/citations + GET /pages/commendations
+  # FastAPI: POST /pages/citations (inclut commendations dans la réponse)
+  # Divergence méthode + split à corriger lors du Sprint 32.
+  # -------------------------------------------------------------------------
+  /players/{player_slug}/pages/citations:
+    get:
+      tags: [career]
+      operationId: getCitations
+      summary: "Citations (Go: GET — FastAPI: POST, divergence à corriger Sprint 32)"
+      parameters:
+        - $ref: "#/components/parameters/PlayerSlug"
+      responses:
+        "200":
+          description: Citations calculées (Triple Kill, Clutch, etc.)
+          content:
+            application/json:
+              schema:
+                type: object
+                description: "TODO Sprint 32 : aligner avec CitationsPageResponse FastAPI"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+  /players/{player_slug}/pages/commendations:
+    get:
+      tags: [career]
+      operationId: getCommendations
+      summary: "Commendations (Go-only — FastAPI intègre dans /pages/citations, à réconcilier Sprint 32)"
+      parameters:
+        - $ref: "#/components/parameters/PlayerSlug"
+      responses:
+        "200":
+          description: Commendations et médailles par catégorie
+          content:
+            application/json:
+              schema:
+                type: object
+                description: "TODO Sprint 32 : fusionner dans CitationsPageResponse FastAPI"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+  # -------------------------------------------------------------------------
+  # Médias (Sprint 13) — ajoutées au contrat sprint 29
+  # Go: GET /pages/media | FastAPI: POST /pages/media
+  # Divergence méthode HTTP à corriger lors du Sprint 32.
+  # -------------------------------------------------------------------------
+  /players/{player_slug}/pages/media:
+    get:
+      tags: [media]
+      operationId: getMediaLibrary
+      summary: "Galerie médias (Go: GET — FastAPI: POST, divergence à corriger Sprint 32)"
+      parameters:
+        - $ref: "#/components/parameters/PlayerSlug"
+      responses:
+        "200":
+          description: Galerie médias paginée
+          content:
+            application/json:
+              schema:
+                type: object
+                description: "TODO Sprint 32 : aligner avec MediaPageResponse FastAPI"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+  # -------------------------------------------------------------------------
+  # Session Compare (Sprint 9) — ajoutée au contrat sprint 29
+  # FastAPI: POST /players/{player_slug}/pages/session-compare — absent Go.
+  # TODO Sprint 32 : implémenter dans Go.
+  # -------------------------------------------------------------------------
+  /players/{player_slug}/pages/session-compare:
+    post:
+      tags: [timeseries]
+      operationId: postSessionCompare
+      summary: "Comparaison de sessions A/B (TODO Sprint 32 : implémenter en Go)"
+      description: |
+        Endpoint présent en FastAPI uniquement (absent Go).
+        Retournera 501 Not Implemented jusqu'au Sprint 32.
+      parameters:
+        - $ref: "#/components/parameters/PlayerSlug"
+      responses:
+        "200":
+          description: Comparaison sessions A/B
+          content:
+            application/json:
+              schema:
+                type: object
+                description: "TODO Sprint 32 : SessionCompareResponse"
+        "501":
+          description: Non implémenté (Go)
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiErrorSchema"
+
+  # -------------------------------------------------------------------------
+  # Last Match (Sprint 8) — ajoutée au contrat sprint 29
+  # FastAPI: POST /players/{player_slug}/pages/last-match/resolve
+  # TODO Sprint 32 : implémenter en Go.
+  # -------------------------------------------------------------------------
+  /players/{player_slug}/pages/last-match/resolve:
+    post:
+      tags: [explorer]
+      operationId: postLastMatchResolve
+      summary: "Résoudre le dernier match (TODO Sprint 32 : implémenter en Go)"
+      parameters:
+        - $ref: "#/components/parameters/PlayerSlug"
+      responses:
+        "200":
+          description: Dernier match résolu
+          content:
+            application/json:
+              schema:
+                type: object
+                description: "TODO Sprint 32 : LastMatchResolveResponse"
+        "501":
+          description: Non implémenté (Go)
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiErrorSchema"
+
 # ---------------------------------------------------------------------------
 # Components
 # ---------------------------------------------------------------------------
@@ -2119,3 +2575,144 @@ components:
           $ref: "#/components/schemas/MatchMediaTab"
         citations_tab:
           $ref: "#/components/schemas/MatchCitationsTab"
+
+    # -----------------------------------------------------------------------
+    # Schémas Auth / Setup / Jobs / Settings (ajoutés Sprint 29)
+    # -----------------------------------------------------------------------
+    DeviceFlowStartResponse:
+      type: object
+      description: Réponse de POST /auth/device-flow/start
+      required: [attempt_id, user_code, verification_uri, expires_in, poll_interval_seconds]
+      properties:
+        attempt_id:
+          type: string
+        user_code:
+          type: string
+          description: Code à afficher à l'utilisateur
+        verification_uri:
+          type: string
+          format: uri
+        verification_uri_complete:
+          type: string
+          format: uri
+          nullable: true
+        expires_in:
+          type: integer
+          description: Durée de validité en secondes
+        poll_interval_seconds:
+          type: integer
+          default: 5
+
+    DeviceFlowStatusResponse:
+      type: object
+      description: Réponse de GET /auth/device-flow/{attempt_id}
+      required: [attempt_id, status]
+      properties:
+        attempt_id:
+          type: string
+        status:
+          type: string
+          enum: [pending, authorized, provisioned, failed, expired]
+        gamertag:
+          type: string
+          nullable: true
+        xuid:
+          type: string
+          nullable: true
+        error:
+          $ref: "#/components/schemas/ApiErrorSchema"
+          nullable: true
+
+    AsyncJobStatus:
+      type: object
+      description: Statut d'un job asynchrone long
+      required: [job_id, job_type, status]
+      properties:
+        job_id:
+          type: string
+        job_type:
+          type: string
+        status:
+          type: string
+          enum: [queued, running, succeeded, failed, interrupted, cancelled]
+        progress_pct:
+          type: integer
+          minimum: 0
+          maximum: 100
+          nullable: true
+        current_step:
+          type: string
+          nullable: true
+        started_at:
+          type: string
+          format: date-time
+          nullable: true
+        finished_at:
+          type: string
+          format: date-time
+          nullable: true
+        result:
+          type: object
+          additionalProperties: true
+          nullable: true
+        error:
+          type: string
+          nullable: true
+
+    SettingsResponse:
+      type: object
+      description: Configuration de l'application (GET/PATCH /settings)
+      required: [lang, user_timezone]
+      properties:
+        lang:
+          type: string
+          enum: [fr, en]
+        discord_lang:
+          type: string
+          enum: [fr, en]
+        user_timezone:
+          type: string
+        normalize_mode_labels:
+          type: boolean
+        show_records:
+          type: boolean
+        refresh_clears_caches:
+          type: boolean
+        career_top_exclude_btb:
+          type: boolean
+        media_captures_base_dir:
+          type: string
+        media_tolerance_minutes:
+          type: integer
+        media_watcher_enabled:
+          type: boolean
+        media_watcher_debounce_seconds:
+          type: integer
+        discord_notifications_enabled:
+          type: boolean
+        discord_webhook_url_present:
+          type: boolean
+        discord_notify_sync:
+          type: boolean
+        discord_notify_backfill:
+          type: boolean
+        discord_notify_new_version:
+          type: boolean
+        discord_notify_new_media:
+          type: boolean
+        spnkr_refresh_with_backfill:
+          type: boolean
+
+    CreatePlayerProfileResponse:
+      type: object
+      description: Réponse de POST /setup/players
+      required: [player, db_created, warnings]
+      properties:
+        player:
+          $ref: "#/components/schemas/PlayerSummary"
+        db_created:
+          type: boolean
+        warnings:
+          type: array
+          items:
+            type: string

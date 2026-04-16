@@ -259,4 +259,107 @@ jobs:
         uses: stoplightio/spectral-action@v0.8.11
         with:
           file_glob: apps/go-api/api/openapi.yaml
-        continue-on-error: true
+
+  go-contract-test:
+    name: Go Contract Test (OpenAPI YAML)
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: apps/go-api
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: "1.22"
+          cache-dependency-path: apps/go-api/go.sum
+
+      # Tests YAML-only : vérifie que openapi.yaml est valide, complet (≥20 paths)
+      # et que les paths obligatoires (health, bootstrap, settings…) sont présents.
+      # CGO_ENABLED=0 : aucune dépendance platform/duckdb.
+      - name: Run contract tests
+        run: |
+          go test ./contracttest/... -run TestContract -v -timeout 30s
+        env:
+          CGO_ENABLED: "0"
+          LEVELUP_DEMO_MODE: "true"
+
+  e2e-react:
+    name: E2E React (Playwright)
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: apps/web
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: "npm"
+          cache-dependency-path: apps/web/package-lock.json
+
+      - name: Install dependencies
+        run: npm ci --prefer-offline
+
+      - name: Install Playwright browsers (Chromium uniquement)
+        run: npx playwright install chromium --with-deps
+
+      - name: Set up Go (backend démo)
+        uses: actions/setup-go@v5
+        with:
+          go-version: "1.22"
+          cache-dependency-path: apps/go-api/go.sum
+
+      - name: Build Go backend
+        working-directory: apps/go-api
+        run: CGO_ENABLED=0 go build -o levelup-api ./cmd/api/
+        env:
+          CGO_ENABLED: "0"
+
+      - name: Start backend in demo mode
+        working-directory: apps/go-api
+        run: |
+          LEVELUP_DEMO_MODE=true LEVELUP_API_PORT=8000 ./levelup-api &
+          echo "Backend PID: $!"
+          # Attendre que l'API réponde (max 30s)
+          for i in $(seq 1 30); do
+            curl -sf http://localhost:8000/health && break
+            sleep 1
+          done
+        env:
+          CGO_ENABLED: "0"
+          LEVELUP_DEMO_MODE: "true"
+
+      - name: Start frontend dev server
+        run: |
+          VITE_API_BASE_URL=http://localhost:8000 npm run dev &
+          echo "Frontend PID: $!"
+          # Attendre que Vite soit prêt (max 30s)
+          for i in $(seq 1 30); do
+            curl -sf http://localhost:5173 && break
+            sleep 1
+          done
+        env:
+          VITE_API_BASE_URL: "http://localhost:8000"
+
+      - name: Run Playwright tests
+        run: |
+          npx playwright test \
+            --project=chromium \
+            --reporter=list \
+            --timeout=30000 \
+            --retries=2
+        env:
+          CI: "true"
+          PLAYWRIGHT_BASE_URL: "http://localhost:5173"
+
+      - name: Upload Playwright report (on failure)
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-report
+          path: apps/web/playwright-report/
+          retention-days: 7

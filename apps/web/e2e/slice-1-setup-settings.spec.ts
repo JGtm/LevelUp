@@ -5,7 +5,7 @@
  *
  * Couverture :
  * 1. La page /setup se charge sans erreur
- * 2. L'API setup/status retourne HTTP 200
+ * 2. (sprint 29) GET /setup/status supprimé — artefact mort, remplacé par BootstrapResponse.setup_state
  * 3. La page /settings se charge avec le titre attendu
  * 4. L'API settings retourne HTTP 200 avec une config valide
  */
@@ -26,12 +26,12 @@ test.describe('Slice 1 — Setup / Settings (DEMO_MODE)', () => {
     ).toHaveLength(0)
   })
 
-  test("l'API setup/status retourne HTTP 200", async ({ request }) => {
-    const resp = await request.get(`${API_BASE}/setup/status`)
+  test("l'API bootstrap retourne HTTP 200 avec setup_state valide", async ({ request }) => {
+    const resp = await request.get(`${API_BASE}/bootstrap`)
 
     expect(resp.status()).toBe(200)
-    const data = await resp.json()
-    expect(data).toBeTruthy()
+    const data = await resp.json() as Record<string, unknown>
+    expect(['no_halo_link', 'halo_linked_no_profile', 'profile_ready_no_sync', 'ready']).toContain(data.setup_state)
   })
 
   test('la page /settings affiche le titre Paramètres', async ({ page }) => {
