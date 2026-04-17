@@ -45,7 +45,8 @@ func NewInMemoryShared(t *testing.T) *sql.DB {
 			first_sync_at TIMESTAMP,
 			last_updated_at TIMESTAMP,
 			created_at TIMESTAMP,
-			updated_at TIMESTAMP
+			updated_at TIMESTAMP,
+			backfill_completed INTEGER DEFAULT 0
 		)`,
 		`CREATE TABLE match_participants (
 			match_id VARCHAR,
@@ -53,11 +54,27 @@ func NewInMemoryShared(t *testing.T) *sql.DB {
 			gamertag VARCHAR,
 			team_id INTEGER,
 			outcome INTEGER,
+			rank INTEGER,
+			score INTEGER,
 			kills INTEGER DEFAULT 0,
 			deaths INTEGER DEFAULT 0,
 			assists INTEGER DEFAULT 0,
+			shots_fired INTEGER DEFAULT 0,
+			shots_hit INTEGER DEFAULT 0,
+			damage_dealt DOUBLE DEFAULT 0,
+			damage_taken DOUBLE DEFAULT 0,
 			kd DOUBLE DEFAULT 0,
 			kda DOUBLE DEFAULT 0,
+			accuracy DOUBLE DEFAULT 0,
+			personal_score INTEGER DEFAULT 0,
+			time_played_seconds INTEGER DEFAULT 0,
+			avg_life_seconds DOUBLE DEFAULT 0,
+			kills_expected DOUBLE,
+			deaths_expected DOUBLE,
+			kills_stddev DOUBLE,
+			team_mmr DOUBLE,
+			enemy_mmr DOUBLE,
+			created_at TIMESTAMP,
 			PRIMARY KEY (match_id, xuid)
 		)`,
 		`CREATE TABLE medals_earned (
@@ -78,16 +95,21 @@ func NewInMemoryShared(t *testing.T) *sql.DB {
 		`CREATE TABLE weapon_kills (
 			match_id VARCHAR,
 			xuid VARCHAR,
+			time_ms INTEGER DEFAULT 0,
 			weapon_id UBIGINT,
+			reconciled_as UBIGINT,
+			delta_ms INTEGER DEFAULT 0,
+			confidence VARCHAR DEFAULT 'low',
+			attribution_path VARCHAR DEFAULT '',
+			swap_detected BOOLEAN DEFAULT FALSE,
+			delayed_damage BOOLEAN DEFAULT FALSE,
+			player_index INTEGER,
 			kills INTEGER DEFAULT 0,
 			headshot_kills INTEGER DEFAULT 0,
 			damage_dealt DOUBLE DEFAULT 0,
 			shots_fired INTEGER DEFAULT 0,
 			shots_hit INTEGER DEFAULT 0,
-			confidence VARCHAR DEFAULT 'low',
 			source VARCHAR DEFAULT 'unknown',
-			delta_ms INTEGER DEFAULT 0,
-			reconciled_as UBIGINT,
 			PRIMARY KEY (match_id, xuid, weapon_id)
 		)`,
 		`CREATE TABLE sync_meta (
@@ -118,11 +140,14 @@ func NewInMemoryPlayer(t *testing.T) *sql.DB {
 			performance_score DOUBLE,
 			session_id VARCHAR,
 			is_with_friends BOOLEAN DEFAULT FALSE,
-			teammates_sig VARCHAR
+			teammates_signature VARCHAR,
+			created_at TIMESTAMP,
+			updated_at TIMESTAMP
 		)`,
 		`CREATE TABLE sync_meta (
 			key VARCHAR PRIMARY KEY,
-			value VARCHAR
+			value VARCHAR,
+			updated_at TIMESTAMP
 		)`,
 		`CREATE TABLE schema_migrations (
 			name VARCHAR PRIMARY KEY,

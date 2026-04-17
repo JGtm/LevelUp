@@ -1,5 +1,28 @@
 # Thought Log
 
+## [2026-04-18] test(sync): 4 tests manquants writes_test.go + fixture schema update + roadmap cleanup
+
+**Statut** : Complété
+
+**Tâche** : Compléter les tests writes_test.go manquants (InsertParticipants, UpsertPlayerEnrichment, InsertWeaponKills, MarkWeaponKillsDone), aligner les schémas fixture.go avec la production, exporter WeaponKillRow, mettre à jour project_map.md avec couverture par package, et corriger toutes les tâches non cochées du SPRINT_ROADMAP.md (sauf Sprint 50).
+
+**Décisions techniques principales** :
+
+1. **Export `WeaponKillRow`** : le type `weaponKillRow` était non-exporté mais passé en paramètre de `InsertWeaponKills` (API publique). Exporté en `WeaponKillRow` pour permettre les tests depuis le package `sync_test` (external test). Mise à jour cohérente dans `backfill_weapons.go`.
+2. **Fixture schema alignment** : `match_participants` passé de 10 à 26 colonnes (ajout rank, score, shots, damage, accuracy, MMR, etc.). `weapon_kills` : ajout time_ms, attribution_path, swap_detected, delayed_damage, player_index. `match_registry` : ajout backfill_completed. `player_match_enrichment` : rename `teammates_sig` → `teammates_signature` + ajout timestamps.
+3. **4 tests ajoutés** : TestInsertParticipants (batch + idempotence + MMR), TestUpsertPlayerEnrichment (insert + update + COALESCE empty), TestInsertWeaponKills (insert + replace + count), TestMarkWeaponKillsDone (bit set + noFilm variant).
+4. **project_map.md** : section Go API ajoutée avec couverture par package (baseline 35.0%).
+5. **SPRINT_ROADMAP.md** : mise à jour massive — S45-S49 marqués ✅, ~20 tâches cochées, ~15 gates cochées, summary table corrigée.
+
+**Résultats** :
+- 8/8 fonctions writes.go couvertes par tests
+- fixture.go schéma aligné avec production (25+ colonnes match_participants)
+- gofmt OK sur tous les fichiers modifiés
+
+**Prochaine étape** : Sprint 50 (non touché per instruction utilisateur).
+
+---
+
 ## [2026-04-17] fix(lint): golangci-lint 0 issues + gates S44/S48 cochées
 
 **Statut** : Complété

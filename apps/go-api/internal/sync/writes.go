@@ -193,7 +193,7 @@ func nullStr(s string) *string {
 
 // InsertWeaponKills remplace les entrées weapon_kills existantes pour (matchID, xuid)
 // par les nouvelles attributions. Opération atomique : DELETE + INSERT batch.
-func InsertWeaponKills(db *sql.DB, matchID, xuid string, attrs []weaponKillRow) error {
+func InsertWeaponKills(db *sql.DB, matchID, xuid string, attrs []WeaponKillRow) error {
 	tx, err := db.Begin()
 	if err != nil {
 		return fmt.Errorf("InsertWeaponKills begin: %w", err)
@@ -221,8 +221,8 @@ func InsertWeaponKills(db *sql.DB, matchID, xuid string, attrs []weaponKillRow) 
 	return tx.Commit()
 }
 
-// weaponKillRow est la représentation interne d'une ligne weapon_kills.
-type weaponKillRow struct {
+// WeaponKillRow est la représentation d'une ligne weapon_kills.
+type WeaponKillRow struct {
 	TimeMS          int
 	WeaponID        *uint64
 	ReconciledAs    *uint64

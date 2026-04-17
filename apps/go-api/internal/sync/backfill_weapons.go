@@ -94,7 +94,7 @@ func BackfillWeaponKillsForMatch(
 		timelines.TimelineNS,
 	)
 
-	// 7. Convertir en weaponKillRow pour l'insertion.
+	// 7. Convertir en WeaponKillRow pour l'insertion.
 	rows := attributionsToRows(attrs, xuid)
 
 	if err := InsertWeaponKills(sharedDB, matchID, xuid, rows); err != nil {
@@ -220,14 +220,14 @@ func getXuidToPI(db *sql.DB, matchID string) (map[string]int, error) {
 // Conversion
 // ─────────────────────────────────────────────────────────────────────────────
 
-// attributionsToRows filtre les attributions pour le joueur et les convertit en weaponKillRow.
-func attributionsToRows(attrs []analysis.KillAttribution, xuid string) []weaponKillRow {
-	rows := make([]weaponKillRow, 0, len(attrs))
+// attributionsToRows filtre les attributions pour le joueur et les convertit en WeaponKillRow.
+func attributionsToRows(attrs []analysis.KillAttribution, xuid string) []WeaponKillRow {
+	rows := make([]WeaponKillRow, 0, len(attrs))
 	for _, a := range attrs {
 		if a.XUID != xuid {
 			continue
 		}
-		rows = append(rows, weaponKillRow{
+		rows = append(rows, WeaponKillRow{
 			TimeMS:          a.TimeMS,
 			WeaponID:        a.WeaponID,
 			ReconciledAs:    a.ReconciledAs,
