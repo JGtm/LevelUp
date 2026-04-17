@@ -53,6 +53,7 @@ export const queryKeys = {
     ['synthesis', playerSlug, period] as const,
 
   // Médias (Slice 8)
+  mediaBase: (playerSlug: string) => ['media', playerSlug] as const,
   media: (playerSlug: string, page: number) => ['media', playerSlug, page] as const,
 
   // Citations (Slice 2B)

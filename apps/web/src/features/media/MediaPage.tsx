@@ -11,6 +11,7 @@
 import { useState, useEffect, useCallback, useRef } from 'react'
 import { useParams } from '@tanstack/react-router'
 import { useMediaPage } from './queries'
+import { UploadButton } from './UploadButton'
 import { PageHeader } from '@/components/shell/PageHeader'
 import { Card, CardContent } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
@@ -305,7 +306,7 @@ export function MediaPage() {
         title="Médias"
         subtitle={totalLabel}
         actions={
-          <div className="flex flex-wrap gap-2">
+          <div className="flex flex-wrap items-center gap-2">
             <select className="rounded border px-2 py-1 text-sm" value={kindFilter}
               onChange={(e) => { setKindFilter(e.target.value); setPage(1) }}>
               {KIND_OPTIONS.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
@@ -336,6 +337,9 @@ export function MediaPage() {
               onChange={(e) => { setGroupBy(e.target.value); setPage(1) }}>
               {GROUP_OPTIONS.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
             </select>
+            <div className="ml-auto">
+              <UploadButton playerSlug={playerSlug} />
+            </div>
           </div>
         }
       />
