@@ -100,4 +100,40 @@ export const api = {
 
   delete: <T>(path: string, headers?: Record<string, string>) =>
     request<T>('DELETE', path, { headers }),
+
+  /**
+   * Envoie un FormData en multipart/form-data.
+   * Ne pose PAS Content-Type : le browser calcule automatiquement le boundary.
+   */
+  postForm: async <T>(path: string, form: FormData): Promise<T> => {
+    const url = `${BASE_URL}${path}`
+    const response = await fetch(url, {
+      method: 'POST',
+      credentials: 'include',
+      headers: {
+        Accept: 'application/json',
+        ...getTitleHeader(),
+        // Content-Type intentionnellement absent → boundary auto
+      },
+      body: form,
+    })
+
+    if (!response.ok) {
+      let errorBody: Partial<ApiError> = {}
+      try {
+        errorBody = await response.json()
+      } catch { /* body non-JSON */ }
+      const err: ApiError = {
+        code: errorBody.code ?? 'upload_error',
+        message: errorBody.message ?? `Erreur HTTP ${response.status}`,
+        retryable: errorBody.retryable ?? response.status >= 500,
+        details: errorBody.details,
+        field_errors: errorBody.field_errors,
+        status: response.status,
+      }
+      throw err
+    }
+
+    return response.json() as Promise<T>
+  },
 }

@@ -836,6 +836,14 @@ export interface MediaPageResponse {
   total_unassigned: number
 }
 
+export interface MediaUploadResponse {
+  saved: number
+  new_indexed: number
+  associated: number
+  thumbnails: number
+  errors?: string[]
+}
+
 // ---------------------------------------------------------------------------
 // Match View (Slice 4B)
 // ---------------------------------------------------------------------------
