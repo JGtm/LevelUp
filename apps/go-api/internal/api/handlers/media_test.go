@@ -25,9 +25,13 @@ func (m *mockMediaService) GetMediaPage(_ context.Context, _ int) (*domain.Media
 	return m.page, m.pageErr
 }
 
+func (m *mockMediaService) UploadMedia(_ context.Context, _ domain.UploadRequest) (*domain.UploadResult, error) {
+	return nil, errors.New("not implemented")
+}
+
 func newMediaRouter(factory handlers.ServiceFactory[port.MediaService]) *chi.Mux {
 	r := chi.NewRouter()
-	h := handlers.NewMediaHandler(factory)
+	h := handlers.NewMediaHandler(factory, nil)
 	r.Route("/players/{player_slug}", func(r chi.Router) {
 		r.Post("/pages/media", h.GetMediaLibrary)
 	})

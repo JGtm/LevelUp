@@ -167,7 +167,7 @@ func NewRouter(
 			r.Post("/pages/citations", citations.GetCitations)
 			r.Post("/pages/commendations", citations.GetCommendations)
 
-			media := handlers.NewMediaHandler(reg.Media)
+			media := handlers.NewMediaHandler(reg.Media, nil)
 			r.Post("/pages/media", media.GetMediaLibrary)
 
 			// Sprint 32 : Explorer matches-query + Match History export
