@@ -141,7 +141,6 @@ func TestApply_BoolFields(t *testing.T) {
 	req := &domain.UpdateSettingsRequest{
 		NormalizeModeLabels:         &tr,
 		DiscordNotificationsEnabled: &tr,
-		MediaWatcherEnabled:         &tr,
 	}
 	settings.Apply(cfg, req)
 	if !cfg.NormalizeModeLabels {
@@ -156,11 +155,9 @@ func TestApply_MediaFields(t *testing.T) {
 	cfg := settings.Defaults()
 	dir := "/captures"
 	tol := 20
-	deb := 10
 	req := &domain.UpdateSettingsRequest{
-		MediaCapturesBaseDir:        &dir,
-		MediaToleranceMinutes:       &tol,
-		MediaWatcherDebounceSeconds: &deb,
+		MediaCapturesBaseDir:  &dir,
+		MediaToleranceMinutes: &tol,
 	}
 	settings.Apply(cfg, req)
 	if cfg.MediaCapturesBaseDir != "/captures" {

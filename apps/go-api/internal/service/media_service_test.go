@@ -3,6 +3,8 @@ package service
 import (
 	"context"
 	"errors"
+	"os"
+	"path/filepath"
 	"testing"
 	"time"
 
@@ -127,5 +129,120 @@ func TestMediaService_GetMediaPage_NoMore(t *testing.T) {
 	}
 	if resp.HasMore {
 		t.Error("expected HasMore = false when all items fit on one page")
+	}
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// UploadMedia
+// ─────────────────────────────────────────────────────────────────────────────
+
+func TestMediaService_UploadMedia_NoFiles(t *testing.T) {
+	svc := NewMediaService(&mockMediaRepo{})
+	result, err := svc.UploadMedia(context.Background(), domain.UploadRequest{
+		Files:       nil,
+		CapturesDir: t.TempDir(),
+		DBPath:      "/nonexistent.duckdb",
+	})
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if result.Saved != 0 {
+		t.Errorf("Saved = %d, want 0", result.Saved)
+	}
+}
+
+func TestMediaService_UploadMedia_SavesToDisk(t *testing.T) {
+	dir := t.TempDir()
+	// DBPath pointe vers un fichier inexistant → IndexMedia échouera mais les
+	// fichiers doivent quand même être écrits sur disque avant l'indexation.
+	svc := NewMediaService(&mockMediaRepo{})
+	req := domain.UploadRequest{
+		Files: []domain.UploadedFile{
+			{OriginalName: "clip.mp4", Data: []byte("fake video bytes")},
+			{OriginalName: "shot.png", Data: []byte("fake image bytes")},
+		},
+		CapturesDir: dir,
+		DBPath:      filepath.Join(dir, "stats.duckdb"),
+		Tolerance:   5,
+	}
+	result, err := svc.UploadMedia(context.Background(), req)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if result.Saved != 2 {
+		t.Errorf("Saved = %d, want 2", result.Saved)
+	}
+	// Vérifier que les fichiers existent bien sur disque
+	for _, name := range []string{"clip.mp4", "shot.png"} {
+		if _, err := os.Stat(filepath.Join(dir, name)); err != nil {
+			t.Errorf("file %s not found on disk: %v", name, err)
+		}
+	}
+}
+
+func TestMediaService_UploadMedia_CreatesCapturesDir(t *testing.T) {
+	base := t.TempDir()
+	captures := filepath.Join(base, "new", "captures")
+	svc := NewMediaService(&mockMediaRepo{})
+	req := domain.UploadRequest{
+		Files:       []domain.UploadedFile{{OriginalName: "a.mp4", Data: []byte("x")}},
+		CapturesDir: captures,
+		DBPath:      filepath.Join(base, "stats.duckdb"),
+	}
+	if _, err := svc.UploadMedia(context.Background(), req); err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if _, err := os.Stat(captures); err != nil {
+		t.Errorf("captures dir not created: %v", err)
+	}
+}
+
+func TestMediaService_UploadMedia_ToleranceDefault(t *testing.T) {
+	dir := t.TempDir()
+	svc := NewMediaService(&mockMediaRepo{})
+	// Tolerance=0 → doit utiliser 5 par défaut (pas de panique)
+	req := domain.UploadRequest{
+		Files:       []domain.UploadedFile{{OriginalName: "a.mp4", Data: []byte("x")}},
+		CapturesDir: dir,
+		DBPath:      filepath.Join(dir, "stats.duckdb"),
+		Tolerance:   0,
+	}
+	result, err := svc.UploadMedia(context.Background(), req)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	// Saved=1 même si IndexMedia échoue (db inexistante)
+	if result.Saved != 1 {
+		t.Errorf("Saved = %d, want 1", result.Saved)
+	}
+}
+
+func TestMediaService_UploadMedia_PathTraversalBlocked(t *testing.T) {
+	dir := t.TempDir()
+	svc := NewMediaService(&mockMediaRepo{})
+	// Un nom de fichier avec path traversal doit être nettoyé par filepath.Base
+	req := domain.UploadRequest{
+		Files: []domain.UploadedFile{
+			{OriginalName: "../../evil.sh", Data: []byte("x")},
+		},
+		CapturesDir: dir,
+		DBPath:      filepath.Join(dir, "stats.duckdb"),
+	}
+	result, err := svc.UploadMedia(context.Background(), req)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if result.Saved != 1 {
+		t.Fatalf("Saved = %d, want 1", result.Saved)
+	}
+	// Le fichier doit être dans dir, pas dans un parent
+	expected := filepath.Join(dir, "evil.sh")
+	if _, err := os.Stat(expected); err != nil {
+		t.Errorf("expected file at %s, not found: %v", expected, err)
+	}
+	// Vérifier que rien n'a été écrit hors de dir
+	parent := filepath.Dir(dir)
+	if _, err := os.Stat(filepath.Join(parent, "evil.sh")); err == nil {
+		t.Error("path traversal succeeded — file written outside captures dir!")
 	}
 }
