@@ -265,9 +265,9 @@ jobs:
       - name: Filtrer exclusions (gen/ + msal-poc/)
         run: bash scripts/coverage_filter.sh coverage.raw > coverage.out
 
-      # S48 T7 : ratchet via coverage_check.sh — seuil actuel = baseline 35.0%
-      # Progressive : S45→15% atteint, S46→35% atteint (baseline = 35.0%)
-      # S47→55%, S48→70% à mesurer après merge des tests CGO
+      # S49 closure : ratchet via coverage_check.sh — seuil actuel = baseline 76.0%
+      # Progressive : S45→15%, S46→35%, S47→55%, S48→70%, S49→76% (per-package mean, tous ≥ 50%)
+      # platform/auth=66%, validation=52.9%, ops=51.4% — sync/migration exclus (integration only)
       - name: Vérifier ratchet couverture (vs coverage_baseline.txt)
         run: bash scripts/coverage_check.sh coverage.out coverage_baseline.txt
         env:
