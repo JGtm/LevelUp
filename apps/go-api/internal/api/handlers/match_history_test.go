@@ -45,7 +45,7 @@ func newMatchHistoryRouter(factory handlers.ContextFactory[port.MatchHistoryServ
 
 func TestMatchHistoryHandler_Query_OK(t *testing.T) {
 	mock := &mockMatchHistoryService{
-		page: domain.MatchHistoryPageResponse{Total: 42},
+		page: domain.MatchHistoryPageResponse{},
 	}
 	factory := func(_ context.Context, slug string) (port.MatchHistoryService, string, string, error) {
 		if slug != testPlayerSlug {
@@ -54,7 +54,7 @@ func TestMatchHistoryHandler_Query_OK(t *testing.T) {
 		return mock, "xuid-1", "TestPlayer", nil
 	}
 	r := newMatchHistoryRouter(factory)
-	body, _ := json.Marshal(domain.MatchHistoryQueryRequest{Page: 1, PageSize: 20})
+	body, _ := json.Marshal(domain.MatchHistoryQueryRequest{Pagination: domain.PaginationRequest{Page: 1, PageSize: 20}})
 	req := httptest.NewRequest(http.MethodPost, "/players/test-player/pages/match-history/query", bytes.NewReader(body))
 	req.Header.Set("Content-Type", "application/json")
 	w := httptest.NewRecorder()

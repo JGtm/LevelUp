@@ -10,6 +10,130 @@ import (
 
 func init() {
 	Register(Migration{
+		Name:        "create_base_shared_schema",
+		TargetDB:    TargetShared,
+		Description: "Tables de base shared_matches_v2 (idempotent IF NOT EXISTS)",
+		ApplySchema: func(db *sql.DB) error {
+			return execScript(db, `
+				CREATE TABLE IF NOT EXISTS match_registry (
+					match_id VARCHAR PRIMARY KEY,
+					start_time TIMESTAMP,
+					end_time TIMESTAMP,
+					playlist_id VARCHAR,
+					playlist_name VARCHAR,
+					map_id VARCHAR,
+					map_name VARCHAR,
+					pair_id VARCHAR,
+					pair_name VARCHAR,
+					game_variant_id VARCHAR,
+					game_variant_name VARCHAR,
+					mode_category VARCHAR,
+					is_ranked BOOLEAN DEFAULT FALSE,
+					is_firefight BOOLEAN DEFAULT FALSE,
+					duration_seconds INTEGER,
+					playable_duration_seconds INTEGER,
+					real_start_time TIMESTAMP,
+					team_0_score INTEGER,
+					team_1_score INTEGER,
+					team_0_ps_score INTEGER,
+					team_1_ps_score INTEGER,
+					player_count INTEGER,
+					first_sync_by VARCHAR,
+					first_sync_at TIMESTAMP,
+					last_updated_at TIMESTAMP,
+					created_at TIMESTAMP,
+					updated_at TIMESTAMP,
+					backfill_completed INTEGER DEFAULT 0,
+					film_match_start_ms INTEGER,
+					spnkr_version VARCHAR,
+					events_loaded BOOLEAN DEFAULT FALSE
+				);
+				CREATE TABLE IF NOT EXISTS match_participants (
+					match_id VARCHAR,
+					xuid VARCHAR,
+					gamertag VARCHAR,
+					team_id INTEGER,
+					outcome INTEGER,
+					rank INTEGER,
+					score INTEGER,
+					kills INTEGER DEFAULT 0,
+					deaths INTEGER DEFAULT 0,
+					assists INTEGER DEFAULT 0,
+					shots_fired INTEGER DEFAULT 0,
+					shots_hit INTEGER DEFAULT 0,
+					damage_dealt DOUBLE DEFAULT 0,
+					damage_taken DOUBLE DEFAULT 0,
+					kd DOUBLE DEFAULT 0,
+					kda DOUBLE DEFAULT 0,
+					accuracy DOUBLE DEFAULT 0,
+					personal_score INTEGER DEFAULT 0,
+					time_played_seconds INTEGER DEFAULT 0,
+					avg_life_seconds DOUBLE DEFAULT 0,
+					headshot_kills SMALLINT DEFAULT 0,
+					max_killing_spree SMALLINT DEFAULT 0,
+					grenade_kills SMALLINT DEFAULT 0,
+					melee_kills SMALLINT DEFAULT 0,
+					power_weapon_kills SMALLINT DEFAULT 0,
+					kills_expected DOUBLE,
+					deaths_expected DOUBLE,
+					kills_stddev DOUBLE,
+					assists_expected DOUBLE,
+					assists_stddev DOUBLE,
+					deaths_stddev DOUBLE,
+					team_mmr DOUBLE,
+					enemy_mmr DOUBLE,
+					backfill_bits INTEGER DEFAULT 0,
+					created_at TIMESTAMP,
+					PRIMARY KEY (match_id, xuid)
+				);
+				CREATE TABLE IF NOT EXISTS medals_earned (
+					match_id VARCHAR,
+					xuid VARCHAR,
+					medal_name_id BIGINT,
+					count INTEGER,
+					created_at TIMESTAMP,
+					PRIMARY KEY (match_id, xuid, medal_name_id)
+				);
+				CREATE TABLE IF NOT EXISTS xuid_aliases (
+					xuid VARCHAR PRIMARY KEY,
+					gamertag VARCHAR,
+					last_seen TIMESTAMP,
+					source VARCHAR DEFAULT 'sync',
+					updated_at TIMESTAMP
+				);
+				CREATE TABLE IF NOT EXISTS weapon_kills (
+					match_id VARCHAR,
+					xuid VARCHAR,
+					weapon_id UBIGINT,
+					kills INTEGER DEFAULT 0,
+					PRIMARY KEY (match_id, xuid, weapon_id)
+				);
+				CREATE TABLE IF NOT EXISTS killer_victim_pairs (
+					match_id VARCHAR,
+					killer_xuid VARCHAR,
+					victim_xuid VARCHAR,
+					created_at TIMESTAMP,
+					PRIMARY KEY (match_id, killer_xuid, victim_xuid)
+				);
+				CREATE TABLE IF NOT EXISTS highlight_events (
+					id INTEGER PRIMARY KEY,
+					match_id VARCHAR,
+					event_type VARCHAR,
+					time_ms INTEGER,
+					xuid VARCHAR,
+					type_hint VARCHAR,
+					raw_json VARCHAR
+				);
+				CREATE TABLE IF NOT EXISTS sync_meta (
+					key VARCHAR PRIMARY KEY,
+					value VARCHAR,
+					updated_at TIMESTAMP
+				);
+			`)
+		},
+	})
+
+	Register(Migration{
 		Name:        "add_film_match_start",
 		TargetDB:    TargetShared,
 		Description: "Colonne film_match_start_ms sur match_registry",

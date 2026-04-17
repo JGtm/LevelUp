@@ -38,20 +38,22 @@ func leaseMutex(path string) *sync.Mutex {
 // Retourne une fonction release() à appeler (via defer) une fois l'écriture terminée.
 // Retourne une erreur si le verrou n'est pas disponible dans le délai imparti.
 //
+// Implémentation via TryLock + polling pour éviter les fuites de goroutines :
+// l'ancienne version (go func { mu.Lock() }) laissait une goroutine bloquée indéfiniment
+// si le timeout survenait avant l'acquisition.
+//
 // Portage du comportement du _db_lock Python avec timeout 5s.
 func AcquireLease(path string, timeout time.Duration) (func(), error) {
 	mu := leaseMutex(path)
+	deadline := time.Now().Add(timeout)
 
-	acquired := make(chan struct{}, 1)
-	go func() {
-		mu.Lock()
-		acquired <- struct{}{}
-	}()
-
-	select {
-	case <-acquired:
-		return func() { mu.Unlock() }, nil
-	case <-time.After(timeout):
-		return nil, fmt.Errorf("write lease timeout (%v) pour %s — autre sync en cours?", timeout, path)
+	for {
+		if mu.TryLock() {
+			return func() { mu.Unlock() }, nil
+		}
+		if time.Now().After(deadline) {
+			return nil, fmt.Errorf("write lease timeout (%v) pour %s — autre sync en cours?", timeout, path)
+		}
+		time.Sleep(5 * time.Millisecond)
 	}
 }

@@ -421,7 +421,7 @@ func statusIcon(status string) string {
 	case "OK":
 		return "✅"
 	case statusWarn:
-		return "⚠️ "
+		return "⚠️"
 	case statusDiverge:
 		return "❌"
 	case statusMissGo:

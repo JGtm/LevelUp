@@ -6,8 +6,8 @@
 > Dernière mise à jour : 2026-04-17
 > Statut global : **Migration portage terminée** — Sprints 0–28 ✅ (Phases 0–5).
 > **Sprints 29–41 terminés ✅** (sauf S36 🔄) — S42 🔄, S43 ✅, S44 🔄 (Phase 9).
-> **Phase 10 — Consolidation qualité (couverture 70%)** : Sprints 45–48 — tests écrits ✅, coverage CI mesurable ⬜.
-> **Phase 11 — Clôture migration** : Sprint 49 ✅ (contrat aligné, S44 durci) — Sprint 50 🔄 (triple audit en cours).
+> **Phase 10 — Consolidation qualité** : Sprints 45–48 ✅ — tests écrits, 21 packages 0 FAIL, couverture mesurée 33.6% (baseline ratchet 33.5%).
+> **Phase 11 — Clôture migration** : Sprint 49 ✅ (contrat aligné, S44 durci, 9 échecs tests corrigés) — Sprint 50 🔄 (triple audit en cours).
 
 ---
 
@@ -87,8 +87,8 @@
 **Total Phases 0–5** : 130–195 jours (~7–10 mois) — ✅ terminé.
 **Total Phases 6–8** : ~45–65 jours — ✅ terminé.
 **Total Phase 9** : ~20–30 jours — 🔄 en cours (S42 🔄, S43 ✅, S44 🔄).
-**Total Phase 10** : ~22–29 jours — ✅ terminé (couverture 35%+ baseline, tests writes/handlers/validation complets).
-**Total Phase 11** : ~6–9 jours — ✅ terminé (contrat aligné, S44 durci, gouvernance résolue).
+**Total Phase 10** : ~22–29 jours — ✅ terminé (21 packages 0 FAIL, couverture mesurée 33.6%, baseline ratchet 33.5% — cible 70% reportée Sprint 51+).
+**Total Phase 11** : ~6–9 jours — ✅ terminé (contrat aligné, S44 durci, gouvernance résolue, 9 échecs tests S45-S49 corrigés — branch `phase11/sprint49-closure`).
 **Total global** : ~230–344 jours pour 1 dev senior temps plein.
 
 > **Note** : les estimations sont basées sur ~55 000 LOC Python réels à porter
@@ -1443,6 +1443,26 @@
 - [x] Gouvernance `SPRINT_EXPLORATION.md` résolue
 - [x] `GO_MIGRATION_CHECKLIST.md` : dépréciée formellement au profit de `SPRINT_ROADMAP.md`
 - [x] Entrée thought_log bilan Phase 11 ajoutée
+
+### Addendum Sprint 49 — Correction 9 échecs de tests (phase11/sprint49-closure)
+
+> Suite à la mise en place des tests CGO (S45-S48), 9 packages présentaient des échecs dus à des désalignements de types/schémas Go. Tous corrigés sur la branche `phase11/sprint49-closure`.
+
+| # | Package | Problème | Correction |
+|--:|---------|---------|------------|
+| 1 | `internal/migration` | `tableExists`/`viewExists` redéclarés (conflit avec `helpers.go`) | Renommés en `assertTableExists`/`assertViewExists` |
+| 2 | `internal/migration` | Migrations ADD COLUMN sur tables inexistantes | Ajout de `create_base_shared_schema` + `create_base_player_schema` en tête |
+| 3 | `internal/sync` | Schéma `career_progression` incorrect (colonnes `current_rank`, `id`) | Aligné sur le vrai schéma (`rank`, `rank_name`, `rank_tier`) |
+| 4 | `internal/platform/duckdb` | `GetPlayerCount` : `FROM match_participants` sans préfixe `shared.` | Corrigé en `FROM shared.match_participants` |
+| 5 | `internal/api/handlers` | `LastMatchResolveResponse{MatchID}` → champ renommé | Corrigé en `CurrentMatchID` |
+| 6 | `internal/api/handlers` | `MatchHistoryPageResponse{Total}` + `MatchHistoryQueryRequest{Page}` | Types domain corrigés |
+| 7 | `internal/api/handlers` | `SessionCompareRequest{SessionA}` : string au lieu de `*string` | Corrigés en pointeurs |
+| 8 | `internal/api/handlers` | `domain.Session` → type réel `SessionGroup` avec `SessionID int` | Corrigé |
+| 9 | `internal/ops` | `restore_test.go` : format Parquet sans timestamp | Format `{table}_{timestamp}.parquet` + metadata JSON |
+
+**Résultat** : 21 packages ✅, 0 FAIL — couverture filtrée : **33.6%**, baseline ratchet mis à jour : **33.5%**.
+
+> **Note couverture** : La cible de 70% (Phase 10) avec `-coverpkg=./...` n'est pas encore atteinte (33.6% mesuré). Les nouvelles migrations `create_base_*` ont augmenté le dénominateur sans tests supplémentaires. Cible 70% reportée à Sprint 51+ (sprint dédié tests DuckDB/sync).
 
 ### Sprint 50 — Triple audit final : parité / architecture / tests (5–8 jours) 🔄
 

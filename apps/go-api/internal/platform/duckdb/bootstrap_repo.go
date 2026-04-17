@@ -55,7 +55,7 @@ func (r *BootstrapRepo) GetPlayerCount(ctx context.Context) (int, error) {
 	defer cancel()
 
 	var count int
-	err := r.shared.QueryRow(ctx, "SELECT COUNT(DISTINCT xuid) FROM match_participants").Scan(&count)
+	err := r.shared.QueryRow(ctx, "SELECT COUNT(DISTINCT xuid) FROM shared.match_participants").Scan(&count)
 	if err != nil {
 		return 0, fmt.Errorf("GetPlayerCount: %w", err)
 	}

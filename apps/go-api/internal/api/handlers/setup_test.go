@@ -129,4 +129,7 @@ func TestSetupHandler_SmokeTest_Accepted(t *testing.T) {
 	if w.Code != http.StatusAccepted {
 		t.Fatalf("expected 202, got %d: %s", w.Code, w.Body.String())
 	}
+
+	// Attendre la fin du goroutine SmokeTest (écriture jobs.json) avant cleanup Windows.
+	time.Sleep(100 * time.Millisecond)
 }

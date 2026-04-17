@@ -71,7 +71,8 @@ func TestDoneGuard_NoBFCol(t *testing.T) {
 
 func TestDoneGuard_KnownFlag(t *testing.T) {
 	// Avec colonne présente et flag connu, retourne clause SQL
-	result := doneGuard("MEDALS", true)
+	// Note : les clés de BackfillFlags sont en minuscules ("medals", pas "MEDALS")
+	result := doneGuard("medals", true)
 	if result == "" {
 		t.Error("doneGuard avec flag MEDALS devrait retourner une clause SQL non-vide")
 	}

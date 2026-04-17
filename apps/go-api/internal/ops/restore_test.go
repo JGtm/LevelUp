@@ -44,7 +44,7 @@ func createTestPlayerDB(t *testing.T, dbPath string) {
 	}
 }
 
-// exportTestParquet exporte la table en Parquet via DuckDB COPY.
+// exportTestParquet exporte la table en Parquet via DuckDB COPY avec timestamp fixe.
 func exportTestParquet(t *testing.T, dbPath, backupDir string) {
 	t.Helper()
 	db, err := sql.Open("duckdb", dbPath)
@@ -53,9 +53,15 @@ func exportTestParquet(t *testing.T, dbPath, backupDir string) {
 	}
 	defer db.Close()
 
-	parqPath := filepath.Join(backupDir, "player_match_enrichment.parquet")
+	const ts = "20250101_120000"
+	parqPath := filepath.Join(backupDir, "player_match_enrichment_"+ts+".parquet")
 	if _, err := db.Exec("COPY player_match_enrichment TO ? (FORMAT PARQUET)", parqPath); err != nil {
 		t.Fatalf("COPY TO PARQUET: %v", err)
+	}
+	// Créer un backup_metadata_*.json pour que findLatestParquetFiles trouve le timestamp.
+	metaPath := filepath.Join(backupDir, "backup_metadata_"+ts+".json")
+	if err := os.WriteFile(metaPath, []byte(`{}`), 0o644); err != nil {
+		t.Fatalf("écrire backup_metadata: %v", err)
 	}
 }
 

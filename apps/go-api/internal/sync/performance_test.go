@@ -136,8 +136,8 @@ func TestPrepareHistoryMetrics_EmptySlice(t *testing.T) {
 	if metrics == nil {
 		t.Fatal("prepareHistoryMetrics(nil) ne devrait pas retourner nil")
 	}
-	if _, ok := metrics["KPM"]; !ok {
-		t.Error("prepareHistoryMetrics: clé KPM manquante même sur slice vide")
+	if _, ok := metrics["kpm"]; !ok {
+		t.Error("prepareHistoryMetrics: clé kpm manquante même sur slice vide")
 	}
 }
 
@@ -149,10 +149,10 @@ func TestPrepareHistoryMetrics_WithRows(t *testing.T) {
 	}
 	metrics := prepareHistoryMetrics(rows)
 
-	if len(metrics["KPM"]) != 3 {
-		t.Errorf("attendu 3 entrées KPM, obtenu %d", len(metrics["KPM"]))
+	if len(metrics["kpm"]) != 3 {
+		t.Errorf("attendu 3 entrées kpm, obtenu %d", len(metrics["kpm"]))
 	}
-	if len(metrics["KDA"]) != 3 {
-		t.Errorf("attendu 3 entrées KDA, obtenu %d", len(metrics["KDA"]))
+	if len(metrics["kda"]) != 3 {
+		t.Errorf("attendu 3 entrées kda, obtenu %d", len(metrics["kda"]))
 	}
 }

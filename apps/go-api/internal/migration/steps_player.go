@@ -13,6 +13,66 @@ import (
 
 func init() {
 	Register(Migration{
+		Name:        "create_base_player_schema",
+		TargetDB:    TargetPlayer,
+		Description: "Tables de base stats.duckdb (idempotent IF NOT EXISTS)",
+		ApplySchema: func(db *sql.DB) error {
+			return execScript(db, `
+				CREATE TABLE IF NOT EXISTS player_match_enrichment (
+					match_id VARCHAR PRIMARY KEY,
+					performance_score DOUBLE,
+					session_id VARCHAR,
+					is_with_friends BOOLEAN DEFAULT FALSE,
+					teammates_signature VARCHAR,
+					created_at TIMESTAMP,
+					updated_at TIMESTAMP
+				);
+				CREATE TABLE IF NOT EXISTS sync_meta (
+					key VARCHAR PRIMARY KEY,
+					value VARCHAR,
+					updated_at TIMESTAMP
+				);
+				CREATE TABLE IF NOT EXISTS career_progression (
+					xuid VARCHAR,
+					rank INTEGER,
+					rank_name VARCHAR,
+					rank_tier VARCHAR,
+					current_xp INTEGER DEFAULT 0,
+					xp_for_next_rank INTEGER DEFAULT 0,
+					xp_total INTEGER DEFAULT 0,
+					is_max_rank BOOLEAN DEFAULT FALSE,
+					adornment_path VARCHAR DEFAULT '',
+					spartan_id VARCHAR DEFAULT '',
+					recorded_at TIMESTAMP
+				);
+				CREATE TABLE IF NOT EXISTS sessions (
+					session_id INTEGER PRIMARY KEY,
+					label VARCHAR,
+					start_time TIMESTAMP,
+					end_time TIMESTAMP,
+					match_count INTEGER DEFAULT 0,
+					created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+				);
+				CREATE TABLE IF NOT EXISTS match_citations (
+					match_id VARCHAR NOT NULL,
+					citation VARCHAR NOT NULL,
+					created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+					PRIMARY KEY (match_id, citation)
+				);
+				CREATE TABLE IF NOT EXISTS media_files (
+					id VARCHAR PRIMARY KEY,
+					filename VARCHAR NOT NULL,
+					match_id VARCHAR,
+					file_size INTEGER DEFAULT 0,
+					media_type VARCHAR,
+					source VARCHAR,
+					created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+				);
+			`)
+		},
+	})
+
+	Register(Migration{
 		Name:        "add_bot_teammate_column",
 		TargetDB:    TargetPlayer,
 		Description: "Colonne had_bot_teammate sur player_match_enrichment",
