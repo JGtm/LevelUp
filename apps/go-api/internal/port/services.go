@@ -60,9 +60,10 @@ type MatchViewService interface {
 	GetMatchView(ctx context.Context, matchID string) (domain.MatchViewResponse, error)
 }
 
-// MediaService construit la page de la galerie médias.
+// MediaService construit la page de la galerie médias et gère l'upload.
 type MediaService interface {
 	GetMediaPage(ctx context.Context, page int) (*domain.MediaPageResponse, error)
+	UploadMedia(ctx context.Context, req domain.UploadRequest) (*domain.UploadResult, error)
 }
 
 // SessionsService construit la page des sessions.

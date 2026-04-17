@@ -1,6 +1,8 @@
 package service
 
 import (
+	"context"
+	"errors"
 	"testing"
 	"time"
 
@@ -170,5 +172,93 @@ func TestFanoutResult_NoErrors(t *testing.T) {
 	}
 	if result.TargetsProcessed != 3 {
 		t.Errorf("expected 3 targets processed, got %d", result.TargetsProcessed)
+	}
+}
+
+// ---------------------------------------------------------------------------
+// TimeseriesService (GetPage + NewTimeseriesService)
+// ---------------------------------------------------------------------------
+
+type mockTimeseriesRepo struct {
+	matches []domain.StatsMatchRow
+	err     error
+}
+
+func (m *mockTimeseriesRepo) LoadStatsMatches(_ context.Context) ([]domain.StatsMatchRow, error) {
+	return m.matches, m.err
+}
+func (m *mockTimeseriesRepo) LoadLUSRHistory(_ context.Context) ([]domain.LUSRMatchRating, error) {
+	return nil, nil
+}
+func (m *mockTimeseriesRepo) LoadMatchParticipants(_ context.Context) ([]domain.ParticipantRow, error) {
+	return nil, nil
+}
+
+func TestNewTimeseriesService(t *testing.T) {
+	svc := NewTimeseriesService(&mockTimeseriesRepo{})
+	if svc == nil {
+		t.Fatal("expected non-nil")
+	}
+}
+
+func TestTimeseriesService_GetPage_Empty(t *testing.T) {
+	svc := NewTimeseriesService(&mockTimeseriesRepo{})
+	resp, err := svc.GetPage(context.Background(), domain.TimeseriesQueryRequest{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if resp.TotalMatches != 0 {
+		t.Errorf("TotalMatches = %d, want 0", resp.TotalMatches)
+	}
+}
+
+func TestTimeseriesService_GetPage_Error(t *testing.T) {
+	svc := NewTimeseriesService(&mockTimeseriesRepo{err: errors.New("fail")})
+	_, err := svc.GetPage(context.Background(), domain.TimeseriesQueryRequest{})
+	if err == nil {
+		t.Error("expected error")
+	}
+}
+
+func TestTimeseriesService_GetPage_WithData(t *testing.T) {
+	win := 2
+	dur := 600
+	acc := 0.5
+	ps := 1500
+	kda := 2.0
+	matches := []domain.StatsMatchRow{
+		{Kills: 10, Deaths: 5, Assists: 3, Outcome: &win, TimePlayedSeconds: &dur, Accuracy: &acc, PersonalScore: &ps, KDA: &kda},
+	}
+	svc := NewTimeseriesService(&mockTimeseriesRepo{matches: matches})
+	resp, err := svc.GetPage(context.Background(), domain.TimeseriesQueryRequest{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if resp.TotalMatches != 1 {
+		t.Errorf("TotalMatches = %d, want 1", resp.TotalMatches)
+	}
+}
+
+// ---------------------------------------------------------------------------
+// buildTimeseriesSummaryTab
+// ---------------------------------------------------------------------------
+
+func TestBuildTimeseriesSummaryTab_Empty(t *testing.T) {
+	tab := buildTimeseriesSummaryTab(nil)
+	if len(tab.KpiCards) != 0 {
+		t.Errorf("expected 0 cards, got %d", len(tab.KpiCards))
+	}
+}
+
+func TestBuildTimeseriesSummaryTab_WithMatches(t *testing.T) {
+	win := 2
+	dur := 600
+	matches := []domain.StatsMatchRow{
+		{Kills: 10, Deaths: 5, Outcome: &win, TimePlayedSeconds: &dur},
+		{Kills: 15, Deaths: 3, Outcome: &win, TimePlayedSeconds: &dur},
+	}
+	tab := buildTimeseriesSummaryTab(matches)
+	if len(tab.KpiCards) == 0 {
+		t.Error("expected cards")
 	}
 }

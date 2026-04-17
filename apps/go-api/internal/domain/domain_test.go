@@ -153,3 +153,30 @@ func TestOutcomeConstants(t *testing.T) {
 		t.Errorf("OutcomeUnknown = %d, want 0", OutcomeUnknown)
 	}
 }
+
+// --- JobMeta ---
+
+func TestJobMeta_GetTitleSlug_Default(t *testing.T) {
+	m := JobMeta{}
+	if got := m.GetTitleSlug(); got != "halo_infinite" {
+		t.Errorf("GetTitleSlug() = %q, want halo_infinite", got)
+	}
+}
+
+func TestJobMeta_GetTitleSlug_Custom(t *testing.T) {
+	m := JobMeta{TitleSlug: "halo_mcc"}
+	if got := m.GetTitleSlug(); got != "halo_mcc" {
+		t.Errorf("GetTitleSlug() = %q, want halo_mcc", got)
+	}
+}
+
+func TestJobMeta_WithTitleSlug(t *testing.T) {
+	m := JobMeta{}
+	m2 := m.WithTitleSlug("halo_mcc")
+	if m2.TitleSlug != "halo_mcc" {
+		t.Errorf("WithTitleSlug failed: %q", m2.TitleSlug)
+	}
+	if m.TitleSlug != "" {
+		t.Error("original should not be modified")
+	}
+}

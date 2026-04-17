@@ -1,0 +1,129 @@
+package service
+
+import (
+	"context"
+	"errors"
+	"testing"
+	"time"
+
+	"levelup/go-api/internal/domain"
+)
+
+// --- mock ---
+
+type mockMatchHistoryRepo struct {
+	rows     []domain.MatchHistoryRawRow
+	loadErr  error
+	winRates map[string][2]int
+	winErr   error
+}
+
+func (m *mockMatchHistoryRepo) LoadAll(_ context.Context) ([]domain.MatchHistoryRawRow, error) {
+	return m.rows, m.loadErr
+}
+func (m *mockMatchHistoryRepo) LoadMapWinRates(_ context.Context) (map[string][2]int, error) {
+	return m.winRates, m.winErr
+}
+
+// --- tests ---
+
+func TestMatchHistoryService_GetPage_OK(t *testing.T) {
+	now := time.Now()
+	mapName := "Aquarius"
+	pairName := "Slayer"
+	repo := &mockMatchHistoryRepo{
+		rows: []domain.MatchHistoryRawRow{
+			{MatchID: "m1", StartTime: &now, MapName: &mapName, PairName: &pairName, Outcome: 2, Kills: 10, Deaths: 5},
+			{MatchID: "m2", StartTime: &now, MapName: &mapName, PairName: &pairName, Outcome: 3, Kills: 5, Deaths: 10},
+		},
+	}
+	svc := NewMatchHistoryService(repo, "TestPlayer")
+
+	resp, err := svc.GetPage(context.Background(), domain.MatchHistoryQueryRequest{
+		Pagination: domain.PaginationRequest{Page: 1, PageSize: 20},
+	})
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if resp.Summary.TotalMatchesScoped != 2 {
+		t.Errorf("TotalMatchesScoped = %d, want 2", resp.Summary.TotalMatchesScoped)
+	}
+	if len(resp.Table.Items) != 2 {
+		t.Errorf("Items = %d, want 2", len(resp.Table.Items))
+	}
+}
+
+func TestMatchHistoryService_GetPage_Empty(t *testing.T) {
+	repo := &mockMatchHistoryRepo{rows: []domain.MatchHistoryRawRow{}}
+	svc := NewMatchHistoryService(repo, "Player")
+
+	resp, err := svc.GetPage(context.Background(), domain.MatchHistoryQueryRequest{
+		Pagination: domain.PaginationRequest{Page: 1, PageSize: 20},
+	})
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if resp.Summary.TotalMatchesScoped != 0 {
+		t.Errorf("TotalMatchesScoped = %d, want 0", resp.Summary.TotalMatchesScoped)
+	}
+}
+
+func TestMatchHistoryService_GetPage_Error(t *testing.T) {
+	repo := &mockMatchHistoryRepo{loadErr: errors.New("fail")}
+	svc := NewMatchHistoryService(repo, "Player")
+
+	_, err := svc.GetPage(context.Background(), domain.MatchHistoryQueryRequest{})
+	if err == nil {
+		t.Error("expected error")
+	}
+}
+
+func TestMatchHistoryService_GetPage_WithExportHint(t *testing.T) {
+	now := time.Now()
+	repo := &mockMatchHistoryRepo{
+		rows: []domain.MatchHistoryRawRow{
+			{MatchID: "m1", StartTime: &now, Outcome: 2},
+		},
+	}
+	svc := NewMatchHistoryService(repo, "Player")
+
+	resp, err := svc.GetPage(context.Background(), domain.MatchHistoryQueryRequest{
+		Pagination:        domain.PaginationRequest{Page: 1, PageSize: 20},
+		IncludeExportHint: true,
+	})
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if resp.ExportHint == nil {
+		t.Error("expected ExportHint to be set")
+	}
+}
+
+func TestMatchHistoryService_ExportCSV_OK(t *testing.T) {
+	now := time.Now()
+	repo := &mockMatchHistoryRepo{
+		rows: []domain.MatchHistoryRawRow{
+			{MatchID: "m1", StartTime: &now, Outcome: 2, Kills: 10, Deaths: 3},
+			{MatchID: "m2", StartTime: &now, Outcome: 3, Kills: 5, Deaths: 8},
+		},
+	}
+	svc := NewMatchHistoryService(repo, "Player")
+
+	items, err := svc.ExportCSV(context.Background(), domain.MatchHistoryQueryRequest{})
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if len(items) != 2 {
+		t.Errorf("len = %d, want 2", len(items))
+	}
+}
+
+func TestMatchHistoryService_ExportCSV_Error(t *testing.T) {
+	repo := &mockMatchHistoryRepo{loadErr: errors.New("fail")}
+	svc := NewMatchHistoryService(repo, "Player")
+
+	_, err := svc.ExportCSV(context.Background(), domain.MatchHistoryQueryRequest{})
+	if err == nil {
+		t.Error("expected error")
+	}
+}

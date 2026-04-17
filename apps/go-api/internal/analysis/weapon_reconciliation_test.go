@@ -72,3 +72,27 @@ func TestReconcileAPIAggregates_Empty(t *testing.T) {
 		t.Errorf("expected 0, got %d", len(result))
 	}
 }
+
+func TestItoa_Zero(t *testing.T) {
+	if itoa(0) != "0" {
+		t.Errorf("expected 0, got %s", itoa(0))
+	}
+}
+
+func TestItoa_Positive(t *testing.T) {
+	if itoa(42) != "42" {
+		t.Errorf("expected 42, got %s", itoa(42))
+	}
+}
+
+func TestItoa_Negative(t *testing.T) {
+	if itoa(-7) != "-7" {
+		t.Errorf("expected -7, got %s", itoa(-7))
+	}
+}
+
+func TestItoa_Large(t *testing.T) {
+	if itoa(123456) != "123456" {
+		t.Errorf("expected 123456, got %s", itoa(123456))
+	}
+}

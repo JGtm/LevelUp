@@ -228,3 +228,75 @@ func TestPathResolver_TitleIsolation(t *testing.T) {
 		t.Error("different titles must have different shared DB paths")
 	}
 }
+
+func TestPathResolver_RepoRoot(t *testing.T) {
+	r := NewRegistry()
+	pr := NewPathResolver("/repo", r)
+	if pr.RepoRoot() != "/repo" {
+		t.Errorf("RepoRoot() = %q, want /repo", pr.RepoRoot())
+	}
+}
+
+func TestPathResolver_SharedPVEDBPath(t *testing.T) {
+	r := NewRegistry()
+	pr := NewPathResolver("/repo", r)
+	got := pr.SharedPVEDBPath("halo_infinite")
+	want := filepath.Join("/repo", "data", "titles", "halo_infinite", "warehouse", "shared_pve.duckdb")
+	if got != want {
+		t.Errorf("SharedPVEDBPath = %q, want %q", got, want)
+	}
+}
+
+func TestPathResolver_PlayerArchiveDir(t *testing.T) {
+	r := NewRegistry()
+	pr := NewPathResolver("/repo", r)
+	got := pr.PlayerArchiveDir("halo_infinite", "TestGT")
+	if got == "" {
+		t.Error("expected non-empty path")
+	}
+}
+
+func TestPathResolver_PlayerCapturesDir(t *testing.T) {
+	r := NewRegistry()
+	pr := NewPathResolver("/repo", r)
+	got := pr.PlayerCapturesDir("halo_infinite", "TestGT")
+	if got == "" {
+		t.Error("expected non-empty path")
+	}
+}
+
+func TestPathResolver_DBProfilesPath(t *testing.T) {
+	r := NewRegistry()
+	pr := NewPathResolver("/repo", r)
+	got := pr.DBProfilesPath()
+	if got == "" {
+		t.Error("expected non-empty path")
+	}
+}
+
+func TestPathResolver_AppSettingsPath(t *testing.T) {
+	r := NewRegistry()
+	pr := NewPathResolver("/repo", r)
+	got := pr.AppSettingsPath()
+	if got == "" {
+		t.Error("expected non-empty path")
+	}
+}
+
+func TestPathResolver_LegacyMetadataDBPath(t *testing.T) {
+	r := NewRegistry()
+	pr := NewPathResolver("/repo", r)
+	got := pr.LegacyMetadataDBPath()
+	if got == "" {
+		t.Error("expected non-empty path")
+	}
+}
+
+func TestPathResolver_LegacyDemoFixturesDir(t *testing.T) {
+	r := NewRegistry()
+	pr := NewPathResolver("/repo", r)
+	got := pr.LegacyDemoFixturesDir()
+	if got == "" {
+		t.Error("expected non-empty path")
+	}
+}
