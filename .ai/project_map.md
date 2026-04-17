@@ -49,6 +49,18 @@ data/
 └── backups/                   # Backups Parquet
 ```
 
+## Go API — Couverture par package (baseline 35.0%)
+
+| Package | Tests existants | Notes |
+|---------|----------------|-------|
+| `internal/sync` | `writes_test.go` (8 fonctions), `transforms_test.go`, `backfill_flags_test.go` | `//go:build integration` (CGO) |
+| `internal/api/handlers` | `testhelpers_test.go`, `sessions_test.go`, `health_test.go`, `game_cms_test.go` | HTTP handlers + middleware |
+| `internal/config` | `config_test.go`, `feature_flags_test.go` | Unit tests purs |
+| `internal/domain/title` | `multititle_test.go`, `registry_test.go` | Unit tests purs |
+| `internal/api/contract` | `contract_test.go` | `//go:build cgo` |
+
+> Baseline global : **35.0%** (mesuré avec `coverage_baseline.txt`). Cible Phase 10 : 70%.
+
 ## Modules Clés
 
 ### Accès aux Données
