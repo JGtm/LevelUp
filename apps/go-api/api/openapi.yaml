@@ -303,21 +303,16 @@ paths:
           $ref: "#/components/responses/InternalError"
 
   /players/{player_slug}/pages/match-history/export:
-    post:
+    get:
       tags: [match-history]
       operationId: exportMatchHistory
       summary: "Export CSV de l'historique"
       description: |
         Génère un jeton d'export CSV pour l'historique filtré des parties.
-        Le MVP renvoie un token/tunnel d'export, pas un flux fichier direct sur cette route.
+        Sprint 49 : aligné sur GET (chi) — l'export utilise les filtres de session,
+        pas un body POST.
       parameters:
         - $ref: "#/components/parameters/PlayerSlug"
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              $ref: "#/components/schemas/MatchHistoryExportRequest"
       responses:
         "200":
           description: Jeton d'export
@@ -730,15 +725,13 @@ paths:
           $ref: "#/components/responses/NotFound"
 
   # -------------------------------------------------------------------------
-  # Stats/Séries temporelles (Sprint 10) — ajoutées au contrat sprint 29
-  # Go: POST /pages/stats/query | FastAPI: POST /pages/timeseries
-  # À réconcilier (renommage ou alias) lors du Sprint 32.
+  # Stats/Séries temporelles (Sprint 10) — POST /pages/stats/query (legacy).
   # -------------------------------------------------------------------------
   /players/{player_slug}/pages/stats/query:
     post:
       tags: [timeseries]
       operationId: postStatsQuery
-      summary: "Séries temporelles (Go: /pages/stats/query — à renommer /pages/timeseries au Sprint 32)"
+      summary: "Séries temporelles (legacy — voir aussi POST /pages/timeseries)"
       parameters:
         - $ref: "#/components/parameters/PlayerSlug"
       responses:
@@ -748,20 +741,37 @@ paths:
             application/json:
               schema:
                 type: object
-                description: "TODO Sprint 32 : aligner avec TimeseriesPageResponse FastAPI"
         "400":
           $ref: "#/components/responses/BadRequest"
 
   # -------------------------------------------------------------------------
-  # Escouade (Sprint 12) — ajoutées au contrat sprint 29
-  # Go: GET /pages/squad | FastAPI: POST /pages/teammates
-  # À réconcilier (méthode + nom) lors du Sprint 32.
+  # Timeseries (Sprint 33) — Sprint 49 : ajouté à l'OpenAPI.
+  # -------------------------------------------------------------------------
+  /players/{player_slug}/pages/timeseries:
+    post:
+      tags: [timeseries]
+      operationId: postTimeseriesPage
+      summary: "Séries temporelles (filtres en body)"
+      parameters:
+        - $ref: "#/components/parameters/PlayerSlug"
+      responses:
+        "200":
+          description: "Données séries temporelles"
+          content:
+            application/json:
+              schema:
+                type: object
+        "400":
+          $ref: "#/components/responses/BadRequest"
+
+  # -------------------------------------------------------------------------
+  # Escouade (Sprint 12) — GET /pages/squad (legacy, toujours fonctionnel).
   # -------------------------------------------------------------------------
   /players/{player_slug}/pages/squad:
     get:
       tags: [teammates]
       operationId: getSquadPage
-      summary: "Escouade (Go: GET /pages/squad — FastAPI: POST /pages/teammates, à réconcilier Sprint 32)"
+      summary: "Escouade (GET legacy — voir aussi POST /pages/teammates)"
       parameters:
         - $ref: "#/components/parameters/PlayerSlug"
       responses:
@@ -771,20 +781,37 @@ paths:
             application/json:
               schema:
                 type: object
-                description: "TODO Sprint 32 : aligner avec TeammatesPageResponse FastAPI"
         "404":
           $ref: "#/components/responses/NotFound"
 
   # -------------------------------------------------------------------------
-  # Synthèse (Sprint 12) — ajoutées au contrat sprint 29
-  # Go: GET /pages/synthesis | FastAPI: POST /pages/synthesis
-  # Divergence méthode HTTP à corriger lors du Sprint 32.
+  # Teammates (Sprint 33) — Sprint 49 : ajouté à l'OpenAPI.
+  # -------------------------------------------------------------------------
+  /players/{player_slug}/pages/teammates:
+    post:
+      tags: [teammates]
+      operationId: postTeammatesPage
+      summary: "Analyse coéquipiers (filtres en body)"
+      parameters:
+        - $ref: "#/components/parameters/PlayerSlug"
+      responses:
+        "200":
+          description: Analyse coéquipiers avec statistiques
+          content:
+            application/json:
+              schema:
+                type: object
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+  # -------------------------------------------------------------------------
+  # Synthèse (Sprint 12) — Sprint 49 : POST aligné sur chi.
   # -------------------------------------------------------------------------
   /players/{player_slug}/pages/synthesis:
-    get:
+    post:
       tags: [synthesis]
-      operationId: getSynthesisPage
-      summary: "Synthèse globale (Go: GET — FastAPI: POST, divergence à corriger Sprint 32)"
+      operationId: postSynthesisPage
+      summary: "Synthèse globale (filtres en body)"
       parameters:
         - $ref: "#/components/parameters/PlayerSlug"
       responses:
@@ -794,21 +821,17 @@ paths:
             application/json:
               schema:
                 type: object
-                description: "TODO Sprint 32 : aligner avec SynthesisPageResponse FastAPI"
         "404":
           $ref: "#/components/responses/NotFound"
 
   # -------------------------------------------------------------------------
-  # Citations + Commendations (Sprint 13) — ajoutées au contrat sprint 29
-  # Go: GET /pages/citations + GET /pages/commendations
-  # FastAPI: POST /pages/citations (inclut commendations dans la réponse)
-  # Divergence méthode + split à corriger lors du Sprint 32.
+  # Citations + Commendations (Sprint 13) — Sprint 49 : POST aligné sur chi.
   # -------------------------------------------------------------------------
   /players/{player_slug}/pages/citations:
-    get:
+    post:
       tags: [career]
-      operationId: getCitations
-      summary: "Citations (Go: GET — FastAPI: POST, divergence à corriger Sprint 32)"
+      operationId: postCitations
+      summary: "Citations (filtres en body)"
       parameters:
         - $ref: "#/components/parameters/PlayerSlug"
       responses:
@@ -818,15 +841,14 @@ paths:
             application/json:
               schema:
                 type: object
-                description: "TODO Sprint 32 : aligner avec CitationsPageResponse FastAPI"
         "404":
           $ref: "#/components/responses/NotFound"
 
   /players/{player_slug}/pages/commendations:
-    get:
+    post:
       tags: [career]
-      operationId: getCommendations
-      summary: "Commendations (Go-only — FastAPI intègre dans /pages/citations, à réconcilier Sprint 32)"
+      operationId: postCommendations
+      summary: "Commendations et médailles par catégorie"
       parameters:
         - $ref: "#/components/parameters/PlayerSlug"
       responses:
@@ -836,20 +858,17 @@ paths:
             application/json:
               schema:
                 type: object
-                description: "TODO Sprint 32 : fusionner dans CitationsPageResponse FastAPI"
         "404":
           $ref: "#/components/responses/NotFound"
 
   # -------------------------------------------------------------------------
-  # Médias (Sprint 13) — ajoutées au contrat sprint 29
-  # Go: GET /pages/media | FastAPI: POST /pages/media
-  # Divergence méthode HTTP à corriger lors du Sprint 32.
+  # Médias (Sprint 13) — Sprint 49 : POST aligné sur chi.
   # -------------------------------------------------------------------------
   /players/{player_slug}/pages/media:
-    get:
+    post:
       tags: [media]
-      operationId: getMediaLibrary
-      summary: "Galerie médias (Go: GET — FastAPI: POST, divergence à corriger Sprint 32)"
+      operationId: postMediaLibrary
+      summary: "Galerie médias (filtres en body)"
       parameters:
         - $ref: "#/components/parameters/PlayerSlug"
       responses:
@@ -859,23 +878,17 @@ paths:
             application/json:
               schema:
                 type: object
-                description: "TODO Sprint 32 : aligner avec MediaPageResponse FastAPI"
         "404":
           $ref: "#/components/responses/NotFound"
 
   # -------------------------------------------------------------------------
-  # Session Compare (Sprint 9) — ajoutée au contrat sprint 29
-  # FastAPI: POST /players/{player_slug}/pages/session-compare — absent Go.
-  # TODO Sprint 32 : implémenter dans Go.
+  # Session Compare (Sprint 9, Sprint 33) — implémenté.
   # -------------------------------------------------------------------------
   /players/{player_slug}/pages/session-compare:
     post:
       tags: [timeseries]
       operationId: postSessionCompare
-      summary: "Comparaison de sessions A/B (TODO Sprint 32 : implémenter en Go)"
-      description: |
-        Endpoint présent en FastAPI uniquement (absent Go).
-        Retournera 501 Not Implemented jusqu'au Sprint 32.
+      summary: "Comparaison de sessions A/B"
       parameters:
         - $ref: "#/components/parameters/PlayerSlug"
       responses:
@@ -885,24 +898,17 @@ paths:
             application/json:
               schema:
                 type: object
-                description: "TODO Sprint 32 : SessionCompareResponse"
-        "501":
-          description: Non implémenté (Go)
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/ApiErrorSchema"
+        "404":
+          $ref: "#/components/responses/NotFound"
 
   # -------------------------------------------------------------------------
-  # Last Match (Sprint 8) — ajoutée au contrat sprint 29
-  # FastAPI: POST /players/{player_slug}/pages/last-match/resolve
-  # TODO Sprint 32 : implémenter en Go.
+  # Last Match (Sprint 8, Sprint 33) — implémenté.
   # -------------------------------------------------------------------------
   /players/{player_slug}/pages/last-match/resolve:
     post:
       tags: [explorer]
       operationId: postLastMatchResolve
-      summary: "Résoudre le dernier match (TODO Sprint 32 : implémenter en Go)"
+      summary: "Résoudre le dernier match"
       parameters:
         - $ref: "#/components/parameters/PlayerSlug"
       responses:
@@ -912,13 +918,30 @@ paths:
             application/json:
               schema:
                 type: object
-                description: "TODO Sprint 32 : LastMatchResolveResponse"
-        "501":
-          description: Non implémenté (Go)
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+  # -------------------------------------------------------------------------
+  # Changelog (Sprint 43) — Sprint 49 : ajouté à l'OpenAPI.
+  # -------------------------------------------------------------------------
+  /changelog:
+    get:
+      tags: [health]
+      operationId: getChangelog
+      summary: "Changelog Markdown du projet"
+      responses:
+        "200":
+          description: Contenu du changelog
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/ApiErrorSchema"
+                type: object
+                properties:
+                  content:
+                    type: string
+                    description: "Contenu Markdown du changelog"
+        "404":
+          $ref: "#/components/responses/NotFound"
 
 # ---------------------------------------------------------------------------
 # Components
@@ -1286,6 +1309,9 @@ components:
         player_slug:
           type: string
           nullable: true
+        title_slug:
+          type: string
+          nullable: true
         locale:
           type: string
           enum: [fr, en]
@@ -1296,20 +1322,27 @@ components:
 
     SessionContextResponse:
       type: object
-      required: [locale, hints_visible, capabilities]
+      required: [current_title_slug, available_titles, locale, hints_visible, auth_ready]
       properties:
-        current_player:
+        current_player_slug:
+          type: string
           nullable: true
-          allOf:
-            - $ref: "#/components/schemas/PlayerSummary"
+        current_title_slug:
+          type: string
+          default: halo_infinite
+        available_titles:
+          type: array
+          items:
+            $ref: "#/components/schemas/TitleSummary"
         locale:
           type: string
           default: fr
         hints_visible:
           type: boolean
           default: true
-        capabilities:
-          $ref: "#/components/schemas/CapabilityMap"
+        auth_ready:
+          type: boolean
+          default: false
 
     # --- Filters ---
     PeriodInput:

@@ -115,18 +115,11 @@ func TestContractRoutesRegistered(t *testing.T) {
 	chiRouteSet := chiRoutes(router)
 
 	// Endpoints intentionnellement absents ou divergents dans chi :
-	// — Sprint 32 : citations/commendations/media/synthesis ont GET dans l'OpenAPI mais POST dans chi
-	//   (divergence Go GET vs FastAPI POST, réconciliation prévue post-Sprint 44).
-	// — match-history/export : POST dans OpenAPI, GET dans chi (à corriger).
-	// — gamertag search : route conditionnelle (nécessite shared DB, absente en DemoMode).
-	notYetImplemented := map[string]bool{
-		"GET /api/v1/players/{*}/pages/citations":             true, // Sprint 32 : GET OpenAPI ↔ POST chi
-		"GET /api/v1/players/{*}/pages/commendations":         true, // Sprint 32 : GET OpenAPI ↔ POST chi
-		"GET /api/v1/players/{*}/pages/media":                 true, // Sprint 32 : GET OpenAPI ↔ POST chi
-		"GET /api/v1/players/{*}/pages/synthesis":             true, // Sprint 32 : GET OpenAPI ↔ POST chi
-		"POST /api/v1/players/{*}/pages/match-history/export": true, // OpenAPI POST ↔ GET chi
-		"GET /api/v1/directory/gamertags/search":              true, // route conditionnelle (shared DB requise)
-	}
+	// Sprint 49 : toutes les exemptions ont été résolues.
+	// - citations/commendations/media/synthesis : OpenAPI aligné sur POST (chi)
+	// - match-history/export : OpenAPI aligné sur GET (chi)
+	// - gamertag search : route inconditionnelle avec 503 si DB absente
+	notYetImplemented := map[string]bool{}
 
 	for path, pathItem := range doc.Paths {
 		for method := range pathItem {

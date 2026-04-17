@@ -192,9 +192,8 @@ func NewRouter(
 		})
 
 		// Endpoints P1 : répertoire gamertags
-		if gamertagSvc != nil {
-			r.Get("/directory/gamertags/search", handlers.NewGamertagHandler(gamertagSvc).Search)
-		}
+		// Sprint 49 : route inconditionnelle — retourne 503 si shared DB absente.
+		r.Get("/directory/gamertags/search", handlers.NewGamertagHandler(gamertagSvc).Search)
 	})
 
 	return r

@@ -11,12 +11,17 @@ Tous les critères suivants **doivent** être verts avant d'activer Go en produc
 
 | # | Critère | Vérification | Statut |
 |---|---------|:---:|:-----:|
-| 1 | `parity_check.py` = 0 diff sur 24 endpoints | `python scripts/parity_check.py` | ⬜ |
-| 2 | 15 specs Playwright = vert | `npm run e2e` | ⬜ |
-| 3 | Onboarding E2E (auth → home) = vert | `npx playwright test slice-9` | ⬜ |
+| 1 | `parity_check.py` = 0 diff sur 24 endpoints | `python scripts/parity_check.py` | ⬜ CI requis |
+| 2 | 15 specs Playwright = vert | `npm run e2e` | ⬜ CI requis |
+| 3 | Onboarding E2E (auth → home) = vert | `npx playwright test slice-9` | ⬜ CI requis |
 | 4 | Sécurité (CSRF, pool, errors) = OK | `go test ./internal/api/middleware/...` | ✅ |
 | 5 | Infra Docker + healthcheck + Makefile OK | `docker compose up --build` | ✅ |
-| 6 | Couverture Go ≥ 50% | `make go-api-coverage` | ⬜ |
+| 6 | Couverture Go ≥ 50% | `make go-api-coverage` | ⬜ CI requis |
+
+> **Note Sprint 49** : les critères 1–3 et 6 nécessitent un environnement CI avec CGO (DuckDB),
+> Node.js (Playwright) et données de test. Le script `apps/go-api/scripts/parity_check.py`
+> couvre 24 endpoints (8 golden values, 16 status-only). Le contrat OpenAPI ↔ chi est vérifié
+> par `TestContractRoutesRegistered` (0 exemption depuis Sprint 49).
 
 ---
 
@@ -183,3 +188,4 @@ Après 2 semaines sans incident : supprimer le service Python du compose.
 | Date | Action | Auteur |
 |------|--------|--------|
 | 2026-07-20 | Document créé (Sprint 36) | Copilot |
+| 2026-07-25 | Sprint 49 — Contrat OpenAPI aligné (0 exemption), `POST /session/context` enrichi, `JobMeta` structuré, ADR routage confirmée définitive. Critères 1-3/6 en attente CI. | Copilot |

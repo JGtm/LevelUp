@@ -65,24 +65,24 @@ type AsyncJobStatus struct {
 	PlayerSlug string `json:"player_slug,omitempty"` // pour FindActiveInitialSync
 }
 
-// JobMeta contient les métadonnées arbitraires associées à un job.
-type JobMeta map[string]any
+// JobMeta contient les métadonnées typées associées à un job.
+// Sprint 49 : remplace l'ancien `map[string]any` par un type structuré.
+type JobMeta struct {
+	TitleSlug string         `json:"title_slug,omitempty"`
+	Extra     map[string]any `json:"extra,omitempty"` // champs libres pour rétrocompatibilité
+}
 
-// TitleSlug extrait le title_slug depuis les métadonnées du job.
-// Retourne "halo_infinite" si absent (rétrocompatibilité).
-func (m JobMeta) TitleSlug() string {
-	if v, ok := m["title_slug"].(string); ok && v != "" {
-		return v
+// GetTitleSlug retourne le title_slug ou "halo_infinite" par défaut.
+func (m JobMeta) GetTitleSlug() string {
+	if m.TitleSlug != "" {
+		return m.TitleSlug
 	}
 	return "halo_infinite"
 }
 
-// WithTitleSlug ajoute le title_slug aux métadonnées du job.
+// WithTitleSlug retourne une copie avec le title_slug positionné.
 func (m JobMeta) WithTitleSlug(slug string) JobMeta {
-	if m == nil {
-		m = JobMeta{}
-	}
-	m["title_slug"] = slug
+	m.TitleSlug = slug
 	return m
 }
 

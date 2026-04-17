@@ -1,5 +1,12 @@
 # GO_MIGRATION_CHECKLIST.md - Suivi vivant du chantier Go
 
+> [!CAUTION]
+> **DÉPRÉCIÉ depuis le Sprint 49 (2026-07-25).**
+> Ce document est obsolète et n'est plus maintenu. Le suivi du chantier Go
+> est assuré par [`SPRINT_ROADMAP.md`](SPRINT_ROADMAP.md).
+> Les informations ci-dessous reflètent un état antérieur (Phase 1-5) et ne
+> correspondent plus à la réalité du projet (Phase 11 atteinte).
+
 > [!WARNING]
 > Ne pas utiliser ce document seul.
 > Lire aussi [PLAN_MIGRATION_PYTHON_TO_GO_V2.md](PLAN_MIGRATION_PYTHON_TO_GO_V2.md), [MATRIX.md](MATRIX.md), [OPS_COMPAT_CHECKLIST.md](OPS_COMPAT_CHECKLIST.md) et [ZERO_PYTHON_STRATEGY.md](ZERO_PYTHON_STRATEGY.md).
