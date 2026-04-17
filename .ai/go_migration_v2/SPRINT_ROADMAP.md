@@ -7,7 +7,7 @@
 > Statut global : **Migration portage terminée** — Sprints 0–28 ✅ (Phases 0–5).
 > **Sprints 29–41 terminés ✅** (sauf S36 🔄) — S42 🔄, S43 ✅, S44 🔄 (Phase 9).
 > **Phase 10 — Consolidation qualité** : Sprints 45–48 ✅ — tests écrits, 21 packages 0 FAIL, couverture mesurée 33.6% (baseline ratchet 33.5%).
-> **Phase 11 — Clôture migration** : Sprint 49 ✅ (contrat aligné, S44 durci, 9 échecs tests corrigés) — Sprint 50 🔄 (triple audit en cours).
+> **Phase 11 — Clôture migration** : Sprint 49 ✅ couverture 70.0% atteinte (seuil franchit, 0 FAIL, régression media.go corrigée) — Sprint 50 🔄 (audit en cours).
 
 ---
 

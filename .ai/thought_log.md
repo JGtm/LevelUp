@@ -14836,3 +14836,54 @@ Prochaine étape : Sprint 27 (Bascule progressive, ~3-5j).
 
 - Critères gate S36 restants (1-3, 6) nécessitent un environnement CI avec CGO + Node.js + Playwright
 - Considérer un Sprint 50 ciblé sur la CI pipeline pour valider ces critères automatiquement
+
+---
+
+## [2026-04-17] Sprint 49 — Couverture 70% + fix régression media.go
+
+**Statut** : Complété ✅
+
+### Décision technique principale
+
+Atteindre le seuil 70% de couverture Go (filtré, hors ops/DB) par ajout de tests unitaires ciblés
+sur les branches non couvertes des fonctions pures d'`analysis/`.
+
+### Actions réalisées
+
+1. **Couverture portée de 69.0% → 70.0%** via `coverage_boost_test.go` :
+   - `decodePositionFrame` : branches invalid baseType / b5 / b9 / valid
+   - `ScanFirstMovements` : détection de mouvement avec frames synthétiques
+   - `EstimateFilmMatchStartMS` : 4 cas (pas assez joueurs, OK, contrainte API, minPlayers=0)
+   - `computeNormalizedMetrics` : tous les champs optionnels (PersonalScore, DamageDealt, Rank, KillsExpected…)
+   - `BuildHighlights` : branches trend positive/négative
+   - `isTeammatesBreak` : edge cases (nil/nil, different sans friendSet, ami parti, ami commun)
+   - `abs64`, `prepareHistoryMetrics`, `addRequired`, `computeKDAFallback`
+   - `estimateFrameTimestamp` : durée zéro + interpolation normale
+
+2. **Commit 114f0c61** — 51 fichiers, 7071 insertions — tous tests de session (S45-S49)
+
+3. **Fix régression media.go (commit fda36438)** :
+   - `media.go` a été modifié pour ajouter `PostUploadMedia` (endpoint upload multipart)
+   - `port.MediaService` a reçu `UploadMedia()` — cassait `server.go` (1 arg) et `media_test.go` (mock incomplet)
+   - Corrigé : `NewMediaHandler(reg.Media, nil)` + mock avec `UploadMedia` stub
+
+### Résultats observés
+
+| Package | Couverture |
+|---------|:----------:|
+| analysis | 81.1% |
+| domain | 100.0% |
+| domain/chart | 100.0% |
+| domain/title | 98.2% |
+| ctxkeys | 100.0% |
+| notify | 57.2% |
+| service | 41.0% |
+| ops | 4.9% (DB-bound, non testable sans fixtures) |
+| **Total filtré** | **70.0%** ✅ |
+
+`go test ./...` : **0 FAIL, EXIT 0** — 21 packages testables, tous OK.
+
+### Conclusion / prochaine étape
+
+- Seuil 70% atteint et stable — prêt pour Sprint 50
+- Sprint 50 : audit S50 (validation/gate/golden) + éventuellement CI pipeline
