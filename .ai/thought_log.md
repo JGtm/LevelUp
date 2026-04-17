@@ -14965,3 +14965,35 @@ Fix correctif : `Q33SynthesisHeatmap` `GROUP BY map_name, mode_name` → `GROUP 
 ### Conclusion
 
 Gate Sprint 47 "Repos DuckDB ≥ 70%" validé à 75.4% avec `-tags integration`. SPRINT_ROADMAP.md mis à jour.
+
+---
+
+## [2025-04-17] Mesure locale des coverage gates CI — Sprint 49 closure
+
+### Statut : Complété
+
+### Décision technique
+Créer des tests internes (package-level) et CGO pour couvrir les fonctions privées non testées dans handlers, middleware et validation, puis mesurer tous les gates localement au lieu d'attendre la CI GitHub Actions.
+
+### Fichiers créés/modifiés
+- `apps/go-api/internal/api/handlers/handlers_extra_test.go` — ajout tests : HomeHandler BattlePass/Challenges NotFound, SquadHandler NotFound/Error, MediaHandler PostUpload 501, MatchHistory Export avec ExportHint
+- `apps/go-api/internal/api/handlers/handlers_internal_test.go` — tests fonctions privées helpers (encodeExportToken, formatOptFloat, optStr, etc.)
+- `apps/go-api/internal/api/middleware/middleware_internal_test.go` — tests internes : contractResponseWriter, validateErrorShape, errorTrackWriter, discordSimplePayload, checkWindow, notifyError/postDiscord (avec fake webhook), shadowCall (fake Python server), shadowResponseWriter, resolveTitleSlug
+- `apps/go-api/internal/validation/compare_cgo_test.go` — tests CGO DuckDB in-memory : listTables, countRows, compareTableCounts, loadMatchIDs, compareMatchIDs, compareBitmasks, ComparePlayerDBs roundtrip + erreurs
+
+### Résultats mesurés
+
+| Package | Avant | Après | Gate | Statut |
+|---------|-------|-------|------|--------|
+| handlers | 73.7% | **75.4%** | ≥75% | ✅ |
+| middleware | 57.5% | **84.6%** | ≥80% | ✅ |
+| validation | 52.9% | **88.4%** | ≥70% | ✅ |
+| migration | 81.1% | 81.1% | ≥75% | ✅ (déjà OK) |
+| platform/duckdb | 75.4% | 75.4% | ≥70% | ✅ (déjà OK) |
+| sync | 11.2% | 11.2% | ≥70% | ❌ (dette : nécessite mock API Halo) |
+
+- **Durée suite complète** : ~6s (`go test -tags cgo,integration ./internal/...`)
+- **Rapport HTML** : `apps/go-api/coverage.html` généré
+
+### Conclusion
+5 gates sur 6 validés localement. Le gate `sync ≥ 70%` reste en dette (11.2%) — nécessiterait une infrastructure de mock API Halo massive, hors scope. SPRINT_ROADMAP.md mis à jour avec les mesures effectives.
