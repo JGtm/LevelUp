@@ -16,8 +16,6 @@ type SettingsResponse struct {
 	CareerTopExcludeBTB                bool   `json:"career_top_exclude_btb"`
 	MediaCapturesBaseDir               string `json:"media_captures_base_dir"`
 	MediaToleranceMinutes              int    `json:"media_tolerance_minutes"`
-	MediaWatcherEnabled                bool   `json:"media_watcher_enabled"`
-	MediaWatcherDebounceSeconds        int    `json:"media_watcher_debounce_seconds"`
 	DiscordNotificationsEnabled        bool   `json:"discord_notifications_enabled"`
 	DiscordWebhookURLPresent           bool   `json:"discord_webhook_url_present"`
 	DiscordNotifySync                  bool   `json:"discord_notify_sync"`
@@ -47,8 +45,6 @@ type UpdateSettingsRequest struct {
 	CareerTopExcludeBTB                *bool   `json:"career_top_exclude_btb,omitempty"`
 	MediaCapturesBaseDir               *string `json:"media_captures_base_dir,omitempty"`
 	MediaToleranceMinutes              *int    `json:"media_tolerance_minutes,omitempty"`
-	MediaWatcherEnabled                *bool   `json:"media_watcher_enabled,omitempty"`
-	MediaWatcherDebounceSeconds        *int    `json:"media_watcher_debounce_seconds,omitempty"`
 	DiscordNotificationsEnabled        *bool   `json:"discord_notifications_enabled,omitempty"`
 	DiscordWebhookURL                  *string `json:"discord_webhook_url,omitempty"` // écriture seule
 	DiscordNotifySync                  *bool   `json:"discord_notify_sync,omitempty"`

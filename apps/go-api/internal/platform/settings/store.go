@@ -24,8 +24,6 @@ type AppSettings struct {
 	CareerTopExcludeBTB                bool   `json:"career_top_exclude_btb"`
 	MediaCapturesBaseDir               string `json:"media_captures_base_dir"`
 	MediaToleranceMinutes              int    `json:"media_tolerance_minutes"`
-	MediaWatcherEnabled                bool   `json:"media_watcher_enabled"`
-	MediaWatcherDebounceSeconds        int    `json:"media_watcher_debounce_seconds"`
 	DiscordNotificationsEnabled        bool   `json:"discord_notifications_enabled"`
 	DiscordWebhookURL                  string `json:"discord_webhook_url"` // jamais exposé côté API
 	DiscordNotifySync                  bool   `json:"discord_notify_sync"`
@@ -164,12 +162,6 @@ func Apply(cfg *AppSettings, req *domain.UpdateSettingsRequest) {
 	if req.MediaToleranceMinutes != nil {
 		cfg.MediaToleranceMinutes = *req.MediaToleranceMinutes
 	}
-	if req.MediaWatcherEnabled != nil {
-		cfg.MediaWatcherEnabled = *req.MediaWatcherEnabled
-	}
-	if req.MediaWatcherDebounceSeconds != nil {
-		cfg.MediaWatcherDebounceSeconds = *req.MediaWatcherDebounceSeconds
-	}
 	if req.DiscordNotificationsEnabled != nil {
 		cfg.DiscordNotificationsEnabled = *req.DiscordNotificationsEnabled
 	}
@@ -229,8 +221,6 @@ func ToResponse(cfg *AppSettings) *domain.SettingsResponse {
 		CareerTopExcludeBTB:                cfg.CareerTopExcludeBTB,
 		MediaCapturesBaseDir:               cfg.MediaCapturesBaseDir,
 		MediaToleranceMinutes:              cfg.MediaToleranceMinutes,
-		MediaWatcherEnabled:                cfg.MediaWatcherEnabled,
-		MediaWatcherDebounceSeconds:        cfg.MediaWatcherDebounceSeconds,
 		DiscordNotificationsEnabled:        cfg.DiscordNotificationsEnabled,
 		DiscordWebhookURLPresent:           cfg.DiscordWebhookURL != "",
 		DiscordNotifySync:                  cfg.DiscordNotifySync,
@@ -257,12 +247,11 @@ func Defaults() *AppSettings {
 // defaultSettings retourne les valeurs par défaut de app_settings.json.
 func defaultSettings() *AppSettings {
 	return &AppSettings{
-		Lang:                        "en",
-		DiscordLang:                 "fr",
-		UserTimezone:                "Europe/Paris",
-		MediaToleranceMinutes:       10,
-		MediaWatcherDebounceSeconds: 5,
-		CanSelfProvision:            true,
-		CanStartInitialSync:         true,
+		Lang:                  "en",
+		DiscordLang:           "fr",
+		UserTimezone:          "Europe/Paris",
+		MediaToleranceMinutes: 10,
+		CanSelfProvision:      true,
+		CanStartInitialSync:   true,
 	}
 }
