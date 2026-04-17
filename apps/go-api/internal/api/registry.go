@@ -84,6 +84,19 @@ func (r *ServiceRegistry) Media(ctx context.Context, slug string) (port.MediaSer
 	return service.NewMediaService(duckdb.NewMediaRepo(pdb)), nil
 }
 
+// MediaUpload retourne un MediaService + métadonnées joueur pour l'upload.
+// Signature conforme à handlers.MediaUploadContextFactory.
+func (r *ServiceRegistry) MediaUpload(ctx context.Context, slug string) (
+	port.MediaService, string, string, string, error,
+) {
+	pdb, err := r.resolve(ctx, slug)
+	if err != nil {
+		return nil, "", "", "", err
+	}
+	svc := service.NewMediaService(duckdb.NewMediaRepo(pdb))
+	return svc, pdb.Gamertag, pdb.TitleSlug, pdb.Player.Path(), nil
+}
+
 // Sessions retourne un SessionsService pour le joueur.
 func (r *ServiceRegistry) Sessions(ctx context.Context, slug string) (port.SessionsService, error) {
 	pdb, err := r.resolve(ctx, slug)
