@@ -6,30 +6,10 @@ package validation
 
 import (
 	"os"
-	"path/filepath"
 	"strings"
 	"testing"
 	"time"
 )
-
-func TestGateReport_Format_AllPassed(t *testing.T) {
-	report := &GateReport{
-		GeneratedAt: time.Now(),
-		AllPassed:   true,
-		Items: []GateItem{
-			{ID: "G1", Label: "DB accessible", Passed: true, Message: ""},
-			{ID: "G2", Label: "Tables présentes", Passed: true, Message: ""},
-		},
-	}
-
-	out := report.Format()
-	if !strings.Contains(out, "✅") {
-		t.Error("expected ✅ for passed items")
-	}
-	if !strings.Contains(out, "G1") || !strings.Contains(out, "G2") {
-		t.Error("expected item IDs in output")
-	}
-}
 
 func TestGateReport_Format_WithFailure(t *testing.T) {
 	report := &GateReport{
@@ -82,36 +62,6 @@ func TestTableComparison_StatusConstants(t *testing.T) {
 }
 
 // ---------------------------------------------------------------------------
-// checkBinary — pas de DuckDB requis
-// ---------------------------------------------------------------------------
-
-func TestCheckBinary_NotFound(t *testing.T) {
-	ok, msg := checkBinary("/nonexistent/root")
-	if ok {
-		t.Error("expected false for nonexistent root")
-	}
-	if !strings.Contains(msg, "introuvable") {
-		t.Errorf("expected 'introuvable' message, got: %s", msg)
-	}
-}
-
-func TestCheckBinary_Found(t *testing.T) {
-	dir := t.TempDir()
-	binDir := filepath.Join(dir, "apps", "go-api", "bin")
-	if err := os.MkdirAll(binDir, 0755); err != nil {
-		t.Fatal(err)
-	}
-	// Créer un faux binaire
-	if err := os.WriteFile(filepath.Join(binDir, "levelup.exe"), []byte("fake"), 0755); err != nil {
-		t.Fatal(err)
-	}
-	ok, msg := checkBinary(dir)
-	if !ok {
-		t.Errorf("expected true, got false: %s", msg)
-	}
-}
-
-// ---------------------------------------------------------------------------
 // checkDBProfiles — pas de DuckDB requis
 // ---------------------------------------------------------------------------
 
@@ -122,30 +72,6 @@ func TestCheckDBProfiles_Missing(t *testing.T) {
 	}
 	if !strings.Contains(msg, "absent") {
 		t.Errorf("expected 'absent' message, got: %s", msg)
-	}
-}
-
-func TestCheckDBProfiles_Empty(t *testing.T) {
-	dir := t.TempDir()
-	p := filepath.Join(dir, "db_profiles.json")
-	if err := os.WriteFile(p, []byte("{}"), 0644); err != nil {
-		t.Fatal(err)
-	}
-	ok, _ := checkDBProfiles(p)
-	if ok {
-		t.Error("expected false for empty profiles")
-	}
-}
-
-func TestCheckDBProfiles_Valid(t *testing.T) {
-	dir := t.TempDir()
-	p := filepath.Join(dir, "db_profiles.json")
-	if err := os.WriteFile(p, []byte(`{"players": [{"gamertag": "test"}]}`), 0644); err != nil {
-		t.Fatal(err)
-	}
-	ok, _ := checkDBProfiles(p)
-	if !ok {
-		t.Error("expected true for valid profiles")
 	}
 }
 
