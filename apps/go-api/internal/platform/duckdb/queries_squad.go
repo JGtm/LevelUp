@@ -115,7 +115,7 @@ SELECT
 FROM shared.match_participants p
 JOIN shared.match_registry r ON r.match_id = p.match_id
 WHERE p.xuid = ?
-GROUP BY map_name, mode_name
+GROUP BY 1, 2
 ORDER BY match_count DESC`
 
 // Q33b : Synthèse — matchs du joueur pour le calcul top_weeks, KPIs et bipolaire.

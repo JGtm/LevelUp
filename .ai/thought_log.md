@@ -14938,3 +14938,30 @@ Porter chaque package sous 50% à ≥ 50% minimum, avec non-régression sur Duck
 ### Conclusion
 
 Tous les packages désormais ≥ 50%. Pipeline global : 78.4%. Prêt pour Sprint 50.
+
+---
+
+## [2025-07-16] Sprint 49 closure — Gate Sprint 47 : Repos DuckDB ≥ 70%
+
+**Statut** : Complété ✅
+
+### Décision technique principale
+
+Création de 3 fichiers de tests `//go:build integration` (`package duckdb`) pour le package `internal/platform/duckdb` :
+- `player_repos_test.go` — HomeRepo, SessionsRepo, StatsRepo, CareerRepo, MediaRepo, ResolveXUID
+- `match_repos_test.go` — FiltersRepo, MatchHistoryRepo, CitationsRepo, ExplorerRepo, MatchViewRepo, SquadRepo
+- `extra_coverage_test.go` — fonctions 0% restantes : GetLUSRHistory, LoadMedalCitationMappings, DB.SQLDb/Path, GetMatchMedals/Events/WeaponKills/KVPairs, PoolKey, CloseAll, LoadTeammateMatches, LoadImpactEvents, LoadSynthesisHeatmap, LoadSynthesisMatches
+
+Fix correctif : `Q33SynthesisHeatmap` `GROUP BY map_name, mode_name` → `GROUP BY 1, 2` (ambiguïté alias/colonne sous DuckDB quand la table possède un champ `map_name`).
+
+### Résultats observés
+
+| Étape | Couverture |
+|-------|-----------|
+| Baseline | 13.1% |
+| Après player_repos_test.go + match_repos_test.go | 59.4% |
+| Après extra_coverage_test.go | **75.4%** ✅ |
+
+### Conclusion
+
+Gate Sprint 47 "Repos DuckDB ≥ 70%" validé à 75.4% avec `-tags integration`. SPRINT_ROADMAP.md mis à jour.
