@@ -47,6 +47,15 @@ Thumbs.db
 .coverage
 coverage.json
 apps/go-api/coverage.out
+apps/go-api/coverage*.out
+apps/go-api/coverage*.raw
+apps/go-api/cov_*.out
+apps/go-api/*.raw
+apps/go-api/handlers_cov*.out
+apps/go-api/merged*.out
+apps/go-api/merged*.raw
+apps/go-api/tmp_*.out
+apps/go-api/tmp_cov/
 htmlcov/
 .pytest_cache/
 test_*.log
