@@ -57,3 +57,30 @@ type MediaPageResponse struct {
 	PageSize   int         `json:"page_size"`
 	HasMore    bool        `json:"has_more"`
 }
+
+// ---------------------------------------------------------------------------
+// Upload
+// ---------------------------------------------------------------------------
+
+// UploadedFile est un fichier reçu via multipart/form-data.
+type UploadedFile struct {
+	OriginalName string
+	Data         []byte
+}
+
+// UploadRequest regroupe les paramètres d'un upload multi-fichiers.
+type UploadRequest struct {
+	Files       []UploadedFile
+	CapturesDir string // chemin absolu résolu par le handler
+	DBPath      string // chemin vers stats.duckdb du joueur
+	Tolerance   int    // tolérance association match (minutes)
+}
+
+// UploadResult résume le résultat d'un upload multi-fichiers.
+type UploadResult struct {
+	Saved      int      `json:"saved"`            // fichiers écrits sur disque
+	NewIndexed int      `json:"new_indexed"`      // nouvelles entrées media_files
+	Associated int      `json:"associated"`       // associations matchs créées
+	Thumbnails int      `json:"thumbnails"`       // miniatures générées
+	Errors     []string `json:"errors,omitempty"` // erreurs non-bloquantes
+}

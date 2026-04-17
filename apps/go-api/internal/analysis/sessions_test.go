@@ -212,3 +212,184 @@ func TestIsSessionPotentiallyActive_Yesterday(t *testing.T) {
 		t.Error("expected inactive session from yesterday")
 	}
 }
+
+func TestSliceContains(t *testing.T) {
+	s := []string{"a", "b", "c"}
+	if !sliceContains(s, "a") {
+		t.Error("expected true for existing element")
+	}
+	if sliceContains(s, "d") {
+		t.Error("expected false for missing element")
+	}
+	if sliceContains(nil, "a") {
+		t.Error("expected false for nil slice")
+	}
+}
+
+// ─── DefaultSessionOptions ──────────────────────────────────────────────────
+
+func TestDefaultSessionOptions(t *testing.T) {
+	opts := DefaultSessionOptions()
+	if opts.GapMinutes != DefaultSessionGapMinutes {
+		t.Errorf("GapMinutes = %d, want %d", opts.GapMinutes, DefaultSessionGapMinutes)
+	}
+}
+
+// ─── derefString ────────────────────────────────────────────────────────────
+
+func TestDerefString_Nil(t *testing.T) {
+	if derefString(nil) != "" {
+		t.Error("expected empty")
+	}
+}
+
+func TestDerefString_Value(t *testing.T) {
+	s := "hello"
+	if derefString(&s) != "hello" {
+		t.Error("expected hello")
+	}
+}
+
+// ─── parseXUIDs ─────────────────────────────────────────────────────────────
+
+func TestParseXUIDs_Empty(t *testing.T) {
+	result := parseXUIDs("")
+	if len(result) != 0 {
+		t.Errorf("expected empty, got %v", result)
+	}
+}
+
+func TestParseXUIDs_Multiple(t *testing.T) {
+	result := parseXUIDs("abc, def , ghi")
+	if len(result) != 3 {
+		t.Errorf("expected 3, got %d", len(result))
+	}
+	if result[0] != "abc" || result[1] != "def" || result[2] != "ghi" {
+		t.Errorf("unexpected: %v", result)
+	}
+}
+
+// ─── buildFriendSet ─────────────────────────────────────────────────────────
+
+func TestBuildFriendSet_Empty(t *testing.T) {
+	s := buildFriendSet(nil)
+	if len(s) != 0 {
+		t.Error("expected empty set")
+	}
+}
+
+func TestBuildFriendSet_Dedup(t *testing.T) {
+	s := buildFriendSet([]string{"a", "b", "a"})
+	if len(s) != 2 {
+		t.Errorf("expected 2, got %d", len(s))
+	}
+}
+
+// ─── filterFriends ──────────────────────────────────────────────────────────
+
+func TestFilterFriends_Empty(t *testing.T) {
+	result := filterFriends(nil, map[string]struct{}{})
+	if len(result) != 0 {
+		t.Error("expected empty")
+	}
+}
+
+func TestFilterFriends_Filters(t *testing.T) {
+	friends := map[string]struct{}{"a": {}, "c": {}}
+	result := filterFriends([]string{"a", "b", "c", "d"}, friends)
+	if len(result) != 2 {
+		t.Errorf("expected 2, got %d", len(result))
+	}
+}
+
+// ─── buildSessionLabel ──────────────────────────────────────────────────────
+
+func TestBuildSessionLabel(t *testing.T) {
+	start := time.Date(2024, 3, 15, 14, 30, 0, 0, time.UTC)
+	end := time.Date(2024, 3, 15, 16, 45, 0, 0, time.UTC)
+	label := buildSessionLabel(start, end, 5)
+	if label == "" {
+		t.Error("expected non-empty label")
+	}
+}
+
+// ─── sessionSortedRows ─────────────────────────────────────────────────────
+
+func TestSessionSortedRows_Empty(t *testing.T) {
+	result := sessionSortedRows(nil)
+	if len(result) != 0 {
+		t.Error("expected empty")
+	}
+}
+
+func TestSessionSortedRows_Sorted(t *testing.T) {
+	base := t0()
+	rows := []domain.SessionMatchRow{
+		makeMatch("m2", tPlus(base, 30), 600, "", false),
+		makeMatch("m1", base, 600, "", false),
+	}
+	sorted := sessionSortedRows(rows)
+	if sorted[0].MatchID != "m1" {
+		t.Errorf("expected m1 first, got %s", sorted[0].MatchID)
+	}
+}
+
+// ─── MergeSessionLabels ─────────────────────────────────────────────────────
+
+func TestMergeSessionLabels_Empty(t *testing.T) {
+	result := MergeSessionLabels(nil, nil)
+	if len(result) != 0 {
+		t.Error("expected empty")
+	}
+}
+
+func TestMergeSessionLabels_InjectsLabels(t *testing.T) {
+	assignments := []domain.SessionAssignment{
+		{MatchID: "m1", SessionID: 0},
+		{MatchID: "m2", SessionID: 1},
+	}
+	groups := []domain.SessionGroup{
+		{SessionID: 0, SessionLabel: "S0"},
+		{SessionID: 1, SessionLabel: "S1"},
+	}
+	result := MergeSessionLabels(assignments, groups)
+	if len(result) != 2 {
+		t.Fatalf("expected 2, got %d", len(result))
+	}
+	if result[0].SessionLabel != "S0" {
+		t.Errorf("label[0] = %q, want S0", result[0].SessionLabel)
+	}
+	if result[1].SessionLabel != "S1" {
+		t.Errorf("label[1] = %q, want S1", result[1].SessionLabel)
+	}
+}
+
+// ─── GetBucketInfo ──────────────────────────────────────────────────────────
+
+func TestGetBucketInfo_Match(t *testing.T) {
+	info := GetBucketInfo(0.5)
+	if info.Type != domain.BucketMatch {
+		t.Errorf("Type = %v, want BucketMatch", info.Type)
+	}
+}
+
+func TestGetBucketInfo_Day(t *testing.T) {
+	info := GetBucketInfo(5)
+	if info.Type != domain.BucketDay {
+		t.Errorf("Type = %v, want BucketDay", info.Type)
+	}
+}
+
+func TestGetBucketInfo_Week(t *testing.T) {
+	info := GetBucketInfo(60)
+	if info.Type != domain.BucketWeek {
+		t.Errorf("Type = %v, want BucketWeek", info.Type)
+	}
+}
+
+func TestGetBucketInfo_Month(t *testing.T) {
+	info := GetBucketInfo(200)
+	if info.Type != domain.BucketMonth {
+		t.Errorf("Type = %v, want BucketMonth", info.Type)
+	}
+}

@@ -178,4 +178,135 @@ func TestPercentileRank_EmptySeries(t *testing.T) {
 	}
 }
 
+// ── Tests ComputeRelativePerformanceScore ────────────────────────────
+
+func makeHistoryRows(n int) []domain.StatsMatchRow {
+	rows := make([]domain.StatsMatchRow, n)
+	for i := range rows {
+		dur := 600
+		acc := 0.45 + float64(i)*0.01
+		ps := 1000 + i*100
+		kda := 1.0 + float64(i)*0.1
+		rows[i] = domain.StatsMatchRow{
+			Kills:             10 + i,
+			Deaths:            5,
+			Assists:           3 + i,
+			TimePlayedSeconds: &dur,
+			Accuracy:          &acc,
+			PersonalScore:     &ps,
+			KDA:               &kda,
+		}
+	}
+	return rows
+}
+
+func TestComputeRelativePerformanceScore_InsufficientHistory(t *testing.T) {
+	row := domain.StatsMatchRow{Kills: 10, Deaths: 5, Assists: 3}
+	// Fewer than MinMatchesForRelative
+	result := ComputeRelativePerformanceScore(row, makeHistoryRows(5), false)
+	if result != nil {
+		t.Error("expected nil with insufficient history")
+	}
+}
+
+func TestComputeRelativePerformanceScore_WithHistory(t *testing.T) {
+	history := makeHistoryRows(15)
+	dur := 600
+	acc := 0.55
+	ps := 1500
+	kda := 2.0
+	row := domain.StatsMatchRow{
+		Kills:             20,
+		Deaths:            3,
+		Assists:           8,
+		TimePlayedSeconds: &dur,
+		Accuracy:          &acc,
+		PersonalScore:     &ps,
+		KDA:               &kda,
+	}
+	result := ComputeRelativePerformanceScore(row, history, false)
+	if result == nil {
+		t.Fatal("expected non-nil score with 15 history matches")
+	}
+	if *result < 0 || *result > 100 {
+		t.Errorf("score out of [0,100]: %f", *result)
+	}
+}
+
+func TestComputeRelativePerformanceScore_WithBotBonus(t *testing.T) {
+	history := makeHistoryRows(15)
+	dur := 600
+	loss := 3
+	row := domain.StatsMatchRow{
+		Kills:             5,
+		Deaths:            10,
+		Assists:           2,
+		TimePlayedSeconds: &dur,
+		Outcome:           &loss,
+	}
+	withoutBot := ComputeRelativePerformanceScore(row, history, false)
+	withBot := ComputeRelativePerformanceScore(row, history, true)
+	if withoutBot == nil || withBot == nil {
+		t.Fatal("expected non-nil scores")
+	}
+	if *withBot <= *withoutBot {
+		t.Errorf("bot bonus should increase score: %f <= %f", *withBot, *withoutBot)
+	}
+}
+
+func TestAddRequired_ShortSeries(t *testing.T) {
+	pct := make(map[string]float64)
+	w := make(map[string]float64)
+	addRequired("kpm", 5.0, []float64{1.0}, false, pct, w)
+	if len(pct) != 0 {
+		t.Error("addRequired should skip series < 2 elements")
+	}
+}
+
+func TestAddRequired_Normal(t *testing.T) {
+	pct := make(map[string]float64)
+	w := make(map[string]float64)
+	addRequired("kpm", 5.0, []float64{1, 2, 3, 4, 5, 6, 7, 8, 9, 10}, false, pct, w)
+	if _, ok := pct["kpm"]; !ok {
+		t.Error("expected kpm percentile")
+	}
+	if _, ok := w["kpm"]; !ok {
+		t.Error("expected kpm weight")
+	}
+}
+
+func TestAddOptional_NilValue(t *testing.T) {
+	pct := make(map[string]float64)
+	w := make(map[string]float64)
+	addOptional("accuracy", nil, []float64{1, 2, 3}, false, pct, w)
+	if len(pct) != 0 {
+		t.Error("addOptional should skip nil value")
+	}
+}
+
+func TestAddOptional_WithValue(t *testing.T) {
+	pct := make(map[string]float64)
+	w := make(map[string]float64)
+	val := 5.0
+	addOptional("accuracy", &val, []float64{1, 2, 3, 4, 5, 6, 7, 8, 9, 10}, false, pct, w)
+	if _, ok := pct["accuracy"]; !ok {
+		t.Error("expected accuracy percentile")
+	}
+}
+
+func TestPrepareHistoryMetrics(t *testing.T) {
+	rows := makeHistoryRows(5)
+	h := prepareHistoryMetrics(rows)
+	if len(h.kpm) != 5 {
+		t.Errorf("expected 5 kpm values, got %d", len(h.kpm))
+	}
+	if len(h.dpmDeaths) != 5 {
+		t.Errorf("expected 5 dpmDeaths values, got %d", len(h.dpmDeaths))
+	}
+	// accuracy is optional, should be filled for rows that had it
+	if len(h.accuracy) == 0 {
+		t.Error("expected accuracy values for history rows with accuracy")
+	}
+}
+
 func intPtr(v int) *int { return &v }

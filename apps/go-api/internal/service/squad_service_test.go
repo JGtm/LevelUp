@@ -1,0 +1,199 @@
+package service
+
+import (
+	"context"
+	"errors"
+	"testing"
+	"time"
+
+	"levelup/go-api/internal/domain"
+)
+
+// --- mock ---
+
+type mockSquadRepo struct {
+	topRows     []domain.TopTeammateRow
+	topErr      error
+	squadRows   []domain.SquadMatchRow
+	squadErr    error
+	tmRows      []domain.TeammateMatchRow
+	tmErr       error
+	impactRows  []domain.ImpactEventRow
+	impactErr   error
+	heatmapRows []domain.SynthesisHeatmapRow
+	heatmapErr  error
+	synthRows   []domain.SynthesisMatchRow
+	synthErr    error
+}
+
+func (m *mockSquadRepo) LoadTopTeammates(_ context.Context, _ string) ([]domain.TopTeammateRow, error) {
+	return m.topRows, m.topErr
+}
+func (m *mockSquadRepo) LoadSquadMatches(_ context.Context, _, _ string) ([]domain.SquadMatchRow, error) {
+	return m.squadRows, m.squadErr
+}
+func (m *mockSquadRepo) LoadTeammateMatches(_ context.Context, _, _ string) ([]domain.TeammateMatchRow, error) {
+	return m.tmRows, m.tmErr
+}
+func (m *mockSquadRepo) LoadImpactEvents(_ context.Context, _ []string) ([]domain.ImpactEventRow, error) {
+	return m.impactRows, m.impactErr
+}
+func (m *mockSquadRepo) LoadSynthesisHeatmap(_ context.Context, _ string) ([]domain.SynthesisHeatmapRow, error) {
+	return m.heatmapRows, m.heatmapErr
+}
+func (m *mockSquadRepo) LoadSynthesisMatches(_ context.Context, _ string) ([]domain.SynthesisMatchRow, error) {
+	return m.synthRows, m.synthErr
+}
+
+// --- tests SquadService ---
+
+func TestSquadService_GetSquadPage_NoTeammate(t *testing.T) {
+	repo := &mockSquadRepo{
+		topRows: []domain.TopTeammateRow{
+			{XUID: "x1", Gamertag: "Ally", GamesTogether: 20, WinsTogether: 12, WinRate: 0.6},
+		},
+	}
+	svc := NewSquadService(repo)
+
+	resp, err := svc.GetSquadPage(context.Background(), "player-xuid", "PlayerGT", "")
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if resp == nil {
+		t.Fatal("expected non-nil response")
+	}
+	if len(resp.TopTeammates) != 1 {
+		t.Errorf("TopTeammates = %d, want 1", len(resp.TopTeammates))
+	}
+}
+
+func TestSquadService_GetSquadPage_WithTeammate(t *testing.T) {
+	now := time.Now()
+	repo := &mockSquadRepo{
+		topRows: []domain.TopTeammateRow{
+			{XUID: "tm1", Gamertag: "AllyGT", GamesTogether: 10, WinsTogether: 5, WinRate: 0.5},
+		},
+		squadRows: []domain.SquadMatchRow{
+			{MatchID: "m1", StartTime: now, Kills: 10, Deaths: 5, Assists: 3, IsWithFriends: true, Outcome: 2, TimePlayedSecs: 600},
+		},
+		tmRows: []domain.TeammateMatchRow{
+			{MatchID: "m1", StartTime: now, Kills: 8, Deaths: 6, Assists: 2, Outcome: 2, TimePlayedSecs: 600},
+		},
+	}
+	svc := NewSquadService(repo)
+
+	resp, err := svc.GetSquadPage(context.Background(), "player-xuid", "PlayerGT", "tm1")
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if resp == nil {
+		t.Fatal("expected non-nil response")
+	}
+}
+
+func TestSquadService_GetSquadPage_TopError(t *testing.T) {
+	repo := &mockSquadRepo{topErr: errors.New("fail")}
+	svc := NewSquadService(repo)
+
+	_, err := svc.GetSquadPage(context.Background(), "x", "gt", "")
+	if err == nil {
+		t.Error("expected error")
+	}
+}
+
+func TestSquadService_GetSquadPage_SquadMatchesError(t *testing.T) {
+	repo := &mockSquadRepo{
+		topRows:  []domain.TopTeammateRow{{XUID: "tm1", Gamertag: "Ally"}},
+		squadErr: errors.New("fail"),
+	}
+	svc := NewSquadService(repo)
+
+	_, err := svc.GetSquadPage(context.Background(), "x", "gt", "tm1")
+	if err == nil {
+		t.Error("expected error")
+	}
+}
+
+func TestSquadService_GetSynthesisPage_OK(t *testing.T) {
+	now := time.Now()
+	repo := &mockSquadRepo{
+		synthRows: []domain.SynthesisMatchRow{
+			{MatchID: "m1", StartTime: now, Outcome: 2, Kills: 10, Deaths: 5, IsWithFriends: true},
+			{MatchID: "m2", StartTime: now, Outcome: 3, Kills: 5, Deaths: 10, IsWithFriends: false},
+		},
+	}
+	svc := NewSquadService(repo)
+
+	resp, err := svc.GetSynthesisPage(context.Background(), "player-xuid")
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if resp == nil {
+		t.Fatal("expected non-nil response")
+	}
+	if resp.TotalMatches != 2 {
+		t.Errorf("TotalMatches = %d, want 2", resp.TotalMatches)
+	}
+}
+
+func TestSquadService_GetSynthesisPage_Error(t *testing.T) {
+	repo := &mockSquadRepo{synthErr: errors.New("fail")}
+	svc := NewSquadService(repo)
+
+	_, err := svc.GetSynthesisPage(context.Background(), "xuid")
+	if err == nil {
+		t.Error("expected error")
+	}
+}
+
+// --- tests TeammatesService ---
+
+func TestTeammatesService_GetPage_OK(t *testing.T) {
+	repo := &mockSquadRepo{
+		topRows: []domain.TopTeammateRow{
+			{XUID: "x1", Gamertag: "Ally1", GamesTogether: 30, WinsTogether: 20, WinRate: 0.67, AvgKDA: 1.5},
+			{XUID: "x2", Gamertag: "Ally2", GamesTogether: 10, WinsTogether: 4, WinRate: 0.4, AvgKDA: 0.8},
+		},
+	}
+	svc := NewTeammatesService(repo)
+
+	resp, err := svc.GetPage(context.Background(), "player-xuid", domain.TeammatesQueryRequest{})
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	_ = resp
+}
+
+func TestTeammatesService_GetPage_Error(t *testing.T) {
+	repo := &mockSquadRepo{topErr: errors.New("fail")}
+	svc := NewTeammatesService(repo)
+
+	_, err := svc.GetPage(context.Background(), "xuid", domain.TeammatesQueryRequest{})
+	if err == nil {
+		t.Error("expected error")
+	}
+}
+
+// --- teammates_service.go pure helpers ---
+
+func TestSafeDiv_ZeroDivisor(t *testing.T) {
+	if safeDiv(10, 0) != 10 {
+		t.Error("expected a when b=0")
+	}
+}
+
+func TestSafeDiv_Normal(t *testing.T) {
+	got := safeDiv(10, 3)
+	if got < 3.33 || got > 3.34 {
+		t.Errorf("safeDiv(10,3) = %f, want ~3.33", got)
+	}
+}
+
+func TestRound2(t *testing.T) {
+	if round2(1.555) != 1.56 {
+		t.Errorf("round2(1.555) = %f, want 1.56", round2(1.555))
+	}
+	if round2(1.0) != 1.0 {
+		t.Errorf("round2(1.0) = %f, want 1.0", round2(1.0))
+	}
+}
