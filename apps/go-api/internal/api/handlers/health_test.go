@@ -1,0 +1,109 @@
+// Package handlers_test — health_test.go : tests HealthHandler.
+package handlers_test
+
+import (
+	"context"
+	"encoding/json"
+	"errors"
+	"net/http"
+	"net/http/httptest"
+	"testing"
+	"time"
+
+	"github.com/go-chi/chi/v5"
+
+	"levelup/go-api/internal/api/handlers"
+)
+
+// mockBootstrapRepo implémente port.BootstrapRepository pour les tests.
+type mockBootstrapRepo struct {
+	matchCount  int
+	matchErr    error
+	dbVersion   string
+	playerCount int
+	lastSync    *time.Time
+}
+
+func (m *mockBootstrapRepo) GetMatchCount(_ context.Context) (int, error) {
+	return m.matchCount, m.matchErr
+}
+func (m *mockBootstrapRepo) GetDBVersion(_ context.Context) (string, error) {
+	return m.dbVersion, nil
+}
+func (m *mockBootstrapRepo) GetPlayerCount(_ context.Context) (int, error) {
+	return m.playerCount, nil
+}
+func (m *mockBootstrapRepo) GetLastSyncAt(_ context.Context) (*time.Time, error) {
+	return m.lastSync, nil
+}
+
+func TestHealthHandler_OK(t *testing.T) {
+	now := time.Now()
+	repo := &mockBootstrapRepo{
+		matchCount:  1500,
+		dbVersion:   "v1.4.4",
+		playerCount: 3,
+		lastSync:    &now,
+	}
+	h := handlers.NewHealthHandlerWithVersion(repo, "1.0.0-test")
+	r := chi.NewRouter()
+	r.Get("/health", h.ServeHTTP)
+
+	req := httptest.NewRequest(http.MethodGet, "/health", nil)
+	w := httptest.NewRecorder()
+	r.ServeHTTP(w, req)
+
+	if w.Code != http.StatusOK {
+		t.Fatalf("expected 200, got %d: %s", w.Code, w.Body.String())
+	}
+
+	var resp map[string]interface{}
+	if err := json.Unmarshal(w.Body.Bytes(), &resp); err != nil {
+		t.Fatalf("invalid JSON: %v", err)
+	}
+	if resp["status"] != "ok" {
+		t.Errorf("expected status=ok, got %v", resp["status"])
+	}
+	if int(resp["match_count"].(float64)) != 1500 {
+		t.Errorf("expected match_count=1500, got %v", resp["match_count"])
+	}
+	if resp["app_version"] != "1.0.0-test" {
+		t.Errorf("expected app_version=1.0.0-test, got %v", resp["app_version"])
+	}
+}
+
+func TestHealthHandler_DBUnavailable(t *testing.T) {
+	repo := &mockBootstrapRepo{matchErr: errors.New("connection refused")}
+	h := handlers.NewHealthHandler(repo)
+	r := chi.NewRouter()
+	r.Get("/health", h.ServeHTTP)
+
+	req := httptest.NewRequest(http.MethodGet, "/health", nil)
+	w := httptest.NewRecorder()
+	r.ServeHTTP(w, req)
+
+	if w.Code != http.StatusServiceUnavailable {
+		t.Fatalf("expected 503, got %d", w.Code)
+	}
+}
+
+func TestHealthHandler_NoVersion(t *testing.T) {
+	repo := &mockBootstrapRepo{matchCount: 100, dbVersion: "v1.4.4"}
+	h := handlers.NewHealthHandler(repo)
+	r := chi.NewRouter()
+	r.Get("/health", h.ServeHTTP)
+
+	req := httptest.NewRequest(http.MethodGet, "/health", nil)
+	w := httptest.NewRecorder()
+	r.ServeHTTP(w, req)
+
+	if w.Code != http.StatusOK {
+		t.Fatalf("expected 200, got %d", w.Code)
+	}
+	var resp map[string]interface{}
+	_ = json.Unmarshal(w.Body.Bytes(), &resp)
+	// app_version doit être vide (pas de version fournie)
+	if v, ok := resp["app_version"]; ok && v != "" {
+		t.Errorf("expected empty app_version, got %v", v)
+	}
+}
