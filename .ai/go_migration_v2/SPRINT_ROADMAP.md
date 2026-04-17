@@ -1336,7 +1336,7 @@
 **Gate Sprint 47** :
 - [x] Toutes les fonctions `sync/writes.go` ont un test avec DB in-memory réelle (8/8 fonctions couvertes)
 - [x] Chaque script de migration (`steps_*.go`) est testé sur DB vierge + DB déjà migrée (idempotence)
-- [ ] Repos DuckDB ≥ 70% (lecture seule + écriture) — ⬜ CI requis
+- [x] Repos DuckDB ≥ 70% (lecture seule + écriture) — ✅ 75.4% avec -tags integration (Sprint 49 closure)
 - [x] Write lease testé en concurrence (2+ goroutines)
 - [x] Couverture globale ≥ 55% — ✅ 76.0% per-package mean (Sprint 49 closure)
 - [x] Baseline mise à jour
