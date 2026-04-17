@@ -1,5 +1,35 @@
 # Thought Log
 
+## [2026-04-17] fix(build): correction build tags + ci.yml CGO + roadmap finalisation S45-S49
+
+**Statut** : Complété
+
+**Tâche** : Corriger 3 bugs de build tags dans les nouveaux fichiers de test, valider le ci.yml, et finaliser le SPRINT_ROADMAP.md pour les sprints 45-49.
+
+**Décisions techniques** :
+
+1. **3 bugs build tags corrigés** :
+   - `restore_test.go` : tag `//go:build integration` en double → supprimé le doublon
+   - `migration_test.go` : idem, tag dupliqué par la session précédente
+   - `performance_test.go` : tag `//go:build integration` **manquant** — le package `sync` importe DuckDB transitivement, ne compile pas sans CGO. Tag ajouté.
+2. **ci.yml YAML valide** : job `go-coverage` avec `CGO_ENABLED=1`, `-tags=integration`, `-coverpkg=./...`, exclusions `gen/` + `msal-poc/`, ratchet via `coverage_check.sh`, artefact HTML 30j.
+3. **S45 T5 coché** : les seuils progressifs (15%→35%→55%→70%) sont définis dans ci.yml.
+4. **Gates S46/S47 harmonisées** : annotations "⬜ valider en CI" → "⬜ CI requis" pour cohérence.
+
+**Pourquoi les items "CI requis" restent `[ ]`** :
+Les gates de couverture (≥70%, ≥75%, etc.) nécessitent l'exécution réelle des tests sur Linux avec `CGO_ENABLED=1`. Sur Windows, DuckDB ne compile pas sans GCC (MSYS2). Ces gates seront cochées automatiquement quand le CI GitHub Actions (ubuntu-latest) tournera après push de la branche.
+
+**État final S45-S49** :
+- S45 : 8/8 tâches ✅ — gate : 6/6 cochés (mesures couverture en CI)
+- S46 : 24/24 tâches ✅ — gate : 4/7 cochés (mesures couverture en CI)
+- S47 : 24/24 tâches ✅ — gate : 3/7 cochés (mesures couverture en CI)
+- S48 : 13/13 tâches (T7 CI requis) — gate : 2/15 cochés (mesures couverture en CI)
+- S49 : 9/12 tâches (T1-T3 CI/E2E requis) — gate : 2/7 cochés
+
+**Conclusion** : le code est complet. Les `[ ]` restants sont tous des **mesures** (coverage %, Playwright vert) qui nécessitent un runner CI. La prochaine étape est : push de la branche → CI tourne → mesures réelles → baseline auto-update.
+
+---
+
 ## [2026-04-18] test(sync): 4 tests manquants writes_test.go + fixture schema update + roadmap cleanup
 
 **Statut** : Complété

@@ -225,7 +225,8 @@ jobs:
           args: --timeout 5m
 
   go-coverage:
-    name: Go Coverage (seuil 50%)
+    name: Go Coverage (CGO_ENABLED=1 — ./... complet)
+    # ubuntu-latest dispose de GCC — CGO_ENABLED=1 fonctionne sans config supplémentaire
     runs-on: ubuntu-latest
     defaults:
       run:
@@ -239,28 +240,60 @@ jobs:
           go-version-file: apps/go-api/go.mod
           cache-dependency-path: apps/go-api/go.sum
 
-      - name: go test with coverage (domain + analysis + contracttest)
+      # S45 T8 — décision : CGO=0 fast-check = job go-build ; CGO=1 full = ce job.
+      - name: Vérifier GCC (CGO requis pour DuckDB)
+        run: gcc --version
+
+      # S45 T1-2 : -coverpkg=./... garantit que les tests externes (golden, contracttest)
+      # remontent la couverture des packages qu'ils exercent.
+      # S45 T3 : exclusions gen/ et msal-poc/ via coverage_filter.sh
+      - name: go test avec couverture complète (CGO + intégration)
         run: |
-          go test -coverprofile=coverage.out -covermode=atomic \
-            ./internal/domain/... ./internal/analysis/... ./contracttest/... \
-            -timeout 60s -count=1
+          go test \
+            -coverprofile=coverage.raw \
+            -covermode=atomic \
+            -coverpkg=./... \
+            -tags=integration \
+            -timeout 120s \
+            -count=1 \
+            ./...
         env:
-          CGO_ENABLED: "0"
+          CGO_ENABLED: "1"
           LEVELUP_DEMO_MODE: "true"
 
-      - name: Check coverage threshold (min 50% — Sprint 35)
-        run: |
-          total=$(go tool cover -func=coverage.out | grep '^total:' | awk '{print $3}' | tr -d '%')
-          echo "Coverage: ${total}%"
-          awk "BEGIN { exit (${total:-0} < 50) }" || \
-            { echo "FAIL: couverture ${total:-0}% < seuil 50%"; exit 1; }
+      # S45 T3 : filtrer internal/api/gen/ et cmd/msal-poc/ du profil
+      - name: Filtrer exclusions (gen/ + msal-poc/)
+        run: bash scripts/coverage_filter.sh coverage.raw > coverage.out
 
-      - name: Upload coverage report
+      # S48 T7 : ratchet via coverage_check.sh — seuil actuel = baseline 35.0%
+      # Progressive : S45→15% atteint, S46→35% atteint (baseline = 35.0%)
+      # S47→55%, S48→70% à mesurer après merge des tests CGO
+      - name: Vérifier ratchet couverture (vs coverage_baseline.txt)
+        run: bash scripts/coverage_check.sh coverage.out coverage_baseline.txt
+        env:
+          CI: "true"
+          GITHUB_REF: ${{ github.ref }}
+
+      # S45 gate : rapport HTML accessible en artifact CI
+      - name: Générer rapport HTML
+        run: go tool cover -html=coverage.out -o coverage.html
+        if: always()
+
+      - name: Upload rapport HTML (artifact 30j)
         uses: actions/upload-artifact@v4
         if: always()
         with:
-          name: go-coverage-report
+          name: go-coverage-html
+          path: apps/go-api/coverage.html
+          retention-days: 30
+
+      - name: Upload profil coverage.out
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: go-coverage-profile
           path: apps/go-api/coverage.out
+          retention-days: 7
 
   go-golden-test:
     name: Go Golden Test (parité endpoints)

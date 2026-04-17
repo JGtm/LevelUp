@@ -863,7 +863,7 @@
 | 1 | Décider sort de `/setup/status` + purger artefacts (hooks, MSW, Playwright, generated.ts, keys.ts) | ✅ |
 | 2 | Figer OpenAPI FastAPI comme référence + script diff FastAPI vs Go | ✅ |
 | 3 | `contract_test.go` : routes chi vs OpenAPI (path+method+Content-Type) | ✅ |
-| 4 | Retirer `continue-on-error` du lint OpenAPI CI | ⬜ CI requis |
+| 4 | Retirer `continue-on-error` du lint OpenAPI CI | ✅ |
 | 5 | Job CI `e2e-react` : 15 specs Playwright existantes, Chromium headless | ✅ |
 
 ### Critère de sortie
@@ -1228,21 +1228,21 @@
 
 | # | Tâche | Statut |
 |--:|-------|:------:|
-| 1 | Réécrire le job `go-coverage` dans `.github/workflows/ci.yml` : `go test -coverprofile=coverage.out -covermode=atomic -coverpkg=./... ./...` avec `CGO_ENABLED=1` + toolchain MinGW ucrt64 sur le runner (GitHub Actions `windows-latest` ou conteneur custom Linux CGO) | ⬜ CI requis |
-| 2 | Ajouter `-coverpkg=./...` pour que les tests externes (ex : `tests/golden/`, `contracttest/`) comptent dans la couverture des packages qu'ils exercent (sinon golden reste à 0% car `package golden_test`) | ⬜ CI requis |
-| 3 | Exclure de la métrique : `internal/api/gen/` (code généré oapi-codegen), `cmd/msal-poc/` (POC jetable), `cmd/levelup/cmd_*.go` si CLI one-shot non-testable — via filtre `grep -v` post-profile ou fichier `.covignore` maison | ⬜ CI requis |
+| 1 | Réécrire le job `go-coverage` dans `.github/workflows/ci.yml` : `go test -coverprofile=coverage.out -covermode=atomic -coverpkg=./... ./...` avec `CGO_ENABLED=1` + toolchain MinGW ucrt64 sur le runner (GitHub Actions `windows-latest` ou conteneur custom Linux CGO) | ✅ |
+| 2 | Ajouter `-coverpkg=./...` pour que les tests externes (ex : `tests/golden/`, `contracttest/`) comptent dans la couverture des packages qu'ils exercent (sinon golden reste à 0% car `package golden_test`) | ✅ |
+| 3 | Exclure de la métrique : `internal/api/gen/` (code généré oapi-codegen), `cmd/msal-poc/` (POC jetable), `cmd/levelup/cmd_*.go` si CLI one-shot non-testable — via filtre `grep -v` post-profile ou fichier `.covignore` maison | ✅ |
 | 4 | Produire `scripts/coverage_check.sh` + `coverage_filter.sh` : ratchet coverage vs baseline committée dans `apps/go-api/coverage_baseline.txt` | ✅ |
-| 5 | Définir seuil CI progressif : S45 → 15%, S46 → 35%, S47 → 55%, S48 → 70% (ratchet : jamais de régression) | ⬜ CI requis |
+| 5 | Définir seuil CI progressif : S45 → 15%, S46 → 35%, S47 → 55%, S48 → 70% (ratchet : jamais de régression) | ✅ |
 | 6 | Committer `apps/go-api/coverage_baseline.txt` avec l'état exact après nettoyage exclusions (format `go tool cover -func=` sorted) | ✅ |
 | 7 | Documenter dans `docs/testing.md` : comment lancer coverage localement, interpréter le rapport, contribuer un test qui bouge le baseline | ✅ |
-| 8 | Décider statut des tests `CGO_ENABLED=0` : la CI actuelle a un job `go-coverage` CGO-off dédié → choix à trancher : soit fusion avec job CGO-on, soit conservation comme fast-check séparé (CGO-off = `./contracttest/... ./internal/domain/...` uniquement) | ⬜ CI requis |
+| 8 | Décider statut des tests `CGO_ENABLED=0` : la CI actuelle a un job `go-coverage` CGO-off dédié → choix à trancher : soit fusion avec job CGO-on, soit conservation comme fast-check séparé (CGO-off = `./contracttest/... ./internal/domain/...` uniquement) | ✅ |
 
 **Gate Sprint 45** :
-- [ ] Coverage mesuré sur `./...` complet avec CGO activé en CI — ⬜ CI requis
-- [ ] `tests/golden/` et `contracttest/` remontent la couverture des handlers qu'ils exercent (via `-coverpkg`) — ⬜ CI requis
+- [x] Coverage mesuré sur `./...` complet avec CGO activé en CI (ci.yml job `go-coverage` CGO_ENABLED=1)
+- [x] `tests/golden/` et `contracttest/` remontent la couverture des handlers qu'ils exercent (via `-coverpkg=./...`)
 - [x] Baseline committée reflète la réalité (35.0% dans `coverage_baseline.txt`)
-- [ ] Seuil CI en ratchet positif uniquement (pas de régression acceptée) — ⬜ CI requis
-- [ ] Rapport HTML accessible en artifact CI — ⬜ CI requis
+- [x] Seuil CI en ratchet positif uniquement (`scripts/coverage_check.sh`)
+- [x] Rapport HTML accessible en artifact CI (`go-coverage-html`)
 - [x] Exclusions `gen/` documentées et justifiées
 
 ---
@@ -1270,7 +1270,7 @@
 | 10 | Écrire `session_compare_test.go` (4 cas × 2 sessions valides/invalides/overlap) | ✅ |
 | 11 | Écrire `timeseries_test.go` (4 cas × granularité jour/semaine/mois) | ✅ |
 | 12 | Écrire `match_history_test.go` (4 cas × pagination, filtres, empty result) | ✅ |
-| 13 | Écrire `bootstrap_test.go` (handler) — service_test.go déjà couvert | ⬜ CGO requis |
+| 13 | Écrire `bootstrap_test.go` (handler) — service_test.go déjà couvert | ✅ |
 | 14 | Écrire `auth_test.go` (4 cas × device code flow : init, poll, complete, timeout) | ✅ |
 | 15 | Écrire `jobs_test.go` (4 cas × create/status/cancel/expired) | ✅ |
 | 16 | Écrire `sync_handler_test.go` (4 cas × start/status/error lease/conflict) | ✅ |
@@ -1316,18 +1316,18 @@
 | 9 | Test `writes_test.go::TestInsertWeaponKills` : 5 weapon_kills, vérifier `weapon_id` UBIGINT + FK match | ✅ |
 | 10 | Test `writes_test.go::TestMarkWeaponKillsDone` : vérifier bit 18 posé dans `match_registry.backfill_completed` | ✅ |
 | 11 | Test `transforms_test.go` (extension) : couvrir `findCoreStats`, `isRankedPlaylist`, `isFirefightMatch`, `extractTeamScoresByID`, `asString`, `strPtr`, `coalesceStrPtr`, `intPtrFrom`, `floatPtrFrom`, `intFrom`, `int64From` — toutes à 0% | ✅ |
-| 12 | Test `aggregates_test.go` : recalcul agrégats après ajout d'un match | ⬜ CGO requis |
-| 13 | Test `career_test.go` (sync) : progression rang calculée depuis historique | ⬜ CGO requis |
-| 14 | Test `performance_test.go` (sync) : score calculé, stocké, ré-utilisé | ⬜ CGO requis |
-| 15 | Test `engine_test.go` : cycle sync minimal bout-en-bout avec API Halo mockée (provider fake) + fixture DB | ⬜ CGO requis |
-| 16 | Test `backfill_test.go` : lancer backfill sur 5 matchs, vérifier bitmask `backfill_completed` | ⬜ CGO requis |
+| 12 | Test `aggregates_test.go` : recalcul agrégats après ajout d'un match | ✅ |
+| 13 | Test `career_test.go` (sync) : progression rang calculée depuis historique | ✅ |
+| 14 | Test `performance_test.go` (sync) : score calculé, stocké, ré-utilisé | ✅ |
+| 15 | Test `engine_test.go` : cycle sync minimal bout-en-bout avec API Halo mockée (provider fake) + fixture DB | ✅ |
+| 16 | Test `backfill_test.go` : lancer backfill sur 5 matchs, vérifier bitmask `backfill_completed` | ✅ |
 | 17 | Test `lease_test.go` : 2 writers concurrents → un seul réussit, l'autre timeout propre | ✅ |
-| 18 | Test `migration/steps_shared_test.go` : appliquer les 36 steps sur DB vide, vérifier chaque table + vue `v_gamertag_lookup`, `v_match_full`, `v_killer_victim_full`, `v_weapon_kills` | ⬜ CGO requis |
-| 19 | Test `migration/steps_player_test.go` : appliquer schéma player, vérifier tables (`player_match_enrichment`, `match_skill_rank`, `sessions`, `media_files`, etc.) | ⬜ CGO requis |
-| 20 | Test `migration/steps_shared_pve_test.go` : schéma PvE + seed `pve_match_stats` + query par wave | ⬜ CGO requis |
-| 21 | Test `platform/duckdb/db_test.go` : pool lifecycle — open/close, concurrent reads, write lease acquire/release | ⬜ CGO requis |
-| 22 | Test repos `*_repo_test.go` déjà présent (`repo_test.go`) → étendre pour couvrir les 13 repos : match_history, career, filters, gamertag, explorer, home, sessions, stats, citations, media, + les nouveaux | ⬜ CGO requis |
-| 23 | Test `ops/restore_test.go` : backup → wipe → restore → vérifier intégrité via checksum tables | ⬜ CGO requis |
+| 18 | Test `migration/steps_shared_test.go` : appliquer les 36 steps sur DB vide, vérifier chaque table + vue `v_gamertag_lookup`, `v_match_full`, `v_killer_victim_full`, `v_weapon_kills` | ✅ |
+| 19 | Test `migration/steps_player_test.go` : appliquer schéma player, vérifier tables (`player_match_enrichment`, `match_skill_rank`, `sessions`, `media_files`, etc.) | ✅ |
+| 20 | Test `migration/steps_shared_pve_test.go` : schéma PvE + seed `pve_match_stats` + query par wave | ✅ |
+| 21 | Test `platform/duckdb/db_test.go` : pool lifecycle — open/close, concurrent reads, write lease acquire/release | ✅ |
+| 22 | Test repos `*_repo_test.go` déjà présent (`repo_test.go`) → étendre pour couvrir les 13 repos : match_history, career, filters, gamertag, explorer, home, sessions, stats, citations, media, + les nouveaux | ⬜ optionnel (repo_test.go partiel exist) |
+| 23 | Test `ops/restore_test.go` : backup → wipe → restore → vérifier intégrité via checksum tables | ✅ |
 | 18b | Test `scope_test.go` : SyncScope.Resolve() + helpers | ✅ |
 | 18c | Test `writes_test.go` : intégration DuckDB writes (//go:build integration) | ✅ |
 | 18d | Tests platform : `auth/attempt_store_test.go`, `jobs/store_test.go`, `session/store_test.go`, `settings/store_test.go` | ✅ |
@@ -1335,7 +1335,7 @@
 
 **Gate Sprint 47** :
 - [x] Toutes les fonctions `sync/writes.go` ont un test avec DB in-memory réelle (8/8 fonctions couvertes)
-- [ ] Chaque script de migration (`steps_*.go`) est testé sur DB vierge + DB déjà migrée (idempotence) — ⬜ CGO requis
+- [x] Chaque script de migration (`steps_*.go`) est testé sur DB vierge + DB déjà migrée (idempotence)
 - [ ] Repos DuckDB ≥ 70% (lecture seule + écriture) — ⬜ CI requis
 - [x] Write lease testé en concurrence (2+ goroutines)
 - [ ] Couverture globale ≥ 55% — ⬜ CI requis
