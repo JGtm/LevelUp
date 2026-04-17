@@ -12,7 +12,7 @@
 #   make tidy        — go mod tidy
 #   make lint        — go vet + build
 
-.PHONY: build gen run test msal-poc vet tidy lint lint-go
+.PHONY: build gen run test test-unit test-all coverage coverage-report msal-poc vet tidy lint lint-go
 
 # Toolchain CGo (Windows MinGW ucrt64)
 CC      := /c/msys64/ucrt64/bin/gcc.exe
@@ -39,7 +39,31 @@ run-demo:
 		LEVELUP_DEMO_MODE=true go run ./cmd/server/
 
 test:
-	$(CGO_ENV) go test ./... -v -timeout 30s
+	$(CGO_ENV) go test -tags=integration -count=1 -timeout=120s -p 1 ./...
+
+# Tests unitaires uniquement (pas de CGO/DuckDB)
+test-unit:
+	go test -count=1 -timeout=60s $$(go list ./... | grep -v -E 'cmd/|api/gen|sync/testutil|platform/duckdb|/migration$$')
+
+# Tests rapides (pas de -count=1, cache activé)
+test-fast:
+	$(CGO_ENV) go test -tags=integration -timeout=120s -p 1 ./...
+
+# Couverture locale complète — résultat affiché + coverage.html généré
+coverage:
+	$(CGO_ENV) go test -tags=integration -count=1 -timeout=120s -p 1 \
+		-coverprofile=coverage.raw -covermode=atomic -coverpkg=./... ./...
+	bash scripts/coverage_filter.sh coverage.raw > coverage.out
+	@go tool cover -func=coverage.out | grep "^total:"
+	@echo ""
+	@echo "Détail par package :"
+	@$(CGO_ENV) go test -tags=integration -count=1 -timeout=120s -p 1 -cover ./... 2>&1 \
+		| grep -E "coverage:" | sort -t% -k1 -rn
+
+# Ouvrir le rapport HTML dans le navigateur
+coverage-report: coverage
+	go tool cover -html=coverage.out -o coverage.html
+	@echo "Rapport : coverage.html"
 
 msal-poc:
 	$(CGO_ENV) go run ./cmd/msal-poc/

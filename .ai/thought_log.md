@@ -1,5 +1,52 @@
 # Thought Log
 
+## [2026-04-17] feat(media): bouton upload médias + suppression watcher
+
+**Statut** : Complété
+
+### Contexte
+
+Ajout d'un endpoint d'upload multi-fichiers sur la page médias (Go API + React frontend), avec indexation immédiate et suppression du watcher périodique Python.
+
+### Décisions techniques
+
+1. **`MediaUploadContextFactory`** : nouveau type factory `func(ctx, slug) (MediaService, gamertag, titleSlug, dbPath, error)` — cohérent avec le pattern `ContextFactory[T]` existant, évite de passer des dépendances via le handler.
+2. **Timezone** : `insertMediaFile` utilise `fi.ModTime().UTC()` — aucune conversion Paris/UTC supplémentaire requise.
+3. **Sécurité path traversal** : `filepath.Base(f.OriginalName)` neutralise les noms `../../evil.sh` avant l'écriture sur disque.
+4. **`walkMediaDir` fix** : ajout du skip `thumbs/` via `filepath.SkipDir` pour éviter la ré-indexation des miniatures générées.
+5. **Frontend** : `<input type="file" multiple>` natif + TanStack Query mutation — aucun problème de reset de state. Invalidation automatique des queries média après succès.
+6. **`MediaWatcherEnabled`/`MediaWatcherDebounceSeconds`** supprimés du domain, du store settings et des tests associés.
+
+### Fichiers créés/modifiés
+
+- `domain/media.go` : +UploadedFile, +UploadRequest, +UploadResult
+- `port/services.go` : MediaService +UploadMedia
+- `service/media_service.go` : +UploadMedia (écriture disque + IndexMedia + GenerateThumbnails)
+- `api/handlers/media.go` : +PostUploadMedia, +parseUploadedFiles, +resolveCapturesDir, MediaUploadContextFactory
+- `api/registry.go` : +MediaUpload factory
+- `api/server.go` : route POST /media/upload
+- `ops/media.go` : fix walkMediaDir skipThumbsDir
+- `ops/media_test.go` : 8 tests purs (sans CGO)
+- `service/media_service_test.go` : 5 tests UploadMedia dont path traversal
+- `api/handlers/media_test.go` : 5 tests handler upload
+- `web/src/lib/api/client.ts` : +postForm
+- `web/src/lib/api/types.ts` : +MediaUploadResponse
+- `web/src/lib/query/keys.ts` : +mediaBase
+- `web/src/features/media/queries.ts` : +useUploadMedia
+- `web/src/features/media/UploadButton.tsx` : nouveau composant
+- `web/src/features/media/MediaPage.tsx` : intégration UploadButton
+- `domain/settings.go`, `platform/settings/store.go` : suppression MediaWatcher*
+- **Supprimés** : `src/app/media_background.py`, `src/app/media_watcher.py`
+
+### Résultats observés
+
+- `go build ./...` : OK (aucune erreur)
+- `go test ./internal/...` : tous les packages OK, 0 FAIL
+
+### Prochaine étape
+
+Commit sur la branche courante.
+
 ## [2026-04-17] fix(tests): correction 9 échecs tests S45-S49 — phase11/sprint49-closure (suite)
 
 **Statut** : Complété
