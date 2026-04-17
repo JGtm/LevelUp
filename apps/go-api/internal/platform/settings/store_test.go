@@ -7,6 +7,7 @@ import (
 	"path/filepath"
 	"testing"
 
+	"levelup/go-api/internal/domain"
 	"levelup/go-api/internal/platform/settings"
 )
 
@@ -96,6 +97,166 @@ func TestStore_Save_RoundTrip(t *testing.T) {
 	}
 	if cfg2.Lang != "de" {
 		t.Errorf("expected lang='de' after save, got %q", cfg2.Lang)
+	}
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Apply
+// ─────────────────────────────────────────────────────────────────────────────
+
+func strPtr(s string) *string { return &s }
+func boolPtr(b bool) *bool    { return &b }
+func intPtr(i int) *int       { return &i }
+
+func TestApply_UpdatesFields(t *testing.T) {
+	cfg := settings.Defaults()
+	lang := "fr"
+	discordLang := "en"
+	req := &domain.UpdateSettingsRequest{
+		Lang:        &lang,
+		DiscordLang: &discordLang,
+	}
+	settings.Apply(cfg, req)
+	if cfg.Lang != "fr" {
+		t.Errorf("expected lang=fr, got %q", cfg.Lang)
+	}
+	if cfg.DiscordLang != "en" {
+		t.Errorf("expected discord_lang=en, got %q", cfg.DiscordLang)
+	}
+}
+
+func TestApply_NilFieldsUnchanged(t *testing.T) {
+	cfg := settings.Defaults()
+	cfg.Lang = "de"
+	req := &domain.UpdateSettingsRequest{} // tous les champs nil
+	settings.Apply(cfg, req)
+	if cfg.Lang != "de" {
+		t.Errorf("nil req should not change lang, got %q", cfg.Lang)
+	}
+}
+
+func TestApply_BoolFields(t *testing.T) {
+	cfg := settings.Defaults()
+	tr := true
+	req := &domain.UpdateSettingsRequest{
+		NormalizeModeLabels:         &tr,
+		DiscordNotificationsEnabled: &tr,
+		MediaWatcherEnabled:         &tr,
+	}
+	settings.Apply(cfg, req)
+	if !cfg.NormalizeModeLabels {
+		t.Error("NormalizeModeLabels should be true")
+	}
+	if !cfg.DiscordNotificationsEnabled {
+		t.Error("DiscordNotificationsEnabled should be true")
+	}
+}
+
+func TestApply_MediaFields(t *testing.T) {
+	cfg := settings.Defaults()
+	dir := "/captures"
+	tol := 20
+	deb := 10
+	req := &domain.UpdateSettingsRequest{
+		MediaCapturesBaseDir:        &dir,
+		MediaToleranceMinutes:       &tol,
+		MediaWatcherDebounceSeconds: &deb,
+	}
+	settings.Apply(cfg, req)
+	if cfg.MediaCapturesBaseDir != "/captures" {
+		t.Errorf("expected /captures, got %q", cfg.MediaCapturesBaseDir)
+	}
+	if cfg.MediaToleranceMinutes != 20 {
+		t.Errorf("expected 20, got %d", cfg.MediaToleranceMinutes)
+	}
+}
+
+func TestApply_SpnkrFields(t *testing.T) {
+	cfg := settings.Defaults()
+	tr := true
+	req := &domain.UpdateSettingsRequest{
+		SpnkrRefreshWithBackfill:           &tr,
+		SpnkrRefreshBackfillMedals:         &tr,
+		SpnkrRefreshBackfillSkill:          &tr,
+		SpnkrRefreshBackfillAliases:        &tr,
+		SpnkrRefreshBackfillPersonalScores: &tr,
+		SpnkrRefreshBackfillPerfScores:     &tr,
+		SpnkrRefreshBackfillLUSR:           &tr,
+		SpnkrRefreshBackfillEvents:         &tr,
+		SpnkrRefreshBackfillWeapons:        &tr,
+	}
+	settings.Apply(cfg, req)
+	if !cfg.SpnkrRefreshWithBackfill {
+		t.Error("SpnkrRefreshWithBackfill should be true")
+	}
+	if !cfg.SpnkrRefreshBackfillWeapons {
+		t.Error("SpnkrRefreshBackfillWeapons should be true")
+	}
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// ToResponse
+// ─────────────────────────────────────────────────────────────────────────────
+
+func TestToResponse_HidesWebhookURL(t *testing.T) {
+	cfg := settings.Defaults()
+	cfg.DiscordWebhookURL = "https://discord.com/api/webhooks/secret"
+	resp := settings.ToResponse(cfg)
+	if !resp.DiscordWebhookURLPresent {
+		t.Error("DiscordWebhookURLPresent should be true when URL set")
+	}
+}
+
+func TestToResponse_EmptyWebhookURL(t *testing.T) {
+	cfg := settings.Defaults()
+	cfg.DiscordWebhookURL = ""
+	resp := settings.ToResponse(cfg)
+	if resp.DiscordWebhookURLPresent {
+		t.Error("DiscordWebhookURLPresent should be false when URL empty")
+	}
+}
+
+func TestToResponse_FieldsMapped(t *testing.T) {
+	cfg := settings.Defaults()
+	cfg.Lang = "fr"
+	cfg.UserTimezone = "America/New_York"
+	resp := settings.ToResponse(cfg)
+	if resp.Lang != "fr" {
+		t.Errorf("Lang: expected fr, got %q", resp.Lang)
+	}
+	if resp.UserTimezone != "America/New_York" {
+		t.Errorf("UserTimezone: expected America/New_York, got %q", resp.UserTimezone)
+	}
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Defaults
+// ─────────────────────────────────────────────────────────────────────────────
+
+func TestDefaults_ReturnsNonNil(t *testing.T) {
+	d := settings.Defaults()
+	if d == nil {
+		t.Fatal("Defaults() should not return nil")
+	}
+}
+
+func TestDefaults_CanStartInitialSync(t *testing.T) {
+	d := settings.Defaults()
+	if !d.CanStartInitialSync {
+		t.Error("CanStartInitialSync default should be true")
+	}
+	if !d.CanSelfProvision {
+		t.Error("CanSelfProvision default should be true")
+	}
+}
+
+func TestDefaults_Lang(t *testing.T) {
+	d := settings.Defaults()
+	if d.Lang != "en" {
+		t.Errorf("default lang should be 'en', got %q", d.Lang)
+	}
+	if d.UserTimezone != "Europe/Paris" {
+		t.Errorf("default timezone should be 'Europe/Paris', got %q", d.UserTimezone)
 	}
 }
 
