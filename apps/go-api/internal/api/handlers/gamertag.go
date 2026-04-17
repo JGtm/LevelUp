@@ -21,6 +21,12 @@ func NewGamertagHandler(svc port.GamertagSearchService) *GamertagHandler {
 
 // Search cherche les gamertags correspondant à la query ?q=.
 func (h *GamertagHandler) Search(w http.ResponseWriter, r *http.Request) {
+	// Sprint 49 : route inconditionnelle — 503 si shared DB absente.
+	if h.svc == nil {
+		writeError(w, http.StatusServiceUnavailable, "shared_db_unavailable", "gamertag search requires shared database")
+		return
+	}
+
 	q := strings.TrimSpace(r.URL.Query().Get("q"))
 	if q == "" {
 		writeJSON(w, http.StatusOK, domain.GamertagSearchResponse{Query: q, Items: []domain.GamertagSearchResult{}})

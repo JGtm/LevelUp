@@ -65,7 +65,7 @@ func (s *BootstrapService) Build(ctx context.Context, sess *domain.SessionData) 
 		CurrentPlayer:       currentPlayer,
 		AvailablePlayers:    players,
 		CurrentTitleSlug:    currentTitleSlug,
-		AvailableTitles:     buildAvailableTitles(),
+		AvailableTitles:     BuildAvailableTitles(),
 		Locale:              settingsExcerpt.Lang,
 		HintsVisibleDefault: true,
 		FeatureFlags:        flags,
@@ -176,8 +176,9 @@ func getStringSetting(settings map[string]interface{}, key, def string) string {
 	return def
 }
 
-// buildAvailableTitles construit la liste des titres depuis le registre.
-func buildAvailableTitles() []domain.TitleSummary {
+// BuildAvailableTitles construit la liste des titres depuis le registre.
+// Sprint 49 : exportée pour réutilisation par le handler session_context.
+func BuildAvailableTitles() []domain.TitleSummary {
 	reg := titlePkg.NewRegistry()
 	all := reg.All()
 	out := make([]domain.TitleSummary, 0, len(all))

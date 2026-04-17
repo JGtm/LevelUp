@@ -38,11 +38,12 @@ type SessionContextRequest struct {
 }
 
 // SessionContextResponse est la réponse de POST /session/context.
-// Expose uniquement les données non sensibles de la session.
+// Sprint 49 : enrichie pour inclure les titres disponibles (bootstrap complet).
 type SessionContextResponse struct {
-	CurrentPlayerSlug *string `json:"current_player_slug,omitempty"`
-	CurrentTitleSlug  string  `json:"current_title_slug"` // Sprint 44
-	Locale            string  `json:"locale"`
-	HintsVisible      bool    `json:"hints_visible"`
-	AuthReady         bool    `json:"auth_ready"`
+	CurrentPlayerSlug *string        `json:"current_player_slug,omitempty"`
+	CurrentTitleSlug  string         `json:"current_title_slug"`
+	AvailableTitles   []TitleSummary `json:"available_titles"`
+	Locale            string         `json:"locale"`
+	HintsVisible      bool           `json:"hints_visible"`
+	AuthReady         bool           `json:"auth_ready"`
 }

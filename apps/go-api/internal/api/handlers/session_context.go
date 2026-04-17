@@ -13,6 +13,7 @@ import (
 	"levelup/go-api/internal/domain"
 	titlePkg "levelup/go-api/internal/domain/title"
 	"levelup/go-api/internal/platform/session"
+	"levelup/go-api/internal/service"
 )
 
 // SessionHandler gère les endpoints de session.
@@ -65,6 +66,7 @@ func (h *SessionHandler) PostContext(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, http.StatusOK, domain.SessionContextResponse{
 		CurrentPlayerSlug: sess.CurrentPlayerSlug,
 		CurrentTitleSlug:  sess.CurrentTitleSlug,
+		AvailableTitles:   service.BuildAvailableTitles(),
 		Locale:            sess.Locale,
 		HintsVisible:      sess.HintsVisible,
 		AuthReady:         sess.AuthReady,

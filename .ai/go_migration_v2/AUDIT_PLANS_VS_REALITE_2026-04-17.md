@@ -154,6 +154,11 @@ Trois points ressortent :
 
 Conclusion : le multi-titres est reellement implante a la verticale, mais pas encore durci jusqu'au contrat final annonce. Le point (1) merite une verification ADR avant d'etre comptabilise comme dette technique.
 
+> **Mise à jour Sprint 49 (2026-07-25)** : les 3 points sont désormais résolus :
+> 1. ADR confirmée définitive — le routage header+session est le choix d'architecture assumé (pas dette) ;
+> 2. `POST /session/context` retourne désormais `available_titles` + `current_title_slug` ;
+> 3. `JobMeta` converti en struct typée avec `TitleSlug string` + `Extra map[string]any`.
+
 #### 2.4 La checklist Go v2 est obsolete comme outil de suivi
 
 La checklist v2 continue d'annoncer un programme tres en retard, jusqu'a parler de Sprint 5 a ouvrir, alors que :

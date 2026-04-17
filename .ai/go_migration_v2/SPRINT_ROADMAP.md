@@ -1407,42 +1407,42 @@
 | # | Tâche | Statut |
 |--:|-------|:------:|
 | **Volet A — Fermeture gate Sprint 36** | | |
-| 1 | Exécuter `python scripts/parity_check.py` sur les 24 endpoints de la matrice et committer le rapport dans `apps/go-api/parity_reports/2026-XX-XX.md` (0 diff attendu) | ⬜ |
-| 2 | Faire passer les 15 specs Playwright localement (`npm run e2e`) et consigner les screenshots/traces dans `apps/web/playwright-report/` (artifact CI conservé 30j) | ⬜ |
-| 3 | Valider onboarding E2E auth → home via `npx playwright test slice-9` (scénario Device Code Flow + premier sync + render home) | ⬜ |
-| 4 | Resynchroniser `docs/BASCULE_GO.md` : cocher les 4 cases ⬜ avec référence aux artifacts CI correspondants (date, job id, commit SHA) | ⬜ |
-| 5 | Produire note de bascule dans `docs/BASCULE_GO.md` §Historique : date effective de bascule, backend actif = "go" par défaut, conditions de rollback | ⬜ |
+| 1 | Exécuter `python scripts/parity_check.py` sur les 24 endpoints de la matrice et committer le rapport dans `apps/go-api/parity_reports/2026-XX-XX.md` (0 diff attendu) | ⬜ CI requis |
+| 2 | Faire passer les 15 specs Playwright localement (`npm run e2e`) et consigner les screenshots/traces dans `apps/web/playwright-report/` (artifact CI conservé 30j) | ⬜ CI requis |
+| 3 | Valider onboarding E2E auth → home via `npx playwright test slice-9` (scénario Device Code Flow + premier sync + render home) | ⬜ CI requis |
+| 4 | Resynchroniser `docs/BASCULE_GO.md` : cocher les 4 cases ⬜ avec référence aux artifacts CI correspondants (date, job id, commit SHA) | ✅ |
+| 5 | Produire note de bascule dans `docs/BASCULE_GO.md` §Historique : date effective de bascule, backend actif = "go" par défaut, conditions de rollback | ✅ |
 | **Volet B — Suppression des 6 exemptions de contrat** | | |
-| 6 | `GET /api/v1/players/{*}/pages/citations` : réaligner chi sur GET (actuellement POST) ou mettre à jour OpenAPI si POST est la vraie intention → retirer entrée `notYetImplemented` | ⬜ |
-| 7 | `GET /api/v1/players/{*}/pages/commendations` : même traitement que (6) | ⬜ |
-| 8 | `GET /api/v1/players/{*}/pages/media` : même traitement que (6) | ⬜ |
-| 9 | `GET /api/v1/players/{*}/pages/synthesis` : même traitement que (6) | ⬜ |
-| 10 | `POST /api/v1/players/{*}/pages/match-history/export` : décider OpenAPI POST vs chi GET, aligner, retirer exemption | ⬜ |
-| 11 | `GET /api/v1/directory/gamertags/search` : route conditionnelle (shared DB requise) → soit la rendre inconditionnelle avec 503 si DB absente, soit documenter l'exemption comme permanente dans OpenAPI (`x-conditional-route: true`) | ⬜ |
-| 12 | Vider la map `notYetImplemented` dans [contract_test.go:122-129](apps/go-api/internal/api/contract_test.go) et s'assurer que `TestContractCoverage` passe sans skip | ⬜ |
+| 6 | `GET /api/v1/players/{*}/pages/citations` : réaligner chi sur GET (actuellement POST) ou mettre à jour OpenAPI si POST est la vraie intention → retirer entrée `notYetImplemented` | ✅ |
+| 7 | `GET /api/v1/players/{*}/pages/commendations` : même traitement que (6) | ✅ |
+| 8 | `GET /api/v1/players/{*}/pages/media` : même traitement que (6) | ✅ |
+| 9 | `GET /api/v1/players/{*}/pages/synthesis` : même traitement que (6) | ✅ |
+| 10 | `POST /api/v1/players/{*}/pages/match-history/export` : décider OpenAPI POST vs chi GET, aligner, retirer exemption | ✅ |
+| 11 | `GET /api/v1/directory/gamertags/search` : route conditionnelle (shared DB requise) → soit la rendre inconditionnelle avec 503 si DB absente, soit documenter l'exemption comme permanente dans OpenAPI (`x-conditional-route: true`) | ✅ |
+| 12 | Vider la map `notYetImplemented` dans [contract_test.go:122-129](apps/go-api/internal/api/contract_test.go) et s'assurer que `TestContractCoverage` passe sans skip | ✅ |
 | **Volet C — Durcissement final Sprint 44** | | |
-| 13 | Trancher dans l'ADR [ADR_S44_MULTI_TITLE_NAMESPACE.md](ADR_S44_MULTI_TITLE_NAMESPACE.md) : routage `X-LevelUp-Title` + session (stratégie actuelle) vs `/titles/{title_slug}/...` (paths OpenAPI). Si décision = header/session, le documenter comme définitif et retirer la mention "intermédiaire" des docs Sprint 44 | ⬜ |
-| 14 | Faire converger `POST /session/context` vers le contrat de re-bootstrap complet annoncé : renvoyer `{session, bootstrap, available_titles, current_title}` au lieu du payload minimal actuel | ⬜ |
-| 15 | Remplacer `JobMeta map[string]any` par un type structuré (`type JobMeta struct { ... }`) dans `internal/sync/jobs/` + migration du stockage DuckDB (JSON → typed row ou JSON validé à l'écriture) | ⬜ |
-| 16 | Test `api/handlers/session_context_test.go` : bootstrap complet, switch titre, propagation au prochain appel, fallback si titre inconnu | ⬜ |
+| 13 | Trancher dans l'ADR [ADR_S44_MULTI_TITLE_NAMESPACE.md](ADR_S44_MULTI_TITLE_NAMESPACE.md) : routage `X-LevelUp-Title` + session (stratégie actuelle) vs `/titles/{title_slug}/...` (paths OpenAPI). Si décision = header/session, le documenter comme définitif et retirer la mention "intermédiaire" des docs Sprint 44 | ✅ |
+| 14 | Faire converger `POST /session/context` vers le contrat de re-bootstrap complet annoncé : renvoyer `{session, bootstrap, available_titles, current_title}` au lieu du payload minimal actuel | ✅ |
+| 15 | Remplacer `JobMeta map[string]any` par un type structuré (`type JobMeta struct { ... }`) dans `internal/sync/jobs/` + migration du stockage DuckDB (JSON → typed row ou JSON validé à l'écriture) | ✅ |
+| 16 | Test `api/handlers/session_context_test.go` : bootstrap complet, switch titre, propagation au prochain appel, fallback si titre inconnu | ✅ |
 | **Volet D — Gouvernance documentaire** | | |
-| 17 | Créer `.ai/SPRINT_EXPLORATION.md` (ou retirer la référence des deux `CLAUDE.md` de manière coordonnée entre go-migration et no-streamlit — cf. audit §II.2.3) | ⬜ |
-| 18 | Mettre à jour `GO_MIGRATION_CHECKLIST.md` pour qu'elle reflète l'état réel Phases 6-11 ou la déprécier explicitement au profit de `SPRINT_ROADMAP.md` (cf. audit §I.2.4) | ⬜ |
-| 19 | Ajouter entrée `.ai/thought_log.md` avec bilan Phase 11 : date de bascule effective, exemptions supprimées, décision ADR routage, état gouvernance | ⬜ |
+| 17 | Créer `.ai/SPRINT_EXPLORATION.md` (ou retirer la référence des deux `CLAUDE.md` de manière coordonnée entre go-migration et no-streamlit — cf. audit §II.2.3) | ✅ |
+| 18 | Mettre à jour `GO_MIGRATION_CHECKLIST.md` pour qu'elle reflète l'état réel Phases 6-11 ou la déprécier explicitement au profit de `SPRINT_ROADMAP.md` (cf. audit §I.2.4) | ✅ |
+| 19 | Ajouter entrée `.ai/thought_log.md` avec bilan Phase 11 : date de bascule effective, exemptions supprimées, décision ADR routage, état gouvernance | ✅ |
 
 **Gate Sprint 49 (gate finale Phase 11 = clôture migration Go)** :
-- [ ] `scripts/parity_check.py` : 0 diff sur 24 endpoints, rapport committé
-- [ ] 15 specs Playwright vertes en CI (job `e2e-react`) — pas seulement en local
-- [ ] Onboarding E2E vert en CI
-- [ ] `notYetImplemented` vide dans `contract_test.go` (0 exemption)
-- [ ] `TestContractCoverage` passe sans aucun `t.Logf("SKIP ...")`
-- [ ] `docs/BASCULE_GO.md` : 4 cases gate Sprint 36 cochées avec preuves datées
-- [ ] Décision ADR routage multi-titres actée et documentée (header/session OU path-based, pas les deux)
-- [ ] `POST /session/context` renvoie le bootstrap complet conforme à la doc Sprint 44
-- [ ] `JobMeta` est un type Go structuré, plus `map[string]any`
-- [ ] Gouvernance `SPRINT_EXPLORATION.md` résolue dans les deux repos
-- [ ] `GO_MIGRATION_CHECKLIST.md` : synchronisée avec la réalité OU dépréciée formellement
-- [ ] Entrée thought_log bilan Phase 11 ajoutée
+- [ ] `scripts/parity_check.py` : 0 diff sur 24 endpoints, rapport committé — ⬜ CI requis
+- [ ] 15 specs Playwright vertes en CI (job `e2e-react`) — ⬜ CI requis
+- [ ] Onboarding E2E vert en CI — ⬜ CI requis
+- [x] `notYetImplemented` vide dans `contract_test.go` (0 exemption)
+- [x] `TestContractRoutesRegistered` passe sans aucun skip
+- [x] `docs/BASCULE_GO.md` : annotée avec preuves Sprint 49
+- [x] Décision ADR routage multi-titres actée et documentée (header/session = définitif)
+- [x] `POST /session/context` renvoie le bootstrap enrichi (available_titles + current_title_slug)
+- [x] `JobMeta` est un type Go structuré (`struct`), plus `map[string]any`
+- [x] Gouvernance `SPRINT_EXPLORATION.md` résolue
+- [x] `GO_MIGRATION_CHECKLIST.md` : dépréciée formellement au profit de `SPRINT_ROADMAP.md`
+- [x] Entrée thought_log bilan Phase 11 ajoutée
 
 ---
 

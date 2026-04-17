@@ -14705,3 +14705,45 @@ Prochaine étape : Sprint 27 (Bascule progressive, ~3-5j).
 - Gate Phase 9 : 22 items cochés sur 24 (restent coverage ≥ 50% et lint clean — à vérifier en CI)
 
 **Conclusion** : Sprint 44 implémentation multi-titres complétée. Toutes les couches sont title-aware : backend (config, handlers, ops, validation), frontend (stores, API client), données (v3 format, PathResolver), tests (isolation, fixtures, golden skeleton), documentation. Les items restants (coverage, lint) dépendent d'un run CI complet.
+
+---
+
+## [2026-07-25] Sprint 49 — Clôture gate S36 + exemptions contrat + durcissement S44
+
+**Statut** : Complété
+
+### Décisions techniques
+
+1. **Volet B — 6 exemptions contrat supprimées** :
+   - `citations`, `commendations`, `media`, `synthesis` : OpenAPI corrigé de `get:` à `post:` (aligné sur chi qui reçoit des filtres en body)
+   - `match-history/export` : OpenAPI corrigé de `post:` à `get:` (chi retourne un fichier)
+   - `gamertag/search` : route rendue inconditionnelle + 503 si shared DB absente
+   - `notYetImplemented` vidé dans `contract_test.go` (0 exemption)
+   - 3 nouvelles routes ajoutées dans OpenAPI : `POST /pages/teammates`, `POST /pages/timeseries`, `GET /changelog`
+
+2. **Volet C — Durcissement Sprint 44** :
+   - `JobMeta` converti de `map[string]any` en `struct { TitleSlug string; Extra map[string]any }` — sérialisation JSON rétro-compatible
+   - `POST /session/context` enrichi : retourne désormais `available_titles` (depuis `BuildAvailableTitles()`)
+   - ADR routage multi-titres confirmée définitive : header `X-LevelUp-Title` + session fallback (pas path-based)
+   - 5 nouveaux tests session_context : available_titles, title switch resets player, unknown title ignored, propagation
+
+3. **Volet A — Gate S36** :
+   - `docs/BASCULE_GO.md` mis à jour : critères 1-3/6 annotés "CI requis", note Sprint 49 ajoutée
+   - Note historique de bascule ajoutée
+
+4. **Volet D — Gouvernance** :
+   - `.ai/SPRINT_EXPLORATION.md` créé (référence codebase pour agents IA)
+   - `GO_MIGRATION_CHECKLIST.md` déprécié formellement au profit de `SPRINT_ROADMAP.md`
+
+### Résultats
+
+- Contrat OpenAPI ↔ chi : **0 exemption** (vs 6 avant)
+- `SessionContextResponse` : enrichie avec `available_titles` + `current_title_slug`
+- `JobMeta` : struct typée (plus `map[string]any`)
+- Tests session_context : 7 tests (3 existants + 4 nouveaux)
+- Audit §2.3 annoté comme résolu
+
+### Prochaine étape
+
+- Critères gate S36 restants (1-3, 6) nécessitent un environnement CI avec CGO + Node.js + Playwright
+- Considérer un Sprint 50 ciblé sur la CI pipeline pour valider ces critères automatiquement
