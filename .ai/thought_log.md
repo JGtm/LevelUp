@@ -14887,3 +14887,54 @@ sur les branches non couvertes des fonctions pures d'`analysis/`.
 
 - Seuil 70% atteint et stable — prêt pour Sprint 50
 - Sprint 50 : audit S50 (validation/gate/golden) + éventuellement CI pipeline
+---
+
+## Sprint 49 — Closure — Phase 2 : Porter tous les packages à ≥ 50%
+
+### Objectif
+
+Porter chaque package sous 50% à ≥ 50% minimum, avec non-régression sur DuckDB+fanout/sync.
+
+### Travaux réalisés (commit `bbf435d5`)
+
+11 nouveaux fichiers de test créés sur la branche `phase11/sprint49-closure` :
+
+| Fichier | Package | Nature |
+|---------|---------|--------|
+| `config_extra_test.go` | config | Tests Load(), SharedDBPath, readXUIDFile, autoDetectRepoRoot |
+| `gate_extra_test.go` | validation | Tests filesystem : GateReport, CheckBinary, CheckDBProfiles, RunGateCheck4 |
+| `gate_cgo_test.go` | validation | Tests DuckDB : checkDBAccessible, checkTablesExist, checkViewsExist, checkSharedTables/Views, checkMigrationsApplied, checkPlayerDB |
+| `seed_cgo_test.go` | ops | Tests DuckDB : SeedCareerRanks, SeedCitationMappings, SeedMedalDefinitions |
+| `restore_extra_test.go` | ops | Tests filesystem : FindAvailableBackups, ReadBackupMetadata |
+| `diagnose_cgo_test.go` | ops | Tests DuckDB : DiagnoseDB, describeAllTables, listViews, listIndexes, FormatDiagnoseReport |
+| `healthcheck_cgo_test.go` | ops | Tests DuckDB : CheckDuckDB, checkFileExists, RunHealthcheck |
+| `backup_archive_extra_test.go` | ops | Tests filesystem : WriteBackupMetadata, WriteArchiveIndex |
+| `media_backup_cgo_test.go` | ops | Tests DuckDB : fileHash, walkMediaDir, listBaseTables, ensureMediaTables, loadKnownHashes, findLatestParquetFiles |
+| `archive_restore_cgo_test.go` | ops | Tests DuckDB : listArchivableYears (tables vides), restoreTable (parquet invalide) |
+| `fanout_bootstrap_extra_test.go` | service | Tests purs : FanoutBuildPlan, FanoutExecute, BootstrapService |
+
+### Résultats finaux
+
+| Package | Couverture (per-pkg) |
+|---------|:-------------------:|
+| analysis | 81.1% ✅ |
+| service | 86.9% ✅ |
+| config | 76.0% ✅ |
+| validation | 52.9% ✅ |
+| ops | 51.4% ✅ |
+| domain | 100.0% ✅ |
+| domain/chart | 100.0% ✅ |
+| domain/title | 98.2% ✅ |
+| notify | 57.2% ✅ |
+| ctxkeys | 100.0% ✅ |
+| **Total pipeline filtré** | **78.4%** ✅ |
+
+### Points notables
+
+- Pattern `//go:build cgo` (sans tag `integration`) pour inclure les tests DuckDB dans le pipeline standard
+- `insertMediaFile` non testable (bug DuckDB: `NOT NULL constraint` sur `id INTEGER PRIMARY KEY` sans SEQUENCE)
+- Métrique de référence pour l'objectif 50% : `go test -cover ./internal/<pkg>/` (pas le pipeline `-coverpkg=./...`)
+
+### Conclusion
+
+Tous les packages désormais ≥ 50%. Pipeline global : 78.4%. Prêt pour Sprint 50.
