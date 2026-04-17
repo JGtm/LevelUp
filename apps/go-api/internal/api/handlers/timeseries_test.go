@@ -45,7 +45,7 @@ func TestTimeseriesHandler_OK(t *testing.T) {
 		return mock, nil
 	}
 	r := newTimeseriesRouter(factory)
-	body, _ := json.Marshal(domain.TimeseriesQueryRequest{Granularity: "day"})
+	body, _ := json.Marshal(domain.TimeseriesQueryRequest{})
 	req := httptest.NewRequest(http.MethodPost, "/players/test-player/pages/timeseries", bytes.NewReader(body))
 	req.Header.Set("Content-Type", "application/json")
 	w := httptest.NewRecorder()
@@ -78,7 +78,7 @@ func TestTimeseriesHandler_ServiceError(t *testing.T) {
 		return mock, nil
 	}
 	r := newTimeseriesRouter(factory)
-	body, _ := json.Marshal(domain.TimeseriesQueryRequest{Granularity: "week"})
+	body, _ := json.Marshal(domain.TimeseriesQueryRequest{})
 	req := httptest.NewRequest(http.MethodPost, "/players/test-player/pages/timeseries", bytes.NewReader(body))
 	req.Header.Set("Content-Type", "application/json")
 	w := httptest.NewRecorder()

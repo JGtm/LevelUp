@@ -176,28 +176,28 @@ func TestMigrationCount_MinimumExpected(t *testing.T) {
 // ─────────────────────────────────────────────────────────────────────────────
 
 // viewExists retourne true si la vue est dans information_schema.views.
-func viewExists(t *testing.T, db *sql.DB, viewName string) bool {
+func assertViewExists(t *testing.T, db *sql.DB, viewName string) bool {
 	t.Helper()
 	var cnt int
 	err := db.QueryRow(
 		"SELECT COUNT(*) FROM information_schema.views WHERE table_name = ?", viewName,
 	).Scan(&cnt)
 	if err != nil {
-		t.Errorf("viewExists(%q): %v", viewName, err)
+		t.Errorf("assertViewExists(%q): %v", viewName, err)
 		return false
 	}
 	return cnt > 0
 }
 
 // tableExists retourne true si la table est dans information_schema.tables.
-func tableExists(t *testing.T, db *sql.DB, tableName string) bool {
+func assertTableExists(t *testing.T, db *sql.DB, tableName string) bool {
 	t.Helper()
 	var cnt int
 	err := db.QueryRow(
 		"SELECT COUNT(*) FROM information_schema.tables WHERE table_name = ?", tableName,
 	).Scan(&cnt)
 	if err != nil {
-		t.Errorf("tableExists(%q): %v", tableName, err)
+		t.Errorf("assertTableExists(%q): %v", tableName, err)
 		return false
 	}
 	return cnt > 0
@@ -224,7 +224,7 @@ func TestRunForDB_Shared_CoreTablesExist(t *testing.T) {
 		"weapon_kills",
 	}
 	for _, tbl := range tables {
-		if !tableExists(t, db, tbl) {
+		if !assertTableExists(t, db, tbl) {
 			t.Errorf("table %q absente après migration shared", tbl)
 		}
 	}
@@ -246,7 +246,7 @@ func TestRunForDB_Shared_V6ViewsExist(t *testing.T) {
 		"v_weapon_kills",
 	}
 	for _, v := range views {
-		if !viewExists(t, db, v) {
+		if !assertViewExists(t, db, v) {
 			t.Errorf("vue v6 %q absente après migration shared", v)
 		}
 	}
@@ -254,7 +254,7 @@ func TestRunForDB_Shared_V6ViewsExist(t *testing.T) {
 	// v_match_full et v_killer_victim_full nécessitent un ATTACH 'meta' à query-time
 	// mais la définition (CREATE VIEW) doit être présente.
 	for _, v := range []string{"v_match_full", "v_killer_victim_full"} {
-		if !viewExists(t, db, v) {
+		if !assertViewExists(t, db, v) {
 			t.Errorf("vue v6 %q absente après migration shared", v)
 		}
 	}
@@ -311,7 +311,7 @@ func TestRunForDB_Player_CoreTablesExist(t *testing.T) {
 		"media_files",
 	}
 	for _, tbl := range tables {
-		if !tableExists(t, db, tbl) {
+		if !assertTableExists(t, db, tbl) {
 			t.Errorf("table player %q absente après migration", tbl)
 		}
 	}
@@ -357,7 +357,7 @@ func TestRunForDB_SharedPvE_TableExists(t *testing.T) {
 		t.Fatalf("RunForDB(SharedPvE): %v", err)
 	}
 
-	if !tableExists(t, db, "pve_match_stats") {
+	if !assertTableExists(t, db, "pve_match_stats") {
 		t.Error("table pve_match_stats absente après migration shared_pve")
 	}
 

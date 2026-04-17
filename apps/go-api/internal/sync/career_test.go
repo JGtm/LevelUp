@@ -24,11 +24,10 @@ func openMemForCareer(t *testing.T) *sql.DB {
 	t.Cleanup(func() { db.Close() })
 
 	_, err = db.Exec(`CREATE TABLE IF NOT EXISTS career_progression (
-		id INTEGER PRIMARY KEY,
 		xuid VARCHAR NOT NULL,
-		current_rank INTEGER,
-		current_rank_name VARCHAR,
-		current_rank_tier VARCHAR,
+		rank INTEGER,
+		rank_name VARCHAR,
+		rank_tier VARCHAR,
 		current_xp INTEGER,
 		xp_for_next_rank INTEGER,
 		xp_total INTEGER,

@@ -45,7 +45,8 @@ func TestSessionCompareHandler_OK(t *testing.T) {
 		return mock, nil
 	}
 	r := newSessionCompareRouter(factory)
-	body, _ := json.Marshal(domain.SessionCompareRequest{SessionA: "s1", SessionB: "s2"})
+	s1, s2 := "s1", "s2"
+	body, _ := json.Marshal(domain.SessionCompareRequest{SessionA: &s1, SessionB: &s2})
 	req := httptest.NewRequest(http.MethodPost, "/players/test-player/pages/session-compare", bytes.NewReader(body))
 	req.Header.Set("Content-Type", "application/json")
 	w := httptest.NewRecorder()
@@ -61,7 +62,8 @@ func TestSessionCompareHandler_PlayerNotFound(t *testing.T) {
 		return nil, errors.New("player_not_found")
 	}
 	r := newSessionCompareRouter(factory)
-	body, _ := json.Marshal(domain.SessionCompareRequest{SessionA: "s1", SessionB: "s2"})
+	s1, s2 := "s1", "s2"
+	body, _ := json.Marshal(domain.SessionCompareRequest{SessionA: &s1, SessionB: &s2})
 	req := httptest.NewRequest(http.MethodPost, "/players/unknown/pages/session-compare", bytes.NewReader(body))
 	req.Header.Set("Content-Type", "application/json")
 	w := httptest.NewRecorder()
@@ -78,7 +80,8 @@ func TestSessionCompareHandler_ServiceError(t *testing.T) {
 		return mock, nil
 	}
 	r := newSessionCompareRouter(factory)
-	body, _ := json.Marshal(domain.SessionCompareRequest{SessionA: "s1", SessionB: "s2"})
+	s1, s2 := "s1", "s2"
+	body, _ := json.Marshal(domain.SessionCompareRequest{SessionA: &s1, SessionB: &s2})
 	req := httptest.NewRequest(http.MethodPost, "/players/test-player/pages/session-compare", bytes.NewReader(body))
 	req.Header.Set("Content-Type", "application/json")
 	w := httptest.NewRecorder()

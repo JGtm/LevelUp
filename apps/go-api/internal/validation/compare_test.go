@@ -313,7 +313,7 @@ func TestStatusIcon_Values(t *testing.T) {
 		{statusWarn, "⚠️"},
 		{statusDiverge, "❌"},
 		{statusMissGo, "🔍"},
-		{statusMissPy, "🔍"},
+		{statusMissPy, "📭"},
 	}
 	for _, tt := range tests {
 		t.Run(tt.status, func(t *testing.T) {

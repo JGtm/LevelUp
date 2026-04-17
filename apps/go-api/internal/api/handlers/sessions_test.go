@@ -36,7 +36,7 @@ func newSessionsRouter(factory handlers.ServiceFactory[port.SessionsService]) *c
 
 func TestSessionsHandler_OK(t *testing.T) {
 	mock := &mockSessionsService{
-		resp: domain.SessionsResponse{Sessions: []domain.Session{{SessionID: "s1"}}},
+		resp: domain.SessionsResponse{Sessions: []domain.SessionGroup{{SessionID: 1}}},
 	}
 	factory := func(_ context.Context, slug string) (port.SessionsService, error) {
 		if slug != testPlayerSlug {

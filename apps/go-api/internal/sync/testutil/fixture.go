@@ -114,7 +114,8 @@ func NewInMemoryShared(t *testing.T) *sql.DB {
 		)`,
 		`CREATE TABLE sync_meta (
 			key VARCHAR PRIMARY KEY,
-			value VARCHAR
+			value VARCHAR,
+			updated_at TIMESTAMP
 		)`,
 	}
 	for _, stmt := range stmts {
@@ -148,6 +149,19 @@ func NewInMemoryPlayer(t *testing.T) *sql.DB {
 			key VARCHAR PRIMARY KEY,
 			value VARCHAR,
 			updated_at TIMESTAMP
+		)`,
+		`CREATE TABLE career_progression (
+			xuid VARCHAR,
+			rank INTEGER,
+			rank_name VARCHAR,
+			rank_tier VARCHAR,
+			current_xp INTEGER DEFAULT 0,
+			xp_for_next_rank INTEGER DEFAULT 0,
+			xp_total INTEGER DEFAULT 0,
+			is_max_rank BOOLEAN DEFAULT FALSE,
+			adornment_path VARCHAR DEFAULT '',
+			spartan_id VARCHAR DEFAULT '',
+			recorded_at TIMESTAMP
 		)`,
 		`CREATE TABLE schema_migrations (
 			name VARCHAR PRIMARY KEY,

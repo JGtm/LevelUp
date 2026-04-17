@@ -37,7 +37,7 @@ func newLastMatchRouter(factory handlers.ServiceFactory[port.LastMatchService]) 
 }
 
 func TestLastMatchHandler_OK(t *testing.T) {
-	mock := &mockLastMatchService{resp: domain.LastMatchResolveResponse{MatchID: "m1"}}
+	mock := &mockLastMatchService{resp: domain.LastMatchResolveResponse{CurrentMatchID: "m1"}}
 	factory := func(_ context.Context, slug string) (port.LastMatchService, error) {
 		if slug != testPlayerSlug {
 			return nil, errors.New("player_not_found")

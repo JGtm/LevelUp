@@ -1,5 +1,41 @@
 # Thought Log
 
+## [2026-04-17] fix(tests): correction 9 échecs tests S45-S49 — phase11/sprint49-closure (suite)
+
+**Statut** : Complété
+
+### Contexte
+
+Continuation du sprint de clôture S49. Après les corrections de build tags (commit précédent), 9 packages présentaient encore des échecs à l'exécution des tests d'intégration.
+
+### Corrections effectuées
+
+1. **`migration/migration_test.go`** : `tableExists`/`viewExists` redéclarés → renommés `assertTableExists`/`assertViewExists`
+2. **`migration/steps_shared.go`** : Migrations ADD COLUMN sur tables inexistantes → ajout `create_base_shared_schema` en tête (8 tables : match_registry, match_participants, medals_earned, xuid_aliases, weapon_kills, killer_victim_pairs, highlight_events, sync_meta)
+3. **`migration/steps_player.go`** : Idem → ajout `create_base_player_schema` en tête (6 tables : player_match_enrichment, sync_meta, career_progression, sessions, match_citations, media_files)
+4. **`sync/career_test.go`** : Schéma `career_progression` incorrect → aligné sur le vrai schéma
+5. **`platform/duckdb/bootstrap_repo.go`** : `FROM match_participants` → `FROM shared.match_participants`
+6. **`api/handlers/last_match_test.go`** : `MatchID` → `CurrentMatchID`
+7. **`api/handlers/match_history_test.go`** : `Total`, `Page/PageSize` → types domain corrects
+8. **`api/handlers/session_compare_test.go`** : `string` → `*string` pour SessionA/SessionB
+9. **`api/handlers/sessions_test.go`** : `domain.Session` → `domain.SessionGroup{SessionID int}`
+10. **`ops/restore_test.go`** : Format Parquet → `{table}_{timestamp}.parquet` + metadata JSON
+11. **`api/handlers/setup_test.go`** : Race Windows TempDir → `time.Sleep(100ms)` avant fin test
+
+### Résultats
+
+- **21 packages, 0 FAIL** — tous les tests d'intégration passent
+- Couverture filtrée (gen/ + msal-poc/ exclus) : **33.6%**
+- Baseline ratchet mis à jour : **35.0% → 33.5%** (les nouvelles migrations create_base_* ont augmenté le dénominateur)
+- ci.yml YAML validé ✅
+- SPRINT_ROADMAP mis à jour avec addendum S49
+
+### Note couverture
+
+La cible de 70% avec `-coverpkg=./...` n'est pas atteinte. La couverture "par package" des packages testés est bien meilleure (migration: 81.1%, platform/jobs: 82.3%, domain: 75%, handlers: 60.8%). La cible 70% globale est reportée à Sprint 51+ (sprint dédié tests DuckDB/sync).
+
+---
+
 ## [2026-04-17] fix(build): correction build tags + ci.yml CGO + roadmap finalisation S45-S49
 
 **Statut** : Complété

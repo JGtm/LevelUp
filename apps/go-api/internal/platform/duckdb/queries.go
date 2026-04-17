@@ -27,8 +27,8 @@ SELECT
     xa.gamertag,
     xa.xuid,
     COUNT(DISTINCT mp.match_id) AS match_count
-FROM xuid_aliases xa
-LEFT JOIN match_participants mp ON xa.xuid = mp.xuid
+FROM shared.xuid_aliases xa
+LEFT JOIN shared.match_participants mp ON xa.xuid = mp.xuid
 WHERE xa.gamertag ILIKE '%' || ? || '%'
 GROUP BY xa.gamertag, xa.xuid
 ORDER BY match_count DESC, xa.gamertag ASC
