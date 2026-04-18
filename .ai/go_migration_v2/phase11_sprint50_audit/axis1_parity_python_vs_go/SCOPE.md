@@ -8,9 +8,9 @@ Vérifier que **toute fonctionnalité présente dans la version Python/Streamlit
 
 | Worktree | Chemin | Branche | SHA à remplir |
 |----------|--------|---------|---------------|
-| Python (référence) | `c:\Users\Guillaume\Downloads\Scripts\LevelUp` | (dernière stable sur `main`) | `_______` |
-| Go (cible backend) | `c:\Users\Guillaume\Downloads\Scripts\LevelUp-go-migration` | `phase11/sprint50-triple-audit` (ou parente) | `_______` |
-| React (cible frontend) | même worktree que Go, dossier `apps/web/` | idem | `_______` |
+| Python (référence) | `c:\Users\Guillaume\Downloads\Scripts\LevelUp` | `v7/cockpit` | `db638c09` |
+| Go (cible backend) | `c:\Users\Guillaume\Downloads\Scripts\LevelUp-go-migration` | `recovery/reapply-wip-s49-closure-2026-04-18` | `93c3cd66` |
+| React (cible frontend) | même worktree que Go, dossier `apps/web/` | idem | `93c3cd66` |
 
 > **Règle** : dès que les SHAs sont figés, on ne les change plus pendant toute la durée de l'axe. Si la base évolue, on rouvre un nouvel axe (Sprint 51+).
 

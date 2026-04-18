@@ -1,5 +1,110 @@
 # Thought Log
 
+## [2026-04-18] fix(go-web-tests): suites Go et React remises au vert
+
+**Statut** : Complété
+
+### Contexte
+
+Après la réintégration du stash 2, le travail a été recentré sur un objectif strict : faire repasser toutes les validations liées au backend Go et au frontend React, sans traiter Python/Streamlit.
+
+### Décisions techniques
+
+1. **Go** : renommage des tests dupliqués dans `internal/notify` et `internal/ops`, plus réalignement des fixtures DuckDB sur `player_match_enrichment.is_excluded`.
+2. **Go** : correction d'un vrai bug dans `internal/platform/duckdb/match_history_repo.go` où l'ordre du `rows.Scan` ne correspondait plus à `Q5MatchHistory` depuis l'ajout de `is_excluded`.
+3. **React** : nettoyage des derniers écarts lint/typecheck (`HomePage`, `MediaPage`, `SetupPage`, `Input`, `Select`, config ESLint pour fichiers de routes/tests).
+4. **React** : durcissement de `HomePage` et `SynthesisPage` face à des fixtures partielles, puis réalignement des tests Vitest devenus obsolètes (`SetupPage`, `SquadPage`, `SynthesisPage`, `MediaPage`, `HomePage`).
+
+### Résultats observés
+
+- `CGO_ENABLED=1 go test -tags=integration ./... -timeout 120s -count=1` : OK
+- `npm run typecheck` : OK
+- `npm run lint` : OK
+- `npm run build` : OK
+- `npm run test:run` : OK (12 fichiers, 61 tests)
+- `npm run test:e2e` : OK (70 tests Playwright)
+
+### Conclusion / prochaine étape
+
+Le périmètre demandé est stabilisé localement : backend Go et frontend React sont tous les deux au vert.
+
+## [2026-04-18] fix(web-shell): finalisation shell React, contrat KPI et validation runtime
+
+**Statut** : Complété
+
+### Contexte
+
+Le shell React sans sidebar était en place, mais il restait trois écarts avant de pouvoir le considérer réellement terminé : absence d'élément de navigation sémantique pour le slice Playwright du shell, affichage faux de la précision (`avg_accuracy` multiplié à tort par 100), et typecheck/build frontend encore bloqués.
+
+### Décisions techniques
+
+1. **Contrat KPI explicité** : côté Go, `HeroKPIs.WinRate` reste un ratio `[0..1]`, mais `HeroKPIs.AvgAccuracy` est déjà un pourcentage. Le frontend ne multiplie plus `avg_accuracy` par 100 dans `KPIBar.tsx` ni dans `HomePage.tsx`.
+2. **Navigation sémantique rétablie** : `PlayerScopeNav.tsx` rend désormais un vrai `nav` avec `aria-label`, ce qui aligne le shell sur l'attente accessibilité/e2e après bootstrap.
+3. **Liens TanStack Router typés** : `HomePage.tsx` remplace les chemins interpolés fragiles par des routes typées avec `params={{ playerSlug }}`.
+4. **Blocages TypeScript nettoyés** : correction du nullable preview dans `CareerEncountersSection.tsx`, ajout de `interrupted` au contrat `JobStatus`, et suppression de l'auto-référence Zustand dans `settingsDraftStore.ts` via `get()`.
+5. **Build Vite réparé à la racine** : ajout explicite de `plotly.js` dans `apps/web/package.json` pour satisfaire la dépendance requise par `react-plotly.js`.
+
+### Fichiers créés/modifiés
+
+- `apps/web/src/components/shell/PlayerScopeNav.tsx`
+- `apps/web/src/components/shell/KPIBar.tsx`
+- `apps/web/src/features/home/HomePage.tsx`
+- `apps/web/src/features/career/CareerEncountersSection.tsx`
+- `apps/web/src/lib/api/types.ts`
+- `apps/web/src/stores/settingsDraftStore.ts`
+- `apps/web/package.json`
+
+### Résultats observés
+
+- `npm run -s typecheck` : OK
+- `npm run -s build` : OK après ajout de `plotly.js`
+- `npm run -s test:run -- src/components/shell/shellNavigation.test.ts` : OK (4 tests)
+- `npm run -s test:e2e -- e2e/slice-0a-shell.spec.ts` : OK (5 tests)
+
+### Conclusion / prochaine étape
+
+Le shell web demandé est désormais réellement finalisé sur ce périmètre : navigation sémantique visible après bootstrap, KPIs cohérents avec le backend, typecheck/build propres et slice Playwright vert.
+
+## [2026-04-18] feat(web-shell): shell React sans sidebar avec header compact et scope joueur
+
+**Statut** : Complété
+
+### Contexte
+
+Après le cadrage UX documentaire, l'utilisateur a demandé de passer à l'implémentation côté projet Go/web, avec une contrainte explicite : pas de sidebar, et un rendu plus lisible, mieux hiérarchisé et plus premium.
+
+### Décisions techniques
+
+1. **Suppression du shell latéral** : `AppShell` n'utilise plus de barre latérale fixe ; il repose désormais sur un header global sticky et une zone de contenu principale centrée.
+2. **Nouveau header global** : création de `AppShellHeader.tsx` pour centraliser identité produit, titre courant, liens utilitaires, session Halo et changement de joueur.
+3. **Navigation joueur en deux niveaux** : création de `PlayerScopeNav.tsx` + `shellNavigation.ts` pour distinguer parcours principaux (`Home`, `Career`, `Historique`, `Squad`, `Media`) et vues secondaires (`Last Match`, `Citations`, `Séries`, `Sessions`, `Explorer`, `Synthèse`).
+4. **Switch joueur propre** : ajout de `buildPlayerDestination()` pour préserver la section active quand le chemin est déjà dans le scope joueur, avec fallback vers `/players/{slug}/home` sinon.
+5. **Refonte visuelle transverse** : `KPIBar` et `PageHeader` ont été re-stylés pour coller au shell compact sans sidebar, avec plus de hiérarchie visuelle et moins de rendu tabulaire brut.
+6. **Validation ciblée** : test Vitest ajouté pour le helper de navigation ; typage global exécuté mais encore bloqué par des erreurs préexistantes hors scope shell.
+
+### Fichiers créés/modifiés
+
+- `apps/web/src/components/shell/AppShell.tsx`
+- `apps/web/src/components/shell/AppShellHeader.tsx`
+- `apps/web/src/components/shell/PlayerScopeNav.tsx`
+- `apps/web/src/components/shell/KPIBar.tsx`
+- `apps/web/src/components/shell/PageHeader.tsx`
+- `apps/web/src/components/shell/shellNavigation.ts`
+- `apps/web/src/components/shell/shellNavigation.test.ts`
+- `apps/web/src/routes/players/$playerSlug.tsx`
+- `apps/web/src/index.css`
+- `apps/web/src/components/shell/NavBar.tsx` (remplacé par un stub vide supprimé du flux d'usage)
+
+### Résultats observés
+
+- `vitest run src/components/shell/shellNavigation.test.ts` : OK (4 tests)
+- `get_errors` sur les fichiers shell modifiés : aucune erreur
+- `npm run -s typecheck` : échec, mais uniquement sur des erreurs préexistantes hors scope (`CareerEncountersSection.tsx`, `HomePage.tsx`, `SetupPage.tsx`, `settingsDraftStore.ts`)
+
+### Conclusion / prochaine étape
+
+Le shell sans sidebar est en place. La prochaine étape logique est un test visuel en local, puis un passage ciblé sur les pages `Home` et `Career` pour profiter pleinement du nouveau header compact et du scope joueur.
+
 ## [2026-04-18] fix(recovery): réapplication stash 2 sur la bonne base Sprint 49
 
 **Statut** : Complété
@@ -15089,3 +15194,21 @@ Créer des tests internes (package-level) et CGO pour couvrir les fonctions priv
 
 ### Conclusion
 5 gates sur 6 validés localement. Le gate `sync ≥ 70%` reste en dette (11.2%) — nécessiterait une infrastructure de mock API Halo massive, hors scope. SPRINT_ROADMAP.md mis à jour avec les mesures effectives.
+
+## [2026-04-18] docs(phase11): Sprint 50 — Triple audit final Claude (3 axes)
+
+**Statut** : Complété
+
+### Décision technique
+Rédaction des 3 `claude_review.md` pour le Sprint 50 (passage aveugle, indépendant de ChatGPT) :
+- **Axe 1 — Parité** : 13/13 P0/P1 endpoints ✅, 41 routes Go, 7/7 algos golden values, 2 pages absentes (Win/Loss, Objectifs), i18n React absent
+- **Axe 2 — Architecture** : hexagonal Go impeccable (0 violation), 27 fonctions >80L (sync/migration), 1 fichier >500L non-généré, React 1 cross-feature import, pas d'ErrorBoundary
+- **Axe 3 — Tests** : couverture Go 58.0% (gate 70% ���), platform/duckdb 0.6% ���, sync 14.1% ���, migration 0.0% — analyse/handlers/service >90% ✅, 1376 Test* functions, React 12 unit + 16 E2E
+
+### Résultats
+- SHAs figés : Go `93c3cd66`, Python `db638c09`
+- 3 reviews complètes dans `phase11_sprint50_audit/axis{1,2,3}/claude_review.md`
+- Couverture mesurée depuis `cov_sprint50.out` (données réelles, pas estimées)
+
+### Conclusion
+Reviews ChatGPT + réconciliation + rapport final restent à faire (hors scope Claude). Blockers identifiés : couverture Go globale et platform/duckdb/sync.

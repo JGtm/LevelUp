@@ -8,8 +8,8 @@ Vérifier que le code Go + React respecte les principes d'architecture hexagonal
 
 | Worktree | Chemin | Branche | SHA |
 |----------|--------|---------|-----|
-| Go | `LevelUp-go-migration/apps/go-api/` | `phase11/sprint50-triple-audit` | `_______` |
-| React | `LevelUp-go-migration/apps/web/` | idem | `_______` |
+| Go | `LevelUp-go-migration/apps/go-api/` | `recovery/reapply-wip-s49-closure-2026-04-18` | `93c3cd66` |
+| React | `LevelUp-go-migration/apps/web/` | idem | `93c3cd66` |
 
 ## Périmètre inclus
 
