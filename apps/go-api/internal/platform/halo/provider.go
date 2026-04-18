@@ -279,7 +279,6 @@ func aggregateChallenges(decks []struct {
 	for _, deck := range decks {
 		total += len(deck.ActiveChallenges)
 		completed += len(deck.CompletedChallenges)
-		// XP : extraction best-effort depuis chaque challenge actif.
 		for _, raw := range deck.ActiveChallenges {
 			var ch struct {
 				XPReward int `json:"XPReward"`
@@ -288,7 +287,6 @@ func aggregateChallenges(decks []struct {
 				xpAvail += ch.XPReward
 			}
 		}
-		// Expiration la plus proche (tri lexicographique des ISO8601 suffisant).
 		if exp := deck.Expiration.ISO8601Date; exp != "" {
 			if nextExpiry == "" || exp < nextExpiry {
 				nextExpiry = exp
