@@ -1,16 +1,61 @@
 // Package halo — privacy_provider.go : interrogation de la privacy d'un compte Halo.
 //
 // Sprint 54 B : GET /hi/players/{xuid}/matches-privacy
+// Sprint 54 B5 : cache process-level avec TTL (privacyTTLCache) pour éviter
+//
+//	un appel Waypoint à chaque requête bootstrap.
+//	TTL par défaut : 30 minutes.
+//	La player DB étant ouverte en read-only dans le pool, le cache
+//	est maintenu en mémoire (sync.RWMutex) plutôt qu'en DuckDB.
 package halo
 
 import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"sync"
+	"time"
 
 	"levelup/go-api/internal/ctxkeys"
 	"levelup/go-api/internal/domain"
 )
+
+// PrivacyCacheTTL est la durée de validité d'une entrée dans le cache privacy.
+// 30 minutes : suffisant pour éviter le spam Waypoint, court pour rester frais.
+const PrivacyCacheTTL = 30 * time.Minute
+
+// privacyCacheEntry est une entrée du cache TTL.
+type privacyCacheEntry struct {
+	info       *domain.MatchPrivacyInfo
+	observedAt time.Time
+}
+
+// privacyTTLCache est un cache thread-safe de la privacy par xuid.
+type privacyTTLCache struct {
+	mu      sync.RWMutex
+	entries map[string]privacyCacheEntry
+}
+
+// get retourne l'entrée si elle existe et n'est pas expirée.
+func (c *privacyTTLCache) get(xuid string) (*domain.MatchPrivacyInfo, bool) {
+	c.mu.RLock()
+	e, ok := c.entries[xuid]
+	c.mu.RUnlock()
+	if !ok || time.Since(e.observedAt) > PrivacyCacheTTL {
+		return nil, false
+	}
+	return e.info, true
+}
+
+// set stocke une entrée dans le cache.
+func (c *privacyTTLCache) set(xuid string, info *domain.MatchPrivacyInfo) {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	if c.entries == nil {
+		c.entries = make(map[string]privacyCacheEntry)
+	}
+	c.entries[xuid] = privacyCacheEntry{info: info, observedAt: time.Now()}
+}
 
 // privacyResponse est la réponse brute de l'endpoint matches-privacy.
 type privacyResponse struct {
@@ -22,12 +67,17 @@ type privacyResponse struct {
 
 const defaultStatsHost = "https://halostats.svc.halowaypoint.com"
 
-// GetMatchPrivacy interroge l'API Waypoint pour connaître la privacy du compte.
-// Les tokens sont lus depuis le contexte via ctxkeys.
-// Retourne un MatchPrivacyInfo avec Hint="auth_required" si l'auth est absente.
+// GetMatchPrivacy retourne la privacy du compte Halo pour le xuid donné.
+// L'appel Waypoint n'est effectué que si le cache est vide ou expiré (TTL=30min).
+// Retourne un MatchPrivacyInfo non-nil même en cas d'erreur (fallback gracieux).
 func (p *HaloProvider) GetMatchPrivacy(ctx context.Context, xuid string) (*domain.MatchPrivacyInfo, error) {
 	if xuid == "" {
 		return &domain.MatchPrivacyInfo{Hint: "auth_required"}, nil
+	}
+
+	// Sprint 54 B5 : vérifier le cache avant tout appel Waypoint.
+	if cached, ok := p.privacyCache.get(xuid); ok {
+		return cached, nil
 	}
 
 	tokens := ctxkeys.HaloTokens(ctx)
@@ -38,7 +88,7 @@ func (p *HaloProvider) GetMatchPrivacy(ctx context.Context, xuid string) (*domai
 	url := fmt.Sprintf("%s/hi/players/xuid(%s)/matches-privacy", defaultStatsHost, xuid)
 	body, err := p.doGet(ctx, url, tokens)
 	if err != nil {
-		// Privacy non critique — on ne bloque pas le bootstrap.
+		// Privacy non critique — fallback partiel sans mettre en cache l'erreur.
 		return &domain.MatchPrivacyInfo{IsPartial: true, Hint: "fetch_error"}, nil
 	}
 
@@ -47,6 +97,16 @@ func (p *HaloProvider) GetMatchPrivacy(ctx context.Context, xuid string) (*domai
 		return &domain.MatchPrivacyInfo{IsPartial: true, Hint: "parse_error"}, nil
 	}
 
+	info := parsePrivacyResponse(&resp)
+
+	// Sprint 54 B5 : mettre en cache le résultat (succès uniquement).
+	p.privacyCache.set(xuid, info)
+
+	return info, nil
+}
+
+// parsePrivacyResponse convertit la réponse brute Waypoint en MatchPrivacyInfo.
+func parsePrivacyResponse(resp *privacyResponse) *domain.MatchPrivacyInfo {
 	info := &domain.MatchPrivacyInfo{}
 	if resp.AllMatchesPrivacy == "Private" {
 		info.IsPrivate = true
@@ -55,5 +115,5 @@ func (p *HaloProvider) GetMatchPrivacy(ctx context.Context, xuid string) (*domai
 		info.IsPartial = true
 		info.Hint = "partial_private"
 	}
-	return info, nil
+	return info
 }

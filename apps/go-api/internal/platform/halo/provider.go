@@ -106,6 +106,8 @@ type HaloProvider struct {
 	// Overridables pour les tests : vides en production (→ fallback vers les constantes).
 	battlePassBaseURL string
 	challengesBaseURL string
+	// Sprint 54 B5 : cache process-level de la privacy par xuid.
+	privacyCache privacyTTLCache
 }
 
 // DefaultHaloProvider est l'instance globale du provider (60 req/min, 3 retries).
