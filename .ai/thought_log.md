@@ -1,5 +1,166 @@
 # Thought Log
 
+## [2026-04-18] test(coverage): couverture Go 80% → atteint 78%
+
+**Statut** : Complété
+
+### Contexte
+
+Objectif : porter la couverture de tests Go de 63% à 80% sur `apps/go-api`. La session finale s'est terminée à 78%, valeur acceptée par l'utilisateur.
+
+### Décisions techniques
+
+1. **Branche** : `test/coverage-80-sync`
+2. **Progression** : 63.4% → 77.6% (sessions précédentes) → 78.0% (session finale)
+3. **Fichiers créés cette session** :
+   - `internal/sync/backfill_missing_test.go` — 23 tests couvrant toutes les branches de `FindMatchesMissingData` (medals, events, skill, assets, PVE, weapons, participants, playable_duration, ForceNoFilm, ForceAliases, etc.)
+   - `internal/migration/helpers_extra_test.go` — 8 tests migration (`addColumnIfMissing`, `columnExists`, `tableExists`, `RunForDB` avec branches backfill RequiresAPI/Success/Error)
+4. **Pattern utilisé** : DuckDB in-memory (`sql.Open("duckdb", ":memory:")`, `MaxOpenConns(1)`, `t.Cleanup`)
+5. **Total fichiers de tests créés sur l'ensemble des sessions** : ~30 fichiers de tests intégration
+
+### Résultats observés
+
+- Couverture finale : **78.0%** (vs objectif initial 80%)
+- Tous les tests passent (aucun FAIL)
+- Commit : `a55b2096` — `test(coverage): ajouter tests FindMatchesMissingData + migration helpers → 78%`
+
+### Conclusion
+
+Objectif 80% non atteint exactement mais utilisateur satisfait de 78%. Les branches non couvertes restantes sont principalement dans des fonctions qui nécessitent un client Halo réel (auth, device flow) ou une infrastructure complète (engine.go, fanout_service). Prochaine étape : merge `test/coverage-80-sync` dans la branche parente.
+
+---
+
+
+
+**Statut** : Complété
+
+### Contexte
+
+Apres lecture du premier cadrage, l'utilisateur a apporte quatre arbitrages importants : les perfect kills doivent servir a affiner la formule, la comparaison `solo vs squad` doit vivre dans `Synthese` et non dans `Escouade`, les tuiles de matchs doivent suivre un pattern de barre composite plutot qu'un simple badge texte, et `Carriere` doit rester hors de ce sujet.
+
+### Décisions techniques
+
+1. **Perfect kills = ancre exacte partielle** — le document integre maintenant une decomposition explicite entre part exacte (`225 * perfect_kills`) et residuel non-perfect, avec une variante offensive et defensive residualisee.
+2. **Clarifier la source de verite** — `medals_earned` ne suffit pas a savoir `qui a perfect qui`; il faut reconstruire cette information via les medal events dans `highlight_events` et les `killer_victim_pairs` temporels.
+3. **Recentrer `Escouade`** — la page ne doit pas opposer un joueur a l'equipe. Les graphes candidats sont maintenant soit team-level, soit per-player within team.
+4. **Verrouiller `Synthese` comme surface de comparaison** — le doc precise maintenant que le graphe `solo vs squad` appartient a `Synthese`, en reutilisant la logique de comparaison deja presente.
+5. **Tuiles = barre composite** — la direction produit n'est plus un badge compact texte mais une barre composite horizontale resumant le match lui-meme.
+6. **Exclure `Carriere`** — la page `Carriere` est maintenant explicitement retiree du perimetre de cette famille de metriques.
+
+### Résultats observés
+
+- `.ai/go_migration_v2/DAMAGE_EFFICIENCY_INTEGRATION.md` distingue maintenant metrique brute, metrique ancree par perfect kills et residuel
+- le positionnement UX des surfaces `Escouade`, `Synthese`, `Home/tiles` et `Carriere` est plus net
+- aucun code runtime, contrat API ou schema DuckDB n'a ete modifie dans cette passe
+
+### Conclusion / prochaine étape
+
+Le cadrage produit et analytique est maintenant beaucoup plus robuste. Si une implementation suit, le premier travail non-doc sera probablement la validation technique de la jointure `medal events Perfect` -> `killer_victim_pairs`, puis une premiere integration display-only sur les surfaces match et synthese.
+
+## [2026-04-18] docs(analysis): cadrage rendement combat / forme / scores locaux
+
+**Statut** : Complété
+
+### Contexte
+
+L'utilisateur a validé le fait de partir sur cette famille de métriques liées aux dégâts et a demandé un document de cadrage pour ne pas perdre les décisions, les pistes d'intégration, la question du vocabulaire et les besoins de tests. Le besoin couvrait à la fois `Escouade`, `Synthèse`, `Forme`, les tableaux/listings de matchs, les tuiles de matchs, ainsi que l'impact potentiel sur `Performance Score` et `LUSR` avec backfill si nécessaire.
+
+### Décisions techniques
+
+1. **Verrouiller le périmètre analytique** — la métrique est jugée viable au niveau agrégé joueur / équipe, mais pas au niveau duel ou attribution killer/victim, faute de dégâts observés par attaquant -> victime.
+2. **Sortir du mot `efficacité`** — le nouveau document recommande la famille produit `rendement combat`, avec les libellés `conversion offensive` et `résistance défensive`, et propose de renommer le `damage_efficiency` du LUSR en `damage_balance` ou `damage_share` pour lever l'ambiguïté.
+3. **Prioriser l'UI et la forme avant les scores persistés** — les premières surfaces recommandées sont `Escouade`, `Synthèse`, `Timeseries/Forme`, `Match History`, `Home` et `Match View`; `Performance` et `LUSR` ne viennent qu'après calibration, versioning et backfill.
+4. **Distinguer exact, proxy et heuristique** — les métriques joueur / équipe et les parts d'équipe sont propres; toute redistribution pondérée des dégâts d'équipe vers un joueur reste explicitement classée comme estimation.
+5. **Ancrer la suite dans des tests ciblés** — le document recense les suites Go analyse/service, OpenAPI et React à enrichir pour couvrir formules, contrats et rendus UI.
+
+### Résultats observés
+
+- Nouveau document ajouté : `.ai/go_migration_v2/DAMAGE_EFFICIENCY_INTEGRATION.md`
+- `.ai/damage-efficiency.md` pointe maintenant vers ce cadrage produit / Go migration
+- `project_map.md`, `SPRINT_EXPLORATION.md` et `data_lineage.md` référencent désormais ce nouveau document
+- Aucun code runtime, schéma DuckDB, contrat OpenAPI ni backfill n'a été modifié dans cette passe
+
+### Conclusion / prochaine étape
+
+Le sujet est maintenant cadré de façon exploitable. La prochaine implémentation devra idéalement commencer en display-only sur les surfaces match / squad / synthèse / forme, puis seulement ensuite trancher si la famille entre dans `Performance Score` ou `LUSR` avec recalibration et backfill.
+
+## [2026-04-18] feat(media): likes backend persistés pour la galerie React
+
+**Statut** : Complété
+
+### Contexte
+
+Après l'ajout du rail média enrichi sur la home, les likes étaient encore purement locaux au navigateur via `localStorage`. L'utilisateur a explicitement validé l'étape suivante : une vraie persistance backend pour liker/unliker les médias et réutiliser le même état entre la home et la page `Médias`.
+
+### Décisions techniques
+
+1. **Persister dans la player DB existante** — le like est stocké dans `media_files` via deux colonnes nouvelles : `liked` et `liked_at`. Pas de nouvelle table tant que le besoin reste un like local persistant par joueur.
+2. **Compteur dérivé et non sur-modélisé** — le frontend reçoit `like_count`, mais il est dérivé du booléen persistant (`0/1`) au lieu d'introduire tout de suite une logique multi-utilisateur artificielle.
+3. **Mutation dédiée côté API Go** — ajout de `PATCH /players/{player_slug}/media/likes` avec body explicite `{ file_path, liked }`.
+4. **Réponse média réalignée pour React** — `POST /pages/media` retourne maintenant une structure paginée de type `items + pagination + total_*`, tandis que le frontend conserve un normaliseur pour tolérer l'ancienne forme plate si elle réapparaît dans certains fixtures.
+5. **Source de vérité unique côté UI** — suppression du hook `useMediaLikes` basé sur `localStorage`; la home et la page `Médias` lisent désormais `item.liked` depuis TanStack Query et utilisent une mutation optimiste partagée.
+
+### Résultats observés
+
+- Tests Go ciblés OK : `internal/service`, `internal/api/handlers`, `internal/platform/duckdb` sur le périmètre média
+- Contrat chi ↔ OpenAPI OK après documentation de la nouvelle route likes
+- Tests Vitest ciblés OK : `HomePage.test.tsx`, `MediaPage.test.tsx`
+- `npm run -s typecheck` reste en échec, mais sur des erreurs préexistantes hors périmètre (`CompareDrawer`, `LeaderboardBlock`)
+
+### Conclusion / prochaine étape
+
+La home et la galerie React partagent maintenant une vraie persistance backend des likes. La prochaine étape naturelle, si on veut fermer complètement le sujet média, est d'aligner plus largement le backend Go sur tous les filtres riches déjà envoyés par `MediaQueryRequest` au lieu de ne fiabiliser pour l'instant que la pagination utile et l'état liked.
+
+## [2026-04-18] feat(web): rail média enrichi sur la home et viewer partagé
+
+**Statut** : Complété
+
+### Contexte
+
+L'utilisateur a demandé que la home expose les derniers médias du joueur sous une forme nettement plus premium : ligne courte de vignettes, preview animée au survol pour les clips, ouverture grand format, navigation manuelle entre médias et likes visibles à la fois sur la vignette et dans le viewer.
+
+### Décisions techniques
+
+1. **Réutiliser la surface média existante au lieu de la dupliquer** — extraction d'un viewer partagé (`MediaViewer`) et d'un hook de likes local (`useMediaLikes`) pour servir à la fois la page `Médias` et la home.
+2. **Créer un rail home dédié** — la home utilise maintenant une requête spécifique `useRecentMediaRail()` avec une clé de cache distincte et une limite fixée à `4` médias.
+3. **Passer d'un placeholder à une preview réelle** — les vignettes de la home affichent maintenant de vraies miniatures ; les clips utilisent une preview vidéo au survol.
+4. **Garder les likes côté navigateur pour l'instant** — la fonctionnalité `like / unlike` reste persistée en localStorage, visible sur les vignettes et dans la lightbox, sans prétendre fournir un compteur partagé backend.
+
+### Résultats observés
+
+- `HomePage` n'affiche plus une grille placeholder des médias récents ; elle affiche un rail compact de `4` éléments maximum
+- La page `Médias` et la home partagent désormais la même lightbox et le même comportement de likes
+- Les tests Vitest ciblés passent : `HomePage.test.tsx` et `MediaPage.test.tsx`
+
+### Conclusion / prochaine étape
+
+La prochaine étape naturelle si on veut aller plus loin est de décider si le produit a besoin d'un vrai stockage backend des likes et, dans ce cas, de définir le contrat et la persistance correspondants au lieu de rester sur une préférence locale par navigateur.
+
+## [2026-04-18] docs(ux): Spartan ID = design Spartan Record, sourcing LevelUp
+
+**Statut** : Complété
+
+### Contexte
+
+L'utilisateur a signalé une nuance décisive pour le futur `Spartan ID` : le composant de Spartan Record semble limité aux données publiques, alors que LevelUp peut aller plus loin grâce à ses endpoints, sa session Halo, MSAL et ses refresh/token exchanges. Il fallait donc verrouiller noir sur blanc que l'inspiration ne concerne que le design, pas la contrainte de données.
+
+### Décisions techniques
+
+1. **Distinguer design et source de vérité** — le document précise maintenant explicitement la règle `leur design, nos endpoints`.
+2. **Prioriser les données authentifiées LevelUp** — le `Spartan ID` cible doit utiliser d'abord les données enrichies issues de l'auth Halo / MSAL / session, puis les enrichissements locaux, et seulement en dernier recours un fallback public minimal.
+3. **Formaliser une dégradation propre** — le composant doit pouvoir exister en mode premium complet, enrichi partiel ou public minimal sans casser l'UX.
+4. **Recommander une payload dédiée** — le document pousse désormais vers une structure backend du type `spartan_identity` plutôt qu'un assemblage opportuniste de champs côté frontend.
+
+### Résultats observés
+
+- `UX_HOME_RECORD_SPARTAN_ADDITIONS.md` explicite maintenant que la limite `public-only` de Spartan Record n'est pas une cible produit pour LevelUp
+- Le cadrage du `Spartan ID` est désormais aligné avec les capacités auth réelles du projet Go
+- Aucun code runtime ni contrat OpenAPI n'a été modifié dans cette passe
+
+### Conclusion / prochaine étape
+
+La prochaine étape naturelle pour ce sujet est de recenser précisément quelles données d'identité/apparence sont déjà exposées ou faciles à exposer côté Go, afin de dessiner un `Spartan ID` sur une base contractuelle réelle plutôt que théorique.
+
 ## [2026-04-18] docs(ux): clarification bloc d'ouverture et pagination des tuiles match
 
 **Statut** : Complété
@@ -15658,3 +15819,39 @@ Deux items Gate S54 restaient non implémentés :
 - `apps/web/src/test/handlers.ts` (handler MSW leaderboard ajouté)
 - `apps/go-api/internal/metadata/medals_guard.go` (guards purs)
 - `apps/go-api/internal/metadata/medals_guard_test.go` (13 tests)
+- `apps/go-api/internal/metadata/medals_guard_test.go` (13 tests)
+
+---
+
+## [2026-04-18] Sprint 54 — Clôture complète : F4/F5/F6/F8 + Gate 100% vert
+
+### Statut : Complété
+
+### Décision technique
+Dernier lot d'items Sprint 54 implémentés en une session :
+
+**F4 — Tests multi-titre propagation (Go)** : 6 tests dans `internal/api/handlers/multititle_test.go` vérifiant que le middleware `TitleExtractor` + header `X-LevelUp-Title` sont correctement propagés dans le contexte des handlers Compare et Leaderboard. Patterns : fallback `halo_infinite`, propagation `halo_mcc`, titre invalide → fallback, absence de mélange entre requêtes concurrentes.
+
+**F5 — Test de latence Compare P95 (Go)** : `TestCompareService_Latency_P95` dans `internal/service/compare_service_test.go`. Répète 20 itérations avec un `slowProvider` simulant 50ms, calcule le P95 avec tri par insertion, vérifie P95 < 5s. Test sans réseau réel.
+
+**F6 — Tests CompareDrawer vitest (React)** : 10 tests dans `apps/web/src/features/compare/CompareDrawer.test.tsx` couvrant : fermeture si `open=false`, formulaire initial, spinner pendant fetch (`Promise` qui ne résout jamais), KPIs des deux joueurs après fetch réussi, 404 → message "Joueur introuvable", 500 → message "Erreur", `privacy_warning` → bandeau PrivacyBanner, `player_b_partial` → warning données partielles, bouton désactivé si champ vide, `onClose` déclenché au clic Fermer. Fixture `makePlayer()` alignée sur le type `NormalizedPlayerStats` frontend (`kd_ratio`, `matches_played`, `avg_kills`, etc.).
+
+**F8 — Sync HALO_EXTERNAL_OPPORTUNITIES.md** : statuts O1→O8 + O14 mis à jour avec "livré Sprint 54" et description des fichiers livrés.
+
+### Résultats
+- Go `internal/api/handlers` : 6 nouveaux tests F4 PASS
+- Go `internal/service` : 3 tests compare PASS (incl. F5 P95=~1s << 5s)
+- vitest `CompareDrawer` : 10/10 PASS (1.28s)
+- Gate Sprint 54 : 100% vert (tous les `[ ]` → `[x]`)
+- SPRINT_ROADMAP.md : Sprint 54 marqué ✅, Phase 13 ✅
+- HALO_EXTERNAL_OPPORTUNITIES.md : statuts O1–O8+O14 synchronisés
+
+### Fichiers créés/modifiés
+- `apps/go-api/internal/api/handlers/multititle_test.go` (nouveau, F4, 6 tests)
+- `apps/go-api/internal/service/compare_service_test.go` (ajout F5, import `time`)
+- `apps/web/src/features/compare/CompareDrawer.test.tsx` (nouveau, F6, 10 tests)
+- `.ai/go_migration_v2/HALO_EXTERNAL_OPPORTUNITIES.md` (statuts mis à jour F8)
+- `.ai/go_migration_v2/SPRINT_ROADMAP.md` (Sprint 54 ✅, gate 100%)
+
+### Conclusion / prochaine étape
+Sprint 54 Phase 13 entièrement clos. Sprint 55 (Phase 14 — Convergence UX Carrière/Synthèse + privacy state durable) peut démarrer.
