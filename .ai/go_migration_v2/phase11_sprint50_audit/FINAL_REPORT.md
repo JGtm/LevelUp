@@ -22,10 +22,10 @@ Sprint 50 de la Phase 11 : triple audit final de la migration Python → Go + St
 
 | Axe | 🔴 Bloquant | 🟠 Majeur | 🟡 Mineur | 🟢 Toléré |
 |-----|:-----------:|:---------:|:---------:|:---------:|
-| Axe 1 — Parité | 0 | 4 | 8 | 7+ |
+| Axe 1 — Parité | 0 | 2 | 6 | 9+ |
 | Axe 2 — Qualité | 0 | 3 | 8 | 8+ |
 | Axe 3 — Tests/logs | 0 | 5 | 7 | 7+ |
-| **Total** | **0** | **12** | **23** | **22+** |
+| **Total** | **0** | **10** | **21** | **24+** |
 
 ### 2.2 Vue d'ensemble
 
@@ -51,18 +51,16 @@ Les principales dettes fonctionnelles (Win/Loss, Objectifs absents, i18n React, 
 
 | # | Axe | Description | Effort | Sprint cible |
 |--:|-----|-------------|:------:|:------------:|
-| 1 | Axe 1 | Page **Win/Loss** absente (React + endpoint Go) | L | Sprint 52 |
-| 2 | Axe 1 | Page **Objectifs** absente (React + endpoint Go) | L | Sprint 52 |
-| 3 | Axe 1 | **Timeseries** React — 5 onglets / ~20 charts à implémenter | L | Sprint 53 |
-| 4 | Axe 1 | **i18n React** — framework à intégrer (react-i18next), 14 langues | L | Sprint 53 |
-| 5 | Axe 2 | `fanout_service.go:17` importe `platform/duckdb` — violation hexagonale | M | Sprint 51 |
-| 6 | Axe 2 | Pas d'`ErrorBoundary` React — crash = page blanche | S | Sprint 51 |
-| 7 | Axe 2 | `SetupPage.tsx` (467L) — découper en sous-composants | M | Sprint 51 |
-| 8 | Axe 3 | `@vitest/coverage-v8` non installé — couverture React non mesurable | S | Sprint 51 |
-| 9 | Axe 3 | `pollDeviceFlow` (auth) à 0% de couverture | S | Sprint 51 |
-| 10 | Axe 3 | `pool.go` : `GetOrOpen`, `openPlayerDB`, `attachShared`, `attachMeta` à 0% | M | Sprint 51 |
-| 11 | Axe 3 | 10 résidus `log.Printf` dans `notify/` — migrer vers `slog` | S | Sprint 51 |
-| 12 | Axe 3 | `ChangelogPage` sans tests unitaire ni E2E | S | Sprint 51 |
+| 1 | Axe 1 | **Timeseries** React — 5 onglets / ~20 charts à implémenter | L | Sprint 53 |
+| 2 | Axe 1 | **i18n React** — framework à intégrer (react-i18next), 14 langues | L | Sprint 53 |
+| 3 | Axe 2 | `fanout_service.go:17` importe `platform/duckdb` — violation hexagonale | M | Sprint 51 |
+| 4 | Axe 2 | Pas d'`ErrorBoundary` React — crash = page blanche | S | Sprint 51 |
+| 5 | Axe 2 | `SetupPage.tsx` (467L) — découper en sous-composants | M | Sprint 51 |
+| 6 | Axe 3 | `@vitest/coverage-v8` non installé — couverture React non mesurable | S | Sprint 51 |
+| 7 | Axe 3 | `pollDeviceFlow` (auth) à 0% de couverture | S | Sprint 51 |
+| 8 | Axe 3 | `pool.go` : `GetOrOpen`, `openPlayerDB`, `attachShared`, `attachMeta` à 0% | M | Sprint 51 |
+| 9 | Axe 3 | 10 résidus `log.Printf` dans `notify/` — migrer vers `slog` | S | Sprint 51 |
+| 10 | Axe 3 | `ChangelogPage` sans tests unitaire ni E2E | S | Sprint 51 |
 
 ### 4.2 Écarts mineurs (🟡) — fix opportuniste
 
@@ -71,10 +69,9 @@ Les principales dettes fonctionnelles (Win/Loss, Objectifs absents, i18n React, 
 | 1 | Axe 1 | Home — médias récents et activité session embed manquants | `features/home/HomePage.tsx` |
 | 2 | Axe 1 | Career — projection Héros multi-joueurs | `features/career/CareerPage.tsx` |
 | 3 | Axe 1 | Squad — radars synergie, heatmaps, trios | `features/squad/SquadPage.tsx` |
-| 4 | Axe 1 | Match view — timeline weapon kills | `features/match-view/MatchViewPage.tsx` |
+| 4 | Axe 1 | Match view — timeline weapon kills *(feature désactivée côté Python, non un écart strict)* | `features/match-view/MatchViewPage.tsx` |
 | 5 | Axe 1 | Route gamertag conditionnelle (`gamertagSvc == nil`) | `internal/api/server.go:202` |
-| 6 | Axe 1 | Scripts utilitaires non portés (`monitor_uptime`, `thumbnails`, `prepare_demo`) | `scripts/` |
-| 7 | Axe 2 | Cross-feature `settings` → `setup/queries` | `features/settings/SettingsPage.tsx:9` |
+| 6 | Axe 2 | Cross-feature `settings` → `setup/queries` *(à valider si la dépendance est pertinente avant correction)* | `features/settings/SettingsPage.tsx:9` |
 | 8 | Axe 2 | TODO `media/reset-index` à ticketer | `handlers/settings.go:105` |
 | 9 | Axe 2 | 27 fonctions >80L (sync/migration/analysis) | `internal/sync/`, `migration/` |
 | 10 | Axe 2 | `interface{}` vs `any` style pre-Go 1.18 | Multiple |
@@ -86,20 +83,21 @@ Les principales dettes fonctionnelles (Win/Loss, Objectifs absents, i18n React, 
 
 | # | Axe | Description | Motivation |
 |--:|-----|-------------|------------|
-| 1 | Axe 1 | Setup wizard simplifié (Xbox OAuth seul, pas Azure manuel) | Expérience utilisateur simplifiée |
-| 2 | Axe 1 | `ChangelogPage` React — nouvelle surface documentaire | Feature absente en Python |
-| 3 | Axe 1 | Match exclusion API — feature nouvelle Go | Contrôle fin des matchs exclus |
-| 4 | Axe 1 | Sync via API async (`POST /sync/initial` + jobs) | Modernisation vs CLI Python |
-| 5 | Axe 2 | TanStack Router file-based — routes typées auto-générées | DX améliorée |
-| 6 | Axe 2 | Zustand v5 — state global léger et structuré | Pas de Redux overengineering |
-| 7 | Axe 3 | CI coverage ratchetté (baseline 76.0) — pas de régression | Filet de sécurité automatique |
+| 1 | Axe 1 | Pas de page Win/Loss — décision produit volontaire | Nouvelle architecture simplifiée |
+| 2 | Axe 1 | Setup wizard simplifié (Xbox OAuth seul, pas Azure manuel) | Expérience utilisateur simplifiée |
+| 3 | Axe 1 | `ChangelogPage` React — nouvelle surface documentaire | Feature absente en Python |
+| 4 | Axe 1 | Match exclusion API — feature nouvelle Go | Contrôle fin des matchs exclus |
+| 5 | Axe 1 | Sync via API async (`POST /sync/initial` + jobs) | Modernisation vs CLI Python |
+| 6 | Axe 2 | TanStack Router file-based — routes typées auto-générées | DX améliorée |
+| 7 | Axe 2 | Zustand v5 — state global léger et structuré | Pas de Redux overengineering |
+| 8 | Axe 3 | CI coverage ratchetté (baseline 76.0) — pas de régression | Filet de sécurité automatique |
 
 ---
 
 ## 5. Décision finale
 
 - [x] Écarts bloquants : **0** restant
-- [ ] Écarts majeurs : à ticketer en Sprint 51 (12 items — cf. §4.1)
+- [ ] Écarts majeurs : à ticketer en Sprint 51 (10 items — cf. §4.1)
 - [x] Réconciliations Claude + ChatGPT complétées sur les 3 axes
 - [x] `thought_log.md` mis à jour avec bilan Sprint 50
 - [x] Gate Sprint 50 : couverture Go 78.8% ≥ 70%
