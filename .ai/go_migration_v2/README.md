@@ -61,6 +61,7 @@ Le cadrage documentaire préalable au code est désormais considéré comme suff
 7. [GO_ARCHITECTURE_RULES.md](GO_ARCHITECTURE_RULES.md)
 8. [SPRINT_44_WORKPACKAGES.md](SPRINT_44_WORKPACKAGES.md)
 9. [ADR_S44_MULTI_TITLE_NAMESPACE.md](ADR_S44_MULTI_TITLE_NAMESPACE.md)
+10. [HALO_EXTERNAL_OPPORTUNITIES.md](HALO_EXTERNAL_OPPORTUNITIES.md)
 
 ## Sources historiques utiles
 
@@ -88,6 +89,7 @@ Les fichiers originaux sont conservés comme archive de la première itération 
 | Adaptateurs canonique -> contrats produit | [HALO_PRODUCT_CONTRACT_ADAPTERS.md](HALO_PRODUCT_CONTRACT_ADAPTERS.md) | [HALO_PRODUCT_CONTRACT_ADAPTERS.md](HALO_PRODUCT_CONTRACT_ADAPTERS.md) |
 | Taxonomie d'erreurs provider -> produit | [HALO_PROVIDER_ERROR_TAXONOMY.md](HALO_PROVIDER_ERROR_TAXONOMY.md) | [HALO_PROVIDER_ERROR_TAXONOMY.md](HALO_PROVIDER_ERROR_TAXONOMY.md) |
 | Contrats OpenAPI MVP P0/P1 | [OPENAPI_MVP_P0_P1.md](OPENAPI_MVP_P0_P1.md) | [OPENAPI_MVP_P0_P1.md](OPENAPI_MVP_P0_P1.md) |
+| Opportunités externes Halo et plans d'implémentation | [HALO_EXTERNAL_OPPORTUNITIES.md](HALO_EXTERNAL_OPPORTUNITIES.md) | [HALO_EXTERNAL_OPPORTUNITIES.md](HALO_EXTERNAL_OPPORTUNITIES.md) |
 | Couverture package/script/commande | [MATRIX.md](MATRIX.md) | [MATRIX.md](MATRIX.md) |
 | Compat runtime, auth, jobs, packaging | [OPS_COMPAT_CHECKLIST.md](OPS_COMPAT_CHECKLIST.md) | [OPS_COMPAT_CHECKLIST.md](OPS_COMPAT_CHECKLIST.md) |
 | Ordre d'exécution détaillé par sprint | [SPRINT_ROADMAP.md](SPRINT_ROADMAP.md) | [SPRINT_ROADMAP.md](SPRINT_ROADMAP.md) |

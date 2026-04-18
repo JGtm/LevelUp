@@ -1,5 +1,50 @@
 # Thought Log
 
+## [2026-04-18] fix(recovery): réapplication stash 2 sur la bonne base Sprint 49
+
+**Statut** : Complété
+
+### Contexte
+
+Après réalignement sur `recovery/reapply-wip-s49-closure-2026-04-18`, le stash 2 contenait encore deux lots de travail réels non réintégrés : l'exclusion manuelle de matchs et le provider Halo live pour Battle Pass / Challenges. L'objectif était de les remettre sur la bonne base sans réintroduire le bruit documentaire ni perdre les fichiers déjà sauvés en untracked.
+
+### Décisions techniques
+
+1. **Réapplication sélective** : extraction de stash 2 en deux sous-lots au lieu d'un `stash pop` global, pour éviter de réinjecter le bloc documentaire et les fichiers déjà jugés redondants.
+2. **Lot 1 — exclusion de matchs** : réapplication du câblage backend/frontend autour des fichiers déjà sauvés localement : OpenAPI, router, registry, migration `add_match_exclusion_flag`, propagation `is_excluded` dans Match History / Match View, filtrage service, types front et mutations React.
+3. **Lot 2 — provider Halo live** : réapplication de `ctxkeys`, de l'injection `HaloTokens`/`XUID` depuis le middleware de session, et du provider Halo live pour Battle Pass / Challenges à la place du stub `auth_required` permanent.
+4. **Correction post-réintégration** : `provider_test.go` déjà récupéré manuellement utilisait un type local divergent pour `parseBattlePassTrack`; réaligné sur `battlePassTrack` et `battlePassProgress` pour coller à l'implémentation remise en place.
+5. **Aucune reprise de stash 3** : ses fixes CI / lease / tests étaient déjà présents ailleurs dans HEAD, donc pas de réapplication.
+6. **Corpus `.ai/go_migration_v2/`** : le document récupéré `HALO_EXTERNAL_OPPORTUNITIES.md` est conservé et relié à `README.md` pour ne pas rester orphelin dans le corpus.
+
+### Fichiers modifiés
+
+- `apps/go-api/api/openapi.yaml`, `apps/go-api/contracttest/contract_yaml_test.go`
+- `apps/go-api/internal/api/middleware/session.go`, `apps/go-api/internal/api/middleware/session_test.go`
+- `apps/go-api/internal/api/registry.go`, `apps/go-api/internal/api/server.go`
+- `apps/go-api/internal/ctxkeys/ctxkeys.go`, `apps/go-api/internal/ctxkeys/ctxkeys_test.go`
+- `apps/go-api/internal/domain/match_history.go`, `apps/go-api/internal/domain/match_view.go`
+- `apps/go-api/internal/migration/steps_player.go`, `apps/go-api/internal/sync/schema.go`
+- `apps/go-api/internal/platform/duckdb/match_history_repo.go`, `apps/go-api/internal/platform/duckdb/match_view_repo.go`, `apps/go-api/internal/platform/duckdb/queries_career.go`, `apps/go-api/internal/platform/duckdb/queries_match.go`
+- `apps/go-api/internal/platform/halo/provider.go`, `apps/go-api/internal/platform/halo/provider_test.go`
+- `apps/go-api/internal/port/repository.go`, `apps/go-api/internal/port/services.go`
+- `apps/go-api/internal/service/match_history_service.go`, `apps/go-api/internal/service/match_history_service_test.go`, `apps/go-api/internal/service/match_view_service.go`
+- `apps/web/src/features/match-history/MatchHistoryPage.tsx`, `apps/web/src/features/match-history/MatchHistoryTable.tsx`, `apps/web/src/features/match-history/queries.ts`, `apps/web/src/features/match-view/MatchViewPage.tsx`, `apps/web/src/lib/api/client.ts`, `apps/web/src/lib/api/types.ts`
+- `.ai/go_migration_v2/HALO_EXTERNAL_OPPORTUNITIES.md`, `.ai/go_migration_v2/README.md`
+
+### Résultats observés
+
+- `git apply -3` du lot exclusion : application propre sur 24 fichiers
+- `go test ./internal/api/handlers/... ./internal/service/... ./contracttest/...` : OK
+- `git apply -3` du lot provider : application propre sur `ctxkeys`, middleware session et provider
+- `go test ./internal/ctxkeys ./internal/api/middleware ./internal/platform/halo` : OK après réalignement de `provider_test.go`
+- `get_errors` : aucune erreur sur les fichiers touchés
+- `npm run -s typecheck` : échec, mais uniquement sur des erreurs préexistantes hors scope (`HomePage.tsx`, `CareerEncountersSection.tsx`, `SetupPage.tsx`, `settingsDraftStore.ts`)
+
+### Conclusion / prochaine étape
+
+Le stash 2 utile est désormais réappliqué sur la bonne base. La suite logique est soit de committer ce lot de récupération, soit de tester fonctionnellement les endpoints d'exclusion et les surfaces Battle Pass / Challenges dans l'UI React.
+
 ## [2026-04-17] feat(media): bouton upload médias + suppression watcher
 
 **Statut** : Complété
