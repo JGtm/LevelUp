@@ -10,6 +10,7 @@ import (
 	"net/http"
 	"time"
 
+	"levelup/go-api/internal/ctxkeys"
 	"levelup/go-api/internal/domain"
 	"levelup/go-api/internal/platform/session"
 )
@@ -26,6 +27,13 @@ func WithSession(store *session.Store, isProduction bool) func(http.Handler) htt
 			_ = store.Touch(sess)
 			setCookie(w, store, sess, isProduction)
 			ctx := context.WithValue(r.Context(), sessionKey{}, sess)
+			if sess.HaloTokens != nil {
+				xuid := ""
+				if sess.LinkedHaloIdentity != nil {
+					xuid = sess.LinkedHaloIdentity.XUID
+				}
+				ctx = ctxkeys.WithHaloAuth(ctx, sess.HaloTokens, xuid)
+			}
 			next.ServeHTTP(w, r.WithContext(ctx))
 		})
 	}
