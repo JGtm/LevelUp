@@ -18,6 +18,8 @@ type mockMediaRepo struct {
 	filesErr error
 	count    int
 	countErr error
+	setOK    bool
+	setErr   error
 }
 
 func (m *mockMediaRepo) LoadMediaFiles(_ context.Context, _, _ int) ([]domain.MediaFileRow, error) {
@@ -25,6 +27,12 @@ func (m *mockMediaRepo) LoadMediaFiles(_ context.Context, _, _ int) ([]domain.Me
 }
 func (m *mockMediaRepo) CountMediaFiles(_ context.Context) (int, error) {
 	return m.count, m.countErr
+}
+func (m *mockMediaRepo) SetMediaLike(_ context.Context, _ string, _ bool) (bool, error) {
+	if m.setErr != nil {
+		return false, m.setErr
+	}
+	return m.setOK, nil
 }
 
 // --- tests ---
@@ -40,24 +48,24 @@ func TestMediaService_GetMediaPage_OK(t *testing.T) {
 	}
 	svc := NewMediaService(repo)
 
-	resp, err := svc.GetMediaPage(context.Background(), 1)
+	resp, err := svc.GetMediaPage(context.Background(), domain.MediaPageRequest{Page: 1})
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
 	if resp == nil {
 		t.Fatal("expected non-nil response")
 	}
-	if len(resp.Items) != 2 {
-		t.Errorf("Items count = %d, want 2", len(resp.Items))
+	if len(resp.Items.Items) != 2 {
+		t.Errorf("Items count = %d, want 2", len(resp.Items.Items))
 	}
-	if resp.TotalCount != 50 {
-		t.Errorf("TotalCount = %d, want 50", resp.TotalCount)
+	if resp.Items.Pagination.Total != 50 {
+		t.Errorf("Total = %d, want 50", resp.Items.Pagination.Total)
 	}
-	if resp.Page != 1 {
-		t.Errorf("Page = %d, want 1", resp.Page)
+	if resp.Items.Pagination.Page != 1 {
+		t.Errorf("Page = %d, want 1", resp.Items.Pagination.Page)
 	}
-	if !resp.HasMore {
-		t.Error("expected HasMore = true")
+	if !resp.Items.Pagination.HasNext {
+		t.Error("expected HasNext = true")
 	}
 }
 
@@ -68,12 +76,12 @@ func TestMediaService_GetMediaPage_ZeroPage(t *testing.T) {
 	}
 	svc := NewMediaService(repo)
 
-	resp, err := svc.GetMediaPage(context.Background(), 0)
+	resp, err := svc.GetMediaPage(context.Background(), domain.MediaPageRequest{Page: 0})
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
-	if resp.Page != 1 {
-		t.Errorf("Page = %d, want 1 (clamped from 0)", resp.Page)
+	if resp.Items.Pagination.Page != 1 {
+		t.Errorf("Page = %d, want 1 (clamped from 0)", resp.Items.Pagination.Page)
 	}
 }
 
@@ -81,12 +89,12 @@ func TestMediaService_GetMediaPage_NegativePage(t *testing.T) {
 	repo := &mockMediaRepo{files: []domain.MediaFileRow{}, count: 0}
 	svc := NewMediaService(repo)
 
-	resp, err := svc.GetMediaPage(context.Background(), -5)
+	resp, err := svc.GetMediaPage(context.Background(), domain.MediaPageRequest{Page: -5})
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
-	if resp.Page != 1 {
-		t.Errorf("Page = %d, want 1 (clamped from -5)", resp.Page)
+	if resp.Items.Pagination.Page != 1 {
+		t.Errorf("Page = %d, want 1 (clamped from -5)", resp.Items.Pagination.Page)
 	}
 }
 
@@ -94,7 +102,7 @@ func TestMediaService_GetMediaPage_FilesError(t *testing.T) {
 	repo := &mockMediaRepo{filesErr: errors.New("db fail")}
 	svc := NewMediaService(repo)
 
-	_, err := svc.GetMediaPage(context.Background(), 1)
+	_, err := svc.GetMediaPage(context.Background(), domain.MediaPageRequest{Page: 1})
 	if err == nil {
 		t.Error("expected error")
 	}
@@ -107,12 +115,12 @@ func TestMediaService_GetMediaPage_CountError_Graceful(t *testing.T) {
 	}
 	svc := NewMediaService(repo)
 
-	resp, err := svc.GetMediaPage(context.Background(), 1)
+	resp, err := svc.GetMediaPage(context.Background(), domain.MediaPageRequest{Page: 1})
 	if err != nil {
 		t.Fatalf("expected graceful fallback, got: %v", err)
 	}
-	if resp.TotalCount != 1 {
-		t.Errorf("TotalCount = %d, want 1 (fallback to len(files))", resp.TotalCount)
+	if resp.Items.Pagination.Total != 1 {
+		t.Errorf("Total = %d, want 1 (fallback to len(files))", resp.Items.Pagination.Total)
 	}
 }
 
@@ -123,12 +131,59 @@ func TestMediaService_GetMediaPage_NoMore(t *testing.T) {
 	}
 	svc := NewMediaService(repo)
 
-	resp, err := svc.GetMediaPage(context.Background(), 1)
+	resp, err := svc.GetMediaPage(context.Background(), domain.MediaPageRequest{Page: 1})
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
-	if resp.HasMore {
-		t.Error("expected HasMore = false when all items fit on one page")
+	if resp.Items.Pagination.HasNext {
+		t.Error("expected HasNext = false when all items fit on one page")
+	}
+}
+
+func TestMediaService_GetMediaPage_PageSizeFromPagination(t *testing.T) {
+	repo := &mockMediaRepo{files: []domain.MediaFileRow{}, count: 0}
+	svc := NewMediaService(repo)
+
+	resp, err := svc.GetMediaPage(context.Background(), domain.MediaPageRequest{
+		Pagination: domain.PaginationRequest{Page: 2, PageSize: 4},
+	})
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if resp.Items.Pagination.Page != 2 {
+		t.Errorf("Page = %d, want 2", resp.Items.Pagination.Page)
+	}
+	if resp.Items.Pagination.PageSize != 4 {
+		t.Errorf("PageSize = %d, want 4", resp.Items.Pagination.PageSize)
+	}
+}
+
+func TestMediaService_SetMediaLike_OK(t *testing.T) {
+	repo := &mockMediaRepo{setOK: true}
+	svc := NewMediaService(repo)
+
+	resp, err := svc.SetMediaLike(context.Background(), domain.MediaLikeRequest{
+		FilePath: "/clips/clip1.mp4",
+		Liked:    true,
+	})
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if !resp.Liked || resp.LikeCount != 1 {
+		t.Fatalf("unexpected response: %+v", resp)
+	}
+}
+
+func TestMediaService_SetMediaLike_NotFound(t *testing.T) {
+	repo := &mockMediaRepo{setOK: false}
+	svc := NewMediaService(repo)
+
+	_, err := svc.SetMediaLike(context.Background(), domain.MediaLikeRequest{
+		FilePath: "/clips/missing.mp4",
+		Liked:    true,
+	})
+	if err == nil {
+		t.Fatal("expected error")
 	}
 }
 

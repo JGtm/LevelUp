@@ -71,7 +71,8 @@ type MatchExclusionService interface {
 
 // MediaService construit la page de la galerie médias et gère l'upload.
 type MediaService interface {
-	GetMediaPage(ctx context.Context, page int) (*domain.MediaPageResponse, error)
+	GetMediaPage(ctx context.Context, req domain.MediaPageRequest) (*domain.MediaPageResponse, error)
+	SetMediaLike(ctx context.Context, req domain.MediaLikeRequest) (*domain.MediaLikeResponse, error)
 	UploadMedia(ctx context.Context, req domain.UploadRequest) (*domain.UploadResult, error)
 }
 

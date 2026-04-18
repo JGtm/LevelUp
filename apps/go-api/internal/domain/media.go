@@ -14,9 +14,42 @@ import "time"
 // MediaPageRequest : corps de POST /pages/media.
 // Tous les champs sont optionnels.
 type MediaPageRequest struct {
-	Page     int    `json:"page"`                // numéro de page (défaut 1)
-	PageSize int    `json:"page_size,omitempty"` // taille de page (défaut 24)
-	Kind     string `json:"kind,omitempty"`      // filtre type : "clip" | "screenshot" | "" (tous)
+	Page          int               `json:"page"`                  // numéro de page legacy (défaut 1)
+	PageSize      int               `json:"page_size,omitempty"`   // taille de page legacy (défaut 24)
+	Pagination    PaginationRequest `json:"pagination,omitempty"`  // pagination moderne React
+	Kind          string            `json:"kind,omitempty"`        // filtre type legacy : "clip" | "screenshot"
+	KindFilter    string            `json:"kind_filter,omitempty"` // filtre type moderne
+	SectionFilter string            `json:"section_filter,omitempty"`
+	MapFilter     string            `json:"map_filter,omitempty"`
+	ModeFilter    string            `json:"mode_filter,omitempty"`
+	GroupBy       string            `json:"group_by,omitempty"`
+	Sort          string            `json:"sort,omitempty"`
+}
+
+// ResolvePage retourne le numéro de page normalisé.
+func (r MediaPageRequest) ResolvePage() int {
+	if r.Pagination.Page > 0 {
+		return r.Pagination.Page
+	}
+	if r.Page > 0 {
+		return r.Page
+	}
+	return 1
+}
+
+// ResolvePageSize retourne la taille de page normalisée et bornée.
+func (r MediaPageRequest) ResolvePageSize(defaultPageSize, maxPageSize int) int {
+	pageSize := r.Pagination.PageSize
+	if pageSize <= 0 {
+		pageSize = r.PageSize
+	}
+	if pageSize <= 0 {
+		pageSize = defaultPageSize
+	}
+	if maxPageSize > 0 && pageSize > maxPageSize {
+		return maxPageSize
+	}
+	return pageSize
 }
 
 // ---------------------------------------------------------------------------
@@ -32,6 +65,7 @@ type MediaFileRow struct {
 	CaptureEndUTC  *time.Time
 	MatchID        *string
 	MatchStartTime *time.Time
+	Liked          bool
 }
 
 // ---------------------------------------------------------------------------
@@ -40,22 +74,46 @@ type MediaFileRow struct {
 
 // MediaItem est un média enrichi pour l'affichage en galerie.
 type MediaItem struct {
-	FileName       string     `json:"file_name"`
+	Basename       string     `json:"basename"`
 	FilePath       string     `json:"file_path"`
 	Kind           string     `json:"kind"`
 	ThumbnailPath  *string    `json:"thumbnail_path,omitempty"`
 	CaptureEndUTC  *time.Time `json:"capture_end_utc,omitempty"`
 	MatchID        *string    `json:"match_id,omitempty"`
 	MatchStartTime *time.Time `json:"match_start_time,omitempty"`
+	Section        string     `json:"section"`
+	OwnerGamertag  *string    `json:"owner_gamertag,omitempty"`
+	MapName        *string    `json:"map_name,omitempty"`
+	Liked          bool       `json:"liked"`
+	LikeCount      int        `json:"like_count"`
+}
+
+// MediaItemsPage représente la table paginée de la galerie médias.
+type MediaItemsPage struct {
+	Items      []MediaItem    `json:"items"`
+	Pagination PaginationMeta `json:"pagination"`
+	Freshness  interface{}    `json:"freshness,omitempty"`
 }
 
 // MediaPageResponse est la réponse paginée de la galerie médias.
 type MediaPageResponse struct {
-	Items      []MediaItem `json:"items"`
-	TotalCount int         `json:"total_count"`
-	Page       int         `json:"page"`
-	PageSize   int         `json:"page_size"`
-	HasMore    bool        `json:"has_more"`
+	Items           MediaItemsPage `json:"items"`
+	TotalMine       int            `json:"total_mine"`
+	TotalTeammates  int            `json:"total_teammates"`
+	TotalUnassigned int            `json:"total_unassigned"`
+}
+
+// MediaLikeRequest représente une mise à jour explicite de l'état liked.
+type MediaLikeRequest struct {
+	FilePath string `json:"file_path"`
+	Liked    bool   `json:"liked"`
+}
+
+// MediaLikeResponse confirme l'état liked persisté côté backend.
+type MediaLikeResponse struct {
+	FilePath  string `json:"file_path"`
+	Liked     bool   `json:"liked"`
+	LikeCount int    `json:"like_count"`
 }
 
 // ---------------------------------------------------------------------------
