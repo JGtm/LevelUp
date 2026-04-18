@@ -103,7 +103,7 @@ export function CareerPage() {
         )}
 
         {/* Top matchs */}
-        {topMatchesItems.length > 0 && (
+        {(topMatchesItems?.length ?? 0) > 0 && (
           <div className="space-y-4">
             {loadingTopMatches ? (
               <div className="flex justify-center py-4">
@@ -146,7 +146,7 @@ export function CareerPage() {
         {/* Rencontres fréquentes */}
         <CareerEncountersSection
           playerSlug={playerSlug}
-          preview={data.encounters_preview}
+          preview={data.encounters_preview ?? []}
         />
       </div>
     </div>

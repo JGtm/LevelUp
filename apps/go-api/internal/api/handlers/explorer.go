@@ -94,29 +94,29 @@ func (h *ExplorerHandler) QueryMatches(w http.ResponseWriter, r *http.Request) {
 	rows := make([]domain.ExplorerMatchesRow, 0, len(mhResp.Table.Items))
 	for _, item := range mhResp.Table.Items {
 		rows = append(rows, domain.ExplorerMatchesRow{
-			MatchID:      item.MatchID,
-			StartTime:    item.StartTime,
-			MapUI:        item.MapUI,
-			ModeUI:       item.ModeUI,
-			OutcomeCode:  item.OutcomeCode,
-			OutcomeLabel: item.OutcomeLabel,
-			Kills:        extractKillsFromLabel(item.ScoreLabel),
-			Deaths:       0, // non disponible dans MatchHistoryRow
-			KDA:          nil,
-			MatchURL:     item.MatchURL,
+			MatchID:             item.MatchID,
+			StartTime:           item.StartTime,
+			StartTimeLabel:      item.StartTimeLabel,
+			MapUI:               item.MapUI,
+			ModeUI:              item.ModeUI,
+			PlaylistLabel:       item.PlaylistLabel,
+			OutcomeCode:         item.OutcomeCode,
+			OutcomeLabel:        item.OutcomeLabel,
+			ScoreLabel:          item.ScoreLabel,
+			IsWithFriends:       false,
+			ExperienceTypeLabel: "",
+			MatchURL:            item.MatchURL,
 		})
 	}
 
 	resp := domain.ExplorerMatchesQueryResponse{
-		Matches:    rows,
-		Pagination: mhResp.Table.Pagination,
-		Total:      mhResp.Summary.TotalMatchesScoped,
+		Summary: domain.ExplorerMatchesSummary{
+			TotalMatches: mhResp.Summary.TotalMatchesScoped,
+		},
+		Table: domain.ExplorerMatchesTable{
+			Items:      rows,
+			Pagination: mhResp.Table.Pagination,
+		},
 	}
 	writeJSON(w, http.StatusOK, resp)
-}
-
-// extractKillsFromLabel est un placeholder — MatchHistoryRow ne stocke pas les kills séparément.
-// Retourne 0 jusqu'à enrichissement du service (Sprint 33).
-func extractKillsFromLabel(_ string) int {
-	return 0
 }

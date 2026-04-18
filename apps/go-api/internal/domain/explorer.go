@@ -52,23 +52,35 @@ type ExplorerMatchesQueryRequest struct {
 
 // ExplorerMatchesRow : une ligne dans la liste des matchs filtrés (Explorer).
 type ExplorerMatchesRow struct {
-	MatchID      string    `json:"match_id"`
-	StartTime    time.Time `json:"start_time"`
-	MapUI        *string   `json:"map_ui"`
-	ModeUI       *string   `json:"mode_ui"`
-	OutcomeCode  int       `json:"outcome_code"`
-	OutcomeLabel string    `json:"outcome_label"`
-	Kills        int       `json:"kills"`
-	Deaths       int       `json:"deaths"`
-	KDA          *float64  `json:"kda"`
-	MatchURL     string    `json:"match_url"`
+	MatchID             string    `json:"match_id"`
+	StartTime           time.Time `json:"start_time"`
+	StartTimeLabel      string    `json:"start_time_label"`
+	MapUI               *string   `json:"map_ui"`
+	ModeUI              *string   `json:"mode_ui"`
+	PlaylistLabel       *string   `json:"playlist_label"`
+	OutcomeCode         int       `json:"outcome_code"`
+	OutcomeLabel        string    `json:"outcome_label"`
+	ScoreLabel          string    `json:"score_label"`
+	IsWithFriends       bool      `json:"is_with_friends"`
+	ExperienceTypeLabel string    `json:"experience_type_label"`
+	MatchURL            string    `json:"match_url"`
+}
+
+// ExplorerMatchesSummary : résumé de la requête Explorer.
+type ExplorerMatchesSummary struct {
+	TotalMatches int `json:"total_matches"`
+}
+
+// ExplorerMatchesTable : table paginée de l'Explorer.
+type ExplorerMatchesTable struct {
+	Items      []ExplorerMatchesRow `json:"items"`
+	Pagination PaginationMeta       `json:"pagination"`
 }
 
 // ExplorerMatchesQueryResponse : réponse de POST matches-query.
 type ExplorerMatchesQueryResponse struct {
-	Matches    []ExplorerMatchesRow `json:"matches"`
-	Pagination PaginationMeta       `json:"pagination"`
-	Total      int                  `json:"total"`
+	Summary ExplorerMatchesSummary `json:"summary"`
+	Table   ExplorerMatchesTable   `json:"table"`
 }
 
 // ---------------------------------------------------------------------------

@@ -11,6 +11,7 @@
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as SetupRouteImport } from './routes/setup'
 import { Route as SettingsRouteImport } from './routes/settings'
+import { Route as ChangelogRouteImport } from './routes/changelog'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as PlayersPlayerSlugRouteImport } from './routes/players/$playerSlug'
 import { Route as PlayersPlayerSlugSynthesisRouteImport } from './routes/players/$playerSlug/synthesis'
@@ -34,6 +35,11 @@ const SetupRoute = SetupRouteImport.update({
 const SettingsRoute = SettingsRouteImport.update({
   id: '/settings',
   path: '/settings',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ChangelogRoute = ChangelogRouteImport.update({
+  id: '/changelog',
+  path: '/changelog',
   getParentRoute: () => rootRouteImport,
 } as any)
 const IndexRoute = IndexRouteImport.update({
@@ -117,6 +123,7 @@ const PlayersPlayerSlugExplorerMatchesMatchIdRoute =
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
+  '/changelog': typeof ChangelogRoute
   '/settings': typeof SettingsRoute
   '/setup': typeof SetupRoute
   '/players/$playerSlug': typeof PlayersPlayerSlugRouteWithChildren
@@ -135,6 +142,7 @@ export interface FileRoutesByFullPath {
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
+  '/changelog': typeof ChangelogRoute
   '/settings': typeof SettingsRoute
   '/setup': typeof SetupRoute
   '/players/$playerSlug': typeof PlayersPlayerSlugRouteWithChildren
@@ -154,6 +162,7 @@ export interface FileRoutesByTo {
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
+  '/changelog': typeof ChangelogRoute
   '/settings': typeof SettingsRoute
   '/setup': typeof SetupRoute
   '/players/$playerSlug': typeof PlayersPlayerSlugRouteWithChildren
@@ -174,6 +183,7 @@ export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
   fullPaths:
     | '/'
+    | '/changelog'
     | '/settings'
     | '/setup'
     | '/players/$playerSlug'
@@ -192,6 +202,7 @@ export interface FileRouteTypes {
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
+    | '/changelog'
     | '/settings'
     | '/setup'
     | '/players/$playerSlug'
@@ -210,6 +221,7 @@ export interface FileRouteTypes {
   id:
     | '__root__'
     | '/'
+    | '/changelog'
     | '/settings'
     | '/setup'
     | '/players/$playerSlug'
@@ -229,6 +241,7 @@ export interface FileRouteTypes {
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
+  ChangelogRoute: typeof ChangelogRoute
   SettingsRoute: typeof SettingsRoute
   SetupRoute: typeof SetupRoute
   PlayersPlayerSlugRoute: typeof PlayersPlayerSlugRouteWithChildren
@@ -248,6 +261,13 @@ declare module '@tanstack/react-router' {
       path: '/settings'
       fullPath: '/settings'
       preLoaderRoute: typeof SettingsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/changelog': {
+      id: '/changelog'
+      path: '/changelog'
+      fullPath: '/changelog'
+      preLoaderRoute: typeof ChangelogRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/': {
@@ -388,6 +408,7 @@ const PlayersPlayerSlugRouteWithChildren =
 
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
+  ChangelogRoute: ChangelogRoute,
   SettingsRoute: SettingsRoute,
   SetupRoute: SetupRoute,
   PlayersPlayerSlugRoute: PlayersPlayerSlugRouteWithChildren,

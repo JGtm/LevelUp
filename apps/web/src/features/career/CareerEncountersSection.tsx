@@ -11,7 +11,7 @@ import { useCareerEncounters } from './queries'
 
 interface Props {
   playerSlug: string
-  preview: CareerEncounter[]
+  preview: CareerEncounter[] | null | undefined
 }
 
 function WinRate({ wins, total }: { wins: number; total: number }) {
@@ -72,7 +72,7 @@ export function CareerEncountersSection({ playerSlug, preview }: Props) {
   const [showAll, setShowAll] = useState(false)
   const { data, isLoading } = useCareerEncounters(playerSlug, showAll)
 
-  const items = showAll && data ? data.items : preview
+  const items = showAll && data ? data.items : (preview ?? [])
 
   return (
     <Card>

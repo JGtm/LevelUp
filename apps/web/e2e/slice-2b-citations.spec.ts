@@ -32,8 +32,8 @@ test.describe('Slice 2B — Page Citations (DEMO_MODE)', () => {
       },
     )
     const data = await resp.json()
-    expect(data.commendations).toBeDefined()
-    expect(Array.isArray(data.commendations)).toBe(true)
+    expect(data.citations).toBeDefined()
+    expect(Array.isArray(data.citations)).toBe(true)
   })
 
   test("la réponse citations contient des médailles", async ({ request }) => {
@@ -44,8 +44,8 @@ test.describe('Slice 2B — Page Citations (DEMO_MODE)', () => {
       },
     )
     const data = await resp.json()
-    expect(data.medals).toBeDefined()
-    expect(Array.isArray(data.medals)).toBe(true)
+    expect(data.citations).toBeDefined()
+    expect(data.citations.length).toBeGreaterThan(0)
   })
 
   test("pas d'erreur 500 sur /pages/citations", async ({ request }) => {

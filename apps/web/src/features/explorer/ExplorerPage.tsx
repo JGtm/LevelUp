@@ -231,7 +231,7 @@ export function ExplorerPage() {
             ) : matchesQuery.data ? (
               <>
                 <p className="text-sm text-gray-500">
-                  {matchesQuery.data.summary.total_matches.toLocaleString('fr-FR')} matchs trouvés
+                  {matchesQuery.data.summary?.total_matches?.toLocaleString('fr-FR') ?? '?'} matchs trouvés
                 </p>
                 <div className="overflow-x-auto rounded-lg border border-gray-200 bg-white">
                   <table className="w-full text-sm">

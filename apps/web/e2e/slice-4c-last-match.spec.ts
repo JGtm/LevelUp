@@ -37,8 +37,8 @@ test.describe('Slice 4C — Last Match Resolve (DEMO_MODE)', () => {
     if (resp.status() !== 200) return
 
     const data = await resp.json()
-    expect(data.match_id).toBeTruthy()
-    expect(typeof data.match_id).toBe('string')
+    expect(data.current_match_id).toBeTruthy()
+    expect(typeof data.current_match_id).toBe('string')
   })
 
   test("la réponse last-match contient session_key si HTTP 200", async ({
@@ -53,7 +53,7 @@ test.describe('Slice 4C — Last Match Resolve (DEMO_MODE)', () => {
     if (resp.status() !== 200) return
 
     const data = await resp.json()
-    expect(data.session_key).toBeDefined()
+    expect(data.session_tracking_key).toBeDefined()
   })
 
   test("pas d'erreur 500 sur /pages/last-match/resolve", async ({ request }) => {

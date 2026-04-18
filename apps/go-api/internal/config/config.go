@@ -115,10 +115,10 @@ type dbProfileEntry struct {
 func (c *AppConfig) LoadPlayers(titleFilter ...string) ([]domain.PlayerSummary, error) {
 	if c.DemoMode {
 		return []domain.PlayerSummary{{
-			PlayerSlug:     "DEMO",
-			Gamertag:       "DEMO",
+			PlayerSlug:     "demo-player",
+			Gamertag:       "DemoPlayer",
 			XUID:           "0",
-			WaypointPlayer: "DEMO",
+			WaypointPlayer: "DemoPlayer",
 			IsDemo:         true,
 		}}, nil
 	}
