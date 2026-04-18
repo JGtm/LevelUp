@@ -182,11 +182,12 @@ type LUSRTabResponse struct {
 
 // StatsPageResponse est la réponse complète de la page stats/séries.
 type StatsPageResponse struct {
-	WinLoss      *WinLossTabResponse   `json:"win_loss,omitempty"`
-	Accuracy     *AccuracyTabResponse  `json:"accuracy,omitempty"`
-	Objective    *ObjectiveTabResponse `json:"objective,omitempty"`
-	Form         *FormTabResponse      `json:"form,omitempty"`
-	LUSR         *LUSRTabResponse      `json:"lusr,omitempty"`
-	BucketInfo   BucketInfo            `json:"bucket_info"`
-	TotalMatches int                   `json:"total_matches"`
+	WinLoss       *WinLossTabResponse   `json:"win_loss,omitempty"`
+	Accuracy      *AccuracyTabResponse  `json:"accuracy,omitempty"`
+	Objective     *ObjectiveTabResponse `json:"objective,omitempty"`
+	Form          *FormTabResponse      `json:"form,omitempty"`
+	LUSR          *LUSRTabResponse      `json:"lusr,omitempty"`
+	BucketInfo    BucketInfo            `json:"bucket_info"`
+	TotalMatches  int                   `json:"total_matches"`
+	CurrentSeason *CurrentSeasonResult  `json:"current_season,omitempty"` // Sprint 54-A7
 }

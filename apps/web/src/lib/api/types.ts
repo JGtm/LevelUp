@@ -522,6 +522,8 @@ export interface MatchHistoryPageResponse {
   table: PaginatedResponse<MatchHistoryRow>
   available_sort_fields: string[]
   export_hint: ExportHint | null
+  /** Sprint 54-B : avertissement privacy */
+  privacy_warning?: MatchPrivacyWarning | null
 }
 
 export interface MatchHistoryQueryRequest {
@@ -1031,6 +1033,8 @@ export interface MatchViewResponse {
   team_tab: MatchTeamTab
   media_tab: MatchMediaTab
   citations_tab: MatchCitationsTab
+  /** Sprint 54-B : avertissement privacy */
+  privacy_warning?: MatchPrivacyWarning | null
 }
 
 export interface LastMatchResolveRequest {
@@ -1193,4 +1197,87 @@ export interface SessionCompareResponse {
   outcomes_chart: PlotlyFigurePayload | null
   maps_table: Record<string, unknown>[]
   modes_table: Record<string, unknown>[]
+}
+
+// ─── Sprint 54-C : Compare joueur vs joueur ───────────────────────────────────
+
+export interface NormalizedPlayerStats {
+  xuid: string
+  gamertag: string
+  title_slug: string
+  matches_played: number
+  win_rate: number
+  kd_ratio: number
+  accuracy: number
+  avg_kills: number
+  avg_deaths: number
+  avg_assists: number
+  avg_damage: number
+  avg_ps_per_min: number
+  avg_playtime_min: number
+  avg_performance_score: number
+  is_local: boolean
+}
+
+export interface CompareMetricRow {
+  metric: string
+  label_fr: string
+  value_a: string | number
+  value_b: string | number
+  delta: number | null
+  winner: 'a' | 'b' | 'tie' | null
+}
+
+export interface CompareRequest {
+  gamertag_b: string
+  title_slug?: string
+}
+
+export interface CompareResponse {
+  player_a: NormalizedPlayerStats
+  player_b: NormalizedPlayerStats
+  metrics: CompareMetricRow[]
+  title_slug: string
+}
+
+// ─── Sprint 54-B : Match Privacy ─────────────────────────────────────────────
+
+export interface MatchPrivacyInfo {
+  is_private: boolean
+  is_partial: boolean
+  hint: string
+}
+
+export interface MatchPrivacyWarning {
+  level: 'none' | 'partial' | 'full'
+  message: string
+}
+
+// ─── Sprint 54-E : Leaderboard ───────────────────────────────────────────────
+
+export interface LeaderboardEntry {
+  rank: number
+  xuid: string
+  gamertag: string
+  title_slug: string
+  season_id: string
+  playlist_id: string
+  csr_value: number
+  tier: string
+  sub_tier: number
+  is_local: boolean
+}
+
+export interface LeaderboardRequest {
+  season_id?: string
+  playlist_id?: string
+  limit?: number
+}
+
+export interface LeaderboardResponse {
+  entries: LeaderboardEntry[]
+  season_id: string
+  playlist_id: string
+  title_slug: string
+  total: number
 }

@@ -56,6 +56,7 @@ Le suivi des sprints est maintenu dans [`SPRINT_ROADMAP.md`](.ai/go_migration_v2
 - `apps/web/src/routes/players/$playerSlug.tsx` : montage du nouveau scope joueur (`PlayerScopeNav` + `KPIBar` + contenu).
 - `apps/web/src/features/home/HomePage.tsx` + `apps/web/src/components/shell/KPIBar.tsx` : correction du contrat KPI côté frontend (`win_rate` = ratio, `avg_accuracy` = pourcentage déjà normalisé), et passage des liens player-scoped en routes typées TanStack Router.
 - `apps/web/src/components/ui/empty-state.tsx` + pages player-scoped (`home`, `career`, `timeseries`, `squad`, `citations`, `synthesis`, `sessions`, `explorer`) : harmonisation des états vides, avec messages explicites quand une payload manque ou qu'une section analytique ne peut pas être rendue.
+- `.ai/go_migration_v2/UX_CAREER_SYNTHESIS_BOUNDARY.md` : mini spec produit de référence pour le prochain reslicing UX ; cible retenue = hub `Carrière` avec onglets `Progression` et `Citations`, et `Synthèse` recentrée sur overview, performances marquantes et rivalités.
 - Validation locale finale : `npm run -s typecheck` OK, `npm run -s build` OK, `vitest` OK sur `shellNavigation.test.ts`, `playwright` OK sur `e2e/slice-0a-shell.spec.ts` (5/5).
 
 ### Validation locale Go + React (2026-04-18)

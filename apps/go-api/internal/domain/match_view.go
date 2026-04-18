@@ -15,6 +15,8 @@ type MatchViewResponse struct {
 	TeamTab      MatchTeamTab      `json:"team_tab"`
 	MediaTab     MatchMediaTab     `json:"media_tab"`
 	CitationsTab MatchCitationsTab `json:"citations_tab"`
+	// Sprint 54 B : avertissement de privacy.
+	PrivacyWarning *MatchPrivacyWarning `json:"privacy_warning,omitempty"`
 }
 
 // MatchViewHeader : en-tête du match.

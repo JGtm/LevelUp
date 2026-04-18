@@ -73,6 +73,8 @@ type BootstrapResponse struct {
 	SettingsExcerpt     SettingsExcerpt      `json:"settings_excerpt"`
 	LinkedHaloIdentity  *HaloIdentitySummary `json:"linked_halo_identity,omitempty"`
 	ActiveSyncJobID     *string              `json:"active_sync_job_id,omitempty"`
+	// Sprint 54 B : privacy du compte courant (chargée en parallèle).
+	Privacy *MatchPrivacyInfo `json:"privacy,omitempty"`
 }
 
 // PlayersListResponse est la réponse de GET /api/v1/players.

@@ -6,7 +6,40 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 > French version: [FR/CHANGELOG.md](FR/CHANGELOG.md)
 
-## [Go-API Phase 12] - 2026-04-XX — Sprints 52 & 53
+## [Go-API Phase 13] - 2026-05-01 — Sprint 54
+
+### Added (Go API)
+
+- **Volet A — Season Calendars** — `MetadataRepository` interface + DuckDB implementation (`metadata_repo.go`). Tables `season_calendars`, `csr_season_calendars` with ETag/content-hash deduplication. `FetchSeasonCalendar` and `FetchCSRSeasonCalendar` in `platform/halo`. CLI `cmd/refresh-metadata` with subcommands `seasons`, `csr-seasons`, `staging`, `all`. Discord notification on hash change.
+
+- **Volet A — Current Season** — `resolveCurrentSeason` in `CareerService` and `StatsService` via `WithMetadataRepo` optional builder. `syntheticSeasonResult` fallback returns `Synthetic.IsFallback=true` when metadata DB unavailable. `CurrentSeason` field added to `CareerPageResponse` and `StatsPageResponse`.
+
+- **Volet B — Match Privacy** — `MatchPrivacyInfo` + `MatchPrivacyWarning` domain types. `privacy_provider.go` in `platform/halo` calls Waypoint privacy endpoint. `WithPrivacyProvider` optional builder on `BootstrapService`; `fetchPrivacyNonBlocking` with 2s timeout. `Privacy` field in `BootstrapResponse`; `PrivacyWarning` in `MatchHistoryPageResponse` and `MatchViewResponse`.
+
+- **Volet C — Compare joueur vs joueur** — `CompareService` with parallel load via `errgroup` (player A from DuckDB, player B from Waypoint or local fallback). 12 KPIs via `buildMetrics`. `CompareRepository`, `PlayerStatsProvider` interfaces. Handler `POST /players/{slug}/pages/compare`.
+
+- **Volet D — Multi-titre staging** — `EnsureStagingTables` in `metadata_repo.go` creates `waypoint_medals_raw` and `waypoint_assets_raw` tables. CLI `refresh-metadata staging` subcommand.
+
+- **Volet E — CSR Leaderboard** — `LeaderboardService` + `LeaderboardRepository`. Local players (`IsLocal=true`) always ranked first. Handler `GET /players/{slug}/pages/leaderboard`.
+
+- **Volet F — Tests** — `compare_service_test.go` (2 tests), `leaderboard_service_test.go` (2 tests). All pass.
+
+### Added (React / TypeScript)
+
+- `PrivacyBanner` component — shows yellow/red alert for partial/full privacy; integrated in `MatchHistoryPage` and `MatchViewPage`.
+- `useCompare` hook (`useMutation`) + `CompareDrawer` with form and 12-KPI table.
+- `useLeaderboard` hook (`useQuery`) + `LeaderboardBlock` with season/playlist filters.
+- New types: `NormalizedPlayerStats`, `CompareMetricRow`, `CompareRequest/Response`, `MatchPrivacyInfo/Warning`, `LeaderboardEntry/Request/Response`.
+- `privacy_warning` field added to `MatchHistoryPageResponse` and `MatchViewResponse` types.
+
+### Changed (OpenAPI)
+
+- New schemas: `MatchPrivacyInfo`, `MatchPrivacyWarning`, `NormalizedPlayerStats`, `CompareMetricRow`, `CompareRequest/Response`, `LeaderboardEntry/Response`, `CurrentSeasonResult`, `SeasonSynthetic`.
+- `BootstrapResponse`: added `privacy` field.
+- `MatchHistoryPageResponse`: added `privacy_warning` field.
+- `MatchViewResponse`: added `privacy_warning` field.
+
+
 
 ### Added (Go API)
 

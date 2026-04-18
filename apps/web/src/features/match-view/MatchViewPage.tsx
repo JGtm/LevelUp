@@ -15,6 +15,7 @@ import { MatchScoreboard } from './MatchScoreboard'
 import { ExpectedCardsSection, MatchRankBadge, KdIndicatorCard } from './MatchStatCards'
 import { useSetMatchExclusion } from '@/features/match-history/queries'
 import { queryKeys } from '@/lib/query/keys'
+import { PrivacyBanner } from '@/components/ui/privacy-banner'
 
 type TabId = 'summary' | 'combat' | 'team' | 'media' | 'citations'
 
@@ -67,6 +68,13 @@ export function MatchViewPage() {
         title={`${header.map_ui} — ${header.mode_ui}`}
         subtitle={header.start_time_label}
       />
+
+      {/* Sprint 54-B : avertissement privacy */}
+      {data.privacy_warning && (
+        <div className="px-6 pt-4">
+          <PrivacyBanner warning={data.privacy_warning} />
+        </div>
+      )}
 
       {/* Header match */}
       <div className="border-b bg-white px-6 py-4">

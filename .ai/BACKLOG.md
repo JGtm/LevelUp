@@ -1,6 +1,6 @@
 ﻿— Tâches et TODO centralisés
 
-> Mis à jour le 2026-04-17.
+> Mis à jour le 2026-04-18.
 
 ---
 
@@ -12,137 +12,49 @@
 
 ---
 
-### [Go/HaloProvider] Implémenter les appels live Battle Pass et Challenges
+### [Multi-titre/O10] Store / economy tracker
 
-**Noté le** : 2026-04-17 | **Priorité** : Moyenne (feature UI, bloquée par auth)
+**Noté le** : 2026-04-18 | **Priorité** : Basse — backlog multi-titre, hors scope Halo Infinite
 
-**Contexte** : `GetBattlePass` et `GetChallenges` dans [platform/halo/provider.go:117-128](../apps/go-api/internal/platform/halo/provider.go#L117-L128) sont des stubs depuis le Sprint 15 — ils retournent `available=false, error_hint="auth_required"` sans aucun appel HTTP. On est au Sprint 49 et ces endpoints n'ont pas été portés.
+**Contexte** : Opportunité O10 identifiée lors de la revue des repos externes (SpartanRecord). Non pertinente pour Halo Infinite aujourd'hui (store en fin de cycle commercial, risque d'obsolescence avant livraison). Gardée en backlog car potentiellement utile si un nouveau titre Halo dispose d'une économie de store active (cosmétiques, battle pass, rotations de boutique).
 
-**Dépendance** : Ces deux endpoints sont **player-gated** (token Spartan du joueur requis). Ils ne peuvent être implémentés qu'après la livraison du Device Code Flow / MSAL Go — voir l'item `[Auth] Simplifier l'onboarding` dans ce backlog.
+**Référence** : `.ai/go_migration_v2/HALO_EXTERNAL_OPPORTUNITIES.md` §O10
 
-**Endpoints Halo à appeler** (à confirmer avec captures réseau, voir `spnkr_pr/README.md`) :
-- Battle Pass / Season Pass : `GET /hi/players/xuid({xuid})/rewardtracks` (economy.svc.halowaypoint.com)
-- Challenges : `GET /hi/players/xuid({xuid})/challenges` (economy.svc.halowaypoint.com)
+**Conditions de déblocage** :
+1. Onboarding d'un nouveau titre avec économie de store active confirmée
+2. Signal utilisateur explicite sur l'intérêt du tracking store pour ce titre
+3. Atterrissage UI validé comme module optionnel dans `Home`, jamais comme menu prioritaire
 
-**Changements ciblés** :
-1. `platform/halo/provider.go` : implémenter `GetBattlePass` et `GetChallenges` avec appel HTTP réel via `HaloProvider.client`, headers Spartan/Clearance, retry via le rate limiter existant
-2. `domain/home.go` : enrichir `BattlePassResponse` et `ChallengesResponse` avec les champs JSON réels (rank, XP, défis actifs, reward_track_path…) — s'appuyer sur les modèles dans `spnkr_pr/models/economy_additions.py` comme référence de structure JSON
-3. Ajouter les tokens Spartan/Clearance dans `HaloProvider` (actuellement le struct n'en a pas — il faut décider si on les injecte à la construction ou à chaque appel)
-4. Mettre à jour les stubs `TODO Sprint 15` en commentaires cohérents
-5. Tests : mocker le serveur HTTP avec `net/http/httptest`
+**Périmètre si débloqué** :
+- Fetcher Waypoint pour les rotations de boutique du titre concerné
+- Persistance dans `metadata.duckdb` avec `title_id` comme clé de partition (déjà prévu dans l'architecture O3/O8)
+- Module compact `Home` scoped au titre — pas de navigation globale
+- Jamais comme sous-produit autonome hors du scope analytics de LevelUp
 
-**Point de vigilance** : vérifier les noms exacts des champs JSON (PascalCase attendu d'après le pattern economy, cf. `spnkr_pr/README.md` §Incertitudes connues).
-
----
-
-### [Go/Settings] Implémenter le vrai reset d'index médias (POST /settings/media/reset-index)
-
-**Noté le** : 2026-04-17 | **Priorité** : Moyenne (feature settings, l'endpoint répond 202 mais ne fait rien)
-
-**Contexte** : `PostMediaResetIndex` dans [api/handlers/settings.go:86-111](../apps/go-api/internal/api/handlers/settings.go#L86-L111) crée un job asynchrone et lance une goroutine… qui se termine immédiatement avec `"Terminé (stub)"` sans toucher la DB. L'index médias n'est pas réinitialisé. Marqué `TODO Sprint 19`.
-
-**Ce que le vrai reset doit faire** (portage du comportement Python `index_media.py --force`) :
-1. Vider la table `media_files` de la player DB (ou toutes les player DBs si multi-joueurs)
-2. Vider `media_match_associations`
-3. Relancer l'indexation complète du dossier médias (`data/players/{gamertag}/media/`)
-4. Mettre à jour la progression du job (`ProgressPct`, `CurrentStep`) au fil de l'indexation
-5. En cas d'erreur, marquer le job `JobStatusFailed` avec un message exploitable
-
-**Changements ciblés** :
-1. Créer un service `MediaIndexService` (ou étendre le service existant) avec une méthode `ResetAndReindex(ctx, playerDB, mediaDir) error`
-2. Brancher ce service dans la goroutine de `PostMediaResetIndex`
-3. Propager la progression via `h.jobStore.Update`
-4. Supprimer le commentaire "Goroutine stub" et le `TODO Sprint 19`
+**Point de vigilance** : ne pas ouvrir ce chantier sur Halo Infinite même sous pression — le store y est en déclin et le risque d'obsolescence est élevé.
 
 ---
 
-### [Go/Explorer] Exposer kills/deaths/KDA dans l'endpoint Explorer common matches
+### [Multi-titre/O11] Spartan Company / social layer
 
-**Noté le** : 2026-04-17 | **Priorité** : Basse (données tronquées dans l'UI Explorer)
+**Noté le** : 2026-04-18 | **Priorité** : Basse — backlog multi-titre, hors scope Halo Infinite
 
-**Contexte** : `extractKillsFromLabel` dans [api/handlers/explorer.go:118-121](../apps/go-api/internal/api/handlers/explorer.go#L118-L121) retourne toujours `0` — kills, deaths et KDA ne sont pas exposés dans la réponse de l'endpoint Explorer (`GET /api/v1/players/{slug}/explorer/common-matches`). Marqué comme placeholder "jusqu'à enrichissement du service Sprint 33".
+**Contexte** : Opportunité O11 identifiée lors de la revue des repos externes (SpartanRecord). Non pertinente pour Halo Infinite aujourd'hui (pas de signal utilisateur, dimension groupe déjà couverte partiellement par `Squad`). Gardée en backlog car potentiellement utile si un nouveau titre Halo dispose d'une dimension clan ou groupe native établie (guildes, escouades persistantes, companies).
 
-**Cause** : `MatchHistoryRow` (le type retourné par le service match history) ne contient pas les kills en colonne séparée — ils sont dans `ScoreLabel` (string formatée) ou absents. Les vraies colonnes kills/deaths/kda sont dans `match_participants` (shared DB).
+**Référence** : `.ai/go_migration_v2/HALO_EXTERNAL_OPPORTUNITIES.md` §O11
 
-**Solution** :
-1. Étendre `ExplorerService.GetCommonMatches` pour joindre `match_participants` sur les `match_id` retournés et ramener kills, deaths, kda
-2. Supprimer `extractKillsFromLabel` et le placeholder `Deaths: 0`
-3. Renseigner `Kills`, `Deaths`, `KDA` dans la réponse `ExplorerMatchRow`
+**Conditions de déblocage** :
+1. Onboarding d'un nouveau titre avec dimension groupe native confirmée
+2. Ou signal utilisateur explicite sur le besoin de gestion de groupes dans LevelUp (hors `Squad` existant)
+3. Dans tous les cas : valider l'atterrissage dans `Squad` avant toute autre surface
 
-**Point de vigilance** : les matchs explorés concernent deux joueurs différents — la jointure doit filtrer sur le bon xuid (joueur cible, pas le joueur courant).
+**Périmètre si débloqué** :
+- Extension de la page `Squad` existante : groupes / cohortes sauvegardées scoped au titre
+- Appels Waypoint vers les endpoints `Spartan Company` ou équivalent du nouveau titre
+- Jamais comme rubrique de navigation autonome ni comme sous-produit social parallèle à LevelUp
+- L'architecture multi-titre (`title_id` dans `xuid_aliases`, `match_participants`, etc.) le rend naturellement extensible sans restructuration
 
----
-
-### [Go/HaloClient] Interface `HaloClient` pour testabilité (DI/mock)
-
-**Noté le** : 2026-04-17 | **Priorité** : Moyenne (qualité tests, non bloquant MVP)
-
-**Contexte** : Inspiré du TODO SPNKr "Extract interfaces for DI/testability". En Go, `HaloAPIClient` est un struct concret passé directement dans `engine.go`. Sans interface, les tests du moteur de sync (`engine_test.go`) ne peuvent pas remplacer le vrai client HTTP par un mock — ils dépendent du réseau ou de fixtures ad hoc.
-
-**Problème** : `engine.go` instancie et reçoit `*HaloAPIClient` directement. Tout test qui touche le moteur de sync doit soit appeler réellement l'API Halo (fragile, lent, token requis), soit contourner le code.
-
-**Solution** : Extraire une interface `HaloClient` dans `internal/sync/halo_client.go` couvrant les méthodes publiques utilisées par le moteur :
-
-```go
-type HaloClient interface {
-    GetMatchHistory(ctx context.Context, gamertag, matchType string, start, count int) ([]MatchHistoryEntry, error)
-    GetMatchStats(ctx context.Context, matchID string) (map[string]any, error)
-    GetMatchFilm(ctx context.Context, matchID string) (map[int]filmChunkData, bool, error)
-}
-```
-
-Remplacer `*HaloAPIClient` par `HaloClient` dans les signatures de `engine.go`, `backfill_weapons.go`, `career.go` (si applicable). `HaloAPIClient` reste l'implémentation concrète instanciée à l'entrée du programme.
-
-**Changements ciblés** :
-1. `internal/sync/halo_client.go` : déclarer l'interface `HaloClient`
-2. `internal/sync/engine.go` : accepter `HaloClient` au lieu de `*HaloAPIClient`
-3. `internal/sync/backfill_weapons.go` : idem
-4. `internal/sync/engine_test.go` : créer un `mockHaloClient` struct implémentant l'interface, retirer toute dépendance réseau
-5. Vérifier que `filmChunkData` est exportée ou que l'interface est définie dans le même package
-
-**Point de vigilance** : `filmChunkData` est actuellement non-exportée — si l'interface doit être consommable hors du package `sync`, il faudra exporter le type (`FilmChunkData`). Si l'interface reste interne au package, pas de changement de visibilité nécessaire.
-
----
-
-### [Go/HaloClient] Validation des paramètres d'entrée du client Halo
-
-**Noté le** : 2026-04-17 | **Priorité** : Basse (défensif, l'appelant contrôle les valeurs aujourd'hui)
-
-**Contexte** : Inspiré du TODO SPNKr "Add parameter validation". En Go, les erreurs de paramètres invalides envoyés à l'API Halo se manifestent soit silencieusement (résultat vide), soit avec une réponse HTTP 400 qui remonte comme erreur opaque après N retries inutiles. Valider tôt (`fail fast`) évite des retries coûteux et produit des messages d'erreur exploitables.
-
-**Périmètre complet — paramètres à valider par fonction** :
-
-**`GetMatchHistory`** ([halo_client.go:78](../apps/go-api/internal/sync/halo_client.go#L78)) :
-- `gamertag` : non vide, longueur ≤ 15, pas de caractères interdits (slashes, `?`, `#`) — injecté dans le path URL
-- `matchType` : doit être dans `{"all", "matchmaking", "custom", "local"}` — l'API retourne 400 sinon
-- `count` : entre 1 et 25 (limite documentée de l'API Halo) — au-delà l'API tronque ou retourne une erreur
-- `start` : ≥ 0
-
-**`GetMatchStats`** ([halo_client.go:118](../apps/go-api/internal/sync/halo_client.go#L118)) :
-- `matchID` : non vide, format UUID v4 (`xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx`) — injecté dans le path URL
-
-**`GetMatchFilm`** ([halo_client.go:157](../apps/go-api/internal/sync/halo_client.go#L157)) :
-- `matchID` : même règle UUID que `GetMatchStats`
-
-**`syncCareerRank`** ([career.go:34](../apps/go-api/internal/sync/career.go#L34)) :
-- `xuid` : non vide, numérique (XUID Xbox = entier 64 bits en string), longueur typique 16 chiffres
-
-**`FilterContextInput`** ([domain/filters.go:53](../apps/go-api/internal/domain/filters.go#L53)) — validation à la frontière HTTP (handler ou service) :
-- `filter_mode` : doit être `"period"` ou `"sessions"`
-- `Period.StartDate` / `Period.EndDate` : si les deux sont présents, `StartDate < EndDate`
-- `SessionsFilter.GapMinutes` : ≥ 0 (valeur négative n'a pas de sens)
-- `CascadeFilter.ExperienceTypes` : valeurs dans un ensemble connu (ex. `"matchmaking"`, `"custom"`, `"pve"`) — évite les injections SQL par concaténation si jamais utilisées dans une requête dynamique
-
-**`MatchHistoryQueryRequest`** ([domain/match_history.go:85](../apps/go-api/internal/domain/match_history.go#L85)) :
-- `Pagination.Page` : ≥ 1
-- `Pagination.PageSize` : entre 1 et 200 (seuil raisonnable à fixer)
-
-**Approche recommandée** :
-- Pour le client Halo (`halo_client.go`, `career.go`) : validation inline en tête de fonction, retourner `fmt.Errorf("GetMatchHistory: paramètre invalide: %w", ErrInvalidParam)`
-- Pour les types domain (`FilterContextInput`, `MatchHistoryQueryRequest`) : ajouter une méthode `Validate() error` sur les structs concernés, appelée dans les handlers HTTP avant de déléguer au service
-- Ne pas créer de framework de validation — des `if` directs suffisent à cette échelle
-
-**Point de vigilance** : `GetMatchHistory` est appelé dans `engine.go` avec `opts.MatchType` qui vient de la config ou du CLI — valider aussi à la construction du `SyncOptions` plutôt que seulement dans le client, pour un message d'erreur au plus tôt.
+**Point de vigilance** : toute dérive vers une surface sociale indépendante de `Squad` est à refuser — la valeur de LevelUp est analytique, pas sociale.
 
 ---
 

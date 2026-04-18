@@ -125,3 +125,27 @@ type GamertagSearchService interface {
 type ProfileService interface {
 	CreatePlayer(req domain.CreatePlayerProfileRequest) (playerKey string, warnings []string, err error)
 }
+
+// ─── Sprint 54 : Compare, Leaderboard ────────────────────────────────────────
+
+// CompareService construit la page Compare joueur vs joueur.
+type CompareService interface {
+	GetPage(ctx context.Context, req domain.CompareRequest) (domain.CompareResponse, error)
+}
+
+// LeaderboardService construit la page Classement CSR.
+type LeaderboardService interface {
+	GetPage(ctx context.Context, req domain.LeaderboardRequest) (domain.LeaderboardResponse, error)
+}
+
+// PlayerStatsProvider fournit les stats d'un joueur distant via Waypoint.
+// Implémenté par platform/halo.CompareProvider.
+type PlayerStatsProvider interface {
+	FetchRemoteStats(ctx context.Context, gamertag, titleSlug string) (*domain.NormalizedPlayerStats, error)
+}
+
+// PrivacyProvider interroge la privacy d'un compte Halo via Waypoint.
+// Implémenté par platform/halo.HaloProvider.
+type PrivacyProvider interface {
+	GetMatchPrivacy(ctx context.Context, xuid string) (*domain.MatchPrivacyInfo, error)
+}

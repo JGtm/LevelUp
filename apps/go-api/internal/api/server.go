@@ -197,6 +197,14 @@ func NewRouter(
 			excl := handlers.NewMatchExclusionHandler(reg.MatchExclusion)
 			r.Patch("/matches/{match_id}/exclusion", excl.SetExclusion)
 			r.Get("/match-exclusions", excl.ListExclusions)
+
+			// Sprint 54 : Compare joueur vs joueur
+			compare := handlers.NewCompareHandler(reg.Compare)
+			r.Post("/pages/compare", compare.PostComparePage)
+
+			// Sprint 54 : Classement CSR (Leaderboard)
+			leaderboard := handlers.NewLeaderboardHandler(reg.Leaderboard)
+			r.Get("/pages/leaderboard", leaderboard.GetLeaderboardPage)
 		})
 
 		// Endpoints P1 : répertoire gamertags

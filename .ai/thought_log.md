@@ -1,5 +1,62 @@
 # Thought Log
 
+## [2026-05-01] feat(s54): Saisons, Privacy, Compare, Leaderboard
+
+**Statut** : Complété
+
+### Contexte
+
+Sprint 54 complet (6 volets A-F). Continuation depuis la session précédente (commit `68bbb834`).
+
+### Décisions techniques
+
+1. **Pattern `With*` pour injection optionnelle** — `WithPrivacyProvider`, `WithMetadataRepo` ajoutés sur `BootstrapService`, `CareerService`, `StatsService`. L'injection n'est pas obligatoire : si absent, fallback gracieux (synthetic season, privacy=nil).
+
+2. **`resolveCurrentSeason` + `syntheticSeasonResult`** — les deux services partagent le même package `service`, donc `syntheticSeasonResult()` est défini une fois dans `career_service.go` et réutilisé dans `stats_service.go`. Aucune date hardcodée — `time.Time{}` pour les saisons fallback.
+
+3. **React: useMutation pour Compare, useQuery pour Leaderboard** — Compare (POST à la demande) utilise `useMutation`; Leaderboard (GET poll) utilise `useQuery`. Cohérent avec la sémantique REST.
+
+4. **PrivacyBanner** — composant pur (`level: 'none'` → null). Intégré dans `MatchHistoryPage` et `MatchViewPage` via `data?.privacy_warning`. `BootstrapResponse.privacy` est de type `MatchPrivacyInfo` (raw), la conversion vers `MatchPrivacyWarning` se fait dans l'UI si besoin.
+
+5. **Tables staging DuckDB** — `waypoint_medals_raw` et `waypoint_assets_raw` créées par `EnsureStagingTables` dans `metadata_repo.go`. PK composites pour idempotence.
+
+6. **OpenAPI** — schémas `MatchPrivacyInfo`, `MatchPrivacyWarning`, `CompareResponse`, `LeaderboardResponse`, `CurrentSeasonResult`, `SeasonSynthetic` ajoutés. Endpoints `POST /pages/compare` et `GET /pages/leaderboard` documentés.
+
+### Résultats observés
+
+- `go build ./...` : ✅ OK
+- `npx tsc --noEmit` : ✅ OK (0 erreur TypeScript)
+- Tests S54 : 4 nouveaux tests passent (`TestCompareService_BothLocal`, `TestCompareService_PlayerBNotFound`, `TestLeaderboardService_LocalFirst`, `TestLeaderboardService_Empty`)
+
+### Conclusion / prochaine étape
+
+Sprint 54 clôturé. Point ouvert : B5 (persist privacy state dans player DB) — déféré au Sprint 55.
+
+## [2026-04-18] docs(ux): cadrage Carrière / Synthèse pour le shell Go
+
+**Statut** : Complété
+
+### Contexte
+
+L'utilisateur a signalé une confusion UX entre Profil, Carrière et Synthèse dans le projet go-migration. Le besoin immédiat n'était pas d'implémenter, mais de figer une mini spec produit exploitable sur le shell Go / React, en excluant explicitement le legacy Python.
+
+### Décisions techniques
+
+1. **`Profil` sort de l'UX cible** — le vocabulaire produit retenu côté go-migration devient `Carrière` pour le hub joueur, avec suppression du terme `Profil` des futures surfaces utilisateur.
+2. **`Carrière` devient un hub** — l'onglet interne homonyme est renommé `Progression`, et `Citations` redevient une vue interne du hub au lieu d'une destination globale autonome.
+3. **Frontière fonctionnelle clarifiée** — `Carrière` porte uniquement la capitalisation long terme (rang, XP, Héros, LUSR/CSR, citations), alors que `Synthèse` absorbe la vue d'ensemble filtrée, les performances marquantes et les rivalités.
+4. **Contrat cible implicite** — les previews `top_matches` et `encounters` n'ont plus vocation à rester au coeur de la page Carrière ; le futur enrichissement doit se faire côté `SynthesisPageResponse` ou endpoints lazy associés.
+
+### Résultats observés
+
+- Mini spec créée : `.ai/go_migration_v2/UX_CAREER_SYNTHESIS_BOUNDARY.md`
+- Cartographie du dépôt mise à jour pour rendre ce cadrage retrouvable côté go-migration
+- Aucun flux de données ni contrat runtime modifié à ce stade
+
+### Conclusion / prochaine étape
+
+Le prochain lot naturel est un chantier en trois temps : terminologie/navigation, hub Carrière Progression/Citations, puis enrichissement de Synthèse avec overview + performances marquantes + rivalités.
+
 ## [2026-04-19] feat(phase12-final): S52 + S53 complets — validations, mock, OpenAPI, tests, CHANGELOG
 
 **Statut** : Complété

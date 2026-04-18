@@ -32,6 +32,7 @@ import (
 	"levelup/go-api/internal/config"
 	"levelup/go-api/internal/migration"
 	"levelup/go-api/internal/platform/duckdb"
+	"levelup/go-api/internal/platform/halo"
 	"levelup/go-api/internal/service"
 )
 
@@ -139,7 +140,8 @@ func main() {
 
 	// --- 4. Repositories + services ---
 	bootRepo := duckdb.NewBootstrapRepo(sharedDB, metaDB)
-	bootSvc := service.NewBootstrapService(cfg, bootRepo)
+	bootSvc := service.NewBootstrapService(cfg, bootRepo).
+		WithPrivacyProvider(halo.DefaultHaloProvider)
 
 	// --- 5. Sprint 0 : validation des types critiques ---
 	ctx := context.Background()
