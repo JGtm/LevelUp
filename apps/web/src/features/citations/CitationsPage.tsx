@@ -6,6 +6,7 @@ import { PageHeader } from '@/components/shell/PageHeader'
 import { Spinner } from '@/components/ui/spinner'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
+import { EmptyStateCard, EmptyStateNotice } from '@/components/ui/empty-state'
 import { PlotlyChart } from '@/components/ui/plotly-chart'
 import { useCitationsPage } from './queries'
 import { useGlobalFilterStore } from '@/stores/globalFilterStore'
@@ -44,7 +45,24 @@ export function CitationsPage() {
     )
   }
 
-  if (!data) return null
+  if (!data) {
+    return (
+      <div className="flex flex-col">
+        <PageHeader
+          title="Citations"
+          subtitle="Commendations et médailles dans la période sélectionnée"
+        />
+        <div className="p-6">
+          <EmptyStateCard
+            title="Citations indisponibles"
+            description="Aucune réponse exploitable n'a été renvoyée pour cette page. Vérifie le chargement des agrégats de citations."
+            actionLabel="Réessayer"
+            onAction={() => refetch()}
+          />
+        </div>
+      </div>
+    )
+  }
 
   const { commendations, medals_summary, deltas, distribution_chart } = data
 
@@ -73,26 +91,31 @@ export function CitationsPage() {
         </div>
 
         {/* Distribution Plotly */}
-        {distribution_chart && (
-          <Card>
-            <CardHeader>
-              <CardTitle className="text-base">Distribution</CardTitle>
-            </CardHeader>
-            <CardContent className="pb-4">
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-base">Distribution</CardTitle>
+          </CardHeader>
+          <CardContent className="pb-4">
+            {distribution_chart ? (
               <PlotlyChart figure={distribution_chart} />
-            </CardContent>
-          </Card>
-        )}
+            ) : (
+              <EmptyStateNotice
+                title="Distribution indisponible"
+                description="Aucun graphique de distribution n'a été généré pour la sélection actuelle."
+              />
+            )}
+          </CardContent>
+        </Card>
 
         {/* Commendations */}
-        {commendations.length > 0 && (
-          <Card>
-            <CardHeader>
-              <CardTitle className="text-base">
-                Commendations ({commendations.length})
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="pb-4">
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-base">
+              Commendations ({commendations.length})
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="pb-4">
+            {commendations.length > 0 ? (
               <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
                 {commendations.map((c) => (
                   <div
@@ -128,19 +151,24 @@ export function CitationsPage() {
                   </div>
                 ))}
               </div>
-            </CardContent>
-          </Card>
-        )}
+            ) : (
+              <EmptyStateNotice
+                title="Aucune commendation disponible"
+                description="Le backend n'a renvoyé aucune commendation pour cette période."
+              />
+            )}
+          </CardContent>
+        </Card>
 
         {/* Médailles — B3 NATIVE_COMPONENTS : grille responsive triée par count */}
-        {medals_summary.length > 0 && (
-          <Card>
-            <CardHeader>
-              <CardTitle className="text-base">
-                Médailles ({medals_summary.length})
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="pb-4">
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-base">
+              Médailles ({medals_summary.length})
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="pb-4">
+            {medals_summary.length > 0 ? (
               <div className="grid grid-cols-4 gap-2 sm:grid-cols-6 lg:grid-cols-8">
                 {[...medals_summary]
                   .sort((a, b) => b.count_filtered - a.count_filtered)
@@ -158,15 +186,14 @@ export function CitationsPage() {
                     </div>
                   ))}
               </div>
-            </CardContent>
-          </Card>
-        )}
-
-        {commendations.length === 0 && medals_summary.length === 0 && (
-          <p className="text-center text-sm text-gray-500">
-            Aucune citation pour la période sélectionnée.
-          </p>
-        )}
+            ) : (
+              <EmptyStateNotice
+                title="Aucune médaille disponible"
+                description="Aucune médaille n'a été agrégée pour cette période filtrée."
+              />
+            )}
+          </CardContent>
+        </Card>
       </div>
     </div>
   )

@@ -74,7 +74,7 @@ const DEFAULT_LOCAL_UI_PREFS: LocalUiPrefs = {
 
 export const useSettingsDraftStore = create<SettingsDraftState>()(
   persist(
-    (set) => ({
+    (set, get) => ({
       dirtyFields: {},
       lastSavedAt: null,
       localUiPrefs: DEFAULT_LOCAL_UI_PREFS,
@@ -120,15 +120,15 @@ export const useSettingsDraftStore = create<SettingsDraftState>()(
           },
         })),
 
-      getLastPlayerSlugForTitle: (titleSlug) => {
-        const state = useSettingsDraftStore.getState()
+      getLastPlayerSlugForTitle: (titleSlug: string): string | null => {
+        const state = get()
         return state.localUiPrefs.lastPlayerSlugByTitle[titleSlug] ?? null
       },
     }),
     {
       name: 'levelup-ui-prefs',
       // Persister uniquement les préférences locales — pas les dirty fields
-      partialize: (state) => ({
+      partialize: (state): Pick<SettingsDraftState, 'localUiPrefs' | 'lastSavedAt'> => ({
         localUiPrefs: state.localUiPrefs,
         lastSavedAt: state.lastSavedAt,
       }),

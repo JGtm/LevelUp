@@ -11,8 +11,6 @@
  */
 import { test, expect } from '@playwright/test'
 
-const DEMO_MATCH_ID = '00000000-0000-0000-0000-000000000001'
-
 test.describe('Slice 4B — Match View (DEMO_MODE)', () => {
   test("l'API /matches/{match_id} retourne HTTP 200 pour un match démo", async ({
     request,

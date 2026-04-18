@@ -1,5 +1,64 @@
 # Thought Log
 
+## [2026-04-18] fix(web-empty-states): harmonisation des pages et sections sans données
+
+**Statut** : Complété
+
+### Contexte
+
+L'audit frontend du shell React a confirmé plusieurs retours `null` silencieux et des sections entièrement masquées quand une payload manquait ou qu'un sous-ensemble de données était vide. L'objectif était d'éliminer tout écran blanc ou trou UX sur les pages player-scoped.
+
+### Décisions techniques
+
+1. **Pattern UI partagé** : création de `apps/web/src/components/ui/empty-state.tsx` avec `EmptyStateCard` et `EmptyStateNotice` pour standardiser les messages de diagnostic sans dupliquer du JSX dans chaque feature.
+2. **Pages racines rendues explicites** : remplacement des `if (!data) return null` sur `HomePage`, `CareerPage`, `TimeseriesPage`, `SquadPage`, `CitationsPage`, `SynthesisPage` et `SessionComparePage` par un rendu visible avec message clair et, quand pertinent, bouton de retry.
+3. **Sections masquées remplacées** : ajout de placeholders dans `CareerChartsSection`, `HomePage` (sessions, highlights, médias), `SquadPage` (sélection/comparaison), `CitationsPage` (distribution, commendations, médailles), `SynthesisPage` (heatmap, top semaines), `SessionComparePage` (graphiques/tableaux) et `ExplorerPage` (mode joueur + fallback requêtes match/player).
+4. **Tests verrouillés** : mise à jour des specs Vitest existantes sur `HomePage`, `CareerPage`, `SquadPage`, `SynthesisPage` et `ExplorerPage` pour vérifier les nouveaux messages explicites.
+
+### Résultats observés
+
+- `npm run typecheck` : OK
+- `npm run test:run -- src/features/home/HomePage.test.tsx src/features/career/CareerPage.test.tsx src/features/squad/SquadPage.test.tsx src/features/synthesis/SynthesisPage.test.tsx src/features/explorer/ExplorerPage.test.tsx` : OK (28 tests)
+- `npm run build` : OK
+
+### Conclusion / prochaine étape
+
+Sur ce périmètre frontend, le shell React ne laisse plus de page blanche quand les données manquent : l'absence de payload ou de sous-section est maintenant visible et exploitable pour le diagnostic.
+
+## [2026-04-18] docs(phase12): Formalisation Sprints 51–53 dans SPRINT_ROADMAP.md
+
+**Statut** : Complété
+
+### Contexte
+
+Suite aux 4 conditions pré-Sprint 51 satisfaites (commit `99c84b73`), formalisation de la Phase 12 (Sprints 51, 52, 53) dans `SPRINT_ROADMAP.md` avec intégration des 6 items backlog.
+
+### Décision technique principale
+
+Organisation en 3 sprints thématiques distincts :
+- **Sprint 51 (5–7j)** : Bascule prod go-as-default + 6 stubs critiques (sync, backfill, commendations, synthesis, settings/apply) + simplification onboarding auth (portage décision Python — wizard → 3 étapes Device Code Flow)
+- **Sprint 52 (4–6j)** : Interface `HaloClient` pour testabilité (mock sans réseau) + validation inline paramètres d'entrée + Explorer kills/deaths/KDA réels (joint `match_participants`)
+- **Sprint 53 (3–5j)** : Reset médias réel (suppression stub `"Terminé (stub)"`) + vectorisation performance score batch (O(n)→O(1) requêtes SQL) + polish prod (logging structuré, graceful shutdown, coverage baseline)
+
+### Résultats observés
+
+- `SPRINT_ROADMAP.md` : 1532 → 1738 lignes (+206 lignes)
+- Vue d'ensemble mise à jour : 3 lignes S51/S52/S53 ajoutées au tableau
+- Total global mis à jour : Phase 12 ajoutée (12–18j, ⬜)
+- En-tête mis à jour : date `2026-04-18`, mention Phase 12 ⬜
+
+### Conclusion / prochaine étape
+
+Les 6 items backlog sont tous couverts :
+- Reset médias → Sprint 53 Volet A (implémentation `MediaIndexer`)
+- Explorer kills/KDA → Sprint 52 Volet C (joint `match_participants`)
+- Interface `HaloClient` → Sprint 52 Volet A (DI/mock)
+- Validation paramètres Halo → Sprint 52 Volet B (validation inline)
+- Auth onboarding Go → Sprint 51 Volet C (audit SetupPage + Device Code Flow)
+- Vectorisation performance → Sprint 53 Volet B (batch SQL)
+
+---
+
 ## [2026-04-18] fix(pre-sprint51): 4 conditions de bascule prod
 
 **Statut** : Complété — commit `99c84b73`

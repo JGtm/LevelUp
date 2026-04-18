@@ -151,6 +151,8 @@ const synthesisFixture = {
   solo_kpis: synthesisKPIs,
   squad_kpis: synthesisKPIs,
   comparison_metrics: [],
+  heatmap_data: [],
+  top_weeks: [],
 }
 
 const mediaFixture = {

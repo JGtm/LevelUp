@@ -155,8 +155,8 @@ func TestRestorePlayer_RestoreAndVerify(t *testing.T) {
 	t.Logf("✅ restauration vérifiée : %d lignes dans player_match_enrichment", cnt)
 }
 
-// TestFindAvailableBackups_EmptyDir vérifie qu'un répertoire vide retourne une liste vide.
-func TestFindAvailableBackups_EmptyDir(t *testing.T) {
+// TestFindAvailableBackups_EmptyDir_RestoreSmoke vérifie qu'un répertoire vide retourne une liste vide.
+func TestFindAvailableBackups_EmptyDir_RestoreSmoke(t *testing.T) {
 	dir := t.TempDir()
 	backups, err := FindAvailableBackups(dir)
 	if err != nil {

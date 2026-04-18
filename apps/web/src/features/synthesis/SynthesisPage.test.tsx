@@ -31,7 +31,7 @@ describe('SynthesisPage', () => {
   it('affiche le titre Synthese après chargement', async () => {
     renderWithProviders(<SynthesisPage />)
     await waitFor(() => {
-      expect(screen.getByText('Synthese')).toBeInTheDocument()
+      expect(screen.getByText('Synthèse')).toBeInTheDocument()
     })
   })
 
@@ -39,6 +39,14 @@ describe('SynthesisPage', () => {
     renderWithProviders(<SynthesisPage />)
     await waitFor(() => {
       expect(screen.getByText('Tout')).toBeInTheDocument()
+    })
+  })
+
+  it('affiche des placeholders explicites pour les sections vides', async () => {
+    renderWithProviders(<SynthesisPage />)
+    await waitFor(() => {
+      expect(screen.getByText(/Activité indisponible/i)).toBeInTheDocument()
+      expect(screen.getByText(/Aucune semaine remarquable/i)).toBeInTheDocument()
     })
   })
 })

@@ -92,7 +92,7 @@ export function CareerEncountersSection({ playerSlug, preview }: Props) {
         ) : (
           <>
             <EncounterTable items={items} />
-            {!showAll && preview.length > 0 && (
+            {!showAll && (preview?.length ?? 0) > 0 && (
               <div className="mt-4 flex justify-center">
                 <Button variant="outline" size="sm" onClick={() => setShowAll(true)}>
                   Voir toutes les rencontres

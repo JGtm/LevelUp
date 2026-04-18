@@ -5,7 +5,10 @@
  */
 import { describe, it, expect, vi } from 'vitest'
 import { screen, waitFor } from '@testing-library/react'
+import { http, HttpResponse } from 'msw'
+import type { ReactNode } from 'react'
 import { renderWithProviders } from '@/test/render-utils'
+import { server } from '@/test/setup'
 import { HomePage } from './HomePage'
 
 vi.mock('@tanstack/react-router', async (importOriginal) => {
@@ -14,6 +17,7 @@ vi.mock('@tanstack/react-router', async (importOriginal) => {
     ...actual,
     useNavigate: () => vi.fn(),
     useParams: () => ({ playerSlug: 'test-player' }),
+    Link: ({ children }: { children?: ReactNode }) => <a>{children}</a>,
   }
 })
 
@@ -48,6 +52,27 @@ describe('HomePage', () => {
     renderWithProviders(<HomePage />)
     await waitFor(() => {
       expect(screen.getByText(/TestPlayer/i)).toBeInTheDocument()
+    })
+  })
+
+  it('affiche des messages explicites pour les sections vides', async () => {
+    renderWithProviders(<HomePage />)
+    await waitFor(() => {
+      expect(screen.getByText(/Aucune session récente disponible/i)).toBeInTheDocument()
+      expect(screen.getByText(/Aucun point saillant disponible/i)).toBeInTheDocument()
+      expect(screen.getByText(/Aucun média récent disponible/i)).toBeInTheDocument()
+    })
+  })
+
+  it('affiche un message clair si la payload home est absente', async () => {
+    server.use(
+      http.get('/api/v1/players/:playerSlug/pages/home', () => HttpResponse.json(null)),
+    )
+
+    renderWithProviders(<HomePage />)
+
+    await waitFor(() => {
+      expect(screen.getByText(/Accueil vide/i)).toBeInTheDocument()
     })
   })
 })

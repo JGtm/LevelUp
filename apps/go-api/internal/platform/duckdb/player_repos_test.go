@@ -93,7 +93,10 @@ func seedPlayerSchema(t *testing.T, db *DB) { //nolint:funlen
 		// ── Tables player
 		`CREATE TABLE player_match_enrichment (
 			match_id VARCHAR PRIMARY KEY, performance_score DOUBLE,
-			session_id INTEGER, session_label VARCHAR, is_with_friends BOOLEAN DEFAULT FALSE)`,
+			session_id INTEGER, session_label VARCHAR,
+			is_with_friends BOOLEAN DEFAULT FALSE,
+			is_excluded BOOLEAN DEFAULT FALSE,
+			updated_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP)`,
 		`CREATE TABLE career_progression (
 			rank INTEGER, current_xp INTEGER, recorded_at TIMESTAMPTZ,
 			rank_name VARCHAR, rank_tier VARCHAR,
@@ -134,8 +137,10 @@ func seedPlayerSchema(t *testing.T, db *DB) { //nolint:funlen
 				1.5, 0.6, 1500, 3000.0, 1500.0, 600, 1200.0, 1100.0,
 				8.0, 5.0, 1, true, 1, 45.0}},
 		{`INSERT INTO shared.xuid_aliases VALUES (?,?)`, []interface{}{pTestXUID, pTestGamertag}},
-		{`INSERT INTO player_match_enrichment VALUES (?,?,?,?,?)`,
-			[]interface{}{"m1", 85.5, 1, "Session 1", false}},
+		{`INSERT INTO player_match_enrichment
+			(match_id,performance_score,session_id,session_label,is_with_friends,is_excluded)
+			VALUES (?,?,?,?,?,?)`,
+			[]interface{}{"m1", 85.5, 1, "Session 1", false, false}},
 		{`INSERT INTO career_progression
 			(rank,current_xp,recorded_at,rank_name,rank_tier,xp_for_next_rank,xp_total,is_max_rank)
 			VALUES (?,?,?,?,?,?,?,?)`,

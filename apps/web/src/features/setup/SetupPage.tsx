@@ -16,6 +16,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Spinner } from '@/components/ui/spinner'
 import { useAppShellStore } from '@/stores/appShellStore'
 import { useSetupFlowStore } from '@/stores/setupFlowStore'
+import type { ApiError } from '@/lib/api/client'
 import { queryKeys } from '@/lib/query/keys'
 import {
   useStartDeviceFlow,
@@ -24,6 +25,18 @@ import {
   useStartInitialSync,
   useJobStatus,
 } from './queries'
+
+function getApiErrorMessage(error: unknown, fallback: string): string {
+  if (
+    error &&
+    typeof error === 'object' &&
+    'message' in error &&
+    typeof (error as ApiError).message === 'string'
+  ) {
+    return (error as ApiError).message
+  }
+  return fallback
+}
 
 // ---------------------------------------------------------------------------
 // Étape 1 — Device Code Flow (Halo Link)
@@ -98,7 +111,7 @@ function StepDeviceCode() {
   }
 
   // Codes d'erreur structurés
-  const errorCode = status?.status === 'failed' ? (status as any).error_code : null
+  const errorCode = status?.status === 'failed' ? status.error?.code ?? null : null
 
   if (status?.status === 'failed' || status?.status === 'expired' || (secondsLeft !== null && secondsLeft <= 0)) {
     const errorMessage: Record<string, string> = {
@@ -177,16 +190,10 @@ function StepDeviceCode() {
 // ---------------------------------------------------------------------------
 function StepPlayer() {
   const linkedHaloIdentity = useAppShellStore((s) => s.linkedHaloIdentity)
-  const [gamertag, setGamertag] = useState(linkedHaloIdentity?.gamertag ?? '')
+  const [gamertagInput, setGamertagInput] = useState('')
   const queryClient = useQueryClient()
   const createPlayer = useCreatePlayer()
-
-  // Sync si l'identité est chargée après le montage
-  useEffect(() => {
-    if (linkedHaloIdentity?.gamertag && !gamertag) {
-      setGamertag(linkedHaloIdentity.gamertag)
-    }
-  }, [linkedHaloIdentity?.gamertag]) // eslint-disable-line react-hooks/exhaustive-deps
+  const gamertag = linkedHaloIdentity?.gamertag ?? gamertagInput
 
   function handleCreate() {
     if (!gamertag.trim()) return
@@ -225,8 +232,8 @@ function StepPlayer() {
             Entrez votre Gamertag Xbox pour créer votre profil.
           </p>
           <Input
-            value={gamertag}
-            onChange={(e) => setGamertag(e.target.value)}
+            value={gamertagInput}
+            onChange={(e) => setGamertagInput(e.target.value)}
             placeholder="MonGamertag"
             onKeyDown={(e) => { if (e.key === 'Enter') handleCreate() }}
           />
@@ -235,7 +242,7 @@ function StepPlayer() {
 
       {createPlayer.isError && (
         <p className="text-red-600 text-sm">
-          {(createPlayer.error as any)?.detail?.message ?? 'Erreur lors de la création du profil.'}
+          {getApiErrorMessage(createPlayer.error, 'Erreur lors de la création du profil.')}
         </p>
       )}
 

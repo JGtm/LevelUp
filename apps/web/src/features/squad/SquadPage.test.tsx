@@ -38,7 +38,15 @@ describe('SquadPage', () => {
   it('affiche 0 coéquipiers pour le fixture vide', async () => {
     renderWithProviders(<SquadPage />)
     await waitFor(() => {
-      expect(screen.getByText(/Aucun coequipier/i)).toBeInTheDocument()
+      expect(screen.getByText(/Aucun coéquipier/i)).toBeInTheDocument()
+    })
+  })
+
+  it('affiche des messages explicites quand aucune sélection n’est active', async () => {
+    renderWithProviders(<SquadPage />)
+    await waitFor(() => {
+      expect(screen.getByText(/Aucune sélection/i)).toBeInTheDocument()
+      expect(screen.getByText(/Comparaison inactive/i)).toBeInTheDocument()
     })
   })
 })

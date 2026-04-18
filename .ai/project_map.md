@@ -21,6 +21,12 @@ En v5.1, les stats coéquipiers sont chargées depuis `shared.match_participants
 
 Le sync écrit dans les player DBs : `player_match_enrichment` + `personal_score_awards` uniquement.
 
+## Validation transversale (2026-04-18)
+
+- Backend Go : `CGO_ENABLED=1 go test -tags=integration ./... -timeout 120s -count=1` passe intégralement.
+- Frontend React : `npm run typecheck`, `npm run lint`, `npm run build`, `npm run test:run` et `npm run test:e2e` passent sur `apps/web`.
+- Correctifs clés de cette passe : ordre de scan `MatchHistoryRepo` réaligné avec `is_excluded`, tests Go dupliqués renommés, `HomePage`/`SynthesisPage` tolérants aux fixtures partielles, specs Vitest réalignées avec l'UI actuelle.
+
 ## État Actuel (2026-03-13) — v5.7 Stable
 
 ### Historique des versions
@@ -71,8 +77,23 @@ data/
 - `apps/go-api/internal/service/match_history_service.go` : filtrage des matchs exclus avant pagination, export CSV et agrégats de win rate.
 - `apps/go-api/internal/api/middleware/session.go` + `apps/go-api/internal/ctxkeys/ctxkeys.go` : injection des `HaloTokens` et du `XUID` depuis la session HTTP dans le contexte Go.
 - `apps/go-api/internal/platform/halo/provider.go` : implémentation live des appels Battle Pass / Challenges à partir du contexte auth, au lieu du stub `auth_required` permanent.
+- `apps/web/src/components/shell/AppShell.tsx`, `AppShellHeader.tsx`, `PlayerScopeNav.tsx` : nouveau shell React sans sidebar, avec header global, navigation joueur compacte en deux niveaux et changement de joueur qui préserve la section courante quand c'est possible.
+- `apps/web/src/components/shell/shellNavigation.ts` : source de vérité du mapping navigation primaire / secondaire et helper `buildPlayerDestination()` pour recalculer la route lors d'un changement de joueur.
 
 ## Modules Clés
+
+### Frontend web (Go migration)
+- `apps/web/src/components/shell/AppShell.tsx` : shell top-level sans sidebar, fond atmosphérique et conteneur principal centré.
+- `apps/web/src/components/shell/AppShellHeader.tsx` : header global avec identité produit, titre courant, session Halo, liens utilitaires et sélecteur de joueur.
+- `apps/web/src/components/shell/PlayerScopeNav.tsx` : navigation compacte du scope joueur, séparée entre parcours principal et vues secondaires, exposée en `nav` sémantique.
+- `apps/web/src/components/shell/KPIBar.tsx` : bande de KPIs repensée en cartes lisibles au lieu d'une simple ligne tabulaire.
+- `apps/web/src/components/shell/PageHeader.tsx` : entête de page plus premium, avec hiérarchie visuelle renforcée.
+- `apps/web/src/components/shell/shellNavigation.ts` : constantes de navigation et logique de destination lors d'un switch joueur.
+- `apps/web/src/components/shell/shellNavigation.test.ts` : test unitaire Vitest du helper de navigation joueur.
+- `apps/web/src/components/ui/empty-state.tsx` : pattern partagé `EmptyStateCard` / `EmptyStateNotice` pour les payloads nulles et sections analytiques vides.
+- `apps/web/src/features/home/HomePage.tsx` : home joueur avec quick actions en routes typées et unité de précision alignée sur le backend Go (`avg_accuracy` déjà en %).
+- `apps/web/src/features/home/HomePage.tsx`, `career/CareerPage.tsx`, `timeseries/TimeseriesPage.tsx`, `squad/SquadPage.tsx`, `citations/CitationsPage.tsx`, `synthesis/SynthesisPage.tsx`, `session-compare/SessionComparePage.tsx`, `explorer/ExplorerPage.tsx` : plus de `return null` silencieux sur ce périmètre, avec placeholders explicites quand une section ne peut pas s'afficher.
+- `apps/web/package.json` : dépendance explicite `plotly.js`, requise au build par `react-plotly.js`.
 
 ### Accès aux Données
 - `src/data/repositories/duckdb_repo.py` : Repository principal DuckDB (splitté: `_awards_repo`, `_diagnostic_repo`, `_legacy_compat`, `_match_queries_helpers`, `_match_queries_polars`, `_metadata_resolution`, `_schema_introspection`, `_archives_repo`, `_events_repo`, `_medals_repo`, `_gamertag_resolver`)

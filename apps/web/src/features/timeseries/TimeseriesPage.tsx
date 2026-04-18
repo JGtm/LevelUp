@@ -7,6 +7,7 @@ import { PageHeader } from '@/components/shell/PageHeader'
 import { Spinner } from '@/components/ui/spinner'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
+import { EmptyStateCard, EmptyStateNotice } from '@/components/ui/empty-state'
 import { PlotlyChart } from '@/components/ui/plotly-chart'
 import { useTimeseriesPage } from './queries'
 import { useGlobalFilterStore } from '@/stores/globalFilterStore'
@@ -24,14 +25,20 @@ const TABS: { id: TabId; label: string }[] = [
 ]
 
 function ChartCard({ title, figure }: { title: string; figure: PlotlyFigurePayload | null }) {
-  if (!figure) return null
   return (
     <Card>
       <CardHeader>
         <CardTitle className="text-sm">{title}</CardTitle>
       </CardHeader>
       <CardContent className="pb-4">
-        <PlotlyChart figure={figure} />
+        {figure ? (
+          <PlotlyChart figure={figure} />
+        ) : (
+          <EmptyStateNotice
+            title="Graphique indisponible"
+            description="Aucune figure exploitable n'a été renvoyée pour cette section."
+          />
+        )}
       </CardContent>
     </Card>
   )
@@ -72,7 +79,24 @@ export function TimeseriesPage() {
     )
   }
 
-  if (!data) return null
+  if (!data) {
+    return (
+      <div className="flex flex-col">
+        <PageHeader
+          title="Séries temporelles"
+          subtitle="Vue analytique des performances"
+        />
+        <div className="p-6">
+          <EmptyStateCard
+            title="Séries temporelles indisponibles"
+            description="Le backend n'a renvoyé aucune charge utile pour cette page. Vérifie les filtres, les données locales ou la requête API."
+            actionLabel="Réessayer"
+            onAction={() => refetch()}
+          />
+        </div>
+      </div>
+    )
+  }
 
   const { summary_tab, cumul_tab, form_tab, intensity_tab, distributions_tab } = data
 
@@ -106,24 +130,31 @@ export function TimeseriesPage() {
         {/* KPIs */}
         {activeTab === 'summary' && (
           <div className="space-y-6">
-            <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-5">
-              {summary_tab.kpi_cards.map((card: TimeseriesKpiCard) => (
-                <Card key={card.key}>
-                  <CardContent className="py-3 text-center">
-                    <p className="text-xs text-gray-500">{card.label}</p>
-                    <p
-                      className="text-xl font-bold"
-                      style={{ color: card.color ?? undefined }}
-                    >
-                      {card.value}
-                    </p>
-                    {card.delta && (
-                      <p className="text-xs text-gray-400">{card.delta}</p>
-                    )}
-                  </CardContent>
-                </Card>
-              ))}
-            </div>
+            {summary_tab.kpi_cards.length > 0 ? (
+              <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-5">
+                {summary_tab.kpi_cards.map((card: TimeseriesKpiCard) => (
+                  <Card key={card.key}>
+                    <CardContent className="py-3 text-center">
+                      <p className="text-xs text-gray-500">{card.label}</p>
+                      <p
+                        className="text-xl font-bold"
+                        style={{ color: card.color ?? undefined }}
+                      >
+                        {card.value}
+                      </p>
+                      {card.delta && (
+                        <p className="text-xs text-gray-400">{card.delta}</p>
+                      )}
+                    </CardContent>
+                  </Card>
+                ))}
+              </div>
+            ) : (
+              <EmptyStateNotice
+                title="KPIs indisponibles"
+                description="Aucune carte KPI n'a été calculée pour cette période."
+              />
+            )}
             <ChartCard title="KDA Distribution" figure={summary_tab.kda_dist_chart} />
             <ChartCard title="Taux de victoire" figure={summary_tab.win_rate_chart} />
             <ChartCard title="Score" figure={summary_tab.score_chart} />
@@ -143,7 +174,7 @@ export function TimeseriesPage() {
         {activeTab === 'form' && (
           <div className="space-y-6">
             {/* D1 — Cartes régression K/D */}
-            {form_tab.regression_stats.has_enough_for_trend && (
+            {form_tab.regression_stats.has_enough_for_trend ? (
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                 <DeltaCard
                   label="Pente K/D"
@@ -170,6 +201,11 @@ export function TimeseriesPage() {
                   warningText="Tendance peu fiable"
                 />
               </div>
+            ) : (
+              <EmptyStateNotice
+                title="Tendance indisponible"
+                description="Il faut davantage de matchs pour calculer une régression interprétable sur cette période."
+              />
             )}
             <ChartCard title="EWMA K/D" figure={form_tab.ewma_kd_chart} />
             <ChartCard title="Tendance (régression)" figure={form_tab.regression_chart} />

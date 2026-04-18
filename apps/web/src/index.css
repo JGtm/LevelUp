@@ -51,11 +51,10 @@
 }
 
 #root {
-  width: 1126px;
-  max-width: 100%;
-  margin: 0 auto;
-  text-align: center;
-  border-inline: 1px solid var(--border);
+  width: 100%;
+  max-width: none;
+  margin: 0;
+  text-align: left;
   min-height: 100svh;
   display: flex;
   flex-direction: column;
@@ -64,6 +63,17 @@
 
 body {
   margin: 0;
+  background:
+    radial-gradient(circle at top, rgba(170, 59, 255, 0.08), transparent 24%),
+    linear-gradient(180deg, #f8fafc 0%, #eef2ff 100%);
+}
+
+@media (prefers-color-scheme: dark) {
+  body {
+    background:
+      radial-gradient(circle at top, rgba(192, 132, 252, 0.12), transparent 26%),
+      linear-gradient(180deg, #111827 0%, #0f172a 100%);
+  }
 }
 
 h1,

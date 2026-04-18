@@ -7,6 +7,7 @@ import { PageHeader } from '@/components/shell/PageHeader'
 import { Spinner } from '@/components/ui/spinner'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
+import { EmptyStateCard, EmptyStateNotice } from '@/components/ui/empty-state'
 import { InfoTooltip } from '@/components/ui/info-tooltip'
 import { CareerSummaryCard } from './CareerSummaryCard'
 import { CareerChartsSection } from './CareerChartsSection'
@@ -49,7 +50,24 @@ export function CareerPage() {
     )
   }
 
-  if (!data) return null
+  if (!data) {
+    return (
+      <div className="flex flex-col">
+        <PageHeader
+          title="Carrière"
+          subtitle="Progression de rang et statistiques globales"
+        />
+        <div className="p-6">
+          <EmptyStateCard
+            title="Données de carrière indisponibles"
+            description="Aucune réponse exploitable n'a été renvoyée pour cette page. Vérifie la source de données ou relance le chargement."
+            actionLabel="Réessayer"
+            onAction={() => refetch()}
+          />
+        </div>
+      </div>
+    )
+  }
 
   const topMatchesItems =
     showAllTopMatches && fullTopMatches
@@ -75,35 +93,42 @@ export function CareerPage() {
         <CareerChartsSection charts={data.charts} />
 
         {/* Section LUSR */}
-        {data.lusr && (
-          <Card>
-            <CardHeader>
-              <CardTitle className="text-base">Rating LUSR <InfoTooltip content="Le LUSR (LevelUp Skill Rating) est un rating calculé localement à partir de vos résultats récents. Il reflète votre niveau indépendamment du CSR officiel, en pondérant victoires, KDA et régularité." /></CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-1">
-              <p className="text-sm font-medium text-gray-700">
-                Actuel :{' '}
-                <span className="text-purple-700 font-bold">
-                  {data.lusr.current_rating ?? '—'}
-                </span>
-                {data.lusr.current_tier_label && (
-                  <> · <span className="text-gray-600">{data.lusr.current_tier_label}</span></>
-                )}
-                {data.lusr.current_playlist_group && (
-                  <span className="ml-2 text-xs text-gray-400">
-                    ({data.lusr.current_playlist_group})
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-base">Rating LUSR <InfoTooltip content="Le LUSR (LevelUp Skill Rating) est un rating calculé localement à partir de vos résultats récents. Il reflète votre niveau indépendamment du CSR officiel, en pondérant victoires, KDA et régularité." /></CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-1">
+            {data.lusr ? (
+              <>
+                <p className="text-sm font-medium text-gray-700">
+                  Actuel :{' '}
+                  <span className="text-purple-700 font-bold">
+                    {data.lusr.current_rating ?? '—'}
                   </span>
+                  {data.lusr.current_tier_label && (
+                    <> · <span className="text-gray-600">{data.lusr.current_tier_label}</span></>
+                  )}
+                  {data.lusr.current_playlist_group && (
+                    <span className="ml-2 text-xs text-gray-400">
+                      ({data.lusr.current_playlist_group})
+                    </span>
+                  )}
+                </p>
+                {data.lusr.trend_label && (
+                  <p className="text-xs text-gray-500">{data.lusr.trend_label}</p>
                 )}
-              </p>
-              {data.lusr.trend_label && (
-                <p className="text-xs text-gray-500">{data.lusr.trend_label}</p>
-              )}
-            </CardContent>
-          </Card>
-        )}
+              </>
+            ) : (
+              <EmptyStateNotice
+                title="Rating indisponible"
+                description="Aucun checkpoint LUSR n'est disponible pour ce joueur ou cette période."
+              />
+            )}
+          </CardContent>
+        </Card>
 
         {/* Top matchs */}
-        {(topMatchesItems?.length ?? 0) > 0 && (
+        {(topMatchesItems?.length ?? 0) > 0 ? (
           <div className="space-y-4">
             {loadingTopMatches ? (
               <div className="flex justify-center py-4">
@@ -141,6 +166,11 @@ export function CareerPage() {
               </>
             )}
           </div>
+        ) : (
+          <EmptyStateCard
+            title="Top matchs indisponibles"
+            description="Aucun match distinctif n'a été calculé pour cette page de carrière."
+          />
         )}
 
         {/* Rencontres fréquentes */}
