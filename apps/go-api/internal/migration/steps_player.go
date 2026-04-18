@@ -139,6 +139,22 @@ func init() {
 	})
 
 	Register(Migration{
+		Name:        "add_media_like_columns",
+		TargetDB:    TargetPlayer,
+		Description: "Colonnes liked et liked_at sur media_files",
+		ApplySchema: func(db *sql.DB) error {
+			exists, err := tableExists(db, "media_files")
+			if err != nil || !exists {
+				return err
+			}
+			if err := addColumnIfMissing(db, "media_files", "liked", "BOOLEAN DEFAULT FALSE"); err != nil {
+				return err
+			}
+			return addColumnIfMissing(db, "media_files", "liked_at", "TIMESTAMP")
+		},
+	})
+
+	Register(Migration{
 		Name:        "add_performance_score",
 		TargetDB:    TargetPlayer,
 		Description: "Colonnes optionnelles sur match_stats (accuracy, session_id, perf...)",
