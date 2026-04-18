@@ -9,6 +9,8 @@ import (
 	"time"
 
 	"levelup/go-api/internal/api/middleware"
+	"levelup/go-api/internal/ctxkeys"
+	"levelup/go-api/internal/domain"
 	"levelup/go-api/internal/platform/session"
 )
 
@@ -86,5 +88,63 @@ func TestGetSession_NilWhenAbsent(t *testing.T) {
 	sess := middleware.GetSession(req.Context())
 	if sess != nil {
 		t.Fatal("expected nil session from empty context")
+	}
+}
+
+func TestWithSession_InjectsHaloAuth(t *testing.T) {
+	store := newSessionStore(t)
+
+	sess := store.New()
+	sess.HaloTokens = &domain.HaloTokens{SpartanToken: "spartan_test", ClearanceToken: "clear_test"}
+	sess.LinkedHaloIdentity = &domain.HaloIdentity{Gamertag: "TestPlayer", XUID: "xuid-42"}
+	_ = store.Save(sess)
+	signed := store.SignCookie(sess.SessionID)
+
+	mw := middleware.WithSession(store, false)
+	var gotTokens *domain.HaloTokens
+	var gotXUID string
+	handler := mw(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		gotTokens = ctxkeys.HaloTokens(r.Context())
+		gotXUID = ctxkeys.HaloXUID(r.Context())
+		w.WriteHeader(http.StatusOK)
+	}))
+
+	req := httptest.NewRequest(http.MethodGet, "/", nil)
+	req.AddCookie(&http.Cookie{Name: session.CookieName, Value: signed})
+	w := httptest.NewRecorder()
+	handler.ServeHTTP(w, req)
+
+	if gotTokens == nil {
+		t.Fatal("expected HaloTokens injected in context")
+	}
+	if gotTokens.SpartanToken != "spartan_test" {
+		t.Errorf("expected spartan_test, got %q", gotTokens.SpartanToken)
+	}
+	if gotXUID != "xuid-42" {
+		t.Errorf("expected xuid-42, got %q", gotXUID)
+	}
+}
+
+func TestWithSession_NoHaloAuthWhenTokensAbsent(t *testing.T) {
+	store := newSessionStore(t)
+
+	sess := store.New()
+	_ = store.Save(sess)
+	signed := store.SignCookie(sess.SessionID)
+
+	mw := middleware.WithSession(store, false)
+	var gotTokens *domain.HaloTokens
+	handler := mw(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		gotTokens = ctxkeys.HaloTokens(r.Context())
+		w.WriteHeader(http.StatusOK)
+	}))
+
+	req := httptest.NewRequest(http.MethodGet, "/", nil)
+	req.AddCookie(&http.Cookie{Name: session.CookieName, Value: signed})
+	w := httptest.NewRecorder()
+	handler.ServeHTTP(w, req)
+
+	if gotTokens != nil {
+		t.Errorf("expected nil tokens when session has no HaloTokens, got %+v", gotTokens)
 	}
 }

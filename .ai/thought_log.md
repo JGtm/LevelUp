@@ -1,5 +1,33 @@
 # Thought Log
 
+## [2026-04-18] feat(halo-provider): appels live Battle Pass et Challenges
+
+**Statut** : Complété
+
+### Contexte
+
+Les méthodes `GetBattlePass` et `GetChallenges` de `HaloProvider` étaient des stubs marqués `TODO Sprint 15` retournant `available=false, error_hint="auth_required"`. Les tokens Halo étaient déjà disponibles en session après le Device Code Flow — il manquait le câblage vers les endpoints Halo et la propagation des tokens dans le contexte.
+
+### Décisions techniques
+
+1. **Propagation via contexte (pattern ctxkeys)** : `ctxkeys.WithHaloAuth` / `HaloTokens` / `HaloXUID` — cohérent avec `TitleSlug`, aucune modification des signatures d'interface.
+2. **Middleware session enrichi** : `WithSession` injecte tokens + XUID dans ctx si la session en possède.
+3. **Endpoints** : `economy.svc.halowaypoint.com/.../rewardtracks/operations` (Battle Pass) et `halostats.svc.halowaypoint.com/.../decks` (Challenges).
+4. **Types nommés** : `battlePassTrack` / `battlePassProgress` pour éviter les structs anonymes non-testables.
+5. **URL injectables en test** : champs `battlePassBaseURL` / `challengesBaseURL` (vides en prod).
+6. **Retry + rate limiting** : `doGet` pattern identique à `halo_client.go` (3 retries, backoff 800ms, no-retry 401/403/404/410).
+7. **Logging** : `slog.DebugContext` succès, `slog.WarnContext` erreur.
+
+### Résultats observés
+
+- `go build ./...` : OK — `go vet ./...` : OK
+- 21/22 suites passent (FAIL `handlers` préexistant : `extractKillsFromLabel` undefined, hors périmètre)
+- Nouveaux tests : 13 provider + 6 ctxkeys + 2 middleware = 21 tests
+
+### Conclusion / prochaine étape
+
+Les endpoints Battle Pass et Challenges sont live pour tout joueur authentifié via Device Code Flow. Comportement dégradé `available=false` préservé pour sessions sans auth.
+
 ## [2026-04-17] feat(media): bouton upload médias + suppression watcher
 
 **Statut** : Complété
