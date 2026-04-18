@@ -11,6 +11,7 @@ import { Spinner } from '@/components/ui/spinner'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { EmptyStateCard } from '@/components/ui/empty-state'
+import { PrivacyBanner } from '@/components/ui/privacy-banner'
 import type { CompareMetricRow, NormalizedPlayerStats } from '@/lib/api/types'
 
 interface CompareDrawerProps {
@@ -155,13 +156,25 @@ export function CompareDrawer({ playerSlug, open, onClose }: CompareDrawerProps)
 
           {isError && (
             <EmptyStateCard
-              title="Erreur"
-              message={error?.message ?? 'Impossible de récupérer la comparaison.'}
+              title={error?.message?.includes('404') ? 'Joueur introuvable' : 'Erreur'}
+              message={
+                error?.message?.includes('404')
+                  ? 'Ce joueur n\'existe pas ou n\'a aucune donnée accessible.'
+                  : (error?.message ?? 'Impossible de récupérer la comparaison.')
+              }
             />
           )}
 
           {data && (
             <>
+              {/* C3.6 : avertissement privacy si joueur B est privé ou données partielles */}
+              <PrivacyBanner warning={data.privacy_warning} />
+              {data.player_b_partial && !data.privacy_warning && (
+                <p className="text-xs text-amber-600 bg-amber-50 rounded px-3 py-2">
+                  Les données de {data.player_b.gamertag} sont partielles — certaines métriques peuvent être absentes.
+                </p>
+              )}
+
               {/* Cartes des deux joueurs */}
               <div className="grid grid-cols-2 gap-3">
                 <PlayerStatsCard stats={data.player_a} side="A" />

@@ -12,6 +12,8 @@ import { EmptyStateNotice } from '@/components/ui/empty-state'
 import { GamertagSearchInput } from './GamertagSearchInput'
 import { useExplorerMatches, useExplorerPlayer } from './queries'
 import { useGlobalFilterStore } from '@/stores/globalFilterStore'
+import { CompareDrawer } from '@/features/compare/CompareDrawer'
+import { useComparePrefetch } from '@/features/compare/queries'
 import type { ExplorerMatchFilters } from '@/lib/api/types'
 
 type SearchMode = 'matches' | 'player'
@@ -23,6 +25,8 @@ export function ExplorerPage() {
 
   const [mode, setMode] = useState<SearchMode>('matches')
   const [targetGamertag, setTargetGamertag] = useState('')
+  const [compareOpen, setCompareOpen] = useState(false)
+  const prefetchCompare = useComparePrefetch(playerSlug)
 
   // Filtres cascade mode Matchs
   const [dateFilter, setDateFilter] = useState('')
@@ -122,7 +126,18 @@ export function ExplorerPage() {
             {targetGamertag && playerQuery.data && (
               <Card>
                 <CardContent className="py-4 space-y-2">
-                  <p className="font-semibold text-gray-900">{playerQuery.data.target.gamertag || targetGamertag}</p>
+                  <div className="flex items-center justify-between">
+                    <p className="font-semibold text-gray-900">{playerQuery.data.target.gamertag || targetGamertag}</p>
+                    {/* C4.1 : CTA Comparer avec prefetch onMouseEnter */}
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onMouseEnter={() => prefetchCompare(playerQuery.data.target.gamertag || targetGamertag)}
+                      onClick={() => setCompareOpen(true)}
+                    >
+                      Comparer
+                    </Button>
+                  </div>
                   <div className="grid grid-cols-3 gap-4 text-sm">
                     <div>
                       <p className="text-xs text-gray-500">Matchs ensemble</p>
@@ -332,6 +347,13 @@ export function ExplorerPage() {
           </div>
         )}
       </div>
+
+      {/* C4.1 : CompareDrawer déclenché depuis la card résultats joueur */}
+      <CompareDrawer
+        playerSlug={playerSlug}
+        open={compareOpen}
+        onClose={() => setCompareOpen(false)}
+      />
     </div>
   )
 }

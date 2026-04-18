@@ -4,7 +4,7 @@
  * Smoke : monte, spinner, puis Hero KPIs affichés depuis MSW.
  */
 import { describe, it, expect, vi } from 'vitest'
-import { screen, waitFor } from '@testing-library/react'
+import { fireEvent, screen, waitFor } from '@testing-library/react'
 import { http, HttpResponse } from 'msw'
 import type { ReactNode } from 'react'
 import { renderWithProviders } from '@/test/render-utils'
@@ -61,6 +61,48 @@ describe('HomePage', () => {
       expect(screen.getByText(/Aucune session récente disponible/i)).toBeInTheDocument()
       expect(screen.getByText(/Aucun point saillant disponible/i)).toBeInTheDocument()
       expect(screen.getByText(/Aucun média récent disponible/i)).toBeInTheDocument()
+    })
+  })
+
+  it('affiche un rail média enrichi et ouvre la lightbox au clic', async () => {
+    server.use(
+      http.post('/api/v1/players/:playerSlug/pages/media', () => HttpResponse.json({
+        items: {
+          items: [
+            {
+              basename: 'clip-epic.mp4',
+              file_path: '/media/clip-epic.mp4',
+              kind: 'clip',
+              thumbnail_path: '/media/thumb-clip-epic.jpg',
+              match_id: 'match-123',
+              capture_end_utc: '2026-04-18T12:00:00Z',
+              match_start_time: '2026-04-18T11:55:00Z',
+              section: 'match',
+              owner_gamertag: 'TestPlayer',
+              map_name: 'Live Fire',
+            },
+          ],
+          pagination: { page: 1, page_size: 4, total: 1, total_pages: 1, has_next: false, has_prev: false },
+          freshness: null,
+        },
+        total_mine: 1,
+        total_teammates: 0,
+        total_unassigned: 0,
+      })),
+    )
+
+    renderWithProviders(<HomePage />)
+
+    await waitFor(() => {
+      expect(screen.getByText('clip-epic.mp4')).toBeInTheDocument()
+      expect(screen.getByText(/Aperçu au survol/i)).toBeInTheDocument()
+    })
+
+    fireEvent.click(screen.getByText('clip-epic.mp4'))
+
+    await waitFor(() => {
+      expect(screen.getByRole('button', { name: /Fermer/i })).toBeInTheDocument()
+      expect(screen.getByText(/Voir le match/i)).toBeInTheDocument()
     })
   })
 

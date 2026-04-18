@@ -7,7 +7,9 @@ import { PageHeader } from '@/components/shell/PageHeader'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { EmptyStateCard, EmptyStateNotice } from '@/components/ui/empty-state'
+import { PrivacyBanner } from '@/components/ui/privacy-banner'
 import { Spinner } from '@/components/ui/spinner'
+import { RecentMediaRail } from './RecentMediaRail'
 import { useHomePage, useBattlePass, useChallenges } from './queries'
 
 function KPICard({ label, value }: { label: string; value: string | number }) {
@@ -91,7 +93,6 @@ export function HomePage() {
   const { hero } = data
   const highlights = data.highlights ?? []
   const recentMatches = data.recent_matches ?? []
-  const recentMedia = data.recent_media ?? []
   const soloSession = data.solo_session ?? null
   const squadSession = data.squad_session ?? null
 
@@ -100,6 +101,9 @@ export function HomePage() {
       <PageHeader title={`Bienvenue, ${hero.player_name}`} subtitle="Mission Control" />
 
       <div className="space-y-6 p-6">
+        {/* B9 : signal discret si données partielles (compte privé) */}
+        <PrivacyBanner warning={data.privacy_warning} />
+
         {/* Hero KPIs */}
         <Card>
           <CardHeader>
@@ -292,39 +296,7 @@ export function HomePage() {
           </CardContent>
         </Card>
 
-        {/* Médias récents */}
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between">
-            <CardTitle className="text-base">Médias récents</CardTitle>
-            <Link
-              to="/players/$playerSlug/media"
-              params={{ playerSlug }}
-              className="text-xs text-purple-600 hover:underline"
-            >
-              Voir tout →
-            </Link>
-          </CardHeader>
-          <CardContent>
-            {recentMedia.length > 0 ? (
-              <div className="grid grid-cols-3 gap-2 sm:grid-cols-6">
-                {recentMedia.slice(0, 6).map((m) => (
-                  <div
-                    key={m.basename}
-                    className="aspect-video rounded-md bg-gray-200 flex items-center justify-center overflow-hidden"
-                    title={m.basename}
-                  >
-                    <span className="text-xl text-gray-500">🖼</span>
-                  </div>
-                ))}
-              </div>
-            ) : (
-              <EmptyStateNotice
-                title="Aucun média récent disponible"
-                description="Aucune capture ou clip n'est associé au joueur pour le scope actuel."
-              />
-            )}
-          </CardContent>
-        </Card>
+        <RecentMediaRail playerSlug={playerSlug} />
       </div>
     </div>
   )
