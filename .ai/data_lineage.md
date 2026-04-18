@@ -288,7 +288,7 @@ Note 2026-04-12 : les définitions GameCMS de reward tracks et d'items battle pa
 
 | Table | Cardinalité | Description |
 |-------|-------------|-------------|
-| `player_match_enrichment` | 1:N par joueur | performance_score, session_id, is_with_friends (**SEULE table match**) |
+| `player_match_enrichment` | 1:N par joueur | performance_score, session_id, is_with_friends, `is_excluded` (**SEULE table match**) |
 | `personal_score_awards` | M:N | Awards objectifs (PersonalScores API) |
 | `match_citations` | 1:N | Citations calculées par match |
 | `career_progression` | 1:N | Historique rangs |
@@ -357,6 +357,44 @@ En v5.1, les stats coéquipiers sont chargées depuis `shared.match_participants
 ```
 
 Le sync écrit dans les player DBs : `player_match_enrichment` + `personal_score_awards` uniquement.
+
+## Flux complémentaires Go Migration
+
+### 12. Exclusion manuelle d'un match — React/Go API → player_match_enrichment
+
+```
+Source: action utilisateur (Match History ou Match View React)
+     ↓
+Endpoint Go: PATCH /api/v1/players/{player_slug}/matches/{match_id}/exclusion
+     ↓
+api/handlers/match_exclusion.go
+     ↓
+service/match_exclusion_service.go
+     ↓
+platform/duckdb/match_exclusion_repo.go
+     ↓
+Destination: players/{gamertag}/stats.duckdb → player_match_enrichment.is_excluded
+     ↓
+Consommation:
+  - match_history_service.go filtre les matchs exclus avant pagination/export
+  - match_view_service.go expose is_excluded dans le header JSON
+```
+
+### 13. Session HTTP → provider Halo live (Battle Pass / Challenges)
+
+```
+Source: session HTTP LevelUp avec HaloTokens + LinkedHaloIdentity
+     ↓
+api/middleware/session.go
+     ↓
+ctxkeys.WithHaloAuth(ctx, tokens, xuid)
+     ↓
+platform/halo/provider.go
+  - GetBattlePass() → economy.svc.halowaypoint.com
+  - GetChallenges() → halostats.svc.halowaypoint.com
+     ↓
+Destination: réponses JSON Home / bootstrap via services Go
+```
 
 ## Problèmes Connus
 

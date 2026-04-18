@@ -55,11 +55,22 @@ data/
 |---------|----------------|-------|
 | `internal/sync` | `writes_test.go` (8 fonctions), `transforms_test.go`, `backfill_flags_test.go` | `//go:build integration` (CGO) |
 | `internal/api/handlers` | `testhelpers_test.go`, `sessions_test.go`, `health_test.go`, `game_cms_test.go` | HTTP handlers + middleware |
+| `internal/api/middleware` | `session_test.go`, `request_id_test.go`, `rate_limit_test.go`, `shadow_test.go`, `cors_test.go` | session + auth context + garde-fous HTTP |
 | `internal/config` | `config_test.go`, `feature_flags_test.go` | Unit tests purs |
 | `internal/domain/title` | `multititle_test.go`, `registry_test.go` | Unit tests purs |
+| `internal/platform/halo` | `provider_test.go` | Battle Pass + Challenges live, retry HTTP, auth context |
+| `internal/ctxkeys` | `ctxkeys_test.go` | clés de contexte titre + auth Halo |
 | `internal/api/contract` | `contract_test.go` | `//go:build cgo` |
 
 > Baseline global : **35.0%** (mesuré avec `coverage_baseline.txt`). Cible Phase 10 : 70%.
+
+## Go API — Points chauds récupérés le 2026-04-18
+
+- `apps/go-api/internal/api/handlers/match_exclusion.go` : endpoints `PATCH /matches/{match_id}/exclusion` + `GET /match-exclusions` pour ignorer/réactiver des matchs au niveau joueur.
+- `apps/go-api/internal/platform/duckdb/match_exclusion_repo.go` : persistance `player_match_enrichment.is_excluded` avec UPSERT côté player DB.
+- `apps/go-api/internal/service/match_history_service.go` : filtrage des matchs exclus avant pagination, export CSV et agrégats de win rate.
+- `apps/go-api/internal/api/middleware/session.go` + `apps/go-api/internal/ctxkeys/ctxkeys.go` : injection des `HaloTokens` et du `XUID` depuis la session HTTP dans le contexte Go.
+- `apps/go-api/internal/platform/halo/provider.go` : implémentation live des appels Battle Pass / Challenges à partir du contexte auth, au lieu du stub `auth_required` permanent.
 
 ## Modules Clés
 
