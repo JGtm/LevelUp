@@ -11,9 +11,9 @@ Vérifier que :
 
 | Worktree | Chemin | Branche | SHA |
 |----------|--------|---------|-----|
-| Go | `LevelUp-go-migration/apps/go-api/` | `phase11/sprint50-triple-audit` | `_______` |
-| React | `LevelUp-go-migration/apps/web/` | idem | `_______` |
-| Python (réf. non-régression) | `LevelUp/` | `main` | `_______` |
+| Go | `LevelUp-go-migration/apps/go-api/` | `recovery/reapply-wip-s49-closure-2026-04-18` | `93c3cd66` |
+| React | `LevelUp-go-migration/apps/web/` | idem | `93c3cd66` |
+| Python (réf. non-régression) | `LevelUp/` | `v7/cockpit` | `db638c09` |
 
 ## Périmètre inclus
 
