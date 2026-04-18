@@ -295,6 +295,34 @@ jobs:
           path: apps/go-api/coverage.out
           retention-days: 7
 
+      # S51 : internal/sync absent du profil ./... (angle mort identifié audit Phase 11).
+      # Ce step isole le package sync pour mesurer sa couverture réelle.
+      - name: go test couverture internal/sync (CGO + intégration)
+        run: |
+          go test \
+            -coverprofile=cov_sync.out \
+            -covermode=atomic \
+            -coverpkg=./internal/sync/... \
+            -tags=integration \
+            -timeout 60s \
+            -count=1 \
+            ./internal/sync/...
+        env:
+          CGO_ENABLED: "1"
+          LEVELUP_DEMO_MODE: "true"
+
+      - name: Afficher couverture internal/sync
+        run: go tool cover -func=cov_sync.out | tail -5
+        if: always()
+
+      - name: Upload profil cov_sync.out
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: go-coverage-sync
+          path: apps/go-api/cov_sync.out
+          retention-days: 7
+
   go-golden-test:
     name: Go Golden Test (parité endpoints)
     runs-on: ubuntu-latest
