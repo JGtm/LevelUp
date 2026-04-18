@@ -126,6 +126,8 @@ type MatchHistoryPageResponse struct {
 	AvailableSortFields []string                 `json:"available_sort_fields"`
 	AvailableColumns    []string                 `json:"available_columns"`
 	ExportHint          *ExportHint              `json:"export_hint"`
+	// Sprint 54 B : avertissement de privacy si le compte a des matchs privés.
+	PrivacyWarning *MatchPrivacyWarning `json:"privacy_warning,omitempty"`
 }
 
 // ExportHint indique qu'un export CSV est disponible.

@@ -23,12 +23,19 @@ const (
 
 // CareerService construit les réponses pour la page Carrière.
 type CareerService struct {
-	repo port.CareerRepository
+	repo     port.CareerRepository
+	metaRepo port.MetadataRepository // optionnel — nil = fallback synthétique
 }
 
 // NewCareerService crée un CareerService.
 func NewCareerService(repo port.CareerRepository) *CareerService {
 	return &CareerService{repo: repo}
+}
+
+// WithMetadataRepo injecte le repository de métadonnées (saisons, etc.).
+func (s *CareerService) WithMetadataRepo(r port.MetadataRepository) *CareerService {
+	s.metaRepo = r
+	return s
 }
 
 // GetCareerPage retourne la réponse complète de la page Carrière.
@@ -52,13 +59,16 @@ func (s *CareerService) GetCareerPage(ctx context.Context) (domain.CareerPageRes
 	projs := buildProjections(xpHistory, xpTotal)
 	lusr := buildLUSRSummary(lusrHistory)
 
+	currentSeason := s.resolveCurrentSeason(ctx)
+
 	return domain.CareerPageResponse{
-		Summary:      summary,
-		HeroProgress: hero,
-		Projections:  projs,
-		Charts:       domain.CareerPageCharts{},
-		XPHistory:    xpHistory,
-		LUSR:         lusr,
+		Summary:       summary,
+		HeroProgress:  hero,
+		Projections:   projs,
+		Charts:        domain.CareerPageCharts{},
+		XPHistory:     xpHistory,
+		LUSR:          lusr,
+		CurrentSeason: currentSeason,
 	}, nil
 }
 
@@ -356,4 +366,33 @@ func convertTopMatches(rows []domain.TopMatchRawRow) []domain.TopMatchDTO {
 		})
 	}
 	return out
+}
+
+// ── Sprint 54-A7/A8 : résolution saison courante avec fallback synthétique ──
+
+// resolveCurrentSeason retourne la saison courante depuis le MetadataRepo.
+// Si le repo est absent ou ne contient aucune saison, retourne un CurrentSeasonResult
+// avec Synthetic non-nil (fallback S54-A8).
+func (s *CareerService) resolveCurrentSeason(ctx context.Context) *domain.CurrentSeasonResult {
+	if s.metaRepo == nil {
+		return syntheticSeasonResult()
+	}
+	titleID := "halo_infinite"
+	season, err := s.metaRepo.GetCurrentSeason(ctx, titleID)
+	if err != nil || season == nil {
+		return syntheticSeasonResult()
+	}
+	return &domain.CurrentSeasonResult{Season: season}
+}
+
+// syntheticSeasonResult retourne un fallback synthétique (0 date hardcodée).
+func syntheticSeasonResult() *domain.CurrentSeasonResult {
+	return &domain.CurrentSeasonResult{
+		Synthetic: &domain.SeasonSynthetic{
+			SeasonID:   "unknown",
+			Name:       "Saison inconnue",
+			StartDate:  time.Time{},
+			IsFallback: true,
+		},
+	}
 }

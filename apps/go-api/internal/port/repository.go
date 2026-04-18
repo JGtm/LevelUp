@@ -427,3 +427,96 @@ func (n *noopMediaRepo) LoadMediaFiles(_ context.Context, _, _ int) ([]domain.Me
 	return nil, nil
 }
 func (n *noopMediaRepo) CountMediaFiles(_ context.Context) (int, error) { return 0, nil }
+
+// ─── Sprint 54 : Metadata, Compare, Leaderboard ─────────────────────────────
+
+// MetadataRepository fournit les saisons et snapshots de métadonnées.
+// Implémenté par platform/duckdb.MetadataRepo.
+type MetadataRepository interface {
+	// GetCurrentSeason retourne la saison courante (last EndDate IS NULL ou MAX(StartDate)).
+	GetCurrentSeason(ctx context.Context, titleID string) (*domain.SeasonCalendar, error)
+
+	// GetCSRSeasons retourne toutes les saisons CSR triées par StartDate DESC.
+	GetCSRSeasons(ctx context.Context, titleID string) ([]domain.CSRSeasonCalendar, error)
+
+	// GetSeasonByDate retourne la saison active à la date donnée.
+	GetSeasonByDate(ctx context.Context, titleID string, date string) (*domain.SeasonCalendar, error)
+
+	// UpsertSeason insère ou met à jour une saison (upsert sur season_id+title_id).
+	UpsertSeason(ctx context.Context, s domain.SeasonCalendar) error
+
+	// UpsertCSRSeason insère ou met à jour une saison CSR.
+	UpsertCSRSeason(ctx context.Context, s domain.CSRSeasonCalendar) error
+
+	// UpsertSnapshot enregistre un snapshot de ressource Waypoint.
+	UpsertSnapshot(ctx context.Context, snap domain.WaypointResourceSnapshot) error
+
+	// GetSnapshot retourne le dernier snapshot d'une ressource.
+	GetSnapshot(ctx context.Context, titleID, resourceKey string) (*domain.WaypointResourceSnapshot, error)
+}
+
+// CompareRepository fournit les stats normalisées d'un joueur local depuis DuckDB.
+// Implémenté par platform/duckdb.CompareRepo.
+type CompareRepository interface {
+	// GetLocalStats retourne les stats normalisées depuis shared.match_participants.
+	GetLocalStats(ctx context.Context, xuid, titleSlug string) (*domain.NormalizedPlayerStats, error)
+
+	// ResolveXUID retourne le XUID pour un gamertag dans le registre local.
+	ResolveXUID(ctx context.Context, gamertag string) (string, error)
+}
+
+// LeaderboardRepository fournit les données pour le classement CSR local.
+// Implémenté par platform/duckdb.LeaderboardRepo.
+type LeaderboardRepository interface {
+	// GetLocalLeaderboard retourne les joueurs locaux triés par CSR DESC.
+	GetLocalLeaderboard(ctx context.Context, titleSlug, season, playlist string) ([]domain.LeaderboardEntry, error)
+}
+
+// Ensure compile-time checks Sprint 54.
+var (
+	_ MetadataRepository    = (*noopMetadataRepo)(nil)
+	_ CompareRepository     = (*noopCompareRepo)(nil)
+	_ LeaderboardRepository = (*noopLeaderboardRepo)(nil)
+)
+
+// noopMetadataRepo — impl nulle pour le check de compilation uniquement.
+type noopMetadataRepo struct{}
+
+func (n *noopMetadataRepo) GetCurrentSeason(_ context.Context, _ string) (*domain.SeasonCalendar, error) {
+	return nil, nil
+}
+func (n *noopMetadataRepo) GetCSRSeasons(_ context.Context, _ string) ([]domain.CSRSeasonCalendar, error) {
+	return nil, nil
+}
+func (n *noopMetadataRepo) GetSeasonByDate(_ context.Context, _, _ string) (*domain.SeasonCalendar, error) {
+	return nil, nil
+}
+func (n *noopMetadataRepo) UpsertSeason(_ context.Context, _ domain.SeasonCalendar) error {
+	return nil
+}
+func (n *noopMetadataRepo) UpsertCSRSeason(_ context.Context, _ domain.CSRSeasonCalendar) error {
+	return nil
+}
+func (n *noopMetadataRepo) UpsertSnapshot(_ context.Context, _ domain.WaypointResourceSnapshot) error {
+	return nil
+}
+func (n *noopMetadataRepo) GetSnapshot(_ context.Context, _, _ string) (*domain.WaypointResourceSnapshot, error) {
+	return nil, nil
+}
+
+// noopCompareRepo — impl nulle pour le check de compilation uniquement.
+type noopCompareRepo struct{}
+
+func (n *noopCompareRepo) GetLocalStats(_ context.Context, _, _ string) (*domain.NormalizedPlayerStats, error) {
+	return nil, nil
+}
+func (n *noopCompareRepo) ResolveXUID(_ context.Context, _ string) (string, error) {
+	return "", nil
+}
+
+// noopLeaderboardRepo — impl nulle pour le check de compilation uniquement.
+type noopLeaderboardRepo struct{}
+
+func (n *noopLeaderboardRepo) GetLocalLeaderboard(_ context.Context, _, _, _ string) ([]domain.LeaderboardEntry, error) {
+	return nil, nil
+}

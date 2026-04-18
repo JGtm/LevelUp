@@ -5,6 +5,7 @@ import { useState } from 'react'
 import { useParams } from '@tanstack/react-router'
 import { PageHeader } from '@/components/shell/PageHeader'
 import { Spinner } from '@/components/ui/spinner'
+import { PrivacyBanner } from '@/components/ui/privacy-banner'
 import { MatchHistoryTable } from './MatchHistoryTable'
 import { useMatchHistory, useMatchHistoryExport } from './queries'
 import { useGlobalFilterStore } from '@/stores/globalFilterStore'
@@ -62,6 +63,9 @@ export function MatchHistoryPage() {
       />
 
       <div className="p-6">
+        {/* Sprint 54-B : avertissement privacy */}
+        <PrivacyBanner warning={data?.privacy_warning} className="mb-4" />
+
         {isLoading ? (
           <div className="flex justify-center py-16">
             <Spinner size="lg" label="Chargement de l'historique…" />

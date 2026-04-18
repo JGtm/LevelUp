@@ -957,6 +957,67 @@ paths:
   # -------------------------------------------------------------------------
   # Session Compare (Sprint 9, Sprint 33) — implémenté.
   # -------------------------------------------------------------------------
+  # -------------------------------------------------------------------------
+  # Sprint 54 — Compare joueur vs joueur, Leaderboard
+  # -------------------------------------------------------------------------
+  /players/{player_slug}/pages/compare:
+    post:
+      tags: [compare]
+      operationId: postComparePage
+      summary: "Comparaison joueur vs joueur (12 KPIs)"
+      parameters:
+        - $ref: "#/components/parameters/PlayerSlug"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CompareRequest"
+      responses:
+        "200":
+          description: Résultat de comparaison avec 12 KPIs
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CompareResponse"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+  /players/{player_slug}/pages/leaderboard:
+    get:
+      tags: [leaderboard]
+      operationId: getLeaderboardPage
+      summary: "Classement des joueurs connus (locaux en premier)"
+      parameters:
+        - $ref: "#/components/parameters/PlayerSlug"
+        - name: season_id
+          in: query
+          schema:
+            type: string
+          description: Filtrer par saison
+        - name: playlist_id
+          in: query
+          schema:
+            type: string
+          description: Filtrer par playlist
+        - name: metric
+          in: query
+          schema:
+            type: string
+            default: win_rate
+          description: Métrique de classement
+      responses:
+        "200":
+          description: Classement des joueurs
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/LeaderboardResponse"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
   /players/{player_slug}/pages/session-compare:
     post:
       tags: [timeseries]
@@ -1363,6 +1424,11 @@ components:
         active_sync_job_id:
           type: string
           nullable: true
+        privacy:
+          description: "Sprint 54-B : informations de confidentialité des matchs du joueur actif."
+          nullable: true
+          allOf:
+            - $ref: "#/components/schemas/MatchPrivacyInfo"
 
     PlayersListResponse:
       type: object
@@ -1944,6 +2010,11 @@ components:
           nullable: true
           allOf:
             - $ref: "#/components/schemas/ExportHint"
+        privacy_warning:
+          description: "Sprint 54-B : avertissement si les matchs du joueur sont privés."
+          nullable: true
+          allOf:
+            - $ref: "#/components/schemas/MatchPrivacyWarning"
 
     MatchHistoryQueryRequest:
       type: object
@@ -2692,6 +2763,11 @@ components:
           $ref: "#/components/schemas/MatchMediaTab"
         citations_tab:
           $ref: "#/components/schemas/MatchCitationsTab"
+        privacy_warning:
+          description: "Sprint 54-B : avertissement si les matchs du joueur sont privés."
+          nullable: true
+          allOf:
+            - $ref: "#/components/schemas/MatchPrivacyWarning"
 
     # -----------------------------------------------------------------------
     # Schémas Auth / Setup / Jobs / Settings (ajoutés Sprint 29)
@@ -2833,3 +2909,175 @@ components:
           type: array
           items:
             type: string
+
+    # -----------------------------------------------------------------------
+    # Sprint 54 — Privacy, Compare, Leaderboard, Seasons
+    # -----------------------------------------------------------------------
+    MatchPrivacyInfo:
+      type: object
+      description: Informations de confidentialité des matchs d'un joueur Halo.
+      properties:
+        is_private:
+          type: boolean
+        is_partial:
+          type: boolean
+        hint:
+          type: string
+          description: Message explicatif pour l'utilisateur.
+
+    MatchPrivacyWarning:
+      type: object
+      description: Avertissement affiché dans l'UI quand le compte est privé.
+      required: [level, message]
+      properties:
+        level:
+          type: string
+          enum: [none, partial, full]
+        message:
+          type: string
+
+    NormalizedPlayerStats:
+      type: object
+      description: Stats normalisées d'un joueur pour la comparaison.
+      properties:
+        gamertag:
+          type: string
+        total_matches:
+          type: integer
+        win_rate:
+          type: number
+        kd_ratio:
+          type: number
+        avg_kills:
+          type: number
+        avg_deaths:
+          type: number
+        avg_assists:
+          type: number
+        avg_score:
+          type: number
+        avg_accuracy:
+          type: number
+        avg_damage_dealt:
+          type: number
+        avg_damage_taken:
+          type: number
+        avg_medals:
+          type: number
+        avg_time_played_sec:
+          type: number
+        is_local:
+          type: boolean
+
+    CompareMetricRow:
+      type: object
+      required: [label, value_a, value_b, winner]
+      properties:
+        label:
+          type: string
+        key:
+          type: string
+        value_a:
+          type: number
+        value_b:
+          type: number
+        winner:
+          type: string
+          enum: [a, b, tie]
+        format:
+          type: string
+
+    CompareRequest:
+      type: object
+      required: [target_gamertag]
+      properties:
+        target_gamertag:
+          type: string
+        title_slug:
+          type: string
+          default: hi
+
+    CompareResponse:
+      type: object
+      required: [player_a, player_b, metrics]
+      properties:
+        player_a:
+          $ref: "#/components/schemas/NormalizedPlayerStats"
+        player_b:
+          $ref: "#/components/schemas/NormalizedPlayerStats"
+        metrics:
+          type: array
+          items:
+            $ref: "#/components/schemas/CompareMetricRow"
+        error_b:
+          type: string
+          nullable: true
+          description: Message d'erreur si le joueur B n'a pas pu être résolu.
+
+    LeaderboardEntry:
+      type: object
+      required: [rank, gamertag, score, is_local]
+      properties:
+        rank:
+          type: integer
+        gamertag:
+          type: string
+        score:
+          type: number
+        is_local:
+          type: boolean
+        xuid:
+          type: string
+          nullable: true
+
+    LeaderboardResponse:
+      type: object
+      required: [entries, metric, season_id, playlist_id]
+      properties:
+        entries:
+          type: array
+          items:
+            $ref: "#/components/schemas/LeaderboardEntry"
+        metric:
+          type: string
+        season_id:
+          type: string
+          nullable: true
+        playlist_id:
+          type: string
+          nullable: true
+        total:
+          type: integer
+
+    CurrentSeasonResult:
+      type: object
+      description: Saison Halo active résolue depuis metadata.duckdb.
+      properties:
+        season_id:
+          type: string
+        name:
+          type: string
+        starts_at:
+          type: string
+          format: date-time
+          nullable: true
+        ends_at:
+          type: string
+          format: date-time
+          nullable: true
+        synthetic:
+          nullable: true
+          allOf:
+            - $ref: "#/components/schemas/SeasonSynthetic"
+
+    SeasonSynthetic:
+      type: object
+      description: Saison de substitution quand metadata.duckdb n'est pas disponible.
+      required: [season_id, name, is_fallback]
+      properties:
+        season_id:
+          type: string
+        name:
+          type: string
+        is_fallback:
+          type: boolean

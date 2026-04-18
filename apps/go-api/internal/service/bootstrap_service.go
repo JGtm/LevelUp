@@ -5,6 +5,7 @@ import (
 	"context"
 	"fmt"
 	"log/slog"
+	"time"
 
 	"levelup/go-api/internal/config"
 	"levelup/go-api/internal/domain"
@@ -14,13 +15,20 @@ import (
 
 // BootstrapService construit le BootstrapResponse pour l'endpoint /api/v1/bootstrap.
 type BootstrapService struct {
-	cfg      *config.AppConfig
-	bootRepo port.BootstrapRepository
+	cfg             *config.AppConfig
+	bootRepo        port.BootstrapRepository
+	privacyProvider port.PrivacyProvider // optionnel — nil = pas de check privacy
 }
 
 // NewBootstrapService crée un BootstrapService.
 func NewBootstrapService(cfg *config.AppConfig, bootRepo port.BootstrapRepository) *BootstrapService {
 	return &BootstrapService{cfg: cfg, bootRepo: bootRepo}
+}
+
+// WithPrivacyProvider injecte le provider de match privacy (optionnel).
+func (s *BootstrapService) WithPrivacyProvider(p port.PrivacyProvider) *BootstrapService {
+	s.privacyProvider = p
+	return s
 }
 
 // Build construit la réponse bootstrap complète.
@@ -57,6 +65,12 @@ func (s *BootstrapService) Build(ctx context.Context, sess *domain.SessionData) 
 		currentTitleSlug = sess.CurrentTitleSlug
 	}
 
+	// Sprint 54-B : privacy match du joueur courant (fetch parallèle non-bloquant).
+	var privacy *domain.MatchPrivacyInfo
+	if s.privacyProvider != nil && currentPlayer != nil && currentPlayer.XUID != "" {
+		privacy = s.fetchPrivacyNonBlocking(ctx, currentPlayer.XUID)
+	}
+
 	return &domain.BootstrapResponse{
 		SetupRequired:       setupRequired,
 		AuthState:           ResolveAuthState(sess),
@@ -71,7 +85,37 @@ func (s *BootstrapService) Build(ctx context.Context, sess *domain.SessionData) 
 		FeatureFlags:        flags,
 		Capabilities:        capabilities,
 		SettingsExcerpt:     settingsExcerpt,
+		Privacy:             privacy,
 	}, nil
+}
+
+// fetchPrivacyNonBlocking fetche la privacy avec un timeout court (2 s).
+// En cas d'échec, renvoie nil sans bloquer le bootstrap.
+func (s *BootstrapService) fetchPrivacyNonBlocking(ctx context.Context, xuid string) *domain.MatchPrivacyInfo {
+	type result struct {
+		info *domain.MatchPrivacyInfo
+	}
+	ch := make(chan result, 1)
+	timeoutCtx, cancel := context.WithTimeout(ctx, 2*time.Second)
+	defer cancel()
+
+	go func() {
+		info, err := s.privacyProvider.GetMatchPrivacy(timeoutCtx, xuid)
+		if err != nil {
+			slog.DebugContext(ctx, "bootstrap: privacy fetch échoué", "xuid", xuid, "err", err)
+			ch <- result{nil}
+			return
+		}
+		ch <- result{info}
+	}()
+
+	select {
+	case r := <-ch:
+		return r.info
+	case <-timeoutCtx.Done():
+		slog.DebugContext(ctx, "bootstrap: privacy fetch timeout", "xuid", xuid)
+		return nil
+	}
 }
 
 // BuildPlayersList construit la liste des joueurs pour GET /api/v1/players.

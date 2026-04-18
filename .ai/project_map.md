@@ -91,6 +91,7 @@ data/
 - `apps/web/src/components/shell/shellNavigation.ts` : constantes de navigation et logique de destination lors d'un switch joueur.
 - `apps/web/src/components/shell/shellNavigation.test.ts` : test unitaire Vitest du helper de navigation joueur.
 - `apps/web/src/components/ui/empty-state.tsx` : pattern partagé `EmptyStateCard` / `EmptyStateNotice` pour les payloads nulles et sections analytiques vides.
+- `.ai/go_migration_v2/UX_CAREER_SYNTHESIS_BOUNDARY.md` : cadrage UX go-only pour la frontière Carrière / Synthèse ; `Profil` disparaît de la cible produit, `Carrière` devient le hub `Progression + Citations`, et `Synthèse` absorbe l'overview filtrée, les performances marquantes et les rivalités.
 - `apps/web/src/features/home/HomePage.tsx` : home joueur avec quick actions en routes typées et unité de précision alignée sur le backend Go (`avg_accuracy` déjà en %).
 - `apps/web/src/features/home/HomePage.tsx`, `career/CareerPage.tsx`, `timeseries/TimeseriesPage.tsx`, `squad/SquadPage.tsx`, `citations/CitationsPage.tsx`, `synthesis/SynthesisPage.tsx`, `session-compare/SessionComparePage.tsx`, `explorer/ExplorerPage.tsx` : plus de `return null` silencieux sur ce périmètre, avec placeholders explicites quand une section ne peut pas s'afficher.
 - `apps/web/package.json` : dépendance explicite `plotly.js`, requise au build par `react-plotly.js`.

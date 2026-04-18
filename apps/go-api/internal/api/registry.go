@@ -11,9 +11,13 @@ import (
 	"levelup/go-api/internal/config"
 	"levelup/go-api/internal/ctxkeys"
 	"levelup/go-api/internal/platform/duckdb"
+	"levelup/go-api/internal/platform/halo"
 	"levelup/go-api/internal/port"
 	"levelup/go-api/internal/service"
 )
+
+// haloProvider est l'instance globale du provider Halo (partagée).
+var haloProvider = halo.DefaultHaloProvider
 
 // PlayerResolver traduit un slug joueur en PlayerDB (pool-cached).
 type PlayerResolver func(ctx context.Context, slug string) (*duckdb.PlayerDB, error)
@@ -207,5 +211,33 @@ func (r *ServiceRegistry) TeammatesCtx(ctx context.Context, slug string) (port.T
 		return nil, "", "", err
 	}
 	svc := service.NewTeammatesService(duckdb.NewSquadRepo(pdb))
+	return svc, pdb.XUID, pdb.Gamertag, nil
+}
+
+// ─── Sprint 54 : Compare + Leaderboard ───────────────────────────────────────
+
+// Compare retourne un CompareService pour le joueur (slug = joueur A).
+// Le PlayerStatsProvider (Waypoint) est injecté via DefaultHaloProvider.
+func (r *ServiceRegistry) Compare(ctx context.Context, slug string) (port.CompareService, string, string, error) {
+	pdb, err := r.resolve(ctx, slug)
+	if err != nil {
+		return nil, "", "", err
+	}
+	svc := service.NewCompareService(
+		duckdb.NewCompareRepo(pdb),
+		haloProvider,
+		pdb.XUID,
+		pdb.TitleSlug,
+	)
+	return svc, pdb.XUID, pdb.Gamertag, nil
+}
+
+// Leaderboard retourne un LeaderboardService pour le joueur.
+func (r *ServiceRegistry) Leaderboard(ctx context.Context, slug string) (port.LeaderboardService, string, string, error) {
+	pdb, err := r.resolve(ctx, slug)
+	if err != nil {
+		return nil, "", "", err
+	}
+	svc := service.NewLeaderboardService(duckdb.NewLeaderboardRepo(pdb))
 	return svc, pdb.XUID, pdb.Gamertag, nil
 }

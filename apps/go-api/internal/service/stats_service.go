@@ -23,11 +23,18 @@ import (
 // StatsService calcule et retourne les séries analytiques pour un joueur.
 type StatsService struct {
 	statsRepo port.StatsRepository
+	metaRepo  port.MetadataRepository // optionnel — Sprint 54-A7
 }
 
 // NewStatsService crée un StatsService.
 func NewStatsService(repo port.StatsRepository) *StatsService {
 	return &StatsService{statsRepo: repo}
+}
+
+// WithMetadataRepo injecte le repository de métadonnées (saisons).
+func (s *StatsService) WithMetadataRepo(r port.MetadataRepository) *StatsService {
+	s.metaRepo = r
+	return s
 }
 
 // GetPage charge les données et construit la réponse de la page stats.
@@ -84,6 +91,9 @@ func (s *StatsService) GetPage(
 		resp.Form = &fo
 		resp.LUSR = &lu
 	}
+
+	// Sprint 54-A7 : saison courante (non-bloquant, fallback synthétique si absent).
+	resp.CurrentSeason = s.resolveCurrentSeason(ctx)
 
 	return resp, nil
 }
@@ -325,4 +335,18 @@ func computeBucketInfoFromMatches(matches []domain.StatsMatchRow) domain.BucketI
 	}
 	days := last.Sub(first).Hours() / 24.0
 	return analysis.GetBucketInfo(days)
+}
+
+// ── Sprint 54-A7/A8 : résolution saison courante ──────────────────────────────
+
+// resolveCurrentSeason retourne la saison courante ou un fallback synthétique.
+func (s *StatsService) resolveCurrentSeason(ctx context.Context) *domain.CurrentSeasonResult {
+	if s.metaRepo == nil {
+		return syntheticSeasonResult()
+	}
+	season, err := s.metaRepo.GetCurrentSeason(ctx, "halo_infinite")
+	if err != nil || season == nil {
+		return syntheticSeasonResult()
+	}
+	return &domain.CurrentSeasonResult{Season: season}
 }

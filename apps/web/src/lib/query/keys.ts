@@ -71,4 +71,12 @@ export const queryKeys = {
   // Last Match (Slice 4C)
   lastMatch: (playerSlug: string, filterHash: string) =>
     ['last-match', playerSlug, filterHash] as const,
+
+  // Compare joueur vs joueur (Sprint 54-C)
+  comparePlayer: (playerSlug: string, targetGamertag: string) =>
+    ['compare', playerSlug, targetGamertag] as const,
+
+  // Classement CSR (Sprint 54-E)
+  leaderboard: (playerSlug: string, season?: string, playlist?: string) =>
+    ['leaderboard', playerSlug, season ?? '', playlist ?? ''] as const,
 } as const

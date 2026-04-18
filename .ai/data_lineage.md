@@ -3,7 +3,7 @@
 > Ce fichier trace l'origine, les transformations et la destination de chaque flux de données.
 > Mis à jour : 2026-04-18
 
-> Note validation 2026-04-18 : aucune évolution de flux de données sur cette passe. Les correctifs portaient sur la stabilité des suites Go/React et sur l'alignement code/tests autour de `player_match_enrichment.is_excluded`, puis sur le rendu frontend des payloads nulles ou sections vides via des empty states explicites côté React. Aucun schéma ni contrat API n'a changé.
+> Note validation 2026-04-18 : aucune évolution de flux de données sur cette passe. Les correctifs portaient sur la stabilité des suites Go/React et sur l'alignement code/tests autour de `player_match_enrichment.is_excluded`, puis sur le rendu frontend des payloads nulles ou sections vides via des empty states explicites côté React. Un cadrage UX Carrière / Synthèse a aussi été formalisé côté go-migration, sans impact de schéma, de flux ou de contrat API à ce stade.
 
 ## Architecture v5.1 - Shared Matches + Player Enrichments
 

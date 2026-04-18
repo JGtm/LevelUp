@@ -118,12 +118,13 @@ type CareerPageCharts struct {
 
 // CareerPageResponse est la réponse de GET /pages/career.
 type CareerPageResponse struct {
-	Summary      CareerRankSummary `json:"summary"`
-	HeroProgress HeroProgress      `json:"hero_progress"`
-	Projections  CareerProjections `json:"projections"`
-	Charts       CareerPageCharts  `json:"charts"`
-	XPHistory    []XPHistoryPoint  `json:"xp_history"`
-	LUSR         LUSRSummary       `json:"lusr"`
+	Summary       CareerRankSummary    `json:"summary"`
+	HeroProgress  HeroProgress         `json:"hero_progress"`
+	Projections   CareerProjections    `json:"projections"`
+	Charts        CareerPageCharts     `json:"charts"`
+	XPHistory     []XPHistoryPoint     `json:"xp_history"`
+	LUSR          LUSRSummary          `json:"lusr"`
+	CurrentSeason *CurrentSeasonResult `json:"current_season,omitempty"` // Sprint 54-A7
 }
 
 // TopMatchDTO représente un match dans le top/pire performance.
