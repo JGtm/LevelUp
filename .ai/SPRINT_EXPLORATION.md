@@ -31,6 +31,7 @@ Le suivi des sprints est maintenu dans [`SPRINT_ROADMAP.md`](.ai/go_migration_v2
 - **Test contrat** : `internal/api/contract_test.go` — vérifie alignement OpenAPI ↔ chi
 - **Exemptions** : 0 (vidées au Sprint 49)
 - **Routes match exclusion** : `PATCH /players/{player_slug}/matches/{match_id}/exclusion` + `GET /players/{player_slug}/match-exclusions` documentées dans OpenAPI et branchées dans le router chi
+- **Routes média** : `POST /players/{player_slug}/pages/media` documente maintenant une vraie réponse paginée média et `PATCH /players/{player_slug}/media/likes` persiste l'état liked dans la player DB
 - **Auth Halo live** : Battle Pass / Challenges lisent désormais `HaloTokens` + `XUID` depuis `ctxkeys`, injectés par le middleware de session
 
 ### Points d'entrée clés
@@ -55,8 +56,13 @@ Le suivi des sprints est maintenu dans [`SPRINT_ROADMAP.md`](.ai/go_migration_v2
 - `apps/web/src/components/shell/shellNavigation.ts` : définition des items de navigation et helper `buildPlayerDestination()` pour préserver la section active lors d'un switch joueur.
 - `apps/web/src/routes/players/$playerSlug.tsx` : montage du nouveau scope joueur (`PlayerScopeNav` + `KPIBar` + contenu).
 - `apps/web/src/features/home/HomePage.tsx` + `apps/web/src/components/shell/KPIBar.tsx` : correction du contrat KPI côté frontend (`win_rate` = ratio, `avg_accuracy` = pourcentage déjà normalisé), et passage des liens player-scoped en routes typées TanStack Router.
+- `apps/web/src/features/media/queries.ts`, `MediaPage.tsx`, `MediaViewer.tsx`, `home/RecentMediaRail.tsx` : likes média branchés sur l'API Go avec mutation optimiste, et normalisation frontend pour tolérer l'ancienne payload média plate si besoin.
 - `apps/web/src/components/ui/empty-state.tsx` + pages player-scoped (`home`, `career`, `timeseries`, `squad`, `citations`, `synthesis`, `sessions`, `explorer`) : harmonisation des états vides, avec messages explicites quand une payload manque ou qu'une section analytique ne peut pas être rendue.
 - `.ai/go_migration_v2/UX_CAREER_SYNTHESIS_BOUNDARY.md` : mini spec produit de référence pour le prochain reslicing UX ; cible retenue = hub `Carrière` avec onglets `Progression` et `Citations`, et `Synthèse` recentrée sur overview, performances marquantes et rivalités.
+- `.ai/go_migration_v2/UX_CAREER_HUB_BLUEPRINT.md` : détaille le redesign concret de `/players/$playerSlug/career` en hub à tabs `Progression` / `Citations`, la stratégie de route canonique et la sortie des blocs `top matches` / `encounters`.
+- `.ai/go_migration_v2/SYNTHESIS_TARGET_CONTRACT_AND_UI.md` : décrit la cible de `Synthèse` côté UI et contrat API, avec extraction hors `SquadHandler`, `scope` explicite, `overview` en tête, previews lazy et migration des anciens endpoints analytiques de Carrière.
+- `.ai/go_migration_v2/UX_HOME_RECORD_SPARTAN_ADDITIONS.md` : cadre les enrichissements inspirés de Spartan Record pour la home/record go-migration sans remplacer la page existante ; focus sur `Spartan ID`, `Data Set`, médailles, tuiles de matchs et stratégie dynamique pour les images de maps.
+- `.ai/go_migration_v2/DAMAGE_EFFICIENCY_INTEGRATION.md` : formalise l'adoption potentielle d'une nouvelle famille de metriques de `rendement combat`, en separant metriques exactes, proxies et integrations candidates sur `Escouade`, `Synthese`, `Forme`, `Performance`, `LUSR` et les surfaces match.
 - Validation locale finale : `npm run -s typecheck` OK, `npm run -s build` OK, `vitest` OK sur `shellNavigation.test.ts`, `playwright` OK sur `e2e/slice-0a-shell.spec.ts` (5/5).
 
 ### Validation locale Go + React (2026-04-18)
