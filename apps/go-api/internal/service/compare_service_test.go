@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"testing"
+	"time"
 
 	"levelup/go-api/internal/domain"
 )
@@ -123,4 +124,66 @@ func (m *mockCompareRepoAB) ResolveXUID(_ context.Context, _ string) (string, er
 		return m.xuid, nil
 	}
 	return "xuid-b", nil
+}
+
+// ─── F5 : Test de latence Compare P95 < 5s ───────────────────────────────────
+
+// slowProvider simule une latence Waypoint configurable.
+type slowProvider struct {
+	delay    time.Duration
+	stats    *domain.NormalizedPlayerStats
+	statsErr error
+}
+
+func (s *slowProvider) FetchRemoteStats(_ context.Context, _, _ string) (*domain.NormalizedPlayerStats, error) {
+	time.Sleep(s.delay)
+	return s.stats, s.statsErr
+}
+
+// TestCompareService_Latency_P95 vérifie que GetPage s'exécute en < 5s
+// même quand le provider Waypoint répond après un délai simulé.
+// Le test est répété N fois pour estimer le P95.
+func TestCompareService_Latency_P95(t *testing.T) {
+	const N = 20
+	const maxP95 = 5 * time.Second
+	const simulatedDelay = 50 * time.Millisecond // latence mock — pas de vrai réseau
+
+	statsA := &domain.NormalizedPlayerStats{Gamertag: "PlayerA", Matches: 100, WinRate: 0.6}
+	statsB := &domain.NormalizedPlayerStats{Gamertag: "PlayerB", Matches: 80, WinRate: 0.5}
+
+	repo := &mockCompareRepoAB{a: statsA, xuidErr: errors.New("not found")}
+	provider := &slowProvider{delay: simulatedDelay, stats: statsB}
+	svc := NewCompareService(repo, provider, "xuid-a", "halo_infinite")
+
+	durations := make([]time.Duration, N)
+	for i := range N {
+		start := time.Now()
+		_, err := svc.GetPage(context.Background(), domain.CompareRequest{TargetGamertag: "PlayerB"})
+		durations[i] = time.Since(start)
+		if err != nil {
+			t.Fatalf("iteration %d: unexpected error: %v", i, err)
+		}
+	}
+
+	// Calcul P95 : trier et prendre le 95e percentile.
+	sorted := make([]time.Duration, N)
+	copy(sorted, durations)
+	sortDurations(sorted)
+	p95idx := int(float64(N)*0.95) - 1
+	if p95idx < 0 {
+		p95idx = 0
+	}
+	p95 := sorted[p95idx]
+
+	if p95 > maxP95 {
+		t.Errorf("P95 latence Compare = %v, dépasse le seuil de %v", p95, maxP95)
+	}
+}
+
+func sortDurations(d []time.Duration) {
+	for i := 1; i < len(d); i++ {
+		for j := i; j > 0 && d[j] < d[j-1]; j-- {
+			d[j], d[j-1] = d[j-1], d[j]
+		}
+	}
 }
