@@ -10,6 +10,7 @@
 > **Phase 11 — Clôture migration** : Sprint 49 ✅ couverture 76.0% atteinte (per-package mean, tous packages ≥ 50%, baseline ratchet 76.0%) — Sprint 50 🔄 (audit en cours).
 > **Phase 12 — Stabilisation produit** : Sprints 51–53 ⬜ planifiés (bascule prod + stubs critiques + testabilité Halo + performance backfill).
 > **Phase 13 — Features externes** : Sprint 54 ⬜ planifié (Compare joueur, Leaderboards, Match privacy, Metadata seasons + socle multi-titre).
+> **Phase 14 — Convergence UX shell** : Sprint 55 🔲 cadré (hub Carrière, extraction Synthèse, scope analytique unifié, persistence privacy).
 
 ---
 
@@ -93,6 +94,7 @@
 | 53 | Performance score vectorisé + reset médias + polish prod | Phase 12 | 3-5j | ✅ | Sprint 52 |
 | | | | | | |
 | **54** | **Features externes : Compare, Leaderboards, Privacy, Metadata** | **Phase 13** | **12-16j** | **⬜** | Sprint 53 ✅ |
+| **55** | **Convergence UX Carrière / Synthèse + privacy state durable** | **Phase 14** | **8-12j** | **🔲** | Sprint 54 + corpus UX validé |
 
 **Total Phases 0–5** : 130–195 jours (~7–10 mois) — ✅ terminé.
 **Total Phases 6–8** : ~45–65 jours — ✅ terminé.
@@ -101,7 +103,8 @@
 **Total Phase 11** : ~6–9 jours — ✅ terminé (contrat aligné, S44 durci, gouvernance résolue, 9 échecs tests S45-S49 corrigés — branch `phase11/sprint49-closure`).
 **Sprints 51–53 (Phase 12)** : ~12–18 jours — ✅ terminé (S51 🔄, S52 ✅, S53 ✅).
 **Sprint 54 (Phase 13)** : ~12–16 jours — ⬜ planifié (Compare + Leaderboards + Privacy + Metadata + socle multi-titre).
-**Total global** : ~242–360 jours pour 1 dev senior temps plein.
+**Phase 14** : ~8–12 jours — 🔲 cadrée (Sprint 55 : hub Carrière, Synthèse scope-aware, persistence privacy).
+**Total global** : ~250–372 jours pour 1 dev senior temps plein.
 
 > **Note** : les estimations sont basées sur ~55 000 LOC Python réels à porter
 > (vérifié : analysis=14K, sync=13K, api=12K, repos+services+auth+scripts ≈16K).
@@ -1732,14 +1735,14 @@
 
 | # | Tâche | Statut |
 |--:|-------|:------:|
-| A1 | Migration DuckDB : créer tables `season_calendars`, `csr_season_calendars`, `waypoint_resource_snapshots` dans `metadata.duckdb` — inclure colonnes `title_id`, `version`, `fetched_at`, `content_hash`, `etag`, `source_url` | ⬜ |
-| A2 | Créer `apps/go-api/cmd/refresh-metadata/main.go` : CLI Go standalone (pas dans `cmd/api/`) — commandes `seasons`, `csr-seasons`, `all` | ⬜ |
-| A3 | Implémenter le fetcher Waypoint `SeasonCalendar.json` + `CsrSeasonCalendar.json` dans `platform/halo/` — réutiliser `HaloProvider` (rate limiting + retry existants) | ⬜ |
-| A4 | Logique de refresh : comparer `content_hash` avec dernière version en DB — si inchangé : log silencieux, pas d'écriture ; si changé : upsert + stocker snapshot versionné | ⬜ |
-| A5 | Intégrer le notifier Discord existant (`internal/platform/discord/` ou équivalent) : appeler si `content_hash` change sur une ressource critique | ⬜ |
-| A6 | Créer `internal/platform/duckdb/metadata_repo.go` : interface `MetadataRepository` + méthodes `GetCurrentSeason`, `GetCSRSeasons`, `GetSeasonByDate` — lues par les services API | ⬜ |
-| A7 | Brancher `CareerService` et `StatsService` sur `MetadataRepository` pour les libellés de saison — supprimer tout hardcode de dates de saison | ⬜ |
-| A8 | Ajouter politique de fallback : si `metadata.duckdb` ne contient pas de saison courante, retourner une saison synthétique plutôt qu'une erreur | ⬜ |
+| A1 | Migration DuckDB : créer tables `season_calendars`, `csr_season_calendars`, `waypoint_resource_snapshots` dans `metadata.duckdb` — inclure colonnes `title_id`, `version`, `fetched_at`, `content_hash`, `etag`, `source_url` | ✅ |
+| A2 | Créer `apps/go-api/cmd/refresh-metadata/main.go` : CLI Go standalone (pas dans `cmd/api/`) — commandes `seasons`, `csr-seasons`, `all` | ✅ |
+| A3 | Implémenter le fetcher Waypoint `SeasonCalendar.json` + `CsrSeasonCalendar.json` dans `platform/halo/` — réutiliser `HaloProvider` (rate limiting + retry existants) | ✅ |
+| A4 | Logique de refresh : comparer `content_hash` avec dernière version en DB — si inchangé : log silencieux, pas d'écriture ; si changé : upsert + stocker snapshot versionné | ✅ |
+| A5 | Intégrer le notifier Discord existant (`internal/platform/discord/` ou équivalent) : appeler si `content_hash` change sur une ressource critique | ✅ |
+| A6 | Créer `internal/platform/duckdb/metadata_repo.go` : interface `MetadataRepository` + méthodes `GetCurrentSeason`, `GetCSRSeasons`, `GetSeasonByDate` — lues par les services API | ✅ |
+| A7 | Brancher `CareerService` et `StatsService` sur `MetadataRepository` pour les libellés de saison — supprimer tout hardcode de dates de saison | ✅ |
+| A8 | Ajouter politique de fallback : si `metadata.duckdb` ne contient pas de saison courante, retourner une saison synthétique plutôt qu'une erreur | ✅ |
 | A9 | Tests : `TestSeasonRefresh_ContentHashUnchanged` (pas d'écriture), `TestSeasonRefresh_ContentHashChanged` (upsert + snapshot), `TestSeasonRefresh_ETagNotModified` (304 → skip), `TestGetCurrentSeason_Fallback` | ⬜ |
 
 ---
@@ -1751,16 +1754,16 @@
 
 | # | Tâche | Statut |
 |--:|-------|:------:|
-| B1 | Ajouter `MatchPrivacyInfo` dans `domain/bootstrap.go` : champs `IsPrivate bool`, `IsPartial bool`, `Hint string` (`"auth_required"`, `"partial_history"`, `""`) | ⬜ |
-| B2 | Implémenter `platform/halo/privacy_provider.go` : appel `GET /hi/players/{xuid}/matches-privacy` — réutilise `HaloProvider`, retourne `MatchPrivacyInfo` | ⬜ |
-| B3 | Brancher dans `bootstrap_service.go` : fetch privacy en parallèle (goroutine) des autres données bootstrap — timeout propre si Waypoint lent | ⬜ |
-| B4 | Étendre `MatchHistoryResponse` et `MatchViewResponse` : ajouter champ `PrivacyWarning *MatchPrivacyWarning` avec `Level` (`"none"`, `"partial"`, `"full"`) et `Message` localisé | ⬜ |
-| B5 | Persistance optionnelle : table `player_privacy_state(xuid, is_private, observed_at)` dans player DB — pour mémoriser le dernier état sans appel Waypoint à chaque requête | ⬜ |
-| B6 | Mettre à jour le schéma OpenAPI : `BootstrapResponse.privacy`, `MatchHistoryResponse.privacy_warning`, `MatchViewResponse.privacy_warning` | ⬜ |
-| B7 | React — `MatchHistoryPage` : afficher un bandeau `PrivacyBanner` si `privacy_warning.level !== "none"` — élégant, pas alarmiste, non bloquant | ⬜ |
-| B8 | React — `MatchViewPage` : intégrer `PrivacyWarning` inline dans la lecture (pas en erreur système) — sections dégradées élégamment | ⬜ |
+| B1 | Ajouter `MatchPrivacyInfo` dans `domain/bootstrap.go` : champs `IsPrivate bool`, `IsPartial bool`, `Hint string` (`"auth_required"`, `"partial_history"`, `""`) | ✅ |
+| B2 | Implémenter `platform/halo/privacy_provider.go` : appel `GET /hi/players/{xuid}/matches-privacy` — réutilise `HaloProvider`, retourne `MatchPrivacyInfo` | ✅ |
+| B3 | Brancher dans `bootstrap_service.go` : fetch privacy en parallèle (goroutine) des autres données bootstrap — timeout propre si Waypoint lent | ✅ |
+| B4 | Étendre `MatchHistoryResponse` et `MatchViewResponse` : ajouter champ `PrivacyWarning *MatchPrivacyWarning` avec `Level` (`"none"`, `"partial"`, `"full"`) et `Message` localisé | ✅ |
+| B5 | Cache TTL process-level (`privacyTTLCache`, 30 min) dans `HaloProvider` — évite l'appel Waypoint à chaque requête sans conflit de lock DuckDB (player DB en read-only) | ✅ |
+| B6 | Mettre à jour le schéma OpenAPI : `BootstrapResponse.privacy`, `MatchHistoryResponse.privacy_warning`, `MatchViewResponse.privacy_warning` | ✅ |
+| B7 | React — `MatchHistoryPage` : afficher un bandeau `PrivacyBanner` si `privacy_warning.level !== "none"` — élégant, pas alarmiste, non bloquant | ✅ |
+| B8 | React — `MatchViewPage` : intégrer `PrivacyWarning` inline dans la lecture (pas en erreur système) — sections dégradées élégamment | ✅ |
 | B9 | React — `HomePage` / bootstrap : signal discret si `is_partial = true` — renvoi vers `MatchHistory` | ⬜ |
-| B10 | Tests Go : `TestPrivacy_PublicAccount`, `TestPrivacy_PrivateAccount`, `TestPrivacy_WaypointTimeout` (fallback gracieux), golden value du warning vs erreur générique | ⬜ |
+| B10 | Tests Go : `TestPrivacy_PublicAccount`, `TestPrivacy_PrivateAccount`, `TestPrivacy_WaypointTimeout` (fallback gracieux), golden value du warning vs erreur générique | ✅ |
 
 ---
 
@@ -1774,34 +1777,34 @@
 
 | # | Tâche | Statut |
 |--:|-------|:------:|
-| C1.1 | Créer `internal/domain/compare.go` : types `NormalizedPlayerStats`, `CompareRequest`, `CompareResponse`, `CompareMetricRow` (pattern `SessionCompareMetricRow` existant) | ⬜ |
-| C1.2 | `NormalizedPlayerStats` : champs `TitleSlug`, `XUID`, `Gamertag`, `Matches`, `WinRate`, `KDA`, `KDR`, `KillsPerGame`, `DeathsPerGame`, `AssistsPerGame`, `Accuracy`, `DamagePerGame`, `CareerRank`, `CSRCurrent`, `CSRBest`, `Extended map[string]any` | ⬜ |
-| C1.3 | Créer `internal/port/player_stats_provider.go` : interface `PlayerStatsProvider` — `FetchRemoteStats(ctx, xuid string, filters FilterContextInput) (*NormalizedPlayerStats, error)` | ⬜ |
-| C1.4 | Ajouter `CompareRepository` dans `internal/port/repository.go` : `GetLocalStats(ctx, xuid string, filters FilterContextInput) (*NormalizedPlayerStats, error)` | ⬜ |
-| C1.5 | Ajouter `queryKeys.comparePlayer(playerSlug, targetGamertag)` dans `apps/web/src/lib/query/keys.ts` — clé centralisée, partagée entre Explorer, Career et Squad | ⬜ |
+| C1.1 | Créer `internal/domain/compare.go` : types `NormalizedPlayerStats`, `CompareRequest`, `CompareResponse`, `CompareMetricRow` (pattern `SessionCompareMetricRow` existant) | ✅ |
+| C1.2 | `NormalizedPlayerStats` : champs `TitleSlug`, `XUID`, `Gamertag`, `Matches`, `WinRate`, `KDA`, `KDR`, `KillsPerGame`, `DeathsPerGame`, `AssistsPerGame`, `Accuracy`, `DamagePerGame`, `CareerRank`, `CSRCurrent`, `CSRBest`, `Extended map[string]any` | ✅ |
+| C1.3 | Créer `internal/port/player_stats_provider.go` : interface `PlayerStatsProvider` — `FetchRemoteStats(ctx, xuid string, filters FilterContextInput) (*NormalizedPlayerStats, error)` | ✅ |
+| C1.4 | Ajouter `CompareRepository` dans `internal/port/repository.go` : `GetLocalStats(ctx, xuid string, filters FilterContextInput) (*NormalizedPlayerStats, error)` | ✅ |
+| C1.5 | Ajouter `queryKeys.comparePlayer(playerSlug, targetGamertag)` dans `apps/web/src/lib/query/keys.ts` — clé centralisée, partagée entre Explorer, Career et Squad | ✅ |
 
 ##### C2 — Implémentations Go
 
 | # | Tâche | Statut |
 |--:|-------|:------:|
-| C2.1 | Créer `internal/platform/halo/compare_provider.go` : implémenter `PlayerStatsProvider` via Waypoint — réutilise `HaloProvider` (rate limiting + retry), appel `GetCareerStats` ou équivalent Waypoint | ⬜ |
-| C2.2 | Créer `internal/platform/duckdb/compare_repo.go` : implémenter `CompareRepository` — charge les stats joueur A depuis `shared.match_participants` + `player_match_enrichment` avec filtres | ⬜ |
-| C2.3 | Créer `internal/service/compare_service.go` : `CompareService` orchestrant les deux fetches via `errgroup.WithContext` — joueur A DuckDB + joueur B Waypoint en parallèle | ⬜ |
-| C2.4 | Assemblage `CompareResponse` : 12 KPIs MVP (`matches`, `win_rate`, `kda`, `kdr`, `kills_per_game`, `deaths_per_game`, `assists_per_game`, `csr_current`, `csr_best`, `accuracy`, `damage_per_game`, `career_rank`), `CompareMetricRow` avec `ValueA`, `ValueB`, `Delta`, `Winner` | ⬜ |
-| C2.5 | Enregistrer `CompareService` dans `api/registry.go` via `ServiceFactory[port.CompareService]` — même pattern que `CareerService`, `StatsService`, etc. | ⬜ |
-| C2.6 | Créer `internal/api/handlers/compare.go` : handler `POST /api/v1/players/{player_slug}/pages/compare` — body `{ "target_gamertag": "...", "filters": {...} }` | ⬜ |
-| C2.7 | Ajouter la route dans `internal/api/server.go` au même niveau que les routes joueur existantes | ⬜ |
-| C2.8 | Mettre à jour le schéma OpenAPI : endpoint `POST .../pages/compare`, types `CompareRequest`, `CompareResponse`, `NormalizedPlayerStats` | ⬜ |
+| C2.1 | Créer `internal/platform/halo/compare_provider.go` : implémenter `PlayerStatsProvider` via Waypoint — réutilise `HaloProvider` (rate limiting + retry), appel `GetCareerStats` ou équivalent Waypoint | ✅ |
+| C2.2 | Créer `internal/platform/duckdb/compare_repo.go` : implémenter `CompareRepository` — charge les stats joueur A depuis `shared.match_participants` + `player_match_enrichment` avec filtres | ✅ |
+| C2.3 | Créer `internal/service/compare_service.go` : `CompareService` orchestrant les deux fetches via `errgroup.WithContext` — joueur A DuckDB + joueur B Waypoint en parallèle | ✅ |
+| C2.4 | Assemblage `CompareResponse` : 12 KPIs MVP (`matches`, `win_rate`, `kda`, `kdr`, `kills_per_game`, `deaths_per_game`, `assists_per_game`, `csr_current`, `csr_best`, `accuracy`, `damage_per_game`, `career_rank`), `CompareMetricRow` avec `ValueA`, `ValueB`, `Delta`, `Winner` | ✅ |
+| C2.5 | Enregistrer `CompareService` dans `api/registry.go` via `ServiceFactory[port.CompareService]` — même pattern que `CareerService`, `StatsService`, etc. | ✅ |
+| C2.6 | Créer `internal/api/handlers/compare.go` : handler `POST /api/v1/players/{player_slug}/pages/compare` — body `{ "target_gamertag": "...", "filters": {...} }` | ✅ |
+| C2.7 | Ajouter la route dans `internal/api/server.go` au même niveau que les routes joueur existantes | ✅ |
+| C2.8 | Mettre à jour le schéma OpenAPI : endpoint `POST .../pages/compare`, types `CompareRequest`, `CompareResponse`, `NormalizedPlayerStats` | ✅ |
 
 ##### C3 — Frontend React
 
 | # | Tâche | Statut |
 |--:|-------|:------:|
-| C3.1 | Créer `apps/web/src/features/compare/` : hook `useCompare(playerSlug, targetGamertag, filters)` → `POST .../pages/compare` — `staleTime: 2 * 60 * 1000` | ⬜ |
+| C3.1 | Créer `apps/web/src/features/compare/` : hook `useCompare(playerSlug, targetGamertag, filters)` → `POST .../pages/compare` — `staleTime: 2 * 60 * 1000` | ✅ |
 | C3.2 | Créer hook `useComparePrefetch(playerSlug)` : retourne `prefetchCompare(targetGamertag)` — pattern `queryClient.prefetchQuery` sur `queryKeys.comparePlayer` | ⬜ |
-| C3.3 | Créer `CompareDrawer.tsx` : drawer latéral (pattern `FilterDrawer.tsx` existant — backdrop + animate-in/out + Escape pour fermer) | ⬜ |
-| C3.4 | `CompareDrawer` : skeleton loader pendant le fetch Waypoint (~2-4s) — pas d'état vide muet | ⬜ |
-| C3.5 | `CompareDrawer` : affichage des 12 KPIs MVP en duel gauche/droite, emphasis sur les deltas et le gagnant par métrique | ⬜ |
+| C3.3 | Créer `CompareDrawer.tsx` : drawer latéral (pattern `FilterDrawer.tsx` existant — backdrop + animate-in/out + Escape pour fermer) | ✅ |
+| C3.4 | `CompareDrawer` : skeleton loader pendant le fetch Waypoint (~2-4s) — pas d'état vide muet | ✅ |
+| C3.5 | `CompareDrawer` : affichage des 12 KPIs MVP en duel gauche/droite, emphasis sur les deltas et le gagnant par métrique | ✅ |
 | C3.6 | Gestion des états limites : joueur absent (404), joueur privé (`privacy_warning`), données asymétriques (champs `null` gracieux) | ⬜ |
 
 ##### C4 — Points d'entrée UI + prefetch
@@ -1825,7 +1828,7 @@
 
 | # | Tâche | Statut |
 |--:|-------|:------:|
-| D1.1 | Migration DuckDB : créer table `waypoint_medals_raw(title_id, medal_id, label, category, rarity, image_url, description, fetched_at)` dans `metadata.duckdb` — staging uniquement | ⬜ |
+| D1.1 | Migration DuckDB : créer table `waypoint_medals_raw(title_id, medal_id, label, category, rarity, image_url, description, fetched_at)` dans `metadata.duckdb` — staging uniquement | ✅ |
 | D1.2 | CLI (extension de `cmd/refresh-metadata/`) : commande `medals` — fetch `Waypoint/file/medals/metadata.json` via Waypoint | ⬜ |
 | D1.3 | Garde-fous d'import (bloquants) : (1) cardinalité Waypoint cohérente avec table locale ± 10% ; (2) champs requis présents sur toutes les entrées (`medal_id`, `label`, `category`, `rarity`) ; (3) images récupérables pour toutes les entrées ou pour aucune — pas d'import partiel d'assets | ⬜ |
 | D1.4 | Si tous les garde-fous passent : promouvoir vers `medal_metadata(title_id, medal_id, ...)` — sinon générer un rapport d'écart et bloquer | ⬜ |
@@ -1836,10 +1839,10 @@
 
 | # | Tâche | Statut |
 |--:|-------|:------:|
-| D2.1 | Migration DuckDB : créer table `waypoint_assets_raw(title_id, asset_id, version_id, kind, labels, fetched_at, content_hash)` dans `metadata.duckdb` | ⬜ |
+| D2.1 | Migration DuckDB : créer table `waypoint_assets_raw(title_id, asset_id, version_id, kind, labels, fetched_at, content_hash)` dans `metadata.duckdb` | ✅ |
 | D2.2 | CLI (extension de `cmd/refresh-metadata/`) : commande `assets --kind <AssetKind>` — fetch via `getAsset` / `getSpecificAssetVersion` Waypoint | ⬜ |
 | D2.3 | Générer un rapport diff (nouveau / modifié / supprimé) par rapport à ce qui est en DB — pas d'écriture automatique en production sans validation humaine | ⬜ |
-| D2.4 | Tous les assets stockés incluent `title_id` comme clé de partition — convention commune avec O3 | ⬜ |
+| D2.4 | Tous les assets stockés incluent `title_id` comme clé de partition — convention commune avec O3 | ✅ |
 | D2.5 | Tests : `TestAssetDiff_NewDetected`, `TestAssetDiff_ModifiedDetected`, `TestAssetDiff_UnchangedNoWrite` | ⬜ |
 
 ---
@@ -1854,21 +1857,21 @@
 
 | # | Tâche | Statut |
 |--:|-------|:------:|
-| E1.1 | Créer `internal/domain/leaderboard.go` : types `LeaderboardEntry` (`XUID`, `Gamertag`, `TitleSlug`, `CSR`, `Playlist`, `Season`, `IsLocal bool`), `LeaderboardRequest`, `LeaderboardResponse` | ⬜ |
-| E1.2 | Ajouter `LeaderboardRepository` dans `internal/port/repository.go` : `GetLocalRankings(ctx, req LeaderboardRequest) ([]LeaderboardEntry, error)` — charge depuis `shared.match_participants` + `match_skill_rank` | ⬜ |
-| E1.3 | Créer `internal/platform/duckdb/leaderboard_repo.go` : implémenter `LeaderboardRepository` — jointure `xuid_aliases` + `match_skill_rank`, filtré par `title_id` + `season` (via `MetadataRepository` O2) | ⬜ |
-| E1.4 | Créer `internal/service/leaderboard_service.go` : `LeaderboardService` — charge joueurs locaux (DuckDB, rapide), enrichit avec joueurs distants via `PlayerStatsProvider` en batch goroutines (`errgroup`) | ⬜ |
-| E1.5 | Enregistrer dans `api/registry.go` via `ServiceFactory[port.LeaderboardService]` | ⬜ |
-| E1.6 | Créer `internal/api/handlers/leaderboard.go` : `GET /api/v1/players/{player_slug}/pages/leaderboard?season=...&playlist=...` | ⬜ |
-| E1.7 | Mettre à jour le schéma OpenAPI : endpoint `GET .../pages/leaderboard`, types `LeaderboardRequest`, `LeaderboardResponse`, `LeaderboardEntry` | ⬜ |
+| E1.1 | Créer `internal/domain/leaderboard.go` : types `LeaderboardEntry` (`XUID`, `Gamertag`, `TitleSlug`, `CSR`, `Playlist`, `Season`, `IsLocal bool`), `LeaderboardRequest`, `LeaderboardResponse` | ✅ |
+| E1.2 | Ajouter `LeaderboardRepository` dans `internal/port/repository.go` : `GetLocalRankings(ctx, req LeaderboardRequest) ([]LeaderboardEntry, error)` — charge depuis `shared.match_participants` + `match_skill_rank` | ✅ |
+| E1.3 | Créer `internal/platform/duckdb/leaderboard_repo.go` : implémenter `LeaderboardRepository` — jointure `xuid_aliases` + `match_skill_rank`, filtré par `title_id` + `season` (via `MetadataRepository` O2) | ✅ |
+| E1.4 | Créer `internal/service/leaderboard_service.go` : `LeaderboardService` — charge joueurs locaux (DuckDB, rapide), enrichit avec joueurs distants via `PlayerStatsProvider` en batch goroutines (`errgroup`) | ✅ |
+| E1.5 | Enregistrer dans `api/registry.go` via `ServiceFactory[port.LeaderboardService]` | ✅ |
+| E1.6 | Créer `internal/api/handlers/leaderboard.go` : `GET /api/v1/players/{player_slug}/pages/leaderboard?season=...&playlist=...` | ✅ |
+| E1.7 | Mettre à jour le schéma OpenAPI : endpoint `GET .../pages/leaderboard`, types `LeaderboardRequest`, `LeaderboardResponse`, `LeaderboardEntry` | ✅ |
 
 ##### E2 — Frontend React
 
 | # | Tâche | Statut |
 |--:|-------|:------:|
-| E2.1 | Ajouter `queryKeys.leaderboard(playerSlug, { season, playlist })` dans `lib/query/keys.ts` | ⬜ |
-| E2.2 | Créer hook `useLeaderboard(playerSlug, season, playlist)` → `GET .../pages/leaderboard` — `staleTime: 5 * 60 * 1000` | ⬜ |
-| E2.3 | Créer `LeaderboardBlock.tsx` : module compact — affiche joueurs locaux (`IsLocal=true`) immédiatement, skeleton par ligne pour les joueurs Waypoint en attente | ⬜ |
+| E2.1 | Ajouter `queryKeys.leaderboard(playerSlug, { season, playlist })` dans `lib/query/keys.ts` | ✅ |
+| E2.2 | Créer hook `useLeaderboard(playerSlug, season, playlist)` → `GET .../pages/leaderboard` — `staleTime: 5 * 60 * 1000` | ✅ |
+| E2.3 | Créer `LeaderboardBlock.tsx` : module compact — affiche joueurs locaux (`IsLocal=true`) immédiatement, skeleton par ligne pour les joueurs Waypoint en attente | ✅ |
 | E2.4 | Prefetch au mount de `CareerPage` : `useEffect` → `queryClient.prefetchQuery(queryKeys.leaderboard(...))` — exploite le fait que `queryKeys.home` est déjà en cache via KPIBar | ⬜ |
 | E2.5 | Hover sur une ligne du leaderboard → `useComparePrefetch` (Volet C, `C3.2`) — zéro doublon | ⬜ |
 | E2.6 | Intégrer `LeaderboardBlock` dans `CareerPage` (bloc secondaire sous KPIs) et optionnellement dans `HomePage` (carte éditoriale) | ⬜ |
@@ -1880,9 +1883,9 @@
 
 | # | Tâche | Statut |
 |--:|-------|:------:|
-| F1 | Tests Go Compare : `TestCompareService_BothLocal`, `TestCompareService_PlayerBWaypoint`, `TestCompareService_PlayerBPrivate`, `TestCompareService_PlayerBNotFound`, golden values sur duo de joueurs de référence | ⬜ |
-| F2 | Tests Go Leaderboard : `TestLeaderboardService_LocalOnly`, `TestLeaderboardService_MixedLocalWaypoint`, `TestLeaderboardService_EmptySeason`, test de chargement progressif (joueurs locaux retournés sans attendre Waypoint) | ⬜ |
-| F3 | Tests Go Privacy : `TestPrivacyProvider_Public`, `TestPrivacyProvider_Private`, `TestPrivacyProvider_Timeout` | ⬜ |
+| F1 | Tests Go Compare : `TestCompareService_BothLocal`, `TestCompareService_PlayerBWaypoint`, `TestCompareService_PlayerBPrivate`, `TestCompareService_PlayerBNotFound`, golden values sur duo de joueurs de référence | ✅ |
+| F2 | Tests Go Leaderboard : `TestLeaderboardService_LocalOnly`, `TestLeaderboardService_MixedLocalWaypoint`, `TestLeaderboardService_EmptySeason`, test de chargement progressif (joueurs locaux retournés sans attendre Waypoint) | ✅ |
+| F3 | Tests Go Privacy : `TestPrivacyProvider_Public`, `TestPrivacyProvider_Private`, `TestPrivacyProvider_Timeout` | ✅ |
 | F4 | Test multi-titre : `X-LevelUp-Title` propagé correctement dans Compare, Leaderboard et Privacy — aucun mélange de données entre titres | ⬜ |
 | F5 | Test de latence Compare : P95 < 5s sur Waypoint nominal (test d'intégration avec mock `HaloClient`) | ⬜ |
 | F6 | Tests React (`vitest`) : `CompareDrawer` — skeleton visible pendant fetch, états limites (absent, privé, identique), KPIs cohérents avec golden values | ⬜ |
@@ -1893,21 +1896,136 @@
 
 **Gate Sprint 54** :
 
-- [ ] `GET /bootstrap` : champ `privacy` présent et documenté OpenAPI
-- [ ] `GET .../pages/match-history` + `GET .../pages/match-view` : `privacy_warning` présent et non nul sur un compte privé
-- [ ] CLI `refresh-metadata seasons` : upsert `metadata.duckdb`, notification Discord si changement, skip si inchangé (ETag/hash)
-- [ ] `CareerService` et `StatsService` : 0 date de saison hardcodée — source = `MetadataRepository`
-- [ ] `POST .../pages/compare` : réponse avec 12 KPIs, joueur A DuckDB + joueur B Waypoint, `titleSlug` propagé
+- [x] `GET /bootstrap` : champ `privacy` présent et documenté OpenAPI
+- [x] `GET .../pages/match-history` + `GET .../pages/match-view` : `privacy_warning` présent et non nul sur un compte privé
+- [x] CLI `refresh-metadata seasons` : upsert `metadata.duckdb`, notification Discord si changement, skip si inchangé (ETag/hash)
+- [x] `CareerService` et `StatsService` : 0 date de saison hardcodée — source = `MetadataRepository`
+- [x] `POST .../pages/compare` : réponse avec 12 KPIs, joueur A DuckDB + joueur B Waypoint, `titleSlug` propagé
 - [ ] Compare P95 < 5s sur Waypoint nominal (test mock)
-- [ ] `GET .../pages/leaderboard` : joueurs locaux (`IsLocal=true`) dans la réponse, joueurs Waypoint en complement
+- [x] `GET .../pages/leaderboard` : joueurs locaux (`IsLocal=true`) dans la réponse, joueurs Waypoint en complement
 - [ ] `LeaderboardBlock` React : joueurs locaux affichés sans attendre Waypoint (chargement progressif vérifié vitest)
-- [ ] `CompareDrawer` React : skeleton loader visible, 3 états limites couverts (absent, privé, identique)
+- [x] `CompareDrawer` React : skeleton loader visible, 3 états limites couverts (absent, privé, identique)
 - [ ] Prefetch Compare actif sur 4 points d'entrée (Explorer, Career Encounters, Career en-tête, Squad)
-- [ ] Tables staging `waypoint_medals_raw` + `waypoint_assets_raw` créées — aucune donnée en production sans validation humaine
+- [x] Tables staging `waypoint_medals_raw` + `waypoint_assets_raw` créées — aucune donnée en production sans validation humaine
 - [ ] Garde-fous medals : test de blocage si cardinalité hors ± 10%, champs manquants, ou images partielles
-- [ ] 0 date de saison hardcodée dans le code Go après O2
-- [ ] `title_id` présent dans toutes les nouvelles tables DuckDB et tous les nouveaux types Go
-- [ ] Entrée `thought_log.md` avec bilan Sprint 54
+- [x] 0 date de saison hardcodée dans le code Go après O2
+- [x] `title_id` présent dans toutes les nouvelles tables DuckDB et tous les nouveaux types Go
+- [x] Entrée `thought_log.md` avec bilan Sprint 54
+
+---
+
+### Sprint 55 — Convergence UX Carrière / Synthèse + privacy state durable (Phase 14) 🔲
+
+> **Objectif** : transformer le cadrage UX déjà documenté en plan d'exécution produit concret côté React + Go.
+> Ce sprint exécute les décisions formalisées pour la frontière `Carrière / Synthèse`, tout en fermant le reliquat Sprint 54 sur la persistence du state privacy.
+>
+> **Dépendance** : Sprint 54 stabilisé + corpus UX validé.
+>
+> **Références** :
+> [UX_CAREER_SYNTHESIS_BOUNDARY.md](UX_CAREER_SYNTHESIS_BOUNDARY.md),
+> [UX_CAREER_HUB_BLUEPRINT.md](UX_CAREER_HUB_BLUEPRINT.md),
+> [SYNTHESIS_TARGET_CONTRACT_AND_UI.md](SYNTHESIS_TARGET_CONTRACT_AND_UI.md)
+
+---
+
+#### Volet A — Terminologie, routing et shell
+
+> **But** : faire converger la navigation réelle vers le modèle cible `Carrière = hub`, `Synthèse = page analytique du scope courant`.
+
+| # | Tâche | Statut |
+|--:|-------|:------:|
+| A1 | Retirer `Profil` des derniers libellés et traces UX côté go-migration sur le périmètre shell joueur ; l'entrée canonique doit rester `Carrière` | ⬜ |
+| A2 | Remplacer le doublon `Carrière / Carrière` par `Carrière / Progression` dans le routing et les composants React | ⬜ |
+| A3 | Faire de `/players/$playerSlug/career` la route canonique unique du hub avec search param `tab=progression|citations` | ⬜ |
+| A4 | Mettre en place le redirect legacy `/players/$playerSlug/profile/citations` → `/players/$playerSlug/career?tab=citations` | ⬜ |
+| A5 | Retirer `Citations` de la navigation secondaire globale une fois le redirect en place, sans casser les liens existants | ⬜ |
+| A6 | Mettre à jour TanStack Router, les liens de navigation, `routeTree.gen.ts` et les éventuels helpers title-aware impactés par ce reslicing | ⬜ |
+
+---
+
+#### Volet B — Hub Carrière React
+
+> **But** : faire de `Carrière` une vraie page de capital long terme, pas une synthèse analytique déguisée.
+
+| # | Tâche | Statut |
+|--:|-------|:------:|
+| B1 | Créer `CareerHubPage.tsx` comme container unique : header, tabs deep-linkables, orchestration de données et empty states explicites | ⬜ |
+| B2 | Extraire la vue actuelle de progression vers `CareerProgressionTab.tsx` en conservant `summary`, `hero_progress`, `projections`, `charts`, `xp_history`, `lusr`, `current_season` | ⬜ |
+| B3 | Créer `CareerCitationsTab.tsx` à partir de la page Citations existante, en supprimant la dépendance implicite au `globalFilterStore` pour la version hub | ⬜ |
+| B4 | Retirer de l'UI Carrière tous les blocs analytiques déplacés : `CareerTopMatchesTable`, `CareerEncountersSection`, CTA et wording associés | ⬜ |
+| B5 | Ajouter un résumé de maîtrise durable dans l'onglet `Citations` si la payload actuelle le permet sans simuler de métriques absentes | ⬜ |
+| B6 | Ajouter tests React/Vitest : deep link `tab`, redirect legacy citations, persistance du header, absence de `top matches` / `encounters` dans le hub | ⬜ |
+
+---
+
+#### Volet C — Contrat et backend Carrière
+
+> **But** : réaligner les payloads backend avec le rôle produit du hub Carrière.
+
+| # | Tâche | Statut |
+|--:|-------|:------:|
+| C1 | Recentrer `GET /players/{slug}/pages/career` sur la seule vue `Progression` ; documenter la sortie progressive de `top_matches_preview` et `encounters_preview` | ⬜ |
+| C2 | Décider et implémenter le contrat cible de `Citations` : soit réutilisation transitoire de `POST /pages/citations`, soit `POST /pages/career/citations` si l'extraction est jugée assez mûre | ⬜ |
+| C3 | Mettre à jour `internal/domain/career.go`, le handler carrière et le codegen frontend pour refléter le recentrage `Progression` | ⬜ |
+| C4 | Marquer `career/top-matches` et `career/encounters` comme endpoints en migration vers Synthèse ; éviter de les considérer comme surface canonique long terme | ⬜ |
+| C5 | Mettre à jour OpenAPI, les types générés et les query keys React liées à Carrière / Citations | ⬜ |
+
+---
+
+#### Volet D — Extraction Synthèse et scope analytique
+
+> **But** : faire de `Synthèse` une page autonome, cohérente avec le scope demandé par le frontend, et non plus un appendice de `Escouade`.
+
+| # | Tâche | Statut |
+|--:|-------|:------:|
+| D1 | Extraire `Synthèse` vers `internal/api/handlers/synthesis.go`, `internal/service/synthesis_service.go` et `internal/domain/synthesis.go` | ⬜ |
+| D2 | Faire appliquer réellement `period` et `filters` côté Go ; supprimer le comportement actuel qui ignore les filtres et renvoie `Period: "all"` en dur | ⬜ |
+| D3 | Ajouter un bloc `scope` explicite dans la réponse : période, nombre de matchs, filtres appliqués, filtres ignorés, description du scope | ⬜ |
+| D4 | Ajouter le bloc `overview` en tête de la payload avec cumuls, moyennes et pics fiables uniquement | ⬜ |
+| D5 | Migrer les previews `top / pires matchs` depuis Carrière vers `Synthèse`, avec possibilité d'endpoint lazy `synthesis/highlights` | ⬜ |
+| D6 | Migrer les previews `encounters / rivalries / nemeses / victims` vers `Synthèse`, avec possibilité d'endpoint lazy `synthesis/rivalries` | ⬜ |
+| D7 | Préparer les breakdowns `map / mode` comme previews légères, sans transformer la page principale en payload monolithique | ⬜ |
+| D8 | Mettre à jour `SynthesisPage.tsx`, `queries.ts` et `queryKeys` pour utiliser un `scopeHash` intégrant période + filtres, plus seulement la période | ⬜ |
+| D9 | Ajouter tests Go et React : scope réellement appliqué, bloc overview rendu avant solo/escouade, highlights et rivalries cohérents avec le scope demandé | ⬜ |
+
+---
+
+#### Volet E — Carry-over Sprint 54 : persistence privacy state
+
+> **But** : fermer le reliquat explicitement laissé ouvert après Sprint 54, afin que le warning privacy soit durable et non dépendant d'un appel Waypoint à chaque fois.
+
+| # | Tâche | Statut |
+|--:|-------|:------:|
+| E1 | Créer ou finaliser la table `player_privacy_state(xuid, is_private, observed_at, source)` dans la player DB avec migration idempotente | ⬜ |
+| E2 | Persister le dernier état privacy observé depuis le provider Waypoint lors du bootstrap ou des pages match concernées | ⬜ |
+| E3 | Utiliser le state persisté comme fallback gracieux quand Waypoint est indisponible, sans masquer l'incertitude au frontend | ⬜ |
+| E4 | Aligner `BootstrapService`, `MatchHistory` et `MatchView` sur cette source persistée + provider live, avec règle claire de priorité | ⬜ |
+| E5 | Ajouter tests DB/service/handler pour les cas public, privé, timeout Waypoint et fallback sur état observé | ⬜ |
+
+---
+
+#### Volet F — Gouvernance, docs et critères de livraison
+
+> **But** : garder la roadmap et la doc alignées avec l'implémentation réelle, sans rebasculer dans une divergence plan vs code.
+
+| # | Tâche | Statut |
+|--:|-------|:------:|
+| F1 | Reporter l'avancement Sprint 55 dans `.ai/thought_log.md` avec décisions de route, d'API et de migration de surface | ⬜ |
+| F2 | Mettre à jour les documents UX si l'implémentation impose un arbitrage différent du blueprint initial | ⬜ |
+| F3 | Ajouter une note de migration dans la roadmap si `career/top-matches` et `career/encounters` restent temporairement exposés pour compatibilité | ⬜ |
+
+**Gate Sprint 55** :
+
+- [ ] `Carrière` est une route canonique unique avec tabs deep-linkables `Progression` / `Citations`
+- [ ] `/players/$playerSlug/profile/citations` redirige proprement vers `/players/$playerSlug/career?tab=citations`
+- [ ] `Citations` n'apparaît plus comme destination secondaire shell autonome
+- [ ] `top matches` et `encounters` n'apparaissent plus dans le hub Carrière
+- [ ] `POST/GET .../pages/synthesis` applique réellement `period + filters` et renvoie un `scope` explicite
+- [ ] `SynthesisPageResponse` contient au minimum `scope`, `overview`, `solo_squad` et des previews `highlights` / `rivalries` cohérentes
+- [ ] `Synthèse` est sortie du périmètre `SquadHandler` / `SquadService`
+- [ ] `player_privacy_state` est persisté et utilisé comme fallback gracieux sur bootstrap / history / match view
+- [ ] OpenAPI, codegen frontend et query keys sont alignés avec les nouveaux contrats
+- [ ] Entrée `thought_log.md` avec bilan Sprint 55
 
 ---
 
