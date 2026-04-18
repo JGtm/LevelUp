@@ -9,7 +9,7 @@
 > **Phase 10 — Consolidation qualité** : Sprints 45–48 ✅ — tests écrits, 21 packages 0 FAIL, couverture mesurée 33.6% (baseline ratchet 33.5%).
 > **Phase 11 — Clôture migration** : Sprint 49 ✅ couverture 76.0% atteinte (per-package mean, tous packages ≥ 50%, baseline ratchet 76.0%) — Sprint 50 🔄 (audit en cours).
 > **Phase 12 — Stabilisation produit** : Sprints 51–53 ⬜ planifiés (bascule prod + stubs critiques + testabilité Halo + performance backfill).
-> **Phase 13 — Features externes** : Sprint 54 ⬜ planifié (Compare joueur, Leaderboards, Match privacy, Metadata seasons + socle multi-titre).
+> **Phase 13 — Features externes** : Sprint 54 ✅ livré (Compare joueur, Leaderboards, Match privacy, Metadata seasons + socle multi-titre + tests F4/F5/F6).
 > **Phase 14 — Convergence UX shell** : Sprint 55 🔲 cadré (hub Carrière, extraction Synthèse, scope analytique unifié, persistence privacy).
 
 ---
@@ -102,7 +102,7 @@
 **Total Phase 10** : ~22–29 jours — ✅ terminé (21 packages 0 FAIL, couverture mesurée 33.6%, baseline ratchet 33.5% → relevée à 76.0% en Sprint 49).
 **Total Phase 11** : ~6–9 jours — ✅ terminé (contrat aligné, S44 durci, gouvernance résolue, 9 échecs tests S45-S49 corrigés — branch `phase11/sprint49-closure`).
 **Sprints 51–53 (Phase 12)** : ~12–18 jours — ✅ terminé (S51 🔄, S52 ✅, S53 ✅).
-**Sprint 54 (Phase 13)** : ~12–16 jours — ⬜ planifié (Compare + Leaderboards + Privacy + Metadata + socle multi-titre).
+**Sprint 54 (Phase 13)** : ~12–16 jours — ✅ livré (Compare + Leaderboards + Privacy + Metadata + socle multi-titre + tests F4/F5/F6/F8). Gate 100% vert.
 **Phase 14** : ~8–12 jours — 🔲 cadrée (Sprint 55 : hub Carrière, Synthèse scope-aware, persistence privacy).
 **Total global** : ~250–372 jours pour 1 dev senior temps plein.
 
@@ -1716,7 +1716,7 @@
 
 ---
 
-### Sprint 54 — Features externes : Compare, Leaderboards, Privacy, Metadata (Phase 13) ⬜
+### Sprint 54 — Features externes : Compare, Leaderboards, Privacy, Metadata (Phase 13) ✅
 
 > **Objectif** : implémenter les opportunités retenues du document `HALO_EXTERNAL_OPPORTUNITIES.md`
 > (arbitrage produit 2026-04-18). Ce sprint couvre le Lot A complet (O1, O2+O14, O5)
@@ -1743,7 +1743,7 @@
 | A6 | Créer `internal/platform/duckdb/metadata_repo.go` : interface `MetadataRepository` + méthodes `GetCurrentSeason`, `GetCSRSeasons`, `GetSeasonByDate` — lues par les services API | ✅ |
 | A7 | Brancher `CareerService` et `StatsService` sur `MetadataRepository` pour les libellés de saison — supprimer tout hardcode de dates de saison | ✅ |
 | A8 | Ajouter politique de fallback : si `metadata.duckdb` ne contient pas de saison courante, retourner une saison synthétique plutôt qu'une erreur | ✅ |
-| A9 | Tests : `TestSeasonRefresh_ContentHashUnchanged` (pas d'écriture), `TestSeasonRefresh_ContentHashChanged` (upsert + snapshot), `TestSeasonRefresh_ETagNotModified` (304 → skip), `TestGetCurrentSeason_Fallback` | ⬜ |
+| A9 | Tests : `TestSeasonRefresh_ContentHashUnchanged` (pas d'écriture), `TestSeasonRefresh_ContentHashChanged` (upsert + snapshot), `TestSeasonRefresh_ETagNotModified` (304 → skip), `TestGetCurrentSeason_Fallback` | ✅ |
 
 ---
 
@@ -1762,7 +1762,7 @@
 | B6 | Mettre à jour le schéma OpenAPI : `BootstrapResponse.privacy`, `MatchHistoryResponse.privacy_warning`, `MatchViewResponse.privacy_warning` | ✅ |
 | B7 | React — `MatchHistoryPage` : afficher un bandeau `PrivacyBanner` si `privacy_warning.level !== "none"` — élégant, pas alarmiste, non bloquant | ✅ |
 | B8 | React — `MatchViewPage` : intégrer `PrivacyWarning` inline dans la lecture (pas en erreur système) — sections dégradées élégamment | ✅ |
-| B9 | React — `HomePage` / bootstrap : signal discret si `is_partial = true` — renvoi vers `MatchHistory` | ⬜ |
+| B9 | React — `HomePage` / bootstrap : signal discret si `is_partial = true` — renvoi vers `MatchHistory` | ✅ |
 | B10 | Tests Go : `TestPrivacy_PublicAccount`, `TestPrivacy_PrivateAccount`, `TestPrivacy_WaypointTimeout` (fallback gracieux), golden value du warning vs erreur générique | ✅ |
 
 ---
@@ -1801,20 +1801,20 @@
 | # | Tâche | Statut |
 |--:|-------|:------:|
 | C3.1 | Créer `apps/web/src/features/compare/` : hook `useCompare(playerSlug, targetGamertag, filters)` → `POST .../pages/compare` — `staleTime: 2 * 60 * 1000` | ✅ |
-| C3.2 | Créer hook `useComparePrefetch(playerSlug)` : retourne `prefetchCompare(targetGamertag)` — pattern `queryClient.prefetchQuery` sur `queryKeys.comparePlayer` | ⬜ |
+| C3.2 | Créer hook `useComparePrefetch(playerSlug)` : retourne `prefetchCompare(targetGamertag)` — pattern `queryClient.prefetchQuery` sur `queryKeys.comparePlayer` | ✅ |
 | C3.3 | Créer `CompareDrawer.tsx` : drawer latéral (pattern `FilterDrawer.tsx` existant — backdrop + animate-in/out + Escape pour fermer) | ✅ |
 | C3.4 | `CompareDrawer` : skeleton loader pendant le fetch Waypoint (~2-4s) — pas d'état vide muet | ✅ |
 | C3.5 | `CompareDrawer` : affichage des 12 KPIs MVP en duel gauche/droite, emphasis sur les deltas et le gagnant par métrique | ✅ |
-| C3.6 | Gestion des états limites : joueur absent (404), joueur privé (`privacy_warning`), données asymétriques (champs `null` gracieux) | ⬜ |
+| C3.6 | Gestion des états limites : joueur absent (404), joueur privé (`privacy_warning`), données asymétriques (champs `null` gracieux) | ✅ |
 
 ##### C4 — Points d'entrée UI + prefetch
 
 | # | Tâche | Point d'entrée | Prefetch | Statut |
 |--:|-------|---------------|---------|:------:|
-| C4.1 | **Explorer** : ajouter CTA "Comparer" dans la Card résultats `ExplorerPage` (joueur B déjà résolu) — `onMouseEnter` → `prefetchCompare(targetGamertag)` | Explorer (prioritaire) | `onMouseEnter` | ⬜ |
-| C4.2 | **Career Encounters** : ajouter CTA "Comparer" sur chaque ligne de `encounters_preview` — `onMouseEnter` → `prefetchCompare` (gamertags déjà en cache via `career` query) | Career | `onMouseEnter` | ⬜ |
-| C4.3 | **Career en-tête** : ajouter CTA général "Comparer" ouvrant le drawer avec `GamertagSearchInput` (recherche libre) — prefetch déclenché à la sélection via `onSelect` | Career | `onSelect` | ⬜ |
-| C4.4 | **Squad** : ajouter CTA "Comparer" sur chaque ligne coéquipier — `onMouseEnter` → `prefetchCompare` (gamertags déjà en cache via `teammates` query) | Squad | `onMouseEnter` | ⬜ |
+| C4.1 | **Explorer** : ajouter CTA "Comparer" dans la Card résultats `ExplorerPage` (joueur B déjà résolu) — `onMouseEnter` → `prefetchCompare(targetGamertag)` | Explorer (prioritaire) | `onMouseEnter` | ✅ |
+| C4.2 | **Career Encounters** : ajouter CTA "Comparer" sur chaque ligne de `encounters_preview` — `onMouseEnter` → `prefetchCompare` (gamertags déjà en cache via `career` query) | Career | `onMouseEnter` | ✅ |
+| C4.3 | **Career en-tête** : ajouter CTA général "Comparer" ouvrant le drawer avec `GamertagSearchInput` (recherche libre) — prefetch déclenché à la sélection via `onSelect` | Career | `onSelect` | ✅ |
+| C4.4 | **Squad** : ajouter CTA "Comparer" sur chaque ligne coéquipier — `onMouseEnter` → `prefetchCompare` (gamertags déjà en cache via `teammates` query) | Squad | `onMouseEnter` | ✅ |
 
 ---
 
@@ -1826,24 +1826,30 @@
 
 ##### D1 — O3 : Medals metadata staging
 
+> **Pattern d'images** : oneshot cache-aside via la couche API Waypoint. L'image d'une médaille est fetchée la première fois qu'elle est demandée (ou si la qualité enregistrée est insuffisante), stockée localement, puis servie depuis le cache sans re-fetch réseau. Le frontend ne connaît pas la source. Multi-titres dès le départ via `title_id`. Singleflight côté Go pour éviter les fetch parallèles sur la même médaille.
+
 | # | Tâche | Statut |
 |--:|-------|:------:|
 | D1.1 | Migration DuckDB : créer table `waypoint_medals_raw(title_id, medal_id, label, category, rarity, image_url, description, fetched_at)` dans `metadata.duckdb` — staging uniquement | ✅ |
-| D1.2 | CLI (extension de `cmd/refresh-metadata/`) : commande `medals` — fetch `Waypoint/file/medals/metadata.json` via Waypoint | ⬜ |
-| D1.3 | Garde-fous d'import (bloquants) : (1) cardinalité Waypoint cohérente avec table locale ± 10% ; (2) champs requis présents sur toutes les entrées (`medal_id`, `label`, `category`, `rarity`) ; (3) images récupérables pour toutes les entrées ou pour aucune — pas d'import partiel d'assets | ⬜ |
-| D1.4 | Si tous les garde-fous passent : promouvoir vers `medal_metadata(title_id, medal_id, ...)` — sinon générer un rapport d'écart et bloquer | ⬜ |
-| D1.5 | Conserver la table actuelle des médailles comme fallback si une clé manque dans `medal_metadata` | ⬜ |
-| D1.6 | Tests : `TestMedalImport_GuardCardinalityFail`, `TestMedalImport_GuardMissingFields`, `TestMedalImport_GuardPartialImages`, `TestMedalImport_FullPassPromotes` | ⬜ |
+| D1.2 | CLI (extension de `cmd/refresh-metadata/`) : commande `medals` — fetch `Waypoint/file/medals/metadata.json` via Waypoint | ✅ |
+| D1.3 | Garde-fous d'import (bloquants) : (1) cardinalité Waypoint cohérente avec table locale ± 10% ; (2) champs requis présents sur toutes les entrées (`medal_id`, `label`, `category`, `rarity`) ; (3) images récupérables pour toutes les entrées ou pour aucune — pas d'import partiel d'assets | ✅ |
+| D1.4 | Si tous les garde-fous passent : promouvoir vers `medal_metadata(title_id, medal_id, ...)` — sinon générer un rapport d'écart et bloquer | ✅ |
+| D1.5 | Conserver la table actuelle des médailles comme fallback si une clé manque dans `medal_metadata` | ✅ |
+| D1.6 | Handler Go `GET /assets/medals/{title_id}/{medal_id}/image` : check registry → fetch Waypoint si absent ou qualité insuffisante → écriture locale → réponse ; singleflight pour éviter les fetches concurrents sur le même `medal_id` | ✅ |
+| D1.7 | Tests : `TestMedalImport_GuardCardinalityFail`, `TestMedalImport_GuardMissingFields`, `TestMedalImport_GuardPartialImages`, `TestMedalImport_FullPassPromotes`, `TestMedalImageHandler_CacheHit`, `TestMedalImageHandler_CacheMissTriggersOneFetch` | ✅ |
 
 ##### D2 — O8 : Asset discovery outillage interne
+
+> **Pattern d'assets** : même logique oneshot cache-aside que D1. Le layer API Go est responsable du fetch et du cache — pas le frontend, pas le pipeline sync. `title_id` comme clé de partition dès le début pour la compatibilité multi-titres. Singleflight anti-doublon pour les fetches concurrents sur le même `asset_id`.
 
 | # | Tâche | Statut |
 |--:|-------|:------:|
 | D2.1 | Migration DuckDB : créer table `waypoint_assets_raw(title_id, asset_id, version_id, kind, labels, fetched_at, content_hash)` dans `metadata.duckdb` | ✅ |
-| D2.2 | CLI (extension de `cmd/refresh-metadata/`) : commande `assets --kind <AssetKind>` — fetch via `getAsset` / `getSpecificAssetVersion` Waypoint | ⬜ |
-| D2.3 | Générer un rapport diff (nouveau / modifié / supprimé) par rapport à ce qui est en DB — pas d'écriture automatique en production sans validation humaine | ⬜ |
+| D2.2 | CLI (extension de `cmd/refresh-metadata/`) : commande `assets --kind <AssetKind>` — fetch via `getAsset` / `getSpecificAssetVersion` Waypoint | ✅ |
+| D2.3 | Générer un rapport diff (nouveau / modifié / supprimé) par rapport à ce qui est en DB — pas d'écriture automatique en production sans validation humaine | ✅ |
 | D2.4 | Tous les assets stockés incluent `title_id` comme clé de partition — convention commune avec O3 | ✅ |
-| D2.5 | Tests : `TestAssetDiff_NewDetected`, `TestAssetDiff_ModifiedDetected`, `TestAssetDiff_UnchangedNoWrite` | ⬜ |
+| D2.5 | Handler Go `GET /assets/{kind}/{title_id}/{asset_id}` : check registry local → fetch Waypoint si absent ou `content_hash` modifié → mise à jour registry → réponse ; singleflight par `(kind, asset_id)` | ✅ |
+| D2.6 | Tests : `TestAssetDiff_NewDetected`, `TestAssetDiff_ModifiedDetected`, `TestAssetDiff_UnchangedNoWrite`, `TestAssetHandler_CacheHit`, `TestAssetHandler_Singleflight` | ✅ |
 
 ---
 
@@ -1872,10 +1878,10 @@
 | E2.1 | Ajouter `queryKeys.leaderboard(playerSlug, { season, playlist })` dans `lib/query/keys.ts` | ✅ |
 | E2.2 | Créer hook `useLeaderboard(playerSlug, season, playlist)` → `GET .../pages/leaderboard` — `staleTime: 5 * 60 * 1000` | ✅ |
 | E2.3 | Créer `LeaderboardBlock.tsx` : module compact — affiche joueurs locaux (`IsLocal=true`) immédiatement, skeleton par ligne pour les joueurs Waypoint en attente | ✅ |
-| E2.4 | Prefetch au mount de `CareerPage` : `useEffect` → `queryClient.prefetchQuery(queryKeys.leaderboard(...))` — exploite le fait que `queryKeys.home` est déjà en cache via KPIBar | ⬜ |
-| E2.5 | Hover sur une ligne du leaderboard → `useComparePrefetch` (Volet C, `C3.2`) — zéro doublon | ⬜ |
-| E2.6 | Intégrer `LeaderboardBlock` dans `CareerPage` (bloc secondaire sous KPIs) et optionnellement dans `HomePage` (carte éditoriale) | ⬜ |
-| E2.7 | CTA "Voir plus" → route secondaire `/leaderboard` (à créer uniquement si l'usage du bloc le justifie — peut rester commenté à ce stade) | ⬜ |
+| E2.4 | Prefetch au mount de `CareerPage` : `useEffect` → `queryClient.prefetchQuery(queryKeys.leaderboard(...))` — exploite le fait que `queryKeys.home` est déjà en cache via KPIBar | ✅ |
+| E2.5 | Hover sur une ligne du leaderboard → `useComparePrefetch` (Volet C, `C3.2`) — zéro doublon | ✅ |
+| E2.6 | Intégrer `LeaderboardBlock` dans `CareerPage` (bloc secondaire sous KPIs) et optionnellement dans `HomePage` (carte éditoriale) | ✅ |
+| E2.7 | CTA "Voir plus" → route secondaire `/leaderboard` (à créer uniquement si l'usage du bloc le justifie — peut rester commenté à ce stade) | ✅ |
 
 ---
 
@@ -1886,11 +1892,11 @@
 | F1 | Tests Go Compare : `TestCompareService_BothLocal`, `TestCompareService_PlayerBWaypoint`, `TestCompareService_PlayerBPrivate`, `TestCompareService_PlayerBNotFound`, golden values sur duo de joueurs de référence | ✅ |
 | F2 | Tests Go Leaderboard : `TestLeaderboardService_LocalOnly`, `TestLeaderboardService_MixedLocalWaypoint`, `TestLeaderboardService_EmptySeason`, test de chargement progressif (joueurs locaux retournés sans attendre Waypoint) | ✅ |
 | F3 | Tests Go Privacy : `TestPrivacyProvider_Public`, `TestPrivacyProvider_Private`, `TestPrivacyProvider_Timeout` | ✅ |
-| F4 | Test multi-titre : `X-LevelUp-Title` propagé correctement dans Compare, Leaderboard et Privacy — aucun mélange de données entre titres | ⬜ |
-| F5 | Test de latence Compare : P95 < 5s sur Waypoint nominal (test d'intégration avec mock `HaloClient`) | ⬜ |
-| F6 | Tests React (`vitest`) : `CompareDrawer` — skeleton visible pendant fetch, états limites (absent, privé, identique), KPIs cohérents avec golden values | ⬜ |
+| F4 | Test multi-titre : `X-LevelUp-Title` propagé correctement dans Compare, Leaderboard et Privacy — aucun mélange de données entre titres | ✅ |
+| F5 | Test de latence Compare : P95 < 5s sur Waypoint nominal (test d'intégration avec mock `HaloClient`) | ✅ |
+| F6 | Tests React (`vitest`) : `CompareDrawer` — skeleton visible pendant fetch, états limites (absent, privé, identique), KPIs cohérents avec golden values | ✅ |
 | F7 | Tests React (`vitest`) : `LeaderboardBlock` — joueurs locaux visibles avant résolution Waypoint, prefetch déclenché au mount | ✅ |
-| F8 | `HALO_EXTERNAL_OPPORTUNITIES.md` : vérifier cohérence entre ce sprint et le document — mettre à jour les statuts des opportunités si nécessaire | ⬜ |
+| F8 | `HALO_EXTERNAL_OPPORTUNITIES.md` : vérifier cohérence entre ce sprint et le document — mettre à jour les statuts des opportunités si nécessaire | ✅ |
 
 ---
 
@@ -1901,11 +1907,11 @@
 - [x] CLI `refresh-metadata seasons` : upsert `metadata.duckdb`, notification Discord si changement, skip si inchangé (ETag/hash)
 - [x] `CareerService` et `StatsService` : 0 date de saison hardcodée — source = `MetadataRepository`
 - [x] `POST .../pages/compare` : réponse avec 12 KPIs, joueur A DuckDB + joueur B Waypoint, `titleSlug` propagé
-- [ ] Compare P95 < 5s sur Waypoint nominal (test mock)
+- [x] Compare P95 < 5s sur Waypoint nominal (test mock) — `TestCompareService_Latency_P95` ✅
 - [x] `GET .../pages/leaderboard` : joueurs locaux (`IsLocal=true`) dans la réponse, joueurs Waypoint en complement
 - [x] `LeaderboardBlock` React : joueurs locaux affichés sans attendre Waypoint (chargement progressif vérifié vitest)
 - [x] `CompareDrawer` React : skeleton loader visible, 3 états limites couverts (absent, privé, identique)
-- [ ] Prefetch Compare actif sur 4 points d'entrée (Explorer, Career Encounters, Career en-tête, Squad)
+- [x] Prefetch Compare actif sur 4 points d'entrée (Explorer, Career Encounters, Career en-tête, Squad)
 - [x] Tables staging `waypoint_medals_raw` + `waypoint_assets_raw` créées — aucune donnée en production sans validation humaine
 - [x] Garde-fous medals : test de blocage si cardinalité hors ± 10%, champs manquants, ou images partielles
 - [x] 0 date de saison hardcodée dans le code Go après O2

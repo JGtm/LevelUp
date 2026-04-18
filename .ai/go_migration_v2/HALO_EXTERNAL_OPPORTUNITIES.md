@@ -93,20 +93,20 @@ etablie (O11). A remettre sur la table lors de l'onboarding d'un nouveau titre.
 
 | ID | Opportunite | Source externe | Type | Statut | Commentaire |
 |----|-------------|----------------|------|--------|-------------|
-| O1 | Match privacy | halo-infinite-api, SpartanRecord | produit + data | retenu V1 | visible dans bootstrap + pages match/history |
-| O2 | Season calendars + CSR calendars | halo-infinite-api | metadata | retenu V1 | CLI Go + metadata.duckdb, bundle avec O14 |
-| O3 | Medals metadata Waypoint | halo-infinite-api | metadata | retenu V2 | anticipe multi-titre, import bloque si info insuffisante |
+| O1 | Match privacy | halo-infinite-api, SpartanRecord | produit + data | **livre Sprint 54 B** | PrivacyBanner dans HomePage, CompareDrawer, MatchPrivacyWarning dans types TS |
+| O2 | Season calendars + CSR calendars | halo-infinite-api | metadata | **livre Sprint 54 A** | CLI `refresh-metadata seasons`, tables `waypoint_seasons`, ETag + ContentHash |
+| O3 | Medals metadata Waypoint | halo-infinite-api | metadata | **livre Sprint 54 D** | CLI `refresh-metadata medals`, table `waypoint_medals_raw`, guard cardinalite + assets |
 | O4 | Match count endpoint | halo-infinite-api | perf + UX | ecarte definitif | peu utile avec filtres + exclusions |
-| O5 | Compare joueur vs joueur | SpartanRecord | produit | retenu V1 | appel Waypoint a la volee, mode contextuel |
+| O5 | Compare joueur vs joueur | SpartanRecord | produit | **livre Sprint 54 C** | handler POST .../pages/compare, CompareService errgroup, CompareDrawer React + prefetch |
 | O6 | Export service record / profil | SpartanRecord | produit | ecarte definitif | faible valeur percue |
-| O7 | CSR leaderboards | SpartanRecord | produit | retenu V3 | meme architecture que Compare, appel Waypoint a la volee |
-| O8 | Asset discovery + versioning | halo-infinite-api | metadata + tooling | retenu V2 | outillage de verification interne, anticipe multi-titre |
+| O7 | CSR leaderboards | SpartanRecord | produit | **livre Sprint 54 E** | LeaderboardBlock integre Career, handler GET .../pages/leaderboard, prefetch hover |
+| O8 | Asset discovery + versioning | halo-infinite-api | metadata + tooling | **livre Sprint 54 D** | CLI `refresh-metadata assets`, ComputeAssetDiff, table `asset_cache`, multi-titre |
 | O9 | Year in Review | SpartanRecord | produit | retenu V3 | route partageable, bloque par O2 + coverage annuelle |
 | O10 | Store / economy tracker | SpartanRecord | produit | backlog multi-titre | hors scope Halo Infinite aujourd'hui, pertinent si nouveau titre avec economie active |
 | O11 | Spartan Company / social layer | SpartanRecord | produit | backlog multi-titre | hors scope Halo Infinite aujourd'hui, a rattacher a Squad ou a une surface groupe multi-titre |
 | O12 | Ban diagnostics | halo-infinite-api | support + ops | retenu V3 | route admin uniquement |
 | O13 | Waypoint Explorer interne | HaloInfiniteGetter | dev tooling | retenu V2 | accelerateur de spikes et metadata |
-| O14 | ETag cache + snapshots | HaloInfiniteGetter | dev tooling | bundle O2 | integre dans le CLI refresh de O2 |
+| O14 | ETag cache + snapshots | HaloInfiniteGetter | dev tooling | **livre Sprint 54 A** | bundle dans O2 — CLI refresh integre ETag + ContentHash |
 
 ---
 

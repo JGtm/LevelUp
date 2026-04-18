@@ -26,6 +26,7 @@ Le sync écrit dans les player DBs : `player_match_enrichment` + `personal_score
 - Backend Go : `CGO_ENABLED=1 go test -tags=integration ./... -timeout 120s -count=1` passe intégralement.
 - Frontend React : `npm run typecheck`, `npm run lint`, `npm run build`, `npm run test:run` et `npm run test:e2e` passent sur `apps/web`.
 - Correctifs clés de cette passe : ordre de scan `MatchHistoryRepo` réaligné avec `is_excluded`, tests Go dupliqués renommés, `HomePage`/`SynthesisPage` tolérants aux fixtures partielles, specs Vitest réalignées avec l'UI actuelle.
+- Médias React : `PATCH /players/{player_slug}/media/likes` persiste désormais `liked` / `liked_at` dans `media_files`, et `POST /pages/media` expose l'état liked utilisé par la home et la galerie.
 
 ## État Actuel (2026-03-13) — v5.7 Stable
 
@@ -77,6 +78,7 @@ data/
 - `apps/go-api/internal/service/match_history_service.go` : filtrage des matchs exclus avant pagination, export CSV et agrégats de win rate.
 - `apps/go-api/internal/api/middleware/session.go` + `apps/go-api/internal/ctxkeys/ctxkeys.go` : injection des `HaloTokens` et du `XUID` depuis la session HTTP dans le contexte Go.
 - `apps/go-api/internal/platform/halo/provider.go` : implémentation live des appels Battle Pass / Challenges à partir du contexte auth, au lieu du stub `auth_required` permanent.
+- `apps/go-api/internal/api/handlers/media.go`, `internal/service/media_service.go`, `internal/platform/duckdb/media_repo.go` : likes média backend persistés dans `media_files` et nouvelle route `PATCH /media/likes` documentée dans OpenAPI.
 - `apps/web/src/components/shell/AppShell.tsx`, `AppShellHeader.tsx`, `PlayerScopeNav.tsx` : nouveau shell React sans sidebar, avec header global, navigation joueur compacte en deux niveaux et changement de joueur qui préserve la section courante quand c'est possible.
 - `apps/web/src/components/shell/shellNavigation.ts` : source de vérité du mapping navigation primaire / secondaire et helper `buildPlayerDestination()` pour recalculer la route lors d'un changement de joueur.
 
@@ -91,7 +93,12 @@ data/
 - `apps/web/src/components/shell/shellNavigation.ts` : constantes de navigation et logique de destination lors d'un switch joueur.
 - `apps/web/src/components/shell/shellNavigation.test.ts` : test unitaire Vitest du helper de navigation joueur.
 - `apps/web/src/components/ui/empty-state.tsx` : pattern partagé `EmptyStateCard` / `EmptyStateNotice` pour les payloads nulles et sections analytiques vides.
+- `apps/web/src/features/media/queries.ts`, `MediaViewer.tsx`, `MediaPage.tsx`, `home/RecentMediaRail.tsx` : likes média désormais lus depuis l'API Go, avec mutation optimiste TanStack Query et normalisation de la réponse paginée média.
 - `.ai/go_migration_v2/UX_CAREER_SYNTHESIS_BOUNDARY.md` : cadrage UX go-only pour la frontière Carrière / Synthèse ; `Profil` disparaît de la cible produit, `Carrière` devient le hub `Progression + Citations`, et `Synthèse` absorbe l'overview filtrée, les performances marquantes et les rivalités.
+- `.ai/go_migration_v2/UX_CAREER_HUB_BLUEPRINT.md` : blueprint détaillé du hub `Carrière`, avec route canonique unique, tabs deep-linkables `Progression` / `Citations`, retrait des blocs analytiques et stratégie de transition depuis `CareerPage` + `CitationsPage`.
+- `.ai/go_migration_v2/SYNTHESIS_TARGET_CONTRACT_AND_UI.md` : composition cible de `Synthèse` côté UI et contrat Go/React ; extraction recommandée hors `SquadHandler`, ajout d'une vraie `overview`, de previews lazy et migration des anciens `top-matches` / `encounters` de Carrière.
+- `.ai/go_migration_v2/UX_HOME_RECORD_SPARTAN_ADDITIONS.md` : cadrage d'ajouts inspirés de Spartan Record pour la home/record existante ; conserve la page actuelle, rejette le toggle global `Overall / Per Match`, ajoute `Spartan ID`, `Data Set`, tuiles de match en complément, hiérarchie médailles et stratégie d'images de maps dynamiques.
+- `.ai/go_migration_v2/DAMAGE_EFFICIENCY_INTEGRATION.md` : cadrage analytique et produit du `rendement combat` ; fixe les gardes-fous data, la taxonomie recommandée (`conversion offensive`, `resistance defensive`), les surfaces d'intégration Go/React, les impacts potentiels sur `Performance` / `LUSR` et la stratégie de tests.
 - `apps/web/src/features/home/HomePage.tsx` : home joueur avec quick actions en routes typées et unité de précision alignée sur le backend Go (`avg_accuracy` déjà en %).
 - `apps/web/src/features/home/HomePage.tsx`, `career/CareerPage.tsx`, `timeseries/TimeseriesPage.tsx`, `squad/SquadPage.tsx`, `citations/CitationsPage.tsx`, `synthesis/SynthesisPage.tsx`, `session-compare/SessionComparePage.tsx`, `explorer/ExplorerPage.tsx` : plus de `return null` silencieux sur ce périmètre, avec placeholders explicites quand une section ne peut pas s'afficher.
 - `apps/web/package.json` : dépendance explicite `plotly.js`, requise au build par `react-plotly.js`.
