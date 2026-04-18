@@ -143,24 +143,26 @@ WHERE pme.match_id = ?`
 
 // Q19 : Matchs communs entre 2 joueurs.
 // Paramètres : ?1 = xuid joueur principal, ?2 = xuid autre joueur.
-// Retourne 7 colonnes : match_id, start_time, map_ui, mode_ui,
-// player1_team_id, player2_team_id, player1_outcome.
+// Retourne 10 colonnes : match_id, start_time, map_ui, mode_ui,
+// player1_team_id, player2_team_id, player1_outcome, player1_kills, player1_deaths, player1_kda.
 const Q19CommonMatches = `
 SELECT
     r.match_id,
     r.start_time,
-    COALESCE(r.map_name, '')   AS map_ui,
-    COALESCE(r.pair_name, '')  AS mode_ui,
-    p1.team_id                 AS player1_team_id,
-    p2.team_id                 AS player2_team_id,
-    COALESCE(p1.outcome, 0)    AS player1_outcome
+    COALESCE(r.map_name, '')          AS map_ui,
+    COALESCE(r.pair_name, '')         AS mode_ui,
+    p1.team_id                        AS player1_team_id,
+    p2.team_id                        AS player2_team_id,
+    COALESCE(p1.outcome, 0)           AS player1_outcome,
+    COALESCE(p1.kills, 0)             AS player1_kills,
+    COALESCE(p1.deaths, 0)            AS player1_deaths,
+    COALESCE(p1.kda, 0.0)             AS player1_kda
 FROM shared.match_registry r
 JOIN shared.match_participants p1 ON r.match_id = p1.match_id AND p1.xuid = ?
 JOIN shared.match_participants p2 ON r.match_id = p2.match_id AND p2.xuid = ?
 ORDER BY r.start_time DESC
 LIMIT 100`
 
-// Q20 : Paires killer→victim pour un match (vue v6 v_killer_victim_full).
 // Paramètre : ? = match_id.
 // Retourne 6 colonnes : killer_xuid, killer_gamertag, victim_xuid,
 // victim_gamertag, kill_count, time_ms.

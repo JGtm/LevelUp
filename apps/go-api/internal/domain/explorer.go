@@ -27,6 +27,9 @@ type CommonMatchRow struct {
 	ModeUI        string    `json:"mode_ui"`
 	WereTeammates bool      `json:"were_teammates"`
 	PlayerOutcome int       `json:"player_outcome"`
+	Kills         int       `json:"kills"`
+	Deaths        int       `json:"deaths"`
+	KDA           float64   `json:"kda"`
 }
 
 // ExplorerPlayerQueryResponse : réponse de la requête player-query.
@@ -96,4 +99,7 @@ type CommonMatchRaw struct {
 	Player1TeamID  *int
 	Player2TeamID  *int
 	Player1Outcome int
+	Player1Kills   int
+	Player1Deaths  int
+	Player1KDA     float64
 }

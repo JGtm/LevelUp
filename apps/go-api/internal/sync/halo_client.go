@@ -18,11 +18,14 @@ package sync
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"net/http"
 	"net/url"
+	"regexp"
 	"strconv"
+	"strings"
 	"time"
 )
 
@@ -32,7 +35,35 @@ const (
 	maxRetries = 4
 	// retryBaseDelay est le délai de base pour le backoff exponentiel.
 	retryBaseDelay = 800 * time.Millisecond
+	// matchCountMax est le nombre maximum de matchs par page d'historique (API Halo).
+	matchCountMax = 25
 )
+
+// validMatchTypes est l'ensemble des types de match valides.
+var validMatchTypes = map[string]bool{
+	"all":         true,
+	"matchmaking": true,
+	"custom":      true,
+	"local":       true,
+}
+
+// rexUUID est l'expression régulière de validation UUID v4.
+var rexUUID = regexp.MustCompile(`(?i)^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$`)
+
+// HaloClient est l'interface abstraite du client HTTP Halo Infinite.
+// Permet l'injection de dépendances et les mocks dans les tests de engine.go.
+type HaloClient interface {
+	// GetMatchHistory récupère une page d'historique de matchs d'un joueur.
+	GetMatchHistory(ctx context.Context, gamertag, matchType string, start, count int) ([]MatchHistoryEntry, error)
+	// GetMatchStats récupère les stats détaillées d'un match (JSON brut).
+	GetMatchStats(ctx context.Context, matchID string) (map[string]any, error)
+	// GetMatchFilm récupère les chunks du film d'un match.
+	// Retourne (nil, false, nil) si le film est absent (404/410 — normal pour vieux matchs).
+	GetMatchFilm(ctx context.Context, matchID string) (map[int]filmChunkData, bool, error)
+	// GetCareerRank récupère la progression du rang carrière via l'API Economy.
+	// Retourne (nil, nil) si le token est absent ou insuffisant.
+	GetCareerRank(ctx context.Context, xuid string) (*CareerRankData, error)
+}
 
 // MatchHistoryEntry est un élément de l'historique des matchs.
 // Portage de MatchHistoryItem (Python models.py).
@@ -80,6 +111,18 @@ func (c *HaloAPIClient) GetMatchHistory(
 	gamertag, matchType string,
 	start, count int,
 ) ([]MatchHistoryEntry, error) {
+	if strings.TrimSpace(gamertag) == "" {
+		return nil, errors.New("GetMatchHistory: gamertag vide")
+	}
+	if !validMatchTypes[matchType] {
+		return nil, fmt.Errorf("GetMatchHistory: matchType invalide %q (attendu : all|matchmaking|custom|local)", matchType)
+	}
+	if start < 0 {
+		return nil, fmt.Errorf("GetMatchHistory: start doit être ≥ 0 (reçu %d)", start)
+	}
+	if count < 1 || count > matchCountMax {
+		return nil, fmt.Errorf("GetMatchHistory: count doit être entre 1 et %d (reçu %d)", matchCountMax, count)
+	}
 	endpoint := fmt.Sprintf("%s/hi/players/%s/matches", haloStatsHost, url.PathEscape(gamertag))
 	params := url.Values{
 		"start": {strconv.Itoa(start)},
@@ -116,6 +159,9 @@ func (c *HaloAPIClient) GetMatchHistory(
 // GetMatchStats récupère les stats détaillées d'un match.
 // Retourne le JSON brut en map[string]any (portage de get_match_stats Python).
 func (c *HaloAPIClient) GetMatchStats(ctx context.Context, matchID string) (map[string]any, error) {
+	if !rexUUID.MatchString(matchID) {
+		return nil, fmt.Errorf("GetMatchStats: matchID n'est pas un UUID valide %q", matchID)
+	}
 	endpoint := fmt.Sprintf("%s/hi/matches/%s/stats", haloStatsHost, url.PathEscape(matchID))
 	body, err := c.doGet(ctx, endpoint)
 	if err != nil {
@@ -155,6 +201,9 @@ type filmChunk struct {
 // Retourne (chunks, true, nil) si le film est disponible.
 // Retourne (nil, false, nil) si le film est absent (404/410) — normal pour vieux matchs.
 func (c *HaloAPIClient) GetMatchFilm(ctx context.Context, matchID string) (map[int]filmChunkData, bool, error) {
+	if !rexUUID.MatchString(matchID) {
+		return nil, false, fmt.Errorf("GetMatchFilm: matchID n'est pas un UUID valide %q", matchID)
+	}
 	endpoint := fmt.Sprintf("%s/hi/films/matches/%s/spectate", haloUGCHost, url.PathEscape(matchID))
 	body, err := c.doGet(ctx, endpoint)
 	if err != nil {
@@ -312,4 +361,43 @@ func (c *HaloAPIClient) backoff(ctx context.Context, attempt int) {
 	case <-ctx.Done():
 	case <-time.After(delay):
 	}
+}
+
+// GetCareerRank récupère la progression du rang carrière via l'API Economy player-gated.
+// Retourne (nil, nil) si le token est absent ou insuffisant (401/403).
+func (c *HaloAPIClient) GetCareerRank(ctx context.Context, xuid string) (*CareerRankData, error) {
+	if strings.TrimSpace(xuid) == "" {
+		return nil, errors.New("GetCareerRank: xuid vide")
+	}
+	rawURL := fmt.Sprintf(
+		"https://economy.svc.halowaypoint.com/hi/players/xuid(%s)/customization",
+		url.PathEscape(xuid))
+
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, rawURL, nil)
+	if err != nil {
+		return nil, fmt.Errorf("GetCareerRank: new request: %w", err)
+	}
+	req.Header.Set("Accept", "application/json")
+	req.Header.Set("x-343-authorization-spartan", c.spartanToken)
+	req.Header.Set("343-clearance", c.clearanceToken)
+
+	c.rateWait(ctx)
+	resp, err := c.http.Do(req)
+	if err != nil {
+		return nil, fmt.Errorf("GetCareerRank HTTP: %w", err)
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode == http.StatusForbidden || resp.StatusCode == http.StatusUnauthorized {
+		return nil, nil // token joueur absent ou insuffisant — skip gracieux
+	}
+	if resp.StatusCode != http.StatusOK {
+		return nil, fmt.Errorf("GetCareerRank: status %d", resp.StatusCode)
+	}
+
+	var body map[string]any
+	if err := json.NewDecoder(resp.Body).Decode(&body); err != nil {
+		return nil, fmt.Errorf("GetCareerRank decode: %w", err)
+	}
+	return parseCareerRank(body, xuid), nil
 }

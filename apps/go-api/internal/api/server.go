@@ -122,6 +122,8 @@ func NewRouter(
 		// Sprint 17 : Jobs longs persistants + sync initiale
 		r.Get("/jobs/{job_id}", handlers.NewJobsHandler(jobStore).GetJob)
 		r.Post("/sync/initial", handlers.NewSyncHandler(cfg, settingsStore, jobStore).StartInitialSync)
+		// Sprint 51-B3 : Pipeline backfill (weapon kills + détection des autres types)
+		r.Post("/backfill/start", handlers.NewBackfillHandler(cfg, jobStore).StartBackfill)
 
 		// Endpoints P1 : pages par joueur (Sprint 37 — DI via ServiceRegistry)
 		r.Route("/players/{player_slug}", func(r chi.Router) {

@@ -15324,3 +15324,75 @@ Réconciliation des reviews Claude + ChatGPT sur les 3 axes, puis rédaction du 
 
 ### Conclusion
 Sprint 50 Phase 11 clôturé. Les 3 réconciliations + le rapport final sont en place. Prochaine étape : committer ce lot, puis Sprint 51 avec les 12 dettes majeures identifiées.
+
+---
+
+## [2026-04-XX] feat(phase12): S52 HaloClient interface+validation+Explorer KDA, S53-A MediaIndexer, S51-B3 POST /backfill/start
+
+### Contexte
+Reprise après résumé de session — continuation de la Phase 12 Sprints 51/52/53.
+Plusieurs items avaient été trouvés déjà implémentés (S51 B1/B2/B4/B5/B6, C1/C2/C3, S53 Volet B).
+
+### Sprint 52 — Volet A : interface HaloClient ✅
+
+**Problème** : `engine.go` et `backfill_weapons.go` recevaient `*HaloAPIClient` concret, rendant les tests impossible sans réseau.
+
+**Solution** :
+- Ajout interface `HaloClient` dans `halo_client.go` (méthodes `GetMatchHistory`, `GetMatchStats`, `GetMatchFilm`, `GetCareerRank`)
+- Paramètre `HaloClient` dans `processMatch`, `runPostSyncPipeline`, `BackfillWeaponKillsForMatches`, `syncCareerRank`
+- `career.go` : suppression du code HTTP dupliqué → délègue entièrement à `client.GetCareerRank()`
+- `HaloAPIClient` reste l'implémentation concrète (aucun changement comportemental prod)
+
+**Décision** : méthode `GetCareerRank` ajoutée directement sur `HaloAPIClient` plutôt que d'exposer les tokens via l'interface (plus propre, pas de fuite du détail d'implémentation HTTP).
+
+### Sprint 52 — Volet B : validation paramètres ✅
+
+Validations ajoutées inline en tête de chaque méthode :
+- `GetMatchHistory` : gamertag non vide (≤15, pas de caractères spéciaux), matchType dans enum, start≥0, count∈[1,25]
+- `GetMatchStats` / `GetMatchFilm` : regex UUID `(?i)^[0-9a-f]{8}-...-[0-9a-f]{12}$`
+
+### Sprint 52 — Volet C : Explorer KDA ✅
+
+Approche choisie : enrichir Q19 (`GetCommonMatches`) directement avec `COALESCE(p1.kills,0)`, `deaths`, `kda` depuis `match_participants`.
+- `domain/explorer.go` : ajout champs `Kills`, `Deaths`, `KDA` sur `CommonMatchRow` + `CommonMatchRaw`
+- `queries_match.go` Q19 : 10 colonnes (était 7)
+- `explorer_repo.go` : scan sur 10 colonnes
+- `explorer_service.go` : mapping direct
+
+Alternative rejetée : méthode séparée `GetCommonMatchesStats` — inutile vu que Q19 peut tout fetcher en une requête.
+
+### Sprint 53 — Volet A : MediaIndexer ✅
+
+**Nouveau fichier** : `internal/service/media_index_service.go`
+- Interface `MediaIndexer` avec `ResetAndReindex(ctx, repoRoot, reindexAfter, jobStore, jobID) error`
+- `DirMediaIndexer` : parcourt `data/players/`, DELETE media_files + media_match_associations, puis `ops.IndexMedia` si `reindexAfter=true`
+- Progress 0→50% reset, 50→100% reindex
+- Erreurs non-fatales : ajoutées dans `j.Warnings` (continue pour les autres joueurs)
+- `settings.go` : `mediaIndexer` injecté via constructeur (DI), goroutine stub remplacée par appel réel
+- `server.go` : `NewDirMediaIndexer()` passé au constructeur (pas de changement de signature externe)
+
+### Sprint 51 — Volet B3 : POST /backfill/start ✅
+
+**Nouveau handler** : `internal/api/handlers/backfill.go`
+- Délègue la détection à `engine.RunBackfill(ctx, scope)`
+- Phase 2 weapon kills via `engine.BackfillWeaponKillsForMatches(ctx, missing)` (seul type avec API Go implémentée)
+- Autres types (medals, events, skill, etc.) : avertissements non-fatals dans `j.Warnings`
+- `dry_run=true` : liste sans exécution
+- 409 si job backfill déjà actif (nouvelle méthode `jobs.Store.FindActiveJob`)
+- Route ajoutée : `POST /backfill/start` dans `server.go`
+
+**Nouveau type domain** : `domain/backfill.go` avec `BackfillStartRequest`
+
+**Nouvelle méthode** : `jobs.Store.FindActiveJob(jobType, playerSlug)` — `FindActiveInitialSync` devient un alias
+
+### Sprint 51 — Volet C (cross-feature React) ✅
+
+- Nouveau fichier `apps/web/src/features/settings/queries.ts` avec `useSettings()` + `useUpdateSettings()`
+- `SettingsPage.tsx` : import corrigé (`@/features/settings/queries` au lieu de `@/features/setup/queries`)
+- `setup/queries.ts` : suppression des deux hooks settings, mise à jour commentaire
+
+### Compilation finale
+`go build ./...` — 0 erreur après tous les changements.
+
+### Restant S52 (tests mock)
+A5, A6, A7, A8 (mock HaloClient + engine_test) non implémentés cette session — requis pour la gate S52 "couverture internal/sync ≥ 10pts".

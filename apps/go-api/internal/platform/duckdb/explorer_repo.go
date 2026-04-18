@@ -22,8 +22,8 @@ func NewExplorerRepo(pdb *PlayerDB, xuid string) *ExplorerRepo {
 }
 
 // GetCommonMatches retourne les matchs communs entre xuid1 et xuid2 (max 100).
-// Q19 retourne 7 colonnes : match_id, start_time, map_ui, mode_ui,
-// player1_team_id, player2_team_id, player1_outcome.
+// Q19 retourne 10 colonnes : match_id, start_time, map_ui, mode_ui,
+// player1_team_id, player2_team_id, player1_outcome, player1_kills, player1_deaths, player1_kda.
 func (r *ExplorerRepo) GetCommonMatches(ctx context.Context, xuid1, xuid2 string) ([]domain.CommonMatchRaw, error) {
 	rows, err := r.pdb.Player.Query(ctx, Q19CommonMatches, xuid1, xuid2)
 	if err != nil {
@@ -42,6 +42,9 @@ func (r *ExplorerRepo) GetCommonMatches(ctx context.Context, xuid1, xuid2 string
 			&m.Player1TeamID,
 			&m.Player2TeamID,
 			&m.Player1Outcome,
+			&m.Player1Kills,
+			&m.Player1Deaths,
+			&m.Player1KDA,
 		); err != nil {
 			return nil, fmt.Errorf("ExplorerRepo.GetCommonMatches: scan: %w", err)
 		}
