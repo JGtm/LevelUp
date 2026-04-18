@@ -1,8 +1,36 @@
 # Thought Log
 
-## [2026-04-18] fix(go-web-tests): suites Go et React remises au vert
+## [2026-04-18] fix(pre-sprint51): 4 conditions de bascule prod
 
-**Statut** : Complété
+**Statut** : Complété — commit `99c84b73`
+
+### Contexte
+
+Suite à l'audit triple LLM Sprint 50 Phase 11 (0🔴/10🟠/21🟡/24🟢 — GO conditionnel), 4 conditions de bascule ont été identifiées pour pouvoir passer en prod. L'utilisateur a demandé leur implémentation immédiate.
+
+### Décisions techniques
+
+1. **Violation hexagonale `fanout_service.go`** : l'import direct `platform/duckdb` dans `internal/service` est supprimé. Solution : créer `port.FanoutRepository` + `port.FanoutPlayerFactory` dans `internal/port/fanout.go`, implémenter dans `platform/duckdb/fanout_repo.go`, créer `config.FanoutFactory` dans `config/fanout_factory.go`. `FanoutService` utilise maintenant la factory via DI — la chaîne `service → config → platform/duckdb` reste (attendue) mais sans import direct. Signature `NewFanoutService(cfg)` conservée pour compatibilité des tests existants.
+
+2. **ErrorBoundary React** : composant class `ErrorBoundary` créé dans `apps/web/src/components/shell/ErrorBoundary.tsx` avec `getDerivedStateFromError` + `componentDidCatch`. Wrappé autour de `<main>` dans `AppShell.tsx`. Écran de repli avec message FR + bouton reload.
+
+3. **@vitest/coverage-v8** : installé avec `--legacy-peer-deps` (conflit peer deps openapi-typescript). Section `coverage: { provider: 'v8', reporter: ['text', 'lcov', 'html'] }` ajoutée dans `vite.config.ts`. Script `test:coverage` ajouté dans `package.json`.
+
+4. **CI step sync coverage** : ajout d'un step isolé dans le job `go-coverage` qui profile `./internal/sync/...` avec `CGO_ENABLED=1 -tags=integration`. Résout l'angle mort identifié dans l'audit (sync absent du profil `coverage.out`). Artifact `go-coverage-sync` uploadé.
+
+### Résultats observés
+
+- `go vet ./internal/port/...` : OK
+- `CGO_ENABLED=0 go vet ./internal/domain/... ./internal/analysis/... ./contracttest/...` : OK
+- `npm run typecheck` : OK (0 erreur TypeScript)
+- Pre-commit hooks : OK (gofmt, go vet, golangci-lint, detect secrets)
+- Commit `99c84b73` : 10 fichiers, 4 créés
+
+### Conclusion / prochaine étape
+
+Les 4 conditions de bascule pré-Sprint 51 sont satisfaites. Le Sprint 51 peut démarrer. Prochaines priorités : traiter les 6 items 🟠 restants de l'audit Phase 11 (6 services stubs, auth device flow, tests E2E fixtures, etc.).
+
+
 
 ### Contexte
 
