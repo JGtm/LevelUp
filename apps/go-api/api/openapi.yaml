@@ -944,13 +944,44 @@ paths:
       summary: "Galerie médias (filtres en body)"
       parameters:
         - $ref: "#/components/parameters/PlayerSlug"
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/MediaPageRequest"
       responses:
         "200":
           description: Galerie médias paginée
           content:
             application/json:
               schema:
-                type: object
+                $ref: "#/components/schemas/MediaPageResponse"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+  /players/{player_slug}/media/likes:
+    patch:
+      tags: [media]
+      operationId: patchMediaLike
+      summary: "Like / unlike d'un média"
+      parameters:
+        - $ref: "#/components/parameters/PlayerSlug"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/MediaLikeRequest"
+      responses:
+        "200":
+          description: État liked persisté côté backend
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MediaLikeResponse"
+        "400":
+          $ref: "#/components/responses/BadRequest"
         "404":
           $ref: "#/components/responses/NotFound"
 
@@ -2715,6 +2746,128 @@ components:
         liked:
           type: boolean
           default: false
+
+    MediaPageRequest:
+      type: object
+      properties:
+        page:
+          type: integer
+          minimum: 1
+          default: 1
+        page_size:
+          type: integer
+          minimum: 1
+          maximum: 100
+          default: 24
+        pagination:
+          $ref: "#/components/schemas/PaginationRequest"
+        kind:
+          type: string
+          nullable: true
+        kind_filter:
+          type: string
+          nullable: true
+        section_filter:
+          type: string
+          nullable: true
+        map_filter:
+          type: string
+          nullable: true
+        mode_filter:
+          type: string
+          nullable: true
+        group_by:
+          type: string
+          nullable: true
+        sort:
+          type: string
+          nullable: true
+
+    MediaItemRow:
+      type: object
+      required: [basename, file_path, kind, section, liked, like_count]
+      properties:
+        basename:
+          type: string
+        file_path:
+          type: string
+        kind:
+          type: string
+        thumbnail_path:
+          type: string
+          nullable: true
+        match_id:
+          type: string
+          nullable: true
+        capture_end_utc:
+          type: string
+          format: date-time
+          nullable: true
+        match_start_time:
+          type: string
+          format: date-time
+          nullable: true
+        section:
+          type: string
+        owner_gamertag:
+          type: string
+          nullable: true
+        map_name:
+          type: string
+          nullable: true
+        liked:
+          type: boolean
+          default: false
+        like_count:
+          type: integer
+          minimum: 0
+
+    MediaItemsPage:
+      type: object
+      required: [items, pagination]
+      properties:
+        items:
+          type: array
+          items:
+            $ref: "#/components/schemas/MediaItemRow"
+        pagination:
+          $ref: "#/components/schemas/PaginationMeta"
+        freshness:
+          $ref: "#/components/schemas/FreshnessInfo"
+
+    MediaPageResponse:
+      type: object
+      required: [items, total_mine, total_teammates, total_unassigned]
+      properties:
+        items:
+          $ref: "#/components/schemas/MediaItemsPage"
+        total_mine:
+          type: integer
+        total_teammates:
+          type: integer
+        total_unassigned:
+          type: integer
+
+    MediaLikeRequest:
+      type: object
+      required: [file_path, liked]
+      properties:
+        file_path:
+          type: string
+        liked:
+          type: boolean
+
+    MediaLikeResponse:
+      type: object
+      required: [file_path, liked, like_count]
+      properties:
+        file_path:
+          type: string
+        liked:
+          type: boolean
+        like_count:
+          type: integer
+          minimum: 0
 
     MatchMediaTab:
       type: object

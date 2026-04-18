@@ -12,14 +12,15 @@ import (
 
 // MedalEntry représente une entrée médaille candidate à l'import.
 type MedalEntry struct {
-	TitleID   string
-	MedalID   int64
-	Label     string
-	Category  string
-	Rarity    string
-	ImageURL  string
-	SpriteIdx int
-	RawJSON   string
+	TitleID     string
+	MedalID     int64
+	Label       string
+	Description string
+	Category    string
+	Rarity      string
+	ImageURL    string
+	SpriteIdx   int
+	RawJSON     string
 }
 
 // GuardResult contient le verdict d'une vérification de garde-fous.

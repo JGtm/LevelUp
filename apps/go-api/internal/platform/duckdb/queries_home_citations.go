@@ -124,7 +124,8 @@ SELECT
     mf.thumbnail_path,
     mf.capture_end_utc,
     mma.match_id,
-    mma.match_start_time
+    mma.match_start_time,
+    COALESCE(mf.liked, FALSE) AS liked
 FROM media_files mf
 LEFT JOIN media_match_associations mma ON mf.file_path = mma.media_path
 WHERE mf.status = 'active'

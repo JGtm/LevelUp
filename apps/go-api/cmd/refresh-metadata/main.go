@@ -23,6 +23,7 @@ import (
 
 	"levelup/go-api/internal/config"
 	"levelup/go-api/internal/domain"
+	"levelup/go-api/internal/metadata"
 	"levelup/go-api/internal/notify"
 	"levelup/go-api/internal/platform/duckdb"
 	"levelup/go-api/internal/platform/halo"
@@ -48,6 +49,10 @@ func main() {
 		err = runSeasons(cfg, args, false)
 	case "csr-seasons":
 		err = runCSRSeasons(cfg, args, false)
+	case "medals":
+		err = runMedals(cfg, args)
+	case "assets":
+		err = runAssets(cfg, args)
 	case "staging":
 		err = runStaging(cfg, args)
 	case "all":
@@ -175,7 +180,120 @@ func runAll(cfg *config.AppConfig, args []string) error {
 	if err := runCSRSeasons(cfg, args, false); err != nil {
 		return fmt.Errorf("csr-seasons: %w", err)
 	}
+	if err := runMedals(cfg, args); err != nil {
+		return fmt.Errorf("medals: %w", err)
+	}
 	return runStaging(cfg, args)
+}
+
+// ─── medals ──────────────────────────────────────────────────────────────────
+
+// runMedals fetch les métadonnées médailles Waypoint, applique les garde-fous
+// et upserte dans waypoint_medals_raw (staging uniquement, pas de promotion auto).
+func runMedals(cfg *config.AppConfig, args []string) error {
+	fs := flag.NewFlagSet("medals", flag.ExitOnError)
+	titleID := fs.String("title-id", "halo_infinite", "Title ID")
+	force := fs.Bool("force", false, "Ignorer le garde-fou de cardinalité")
+	if err := fs.Parse(args); err != nil {
+		return err
+	}
+
+	metaDB, err := openMetadataDB(cfg)
+	if err != nil {
+		return err
+	}
+
+	repo := duckdb.NewMetadataRepoFromDB(metaDB)
+	ctx := context.Background()
+
+	if err := repo.EnsureStagingTables(ctx); err != nil {
+		return fmt.Errorf("EnsureStagingTables: %w", err)
+	}
+
+	provider := halo.DefaultHaloProvider
+	entries, raw, err := provider.FetchMedalsMetadata(ctx, *titleID)
+	if err != nil {
+		return fmt.Errorf("FetchMedalsMetadata: %w", err)
+	}
+
+	newHash := halo.ContentHash(raw)
+
+	// Garde-fous (D1.3).
+	if !*force {
+		localCount, _ := repo.CountMedalsRaw(ctx, *titleID)
+		result := metadata.RunAllGuards(entries, localCount)
+		if !result.Passed {
+			fmt.Fprintf(os.Stderr, "❌ Garde-fou échoué : %s\n", result.Reason)
+			for _, d := range result.Details {
+				fmt.Fprintf(os.Stderr, "   %s\n", d)
+			}
+			return fmt.Errorf("import bloqué par garde-fous")
+		}
+		fmt.Printf("✓ Garde-fous OK : %s\n", result.Reason)
+	}
+
+	if err := repo.UpsertMedalsRaw(ctx, entries, newHash); err != nil {
+		return fmt.Errorf("UpsertMedalsRaw: %w", err)
+	}
+
+	fmt.Printf("✅ %d médailles upsertées dans waypoint_medals_raw (hash %s)\n", len(entries), newHash[:8])
+	fmt.Println("ℹ️  Promotion vers medal_metadata : à valider manuellement avant d'activer (D1.4)")
+	return nil
+}
+
+// ─── assets ──────────────────────────────────────────────────────────────────
+
+// runAssets génère un rapport diff des assets Waypoint vs DB locale (D2.3).
+// Pas d'écriture automatique en production sans validation humaine.
+func runAssets(cfg *config.AppConfig, args []string) error {
+	fs := flag.NewFlagSet("assets", flag.ExitOnError)
+	titleID := fs.String("title-id", "halo_infinite", "Title ID")
+	write := fs.Bool("write", false, "Écrire les assets nouveaux/modifiés en DB (désactivé par défaut)")
+	if err := fs.Parse(args); err != nil {
+		return err
+	}
+
+	metaDB, err := openMetadataDB(cfg)
+	if err != nil {
+		return err
+	}
+
+	repo := duckdb.NewMetadataRepoFromDB(metaDB)
+	ctx := context.Background()
+
+	if err := repo.EnsureStagingTables(ctx); err != nil {
+		return fmt.Errorf("EnsureStagingTables: %w", err)
+	}
+
+	// Charger la liste locale.
+	local, err := repo.ListAssets(ctx, *titleID)
+	if err != nil {
+		return fmt.Errorf("ListAssets: %w", err)
+	}
+
+	// Pas de fetch Waypoint réel ici — placeholder pour l'intégration future.
+	// Le fetch Waypoint sera ajouté quand l'endpoint Waypoint assets sera documenté.
+	incoming := local // diff vide = 0 nouveaux, 0 modifiés, len(local) inchangés
+
+	report := duckdb.ComputeAssetDiff(local, incoming)
+
+	fmt.Printf("📊 Rapport diff assets (title_id=%s)\n", *titleID)
+	fmt.Printf("   Nouveaux   : %d\n", len(report.New))
+	fmt.Printf("   Modifiés   : %d\n", len(report.Modified))
+	fmt.Printf("   Inchangés  : %d\n", report.Unchanged)
+
+	if !*write {
+		fmt.Println("ℹ️  Mode lecture seule — relancer avec --write pour persister les changements")
+		return nil
+	}
+
+	for _, e := range append(report.New, report.Modified...) {
+		if err := repo.UpsertAsset(ctx, e); err != nil {
+			return fmt.Errorf("UpsertAsset: %w", err)
+		}
+	}
+	fmt.Printf("✅ %d assets écrits en DB\n", len(report.New)+len(report.Modified))
+	return nil
 }
 
 // ─── staging ─────────────────────────────────────────────────────────────────
@@ -237,6 +355,8 @@ func printUsage() {
 Sous-commandes :
   seasons     [--title-id halo_infinite] [--force]   Saisons standards
   csr-seasons [--title-id halo_infinite] [--force]   Saisons CSR
+  medals      [--title-id halo_infinite] [--force]   Médailles (staging + garde-fous)
+  assets      [--title-id halo_infinite] [--write]   Assets diff (rapport sans écriture par défaut)
   staging     Crée les tables staging medals/assets (schéma seulement)
   all         [--title-id halo_infinite] [--force]   Toutes les opérations ci-dessus
 
