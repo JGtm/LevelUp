@@ -8,9 +8,7 @@ package sync
 import (
 	"context"
 	"database/sql"
-	"encoding/json"
 	"fmt"
-	"net/http"
 	"time"
 )
 
@@ -29,43 +27,14 @@ type CareerRankData struct {
 	SpartanID       string
 }
 
-// syncCareerRank récupère la progression du rang carrière via l'API.
+// syncCareerRank récupère la progression du rang carrière via le client Halo.
 // Si le token joueur est absent, la sync est sautée proprement (nil, nil).
 func syncCareerRank(
 	ctx context.Context,
-	client *HaloAPIClient,
+	client HaloClient,
 	xuid string,
 ) (*CareerRankData, error) {
-	url := fmt.Sprintf("https://economy.svc.halowaypoint.com/hi/players/xuid(%s)/customization", xuid)
-
-	req, err := http.NewRequestWithContext(ctx, http.MethodGet, url, nil)
-	if err != nil {
-		return nil, fmt.Errorf("syncCareerRank: %w", err)
-	}
-	req.Header.Set("Accept", "application/json")
-	req.Header.Set("x-343-authorization-spartan", client.spartanToken)
-	req.Header.Set("343-clearance", client.clearanceToken)
-
-	resp, err := client.http.Do(req)
-	if err != nil {
-		return nil, fmt.Errorf("syncCareerRank HTTP: %w", err)
-	}
-	defer resp.Body.Close()
-
-	if resp.StatusCode == http.StatusForbidden || resp.StatusCode == http.StatusUnauthorized {
-		// Token joueur absent ou insuffisant — skip gracieusement.
-		return nil, nil
-	}
-	if resp.StatusCode != http.StatusOK {
-		return nil, fmt.Errorf("syncCareerRank: status %d", resp.StatusCode)
-	}
-
-	var body map[string]interface{}
-	if err := json.NewDecoder(resp.Body).Decode(&body); err != nil {
-		return nil, fmt.Errorf("syncCareerRank decode: %w", err)
-	}
-
-	return parseCareerRank(body, xuid), nil
+	return client.GetCareerRank(ctx, xuid)
 }
 
 // parseCareerRank extrait les données de rang depuis la réponse API.

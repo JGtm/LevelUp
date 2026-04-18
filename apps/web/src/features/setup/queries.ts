@@ -1,7 +1,10 @@
 /**
- * Queries TanStack Query — Setup & Settings (Slice 1).
+ * Queries TanStack Query — Setup (Slice 1).
+ *
+ * Note : useSettings et useUpdateSettings ont été déplacés dans
+ * features/settings/queries.ts (Sprint 51).
  */
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
+import { useQuery, useMutation } from '@tanstack/react-query'
 import { api } from '@/lib/api/client'
 import { queryKeys } from '@/lib/query/keys'
 import type {
@@ -12,8 +15,6 @@ import type {
   SmokeTestStartRequest,
   AsyncJobStatus,
   InitialSyncStartRequest,
-  SettingsResponse,
-  UpdateSettingsRequest,
 } from '@/lib/api/types'
 
 // useSetupStatus() supprimé (sprint 29) : GET /setup/status est un artefact mort.
@@ -67,24 +68,5 @@ export function useJobStatus(jobId: string, enabled: boolean) {
       return 3_000
     },
     staleTime: 0,
-  })
-}
-
-export function useSettings() {
-  return useQuery({
-    queryKey: queryKeys.settings,
-    queryFn: () => api.get<SettingsResponse>('/settings'),
-    staleTime: 5 * 60 * 1000,
-  })
-}
-
-export function useUpdateSettings() {
-  const qc = useQueryClient()
-  return useMutation({
-    mutationFn: (req: UpdateSettingsRequest) =>
-      api.patch<SettingsResponse>('/settings', req),
-    onSuccess: (data) => {
-      qc.setQueryData(queryKeys.settings, data)
-    },
   })
 }

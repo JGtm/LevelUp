@@ -6,6 +6,7 @@
 package handlers
 
 import (
+	"context"
 	"encoding/json"
 	"net/http"
 
@@ -13,6 +14,7 @@ import (
 	"levelup/go-api/internal/domain"
 	"levelup/go-api/internal/platform/jobs"
 	settings_platform "levelup/go-api/internal/platform/settings"
+	"levelup/go-api/internal/service"
 )
 
 // SettingsHandler gère les endpoints de configuration.
@@ -20,6 +22,7 @@ type SettingsHandler struct {
 	cfg           *config.AppConfig
 	settingsStore *settings_platform.Store
 	jobStore      *jobs.Store
+	mediaIndexer  service.MediaIndexer
 }
 
 // NewSettingsHandler crée un SettingsHandler.
@@ -28,6 +31,7 @@ func NewSettingsHandler(cfg *config.AppConfig, settingsStore *settings_platform.
 		cfg:           cfg,
 		settingsStore: settingsStore,
 		jobStore:      jobStore,
+		mediaIndexer:  service.NewDirMediaIndexer(),
 	}
 }
 
@@ -98,12 +102,30 @@ func (h *SettingsHandler) PostMediaResetIndex(w http.ResponseWriter, r *http.Req
 
 	job := h.jobStore.Create(domain.JobTypeReindexMedia, "")
 
-	// Goroutine stub : dans Phase 4, le vrai reset sera implémenté ici.
 	go func() {
-		step := "Reset index"
+		step := "Reset index médias en cours"
 		h.jobStore.SetStatus(job.JobID, domain.JobStatusRunning, &step)
-		// TODO Sprint 19 : implémenter la réinitialisation réelle de l'index médias.
-		done := "Terminé (stub)"
+
+		err := h.mediaIndexer.ResetAndReindex(
+			context.Background(),
+			h.cfg.RepoRoot,
+			req.ReindexAfterReset,
+			h.jobStore,
+			job.JobID,
+		)
+		if err != nil {
+			errMsg := err.Error()
+			h.jobStore.Update(job.JobID, func(j *domain.AsyncJobStatus) {
+				j.Status = domain.JobStatusFailed
+				j.Error = &domain.JobErrorDetail{
+					Code:    "media_reset_error",
+					Message: errMsg,
+				}
+			})
+			return
+		}
+
+		done := "Index médias réinitialisé"
 		pct := 100
 		h.jobStore.Update(job.JobID, func(j *domain.AsyncJobStatus) {
 			j.Status = domain.JobStatusSucceeded

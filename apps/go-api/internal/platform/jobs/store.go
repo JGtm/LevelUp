@@ -115,11 +115,16 @@ func (s *Store) SetStatus(jobID string, status domain.JobStatus, step *string) b
 
 // FindActiveInitialSync retourne le job "initial_sync" actif (non terminal) pour un joueur.
 func (s *Store) FindActiveInitialSync(playerSlug string) *domain.AsyncJobStatus {
+	return s.FindActiveJob(domain.JobTypeInitialSync, playerSlug)
+}
+
+// FindActiveJob retourne un job actif (non terminal) du type et du joueur donnés.
+func (s *Store) FindActiveJob(jobType domain.JobType, playerSlug string) *domain.AsyncJobStatus {
 	s.mu.RLock()
 	defer s.mu.RUnlock()
 
 	for _, job := range s.jobs {
-		if job.JobType == string(domain.JobTypeInitialSync) &&
+		if job.JobType == string(jobType) &&
 			job.PlayerSlug == playerSlug &&
 			!job.IsTerminal() {
 			cp := *job

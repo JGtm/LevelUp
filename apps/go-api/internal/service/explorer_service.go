@@ -75,6 +75,9 @@ func convertCommonMatches(raw []domain.CommonMatchRaw, limit int) []domain.Commo
 			ModeUI:        r.ModeUI,
 			WereTeammates: wereTeammates,
 			PlayerOutcome: r.Player1Outcome,
+			Kills:         r.Player1Kills,
+			Deaths:        r.Player1Deaths,
+			KDA:           r.Player1KDA,
 		})
 	}
 	return result

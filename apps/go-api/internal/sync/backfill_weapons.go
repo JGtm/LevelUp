@@ -30,7 +30,7 @@ import (
 // Retourne (filmFound, error) : filmFound=false si le film est absent (404/410).
 func BackfillWeaponKillsForMatch(
 	ctx context.Context,
-	client *HaloAPIClient,
+	client HaloClient,
 	sharedDB *sql.DB,
 	matchID, xuid string,
 ) (bool, error) {

@@ -198,7 +198,7 @@ done:
 // processMatch récupère, transforme et insère un match dans les deux DBs.
 func (e *SyncEngine) processMatch(
 	ctx context.Context,
-	client *HaloAPIClient,
+	client HaloClient,
 	sharedDB, playerDB *sql.DB,
 	result *domain.SyncResult,
 	matchID string,
@@ -281,7 +281,7 @@ func loadKnownMatchIDs(db *sql.DB) (map[string]bool, error) {
 func (e *SyncEngine) runPostSyncPipeline(
 	ctx context.Context,
 	playerDB, sharedDB *sql.DB,
-	client *HaloAPIClient,
+	client HaloClient,
 ) domain.PostSyncResult {
 	var r domain.PostSyncResult
 

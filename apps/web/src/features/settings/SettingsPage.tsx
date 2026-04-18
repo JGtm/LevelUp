@@ -6,7 +6,7 @@ import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Spinner } from '@/components/ui/spinner'
 import { useSettingsDraftStore } from '@/stores/settingsDraftStore'
-import { useSettings, useUpdateSettings } from '@/features/setup/queries'
+import { useSettings, useUpdateSettings } from '@/features/settings/queries'
 import type { SettingsResponse } from '@/lib/api/types'
 
 function ToggleRow({ label, value, onChange }: { label: string; value: boolean; onChange: (v: boolean) => void }) {
