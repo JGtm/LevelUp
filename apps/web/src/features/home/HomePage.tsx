@@ -225,7 +225,7 @@ export function HomePage() {
         </Card>
 
         {/* Médias récents */}
-        {recent_media.length > 0 && (
+        {(recent_media?.length ?? 0) > 0 && (
           <Card>
             <CardHeader className="flex flex-row items-center justify-between">
               <CardTitle className="text-base">Médias récents</CardTitle>

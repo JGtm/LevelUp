@@ -2,10 +2,13 @@
 package handlers
 
 import (
+	"errors"
 	"net/http"
+	"strings"
 
 	"github.com/go-chi/chi/v5"
 
+	"levelup/go-api/internal/domain"
 	"levelup/go-api/internal/port"
 )
 
@@ -37,6 +40,15 @@ func (h *MatchViewHandler) GetMatchView(w http.ResponseWriter, r *http.Request) 
 
 	resp, err := svc.GetMatchView(r.Context(), matchID)
 	if err != nil {
+		var apiErr *domain.APIError
+		if errors.As(err, &apiErr) && apiErr.Code == "not_found" {
+			writeError(w, http.StatusNotFound, "match_not_found", apiErr.Message)
+			return
+		}
+		if strings.Contains(err.Error(), "no rows") || strings.Contains(err.Error(), "no rows in result set") {
+			writeError(w, http.StatusNotFound, "match_not_found", "match introuvable : "+matchID)
+			return
+		}
 		writeError(w, http.StatusInternalServerError, "match_view_error", err.Error())
 		return
 	}

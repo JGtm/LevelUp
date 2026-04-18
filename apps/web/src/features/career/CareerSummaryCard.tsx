@@ -11,6 +11,7 @@ interface Props {
   summary: CareerSummary | null
   heroProgress: HeroProgress | null
   projections: CareerProjections | null
+}
 export function CareerSummaryCard({ summary, heroProgress, projections }: Props) {
   if (!summary) {
     return (
@@ -59,5 +60,11 @@ export function CareerSummaryCard({ summary, heroProgress, projections }: Props)
         {/* Projections */}
         {projections?.estimated_hero_date && (
           <p className="mt-3 text-center text-xs text-gray-500">
+            Héros estimé le{' '}
+            {new Date(projections.estimated_hero_date).toLocaleDateString('fr-FR')}
+          </p>
+        )}
+      </CardContent>
+    </Card>
   )
 }

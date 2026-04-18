@@ -24,6 +24,10 @@ export default defineConfig({
     video: 'off',
     // Pas de JS disabled — l'app est 100% JS
     locale: 'fr-FR',
+    // Origin header requis pour passer le middleware CSRF de l'API Go
+    extraHTTPHeaders: {
+      Origin: 'http://localhost:5173',
+    },
   },
 
   projects: [

@@ -91,8 +91,8 @@ test.describe('Slice 9 — Onboarding flow (DEMO_MODE)', () => {
     const resp = await request.get(`${API_BASE}/players`)
     expect(resp.status()).toBe(200)
 
-    const data = await resp.json() as unknown[]
-    expect(Array.isArray(data)).toBe(true)
-    expect(data.length).toBeGreaterThan(0)
+    const body = await resp.json() as { items: unknown[] }
+    expect(Array.isArray(body.items)).toBe(true)
+    expect(body.items.length).toBeGreaterThan(0)
   })
 })

@@ -177,7 +177,7 @@ SELECT
      FROM shared.match_participants t
      WHERE t.match_id = mp.match_id AND t.team_id = mp.team_id AND t.xuid <> ?
     )                                                   AS teammates_sig,
-    COALESCE(mp.is_ranked, FALSE)                       AS is_ranked,
+    COALESCE(r.is_ranked, FALSE)                       AS is_ranked,
     mp.time_played_seconds,
     CASE WHEN mp.time_played_seconds IS NOT NULL
          THEN r.start_time + INTERVAL (mp.time_played_seconds || ' seconds')
@@ -210,7 +210,7 @@ SELECT
     mp.kills_expected,
     mp.deaths_expected,
     mp.rank,
-    mp.is_ranked,
+    COALESCE(r.is_ranked, FALSE)     AS is_ranked,
     COALESCE(r.playlist_name, '')    AS playlist_name,
     COALESCE(r.pair_name, '')        AS pair_name,
     mp.team_id,

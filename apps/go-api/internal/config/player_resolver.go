@@ -38,7 +38,7 @@ func resolveDemoPlayer(ctx context.Context, cfg *AppConfig, titleSlug string) (*
 		xuidBytes = "2535469190789936"
 	}
 	pcfg := duckdb.PlayerPoolConfig{
-		Gamertag:     "DEMO",
+		Gamertag:     "DemoPlayer",
 		XUID:         xuidBytes,
 		TitleSlug:    titleSlug,
 		PlayerDBPath: filepath.Join(dir, "stats.duckdb"),
