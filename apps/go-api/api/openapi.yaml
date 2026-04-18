@@ -2064,6 +2064,17 @@ components:
         experience_type_label:
           type: string
           default: "Non classé"
+        # Sprint 52 C5 : kills/deaths/kda réels depuis match_participants.
+        kills:
+          type: integer
+          default: 0
+        deaths:
+          type: integer
+          default: 0
+        kda:
+          type: number
+          format: float
+          default: 0.0
 
     ExplorerEncounterRow:
       type: object

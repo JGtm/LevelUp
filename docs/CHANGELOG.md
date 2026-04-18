@@ -6,6 +6,42 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 > French version: [FR/CHANGELOG.md](FR/CHANGELOG.md)
 
+## [Go-API Phase 12] - 2026-04-XX — Sprints 52 & 53
+
+### Added (Go API)
+
+- **HaloClient interface** — `internal/sync.HaloClient` interface extracted from the concrete client. `SyncEngine`, `backfill_weapons`, and `syncCareerRank` now depend on the interface, making all Halo API calls mockable without network access.
+
+- **`mockHaloClient`** — deterministic test double in `internal/sync` (same package). Supports controlled history, stats, film, and career responses, plus call-count assertions. Compile-time check via `var _ HaloClient = (*mockHaloClient)(nil)`.
+
+- **Mock-based unit tests** — `engine_mock_test.go`: 15 new tests covering validation and mock behavior; no `//go:build integration` tag needed — runs on every CI pass.
+
+- **Explorer KDA** — `CommonMatchRaw`, `CommonMatchRow` and the Q19 SQL query now include `kills`, `deaths`, and `kda` columns pulled from `match_participants`. `convertCommonMatches` maps them directly; zero-KDA entries no longer appear.
+
+- **Input validation** — new `Validate()` methods on `FilterContextInput`, `MatchHistoryQueryRequest`, and `SyncOptions`; `xuid` length/digit validation in `syncCareerRank`; both HTTP handlers call Validate() before service dispatch and return 400 on invalid input.
+
+- **Table-driven validation tests** — `internal/domain/validate_test.go`: 27 cases for all three Validate() methods; pure Go, zero CGO.
+
+- **POST /backfill/start** — new endpoint and `BackfillStartRequest` domain type; route registered in `server.go`.
+
+- **`DirMediaIndexer`** — `service.MediaIndexer` interface + concrete `DirMediaIndexer.ResetAndReindex` implementation replaces the old stub; job progress reported via `jobs.Store.Update`.
+
+- **`NewSettingsHandlerWithIndexer`** — additional constructor for `SettingsHandler` that accepts an explicit `MediaIndexer`; original `NewSettingsHandler` delegates to it using `DirMediaIndexer`.
+
+- **Media reset integration test** — `settings_media_test.go`: `TestPostMediaResetIndex_Stub_Replaced` verifies that a POST to `/settings/media/reset-index` reaches `JobStatusSucceeded` with `ProgressPct=100` and no "stub" text in `CurrentStep`.
+
+- **ExplorerMatchRow OpenAPI schema** — `ExplorerMatchRow` in `api/openapi.yaml` now declares `kills`, `deaths`, and `kda` fields.
+
+- **Golden test for KDA** — `TestExplorerService_GetCommonMatches_WithStats` asserts that non-zero kills/deaths/kda from `CommonMatchRaw` are preserved end-to-end through `convertCommonMatches`.
+
+### Changed (Go API)
+
+- **`extractKillsFromLabel` removed** — placeholder function (always returned 0) and its test deleted; KDA data now originates in the service layer.
+
+- **Coverage baseline raised** — `coverage_baseline.txt`: `76.0` → `79.2` (per-package mean after filter); `internal/sync` went from 0% to 13.1%.
+
+---
+
 ## [7.0.0] - 2026-04-12
 
 ### Added

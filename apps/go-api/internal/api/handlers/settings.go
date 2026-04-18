@@ -25,13 +25,24 @@ type SettingsHandler struct {
 	mediaIndexer  service.MediaIndexer
 }
 
-// NewSettingsHandler crée un SettingsHandler.
+// NewSettingsHandler crée un SettingsHandler avec le DirMediaIndexer par défaut.
 func NewSettingsHandler(cfg *config.AppConfig, settingsStore *settings_platform.Store, jobStore *jobs.Store) *SettingsHandler {
+	return NewSettingsHandlerWithIndexer(cfg, settingsStore, jobStore, service.NewDirMediaIndexer())
+}
+
+// NewSettingsHandlerWithIndexer crée un SettingsHandler avec un MediaIndexer explicite.
+// Utilisé en production et dans les tests (permet l'injection d'un mock).
+func NewSettingsHandlerWithIndexer(
+	cfg *config.AppConfig,
+	settingsStore *settings_platform.Store,
+	jobStore *jobs.Store,
+	indexer service.MediaIndexer,
+) *SettingsHandler {
 	return &SettingsHandler{
 		cfg:           cfg,
 		settingsStore: settingsStore,
 		jobStore:      jobStore,
-		mediaIndexer:  service.NewDirMediaIndexer(),
+		mediaIndexer:  indexer,
 	}
 }
 

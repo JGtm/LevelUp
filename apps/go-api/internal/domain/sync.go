@@ -5,7 +5,18 @@
 // L'implémentation est dans internal/sync/.
 package domain
 
-import "time"
+import (
+	"fmt"
+	"time"
+)
+
+// validSyncMatchTypes est l'ensemble des types de match valides pour la sync.
+var validSyncMatchTypes = map[string]bool{
+	"all":         true,
+	"matchmaking": true,
+	"custom":      true,
+	"local":       true,
+}
 
 // SyncOptions paramètre un cycle de synchronisation.
 // Portage de SyncOptions (Python models_sync.py).
@@ -20,6 +31,24 @@ type SyncOptions struct {
 	WithMedals bool
 	// RequestsPerSecond contrôle le rate limiting vers l'API Halo.
 	RequestsPerSecond int
+}
+
+// Validate vérifie la cohérence des options de synchronisation.
+// Appelé dans engine.go avant tout appel réseau (fail-fast B8).
+func (o SyncOptions) Validate() error {
+	if o.MatchType == "" {
+		return fmt.Errorf("SyncOptions: MatchType vide (attendu : all|matchmaking|custom|local)")
+	}
+	if !validSyncMatchTypes[o.MatchType] {
+		return fmt.Errorf("SyncOptions: MatchType invalide %q (attendu : all|matchmaking|custom|local)", o.MatchType)
+	}
+	if o.MaxMatches < 0 {
+		return fmt.Errorf("SyncOptions: MaxMatches doit être ≥ 0 (reçu %d)", o.MaxMatches)
+	}
+	if o.RequestsPerSecond < 0 {
+		return fmt.Errorf("SyncOptions: RequestsPerSecond doit être ≥ 0 (reçu %d)", o.RequestsPerSecond)
+	}
+	return nil
 }
 
 // DefaultSyncOptions retourne les options par défaut (portage de SyncOptions() Python).
