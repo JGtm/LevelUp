@@ -18,9 +18,7 @@ func newTestProvider(battlePassURL, challengesURL string) *HaloProvider {
 	p := NewHaloProvider()
 	p.battlePassBaseURL = battlePassURL
 	p.challengesBaseURL = challengesURL
-	// Pas de rate limiting en test : bucket plein, refill instantané.
 	p.limiter = newRateLimiter(600)
-	// Pas de retry delay en test.
 	p.maxRetries = 3
 	return p
 }
@@ -120,8 +118,7 @@ func TestGetBattlePass_HTTP401(t *testing.T) {
 	defer srv.Close()
 
 	p := newTestProvider(srv.URL, "")
-	ctx := ctxWithAuth(testTokens(), "xuid-test")
-	resp := p.GetBattlePass(ctx)
+	resp := p.GetBattlePass(ctxWithAuth(testTokens(), "xuid-test"))
 
 	if resp.Available {
 		t.Error("expected available=false on 401")
@@ -158,10 +155,7 @@ func TestGetBattlePass_HTTP500ThenOK(t *testing.T) {
 	defer srv.Close()
 
 	p := newTestProvider(srv.URL, "")
-	// Désactiver le backoff pour accélérer le test.
-	p.maxRetries = 3
-	ctx := ctxWithAuth(testTokens(), "xuid-test")
-	resp := p.GetBattlePass(ctx)
+	resp := p.GetBattlePass(ctxWithAuth(testTokens(), "xuid-test"))
 
 	if !resp.Available {
 		t.Errorf("expected available=true after retry, error_hint=%v", resp.ErrorHint)
@@ -182,8 +176,7 @@ func TestGetBattlePass_MalformedJSON(t *testing.T) {
 	defer srv.Close()
 
 	p := newTestProvider(srv.URL, "")
-	ctx := ctxWithAuth(testTokens(), "xuid-test")
-	resp := p.GetBattlePass(ctx)
+	resp := p.GetBattlePass(ctxWithAuth(testTokens(), "xuid-test"))
 
 	if resp.Available {
 		t.Error("expected available=false on malformed JSON")
@@ -236,8 +229,7 @@ func TestGetChallenges_LiveOK(t *testing.T) {
 	defer srv.Close()
 
 	p := newTestProvider("", srv.URL)
-	ctx := ctxWithAuth(testTokens(), "xuid-test")
-	resp := p.GetChallenges(ctx)
+	resp := p.GetChallenges(ctxWithAuth(testTokens(), "xuid-test"))
 
 	if !resp.Available {
 		t.Errorf("expected available=true, error_hint=%v", resp.ErrorHint)
@@ -258,15 +250,13 @@ func TestGetChallenges_LiveOK(t *testing.T) {
 
 func TestGetChallenges_EmptyDecks(t *testing.T) {
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		payload := map[string]any{"AssignedDecks": []any{}}
 		w.Header().Set("Content-Type", "application/json")
-		_ = json.NewEncoder(w).Encode(payload)
+		_ = json.NewEncoder(w).Encode(map[string]any{"AssignedDecks": []any{}})
 	}))
 	defer srv.Close()
 
 	p := newTestProvider("", srv.URL)
-	ctx := ctxWithAuth(testTokens(), "xuid-test")
-	resp := p.GetChallenges(ctx)
+	resp := p.GetChallenges(ctxWithAuth(testTokens(), "xuid-test"))
 
 	if !resp.Available {
 		t.Errorf("expected available=true even with empty decks")
@@ -291,8 +281,7 @@ func TestGetChallenges_HTTP401(t *testing.T) {
 	defer srv.Close()
 
 	p := newTestProvider("", srv.URL)
-	ctx := ctxWithAuth(testTokens(), "xuid-test")
-	resp := p.GetChallenges(ctx)
+	resp := p.GetChallenges(ctxWithAuth(testTokens(), "xuid-test"))
 
 	if resp.Available {
 		t.Error("expected available=false on 401")
@@ -327,5 +316,12 @@ func TestParseBattlePassTrack_NoMatch_FallbackFirst(t *testing.T) {
 	rank, prog, path := parseBattlePassTrack("op/UnknownSeason", tracks)
 	if rank != 10 || prog != 100 || path != "op/Season5" {
 		t.Errorf("unexpected fallback: rank=%d prog=%d path=%q", rank, prog, path)
+	}
+}
+
+func TestParseBattlePassTrack_EmptyTracks(t *testing.T) {
+	rank, prog, path := parseBattlePassTrack("op/Season6", nil)
+	if rank != 0 || prog != 0 || path != "op/Season6" {
+		t.Errorf("unexpected result on empty tracks: rank=%d prog=%d path=%q", rank, prog, path)
 	}
 }

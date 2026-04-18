@@ -94,7 +94,6 @@ func TestGetSession_NilWhenAbsent(t *testing.T) {
 func TestWithSession_InjectsHaloAuth(t *testing.T) {
 	store := newSessionStore(t)
 
-	// Créer et persister une session avec HaloTokens + identity.
 	sess := store.New()
 	sess.HaloTokens = &domain.HaloTokens{SpartanToken: "spartan_test", ClearanceToken: "clear_test"}
 	sess.LinkedHaloIdentity = &domain.HaloIdentity{Gamertag: "TestPlayer", XUID: "xuid-42"}
@@ -129,7 +128,6 @@ func TestWithSession_InjectsHaloAuth(t *testing.T) {
 func TestWithSession_NoHaloAuthWhenTokensAbsent(t *testing.T) {
 	store := newSessionStore(t)
 
-	// Session sans HaloTokens.
 	sess := store.New()
 	_ = store.Save(sess)
 	signed := store.SignCookie(sess.SessionID)

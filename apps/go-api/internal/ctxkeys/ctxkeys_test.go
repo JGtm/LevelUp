@@ -44,10 +44,8 @@ func TestWithHaloAuth_RoundTrip(t *testing.T) {
 	if gotTokens.ClearanceToken != "clear_xyz" {
 		t.Errorf("expected clear_xyz, got %q", gotTokens.ClearanceToken)
 	}
-
-	gotXUID := HaloXUID(ctx)
-	if gotXUID != "xuid-1234" {
-		t.Errorf("expected xuid-1234, got %q", gotXUID)
+	if HaloXUID(ctx) != "xuid-1234" {
+		t.Errorf("expected xuid-1234, got %q", HaloXUID(ctx))
 	}
 }
 
@@ -67,9 +65,8 @@ func TestHaloXUID_AbsentReturnsEmpty(t *testing.T) {
 
 func TestWithHaloAuth_NilTokens(t *testing.T) {
 	ctx := WithHaloAuth(context.Background(), nil, "xuid-999")
-	got := HaloTokens(ctx)
-	if got != nil {
-		t.Errorf("expected nil tokens when nil passed, got %+v", got)
+	if HaloTokens(ctx) != nil {
+		t.Errorf("expected nil tokens when nil passed")
 	}
 	if HaloXUID(ctx) != "xuid-999" {
 		t.Errorf("expected xuid-999")

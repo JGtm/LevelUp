@@ -1,12 +1,12 @@
 # Thought Log
 
-## [2026-04-18] fix(web-empty-states): harmonisation des pages et sections sans données
+## [2026-04-18] feat(halo-provider): appels live Battle Pass et Challenges
 
 **Statut** : Complété
 
 ### Contexte
 
-L'audit frontend du shell React a confirmé plusieurs retours `null` silencieux et des sections entièrement masquées quand une payload manquait ou qu'un sous-ensemble de données était vide. L'objectif était d'éliminer tout écran blanc ou trou UX sur les pages player-scoped.
+Les méthodes `GetBattlePass` et `GetChallenges` de `HaloProvider` étaient des stubs marqués `TODO Sprint 15` retournant `available=false, error_hint="auth_required"`. Les tokens Halo étaient déjà disponibles en session après le Device Code Flow — il manquait le câblage vers les endpoints Halo et la propagation des tokens dans le contexte.
 
 ### Décisions techniques
 
