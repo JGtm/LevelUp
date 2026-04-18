@@ -202,6 +202,8 @@ func ensureMediaTables(db *sql.DB) error {
 			kind VARCHAR,
 			capture_start_utc TIMESTAMPTZ,
 			duration_seconds DOUBLE,
+			liked BOOLEAN DEFAULT FALSE,
+			liked_at TIMESTAMPTZ,
 			discord_notified BOOLEAN DEFAULT FALSE,
 			indexed_at TIMESTAMPTZ DEFAULT NOW()
 		)

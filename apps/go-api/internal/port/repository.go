@@ -255,6 +255,10 @@ var (
 	_ StatsRepository    = (*noopStatsRepo)(nil)
 )
 
+func (n *noopMediaRepo) SetMediaLike(_ context.Context, _ string, _ bool) (bool, error) {
+	return false, nil
+}
+
 // noopSessionsRepo — impl nulle pour le check de compilation uniquement.
 type noopSessionsRepo struct{}
 
@@ -373,6 +377,9 @@ type MediaRepository interface {
 
 	// CountMediaFiles retourne le nombre total de médias actifs (Q37Count).
 	CountMediaFiles(ctx context.Context) (int, error)
+
+	// SetMediaLike persiste l'état liked d'un média. Retourne false si le média est introuvable.
+	SetMediaLike(ctx context.Context, filePath string, liked bool) (bool, error)
 }
 
 // Ensure compile-time checks pour les nouveaux repos Sprint 12+13.

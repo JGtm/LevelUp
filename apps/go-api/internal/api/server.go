@@ -171,6 +171,7 @@ func NewRouter(
 
 			media := handlers.NewMediaHandler(reg.Media, reg.MediaUpload)
 			r.Post("/pages/media", media.GetMediaLibrary)
+			r.Patch("/media/likes", media.PatchMediaLike)
 			r.Post("/media/upload", media.PostUploadMedia)
 
 			// Sprint 32 : Explorer matches-query + Match History export

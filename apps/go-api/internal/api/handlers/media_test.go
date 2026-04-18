@@ -22,12 +22,24 @@ import (
 type mockMediaService struct {
 	page      *domain.MediaPageResponse
 	pageErr   error
+	like      *domain.MediaLikeResponse
+	likeErr   error
 	upload    *domain.UploadResult
 	uploadErr error
 }
 
-func (m *mockMediaService) GetMediaPage(_ context.Context, _ int) (*domain.MediaPageResponse, error) {
+func (m *mockMediaService) GetMediaPage(_ context.Context, _ domain.MediaPageRequest) (*domain.MediaPageResponse, error) {
 	return m.page, m.pageErr
+}
+
+func (m *mockMediaService) SetMediaLike(_ context.Context, _ domain.MediaLikeRequest) (*domain.MediaLikeResponse, error) {
+	if m.likeErr != nil {
+		return nil, m.likeErr
+	}
+	if m.like != nil {
+		return m.like, nil
+	}
+	return &domain.MediaLikeResponse{}, nil
 }
 
 func (m *mockMediaService) UploadMedia(_ context.Context, _ domain.UploadRequest) (*domain.UploadResult, error) {
@@ -45,6 +57,7 @@ func newMediaRouter(factory handlers.ServiceFactory[port.MediaService]) *chi.Mux
 	h := handlers.NewMediaHandler(factory, nil)
 	r.Route("/players/{player_slug}", func(r chi.Router) {
 		r.Post("/pages/media", h.GetMediaLibrary)
+		r.Patch("/media/likes", h.PatchMediaLike)
 	})
 	return r
 }
@@ -93,6 +106,40 @@ func TestMediaHandler_ServiceError(t *testing.T) {
 
 	if w.Code != http.StatusInternalServerError {
 		t.Fatalf("expected 500, got %d", w.Code)
+	}
+}
+
+func TestMediaHandler_PatchMediaLike_OK(t *testing.T) {
+	mock := &mockMediaService{like: &domain.MediaLikeResponse{FilePath: "/clips/g1.mp4", Liked: true, LikeCount: 1}}
+	factory := func(_ context.Context, _ string) (port.MediaService, error) {
+		return mock, nil
+	}
+	r := newMediaRouter(factory)
+	body, _ := json.Marshal(domain.MediaLikeRequest{FilePath: "/clips/g1.mp4", Liked: true})
+	req := httptest.NewRequest(http.MethodPatch, "/players/test-player/media/likes", bytes.NewReader(body))
+	req.Header.Set("Content-Type", "application/json")
+	w := httptest.NewRecorder()
+	r.ServeHTTP(w, req)
+
+	if w.Code != http.StatusOK {
+		t.Fatalf("expected 200, got %d: %s", w.Code, w.Body.String())
+	}
+}
+
+func TestMediaHandler_PatchMediaLike_NotFound(t *testing.T) {
+	mock := &mockMediaService{likeErr: domain.ErrNotFound("media", "/clips/missing.mp4")}
+	factory := func(_ context.Context, _ string) (port.MediaService, error) {
+		return mock, nil
+	}
+	r := newMediaRouter(factory)
+	body, _ := json.Marshal(domain.MediaLikeRequest{FilePath: "/clips/missing.mp4", Liked: true})
+	req := httptest.NewRequest(http.MethodPatch, "/players/test-player/media/likes", bytes.NewReader(body))
+	req.Header.Set("Content-Type", "application/json")
+	w := httptest.NewRecorder()
+	r.ServeHTTP(w, req)
+
+	if w.Code != http.StatusNotFound {
+		t.Fatalf("expected 404, got %d", w.Code)
 	}
 }
 

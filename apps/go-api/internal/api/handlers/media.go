@@ -3,12 +3,14 @@
 // Endpoints :
 //
 //	POST /api/v1/players/{player_slug}/pages/media    → MediaPageResponse
+//	PATCH /api/v1/players/{player_slug}/media/likes   → MediaLikeResponse
 //	POST /api/v1/players/{player_slug}/media/upload   → UploadResult (multipart)
 package handlers
 
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"log/slog"
@@ -77,9 +79,45 @@ func (h *MediaHandler) GetMediaLibrary(w http.ResponseWriter, r *http.Request) {
 		req.Page = 1
 	}
 
-	resp, err := svc.GetMediaPage(r.Context(), req.Page)
+	resp, err := svc.GetMediaPage(r.Context(), req)
 	if err != nil {
 		writeError(w, http.StatusInternalServerError, "media_page_error", err.Error())
+		return
+	}
+
+	writeJSON(w, http.StatusOK, resp)
+}
+
+// PatchMediaLike persiste le like/unlike d'un média.
+// PATCH /api/v1/players/{player_slug}/media/likes
+func (h *MediaHandler) PatchMediaLike(w http.ResponseWriter, r *http.Request) {
+	slug := chi.URLParam(r, "player_slug")
+	svc, err := h.newSvc(r.Context(), slug)
+	if err != nil {
+		writeError(w, http.StatusNotFound, "player_not_found", err.Error())
+		return
+	}
+
+	var req domain.MediaLikeRequest
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		writeError(w, http.StatusBadRequest, "invalid_body", err.Error())
+		return
+	}
+
+	resp, err := svc.SetMediaLike(r.Context(), req)
+	if err != nil {
+		var apiErr *domain.APIError
+		if errors.As(err, &apiErr) {
+			switch apiErr.Code {
+			case "bad_request":
+				writeError(w, http.StatusBadRequest, apiErr.Code, apiErr.Message)
+				return
+			case "not_found":
+				writeError(w, http.StatusNotFound, apiErr.Code, apiErr.Message)
+				return
+			}
+		}
+		writeError(w, http.StatusInternalServerError, "media_like_error", err.Error())
 		return
 	}
 

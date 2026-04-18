@@ -41,6 +41,7 @@ func (r *MediaRepo) LoadMediaFiles(ctx context.Context, limit, offset int) ([]do
 			&row.CaptureEndUTC,
 			&row.MatchID,
 			&row.MatchStartTime,
+			&row.Liked,
 		); err != nil {
 			return nil, fmt.Errorf("LoadMediaFiles scan: %w", err)
 		}
@@ -60,4 +61,26 @@ func (r *MediaRepo) CountMediaFiles(ctx context.Context) (int, error) {
 		return 0, fmt.Errorf("CountMediaFiles: %w", err)
 	}
 	return count, nil
+}
+
+// SetMediaLike persiste l'état liked d'un média dans media_files.
+func (r *MediaRepo) SetMediaLike(ctx context.Context, filePath string, liked bool) (bool, error) {
+	ctx, cancel := context.WithTimeout(ctx, 5*time.Second)
+	defer cancel()
+
+	result, err := r.pdb.Player.Exec(ctx, `
+		UPDATE media_files
+		SET liked = ?,
+			liked_at = CASE WHEN ? THEN CURRENT_TIMESTAMP ELSE NULL END
+		WHERE file_path = ?
+	`, liked, liked, filePath)
+	if err != nil {
+		return false, fmt.Errorf("SetMediaLike: %w", err)
+	}
+
+	rowsAffected, err := result.RowsAffected()
+	if err != nil {
+		return false, fmt.Errorf("SetMediaLike rows affected: %w", err)
+	}
+	return rowsAffected > 0, nil
 }
