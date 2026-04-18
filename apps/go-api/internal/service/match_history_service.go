@@ -6,6 +6,7 @@ package service
 import (
 	"context"
 	"fmt"
+	"log/slog"
 	"math"
 	"sort"
 	"strings"
@@ -60,6 +61,9 @@ func (s *MatchHistoryService) GetPage(
 	}
 	totalUnfiltered := len(rawRows)
 
+	// Exclusions manuelles — avant tout autre filtrage
+	rawRows = filterExcludedRows(rawRows)
+
 	// Filtrage (réutilise la logique pure du FiltersService)
 	filtered := filterMatchHistoryRows(rawRows, req.Filters)
 	totalScoped := len(filtered)
@@ -112,6 +116,7 @@ func (s *MatchHistoryService) ExportCSV(
 		return nil, fmt.Errorf("MatchHistoryService.ExportCSV: %w", err)
 	}
 
+	rawRows = filterExcludedRows(rawRows)
 	filtered := filterMatchHistoryRows(rawRows, req.Filters)
 	mapWinRates := computeMapWinRates(rawRows)
 	items := enrichRows(filtered, mapWinRates, s.waypointPlayer)
@@ -123,6 +128,26 @@ func (s *MatchHistoryService) ExportCSV(
 // ---------------------------------------------------------------------------
 // Filtrage (conversion MatchHistoryRawRow → FilterMatchRow pour réutiliser la logique)
 // ---------------------------------------------------------------------------
+
+// filterExcludedRows retire les matchs marqués is_excluded par l'utilisateur.
+func filterExcludedRows(rows []domain.MatchHistoryRawRow) []domain.MatchHistoryRawRow {
+	out := rows[:0:0]
+	excluded := 0
+	for _, r := range rows {
+		if r.IsExcluded {
+			excluded++
+		} else {
+			out = append(out, r)
+		}
+	}
+	if excluded > 0 {
+		slog.Debug("match history: excluded rows filtered",
+			"excluded_count", excluded,
+			"remaining", len(out),
+		)
+	}
+	return out
+}
 
 func filterMatchHistoryRows(rows []domain.MatchHistoryRawRow, f domain.FilterContextInput) []domain.MatchHistoryRawRow {
 	filterRows := make([]domain.FilterMatchRow, len(rows))
@@ -254,6 +279,7 @@ func enrichRow(r domain.MatchHistoryRawRow, mapWR map[string][2]int, waypoint st
 		PerformanceScoreRelative: nil,
 		AverageLifeMMSS:          formatLifeSeconds(r.AverageLifeSeconds),
 		MatchURL:                 matchURL,
+		IsExcluded:               r.IsExcluded,
 	}
 }
 

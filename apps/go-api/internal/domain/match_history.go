@@ -28,6 +28,7 @@ type MatchHistoryRawRow struct {
 	PersonalScore      *int
 	AverageLifeSeconds *float64
 	TimePlayedSeconds  *int
+	IsExcluded         bool
 }
 
 // PaginationRequest représente les paramètres de pagination d'une requête.
@@ -64,6 +65,7 @@ type MatchHistoryRow struct {
 	PerformanceScoreRelative *int      `json:"performance_score_relative"`
 	AverageLifeMMSS          string    `json:"average_life_mmss"`
 	MatchURL                 string    `json:"match_url"`
+	IsExcluded               bool      `json:"is_excluded"`
 }
 
 // MatchHistoryQuerySummary est le résumé de la requête historique.

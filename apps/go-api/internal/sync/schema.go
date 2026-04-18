@@ -40,6 +40,7 @@ CREATE TABLE IF NOT EXISTS player_match_enrichment (
     known_teammates_count  SMALLINT,
     friends_xuids          VARCHAR,
     had_bot_teammate       BOOLEAN,
+    is_excluded            BOOLEAN   DEFAULT FALSE,
     created_at             TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at             TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );

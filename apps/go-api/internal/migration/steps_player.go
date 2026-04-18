@@ -252,6 +252,15 @@ func init() {
 		Description: "mv_session_stats.session_id INTEGER → VARCHAR",
 		ApplySchema: applyFixMvSessionStats,
 	})
+
+	Register(Migration{
+		Name:        "add_match_exclusion_flag",
+		TargetDB:    TargetPlayer,
+		Description: "Colonne is_excluded (BOOLEAN) sur player_match_enrichment — exclusion manuelle par l'utilisateur",
+		ApplySchema: func(db *sql.DB) error {
+			return addColumnIfMissing(db, "player_match_enrichment", "is_excluded", "BOOLEAN DEFAULT FALSE")
+		},
+	})
 }
 
 // applyCareerProgressionSequence recrée career_progression avec séquence auto-increment.

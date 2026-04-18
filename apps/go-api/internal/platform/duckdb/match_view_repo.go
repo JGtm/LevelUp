@@ -81,6 +81,7 @@ func (r *MatchViewRepo) GetMatchEnrichment(ctx context.Context, matchID string) 
 	err := r.pdb.Player.QueryRow(ctx, Q18MatchEnrichment, matchID).Scan(
 		&e.PerformanceScore,
 		&e.IsWithFriends,
+		&e.IsExcluded,
 	)
 	if err != nil {
 		// Pas d'enrichissement → retourner vide

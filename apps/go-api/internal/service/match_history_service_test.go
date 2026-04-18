@@ -127,3 +127,70 @@ func TestMatchHistoryService_ExportCSV_Error(t *testing.T) {
 		t.Error("expected error")
 	}
 }
+
+// --- filterExcludedRows ---
+
+func TestFilterExcludedRows(t *testing.T) {
+	now := time.Now()
+	tests := []struct {
+		name    string
+		rows    []domain.MatchHistoryRawRow
+		wantLen int
+	}{
+		{
+			name:    "aucune exclusion",
+			rows:    []domain.MatchHistoryRawRow{{MatchID: "m1", StartTime: &now, IsExcluded: false}},
+			wantLen: 1,
+		},
+		{
+			name: "une exclusion",
+			rows: []domain.MatchHistoryRawRow{
+				{MatchID: "m1", StartTime: &now, IsExcluded: false},
+				{MatchID: "m2", StartTime: &now, IsExcluded: true},
+			},
+			wantLen: 1,
+		},
+		{
+			name:    "toutes exclues",
+			rows:    []domain.MatchHistoryRawRow{{MatchID: "m1", StartTime: &now, IsExcluded: true}},
+			wantLen: 0,
+		},
+		{
+			name:    "liste vide",
+			rows:    []domain.MatchHistoryRawRow{},
+			wantLen: 0,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			out := filterExcludedRows(tt.rows)
+			if len(out) != tt.wantLen {
+				t.Errorf("filterExcludedRows(%q): got %d rows, want %d", tt.name, len(out), tt.wantLen)
+			}
+		})
+	}
+}
+
+func TestMatchHistoryService_GetPage_ExcludedFiltered(t *testing.T) {
+	now := time.Now()
+	repo := &mockMatchHistoryRepo{
+		rows: []domain.MatchHistoryRawRow{
+			{MatchID: "m1", StartTime: &now, Outcome: 2, IsExcluded: true},
+			{MatchID: "m2", StartTime: &now, Outcome: 3, IsExcluded: true},
+		},
+	}
+	svc := NewMatchHistoryService(repo, "Player")
+
+	resp, err := svc.GetPage(context.Background(), domain.MatchHistoryQueryRequest{
+		Pagination: domain.PaginationRequest{Page: 1, PageSize: 20},
+	})
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if resp.Summary.TotalMatchesScoped != 0 {
+		t.Errorf("TotalMatchesScoped = %d, want 0 (all excluded)", resp.Summary.TotalMatchesScoped)
+	}
+	if len(resp.Table.Items) != 0 {
+		t.Errorf("Items = %d, want 0 (all excluded)", len(resp.Table.Items))
+	}
+}

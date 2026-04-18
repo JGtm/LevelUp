@@ -132,11 +132,12 @@ WHERE p.match_id = ? AND p.xuid = ?`
 
 // Q18 : Enrichissement joueur pour un match (player_match_enrichment).
 // Paramètre : ? = match_id.
-// Retourne 2 colonnes : performance_score, is_with_friends.
+// Retourne 3 colonnes : performance_score, is_with_friends, is_excluded.
 const Q18MatchEnrichment = `
 SELECT
     pme.performance_score,
-    COALESCE(pme.is_with_friends, FALSE) AS is_with_friends
+    COALESCE(pme.is_with_friends, FALSE) AS is_with_friends,
+    COALESCE(pme.is_excluded, FALSE)     AS is_excluded
 FROM player_match_enrichment pme
 WHERE pme.match_id = ?`
 

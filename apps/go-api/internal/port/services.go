@@ -60,6 +60,15 @@ type MatchViewService interface {
 	GetMatchView(ctx context.Context, matchID string) (domain.MatchViewResponse, error)
 }
 
+// MatchExclusionService gère le marquage et la liste des matchs non pertinents.
+type MatchExclusionService interface {
+	// SetExclusion marque ou démarque un match comme non pertinent.
+	SetExclusion(ctx context.Context, matchID string, excluded bool) error
+
+	// ListExcluded retourne les matchs exclus du joueur.
+	ListExcluded(ctx context.Context) ([]domain.ExcludedMatch, error)
+}
+
 // MediaService construit la page de la galerie médias et gère l'upload.
 type MediaService interface {
 	GetMediaPage(ctx context.Context, page int) (*domain.MediaPageResponse, error)

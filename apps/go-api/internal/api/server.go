@@ -190,6 +190,11 @@ func NewRouter(
 			// Sprint 33 : Last Match Resolve
 			lm := handlers.NewLastMatchHandler(reg.LastMatch)
 			r.Post("/pages/last-match/resolve", lm.Resolve)
+
+			// Exclusion manuelle de matchs non pertinents
+			excl := handlers.NewMatchExclusionHandler(reg.MatchExclusion)
+			r.Patch("/matches/{match_id}/exclusion", excl.SetExclusion)
+			r.Get("/match-exclusions", excl.ListExclusions)
 		})
 
 		// Endpoints P1 : répertoire gamertags

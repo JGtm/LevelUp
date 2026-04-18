@@ -1,11 +1,16 @@
 /**
  * MatchHistoryTable — tableau paginé de l'historique des parties.
  * A1 NATIVE_COMPONENTS — couleur ligne par outcome + clic ligne → Match View.
+ * Sprint exclusion : bouton ⊘ par ligne avec confirmation inline.
  */
+import { useState } from 'react'
 import { useNavigate } from '@tanstack/react-router'
+import { useQueryClient } from '@tanstack/react-query'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import type { MatchHistoryRow, PaginationMeta } from '@/lib/api/types'
+import { useSetMatchExclusion } from './queries'
+import { queryKeys } from '@/lib/query/keys'
 
 interface Props {
   rows: MatchHistoryRow[]
@@ -17,6 +22,8 @@ interface Props {
   onExport?: () => void
   exporting?: boolean
   playerSlug: string
+  filterHash: string
+  page: number
   /** Si true, n'affiche pas le bouton Export CSV (usage dans Explorer) */
   hideExport?: boolean
 }
@@ -59,9 +66,14 @@ export function MatchHistoryTable({
   onExport,
   exporting,
   playerSlug,
+  filterHash,
+  page,
   hideExport,
 }: Props) {
   const navigate = useNavigate()
+  const queryClient = useQueryClient()
+  const [confirmingId, setConfirmingId] = useState<string | null>(null)
+  const excludeMutation = useSetMatchExclusion(playerSlug)
 
   const columns = [
     { key: 'start_time', label: 'Date' },
@@ -73,6 +85,7 @@ export function MatchHistoryTable({
     { key: 'team_enemy_mmr', label: 'MMR T/A', sortable: false },
     { key: 'win_rate_hist', label: 'Win%' },
     { key: 'average_life_mmss', label: 'Vie moy.', sortable: false },
+    { key: 'actions', label: '', sortable: false },
   ] as const
 
   function navigateToMatch(matchId: string) {
@@ -80,6 +93,31 @@ export function MatchHistoryTable({
       to: '/players/$playerSlug/explorer/matches/$matchId',
       params: { playerSlug, matchId },
     })
+  }
+
+  function handleExclude(e: React.MouseEvent, matchId: string) {
+    e.stopPropagation()
+    setConfirmingId(matchId)
+  }
+
+  function handleConfirm(e: React.MouseEvent, matchId: string) {
+    e.stopPropagation()
+    excludeMutation.mutate(
+      { matchId, excluded: true },
+      {
+        onSuccess: () => {
+          setConfirmingId(null)
+          void queryClient.invalidateQueries({
+            queryKey: queryKeys.matchHistory(playerSlug, filterHash, page),
+          })
+        },
+      },
+    )
+  }
+
+  function handleCancel(e: React.MouseEvent) {
+    e.stopPropagation()
+    setConfirmingId(null)
   }
 
   return (
@@ -128,6 +166,8 @@ export function MatchHistoryTable({
           <tbody className="divide-y divide-gray-800">
             {rows.map((row) => {
               const bg = OUTCOME_ROW_BG[row.outcome_code ?? 0] ?? ''
+              const isConfirming = confirmingId === row.match_id
+              const isPending = excludeMutation.isPending && confirmingId === row.match_id
               return (
                 <tr
                   key={row.match_id}
@@ -196,12 +236,40 @@ export function MatchHistoryTable({
                   <td className="px-4 py-2 text-right text-gray-400">
                     {row.average_life_mmss}
                   </td>
+                  <td className="px-4 py-2 text-right whitespace-nowrap" onClick={(e) => e.stopPropagation()}>
+                    {isConfirming ? (
+                      <span className="inline-flex items-center gap-1">
+                        <button
+                          className="rounded px-2 py-0.5 text-xs bg-red-900/60 text-red-300 hover:bg-red-800/60 disabled:opacity-50"
+                          onClick={(e) => handleConfirm(e, row.match_id)}
+                          disabled={isPending}
+                        >
+                          Ignorer
+                        </button>
+                        <button
+                          className="rounded px-2 py-0.5 text-xs bg-gray-800 text-gray-400 hover:bg-gray-700"
+                          onClick={handleCancel}
+                          disabled={isPending}
+                        >
+                          Annuler
+                        </button>
+                      </span>
+                    ) : (
+                      <button
+                        className="rounded p-1 text-gray-600 hover:text-gray-300 hover:bg-gray-800/60 transition-colors"
+                        title="Ignorer ce match"
+                        onClick={(e) => handleExclude(e, row.match_id)}
+                      >
+                        ⊘
+                      </button>
+                    )}
+                  </td>
                 </tr>
               )
             })}
             {rows.length === 0 && (
               <tr>
-                <td colSpan={9} className="px-4 py-10 text-center text-gray-500">
+                <td colSpan={10} className="px-4 py-10 text-center text-gray-500">
                   Aucun match trouvé.
                 </td>
               </tr>

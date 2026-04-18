@@ -501,6 +501,7 @@ export interface MatchHistoryRow {
   performance_score_relative: number | null
   average_life_mmss: string
   match_url: string
+  is_excluded?: boolean
 }
 
 export interface MatchHistoryQuerySummary {
@@ -864,6 +865,7 @@ export interface MatchViewHeader {
   playlist_label: string
   performance_display: string
   performance_color: string | null
+  is_excluded: boolean
 }
 
 export interface MatchViewRank {

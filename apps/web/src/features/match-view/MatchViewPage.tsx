@@ -3,6 +3,7 @@
  */
 import { useState } from 'react'
 import { useParams } from '@tanstack/react-router'
+import { useQueryClient } from '@tanstack/react-query'
 import { PageHeader } from '@/components/shell/PageHeader'
 import { Spinner } from '@/components/ui/spinner'
 import { Card, CardContent } from '@/components/ui/card'
@@ -12,6 +13,8 @@ import { PlotlyChart } from '@/components/ui/plotly-chart'
 import { useMatchView } from './queries'
 import { MatchScoreboard } from './MatchScoreboard'
 import { ExpectedCardsSection, MatchRankBadge, KdIndicatorCard } from './MatchStatCards'
+import { useSetMatchExclusion } from '@/features/match-history/queries'
+import { queryKeys } from '@/lib/query/keys'
 
 type TabId = 'summary' | 'combat' | 'team' | 'media' | 'citations'
 
@@ -30,6 +33,8 @@ export function MatchViewPage() {
   }
   const [activeTab, setActiveTab] = useState<TabId>('summary')
   const { data, isLoading, isError, refetch } = useMatchView(playerSlug, matchId)
+  const queryClient = useQueryClient()
+  const excludeMutation = useSetMatchExclusion(playerSlug)
 
   if (isLoading) {
     return (
@@ -83,6 +88,26 @@ export function MatchViewPage() {
           <span className="ml-auto text-sm font-medium" style={{ color: header.performance_color ?? undefined }}>
             {header.performance_display}
           </span>
+          <Button
+            variant="ghost"
+            size="sm"
+            className={header.is_excluded ? 'text-gray-400' : 'text-gray-500 hover:text-red-500'}
+            loading={excludeMutation.isPending}
+            onClick={() => {
+              excludeMutation.mutate(
+                { matchId, excluded: !header.is_excluded },
+                {
+                  onSuccess: () => {
+                    void queryClient.invalidateQueries({
+                      queryKey: queryKeys.matchView(playerSlug, matchId),
+                    })
+                  },
+                },
+              )
+            }}
+          >
+            {header.is_excluded ? '↩ Réactiver' : '⊘ Ignorer'}
+          </Button>
         </div>
       </div>
 

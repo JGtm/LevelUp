@@ -355,6 +355,16 @@ type CitationsRepository interface {
 	LoadMedalCitationMappings(ctx context.Context) ([]domain.MedalCitationRow, error)
 }
 
+// MatchExclusionRepository gère le flag is_excluded dans player_match_enrichment.
+// Implémenté par platform/duckdb.MatchExclusionRepo.
+type MatchExclusionRepository interface {
+	// SetExclusion positionne is_excluded pour un match (UPSERT).
+	SetExclusion(ctx context.Context, matchID string, excluded bool) error
+
+	// ListExcluded retourne les matchs marqués is_excluded = TRUE.
+	ListExcluded(ctx context.Context) ([]domain.ExcludedMatch, error)
+}
+
 // MediaRepository fournit les données pour la galerie médias.
 // Implémenté par platform/duckdb.MediaRepo.
 type MediaRepository interface {

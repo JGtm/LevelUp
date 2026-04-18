@@ -84,6 +84,8 @@ export function MatchHistoryPage() {
             onExport={handleExport}
             exporting={exportMutation.isPending}
             playerSlug={playerSlug}
+            filterHash={filterContextHash}
+            page={page}
           />
         ) : null}
       </div>

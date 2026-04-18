@@ -171,6 +171,8 @@ func TestContractPathsCoverage(t *testing.T) {
 		{"/auth/device-flow/start", "post", "device flow start"},
 		{"/setup/players", "post", "création joueur"},
 		{"/sync/initial", "post", "sync initiale"},
+		{"/players/{player_slug}/matches/{match_id}/exclusion", "patch", "match exclusion PATCH"},
+		{"/players/{player_slug}/match-exclusions", "get", "match exclusions GET"},
 	}
 
 	for _, mp := range mandatoryPaths {
