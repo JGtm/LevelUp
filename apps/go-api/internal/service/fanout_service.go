@@ -14,17 +14,21 @@ import (
 	"levelup/go-api/internal/config"
 	"levelup/go-api/internal/ctxkeys"
 	"levelup/go-api/internal/domain"
-	"levelup/go-api/internal/platform/duckdb"
+	"levelup/go-api/internal/port"
 )
 
 // FanoutService identifie et enrichit les joueurs partageant des matchs communs.
 type FanoutService struct {
-	cfg *config.AppConfig
+	cfg     *config.AppConfig
+	factory port.FanoutPlayerFactory
 }
 
 // NewFanoutService crée un FanoutService.
 func NewFanoutService(cfg *config.AppConfig) *FanoutService {
-	return &FanoutService{cfg: cfg}
+	return &FanoutService{
+		cfg:     cfg,
+		factory: config.NewFanoutFactory(cfg),
+	}
 }
 
 // BuildPlan identifie les joueurs configurés ayant des matchs communs
@@ -46,8 +50,8 @@ func (s *FanoutService) BuildPlan(
 		return nil, fmt.Errorf("fanout BuildPlan: %w", err)
 	}
 
-	// Résoudre le joueur source pour obtenir un accès shared DB.
-	sourcePDB, err := config.ResolvePlayer(ctx, s.cfg, sourceGamertag, ctxkeys.TitleSlug(ctx))
+	// Résoudre le joueur source via le port hexagonal.
+	sourceRepo, err := s.factory.OpenForPlayer(ctx, sourceGamertag, ctxkeys.TitleSlug(ctx))
 	if err != nil {
 		return nil, fmt.Errorf("fanout BuildPlan resolve source: %w", err)
 	}
@@ -63,7 +67,7 @@ func (s *FanoutService) BuildPlan(
 			continue
 		}
 
-		count, err := countCommonMatches(ctx, sourcePDB, p.XUID, insertedMatchIDs)
+		count, err := sourceRepo.CountCommonMatchesForXUID(ctx, p.XUID, insertedMatchIDs)
 		if err != nil {
 			slog.WarnContext(ctx, "fanout: erreur comptage matchs communs",
 				"target", p.Gamertag, "err", err)
@@ -127,13 +131,13 @@ func (s *FanoutService) enrichTarget(
 	target domain.FanoutTarget,
 	matchIDs []string,
 ) (int, error) {
-	pdb, err := config.ResolvePlayer(ctx, s.cfg, target.Gamertag, ctxkeys.TitleSlug(ctx))
+	repo, err := s.factory.OpenForPlayer(ctx, target.Gamertag, ctxkeys.TitleSlug(ctx))
 	if err != nil {
 		return 0, fmt.Errorf("resolve target %s: %w", target.Gamertag, err)
 	}
 
 	// Trouver les matchs déjà enrichis pour ce joueur.
-	existing, err := loadExistingEnrichments(ctx, pdb, matchIDs)
+	existing, err := repo.LoadExistingEnrichments(ctx, matchIDs)
 	if err != nil {
 		return 0, fmt.Errorf("load existing enrichments %s: %w", target.Gamertag, err)
 	}
@@ -151,95 +155,10 @@ func (s *FanoutService) enrichTarget(
 
 	// Insérer des enregistrements basiques pour les matchs manquants.
 	// Le performance_score sera recalculé au prochain post-sync compute.
-	enriched, err := insertStubEnrichments(ctx, pdb, target.XUID, missing)
+	enriched, err := repo.InsertStubEnrichments(ctx, target.XUID, missing)
 	if err != nil {
 		return 0, fmt.Errorf("insert enrichments %s: %w", target.Gamertag, err)
 	}
 
 	return enriched, nil
-}
-
-// countCommonMatches compte le nombre de matchs parmi insertedMatchIDs
-// où le joueur cible (targetXUID) était participant.
-func countCommonMatches(
-	ctx context.Context,
-	pdb *duckdb.PlayerDB,
-	targetXUID string,
-	matchIDs []string,
-) (int, error) {
-	if len(matchIDs) == 0 {
-		return 0, nil
-	}
-
-	// Requête sur shared.match_participants pour trouver les matchs communs.
-	query := `
-		SELECT COUNT(DISTINCT match_id)
-		FROM shared.match_participants
-		WHERE xuid = ?
-		AND match_id IN (SELECT UNNEST(?::VARCHAR[]))
-	`
-	var count int
-	err := pdb.Player.QueryRow(ctx, query, targetXUID, matchIDs).Scan(&count)
-	if err != nil {
-		return 0, err
-	}
-	return count, nil
-}
-
-// loadExistingEnrichments retourne un set des match_ids déjà enrichis.
-func loadExistingEnrichments(
-	ctx context.Context,
-	pdb *duckdb.PlayerDB,
-	matchIDs []string,
-) (map[string]bool, error) {
-	result := make(map[string]bool, len(matchIDs))
-	if len(matchIDs) == 0 {
-		return result, nil
-	}
-
-	query := `
-		SELECT match_id
-		FROM player_match_enrichment
-		WHERE match_id IN (SELECT UNNEST(?::VARCHAR[]))
-	`
-	rows, err := pdb.Player.Query(ctx, query, matchIDs)
-	if err != nil {
-		return nil, err
-	}
-	defer rows.Close()
-
-	for rows.Next() {
-		var mid string
-		if err := rows.Scan(&mid); err != nil {
-			return nil, err
-		}
-		result[mid] = true
-	}
-	return result, rows.Err()
-}
-
-// insertStubEnrichments insère des enregistrements stub dans player_match_enrichment
-// pour les matchs communs manquants. Le performance_score sera recalculé plus tard.
-func insertStubEnrichments(
-	ctx context.Context,
-	pdb *duckdb.PlayerDB,
-	xuid string,
-	matchIDs []string,
-) (int, error) { //nolint:unparam // error toujours nil actuellement, interface-compatible
-	_ = xuid // disponible pour future extension
-
-	inserted := 0
-	for _, mid := range matchIDs {
-		_, err := pdb.Player.Exec(ctx,
-			`INSERT OR IGNORE INTO player_match_enrichment (match_id) VALUES (?)`,
-			mid,
-		)
-		if err != nil {
-			slog.Warn("fanout: insert stub échoué", "match_id", mid, "err", err)
-			continue
-		}
-		inserted++
-	}
-
-	return inserted, nil
 }

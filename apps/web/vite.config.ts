@@ -33,5 +33,17 @@ export default defineConfig({
     setupFiles: ['./src/test/setup.ts'],
     // Exclure les tests Playwright (e2e/) qui sont exécutés par leur propre runner
     exclude: ['**/node_modules/**', '**/e2e/**'],
+    coverage: {
+      provider: 'v8',
+      reporter: ['text', 'lcov', 'html'],
+      reportsDirectory: './coverage',
+      include: ['src/**/*.{ts,tsx}'],
+      exclude: [
+        'src/test/**',
+        'src/**/*.d.ts',
+        'src/routes/**/*.lazy.tsx',
+        'src/main.tsx',
+      ],
+    },
   },
 })
