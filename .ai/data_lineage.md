@@ -1,7 +1,9 @@
 # Data Lineage - Traçabilité des Données Halo
 
 > Ce fichier trace l'origine, les transformations et la destination de chaque flux de données.
-> Mis à jour : 2026-03-13
+> Mis à jour : 2026-04-18
+
+> Note validation 2026-04-18 : aucune évolution de flux de données sur cette passe. Les correctifs portaient sur la stabilité des suites Go/React et sur l'alignement code/tests autour de `player_match_enrichment.is_excluded`, puis sur le rendu frontend des payloads nulles ou sections vides via des empty states explicites côté React. Aucun schéma ni contrat API n'a changé.
 
 ## Architecture v5.1 - Shared Matches + Player Enrichments
 
@@ -249,6 +251,28 @@ Note 2026-04-12 : la home n'utilise plus le calendrier GameCMS comme source prim
 Note 2026-04-12 : les rewards `xpboost` et `rerollcurrency` utilisent désormais des PNG embarqués dans le repo quand GameCMS ne fournit pas de `DisplayPath`; ces assets sont référencés via `battlepass_asset_refs` avec origine `repo-static`.
 
 Note 2026-04-12 : les définitions GameCMS de reward tracks et d'items battle pass sont désormais persistées dans `metadata.duckdb` pour mutualiser le cache entre joueurs partageant le même season pass ; seuls l'appel Economy joueur et la progression personnelle restent spécifiques au joueur.
+
+### 12. Contrat KPIs Home Go → Frontend web (2026-04-18)
+
+```
+Source: apps/go-api/internal/analysis/home.go
+  - ComputeKPIs()
+    • WinRate = wins / total                  -> ratio [0..1]
+    • AvgAccuracy = moyenne déjà en pourcent -> ex: 42.0
+     ↓
+Service: apps/go-api/internal/service/home_service.go
+     ↓
+DTO: HomePageResponse.hero.kpis
+     ↓
+Destination frontend:
+  - apps/web/src/components/shell/KPIBar.tsx
+  - apps/web/src/features/home/HomePage.tsx
+```
+
+Règle de transformation validée localement :
+
+- `win_rate` doit être multiplié par 100 pour l'affichage UI.
+- `avg_accuracy` ne doit **pas** être remultiplié ; la valeur backend est déjà un pourcentage prêt à afficher.
 
 ## Tables PvE (shared_pve.duckdb)
 

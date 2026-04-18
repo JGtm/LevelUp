@@ -6,6 +6,7 @@ import { Link } from '@tanstack/react-router'
 import { PageHeader } from '@/components/shell/PageHeader'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
+import { EmptyStateCard, EmptyStateNotice } from '@/components/ui/empty-state'
 import { Spinner } from '@/components/ui/spinner'
 import { useHomePage, useBattlePass, useChallenges } from './queries'
 
@@ -20,11 +21,34 @@ function KPICard({ label, value }: { label: string; value: string | number }) {
 
 export function HomePage() {
   const { playerSlug } = useParams({ strict: false }) as { playerSlug: string }
-  const { data, isLoading } = useHomePage(playerSlug)
+  const { data, isLoading, isError, refetch } = useHomePage(playerSlug)
   const { data: bp } = useBattlePass(playerSlug)
   const { data: challenges } = useChallenges(playerSlug)
 
-  if (isLoading || !data) {
+  const quickActions = [
+    {
+      to: '/players/$playerSlug/stats/timeseries',
+      label: 'Statistiques',
+      icon: '📈',
+    },
+    {
+      to: '/players/$playerSlug/squad',
+      label: 'Escouade',
+      icon: '👥',
+    },
+    {
+      to: '/players/$playerSlug/explorer',
+      label: 'Explorer',
+      icon: '🔍',
+    },
+    {
+      to: '/players/$playerSlug/media',
+      label: 'Médias',
+      icon: '🖼',
+    },
+  ] as const
+
+  if (isLoading) {
     return (
       <div className="flex h-full items-center justify-center">
         <Spinner size="lg" label="Chargement de l'accueil…" />
@@ -32,7 +56,44 @@ export function HomePage() {
     )
   }
 
-  const { hero, highlights, recent_matches, recent_media, solo_session, squad_session } = data
+  if (isError) {
+    return (
+      <div className="flex flex-col">
+        <PageHeader title="Mission Control" subtitle="Accueil joueur" />
+        <div className="p-6">
+          <EmptyStateCard
+            title="Accueil indisponible"
+            description="La page d'accueil n'a pas pu être chargée pour ce joueur. Vérifie la session ou relance la requête."
+            actionLabel="Réessayer"
+            onAction={() => refetch()}
+          />
+        </div>
+      </div>
+    )
+  }
+
+  if (!data) {
+    return (
+      <div className="flex flex-col">
+        <PageHeader title="Mission Control" subtitle="Accueil joueur" />
+        <div className="p-6">
+          <EmptyStateCard
+            title="Accueil vide"
+            description="Aucune donnée d'accueil n'a été renvoyée pour ce joueur. Vérifie le bootstrap ou les données locales avant de continuer."
+            actionLabel="Relancer"
+            onAction={() => refetch()}
+          />
+        </div>
+      </div>
+    )
+  }
+
+  const { hero } = data
+  const highlights = data.highlights ?? []
+  const recentMatches = data.recent_matches ?? []
+  const recentMedia = data.recent_media ?? []
+  const soloSession = data.solo_session ?? null
+  const squadSession = data.squad_session ?? null
 
   return (
     <div className="flex flex-col">
@@ -51,7 +112,7 @@ export function HomePage() {
               <KPICard label="K/D" value={hero.kpis.global_ratio?.toFixed(2) ?? '—'} />
               <KPICard label="Victoires" value={hero.kpis.wins.toLocaleString('fr-FR')} />
               <KPICard label="Défaites" value={hero.kpis.losses.toLocaleString('fr-FR')} />
-              <KPICard label="Précision" value={hero.kpis.avg_accuracy != null ? `${(hero.kpis.avg_accuracy * 100).toFixed(0)}%` : '—'} />
+              <KPICard label="Précision" value={hero.kpis.avg_accuracy != null ? `${hero.kpis.avg_accuracy.toFixed(0)}%` : '—'} />
             </div>
           </CardContent>
         </Card>
@@ -100,39 +161,44 @@ export function HomePage() {
         </div>
 
         {/* Sessions récentes */}
-        {(solo_session || squad_session) && (
-          <Card>
-            <CardHeader>
-              <CardTitle className="text-base">Sessions récentes</CardTitle>
-            </CardHeader>
-            <CardContent>
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-base">Sessions récentes</CardTitle>
+          </CardHeader>
+          <CardContent>
+            {soloSession || squadSession ? (
               <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-                {solo_session && (
+                {soloSession && (
                   <div className="rounded-md bg-gray-50 p-3">
                     <Badge variant="secondary" className="mb-2">Solo</Badge>
-                    <p className="text-sm font-medium">{solo_session.session_label}</p>
-                    <p className="text-xs text-gray-500">{solo_session.match_count} parties · {(solo_session.win_rate * 100).toFixed(0)}% W</p>
+                    <p className="text-sm font-medium">{soloSession.session_label}</p>
+                    <p className="text-xs text-gray-500">{soloSession.match_count} parties · {(soloSession.win_rate * 100).toFixed(0)}% W</p>
                   </div>
                 )}
-                {squad_session && (
+                {squadSession && (
                   <div className="rounded-md bg-purple-50 p-3">
                     <Badge variant="default" className="mb-2">Escouade</Badge>
-                    <p className="text-sm font-medium">{squad_session.session_label}</p>
-                    <p className="text-xs text-gray-500">{squad_session.match_count} parties · {(squad_session.win_rate * 100).toFixed(0)}% W</p>
+                    <p className="text-sm font-medium">{squadSession.session_label}</p>
+                    <p className="text-xs text-gray-500">{squadSession.match_count} parties · {(squadSession.win_rate * 100).toFixed(0)}% W</p>
                   </div>
                 )}
               </div>
-            </CardContent>
-          </Card>
-        )}
+            ) : (
+              <EmptyStateNotice
+                title="Aucune session récente disponible"
+                description="Aucune session solo ou escouade n'a été calculée pour le scope actuel."
+              />
+            )}
+          </CardContent>
+        </Card>
 
         {/* Highlights */}
-        {highlights.length > 0 && (
-          <Card>
-            <CardHeader>
-              <CardTitle className="text-base">Points saillants</CardTitle>
-            </CardHeader>
-            <CardContent>
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-base">Points saillants</CardTitle>
+          </CardHeader>
+          <CardContent>
+            {highlights.length > 0 ? (
               <div className="grid grid-cols-1 gap-2 sm:grid-cols-3">
                 {highlights.map((h, i) => (
                   <div key={i} className="rounded-md border border-gray-100 p-3">
@@ -142,9 +208,14 @@ export function HomePage() {
                   </div>
                 ))}
               </div>
-            </CardContent>
-          </Card>
-        )}
+            ) : (
+              <EmptyStateNotice
+                title="Aucun point saillant disponible"
+                description="Le backend n'a renvoyé aucun highlight exploitable pour cette période."
+              />
+            )}
+          </CardContent>
+        </Card>
 
         {/* Matchs récents */}
         <Card>
@@ -153,7 +224,7 @@ export function HomePage() {
           </CardHeader>
           <CardContent>
             <div className="space-y-1">
-              {recent_matches.slice(0, 8).map((m) => (
+              {recentMatches.slice(0, 8).map((m) => (
                 <div key={m.match_id} className="flex items-center justify-between rounded-md px-3 py-2 hover:bg-gray-50">
                   <div>
                     <p className="text-sm font-medium text-gray-800">{m.title}</p>
@@ -180,15 +251,11 @@ export function HomePage() {
           </CardHeader>
           <CardContent>
             <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
-              {[
-                { to: `/players/${playerSlug}/stats/timeseries`, label: 'Statistiques', icon: '📈' },
-                { to: `/players/${playerSlug}/squad`, label: 'Escouade', icon: '👥' },
-                { to: `/players/${playerSlug}/explorer`, label: 'Explorer', icon: '🔍' },
-                { to: `/players/${playerSlug}/media`, label: 'Médias', icon: '🖼' },
-              ].map((item) => (
+              {quickActions.map((item) => (
                 <Link
                   key={item.to}
                   to={item.to}
+                  params={{ playerSlug }}
                   className="flex flex-col items-center justify-center gap-1 rounded-lg border border-gray-200 bg-gray-50 px-4 py-4 text-center hover:bg-purple-50 hover:border-purple-300 transition-colors"
                 >
                   <span className="text-2xl">{item.icon}</span>
@@ -205,14 +272,15 @@ export function HomePage() {
             <CardTitle className="text-base">Dernier match</CardTitle>
           </CardHeader>
           <CardContent>
-            {recent_matches.length > 0 ? (
+            {recentMatches.length > 0 ? (
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-sm font-medium text-gray-800">{recent_matches[0].title}</p>
-                  <p className="text-xs text-gray-400">{recent_matches[0].detail}</p>
+                  <p className="text-sm font-medium text-gray-800">{recentMatches[0].title}</p>
+                  <p className="text-xs text-gray-400">{recentMatches[0].detail}</p>
                 </div>
                 <Link
-                  to={`/players/${playerSlug}/last-match`}
+                  to="/players/$playerSlug/last-match"
+                  params={{ playerSlug }}
                   className="ml-4 inline-flex items-center gap-1 rounded-md bg-purple-600 px-3 py-1.5 text-xs font-medium text-white hover:bg-purple-700 transition-colors"
                 >
                   Voir →
@@ -225,20 +293,21 @@ export function HomePage() {
         </Card>
 
         {/* Médias récents */}
-        {(recent_media?.length ?? 0) > 0 && (
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between">
-              <CardTitle className="text-base">Médias récents</CardTitle>
-              <Link
-                to={`/players/${playerSlug}/media`}
-                className="text-xs text-purple-600 hover:underline"
-              >
-                Voir tout →
-              </Link>
-            </CardHeader>
-            <CardContent>
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between">
+            <CardTitle className="text-base">Médias récents</CardTitle>
+            <Link
+              to="/players/$playerSlug/media"
+              params={{ playerSlug }}
+              className="text-xs text-purple-600 hover:underline"
+            >
+              Voir tout →
+            </Link>
+          </CardHeader>
+          <CardContent>
+            {recentMedia.length > 0 ? (
               <div className="grid grid-cols-3 gap-2 sm:grid-cols-6">
-                {recent_media.slice(0, 6).map((m) => (
+                {recentMedia.slice(0, 6).map((m) => (
                   <div
                     key={m.basename}
                     className="aspect-video rounded-md bg-gray-200 flex items-center justify-center overflow-hidden"
@@ -248,9 +317,14 @@ export function HomePage() {
                   </div>
                 ))}
               </div>
-            </CardContent>
-          </Card>
-        )}
+            ) : (
+              <EmptyStateNotice
+                title="Aucun média récent disponible"
+                description="Aucune capture ou clip n'est associé au joueur pour le scope actuel."
+              />
+            )}
+          </CardContent>
+        </Card>
       </div>
     </div>
   )

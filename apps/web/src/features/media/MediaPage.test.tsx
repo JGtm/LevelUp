@@ -39,7 +39,7 @@ describe('MediaPage', () => {
   it('affiche les filtres de type de média', async () => {
     renderWithProviders(<MediaPage />)
     await waitFor(() => {
-      expect(screen.getByText('Tous')).toBeInTheDocument()
+      expect(screen.getByText('Tous types')).toBeInTheDocument()
       expect(screen.getByText('Screenshots')).toBeInTheDocument()
     })
   })

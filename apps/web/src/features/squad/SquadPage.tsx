@@ -9,6 +9,7 @@ import { useTeammates } from './queries'
 import { PageHeader } from '@/components/shell/PageHeader'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
+import { EmptyStateCard, EmptyStateNotice } from '@/components/ui/empty-state'
 import { Spinner } from '@/components/ui/spinner'
 import { PlotlyChart } from '@/components/ui/plotly-chart'
 import type { TeammateRow, TeammateKPIs, TeammatesQueryRequest, PlotlyFigurePayload } from '@/lib/api/types'
@@ -191,7 +192,22 @@ export function SquadPage() {
 
   if (isLoading) return <div className="flex items-center justify-center min-h-64"><Spinner size="lg" /></div>
   if (isError) return <div className="p-8 text-center text-red-600">Erreur : {String(error)}</div>
-  if (!data) return null
+  if (!data) {
+    return (
+      <div className="flex flex-col gap-6">
+        <PageHeader
+          title="Escouade"
+          subtitle="Analyse des coéquipiers et des synergies"
+        />
+        <div className="px-6">
+          <EmptyStateCard
+            title="Données d'escouade indisponibles"
+            description="Aucune réponse exploitable n'a été renvoyée pour cette page. Vérifie les filtres ou la disponibilité des matchs partagés."
+          />
+        </div>
+      </div>
+    )
+  }
 
   const { teammates, solo_reference } = data
   const selectedRows = selectedGts.map((gt) => teammates.find((t) => t.gamertag === gt)).filter(Boolean) as TeammateRow[]
@@ -207,67 +223,88 @@ export function SquadPage() {
       />
 
       {/* KPI rapides si coéquipier(s) sélectionné(s) */}
-      {selectedRows.length > 0 && (
-        <Card>
-          <CardHeader>
-            <CardTitle>
-              Stats avec les coéquipiers sélectionnés
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="flex flex-col gap-4">
-            {selectedRows.map((row, i) => (
-              <KPIBlock
-                key={row.gamertag}
-                title={`Avec ${row.gamertag}`}
-                kpis={row.with_kpis}
-                color={`text-[${CHART_COLORS[i % CHART_COLORS.length]}]`}
-              />
-            ))}
-            {solo_reference && <KPIBlock title="Référence solo" kpis={solo_reference} color="text-cyan-600" />}
-          </CardContent>
-        </Card>
-      )}
+      <Card>
+        <CardHeader>
+          <CardTitle>
+            Stats avec les coéquipiers sélectionnés
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="flex flex-col gap-4">
+          {selectedRows.length > 0 ? (
+            <>
+              {selectedRows.map((row, i) => (
+                <KPIBlock
+                  key={row.gamertag}
+                  title={`Avec ${row.gamertag}`}
+                  kpis={row.with_kpis}
+                  color={`text-[${CHART_COLORS[i % CHART_COLORS.length]}]`}
+                />
+              ))}
+              {solo_reference && <KPIBlock title="Référence solo" kpis={solo_reference} color="text-cyan-600" />}
+            </>
+          ) : (
+            <EmptyStateNotice
+              title="Aucune sélection"
+              description="Sélectionne jusqu'à 3 coéquipiers dans le tableau pour activer la comparaison."
+            />
+          )}
+        </CardContent>
+      </Card>
 
       {/* Onglets Synergies / Contributions */}
-      {selectedRows.length > 0 && (
-        <Card>
-          <div className="flex gap-0 border-b px-4">
-            {TABS.map((tab) => (
-              <Button
-                key={tab.id}
-                variant="ghost"
-                size="sm"
-                onClick={() => setActiveTab(tab.id)}
-                className={`rounded-none border-b-2 px-4 py-3 text-sm ${
-                  activeTab === tab.id
-                    ? 'border-purple-600 font-semibold text-purple-700'
-                    : 'border-transparent text-gray-500 hover:text-gray-800'
-                }`}
-              >
-                {tab.label}
-              </Button>
-            ))}
-          </div>
-          <CardContent className="pt-4">
-            {activeTab === 'synergies' && synergiesChart && (
+      <Card>
+        <div className="flex gap-0 border-b px-4">
+          {TABS.map((tab) => (
+            <Button
+              key={tab.id}
+              variant="ghost"
+              size="sm"
+              onClick={() => setActiveTab(tab.id)}
+              className={`rounded-none border-b-2 px-4 py-3 text-sm ${
+                activeTab === tab.id
+                  ? 'border-purple-600 font-semibold text-purple-700'
+                  : 'border-transparent text-gray-500 hover:text-gray-800'
+              }`}
+            >
+              {tab.label}
+            </Button>
+          ))}
+        </div>
+        <CardContent className="pt-4">
+          {selectedRows.length === 0 ? (
+            <EmptyStateNotice
+              title="Comparaison inactive"
+              description="Sélectionne au moins un coéquipier pour afficher les synergies et les contributions."
+            />
+          ) : activeTab === 'synergies' ? (
+            synergiesChart ? (
               <div className="space-y-4">
                 <p className="text-sm text-gray-500">
                   Comparaison de tes stats <em>avec</em> chaque coéquipier vs ta référence solo.
                 </p>
                 <PlotlyChart figure={synergiesChart} />
               </div>
-            )}
-            {activeTab === 'contributions' && radarChart && (
-              <div className="space-y-4">
-                <p className="text-sm text-gray-500">
-                  Profil de contribution normalisé (violet) vs ta référence solo (cyan pointillé).
-                </p>
-                <PlotlyChart figure={radarChart} />
-              </div>
-            )}
-          </CardContent>
-        </Card>
-      )}
+            ) : (
+              <EmptyStateNotice
+                title="Synergies indisponibles"
+                description="Le graphique de synergie n'a pas pu être construit avec les données actuelles."
+              />
+            )
+          ) : radarChart ? (
+            <div className="space-y-4">
+              <p className="text-sm text-gray-500">
+                Profil de contribution normalisé (violet) vs ta référence solo (cyan pointillé).
+              </p>
+              <PlotlyChart figure={radarChart} />
+            </div>
+          ) : (
+            <EmptyStateNotice
+              title="Contributions indisponibles"
+              description="Le radar de contribution n'a pas pu être calculé pour la sélection en cours."
+            />
+          )}
+        </CardContent>
+      </Card>
 
       {/* Table principale coéquipiers */}
       <Card>

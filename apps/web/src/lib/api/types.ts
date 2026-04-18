@@ -261,7 +261,7 @@ export interface SmokeTestStartRequest {
 // Jobs asynchrones (Slice 1)
 // ---------------------------------------------------------------------------
 
-export type JobStatus = 'queued' | 'running' | 'succeeded' | 'failed' | 'cancelled'
+export type JobStatus = 'queued' | 'running' | 'succeeded' | 'failed' | 'interrupted' | 'cancelled'
 
 export interface AsyncJobStatus {
   job_id: string

@@ -8,6 +8,7 @@ import { createFileRoute, Outlet } from '@tanstack/react-router'
 import { useAppShellStore } from '@/stores/appShellStore'
 import { useEffect } from 'react'
 import { KPIBar } from '@/components/shell/KPIBar'
+import { NavL2 } from '@/components/shell/NavL2'
 
 export const Route = createFileRoute('/players/$playerSlug')({
   component: PlayerLayout,
@@ -27,7 +28,10 @@ function PlayerLayout() {
   }, [playerSlug, availablePlayers, currentPlayer, setCurrentPlayer])
 
   return (
-    <div className="flex flex-col h-full">
+    <div className="flex flex-col">
+      {/* Bandeau contextuel L2 : sous-onglets Stats + filtres (Stats/Escouade uniquement) */}
+      <NavL2 />
+      {/* KPI bar transverse */}
       <KPIBar />
       <Outlet />
     </div>

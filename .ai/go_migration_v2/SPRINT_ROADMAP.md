@@ -3,11 +3,12 @@
 > Document de suivi opérationnel : tous les sprints de A à Z, dans l'ordre.
 > Chaque sprint a un objectif, des tâches, un critère de sortie et une estimation.
 >
-> Dernière mise à jour : 2026-04-17
+> Dernière mise à jour : 2026-04-18
 > Statut global : **Migration portage terminée** — Sprints 0–28 ✅ (Phases 0–5).
 > **Sprints 29–41 terminés ✅** (sauf S36 🔄) — S42 🔄, S43 ✅, S44 🔄 (Phase 9).
 > **Phase 10 — Consolidation qualité** : Sprints 45–48 ✅ — tests écrits, 21 packages 0 FAIL, couverture mesurée 33.6% (baseline ratchet 33.5%).
 > **Phase 11 — Clôture migration** : Sprint 49 ✅ couverture 76.0% atteinte (per-package mean, tous packages ≥ 50%, baseline ratchet 76.0%) — Sprint 50 🔄 (audit en cours).
+> **Phase 12 — Stabilisation produit** : Sprints 51–53 ⬜ planifiés (bascule prod + stubs critiques + testabilité Halo + performance backfill).
 
 ---
 
@@ -83,12 +84,19 @@
 | 48 | Tests validation + ops + service restants + gate 70% | Phase 10 | 5-7j | ✅ | Sprint 47 |
 | | | | | | |
 | **49** | **Clôture gate S36 + exemptions contrat + durcissement S44** | **Phase 11** | **6-9j** | **✅** | Sprint 48 + S44 ✅ + S36 🔄 |
+| | | | | | |
+| **50** | **Triple audit final parité / architecture / tests** | **Phase 11** | **5-8j** | **🔄** | Sprint 49 |
+| | | | | | |
+| **51** | **Bascule prod + 6 stubs critiques + auth onboarding** | **Phase 12** | **5-7j** | **⬜** | Sprint 50 ✅ |
+| 52 | Testabilité client Halo (interface + validation) + Explorer complet | Phase 12 | 4-6j | ⬜ | Sprint 51 |
+| 53 | Performance score vectorisé + reset médias + polish prod | Phase 12 | 3-5j | ⬜ | Sprint 52 |
 
 **Total Phases 0–5** : 130–195 jours (~7–10 mois) — ✅ terminé.
 **Total Phases 6–8** : ~45–65 jours — ✅ terminé.
 **Total Phase 9** : ~20–30 jours — 🔄 en cours (S42 🔄, S43 ✅, S44 🔄).
 **Total Phase 10** : ~22–29 jours — ✅ terminé (21 packages 0 FAIL, couverture mesurée 33.6%, baseline ratchet 33.5% → relevée à 76.0% en Sprint 49).
 **Total Phase 11** : ~6–9 jours — ✅ terminé (contrat aligné, S44 durci, gouvernance résolue, 9 échecs tests S45-S49 corrigés — branch `phase11/sprint49-closure`).
+**Sprints 51–53 (Phase 12)** : ~12–18 jours — ⬜ planifiés (bascule prod + qualité produit + fondations testabilité).
 **Total global** : ~230–344 jours pour 1 dev senior temps plein.
 
 > **Note** : les estimations sont basées sur ~55 000 LOC Python réels à porter
@@ -1503,6 +1511,204 @@
 - [ ] `FINAL_REPORT.md` complété et validé
 - [ ] Aucun écart 🔴 Bloquant non résolu ou non ticketé
 - [ ] Tous les 🟠 Majeurs ont un ticket de backlog
+
+---
+
+## Phase 12 — Stabilisation produit post-migration
+
+> **Contexte** : l'audit triple Sprint 50 a rendu un verdict GO conditionnel (0🔴 / 10🟠 / 21🟡 / 24🟢).
+> Les 4 conditions de bascule pré-Sprint 51 ont été satisfaites (commit `99c84b73`) :
+> violation hexagonale `fanout_service.go` résolue, `ErrorBoundary` React ajouté,
+> `@vitest/coverage-v8` configuré, step CI `internal/sync` ajouté.
+>
+> **Objectif Phase 12** : passer de "GO conditionnel" à "GO sans réserve" en traitant les
+> 10 items 🟠 restants, en implémentant les stubs critiques, et en ancrant la testabilité
+> du client Halo pour les développements futurs.
+
+---
+
+### Sprint 51 — Bascule prod + 6 stubs critiques + auth onboarding (5–7 jours) ⬜
+
+> **Objectif** : activer la bascule production Go comme backend par défaut et implémenter
+> les 6 stubs Go les plus visibles qui dégradent l'expérience utilisateur réelle.
+> Traiter en parallèle la simplification du parcours d'onboarding auth héritée du Python.
+>
+> **Dépendance** : conditions pré-Sprint 51 toutes satisfaites (voir commit `99c84b73`).
+
+#### Volet A — Bascule production
+
+| # | Tâche | Statut |
+|--:|-------|:------:|
+| A1 | Activer `BACKEND=go` dans `docker-compose.yml` et `deploy.sh` — supprimer le fallback Python dans le routage du reverse proxy | ⬜ |
+| A2 | Valider que `docs/BASCULE_GO.md` est entièrement coché avec références CI (SHA, job id, date) | ⬜ |
+| A3 | Smoke test post-bascule : 5 endpoints P0 répondent 200 en production (bootstrap, filters, career, history, home) | ⬜ |
+| A4 | Rollback documenté dans `docs/BASCULE_GO.md` §Rollback : commande exacte pour repasser sur Python en < 2 min | ⬜ |
+
+#### Volet B — Stubs critiques Go (6 stubs identifiés audit Phase 11)
+
+| # | Tâche | Priorité | Statut |
+|--:|-------|:--------:|:------:|
+| B1 | **`POST /sync/start`** — implémenter le démarrage de sync réelle via le moteur Go (actuellement : job créé mais goroutine stub) | P0 | ⬜ |
+| B2 | **`GET /sync/status/:id`** — connecter le job store réel au handler status (actuellement : renvoie `JobStatusPending` figé) | P0 | ⬜ |
+| B3 | **`POST /backfill/start`** — déclencher le pipeline backfill réel (actuellement : stub `"Terminé (stub)"`) | P1 | ⬜ |
+| B4 | **`GET /api/v1/players/{slug}/pages/commendations`** — implémenter la requête DuckDB commendations (actuellement : `[]` vide) | P1 | ⬜ |
+| B5 | **`GET /api/v1/players/{slug}/pages/synthesis`** — retourner les données de synthèse réelles (actuellement : données partielles hard-codées) | P1 | ⬜ |
+| B6 | **`POST /settings/apply`** — persister les settings dans `app_settings.json` + rechargement à chaud (actuellement : applique en mémoire sans persist) | P2 | ⬜ |
+
+#### Volet C — Simplification onboarding auth (portage décision Python → Go)
+
+> Contexte Python : `[Auth] Simplifier l'onboarding et sortir le wizard in-app du parcours principal`.
+> En Go, le Device Code Flow est déjà le seul chemin d'auth standard. Ce volet acte
+> formellement que le wizard in-app est réduit à un écran minimal de connexion / recovery.
+
+| # | Tâche | Statut |
+|--:|-------|:------:|
+| C1 | **Audit UI Setup/Onboarding** (`apps/web/src/features/setup/`) : recenser toute référence à un "wizard Azure" ou à une saisie manuelle de `client_id` — supprimer si trouvée | ⬜ |
+| C2 | **`SetupPage`** : réduire l'écran de setup à 3 étapes max — (1) lancer Device Code Flow, (2) coller le code sur microsoft.com, (3) confirmation de connexion | ⬜ |
+| C3 | **`POST /session/auth/device-code/start`** + **`POST /session/auth/device-code/poll`** : vérifier que les deux endpoints sont implémentés et renvoient les champs attendus par `SetupPage` | ⬜ |
+| C4 | **Recovery screen** : si le token est expiré et que le refresh échoue, rediriger vers l'écran de reconnexion minimal (pas vers le wizard complet) | ⬜ |
+| C5 | **Docs** : mettre à jour `docs/INSTALL.md` et `docs/CONFIGURATION.md` — supprimer toute mention de setup Azure manuel dans le parcours standard | ⬜ |
+
+**Gate Sprint 51** :
+- [ ] `BACKEND=go` actif en production — Python n'est plus le backend par défaut
+- [ ] Smoke test 5 endpoints P0 verts post-bascule
+- [ ] Les 6 stubs B1–B6 ont une implémentation réelle (plus de `"Terminé (stub)"` dans les logs)
+- [ ] `SetupPage` : parcours onboarding ≤ 3 étapes, pas de référence Azure manuel
+- [ ] `docs/BASCULE_GO.md` intégralement coché avec SHA CI
+- [ ] Entrée `thought_log.md` avec bilan Sprint 51
+
+---
+
+### Sprint 52 — Testabilité client Halo + Explorer complet (4–6 jours) ⬜
+
+> **Objectif** : ancrer la testabilité du client Halo via une interface DI/mock,
+> ajouter la validation des paramètres d'entrée pour un fail-fast défensif,
+> et compléter l'endpoint Explorer avec les kills/deaths/KDA réels.
+>
+> **Références BACKLOG** :
+> - `[Go/HaloClient] Interface HaloClient pour testabilité (DI/mock)`
+> - `[Go/HaloClient] Validation des paramètres d'entrée du client Halo`
+> - `[Go/Explorer] Exposer kills/deaths/KDA dans l'endpoint Explorer common matches`
+
+#### Volet A — Interface `HaloClient` (DI/mock)
+
+> Problème actuel : `engine.go` reçoit `*HaloAPIClient` concret — tout test du moteur de sync
+> dépend du réseau ou de fixtures ad hoc. L'interface permet des mocks déterministes.
+
+| # | Tâche | Statut |
+|--:|-------|:------:|
+| A1 | Créer `internal/sync/halo_client.go` : déclarer l'interface `HaloClient` avec les méthodes `GetMatchHistory`, `GetMatchStats`, `GetMatchFilm` | ⬜ |
+| A2 | **`engine.go`** : remplacer `*HaloAPIClient` par `HaloClient` dans la signature du constructeur et tous les champs qui le reçoivent | ⬜ |
+| A3 | **`backfill_weapons.go`** et **`career.go`** : même substitution si ces fichiers reçoivent `*HaloAPIClient` directement | ⬜ |
+| A4 | `HaloAPIClient` reste l'implémentation concrète instanciée dans `cmd/api/main.go` — aucun changement de comportement prod | ⬜ |
+| A5 | Créer `internal/sync/mock_halo_client_test.go` : `mockHaloClient` struct implémentant `HaloClient`, retournant des fixtures déterministes | ⬜ |
+| A6 | **`engine_test.go`** : remplacer toute dépendance réseau par `mockHaloClient` — les tests `internal/sync` doivent passer sans accès internet | ⬜ |
+| A7 | Décider si `filmChunkData` doit être exportée (`FilmChunkData`) selon que l'interface est consommée hors package | ⬜ |
+| A8 | Vérifier que `go test -tags=integration ./internal/sync/...` passe avec le mock — couverture `internal/sync` devrait progresser notablement | ⬜ |
+
+#### Volet B — Validation des paramètres d'entrée
+
+> Pattern cible : validation inline en tête de fonction, `fmt.Errorf("GetMatchHistory: param invalide: %w", err)`,
+> sans framework de validation.
+
+| # | Tâche | Paramètres à valider | Statut |
+|--:|-------|----------------------|:------:|
+| B1 | **`GetMatchHistory`** (`halo_client.go:78`) | `gamertag` non vide, longueur ≤ 15, pas de `/`, `?`, `#` ; `matchType` dans `{"all","matchmaking","custom","local"}` ; `count` ∈ [1,25] ; `start` ≥ 0 | ⬜ |
+| B2 | **`GetMatchStats`** (`halo_client.go:118`) | `matchID` non vide, format UUID v4 (`[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}`) | ⬜ |
+| B3 | **`GetMatchFilm`** (`halo_client.go:157`) | `matchID` : même règle UUID que B2 | ⬜ |
+| B4 | **`syncCareerRank`** (`career.go:34`) | `xuid` non vide, numérique, longueur typique 16 chiffres | ⬜ |
+| B5 | **`FilterContextInput`** (handler ou service) | `filter_mode` dans `{"period","sessions"}` ; `StartDate < EndDate` si les deux présents ; `GapMinutes ≥ 0` ; `ExperienceTypes` dans un ensemble connu | ⬜ |
+| B6 | **`MatchHistoryQueryRequest`** | `Pagination.Page ≥ 1` ; `Pagination.PageSize` ∈ [1, 200] | ⬜ |
+| B7 | Ajouter méthode `Validate() error` sur `FilterContextInput` et `MatchHistoryQueryRequest` — appelée dans les handlers avant délégation service | ⬜ |
+| B8 | Valider aussi `SyncOptions.MatchType` à la construction (fail-fast avant appel réseau) | ⬜ |
+| B9 | Tests unitaires CGO=0 : un test par règle de validation (table-driven), couverture des cas limites et cas invalides | ⬜ |
+
+#### Volet C — Explorer common matches avec kills/deaths/KDA
+
+> Problème actuel : `extractKillsFromLabel` ([handlers/explorer.go:118-121](../apps/go-api/internal/api/handlers/explorer.go)) retourne toujours `0`.
+> La vraie source est `shared.match_participants` (colonnes `kills`, `deaths`, `kda`).
+
+| # | Tâche | Statut |
+|--:|-------|:------:|
+| C1 | Étendre `ExplorerRepository` (port) : ajouter méthode `GetCommonMatchesStats(ctx, xuid, matchIDs []string) (map[string]ExplorerMatchStats, error)` | ⬜ |
+| C2 | Implémenter dans `platform/duckdb` : `SELECT match_id, kills, deaths, kda FROM shared.match_participants WHERE xuid = ? AND match_id IN (...)` — **filtrer sur le xuid du joueur cible**, pas du joueur courant | ⬜ |
+| C3 | **`ExplorerService.GetCommonMatches`** : appeler la nouvelle méthode repo et enrichir chaque `ExplorerMatchRow` avec `Kills`, `Deaths`, `KDA` réels | ⬜ |
+| C4 | Supprimer la fonction `extractKillsFromLabel` et les champs `Deaths: 0`, `KDA: 0` hard-codés du handler | ⬜ |
+| C5 | Mettre à jour le schéma OpenAPI `ExplorerMatchRow` si les champs `kills`/`deaths`/`kda` n'étaient pas déclarés (ou étaient marqués `TODO`) | ⬜ |
+| C6 | Tests : `ExplorerService_GetCommonMatches_WithStats` — golden value avec kills/deaths/KDA non nuls | ⬜ |
+
+**Gate Sprint 52** :
+- [ ] `CGO_ENABLED=0 go test ./internal/sync/...` : tous les tests passent avec `mockHaloClient` (0 appel réseau)
+- [ ] Couverture `internal/sync` progresse de ≥ 10 points (baseline actuelle : ~11%)
+- [ ] `GetMatchHistory`, `GetMatchStats`, `GetMatchFilm` : 0 paramètre invalide ne traverse la validation sans erreur
+- [ ] `FilterContextInput.Validate()` et `MatchHistoryQueryRequest.Validate()` : testés (table-driven, ≥ 6 cas chacun)
+- [ ] `GET /api/v1/players/{slug}/explorer/common-matches` : `kills`, `deaths`, `kda` non nuls dans la réponse (vérifiable via golden test)
+- [ ] Entrée `thought_log.md` avec bilan Sprint 52
+
+---
+
+### Sprint 53 — Performance score vectorisé + reset médias + polish prod (3–5 jours) ⬜
+
+> **Objectif** : corriger le dernier stub critique visible en prod (reset médias), vectoriser
+> le calcul de performance score pour les backfills multi-flags, et clore les items de polish
+> restants identifiés par l'audit Phase 11.
+>
+> **Références BACKLOG** :
+> - `[Go/Settings] Implémenter le vrai reset d'index médias (POST /settings/media/reset-index)`
+> - `Backfill multi-flags : vectoriser le calcul per-match des performance scores` (portage Go de la décision Python)
+
+#### Volet A — Reset d'index médias réel
+
+> Problème actuel : `PostMediaResetIndex` ([handlers/settings.go:86-111](../apps/go-api/internal/api/handlers/settings.go))
+> crée un job et lance une goroutine qui se termine immédiatement avec `"Terminé (stub)"`.
+> L'index médias n'est pas réinitialisé. Marqué `TODO Sprint 19`.
+
+| # | Tâche | Statut |
+|--:|-------|:------:|
+| A1 | Créer `internal/service/media_index_service.go` : interface `MediaIndexer` + méthode `ResetAndReindex(ctx, playerDB, mediaDir) error` | ⬜ |
+| A2 | Implémenter `ResetAndReindex` : (1) `DELETE FROM media_files` + `DELETE FROM media_match_associations` dans la player DB, (2) scanner `data/players/{gamertag}/media/`, (3) insérer dans `media_files` + associer via timestamps UTC | ⬜ |
+| A3 | Progresser via `jobStore.Update(jobID, pct, step)` — pct doit avancer de 0 à 100 au fil de l'indexation (non figé) | ⬜ |
+| A4 | Brancher `MediaIndexer` dans la goroutine de `PostMediaResetIndex` — supprimer `"Terminé (stub)"` et le `TODO Sprint 19` | ⬜ |
+| A5 | En cas d'erreur, marquer le job `JobStatusFailed` avec message exploitable (chemin manquant, DB locked, etc.) | ⬜ |
+| A6 | Injecter `MediaIndexer` dans le handler via DI (ne pas l'instancier dans le handler) | ⬜ |
+| A7 | Test : `TestPostMediaResetIndex_Stub_Replaced` — vérifier que le job passe à `JobStatusDone` avec `ProgressPct=100` et que `media_files` est non vide après exécution | ⬜ |
+
+#### Volet B — Vectorisation performance score (backfill multi-flags)
+
+> Contexte Python : quand `--force-performance-scores` est combiné avec d'autres flags backfill,
+> la boucle séquentielle appelle `compute_performance_score_for_match()` 1×/match avec une requête
+> SQL individuelle pour charger l'historique des 50 derniers matchs → O(n) requêtes.
+> Le chemin batch (`batch_compute_performance_scores`) charge tout en une seule requête.
+>
+> En Go, le même problème existe dans `internal/sync/performance.go` ou équivalent.
+
+| # | Tâche | Statut |
+|--:|-------|:------:|
+| B1 | Localiser le point de calcul performance score dans `internal/sync/` — identifier si la boucle per-match fait une requête SQL individuelle pour l'historique | ⬜ |
+| B2 | Si oui : extraire `batchLoadPerformanceHistory(ctx, repo, matchIDs []string) (map[string][]float64, error)` — une requête SQL pour tous les `matchIDs` | ⬜ |
+| B3 | Passer la map `history` pré-chargée en paramètre à `computePerformanceScoreForMatch` — supprimer la requête individuelle interne | ⬜ |
+| B4 | Le chemin `forcePerformanceScoresOnly` (backfill solo) peut conserver son optimisation existante sans changement | ⬜ |
+| B5 | Benchmark avant/après sur un historique de 500 matchs : mesurer la réduction du nombre de requêtes SQL (logguer `N queries` avant, `1 query` après) | ⬜ |
+| B6 | Test : `TestBatchPerformanceScore_NQueriesReduced` — injecter un `DB` stub qui compte les appels, vérifier que N matchs → 1 appel SQL historique (pas N) | ⬜ |
+
+#### Volet C — Polish prod restant (items 🟡 audit Phase 11)
+
+| # | Tâche | Source audit | Statut |
+|--:|-------|-------------|:------:|
+| C1 | **Logging structuré uniforme** : vérifier que tous les handlers émettent `slog.InfoContext` / `slog.ErrorContext` avec `request_id`, `player_slug`, `duration_ms` — aucun `fmt.Println` restant dans `internal/api/` | Axe 3 🟡 | ⬜ |
+| C2 | **Graceful shutdown** : vérifier que `cmd/api/main.go` gère `SIGTERM` + `SIGINT` avec un contexte d'arrêt propre (drain des connexions DuckDB ouvertes) | Axe 2 🟡 | ⬜ |
+| C3 | **`coverage_baseline.txt`** : après Sprint 52, relever la baseline si `internal/sync` progresse de ≥ 10 points — commit et mise à jour `.github/workflows/ci.yml` | Axe 3 🟡 | ⬜ |
+| C4 | **Docs** : mettre à jour `docs/CHANGELOG.md` avec les fonctionnalités Phase 12 (reset médias, Explorer complet, HaloClient mockable, onboarding simplifié) | — | ⬜ |
+| C5 | **`SPRINT_ROADMAP.md`** : marquer S51, S52, S53 ✅ et archiver Phase 12 dans la vue d'ensemble | — | ⬜ |
+
+**Gate Sprint 53** :
+- [ ] `POST /settings/media/reset-index` : le job passe à `JobStatusDone` avec `ProgressPct=100` en conditions réelles (pas de stub)
+- [ ] Backfill multi-flags : N matchs génèrent 1 requête SQL pour l'historique performance (vérifié par benchmark + test)
+- [ ] 0 `fmt.Println` dans `internal/api/handlers/`
+- [ ] Graceful shutdown : `SIGTERM` n'émet pas d'erreur de connexion DuckDB dans les logs
+- [ ] `CHANGELOG.md` à jour pour Phase 12
+- [ ] `coverage_baseline.txt` relevée si progression ≥ 10 points sur `internal/sync`
+- [ ] Entrée `thought_log.md` avec bilan Sprint 53 + bilan Phase 12
 
 ---
 

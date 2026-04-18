@@ -7,6 +7,7 @@ import { PageHeader } from '@/components/shell/PageHeader'
 import { Spinner } from '@/components/ui/spinner'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
+import { EmptyStateCard, EmptyStateNotice } from '@/components/ui/empty-state'
 import { PlotlyChart } from '@/components/ui/plotly-chart'
 import { useSessionComparePage } from './queries'
 import { useGlobalFilterStore } from '@/stores/globalFilterStore'
@@ -133,7 +134,27 @@ export function SessionComparePage() {
     )
   }
 
-  if (!data) return null
+  if (!data) {
+    return (
+      <div className="flex flex-col">
+        <PageHeader
+          title="Comparaison de sessions"
+          subtitle="Sélectionnez deux sessions pour les comparer"
+        />
+        <div className="p-6">
+          <EmptyStateCard
+            title="Comparaison indisponible"
+            description="Aucune réponse exploitable n'a été renvoyée pour cette page. Vérifie les sessions calculées et les filtres actifs."
+            actionLabel="Réessayer"
+            onAction={() => refetch()}
+          />
+        </div>
+      </div>
+    )
+  }
+
+  const hasAvailableSessions = data.available_sessions.length > 0
+  const hasComparisonSelection = Boolean(sessionA && sessionB)
 
   return (
     <div className="flex flex-col">
@@ -143,189 +164,241 @@ export function SessionComparePage() {
       />
 
       <div className="space-y-6 p-6">
-        {/* Sélecteurs A / B */}
-        <div className="grid gap-4 sm:grid-cols-2">
-          <div>
-            <label className="mb-1 block text-xs font-medium text-gray-600">Session A</label>
-            <select
-              className="w-full rounded-md border border-gray-200 px-3 py-2 text-sm"
-              value={sessionA}
-              onChange={(e) => setSessionA(e.target.value)}
-            >
-              <option value="">— Sélectionner —</option>
-              {data.available_sessions.map((s) => (
-                <option key={s} value={s}>
-                  {s}
-                </option>
-              ))}
-            </select>
-          </div>
-          <div>
-            <label className="mb-1 block text-xs font-medium text-gray-600">Session B</label>
-            <select
-              className="w-full rounded-md border border-gray-200 px-3 py-2 text-sm"
-              value={sessionB}
-              onChange={(e) => setSessionB(e.target.value)}
-            >
-              <option value="">— Sélectionner —</option>
-              {data.available_sessions.map((s) => (
-                <option key={s} value={s}>
-                  {s}
-                </option>
-              ))}
-            </select>
-          </div>
-        </div>
-
-        {/* Cards résumé */}
-        <div className="grid gap-4 sm:grid-cols-2">
-          <SessionCard label={data.session_a?.session_label ?? ''} entry={data.session_a} side="A" />
-          <SessionCard label={data.session_b?.session_label ?? ''} entry={data.session_b} side="B" />
-        </div>
-
-        {/* Donuts résultats */}
-        {data.outcomes_chart && (
-          <Card>
-            <CardHeader>
-              <CardTitle className="text-base">Répartition des résultats</CardTitle>
-            </CardHeader>
-            <CardContent className="pb-4">
-              <PlotlyChart figure={data.outcomes_chart} />
-            </CardContent>
-          </Card>
-        )}
-
-        {/* Radar */}
-        {data.radar_chart && (
-          <Card>
-            <CardHeader>
-              <CardTitle className="text-base">Radar de performance</CardTitle>
-            </CardHeader>
-            <CardContent className="pb-4">
-              <PlotlyChart figure={data.radar_chart} />
-            </CardContent>
-          </Card>
-        )}
-
-        {/* D2 — Delta cards K/D / Win Rate / Kills/match / Score (A vs B) */}
-        {data.metrics.length > 0 && data.session_a && data.session_b && (
-          <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
-            {(['kd_ratio', 'win_rate', 'kills_per_match', 'score'] as const).flatMap((key) => {
-              const row = data.metrics.find((m) => m.key === key)
-              if (!row) return []
-              const delta = row.delta ? parseFloat(row.delta) : null
-              const lowerIsBetter = false
-              return [
-                <DeltaCard
-                  key={key}
-                  label={row.label}
-                  value={row.value_a}
-                  delta={delta}
-                  lowerIsBetter={lowerIsBetter}
-                />,
-              ]
-            })}
-          </div>
-        )}
-
-        {/* Tableau de métriques */}
-        {data.metrics.length > 0 && (
-          <Card>
-            <CardHeader>
-              <CardTitle className="text-base">Métriques comparées</CardTitle>
-            </CardHeader>
-            <CardContent className="pb-4 overflow-x-auto">
-              <table className="w-full">
-                <thead>
-                  <tr className="border-b text-left text-xs text-gray-500">
-                    <th className="py-2 pr-4">Métrique</th>
-                    <th className="py-2 pr-4 text-right text-blue-600">Session A</th>
-                    <th className="py-2 pr-4 text-right text-orange-600">Session B</th>
-                    <th className="py-2 text-right">Delta</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {data.metrics.map((row) => (
-                    <MetricRow key={row.key} row={row} />
+        {hasAvailableSessions ? (
+          <>
+            {/* Sélecteurs A / B */}
+            <div className="grid gap-4 sm:grid-cols-2">
+              <div>
+                <label className="mb-1 block text-xs font-medium text-gray-600">Session A</label>
+                <select
+                  className="w-full rounded-md border border-gray-200 px-3 py-2 text-sm"
+                  value={sessionA}
+                  onChange={(e) => setSessionA(e.target.value)}
+                >
+                  <option value="">— Sélectionner —</option>
+                  {data.available_sessions.map((s) => (
+                    <option key={s} value={s}>
+                      {s}
+                    </option>
                   ))}
-                </tbody>
-              </table>
-            </CardContent>
-          </Card>
-        )}
-
-        {/* Progression K/D */}
-        {data.kd_progression_chart && (
-          <Card>
-            <CardHeader>
-              <CardTitle className="text-base">Progression K/D</CardTitle>
-            </CardHeader>
-            <CardContent className="pb-4">
-              <PlotlyChart figure={data.kd_progression_chart} />
-            </CardContent>
-          </Card>
-        )}
-
-        {/* Résultats par map */}
-        {data.maps_table.length > 0 && (
-          <Card>
-            <CardHeader>
-              <CardTitle className="text-base">Par carte</CardTitle>
-            </CardHeader>
-            <CardContent className="pb-4 overflow-x-auto">
-              <table className="w-full text-sm">
-                <thead>
-                  <tr className="border-b text-left text-xs text-gray-500">
-                    {Object.keys(data.maps_table[0]).map((k) => (
-                      <th key={k} className="py-2 pr-4">{k}</th>
-                    ))}
-                  </tr>
-                </thead>
-                <tbody>
-                  {data.maps_table.map((row, i) => (
-                    <tr key={i} className="border-b last:border-0">
-                      {Object.values(row).map((v, j) => (
-                        <td key={j} className="py-1.5 pr-4 text-gray-700">
-                          {String(v ?? '-')}
-                        </td>
-                      ))}
-                    </tr>
+                </select>
+              </div>
+              <div>
+                <label className="mb-1 block text-xs font-medium text-gray-600">Session B</label>
+                <select
+                  className="w-full rounded-md border border-gray-200 px-3 py-2 text-sm"
+                  value={sessionB}
+                  onChange={(e) => setSessionB(e.target.value)}
+                >
+                  <option value="">— Sélectionner —</option>
+                  {data.available_sessions.map((s) => (
+                    <option key={s} value={s}>
+                      {s}
+                    </option>
                   ))}
-                </tbody>
-              </table>
-            </CardContent>
-          </Card>
-        )}
+                </select>
+              </div>
+            </div>
 
-        {/* Tableau par mode */}
-        {data.modes_table.length > 0 && (
-          <Card>
-            <CardHeader>
-              <CardTitle className="text-base">Par mode de jeu</CardTitle>
-            </CardHeader>
-            <CardContent className="pb-4 overflow-x-auto">
-              <table className="w-full text-sm">
-                <thead>
-                  <tr className="border-b text-left text-xs text-gray-500">
-                    {Object.keys(data.modes_table[0]).map((k) => (
-                      <th key={k} className="py-2 pr-4">{k}</th>
-                    ))}
-                  </tr>
-                </thead>
-                <tbody>
-                  {data.modes_table.map((row, i) => (
-                    <tr key={i} className="border-b last:border-0">
-                      {Object.values(row).map((v, j) => (
-                        <td key={j} className="py-1.5 pr-4 text-gray-700">
-                          {String(v ?? '-')}
-                        </td>
-                      ))}
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </CardContent>
-          </Card>
+            {/* Cards résumé */}
+            <div className="grid gap-4 sm:grid-cols-2">
+              <SessionCard label={data.session_a?.session_label ?? ''} entry={data.session_a} side="A" />
+              <SessionCard label={data.session_b?.session_label ?? ''} entry={data.session_b} side="B" />
+            </div>
+
+            {hasComparisonSelection ? (
+              <>
+                <Card>
+                  <CardHeader>
+                    <CardTitle className="text-base">Répartition des résultats</CardTitle>
+                  </CardHeader>
+                  <CardContent className="pb-4">
+                    {data.outcomes_chart ? (
+                      <PlotlyChart figure={data.outcomes_chart} />
+                    ) : (
+                      <EmptyStateNotice
+                        title="Répartition indisponible"
+                        description="Le comparatif n'a renvoyé aucun donut de résultats pour les sessions choisies."
+                      />
+                    )}
+                  </CardContent>
+                </Card>
+
+                <Card>
+                  <CardHeader>
+                    <CardTitle className="text-base">Radar de performance</CardTitle>
+                  </CardHeader>
+                  <CardContent className="pb-4">
+                    {data.radar_chart ? (
+                      <PlotlyChart figure={data.radar_chart} />
+                    ) : (
+                      <EmptyStateNotice
+                        title="Radar indisponible"
+                        description="Aucun radar de performance n'a été généré pour cette paire de sessions."
+                      />
+                    )}
+                  </CardContent>
+                </Card>
+
+                <Card>
+                  <CardHeader>
+                    <CardTitle className="text-base">Résumé des écarts</CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    {data.metrics.length > 0 && data.session_a && data.session_b ? (
+                      <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+                        {(['kd_ratio', 'win_rate', 'kills_per_match', 'score'] as const).flatMap((key) => {
+                          const row = data.metrics.find((m) => m.key === key)
+                          if (!row) return []
+                          const delta = row.delta ? parseFloat(row.delta) : null
+                          return [
+                            <DeltaCard
+                              key={key}
+                              label={row.label}
+                              value={row.value_a}
+                              delta={delta}
+                              lowerIsBetter={false}
+                            />,
+                          ]
+                        })}
+                      </div>
+                    ) : (
+                      <EmptyStateNotice
+                        title="Résumé indisponible"
+                        description="Aucune métrique résumée n'a été calculée pour les sessions sélectionnées."
+                      />
+                    )}
+                  </CardContent>
+                </Card>
+
+                <Card>
+                  <CardHeader>
+                    <CardTitle className="text-base">Métriques comparées</CardTitle>
+                  </CardHeader>
+                  <CardContent className="pb-4 overflow-x-auto">
+                    {data.metrics.length > 0 ? (
+                      <table className="w-full">
+                        <thead>
+                          <tr className="border-b text-left text-xs text-gray-500">
+                            <th className="py-2 pr-4">Métrique</th>
+                            <th className="py-2 pr-4 text-right text-blue-600">Session A</th>
+                            <th className="py-2 pr-4 text-right text-orange-600">Session B</th>
+                            <th className="py-2 text-right">Delta</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {data.metrics.map((row) => (
+                            <MetricRow key={row.key} row={row} />
+                          ))}
+                        </tbody>
+                      </table>
+                    ) : (
+                      <EmptyStateNotice
+                        title="Aucune métrique détaillée"
+                        description="Le tableau comparatif est vide pour les sessions choisies."
+                      />
+                    )}
+                  </CardContent>
+                </Card>
+
+                <Card>
+                  <CardHeader>
+                    <CardTitle className="text-base">Progression K/D</CardTitle>
+                  </CardHeader>
+                  <CardContent className="pb-4">
+                    {data.kd_progression_chart ? (
+                      <PlotlyChart figure={data.kd_progression_chart} />
+                    ) : (
+                      <EmptyStateNotice
+                        title="Progression indisponible"
+                        description="La progression K/D n'a pas pu être tracée pour ces sessions."
+                      />
+                    )}
+                  </CardContent>
+                </Card>
+
+                <Card>
+                  <CardHeader>
+                    <CardTitle className="text-base">Par carte</CardTitle>
+                  </CardHeader>
+                  <CardContent className="pb-4 overflow-x-auto">
+                    {data.maps_table.length > 0 ? (
+                      <table className="w-full text-sm">
+                        <thead>
+                          <tr className="border-b text-left text-xs text-gray-500">
+                            {Object.keys(data.maps_table[0]).map((k) => (
+                              <th key={k} className="py-2 pr-4">{k}</th>
+                            ))}
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {data.maps_table.map((row, i) => (
+                            <tr key={i} className="border-b last:border-0">
+                              {Object.values(row).map((v, j) => (
+                                <td key={j} className="py-1.5 pr-4 text-gray-700">
+                                  {String(v ?? '-')}
+                                </td>
+                              ))}
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    ) : (
+                      <EmptyStateNotice
+                        title="Aucune comparaison par carte"
+                        description="Aucune ligne par carte n'est disponible pour les sessions sélectionnées."
+                      />
+                    )}
+                  </CardContent>
+                </Card>
+
+                <Card>
+                  <CardHeader>
+                    <CardTitle className="text-base">Par mode de jeu</CardTitle>
+                  </CardHeader>
+                  <CardContent className="pb-4 overflow-x-auto">
+                    {data.modes_table.length > 0 ? (
+                      <table className="w-full text-sm">
+                        <thead>
+                          <tr className="border-b text-left text-xs text-gray-500">
+                            {Object.keys(data.modes_table[0]).map((k) => (
+                              <th key={k} className="py-2 pr-4">{k}</th>
+                            ))}
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {data.modes_table.map((row, i) => (
+                            <tr key={i} className="border-b last:border-0">
+                              {Object.values(row).map((v, j) => (
+                                <td key={j} className="py-1.5 pr-4 text-gray-700">
+                                  {String(v ?? '-')}
+                                </td>
+                              ))}
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    ) : (
+                      <EmptyStateNotice
+                        title="Aucune comparaison par mode"
+                        description="Le backend n'a renvoyé aucune ventilation par mode pour cette paire de sessions."
+                      />
+                    )}
+                  </CardContent>
+                </Card>
+              </>
+            ) : (
+              <EmptyStateCard
+                title="Comparaison incomplète"
+                description="Sélectionne une session A et une session B pour afficher les graphiques et tableaux comparatifs."
+              />
+            )}
+          </>
+        ) : (
+          <EmptyStateCard
+            title="Aucune session disponible"
+            description="Aucune session n'est disponible dans le scope courant. Vérifie le découpage de sessions ou élargis les filtres."
+          />
         )}
       </div>
     </div>

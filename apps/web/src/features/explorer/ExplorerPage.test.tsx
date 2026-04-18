@@ -4,7 +4,7 @@
  * Smoke : monte, affiche les onglets Matchs / Joueur.
  */
 import { describe, it, expect, vi } from 'vitest'
-import { screen, waitFor } from '@testing-library/react'
+import { fireEvent, screen, waitFor } from '@testing-library/react'
 import { renderWithProviders } from '@/test/render-utils'
 import { ExplorerPage } from './ExplorerPage'
 
@@ -34,11 +34,19 @@ describe('ExplorerPage', () => {
     expect(screen.getByText('Joueur')).toBeInTheDocument()
   })
 
-  it('affiche les résultats vides après chargement', async () => {
+  it('affiche un message explicite quand aucun match n’est trouvé', async () => {
     renderWithProviders(<ExplorerPage />)
     await waitFor(() => {
-      // Le fixture retourne 0 matchs — aucune ligne de résultat
-      expect(screen.queryByRole('row')).not.toBeInTheDocument()
+      expect(screen.getByText(/Aucun match trouvé/i)).toBeInTheDocument()
+    })
+  })
+
+  it('affiche un message explicite tant qu’aucun joueur n’est sélectionné', async () => {
+    renderWithProviders(<ExplorerPage />)
+    fireEvent.click(screen.getByText('Joueur'))
+
+    await waitFor(() => {
+      expect(screen.getByText(/Aucun joueur sélectionné/i)).toBeInTheDocument()
     })
   })
 })

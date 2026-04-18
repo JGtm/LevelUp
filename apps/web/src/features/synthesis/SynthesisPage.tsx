@@ -8,6 +8,7 @@ import { useGlobalFilterStore } from '@/stores/globalFilterStore'
 import { useSynthesisPage } from './queries'
 import { PageHeader } from '@/components/shell/PageHeader'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+import { EmptyStateCard, EmptyStateNotice } from '@/components/ui/empty-state'
 import { Spinner } from '@/components/ui/spinner'
 import { PlotlyChart } from '@/components/ui/plotly-chart'
 import { InfoTooltip } from '@/components/ui/info-tooltip'
@@ -157,14 +158,33 @@ export function SynthesisPage() {
 
   if (isLoading) return <div className="flex items-center justify-center min-h-64"><Spinner size="lg" /></div>
   if (isError) return <div className="p-8 text-center text-red-600">Erreur : {String(error)}</div>
-  if (!data) return null
+  if (!data) {
+    return (
+      <div className="flex flex-col gap-6">
+        <PageHeader
+          title="Synthèse"
+          subtitle="Bilan global et comparaison solo / escouade"
+        />
+        <div className="px-6">
+          <EmptyStateCard
+            title="Synthèse indisponible"
+            description="Aucune charge utile n'a été renvoyée pour cette page. Vérifie les agrégats solo/escouade et le contexte de filtres."
+          />
+        </div>
+      </div>
+    )
+  }
 
-  const bipolaireChart = data.comparison_metrics.length > 0
-    ? buildBipolaireChart(data.comparison_metrics)
+  const comparisonMetrics = data.comparison_metrics ?? []
+  const heatmapData = data.heatmap_data ?? []
+  const topWeeks = data.top_weeks ?? []
+
+  const bipolaireChart = comparisonMetrics.length > 0
+    ? buildBipolaireChart(comparisonMetrics)
     : null
 
-  const heatmapChart = data.heatmap_data.length > 0
-    ? buildHeatmapChart(data.heatmap_data)
+  const heatmapChart = heatmapData.length > 0
+    ? buildHeatmapChart(heatmapData)
     : null
 
   return (
@@ -226,7 +246,7 @@ export function SynthesisPage() {
       <Card>
         <CardHeader><CardTitle>Comparaison détaillée</CardTitle></CardHeader>
         <CardContent className="p-0">
-          {data.comparison_metrics.length === 0 ? (
+          {comparisonMetrics.length === 0 ? (
             <p className="p-6 text-center text-gray-500">Pas assez de données pour cette période.</p>
           ) : (
             <div className="overflow-x-auto">
@@ -239,7 +259,7 @@ export function SynthesisPage() {
                   </tr>
                 </thead>
                 <tbody>
-                  {data.comparison_metrics.map((item, idx) => <MetricRow key={idx} item={item} />)}
+                  {comparisonMetrics.map((item, idx) => <MetricRow key={idx} item={item} />)}
                 </tbody>
               </table>
             </div>
@@ -248,20 +268,25 @@ export function SynthesisPage() {
       </Card>
 
       {/* Heatmap temporelle */}
-      {heatmapChart && (
-        <Card>
-          <CardHeader><CardTitle>Activité par jour et heure</CardTitle></CardHeader>
-          <CardContent>
+      <Card>
+        <CardHeader><CardTitle>Activité par jour et heure</CardTitle></CardHeader>
+        <CardContent>
+          {heatmapChart ? (
             <PlotlyChart figure={heatmapChart} />
-          </CardContent>
-        </Card>
-      )}
+          ) : (
+            <EmptyStateNotice
+              title="Activité indisponible"
+              description="La heatmap temporelle ne peut pas être affichée sans répartition horaire exploitable."
+            />
+          )}
+        </CardContent>
+      </Card>
 
       {/* Top semaines */}
-      {data.top_weeks.length > 0 && (
-        <Card>
-          <CardHeader><CardTitle>Top {data.top_weeks.length} semaines</CardTitle></CardHeader>
-          <CardContent className="p-0">
+      <Card>
+        <CardHeader><CardTitle>Top semaines</CardTitle></CardHeader>
+        <CardContent className={topWeeks.length > 0 ? 'p-0' : undefined}>
+          {topWeeks.length > 0 ? (
             <div className="overflow-x-auto">
               <table className="w-full text-sm">
                 <thead className="bg-gray-50 border-b">
@@ -274,13 +299,18 @@ export function SynthesisPage() {
                   </tr>
                 </thead>
                 <tbody>
-                  {data.top_weeks.map((w, i) => <TopWeekRow key={w.week_label} item={w} rank={i + 1} />)}
+                  {topWeeks.map((w, i) => <TopWeekRow key={w.week_label} item={w} rank={i + 1} />)}
                 </tbody>
               </table>
             </div>
-          </CardContent>
-        </Card>
-      )}
+          ) : (
+            <EmptyStateNotice
+              title="Aucune semaine remarquable"
+              description="Le classement hebdomadaire est vide pour la période et les filtres sélectionnés."
+            />
+          )}
+        </CardContent>
+      </Card>
     </div>
   )
 }

@@ -13,7 +13,7 @@ import (
 // discord.go — helpers
 // ---------------------------------------------------------------------------
 
-func TestBoolVal(t *testing.T) {
+func TestBoolVal_Basic(t *testing.T) {
 	m := map[string]any{"flag": true, "off": false}
 	if !boolVal(m, "flag") {
 		t.Error("expected true for 'flag'")
@@ -26,7 +26,7 @@ func TestBoolVal(t *testing.T) {
 	}
 }
 
-func TestBoolValDefault(t *testing.T) {
+func TestBoolValDefault_Basic(t *testing.T) {
 	m := map[string]any{"flag": true}
 	if !boolValDefault(m, "missing", true) {
 		t.Error("expected default true")
@@ -36,7 +36,7 @@ func TestBoolValDefault(t *testing.T) {
 	}
 }
 
-func TestStrVal(t *testing.T) {
+func TestStrVal_Basic(t *testing.T) {
 	m := map[string]any{"name": "test"}
 	if strVal(m, "name") != "test" {
 		t.Error("expected 'test'")
@@ -46,14 +46,14 @@ func TestStrVal(t *testing.T) {
 	}
 }
 
-func TestStrValDefault(t *testing.T) {
+func TestStrValDefault_Basic(t *testing.T) {
 	m := map[string]any{}
 	if strValDefault(m, "key", "default") != "default" {
 		t.Error("expected 'default'")
 	}
 }
 
-func TestT_UnknownKey(t *testing.T) {
+func TestT_UnknownKey_Basic(t *testing.T) {
 	result := T("nonexistent_key_xyz", "fr")
 	// Should return key or empty, not panic
 	if result == "" {
@@ -67,7 +67,7 @@ func TestT_UnknownKey(t *testing.T) {
 // embeds.go — fonctions pures
 // ---------------------------------------------------------------------------
 
-func TestFormatDuration(t *testing.T) {
+func TestFormatDuration_Basic(t *testing.T) {
 	start := time.Date(2024, 1, 1, 10, 0, 0, 0, time.UTC)
 	end := time.Date(2024, 1, 1, 10, 5, 30, 0, time.UTC)
 	result := formatDuration(start, end)
@@ -76,7 +76,7 @@ func TestFormatDuration(t *testing.T) {
 	}
 }
 
-func TestTruncate(t *testing.T) {
+func TestTruncate_Basic(t *testing.T) {
 	if truncate("hello", 10) != "hello" {
 		t.Error("short string should not be truncated")
 	}
@@ -86,19 +86,19 @@ func TestTruncate(t *testing.T) {
 	}
 }
 
-func TestHasMissingData_Empty(t *testing.T) {
+func TestHasMissingData_EmptyBasic(t *testing.T) {
 	if hasMissingData(nil) {
 		t.Error("expected false for nil players")
 	}
 }
 
-func TestAllIdle_Empty(t *testing.T) {
+func TestAllIdle_EmptyBasic(t *testing.T) {
 	if !allIdle(nil) {
 		t.Error("expected true for nil players")
 	}
 }
 
-func TestResolveOpLabel(t *testing.T) {
+func TestResolveOpLabel_Basic(t *testing.T) {
 	label := resolveOpLabel("delta", "fr")
 	if label == "" {
 		t.Error("expected non-empty label for delta op")
@@ -109,7 +109,7 @@ func TestResolveOpLabel(t *testing.T) {
 // version.go — parsing
 // ---------------------------------------------------------------------------
 
-func TestIsMajorMinorChange(t *testing.T) {
+func TestIsMajorMinorChange_Basic(t *testing.T) {
 	tests := []struct {
 		old, new string
 		want     bool
@@ -127,7 +127,7 @@ func TestIsMajorMinorChange(t *testing.T) {
 	}
 }
 
-func TestParseMajorMinor(t *testing.T) {
+func TestParseMajorMinor_Basic(t *testing.T) {
 	major, minor, ok := parseMajorMinor("2.5.3")
 	if !ok || major != 2 || minor != 5 {
 		t.Errorf("expected (2, 5, true), got (%d, %d, %v)", major, minor, ok)
@@ -139,7 +139,7 @@ func TestParseMajorMinor(t *testing.T) {
 	}
 }
 
-func TestBuildVersionEmbed(t *testing.T) {
+func TestBuildVersionEmbed_Basic(t *testing.T) {
 	embed := BuildVersionEmbed("1.2.0", "New features", "fr")
 	if embed.Title == "" {
 		t.Error("expected non-empty embed title")

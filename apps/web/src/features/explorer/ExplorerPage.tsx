@@ -8,6 +8,7 @@ import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { Spinner } from '@/components/ui/spinner'
 import { Card, CardContent } from '@/components/ui/card'
+import { EmptyStateNotice } from '@/components/ui/empty-state'
 import { GamertagSearchInput } from './GamertagSearchInput'
 import { useExplorerMatches, useExplorerPlayer } from './queries'
 import { useGlobalFilterStore } from '@/stores/globalFilterStore'
@@ -79,16 +80,49 @@ export function ExplorerPage() {
           <div className="space-y-4">
             <GamertagSearchInput onSelect={setTargetGamertag} />
 
+            {!targetGamertag && (
+              <Card>
+                <CardContent className="py-4">
+                  <EmptyStateNotice
+                    title="Aucun joueur sélectionné"
+                    description="Recherche un gamertag pour afficher les matchs communs et le bilan face à ce joueur."
+                  />
+                </CardContent>
+              </Card>
+            )}
+
             {targetGamertag && playerQuery.isLoading && (
               <div className="flex justify-center py-8">
                 <Spinner label="Recherche en cours…" />
               </div>
             )}
 
+            {targetGamertag && playerQuery.isError && (
+              <Card>
+                <CardContent className="py-4">
+                  <EmptyStateNotice
+                    title="Recherche indisponible"
+                    description="Le backend n'a pas pu renvoyer les informations de ce joueur. Réessaie avec un autre gamertag ou relance la requête."
+                  />
+                </CardContent>
+              </Card>
+            )}
+
+            {targetGamertag && !playerQuery.isLoading && !playerQuery.isError && !playerQuery.data && (
+              <Card>
+                <CardContent className="py-4">
+                  <EmptyStateNotice
+                    title="Aucun résultat joueur"
+                    description="La recherche n'a renvoyé aucune charge utile exploitable pour ce gamertag."
+                  />
+                </CardContent>
+              </Card>
+            )}
+
             {targetGamertag && playerQuery.data && (
               <Card>
                 <CardContent className="py-4 space-y-2">
-                  <p className="font-semibold text-gray-900">{playerQuery.data.target.gamertag}</p>
+                  <p className="font-semibold text-gray-900">{playerQuery.data.target.gamertag || targetGamertag}</p>
                   <div className="grid grid-cols-3 gap-4 text-sm">
                     <div>
                       <p className="text-xs text-gray-500">Matchs ensemble</p>
@@ -105,11 +139,11 @@ export function ExplorerPage() {
                   </div>
 
                   {/* Matchs communs */}
-                  {playerQuery.data.common_matches.length > 0 && (
-                    <div className="mt-4">
-                      <p className="mb-2 text-xs font-medium text-gray-500 uppercase tracking-wide">
-                        Matchs communs récents
-                      </p>
+                  <div className="mt-4">
+                    <p className="mb-2 text-xs font-medium text-gray-500 uppercase tracking-wide">
+                      Matchs communs récents
+                    </p>
+                    {playerQuery.data.common_matches.length > 0 ? (
                       <div className="space-y-1">
                         {playerQuery.data.common_matches.slice(0, 5).map((m) => (
                           <div key={m.match_id} className="flex items-center justify-between rounded-md bg-gray-50 px-3 py-1.5 text-sm">
@@ -125,8 +159,13 @@ export function ExplorerPage() {
                           </div>
                         ))}
                       </div>
-                    </div>
-                  )}
+                    ) : (
+                      <EmptyStateNotice
+                        title="Aucun match commun récent"
+                        description="Ce joueur n'a aucun match commun visible avec le scope actuel."
+                      />
+                    )}
+                  </div>
                 </CardContent>
               </Card>
             )}
@@ -279,7 +318,16 @@ export function ExplorerPage() {
                   </table>
                 </div>
               </>
-            ) : null}
+            ) : (
+              <Card>
+                <CardContent className="py-4">
+                  <EmptyStateNotice
+                    title="Résultats indisponibles"
+                    description="La requête n'a renvoyé aucun tableau de matchs exploitable pour ce scope."
+                  />
+                </CardContent>
+              </Card>
+            )}
             </div>
           </div>
         )}

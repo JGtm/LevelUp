@@ -50,4 +50,13 @@ describe('CareerPage', () => {
       expect(screen.queryByText(/Voir tous les top matchs/i)).not.toBeInTheDocument()
     })
   })
+
+  it('affiche des placeholders explicites pour les sections vides', async () => {
+    renderWithProviders(<CareerPage />)
+    await waitFor(() => {
+      expect(screen.getAllByText(/Graphique indisponible/i).length).toBeGreaterThan(0)
+      expect(screen.getByText(/Rating indisponible/i)).toBeInTheDocument()
+      expect(screen.getByText(/Top matchs indisponibles/i)).toBeInTheDocument()
+    })
+  })
 })

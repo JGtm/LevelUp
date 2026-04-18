@@ -90,13 +90,14 @@ function Lightbox({ items, startIndex, onClose }: LightboxProps) {
   const [idx, setIdx] = useState(startIndex)
   const videoRef = useRef<HTMLVideoElement>(null)
   const item = items[idx]
-  if (!item) return null
 
   const prev = () => setIdx((i) => Math.max(0, i - 1))
   const next = () => setIdx((i) => Math.min(items.length - 1, i + 1))
 
   // Keyboard nav
   useEffect(() => {
+    if (!item) return undefined
+
     function onKey(e: KeyboardEvent) {
       if (e.key === 'ArrowLeft') prev()
       else if (e.key === 'ArrowRight') next()
@@ -104,7 +105,9 @@ function Lightbox({ items, startIndex, onClose }: LightboxProps) {
     }
     window.addEventListener('keydown', onKey)
     return () => window.removeEventListener('keydown', onKey)
-  }, [onClose]) // eslint-disable-line react-hooks/exhaustive-deps
+  }, [item, onClose]) // eslint-disable-line react-hooks/exhaustive-deps
+
+  if (!item) return null
 
   const dateStr = item.match_start_time || item.capture_end_utc
     ? new Date((item.match_start_time ?? item.capture_end_utc)!).toLocaleDateString('fr-FR', {

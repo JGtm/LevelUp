@@ -19,9 +19,13 @@ interface KPIItemProps {
 }
 function KPIItem({ label, value, emphasis = false }: KPIItemProps) {
   return (
-    <div className="flex flex-col items-center gap-0.5 px-4 py-1.5 border-r last:border-r-0 border-gray-200">
-      <span className="text-[10px] uppercase tracking-wide text-gray-500">{label}</span>
-      <span className={`text-sm font-bold tabular-nums ${emphasis ? 'text-purple-700' : 'text-gray-800'}`}>
+    <div className="rounded-2xl border border-slate-200/80 bg-slate-50/85 px-4 py-3 text-left shadow-sm">
+      <span className="text-[11px] font-semibold uppercase tracking-[0.22em] text-slate-500">
+        {label}
+      </span>
+      <span
+        className={`mt-1 block text-2xl font-semibold tracking-tight tabular-nums ${emphasis ? 'text-violet-700' : 'text-slate-900'}`}
+      >
         {value}
       </span>
     </div>
@@ -48,12 +52,23 @@ export function KPIBar() {
   const { kpis } = data.hero
   const wr = `${(kpis.win_rate * 100).toFixed(1)} %`
   const kd = kpis.global_ratio != null ? kpis.global_ratio.toFixed(2) : '–'
-  const acc = kpis.avg_accuracy != null ? `${(kpis.avg_accuracy).toFixed(1)} %` : '–'
+  const acc = kpis.avg_accuracy != null ? `${kpis.avg_accuracy.toFixed(1)} %` : '–'
 
   return (
-    <div className="w-full bg-white border-b border-gray-200 shadow-sm">
-      <div className="flex items-center justify-center flex-wrap">
-        <KPIItem label="Matchs" value={String(kpis.total_matches)} />
+    <div className="rounded-[28px] border border-slate-200/80 bg-white/90 p-4 shadow-sm backdrop-blur">
+      <div className="mb-3 flex items-center justify-between px-1">
+        <div>
+          <p className="text-[11px] font-semibold uppercase tracking-[0.24em] text-slate-500">
+            Lecture rapide
+          </p>
+          <p className="mt-1 text-sm text-slate-600">
+            Les indicateurs qui doivent toujours rester visibles pendant la navigation.
+          </p>
+        </div>
+      </div>
+
+      <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+        <KPIItem label="Matchs" value={kpis.total_matches.toLocaleString('fr-FR')} />
         <KPIItem label="Win rate" value={wr} emphasis />
         <KPIItem label="K/D" value={kd} />
         <KPIItem label="Précision" value={acc} />
