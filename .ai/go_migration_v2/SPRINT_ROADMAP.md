@@ -1889,7 +1889,7 @@
 | F4 | Test multi-titre : `X-LevelUp-Title` propagé correctement dans Compare, Leaderboard et Privacy — aucun mélange de données entre titres | ⬜ |
 | F5 | Test de latence Compare : P95 < 5s sur Waypoint nominal (test d'intégration avec mock `HaloClient`) | ⬜ |
 | F6 | Tests React (`vitest`) : `CompareDrawer` — skeleton visible pendant fetch, états limites (absent, privé, identique), KPIs cohérents avec golden values | ⬜ |
-| F7 | Tests React (`vitest`) : `LeaderboardBlock` — joueurs locaux visibles avant résolution Waypoint, prefetch déclenché au mount | ⬜ |
+| F7 | Tests React (`vitest`) : `LeaderboardBlock` — joueurs locaux visibles avant résolution Waypoint, prefetch déclenché au mount | ✅ |
 | F8 | `HALO_EXTERNAL_OPPORTUNITIES.md` : vérifier cohérence entre ce sprint et le document — mettre à jour les statuts des opportunités si nécessaire | ⬜ |
 
 ---
@@ -1903,11 +1903,11 @@
 - [x] `POST .../pages/compare` : réponse avec 12 KPIs, joueur A DuckDB + joueur B Waypoint, `titleSlug` propagé
 - [ ] Compare P95 < 5s sur Waypoint nominal (test mock)
 - [x] `GET .../pages/leaderboard` : joueurs locaux (`IsLocal=true`) dans la réponse, joueurs Waypoint en complement
-- [ ] `LeaderboardBlock` React : joueurs locaux affichés sans attendre Waypoint (chargement progressif vérifié vitest)
+- [x] `LeaderboardBlock` React : joueurs locaux affichés sans attendre Waypoint (chargement progressif vérifié vitest)
 - [x] `CompareDrawer` React : skeleton loader visible, 3 états limites couverts (absent, privé, identique)
 - [ ] Prefetch Compare actif sur 4 points d'entrée (Explorer, Career Encounters, Career en-tête, Squad)
 - [x] Tables staging `waypoint_medals_raw` + `waypoint_assets_raw` créées — aucune donnée en production sans validation humaine
-- [ ] Garde-fous medals : test de blocage si cardinalité hors ± 10%, champs manquants, ou images partielles
+- [x] Garde-fous medals : test de blocage si cardinalité hors ± 10%, champs manquants, ou images partielles
 - [x] 0 date de saison hardcodée dans le code Go après O2
 - [x] `title_id` présent dans toutes les nouvelles tables DuckDB et tous les nouveaux types Go
 - [x] Entrée `thought_log.md` avec bilan Sprint 54

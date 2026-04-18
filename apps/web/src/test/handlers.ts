@@ -228,6 +228,24 @@ export const handlers = [
     HttpResponse.json({ available: false, total: null, completed: null, xp_available: null, next_expiry: null, error_hint: null }),
   ),
 
+  // Leaderboard
+  http.get(p(`/players/${SLUG}/pages/leaderboard`), ({ request }) => {
+    const url = new URL(request.url)
+    const season = url.searchParams.get('season') ?? 'Season5'
+    const playlist = url.searchParams.get('playlist') ?? 'Ranked'
+    return HttpResponse.json({
+      entries: [
+        { rank: 1, xuid: '1000', gamertag: 'LocalAce', title_slug: 'halo_infinite', season_id: season, playlist_id: playlist, csr_value: 1850, tier: 'Onyx', sub_tier: 0, is_local: true },
+        { rank: 2, xuid: '2000', gamertag: 'RemoteRival', title_slug: 'halo_infinite', season_id: season, playlist_id: playlist, csr_value: 1720, tier: 'Diamond', sub_tier: 6, is_local: false },
+        { rank: 3, xuid: '3000', gamertag: 'LocalVet', title_slug: 'halo_infinite', season_id: season, playlist_id: playlist, csr_value: 1600, tier: 'Diamond', sub_tier: 3, is_local: true },
+      ],
+      season_id: season,
+      playlist_id: playlist,
+      title_slug: 'halo_infinite',
+      total: 3,
+    })
+  }),
+
   // Squad / Teammates
   http.post(p(`/players/${SLUG}/pages/teammates`), () => HttpResponse.json(teammatesFixture)),
 

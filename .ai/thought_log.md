@@ -1,5 +1,154 @@
 # Thought Log
 
+## [2026-04-18] docs(ux): clarification bloc d'ouverture et pagination des tuiles match
+
+**Statut** : Complété
+
+### Contexte
+
+L'utilisateur a demandé deux clarifications importantes sur le cadrage home record : ce que recouvrait exactement le terme `hero block`, et comment devait fonctionner une éventuelle preview en tuiles de matchs à la place du bloc `Dernier match`.
+
+### Décisions techniques
+
+1. **Remplacer le terme ambigu `hero block`** — le document parle désormais plutôt de `bloc d'ouverture record`, pour éviter l'idée d'un grand bandeau ou d'une fusion forcée avec toute la performance.
+2. **Ajuster la recommandation sur la home** — vu la préférence utilisateur pour un `Spartan ID` petit, la direction retenue n'est plus une fusion monobloc agressive, mais une proximité visuelle entre `Spartan ID` compact et résumé de performance resserré.
+3. **Fixer une règle simple pour les tuiles de matchs sur la home** — la preview home montre `4` matchs maximum, sans pagination ni scroll infini.
+4. **Réserver la profondeur à l'historique** — si une vue cartes existe dans `MatchHistoryPage`, elle doit réutiliser la pagination serveur existante au lieu d'introduire un pattern de scroll infini concurrent.
+
+### Résultats observés
+
+- `UX_HOME_RECORD_SPARTAN_ADDITIONS.md` explicite désormais le vocabulaire `bloc d'ouverture record`
+- Le document précise qu'un `Spartan ID` compact n'impose pas une fusion totale avec la performance
+- Le document fige une recommandation produit nette : `Home = 4 tuiles récentes, pas de pagination`, `MatchHistory = profondeur paginée`
+
+### Conclusion / prochaine étape
+
+Le cadrage home record est maintenant plus opérable :
+
+1. le composant d'ouverture peut être conçu sans ambiguïté de taille ;
+2. la question des tuiles de matchs a une réponse UX ferme ;
+3. la prochaine étape naturelle est un wireframe concret de `HomePage` avec ce budget d'attention.
+
+## [2026-04-18] docs(ux): arbitrage saturation et effacement pour inspirations Spartan Record
+
+**Statut** : Complété
+
+### Contexte
+
+Après la première version du cadrage `UX_HOME_RECORD_SPARTAN_ADDITIONS.md`, l'utilisateur a précisé un point important : il ne suffit pas d'identifier de bonnes inspirations, il faut aussi décider ce qui deviendrait trop, ce qui serait redondant et ce qui devrait s'effacer pour faire place à ces ajouts dans le shell Go actuel.
+
+### Décisions techniques
+
+1. **Partir des pages React existantes** — l'arbitrage a été refait à partir des blocs réellement présents dans `HomePage`, `CareerPage`, `CitationsPage`, `SynthesisPage` et `MatchHistoryPage`, pas à partir d'une projection abstraite.
+2. **Poser une règle de budget d'attention** — aucune grosse inspiration Spartan Record n'est retenue sans compression, fusion ou déclassement d'un bloc existant sur la même page.
+3. **Clarifier les vraies redondances de la home** — `Performance globale` doit fusionner avec le futur bloc hero, `Dernier match` devient redondant si `Matchs récents` passe en tuiles, et `Battle Pass / Défis` doivent être visuellement déclassés sous le coeur record.
+4. **Verrouiller le prérequis Carrière** — aucun `Hero Tracker` n'est légitime tant que `top matches` et `encounters` n'ont pas quitté `CareerPage`.
+5. **Hiérarchiser la dette visuelle de Citations et Synthèse** — le trio `Delta` de `CitationsPage` et la table détaillée de `SynthesisPage` sont désormais explicitement identifiés comme surfaces à compresser ou décaler si de nouveaux blocs premium arrivent.
+
+### Résultats observés
+
+- `UX_HOME_RECORD_SPARTAN_ADDITIONS.md` contient maintenant un diagnostic page par page de la densité UX actuelle
+- Le document formalise ce qui est redondant aujourd'hui et ce qui doit fusionner, se décaler ou disparaître pour laisser place aux inspirations retenues
+- Aucun code runtime ni contrat API n'a été modifié dans cette passe
+
+### Conclusion / prochaine étape
+
+La prochaine étape naturelle n'est plus seulement `quoi ajouter`, mais `dans quel ordre remplacer ou fusionner` :
+
+1. refondre l'ouverture de `HomePage` en fusionnant hero + KPIs ;
+2. supprimer le doublon `Dernier match` si une preview match enrichie arrive ;
+3. déplacer réellement `top matches` et `encounters` hors de `CareerPage` avant tout ajout carrière supplémentaire.
+
+## [2026-04-18] docs(ux): cadrage des ajouts Spartan Record pour la home record
+
+**Statut** : Complété
+
+### Contexte
+
+Après le cadrage `Carrière / Synthèse`, l'utilisateur a précisé qu'il ne voulait pas remplacer la page record actuelle copiée depuis Python, mais l'enrichir avec des idées ciblées vues dans Spartan Record : `Spartan ID`, meilleure hiérarchie service record, tuiles de matchs, carte `Data Set`, amélioration des médailles et stratégie d'images de maps plus dynamique.
+
+### Décisions techniques
+
+1. **Préserver la surface record actuelle** — la home React existante reste la base produit ; aucune stratégie de clone intégral de Spartan Record n'est retenue.
+2. **Rejeter le toggle global `Overall / Per Match`** — le pattern a été jugé peu aligné avec la lecture actuelle de LevelUp et ne devient pas une direction prioritaire.
+3. **Placer le `Spartan ID` sur la home** — la carte identitaire compacte appartient à l'accueil / record, pas à `Carrière`, afin de renforcer l'identité joueur sans créer une nouvelle page.
+4. **Séparer médailles durables et médailles analytiques** — le cabinet premium reste une cible `Carrière / Citations`, tandis que le delta solo / escouade reste pertinent dans une lecture analytique de type `Synthèse`.
+5. **Traiter les images de maps comme un sujet metadata** — la direction retenue est une source pilotée par le backend et `metadata.duckdb`, avec fallback clair, pour éviter la maintenance manuelle des nouveaux assets.
+
+### Résultats observés
+
+- Nouveau document produit : `.ai/go_migration_v2/UX_HOME_RECORD_SPARTAN_ADDITIONS.md`
+- `SPRINT_ROADMAP.md`, `project_map.md`, `SPRINT_EXPLORATION.md` et `data_lineage.md` mettent désormais ce cadrage en visibilité dans le corpus `.ai`
+- Aucun code runtime, contrat OpenAPI ou schéma DuckDB n'a été modifié dans cette passe
+
+### Conclusion / prochaine étape
+
+La suite naturelle est de découper l'implémentation en petits lots visibles :
+
+1. `Spartan ID` + carte `Data Set` sur la home ;
+2. stratégie dynamique pour les vignettes de maps ;
+3. amélioration des surfaces médailles et éventuellement vue cartes complémentaire pour les matchs.
+
+## [2026-04-18] docs(roadmap): ajout du Sprint 55 UX shell
+
+**Statut** : Complété
+
+### Contexte
+
+La roadmap opérationnelle ne couvrait pas encore explicitement la mise en oeuvre du reslicing `Carrière / Synthèse` pourtant déjà cadré dans le corpus go-migration. L'objectif de cette passe était d'ajouter un Sprint 55 détaillé, directement exploitable, en renvoyant vers les trois documents UX déjà produits.
+
+### Décisions techniques
+
+1. **Créer une nouvelle phase dédiée** — le Sprint 55 est positionné en **Phase 14 — Convergence UX shell**, pour éviter de le diluer dans la Phase 13 des features externes.
+2. **S'appuyer sur le corpus existant plutôt que dupliquer** — la roadmap référence explicitement `UX_CAREER_SYNTHESIS_BOUNDARY.md`, `UX_CAREER_HUB_BLUEPRINT.md` et `SYNTHESIS_TARGET_CONTRACT_AND_UI.md` comme documents source.
+3. **Porter le plan sur trois fronts produit + un reliquat infra** — le Sprint 55 est structuré autour de : shell/routing, hub Carrière, extraction Synthèse, et persistence `player_privacy_state` reportée depuis Sprint 54.
+4. **Définir un gate mesurable** — les critères de sortie exigent un hub Carrière unifié, une Synthèse scope-aware réellement filtrée, l'extraction hors `Squad`, et un fallback privacy persisté.
+
+### Résultats observés
+
+- `SPRINT_ROADMAP.md` contient désormais une entrée de synthèse Sprint 55 dans la table globale
+- Le document contient une section détaillée `Sprint 55` avec volets A à F et gate de sortie
+- Aucun code runtime ni contrat API effectif n'a été modifié dans cette passe
+
+### Conclusion / prochaine étape
+
+La roadmap est maintenant prête pour une passe d'implémentation. La suite naturelle est :
+
+1. attaquer le Volet A/B côté React pour matérialiser le hub `Carrière` ;
+2. lancer le Volet D côté Go pour extraire `Synthèse` hors `Squad` ;
+3. fermer le reliquat privacy avec la persistence `player_privacy_state`.
+
+## [2026-04-18] docs(ux): blueprint hub Carrière + contrat cible Synthèse
+
+**Statut** : Complété
+
+### Contexte
+
+Après le cadrage initial de frontière `Carrière / Synthèse`, l'utilisateur a demandé de poursuivre sur les items 2 et 3 : détailler précisément le redesign du hub `Carrière` et la composition/contractualisation cible de `Synthèse`, toujours dans le worktree go-migration et sans revenir au legacy Python comme source de décision.
+
+### Décisions techniques
+
+1. **Hub Carrière mono-route** — la cible retenue pour `Carrière` est une route canonique unique `/players/$playerSlug/career` avec tabs deep-linkables `Progression` / `Citations`, de préférence via search param `tab`, plutôt que deux destinations shell concurrentes.
+2. **Sortie des blocs analytiques de Carrière** — `top matches` et `encounters` ne font plus partie du hub cible ; ils sont explicitement marqués comme contenus à migrer vers `Synthèse`.
+3. **Décorrélation de `Citations` des filtres globaux** — la vue `Citations` du hub doit être pensée comme capital long terme ; le delta filtré vs complet de la page actuelle n'est pas reconduit comme lecture principale.
+4. **Extraction dédiée pour Synthèse** — la cible recommandée est un `SynthesisHandler`, un `SynthesisService` et des types domaine dédiés, en dehors de `SquadHandler` / `SquadService`.
+5. **Contrat Synthèse piloté par le scope** — la future payload doit exposer un `scope` explicite, une `overview`, des previews `highlights` / `rivalries` / `breakdowns`, et des endpoints lazy cohérents avec le même body `period + filters`.
+
+### Résultats observés
+
+- Spec ajoutée : `.ai/go_migration_v2/UX_CAREER_HUB_BLUEPRINT.md`
+- Spec ajoutée : `.ai/go_migration_v2/SYNTHESIS_TARGET_CONTRACT_AND_UI.md`
+- Cartographie et docs de contexte mises à jour pour rendre ces deux références retrouvables
+- Aucun code runtime ni contrat OpenAPI modifié à ce stade
+
+### Conclusion / prochaine étape
+
+La prochaine passe naturelle est désormais très concrète :
+
+1. implémenter le hub `Carrière` côté React (tabs + redirect legacy citations) ;
+2. sortir `Synthèse` du périmètre `Squad` côté Go ;
+3. brancher la future payload `overview + previews lazy`, puis migrer les anciens endpoints analytiques de `Carrière`.
+
 ## [2026-05-01] feat(s54): Saisons, Privacy, Compare, Leaderboard
 
 **Statut** : Complété
@@ -15487,3 +15636,25 @@ Alternative rejetée : méthode séparée `GetCommonMatchesStats` — inutile vu
 
 ### Restant S52 (tests mock)
 A5, A6, A7, A8 (mock HaloClient + engine_test) non implémentés cette session — requis pour la gate S52 "couverture internal/sync ≥ 10pts".
+
+---
+
+## [2025-07-22] Sprint 54 Gate — LeaderboardBlock vitest + Garde-fous medals
+
+### Statut : Complété
+
+### Décision technique
+Deux items Gate S54 restaient non implémentés :
+1. **LeaderboardBlock vitest** : 8 tests React (vitest + MSW + @testing-library) vérifiant spinner, badge Local, tri par rank, CSR/tier, compteur, état vide, erreur 500, titre.
+2. **Garde-fous medals** : package Go `internal/metadata` avec 3 guards purs (cardinalité ±10%, champs requis, images partielles) + `RunAllGuards` orchestrateur. 13 tests Go couvrant tous les cas.
+
+### Résultats
+- vitest : 8/8 PASS (1.53s)
+- Go tests : 13/13 PASS (0.19s)
+- Gate S54 : 2 items cochés supplémentaires
+
+### Fichiers créés
+- `apps/web/src/features/leaderboard/LeaderboardBlock.test.tsx` (8 tests)
+- `apps/web/src/test/handlers.ts` (handler MSW leaderboard ajouté)
+- `apps/go-api/internal/metadata/medals_guard.go` (guards purs)
+- `apps/go-api/internal/metadata/medals_guard_test.go` (13 tests)
