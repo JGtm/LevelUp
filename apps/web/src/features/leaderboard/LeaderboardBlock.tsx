@@ -17,12 +17,17 @@ interface LeaderboardBlockProps {
   playerSlug: string
   defaultSeason?: string
   defaultPlaylist?: string
+  /** E2.5 : callback appelé onMouseEnter pour prefetch compare */
+  onHoverEntry?: (gamertag: string) => void
 }
 
 /** Ligne du classement. */
-function LeaderboardRow({ entry }: { entry: LeaderboardEntry }) {
+function LeaderboardRow({ entry, onHover }: { entry: LeaderboardEntry; onHover?: (gamertag: string) => void }) {
   return (
-    <tr className="border-b last:border-0 text-sm hover:bg-gray-50 transition-colors">
+    <tr
+      className="border-b last:border-0 text-sm hover:bg-gray-50 transition-colors"
+      onMouseEnter={() => onHover?.(entry.gamertag)}
+    >
       <td className="py-2 pr-4 text-center font-mono text-gray-500">
         {entry.rank}
       </td>
@@ -52,6 +57,7 @@ export function LeaderboardBlock({
   playerSlug,
   defaultSeason,
   defaultPlaylist,
+  onHoverEntry,
 }: LeaderboardBlockProps) {
   const [season, setSeason] = useState(defaultSeason ?? '')
   const [playlist, setPlaylist] = useState(defaultPlaylist ?? '')
@@ -129,7 +135,7 @@ export function LeaderboardBlock({
             </thead>
             <tbody>
               {data.entries.map((entry) => (
-                <LeaderboardRow key={`${entry.xuid}-${entry.rank}`} entry={entry} />
+                <LeaderboardRow key={`${entry.xuid}-${entry.rank}`} entry={entry} onHover={onHoverEntry} />
               ))}
             </tbody>
           </table>

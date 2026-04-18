@@ -13,6 +13,8 @@ import { EmptyStateCard, EmptyStateNotice } from '@/components/ui/empty-state'
 import { Spinner } from '@/components/ui/spinner'
 import { PlotlyChart } from '@/components/ui/plotly-chart'
 import type { TeammateRow, TeammateKPIs, TeammatesQueryRequest, PlotlyFigurePayload } from '@/lib/api/types'
+import { CompareDrawer } from '@/features/compare/CompareDrawer'
+import { useComparePrefetch } from '@/features/compare/queries'
 
 const MAX_SELECTION = 3
 
@@ -142,8 +144,14 @@ function KPIBlock({ title, kpis, color = 'text-gray-600' }: KPIBlockProps) {
 
 // ─── Tableau coéquipiers ──────────────────────────────────────────────────────
 
-interface TeammateRowItemProps { row: TeammateRow; selectionIndex: number; onSelect: () => void }
-function TeammateRowItem({ row, selectionIndex, onSelect }: TeammateRowItemProps) {
+interface TeammateRowItemProps {
+  row: TeammateRow
+  selectionIndex: number
+  onSelect: () => void
+  onCompare: (gamertag: string) => void
+  onPrefetchCompare: (gamertag: string) => void
+}
+function TeammateRowItem({ row, selectionIndex, onSelect, onCompare, onPrefetchCompare }: TeammateRowItemProps) {
   const isSelected = selectionIndex >= 0
   const wr = (row.with_kpis.win_rate * 100).toFixed(0)
   const kd = row.with_kpis.kd_ratio?.toFixed(2) ?? '-'
@@ -164,6 +172,16 @@ function TeammateRowItem({ row, selectionIndex, onSelect }: TeammateRowItemProps
       <td className="px-4 py-3 text-center text-xs text-gray-400">
         {row.last_seen_at ? new Date(row.last_seen_at).toLocaleDateString('fr-FR') : '-'}
       </td>
+      {/* C4.4 : CTA Comparer avec prefetch onMouseEnter */}
+      <td className="px-4 py-3 text-center">
+        <button
+          onClick={(e) => { e.stopPropagation(); onCompare(row.gamertag) }}
+          onMouseEnter={() => onPrefetchCompare(row.gamertag)}
+          className="text-xs text-purple-600 hover:underline"
+        >
+          Comparer
+        </button>
+      </td>
     </tr>
   )
 }
@@ -175,6 +193,8 @@ export function SquadPage() {
   const { filterContext, filterContextHash } = useGlobalFilterStore()
   const [selectedGts, setSelectedGts] = useState<string[]>([])
   const [activeTab, setActiveTab] = useState<TabId>('synergies')
+  const [compareTarget, setCompareTarget] = useState<string | null>(null)
+  const prefetchCompare = useComparePrefetch(playerSlug)
 
   const request: TeammatesQueryRequest = {
     filters: filterContext,
@@ -351,6 +371,8 @@ export function SquadPage() {
                         row={row}
                         selectionIndex={idx}
                         onSelect={() => toggleSelect(row.gamertag)}
+                        onCompare={(gt) => setCompareTarget(gt)}
+                        onPrefetchCompare={prefetchCompare}
                       />
                     )
                   })}
@@ -360,6 +382,15 @@ export function SquadPage() {
           )}
         </CardContent>
       </Card>
+
+      {/* C4.4 : CompareDrawer déclenché depuis les lignes coéquipiers */}
+      {compareTarget && (
+        <CompareDrawer
+          playerSlug={playerSlug}
+          open={!!compareTarget}
+          onClose={() => setCompareTarget(null)}
+        />
+      )}
     </div>
   )
 }

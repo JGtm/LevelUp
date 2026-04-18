@@ -693,6 +693,8 @@ export interface HomePageResponse {
   recent_media: RecentMediaItem[]
   solo_session: SessionSummaryItem | null
   squad_session: SessionSummaryItem | null
+  /** Sprint 54-B9 : signal discret si les données sont partielles (compte privé). */
+  privacy_warning?: MatchPrivacyWarning | null
 }
 
 export interface BattlePassResponse {
@@ -820,6 +822,8 @@ export interface MediaItemRow {
   section: string
   owner_gamertag: string | null
   map_name: string | null
+  liked: boolean
+  like_count: number
 }
 
 export interface MediaQueryRequest {
@@ -837,6 +841,17 @@ export interface MediaPageResponse {
   total_mine: number
   total_teammates: number
   total_unassigned: number
+}
+
+export interface MediaLikeRequest {
+  file_path: string
+  liked: boolean
+}
+
+export interface MediaLikeResponse {
+  file_path: string
+  liked: boolean
+  like_count: number
 }
 
 export interface MediaUploadResponse {
@@ -1238,6 +1253,10 @@ export interface CompareResponse {
   player_b: NormalizedPlayerStats
   metrics: CompareMetricRow[]
   title_slug: string
+  /** C3.6 : avertissement si joueur B est privé ou introuvable. */
+  privacy_warning?: MatchPrivacyWarning | null
+  /** C3.6 : indique si les données de joueur B sont partielles (champs null). */
+  player_b_partial?: boolean
 }
 
 // ─── Sprint 54-B : Match Privacy ─────────────────────────────────────────────

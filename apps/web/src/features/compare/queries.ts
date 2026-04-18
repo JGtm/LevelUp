@@ -2,8 +2,9 @@
  * queries.ts — hooks TanStack Query pour Compare joueur vs joueur.
  * Sprint 54-C.
  */
-import { useMutation } from '@tanstack/react-query'
+import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { api } from '@/lib/api/client'
+import { queryKeys } from '@/lib/query/keys'
 import type { CompareRequest, CompareResponse } from '@/lib/api/types'
 
 /**
@@ -17,4 +18,23 @@ export function useCompare(playerSlug: string) {
     mutationFn: (req: CompareRequest) =>
       api.post<CompareResponse>(`/players/${playerSlug}/pages/compare`, req),
   })
+}
+
+/**
+ * useComparePrefetch — retourne une fonction qui prefetch la comparaison
+ * pour un gamertag cible. À déclencher sur onMouseEnter ou onSelect (C3.2).
+ */
+export function useComparePrefetch(playerSlug: string) {
+  const queryClient = useQueryClient()
+
+  return function prefetchCompare(targetGamertag: string) {
+    void queryClient.prefetchQuery({
+      queryKey: queryKeys.comparePlayer(playerSlug, targetGamertag),
+      queryFn: () =>
+        api.post<CompareResponse>(`/players/${playerSlug}/pages/compare`, {
+          gamertag_b: targetGamertag,
+        }),
+      staleTime: 2 * 60 * 1000,
+    })
+  }
 }

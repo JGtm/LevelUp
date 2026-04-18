@@ -55,6 +55,7 @@ export const queryKeys = {
   // Médias (Slice 8)
   mediaBase: (playerSlug: string) => ['media', playerSlug] as const,
   media: (playerSlug: string, page: number) => ['media', playerSlug, page] as const,
+  mediaRail: (playerSlug: string, limit: number) => ['media', playerSlug, 'home-rail', limit] as const,
 
   // Citations (Slice 2B)
   citations: (playerSlug: string, filterHash: string) =>

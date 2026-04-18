@@ -14,11 +14,16 @@ import { CareerChartsSection } from './CareerChartsSection'
 import { CareerTopMatchesTable } from './CareerTopMatchesTable'
 import { CareerEncountersSection } from './CareerEncountersSection'
 import { useCareerPage, useCareerTopMatches } from './queries'
+import { CompareDrawer } from '@/features/compare/CompareDrawer'
+import { LeaderboardBlock } from '@/features/leaderboard/LeaderboardBlock'
+import { useComparePrefetch } from '@/features/compare/queries'
 
 export function CareerPage() {
   const { playerSlug } = useParams({ strict: false }) as { playerSlug: string }
   const { data, isLoading, isError, refetch } = useCareerPage(playerSlug)
   const [showAllTopMatches, setShowAllTopMatches] = useState(false)
+  const [compareOpen, setCompareOpen] = useState(false)
+  const prefetchCompare = useComparePrefetch(playerSlug)
   const { data: fullTopMatches, isLoading: loadingTopMatches } = useCareerTopMatches(
     playerSlug,
     showAllTopMatches,
@@ -79,6 +84,11 @@ export function CareerPage() {
       <PageHeader
         title="Carrière"
         subtitle="Progression de rang et statistiques globales"
+        actions={
+          <Button size="sm" variant="outline" onClick={() => setCompareOpen(true)}>
+            Comparer
+          </Button>
+        }
       />
 
       <div className="space-y-6 p-6">
@@ -173,12 +183,25 @@ export function CareerPage() {
           />
         )}
 
+        {/* E2.6 : Leaderboard CSR — bloc secondaire sous les KPIs */}
+        <LeaderboardBlock
+          playerSlug={playerSlug}
+          onHoverEntry={prefetchCompare}
+        />
+
         {/* Rencontres fréquentes */}
         <CareerEncountersSection
           playerSlug={playerSlug}
           preview={data.encounters_preview ?? []}
         />
       </div>
+
+      {/* C4.3 : CompareDrawer ouvert depuis l'en-tête Carrière */}
+      <CompareDrawer
+        playerSlug={playerSlug}
+        open={compareOpen}
+        onClose={() => setCompareOpen(false)}
+      />
     </div>
   )
 }
