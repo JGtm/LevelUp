@@ -108,7 +108,8 @@ func seedPlayerSchema(t *testing.T, db *DB) { //nolint:funlen
 		`CREATE TABLE media_files (
 			file_path VARCHAR PRIMARY KEY, file_name VARCHAR, kind VARCHAR,
 			thumbnail_path VARCHAR, capture_end_utc TIMESTAMPTZ,
-			mtime TIMESTAMPTZ, status VARCHAR)`,
+			mtime TIMESTAMPTZ, status VARCHAR,
+			liked BOOLEAN DEFAULT FALSE, liked_at TIMESTAMPTZ)`,
 		`CREATE TABLE media_match_associations (
 			media_path VARCHAR, match_id VARCHAR, match_start_time TIMESTAMPTZ)`,
 		`CREATE TABLE sync_meta (key VARCHAR PRIMARY KEY, value VARCHAR)`,
@@ -504,6 +505,27 @@ func TestMediaRepo_LoadMediaFiles_WithData(t *testing.T) {
 	}
 	if len(rows) != 1 {
 		t.Errorf("attendu 1, obtenu %d", len(rows))
+	}
+}
+
+func TestMediaRepo_SetMediaLike(t *testing.T) {
+	pdb := newTestPlayerDB(t)
+	repo := NewMediaRepo(pdb)
+
+	ok, err := repo.SetMediaLike(context.Background(), "/clips/g1.mp4", true)
+	if err != nil {
+		t.Fatalf("SetMediaLike: %v", err)
+	}
+	if !ok {
+		t.Fatal("attendu ok=true")
+	}
+
+	rows, err := repo.LoadMediaFiles(context.Background(), 10, 0)
+	if err != nil {
+		t.Fatalf("LoadMediaFiles: %v", err)
+	}
+	if len(rows) != 1 || !rows[0].Liked {
+		t.Fatalf("liked non persisté: %+v", rows)
 	}
 }
 
