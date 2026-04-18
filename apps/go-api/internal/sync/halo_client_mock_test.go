@@ -1,0 +1,93 @@
+// Package sync — halo_client_mock_test.go : mock déterministe de HaloClient pour les tests.
+//
+// Sprint 52 A5 : implémentation de mockHaloClient satisfaisant l'interface HaloClient.
+// Ce fichier ne dépend pas du réseau et ne nécessite pas de build tag integration.
+// Les tests qui l'utilisent tournent avec CGO_ENABLED=1 (requis par duckdb-go) mais
+// sans accès réseau réel.
+//
+// A7 — filmChunkData : le type reste non exporté car HaloClient est consommé uniquement
+// dans le package sync. Tant qu'aucun consommateur externe n'utilise GetMatchFilm dans
+// une expression de type (ex. var _ sync.HaloClient = &MyMock{}), l'export n'est pas requis.
+package sync
+
+import (
+	"context"
+	"errors"
+)
+
+// mockHaloClient est une implémentation de HaloClient qui retourne des fixtures
+// déterministes. Aucun appel réseau n'est effectué.
+type mockHaloClient struct {
+	// history est la liste de matchs retournée par GetMatchHistory.
+	history []MatchHistoryEntry
+	// statsBody est le corps JSON retourné par GetMatchStats (indexé par match_id).
+	statsBody map[string]map[string]any
+	// getHistoryErr simule une erreur de GetMatchHistory si non nil.
+	getHistoryErr error
+	// getStatsErr simule une erreur de GetMatchStats si non nil.
+	getStatsErr error
+	// careerData est la progression de carrière retournée par GetCareerRank.
+	careerData *CareerRankData
+	// getCareerErr simule une erreur de GetCareerRank si non nil.
+	getCareerErr error
+	// callsGetHistory compte le nombre d'appels à GetMatchHistory.
+	callsGetHistory int
+	// callsGetStats compte le nombre d'appels à GetMatchStats.
+	callsGetStats int
+}
+
+// GetMatchHistory retourne la liste de matchs configurée ou une erreur simulée.
+func (m *mockHaloClient) GetMatchHistory(
+	_ context.Context,
+	_, _ string,
+	_, _ int,
+) ([]MatchHistoryEntry, error) {
+	m.callsGetHistory++
+	if m.getHistoryErr != nil {
+		return nil, m.getHistoryErr
+	}
+	return m.history, nil
+}
+
+// GetMatchStats retourne le corps JSON configuré pour le match donné.
+func (m *mockHaloClient) GetMatchStats(_ context.Context, matchID string) (map[string]any, error) {
+	m.callsGetStats++
+	if m.getStatsErr != nil {
+		return nil, m.getStatsErr
+	}
+	if m.statsBody != nil {
+		if body, ok := m.statsBody[matchID]; ok {
+			return body, nil
+		}
+	}
+	// Corps minimal valide si aucune fixture spécifique n'est définie.
+	return map[string]any{
+		"MatchInfo": map[string]any{
+			"MapVariant":          map[string]any{"AssetId": "map-id-1"},
+			"GameVariantCategory": float64(9),
+			"PlaylistExperience":  "Slayer",
+		},
+		"Players": []any{},
+	}, nil
+}
+
+// GetMatchFilm retourne toujours (nil, false, nil) : film absent.
+func (m *mockHaloClient) GetMatchFilm(_ context.Context, _ string) (map[int]filmChunkData, bool, error) {
+	return nil, false, nil
+}
+
+// GetCareerRank retourne la progression de carrière configurée.
+func (m *mockHaloClient) GetCareerRank(_ context.Context, _ string) (*CareerRankData, error) {
+	if m.getCareerErr != nil {
+		return nil, m.getCareerErr
+	}
+	return m.careerData, nil
+}
+
+// compile-time : mockHaloClient implémente HaloClient.
+var _ HaloClient = (*mockHaloClient)(nil)
+
+// ── Helpers d'assertion ──────────────────────────────────────────────────────
+
+// errNetworkExpected est retournée si un test détecte un vrai appel réseau.
+var errNetworkExpected = errors.New("appel réseau inattendu dans le test")

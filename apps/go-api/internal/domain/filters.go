@@ -1,7 +1,10 @@
 // Package domain — types du gestionnaire de filtres.
 package domain
 
-import "time"
+import (
+	"fmt"
+	"time"
+)
 
 // LabelValue est une paire label/value pour les options de sélection.
 type LabelValue struct {
@@ -55,6 +58,30 @@ type FilterContextInput struct {
 	Period     PeriodInput    `json:"period"`
 	Sessions   SessionsFilter `json:"sessions"`
 	Cascade    CascadeFilter  `json:"cascade"`
+}
+
+// validFilterModes est l'ensemble des modes de filtre valides.
+var validFilterModes = map[string]bool{
+	"period":   true,
+	"sessions": true,
+}
+
+// Validate vérifie la cohérence des paramètres du filtre.
+// Une valeur vide de FilterMode est acceptée (défaut : "period").
+func (f FilterContextInput) Validate() error {
+	if f.FilterMode != "" && !validFilterModes[f.FilterMode] {
+		return fmt.Errorf("FilterContextInput: filter_mode invalide %q (attendu : period|sessions)", f.FilterMode)
+	}
+	if f.Period.StartDate != nil && f.Period.EndDate != nil {
+		if !f.Period.StartDate.Before(*f.Period.EndDate) {
+			return fmt.Errorf("FilterContextInput: start_date (%s) doit être antérieure à end_date (%s)",
+				f.Period.StartDate.Format(time.RFC3339), f.Period.EndDate.Format(time.RFC3339))
+		}
+	}
+	if f.Sessions.GapMinutes < 0 {
+		return fmt.Errorf("FilterContextInput: gap_minutes doit être ≥ 0 (reçu %d)", f.Sessions.GapMinutes)
+	}
+	return nil
 }
 
 // SessionOption représente une session disponible.

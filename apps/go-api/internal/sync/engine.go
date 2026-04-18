@@ -96,6 +96,11 @@ func (e *SyncEngine) RunBackfill(ctx context.Context, scope *SyncScope) ([]strin
 func (e *SyncEngine) run(ctx context.Context, opts domain.SyncOptions, isDelta bool) (domain.SyncResult, error) {
 	result := domain.SyncResult{StartedAt: time.Now()}
 
+	// B8 : validation fail-fast des options avant tout accès réseau ou DB.
+	if err := opts.Validate(); err != nil {
+		return result, fmt.Errorf("run: options invalides: %w", err)
+	}
+
 	// ─── Write leases ──────────────────────────────────────────────────────────
 	relPlayer, err := AcquireLease(e.playerDBPath, leaseTimeout)
 	if err != nil {

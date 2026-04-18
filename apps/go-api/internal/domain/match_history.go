@@ -1,7 +1,10 @@
 // Package domain — types de l'historique des parties.
 package domain
 
-import "time"
+import (
+	"fmt"
+	"time"
+)
 
 // MatchHistoryRawRow est le type de transfert entre platform/duckdb et les services.
 type MatchHistoryRawRow struct {
@@ -93,6 +96,27 @@ type MatchHistoryQueryRequest struct {
 	// Columns permet au client de préciser les colonnes souhaitées dans la réponse.
 	// Nil/vide = toutes les colonnes disponibles (comportement par défaut).
 	Columns []string `json:"columns,omitempty"`
+}
+
+// maxPageSize est la taille de page maximale acceptée.
+const maxPageSize = 200
+
+// Validate vérifie la cohérence des paramètres de la requête historique.
+// Page=0 et PageSize=0 sont acceptés (defaults : 1 et 20 côté service).
+func (r MatchHistoryQueryRequest) Validate() error {
+	if r.Pagination.Page < 0 {
+		return fmt.Errorf("MatchHistoryQueryRequest: page doit être ≥ 0 (reçu %d)", r.Pagination.Page)
+	}
+	if r.Pagination.PageSize < 0 {
+		return fmt.Errorf("MatchHistoryQueryRequest: page_size doit être ≥ 0 (reçu %d)", r.Pagination.PageSize)
+	}
+	if r.Pagination.PageSize > maxPageSize {
+		return fmt.Errorf("MatchHistoryQueryRequest: page_size maximal est %d (reçu %d)", maxPageSize, r.Pagination.PageSize)
+	}
+	if err := r.Filters.Validate(); err != nil {
+		return fmt.Errorf("MatchHistoryQueryRequest.Filters: %w", err)
+	}
+	return nil
 }
 
 // MatchHistoryPageResponse est la réponse de POST match-history/query.

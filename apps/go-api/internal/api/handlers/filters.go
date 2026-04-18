@@ -36,6 +36,11 @@ func (h *FiltersHandler) Resolve(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	if err := input.Validate(); err != nil {
+		writeError(w, http.StatusBadRequest, "invalid_filters", err.Error())
+		return
+	}
+
 	result, err := svc.Resolve(r.Context(), input)
 	if err != nil {
 		writeError(w, http.StatusInternalServerError, "filters_error", err.Error())

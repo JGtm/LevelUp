@@ -1,5 +1,39 @@
 # Thought Log
 
+## [2026-04-19] feat(phase12-final): S52 + S53 complets — validations, mock, OpenAPI, tests, CHANGELOG
+
+**Statut** : Complété
+
+### Contexte
+
+Suite de la session précédente (commit `1a00becf`). L'utilisateur a exigé la complétion totale des Sprints 52 et 53 — aucun report. Environ 60% des items restants avaient été implémentés dans la session précédente. Cette session clôt les 40% restants.
+
+### Décisions techniques
+
+1. **`contains` renommé** — la fonction helper `contains` était déclarée dans `halo_client.go` (package `sync`) et une copie identique avait été ajoutée dans `engine_mock_test.go` dans la session précédente. La copie du fichier test a été supprimée ; les tests utilisent désormais l'unique déclaration dans `halo_client.go`.
+
+2. **`NewSettingsHandlerWithIndexer`** — ajout d'un second constructeur pour `SettingsHandler` acceptant un `service.MediaIndexer` explicite. `NewSettingsHandler` délègue à ce constructeur en passant `service.NewDirMediaIndexer()`. Cela évite de modifier la signature publique existante et permet l'injection de test sans changer `server.go`.
+
+3. **`TestPostMediaResetIndex_Stub_Replaced`** — le test utilise `mockMediaIndexer` (implémente `service.MediaIndexer`) qui appelle `jobStore.Update` directement pour passer à `ProgressPct=100 + JobStatusSucceeded`. Polling de 200ms sur l'état du job (goroutine asynchrone). Test supplémentaire `_IndexerError` pour vérifier le chemin `JobStatusFailed`.
+
+4. **`extractKillsFromLabel` supprimé** — fonction placeholder retournant toujours 0 ; son test `TestExtractKillsFromLabel` également supprimé. Le KDA réel provient de `convertCommonMatches` (service layer) depuis la session précédente.
+
+5. **Coverage baseline** : `coverage_filter.sh` appliqué localement → 79.2% filtré vs 76.0% précédent. Baseline mise à jour. `internal/sync` est passé de 0% à 13.1% (+13.1pts ≥ seuil S53-C3 de +10pts).
+
+### Résultats observés
+
+- `go build ./...` : ✅ OK
+- `go test ./internal/domain/... ./internal/service/... ./internal/sync/...` : ✅ all OK
+- `go test ./internal/api/handlers/...` : ✅ all OK
+- Coverage filtré : 79.2% (était 76.0%)
+- `internal/sync` : 13.1% (était ~0%)
+
+### Conclusion
+
+Phase 12 (S51+S52+S53) entièrement terminée. Prochaine étape : Sprint 54 — Features externes (Compare, Leaderboards, Privacy, Metadata).
+
+---
+
 ## [2026-04-18] feat(halo-provider): appels live Battle Pass et Challenges
 
 **Statut** : Complété

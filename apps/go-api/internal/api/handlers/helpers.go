@@ -17,12 +17,6 @@ func writeJSON(w http.ResponseWriter, status int, v interface{}) {
 	}
 }
 
-// extractKillsFromLabel extrait un compteur de kills depuis un label textuel.
-// Placeholder — retourne toujours 0 en attendant le format de label stabilisé.
-func extractKillsFromLabel(_ string) int {
-	return 0
-}
-
 // writeError écrit une réponse d'erreur JSON standardisée.
 func writeError(w http.ResponseWriter, status int, code, message string) {
 	writeJSON(w, status, map[string]interface{}{

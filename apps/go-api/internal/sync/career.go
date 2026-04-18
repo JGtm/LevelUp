@@ -9,7 +9,9 @@ import (
 	"context"
 	"database/sql"
 	"fmt"
+	"strings"
 	"time"
+	"unicode"
 )
 
 // CareerRankData contient les données d'un snapshot de rang.
@@ -34,6 +36,18 @@ func syncCareerRank(
 	client HaloClient,
 	xuid string,
 ) (*CareerRankData, error) {
+	// B4 : validation xuid — non vide, numérique, longueur typique 16 chiffres.
+	if strings.TrimSpace(xuid) == "" {
+		return nil, fmt.Errorf("syncCareerRank: xuid vide")
+	}
+	for _, r := range xuid {
+		if !unicode.IsDigit(r) {
+			return nil, fmt.Errorf("syncCareerRank: xuid doit être numérique (reçu %q)", xuid)
+		}
+	}
+	if len(xuid) < 12 || len(xuid) > 20 {
+		return nil, fmt.Errorf("syncCareerRank: longueur xuid inattendue %d (attendu 12-20 chiffres)", len(xuid))
+	}
 	return client.GetCareerRank(ctx, xuid)
 }
 

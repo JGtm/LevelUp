@@ -1,6 +1,6 @@
 // handlers_internal_test.go — tests internes (package handlers) pour les helpers privés.
 //
-// encode/decodeExportToken, formatOptFloat, optStr, extractKillsFromLabel,
+// encode/decodeExportToken, formatOptFloat, optStr,
 // filterCitationsByCategory, filterCommendationsByCategory, fileExists,
 // resolveCapturesDir, deviceFlowStartResponse, deviceFlowStatusResponse.
 package handlers
@@ -105,19 +105,6 @@ func TestOptStr_Value(t *testing.T) {
 	got := optStr(&s)
 	if got != "hello" {
 		t.Errorf("got %q, want %q", got, "hello")
-	}
-}
-
-// ---------------------------------------------------------------------------
-// extractKillsFromLabel (returns 0 — placeholder)
-// ---------------------------------------------------------------------------
-
-func TestExtractKillsFromLabel(t *testing.T) {
-	for _, label := range []string{"", "25-10", "10 kills"} {
-		got := extractKillsFromLabel(label)
-		if got != 0 {
-			t.Errorf("extractKillsFromLabel(%q) = %d, want 0", label, got)
-		}
 	}
 }
 

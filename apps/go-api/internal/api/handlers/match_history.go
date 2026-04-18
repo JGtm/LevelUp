@@ -43,6 +43,11 @@ func (h *MatchHistoryHandler) Query(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	if err := req.Validate(); err != nil {
+		writeError(w, http.StatusBadRequest, "invalid_request", err.Error())
+		return
+	}
+
 	resp, err := svc.GetPage(r.Context(), req)
 	if err != nil {
 		writeError(w, http.StatusInternalServerError, "match_history_error", err.Error())

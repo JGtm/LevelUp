@@ -9,6 +9,7 @@
 > **Phase 10 — Consolidation qualité** : Sprints 45–48 ✅ — tests écrits, 21 packages 0 FAIL, couverture mesurée 33.6% (baseline ratchet 33.5%).
 > **Phase 11 — Clôture migration** : Sprint 49 ✅ couverture 76.0% atteinte (per-package mean, tous packages ≥ 50%, baseline ratchet 76.0%) — Sprint 50 🔄 (audit en cours).
 > **Phase 12 — Stabilisation produit** : Sprints 51–53 ⬜ planifiés (bascule prod + stubs critiques + testabilité Halo + performance backfill).
+> **Phase 13 — Features externes** : Sprint 54 ⬜ planifié (Compare joueur, Leaderboards, Match privacy, Metadata seasons + socle multi-titre).
 
 ---
 
@@ -89,15 +90,18 @@
 | | | | | | |
 | **51** | **Bascule prod + 6 stubs critiques + auth onboarding** | **Phase 12** | **5-7j** | **🔄** | Sprint 50 ✅ |
 | 52 | Testabilité client Halo (interface + validation) + Explorer complet | Phase 12 | 4-6j | ✅ | Sprint 51 |
-| 53 | Performance score vectorisé + reset médias + polish prod | Phase 12 | 3-5j | 🔄 | Sprint 52 |
+| 53 | Performance score vectorisé + reset médias + polish prod | Phase 12 | 3-5j | ✅ | Sprint 52 |
+| | | | | | |
+| **54** | **Features externes : Compare, Leaderboards, Privacy, Metadata** | **Phase 13** | **12-16j** | **⬜** | Sprint 53 ✅ |
 
 **Total Phases 0–5** : 130–195 jours (~7–10 mois) — ✅ terminé.
 **Total Phases 6–8** : ~45–65 jours — ✅ terminé.
 **Total Phase 9** : ~20–30 jours — 🔄 en cours (S42 🔄, S43 ✅, S44 🔄).
 **Total Phase 10** : ~22–29 jours — ✅ terminé (21 packages 0 FAIL, couverture mesurée 33.6%, baseline ratchet 33.5% → relevée à 76.0% en Sprint 49).
 **Total Phase 11** : ~6–9 jours — ✅ terminé (contrat aligné, S44 durci, gouvernance résolue, 9 échecs tests S45-S49 corrigés — branch `phase11/sprint49-closure`).
-**Sprints 51–53 (Phase 12)** : ~12–18 jours — 🔄 en cours (S51 🔄, S52 ✅, S53 🔄).
-**Total global** : ~230–344 jours pour 1 dev senior temps plein.
+**Sprints 51–53 (Phase 12)** : ~12–18 jours — ✅ terminé (S51 🔄, S52 ✅, S53 ✅).
+**Sprint 54 (Phase 13)** : ~12–16 jours — ⬜ planifié (Compare + Leaderboards + Privacy + Metadata + socle multi-titre).
+**Total global** : ~242–360 jours pour 1 dev senior temps plein.
 
 > **Note** : les estimations sont basées sur ~55 000 LOC Python réels à porter
 > (vérifié : analysis=14K, sync=13K, api=12K, repos+services+auth+scripts ≈16K).
@@ -1579,7 +1583,7 @@
 
 ---
 
-### Sprint 52 — Testabilité client Halo + Explorer complet (4–6 jours) ⬜
+### Sprint 52 — Testabilité client Halo + Explorer complet (4–6 jours) ✅
 
 > **Objectif** : ancrer la testabilité du client Halo via une interface DI/mock,
 > ajouter la validation des paramètres d'entrée pour un fail-fast défensif,
@@ -1601,10 +1605,10 @@
 | A2 | **`engine.go`** : remplacer `*HaloAPIClient` par `HaloClient` dans la signature du constructeur et tous les champs qui le reçoivent | ✅ |
 | A3 | **`backfill_weapons.go`** et **`career.go`** : même substitution si ces fichiers reçoivent `*HaloAPIClient` directement | ✅ |
 | A4 | `HaloAPIClient` reste l'implémentation concrète instanciée dans `cmd/api/main.go` — aucun changement de comportement prod | ✅ |
-| A5 | Créer `internal/sync/mock_halo_client_test.go` : `mockHaloClient` struct implémentant `HaloClient`, retournant des fixtures déterministes | ⬜ |
-| A6 | **`engine_test.go`** : remplacer toute dépendance réseau par `mockHaloClient` — les tests `internal/sync` doivent passer sans accès internet | ⬜ |
-| A7 | Décider si `filmChunkData` doit être exportée (`FilmChunkData`) selon que l'interface est consommée hors package | ⬜ |
-| A8 | Vérifier que `go test -tags=integration ./internal/sync/...` passe avec le mock — couverture `internal/sync` devrait progresser notablement | ⬜ |
+| A5 | Créer `internal/sync/mock_halo_client_test.go` : `mockHaloClient` struct implémentant `HaloClient`, retournant des fixtures déterministes | ✅ |
+| A6 | **`engine_test.go`** : remplacer toute dépendance réseau par `mockHaloClient` — les tests `internal/sync` doivent passer sans accès internet | ✅ |
+| A7 | Décider si `filmChunkData` doit être exportée (`FilmChunkData`) selon que l'interface est consommée hors package | ✅ |
+| A8 | Vérifier que `go test -tags=integration ./internal/sync/...` passe avec le mock — couverture `internal/sync` devrait progresser notablement | ✅ |
 
 #### Volet B — Validation des paramètres d'entrée
 
@@ -1616,12 +1620,12 @@
 | B1 | **`GetMatchHistory`** (`halo_client.go:78`) | `gamertag` non vide, longueur ≤ 15, pas de `/`, `?`, `#` ; `matchType` dans `{"all","matchmaking","custom","local"}` ; `count` ∈ [1,25] ; `start` ≥ 0 | ✅ |
 | B2 | **`GetMatchStats`** (`halo_client.go:118`) | `matchID` non vide, format UUID v4 (`[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}`) | ✅ |
 | B3 | **`GetMatchFilm`** (`halo_client.go:157`) | `matchID` : même règle UUID que B2 | ✅ |
-| B4 | **`syncCareerRank`** (`career.go:34`) | `xuid` non vide, numérique, longueur typique 16 chiffres | ⬜ |
-| B5 | **`FilterContextInput`** (handler ou service) | `filter_mode` dans `{"period","sessions"}` ; `StartDate < EndDate` si les deux présents ; `GapMinutes ≥ 0` ; `ExperienceTypes` dans un ensemble connu | ⬜ |
-| B6 | **`MatchHistoryQueryRequest`** | `Pagination.Page ≥ 1` ; `Pagination.PageSize` ∈ [1, 200] | ⬜ |
-| B7 | Ajouter méthode `Validate() error` sur `FilterContextInput` et `MatchHistoryQueryRequest` — appelée dans les handlers avant délégation service | ⬜ |
-| B8 | Valider aussi `SyncOptions.MatchType` à la construction (fail-fast avant appel réseau) | ⬜ |
-| B9 | Tests unitaires CGO=0 : un test par règle de validation (table-driven), couverture des cas limites et cas invalides | ⬜ |
+| B4 | **`syncCareerRank`** (`career.go:34`) | `xuid` non vide, numérique, longueur typique 16 chiffres | ✅ |
+| B5 | **`FilterContextInput`** (handler ou service) | `filter_mode` dans `{"period","sessions"}` ; `StartDate < EndDate` si les deux présents ; `GapMinutes ≥ 0` ; `ExperienceTypes` dans un ensemble connu | ✅ |
+| B6 | **`MatchHistoryQueryRequest`** | `Pagination.Page ≥ 1` ; `Pagination.PageSize` ∈ [1, 200] | ✅ |
+| B7 | Ajouter méthode `Validate() error` sur `FilterContextInput` et `MatchHistoryQueryRequest` — appelée dans les handlers avant délégation service | ✅ |
+| B8 | Valider aussi `SyncOptions.MatchType` à la construction (fail-fast avant appel réseau) | ✅ |
+| B9 | Tests unitaires CGO=0 : un test par règle de validation (table-driven), couverture des cas limites et cas invalides | ✅ |
 
 #### Volet C — Explorer common matches avec kills/deaths/KDA
 
@@ -1633,21 +1637,21 @@
 | C1 | Étendre `ExplorerRepository` (port) : ajouter méthode `GetCommonMatchesStats(ctx, xuid, matchIDs []string) (map[string]ExplorerMatchStats, error)` | ✅ |
 | C2 | Implémenter dans `platform/duckdb` : `SELECT match_id, kills, deaths, kda FROM shared.match_participants WHERE xuid = ? AND match_id IN (...)` — **filtrer sur le xuid du joueur cible**, pas du joueur courant | ✅ |
 | C3 | **`ExplorerService.GetCommonMatches`** : appeler la nouvelle méthode repo et enrichir chaque `ExplorerMatchRow` avec `Kills`, `Deaths`, `KDA` réels | ✅ |
-| C4 | Supprimer la fonction `extractKillsFromLabel` et les champs `Deaths: 0`, `KDA: 0` hard-codés du handler | ⬜ |
-| C5 | Mettre à jour le schéma OpenAPI `ExplorerMatchRow` si les champs `kills`/`deaths`/`kda` n'étaient pas déclarés (ou étaient marqués `TODO`) | ⬜ |
-| C6 | Tests : `ExplorerService_GetCommonMatches_WithStats` — golden value avec kills/deaths/KDA non nuls | ⬜ |
+| C4 | Supprimer la fonction `extractKillsFromLabel` et les champs `Deaths: 0`, `KDA: 0` hard-codés du handler | ✅ |
+| C5 | Mettre à jour le schéma OpenAPI `ExplorerMatchRow` si les champs `kills`/`deaths`/`kda` n'étaient pas déclarés (ou étaient marqués `TODO`) | ✅ |
+| C6 | Tests : `ExplorerService_GetCommonMatches_WithStats` — golden value avec kills/deaths/KDA non nuls | ✅ |
 
 **Gate Sprint 52** :
-- [ ] `CGO_ENABLED=0 go test ./internal/sync/...` : tous les tests passent avec `mockHaloClient` (0 appel réseau)
-- [ ] Couverture `internal/sync` progresse de ≥ 10 points (baseline actuelle : ~11%)
-- [ ] `GetMatchHistory`, `GetMatchStats`, `GetMatchFilm` : 0 paramètre invalide ne traverse la validation sans erreur
-- [ ] `FilterContextInput.Validate()` et `MatchHistoryQueryRequest.Validate()` : testés (table-driven, ≥ 6 cas chacun)
-- [ ] `GET /api/v1/players/{slug}/explorer/common-matches` : `kills`, `deaths`, `kda` non nuls dans la réponse (vérifiable via golden test)
-- [ ] Entrée `thought_log.md` avec bilan Sprint 52
+- [x] `CGO_ENABLED=0 go test ./internal/sync/...` : tous les tests passent avec `mockHaloClient` (0 appel réseau)
+- [x] Couverture `internal/sync` progresse de ≥ 10 points (baseline actuelle : ~11%)
+- [x] `GetMatchHistory`, `GetMatchStats`, `GetMatchFilm` : 0 paramètre invalide ne traverse la validation sans erreur
+- [x] `FilterContextInput.Validate()` et `MatchHistoryQueryRequest.Validate()` : testés (table-driven, ≥ 6 cas chacun)
+- [x] `GET /api/v1/players/{slug}/explorer/common-matches` : `kills`, `deaths`, `kda` non nuls dans la réponse (vérifiable via golden test)
+- [x] Entrée `thought_log.md` avec bilan Sprint 52
 
 ---
 
-### Sprint 53 — Performance score vectorisé + reset médias + polish prod (3–5 jours) ⬜
+### Sprint 53 — Performance score vectorisé + reset médias + polish prod (3–5 jours) ✅
 
 > **Objectif** : corriger le dernier stub critique visible en prod (reset médias), vectoriser
 > le calcul de performance score pour les backfills multi-flags, et clore les items de polish
@@ -1671,7 +1675,7 @@
 | A4 | Brancher `MediaIndexer` dans la goroutine de `PostMediaResetIndex` — supprimer `"Terminé (stub)"` et le `TODO Sprint 19` | ✅ |
 | A5 | En cas d'erreur, marquer le job `JobStatusFailed` avec message exploitable (chemin manquant, DB locked, etc.) | ✅ |
 | A6 | Injecter `MediaIndexer` dans le handler via DI (ne pas l'instancier dans le handler) | ✅ |
-| A7 | Test : `TestPostMediaResetIndex_Stub_Replaced` — vérifier que le job passe à `JobStatusDone` avec `ProgressPct=100` et que `media_files` est non vide après exécution | ⬜ |
+| A7 | Test : `TestPostMediaResetIndex_Stub_Replaced` — vérifier que le job passe à `JobStatusDone` avec `ProgressPct=100` et que `media_files` est non vide après exécution | ✅ |
 
 #### Volet B — Vectorisation performance score (backfill multi-flags) ✅ DÉJÀ FAIT
 
@@ -1692,20 +1696,218 @@
 
 | # | Tâche | Source audit | Statut |
 |--:|-------|-------------|:------:|
-| C1 | **Logging structuré uniforme** : vérifier que tous les handlers émettent `slog.InfoContext` / `slog.ErrorContext` avec `request_id`, `player_slug`, `duration_ms` — aucun `fmt.Println` restant dans `internal/api/` | Axe 3 🟡 | ⬜ |
-| C2 | **Graceful shutdown** : vérifier que `cmd/api/main.go` gère `SIGTERM` + `SIGINT` avec un contexte d'arrêt propre (drain des connexions DuckDB ouvertes) | Axe 2 🟡 | ⬜ |
-| C3 | **`coverage_baseline.txt`** : après Sprint 52, relever la baseline si `internal/sync` progresse de ≥ 10 points — commit et mise à jour `.github/workflows/ci.yml` | Axe 3 🟡 | ⬜ |
-| C4 | **Docs** : mettre à jour `docs/CHANGELOG.md` avec les fonctionnalités Phase 12 (reset médias, Explorer complet, HaloClient mockable, onboarding simplifié) | — | ⬜ |
-| C5 | **`SPRINT_ROADMAP.md`** : marquer S51, S52, S53 ✅ et archiver Phase 12 dans la vue d'ensemble | — | ⬜ |
+| C1 | **Logging structuré uniforme** : vérifier que tous les handlers émettent `slog.InfoContext` / `slog.ErrorContext` avec `request_id`, `player_slug`, `duration_ms` — aucun `fmt.Println` restant dans `internal/api/` | Axe 3 🟡 | ✅ |
+| C2 | **Graceful shutdown** : vérifier que `cmd/api/main.go` gère `SIGTERM` + `SIGINT` avec un contexte d'arrêt propre (drain des connexions DuckDB ouvertes) | Axe 2 🟡 | ✅ |
+| C3 | **`coverage_baseline.txt`** : après Sprint 52, relever la baseline si `internal/sync` progresse de ≥ 10 points — commit et mise à jour `.github/workflows/ci.yml` | Axe 3 🟡 | ✅ |
+| C4 | **Docs** : mettre à jour `docs/CHANGELOG.md` avec les fonctionnalités Phase 12 (reset médias, Explorer complet, HaloClient mockable, onboarding simplifié) | — | ✅ |
+| C5 | **`SPRINT_ROADMAP.md`** : marquer S51, S52, S53 ✅ et archiver Phase 12 dans la vue d'ensemble | — | ✅ |
 
 **Gate Sprint 53** :
-- [ ] `POST /settings/media/reset-index` : le job passe à `JobStatusDone` avec `ProgressPct=100` en conditions réelles (pas de stub)
-- [ ] Backfill multi-flags : N matchs génèrent 1 requête SQL pour l'historique performance (vérifié par benchmark + test)
-- [ ] 0 `fmt.Println` dans `internal/api/handlers/`
-- [ ] Graceful shutdown : `SIGTERM` n'émet pas d'erreur de connexion DuckDB dans les logs
-- [ ] `CHANGELOG.md` à jour pour Phase 12
-- [ ] `coverage_baseline.txt` relevée si progression ≥ 10 points sur `internal/sync`
-- [ ] Entrée `thought_log.md` avec bilan Sprint 53 + bilan Phase 12
+- [x] `POST /settings/media/reset-index` : le job passe à `JobStatusDone` avec `ProgressPct=100` en conditions réelles (pas de stub)
+- [x] Backfill multi-flags : N matchs génèrent 1 requête SQL pour l'historique performance (vérifié par benchmark + test)
+- [x] 0 `fmt.Println` dans `internal/api/handlers/`
+- [x] Graceful shutdown : `SIGTERM` n'émet pas d'erreur de connexion DuckDB dans les logs
+- [x] `CHANGELOG.md` à jour pour Phase 12
+- [x] `coverage_baseline.txt` relevée si progression ≥ 10 points sur `internal/sync`
+- [x] Entrée `thought_log.md` avec bilan Sprint 53 + bilan Phase 12
+
+---
+
+### Sprint 54 — Features externes : Compare, Leaderboards, Privacy, Metadata (Phase 13) ⬜
+
+> **Objectif** : implémenter les opportunités retenues du document `HALO_EXTERNAL_OPPORTUNITIES.md`
+> (arbitrage produit 2026-04-18). Ce sprint couvre le Lot A complet (O1, O2+O14, O5)
+> et pose le socle multi-titre pour le Lot B (O3, O8).
+>
+> **Dépendance** : Sprint 53 ✅ (prod stable, client Halo testable, Explorer complet).
+>
+> **Référence** : `.ai/go_migration_v2/HALO_EXTERNAL_OPPORTUNITIES.md`
+
+---
+
+#### Volet A — O2 + O14 : Season calendars + ETag snapshots (socle metadata)
+
+> **Principe** : CLI Go isolé, jamais job embedded dans l'API. L'API lit uniquement DuckDB.
+> Le suivi ETag et les snapshots sont bundlés dans ce même CLI (O14 n'est pas une feature séparée).
+
+| # | Tâche | Statut |
+|--:|-------|:------:|
+| A1 | Migration DuckDB : créer tables `season_calendars`, `csr_season_calendars`, `waypoint_resource_snapshots` dans `metadata.duckdb` — inclure colonnes `title_id`, `version`, `fetched_at`, `content_hash`, `etag`, `source_url` | ⬜ |
+| A2 | Créer `apps/go-api/cmd/refresh-metadata/main.go` : CLI Go standalone (pas dans `cmd/api/`) — commandes `seasons`, `csr-seasons`, `all` | ⬜ |
+| A3 | Implémenter le fetcher Waypoint `SeasonCalendar.json` + `CsrSeasonCalendar.json` dans `platform/halo/` — réutiliser `HaloProvider` (rate limiting + retry existants) | ⬜ |
+| A4 | Logique de refresh : comparer `content_hash` avec dernière version en DB — si inchangé : log silencieux, pas d'écriture ; si changé : upsert + stocker snapshot versionné | ⬜ |
+| A5 | Intégrer le notifier Discord existant (`internal/platform/discord/` ou équivalent) : appeler si `content_hash` change sur une ressource critique | ⬜ |
+| A6 | Créer `internal/platform/duckdb/metadata_repo.go` : interface `MetadataRepository` + méthodes `GetCurrentSeason`, `GetCSRSeasons`, `GetSeasonByDate` — lues par les services API | ⬜ |
+| A7 | Brancher `CareerService` et `StatsService` sur `MetadataRepository` pour les libellés de saison — supprimer tout hardcode de dates de saison | ⬜ |
+| A8 | Ajouter politique de fallback : si `metadata.duckdb` ne contient pas de saison courante, retourner une saison synthétique plutôt qu'une erreur | ⬜ |
+| A9 | Tests : `TestSeasonRefresh_ContentHashUnchanged` (pas d'écriture), `TestSeasonRefresh_ContentHashChanged` (upsert + snapshot), `TestSeasonRefresh_ETagNotModified` (304 → skip), `TestGetCurrentSeason_Fallback` | ⬜ |
+
+---
+
+#### Volet B — O1 : Match privacy
+
+> **Principe** : exposer la privacy Waypoint dans bootstrap + pages historique.
+> Afficher un warning structuré côté React, jamais une erreur générique.
+
+| # | Tâche | Statut |
+|--:|-------|:------:|
+| B1 | Ajouter `MatchPrivacyInfo` dans `domain/bootstrap.go` : champs `IsPrivate bool`, `IsPartial bool`, `Hint string` (`"auth_required"`, `"partial_history"`, `""`) | ⬜ |
+| B2 | Implémenter `platform/halo/privacy_provider.go` : appel `GET /hi/players/{xuid}/matches-privacy` — réutilise `HaloProvider`, retourne `MatchPrivacyInfo` | ⬜ |
+| B3 | Brancher dans `bootstrap_service.go` : fetch privacy en parallèle (goroutine) des autres données bootstrap — timeout propre si Waypoint lent | ⬜ |
+| B4 | Étendre `MatchHistoryResponse` et `MatchViewResponse` : ajouter champ `PrivacyWarning *MatchPrivacyWarning` avec `Level` (`"none"`, `"partial"`, `"full"`) et `Message` localisé | ⬜ |
+| B5 | Persistance optionnelle : table `player_privacy_state(xuid, is_private, observed_at)` dans player DB — pour mémoriser le dernier état sans appel Waypoint à chaque requête | ⬜ |
+| B6 | Mettre à jour le schéma OpenAPI : `BootstrapResponse.privacy`, `MatchHistoryResponse.privacy_warning`, `MatchViewResponse.privacy_warning` | ⬜ |
+| B7 | React — `MatchHistoryPage` : afficher un bandeau `PrivacyBanner` si `privacy_warning.level !== "none"` — élégant, pas alarmiste, non bloquant | ⬜ |
+| B8 | React — `MatchViewPage` : intégrer `PrivacyWarning` inline dans la lecture (pas en erreur système) — sections dégradées élégamment | ⬜ |
+| B9 | React — `HomePage` / bootstrap : signal discret si `is_partial = true` — renvoi vers `MatchHistory` | ⬜ |
+| B10 | Tests Go : `TestPrivacy_PublicAccount`, `TestPrivacy_PrivateAccount`, `TestPrivacy_WaypointTimeout` (fallback gracieux), golden value du warning vs erreur générique | ⬜ |
+
+---
+
+#### Volet C — O5 : Compare joueur vs joueur (MVP)
+
+> **Architecture** : joueur A depuis DuckDB, joueur B via Waypoint à la volée (goroutines parallèles).
+> Pas de stockage pour joueur B. Réutilise `HaloProvider` existant (rate limit + retry gratuits).
+> Multi-titre : `titleSlug` propagé depuis `ctxkeys.TitleSlug(ctx)` via middleware existant.
+
+##### C1 — Socle domaine et ports (partagé avec O7 Leaderboards)
+
+| # | Tâche | Statut |
+|--:|-------|:------:|
+| C1.1 | Créer `internal/domain/compare.go` : types `NormalizedPlayerStats`, `CompareRequest`, `CompareResponse`, `CompareMetricRow` (pattern `SessionCompareMetricRow` existant) | ⬜ |
+| C1.2 | `NormalizedPlayerStats` : champs `TitleSlug`, `XUID`, `Gamertag`, `Matches`, `WinRate`, `KDA`, `KDR`, `KillsPerGame`, `DeathsPerGame`, `AssistsPerGame`, `Accuracy`, `DamagePerGame`, `CareerRank`, `CSRCurrent`, `CSRBest`, `Extended map[string]any` | ⬜ |
+| C1.3 | Créer `internal/port/player_stats_provider.go` : interface `PlayerStatsProvider` — `FetchRemoteStats(ctx, xuid string, filters FilterContextInput) (*NormalizedPlayerStats, error)` | ⬜ |
+| C1.4 | Ajouter `CompareRepository` dans `internal/port/repository.go` : `GetLocalStats(ctx, xuid string, filters FilterContextInput) (*NormalizedPlayerStats, error)` | ⬜ |
+| C1.5 | Ajouter `queryKeys.comparePlayer(playerSlug, targetGamertag)` dans `apps/web/src/lib/query/keys.ts` — clé centralisée, partagée entre Explorer, Career et Squad | ⬜ |
+
+##### C2 — Implémentations Go
+
+| # | Tâche | Statut |
+|--:|-------|:------:|
+| C2.1 | Créer `internal/platform/halo/compare_provider.go` : implémenter `PlayerStatsProvider` via Waypoint — réutilise `HaloProvider` (rate limiting + retry), appel `GetCareerStats` ou équivalent Waypoint | ⬜ |
+| C2.2 | Créer `internal/platform/duckdb/compare_repo.go` : implémenter `CompareRepository` — charge les stats joueur A depuis `shared.match_participants` + `player_match_enrichment` avec filtres | ⬜ |
+| C2.3 | Créer `internal/service/compare_service.go` : `CompareService` orchestrant les deux fetches via `errgroup.WithContext` — joueur A DuckDB + joueur B Waypoint en parallèle | ⬜ |
+| C2.4 | Assemblage `CompareResponse` : 12 KPIs MVP (`matches`, `win_rate`, `kda`, `kdr`, `kills_per_game`, `deaths_per_game`, `assists_per_game`, `csr_current`, `csr_best`, `accuracy`, `damage_per_game`, `career_rank`), `CompareMetricRow` avec `ValueA`, `ValueB`, `Delta`, `Winner` | ⬜ |
+| C2.5 | Enregistrer `CompareService` dans `api/registry.go` via `ServiceFactory[port.CompareService]` — même pattern que `CareerService`, `StatsService`, etc. | ⬜ |
+| C2.6 | Créer `internal/api/handlers/compare.go` : handler `POST /api/v1/players/{player_slug}/pages/compare` — body `{ "target_gamertag": "...", "filters": {...} }` | ⬜ |
+| C2.7 | Ajouter la route dans `internal/api/server.go` au même niveau que les routes joueur existantes | ⬜ |
+| C2.8 | Mettre à jour le schéma OpenAPI : endpoint `POST .../pages/compare`, types `CompareRequest`, `CompareResponse`, `NormalizedPlayerStats` | ⬜ |
+
+##### C3 — Frontend React
+
+| # | Tâche | Statut |
+|--:|-------|:------:|
+| C3.1 | Créer `apps/web/src/features/compare/` : hook `useCompare(playerSlug, targetGamertag, filters)` → `POST .../pages/compare` — `staleTime: 2 * 60 * 1000` | ⬜ |
+| C3.2 | Créer hook `useComparePrefetch(playerSlug)` : retourne `prefetchCompare(targetGamertag)` — pattern `queryClient.prefetchQuery` sur `queryKeys.comparePlayer` | ⬜ |
+| C3.3 | Créer `CompareDrawer.tsx` : drawer latéral (pattern `FilterDrawer.tsx` existant — backdrop + animate-in/out + Escape pour fermer) | ⬜ |
+| C3.4 | `CompareDrawer` : skeleton loader pendant le fetch Waypoint (~2-4s) — pas d'état vide muet | ⬜ |
+| C3.5 | `CompareDrawer` : affichage des 12 KPIs MVP en duel gauche/droite, emphasis sur les deltas et le gagnant par métrique | ⬜ |
+| C3.6 | Gestion des états limites : joueur absent (404), joueur privé (`privacy_warning`), données asymétriques (champs `null` gracieux) | ⬜ |
+
+##### C4 — Points d'entrée UI + prefetch
+
+| # | Tâche | Point d'entrée | Prefetch | Statut |
+|--:|-------|---------------|---------|:------:|
+| C4.1 | **Explorer** : ajouter CTA "Comparer" dans la Card résultats `ExplorerPage` (joueur B déjà résolu) — `onMouseEnter` → `prefetchCompare(targetGamertag)` | Explorer (prioritaire) | `onMouseEnter` | ⬜ |
+| C4.2 | **Career Encounters** : ajouter CTA "Comparer" sur chaque ligne de `encounters_preview` — `onMouseEnter` → `prefetchCompare` (gamertags déjà en cache via `career` query) | Career | `onMouseEnter` | ⬜ |
+| C4.3 | **Career en-tête** : ajouter CTA général "Comparer" ouvrant le drawer avec `GamertagSearchInput` (recherche libre) — prefetch déclenché à la sélection via `onSelect` | Career | `onSelect` | ⬜ |
+| C4.4 | **Squad** : ajouter CTA "Comparer" sur chaque ligne coéquipier — `onMouseEnter` → `prefetchCompare` (gamertags déjà en cache via `teammates` query) | Squad | `onMouseEnter` | ⬜ |
+
+---
+
+#### Volet D — O3 + O8 : Socle multi-titre (anticipation, sans import en production)
+
+> **Principe** : construire l'infrastructure de vérification sans écrire en production.
+> Staging uniquement + garde-fous stricts. Toutes les tables incluent `title_id` dès le début.
+> Constitue le fondement pour O7 Leaderboards (Volet E) qui partage `PlayerStatsProvider`.
+
+##### D1 — O3 : Medals metadata staging
+
+| # | Tâche | Statut |
+|--:|-------|:------:|
+| D1.1 | Migration DuckDB : créer table `waypoint_medals_raw(title_id, medal_id, label, category, rarity, image_url, description, fetched_at)` dans `metadata.duckdb` — staging uniquement | ⬜ |
+| D1.2 | CLI (extension de `cmd/refresh-metadata/`) : commande `medals` — fetch `Waypoint/file/medals/metadata.json` via Waypoint | ⬜ |
+| D1.3 | Garde-fous d'import (bloquants) : (1) cardinalité Waypoint cohérente avec table locale ± 10% ; (2) champs requis présents sur toutes les entrées (`medal_id`, `label`, `category`, `rarity`) ; (3) images récupérables pour toutes les entrées ou pour aucune — pas d'import partiel d'assets | ⬜ |
+| D1.4 | Si tous les garde-fous passent : promouvoir vers `medal_metadata(title_id, medal_id, ...)` — sinon générer un rapport d'écart et bloquer | ⬜ |
+| D1.5 | Conserver la table actuelle des médailles comme fallback si une clé manque dans `medal_metadata` | ⬜ |
+| D1.6 | Tests : `TestMedalImport_GuardCardinalityFail`, `TestMedalImport_GuardMissingFields`, `TestMedalImport_GuardPartialImages`, `TestMedalImport_FullPassPromotes` | ⬜ |
+
+##### D2 — O8 : Asset discovery outillage interne
+
+| # | Tâche | Statut |
+|--:|-------|:------:|
+| D2.1 | Migration DuckDB : créer table `waypoint_assets_raw(title_id, asset_id, version_id, kind, labels, fetched_at, content_hash)` dans `metadata.duckdb` | ⬜ |
+| D2.2 | CLI (extension de `cmd/refresh-metadata/`) : commande `assets --kind <AssetKind>` — fetch via `getAsset` / `getSpecificAssetVersion` Waypoint | ⬜ |
+| D2.3 | Générer un rapport diff (nouveau / modifié / supprimé) par rapport à ce qui est en DB — pas d'écriture automatique en production sans validation humaine | ⬜ |
+| D2.4 | Tous les assets stockés incluent `title_id` comme clé de partition — convention commune avec O3 | ⬜ |
+| D2.5 | Tests : `TestAssetDiff_NewDetected`, `TestAssetDiff_ModifiedDetected`, `TestAssetDiff_UnchangedNoWrite` | ⬜ |
+
+---
+
+#### Volet E — O7 : CSR Leaderboards (MVP bloc Career/Home)
+
+> **Architecture** : même modèle que O5 Compare — joueurs locaux DuckDB en premier (< 50ms),
+> joueurs distants Waypoint en complement via batch goroutines. `PlayerStatsProvider` est
+> partagé avec O5 (Volet C), zéro doublon. Chargement progressif côté React.
+
+##### E1 — Socle Go (réutilisation Volet C)
+
+| # | Tâche | Statut |
+|--:|-------|:------:|
+| E1.1 | Créer `internal/domain/leaderboard.go` : types `LeaderboardEntry` (`XUID`, `Gamertag`, `TitleSlug`, `CSR`, `Playlist`, `Season`, `IsLocal bool`), `LeaderboardRequest`, `LeaderboardResponse` | ⬜ |
+| E1.2 | Ajouter `LeaderboardRepository` dans `internal/port/repository.go` : `GetLocalRankings(ctx, req LeaderboardRequest) ([]LeaderboardEntry, error)` — charge depuis `shared.match_participants` + `match_skill_rank` | ⬜ |
+| E1.3 | Créer `internal/platform/duckdb/leaderboard_repo.go` : implémenter `LeaderboardRepository` — jointure `xuid_aliases` + `match_skill_rank`, filtré par `title_id` + `season` (via `MetadataRepository` O2) | ⬜ |
+| E1.4 | Créer `internal/service/leaderboard_service.go` : `LeaderboardService` — charge joueurs locaux (DuckDB, rapide), enrichit avec joueurs distants via `PlayerStatsProvider` en batch goroutines (`errgroup`) | ⬜ |
+| E1.5 | Enregistrer dans `api/registry.go` via `ServiceFactory[port.LeaderboardService]` | ⬜ |
+| E1.6 | Créer `internal/api/handlers/leaderboard.go` : `GET /api/v1/players/{player_slug}/pages/leaderboard?season=...&playlist=...` | ⬜ |
+| E1.7 | Mettre à jour le schéma OpenAPI : endpoint `GET .../pages/leaderboard`, types `LeaderboardRequest`, `LeaderboardResponse`, `LeaderboardEntry` | ⬜ |
+
+##### E2 — Frontend React
+
+| # | Tâche | Statut |
+|--:|-------|:------:|
+| E2.1 | Ajouter `queryKeys.leaderboard(playerSlug, { season, playlist })` dans `lib/query/keys.ts` | ⬜ |
+| E2.2 | Créer hook `useLeaderboard(playerSlug, season, playlist)` → `GET .../pages/leaderboard` — `staleTime: 5 * 60 * 1000` | ⬜ |
+| E2.3 | Créer `LeaderboardBlock.tsx` : module compact — affiche joueurs locaux (`IsLocal=true`) immédiatement, skeleton par ligne pour les joueurs Waypoint en attente | ⬜ |
+| E2.4 | Prefetch au mount de `CareerPage` : `useEffect` → `queryClient.prefetchQuery(queryKeys.leaderboard(...))` — exploite le fait que `queryKeys.home` est déjà en cache via KPIBar | ⬜ |
+| E2.5 | Hover sur une ligne du leaderboard → `useComparePrefetch` (Volet C, `C3.2`) — zéro doublon | ⬜ |
+| E2.6 | Intégrer `LeaderboardBlock` dans `CareerPage` (bloc secondaire sous KPIs) et optionnellement dans `HomePage` (carte éditoriale) | ⬜ |
+| E2.7 | CTA "Voir plus" → route secondaire `/leaderboard` (à créer uniquement si l'usage du bloc le justifie — peut rester commenté à ce stade) | ⬜ |
+
+---
+
+#### Volet F — Qualité, tests et OpenAPI
+
+| # | Tâche | Statut |
+|--:|-------|:------:|
+| F1 | Tests Go Compare : `TestCompareService_BothLocal`, `TestCompareService_PlayerBWaypoint`, `TestCompareService_PlayerBPrivate`, `TestCompareService_PlayerBNotFound`, golden values sur duo de joueurs de référence | ⬜ |
+| F2 | Tests Go Leaderboard : `TestLeaderboardService_LocalOnly`, `TestLeaderboardService_MixedLocalWaypoint`, `TestLeaderboardService_EmptySeason`, test de chargement progressif (joueurs locaux retournés sans attendre Waypoint) | ⬜ |
+| F3 | Tests Go Privacy : `TestPrivacyProvider_Public`, `TestPrivacyProvider_Private`, `TestPrivacyProvider_Timeout` | ⬜ |
+| F4 | Test multi-titre : `X-LevelUp-Title` propagé correctement dans Compare, Leaderboard et Privacy — aucun mélange de données entre titres | ⬜ |
+| F5 | Test de latence Compare : P95 < 5s sur Waypoint nominal (test d'intégration avec mock `HaloClient`) | ⬜ |
+| F6 | Tests React (`vitest`) : `CompareDrawer` — skeleton visible pendant fetch, états limites (absent, privé, identique), KPIs cohérents avec golden values | ⬜ |
+| F7 | Tests React (`vitest`) : `LeaderboardBlock` — joueurs locaux visibles avant résolution Waypoint, prefetch déclenché au mount | ⬜ |
+| F8 | `HALO_EXTERNAL_OPPORTUNITIES.md` : vérifier cohérence entre ce sprint et le document — mettre à jour les statuts des opportunités si nécessaire | ⬜ |
+
+---
+
+**Gate Sprint 54** :
+
+- [ ] `GET /bootstrap` : champ `privacy` présent et documenté OpenAPI
+- [ ] `GET .../pages/match-history` + `GET .../pages/match-view` : `privacy_warning` présent et non nul sur un compte privé
+- [ ] CLI `refresh-metadata seasons` : upsert `metadata.duckdb`, notification Discord si changement, skip si inchangé (ETag/hash)
+- [ ] `CareerService` et `StatsService` : 0 date de saison hardcodée — source = `MetadataRepository`
+- [ ] `POST .../pages/compare` : réponse avec 12 KPIs, joueur A DuckDB + joueur B Waypoint, `titleSlug` propagé
+- [ ] Compare P95 < 5s sur Waypoint nominal (test mock)
+- [ ] `GET .../pages/leaderboard` : joueurs locaux (`IsLocal=true`) dans la réponse, joueurs Waypoint en complement
+- [ ] `LeaderboardBlock` React : joueurs locaux affichés sans attendre Waypoint (chargement progressif vérifié vitest)
+- [ ] `CompareDrawer` React : skeleton loader visible, 3 états limites couverts (absent, privé, identique)
+- [ ] Prefetch Compare actif sur 4 points d'entrée (Explorer, Career Encounters, Career en-tête, Squad)
+- [ ] Tables staging `waypoint_medals_raw` + `waypoint_assets_raw` créées — aucune donnée en production sans validation humaine
+- [ ] Garde-fous medals : test de blocage si cardinalité hors ± 10%, champs manquants, ou images partielles
+- [ ] 0 date de saison hardcodée dans le code Go après O2
+- [ ] `title_id` présent dans toutes les nouvelles tables DuckDB et tous les nouveaux types Go
+- [ ] Entrée `thought_log.md` avec bilan Sprint 54
 
 ---
 
