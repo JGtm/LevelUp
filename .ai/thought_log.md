@@ -15203,7 +15203,7 @@ Créer des tests internes (package-level) et CGO pour couvrir les fonctions priv
 Rédaction des 3 `claude_review.md` pour le Sprint 50 (passage aveugle, indépendant de ChatGPT) :
 - **Axe 1 — Parité** : 13/13 P0/P1 endpoints ✅, 41 routes Go, 7/7 algos golden values, 2 pages absentes (Win/Loss, Objectifs), i18n React absent
 - **Axe 2 — Architecture** : hexagonal Go impeccable (0 violation), 27 fonctions >80L (sync/migration), 1 fichier >500L non-généré, React 1 cross-feature import, pas d'ErrorBoundary
-- **Axe 3 — Tests** : couverture Go 58.0% (gate 70% ���), platform/duckdb 0.6% ���, sync 14.1% ���, migration 0.0% — analyse/handlers/service >90% ✅, 1376 Test* functions, React 12 unit + 16 E2E
+- **Axe 3 — Tests** : couverture Go 58.0% (gate 70% ���), platform/duckdb 0.6% ���, sync 14.1% ���, migration 0.0% — analyse/handlers/service >90% ✅, 1376 Test* functions, React 12 unit + 16 E2E
 
 ### Résultats
 - SHAs figés : Go `93c3cd66`, Python `db638c09`
@@ -15212,3 +15212,28 @@ Rédaction des 3 `claude_review.md` pour le Sprint 50 (passage aveugle, indépen
 
 ### Conclusion
 Reviews ChatGPT + réconciliation + rapport final restent à faire (hors scope Claude). Blockers identifiés : couverture Go globale et platform/duckdb/sync.
+
+## [2026-04-18] docs(phase11): Sprint 50 — Réconciliation triple LLM + rapport final
+
+**Statut** : Complété
+
+### Décision technique
+Réconciliation des reviews Claude + ChatGPT sur les 3 axes, puis rédaction du `FINAL_REPORT.md` :
+
+- **Axe 1 — Parité** : 7 convergences, 5 divergences arbitrées, 7 items uniques. Divergence principale : Python utilise `SPNKr` (pas une lib Go) → non parité directe attendue. Synthèse : 0 🔴 / 4 🟠 / 8 🟡 / 7 🟢. GO conditionnel.
+- **Axe 2 — Architecture** : Vérification manuelle confirmée : `fanout_service.go:17` importe `platform/duckdb` directement (violation hexagonale, identifiée uniquement par ChatGPT). MediaPage = 391L réels (pas 583L ChatGPT). Synthèse : 0 🔴 / 3 🟠 / 8 🟡 / 8 🟢. GO conditionnel.
+- **Axe 3 — Tests/logging** : Divergence principale = profils de couverture différents. `coverage.out` (CI, CGO+integration) = 78.8% = référence officielle (gate 70% PASSÉE). `cov_sprint50.out` (sans integration) = 58.0%. Le package `sync` est **absent de `coverage.out`** (angle mort). `@vitest/coverage-v8` non installé (ChatGPT l'a vu, Claude non). Synthèse : 0 🔴 / 5 🟠 / 7 🟡 / 7 🟢. GO conditionnel.
+
+### Rapport final (FINAL_REPORT.md)
+- Total consolidé : **0 🔴 / 12 🟠 / 23 🟡 / 22+ 🟢**
+- Aucun blocker — gate officiellement passée
+- 12 dettes majeures planifiées Sprint 51+ (fanout, ErrorBoundary, SetupPage, @vitest/coverage-v8, pool.go, pollDeviceFlow, log.Printf, sync profil CI, pages Win/Loss/Objectifs, i18n, Timeseries, ChangelogPage)
+- Décision : **GO conditionnel** — bascule OK sous 4 conditions (fanout, ErrorBoundary, vitest-coverage, profil sync)
+
+### Résultats
+- 3 RECONCILIATION.md complétés (Axe 1 déjà fait, Axe 2 et 3 complétés cette session)
+- FINAL_REPORT.md écrit entièrement
+- Vérifications manuelles : fanout import confirmé, MediaPage = 391L, `sync` absent du profil CI, `@vitest/coverage-v8` absent du `package.json`
+
+### Conclusion
+Sprint 50 Phase 11 clôturé. Les 3 réconciliations + le rapport final sont en place. Prochaine étape : committer ce lot, puis Sprint 51 avec les 12 dettes majeures identifiées.
