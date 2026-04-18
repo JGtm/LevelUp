@@ -73,6 +73,7 @@ SELECT
     pme.session_id,
     pme.session_label,
     COALESCE(pme.is_with_friends, FALSE)                 AS is_with_friends,
+    COALESCE(pme.is_excluded, FALSE)                     AS is_excluded,
     COALESCE(p.outcome, 0)                               AS outcome,
     p.team_mmr,
     p.enemy_mmr,

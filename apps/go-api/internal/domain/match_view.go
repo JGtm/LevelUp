@@ -34,6 +34,7 @@ type MatchViewHeader struct {
 	PlaylistLabel  string     `json:"playlist_label"`
 	PerfDisplay    string     `json:"performance_display"`
 	PerfColor      *string    `json:"performance_color,omitempty"`
+	IsExcluded     bool       `json:"is_excluded"`
 }
 
 // MatchViewRank : rang CSR ou LUSR pour ce match.
@@ -251,6 +252,7 @@ type ScoreboardRaw struct {
 type MatchEnrichmentRaw struct {
 	PerformanceScore *float64
 	IsWithFriends    bool
+	IsExcluded       bool
 }
 
 // MedalRaw : données brutes de Q14.

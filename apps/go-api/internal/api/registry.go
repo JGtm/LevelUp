@@ -191,6 +191,15 @@ func (r *ServiceRegistry) SquadCtx(ctx context.Context, slug string) (port.Squad
 	return svc, pdb.XUID, pdb.Gamertag, nil
 }
 
+// MatchExclusion retourne un MatchExclusionService pour le joueur.
+func (r *ServiceRegistry) MatchExclusion(ctx context.Context, slug string) (port.MatchExclusionService, error) {
+	pdb, err := r.resolve(ctx, slug)
+	if err != nil {
+		return nil, err
+	}
+	return service.NewMatchExclusionService(duckdb.NewMatchExclusionRepo(pdb)), nil
+}
+
 // TeammatesCtx retourne un TeammatesService + identifiants joueur.
 func (r *ServiceRegistry) TeammatesCtx(ctx context.Context, slug string) (port.TeammatesService, string, string, error) {
 	pdb, err := r.resolve(ctx, slug)

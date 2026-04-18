@@ -37,3 +37,10 @@ export function useMatchHistoryExport(playerSlug: string) {
       ),
   })
 }
+
+export function useSetMatchExclusion(playerSlug: string) {
+  return useMutation({
+    mutationFn: ({ matchId, excluded }: { matchId: string; excluded: boolean }) =>
+      api.patch(`/players/${playerSlug}/matches/${matchId}/exclusion`, { excluded }),
+  })
+}

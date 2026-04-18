@@ -132,12 +132,15 @@ func buildMatchHeader(
 		h.ScoreLabel = buildScoreLabel(scoreboard)
 	}
 
-	if enrich != nil && enrich.PerformanceScore != nil {
-		perf := *enrich.PerformanceScore
-		display := fmt.Sprintf("%.0f", perf)
-		h.PerfDisplay = display
-		color := perfColor(perf)
-		h.PerfColor = &color
+	if enrich != nil {
+		if enrich.PerformanceScore != nil {
+			perf := *enrich.PerformanceScore
+			display := fmt.Sprintf("%.0f", perf)
+			h.PerfDisplay = display
+			color := perfColor(perf)
+			h.PerfColor = &color
+		}
+		h.IsExcluded = enrich.IsExcluded
 	}
 
 	return h
