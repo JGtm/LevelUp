@@ -189,3 +189,4 @@ Après 2 semaines sans incident : supprimer le service Python du compose.
 |------|--------|--------|
 | 2026-07-20 | Document créé (Sprint 36) | Copilot |
 | 2026-07-25 | Sprint 49 — Contrat OpenAPI aligné (0 exemption), `POST /session/context` enrichi, `JobMeta` structuré, ADR routage confirmée définitive. Critères 1-3/6 en attente CI. | Copilot |
+| 2025-12-01 | Sprint 51 — Critère 4 (sécurité) ✅ branche `feat/sprint-55-career-synthesis-ux` ; critère 5 (docker-compose healthcheck `levelup-server` Go natif) ✅ vérifié. Items 1-3/6 en attente CI. | Copilot |

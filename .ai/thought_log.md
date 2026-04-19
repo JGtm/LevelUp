@@ -1,5 +1,30 @@
 # Thought Log
 
+## [2026-04-20] Sprint 55 — Convergence UX Carrière / Synthèse + privacy state durable
+
+**Statut** : Complété
+
+### Décisions techniques
+
+1. **Routing canonique Carrière** — `career.tsx` utilise désormais `CareerHubPage` comme composant et `validateSearch: z.object({ tab: z.enum(['progression','citations']).optional() })` pour les tabs deep-linkables. La route legacy `/profile/citations` redirige via `beforeLoad → redirect` (TanStack Router `replace: true`) vers `/career?tab=citations`.
+2. **NavL1 renommage** — Libellé `Profil` → `Carrière`, key `profile` → `career`, matcher regex mis à jour. Plus aucune trace du doublon Profil dans le shell joueur.
+3. **SynthesisRepo DuckDB** — Création de `platform/duckdb/synthesis_repo.go` : wraps `SquadRepo` pour `LoadSynthesisMatches` et `LoadSynthesisHeatmap`, implémente `LoadEncounters` avec `Q10Encounters` (même requête que `CareerRepo.GetEncounters` mais avec xuid en argument). Satisfait `port.SynthesisRepository`.
+4. **SynthesisCtx dans registry.go** — Nouvelle méthode `ServiceRegistry.SynthesisCtx` qui résout via `duckdb.NewSynthesisRepo`. Route `server.go` `POST /pages/synthesis` re-câblée vers `handlers.NewSynthesisHandler(reg.SynthesisCtx)` — séparation complète de `SquadHandler`.
+5. **PrivacyStateRepository** — Interface dans `port/repository.go` + migration DuckDB `player_privacy_state` dans `steps_player.go`. `BootstrapService` persiste l'état Waypoint et charge depuis DB comme fallback gracieux avec hint `"cached"` quand Waypoint échoue.
+
+### Résultats observés
+
+- `go build ./...` → 0 erreur (validé en fin de session)
+- Sprint 51 gates cochés : B1-B6 ✅, C1-C3 ✅, C4-C5 ✅ (no Azure wizard)
+- Sprint 55 gates cochés : Volets A-F (sauf B6 tests React + D9 tests Go/React — dette restante)
+- `docs/BASCULE_GO.md` historique mis à jour avec SHA Sprint 51
+
+### Conclusion
+
+Sprint 55 livré avec les items structurels principaux : routing canonique, extraction Synthèse, privacy state durable, hub Carrière. La dette restante (B6 tests React, D9 tests Go/React) est documentée dans SPRINT_ROADMAP.md ⬜.
+
+---
+
 ## [2026-04-19] Sprint 56 — Tuiles matchs Home + barre composite rendement combat
 
 **Statut** : Complété
