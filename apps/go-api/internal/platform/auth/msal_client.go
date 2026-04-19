@@ -131,6 +131,17 @@ type InMemoryCacheAccessor struct {
 	data []byte
 }
 
+// NewInMemoryCacheAccessorFromJSON crée un InMemoryCacheAccessor pré-chargé
+// avec le JSON du cache MSAL lu depuis sync_meta.
+// Si jsonData est vide, retourne un cache vide (premier lancement).
+func NewInMemoryCacheAccessorFromJSON(jsonData string) *InMemoryCacheAccessor {
+	acc := &InMemoryCacheAccessor{}
+	if jsonData != "" {
+		acc.data = []byte(jsonData)
+	}
+	return acc
+}
+
 // Replace écrit le cache MSAL (appelé par MSAL pour lire le cache).
 func (a *InMemoryCacheAccessor) Replace(ctx context.Context, c cache.Unmarshaler, hints cache.ReplaceHints) error {
 	a.mu.Lock()

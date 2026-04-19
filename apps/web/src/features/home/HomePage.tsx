@@ -114,7 +114,7 @@ export function HomePage() {
           <CardContent>
             <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-6">
               <KPICard label="Parties" value={hero.kpis.total_matches.toLocaleString('fr-FR')} />
-              <KPICard label="Win Rate" value={`${(hero.kpis.win_rate * 100).toFixed(0)}%`} />
+              <KPICard label="Taux de victoire" value={`${(hero.kpis.win_rate * 100).toFixed(0)}%`} />
               <KPICard label="K/D" value={hero.kpis.global_ratio?.toFixed(2) ?? '—'} />
               <KPICard label="Victoires" value={hero.kpis.wins.toLocaleString('fr-FR')} />
               <KPICard label="Défaites" value={hero.kpis.losses.toLocaleString('fr-FR')} />

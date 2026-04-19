@@ -1,10 +1,22 @@
 # Thought Log
 
-## [2026-04-20] Sprint 55 D9 — Tests scope + overview + highlights + rivalries
+## [2026-04-19] Fix labels FR home + auth Battle Pass + tests handlers
 
 **Statut** : Complété
 
-### Décisions techniques
+**Décisions techniques** :
+1. **Normalisation labels FR dans la page home** : Q26 ne récupérait pas `map_name_fr`/`pair_name_fr` depuis `match_registry`. Ajout de ces colonnes dans la requête, dans `HomeMatchRow`, dans le scan DuckDB, et fonction `labelFR(fr, en)` dans `analysis/home.go` pour afficher les noms FR dans les highlights et recent matches.
+2. **"Win Rate" → "Taux de victoire"** : `HomePage.tsx`, `SquadPage.tsx` (labels KPICard + métriques radar), test `HomePage.test.tsx` mis à jour.
+3. **HomeAuthFactory** : `home.go` handlers migré de `ContextFactory[port.HomeService]` (4 retours) vers `HomeAuthFactory` (5 retours avec contexte enrichi) pour permettre l'injection MSAL. Tests corrigés dans `home_test.go` et `handlers_extra_test.go`.
+4. **Auth Battle Pass / Challenges** : chaîne `sync_meta → MSAL → XBL → Spartan` implémentée via `queries_auth.go`, `player_token_cache.go`, `HomeCtxWithAuth` dans `registry.go`.
+
+**Résultats** : 22/22 packages Go ✅, tests front HomePage ✅. Les matchs récents et highlights afficheront les noms FR (ex : "Slayer en équipe" au lieu de "Arena:Team Slayer on...") dès le prochain redémarrage du serveur.
+
+**Conclusion** : Redémarrer `make go-api-dev` pour bénéficier des corrections.
+
+---
+
+
 
 1. **Tests Go synthesis_service** — 4 tests ajoutés : `ScopeApplied_Period` (filtrage 1w → MatchCount=1), `Overview_MatchesScope` (overview.TotalMatches == scope.MatchCount), `Highlights_WithinScope` (MatchIDs highlights ⊂ rows filtrées), `Rivalries_FromEncounters` (Total=2 avec Alice + Bob correctement splitées équipe/ennemi).
 2. **Tests Go synthesis_handler** — 3 tests ajoutés : `ScopePeriodInResponse` (scope.period propagé en JSON), `OverviewInResponse` (bloc overview présent + total_matches=5), `RivalriesInResponse` (rivalries_preview + teammates dans JSON).

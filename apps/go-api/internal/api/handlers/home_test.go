@@ -35,7 +35,7 @@ func (m *mockHomeService) GetChallenges(_ context.Context) domain.ChallengesResp
 	return m.challenges
 }
 
-func newHomeRouter(factory handlers.ContextFactory[port.HomeService]) *chi.Mux {
+func newHomeRouter(factory handlers.HomeAuthFactory) *chi.Mux {
 	r := chi.NewRouter()
 	h := handlers.NewHomeHandler(factory)
 	r.Route("/players/{player_slug}", func(r chi.Router) {
@@ -48,11 +48,11 @@ func newHomeRouter(factory handlers.ContextFactory[port.HomeService]) *chi.Mux {
 
 func TestHomeHandler_GetHomePage_OK(t *testing.T) {
 	mock := &mockHomeService{page: &domain.HomePageResponse{}}
-	factory := func(_ context.Context, slug string) (port.HomeService, string, string, error) {
+	factory := func(ctx context.Context, slug string) (port.HomeService, context.Context, string, string, error) {
 		if slug != testPlayerSlug {
-			return nil, "", "", errors.New("player_not_found")
+			return nil, ctx, "", "", errors.New("player_not_found")
 		}
-		return mock, "xuid-1", "TestPlayer", nil
+		return mock, ctx, "xuid-1", "TestPlayer", nil
 	}
 	r := newHomeRouter(factory)
 	req := httptest.NewRequest(http.MethodGet, "/players/test-player/pages/home", nil)
@@ -65,8 +65,8 @@ func TestHomeHandler_GetHomePage_OK(t *testing.T) {
 }
 
 func TestHomeHandler_GetHomePage_PlayerNotFound(t *testing.T) {
-	factory := func(_ context.Context, _ string) (port.HomeService, string, string, error) {
-		return nil, "", "", errors.New("player_not_found")
+	factory := func(ctx context.Context, _ string) (port.HomeService, context.Context, string, string, error) {
+		return nil, ctx, "", "", errors.New("player_not_found")
 	}
 	r := newHomeRouter(factory)
 	req := httptest.NewRequest(http.MethodGet, "/players/unknown/pages/home", nil)
@@ -80,8 +80,8 @@ func TestHomeHandler_GetHomePage_PlayerNotFound(t *testing.T) {
 
 func TestHomeHandler_GetHomePage_ServiceError(t *testing.T) {
 	mock := &mockHomeService{pageErr: errors.New("db_error")}
-	factory := func(_ context.Context, _ string) (port.HomeService, string, string, error) {
-		return mock, "xuid", "gt", nil
+	factory := func(ctx context.Context, _ string) (port.HomeService, context.Context, string, string, error) {
+		return mock, ctx, "xuid", "gt", nil
 	}
 	r := newHomeRouter(factory)
 	req := httptest.NewRequest(http.MethodGet, "/players/test-player/pages/home", nil)
@@ -95,8 +95,8 @@ func TestHomeHandler_GetHomePage_ServiceError(t *testing.T) {
 
 func TestHomeHandler_GetBattlePass_OK(t *testing.T) {
 	mock := &mockHomeService{battlePass: domain.BattlePassResponse{}}
-	factory := func(_ context.Context, _ string) (port.HomeService, string, string, error) {
-		return mock, "xuid", "gt", nil
+	factory := func(ctx context.Context, _ string) (port.HomeService, context.Context, string, string, error) {
+		return mock, ctx, "xuid", "gt", nil
 	}
 	r := newHomeRouter(factory)
 	req := httptest.NewRequest(http.MethodGet, "/players/test-player/battlepass", nil)
@@ -110,8 +110,8 @@ func TestHomeHandler_GetBattlePass_OK(t *testing.T) {
 
 func TestHomeHandler_GetChallenges_OK(t *testing.T) {
 	mock := &mockHomeService{challenges: domain.ChallengesResponse{}}
-	factory := func(_ context.Context, _ string) (port.HomeService, string, string, error) {
-		return mock, "xuid", "gt", nil
+	factory := func(ctx context.Context, _ string) (port.HomeService, context.Context, string, string, error) {
+		return mock, ctx, "xuid", "gt", nil
 	}
 	r := newHomeRouter(factory)
 	req := httptest.NewRequest(http.MethodGet, "/players/test-player/challenges", nil)

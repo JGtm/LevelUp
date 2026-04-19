@@ -32,7 +32,7 @@ function buildSynergiesChart(
   rows: TeammateRow[],
   soloRef: TeammateKPIs | null,
 ): PlotlyFigurePayload {
-  const metrics = ['Win Rate', 'K/D', 'Kills/partie', 'Assists/partie']
+  const metrics = ['Taux de victoire', 'K/D', 'Kills/partie', 'Assists/partie']
   const extract = (k: TeammateKPIs) => [
     k.win_rate * 100,
     k.kd_ratio ?? 0,
@@ -68,7 +68,7 @@ function buildRadarChart(
   rows: TeammateRow[],
   soloRef: TeammateKPIs | null,
 ): PlotlyFigurePayload {
-  const axes = ['Win Rate', 'K/D', 'Kills/partie', 'Assists/partie', 'Précision']
+  const axes = ['Taux de victoire', 'K/D', 'Kills/partie', 'Assists/partie', 'Précision']
   const norm = (v: number | null, max: number) => v != null ? Math.min(100, (v / max) * 100) : 0
 
   const makeVals = (k: TeammateKPIs) => [
@@ -134,7 +134,7 @@ function KPIBlock({ title, kpis, color = 'text-gray-600' }: KPIBlockProps) {
       <h3 className={`text-sm font-medium mb-2 ${color}`}>{title}</h3>
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
         <KPICard label="Matchs" value={kpis.match_count} />
-        <KPICard label="Win Rate" value={kpis.win_rate * 100} unit="%" />
+        <KPICard label="Taux de victoire" value={kpis.win_rate * 100} unit="%" />
         <KPICard label="K/D" value={kpis.kd_ratio} />
         <KPICard label="Kills / match" value={kpis.kills_per_game} />
       </div>

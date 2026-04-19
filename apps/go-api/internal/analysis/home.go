@@ -38,6 +38,14 @@ var homeOutcomeTones = map[int]string{
 	homeOutcomeDNF:  "dnf",
 }
 
+// labelFR retourne fr si non vide, sinon en.
+func labelFR(fr, en string) string {
+	if fr != "" {
+		return fr
+	}
+	return en
+}
+
 // ---------------------------------------------------------------------------
 // ComputeKPIs — KPIs globaux
 // ---------------------------------------------------------------------------
@@ -156,7 +164,7 @@ func BuildHighlights(matches []domain.HomeMatchRow) []domain.HighlightItem {
 		highlights = append(highlights, domain.HighlightItem{
 			Title:  "Pic KD récent",
 			Value:  fmt.Sprintf("KD %.2f", *best.Ratio),
-			Detail: fmt.Sprintf("%s · %s", best.MapName, best.PairName),
+			Detail: fmt.Sprintf("%s · %s", labelFR(best.MapNameFR, best.MapName), labelFR(best.PairNameFR, best.PairName)),
 		})
 	}
 
@@ -236,8 +244,8 @@ func BuildRecentMatches(matches []domain.HomeMatchRow, limit int) []domain.Recen
 		t := m.StartTime
 		items = append(items, domain.RecentMatchItem{
 			MatchID:      m.MatchID,
-			Title:        fmt.Sprintf("%s · %s", label, m.MapName),
-			Detail:       fmt.Sprintf("%s · KD %s · %s", m.PairName, ratioStr, accStr),
+			Title:        fmt.Sprintf("%s · %s", label, labelFR(m.MapNameFR, m.MapName)),
+			Detail:       fmt.Sprintf("%s · KD %s · %s", labelFR(m.PairNameFR, m.PairName), ratioStr, accStr),
 			StartedAt:    &t,
 			OutcomeLabel: label,
 			OutcomeTone:  tone,

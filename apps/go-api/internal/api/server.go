@@ -154,7 +154,7 @@ func NewRouter(
 			r.Post("/pages/stats/query", stats.GetPage)
 
 			// Sprint 11 : Accueil/Home + Battle Pass + Challenges
-			home := handlers.NewHomeHandler(reg.HomeCtx)
+			home := handlers.NewHomeHandler(reg.HomeCtxWithAuth)
 			r.Get("/pages/home", home.GetHomePage)
 			r.Get("/battlepass", home.GetBattlePass)
 			r.Get("/challenges", home.GetChallenges)

@@ -16,7 +16,9 @@ type HomeMatchRow struct {
 	MatchID        string
 	StartTime      time.Time
 	MapName        string
+	MapNameFR      string
 	PairName       string
+	PairNameFR     string
 	PlaylistName   string
 	IsFirefight    bool
 	IsRanked       bool
