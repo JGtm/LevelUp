@@ -9,12 +9,13 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { EmptyStateCard, EmptyStateNotice } from '@/components/ui/empty-state'
 import { PlotlyChart } from '@/components/ui/plotly-chart'
-import { useTimeseriesPage } from './queries'
+import { useTimeseriesPage, useCombatYieldHistory } from './queries'
 import { useGlobalFilterStore } from '@/stores/globalFilterStore'
 import { DeltaCard } from '@/components/ui/delta-card'
+import { CombatYieldTimeseries } from '@/components/ui/combat-yield-timeseries'
 import type { PlotlyFigurePayload, TimeseriesKpiCard } from '@/lib/api/types'
 
-type TabId = 'summary' | 'cumul' | 'form' | 'intensity' | 'distributions'
+type TabId = 'summary' | 'cumul' | 'form' | 'intensity' | 'distributions' | 'combat'
 
 const TABS: { id: TabId; label: string }[] = [
   { id: 'summary', label: 'KPIs' },
@@ -22,6 +23,7 @@ const TABS: { id: TabId; label: string }[] = [
   { id: 'form', label: 'Forme' },
   { id: 'intensity', label: 'Intensité' },
   { id: 'distributions', label: 'Distributions' },
+  { id: 'combat', label: 'Combat' },
 ]
 
 function ChartCard({ title, figure }: { title: string; figure: PlotlyFigurePayload | null }) {
@@ -54,6 +56,12 @@ export function TimeseriesPage() {
     playerSlug,
     { filters: filterContext },
     filterContextHash,
+  )
+
+  const { data: combatData, isLoading: combatLoading } = useCombatYieldHistory(
+    playerSlug,
+    filterContextHash,
+    filterContext,
   )
 
   if (isLoading) {
@@ -233,6 +241,24 @@ export function TimeseriesPage() {
                 </CardContent>
               </Card>
             ))}
+          </div>
+        )}
+
+        {/* Combat — deux courbes OC + DR (S56) */}
+        {activeTab === 'combat' && (
+          <div className="space-y-6">
+            <Card>
+              <CardHeader>
+                <CardTitle className="text-sm">Rendement combat par match</CardTitle>
+              </CardHeader>
+              <CardContent className="pb-4">
+                {combatLoading ? (
+                  <div className="flex justify-center py-8"><span className="text-gray-400 text-sm">Chargement…</span></div>
+                ) : (
+                  <CombatYieldTimeseries rows={combatData?.table.items ?? []} />
+                )}
+              </CardContent>
+            </Card>
           </div>
         )}
       </div>

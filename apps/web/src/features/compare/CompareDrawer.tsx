@@ -157,7 +157,7 @@ export function CompareDrawer({ playerSlug, open, onClose }: CompareDrawerProps)
           {isError && (
             <EmptyStateCard
               title={error?.message?.includes('404') ? 'Joueur introuvable' : 'Erreur'}
-              message={
+              description={
                 error?.message?.includes('404')
                   ? 'Ce joueur n\'existe pas ou n\'a aucune donnée accessible.'
                   : (error?.message ?? 'Impossible de récupérer la comparaison.')
