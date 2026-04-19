@@ -39,11 +39,11 @@ describe('HomePage', () => {
     })
   })
 
-  it('affiche les KPIs globaux (Parties, Win Rate, K/D)', async () => {
+  it('affiche les KPIs globaux (Parties, Taux de victoire, K/D)', async () => {
     renderWithProviders(<HomePage />)
     await waitFor(() => {
       expect(screen.getByText('Parties')).toBeInTheDocument()
-      expect(screen.getByText('Win Rate')).toBeInTheDocument()
+      expect(screen.getByText('Taux de victoire')).toBeInTheDocument()
       expect(screen.getByText('K/D')).toBeInTheDocument()
     })
   })

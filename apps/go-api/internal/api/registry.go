@@ -7,9 +7,11 @@ package api
 
 import (
 	"context"
+	"log/slog"
 
 	"levelup/go-api/internal/config"
 	"levelup/go-api/internal/ctxkeys"
+	"levelup/go-api/internal/platform/auth"
 	"levelup/go-api/internal/platform/duckdb"
 	"levelup/go-api/internal/platform/halo"
 	"levelup/go-api/internal/port"
@@ -173,6 +175,57 @@ func (r *ServiceRegistry) HomeCtx(ctx context.Context, slug string) (port.HomeSe
 	}
 	svc := service.NewHomeService(duckdb.NewHomeRepo(pdb))
 	return svc, pdb.XUID, pdb.Gamertag, nil
+}
+
+// HomeCtxWithAuth retourne un HomeService + contexte enrichi avec les HaloTokens du joueur.
+// Si la session HTTP porte déjà des tokens, ils sont réutilisés.
+// Sinon, tente un refresh silencieux depuis le cache MSAL stocké dans sync_meta.
+func (r *ServiceRegistry) HomeCtxWithAuth(ctx context.Context, slug string) (port.HomeService, context.Context, string, string, error) {
+	pdb, err := r.resolve(ctx, slug)
+	if err != nil {
+		return nil, ctx, "", "", err
+	}
+	svc := service.NewHomeService(duckdb.NewHomeRepo(pdb))
+	enriched := r.enrichWithHaloTokens(ctx, pdb)
+	return svc, enriched, pdb.XUID, pdb.Gamertag, nil
+}
+
+// enrichWithHaloTokens injecte les HaloTokens dans le contexte si absents.
+// Ordre : 1) session HTTP (déjà injectée par le middleware), 2) cache process, 3) sync_meta DB.
+func (r *ServiceRegistry) enrichWithHaloTokens(ctx context.Context, pdb *duckdb.PlayerDB) context.Context {
+	if ctxkeys.HaloTokens(ctx) != nil {
+		return ctx // tokens déjà présents via session HTTP
+	}
+	xuid := pdb.XUID
+	if cached := halo.GetCachedPlayerTokens(xuid); cached != nil {
+		return ctxkeys.WithHaloAuth(ctx, cached, xuid)
+	}
+	result := refreshTokensFromDB(ctx, pdb, xuid)
+	if result != nil {
+		halo.SetCachedPlayerTokens(xuid, result.Tokens)
+		return ctxkeys.WithHaloAuth(ctx, result.Tokens, xuid)
+	}
+	return ctx
+}
+
+// refreshTokensFromDB charge le cache MSAL depuis sync_meta et tente un refresh silencieux.
+func refreshTokensFromDB(ctx context.Context, pdb *duckdb.PlayerDB, xuid string) *auth.ExchangeResult {
+	cacheJSON, err := duckdb.ReadMSALCacheJSON(ctx, pdb.Player)
+	if err != nil || cacheJSON == "" {
+		return nil
+	}
+	accessor := auth.NewInMemoryCacheAccessorFromJSON(cacheJSON)
+	accessToken, err := auth.AcquireTokenSilent(ctx, accessor)
+	if err != nil || accessToken == "" {
+		slog.WarnContext(ctx, "halo_auth: refresh silencieux échoué", "xuid", xuid, "err", err)
+		return nil
+	}
+	result, err := auth.ExchangeAccessToken(ctx, accessToken)
+	if err != nil {
+		slog.WarnContext(ctx, "halo_auth: échange access_token échoué", "xuid", xuid, "err", err)
+		return nil
+	}
+	return result
 }
 
 // MatchHistoryCtx retourne un MatchHistoryService + identifiants joueur.

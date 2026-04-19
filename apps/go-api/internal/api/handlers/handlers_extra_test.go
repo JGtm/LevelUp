@@ -410,8 +410,8 @@ func TestSyncHandler_InitialSync_NoTokens(t *testing.T) {
 // ---------------------------------------------------------------------------
 
 func TestHomeHandler_GetBattlePass_PlayerNotFound(t *testing.T) {
-	factory := func(_ context.Context, _ string) (port.HomeService, string, string, error) {
-		return nil, "", "", errors.New("not_found")
+	factory := func(ctx context.Context, _ string) (port.HomeService, context.Context, string, string, error) {
+		return nil, ctx, "", "", errors.New("not_found")
 	}
 	r := newHomeRouter(factory)
 	req := httptest.NewRequest(http.MethodGet, "/players/unknown/battlepass", nil)
@@ -423,8 +423,8 @@ func TestHomeHandler_GetBattlePass_PlayerNotFound(t *testing.T) {
 }
 
 func TestHomeHandler_GetChallenges_PlayerNotFound(t *testing.T) {
-	factory := func(_ context.Context, _ string) (port.HomeService, string, string, error) {
-		return nil, "", "", errors.New("not_found")
+	factory := func(ctx context.Context, _ string) (port.HomeService, context.Context, string, string, error) {
+		return nil, ctx, "", "", errors.New("not_found")
 	}
 	r := newHomeRouter(factory)
 	req := httptest.NewRequest(http.MethodGet, "/players/unknown/challenges", nil)

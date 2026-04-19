@@ -8,6 +8,7 @@
 package handlers
 
 import (
+	"context"
 	"net/http"
 
 	"github.com/go-chi/chi/v5"
@@ -15,13 +16,16 @@ import (
 	"levelup/go-api/internal/port"
 )
 
+// HomeAuthFactory est une factory qui retourne un HomeService + contexte enrichi avec HaloTokens.
+type HomeAuthFactory func(ctx context.Context, slug string) (svc port.HomeService, enrichedCtx context.Context, xuid, gamertag string, err error)
+
 // HomeHandler gère les endpoints de la page d'accueil Mission Control.
 type HomeHandler struct {
-	newSvc ContextFactory[port.HomeService]
+	newSvc HomeAuthFactory
 }
 
 // NewHomeHandler crée un HomeHandler.
-func NewHomeHandler(newSvc ContextFactory[port.HomeService]) *HomeHandler {
+func NewHomeHandler(newSvc HomeAuthFactory) *HomeHandler {
 	return &HomeHandler{newSvc: newSvc}
 }
 
@@ -29,13 +33,13 @@ func NewHomeHandler(newSvc ContextFactory[port.HomeService]) *HomeHandler {
 // GET /api/v1/players/{player_slug}/pages/home
 func (h *HomeHandler) GetHomePage(w http.ResponseWriter, r *http.Request) {
 	slug := chi.URLParam(r, "player_slug")
-	svc, _, gamertag, err := h.newSvc(r.Context(), slug)
+	svc, ctx, _, gamertag, err := h.newSvc(r.Context(), slug)
 	if err != nil {
 		writeError(w, http.StatusNotFound, "player_not_found", "joueur introuvable")
 		return
 	}
 
-	page, err := svc.GetHomePage(r.Context(), gamertag)
+	page, err := svc.GetHomePage(ctx, gamertag)
 	if err != nil {
 		writeError(w, http.StatusInternalServerError, "home_page_error", "erreur chargement page d'accueil")
 		return
@@ -48,13 +52,13 @@ func (h *HomeHandler) GetHomePage(w http.ResponseWriter, r *http.Request) {
 // GET /api/v1/players/{player_slug}/battlepass
 func (h *HomeHandler) GetBattlePass(w http.ResponseWriter, r *http.Request) {
 	slug := chi.URLParam(r, "player_slug")
-	svc, _, _, err := h.newSvc(r.Context(), slug)
+	svc, ctx, _, _, err := h.newSvc(r.Context(), slug)
 	if err != nil {
 		writeError(w, http.StatusNotFound, "player_not_found", "joueur introuvable")
 		return
 	}
 
-	resp := svc.GetBattlePass(r.Context())
+	resp := svc.GetBattlePass(ctx)
 	writeJSON(w, http.StatusOK, resp)
 }
 
@@ -62,12 +66,12 @@ func (h *HomeHandler) GetBattlePass(w http.ResponseWriter, r *http.Request) {
 // GET /api/v1/players/{player_slug}/challenges
 func (h *HomeHandler) GetChallenges(w http.ResponseWriter, r *http.Request) {
 	slug := chi.URLParam(r, "player_slug")
-	svc, _, _, err := h.newSvc(r.Context(), slug)
+	svc, ctx, _, _, err := h.newSvc(r.Context(), slug)
 	if err != nil {
 		writeError(w, http.StatusNotFound, "player_not_found", "joueur introuvable")
 		return
 	}
 
-	resp := svc.GetChallenges(r.Context())
+	resp := svc.GetChallenges(ctx)
 	writeJSON(w, http.StatusOK, resp)
 }
