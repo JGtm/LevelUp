@@ -343,6 +343,17 @@ type SquadRepository interface {
 	LoadSynthesisMatches(ctx context.Context, xuid string) ([]domain.SynthesisMatchRow, error)
 }
 
+// SynthesisRepository fournit les données pour la page Synthèse (Sprint 55 D1).
+// Sous-ensemble de SquadRepository — isolé pour l'injection ciblée.
+type SynthesisRepository interface {
+	// LoadSynthesisMatches charge les matchs du joueur pour le calcul top_weeks (Q33b).
+	LoadSynthesisMatches(ctx context.Context, xuid string) ([]domain.SynthesisMatchRow, error)
+	// LoadEncounters charge les encounters du joueur (Q_encounters).
+	LoadEncounters(ctx context.Context, xuid string) ([]domain.EncounterRawRow, error)
+	// LoadSynthesisHeatmap charge la heatmap carte×mode (Q33).
+	LoadSynthesisHeatmap(ctx context.Context, xuid string) ([]domain.SynthesisHeatmapRow, error)
+}
+
 // CitationsRepository fournit les données pour les pages Citations et Commendations.
 // Implémenté par platform/duckdb.CitationsRepo.
 type CitationsRepository interface {

@@ -66,6 +66,14 @@ type MediaFileRow struct {
 	MatchID        *string
 	MatchStartTime *time.Time
 	Liked          bool
+	MapName        *string
+	ModeName       *string
+}
+
+// MediaSectionTotals regroupe les compteurs par section (S56).
+type MediaSectionTotals struct {
+	Mine       int
+	Unassigned int
 }
 
 // ---------------------------------------------------------------------------
@@ -84,6 +92,7 @@ type MediaItem struct {
 	Section        string     `json:"section"`
 	OwnerGamertag  *string    `json:"owner_gamertag,omitempty"`
 	MapName        *string    `json:"map_name,omitempty"`
+	ModeName       *string    `json:"mode_name,omitempty"`
 	Liked          bool       `json:"liked"`
 	LikeCount      int        `json:"like_count"`
 }
