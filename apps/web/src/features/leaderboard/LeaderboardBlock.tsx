@@ -109,7 +109,7 @@ export function LeaderboardBlock({
           <div className="p-4">
             <EmptyStateCard
               title="Erreur"
-              message={error?.message ?? 'Impossible de charger le classement.'}
+              description={error?.message ?? 'Impossible de charger le classement.'}
             />
           </div>
         )}
@@ -118,7 +118,7 @@ export function LeaderboardBlock({
           <div className="p-4">
             <EmptyStateCard
               title="Classement vide"
-              message="Aucun joueur trouvé pour cette saison/playlist."
+              description="Aucun joueur trouvé pour cette saison/playlist."
             />
           </div>
         )}

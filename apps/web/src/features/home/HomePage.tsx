@@ -9,6 +9,7 @@ import { Badge } from '@/components/ui/badge'
 import { EmptyStateCard, EmptyStateNotice } from '@/components/ui/empty-state'
 import { PrivacyBanner } from '@/components/ui/privacy-banner'
 import { Spinner } from '@/components/ui/spinner'
+import { MatchCard } from '@/components/ui/match-card'
 import { RecentMediaRail } from './RecentMediaRail'
 import { useHomePage, useBattlePass, useChallenges } from './queries'
 
@@ -93,6 +94,7 @@ export function HomePage() {
   const { hero } = data
   const highlights = data.highlights ?? []
   const recentMatches = data.recent_matches ?? []
+  const recentMedia = data.recent_media ?? []
   const soloSession = data.solo_session ?? null
   const squadSession = data.squad_session ?? null
 
@@ -221,30 +223,24 @@ export function HomePage() {
           </CardContent>
         </Card>
 
-        {/* Matchs récents */}
+        {/* Matchs récents — 4 tuiles MatchCard */}
         <Card>
           <CardHeader>
             <CardTitle className="text-base">Matchs récents</CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="space-y-1">
-              {recentMatches.slice(0, 8).map((m) => (
-                <div key={m.match_id} className="flex items-center justify-between rounded-md px-3 py-2 hover:bg-gray-50">
-                  <div>
-                    <p className="text-sm font-medium text-gray-800">{m.title}</p>
-                    <p className="text-xs text-gray-400">{m.detail}</p>
-                  </div>
-                  <Badge
-                    variant={
-                      m.outcome_tone === 'win' ? 'success' :
-                      m.outcome_tone === 'loss' ? 'destructive' : 'secondary'
-                    }
-                  >
-                    {m.outcome_label}
-                  </Badge>
-                </div>
-              ))}
-            </div>
+            {recentMatches.length > 0 ? (
+              <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
+                {recentMatches.slice(0, 4).map((m) => (
+                  <MatchCard key={m.match_id} match={m} />
+                ))}
+              </div>
+            ) : (
+              <EmptyStateNotice
+                title="Aucun match récent disponible"
+                description="Les matchs récents apparaîtront ici après une synchronisation."
+              />
+            )}
           </CardContent>
         </Card>
 
@@ -270,33 +266,7 @@ export function HomePage() {
           </CardContent>
         </Card>
 
-        {/* Dernier match — lien rapide */}
-        <Card>
-          <CardHeader>
-            <CardTitle className="text-base">Dernier match</CardTitle>
-          </CardHeader>
-          <CardContent>
-            {recentMatches.length > 0 ? (
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-sm font-medium text-gray-800">{recentMatches[0].title}</p>
-                  <p className="text-xs text-gray-400">{recentMatches[0].detail}</p>
-                </div>
-                <Link
-                  to="/players/$playerSlug/last-match"
-                  params={{ playerSlug }}
-                  className="ml-4 inline-flex items-center gap-1 rounded-md bg-purple-600 px-3 py-1.5 text-xs font-medium text-white hover:bg-purple-700 transition-colors"
-                >
-                  Voir →
-                </Link>
-              </div>
-            ) : (
-              <p className="text-sm text-gray-400">Aucun match récent.</p>
-            )}
-          </CardContent>
-        </Card>
-
-        <RecentMediaRail playerSlug={playerSlug} />
+        <RecentMediaRail playerSlug={playerSlug} items={recentMedia} />
       </div>
     </div>
   )
