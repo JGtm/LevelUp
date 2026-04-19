@@ -1,5 +1,31 @@
 # Thought Log
 
+## [2026-04-20] Sprint 55 D9 — Tests scope + overview + highlights + rivalries
+
+**Statut** : Complété
+
+### Décisions techniques
+
+1. **Tests Go synthesis_service** — 4 tests ajoutés : `ScopeApplied_Period` (filtrage 1w → MatchCount=1), `Overview_MatchesScope` (overview.TotalMatches == scope.MatchCount), `Highlights_WithinScope` (MatchIDs highlights ⊂ rows filtrées), `Rivalries_FromEncounters` (Total=2 avec Alice + Bob correctement splitées équipe/ennemi).
+2. **Tests Go synthesis_handler** — 3 tests ajoutés : `ScopePeriodInResponse` (scope.period propagé en JSON), `OverviewInResponse` (bloc overview présent + total_matches=5), `RivalriesInResponse` (rivalries_preview + teammates dans JSON).
+3. **Types React** — `SynthesisScope` et `SynthesisOverview` ajoutés dans `types.ts`. `SynthesisPageResponse` enrichi avec `scope?` et `overview?` optionnels (compatibilité ascendante).
+4. **Fixture MSW** — `synthesisFixture` enrichi avec `scope` (period, match_count=5) et `overview` (total_matches=5, win_rate=0.6) pour permettre les assertions React.
+5. **SynthesisPage.tsx** — Nouveau sous-composant `ScopeOverviewBar` rendu avant les KPIs Solo/Escouade, affichant période, nb matchs, win rate cumulé et K/D cumulé avec `data-testid="scope-overview-bar"`.
+6. **Tests React** — 4 tests D9 dans `describe('scope et overview (D9)')` : rendu du bar, match_count=5, période "Tout", et `compareDocumentPosition` pour valider l'ordre DOM (scope avant Solo).
+
+### Résultats observés
+
+- `go test ./internal/service/... ./internal/api/handlers/...` : ✅ tous passent
+- `go test ./...` : ✅ tous passent
+- `npx vitest run SynthesisPage.test.tsx` : ✅ 9/9 passent (5 existants + 4 D9)
+- `npx vitest run` : 116/121 tests passent (5 échecs HomePage préexistants, non liés à D9)
+
+### Conclusion
+
+Sprint 55 D9 ✅ — Tests scope appliqué, overview rendu avant solo/escouade, highlights/rivalries cohérents avec le scope. Commit `de2acada`.
+
+---
+
 ## [2026-04-20] Sprint 55 — Convergence UX Carrière / Synthèse + privacy state durable
 
 **Statut** : Complété
