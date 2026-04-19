@@ -74,6 +74,36 @@ const careerFixture = {
   encounters_preview: [],
 }
 
+const citationsFixture = {
+  commendations: [
+    {
+      key: 'double-kill-mastery',
+      label: 'Double Kill',
+      category: 'Multikill',
+      current_value: 42,
+      color: '#7c3aed',
+      icon_path: null,
+      tier_label: 'Or',
+      mastery_pct: 84.0,
+    },
+  ],
+  medals_summary: [
+    {
+      medal_name_id: 101,
+      name: 'Double Kill',
+      count_filtered: 12,
+      count_total: 42,
+      description: 'Deux kills rapides',
+    },
+  ],
+  deltas: {
+    filtered_total: 12,
+    unfiltered_total: 42,
+    delta_count: -30,
+  },
+  distribution_chart: null,
+}
+
 const emptyPagination = { total: 0, page: 1, page_size: 20, has_next: false, has_prev: false }
 
 const matchHistoryFixture = {
@@ -162,6 +192,166 @@ const mediaFixture = {
   total_unassigned: 0,
 }
 
+const labResourcesFixture = {
+  title_slug: 'halo_infinite',
+  metadata_db_path: 'data/titles/halo_infinite/warehouse/metadata.duckdb',
+  current_season: {
+    title_id: 'halo_infinite',
+    season_id: 'season-5',
+    version: 'v5',
+    name: 'Echoes Within',
+    start_date: '2026-01-01T00:00:00Z',
+    end_date: '2026-06-01T00:00:00Z',
+    fetched_at: '2026-04-19T10:00:00Z',
+    content_hash: 'season-hash',
+    etag: 'etag-season',
+    source_url: 'https://waypoint.example/seasons',
+  },
+  seasons: [],
+  csr_seasons: [],
+  snapshots: [
+    {
+      resource_key: 'season_calendar',
+      version: 'v5',
+      fetched_at: '2026-04-19T10:00:00Z',
+      content_hash: 'season-hash',
+      etag: 'etag-season',
+      source_url: 'https://waypoint.example/seasons',
+      payload_size: 2450,
+    },
+  ],
+  selected_snapshot: {
+    resource_key: 'season_calendar',
+    version: 'v5',
+    fetched_at: '2026-04-19T10:00:00Z',
+    content_hash: 'season-hash',
+    etag: 'etag-season',
+    source_url: 'https://waypoint.example/seasons',
+    payload: '{"seasons":[{"id":"season-5","name":"Echoes Within"}]}',
+  },
+  assets: {
+    total: 2,
+    search: '',
+    items: [
+      {
+        asset_id: 'asset-aquarius',
+        asset_type: 'map',
+        version_id: '1',
+        name: 'Aquarius',
+        fetched_at: '2026-04-19T10:00:00Z',
+      },
+    ],
+    selected: {
+      asset_id: 'asset-aquarius',
+      asset_type: 'map',
+      version_id: '1',
+      name: 'Aquarius',
+      description: 'Arena map',
+      fetched_at: '2026-04-19T10:00:00Z',
+      content_hash: 'asset-hash',
+      raw_json: '{"id":"asset-aquarius","kind":"map"}',
+    },
+  },
+  medals: {
+    total: 2,
+    search: '',
+    items: [
+      {
+        medal_id: 101,
+        name_id: 'DoubleKill',
+        description_id: 'Earned for two kills',
+        medal_type: 'multikill',
+        difficulty: 'normal',
+        sprite_index: 3,
+        fetched_at: '2026-04-19T10:00:00Z',
+      },
+    ],
+    selected: {
+      medal_id: 101,
+      name_id: 'DoubleKill',
+      description_id: 'Earned for two kills',
+      medal_type: 'multikill',
+      difficulty: 'normal',
+      sprite_index: 3,
+      personal_score: 100,
+      fetched_at: '2026-04-19T10:00:00Z',
+      content_hash: 'medal-hash',
+      raw_json: '{"id":101,"name":"DoubleKill"}',
+    },
+  },
+}
+
+const labContractsFixture = {
+  go_openapi: {
+    path: 'apps/go-api/api/openapi.yaml',
+    exists: true,
+    size_bytes: 128000,
+    modified_at: '2026-04-19T10:00:00Z',
+  },
+  fastapi_reference: {
+    path: 'apps/go-api/api/openapi_fastapi_reference.yaml',
+    exists: true,
+    size_bytes: 120000,
+    modified_at: '2026-04-18T10:00:00Z',
+  },
+  summary: {
+    fastapi_route_count: 24,
+    go_route_count: 27,
+    missing_in_go: 0,
+    extra_in_go: 3,
+    method_mismatches: 1,
+    status: 'DIVERGENCES',
+  },
+  missing_in_go: [],
+  extra_in_go: [
+    { path: '/lab/resources', methods: ['get'] },
+    { path: '/lab/contracts', methods: ['get'] },
+    { path: '/lab/diagnostics', methods: ['get'] },
+  ],
+  method_mismatches: [
+    {
+      fastapi_path: '/players/{player_slug}/pages/media',
+      go_path: '/players/{player_slug}/pages/media',
+      fastapi_methods: ['get'],
+      go_methods: ['post'],
+      missing_methods: ['get'],
+      extra_methods: ['post'],
+    },
+  ],
+}
+
+const labDiagnosticsFixture = {
+  title_slug: 'halo_infinite',
+  parity_report_file: {
+    path: 'apps/go-api/tests/fixtures/parity_report.json',
+    exists: true,
+    size_bytes: 4500,
+    modified_at: '2026-04-19T11:00:00Z',
+  },
+  parity_report: {
+    generated_at: '2026-04-19T11:00:00Z',
+    go_url: 'http://localhost:8000',
+    player: 'TestPlayer',
+    summary: {
+      total: 24,
+      passed: 20,
+      failed: 2,
+      skipped: 2,
+    },
+    results: [
+      { name: 'health', status: 'passed', http_status: 200 },
+      { name: 'media', status: 'failed', http_status: 500, error: 'fixture mismatch' },
+    ],
+  },
+  medal_guards: {
+    entry_count: 2,
+    cardinality: { passed: true, reason: 'cardinalité OK', details: [] },
+    required_fields: { passed: true, reason: 'Tous les champs requis sont présents', details: [] },
+    images: { passed: true, reason: '0 images — import sans assets visuels (accepté)', details: [] },
+    overall: { passed: true, reason: 'tous les garde-fous passent (2 entrées)', details: [] },
+  },
+}
+
 // ─── Handlers ─────────────────────────────────────────────────────────────────
 
 export const handlers = [
@@ -199,10 +389,16 @@ export const handlers = [
     return HttpResponse.json({ ...settingsFixture, ...(body as Record<string, unknown>) })
   }),
 
+  // Instance lab
+  http.get(p('/lab/resources'), () => HttpResponse.json(labResourcesFixture)),
+  http.get(p('/lab/contracts'), () => HttpResponse.json(labContractsFixture)),
+  http.get(p('/lab/diagnostics'), () => HttpResponse.json(labDiagnosticsFixture)),
+
   // Career
   http.get(p(`/players/${SLUG}/pages/career`), () => HttpResponse.json(careerFixture)),
   http.get(p(`/players/${SLUG}/pages/career/top-matches`), () => HttpResponse.json({ items: [] })),
   http.get(p(`/players/${SLUG}/pages/career/encounters`), () => HttpResponse.json({ items: [] })),
+  http.post(p(`/players/${SLUG}/pages/citations`), () => HttpResponse.json(citationsFixture)),
 
   // Match History
   http.post(p(`/players/${SLUG}/pages/match-history/query`), () => HttpResponse.json(matchHistoryFixture)),

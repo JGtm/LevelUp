@@ -17,6 +17,9 @@ export const queryKeys = {
   deviceFlow: (attemptId: string) => ['device-flow', attemptId] as const,
   job: (jobId: string) => ['job', jobId] as const,
   settings: ['settings'] as const,
+  labContracts: ['lab', 'contracts'] as const,
+  labDiagnostics: ['lab', 'diagnostics'] as const,
+  labResources: (requestHash: string) => ['lab', 'resources', requestHash] as const,
 
   // Par joueur
   player: (playerSlug: string) => ['player', playerSlug] as const,
@@ -48,14 +51,13 @@ export const queryKeys = {
   teammates: (playerSlug: string, filterHash: string) =>
     ['teammates', playerSlug, filterHash] as const,
 
-  // Synthèse (Slice 7)
-  synthesis: (playerSlug: string, period: string) =>
-    ['synthesis', playerSlug, period] as const,
+  // Synthèse (Slice 7 — Sprint 55 D8 : scopeHash = period + filtres)
+  synthesis: (playerSlug: string, scopeHash: string) =>
+    ['synthesis', playerSlug, scopeHash] as const,
 
   // Médias (Slice 8)
   mediaBase: (playerSlug: string) => ['media', playerSlug] as const,
-  media: (playerSlug: string, page: number) => ['media', playerSlug, page] as const,
-  mediaRail: (playerSlug: string, limit: number) => ['media', playerSlug, 'home-rail', limit] as const,
+  media: (playerSlug: string, requestHash: string) => ['media', playerSlug, requestHash] as const,
 
   // Citations (Slice 2B)
   citations: (playerSlug: string, filterHash: string) =>
