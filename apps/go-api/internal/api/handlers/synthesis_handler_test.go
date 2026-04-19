@@ -168,3 +168,118 @@ func TestSynthesisHandler_HighlightsInResponse(t *testing.T) {
 		t.Error("response should contain match id m1")
 	}
 }
+
+// --- D9 : scope.period propagé dans la réponse JSON ---
+
+// TestSynthesisHandler_ScopePeriodInResponse vérifie que la période du body
+// est retournée dans scope.period de la réponse JSON.
+func TestSynthesisHandler_ScopePeriodInResponse(t *testing.T) {
+	resp := &domain.SynthesisPageV2Response{
+		Scope: domain.SynthesisScope{Period: "1m", MatchCount: 42},
+	}
+	mock := &mockSynthesisService{resp: resp}
+	router := newSynthesisTestRouter(synthesisContextFactory(mock, nil))
+
+	body := `{"period":"1m"}`
+	req := httptest.NewRequest(http.MethodPost, "/players/test-player/pages/synthesis", strings.NewReader(body))
+	req.Header.Set("Content-Type", "application/json")
+	req.ContentLength = int64(len(body))
+	w := httptest.NewRecorder()
+	router.ServeHTTP(w, req)
+
+	if w.Code != http.StatusOK {
+		t.Fatalf("want 200, got %d", w.Code)
+	}
+	var out map[string]json.RawMessage
+	if err := json.Unmarshal(w.Body.Bytes(), &out); err != nil {
+		t.Fatalf("invalid JSON response: %v", err)
+	}
+	var scope struct {
+		Period     string `json:"period"`
+		MatchCount int    `json:"match_count"`
+	}
+	if err := json.Unmarshal(out["scope"], &scope); err != nil {
+		t.Fatalf("cannot parse scope: %v", err)
+	}
+	if scope.Period != "1m" {
+		t.Errorf("scope.period = %q, want %q", scope.Period, "1m")
+	}
+	if scope.MatchCount != 42 {
+		t.Errorf("scope.match_count = %d, want 42", scope.MatchCount)
+	}
+}
+
+// TestSynthesisHandler_OverviewInResponse vérifie que le bloc overview
+// est présent et non-nul dans la réponse JSON.
+func TestSynthesisHandler_OverviewInResponse(t *testing.T) {
+	resp := &domain.SynthesisPageV2Response{
+		Scope: domain.SynthesisScope{Period: "all", MatchCount: 5},
+		Overview: domain.SynthesisOverview{
+			TotalMatches: 5,
+			TotalWins:    3,
+			WinRate:      0.6,
+		},
+	}
+	mock := &mockSynthesisService{resp: resp}
+	router := newSynthesisTestRouter(synthesisContextFactory(mock, nil))
+
+	req := httptest.NewRequest(http.MethodPost, "/players/test-player/pages/synthesis", nil)
+	w := httptest.NewRecorder()
+	router.ServeHTTP(w, req)
+
+	if w.Code != http.StatusOK {
+		t.Fatalf("want 200, got %d", w.Code)
+	}
+	var out map[string]json.RawMessage
+	if err := json.Unmarshal(w.Body.Bytes(), &out); err != nil {
+		t.Fatalf("invalid JSON response: %v", err)
+	}
+	if _, ok := out["overview"]; !ok {
+		t.Error("response should contain overview field")
+	}
+	var overview struct {
+		TotalMatches int     `json:"total_matches"`
+		WinRate      float64 `json:"win_rate"`
+	}
+	if err := json.Unmarshal(out["overview"], &overview); err != nil {
+		t.Fatalf("cannot parse overview: %v", err)
+	}
+	if overview.TotalMatches != 5 {
+		t.Errorf("overview.total_matches = %d, want 5", overview.TotalMatches)
+	}
+}
+
+// TestSynthesisHandler_RivalriesInResponse vérifie que rivalries_preview
+// est présent dans la réponse JSON.
+func TestSynthesisHandler_RivalriesInResponse(t *testing.T) {
+	avk := 1.5
+	resp := &domain.SynthesisPageV2Response{
+		Scope: domain.SynthesisScope{Period: "all"},
+		RivalriesPreview: domain.SynthesisRivalriesPreview{
+			Total: 2,
+			TopTeammates: []domain.SynthesisEncounterPreview{
+				{XUID: "x1", Gamertag: "Alice", MatchCount: 5, AsTeammate: 4, AsEnemy: 1, AvgKDA: &avk},
+			},
+			TopEnemies: []domain.SynthesisEncounterPreview{
+				{XUID: "x2", Gamertag: "Bob", MatchCount: 3, AsTeammate: 0, AsEnemy: 3, AvgKDA: &avk},
+			},
+		},
+	}
+	mock := &mockSynthesisService{resp: resp}
+	router := newSynthesisTestRouter(synthesisContextFactory(mock, nil))
+
+	req := httptest.NewRequest(http.MethodPost, "/players/test-player/pages/synthesis", nil)
+	w := httptest.NewRecorder()
+	router.ServeHTTP(w, req)
+
+	if w.Code != http.StatusOK {
+		t.Fatalf("want 200, got %d", w.Code)
+	}
+	body := w.Body.String()
+	if !strings.Contains(body, "rivalries_preview") {
+		t.Error("response should contain rivalries_preview field")
+	}
+	if !strings.Contains(body, "Alice") {
+		t.Error("response should contain teammate Alice")
+	}
+}

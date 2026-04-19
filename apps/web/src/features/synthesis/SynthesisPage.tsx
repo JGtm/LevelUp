@@ -17,6 +17,7 @@ import type {
   HeatmapCell,
   PlotlyFigurePayload,
   SynthesisKPIs,
+  SynthesisOverview,
   SynthesisQueryRequest,
   TopWeekItem,
 } from '@/lib/api/types'
@@ -108,7 +109,32 @@ function buildHeatmapChart(cells: HeatmapCell[]): PlotlyFigurePayload {
 
 // ─── Sous-composants ──────────────────────────────────────────────────────────
 
-interface MetricRowProps { item: ComparisonMetricItem }
+// ─── Scope + Overview ─────────────────────────────────────────────────────────
+
+interface ScopeOverviewBarProps {
+  matchCount: number
+  winRate: number
+  totalKills: number
+  totalDeaths: number
+  period: string
+}
+function ScopeOverviewBar({ matchCount, winRate, totalKills, totalDeaths, period }: ScopeOverviewBarProps) {
+  const periodLabel = PERIOD_OPTIONS.find((o) => o.value === period)?.label ?? period
+  return (
+    <Card>
+      <CardContent className="py-4">
+        <div className="flex flex-wrap gap-6 items-center text-sm" data-testid="scope-overview-bar">
+          <span className="text-gray-500">Période : <strong className="text-gray-800">{periodLabel}</strong></span>
+          <span className="text-gray-500">Matchs : <strong className="text-gray-800">{matchCount}</strong></span>
+          <span className="text-gray-500">Win Rate : <strong className="text-green-600">{(winRate * 100).toFixed(1)}%</strong></span>
+          <span className="text-gray-500">K/D cumulés : <strong className="text-gray-800">{totalDeaths > 0 ? (totalKills / totalDeaths).toFixed(2) : '—'}</strong></span>
+        </div>
+      </CardContent>
+    </Card>
+  )
+}
+
+
 function MetricRow({ item }: MetricRowProps) {
   return (
     <tr className="border-b last:border-0">
@@ -206,6 +232,17 @@ export function SynthesisPage() {
           </div>
         }
       />
+
+      {/* Scope + Overview */}
+      {data.scope && data.overview && (
+        <ScopeOverviewBar
+          matchCount={data.scope.match_count}
+          winRate={data.overview.win_rate}
+          totalKills={data.overview.total_kills}
+          totalDeaths={data.overview.total_deaths}
+          period={data.scope.period}
+        />
+      )}
 
       {/* KPIs Solo / Escouade */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
