@@ -15,9 +15,10 @@ import (
 
 // BootstrapService construit le BootstrapResponse pour l'endpoint /api/v1/bootstrap.
 type BootstrapService struct {
-	cfg             *config.AppConfig
-	bootRepo        port.BootstrapRepository
-	privacyProvider port.PrivacyProvider // optionnel — nil = pas de check privacy
+	cfg              *config.AppConfig
+	bootRepo         port.BootstrapRepository
+	privacyProvider  port.PrivacyProvider        // optionnel — nil = pas de check privacy
+	privacyStateRepo port.PrivacyStateRepository // optionnel — nil = pas de fallback persisté
 }
 
 // NewBootstrapService crée un BootstrapService.
@@ -28,6 +29,13 @@ func NewBootstrapService(cfg *config.AppConfig, bootRepo port.BootstrapRepositor
 // WithPrivacyProvider injecte le provider de match privacy (optionnel).
 func (s *BootstrapService) WithPrivacyProvider(p port.PrivacyProvider) *BootstrapService {
 	s.privacyProvider = p
+	return s
+}
+
+// WithPrivacyStateRepo injecte le repo de persistance du state privacy (optionnel).
+// Sprint 55 E4 : permet le fallback gracieux quand Waypoint est indisponible.
+func (s *BootstrapService) WithPrivacyStateRepo(r port.PrivacyStateRepository) *BootstrapService {
+	s.privacyStateRepo = r
 	return s
 }
 
@@ -65,10 +73,34 @@ func (s *BootstrapService) Build(ctx context.Context, sess *domain.SessionData) 
 		currentTitleSlug = sess.CurrentTitleSlug
 	}
 
-	// Sprint 54-B : privacy match du joueur courant (fetch parallèle non-bloquant).
+	// Sprint 54-B / 55-E : privacy match du joueur courant.
+	// Priorité : Waypoint live → state persisté en DB → nil (inconnu).
 	var privacy *domain.MatchPrivacyInfo
-	if s.privacyProvider != nil && currentPlayer != nil && currentPlayer.XUID != "" {
-		privacy = s.fetchPrivacyNonBlocking(ctx, currentPlayer.XUID)
+	if currentPlayer != nil && currentPlayer.XUID != "" {
+		if s.privacyProvider != nil {
+			privacy = s.fetchPrivacyNonBlocking(ctx, currentPlayer.XUID)
+			// E2 : persister le résultat Waypoint pour les prochains appels
+			if privacy != nil && s.privacyStateRepo != nil {
+				state := domain.PlayerPrivacyState{
+					XUID:       currentPlayer.XUID,
+					IsPrivate:  privacy.IsPrivate,
+					ObservedAt: time.Now().UTC(),
+					Source:     "waypoint",
+				}
+				_ = s.privacyStateRepo.UpsertPrivacyState(ctx, state)
+			}
+		}
+		// E3 : fallback sur le state persisté si Waypoint indisponible
+		if privacy == nil && s.privacyStateRepo != nil {
+			if stored, err := s.privacyStateRepo.LoadPrivacyState(ctx, currentPlayer.XUID); err == nil && stored != nil {
+				slog.DebugContext(ctx, "bootstrap: privacy fallback sur state persisté", "xuid", currentPlayer.XUID)
+				privacy = &domain.MatchPrivacyInfo{
+					IsPrivate: stored.IsPrivate,
+					IsPartial: false,
+					Hint:      "cached",
+				}
+			}
+		}
 	}
 
 	return &domain.BootstrapResponse{

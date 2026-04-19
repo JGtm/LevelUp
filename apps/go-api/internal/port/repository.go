@@ -538,3 +538,23 @@ type noopLeaderboardRepo struct{}
 func (n *noopLeaderboardRepo) GetLocalLeaderboard(_ context.Context, _, _, _ string) ([]domain.LeaderboardEntry, error) {
 	return nil, nil
 }
+
+// PrivacyStateRepository persiste et charge l'état de privacy d'un joueur.
+// Implémenté par platform/duckdb.PrivacyStateRepo.
+// Sprint 55 E2-E4 : persistance durable du warning privacy (fallback Waypoint).
+type PrivacyStateRepository interface {
+	UpsertPrivacyState(ctx context.Context, state domain.PlayerPrivacyState) error
+	LoadPrivacyState(ctx context.Context, xuid string) (*domain.PlayerPrivacyState, error)
+}
+
+// noopPrivacyStateRepo — impl nulle pour le check de compilation uniquement.
+type noopPrivacyStateRepo struct{}
+
+func (n *noopPrivacyStateRepo) UpsertPrivacyState(_ context.Context, _ domain.PlayerPrivacyState) error {
+	return nil
+}
+func (n *noopPrivacyStateRepo) LoadPrivacyState(_ context.Context, _ string) (*domain.PlayerPrivacyState, error) {
+	return nil, nil
+}
+
+var _ PrivacyStateRepository = (*noopPrivacyStateRepo)(nil)
