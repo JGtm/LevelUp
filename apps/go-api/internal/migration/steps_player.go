@@ -277,6 +277,23 @@ func init() {
 			return addColumnIfMissing(db, "player_match_enrichment", "is_excluded", "BOOLEAN DEFAULT FALSE")
 		},
 	})
+
+	// Sprint 55 E1 : table player_privacy_state pour persistence durable du warning privacy.
+	Register(Migration{
+		Name:        "add_player_privacy_state",
+		TargetDB:    TargetPlayer,
+		Description: "Table player_privacy_state (xuid, is_private, observed_at, source) — fallback gracieux quand Waypoint est indisponible",
+		ApplySchema: func(db *sql.DB) error {
+			return execScript(db, `
+				CREATE TABLE IF NOT EXISTS player_privacy_state (
+					xuid        VARCHAR PRIMARY KEY,
+					is_private  BOOLEAN NOT NULL DEFAULT FALSE,
+					observed_at TIMESTAMP NOT NULL,
+					source      VARCHAR NOT NULL DEFAULT 'waypoint'
+				);
+			`)
+		},
+	})
 }
 
 // applyCareerProgressionSequence recrée career_progression avec séquence auto-increment.
