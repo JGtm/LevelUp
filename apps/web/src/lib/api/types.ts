@@ -115,6 +115,216 @@ export interface HealthResponse {
 }
 
 // ---------------------------------------------------------------------------
+// Lab interne
+// ---------------------------------------------------------------------------
+
+export interface LabFileStatus {
+  path: string
+  exists: boolean
+  size_bytes: number
+  modified_at?: string | null
+}
+
+export interface LabSnapshotSummary {
+  resource_key: string
+  version: string
+  fetched_at: string
+  content_hash: string
+  etag?: string | null
+  source_url?: string | null
+  payload_size: number
+}
+
+export interface LabSnapshotDetail {
+  resource_key: string
+  version: string
+  fetched_at: string
+  content_hash: string
+  etag?: string | null
+  source_url?: string | null
+  payload: string
+}
+
+export interface LabAssetSummary {
+  asset_id: string
+  asset_type: string
+  version_id: string
+  name: string
+  fetched_at: string
+}
+
+export interface LabAssetDetail {
+  asset_id: string
+  asset_type: string
+  version_id: string
+  name: string
+  description: string
+  fetched_at: string
+  content_hash: string
+  raw_json: string
+}
+
+export interface LabAssetExplorer {
+  total: number
+  search?: string | null
+  items: LabAssetSummary[]
+  selected?: LabAssetDetail | null
+}
+
+export interface LabMedalSummary {
+  medal_id: number
+  name_id: string
+  description_id: string
+  medal_type: string
+  difficulty: string
+  sprite_index: number
+  fetched_at: string
+}
+
+export interface LabMedalDetail {
+  medal_id: number
+  name_id: string
+  description_id: string
+  medal_type: string
+  difficulty: string
+  sprite_index: number
+  personal_score: number
+  fetched_at: string
+  content_hash: string
+  raw_json: string
+}
+
+export interface LabMedalExplorer {
+  total: number
+  search?: string | null
+  items: LabMedalSummary[]
+  selected?: LabMedalDetail | null
+}
+
+export interface LabResourcesResponse {
+  title_slug: string
+  metadata_db_path: string
+  current_season?: {
+    title_id: string
+    season_id: string
+    version: string
+    name: string
+    start_date: string
+    end_date?: string | null
+    fetched_at: string
+    content_hash: string
+    etag?: string | null
+    source_url?: string | null
+  } | null
+  seasons: Array<{
+    title_id: string
+    season_id: string
+    version: string
+    name: string
+    start_date: string
+    end_date?: string | null
+    fetched_at: string
+    content_hash: string
+    etag?: string | null
+    source_url?: string | null
+  }>
+  csr_seasons: Array<{
+    title_id: string
+    season_id: string
+    version: string
+    name: string
+    start_date: string
+    end_date?: string | null
+    fetched_at: string
+    content_hash: string
+    etag?: string | null
+    source_url?: string | null
+  }>
+  snapshots: LabSnapshotSummary[]
+  selected_snapshot?: LabSnapshotDetail | null
+  assets: LabAssetExplorer
+  medals: LabMedalExplorer
+}
+
+export interface LabRouteMethods {
+  path: string
+  methods: string[]
+}
+
+export interface LabMethodMismatch {
+  fastapi_path: string
+  go_path: string
+  fastapi_methods: string[]
+  go_methods: string[]
+  missing_methods: string[]
+  extra_methods: string[]
+}
+
+export interface LabOpenAPISummary {
+  fastapi_route_count: number
+  go_route_count: number
+  missing_in_go: number
+  extra_in_go: number
+  method_mismatches: number
+  status: string
+}
+
+export interface LabContractsResponse {
+  go_openapi: LabFileStatus
+  fastapi_reference: LabFileStatus
+  summary: LabOpenAPISummary
+  missing_in_go: LabRouteMethods[]
+  extra_in_go: LabRouteMethods[]
+  method_mismatches: LabMethodMismatch[]
+}
+
+export interface LabGuardResult {
+  passed: boolean
+  reason: string
+  details: string[]
+}
+
+export interface LabMedalGuardsReport {
+  entry_count: number
+  cardinality: LabGuardResult
+  required_fields: LabGuardResult
+  images: LabGuardResult
+  overall: LabGuardResult
+}
+
+export interface LabParitySummary {
+  total: number
+  passed: number
+  failed: number
+  skipped: number
+}
+
+export interface LabParityResult {
+  name: string
+  status: string
+  http_status?: number | null
+  mode?: string | null
+  reason?: string | null
+  error?: string | null
+  diffs?: Array<Record<string, unknown>>
+}
+
+export interface LabParityReport {
+  generated_at: string
+  go_url: string
+  player: string
+  summary: LabParitySummary
+  results: LabParityResult[]
+}
+
+export interface LabDiagnosticsResponse {
+  title_slug: string
+  parity_report_file: LabFileStatus
+  parity_report?: LabParityReport | null
+  medal_guards?: LabMedalGuardsReport | null
+}
+
+// ---------------------------------------------------------------------------
 // Filtres
 // ---------------------------------------------------------------------------
 
@@ -502,6 +712,16 @@ export interface MatchHistoryRow {
   average_life_mmss: string
   match_url: string
   is_excluded?: boolean
+  /** S56 — combat yield */
+  kills?: number | null
+  assists?: number | null
+  deaths?: number | null
+  damage_dealt?: number | null
+  damage_taken?: number | null
+  offensive_conversion?: number | null
+  defensive_resistance?: number | null
+  offensive_finishing?: number | null
+  map_image_url?: string | null
 }
 
 export interface MatchHistoryQuerySummary {
@@ -670,6 +890,19 @@ export interface RecentMatchItem {
   started_at: string | null
   outcome_label: string
   outcome_tone: string
+  /** S56 — champs enrichis pour MatchCard */
+  map_ui?: string | null
+  mode_ui?: string | null
+  kills?: number | null
+  assists?: number | null
+  deaths?: number | null
+  performance_score_relative?: number | null
+  offensive_conversion?: number | null
+  defensive_resistance?: number | null
+  offensive_finishing?: number | null
+  damage_dealt?: number | null
+  damage_taken?: number | null
+  map_image_url?: string | null
 }
 
 export interface SessionSummaryItem {
@@ -682,8 +915,18 @@ export interface SessionSummaryItem {
 
 export interface RecentMediaItem {
   basename: string
+  file_path: string
+  kind: string
+  thumbnail_path: string | null
   match_id: string | null
+  capture_end_utc: string | null
   match_start_time: string | null
+  section: string
+  owner_gamertag: string | null
+  map_name: string | null
+  mode_name: string | null
+  liked: boolean
+  like_count: number
 }
 
 export interface HomePageResponse {
@@ -725,6 +968,15 @@ export interface TeammateOption {
   last_seen_at: string | null
 }
 
+export interface RadarAxes {
+  objectives: number
+  combat: number
+  support: number
+  score: number
+  impact: number
+  survival: number
+}
+
 export interface TeammateKPIs {
   match_count: number
   wins: number
@@ -733,6 +985,7 @@ export interface TeammateKPIs {
   accuracy: number | null
   kills_per_game: number | null
   assists_per_game: number | null
+  radar_axes?: RadarAxes | null
 }
 
 export interface TeammateRow {
@@ -805,6 +1058,62 @@ export interface SynthesisPageResponse {
   comparison_metrics: ComparisonMetricItem[]
   heatmap_data: HeatmapCell[]
   top_weeks: TopWeekItem[]
+  // Sprint 55 D5/D6/D7
+  highlights_preview?: SynthesisHighlightsPreview
+  rivalries_preview?: SynthesisRivalriesPreview
+  breakdowns?: SynthesisBreakdowns
+}
+
+// Sprint 55 D5 — Highlights
+export interface SynthesisMatchHighlight {
+  match_id: string
+  kills: number
+  deaths: number
+  kda: number | null
+  outcome: number
+  perf_score: number | null
+}
+
+export interface SynthesisHighlightsPreview {
+  top_by_kills: SynthesisMatchHighlight[]
+  top_by_kda: SynthesisMatchHighlight[]
+  worst_by_deaths: SynthesisMatchHighlight[]
+}
+
+// Sprint 55 D6 — Rivalries
+export interface SynthesisEncounterPreview {
+  xuid: string
+  gamertag: string
+  match_count: number
+  as_teammate: number
+  as_enemy: number
+  avg_kda: number | null
+}
+
+export interface SynthesisRivalriesPreview {
+  top_teammates: SynthesisEncounterPreview[]
+  top_enemies: SynthesisEncounterPreview[]
+  total: number
+}
+
+// Sprint 55 D7 — Breakdowns
+export interface SynthesisMapEntry {
+  map_name: string
+  match_count: number
+  wins: number
+  win_rate: number
+}
+
+export interface SynthesisModeEntry {
+  mode_name: string
+  match_count: number
+  wins: number
+  win_rate: number
+}
+
+export interface SynthesisBreakdowns {
+  top_maps: SynthesisMapEntry[]
+  top_modes: SynthesisModeEntry[]
 }
 
 // ---------------------------------------------------------------------------
@@ -822,6 +1131,7 @@ export interface MediaItemRow {
   section: string
   owner_gamertag: string | null
   map_name: string | null
+  mode_name: string | null
   liked: boolean
   like_count: number
 }
