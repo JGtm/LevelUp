@@ -1992,7 +1992,7 @@
 | D6 | Migrer les previews `encounters / rivalries / nemeses / victims` vers `Synthèse`, avec possibilité d'endpoint lazy `synthesis/rivalries` | ✅ |
 | D7 | Préparer les breakdowns `map / mode` comme previews légères, sans transformer la page principale en payload monolithique | ✅ |
 | D8 | Mettre à jour `SynthesisPage.tsx`, `queries.ts` et `queryKeys` pour utiliser un `scopeHash` intégrant période + filtres, plus seulement la période | ✅ |
-| D9 | Ajouter tests Go et React : scope réellement appliqué, bloc overview rendu avant solo/escouade, highlights et rivalries cohérents avec le scope demandé | ⬜ |
+| D9 | Ajouter tests Go et React : scope réellement appliqué, bloc overview rendu avant solo/escouade, highlights et rivalries cohérents avec le scope demandé | ✅ |
 
 ---
 
