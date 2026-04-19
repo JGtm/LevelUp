@@ -1960,7 +1960,7 @@
 | B3 | Créer `CareerCitationsTab.tsx` à partir de la page Citations existante, en supprimant la dépendance implicite au `globalFilterStore` pour la version hub | ✅ |
 | B4 | Retirer de l'UI Carrière tous les blocs analytiques déplacés : `CareerTopMatchesTable`, `CareerEncountersSection`, CTA et wording associés | ✅ |
 | B5 | Ajouter un résumé de maîtrise durable dans l'onglet `Citations` si la payload actuelle le permet sans simuler de métriques absentes | ✅ |
-| B6 | Ajouter tests React/Vitest : deep link `tab`, redirect legacy citations, persistance du header, absence de `top matches` / `encounters` dans le hub | ⬜ |
+| B6 | Ajouter tests React/Vitest : deep link `tab`, redirect legacy citations, persistance du header, absence de `top matches` / `encounters` dans le hub | ✅ |
 
 ---
 
