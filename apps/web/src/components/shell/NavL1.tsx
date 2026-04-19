@@ -55,10 +55,10 @@ const L1_SECTIONS: L1Section[] = [
     matchPathname: (p) => /\/players\/[^/]+\/media/.test(p),
   },
   {
-    key: 'profile',
-    label: 'Profil',
+    key: 'career',
+    label: 'Carrière',
     defaultPath: '/players/$playerSlug/career',
-    matchPathname: (p) => /\/players\/[^/]+\/(career|profile|citations)/.test(p),
+    matchPathname: (p) => /\/players\/[^/]+\/(career|profile)/.test(p),
   },
 ]
 
