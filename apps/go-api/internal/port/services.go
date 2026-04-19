@@ -92,6 +92,11 @@ type SquadService interface {
 	GetSynthesisPage(ctx context.Context, playerXUID string) (*domain.SynthesisPageResponse, error)
 }
 
+// SynthesisService orchestre la page Synthèse (Sprint 55 D1 — autonome).
+type SynthesisService interface {
+	GetSynthesisPage(ctx context.Context, playerXUID string, req domain.SynthesisRequest) (*domain.SynthesisPageV2Response, error)
+}
+
 // StatsService construit la page Stats/Séries.
 type StatsService interface {
 	GetPage(ctx context.Context, req domain.StatsQueryRequest) (domain.StatsPageResponse, error)
