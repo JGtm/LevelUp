@@ -1,9 +1,17 @@
 /**
- * Route /players/$playerSlug/profile/citations — Citations (commendations + médailles).
+ * Route /players/$playerSlug/profile/citations — redirect legacy.
+ * Sprint 55 A4 : redirige vers /players/$playerSlug/career?tab=citations.
  */
-import { createFileRoute } from '@tanstack/react-router'
-import { CitationsPage } from '@/features/citations/CitationsPage'
+import { createFileRoute, redirect } from '@tanstack/react-router'
 
 export const Route = createFileRoute('/players/$playerSlug/profile/citations')({
-  component: CitationsPage,
+  beforeLoad: ({ params }) => {
+    throw redirect({
+      to: '/players/$playerSlug/career',
+      params: { playerSlug: params.playerSlug },
+      search: { tab: 'citations' },
+      replace: true,
+    })
+  },
+  component: () => null,
 })
