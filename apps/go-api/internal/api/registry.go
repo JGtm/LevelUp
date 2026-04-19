@@ -241,3 +241,16 @@ func (r *ServiceRegistry) Leaderboard(ctx context.Context, slug string) (port.Le
 	svc := service.NewLeaderboardService(duckdb.NewLeaderboardRepo(pdb))
 	return svc, pdb.XUID, pdb.Gamertag, nil
 }
+
+// ─── Sprint 55 : Synthesis (extrait de Squad) ────────────────────────────────
+
+// SynthesisCtx retourne un SynthesisService + identifiants joueur.
+// Sprint 55 D1 : séparé de SquadCtx pour refléter la frontière produit.
+func (r *ServiceRegistry) SynthesisCtx(ctx context.Context, slug string) (port.SynthesisService, string, string, error) {
+	pdb, err := r.resolve(ctx, slug)
+	if err != nil {
+		return nil, "", "", err
+	}
+	svc := service.NewSynthesisService(duckdb.NewSynthesisRepo(pdb))
+	return svc, pdb.XUID, pdb.Gamertag, nil
+}

@@ -159,10 +159,13 @@ func NewRouter(
 			r.Get("/battlepass", home.GetBattlePass)
 			r.Get("/challenges", home.GetChallenges)
 
-			// Sprint 12 : Escouade | Sprint 32 : Synthèse → POST
+			// Sprint 12 : Escouade | Sprint 55 D1 : Synthèse → handler autonome
 			squad := handlers.NewSquadHandler(reg.SquadCtx)
 			r.Get("/pages/squad", squad.GetSquadPage)
-			r.Post("/pages/synthesis", squad.GetSynthesisPage)
+
+			// Sprint 55 D1 : SynthesisHandler extrait de SquadHandler (frontière produit)
+			synthesis := handlers.NewSynthesisHandler(reg.SynthesisCtx)
+			r.Post("/pages/synthesis", synthesis.GetSynthesisPage)
 
 			// Sprint 13 → Sprint 32 : Citations + Commendations + Médias → POST
 			citations := handlers.NewCitationsHandler(reg.CitationsCtx)
