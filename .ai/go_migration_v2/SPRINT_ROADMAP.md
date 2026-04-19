@@ -2035,6 +2035,45 @@
 
 ---
 
+### Sprint 56 — Tuiles matchs Home / Record + barre composite rendement combat (Phase 14) ✅
+
+**Objectif** : Enrichir les métriques de combat (offensive_conversion, defensive_resistance) et les exposer via des composants visuels React dédiés (MatchCard, CombatYieldBar) sur la Home et la page Timeseries.
+
+**Lots livrés** :
+
+| # | Livrable | Statut |
+|---|----------|:------:|
+| L1 | Go : `analysis/combat_yield.go` — formules OC/DR/OF + normalisation p80 | ✅ |
+| L1 | Migration DuckDB : colonnes `offensive_conversion`, `defensive_resistance`, `offensive_finishing` sur `match_participants` | ✅ |
+| L1 | Backfill SQL : `applyCombatYieldBackfill` idempotent dans `steps_shared.go` | ✅ |
+| L1 | OpenAPI : `MatchHistoryRow` + `RecentMatchItem` enrichis, `damage_efficiency` → `damage_balance` | ✅ |
+| L1 | Go service : `match_history_service.go` + `analysis/home.go` exposent OC/DR depuis DB ou live calc | ✅ |
+| L2 | React : `CombatYieldBar` (120px max/côté, normalisé p80, tooltip dmg/kill + dmg/mort) | ✅ |
+| L2 | React : `MatchCard` (image map h-48, badge résultat overlay, K/A/D, perf score, CombatYieldBar) | ✅ |
+| L2 | Home : 4 tuiles MatchCard remplacent liste + carte "Dernier match" | ✅ |
+| L3 | Timeseries : onglet "Combat" — graphe deux courbes OC (vert) + DR (bleu) + lignes p80 | ✅ |
+| L4 | Go : radar 6 axes `ComputeParticipationProfile` port fidèle Python (OC/DR enrichis) | ✅ |
+| L4 | React : `SquadPage.tsx` `buildRadarChart` consomme `radar_axes` pré-calculés Go | ✅ |
+| L5 | Domain Go : `PlayerPrivacyState`, `MediaSectionTotals`, `MapName/ModeName` sur `MediaFileRow` | ✅ |
+| L5 | Port Go : `SynthesisRepository`, `SynthesisService` interfaces ajoutées | ✅ |
+| L6 | Tests Go : `combat_yield_test.go` (8 cas : nominal, zéros, clips, OC/DR) | ✅ |
+| L6 | Tests React : `CombatYieldBar.test.tsx` (7 cas) + `MatchCard.test.tsx` (9 cas) | ✅ |
+
+**Décisions techniques** :
+- Formules combat yield côté Go (pas Python) — port direct de `DAMAGE_EFFICIENCY_INTEGRATION.md`
+- p80 normalization : `OC_P80=0.83`, `DR_P80=1.59`, `CLIP_FACTOR=1.5` — constantes partagées Go + React
+- Graphe timeseries construit côté React (Plotly) depuis `MatchHistoryRow` — pas de figure backend
+- `SynthesisService` extrait de `SquadService` en interface port autonome (Sprint 55 D1 complété)
+
+**Gate Sprint 56** :
+- [x] `go build ./...` → 0 erreur
+- [x] `go test ./...` → 100% PASS
+- [x] `npx tsc --noEmit` → 0 erreur TypeScript
+- [x] Vitest : 16 nouveaux tests (CombatYieldBar + MatchCard) → PASS
+- [x] Entrée `thought_log.md` avec bilan Sprint 56
+
+---
+
 ## Critères d'abandon (kill switch)
 
 La migration **s'arrête** (pas ralentit — s'arrête) si :

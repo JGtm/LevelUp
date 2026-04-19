@@ -1,5 +1,32 @@
 # Thought Log
 
+## [2026-04-19] Sprint 56 — Tuiles matchs Home + barre composite rendement combat
+
+**Statut** : Complété
+
+### Décisions techniques
+
+1. **Formules côté Go** — `offensive_conversion = 225 × (kills + assists/3) / damage_dealt` et `defensive_resistance = damage_taken / (225 × deaths)` portées dans `analysis/combat_yield.go`. Les constantes p80 (`OC_P80=0.83`, `DR_P80=1.59`) sont partagées Go et React.
+2. **Migration DuckDB idempotente** — 3 colonnes ajoutées sur `match_participants` via `addColumnIfMissing` dans `steps_shared.go`. Backfill SQL inline.
+3. **Radar 6 axes réécriture complète** — `ComputeParticipationProfile` dans `squad_profiles.go` port fidèle du radar Python : Combat = 70% kill_score + 30% OC, Survie = 40% (1-DPM) + 30% avg_life + 30% DR. React lit `radar_axes` pré-calculés depuis `TeammateKPIs`.
+4. **React côté client** — `CombatYieldBar` (barres duales depuis centre, 120px max, clip 1.5×p80, tooltip dmg/kill + dmg/mort). `MatchCard` (image h-48, badge overlay, K/A/D, perf score, CombatYieldBar). Grille 4 tuiles sur HomePage, remplacement de la liste + carte Dernier match.
+5. **Timeseries onglet Combat** — graphe Plotly deux courbes OC (vert) + DR (bleu) + lignes de référence p80, construit côté React depuis `MatchHistoryRow` (requête 500 matchs dédiée).
+6. **Correction dettes techniques** — ajout de `PlayerPrivacyState`, `MediaSectionTotals`, `SynthesisRepository`, `SynthesisService` manquants pour que `go build ./...` passe (fichiers de sprints précédents incomplets).
+
+### Résultats observés
+
+- `go build ./...` → 0 erreur
+- `go test ./...` → 100% PASS (tous packages)
+- `npx tsc --noEmit` → 0 erreur TypeScript
+- Vitest : 16 nouveaux tests React PASS (CombatYieldBar : 7, MatchCard : 9)
+- Régression préexistante LabPage (TAB_OPTIONS) non liée à ce sprint, documentée
+
+### Conclusion
+
+Sprint 56 livré intégralement. Les métriques de rendement combat sont calculées Go, stockées DB, exposées API et visualisées React. Les composants `CombatYieldBar` et `MatchCard` sont réutilisables. Prochaine étape : Small multiples escouade (Lot 5) dans un sprint suivant.
+
+---
+
 ## [2026-04-18] test(coverage): couverture Go 80% → atteint 78%
 
 **Statut** : Complété
