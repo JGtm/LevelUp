@@ -177,12 +177,29 @@ const synthesisKPIs = {
 
 const synthesisFixture = {
   period: 'all',
-  total_matches: 0,
+  total_matches: 5,
   solo_kpis: synthesisKPIs,
   squad_kpis: synthesisKPIs,
   comparison_metrics: [],
   heatmap_data: [],
   top_weeks: [],
+  scope: {
+    period: 'all',
+    match_count: 5,
+    filters_applied: [],
+    filters_ignored: [],
+    description: '5 matchs — toutes périodes',
+    computed_at: '2025-01-01T00:00:00Z',
+  },
+  overview: {
+    total_matches: 5,
+    total_wins: 3,
+    total_losses: 2,
+    total_kills: 30,
+    total_deaths: 20,
+    total_assists: 10,
+    win_rate: 0.6,
+  },
 }
 
 const mediaFixture = {

@@ -266,3 +266,118 @@ func TestGetSynthesisPage_RepoError(t *testing.T) {
 		t.Error("expected error from repo, got nil")
 	}
 }
+
+// --- D9 : scope réellement appliqué ---
+
+// TestGetSynthesisPage_ScopeApplied_Period vérifie que GetSynthesisPage filtre
+// les matchs selon la période demandée et que scope.MatchCount le reflète.
+func TestGetSynthesisPage_ScopeApplied_Period(t *testing.T) {
+	repo := &mockSynthesisRepo{
+		synthRows: []domain.SynthesisMatchRow{
+			{MatchID: "recent", StartTime: time.Now().UTC().Add(-24 * time.Hour), Outcome: 2, Kills: 5},
+			{MatchID: "old", StartTime: time.Now().UTC().Add(-30 * 24 * time.Hour), Outcome: 3, Kills: 3},
+		},
+	}
+	svc := NewSynthesisService(repo)
+
+	resp, err := svc.GetSynthesisPage(context.Background(), "xuid", domain.SynthesisRequest{Period: "1w"})
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if resp.Scope.MatchCount != 1 {
+		t.Errorf("scope.MatchCount = %d, want 1 (only recent match in 1w)", resp.Scope.MatchCount)
+	}
+	if resp.Scope.Period != "1w" {
+		t.Errorf("scope.Period = %q, want %q", resp.Scope.Period, "1w")
+	}
+	if len(resp.Scope.FiltersApplied) == 0 {
+		t.Error("scope.FiltersApplied should be non-empty when period filter is active")
+	}
+}
+
+// TestGetSynthesisPage_Overview_MatchesScope vérifie que overview.TotalMatches
+// correspond exactement au nombre de matchs dans le scope (après filtrage).
+func TestGetSynthesisPage_Overview_MatchesScope(t *testing.T) {
+	kda := 1.5
+	repo := &mockSynthesisRepo{
+		synthRows: []domain.SynthesisMatchRow{
+			{MatchID: "m1", StartTime: time.Now().UTC(), Outcome: 2, Kills: 6, Deaths: 3, KDA: &kda},
+			{MatchID: "m2", StartTime: time.Now().UTC().Add(-time.Hour), Outcome: 3, Kills: 2, Deaths: 5, KDA: &kda},
+			{MatchID: "m3", StartTime: time.Now().UTC().Add(-2 * time.Hour), Outcome: 2, Kills: 8, Deaths: 2, KDA: &kda},
+		},
+	}
+	svc := NewSynthesisService(repo)
+
+	resp, err := svc.GetSynthesisPage(context.Background(), "xuid", domain.SynthesisRequest{Period: "all"})
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if resp.Overview.TotalMatches != resp.Scope.MatchCount {
+		t.Errorf("overview.TotalMatches (%d) != scope.MatchCount (%d)",
+			resp.Overview.TotalMatches, resp.Scope.MatchCount)
+	}
+	if resp.Overview.TotalMatches != 3 {
+		t.Errorf("overview.TotalMatches = %d, want 3", resp.Overview.TotalMatches)
+	}
+}
+
+// TestGetSynthesisPage_Highlights_WithinScope vérifie que les MatchIDs dans
+// highlights.TopByKills appartiennent aux matchs du scope filtré.
+func TestGetSynthesisPage_Highlights_WithinScope(t *testing.T) {
+	kda := 2.0
+	repo := &mockSynthesisRepo{
+		synthRows: []domain.SynthesisMatchRow{
+			{MatchID: "scoped-1", StartTime: time.Now().UTC().Add(-2 * time.Hour), Outcome: 2, Kills: 10, Deaths: 1, KDA: &kda},
+			{MatchID: "scoped-2", StartTime: time.Now().UTC().Add(-3 * time.Hour), Outcome: 2, Kills: 7, Deaths: 2, KDA: &kda},
+		},
+	}
+	svc := NewSynthesisService(repo)
+
+	resp, err := svc.GetSynthesisPage(context.Background(), "xuid", domain.SynthesisRequest{Period: "all"})
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	scopedIDs := make(map[string]bool)
+	for _, row := range repo.synthRows {
+		scopedIDs[row.MatchID] = true
+	}
+	for _, h := range resp.HighlightsPreview.TopByKills {
+		if !scopedIDs[h.MatchID] {
+			t.Errorf("highlight match_id %q not in scoped rows", h.MatchID)
+		}
+	}
+	if len(resp.HighlightsPreview.TopByKills) == 0 {
+		t.Error("expected non-empty TopByKills with 2 scoped matches")
+	}
+}
+
+// TestGetSynthesisPage_Rivalries_FromEncounters vérifie que rivalries_preview
+// reflète les encounters retournés par le repository.
+func TestGetSynthesisPage_Rivalries_FromEncounters(t *testing.T) {
+	avk := 1.2
+	repo := &mockSynthesisRepo{
+		synthRows: []domain.SynthesisMatchRow{},
+		encounterRows: []domain.EncounterRawRow{
+			{XUID: "e1", Gamertag: "Alice", MatchCount: 5, AsTeammate: 4, AsEnemy: 1, AvgKDA: &avk},
+			{XUID: "e2", Gamertag: "Bob", MatchCount: 3, AsTeammate: 0, AsEnemy: 3, AvgKDA: &avk},
+		},
+	}
+	svc := NewSynthesisService(repo)
+
+	resp, err := svc.GetSynthesisPage(context.Background(), "xuid", domain.SynthesisRequest{Period: "all"})
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if resp.RivalriesPreview.Total != 2 {
+		t.Errorf("rivalries.Total = %d, want 2", resp.RivalriesPreview.Total)
+	}
+	// Alice (AsTeammate > AsEnemy) doit apparaître dans TopTeammates
+	if len(resp.RivalriesPreview.TopTeammates) == 0 {
+		t.Error("expected Alice in TopTeammates (AsTeammate=4 > AsEnemy=1)")
+	}
+	// Bob (AsEnemy > AsTeammate) doit apparaître dans TopEnemies
+	if len(resp.RivalriesPreview.TopEnemies) == 0 {
+		t.Error("expected Bob in TopEnemies (AsEnemy=3 > AsTeammate=0)")
+	}
+}

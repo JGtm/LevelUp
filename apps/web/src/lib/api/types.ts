@@ -1062,6 +1062,37 @@ export interface SynthesisPageResponse {
   highlights_preview?: SynthesisHighlightsPreview
   rivalries_preview?: SynthesisRivalriesPreview
   breakdowns?: SynthesisBreakdowns
+  // Sprint 55 D9 — scope + overview
+  scope?: SynthesisScope
+  overview?: SynthesisOverview
+}
+
+// Sprint 55 D9 — Scope
+export interface SynthesisScope {
+  period: string
+  match_count: number
+  filters_applied?: string[]
+  filters_ignored?: string[]
+  description: string
+  computed_at: string
+}
+
+// Sprint 55 D9 — Overview
+export interface SynthesisOverview {
+  total_matches: number
+  total_wins: number
+  total_losses: number
+  total_kills: number
+  total_deaths: number
+  total_assists: number
+  avg_kda?: number | null
+  avg_kills?: number | null
+  avg_deaths?: number | null
+  win_rate: number
+  avg_perf_score?: number | null
+  best_kills_match?: number | null
+  best_kda_match?: number | null
+  longest_win_streak?: number
 }
 
 // Sprint 55 D5 — Highlights
