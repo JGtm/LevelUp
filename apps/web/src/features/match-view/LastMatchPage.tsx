@@ -44,7 +44,7 @@ export function LastMatchPage() {
 
   function goToMatch(matchId: string) {
     navigate({
-      to: '/players/$playerSlug/explorer/matches/$matchId',
+      to: '/players/$playerSlug/matches/$matchId',
       params: { playerSlug, matchId },
     })
   }

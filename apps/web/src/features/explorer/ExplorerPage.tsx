@@ -2,7 +2,7 @@
  * ExplorerPage — page Explorer (recherche + filtres).
  */
 import { useState } from 'react'
-import { useParams } from '@tanstack/react-router'
+import { useParams, useNavigate } from '@tanstack/react-router'
 import { PageHeader } from '@/components/shell/PageHeader'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
@@ -20,6 +20,7 @@ type SearchMode = 'matches' | 'player'
 
 export function ExplorerPage() {
   const { playerSlug } = useParams({ strict: false }) as { playerSlug: string }
+  const navigate = useNavigate()
   const filterContext = useGlobalFilterStore((s) => s.filterContext)
   const filterContextHash = useGlobalFilterStore((s) => s.filterContextHash)
 
@@ -27,6 +28,21 @@ export function ExplorerPage() {
   const [targetGamertag, setTargetGamertag] = useState('')
   const [compareOpen, setCompareOpen] = useState(false)
   const prefetchCompare = useComparePrefetch(playerSlug)
+
+  // Filtres cascade mode Matchs
+  const [dateFilter, setDateFilter] = useState('')
+  const [squadScope, setSquadScope] = useState<'' | 'all' | 'solo' | 'squad'>('')
+  const [expType, setExpType] = useState('')
+  const [playlistFilter, setPlaylistFilter] = useState('')
+  const [modeFilter, setModeFilter] = useState('')
+  const [mapFilter, setMapFilter] = useState('')
+
+  function goToMatch(matchId: string) {
+    void navigate({
+      to: '/players/$playerSlug/matches/$matchId',
+      params: { playerSlug, matchId },
+    })
+  }
 
   // Filtres cascade mode Matchs
   const [dateFilter, setDateFilter] = useState('')
@@ -161,7 +177,14 @@ export function ExplorerPage() {
                     {playerQuery.data.common_matches.length > 0 ? (
                       <div className="space-y-1">
                         {playerQuery.data.common_matches.slice(0, 5).map((m) => (
-                          <div key={m.match_id} className="flex items-center justify-between rounded-md bg-muted px-3 py-1.5 text-sm">
+                          <div
+                            key={m.match_id}
+                            className="flex items-center justify-between rounded-md bg-muted px-3 py-1.5 text-sm cursor-pointer hover:bg-muted/70 transition-colors"
+                            onClick={() => goToMatch(m.match_id)}
+                            role="button"
+                            tabIndex={0}
+                            onKeyDown={(e) => e.key === 'Enter' && goToMatch(m.match_id)}
+                          >
                             <span>{m.map_ui} · {m.mode_ui}</span>
                             <Badge
                               variant={
@@ -300,7 +323,11 @@ export function ExplorerPage() {
                     </thead>
                     <tbody className="divide-y divide-border">
                       {matchesQuery.data.table.items.map((row) => (
-                        <tr key={row.match_id} className="hover:bg-primary/10 transition-colors">
+                        <tr
+                          key={row.match_id}
+                          className="hover:bg-primary/10 transition-colors cursor-pointer"
+                          onClick={() => goToMatch(row.match_id)}
+                        >
                           <td className="px-4 py-2 text-muted-foreground">
                             {new Date(row.start_time).toLocaleDateString('fr-FR')}
                           </td>

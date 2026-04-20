@@ -2,7 +2,7 @@
  * HomePage — Accueil Mission Control (Slice 5).
  */
 import { useState } from 'react'
-import { useParams } from '@tanstack/react-router'
+import { useParams, useNavigate } from '@tanstack/react-router'
 import { useQueryClient } from '@tanstack/react-query'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
@@ -29,12 +29,20 @@ function KPICard({ label, value }: { label: string; value: string | number }) {
 
 export function HomePage() {
   const { playerSlug } = useParams({ strict: false }) as { playerSlug: string }
+  const navigate = useNavigate()
   const { data, isLoading, isError, refetch } = useHomePage(playerSlug)
   const { data: bp } = useBattlePass(playerSlug)
   const { data: challenges } = useChallenges(playerSlug)
   const [matchTab, setMatchTab] = useState<'recent' | 'favorites'>('recent')
   const queryClient = useQueryClient()
   const favoriteMutation = useSetMatchFavorite(playerSlug)
+
+  function goToMatch(matchId: string) {
+    void navigate({
+      to: '/players/$playerSlug/matches/$matchId',
+      params: { playerSlug, matchId },
+    })
+  }
 
   if (isLoading) {
     return (
@@ -262,6 +270,7 @@ export function HomePage() {
                     <MatchCard
                       key={m.match_id}
                       match={m}
+                      onClick={() => goToMatch(m.match_id)}
                       onToggleFavorite={() => {
                         favoriteMutation.mutate(
                           { matchId: m.match_id, favorite: !m.is_favorite },
@@ -291,6 +300,7 @@ export function HomePage() {
                     <MatchCard
                       key={m.match_id}
                       match={m}
+                      onClick={() => goToMatch(m.match_id)}
                       onToggleFavorite={() => {
                         favoriteMutation.mutate(
                           { matchId: m.match_id, favorite: false },

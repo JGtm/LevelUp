@@ -48,7 +48,7 @@ export function CareerTopMatchesTable({ items, variant, title, playerSlug: slugP
 
   function goToMatch(matchId: string) {
     void navigate({
-      to: '/players/$playerSlug/explorer/matches/$matchId',
+      to: '/players/$playerSlug/matches/$matchId',
       params: { playerSlug, matchId },
     })
   }
