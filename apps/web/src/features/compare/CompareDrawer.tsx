@@ -5,14 +5,10 @@
  * Usage :
  *   <CompareDrawer playerSlug={slug} open={open} onClose={() => setOpen(false)} />
  */
-import { useState } from 'react'
-import { useCompare } from './queries'
-import { Spinner } from '@/components/ui/spinner'
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
-import { Badge } from '@/components/ui/badge'
-import { EmptyStateCard } from '@/components/ui/empty-state'
-import { PrivacyBanner } from '@/components/ui/privacy-banner'
-import type { CompareMetricRow, NormalizedPlayerStats } from '@/lib/api/types'
+import { useAppShellStore } from '@/stores/appShellStore'
+
+import { CompareSurface } from './CompareSurface'
+import { getCompareText, normalizeCompareLocale } from './i18n'
 
 interface CompareDrawerProps {
   playerSlug: string
@@ -20,203 +16,35 @@ interface CompareDrawerProps {
   onClose: () => void
 }
 
-/** Carte de stats pour un joueur dans la comparaison. */
-function PlayerStatsCard({
-  stats,
-  side,
-}: {
-  stats: NormalizedPlayerStats
-  side: 'A' | 'B'
-}) {
-  const colorClass = side === 'A' ? 'text-compare-a' : 'text-compare-b'
-  const bgClass =
-    side === 'A' ? 'bg-compare-a/10 border-compare-a' : 'bg-compare-b/10 border-compare-b'
-
-  return (
-    <Card className={`border ${bgClass}`}>
-      <CardHeader className="pb-2">
-        <CardTitle className={`text-sm ${colorClass}`}>
-          Joueur {side} — {stats.gamertag}
-          {stats.is_local && (
-            <Badge variant="secondary" className="ml-2 text-xs">
-              Local
-            </Badge>
-          )}
-        </CardTitle>
-      </CardHeader>
-      <CardContent className="space-y-1 text-xs text-foreground">
-        <p>
-          <span className="font-medium">Matchs :</span> {stats.matches_played}
-        </p>
-        <p>
-          <span className="font-medium">Victoires :</span>{' '}
-          {(stats.win_rate * 100).toFixed(1)} %
-        </p>
-        <p>
-          <span className="font-medium">K/D :</span> {stats.kd_ratio.toFixed(2)}
-        </p>
-        <p>
-          <span className="font-medium">Précision :</span>{' '}
-          {(stats.accuracy * 100).toFixed(1)} %
-        </p>
-        <p>
-          <span className="font-medium">Kills/match :</span>{' '}
-          {stats.avg_kills.toFixed(1)}
-        </p>
-      </CardContent>
-    </Card>
-  )
-}
-
-/** Ligne de métrique dans le tableau comparatif. */
-function MetricRowComp({ row }: { row: CompareMetricRow }) {
-  const winnerA = row.winner === 'a'
-  const winnerB = row.winner === 'b'
-
-  return (
-    <tr className="border-b last:border-0 text-sm">
-      <td className={`py-2 pr-4 ${winnerA ? 'font-semibold text-compare-a' : 'text-foreground'}`}>
-        {String(row.value_a)}
-      </td>
-      <td className="py-2 px-2 text-muted-foreground text-center text-xs">{row.label_fr}</td>
-      <td className={`py-2 pl-4 text-right ${winnerB ? 'font-semibold text-compare-b' : 'text-foreground'}`}>
-        {String(row.value_b)}
-      </td>
-    </tr>
-  )
-}
-
 /** Tiroir principal de comparaison. */
 export function CompareDrawer({ playerSlug, open, onClose }: CompareDrawerProps) {
-  const [gamertagB, setGamertagB] = useState('')
-  const { mutate, data, isPending, isError, error, reset } = useCompare(playerSlug)
+  const locale = normalizeCompareLocale(useAppShellStore((state) => state.locale))
+  const text = getCompareText(locale)
 
   if (!open) return null
 
-  function handleSubmit(e: React.FormEvent) {
-    e.preventDefault()
-    if (!gamertagB.trim()) return
-    reset()
-    mutate({ gamertag_b: gamertagB.trim() })
-  }
-
   return (
     <>
-      {/* Overlay */}
       <div
         className="fixed inset-0 bg-black/40 z-40"
         onClick={onClose}
         aria-hidden="true"
       />
 
-      {/* Tiroir */}
       <aside className="fixed right-0 top-0 h-full w-full max-w-lg bg-background shadow-xl z-50 flex flex-col overflow-y-auto">
-        {/* En-tête */}
         <div className="flex items-center justify-between p-4 border-b">
-          <h2 className="text-lg font-semibold">Comparer avec un joueur</h2>
+          <h2 className="text-lg font-semibold">{text.drawerTitle}</h2>
           <button
             onClick={onClose}
             className="text-muted-foreground hover:text-foreground text-xl font-bold"
-            aria-label="Fermer"
+            aria-label={text.close}
           >
             ✕
           </button>
         </div>
 
-        {/* Formulaire de recherche */}
-        <form onSubmit={handleSubmit} className="p-4 border-b space-y-2">
-          <label className="block text-sm font-medium text-foreground">
-            Gamertag du joueur à comparer
-          </label>
-          <div className="flex gap-2">
-            <input
-              type="text"
-              value={gamertagB}
-              onChange={(e) => setGamertagB(e.target.value)}
-              placeholder="Ex : HaloPlayer123"
-              className="flex-1 border rounded px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-400"
-            />
-            <button
-              type="submit"
-              disabled={isPending || !gamertagB.trim()}
-              className="px-4 py-2 bg-primary text-primary-foreground rounded text-sm font-medium hover:bg-primary/90 disabled:opacity-50"
-            >
-              {isPending ? '…' : 'Comparer'}
-            </button>
-          </div>
-        </form>
-
-        {/* Corps */}
-        <div className="flex-1 p-4 space-y-4">
-          {isPending && (
-            <div className="flex justify-center py-8">
-              <Spinner size="lg" />
-            </div>
-          )}
-
-          {isError && (
-            <EmptyStateCard
-              title={error?.message?.includes('404') ? 'Joueur introuvable' : 'Erreur'}
-              description={
-                error?.message?.includes('404')
-                  ? 'Ce joueur n\'existe pas ou n\'a aucune donnée accessible.'
-                  : (error?.message ?? 'Impossible de récupérer la comparaison.')
-              }
-            />
-          )}
-
-          {data && (
-            <>
-              {/* C3.6 : avertissement privacy si joueur B est privé ou données partielles */}
-              <PrivacyBanner warning={data.privacy_warning} />
-              {data.player_b_partial && !data.privacy_warning && (
-                <p className="text-xs text-warning bg-warning/10 rounded px-3 py-2">
-                  Les données de {data.player_b.gamertag} sont partielles — certaines métriques peuvent être absentes.
-                </p>
-              )}
-
-              {/* Cartes des deux joueurs */}
-              <div className="grid grid-cols-2 gap-3">
-                <PlayerStatsCard stats={data.player_a} side="A" />
-                <PlayerStatsCard stats={data.player_b} side="B" />
-              </div>
-
-              {/* Tableau des métriques */}
-              {data.metrics.length > 0 && (
-                <Card>
-                  <CardHeader className="pb-2">
-                    <CardTitle className="text-sm">Comparaison détaillée</CardTitle>
-                  </CardHeader>
-                  <CardContent className="p-0">
-                    <table className="w-full">
-                      <thead>
-                        <tr className="text-xs text-muted-foreground border-b">
-                          <th className="py-2 pr-4 text-left font-medium text-compare-a">
-                            {data.player_a.gamertag}
-                          </th>
-                          <th className="py-2 px-2 text-center font-medium">Métrique</th>
-                          <th className="py-2 pl-4 text-right font-medium text-compare-b">
-                            {data.player_b.gamertag}
-                          </th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {data.metrics.map((row) => (
-                          <MetricRowComp key={row.metric} row={row} />
-                        ))}
-                      </tbody>
-                    </table>
-                  </CardContent>
-                </Card>
-              )}
-            </>
-          )}
-
-          {!isPending && !isError && !data && (
-            <p className="text-sm text-muted-foreground text-center py-8">
-              Entrez un gamertag pour lancer la comparaison.
-            </p>
-          )}
+        <div className="flex-1 overflow-y-auto p-4">
+          <CompareSurface playerSlug={playerSlug} />
         </div>
       </aside>
     </>

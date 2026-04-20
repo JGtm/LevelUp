@@ -32,7 +32,7 @@ export function useComparePrefetch(playerSlug: string) {
       queryKey: queryKeys.comparePlayer(playerSlug, targetGamertag),
       queryFn: () =>
         api.post<CompareResponse>(`/players/${playerSlug}/pages/compare`, {
-          gamertag_b: targetGamertag,
+          target_gamertag: targetGamertag,
         }),
       staleTime: 2 * 60 * 1000,
     })

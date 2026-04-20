@@ -16,17 +16,18 @@ const makePlayer = (gamertag: string, isLocal: boolean) => ({
   title_slug: 'halo_infinite',
   xuid: isLocal ? 'xuid-a' : 'xuid-b',
   gamertag,
-  matches_played: isLocal ? 120 : 80,
+  matches: isLocal ? 120 : 80,
   win_rate: isLocal ? 0.58 : 0.50,
-  kd_ratio: isLocal ? 1.5 : 1.2,
+  kda: isLocal ? 2.1 : 1.7,
+  kdr: isLocal ? 1.5 : 1.2,
+  kills_per_game: isLocal ? 12.3 : 10.1,
+  deaths_per_game: isLocal ? 8.2 : 8.5,
+  assists_per_game: isLocal ? 4.1 : 3.2,
   accuracy: isLocal ? 0.42 : 0.38,
-  avg_kills: isLocal ? 12.3 : 10.1,
-  avg_deaths: isLocal ? 8.2 : 8.5,
-  avg_assists: isLocal ? 4.1 : 3.2,
-  avg_damage: isLocal ? 3200 : 2900,
-  avg_ps_per_min: 0,
-  avg_playtime_min: 0,
-  avg_performance_score: 0,
+  damage_per_game: isLocal ? 3200 : 2900,
+  career_rank: isLocal ? 82 : 64,
+  csr_current: isLocal ? 1620 : 1485,
+  csr_best: isLocal ? 1705 : 1510,
   is_local: isLocal,
 })
 
@@ -58,9 +59,9 @@ describe('CompareDrawer', () => {
 
   it('affiche le formulaire de recherche à l\'ouverture', () => {
     renderDrawer()
-    expect(screen.getByText('Comparer avec un joueur')).toBeInTheDocument()
+    expect(screen.getByText('Face-à-face avec un joueur')).toBeInTheDocument()
     expect(screen.getByPlaceholderText(/HaloPlayer123/i)).toBeInTheDocument()
-    expect(screen.getByText('Entrez un gamertag pour lancer la comparaison.')).toBeInTheDocument()
+    expect(screen.getByText('Entrez un gamertag pour lancer le face-à-face.')).toBeInTheDocument()
   })
 
   it('affiche un spinner pendant le fetch', async () => {
@@ -75,7 +76,7 @@ describe('CompareDrawer', () => {
     fireEvent.change(screen.getByPlaceholderText(/HaloPlayer123/i), {
       target: { value: 'RemoteRival' },
     })
-    fireEvent.click(screen.getByRole('button', { name: 'Comparer' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Face-à-face' }))
 
     // Le spinner doit apparaître pendant le chargement
     await waitFor(() => {
@@ -94,7 +95,7 @@ describe('CompareDrawer', () => {
     fireEvent.change(screen.getByPlaceholderText(/HaloPlayer123/i), {
       target: { value: 'RemoteRival' },
     })
-    fireEvent.click(screen.getByRole('button', { name: 'Comparer' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Face-à-face' }))
 
     await waitFor(() => {
       // Les deux gamertags sont visibles (peuvent apparaître dans plusieurs éléments)
@@ -117,7 +118,7 @@ describe('CompareDrawer', () => {
     fireEvent.change(screen.getByPlaceholderText(/HaloPlayer123/i), {
       target: { value: 'InexistantXXX' },
     })
-    fireEvent.click(screen.getByRole('button', { name: 'Comparer' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Face-à-face' }))
 
     await waitFor(() => {
       expect(screen.getByText('Joueur introuvable')).toBeInTheDocument()
@@ -135,7 +136,7 @@ describe('CompareDrawer', () => {
     fireEvent.change(screen.getByPlaceholderText(/HaloPlayer123/i), {
       target: { value: 'BrokenPlayer' },
     })
-    fireEvent.click(screen.getByRole('button', { name: 'Comparer' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Face-à-face' }))
 
     await waitFor(() => {
       expect(screen.getByText('Erreur')).toBeInTheDocument()
@@ -159,7 +160,7 @@ describe('CompareDrawer', () => {
     fireEvent.change(screen.getByPlaceholderText(/HaloPlayer123/i), {
       target: { value: 'PrivatePlayer' },
     })
-    fireEvent.click(screen.getByRole('button', { name: 'Comparer' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Face-à-face' }))
 
     await waitFor(() => {
       expect(screen.getByText(/confidentialité/i)).toBeInTheDocument()
@@ -181,16 +182,16 @@ describe('CompareDrawer', () => {
     fireEvent.change(screen.getByPlaceholderText(/HaloPlayer123/i), {
       target: { value: 'PartialPlayer' },
     })
-    fireEvent.click(screen.getByRole('button', { name: 'Comparer' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Face-à-face' }))
 
     await waitFor(() => {
       expect(screen.getByText(/données.*partielles/i)).toBeInTheDocument()
     })
   })
 
-  it('le bouton Comparer est désactivé si le champ est vide', () => {
+  it('le bouton Face-à-face est désactivé si le champ est vide', () => {
     renderDrawer()
-    const btn = screen.getByRole('button', { name: 'Comparer' })
+    const btn = screen.getByRole('button', { name: 'Face-à-face' })
     expect(btn).toBeDisabled()
   })
 
