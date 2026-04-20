@@ -16,7 +16,7 @@ import (
 	"context"
 	"database/sql"
 	"fmt"
-	"log"
+	"log/slog"
 	"path/filepath"
 	"time"
 
@@ -95,21 +95,41 @@ func (e *SyncEngine) RunBackfill(ctx context.Context, scope *SyncScope) ([]strin
 // run est le cœur du moteur de sync. isDelta=true → stop dès un match connu.
 func (e *SyncEngine) run(ctx context.Context, opts domain.SyncOptions, isDelta bool) (domain.SyncResult, error) {
 	result := domain.SyncResult{StartedAt: time.Now()}
+	mode := "full"
+	if isDelta {
+		mode = "delta"
+	}
+
+	slog.InfoContext(ctx, "sync: démarrage",
+		"gamertag", e.gamertag,
+		"xuid", e.xuid,
+		"mode", mode,
+		"match_type", opts.MatchType,
+		"max_matches", opts.MaxMatches,
+		"with_participants", opts.WithParticipants,
+		"with_medals", opts.WithMedals,
+		"rps", opts.RequestsPerSecond,
+	)
 
 	// B8 : validation fail-fast des options avant tout accès réseau ou DB.
 	if err := opts.Validate(); err != nil {
+		slog.ErrorContext(ctx, "sync: options invalides", "err", err, "gamertag", e.gamertag)
 		return result, fmt.Errorf("run: options invalides: %w", err)
 	}
 
 	// ─── Write leases ──────────────────────────────────────────────────────────
+	slog.DebugContext(ctx, "sync: acquisition lease player DB", "gamertag", e.gamertag, "db", e.playerDBPath)
 	relPlayer, err := AcquireLease(e.playerDBPath, leaseTimeout)
 	if err != nil {
+		slog.ErrorContext(ctx, "sync: lease player DB échouée", "gamertag", e.gamertag, "err", err, "timeout", leaseTimeout)
 		return result, fmt.Errorf("run: %w", err)
 	}
 	defer relPlayer()
 
+	slog.DebugContext(ctx, "sync: acquisition lease shared DB", "gamertag", e.gamertag, "db", e.sharedDBPath)
 	relShared, err := AcquireLease(e.sharedDBPath, leaseTimeout)
 	if err != nil {
+		slog.ErrorContext(ctx, "sync: lease shared DB échouée", "gamertag", e.gamertag, "err", err, "timeout", leaseTimeout)
 		return result, fmt.Errorf("run: %w", err)
 	}
 	defer relShared()
@@ -117,21 +137,26 @@ func (e *SyncEngine) run(ctx context.Context, opts domain.SyncOptions, isDelta b
 	// ─── Ouverture des DBs ─────────────────────────────────────────────────────
 	playerDB, err := OpenPlayerDB(e.playerDBPath)
 	if err != nil {
+		slog.ErrorContext(ctx, "sync: ouverture player DB échouée", "gamertag", e.gamertag, "db", e.playerDBPath, "err", err)
 		return result, fmt.Errorf("run OpenPlayerDB: %w", err)
 	}
 	defer playerDB.Close()
 
 	sharedDB, err := OpenSharedDB(e.sharedDBPath)
 	if err != nil {
+		slog.ErrorContext(ctx, "sync: ouverture shared DB échouée", "gamertag", e.gamertag, "db", e.sharedDBPath, "err", err)
 		return result, fmt.Errorf("run OpenSharedDB: %w", err)
 	}
 	defer sharedDB.Close()
+	slog.DebugContext(ctx, "sync: DBs ouvertes", "gamertag", e.gamertag)
 
 	// ─── Match IDs déjà connus (player DB) ───────────────────────────────────
 	known, err := loadKnownMatchIDs(playerDB)
 	if err != nil {
+		slog.ErrorContext(ctx, "sync: chargement match_ids connus échoué", "gamertag", e.gamertag, "err", err)
 		return result, fmt.Errorf("run loadKnownMatchIDs: %w", err)
 	}
+	slog.InfoContext(ctx, "sync: match_ids connus chargés", "gamertag", e.gamertag, "known_count", len(known))
 
 	// ─── Client API ────────────────────────────────────────────────────────────
 	client := NewHaloAPIClient(e.tokens.SpartanToken, e.tokens.ClearanceToken, opts.RequestsPerSecond)
@@ -146,14 +171,24 @@ func (e *SyncEngine) run(ctx context.Context, opts domain.SyncOptions, isDelta b
 			break
 		}
 
+		slog.DebugContext(ctx, "sync: requête historique API",
+			"gamertag", e.gamertag, "start", start, "page_size", historyPageSize,
+		)
 		entries, err := client.GetMatchHistory(ctx, e.gamertag, opts.MatchType, start, historyPageSize)
 		if err != nil {
+			slog.WarnContext(ctx, "sync: GetMatchHistory échoué",
+				"gamertag", e.gamertag, "start", start, "err", err,
+			)
 			result.AddWarning(fmt.Sprintf("GetMatchHistory(start=%d): %v", start, err))
 			break
 		}
 		if len(entries) == 0 {
+			slog.DebugContext(ctx, "sync: fin historique (page vide)", "gamertag", e.gamertag, "start", start)
 			break // fin de l'historique
 		}
+		slog.DebugContext(ctx, "sync: page reçue",
+			"gamertag", e.gamertag, "entries", len(entries), "start", start,
+		)
 
 		allKnown := true
 		for _, entry := range entries {
@@ -163,7 +198,10 @@ func (e *SyncEngine) run(ctx context.Context, opts domain.SyncOptions, isDelta b
 			if known[entry.MatchID] {
 				result.MatchesSkipped++
 				if isDelta {
-					// En mode delta, on s'arrête dès le premier match connu.
+					slog.InfoContext(ctx, "sync: match connu rencontré — arrêt delta",
+						"gamertag", e.gamertag, "match_id", entry.MatchID,
+						"processed", processed, "skipped", result.MatchesSkipped,
+					)
 					goto done
 				}
 				continue
@@ -171,9 +209,16 @@ func (e *SyncEngine) run(ctx context.Context, opts domain.SyncOptions, isDelta b
 			allKnown = false
 
 			if err := e.processMatch(ctx, client, sharedDB, playerDB, &result, entry.MatchID, opts); err != nil {
+				slog.WarnContext(ctx, "sync: processMatch échoué",
+					"gamertag", e.gamertag, "match_id", entry.MatchID, "err", err,
+				)
 				result.AddWarning(fmt.Sprintf("processMatch(%s): %v", entry.MatchID, err))
 			} else {
 				processed++
+				slog.InfoContext(ctx, "sync: match traité",
+					"gamertag", e.gamertag, "match_id", entry.MatchID,
+					"processed", processed, "inserted_total", result.MatchesInserted,
+				)
 			}
 		}
 
@@ -184,10 +229,26 @@ func (e *SyncEngine) run(ctx context.Context, opts domain.SyncOptions, isDelta b
 	}
 
 done:
+	slog.InfoContext(ctx, "sync: boucle pagination terminée",
+		"gamertag", e.gamertag, "mode", mode,
+		"inserted", result.MatchesInserted, "skipped", result.MatchesSkipped,
+		"warnings", len(result.Warnings),
+	)
+
 	// ─── Pipeline post-sync ─────────────────────────────────────────────────────
 	if result.MatchesInserted > 0 {
+		slog.InfoContext(ctx, "sync: lancement pipeline post-sync", "gamertag", e.gamertag)
 		postResult := e.runPostSyncPipeline(ctx, playerDB, sharedDB, client)
 		result.PostSync = &postResult
+		slog.InfoContext(ctx, "sync: pipeline post-sync terminé",
+			"gamertag", e.gamertag,
+			"perf_scores", postResult.PerfScoresComputed,
+			"lusr_updated", postResult.LUSRUpdated,
+			"career_synced", postResult.CareerSynced,
+			"views_refreshed", postResult.ViewsRefreshed,
+		)
+	} else {
+		slog.DebugContext(ctx, "sync: aucun match inséré — pipeline post-sync ignoré", "gamertag", e.gamertag)
 	}
 
 	// ─── sync_meta ──────────────────────────────────────────────────────────────
@@ -197,6 +258,17 @@ done:
 
 	result.FinishedAt = time.Now()
 	result.DurationSeconds = result.FinishedAt.Sub(result.StartedAt).Seconds()
+
+	slog.InfoContext(ctx, "sync: terminé",
+		"gamertag", e.gamertag, "mode", mode,
+		"inserted", result.MatchesInserted,
+		"skipped", result.MatchesSkipped,
+		"medals", result.MedalsInserted,
+		"participants", result.ParticipantsDone,
+		"warnings", len(result.Warnings),
+		"duration_s", fmt.Sprintf("%.2f", result.DurationSeconds),
+		"status", result.Status(),
+	)
 	return result, nil
 }
 
@@ -209,17 +281,29 @@ func (e *SyncEngine) processMatch(
 	matchID string,
 	opts domain.SyncOptions,
 ) error {
+	start := time.Now()
+	slog.DebugContext(ctx, "processMatch: début", "gamertag", e.gamertag, "match_id", matchID)
+
 	matchJSON, err := client.GetMatchStats(ctx, matchID)
 	if err != nil {
+		slog.WarnContext(ctx, "processMatch: GetMatchStats échoué",
+			"gamertag", e.gamertag, "match_id", matchID, "err", err,
+		)
 		return fmt.Errorf("GetMatchStats: %w", err)
 	}
 
 	// ─── match_registry ────────────────────────────────────────────────────────
 	reg, err := ExtractRegistry(matchJSON, e.gamertag)
 	if err != nil {
+		slog.WarnContext(ctx, "processMatch: ExtractRegistry échoué",
+			"gamertag", e.gamertag, "match_id", matchID, "err", err,
+		)
 		return fmt.Errorf("ExtractRegistry: %w", err)
 	}
 	if err := InsertRegistryIfNotExists(sharedDB, *reg); err != nil {
+		slog.ErrorContext(ctx, "processMatch: InsertRegistry échoué",
+			"gamertag", e.gamertag, "match_id", matchID, "err", err,
+		)
 		return fmt.Errorf("InsertRegistry: %w", err)
 	}
 
@@ -227,34 +311,54 @@ func (e *SyncEngine) processMatch(
 	if opts.WithParticipants {
 		participants := ExtractParticipants(matchJSON)
 		if err := InsertParticipants(sharedDB, participants); err != nil {
+			slog.ErrorContext(ctx, "processMatch: InsertParticipants échoué",
+				"gamertag", e.gamertag, "match_id", matchID, "count", len(participants), "err", err,
+			)
 			return fmt.Errorf("InsertParticipants: %w", err)
 		}
 		result.ParticipantsDone += len(participants)
 
-		// xuid_aliases pour tous les participants
+		aliased := 0
 		for _, p := range participants {
 			if p.Gamertag != nil && *p.Gamertag != "" {
 				_ = UpsertXUIDAlias(sharedDB, p.XUID, *p.Gamertag)
+				aliased++
 			}
 		}
+		slog.DebugContext(ctx, "processMatch: participants insérés",
+			"match_id", matchID, "participants", len(participants), "aliases_upserted", aliased,
+		)
 	}
 
 	// ─── medals_earned ─────────────────────────────────────────────────────────
 	if opts.WithMedals {
 		medals := ExtractMedals(matchJSON)
 		if err := InsertMedals(sharedDB, medals); err != nil {
+			slog.ErrorContext(ctx, "processMatch: InsertMedals échoué",
+				"gamertag", e.gamertag, "match_id", matchID, "count", len(medals), "err", err,
+			)
 			return fmt.Errorf("InsertMedals: %w", err)
 		}
 		result.MedalsInserted += len(medals)
+		slog.DebugContext(ctx, "processMatch: médailles insérées",
+			"match_id", matchID, "medals", len(medals),
+		)
 	}
 
 	// ─── player_match_enrichment (player DB) ───────────────────────────────────
 	if err := UpsertPlayerEnrichment(playerDB, matchID, ""); err != nil {
+		slog.ErrorContext(ctx, "processMatch: UpsertPlayerEnrichment échoué",
+			"gamertag", e.gamertag, "match_id", matchID, "err", err,
+		)
 		return fmt.Errorf("UpsertPlayerEnrichment: %w", err)
 	}
 
 	result.MatchesInserted++
 	result.InsertedMatchIDs = append(result.InsertedMatchIDs, matchID)
+	slog.DebugContext(ctx, "processMatch: terminé",
+		"gamertag", e.gamertag, "match_id", matchID,
+		"duration_ms", time.Since(start).Milliseconds(),
+	)
 	return nil
 }
 
@@ -291,38 +395,48 @@ func (e *SyncEngine) runPostSyncPipeline(
 	var r domain.PostSyncResult
 
 	// 1. Performance scores
+	slog.DebugContext(ctx, "post-sync: calcul perf scores", "gamertag", e.gamertag)
 	if n, err := batchComputePerformanceScores(playerDB, sharedDB, e.xuid); err != nil {
-		log.Printf("[post-sync] WARN perf scores: %v", err)
+		slog.WarnContext(ctx, "post-sync: perf scores échoué", "gamertag", e.gamertag, "err", err)
 	} else {
 		r.PerfScoresComputed = n
+		slog.DebugContext(ctx, "post-sync: perf scores calculés", "gamertag", e.gamertag, "count", n)
 	}
 
 	// 2. LUSR (TrueSkill 2)
+	slog.DebugContext(ctx, "post-sync: calcul LUSR", "gamertag", e.gamertag)
 	if n, err := batchComputeLUSR(playerDB, sharedDB, e.xuid); err != nil {
-		log.Printf("[post-sync] WARN LUSR: %v", err)
+		slog.WarnContext(ctx, "post-sync: LUSR échoué", "gamertag", e.gamertag, "err", err)
 	} else {
 		r.LUSRUpdated = n
+		slog.DebugContext(ctx, "post-sync: LUSR mis à jour", "gamertag", e.gamertag, "count", n)
 	}
 
 	// 3. Career rank
+	slog.DebugContext(ctx, "post-sync: sync career rank", "gamertag", e.gamertag, "xuid", e.xuid)
 	if data, err := syncCareerRank(ctx, client, e.xuid); err != nil {
-		log.Printf("[post-sync] WARN career: %v", err)
+		slog.WarnContext(ctx, "post-sync: career rank échoué", "gamertag", e.gamertag, "err", err)
 	} else if data != nil {
 		if err := saveCareerRank(playerDB, data); err != nil {
-			log.Printf("[post-sync] WARN career save: %v", err)
+			slog.WarnContext(ctx, "post-sync: sauvegarde career échouée", "gamertag", e.gamertag, "err", err)
 		} else {
 			r.CareerSynced = true
+			slog.DebugContext(ctx, "post-sync: career rank sauvegardé",
+				"gamertag", e.gamertag, "rank", data.CurrentRank, "rank_name", data.CurrentRankName,
+			)
 		}
 	}
 
 	// 4. Aggregates (materialized views)
+	slog.DebugContext(ctx, "post-sync: refresh aggregates player", "gamertag", e.gamertag)
 	if n, err := refreshAggregates(playerDB); err != nil {
-		log.Printf("[post-sync] WARN aggregates: %v", err)
+		slog.WarnContext(ctx, "post-sync: aggregates échoué", "gamertag", e.gamertag, "err", err)
 	} else {
 		r.ViewsRefreshed = n
 	}
+	slog.DebugContext(ctx, "post-sync: refresh shared views", "gamertag", e.gamertag)
 	if n, err := refreshSharedViews(sharedDB); err != nil {
-		log.Printf("[post-sync] WARN shared views: %v", err)
+		slog.WarnContext(ctx, "post-sync: shared views échoué", "gamertag", e.gamertag, "err", err)
 	} else {
 		r.ViewsRefreshed += n
 	}

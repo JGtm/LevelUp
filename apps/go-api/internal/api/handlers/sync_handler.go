@@ -187,3 +187,56 @@ func (h *SyncHandler) StartDeltaSync(w http.ResponseWriter, r *http.Request) {
 
 	writeJSON(w, http.StatusAccepted, job)
 }
+
+// StartSyncAll lance une synchronisation delta pour tous les joueurs configurés.
+// POST /api/v1/sync/all → 202 AsyncJobStatus.
+func (h *SyncHandler) StartSyncAll(w http.ResponseWriter, r *http.Request) {
+	sess := middleware.GetSession(r.Context())
+	if sess == nil || sess.HaloTokens == nil {
+		writeError(w, http.StatusUnauthorized, "auth_required", "Tokens Halo absents.")
+		return
+	}
+	tokens := sess.HaloTokens
+
+	players, err := h.cfg.LoadPlayers()
+	if err != nil {
+		writeError(w, http.StatusInternalServerError, "profiles_load_error", "Impossible de charger db_profiles.json.")
+		return
+	}
+	if len(players) == 0 {
+		writeError(w, http.StatusNotFound, "no_players", "Aucun joueur configuré dans db_profiles.json.")
+		return
+	}
+
+	job := h.jobStore.Create(domain.JobTypeDeltaSyncAll, "all")
+
+	go func() {
+		total := len(players)
+		var succeeded, failed int
+		for i, p := range players {
+			step := fmt.Sprintf("%s (%d/%d)", p.Gamertag, i+1, total)
+			h.jobStore.Update(job.JobID, func(j *domain.AsyncJobStatus) {
+				j.CurrentStep = &step
+				pct := (i * 100) / total
+				j.ProgressPct = &pct
+			})
+
+			engine := go_sync.NewSyncEngine(h.cfg.RepoRoot, p.Gamertag, p.XUID, tokens)
+			opts := domain.DefaultSyncOptions()
+			if _, err := engine.RunDelta(context.Background(), opts); err != nil {
+				failed++
+			} else {
+				succeeded++
+			}
+		}
+
+		summary := fmt.Sprintf("players=%d succeeded=%d failed=%d", total, succeeded, failed)
+		if failed > 0 {
+			h.jobStore.SetStatus(job.JobID, domain.JobStatusFailed, &summary)
+		} else {
+			h.jobStore.SetStatus(job.JobID, domain.JobStatusSucceeded, &summary)
+		}
+	}()
+
+	writeJSON(w, http.StatusAccepted, job)
+}

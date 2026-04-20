@@ -8,7 +8,7 @@ package sync
 import (
 	"database/sql"
 	"fmt"
-	"log"
+	"log/slog"
 )
 
 // MaterializedView décrit une vue matérialisée à recréer.
@@ -76,7 +76,7 @@ func refreshAggregates(playerDB *sql.DB) (int, error) { //nolint:unparam // erro
 	count := 0
 	for _, mv := range playerMaterializedViews {
 		if err := recreateMaterializedView(playerDB, mv); err != nil {
-			log.Printf("[aggregates] WARN: %s — %v", mv.Name, err)
+			slog.Warn("aggregates: échec vue matérialisée", "view", mv.Name, "err", err)
 			continue
 		}
 		count++
@@ -89,7 +89,7 @@ func refreshSharedViews(sharedDB *sql.DB) (int, error) { //nolint:unparam // err
 	count := 0
 	for _, v := range sharedSQLViews {
 		if err := recreateSQLView(sharedDB, v); err != nil {
-			log.Printf("[aggregates] WARN shared view %s — %v", v.Name, err)
+			slog.Warn("aggregates: échec shared view", "view", v.Name, "err", err)
 			continue
 		}
 		count++
