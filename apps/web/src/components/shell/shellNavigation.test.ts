@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 
-import { buildPlayerDestination } from './shellNavigation'
+import { buildPlayerDestination, PLAYER_PRIMARY_NAV_ITEMS } from './shellNavigation'
 
 describe('buildPlayerDestination', () => {
   it('redirige vers home si aucun slug courant', () => {
@@ -27,5 +27,12 @@ describe('buildPlayerDestination', () => {
     expect(buildPlayerDestination('/players/old-player', 'old-player', 'new-player')).toBe(
       '/players/new-player/home',
     )
+  })
+
+  it('place Palmarès avant Carrière dans le parcours principal', () => {
+    const labels = PLAYER_PRIMARY_NAV_ITEMS.map((item) => item.label)
+
+    expect(labels.indexOf('Palmarès')).toBeGreaterThanOrEqual(0)
+    expect(labels.indexOf('Palmarès')).toBeLessThan(labels.indexOf('Carrière'))
   })
 })

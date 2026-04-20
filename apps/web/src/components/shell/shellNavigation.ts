@@ -18,6 +18,12 @@ export const PLAYER_PRIMARY_NAV_ITEMS: ShellNavItem[] = [
     description: 'Briefing, signaux chauds et accès prioritaires.',
   },
   {
+    to: '/players/$playerSlug/palmares',
+    label: 'Palmarès',
+    eyebrow: 'Prestige',
+    description: 'Classements, relations et face-à-face joueur à joueur.',
+  },
+  {
     to: '/players/$playerSlug/career',
     label: 'Carrière',
     eyebrow: 'Progression',

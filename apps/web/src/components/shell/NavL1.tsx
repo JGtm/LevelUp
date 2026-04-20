@@ -2,27 +2,35 @@
  * NavL1 — barre de navigation principale (niveau 1).
  *
  * Barre horizontale fixée en haut de l'application, visible sur toutes les pages.
- * Contient : logo · 6 sections joueur · sélecteur de joueur actif · switch thème · lien paramètres.
+ * Contient : logo · sections joueur · sélecteur de joueur actif · switch thème · lien paramètres.
  *
- * Les 6 sections correspondent au plan V7 : Accueil · Stats · Escouade ·
- * Explorer · Médias · Profil. La détection de la section active se fait sur
- * le pathname courant (pas sur les classes CSS du Link, pour gérer les
- * groupes de sous-routes, ex. /stats/history = section Stats).
+ * Les sections avec plusieurs onglets (Palmarès, Stats, Escouade, Carrière) utilisent un
+ * split button : clic sur le label → landing, clic sur ▾ → dropdown des onglets.
  */
 import { Link, useNavigate, useRouterState } from '@tanstack/react-router'
+import { useRef, useEffect, useState } from 'react'
 import { useAppShellStore } from '@/stores/appShellStore'
 import { ThemeToggle } from './ThemeToggle'
 import { buildPlayerDestination } from './shellNavigation'
 
 // ─── Définition des sections L1 ───────────────────────────────────────────────
 
+interface L1Tab {
+  key: string
+  label: string
+  /** Chemin avec $playerSlug en placeholder. */
+  path: string
+}
+
 interface L1Section {
   key: string
   label: string
-  /** Route par défaut lors du clic (avec $playerSlug en placeholder). */
+  /** Route par défaut lors du clic sur le label (avec $playerSlug en placeholder). */
   defaultPath: string
   /** Retourne true si le pathname courant appartient à cette section. */
   matchPathname: (pathname: string) => boolean
+  /** Onglets du dropdown (optionnel — si absent, bouton simple). */
+  tabs?: L1Tab[]
 }
 
 const L1_SECTIONS: L1Section[] = [
@@ -37,12 +45,21 @@ const L1_SECTIONS: L1Section[] = [
     label: 'Stats',
     defaultPath: '/players/$playerSlug/stats/history',
     matchPathname: (p) => /\/players\/[^/]+\/stats\//.test(p),
+    tabs: [
+      { key: 'history', label: 'Historique', path: '/players/$playerSlug/stats/history' },
+      { key: 'timeseries', label: 'Séries', path: '/players/$playerSlug/stats/timeseries' },
+      { key: 'sessions', label: 'Sessions', path: '/players/$playerSlug/stats/sessions' },
+    ],
   },
   {
     key: 'squad',
     label: 'Escouade',
-    defaultPath: '/players/$playerSlug/squad',
+    defaultPath: '/players/$playerSlug/squad/synergies',
     matchPathname: (p) => /\/players\/[^/]+\/squad/.test(p),
+    tabs: [
+      { key: 'synergies', label: 'Synergies', path: '/players/$playerSlug/squad/synergies' },
+      { key: 'contributions', label: 'Contributions', path: '/players/$playerSlug/squad/contributions' },
+    ],
   },
   {
     key: 'explorer',
@@ -57,14 +74,115 @@ const L1_SECTIONS: L1Section[] = [
     matchPathname: (p) => /\/players\/[^/]+\/media/.test(p),
   },
   {
+    key: 'palmares',
+    label: 'Palmarès',
+    defaultPath: '/players/$playerSlug/palmares',
+    matchPathname: (p) => /\/players\/[^/]+\/palmares(?:\/|$)/.test(p),
+    tabs: [
+      { key: 'leaderboard', label: 'Classements', path: '/players/$playerSlug/palmares' },
+      { key: 'relations', label: 'Relations', path: '/players/$playerSlug/palmares/relations' },
+      { key: 'compare', label: 'Face-à-face', path: '/players/$playerSlug/palmares/compare' },
+      { key: 'season-pass', label: 'Pass saisonnier', path: '/players/$playerSlug/palmares/season-pass' },
+    ],
+  },
+  {
     key: 'career',
     label: 'Carrière',
     defaultPath: '/players/$playerSlug/career',
     matchPathname: (p) => /\/players\/[^/]+\/(career|profile)/.test(p),
+    tabs: [
+      { key: 'progression', label: 'Progression', path: '/players/$playerSlug/career' },
+      { key: 'citations', label: 'Citations', path: '/players/$playerSlug/profile/citations' },
+    ],
   },
 ]
 
-// ─── Composant ────────────────────────────────────────────────────────────────
+// ─── SplitButton ──────────────────────────────────────────────────────────────
+
+interface SplitButtonProps {
+  section: L1Section & { tabs: L1Tab[] }
+  isActive: boolean
+  resolvedDefaultPath: string
+  resolvePath: (tpl: string) => string
+}
+
+function SplitButton({ section, isActive, resolvedDefaultPath, resolvePath }: SplitButtonProps) {
+  const [open, setOpen] = useState(false)
+  const ref = useRef<HTMLDivElement>(null)
+
+  useEffect(() => {
+    function handleClickOutside(e: MouseEvent) {
+      if (ref.current && !ref.current.contains(e.target as Node)) {
+        setOpen(false)
+      }
+    }
+    document.addEventListener('mousedown', handleClickOutside)
+    return () => document.removeEventListener('mousedown', handleClickOutside)
+  }, [])
+
+  const wrapperClass = [
+    'flex items-stretch rounded-md overflow-hidden text-sm font-medium transition-colors',
+    isActive
+      ? 'bg-sidebar-primary text-sidebar-primary-foreground'
+      : 'text-sidebar-foreground/70 hover:bg-sidebar-accent hover:text-sidebar-accent-foreground',
+  ].join(' ')
+
+  return (
+    <div ref={ref} className="relative">
+      <div className={wrapperClass}>
+        <Link
+          to={resolvedDefaultPath as never}
+          className="px-3 py-1.5 whitespace-nowrap"
+          aria-current={isActive ? 'page' : undefined}
+        >
+          {section.label}
+        </Link>
+
+        <span className="mx-0.5 h-4 w-px self-center rounded-full bg-current opacity-20" aria-hidden="true" />
+
+        <button
+          type="button"
+          onClick={() => setOpen((v) => !v)}
+          className="px-1.5 py-1.5 cursor-pointer"
+          aria-label={`Onglets ${section.label}`}
+          aria-expanded={open}
+          aria-haspopup="menu"
+        >
+          <svg
+            xmlns="http://www.w3.org/2000/svg"
+            className={`h-3 w-3 transition-transform ${open ? 'rotate-180' : ''}`}
+            viewBox="0 0 12 12"
+            fill="currentColor"
+            aria-hidden="true"
+          >
+            <path d="M6 8L1 3h10z" />
+          </svg>
+        </button>
+      </div>
+
+      {open && (
+        <div
+          role="menu"
+          className="absolute left-0 top-full mt-1 z-50 min-w-[10rem] rounded-md border border-border bg-popover py-1 shadow-lg"
+        >
+          {section.tabs.map((tab) => (
+            <Link
+              key={tab.key}
+              to={resolvePath(tab.path) as never}
+              role="menuitem"
+              onClick={() => setOpen(false)}
+              className="block px-3 py-1.5 text-sm text-popover-foreground hover:bg-accent hover:text-accent-foreground whitespace-nowrap"
+            >
+              {tab.label}
+            </Link>
+          ))}
+        </div>
+      )}
+    </div>
+  )
+}
+
+// ─── Composant principal ──────────────────────────────────────────────────────
 
 export function NavL1() {
   const navigate = useNavigate()
@@ -77,7 +195,7 @@ export function NavL1() {
   const pathname = routerState.location.pathname
   const playerSlug = currentPlayer?.player_slug ?? ''
 
-  function resolvedPath(templatePath: string): string {
+  function resolvePath(templatePath: string): string {
     return templatePath.replace('$playerSlug', playerSlug)
   }
 
@@ -97,7 +215,7 @@ export function NavL1() {
     >
       {/* ── Logo ────────────────────────────────────────────────────────── */}
       <Link
-        to={playerSlug ? resolvedPath('/players/$playerSlug/home') : '/'}
+        to={playerSlug ? resolvePath('/players/$playerSlug/home') as never : '/'}
         className="mr-3 flex shrink-0 items-center gap-2 rounded-md px-2 py-1.5 transition-colors hover:bg-sidebar-accent"
         aria-label="LevelUp — retour à l'accueil"
       >
@@ -109,10 +227,24 @@ export function NavL1() {
       {playerSlug &&
         L1_SECTIONS.map((section) => {
           const isActive = section.matchPathname(pathname)
+          const resolvedDefaultPath = resolvePath(section.defaultPath)
+
+          if (section.tabs) {
+            return (
+              <SplitButton
+                key={section.key}
+                section={section as L1Section & { tabs: L1Tab[] }}
+                isActive={isActive}
+                resolvedDefaultPath={resolvedDefaultPath}
+                resolvePath={resolvePath}
+              />
+            )
+          }
+
           return (
             <Link
               key={section.key}
-              to={resolvedPath(section.defaultPath)}
+              to={resolvedDefaultPath as never}
               className={[
                 'rounded-md px-3 py-1.5 text-sm font-medium transition-colors whitespace-nowrap',
                 isActive
