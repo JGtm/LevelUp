@@ -16,19 +16,21 @@
 
 **Conclusion** : le bug principal venait bien d'un trou d'authentification GameCMS dans le backend Go. La localisation texte et les badges disponibles fonctionnent en live ; un sous-ensemble de défis saisonniers ne semble simplement pas exposer de badge Waypoint récupérable.
 
-## [2026-04-20] feat(battlepass): sonde complète des operations + persistance locale intégrale
+## [2026-04-20] fix(go-battlepass): persistance joueur locale des progressions battle pass
 
 **Statut** : Complété
 
-**Décision technique** : ajout d'un collecteur Python autonome (`src/data/battlepass_probe.py` + `scripts/probe_battlepass_catalog.py`) qui réutilise l'auth Halo existante, l'endpoint Economy `rewardtracks/operations`, les fetchs GameCMS déjà présents et le cache d'assets battle pass. La progression joueur est maintenant normalisée dans une nouvelle table player DB `battlepass_snapshots`, tandis que le catalogue partagé reste dans `metadata.duckdb` et les payloads bruts sont écrits en JSON dans `data/investigation/battlepass/<joueur>/`.
+**Décision technique** : abandon du collecteur Python ajouté par erreur sur cette branche et recentrage sur le backend Go. La persistance de progression battle pass est portée dans `apps/go-api/internal/platform/duckdb/persist_sink.go` avec une nouvelle table player DB `battlepass_snapshots`, puis relue par `home_repo.go` et `season_pass_repo.go` pour refléter l'état réel du joueur au lieu d'un payload partagé global.
 
-**Résultats** :
-- Tests ciblés Python : `tests/test_battlepass_snapshots.py` + `tests/test_battlepass_probe.py` + `tests/test_battlepass_data.py` PASS (8/8).
-- Exécution live validée sur `Chocoboflor` : 30 operations détectées, 30 snapshots joueur insérés dans `battlepass_snapshots`, 30 tracks persistés, 1007 items persistés.
-- Assets téléchargés/localisés : 60 visuels de track, 952 visuels d'items, 2 monnaies repo-static disponibles (`xpboost`, `rerollcurrency`).
-- Monnaies live additionnelles vues dans les rewards : `Currency/Currencies/softcurrency.json`, `Currency/Currencies/cR.json`, désormais classées comme monnaies externes non couvertes par les PNG embarqués du repo.
+**Résultats observés** :
+- `challenge_snapshots` fournissait déjà le pattern append-only/déduplication côté Go ; il est réutilisé pour le battle pass.
+- `home_repo.go` et `season_pass_repo.go` lisaient jusque-là la progression depuis `battlepass_track_definitions.raw_payload_json`, ce qui mélangeait metadata partagée et état joueur.
+- Nouvelle migration Go `add_battlepass_snapshots` dans `apps/go-api/internal/migration/steps_player.go`.
+- `apps/go-api/internal/platform/duckdb/persist_sink.go` persiste désormais un snapshot par reward track avec déduplication sur 24h.
+- `apps/go-api/internal/platform/duckdb/home_repo.go` et `season_pass_repo.go` relisent désormais la progression depuis `battlepass_snapshots`.
+- Validation : `go test ./internal/service/... ./internal/platform/duckdb/...` PASS.
 
-**Conclusion** : le repo sait désormais aspirer l'ensemble des battle pass exposés côté joueur, conserver les payloads bruts hors ligne, hydrater le cache metadata partagé, historiser la progression joueur par track en base locale et distinguer proprement les monnaies repo-static des autres monnaies live.
+**Conclusion** : la branche est revenue sur le bon périmètre Go. Le battle pass joueur est maintenant historisé localement dans `stats.duckdb` et les vues Home / Season Pass exploitent cette source player-specific au lieu d'un payload partagé global.
 
 ## [2026-04-20] fix(web): favicon casque et titre dynamique par route
 

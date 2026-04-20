@@ -7,7 +7,7 @@
 //
 // Connexions :
 //   - metadata.duckdb : battlepass_track_definitions + waypoint_assets_raw
-//   - stats.duckdb    : challenge_snapshots (append-only)
+//   - stats.duckdb    : battlepass_snapshots + challenge_snapshots (append-only)
 package duckdb
 
 import (
@@ -49,7 +49,8 @@ func persistHash(data []byte) string {
 // ---------------------------------------------------------------------------
 
 // PersistBattlePass lance une goroutine fire-and-forget pour sauvegarder les
-// données BP dans battlepass_track_definitions et waypoint_assets_raw.
+// données BP dans battlepass_track_definitions, waypoint_assets_raw et
+// battlepass_snapshots (par joueur).
 func (s *PersistSink) PersistBattlePass(trackPath string, rawBody []byte) {
 	if s.MetaPath == "" || trackPath == "" || len(rawBody) == 0 {
 		return
@@ -63,7 +64,23 @@ func (s *PersistSink) PersistBattlePass(trackPath string, rawBody []byte) {
 	}()
 }
 
-// writeBattlePass effectue les UPSERTs dans metadata.duckdb.
+// battlePassTrackRaw est le struct de parsing best-effort d'un track depuis /operations.
+type battlePassTrackRaw struct {
+	RewardTrackPath string `json:"RewardTrackPath"`
+	CurrentProgress struct {
+		Rank              int  `json:"Rank"`
+		PartialProgress   int  `json:"PartialProgress"`
+		IsOwned           bool `json:"IsOwned"`
+		HasReachedMaxRank bool `json:"HasReachedMaxRank"`
+	} `json:"CurrentProgress"`
+	IsOwned bool `json:"IsOwned"`
+	BaseXP  int  `json:"BaseXp"`
+	BoostXP int  `json:"BoostXp"`
+}
+
+// writeBattlePass effectue les UPSERTs dans metadata.duckdb puis écrit des
+// snapshots append-only dans stats.duckdb pour refléter la progression réelle
+// du joueur par reward track.
 func (s *PersistSink) writeBattlePass(ctx context.Context, trackPath string, body []byte) error {
 	db, err := OpenReadWrite(s.MetaPath)
 	if err != nil {
@@ -92,16 +109,111 @@ func (s *PersistSink) writeBattlePass(ctx context.Context, trackPath string, bod
 		INSERT INTO battlepass_track_definitions
 			(reward_track_path, content_hash, raw_payload_json,
 			 is_current, first_seen_at, last_seen_at)
-		VALUES (?, ?, ?, TRUE, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
+		VALUES (?, ?, ?, ?, ?, ?)
 		ON CONFLICT (reward_track_path, content_hash) DO UPDATE SET
-			last_seen_at = CURRENT_TIMESTAMP,
-			is_current   = TRUE`,
-		trackPath, hash, string(body),
+			raw_payload_json = excluded.raw_payload_json,
+			last_seen_at     = excluded.last_seen_at,
+			is_current       = excluded.is_current`,
+		trackPath, hash, string(body), true, now, now,
 	)
 	if err != nil {
 		return fmt.Errorf("battlepass_track_definitions upsert: %w", err)
 	}
+
+	if s.PlayerPath == "" || s.XUID == "" {
+		return nil
+	}
+
+	var payload struct {
+		ActiveOperationRewardTrackPath string            `json:"ActiveOperationRewardTrackPath"`
+		OperationRewardTracks          []json.RawMessage `json:"OperationRewardTracks"`
+	}
+	if err := json.Unmarshal(body, &payload); err != nil {
+		return fmt.Errorf("parse battlepass body: %w", err)
+	}
+
+	pdb, err := OpenReadWrite(s.PlayerPath)
+	if err != nil {
+		return fmt.Errorf("open player rw: %w", err)
+	}
+
+	for _, rawTrack := range payload.OperationRewardTracks {
+		if err := s.insertBattlePassSnapshot(
+			ctx,
+			pdb,
+			rawTrack,
+			payload.ActiveOperationRewardTrackPath,
+			now,
+		); err != nil {
+			slog.Warn("persist_sink: battlepass snapshot insert failed",
+				"xuid", s.XUID, "err", err)
+		}
+	}
 	return nil
+}
+
+// insertBattlePassSnapshot insère une snapshot de progression battle pass si
+// l'état du track a changé dans les dernières 24h.
+func (s *PersistSink) insertBattlePassSnapshot(
+	ctx context.Context,
+	db *DB,
+	rawTrack json.RawMessage,
+	activeTrackPath string,
+	at time.Time,
+) error {
+	var track battlePassTrackRaw
+	if err := json.Unmarshal(rawTrack, &track); err != nil {
+		return nil
+	}
+	if track.RewardTrackPath == "" {
+		return nil
+	}
+
+	isActive := track.RewardTrackPath == activeTrackPath
+	isOwned := track.IsOwned || track.CurrentProgress.IsOwned
+	statePayload, err := json.Marshal(struct {
+		IsActive bool            `json:"is_active"`
+		Track    json.RawMessage `json:"track"`
+	}{
+		IsActive: isActive,
+		Track:    rawTrack,
+	})
+	if err != nil {
+		return fmt.Errorf("marshal battlepass state: %w", err)
+	}
+	stateHash := persistHash(statePayload)
+
+	var existing int
+	err = db.QueryRow(ctx, `
+		SELECT COUNT(*) FROM battlepass_snapshots
+		WHERE xuid = ? AND reward_track_path = ? AND state_hash = ?
+		  AND snapshot_at > CURRENT_TIMESTAMP - INTERVAL 1 DAY`,
+		s.XUID, track.RewardTrackPath, stateHash,
+	).Scan(&existing)
+	if err == nil && existing > 0 {
+		return nil
+	}
+
+	_, err = db.Exec(ctx, `
+		INSERT INTO battlepass_snapshots
+			(snapshot_at, xuid, reward_track_path, is_active,
+			 current_rank, partial_progress, is_owned, has_reached_max_rank,
+			 base_xp, boost_xp, state_hash, raw_payload_json)
+		VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+		at,
+		s.XUID,
+		track.RewardTrackPath,
+		isActive,
+		track.CurrentProgress.Rank,
+		track.CurrentProgress.PartialProgress,
+		isOwned,
+		track.CurrentProgress.HasReachedMaxRank,
+		track.BaseXP,
+		track.BoostXP,
+		stateHash,
+		string(rawTrack),
+	)
+	return err
 }
 
 // ---------------------------------------------------------------------------

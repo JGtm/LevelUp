@@ -59,6 +59,14 @@ export interface PalmaresText {
     active: string
     cardRank: string
     cardProgress: string
+    activePassTitle: string
+    activeTierTitle: string
+    activeTierProgress: string
+    activeTierFallback: string
+    obtained: string
+    upcoming: string
+    otherPassesTitle: string
+    noDescription: string
     noPassesTitle: string
     noPassesDescription: string
     status: Record<string, string>
@@ -128,6 +136,14 @@ const FR_TEXT: PalmaresText = {
     active: 'Actif',
     cardRank: 'Rang',
     cardProgress: 'Progression',
+    activePassTitle: 'Pass actif',
+    activeTierTitle: 'Palier actif',
+    activeTierProgress: 'Progression du palier',
+    activeTierFallback: 'Palier à venir',
+    obtained: 'Obtenu',
+    upcoming: 'À venir',
+    otherPassesTitle: 'Autres passes',
+    noDescription: 'Aucune description disponible pour ce pass.',
     noPassesTitle: 'Aucun pass détecté',
     noPassesDescription: 'Aucune progression de pass saisonnier n\'a été renvoyée pour ce joueur.',
     status: {
@@ -202,6 +218,14 @@ const EN_TEXT: PalmaresText = {
     active: 'Active',
     cardRank: 'Rank',
     cardProgress: 'Progress',
+    activePassTitle: 'Active pass',
+    activeTierTitle: 'Active tier',
+    activeTierProgress: 'Tier progress',
+    activeTierFallback: 'Upcoming tier',
+    obtained: 'Unlocked',
+    upcoming: 'Upcoming',
+    otherPassesTitle: 'Other passes',
+    noDescription: 'No description is available for this pass.',
     noPassesTitle: 'No pass detected',
     noPassesDescription: 'No seasonal pass progression was returned for this player.',
     status: {

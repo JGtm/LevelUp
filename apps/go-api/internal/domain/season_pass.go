@@ -11,30 +11,45 @@ const (
 	SeasonPassStatusNotStarted SeasonPassStatus = "not_started"
 )
 
+// SeasonPassTierSummary représente un palier individuel avec son visuel principal.
+type SeasonPassTierSummary struct {
+	Rank        int     `json:"rank"`
+	Title       string  `json:"title"`
+	Description *string `json:"description,omitempty"`
+	ImageURL    *string `json:"image_url,omitempty"`
+	IsObtained  bool    `json:"is_obtained"`
+	IsCurrent   bool    `json:"is_current"`
+	IsPremium   bool    `json:"is_premium"`
+}
+
 // SeasonPassTrackSummary résume un Battle Pass / Operation Reward Track.
 // Les champs sont un mirror exact des types TypeScript côté frontend.
 type SeasonPassTrackSummary struct {
-	RewardTrackPath    string           `json:"reward_track_path"`
-	Name               string           `json:"name"`
-	Status             SeasonPassStatus `json:"status"`
-	IsActive           bool             `json:"is_active"`
-	IsOwned            bool             `json:"is_owned"`
-	HasReachedMaxRank  bool             `json:"has_reached_max_rank"`
-	CurrentRank        int              `json:"current_rank"`
-	PartialProgress    int              `json:"partial_progress"`
-	XPPerRank          *int             `json:"xp_per_rank,omitempty"`
-	MaxRank            *int             `json:"max_rank,omitempty"`
-	CompletionPercent  *float64         `json:"completion_percent,omitempty"`
-	ImageURL           *string          `json:"image_url,omitempty"`
-	BackgroundImageURL *string          `json:"background_image_url,omitempty"`
+	RewardTrackPath           string                  `json:"reward_track_path"`
+	Name                      string                  `json:"name"`
+	Description               *string                 `json:"description,omitempty"`
+	Status                    SeasonPassStatus        `json:"status"`
+	IsActive                  bool                    `json:"is_active"`
+	IsOwned                   bool                    `json:"is_owned"`
+	HasReachedMaxRank         bool                    `json:"has_reached_max_rank"`
+	CurrentRank               int                     `json:"current_rank"`
+	PartialProgress           int                     `json:"partial_progress"`
+	XPPerRank                 *int                    `json:"xp_per_rank,omitempty"`
+	MaxRank                   *int                    `json:"max_rank,omitempty"`
+	CompletionPercent         *float64                `json:"completion_percent,omitempty"`
+	ActiveTierRank            *int                    `json:"active_tier_rank,omitempty"`
+	ActiveTierProgressPercent *float64                `json:"active_tier_progress_percent,omitempty"`
+	ImageURL                  *string                 `json:"image_url,omitempty"`
+	BackgroundImageURL        *string                 `json:"background_image_url,omitempty"`
+	Tiers                     []SeasonPassTierSummary `json:"tiers,omitempty"`
 }
 
 // SeasonPassPageResponse est la réponse de l'endpoint /pages/palmares/season-pass.
 type SeasonPassPageResponse struct {
-	TitleSlug       string                 `json:"title_slug"`
-	Available       bool                   `json:"available"`
-	ErrorHint       *string                `json:"error_hint,omitempty"`
-	ActiveTrackPath *string                `json:"active_track_path,omitempty"`
-	Challenges      ChallengesResponse     `json:"challenges"`
+	TitleSlug       string                   `json:"title_slug"`
+	Available       bool                     `json:"available"`
+	ErrorHint       *string                  `json:"error_hint,omitempty"`
+	ActiveTrackPath *string                  `json:"active_track_path,omitempty"`
+	Challenges      ChallengesResponse       `json:"challenges"`
 	Passes          []SeasonPassTrackSummary `json:"passes"`
 }

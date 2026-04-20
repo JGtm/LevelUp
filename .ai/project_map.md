@@ -112,8 +112,6 @@ data/
 - `src/data/repositories/factory.py` : Factory pattern
 - `src/data/challenges.py` : Façade publique des défis Halo ; délègue le catalogue metadata à `src/data/_challenge_catalog.py` et les snapshots joueur à `src/data/_challenge_snapshots.py`
 - `src/data/battlepass.py` : Façade publique du catalogue metadata battle pass ; délègue les reward tracks et items partagés à `src/data/_battlepass_catalog.py` dans `metadata.duckdb`
-- `src/data/battlepass_snapshots.py` + `src/data/_battlepass_snapshots.py` : persistance append-only dédupliquée de la progression battle pass par joueur dans `stats.duckdb` (`battlepass_snapshots`)
-- `src/data/battlepass_probe.py` + `scripts/probe_battlepass_catalog.py` : sonde `rewardtracks/operations`, persiste tous les tracks/items battle pass dans `metadata.duckdb`, enregistre la progression joueur dans `battlepass_snapshots`, remplit le cache d'assets local et écrit un snapshot JSON complet dans `data/investigation/battlepass/<joueur>/`
 - `src/data/sync/engine.py` : Moteur de synchronisation (8 mixins MRO : `_shared_writes`, `_performance`, `_skill_rating`, `_career`, `_aggregates`, `_match_processing`, `_engine_connections`, `_engine_schema` + `_protocol.py`)
 - `src/data/sync/_engine_weapon_kills.py` : Mixin extraction armes depuis films (`WeaponKillsEngineMixin`) — v5.6
 - `src/data/services/weapon_extraction_service.py` : Service hexagonal extraction armes (`WeaponExtractionService`) — v5.6

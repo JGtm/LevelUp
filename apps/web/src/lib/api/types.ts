@@ -989,9 +989,20 @@ export interface ChallengesResponse {
 
 export type SeasonPassStatus = 'active' | 'in_progress' | 'completed' | 'not_started'
 
+export interface SeasonPassTierSummary {
+  rank: number
+  title: string
+  description?: string | null
+  image_url?: string | null
+  is_obtained: boolean
+  is_current: boolean
+  is_premium: boolean
+}
+
 export interface SeasonPassTrackSummary {
   reward_track_path: string
   name: string
+  description?: string | null
   status: SeasonPassStatus
   is_active: boolean
   is_owned: boolean
@@ -1001,8 +1012,11 @@ export interface SeasonPassTrackSummary {
   xp_per_rank?: number | null
   max_rank?: number | null
   completion_percent?: number | null
+  active_tier_rank?: number | null
+  active_tier_progress_percent?: number | null
   image_url?: string | null
   background_image_url?: string | null
+  tiers?: SeasonPassTierSummary[]
 }
 
 export interface SeasonPassPageResponse {

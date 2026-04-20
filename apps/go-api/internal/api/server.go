@@ -77,11 +77,6 @@ func NewRouter(
 	})
 	r.Use(errorTracker.Middleware)
 
-	// Sprint 35 : shadow mode — compare Go vs Python en parallèle si activé.
-	if cfg.ShadowMode == "both" {
-		r.Use(middleware.Shadow(middleware.ShadowConfig{PythonURL: cfg.PythonURL}))
-	}
-
 	// Sprint 37 : ServiceRegistry — câblage par injection de dépendances.
 	// TokenProvider : MSAL Device Code Flow (implémentation par défaut).
 	tokenProvider := auth_platform.NewMSALProvider()
