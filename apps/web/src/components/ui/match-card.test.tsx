@@ -45,14 +45,14 @@ describe('MatchCard', () => {
     render(<MatchCard match={WIN_MATCH} />)
     const badge = screen.getByText('Victoire')
     expect(badge).toBeTruthy()
-    expect(badge.className).toContain('green')
+    expect(badge.className).toContain('success')
   })
 
   it('affiche le badge défaite en rouge', () => {
     render(<MatchCard match={LOSS_MATCH} />)
     const badge = screen.getByText('Défaite')
     expect(badge).toBeTruthy()
-    expect(badge.className).toContain('red')
+    expect(badge.className).toContain('destructive')
   })
 
   it('affiche les stats K/A/D', () => {

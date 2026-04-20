@@ -32,7 +32,10 @@ SELECT
          THEN CAST(COALESCE(mp.kills, 0) AS DOUBLE) / CAST(mp.deaths AS DOUBLE)
          ELSE CAST(COALESCE(mp.kills, 0) AS DOUBLE) END     AS ratio,
     mp.accuracy,
-    mp.time_played_seconds
+    mp.time_played_seconds,
+    mp.damage_dealt,
+    mp.damage_taken,
+    pme.performance_score
 FROM shared.match_participants mp
 JOIN shared.v_match_full r ON r.match_id = mp.match_id
 LEFT JOIN player_match_enrichment pme ON pme.match_id = mp.match_id

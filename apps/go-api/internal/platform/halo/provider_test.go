@@ -631,6 +631,40 @@ func TestFetchChallengeBadgeDataURL_PersistsLiveBadgeToLocalCache(t *testing.T) 
 	}
 }
 
+func TestFetchChallengeBadgeDataURL_SeasonalFallsBackToWeekly(t *testing.T) {
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		switch r.URL.Path {
+		case "/hi/waypoint/file/images/weekly-action-legendary.png":
+			w.Header().Set("Content-Type", "image/png")
+			_, _ = w.Write(append(append([]byte{}, challengePNGSignature...), []byte("seasonal-weekly-fallback")...))
+		default:
+			http.NotFound(w, r)
+		}
+	}))
+	defer srv.Close()
+
+	p := newTestProvider("", srv.URL)
+	imageURL := p.fetchChallengeBadgeDataURL(
+		context.Background(),
+		testTokens(),
+		"ChallengeContent/ClientChallengeDefinitions/S5WinterChallenges/Legendary/LWinterMedalSplatter.json",
+		"Seasonal",
+		"Legendary",
+	)
+	if imageURL == nil || !strings.HasPrefix(*imageURL, "data:image/png;base64,") {
+		t.Fatalf("expected data URL from seasonal weekly fallback, got %v", imageURL)
+	}
+
+	candidates := buildChallengeBadgeCandidates(
+		"ChallengeContent/ClientChallengeDefinitions/S5WinterChallenges/Legendary/LWinterMedalSplatter.json",
+		"Seasonal",
+		"Legendary",
+	)
+	if len(candidates) == 0 || candidates[0] != "weekly-action-legendary" {
+		t.Fatalf("expected weekly fallback candidates first, got %v", candidates)
+	}
+}
+
 // ---------------------------------------------------------------------------
 // parseBattlePassTrack — unité pure
 // ---------------------------------------------------------------------------

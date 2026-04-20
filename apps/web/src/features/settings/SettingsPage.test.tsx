@@ -78,6 +78,9 @@ describe('SettingsPage', () => {
 
   it('affiche le CTA vers le Lab quand la capacité instance est active', async () => {
     renderWithProviders(<SettingsPage />)
+    // Attendre que l'onglet Lab soit visible (page chargée), puis l'activer
+    const labTab = await waitFor(() => screen.getByRole('tab', { name: /^Lab$/i }))
+    fireEvent.click(labTab)
     await waitFor(() => {
       expect(screen.getByText(/Lab interne/i)).toBeInTheDocument()
       expect(screen.getByRole('link', { name: /Ouvrir le Lab/i })).toHaveAttribute('href', '/lab')

@@ -13,25 +13,28 @@ import "time"
 
 // HomeMatchRow est une ligne brute chargée depuis Q26 (matchs du home).
 type HomeMatchRow struct {
-	MatchID        string
-	StartTime      time.Time
-	MapName        string
-	MapNameFR      string
-	PairName       string
-	PairNameFR     string
-	PlaylistName   string
-	IsFirefight    bool
-	IsRanked       bool
-	SessionLabel   *string
-	IsWithFriends  bool
-	Outcome        int
-	Kills          int
-	Deaths         int
-	Assists        int
-	KDA            *float64
-	Ratio          *float64
-	Accuracy       *float64
-	TimePlayedSecs *int
+	MatchID          string
+	StartTime        time.Time
+	MapName          string
+	MapNameFR        string
+	PairName         string
+	PairNameFR       string
+	PlaylistName     string
+	IsFirefight      bool
+	IsRanked         bool
+	SessionLabel     *string
+	IsWithFriends    bool
+	Outcome          int
+	Kills            int
+	Deaths           int
+	Assists          int
+	KDA              *float64
+	Ratio            *float64
+	Accuracy         *float64
+	TimePlayedSecs   *int
+	DamageDealt      *float64
+	DamageTaken      *float64
+	PerformanceScore *float64
 }
 
 // HomeSessionRow est une ligne brute chargée depuis Q27 (sessions enrichment).
@@ -102,6 +105,19 @@ type RecentMatchItem struct {
 	StartedAt    *time.Time `json:"started_at,omitempty"`
 	OutcomeLabel string     `json:"outcome_label"`
 	OutcomeTone  string     `json:"outcome_tone"`
+	IsFavorite   bool       `json:"is_favorite"`
+	// S56 — champs enrichis pour MatchCard
+	MapUI                    *string  `json:"map_ui,omitempty"`
+	ModeUI                   *string  `json:"mode_ui,omitempty"`
+	Kills                    *int     `json:"kills,omitempty"`
+	Deaths                   *int     `json:"deaths,omitempty"`
+	Assists                  *int     `json:"assists,omitempty"`
+	PerformanceScoreRelative *int     `json:"performance_score_relative,omitempty"`
+	OffensiveConversion      *float64 `json:"offensive_conversion,omitempty"`
+	DefensiveResistance      *float64 `json:"defensive_resistance,omitempty"`
+	DamageDealt              *float64 `json:"damage_dealt,omitempty"`
+	DamageTaken              *float64 `json:"damage_taken,omitempty"`
+	MapImageURL              *string  `json:"map_image_url,omitempty"`
 }
 
 // ---------------------------------------------------------------------------
@@ -134,12 +150,13 @@ type RecentMediaItem struct {
 
 // HomePageResponse est la réponse agrégée de la page d'accueil Mission Control.
 type HomePageResponse struct {
-	Hero          HomeHeroCard        `json:"hero"`
-	Highlights    []HighlightItem     `json:"highlights"`
-	RecentMatches []RecentMatchItem   `json:"recent_matches"`
-	RecentMedia   []RecentMediaItem   `json:"recent_media"`
-	SoloSession   *SessionSummaryItem `json:"solo_session,omitempty"`
-	SquadSession  *SessionSummaryItem `json:"squad_session,omitempty"`
+	Hero           HomeHeroCard        `json:"hero"`
+	Highlights     []HighlightItem     `json:"highlights"`
+	RecentMatches  []RecentMatchItem   `json:"recent_matches"`
+	FavoriteMatches []RecentMatchItem  `json:"favorite_matches"`
+	RecentMedia    []RecentMediaItem   `json:"recent_media"`
+	SoloSession    *SessionSummaryItem `json:"solo_session,omitempty"`
+	SquadSession   *SessionSummaryItem `json:"squad_session,omitempty"`
 }
 
 // BattlePassResponse contient les informations Battle Pass live ou depuis le cache DB.

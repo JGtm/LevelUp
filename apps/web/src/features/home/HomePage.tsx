@@ -11,6 +11,7 @@ import { EmptyStateCard, EmptyStateNotice } from '@/components/ui/empty-state'
 import { PrivacyBanner } from '@/components/ui/privacy-banner'
 import { Spinner } from '@/components/ui/spinner'
 import { MatchCard } from '@/components/ui/match-card'
+import { Carousel, CarouselItem } from '@/components/ui/carousel'
 import { HomeHeroBanner } from './HomeHeroBanner'
 import { HomeChallengesList } from './HomeChallengesList'
 import { RecentMediaRail } from './RecentMediaRail'
@@ -265,28 +266,29 @@ export function HomePage() {
           <CardContent>
             {matchTab === 'recent' ? (
               recentMatches.length > 0 ? (
-                <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
-                  {recentMatches.slice(0, 4).map((m) => (
-                    <MatchCard
-                      key={m.match_id}
-                      match={m}
-                      onClick={() => goToMatch(m.match_id)}
-                      onToggleFavorite={() => {
-                        favoriteMutation.mutate(
-                          { matchId: m.match_id, favorite: !m.is_favorite },
-                          {
-                            onSuccess: () => {
-                              void queryClient.invalidateQueries({
-                                queryKey: queryKeys.home(playerSlug),
-                              })
+                <Carousel>
+                  {recentMatches.map((m) => (
+                    <CarouselItem key={m.match_id} className="w-72">
+                      <MatchCard
+                        match={m}
+                        onClick={() => goToMatch(m.match_id)}
+                        onToggleFavorite={() => {
+                          favoriteMutation.mutate(
+                            { matchId: m.match_id, favorite: !m.is_favorite },
+                            {
+                              onSuccess: () => {
+                                void queryClient.invalidateQueries({
+                                  queryKey: queryKeys.home(playerSlug),
+                                })
+                              },
                             },
-                          },
-                        )
-                      }}
-                      favoriteDisabled={favoriteMutation.isPending}
-                    />
+                          )
+                        }}
+                        favoriteDisabled={favoriteMutation.isPending}
+                      />
+                    </CarouselItem>
                   ))}
-                </div>
+                </Carousel>
               ) : (
                 <EmptyStateNotice
                   title="Aucun match récent disponible"
@@ -295,28 +297,29 @@ export function HomePage() {
               )
             ) : (
               favoriteMatches.length > 0 ? (
-                <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
-                  {favoriteMatches.slice(0, 4).map((m) => (
-                    <MatchCard
-                      key={m.match_id}
-                      match={m}
-                      onClick={() => goToMatch(m.match_id)}
-                      onToggleFavorite={() => {
-                        favoriteMutation.mutate(
-                          { matchId: m.match_id, favorite: false },
-                          {
-                            onSuccess: () => {
-                              void queryClient.invalidateQueries({
-                                queryKey: queryKeys.home(playerSlug),
-                              })
+                <Carousel>
+                  {favoriteMatches.map((m) => (
+                    <CarouselItem key={m.match_id} className="w-72">
+                      <MatchCard
+                        match={m}
+                        onClick={() => goToMatch(m.match_id)}
+                        onToggleFavorite={() => {
+                          favoriteMutation.mutate(
+                            { matchId: m.match_id, favorite: false },
+                            {
+                              onSuccess: () => {
+                                void queryClient.invalidateQueries({
+                                  queryKey: queryKeys.home(playerSlug),
+                                })
+                              },
                             },
-                          },
-                        )
-                      }}
-                      favoriteDisabled={favoriteMutation.isPending}
-                    />
+                          )
+                        }}
+                        favoriteDisabled={favoriteMutation.isPending}
+                      />
+                    </CarouselItem>
                   ))}
-                </div>
+                </Carousel>
               ) : (
                 <EmptyStateNotice
                   title="Aucun match favori"
@@ -327,7 +330,7 @@ export function HomePage() {
           </CardContent>
         </Card>
 
-        <RecentMediaRail playerSlug={playerSlug} items={recentMedia} />
+        <RecentMediaRail playerSlug={playerSlug} />
       </div>
     </div>
   )

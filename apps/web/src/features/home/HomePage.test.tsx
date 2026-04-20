@@ -59,7 +59,7 @@ describe('HomePage', () => {
             progress_percent: 0,
           },
           {
-            challenge_path: 'challenge/advanced',
+            challenge_path: 'ChallengeContent/ClientChallengeDefinitions/WeeklyChallenges/Action/ch1.json',
             tracking_id: 'c1',
             title: 'Défi avancé',
             description: 'Presque terminé.',
@@ -69,7 +69,7 @@ describe('HomePage', () => {
             progress_percent: 70,
           },
           {
-            challenge_path: 'challenge/in-progress',
+            challenge_path: 'ChallengeContent/ClientChallengeDefinitions/DailyChallenges/ch2.json',
             tracking_id: 'c2',
             title: 'Défi en cours',
             description: 'Continue la progression.',
@@ -98,6 +98,11 @@ describe('HomePage', () => {
       'Défi en cours',
       'Défi pas commencé',
     ])
+
+    const kinds = screen.getAllByTestId('home-challenge-kind')
+    expect(kinds.map((node) => node.textContent)).toEqual(['Hebdo', 'Quotidien'])
+    expect(kinds[0]).toHaveClass('bg-sky-500/14')
+    expect(kinds[1]).toHaveClass('bg-amber-500/14')
 
     expect(screen.getByText('Défi avancé')).toHaveClass('font-semibold')
     expect(screen.getByText('Presque terminé.')).toHaveClass('italic')

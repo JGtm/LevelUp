@@ -490,6 +490,25 @@ export const handlers = [
     })
   }),
 
+  // Palmares — Relations
+  http.get(p(`/players/${SLUG}/pages/palmares/relations`), () =>
+    HttpResponse.json({
+      overview: { distinct_players: 42, frequent_allies: 5, repeat_rivals: 3, closed_circle: 2 },
+      frequent_allies: [
+        { xuid: '1', gamertag: 'DuoAlpha', total_matches: 80, teammate_matches: 60, teammate_wins: 40, enemy_matches: 20, enemy_wins: 10 },
+        { xuid: '2', gamertag: 'QueueGhost', total_matches: 50, teammate_matches: 45, teammate_wins: 30, enemy_matches: 5, enemy_wins: 2 },
+      ],
+      best_synergies: [
+        { xuid: '3', gamertag: 'SynergyOne', total_matches: 30, teammate_matches: 30, teammate_wins: 25, enemy_matches: 0, enemy_wins: 0 },
+      ],
+      nemeses: [
+        { xuid: '4', gamertag: 'NemesisBravo', total_matches: 40, teammate_matches: 5, teammate_wins: 3, enemy_matches: 35, enemy_wins: 28 },
+      ],
+      favorite_victims: [],
+      closed_circle: [],
+    }),
+  ),
+
   // Squad / Teammates
   http.post(p(`/players/${SLUG}/pages/teammates`), () => HttpResponse.json(teammatesFixture)),
 

@@ -188,14 +188,15 @@ export function useMediaPage(
   })
 }
 
-export function useRecentMediaRail(playerSlug: string, limit: number) {
+export function useRecentMediaRail(playerSlug: string, limit: number, likedOnly = false) {
   const request: MediaQueryRequest = {
     sort: DEFAULT_MEDIA_SORT,
+    liked_only: likedOnly || null,
     pagination: { page: 1, page_size: limit },
   }
 
   return useQuery({
-    queryKey: queryKeys.mediaRail(playerSlug, limit),
+    queryKey: queryKeys.mediaRail(playerSlug, limit, likedOnly),
     queryFn: () =>
       api.post<MediaPageApiResponse>(
         `/players/${playerSlug}/pages/media`,

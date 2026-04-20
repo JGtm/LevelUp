@@ -191,7 +191,8 @@ func (r *ServiceRegistry) HomeCtx(ctx context.Context, slug string) (port.HomeSe
 	if err != nil {
 		return nil, "", "", err
 	}
-	svc := service.NewHomeService(duckdb.NewHomeRepo(pdb))
+	svc := service.NewHomeService(duckdb.NewHomeRepo(pdb)).
+		WithSocial(duckdb.NewSocialRepo(pdb), slug)
 	return svc, pdb.XUID, pdb.Gamertag, nil
 }
 
@@ -211,7 +212,8 @@ func (r *ServiceRegistry) HomeCtxWithAuth(ctx context.Context, slug string) (por
 	svc := service.NewHomeService(homeRepo).
 		WithPersistSink(sink).
 		WithCacheRepo(homeRepo).
-		WithHaloProvider(haloProvider)
+		WithHaloProvider(haloProvider).
+		WithSocial(duckdb.NewSocialRepo(pdb), slug)
 	enriched := r.enrichWithHaloTokens(ctx, pdb)
 	return svc, enriched, pdb.XUID, pdb.Gamertag, nil
 }
