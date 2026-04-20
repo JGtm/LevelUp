@@ -32,6 +32,12 @@ func (s *HomeService) GetHomePage(ctx context.Context, gamertag string) (*domain
 		return nil, err
 	}
 
+	totalMatches, err := s.repo.CountPlayerMatches(ctx)
+	if err != nil {
+		// Fallback sur len(matches) si la query échoue.
+		totalMatches = len(matches)
+	}
+
 	sessions, err := s.repo.LoadHomeSessions(ctx)
 	if err != nil {
 		return nil, err
@@ -43,7 +49,7 @@ func (s *HomeService) GetHomePage(ctx context.Context, gamertag string) (*domain
 		media = nil
 	}
 
-	hero := analysis.BuildHeroCard(matches, gamertag)
+	hero := analysis.BuildHeroCard(matches, gamertag, totalMatches)
 	highlights := analysis.BuildHighlights(matches)
 	recentMatches := analysis.BuildRecentMatches(matches, 6)
 	recentMedia := analysis.BuildRecentMedia(media, 4)

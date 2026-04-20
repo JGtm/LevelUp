@@ -36,6 +36,11 @@ WHERE mp.xuid = ?
 ORDER BY r.start_time DESC
 LIMIT 200`
 
+// Q26b : Home -- nombre total de matchs d un joueur (pas de LIMIT).
+// Parametre : ?1 = xuid du joueur.
+const Q26bCountPlayerMatches = `
+SELECT COUNT(*) FROM shared.match_participants WHERE xuid = ?`
+
 // Q27 : Home — sessions depuis player_match_enrichment.
 // Pas de parametre (les donnees sont dans la DB joueur).
 // Retourne les matchs avec un label de session pour le resumé solo/escouade.

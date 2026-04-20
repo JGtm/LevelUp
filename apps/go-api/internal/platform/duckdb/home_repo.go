@@ -58,6 +58,13 @@ func (r *HomeRepo) LoadHomeMatches(ctx context.Context) ([]domain.HomeMatchRow, 
 	return result, rows.Err()
 }
 
+// CountPlayerMatches retourne le nombre total de matchs du joueur (Q26b).
+func (r *HomeRepo) CountPlayerMatches(ctx context.Context) (int, error) {
+	var count int
+	err := r.pdb.Player.QueryRow(ctx, Q26bCountPlayerMatches, r.pdb.XUID).Scan(&count)
+	return count, err
+}
+
 // LoadHomeSessions charge les sessions avec label depuis player_match_enrichment (Q27).
 func (r *HomeRepo) LoadHomeSessions(ctx context.Context) ([]domain.HomeSessionRow, error) {
 	rows, err := r.pdb.Player.Query(ctx, Q27HomeSessions)

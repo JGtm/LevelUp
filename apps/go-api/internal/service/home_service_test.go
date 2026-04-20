@@ -14,6 +14,8 @@ import (
 type mockHomeRepo struct {
 	matches    []domain.HomeMatchRow
 	matchErr   error
+	matchCount int
+	countErr   error
 	sessions   []domain.HomeSessionRow
 	sessionErr error
 	media      []domain.HomeMediaRow
@@ -22,6 +24,12 @@ type mockHomeRepo struct {
 
 func (m *mockHomeRepo) LoadHomeMatches(_ context.Context) ([]domain.HomeMatchRow, error) {
 	return m.matches, m.matchErr
+}
+func (m *mockHomeRepo) CountPlayerMatches(_ context.Context) (int, error) {
+	if m.matchCount > 0 {
+		return m.matchCount, m.countErr
+	}
+	return len(m.matches), m.countErr
 }
 func (m *mockHomeRepo) LoadHomeSessions(_ context.Context) ([]domain.HomeSessionRow, error) {
 	return m.sessions, m.sessionErr

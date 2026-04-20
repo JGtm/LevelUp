@@ -51,7 +51,8 @@ func labelFR(fr, en string) string {
 // ---------------------------------------------------------------------------
 
 // ComputeKPIs calcule les KPIs globaux depuis les matchs chargés.
-func ComputeKPIs(matches []domain.HomeMatchRow) domain.HeroKPIs {
+// totalMatches est le nombre réel de matchs du joueur (pas limité par le LIMIT SQL).
+func ComputeKPIs(matches []domain.HomeMatchRow, totalMatches int) domain.HeroKPIs {
 	if len(matches) == 0 {
 		return domain.HeroKPIs{}
 	}
@@ -78,7 +79,7 @@ func ComputeKPIs(matches []domain.HomeMatchRow) domain.HeroKPIs {
 	total := len(matches)
 	kpis := domain.HeroKPIs{
 		WinRate:      float64(wins) / float64(total),
-		TotalMatches: total,
+		TotalMatches: totalMatches,
 		Wins:         wins,
 		Losses:       losses,
 	}
@@ -137,8 +138,9 @@ func ComputeTrend(matches []domain.HomeMatchRow, window int) *domain.HeroTrend {
 // ---------------------------------------------------------------------------
 
 // BuildHeroCard construit le hero card pour un joueur.
-func BuildHeroCard(matches []domain.HomeMatchRow, gamertag string) domain.HomeHeroCard {
-	kpis := ComputeKPIs(matches)
+// totalMatches est le nombre réel de matchs (sans LIMIT SQL).
+func BuildHeroCard(matches []domain.HomeMatchRow, gamertag string, totalMatches int) domain.HomeHeroCard {
+	kpis := ComputeKPIs(matches, totalMatches)
 	trend := ComputeTrend(matches, 5)
 	return domain.HomeHeroCard{PlayerName: gamertag, KPIs: kpis, Trend: trend}
 }
@@ -196,7 +198,7 @@ func BuildHighlights(matches []domain.HomeMatchRow) []domain.HighlightItem {
 		if len(sample) > 10 {
 			sample = sample[:10]
 		}
-		kpis := ComputeKPIs(sample)
+		kpis := ComputeKPIs(sample, len(sample))
 		ratioStr := "-"
 		if kpis.GlobalRatio != nil {
 			ratioStr = fmt.Sprintf("%.2f", *kpis.GlobalRatio)
@@ -307,7 +309,7 @@ func BuildSessionSummary(
 		return nil
 	}
 
-	kpis := ComputeKPIs(sessionMatches)
+	kpis := ComputeKPIs(sessionMatches, len(sessionMatches))
 	item := &domain.SessionSummaryItem{
 		SessionLabel: latestLabel,
 		MatchCount:   len(sessionMatches),

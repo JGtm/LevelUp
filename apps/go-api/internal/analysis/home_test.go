@@ -46,7 +46,7 @@ func sp(v string) *string   { return &v }
 // ---------------------------------------------------------------------------
 
 func TestComputeKPIs_Empty(t *testing.T) {
-	kpis := analysis.ComputeKPIs(nil)
+	kpis := analysis.ComputeKPIs(nil, 0)
 	if kpis.TotalMatches != 0 || kpis.WinRate != 0 {
 		t.Errorf("empty: got %+v", kpis)
 	}
@@ -58,7 +58,7 @@ func TestComputeKPIs_WithMatches(t *testing.T) {
 		makeHomeMatch("m2", 3, fp(0.5), fp(30.0), false), // loss
 		makeHomeMatch("m3", 2, fp(1.5), nil, false),      // win, no accuracy
 	}
-	kpis := analysis.ComputeKPIs(matches)
+	kpis := analysis.ComputeKPIs(matches, len(matches))
 	if kpis.TotalMatches != 3 {
 		t.Errorf("TotalMatches: want 3, got %d", kpis.TotalMatches)
 	}
