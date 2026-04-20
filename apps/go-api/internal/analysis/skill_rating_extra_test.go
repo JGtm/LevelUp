@@ -177,7 +177,7 @@ func TestResolvePlaylistGroup_BTB(t *testing.T) {
 
 func TestComputeCompositeScore_AllNil(t *testing.T) {
 	row := domain.StatsMatchRow{MatchID: "m1", Kills: 10, Deaths: 5}
-	score := computeCompositeScore(row, 0, 0, 0, 0)
+	score := computeCompositeScore(row, 0, 0, 0, 0, 0, 0, 0)
 	if score != 0.5 {
 		t.Errorf("expected 0.5 (no components), got %f", score)
 	}
@@ -195,7 +195,7 @@ func TestComputeCompositeScore_WithKE(t *testing.T) {
 		DeathsExpected: &de,
 		Outcome:        &outcome,
 	}
-	score := computeCompositeScore(row, 0.4, 10, 10, 0.5)
+	score := computeCompositeScore(row, 0.4, 10, 10, 0.5, 0, 0, 0)
 	if score <= 0.5 || score > 1.0 {
 		t.Errorf("expected score > 0.5 for good performance, got %f", score)
 	}

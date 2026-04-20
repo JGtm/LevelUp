@@ -28,11 +28,15 @@ const (
 )
 
 var compositeWeights = map[string]float64{
-	"kills_vs_expected":  0.31,
-	"deaths_vs_expected": 0.28,
-	"win_factor":         0.05,
-	"damage_efficiency":  0.23,
-	"accuracy_delta":     0.13,
+	"kills_vs_expected":    0.27,
+	"deaths_vs_expected":   0.24,
+	"win_factor":           0.05,
+	"damage_efficiency":    0.10,
+	"accuracy_delta":       0.10,
+	"medal_exploit":        0.04,
+	"offensive_conversion": 0.16,
+	"defensive_resistance": 0.06,
+	// Σ = 1.02 → renormalisé automatiquement dans computeCompositeScore
 }
 
 var winFactors = map[int]float64{
@@ -51,12 +55,15 @@ var playlistGroupPrefixes = map[string]string{
 }
 
 type playerState struct {
-	mu               float64
-	sigma            float64
-	matchCount       int
-	lastMatchTime    *time.Time
-	accuracyHistory  []float64
-	damageEffHistory []float64
+	mu                   float64
+	sigma                float64
+	matchCount           int
+	lastMatchTime        *time.Time
+	accuracyHistory      []float64
+	damageEffHistory     []float64
+	medalExploitHistory  []float64
+	offConversionHistory []float64
+	defResistanceHistory []float64
 }
 
 func newPlayerState() *playerState {
@@ -106,7 +113,10 @@ func ComputeSkillRatingsBatch(
 		enemyAvgKE := avgKEForGroup(enemies)
 		avgAcc := computeRollingAvg(state.accuracyHistory)
 		avgDamageEff := computeRollingAvg(state.damageEffHistory)
-		composite := computeCompositeScore(row, avgAcc, teammateAvgKE, enemyAvgKE, avgDamageEff)
+		avgMedalExploit := computeRollingAvg(state.medalExploitHistory)
+		avgOffConv := computeRollingAvg(state.offConversionHistory)
+		avgDefRes := computeRollingAvg(state.defResistanceHistory)
+		composite := computeCompositeScore(row, avgAcc, teammateAvgKE, enemyAvgKE, avgDamageEff, avgMedalExploit, avgOffConv, avgDefRes)
 
 		state.mu, state.sigma = trueskillUpdate(
 			state.mu, state.sigma,
@@ -126,6 +136,15 @@ func ComputeSkillRatingsBatch(
 				de := *row.DamageDealt / total
 				state.damageEffHistory = appendRolling(state.damageEffHistory, de, accuracyHistorySize)
 			}
+		}
+		if row.MedalExploitScore != nil {
+			state.medalExploitHistory = appendRolling(state.medalExploitHistory, *row.MedalExploitScore, accuracyHistorySize)
+		}
+		if row.OffensiveConversion != nil {
+			state.offConversionHistory = appendRolling(state.offConversionHistory, *row.OffensiveConversion, accuracyHistorySize)
+		}
+		if row.DefensiveResistance != nil {
+			state.defResistanceHistory = appendRolling(state.defResistanceHistory, *row.DefensiveResistance, accuracyHistorySize)
 		}
 
 		results = append(results, domain.LUSRMatchRating{
@@ -182,11 +201,14 @@ func vWin(t, eps float64) float64 {
 }
 
 // computeCompositeScore calcule le score composite [0,1] pour un match.
-func computeCompositeScore( //nolint:unparam // voir ci-dessous
+func computeCompositeScore( //nolint:unparam
 	row domain.StatsMatchRow,
 	avgAcc float64,
-	teammateAvgKE, enemyAvgKE float64, //nolint:unparam // teammateAvgKE réservé pour future formule synergie
+	teammateAvgKE, enemyAvgKE float64, //nolint:unparam
 	avgDamageEff float64,
+	avgMedalExploit float64,
+	avgOffConv float64,
+	avgDefRes float64,
 ) float64 {
 	components := make(map[string]float64)
 
@@ -217,6 +239,30 @@ func computeCompositeScore( //nolint:unparam // voir ci-dessous
 	if row.Accuracy != nil && avgAcc > 0 {
 		delta := *row.Accuracy - avgAcc
 		components["accuracy_delta"] = clampF(0.5+delta*2.0, 0.0, 1.0)
+	}
+
+	if row.MedalExploitScore != nil {
+		ref := avgMedalExploit
+		if ref < 1e-9 {
+			ref = 5.0
+		}
+		components["medal_exploit"] = sigmoidRatio(*row.MedalExploitScore, ref)
+	}
+
+	if row.OffensiveConversion != nil {
+		ref := avgOffConv
+		if ref < 1e-9 {
+			ref = OffensiveConversionP80
+		}
+		components["offensive_conversion"] = sigmoidRatio(*row.OffensiveConversion, ref)
+	}
+
+	if row.DefensiveResistance != nil {
+		ref := avgDefRes
+		if ref < 1e-9 {
+			ref = DefensiveResistanceP80
+		}
+		components["defensive_resistance"] = sigmoidRatio(*row.DefensiveResistance, ref)
 	}
 
 	totalWeight := 0.0
