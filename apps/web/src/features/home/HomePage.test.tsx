@@ -32,10 +32,10 @@ describe('HomePage', () => {
     expect(screen.getByText(/Chargement de l'accueil/i)).toBeInTheDocument()
   })
 
-  it('affiche le titre Mission Control', async () => {
+  it('affiche la section Performance globale après chargement', async () => {
     renderWithProviders(<HomePage />)
     await waitFor(() => {
-      expect(screen.getByText(/Mission Control/i)).toBeInTheDocument()
+      expect(screen.getByText(/Performance globale/i)).toBeInTheDocument()
     })
   })
 
@@ -48,10 +48,10 @@ describe('HomePage', () => {
     })
   })
 
-  it('affiche le nom du joueur dans le titre', async () => {
+  it("n'affiche pas de warning privacy quand la payload n'en contient pas", async () => {
     renderWithProviders(<HomePage />)
     await waitFor(() => {
-      expect(screen.getByText(/TestPlayer/i)).toBeInTheDocument()
+      expect(screen.queryByRole('alert')).not.toBeInTheDocument()
     })
   })
 
@@ -61,6 +61,61 @@ describe('HomePage', () => {
       expect(screen.getByText(/Aucune session récente disponible/i)).toBeInTheDocument()
       expect(screen.getByText(/Aucun point saillant disponible/i)).toBeInTheDocument()
       expect(screen.getByText(/Aucun média récent disponible/i)).toBeInTheDocument()
+    })
+  })
+
+  it('affiche la bannière visuelle en tête de la home', async () => {
+    renderWithProviders(<HomePage />)
+
+    await waitFor(() => {
+      const stickyShell = screen.getByTestId('home-hero-banner-sticky')
+      const banner = screen.getByTestId('home-hero-banner')
+      const image = banner.querySelector('img')
+
+      expect(stickyShell).toHaveClass('sticky', 'top-0')
+      expect(banner).toBeInTheDocument()
+      expect(banner).not.toHaveClass('sticky', 'top-0')
+      expect(image).not.toBeNull()
+      expect(image).toHaveClass('h-36', 'sm:h-48', 'lg:h-56')
+    })
+  })
+
+  it('garde la bannière avant le warning privacy quand il existe', async () => {
+    server.use(
+      http.get('/api/v1/players/:playerSlug/pages/home', () => HttpResponse.json({
+        hero: {
+          player_name: 'TestPlayer',
+          kpis: {
+            win_rate: 55.0,
+            global_ratio: 1.2,
+            avg_accuracy: 42.0,
+            total_matches: 120,
+            wins: 66,
+            losses: 54,
+          },
+          trend: null,
+        },
+        highlights: [],
+        recent_matches: [],
+        recent_media: [],
+        solo_session: null,
+        squad_session: null,
+        privacy_warning: {
+          level: 'partial',
+          message: 'Certaines données Halo ne sont pas accessibles.',
+        },
+      })),
+    )
+
+    renderWithProviders(<HomePage />)
+
+    await waitFor(() => {
+      const banner = screen.getByTestId('home-hero-banner')
+      const alert = screen.getByRole('alert')
+
+      expect(
+        banner.compareDocumentPosition(alert) & Node.DOCUMENT_POSITION_FOLLOWING,
+      ).toBeTruthy()
     })
   })
 

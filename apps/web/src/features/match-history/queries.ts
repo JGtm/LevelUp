@@ -44,3 +44,10 @@ export function useSetMatchExclusion(playerSlug: string) {
       api.patch(`/players/${playerSlug}/matches/${matchId}/exclusion`, { excluded }),
   })
 }
+
+export function useSetMatchFavorite(playerSlug: string) {
+  return useMutation({
+    mutationFn: ({ matchId, favorite }: { matchId: string; favorite: boolean }) =>
+      api.patch(`/players/${playerSlug}/matches/${matchId}/favorite`, { favorite }),
+  })
+}

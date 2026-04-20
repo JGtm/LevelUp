@@ -135,7 +135,7 @@ export function ExplorerPage() {
                       onMouseEnter={() => prefetchCompare(playerQuery.data.target.gamertag || targetGamertag)}
                       onClick={() => setCompareOpen(true)}
                     >
-                      Comparer
+                      Face-à-face
                     </Button>
                   </div>
                   <div className="grid grid-cols-3 gap-4 text-sm">

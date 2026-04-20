@@ -1,15 +1,21 @@
 /**
  * HomePage — Accueil Mission Control (Slice 5).
  */
+import { useState } from 'react'
 import { useParams } from '@tanstack/react-router'
+import { useQueryClient } from '@tanstack/react-query'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
+import { Button } from '@/components/ui/button'
 import { EmptyStateCard, EmptyStateNotice } from '@/components/ui/empty-state'
 import { PrivacyBanner } from '@/components/ui/privacy-banner'
 import { Spinner } from '@/components/ui/spinner'
 import { MatchCard } from '@/components/ui/match-card'
+import { HomeHeroBanner } from './HomeHeroBanner'
 import { RecentMediaRail } from './RecentMediaRail'
 import { useHomePage, useBattlePass, useChallenges } from './queries'
+import { useSetMatchFavorite } from '@/features/match-history/queries'
+import { queryKeys } from '@/lib/query/keys'
 
 function KPICard({ label, value }: { label: string; value: string | number }) {
   return (
@@ -25,6 +31,9 @@ export function HomePage() {
   const { data, isLoading, isError, refetch } = useHomePage(playerSlug)
   const { data: bp } = useBattlePass(playerSlug)
   const { data: challenges } = useChallenges(playerSlug)
+  const [matchTab, setMatchTab] = useState<'recent' | 'favorites'>('recent')
+  const queryClient = useQueryClient()
+  const favoriteMutation = useSetMatchFavorite(playerSlug)
 
   if (isLoading) {
     return (
@@ -67,13 +76,18 @@ export function HomePage() {
   const { hero } = data
   const highlights = data.highlights ?? []
   const recentMatches = data.recent_matches ?? []
+  const favoriteMatches = data.favorite_matches ?? []
   const recentMedia = data.recent_media ?? []
   const soloSession = data.solo_session ?? null
   const squadSession = data.squad_session ?? null
 
   return (
-    <div className="flex flex-col">
-      <div className="space-y-6 p-6">
+    <div className="relative isolate flex flex-col">
+      <div className="sticky top-0 z-0 px-6 pt-0" data-testid="home-hero-banner-sticky">
+        <HomeHeroBanner />
+      </div>
+
+      <div className="relative z-10 space-y-6 bg-background px-6 pb-6 pt-6">
         {/* B9 : signal discret si données partielles (compte privé) */}
         <PrivacyBanner warning={data.privacy_warning} />
 
@@ -194,23 +208,105 @@ export function HomePage() {
           </CardContent>
         </Card>
 
-        {/* Matchs récents — 4 tuiles MatchCard */}
+        {/* Matchs récents / Favoris — 4 tuiles MatchCard */}
         <Card>
           <CardHeader>
-            <CardTitle className="text-base">Matchs récents</CardTitle>
+            <div className="flex items-center justify-between">
+              <CardTitle className="text-base">
+                {matchTab === 'recent' ? 'Matchs récents' : 'Matchs favoris'}
+              </CardTitle>
+              <div className="flex items-center gap-1 border-b border-transparent">
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => setMatchTab('recent')}
+                  className={`rounded-none border-b-2 px-3 py-1.5 text-xs ${
+                    matchTab === 'recent'
+                      ? 'border-primary text-primary font-semibold'
+                      : 'border-transparent text-muted-foreground hover:text-foreground'
+                  }`}
+                >
+                  Récents
+                </Button>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => setMatchTab('favorites')}
+                  className={`rounded-none border-b-2 px-3 py-1.5 text-xs ${
+                    matchTab === 'favorites'
+                      ? 'border-primary text-primary font-semibold'
+                      : 'border-transparent text-muted-foreground hover:text-foreground'
+                  }`}
+                >
+                  Favoris
+                  {favoriteMatches.length > 0 && (
+                    <span className="ml-1.5 rounded-full bg-amber-500/20 px-1.5 py-0.5 text-[10px] text-amber-400">
+                      {favoriteMatches.length}
+                    </span>
+                  )}
+                </Button>
+              </div>
+            </div>
           </CardHeader>
           <CardContent>
-            {recentMatches.length > 0 ? (
-              <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
-                {recentMatches.slice(0, 4).map((m) => (
-                  <MatchCard key={m.match_id} match={m} />
-                ))}
-              </div>
+            {matchTab === 'recent' ? (
+              recentMatches.length > 0 ? (
+                <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
+                  {recentMatches.slice(0, 4).map((m) => (
+                    <MatchCard
+                      key={m.match_id}
+                      match={m}
+                      onToggleFavorite={() => {
+                        favoriteMutation.mutate(
+                          { matchId: m.match_id, favorite: !m.is_favorite },
+                          {
+                            onSuccess: () => {
+                              void queryClient.invalidateQueries({
+                                queryKey: queryKeys.home(playerSlug),
+                              })
+                            },
+                          },
+                        )
+                      }}
+                      favoriteDisabled={favoriteMutation.isPending}
+                    />
+                  ))}
+                </div>
+              ) : (
+                <EmptyStateNotice
+                  title="Aucun match récent disponible"
+                  description="Les matchs récents apparaîtront ici après une synchronisation."
+                />
+              )
             ) : (
-              <EmptyStateNotice
-                title="Aucun match récent disponible"
-                description="Les matchs récents apparaîtront ici après une synchronisation."
-              />
+              favoriteMatches.length > 0 ? (
+                <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
+                  {favoriteMatches.slice(0, 4).map((m) => (
+                    <MatchCard
+                      key={m.match_id}
+                      match={m}
+                      onToggleFavorite={() => {
+                        favoriteMutation.mutate(
+                          { matchId: m.match_id, favorite: false },
+                          {
+                            onSuccess: () => {
+                              void queryClient.invalidateQueries({
+                                queryKey: queryKeys.home(playerSlug),
+                              })
+                            },
+                          },
+                        )
+                      }}
+                      favoriteDisabled={favoriteMutation.isPending}
+                    />
+                  ))}
+                </div>
+              ) : (
+                <EmptyStateNotice
+                  title="Aucun match favori"
+                  description="Marquez vos meilleurs matchs avec l'icône étoile pour les retrouver ici."
+                />
+              )
             )}
           </CardContent>
         </Card>

@@ -79,6 +79,10 @@ async function request<T>(
       field_errors: errorBody.field_errors,
       status: response.status,
     }
+    // Session expirée en cours de navigation → signal au RootLayout
+    if (response.status === 401 && errorBody.code === 'auth_required' && !path.includes('/bootstrap')) {
+      window.dispatchEvent(new CustomEvent('levelup:auth-required'))
+    }
     throw err
   }
 
