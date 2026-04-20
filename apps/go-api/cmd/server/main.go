@@ -31,11 +31,18 @@ import (
 
 	"levelup/go-api/internal/api"
 	"levelup/go-api/internal/config"
+	"levelup/go-api/internal/domain"
+	"levelup/go-api/internal/domain/title"
 	"levelup/go-api/internal/migration"
+	"levelup/go-api/internal/platform/auth"
 	"levelup/go-api/internal/platform/duckdb"
 	"levelup/go-api/internal/platform/halo"
+	"levelup/go-api/internal/platform/settings"
 	"levelup/go-api/internal/platform/userstore"
+	"levelup/go-api/internal/scheduler"
 	"levelup/go-api/internal/service"
+	syncpkg "levelup/go-api/internal/sync"
+	"levelup/go-api/internal/watcher"
 )
 
 // version est injectée au build via -ldflags "-X main.version=X.Y.Z".
@@ -184,6 +191,19 @@ func main() {
 		IdleTimeout:  60 * time.Second,
 	}
 
+	// --- 6b. Scheduler de sync automatique ---
+	// Lit spnkr_auto_sync_enabled à chaque tick — ne fait rien si désactivé.
+	settingsStore := settings.NewStore(cfg.AppSettingsPath)
+	tokenProvider := auth.NewMSALProvider()
+	autoScheduler := scheduler.New(cfg, settingsStore, tokenProvider)
+	schedulerCtx, cancelScheduler := context.WithCancel(ctx)
+	go autoScheduler.Run(schedulerCtx)
+
+	// --- 6c. Watcher daemon (présence Xbox RTA + Steam) ---
+	// Démarré uniquement si un token store existe avec des tokens XSTS valides.
+	var watcherDaemon *watcher.Daemon
+	watcherDaemon = startWatcherDaemon(ctx, cfg, settingsStore)
+
 	// --- 7. Démarrage + graceful shutdown ---
 	// On bind le port en premier pour détecter immédiatement un conflit.
 	ln, err := net.Listen("tcp", cfg.ServerAddr())
@@ -205,6 +225,12 @@ func main() {
 
 	<-sigCh
 	fmt.Fprint(os.Stderr, "\n  [..] Arret en cours...")
+
+	cancelScheduler()
+
+	if watcherDaemon != nil {
+		watcherDaemon.Stop()
+	}
 
 	shutdownCtx, cancel := context.WithTimeout(context.Background(), 15*time.Second)
 	defer cancel()
@@ -289,4 +315,99 @@ func RunPlayerMigrations(playerDBPath string) error {
 	}
 	defer db.Close()
 	return migration.RunForDB(db.SQLDb(), migration.TargetPlayer)
+}
+
+// startWatcherDaemon tente de démarrer le daemon de présence.
+// Retourne nil si watcher_presence_enabled est false ou si les prérequis ne sont pas remplis.
+func startWatcherDaemon(ctx context.Context, cfg *config.AppConfig, settingsStore *settings.Store) *watcher.Daemon {
+	// Vérifier que le watcher est activé dans les settings
+	appSettings, err := settingsStore.Load()
+	if err != nil {
+		slog.Info("watcher: lecture settings échouée, daemon désactivé", "err", err)
+		return nil
+	}
+	if !appSettings.WatcherPresenceEnabled {
+		slog.Info("watcher: watcher_presence_enabled=false, daemon désactivé")
+		return nil
+	}
+
+	tokenStorePath := filepath.Join(cfg.RepoRoot, "data", "cache", "watcher_tokens.json")
+	store := auth.NewTokenStore(tokenStorePath)
+	tokens, err := store.Load()
+	if err != nil {
+		slog.Info("watcher: pas de token store, daemon désactivé", "path", tokenStorePath)
+		return nil
+	}
+
+	if !tokens.IsXSTSValid(0) {
+		slog.Info("watcher: tokens XSTS expirés, daemon désactivé")
+		return nil
+	}
+
+	// Charger les joueurs depuis db_profiles.json
+	players, err := cfg.LoadPlayers()
+	if err != nil || len(players) == 0 {
+		slog.Info("watcher: aucun joueur configuré, daemon désactivé")
+		return nil
+	}
+
+	// Convertir en domain.PlayerSummary
+	playerSummaries := make([]domain.PlayerSummary, len(players))
+	for i, p := range players {
+		playerSummaries[i] = p
+	}
+
+	// Registre de titres
+	titleReg := title.NewRegistry()
+
+	// Sync trigger (in-process)
+	syncTrigger := syncpkg.NewTrigger(cfg.RepoRoot, &staticTokenProvider{tokens: *tokens}, domain.SyncOptions{
+		MatchType:         "matchmaking",
+		MaxMatches:        25,
+		WithParticipants:  true,
+		WithMedals:        true,
+		RequestsPerSecond: 1,
+	})
+
+	daemon := watcher.NewDaemon(watcher.DaemonConfig{
+		RepoRoot:        cfg.RepoRoot,
+		SteamAPIKey:     os.Getenv("STEAM_API_KEY"),
+		MaxParallelSync: 2,
+		LiveRefreshFactory: func(gamertag, xuid string) watcher.LiveRefreshTrigger {
+			metaPath := filepath.Join(cfg.RepoRoot, "data", "warehouse", "metadata.duckdb")
+			playerPath := filepath.Join(cfg.RepoRoot, "data", "players", gamertag, "stats.duckdb")
+			sink := duckdb.NewPersistSink(metaPath, playerPath, xuid)
+			return watcher.NewPlayerLiveRefresher(gamertag, xuid, sink)
+		},
+	}, titleReg, syncTrigger)
+
+	xstsResult := &auth.XSTSResult{
+		Token:    tokens.XSTSToken,
+		UserHash: tokens.XSTSUserHash,
+	}
+	daemon.Start(ctx, xstsResult.AuthHeader(), playerSummaries)
+
+	// Refresh loop : met à jour les tokens XSTS et le daemon
+	refreshLoop := auth.NewRefreshLoop(store, func(result *auth.XSTSResult) {
+		daemon.UpdateAuth(result.AuthHeader())
+	})
+	go refreshLoop.Run(ctx)
+
+	slog.Info("watcher: daemon démarré",
+		"players", len(playerSummaries),
+		"rta_auth", "ok",
+	)
+	return daemon
+}
+
+// staticTokenProvider fournit les tokens Halo depuis le token store.
+type staticTokenProvider struct {
+	tokens auth.StoredTokens
+}
+
+func (s *staticTokenProvider) GetTokens(_ context.Context) (*domain.HaloTokens, error) {
+	return &domain.HaloTokens{
+		SpartanToken:   s.tokens.AccessToken,
+		ClearanceToken: "",
+	}, nil
 }

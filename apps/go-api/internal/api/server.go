@@ -83,7 +83,9 @@ func NewRouter(
 	}
 
 	// Sprint 37 : ServiceRegistry — câblage par injection de dépendances.
-	reg := NewServiceRegistry(cfg)
+	// TokenProvider : MSAL Device Code Flow (implémentation par défaut).
+	tokenProvider := auth_platform.NewMSALProvider()
+	reg := NewServiceRegistry(cfg, tokenProvider)
 
 	// Gamertag search — service global (shared DB, pas de résolution joueur).
 	var gamertagSvc port.GamertagSearchService
@@ -111,7 +113,7 @@ func NewRouter(
 		r.Post("/session/context", sessionHandler.PostContext)
 
 		// Sprint 15 : Device Code Flow + authentification Halo
-		authHandler := handlers.NewAuthHandler(sessionStore, attemptStore, cfg.DemoMode).
+		authHandler := handlers.NewAuthHandler(sessionStore, attemptStore, cfg.DemoMode, tokenProvider).
 			WithUserStore(users)
 		r.Post("/auth/device-flow/start", authHandler.StartDeviceFlow)
 		r.Get("/auth/device-flow/{attempt_id}", authHandler.GetDeviceFlowStatus)
@@ -151,6 +153,7 @@ func NewRouter(
 		r.Get("/jobs/{job_id}", handlers.NewJobsHandler(jobStore).GetJob)
 		syncH := handlers.NewSyncHandler(cfg, settingsStore, jobStore)
 		r.Post("/sync/initial", syncH.StartInitialSync)
+		r.Post("/sync/all", syncH.StartSyncAll)
 		// Sprint 51-B3 : Pipeline backfill (weapon kills + détection des autres types)
 		r.Post("/backfill/start", handlers.NewBackfillHandler(cfg, jobStore).StartBackfill)
 
@@ -190,6 +193,10 @@ func NewRouter(
 			r.Get("/pages/home", home.GetHomePage)
 			r.Get("/battlepass", home.GetBattlePass)
 			r.Get("/challenges", home.GetChallenges)
+
+			// Season Pass (palmares)
+			seasonPass := handlers.NewSeasonPassHandler(reg.SeasonPassCtxWithAuth)
+			r.Get("/pages/palmares/season-pass", seasonPass.GetSeasonPass)
 
 			// Sprint 12 : Escouade | Sprint 55 D1 : Synthèse → handler autonome
 			squad := handlers.NewSquadHandler(reg.SquadCtx)

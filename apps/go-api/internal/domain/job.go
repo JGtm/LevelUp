@@ -22,6 +22,7 @@ type JobType string
 const (
 	JobTypeSetupSmokeTest JobType = "setup_smoke_test"
 	JobTypeInitialSync    JobType = "initial_sync"
+	JobTypeDeltaSyncAll   JobType = "delta_sync_all"
 	JobTypeBackfill       JobType = "backfill"
 	JobTypeReindexMedia   JobType = "reindex_media"
 	JobTypeOther          JobType = "other"

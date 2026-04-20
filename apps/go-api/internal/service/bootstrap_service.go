@@ -217,11 +217,15 @@ func buildSettingsExcerpt(cfg *config.AppConfig, settings map[string]interface{}
 }
 
 func buildFeatureFlags(cfg *config.AppConfig, settings map[string]interface{}) domain.FeatureFlags {
+	discordURL := cfg.DiscordWebhookURL
+	if discordURL == "" {
+		discordURL = getStringSetting(settings, "discord_webhook_url", "")
+	}
 	return domain.FeatureFlags{
 		V7Enabled:         true,
 		MediaEnabled:      getBoolSetting(settings, "media_enabled", true),
 		DemoMode:          cfg.DemoMode,
-		DiscordConfigured: cfg.DiscordWebhookURL != "",
+		DiscordConfigured: discordURL != "",
 		TailscaleEnabled:  getBoolSetting(settings, "tailscale_enabled", false),
 	}
 }

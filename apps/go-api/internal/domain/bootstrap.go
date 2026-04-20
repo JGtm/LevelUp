@@ -38,6 +38,7 @@ type PlayerSummary struct {
 	XUID           string `json:"xuid"`
 	WaypointPlayer string `json:"waypoint_player"`
 	IsDemo         bool   `json:"is_demo"`
+	SteamID        string `json:"steam_id,omitempty"` // Steam ID pour le poller de présence
 }
 
 // HaloIdentitySummary représente l'identité Halo résolue côté backend.
