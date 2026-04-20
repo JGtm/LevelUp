@@ -63,7 +63,17 @@ func (s *BootstrapService) Build(ctx context.Context, sess *domain.SessionData) 
 
 	var currentPlayer *domain.PlayerSummary
 	if len(players) > 0 {
-		p := players[0]
+		// Respecter le choix de joueur stocké en session, sinon fallback players[0].
+		idx := 0
+		if sess != nil && sess.CurrentPlayerSlug != nil {
+			for i, p := range players {
+				if p.PlayerSlug == *sess.CurrentPlayerSlug {
+					idx = i
+					break
+				}
+			}
+		}
+		p := players[idx]
 		currentPlayer = &p
 	}
 
