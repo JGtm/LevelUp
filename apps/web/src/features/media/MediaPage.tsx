@@ -13,41 +13,32 @@ import { useParams } from '@tanstack/react-router'
 import { PageHeader } from '@/components/shell/PageHeader'
 import { Card, CardContent } from '@/components/ui/card'
 import { Spinner } from '@/components/ui/spinner'
-import type { MediaItemRow, MediaQueryRequest } from '@/lib/api/types'
+import type { LabelValue, MediaItemRow, MediaQueryRequest } from '@/lib/api/types'
+import { useAppShellStore } from '@/stores/appShellStore'
 import { MediaLightbox, MediaThumbnailCard } from './MediaViewer'
+import { MediaToolbar } from './MediaToolbar'
 import { UploadButton } from './UploadButton'
+import { getMediaText } from './i18n'
 import { useMediaPage, useToggleMediaLike, useFeedVersion } from './queries'
 import { useQueryClient } from '@tanstack/react-query'
 import { queryKeys } from '@/lib/query/keys'
 
-const KIND_OPTIONS = [
-  { value: '', label: 'Tous types' },
-  { value: 'screenshot', label: 'Screenshots' },
-  { value: 'clip', label: 'Clips' },
-]
-const SECTION_OPTIONS = [
-  { value: '', label: 'Tous auteurs' },
-  { value: 'mine', label: 'Mes captures' },
-  { value: 'teammate', label: 'Coéquipiers' },
-]
-const SORT_OPTIONS = [
-  { value: 'date_desc', label: 'Date ↓' },
-  { value: 'date_asc', label: 'Date ↑' },
-  { value: 'map_asc', label: 'Carte A→Z' },
-  { value: 'mode_asc', label: 'Mode A→Z' },
-]
-const GROUP_OPTIONS = [
-  { value: '', label: 'Sans groupement' },
-  { value: 'owner', label: 'Par auteur' },
-  { value: 'map', label: 'Par carte' },
-  { value: 'mode', label: 'Par mode' },
-  { value: 'week', label: 'Par semaine' },
-  { value: 'liked', label: 'Aimés en premier' },
-]
 const PAGE_SIZE = 24
+
+function buildFallbackOptions(items: MediaItemRow[], key: 'map_name' | 'mode_name'): LabelValue[] {
+  const labels = Array.from(new Set(
+    items
+      .map((item) => item[key]?.trim())
+      .filter((value): value is string => Boolean(value)),
+  )).sort((left, right) => left.localeCompare(right))
+
+  return labels.map((label) => ({ label, value: label }))
+}
 
 export function MediaPage() {
   const { playerSlug } = useParams({ from: '/players/$playerSlug/media' })
+  const locale = useAppShellStore((state) => state.locale)
+  const text = getMediaText(locale)
   const [page, setPage] = useState(1)
   const [kindFilter, setKindFilter] = useState('')
   const [sectionFilter, setSectionFilter] = useState('')
@@ -72,6 +63,12 @@ export function MediaPage() {
   const { data, isLoading, isError, error, isFetching } = useMediaPage(playerSlug, request, page)
   const toggleMediaLike = useToggleMediaLike(playerSlug)
   const mediaItems: MediaItemRow[] = data?.items?.items ?? []
+  const mapOptions = data?.available_filters.maps?.length
+    ? data.available_filters.maps
+    : buildFallbackOptions(mediaItems, 'map_name')
+  const modeOptions = data?.available_filters.modes?.length
+    ? data.available_filters.modes
+    : buildFallbackOptions(mediaItems, 'mode_name')
 
   // Polling feed-version : invalide le cache si un autre joueur a uploadé/liké
   const queryClient = useQueryClient()
@@ -86,8 +83,47 @@ export function MediaPage() {
   const pagination = data?.items?.pagination
   const totalPages = pagination ? Math.ceil(pagination.total / PAGE_SIZE) : 1
   const totalLabel = data
-    ? `${data.total_mine} perso · ${data.total_teammates} équipe · ${data.total_unassigned} non assigné`
-    : 'Galerie de captures et clips'
+    ? text.buildSubtitle({
+        mine: data.total_mine,
+        teammates: data.total_teammates,
+        unassigned: data.total_unassigned,
+      })
+    : text.gallerySubtitle
+
+  function handleKindChange(value: string) {
+    setKindFilter(value)
+    setPage(1)
+  }
+
+  function handleSectionChange(value: string) {
+    setSectionFilter(value)
+    setPage(1)
+  }
+
+  function handleMapChange(value: string) {
+    setMapFilter(value)
+    setPage(1)
+  }
+
+  function handleModeChange(value: string) {
+    setModeFilter(value)
+    setPage(1)
+  }
+
+  function handleSortChange(value: string) {
+    setSortKey(value)
+    setPage(1)
+  }
+
+  function handleGroupByChange(value: string) {
+    setGroupBy(value)
+    setPage(1)
+  }
+
+  function handleLikedOnlyChange(value: boolean) {
+    setLikedOnly(value)
+    setPage(1)
+  }
 
   return (
     <div className="flex flex-col gap-6">
@@ -102,83 +138,28 @@ export function MediaPage() {
       )}
 
       <PageHeader
-        title="Médias"
+        title={text.title}
         subtitle={totalLabel}
         actions={
-          <div className="flex flex-wrap items-center gap-2">
-            <select
-              className="rounded border px-2 py-1 text-sm"
-              value={kindFilter}
-              onChange={(event) => {
-                setKindFilter(event.target.value)
-                setPage(1)
-              }}
-            >
-              {KIND_OPTIONS.map((option) => <option key={option.value} value={option.value}>{option.label}</option>)}
-            </select>
-            <select
-              className="rounded border px-2 py-1 text-sm"
-              value={sectionFilter}
-              onChange={(event) => {
-                setSectionFilter(event.target.value)
-                setPage(1)
-              }}
-            >
-              {SECTION_OPTIONS.map((option) => <option key={option.value} value={option.value}>{option.label}</option>)}
-            </select>
-            <input
-              type="text"
-              placeholder="Filtrer carte…"
-              value={mapFilter}
-              onChange={(event) => {
-                setMapFilter(event.target.value)
-                setPage(1)
-              }}
-              className="w-28 rounded border px-2 py-1 text-sm"
-            />
-            <input
-              type="text"
-              placeholder="Filtrer mode…"
-              value={modeFilter}
-              onChange={(event) => {
-                setModeFilter(event.target.value)
-                setPage(1)
-              }}
-              className="w-28 rounded border px-2 py-1 text-sm"
-            />
-            <select
-              className="rounded border px-2 py-1 text-sm"
-              value={sortKey}
-              onChange={(event) => {
-                setSortKey(event.target.value)
-                setPage(1)
-              }}
-            >
-              {SORT_OPTIONS.map((option) => <option key={option.value} value={option.value}>{option.label}</option>)}
-            </select>
-            <select
-              className="rounded border px-2 py-1 text-sm"
-              value={groupBy}
-              onChange={(event) => {
-                setGroupBy(event.target.value)
-                setPage(1)
-              }}
-            >
-              {GROUP_OPTIONS.map((option) => <option key={option.value} value={option.value}>{option.label}</option>)}
-            </select>
-            <label className="flex cursor-pointer items-center gap-1.5 text-sm">
-              <input
-                type="checkbox"
-                checked={likedOnly}
-                onChange={(event) => {
-                  setLikedOnly(event.target.checked)
-                  setPage(1)
-                }}
-                className="rounded"
-              />
-              ♥ Aimés
-            </label>
-          </div>
+          <MediaToolbar
+            text={text}
+            kindFilter={kindFilter}
+            sectionFilter={sectionFilter}
+            mapFilter={mapFilter}
+            modeFilter={modeFilter}
+            groupBy={groupBy}
+            sortKey={sortKey}
+            likedOnly={likedOnly}
+            mapOptions={mapOptions}
+            modeOptions={modeOptions}
+            onKindChange={handleKindChange}
+            onSectionChange={handleSectionChange}
+            onMapChange={handleMapChange}
+            onModeChange={handleModeChange}
+            onSortChange={handleSortChange}
+            onGroupByChange={handleGroupByChange}
+            onLikedOnlyChange={handleLikedOnlyChange}
+          />
         }
       />
 
@@ -188,11 +169,11 @@ export function MediaPage() {
       {isLoading ? (
         <div className="flex min-h-64 items-center justify-center"><Spinner size="lg" /></div>
       ) : isError ? (
-        <div className="p-8 text-center text-destructive">Erreur : {String(error)}</div>
+        <div className="p-8 text-center text-destructive">{text.errorPrefix} {String(error)}</div>
       ) : mediaItems.length === 0 ? (
         <Card>
           <CardContent className="p-12 text-center text-muted-foreground">
-            Aucun média disponible pour ces filtres.
+            {text.emptyState}
           </CardContent>
         </Card>
       ) : (
@@ -221,15 +202,15 @@ export function MediaPage() {
                 disabled={page === 1}
                 onClick={() => setPage((current) => current - 1)}
               >
-                ← Précédent
+                {text.previousPage}
               </button>
-              <span className="text-sm text-muted-foreground">Page {page} / {totalPages}</span>
+              <span className="text-sm text-muted-foreground">{text.pageLabel(page, totalPages)}</span>
               <button
                 className="rounded border px-3 py-1 text-sm disabled:opacity-40"
                 disabled={page >= totalPages}
                 onClick={() => setPage((current) => current + 1)}
               >
-                Suivant →
+                {text.nextPage}
               </button>
             </div>
           )}

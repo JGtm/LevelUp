@@ -7,6 +7,8 @@ import (
 	"log/slog"
 	"os"
 	"path/filepath"
+	"sort"
+	"strings"
 
 	"levelup/go-api/internal/domain"
 	"levelup/go-api/internal/ops"
@@ -59,6 +61,7 @@ func (s *MediaService) GetMediaPage(
 	}
 
 	hasNext := offset+len(files) < total
+	availableFilters := s.resolveAvailableFilters(ctx, filters, files)
 
 	items := buildMediaItems(files)
 
@@ -88,9 +91,10 @@ func (s *MediaService) GetMediaPage(
 				HasPrev:  page > 1,
 			},
 		},
-		TotalMine:       total,
-		TotalTeammates:  0,
-		TotalUnassigned: 0,
+		TotalMine:        total,
+		TotalTeammates:   0,
+		TotalUnassigned:  0,
+		AvailableFilters: availableFilters,
 	}, nil
 }
 
@@ -234,6 +238,65 @@ func buildMediaItems(rows []domain.MediaFileRow) []domain.MediaItem {
 		})
 	}
 	return items
+}
+
+func (s *MediaService) resolveAvailableFilters(
+	ctx context.Context,
+	filters domain.MediaFilters,
+	files []domain.MediaFileRow,
+) domain.MediaFilterOptions {
+	fallback := buildMediaFilterOptionsFromRows(files)
+
+	options, err := s.repo.LoadMediaFilterOptions(ctx, filters)
+	if err != nil {
+		slog.WarnContext(ctx, "media: options de filtres indisponibles", "err", err)
+		return fallback
+	}
+
+	if len(options.Maps) == 0 {
+		options.Maps = fallback.Maps
+	}
+	if len(options.Modes) == 0 {
+		options.Modes = fallback.Modes
+	}
+	return options
+}
+
+func buildMediaFilterOptionsFromRows(rows []domain.MediaFileRow) domain.MediaFilterOptions {
+	return domain.MediaFilterOptions{
+		Maps:  collectMediaLabelValues(rows, func(row domain.MediaFileRow) *string { return row.MapName }),
+		Modes: collectMediaLabelValues(rows, func(row domain.MediaFileRow) *string { return row.ModeName }),
+	}
+}
+
+func collectMediaLabelValues(
+	rows []domain.MediaFileRow,
+	selector func(domain.MediaFileRow) *string,
+) []domain.LabelValue {
+	seen := make(map[string]struct{})
+	labels := make([]string, 0)
+	for _, row := range rows {
+		labelPtr := selector(row)
+		if labelPtr == nil {
+			continue
+		}
+		label := strings.TrimSpace(*labelPtr)
+		if label == "" {
+			continue
+		}
+		if _, exists := seen[label]; exists {
+			continue
+		}
+		seen[label] = struct{}{}
+		labels = append(labels, label)
+	}
+
+	sort.Strings(labels)
+	options := make([]domain.LabelValue, 0, len(labels))
+	for _, label := range labels {
+		options = append(options, domain.LabelValue{Label: label, Value: label})
+	}
+	return options
 }
 
 func boolToLikeCount(liked bool) int {

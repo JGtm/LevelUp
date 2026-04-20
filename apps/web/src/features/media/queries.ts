@@ -5,6 +5,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { api } from '@/lib/api/client'
 import { queryKeys } from '@/lib/query/keys'
 import type {
+  MediaAvailableFilters,
   MediaItemRow,
   MediaLikeRequest,
   MediaLikeResponse,
@@ -14,6 +15,11 @@ import type {
 } from '@/lib/api/types'
 
 const DEFAULT_MEDIA_SORT = 'date_desc'
+
+const EMPTY_MEDIA_FILTERS: MediaAvailableFilters = {
+  maps: [],
+  modes: [],
+}
 
 interface LegacyMediaItemRow {
   basename?: string | null
@@ -27,6 +33,7 @@ interface LegacyMediaItemRow {
   section?: string | null
   owner_gamertag?: string | null
   map_name?: string | null
+  mode_name?: string | null
   liked?: boolean | null
   like_count?: number | null
 }
@@ -77,6 +84,7 @@ function normalizeMediaItem(item: LegacyMediaItemRow | MediaItemRow): MediaItemR
     section: item.section ?? 'mine',
     owner_gamertag: item.owner_gamertag ?? null,
     map_name: item.map_name ?? null,
+    mode_name: item.mode_name ?? null,
     liked,
     like_count: item.like_count ?? (liked ? 1 : 0),
   }
@@ -100,6 +108,7 @@ function normalizeMediaPageResponse(response: MediaPageApiResponse): MediaPageRe
       total_mine: response.total_count,
       total_teammates: 0,
       total_unassigned: 0,
+      available_filters: EMPTY_MEDIA_FILTERS,
     }
   }
 
@@ -107,6 +116,10 @@ function normalizeMediaPageResponse(response: MediaPageApiResponse): MediaPageRe
     total_mine: response.total_mine,
     total_teammates: response.total_teammates,
     total_unassigned: response.total_unassigned,
+    available_filters: {
+      maps: response.available_filters?.maps ?? [],
+      modes: response.available_filters?.modes ?? [],
+    },
     items: {
       ...response.items,
       freshness: response.items.freshness ?? null,
@@ -214,7 +227,7 @@ export function useToggleMediaLike(playerSlug: string) {
         ),
       )
 
-		return { previous }
+      return { previous }
     },
     onError: (_error, _request, context) => {
       context?.previous.forEach(([queryKey, data]) => {
@@ -268,7 +281,6 @@ export function useUploadMedia(playerSlug: string) {
  * Quand la version change, invalide le cache médias du joueur.
  */
 export function useFeedVersion(playerSlug: string) {
-  const queryClient = useQueryClient()
   return useQuery({
     queryKey: queryKeys.feedVersion,
     queryFn: () => api.get<{ version: number }>('/media/feed-version'),

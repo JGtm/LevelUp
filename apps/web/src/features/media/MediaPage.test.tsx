@@ -3,9 +3,12 @@
  *
  * Smoke : monte, spinner, puis galerie vide depuis MSW.
  */
-import { describe, it, expect, vi } from 'vitest'
-import { screen, waitFor, fireEvent } from '@testing-library/react'
+import { afterEach, describe, it, expect, vi } from 'vitest'
+import { screen, waitFor, fireEvent, act } from '@testing-library/react'
+import { http, HttpResponse } from 'msw'
 import { renderWithProviders } from '@/test/render-utils'
+import { useAppShellStore } from '@/stores/appShellStore'
+import { server } from '@/test/setup'
 import { MediaPage } from './MediaPage'
 
 vi.mock('@tanstack/react-router', async (importOriginal) => {
@@ -18,6 +21,12 @@ vi.mock('@tanstack/react-router', async (importOriginal) => {
 })
 
 describe('MediaPage', () => {
+  afterEach(() => {
+    act(() => {
+      useAppShellStore.setState({ locale: 'fr' })
+    })
+  })
+
   it('monte sans erreur', () => {
     const { container } = renderWithProviders(<MediaPage />)
     expect(container).toBeTruthy()
@@ -54,9 +63,78 @@ describe('MediaPage', () => {
   it('affiche le sélecteur de tri', async () => {
     renderWithProviders(<MediaPage />)
     await waitFor(() => {
-      // Le select de tri doit être présent
-      const sortSelect = document.querySelector('select')
-      expect(sortSelect).toBeInTheDocument()
+      expect(screen.getByLabelText('Tri de la galerie')).toBeInTheDocument()
+    })
+  })
+
+  it('distingue filtres et tri dans la toolbar', async () => {
+    renderWithProviders(<MediaPage />)
+    await waitFor(() => {
+      expect(screen.getByText('Filtrer :')).toBeInTheDocument()
+      expect(screen.getByText('Trier :')).toBeInTheDocument()
+    })
+  })
+
+  it('utilise des listes déroulantes pour les cartes et les modes', async () => {
+    renderWithProviders(<MediaPage />)
+    await waitFor(() => {
+      expect(screen.getByLabelText('Carte de la galerie')).toBeInTheDocument()
+      expect(screen.getByLabelText('Mode de la galerie')).toBeInTheDocument()
+      expect(screen.getByRole('option', { name: 'Toutes cartes' })).toBeInTheDocument()
+      expect(screen.getByRole('option', { name: 'Tous modes' })).toBeInTheDocument()
+      expect(screen.getByRole('option', { name: 'Slayer' })).toBeInTheDocument()
+    })
+  })
+
+  it('reconstruit les options cartes et modes depuis les items quand available_filters est vide', async () => {
+    server.use(
+      http.post('/api/v1/players/:playerSlug/pages/media', () => HttpResponse.json({
+        items: {
+          items: [
+            {
+              basename: 'clip1.mp4',
+              file_path: '/clips/clip1.mp4',
+              kind: 'clip',
+              thumbnail_path: null,
+              capture_end_utc: null,
+              match_id: 'm1',
+              match_start_time: '2025-01-01T10:00:00Z',
+              section: 'mine',
+              owner_gamertag: null,
+              map_name: 'Recharge',
+              mode_name: 'Oddball',
+              liked: false,
+              like_count: 0,
+            },
+          ],
+          pagination: { total: 1, page: 1, page_size: 24, has_next: false, has_prev: false },
+          freshness: null,
+        },
+        total_mine: 1,
+        total_teammates: 0,
+        total_unassigned: 0,
+        available_filters: { maps: [], modes: [] },
+      })),
+    )
+
+    renderWithProviders(<MediaPage />)
+
+    await waitFor(() => {
+      expect(screen.getByRole('option', { name: 'Recharge' })).toBeInTheDocument()
+      expect(screen.getByRole('option', { name: 'Oddball' })).toBeInTheDocument()
+    })
+  })
+
+  it('bascule les libellés de toolbar en anglais quand locale=en', async () => {
+    act(() => {
+      useAppShellStore.setState({ locale: 'en' })
+    })
+    renderWithProviders(<MediaPage />)
+    await waitFor(() => {
+      expect(screen.getByText('Filter:')).toBeInTheDocument()
+      expect(screen.getByText('Sort:')).toBeInTheDocument()
+      expect(screen.getByRole('option', { name: 'All maps' })).toBeInTheDocument()
+      expect(screen.getByRole('option', { name: 'All modes' })).toBeInTheDocument()
     })
   })
 

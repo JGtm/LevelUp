@@ -18,6 +18,8 @@ type mockMediaRepo struct {
 	filesErr       error
 	count          int
 	countErr       error
+	filterOptions  domain.MediaFilterOptions
+	filterOptsErr  error
 	setOK          bool
 	setErr         error
 	toggleErr      error
@@ -34,6 +36,9 @@ func (m *mockMediaRepo) LoadMediaFiles(_ context.Context, f domain.MediaFilters,
 }
 func (m *mockMediaRepo) CountMediaFiles(_ context.Context, _ domain.MediaFilters) (int, error) {
 	return m.count, m.countErr
+}
+func (m *mockMediaRepo) LoadMediaFilterOptions(_ context.Context, _ domain.MediaFilters) (domain.MediaFilterOptions, error) {
+	return m.filterOptions, m.filterOptsErr
 }
 func (m *mockMediaRepo) SetMediaLike(_ context.Context, _ string, _ bool) (bool, error) {
 	if m.setErr != nil {
@@ -374,6 +379,69 @@ func TestMediaService_GetMediaPage_MapAndModeFilters(t *testing.T) {
 	}
 	if repo.capturedFilter.Sort != "date_asc" {
 		t.Errorf("Sort = %q, want date_asc", repo.capturedFilter.Sort)
+	}
+}
+
+func TestMediaService_GetMediaPage_FilterOptionsFallbackToLoadedItems(t *testing.T) {
+	mapName := "Recharge"
+	modeName := "Oddball"
+	repo := &mockMediaRepo{
+		files: []domain.MediaFileRow{
+			{
+				FileName: "clip1.mp4",
+				FilePath: "/clips/clip1.mp4",
+				Kind:     "video",
+				MapName:  &mapName,
+				ModeName: &modeName,
+			},
+		},
+		count:         1,
+		filterOptsErr: errors.New("options indisponibles"),
+	}
+	svc := NewMediaService(repo)
+
+	resp, err := svc.GetMediaPage(context.Background(), domain.MediaPageRequest{Page: 1})
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if len(resp.AvailableFilters.Maps) != 1 || resp.AvailableFilters.Maps[0].Value != mapName {
+		t.Fatalf("Maps = %+v, want fallback map %q", resp.AvailableFilters.Maps, mapName)
+	}
+	if len(resp.AvailableFilters.Modes) != 1 || resp.AvailableFilters.Modes[0].Value != modeName {
+		t.Fatalf("Modes = %+v, want fallback mode %q", resp.AvailableFilters.Modes, modeName)
+	}
+}
+
+func TestMediaService_GetMediaPage_FilterOptionsCompleteEmptyRepoValues(t *testing.T) {
+	mapName := "Aquarius"
+	modeName := "Slayer"
+	repo := &mockMediaRepo{
+		files: []domain.MediaFileRow{
+			{
+				FileName: "clip1.mp4",
+				FilePath: "/clips/clip1.mp4",
+				Kind:     "video",
+				MapName:  &mapName,
+				ModeName: &modeName,
+			},
+		},
+		count: 1,
+		filterOptions: domain.MediaFilterOptions{
+			Maps:  nil,
+			Modes: []domain.LabelValue{{Label: modeName, Value: modeName}},
+		},
+	}
+	svc := NewMediaService(repo)
+
+	resp, err := svc.GetMediaPage(context.Background(), domain.MediaPageRequest{Page: 1})
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if len(resp.AvailableFilters.Maps) != 1 || resp.AvailableFilters.Maps[0].Value != mapName {
+		t.Fatalf("Maps = %+v, want fallback map %q", resp.AvailableFilters.Maps, mapName)
+	}
+	if len(resp.AvailableFilters.Modes) != 1 || resp.AvailableFilters.Modes[0].Value != modeName {
+		t.Fatalf("Modes = %+v, want repo mode %q", resp.AvailableFilters.Modes, modeName)
 	}
 }
 
