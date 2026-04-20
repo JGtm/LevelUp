@@ -38,6 +38,13 @@ interface AppShellState {
   /** ID de job de sync initiale actif pour cette session. Null si aucun. */
   activeSyncJobId: string | null
 
+  // Auth locale
+  authMode: 'none' | 'password'
+  registrationMode: 'invite' | 'open' | 'closed'
+  isAdmin: boolean
+  currentUsername: string | null
+  firstLaunch: boolean
+
   // Actions
   hydrateFromBootstrap: (data: BootstrapResponse) => void
   setCurrentPlayer: (player: PlayerSummary) => void
@@ -77,6 +84,11 @@ export const useAppShellStore = create<AppShellState>((set, get) => ({
   isBootstrapped: false,
   linkedHaloIdentity: null,
   activeSyncJobId: null,
+  authMode: 'none',
+  registrationMode: 'invite',
+  isAdmin: false,
+  currentUsername: null,
+  firstLaunch: false,
 
   hydrateFromBootstrap: (data: BootstrapResponse) => {
     const titleSlug = data.current_title_slug ?? 'halo_infinite'
@@ -95,6 +107,11 @@ export const useAppShellStore = create<AppShellState>((set, get) => ({
       isBootstrapped: true,
       linkedHaloIdentity: data.linked_halo_identity ?? null,
       activeSyncJobId: data.active_sync_job_id ?? null,
+      authMode: data.auth_mode ?? 'none',
+      registrationMode: data.registration_mode ?? 'invite',
+      isAdmin: data.is_admin ?? false,
+      currentUsername: data.current_username ?? null,
+      firstLaunch: data.first_launch ?? false,
     })
   },
 

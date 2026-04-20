@@ -20,6 +20,9 @@ function RootLayout() {
   const hydrateFromBootstrap = useAppShellStore((s) => s.hydrateFromBootstrap)
   const isBootstrapped = useAppShellStore((s) => s.isBootstrapped)
   const setupRequired = useAppShellStore((s) => s.setupRequired)
+  const authMode = useAppShellStore((s) => s.authMode)
+  const currentUsername = useAppShellStore((s) => s.currentUsername)
+  const firstLaunch = useAppShellStore((s) => s.firstLaunch)
 
   const { data, isLoading, isError } = useQuery({
     queryKey: queryKeys.bootstrap,
@@ -31,6 +34,20 @@ function RootLayout() {
   useEffect(() => {
     if (!data) return
     hydrateFromBootstrap(data)
+
+    // Auth locale : rediriger si pas connecté
+    if (data.auth_mode === 'password') {
+      const path = window.location.pathname
+      if (data.first_launch && path !== '/register') {
+        navigate({ to: '/register' })
+        return
+      }
+      if (!data.current_username && path !== '/login' && path !== '/register') {
+        navigate({ to: '/login' })
+        return
+      }
+    }
+
     if (data.setup_required) {
       navigate({ to: '/setup' })
     }
@@ -67,6 +84,16 @@ function RootLayout() {
 
   // Setup en cours → pas de shell
   if (!isBootstrapped || setupRequired) {
+    return <Outlet />
+  }
+
+  // Auth locale non connectée → pages login/register sans shell
+  if (authMode === 'password' && !currentUsername) {
+    return <Outlet />
+  }
+
+  // Premier lancement → page register sans shell
+  if (authMode === 'password' && firstLaunch) {
     return <Outlet />
   }
 

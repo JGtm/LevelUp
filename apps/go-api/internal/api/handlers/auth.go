@@ -29,6 +29,12 @@ type AuthHandler struct {
 	sessionStore *session.Store
 	attempts     *auth_platform.AttemptStore
 	demoMode     bool
+	userStore    UserLinker // optionnel — lie gamertag→user après Device Code Flow
+}
+
+// UserLinker est une interface pour lier l'identité Halo à un user local.
+type UserLinker interface {
+	LinkIdentity(username, gamertag, xuid string) error
 }
 
 // NewAuthHandler crée un AuthHandler.
@@ -38,6 +44,12 @@ func NewAuthHandler(sessionStore *session.Store, attempts *auth_platform.Attempt
 		attempts:     attempts,
 		demoMode:     demoMode,
 	}
+}
+
+// WithUserStore injecte le user store pour le LinkIdentity post Device Code Flow.
+func (h *AuthHandler) WithUserStore(us UserLinker) *AuthHandler {
+	h.userStore = us
+	return h
 }
 
 // StartDeviceFlow démarre un Device Code Flow Microsoft pour Halo Infinite.
@@ -120,6 +132,12 @@ func (h *AuthHandler) GetDeviceFlowStatus(w http.ResponseWriter, r *http.Request
 				SpartanToken:   snapshot.SpartanToken,
 				ClearanceToken: snapshot.ClearanceToken,
 			}
+		}
+		// Auth locale : lier l'identité Halo au user connecté + auto-select player.
+		if h.userStore != nil && sess.Username != nil && snapshot.Gamertag != "" {
+			_ = h.userStore.LinkIdentity(*sess.Username, snapshot.Gamertag, snapshot.XUID)
+			slug := snapshot.Gamertag
+			sess.CurrentPlayerSlug = &slug
 		}
 		_ = h.sessionStore.Save(sess)
 	}

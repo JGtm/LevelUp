@@ -212,6 +212,27 @@ func resolveSetupState(players []domain.PlayerSummary) string {
 	return "profile_ready_no_sync"
 }
 
+// resolveUsername retourne le username de la session (ou nil).
+func resolveUsername(sess *domain.SessionData) *string {
+	if sess == nil {
+		return nil
+	}
+	return sess.Username
+}
+
+// isFirstLaunch retourne true si le user store est vide (premier lancement en mode password).
+func (s *BootstrapService) isFirstLaunch() bool {
+	if s.userStoreEmpty == nil {
+		return false
+	}
+	empty, err := s.userStoreEmpty()
+	if err != nil {
+		slog.Warn("bootstrap: erreur vérification first_launch", "err", err)
+		return false
+	}
+	return empty
+}
+
 // ResolveAuthState déduit l'état d'authentification depuis la session.
 func ResolveAuthState(sess *domain.SessionData) string {
 	if sess == nil || !sess.AuthReady {
