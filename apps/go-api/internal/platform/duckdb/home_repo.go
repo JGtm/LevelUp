@@ -4,7 +4,10 @@ package duckdb
 import (
 	"context"
 	"database/sql"
+	"encoding/json"
+	"fmt"
 	"strings"
+	"time"
 
 	"levelup/go-api/internal/domain"
 )
@@ -131,4 +134,154 @@ func isTableNotFoundErr(err error) bool {
 	return strings.Contains(msg, "Table with name") ||
 		strings.Contains(msg, "does not exist") ||
 		strings.Contains(msg, "no such table")
+}
+
+// ---------------------------------------------------------------------------
+// BattlePassCacheRepository implementation
+// ---------------------------------------------------------------------------
+
+// battlePassCachePayload est la structure minimale du JSON Waypoint stocké dans
+// battlepass_track_definitions.raw_payload_json.
+type battlePassCachePayload struct {
+	ActiveOperationRewardTrackPath string `json:"ActiveOperationRewardTrackPath"`
+	OperationRewardTracks          []struct {
+		RewardTrackPath string `json:"RewardTrackPath"`
+		CurrentProgress struct {
+			Rank            int `json:"Rank"`
+			PartialProgress int `json:"PartialProgress"`
+		} `json:"CurrentProgress"`
+	} `json:"OperationRewardTracks"`
+}
+
+// LoadCachedBattlePass retourne les données BP depuis battlepass_track_definitions
+// si une entrée is_current existe et a été vue dans la fenêtre ttl.
+func (r *HomeRepo) LoadCachedBattlePass(ctx context.Context, ttl time.Duration) (*domain.BattlePassResponse, bool, error) {
+	secs := int64(ttl.Seconds())
+	query := fmt.Sprintf(`
+		SELECT reward_track_path, raw_payload_json
+		FROM battlepass_track_definitions
+		WHERE is_current = TRUE
+		  AND last_seen_at > CURRENT_TIMESTAMP - INTERVAL '%d' SECOND
+		ORDER BY last_seen_at DESC
+		LIMIT 1`, secs)
+
+	var trackPath, rawJSON string
+	err := r.pdb.Metadata.QueryRow(ctx, query).Scan(&trackPath, &rawJSON)
+	if err != nil {
+		if err == sql.ErrNoRows {
+			return nil, false, nil
+		}
+		return nil, false, fmt.Errorf("home_repo: cache BP query: %w", err)
+	}
+
+	var payload battlePassCachePayload
+	if err := json.Unmarshal([]byte(rawJSON), &payload); err != nil {
+		// JSON corrompu → traiter comme un miss plutôt que bloquer
+		return nil, false, nil
+	}
+
+	rank, progress := 0, 0
+	for _, t := range payload.OperationRewardTracks {
+		if t.RewardTrackPath == payload.ActiveOperationRewardTrackPath {
+			rank = t.CurrentProgress.Rank
+			progress = t.CurrentProgress.PartialProgress
+			break
+		}
+	}
+	if rank == 0 && len(payload.OperationRewardTracks) > 0 {
+		rank = payload.OperationRewardTracks[0].CurrentProgress.Rank
+		progress = payload.OperationRewardTracks[0].CurrentProgress.PartialProgress
+		trackPath = payload.OperationRewardTracks[0].RewardTrackPath
+	}
+
+	resp := &domain.BattlePassResponse{
+		Available:   true,
+		Rank:        &rank,
+		Progress:    &progress,
+		RewardTrack: &trackPath,
+		FromCache:   true,
+	}
+	return resp, true, nil
+}
+
+// challengeSnapshotRow est une ligne agrégée pour la reconstruction ChallengesResponse.
+type challengeSnapshotRow struct {
+	status    string
+	xpReward  int
+	expiresAt sql.NullTime
+}
+
+// LoadCachedChallenges retourne un résumé des snapshots récents depuis challenge_snapshots
+// (la snapshot la plus récente par challenge_path dans la fenêtre ttl).
+func (r *HomeRepo) LoadCachedChallenges(ctx context.Context, ttl time.Duration) (*domain.ChallengesResponse, bool, error) {
+	secs := int64(ttl.Seconds())
+	// Sélectionne la snapshot la plus récente par challenge_path dans la fenêtre TTL.
+	query := fmt.Sprintf(`
+		SELECT status, xp_reward, expires_at
+		FROM (
+			SELECT status, xp_reward, expires_at,
+			       ROW_NUMBER() OVER (PARTITION BY challenge_path ORDER BY snapshot_at DESC) AS rn
+			FROM challenge_snapshots
+			WHERE xuid = ?
+			  AND snapshot_at > CURRENT_TIMESTAMP - INTERVAL '%d' SECOND
+		) t
+		WHERE rn = 1`, secs)
+
+	rows, err := r.pdb.Player.Query(ctx, query, r.pdb.XUID)
+	if err != nil {
+		if isTableNotFoundErr(err) {
+			return nil, false, nil
+		}
+		return nil, false, fmt.Errorf("home_repo: cache challenges query: %w", err)
+	}
+	defer rows.Close()
+
+	var snapshots []challengeSnapshotRow
+	for rows.Next() {
+		var s challengeSnapshotRow
+		if err := rows.Scan(&s.status, &s.xpReward, &s.expiresAt); err != nil {
+			return nil, false, fmt.Errorf("home_repo: cache challenges scan: %w", err)
+		}
+		snapshots = append(snapshots, s)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, false, err
+	}
+	if len(snapshots) == 0 {
+		return nil, false, nil
+	}
+
+	total := len(snapshots)
+	completed := 0
+	xpAvailable := 0
+	var earliestExpiry *time.Time
+
+	for _, s := range snapshots {
+		if strings.EqualFold(s.status, "Completed") {
+			completed++
+		} else {
+			xpAvailable += s.xpReward
+		}
+		if s.expiresAt.Valid {
+			t := s.expiresAt.Time
+			if earliestExpiry == nil || t.Before(*earliestExpiry) {
+				earliestExpiry = &t
+			}
+		}
+	}
+
+	resp := &domain.ChallengesResponse{
+		Available: true,
+		Total:     &total,
+		Completed: &completed,
+		FromCache: true,
+	}
+	if xpAvailable > 0 {
+		resp.XPAvailable = &xpAvailable
+	}
+	if earliestExpiry != nil {
+		s := earliestExpiry.Format(time.RFC3339)
+		resp.NextExpiry = &s
+	}
+	return resp, true, nil
 }
