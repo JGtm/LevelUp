@@ -90,6 +90,7 @@ data/
 ### Frontend web (Go migration)
 - `apps/web/src/components/shell/AppShell.tsx` : shell top-level sans sidebar, fond atmosphérique et conteneur principal centré.
 - `apps/web/src/components/shell/AppShellHeader.tsx` : header global avec identité produit, titre courant, session Halo, liens utilitaires et sélecteur de joueur.
+- `apps/web/src/components/shell/NavL1.tsx` + `ThemeToggle.tsx` + `src/app/providers/theme-provider.tsx` : la barre globale expose désormais un switch dark/light local, persisté dans `levelup-ui-prefs` et appliqué au document via `data-theme`.
 - `apps/web/src/components/shell/PlayerScopeNav.tsx` : navigation compacte du scope joueur, séparée entre parcours principal et vues secondaires, exposée en `nav` sémantique.
 - `apps/web/src/components/shell/KPIBar.tsx` : bande de KPIs repensée en cartes lisibles au lieu d'une simple ligne tabulaire.
 - `apps/web/src/components/shell/PageHeader.tsx` : entête de page plus premium, avec hiérarchie visuelle renforcée.

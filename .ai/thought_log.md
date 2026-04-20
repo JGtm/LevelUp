@@ -1,5 +1,26 @@
 # Thought Log
 
+## [2026-04-20] feat(web): ajouter un switch dark/light dans la nav L1
+
+**Statut** : Complété
+
+### Décisions techniques
+
+1. **Rester 100% côté front local** — le thème est stocké dans `settingsDraftStore.localUiPrefs`, donc persisté en localStorage (`levelup-ui-prefs`) sans toucher au backend ni aux settings serveur.
+2. **Appliquer le thème via tokens globaux** — ajout d'un `ThemeProvider` racine qui pose `data-theme` sur `document.documentElement`, avec nouveaux tokens light dans `apps/web/src/styles/globals.css` et dark conservé par défaut.
+3. **Insérer le contrôle au bon endroit UX** — nouveau composant `ThemeToggle` inséré dans `NavL1`, juste à gauche de l'icône Paramètres, avec sémantique accessible `role="switch"`.
+4. **Préserver les utilisateurs existants** — la persistance Zustand utilise maintenant une fusion explicite pour ne pas perdre la nouvelle clé `theme` quand un ancien `levelup-ui-prefs` existe déjà en localStorage.
+
+### Résultats observés
+
+- `vitest run src/components/shell/ThemeToggle.test.tsx` : OK
+- `get_errors` sur les fichiers modifiés : aucune erreur
+- `npm run typecheck` : toujours en échec, mais uniquement sur 6 erreurs préexistantes hors périmètre (`HomePage`, `media/queries`, `SquadSynergiesPage`, `SynthesisPage`)
+
+### Conclusion
+
+Le shell React dispose maintenant d'une bascule dark/light persistée et accessible directement depuis la barre globale. Le changement est isolé au front et couvert par un test ciblé sans introduire de nouvelle régression de typage sur les fichiers touchés.
+
 ## [2026-04-20] fix(dev): démarrage go-api compatible PowerShell + port configurable
 
 **Statut** : Complété
