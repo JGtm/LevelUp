@@ -120,6 +120,8 @@ function updateMediaLikeInResponse(
   filePath: string,
   liked: boolean,
   likeCount: number,
+  likers?: string[],
+  totalLikers?: number,
 ) {
   if (!response) {
     return response
@@ -131,7 +133,13 @@ function updateMediaLikeInResponse(
       ...response.items,
       items: response.items.items.map((item) =>
         item.file_path === filePath
-          ? { ...item, liked, like_count: likeCount }
+          ? {
+              ...item,
+              liked,
+              like_count: likeCount,
+              ...(likers !== undefined && { likers }),
+              ...(totalLikers !== undefined && { total_likers: totalLikers }),
+            }
           : item,
       ),
     },
@@ -143,8 +151,20 @@ export function useMediaPage(
   request: MediaQueryRequest,
   page: number,
 ) {
+  // La clé inclut tous les filtres actifs pour que chaque combinaison soit indépendante.
+  const requestHash = JSON.stringify({
+    p: page,
+    s: request.sort,
+    k: request.kind_filter,
+    sec: request.section_filter,
+    map: request.map_filter,
+    mod: request.mode_filter,
+    g: request.group_by,
+    lo: request.liked_only,
+  })
+
   return useQuery({
-    queryKey: queryKeys.media(playerSlug, page),
+    queryKey: queryKeys.media(playerSlug, requestHash),
     queryFn: () =>
       api.post<MediaPageApiResponse>(
         `/players/${playerSlug}/pages/media`,
@@ -209,6 +229,8 @@ export function useToggleMediaLike(playerSlug: string) {
           response.file_path,
           response.liked,
           response.like_count,
+          response.likers,
+          response.total_likers,
         ),
       )
     },
@@ -239,4 +261,34 @@ export function useUploadMedia(playerSlug: string) {
       })
     },
   })
+}
+
+/**
+ * Polling léger : récupère la version du flux médias toutes les 10 s.
+ * Quand la version change, invalide le cache médias du joueur.
+ */
+export function useFeedVersion(playerSlug: string) {
+  const queryClient = useQueryClient()
+  return useQuery({
+    queryKey: queryKeys.feedVersion,
+    queryFn: () => api.get<{ version: number }>('/media/feed-version'),
+    refetchInterval: 10_000,
+    enabled: !!playerSlug,
+    select: (data) => data.version,
+    notifyOnChangeProps: ['data'],
+    staleTime: 0,
+  })
+}
+
+// Effet de bord : invalide le cache médias quand la version change.
+export function useInvalidateOnFeedVersion(playerSlug: string) {
+  const queryClient = useQueryClient()
+  const { data: version } = useFeedVersion(playerSlug)
+  // Non réactif ici, à utiliser avec useEffect dans un composant parent.
+  return (lastVersion: number | undefined) => {
+    if (version !== undefined && lastVersion !== undefined && version !== lastVersion) {
+      queryClient.invalidateQueries({ queryKey: queryKeys.mediaBase(playerSlug) })
+    }
+    return version
+  }
 }

@@ -35,21 +35,51 @@ func (s *MediaService) GetMediaPage(
 	limit := req.ResolvePageSize(defaultMediaPageSize, maxMediaPageSize)
 	offset := (page - 1) * limit
 
-	files, err := s.repo.LoadMediaFiles(ctx, limit, offset)
+	// Construction des filtres depuis la requête
+	kindFilter := req.KindFilter
+	if kindFilter == "" {
+		kindFilter = req.Kind // compat. legacy
+	}
+	filters := domain.MediaFilters{
+		KindFilter: kindFilter,
+		MapFilter:  req.MapFilter,
+		ModeFilter: req.ModeFilter,
+		LikedOnly:  req.LikedOnly,
+		Sort:       req.Sort,
+	}
+
+	files, err := s.repo.LoadMediaFiles(ctx, filters, limit, offset)
 	if err != nil {
 		return nil, err
 	}
 
-	total, err := s.repo.CountMediaFiles(ctx)
+	total, err := s.repo.CountMediaFiles(ctx, filters)
 	if err != nil {
 		total = len(files)
 	}
 
 	hasNext := offset+len(files) < total
 
+	items := buildMediaItems(files)
+
+	// Enrichissement des likers depuis shared DB (best-effort)
+	paths := make([]string, len(items))
+	for i, it := range items {
+		paths[i] = it.FilePath
+	}
+	if likersMap, err := s.repo.GetMediaLikers(ctx, paths); err == nil && len(likersMap) > 0 {
+		for i := range items {
+			if info, ok := likersMap[items[i].FilePath]; ok {
+				items[i].Likers = info.Names
+				items[i].TotalLikers = info.Total
+				items[i].LikeCount = info.Total
+			}
+		}
+	}
+
 	return &domain.MediaPageResponse{
 		Items: domain.MediaItemsPage{
-			Items: buildMediaItems(files),
+			Items: items,
 			Pagination: domain.PaginationMeta{
 				Total:    total,
 				Page:     page,
@@ -81,11 +111,32 @@ func (s *MediaService) SetMediaLike(
 		return nil, domain.ErrNotFound("media", req.FilePath)
 	}
 
-	return &domain.MediaLikeResponse{
+	// Écriture dans media_likes partagé si on a un likerSlug
+	if req.LikerSlug != "" {
+		likerGamertag := req.LikerGamertag
+		if likerGamertag == "" {
+			likerGamertag = req.LikerSlug
+		}
+		if err := s.repo.ToggleSharedLike(ctx, req.FilePath, req.LikerSlug, likerGamertag, req.Liked); err != nil {
+			// Non-bloquant : le like local est déjà persisté
+			slog.Warn("ToggleSharedLike: erreur non-bloquante", "err", err)
+		}
+	}
+
+	// Récupération des likers pour la réponse
+	resp := &domain.MediaLikeResponse{
 		FilePath:  req.FilePath,
 		Liked:     req.Liked,
 		LikeCount: boolToLikeCount(req.Liked),
-	}, nil
+	}
+	if likersMap, err := s.repo.GetMediaLikers(ctx, []string{req.FilePath}); err == nil {
+		if info, ok := likersMap[req.FilePath]; ok {
+			resp.Likers = info.Names
+			resp.TotalLikers = info.Total
+			resp.LikeCount = info.Total
+		}
+	}
+	return resp, nil
 }
 
 // UploadMedia sauvegarde les fichiers uploadés sur disque puis les indexe
@@ -174,6 +225,8 @@ func buildMediaItems(rows []domain.MediaFileRow) []domain.MediaItem {
 			CaptureEndUTC:  r.CaptureEndUTC,
 			MatchID:        r.MatchID,
 			MatchStartTime: r.MatchStartTime,
+			MapName:        r.MapName,
+			ModeName:       r.ModeName,
 			Section:        "mine",
 			Liked:          r.Liked,
 			LikeCount:      boolToLikeCount(r.Liked),

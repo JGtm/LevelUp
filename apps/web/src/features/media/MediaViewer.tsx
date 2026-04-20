@@ -24,6 +24,22 @@ function formatLightboxHeading(item: MediaItemRow, index: number, total: number)
   return [item.map_name, dateStr, `${index + 1}/${total}`].filter(Boolean).join(' · ')
 }
 
+// LikersLine — affiche "Alice, Bob et 3 autres ♥" sous le bouton like
+function LikersLine({ likers, totalLikers }: { likers?: string[]; totalLikers?: number }) {
+  if (!totalLikers || totalLikers === 0) return null
+  const names = likers ?? []
+  const rest = totalLikers - names.length
+  let label: string
+  if (names.length === 0) {
+    label = `${totalLikers} ♥`
+  } else if (rest <= 0) {
+    label = `${names.join(', ')} ♥`
+  } else {
+    label = `${names.join(', ')} et ${rest} autre${rest > 1 ? 's' : ''} ♥`
+  }
+  return <p className="text-[11px] text-rose-400 leading-tight">{label}</p>
+}
+
 interface MediaLikeButtonProps {
   isLiked: boolean
   likeCount: number
@@ -134,8 +150,7 @@ export function MediaThumbnailCard({ item, onToggleLike, onOpen, likeDisabled = 
           {item.map_name && <span className="truncate text-xs text-muted-foreground">{item.map_name}</span>}
         </div>
         <p className="truncate text-xs text-muted-foreground" title={item.basename}>{item.basename}</p>
-        {dateStr && <p className="text-xs text-muted-foreground">{dateStr}</p>}
-      </div>
+        {dateStr && <p className="text-xs text-muted-foreground">{dateStr}</p>}        <LikersLine likers={item.likers} totalLikers={item.total_likers} />      </div>
     </article>
   )
 }
@@ -230,7 +245,8 @@ export function MediaLightbox({ items, onToggleLike, startIndex, onClose, likeDi
           )}
         </div>
 
-        <div className="flex items-center gap-2 bg-black/60 px-4 py-2">
+        <div className="flex flex-col gap-1 bg-black/60 px-4 py-2">
+          <div className="flex items-center gap-2">
           <Badge variant="secondary" className="text-xs">{item.kind}</Badge>
           <span className="truncate text-xs text-white/60">{item.basename}</span>
           <MediaLikeButton
@@ -248,6 +264,8 @@ export function MediaLightbox({ items, onToggleLike, startIndex, onClose, likeDi
               Voir le match →
             </a>
           )}
+          </div>
+          <LikersLine likers={item.likers} totalLikers={item.total_likers} />
         </div>
       </div>
     </div>

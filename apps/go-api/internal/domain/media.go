@@ -24,6 +24,16 @@ type MediaPageRequest struct {
 	ModeFilter    string            `json:"mode_filter,omitempty"`
 	GroupBy       string            `json:"group_by,omitempty"`
 	Sort          string            `json:"sort,omitempty"`
+	LikedOnly     bool              `json:"liked_only,omitempty"`
+}
+
+// MediaFilters regroupe les paramètres de filtrage/tri pour le repository.
+type MediaFilters struct {
+	KindFilter string // "clip" | "screenshot" | "" (aucun)
+	MapFilter  string // filtre ILIKE sur map_name
+	ModeFilter string // filtre ILIKE sur mode_name
+	LikedOnly  bool   // restreindre aux médias likés
+	Sort       string // "date_desc" | "date_asc" | "map_asc" | "mode_asc"
 }
 
 // ResolvePage retourne le numéro de page normalisé.
@@ -70,6 +80,12 @@ type MediaFileRow struct {
 	ModeName       *string
 }
 
+// MediaLikersInfo contient les likers d'un média (max 3 noms + total).
+type MediaLikersInfo struct {
+	Names []string // max 3 premiers gamertags
+	Total int
+}
+
 // MediaSectionTotals regroupe les compteurs par section (S56).
 type MediaSectionTotals struct {
 	Mine       int
@@ -95,6 +111,9 @@ type MediaItem struct {
 	ModeName       *string    `json:"mode_name,omitempty"`
 	Liked          bool       `json:"liked"`
 	LikeCount      int        `json:"like_count"`
+	// Likes sociaux : noms des 3 premiers likers + total
+	Likers      []string `json:"likers,omitempty"`
+	TotalLikers int      `json:"total_likers"`
 }
 
 // MediaItemsPage représente la table paginée de la galerie médias.
@@ -114,15 +133,19 @@ type MediaPageResponse struct {
 
 // MediaLikeRequest représente une mise à jour explicite de l'état liked.
 type MediaLikeRequest struct {
-	FilePath string `json:"file_path"`
-	Liked    bool   `json:"liked"`
+	FilePath      string `json:"file_path"`
+	Liked         bool   `json:"liked"`
+	LikerSlug     string `json:"liker_slug,omitempty"`     // slug du joueur qui like
+	LikerGamertag string `json:"liker_gamertag,omitempty"` // gamertag affiché dans les likers
 }
 
 // MediaLikeResponse confirme l'état liked persisté côté backend.
 type MediaLikeResponse struct {
-	FilePath  string `json:"file_path"`
-	Liked     bool   `json:"liked"`
-	LikeCount int    `json:"like_count"`
+	FilePath    string   `json:"file_path"`
+	Liked       bool     `json:"liked"`
+	LikeCount   int      `json:"like_count"`
+	Likers      []string `json:"likers,omitempty"`
+	TotalLikers int      `json:"total_likers"`
 }
 
 // ---------------------------------------------------------------------------

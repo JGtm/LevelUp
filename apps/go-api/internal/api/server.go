@@ -154,6 +154,9 @@ func NewRouter(
 		// Sprint 51-B3 : Pipeline backfill (weapon kills + détection des autres types)
 		r.Post("/backfill/start", handlers.NewBackfillHandler(cfg, jobStore).StartBackfill)
 
+		// Galerie médias — version de flux pour polling léger
+		r.Get("/media/feed-version", handlers.GetMediaFeedVersion)
+
 		// Endpoints P1 : pages par joueur (Sprint 37 — DI via ServiceRegistry)
 		r.Route("/players/{player_slug}", func(r chi.Router) {
 			filters := handlers.NewFiltersHandler(reg.Filters)

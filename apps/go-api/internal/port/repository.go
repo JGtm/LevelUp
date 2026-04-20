@@ -258,6 +258,10 @@ var (
 func (n *noopMediaRepo) SetMediaLike(_ context.Context, _ string, _ bool) (bool, error) {
 	return false, nil
 }
+func (n *noopMediaRepo) ToggleSharedLike(_ context.Context, _, _, _ string, _ bool) error { return nil }
+func (n *noopMediaRepo) GetMediaLikers(_ context.Context, _ []string) (map[string]domain.MediaLikersInfo, error) {
+	return nil, nil
+}
 
 // noopSessionsRepo — impl nulle pour le check de compilation uniquement.
 type noopSessionsRepo struct{}
@@ -383,14 +387,20 @@ type MatchExclusionRepository interface {
 // MediaRepository fournit les données pour la galerie médias.
 // Implémenté par platform/duckdb.MediaRepo.
 type MediaRepository interface {
-	// LoadMediaFiles charge les médias actifs paginés (Q37).
-	LoadMediaFiles(ctx context.Context, limit, offset int) ([]domain.MediaFileRow, error)
+	// LoadMediaFiles charge les médias actifs paginés avec filtres dynamiques.
+	LoadMediaFiles(ctx context.Context, filters domain.MediaFilters, limit, offset int) ([]domain.MediaFileRow, error)
 
-	// CountMediaFiles retourne le nombre total de médias actifs (Q37Count).
-	CountMediaFiles(ctx context.Context) (int, error)
+	// CountMediaFiles retourne le nombre total de médias actifs selon les filtres.
+	CountMediaFiles(ctx context.Context, filters domain.MediaFilters) (int, error)
 
 	// SetMediaLike persiste l'état liked d'un média. Retourne false si le média est introuvable.
 	SetMediaLike(ctx context.Context, filePath string, liked bool) (bool, error)
+
+	// ToggleSharedLike écrit/supprime un like dans la table media_likes partagée.
+	ToggleSharedLike(ctx context.Context, mediaPath, likerSlug, likerGamertag string, liked bool) error
+
+	// GetMediaLikers retourne les likers (noms + total) pour une liste de media_path.
+	GetMediaLikers(ctx context.Context, mediaPaths []string) (map[string]domain.MediaLikersInfo, error)
 }
 
 // Ensure compile-time checks pour les nouveaux repos Sprint 12+13.
@@ -441,10 +451,12 @@ func (n *noopCitationsRepo) LoadMedalCitationMappings(_ context.Context) ([]doma
 // noopMediaRepo — impl nulle pour le check de compilation uniquement.
 type noopMediaRepo struct{}
 
-func (n *noopMediaRepo) LoadMediaFiles(_ context.Context, _, _ int) ([]domain.MediaFileRow, error) {
+func (n *noopMediaRepo) LoadMediaFiles(_ context.Context, _ domain.MediaFilters, _, _ int) ([]domain.MediaFileRow, error) {
 	return nil, nil
 }
-func (n *noopMediaRepo) CountMediaFiles(_ context.Context) (int, error) { return 0, nil }
+func (n *noopMediaRepo) CountMediaFiles(_ context.Context, _ domain.MediaFilters) (int, error) {
+	return 0, nil
+}
 
 // ─── Sprint 54 : Metadata, Compare, Leaderboard ─────────────────────────────
 

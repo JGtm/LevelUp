@@ -1175,6 +1175,10 @@ export interface MediaItemRow {
   mode_name: string | null
   liked: boolean
   like_count: number
+  /** Noms des 3 premiers likers (affiches inline) */
+  likers?: string[]
+  /** Nombre total de personnes ayant liké */
+  total_likers?: number
 }
 
 export interface MediaQueryRequest {
@@ -1184,6 +1188,7 @@ export interface MediaQueryRequest {
   map_filter?: string | null
   mode_filter?: string | null
   group_by?: string | null
+  liked_only?: boolean | null
   pagination?: PaginationRequest
 }
 
@@ -1197,6 +1202,8 @@ export interface MediaPageResponse {
 export interface MediaLikeRequest {
   file_path: string
   liked: boolean
+  /** Slug du joueur qui like (pour la table shared) */
+  liker_slug?: string
 }
 
 export interface MediaLikeResponse {
