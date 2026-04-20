@@ -198,11 +198,11 @@ func buildMultipartRequest(t *testing.T, route string, files map[string][]byte) 
 }
 
 func makeUploadFactory(mock *mockMediaService) handlers.MediaUploadContextFactory {
-	return func(_ context.Context, slug string) (port.MediaService, string, string, string, error) {
+	return func(_ context.Context, slug string) (port.MediaService, string, string, string, string, error) {
 		if slug != testPlayerSlug {
-			return nil, "", "", "", errors.New("player_not_found")
+			return nil, "", "", "", "", errors.New("player_not_found")
 		}
-		return mock, "TestPlayer", "halo_infinite", "/data/players/TestPlayer/stats.duckdb", nil
+		return mock, "TestPlayer", "halo_infinite", "/data/players/TestPlayer/stats.duckdb", "", nil
 	}
 }
 
@@ -224,8 +224,8 @@ func TestUploadHandler_PlayerNotFound(t *testing.T) {
 	svcFactory := func(_ context.Context, _ string) (port.MediaService, error) {
 		return &mockMediaService{}, nil
 	}
-	uploadFactory := func(_ context.Context, _ string) (port.MediaService, string, string, string, error) {
-		return nil, "", "", "", errors.New("player_not_found")
+	uploadFactory := func(_ context.Context, _ string) (port.MediaService, string, string, string, string, error) {
+		return nil, "", "", "", "", errors.New("player_not_found")
 	}
 	r := newUploadRouter(svcFactory, uploadFactory)
 	req := buildMultipartRequest(t, "/players/test-player/media/upload", map[string][]byte{

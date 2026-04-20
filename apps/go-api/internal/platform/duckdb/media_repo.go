@@ -19,13 +19,21 @@ func NewMediaRepo(pdb *PlayerDB) *MediaRepo {
 	return &MediaRepo{pdb: pdb}
 }
 
+// socialDB retourne SharedSocial si disponible, sinon Player (fallback de transition).
+func (r *MediaRepo) socialDB() *DB {
+	if r.pdb.SharedSocial != nil {
+		return r.pdb.SharedSocial
+	}
+	return r.pdb.Player
+}
+
 // LoadMediaFiles charge une page de fichiers médias avec filtres dynamiques (Q37).
 func (r *MediaRepo) LoadMediaFiles(ctx context.Context, filters domain.MediaFilters, limit, offset int) ([]domain.MediaFileRow, error) {
 	ctx, cancel := context.WithTimeout(ctx, 10*time.Second)
 	defer cancel()
 
 	q, args := BuildQ37MediaQuery(filters, limit, offset)
-	rows, err := r.pdb.Player.Query(ctx, q, args...)
+	rows, err := r.socialDB().Query(ctx, q, args...)
 	if err != nil {
 		return nil, fmt.Errorf("LoadMediaFiles: %w", err)
 	}
@@ -60,7 +68,7 @@ func (r *MediaRepo) CountMediaFiles(ctx context.Context, filters domain.MediaFil
 
 	q, args := BuildQ37MediaCountQuery(filters)
 	var count int
-	err := r.pdb.Player.QueryRow(ctx, q, args...).Scan(&count)
+	err := r.socialDB().QueryRow(ctx, q, args...).Scan(&count)
 	if err != nil {
 		return 0, fmt.Errorf("CountMediaFiles: %w", err)
 	}
@@ -72,7 +80,7 @@ func (r *MediaRepo) SetMediaLike(ctx context.Context, filePath string, liked boo
 	ctx, cancel := context.WithTimeout(ctx, 5*time.Second)
 	defer cancel()
 
-	result, err := r.pdb.Player.Exec(ctx, `
+	result, err := r.socialDB().Exec(ctx, `
 		UPDATE media_files
 		SET liked = ?,
 			liked_at = CASE WHEN ? THEN CURRENT_TIMESTAMP ELSE NULL END
@@ -96,7 +104,7 @@ func (r *MediaRepo) ToggleSharedLike(ctx context.Context, mediaPath, likerSlug, 
 	defer cancel()
 
 	if liked {
-		_, err := r.pdb.Shared.Exec(ctx, `
+		_, err := r.socialDB().Exec(ctx, `
 			INSERT INTO media_likes (media_path, liker_slug, liker_gamertag, liked_at)
 			VALUES (?, ?, ?, CURRENT_TIMESTAMP)
 			ON CONFLICT (media_path, liker_slug) DO UPDATE SET
@@ -105,7 +113,7 @@ func (r *MediaRepo) ToggleSharedLike(ctx context.Context, mediaPath, likerSlug, 
 		`, mediaPath, likerSlug, likerGamertag)
 		return err
 	}
-	_, err := r.pdb.Shared.Exec(ctx, `
+	_, err := r.socialDB().Exec(ctx, `
 		DELETE FROM media_likes WHERE media_path = ? AND liker_slug = ?
 	`, mediaPath, likerSlug)
 	return err
@@ -133,7 +141,7 @@ func (r *MediaRepo) GetMediaLikers(ctx context.Context, mediaPaths []string) (ma
 	WHERE media_path IN (` + joinStrings(placeholders) + `)
 	ORDER BY media_path, liked_at`
 
-	rows, err := r.pdb.Shared.Query(ctx, q, args...)
+	rows, err := r.socialDB().Query(ctx, q, args...)
 	if err != nil {
 		return nil, fmt.Errorf("GetMediaLikers: %w", err)
 	}
