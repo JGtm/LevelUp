@@ -1,8 +1,9 @@
 /**
  * Queries TanStack Query — Auth locale (login/register/logout).
  */
-import { useMutation, useQuery } from '@tanstack/react-query'
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { api } from '@/lib/api/client'
+import { queryKeys } from '@/lib/query/keys'
 import type {
   LoginRequest,
   LoginResponse,
@@ -18,22 +19,28 @@ import type {
 // ---------------------------------------------------------------------------
 
 export function useLogin() {
+  const queryClient = useQueryClient()
   return useMutation({
     mutationFn: (req: LoginRequest) =>
       api.post<LoginResponse>('/auth/login', req),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: queryKeys.bootstrap }),
   })
 }
 
 export function useRegister() {
+  const queryClient = useQueryClient()
   return useMutation({
     mutationFn: (req: RegisterRequest) =>
       api.post<RegisterResponse>('/auth/register', req),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: queryKeys.bootstrap }),
   })
 }
 
 export function useLogout() {
+  const queryClient = useQueryClient()
   return useMutation({
     mutationFn: () => api.post<void>('/auth/logout'),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: queryKeys.bootstrap }),
   })
 }
 

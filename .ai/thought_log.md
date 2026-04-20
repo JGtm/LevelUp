@@ -16095,3 +16095,32 @@ Dernier lot d'items Sprint 54 implémentés en une session :
 
 ### Conclusion / prochaine étape
 Sprint 54 Phase 13 entièrement clos. Sprint 55 (Phase 14 — Convergence UX Carrière/Synthèse + privacy state durable) peut démarrer.
+
+---
+
+## [2025-07-16] Vérification finale — Xbox/Steam Presence Watcher (feat/match-favorites)
+
+**Statut** : Complété
+
+### Décision technique principale
+Finalisation et validation du daemon de présence Xbox/Steam introduit dans la session précédente. Correction d'une entrée `go.sum` manquante pour `gorilla/websocket` et `x/crypto` (détectés uniquement lors du `go test`, pas lors du `go build`).
+
+### Actions réalisées
+1. **go.sum** : `go get github.com/gorilla/websocket@v1.5.3` + `go get levelup/go-api/internal/platform/userstore` + `go mod tidy`
+2. **7 fichiers de tests créés** (session précédente, validés maintenant) :
+   - `internal/presence/event_parser_test.go` — 8 cas
+   - `internal/presence/reconnect_test.go` — 5 cas  
+   - `internal/watcher/match_queue_test.go` — 6 cas
+   - `internal/watcher/state_machine_test.go` — 11 cas
+   - `internal/titles/registry_test.go` — 9 cas
+   - `internal/auth/token_store_test.go` — 8 cas
+   - `internal/sync/coordinator_test.go` — 6 cas
+3. **Audit logging** : `slog` standardisé, dead code supprimé dans `presence_notifier.go`
+
+### Résultats
+- `go build ./... && go vet ./...` : 0 erreur (packages watcher)
+- `go test` sur 10 packages : **100% PASS** (presence, watcher, auth, titles, sync, notify, analysis, domain)
+- Packages WIP avec erreurs préexistantes (`config_cache.go`, `reward_tracks_provider.go`, `bootstrap_service.go`) : non touchés, erreurs antérieures à cette session
+
+### Conclusion / prochaine étape
+Le daemon de présence Xbox/Steam est complet, compilable et testé. 53 cas de test couvrent toute la logique pure des nouveaux packages.

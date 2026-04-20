@@ -115,7 +115,11 @@ export const useAppShellStore = create<AppShellState>((set, get) => ({
     })
   },
 
-  setCurrentPlayer: (player) => set({ currentPlayer: player }),
+  setCurrentPlayer: (player) => {
+    set({ currentPlayer: player })
+    // Persister le choix côté serveur (fire-and-forget).
+    api.post('/session/context', { player_slug: player.player_slug }).catch(() => {})
+  },
   setCurrentTitle: (titleSlug) => {
     setApiTitleSlug(titleSlug)
     set({ currentTitleSlug: titleSlug })

@@ -9,9 +9,10 @@
  * le pathname courant (pas sur les classes CSS du Link, pour gérer les
  * groupes de sous-routes, ex. /stats/history = section Stats).
  */
-import { Link, useRouterState } from '@tanstack/react-router'
+import { Link, useNavigate, useRouterState } from '@tanstack/react-router'
 import { useAppShellStore } from '@/stores/appShellStore'
 import { ThemeToggle } from './ThemeToggle'
+import { buildPlayerDestination } from './shellNavigation'
 
 // ─── Définition des sections L1 ───────────────────────────────────────────────
 
@@ -66,9 +67,12 @@ const L1_SECTIONS: L1Section[] = [
 // ─── Composant ────────────────────────────────────────────────────────────────
 
 export function NavL1() {
+  const navigate = useNavigate()
   const currentPlayer = useAppShellStore((s) => s.currentPlayer)
   const availablePlayers = useAppShellStore((s) => s.availablePlayers)
   const setCurrentPlayer = useAppShellStore((s) => s.setCurrentPlayer)
+  const isAdmin = useAppShellStore((s) => s.isAdmin)
+  const authMode = useAppShellStore((s) => s.authMode)
   const routerState = useRouterState()
   const pathname = routerState.location.pathname
   const playerSlug = currentPlayer?.player_slug ?? ''
@@ -79,11 +83,10 @@ export function NavL1() {
 
   function handlePlayerChange(slug: string) {
     const player = availablePlayers.find((p) => p.player_slug === slug)
-    if (player) setCurrentPlayer(player)
-    // La navigation vers la route équivalente pour le nouveau joueur
-    // est gérée par buildPlayerDestination si besoin (on laisse le
-    // comportement natif du sélecteur ici — l'URL sera mise à jour
-    // par le useEffect dans $playerSlug.tsx).
+    if (!player) return
+    setCurrentPlayer(player)
+    const nextPath = buildPlayerDestination(pathname, playerSlug, player.player_slug)
+    navigate({ to: nextPath as never })
   }
 
   return (
@@ -149,6 +152,18 @@ export function NavL1() {
       )}
 
       <ThemeToggle className="ml-2" />
+
+      {/* ── Lien Admin (mode password, rôle admin) ─────────────────────── */}
+      {authMode === 'password' && isAdmin && (
+        <Link
+          to="/admin"
+          className="ml-1 shrink-0 rounded-md px-2 py-1.5 text-sm font-medium text-muted-foreground transition-colors hover:bg-sidebar-accent hover:text-sidebar-foreground [&.active]:text-sidebar-foreground"
+          title="Administration"
+          aria-label="Administration"
+        >
+          Admin
+        </Link>
+      )}
 
       {/* ── Lien Paramètres ─────────────────────────────────────────────── */}
       <Link
