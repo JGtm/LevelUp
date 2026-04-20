@@ -298,3 +298,88 @@ func TestUploadHandler_ServiceError(t *testing.T) {
 		t.Fatalf("expected 500, got %d", w.Code)
 	}
 }
+
+// ─────────────────────────────────────────────────────────────────────────────
+// GetMediaFeedVersion — feed-version polling
+// ─────────────────────────────────────────────────────────────────────────────
+
+func TestGetMediaFeedVersion_ReturnsJSON(t *testing.T) {
+	r := chi.NewRouter()
+	r.Get("/media/feed-version", handlers.GetMediaFeedVersion)
+
+	req := httptest.NewRequest(http.MethodGet, "/media/feed-version", nil)
+	w := httptest.NewRecorder()
+	r.ServeHTTP(w, req)
+
+	if w.Code != http.StatusOK {
+		t.Fatalf("expected 200, got %d", w.Code)
+	}
+	var body map[string]int64
+	if err := json.NewDecoder(w.Body).Decode(&body); err != nil {
+		t.Fatalf("decode response: %v", err)
+	}
+	if _, ok := body["version"]; !ok {
+		t.Error("expected 'version' field in response")
+	}
+}
+
+func TestBumpMediaFeedVersion_Increments(t *testing.T) {
+	r := chi.NewRouter()
+	r.Get("/media/feed-version", handlers.GetMediaFeedVersion)
+
+	getVersion := func() int64 {
+		req := httptest.NewRequest(http.MethodGet, "/media/feed-version", nil)
+		w := httptest.NewRecorder()
+		r.ServeHTTP(w, req)
+		var body map[string]int64
+		json.NewDecoder(w.Body).Decode(&body) //nolint:errcheck
+		return body["version"]
+	}
+
+	v1 := getVersion()
+	handlers.BumpMediaFeedVersion()
+	v2 := getVersion()
+
+	if v2 != v1+1 {
+		t.Errorf("expected version to increment by 1: %d → %d", v1, v2)
+	}
+}
+
+func TestMediaHandler_PatchLike_BumpsVersion(t *testing.T) {
+	mock := &mockMediaService{like: &domain.MediaLikeResponse{FilePath: "/x.mp4", Liked: true}}
+	factory := func(_ context.Context, _ string) (port.MediaService, error) {
+		return mock, nil
+	}
+	r := chi.NewRouter()
+	h := handlers.NewMediaHandler(factory, nil)
+	r.Route("/players/{player_slug}", func(r chi.Router) {
+		r.Patch("/media/likes", h.PatchMediaLike)
+	})
+	r.Get("/media/feed-version", handlers.GetMediaFeedVersion)
+
+	versionNow := func() int64 {
+		req := httptest.NewRequest(http.MethodGet, "/media/feed-version", nil)
+		w := httptest.NewRecorder()
+		r.ServeHTTP(w, req)
+		var body map[string]int64
+		json.NewDecoder(w.Body).Decode(&body) //nolint:errcheck
+		return body["version"]
+	}
+
+	v1 := versionNow()
+
+	body, _ := json.Marshal(domain.MediaLikeRequest{FilePath: "/x.mp4", Liked: true})
+	req := httptest.NewRequest(http.MethodPatch, "/players/test-player/media/likes", bytes.NewReader(body))
+	req.Header.Set("Content-Type", "application/json")
+	w := httptest.NewRecorder()
+	r.ServeHTTP(w, req)
+
+	if w.Code != http.StatusOK {
+		t.Fatalf("expected 200, got %d", w.Code)
+	}
+
+	v2 := versionNow()
+	if v2 <= v1 {
+		t.Errorf("expected version to increase after like: %d → %d", v1, v2)
+	}
+}
