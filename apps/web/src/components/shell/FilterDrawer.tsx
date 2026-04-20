@@ -70,18 +70,18 @@ export function FilterDrawer({ open, onClose }: FilterDrawerProps) {
         aria-modal="true"
         aria-label="Panneau de filtres"
         className={[
-          'fixed inset-y-0 right-0 z-50 flex w-80 flex-col bg-white shadow-xl',
+          'fixed inset-y-0 right-0 z-50 flex w-80 flex-col bg-background shadow-xl',
           'transition-transform duration-200',
           open ? 'translate-x-0' : 'translate-x-full',
         ].join(' ')}
       >
         {/* En-tête */}
-        <div className="flex shrink-0 items-center justify-between border-b border-gray-200 px-5 py-4">
-          <h2 className="text-sm font-semibold text-gray-900">Filtres</h2>
+        <div className="flex shrink-0 items-center justify-between border-b border-border px-5 py-4">
+          <h2 className="text-sm font-semibold text-foreground">Filtres</h2>
           <button
             type="button"
             onClick={onClose}
-            className="rounded-md p-1 text-gray-400 transition-colors hover:bg-gray-100 hover:text-gray-600"
+            className="rounded-md p-1 text-muted-foreground transition-colors hover:bg-muted hover:text-muted-foreground"
             aria-label="Fermer le panneau"
           >
             <svg
@@ -106,7 +106,7 @@ export function FilterDrawer({ open, onClose }: FilterDrawerProps) {
         <div className="flex-1 space-y-6 overflow-y-auto px-5 py-5">
           {/* ── Mode d'analyse ──────────────────────────────────────────── */}
           <section>
-            <h3 className="mb-3 text-xs font-semibold uppercase tracking-wider text-gray-400">
+            <h3 className="mb-3 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
               Mode d'analyse
             </h3>
             <div className="flex gap-2">
@@ -118,8 +118,8 @@ export function FilterDrawer({ open, onClose }: FilterDrawerProps) {
                   className={[
                     'flex-1 rounded-lg px-3 py-2 text-sm font-medium transition-colors',
                     filterContext.filter_mode === mode
-                      ? 'bg-purple-600 text-white shadow-sm'
-                      : 'bg-gray-100 text-gray-600 hover:bg-gray-200',
+                      ? 'bg-primary text-primary-foreground shadow-sm'
+                      : 'bg-muted text-muted-foreground hover:bg-accent',
                   ].join(' ')}
                 >
                   {mode === 'period' ? 'Période' : 'Sessions'}
@@ -131,7 +131,7 @@ export function FilterDrawer({ open, onClose }: FilterDrawerProps) {
           {/* ── Sélecteur de session ─────────────────────────────────────── */}
           {sessionOptions.length > 0 && (
             <section>
-              <h3 className="mb-3 text-xs font-semibold uppercase tracking-wider text-gray-400">
+              <h3 className="mb-3 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
                 Session
               </h3>
               <select
@@ -142,7 +142,7 @@ export function FilterDrawer({ open, onClose }: FilterDrawerProps) {
                     picked_sessions: e.target.value ? [e.target.value] : [],
                   })
                 }
-                className="w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm text-gray-700 transition focus:border-purple-400 focus:outline-none focus:ring-2 focus:ring-purple-200"
+                className="w-full rounded-lg border border-input bg-background px-3 py-2 text-sm text-foreground transition focus:border-ring focus:outline-none focus:ring-2 focus:ring-ring"
               >
                 <option value="">Toutes les sessions</option>
                 {sessionOptions.map((s) => (
@@ -196,14 +196,14 @@ export function FilterDrawer({ open, onClose }: FilterDrawerProps) {
         </div>
 
         {/* Pied de page */}
-        <div className="shrink-0 border-t border-gray-200 px-5 py-4">
+        <div className="shrink-0 border-t border-border px-5 py-4">
           <button
             type="button"
             onClick={() => {
               resetFilters()
               onClose()
             }}
-            className="w-full rounded-lg border border-gray-200 py-2 text-sm font-medium text-gray-600 transition-colors hover:bg-gray-50 hover:text-gray-800"
+            className="w-full rounded-lg border border-border py-2 text-sm font-medium text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
           >
             Réinitialiser les filtres
           </button>
@@ -225,7 +225,7 @@ interface CascadeSectionProps {
 function CascadeSection({ title, options, selected, onToggle }: CascadeSectionProps) {
   return (
     <section>
-      <h3 className="mb-3 text-xs font-semibold uppercase tracking-wider text-gray-400">
+      <h3 className="mb-3 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
         {title}
       </h3>
       <div className="flex flex-wrap gap-2">
@@ -239,8 +239,8 @@ function CascadeSection({ title, options, selected, onToggle }: CascadeSectionPr
               className={[
                 'rounded-full px-3 py-1 text-xs font-medium transition-colors',
                 active
-                  ? 'bg-purple-600 text-white shadow-sm'
-                  : 'bg-gray-100 text-gray-700 hover:bg-gray-200',
+                  ? 'bg-primary text-primary-foreground shadow-sm'
+                  : 'bg-muted text-foreground hover:bg-accent',
               ].join(' ')}
             >
               {opt.label}
