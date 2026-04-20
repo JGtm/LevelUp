@@ -27,6 +27,7 @@ Le sync écrit dans les player DBs : `player_match_enrichment` + `personal_score
 - Frontend React : `npm run typecheck`, `npm run lint`, `npm run build`, `npm run test:run` et `npm run test:e2e` passent sur `apps/web`.
 - Correctifs clés de cette passe : ordre de scan `MatchHistoryRepo` réaligné avec `is_excluded`, tests Go dupliqués renommés, `HomePage`/`SynthesisPage` tolérants aux fixtures partielles, specs Vitest réalignées avec l'UI actuelle.
 - Médias React : `PATCH /players/{player_slug}/media/likes` persiste désormais `liked` / `liked_at` dans `media_files`, et `POST /pages/media` expose l'état liked utilisé par la home et la galerie.
+- Workflow dev Go/React (2026-04-20) : `Makefile` racine accepte `API_PORT`, réutilise une API déjà saine sur ce port, et `apps/web/vite.config.ts` lit `VITE_API_PROXY_TARGET` pour suivre automatiquement le backend choisi en dev.
 
 ## État Actuel (2026-03-13) — v5.7 Stable
 
@@ -80,7 +81,9 @@ data/
 - `apps/go-api/internal/platform/halo/provider.go` : implémentation live des appels Battle Pass / Challenges à partir du contexte auth, au lieu du stub `auth_required` permanent.
 - `apps/go-api/internal/api/handlers/media.go`, `internal/service/media_service.go`, `internal/platform/duckdb/media_repo.go` : likes média backend persistés dans `media_files` et nouvelle route `PATCH /media/likes` documentée dans OpenAPI.
 - `apps/web/src/components/shell/AppShell.tsx`, `AppShellHeader.tsx`, `PlayerScopeNav.tsx` : nouveau shell React sans sidebar, avec header global, navigation joueur compacte en deux niveaux et changement de joueur qui préserve la section courante quand c'est possible.
+- `apps/web/src/components/shell/NavL1.tsx` + `apps/web/src/features/settings/SettingsPage.tsx` : le Lab interne est de nouveau exposé dans l'UI courante quand `capabilities.can_manage_instance` est actif, avec entrée visible dans la barre globale et carte d'accès dédiée dans Paramètres.
 - `apps/web/src/components/shell/shellNavigation.ts` : source de vérité du mapping navigation primaire / secondaire et helper `buildPlayerDestination()` pour recalculer la route lors d'un changement de joueur.
+- `Makefile` (racine) + `apps/go-api/.air.toml` + `apps/web/vite.config.ts` : démarrage dev backend/frontend harmonisé sous Windows avec cleanup `server.exe` côté Makefile, `API_PORT` override, réutilisation d'une API déjà up et proxy Vite configurable.
 
 ## Modules Clés
 

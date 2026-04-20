@@ -3,6 +3,8 @@
 > Ce fichier trace l'origine, les transformations et la destination de chaque flux de données.
 > Mis à jour : 2026-04-18
 
+> Note tooling dev 2026-04-20 : aucun flux de données modifié dans cette passe. Les changements portent uniquement sur la chaîne de démarrage locale Go/React : port API configurable via `API_PORT`, réutilisation d'une API déjà active, et proxy Vite dev paramétrable via `VITE_API_PROXY_TARGET`.
+
 > Note média 2026-04-18 : les likes de la galerie React sont désormais persistés dans `players/{gamertag}/stats.duckdb`, table `media_files`, colonnes `liked` et `liked_at`, via `PATCH /players/{player_slug}/media/likes`. `POST /players/{player_slug}/pages/media` renvoie aussi `liked` + `like_count` pour la home et la galerie.
 
 > Note validation 2026-04-18 : aucune évolution de flux de données sur cette passe. Les correctifs portaient sur la stabilité des suites Go/React et sur l'alignement code/tests autour de `player_match_enrichment.is_excluded`, puis sur le rendu frontend des payloads nulles ou sections vides via des empty states explicites côté React. Un cadrage UX Carrière / Synthèse a aussi été formalisé côté go-migration, puis détaillé via un blueprint du hub Carrière, un blueprint contrat/UI de Synthèse et un cadrage d'ajouts inspirés de Spartan Record pour la home record. Ces documents décrivent des cibles de routes, de payloads et de surfaces UI, mais n'introduisent encore aucun changement de schéma, de flux ou de contrat API effectif.

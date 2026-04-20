@@ -1,5 +1,134 @@
 # Thought Log
 
+## [2026-04-20] fix(dev): démarrage go-api compatible PowerShell + port configurable
+
+**Statut** : Complété
+
+### Décisions techniques
+
+1. **Retirer le cleanup Windows de `air`** — le `pre_cmd` de `.air.toml` utilisait `taskkill ... || exit 0`, syntaxe valide pour `cmd.exe` mais pas pour PowerShell. Le kill préventif de `server.exe` a été déplacé dans le `Makefile` racine, avec appel explicite à `cmd` sous Windows.
+2. **Rendre le port backend configurable au niveau racine** — ajout de `API_PORT ?= 8000` dans le `Makefile` racine, transmis à `LEVELUP_API_PORT` pour `make go-api-run` et `make go-api-dev`.
+3. **Réutiliser une API déjà saine** — `make go-api-run` sonde désormais `http://127.0.0.1:$API_PORT/health`; si l'API répond, la commande n'échoue plus et réutilise simplement l'instance existante.
+4. **Aligner le front dev sur le même port** — `web-dev` exporte `VITE_API_PROXY_TARGET`, et `apps/web/vite.config.ts` lit cette variable pour que le proxy `/api` suive automatiquement le port backend choisi.
+
+### Résultats observés
+
+- `npm run -s build` dans `apps/web` : OK
+- `make go-api-run API_PORT=8011` : démarrage réussi sans parse error PowerShell
+- `curl http://127.0.0.1:8011/health` : 200
+- Relance sur le même port : message de réutilisation au lieu d'une erreur de port déjà occupé
+
+### Conclusion
+
+Le workflow dev est maintenant plus robuste sous Windows : plus de faux positif PowerShell sur `||`, plus d'obligation implicite de rester sur 8000, et possibilité de réutiliser proprement une API déjà active sur le port demandé.
+
+## [2026-04-20] fix(go-api): migrer stats.duckdb joueur avant ouverture read-only
+
+**Statut** : Complété
+
+### Décisions techniques
+
+1. **Corriger à la source dans le pool DuckDB** — `openPlayerDB()` exécute désormais les migrations `TargetPlayer` sur `stats.duckdb` avant l'ouverture `OpenReadOnly()`. Cela garantit la présence de colonnes attendues par les requêtes runtime comme `player_match_enrichment.is_excluded` et `media_files.liked`.
+2. **Couvrir le vrai chemin runtime** — ajout de `pool_migration_test.go` avec une DB joueur legacy semée sans les colonnes récentes. Le test vérifie que `GetOrOpen()` applique bien les migrations puis que `MatchHistoryRepo.LoadAll()` et `MediaRepo.LoadMediaFiles()` passent sans binder error.
+3. **Réduire un risque de lock connexe** — `MatchExclusionRepo.SetExclusion()` ferme maintenant explicitement sa connexion RW pour éviter de laisser un handle d'écriture ouvert plus longtemps que nécessaire sur `stats.duckdb`.
+
+### Résultats observés
+
+- Reproduction initiale confirmée sur runtime réel : `match-history` et `media` tombaient en 500 avec colonnes manquantes sur DB joueur legacy.
+- `go test ./... -count=1` : OK
+- `go test -tags=integration ./internal/platform/duckdb -run TestGetOrOpen_RunsPlayerMigrationsForLegacySchema -count=1 -v` : OK
+- Validation runtime sur serveur temporaire 8001 : le code corrigé démarre bien, mais l'ouverture RW de la vraie DB joueur a été bloquée par un autre process serveur déjà ouvert sur le même fichier, ce qui confirme un verrou externe plutôt qu'un échec du correctif lui-même.
+
+### Conclusion
+
+La panne de chargement venait de migrations player jamais appliquées avant lecture runtime. Le correctif est en place et couvert par un test d'intégration ciblé. Sur la vraie donnée utilisateur, un redémarrage backend propre sans autre process tenant `stats.duckdb` permettra au premier accès d'appliquer la migration et de supprimer les 500 Historique/Médias.
+
+## [2026-04-19] fix(web): restaurer le radius visible des PageHeader
+
+**Statut** : Complété
+
+### Décisions techniques
+
+1. **Le bug venait du layout, pas du radius lui-même** — `PageHeader` avait déjà `rounded-[28px]`, mais sans inset horizontal il lisait comme un bloc pleine largeur dans les pages standards.
+2. **Ajouter un inset par défaut au composant partagé** — `PageHeader` reçoit un prop `inset` et applique `mx-6` par défaut pour redonner de la respiration latérale et rendre les coins visibles.
+3. **Prévoir un opt-out pour les pages déjà paddées** — `ChangelogPage` et `LabPage` passent `inset={false}` pour éviter un double padding, car elles ont déjà un wrapper global en `p-6`.
+
+### Résultats observés
+
+- Les `PageHeader` standards retrouvent un radius visuellement lisible
+- `Historique des parties` n'est plus rendu flush bord à bord
+- Les pages déjà enveloppées par un container paddé gardent leur alignement existant
+
+### Conclusion
+
+Le comportement du header est maintenant cohérent par défaut dans l'app, sans casser les pages spéciales déjà mises en page différemment.
+
+## [2026-04-19] feat(analysis): CombatYield depuis DB + medal_exploit intégrés aux formules LUSR et perf score
+
+**Statut** : Complété
+
+### Décisions techniques
+
+1. **`offensive_conversion` / `defensive_resistance` lus depuis la DB** — colonnes déjà stockées dans `match_participants` (migration L1 ✅). Suppression de l'appel `ComputeCombatYield` on-the-fly dans `computeNormalizedMetrics` et de `derefF`. Q23 étendu avec ces deux colonnes, `Scan()` mis à jour dans `stats_repo.go`.
+2. **`medal_exploit_score` calculé à la volée** — pas de colonne DB dédiée. Il est calculé depuis les médailles du match (`medals_earned` + poids difficulté). Reste dans `StatsMatchRow` comme champ peuplé par le service appelant.
+3. **Poids LUSR composite** — 8 composants : kills_vs_expected=0.27, deaths_vs_expected=0.24, offensive_conversion=0.16, damage_efficiency=0.10, accuracy_delta=0.10, defensive_resistance=0.06, win_factor=0.05, medal_exploit=0.04.
+4. **Poids performance score** — 13 métriques avec offensive_conversion=0.09, defensive_resistance=0.05, medal_exploit=0.06.
+5. **Dégradation gracieuse** — métriques absentes (nil) : poids renormalisés automatiquement, aucune métrique ne bloque le calcul.
+
+### Résultats observés
+
+- `go build ./...` : aucune erreur
+- `go test ./...` : 100% PASS (tous les packages)
+
+### Conclusion
+
+L'architecture est cohérente : les valeurs CombatYield viennent de la DB (sync-time), pas recalculées à la lecture. Le `medal_exploit_score` est la seule valeur calculée on-the-fly car elle nécessite une jointure médailles × poids difficulté que le service appelant doit réaliser.
+
+## [2026-04-19] fix(web): unifier la largeur shell à 1320px
+
+**Statut** : Complété
+
+### Décisions techniques
+
+1. **Éviter les valeurs dupliquées dans le shell** — la largeur du body ne doit plus être codée séparément dans `AppShell` et `AppShellHeader`, sinon les deux dérivent.
+2. **Créer une classe partagée** — ajout de `.app-shell-width` dans `apps/web/src/styles/globals.css` avec `max-width: 1320px`.
+3. **Appliquer cette classe aux conteneurs globaux** — `AppShell.tsx` et `AppShellHeader.tsx` utilisent désormais la même largeur de référence pour toutes les pages.
+
+### Résultats observés
+
+- Le conteneur principal du shell est fixé à 1320px
+- Le header shell utilise la même largeur et reste aligné avec le contenu
+- Plus de divergence 1280px / 1440px entre zones globales
+
+### Conclusion
+
+La largeur globale de l'application est maintenant pilotée par un seul point de vérité et s'applique de manière cohérente à toutes les pages passant par le shell, avec une réduction plus visible sur les pages denses.
+
+## [2026-04-20] fix(web): réexposer le Lab dans l'UI shell + paramètres
+
+**Statut** : Complété
+
+### Contexte
+
+Le Lab React existait toujours côté route et API, mais l'utilisateur ne voyait aucun point d'entrée dans l'interface. L'investigation a montré que le backend renvoyait bien `can_manage_instance=true` via `/api/v1/bootstrap`, tandis que l'état courant du front n'exposait plus de lien `Lab` ni dans la barre globale ni dans la page `Paramètres`.
+
+### Décisions techniques
+
+1. **Ne pas toucher au backend** — `buildCapabilities()` expose déjà `CanManageInstance: true` par défaut. Le bug était un problème de discoverability UI, pas de capability plumbing.
+2. **Réintroduire une entrée shell explicite** — `NavL1.tsx` affiche maintenant un lien `Lab` visible uniquement si `capabilities.can_manage_instance` est actif, avec état actif sur `/lab`.
+3. **Réintroduire un accès depuis Paramètres** — `SettingsPage.tsx` affiche une carte `Lab interne` avec bouton `Ouvrir le Lab`, elle aussi conditionnée par la capacité instance.
+4. **Couvrir la régression côté test** — `SettingsPage.test.tsx` vérifie maintenant que le CTA Lab apparaît bien et pointe vers `/lab` lorsque la capacité est active.
+
+### Résultats observés
+
+- Runtime bootstrap vérifié : `"can_manage_instance":true`
+- `vitest run src/features/settings/SettingsPage.test.tsx` : OK (5/5)
+- `tsc -b` reste en échec, mais sur 5 erreurs préexistantes hors périmètre Lab (`HomePage`, `media/queries`, `SynthesisPage`)
+
+### Conclusion
+
+Le Lab est de nouveau visible dans l'UI courante du shell et dans Paramètres. Le blocage utilisateur venait de points d'entrée front disparus, pas d'une désactivation côté backend.
+
 ## [2026-04-19] Fix labels FR home + auth Battle Pass + tests handlers
 
 **Statut** : Complété
