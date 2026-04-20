@@ -16546,3 +16546,41 @@ Utiliser le système de jobs asynchrones existant (`activeSyncJobId` / `useJobSt
 
 **Conclusion** :
 La feature est 100% terminée. Un spinner tourne à côté du gamertag dans la L1 quand `active_sync_job_id` est non-null (retourné par bootstrap ou par POST /sync). Il disparaît automatiquement quand le job passe en état terminal via `useEffect` + `setActiveSyncJobId(null)`.
+
+---
+
+## [2025-07-29] — Suppression complète Python legacy
+
+**Statut** : Complété
+
+**Décision technique principale** :
+Après confirmation que sync DuckDB, auth MSAL/XSTS, API Halo (SPNKr) et launcher sont portés en Go, suppression de tout le Python legacy sur la branche `feat/timeseries-rendering-fixes`.
+
+**Fichiers supprimés** :
+- `src/` (code Python métier entier)
+- `scripts/` (98 scripts Python)
+- `spnkr_pr/` (fork SPNKr)
+- `launcher.py` (appelait uvicorn supprimé)
+- `tests/` (tests pytest src/)
+- `levelup_halo.egg-info/` (build artifact)
+- `packaging/build_release.py` + `packaging/__pycache__/`
+- `pyproject.toml`
+- `apps/go-api/scripts/benchmark_python_api.py`, `export_fastapi_openapi.py`, `diff_openapi.py`, `capture_golden_values.py`, `parity_check.py`
+- `.github/workflows/e2e-browser-optional.yml` (testait Streamlit)
+
+**Fichiers modifiés** :
+- `Makefile` : suppression variables Python/LAUNCHER, cibles Python (install, run, test, etc.), GO_VERSION lit `VERSION`
+- `.pre-commit-config.yaml` : hook check-code-size (enforce_size_limits.py) retiré
+- `.github/workflows/ci.yml` : 5 jobs Python supprimés (fast-data-contracts, test, lint, quality, go-golden-test)
+- `.github/workflows/bump-version.yml` : réécrit pour utiliser `VERSION` au lieu de pyproject.toml
+- `.github/workflows/deploy.yml` : validation Python + prepare_demo_data.py remplacé par placeholder `levelup seed`
+- `.github/workflows/test-deploy-precheck.yml` : toutes les étapes `python -c` remplacées par shell
+- `.github/workflows/release.yml` : job `build-releases` Python supprimé, `needs` et `files` nettoyés
+- `apps/go-api/internal/service/timeseries_service.go` : correction types pointeurs FilterMatchRow (bug WIP branche)
+
+**Résultats observés** :
+- `CGO_ENABLED=1 go build ./...` : EXIT 0 (succès)
+- Aucune référence Python dans les workflows CI restants
+
+**Conclusion** :
+Go est désormais l'unique runtime. ~900 fichiers Python supprimés. Le dépôt est prêt pour un commit de clôture.

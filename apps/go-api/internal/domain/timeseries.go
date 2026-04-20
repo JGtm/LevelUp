@@ -10,6 +10,8 @@
 // Les onglets sont néanmoins structurés identiquement au contrat Python.
 package domain
 
+import "time"
+
 // ---------------------------------------------------------------------------
 // Types communs
 // ---------------------------------------------------------------------------
@@ -105,10 +107,13 @@ type TimeseriesDistributionsTab struct {
 	KDADistribution *PlotlyFigurePayload  `json:"kda_distribution"`
 	FirstKillDist   *PlotlyFigurePayload  `json:"first_kill_dist"`
 	Correlations    []PlotlyFigurePayload `json:"correlations"`
-	// Data points bruts pour le frontend (Sprint 42).
-	KDABuckets        []DistributionBucket  `json:"kda_buckets"`
-	KillsBuckets      []DistributionBucket  `json:"kills_buckets"`
-	CorrelationPoints []CorrelationDataPair `json:"correlation_points"`
+	// Data points bruts pour le frontend.
+	KDABuckets         []DistributionBucket  `json:"kda_buckets"`
+	KillsBuckets       []DistributionBucket  `json:"kills_buckets"`
+	AccuracyBuckets    []DistributionBucket  `json:"accuracy_buckets"`
+	ScorePerMinBuckets []DistributionBucket  `json:"score_per_min_buckets"`
+	RollingWRBuckets   []DistributionBucket  `json:"rolling_wr_buckets"`
+	CorrelationPoints  []CorrelationDataPair `json:"correlation_points"`
 }
 
 // DistributionBucket est un bucket pour un histogramme de distribution.
@@ -120,9 +125,31 @@ type DistributionBucket struct {
 
 // CorrelationDataPair est une paire (x, y) pour un scatter plot de corrélation.
 type CorrelationDataPair struct {
-	Label string  `json:"label"` // ex: "kills_vs_kd"
-	X     float64 `json:"x"`
-	Y     float64 `json:"y"`
+	Label   string  `json:"label"` // ex: "kills_vs_kd" | "lifespan_vs_kills" | "accuracy_vs_kda" | "lifespan_vs_deaths" | "kills_vs_deaths" | "mmr_team_vs_enemy"
+	X       float64 `json:"x"`
+	Y       float64 `json:"y"`
+	Outcome *int    `json:"outcome"` // nil si inconnu ; 2=victoire, 3=défaite, 1=égalité
+}
+
+// TimeseriesMatchRow est une ligne de données par match pour les charts timeline.
+// Fourni dans TimeseriesPageResponse.MatchRows pour permettre au frontend de
+// construire les graphes K/D/A, assists, dégâts, perf score, etc.
+type TimeseriesMatchRow struct {
+	MatchID           string     `json:"match_id"`
+	Index             int        `json:"index"`
+	StartTime         time.Time  `json:"start_time"`
+	Kills             int        `json:"kills"`
+	Deaths            int        `json:"deaths"`
+	Assists           int        `json:"assists"`
+	Accuracy          *float64   `json:"accuracy"`
+	Outcome           *int       `json:"outcome"`
+	PersonalScore     *int       `json:"personal_score"`
+	DamageDealt       *float64   `json:"damage_dealt"`
+	DamageTaken       *float64   `json:"damage_taken"`
+	PerfScore         *float64   `json:"perf_score"`
+	Rank              *int       `json:"rank"`
+	PlaylistName      string     `json:"playlist_name"`
+	TimePlayedSeconds *int       `json:"time_played_seconds"`
 }
 
 // ---------------------------------------------------------------------------
@@ -132,6 +159,7 @@ type CorrelationDataPair struct {
 // TimeseriesPageResponse est la réponse de POST /pages/timeseries.
 type TimeseriesPageResponse struct {
 	TotalMatches     int                        `json:"total_matches"`
+	MatchRows        []TimeseriesMatchRow       `json:"match_rows"`
 	SummaryTab       TimeseriesSummaryTab       `json:"summary_tab"`
 	CumulTab         TimeseriesCumulTab         `json:"cumul_tab"`
 	FormTab          TimeseriesFormTab          `json:"form_tab"`

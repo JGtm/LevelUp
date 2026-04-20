@@ -41,11 +41,6 @@ jobs:
           done
           exit $errors
 
-      - name: Validation syntaxe Python (prepare_demo_data.py)
-        run: |
-          python3 -m py_compile scripts/prepare_demo_data.py
-          echo "  ✅ prepare_demo_data.py"
-
       - name: Pas de répertoires fantômes à la racine
         run: |
           for f in db_profiles.json app_settings.json; do
@@ -111,8 +106,9 @@ jobs:
             mkdir -p data/demo
 
             docker compose run --rm levelup \
-              python scripts/prepare_demo_data.py \
-                --gamertag JGtm --max-matches 50 --service-tag SPTA --out data/demo
+              levelup seed career-ranks citation-mappings medals
+            # TODO: remplacer par la commande Go de génération des données démo
+            # (équivalent de l'ancien scripts/prepare_demo_data.py --gamertag JGtm --max-matches 50 --service-tag SPTA --out data/demo)
 
             # [Guard] Vérification post-regen — les fichiers doivent exister et être des fichiers
             echo "[regen] Vérification fichiers post-regen..."

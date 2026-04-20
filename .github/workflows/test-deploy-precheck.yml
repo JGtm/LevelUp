@@ -66,11 +66,6 @@ jobs:
           done
           exit $errors
 
-      - name: Validation syntaxe Python (scripts/prepare_demo_data.py)
-        run: |
-          python3 -m py_compile scripts/prepare_demo_data.py
-          echo "  ✅ prepare_demo_data.py"
-
       - name: "Vérifier que db_profiles.json racine est un fichier (pas répertoire)"
         run: |
           if [[ -d "db_profiles.json" ]]; then
@@ -152,7 +147,7 @@ jobs:
           docker run --rm \
               -v "$PWD/data:/app/data" \
               levelup-test:ci \
-              python -c "import os; os.makedirs('/app/data/demo/warehouse', exist_ok=True); print('OK')"
+              /bin/sh -c "mkdir -p /app/data/demo/warehouse && echo 'OK'"
           echo "  ✅ Entrypoint a corrigé les permissions automatiquement"
 
       - name: "Cas B : data/ appartient à root → entrypoint fixe aussi"
@@ -161,7 +156,7 @@ jobs:
           docker run --rm \
               -v "$PWD/data:/app/data" \
               levelup-test:ci \
-              python -c "import os; os.makedirs('/app/data/demo/test_root', exist_ok=True); print('OK')"
+              /bin/sh -c "mkdir -p /app/data/demo/test_root && echo 'OK'"
           echo "  ✅ Entrypoint a corrigé les permissions root:root"
 
       - name: "Cas C : Reproduction bug répertoire fantôme Docker bind-mount"
@@ -186,12 +181,10 @@ jobs:
             exit 1
           fi
 
-      - name: "Cas D : Vérifier que le script check_vps_deploy.sh est syntaxiquement correct"
+      - name: "Cas D : Vérifier la syntaxe de deploy.sh"
         run: |
-          bash -n scripts/check_vps_deploy.sh
-          echo "  ✅ check_vps_deploy.sh : syntaxe bash OK"
-          bash -n scripts/test_deploy_dry_run.sh
-          echo "  ✅ test_deploy_dry_run.sh : syntaxe bash OK"
+          bash -n deploy.sh
+          echo "  ✅ deploy.sh : syntaxe bash OK"
 
   # ────────────────────────────────────────────────────────────────
   # Job 4 — Simulation end-to-end regen demo (sans données réelles)
@@ -231,22 +224,11 @@ jobs:
           docker run --rm \
             -v "$PWD/data:/app/data" \
             levelup-test:ci \
-            python -c "
-          import os, json
-          from pathlib import Path
-          out = Path('/app/data/demo')
-          (out / 'warehouse').mkdir(parents=True, exist_ok=True)
-          (out / 'players' / 'DEMO').mkdir(parents=True, exist_ok=True)
-          (out / 'db_profiles.json').write_text(json.dumps({'version': '2.1'}))
-          (out / 'app_settings.json').write_text(json.dumps({}))
-          print('Simulation prepare_demo_data.py : OK')
-          print(f'Fichiers créés : {list(out.iterdir())}')
-          "
-          echo "  ✅ Étape 2 : écriture OK"
-
-      - name: "Simulation étape 4 : vérifier docker compose up levelup-demo"
-        run: |
-          # Vérifier que les volumes du service levelup-demo peuvent être montés
+            /bin/sh -c "
+          mkdir -p /app/data/demo/warehouse /app/data/demo/players/DEMO
+          echo '{\"version\": \"2.1\"}' > /app/data/demo/db_profiles.json
+          echo '{}' > /app/data/demo/app_settings.json
+          echo 'Simulation demo data : OK'
           for f in data/demo/db_profiles.json data/demo/app_settings.json; do
             if [[ -d "$f" ]]; then
               echo "  ❌ $f est un répertoire — compose up levelup-demo va échouer"

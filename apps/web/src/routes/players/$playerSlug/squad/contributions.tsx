@@ -1,11 +1,8 @@
 import { createFileRoute } from '@tanstack/react-router'
+import { SquadContributionsPage } from '@/features/squad/SquadContributionsPage'
 
 export const Route = createFileRoute(
   '/players/$playerSlug/squad/contributions',
 )({
-  component: RouteComponent,
+  component: SquadContributionsPage,
 })
-
-function RouteComponent() {
-  return <div>Hello "/players/$playerSlug/squad/contributions"!</div>
-}
