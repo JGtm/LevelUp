@@ -26,16 +26,20 @@ const DefaultDurationSeconds = 600.0
 
 // relativeWeights sont les poids des métriques pour le score relatif v5.
 var relativeWeights = map[string]float64{
-	"kpm":                0.17, // Kills per minute
-	"dpm_deaths":         0.13, // Deaths per minute (inversé)
-	"apm":                0.08, // Assists per minute
-	"kda":                0.13, // KDA
-	"accuracy":           0.06, // Précision
-	"pspm":               0.12, // Personal Score Per Minute
-	"dpm_damage":         0.09, // Damage Per Minute
-	"rank_perf":          0.04, // Rank vs Expected (optionnel)
-	"kills_vs_expected":  0.10, // Kills réels / Kills attendus
-	"deaths_vs_expected": 0.08, // Deaths attendus / Deaths réels (inversé)
+	"kpm":                  0.14, // Kills per minute
+	"dpm_deaths":           0.10, // Deaths per minute (inversé)
+	"apm":                  0.06, // Assists per minute
+	"kda":                  0.11, // KDA
+	"accuracy":             0.04, // Précision
+	"pspm":                 0.10, // Personal Score Per Minute
+	"dpm_damage":           0.06, // Damage Per Minute
+	"rank_perf":            0.04, // Rank vs Expected (optionnel)
+	"kills_vs_expected":    0.09, // Kills réels / Kills attendus
+	"deaths_vs_expected":   0.07, // Deaths attendus / Deaths réels (inversé)
+	"medal_exploit":        0.06, // Exploit médailles heroic+ pondérées par difficulté
+	"offensive_conversion": 0.09, // 225×(kills+assists/3)/damage_dealt
+	"defensive_resistance": 0.05, // damage_taken/(225×deaths) — inversé
+	// Σ = 1.01 → renormalisé automatiquement (poids manquants ignorés)
 }
 
 // Codes numériques des issues de match Halo Infinite.
@@ -78,6 +82,9 @@ func ComputeRelativePerformanceScore(
 	addOptional("rank_perf", current.rankPerfDiff, hist.rankPerfDiff, false, percentiles, weights)
 	addOptional("kills_vs_expected", current.killsVsExpected, hist.killsVsExpected, false, percentiles, weights)
 	addOptional("deaths_vs_expected", current.deathsVsExpected, hist.deathsVsExpected, false, percentiles, weights)
+	addOptional("medal_exploit", current.medalExploit, hist.medalExploit, false, percentiles, weights)
+	addOptional("offensive_conversion", current.offensiveConversion, hist.offensiveConversion, false, percentiles, weights)
+	addOptional("defensive_resistance", current.defensiveResistance, hist.defensiveResistance, false, percentiles, weights)
 
 	totalWeight := 0.0
 	weightedSum := 0.0
@@ -121,29 +128,35 @@ func ComputePerformanceSeries(matches []domain.StatsMatchRow) []*float64 {
 // ─── Types internes ──────────────────────────────────────────────────────────
 
 type normalizedMetrics struct {
-	kpm              float64
-	dpmDeaths        float64
-	apm              float64
-	kda              float64
-	accuracy         *float64
-	pspm             *float64
-	dpmDamage        *float64
-	rankPerfDiff     *float64
-	killsVsExpected  *float64
-	deathsVsExpected *float64
+	kpm                 float64
+	dpmDeaths           float64
+	apm                 float64
+	kda                 float64
+	accuracy            *float64
+	pspm                *float64
+	dpmDamage           *float64
+	rankPerfDiff        *float64
+	killsVsExpected     *float64
+	deathsVsExpected    *float64
+	medalExploit        *float64
+	offensiveConversion *float64
+	defensiveResistance *float64
 }
 
 type historyColumns struct {
-	kpm              []float64
-	dpmDeaths        []float64
-	apm              []float64
-	kda              []float64
-	accuracy         []float64
-	pspm             []float64
-	dpmDamage        []float64
-	rankPerfDiff     []float64
-	killsVsExpected  []float64
-	deathsVsExpected []float64
+	kpm                 []float64
+	dpmDeaths           []float64
+	apm                 []float64
+	kda                 []float64
+	accuracy            []float64
+	pspm                []float64
+	dpmDamage           []float64
+	rankPerfDiff        []float64
+	killsVsExpected     []float64
+	deathsVsExpected    []float64
+	medalExploit        []float64
+	offensiveConversion []float64
+	defensiveResistance []float64
 }
 
 // ─── Calcul métriques normalisées ────────────────────────────────────────────
@@ -199,6 +212,17 @@ func computeNormalizedMetrics(row domain.StatsMatchRow) normalizedMetrics {
 		m.deathsVsExpected = &v
 	}
 
+	if row.MedalExploitScore != nil {
+		m.medalExploit = row.MedalExploitScore
+	}
+
+	if row.OffensiveConversion != nil && *row.OffensiveConversion > 0 {
+		m.offensiveConversion = row.OffensiveConversion
+	}
+	if row.DefensiveResistance != nil && *row.DefensiveResistance > 0 {
+		m.defensiveResistance = row.DefensiveResistance
+	}
+
 	return m
 }
 
@@ -233,6 +257,15 @@ func prepareHistoryMetrics(history []domain.StatsMatchRow) historyColumns {
 		}
 		if m.deathsVsExpected != nil {
 			h.deathsVsExpected = append(h.deathsVsExpected, *m.deathsVsExpected)
+		}
+		if m.medalExploit != nil {
+			h.medalExploit = append(h.medalExploit, *m.medalExploit)
+		}
+		if m.offensiveConversion != nil {
+			h.offensiveConversion = append(h.offensiveConversion, *m.offensiveConversion)
+		}
+		if m.defensiveResistance != nil {
+			h.defensiveResistance = append(h.defensiveResistance, *m.defensiveResistance)
 		}
 	}
 	return h
