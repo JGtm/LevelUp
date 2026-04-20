@@ -50,8 +50,8 @@ export function MatchViewPage() {
       <div className="p-6">
         <Card>
           <CardContent className="py-8 text-center">
-            <p className="font-medium text-red-600">Match introuvable ou erreur de chargement.</p>
-            <button onClick={() => refetch()} className="mt-2 text-sm text-purple-600 underline">
+            <p className="font-medium text-destructive">Match introuvable ou erreur de chargement.</p>
+            <button onClick={() => refetch()} className="mt-2 text-sm text-primary underline">
               Réessayer
             </button>
           </CardContent>
@@ -77,7 +77,7 @@ export function MatchViewPage() {
       )}
 
       {/* Header match */}
-      <div className="border-b bg-white px-6 py-4">
+      <div className="border-b bg-background px-6 py-4">
         <div className="flex flex-wrap items-center gap-4">
           <span
             className="text-xl font-bold"
@@ -85,10 +85,10 @@ export function MatchViewPage() {
           >
             {header.outcome_label}
           </span>
-          <span className="text-sm text-gray-600">{header.score_label}</span>
+          <span className="text-sm text-muted-foreground">{header.score_label}</span>
           <Badge variant="outline">{header.playlist_label}</Badge>
           {rank.rating_type !== 'none' && rank.tier_label && (
-            <Badge className="bg-purple-100 text-purple-800">
+            <Badge className="bg-primary/10 text-primary">
               {rank.rating_type} · {rank.tier_label}
               {rank.numeric_value != null && ` (${rank.numeric_value.toFixed(0)})`}
             </Badge>
@@ -99,7 +99,7 @@ export function MatchViewPage() {
           <Button
             variant="ghost"
             size="sm"
-            className={header.is_excluded ? 'text-gray-400' : 'text-gray-500 hover:text-red-500'}
+            className={header.is_excluded ? 'text-muted-foreground' : 'text-muted-foreground hover:text-destructive'}
             loading={excludeMutation.isPending}
             onClick={() => {
               excludeMutation.mutate(
@@ -120,7 +120,7 @@ export function MatchViewPage() {
       </div>
 
       {/* Onglets */}
-      <div className="flex gap-0 border-b bg-white px-6">
+      <div className="flex gap-0 border-b bg-background px-6">
         {TABS.map((tab) => (
           <Button
             key={tab.id}
@@ -129,8 +129,8 @@ export function MatchViewPage() {
             onClick={() => setActiveTab(tab.id)}
             className={`rounded-none border-b-2 px-4 py-3 text-sm ${
               activeTab === tab.id
-                ? 'border-purple-600 font-semibold text-purple-700'
-                : 'border-transparent text-gray-500 hover:text-gray-800'
+                ? 'border-primary font-semibold text-primary'
+                : 'border-transparent text-muted-foreground hover:text-foreground'
             }`}
           >
             {tab.label}
@@ -154,8 +154,8 @@ export function MatchViewPage() {
               ].map((kpi) => (
                 <Card key={kpi.label}>
                   <CardContent className="py-3 text-center">
-                    <p className="text-xs text-gray-500">{kpi.label}</p>
-                    <p className="text-lg font-bold text-gray-900">{kpi.value ?? '-'}</p>
+                    <p className="text-xs text-muted-foreground">{kpi.label}</p>
+                    <p className="text-lg font-bold text-foreground">{kpi.value ?? '-'}</p>
                   </CardContent>
                 </Card>
               ))}
@@ -176,7 +176,7 @@ export function MatchViewPage() {
             {summary_tab.medals.length > 0 && (
               <Card>
                 <CardContent className="py-4">
-                  <p className="mb-3 text-sm font-semibold text-gray-700">Médailles</p>
+                  <p className="mb-3 text-sm font-semibold text-foreground">Médailles</p>
                   <div className="flex flex-wrap gap-2">
                     {summary_tab.medals.map((m) => (
                       <Badge key={m.medal_name_id} variant="secondary" title={m.description ?? undefined}>
@@ -191,7 +191,7 @@ export function MatchViewPage() {
             {summary_tab.citations.length > 0 && (
               <Card>
                 <CardContent className="py-4">
-                  <p className="mb-3 text-sm font-semibold text-gray-700">Citations</p>
+                  <p className="mb-3 text-sm font-semibold text-foreground">Citations</p>
                   <div className="flex flex-wrap gap-2">
                     {summary_tab.citations.map((c) => (
                       <Badge
@@ -215,12 +215,12 @@ export function MatchViewPage() {
             {combat_tab.weapon_kills.length > 0 && (
               <Card>
                 <CardContent className="py-4">
-                  <p className="mb-3 text-sm font-semibold text-gray-700">Kills par arme</p>
+                  <p className="mb-3 text-sm font-semibold text-foreground">Kills par arme</p>
                   <div className="space-y-1">
                     {combat_tab.weapon_kills.map((w) => (
                       <div key={w.weapon_id} className="flex items-center justify-between text-sm">
-                        <span className="text-gray-700">{w.weapon_label}</span>
-                        <span className="font-semibold text-purple-700">{w.kill_count}</span>
+                        <span className="text-foreground">{w.weapon_label}</span>
+                        <span className="font-semibold text-primary">{w.kill_count}</span>
                       </div>
                     ))}
                   </div>
@@ -250,12 +250,12 @@ export function MatchViewPage() {
             {team_tab.nemesis.length > 0 && (
               <Card>
                 <CardContent className="py-4">
-                  <p className="mb-3 text-sm font-semibold text-gray-700">Nemesis</p>
+                  <p className="mb-3 text-sm font-semibold text-foreground">Nemesis</p>
                   <div className="space-y-1">
                     {team_tab.nemesis.map((n) => (
                       <div key={n.xuid} className="flex items-center justify-between text-sm">
-                        <span className="text-gray-700">{n.gamertag}</span>
-                        <span className="text-xs text-gray-500">
+                        <span className="text-foreground">{n.gamertag}</span>
+                        <span className="text-xs text-muted-foreground">
                           {n.killed_me} kills reçus · {n.i_killed} kills rendus
                         </span>
                       </div>
@@ -271,7 +271,7 @@ export function MatchViewPage() {
         {activeTab === 'media' && (
           <div className="space-y-4">
             {media_tab.media_items.length === 0 ? (
-              <p className="text-sm text-gray-500">Aucun média associé à ce match.</p>
+              <p className="text-sm text-muted-foreground">Aucun média associé à ce match.</p>
             ) : (
               <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-4">
                 {media_tab.media_items.map((item) => (
@@ -284,11 +284,11 @@ export function MatchViewPage() {
                           className="mb-2 h-24 w-full rounded object-cover"
                         />
                       ) : (
-                        <div className="mb-2 flex h-24 items-center justify-center rounded bg-gray-100">
-                          <span className="text-xs text-gray-400">Aperçu indisponible</span>
+                        <div className="mb-2 flex h-24 items-center justify-center rounded bg-muted">
+                          <span className="text-xs text-muted-foreground">Aperçu indisponible</span>
                         </div>
                       )}
-                      <p className="truncate text-xs text-gray-700">{item.file_name}</p>
+                      <p className="truncate text-xs text-foreground">{item.file_name}</p>
                     </CardContent>
                   </Card>
                 ))}
@@ -303,7 +303,7 @@ export function MatchViewPage() {
             {citations_tab.commendations.length > 0 && (
               <Card>
                 <CardContent className="py-4">
-                  <p className="mb-3 text-sm font-semibold text-gray-700">Commendations</p>
+                  <p className="mb-3 text-sm font-semibold text-foreground">Commendations</p>
                   <div className="flex flex-wrap gap-2">
                     {citations_tab.commendations.map((c) => (
                       <Badge
@@ -320,7 +320,7 @@ export function MatchViewPage() {
             {citations_tab.medals.length > 0 && (
               <Card>
                 <CardContent className="py-4">
-                  <p className="mb-3 text-sm font-semibold text-gray-700">Médailles contextuelles</p>
+                  <p className="mb-3 text-sm font-semibold text-foreground">Médailles contextuelles</p>
                   <div className="flex flex-wrap gap-2">
                     {citations_tab.medals.map((m) => (
                       <Badge key={m.medal_name_id} variant="secondary">
@@ -332,7 +332,7 @@ export function MatchViewPage() {
               </Card>
             )}
             {citations_tab.commendations.length === 0 && citations_tab.medals.length === 0 && (
-              <p className="text-sm text-gray-500">Aucune citation pour ce match.</p>
+              <p className="text-sm text-muted-foreground">Aucune citation pour ce match.</p>
             )}
           </div>
         )}

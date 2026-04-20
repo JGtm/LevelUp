@@ -65,10 +65,10 @@ export function UploadButton({ playerSlug }: Props) {
         className={[
           'flex cursor-pointer flex-col items-center justify-center gap-1.5 rounded-lg border-2 border-dashed px-6 py-4 text-sm transition-colors select-none',
           isPending
-            ? 'cursor-not-allowed border-gray-300 text-gray-400 dark:border-gray-600 dark:text-gray-500'
+            ? 'cursor-not-allowed border-input text-muted-foreground'
             : isDragging
-              ? 'border-blue-500 bg-blue-50 text-blue-700 dark:border-blue-400 dark:bg-blue-950/30 dark:text-blue-300'
-              : 'border-gray-300 text-gray-500 hover:border-gray-400 hover:text-gray-700 dark:border-gray-600 dark:text-gray-400 dark:hover:border-gray-400 dark:hover:text-gray-200',
+              ? 'border-primary bg-primary/10 text-primary'
+              : 'border-input text-muted-foreground hover:border-border hover:text-foreground',
         ].join(' ')}
       >
         {isPending ? (
@@ -91,7 +91,7 @@ export function UploadButton({ playerSlug }: Props) {
       </div>
 
       {isSuccess && data && (
-        <p className="text-xs text-green-600 dark:text-green-400">
+        <p className="text-xs text-success">
           {data.saved} fichier{data.saved !== 1 ? 's' : ''} importé{data.saved !== 1 ? 's' : ''}&nbsp;·&nbsp;
           {data.new_indexed} nouveau{data.new_indexed !== 1 ? 'x' : ''}&nbsp;·&nbsp;
           {data.associated} assoc.
@@ -100,7 +100,7 @@ export function UploadButton({ playerSlug }: Props) {
       )}
 
       {error != null && (
-        <p className="text-xs text-red-600 dark:text-red-400" role="alert">
+        <p className="text-xs text-destructive" role="alert">
           {(error as { message?: string }).message ?? 'Erreur lors de l\'import'}
         </p>
       )}

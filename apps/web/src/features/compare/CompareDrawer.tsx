@@ -28,9 +28,9 @@ function PlayerStatsCard({
   stats: NormalizedPlayerStats
   side: 'A' | 'B'
 }) {
-  const colorClass = side === 'A' ? 'text-blue-700' : 'text-orange-700'
+  const colorClass = side === 'A' ? 'text-compare-a' : 'text-compare-b'
   const bgClass =
-    side === 'A' ? 'bg-blue-50 border-blue-200' : 'bg-orange-50 border-orange-200'
+    side === 'A' ? 'bg-compare-a/10 border-compare-a' : 'bg-compare-b/10 border-compare-b'
 
   return (
     <Card className={`border ${bgClass}`}>
@@ -44,7 +44,7 @@ function PlayerStatsCard({
           )}
         </CardTitle>
       </CardHeader>
-      <CardContent className="space-y-1 text-xs text-gray-700">
+      <CardContent className="space-y-1 text-xs text-foreground">
         <p>
           <span className="font-medium">Matchs :</span> {stats.matches_played}
         </p>
@@ -75,11 +75,11 @@ function MetricRowComp({ row }: { row: CompareMetricRow }) {
 
   return (
     <tr className="border-b last:border-0 text-sm">
-      <td className={`py-2 pr-4 ${winnerA ? 'font-semibold text-blue-700' : 'text-gray-700'}`}>
+      <td className={`py-2 pr-4 ${winnerA ? 'font-semibold text-compare-a' : 'text-foreground'}`}>
         {String(row.value_a)}
       </td>
-      <td className="py-2 px-2 text-gray-500 text-center text-xs">{row.label_fr}</td>
-      <td className={`py-2 pl-4 text-right ${winnerB ? 'font-semibold text-orange-700' : 'text-gray-700'}`}>
+      <td className="py-2 px-2 text-muted-foreground text-center text-xs">{row.label_fr}</td>
+      <td className={`py-2 pl-4 text-right ${winnerB ? 'font-semibold text-compare-b' : 'text-foreground'}`}>
         {String(row.value_b)}
       </td>
     </tr>
@@ -110,13 +110,13 @@ export function CompareDrawer({ playerSlug, open, onClose }: CompareDrawerProps)
       />
 
       {/* Tiroir */}
-      <aside className="fixed right-0 top-0 h-full w-full max-w-lg bg-white shadow-xl z-50 flex flex-col overflow-y-auto">
+      <aside className="fixed right-0 top-0 h-full w-full max-w-lg bg-background shadow-xl z-50 flex flex-col overflow-y-auto">
         {/* En-tête */}
         <div className="flex items-center justify-between p-4 border-b">
           <h2 className="text-lg font-semibold">Comparer avec un joueur</h2>
           <button
             onClick={onClose}
-            className="text-gray-500 hover:text-gray-700 text-xl font-bold"
+            className="text-muted-foreground hover:text-foreground text-xl font-bold"
             aria-label="Fermer"
           >
             ✕
@@ -125,7 +125,7 @@ export function CompareDrawer({ playerSlug, open, onClose }: CompareDrawerProps)
 
         {/* Formulaire de recherche */}
         <form onSubmit={handleSubmit} className="p-4 border-b space-y-2">
-          <label className="block text-sm font-medium text-gray-700">
+          <label className="block text-sm font-medium text-foreground">
             Gamertag du joueur à comparer
           </label>
           <div className="flex gap-2">
@@ -139,7 +139,7 @@ export function CompareDrawer({ playerSlug, open, onClose }: CompareDrawerProps)
             <button
               type="submit"
               disabled={isPending || !gamertagB.trim()}
-              className="px-4 py-2 bg-blue-600 text-white rounded text-sm font-medium hover:bg-blue-700 disabled:opacity-50"
+              className="px-4 py-2 bg-primary text-primary-foreground rounded text-sm font-medium hover:bg-primary/90 disabled:opacity-50"
             >
               {isPending ? '…' : 'Comparer'}
             </button>
@@ -170,7 +170,7 @@ export function CompareDrawer({ playerSlug, open, onClose }: CompareDrawerProps)
               {/* C3.6 : avertissement privacy si joueur B est privé ou données partielles */}
               <PrivacyBanner warning={data.privacy_warning} />
               {data.player_b_partial && !data.privacy_warning && (
-                <p className="text-xs text-amber-600 bg-amber-50 rounded px-3 py-2">
+                <p className="text-xs text-warning bg-warning/10 rounded px-3 py-2">
                   Les données de {data.player_b.gamertag} sont partielles — certaines métriques peuvent être absentes.
                 </p>
               )}
@@ -190,12 +190,12 @@ export function CompareDrawer({ playerSlug, open, onClose }: CompareDrawerProps)
                   <CardContent className="p-0">
                     <table className="w-full">
                       <thead>
-                        <tr className="text-xs text-gray-500 border-b">
-                          <th className="py-2 pr-4 text-left font-medium text-blue-600">
+                        <tr className="text-xs text-muted-foreground border-b">
+                          <th className="py-2 pr-4 text-left font-medium text-compare-a">
                             {data.player_a.gamertag}
                           </th>
                           <th className="py-2 px-2 text-center font-medium">Métrique</th>
-                          <th className="py-2 pl-4 text-right font-medium text-orange-600">
+                          <th className="py-2 pl-4 text-right font-medium text-compare-b">
                             {data.player_b.gamertag}
                           </th>
                         </tr>
@@ -213,7 +213,7 @@ export function CompareDrawer({ playerSlug, open, onClose }: CompareDrawerProps)
           )}
 
           {!isPending && !isError && !data && (
-            <p className="text-sm text-gray-500 text-center py-8">
+            <p className="text-sm text-muted-foreground text-center py-8">
               Entrez un gamertag pour lancer la comparaison.
             </p>
           )}

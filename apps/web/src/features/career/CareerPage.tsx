@@ -42,10 +42,10 @@ export function CareerPage() {
       <div className="p-6">
         <Card>
           <CardContent className="py-8 text-center">
-            <p className="font-medium text-red-600">Erreur lors du chargement de la carrière.</p>
+            <p className="font-medium text-destructive">Erreur lors du chargement de la carrière.</p>
             <button
               onClick={() => refetch()}
-              className="mt-2 text-sm text-purple-600 underline"
+              className="mt-2 text-sm text-primary underline"
             >
               Réessayer
             </button>
@@ -110,22 +110,22 @@ export function CareerPage() {
           <CardContent className="space-y-1">
             {data.lusr ? (
               <>
-                <p className="text-sm font-medium text-gray-700">
+                <p className="text-sm font-medium text-foreground">
                   Actuel :{' '}
-                  <span className="text-purple-700 font-bold">
+                  <span className="text-primary font-bold">
                     {data.lusr.current_rating ?? '—'}
                   </span>
                   {data.lusr.current_tier_label && (
-                    <> · <span className="text-gray-600">{data.lusr.current_tier_label}</span></>
+                    <> · <span className="text-muted-foreground">{data.lusr.current_tier_label}</span></>
                   )}
                   {data.lusr.current_playlist_group && (
-                    <span className="ml-2 text-xs text-gray-400">
+                    <span className="ml-2 text-xs text-muted-foreground">
                       ({data.lusr.current_playlist_group})
                     </span>
                   )}
                 </p>
                 {data.lusr.trend_label && (
-                  <p className="text-xs text-gray-500">{data.lusr.trend_label}</p>
+                  <p className="text-xs text-muted-foreground">{data.lusr.trend_label}</p>
                 )}
               </>
             ) : (

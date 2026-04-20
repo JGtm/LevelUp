@@ -121,9 +121,9 @@ function MetricCard({
   return (
     <Card>
       <CardContent className="p-4">
-        <p className="text-xs font-semibold uppercase tracking-[0.16em] text-slate-500">{label}</p>
-        <p className="mt-2 text-2xl font-semibold text-slate-950">{value}</p>
-        {hint ? <p className="mt-1 text-xs text-slate-500">{hint}</p> : null}
+        <p className="text-xs font-semibold uppercase tracking-[0.16em] text-muted-foreground">{label}</p>
+        <p className="mt-2 text-2xl font-semibold text-foreground">{value}</p>
+        {hint ? <p className="mt-1 text-xs text-muted-foreground">{hint}</p> : null}
       </CardContent>
     </Card>
   )
@@ -149,8 +149,8 @@ function JsonViewer({
 
   return (
     <div className="space-y-2">
-      <p className="text-xs font-semibold uppercase tracking-[0.16em] text-slate-500">{title}</p>
-      <pre className="max-h-[420px] overflow-auto rounded-xl bg-slate-950 p-4 text-xs leading-6 text-slate-100">
+      <p className="text-xs font-semibold uppercase tracking-[0.16em] text-muted-foreground">{title}</p>
+      <pre className="max-h-[420px] overflow-auto rounded-xl bg-card p-4 text-xs leading-6 text-muted-foreground">
         {content}
       </pre>
     </div>
@@ -169,17 +169,17 @@ function FileStatusRow({
   text: LabText
 }) {
   return (
-    <div className="rounded-xl border border-slate-200 bg-slate-50 p-4">
+    <div className="rounded-xl border border-border bg-muted p-4">
       <div className="flex items-start justify-between gap-3">
         <div>
-          <p className="text-sm font-semibold text-slate-900">{label}</p>
-          <p className="mt-1 break-all text-xs text-slate-500">{file.path}</p>
+          <p className="text-sm font-semibold text-foreground">{label}</p>
+          <p className="mt-1 break-all text-xs text-muted-foreground">{file.path}</p>
         </div>
         <Badge variant={file.exists ? 'success' : 'destructive'}>
           {file.exists ? text.common.present : text.common.absent}
         </Badge>
       </div>
-      <div className="mt-3 flex flex-wrap gap-4 text-xs text-slate-500">
+      <div className="mt-3 flex flex-wrap gap-4 text-xs text-muted-foreground">
         <span>{text.common.size}: {formatBytes(file.size_bytes, locale, text)}</span>
         <span>{text.common.modified}: {formatDate(file.modified_at ?? null, locale, text)}</span>
       </div>
@@ -209,7 +209,7 @@ function RouteList({
         ) : (
           <div className="space-y-3">
             {items.map((item) => (
-              <div key={item.path} className="rounded-xl border border-slate-200 p-3">
+              <div key={item.path} className="rounded-xl border border-border p-3">
                 <div className="flex flex-wrap items-center gap-2">
                   {item.methods.map((method) => (
                     <Badge key={`${item.path}-${method}`} variant="outline">
@@ -217,7 +217,7 @@ function RouteList({
                     </Badge>
                   ))}
                 </div>
-                <p className="mt-2 break-all text-sm text-slate-700">{item.path}</p>
+                <p className="mt-2 break-all text-sm text-foreground">{item.path}</p>
               </div>
             ))}
           </div>
@@ -237,16 +237,16 @@ function GuardRow({
   text: LabText
 }) {
   return (
-    <div className="rounded-xl border border-slate-200 p-4">
+    <div className="rounded-xl border border-border p-4">
       <div className="flex items-center justify-between gap-3">
-        <p className="text-sm font-semibold text-slate-900">{label}</p>
+        <p className="text-sm font-semibold text-foreground">{label}</p>
         <Badge variant={result.passed ? 'success' : 'destructive'}>
           {result.passed ? text.common.statuses.ok : text.common.statuses.ko}
         </Badge>
       </div>
-      <p className="mt-2 text-sm text-slate-600">{result.reason}</p>
+      <p className="mt-2 text-sm text-muted-foreground">{result.reason}</p>
       {result.details.length > 0 ? (
-        <div className="mt-2 space-y-1 text-xs text-slate-500">
+        <div className="mt-2 space-y-1 text-xs text-muted-foreground">
           {result.details.slice(0, 5).map((detail) => (
             <p key={detail}>{detail}</p>
           ))}
@@ -271,8 +271,8 @@ function TabButton({
       className={[
         'rounded-full px-4 py-2 text-sm font-medium transition-colors',
         active
-          ? 'bg-violet-600 text-white'
-          : 'bg-white text-slate-600 hover:bg-slate-100 hover:text-slate-900',
+          ? 'bg-primary text-primary-foreground'
+          : 'bg-background text-muted-foreground hover:bg-muted hover:text-foreground',
       ].join(' ')}
     >
       {label}
@@ -311,16 +311,16 @@ function SelectableAssetList({
             className={[
               'w-full rounded-xl border p-3 text-left transition-colors',
               active
-                ? 'border-violet-300 bg-violet-50'
-                : 'border-slate-200 hover:border-slate-300 hover:bg-slate-50',
+                ? 'border-primary/30 bg-primary/10'
+                : 'border-border hover:border-border hover:bg-muted',
             ].join(' ')}
           >
             <div className="flex items-center justify-between gap-3">
-              <p className="text-sm font-semibold text-slate-900">{item.name || item.asset_id}</p>
+              <p className="text-sm font-semibold text-foreground">{item.name || item.asset_id}</p>
               <Badge variant="outline">{item.asset_type}</Badge>
             </div>
-            <p className="mt-1 text-xs text-slate-500">{item.asset_id}</p>
-            <p className="mt-1 text-xs text-slate-500">{text.common.version}: {item.version_id}</p>
+            <p className="mt-1 text-xs text-muted-foreground">{item.asset_id}</p>
+            <p className="mt-1 text-xs text-muted-foreground">{text.common.version}: {item.version_id}</p>
           </button>
         )
       })}
@@ -359,16 +359,16 @@ function SelectableMedalList({
             className={[
               'w-full rounded-xl border p-3 text-left transition-colors',
               active
-                ? 'border-violet-300 bg-violet-50'
-                : 'border-slate-200 hover:border-slate-300 hover:bg-slate-50',
+                ? 'border-primary/30 bg-primary/10'
+                : 'border-border hover:border-border hover:bg-muted',
             ].join(' ')}
           >
             <div className="flex items-center justify-between gap-3">
-              <p className="text-sm font-semibold text-slate-900">{item.name_id || `${text.common.id} ${item.medal_id}`}</p>
+              <p className="text-sm font-semibold text-foreground">{item.name_id || `${text.common.id} ${item.medal_id}`}</p>
               <Badge variant="outline">{item.medal_type || text.common.rawValue}</Badge>
             </div>
-            <p className="mt-1 text-xs text-slate-500">{text.common.id}: {item.medal_id}</p>
-            <p className="mt-1 text-xs text-slate-500">{text.common.sprite}: {item.sprite_index}</p>
+            <p className="mt-1 text-xs text-muted-foreground">{text.common.id}: {item.medal_id}</p>
+            <p className="mt-1 text-xs text-muted-foreground">{text.common.sprite}: {item.sprite_index}</p>
           </button>
         )
       })}
@@ -478,13 +478,13 @@ function ResourcesPanel({
                   className={[
                     'w-full rounded-xl border p-3 text-left transition-colors',
                     snapshot.resource_key === selectedSnapshotKey
-                      ? 'border-violet-300 bg-violet-50'
-                      : 'border-slate-200 hover:border-slate-300 hover:bg-slate-50',
+                      ? 'border-primary/30 bg-primary/10'
+                      : 'border-border hover:border-border hover:bg-muted',
                   ].join(' ')}
                 >
-                  <p className="text-sm font-semibold text-slate-900">{snapshot.resource_key}</p>
-                  <p className="mt-1 text-xs text-slate-500">{text.common.version}: {snapshot.version}</p>
-                  <p className="mt-1 text-xs text-slate-500">{text.resources.snapshotPayloadTitle}: {formatBytes(snapshot.payload_size, locale, text)}</p>
+                  <p className="text-sm font-semibold text-foreground">{snapshot.resource_key}</p>
+                  <p className="mt-1 text-xs text-muted-foreground">{text.common.version}: {snapshot.version}</p>
+                  <p className="mt-1 text-xs text-muted-foreground">{text.resources.snapshotPayloadTitle}: {formatBytes(snapshot.payload_size, locale, text)}</p>
                 </button>
               ))
             )}
@@ -492,13 +492,13 @@ function ResourcesPanel({
 
           <div className="space-y-4">
             {data.selected_snapshot ? (
-              <Card className="border-slate-200">
+              <Card className="border-border">
                 <CardContent className="space-y-4 p-4">
-                  <div className="grid gap-2 text-sm text-slate-600 md:grid-cols-2">
-                    <p>{text.common.version}: <span className="font-medium text-slate-900">{data.selected_snapshot.version}</span></p>
-                    <p>{text.common.fetchedAt}: <span className="font-medium text-slate-900">{formatDate(data.selected_snapshot.fetched_at, locale, text)}</span></p>
-                    <p className="break-all">{text.common.hash}: <span className="font-medium text-slate-900">{data.selected_snapshot.content_hash}</span></p>
-                    <p className="break-all">{text.common.source}: <span className="font-medium text-slate-900">{data.selected_snapshot.source_url || text.common.notAvailable}</span></p>
+                  <div className="grid gap-2 text-sm text-muted-foreground md:grid-cols-2">
+                    <p>{text.common.version}: <span className="font-medium text-foreground">{data.selected_snapshot.version}</span></p>
+                    <p>{text.common.fetchedAt}: <span className="font-medium text-foreground">{formatDate(data.selected_snapshot.fetched_at, locale, text)}</span></p>
+                    <p className="break-all">{text.common.hash}: <span className="font-medium text-foreground">{data.selected_snapshot.content_hash}</span></p>
+                    <p className="break-all">{text.common.source}: <span className="font-medium text-foreground">{data.selected_snapshot.source_url || text.common.notAvailable}</span></p>
                   </div>
                   <JsonViewer title={text.resources.snapshotPayloadTitle} content={data.selected_snapshot.payload} text={text} />
                 </CardContent>
@@ -524,7 +524,7 @@ function ResourcesPanel({
               value={assetSearch}
               onChange={(event) => setAssetSearch(event.target.value)}
               placeholder={text.resources.assetsPlaceholder}
-              className="w-full rounded-xl border border-slate-300 px-3 py-2 text-sm md:max-w-sm"
+              className="w-full rounded-xl border border-input px-3 py-2 text-sm md:max-w-sm"
             />
           </div>
         </CardHeader>
@@ -532,13 +532,13 @@ function ResourcesPanel({
           <SelectableAssetList items={data.assets.items} selectedID={selectedAssetID} onSelect={setSelectedAssetID} text={text} />
           <div className="space-y-4">
             {data.assets.selected ? (
-              <Card className="border-slate-200">
+              <Card className="border-border">
                 <CardContent className="space-y-4 p-4">
-                  <div className="grid gap-2 text-sm text-slate-600 md:grid-cols-2">
-                    <p>{text.common.asset}: <span className="font-medium text-slate-900">{data.assets.selected.asset_id}</span></p>
-                    <p>{text.common.type}: <span className="font-medium text-slate-900">{data.assets.selected.asset_type}</span></p>
-                    <p>{text.common.version}: <span className="font-medium text-slate-900">{data.assets.selected.version_id}</span></p>
-                    <p>{text.common.fetchedAt}: <span className="font-medium text-slate-900">{formatDate(data.assets.selected.fetched_at, locale, text)}</span></p>
+                  <div className="grid gap-2 text-sm text-muted-foreground md:grid-cols-2">
+                    <p>{text.common.asset}: <span className="font-medium text-foreground">{data.assets.selected.asset_id}</span></p>
+                    <p>{text.common.type}: <span className="font-medium text-foreground">{data.assets.selected.asset_type}</span></p>
+                    <p>{text.common.version}: <span className="font-medium text-foreground">{data.assets.selected.version_id}</span></p>
+                    <p>{text.common.fetchedAt}: <span className="font-medium text-foreground">{formatDate(data.assets.selected.fetched_at, locale, text)}</span></p>
                   </div>
                   <JsonViewer title={text.resources.rawAssetTitle} content={data.assets.selected.raw_json} text={text} />
                 </CardContent>
@@ -564,7 +564,7 @@ function ResourcesPanel({
               value={medalSearch}
               onChange={(event) => setMedalSearch(event.target.value)}
               placeholder={text.resources.medalsPlaceholder}
-              className="w-full rounded-xl border border-slate-300 px-3 py-2 text-sm md:max-w-sm"
+              className="w-full rounded-xl border border-input px-3 py-2 text-sm md:max-w-sm"
             />
           </div>
         </CardHeader>
@@ -572,13 +572,13 @@ function ResourcesPanel({
           <SelectableMedalList items={data.medals.items} selectedID={selectedMedalID} onSelect={setSelectedMedalID} text={text} />
           <div className="space-y-4">
             {data.medals.selected ? (
-              <Card className="border-slate-200">
+              <Card className="border-border">
                 <CardContent className="space-y-4 p-4">
-                  <div className="grid gap-2 text-sm text-slate-600 md:grid-cols-2">
-                    <p>{text.common.id}: <span className="font-medium text-slate-900">{data.medals.selected.medal_id}</span></p>
-                    <p>{text.common.type}: <span className="font-medium text-slate-900">{data.medals.selected.medal_type || text.common.notAvailable}</span></p>
-                    <p>{text.common.score}: <span className="font-medium text-slate-900">{formatNumber(data.medals.selected.personal_score, locale, text)}</span></p>
-                    <p>{text.common.fetchedAt}: <span className="font-medium text-slate-900">{formatDate(data.medals.selected.fetched_at, locale, text)}</span></p>
+                  <div className="grid gap-2 text-sm text-muted-foreground md:grid-cols-2">
+                    <p>{text.common.id}: <span className="font-medium text-foreground">{data.medals.selected.medal_id}</span></p>
+                    <p>{text.common.type}: <span className="font-medium text-foreground">{data.medals.selected.medal_type || text.common.notAvailable}</span></p>
+                    <p>{text.common.score}: <span className="font-medium text-foreground">{formatNumber(data.medals.selected.personal_score, locale, text)}</span></p>
+                    <p>{text.common.fetchedAt}: <span className="font-medium text-foreground">{formatDate(data.medals.selected.fetched_at, locale, text)}</span></p>
                   </div>
                   <JsonViewer title={text.resources.rawMedalTitle} content={data.medals.selected.raw_json} text={text} />
                 </CardContent>
@@ -673,18 +673,18 @@ function ContractsPanel({
           ) : (
             <div className="space-y-3">
               {data.method_mismatches.map((item) => (
-                <div key={item.fastapi_path} className="rounded-xl border border-slate-200 p-4">
+                <div key={item.fastapi_path} className="rounded-xl border border-border p-4">
                   <div className="flex flex-wrap items-center gap-2">
                     <StatusBadge status="DIVERGENCES" text={text} />
-                    <p className="text-sm font-semibold text-slate-900">{item.fastapi_path}</p>
+                    <p className="text-sm font-semibold text-foreground">{item.fastapi_path}</p>
                   </div>
-                  <div className="mt-3 grid gap-3 text-sm text-slate-600 md:grid-cols-2">
+                  <div className="mt-3 grid gap-3 text-sm text-muted-foreground md:grid-cols-2">
                     <div>
-                      <p className="font-medium text-slate-900">{text.contracts.fastapiLabel}</p>
+                      <p className="font-medium text-foreground">{text.contracts.fastapiLabel}</p>
                       <p>{item.fastapi_methods.join(', ')}</p>
                     </div>
                     <div>
-                      <p className="font-medium text-slate-900">{text.contracts.goLabel}</p>
+                      <p className="font-medium text-foreground">{text.contracts.goLabel}</p>
                       <p>{item.go_methods.join(', ')}</p>
                     </div>
                   </div>
@@ -763,16 +763,16 @@ function DiagnosticsPanel({
             {data.parity_report ? (
               <div className="space-y-3">
                 {data.parity_report.results.map((item) => (
-                  <div key={item.name} className="rounded-xl border border-slate-200 p-3">
+                  <div key={item.name} className="rounded-xl border border-border p-3">
                     <div className="flex items-center justify-between gap-3">
-                      <p className="text-sm font-semibold text-slate-900">{item.name}</p>
+                      <p className="text-sm font-semibold text-foreground">{item.name}</p>
                       <StatusBadge status={item.status} text={text} />
                     </div>
-                    <div className="mt-2 flex flex-wrap gap-4 text-xs text-slate-500">
+                    <div className="mt-2 flex flex-wrap gap-4 text-xs text-muted-foreground">
                       <span>{text.common.http}: {item.http_status ?? text.common.notAvailable}</span>
                       <span>{text.common.mode}: {item.mode || text.common.defaultMode}</span>
                     </div>
-                    {item.error ? <p className="mt-2 text-xs text-red-600">{item.error}</p> : null}
+                    {item.error ? <p className="mt-2 text-xs text-destructive">{item.error}</p> : null}
                   </div>
                 ))}
               </div>
@@ -872,6 +872,7 @@ export function LabPage() {
         <PageHeader
           title={text.page.title}
           subtitle={text.page.accessSubtitle}
+          inset={false}
         />
         <div className="mt-6">
           <EmptyStateCard
@@ -888,12 +889,13 @@ export function LabPage() {
       <PageHeader
         title={text.page.title}
         subtitle={text.page.subtitle}
+        inset={false}
         actions={
           <Badge variant="outline">{text.page.currentTitleBadge}: {currentTitleSlug}</Badge>
         }
       />
 
-      <div className="flex flex-wrap gap-2 rounded-full bg-slate-100 p-1">
+      <div className="flex flex-wrap gap-2 rounded-full bg-muted p-1">
         {TAB_VALUES.map((tab) => (
           <TabButton
             key={tab}

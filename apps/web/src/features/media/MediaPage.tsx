@@ -162,10 +162,10 @@ export function MediaPage() {
       {isLoading ? (
         <div className="flex min-h-64 items-center justify-center"><Spinner size="lg" /></div>
       ) : isError ? (
-        <div className="p-8 text-center text-red-600">Erreur : {String(error)}</div>
+        <div className="p-8 text-center text-destructive">Erreur : {String(error)}</div>
       ) : mediaItems.length === 0 ? (
         <Card>
-          <CardContent className="p-12 text-center text-gray-500">
+          <CardContent className="p-12 text-center text-muted-foreground">
             Aucun média disponible pour ces filtres.
           </CardContent>
         </Card>
@@ -197,7 +197,7 @@ export function MediaPage() {
               >
                 ← Précédent
               </button>
-              <span className="text-sm text-gray-500">Page {page} / {totalPages}</span>
+              <span className="text-sm text-muted-foreground">Page {page} / {totalPages}</span>
               <button
                 className="rounded border px-3 py-1 text-sm disabled:opacity-40"
                 disabled={page >= totalPages}

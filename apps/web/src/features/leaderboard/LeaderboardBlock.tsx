@@ -25,13 +25,13 @@ interface LeaderboardBlockProps {
 function LeaderboardRow({ entry, onHover }: { entry: LeaderboardEntry; onHover?: (gamertag: string) => void }) {
   return (
     <tr
-      className="border-b last:border-0 text-sm hover:bg-gray-50 transition-colors"
+      className="border-b last:border-0 text-sm hover:bg-muted transition-colors"
       onMouseEnter={() => onHover?.(entry.gamertag)}
     >
-      <td className="py-2 pr-4 text-center font-mono text-gray-500">
+      <td className="py-2 pr-4 text-center font-mono text-muted-foreground">
         {entry.rank}
       </td>
-      <td className="py-2 pr-4 font-medium text-gray-800">
+      <td className="py-2 pr-4 font-medium text-foreground">
         {entry.gamertag}
         {entry.is_local && (
           <Badge variant="secondary" className="ml-2 text-xs">
@@ -40,12 +40,12 @@ function LeaderboardRow({ entry, onHover }: { entry: LeaderboardEntry; onHover?:
         )}
       </td>
       <td className="py-2 pr-4 text-center">
-        <span className="inline-block px-2 py-0.5 rounded bg-indigo-100 text-indigo-800 text-xs font-semibold">
+        <span className="inline-block px-2 py-0.5 rounded bg-accent text-accent-foreground text-xs font-semibold">
           {entry.tier}
           {entry.sub_tier > 0 ? ` ${entry.sub_tier}` : ''}
         </span>
       </td>
-      <td className="py-2 text-right font-mono text-gray-700">
+      <td className="py-2 text-right font-mono text-foreground">
         {entry.csr_value.toLocaleString('fr-FR')}
       </td>
     </tr>
@@ -91,7 +91,7 @@ export function LeaderboardBlock({
           </div>
         </div>
         {data && (
-          <p className="text-xs text-gray-500 mt-1">
+          <p className="text-xs text-muted-foreground mt-1">
             {data.total} joueur{data.total > 1 ? 's' : ''} — Saison :{' '}
             <span className="font-medium">{data.season_id || '—'}</span>
           </p>
@@ -126,7 +126,7 @@ export function LeaderboardBlock({
         {data && data.entries.length > 0 && (
           <table className="w-full">
             <thead>
-              <tr className="text-xs text-gray-500 border-b bg-gray-50">
+              <tr className="text-xs text-muted-foreground border-b bg-muted">
                 <th className="py-2 pr-4 text-center font-medium w-12">#</th>
                 <th className="py-2 pr-4 text-left font-medium">Joueur</th>
                 <th className="py-2 pr-4 text-center font-medium">Rang</th>

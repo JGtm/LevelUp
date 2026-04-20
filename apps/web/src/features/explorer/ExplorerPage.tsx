@@ -127,7 +127,7 @@ export function ExplorerPage() {
               <Card>
                 <CardContent className="py-4 space-y-2">
                   <div className="flex items-center justify-between">
-                    <p className="font-semibold text-gray-900">{playerQuery.data.target.gamertag || targetGamertag}</p>
+                    <p className="font-semibold text-foreground">{playerQuery.data.target.gamertag || targetGamertag}</p>
                     {/* C4.1 : CTA Comparer avec prefetch onMouseEnter */}
                     <Button
                       size="sm"
@@ -140,28 +140,28 @@ export function ExplorerPage() {
                   </div>
                   <div className="grid grid-cols-3 gap-4 text-sm">
                     <div>
-                      <p className="text-xs text-gray-500">Matchs ensemble</p>
-                      <p className="font-bold text-purple-700">{playerQuery.data.summary.matches_together}</p>
+                      <p className="text-xs text-muted-foreground">Matchs ensemble</p>
+                      <p className="font-bold text-primary">{playerQuery.data.summary.matches_together}</p>
                     </div>
                     <div>
-                      <p className="text-xs text-gray-500">Victoires</p>
-                      <p className="font-bold text-green-600">{playerQuery.data.summary.wins_together}</p>
+                      <p className="text-xs text-muted-foreground">Victoires</p>
+                      <p className="font-bold text-success">{playerQuery.data.summary.wins_together}</p>
                     </div>
                     <div>
-                      <p className="text-xs text-gray-500">Défaites</p>
-                      <p className="font-bold text-red-500">{playerQuery.data.summary.losses_together}</p>
+                      <p className="text-xs text-muted-foreground">Défaites</p>
+                      <p className="font-bold text-destructive">{playerQuery.data.summary.losses_together}</p>
                     </div>
                   </div>
 
                   {/* Matchs communs */}
                   <div className="mt-4">
-                    <p className="mb-2 text-xs font-medium text-gray-500 uppercase tracking-wide">
+                    <p className="mb-2 text-xs font-medium text-muted-foreground uppercase tracking-wide">
                       Matchs communs récents
                     </p>
                     {playerQuery.data.common_matches.length > 0 ? (
                       <div className="space-y-1">
                         {playerQuery.data.common_matches.slice(0, 5).map((m) => (
-                          <div key={m.match_id} className="flex items-center justify-between rounded-md bg-gray-50 px-3 py-1.5 text-sm">
+                          <div key={m.match_id} className="flex items-center justify-between rounded-md bg-muted px-3 py-1.5 text-sm">
                             <span>{m.map_ui} · {m.mode_ui}</span>
                             <Badge
                               variant={
@@ -195,20 +195,20 @@ export function ExplorerPage() {
               <CardContent className="py-3">
                 <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 md:grid-cols-6">
                   <div>
-                    <label className="block text-xs text-gray-500 mb-1">Date</label>
+                    <label className="block text-xs text-muted-foreground mb-1">Date</label>
                     <input
                       type="date"
                       value={dateFilter}
                       onChange={(e) => setDateFilter(e.target.value)}
-                      className="w-full rounded border border-gray-300 px-2 py-1 text-sm"
+                      className="w-full rounded border border-input px-2 py-1 text-sm"
                     />
                   </div>
                   <div>
-                    <label className="block text-xs text-gray-500 mb-1">Contexte</label>
+                    <label className="block text-xs text-muted-foreground mb-1">Contexte</label>
                     <select
                       value={squadScope}
                       onChange={(e) => setSquadScope(e.target.value as '' | 'all' | 'solo' | 'squad')}
-                      className="w-full rounded border border-gray-300 px-2 py-1 text-sm"
+                      className="w-full rounded border border-input px-2 py-1 text-sm"
                     >
                       <option value="">Tous</option>
                       <option value="solo">Solo</option>
@@ -216,50 +216,50 @@ export function ExplorerPage() {
                     </select>
                   </div>
                   <div>
-                    <label className="block text-xs text-gray-500 mb-1">Type d'expérience</label>
+                    <label className="block text-xs text-muted-foreground mb-1">Type d'expérience</label>
                     <input
                       type="text"
                       placeholder="PvP, PvE…"
                       value={expType}
                       onChange={(e) => setExpType(e.target.value)}
-                      className="w-full rounded border border-gray-300 px-2 py-1 text-sm"
+                      className="w-full rounded border border-input px-2 py-1 text-sm"
                     />
                   </div>
                   <div>
-                    <label className="block text-xs text-gray-500 mb-1">Playlist</label>
+                    <label className="block text-xs text-muted-foreground mb-1">Playlist</label>
                     <input
                       type="text"
                       placeholder="Filtrer playlist…"
                       value={playlistFilter}
                       onChange={(e) => setPlaylistFilter(e.target.value)}
-                      className="w-full rounded border border-gray-300 px-2 py-1 text-sm"
+                      className="w-full rounded border border-input px-2 py-1 text-sm"
                     />
                   </div>
                   <div>
-                    <label className="block text-xs text-gray-500 mb-1">Mode</label>
+                    <label className="block text-xs text-muted-foreground mb-1">Mode</label>
                     <input
                       type="text"
                       placeholder="Filtrer mode…"
                       value={modeFilter}
                       onChange={(e) => setModeFilter(e.target.value)}
-                      className="w-full rounded border border-gray-300 px-2 py-1 text-sm"
+                      className="w-full rounded border border-input px-2 py-1 text-sm"
                     />
                   </div>
                   <div>
-                    <label className="block text-xs text-gray-500 mb-1">Carte</label>
+                    <label className="block text-xs text-muted-foreground mb-1">Carte</label>
                     <input
                       type="text"
                       placeholder="Filtrer carte…"
                       value={mapFilter}
                       onChange={(e) => setMapFilter(e.target.value)}
-                      className="w-full rounded border border-gray-300 px-2 py-1 text-sm"
+                      className="w-full rounded border border-input px-2 py-1 text-sm"
                     />
                   </div>
                 </div>
                 {(dateFilter || squadScope || expType || playlistFilter || modeFilter || mapFilter) && (
                   <div className="mt-2 flex justify-end">
                     <button
-                      className="text-xs text-purple-600 hover:underline"
+                      className="text-xs text-primary hover:underline"
                       onClick={() => { setDateFilter(''); setSquadScope(''); setExpType(''); setPlaylistFilter(''); setModeFilter(''); setMapFilter('') }}
                     >
                       Réinitialiser les filtres
@@ -276,21 +276,21 @@ export function ExplorerPage() {
                 <Spinner label="Chargement des matchs…" />
               </div>
             ) : matchesQuery.isError ? (
-              <div className="rounded-lg border border-red-100 bg-red-50 p-6 text-center">
-                <p className="text-red-600">Impossible de charger les matchs.</p>
-                <button onClick={() => matchesQuery.refetch()} className="mt-2 text-sm text-purple-600 underline">
+              <div className="rounded-lg border border-destructive/30 bg-destructive/10 p-6 text-center">
+                <p className="text-destructive">Impossible de charger les matchs.</p>
+                <button onClick={() => matchesQuery.refetch()} className="mt-2 text-sm text-primary underline">
                   Réessayer
                 </button>
               </div>
             ) : matchesQuery.data ? (
               <>
-                <p className="text-sm text-gray-500">
+                <p className="text-sm text-muted-foreground">
                   {matchesQuery.data.summary?.total_matches?.toLocaleString('fr-FR') ?? '?'} matchs trouvés
                 </p>
-                <div className="overflow-x-auto rounded-lg border border-gray-200 bg-white">
+                <div className="overflow-x-auto rounded-lg border border-border bg-background">
                   <table className="w-full text-sm">
                     <thead>
-                      <tr className="border-b border-gray-100 bg-gray-50 text-xs font-medium text-gray-500">
+                      <tr className="border-b border-border bg-muted text-xs font-medium text-muted-foreground">
                         <th className="px-4 py-2.5 text-left">Date</th>
                         <th className="px-4 py-2.5 text-left">Carte / Mode</th>
                         <th className="px-4 py-2.5 text-left">Résultat</th>
@@ -298,15 +298,15 @@ export function ExplorerPage() {
                         <th className="px-4 py-2.5 text-left">Type</th>
                       </tr>
                     </thead>
-                    <tbody className="divide-y divide-gray-50">
+                    <tbody className="divide-y divide-border">
                       {matchesQuery.data.table.items.map((row) => (
-                        <tr key={row.match_id} className="hover:bg-purple-50/30 transition-colors">
-                          <td className="px-4 py-2 text-gray-400">
+                        <tr key={row.match_id} className="hover:bg-primary/10 transition-colors">
+                          <td className="px-4 py-2 text-muted-foreground">
                             {new Date(row.start_time).toLocaleDateString('fr-FR')}
                           </td>
                           <td className="px-4 py-2">
-                            <span className="font-medium text-gray-800">{row.map_ui}</span>
-                            <span className="ml-1 text-xs text-gray-400">· {row.mode_ui}</span>
+                            <span className="font-medium text-foreground">{row.map_ui}</span>
+                            <span className="ml-1 text-xs text-muted-foreground">· {row.mode_ui}</span>
                           </td>
                           <td className="px-4 py-2">
                             <Badge
@@ -318,13 +318,13 @@ export function ExplorerPage() {
                               {row.outcome_label}
                             </Badge>
                           </td>
-                          <td className="px-4 py-2 text-gray-700">{row.score_label}</td>
-                          <td className="px-4 py-2 text-gray-500">{row.experience_type_label}</td>
+                          <td className="px-4 py-2 text-foreground">{row.score_label}</td>
+                          <td className="px-4 py-2 text-muted-foreground">{row.experience_type_label}</td>
                         </tr>
                       ))}
                       {matchesQuery.data.table.items.length === 0 && (
                         <tr>
-                          <td colSpan={5} className="px-4 py-8 text-center text-gray-400">
+                          <td colSpan={5} className="px-4 py-8 text-center text-muted-foreground">
                             Aucun match trouvé.
                           </td>
                         </tr>

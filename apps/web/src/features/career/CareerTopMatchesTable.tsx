@@ -26,10 +26,10 @@ const BADGE_STYLE: Record<string, { label: string; color: string }> = {
 function MatchBadge({ type }: { type: string | null }) {
   if (!type) return null
   const style = BADGE_STYLE[type]
-  if (!style) return <span className="text-xs text-gray-500">{type}</span>
+  if (!style) return <span className="text-xs text-muted-foreground">{type}</span>
   return (
     <span
-      className="rounded px-1.5 py-0.5 text-xs font-semibold text-white"
+      className="rounded px-1.5 py-0.5 text-xs font-semibold text-primary-foreground"
       style={{ backgroundColor: style.color }}
     >
       {style.label}
@@ -66,7 +66,7 @@ export function CareerTopMatchesTable({ items, variant, title, playerSlug: slugP
         <div className="overflow-x-auto">
           <table className="w-full text-sm">
             <thead>
-              <tr className="border-b border-gray-700 text-xs font-medium text-gray-400">
+              <tr className="border-b border-border text-xs font-medium text-muted-foreground">
                 <th className="pb-2 text-left">#</th>
                 <th className="pb-2 text-left">Date</th>
                 <th className="pb-2 text-left">Carte / Mode</th>
@@ -79,23 +79,23 @@ export function CareerTopMatchesTable({ items, variant, title, playerSlug: slugP
                 <th className="pb-2 text-left pl-3">Badge</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-gray-800">
+            <tbody className="divide-y divide-border">
               {filtered.map((m, idx) => (
                 <tr
                   key={m.match_id}
-                  className="cursor-pointer transition-colors hover:bg-white/5"
+                  className="cursor-pointer transition-colors hover:bg-accent"
                   onClick={() => goToMatch(m.match_id)}
                 >
-                  <td className="py-1.5 text-gray-500 font-mono text-xs">{idx + 1}</td>
-                  <td className="py-1.5 text-gray-400 whitespace-nowrap">
+                  <td className="py-1.5 text-muted-foreground font-mono text-xs">{idx + 1}</td>
+                  <td className="py-1.5 text-muted-foreground whitespace-nowrap">
                     {m.start_time
                       ? new Date(m.start_time).toLocaleDateString('fr-FR')
                       : '—'}
                   </td>
                   <td className="py-1.5">
-                    <span className="font-medium text-white">{m.map_ui ?? '—'}</span>
+                    <span className="font-medium text-foreground">{m.map_ui ?? '—'}</span>
                     {m.mode_ui && (
-                      <span className="ml-1 text-xs text-gray-400">· {m.mode_ui}</span>
+                      <span className="ml-1 text-xs text-muted-foreground">· {m.mode_ui}</span>
                     )}
                   </td>
                   <td className="py-1.5 text-right text-[#33D6FF] font-mono">
@@ -104,13 +104,13 @@ export function CareerTopMatchesTable({ items, variant, title, playerSlug: slugP
                   <td className="py-1.5 text-right text-[#FF4B4B] font-mono">
                     {m.deaths ?? '—'}
                   </td>
-                  <td className="py-1.5 text-right text-gray-300 font-mono">
+                  <td className="py-1.5 text-right text-muted-foreground font-mono">
                     {m.assists ?? '—'}
                   </td>
-                  <td className="py-1.5 text-right font-mono text-gray-200">
+                  <td className="py-1.5 text-right font-mono text-foreground">
                     {m.kd_ratio != null ? m.kd_ratio.toFixed(1) : '—'}
                   </td>
-                  <td className="py-1.5 text-right text-gray-300">{m.score_label ?? '—'}</td>
+                  <td className="py-1.5 text-right text-muted-foreground">{m.score_label ?? '—'}</td>
                   <td className="py-1.5 text-right">
                     {m.outcome_label && (
                       <Badge

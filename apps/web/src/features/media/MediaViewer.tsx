@@ -48,8 +48,8 @@ function MediaLikeButton({
         onToggle()
       }}
       className={compact
-        ? `absolute right-1.5 top-1.5 flex h-7 min-w-7 items-center justify-center gap-1 rounded-full px-2 text-[11px] font-semibold transition-colors disabled:cursor-not-allowed disabled:opacity-60 ${isLiked ? 'bg-red-500 text-white' : 'bg-black/45 text-white/70 hover:bg-red-500/70 hover:text-white'}`
-        : `inline-flex items-center gap-2 rounded-full border px-3 py-1.5 text-xs font-medium transition-colors disabled:cursor-not-allowed disabled:opacity-60 ${isLiked ? 'border-red-400 bg-red-500 text-white' : 'border-white/20 bg-black/35 text-white/85 hover:border-red-300 hover:bg-red-500/70'}`}
+        ? `absolute right-1.5 top-1.5 flex h-7 min-w-7 items-center justify-center gap-1 rounded-full px-2 text-[11px] font-semibold transition-colors disabled:cursor-not-allowed disabled:opacity-60 ${isLiked ? 'bg-destructive text-white' : 'bg-black/45 text-white/70 hover:bg-destructive/70 hover:text-white'}`
+        : `inline-flex items-center gap-2 rounded-full border px-3 py-1.5 text-xs font-medium transition-colors disabled:cursor-not-allowed disabled:opacity-60 ${isLiked ? 'border-destructive bg-destructive text-white' : 'border-white/20 bg-black/35 text-white/85 hover:border-destructive hover:bg-destructive/70'}`}
       aria-label={isLiked ? 'Retirer le like' : 'Liker'}
     >
       <span aria-hidden="true">♥</span>
@@ -74,7 +74,7 @@ export function MediaThumbnailCard({ item, onToggleLike, onOpen, likeDisabled = 
 
   return (
     <article
-      className="group relative overflow-hidden rounded-lg border bg-gray-50 transition-shadow hover:shadow-md"
+      className="group relative overflow-hidden rounded-lg border bg-muted transition-shadow hover:shadow-md"
       onClick={onOpen}
       onMouseEnter={() => setIsPreviewing(true)}
       onMouseLeave={() => setIsPreviewing(false)}
@@ -89,7 +89,7 @@ export function MediaThumbnailCard({ item, onToggleLike, onOpen, likeDisabled = 
       role="button"
       tabIndex={0}
     >
-      <div className="relative aspect-video overflow-hidden bg-gray-200">
+      <div className="relative aspect-video overflow-hidden bg-muted">
         {showPreview ? (
           <video
             src={item.file_path}
@@ -108,7 +108,7 @@ export function MediaThumbnailCard({ item, onToggleLike, onOpen, likeDisabled = 
             className="h-full w-full object-cover transition-transform duration-200 group-hover:scale-105"
           />
         ) : (
-          <div className="flex h-full w-full items-center justify-center text-2xl text-gray-400">
+          <div className="flex h-full w-full items-center justify-center text-2xl text-muted-foreground">
             {item.kind === 'clip' ? '▶' : '🖼'}
           </div>
         )}
@@ -131,10 +131,10 @@ export function MediaThumbnailCard({ item, onToggleLike, onOpen, likeDisabled = 
           <Badge variant={item.kind === 'clip' ? 'default' : 'secondary'} className="text-xs">
             {item.kind}
           </Badge>
-          {item.map_name && <span className="truncate text-xs text-gray-400">{item.map_name}</span>}
+          {item.map_name && <span className="truncate text-xs text-muted-foreground">{item.map_name}</span>}
         </div>
-        <p className="truncate text-xs text-gray-600" title={item.basename}>{item.basename}</p>
-        {dateStr && <p className="text-xs text-gray-400">{dateStr}</p>}
+        <p className="truncate text-xs text-muted-foreground" title={item.basename}>{item.basename}</p>
+        {dateStr && <p className="text-xs text-muted-foreground">{dateStr}</p>}
       </div>
     </article>
   )
@@ -242,7 +242,7 @@ export function MediaLightbox({ items, onToggleLike, startIndex, onClose, likeDi
           {item.match_id && (
             <a
               href={`/players/${item.owner_gamertag ?? 'me'}/match/${item.match_id}`}
-              className="ml-auto whitespace-nowrap text-xs text-purple-400 underline hover:text-purple-300"
+              className="ml-auto whitespace-nowrap text-xs text-primary underline hover:text-primary/80"
               onClick={(event) => event.stopPropagation()}
             >
               Voir le match →

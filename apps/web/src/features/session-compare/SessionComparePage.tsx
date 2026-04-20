@@ -23,8 +23,8 @@ function SessionCard({
   entry: SessionCompareEntry | null
   side: 'A' | 'B'
 }) {
-  const color = side === 'A' ? 'text-blue-700' : 'text-orange-700'
-  const bg = side === 'A' ? 'bg-blue-50 border-blue-200' : 'bg-orange-50 border-orange-200'
+  const color = side === 'A' ? 'text-compare-a' : 'text-compare-b'
+  const bg = side === 'A' ? 'bg-compare-a/10 border-compare-a' : 'bg-compare-b/10 border-compare-b'
 
   return (
     <Card className={`border ${bg}`}>
@@ -33,7 +33,7 @@ function SessionCard({
           Session {side} {label && `— ${label}`}
         </CardTitle>
       </CardHeader>
-      <CardContent className="space-y-1 text-xs text-gray-700">
+      <CardContent className="space-y-1 text-xs text-foreground">
         {entry ? (
           <>
             <p>
@@ -60,7 +60,7 @@ function SessionCard({
             )}
           </>
         ) : (
-          <p className="text-gray-400 italic">Non sélectionnée</p>
+          <p className="text-muted-foreground italic">Non sélectionnée</p>
         )}
       </CardContent>
     </Card>
@@ -70,18 +70,18 @@ function SessionCard({
 function MetricRow({ row }: { row: SessionCompareMetricRow }) {
   const winnerColor =
     row.winner === 'a'
-      ? 'text-blue-700 font-semibold'
+      ? 'text-compare-a font-semibold'
       : row.winner === 'b'
-        ? 'text-orange-700 font-semibold'
-        : 'text-gray-700'
+        ? 'text-compare-b font-semibold'
+        : 'text-foreground'
 
   return (
     <tr className="border-b last:border-0 text-sm">
-      <td className="py-2 pr-4 text-gray-600">{row.label}</td>
-      <td className={`py-2 pr-4 text-right ${row.winner === 'a' ? 'text-blue-700 font-semibold' : 'text-gray-700'}`}>
+      <td className="py-2 pr-4 text-muted-foreground">{row.label}</td>
+      <td className={`py-2 pr-4 text-right ${row.winner === 'a' ? 'text-compare-a font-semibold' : 'text-foreground'}`}>
         {row.value_a}
       </td>
-      <td className={`py-2 pr-4 text-right ${row.winner === 'b' ? 'text-orange-700 font-semibold' : 'text-gray-700'}`}>
+      <td className={`py-2 pr-4 text-right ${row.winner === 'b' ? 'text-compare-b font-semibold' : 'text-foreground'}`}>
         {row.value_b}
       </td>
       <td className={`py-2 text-right text-xs ${winnerColor}`}>
@@ -124,8 +124,8 @@ export function SessionComparePage() {
       <div className="p-6">
         <Card>
           <CardContent className="py-8 text-center">
-            <p className="font-medium text-red-600">Erreur lors du chargement.</p>
-            <button onClick={() => refetch()} className="mt-2 text-sm text-purple-600 underline">
+            <p className="font-medium text-destructive">Erreur lors du chargement.</p>
+            <button onClick={() => refetch()} className="mt-2 text-sm text-primary underline">
               Réessayer
             </button>
           </CardContent>
@@ -169,9 +169,9 @@ export function SessionComparePage() {
             {/* Sélecteurs A / B */}
             <div className="grid gap-4 sm:grid-cols-2">
               <div>
-                <label className="mb-1 block text-xs font-medium text-gray-600">Session A</label>
+                <label className="mb-1 block text-xs font-medium text-muted-foreground">Session A</label>
                 <select
-                  className="w-full rounded-md border border-gray-200 px-3 py-2 text-sm"
+                  className="w-full rounded-md border border-border px-3 py-2 text-sm"
                   value={sessionA}
                   onChange={(e) => setSessionA(e.target.value)}
                 >
@@ -184,9 +184,9 @@ export function SessionComparePage() {
                 </select>
               </div>
               <div>
-                <label className="mb-1 block text-xs font-medium text-gray-600">Session B</label>
+                <label className="mb-1 block text-xs font-medium text-muted-foreground">Session B</label>
                 <select
-                  className="w-full rounded-md border border-gray-200 px-3 py-2 text-sm"
+                  className="w-full rounded-md border border-border px-3 py-2 text-sm"
                   value={sessionB}
                   onChange={(e) => setSessionB(e.target.value)}
                 >
@@ -279,10 +279,10 @@ export function SessionComparePage() {
                     {data.metrics.length > 0 ? (
                       <table className="w-full">
                         <thead>
-                          <tr className="border-b text-left text-xs text-gray-500">
+                          <tr className="border-b text-left text-xs text-muted-foreground">
                             <th className="py-2 pr-4">Métrique</th>
-                            <th className="py-2 pr-4 text-right text-blue-600">Session A</th>
-                            <th className="py-2 pr-4 text-right text-orange-600">Session B</th>
+                            <th className="py-2 pr-4 text-right text-compare-a">Session A</th>
+                            <th className="py-2 pr-4 text-right text-compare-b">Session B</th>
                             <th className="py-2 text-right">Delta</th>
                           </tr>
                         </thead>
@@ -325,7 +325,7 @@ export function SessionComparePage() {
                     {data.maps_table.length > 0 ? (
                       <table className="w-full text-sm">
                         <thead>
-                          <tr className="border-b text-left text-xs text-gray-500">
+                          <tr className="border-b text-left text-xs text-muted-foreground">
                             {Object.keys(data.maps_table[0]).map((k) => (
                               <th key={k} className="py-2 pr-4">{k}</th>
                             ))}
@@ -335,7 +335,7 @@ export function SessionComparePage() {
                           {data.maps_table.map((row, i) => (
                             <tr key={i} className="border-b last:border-0">
                               {Object.values(row).map((v, j) => (
-                                <td key={j} className="py-1.5 pr-4 text-gray-700">
+                                <td key={j} className="py-1.5 pr-4 text-foreground">
                                   {String(v ?? '-')}
                                 </td>
                               ))}
@@ -360,7 +360,7 @@ export function SessionComparePage() {
                     {data.modes_table.length > 0 ? (
                       <table className="w-full text-sm">
                         <thead>
-                          <tr className="border-b text-left text-xs text-gray-500">
+                          <tr className="border-b text-left text-xs text-muted-foreground">
                             {Object.keys(data.modes_table[0]).map((k) => (
                               <th key={k} className="py-2 pr-4">{k}</th>
                             ))}
@@ -370,7 +370,7 @@ export function SessionComparePage() {
                           {data.modes_table.map((row, i) => (
                             <tr key={i} className="border-b last:border-0">
                               {Object.values(row).map((v, j) => (
-                                <td key={j} className="py-1.5 pr-4 text-gray-700">
+                                <td key={j} className="py-1.5 pr-4 text-foreground">
                                   {String(v ?? '-')}
                                 </td>
                               ))}

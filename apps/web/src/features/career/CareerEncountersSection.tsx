@@ -20,10 +20,10 @@ function WinRate({ wins, total }: { wins: number; total: number }) {
     <span
       className={
         pct >= 55
-          ? 'text-green-600 font-medium'
+          ? 'text-success font-medium'
           : pct <= 40
-          ? 'text-red-500 font-medium'
-          : 'text-gray-700'
+          ? 'text-destructive font-medium'
+          : 'text-foreground'
       }
     >
       {pct} %
@@ -36,7 +36,7 @@ function EncounterTable({ items }: { items: CareerEncounter[] }) {
     <div className="overflow-x-auto">
       <table className="w-full text-sm">
         <thead>
-          <tr className="border-b border-gray-100 text-xs font-medium text-gray-500">
+          <tr className="border-b border-border text-xs font-medium text-muted-foreground">
             <th className="pb-2 text-left">Joueur</th>
             <th className="pb-2 text-right">Matchs</th>
             <th className="pb-2 text-right">Win%</th>
@@ -45,17 +45,17 @@ function EncounterTable({ items }: { items: CareerEncounter[] }) {
             <th className="pb-2 text-right">Dernière rencontre</th>
           </tr>
         </thead>
-        <tbody className="divide-y divide-gray-50">
+        <tbody className="divide-y divide-border">
           {items.map((enc) => (
-            <tr key={enc.encounter_key} className="hover:bg-gray-50">
-              <td className="py-1.5 font-medium text-gray-900">{enc.opponent_gamertag}</td>
-              <td className="py-1.5 text-right text-gray-600">{enc.count_matches}</td>
+            <tr key={enc.encounter_key} className="hover:bg-muted">
+              <td className="py-1.5 font-medium text-foreground">{enc.opponent_gamertag}</td>
+              <td className="py-1.5 text-right text-muted-foreground">{enc.count_matches}</td>
               <td className="py-1.5 text-right">
                 <WinRate wins={enc.wins} total={enc.count_matches} />
               </td>
-              <td className="py-1.5 text-right text-green-600">{enc.wins}</td>
-              <td className="py-1.5 text-right text-red-500">{enc.losses}</td>
-              <td className="py-1.5 text-right text-xs text-gray-400">
+              <td className="py-1.5 text-right text-success">{enc.wins}</td>
+              <td className="py-1.5 text-right text-destructive">{enc.losses}</td>
+              <td className="py-1.5 text-right text-xs text-muted-foreground">
                 {enc.last_seen_at
                   ? new Date(enc.last_seen_at).toLocaleDateString('fr-FR')
                   : '—'}
@@ -88,7 +88,7 @@ export function CareerEncountersSection({ playerSlug, preview }: Props) {
             <Spinner size="sm" label="Chargement…" />
           </div>
         ) : items.length === 0 ? (
-          <p className="py-6 text-center text-sm text-gray-400">Aucune rencontre enregistrée.</p>
+          <p className="py-6 text-center text-sm text-muted-foreground">Aucune rencontre enregistrée.</p>
         ) : (
           <>
             <EncounterTable items={items} />

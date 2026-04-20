@@ -16,7 +16,7 @@ export function CareerSummaryCard({ summary, heroProgress, projections }: Props)
   if (!summary) {
     return (
       <Card>
-        <CardContent className="py-8 text-center text-sm text-gray-400">
+        <CardContent className="py-8 text-center text-sm text-muted-foreground">
           Données de carrière non disponibles.
         </CardContent>
       </Card>
@@ -59,7 +59,7 @@ export function CareerSummaryCard({ summary, heroProgress, projections }: Props)
 
         {/* Projections */}
         {projections?.estimated_hero_date && (
-          <p className="mt-3 text-center text-xs text-gray-500">
+          <p className="mt-3 text-center text-xs text-muted-foreground">
             Héros estimé le{' '}
             {new Date(projections.estimated_hero_date).toLocaleDateString('fr-FR')}
           </p>
