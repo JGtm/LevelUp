@@ -200,6 +200,33 @@ const synthesisFixture = {
     total_assists: 10,
     win_rate: 0.6,
   },
+  highlights_preview: {
+    top_by_kills: [
+      { match_id: 'aaaabbbbcccc1111', kills: 12, deaths: 3, kda: 4.0, outcome: 2, perf_score: 220 },
+    ],
+    top_by_kda: [],
+    worst_by_deaths: [
+      { match_id: 'ddddeeeeffffg222', kills: 2, deaths: 15, kda: 0.13, outcome: 3, perf_score: 55 },
+    ],
+  },
+  rivalries_preview: {
+    top_teammates: [
+      { gamertag: 'AllyOne', shared_matches: 8, win_rate_together: 0.75 },
+    ],
+    top_enemies: [
+      { gamertag: 'RivalOne', shared_matches: 6, win_rate_together: 0.33 },
+    ],
+  },
+  breakdowns: {
+    top_maps: [
+      { map_name: 'Aquarius', match_count: 4, win_rate: 0.75 },
+      { map_name: 'Bazaar', match_count: 1, win_rate: 0.0 },
+    ],
+    top_modes: [
+      { mode_name: 'Slayer', match_count: 3, win_rate: 0.67 },
+      { mode_name: 'CTF', match_count: 2, win_rate: 0.5 },
+    ],
+  },
 }
 
 const mediaFixture = {
