@@ -19,12 +19,12 @@ interface KPIItemProps {
 }
 function KPIItem({ label, value, emphasis = false }: KPIItemProps) {
   return (
-    <div className="rounded-2xl border border-slate-200/80 bg-slate-50/85 px-4 py-3 text-left shadow-sm">
-      <span className="text-[11px] font-semibold uppercase tracking-[0.22em] text-slate-500">
+    <div className="rounded-2xl border border-border bg-muted/85 px-4 py-3 text-left shadow-sm">
+      <span className="text-[11px] font-semibold uppercase tracking-[0.22em] text-muted-foreground">
         {label}
       </span>
       <span
-        className={`mt-1 block text-2xl font-semibold tracking-tight tabular-nums ${emphasis ? 'text-violet-700' : 'text-slate-900'}`}
+        className={`mt-1 block text-2xl font-semibold tracking-tight tabular-nums ${emphasis ? 'text-primary' : 'text-foreground'}`}
       >
         {value}
       </span>
@@ -55,18 +55,7 @@ export function KPIBar() {
   const acc = kpis.avg_accuracy != null ? `${kpis.avg_accuracy.toFixed(1)} %` : '–'
 
   return (
-    <div className="rounded-[28px] border border-slate-200/80 bg-white/90 p-4 shadow-sm backdrop-blur">
-      <div className="mb-3 flex items-center justify-between px-1">
-        <div>
-          <p className="text-[11px] font-semibold uppercase tracking-[0.24em] text-slate-500">
-            Lecture rapide
-          </p>
-          <p className="mt-1 text-sm text-slate-600">
-            Les indicateurs qui doivent toujours rester visibles pendant la navigation.
-          </p>
-        </div>
-      </div>
-
+    <div className="rounded-[28px] border border-border bg-card/90 p-4 shadow-sm backdrop-blur">
       <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
         <KPIItem label="Matchs" value={kpis.total_matches.toLocaleString('fr-FR')} />
         <KPIItem label="Win rate" value={wr} emphasis />

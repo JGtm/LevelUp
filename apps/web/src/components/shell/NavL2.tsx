@@ -42,12 +42,12 @@ interface FilterChipProps {
 
 function FilterChip({ label, onRemove }: FilterChipProps) {
   return (
-    <span className="inline-flex shrink-0 items-center gap-1 rounded-full bg-purple-100 px-2.5 py-0.5 text-xs font-medium text-purple-800">
+    <span className="inline-flex shrink-0 items-center gap-1 rounded-full bg-primary/20 px-2.5 py-0.5 text-xs font-medium text-primary">
       {label}
       <button
         type="button"
         onClick={onRemove}
-        className="flex h-3.5 w-3.5 items-center justify-center rounded-full text-purple-500 transition-colors hover:bg-purple-200 hover:text-purple-800"
+        className="flex h-3.5 w-3.5 items-center justify-center rounded-full text-primary transition-colors hover:bg-primary/10 hover:text-primary"
         aria-label={`Retirer le filtre ${label}`}
       >
         ×
@@ -131,13 +131,13 @@ export function NavL2() {
   return (
     <>
       <div
-        className="shrink-0 border-b border-gray-200 bg-white"
+        className="shrink-0 border-b border-border bg-background"
         role="navigation"
         aria-label="Navigation analytique"
       >
         {/* ── Sous-onglets Stats ──────────────────────────────────────────── */}
         {section === 'stats' && (
-          <div className="flex items-center gap-0 border-b border-gray-100 px-4">
+          <div className="flex items-center gap-0 border-b border-border px-4">
             {STATS_TABS.map((tab) => {
               const resolved = resolvePath(tab.path)
               const isActive = pathname === resolved
@@ -148,8 +148,8 @@ export function NavL2() {
                   className={[
                     'border-b-2 px-4 py-2.5 text-sm font-medium transition-colors',
                     isActive
-                      ? 'border-purple-600 text-purple-700'
-                      : 'border-transparent text-gray-500 hover:border-gray-300 hover:text-gray-700',
+                      ? 'border-primary text-primary'
+                      : 'border-transparent text-muted-foreground hover:border-border hover:text-foreground',
                   ].join(' ')}
                   aria-current={isActive ? 'page' : undefined}
                 >
@@ -165,7 +165,7 @@ export function NavL2() {
           {/* Scope session + navigation */}
           {allSessions.length > 0 && (
             <>
-              <span className="shrink-0 max-w-[12rem] truncate text-xs font-medium text-gray-500">
+              <span className="shrink-0 max-w-[12rem] truncate text-xs font-medium text-muted-foreground">
                 {currentLabel}
               </span>
               <div className="flex shrink-0 items-center gap-0.5">
@@ -173,7 +173,7 @@ export function NavL2() {
                   type="button"
                   onClick={goPrev}
                   disabled={!canGoPrev}
-                  className="rounded px-1.5 py-0.5 text-xs text-gray-400 transition-colors hover:bg-gray-100 hover:text-gray-700 disabled:cursor-not-allowed disabled:opacity-30"
+                  className="rounded px-1.5 py-0.5 text-xs text-muted-foreground transition-colors hover:bg-muted hover:text-foreground disabled:cursor-not-allowed disabled:opacity-30"
                   title="Session précédente"
                 >
                   ◀ Précédente
@@ -182,7 +182,7 @@ export function NavL2() {
                   type="button"
                   onClick={goLatest}
                   disabled={!canGoLatest}
-                  className="rounded px-1.5 py-0.5 text-xs text-gray-400 transition-colors hover:bg-gray-100 hover:text-gray-700 disabled:cursor-not-allowed disabled:opacity-30"
+                  className="rounded px-1.5 py-0.5 text-xs text-muted-foreground transition-colors hover:bg-muted hover:text-foreground disabled:cursor-not-allowed disabled:opacity-30"
                   title="Session la plus récente"
                 >
                   ⚡ Dernière
@@ -193,7 +193,7 @@ export function NavL2() {
 
           {/* Séparateur visuel avant les chips */}
           {chips.length > 0 && (
-            <div className="mx-0.5 h-4 w-px shrink-0 bg-gray-200" aria-hidden="true" />
+            <div className="mx-0.5 h-4 w-px shrink-0 bg-border" aria-hidden="true" />
           )}
 
           {/* Chips filtres actifs */}
@@ -212,7 +212,7 @@ export function NavL2() {
           <button
             type="button"
             onClick={() => setDrawerOpen(true)}
-            className="shrink-0 rounded-md border border-gray-300 bg-white px-2.5 py-1 text-xs font-medium text-gray-600 transition-colors hover:border-gray-400 hover:bg-gray-50"
+            className="shrink-0 rounded-md border border-input bg-background px-2.5 py-1 text-xs font-medium text-muted-foreground transition-colors hover:border-border hover:bg-muted"
           >
             Filtres
           </button>
@@ -222,7 +222,7 @@ export function NavL2() {
             <button
               type="button"
               onClick={resetFilters}
-              className="shrink-0 text-xs text-gray-400 transition-colors hover:text-red-500"
+              className="shrink-0 text-xs text-muted-foreground transition-colors hover:text-destructive"
             >
               Réinitialiser
             </button>

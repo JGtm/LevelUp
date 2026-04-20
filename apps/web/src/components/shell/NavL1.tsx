@@ -87,18 +87,18 @@ export function NavL1() {
 
   return (
     <nav
-      className="flex h-12 shrink-0 items-center gap-0.5 border-b border-gray-200 bg-white px-3"
+      className="flex h-12 shrink-0 items-center gap-0.5 border-b border-border bg-sidebar px-3"
       role="navigation"
       aria-label="Navigation principale"
     >
       {/* ── Logo ────────────────────────────────────────────────────────── */}
       <Link
         to={playerSlug ? resolvedPath('/players/$playerSlug/home') : '/'}
-        className="mr-3 flex shrink-0 items-center gap-2 rounded-md px-2 py-1.5 transition-colors hover:bg-gray-50"
+        className="mr-3 flex shrink-0 items-center gap-2 rounded-md px-2 py-1.5 transition-colors hover:bg-sidebar-accent"
         aria-label="LevelUp — retour à l'accueil"
       >
-        <span className="text-lg leading-none">⚔️</span>
-        <span className="hidden text-sm font-bold text-gray-900 sm:block">LevelUp</span>
+        <img src="/logo.png" alt="LevelUp" className="h-7 w-7 shrink-0 object-contain" />
+        <span className="hidden text-sm font-bold text-sidebar-foreground sm:block">LevelUp</span>
       </Link>
 
       {/* ── Sections (seulement si un joueur est actif) ──────────────────── */}
@@ -112,8 +112,8 @@ export function NavL1() {
               className={[
                 'rounded-md px-3 py-1.5 text-sm font-medium transition-colors whitespace-nowrap',
                 isActive
-                  ? 'bg-purple-100 text-purple-800'
-                  : 'text-gray-600 hover:bg-gray-100 hover:text-gray-900',
+                  ? 'bg-sidebar-primary text-sidebar-primary-foreground'
+                  : 'text-sidebar-foreground/70 hover:bg-sidebar-accent hover:text-sidebar-accent-foreground',
               ].join(' ')}
               aria-current={isActive ? 'page' : undefined}
             >
@@ -130,7 +130,7 @@ export function NavL1() {
         <select
           value={playerSlug}
           onChange={(e) => handlePlayerChange(e.target.value)}
-          className="rounded-md border border-gray-200 bg-white px-2 py-1 text-sm text-gray-700 transition-colors focus:border-purple-400 focus:outline-none focus:ring-2 focus:ring-purple-200"
+          className="rounded-md border border-sidebar-border bg-sidebar-accent px-2 py-1 text-sm text-sidebar-foreground transition-colors focus:border-ring focus:outline-none focus:ring-2 focus:ring-ring/30"
           aria-label="Joueur actif"
         >
           {availablePlayers.map((p) => (
@@ -141,7 +141,7 @@ export function NavL1() {
         </select>
       ) : (
         currentPlayer && (
-          <span className="shrink-0 text-sm font-medium text-gray-600">
+          <span className="shrink-0 text-sm font-medium text-sidebar-foreground/70">
             {currentPlayer.gamertag}
           </span>
         )
@@ -150,7 +150,7 @@ export function NavL1() {
       {/* ── Lien Paramètres ─────────────────────────────────────────────── */}
       <Link
         to="/settings"
-        className="ml-1 shrink-0 rounded-md p-1.5 text-gray-400 transition-colors hover:bg-gray-100 hover:text-gray-600 [&.active]:text-gray-700"
+        className="ml-1 shrink-0 rounded-md p-1.5 text-muted-foreground transition-colors hover:bg-sidebar-accent hover:text-sidebar-foreground [&.active]:text-sidebar-foreground"
         title="Paramètres"
         aria-label="Paramètres"
       >

@@ -39,16 +39,16 @@ export class ErrorBoundary extends Component<ErrorBoundaryProps, ErrorBoundarySt
         return this.props.fallback
       }
       return (
-        <div className="flex h-screen flex-col items-center justify-center gap-4 bg-gray-50 p-8 text-center">
-          <h1 className="text-2xl font-semibold text-gray-800">Une erreur est survenue</h1>
-          <p className="text-gray-500">
+        <div className="flex h-screen flex-col items-center justify-center gap-4 bg-muted p-8 text-center">
+          <h1 className="text-2xl font-semibold text-foreground">Une erreur est survenue</h1>
+          <p className="text-muted-foreground">
             L&apos;application a rencontré un problème inattendu. Rechargez la page pour réessayer.
           </p>
-          <pre className="max-w-lg overflow-auto rounded bg-gray-100 p-4 text-left text-xs text-gray-600">
+          <pre className="max-w-lg overflow-auto rounded bg-muted p-4 text-left text-xs text-muted-foreground">
             {this.state.error?.message}
           </pre>
           <button
-            className="rounded bg-blue-600 px-4 py-2 text-sm text-white hover:bg-blue-700"
+            className="rounded bg-primary px-4 py-2 text-sm text-primary-foreground hover:bg-primary/90"
             onClick={() => window.location.reload()}
             type="button"
           >
