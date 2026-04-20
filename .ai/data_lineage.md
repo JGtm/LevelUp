@@ -258,6 +258,8 @@ Note 2026-04-12 : les rewards `xpboost` et `rerollcurrency` utilisent désormais
 
 Note 2026-04-12 : les définitions GameCMS de reward tracks et d'items battle pass sont désormais persistées dans `metadata.duckdb` pour mutualiser le cache entre joueurs partageant le même season pass ; seuls l'appel Economy joueur et la progression personnelle restent spécifiques au joueur.
 
+Note 2026-04-20 : `scripts/probe_battlepass_catalog.py` réutilise ce flux pour sonder l'intégralité des operations visibles côté joueur, persiste les payloads bruts en JSON dans `data/investigation/battlepass/<joueur>/`, hydrate `metadata.duckdb` avec tous les reward tracks/items, écrit l'état joueur par track dans `stats.duckdb` (`battlepass_snapshots`) et pré-remplit le cache `data/cache/battlepass_assets/`. Validation locale sur `Chocoboflor` : 30 operations, 30 snapshots joueur insérés, 1007 items, 60 visuels de track, 952 visuels de rewards, et seules les monnaies repo-static (`xpboost`, `rerollcurrency`) sont traitées comme assets locaux ; `softcurrency` et `cR` sont désormais classées comme monnaies externes non gérées par le repo.
+
 ### 12. Contrat KPIs Home Go → Frontend web (2026-04-18)
 
 ```
