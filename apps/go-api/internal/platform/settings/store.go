@@ -30,6 +30,10 @@ type AppSettings struct {
 	DiscordNotifyBackfill              bool   `json:"discord_notify_backfill"`
 	DiscordNotifyNewVersion            bool   `json:"discord_notify_new_version"`
 	DiscordNotifyNewMedia              bool   `json:"discord_notify_new_media"`
+	SpnkrAutoSyncEnabled               bool   `json:"spnkr_auto_sync_enabled"`
+	SpnkrAutoSyncIntervalHours         int    `json:"spnkr_auto_sync_interval_hours"`
+	SpnkrAutoSyncIntervalMinutes       int    `json:"spnkr_auto_sync_interval_minutes"`
+	WatcherPresenceEnabled             bool   `json:"watcher_presence_enabled"`
 	SpnkrRefreshWithBackfill           bool   `json:"spnkr_refresh_with_backfill"`
 	SpnkrRefreshBackfillMedals         bool   `json:"spnkr_refresh_backfill_medals"`
 	SpnkrRefreshBackfillSkill          bool   `json:"spnkr_refresh_backfill_skill"`
@@ -180,6 +184,18 @@ func Apply(cfg *AppSettings, req *domain.UpdateSettingsRequest) {
 	if req.DiscordNotifyNewMedia != nil {
 		cfg.DiscordNotifyNewMedia = *req.DiscordNotifyNewMedia
 	}
+	if req.SpnkrAutoSyncEnabled != nil {
+		cfg.SpnkrAutoSyncEnabled = *req.SpnkrAutoSyncEnabled
+	}
+	if req.SpnkrAutoSyncIntervalHours != nil {
+		cfg.SpnkrAutoSyncIntervalHours = *req.SpnkrAutoSyncIntervalHours
+	}
+	if req.SpnkrAutoSyncIntervalMinutes != nil {
+		cfg.SpnkrAutoSyncIntervalMinutes = *req.SpnkrAutoSyncIntervalMinutes
+	}
+	if req.WatcherPresenceEnabled != nil {
+		cfg.WatcherPresenceEnabled = *req.WatcherPresenceEnabled
+	}
 	if req.SpnkrRefreshWithBackfill != nil {
 		cfg.SpnkrRefreshWithBackfill = *req.SpnkrRefreshWithBackfill
 	}
@@ -227,6 +243,10 @@ func ToResponse(cfg *AppSettings) *domain.SettingsResponse {
 		DiscordNotifyBackfill:              cfg.DiscordNotifyBackfill,
 		DiscordNotifyNewVersion:            cfg.DiscordNotifyNewVersion,
 		DiscordNotifyNewMedia:              cfg.DiscordNotifyNewMedia,
+		SpnkrAutoSyncEnabled:               cfg.SpnkrAutoSyncEnabled,
+		SpnkrAutoSyncIntervalHours:         cfg.SpnkrAutoSyncIntervalHours,
+		SpnkrAutoSyncIntervalMinutes:       cfg.SpnkrAutoSyncIntervalMinutes,
+		WatcherPresenceEnabled:             cfg.WatcherPresenceEnabled,
 		SpnkrRefreshWithBackfill:           cfg.SpnkrRefreshWithBackfill,
 		SpnkrRefreshBackfillMedals:         cfg.SpnkrRefreshBackfillMedals,
 		SpnkrRefreshBackfillSkill:          cfg.SpnkrRefreshBackfillSkill,
