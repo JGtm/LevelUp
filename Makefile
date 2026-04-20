@@ -14,6 +14,13 @@
 #   make clean         # Supprime le venv
 # =============================================================================
 
+# Charge .env.local (puis .env) s'ils existent — permet aux worktrees
+# de partager la config du repo principal via un symlink.
+# Note : on NE fait PAS -include car Make ne parse pas la syntaxe shell.
+# Le chargement se fait via set -a / source dans les recettes shell.
+LOAD_DOTENV := if [ -f .env.local ]; then set -a; . ./.env.local; set +a; fi; \
+               if [ -f .env ]; then set -a; . ./.env; set +a; fi
+
 PYTHON   := $(shell command -v python3 2>/dev/null || command -v python 2>/dev/null)
 VENV_PY  := .venv/bin/python
 LAUNCHER := $(VENV_PY) launcher.py
@@ -91,9 +98,9 @@ api: _check_venv
 web:
 	cd apps/web && npm run dev
 
-## Lance API + frontend en parallèle (nécessite un terminal avec support job control)
-dev: _check_venv
-	@echo "▶ Démarrage API (port 8000) + Web (port 5173)…"
+## (legacy Python) Lance API FastAPI + frontend en parallele
+dev-python: _check_venv
+	@echo "Demarrage API Python (port 8000) + Web (port 5173)..."
 	$(VENV_PY) -m uvicorn apps.api.app.main:app --host 127.0.0.1 --port 8000 --reload & \
 	cd apps/web && npm run dev
 
@@ -171,26 +178,47 @@ endif
 go-api-build:
 	cd $(GO_API_DIR) && CGO_ENABLED=1 go build $(GO_LDFLAGS) -o bin/server ./cmd/server/
 
-## Go API: démarre le serveur Go seul avec hot-reload (air)
-go-api-run:
+# (interne) Demarre le serveur Go seul avec hot-reload (air)
+_go-api-run:
 	@if curl -fsS "http://127.0.0.1:$(API_PORT)/health" >/dev/null 2>&1; then \
-		echo "  ℹ️ LevelUp API déjà disponible sur http://127.0.0.1:$(API_PORT) — réutilisation."; \
+		echo "  [i] LevelUp API deja disponible sur http://127.0.0.1:$(API_PORT) -- reutilisation."; \
 		exit 0; \
 	fi
 	@$(GO_API_CLEANUP_CMD)
 	@cd $(GO_API_DIR) && CGO_ENABLED=1 \
 		LEVELUP_REPO_ROOT="$(LEVELUP_DATA_ROOT)" \
 		LEVELUP_API_PORT="$(API_PORT)" \
-		$(AIR) -c .air.toml
+		$(AIR) -c .air.toml || true
 
-## Go API: démarre le serveur Go (air hot-reload) + frontend Vite en parallèle
-## Sur Windows/MSYS2, ouvrir deux terminaux : make go-api-run | make web-dev
-go-api-dev:
-	@$(MAKE) -j2 --no-print-directory go-api-run web-dev
-
-## Frontend Vite uniquement
-web-dev:
-	@cd apps/web && VITE_API_PROXY_TARGET="$(VITE_API_PROXY_TARGET)" npm run dev
+## Demarre l'app LevelUp (API Go + frontend Vite). Ctrl+C arrete tout.
+dev:
+	@if curl -fsS "http://127.0.0.1:$(API_PORT)/health" >/dev/null 2>&1; then \
+		echo "  [!] LevelUp API deja en cours sur le port $(API_PORT). Arretez-la d'abord."; \
+		exit 1; \
+	fi
+	@echo "  [*] Demarrage API (port $(API_PORT)) + Web (port 5173)..."
+	@echo "  --> Ouvrir http://localhost:5173 dans le navigateur"
+	@echo ""
+	@$(LOAD_DOTENV); \
+	TRAPPED=0; \
+	_cleanup() { \
+		if [ "$$TRAPPED" = "1" ]; then return; fi; \
+		TRAPPED=1; \
+		echo ""; \
+		echo "  [..] Arret des serveurs..."; \
+		[ -n "$$PID_API" ] && kill $$PID_API 2>/dev/null; \
+		[ -n "$$PID_WEB" ] && kill $$PID_WEB 2>/dev/null; \
+		$(GO_API_CLEANUP_CMD); \
+		wait $$PID_API $$PID_WEB 2>/dev/null; \
+		echo "  [OK] Serveurs arretes."; \
+	}; \
+	trap _cleanup INT TERM; \
+	(cd $(GO_API_DIR) && CGO_ENABLED=1 \
+		LEVELUP_REPO_ROOT="$(LEVELUP_DATA_ROOT)" \
+		LEVELUP_API_PORT="$(API_PORT)" \
+		$(AIR) -c .air.toml || true) & PID_API=$$!; \
+	(cd apps/web && VITE_API_PROXY_TARGET="$(VITE_API_PROXY_TARGET)" npm run dev) & PID_WEB=$$!; \
+	wait
 
 ## Go API: lance les tests (sans CGo — domain/analysis/contract)
 go-api-test:
