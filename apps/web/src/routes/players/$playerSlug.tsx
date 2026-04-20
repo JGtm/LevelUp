@@ -4,12 +4,20 @@
  * Rend un <Outlet /> pour les sous-routes.
  * Vérifie que le playerSlug existe dans les joueurs disponibles.
  */
-import { createFileRoute, Outlet } from '@tanstack/react-router'
+import { createFileRoute, Outlet, redirect } from '@tanstack/react-router'
 import { useAppShellStore } from '@/stores/appShellStore'
 import { useEffect } from 'react'
 import { NavL2 } from '@/components/shell/NavL2'
 
 export const Route = createFileRoute('/players/$playerSlug')({
+  // Guard synchrone avant rendu — bloque les accès directs par URL
+  beforeLoad: () => {
+    const { isBootstrapped, setupRequired, authMode, currentUsername } = useAppShellStore.getState()
+    if (!isBootstrapped) return // Bootstrap pas encore terminé — __root gère l'écran de chargement
+    if (setupRequired) throw redirect({ to: '/setup' })
+    // Rediriger vers login uniquement en mode password sans utilisateur connecté
+    if (authMode === 'password' && !currentUsername) throw redirect({ to: '/login' })
+  },
   component: PlayerLayout,
 })
 
