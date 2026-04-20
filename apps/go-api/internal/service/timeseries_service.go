@@ -12,6 +12,7 @@ package service
 import (
 	"context"
 	"fmt"
+	"log/slog"
 	"math"
 	"sort"
 
@@ -37,10 +38,15 @@ func (s *TimeseriesService) GetPage(
 ) (domain.TimeseriesPageResponse, error) {
 	allMatches, err := s.statsRepo.LoadStatsMatches(ctx)
 	if err != nil {
+		slog.ErrorContext(ctx, "timeseries: chargement matches", "error", err)
 		return domain.TimeseriesPageResponse{}, fmt.Errorf("TimeseriesService: %w", err)
 	}
 
 	matches := filterStatsMatchRows(allMatches, req.Filters)
+	slog.DebugContext(ctx, "timeseries: matches chargés",
+		"total", len(allMatches),
+		"apres_filtres", len(matches),
+	)
 
 	resp := domain.TimeseriesPageResponse{
 		TotalMatches:     len(matches),
