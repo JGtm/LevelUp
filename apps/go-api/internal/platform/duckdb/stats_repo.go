@@ -60,6 +60,8 @@ func (r *StatsRepo) LoadStatsMatches(ctx context.Context) ([]domain.StatsMatchRo
 			&m.PerfScoreComputed,
 			&m.SessionID,
 			&m.SessionLabel,
+			&m.OffensiveConversion,
+			&m.DefensiveResistance,
 		); err != nil {
 			return nil, fmt.Errorf("StatsRepo.LoadStatsMatches scan: %w", err)
 		}

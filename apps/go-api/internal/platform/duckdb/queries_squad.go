@@ -55,7 +55,7 @@ SELECT
     pme.performance_score,
     COALESCE(pme.is_with_friends, FALSE)                         AS is_with_friends
 FROM shared.match_participants p1
-JOIN shared.match_registry r ON r.match_id = p1.match_id
+JOIN shared.v_match_full r ON r.match_id = p1.match_id
 JOIN shared.match_participants p2
     ON p2.match_id = p1.match_id
     AND p2.team_id  = p1.team_id
@@ -81,7 +81,7 @@ SELECT
     COALESCE(p.team_mmr, 0.0)                                    AS team_mmr,
     p.accuracy
 FROM shared.match_participants p
-JOIN shared.match_registry r ON r.match_id = p.match_id
+JOIN shared.v_match_full r ON r.match_id = p.match_id
 JOIN shared.match_participants p_main
     ON p_main.match_id = p.match_id
     AND p_main.team_id  = p.team_id
@@ -113,7 +113,7 @@ SELECT
     COUNT(DISTINCT p.match_id)                         AS match_count,
     SUM(CASE WHEN p.outcome = 2 THEN 1 ELSE 0 END)    AS wins
 FROM shared.match_participants p
-JOIN shared.match_registry r ON r.match_id = p.match_id
+JOIN shared.v_match_full r ON r.match_id = p.match_id
 WHERE p.xuid = ?
 GROUP BY 1, 2
 ORDER BY match_count DESC`

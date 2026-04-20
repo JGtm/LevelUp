@@ -20,11 +20,11 @@ SELECT
     COALESCE(pme.is_with_friends, FALSE)                 AS is_with_friends
 FROM (
     SELECT r.match_id, r.start_time, r.map_name,
-           NULL AS map_name_fr, r.pair_name, NULL AS pair_name_fr,
-           r.playlist_name, NULL AS playlist_name_fr,
+           r.map_name_fr, r.pair_name, r.pair_name_fr,
+           r.playlist_name, r.playlist_name_fr,
            COALESCE(r.is_firefight, FALSE) AS is_firefight,
            COALESCE(r.is_ranked, FALSE)    AS is_ranked
-    FROM shared.match_registry r
+    FROM shared.v_match_full r
     JOIN shared.match_participants p ON r.match_id = p.match_id
     WHERE p.xuid = ?
 ) ms
@@ -87,11 +87,11 @@ SELECT
     p.time_played_seconds
 FROM (
     SELECT r.match_id, r.start_time, r.map_name,
-           NULL AS map_name_fr, r.pair_name, NULL AS pair_name_fr,
-           r.playlist_name, NULL AS playlist_name_fr,
+           r.map_name_fr, r.pair_name, r.pair_name_fr,
+           r.playlist_name, r.playlist_name_fr,
            COALESCE(r.is_firefight, FALSE) AS is_firefight,
            COALESCE(r.is_ranked, FALSE)    AS is_ranked
-    FROM shared.match_registry r
+    FROM shared.v_match_full r
     JOIN shared.match_participants p ON r.match_id = p.match_id
     WHERE p.xuid = ?
 ) ms
@@ -217,7 +217,9 @@ SELECT
     mp.team_id,
     pme.performance_score             AS performance_score_computed,
     pme.session_id,
-    pme.session_label
+    pme.session_label,
+    mp.offensive_conversion,
+    mp.defensive_resistance
 FROM shared.match_participants mp
 JOIN shared.match_registry r ON r.match_id = mp.match_id
 LEFT JOIN player_match_enrichment pme ON pme.match_id = mp.match_id
