@@ -45,6 +45,10 @@ type TitleDescriptor struct {
 	Status       Status       `json:"status"`
 	Capabilities []Capability `json:"capabilities"`
 	IsDefault    bool         `json:"is_default"` // halo_infinite = true
+
+	// Identifiants plateforme pour le matching de présence (watcher)
+	XboxTitleID string `json:"xbox_title_id"` // ex: "1144039928" pour Halo Infinite
+	SteamAppID  string `json:"steam_app_id"`  // ex: "1336960" pour Halo Infinite (Steam)
 }
 
 // HasCapability vérifie si le titre supporte une fonctionnalité.
@@ -85,7 +89,9 @@ func NewRegistry() *Registry {
 			CapMatchmaking, CapFirefight, CapForge,
 			CapMedia, CapRanked, CapCareer,
 		},
-		IsDefault: true,
+		IsDefault:   true,
+		XboxTitleID: "1144039928",
+		SteamAppID:  "1336960",
 	})
 	return r
 }
