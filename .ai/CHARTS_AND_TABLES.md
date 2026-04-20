@@ -1363,6 +1363,140 @@ Tous les graphiques partagent :
 
 ---
 
+## 14. Page SYNTHÈSE (Analyse du scope courant)
+
+> Route : `/players/$playerSlug/synthesis`  
+> Handler Go : `POST /api/v1/players/{player_slug}/pages/synthesis` → `SynthesisHandler.GetSynthesisPage`  
+> Composant principal : `apps/web/src/features/synthesis/SynthesisPage.tsx`
+
+### Vue d'ensemble des blocs
+
+| Bloc | Composant | Description |
+|------|-----------|-------------|
+| Scope bar (Bloc 0) | `ScopeBar` | Barre de contexte : période, matchs, filtres actifs/ignorés |
+| Vue d'ensemble (Bloc 1 / D4) | `SynthesisOverviewSection` | Cartes KPI cumulatifs : victoires, défaites, kills, K/D, win rate, meilleur match, série |
+| KPIs Solo / Escouade (Bloc 2) | `KPISection` ×2 | Grilles 2×4 cartes (win rate, K/D, matchs, perf. score) |
+| Graphique bipolaire (Bloc 3) | `buildBipolaireChart` / `PlotlyChart` | Barres horizontales Solo ← → Escouade |
+| Comparaison détaillée (Bloc 4) | `MetricRow` | Tableau HTML des métriques comparatives |
+| Highlights (Bloc 5 / D5) | `SynthesisHighlightsSection` | Meilleurs et pires matchs par kills/KDA/morts |
+| Heatmap activité (Bloc 6) | `buildHeatmapChart` / `PlotlyChart` | Heatmap 7×24 (jour × heure) |
+| Top semaines (Bloc 7) | `TopWeekRow` | Tableau HTML des meilleures semaines |
+| Relations (Bloc 8 / D6) | `SynthesisRelationsPreview` | Coéquipiers top + adversaires récurrents |
+| Breakdowns (Bloc 9 / D7) | `SynthesisBreakdownsSection` | Tables carte et mode (matchs + win%) |
+
+---
+
+### 14.1 Barre de scope (`ScopeBar`)
+
+**Type** : Composant React HTML (pas de Plotly)  
+**Source données** : `SynthesisScope` (champ `scope` de la réponse API)
+
+**Champs affichés** :
+- Période (label traduit via `PERIOD_OPTIONS`)
+- Nombre de matchs (`scope.match_count`)
+- Filtres appliqués (`scope.filters_applied`) si non vide
+- Filtres ignorés (`scope.filters_ignored`) avec icône ⚠ en `text-amber-500`
+
+**data-testid** : `scope-bar`
+
+---
+
+### 14.2 Vue d'ensemble (D4 — `SynthesisOverviewSection`)
+
+**Type** : Grille de cartes KPI (pas de Plotly)  
+**Source données** : `SynthesisOverview` (champ `overview`)
+
+**Cartes** (jusqu'à 7) :
+| Label | Champ source |
+|-------|-------------|
+| Victoires | `overview.total_wins` |
+| Défaites | `overview.total_losses` |
+| Kills | `overview.total_kills` |
+| K/D moyen | `total_kills / total_deaths` (calculé) |
+| Win Rate | `overview.win_rate * 100` en % |
+| Meilleur match | `overview.best_kills_match` (si non null) |
+| Série max | `overview.longest_win_streak` (si > 1) |
+
+---
+
+### 14.3 Graphique bipolaire Solo ← → Escouade
+
+**Type** : `go.Bar` horizontal, `barmode="overlay"` (Plotly)  
+**Source données** : `data.comparison_metrics` → `buildBipolaireChart(metrics)`
+
+**Structure** :
+- **Axe Y** : labels de métriques (K/D, Win Rate, Accuracy, K/min, Avg Life, Perf Score) — inversé (`autorange='reversed'`)
+- **Axe X** : normalisé −100 à +100, ticks masqués, ligne verticale `x=0` (axis shape)
+- **Bars Solo** : orientation `h`, x négatif (cyan `#33D6FF`/`#06B6D4`), `textposition='outside'`
+- **Bars Escouade** : orientation `h`, x positif (vert `#22C55E`/`#00DC82`), `textposition='outside'`
+- **Hauteur** : `max(320, 70 × nb_metrics)` px
+- **Transparence** : `plot_bgcolor` et `paper_bgcolor` = `rgba(0,0,0,0)` (thème sombre)
+
+**Affichage conditionnel** : si `comparison_metrics.length === 0`, affiche une carte vide "Pas assez de données".
+
+---
+
+### 14.4 Heatmap activité jour × heure
+
+**Type** : `go.Heatmap`, colorscale `Blues` (Plotly)  
+**Source données** : `data.heatmap_data` → `buildHeatmapChart(cells: HeatmapCell[])`  
+**Dimensions** : matrice 7 (jours) × 24 (heures), chaque cellule = nombre de matchs  
+**Labels** : axe X = heures `0h`…`23h` ; axe Y = `['Lun','Mar','Mer','Jeu','Ven','Sam','Dim']`  
+**Hauteur** : 220 px  
+**Note** : différent du §2.3 (Win Rate heatmap, colorscale `RdYlGn`) — ici c'est la **fréquence** de jeu, pas les résultats
+
+**Affichage conditionnel** : si `heatmap_data.length === 0`, affiche `EmptyStateNotice`.
+
+---
+
+### 14.5 Table Top semaines
+
+**Type** : Tableau HTML (pas de Plotly)  
+**Source données** : `data.top_weeks: TopWeekItem[]`
+
+**Colonnes** :
+| # | Semaine | Matchs | Win% | K/D |
+|---|---------|--------|------|-----|
+| rang | `week_label` (format `YYYY-Www`) | `match_count` | `win_rate * 100` % | `kd_ratio` |
+
+**Affichage conditionnel** : si vide, affiche `EmptyStateNotice`.
+
+---
+
+### 14.6 Highlights D5 (`SynthesisHighlightsSection`)
+
+**Type** : Composant React HTML (pas de Plotly)  
+**Source données** : `data.highlights_preview: SynthesisHighlightsPreview`  
+**Fichier** : `apps/web/src/features/synthesis/SynthesisHighlightsSection.tsx`
+
+**Sections** :
+- **Meilleur match** : `top_by_kills` (fallback `top_by_kda`) — lien vers `/players/${playerSlug}/matches/${match_id}`
+- **Pire match** : `worst_by_deaths`
+- Badge outcome (victoire/défaite/nul), K/D inline, perf score
+
+---
+
+### 14.7 Relations / Rivalités D6 (`SynthesisRelationsPreview`)
+
+**Type** : Listes HTML (pas de Plotly)  
+**Source données** : `data.rivalries_preview: SynthesisRivalriesPreview`  
+**Fichier** : `apps/web/src/features/synthesis/SynthesisRelationsPreview.tsx`  
+**Affichage conditionnel** : affiché seulement si `top_teammates.length > 0 || top_enemies.length > 0`
+
+---
+
+### 14.8 Répartition carte / mode D7 (`SynthesisBreakdownsSection`)
+
+**Type** : Tables HTML en grille 1–2 colonnes (pas de Plotly)  
+**Source données** : `data.breakdowns: SynthesisBreakdowns`
+
+**Tables** :
+- Par carte : `breakdowns.top_maps` → colonnes Carte / Matchs / Win%
+- Par mode : `breakdowns.top_modes` → colonnes Mode / Matchs / Win%  
+**Affichage conditionnel** : `return null` si les deux listes sont vides
+
+---
+
 ## Annexe : Conventions de nommage des clés i18n
 
 Les labels affichés dans les graphiques sont tous gérés via `src/ui/i18n/viz.py::viz_t(key, lang)`.

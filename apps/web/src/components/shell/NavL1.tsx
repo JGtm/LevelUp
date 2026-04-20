@@ -149,6 +149,12 @@ const L1_SECTIONS: L1Section[] = [
     ],
   },
   {
+    key: 'synthesis',
+    label: 'Synthèse',
+    defaultPath: '/players/$playerSlug/synthesis',
+    matchPathname: (p) => /\/players\/[^/]+\/synthesis/.test(p),
+  },
+  {
     key: 'explorer',
     label: 'Explorer',
     defaultPath: '/players/$playerSlug/explorer',
@@ -179,7 +185,7 @@ const L1_SECTIONS: L1Section[] = [
     matchPathname: (p) => /\/players\/[^/]+\/(career|profile)/.test(p),
     tabs: [
       { key: 'progression', label: 'Progression', path: '/players/$playerSlug/career' },
-      { key: 'citations', label: 'Citations', path: '/players/$playerSlug/profile/citations' },
+      { key: 'citations', label: 'Citations', path: '/players/$playerSlug/career?tab=citations' },
     ],
   },
 ]

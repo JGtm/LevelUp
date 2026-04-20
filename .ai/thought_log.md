@@ -1,5 +1,18 @@
 # Thought Log
 
+## [2026-04-20] feat(home): marquer les défis quotidiens / hebdos sur la home React
+
+**Statut** : Complété
+
+**Décision technique** : pour la home React actuelle, la déduction quotidien/hebdo est faite côté UI à partir de `challenge_path`, sans élargir le contrat API. Les paths saisonniers (`S5WinterChallenges`, `event`, `operation`, `fracture`) sont traités comme des hebdos pour rester cohérents avec le fallback badge mis en place côté Go.
+
+**Résultats** :
+- `apps/web/src/features/home/HomeChallengesList.tsx` : ajout d'un libellé visible (`Quotidien`, `Hebdo`, `Capstone`) et d'un fond coloré discret par type de défi.
+- `apps/web/src/features/home/HomePage.test.tsx` : test enrichi pour vérifier l'affichage des labels `Hebdo` / `Quotidien` et leurs classes visuelles.
+- Validation : `npm run test:run -- src/features/home/HomePage.test.tsx` PASS (11/11).
+
+**Conclusion** : la section défis de la home indique maintenant explicitement le type du défi avec un code couleur lisible, y compris quand un défi saisonnier doit être assimilé à un hebdo.
+
 ## [2026-04-20] fix(challenges): fallback metadata.duckdb + cache badges local dans le provider Go
 
 **Statut** : Complété
@@ -8,10 +21,10 @@
 
 **Résultats** :
 - `apps/go-api/internal/platform/halo/provider.go` : ajout de `WithChallengeCache(metaPath, badgeDir)` pour obtenir une copie configurée du provider.
-- `apps/go-api/internal/platform/halo/challenges_details.go` : lecture des définitions depuis `challenge_definitions` / `challenge_translations` avant appel GameCMS ; upsert metadata après fetch live ; lecture/écriture des badges PNG dans `data/.../cache/challenge_badges` avant fallback live ; logs debug ajoutés pour cache-hit et échecs best-effort de lecture/écriture locale.
+- `apps/go-api/internal/platform/halo/challenges_details.go` : lecture des définitions depuis `challenge_definitions` / `challenge_translations` avant appel GameCMS ; upsert metadata après fetch live ; lecture/écriture des badges PNG dans `data/.../cache/challenge_badges` avant fallback live ; logs debug ajoutés pour cache-hit et échecs best-effort de lecture/écriture locale ; fallback supplémentaire `seasonal -> weekly-*-[difficulty]` pour les défis de type `S5WinterChallenges` et assimilés.
 - `apps/go-api/internal/service/home_service.go` : ajout de `WithHaloProvider()` pour injecter un provider configuré par joueur.
 - `apps/go-api/internal/api/registry.go` : `HomeCtxWithAuth` et `SeasonPassCtxWithAuth` câblent désormais un provider avec `metadata.duckdb` + cache local des badges.
-- `apps/go-api/internal/platform/halo/provider_test.go` : nouveaux tests ciblés sur la lecture metadata locale, la persistance metadata après fetch live, la lecture d'un badge hebdo depuis le cache fichier local, et la persistance du badge local après fetch live.
+- `apps/go-api/internal/platform/halo/provider_test.go` : nouveaux tests ciblés sur la lecture metadata locale, la persistance metadata après fetch live, la lecture d'un badge hebdo depuis le cache fichier local, la persistance du badge local après fetch live, et le fallback explicite d'un défi saisonnier vers un badge hebdo.
 - Validation : `go test -count=1 ./internal/platform/halo/...` PASS ; `go test -count=1 ./internal/service ./internal/api/...` PASS ; couverture package Halo `64.2%`, avec couverture forte sur le périmètre corrigé (`loadChallengeDefinitionFromMetadata 92.6%`, `storeChallengeDefinitionInMetadata 84.0%`, `fetchChallengeDefinition 71.4%`, `fetchChallengeBadgeDataURL 70.8%`).
 
 **Conclusion** : le backend Go ne dépend plus uniquement du live pour enrichir les défis home. Si le catalogue ou le badge sont déjà connus localement, ils sont servis depuis la DB/cache disque ; le live reste réservé au complément et à la progression courante.
@@ -16628,3 +16641,30 @@ Go est désormais l'unique runtime. ~900 fichiers Python supprimés. Le dépôt 
 - `go test ./internal/service/... -run "Timeseries|BuildMatchRows|BuildAccuracy|BuildCorrelation|FilterStats"` : 13/13 PASS
 
 **Conclusion** : Tous les onglets de la page timeseries ont désormais des composants de rendu fonctionnels. Le Go fournit les données brutes, React construit les figures Plotly client-side.
+
+---
+
+## [2025-01-20] Page Synthèse — Navigation L1 + blocs D4/D5/D6/D7
+
+**Statut** : Complété
+
+**Décision technique principale** :
+La page Synthèse (route `/players/$playerSlug/synthesis`) était inaccessible depuis la navigation L1 (absente de `L1_SECTIONS`). Correction du bug de navigation + implémentation complète des 4 blocs Sprint 55 manquants dans le frontend React.
+
+**Modifications** :
+1. `NavL1.tsx` — Ajout de l'entrée Synthèse entre Escouade et Explorer ; correction du path Citations (`/career?tab=citations`)
+2. `NavL1.test.tsx` — 3 nouveaux tests (présence, état actif, ordre DOM)
+3. `SynthesisHighlightsSection.tsx` — Nouveau composant D5 (meilleur/pire match)
+4. `SynthesisPage.tsx` — Refactoring complet :
+   - Remplacement `ScopeOverviewBar` → `ScopeBar` (filters_applied/ignored) + `SynthesisOverviewSection` (7 KPI D4)
+   - Ajout `SynthesisBreakdownsSection` inline (tables carte/mode D7)
+   - Render mis à jour : D4 → KPIs → bipolaire → détaillée → D5 highlights → heatmap → top semaines → D6 relations → D7 breakdowns
+   - Correction `MetricRowProps` (type manquant déclaré)
+5. `.ai/CHARTS_AND_TABLES.md` — Section §14 ajoutée (8 sous-sections : scope, overview, bipolaire, heatmap, top semaines, D5/D6/D7)
+
+**Résultats observés** :
+- `get_errors` sur SynthesisPage.tsx → 0 erreurs TypeScript
+- NavL1.test.tsx : 3 nouveaux tests ajoutés
+- SynthesisHighlightsSection.tsx créé (~100 lignes)
+
+**Conclusion** : La page Synthèse est maintenant accessible en L1 et expose tous les blocs Sprint 55 (D4-D9 côté Go, D4-D7 côté React). La branche de travail est `feat/synthesis-nav-and-page-blocks`.

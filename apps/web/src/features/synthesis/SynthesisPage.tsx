@@ -12,12 +12,16 @@ import { EmptyStateCard, EmptyStateNotice } from '@/components/ui/empty-state'
 import { Spinner } from '@/components/ui/spinner'
 import { PlotlyChart } from '@/components/ui/plotly-chart'
 import { InfoTooltip } from '@/components/ui/info-tooltip'
+import { SynthesisHighlightsSection } from './SynthesisHighlightsSection'
+import { SynthesisRelationsPreview } from './SynthesisRelationsPreview'
 import type {
   ComparisonMetricItem,
   HeatmapCell,
   PlotlyFigurePayload,
+  SynthesisBreakdowns,
   SynthesisKPIs,
   SynthesisOverview,
+  SynthesisScope,
   SynthesisQueryRequest,
   TopWeekItem,
 } from '@/lib/api/types'
@@ -109,32 +113,70 @@ function buildHeatmapChart(cells: HeatmapCell[]): PlotlyFigurePayload {
 
 // ─── Sous-composants ──────────────────────────────────────────────────────────
 
-// ─── Scope + Overview ─────────────────────────────────────────────────────────
+// ─── Bloc 0 — Scope bar ───────────────────────────────────────────────────────
 
-interface ScopeOverviewBarProps {
-  matchCount: number
-  winRate: number
-  totalKills: number
-  totalDeaths: number
-  period: string
-}
-function ScopeOverviewBar({ matchCount, winRate, totalKills, totalDeaths, period }: ScopeOverviewBarProps) {
-  const periodLabel = PERIOD_OPTIONS.find((o) => o.value === period)?.label ?? period
+interface ScopeBarProps { scope: SynthesisScope }
+function ScopeBar({ scope }: ScopeBarProps) {
+  const periodLabel = PERIOD_OPTIONS.find((o) => o.value === scope.period)?.label ?? scope.period
+  const appliedFilters = scope.filters_applied ?? []
+  const ignoredFilters = scope.filters_ignored ?? []
   return (
     <Card>
       <CardContent className="py-4">
-        <div className="flex flex-wrap gap-6 items-center text-sm" data-testid="scope-overview-bar">
+        <div className="flex flex-wrap gap-6 items-center text-sm" data-testid="scope-bar">
           <span className="text-muted-foreground">Période : <strong className="text-foreground">{periodLabel}</strong></span>
-          <span className="text-muted-foreground">Matchs : <strong className="text-foreground">{matchCount}</strong></span>
-          <span className="text-muted-foreground">Win Rate : <strong className="text-success">{(winRate * 100).toFixed(1)}%</strong></span>
-          <span className="text-muted-foreground">K/D cumulés : <strong className="text-foreground">{totalDeaths > 0 ? (totalKills / totalDeaths).toFixed(2) : '—'}</strong></span>
+          <span className="text-muted-foreground">Matchs : <strong className="text-foreground">{scope.match_count}</strong></span>
+          {appliedFilters.length > 0 && (
+            <span className="text-muted-foreground">Filtres : <strong className="text-foreground">{appliedFilters.join(', ')}</strong></span>
+          )}
+          {ignoredFilters.length > 0 && (
+            <span className="text-xs text-amber-500">⚠ Ignorés : {ignoredFilters.join(', ')}</span>
+          )}
         </div>
       </CardContent>
     </Card>
   )
 }
 
+// ─── Bloc 1 — Vue d'ensemble (D4) ─────────────────────────────────────────────
 
+function StatCell({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="rounded-lg border p-3">
+      <span className="text-xs text-muted-foreground block">{label}</span>
+      <span className="text-xl font-bold">{value}</span>
+    </div>
+  )
+}
+
+interface SynthesisOverviewSectionProps { overview: SynthesisOverview }
+function SynthesisOverviewSection({ overview }: SynthesisOverviewSectionProps) {
+  const kd = overview.total_deaths > 0
+    ? (overview.total_kills / overview.total_deaths).toFixed(2)
+    : String(overview.total_kills)
+  return (
+    <Card>
+      <CardHeader><CardTitle>Vue d'ensemble</CardTitle></CardHeader>
+      <CardContent>
+        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
+          <StatCell label="Victoires" value={String(overview.total_wins)} />
+          <StatCell label="Défaites" value={String(overview.total_losses)} />
+          <StatCell label="Kills" value={String(overview.total_kills)} />
+          <StatCell label="K/D moyen" value={kd} />
+          <StatCell label="Win Rate" value={`${(overview.win_rate * 100).toFixed(1)}%`} />
+          {overview.best_kills_match != null && (
+            <StatCell label="Meilleur match" value={`${overview.best_kills_match}K`} />
+          )}
+          {(overview.longest_win_streak ?? 0) > 1 && (
+            <StatCell label="Série max" value={`${overview.longest_win_streak}V`} />
+          )}
+        </div>
+      </CardContent>
+    </Card>
+  )
+}
+
+interface MetricRowProps { item: ComparisonMetricItem }
 function MetricRow({ item }: MetricRowProps) {
   return (
     <tr className="border-b last:border-0">
@@ -170,6 +212,73 @@ function TopWeekRow({ item, rank }: TopWeekRowProps) {
       <td className="px-4 py-2 text-center text-sm">{(item.win_rate * 100).toFixed(0)}%</td>
       <td className="px-4 py-2 text-center text-sm">{item.kd_ratio?.toFixed(2) ?? '-'}</td>
     </tr>
+  )
+}
+
+// ─── Breakdowns D7 ────────────────────────────────────────────────────────────
+
+interface SynthesisBreakdownsSectionProps { breakdowns: SynthesisBreakdowns }
+function SynthesisBreakdownsSection({ breakdowns }: SynthesisBreakdownsSectionProps) {
+  const hasMaps = breakdowns.top_maps.length > 0
+  const hasModes = breakdowns.top_modes.length > 0
+  if (!hasMaps && !hasModes) return null
+  return (
+    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+      {hasMaps && (
+        <Card>
+          <CardHeader><CardTitle>Par carte</CardTitle></CardHeader>
+          <CardContent className="p-0">
+            <div className="overflow-x-auto">
+              <table className="w-full text-sm">
+                <thead className="bg-muted border-b">
+                  <tr>
+                    <th className="px-4 py-2 text-left">Carte</th>
+                    <th className="px-4 py-2 text-center">Matchs</th>
+                    <th className="px-4 py-2 text-center">Win%</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {breakdowns.top_maps.map((m) => (
+                    <tr key={m.map_name} className="border-b last:border-0">
+                      <td className="px-4 py-2 text-sm font-medium">{m.map_name}</td>
+                      <td className="px-4 py-2 text-center text-sm">{m.match_count}</td>
+                      <td className="px-4 py-2 text-center text-sm">{(m.win_rate * 100).toFixed(0)}%</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </CardContent>
+        </Card>
+      )}
+      {hasModes && (
+        <Card>
+          <CardHeader><CardTitle>Par mode</CardTitle></CardHeader>
+          <CardContent className="p-0">
+            <div className="overflow-x-auto">
+              <table className="w-full text-sm">
+                <thead className="bg-muted border-b">
+                  <tr>
+                    <th className="px-4 py-2 text-left">Mode</th>
+                    <th className="px-4 py-2 text-center">Matchs</th>
+                    <th className="px-4 py-2 text-center">Win%</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {breakdowns.top_modes.map((m) => (
+                    <tr key={m.mode_name} className="border-b last:border-0">
+                      <td className="px-4 py-2 text-sm font-medium">{m.mode_name}</td>
+                      <td className="px-4 py-2 text-center text-sm">{m.match_count}</td>
+                      <td className="px-4 py-2 text-center text-sm">{(m.win_rate * 100).toFixed(0)}%</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </CardContent>
+        </Card>
+      )}
+    </div>
   )
 }
 
@@ -233,16 +342,11 @@ export function SynthesisPage() {
         }
       />
 
-      {/* Scope + Overview */}
-      {data.scope && data.overview && (
-        <ScopeOverviewBar
-          matchCount={data.scope.match_count}
-          winRate={data.overview.win_rate}
-          totalKills={data.overview.total_kills}
-          totalDeaths={data.overview.total_deaths}
-          period={data.scope.period}
-        />
-      )}
+      {/* Bloc 0 — Scope */}
+      {data.scope && <ScopeBar scope={data.scope} />}
+
+      {/* Bloc 1 — Vue d'ensemble D4 */}
+      {data.overview && <SynthesisOverviewSection overview={data.overview} />}
 
       {/* KPIs Solo / Escouade */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -304,6 +408,11 @@ export function SynthesisPage() {
         </CardContent>
       </Card>
 
+      {/* Performances marquantes D5 */}
+      {data.highlights_preview && (
+        <SynthesisHighlightsSection highlights={data.highlights_preview} playerSlug={playerSlug} />
+      )}
+
       {/* Heatmap temporelle */}
       <Card>
         <CardHeader><CardTitle>Activité par jour et heure</CardTitle></CardHeader>
@@ -348,6 +457,15 @@ export function SynthesisPage() {
           )}
         </CardContent>
       </Card>
+
+      {/* Relations / Rivalités D6 */}
+      {data.rivalries_preview &&
+        (data.rivalries_preview.top_teammates.length > 0 || data.rivalries_preview.top_enemies.length > 0) && (
+          <SynthesisRelationsPreview playerSlug={playerSlug} preview={data.rivalries_preview} />
+        )}
+
+      {/* Répartition carte / mode D7 */}
+      {data.breakdowns && <SynthesisBreakdownsSection breakdowns={data.breakdowns} />}
     </div>
   )
 }
