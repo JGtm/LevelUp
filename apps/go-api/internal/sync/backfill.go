@@ -13,7 +13,7 @@ package sync
 import (
 	"database/sql"
 	"fmt"
-	"log"
+	"log/slog"
 	"strings"
 )
 
@@ -370,7 +370,7 @@ func findMatchesInSharedAll(
 
 	rows, err := sharedDB.Query(query, params...)
 	if err != nil {
-		log.Printf("Erreur détection V5 dans shared DB: %v", err)
+		slog.Warn("backfill: détection V5 shared DB échouée", "err", err)
 		return nil, nil // match Python behavior: log + return []
 	}
 	defer rows.Close()
@@ -460,7 +460,7 @@ func findMatchesInSharedDB(
 
 	rows, err := sharedDB.Query(query, xuid)
 	if err != nil {
-		log.Printf("Erreur détection dans shared DB: %v", err)
+		slog.Warn("backfill: détection shared DB échouée", "err", err)
 		return nil, nil
 	}
 	defer rows.Close()
