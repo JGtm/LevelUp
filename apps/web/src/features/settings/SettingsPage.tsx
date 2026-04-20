@@ -1,5 +1,5 @@
 /**
- * SettingsPage — page des paramètres utilisateur.
+ * SettingsPage — page des paramètres utilisateur avec onglets.
  */
 import { useState, useEffect } from 'react'
 import { Link } from '@tanstack/react-router'
@@ -10,6 +10,8 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Spinner } from '@/components/ui/spinner'
 import { useAppShellStore } from '@/stores/appShellStore'
 import { useSettings, useUpdateSettings } from '@/features/settings/queries'
+import { useStartSyncAll, useJobStatus } from '@/features/setup/queries'
+import { getSettingsText, normalizeSettingsLocale } from '@/features/settings/i18n'
 import type { SettingsResponse } from '@/lib/api/types'
 
 function ToggleRow({ label, value, onChange }: { label: string; value: boolean; onChange: (v: boolean) => void }) {
@@ -36,18 +38,18 @@ export function SettingsPage() {
   const { data: settings, isLoading } = useSettings()
   const mutation = useUpdateSettings()
   const canManageInstance = useAppShellStore((s) => s.capabilities?.can_manage_instance ?? false)
+  const locale = normalizeSettingsLocale(useAppShellStore((s) => s.locale))
+  const t = getSettingsText(locale)
 
-  // État local pour les mises à jour optimistes (feedback immédiat sans attendre le refetch)
   const [localSettings, setLocalSettings] = useState<Partial<SettingsResponse>>({})
-  // Indicateur éphémère : 'saved' | 'error' | null
   const [saveStatus, setSaveStatus] = useState<'saved' | 'error' | null>(null)
   const saveTimerRef = useState<ReturnType<typeof setTimeout> | null>(null)
+  const [activeTab, setActiveTab] = useState<'general' | 'sync'>('general')
 
   useEffect(() => {
     if (settings) setLocalSettings(settings)
   }, [settings])
 
-  // Nettoyage du timer au démontage
   useEffect(() => {
     return () => {
       if (saveTimerRef[0]) clearTimeout(saveTimerRef[0])
@@ -75,7 +77,7 @@ export function SettingsPage() {
   if (isLoading) {
     return (
       <div className="flex h-full items-center justify-center">
-        <Spinner size="lg" label="Chargement des paramètres…" />
+        <Spinner size="lg" label={t.loading} />
       </div>
     )
   }
@@ -83,206 +85,288 @@ export function SettingsPage() {
   return (
     <div className="flex flex-col">
       <PageHeader
-        title="Paramètres"
-        subtitle="Configuration de l'application"
+        title={t.pageTitle}
+        subtitle={t.pageSubtitle}
         actions={
           saveStatus === 'saved' ? (
             <span className="text-sm text-success" role="status" aria-live="polite">
-              ✓ Enregistré
+              {t.savedStatus}
             </span>
           ) : saveStatus === 'error' ? (
             <span className="text-sm text-destructive" role="alert">
-              ✗ Erreur lors de la sauvegarde
+              {t.errorStatus}
             </span>
           ) : undefined
         }
       />
 
+      {/* Onglets */}
+      <div className="border-b border-border px-6">
+        <nav className="-mb-px flex gap-4" aria-label="Onglets paramètres">
+          {(['general', 'sync'] as const).map((tab) => (
+            <button
+              key={tab}
+              onClick={() => setActiveTab(tab)}
+              className={[
+                'whitespace-nowrap border-b-2 px-1 py-3 text-sm font-medium transition-colors',
+                activeTab === tab
+                  ? 'border-primary text-primary'
+                  : 'border-transparent text-muted-foreground hover:border-border hover:text-foreground',
+              ].join(' ')}
+              aria-selected={activeTab === tab}
+              role="tab"
+            >
+              {tab === 'general' ? t.tabGeneral : t.tabSync}
+            </button>
+          ))}
+        </nav>
+      </div>
+
       <div className="space-y-6 p-6">
-        {canManageInstance && (
-          <Card className="border-border bg-card">
-            <CardContent className="flex flex-col gap-4 p-6 md:flex-row md:items-center md:justify-between">
-              <div>
-                <p className="text-xs font-semibold uppercase tracking-[0.16em] text-muted-foreground">Instance</p>
-                <p className="mt-2 text-lg font-semibold text-foreground">Lab interne</p>
-                <p className="mt-1 text-sm text-muted-foreground">
-                  Ouvrir l&apos;explorateur interne des métadonnées Waypoint, du diff OpenAPI et des diagnostics locaux.
-                </p>
-              </div>
-              <Link to="/lab">
-                <Button>Ouvrir le Lab</Button>
-              </Link>
-            </CardContent>
-          </Card>
+        {activeTab === 'general' && (
+          <GeneralTab merged={merged} handleChange={handleChange} canManageInstance={canManageInstance} t={t} />
         )}
-
-        {/* Langue & Interface */}
-        <Card>
-          <CardHeader>
-            <CardTitle className="text-base">Interface</CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-1 divide-y divide-border/50">
-            <div className="flex items-center justify-between py-2">
-              <span className="text-sm text-foreground">Langue</span>
-              <select
-                value={merged.lang ?? 'fr'}
-                onChange={(e) => handleChange('lang', e.target.value)}
-                className="rounded border border-input px-2 py-1 text-sm"
-              >
-                <option value="fr">Français</option>
-                <option value="en">English</option>
-              </select>
-            </div>
-            <div className="flex items-center justify-between py-2">
-              <span className="text-sm text-foreground">Fuseau horaire</span>
-              <select
-                value={merged.user_timezone ?? 'Europe/Paris'}
-                onChange={(e) => handleChange('user_timezone', e.target.value)}
-                className="rounded border border-input px-2 py-1 text-sm"
-              >
-                <option value="Europe/Paris">Europe/Paris</option>
-                <option value="Europe/London">Europe/London</option>
-                <option value="America/New_York">America/New_York</option>
-                <option value="America/Los_Angeles">America/Los_Angeles</option>
-                <option value="America/Chicago">America/Chicago</option>
-                <option value="Asia/Tokyo">Asia/Tokyo</option>
-                <option value="UTC">UTC</option>
-              </select>
-            </div>
-            <ToggleRow
-              label="Afficher les records"
-              value={merged.show_records ?? false}
-              onChange={(v) => handleChange('show_records', v)}
-            />
-            <ToggleRow
-              label="Normaliser les libellés de modes"
-              value={merged.normalize_mode_labels ?? true}
-              onChange={(v) => handleChange('normalize_mode_labels', v)}
-            />
-            <ToggleRow
-              label="Exclure BTB du classement carrière"
-              value={merged.career_top_exclude_btb ?? false}
-              onChange={(v) => handleChange('career_top_exclude_btb', v)}
-            />
-            <ToggleRow
-              label="Vider les caches à l'actualisation"
-              value={merged.refresh_clears_caches ?? false}
-              onChange={(v) => handleChange('refresh_clears_caches', v)}
-            />
-          </CardContent>
-        </Card>
-
-        {/* Notifications Discord */}
-        <Card>
-          <CardHeader>
-            <CardTitle className="text-base">Notifications Discord</CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-1 divide-y divide-border/50">
-            <ToggleRow
-              label="Activer les notifications"
-              value={merged.discord_notifications_enabled ?? false}
-              onChange={(v) => handleChange('discord_notifications_enabled', v)}
-            />
-            <ToggleRow
-              label="Notifier à la synchronisation"
-              value={merged.discord_notify_sync ?? false}
-              onChange={(v) => handleChange('discord_notify_sync', v)}
-            />
-            <ToggleRow
-              label="Notifier au backfill"
-              value={merged.discord_notify_backfill ?? false}
-              onChange={(v) => handleChange('discord_notify_backfill', v)}
-            />
-            <ToggleRow
-              label="Notifier pour les nouveaux médias"
-              value={merged.discord_notify_new_media ?? false}
-              onChange={(v) => handleChange('discord_notify_new_media', v)}
-            />
-          </CardContent>
-        </Card>
-
-        {/* Médias */}
-        <Card>
-          <CardHeader>
-            <CardTitle className="text-base">Médias</CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-1 divide-y divide-border/50">
-            <ToggleRow
-              label="Surveillance automatique des médias"
-              value={merged.media_watcher_enabled ?? false}
-              onChange={(v) => handleChange('media_watcher_enabled', v)}
-            />
-            <div className="flex items-center justify-between py-2">
-              <span className="text-sm text-foreground">Tolérance association (min)</span>
-              <input
-                type="number"
-                value={merged.media_tolerance_minutes ?? 10}
-                onChange={(e) => handleChange('media_tolerance_minutes', Number(e.target.value))}
-                className="w-20 rounded border border-input px-2 py-1 text-sm text-right"
-                min={1}
-                max={60}
-              />
-            </div>
-          </CardContent>
-        </Card>
-
-        {/* Synchronisation SPNKr */}
-        <Card>
-          <CardHeader>
-            <CardTitle className="text-base">Synchronisation SPNKr</CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-1 divide-y divide-border/50">
-            <ToggleRow
-              label="Lancer un backfill après chaque synchronisation"
-              value={merged.spnkr_refresh_with_backfill ?? false}
-              onChange={(v) => handleChange('spnkr_refresh_with_backfill', v)}
-            />
-          </CardContent>
-        </Card>
-
-        {/* Backfill — éléments à inclure */}
-        <Card>
-          <CardHeader>
-            <CardTitle className="text-base">Données à inclure dans le backfill</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="grid grid-cols-2 sm:grid-cols-3 gap-x-6 gap-y-1 py-1">
-              {(
-                [
-                  ['spnkr_refresh_backfill_medals', 'Médailles'],
-                  ['spnkr_refresh_backfill_skill', 'Classement (CSR/MMR)'],
-                  ['spnkr_refresh_backfill_aliases', 'Alias gamertag'],
-                  ['spnkr_refresh_backfill_personal_scores', 'Scores personnels'],
-                  ['spnkr_refresh_backfill_performance_scores', 'Scores performance'],
-                  ['spnkr_refresh_backfill_lusr', 'LUSR'],
-                  ['spnkr_refresh_backfill_events', 'Événements'],
-                  ['spnkr_refresh_backfill_weapons', 'Armes'],
-                ] as const
-              ).map(([field, label]) => (
-                <ToggleRow
-                  key={field}
-                  label={label}
-                  value={(merged as Record<string, boolean>)[field] ?? false}
-                  onChange={(v) => handleChange(field, v)}
-                />
-              ))}
-            </div>
-          </CardContent>
-        </Card>
-
-        {/* Avertissements de cohérence */}
-        {merged.discord_notifications_enabled && !merged.discord_webhook_url_present && (
-          <div className="rounded-lg border border-warning bg-warning/10 px-4 py-3 text-sm text-warning">
-            ⚠️ Les notifications Discord sont activées mais aucun webhook URL n'est configuré.
-          </div>
+        {activeTab === 'sync' && (
+          <SyncTab merged={merged} handleChange={handleChange} t={t} />
         )}
-        {merged.media_watcher_enabled && !merged.media_captures_base_dir && (
-          <div className="rounded-lg border border-warning bg-warning/10 px-4 py-3 text-sm text-warning">
-            ⚠️ La surveillance des médias est activée mais aucun dossier source n'est défini.
-          </div>
-        )}
-
       </div>
     </div>
+  )
+}
+
+// ─── Types partagés entre onglets ─────────────────────────────────────────────
+
+interface TabProps {
+  merged: Partial<SettingsResponse>
+  handleChange: <K extends keyof SettingsResponse>(field: K, value: SettingsResponse[K]) => void
+  t: ReturnType<typeof getSettingsText>
+}
+
+// ─── Onglet Général ───────────────────────────────────────────────────────────
+
+function GeneralTab({ merged, handleChange, canManageInstance, t }: TabProps & { canManageInstance: boolean }) {
+  return (
+    <>
+      {canManageInstance && (
+        <Card className="border-border bg-card">
+          <CardContent className="flex flex-col gap-4 p-6 md:flex-row md:items-center md:justify-between">
+            <div>
+              <p className="text-xs font-semibold uppercase tracking-[0.16em] text-muted-foreground">{t.instanceLabel}</p>
+              <p className="mt-2 text-lg font-semibold text-foreground">{t.instanceTitle}</p>
+              <p className="mt-1 text-sm text-muted-foreground">{t.instanceDescription}</p>
+            </div>
+            <Link to="/lab">
+              <Button>{t.openLabButton}</Button>
+            </Link>
+          </CardContent>
+        </Card>
+      )}
+
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-base">{t.interfaceTitle}</CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-1 divide-y divide-border/50">
+          <div className="flex items-center justify-between py-2">
+            <span className="text-sm text-foreground">{t.langLabel}</span>
+            <select
+              value={merged.lang ?? 'fr'}
+              onChange={(e) => handleChange('lang', e.target.value)}
+              className="rounded border border-input px-2 py-1 text-sm"
+            >
+              <option value="fr">{t.langFr}</option>
+              <option value="en">{t.langEn}</option>
+            </select>
+          </div>
+          <div className="flex items-center justify-between py-2">
+            <span className="text-sm text-foreground">{t.timezoneLabel}</span>
+            <select
+              value={merged.user_timezone ?? 'Europe/Paris'}
+              onChange={(e) => handleChange('user_timezone', e.target.value)}
+              className="rounded border border-input px-2 py-1 text-sm"
+            >
+              <option value="Europe/Paris">Europe/Paris</option>
+              <option value="Europe/London">Europe/London</option>
+              <option value="America/New_York">America/New_York</option>
+              <option value="America/Los_Angeles">America/Los_Angeles</option>
+              <option value="America/Chicago">America/Chicago</option>
+              <option value="Asia/Tokyo">Asia/Tokyo</option>
+              <option value="UTC">UTC</option>
+            </select>
+          </div>
+          <ToggleRow label={t.showRecords} value={merged.show_records ?? false} onChange={(v) => handleChange('show_records', v)} />
+          <ToggleRow label={t.normalizeModeLabels} value={merged.normalize_mode_labels ?? true} onChange={(v) => handleChange('normalize_mode_labels', v)} />
+          <ToggleRow label={t.excludeBTB} value={merged.career_top_exclude_btb ?? false} onChange={(v) => handleChange('career_top_exclude_btb', v)} />
+          <ToggleRow label={t.refreshClearsCaches} value={merged.refresh_clears_caches ?? false} onChange={(v) => handleChange('refresh_clears_caches', v)} />
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-base">{t.discordTitle}</CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-1 divide-y divide-border/50">
+          <ToggleRow label={t.discordEnabled} value={merged.discord_notifications_enabled ?? false} onChange={(v) => handleChange('discord_notifications_enabled', v)} />
+          <ToggleRow label={t.discordNotifySync} value={merged.discord_notify_sync ?? false} onChange={(v) => handleChange('discord_notify_sync', v)} />
+          <ToggleRow label={t.discordNotifyBackfill} value={merged.discord_notify_backfill ?? false} onChange={(v) => handleChange('discord_notify_backfill', v)} />
+          <ToggleRow label={t.discordNotifyNewMedia} value={merged.discord_notify_new_media ?? false} onChange={(v) => handleChange('discord_notify_new_media', v)} />
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-base">{t.mediaTitle}</CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-1 divide-y divide-border/50">
+          <ToggleRow label={t.mediaWatcherEnabled} value={merged.media_watcher_enabled ?? false} onChange={(v) => handleChange('media_watcher_enabled', v)} />
+          <div className="flex items-center justify-between py-2">
+            <span className="text-sm text-foreground">{t.mediaToleranceLabel}</span>
+            <input
+              type="number"
+              value={merged.media_tolerance_minutes ?? 10}
+              onChange={(e) => handleChange('media_tolerance_minutes', Number(e.target.value))}
+              className="w-20 rounded border border-input px-2 py-1 text-right text-sm"
+              min={1}
+              max={60}
+            />
+          </div>
+        </CardContent>
+      </Card>
+
+      {merged.discord_notifications_enabled && !merged.discord_webhook_url_present && (
+        <div className="rounded-lg border border-warning bg-warning/10 px-4 py-3 text-sm text-warning">
+          ⚠️ {t.discordNoWebhook}
+        </div>
+      )}
+      {merged.media_watcher_enabled && !merged.media_captures_base_dir && (
+        <div className="rounded-lg border border-warning bg-warning/10 px-4 py-3 text-sm text-warning">
+          ⚠️ {t.mediaNoBaseDir}
+        </div>
+      )}
+    </>
+  )
+}
+
+// ─── Onglet Synchronisation ──────────────────────────────────────────────────
+
+function SyncTab({ merged, handleChange, t }: TabProps) {
+  const activeSyncJobId = useAppShellStore((s) => s.activeSyncJobId)
+  const setActiveSyncJobId = useAppShellStore((s) => s.setActiveSyncJobId)
+  const startSyncAll = useStartSyncAll()
+  const { data: jobStatus } = useJobStatus(activeSyncJobId ?? '', !!activeSyncJobId)
+
+  const syncRunning =
+    !!activeSyncJobId &&
+    jobStatus?.status !== 'succeeded' &&
+    jobStatus?.status !== 'failed' &&
+    jobStatus?.status !== 'cancelled' &&
+    jobStatus?.status !== 'interrupted'
+
+  useEffect(() => {
+    if (
+      activeSyncJobId &&
+      (jobStatus?.status === 'succeeded' ||
+        jobStatus?.status === 'failed' ||
+        jobStatus?.status === 'cancelled' ||
+        jobStatus?.status === 'interrupted')
+    ) {
+      setActiveSyncJobId(null)
+    }
+  }, [jobStatus?.status, activeSyncJobId, setActiveSyncJobId])
+
+  function handleSync() {
+    if (syncRunning) return
+    startSyncAll.mutate(undefined, {
+      onSuccess: (job) => setActiveSyncJobId(job.job_id),
+    })
+  }
+
+  return (
+    <>
+      {/* Synchronisation manuelle */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-base">{t.manualSyncTitle}</CardTitle>
+        </CardHeader>
+        <CardContent className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+          <p className="text-sm text-muted-foreground">{t.manualSyncDescription}</p>
+          <Button
+            onClick={handleSync}
+            disabled={syncRunning || startSyncAll.isPending}
+            className="shrink-0"
+          >
+            {syncRunning ? t.manualSyncRunning : t.manualSyncButton}
+          </Button>
+        </CardContent>
+      </Card>
+
+      {/* Synchronisation périodique */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-base">{t.spnkrTitle}</CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-1 divide-y divide-border/50">
+          <ToggleRow label={t.spnkrAutoSync} value={merged.spnkr_auto_sync_enabled ?? false} onChange={(v) => handleChange('spnkr_auto_sync_enabled', v)} />
+          {(merged.spnkr_auto_sync_enabled ?? false) && (
+            <div className="flex items-center justify-between py-3 text-sm">
+              <span>{t.spnkrAutoSyncIntervalMinutes}</span>
+              <div className="flex items-center gap-1.5">
+                <input
+                  type="number"
+                  min={5}
+                  max={1440}
+                  className="w-20 rounded border border-border bg-background px-2 py-1 text-right text-sm"
+                  value={merged.spnkr_auto_sync_interval_minutes ?? 360}
+                  onChange={(e) => handleChange('spnkr_auto_sync_interval_minutes', parseInt(e.target.value, 10) || 360)}
+                />
+                <span className="text-muted-foreground">{t.spnkrAutoSyncIntervalMinutesUnit}</span>
+              </div>
+            </div>
+          )}
+          <ToggleRow label={t.spnkrRefreshWithBackfill} value={merged.spnkr_refresh_with_backfill ?? false} onChange={(v) => handleChange('spnkr_refresh_with_backfill', v)} />
+        </CardContent>
+      </Card>
+
+      {/* Détection de présence */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-base">{t.watcherTitle}</CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-1 divide-y divide-border/50">
+          <ToggleRow label={t.watcherPresenceEnabled} value={merged.watcher_presence_enabled ?? false} onChange={(v) => handleChange('watcher_presence_enabled', v)} />
+          <p className="py-2 text-xs text-muted-foreground">{t.watcherPresenceDescription}</p>
+        </CardContent>
+      </Card>
+
+      {/* Backfill */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-base">{t.backfillTitle}</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="grid grid-cols-2 gap-x-6 gap-y-1 py-1 sm:grid-cols-3">
+            {(
+              [
+                ['spnkr_refresh_backfill_medals', t.backfillMedals],
+                ['spnkr_refresh_backfill_skill', t.backfillSkill],
+                ['spnkr_refresh_backfill_aliases', t.backfillAliases],
+                ['spnkr_refresh_backfill_personal_scores', t.backfillPersonalScores],
+                ['spnkr_refresh_backfill_performance_scores', t.backfillPerfScores],
+                ['spnkr_refresh_backfill_lusr', t.backfillLUSR],
+                ['spnkr_refresh_backfill_events', t.backfillEvents],
+                ['spnkr_refresh_backfill_weapons', t.backfillWeapons],
+              ] as const
+            ).map(([field, label]) => (
+              <ToggleRow
+                key={field}
+                label={label}
+                value={(merged as Record<string, boolean>)[field] ?? false}
+                onChange={(v) => handleChange(field, v)}
+              />
+            ))}
+          </div>
+        </CardContent>
+      </Card>
+    </>
   )
 }

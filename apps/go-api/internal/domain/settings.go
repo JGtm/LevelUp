@@ -22,6 +22,10 @@ type SettingsResponse struct {
 	DiscordNotifyBackfill              bool   `json:"discord_notify_backfill"`
 	DiscordNotifyNewVersion            bool   `json:"discord_notify_new_version"`
 	DiscordNotifyNewMedia              bool   `json:"discord_notify_new_media"`
+	SpnkrAutoSyncEnabled               bool   `json:"spnkr_auto_sync_enabled"`
+	SpnkrAutoSyncIntervalHours         int    `json:"spnkr_auto_sync_interval_hours"`
+	SpnkrAutoSyncIntervalMinutes       int    `json:"spnkr_auto_sync_interval_minutes"`
+	WatcherPresenceEnabled             bool   `json:"watcher_presence_enabled"`
 	SpnkrRefreshWithBackfill           bool   `json:"spnkr_refresh_with_backfill"`
 	SpnkrRefreshBackfillMedals         bool   `json:"spnkr_refresh_backfill_medals"`
 	SpnkrRefreshBackfillSkill          bool   `json:"spnkr_refresh_backfill_skill"`
@@ -51,6 +55,10 @@ type UpdateSettingsRequest struct {
 	DiscordNotifyBackfill              *bool   `json:"discord_notify_backfill,omitempty"`
 	DiscordNotifyNewVersion            *bool   `json:"discord_notify_new_version,omitempty"`
 	DiscordNotifyNewMedia              *bool   `json:"discord_notify_new_media,omitempty"`
+	SpnkrAutoSyncEnabled               *bool   `json:"spnkr_auto_sync_enabled,omitempty"`
+	SpnkrAutoSyncIntervalHours         *int    `json:"spnkr_auto_sync_interval_hours,omitempty"`
+	SpnkrAutoSyncIntervalMinutes       *int    `json:"spnkr_auto_sync_interval_minutes,omitempty"`
+	WatcherPresenceEnabled             *bool   `json:"watcher_presence_enabled,omitempty"`
 	SpnkrRefreshWithBackfill           *bool   `json:"spnkr_refresh_with_backfill,omitempty"`
 	SpnkrRefreshBackfillMedals         *bool   `json:"spnkr_refresh_backfill_medals,omitempty"`
 	SpnkrRefreshBackfillSkill          *bool   `json:"spnkr_refresh_backfill_skill,omitempty"`
