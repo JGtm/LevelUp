@@ -64,6 +64,12 @@ export function useStartDeltaSync() {
   })
 }
 
+export function useStartSyncAll() {
+  return useMutation({
+    mutationFn: () => api.post<AsyncJobStatus>('/sync/all', {}),
+  })
+}
+
 export function useJobStatus(jobId: string, enabled: boolean) {
   return useQuery({
     queryKey: queryKeys.job(jobId),

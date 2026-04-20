@@ -6,17 +6,19 @@
  * En mode setup_required, redirige vers /setup.
  */
 
-import { createRootRoute, Outlet, useNavigate } from '@tanstack/react-router'
+import { createRootRoute, Outlet, useNavigate, useRouterState } from '@tanstack/react-router'
 import { useQuery } from '@tanstack/react-query'
 import { useEffect } from 'react'
 import { api } from '@/lib/api/client'
 import { queryKeys } from '@/lib/query/keys'
+import { resolvePageTitle } from '@/lib/pageTitle'
 import { useAppShellStore } from '@/stores/appShellStore'
 import { AppShell } from '@/components/shell/AppShell'
 import type { BootstrapResponse } from '@/lib/api/types'
 
 function RootLayout() {
   const navigate = useNavigate()
+  const pathname = useRouterState({ select: (state) => state.location.pathname })
   const hydrateFromBootstrap = useAppShellStore((s) => s.hydrateFromBootstrap)
   const isBootstrapped = useAppShellStore((s) => s.isBootstrapped)
   const setupRequired = useAppShellStore((s) => s.setupRequired)
@@ -30,6 +32,10 @@ function RootLayout() {
     staleTime: 2 * 60 * 1000,
     refetchOnWindowFocus: false,
   })
+
+  useEffect(() => {
+    document.title = resolvePageTitle(pathname)
+  }, [pathname])
 
   useEffect(() => {
     if (!data) return

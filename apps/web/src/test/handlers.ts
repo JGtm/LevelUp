@@ -207,6 +207,10 @@ const mediaFixture = {
   total_mine: 0,
   total_teammates: 0,
   total_unassigned: 0,
+  available_filters: {
+    maps: [{ label: 'Aquarius', value: 'Aquarius' }],
+    modes: [{ label: 'Slayer', value: 'Slayer' }],
+  },
 }
 
 const labResourcesFixture = {
@@ -438,7 +442,7 @@ export const handlers = [
     HttpResponse.json({ available: false, rank: null, reward_track: null, progress: null, error_hint: null }),
   ),
   http.get(p(`/players/${SLUG}/challenges`), () =>
-    HttpResponse.json({ available: false, total: null, completed: null, xp_available: null, next_expiry: null, error_hint: null }),
+    HttpResponse.json({ available: false, total: null, completed: null, xp_available: null, next_expiry: null, items: [], error_hint: null }),
   ),
 
   // Leaderboard
@@ -467,6 +471,7 @@ export const handlers = [
 
   // Media
   http.post(p(`/players/${SLUG}/pages/media`), () => HttpResponse.json(mediaFixture)),
+  http.get(p('/media/feed-version'), () => HttpResponse.json({ version: 1 })),
 ]
 
 // Ré-export de emptyKPIs pour usage éventuel dans les tests unitaires

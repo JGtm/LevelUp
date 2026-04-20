@@ -55,6 +55,8 @@ interface AppShellState {
   setHintsVisible: (visible: boolean) => void
   /** Reset des données joueur (appelé lors d'un switch titre) */
   resetPlayerData: () => void
+  /** Met à jour l'ID du job de sync actif (null = aucun sync en cours). */
+  setActiveSyncJobId: (id: string | null) => void
 }
 
 const DEFAULT_CAPABILITIES: CapabilityMap = {
@@ -152,6 +154,7 @@ export const useAppShellStore = create<AppShellState>((set, get) => ({
 
   setLocale: (locale) => set({ locale }),
   setHintsVisible: (visible) => set({ hintsVisible: visible }),
+  setActiveSyncJobId: (id) => set({ activeSyncJobId: id }),
 
   resetPlayerData: () => {
     set({
