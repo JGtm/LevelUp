@@ -37,10 +37,10 @@ var allowedMediaExts = map[string]bool{
 	".png": true, ".jpg": true, ".jpeg": true, ".bmp": true, ".gif": true,
 }
 
-// MediaUploadContextFactory retourne service + gamertag + titleSlug + dbPath.
+// MediaUploadContextFactory retourne service + gamertag + titleSlug + dbPath + sharedSocialDBPath.
 // Utilisée par PostUploadMedia pour résoudre le répertoire captures.
 type MediaUploadContextFactory func(ctx context.Context, slug string) (
-	port.MediaService, string, string, string, error,
+	port.MediaService, string, string, string, string, error,
 )
 
 // MediaHandler gère les endpoints de la galerie médias.
@@ -136,7 +136,7 @@ func (h *MediaHandler) PostUploadMedia(w http.ResponseWriter, r *http.Request) {
 	}
 
 	slug := chi.URLParam(r, "player_slug")
-	svc, gamertag, titleSlug, dbPath, err := h.newUpload(r.Context(), slug)
+	svc, gamertag, titleSlug, dbPath, sharedSocialDBPath, err := h.newUpload(r.Context(), slug)
 	if err != nil {
 		writeError(w, http.StatusNotFound, "player_not_found", err.Error())
 		return
@@ -165,10 +165,11 @@ func (h *MediaHandler) PostUploadMedia(w http.ResponseWriter, r *http.Request) {
 		"player", gamertag, "files", len(files), "captures_dir", capturesDir)
 
 	req := domain.UploadRequest{
-		Files:       files,
-		CapturesDir: capturesDir,
-		DBPath:      dbPath,
-		Tolerance:   5,
+		Files:              files,
+		CapturesDir:        capturesDir,
+		DBPath:             dbPath,
+		SharedSocialDBPath: sharedSocialDBPath,
+		Tolerance:          5,
 	}
 
 	result, err := svc.UploadMedia(r.Context(), req)

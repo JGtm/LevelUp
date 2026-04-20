@@ -160,10 +160,11 @@ type UploadedFile struct {
 
 // UploadRequest regroupe les paramètres d'un upload multi-fichiers.
 type UploadRequest struct {
-	Files       []UploadedFile
-	CapturesDir string // chemin absolu résolu par le handler
-	DBPath      string // chemin vers stats.duckdb du joueur
-	Tolerance   int    // tolérance association match (minutes)
+	Files              []UploadedFile
+	CapturesDir        string // chemin absolu résolu par le handler
+	DBPath             string // chemin vers stats.duckdb du joueur (fallback)
+	SharedSocialDBPath string // chemin vers shared_social.duckdb (cible principale)
+	Tolerance          int    // tolérance association match (minutes)
 }
 
 // UploadResult résume le résultat d'un upload multi-fichiers.
@@ -173,4 +174,18 @@ type UploadResult struct {
 	Associated int      `json:"associated"`       // associations matchs créées
 	Thumbnails int      `json:"thumbnails"`       // miniatures générées
 	Errors     []string `json:"errors,omitempty"` // erreurs non-bloquantes
+}
+
+// MatchFavoriteRequest représente une demande de bascule favori.
+type MatchFavoriteRequest struct {
+	PlayerSlug string `json:"player_slug"`
+	MatchID    string `json:"match_id"`
+	Favorited  bool   `json:"favorited"`
+}
+
+// MatchFavoriteResponse représente la réponse après une bascule favori.
+type MatchFavoriteResponse struct {
+	PlayerSlug string `json:"player_slug"`
+	MatchID    string `json:"match_id"`
+	Favorited  bool   `json:"favorited"`
 }

@@ -28,11 +28,12 @@ import (
 
 // MediaIndexOptions configure l'indexation des médias.
 type MediaIndexOptions struct {
-	PlayerDBPath string
-	CapturesDir  string // répertoire captures du joueur
-	ForceRescan  bool   // réindexer tous les fichiers même connus
-	ToleranceMin int    // tolérance d'association match en minutes (défaut 5)
-	Gamertag     string
+	PlayerDBPath       string
+	SharedSocialDBPath string // shared_social.duckdb (cible d'écriture médias)
+	CapturesDir        string // répertoire captures du joueur
+	ForceRescan        bool   // réindexer tous les fichiers même connus
+	ToleranceMin       int    // tolérance d'association match en minutes (défaut 5)
+	Gamertag           string
 }
 
 // MediaIndexResult résume le résultat de l'indexation.
@@ -63,9 +64,15 @@ func IndexMedia(opts MediaIndexOptions) (MediaIndexResult, error) {
 		opts.ToleranceMin = 5
 	}
 
-	db, err := sql.Open("duckdb", opts.PlayerDBPath)
+	// Utiliser shared_social.duckdb si disponible, sinon fallback sur stats.duckdb (transition).
+	targetPath := opts.PlayerDBPath
+	if opts.SharedSocialDBPath != "" {
+		targetPath = opts.SharedSocialDBPath
+	}
+
+	db, err := sql.Open("duckdb", targetPath)
 	if err != nil {
-		return MediaIndexResult{}, fmt.Errorf("ouverture player DB: %w", err)
+		return MediaIndexResult{}, fmt.Errorf("ouverture DB: %w", err)
 	}
 	defer db.Close()
 
