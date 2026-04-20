@@ -157,3 +157,4 @@ data/ui_prefs.json
 # Build artifacts Go
 apps/go-api/bin/
 apps/go-api/*.exe
+data/auth/
