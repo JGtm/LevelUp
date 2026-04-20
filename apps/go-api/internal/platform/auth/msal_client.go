@@ -36,6 +36,18 @@ const (
 var XboxScopes = []string{"Xboxlive.signin", "Xboxlive.offline_access"}
 
 // DeviceCodeFlow regroupe les données d'un flow en cours.
+// NewDeviceCodeFlow crée un DeviceCodeFlow avec les champs exportés initialisés.
+// Le champ interne MSAL est laissé à zéro — AppeleToken échouera immédiatement
+// (utilisé uniquement dans les stubs de test et les clients non-MSAL).
+func NewDeviceCodeFlow(userCode, verificationURL, message string, expiresIn int) *DeviceCodeFlow {
+	return &DeviceCodeFlow{
+		Message:         message,
+		UserCode:        userCode,
+		VerificationURL: verificationURL,
+		ExpiresIn:       expiresIn,
+	}
+}
+
 type DeviceCodeFlow struct {
 	// Message contient le texte à afficher à l'utilisateur (localisé par Microsoft).
 	Message string
