@@ -144,8 +144,11 @@ func TestBuildDistributionsTab_CorrectBuckets(t *testing.T) {
 	if len(tab.KDABuckets) == 0 {
 		t.Fatal("expected non-empty KDABuckets")
 	}
-	if len(tab.CorrelationPoints) != 4 {
-		t.Errorf("expected 4 correlation points, got %d", len(tab.CorrelationPoints))
+	// buildCorrelationPoints génère 4 points par match (kills_vs_kd, lifespan_vs_kills,
+	// lifespan_vs_deaths, kills_vs_deaths) — accuracy_vs_kda et mmr_team_vs_enemy sont
+	// exclus car Accuracy/KDA/MMR sont nil dans ce fixture.
+	if len(tab.CorrelationPoints) != 16 {
+		t.Errorf("expected 4 matches × 4 types = 16 correlation points, got %d", len(tab.CorrelationPoints))
 	}
 }
 
@@ -399,5 +402,104 @@ func TestFilterStatsMatchRows_NoFilter(t *testing.T) {
 	out := filterStatsMatchRows(rows, domain.FilterContextInput{})
 	if len(out) != 2 {
 		t.Errorf("expected 2 rows without filter, got %d", len(out))
+	}
+}
+
+// ---------------------------------------------------------------------------
+// computeRegressionStats
+// ---------------------------------------------------------------------------
+
+func TestComputeRegressionStats_TooFewMatches(t *testing.T) {
+	// Moins de 20 matchs → HasEnoughForTrend = false
+	matches := make([]domain.StatsMatchRow, 10)
+	for i := range matches {
+		matches[i] = domain.StatsMatchRow{Kills: 5, Deaths: 5}
+	}
+	stats := computeRegressionStats(matches)
+	if stats.HasEnoughForTrend {
+		t.Error("expected HasEnoughForTrend=false with < 20 matches")
+	}
+	if stats.KDSlope != nil {
+		t.Error("expected nil KDSlope when no trend")
+	}
+}
+
+func TestComputeRegressionStats_ImprovingTrend(t *testing.T) {
+	// 25 matchs avec K/D croissant → trend="improving"
+	matches := make([]domain.StatsMatchRow, 25)
+	for i := range matches {
+		matches[i] = domain.StatsMatchRow{
+			Kills:  i + 1,
+			Deaths: 5,
+		}
+	}
+	stats := computeRegressionStats(matches)
+	if !stats.HasEnoughForTrend {
+		t.Fatal("expected HasEnoughForTrend=true")
+	}
+	if stats.Trend == nil || *stats.Trend != "improving" {
+		trend := "<nil>"
+		if stats.Trend != nil {
+			trend = *stats.Trend
+		}
+		t.Errorf("expected trend=improving, got %q", trend)
+	}
+	if stats.KDSlope == nil || *stats.KDSlope <= 0 {
+		t.Error("expected positive KDSlope for improving trend")
+	}
+}
+
+func TestComputeRegressionStats_DecliningTrend(t *testing.T) {
+	// 25 matchs avec K/D décroissant → trend="declining"
+	matches := make([]domain.StatsMatchRow, 25)
+	for i := range matches {
+		matches[i] = domain.StatsMatchRow{
+			Kills:  25 - i,
+			Deaths: 5,
+		}
+	}
+	stats := computeRegressionStats(matches)
+	if !stats.HasEnoughForTrend {
+		t.Fatal("expected HasEnoughForTrend=true")
+	}
+	if stats.Trend == nil || *stats.Trend != "declining" {
+		trend := "<nil>"
+		if stats.Trend != nil {
+			trend = *stats.Trend
+		}
+		t.Errorf("expected trend=declining, got %q", trend)
+	}
+}
+
+func TestComputeRegressionStats_StableTrend(t *testing.T) {
+	// 25 matchs identiques → trend="stable"
+	matches := make([]domain.StatsMatchRow, 25)
+	for i := range matches {
+		matches[i] = domain.StatsMatchRow{Kills: 10, Deaths: 5}
+	}
+	stats := computeRegressionStats(matches)
+	if !stats.HasEnoughForTrend {
+		t.Fatal("expected HasEnoughForTrend=true")
+	}
+	if stats.Trend == nil || *stats.Trend != "stable" {
+		trend := "<nil>"
+		if stats.Trend != nil {
+			trend = *stats.Trend
+		}
+		t.Errorf("expected trend=stable, got %q", trend)
+	}
+}
+
+func TestComputeRegressionStats_RSquaredBounded(t *testing.T) {
+	// R² doit être dans [0, 1]
+	matches := make([]domain.StatsMatchRow, 30)
+	for i := range matches {
+		matches[i] = domain.StatsMatchRow{Kills: i%7 + 1, Deaths: 3}
+	}
+	stats := computeRegressionStats(matches)
+	if stats.RSquared != nil {
+		if *stats.RSquared < 0 || *stats.RSquared > 1 {
+			t.Errorf("R² hors [0,1]: %v", *stats.RSquared)
+		}
 	}
 }
