@@ -276,8 +276,6 @@ export function NavL1() {
   const currentPlayer = useAppShellStore((s) => s.currentPlayer)
   const availablePlayers = useAppShellStore((s) => s.availablePlayers)
   const setCurrentPlayer = useAppShellStore((s) => s.setCurrentPlayer)
-  const isAdmin = useAppShellStore((s) => s.isAdmin)
-  const authMode = useAppShellStore((s) => s.authMode)
   const routerState = useRouterState()
   const pathname = routerState.location.pathname
   const playerSlug = currentPlayer?.player_slug ?? ''
@@ -375,18 +373,6 @@ export function NavL1() {
       )}
 
       <ThemeToggle className="ml-2" />
-
-      {/* ── Lien Admin (mode password, rôle admin) ─────────────────────── */}
-      {authMode === 'password' && isAdmin && (
-        <Link
-          to="/admin"
-          className="ml-1 shrink-0 rounded-md px-2 py-1.5 text-sm font-medium text-muted-foreground transition-colors hover:bg-sidebar-accent hover:text-sidebar-foreground [&.active]:text-sidebar-foreground"
-          title="Administration"
-          aria-label="Administration"
-        >
-          Admin
-        </Link>
-      )}
 
       {/* ── Lien Paramètres ─────────────────────────────────────────────── */}
       <Link
