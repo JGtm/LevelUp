@@ -105,10 +105,6 @@ test-api: _check_venv
 test-parity: _check_venv
 	$(VENV_PY) -m pytest tests/parity/ -v
 
-## Lance les tests unitaires front (Vitest)
-test-web:
-	cd apps/web && npm run test
-
 ## Génère le fichier de types TypeScript depuis le schéma OpenAPI FastAPI
 ## Prérequis : l'API doit être démarrée (make api ou make dev)
 ## Usage : make generate-types
@@ -152,27 +148,49 @@ _check_venv:
 # =============================================================================
 
 GO_API_DIR := apps/go-api
+API_PORT ?= 8000
 # Injection de la version depuis pyproject.toml ou tag Git (fallback "dev")
 GO_VERSION := $(shell python3 -c "import re,pathlib; m=re.search(r'version\s*=\s*\"([^\"]+)\"', pathlib.Path('pyproject.toml').read_text()); print(m.group(1) if m else 'dev')" 2>/dev/null || echo "dev")
+# Racine du repo de données (contient db_profiles.json + data/players/).
+# Par défaut : repo Python LevelUp frère de ce repo. Surchargeable via env.
+# Note: $(abspath) ne gère pas les lettres de lecteur Windows (C:/) sous MSYS2 —
+# on utilise $(shell cd ../LevelUp && pwd -W) pour obtenir un chemin Windows natif.
+LEVELUP_DATA_ROOT ?= $(shell (cd ../LevelUp && pwd -W 2>/dev/null) || (cd ../LevelUp && pwd))
+VITE_API_PROXY_TARGET ?= http://127.0.0.1:$(API_PORT)
 GO_LDFLAGS := -ldflags "-X main.version=$(GO_VERSION)"
+# air hot-reload — cygpath convertit le chemin Windows en chemin POSIX (MSYS2/Git Bash)
+AIR := $(shell cygpath -u "$$(go env GOPATH)")/bin/air
+
+ifeq ($(OS),Windows_NT)
+GO_API_CLEANUP_CMD := cmd //C "taskkill /F /IM server.exe /T >NUL 2>&1 || exit /B 0"
+else
+GO_API_CLEANUP_CMD := true
+endif
 
 ## Go API: compile le binaire server (Linux — requiert CGo/DuckDB)
 go-api-build:
 	cd $(GO_API_DIR) && CGO_ENABLED=1 go build $(GO_LDFLAGS) -o bin/server ./cmd/server/
 
-## Go API: démarre le serveur Go en mode dev (localhost:8000)
+## Go API: démarre le serveur Go seul avec hot-reload (air)
 go-api-run:
-	cd $(GO_API_DIR) && CGO_ENABLED=1 \
-		LEVELUP_REPO_ROOT="$(shell pwd)" \
-		go run ./cmd/server/
+	@if curl -fsS "http://127.0.0.1:$(API_PORT)/health" >/dev/null 2>&1; then \
+		echo "  ℹ️ LevelUp API déjà disponible sur http://127.0.0.1:$(API_PORT) — réutilisation."; \
+		exit 0; \
+	fi
+	@$(GO_API_CLEANUP_CMD)
+	@cd $(GO_API_DIR) && CGO_ENABLED=1 \
+		LEVELUP_REPO_ROOT="$(LEVELUP_DATA_ROOT)" \
+		LEVELUP_API_PORT="$(API_PORT)" \
+		$(AIR) -c .air.toml
 
-## Go API: démarre le serveur Go + frontend Vite en parallèle
+## Go API: démarre le serveur Go (air hot-reload) + frontend Vite en parallèle
+## Sur Windows/MSYS2, ouvrir deux terminaux : make go-api-run | make web-dev
 go-api-dev:
-	@echo "▶ Go API (port 8000) + Web (port 5173)…"
-	cd $(GO_API_DIR) && CGO_ENABLED=1 \
-		LEVELUP_REPO_ROOT="$(shell pwd)" \
-		go run ./cmd/server/ & \
-	cd apps/web && npm run dev
+	@$(MAKE) -j2 --no-print-directory go-api-run web-dev
+
+## Frontend Vite uniquement
+web-dev:
+	@cd apps/web && VITE_API_PROXY_TARGET="$(VITE_API_PROXY_TARGET)" npm run dev
 
 ## Go API: lance les tests (sans CGo — domain/analysis/contract)
 go-api-test:
