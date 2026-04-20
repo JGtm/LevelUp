@@ -5,6 +5,7 @@ package handlers
 
 import (
 	"encoding/json"
+	"log/slog"
 	"net/http"
 
 	"github.com/go-chi/chi/v5"
@@ -40,6 +41,7 @@ func (h *TimeseriesHandler) GetPage(w http.ResponseWriter, r *http.Request) {
 
 	resp, svcErr := svc.GetPage(r.Context(), req)
 	if svcErr != nil {
+		slog.ErrorContext(r.Context(), "timeseries: erreur service", "player", slug, "err", svcErr)
 		writeError(w, http.StatusInternalServerError, "timeseries_error", svcErr.Error())
 		return
 	}

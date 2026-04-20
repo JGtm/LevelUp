@@ -1,5 +1,21 @@
 # Thought Log
 
+## [2026-04-20] fix(challenges): fallback metadata.duckdb + cache badges local dans le provider Go
+
+**Statut** : Complété
+
+**Décision technique** : le provider Go des défis doit reproduire le fast-path du Python sans rendre le provider global mutable. Le câblage se fait donc par joueur dans `registry.go`, en injectant au `HomeService` un `HaloProvider` cloné avec accès au `metadata.duckdb` du titre et à un répertoire local `cache/challenge_badges`. Le fallback est désormais : metadata locale pour la définition du défi, puis cache PNG local pour le badge, puis live GameCMS seulement si nécessaire ; une définition récupérée en live est réinsérée dans `challenge_definitions` / `challenge_translations` pour les appels suivants.
+
+**Résultats** :
+- `apps/go-api/internal/platform/halo/provider.go` : ajout de `WithChallengeCache(metaPath, badgeDir)` pour obtenir une copie configurée du provider.
+- `apps/go-api/internal/platform/halo/challenges_details.go` : lecture des définitions depuis `challenge_definitions` / `challenge_translations` avant appel GameCMS ; upsert metadata après fetch live ; lecture/écriture des badges PNG dans `data/.../cache/challenge_badges` avant fallback live ; logs debug ajoutés pour cache-hit et échecs best-effort de lecture/écriture locale.
+- `apps/go-api/internal/service/home_service.go` : ajout de `WithHaloProvider()` pour injecter un provider configuré par joueur.
+- `apps/go-api/internal/api/registry.go` : `HomeCtxWithAuth` et `SeasonPassCtxWithAuth` câblent désormais un provider avec `metadata.duckdb` + cache local des badges.
+- `apps/go-api/internal/platform/halo/provider_test.go` : nouveaux tests ciblés sur la lecture metadata locale, la persistance metadata après fetch live, la lecture d'un badge hebdo depuis le cache fichier local, et la persistance du badge local après fetch live.
+- Validation : `go test -count=1 ./internal/platform/halo/...` PASS ; `go test -count=1 ./internal/service ./internal/api/...` PASS ; couverture package Halo `64.2%`, avec couverture forte sur le périmètre corrigé (`loadChallengeDefinitionFromMetadata 92.6%`, `storeChallengeDefinitionInMetadata 84.0%`, `fetchChallengeDefinition 71.4%`, `fetchChallengeBadgeDataURL 70.8%`).
+
+**Conclusion** : le backend Go ne dépend plus uniquement du live pour enrichir les défis home. Si le catalogue ou le badge sont déjà connus localement, ils sont servis depuis la DB/cache disque ; le live reste réservé au complément et à la progression courante.
+
 ## [2026-04-20] fix(home): auth GameCMS des défis + vérification live JGtm
 
 **Statut** : Complété

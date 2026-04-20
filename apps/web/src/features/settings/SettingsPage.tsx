@@ -397,6 +397,55 @@ function SyncTab({ merged, handleChange, t }: TabProps) {
           </div>
         </CardContent>
       </Card>
+
+      {/* Escouade — amis par défaut */}
+      <FriendGamertagesSection
+        value={(merged.friend_gamertags as string[] | undefined) ?? []}
+        onChange={(v) => handleChange('friend_gamertags', v)}
+      />
     </>
+  )
+}
+
+// ─── Section amis par défaut ─────────────────────────────────────────────────
+
+function FriendGamertagesSection({
+  value,
+  onChange,
+}: {
+  value: string[]
+  onChange: (v: string[]) => void
+}) {
+  const [draft, setDraft] = useState(value.join(', '))
+
+  const handleBlur = () => {
+    const parsed = draft
+      .split(',')
+      .map((s) => s.trim())
+      .filter(Boolean)
+    onChange(parsed)
+    setDraft(parsed.join(', '))
+  }
+
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle className="text-base">Mon escouade (amis par défaut)</CardTitle>
+      </CardHeader>
+      <CardContent>
+        <p className="text-sm text-muted-foreground mb-3">
+          Gamertags des coéquipiers présélectionnés à l'ouverture de la page Escouade.
+          Séparer par des virgules.
+        </p>
+        <input
+          type="text"
+          value={draft}
+          onChange={(e) => setDraft(e.target.value)}
+          onBlur={handleBlur}
+          placeholder="Pseudo1, Pseudo2, Pseudo3"
+          className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
+        />
+      </CardContent>
+    </Card>
   )
 }

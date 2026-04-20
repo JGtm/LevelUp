@@ -7,6 +7,9 @@ import { Card, CardContent } from '@/components/ui/card'
 import { EmptyStateNotice } from '@/components/ui/empty-state'
 import type { TeammateRow, TeammateKPIs, PlotlyFigurePayload } from '@/lib/api/types'
 import { useSquadContext } from './SquadLayout'
+import { buildHsPkChart } from './charts/hsPkChart'
+import { buildTimelineChart } from './charts/timelineChart'
+import { buildHeatmapChart } from './charts/heatmapChart'
 
 // ─── Helpers graphiques ───────────────────────────────────────────────────────
 
@@ -57,33 +60,70 @@ function buildSynergiesChart(
 // ─── Composant ────────────────────────────────────────────────────────────────
 
 export function SquadSynergiesPage() {
-  const { selectedRows, soloReference } = useSquadContext()
+  const { selectedRows, soloReference, pageData } = useSquadContext()
 
   const chart =
     selectedRows.length > 0 ? buildSynergiesChart(selectedRows, soloReference) : null
 
+  const hsPkChart = selectedRows.length > 0 ? buildHsPkChart(selectedRows) : null
+  const timelineChart =
+    pageData?.timeseries && pageData.timeseries.length > 0
+      ? buildTimelineChart(pageData.timeseries)
+      : null
+  const heatmapChart =
+    pageData?.map_breakdown && pageData.map_breakdown.length > 0
+      ? buildHeatmapChart(pageData.map_breakdown)
+      : null
+
   return (
-    <Card>
-      <CardContent className="pt-4">
-        {selectedRows.length === 0 ? (
-          <EmptyStateNotice
-            title="Comparaison inactive"
-            description="Sélectionne au moins un coéquipier pour afficher les synergies."
-          />
-        ) : chart ? (
-          <div className="space-y-4">
-            <p className="text-sm text-muted-foreground">
-              Comparaison de tes stats <em>avec</em> chaque coéquipier vs ta référence solo.
-            </p>
-            <PlotlyChart figure={chart} />
-          </div>
-        ) : (
-          <EmptyStateNotice
-            title="Synergies indisponibles"
-            description="Le graphique de synergie n'a pas pu être construit avec les données actuelles."
-          />
-        )}
-      </CardContent>
-    </Card>
+    <div className="space-y-4">
+      <Card>
+        <CardContent className="pt-4">
+          {selectedRows.length === 0 ? (
+            <EmptyStateNotice
+              title="Comparaison inactive"
+              description="Sélectionne au moins un coéquipier pour afficher les synergies."
+            />
+          ) : chart ? (
+            <div className="space-y-4">
+              <p className="text-sm text-muted-foreground">
+                Comparaison de tes stats <em>avec</em> chaque coéquipier vs ta référence solo.
+              </p>
+              <PlotlyChart figure={chart} />
+            </div>
+          ) : (
+            <EmptyStateNotice
+              title="Synergies indisponibles"
+              description="Le graphique de synergie n'a pas pu être construit avec les données actuelles."
+            />
+          )}
+        </CardContent>
+      </Card>
+
+      {hsPkChart && (
+        <Card>
+          <CardContent className="pt-4">
+            <PlotlyChart figure={hsPkChart} />
+          </CardContent>
+        </Card>
+      )}
+
+      {timelineChart && (
+        <Card>
+          <CardContent className="pt-4">
+            <PlotlyChart figure={timelineChart} />
+          </CardContent>
+        </Card>
+      )}
+
+      {heatmapChart && (
+        <Card>
+          <CardContent className="pt-4">
+            <PlotlyChart figure={heatmapChart} />
+          </CardContent>
+        </Card>
+      )}
+    </div>
   )
 }
+

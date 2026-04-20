@@ -106,7 +106,8 @@ func TestLoadDiscordWebhookURL_FromEnv(t *testing.T) {
 }
 
 func TestLoadDiscordWebhookURL_FromFile(t *testing.T) {
-	os.Unsetenv("LEVELUP_DISCORD_WEBHOOK_URL")
+	t.Setenv("LEVELUP_DISCORD_WEBHOOK_URL", "")
+	t.Setenv("DISCORD_WEBHOOK_URL", "") // neutraliser la variable legacy
 	tmpDir := t.TempDir()
 	settingsPath := tmpDir + "/app_settings.json"
 	content := `{"discord_webhook_url":"https://discord.com/api/webhooks/456/def"}`
@@ -120,7 +121,8 @@ func TestLoadDiscordWebhookURL_FromFile(t *testing.T) {
 }
 
 func TestLoadDiscordWebhookURL_InvalidJSON(t *testing.T) {
-	os.Unsetenv("LEVELUP_DISCORD_WEBHOOK_URL")
+	t.Setenv("LEVELUP_DISCORD_WEBHOOK_URL", "")
+	t.Setenv("DISCORD_WEBHOOK_URL", "") // neutraliser la variable legacy
 	tmpDir := t.TempDir()
 	settingsPath := tmpDir + "/app_settings.json"
 	if err := os.WriteFile(settingsPath, []byte("not json"), 0o644); err != nil {
@@ -133,7 +135,8 @@ func TestLoadDiscordWebhookURL_InvalidJSON(t *testing.T) {
 }
 
 func TestLoadDiscordWebhookURL_BadPrefix(t *testing.T) {
-	os.Unsetenv("LEVELUP_DISCORD_WEBHOOK_URL")
+	t.Setenv("LEVELUP_DISCORD_WEBHOOK_URL", "")
+	t.Setenv("DISCORD_WEBHOOK_URL", "") // neutraliser la variable legacy
 	tmpDir := t.TempDir()
 	settingsPath := tmpDir + "/app_settings.json"
 	content := `{"discord_webhook_url":"http://evil.com/hook"}`

@@ -107,6 +107,8 @@ type HaloProvider struct {
 	battlePassBaseURL string
 	challengesBaseURL string
 	gameCMSBaseURL    string
+	challengeMetaPath string
+	challengeBadgeDir string
 	// Sprint 54 B5 : cache process-level de la privacy par xuid.
 	privacyCache privacyTTLCache
 }
@@ -123,6 +125,18 @@ func NewHaloProvider() *HaloProvider {
 		limiter:    newRateLimiter(60),
 		maxRetries: providerMaxRetries,
 	}
+}
+
+// WithChallengeCache retourne une copie du provider avec un chemin metadata
+// et un répertoire de cache badges dédiés aux défis.
+func (p *HaloProvider) WithChallengeCache(metaPath, badgeDir string) *HaloProvider {
+	if p == nil {
+		return nil
+	}
+	clone := *p
+	clone.challengeMetaPath = metaPath
+	clone.challengeBadgeDir = badgeDir
+	return &clone
 }
 
 // ---------------------------------------------------------------------------

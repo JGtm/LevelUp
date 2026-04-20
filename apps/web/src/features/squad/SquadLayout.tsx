@@ -8,19 +8,21 @@
  * Route parente : /players/$playerSlug/squad
  * Routes enfants : /squad/synergies · /squad/contributions
  */
-import { createContext, useContext, useState } from 'react'
+import { createContext, useContext, useState, useEffect } from 'react'
 import { Outlet, useParams, Link, useMatchRoute } from '@tanstack/react-router'
 import { useGlobalFilterStore } from '@/stores/globalFilterStore'
 import { useTeammates } from './queries'
+import { useSettings } from '@/features/settings/queries'
 import { PageHeader } from '@/components/shell/PageHeader'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
-import { Button } from '@/components/ui/button'
-import { EmptyStateCard, EmptyStateNotice } from '@/components/ui/empty-state'
+import { EmptyStateCard } from '@/components/ui/empty-state'
 import { Spinner } from '@/components/ui/spinner'
+import { SessionScopeSelector } from './SessionScopeSelector'
 import type {
   TeammateRow,
   TeammateKPIs,
   TeammatesQueryRequest,
+  TeammatesPageResponse,
 } from '@/lib/api/types'
 import { CompareDrawer } from '@/features/compare/CompareDrawer'
 import { useComparePrefetch } from '@/features/compare/queries'
@@ -30,11 +32,13 @@ import { useComparePrefetch } from '@/features/compare/queries'
 interface SquadContextValue {
   selectedRows: TeammateRow[]
   soloReference: TeammateKPIs | null
+  pageData: TeammatesPageResponse | null
 }
 
 const SquadContext = createContext<SquadContextValue>({
   selectedRows: [],
   soloReference: null,
+  pageData: null,
 })
 
 export function useSquadContext(): SquadContextValue {
@@ -145,12 +149,24 @@ export function SquadLayout() {
   const { filterContext, filterContextHash } = useGlobalFilterStore()
   const [selectedGts, setSelectedGts] = useState<string[]>([])
   const [compareTarget, setCompareTarget] = useState<string | null>(null)
+  const [soloSession, setSoloSession] = useState<string | null>(null)
+  const [squadSession, setSquadSession] = useState<string | null>(null)
   const prefetchCompare = useComparePrefetch(playerSlug)
   const matchRoute = useMatchRoute()
+  const { data: settings } = useSettings()
+
+  // Init depuis les amis par défaut dans les settings (une seule fois)
+  useEffect(() => {
+    if (settings?.friend_gamertags?.length && selectedGts.length === 0) {
+      setSelectedGts(settings.friend_gamertags.slice(0, MAX_SELECTION))
+    }
+  }, [settings?.friend_gamertags])
 
   const request: TeammatesQueryRequest = {
     filters: filterContext,
     selected_gamertags: selectedGts.length > 0 ? selectedGts : undefined,
+    picked_solo_session_label: soloSession,
+    picked_squad_session_label: squadSession,
   }
   const { data, isLoading, isError, error } = useTeammates(
     playerSlug,
@@ -203,11 +219,20 @@ export function SquadLayout() {
   const isContributions = !!matchRoute({ to: contributionsRoute, fuzzy: true })
 
   return (
-    <SquadContext.Provider value={{ selectedRows, soloReference: solo_reference }}>
+    <SquadContext.Provider value={{ selectedRows, soloReference: solo_reference, pageData: data ?? null }}>
       <div className="flex flex-col gap-6">
         <PageHeader
           title="Escouade"
           subtitle={`${availableOptions.length} coéquipiers fréquents · ${data.total_matches} matchs`}
+        />
+
+        {/* Sélecteur de session (solo / escouade) */}
+        <SessionScopeSelector
+          sessionLabels={data.session_labels ?? { solo: [], squad: [] }}
+          soloSession={soloSession}
+          squadSession={squadSession}
+          onSoloChange={setSoloSession}
+          onSquadChange={setSquadSession}
         />
 
         {/* Multiselect coéquipiers depuis les options */}

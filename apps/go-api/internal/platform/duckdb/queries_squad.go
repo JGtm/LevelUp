@@ -53,7 +53,9 @@ SELECT
     pme.session_id,
     pme.session_label,
     pme.performance_score,
-    COALESCE(pme.is_with_friends, FALSE)                         AS is_with_friends
+    COALESCE(pme.is_with_friends, FALSE)                         AS is_with_friends,
+    COALESCE(p1.headshot_kills, 0)                               AS headshot_kills,
+    COALESCE(p1.perfect_kills, 0)                                AS perfect_kills
 FROM shared.match_participants p1
 JOIN shared.v_match_full r ON r.match_id = p1.match_id
 JOIN shared.match_participants p2
@@ -120,6 +122,7 @@ ORDER BY match_count DESC`
 
 // Q33b : Synthèse — matchs du joueur pour le calcul top_weeks, KPIs et bipolaire.
 // Sprint 43 : enrichi avec accuracy, time_played_seconds, performance_score.
+// Sprint N  : ajout session_label pour les filtres de session teammates.
 // Paramètre : ?1 = xuid du joueur.
 const Q33bSynthesisMatches = `
 SELECT
@@ -132,7 +135,8 @@ SELECT
     COALESCE(pme.is_with_friends, FALSE) AS is_with_friends,
     p.accuracy,
     p.time_played_seconds,
-    pme.performance_score
+    pme.performance_score,
+    pme.session_label
 FROM shared.match_participants p
 JOIN shared.match_registry r ON r.match_id = p.match_id
 LEFT JOIN player_match_enrichment pme ON r.match_id = pme.match_id
