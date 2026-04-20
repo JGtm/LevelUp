@@ -46,23 +46,23 @@ interface TooltipProps {
 
 function Tooltip({ offensiveConversion, defensiveResistance, damagePerKill, damagePerDeath }: TooltipProps) {
   return (
-    <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 z-50 w-48 rounded-md bg-gray-900 border border-gray-700 px-3 py-2 text-xs shadow-lg pointer-events-none">
+    <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 z-50 w-48 rounded-md bg-popover border border-border px-3 py-2 text-xs shadow-lg pointer-events-none">
       <div className="flex justify-between gap-2 mb-1">
         <span className="text-[#4ade80] font-semibold">Offensif</span>
-        <span className="text-gray-300">{offensiveConversion != null ? offensiveConversion.toFixed(2) : '—'}</span>
+        <span className="text-muted-foreground">{offensiveConversion != null ? offensiveConversion.toFixed(2) : '—'}</span>
       </div>
       {damagePerKill != null && (
-        <div className="text-gray-400 mb-1">{Math.round(damagePerKill)} dmg/kill</div>
+        <div className="text-muted-foreground mb-1">{Math.round(damagePerKill)} dmg/kill</div>
       )}
       <div className="flex justify-between gap-2 mb-1">
         <span className="text-[#60a5fa] font-semibold">Défensif</span>
-        <span className="text-gray-300">{defensiveResistance != null ? defensiveResistance.toFixed(2) : '—'}</span>
+        <span className="text-muted-foreground">{defensiveResistance != null ? defensiveResistance.toFixed(2) : '—'}</span>
       </div>
       {damagePerDeath != null && (
-        <div className="text-gray-400">{Math.round(damagePerDeath)} dmg/mort</div>
+        <div className="text-muted-foreground">{Math.round(damagePerDeath)} dmg/mort</div>
       )}
       {/* triangle pointer */}
-      <div className="absolute top-full left-1/2 -translate-x-1/2 border-4 border-transparent border-t-gray-900" />
+      <div className="absolute top-full left-1/2 -translate-x-1/2 border-4 border-transparent border-t-popover" />
     </div>
   )
 }
@@ -103,7 +103,7 @@ export function CombatYieldBar({
       </div>
 
       {/* Séparateur central */}
-      <div className="w-px h-3 bg-gray-600 flex-shrink-0" />
+      <div className="w-px h-3 bg-border flex-shrink-0" />
 
       {/* Barre défensive (droite) */}
       <div className="flex justify-start" style={{ width: BAR_MAX_PX }}>

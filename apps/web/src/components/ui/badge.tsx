@@ -8,11 +8,11 @@ export function Badge({ className = '', variant = 'default', ...props }: BadgePr
   const base =
     'inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium transition-colors'
   const variants: Record<string, string> = {
-    default: 'bg-purple-100 text-purple-800',
-    secondary: 'bg-gray-100 text-gray-700',
-    success: 'bg-green-100 text-green-800',
-    destructive: 'bg-red-100 text-red-700',
-    outline: 'border border-gray-300 text-gray-700',
+    default: 'bg-primary/20 text-primary',
+    secondary: 'bg-secondary text-secondary-foreground',
+    success: 'bg-success/20 text-success',
+    destructive: 'bg-destructive/20 text-destructive',
+    outline: 'border border-border text-foreground',
   }
   return <span className={`${base} ${variants[variant]} ${className}`} {...props} />
 }

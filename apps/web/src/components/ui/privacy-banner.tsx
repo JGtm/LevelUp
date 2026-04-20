@@ -18,11 +18,11 @@ interface PrivacyBannerProps {
 
 const LEVEL_STYLES: Record<string, { container: string; icon: string }> = {
   partial: {
-    container: 'bg-yellow-50 border border-yellow-300 text-yellow-800',
+    container: 'bg-warning/10 border border-warning text-warning-foreground',
     icon: '⚠️',
   },
   full: {
-    container: 'bg-red-50 border border-red-300 text-red-800',
+    container: 'bg-destructive/10 border border-destructive text-destructive',
     icon: '🔒',
   },
 }

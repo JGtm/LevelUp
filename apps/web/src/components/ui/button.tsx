@@ -9,14 +9,14 @@ interface ButtonProps extends React.ButtonHTMLAttributes<HTMLButtonElement> {
 export const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
   ({ className = '', variant = 'default', size = 'md', loading, disabled, children, ...props }, ref) => {
     const base =
-      'inline-flex items-center justify-center gap-2 rounded-md font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-purple-500 disabled:pointer-events-none disabled:opacity-50 cursor-pointer'
+      'inline-flex items-center justify-center gap-2 rounded-md font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:pointer-events-none disabled:opacity-50 cursor-pointer'
     const variants: Record<string, string> = {
-      default: 'bg-purple-600 text-white hover:bg-purple-700 active:bg-purple-800',
-      secondary: 'bg-gray-100 text-gray-900 hover:bg-gray-200',
-      ghost: 'hover:bg-gray-100 text-gray-700',
-      destructive: 'bg-red-600 text-white hover:bg-red-700',
-      outline: 'border border-gray-300 bg-transparent hover:bg-gray-50 text-gray-700',
-      link: 'underline-offset-4 hover:underline text-purple-600 p-0 h-auto',
+      default: 'bg-primary text-primary-foreground hover:bg-primary/90 active:bg-primary/80',
+      secondary: 'bg-secondary text-secondary-foreground hover:bg-secondary/80',
+      ghost: 'hover:bg-accent hover:text-accent-foreground',
+      destructive: 'bg-destructive text-destructive-foreground hover:bg-destructive/90',
+      outline: 'border border-border bg-transparent hover:bg-accent hover:text-accent-foreground',
+      link: 'underline-offset-4 hover:underline text-primary p-0 h-auto',
     }
     const sizes: Record<string, string> = {
       sm: 'h-8 px-3 text-sm',
