@@ -14,18 +14,25 @@ import (
 // --- mock ---
 
 type mockMediaRepo struct {
-	files    []domain.MediaFileRow
-	filesErr error
-	count    int
-	countErr error
-	setOK    bool
-	setErr   error
+	files          []domain.MediaFileRow
+	filesErr       error
+	count          int
+	countErr       error
+	setOK          bool
+	setErr         error
+	toggleErr      error
+	toggleCalled   bool
+	toggleLiked    bool
+	likersData     map[string]domain.MediaLikersInfo
+	likersErr      error
+	capturedFilter domain.MediaFilters
 }
 
-func (m *mockMediaRepo) LoadMediaFiles(_ context.Context, _, _ int) ([]domain.MediaFileRow, error) {
+func (m *mockMediaRepo) LoadMediaFiles(_ context.Context, f domain.MediaFilters, _, _ int) ([]domain.MediaFileRow, error) {
+	m.capturedFilter = f
 	return m.files, m.filesErr
 }
-func (m *mockMediaRepo) CountMediaFiles(_ context.Context) (int, error) {
+func (m *mockMediaRepo) CountMediaFiles(_ context.Context, _ domain.MediaFilters) (int, error) {
 	return m.count, m.countErr
 }
 func (m *mockMediaRepo) SetMediaLike(_ context.Context, _ string, _ bool) (bool, error) {
@@ -33,6 +40,14 @@ func (m *mockMediaRepo) SetMediaLike(_ context.Context, _ string, _ bool) (bool,
 		return false, m.setErr
 	}
 	return m.setOK, nil
+}
+func (m *mockMediaRepo) ToggleSharedLike(_ context.Context, _, _, _ string, liked bool) error {
+	m.toggleCalled = true
+	m.toggleLiked = liked
+	return m.toggleErr
+}
+func (m *mockMediaRepo) GetMediaLikers(_ context.Context, _ []string) (map[string]domain.MediaLikersInfo, error) {
+	return m.likersData, m.likersErr
 }
 
 // --- tests ---
@@ -299,5 +314,173 @@ func TestMediaService_UploadMedia_PathTraversalBlocked(t *testing.T) {
 	parent := filepath.Dir(dir)
 	if _, err := os.Stat(filepath.Join(parent, "evil.sh")); err == nil {
 		t.Error("path traversal succeeded — file written outside captures dir!")
+	}
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Filtres — vérifier que les filtres sont bien transmis au repo
+// ─────────────────────────────────────────────────────────────────────────────
+
+func TestMediaService_GetMediaPage_KindFilterPassedToRepo(t *testing.T) {
+	repo := &mockMediaRepo{files: []domain.MediaFileRow{}, count: 0}
+	svc := NewMediaService(repo)
+
+	_, err := svc.GetMediaPage(context.Background(), domain.MediaPageRequest{
+		Page:       1,
+		KindFilter: "screenshot",
+	})
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if repo.capturedFilter.KindFilter != "screenshot" {
+		t.Errorf("KindFilter = %q, want %q", repo.capturedFilter.KindFilter, "screenshot")
+	}
+}
+
+func TestMediaService_GetMediaPage_LikedOnly_PassedToRepo(t *testing.T) {
+	repo := &mockMediaRepo{files: []domain.MediaFileRow{}, count: 0}
+	svc := NewMediaService(repo)
+
+	_, err := svc.GetMediaPage(context.Background(), domain.MediaPageRequest{
+		Page:      1,
+		LikedOnly: true,
+	})
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if !repo.capturedFilter.LikedOnly {
+		t.Error("LikedOnly flag should be true in filters")
+	}
+}
+
+func TestMediaService_GetMediaPage_MapAndModeFilters(t *testing.T) {
+	repo := &mockMediaRepo{files: []domain.MediaFileRow{}, count: 0}
+	svc := NewMediaService(repo)
+
+	_, err := svc.GetMediaPage(context.Background(), domain.MediaPageRequest{
+		Page:       1,
+		MapFilter:  "Fragmentation",
+		ModeFilter: "Slayer",
+		Sort:       "date_asc",
+	})
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if repo.capturedFilter.MapFilter != "Fragmentation" {
+		t.Errorf("MapFilter = %q, want Fragmentation", repo.capturedFilter.MapFilter)
+	}
+	if repo.capturedFilter.ModeFilter != "Slayer" {
+		t.Errorf("ModeFilter = %q, want Slayer", repo.capturedFilter.ModeFilter)
+	}
+	if repo.capturedFilter.Sort != "date_asc" {
+		t.Errorf("Sort = %q, want date_asc", repo.capturedFilter.Sort)
+	}
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Likes sociaux — ToggleSharedLike + GetMediaLikers
+// ─────────────────────────────────────────────────────────────────────────────
+
+func TestMediaService_SetMediaLike_EmptyFilePath(t *testing.T) {
+	repo := &mockMediaRepo{setOK: true}
+	svc := NewMediaService(repo)
+
+	_, err := svc.SetMediaLike(context.Background(), domain.MediaLikeRequest{
+		FilePath: "",
+		Liked:    true,
+	})
+	if err == nil {
+		t.Fatal("expected error for empty file_path")
+	}
+}
+
+func TestMediaService_SetMediaLike_WithLikerSlug_CallsToggle(t *testing.T) {
+	repo := &mockMediaRepo{setOK: true}
+	svc := NewMediaService(repo)
+
+	_, err := svc.SetMediaLike(context.Background(), domain.MediaLikeRequest{
+		FilePath:      "/clips/g1.mp4",
+		Liked:         true,
+		LikerSlug:     "player-1",
+		LikerGamertag: "Player1",
+	})
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if !repo.toggleCalled {
+		t.Error("ToggleSharedLike should have been called")
+	}
+	if !repo.toggleLiked {
+		t.Error("ToggleSharedLike should be called with liked=true")
+	}
+}
+
+func TestMediaService_SetMediaLike_ToggleError_NonBlocking(t *testing.T) {
+	repo := &mockMediaRepo{setOK: true, toggleErr: errors.New("shared db error")}
+	svc := NewMediaService(repo)
+
+	// L'erreur ToggleSharedLike ne doit pas faire échouer SetMediaLike
+	resp, err := svc.SetMediaLike(context.Background(), domain.MediaLikeRequest{
+		FilePath:  "/clips/g1.mp4",
+		Liked:     true,
+		LikerSlug: "player-1",
+	})
+	if err != nil {
+		t.Fatalf("ToggleSharedLike error should be non-blocking, got: %v", err)
+	}
+	if resp == nil || !resp.Liked {
+		t.Error("expected non-nil response with Liked=true")
+	}
+}
+
+func TestMediaService_SetMediaLike_LikersEnrichedInResponse(t *testing.T) {
+	repo := &mockMediaRepo{
+		setOK: true,
+		likersData: map[string]domain.MediaLikersInfo{
+			"/clips/g1.mp4": {Names: []string{"Alice", "Bob"}, Total: 3},
+		},
+	}
+	svc := NewMediaService(repo)
+
+	resp, err := svc.SetMediaLike(context.Background(), domain.MediaLikeRequest{
+		FilePath: "/clips/g1.mp4",
+		Liked:    true,
+	})
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if resp.TotalLikers != 3 {
+		t.Errorf("TotalLikers = %d, want 3", resp.TotalLikers)
+	}
+	if len(resp.Likers) != 2 {
+		t.Errorf("Likers = %v, want [Alice Bob]", resp.Likers)
+	}
+}
+
+func TestMediaService_GetMediaPage_LikersEnrichedOnItems(t *testing.T) {
+	repo := &mockMediaRepo{
+		files: []domain.MediaFileRow{
+			{FileName: "g1.mp4", FilePath: "/clips/g1.mp4", Kind: "video"},
+		},
+		count: 1,
+		likersData: map[string]domain.MediaLikersInfo{
+			"/clips/g1.mp4": {Names: []string{"Alice"}, Total: 1},
+		},
+	}
+	svc := NewMediaService(repo)
+
+	resp, err := svc.GetMediaPage(context.Background(), domain.MediaPageRequest{Page: 1})
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if len(resp.Items.Items) != 1 {
+		t.Fatalf("expected 1 item")
+	}
+	item := resp.Items.Items[0]
+	if item.TotalLikers != 1 {
+		t.Errorf("TotalLikers = %d, want 1", item.TotalLikers)
+	}
+	if len(item.Likers) != 1 || item.Likers[0] != "Alice" {
+		t.Errorf("Likers = %v, want [Alice]", item.Likers)
 	}
 }
