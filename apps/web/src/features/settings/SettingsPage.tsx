@@ -38,13 +38,14 @@ export function SettingsPage() {
   const { data: settings, isLoading } = useSettings()
   const mutation = useUpdateSettings()
   const canManageInstance = useAppShellStore((s) => s.capabilities?.can_manage_instance ?? false)
+  const isAdmin = useAppShellStore((s) => s.isAdmin)
   const locale = normalizeSettingsLocale(useAppShellStore((s) => s.locale))
   const t = getSettingsText(locale)
 
   const [localSettings, setLocalSettings] = useState<Partial<SettingsResponse>>({})
   const [saveStatus, setSaveStatus] = useState<'saved' | 'error' | null>(null)
   const saveTimerRef = useState<ReturnType<typeof setTimeout> | null>(null)
-  const [activeTab, setActiveTab] = useState<'general' | 'sync'>('general')
+  const [activeTab, setActiveTab] = useState<'general' | 'sync' | 'lab' | 'users'>('general')
 
   useEffect(() => {
     if (settings) setLocalSettings(settings)
@@ -103,20 +104,27 @@ export function SettingsPage() {
       {/* Onglets */}
       <div className="border-b border-border px-6">
         <nav className="-mb-px flex gap-4" aria-label="Onglets paramètres">
-          {(['general', 'sync'] as const).map((tab) => (
+          {(
+            [
+              { id: 'general', label: t.tabGeneral },
+              { id: 'sync', label: t.tabSync },
+              ...(canManageInstance ? [{ id: 'lab', label: t.tabLab }] : []),
+              ...(isAdmin ? [{ id: 'users', label: t.tabUsers }] : []),
+            ] as { id: 'general' | 'sync' | 'lab' | 'users'; label: string }[]
+          ).map(({ id, label }) => (
             <button
-              key={tab}
-              onClick={() => setActiveTab(tab)}
+              key={id}
+              onClick={() => setActiveTab(id)}
               className={[
                 'whitespace-nowrap border-b-2 px-1 py-3 text-sm font-medium transition-colors',
-                activeTab === tab
+                activeTab === id
                   ? 'border-primary text-primary'
                   : 'border-transparent text-muted-foreground hover:border-border hover:text-foreground',
               ].join(' ')}
-              aria-selected={activeTab === tab}
+              aria-selected={activeTab === id}
               role="tab"
             >
-              {tab === 'general' ? t.tabGeneral : t.tabSync}
+              {label}
             </button>
           ))}
         </nav>
@@ -124,11 +132,13 @@ export function SettingsPage() {
 
       <div className="space-y-6 p-6">
         {activeTab === 'general' && (
-          <GeneralTab merged={merged} handleChange={handleChange} canManageInstance={canManageInstance} t={t} />
+          <GeneralTab merged={merged} handleChange={handleChange} t={t} />
         )}
         {activeTab === 'sync' && (
           <SyncTab merged={merged} handleChange={handleChange} t={t} />
         )}
+        {activeTab === 'lab' && <LabTab t={t} />}
+        {activeTab === 'users' && <UsersTab t={t} />}
       </div>
     </div>
   )
@@ -144,24 +154,9 @@ interface TabProps {
 
 // ─── Onglet Général ───────────────────────────────────────────────────────────
 
-function GeneralTab({ merged, handleChange, canManageInstance, t }: TabProps & { canManageInstance: boolean }) {
+function GeneralTab({ merged, handleChange, t }: TabProps) {
   return (
     <>
-      {canManageInstance && (
-        <Card className="border-border bg-card">
-          <CardContent className="flex flex-col gap-4 p-6 md:flex-row md:items-center md:justify-between">
-            <div>
-              <p className="text-xs font-semibold uppercase tracking-[0.16em] text-muted-foreground">{t.instanceLabel}</p>
-              <p className="mt-2 text-lg font-semibold text-foreground">{t.instanceTitle}</p>
-              <p className="mt-1 text-sm text-muted-foreground">{t.instanceDescription}</p>
-            </div>
-            <Link to="/lab">
-              <Button>{t.openLabButton}</Button>
-            </Link>
-          </CardContent>
-        </Card>
-      )}
-
       <Card>
         <CardHeader>
           <CardTitle className="text-base">{t.interfaceTitle}</CardTitle>
@@ -244,6 +239,43 @@ function GeneralTab({ merged, handleChange, canManageInstance, t }: TabProps & {
         </div>
       )}
     </>
+  )
+}
+
+// ─── Onglet Utilisateurs ────────────────────────────────────────────────────
+
+function UsersTab({ t }: { t: ReturnType<typeof getSettingsText> }) {
+  return (
+    <Card className="border-border bg-card">
+      <CardContent className="flex flex-col gap-4 p-6 md:flex-row md:items-center md:justify-between">
+        <div>
+          <p className="mt-2 text-lg font-semibold text-foreground">{t.usersTitle}</p>
+          <p className="mt-1 text-sm text-muted-foreground">{t.usersDescription}</p>
+        </div>
+        <Link to="/admin">
+          <Button>{t.openUsersButton}</Button>
+        </Link>
+      </CardContent>
+    </Card>
+  )
+}
+
+// ─── Onglet Lab ──────────────────────────────────────────────────────────────
+
+function LabTab({ t }: { t: ReturnType<typeof getSettingsText> }) {
+  return (
+    <Card className="border-border bg-card">
+      <CardContent className="flex flex-col gap-4 p-6 md:flex-row md:items-center md:justify-between">
+        <div>
+          <p className="text-xs font-semibold uppercase tracking-[0.16em] text-muted-foreground">{t.instanceLabel}</p>
+          <p className="mt-2 text-lg font-semibold text-foreground">{t.instanceTitle}</p>
+          <p className="mt-1 text-sm text-muted-foreground">{t.instanceDescription}</p>
+        </div>
+        <Link to="/lab">
+          <Button>{t.openLabButton}</Button>
+        </Link>
+      </CardContent>
+    </Card>
   )
 }
 

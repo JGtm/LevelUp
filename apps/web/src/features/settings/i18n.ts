@@ -11,6 +11,8 @@ export interface SettingsText {
   // Onglets
   tabGeneral: string
   tabSync: string
+  tabLab: string
+  tabUsers: string
 
   // Sync manuelle
   manualSyncTitle: string
@@ -23,6 +25,11 @@ export interface SettingsText {
   instanceTitle: string
   instanceDescription: string
   openLabButton: string
+
+  // Utilisateurs
+  usersTitle: string
+  usersDescription: string
+  openUsersButton: string
 
   // Interface
   interfaceTitle: string
@@ -84,6 +91,8 @@ const FR_TEXT: SettingsText = {
 
   tabGeneral: 'Général',
   tabSync: 'Synchronisation',
+  tabLab: 'Lab',
+  tabUsers: 'Utilisateurs',
 
   manualSyncTitle: 'Synchronisation manuelle',
   manualSyncButton: '↻ Synchroniser tous les joueurs',
@@ -95,6 +104,11 @@ const FR_TEXT: SettingsText = {
   instanceDescription:
     "Ouvrir l'explorateur interne des métadonnées Waypoint, du diff OpenAPI et des diagnostics locaux.",
   openLabButton: 'Ouvrir le Lab',
+
+  usersTitle: 'Gestion des utilisateurs',
+  usersDescription:
+    'Gérer les comptes utilisateurs, les rôles et les codes d\u2019invitation.',
+  openUsersButton: 'Gérer les utilisateurs',
 
   interfaceTitle: 'Interface',
   langLabel: 'Langue',
@@ -152,6 +166,8 @@ const EN_TEXT: SettingsText = {
 
   tabGeneral: 'General',
   tabSync: 'Synchronisation',
+  tabLab: 'Lab',
+  tabUsers: 'Users',
 
   manualSyncTitle: 'Manual synchronisation',
   manualSyncButton: '↻ Synchronise all players',
@@ -163,6 +179,10 @@ const EN_TEXT: SettingsText = {
   instanceDescription:
     'Open the internal explorer for Waypoint metadata, OpenAPI diffs and local diagnostics.',
   openLabButton: 'Open the Lab',
+
+  usersTitle: 'User management',
+  usersDescription: 'Manage user accounts, roles and invite codes.',
+  openUsersButton: 'Manage users',
 
   interfaceTitle: 'Interface',
   langLabel: 'Language',
