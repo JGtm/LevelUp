@@ -68,4 +68,33 @@ describe('NavL1', () => {
       palmaresLink.compareDocumentPosition(careerLink) & Node.DOCUMENT_POSITION_FOLLOWING,
     ).toBeTruthy()
   })
+
+  it('affiche Synthèse dans la navigation principale', () => {
+    renderWithProviders(<NavL1 />)
+
+    expect(screen.getByRole('link', { name: 'Synthèse' })).toBeInTheDocument()
+  })
+
+  it('marque Synthèse actif sur sa route', () => {
+    mockPathname = '/players/test-player/synthesis'
+
+    renderWithProviders(<NavL1 />)
+
+    expect(screen.getByRole('link', { name: 'Synthèse' })).toHaveAttribute('aria-current', 'page')
+  })
+
+  it('place Synthèse entre Escouade et Explorer', () => {
+    renderWithProviders(<NavL1 />)
+
+    const escouadeLink = screen.getByRole('link', { name: 'Escouade' })
+    const syntheseLink = screen.getByRole('link', { name: 'Synthèse' })
+    const explorerLink = screen.getByRole('link', { name: 'Explorer' })
+
+    expect(
+      escouadeLink.compareDocumentPosition(syntheseLink) & Node.DOCUMENT_POSITION_FOLLOWING,
+    ).toBeTruthy()
+    expect(
+      syntheseLink.compareDocumentPosition(explorerLink) & Node.DOCUMENT_POSITION_FOLLOWING,
+    ).toBeTruthy()
+  })
 })
