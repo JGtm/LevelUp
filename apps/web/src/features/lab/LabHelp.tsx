@@ -23,26 +23,26 @@ function LabNotice({
   readonly = false,
 }: LabNoticeProps) {
   return (
-    <Card className="border-sky-200 bg-sky-50/80">
+    <Card className="border-info bg-info/10">
       <CardHeader className="pb-3">
         <div className="flex flex-wrap items-center gap-2">
-          <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-sky-700">
+          <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-info">
             {eyebrow}
           </p>
           {readonly && readOnlyLabel ? <Badge variant="outline">{readOnlyLabel}</Badge> : null}
         </div>
-        <CardTitle className="text-base text-slate-950">{title}</CardTitle>
+        <CardTitle className="text-base text-foreground">{title}</CardTitle>
       </CardHeader>
-      <CardContent className="space-y-3 text-sm text-slate-700">
+      <CardContent className="space-y-3 text-sm text-foreground">
         <p>{description}</p>
-        <ul className="space-y-1.5 pl-5 text-sm text-slate-700">
+        <ul className="space-y-1.5 pl-5 text-sm text-foreground">
           {bullets.map((item) => (
             <li key={item} className="list-disc">
               {item}
             </li>
           ))}
         </ul>
-        {footer ? <p className="text-xs text-slate-500">{footer}</p> : null}
+        {footer ? <p className="text-xs text-muted-foreground">{footer}</p> : null}
       </CardContent>
     </Card>
   )
@@ -72,23 +72,23 @@ function LabToolSectionCard({
   text: LabText
 }) {
   return (
-    <div className="space-y-3 rounded-2xl border border-slate-200 bg-white/80 p-4">
-      <p className="text-sm font-semibold text-slate-950">{section.title}</p>
-      <div className="space-y-2 text-sm text-slate-700">
+    <div className="space-y-3 rounded-2xl border border-border bg-background/80 p-4">
+      <p className="text-sm font-semibold text-foreground">{section.title}</p>
+      <div className="space-y-2 text-sm text-foreground">
         <div>
-          <p className="text-xs font-semibold uppercase tracking-[0.12em] text-slate-500">
+          <p className="text-xs font-semibold uppercase tracking-[0.12em] text-muted-foreground">
             {text.help.sections.whatItDoes}
           </p>
           <p className="mt-1">{section.whatItDoes}</p>
         </div>
         <div>
-          <p className="text-xs font-semibold uppercase tracking-[0.12em] text-slate-500">
+          <p className="text-xs font-semibold uppercase tracking-[0.12em] text-muted-foreground">
             {text.help.sections.interest}
           </p>
           <p className="mt-1">{section.interest}</p>
         </div>
         <div>
-          <p className="text-xs font-semibold uppercase tracking-[0.12em] text-slate-500">
+          <p className="text-xs font-semibold uppercase tracking-[0.12em] text-muted-foreground">
             {text.help.sections.capabilities}
           </p>
           <ul className="mt-1 space-y-1.5 pl-5">
@@ -115,15 +115,15 @@ export function LabSelectedToolNotice({
   const copy = text.help.tools[tab]
 
   return (
-    <Card className="border-violet-200 bg-violet-50/60">
+    <Card className="border-primary/30 bg-primary/10">
       <CardHeader className="pb-3">
         <div className="flex flex-wrap items-center gap-2">
-          <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-violet-700">
+          <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-primary">
             {text.help.selectedToolEyebrow}
           </p>
           <Badge variant="outline">{text.common.readOnly}</Badge>
         </div>
-        <CardTitle className="text-base text-slate-950">{copy.title}</CardTitle>
+        <CardTitle className="text-base text-foreground">{copy.title}</CardTitle>
       </CardHeader>
       <CardContent>
         <LabToolSectionCard section={copy} text={text} />

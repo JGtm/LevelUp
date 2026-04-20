@@ -46,8 +46,8 @@ function cellClass(value: number | null, ex: Extremes, inverted: boolean): strin
   if (value == null || ex.min == null || ex.max == null || ex.min === ex.max) return ''
   const isBest = inverted ? value === ex.min : value === ex.max
   const isWorst = inverted ? value === ex.max : value === ex.min
-  if (isBest) return 'bg-green-900/40 text-green-300 font-semibold'
-  if (isWorst) return 'bg-red-900/40 text-red-300'
+  if (isBest) return 'bg-success/40 text-success font-semibold'
+  if (isWorst) return 'bg-destructive/40 text-destructive'
   return ''
 }
 
@@ -82,11 +82,11 @@ export function MatchScoreboard({ rows, weaponKills, medals, citations }: Props)
 
     return (
       <div key={side} className="mb-4">
-        <p className="mb-1 text-xs font-semibold uppercase tracking-wide text-gray-400">{label}</p>
+        <p className="mb-1 text-xs font-semibold uppercase tracking-wide text-muted-foreground">{label}</p>
         <div className="overflow-x-auto">
           <table className="w-full text-xs">
             <thead>
-              <tr className="border-b border-gray-700 text-gray-500">
+              <tr className="border-b border-border text-muted-foreground">
                 <th className="pb-1 text-left pr-2">Joueur</th>
                 {COLS.map((c) => (
                   <th key={String(c.key)} className="pb-1 text-right pr-2">{c.label}</th>
@@ -102,17 +102,17 @@ export function MatchScoreboard({ rows, weaponKills, medals, citations }: Props)
                   <>
                     <tr
                       key={row.xuid}
-                      className={`cursor-pointer border-b border-gray-800 hover:bg-white/5 transition-colors ${row.is_me ? 'bg-cyan-950/30' : ''}`}
+                      className={`cursor-pointer border-b border-border hover:bg-accent transition-colors ${row.is_me ? 'bg-info/10' : ''}`}
                       onClick={() => setExpandedXuid(isExpanded ? null : row.xuid)}
                     >
-                      <td className="py-1 pr-2 font-medium text-white whitespace-nowrap">
-                        <span className="mr-1 text-gray-500">{isExpanded ? '▾' : '▸'}</span>
+                      <td className="py-1 pr-2 font-medium text-foreground whitespace-nowrap">
+                        <span className="mr-1 text-muted-foreground">{isExpanded ? '▾' : '▸'}</span>
                         {row.gamertag}
                         {row.xuid === mvp && (
-                          <span className="ml-1 rounded px-1 py-0 text-[10px] font-bold bg-yellow-500/80 text-black">MVP</span>
+                          <span className="ml-1 rounded px-1 py-0 text-[10px] font-bold bg-warning/80 text-foreground">MVP</span>
                         )}
                         {row.xuid === lvp && (
-                          <span className="ml-1 rounded px-1 py-0 text-[10px] font-bold bg-gray-600 text-gray-300">LVP</span>
+                          <span className="ml-1 rounded px-1 py-0 text-[10px] font-bold bg-muted text-muted-foreground">LVP</span>
                         )}
                       </td>
                       {COLS.map((c) => {
@@ -124,8 +124,8 @@ export function MatchScoreboard({ rows, weaponKills, medals, citations }: Props)
                           </td>
                         )
                       })}
-                      <td className="py-1 text-right text-gray-400">{row.average_life ?? '—'}</td>
-                      <td className="py-1 pl-2 text-right text-gray-300 whitespace-nowrap">{row.outcome_label}</td>
+                      <td className="py-1 text-right text-muted-foreground">{row.average_life ?? '—'}</td>
+                      <td className="py-1 pl-2 text-right text-muted-foreground whitespace-nowrap">{row.outcome_label}</td>
                     </tr>
                     {isExpanded && (
                       <tr key={`${row.xuid}-detail`}>
@@ -152,7 +152,7 @@ export function MatchScoreboard({ rows, weaponKills, medals, citations }: Props)
   return (
     <Card>
       <CardContent className="py-4">
-        <p className="mb-3 text-sm font-semibold text-white">Scoreboard</p>
+        <p className="mb-3 text-sm font-semibold text-foreground">Scoreboard</p>
         {teams.map((side) => renderTeam(side))}
       </CardContent>
     </Card>

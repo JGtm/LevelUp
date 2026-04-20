@@ -35,7 +35,7 @@ export function RecentMediaRail({ playerSlug }: RecentMediaRailProps) {
         <Link
           to="/players/$playerSlug/media"
           params={{ playerSlug }}
-          className="text-xs text-purple-600 hover:underline"
+          className="text-xs text-primary hover:underline"
         >
           Voir tout →
         </Link>

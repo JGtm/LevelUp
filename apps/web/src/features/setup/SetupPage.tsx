@@ -122,7 +122,7 @@ function StepDeviceCode() {
     }
     return (
       <div className="space-y-3">
-        <p className="text-red-600 font-medium">
+        <p className="text-destructive font-medium">
           {status?.status === 'expired' || (secondsLeft !== null && secondsLeft <= 0)
             ? 'Le code a expiré.'
             : (errorCode && errorMessage[errorCode]) ?? "Échec de l'authentification."}
@@ -135,11 +135,11 @@ function StepDeviceCode() {
   if (status?.status === 'authorized' || status?.status === 'provisioned') {
     return (
       <div className="space-y-2">
-        <p className="text-green-600 font-semibold">✓ Authentification réussie !</p>
+        <p className="text-success font-semibold">✓ Authentification réussie !</p>
         {status.gamertag && (
-          <div className="rounded-lg border border-green-200 bg-green-50 p-3">
-            <p className="text-xs text-gray-500">Compte Microsoft identifié :</p>
-            <p className="mt-0.5 text-lg font-bold text-green-700">{status.gamertag}</p>
+          <div className="rounded-lg border border-success/30 bg-success/10 p-3">
+            <p className="text-xs text-muted-foreground">Compte Microsoft identifié :</p>
+            <p className="mt-0.5 text-lg font-bold text-success">{status.gamertag}</p>
           </div>
         )}
         <Spinner size="sm" label="Chargement du profil…" />
@@ -154,16 +154,16 @@ function StepDeviceCode() {
   return (
     <div className="space-y-4">
       <h2 className="text-lg font-semibold">Connexion Microsoft</h2>
-      <p className="text-sm text-gray-500">
+      <p className="text-sm text-muted-foreground">
         Rendez-vous sur{' '}
-        <a href={uri} target="_blank" rel="noopener noreferrer" className="text-purple-600 underline">
+        <a href={uri} target="_blank" rel="noopener noreferrer" className="text-primary underline">
           {uri.replace('https://', '')}
         </a>{' '}
         et entrez ce code :
       </p>
-      <div className="rounded-lg bg-gray-900 px-6 py-4 text-center">
+      <div className="rounded-lg bg-card px-6 py-4 text-center">
         {deviceFlowUserCode ? (
-          <span className="text-3xl font-mono font-bold tracking-widest text-white select-all">
+          <span className="text-3xl font-mono font-bold tracking-widest text-foreground select-all">
             {deviceFlowUserCode}
           </span>
         ) : (
@@ -171,14 +171,14 @@ function StepDeviceCode() {
         )}
       </div>
       {secondsLeft != null && secondsLeft > 0 && (
-        <p className="text-center text-xs text-gray-400">
+        <p className="text-center text-xs text-muted-foreground">
           Code valide encore{' '}
-          <span className={secondsLeft < 60 ? 'text-amber-500 font-semibold' : ''}>
+          <span className={secondsLeft < 60 ? 'text-warning font-semibold' : ''}>
             {mins}:{String(secs).padStart(2, '0')}
           </span>
         </p>
       )}
-      <p className="text-xs text-gray-400 text-center animate-pulse">
+      <p className="text-xs text-muted-foreground text-center animate-pulse">
         En attente de l'authentification…
       </p>
     </div>
@@ -214,21 +214,21 @@ function StepPlayer() {
 
       {linkedHaloIdentity ? (
         /* Carte de confirmation — identité résolue depuis la session */
-        <div className="rounded-lg border border-purple-200 bg-purple-50 p-4">
-          <p className="text-xs text-gray-500">Identité Halo liée à cette session :</p>
-          <p className="mt-1 text-2xl font-bold text-purple-700">
+        <div className="rounded-lg border border-primary/30 bg-primary/10 p-4">
+          <p className="text-xs text-muted-foreground">Identité Halo liée à cette session :</p>
+          <p className="mt-1 text-2xl font-bold text-primary">
             {linkedHaloIdentity.gamertag}
           </p>
-          <p className="text-xs text-gray-400 mt-0.5 font-mono">
+          <p className="text-xs text-muted-foreground mt-0.5 font-mono">
             XUID {linkedHaloIdentity.xuid}
           </p>
-          <p className="mt-2 text-xs text-gray-500">
+          <p className="mt-2 text-xs text-muted-foreground">
             Un profil local sera créé pour ce compte.
           </p>
         </div>
       ) : (
         <>
-          <p className="text-sm text-gray-500">
+          <p className="text-sm text-muted-foreground">
             Entrez votre Gamertag Xbox pour créer votre profil.
           </p>
           <Input
@@ -241,7 +241,7 @@ function StepPlayer() {
       )}
 
       {createPlayer.isError && (
-        <p className="text-red-600 text-sm">
+        <p className="text-destructive text-sm">
           {getApiErrorMessage(createPlayer.error, 'Erreur lors de la création du profil.')}
         </p>
       )}
@@ -305,7 +305,7 @@ function StepInitialSync({ playerSlug }: { playerSlug: string }) {
   return (
     <div className="space-y-4">
       <h2 className="text-lg font-semibold">Synchronisation initiale</h2>
-      <p className="text-sm text-gray-500">
+      <p className="text-sm text-muted-foreground">
         Nous allons télécharger vos matchs Halo Infinite et calculer vos statistiques.
         Cela prend environ 2–4 minutes selon votre historique.
       </p>
@@ -321,13 +321,13 @@ function StepInitialSync({ playerSlug }: { playerSlug: string }) {
           {/* Barre de progression */}
           {job.progress_pct != null && (
             <div className="space-y-1">
-              <div className="flex justify-between text-xs text-gray-500">
+              <div className="flex justify-between text-xs text-muted-foreground">
                 <span>{job.phase_label ?? job.current_step ?? '…'}</span>
                 <span>{job.progress_pct} %</span>
               </div>
-              <div className="h-2 w-full rounded-full bg-gray-100">
+              <div className="h-2 w-full rounded-full bg-muted">
                 <div
-                  className="h-full rounded-full bg-purple-500 transition-all duration-500"
+                  className="h-full rounded-full bg-primary transition-all duration-500"
                   style={{ width: `${job.progress_pct}%` }}
                 />
               </div>
@@ -336,21 +336,21 @@ function StepInitialSync({ playerSlug }: { playerSlug: string }) {
 
           {/* Compteurs métier */}
           {job.matches_done != null && job.matches_total != null && (
-            <p className="text-sm text-gray-600">
+            <p className="text-sm text-muted-foreground">
               {job.matches_done} / {job.matches_total} matchs récupérés
             </p>
           )}
 
           {/* ETA */}
           {job.eta_seconds != null && job.status === 'running' && (
-            <p className="text-xs text-gray-400">
+            <p className="text-xs text-muted-foreground">
               Temps restant estimé : environ {Math.ceil(job.eta_seconds / 60)} min
             </p>
           )}
 
           {/* Warnings */}
           {job.warnings.length > 0 && (
-            <ul className="text-xs text-amber-600 space-y-0.5">
+            <ul className="text-xs text-warning space-y-0.5">
               {job.warnings.map((w) => <li key={w}>⚠️ {w}</li>)}
             </ul>
           )}
@@ -358,10 +358,10 @@ function StepInitialSync({ playerSlug }: { playerSlug: string }) {
           {/* Résultat réussi */}
           {job.status === 'succeeded' && (
             <div className="space-y-2">
-              <p className="text-green-600 font-medium">
+              <p className="text-success font-medium">
                 ✓ Synchronisation terminée&thinsp;!
                 {job.result?.matches_imported != null && (
-                  <span className="font-normal text-gray-600">
+                  <span className="font-normal text-muted-foreground">
                     {' '}{Number(job.result.matches_imported)} matchs importés.
                   </span>
                 )}
@@ -375,7 +375,7 @@ function StepInitialSync({ playerSlug }: { playerSlug: string }) {
           {/* Interrompu (redémarrage serveur) */}
           {job.status === 'interrupted' && (
             <div className="space-y-2">
-              <p className="text-amber-600 font-medium">
+              <p className="text-warning font-medium">
                 ⚡ Synchronisation interrompue (redémarrage serveur).
               </p>
               <Button
@@ -393,9 +393,9 @@ function StepInitialSync({ playerSlug }: { playerSlug: string }) {
           {/* Erreur */}
           {job.status === 'failed' && (
             <div className="space-y-2">
-              <p className="text-red-600 font-medium">✗ Échec de la synchronisation.</p>
+              <p className="text-destructive font-medium">✗ Échec de la synchronisation.</p>
               {job.error?.code && (
-                <p className="text-sm text-gray-500">
+                <p className="text-sm text-muted-foreground">
                   {errorMessages[job.error.code] ?? job.error.message}
                 </p>
               )}
@@ -443,7 +443,7 @@ export function SetupPage() {
   }
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-gray-50">
+    <div className="flex min-h-screen items-center justify-center bg-muted">
       <Card className="w-full max-w-lg mx-4">
         <CardHeader>
           <div className="flex items-center gap-2">
@@ -463,7 +463,7 @@ export function SetupPage() {
           )}
           {setupState === 'ready' && (
             <div className="space-y-4">
-              <p className="text-green-600 font-semibold">✓ Configuration terminée !</p>
+              <p className="text-success font-semibold">✓ Configuration terminée !</p>
               <Button onClick={() => navigate({ to: '/' })}>Accéder à l'application</Button>
             </div>
           )}

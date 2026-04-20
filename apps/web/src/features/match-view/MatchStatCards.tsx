@@ -30,18 +30,18 @@ export function StatExpectedCard({ label, actual, expected, lowerIsBetter = fals
   return (
     <div
       className={`rounded-lg border px-4 py-3 text-center ${
-        hasData ? 'border-gray-600 bg-[#1d2328]' : 'border-gray-700/40 bg-[#1d2328]/50 opacity-50'
+        hasData ? 'border-border bg-[#1d2328]' : 'border-border/40 bg-[#1d2328]/50 opacity-50'
       }`}
     >
-      <p className="text-xs text-gray-400 uppercase tracking-wide mb-1">{label}</p>
-      <p className="text-2xl font-bold text-white">{actual ?? '—'}</p>
+      <p className="text-xs text-muted-foreground uppercase tracking-wide mb-1">{label}</p>
+      <p className="text-2xl font-bold text-foreground">{actual ?? '—'}</p>
       {hasData && expected != null ? (
-        <p className="text-xs text-gray-400 mt-0.5">
+        <p className="text-xs text-muted-foreground mt-0.5">
           attendu {expected.toFixed(1)}{' '}
           {delta != null && (
             <span
               className={`font-semibold ${
-                isFavorable ? 'text-[#00DC82]' : isFavorable === false ? 'text-[#FF4B4B]' : 'text-gray-400'
+                isFavorable ? 'text-[#00DC82]' : isFavorable === false ? 'text-[#FF4B4B]' : 'text-muted-foreground'
               }`}
             >
               ({delta > 0 ? '+' : ''}{delta.toFixed(1)})
@@ -49,7 +49,7 @@ export function StatExpectedCard({ label, actual, expected, lowerIsBetter = fals
           )}
         </p>
       ) : (
-        <p className="text-xs text-gray-600 mt-0.5">pas de données CSR</p>
+        <p className="text-xs text-muted-foreground mt-0.5">pas de données CSR</p>
       )}
     </div>
   )
@@ -103,19 +103,19 @@ export function MatchRankBadge({ rank, hadBotTeammate = false }: MatchRankBadgeP
 
   const delta = rank.delta_value
   const deltaColor =
-    delta == null ? 'text-gray-400'
+    delta == null ? 'text-muted-foreground'
     : delta > 0 ? 'text-[#00DC82]'
     : delta < 0 ? 'text-[#FF4B4B]'
-    : 'text-gray-400'
+    : 'text-muted-foreground'
 
   return (
-    <div className="flex items-center gap-3 rounded-lg border border-gray-600 bg-[#1d2328] px-4 py-3">
+    <div className="flex items-center gap-3 rounded-lg border border-border bg-[#1d2328] px-4 py-3">
       <div className="flex-1">
-        <p className="text-xs text-gray-400 uppercase tracking-wide">{rank.rating_type}</p>
+        <p className="text-xs text-muted-foreground uppercase tracking-wide">{rank.rating_type}</p>
         <div className="flex items-baseline gap-2 mt-0.5">
-          <span className="text-lg font-bold text-white">{rank.tier_label}</span>
+          <span className="text-lg font-bold text-foreground">{rank.tier_label}</span>
           {rank.numeric_value != null && (
-            <span className="text-sm text-gray-300">{rank.numeric_value.toFixed(0)} pts</span>
+            <span className="text-sm text-muted-foreground">{rank.numeric_value.toFixed(0)} pts</span>
           )}
         </div>
       </div>
@@ -125,7 +125,7 @@ export function MatchRankBadge({ rank, hadBotTeammate = false }: MatchRankBadgeP
         </span>
       )}
       {hadBotTeammate && (
-        <span className="ml-2 rounded bg-yellow-900/60 px-2 py-0.5 text-[10px] text-yellow-300" title="Coéquipier bot présent dans ce match">
+        <span className="ml-2 rounded bg-warning/20 px-2 py-0.5 text-[10px] text-warning" title="Coéquipier bot présent dans ce match">
           🤖 bot
         </span>
       )}
@@ -149,15 +149,15 @@ export function KdIndicatorCard({ nemesis }: KdIndicatorCardProps) {
   const kdColor = favorable ? 'text-[#00DC82]' : 'text-[#FF4B4B]'
 
   return (
-    <div className="rounded-lg border border-gray-600 bg-[#1d2328] px-4 py-3">
-      <p className="text-xs text-gray-400 uppercase tracking-wide mb-1">
+    <div className="rounded-lg border border-border bg-[#1d2328] px-4 py-3">
+      <p className="text-xs text-muted-foreground uppercase tracking-wide mb-1">
         K/D vs nemesis
       </p>
       <div className="flex items-baseline gap-2">
         <span className={`text-2xl font-bold ${kdColor}`}>{kd.toFixed(2)}</span>
-        <span className="text-sm text-gray-400">vs {nemesis.gamertag}</span>
+        <span className="text-sm text-muted-foreground">vs {nemesis.gamertag}</span>
       </div>
-      <p className="text-xs text-gray-500 mt-0.5">
+      <p className="text-xs text-muted-foreground mt-0.5">
         {nemesis.i_killed} kills · {nemesis.killed_me} morts
       </p>
     </div>

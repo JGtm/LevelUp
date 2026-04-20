@@ -35,8 +35,8 @@ export function CitationsPage() {
       <div className="p-6">
         <Card>
           <CardContent className="py-8 text-center">
-            <p className="font-medium text-red-600">Erreur lors du chargement des citations.</p>
-            <button onClick={() => refetch()} className="mt-2 text-sm text-purple-600 underline">
+            <p className="font-medium text-destructive">Erreur lors du chargement des citations.</p>
+            <button onClick={() => refetch()} className="mt-2 text-sm text-primary underline">
               Réessayer
             </button>
           </CardContent>
@@ -83,8 +83,8 @@ export function CitationsPage() {
           ].map((kpi) => (
             <Card key={kpi.label}>
               <CardContent className="py-3 text-center">
-                <p className="text-xs text-gray-500">{kpi.label}</p>
-                <p className="text-lg font-bold text-gray-900">{kpi.value}</p>
+                <p className="text-xs text-muted-foreground">{kpi.label}</p>
+                <p className="text-lg font-bold text-foreground">{kpi.value}</p>
               </CardContent>
             </Card>
           ))}
@@ -124,26 +124,26 @@ export function CitationsPage() {
                     style={{ borderLeftColor: c.color ?? '#a78bfa', borderLeftWidth: 4 }}
                   >
                     <div className="flex items-center justify-between">
-                      <p className="text-sm font-semibold text-gray-800">{c.label}</p>
+                      <p className="text-sm font-semibold text-foreground">{c.label}</p>
                       {c.tier_label && (
                         <Badge variant="secondary" className="text-xs">
                           {c.tier_label}
                         </Badge>
                       )}
                     </div>
-                    <p className="text-xs text-gray-500">{c.category ?? ''}</p>
-                    <div className="flex items-center justify-between text-xs">
-                      <span className="text-gray-700">Valeur : {c.current_value}</span>
-                      {c.mastery_pct != null && (
-                        <span className="font-medium text-purple-700">
+                  <p className="text-xs text-muted-foreground">{c.category ?? ''}</p>
+                  <div className="flex items-center justify-between text-xs">
+                    <span className="text-foreground">Valeur : {c.current_value}</span>
+                    {c.mastery_pct != null && (
+                      <span className="font-medium text-primary">
                           {c.mastery_pct.toFixed(1)}%
                         </span>
                       )}
                     </div>
                     {c.mastery_pct != null && (
-                      <div className="h-1.5 w-full overflow-hidden rounded-full bg-gray-100">
+                      <div className="h-1.5 w-full overflow-hidden rounded-full bg-muted">
                         <div
-                          className="h-full rounded-full bg-purple-500"
+                          className="h-full rounded-full bg-primary"
                           style={{ width: `${Math.min(100, c.mastery_pct)}%` }}
                         />
                       </div>
@@ -175,13 +175,13 @@ export function CitationsPage() {
                   .map((m) => (
                     <div
                       key={m.medal_name_id}
-                      className="flex flex-col items-center rounded-lg bg-gray-800/40 p-2 text-center"
+                      className="flex flex-col items-center rounded-lg bg-muted/40 p-2 text-center"
                       title={m.description ?? m.name}
                     >
                       <span className="text-lg font-bold text-[#33D6FF]">{m.count_filtered}</span>
-                      <span className="mt-0.5 text-[10px] leading-tight text-gray-300 line-clamp-2">{m.name}</span>
+                      <span className="mt-0.5 text-[10px] leading-tight text-muted-foreground line-clamp-2">{m.name}</span>
                       {m.count_total !== m.count_filtered && (
-                        <span className="text-[9px] text-gray-500">/{m.count_total}</span>
+                        <span className="text-[9px] text-muted-foreground">/{m.count_total}</span>
                       )}
                     </div>
                   ))}

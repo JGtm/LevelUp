@@ -14,15 +14,15 @@ export function ChangelogPage() {
   if (error || !data) {
     return (
       <div className="p-6">
-        <PageHeader title="Changelog" />
-        <p className="text-red-500 mt-4">Impossible de charger le changelog.</p>
+        <PageHeader title="Changelog" inset={false} />
+        <p className="text-destructive mt-4">Impossible de charger le changelog.</p>
       </div>
     )
   }
 
   return (
     <div className="p-6 max-w-4xl mx-auto space-y-4">
-      <PageHeader title="Changelog" />
+      <PageHeader title="Changelog" inset={false} />
       <Card>
         <CardContent className="prose prose-sm max-w-none pt-6">
           <Markdown>{data.content}</Markdown>

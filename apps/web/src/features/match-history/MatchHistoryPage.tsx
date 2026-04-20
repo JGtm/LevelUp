@@ -71,9 +71,9 @@ export function MatchHistoryPage() {
             <Spinner size="lg" label="Chargement de l'historique…" />
           </div>
         ) : isError ? (
-          <div className="rounded-lg border border-red-100 bg-red-50 p-6 text-center">
-            <p className="font-medium text-red-600">Impossible de charger l'historique.</p>
-            <button onClick={() => refetch()} className="mt-2 text-sm text-purple-600 underline">
+          <div className="rounded-lg border border-destructive/30 bg-destructive/10 p-6 text-center">
+            <p className="font-medium text-destructive">Impossible de charger l'historique.</p>
+            <button onClick={() => refetch()} className="mt-2 text-sm text-primary underline">
               Réessayer
             </button>
           </div>

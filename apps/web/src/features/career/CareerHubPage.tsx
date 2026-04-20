@@ -38,7 +38,7 @@ export function CareerHubPage() {
       />
 
       {/* Tabs deep-linkables */}
-      <div className="border-b border-slate-200 bg-white px-6">
+      <div className="border-b border-border bg-background px-6">
         <nav className="-mb-px flex gap-1" aria-label="Onglets Carrière">
           {TABS.map(({ value, label }) => (
             <button
@@ -48,8 +48,8 @@ export function CareerHubPage() {
               className={[
                 'inline-flex items-center px-4 py-3 text-sm font-medium transition-colors',
                 activeTab === value
-                  ? 'border-b-2 border-violet-600 text-violet-700'
-                  : 'border-b-2 border-transparent text-slate-600 hover:border-slate-300 hover:text-slate-800',
+                  ? 'border-b-2 border-primary text-primary'
+                  : 'border-b-2 border-transparent text-muted-foreground hover:border-border hover:text-foreground',
               ].join(' ')}
             >
               {label}

@@ -62,8 +62,8 @@ export function LastMatchPage() {
       <div className="p-6">
         <Card>
           <CardContent className="py-8 text-center">
-            <p className="font-medium text-red-600">Aucun match dans le scope actuel.</p>
-            <button onClick={() => resolve()} className="mt-2 text-sm text-purple-600 underline">
+            <p className="font-medium text-destructive">Aucun match dans le scope actuel.</p>
+            <button onClick={() => resolve()} className="mt-2 text-sm text-primary underline">
               Réessayer
             </button>
           </CardContent>
@@ -119,13 +119,13 @@ export function LastMatchPage() {
         </div>
 
         <Card>
-          <CardContent className="py-4 text-sm text-gray-600 space-y-1">
+          <CardContent className="py-4 text-sm text-muted-foreground space-y-1">
             <p>
-              <span className="font-medium text-gray-900">Match ID : </span>
+              <span className="font-medium text-foreground">Match ID : </span>
               {resolved.current_match_id}
             </p>
             <p>
-              <span className="font-medium text-gray-900">Position : </span>
+              <span className="font-medium text-foreground">Position : </span>
               {resolved.current_index + 1} / {resolved.total_matches_in_scope}
             </p>
           </CardContent>

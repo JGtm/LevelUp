@@ -77,8 +77,8 @@ export function TimeseriesPage() {
       <div className="p-6">
         <Card>
           <CardContent className="py-8 text-center">
-            <p className="font-medium text-red-600">Erreur lors du chargement des séries.</p>
-            <button onClick={() => refetch()} className="mt-2 text-sm text-purple-600 underline">
+            <p className="font-medium text-destructive">Erreur lors du chargement des séries.</p>
+            <button onClick={() => refetch()} className="mt-2 text-sm text-primary underline">
               Réessayer
             </button>
           </CardContent>
@@ -116,7 +116,7 @@ export function TimeseriesPage() {
       />
 
       {/* Onglets */}
-      <div className="flex gap-0 border-b bg-white px-6">
+      <div className="flex gap-0 border-b bg-background px-6">
         {TABS.map((tab) => (
           <Button
             key={tab.id}
@@ -125,8 +125,8 @@ export function TimeseriesPage() {
             onClick={() => setActiveTab(tab.id)}
             className={`rounded-none border-b-2 px-4 py-3 text-sm ${
               activeTab === tab.id
-                ? 'border-purple-600 font-semibold text-purple-700'
-                : 'border-transparent text-gray-500 hover:text-gray-800'
+                ? 'border-primary font-semibold text-primary'
+                : 'border-transparent text-muted-foreground hover:text-foreground'
             }`}
           >
             {tab.label}
@@ -143,7 +143,7 @@ export function TimeseriesPage() {
                 {summary_tab.kpi_cards.map((card: TimeseriesKpiCard) => (
                   <Card key={card.key}>
                     <CardContent className="py-3 text-center">
-                      <p className="text-xs text-gray-500">{card.label}</p>
+                      <p className="text-xs text-muted-foreground">{card.label}</p>
                       <p
                         className="text-xl font-bold"
                         style={{ color: card.color ?? undefined }}
@@ -151,7 +151,7 @@ export function TimeseriesPage() {
                         {card.value}
                       </p>
                       {card.delta && (
-                        <p className="text-xs text-gray-400">{card.delta}</p>
+                        <p className="text-xs text-muted-foreground">{card.delta}</p>
                       )}
                     </CardContent>
                   </Card>
@@ -253,7 +253,7 @@ export function TimeseriesPage() {
               </CardHeader>
               <CardContent className="pb-4">
                 {combatLoading ? (
-                  <div className="flex justify-center py-8"><span className="text-gray-400 text-sm">Chargement…</span></div>
+                  <div className="flex justify-center py-8"><span className="text-muted-foreground text-sm">Chargement…</span></div>
                 ) : (
                   <CombatYieldTimeseries rows={combatData?.table.items ?? []} />
                 )}

@@ -124,10 +124,10 @@ function ScopeOverviewBar({ matchCount, winRate, totalKills, totalDeaths, period
     <Card>
       <CardContent className="py-4">
         <div className="flex flex-wrap gap-6 items-center text-sm" data-testid="scope-overview-bar">
-          <span className="text-gray-500">Période : <strong className="text-gray-800">{periodLabel}</strong></span>
-          <span className="text-gray-500">Matchs : <strong className="text-gray-800">{matchCount}</strong></span>
-          <span className="text-gray-500">Win Rate : <strong className="text-green-600">{(winRate * 100).toFixed(1)}%</strong></span>
-          <span className="text-gray-500">K/D cumulés : <strong className="text-gray-800">{totalDeaths > 0 ? (totalKills / totalDeaths).toFixed(2) : '—'}</strong></span>
+          <span className="text-muted-foreground">Période : <strong className="text-foreground">{periodLabel}</strong></span>
+          <span className="text-muted-foreground">Matchs : <strong className="text-foreground">{matchCount}</strong></span>
+          <span className="text-muted-foreground">Win Rate : <strong className="text-success">{(winRate * 100).toFixed(1)}%</strong></span>
+          <span className="text-muted-foreground">K/D cumulés : <strong className="text-foreground">{totalDeaths > 0 ? (totalKills / totalDeaths).toFixed(2) : '—'}</strong></span>
         </div>
       </CardContent>
     </Card>
@@ -138,9 +138,9 @@ function ScopeOverviewBar({ matchCount, winRate, totalKills, totalDeaths, period
 function MetricRow({ item }: MetricRowProps) {
   return (
     <tr className="border-b last:border-0">
-      <td className="px-4 py-3 text-sm font-medium text-gray-700">{item.label}</td>
-      <td className="px-4 py-3 text-center text-sm text-cyan-600">{item.solo_text}</td>
-      <td className="px-4 py-3 text-center text-sm text-green-600">{item.squad_text}</td>
+      <td className="px-4 py-3 text-sm font-medium text-foreground">{item.label}</td>
+      <td className="px-4 py-3 text-center text-sm text-info">{item.solo_text}</td>
+      <td className="px-4 py-3 text-center text-sm text-success">{item.squad_text}</td>
     </tr>
   )
 }
@@ -149,12 +149,12 @@ interface KPISectionProps { title: string; kpis: SynthesisKPIs }
 function KPISection({ title, kpis }: KPISectionProps) {
   return (
     <div>
-      {title && <h3 className="text-sm font-semibold text-gray-600 mb-2">{title}</h3>}
+      {title && <h3 className="text-sm font-semibold text-muted-foreground mb-2">{title}</h3>}
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-        <div className="rounded-lg border p-3"><span className="text-xs text-gray-500 block">Win Rate</span><span className="text-xl font-bold">{(kpis.win_rate * 100).toFixed(1)}%</span></div>
-        <div className="rounded-lg border p-3"><span className="text-xs text-gray-500 block">K/D</span><span className="text-xl font-bold">{kpis.kd_ratio?.toFixed(2) ?? '-'}</span></div>
-        <div className="rounded-lg border p-3"><span className="text-xs text-gray-500 block">Matchs</span><span className="text-xl font-bold">{kpis.match_count}</span></div>
-        <div className="rounded-lg border p-3"><span className="text-xs text-gray-500 block">Perf. <InfoTooltip content="Le Performance Score est un indice composite calculé par LevelUp à partir des kills, assists, objectifs et dégâts. Plus il est élevé, meilleure est la contribution globale au match." /></span><span className="text-xl font-bold">{kpis.performance_score?.toFixed(0) ?? '-'}</span></div>
+        <div className="rounded-lg border p-3"><span className="text-xs text-muted-foreground block">Win Rate</span><span className="text-xl font-bold">{(kpis.win_rate * 100).toFixed(1)}%</span></div>
+        <div className="rounded-lg border p-3"><span className="text-xs text-muted-foreground block">K/D</span><span className="text-xl font-bold">{kpis.kd_ratio?.toFixed(2) ?? '-'}</span></div>
+        <div className="rounded-lg border p-3"><span className="text-xs text-muted-foreground block">Matchs</span><span className="text-xl font-bold">{kpis.match_count}</span></div>
+        <div className="rounded-lg border p-3"><span className="text-xs text-muted-foreground block">Perf. <InfoTooltip content="Le Performance Score est un indice composite calculé par LevelUp à partir des kills, assists, objectifs et dégâts. Plus il est élevé, meilleure est la contribution globale au match." /></span><span className="text-xl font-bold">{kpis.performance_score?.toFixed(0) ?? '-'}</span></div>
       </div>
     </div>
   )
@@ -164,7 +164,7 @@ interface TopWeekRowProps { item: TopWeekItem; rank: number }
 function TopWeekRow({ item, rank }: TopWeekRowProps) {
   return (
     <tr className="border-b last:border-0">
-      <td className="px-4 py-2 text-sm text-gray-500">{rank}</td>
+      <td className="px-4 py-2 text-sm text-muted-foreground">{rank}</td>
       <td className="px-4 py-2 text-sm font-mono font-medium">{item.week_label}</td>
       <td className="px-4 py-2 text-center text-sm font-bold">{item.match_count}</td>
       <td className="px-4 py-2 text-center text-sm">{(item.win_rate * 100).toFixed(0)}%</td>
@@ -183,7 +183,7 @@ export function SynthesisPage() {
   const { data, isLoading, isError, error } = useSynthesisPage(playerSlug, period, request)
 
   if (isLoading) return <div className="flex items-center justify-center min-h-64"><Spinner size="lg" /></div>
-  if (isError) return <div className="p-8 text-center text-red-600">Erreur : {String(error)}</div>
+  if (isError) return <div className="p-8 text-center text-destructive">Erreur : {String(error)}</div>
   if (!data) {
     return (
       <div className="flex flex-col gap-6">
@@ -224,7 +224,7 @@ export function SynthesisPage() {
               <button
                 key={opt.value}
                 onClick={() => setPeriod(opt.value)}
-                className={`rounded px-3 py-1 text-sm transition-colors ${period === opt.value ? 'bg-blue-600 text-white' : 'text-gray-600 hover:bg-gray-100'}`}
+                className={`rounded px-3 py-1 text-sm transition-colors ${period === opt.value ? 'bg-primary text-primary-foreground' : 'text-muted-foreground hover:bg-muted'}`}
               >
                 {opt.label}
               </button>
@@ -261,19 +261,19 @@ export function SynthesisPage() {
         <Card>
           <CardHeader>
             <CardTitle>
-              Solo <span className="mx-2 text-cyan-500">←</span> vs <span className="mx-2 text-green-500">→</span> Escouade
+              Solo <span className="mx-2 text-info">←</span> vs <span className="mx-2 text-success">→</span> Escouade
             </CardTitle>
           </CardHeader>
           <CardContent>
             <PlotlyChart figure={bipolaireChart} />
-            <p className="mt-2 text-xs text-gray-400 text-center">
+            <p className="mt-2 text-xs text-muted-foreground text-center">
               Solo : {data.solo_kpis.match_count} matchs · Escouade : {data.squad_kpis.match_count} matchs
             </p>
           </CardContent>
         </Card>
       ) : (
         <Card>
-          <CardContent className="py-6 text-center text-gray-400 text-sm">
+          <CardContent className="py-6 text-center text-muted-foreground text-sm">
             Pas assez de données des deux contextes pour afficher la comparaison.
           </CardContent>
         </Card>
@@ -284,15 +284,15 @@ export function SynthesisPage() {
         <CardHeader><CardTitle>Comparaison détaillée</CardTitle></CardHeader>
         <CardContent className="p-0">
           {comparisonMetrics.length === 0 ? (
-            <p className="p-6 text-center text-gray-500">Pas assez de données pour cette période.</p>
+            <p className="p-6 text-center text-muted-foreground">Pas assez de données pour cette période.</p>
           ) : (
             <div className="overflow-x-auto">
               <table className="w-full text-sm">
-                <thead className="bg-gray-50 border-b">
+                <thead className="bg-muted border-b">
                   <tr>
                     <th className="px-4 py-3 text-left">Métrique</th>
-                    <th className="px-4 py-3 text-center text-cyan-600">Solo</th>
-                    <th className="px-4 py-3 text-center text-green-600">Escouade</th>
+                    <th className="px-4 py-3 text-center text-info">Solo</th>
+                    <th className="px-4 py-3 text-center text-success">Escouade</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -326,9 +326,9 @@ export function SynthesisPage() {
           {topWeeks.length > 0 ? (
             <div className="overflow-x-auto">
               <table className="w-full text-sm">
-                <thead className="bg-gray-50 border-b">
+                <thead className="bg-muted border-b">
                   <tr>
-                    <th className="px-4 py-2 text-left text-gray-500">#</th>
+                    <th className="px-4 py-2 text-left text-muted-foreground">#</th>
                     <th className="px-4 py-2 text-left">Semaine</th>
                     <th className="px-4 py-2 text-center">Matchs</th>
                     <th className="px-4 py-2 text-center">Win%</th>

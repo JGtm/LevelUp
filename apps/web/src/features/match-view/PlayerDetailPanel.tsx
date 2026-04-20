@@ -20,18 +20,18 @@ interface Props {
 function StatLine({ label, value }: { label: string; value: React.ReactNode }) {
   return (
     <div className="flex items-center justify-between text-xs py-0.5">
-      <span className="text-gray-400">{label}</span>
-      <span className="text-white font-mono">{value ?? '—'}</span>
+      <span className="text-muted-foreground">{label}</span>
+      <span className="text-foreground font-mono">{value ?? '—'}</span>
     </div>
   )
 }
 
 export function PlayerDetailPanel({ row, weaponKills, medals, citations }: Props) {
   return (
-    <div className="bg-[#151a1f]/80 border border-gray-700 rounded-b px-4 py-3 space-y-3">
+    <div className="bg-[#151a1f]/80 border border-border rounded-b px-4 py-3 space-y-3">
       {/* Stats de combat */}
       <div>
-        <p className="text-xs font-semibold uppercase tracking-wide text-gray-400 mb-1">Statistiques</p>
+        <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground mb-1">Statistiques</p>
         <div className="grid grid-cols-2 sm:grid-cols-3 gap-x-6">
           <StatLine label="Kills" value={row.kills} />
           <StatLine label="Deaths" value={row.deaths} />
@@ -57,11 +57,11 @@ export function PlayerDetailPanel({ row, weaponKills, medals, citations }: Props
       {/* Armes — uniquement si disponibles */}
       {weaponKills && weaponKills.length > 0 && (
         <div>
-          <p className="text-xs font-semibold uppercase tracking-wide text-gray-400 mb-1">Armes</p>
+          <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground mb-1">Armes</p>
           <div className="space-y-0.5">
             {weaponKills.slice(0, 5).map((w) => (
               <div key={w.weapon_id} className="flex items-center justify-between text-xs">
-                <span className="text-gray-300">{w.weapon_label ?? `#${w.weapon_id}`}</span>
+                <span className="text-muted-foreground">{w.weapon_label ?? `#${w.weapon_id}`}</span>
                 <span className="text-[#33D6FF] font-mono font-semibold">{w.kill_count} kills</span>
               </div>
             ))}
@@ -72,12 +72,12 @@ export function PlayerDetailPanel({ row, weaponKills, medals, citations }: Props
       {/* Médailles */}
       {medals && medals.length > 0 && (
         <div>
-          <p className="text-xs font-semibold uppercase tracking-wide text-gray-400 mb-1">Médailles</p>
+          <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground mb-1">Médailles</p>
           <div className="flex flex-wrap gap-1">
             {medals.map((m) => (
               <span
                 key={m.medal_name_id}
-                className="rounded bg-gray-700/60 px-1.5 py-0.5 text-[11px] text-gray-200"
+                className="rounded bg-muted/40 px-1.5 py-0.5 text-[11px] text-muted-foreground"
                 title={m.description ?? undefined}
               >
                 {m.name} ×{m.count}
@@ -90,7 +90,7 @@ export function PlayerDetailPanel({ row, weaponKills, medals, citations }: Props
       {/* Citations */}
       {citations && citations.length > 0 && (
         <div>
-          <p className="text-xs font-semibold uppercase tracking-wide text-gray-400 mb-1">Citations</p>
+          <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground mb-1">Citations</p>
           <div className="flex flex-wrap gap-1">
             {citations.map((c) => (
               <span

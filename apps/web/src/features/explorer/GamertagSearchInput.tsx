@@ -39,26 +39,26 @@ export function GamertagSearchInput({ onSelect, placeholder = 'Rechercher un jou
       />
 
       {open && query.length >= 2 && (
-        <div className="absolute z-50 mt-1 w-full rounded-md border border-gray-200 bg-white shadow-lg">
+        <div className="absolute z-50 mt-1 w-full rounded-md border border-border bg-background shadow-lg">
           {isFetching && (
-            <div className="px-4 py-2 text-sm text-gray-400">Recherche…</div>
+            <div className="px-4 py-2 text-sm text-muted-foreground">Recherche…</div>
           )}
           {!isFetching && data?.items.length === 0 && (
-            <div className="px-4 py-2 text-sm text-gray-400">Aucun résultat</div>
+            <div className="px-4 py-2 text-sm text-muted-foreground">Aucun résultat</div>
           )}
           {data?.items.map((item) => (
             <button
               key={item.gamertag}
-              className="flex w-full items-center gap-2 px-4 py-2 text-sm text-left hover:bg-purple-50 transition-colors"
+              className="flex w-full items-center gap-2 px-4 py-2 text-sm text-left hover:bg-primary/10 transition-colors"
               onClick={() => {
                 onSelect(item.gamertag)
                 setQuery(item.gamertag)
                 setOpen(false)
               }}
             >
-              <span className="font-medium text-gray-800">{item.gamertag}</span>
+              <span className="font-medium text-foreground">{item.gamertag}</span>
               {item.exact_match && (
-                <span className="ml-auto text-xs text-purple-500">Exact</span>
+                <span className="ml-auto text-xs text-primary">Exact</span>
               )}
             </button>
           ))}

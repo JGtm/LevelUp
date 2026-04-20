@@ -121,14 +121,14 @@ function KPICard({ label, value, unit = '' }: KPICardProps) {
   const display = value == null ? '-' : `${Number.isInteger(value) ? value : value.toFixed(2)}${unit}`
   return (
     <div className="flex flex-col gap-1 rounded-lg border p-3">
-      <span className="text-xs text-gray-500 uppercase tracking-wide">{label}</span>
+      <span className="text-xs text-muted-foreground uppercase tracking-wide">{label}</span>
       <span className="text-xl font-bold">{display}</span>
     </div>
   )
 }
 
 interface KPIBlockProps { title: string; kpis: TeammateKPIs; color?: string }
-function KPIBlock({ title, kpis, color = 'text-gray-600' }: KPIBlockProps) {
+function KPIBlock({ title, kpis, color = 'text-muted-foreground' }: KPIBlockProps) {
   return (
     <div>
       <h3 className={`text-sm font-medium mb-2 ${color}`}>{title}</h3>
@@ -159,7 +159,7 @@ function TeammateRowItem({ row, selectionIndex, onSelect, onCompare, onPrefetchC
   return (
     <tr
       onClick={onSelect}
-      className={`cursor-pointer transition-colors hover:bg-gray-50 ${isSelected ? 'bg-purple-50' : ''}`}
+      className={`cursor-pointer transition-colors hover:bg-muted ${isSelected ? 'bg-primary/10' : ''}`}
     >
       <td className="px-4 py-3 font-medium flex items-center gap-2">
         {dotColor && <span className="inline-block w-2 h-2 rounded-full" style={{ backgroundColor: dotColor }} />}
@@ -169,7 +169,7 @@ function TeammateRowItem({ row, selectionIndex, onSelect, onCompare, onPrefetchC
       <td className="px-4 py-3 text-center">{row.with_kpis.wins}</td>
       <td className="px-4 py-3 text-center">{wr}%</td>
       <td className="px-4 py-3 text-center">{kd}</td>
-      <td className="px-4 py-3 text-center text-xs text-gray-400">
+      <td className="px-4 py-3 text-center text-xs text-muted-foreground">
         {row.last_seen_at ? new Date(row.last_seen_at).toLocaleDateString('fr-FR') : '-'}
       </td>
       {/* C4.4 : CTA Comparer avec prefetch onMouseEnter */}
@@ -177,7 +177,7 @@ function TeammateRowItem({ row, selectionIndex, onSelect, onCompare, onPrefetchC
         <button
           onClick={(e) => { e.stopPropagation(); onCompare(row.gamertag) }}
           onMouseEnter={() => onPrefetchCompare(row.gamertag)}
-          className="text-xs text-purple-600 hover:underline"
+          className="text-xs text-primary hover:underline"
         >
           Comparer
         </button>
@@ -211,7 +211,7 @@ export function SquadPage() {
   }
 
   if (isLoading) return <div className="flex items-center justify-center min-h-64"><Spinner size="lg" /></div>
-  if (isError) return <div className="p-8 text-center text-red-600">Erreur : {String(error)}</div>
+  if (isError) return <div className="p-8 text-center text-destructive">Erreur : {String(error)}</div>
   if (!data) {
     return (
       <div className="flex flex-col gap-6">
@@ -260,7 +260,7 @@ export function SquadPage() {
                   color={`text-[${CHART_COLORS[i % CHART_COLORS.length]}]`}
                 />
               ))}
-              {solo_reference && <KPIBlock title="Référence solo" kpis={solo_reference} color="text-cyan-600" />}
+              {solo_reference && <KPIBlock title="Référence solo" kpis={solo_reference} color="text-info" />}
             </>
           ) : (
             <EmptyStateNotice
@@ -282,8 +282,8 @@ export function SquadPage() {
               onClick={() => setActiveTab(tab.id)}
               className={`rounded-none border-b-2 px-4 py-3 text-sm ${
                 activeTab === tab.id
-                  ? 'border-purple-600 font-semibold text-purple-700'
-                  : 'border-transparent text-gray-500 hover:text-gray-800'
+                  ? 'border-primary font-semibold text-primary'
+                  : 'border-transparent text-muted-foreground hover:text-foreground'
               }`}
             >
               {tab.label}
@@ -299,7 +299,7 @@ export function SquadPage() {
           ) : activeTab === 'synergies' ? (
             synergiesChart ? (
               <div className="space-y-4">
-                <p className="text-sm text-gray-500">
+                <p className="text-sm text-muted-foreground">
                   Comparaison de tes stats <em>avec</em> chaque coéquipier vs ta référence solo.
                 </p>
                 <PlotlyChart figure={synergiesChart} />
@@ -312,7 +312,7 @@ export function SquadPage() {
             )
           ) : radarChart ? (
             <div className="space-y-4">
-              <p className="text-sm text-gray-500">
+              <p className="text-sm text-muted-foreground">
                 Profil de contribution normalisé (violet) vs ta référence solo (cyan pointillé).
               </p>
               <PlotlyChart figure={radarChart} />
@@ -332,12 +332,12 @@ export function SquadPage() {
           <CardTitle className="flex items-center justify-between">
             <span>Coéquipiers</span>
             <div className="flex items-center gap-3">
-              <span className="text-sm font-normal text-gray-500">
+              <span className="text-sm font-normal text-muted-foreground">
                 {selectedGts.length}/{MAX_SELECTION} sélectionnés
               </span>
               {selectedGts.length > 0 && (
                 <button
-                  className="text-xs text-gray-400 hover:text-gray-700"
+                  className="text-xs text-muted-foreground hover:text-foreground"
                   onClick={() => setSelectedGts([])}
                 >
                   ✕ Effacer
@@ -348,11 +348,11 @@ export function SquadPage() {
         </CardHeader>
         <CardContent className="p-0">
           {teammates.length === 0 ? (
-            <p className="p-6 text-center text-gray-500">Aucun coéquipier trouvé pour cette période.</p>
+            <p className="p-6 text-center text-muted-foreground">Aucun coéquipier trouvé pour cette période.</p>
           ) : (
             <div className="overflow-x-auto">
               <table className="w-full text-sm">
-                <thead className="bg-gray-50 border-b">
+                <thead className="bg-muted border-b">
                   <tr>
                     <th className="px-4 py-3 text-left">Gamertag</th>
                     <th className="px-4 py-3 text-center">Matchs</th>
