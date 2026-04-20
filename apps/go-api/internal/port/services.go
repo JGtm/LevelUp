@@ -76,6 +76,11 @@ type MediaService interface {
 	UploadMedia(ctx context.Context, req domain.UploadRequest) (*domain.UploadResult, error)
 }
 
+// SocialService gère les interactions sociales (favoris de matchs).
+type SocialService interface {
+	ToggleMatchFavorite(ctx context.Context, req domain.MatchFavoriteRequest) error
+}
+
 // SessionsService construit la page des sessions.
 type SessionsService interface {
 	GetSessions(ctx context.Context, opts domain.SessionComputeOptions) (domain.SessionsResponse, error)

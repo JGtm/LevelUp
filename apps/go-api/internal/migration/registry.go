@@ -15,10 +15,11 @@ import (
 type TargetDB string
 
 const (
-	TargetPlayer    TargetDB = "player"
-	TargetShared    TargetDB = "shared"
-	TargetSharedPvE TargetDB = "shared_pve"
-	TargetMetadata  TargetDB = "metadata"
+	TargetPlayer       TargetDB = "player"
+	TargetShared       TargetDB = "shared"
+	TargetSharedPvE    TargetDB = "shared_pve"
+	TargetSharedSocial TargetDB = "shared_social"
+	TargetMetadata     TargetDB = "metadata"
 )
 
 // Migration décrit une migration DuckDB idempotente.

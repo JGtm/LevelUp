@@ -396,6 +396,17 @@ func init() {
 			`)
 		},
 	})
+
+	// shared_social migration : supprimer media_likes de shared_matches_v2.duckdb
+	// (données déplacées dans shared_social.duckdb).
+	Register(Migration{
+		Name:        "drop_media_likes_from_shared",
+		TargetDB:    TargetShared,
+		Description: "Supprime media_likes de shared_matches_v2.duckdb (migrée vers shared_social.duckdb)",
+		ApplySchema: func(db *sql.DB) error {
+			return execScript(db, `DROP TABLE IF EXISTS media_likes;`)
+		},
+	})
 }
 
 // applyHighlightEventsAutoincrement recrée highlight_events avec séquence.

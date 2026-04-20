@@ -234,6 +234,10 @@ func NewRouter(
 			r.Patch("/matches/{match_id}/exclusion", excl.SetExclusion)
 			r.Get("/match-exclusions", excl.ListExclusions)
 
+			// Match favoris (shared_social.duckdb)
+			fav := handlers.NewMatchFavoriteHandler(reg.Social)
+			r.Patch("/matches/{match_id}/favorite", fav.PatchMatchFavorite)
+
 			// Sprint 54 : Compare joueur vs joueur
 			compare := handlers.NewCompareHandler(reg.Compare)
 			r.Post("/pages/compare", compare.PostComparePage)

@@ -111,6 +111,7 @@ func main() {
 	// --- 3. Connexions DuckDB ---
 	sharedPath := filepath.Join(cfg.RepoRoot, "data", "warehouse", "shared_matches_v2.duckdb")
 	metaPath := filepath.Join(cfg.RepoRoot, "data", "warehouse", "metadata.duckdb")
+	sharedSocialPath := filepath.Join(cfg.RepoRoot, "data", "warehouse", "shared_social.duckdb")
 
 	// En DEMO_MODE, utiliser les fixtures de démo si les DBs prod n'existent pas.
 	if cfg.DemoMode {
@@ -129,10 +130,10 @@ func main() {
 		}
 	}
 
-	slog.Debug("ouverture DuckDB", "shared", sharedPath, "metadata", metaPath)
+	slog.Debug("ouverture DuckDB", "shared", sharedPath, "metadata", metaPath, "shared_social", sharedSocialPath)
 
 	// --- 3a. Migrations (read-write, avant l'ouverture read-only) ---
-	if err := runMigrations(metaPath, sharedPath, cfg); err != nil {
+	if err := runMigrations(metaPath, sharedPath, sharedSocialPath, cfg); err != nil {
 		slog.Debug("migrations ignorées (DB verrouillée), démarrage sans migration")
 	} else {
 		slog.Debug("migrations appliquées")
@@ -187,14 +188,14 @@ func main() {
 	// On bind le port en premier pour détecter immédiatement un conflit.
 	ln, err := net.Listen("tcp", cfg.ServerAddr())
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "  ❌ Port %s déjà occupé — fermez l'ancien processus\n", cfg.ServerAddr())
+		fmt.Fprintf(os.Stderr, "  [ERR] Port %s deja occupe -- fermez l'ancien processus\n", cfg.ServerAddr())
 		os.Exit(1)
 	}
 
 	sigCh := make(chan os.Signal, 1)
 	signal.Notify(sigCh, os.Interrupt, syscall.SIGTERM)
 
-	fmt.Fprintf(os.Stderr, "\n  ✅ LevelUp API prête → http://%s\n\n", cfg.ServerAddr())
+	fmt.Fprintf(os.Stderr, "\n  [OK] LevelUp API ready -> http://%s\n\n", cfg.ServerAddr())
 	go func() {
 		if err := srv.Serve(ln); err != nil && err != http.ErrServerClosed {
 			slog.Error("server error", "err", err)
@@ -203,7 +204,7 @@ func main() {
 	}()
 
 	<-sigCh
-	fmt.Fprint(os.Stderr, "\n  ⏳ Arrêt en cours…")
+	fmt.Fprint(os.Stderr, "\n  [..] Arret en cours...")
 
 	shutdownCtx, cancel := context.WithTimeout(context.Background(), 15*time.Second)
 	defer cancel()
@@ -223,9 +224,9 @@ func main() {
 func strPtr(s string) *string { return &s }
 
 // runMigrations applique les migrations DuckDB dans l'ordre :
-// metadata → shared → shared_pve.
+// metadata → shared → shared_pve → shared_social.
 // Les migrations player sont gérées à l'ouverture de chaque player DB.
-func runMigrations(metaPath, sharedPath string, cfg *config.AppConfig) error {
+func runMigrations(metaPath, sharedPath, sharedSocialPath string, cfg *config.AppConfig) error {
 	// Ensure all step init() have been registered (side-effect imports).
 	_ = migration.All()
 
@@ -264,6 +265,17 @@ func runMigrations(metaPath, sharedPath string, cfg *config.AppConfig) error {
 		}
 		pveDB.Close()
 	}
+
+	// 4. shared_social.duckdb (créé automatiquement s'il n'existe pas)
+	socialDB, err := duckdb.OpenReadWrite(sharedSocialPath)
+	if err != nil {
+		return fmt.Errorf("open shared_social rw: %w", err)
+	}
+	if err := migration.RunForDB(socialDB.SQLDb(), migration.TargetSharedSocial); err != nil {
+		socialDB.Close()
+		return fmt.Errorf("shared_social migrations: %w", err)
+	}
+	socialDB.Close()
 
 	return nil
 }

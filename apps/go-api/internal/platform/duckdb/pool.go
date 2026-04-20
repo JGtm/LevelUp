@@ -19,12 +19,13 @@ import (
 
 // PlayerPoolConfig contient les chemins nécessaires pour ouvrir un PlayerDB.
 type PlayerPoolConfig struct {
-	Gamertag     string
-	XUID         string
-	TitleSlug    string // Sprint 44 : namespace titre (ex: "halo_infinite")
-	PlayerDBPath string
-	SharedDBPath string
-	MetaDBPath   string
+	Gamertag           string
+	XUID               string
+	TitleSlug          string // Sprint 44 : namespace titre (ex: "halo_infinite")
+	PlayerDBPath       string
+	SharedDBPath       string
+	MetaDBPath         string
+	SharedSocialDBPath string // shared_social.duckdb (médias, likes, favoris)
 }
 
 // PoolKey retourne la clé unique du pool pour ce joueur.
@@ -38,12 +39,13 @@ func (c PlayerPoolConfig) PoolKey() string {
 
 // PlayerDB regroupe les connexions DB nécessaires pour un joueur.
 type PlayerDB struct {
-	Player    *DB // stats.duckdb du joueur (avec shared attaché)
-	Shared    *DB // shared_matches_v2.duckdb
-	Metadata  *DB // metadata.duckdb
-	XUID      string
-	Gamertag  string
-	TitleSlug string // Sprint 44 : titre associé
+	Player       *DB // stats.duckdb du joueur (avec shared attaché)
+	Shared       *DB // shared_matches_v2.duckdb
+	SharedSocial *DB // shared_social.duckdb (médias, likes, favoris de matchs)
+	Metadata     *DB // metadata.duckdb
+	XUID         string
+	Gamertag     string
+	TitleSlug    string // Sprint 44 : titre associé
 }
 
 // GlobalPool est le registre process-level des PlayerDB par gamertag (slug).
@@ -86,6 +88,9 @@ func CloseAll() {
 		pdb := value.(*PlayerDB)
 		_ = pdb.Player.Close()
 		_ = pdb.Shared.Close()
+		if pdb.SharedSocial != nil {
+			_ = pdb.SharedSocial.Close()
+		}
 		_ = pdb.Metadata.Close()
 		globalPool.Delete(key)
 		return true
@@ -116,6 +121,16 @@ func openPlayerDB(ctx context.Context, cfg PlayerPoolConfig) (*PlayerDB, error) 
 		return nil, fmt.Errorf("pool: open metadata db: %w", err)
 	}
 
+	// SharedSocial est optionnel : absent si le fichier n'existe pas encore.
+	var socialDB *DB
+	if cfg.SharedSocialDBPath != "" {
+		socialDB, err = OpenReadOnly(cfg.SharedSocialDBPath)
+		if err != nil {
+			// Non bloquant : la DB sera créée lors de la prochaine migration.
+			socialDB = nil
+		}
+	}
+
 	// ATTACH shared sur la connexion player pour les requêtes join
 	if err := attachShared(ctx, playerDB, cfg.SharedDBPath); err != nil {
 		_ = playerDB.Close()
@@ -132,13 +147,22 @@ func openPlayerDB(ctx context.Context, cfg PlayerPoolConfig) (*PlayerDB, error) 
 		return nil, fmt.Errorf("pool: attach meta on player db: %w", err)
 	}
 
+	// ATTACH shared_matches_v2 sur SharedSocial pour les JOIN match_registry dans Q37.
+	if socialDB != nil && cfg.SharedDBPath != "" {
+		if err := attachShared(ctx, socialDB, cfg.SharedDBPath); err != nil {
+			// Non bloquant : les colonnes map/mode seront NULL.
+			_ = err
+		}
+	}
+
 	return &PlayerDB{
-		Player:    playerDB,
-		Shared:    sharedDB,
-		Metadata:  metaDB,
-		XUID:      cfg.XUID,
-		Gamertag:  cfg.Gamertag,
-		TitleSlug: cfg.TitleSlug,
+		Player:       playerDB,
+		Shared:       sharedDB,
+		SharedSocial: socialDB,
+		Metadata:     metaDB,
+		XUID:         cfg.XUID,
+		Gamertag:     cfg.Gamertag,
+		TitleSlug:    cfg.TitleSlug,
 	}, nil
 }
 

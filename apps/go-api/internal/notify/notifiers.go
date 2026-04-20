@@ -80,6 +80,7 @@ func NotifySync(
 //
 // Anti-spam DuckDB : seuls les médias avec discord_notified_at IS NULL sont
 // notifiés. Après envoi réussi, discord_notified_at est mis à jour dans la DB.
+// dbPath est le chemin vers shared_social.duckdb (fallback : stats.duckdb du joueur).
 func NotifyNewMedia(cfg NotifyConfig, dbPath, gamertag string) {
 	defer func() {
 		if r := recover(); r != nil {
