@@ -44,14 +44,6 @@ export function ExplorerPage() {
     })
   }
 
-  // Filtres cascade mode Matchs
-  const [dateFilter, setDateFilter] = useState('')
-  const [squadScope, setSquadScope] = useState<'' | 'all' | 'solo' | 'squad'>('')
-  const [expType, setExpType] = useState('')
-  const [playlistFilter, setPlaylistFilter] = useState('')
-  const [modeFilter, setModeFilter] = useState('')
-  const [mapFilter, setMapFilter] = useState('')
-
   const matchFilters: ExplorerMatchFilters = {
     selected_date: dateFilter || null,
     squad_scope: squadScope || undefined,
