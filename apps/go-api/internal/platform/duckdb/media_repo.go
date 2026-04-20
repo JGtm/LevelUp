@@ -32,7 +32,7 @@ func (r *MediaRepo) LoadMediaFiles(ctx context.Context, filters domain.MediaFilt
 	ctx, cancel := context.WithTimeout(ctx, 10*time.Second)
 	defer cancel()
 
-	q, args := BuildQ37MediaQuery(filters, limit, offset)
+	q, args := buildQ37MediaQuery(filters, limit, offset, r.queryConfig())
 	rows, err := r.socialDB().Query(ctx, q, args...)
 	if err != nil {
 		return nil, fmt.Errorf("LoadMediaFiles: %w", err)
@@ -66,13 +66,42 @@ func (r *MediaRepo) CountMediaFiles(ctx context.Context, filters domain.MediaFil
 	ctx, cancel := context.WithTimeout(ctx, 5*time.Second)
 	defer cancel()
 
-	q, args := BuildQ37MediaCountQuery(filters)
+	q, args := buildQ37MediaCountQuery(filters, r.queryConfig())
 	var count int
 	err := r.socialDB().QueryRow(ctx, q, args...).Scan(&count)
 	if err != nil {
 		return 0, fmt.Errorf("CountMediaFiles: %w", err)
 	}
 	return count, nil
+}
+
+// LoadMediaFilterOptions retourne les valeurs distinctes des filtres carte/mode.
+func (r *MediaRepo) LoadMediaFilterOptions(ctx context.Context, filters domain.MediaFilters) (domain.MediaFilterOptions, error) {
+	ctx, cancel := context.WithTimeout(ctx, 5*time.Second)
+	defer cancel()
+
+	queryCfg := r.queryConfig()
+
+	mapQuery, mapArgs := buildQ37MediaMapOptionsQuery(filters, queryCfg)
+	maps, err := r.loadMediaLabelValues(ctx, mapQuery, mapArgs)
+	if err != nil {
+		return domain.MediaFilterOptions{}, fmt.Errorf("LoadMediaFilterOptions maps: %w", err)
+	}
+
+	modeQuery, modeArgs := buildQ37MediaModeOptionsQuery(filters, queryCfg)
+	modes, err := r.loadMediaLabelValues(ctx, modeQuery, modeArgs)
+	if err != nil {
+		return domain.MediaFilterOptions{}, fmt.Errorf("LoadMediaFilterOptions modes: %w", err)
+	}
+
+	return domain.MediaFilterOptions{Maps: maps, Modes: modes}, nil
+}
+
+func (r *MediaRepo) queryConfig() mediaQueryConfig {
+	if r.pdb.SharedSocial != nil {
+		return mediaQueryConfig{playerSlug: r.pdb.Gamertag}
+	}
+	return mediaQueryConfig{}
 }
 
 // SetMediaLike persiste l'état liked d'un média dans media_files (cache local).
@@ -173,4 +202,26 @@ func joinStrings(ss []string) string {
 		out += s
 	}
 	return out
+}
+
+func (r *MediaRepo) loadMediaLabelValues(ctx context.Context, query string, args []any) ([]domain.LabelValue, error) {
+	rows, err := r.socialDB().Query(ctx, query, args...)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	options := make([]domain.LabelValue, 0)
+	for rows.Next() {
+		var label string
+		if err := rows.Scan(&label); err != nil {
+			return nil, err
+		}
+		if label == "" {
+			continue
+		}
+		options = append(options, domain.LabelValue{Label: label, Value: label})
+	}
+
+	return options, rows.Err()
 }

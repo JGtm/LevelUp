@@ -30,8 +30,8 @@ type MediaPageRequest struct {
 // MediaFilters regroupe les paramètres de filtrage/tri pour le repository.
 type MediaFilters struct {
 	KindFilter string // "clip" | "screenshot" | "" (aucun)
-	MapFilter  string // filtre ILIKE sur map_name
-	ModeFilter string // filtre ILIKE sur mode_name
+	MapFilter  string // filtre ILIKE sur le libellé de carte exposé à l'UI
+	ModeFilter string // filtre ILIKE sur le mode normalisé exposé à l'UI
 	LikedOnly  bool   // restreindre aux médias likés
 	Sort       string // "date_desc" | "date_asc" | "map_asc" | "mode_asc"
 }
@@ -123,12 +123,19 @@ type MediaItemsPage struct {
 	Freshness  interface{}    `json:"freshness,omitempty"`
 }
 
+// MediaFilterOptions représente les options de filtres dédiées à la galerie.
+type MediaFilterOptions struct {
+	Maps  []LabelValue `json:"maps"`
+	Modes []LabelValue `json:"modes"`
+}
+
 // MediaPageResponse est la réponse paginée de la galerie médias.
 type MediaPageResponse struct {
-	Items           MediaItemsPage `json:"items"`
-	TotalMine       int            `json:"total_mine"`
-	TotalTeammates  int            `json:"total_teammates"`
-	TotalUnassigned int            `json:"total_unassigned"`
+	Items            MediaItemsPage     `json:"items"`
+	TotalMine        int                `json:"total_mine"`
+	TotalTeammates   int                `json:"total_teammates"`
+	TotalUnassigned  int                `json:"total_unassigned"`
+	AvailableFilters MediaFilterOptions `json:"available_filters"`
 }
 
 // MediaLikeRequest représente une mise à jour explicite de l'état liked.

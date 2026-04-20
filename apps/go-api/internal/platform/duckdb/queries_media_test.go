@@ -21,8 +21,8 @@ func TestBuildQ37MediaQuery_NoFilters(t *testing.T) {
 	if !strings.Contains(q, "mf.status = 'active'") {
 		t.Error("expected status = active filter")
 	}
-	if !strings.Contains(q, "ORDER BY mf.mtime DESC") {
-		t.Errorf("expected default ORDER BY mf.mtime DESC, got: %s", q)
+	if !strings.Contains(q, "ORDER BY COALESCE(mf.capture_end_utc, mf.mtime) DESC") {
+		t.Errorf("expected default ORDER BY capture_end_utc/mtime DESC, got: %s", q)
 	}
 	if !strings.Contains(q, "LIMIT ? OFFSET ?") {
 		t.Error("expected LIMIT ? OFFSET ?")
@@ -69,8 +69,8 @@ func TestBuildQ37MediaQuery_LikedOnly(t *testing.T) {
 func TestBuildQ37MediaQuery_MapFilter(t *testing.T) {
 	q, args := BuildQ37MediaQuery(domain.MediaFilters{MapFilter: "Fragmentation"}, 24, 0)
 
-	if !strings.Contains(q, "mr.map_name ILIKE ?") {
-		t.Error("expected map_name ILIKE clause")
+	if !strings.Contains(q, q37MediaMapLabelExpr+" ILIKE ?") {
+		t.Error("expected normalized map label ILIKE clause")
 	}
 	// Vérifier que le % wrapping est appliqué
 	if len(args) < 1 {
@@ -85,8 +85,11 @@ func TestBuildQ37MediaQuery_MapFilter(t *testing.T) {
 func TestBuildQ37MediaQuery_ModeFilter(t *testing.T) {
 	q, args := BuildQ37MediaQuery(domain.MediaFilters{ModeFilter: "Slayer"}, 24, 0)
 
-	if !strings.Contains(q, "mr.pair_name ILIKE ?") {
-		t.Error("expected pair_name ILIKE clause")
+	if !strings.Contains(q, q37MediaModeLabelExpr+" ILIKE ?") {
+		t.Error("expected normalized mode label ILIKE clause")
+	}
+	if !strings.Contains(q, "regexp_replace") {
+		t.Error("expected normalized mode expression in query")
 	}
 	if len(args) < 1 {
 		t.Fatal("expected at least 1 filter arg")
@@ -128,29 +131,29 @@ func TestBuildQ37MediaQuery_AllFilters_ArgOrder(t *testing.T) {
 
 func TestBuildQ37MediaQuery_Sort_DateAsc(t *testing.T) {
 	q, _ := BuildQ37MediaQuery(domain.MediaFilters{Sort: "date_asc"}, 24, 0)
-	if !strings.Contains(q, "ORDER BY mf.mtime ASC") {
-		t.Errorf("expected mtime ASC order, got: %s", q)
+	if !strings.Contains(q, "ORDER BY COALESCE(mf.capture_end_utc, mf.mtime) ASC") {
+		t.Errorf("expected capture_end_utc/mtime ASC order, got: %s", q)
 	}
 }
 
 func TestBuildQ37MediaQuery_Sort_MapAsc(t *testing.T) {
 	q, _ := BuildQ37MediaQuery(domain.MediaFilters{Sort: "map_asc"}, 24, 0)
-	if !strings.Contains(q, "COALESCE(mr.map_name") {
+	if !strings.Contains(q, "COALESCE("+q37MediaMapLabelExpr) {
 		t.Errorf("expected map_name sort, got: %s", q)
 	}
 }
 
 func TestBuildQ37MediaQuery_Sort_ModeAsc(t *testing.T) {
 	q, _ := BuildQ37MediaQuery(domain.MediaFilters{Sort: "mode_asc"}, 24, 0)
-	if !strings.Contains(q, "COALESCE(mr.pair_name") {
+	if !strings.Contains(q, "COALESCE("+q37MediaModeLabelExpr) {
 		t.Errorf("expected pair_name sort, got: %s", q)
 	}
 }
 
 func TestBuildQ37MediaQuery_Sort_Unknown_FallsBackToDefault(t *testing.T) {
 	q, _ := BuildQ37MediaQuery(domain.MediaFilters{Sort: "random_invalid"}, 24, 0)
-	if !strings.Contains(q, "ORDER BY mf.mtime DESC") {
-		t.Errorf("expected fallback to mtime DESC, got: %s", q)
+	if !strings.Contains(q, "ORDER BY COALESCE(mf.capture_end_utc, mf.mtime) DESC") {
+		t.Errorf("expected fallback to capture_end_utc/mtime DESC, got: %s", q)
 	}
 }
 
@@ -223,7 +226,7 @@ func TestBuildQ37MediaCountQuery_MultipleFilters(t *testing.T) {
 	if !strings.Contains(q, "mf.kind = ?") {
 		t.Error("expected kind filter")
 	}
-	if !strings.Contains(q, "mr.map_name ILIKE ?") {
+	if !strings.Contains(q, q37MediaMapLabelExpr+" ILIKE ?") {
 		t.Error("expected map filter")
 	}
 	// kind arg + map arg
@@ -239,5 +242,89 @@ func TestBuildQ37MediaCountQuery_HasJoins(t *testing.T) {
 	}
 	if !strings.Contains(q, "LEFT JOIN shared.match_registry") {
 		t.Error("expected JOIN shared.match_registry in count query")
+	}
+}
+
+func TestBuildQ37MediaMapOptionsQuery_IgnoresCurrentMapFilter(t *testing.T) {
+	q, args := BuildQ37MediaMapOptionsQuery(domain.MediaFilters{
+		KindFilter: "clip",
+		MapFilter:  "Aquarius",
+		ModeFilter: "Slayer",
+	})
+
+	if strings.Contains(q, q37MediaMapLabelExpr+" ILIKE ?") {
+		t.Error("expected current map filter to be ignored for map options")
+	}
+	if !strings.Contains(q, q37MediaModeLabelExpr+" ILIKE ?") {
+		t.Error("expected mode filter to stay applied for map options")
+	}
+	if !strings.Contains(q, "SELECT DISTINCT "+q37MediaMapLabelExpr+" AS label") {
+		t.Error("expected distinct map label selection")
+	}
+	if len(args) != 2 {
+		t.Fatalf("args len = %d, want 2", len(args))
+	}
+}
+
+func TestBuildQ37MediaModeOptionsQuery_UsesNormalizedModeLabels(t *testing.T) {
+	q, args := BuildQ37MediaModeOptionsQuery(domain.MediaFilters{
+		MapFilter:  "Recharge",
+		ModeFilter: "CTF",
+	})
+
+	if strings.Contains(q, q37MediaModeLabelExpr+" ILIKE ?") {
+		t.Error("expected current mode filter to be ignored for mode options")
+	}
+	if !strings.Contains(q, q37MediaMapLabelExpr+" ILIKE ?") {
+		t.Error("expected map filter to stay applied for mode options")
+	}
+	if !strings.Contains(q, "SELECT DISTINCT "+q37MediaModeLabelExpr+" AS label") {
+		t.Error("expected distinct normalized mode label selection")
+	}
+	if !strings.Contains(q, "regexp_replace") {
+		t.Error("expected normalized mode expression in options query")
+	}
+	if len(args) != 1 {
+		t.Fatalf("args len = %d, want 1", len(args))
+	}
+}
+
+func TestBuildQ37MediaQuery_SharedSocialSchemaUsesPlayerScopedJoin(t *testing.T) {
+	q, args := buildQ37MediaQuery(domain.MediaFilters{}, 24, 0, mediaQueryConfig{playerSlug: "HeroPlayer"})
+
+	if !strings.Contains(q, "mf.id = mma.media_file_id") {
+		t.Errorf("expected shared_social join on media_file_id, got: %s", q)
+	}
+	if !strings.Contains(q, "mf.player_slug = ?") {
+		t.Errorf("expected player_slug filter, got: %s", q)
+	}
+	if !strings.Contains(q, "mr.start_time AS match_start_time") {
+		t.Errorf("expected match_start_time from match_registry, got: %s", q)
+	}
+	if strings.Contains(q, "mf.status = 'active'") {
+		t.Errorf("did not expect legacy status filter in shared_social query, got: %s", q)
+	}
+	if len(args) != 3 {
+		t.Fatalf("args len = %d, want 3", len(args))
+	}
+	if args[0] != "HeroPlayer" || args[1] != 24 || args[2] != 0 {
+		t.Fatalf("args = %v, want [HeroPlayer 24 0]", args)
+	}
+}
+
+func TestBuildQ37MediaMapOptionsQuery_SharedSocialSchemaKeepsPlayerScope(t *testing.T) {
+	q, args := buildQ37MediaMapOptionsQuery(domain.MediaFilters{ModeFilter: "Slayer"}, mediaQueryConfig{playerSlug: "HeroPlayer"})
+
+	if !strings.Contains(q, "mf.id = mma.media_file_id") {
+		t.Errorf("expected shared_social join on media_file_id, got: %s", q)
+	}
+	if !strings.Contains(q, "mf.player_slug = ?") {
+		t.Errorf("expected player_slug filter, got: %s", q)
+	}
+	if len(args) != 2 {
+		t.Fatalf("args len = %d, want 2", len(args))
+	}
+	if args[0] != "HeroPlayer" {
+		t.Fatalf("args[0] = %v, want HeroPlayer", args[0])
 	}
 }
