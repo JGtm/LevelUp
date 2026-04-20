@@ -35,6 +35,16 @@ func (m *mockSocialRepo) IsMatchFavorite(_ context.Context, playerSlug, matchID 
 	return m.favorites[playerSlug+":"+matchID], nil
 }
 
+func (m *mockSocialRepo) GetFavoriteMatchIDs(_ context.Context, _ string) (map[string]bool, error) {
+	result := make(map[string]bool)
+	for key, v := range m.favorites {
+		if v {
+			result[key] = true
+		}
+	}
+	return result, nil
+}
+
 func TestSocialService_ToggleMatchFavorite_Add(t *testing.T) {
 	repo := &mockSocialRepo{favorites: make(map[string]bool)}
 	svc := NewSocialService(repo)

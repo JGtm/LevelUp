@@ -441,6 +441,9 @@ type SocialRepository interface {
 
 	// IsMatchFavorite indique si un match est en favori pour un joueur.
 	IsMatchFavorite(ctx context.Context, playerSlug, matchID string) (bool, error)
+
+	// GetFavoriteMatchIDs retourne l'ensemble des match_id mis en favoris par un joueur.
+	GetFavoriteMatchIDs(ctx context.Context, playerSlug string) (map[string]bool, error)
 }
 
 // Ensure compile-time checks pour les nouveaux repos Sprint 12+13.
@@ -623,4 +626,7 @@ func (n *noopSocialRepo) ToggleMatchFavorite(_ context.Context, _, _ string, _ b
 }
 func (n *noopSocialRepo) IsMatchFavorite(_ context.Context, _, _ string) (bool, error) {
 	return false, nil
+}
+func (n *noopSocialRepo) GetFavoriteMatchIDs(_ context.Context, _ string) (map[string]bool, error) {
+	return nil, nil
 }

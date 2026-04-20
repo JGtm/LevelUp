@@ -1,6 +1,8 @@
 import { useMemo, useState } from 'react'
 import type { ChallengeItem } from '@/lib/api/types'
 
+type ChallengeCadence = 'daily' | 'weekly' | 'capstone' | null
+
 function challengeSortScore(item: ChallengeItem): number {
   if (item.progress_percent != null) {
     return item.progress_percent
@@ -9,6 +11,69 @@ function challengeSortScore(item: ChallengeItem): number {
     return 0.001 + item.progress_current / 10000
   }
   return 0
+}
+
+function deriveChallengeCadence(challengePath?: string | null): ChallengeCadence {
+  const normalizedPath = (challengePath ?? '').toLowerCase()
+  if (!normalizedPath) {
+    return null
+  }
+  if (normalizedPath.includes('dailychallenges')) {
+    return 'daily'
+  }
+  if (
+    normalizedPath.includes('weeklychallenges') ||
+    normalizedPath.includes('winterchallenges') ||
+    normalizedPath.includes('seasonalchallenges') ||
+    normalizedPath.includes('eventchallenges') ||
+    normalizedPath.includes('operationchallenges') ||
+    normalizedPath.includes('fracturechallenges')
+  ) {
+    return 'weekly'
+  }
+  if (normalizedPath.includes('ultimate') || normalizedPath.includes('capstone')) {
+    return 'capstone'
+  }
+  return null
+}
+
+function challengeCadenceLabel(cadence: ChallengeCadence): string | null {
+  if (cadence === 'daily') {
+    return 'Quotidien'
+  }
+  if (cadence === 'weekly') {
+    return 'Hebdo'
+  }
+  if (cadence === 'capstone') {
+    return 'Capstone'
+  }
+  return null
+}
+
+function challengeCadenceClasses(cadence: ChallengeCadence): string {
+  if (cadence === 'daily') {
+    return 'border-amber-500/25 bg-amber-500/8'
+  }
+  if (cadence === 'weekly') {
+    return 'border-sky-500/25 bg-sky-500/8'
+  }
+  if (cadence === 'capstone') {
+    return 'border-fuchsia-500/25 bg-fuchsia-500/8'
+  }
+  return 'border-border/70 bg-muted/35'
+}
+
+function challengeCadenceBadgeClasses(cadence: ChallengeCadence): string {
+  if (cadence === 'daily') {
+    return 'bg-amber-500/14 text-amber-700 dark:text-amber-300'
+  }
+  if (cadence === 'weekly') {
+    return 'bg-sky-500/14 text-sky-700 dark:text-sky-300'
+  }
+  if (cadence === 'capstone') {
+    return 'bg-fuchsia-500/14 text-fuchsia-700 dark:text-fuchsia-300'
+  }
+  return 'bg-muted text-muted-foreground'
 }
 
 function ChallengeThumb({ imageUrl, title }: { imageUrl?: string | null; title: string }) {
@@ -54,17 +119,27 @@ export function HomeChallengesList({ items }: { items: ChallengeItem[] }) {
         const progressPercent = Math.max(0, Math.min(100, item.progress_percent ?? 0))
         const current = item.progress_current ?? 0
         const target = item.progress_target
+        const cadence = deriveChallengeCadence(item.challenge_path)
+        const cadenceLabel = challengeCadenceLabel(cadence)
 
         return (
           <div
             key={item.tracking_id ?? item.challenge_path}
             data-testid="home-challenge-item"
-            className="flex items-stretch gap-3 rounded-lg border border-border/70 bg-muted/35 p-3"
+            className={`flex items-stretch gap-3 rounded-lg border p-3 ${challengeCadenceClasses(cadence)}`}
           >
             <ChallengeThumb imageUrl={item.image_url} title={item.title} />
 
             <div className="flex min-h-16 min-w-0 flex-1 flex-col justify-between gap-2">
               <div className="min-w-0">
+                {cadenceLabel && (
+                  <span
+                    data-testid="home-challenge-kind"
+                    className={`mb-1 inline-flex rounded-full px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.14em] ${challengeCadenceBadgeClasses(cadence)}`}
+                  >
+                    {cadenceLabel}
+                  </span>
+                )}
                 <p data-testid="home-challenge-title" className="truncate text-[15px] font-semibold leading-tight text-foreground">
                   {item.title}
                 </p>

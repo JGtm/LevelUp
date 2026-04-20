@@ -651,6 +651,11 @@ func buildChallengeBadgeCandidates(challengePath, category, difficulty string) [
 		}
 		candidates = append(candidates, "capstone-"+diff)
 	}
+	if isSeasonalChallengePath(normalizedPath) && diff != "" {
+		for _, family := range []string{"action", "gametype", "weapon"} {
+			candidates = append(candidates, "weekly-"+family+"-"+diff)
+		}
+	}
 	if cat == "daily" && diff != "" {
 		candidates = append(candidates, "daily-"+diff)
 	}
@@ -711,6 +716,25 @@ func inferWeeklyFamily(normalizedPath string) string {
 		}
 	}
 	return ""
+}
+
+func isSeasonalChallengePath(normalizedPath string) bool {
+	if normalizedPath == "" {
+		return false
+	}
+	seasonalTokens := []string{
+		"winterchallenges",
+		"seasonalchallenges",
+		"eventchallenges",
+		"operationchallenges",
+		"fracturechallenges",
+	}
+	for _, token := range seasonalTokens {
+		if strings.Contains(normalizedPath, token) {
+			return true
+		}
+	}
+	return strings.Contains(normalizedPath, "/s") && strings.Contains(normalizedPath, "challenges/")
 }
 
 func challengeSortScore(item domain.ChallengeItem) float64 {

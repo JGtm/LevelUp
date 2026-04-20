@@ -14,6 +14,8 @@ import { CombatYieldBar } from './combat-yield-bar'
 export interface MatchCardProps {
   match: RecentMatchItem
   onClick?: () => void
+  onToggleFavorite?: () => void
+  favoriteDisabled?: boolean
 }
 
 function OutcomeBadge({ tone, label }: { tone: string; label: string }) {

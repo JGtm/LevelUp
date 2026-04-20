@@ -222,6 +222,12 @@ func BuildHighlights(matches []domain.HomeMatchRow) []domain.HighlightItem {
 
 // BuildRecentMatches construit la liste des derniers matchs pour la timeline.
 func BuildRecentMatches(matches []domain.HomeMatchRow, limit int) []domain.RecentMatchItem {
+	return BuildRecentMatchesWithFavorites(matches, limit, nil)
+}
+
+// BuildRecentMatchesWithFavorites construit la liste des derniers matchs avec le flag favori.
+// favoriteIDs est un set de match_id favoris (nil = social repo indisponible).
+func BuildRecentMatchesWithFavorites(matches []domain.HomeMatchRow, limit int, favoriteIDs map[string]bool) []domain.RecentMatchItem {
 	if len(matches) == 0 {
 		return nil
 	}
@@ -244,16 +250,64 @@ func BuildRecentMatches(matches []domain.HomeMatchRow, limit int) []domain.Recen
 			accStr = fmt.Sprintf("%.0f%%", *m.Accuracy)
 		}
 		t := m.StartTime
+
+		mapUI := labelFR(m.MapNameFR, m.MapName)
+		modeUI := labelFR(m.PairNameFR, m.PairName)
+
+		kills := m.Kills
+		deaths := m.Deaths
+		assists := m.Assists
+
+		var perfScoreRel *int
+		if m.PerformanceScore != nil {
+			v := int(math.Round(*m.PerformanceScore))
+			perfScoreRel = &v
+		}
+
+		var offConv, defRes *float64
+		dd := float64PtrVal(m.DamageDealt)
+		dt := float64PtrVal(m.DamageTaken)
+		if dd > 0 || dt > 0 {
+			cy := ComputeCombatYield(m.Kills, m.Assists, dd, dt, m.Deaths)
+			if dd > 0 {
+				offConv = &cy.OffensiveConversion
+			}
+			if dt > 0 && m.Deaths > 0 {
+				defRes = &cy.DefensiveResistance
+			}
+		}
+
+		isFav := favoriteIDs[m.MatchID]
+
 		items = append(items, domain.RecentMatchItem{
-			MatchID:      m.MatchID,
-			Title:        fmt.Sprintf("%s · %s", label, labelFR(m.MapNameFR, m.MapName)),
-			Detail:       fmt.Sprintf("%s · KD %s · %s", labelFR(m.PairNameFR, m.PairName), ratioStr, accStr),
-			StartedAt:    &t,
-			OutcomeLabel: label,
-			OutcomeTone:  tone,
+			MatchID:                  m.MatchID,
+			Title:                    fmt.Sprintf("%s · %s", label, mapUI),
+			Detail:                   fmt.Sprintf("%s · KD %s · %s", modeUI, ratioStr, accStr),
+			StartedAt:                &t,
+			OutcomeLabel:             label,
+			OutcomeTone:              tone,
+			IsFavorite:               isFav,
+			MapUI:                    &mapUI,
+			ModeUI:                   &modeUI,
+			Kills:                    &kills,
+			Deaths:                   &deaths,
+			Assists:                  &assists,
+			PerformanceScoreRelative: perfScoreRel,
+			OffensiveConversion:      offConv,
+			DefensiveResistance:      defRes,
+			DamageDealt:              m.DamageDealt,
+			DamageTaken:              m.DamageTaken,
 		})
 	}
 	return items
+}
+
+// float64PtrVal retourne la valeur pointée ou 0 si nil.
+func float64PtrVal(p *float64) float64 {
+	if p == nil {
+		return 0
+	}
+	return *p
 }
 
 // ---------------------------------------------------------------------------

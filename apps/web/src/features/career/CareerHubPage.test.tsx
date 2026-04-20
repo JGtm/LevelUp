@@ -47,7 +47,7 @@ describe('CareerHubPage', () => {
   it("l'onglet Progression est actif par défaut", () => {
     renderWithProviders(<CareerHubPage />)
     const progressionTab = screen.getByText('Progression')
-    expect(progressionTab).toHaveClass('border-violet-600')
+    expect(progressionTab).toHaveClass('border-primary')
   })
 
   it("cliquer sur Citations navigue vers ?tab=citations", () => {
@@ -83,7 +83,7 @@ describe('CareerHubPage — onglet Citations', () => {
   it("affiche l'onglet Citations actif quand tab=citations", () => {
     renderWithProviders(<CareerHubPage />)
     const citationsTab = screen.getByText('Citations')
-    expect(citationsTab).toHaveClass('border-violet-600')
+    expect(citationsTab).toHaveClass('border-primary')
   })
 })
 
@@ -100,15 +100,15 @@ describe('CareerHubPage — deep link tab via search param (B6)', () => {
   it("tab=citations en search param active l'onglet Citations", () => {
     activeTab = 'citations'
     renderWithProviders(<CareerHubPage />)
-    expect(screen.getByText('Citations')).toHaveClass('border-violet-600')
-    expect(screen.getByText('Progression')).not.toHaveClass('border-violet-600')
+    expect(screen.getByText('Citations')).toHaveClass('border-primary')
+    expect(screen.getByText('Progression')).not.toHaveClass('border-primary')
   })
 
   it("tab=progression en search param active l'onglet Progression", () => {
     activeTab = 'progression'
     renderWithProviders(<CareerHubPage />)
-    expect(screen.getByText('Progression')).toHaveClass('border-violet-600')
-    expect(screen.getByText('Citations')).not.toHaveClass('border-violet-600')
+    expect(screen.getByText('Progression')).toHaveClass('border-primary')
+    expect(screen.getByText('Citations')).not.toHaveClass('border-primary')
   })
 
   it('handleTabChange passe replace:true pour remplacer l\'entrée historique', () => {

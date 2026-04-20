@@ -19,10 +19,12 @@ const battlePassCacheTTL = 1 * time.Hour
 
 // HomeService orchestre les données de la page d'accueil.
 type HomeService struct {
-	repo      port.HomeRepository
-	cacheRepo port.BattlePassCacheRepository
-	provider  *halo.HaloProvider
-	sink      *duckdb.PersistSink // nil → pas de persistance (tests, joueurs sans auth)
+	repo        port.HomeRepository
+	cacheRepo   port.BattlePassCacheRepository
+	provider    *halo.HaloProvider
+	sink        *duckdb.PersistSink // nil → pas de persistance (tests, joueurs sans auth)
+	socialRepo  port.SocialRepository
+	playerSlug  string
 }
 
 // NewHomeService crée un HomeService avec le repository et le provider Halo.
@@ -56,6 +58,14 @@ func (s *HomeService) WithCacheRepo(r port.BattlePassCacheRepository) *HomeServi
 	return s
 }
 
+// WithSocial configure le repository social (favoris) et le slug joueur.
+// Retourne le service pour permettre le chaînage.
+func (s *HomeService) WithSocial(repo port.SocialRepository, playerSlug string) *HomeService {
+	s.socialRepo = repo
+	s.playerSlug = playerSlug
+	return s
+}
+
 // GetHomePage retourne la page d'accueil agrégée (hero card, highlights, matchs récents,
 // médias récents, résumés de sessions solo et escouade).
 func (s *HomeService) GetHomePage(ctx context.Context, gamertag string) (*domain.HomePageResponse, error) {
@@ -81,21 +91,50 @@ func (s *HomeService) GetHomePage(ctx context.Context, gamertag string) (*domain
 		media = nil
 	}
 
+	// Charger les favoris si le social repo est disponible (dégradation silencieuse sinon).
+	var favoriteIDs map[string]bool
+	if s.socialRepo != nil && s.playerSlug != "" {
+		if ids, err := s.socialRepo.GetFavoriteMatchIDs(ctx, s.playerSlug); err == nil {
+			favoriteIDs = ids
+		} else {
+			slog.WarnContext(ctx, "home: GetFavoriteMatchIDs failed", "err", err)
+		}
+	}
+
 	hero := analysis.BuildHeroCard(matches, gamertag, totalMatches)
 	highlights := analysis.BuildHighlights(matches)
-	recentMatches := analysis.BuildRecentMatches(matches, 6)
+	recentMatches := analysis.BuildRecentMatchesWithFavorites(matches, 6, favoriteIDs)
+	favoriteMatches := buildFavoriteMatchList(recentMatches, matches, favoriteIDs)
 	recentMedia := analysis.BuildRecentMedia(media, 4)
 	soloSession := analysis.BuildSessionSummary(matches, sessions, false)
 	squadSession := analysis.BuildSessionSummary(matches, sessions, true)
 
 	return &domain.HomePageResponse{
-		Hero:          hero,
-		Highlights:    highlights,
-		RecentMatches: recentMatches,
-		RecentMedia:   recentMedia,
-		SoloSession:   soloSession,
-		SquadSession:  squadSession,
+		Hero:            hero,
+		Highlights:      highlights,
+		RecentMatches:   recentMatches,
+		FavoriteMatches: favoriteMatches,
+		RecentMedia:     recentMedia,
+		SoloSession:     soloSession,
+		SquadSession:    squadSession,
 	}, nil
+}
+
+// buildFavoriteMatchList construit la liste des matchs favoris à partir de tous les matchs
+// chargés (pas limités à 6), en appliquant le flag IsFavorite.
+func buildFavoriteMatchList(recent []domain.RecentMatchItem, all []domain.HomeMatchRow, favoriteIDs map[string]bool) []domain.RecentMatchItem {
+	if len(favoriteIDs) == 0 {
+		return nil
+	}
+	// Construire la liste complète des matchs favoris (pas limités aux 6 récents).
+	allItems := analysis.BuildRecentMatchesWithFavorites(all, len(all), favoriteIDs)
+	var favorites []domain.RecentMatchItem
+	for _, item := range allItems {
+		if item.IsFavorite {
+			favorites = append(favorites, item)
+		}
+	}
+	return favorites
 }
 
 // GetBattlePass retourne les infos Battle Pass (cache DB d'abord, live en fallback).

@@ -52,6 +52,9 @@ func (r *HomeRepo) LoadHomeMatches(ctx context.Context) ([]domain.HomeMatchRow, 
 			&row.Ratio,
 			&row.Accuracy,
 			&row.TimePlayedSecs,
+			&row.DamageDealt,
+			&row.DamageTaken,
+			&row.PerformanceScore,
 		); err != nil {
 			return nil, err
 		}
