@@ -1,0 +1,476 @@
+package halo
+
+import (
+	"context"
+	"encoding/base64"
+	"encoding/json"
+	"fmt"
+	"io"
+	"log/slog"
+	"net/http"
+	"path"
+	"sort"
+	"strings"
+	"time"
+
+	"levelup/go-api/internal/domain"
+)
+
+type challengeDeckRaw struct {
+	Expiration struct {
+		ISO8601Date string `json:"ISO8601Date"`
+	} `json:"Expiration"`
+	ActiveChallenges    []challengeDeckItemRaw `json:"ActiveChallenges"`
+	CompletedChallenges []json.RawMessage      `json:"CompletedChallenges"`
+}
+
+type challengeDeckItemRaw struct {
+	Path            string `json:"Path"`
+	TrackingID      string `json:"TrackingId"`
+	XPReward        *int   `json:"XPReward"`
+	Threshold       *int   `json:"Threshold"`
+	Progress        *int   `json:"Progress"`
+	CurrentProgress *int   `json:"CurrentProgress"`
+	CanReroll       *bool  `json:"CanReroll"`
+	Expiration      struct {
+		ISO8601Date string `json:"ISO8601Date"`
+	} `json:"Expiration"`
+}
+
+type challengeDefinitionRaw struct {
+	Title               any    `json:"Title"`
+	Description         any    `json:"Description"`
+	Category            string `json:"Category"`
+	Difficulty          string `json:"Difficulty"`
+	ThresholdForSuccess any    `json:"ThresholdForSuccess"`
+	Reward              struct {
+		SoftExperience int `json:"SoftExperience"`
+	} `json:"Reward"`
+	SecondaryReward struct {
+		SoftExperience int `json:"SoftExperience"`
+	} `json:"SecondaryReward"`
+}
+
+func (p *HaloProvider) buildActiveChallengeItems(ctx context.Context, tokens *domain.HaloTokens, decks []challengeDeckRaw) []domain.ChallengeItem {
+	seen := make(map[string]struct{})
+	items := make([]domain.ChallengeItem, 0)
+	lang := "fr-FR"
+
+	for _, deck := range decks {
+		for _, ch := range deck.ActiveChallenges {
+			key := ch.Path
+			if key == "" {
+				key = ch.TrackingID
+			}
+			if key == "" {
+				continue
+			}
+			if _, ok := seen[key]; ok {
+				continue
+			}
+			seen[key] = struct{}{}
+
+			var def *challengeDefinitionRaw
+			if ch.Path != "" {
+				loaded, err := p.fetchChallengeDefinition(ctx, tokens, ch.Path)
+				if err != nil {
+					slog.DebugContext(ctx, "halo_provider: challenge definition unavailable",
+						"path", ch.Path, "err", err)
+				} else {
+					def = loaded
+				}
+			}
+
+			items = append(items, p.buildChallengeItem(ctx, tokens, ch, def, lang))
+		}
+	}
+
+	sort.SliceStable(items, func(i, j int) bool {
+		left := challengeSortScore(items[i])
+		right := challengeSortScore(items[j])
+		if left != right {
+			return left > right
+		}
+		leftCurrent := derefInt(items[i].ProgressCurrent)
+		rightCurrent := derefInt(items[j].ProgressCurrent)
+		if leftCurrent != rightCurrent {
+			return leftCurrent > rightCurrent
+		}
+		return strings.ToLower(items[i].Title) < strings.ToLower(items[j].Title)
+	})
+
+	return items
+}
+
+func (p *HaloProvider) buildChallengeItem(
+	ctx context.Context,
+	tokens *domain.HaloTokens,
+	ch challengeDeckItemRaw,
+	def *challengeDefinitionRaw,
+	lang string,
+) domain.ChallengeItem {
+	current := resolveChallengeCurrentProgress(ch)
+	target := resolveChallengeTarget(ch, def)
+	xpReward := resolveChallengeXP(ch, def)
+	title := fallbackChallengeTitle(ch.Path)
+	var description *string
+	var imageURL *string
+	var progressPct *float64
+
+	if def != nil {
+		if localizedTitle := resolveChallengeLocalizedValue(def.Title, lang); localizedTitle != "" {
+			title = localizedTitle
+		}
+		if localizedDescription := resolveChallengeLocalizedValue(def.Description, lang); localizedDescription != "" {
+			description = stringPtr(localizedDescription)
+		}
+		imageURL = p.fetchChallengeBadgeDataURL(ctx, tokens, ch.Path, def.Category, def.Difficulty)
+	} else {
+		imageURL = p.fetchChallengeBadgeDataURL(ctx, tokens, ch.Path, "", "")
+	}
+
+	if current != nil && target != nil && *target > 0 {
+		pct := float64(*current) / float64(*target) * 100.0
+		if pct < 0 {
+			pct = 0
+		}
+		if pct > 100 {
+			pct = 100
+		}
+		progressPct = &pct
+	}
+
+	item := domain.ChallengeItem{
+		ChallengePath:   challengePathOrFallback(ch.Path, ch.TrackingID),
+		Title:           title,
+		Description:     description,
+		ImageURL:        imageURL,
+		ProgressCurrent: current,
+		ProgressTarget:  target,
+		ProgressPercent: progressPct,
+		XPReward:        xpReward,
+	}
+	if ch.TrackingID != "" {
+		item.TrackingID = stringPtr(ch.TrackingID)
+	}
+	return item
+}
+
+func (p *HaloProvider) fetchChallengeDefinition(ctx context.Context, tokens *domain.HaloTokens, challengePath string) (*challengeDefinitionRaw, error) {
+	trimmed := strings.TrimSpace(challengePath)
+	if trimmed == "" {
+		return nil, nil
+	}
+	base := p.gameCMSBaseURL
+	if base == "" {
+		base = defaultGameCMSHost
+	}
+	url := fmt.Sprintf("%s/hi/Progression/file/%s", strings.TrimRight(base, "/"), strings.TrimLeft(trimmed, "/"))
+	body, err := p.doGet(ctx, url, tokens)
+	if err != nil {
+		return nil, err
+	}
+	var def challengeDefinitionRaw
+	if err := json.Unmarshal(body, &def); err != nil {
+		return nil, fmt.Errorf("challenge definition decode: %w", err)
+	}
+	return &def, nil
+}
+
+func (p *HaloProvider) fetchChallengeBadgeDataURL(
+	ctx context.Context,
+	tokens *domain.HaloTokens,
+	challengePath, category, difficulty string,
+) *string {
+	stems := buildChallengeBadgeCandidates(challengePath, category, difficulty)
+	if len(stems) == 0 {
+		return nil
+	}
+	base := p.gameCMSBaseURL
+	if base == "" {
+		base = defaultGameCMSHost
+	}
+	for _, stem := range stems {
+		url := fmt.Sprintf("%s/hi/waypoint/file/images/%s.png", strings.TrimRight(base, "/"), stem)
+		body, err := p.doGetWithAccept(ctx, url, tokens, "image/png")
+		if err != nil {
+			slog.DebugContext(ctx, "halo_provider: challenge badge unavailable",
+				"path", challengePath, "stem", stem, "err", err)
+			continue
+		}
+		dataURL := "data:image/png;base64," + base64.StdEncoding.EncodeToString(body)
+		return &dataURL
+	}
+	return nil
+}
+
+func (p *HaloProvider) doGetWithAccept(ctx context.Context, rawURL string, tokens *domain.HaloTokens, accept string) ([]byte, error) {
+	var lastErr error
+	for attempt := 0; attempt < p.maxRetries; attempt++ {
+		if err := p.limiter.Wait(ctx); err != nil {
+			return nil, err
+		}
+
+		req, err := http.NewRequestWithContext(ctx, http.MethodGet, rawURL, nil)
+		if err != nil {
+			return nil, fmt.Errorf("doGetWithAccept new request: %w", err)
+		}
+		req.Header.Set("Accept", accept)
+		req.Header.Set("x-343-authorization-spartan", tokens.SpartanToken)
+		if tokens.ClearanceToken != "" {
+			req.Header.Set("343-clearance", tokens.ClearanceToken)
+		}
+
+		resp, err := p.client.Do(req)
+		if err != nil {
+			lastErr = err
+		} else {
+			body, readErr := io.ReadAll(resp.Body)
+			_ = resp.Body.Close()
+			if readErr != nil {
+				lastErr = readErr
+			} else if resp.StatusCode == http.StatusOK {
+				return body, nil
+			} else if resp.StatusCode == http.StatusNotFound {
+				return nil, fmt.Errorf("doGetWithAccept %s: 404", rawURL)
+			} else if resp.StatusCode >= 500 {
+				lastErr = fmt.Errorf("doGetWithAccept %s: %d", rawURL, resp.StatusCode)
+			} else {
+				return nil, fmt.Errorf("doGetWithAccept %s: %d", rawURL, resp.StatusCode)
+			}
+		}
+
+		if attempt < p.maxRetries-1 {
+			backoff := providerRetryBase * time.Duration(1<<attempt)
+			select {
+			case <-ctx.Done():
+				return nil, ctx.Err()
+			case <-time.After(backoff):
+			}
+		}
+	}
+	return nil, lastErr
+}
+
+func resolveChallengeCurrentProgress(ch challengeDeckItemRaw) *int {
+	if ch.Progress != nil {
+		return intPtr(*ch.Progress)
+	}
+	if ch.CurrentProgress != nil {
+		return intPtr(*ch.CurrentProgress)
+	}
+	return nil
+}
+
+func resolveChallengeTarget(ch challengeDeckItemRaw, def *challengeDefinitionRaw) *int {
+	if ch.Threshold != nil {
+		return intPtr(*ch.Threshold)
+	}
+	if def == nil {
+		return nil
+	}
+	if value, ok := coerceChallengeInt(def.ThresholdForSuccess); ok {
+		return intPtr(value)
+	}
+	return nil
+}
+
+func resolveChallengeXP(ch challengeDeckItemRaw, def *challengeDefinitionRaw) *int {
+	if ch.XPReward != nil {
+		return intPtr(*ch.XPReward)
+	}
+	if def == nil {
+		return nil
+	}
+	if def.Reward.SoftExperience > 0 {
+		return intPtr(def.Reward.SoftExperience)
+	}
+	if def.SecondaryReward.SoftExperience > 0 {
+		return intPtr(def.SecondaryReward.SoftExperience)
+	}
+	return nil
+}
+
+func resolveChallengeLocalizedValue(data any, lang string) string {
+	if value, ok := data.(string); ok {
+		return strings.TrimSpace(value)
+	}
+	obj, ok := data.(map[string]any)
+	if !ok {
+		return ""
+	}
+	translations, _ := obj["translations"].(map[string]any)
+	for _, candidate := range challengeLanguageCandidates(normalizeChallengeLang(lang)) {
+		if raw, ok := translations[candidate]; ok {
+			if text, ok := raw.(string); ok && strings.TrimSpace(text) != "" {
+				return strings.TrimSpace(text)
+			}
+		}
+	}
+	if fallback, ok := obj["value"].(string); ok {
+		return strings.TrimSpace(fallback)
+	}
+	return ""
+}
+
+func normalizeChallengeLang(lang string) string {
+	switch strings.ToLower(strings.TrimSpace(lang)) {
+	case "fr", "fr-fr":
+		return "fr-FR"
+	case "en", "en-us":
+		return "en-US"
+	default:
+		return "fr-FR"
+	}
+}
+
+func challengeLanguageCandidates(lang string) []string {
+	if lang == "fr-FR" {
+		return []string{"fr-FR", "fr"}
+	}
+	if lang == "en-US" {
+		return []string{"en-US", "en-GB", "en"}
+	}
+	short := strings.Split(lang, "-")[0]
+	return []string{lang, short}
+}
+
+func buildChallengeBadgeCandidates(challengePath, category, difficulty string) []string {
+	normalizedPath := strings.ToLower(strings.ReplaceAll(challengePath, `\`, "/"))
+	cat := slugifyChallengeToken(category)
+	diff := slugifyChallengeToken(difficulty)
+	weeklyFamily := inferWeeklyFamily(normalizedPath)
+	candidates := make([]string, 0, 6)
+
+	if strings.Contains(normalizedPath, "dailychallenges") && diff != "" {
+		candidates = append(candidates, "daily-"+diff)
+	}
+	if strings.Contains(normalizedPath, "weeklychallenges") && weeklyFamily != "" && diff != "" {
+		candidates = append(candidates, "weekly-"+weeklyFamily+"-"+diff)
+	}
+	if strings.Contains(normalizedPath, "ultimate") || strings.Contains(normalizedPath, "capstone") {
+		if diff == "" {
+			diff = "mythic"
+		}
+		candidates = append(candidates, "capstone-"+diff)
+	}
+	if cat == "daily" && diff != "" {
+		candidates = append(candidates, "daily-"+diff)
+	}
+	if cat == "weekly" && weeklyFamily != "" && diff != "" {
+		candidates = append(candidates, "weekly-"+weeklyFamily+"-"+diff)
+	}
+	if cat == "ultimate" || cat == "capstone" {
+		if diff == "" {
+			diff = "mythic"
+		}
+		candidates = append(candidates, "capstone-"+diff)
+	}
+	if diff == "mythic" {
+		candidates = append(candidates, "capstone-mythic")
+	}
+	if cat != "" && diff != "" {
+		candidates = append(candidates, cat+"-"+diff)
+	}
+	return dedupeChallengeCandidates(candidates)
+}
+
+func dedupeChallengeCandidates(values []string) []string {
+	seen := make(map[string]struct{}, len(values))
+	result := make([]string, 0, len(values))
+	for _, value := range values {
+		if value == "" {
+			continue
+		}
+		if _, ok := seen[value]; ok {
+			continue
+		}
+		seen[value] = struct{}{}
+		result = append(result, value)
+	}
+	return result
+}
+
+func slugifyChallengeToken(value string) string {
+	value = strings.ToLower(strings.TrimSpace(value))
+	if value == "" {
+		return ""
+	}
+	replacer := strings.NewReplacer("_", "-", " ", "-")
+	value = replacer.Replace(value)
+	b := strings.Builder{}
+	for _, char := range value {
+		if (char >= 'a' && char <= 'z') || (char >= '0' && char <= '9') || char == '-' {
+			b.WriteRune(char)
+		}
+	}
+	return strings.Trim(b.String(), "-")
+}
+
+func inferWeeklyFamily(normalizedPath string) string {
+	for _, token := range []string{"action", "gametype", "weapon"} {
+		if strings.Contains(normalizedPath, "/"+token+"/") {
+			return token
+		}
+	}
+	return ""
+}
+
+func challengeSortScore(item domain.ChallengeItem) float64 {
+	if item.ProgressPercent != nil {
+		return *item.ProgressPercent
+	}
+	if item.ProgressCurrent != nil && *item.ProgressCurrent > 0 {
+		return 0.001 + float64(*item.ProgressCurrent)/10000.0
+	}
+	return 0
+}
+
+func fallbackChallengeTitle(challengePath string) string {
+	base := path.Base(challengePath)
+	base = strings.TrimSuffix(base, path.Ext(base))
+	base = strings.ReplaceAll(base, "_", " ")
+	base = strings.ReplaceAll(base, "-", " ")
+	base = strings.TrimSpace(base)
+	if base == "" || strings.EqualFold(base, ".") {
+		return "Défi actif"
+	}
+	return base
+}
+
+func challengePathOrFallback(challengePath, trackingID string) string {
+	if strings.TrimSpace(challengePath) != "" {
+		return strings.TrimSpace(challengePath)
+	}
+	if trackingID != "" {
+		return "Challenges/Tracking/" + trackingID
+	}
+	return "Challenges/Unknown"
+}
+
+func coerceChallengeInt(value any) (int, bool) {
+	switch v := value.(type) {
+	case int:
+		return v, true
+	case float64:
+		return int(v), true
+	case map[string]any:
+		for _, key := range []string{"value", "Value", "threshold", "Threshold", "count", "Count"} {
+			if resolved, ok := coerceChallengeInt(v[key]); ok {
+				return resolved, true
+			}
+		}
+	}
+	return 0, false
+}
+
+func intPtr(value int) *int { return &value }
+
+func stringPtr(value string) *string { return &value }
+
+func derefInt(value *int) int {
+	if value == nil {
+		return 0
+	}
+	return *value
+}
