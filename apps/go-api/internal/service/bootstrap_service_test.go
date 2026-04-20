@@ -1,11 +1,27 @@
 package service
 
 import (
+	"context"
 	"testing"
+	"time"
 
 	"levelup/go-api/internal/config"
 	"levelup/go-api/internal/domain"
 )
+
+// mockBootRepo is a minimal mock for BootstrapRepository used in tests.
+type mockBootRepo struct {
+	matchCount int
+}
+
+func (m *mockBootRepo) GetMatchCount(context.Context) (int, error) { return m.matchCount, nil }
+func (m *mockBootRepo) GetDBVersion(context.Context) (string, error) {
+	return "test", nil
+}
+func (m *mockBootRepo) GetPlayerCount(context.Context) (int, error) { return 0, nil }
+func (m *mockBootRepo) GetLastSyncAt(context.Context) (*time.Time, error) {
+	return nil, nil
+}
 
 // ---------------------------------------------------------------------------
 // getBoolSetting / getStringSetting
@@ -71,7 +87,8 @@ func TestGetStringSetting_WrongType(t *testing.T) {
 // ---------------------------------------------------------------------------
 
 func TestResolveSetupState_NoPlayers(t *testing.T) {
-	got := resolveSetupState(nil)
+	svc := NewBootstrapService(&config.AppConfig{}, &mockBootRepo{matchCount: 0})
+	got := svc.resolveSetupState(context.Background(), nil)
 	if got != "no_halo_link" {
 		t.Errorf("expected no_halo_link, got %s", got)
 	}
@@ -79,9 +96,19 @@ func TestResolveSetupState_NoPlayers(t *testing.T) {
 
 func TestResolveSetupState_WithPlayers(t *testing.T) {
 	players := []domain.PlayerSummary{{Gamertag: "GT"}}
-	got := resolveSetupState(players)
+	svc := NewBootstrapService(&config.AppConfig{}, &mockBootRepo{matchCount: 0})
+	got := svc.resolveSetupState(context.Background(), players)
 	if got != "profile_ready_no_sync" {
 		t.Errorf("expected profile_ready_no_sync, got %s", got)
+	}
+}
+
+func TestResolveSetupState_WithMatchesReady(t *testing.T) {
+	players := []domain.PlayerSummary{{Gamertag: "GT"}}
+	svc := NewBootstrapService(&config.AppConfig{}, &mockBootRepo{matchCount: 42})
+	got := svc.resolveSetupState(context.Background(), players)
+	if got != "ready" {
+		t.Errorf("expected ready, got %s", got)
 	}
 }
 

@@ -19,6 +19,7 @@ type BootstrapService struct {
 	bootRepo         port.BootstrapRepository
 	privacyProvider  port.PrivacyProvider        // optionnel — nil = pas de check privacy
 	privacyStateRepo port.PrivacyStateRepository // optionnel — nil = pas de fallback persisté
+	userStoreEmpty   func() (bool, error)        // optionnel — nil = first_launch toujours false
 }
 
 // NewBootstrapService crée un BootstrapService.
@@ -36,6 +37,12 @@ func (s *BootstrapService) WithPrivacyProvider(p port.PrivacyProvider) *Bootstra
 // Sprint 55 E4 : permet le fallback gracieux quand Waypoint est indisponible.
 func (s *BootstrapService) WithPrivacyStateRepo(r port.PrivacyStateRepository) *BootstrapService {
 	s.privacyStateRepo = r
+	return s
+}
+
+// WithUserStoreEmpty injecte la fonction de vérification "user store vide" (mode password).
+func (s *BootstrapService) WithUserStoreEmpty(fn func() (bool, error)) *BootstrapService {
+	s.userStoreEmpty = fn
 	return s
 }
 
@@ -59,7 +66,7 @@ func (s *BootstrapService) Build(ctx context.Context, sess *domain.SessionData) 
 	settingsExcerpt := buildSettingsExcerpt(s.cfg, appSettings)
 	flags := buildFeatureFlags(s.cfg, appSettings)
 
-	setupState := resolveSetupState(players)
+	setupState := s.resolveSetupState(ctx, players)
 
 	var currentPlayer *domain.PlayerSummary
 	if len(players) > 0 {
@@ -128,6 +135,11 @@ func (s *BootstrapService) Build(ctx context.Context, sess *domain.SessionData) 
 		Capabilities:        capabilities,
 		SettingsExcerpt:     settingsExcerpt,
 		Privacy:             privacy,
+		AuthMode:            s.cfg.AuthMode,
+		RegistrationMode:    s.cfg.RegistrationMode,
+		IsAdmin:             sess != nil && sess.Role != nil && *sess.Role == "admin",
+		CurrentUsername:     resolveUsername(sess),
+		FirstLaunch:         s.isFirstLaunch(),
 	}, nil
 }
 
@@ -209,16 +221,27 @@ func buildFeatureFlags(cfg *config.AppConfig, settings map[string]interface{}) d
 		V7Enabled:         true,
 		MediaEnabled:      getBoolSetting(settings, "media_enabled", true),
 		DemoMode:          cfg.DemoMode,
-		DiscordConfigured: getStringSetting(settings, "discord_webhook_url", "") != "",
+		DiscordConfigured: cfg.DiscordWebhookURL != "",
 		TailscaleEnabled:  getBoolSetting(settings, "tailscale_enabled", false),
 	}
 }
 
-func resolveSetupState(players []domain.PlayerSummary) string {
+func (s *BootstrapService) resolveSetupState(ctx context.Context, players []domain.PlayerSummary) string {
 	if len(players) == 0 {
 		return "no_halo_link"
 	}
-	// Sprint 31 : vérifier sync_meta.initial_sync_completed_at à terme.
+	// Vérifier si des matchs existent dans la shared DB.
+	if s.bootRepo == nil {
+		return "profile_ready_no_sync"
+	}
+	count, err := s.bootRepo.GetMatchCount(ctx)
+	if err != nil {
+		slog.WarnContext(ctx, "bootstrap: erreur GetMatchCount pour setup_state", "err", err)
+		return "profile_ready_no_sync"
+	}
+	if count > 0 {
+		return "ready"
+	}
 	return "profile_ready_no_sync"
 }
 

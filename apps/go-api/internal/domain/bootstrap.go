@@ -75,6 +75,12 @@ type BootstrapResponse struct {
 	ActiveSyncJobID     *string              `json:"active_sync_job_id,omitempty"`
 	// Sprint 54 B : privacy du compte courant (chargée en parallèle).
 	Privacy *MatchPrivacyInfo `json:"privacy,omitempty"`
+	// Auth locale
+	AuthMode         string  `json:"auth_mode"`
+	RegistrationMode string  `json:"registration_mode"`
+	IsAdmin          bool    `json:"is_admin"`
+	CurrentUsername  *string `json:"current_username"`
+	FirstLaunch      bool    `json:"first_launch"`
 }
 
 // PlayersListResponse est la réponse de GET /api/v1/players.

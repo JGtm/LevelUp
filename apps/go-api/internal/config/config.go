@@ -36,12 +36,21 @@ type AppConfig struct {
 	// Sprint 40 T2 : Discord webhook URL pour alerting 500 + taux d'erreur.
 	// Lit LEVELUP_DISCORD_WEBHOOK_URL ; fallback sur discord_webhook_url dans app_settings.json.
 	DiscordWebhookURL string
+	// Auth locale : répertoire contenant users.json et invites.json.
+	AuthDir string
+	// AuthMode : "none" (défaut) ou "password".
+	AuthMode string
+	// RegistrationMode : "invite" (défaut), "open" ou "closed".
+	RegistrationMode string
 }
 
-// loadDiscordWebhookURL lit le webhook Discord depuis LEVELUP_DISCORD_WEBHOOK_URL
-// ou le champ discord_webhook_url de app_settings.json.
+// loadDiscordWebhookURL lit le webhook Discord depuis LEVELUP_DISCORD_WEBHOOK_URL,
+// DISCORD_WEBHOOK_URL (legacy Python) ou le champ discord_webhook_url de app_settings.json.
 func loadDiscordWebhookURL(settingsPath string) string {
 	if url := os.Getenv("LEVELUP_DISCORD_WEBHOOK_URL"); url != "" {
+		return url
+	}
+	if url := os.Getenv("DISCORD_WEBHOOK_URL"); url != "" {
 		return url
 	}
 	data, err := os.ReadFile(settingsPath)
@@ -82,6 +91,9 @@ func Load() (*AppConfig, error) {
 		ShadowMode:        getEnvOrDefault("LEVELUP_SHADOW_MODE", ""),
 		PythonURL:         getEnvOrDefault("LEVELUP_PYTHON_URL", "http://127.0.0.1:8001"),
 		DiscordWebhookURL: loadDiscordWebhookURL(getEnvOrDefault("LEVELUP_APP_SETTINGS", filepath.Join(repoRoot, "app_settings.json"))),
+		AuthDir:           getEnvOrDefault("LEVELUP_AUTH_DIR", filepath.Join(repoRoot, "data", "auth")),
+		AuthMode:          getEnvOrDefault("LEVELUP_AUTH_MODE", "none"),
+		RegistrationMode:  getEnvOrDefault("LEVELUP_REGISTRATION", "invite"),
 	}
 	appSettingsPath := getEnvOrDefault("LEVELUP_APP_SETTINGS", filepath.Join(repoRoot, "app_settings.json"))
 	cfg.FeatureFlags = LoadFeatureFlags(appSettingsPath)
