@@ -7,6 +7,7 @@ import (
 	"path/filepath"
 	"testing"
 
+	"levelup/go-api/internal/domain"
 	duckdb "levelup/go-api/internal/platform/duckdb"
 )
 
@@ -43,7 +44,7 @@ func TestGetOrOpen_RunsPlayerMigrationsForLegacySchema(t *testing.T) {
 	if _, err := duckdb.NewMatchHistoryRepo(pdb).LoadAll(ctx); err != nil {
 		t.Fatalf("MatchHistoryRepo.LoadAll after migrations: %v", err)
 	}
-	if _, err := duckdb.NewMediaRepo(pdb).LoadMediaFiles(ctx, 10, 0); err != nil {
+	if _, err := duckdb.NewMediaRepo(pdb).LoadMediaFiles(ctx, domain.MediaFilters{}, 10, 0); err != nil {
 		t.Fatalf("MediaRepo.LoadMediaFiles after migrations: %v", err)
 	}
 }

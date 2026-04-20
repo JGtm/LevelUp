@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
+	"strings"
 	"sync/atomic"
 	"testing"
 
@@ -18,6 +19,9 @@ func newTestProvider(battlePassURL, challengesURL string) *HaloProvider {
 	p := NewHaloProvider()
 	p.battlePassBaseURL = battlePassURL
 	p.challengesBaseURL = challengesURL
+	if challengesURL != "" {
+		p.gameCMSBaseURL = challengesURL
+	}
 	p.limiter = newRateLimiter(600)
 	p.maxRetries = 3
 	return p
@@ -208,23 +212,89 @@ func TestGetChallenges_NoTokens(t *testing.T) {
 
 func TestGetChallenges_LiveOK(t *testing.T) {
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		payload := map[string]any{
-			"AssignedDecks": []any{
-				map[string]any{
-					"Expiration": map[string]string{"ISO8601Date": "2024-11-19T17:00:00Z"},
-					"ActiveChallenges": []any{
-						map[string]any{"XPReward": 1000},
-						map[string]any{"XPReward": 2000},
-						map[string]any{"XPReward": 1500},
-					},
-					"CompletedChallenges": []any{
-						map[string]any{"XPReward": 500},
+		switch r.URL.Path {
+		case "/hi/players/xuid(xuid-test)/decks":
+			if r.Header.Get("x-343-authorization-spartan") == "" {
+				http.Error(w, "missing spartan", http.StatusUnauthorized)
+				return
+			}
+			payload := map[string]any{
+				"AssignedDecks": []any{
+					map[string]any{
+						"Expiration": map[string]string{"ISO8601Date": "2024-11-19T17:00:00Z"},
+						"ActiveChallenges": []any{
+							map[string]any{"Path": "ChallengeContent/ClientChallengeDefinitions/WeeklyChallenges/Action/ch1.json", "XPReward": 1000, "Progress": 7, "Threshold": 10, "TrackingId": "track-1"},
+							map[string]any{"Path": "ChallengeContent/ClientChallengeDefinitions/DailyChallenges/ch2.json", "XPReward": 2000, "Progress": 1, "Threshold": 3, "TrackingId": "track-2"},
+							map[string]any{"Path": "ChallengeContent/ClientChallengeDefinitions/WeeklyChallenges/Weapon/ch3.json", "XPReward": 1500, "Progress": 0, "Threshold": 5, "TrackingId": "track-3"},
+						},
+						"CompletedChallenges": []any{
+							map[string]any{"XPReward": 500},
+						},
 					},
 				},
-			},
+			}
+			w.Header().Set("Content-Type", "application/json")
+			_ = json.NewEncoder(w).Encode(payload)
+		case "/hi/Progression/file/ChallengeContent/ClientChallengeDefinitions/WeeklyChallenges/Action/ch1.json":
+			if r.Header.Get("x-343-authorization-spartan") == "" {
+				http.Error(w, "missing spartan", http.StatusUnauthorized)
+				return
+			}
+			_ = json.NewEncoder(w).Encode(map[string]any{
+				"Title":               map[string]any{"translations": map[string]any{"fr-FR": "Défi avancé"}, "value": "Advanced Challenge"},
+				"Description":         map[string]any{"translations": map[string]any{"fr-FR": "Gagne des points rapidement"}, "value": "Gain points quickly"},
+				"Category":            "Weekly",
+				"Difficulty":          "Heroic",
+				"ThresholdForSuccess": 10,
+			})
+		case "/hi/Progression/file/ChallengeContent/ClientChallengeDefinitions/DailyChallenges/ch2.json":
+			if r.Header.Get("x-343-authorization-spartan") == "" {
+				http.Error(w, "missing spartan", http.StatusUnauthorized)
+				return
+			}
+			_ = json.NewEncoder(w).Encode(map[string]any{
+				"Title":               map[string]any{"translations": map[string]any{"fr-FR": "Défi en cours"}, "value": "In Progress Challenge"},
+				"Description":         map[string]any{"translations": map[string]any{"fr-FR": "Continue la progression"}, "value": "Keep going"},
+				"Category":            "Daily",
+				"Difficulty":          "Normal",
+				"ThresholdForSuccess": 3,
+			})
+		case "/hi/Progression/file/ChallengeContent/ClientChallengeDefinitions/WeeklyChallenges/Weapon/ch3.json":
+			if r.Header.Get("x-343-authorization-spartan") == "" {
+				http.Error(w, "missing spartan", http.StatusUnauthorized)
+				return
+			}
+			_ = json.NewEncoder(w).Encode(map[string]any{
+				"Title":               map[string]any{"translations": map[string]any{"fr-FR": "Défi pas commencé"}, "value": "Not Started Challenge"},
+				"Description":         map[string]any{"translations": map[string]any{"fr-FR": "Commence ce défi"}, "value": "Start this challenge"},
+				"Category":            "Weekly",
+				"Difficulty":          "Legendary",
+				"ThresholdForSuccess": 5,
+			})
+		case "/hi/waypoint/file/images/weekly-action-heroic.png":
+			if r.Header.Get("x-343-authorization-spartan") == "" {
+				http.Error(w, "missing spartan", http.StatusUnauthorized)
+				return
+			}
+			w.Header().Set("Content-Type", "image/png")
+			_, _ = w.Write([]byte("png-ch1"))
+		case "/hi/waypoint/file/images/daily-normal.png":
+			if r.Header.Get("x-343-authorization-spartan") == "" {
+				http.Error(w, "missing spartan", http.StatusUnauthorized)
+				return
+			}
+			w.Header().Set("Content-Type", "image/png")
+			_, _ = w.Write([]byte("png-ch2"))
+		case "/hi/waypoint/file/images/weekly-weapon-legendary.png":
+			if r.Header.Get("x-343-authorization-spartan") == "" {
+				http.Error(w, "missing spartan", http.StatusUnauthorized)
+				return
+			}
+			w.Header().Set("Content-Type", "image/png")
+			_, _ = w.Write([]byte("png-ch3"))
+		default:
+			http.NotFound(w, r)
 		}
-		w.Header().Set("Content-Type", "application/json")
-		_ = json.NewEncoder(w).Encode(payload)
 	}))
 	defer srv.Close()
 
@@ -234,8 +304,8 @@ func TestGetChallenges_LiveOK(t *testing.T) {
 	if !resp.Available {
 		t.Errorf("expected available=true, error_hint=%v", resp.ErrorHint)
 	}
-	if resp.Total == nil || *resp.Total != 3 {
-		t.Errorf("expected total=3, got %v", resp.Total)
+	if resp.Total == nil || *resp.Total != 4 {
+		t.Errorf("expected total=4, got %v", resp.Total)
 	}
 	if resp.Completed == nil || *resp.Completed != 1 {
 		t.Errorf("expected completed=1, got %v", resp.Completed)
@@ -245,6 +315,27 @@ func TestGetChallenges_LiveOK(t *testing.T) {
 	}
 	if resp.NextExpiry == nil || *resp.NextExpiry != "2024-11-19T17:00:00Z" {
 		t.Errorf("expected next_expiry, got %v", resp.NextExpiry)
+	}
+	if len(resp.Items) != 3 {
+		t.Fatalf("expected 3 active items, got %d", len(resp.Items))
+	}
+	if resp.Items[0].Title != "Défi avancé" || resp.Items[1].Title != "Défi en cours" || resp.Items[2].Title != "Défi pas commencé" {
+		t.Fatalf("unexpected item order: %#v", resp.Items)
+	}
+	if resp.Items[0].ProgressPercent == nil || int(*resp.Items[0].ProgressPercent) != 70 {
+		t.Fatalf("expected first item progress 70%%, got %#v", resp.Items[0].ProgressPercent)
+	}
+	if resp.Items[2].ProgressPercent == nil || int(*resp.Items[2].ProgressPercent) != 0 {
+		t.Fatalf("expected third item progress 0%%, got %#v", resp.Items[2].ProgressPercent)
+	}
+	if resp.Items[0].Description == nil || *resp.Items[0].Description == "" {
+		t.Fatal("expected description on enriched challenge")
+	}
+	if resp.Items[0].ImageURL == nil || *resp.Items[0].ImageURL == "" {
+		t.Fatal("expected image_url on enriched challenge")
+	}
+	if !strings.HasPrefix(*resp.Items[0].ImageURL, "data:image/png;base64,") {
+		t.Fatalf("expected data URL image, got %q", *resp.Items[0].ImageURL)
 	}
 }
 

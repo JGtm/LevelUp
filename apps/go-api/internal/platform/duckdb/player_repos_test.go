@@ -8,6 +8,8 @@ package duckdb
 import (
 	"context"
 	"testing"
+
+	"levelup/go-api/internal/domain"
 )
 
 const (
@@ -37,6 +39,26 @@ func newTestPlayerDB(t *testing.T) *PlayerDB {
 		Metadata: meta,
 		XUID:     pTestXUID,
 		Gamertag: pTestGamertag,
+	}
+}
+
+func newTestPlayerDBWithSharedSocial(t *testing.T) *PlayerDB {
+	t.Helper()
+	player := openMemDB(t)
+	shared := openMemDB(t)
+	social := openMemDB(t)
+	meta := openMemDB(t)
+	seedSharedDBSchema(t, shared)
+	seedSharedDBSchema(t, social)
+	seedSharedSocialSchema(t, social)
+	seedMetaDBSchema(t, meta)
+	return &PlayerDB{
+		Player:       player,
+		Shared:       shared,
+		SharedSocial: social,
+		Metadata:     meta,
+		XUID:         pTestXUID,
+		Gamertag:     pTestGamertag,
 	}
 }
 
@@ -162,6 +184,53 @@ func seedPlayerSchema(t *testing.T, db *DB) { //nolint:funlen
 		if _, err := db.Exec(ctx, ins.q, ins.args...); err != nil {
 			t.Fatalf("seedPlayerSchema INSERT: %v\nSQL: %s", err, ins.q)
 		}
+	}
+}
+
+func seedSharedSocialSchema(t *testing.T, db *DB) {
+	t.Helper()
+	ctx := context.Background()
+	ddl := []string{
+		`CREATE TABLE media_files (
+			id VARCHAR PRIMARY KEY,
+			player_slug VARCHAR NOT NULL,
+			file_path VARCHAR NOT NULL,
+			file_name VARCHAR NOT NULL,
+			kind VARCHAR NOT NULL,
+			thumbnail_path VARCHAR,
+			capture_end_utc TIMESTAMPTZ,
+			liked BOOLEAN DEFAULT FALSE,
+			liked_at TIMESTAMPTZ,
+			created_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP,
+			updated_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP
+		)`,
+		`CREATE TABLE media_match_associations (
+			media_file_id VARCHAR NOT NULL,
+			match_id VARCHAR NOT NULL,
+			delta_seconds INTEGER,
+			created_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP
+		)`,
+	}
+	for _, q := range ddl {
+		if _, err := db.Exec(ctx, q); err != nil {
+			t.Fatalf("seedSharedSocialSchema stmt failed: %v\nSQL: %s", err, q)
+		}
+	}
+	if _, err := db.Exec(ctx, `
+		INSERT INTO media_files (
+			id, player_slug, file_path, file_name, kind, thumbnail_path, capture_end_utc, liked, created_at, updated_at
+		) VALUES (
+			'media-1', ?, '/clips/shared.mp4', 'shared.mp4', 'video', '/thumbs/shared.jpg',
+			TIMESTAMPTZ '2025-01-10 15:01:00+00', TRUE, TIMESTAMPTZ '2025-01-10 15:01:00+00', TIMESTAMPTZ '2025-01-10 15:01:00+00'
+		)
+	`, pTestGamertag); err != nil {
+		t.Fatalf("seedSharedSocialSchema insert media_files failed: %v", err)
+	}
+	if _, err := db.Exec(ctx, `
+		INSERT INTO media_match_associations (media_file_id, match_id, delta_seconds)
+		VALUES ('media-1', 'm1', 12)
+	`); err != nil {
+		t.Fatalf("seedSharedSocialSchema insert associations failed: %v", err)
 	}
 }
 
@@ -488,7 +557,7 @@ func TestCareerRepo_GetEncounters_Empty(t *testing.T) {
 func TestMediaRepo_CountMediaFiles(t *testing.T) {
 	pdb := newTestPlayerDB(t)
 	repo := NewMediaRepo(pdb)
-	count, err := repo.CountMediaFiles(context.Background())
+	count, err := repo.CountMediaFiles(context.Background(), domain.MediaFilters{})
 	if err != nil {
 		t.Fatalf("CountMediaFiles: %v", err)
 	}
@@ -500,7 +569,7 @@ func TestMediaRepo_CountMediaFiles(t *testing.T) {
 func TestMediaRepo_LoadMediaFiles_WithData(t *testing.T) {
 	pdb := newTestPlayerDB(t)
 	repo := NewMediaRepo(pdb)
-	rows, err := repo.LoadMediaFiles(context.Background(), 10, 0)
+	rows, err := repo.LoadMediaFiles(context.Background(), domain.MediaFilters{}, 10, 0)
 	if err != nil {
 		t.Fatalf("LoadMediaFiles: %v", err)
 	}
@@ -521,12 +590,45 @@ func TestMediaRepo_SetMediaLike(t *testing.T) {
 		t.Fatal("attendu ok=true")
 	}
 
-	rows, err := repo.LoadMediaFiles(context.Background(), 10, 0)
+	rows, err := repo.LoadMediaFiles(context.Background(), domain.MediaFilters{}, 10, 0)
 	if err != nil {
 		t.Fatalf("LoadMediaFiles: %v", err)
 	}
 	if len(rows) != 1 || !rows[0].Liked {
 		t.Fatalf("liked non persisté: %+v", rows)
+	}
+}
+
+func TestMediaRepo_LoadMediaFiles_WithSharedSocialSchema(t *testing.T) {
+	pdb := newTestPlayerDBWithSharedSocial(t)
+	repo := NewMediaRepo(pdb)
+
+	rows, err := repo.LoadMediaFiles(context.Background(), domain.MediaFilters{}, 10, 0)
+	if err != nil {
+		t.Fatalf("LoadMediaFiles shared_social: %v", err)
+	}
+	if len(rows) != 1 {
+		t.Fatalf("attendu 1 ligne shared_social, obtenu %d", len(rows))
+	}
+	if rows[0].MatchStartTime == nil {
+		t.Fatal("attendu match_start_time depuis shared.match_registry")
+	}
+	if rows[0].MapName == nil || *rows[0].MapName != "Aquarius" {
+		t.Fatalf("MapName = %+v, want Aquarius", rows[0].MapName)
+	}
+	if rows[0].ModeName == nil || *rows[0].ModeName != "Slayer" {
+		t.Fatalf("ModeName = %+v, want Slayer", rows[0].ModeName)
+	}
+
+	options, err := repo.LoadMediaFilterOptions(context.Background(), domain.MediaFilters{})
+	if err != nil {
+		t.Fatalf("LoadMediaFilterOptions shared_social: %v", err)
+	}
+	if len(options.Maps) != 1 || options.Maps[0].Value != "Aquarius" {
+		t.Fatalf("Maps = %+v, want Aquarius", options.Maps)
+	}
+	if len(options.Modes) != 1 || options.Modes[0].Value != "Slayer" {
+		t.Fatalf("Modes = %+v, want Slayer", options.Modes)
 	}
 }
 

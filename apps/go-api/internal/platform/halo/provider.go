@@ -106,6 +106,7 @@ type HaloProvider struct {
 	// Overridables pour les tests : vides en production (→ fallback vers les constantes).
 	battlePassBaseURL string
 	challengesBaseURL string
+	gameCMSBaseURL    string
 	// Sprint 54 B5 : cache process-level de la privacy par xuid.
 	privacyCache privacyTTLCache
 }
@@ -132,20 +133,27 @@ func NewHaloProvider() *HaloProvider {
 // Les tokens et le XUID sont lus depuis ctx via ctxkeys.
 // Retourne available=false, error_hint="auth_required" si l'auth est absente du contexte.
 func (p *HaloProvider) GetBattlePass(ctx context.Context) domain.BattlePassResponse {
+	resp, _ := p.GetBattlePassWithRaw(ctx)
+	return resp
+}
+
+// GetBattlePassWithRaw retourne la réponse Battle Pass et les bytes JSON bruts
+// de Waypoint (pour persistance). Les bytes sont nil en cas d'erreur ou d'absence d'auth.
+func (p *HaloProvider) GetBattlePassWithRaw(ctx context.Context) (domain.BattlePassResponse, []byte) {
 	tokens := ctxkeys.HaloTokens(ctx)
 	xuid := ctxkeys.HaloXUID(ctx)
 	if tokens == nil || xuid == "" {
 		hint := "auth_required"
-		return domain.BattlePassResponse{Available: false, ErrorHint: &hint}
+		return domain.BattlePassResponse{Available: false, ErrorHint: &hint}, nil
 	}
 
-	resp, err := p.fetchBattlePass(ctx, tokens, xuid)
+	resp, raw, err := p.fetchBattlePass(ctx, tokens, xuid)
 	if err != nil {
 		slog.WarnContext(ctx, "halo_provider: battle_pass fetch failed", "xuid", xuid, "err", err)
 		hint := "fetch_error"
-		return domain.BattlePassResponse{Available: false, ErrorHint: &hint}
+		return domain.BattlePassResponse{Available: false, ErrorHint: &hint}, nil
 	}
-	return resp
+	return resp, raw
 }
 
 // battlePassProgress contient la progression dans un palier de Battle Pass.
@@ -161,7 +169,8 @@ type battlePassTrack struct {
 }
 
 // fetchBattlePass appelle l'endpoint economy operations et parse la réponse.
-func (p *HaloProvider) fetchBattlePass(ctx context.Context, tokens *domain.HaloTokens, xuid string) (domain.BattlePassResponse, error) {
+// Retourne la réponse domaine, les bytes JSON bruts (pour persistance), et une erreur éventuelle.
+func (p *HaloProvider) fetchBattlePass(ctx context.Context, tokens *domain.HaloTokens, xuid string) (domain.BattlePassResponse, []byte, error) {
 	base := p.battlePassBaseURL
 	if base == "" {
 		base = defaultEconomyHost
@@ -170,7 +179,7 @@ func (p *HaloProvider) fetchBattlePass(ctx context.Context, tokens *domain.HaloT
 
 	body, err := p.doGet(ctx, url, tokens)
 	if err != nil {
-		return domain.BattlePassResponse{}, err
+		return domain.BattlePassResponse{}, nil, err
 	}
 
 	var raw struct {
@@ -178,7 +187,7 @@ func (p *HaloProvider) fetchBattlePass(ctx context.Context, tokens *domain.HaloT
 		OperationRewardTracks          []battlePassTrack `json:"OperationRewardTracks"`
 	}
 	if err := json.Unmarshal(body, &raw); err != nil {
-		return domain.BattlePassResponse{}, fmt.Errorf("battle_pass decode: %w", err)
+		return domain.BattlePassResponse{}, body, fmt.Errorf("battle_pass decode: %w", err)
 	}
 
 	rank, progress, trackPath := parseBattlePassTrack(raw.ActiveOperationRewardTrackPath, raw.OperationRewardTracks)
@@ -188,7 +197,7 @@ func (p *HaloProvider) fetchBattlePass(ctx context.Context, tokens *domain.HaloT
 		Rank:        &rank,
 		Progress:    &progress,
 		RewardTrack: &trackPath,
-	}, nil
+	}, body, nil
 }
 
 // parseBattlePassTrack extrait rank, progress et trackPath depuis les opérations.
@@ -214,24 +223,32 @@ func parseBattlePassTrack(activePath string, tracks []battlePassTrack) (rank, pr
 // Les tokens et le XUID sont lus depuis ctx via ctxkeys.
 // Retourne available=false, error_hint="auth_required" si l'auth est absente du contexte.
 func (p *HaloProvider) GetChallenges(ctx context.Context) domain.ChallengesResponse {
+	resp, _ := p.GetChallengesWithRaw(ctx)
+	return resp
+}
+
+// GetChallengesWithRaw retourne la réponse défis et les bytes JSON bruts
+// de Waypoint (pour persistance). Les bytes sont nil en cas d'erreur ou d'absence d'auth.
+func (p *HaloProvider) GetChallengesWithRaw(ctx context.Context) (domain.ChallengesResponse, []byte) {
 	tokens := ctxkeys.HaloTokens(ctx)
 	xuid := ctxkeys.HaloXUID(ctx)
 	if tokens == nil || xuid == "" {
 		hint := "auth_required"
-		return domain.ChallengesResponse{Available: false, ErrorHint: &hint}
+		return domain.ChallengesResponse{Available: false, ErrorHint: &hint}, nil
 	}
 
-	resp, err := p.fetchChallenges(ctx, tokens, xuid)
+	resp, raw, err := p.fetchChallenges(ctx, tokens, xuid)
 	if err != nil {
 		slog.WarnContext(ctx, "halo_provider: challenges fetch failed", "xuid", xuid, "err", err)
 		hint := "fetch_error"
-		return domain.ChallengesResponse{Available: false, ErrorHint: &hint}
+		return domain.ChallengesResponse{Available: false, ErrorHint: &hint}, nil
 	}
-	return resp
+	return resp, raw
 }
 
 // fetchChallenges appelle l'endpoint decks et parse la réponse.
-func (p *HaloProvider) fetchChallenges(ctx context.Context, tokens *domain.HaloTokens, xuid string) (domain.ChallengesResponse, error) {
+// Retourne la réponse domaine, les bytes JSON bruts (pour persistance), et une erreur éventuelle.
+func (p *HaloProvider) fetchChallenges(ctx context.Context, tokens *domain.HaloTokens, xuid string) (domain.ChallengesResponse, []byte, error) {
 	base := p.challengesBaseURL
 	if base == "" {
 		base = defaultChallengesHost
@@ -240,53 +257,42 @@ func (p *HaloProvider) fetchChallenges(ctx context.Context, tokens *domain.HaloT
 
 	body, err := p.doGet(ctx, url, tokens)
 	if err != nil {
-		return domain.ChallengesResponse{}, err
+		return domain.ChallengesResponse{}, nil, err
 	}
 
 	var raw struct {
-		AssignedDecks []struct {
-			Expiration struct {
-				ISO8601Date string `json:"ISO8601Date"`
-			} `json:"Expiration"`
-			ActiveChallenges    []json.RawMessage `json:"ActiveChallenges"`
-			CompletedChallenges []json.RawMessage `json:"CompletedChallenges"`
-		} `json:"AssignedDecks"`
+		AssignedDecks []challengeDeckRaw `json:"AssignedDecks"`
 	}
 	if err := json.Unmarshal(body, &raw); err != nil {
-		return domain.ChallengesResponse{}, fmt.Errorf("challenges decode: %w", err)
+		return domain.ChallengesResponse{}, body, fmt.Errorf("challenges decode: %w", err)
 	}
 
 	total, completed, xpAvail, nextExpiry := aggregateChallenges(raw.AssignedDecks)
+	items := p.buildActiveChallengeItems(ctx, tokens, raw.AssignedDecks)
 	slog.InfoContext(ctx, "halo_provider: challenges fetched", "xuid", xuid, "total", total, "completed", completed)
 	resp := domain.ChallengesResponse{
 		Available:   true,
 		Total:       &total,
 		Completed:   &completed,
 		XPAvailable: &xpAvail,
+		Items:       items,
 	}
 	if nextExpiry != "" {
 		resp.NextExpiry = &nextExpiry
 	}
-	return resp, nil
+	return resp, body, nil
 }
 
 // aggregateChallenges calcule les totaux depuis les decks assignés.
-func aggregateChallenges(decks []struct {
-	Expiration struct {
-		ISO8601Date string `json:"ISO8601Date"`
-	} `json:"Expiration"`
-	ActiveChallenges    []json.RawMessage `json:"ActiveChallenges"`
-	CompletedChallenges []json.RawMessage `json:"CompletedChallenges"`
-}) (total, completed, xpAvail int, nextExpiry string) {
+func aggregateChallenges(decks []challengeDeckRaw) (total, completed, xpAvail int, nextExpiry string) {
 	for _, deck := range decks {
-		total += len(deck.ActiveChallenges)
-		completed += len(deck.CompletedChallenges)
-		for _, raw := range deck.ActiveChallenges {
-			var ch struct {
-				XPReward int `json:"XPReward"`
-			}
-			if err := json.Unmarshal(raw, &ch); err == nil {
-				xpAvail += ch.XPReward
+		activeCnt := len(deck.ActiveChallenges)
+		completedCnt := len(deck.CompletedChallenges)
+		total += activeCnt + completedCnt
+		completed += completedCnt
+		for _, ch := range deck.ActiveChallenges {
+			if ch.XPReward != nil {
+				xpAvail += *ch.XPReward
 			}
 		}
 		if exp := deck.Expiration.ISO8601Date; exp != "" {
