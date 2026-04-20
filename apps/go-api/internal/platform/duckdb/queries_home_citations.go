@@ -1,7 +1,11 @@
 // Package duckdb — queries_home_citations.go : requêtes page Home, citations et médias.
 package duckdb
 
-import "levelup/go-api/internal/domain"
+import (
+	"strings"
+
+	"levelup/go-api/internal/domain"
+)
 
 // Q26 : Home — matchs recents d un joueur avec KPIs pour le hero card.
 // Parametre : ?1 = xuid du joueur.
@@ -136,11 +140,9 @@ SELECT
     mma.match_id,
     mma.match_start_time,
     COALESCE(mf.liked, FALSE) AS liked,
-    mr.map_name,
-    mr.pair_name AS mode_name
-FROM media_files mf
-LEFT JOIN media_match_associations mma ON mf.file_path = mma.media_path
-LEFT JOIN shared.match_registry mr ON mma.match_id = mr.match_id
+    ` + q37MediaMapLabelExpr + ` AS map_name,
+    ` + q37MediaModeLabelExpr + ` AS mode_name
+` + q37MediaFromClause + `
 WHERE mf.status = 'active'
 ORDER BY mf.mtime DESC
 LIMIT ? OFFSET ?`
@@ -148,11 +150,67 @@ LIMIT ? OFFSET ?`
 // Q37Count : Médias — nombre total de fichiers actifs.
 const Q37MediaCount = `SELECT COUNT(*) FROM media_files WHERE status = 'active'`
 
-// BuildQ37MediaQuery construit dynamiquement la query médias avec filtres et tri.
-// Retourne la query SQL et les args à passer (dans l'ordre : filtres..., limit, offset).
-func BuildQ37MediaQuery(f domain.MediaFilters, limit, offset int) (string, []any) {
-	where := []string{"mf.status = 'active'"}
-	args := []any{}
+const q37LegacyMediaFromClause = `FROM media_files mf
+LEFT JOIN media_match_associations mma ON mf.file_path = mma.media_path
+LEFT JOIN shared.match_registry mr ON mma.match_id = mr.match_id`
+
+const q37SharedSocialFromClause = `FROM media_files mf
+LEFT JOIN media_match_associations mma ON mf.id = mma.media_file_id
+LEFT JOIN shared.match_registry mr ON mma.match_id = mr.match_id`
+
+const q37MediaFromClause = q37LegacyMediaFromClause
+
+const q37MediaMapLabelExpr = `NULLIF(TRIM(COALESCE(mr.map_name_fr, mr.map_name, '')), '')`
+
+const q37MediaModeLabelExpr = `NULLIF(TRIM(regexp_replace(regexp_replace(regexp_replace(COALESCE(mr.pair_name_fr, mr.pair_name, ''), ' on .+$', '', 'i'), '\s*-\s*Forge\b', '', 'i'), '\s*-\s*Ranked\b', '', 'i')), '')`
+
+type mediaWhereConfig struct {
+	includeMapFilter  bool
+	includeModeFilter bool
+}
+
+type mediaQueryConfig struct {
+	playerSlug string
+}
+
+func (cfg mediaQueryConfig) useSharedSocialSchema() bool {
+	return cfg.playerSlug != ""
+}
+
+func (cfg mediaQueryConfig) fromClause() string {
+	if cfg.useSharedSocialSchema() {
+		return q37SharedSocialFromClause
+	}
+	return q37LegacyMediaFromClause
+}
+
+func (cfg mediaQueryConfig) baseWhereClause() ([]string, []any) {
+	if cfg.useSharedSocialSchema() {
+		return []string{"mf.player_slug = ?"}, []any{cfg.playerSlug}
+	}
+	return []string{"mf.status = 'active'"}, nil
+}
+
+func (cfg mediaQueryConfig) matchStartExpr() string {
+	if cfg.useSharedSocialSchema() {
+		return "mr.start_time"
+	}
+	return "mma.match_start_time"
+}
+
+func (cfg mediaQueryConfig) timeOrderExpr() string {
+	if cfg.useSharedSocialSchema() {
+		return "COALESCE(mf.capture_end_utc, mf.updated_at, mf.created_at)"
+	}
+	return "COALESCE(mf.capture_end_utc, mf.mtime)"
+}
+
+func buildQ37MediaWhereClause(
+	f domain.MediaFilters,
+	whereCfg mediaWhereConfig,
+	queryCfg mediaQueryConfig,
+) (string, []any) {
+	where, args := queryCfg.baseWhereClause()
 
 	if f.KindFilter != "" {
 		where = append(where, "mf.kind = ?")
@@ -161,32 +219,42 @@ func BuildQ37MediaQuery(f domain.MediaFilters, limit, offset int) (string, []any
 	if f.LikedOnly {
 		where = append(where, "COALESCE(mf.liked, FALSE) = TRUE")
 	}
-	if f.MapFilter != "" {
-		where = append(where, "mr.map_name ILIKE ?")
+	if whereCfg.includeMapFilter && f.MapFilter != "" {
+		where = append(where, q37MediaMapLabelExpr+" ILIKE ?")
 		args = append(args, "%"+f.MapFilter+"%")
 	}
-	if f.ModeFilter != "" {
-		where = append(where, "mr.pair_name ILIKE ?")
+	if whereCfg.includeModeFilter && f.ModeFilter != "" {
+		where = append(where, q37MediaModeLabelExpr+" ILIKE ?")
 		args = append(args, "%"+f.ModeFilter+"%")
 	}
 
-	orderBy := "mf.mtime DESC"
+	return "WHERE " + strings.Join(where, " AND "), args
+}
+
+// BuildQ37MediaQuery construit dynamiquement la query médias avec filtres et tri.
+// Retourne la query SQL et les args à passer (dans l'ordre : filtres..., limit, offset).
+func BuildQ37MediaQuery(f domain.MediaFilters, limit, offset int) (string, []any) {
+	return buildQ37MediaQuery(f, limit, offset, mediaQueryConfig{})
+}
+
+func buildQ37MediaQuery(
+	f domain.MediaFilters,
+	limit, offset int,
+	queryCfg mediaQueryConfig,
+) (string, []any) {
+	whereClause, args := buildQ37MediaWhereClause(f, mediaWhereConfig{
+		includeMapFilter:  true,
+		includeModeFilter: true,
+	}, queryCfg)
+
+	orderBy := queryCfg.timeOrderExpr() + " DESC"
 	switch f.Sort {
 	case "date_asc":
-		orderBy = "mf.mtime ASC"
+		orderBy = queryCfg.timeOrderExpr() + " ASC"
 	case "map_asc":
-		orderBy = "COALESCE(mr.map_name, '') ASC, mf.mtime DESC"
+		orderBy = "COALESCE(" + q37MediaMapLabelExpr + ", '') ASC, " + queryCfg.timeOrderExpr() + " DESC"
 	case "mode_asc":
-		orderBy = "COALESCE(mr.pair_name, '') ASC, mf.mtime DESC"
-	}
-
-	whereClause := ""
-	for i, w := range where {
-		if i == 0 {
-			whereClause = "WHERE " + w
-		} else {
-			whereClause += " AND " + w
-		}
+		orderBy = "COALESCE(" + q37MediaModeLabelExpr + ", '') ASC, " + queryCfg.timeOrderExpr() + " DESC"
 	}
 
 	q := `SELECT
@@ -196,13 +264,11 @@ func BuildQ37MediaQuery(f domain.MediaFilters, limit, offset int) (string, []any
     mf.thumbnail_path,
     mf.capture_end_utc,
     mma.match_id,
-    mma.match_start_time,
+    ` + queryCfg.matchStartExpr() + ` AS match_start_time,
     COALESCE(mf.liked, FALSE) AS liked,
-    mr.map_name,
-    mr.pair_name AS mode_name
-FROM media_files mf
-LEFT JOIN media_match_associations mma ON mf.file_path = mma.media_path
-LEFT JOIN shared.match_registry mr ON mma.match_id = mr.match_id
+    ` + q37MediaMapLabelExpr + ` AS map_name,
+    ` + q37MediaModeLabelExpr + ` AS mode_name
+` + queryCfg.fromClause() + `
 ` + whereClause + `
 ORDER BY ` + orderBy + `
 LIMIT ? OFFSET ?`
@@ -213,39 +279,58 @@ LIMIT ? OFFSET ?`
 
 // BuildQ37MediaCountQuery construit la query COUNT correspondante aux filtres actifs.
 func BuildQ37MediaCountQuery(f domain.MediaFilters) (string, []any) {
-	where := []string{"mf.status = 'active'"}
-	args := []any{}
+	return buildQ37MediaCountQuery(f, mediaQueryConfig{})
+}
 
-	if f.KindFilter != "" {
-		where = append(where, "mf.kind = ?")
-		args = append(args, f.KindFilter)
-	}
-	if f.LikedOnly {
-		where = append(where, "COALESCE(mf.liked, FALSE) = TRUE")
-	}
-	if f.MapFilter != "" {
-		where = append(where, "mr.map_name ILIKE ?")
-		args = append(args, "%"+f.MapFilter+"%")
-	}
-	if f.ModeFilter != "" {
-		where = append(where, "mr.pair_name ILIKE ?")
-		args = append(args, "%"+f.ModeFilter+"%")
-	}
-
-	whereClause := ""
-	for i, w := range where {
-		if i == 0 {
-			whereClause = "WHERE " + w
-		} else {
-			whereClause += " AND " + w
-		}
-	}
+func buildQ37MediaCountQuery(f domain.MediaFilters, queryCfg mediaQueryConfig) (string, []any) {
+	whereClause, args := buildQ37MediaWhereClause(f, mediaWhereConfig{
+		includeMapFilter:  true,
+		includeModeFilter: true,
+	}, queryCfg)
 
 	q := `SELECT COUNT(*)
-FROM media_files mf
-LEFT JOIN media_match_associations mma ON mf.file_path = mma.media_path
-LEFT JOIN shared.match_registry mr ON mma.match_id = mr.match_id
+` + queryCfg.fromClause() + `
 ` + whereClause
+
+	return q, args
+}
+
+// BuildQ37MediaMapOptionsQuery retourne les cartes distinctes disponibles pour la galerie.
+func BuildQ37MediaMapOptionsQuery(f domain.MediaFilters) (string, []any) {
+	return buildQ37MediaMapOptionsQuery(f, mediaQueryConfig{})
+}
+
+func buildQ37MediaMapOptionsQuery(f domain.MediaFilters, queryCfg mediaQueryConfig) (string, []any) {
+	whereClause, args := buildQ37MediaWhereClause(f, mediaWhereConfig{
+		includeMapFilter:  false,
+		includeModeFilter: true,
+	}, queryCfg)
+
+	q := `SELECT DISTINCT ` + q37MediaMapLabelExpr + ` AS label
+` + queryCfg.fromClause() + `
+` + whereClause + `
+  AND ` + q37MediaMapLabelExpr + ` IS NOT NULL
+ORDER BY label ASC`
+
+	return q, args
+}
+
+// BuildQ37MediaModeOptionsQuery retourne les modes normalisés distincts disponibles.
+func BuildQ37MediaModeOptionsQuery(f domain.MediaFilters) (string, []any) {
+	return buildQ37MediaModeOptionsQuery(f, mediaQueryConfig{})
+}
+
+func buildQ37MediaModeOptionsQuery(f domain.MediaFilters, queryCfg mediaQueryConfig) (string, []any) {
+	whereClause, args := buildQ37MediaWhereClause(f, mediaWhereConfig{
+		includeMapFilter:  true,
+		includeModeFilter: false,
+	}, queryCfg)
+
+	q := `SELECT DISTINCT ` + q37MediaModeLabelExpr + ` AS label
+` + queryCfg.fromClause() + `
+` + whereClause + `
+  AND ` + q37MediaModeLabelExpr + ` IS NOT NULL
+ORDER BY label ASC`
 
 	return q, args
 }

@@ -39,6 +39,74 @@ describe('HomePage', () => {
     })
   })
 
+  it('affiche les défis actifs détaillés triés du plus avancé au moins avancé', async () => {
+    server.use(
+      http.get('/api/v1/players/:playerSlug/challenges', () => HttpResponse.json({
+        available: true,
+        total: 3,
+        completed: 0,
+        xp_available: 4500,
+        next_expiry: '2026-04-20T18:00:00Z',
+        items: [
+          {
+            challenge_path: 'challenge/not-started',
+            tracking_id: 'c3',
+            title: 'Défi pas commencé',
+            description: 'Commence ce défi.',
+            image_url: 'https://example.com/challenge-3.png',
+            progress_current: 0,
+            progress_target: 5,
+            progress_percent: 0,
+          },
+          {
+            challenge_path: 'challenge/advanced',
+            tracking_id: 'c1',
+            title: 'Défi avancé',
+            description: 'Presque terminé.',
+            image_url: 'https://example.com/challenge-1.png',
+            progress_current: 7,
+            progress_target: 10,
+            progress_percent: 70,
+          },
+          {
+            challenge_path: 'challenge/in-progress',
+            tracking_id: 'c2',
+            title: 'Défi en cours',
+            description: 'Continue la progression.',
+            image_url: 'https://example.com/challenge-2.png',
+            progress_current: 1,
+            progress_target: 3,
+            progress_percent: 33.3,
+          },
+        ],
+        error_hint: null,
+      })),
+    )
+
+    renderWithProviders(<HomePage />)
+
+    await waitFor(() => {
+      expect(screen.getByText(/Défis actifs/i)).toBeInTheDocument()
+      expect(
+        screen.getByText((content) => content.replace(/\s+/g, ' ').includes('4 500 XP disponibles')),
+      ).toBeInTheDocument()
+    })
+
+    const titles = screen.getAllByTestId('home-challenge-title')
+    expect(titles.map((node) => node.textContent)).toEqual([
+      'Défi avancé',
+      'Défi en cours',
+      'Défi pas commencé',
+    ])
+
+    expect(screen.getByText('Défi avancé')).toHaveClass('font-semibold')
+    expect(screen.getByText('Presque terminé.')).toHaveClass('italic')
+
+    const fills = screen.getAllByTestId('home-challenge-progress-fill')
+    expect(fills[0]).toHaveStyle({ width: '70%' })
+    expect(fills[2]).toHaveStyle({ width: '0%' })
+  })
+
   it('affiche les KPIs globaux (Parties, Taux de victoire, K/D)', async () => {
     renderWithProviders(<HomePage />)
     await waitFor(() => {

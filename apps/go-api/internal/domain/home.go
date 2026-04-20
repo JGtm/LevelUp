@@ -142,23 +142,39 @@ type HomePageResponse struct {
 	SquadSession  *SessionSummaryItem `json:"squad_session,omitempty"`
 }
 
-// BattlePassResponse contient les informations Battle Pass live.
+// BattlePassResponse contient les informations Battle Pass live ou depuis le cache DB.
 // available=false avec error_hint="auth_required" tant que l'auth n'est pas portée (Sprint 15).
 type BattlePassResponse struct {
 	Available   bool    `json:"available"`
 	Rank        *int    `json:"rank,omitempty"`
 	RewardTrack *string `json:"reward_track,omitempty"`
 	Progress    *int    `json:"progress,omitempty"`
+	FromCache   bool    `json:"from_cache,omitempty"`
 	ErrorHint   *string `json:"error_hint,omitempty"`
 }
 
-// ChallengesResponse contient le résumé des défis actifs.
+// ChallengeItem représente un défi actif détaillé pour l'accueil.
+type ChallengeItem struct {
+	ChallengePath   string   `json:"challenge_path"`
+	TrackingID      *string  `json:"tracking_id,omitempty"`
+	Title           string   `json:"title"`
+	Description     *string  `json:"description,omitempty"`
+	ImageURL        *string  `json:"image_url,omitempty"`
+	ProgressCurrent *int     `json:"progress_current,omitempty"`
+	ProgressTarget  *int     `json:"progress_target,omitempty"`
+	ProgressPercent *float64 `json:"progress_percent,omitempty"`
+	XPReward        *int     `json:"xp_reward,omitempty"`
+}
+
+// ChallengesResponse contient le résumé des défis actifs ou depuis le cache DB.
 // available=false avec error_hint="auth_required" tant que l'auth n'est pas portée (Sprint 15).
 type ChallengesResponse struct {
-	Available   bool    `json:"available"`
-	Total       *int    `json:"total,omitempty"`
-	Completed   *int    `json:"completed,omitempty"`
-	XPAvailable *int    `json:"xp_available,omitempty"`
-	NextExpiry  *string `json:"next_expiry,omitempty"`
-	ErrorHint   *string `json:"error_hint,omitempty"`
+	Available   bool            `json:"available"`
+	Total       *int            `json:"total,omitempty"`
+	Completed   *int            `json:"completed,omitempty"`
+	XPAvailable *int            `json:"xp_available,omitempty"`
+	NextExpiry  *string         `json:"next_expiry,omitempty"`
+	Items       []ChallengeItem `json:"items,omitempty"`
+	FromCache   bool            `json:"from_cache,omitempty"`
+	ErrorHint   *string         `json:"error_hint,omitempty"`
 }

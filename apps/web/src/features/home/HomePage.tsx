@@ -12,6 +12,7 @@ import { PrivacyBanner } from '@/components/ui/privacy-banner'
 import { Spinner } from '@/components/ui/spinner'
 import { MatchCard } from '@/components/ui/match-card'
 import { HomeHeroBanner } from './HomeHeroBanner'
+import { HomeChallengesList } from './HomeChallengesList'
 import { RecentMediaRail } from './RecentMediaRail'
 import { useHomePage, useBattlePass, useChallenges } from './queries'
 import { useSetMatchFavorite } from '@/features/match-history/queries'
@@ -136,11 +137,16 @@ export function HomePage() {
             </CardHeader>
             <CardContent>
               {challenges?.available ? (
-                <div className="space-y-1">
+                <div className="space-y-3">
                   <p className="text-sm text-foreground">
-                    <strong className="text-primary">{challenges.completed}</strong> / {challenges.total} complétés
+                    <strong className="text-primary">{challenges.completed ?? 0}</strong> / {challenges.total ?? 0} complétés
                   </p>
-                  {challenges.xp_available && (
+                  {Array.isArray(challenges.items) && challenges.items.length > 0 ? (
+                    <HomeChallengesList items={challenges.items} />
+                  ) : (
+                    <p className="text-xs text-muted-foreground">Aucun défi actif détaillé disponible pour le moment.</p>
+                  )}
+                  {challenges.xp_available != null && challenges.xp_available > 0 && (
                     <p className="text-xs text-muted-foreground">{challenges.xp_available.toLocaleString('fr-FR')} XP disponibles</p>
                   )}
                 </div>
