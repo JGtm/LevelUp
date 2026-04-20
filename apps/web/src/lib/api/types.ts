@@ -535,6 +535,10 @@ export interface SettingsResponse {
   discord_notify_backfill: boolean
   discord_notify_new_version: boolean
   discord_notify_new_media: boolean
+  spnkr_auto_sync_enabled: boolean
+  spnkr_auto_sync_interval_hours: number
+  spnkr_auto_sync_interval_minutes: number
+  watcher_presence_enabled: boolean
   spnkr_refresh_with_backfill: boolean
   spnkr_refresh_backfill_medals: boolean
   spnkr_refresh_backfill_skill: boolean
@@ -961,12 +965,25 @@ export interface BattlePassResponse {
   error_hint: string | null
 }
 
+export interface ChallengeItem {
+  challenge_path: string
+  tracking_id?: string | null
+  title: string
+  description?: string | null
+  image_url?: string | null
+  progress_current?: number | null
+  progress_target?: number | null
+  progress_percent?: number | null
+  xp_reward?: number | null
+}
+
 export interface ChallengesResponse {
   available: boolean
   total: number | null
   completed: number | null
   xp_available: number | null
   next_expiry: string | null
+  items?: ChallengeItem[]
   error_hint: string | null
 }
 
@@ -1242,6 +1259,11 @@ export interface MediaItemRow {
   total_likers?: number
 }
 
+export interface MediaAvailableFilters {
+  maps: LabelValue[]
+  modes: LabelValue[]
+}
+
 export interface MediaQueryRequest {
   sort?: string
   kind_filter?: string | null
@@ -1258,6 +1280,7 @@ export interface MediaPageResponse {
   total_mine: number
   total_teammates: number
   total_unassigned: number
+  available_filters: MediaAvailableFilters
 }
 
 export interface MediaLikeRequest {
@@ -1271,6 +1294,8 @@ export interface MediaLikeResponse {
   file_path: string
   liked: boolean
   like_count: number
+  likers?: string[]
+  total_likers?: number
 }
 
 export interface MediaUploadResponse {

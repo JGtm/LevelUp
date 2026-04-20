@@ -12,7 +12,94 @@ import { useRef, useEffect, useState } from 'react'
 import { useAppShellStore } from '@/stores/appShellStore'
 import { ThemeToggle } from './ThemeToggle'
 import { buildPlayerDestination } from './shellNavigation'
+import { useJobStatus } from '@/features/setup/queries'
+// ─── SyncStatusIndicator ───────────────────────────────────────────────────
 
+/**
+ * Indicateur permanent de statut de sync dans la L1.
+ * - Check vert : aucun sync en cours (repos).
+ * - Spinner   : sync en cours (job actif).
+ * Se réinitialise automatiquement quand le job passe en état terminal.
+ */
+function SyncStatusIndicator() {
+  const activeSyncJobId = useAppShellStore((s) => s.activeSyncJobId)
+  const setActiveSyncJobId = useAppShellStore((s) => s.setActiveSyncJobId)
+  const { data } = useJobStatus(activeSyncJobId ?? '', !!activeSyncJobId)
+  const status = data?.status
+
+  useEffect(() => {
+    if (
+      activeSyncJobId &&
+      (status === 'succeeded' ||
+        status === 'failed' ||
+        status === 'cancelled' ||
+        status === 'interrupted')
+    ) {
+      setActiveSyncJobId(null)
+    }
+  }, [status, activeSyncJobId, setActiveSyncJobId])
+
+  const isRunning =
+    !!activeSyncJobId &&
+    status !== 'succeeded' &&
+    status !== 'failed' &&
+    status !== 'cancelled' &&
+    status !== 'interrupted'
+
+  if (isRunning) {
+    return (
+      <span
+        title="Synchronisation en cours…"
+        aria-label="Synchronisation en cours"
+        className="flex shrink-0 items-center"
+      >
+        <svg
+          className="h-3.5 w-3.5 animate-spin text-sidebar-primary"
+          xmlns="http://www.w3.org/2000/svg"
+          fill="none"
+          viewBox="0 0 24 24"
+          aria-hidden="true"
+        >
+          <circle
+            className="opacity-25"
+            cx="12"
+            cy="12"
+            r="10"
+            stroke="currentColor"
+            strokeWidth="4"
+          />
+          <path
+            className="opacity-75"
+            fill="currentColor"
+            d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"
+          />
+        </svg>
+      </span>
+    )
+  }
+
+  return (
+    <span
+      title="À jour"
+      aria-label="Synchronisation à jour"
+      className="flex shrink-0 items-center"
+    >
+      <svg
+        className="h-3.5 w-3.5 text-green-500"
+        xmlns="http://www.w3.org/2000/svg"
+        viewBox="0 0 20 20"
+        fill="currentColor"
+        aria-hidden="true"
+      >
+        <path
+          fillRule="evenodd"
+          d="M16.704 4.153a.75.75 0 01.143 1.052l-8 10.5a.75.75 0 01-1.127.075l-4.5-4.5a.75.75 0 011.06-1.06l3.894 3.893 7.48-9.817a.75.75 0 011.05-.143z"
+          clipRule="evenodd"
+        />
+      </svg>
+    </span>
+  )
+}
 // ─── Définition des sections L1 ───────────────────────────────────────────────
 
 interface L1Tab {
@@ -263,21 +350,25 @@ export function NavL1() {
 
       {/* ── Gamertag / sélecteur joueur ──────────────────────────────────── */}
       {availablePlayers.length > 1 ? (
-        <select
-          value={playerSlug}
-          onChange={(e) => handlePlayerChange(e.target.value)}
-          className="rounded-md border border-sidebar-border bg-sidebar-accent px-2 py-1 text-sm text-sidebar-foreground transition-colors focus:border-ring focus:outline-none focus:ring-2 focus:ring-ring/30"
-          aria-label="Joueur actif"
-        >
-          {availablePlayers.map((p) => (
-            <option key={p.player_slug} value={p.player_slug}>
-              {p.gamertag}
-            </option>
-          ))}
-        </select>
+        <div className="flex items-center gap-1.5">
+          <SyncStatusIndicator />
+          <select
+            value={playerSlug}
+            onChange={(e) => handlePlayerChange(e.target.value)}
+            className="rounded-md border border-sidebar-border bg-sidebar-accent px-2 py-1 text-sm text-sidebar-foreground transition-colors focus:border-ring focus:outline-none focus:ring-2 focus:ring-ring/30"
+            aria-label="Joueur actif"
+          >
+            {availablePlayers.map((p) => (
+              <option key={p.player_slug} value={p.player_slug}>
+                {p.gamertag}
+              </option>
+            ))}
+          </select>
+        </div>
       ) : (
         currentPlayer && (
-          <span className="shrink-0 text-sm font-medium text-sidebar-foreground/70">
+          <span className="flex shrink-0 items-center gap-1.5 text-sm font-medium text-sidebar-foreground/70">
+            <SyncStatusIndicator />
             {currentPlayer.gamertag}
           </span>
         )

@@ -2,8 +2,6 @@ import { Link, useNavigate, useRouterState } from '@tanstack/react-router'
 
 import { Badge } from '@/components/ui/badge'
 import { useAppShellStore } from '@/stores/appShellStore'
-import { useStartDeltaSync, useJobStatus } from '@/features/setup/queries'
-import { useState } from 'react'
 
 import {
   buildPlayerDestination,
@@ -30,20 +28,6 @@ export function AppShellHeader() {
   const currentTitleSlug = useAppShellStore((s) => s.currentTitleSlug)
   const availableTitles = useAppShellStore((s) => s.availableTitles)
   const linkedHaloIdentity = useAppShellStore((s) => s.linkedHaloIdentity)
-  const activeSyncJobId = useAppShellStore((s) => s.activeSyncJobId)
-
-  const [localJobId, setLocalJobId] = useState<string | null>(null)
-  const startDeltaSync = useStartDeltaSync()
-  const runningJobId = activeSyncJobId ?? localJobId ?? ''
-  const { data: jobStatus } = useJobStatus(runningJobId, !!runningJobId)
-  const syncRunning = !!runningJobId && jobStatus?.status !== 'succeeded' && jobStatus?.status !== 'failed' && jobStatus?.status !== 'cancelled' && jobStatus?.status !== 'interrupted'
-
-  function handleSync() {
-    if (!currentPlayer || syncRunning) return
-    startDeltaSync.mutate(currentPlayer.player_slug, {
-      onSuccess: (job) => setLocalJobId(job.job_id),
-    })
-  }
 
   const currentTitle =
     availableTitles.find((title) => title.slug === currentTitleSlug)?.name ?? currentTitleSlug
@@ -91,20 +75,6 @@ export function AppShellHeader() {
               <Badge variant="secondary" className="bg-muted px-3 py-1 text-foreground">
                 Session Halo : {linkedHaloIdentity.gamertag}
               </Badge>
-            )}
-            {syncRunning && (
-              <Badge variant="default" className="bg-primary px-3 py-1 text-primary-foreground">
-                Sync active
-              </Badge>
-            )}
-            {currentPlayer && !syncRunning && (
-              <button
-                onClick={handleSync}
-                disabled={startDeltaSync.isPending}
-                className="inline-flex items-center justify-center rounded-full border border-border bg-background/75 px-4 py-2 text-sm font-medium text-foreground transition hover:border-border hover:bg-primary/10 hover:text-primary disabled:cursor-not-allowed disabled:opacity-50"
-              >
-                {startDeltaSync.isPending ? 'Démarrage…' : '↻ Synchroniser'}
-              </button>
             )}
             {GLOBAL_SHELL_LINKS.map((item) => (
               <UtilityLink key={item.to} to={item.to} label={item.label} />
