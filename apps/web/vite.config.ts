@@ -4,6 +4,8 @@ import tailwindcss from '@tailwindcss/vite'
 import { TanStackRouterVite } from '@tanstack/router-plugin/vite'
 import path from 'path'
 
+const apiProxyTarget = process.env.VITE_API_PROXY_TARGET ?? 'http://127.0.0.1:8000'
+
 // https://vite.dev/config/
 export default defineConfig({
   plugins: [
@@ -19,10 +21,10 @@ export default defineConfig({
   },
   server: {
     port: 5173,
-    // Proxy dev : redirige /api/** vers l'API FastAPI sur :8000
+    // Proxy dev : redirige /api/** vers l'API Go configurée
     proxy: {
       '/api': {
-        target: 'http://127.0.0.1:8000',
+        target: apiProxyTarget,
         changeOrigin: true,
       },
     },

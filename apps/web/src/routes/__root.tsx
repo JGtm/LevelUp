@@ -39,7 +39,7 @@ function RootLayout() {
   if (isLoading) {
     return (
       <div className="flex h-screen items-center justify-center">
-        <span className="text-sm text-gray-500 animate-pulse">
+        <span className="text-sm text-muted-foreground animate-pulse">
           Chargement LevelUp…
         </span>
       </div>
@@ -50,12 +50,12 @@ function RootLayout() {
     return (
       <div className="flex h-screen items-center justify-center">
         <div className="text-center space-y-2">
-          <p className="font-semibold text-red-600">Impossible de contacter l'API.</p>
-          <p className="text-sm text-gray-500">
-            Vérifiez que le serveur FastAPI est démarré sur le port 8000.
+          <p className="font-semibold text-destructive">Impossible de contacter l'API.</p>
+          <p className="text-sm text-muted-foreground">
+            Vérifiez que le serveur Go est démarré (<code>make go-api-run</code>).
           </p>
           <button
-            className="text-sm underline text-purple-600"
+            className="text-sm underline text-primary"
             onClick={() => window.location.reload()}
           >
             Réessayer

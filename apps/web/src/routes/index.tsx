@@ -14,9 +14,9 @@ function IndexPage() {
 
   if (!currentPlayer && availablePlayers.length === 0) {
     return (
-      <div className="flex h-full items-center justify-center text-sm text-gray-500">
+      <div className="flex h-full items-center justify-center text-sm text-muted-foreground">
         Aucun joueur configuré.{' '}
-        <a href="/setup" className="ml-1 text-purple-600 underline">
+        <a href="/setup" className="ml-1 text-primary underline">
           Configurer l'application
         </a>
       </div>
