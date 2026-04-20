@@ -39,6 +39,7 @@ Le suivi des sprints est maintenu dans [`SPRINT_ROADMAP.md`](.ai/go_migration_v2
 | Fichier | Rôle |
 |---------|------|
 | `cmd/server/main.go` | Point d'entrée du serveur |
+| `Makefile` | Workflow dev racine (`go-api-run`, `go-api-dev`, `web-dev`) avec `API_PORT` configurable et réutilisation d'une API déjà active |
 | `internal/api/server.go` | Assembly du router chi |
 | `internal/api/middleware/session.go` | Injection session HTTP + auth Halo dans le contexte |
 | `internal/service/bootstrap_service.go` | Bootstrap du shell React |
@@ -54,6 +55,7 @@ Le suivi des sprints est maintenu dans [`SPRINT_ROADMAP.md`](.ai/go_migration_v2
 - `apps/web/src/components/shell/AppShellHeader.tsx` : identité produit, titre courant, liens utilitaires et sélecteur de joueur branché au router.
 - `apps/web/src/components/shell/PlayerScopeNav.tsx` : navigation du scope joueur découpée entre parcours principaux et vues secondaires, désormais rendue en `nav` sémantique pour l'accessibilité et les tests E2E.
 - `apps/web/src/components/shell/shellNavigation.ts` : définition des items de navigation et helper `buildPlayerDestination()` pour préserver la section active lors d'un switch joueur.
+- `apps/web/vite.config.ts` : le proxy dev `/api` cible maintenant `VITE_API_PROXY_TARGET` (défaut `http://127.0.0.1:8000`), ce qui permet de lancer `go-api-dev` sur un port alternatif sans reconfig manuelle du front.
 - `apps/web/src/routes/players/$playerSlug.tsx` : montage du nouveau scope joueur (`PlayerScopeNav` + `KPIBar` + contenu).
 - `apps/web/src/features/home/HomePage.tsx` + `apps/web/src/components/shell/KPIBar.tsx` : correction du contrat KPI côté frontend (`win_rate` = ratio, `avg_accuracy` = pourcentage déjà normalisé), et passage des liens player-scoped en routes typées TanStack Router.
 - `apps/web/src/features/media/queries.ts`, `MediaPage.tsx`, `MediaViewer.tsx`, `home/RecentMediaRail.tsx` : likes média branchés sur l'API Go avec mutation optimiste, et normalisation frontend pour tolérer l'ancienne payload média plate si besoin.
@@ -64,6 +66,13 @@ Le suivi des sprints est maintenu dans [`SPRINT_ROADMAP.md`](.ai/go_migration_v2
 - `.ai/go_migration_v2/UX_HOME_RECORD_SPARTAN_ADDITIONS.md` : cadre les enrichissements inspirés de Spartan Record pour la home/record go-migration sans remplacer la page existante ; focus sur `Spartan ID`, `Data Set`, médailles, tuiles de matchs et stratégie dynamique pour les images de maps.
 - `.ai/go_migration_v2/DAMAGE_EFFICIENCY_INTEGRATION.md` : formalise l'adoption potentielle d'une nouvelle famille de metriques de `rendement combat`, en separant metriques exactes, proxies et integrations candidates sur `Escouade`, `Synthese`, `Forme`, `Performance`, `LUSR` et les surfaces match.
 - Validation locale finale : `npm run -s typecheck` OK, `npm run -s build` OK, `vitest` OK sur `shellNavigation.test.ts`, `playwright` OK sur `e2e/slice-0a-shell.spec.ts` (5/5).
+
+### Workflow dev Windows (2026-04-20)
+
+- `.air.toml` n'exécute plus de `pre_cmd` PowerShell-incompatible pour tuer `server.exe`.
+- Le cleanup Windows est géré côté `Makefile` via `cmd /C taskkill ...`, ce qui évite le parser error `||` dans PowerShell.
+- `make go-api-run API_PORT=8011` a été validé localement ; `/health` répond 200.
+- Une relance sur le même port réutilise l'instance existante au lieu d'échouer immédiatement sur `port already occupied`.
 
 ### Validation locale Go + React (2026-04-18)
 
