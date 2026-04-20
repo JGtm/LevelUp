@@ -10,6 +10,26 @@ import (
 	"levelup/go-api/internal/domain"
 )
 
+// BattlePassCacheRepository fournit les données Battle Pass et Challenges depuis le cache DB.
+// Implémenté par platform/duckdb.HomeRepo.
+type BattlePassCacheRepository interface {
+	// LoadCachedBattlePass retourne les données BP si une entrée is_current existe
+	// et a été vue il y a moins de ttl. Retourne (nil, false, nil) si pas en cache.
+	LoadCachedBattlePass(ctx context.Context, ttl time.Duration) (*domain.BattlePassResponse, bool, error)
+
+	// LoadCachedChallenges retourne un résumé des snapshots récents du joueur
+	// si des entrées existent dans la fenêtre ttl. Retourne (nil, false, nil) si pas en cache.
+	LoadCachedChallenges(ctx context.Context, ttl time.Duration) (*domain.ChallengesResponse, bool, error)
+}
+
+// SeasonPassRepository fournit les tracks Battle Pass persistées.
+// Implémenté par platform/duckdb.SeasonPassRepo.
+type SeasonPassRepository interface {
+	// LoadSeasonPassTracks retourne toutes les tracks connues (is_current ou historique)
+	// triées par last_seen_at DESC.
+	LoadSeasonPassTracks(ctx context.Context, xuid, titleSlug string) ([]domain.SeasonPassTrackSummary, error)
+}
+
 // BootstrapRepository fournit les données nécessaires à l'endpoint /bootstrap.
 // Implémenté par platform/duckdb.BootstrapRepo.
 type BootstrapRepository interface {
@@ -399,6 +419,9 @@ type MediaRepository interface {
 	// CountMediaFiles retourne le nombre total de médias actifs selon les filtres.
 	CountMediaFiles(ctx context.Context, filters domain.MediaFilters) (int, error)
 
+	// LoadMediaFilterOptions retourne les valeurs distinctes exposées dans les listes déroulantes.
+	LoadMediaFilterOptions(ctx context.Context, filters domain.MediaFilters) (domain.MediaFilterOptions, error)
+
 	// SetMediaLike persiste l'état liked d'un média. Retourne false si le média est introuvable.
 	SetMediaLike(ctx context.Context, filePath string, liked bool) (bool, error)
 
@@ -474,6 +497,9 @@ func (n *noopMediaRepo) LoadMediaFiles(_ context.Context, _ domain.MediaFilters,
 }
 func (n *noopMediaRepo) CountMediaFiles(_ context.Context, _ domain.MediaFilters) (int, error) {
 	return 0, nil
+}
+func (n *noopMediaRepo) LoadMediaFilterOptions(_ context.Context, _ domain.MediaFilters) (domain.MediaFilterOptions, error) {
+	return domain.MediaFilterOptions{}, nil
 }
 
 // ─── Sprint 54 : Metadata, Compare, Leaderboard ─────────────────────────────

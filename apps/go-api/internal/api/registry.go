@@ -8,6 +8,8 @@ package api
 import (
 	"context"
 	"log/slog"
+	"os"
+	"strings"
 
 	"levelup/go-api/internal/config"
 	"levelup/go-api/internal/ctxkeys"
@@ -27,17 +29,19 @@ type PlayerResolver func(ctx context.Context, slug string) (*duckdb.PlayerDB, er
 // ServiceRegistry centralise la construction des services métier.
 // Chaque méthode résout le joueur puis construit le service injecté.
 type ServiceRegistry struct {
-	resolve PlayerResolver
+	resolve  PlayerResolver
+	provider auth.TokenProvider
 }
 
 // NewServiceRegistry crée un ServiceRegistry câblé avec config.ResolvePlayer.
 // Le titleSlug est lu depuis le contexte (ctxkeys.TitleSlug), fallback "halo_infinite".
-func NewServiceRegistry(cfg *config.AppConfig) *ServiceRegistry {
+func NewServiceRegistry(cfg *config.AppConfig, provider auth.TokenProvider) *ServiceRegistry {
 	return &ServiceRegistry{
 		resolve: func(ctx context.Context, slug string) (*duckdb.PlayerDB, error) {
 			titleSlug := ctxkeys.TitleSlug(ctx)
 			return config.ResolvePlayer(ctx, cfg, slug, titleSlug)
 		},
+		provider: provider,
 	}
 }
 
@@ -193,18 +197,36 @@ func (r *ServiceRegistry) HomeCtx(ctx context.Context, slug string) (port.HomeSe
 // HomeCtxWithAuth retourne un HomeService + contexte enrichi avec les HaloTokens du joueur.
 // Si la session HTTP porte déjà des tokens, ils sont réutilisés.
 // Sinon, tente un refresh silencieux depuis le cache MSAL stocké dans sync_meta.
+// Un PersistSink est configuré pour la persistance fire-and-forget des données BP/challenges.
 func (r *ServiceRegistry) HomeCtxWithAuth(ctx context.Context, slug string) (port.HomeService, context.Context, string, string, error) {
 	pdb, err := r.resolve(ctx, slug)
 	if err != nil {
 		return nil, ctx, "", "", err
 	}
-	svc := service.NewHomeService(duckdb.NewHomeRepo(pdb))
+	sink := duckdb.NewPersistSink(pdb.Metadata.Path(), pdb.Player.Path(), pdb.XUID)
+	homeRepo := duckdb.NewHomeRepo(pdb)
+	svc := service.NewHomeService(homeRepo).WithPersistSink(sink).WithCacheRepo(homeRepo)
 	enriched := r.enrichWithHaloTokens(ctx, pdb)
 	return svc, enriched, pdb.XUID, pdb.Gamertag, nil
 }
 
+// SeasonPassCtxWithAuth retourne un SeasonPassService + contexte enrichi avec les HaloTokens.
+// Réutilise HomeCtxWithAuth pour la résolution des tokens et le cacheRepo BP/challenges.
+func (r *ServiceRegistry) SeasonPassCtxWithAuth(ctx context.Context, slug string) (port.SeasonPassService, context.Context, error) {
+	pdb, err := r.resolve(ctx, slug)
+	if err != nil {
+		return nil, ctx, err
+	}
+	homeRepo := duckdb.NewHomeRepo(pdb)
+	sink := duckdb.NewPersistSink(pdb.Metadata.Path(), pdb.Player.Path(), pdb.XUID)
+	homeSvc := service.NewHomeService(homeRepo).WithPersistSink(sink).WithCacheRepo(homeRepo)
+	spRepo := duckdb.NewSeasonPassRepo(pdb)
+	svc := service.NewSeasonPassService(spRepo, homeSvc, pdb.XUID, pdb.TitleSlug)
+	enriched := r.enrichWithHaloTokens(ctx, pdb)
+	return svc, enriched, nil
+}
+
 // enrichWithHaloTokens injecte les HaloTokens dans le contexte si absents.
-// Ordre : 1) session HTTP (déjà injectée par le middleware), 2) cache process, 3) sync_meta DB.
 func (r *ServiceRegistry) enrichWithHaloTokens(ctx context.Context, pdb *duckdb.PlayerDB) context.Context {
 	if ctxkeys.HaloTokens(ctx) != nil {
 		return ctx // tokens déjà présents via session HTTP
@@ -213,7 +235,7 @@ func (r *ServiceRegistry) enrichWithHaloTokens(ctx context.Context, pdb *duckdb.
 	if cached := halo.GetCachedPlayerTokens(xuid); cached != nil {
 		return ctxkeys.WithHaloAuth(ctx, cached, xuid)
 	}
-	result := refreshTokensFromDB(ctx, pdb, xuid)
+	result := r.refreshTokensFromDB(ctx, pdb, xuid)
 	if result != nil {
 		halo.SetCachedPlayerTokens(xuid, result.Tokens)
 		return ctxkeys.WithHaloAuth(ctx, result.Tokens, xuid)
@@ -221,24 +243,52 @@ func (r *ServiceRegistry) enrichWithHaloTokens(ctx context.Context, pdb *duckdb.
 	return ctx
 }
 
-// refreshTokensFromDB charge le cache MSAL depuis sync_meta et tente un refresh silencieux.
-func refreshTokensFromDB(ctx context.Context, pdb *duckdb.PlayerDB, xuid string) *auth.ExchangeResult {
+// refreshTokensFromDB charge le cache MSAL ou le refresh_token OAuth v2 depuis sync_meta,
+// puis tente un refresh silencieux pour obtenir les tokens Halo.
+// Ordre :
+//  1. MSAL cache (sync_meta.msal_token_cache) → TrySilentRefresh
+//  2. OAuth v2 refresh_token (env var SPNKR_OAUTH_REFRESH_TOKEN_<GAMERTAG>) → TryOAuthRefresh
+//  3. OAuth v2 refresh_token (sync_meta.oauth_refresh_token) → TryOAuthRefresh
+func (r *ServiceRegistry) refreshTokensFromDB(ctx context.Context, pdb *duckdb.PlayerDB, xuid string) *auth.ExchangeResult {
+	// --- Chemin 1 : MSAL cache ---
 	cacheJSON, err := duckdb.ReadMSALCacheJSON(ctx, pdb.Player)
-	if err != nil || cacheJSON == "" {
-		return nil
+	if err == nil && cacheJSON != "" {
+		accessToken, err := r.provider.TrySilentRefresh(ctx, cacheJSON)
+		if err == nil && accessToken != "" {
+			result, err := r.provider.Exchange(ctx, accessToken)
+			if err == nil && result != nil {
+				slog.DebugContext(ctx, "halo_auth: tokens obtenus via MSAL cache", "xuid", xuid)
+				return result
+			}
+			slog.WarnContext(ctx, "halo_auth: échange access_token échoué (MSAL)", "xuid", xuid, "err", err)
+		} else if err != nil {
+			slog.WarnContext(ctx, "halo_auth: MSAL silent refresh échoué", "xuid", xuid, "err", err)
+		}
 	}
-	accessor := auth.NewInMemoryCacheAccessorFromJSON(cacheJSON)
-	accessToken, err := auth.AcquireTokenSilent(ctx, accessor)
-	if err != nil || accessToken == "" {
-		slog.WarnContext(ctx, "halo_auth: refresh silencieux échoué", "xuid", xuid, "err", err)
-		return nil
+
+	// --- Chemin 2 : refresh_token OAuth v2 ---
+	// Priorité : variable d'environnement SPNKR_OAUTH_REFRESH_TOKEN_<GAMERTAG_UPPER>
+	// puis clé oauth_refresh_token dans sync_meta.
+	refreshToken := oauthRefreshTokenForPlayer(pdb.Gamertag)
+	if refreshToken == "" {
+		refreshToken, _ = duckdb.ReadOAuthRefreshToken(ctx, pdb.Player)
 	}
-	result, err := auth.ExchangeAccessToken(ctx, accessToken)
-	if err != nil {
-		slog.WarnContext(ctx, "halo_auth: échange access_token échoué", "xuid", xuid, "err", err)
-		return nil
+	if refreshToken != "" {
+		accessToken, err := r.provider.TryOAuthRefresh(ctx, refreshToken)
+		if err == nil && accessToken != "" {
+			result, err := r.provider.Exchange(ctx, accessToken)
+			if err == nil && result != nil {
+				slog.DebugContext(ctx, "halo_auth: tokens obtenus via OAuth v2 refresh", "xuid", xuid)
+				return result
+			}
+			slog.WarnContext(ctx, "halo_auth: échange access_token échoué (OAuth v2)", "xuid", xuid, "err", err)
+		} else if err != nil {
+			slog.WarnContext(ctx, "halo_auth: OAuth v2 refresh échoué", "xuid", xuid, "err", err)
+		}
 	}
-	return result
+
+	slog.WarnContext(ctx, "halo_auth: aucun token disponible pour le joueur", "xuid", xuid, "gamertag", pdb.Gamertag)
+	return nil
 }
 
 // MatchHistoryCtx retourne un MatchHistoryService + identifiants joueur.
@@ -319,4 +369,27 @@ func (r *ServiceRegistry) SynthesisCtx(ctx context.Context, slug string) (port.S
 	}
 	svc := service.NewSynthesisService(duckdb.NewSynthesisRepo(pdb))
 	return svc, pdb.XUID, pdb.Gamertag, nil
+}
+
+// =============================================================================
+// Helpers auth
+// =============================================================================
+
+// oauthRefreshTokenForPlayer retourne le refresh_token OAuth v2 depuis l'environnement
+// pour un gamertag donné.
+// Convention : SPNKR_OAUTH_REFRESH_TOKEN_<GAMERTAG_MAJUSCULES_SANS_ESPACES>
+// Exemple : gamertag "JGtm" → SPNKR_OAUTH_REFRESH_TOKEN_JGTM
+func oauthRefreshTokenForPlayer(gamertag string) string {
+	if gamertag == "" {
+		return ""
+	}
+	// Normalisation : majuscules, espaces/tirets/points → underscore.
+	key := strings.ToUpper(gamertag)
+	key = strings.Map(func(r rune) rune {
+		if r == ' ' || r == '-' || r == '.' {
+			return '_'
+		}
+		return r
+	}, key)
+	return os.Getenv("SPNKR_OAUTH_REFRESH_TOKEN_" + key)
 }

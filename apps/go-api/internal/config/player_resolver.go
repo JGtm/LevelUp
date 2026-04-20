@@ -72,22 +72,26 @@ func resolveRealPlayer(ctx context.Context, cfg *AppConfig, slug, titleSlug stri
 }
 
 // buildPoolConfig construit un PlayerPoolConfig depuis un PlayerSummary.
-// Utilise le PathResolver pour résoudre les chemins title-aware.
+// Utilise le PathResolver pour résoudre les chemins title-aware, avec fallback
+// legacy automatique si le répertoire title-aware n'existe pas encore sur disque.
 func buildPoolConfig(cfg *AppConfig, p *domain.PlayerSummary, titleSlug string) duckdb.PlayerPoolConfig {
 	reg := title.NewRegistry()
 	pr := title.NewPathResolver(cfg.RepoRoot, reg)
 
-	// Si le titre est connu dans le registre, utiliser les chemins title-aware.
-	// Sinon, fallback legacy (data/players/{gt}, data/warehouse/).
+	// Si le titre est connu ET que le répertoire title-aware existe sur disque,
+	// utiliser les chemins title-aware. Sinon, fallback legacy (data/players/, data/warehouse/).
 	if reg.Exists(titleSlug) {
-		return duckdb.PlayerPoolConfig{
-			Gamertag:           p.Gamertag,
-			XUID:               p.XUID,
-			TitleSlug:          titleSlug,
-			PlayerDBPath:       pr.PlayerDBPath(titleSlug, p.Gamertag),
-			SharedDBPath:       pr.SharedDBPath(titleSlug),
-			MetaDBPath:         pr.MetadataDBPath(titleSlug),
-			SharedSocialDBPath: pr.LegacySharedSocialDBPath(),
+		titleDir := pr.TitleDataDir(titleSlug)
+		if _, err := os.Stat(titleDir); err == nil {
+			return duckdb.PlayerPoolConfig{
+				Gamertag:           p.Gamertag,
+				XUID:               p.XUID,
+				TitleSlug:          titleSlug,
+				PlayerDBPath:       pr.PlayerDBPath(titleSlug, p.Gamertag),
+				SharedDBPath:       pr.SharedDBPath(titleSlug),
+				MetaDBPath:         pr.MetadataDBPath(titleSlug),
+				SharedSocialDBPath: pr.LegacySharedSocialDBPath(),
+			}
 		}
 	}
 	// Legacy fallback
@@ -114,7 +118,10 @@ func SharedDBPath(cfg *AppConfig, titleSlug string) string {
 	reg := title.NewRegistry()
 	pr := title.NewPathResolver(cfg.RepoRoot, reg)
 	if reg.Exists(titleSlug) {
-		return pr.SharedDBPath(titleSlug)
+		p := pr.SharedDBPath(titleSlug)
+		if _, err := os.Stat(p); err == nil {
+			return p
+		}
 	}
 	return pr.LegacySharedDBPath()
 }

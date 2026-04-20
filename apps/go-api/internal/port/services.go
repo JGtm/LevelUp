@@ -44,6 +44,11 @@ type HomeService interface {
 	GetChallenges(ctx context.Context) domain.ChallengesResponse
 }
 
+// SeasonPassService construit la réponse de la page Season Pass (palmares).
+type SeasonPassService interface {
+	GetSeasonPassPage(ctx context.Context) (domain.SeasonPassPageResponse, error)
+}
+
 // LastMatchService résout le dernier match joué.
 type LastMatchService interface {
 	Resolve(ctx context.Context, req domain.LastMatchResolveRequest) (domain.LastMatchResolveResponse, error)

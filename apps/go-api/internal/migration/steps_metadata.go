@@ -165,6 +165,28 @@ func init() {
 			`)
 		},
 	})
+
+	Register(Migration{
+		Name:        "add_waypoint_assets_raw",
+		TargetDB:    TargetMetadata,
+		Description: "Table waypoint_assets_raw : cache générique de blobs JSON Waypoint",
+		ApplySchema: func(db *sql.DB) error {
+			return execScript(db, `
+				CREATE TABLE IF NOT EXISTS waypoint_assets_raw (
+					title_id     VARCHAR NOT NULL,
+					asset_id     VARCHAR NOT NULL,
+					asset_type   VARCHAR NOT NULL DEFAULT '',
+					version_id   VARCHAR NOT NULL DEFAULT '',
+					name         VARCHAR NOT NULL DEFAULT '',
+					description  VARCHAR NOT NULL DEFAULT '',
+					raw_json     VARCHAR NOT NULL DEFAULT '',
+					fetched_at   TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT now(),
+					content_hash VARCHAR NOT NULL DEFAULT '',
+					PRIMARY KEY (title_id, asset_id, version_id)
+				);
+			`)
+		},
+	})
 }
 
 // applyWeaponLabels crée et peuple weapon_labels avec tous les IDs connus.

@@ -73,6 +73,9 @@ func loadDiscordWebhookURL(settingsPath string) string {
 // Les valeurs par défaut correspondent au développement local.
 func Load() (*AppConfig, error) {
 	repoRoot := getEnvOrDefault("LEVELUP_REPO_ROOT", autoDetectRepoRoot())
+	// Charger .env.local avant toute lecture de variable d'environnement,
+	// pour que SPNKR_OAUTH_REFRESH_TOKEN_* et autres vars locales soient disponibles.
+	loadEnvLocal(filepath.Join(repoRoot, ".env.local"))
 	demoMode := strings.ToLower(getEnvOrDefault("LEVELUP_DEMO_MODE", "false")) == "true"
 
 	cfg := &AppConfig{
@@ -248,6 +251,37 @@ func (c *AppConfig) ServerAddr() string {
 
 // --- helpers ---
 
+// loadEnvLocal lit un fichier .env.local et injecte les variables dans l'environnement
+// du processus, sans écraser les variables déjà définies (env process a priorité).
+// Format : KEY=VALUE, lignes # ignorées, lignes vides ignorées.
+// Si le fichier est absent, la fonction retourne silencieusement.
+func loadEnvLocal(path string) {
+	data, err := os.ReadFile(path)
+	if err != nil {
+		return // .env.local absent — ok en CI/prod
+	}
+	for _, line := range strings.Split(string(data), "\n") {
+		line = strings.TrimSpace(line)
+		if line == "" || strings.HasPrefix(line, "#") {
+			continue
+		}
+		idx := strings.IndexByte(line, '=')
+		if idx <= 0 {
+			continue
+		}
+		key := strings.TrimSpace(line[:idx])
+		val := strings.TrimSpace(line[idx+1:])
+		// Supprimer les guillemets simples ou doubles éventuels.
+		if len(val) >= 2 && ((val[0] == '"' && val[len(val)-1] == '"') || (val[0] == '\'' && val[len(val)-1] == '\'')) {
+			val = val[1 : len(val)-1]
+		}
+		// Ne pas écraser une variable déjà définie dans l'environnement réel.
+		if os.Getenv(key) == "" {
+			_ = os.Setenv(key, val)
+		}
+	}
+}
+
 func getEnvOrDefault(key, def string) string {
 	if v := os.Getenv(key); v != "" {
 		return v
@@ -284,26 +318,30 @@ func parseCORSOrigins(s string) []string {
 	return out
 }
 
-// autoDetectRepoRoot remonte depuis le binaire pour trouver la racine du repo.
-// Cherche la présence de db_profiles.json ou db_profiles.example.json.
+// autoDetectRepoRoot remonte depuis le binaire (ou le cwd en fallback) pour
+// trouver la racine du repo. Cherche la présence de db_profiles.example.json.
 func autoDetectRepoRoot() string {
-	// Dans le worktree go-migration, le binaire sera dans apps/go-api/cmd/server/
-	// La racine est 4 niveaux au-dessus.
-	exe, err := os.Executable()
-	if err != nil {
-		return "."
+	// Tente d'abord depuis l'exécutable (binaire compilé), puis depuis le cwd
+	// (nécessaire avec `go run` qui place l'exe dans un répertoire temp).
+	candidates := make([]string, 0, 2)
+	if exe, err := os.Executable(); err == nil {
+		candidates = append(candidates, filepath.Dir(exe))
 	}
-	dir := filepath.Dir(exe)
-	// Remonte jusqu'à trouver db_profiles.example.json (marqueur de la racine repo)
-	for i := 0; i < 8; i++ {
-		if _, err := os.Stat(filepath.Join(dir, "db_profiles.example.json")); err == nil {
-			return dir
+	if cwd, err := os.Getwd(); err == nil {
+		candidates = append(candidates, cwd)
+	}
+	for _, start := range candidates {
+		dir := start
+		for i := 0; i < 8; i++ {
+			if _, err := os.Stat(filepath.Join(dir, "db_profiles.example.json")); err == nil {
+				return dir
+			}
+			parent := filepath.Dir(dir)
+			if parent == dir {
+				break
+			}
+			dir = parent
 		}
-		parent := filepath.Dir(dir)
-		if parent == dir {
-			break
-		}
-		dir = parent
 	}
 	return "."
 }
