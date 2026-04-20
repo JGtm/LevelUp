@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import { Link } from '@tanstack/react-router'
 import { Badge } from '@/components/ui/badge'
 import type { MediaItemRow } from '@/lib/api/types'
 
@@ -255,14 +256,15 @@ export function MediaLightbox({ items, onToggleLike, startIndex, onClose, likeDi
             onToggle={() => onToggleLike(item)}
             disabled={likeDisabled}
           />
-          {item.match_id && (
-            <a
-              href={`/players/${item.owner_gamertag ?? 'me'}/match/${item.match_id}`}
+          {item.match_id && item.owner_gamertag && (
+            <Link
+              to="/players/$playerSlug/matches/$matchId"
+              params={{ playerSlug: item.owner_gamertag, matchId: item.match_id }}
               className="ml-auto whitespace-nowrap text-xs text-primary underline hover:text-primary/80"
               onClick={(event) => event.stopPropagation()}
             >
               Voir le match →
-            </a>
+            </Link>
           )}
           </div>
           <LikersLine likers={item.likers} totalLikers={item.total_likers} />

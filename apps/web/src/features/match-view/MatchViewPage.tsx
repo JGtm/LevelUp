@@ -2,7 +2,7 @@
  * MatchViewPage — détail d'un match (5 onglets).
  */
 import { useState } from 'react'
-import { useParams } from '@tanstack/react-router'
+import { useParams, useRouter, Link } from '@tanstack/react-router'
 import { useQueryClient } from '@tanstack/react-query'
 import { PageHeader } from '@/components/shell/PageHeader'
 import { Spinner } from '@/components/ui/spinner'
@@ -16,6 +16,65 @@ import { ExpectedCardsSection, MatchRankBadge, KdIndicatorCard } from './MatchSt
 import { useSetMatchExclusion } from '@/features/match-history/queries'
 import { queryKeys } from '@/lib/query/keys'
 import { PrivacyBanner } from '@/components/ui/privacy-banner'
+
+// ─── Breadcrumb ───────────────────────────────────────────────────────────────
+
+interface MatchBreadcrumbProps {
+  playerSlug: string
+  matchLabel: string
+}
+
+function MatchBreadcrumb({ playerSlug, matchLabel }: MatchBreadcrumbProps) {
+  const router = useRouter()
+
+  function handleBack() {
+    const canGoBack = router.history.length > 1
+    if (canGoBack) {
+      router.history.back()
+    } else {
+      void router.navigate({
+        to: '/players/$playerSlug/explorer',
+        params: { playerSlug },
+      })
+    }
+  }
+
+  return (
+    <div className="flex items-center gap-2 px-6 pt-4 pb-2 text-sm text-muted-foreground">
+      <button
+        type="button"
+        onClick={handleBack}
+        className="flex items-center gap-1 hover:text-foreground transition-colors"
+        aria-label="Retour"
+      >
+        <svg
+          xmlns="http://www.w3.org/2000/svg"
+          viewBox="0 0 20 20"
+          fill="currentColor"
+          className="h-4 w-4"
+          aria-hidden="true"
+        >
+          <path
+            fillRule="evenodd"
+            d="M17 10a.75.75 0 01-.75.75H5.612l4.158 3.96a.75.75 0 11-1.04 1.08l-5.5-5.25a.75.75 0 010-1.08l5.5-5.25a.75.75 0 111.04 1.08L5.612 9.25H16.25A.75.75 0 0117 10z"
+            clipRule="evenodd"
+          />
+        </svg>
+        Retour
+      </button>
+      <span aria-hidden="true">·</span>
+      <Link
+        to="/players/$playerSlug/home"
+        params={{ playerSlug }}
+        className="hover:text-foreground transition-colors truncate max-w-[12rem]"
+      >
+        {playerSlug}
+      </Link>
+      <span aria-hidden="true">›</span>
+      <span className="text-foreground truncate">{matchLabel}</span>
+    </div>
+  )
+}
 
 type TabId = 'summary' | 'combat' | 'team' | 'media' | 'citations'
 
@@ -61,9 +120,11 @@ export function MatchViewPage() {
   }
 
   const { header, rank, summary_tab, combat_tab, team_tab, media_tab, citations_tab } = data
+  const matchLabel = `${header.map_ui} — ${header.mode_ui}`
 
   return (
     <div className="flex flex-col">
+      <MatchBreadcrumb playerSlug={playerSlug} matchLabel={matchLabel} />
       <PageHeader
         title={`${header.map_ui} — ${header.mode_ui}`}
         subtitle={header.start_time_label}

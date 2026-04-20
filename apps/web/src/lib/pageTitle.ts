@@ -15,7 +15,7 @@ const PLAYER_ROUTE_OVERRIDES: RouteTitleRule[] = [
   { pattern: '/players/$playerSlug/palmares/season-pass', title: 'Pass saisonnier' },
   { pattern: '/players/$playerSlug/squad/contributions', title: 'Contributions' },
   { pattern: '/players/$playerSlug/squad/synergies', title: 'Synergies' },
-  { pattern: '/players/$playerSlug/explorer/matches/$matchId', title: 'Match' },
+  { pattern: '/players/$playerSlug/matches/$matchId', title: 'Match' },
   { pattern: '/players/$playerSlug/profile/citations', title: 'Citations' },
   { pattern: '/players/$playerSlug', title: 'Accueil' },
 ]

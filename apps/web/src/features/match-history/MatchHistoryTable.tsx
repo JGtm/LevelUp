@@ -90,7 +90,7 @@ export function MatchHistoryTable({
 
   function navigateToMatch(matchId: string) {
     void navigate({
-      to: '/players/$playerSlug/explorer/matches/$matchId',
+      to: '/players/$playerSlug/matches/$matchId',
       params: { playerSlug, matchId },
     })
   }
