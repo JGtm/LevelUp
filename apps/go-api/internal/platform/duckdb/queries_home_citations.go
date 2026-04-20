@@ -28,7 +28,7 @@ SELECT
     mp.accuracy,
     mp.time_played_seconds
 FROM shared.match_participants mp
-JOIN shared.match_registry r ON r.match_id = mp.match_id
+JOIN shared.v_match_full r ON r.match_id = mp.match_id
 LEFT JOIN player_match_enrichment pme ON pme.match_id = mp.match_id
 WHERE mp.xuid = ?
 ORDER BY r.start_time DESC

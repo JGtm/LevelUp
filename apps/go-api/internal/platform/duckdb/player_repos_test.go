@@ -82,6 +82,7 @@ func seedPlayerSchema(t *testing.T, db *DB) { //nolint:funlen
 			       xuid::VARCHAR AS victim_xuid, gamertag::VARCHAR AS victim_gamertag,
 			       0::INTEGER AS kill_count, 0::BIGINT AS time_ms
 			FROM shared.match_participants WHERE FALSE`,
+		`CREATE VIEW shared.v_match_full AS SELECT * FROM shared.match_registry`,
 		// ── Schéma meta simulé (ATTACH metadata.duckdb)
 		`CREATE SCHEMA IF NOT EXISTS meta`,
 		`CREATE TABLE meta.citation_mappings (

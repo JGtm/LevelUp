@@ -29,6 +29,7 @@ func (r *MatchExclusionRepo) SetExclusion(ctx context.Context, matchID string, e
 	if err != nil {
 		return fmt.Errorf("MatchExclusionRepo.SetExclusion: open rw: %w", err)
 	}
+	defer rwDB.Close()
 
 	_, err = rwDB.Exec(ctx, `
 		INSERT INTO player_match_enrichment (match_id, is_excluded, updated_at)

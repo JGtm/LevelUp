@@ -12,6 +12,8 @@ import (
 	"fmt"
 	"sync"
 
+	"levelup/go-api/internal/migration"
+
 	"golang.org/x/sync/singleflight"
 )
 
@@ -92,6 +94,10 @@ func CloseAll() {
 
 // openPlayerDB ouvre et initialise un PlayerDB complet.
 func openPlayerDB(ctx context.Context, cfg PlayerPoolConfig) (*PlayerDB, error) {
+	if err := ensurePlayerDBMigrations(cfg.PlayerDBPath); err != nil {
+		return nil, fmt.Errorf("pool: migrate player db %s: %w", cfg.Gamertag, err)
+	}
+
 	playerDB, err := OpenReadOnly(cfg.PlayerDBPath)
 	if err != nil {
 		return nil, fmt.Errorf("pool: open player db %s: %w", cfg.Gamertag, err)
@@ -134,6 +140,21 @@ func openPlayerDB(ctx context.Context, cfg PlayerPoolConfig) (*PlayerDB, error) 
 		Gamertag:  cfg.Gamertag,
 		TitleSlug: cfg.TitleSlug,
 	}, nil
+}
+
+func ensurePlayerDBMigrations(path string) error {
+	_ = migration.All()
+
+	rwDB, err := OpenReadWrite(path)
+	if err != nil {
+		return fmt.Errorf("open rw: %w", err)
+	}
+	defer rwDB.Close()
+
+	if err := migration.RunForDB(rwDB.SQLDb(), migration.TargetPlayer); err != nil {
+		return fmt.Errorf("run migrations: %w", err)
+	}
+	return nil
 }
 
 // attachShared attache shared_matches_v2.duckdb sur une connexion player.
