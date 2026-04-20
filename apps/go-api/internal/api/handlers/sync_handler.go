@@ -123,3 +123,67 @@ func (h *SyncHandler) StartInitialSync(w http.ResponseWriter, r *http.Request) {
 
 	writeJSON(w, http.StatusAccepted, job)
 }
+
+// StartDeltaSync lance une synchronisation delta pour un joueur donné.
+// POST /api/v1/players/{player_slug}/sync → 202 AsyncJobStatus.
+// Contrairement à StartInitialSync, cette route n'est pas protégée par can_start_initial_sync.
+func (h *SyncHandler) StartDeltaSync(w http.ResponseWriter, r *http.Request) {
+	playerSlug := r.PathValue("player_slug")
+	if playerSlug == "" {
+		writeError(w, http.StatusBadRequest, "invalid_player_slug", "player_slug manquant.")
+		return
+	}
+
+	if active := h.jobStore.FindActiveInitialSync(playerSlug); active != nil {
+		writeError(w, http.StatusConflict, "sync_already_active",
+			"Une synchronisation est déjà en cours pour ce joueur.")
+		return
+	}
+
+	sess := middleware.GetSession(r.Context())
+	if sess == nil || sess.HaloTokens == nil {
+		writeError(w, http.StatusUnauthorized, "auth_required",
+			"Tokens Halo absents.")
+		return
+	}
+	tokens := sess.HaloTokens
+
+	players, err := h.cfg.LoadPlayers()
+	if err != nil {
+		writeError(w, http.StatusInternalServerError, "profiles_load_error", "Impossible de charger db_profiles.json.")
+		return
+	}
+	var gamertag, xuid string
+	for _, p := range players {
+		if p.PlayerSlug == playerSlug {
+			gamertag = p.Gamertag
+			xuid = p.XUID
+			break
+		}
+	}
+	if gamertag == "" {
+		writeError(w, http.StatusNotFound, "player_not_found",
+			fmt.Sprintf("Joueur %q introuvable dans db_profiles.json.", playerSlug))
+		return
+	}
+
+	job := h.jobStore.Create(domain.JobTypeInitialSync, playerSlug)
+
+	go func() {
+		engine := go_sync.NewSyncEngine(h.cfg.RepoRoot, gamertag, xuid, tokens)
+		opts := domain.DefaultSyncOptions()
+
+		result, err := engine.RunDelta(context.Background(), opts)
+		if err != nil {
+			errMsg := err.Error()
+			h.jobStore.SetStatus(job.JobID, domain.JobStatusFailed, &errMsg)
+			return
+		}
+		summary := fmt.Sprintf("inserted=%d skipped=%d medals=%d duration=%.1fs status=%s",
+			result.MatchesInserted, result.MatchesSkipped, result.MedalsInserted,
+			result.DurationSeconds, result.Status())
+		h.jobStore.SetStatus(job.JobID, domain.JobStatusSucceeded, &summary)
+	}()
+
+	writeJSON(w, http.StatusAccepted, job)
+}
