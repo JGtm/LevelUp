@@ -8,7 +8,7 @@
  * - Likes persistés côté backend (player DB)
  * - Toolbar : type, section, tri, ordre
  */
-import { useState } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { useParams } from '@tanstack/react-router'
 import { PageHeader } from '@/components/shell/PageHeader'
 import { Card, CardContent } from '@/components/ui/card'
@@ -16,32 +16,33 @@ import { Spinner } from '@/components/ui/spinner'
 import type { MediaItemRow, MediaQueryRequest } from '@/lib/api/types'
 import { MediaLightbox, MediaThumbnailCard } from './MediaViewer'
 import { UploadButton } from './UploadButton'
-import { useMediaPage, useToggleMediaLike } from './queries'
+import { useMediaPage, useToggleMediaLike, useFeedVersion } from './queries'
+import { useQueryClient } from '@tanstack/react-query'
+import { queryKeys } from '@/lib/query/keys'
 
 const KIND_OPTIONS = [
   { value: '', label: 'Tous types' },
   { value: 'screenshot', label: 'Screenshots' },
   { value: 'clip', label: 'Clips' },
-  { value: 'thumbnail', label: 'Vignettes' },
 ]
 const SECTION_OPTIONS = [
-  { value: '', label: 'Toutes sections' },
-  { value: 'career', label: 'Carrière' },
-  { value: 'match', label: 'Match' },
-  { value: 'highlight', label: 'Highlight' },
+  { value: '', label: 'Tous auteurs' },
+  { value: 'mine', label: 'Mes captures' },
+  { value: 'teammate', label: 'Coéquipiers' },
 ]
 const SORT_OPTIONS = [
   { value: 'date_desc', label: 'Date ↓' },
   { value: 'date_asc', label: 'Date ↑' },
-  { value: 'name_asc', label: 'Nom A→Z' },
+  { value: 'map_asc', label: 'Carte A→Z' },
+  { value: 'mode_asc', label: 'Mode A→Z' },
 ]
 const GROUP_OPTIONS = [
   { value: '', label: 'Sans groupement' },
+  { value: 'owner', label: 'Par auteur' },
   { value: 'map', label: 'Par carte' },
   { value: 'mode', label: 'Par mode' },
   { value: 'week', label: 'Par semaine' },
-  { value: 'section', label: 'Par section' },
-  { value: 'owner', label: 'Par auteur' },
+  { value: 'liked', label: 'Aimés en premier' },
 ]
 const PAGE_SIZE = 24
 
@@ -54,6 +55,7 @@ export function MediaPage() {
   const [modeFilter, setModeFilter] = useState('')
   const [groupBy, setGroupBy] = useState('')
   const [sortKey, setSortKey] = useState('date_desc')
+  const [likedOnly, setLikedOnly] = useState(false)
   const [lightboxIdx, setLightboxIdx] = useState<number | null>(null)
 
   const request: MediaQueryRequest = {
@@ -63,12 +65,24 @@ export function MediaPage() {
     map_filter: mapFilter || null,
     mode_filter: modeFilter || null,
     group_by: groupBy || null,
+    liked_only: likedOnly || null,
     pagination: { page, page_size: PAGE_SIZE },
   }
 
   const { data, isLoading, isError, error, isFetching } = useMediaPage(playerSlug, request, page)
   const toggleMediaLike = useToggleMediaLike(playerSlug)
   const mediaItems: MediaItemRow[] = data?.items?.items ?? []
+
+  // Polling feed-version : invalide le cache si un autre joueur a uploadé/liké
+  const queryClient = useQueryClient()
+  const { data: feedVersion } = useFeedVersion(playerSlug)
+  const lastFeedVersion = useRef<number | undefined>(undefined)
+  useEffect(() => {
+    if (feedVersion !== undefined && lastFeedVersion.current !== undefined && feedVersion !== lastFeedVersion.current) {
+      queryClient.invalidateQueries({ queryKey: queryKeys.mediaBase(playerSlug) })
+    }
+    lastFeedVersion.current = feedVersion
+  }, [feedVersion, playerSlug, queryClient])
   const pagination = data?.items?.pagination
   const totalPages = pagination ? Math.ceil(pagination.total / PAGE_SIZE) : 1
   const totalLabel = data
@@ -152,12 +166,24 @@ export function MediaPage() {
             >
               {GROUP_OPTIONS.map((option) => <option key={option.value} value={option.value}>{option.label}</option>)}
             </select>
-            <div className="ml-auto">
-              <UploadButton playerSlug={playerSlug} />
-            </div>
+            <label className="flex cursor-pointer items-center gap-1.5 text-sm">
+              <input
+                type="checkbox"
+                checked={likedOnly}
+                onChange={(event) => {
+                  setLikedOnly(event.target.checked)
+                  setPage(1)
+                }}
+                className="rounded"
+              />
+              ♥ Aimés
+            </label>
           </div>
         }
       />
+
+      {/* Zone d'upload pleine largeur */}
+      <UploadButton playerSlug={playerSlug} fullWidth />
 
       {isLoading ? (
         <div className="flex min-h-64 items-center justify-center"><Spinner size="lg" /></div>

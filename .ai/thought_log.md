@@ -1,5 +1,124 @@
 # Thought Log
 
+## [2025-01-22] feat(media): galerie partagée, filtres fonctionnels, likes sociaux, feed-version
+
+**Statut** : Complété
+
+### Décisions techniques
+
+1. **Upload full-width au-dessus de la grille** — `UploadButton` reçoit une prop `fullWidth` qui élargit la zone de dépôt, et est repositionné hors du `PageHeader` dans `MediaPage.tsx`.
+2. **Filtres dynamiques via `BuildQ37MediaQuery`** — remplace la constante `Q37MediaFiles` par une fonction avec WHERE/ORDER BY dynamiques. JOIN vers `shared.match_registry` pour `map_name`/`mode_name`.
+3. **`queryKey` corrigée** — `useMediaPage` calcule maintenant un `requestHash = JSON.stringify({p, s, k, sec, map, mod, g, lo})` pour que chaque combinaison de filtres soit indépendante dans le cache TanStack.
+4. **`MediaFilters` dans `domain`** — évite la dépendance circulaire `port → platform/duckdb`. Le type est défini en `domain.MediaFilters` et utilisé partout.
+5. **Likes sociaux via `media_likes` (shared DB)** — nouvelle table `media_likes(media_path, liker_slug, liker_gamertag, liked_at, PK)` dans `shared_matches_v2.duckdb`. `ToggleSharedLike` écrit/supprime la ligne, `GetMediaLikers` retourne les 3 premiers noms + total avec une window function.
+6. **`LikersLine` composant** — affiche "Alice, Bob et 3 autres ♥" dans la carte thumbnail et dans la lightbox footer.
+7. **`feedVersion` polling** — `GET /media/feed-version` retourne un compteur atomique incrémenté après chaque upload et like. `useFeedVersion` poll toutes les 10 s et invalide `mediaBase(playerSlug)` si la version a changé.
+8. **Erreurs `config`/`halo` pré-existantes** — confirmées présentes avant nos modifications (vérifiées via `git stash`). Hors périmètre.
+
+### Résultats observés
+
+- `go build` sur les packages modifiés : 0 erreur nouvelle
+- `tsc --noEmit` : 0 erreur dans les fichiers médias
+
+### Conclusion / prochaine étape
+
+Implémentation complète. Commit à effectuer.
+
+
+
+**Statut** : Complété
+
+### Décisions techniques
+
+1. **Utiliser `sticky` plutôt que `fixed` global** — la bannière reste fixée sous la L1 à l'intérieur de la zone scrollable de l'app, sans sortir du layout du shell.
+2. **Faire passer le contenu au-dessus au scroll** — la colonne de contenu de `HomePage` est montée en `z-10` sur fond `bg-background`, tandis que la bannière reste en `z-0`, ce qui permet à la page de la recouvrir naturellement pendant le défilement.
+3. **Augmenter franchement la hauteur du visuel** — l'image passe de `h-24 / sm:h-32 / lg:h-40` à `h-32 / sm:h-44 / lg:h-52`, soit au moins +30% sur chaque breakpoint.
+
+### Résultats observés
+
+- Le bandeau reste accroché sous la L1 pendant le scroll de la home
+- Le contenu de la page passe visuellement par-dessus
+- La hauteur du header visuel est sensiblement augmentée sur mobile, tablette et desktop
+
+### Conclusion
+
+La bannière d'accueil fonctionne maintenant comme un fond sticky sous la navigation, avec un impact visuel plus marqué.
+
+## [2026-04-20] fix(web): aligner le radius de la bannière home sur les sections
+
+**Statut** : Complété
+
+### Décisions techniques
+
+1. **Réutiliser la même classe que les cartes de section** — `HomeHeroBanner` utilisait `rounded-[28px]` alors que les sections de la home reposent sur `Card` en `rounded-lg`.
+2. **Limiter le changement au composant décoratif** — le rendu, l'image et les overlays restent inchangés ; seul le radius est harmonisé.
+
+### Résultats observés
+
+- `HomeHeroBanner.tsx` utilise maintenant `rounded-lg`
+- La bannière garde le même placement sous la L1, avec des coins cohérents avec les sections voisines
+
+### Conclusion
+
+Le bandeau d'accueil partage désormais le même radius que les sections de la page.
+
+## [2026-04-20] perf: cache Go + React — round 2 (5 axes)
+
+**Statut** : Complété
+
+**Décisions techniques** :
+1. `CareerService` : 3 caches `memcache.Cache` (page/topMatches/encounters, TTL 30 min) + `GetOrSet` avec singleflight intégré
+2. `config_cache.go` : `LoadPlayersCached` + `LoadAppSettingsCached` (TTL 30 s) stockés sur l'instance `AppConfig` (pas de globals) → isolation tests garantie
+3. `memcache.GetOrSet` : singleflight embarqué pour éviter le thundering herd sur les miss
+4. `gcTime` TanStack Query : 10 min → 60 min (doit être ≥ staleTime max = 30 min)
+5. `NavL1` : `onMouseEnter` → `prefetchQuery` via `useNavPrefetch` pour navigation perçue instantanée
+
+**Résultats** : `go test ./internal/service/... ./internal/config/... ./internal/api/handlers/... ./internal/api/middleware/...` — OK, 0 failure
+
+**Conclusion** : Les deux rounds de cache sont posés. Round 1 (ETag, singleflight memcache HomeService, config cache bootstrap, staleTime frontend, useMemo) + Round 2 complétés. Prochaine étape : aucune tâche cache en attente.
+
+## [2026-04-20] fix(web): rétablir Palmarès dans la barre L1
+
+**Statut** : Complété
+
+### Décisions techniques
+
+1. **Corriger à la source dans `NavL1.tsx`** — la barre L1 utilisait encore une liste statique ancienne qui ne contenait pas `Palmarès`, alors que les routes et le hub React existaient déjà.
+2. **Ajouter la détection active du hub** — l'entrée `palmares` est maintenant matchée sur `/players/{slug}/palmares...`, ce qui couvre la page index et les sous-routes `relations`, `compare` et `season-pass`.
+3. **Rester cohérent avec le pattern L1 existant** — `Palmarès` a été ajouté comme section à split-button, avec ses sous-onglets `Classements`, `Relations`, `Comparer` et `Pass saisonnier`, plutôt que comme lien isolé divergent du reste de la nav.
+4. **Verrouiller la non-régression** — ajout d'un test `NavL1.test.tsx` qui vérifie la présence de `Palmarès` et son état actif sur une sous-route du hub.
+
+### Résultats observés
+
+- `NavL1.tsx` affiche de nouveau `Palmarès` quand un joueur est actif.
+- La L1 sait maintenant marquer correctement le hub `Palmarès` comme section active.
+- `vitest run src/components/shell/NavL1.test.tsx` : OK (2 tests)
+- Le correctif est isolé au shell React, sans impact backend ni schéma.
+
+### Conclusion
+
+Le problème venait d'une source de vérité UI obsolète dans la L1. Le hub `Palmarès` est maintenant visible et couvert par un test ciblé.
+
+## [2026-04-20] fix(web): rendre effectivement visible la bannière Echoes Within sur la home
+
+**Statut** : Complété
+
+### Décisions techniques
+
+1. **Corriger le vrai bug runtime** — `HomeHeroBanner.tsx` existait, mais `HomePage.tsx` ne l'importait plus et ne le rendait plus ; la correction a donc consisté à le réinjecter en tête du flux de contenu.
+2. **Valider jusqu'au bundle** — un simple test composant ne suffisait pas ; le frontend a été reconstruit pour vérifier que `dist` contient bien `home-hero-banner` et la référence `/echoes-within-header.webp`.
+3. **Reverrouiller les tests** — les assertions Home liées à la bannière ont été réajoutées pour couvrir la présence du bandeau et son ordre avant le warning privacy.
+
+### Résultats observés
+
+- `HomePage.tsx` rend bien `HomeHeroBanner` juste sous la L1
+- `npm run build` dans `apps/web` : OK
+- `dist/assets/home-*.js` contient `home-hero-banner` et `/echoes-within-header.webp`
+
+### Conclusion
+
+Le problème venait d'un rendu perdu dans la home, pas de l'asset lui-même. Le bundle reconstruit embarque maintenant correctement la bannière visuelle.
+
 ## [2026-04-20] feat(web): ajouter un switch dark/light dans la nav L1
 
 **Statut** : Complété

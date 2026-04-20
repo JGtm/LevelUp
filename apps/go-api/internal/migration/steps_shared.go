@@ -378,6 +378,24 @@ func init() {
 			return nil
 		},
 	})
+
+	Register(Migration{
+		Name:        "add_media_likes",
+		TargetDB:    TargetShared,
+		Description: "Table media_likes pour les likes sociaux partagés entre joueurs",
+		ApplySchema: func(db *sql.DB) error {
+			return execScript(db, `
+				CREATE TABLE IF NOT EXISTS media_likes (
+					media_path      VARCHAR NOT NULL,
+					liker_slug      VARCHAR NOT NULL,
+					liker_gamertag  VARCHAR NOT NULL DEFAULT '',
+					liked_at        TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+					PRIMARY KEY (media_path, liker_slug)
+				);
+				CREATE INDEX IF NOT EXISTS idx_ml_path ON media_likes(media_path);
+			`)
+		},
+	})
 }
 
 // applyHighlightEventsAutoincrement recrée highlight_events avec séquence.

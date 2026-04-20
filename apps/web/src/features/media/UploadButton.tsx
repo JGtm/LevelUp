@@ -12,9 +12,11 @@ const ACCEPTED_MIME = new Set([
 
 interface Props {
   playerSlug: string
+  /** Afficher la zone de drop pleine largeur (mode galerie) */
+  fullWidth?: boolean
 }
 
-export function UploadButton({ playerSlug }: Props) {
+export function UploadButton({ playerSlug, fullWidth = false }: Props) {
   const inputRef = useRef<HTMLInputElement>(null)
   const { mutate, isPending, isSuccess, data, error, reset } = useUploadMedia(playerSlug)
   const [isDragging, setIsDragging] = useState(false)
@@ -45,7 +47,7 @@ export function UploadButton({ playerSlug }: Props) {
   }
 
   return (
-    <div className="flex flex-col gap-2">
+    <div className={fullWidth ? 'flex w-full flex-col gap-2' : 'flex flex-col gap-2'}>
       <input
         ref={inputRef}
         type="file"
@@ -63,7 +65,8 @@ export function UploadButton({ playerSlug }: Props) {
         onDrop={onDrop}
         onClick={() => !isPending && inputRef.current?.click()}
         className={[
-          'flex cursor-pointer flex-col items-center justify-center gap-1.5 rounded-lg border-2 border-dashed px-6 py-4 text-sm transition-colors select-none',
+          'flex cursor-pointer flex-col items-center justify-center gap-1.5 rounded-lg border-2 border-dashed text-sm transition-colors select-none',
+          fullWidth ? 'w-full px-6 py-6' : 'px-6 py-4',
           isPending
             ? 'cursor-not-allowed border-input text-muted-foreground'
             : isDragging

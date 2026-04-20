@@ -17,6 +17,7 @@ import (
 	"net/http"
 	"path/filepath"
 	"strings"
+	"sync/atomic"
 
 	"github.com/go-chi/chi/v5"
 
@@ -122,6 +123,7 @@ func (h *MediaHandler) PatchMediaLike(w http.ResponseWriter, r *http.Request) {
 	}
 
 	writeJSON(w, http.StatusOK, resp)
+	BumpMediaFeedVersion()
 }
 
 // PostUploadMedia reçoit des fichiers via multipart/form-data, les sauvegarde
@@ -177,6 +179,7 @@ func (h *MediaHandler) PostUploadMedia(w http.ResponseWriter, r *http.Request) {
 	}
 
 	writeJSON(w, http.StatusOK, result)
+	BumpMediaFeedVersion()
 }
 
 // parseUploadedFiles extrait et valide les fichiers du formulaire multipart.
@@ -223,4 +226,25 @@ func resolveCapturesDir(titleSlug, gamertag string) string {
 		return filepath.Join("data", "titles", titleSlug, "players", gamertag, "captures")
 	}
 	return filepath.Join("data", "players", gamertag, "captures")
+}
+
+// ---------------------------------------------------------------------------
+// Feed-version — polling léger pour rafraîchir la galerie
+// ---------------------------------------------------------------------------
+
+// mediaFeedVersion est incrémenté à chaque upload ou like pour que les
+// clients puissent détecter les changements sans ouvrir un websocket.
+var mediaFeedVersion int64
+
+// BumpMediaFeedVersion incrémente le compteur de version de la galerie.
+// Appelé après upload ou toggle like.
+func BumpMediaFeedVersion() {
+	atomic.AddInt64(&mediaFeedVersion, 1)
+}
+
+// GetMediaFeedVersion retourne la version courante du flux médias.
+// GET /api/v1/media/feed-version
+func GetMediaFeedVersion(w http.ResponseWriter, _ *http.Request) {
+	v := atomic.LoadInt64(&mediaFeedVersion)
+	writeJSON(w, http.StatusOK, map[string]int64{"version": v})
 }

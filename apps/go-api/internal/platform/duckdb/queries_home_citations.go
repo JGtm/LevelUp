@@ -1,6 +1,8 @@
 // Package duckdb — queries_home_citations.go : requêtes page Home, citations et médias.
 package duckdb
 
+import "levelup/go-api/internal/domain"
+
 // Q26 : Home — matchs recents d un joueur avec KPIs pour le hero card.
 // Parametre : ?1 = xuid du joueur.
 // Retourne les 200 derniers matchs (hero card, highlights, recent matches, sessions).
@@ -116,8 +118,9 @@ WHERE mapping_type = 'medal'
   AND enabled IS NOT FALSE
   AND medal_id IS NOT NULL`
 
-// Q37 : Médias — fichiers actifs paginés depuis media_files + associations.
-// Paramètres : ?1 = LIMIT, ?2 = OFFSET.
+// Q37 : Médias — fichiers actifs paginés depuis media_files + associations + match_registry.
+// Remplacé par BuildQ37MediaQuery pour les filtres/tri dynamiques.
+// Conservé pour compatibilité éventuelle.
 const Q37MediaFiles = `
 SELECT
     mf.file_path,
@@ -127,12 +130,117 @@ SELECT
     mf.capture_end_utc,
     mma.match_id,
     mma.match_start_time,
-    COALESCE(mf.liked, FALSE) AS liked
+    COALESCE(mf.liked, FALSE) AS liked,
+    mr.map_name,
+    mr.pair_name AS mode_name
 FROM media_files mf
 LEFT JOIN media_match_associations mma ON mf.file_path = mma.media_path
+LEFT JOIN shared.match_registry mr ON mma.match_id = mr.match_id
 WHERE mf.status = 'active'
 ORDER BY mf.mtime DESC
 LIMIT ? OFFSET ?`
 
 // Q37Count : Médias — nombre total de fichiers actifs.
 const Q37MediaCount = `SELECT COUNT(*) FROM media_files WHERE status = 'active'`
+
+// BuildQ37MediaQuery construit dynamiquement la query médias avec filtres et tri.
+// Retourne la query SQL et les args à passer (dans l'ordre : filtres..., limit, offset).
+func BuildQ37MediaQuery(f domain.MediaFilters, limit, offset int) (string, []any) {
+	where := []string{"mf.status = 'active'"}
+	args := []any{}
+
+	if f.KindFilter != "" {
+		where = append(where, "mf.kind = ?")
+		args = append(args, f.KindFilter)
+	}
+	if f.LikedOnly {
+		where = append(where, "COALESCE(mf.liked, FALSE) = TRUE")
+	}
+	if f.MapFilter != "" {
+		where = append(where, "mr.map_name ILIKE ?")
+		args = append(args, "%"+f.MapFilter+"%")
+	}
+	if f.ModeFilter != "" {
+		where = append(where, "mr.pair_name ILIKE ?")
+		args = append(args, "%"+f.ModeFilter+"%")
+	}
+
+	orderBy := "mf.mtime DESC"
+	switch f.Sort {
+	case "date_asc":
+		orderBy = "mf.mtime ASC"
+	case "map_asc":
+		orderBy = "COALESCE(mr.map_name, '') ASC, mf.mtime DESC"
+	case "mode_asc":
+		orderBy = "COALESCE(mr.pair_name, '') ASC, mf.mtime DESC"
+	}
+
+	whereClause := ""
+	for i, w := range where {
+		if i == 0 {
+			whereClause = "WHERE " + w
+		} else {
+			whereClause += " AND " + w
+		}
+	}
+
+	q := `SELECT
+    mf.file_path,
+    mf.file_name,
+    mf.kind,
+    mf.thumbnail_path,
+    mf.capture_end_utc,
+    mma.match_id,
+    mma.match_start_time,
+    COALESCE(mf.liked, FALSE) AS liked,
+    mr.map_name,
+    mr.pair_name AS mode_name
+FROM media_files mf
+LEFT JOIN media_match_associations mma ON mf.file_path = mma.media_path
+LEFT JOIN shared.match_registry mr ON mma.match_id = mr.match_id
+` + whereClause + `
+ORDER BY ` + orderBy + `
+LIMIT ? OFFSET ?`
+
+	args = append(args, limit, offset)
+	return q, args
+}
+
+// BuildQ37MediaCountQuery construit la query COUNT correspondante aux filtres actifs.
+func BuildQ37MediaCountQuery(f domain.MediaFilters) (string, []any) {
+	where := []string{"mf.status = 'active'"}
+	args := []any{}
+
+	if f.KindFilter != "" {
+		where = append(where, "mf.kind = ?")
+		args = append(args, f.KindFilter)
+	}
+	if f.LikedOnly {
+		where = append(where, "COALESCE(mf.liked, FALSE) = TRUE")
+	}
+	if f.MapFilter != "" {
+		where = append(where, "mr.map_name ILIKE ?")
+		args = append(args, "%"+f.MapFilter+"%")
+	}
+	if f.ModeFilter != "" {
+		where = append(where, "mr.pair_name ILIKE ?")
+		args = append(args, "%"+f.ModeFilter+"%")
+	}
+
+	whereClause := ""
+	for i, w := range where {
+		if i == 0 {
+			whereClause = "WHERE " + w
+		} else {
+			whereClause += " AND " + w
+		}
+	}
+
+	q := `SELECT COUNT(*)
+FROM media_files mf
+LEFT JOIN media_match_associations mma ON mf.file_path = mma.media_path
+LEFT JOIN shared.match_registry mr ON mma.match_id = mr.match_id
+` + whereClause
+
+	return q, args
+}
