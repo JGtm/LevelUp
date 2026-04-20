@@ -29,7 +29,8 @@ type AuthHandler struct {
 	sessionStore *session.Store
 	attempts     *auth_platform.AttemptStore
 	demoMode     bool
-	userStore    UserLinker // optionnel — lie gamertag→user après Device Code Flow
+	userStore    UserLinker                 // optionnel — lie gamertag→user après Device Code Flow
+	provider     auth_platform.TokenProvider // abstrait le mécanisme d'acquisition de tokens
 }
 
 // UserLinker est une interface pour lier l'identité Halo à un user local.
@@ -38,11 +39,12 @@ type UserLinker interface {
 }
 
 // NewAuthHandler crée un AuthHandler.
-func NewAuthHandler(sessionStore *session.Store, attempts *auth_platform.AttemptStore, demoMode bool) *AuthHandler {
+func NewAuthHandler(sessionStore *session.Store, attempts *auth_platform.AttemptStore, demoMode bool, provider auth_platform.TokenProvider) *AuthHandler {
 	return &AuthHandler{
 		sessionStore: sessionStore,
 		attempts:     attempts,
 		demoMode:     demoMode,
+		provider:     provider,
 	}
 }
 
@@ -73,9 +75,8 @@ func (h *AuthHandler) StartDeviceFlow(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Nouvelle tentative : initier le Device Code Flow MSAL.
-	cacheAccessor := &auth_platform.InMemoryCacheAccessor{}
-	flow, err := auth_platform.InitDeviceFlow(r.Context(), cacheAccessor)
+	// Nouvelle tentative : initier le Device Code Flow via le provider configuré.
+	flow, err := h.provider.InitDeviceFlow(r.Context())
 	if err != nil {
 		h.attempts.Update(attempt.AttemptID, func(a *auth_platform.Attempt) {
 			a.Status = "failed"
@@ -166,7 +167,7 @@ func (h *AuthHandler) pollDeviceFlow(attemptID string, flow *auth_platform.Devic
 	}
 
 	// Chaîne d'échange : access_token → tokens Halo + identité.
-	result, err := auth_platform.ExchangeAccessToken(ctx, accessToken)
+	result, err := h.provider.Exchange(ctx, accessToken)
 	if err != nil {
 		h.attempts.Update(attemptID, func(a *auth_platform.Attempt) {
 			a.Status = "failed"
