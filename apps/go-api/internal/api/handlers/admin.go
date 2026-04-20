@@ -12,6 +12,7 @@ package handlers
 import (
 	"encoding/json"
 	"errors"
+	"log/slog"
 	"net/http"
 
 	"github.com/go-chi/chi/v5"
@@ -52,9 +53,11 @@ func (h *AdminHandler) DeleteUser(w http.ResponseWriter, r *http.Request) {
 			writeError(w, http.StatusNotFound, "not_found", "utilisateur introuvable")
 			return
 		}
+		slog.Error("admin: erreur delete user", "target", username, "err", err)
 		writeError(w, http.StatusInternalServerError, "delete_error", "erreur de suppression")
 		return
 	}
+	slog.Info("admin: utilisateur supprimé", "target", username, "by", adminUsername(r))
 	w.WriteHeader(http.StatusNoContent)
 }
 
@@ -78,9 +81,11 @@ func (h *AdminHandler) ChangeRole(w http.ResponseWriter, r *http.Request) {
 			writeError(w, http.StatusNotFound, "not_found", "utilisateur introuvable")
 			return
 		}
+		slog.Error("admin: erreur change role", "target", username, "role", body.Role, "err", err)
 		writeError(w, http.StatusInternalServerError, "role_error", "erreur de modification")
 		return
 	}
+	slog.Info("admin: rôle modifié", "target", username, "role", body.Role, "by", adminUsername(r))
 	w.WriteHeader(http.StatusNoContent)
 }
 
@@ -104,9 +109,11 @@ func (h *AdminHandler) ResetPassword(w http.ResponseWriter, r *http.Request) {
 			writeError(w, http.StatusBadRequest, "validation_error", err.Error())
 			return
 		}
+		slog.Error("admin: erreur reset password", "target", username, "err", err)
 		writeError(w, http.StatusInternalServerError, "reset_error", "erreur de réinitialisation")
 		return
 	}
+	slog.Info("admin: mot de passe réinitialisé", "target", username, "by", adminUsername(r))
 	w.WriteHeader(http.StatusNoContent)
 }
 
@@ -144,9 +151,11 @@ func (h *AdminHandler) GenerateInvite(w http.ResponseWriter, r *http.Request) {
 
 	invite, err := h.invites.Generate(createdBy, body.ExpiresInDays)
 	if err != nil {
+		slog.Error("admin: erreur generate invite", "by", createdBy, "err", err)
 		writeError(w, http.StatusInternalServerError, "generate_error", "erreur de génération")
 		return
 	}
+	slog.Info("admin: invitation générée", "code", invite.Code, "by", createdBy, "expires_in_days", body.ExpiresInDays)
 	writeJSON(w, http.StatusCreated, invite)
 }
 
@@ -159,13 +168,24 @@ func (h *AdminHandler) RevokeInvite(w http.ResponseWriter, r *http.Request) {
 			writeError(w, http.StatusNotFound, "not_found", "invitation introuvable")
 			return
 		}
+		slog.Error("admin: erreur revoke invite", "code", code, "err", err)
 		writeError(w, http.StatusInternalServerError, "revoke_error", "erreur de révocation")
 		return
 	}
+	slog.Info("admin: invitation révoquée", "code", code, "by", adminUsername(r))
 	w.WriteHeader(http.StatusNoContent)
 }
 
 // getSessionFromRequest est un helper pour accéder à la session depuis le contexte.
 func getSessionFromRequest(r *http.Request) *domain.SessionData {
 	return middleware.GetSession(r.Context())
+}
+
+// adminUsername extrait le username admin depuis la session de la requête.
+func adminUsername(r *http.Request) string {
+	sess := getSessionFromRequest(r)
+	if sess != nil && sess.Username != nil {
+		return *sess.Username
+	}
+	return "unknown"
 }
