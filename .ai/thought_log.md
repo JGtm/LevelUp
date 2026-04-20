@@ -1,5 +1,163 @@
 # Thought Log
 
+## [2026-04-20] fix(home): auth GameCMS des défis + vérification live JGtm
+
+**Statut** : Complété
+
+**Décision technique** : le provider Go des défis home doit utiliser l'auth Spartan aussi pour GameCMS, pas seulement pour `/decks`. Les fetchs de définitions et de badges passent désormais par `doGet`/`doGetWithAccept` authentifiés, et les badges renvoyés au frontend sont encodés en data URLs pour éviter un blocage navigateur sur les headers Spartan impossibles à ajouter côté client.
+
+**Résultats** :
+- `apps/go-api/internal/platform/halo/challenges_details.go` : définitions CMS authentifiées, badges récupérés côté serveur puis encodés en `data:image/png;base64,...`.
+- `apps/go-api/internal/platform/halo/provider.go` : enrichissement des items actifs avec passage explicite des tokens Halo.
+- `apps/go-api/internal/platform/halo/provider_test.go` : tests mis à jour pour exiger l'auth sur `/decks`, `/hi/Progression/file/...` et `/hi/waypoint/file/images/...`.
+- `go test -count=1 ./internal/platform/halo/...` : PASS.
+- Vérification live après relance de l'API `LevelUp-go-migration` sur `:8000` : les titres/descriptions de JGtm sont désormais localisés (`Attention !`, `La pratique fait la perfection`) et au moins un badge remonte bien en data URL.
+- Inspection CMS du défi `S5WinterChallenges/Legendary/LWinterMedalSplatter.json` : aucune clé image/badge exploitable dans la définition, et plusieurs stems plausibles (`general-legendary`, `winter-legendary`, etc.) répondent `404` côté Waypoint ; le fallback visuel côté UI reste donc attendu pour ce défi précis.
+
+**Conclusion** : le bug principal venait bien d'un trou d'authentification GameCMS dans le backend Go. La localisation texte et les badges disponibles fonctionnent en live ; un sous-ensemble de défis saisonniers ne semble simplement pas exposer de badge Waypoint récupérable.
+
+## [2026-04-20] feat(battlepass): sonde complète des operations + persistance locale intégrale
+
+**Statut** : Complété
+
+**Décision technique** : ajout d'un collecteur Python autonome (`src/data/battlepass_probe.py` + `scripts/probe_battlepass_catalog.py`) qui réutilise l'auth Halo existante, l'endpoint Economy `rewardtracks/operations`, les fetchs GameCMS déjà présents et le cache d'assets battle pass. La progression joueur est maintenant normalisée dans une nouvelle table player DB `battlepass_snapshots`, tandis que le catalogue partagé reste dans `metadata.duckdb` et les payloads bruts sont écrits en JSON dans `data/investigation/battlepass/<joueur>/`.
+
+**Résultats** :
+- Tests ciblés Python : `tests/test_battlepass_snapshots.py` + `tests/test_battlepass_probe.py` + `tests/test_battlepass_data.py` PASS (8/8).
+- Exécution live validée sur `Chocoboflor` : 30 operations détectées, 30 snapshots joueur insérés dans `battlepass_snapshots`, 30 tracks persistés, 1007 items persistés.
+- Assets téléchargés/localisés : 60 visuels de track, 952 visuels d'items, 2 monnaies repo-static disponibles (`xpboost`, `rerollcurrency`).
+- Monnaies live additionnelles vues dans les rewards : `Currency/Currencies/softcurrency.json`, `Currency/Currencies/cR.json`, désormais classées comme monnaies externes non couvertes par les PNG embarqués du repo.
+
+**Conclusion** : le repo sait désormais aspirer l'ensemble des battle pass exposés côté joueur, conserver les payloads bruts hors ligne, hydrater le cache metadata partagé, historiser la progression joueur par track en base locale et distinguer proprement les monnaies repo-static des autres monnaies live.
+
+## [2026-04-20] fix(web): favicon casque et titre dynamique par route
+
+**Statut** : Complété
+
+**Décision technique** : réutilisation de l'asset public casque seul déjà présent (`apps/web/public/logo.png`) comme favicon, et ajout d'une résolution centralisée des titres de page à partir des routes TanStack Router pour synchroniser `document.title` au niveau de la route racine.
+
+**Résultats** :
+- `apps/web/index.html` pointe maintenant le favicon vers `logo.png` et définit `LevelUp` comme titre de base.
+- `apps/web/src/lib/pageTitle.ts` centralise le mapping route → libellé de page active.
+- `apps/web/src/routes/__root.tsx` met à jour `document.title` automatiquement à chaque changement de route (`LevelUp - <page active>`).
+
+**Conclusion** : le favicon utilise désormais le casque LevelUp sans wordmark, et le titre d'onglet reflète la page active sur l'ensemble du frontend React.
+
+## [2026-05-20] feat(home+season-pass): cache BP/Challenges + endpoint Season Pass + LiveRefreshTicker
+
+**Statut** : Complété
+
+**Décision technique** : Implémentation en 3 phases (A/B/C) approuvée précédemment.
+
+**Phase A — Cache BattlePass/Challenges TTL 1h**
+- `domain/home.go` : `FromCache bool` sur `BattlePassResponse` et `ChallengesResponse`
+- `port/repository.go` : interfaces `BattlePassCacheRepository` + `SeasonPassRepository`
+- `platform/duckdb/home_repo.go` : `LoadCachedBattlePass` (battlepass_track_definitions, is_current + TTL) + `LoadCachedChallenges` (ROW_NUMBER PARTITION BY challenge_path) + helpers
+- `service/home_service.go` : champ `cacheRepo`, méthode `WithCacheRepo()`, logique cache-first dans `GetBattlePass`/`GetChallenges` (TTL 1h, fallback live sur miss)
+- `registry.go` : `HomeCtxWithAuth` câble `WithCacheRepo(homeRepo)` sur le service
+
+**Phase B — Season Pass endpoint `/pages/palmares/season-pass`**
+- `domain/season_pass.go` (nouveau) : `SeasonPassStatus`, `SeasonPassTrackSummary`, `SeasonPassPageResponse` (mirror exact TS)
+- `port/services.go` : interface `SeasonPassService`
+- `platform/duckdb/season_pass_repo.go` (nouveau) : `SeasonPassRepo.LoadSeasonPassTracks` — JOIN battlepass_track_definitions + battlepass_track_translations, progression depuis raw_payload_json, calcul statut/isOwned/hasReachedMaxRank
+- `service/season_pass_service.go` (nouveau) : `SeasonPassService` — combine `SeasonPassRepository` + `HomeService.GetChallenges()`
+- `api/handlers/season_pass.go` (nouveau) : `SeasonPassHandler.GetSeasonPass` + `SeasonPassAuthFactory`
+- `api/handlers/season_pass_test.go` (nouveau) : 3 tests (OK / 404 / 500)
+- `registry.go` : méthode `SeasonPassCtxWithAuth`
+- `api/server.go` : route `GET /pages/palmares/season-pass`
+
+**Phase C — LiveRefreshTicker (5 min pendant présence)**
+- `watcher/live_refresh.go` (nouveau) : interface `LiveRefreshTrigger` + `PlayerLiveRefresher` — ticker 5min, utilise `halo.GetCachedPlayerTokens` + `ctxkeys.WithHaloAuth`, fire-and-forget via `PersistSink`
+- `watcher/player_watcher.go` : champ `liveRefresh LiveRefreshTrigger`, méthode `WithLiveRefresh()`, appels dans `OnPresenceActive`/`OnPresenceInactive`
+- `watcher/daemon.go` : `DaemonConfig.LiveRefreshFactory func(gamertag, xuid) LiveRefreshTrigger`
+- `cmd/server/main.go` : `LiveRefreshFactory` injecte `NewPlayerLiveRefresher` avec sink par joueur
+
+**Tests**
+- `service/home_service_test.go` : 5 nouveaux tests (CacheHit BP, CacheMiss BP, CacheHit Challenges, CacheMiss Challenges, NoCacheRepo)
+- `handlers/season_pass_test.go` : 3 tests
+- `go build ./...` : OK
+- `go test ./internal/service/... ./internal/api/handlers/... ./internal/watcher/...` : PASS
+
+**Conclusion** : Toutes les phases A/B/C implémentées, compilées et testées. L'endpoint `/pages/palmares/season-pass` est opérationnel pour le `SeasonPassPage.tsx` déjà en place côté frontend. Le ticker live rafraîchit silencieusement pendant la présence.
+
+## [2026-04-20] feat(sync): logging slog structuré + 21 tests E2E moteur sync
+
+**Statut** : Complété
+
+**Décision technique** : Migration complète de `log.Printf` → `slog` structuré dans tout `internal/sync/` (engine.go, aggregates.go, backfill.go). Ajout de logging diagnostique riche à chaque étape de `run()`, `processMatch()` et `runPostSyncPipeline()` avec attributs structurés (gamertag, match_id, durée, compteurs). Création de `engine_e2e_test.go` (21 tests) couvrant le workflow complet avec DuckDB in-memory + mockHaloClient.
+
+**Résultats** :
+- `engine.go` (445L) : chaque étape de `run()` loguée en slog (démarrage, leases, DBs, known IDs, pagination, dédup delta/full, post-sync, terminaison avec métriques)
+- `processMatch()` : logging début/fin avec durée_ms, erreurs par sous-étape (GetMatchStats, ExtractRegistry, InsertParticipants, InsertMedals, UpsertPlayerEnrichment)
+- `runPostSyncPipeline()` : logging détaillé pour chaque étape (perf scores, LUSR, career rank, aggregates, shared views)
+- `aggregates.go` + `backfill.go` : `log.Printf` → `slog.Warn` (0 imports `"log"` restants)
+- `engine_e2e_test.go` (796L, 21 tests) : processMatch full/sans participants/sans medals/erreur API/idempotent/multi-matchs, déduplication, delta stop, full continue, empty history/players, context cancelled, API call counting, sync_meta read/write/overwrite, SyncOptions validation (6 sous-tests), post-sync pipeline (nominal/career error/nil career)
+- Build `go build ./...` : OK
+- Tests `go test ./internal/sync/ ./internal/scheduler/` : 100% PASS
+
+**Conclusion** : Le moteur sync est désormais entièrement diagnosticable via slog structuré et couvert par 21 tests E2E supplémentaires validant le workflow complet sans réseau.
+
+## [2026-04-20] feat(scheduler): auto_sync testable avec mocks injectables + 11 tests
+
+**Statut** : Complété
+
+**Décision technique** : Refactoring de `auto_sync.go` pour injectabilité — extraction de `DeltaRunner` (interface), `EngineFactory` (func type), `TokenReader` (func type) et `RunOnce()` (publique, testable). Les champs `EngineFactory` et `TokenReader` sont exportés pour injection directe dans les tests. `CurrentInterval()` exporté pour vérification indirecte de `intervalFromHours`.
+
+**Résultats** :
+- `auto_sync.go` (360L) : scheduler refactoré avec logs structurés détaillés (slog), résumé de cycle `RunOnceResult`, compteurs Synced/Skipped/Failed
+- `auto_sync_test.go` (489L) : 11 tests passants — mocks `mockProvider` (auth.TokenProvider) et `mockRunner` (DeltaRunner), helpers `newTestScheduler`/`addPlayer` avec fichiers temp
+- Tests couvrent : intervalle par défaut/custom, liste vide, DB absente, token absent, erreur tokenReader, erreur Exchange, erreur RunDelta, succès partiel, succès complet, multi-joueurs mixtes, annulation ctx
+- Build complet `go build ./...` : OK
+
+**Conclusion** : Le scheduler est prêt pour un test en conditions réelles. Les logs structurés permettent un diagnostic précis de chaque étape par joueur.
+
+## [2026-04-20] feat(auth): OAuth v2 refresh_token path pour JGtm (et tout joueur sans MSAL cache)
+
+**Statut** : Complété
+
+**Décision technique** : 3 chemins dans `refreshTokensFromDB` — MSAL silent refresh (existant) → env var `SPNKR_OAUTH_REFRESH_TOKEN_<GT>` → `sync_meta.oauth_refresh_token` — sans casser le chemin existant. Le `.env.local` est chargé au démarrage via `config.Load()`. La normalisation gamertag (majuscules, espaces/tirets/points → underscore) est centralisée dans `oauthRefreshTokenForPlayer`.
+
+**Résultats** :
+- `internal/config/config.go` : `loadEnvLocal()` + appel dans `Load()`
+- `internal/platform/auth/oauth_refresh.go` : `ExchangeRefreshToken` (POST OAuth v2)
+- `internal/platform/auth/provider.go` : `TryOAuthRefresh` ajouté à l'interface + `MSALProvider`
+- `internal/platform/duckdb/queries_auth.go` : `ReadOAuthRefreshToken` (clé `oauth_refresh_token`)
+- `internal/api/registry.go` : `refreshTokensFromDB` 3-chemins + `oauthRefreshTokenForPlayer`
+- `internal/api/handlers/stub_provider_test.go` : méthode `TryOAuthRefresh` ajoutée au stub
+- Tests : `oauth_refresh_test.go` + `config_helpers_test.go` (loadEnvLocal × 4)
+- `go build ./...` : OK · `go test ./...` : OK sauf FAIL pré-existant `TestBuildFeatureFlags_Discord`
+
+**Conclusion** : joueur sans cache MSAL (ex: JGtm) peut désormais s'authentifier via son refresh_token `.env.local`.
+
+---
+
+## [2026-04-20] fix(media): distinguer filtres/tri et passer cartes+modes en listes déroulantes
+
+**Statut** : Complété
+
+**Décision technique** : séparation explicite de la toolbar React entre `Filtrer :` et `Trier :`, avec i18n FR/EN locale à la feature médias. Côté Go, le vrai correctif est porté au niveau des requêtes Q37 : les filtres carte/mode s'appuient désormais sur les libellés exposés à l'UI, les modes sont normalisés via la même logique que `filters/resolve` (`on <map>`, suffixes Forge/Ranked retirés), et la réponse média embarque des options distinctes `available_filters` pour alimenter les listes déroulantes.
+
+**Résultats** :
+- `apps/go-api/internal/platform/duckdb/queries_home_citations.go` : expressions SQL partagées pour cartes affichées et modes normalisés, tri/filtre alignés, nouvelles requêtes d'options distinctes cartes/modes.
+
+- `apps/go-api/internal/platform/duckdb/media_repo.go` + `internal/service/media_service.go` : chargement best-effort des options de filtres dans `MediaPageResponse.available_filters`.
+- `apps/web/src/features/media/MediaPage.tsx` : toolbar refondue, labels `Filtrer :` / `Trier :`, selects cartes/modes, texte multilingue.
+- `apps/web/src/features/media/MediaToolbar.tsx` + `i18n.ts` : extraction de la toolbar et dictionnaire local FR/EN.
+- Tests validés : `go test ./internal/platform/duckdb/... ./internal/api/handlers/... && go test ./internal/service -run Media` ✅ ; `npm run test:run -- src/features/media/MediaPage.test.tsx` ✅ (13/13 verts).
+- Validation plus large : `npm run typecheck` reste en échec pour des erreurs **pré-existantes hors périmètre** (`match-card`, auth pages, palmarès queries, synthesis, appShellStore tests...).
+
+**Conclusion** : la page médias distingue maintenant clairement filtrage et tri, et les filtres carte/mode reposent sur de vraies listes déroulantes cohérentes avec la normalisation produit des modes. Les dettes TypeScript restantes ne viennent pas de cette passe.
+
+## [2026-04-20] fix(web): alléger le séparateur des split buttons de la L1
+
+**Statut** : Complété
+
+**Décision technique** : conservation du repère visuel entre le libellé et le chevron dans `NavL1`, mais en version courte et centrée (`h-4`, `self-center`, coins arrondis) au lieu d'une barre pleine hauteur trop présente. Aucun changement de structure ou d'ordre des sections.
+
+**Résultats** : `npm run test:run -- src/components/shell/NavL1.test.tsx` ✅ (3/3 verts). `Palmarès` reste affiché, actif sur ses sous-routes et positionné en avant-dernier.
+
+**Conclusion** : la séparation visuelle avant les chevrons est plus discrète sans régression de rendu ou de navigation dans la L1.
+
 ## [2026-04-20] fix(web): déplacer Palmarès en avant-dernier dans la L1
 
 **Statut** : Complété
@@ -3382,6 +3540,27 @@ Phase 0 terminée. Ouvrir Sprint 4 (squelette HTTP Go + `oapi-codegen` + CI GitH
 - Une carte `activité récente` a été ajoutée à la première rangée de synthèse pour densifier l'accueil avec une timeline courte des derniers matchs et des liens directs vers Explorer.
 - Les liens HTML conservent le contexte utile (`match_id`, `stats_view`, `session`, `scope`) et `streamlit_app.py::_parse_query_params()` consomme désormais aussi ces paramètres pour retrouver le comportement des anciens boutons.
 - `v7_theme.css` a été étendu pour styliser la nouvelle grille d'actions, les CTA pill et la timeline, de façon cohérente avec le langage GitHub dark déjà engagé sur le L1.
+
+## [2026-04-20] fix(media): recompact toolbar et retablir les options cartes/modes
+
+**Statut** : Complété  
+**Branche** : `feat/media-shared-gallery`
+
+**Décision technique** :
+- Le problème visible n'était pas seulement UI. La toolbar React avait été rendue verticale trop tôt, et la galerie Go utilisait encore le vieux schéma `media_files/media_match_associations` alors que `shared_social.duckdb` joint désormais `media_files.id -> media_match_associations.media_file_id` avec `shared.match_registry` pour les labels match.
+- Le correctif retient une approche défensive sur deux couches : requêtes DuckDB schema-aware côté Go selon la DB réellement utilisée (legacy player DB ou `shared_social`), puis fallback d'options cartes/modes reconstruites depuis les items chargés si `available_filters` revient vide ou en erreur.
+- La toolbar reste séparée entre `Filtrer :` et `Trier :`, mais revient à une disposition compacte en ligne avec wrap souple au lieu d'un empilement vertical jusqu'à `xl`.
+
+**Résultats observés** :
+- `apps/go-api/internal/platform/duckdb/queries_home_citations.go` choisit maintenant le bon FROM/JOIN/ORDER selon le schéma média, filtre `shared_social.media_files` sur le joueur courant, lit `mr.start_time` comme `match_start_time` et conserve le fallback legacy player DB.
+- `apps/go-api/internal/platform/duckdb/media_repo.go` passe la config de schéma adéquate aux queries média ; les tests couvrent désormais explicitement le chemin `shared_social`.
+- `apps/go-api/internal/service/media_service.go` complète `available_filters` avec un fallback déduit des rows déjà chargées.
+- `apps/web/src/features/media/MediaPage.tsx` reconstruit aussi localement les options cartes/modes depuis les items si l'API renvoie des listes vides ; `MediaToolbar.tsx` revient à une disposition compacte `flex-wrap`.
+- Validation ciblée verte : `go test ./internal/service -run Media`, `go test ./internal/platform/duckdb -run "TestBuildQ37Media|TestBuildQ37MediaMapOptionsQuery_SharedSocialSchemaKeepsPlayerScope"`, `go test -tags=integration ./internal/platform/duckdb -run "TestMediaRepo_(CountMediaFiles|LoadMediaFiles_WithData|LoadMediaFiles_WithSharedSocialSchema)"`, `npm run test:run -- src/features/media/MediaPage.test.tsx`.
+
+**Conclusion / prochaine étape** :
+- La régression UI est corrigée et les dropdowns cartes/modes ne dépendent plus d'une seule source fragile.
+- Un test de migration legacy existant reste incohérent avec la suppression de `media_files` du player DB, mais il est hors périmètre de ce correctif.
 
 **Résultats** :
 - L'accueil Mission Control n'utilise plus de boutons Streamlit visibles pour ses accès rapides, ses cartes session et son bloc médias récents.
@@ -16345,3 +16524,23 @@ Finalisation et validation du daemon de présence Xbox/Steam introduit dans la s
 
 ### Conclusion / prochaine étape
 Le daemon de présence Xbox/Steam est complet, compilable et testé. 53 cas de test couvrent toute la logique pure des nouveaux packages.
+
+---
+
+## [2025-07-29] — Indicateur sync en cours dans NavL1 (SyncStatusDot)
+
+**Statut** : Complété
+
+**Décision technique principale** :
+Utiliser le système de jobs asynchrones existant (`activeSyncJobId` / `useJobStatus`) plutôt que le watcher de présence Xbox (sur une autre branche). `activeSyncJobId` était déjà dans `appShellStore` et hydraté depuis bootstrap — il manquait uniquement le setter et le composant visuel.
+
+**Fichiers modifiés** :
+- `apps/web/src/stores/appShellStore.ts` : ajout de `setActiveSyncJobId(id: string | null) => void` dans l'interface et l'implémentation
+- `apps/web/src/components/shell/NavL1.tsx` : import `useJobStatus`, composant `SyncStatusDot` (SVG `animate-spin`), intégration dans les deux zones gamertag (single et multi-joueurs)
+
+**Résultats observés** :
+- `tsc --noEmit` : 0 erreur TypeScript
+- `vitest run NavL1.test.tsx` : 3/3 tests passent
+
+**Conclusion** :
+La feature est 100% terminée. Un spinner tourne à côté du gamertag dans la L1 quand `active_sync_job_id` est non-null (retourné par bootstrap ou par POST /sync). Il disparaît automatiquement quand le job passe en état terminal via `useEffect` + `setActiveSyncJobId(null)`.
