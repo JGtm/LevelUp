@@ -13,6 +13,7 @@ import (
 	"context"
 	"fmt"
 	"math"
+	"sort"
 
 	"levelup/go-api/internal/analysis"
 	"levelup/go-api/internal/domain"
@@ -32,15 +33,18 @@ func NewTimeseriesService(repo port.StatsRepository) *TimeseriesService {
 // GetPage construit la réponse complète avec 5 onglets.
 func (s *TimeseriesService) GetPage(
 	ctx context.Context,
-	_ domain.TimeseriesQueryRequest,
+	req domain.TimeseriesQueryRequest,
 ) (domain.TimeseriesPageResponse, error) {
-	matches, err := s.statsRepo.LoadStatsMatches(ctx)
+	allMatches, err := s.statsRepo.LoadStatsMatches(ctx)
 	if err != nil {
 		return domain.TimeseriesPageResponse{}, fmt.Errorf("TimeseriesService: %w", err)
 	}
 
+	matches := filterStatsMatchRows(allMatches, req.Filters)
+
 	resp := domain.TimeseriesPageResponse{
 		TotalMatches:     len(matches),
+		MatchRows:        buildMatchRows(matches),
 		SummaryTab:       buildTimeseriesSummaryTab(matches),
 		CumulTab:         buildCumulTab(matches),
 		FormTab:          buildTimeseriesFormTab(matches),
@@ -168,7 +172,8 @@ func buildTimeseriesFormTab(matches []domain.StatsMatchRow) domain.TimeseriesFor
 	regStats := computeRegressionStats(matches)
 
 	// EWMA K/D (exponentially weighted moving average).
-	const alpha = 0.1
+	// alpha = 0.20 — aligné sur Python plot_ewma_kd (alpha=0.20).
+	const alpha = 0.20
 	ewmaPoints := make([]domain.CumulativePoint, 0, len(matches))
 	var ewma float64
 	for i, m := range matches {
@@ -348,22 +353,24 @@ func buildIntensityTab(matches []domain.StatsMatchRow) domain.TimeseriesIntensit
 func buildDistributionsTab(matches []domain.StatsMatchRow) domain.TimeseriesDistributionsTab {
 	if len(matches) == 0 {
 		return domain.TimeseriesDistributionsTab{
-			KDABuckets:        []domain.DistributionBucket{},
-			KillsBuckets:      []domain.DistributionBucket{},
-			CorrelationPoints: []domain.CorrelationDataPair{},
-			Correlations:      []domain.PlotlyFigurePayload{},
+			KDABuckets:         []domain.DistributionBucket{},
+			KillsBuckets:       []domain.DistributionBucket{},
+			AccuracyBuckets:    []domain.DistributionBucket{},
+			ScorePerMinBuckets: []domain.DistributionBucket{},
+			RollingWRBuckets:   []domain.DistributionBucket{},
+			CorrelationPoints:  []domain.CorrelationDataPair{},
+			Correlations:       []domain.PlotlyFigurePayload{},
 		}
 	}
 
-	kdaBuckets := buildKDABuckets(matches)
-	killsBuckets := buildKillsBuckets(matches)
-	correlations := buildCorrelationPoints(matches)
-
 	return domain.TimeseriesDistributionsTab{
-		KDABuckets:        kdaBuckets,
-		KillsBuckets:      killsBuckets,
-		CorrelationPoints: correlations,
-		Correlations:      []domain.PlotlyFigurePayload{},
+		KDABuckets:         buildKDABuckets(matches),
+		KillsBuckets:       buildKillsBuckets(matches),
+		AccuracyBuckets:    buildAccuracyBuckets(matches),
+		ScorePerMinBuckets: buildScorePerMinBuckets(matches),
+		RollingWRBuckets:   buildRollingWRBuckets(matches),
+		CorrelationPoints:  buildCorrelationPoints(matches),
+		Correlations:       []domain.PlotlyFigurePayload{},
 	}
 }
 
@@ -443,19 +450,212 @@ func buildKillsBuckets(matches []domain.StatsMatchRow) []domain.DistributionBuck
 	return buckets
 }
 
-// buildCorrelationPoints construit les paires de corrélation kills↔K/D.
+// buildCorrelationPoints construit les paires de corrélation pour 5 types de scatter.
 func buildCorrelationPoints(matches []domain.StatsMatchRow) []domain.CorrelationDataPair {
-	points := make([]domain.CorrelationDataPair, 0, len(matches))
+	points := make([]domain.CorrelationDataPair, 0, len(matches)*5)
 	for _, m := range matches {
 		kd := 0.0
 		if m.Deaths > 0 {
 			kd = float64(m.Kills) / float64(m.Deaths)
 		}
+		// Durée de vie approchée : time_played / (deaths+1)
+		lifespan := 0.0
+		if m.TimePlayedSeconds != nil && *m.TimePlayedSeconds > 0 {
+			lifespan = float64(*m.TimePlayedSeconds) / float64(m.Deaths+1)
+		}
+
+		// kills_vs_kd
 		points = append(points, domain.CorrelationDataPair{
-			Label: "kills_vs_kd",
-			X:     float64(m.Kills),
-			Y:     math.Round(kd*100) / 100,
+			Label: "kills_vs_kd", X: float64(m.Kills), Y: math.Round(kd*100) / 100, Outcome: m.Outcome,
 		})
+		// lifespan_vs_kills
+		points = append(points, domain.CorrelationDataPair{
+			Label: "lifespan_vs_kills", X: math.Round(lifespan*10) / 10, Y: float64(m.Kills), Outcome: m.Outcome,
+		})
+		// accuracy_vs_kda
+		if m.Accuracy != nil && m.KDA != nil {
+			points = append(points, domain.CorrelationDataPair{
+				Label: "accuracy_vs_kda", X: math.Round(*m.Accuracy*1000) / 10, Y: math.Round(*m.KDA*100) / 100, Outcome: m.Outcome,
+			})
+		}
+		// lifespan_vs_deaths
+		points = append(points, domain.CorrelationDataPair{
+			Label: "lifespan_vs_deaths", X: math.Round(lifespan*10) / 10, Y: float64(m.Deaths), Outcome: m.Outcome,
+		})
+		// kills_vs_deaths
+		points = append(points, domain.CorrelationDataPair{
+			Label: "kills_vs_deaths", X: float64(m.Kills), Y: float64(m.Deaths), Outcome: m.Outcome,
+		})
+		// mmr_team_vs_enemy (si disponible)
+		if m.TeamMMR != nil && m.EnemyMMR != nil {
+			points = append(points, domain.CorrelationDataPair{
+				Label: "mmr_team_vs_enemy", X: math.Round(*m.TeamMMR*100) / 100, Y: math.Round(*m.EnemyMMR*100) / 100, Outcome: m.Outcome,
+			})
+		}
 	}
 	return points
+}
+
+// ---------------------------------------------------------------------------
+// Lignes match brutes (pour les charts timeline React)
+// ---------------------------------------------------------------------------
+
+// buildMatchRows convertit StatsMatchRow en TimeseriesMatchRow (1 ligne = 1 match).
+func buildMatchRows(matches []domain.StatsMatchRow) []domain.TimeseriesMatchRow {
+	rows := make([]domain.TimeseriesMatchRow, 0, len(matches))
+	for i, m := range matches {
+		rows = append(rows, domain.TimeseriesMatchRow{
+			MatchID:           m.MatchID,
+			Index:             i,
+			StartTime:         m.StartTime,
+			Kills:             m.Kills,
+			Deaths:            m.Deaths,
+			Assists:           m.Assists,
+			Accuracy:          m.Accuracy,
+			Outcome:           m.Outcome,
+			PersonalScore:     m.PersonalScore,
+			DamageDealt:       m.DamageDealt,
+			DamageTaken:       m.DamageTaken,
+			PerfScore:         m.PerfScoreComputed,
+			Rank:              m.Rank,
+			PlaylistName:      m.PlaylistName,
+			TimePlayedSeconds: m.TimePlayedSeconds,
+		})
+	}
+	return rows
+}
+
+// ---------------------------------------------------------------------------
+// Histogrammes supplémentaires (Précision, Score/min, Win Rate glissant)
+// ---------------------------------------------------------------------------
+
+// buildAccuracyBuckets crée des buckets de 5 % pour la distribution de précision.
+func buildAccuracyBuckets(matches []domain.StatsMatchRow) []domain.DistributionBucket {
+	const binWidth = 5.0 // 5 % par bin (valeurs [0, 1] → converties en %)
+	counts := make([]int, 21)  // bins 0-5, 5-10, …, 95-100, 100+
+
+	for _, m := range matches {
+		if m.Accuracy == nil {
+			continue
+		}
+		pct := *m.Accuracy * 100
+		idx := int(pct / binWidth)
+		if idx >= len(counts) {
+			idx = len(counts) - 1
+		}
+		counts[idx]++
+	}
+
+	buckets := make([]domain.DistributionBucket, 0, len(counts))
+	for i, c := range counts {
+		if c == 0 {
+			continue
+		}
+		start := float64(i) * binWidth
+		buckets = append(buckets, domain.DistributionBucket{
+			BinStart: start, BinEnd: start + binWidth, Count: c,
+		})
+	}
+	return buckets
+}
+
+// buildScorePerMinBuckets crée des buckets de 10 pts/min pour la distribution score/min.
+func buildScorePerMinBuckets(matches []domain.StatsMatchRow) []domain.DistributionBucket {
+	const binWidth = 10.0
+	counts := make(map[int]int)
+
+	for _, m := range matches {
+		if m.PersonalScore == nil || m.TimePlayedSeconds == nil || *m.TimePlayedSeconds == 0 {
+			continue
+		}
+		spm := float64(*m.PersonalScore) / (float64(*m.TimePlayedSeconds) / 60.0)
+		idx := int(spm / binWidth)
+		counts[idx]++
+	}
+
+	buckets := make([]domain.DistributionBucket, 0, len(counts))
+	for idx, c := range counts {
+		start := float64(idx) * binWidth
+		buckets = append(buckets, domain.DistributionBucket{
+			BinStart: start, BinEnd: start + binWidth, Count: c,
+		})
+	}
+	sort.Slice(buckets, func(i, j int) bool { return buckets[i].BinStart < buckets[j].BinStart })
+	return buckets
+}
+
+// buildRollingWRBuckets crée des buckets de 5 % pour la distribution du win-rate glissant (fenêtre 14).
+func buildRollingWRBuckets(matches []domain.StatsMatchRow) []domain.DistributionBucket {
+	const (
+		window   = 14
+		binWidth = 5.0
+	)
+	counts := make([]int, 21) // bins 0-5, 5-10, …, 95-100
+
+	for i := range matches {
+		start := i - window + 1
+		if start < 0 {
+			start = 0
+		}
+		wins := 0
+		for j := start; j <= i; j++ {
+			if matches[j].Outcome != nil && *matches[j].Outcome == analysis.OutcomeWin {
+				wins++
+			}
+		}
+		total := i - start + 1
+		wr := float64(wins) / float64(total) * 100
+		idx := int(wr / binWidth)
+		if idx >= len(counts) {
+			idx = len(counts) - 1
+		}
+		counts[idx]++
+	}
+
+	buckets := make([]domain.DistributionBucket, 0, len(counts))
+	for i, c := range counts {
+		if c == 0 {
+			continue
+		}
+		start := float64(i) * binWidth
+		buckets = append(buckets, domain.DistributionBucket{
+			BinStart: start, BinEnd: start + binWidth, Count: c,
+		})
+	}
+	return buckets
+}
+
+// ---------------------------------------------------------------------------
+// Filtrage des StatsMatchRow
+// ---------------------------------------------------------------------------
+
+// filterStatsMatchRows applique les filtres de contexte sur les StatsMatchRow
+// en passant par la couche FilterMatchRow partagée avec le reste des services.
+func filterStatsMatchRows(rows []domain.StatsMatchRow, f domain.FilterContextInput) []domain.StatsMatchRow {
+filterRows := make([]domain.FilterMatchRow, len(rows))
+for i, r := range rows {
+filterRows[i] = domain.FilterMatchRow{
+MatchID:      r.MatchID,
+StartTime:    &r.StartTime,
+PlaylistName: &r.PlaylistName,
+PairName:     &r.PairName,
+IsRanked:     r.IsRanked,
+SessionID:    r.SessionID,
+SessionLabel: r.SessionLabel,
+}
+}
+
+filtered := applyAllFilters(filterRows, f)
+keepIDs := make(map[string]struct{}, len(filtered))
+for _, fr := range filtered {
+keepIDs[fr.MatchID] = struct{}{}
+}
+
+out := make([]domain.StatsMatchRow, 0, len(filtered))
+for _, r := range rows {
+if _, ok := keepIDs[r.MatchID]; ok {
+out = append(out, r)
+}
+}
+return out
 }

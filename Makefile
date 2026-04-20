@@ -1,17 +1,14 @@
 # =============================================================================
-# LevelUp — Makefile (macOS / Linux)
+# LevelUp — Makefile
 #
 # Usage:
-#   make install       # Premier lancement : crée .venv + installe les dépendances
-#   make run           # Lance le dashboard
-#   make sync          # Synchronise tous les joueurs
-#   make add-player    # Ajoute un nouveau joueur (guidé)
-#   make doctor        # Vérifie l'environnement
-#   make update        # Met à jour les dépendances
-#   make check         # Lint + format + taille (avant chaque commit)
-#   make test          # Lance la suite de tests rapide
-#   make test-all      # Lance tous les tests (incl. intégration)
-#   make clean         # Supprime le venv
+#   make dev           # Lance l'API Go (air) + frontend Vite (http://localhost:5173)
+#   make go-api-build  # Compile le binaire Go
+#   make go-api-test   # Lance les tests Go
+#   make install-web   # Installe les dépendances npm
+#   make test-web      # Tests Vitest frontend
+#   make generate-types # Génère les types TypeScript depuis openapi.yaml
+#   make check-types   # Vérifie les types TypeScript
 # =============================================================================
 
 # Charge .env.local (puis .env) s'ils existent — permet aux worktrees
@@ -21,66 +18,9 @@
 LOAD_DOTENV := if [ -f .env.local ]; then set -a; . ./.env.local; set +a; fi; \
                if [ -f .env ]; then set -a; . ./.env; set +a; fi
 
-PYTHON   := $(shell command -v python3 2>/dev/null || command -v python 2>/dev/null)
-VENV_PY  := .venv/bin/python
-LAUNCHER := $(VENV_PY) launcher.py
-
-.PHONY: install run sync add-player doctor update check test test-all clean help \
-        web dev test-parity test-web test-e2e test-e2e-ui check-types \
-        generate-types install-web _check_venv
-
-## Installe le venv et les dépendances (idempotent)
-install:
-	@if [ -f "$(VENV_PY)" ]; then \
-		echo "✓ .venv déjà présent — utilisez 'make update' pour mettre à jour"; \
-	else \
-		$(PYTHON) launcher.py setup; \
-	fi
-
-## Lance le dashboard (mode interactif si aucun joueur)
-run: _check_venv
-	$(LAUNCHER)
-
-## Synchronise tous les joueurs configurés
-sync: _check_venv
-	$(LAUNCHER) sync
-
-## Ajoute / synchronise un joueur (guidé si --gamertag absent)
-## Usage : make add-player  ou  make add-player GAMERTAG=JGtm
-add-player: _check_venv
-ifdef GAMERTAG
-	$(LAUNCHER) add-player --gamertag $(GAMERTAG)
-else
-	$(LAUNCHER) add-player
-endif
-
-## Vérifie l'environnement (packages, données, configuration)
-doctor: _check_venv
-	$(LAUNCHER) doctor
-
-## Met à jour les dépendances du venv
-update: _check_venv
-	$(LAUNCHER) setup --update
-
-## Lint + format + vérification taille (identique au pre-commit, à lancer avant git commit)
-check: _check_venv
-	$(VENV_PY) -m ruff check src/ scripts/ --fix
-	$(VENV_PY) -m ruff format src/ scripts/ tests/
-	$(VENV_PY) scripts/check_code_size.py
-
-## Lance la suite de tests rapide (hors intégration)
-test: _check_venv
-	$(VENV_PY) -m pytest --ignore=tests/integration -q
-
-## Lance tous les tests (intégration incluse)
-test-all: _check_venv
-	$(VENV_PY) -m pytest -q
-
-## Supprime le venv (les données ne sont PAS affectées)
-clean:
-	@echo "Suppression de .venv…"
-	rm -rf .venv
-	@echo "✓ Terminé. Relanez 'make install' pour recréer l'environnement."
+.PHONY: help web dev test-web test-e2e test-e2e-ui check-types \
+        generate-types install-web \
+        go-api-build go-api-test go-api-dev _go-api-run
 
 ## Affiche cette aide
 help:
@@ -93,10 +33,6 @@ help:
 ## Lance le frontend React/Vite en mode dev (port 5173)
 web:
         cd apps/web && npm run dev
-
-## Lance les tests de parité backend (tests/parity/)
-test-parity: _check_venv
-        $(VENV_PY) -m pytest tests/parity/ -v
 
 ## Génère le fichier de types TypeScript depuis le schéma OpenAPI Go
 ## Usage : make generate-types
@@ -125,21 +61,14 @@ test-e2e:
 test-e2e-ui:
 	cd apps/web && npm run test:e2e:ui
 
-# ── Cible interne ─────────────────────────────────────────────────────────────
-_check_venv:
-	@if [ ! -f "$(VENV_PY)" ]; then \
-		echo "❌ .venv introuvable — lancez 'make install' d'abord."; \
-		exit 1; \
-	fi
-
 # =============================================================================
 # Go API — cibles build/run/test (Sprint 34)
 # =============================================================================
 
 GO_API_DIR := apps/go-api
 API_PORT ?= 8000
-# Injection de la version depuis pyproject.toml ou tag Git (fallback "dev")
-GO_VERSION := $(shell python3 -c "import re,pathlib; m=re.search(r'version\s*=\s*\"([^\"]+)\"', pathlib.Path('pyproject.toml').read_text()); print(m.group(1) if m else 'dev')" 2>/dev/null || echo "dev")
+# Version depuis le fichier VERSION (ou tag Git en fallback)
+GO_VERSION := $(shell cat VERSION 2>/dev/null || git describe --tags --abbrev=0 2>/dev/null || echo "dev")
 # Racine du repo de données (contient db_profiles.json + data/players/).
 # Par défaut : repo Python LevelUp frère de ce repo. Surchargeable via env.
 # Note: $(abspath) ne gère pas les lettres de lecteur Windows (C:/) sous MSYS2 —

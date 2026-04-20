@@ -1568,6 +1568,55 @@ export interface CitationsPageResponse {
 // Timeseries (Slice 3B)
 // ---------------------------------------------------------------------------
 
+/** Point d'une courbe cumulative ou glissante indexée sur les matchs. */
+export interface CumulativePoint {
+  index: number
+  start_time: string
+  value: number
+}
+
+/** Bucket d'un histogramme de distribution. */
+export interface DistributionBucket {
+  bin_start: number
+  bin_end: number
+  count: number
+}
+
+/** Paire (x, y) pour un scatter plot de corrélation. */
+export interface CorrelationDataPair {
+  label: string
+  x: number
+  y: number
+  outcome: number | null
+}
+
+/** Point de la heatmap intensité (jour × heure). */
+export interface IntensityHeatmapPoint {
+  day_of_week: number // 0=Lundi … 6=Dimanche
+  hour: number
+  count: number
+  avg_kd: number
+}
+
+/** Ligne brute par match pour les charts timeline côté frontend. */
+export interface TimeseriesMatchRow {
+  match_id: string
+  index: number
+  start_time: string
+  kills: number
+  deaths: number
+  assists: number
+  accuracy: number | null
+  outcome: number | null
+  personal_score: number | null
+  damage_dealt: number | null
+  damage_taken: number | null
+  perf_score: number | null
+  rank: number | null
+  playlist_name: string
+  time_played_seconds: number | null
+}
+
 export interface TimeseriesKpiCard {
   key: string
   label: string
@@ -1587,6 +1636,10 @@ export interface TimeseriesCumulTab {
   cumul_net_chart: PlotlyFigurePayload | null
   cumul_kd_chart: PlotlyFigurePayload | null
   rolling_kd_chart: PlotlyFigurePayload | null
+  // Data points bruts pour les charts React client-side.
+  cumulative_kd: CumulativePoint[]
+  cumulative_net: CumulativePoint[]
+  rolling_kd: CumulativePoint[]
 }
 
 export interface TimeseriesRegressionStats {
@@ -1602,17 +1655,29 @@ export interface TimeseriesFormTab {
   regression_chart: PlotlyFigurePayload | null
   net_score_per_hour_chart: PlotlyFigurePayload | null
   regression_stats: TimeseriesRegressionStats
+  // Data points bruts pour les charts React client-side.
+  ewma_kd_points: CumulativePoint[]
 }
 
 export interface TimeseriesIntensityTab {
   intensity_heatmap: PlotlyFigurePayload | null
   score_per_minute_chart: PlotlyFigurePayload | null
+  // Data points bruts pour les charts React client-side.
+  heatmap_data: IntensityHeatmapPoint[]
+  score_per_min_data: CumulativePoint[]
 }
 
 export interface TimeseriesDistributionsTab {
   kda_distribution: PlotlyFigurePayload | null
   first_kill_dist: PlotlyFigurePayload | null
   correlations: PlotlyFigurePayload[]
+  // Data points bruts pour les charts React client-side.
+  kda_buckets: DistributionBucket[]
+  kills_buckets: DistributionBucket[]
+  accuracy_buckets: DistributionBucket[]
+  score_per_min_buckets: DistributionBucket[]
+  rolling_wr_buckets: DistributionBucket[]
+  correlation_points: CorrelationDataPair[]
 }
 
 export interface TimeseriesQueryRequest {
@@ -1621,6 +1686,7 @@ export interface TimeseriesQueryRequest {
 
 export interface TimeseriesPageResponse {
   total_matches: number
+  match_rows: TimeseriesMatchRow[]
   summary_tab: TimeseriesSummaryTab
   cumul_tab: TimeseriesCumulTab
   form_tab: TimeseriesFormTab

@@ -31,22 +31,11 @@ jobs:
           token: ${{ secrets.GITHUB_TOKEN }}
           fetch-depth: 0
 
-      - name: Set up Python
-        uses: actions/setup-python@v5
-        with:
-          python-version: "3.12"
-
-      - name: Compute new version
+- name: Compute new version
         id: ver
         run: |
-          # Lire la version actuelle depuis pyproject.toml
-          CURRENT=$(python - <<'EOF'
-          import re, pathlib
-          text = pathlib.Path("pyproject.toml").read_text()
-          m = re.search(r'^version\s*=\s*"([^"]+)"', text, re.MULTILINE)
-          print(m.group(1))
-          EOF
-          )
+          # Lire la version actuelle depuis VERSION
+          CURRENT=$(cat VERSION)
           echo "current=$CURRENT" >> "$GITHUB_OUTPUT"
 
           # Calculer la nouvelle version
@@ -60,27 +49,16 @@ jobs:
           echo "new=$NEW" >> "$GITHUB_OUTPUT"
           echo "tag=v$NEW" >> "$GITHUB_OUTPUT"
 
-      - name: Update pyproject.toml
+      - name: Update VERSION
         run: |
-          python - <<EOF
-          import re, pathlib
-          p = pathlib.Path("pyproject.toml")
-          text = p.read_text()
-          text = re.sub(
-              r'^(version\s*=\s*")[^"]+(")',
-              r'\g<1>${{ steps.ver.outputs.new }}\2',
-              text,
-              flags=re.MULTILINE,
-          )
-          p.write_text(text)
-          EOF
-          echo "pyproject.toml mis à jour : ${{ steps.ver.outputs.current }} → ${{ steps.ver.outputs.new }}"
+          echo "${{ steps.ver.outputs.new }}" > VERSION
+          echo "VERSION mis à jour : ${{ steps.ver.outputs.current }} → ${{ steps.ver.outputs.new }}"
 
       - name: Commit & tag
         run: |
           git config user.name  "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
-          git add pyproject.toml
+          git add VERSION
           NOTE="${{ inputs.note }}"
           if [ -n "$NOTE" ]; then
             MSG="chore(release): bump version to ${{ steps.ver.outputs.new }} — $NOTE"

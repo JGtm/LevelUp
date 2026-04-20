@@ -1,15 +1,15 @@
 /**
  * SquadLayout — layout partagé de la section Escouade.
  *
- * Gère la sélection des coéquipiers, le tableau, les KPIs et le drawer Comparer.
- * Expose les données sélectionnées via SquadContext pour les onglets enfants
- * (SquadSynergiesPage, SquadContributionsPage).
+ * Gère la sélection des coéquipiers (via data.options), les KPI cards
+ * et la navigation par onglets (Synergies / Contributions).
+ * Expose les données sélectionnées via SquadContext pour les onglets enfants.
  *
  * Route parente : /players/$playerSlug/squad
  * Routes enfants : /squad/synergies · /squad/contributions
  */
 import { createContext, useContext, useState } from 'react'
-import { Outlet, useParams } from '@tanstack/react-router'
+import { Outlet, useParams, Link, useMatchRoute } from '@tanstack/react-router'
 import { useGlobalFilterStore } from '@/stores/globalFilterStore'
 import { useTeammates } from './queries'
 import { PageHeader } from '@/components/shell/PageHeader'
@@ -140,14 +140,13 @@ function TeammateRowItem({
   )
 }
 
-// ─── Layout ───────────────────────────────────────────────────────────────────
-
 export function SquadLayout() {
   const { playerSlug } = useParams({ strict: false }) as { playerSlug: string }
   const { filterContext, filterContextHash } = useGlobalFilterStore()
   const [selectedGts, setSelectedGts] = useState<string[]>([])
   const [compareTarget, setCompareTarget] = useState<string | null>(null)
   const prefetchCompare = useComparePrefetch(playerSlug)
+  const matchRoute = useMatchRoute()
 
   const request: TeammatesQueryRequest = {
     filters: filterContext,
@@ -189,77 +188,136 @@ export function SquadLayout() {
     )
   }
 
-  const { teammates, solo_reference } = data
+  // Utiliser data.options pour le multiselect (coéquipiers fréquents)
+  const availableOptions = data.options ?? []
+  const teammates = data.teammates ?? []
+  const solo_reference = data.solo_reference ?? null
+
   const selectedRows = selectedGts
     .map((gt) => teammates.find((t) => t.gamertag === gt))
     .filter(Boolean) as TeammateRow[]
+
+  const synergiesRoute = '/players/$playerSlug/squad/synergies' as const
+  const contributionsRoute = '/players/$playerSlug/squad/contributions' as const
+  const isSynergies = !!matchRoute({ to: synergiesRoute, fuzzy: true })
+  const isContributions = !!matchRoute({ to: contributionsRoute, fuzzy: true })
 
   return (
     <SquadContext.Provider value={{ selectedRows, soloReference: solo_reference }}>
       <div className="flex flex-col gap-6">
         <PageHeader
           title="Escouade"
-          subtitle={`${teammates.length} coéquipiers · ${data.total_matches} matchs`}
+          subtitle={`${availableOptions.length} coéquipiers fréquents · ${data.total_matches} matchs`}
         />
 
-        {/* KPI rapides si coéquipier(s) sélectionné(s) */}
-        <Card>
-          <CardHeader>
-            <CardTitle>Stats avec les coéquipiers sélectionnés</CardTitle>
-          </CardHeader>
-          <CardContent className="flex flex-col gap-4">
-            {selectedRows.length > 0 ? (
-              <>
-                {selectedRows.map((row, i) => (
-                  <KPIBlock
-                    key={row.gamertag}
-                    title={`Avec ${row.gamertag}`}
-                    kpis={row.with_kpis}
-                    color={`text-[${CHART_COLORS[i % CHART_COLORS.length]}]`}
-                  />
-                ))}
-                {solo_reference && (
-                  <KPIBlock title="Référence solo" kpis={solo_reference} color="text-info" />
-                )}
-              </>
-            ) : (
-              <EmptyStateNotice
-                title="Aucune sélection"
-                description="Sélectionne jusqu'à 3 coéquipiers dans le tableau pour activer la comparaison."
-              />
-            )}
-          </CardContent>
-        </Card>
+        {/* Multiselect coéquipiers depuis les options */}
+        {availableOptions.length > 0 && (
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center justify-between text-base">
+                <span>Sélectionner des coéquipiers</span>
+                <span className="text-sm font-normal text-muted-foreground">
+                  {selectedGts.length}/{MAX_SELECTION}
+                  {selectedGts.length > 0 && (
+                    <button
+                      className="ml-2 text-xs text-muted-foreground hover:text-foreground"
+                      onClick={() => setSelectedGts([])}
+                    >
+                      ✕ Effacer
+                    </button>
+                  )}
+                </span>
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="flex flex-wrap gap-2">
+                {availableOptions.map((opt) => {
+                  const idx = selectedGts.indexOf(opt.gamertag)
+                  const isSelected = idx >= 0
+                  const color = isSelected ? CHART_COLORS[idx % CHART_COLORS.length] : undefined
+                  return (
+                    <button
+                      key={opt.xuid ?? opt.gamertag}
+                      onClick={() => toggleSelect(opt.gamertag)}
+                      disabled={!isSelected && selectedGts.length >= MAX_SELECTION}
+                      className={`flex items-center gap-1.5 rounded-full border px-3 py-1 text-sm transition-colors
+                        ${isSelected
+                          ? 'border-transparent text-white'
+                          : 'border-border text-muted-foreground hover:border-primary hover:text-foreground disabled:opacity-40'
+                        }`}
+                      style={isSelected ? { backgroundColor: color } : undefined}
+                    >
+                      {isSelected && <span className="text-xs">✓</span>}
+                      {opt.gamertag}
+                      <span className="text-xs opacity-70">({opt.encounter_count})</span>
+                    </button>
+                  )
+                })}
+              </div>
+            </CardContent>
+          </Card>
+        )}
 
-        {/* Contenu de l'onglet actif (Synergies ou Contributions) */}
+        {/* KPI block si coéquipier(s) sélectionné(s) */}
+        {selectedRows.length > 0 && (
+          <Card>
+            <CardHeader>
+              <CardTitle>Stats avec les coéquipiers sélectionnés</CardTitle>
+            </CardHeader>
+            <CardContent className="flex flex-col gap-4">
+              {selectedRows.map((row, i) => (
+                <KPIBlock
+                  key={row.gamertag}
+                  title={`Avec ${row.gamertag}`}
+                  kpis={row.with_kpis}
+                  color={`text-[${CHART_COLORS[i % CHART_COLORS.length]}]`}
+                />
+              ))}
+              {solo_reference && (
+                <KPIBlock title="Référence solo" kpis={solo_reference} color="text-info" />
+              )}
+            </CardContent>
+          </Card>
+        )}
+
+        {/* Navigation onglets */}
+        <div className="border-b">
+          <nav className="flex gap-0">
+            <Link
+              to="/players/$playerSlug/squad/synergies"
+              params={{ playerSlug }}
+              className={`px-4 py-2 text-sm font-medium border-b-2 transition-colors
+                ${isSynergies
+                  ? 'border-primary text-primary'
+                  : 'border-transparent text-muted-foreground hover:text-foreground'
+                }`}
+            >
+              Synergies
+            </Link>
+            <Link
+              to="/players/$playerSlug/squad/contributions"
+              params={{ playerSlug }}
+              className={`px-4 py-2 text-sm font-medium border-b-2 transition-colors
+                ${isContributions
+                  ? 'border-primary text-primary'
+                  : 'border-transparent text-muted-foreground hover:text-foreground'
+                }`}
+            >
+              Contributions
+            </Link>
+          </nav>
+        </div>
+
+        {/* Contenu de l'onglet actif */}
         <Outlet />
 
-        {/* Table principale coéquipiers */}
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center justify-between">
-              <span>Coéquipiers</span>
-              <div className="flex items-center gap-3">
-                <span className="text-sm font-normal text-muted-foreground">
-                  {selectedGts.length}/{MAX_SELECTION} sélectionnés
-                </span>
-                {selectedGts.length > 0 && (
-                  <button
-                    className="text-xs text-muted-foreground hover:text-foreground"
-                    onClick={() => setSelectedGts([])}
-                  >
-                    ✕ Effacer
-                  </button>
-                )}
-              </div>
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="p-0">
-            {teammates.length === 0 ? (
-              <p className="p-6 text-center text-muted-foreground">
-                Aucun coéquipier trouvé pour cette période.
-              </p>
-            ) : (
+        {/* Table coéquipiers (secondaire, repliable si sélection active) */}
+        {teammates.length > 0 && (
+          <Card>
+            <CardHeader>
+              <CardTitle>Tous les coéquipiers</CardTitle>
+            </CardHeader>
+            <CardContent className="p-0">
               <div className="overflow-x-auto">
                 <table className="w-full text-sm">
                   <thead className="bg-muted border-b">
@@ -290,9 +348,9 @@ export function SquadLayout() {
                   </tbody>
                 </table>
               </div>
-            )}
-          </CardContent>
-        </Card>
+            </CardContent>
+          </Card>
+        )}
 
         {compareTarget && (
           <CompareDrawer

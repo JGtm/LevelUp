@@ -8,12 +8,16 @@ import { Spinner } from '@/components/ui/spinner'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { EmptyStateCard, EmptyStateNotice } from '@/components/ui/empty-state'
-import { PlotlyChart } from '@/components/ui/plotly-chart'
 import { useTimeseriesPage, useCombatYieldHistory } from './queries'
 import { useGlobalFilterStore } from '@/stores/globalFilterStore'
 import { DeltaCard } from '@/components/ui/delta-card'
 import { CombatYieldTimeseries } from '@/components/ui/combat-yield-timeseries'
-import type { PlotlyFigurePayload, TimeseriesKpiCard } from '@/lib/api/types'
+import { TimeseriesLineChart } from '@/components/ui/timeseries-line-chart'
+import { TimeseriesHistogram } from '@/components/ui/timeseries-histogram'
+import { TimeseriesHeatmap } from '@/components/ui/timeseries-heatmap'
+import { TimeseriesScatter } from '@/components/ui/timeseries-scatter'
+import { TimeseriesKdaBars } from '@/components/ui/timeseries-kda-bars'
+import type { TimeseriesKpiCard } from '@/lib/api/types'
 
 type TabId = 'summary' | 'cumul' | 'form' | 'intensity' | 'distributions' | 'combat'
 
@@ -25,26 +29,6 @@ const TABS: { id: TabId; label: string }[] = [
   { id: 'distributions', label: 'Distributions' },
   { id: 'combat', label: 'Combat' },
 ]
-
-function ChartCard({ title, figure }: { title: string; figure: PlotlyFigurePayload | null }) {
-  return (
-    <Card>
-      <CardHeader>
-        <CardTitle className="text-sm">{title}</CardTitle>
-      </CardHeader>
-      <CardContent className="pb-4">
-        {figure ? (
-          <PlotlyChart figure={figure} />
-        ) : (
-          <EmptyStateNotice
-            title="Graphique indisponible"
-            description="Aucune figure exploitable n'a été renvoyée pour cette section."
-          />
-        )}
-      </CardContent>
-    </Card>
-  )
-}
 
 export function TimeseriesPage() {
   const { playerSlug } = useParams({ strict: false }) as { playerSlug: string }
@@ -163,25 +147,64 @@ export function TimeseriesPage() {
                 description="Aucune carte KPI n'a été calculée pour cette période."
               />
             )}
-            <ChartCard title="KDA Distribution" figure={summary_tab.kda_dist_chart} />
-            <ChartCard title="Taux de victoire" figure={summary_tab.win_rate_chart} />
-            <ChartCard title="Score" figure={summary_tab.score_chart} />
+            <Card>
+              <CardHeader>
+                <CardTitle className="text-sm">Timeline K/D par match</CardTitle>
+              </CardHeader>
+              <CardContent className="pb-4">
+                <TimeseriesKdaBars rows={data.match_rows ?? []} />
+              </CardContent>
+            </Card>
           </div>
         )}
 
         {/* Cumul */}
         {activeTab === 'cumul' && (
           <div className="space-y-6">
-            <ChartCard title="Score net cumulé" figure={cumul_tab.cumul_net_chart} />
-            <ChartCard title="K/D cumulé" figure={cumul_tab.cumul_kd_chart} />
-            <ChartCard title="K/D glissant" figure={cumul_tab.rolling_kd_chart} />
+            <Card>
+              <CardHeader>
+                <CardTitle className="text-sm">K/D cumulé</CardTitle>
+              </CardHeader>
+              <CardContent className="pb-4">
+                <TimeseriesLineChart
+                  series={[{ name: 'K/D cumulé', points: cumul_tab.cumulative_kd ?? [], color: '#0072B2' }]}
+                  yAxisLabel="K/D"
+                  referenceY={1}
+                  referenceLabel="K/D = 1"
+                />
+              </CardContent>
+            </Card>
+            <Card>
+              <CardHeader>
+                <CardTitle className="text-sm">Score net cumulé</CardTitle>
+              </CardHeader>
+              <CardContent className="pb-4">
+                <TimeseriesLineChart
+                  series={[{ name: 'Kills – Morts cumulés', points: cumul_tab.cumulative_net ?? [], color: '#00DC82', fill: 'tozeroy' }]}
+                  yAxisLabel="Net"
+                  referenceY={0}
+                />
+              </CardContent>
+            </Card>
+            <Card>
+              <CardHeader>
+                <CardTitle className="text-sm">K/D glissant (20 matchs)</CardTitle>
+              </CardHeader>
+              <CardContent className="pb-4">
+                <TimeseriesLineChart
+                  series={[{ name: 'K/D glissant', points: cumul_tab.rolling_kd ?? [], color: '#FFB703' }]}
+                  yAxisLabel="K/D"
+                  referenceY={1}
+                  referenceLabel="K/D = 1"
+                />
+              </CardContent>
+            </Card>
           </div>
         )}
 
         {/* Forme */}
         {activeTab === 'form' && (
           <div className="space-y-6">
-            {/* D1 — Cartes régression K/D */}
             {form_tab.regression_stats.has_enough_for_trend ? (
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                 <DeltaCard
@@ -215,32 +238,120 @@ export function TimeseriesPage() {
                 description="Il faut davantage de matchs pour calculer une régression interprétable sur cette période."
               />
             )}
-            <ChartCard title="EWMA K/D" figure={form_tab.ewma_kd_chart} />
-            <ChartCard title="Tendance (régression)" figure={form_tab.regression_chart} />
-            <ChartCard title="Score net / heure" figure={form_tab.net_score_per_hour_chart} />
+            <Card>
+              <CardHeader>
+                <CardTitle className="text-sm">EWMA K/D (α = 0.20)</CardTitle>
+              </CardHeader>
+              <CardContent className="pb-4">
+                <TimeseriesLineChart
+                  series={[{ name: 'EWMA K/D', points: form_tab.ewma_kd_points ?? [], color: '#33D6FF' }]}
+                  yAxisLabel="K/D lissé"
+                  referenceY={1}
+                  referenceLabel="K/D = 1"
+                />
+              </CardContent>
+            </Card>
           </div>
         )}
 
         {/* Intensité */}
         {activeTab === 'intensity' && (
           <div className="space-y-6">
-            <ChartCard title="Heatmap d'intensité" figure={intensity_tab.intensity_heatmap} />
-            <ChartCard title="Score par minute" figure={intensity_tab.score_per_minute_chart} />
+            <Card>
+              <CardHeader>
+                <CardTitle className="text-sm">Heatmap d'intensité (jour × heure)</CardTitle>
+              </CardHeader>
+              <CardContent className="pb-4">
+                <TimeseriesHeatmap data={intensity_tab.heatmap_data ?? []} colorBy="count" />
+              </CardContent>
+            </Card>
+            <Card>
+              <CardHeader>
+                <CardTitle className="text-sm">Score par minute</CardTitle>
+              </CardHeader>
+              <CardContent className="pb-4">
+                <TimeseriesLineChart
+                  series={[{ name: 'Score/min', points: intensity_tab.score_per_min_data ?? [], color: '#FFB703', fill: 'tozeroy' }]}
+                  yAxisLabel="pts/min"
+                />
+              </CardContent>
+            </Card>
           </div>
         )}
 
         {/* Distributions */}
         {activeTab === 'distributions' && (
           <div className="space-y-6">
-            <ChartCard title="Distribution KDA" figure={distributions_tab.kda_distribution} />
-            <ChartCard title="Premier événement" figure={distributions_tab.first_kill_dist} />
-            {distributions_tab.correlations.map((fig, i) => (
-              <Card key={i}>
-                <CardContent className="pb-4 pt-4">
-                  <PlotlyChart figure={fig} />
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <Card>
+                <CardHeader>
+                  <CardTitle className="text-sm">Distribution K/D</CardTitle>
+                </CardHeader>
+                <CardContent className="pb-4">
+                  <TimeseriesHistogram
+                    buckets={distributions_tab.kda_buckets ?? []}
+                    color="#33D6FF"
+                    xAxisLabel="K/D"
+                  />
                 </CardContent>
               </Card>
-            ))}
+              <Card>
+                <CardHeader>
+                  <CardTitle className="text-sm">Distribution Kills</CardTitle>
+                </CardHeader>
+                <CardContent className="pb-4">
+                  <TimeseriesHistogram
+                    buckets={distributions_tab.kills_buckets ?? []}
+                    color="#00DC82"
+                    xAxisLabel="Kills / match"
+                  />
+                </CardContent>
+              </Card>
+              <Card>
+                <CardHeader>
+                  <CardTitle className="text-sm">Distribution Précision</CardTitle>
+                </CardHeader>
+                <CardContent className="pb-4">
+                  <TimeseriesHistogram
+                    buckets={distributions_tab.accuracy_buckets ?? []}
+                    color="#FFB703"
+                    xAxisLabel="Précision (%)"
+                  />
+                </CardContent>
+              </Card>
+              <Card>
+                <CardHeader>
+                  <CardTitle className="text-sm">Distribution Score/min</CardTitle>
+                </CardHeader>
+                <CardContent className="pb-4">
+                  <TimeseriesHistogram
+                    buckets={distributions_tab.score_per_min_buckets ?? []}
+                    color="#8B5CF6"
+                    xAxisLabel="Score / min"
+                  />
+                </CardContent>
+              </Card>
+              <Card>
+                <CardHeader>
+                  <CardTitle className="text-sm">Distribution Win Rate glissant</CardTitle>
+                </CardHeader>
+                <CardContent className="pb-4">
+                  <TimeseriesHistogram
+                    buckets={distributions_tab.rolling_wr_buckets ?? []}
+                    color="#FF4B4B"
+                    xAxisLabel="Win Rate (%)"
+                  />
+                </CardContent>
+              </Card>
+            </div>
+            <Card>
+              <CardHeader>
+                <CardTitle className="text-sm">Corrélations</CardTitle>
+              </CardHeader>
+              <CardContent className="pb-4">
+                <TimeseriesScatter points={distributions_tab.correlation_points ?? []} />
+              </CardContent>
+            </Card>
           </div>
         )}
 

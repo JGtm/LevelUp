@@ -102,18 +102,6 @@ repos:
         pass_filenames: false
         stages: [pre-push]
 
-      # Vérification des limites de taille (mode ratchet)
-      # Échoue uniquement si une NOUVELLE violation apparaît (pas dans le baseline)
-      # Pour mettre à jour après refactoring : python scripts/enforce_size_limits.py --update
-      # NOTE Sprint 28 : remplacé par golangci-lint funlen/gocyclo pour le code Go.
-      # Ce hook reste actif pour le code Python résiduel (scripts, tests de parité).
-      - id: check-code-size
-        name: Check function/module size limits (ratchet)
-        entry: python scripts/enforce_size_limits.py
-        language: system
-        pass_filenames: false
-        files: ^(src|scripts|tests)/.*\.py$
-
   # ==========================================================================
   # TYPE CHECKING (optionnel - décommenter si souhaité)
   # ==========================================================================
