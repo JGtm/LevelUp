@@ -294,6 +294,20 @@ func init() {
 			`)
 		},
 	})
+
+	// shared_social migration : supprimer media_files et media_match_associations de stats.duckdb
+	// (données déplacées dans shared_social.duckdb).
+	Register(Migration{
+		Name:        "drop_media_from_player_db",
+		TargetDB:    TargetPlayer,
+		Description: "Supprime media_files et media_match_associations de stats.duckdb (migrés vers shared_social.duckdb)",
+		ApplySchema: func(db *sql.DB) error {
+			return execScript(db, `
+				DROP TABLE IF EXISTS media_match_associations;
+				DROP TABLE IF EXISTS media_files;
+			`)
+		},
+	})
 }
 
 // applyCareerProgressionSequence recrée career_progression avec séquence auto-increment.

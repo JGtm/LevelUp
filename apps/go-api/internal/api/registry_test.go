@@ -56,7 +56,7 @@ func TestServiceRegistry_Media_ResolveError(t *testing.T) {
 
 func TestServiceRegistry_MediaUpload_ResolveError(t *testing.T) {
 	reg := &ServiceRegistry{resolve: failResolver}
-	_, _, _, _, err := reg.MediaUpload(context.Background(), "x")
+	_, _, _, _, _, err := reg.MediaUpload(context.Background(), "x")
 	if !errors.Is(err, errResolve) {
 		t.Fatalf("expected resolve error, got %v", err)
 	}

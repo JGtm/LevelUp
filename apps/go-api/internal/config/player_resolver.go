@@ -38,12 +38,13 @@ func resolveDemoPlayer(ctx context.Context, cfg *AppConfig, titleSlug string) (*
 		xuidBytes = "2535469190789936"
 	}
 	pcfg := duckdb.PlayerPoolConfig{
-		Gamertag:     "DemoPlayer",
-		XUID:         xuidBytes,
-		TitleSlug:    titleSlug,
-		PlayerDBPath: filepath.Join(dir, "stats.duckdb"),
-		SharedDBPath: filepath.Join(dir, "shared_matches_v2.duckdb"),
-		MetaDBPath:   filepath.Join(dir, "metadata.duckdb"),
+		Gamertag:           "DemoPlayer",
+		XUID:               xuidBytes,
+		TitleSlug:          titleSlug,
+		PlayerDBPath:       filepath.Join(dir, "stats.duckdb"),
+		SharedDBPath:       filepath.Join(dir, "shared_matches_v2.duckdb"),
+		MetaDBPath:         filepath.Join(dir, "metadata.duckdb"),
+		SharedSocialDBPath: filepath.Join(cfg.RepoRoot, "data", "warehouse", "shared_social.duckdb"),
 	}
 	return duckdb.GetOrOpen(ctx, pcfg)
 }
@@ -80,22 +81,24 @@ func buildPoolConfig(cfg *AppConfig, p *domain.PlayerSummary, titleSlug string) 
 	// Sinon, fallback legacy (data/players/{gt}, data/warehouse/).
 	if reg.Exists(titleSlug) {
 		return duckdb.PlayerPoolConfig{
-			Gamertag:     p.Gamertag,
-			XUID:         p.XUID,
-			TitleSlug:    titleSlug,
-			PlayerDBPath: pr.PlayerDBPath(titleSlug, p.Gamertag),
-			SharedDBPath: pr.SharedDBPath(titleSlug),
-			MetaDBPath:   pr.MetadataDBPath(titleSlug),
+			Gamertag:           p.Gamertag,
+			XUID:               p.XUID,
+			TitleSlug:          titleSlug,
+			PlayerDBPath:       pr.PlayerDBPath(titleSlug, p.Gamertag),
+			SharedDBPath:       pr.SharedDBPath(titleSlug),
+			MetaDBPath:         pr.MetadataDBPath(titleSlug),
+			SharedSocialDBPath: pr.LegacySharedSocialDBPath(),
 		}
 	}
 	// Legacy fallback
 	return duckdb.PlayerPoolConfig{
-		Gamertag:     p.Gamertag,
-		XUID:         p.XUID,
-		TitleSlug:    titleSlug,
-		PlayerDBPath: filepath.Join(pr.LegacyPlayerDir(p.Gamertag), "stats.duckdb"),
-		SharedDBPath: pr.LegacySharedDBPath(),
-		MetaDBPath:   pr.LegacyMetadataDBPath(),
+		Gamertag:           p.Gamertag,
+		XUID:               p.XUID,
+		TitleSlug:          titleSlug,
+		PlayerDBPath:       filepath.Join(pr.LegacyPlayerDir(p.Gamertag), "stats.duckdb"),
+		SharedDBPath:       pr.LegacySharedDBPath(),
+		MetaDBPath:         pr.LegacyMetadataDBPath(),
+		SharedSocialDBPath: pr.LegacySharedSocialDBPath(),
 	}
 }
 

@@ -301,6 +301,9 @@ type HomeRepository interface {
 	// LoadHomeMatches charge les 200 derniers matchs du joueur avec les KPIs (Q26).
 	LoadHomeMatches(ctx context.Context) ([]domain.HomeMatchRow, error)
 
+	// CountPlayerMatches retourne le nombre total de matchs du joueur (Q26b).
+	CountPlayerMatches(ctx context.Context) (int, error)
+
 	// LoadHomeSessions charge les sessions depuis player_match_enrichment (Q27).
 	LoadHomeSessions(ctx context.Context) ([]domain.HomeSessionRow, error)
 
@@ -317,6 +320,9 @@ type noopHomeRepo struct{}
 
 func (n *noopHomeRepo) LoadHomeMatches(_ context.Context) ([]domain.HomeMatchRow, error) {
 	return nil, nil
+}
+func (n *noopHomeRepo) CountPlayerMatches(_ context.Context) (int, error) {
+	return 0, nil
 }
 func (n *noopHomeRepo) LoadHomeSessions(_ context.Context) ([]domain.HomeSessionRow, error) {
 	return nil, nil
@@ -403,11 +409,23 @@ type MediaRepository interface {
 	GetMediaLikers(ctx context.Context, mediaPaths []string) (map[string]domain.MediaLikersInfo, error)
 }
 
+// SocialRepository gère les données sociales (favoris) dans shared_social.duckdb.
+// Implémenté par platform/duckdb.SocialRepo.
+type SocialRepository interface {
+	// ToggleMatchFavorite bascule l'état favori d'un match pour un joueur.
+	// Retourne le nouvel état.
+	ToggleMatchFavorite(ctx context.Context, playerSlug, matchID string, favorited bool) error
+
+	// IsMatchFavorite indique si un match est en favori pour un joueur.
+	IsMatchFavorite(ctx context.Context, playerSlug, matchID string) (bool, error)
+}
+
 // Ensure compile-time checks pour les nouveaux repos Sprint 12+13.
 var (
 	_ SquadRepository     = (*noopSquadRepo)(nil)
 	_ CitationsRepository = (*noopCitationsRepo)(nil)
 	_ MediaRepository     = (*noopMediaRepo)(nil)
+	_ SocialRepository    = (*noopSocialRepo)(nil)
 )
 
 // noopSquadRepo — impl nulle pour le check de compilation uniquement.
@@ -570,3 +588,13 @@ func (n *noopPrivacyStateRepo) LoadPrivacyState(_ context.Context, _ string) (*d
 }
 
 var _ PrivacyStateRepository = (*noopPrivacyStateRepo)(nil)
+
+// noopSocialRepo — impl nulle pour le check de compilation uniquement.
+type noopSocialRepo struct{}
+
+func (n *noopSocialRepo) ToggleMatchFavorite(_ context.Context, _, _ string, _ bool) error {
+	return nil
+}
+func (n *noopSocialRepo) IsMatchFavorite(_ context.Context, _, _ string) (bool, error) {
+	return false, nil
+}

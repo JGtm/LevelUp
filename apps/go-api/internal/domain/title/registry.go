@@ -262,6 +262,11 @@ func (p *PathResolver) LegacySharedDBPath() string {
 	return filepath.Join(p.LegacyWarehouseDir(), "shared_matches_v2.duckdb")
 }
 
+// LegacySharedSocialDBPath retourne le chemin legacy de la base sociale partagée.
+func (p *PathResolver) LegacySharedSocialDBPath() string {
+	return filepath.Join(p.LegacyWarehouseDir(), "shared_social.duckdb")
+}
+
 // LegacyMetadataDBPath retourne le chemin legacy de la base metadata.
 func (p *PathResolver) LegacyMetadataDBPath() string {
 	return filepath.Join(p.LegacyWarehouseDir(), "metadata.duckdb")
