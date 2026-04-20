@@ -23,6 +23,7 @@ import (
 	jobs_platform "levelup/go-api/internal/platform/jobs"
 	session_platform "levelup/go-api/internal/platform/session"
 	settings_platform "levelup/go-api/internal/platform/settings"
+	"levelup/go-api/internal/platform/userstore"
 	"levelup/go-api/internal/port"
 	"levelup/go-api/internal/service"
 )
@@ -43,6 +44,12 @@ func NewRouter(
 	settingsStore := settings_platform.NewStore(cfg.AppSettingsPath)
 	jobsPath := filepath.Join(cfg.RepoRoot, "data", "cache", "jobs.json")
 	jobStore := jobs_platform.NewStore(jobsPath)
+
+	// Auth locale : user store + invite store (mode password).
+	usersPath := filepath.Join(cfg.AuthDir, "users.json")
+	invitesPath := filepath.Join(cfg.AuthDir, "invites.json")
+	users := userstore.NewStore(usersPath)
+	invites := userstore.NewInviteStore(invitesPath)
 
 	r := chi.NewRouter()
 
@@ -104,9 +111,30 @@ func NewRouter(
 		r.Post("/session/context", sessionHandler.PostContext)
 
 		// Sprint 15 : Device Code Flow + authentification Halo
-		authHandler := handlers.NewAuthHandler(sessionStore, attemptStore, cfg.DemoMode)
+		authHandler := handlers.NewAuthHandler(sessionStore, attemptStore, cfg.DemoMode).
+			WithUserStore(users)
 		r.Post("/auth/device-flow/start", authHandler.StartDeviceFlow)
 		r.Get("/auth/device-flow/{attempt_id}", authHandler.GetDeviceFlowStatus)
+
+		// Auth locale : login/register/logout (mode password).
+		userAuthHandler := handlers.NewUserAuthHandler(users, invites, sessionStore, cfg.RegistrationMode)
+		r.Post("/auth/login", userAuthHandler.Login)
+		r.Post("/auth/register", userAuthHandler.Register)
+		r.Post("/auth/logout", userAuthHandler.Logout)
+
+		// Admin : gestion utilisateurs + invitations (protégé par RequireAuth + RequireAdmin).
+		adminHandler := handlers.NewAdminHandler(users, invites)
+		r.Route("/admin", func(r chi.Router) {
+			r.Use(middleware.RequireAuth(cfg.DemoMode, cfg.AuthMode))
+			r.Use(middleware.RequireAdmin())
+			r.Get("/users", adminHandler.ListUsers)
+			r.Delete("/users/{username}", adminHandler.DeleteUser)
+			r.Patch("/users/{username}/role", adminHandler.ChangeRole)
+			r.Patch("/users/{username}/password", adminHandler.ResetPassword)
+			r.Get("/invites", adminHandler.ListInvites)
+			r.Post("/invites", adminHandler.GenerateInvite)
+			r.Delete("/invites/{code}", adminHandler.RevokeInvite)
+		})
 
 		// Sprint 16 : Settings + Setup joueur
 		settingsHandler := handlers.NewSettingsHandler(cfg, settingsStore, jobStore)

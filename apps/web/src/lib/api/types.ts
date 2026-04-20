@@ -81,6 +81,16 @@ export interface BootstrapResponse {
   linked_halo_identity?: HaloIdentitySummary | null
   /** ID du job de sync initial actif pour cette session (null si aucun). */
   active_sync_job_id?: string | null
+  /** Auth locale : mode d'authentification ("none" | "password"). */
+  auth_mode: 'none' | 'password'
+  /** Mode d'inscription ("invite" | "open" | "closed"). */
+  registration_mode: 'invite' | 'open' | 'closed'
+  /** True si l'utilisateur courant est admin. */
+  is_admin: boolean
+  /** Username connecté (si mode password et connecté). */
+  current_username?: string | null
+  /** True si aucun user n'est enregistré (premier lancement). */
+  first_launch: boolean
 }
 
 export interface PlayersListResponse {
@@ -1640,4 +1650,55 @@ export interface LeaderboardResponse {
   playlist_id: string
   title_slug: string
   total: number
+}
+
+// ---------------------------------------------------------------------------
+// Auth locale
+// ---------------------------------------------------------------------------
+
+export interface LoginRequest {
+  username: string
+  password: string
+}
+
+export interface LoginResponse {
+  username: string
+  role: 'admin' | 'user'
+  gamertag?: string
+}
+
+export interface RegisterRequest {
+  username: string
+  password: string
+  invite_code?: string
+}
+
+export interface RegisterResponse {
+  username: string
+  role: 'admin' | 'user'
+}
+
+export interface AdminUserSummary {
+  username: string
+  role: 'admin' | 'user'
+  gamertag?: string
+  created_at: string
+  last_login_at?: string
+}
+
+export interface AdminInviteSummary {
+  code: string
+  created_by: string
+  created_at: string
+  expires_at: string
+  used_by?: string | null
+  used_at?: string | null
+  valid: boolean
+}
+
+export interface InviteCode {
+  code: string
+  created_by: string
+  created_at: string
+  expires_at: string
 }

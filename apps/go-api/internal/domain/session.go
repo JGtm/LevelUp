@@ -28,6 +28,9 @@ type SessionData struct {
 	// HaloTokens contient les tokens Halo obtenus après échange (Sprint 18).
 	// Jamais exposés au navigateur. TTL ~4h (Spartan token).
 	HaloTokens *HaloTokens `json:"halo_tokens,omitempty"`
+	// Auth locale : username et rôle de l'utilisateur connecté (mode password).
+	Username *string `json:"username,omitempty"`
+	Role     *string `json:"role,omitempty"` // "admin" | "user"
 }
 
 // SessionContextRequest est le body de POST /session/context.
