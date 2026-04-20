@@ -262,3 +262,142 @@ func TestBuildTimeseriesSummaryTab_WithMatches(t *testing.T) {
 		t.Error("expected cards")
 	}
 }
+
+// ---------------------------------------------------------------------------
+// buildMatchRows
+// ---------------------------------------------------------------------------
+
+func TestBuildMatchRows_Basic(t *testing.T) {
+	win := 2
+	acc := 0.55
+	score := 1200
+	dur := 600
+	now := time.Now()
+	matches := []domain.StatsMatchRow{
+		{
+			MatchID:           "abc123",
+			StartTime:         now,
+			Kills:             10,
+			Deaths:            5,
+			Assists:           2,
+			Accuracy:          &acc,
+			Outcome:           &win,
+			PersonalScore:     &score,
+			TimePlayedSeconds: &dur,
+			PlaylistName:      "Ranked Arena",
+		},
+	}
+	rows := buildMatchRows(matches)
+	if len(rows) != 1 {
+		t.Fatalf("expected 1 row, got %d", len(rows))
+	}
+	r := rows[0]
+	if r.MatchID != "abc123" {
+		t.Errorf("MatchID = %q, want abc123", r.MatchID)
+	}
+	if r.Index != 0 {
+		t.Errorf("Index = %d, want 0 (0-based)", r.Index)
+	}
+	if r.Kills != 10 {
+		t.Errorf("Kills = %d, want 10", r.Kills)
+	}
+	if r.PlaylistName != "Ranked Arena" {
+		t.Errorf("PlaylistName = %q", r.PlaylistName)
+	}
+}
+
+// ---------------------------------------------------------------------------
+// buildAccuracyBuckets
+// ---------------------------------------------------------------------------
+
+func TestBuildAccuracyBuckets_Empty(t *testing.T) {
+	buckets := buildAccuracyBuckets(nil)
+	if len(buckets) != 0 {
+		t.Errorf("expected 0 buckets, got %d", len(buckets))
+	}
+}
+
+func TestBuildAccuracyBuckets_Basic(t *testing.T) {
+	acc30 := 0.30
+	acc60 := 0.60
+	matches := []domain.StatsMatchRow{
+		{Accuracy: &acc30},
+		{Accuracy: &acc30},
+		{Accuracy: &acc60},
+		{Accuracy: nil},
+	}
+	buckets := buildAccuracyBuckets(matches)
+	// Should produce non-empty buckets for bins containing 30% and 60%
+	if len(buckets) == 0 {
+		t.Fatal("expected non-empty buckets")
+	}
+	total := 0
+	for _, b := range buckets {
+		total += b.Count
+	}
+	if total != 3 {
+		t.Errorf("total count = %d, want 3 (nil excluded)", total)
+	}
+}
+
+// ---------------------------------------------------------------------------
+// buildCorrelationPoints (types étendus)
+// ---------------------------------------------------------------------------
+
+func TestBuildCorrelationPoints_AllTypes(t *testing.T) {
+	win := 2
+	acc := 0.55
+	dur := 600
+	kda := 2.5
+	mmrTeam := 1500.0
+	mmrEnemy := 1600.0
+	matches := []domain.StatsMatchRow{
+		{
+			Kills:             10,
+			Deaths:            5,
+			Assists:           2,
+			Outcome:           &win,
+			Accuracy:          &acc,
+			TimePlayedSeconds: &dur,
+			KDA:               &kda,
+			TeamMMR:           &mmrTeam,
+			EnemyMMR:          &mmrEnemy,
+		},
+	}
+	points := buildCorrelationPoints(matches)
+	if len(points) == 0 {
+		t.Fatal("expected non-empty correlation points")
+	}
+	labels := make(map[string]bool)
+	for _, p := range points {
+		labels[p.Label] = true
+	}
+	for _, want := range []string{"kills_vs_kd", "kills_vs_deaths", "lifespan_vs_kills"} {
+		if !labels[want] {
+			t.Errorf("missing label %q", want)
+		}
+	}
+}
+
+// ---------------------------------------------------------------------------
+// filterStatsMatchRows
+// ---------------------------------------------------------------------------
+
+func TestFilterStatsMatchRows_Empty(t *testing.T) {
+	rows := filterStatsMatchRows(nil, domain.FilterContextInput{})
+	if len(rows) != 0 {
+		t.Errorf("expected 0 rows, got %d", len(rows))
+	}
+}
+
+func TestFilterStatsMatchRows_NoFilter(t *testing.T) {
+	now := time.Now()
+	rows := []domain.StatsMatchRow{
+		{MatchID: "m1", StartTime: now, PlaylistName: "Arena"},
+		{MatchID: "m2", StartTime: now, PlaylistName: "BTB"},
+	}
+	out := filterStatsMatchRows(rows, domain.FilterContextInput{})
+	if len(out) != 2 {
+		t.Errorf("expected 2 rows without filter, got %d", len(out))
+	}
+}

@@ -16584,3 +16584,31 @@ Après confirmation que sync DuckDB, auth MSAL/XSTS, API Halo (SPNKr) et launche
 
 **Conclusion** :
 Go est désormais l'unique runtime. ~900 fichiers Python supprimés. Le dépôt est prêt pour un commit de clôture.
+
+---
+
+## 2025-07-13 — Portage timeseries Go — rendu charts client-side
+
+**Contexte** : Sprint 33+. `PlotlyFigurePayload = null` dans toutes les réponses Go (décision architecturale). La page "Stats en solo" n'affichait que des `EmptyStateNotice` dans tous les onglets.
+
+**Décision architecturale** : Construire les charts côté React depuis les données brutes (arrays typés) — pas de régénération de `PlotlyFigurePayload` dans le Go.
+
+**Fichiers modifiés — Go** :
+- `apps/go-api/internal/domain/timeseries.go` : `TimeseriesMatchRow` ajouté, `CorrelationDataPair.Outcome *int`, 3 nouveaux champs buckets dans `TimeseriesDistributionsTab`, `MatchRows []TimeseriesMatchRow` dans `TimeseriesPageResponse`
+- `apps/go-api/internal/service/timeseries_service.go` : alpha EWMA 0.1→0.20, `buildMatchRows`, `buildAccuracyBuckets`, `buildScorePerMinBuckets`, `buildRollingWRBuckets`, `buildCorrelationPoints` étendu à 6 types avec Outcome, `filterStatsMatchRows` branché dans `GetPage`
+- `apps/go-api/internal/service/timeseries_service_test.go` : 6 nouveaux tests (buildMatchRows, buildAccuracyBuckets×2, buildCorrelationPoints, filterStatsMatchRows×2)
+
+**Fichiers modifiés — TypeScript / React** :
+- `apps/web/src/lib/api/types.ts` : 5 nouvelles interfaces (CumulativePoint, DistributionBucket, CorrelationDataPair, IntensityHeatmapPoint, TimeseriesMatchRow), interfaces existantes étendues
+- `apps/web/src/features/timeseries/TimeseriesPage.tsx` : tous les onglets câblés sur les nouveaux composants (suppression PlotlyChart fallback)
+- `apps/web/src/components/ui/timeseries-line-chart.tsx` : CRÉÉ — multi-séries Plotly ligne (cumul/rolling/EWMA)
+- `apps/web/src/components/ui/timeseries-histogram.tsx` : CRÉÉ — barres depuis DistributionBucket[]
+- `apps/web/src/components/ui/timeseries-heatmap.tsx` : CRÉÉ — heatmap 7×24 jour/heure
+- `apps/web/src/components/ui/timeseries-scatter.tsx` : CRÉÉ — scatter multi-type avec sélecteur de label
+- `apps/web/src/components/ui/timeseries-kda-bars.tsx` : CRÉÉ — timeline K/D barres+ligne par match
+
+**Résultats observés** :
+- `go build ./...` : EXIT 0
+- `go test ./internal/service/... -run "Timeseries|BuildMatchRows|BuildAccuracy|BuildCorrelation|FilterStats"` : 13/13 PASS
+
+**Conclusion** : Tous les onglets de la page timeseries ont désormais des composants de rendu fonctionnels. Le Go fournit les données brutes, React construit les figures Plotly client-side.
