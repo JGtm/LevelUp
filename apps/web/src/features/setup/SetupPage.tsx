@@ -427,12 +427,14 @@ export function SetupPage() {
   const isBootstrapped = useAppShellStore((s) => s.isBootstrapped)
   const currentPlayer = useAppShellStore((s) => s.currentPlayer)
 
-  // Rediriger vers l'accueil dès que l'onboarding est terminé
+  const setupRequired = useAppShellStore((s) => s.setupRequired)
+
+  // Rediriger vers l'accueil si le setup n'est pas requis ou est terminé
   useEffect(() => {
-    if (isBootstrapped && setupState === 'ready') {
+    if (isBootstrapped && (setupState === 'ready' || !setupRequired)) {
       navigate({ to: '/' })
     }
-  }, [isBootstrapped, setupState, navigate])
+  }, [isBootstrapped, setupState, setupRequired, navigate])
 
   if (!isBootstrapped) {
     return (
@@ -447,7 +449,7 @@ export function SetupPage() {
       <Card className="w-full max-w-lg mx-4">
         <CardHeader>
           <div className="flex items-center gap-2">
-            <span className="text-2xl">⚔️</span>
+            <img src="/logo.png" alt="LevelUp" className="h-8 w-8 rounded-full" />
             <CardTitle>Configuration de LevelUp</CardTitle>
           </div>
         </CardHeader>

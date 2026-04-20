@@ -842,6 +842,7 @@ export interface ExplorerMatchesQueryRequest {
   filters?: FilterContextInput
   match_filters?: ExplorerMatchFilters
   pagination?: PaginationRequest
+  favorites_only?: boolean
 }
 
 export interface ExplorerPlayerQueryRequest {
@@ -900,6 +901,7 @@ export interface RecentMatchItem {
   started_at: string | null
   outcome_label: string
   outcome_tone: string
+  is_favorite: boolean
   /** S56 — champs enrichis pour MatchCard */
   map_ui?: string | null
   mode_ui?: string | null
@@ -943,6 +945,7 @@ export interface HomePageResponse {
   hero: HomeHeroCard
   highlights: HighlightItem[]
   recent_matches: RecentMatchItem[]
+  favorite_matches: RecentMatchItem[]
   recent_media: RecentMediaItem[]
   solo_session: SessionSummaryItem | null
   squad_session: SessionSummaryItem | null
@@ -965,6 +968,64 @@ export interface ChallengesResponse {
   xp_available: number | null
   next_expiry: string | null
   error_hint: string | null
+}
+
+export type SeasonPassStatus = 'active' | 'in_progress' | 'completed' | 'not_started'
+
+export interface SeasonPassTrackSummary {
+  reward_track_path: string
+  name: string
+  status: SeasonPassStatus
+  is_active: boolean
+  is_owned: boolean
+  has_reached_max_rank: boolean
+  current_rank: number
+  partial_progress: number
+  xp_per_rank?: number | null
+  max_rank?: number | null
+  completion_percent?: number | null
+  image_url?: string | null
+  background_image_url?: string | null
+}
+
+export interface SeasonPassPageResponse {
+  title_slug: string
+  available: boolean
+  error_hint?: string | null
+  active_track_path?: string | null
+  challenges: ChallengesResponse
+  passes: SeasonPassTrackSummary[]
+}
+
+export interface RelationInsight {
+  xuid: string
+  gamertag: string
+  total_matches: number
+  teammate_matches: number
+  teammate_wins: number
+  teammate_win_rate?: number | null
+  enemy_matches: number
+  enemy_wins: number
+  enemy_win_rate?: number | null
+  avg_kda_with?: number | null
+  avg_kda_against?: number | null
+  last_seen_at?: string | null
+}
+
+export interface RelationsOverview {
+  distinct_players: number
+  frequent_allies: number
+  repeat_rivals: number
+  closed_circle: number
+}
+
+export interface RelationsPageResponse {
+  overview: RelationsOverview
+  frequent_allies: RelationInsight[]
+  best_synergies: RelationInsight[]
+  nemeses: RelationInsight[]
+  favorite_victims: RelationInsight[]
+  closed_circle: RelationInsight[]
 }
 
 // ---------------------------------------------------------------------------
@@ -1578,17 +1639,19 @@ export interface NormalizedPlayerStats {
   xuid: string
   gamertag: string
   title_slug: string
-  matches_played: number
+  matches: number
   win_rate: number
-  kd_ratio: number
+  kda: number
+  kdr: number
+  kills_per_game: number
+  deaths_per_game: number
+  assists_per_game: number
   accuracy: number
-  avg_kills: number
-  avg_deaths: number
-  avg_assists: number
-  avg_damage: number
-  avg_ps_per_min: number
-  avg_playtime_min: number
-  avg_performance_score: number
+  damage_per_game: number
+  career_rank: number
+  csr_current: number
+  csr_best: number
+  extended?: Record<string, unknown>
   is_local: boolean
 }
 
@@ -1602,8 +1665,8 @@ export interface CompareMetricRow {
 }
 
 export interface CompareRequest {
-  gamertag_b: string
-  title_slug?: string
+  target_gamertag: string
+  filters?: FilterContextInput
 }
 
 export interface CompareResponse {
