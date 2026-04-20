@@ -1,5 +1,107 @@
 # Thought Log
 
+## [2026-04-20] fix(web): déplacer Palmarès en avant-dernier dans la L1
+
+**Statut** : Complété
+
+**Décision technique** : déplacement effectif de `Palmarès` dans `NavL1` pour le placer en avant-dernier parmi les sections joueur, juste avant `Carrière`, puis mise à jour du test de régression dans `apps/web/src/components/shell/NavL1.test.tsx` pour verrouiller l'ordre `Médias → Palmarès → Carrière`.
+
+**Résultats** : `npm run test:run -- src/components/shell/NavL1.test.tsx` ✅ (3/3 verts), dont une assertion d'ordre DOM entre les liens `Médias`, `Palmarès` et `Carrière`.
+
+**Conclusion** : la L1 est maintenant alignée sur la consigne produit courante, avec `Palmarès` en avant-dernier et un test de verrouillage dédié.
+
+## [2026-04-20] feat(social): vérification finale + hardening tests/logging
+
+**Statut** : Complété
+
+**Décision technique** : Finalisation de la migration `shared_social.duckdb` — ajout de la couverture tests manquante, amélioration du logging, validation des entrées, et correction d'une régression de signature dans les tests existants.
+
+**Résultats** :
+- `port/repository.go` : ajout `noopSocialRepo` + check compile-time `_ SocialRepository = (*noopSocialRepo)(nil)`
+- `platform/duckdb/social_repo.go` : ajout `log/slog` — `WarnContext` quand `SharedSocial == nil` (DB indisponible), wrapping erreurs avec contexte (`fmt.Errorf("... : %w", err)`)
+- `api/handlers/match_favorite.go` : ajout validation `matchID == ""` → 400 Bad Request, `DebugContext` sur succès avec `match_id`/`player`/`favorited`, `ErrorContext` enrichi avec `"player"` field
+- `service/social_service_test.go` (NOUVEAU) : 3 cas — Toggle Add, Toggle Remove, RepoError
+- `api/handlers/match_favorite_test.go` (NOUVEAU) : 6 cas — Add OK, Remove OK, PlayerNotFound, InvalidBody, DBError, SlugAndMatchIDPropagated
+- `api/handlers/media_test.go` : correction signature `MediaUploadContextFactory` (4→5 retour values + sharedSocialDBPath)
+- `internal/api/registry_test.go` : correction `MediaUpload` assignation 5→6 variables
+- Build : `go build ./...` ✅, `go vet ./...` : sortie propre ✅
+- Tests nouveaux : 9/9 ✅ ; seul `TestBuildFeatureFlags_Discord` échoue (pré-existant, configuration Discord absente dans l'environnement local)
+
+**Conclusion** : Tous les gaps identifiés en session précédente sont comblés. L'API `PATCH /players/{slug}/matches/{match_id}/favorite` est complète avec tests, logging et validation.
+
+## [2025-07-25] feat(social): migration shared_social.duckdb — Phases 1→4
+
+**Statut** : Complété
+
+**Décision technique** : Création d'une DB dédiée `shared_social.duckdb` (`data/warehouse/`) pour centraliser toutes les données sociales/contenu utilisateur : `media_files`, `media_match_associations`, `media_likes`, `match_favorites`. Rationale : ces données ne sont ni des statistiques de match (shared_matches_v2) ni des enrichissements joueur (stats.duckdb).
+
+**Résultats** :
+- Phase 1 : `TargetSharedSocial` dans registry, `PlayerDB.SharedSocial`, `steps_shared_social.go` (DDL), `main.go`, `LegacySharedSocialDBPath()`, `player_resolver.go`
+- Phase 2 : Script one-shot `cmd/migrate-to-shared-social/main.go` (idempotent, `--dry-run`)
+- Phase 3 : Bascule `media_repo.go` → `socialDB()` helper (fallback Player si nil), `ops/media.go` → `SharedSocialDBPath`, `notify/notifiers.go` commentaire mis à jour, handler `match_favorite.go` + route `PATCH /players/{slug}/matches/{id}/favorite`, `port.SocialRepository`, `port.SocialService`, `service.SocialService`, `platform/duckdb.SocialRepo`
+- Phase 4 : Migrations `drop_media_from_player_db` (stats.duckdb) et `drop_media_likes_from_shared` (shared_matches_v2.duckdb). ATTACH `shared_matches_v2` sur connexion SharedSocial pour que Q37 continue de joindre `shared.match_registry`
+- Build : `go build ./...` ✅, `go vet` : sortie propre
+
+**Conclusion** : Architecture sociale proprement isolée. Les vrais DROP ne s'exécutent qu'au prochain démarrage via `launcher.py → _run_migrations()`, après que le script de migration manuelle a copié les données.
+
+
+
+### Décisions techniques
+
+1. **Faire un incrément léger mais visible** — la hauteur du visuel passe de `h-32 / sm:h-44 / lg:h-52` à `h-36 / sm:h-48 / lg:h-56`, soit environ +8 à +12% selon le breakpoint.
+2. **Conserver le reste du comportement inchangé** — sticky, radius et recouvrement par le contenu restent identiques ; seule l'emprise verticale de l'image augmente.
+
+### Résultats observés
+
+- Le bandeau prend un peu plus de place visuelle sur mobile, tablette et desktop
+- Le test Home a été réaligné sur les nouvelles classes de hauteur
+
+### Conclusion
+
+Le header visuel de la home est maintenant légèrement plus généreux, sans changer son comportement sticky.
+
+## [2026-04-20] fix(web): déplacer le sticky du bandeau home sur le bon conteneur
+
+**Statut** : Complété
+
+### Décisions techniques
+
+1. **Corriger la mécanique CSS au bon niveau** — le `sticky` posé directement sur `HomeHeroBanner` ne pouvait pas coller durablement, car son parent immédiat n'offrait pas de hauteur utile pour le scroll.
+2. **Déplacer le collage dans `HomePage`** — le wrapper du bandeau devient `sticky top-0`, ce qui l'ancre dans le flux complet de la page d'accueil et laisse le contenu défiler par-dessus.
+3. **Laisser le composant décoratif simple** — `HomeHeroBanner` revient à un bloc purement visuel, sans responsabilité de positionnement global.
+
+### Résultats observés
+
+- Le conteneur sticky de la bannière est maintenant porté par `HomePage`
+- `HomeHeroBanner` conserve uniquement le rendu visuel
+- Le test Home vérifie désormais le bon noeud sticky
+
+### Conclusion
+
+Le bandeau ne collait pas parce que le `sticky` était appliqué au mauvais niveau du layout. Le comportement est maintenant branché sur le wrapper correct.
+
+## [2026-04-20] fix(web): Palmarès avant Carrière + wording Face-à-face
+
+**Statut** : Complété
+
+### Décisions techniques
+
+1. **Remonter Palmarès dans le parcours joueur** — ajout de `Palmarès` dans `PLAYER_PRIMARY_NAV_ITEMS` avant `Carrière` pour aligner la navigation joueur avec l’intention produit, au-delà de la seule barre L1.
+2. **Remplacer le libellé trop générique `Comparer`** — adoption de `Face-à-face` en FR et `Head-to-head` en EN sur l’onglet Palmarès et les CTA visibles.
+3. **Supprimer la duplication du drawer compare** — `CompareDrawer` réutilise désormais `CompareSurface` + les textes i18n partagés, ce qui évite une nouvelle dérive de wording ou de structure.
+4. **Réaligner le contrat compare web avec le backend Go courant** — `types.ts`, `queries.ts` et les fixtures de test utilisent de nouveau `target_gamertag` et la shape normalisée `matches / kda / kdr / kills_per_game / ...` déjà exposée par `internal/domain/compare.go`.
+
+### Résultats observés
+
+- `apps/web/src/components/shell/shellNavigation.test.ts` : OK, avec assertion explicite que `Palmarès` précède `Carrière`.
+- `apps/web/src/features/compare/CompareDrawer.test.tsx` : OK après réalignement du fixture compare.
+- `apps/web`: `npm run test:run -- src/components/shell/shellNavigation.test.ts src/features/compare/CompareDrawer.test.tsx` : OK (15 tests).
+- `apps/web`: `npm run build` : OK.
+
+### Conclusion
+
+Le positionnement de `Palmarès` et le wording `Face-à-face` sont maintenant cohérents dans la navigation et dans la feature compare, avec un contrat front ré-aligné sur l’implémentation Go actuelle.
+
 ## [2025-01-22] feat(media): galerie partagée, filtres fonctionnels, likes sociaux, feed-version
 
 **Statut** : Complété
