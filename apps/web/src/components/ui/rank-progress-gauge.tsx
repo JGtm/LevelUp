@@ -98,7 +98,7 @@ export function RankProgressGauge({ title, progressPct, subtitle, size = 220 }: 
         </text>
       </svg>
       {subtitle && (
-        <p className="mt-1 text-center text-xs text-gray-400">{subtitle}</p>
+        <p className="mt-1 text-center text-xs text-muted-foreground">{subtitle}</p>
       )}
     </div>
   )

@@ -21,10 +21,10 @@ export function EmptyStateNotice({
 }: EmptyStateNoticeProps) {
   return (
     <div
-      className={`rounded-xl border border-dashed border-gray-200 bg-gray-50/80 px-4 py-5 text-center ${className}`}
+      className={`rounded-xl border border-dashed border-border bg-muted/80 px-4 py-5 text-center ${className}`}
     >
-      <p className="text-sm font-semibold text-gray-800">{title}</p>
-      <p className="mt-1 text-sm text-gray-500">{description}</p>
+      <p className="text-sm font-semibold text-foreground">{title}</p>
+      <p className="mt-1 text-sm text-muted-foreground">{description}</p>
       {actionLabel && onAction && (
         <div className="mt-4">
           <Button variant="outline" size="sm" onClick={onAction}>

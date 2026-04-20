@@ -32,12 +32,12 @@ function KADRow({ kills, assists, deaths }: { kills?: number | null; assists?: n
   if (kills == null && assists == null && deaths == null) return null
   return (
     <div className="flex items-center gap-3 text-sm font-mono">
-      <span className="text-white font-bold">{kills ?? '—'}</span>
-      <span className="text-gray-400 text-xs">K</span>
-      <span className="text-gray-300">{assists ?? '—'}</span>
-      <span className="text-gray-400 text-xs">A</span>
+      <span className="text-foreground font-bold">{kills ?? '—'}</span>
+      <span className="text-muted-foreground text-xs">K</span>
+      <span className="text-muted-foreground">{assists ?? '—'}</span>
+      <span className="text-muted-foreground text-xs">A</span>
       <span className="text-[#FF4B4B]">{deaths ?? '—'}</span>
-      <span className="text-gray-400 text-xs">D</span>
+      <span className="text-muted-foreground text-xs">D</span>
     </div>
   )
 }
@@ -64,13 +64,13 @@ function damagePerDeath(m: RecentMatchItem): number | null {
 export function MatchCard({ match: m, onClick }: MatchCardProps) {
   return (
     <div
-      className="rounded-xl overflow-hidden border border-gray-700 bg-[#1d2328] flex flex-col cursor-default hover:border-gray-500 transition-colors"
+      className="rounded-xl overflow-hidden border border-border bg-[#1d2328] flex flex-col cursor-default hover:border-border transition-colors"
       onClick={onClick}
       role={onClick ? 'button' : undefined}
       tabIndex={onClick ? 0 : undefined}
     >
       {/* Image de la map */}
-      <div className="relative h-48 bg-gray-800 overflow-hidden flex-shrink-0">
+      <div className="relative h-48 bg-muted overflow-hidden flex-shrink-0">
         {m.map_image_url ? (
           <img
             src={m.map_image_url}
@@ -79,7 +79,7 @@ export function MatchCard({ match: m, onClick }: MatchCardProps) {
             loading="lazy"
           />
         ) : (
-          <div className="w-full h-full flex items-center justify-center text-gray-600 text-xs">
+          <div className="w-full h-full flex items-center justify-center text-muted-foreground text-xs">
             {m.map_ui ?? 'Map inconnue'}
           </div>
         )}
@@ -94,11 +94,11 @@ export function MatchCard({ match: m, onClick }: MatchCardProps) {
       <div className="flex flex-col gap-2 px-3 py-2 flex-1">
         {/* Map / mode */}
         <div>
-          <p className="text-sm font-semibold text-white leading-tight truncate">
+          <p className="text-sm font-semibold text-foreground leading-tight truncate">
             {m.map_ui ?? m.title}
           </p>
           {m.mode_ui && (
-            <p className="text-xs text-gray-400 truncate">{m.mode_ui}</p>
+            <p className="text-xs text-muted-foreground truncate">{m.mode_ui}</p>
           )}
         </div>
 
@@ -109,7 +109,7 @@ export function MatchCard({ match: m, onClick }: MatchCardProps) {
         </div>
 
         {/* CombatYieldBar */}
-        <div className="flex items-center justify-center pt-1 border-t border-gray-700">
+        <div className="flex items-center justify-center pt-1 border-t border-border">
           <CombatYieldBar
             offensiveConversion={m.offensive_conversion}
             defensiveResistance={m.defensive_resistance}

@@ -24,11 +24,11 @@ function formatDelta(delta: number | string | null | undefined, lowerIsBetter: b
 } {
   if (delta == null) return { text: '', color: '' }
   const num = typeof delta === 'number' ? delta : parseFloat(String(delta))
-  if (isNaN(num)) return { text: String(delta), color: 'text-gray-400' }
+  if (isNaN(num)) return { text: String(delta), color: 'text-muted-foreground' }
   const isFavorable = lowerIsBetter ? num < 0 : num > 0
   const sign = num > 0 ? '+' : ''
   const text = `${sign}${num.toFixed(typeof delta === 'number' && Math.abs(num) < 1 ? 3 : 1)}`
-  const color = isFavorable ? 'text-[#00DC82]' : num === 0 ? 'text-gray-400' : 'text-[#FF4B4B]'
+  const color = isFavorable ? 'text-[#00DC82]' : num === 0 ? 'text-muted-foreground' : 'text-[#FF4B4B]'
   return { text, color }
 }
 
@@ -44,17 +44,17 @@ export function DeltaCard({
   const { text: deltaText, color: deltaColor } = formatDelta(delta, lowerIsBetter)
 
   return (
-    <div className="rounded-lg border border-gray-600 bg-[#1d2328] px-4 py-3">
-      <p className="text-xs text-gray-400 uppercase tracking-wide mb-1">{label}</p>
+    <div className="rounded-lg border border-border bg-[#1d2328] px-4 py-3">
+      <p className="text-xs text-muted-foreground uppercase tracking-wide mb-1">{label}</p>
       <div className="flex items-baseline gap-1.5">
-        <span className="text-xl font-bold text-white">{value}</span>
-        {unit && <span className="text-xs text-gray-400">{unit}</span>}
+        <span className="text-xl font-bold text-foreground">{value}</span>
+        {unit && <span className="text-xs text-muted-foreground">{unit}</span>}
       </div>
       {deltaText && (
         <p className={`text-xs font-semibold mt-0.5 ${deltaColor}`}>{deltaText}</p>
       )}
       {warning && (
-        <p className="text-[10px] text-yellow-400 mt-1">⚠ {warningText ?? 'Tendance non significative'}</p>
+        <p className="text-[10px] text-warning mt-1">⚠ {warningText ?? 'Tendance non significative'}</p>
       )}
     </div>
   )

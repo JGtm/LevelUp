@@ -28,7 +28,7 @@ export function InfoTooltip({ content, iconClass = 'w-4 h-4' }: InfoTooltipProps
     <div className="relative inline-flex items-center" ref={ref}>
       <button
         type="button"
-        className={`${iconClass} inline-flex items-center justify-center rounded-full border border-gray-300 text-gray-400 hover:text-gray-600 hover:border-gray-400 text-[10px] font-bold leading-none cursor-help transition-colors`}
+        className={`${iconClass} inline-flex items-center justify-center rounded-full border border-input text-muted-foreground hover:text-foreground hover:border-border text-[10px] font-bold leading-none cursor-help transition-colors`}
         onMouseEnter={() => setOpen(true)}
         onMouseLeave={() => setOpen(false)}
         onFocus={() => setOpen(true)}
@@ -41,10 +41,10 @@ export function InfoTooltip({ content, iconClass = 'w-4 h-4' }: InfoTooltipProps
       {open && (
         <div
           role="tooltip"
-          className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 z-50 w-64 rounded-lg border border-gray-200 bg-white p-3 text-xs text-gray-700 shadow-lg"
+          className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 z-50 w-64 rounded-lg border border-border bg-background p-3 text-xs text-foreground shadow-lg"
         >
           {content}
-          <div className="absolute top-full left-1/2 -translate-x-1/2 -mt-px border-4 border-transparent border-t-white" />
+          <div className="absolute top-full left-1/2 -translate-x-1/2 -mt-px border-4 border-transparent border-t-background" />
         </div>
       )}
     </div>
