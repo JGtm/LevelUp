@@ -2,7 +2,7 @@
  * NavL1 — barre de navigation principale (niveau 1).
  *
  * Barre horizontale fixée en haut de l'application, visible sur toutes les pages.
- * Contient : logo · 6 sections joueur · sélecteur de joueur actif · lien paramètres.
+ * Contient : logo · 6 sections joueur · sélecteur de joueur actif · switch thème · lien paramètres.
  *
  * Les 6 sections correspondent au plan V7 : Accueil · Stats · Escouade ·
  * Explorer · Médias · Profil. La détection de la section active se fait sur
@@ -11,6 +11,7 @@
  */
 import { Link, useRouterState } from '@tanstack/react-router'
 import { useAppShellStore } from '@/stores/appShellStore'
+import { ThemeToggle } from './ThemeToggle'
 
 // ─── Définition des sections L1 ───────────────────────────────────────────────
 
@@ -146,6 +147,8 @@ export function NavL1() {
           </span>
         )
       )}
+
+      <ThemeToggle className="ml-2" />
 
       {/* ── Lien Paramètres ─────────────────────────────────────────────── */}
       <Link

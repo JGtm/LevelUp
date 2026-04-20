@@ -23,9 +23,13 @@ import type { UpdateSettingsRequest } from '@/lib/api/types'
 // Types
 // ---------------------------------------------------------------------------
 
+export type UiTheme = 'dark' | 'light'
+
 interface LocalUiPrefs {
   /** Afficher les hints contextuels dans l'UI */
   showHints: boolean
+  /** Thème visuel local de l'application */
+  theme: UiTheme
   /** Dernier slug joueur sélectionné par titre (restaure le contexte au rechargement) */
   lastPlayerSlugByTitle: Record<string, string | null>
 }
@@ -51,6 +55,8 @@ interface SettingsDraftState {
 
   // --- Actions prefs locales ---
   setShowHints: (value: boolean) => void
+  setTheme: (theme: UiTheme) => void
+  toggleTheme: () => void
   /** @deprecated Utiliser setLastPlayerSlugForTitle */
   setLastPlayerSlug: (slug: string | null) => void
   /** Définit le dernier slug joueur pour un titre donné */
@@ -65,6 +71,7 @@ interface SettingsDraftState {
 
 const DEFAULT_LOCAL_UI_PREFS: LocalUiPrefs = {
   showHints: true,
+  theme: 'dark',
   lastPlayerSlugByTitle: {},
 }
 
@@ -96,6 +103,19 @@ export const useSettingsDraftStore = create<SettingsDraftState>()(
       setShowHints: (value) =>
         set((state) => ({
           localUiPrefs: { ...state.localUiPrefs, showHints: value },
+        })),
+
+      setTheme: (theme) =>
+        set((state) => ({
+          localUiPrefs: { ...state.localUiPrefs, theme },
+        })),
+
+      toggleTheme: () =>
+        set((state) => ({
+          localUiPrefs: {
+            ...state.localUiPrefs,
+            theme: state.localUiPrefs.theme === 'dark' ? 'light' : 'dark',
+          },
         })),
 
       setLastPlayerSlug: (slug) =>
@@ -132,6 +152,23 @@ export const useSettingsDraftStore = create<SettingsDraftState>()(
         localUiPrefs: state.localUiPrefs,
         lastSavedAt: state.lastSavedAt,
       }),
+      merge: (persistedState, currentState) => {
+        const persisted = persistedState as Partial<
+          Pick<SettingsDraftState, 'localUiPrefs' | 'lastSavedAt'>
+        >
+        return {
+          ...currentState,
+          ...persisted,
+          localUiPrefs: {
+            ...currentState.localUiPrefs,
+            ...(persisted.localUiPrefs ?? {}),
+            lastPlayerSlugByTitle: {
+              ...currentState.localUiPrefs.lastPlayerSlugByTitle,
+              ...(persisted.localUiPrefs?.lastPlayerSlugByTitle ?? {}),
+            },
+          },
+        }
+      },
     },
   ),
 )
