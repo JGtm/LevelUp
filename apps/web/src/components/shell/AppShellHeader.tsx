@@ -69,18 +69,12 @@ export function AppShellHeader() {
         <div className="flex flex-col gap-4 xl:flex-row xl:items-start xl:justify-between">
           <Link to="/" className="flex min-w-0 items-start gap-4">
             <img
-              src="/logo.png"
+              src="/logo-full-inline.png"
               alt="LevelUp"
-              className="h-12 w-12 shrink-0 object-contain"
+              className="h-12 shrink-0 object-contain"
             />
             <div className="min-w-0">
-              <p className="text-[11px] font-semibold uppercase tracking-[0.28em] text-muted-foreground">
-                Halo Ops Center
-              </p>
-              <div className="mt-1 flex flex-wrap items-center gap-2">
-                <span className="text-xl font-semibold tracking-tight text-foreground sm:text-2xl">
-                  LevelUp
-                </span>
+              <div className="flex flex-wrap items-center gap-2">
                 <Badge variant="outline" className="border-border bg-background/70 text-muted-foreground">
                   {currentTitle}
                 </Badge>
