@@ -86,6 +86,8 @@ func (r *SquadRepo) LoadSquadMatches(ctx context.Context, playerXUID, teammateXU
 			&row.SessionLabel,
 			&row.PerformanceScore,
 			&row.IsWithFriends,
+			&row.HeadshotKills,
+			&row.PerfectKills,
 		); err != nil {
 			return nil, fmt.Errorf("LoadSquadMatches scan: %w", err)
 		}
@@ -222,6 +224,7 @@ func (r *SquadRepo) LoadSynthesisMatches(ctx context.Context, xuid string) ([]do
 			&row.Accuracy,
 			&row.TimePlayedSecs,
 			&row.PerformanceScore,
+			&row.SessionLabel,
 		); err != nil {
 			return nil, fmt.Errorf("LoadSynthesisMatches scan: %w", err)
 		}

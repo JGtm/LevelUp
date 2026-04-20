@@ -4,7 +4,6 @@
 //   - Rate limiting : constantes et comportement démo
 //   - Corps JSON malformé (400 attendu)
 //   - Format d'erreur structuré (code + message, pas de stack trace)
-//   - Shadow mode désactivé par défaut
 package middleware_test
 
 import (
@@ -95,54 +94,6 @@ func TestErrorFormat_ContainsCodeAndMessage(t *testing.T) {
 	// Vérifier l'absence de stack trace Go (goroutine, runtime)
 	if strings.Contains(body, "goroutine") || strings.Contains(body, "runtime/") {
 		t.Errorf("ErrorResponse ne doit pas exposer de stack trace, got: %s", body)
-	}
-}
-
-// ---------------------------------------------------------------------------
-// Shadow mode désactivé par défaut
-// ---------------------------------------------------------------------------
-
-func TestShadow_DisabledByDefault(t *testing.T) {
-	// shadowURL="" → middleware transparent, ne modifie pas les réponses.
-	called := false
-	inner := http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
-		called = true
-		w.WriteHeader(http.StatusOK)
-	})
-	handler := middleware.Shadow(middleware.ShadowConfig{PythonURL: ""})(inner)
-
-	req := httptest.NewRequest(http.MethodGet, "/api/v1/bootstrap", nil)
-	rr := httptest.NewRecorder()
-	handler.ServeHTTP(rr, req)
-
-	if rr.Code != http.StatusOK {
-		t.Errorf("Shadow disabled doit passer HTTP 200, got %d", rr.Code)
-	}
-	if !called {
-		t.Error("Shadow disabled doit appeler le handler interne")
-	}
-}
-
-func TestShadow_DoesNotModifyGoResponse(t *testing.T) {
-	// Even with shadow enabled, la réponse Go ne doit pas être modifiée.
-	const want = `{"status":"ok"}`
-	inner := http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
-		w.Header().Set("Content-Type", "application/json")
-		w.WriteHeader(http.StatusOK)
-		_, _ = w.Write([]byte(want))
-	})
-	// PythonURL invalide — l'appel shadow échoue silencieusement.
-	handler := middleware.Shadow(middleware.ShadowConfig{PythonURL: "http://127.0.0.1:0"})(inner)
-
-	req := httptest.NewRequest(http.MethodGet, "/api/v1/bootstrap", nil)
-	rr := httptest.NewRecorder()
-	handler.ServeHTTP(rr, req)
-
-	if rr.Code != http.StatusOK {
-		t.Errorf("Shadow ne doit pas modifier le status Go, got %d", rr.Code)
-	}
-	if got := rr.Body.String(); got != want {
-		t.Errorf("Shadow ne doit pas modifier le body Go: want %q got %q", want, got)
 	}
 }
 

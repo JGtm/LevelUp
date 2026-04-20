@@ -41,8 +41,10 @@ type AppSettings struct {
 	SpnkrRefreshBackfillPersonalScores bool   `json:"spnkr_refresh_backfill_personal_scores"`
 	SpnkrRefreshBackfillPerfScores     bool   `json:"spnkr_refresh_backfill_performance_scores"`
 	SpnkrRefreshBackfillLUSR           bool   `json:"spnkr_refresh_backfill_lusr"`
-	SpnkrRefreshBackfillEvents         bool   `json:"spnkr_refresh_backfill_events"`
-	SpnkrRefreshBackfillWeapons        bool   `json:"spnkr_refresh_backfill_weapons"`
+	SpnkrRefreshBackfillEvents         bool     `json:"spnkr_refresh_backfill_events"`
+	SpnkrRefreshBackfillWeapons        bool     `json:"spnkr_refresh_backfill_weapons"`
+	// Escouade — gamertags des amis par défaut
+	FriendGamertags []string `json:"friend_gamertags"`
 
 	// Capabilities (défaut : true)
 	CanSelfProvision    bool `json:"can_self_provision"`
@@ -223,6 +225,9 @@ func Apply(cfg *AppSettings, req *domain.UpdateSettingsRequest) {
 	if req.SpnkrRefreshBackfillWeapons != nil {
 		cfg.SpnkrRefreshBackfillWeapons = *req.SpnkrRefreshBackfillWeapons
 	}
+	if req.FriendGamertags != nil {
+		cfg.FriendGamertags = req.FriendGamertags
+	}
 }
 
 // ToResponse convertit AppSettings en SettingsResponse (sans discord_webhook_url).
@@ -256,6 +261,7 @@ func ToResponse(cfg *AppSettings) *domain.SettingsResponse {
 		SpnkrRefreshBackfillLUSR:           cfg.SpnkrRefreshBackfillLUSR,
 		SpnkrRefreshBackfillEvents:         cfg.SpnkrRefreshBackfillEvents,
 		SpnkrRefreshBackfillWeapons:        cfg.SpnkrRefreshBackfillWeapons,
+		FriendGamertags:                    cfg.FriendGamertags,
 	}
 }
 

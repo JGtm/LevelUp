@@ -47,6 +47,9 @@ type SquadMatchRow struct {
 	SessionLabel     *string
 	PerformanceScore *float64
 	IsWithFriends    bool
+	// Sprint N : métriques précision avancée
+	HeadshotKills int
+	PerfectKills  int
 }
 
 // TeammateMatchRow est une ligne brute chargée depuis Q31 (stats d'un coéquipier).
@@ -250,6 +253,7 @@ type SynthesisPageRequest struct {
 
 // SynthesisMatchRow est une ligne brute chargée depuis Q33b.
 // Sprint 43 : enrichi avec accuracy, time_played, performance_score pour les KPIs bipolaires.
+// Sprint N : ajout SessionLabel pour les filtres de session.
 type SynthesisMatchRow struct {
 	MatchID          string
 	StartTime        time.Time
@@ -261,4 +265,5 @@ type SynthesisMatchRow struct {
 	Accuracy         *float64
 	TimePlayedSecs   *int
 	PerformanceScore *float64
+	SessionLabel     *string
 }

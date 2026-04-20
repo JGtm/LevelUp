@@ -33,6 +33,15 @@ func NewHomeService(repo port.HomeRepository) *HomeService {
 	}
 }
 
+// WithHaloProvider remplace le provider Halo utilisé par le service.
+// Utile pour injecter un provider configuré par joueur (cache local, tests).
+func (s *HomeService) WithHaloProvider(provider *halo.HaloProvider) *HomeService {
+	if provider != nil {
+		s.provider = provider
+	}
+	return s
+}
+
 // WithPersistSink configure le sink de persistance fire-and-forget.
 // Retourne le service pour permettre le chaînage.
 func (s *HomeService) WithPersistSink(sink *duckdb.PersistSink) *HomeService {

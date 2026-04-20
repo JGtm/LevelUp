@@ -5,6 +5,7 @@ package handlers
 
 import (
 	"encoding/json"
+	"log/slog"
 	"net/http"
 
 	"github.com/go-chi/chi/v5"
@@ -40,6 +41,7 @@ func (h *TeammatesHandler) GetPage(w http.ResponseWriter, r *http.Request) {
 
 	resp, svcErr := svc.GetPage(r.Context(), xuid, req)
 	if svcErr != nil {
+		slog.ErrorContext(r.Context(), "teammates: erreur service", "player", slug, "err", svcErr)
 		writeError(w, http.StatusInternalServerError, "teammates_error", svcErr.Error())
 		return
 	}

@@ -7,6 +7,7 @@ package service
 import (
 	"context"
 	"fmt"
+	"log/slog"
 	"math"
 	"time"
 
@@ -40,23 +41,44 @@ func (s *TeammatesService) GetPage(
 	options := buildTeammateOptions(topRows)
 
 	// Solo matches pour la référence solo.
-	soloMatches, err := s.repo.LoadSynthesisMatches(ctx, playerXUID)
+	allMatches, err := s.repo.LoadSynthesisMatches(ctx, playerXUID)
 	if err != nil {
 		return domain.TeammatesPageResponse{}, fmt.Errorf("TeammatesService solo: %w", err)
 	}
-	soloRef := computeSoloReference(soloMatches)
-	totalMatches := len(soloMatches)
+
+	// Extraire les session_labels disponibles (solo / escouade).
+	sessionLabels := extractSynthesisSessionLabels(allMatches)
+
+	// Filtrer les matchs selon les sessions sélectionnées.
+	filteredMatches := filterSynthesisBySession(allMatches, req.PickedSoloSession, req.PickedSquadSession)
+
+	soloRef := computeSoloReference(filteredMatches)
+	totalMatches := len(filteredMatches)
 
 	// Calculs détaillés pour les gamertags sélectionnés.
 	teammates := make([]domain.TeammateRow, 0, len(req.SelectedGamertags))
+	var allSquadRows []domain.SquadMatchRow
+	matchSeries := map[string][]domain.SquadMatchSeriesPoint{}
+
 	for _, gt := range req.SelectedGamertags {
-		row, err := s.buildTeammateRow(ctx, playerXUID, gt, topRows, soloMatches)
+		row, squadMatches, err := s.buildTeammateRowWithMatches(ctx, playerXUID, gt, topRows, filteredMatches)
 		if err != nil {
+			slog.WarnContext(ctx, "teammates: erreur buildTeammateRow", "gamertag", gt, "err", err)
 			continue // skip teammate on error
 		}
 		if row != nil {
 			teammates = append(teammates, *row)
+			allSquadRows = append(allSquadRows, squadMatches...)
+			matchSeries[gt] = buildMatchSeries(squadMatches)
 		}
+	}
+
+	// Timeseries + MapBreakdown sur l'union des matchs escouade.
+	var timeseries []domain.SquadTimeseriesPoint
+	var mapBreakdown []domain.MapBreakdownRow
+	if len(allSquadRows) > 0 {
+		timeseries = analysis.ComputeSquadTimeseries(allSquadRows, 20)
+		mapBreakdown = computeMapBreakdown(allSquadRows)
 	}
 
 	return domain.TeammatesPageResponse{
@@ -64,7 +86,65 @@ func (s *TeammatesService) GetPage(
 		Teammates:     teammates,
 		SoloReference: soloRef,
 		TotalMatches:  totalMatches,
+		SessionLabels: sessionLabels,
+		Timeseries:    timeseries,
+		MapBreakdown:  mapBreakdown,
+		MatchSeries:   matchSeries,
 	}, nil
+}
+
+// extractSynthesisSessionLabels collecte les sessions uniques en séparant solo / escouade.
+func extractSynthesisSessionLabels(matches []domain.SynthesisMatchRow) domain.SessionLabelsList {
+	soloSet := map[string]struct{}{}
+	squadSet := map[string]struct{}{}
+	for _, m := range matches {
+		if m.SessionLabel == nil || *m.SessionLabel == "" {
+			continue
+		}
+		if m.IsWithFriends {
+			squadSet[*m.SessionLabel] = struct{}{}
+		} else {
+			soloSet[*m.SessionLabel] = struct{}{}
+		}
+	}
+	solo := make([]string, 0, len(soloSet))
+	for k := range soloSet {
+		solo = append(solo, k)
+	}
+	squad := make([]string, 0, len(squadSet))
+	for k := range squadSet {
+		squad = append(squad, k)
+	}
+	return domain.SessionLabelsList{Solo: solo, Squad: squad}
+}
+
+// filterSynthesisBySession filtre les matchs selon la session sélectionnée (solo ou escouade).
+// Si les deux sont nil, tous les matchs sont retournés.
+// Si PickedSolo est renseigné, seuls les matchs de cette session solo sont gardés.
+// Si PickedSquad est renseigné, seuls les matchs de cette session escouade sont gardés.
+func filterSynthesisBySession(
+	matches []domain.SynthesisMatchRow,
+	pickedSolo *string,
+	pickedSquad *string,
+) []domain.SynthesisMatchRow {
+	if pickedSolo == nil && pickedSquad == nil {
+		return matches
+	}
+	filtered := make([]domain.SynthesisMatchRow, 0, len(matches))
+	for _, m := range matches {
+		label := ""
+		if m.SessionLabel != nil {
+			label = *m.SessionLabel
+		}
+		if pickedSolo != nil && !m.IsWithFriends && label == *pickedSolo {
+			filtered = append(filtered, m)
+			continue
+		}
+		if pickedSquad != nil && m.IsWithFriends && label == *pickedSquad {
+			filtered = append(filtered, m)
+		}
+	}
+	return filtered
 }
 
 // buildTeammateOptions convertit les TopTeammateRow en TeammateOption.
@@ -81,13 +161,13 @@ func buildTeammateOptions(rows []domain.TopTeammateRow) []domain.TeammateOption 
 	return opts
 }
 
-// buildTeammateRow construit les KPIs avec/sans pour un coéquipier.
-func (s *TeammatesService) buildTeammateRow(
+// buildTeammateRowWithMatches construit les KPIs avec/sans pour un coéquipier et retourne aussi les matches escouade.
+func (s *TeammatesService) buildTeammateRowWithMatches(
 	ctx context.Context,
 	playerXUID, gamertag string,
 	topRows []domain.TopTeammateRow,
 	allMatches []domain.SynthesisMatchRow,
-) (*domain.TeammateRow, error) {
+) (*domain.TeammateRow, []domain.SquadMatchRow, error) {
 	// Trouver le XUID du coéquipier.
 	var teammateXUID string
 	var encounterCount int
@@ -99,13 +179,13 @@ func (s *TeammatesService) buildTeammateRow(
 		}
 	}
 	if teammateXUID == "" {
-		return nil, nil
+		return nil, nil, nil
 	}
 
 	// Charger les matchs communs.
 	squadMatches, err := s.repo.LoadSquadMatches(ctx, playerXUID, teammateXUID)
 	if err != nil {
-		return nil, fmt.Errorf("buildTeammateRow LoadSquadMatches: %w", err)
+		return nil, nil, fmt.Errorf("buildTeammateRowWithMatches LoadSquadMatches: %w", err)
 	}
 
 	withKPIs := computeKPIsFromSquadMatches(squadMatches)
@@ -136,7 +216,7 @@ func (s *TeammatesService) buildTeammateRow(
 		LastSeenAt:     lastSeen,
 		WithKPIs:       withKPIs,
 		WithoutKPIs:    &withoutKPIs,
-	}, nil
+	}, squadMatches, nil
 }
 
 // computeKPIsFromSquadMatches calcule les KPIs depuis les matchs communs.
@@ -147,6 +227,7 @@ func computeKPIsFromSquadMatches(matches []domain.SquadMatchRow) domain.Teammate
 	}
 	wins := 0
 	totalKills, totalDeaths, totalAssists := 0, 0, 0
+	totalHS, totalPK := 0, 0
 	accSum, accCount := 0.0, 0
 	for _, m := range matches {
 		if m.Outcome == analysis.OutcomeWin {
@@ -155,6 +236,8 @@ func computeKPIsFromSquadMatches(matches []domain.SquadMatchRow) domain.Teammate
 		totalKills += m.Kills
 		totalDeaths += m.Deaths
 		totalAssists += m.Assists
+		totalHS += m.HeadshotKills
+		totalPK += m.PerfectKills
 		if m.Accuracy != nil {
 			accSum += *m.Accuracy
 			accCount++
@@ -163,19 +246,23 @@ func computeKPIsFromSquadMatches(matches []domain.SquadMatchRow) domain.Teammate
 	kd := safeDiv(float64(totalKills), float64(totalDeaths))
 	kpg := float64(totalKills) / float64(n)
 	apg := float64(totalAssists) / float64(n)
+	hspg := float64(totalHS) / float64(n)
+	pkpg := float64(totalPK) / float64(n)
 	var acc *float64
 	if accCount > 0 {
 		v := round2(accSum / float64(accCount) * 100)
 		acc = &v
 	}
 	return domain.TeammateKPIs{
-		MatchCount:     n,
-		Wins:           wins,
-		KDRatio:        &kd,
-		WinRate:        round2(float64(wins) / float64(n) * 100),
-		Accuracy:       acc,
-		KillsPerGame:   &kpg,
-		AssistsPerGame: &apg,
+		MatchCount:           n,
+		Wins:                 wins,
+		KDRatio:              &kd,
+		WinRate:              round2(float64(wins) / float64(n) * 100),
+		Accuracy:             acc,
+		KillsPerGame:         &kpg,
+		AssistsPerGame:       &apg,
+		HeadshotKillsPerGame: &hspg,
+		PerfectKillsPerGame:  &pkpg,
 	}
 }
 
@@ -238,4 +325,48 @@ func safeDiv(a, b float64) float64 {
 
 func round2(v float64) float64 {
 	return math.Round(v*100) / 100
+}
+
+// computeMapBreakdown agrège les stats par carte depuis les matchs escouade.
+func computeMapBreakdown(matches []domain.SquadMatchRow) []domain.MapBreakdownRow {
+	type stats struct{ count, wins int }
+	m := map[string]*stats{}
+	for _, r := range matches {
+		key := r.MapUI
+		if key == "" {
+			key = "Unknown"
+		}
+		if _, ok := m[key]; !ok {
+			m[key] = &stats{}
+		}
+		m[key].count++
+		if r.Outcome == analysis.OutcomeWin {
+			m[key].wins++
+		}
+	}
+	result := make([]domain.MapBreakdownRow, 0, len(m))
+	for mapUI, s := range m {
+		result = append(result, domain.MapBreakdownRow{
+			MapUI:      mapUI,
+			MatchCount: s.count,
+			WinRate:    round2(float64(s.wins) / float64(s.count) * 100),
+		})
+	}
+	return result
+}
+
+// buildMatchSeries construit la série temporelle des matchs pour un coéquipier.
+func buildMatchSeries(matches []domain.SquadMatchRow) []domain.SquadMatchSeriesPoint {
+	series := make([]domain.SquadMatchSeriesPoint, 0, len(matches))
+	for _, m := range matches {
+		series = append(series, domain.SquadMatchSeriesPoint{
+			MatchID:          m.MatchID,
+			StartTime:        m.StartTime.Format("2006-01-02T15:04:05Z"),
+			Outcome:          m.Outcome,
+			PerformanceScore: m.PerformanceScore,
+			TeamMMRAvg:       m.TeamMMR,
+			SessionLabel:     m.SessionLabel,
+		})
+	}
+	return series
 }

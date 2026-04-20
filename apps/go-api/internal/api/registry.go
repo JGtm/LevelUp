@@ -9,6 +9,7 @@ import (
 	"context"
 	"log/slog"
 	"os"
+	"path/filepath"
 	"strings"
 
 	"levelup/go-api/internal/config"
@@ -205,7 +206,12 @@ func (r *ServiceRegistry) HomeCtxWithAuth(ctx context.Context, slug string) (por
 	}
 	sink := duckdb.NewPersistSink(pdb.Metadata.Path(), pdb.Player.Path(), pdb.XUID)
 	homeRepo := duckdb.NewHomeRepo(pdb)
-	svc := service.NewHomeService(homeRepo).WithPersistSink(sink).WithCacheRepo(homeRepo)
+	challengeBadgeDir := filepath.Join(filepath.Dir(filepath.Dir(pdb.Metadata.Path())), "cache", "challenge_badges")
+	haloProvider := halo.DefaultHaloProvider.WithChallengeCache(pdb.Metadata.Path(), challengeBadgeDir)
+	svc := service.NewHomeService(homeRepo).
+		WithPersistSink(sink).
+		WithCacheRepo(homeRepo).
+		WithHaloProvider(haloProvider)
 	enriched := r.enrichWithHaloTokens(ctx, pdb)
 	return svc, enriched, pdb.XUID, pdb.Gamertag, nil
 }
@@ -219,7 +225,12 @@ func (r *ServiceRegistry) SeasonPassCtxWithAuth(ctx context.Context, slug string
 	}
 	homeRepo := duckdb.NewHomeRepo(pdb)
 	sink := duckdb.NewPersistSink(pdb.Metadata.Path(), pdb.Player.Path(), pdb.XUID)
-	homeSvc := service.NewHomeService(homeRepo).WithPersistSink(sink).WithCacheRepo(homeRepo)
+	challengeBadgeDir := filepath.Join(filepath.Dir(filepath.Dir(pdb.Metadata.Path())), "cache", "challenge_badges")
+	haloProvider := halo.DefaultHaloProvider.WithChallengeCache(pdb.Metadata.Path(), challengeBadgeDir)
+	homeSvc := service.NewHomeService(homeRepo).
+		WithPersistSink(sink).
+		WithCacheRepo(homeRepo).
+		WithHaloProvider(haloProvider)
 	spRepo := duckdb.NewSeasonPassRepo(pdb)
 	svc := service.NewSeasonPassService(spRepo, homeSvc, pdb.XUID, pdb.TitleSlug)
 	enriched := r.enrichWithHaloTokens(ctx, pdb)

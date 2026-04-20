@@ -2,19 +2,27 @@ package halo
 
 import (
 	"context"
+	"crypto/sha256"
+	"database/sql"
 	"encoding/base64"
+	"encoding/hex"
 	"encoding/json"
 	"fmt"
 	"io"
 	"log/slog"
 	"net/http"
+	"os"
 	"path"
+	"path/filepath"
 	"sort"
 	"strings"
 	"time"
 
 	"levelup/go-api/internal/domain"
+	"levelup/go-api/internal/platform/duckdb"
 )
+
+var challengePNGSignature = []byte{0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a}
 
 type challengeDeckRaw struct {
 	Expiration struct {
@@ -161,6 +169,14 @@ func (p *HaloProvider) fetchChallengeDefinition(ctx context.Context, tokens *dom
 	if trimmed == "" {
 		return nil, nil
 	}
+	if cached, err := p.loadChallengeDefinitionFromMetadata(ctx, trimmed); err == nil && cached != nil {
+		slog.DebugContext(ctx, "halo_provider: challenge definition served from metadata cache",
+			"path", trimmed)
+		return cached, nil
+	} else if err != nil {
+		slog.DebugContext(ctx, "halo_provider: challenge definition metadata cache read failed",
+			"path", trimmed, "err", err)
+	}
 	base := p.gameCMSBaseURL
 	if base == "" {
 		base = defaultGameCMSHost
@@ -174,6 +190,10 @@ func (p *HaloProvider) fetchChallengeDefinition(ctx context.Context, tokens *dom
 	if err := json.Unmarshal(body, &def); err != nil {
 		return nil, fmt.Errorf("challenge definition decode: %w", err)
 	}
+	if err := p.storeChallengeDefinitionInMetadata(ctx, trimmed, body, &def); err != nil {
+		slog.DebugContext(ctx, "halo_provider: challenge definition metadata cache write failed",
+			"path", trimmed, "err", err)
+	}
 	return &def, nil
 }
 
@@ -185,6 +205,17 @@ func (p *HaloProvider) fetchChallengeBadgeDataURL(
 	stems := buildChallengeBadgeCandidates(challengePath, category, difficulty)
 	if len(stems) == 0 {
 		return nil
+	}
+	for _, stem := range stems {
+		if body, err := p.readCachedChallengeBadge(stem); err == nil && len(body) > 0 {
+			slog.DebugContext(ctx, "halo_provider: challenge badge served from local cache",
+				"path", challengePath, "stem", stem)
+			dataURL := "data:image/png;base64," + base64.StdEncoding.EncodeToString(body)
+			return &dataURL
+		} else if err != nil {
+			slog.DebugContext(ctx, "halo_provider: challenge badge local cache read failed",
+				"path", challengePath, "stem", stem, "err", err)
+		}
 	}
 	base := p.gameCMSBaseURL
 	if base == "" {
@@ -198,10 +229,276 @@ func (p *HaloProvider) fetchChallengeBadgeDataURL(
 				"path", challengePath, "stem", stem, "err", err)
 			continue
 		}
+		if err := p.writeCachedChallengeBadge(stem, body); err != nil {
+			slog.DebugContext(ctx, "halo_provider: challenge badge local cache write failed",
+				"path", challengePath, "stem", stem, "err", err)
+		}
 		dataURL := "data:image/png;base64," + base64.StdEncoding.EncodeToString(body)
 		return &dataURL
 	}
 	return nil
+}
+
+func (p *HaloProvider) loadChallengeDefinitionFromMetadata(
+	ctx context.Context,
+	challengePath string,
+) (*challengeDefinitionRaw, error) {
+	metaPath := strings.TrimSpace(p.challengeMetaPath)
+	if metaPath == "" {
+		return nil, nil
+	}
+	db, err := duckdb.OpenReadOnly(metaPath)
+	if err != nil {
+		return nil, err
+	}
+	defer db.Close()
+
+	row := db.QueryRow(ctx, `
+		SELECT d.category,
+		       d.difficulty,
+		       d.threshold_for_success,
+		       d.reward_xp,
+		       d.secondary_reward_xp,
+		       COALESCE(t_fr.title, t_en.title) AS title,
+		       COALESCE(t_fr.description, t_en.description) AS description
+		FROM challenge_definitions d
+		LEFT JOIN challenge_translations t_fr
+		       ON t_fr.challenge_path = d.challenge_path
+		      AND t_fr.content_hash = d.content_hash
+		      AND t_fr.lang = 'fr-FR'
+		LEFT JOIN challenge_translations t_en
+		       ON t_en.challenge_path = d.challenge_path
+		      AND t_en.content_hash = d.content_hash
+		      AND t_en.lang = 'en-US'
+		WHERE d.challenge_path = ? AND d.is_current = TRUE
+		ORDER BY d.last_seen_at DESC
+		LIMIT 1`, challengePath)
+
+	var category sql.NullString
+	var difficulty sql.NullString
+	var threshold sql.NullInt64
+	var rewardXP sql.NullInt64
+	var secondaryXP sql.NullInt64
+	var title sql.NullString
+	var description sql.NullString
+	if err := row.Scan(&category, &difficulty, &threshold, &rewardXP, &secondaryXP, &title, &description); err != nil {
+		if err == sql.ErrNoRows {
+			return nil, nil
+		}
+		return nil, err
+	}
+
+	def := &challengeDefinitionRaw{
+		Category:    category.String,
+		Difficulty:  difficulty.String,
+		Title:       title.String,
+		Description: description.String,
+	}
+	if threshold.Valid {
+		def.ThresholdForSuccess = int(threshold.Int64)
+	}
+	if rewardXP.Valid {
+		def.Reward.SoftExperience = int(rewardXP.Int64)
+	}
+	if secondaryXP.Valid {
+		def.SecondaryReward.SoftExperience = int(secondaryXP.Int64)
+	}
+	return def, nil
+}
+
+func (p *HaloProvider) storeChallengeDefinitionInMetadata(
+	ctx context.Context,
+	challengePath string,
+	body []byte,
+	def *challengeDefinitionRaw,
+) error {
+	metaPath := strings.TrimSpace(p.challengeMetaPath)
+	if metaPath == "" || def == nil || len(body) == 0 {
+		return nil
+	}
+	db, err := duckdb.OpenReadWrite(metaPath)
+	if err != nil {
+		return err
+	}
+	defer db.Close()
+
+	contentHash := challengeDefinitionContentHash(body)
+	threshold, _ := coerceChallengeInt(def.ThresholdForSuccess)
+	now := time.Now()
+
+	if _, err := db.Exec(ctx, `
+		UPDATE challenge_definitions
+		SET is_current = FALSE,
+		    last_seen_at = ?
+		WHERE challenge_path = ?
+		  AND content_hash <> ?
+		  AND is_current = TRUE`, now, challengePath, contentHash); err != nil {
+		return err
+	}
+
+	if _, err := db.Exec(ctx, `
+		INSERT INTO challenge_definitions
+			(challenge_path, content_hash, category, difficulty, threshold_for_success,
+			 reward_xp, secondary_reward_xp, first_seen_at, last_seen_at, is_current)
+		VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, TRUE)
+		ON CONFLICT (challenge_path, content_hash) DO UPDATE SET
+			category = excluded.category,
+			difficulty = excluded.difficulty,
+			threshold_for_success = excluded.threshold_for_success,
+			reward_xp = excluded.reward_xp,
+			secondary_reward_xp = excluded.secondary_reward_xp,
+			last_seen_at = excluded.last_seen_at,
+			is_current = TRUE`,
+		challengePath,
+		contentHash,
+		nullableChallengeString(def.Category),
+		nullableChallengeString(def.Difficulty),
+		nullableChallengeInt(threshold),
+		nullableChallengeInt(def.Reward.SoftExperience),
+		nullableChallengeInt(def.SecondaryReward.SoftExperience),
+		now,
+		now,
+	); err != nil {
+		return err
+	}
+
+	titleTranslations := collectChallengeTranslations(def.Title)
+	descriptionTranslations := collectChallengeTranslations(def.Description)
+	langs := make(map[string]struct{}, len(titleTranslations)+len(descriptionTranslations))
+	for lang := range titleTranslations {
+		langs[lang] = struct{}{}
+	}
+	for lang := range descriptionTranslations {
+		langs[lang] = struct{}{}
+	}
+	for lang := range langs {
+		if _, err := db.Exec(ctx, `
+			INSERT INTO challenge_translations
+				(challenge_path, content_hash, lang, title, description, first_seen_at, last_seen_at)
+			VALUES (?, ?, ?, ?, ?, ?, ?)
+			ON CONFLICT (challenge_path, content_hash, lang) DO UPDATE SET
+				title = excluded.title,
+				description = excluded.description,
+				last_seen_at = excluded.last_seen_at`,
+			challengePath,
+			contentHash,
+			lang,
+			nullableChallengeString(titleTranslations[lang]),
+			nullableChallengeString(descriptionTranslations[lang]),
+			now,
+			now,
+		); err != nil {
+			return err
+		}
+	}
+
+	return nil
+}
+
+func (p *HaloProvider) challengeBadgeCacheDir() string {
+	if strings.TrimSpace(p.challengeBadgeDir) != "" {
+		return p.challengeBadgeDir
+	}
+	metaPath := strings.TrimSpace(p.challengeMetaPath)
+	if metaPath == "" {
+		return ""
+	}
+	warehouseDir := filepath.Dir(metaPath)
+	dataDir := filepath.Dir(warehouseDir)
+	return filepath.Join(dataDir, "cache", "challenge_badges")
+}
+
+func (p *HaloProvider) challengeBadgeCachePath(stem string) string {
+	cacheDir := p.challengeBadgeCacheDir()
+	if cacheDir == "" || strings.TrimSpace(stem) == "" {
+		return ""
+	}
+	return filepath.Join(cacheDir, stem+".png")
+}
+
+func (p *HaloProvider) readCachedChallengeBadge(stem string) ([]byte, error) {
+	cachePath := p.challengeBadgeCachePath(stem)
+	if cachePath == "" {
+		return nil, nil
+	}
+	body, err := os.ReadFile(cachePath)
+	if err != nil {
+		if os.IsNotExist(err) {
+			return nil, nil
+		}
+		return nil, err
+	}
+	if !isChallengePNG(body) {
+		return nil, nil
+	}
+	return body, nil
+}
+
+func (p *HaloProvider) writeCachedChallengeBadge(stem string, body []byte) error {
+	if !isChallengePNG(body) {
+		return nil
+	}
+	cachePath := p.challengeBadgeCachePath(stem)
+	if cachePath == "" {
+		return nil
+	}
+	if err := os.MkdirAll(filepath.Dir(cachePath), 0o755); err != nil {
+		return err
+	}
+	return os.WriteFile(cachePath, body, 0o644)
+}
+
+func isChallengePNG(body []byte) bool {
+	if len(body) < len(challengePNGSignature) {
+		return false
+	}
+	return string(body[:len(challengePNGSignature)]) == string(challengePNGSignature)
+}
+
+func challengeDefinitionContentHash(data []byte) string {
+	hash := sha256.Sum256(data)
+	return hex.EncodeToString(hash[:8])
+}
+
+func collectChallengeTranslations(raw any) map[string]string {
+	translations := make(map[string]string)
+	switch value := raw.(type) {
+	case string:
+		if trimmed := strings.TrimSpace(value); trimmed != "" {
+			translations["en-US"] = trimmed
+		}
+	case map[string]any:
+		if fallback, ok := value["value"].(string); ok {
+			if trimmed := strings.TrimSpace(fallback); trimmed != "" {
+				translations["en-US"] = trimmed
+			}
+		}
+		if nested, ok := value["translations"].(map[string]any); ok {
+			for lang, localized := range nested {
+				if text, ok := localized.(string); ok {
+					if trimmed := strings.TrimSpace(text); trimmed != "" {
+						translations[lang] = trimmed
+					}
+				}
+			}
+		}
+	}
+	return translations
+}
+
+func nullableChallengeString(value string) any {
+	trimmed := strings.TrimSpace(value)
+	if trimmed == "" {
+		return nil
+	}
+	return trimmed
+}
+
+func nullableChallengeInt(value int) any {
+	if value <= 0 {
+		return nil
+	}
+	return value
 }
 
 func (p *HaloProvider) doGetWithAccept(ctx context.Context, rawURL string, tokens *domain.HaloTokens, accept string) ([]byte, error) {

@@ -548,6 +548,7 @@ export interface SettingsResponse {
   spnkr_refresh_backfill_lusr: boolean
   spnkr_refresh_backfill_events: boolean
   spnkr_refresh_backfill_weapons: boolean
+  friend_gamertags: string[]
 }
 
 export type UpdateSettingsRequest = Partial<
@@ -1087,6 +1088,8 @@ export interface TeammateKPIs {
   accuracy: number | null
   kills_per_game: number | null
   assists_per_game: number | null
+  headshot_kills_per_game?: number | null
+  perfect_kills_per_game?: number | null
   radar_axes?: RadarAxes | null
 }
 
@@ -1102,6 +1105,37 @@ export interface TeammateRow {
 export interface TeammatesQueryRequest {
   selected_gamertags?: string[]
   filters?: FilterContextInput | null
+  picked_solo_session_label?: string | null
+  picked_squad_session_label?: string | null
+}
+
+export interface SessionLabelsList {
+  solo: string[]
+  squad: string[]
+}
+
+export interface SquadTimeseriesPoint {
+  period_label: string
+  match_count: number
+  wins: number
+  win_rate: number
+  avg_performance: number | null
+  avg_mmr: number | null
+}
+
+export interface MapBreakdownRow {
+  map_ui: string
+  match_count: number
+  win_rate: number
+}
+
+export interface SquadMatchSeriesPoint {
+  match_id: string
+  start_time: string
+  outcome: number
+  performance_score: number | null
+  team_mmr_avg: number
+  session_label: string | null
 }
 
 export interface TeammatesPageResponse {
@@ -1109,6 +1143,10 @@ export interface TeammatesPageResponse {
   teammates: TeammateRow[]
   solo_reference: TeammateKPIs | null
   total_matches: number
+  session_labels: SessionLabelsList
+  timeseries?: SquadTimeseriesPoint[]
+  map_breakdown?: MapBreakdownRow[]
+  match_series?: Record<string, SquadMatchSeriesPoint[]>
 }
 
 // ---------------------------------------------------------------------------
