@@ -56,6 +56,9 @@ apps/go-api/merged*.out
 apps/go-api/merged*.raw
 apps/go-api/tmp_*.out
 apps/go-api/tmp_cov/
+# air hot-reload
+apps/go-api/tmp/
+apps/go-api/build-errors.log
 htmlcov/
 .pytest_cache/
 test_*.log
