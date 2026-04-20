@@ -10,30 +10,33 @@ import "time"
 // StatsMatchRow est le type de transfert entre platform/duckdb et les services de stats.
 // Contient toutes les métriques nécessaires au calcul du performance score (Q23).
 type StatsMatchRow struct {
-	MatchID           string
-	StartTime         time.Time
-	Outcome           *int
-	Kills             int
-	Deaths            int
-	Assists           int
-	KDA               *float64
-	Accuracy          *float64
-	PersonalScore     *int
-	DamageDealt       *float64
-	DamageTaken       *float64
-	TimePlayedSeconds *int
-	TeamMMR           *float64
-	EnemyMMR          *float64
-	KillsExpected     *float64
-	DeathsExpected    *float64
-	Rank              *int
-	IsRanked          bool
-	PlaylistName      string
-	PairName          string
-	TeamID            *int
-	PerfScoreComputed *float64 // score stocké en DB (player_match_enrichment)
-	SessionID         *string
-	SessionLabel      *string
+	MatchID             string
+	StartTime           time.Time
+	Outcome             *int
+	Kills               int
+	Deaths              int
+	Assists             int
+	KDA                 *float64
+	Accuracy            *float64
+	PersonalScore       *int
+	DamageDealt         *float64
+	DamageTaken         *float64
+	TimePlayedSeconds   *int
+	TeamMMR             *float64
+	EnemyMMR            *float64
+	KillsExpected       *float64
+	DeathsExpected      *float64
+	Rank                *int
+	IsRanked            bool
+	PlaylistName        string
+	PairName            string
+	TeamID              *int
+	PerfScoreComputed   *float64 // score stocké en DB (player_match_enrichment)
+	SessionID           *string
+	SessionLabel        *string
+	MedalExploitScore   *float64 // Σ(count × poids_difficulté) médailles heroic+
+	OffensiveConversion *float64 // 225×(kills+assists/3)/damage_dealt
+	DefensiveResistance *float64 // damage_taken/(225×deaths)
 }
 
 // LUSRMatchRating est le type de transfert pour un checkpoint LUSR.

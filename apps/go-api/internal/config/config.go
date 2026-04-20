@@ -257,7 +257,10 @@ func getEnvInt(key string, def int) int {
 
 func parseCORSOrigins(s string) []string {
 	if s == "" {
-		return []string{"http://localhost:5173", "http://127.0.0.1:5173"}
+		return []string{
+			"http://localhost:5173", "http://127.0.0.1:5173",
+			"http://localhost:5174", "http://127.0.0.1:5174",
+		}
 	}
 	parts := strings.Split(s, ",")
 	out := make([]string, 0, len(parts))

@@ -13,6 +13,7 @@ import (
 
 // SlogLogger est un middleware chi qui log chaque requête via slog.
 // Remplace chimiddleware.Logger pour utiliser slog natif Go 1.21+.
+// Niveaux : 2xx/3xx → DEBUG (silencieux en prod), 4xx → WARN, 5xx → ERROR.
 func SlogLogger(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		start := time.Now()
@@ -20,7 +21,7 @@ func SlogLogger(next http.Handler) http.Handler {
 
 		next.ServeHTTP(ww, r)
 
-		slog.Info("http",
+		attrs := []any{
 			"method", r.Method,
 			"path", r.URL.Path,
 			"status", ww.status,
@@ -29,7 +30,15 @@ func SlogLogger(next http.Handler) http.Handler {
 			"request_id", w.Header().Get(headerRequestID),
 			"remote_addr", r.RemoteAddr,
 			"title_slug", ctxkeys.TitleSlug(r.Context()),
-		)
+		}
+		switch {
+		case ww.status >= 500:
+			slog.Error("http", attrs...)
+		case ww.status >= 400:
+			slog.Warn("http", attrs...)
+		default:
+			slog.Debug("http", attrs...)
+		}
 	})
 }
 

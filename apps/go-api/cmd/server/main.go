@@ -20,6 +20,7 @@ import (
 	"context"
 	"fmt"
 	"log/slog"
+	"net"
 	"net/http"
 	"os"
 	"os/signal"
@@ -70,12 +71,22 @@ func main() {
 
 	// --- 1. Logging structuré ---
 	// En production (LEVELUP_LOG_JSON=true) : JSON. En dev : texte lisible.
+	// Niveau par défaut : INFO. Passer LEVELUP_LOG_LEVEL=debug pour activer les logs HTTP 2xx.
 	logJSON := strings.ToLower(os.Getenv("LEVELUP_LOG_JSON")) == "true"
+	logLevelStr := strings.ToLower(os.Getenv("LEVELUP_LOG_LEVEL"))
+	logLevel := slog.LevelInfo
+	if logLevelStr == "debug" {
+		logLevel = slog.LevelDebug
+	} else if logLevelStr == "warn" {
+		logLevel = slog.LevelWarn
+	} else if logLevelStr == "error" {
+		logLevel = slog.LevelError
+	}
 	var logHandler slog.Handler
 	if logJSON {
-		logHandler = slog.NewJSONHandler(os.Stderr, &slog.HandlerOptions{Level: slog.LevelInfo})
+		logHandler = slog.NewJSONHandler(os.Stderr, &slog.HandlerOptions{Level: logLevel})
 	} else {
-		logHandler = slog.NewTextHandler(os.Stderr, &slog.HandlerOptions{Level: slog.LevelDebug})
+		logHandler = slog.NewTextHandler(os.Stderr, &slog.HandlerOptions{Level: logLevel})
 	}
 	slog.SetDefault(slog.New(logHandler))
 
@@ -89,7 +100,7 @@ func main() {
 	if cfg.AppVersion == "dev" && version != "dev" {
 		cfg.AppVersion = version
 	}
-	slog.Info("config chargée",
+	slog.Debug("config chargée",
 		"repo_root", cfg.RepoRoot,
 		"demo_mode", cfg.DemoMode,
 		"version", cfg.AppVersion,
@@ -117,14 +128,14 @@ func main() {
 		}
 	}
 
-	slog.Info("ouverture DuckDB", "shared", sharedPath, "metadata", metaPath)
+	slog.Debug("ouverture DuckDB", "shared", sharedPath, "metadata", metaPath)
 
 	// --- 3a. Migrations (read-write, avant l'ouverture read-only) ---
 	if err := runMigrations(metaPath, sharedPath, cfg); err != nil {
-		slog.Error("migrations échouées", "err", err)
-		os.Exit(1)
+		slog.Debug("migrations ignorées (DB verrouillée), démarrage sans migration")
+	} else {
+		slog.Debug("migrations appliquées")
 	}
-	slog.Info("migrations appliquées ✓")
 
 	sharedDB, err := duckdb.OpenReadOnly(sharedPath)
 	if err != nil {
@@ -136,7 +147,7 @@ func main() {
 		slog.Error("ouverture metadata échouée", "err", err)
 		os.Exit(1)
 	}
-	slog.Info("DuckDB ouvert ✓")
+	slog.Debug("DuckDB ouvert")
 
 	// --- 4. Repositories + services ---
 	bootRepo := duckdb.NewBootstrapRepo(sharedDB, metaDB)
@@ -149,13 +160,8 @@ func main() {
 		slog.Error("validation types DuckDB échouée", "err", err)
 		os.Exit(1)
 	}
-	slog.Info("types DuckDB validés (UBIGINT/TIMESTAMPTZ/BOOLEAN) ✓")
-
-	careerCount, err := bootRepo.GetCareerRanksSample(ctx)
-	if err != nil {
+	if _, err := bootRepo.GetCareerRanksSample(ctx); err != nil {
 		slog.Warn("lecture career_ranks échouée", "err", err)
-	} else {
-		slog.Info("metadata.duckdb lisible ✓", "career_ranks_count", careerCount)
 	}
 
 	// --- 6. Routeur HTTP ---
@@ -170,19 +176,26 @@ func main() {
 	}
 
 	// --- 7. Démarrage + graceful shutdown ---
+	// On bind le port en premier pour détecter immédiatement un conflit.
+	ln, err := net.Listen("tcp", cfg.ServerAddr())
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "  ❌ Port %s déjà occupé — fermez l'ancien processus\n", cfg.ServerAddr())
+		os.Exit(1)
+	}
+
 	sigCh := make(chan os.Signal, 1)
 	signal.Notify(sigCh, os.Interrupt, syscall.SIGTERM)
 
+	fmt.Fprintf(os.Stderr, "\n  ✅ LevelUp API prête → http://%s\n\n", cfg.ServerAddr())
 	go func() {
-		slog.Info("serveur démarré", "addr", cfg.ServerAddr())
-		if err := srv.ListenAndServe(); err != nil && err != http.ErrServerClosed {
-			slog.Error("ListenAndServe", "err", err)
+		if err := srv.Serve(ln); err != nil && err != http.ErrServerClosed {
+			slog.Error("server error", "err", err)
 			os.Exit(1)
 		}
 	}()
 
 	<-sigCh
-	slog.Info("arrêt gracieux en cours…")
+	fmt.Fprint(os.Stderr, "\n  ⏳ Arrêt en cours…")
 
 	shutdownCtx, cancel := context.WithTimeout(context.Background(), 15*time.Second)
 	defer cancel()
@@ -196,8 +209,7 @@ func main() {
 	if err := metaDB.Close(); err != nil {
 		slog.Warn("fermeture metadata DB", "err", err)
 	}
-	slog.Info("bye.")
-	fmt.Println()
+	fmt.Fprintln(os.Stderr, " terminé.")
 }
 
 func strPtr(s string) *string { return &s }

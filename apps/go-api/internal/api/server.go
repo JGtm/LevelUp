@@ -121,7 +121,8 @@ func NewRouter(
 
 		// Sprint 17 : Jobs longs persistants + sync initiale
 		r.Get("/jobs/{job_id}", handlers.NewJobsHandler(jobStore).GetJob)
-		r.Post("/sync/initial", handlers.NewSyncHandler(cfg, settingsStore, jobStore).StartInitialSync)
+		syncH := handlers.NewSyncHandler(cfg, settingsStore, jobStore)
+		r.Post("/sync/initial", syncH.StartInitialSync)
 		// Sprint 51-B3 : Pipeline backfill (weapon kills + détection des autres types)
 		r.Post("/backfill/start", handlers.NewBackfillHandler(cfg, jobStore).StartBackfill)
 
@@ -209,6 +210,9 @@ func NewRouter(
 			// Sprint 54 : Classement CSR (Leaderboard)
 			leaderboard := handlers.NewLeaderboardHandler(reg.Leaderboard)
 			r.Get("/pages/leaderboard", leaderboard.GetLeaderboardPage)
+
+			// Sync delta par joueur
+			r.Post("/sync", syncH.StartDeltaSync)
 		})
 
 		// Endpoints P1 : répertoire gamertags

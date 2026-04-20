@@ -59,8 +59,8 @@ func TestGetEnvInt_Empty(t *testing.T) {
 
 func TestParseCORSOrigins_Empty(t *testing.T) {
 	origins := parseCORSOrigins("")
-	if len(origins) != 2 {
-		t.Errorf("expected 2 defaults, got %d", len(origins))
+	if len(origins) != 4 {
+		t.Errorf("expected 4 defaults, got %d", len(origins))
 	}
 }
 
