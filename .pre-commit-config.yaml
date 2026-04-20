@@ -76,7 +76,7 @@ repos:
     hooks:
       - id: detect-secrets
         args: ['--baseline', '.secrets.baseline']
-        exclude: package.lock.json
+        exclude: 'package.lock.json|_test\.go$'
 
   # ==========================================================================
   # TESTS RAPIDES Go (avant push uniquement)

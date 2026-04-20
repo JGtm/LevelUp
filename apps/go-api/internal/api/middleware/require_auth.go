@@ -9,6 +9,7 @@ package middleware
 
 import (
 	"encoding/json"
+	"log/slog"
 	"net/http"
 )
 
@@ -26,12 +27,14 @@ func RequireAuth(demoMode bool, authMode ...string) func(http.Handler) http.Hand
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			sess := GetSession(r.Context())
 			if sess == nil {
+				slog.Debug("auth: rejet 401 — pas de session", "path", r.URL.Path, "ip", r.RemoteAddr)
 				writeAuthRequired(w)
 				return
 			}
 			// En mode password, vérifier que l'utilisateur est connecté.
 			if mode == "password" {
 				if sess.Username == nil {
+					slog.Debug("auth: rejet 401 — session sans username", "path", r.URL.Path, "ip", r.RemoteAddr)
 					writeAuthRequired(w)
 					return
 				}

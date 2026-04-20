@@ -8,6 +8,7 @@ package handlers
 import (
 	"encoding/json"
 	"errors"
+	"log/slog"
 	"net/http"
 
 	"levelup/go-api/internal/api/middleware"
@@ -51,14 +52,18 @@ func (h *UserAuthHandler) Login(w http.ResponseWriter, r *http.Request) {
 	user, err := h.users.Authenticate(req.Username, req.Password)
 	if err != nil {
 		if errors.Is(err, userstore.ErrInvalidCredentials) {
+			slog.Warn("auth: login échoué", "username", req.Username, "ip", r.RemoteAddr)
 			writeError(w, http.StatusUnauthorized, "invalid_credentials", "identifiants incorrects")
 			return
 		}
+		slog.Error("auth: erreur authenticate", "username", req.Username, "err", err)
 		writeError(w, http.StatusInternalServerError, "auth_error", "erreur d'authentification")
 		return
 	}
 
-	_ = h.users.UpdateLastLogin(user.Username)
+	if err := h.users.UpdateLastLogin(user.Username); err != nil {
+		slog.Warn("auth: échec UpdateLastLogin", "username", user.Username, "err", err)
+	}
 
 	// Stocker les infos dans la session.
 	sess := middleware.GetSession(r.Context())
@@ -70,7 +75,11 @@ func (h *UserAuthHandler) Login(w http.ResponseWriter, r *http.Request) {
 	role := string(user.Role)
 	sess.Role = &role
 	h.autoSelectPlayer(sess, user)
-	_ = h.sessionStore.Save(sess)
+	if err := h.sessionStore.Save(sess); err != nil {
+		slog.Error("auth: échec save session login", "username", user.Username, "err", err)
+	}
+
+	slog.Info("auth: login réussi", "username", user.Username, "role", user.Role)
 
 	writeJSON(w, http.StatusOK, domain.LoginResponse{
 		Username: user.Username,
@@ -99,6 +108,7 @@ func (h *UserAuthHandler) Register(w http.ResponseWriter, r *http.Request) {
 	if empty {
 		// Premier utilisateur = admin automatique, pas besoin de code d'invitation.
 		role = domain.RoleAdmin
+		slog.Info("auth: premier utilisateur, rôle admin automatique", "username", req.Username)
 	} else {
 		// Vérifier le mode d'inscription.
 		if h.regMode == "closed" {
@@ -120,6 +130,7 @@ func (h *UserAuthHandler) Register(w http.ResponseWriter, r *http.Request) {
 	user, err := h.users.Create(req.Username, req.Password, role)
 	if err != nil {
 		if errors.Is(err, userstore.ErrUserAlreadyExists) {
+			slog.Warn("auth: register username déjà pris", "username", req.Username)
 			writeError(w, http.StatusConflict, "user_exists", "nom d'utilisateur déjà pris")
 			return
 		}
@@ -133,7 +144,9 @@ func (h *UserAuthHandler) Register(w http.ResponseWriter, r *http.Request) {
 
 	// Consommer le code d'invitation si utilisé.
 	if req.InviteCode != "" && !empty {
-		_ = h.invites.Consume(req.InviteCode, user.Username)
+		if err := h.invites.Consume(req.InviteCode, user.Username); err != nil {
+			slog.Error("auth: échec consume invite", "code", req.InviteCode, "username", user.Username, "err", err)
+		}
 	}
 
 	// Auto-login après inscription.
@@ -142,8 +155,12 @@ func (h *UserAuthHandler) Register(w http.ResponseWriter, r *http.Request) {
 		sess.Username = &user.Username
 		roleStr := string(user.Role)
 		sess.Role = &roleStr
-		_ = h.sessionStore.Save(sess)
+		if err := h.sessionStore.Save(sess); err != nil {
+			slog.Error("auth: échec save session register", "username", user.Username, "err", err)
+		}
 	}
+
+	slog.Info("auth: inscription réussie", "username", user.Username, "role", user.Role)
 
 	writeJSON(w, http.StatusCreated, domain.RegisterResponse{
 		Username: user.Username,
@@ -156,9 +173,16 @@ func (h *UserAuthHandler) Register(w http.ResponseWriter, r *http.Request) {
 func (h *UserAuthHandler) Logout(w http.ResponseWriter, r *http.Request) {
 	sess := middleware.GetSession(r.Context())
 	if sess != nil {
+		username := "<unknown>"
+		if sess.Username != nil {
+			username = *sess.Username
+		}
 		sess.Username = nil
 		sess.Role = nil
-		_ = h.sessionStore.Save(sess)
+		if err := h.sessionStore.Save(sess); err != nil {
+			slog.Error("auth: échec save session logout", "err", err)
+		}
+		slog.Info("auth: logout", "username", username)
 	}
 	w.WriteHeader(http.StatusNoContent)
 }
