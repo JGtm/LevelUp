@@ -27,12 +27,6 @@ type AppConfig struct {
 	Lang            string
 	AppVersion      string
 	FeatureFlags    FeatureFlags
-	// Sprint 35 : shadow mode — compare Go vs Python en parallèle.
-	// LEVELUP_SHADOW_MODE=both active le mode shadow (appel parallèle Python).
-	ShadowMode string
-	// PythonURL : URL de base de l'API Python pour le shadow mode.
-	// Défaut : http://127.0.0.1:8001
-	PythonURL string
 	// Sprint 40 T2 : Discord webhook URL pour alerting 500 + taux d'erreur.
 	// Lit LEVELUP_DISCORD_WEBHOOK_URL ; fallback sur discord_webhook_url dans app_settings.json.
 	DiscordWebhookURL string
@@ -91,8 +85,6 @@ func Load() (*AppConfig, error) {
 		CORSOrigins:       parseCORSOrigins(getEnvOrDefault("LEVELUP_CORS_ORIGINS", "")),
 		Lang:              getEnvOrDefault("LEVELUP_LANG", "fr"),
 		AppVersion:        getEnvOrDefault("LEVELUP_APP_VERSION", "dev"),
-		ShadowMode:        getEnvOrDefault("LEVELUP_SHADOW_MODE", ""),
-		PythonURL:         getEnvOrDefault("LEVELUP_PYTHON_URL", "http://127.0.0.1:8001"),
 		DiscordWebhookURL: loadDiscordWebhookURL(getEnvOrDefault("LEVELUP_APP_SETTINGS", filepath.Join(repoRoot, "app_settings.json"))),
 		AuthDir:           getEnvOrDefault("LEVELUP_AUTH_DIR", filepath.Join(repoRoot, "data", "auth")),
 		AuthMode:          getEnvOrDefault("LEVELUP_AUTH_MODE", "none"),

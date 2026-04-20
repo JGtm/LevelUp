@@ -116,6 +116,32 @@ func init() {
 	})
 
 	Register(Migration{
+		Name:        "add_battlepass_snapshots",
+		TargetDB:    TargetPlayer,
+		Description: "Table battlepass_snapshots pour historiser la progression battle pass joueur",
+		ApplySchema: func(db *sql.DB) error {
+			return execScript(db, `
+				CREATE TABLE IF NOT EXISTS battlepass_snapshots (
+					snapshot_at           TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+					xuid                  VARCHAR NOT NULL,
+					reward_track_path     VARCHAR NOT NULL,
+					is_active             BOOLEAN NOT NULL DEFAULT FALSE,
+					current_rank          INTEGER NOT NULL DEFAULT 0,
+					partial_progress      INTEGER NOT NULL DEFAULT 0,
+					is_owned              BOOLEAN NOT NULL DEFAULT FALSE,
+					has_reached_max_rank  BOOLEAN NOT NULL DEFAULT FALSE,
+					base_xp               INTEGER NOT NULL DEFAULT 0,
+					boost_xp              INTEGER NOT NULL DEFAULT 0,
+					state_hash            VARCHAR NOT NULL,
+					raw_payload_json      VARCHAR NOT NULL DEFAULT ''
+				);
+				CREATE INDEX IF NOT EXISTS idx_battlepass_snapshots_xuid_time ON battlepass_snapshots(xuid, snapshot_at DESC);
+				CREATE INDEX IF NOT EXISTS idx_battlepass_snapshots_track_time ON battlepass_snapshots(reward_track_path, snapshot_at DESC);
+			`)
+		},
+	})
+
+	Register(Migration{
 		Name:        "add_dominance_flag_column",
 		TargetDB:    TargetPlayer,
 		Description: "Colonne dominance_flag (TINYINT) sur player_match_enrichment",

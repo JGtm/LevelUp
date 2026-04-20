@@ -47,6 +47,10 @@ export const queryKeys = {
   battlepass: (playerSlug: string) => ['home', playerSlug, 'battlepass'] as const,
   challenges: (playerSlug: string) => ['home', playerSlug, 'challenges'] as const,
 
+  // Palmares
+  seasonPass: (playerSlug: string) => ['palmares', playerSlug, 'season-pass'] as const,
+  palmaresRelations: (playerSlug: string) => ['palmares', playerSlug, 'relations'] as const,
+
   // Escouade / Teammates (Slice 6)
   teammates: (playerSlug: string, filterHash: string) =>
     ['teammates', playerSlug, filterHash] as const,

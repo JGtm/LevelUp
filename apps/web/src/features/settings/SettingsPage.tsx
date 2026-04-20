@@ -307,22 +307,20 @@ function SyncTab({ merged, handleChange, t }: TabProps) {
         </CardHeader>
         <CardContent className="space-y-1 divide-y divide-border/50">
           <ToggleRow label={t.spnkrAutoSync} value={merged.spnkr_auto_sync_enabled ?? false} onChange={(v) => handleChange('spnkr_auto_sync_enabled', v)} />
-          {(merged.spnkr_auto_sync_enabled ?? false) && (
-            <div className="flex items-center justify-between py-3 text-sm">
-              <span>{t.spnkrAutoSyncIntervalMinutes}</span>
-              <div className="flex items-center gap-1.5">
-                <input
-                  type="number"
-                  min={5}
-                  max={1440}
-                  className="w-20 rounded border border-border bg-background px-2 py-1 text-right text-sm"
-                  value={merged.spnkr_auto_sync_interval_minutes ?? 360}
-                  onChange={(e) => handleChange('spnkr_auto_sync_interval_minutes', parseInt(e.target.value, 10) || 360)}
-                />
-                <span className="text-muted-foreground">{t.spnkrAutoSyncIntervalMinutesUnit}</span>
-              </div>
+          <div className="flex items-center justify-between py-3 text-sm">
+            <span>{t.spnkrAutoSyncIntervalMinutes}</span>
+            <div className="flex items-center gap-1.5">
+              <input
+                type="number"
+                min={5}
+                max={1440}
+                className="w-20 rounded border border-border bg-background px-2 py-1 text-right text-sm"
+                value={merged.spnkr_auto_sync_interval_minutes ?? 360}
+                onChange={(e) => handleChange('spnkr_auto_sync_interval_minutes', parseInt(e.target.value, 10) || 360)}
+              />
+              <span className="text-muted-foreground">{t.spnkrAutoSyncIntervalMinutesUnit}</span>
             </div>
-          )}
+          </div>
           <ToggleRow label={t.spnkrRefreshWithBackfill} value={merged.spnkr_refresh_with_backfill ?? false} onChange={(v) => handleChange('spnkr_refresh_with_backfill', v)} />
         </CardContent>
       </Card>

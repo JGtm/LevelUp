@@ -4,7 +4,6 @@ package duckdb
 import (
 	"context"
 	"database/sql"
-	"encoding/json"
 	"fmt"
 	"strings"
 	"time"
@@ -140,58 +139,29 @@ func isTableNotFoundErr(err error) bool {
 // BattlePassCacheRepository implementation
 // ---------------------------------------------------------------------------
 
-// battlePassCachePayload est la structure minimale du JSON Waypoint stocké dans
-// battlepass_track_definitions.raw_payload_json.
-type battlePassCachePayload struct {
-	ActiveOperationRewardTrackPath string `json:"ActiveOperationRewardTrackPath"`
-	OperationRewardTracks          []struct {
-		RewardTrackPath string `json:"RewardTrackPath"`
-		CurrentProgress struct {
-			Rank            int `json:"Rank"`
-			PartialProgress int `json:"PartialProgress"`
-		} `json:"CurrentProgress"`
-	} `json:"OperationRewardTracks"`
-}
-
-// LoadCachedBattlePass retourne les données BP depuis battlepass_track_definitions
-// si une entrée is_current existe et a été vue dans la fenêtre ttl.
+// LoadCachedBattlePass retourne les données BP depuis battlepass_snapshots si une
+// entrée récente du joueur existe dans la fenêtre ttl.
 func (r *HomeRepo) LoadCachedBattlePass(ctx context.Context, ttl time.Duration) (*domain.BattlePassResponse, bool, error) {
 	secs := int64(ttl.Seconds())
 	query := fmt.Sprintf(`
-		SELECT reward_track_path, raw_payload_json
-		FROM battlepass_track_definitions
-		WHERE is_current = TRUE
-		  AND last_seen_at > CURRENT_TIMESTAMP - INTERVAL '%d' SECOND
-		ORDER BY last_seen_at DESC
+		SELECT reward_track_path, current_rank, partial_progress
+		FROM battlepass_snapshots
+		WHERE xuid = ?
+		  AND snapshot_at > CURRENT_TIMESTAMP - INTERVAL '%d' SECOND
+		ORDER BY is_active DESC, snapshot_at DESC
 		LIMIT 1`, secs)
 
-	var trackPath, rawJSON string
-	err := r.pdb.Metadata.QueryRow(ctx, query).Scan(&trackPath, &rawJSON)
+	var trackPath string
+	var rank, progress int
+	err := r.pdb.Player.QueryRow(ctx, query, r.pdb.XUID).Scan(&trackPath, &rank, &progress)
 	if err != nil {
 		if err == sql.ErrNoRows {
 			return nil, false, nil
 		}
-		return nil, false, fmt.Errorf("home_repo: cache BP query: %w", err)
-	}
-
-	var payload battlePassCachePayload
-	if err := json.Unmarshal([]byte(rawJSON), &payload); err != nil {
-		// JSON corrompu → traiter comme un miss plutôt que bloquer
-		return nil, false, nil
-	}
-
-	rank, progress := 0, 0
-	for _, t := range payload.OperationRewardTracks {
-		if t.RewardTrackPath == payload.ActiveOperationRewardTrackPath {
-			rank = t.CurrentProgress.Rank
-			progress = t.CurrentProgress.PartialProgress
-			break
+		if isTableNotFoundErr(err) {
+			return nil, false, nil
 		}
-	}
-	if rank == 0 && len(payload.OperationRewardTracks) > 0 {
-		rank = payload.OperationRewardTracks[0].CurrentProgress.Rank
-		progress = payload.OperationRewardTracks[0].CurrentProgress.PartialProgress
-		trackPath = payload.OperationRewardTracks[0].RewardTrackPath
+		return nil, false, fmt.Errorf("home_repo: cache BP query: %w", err)
 	}
 
 	resp := &domain.BattlePassResponse{

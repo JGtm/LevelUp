@@ -48,7 +48,7 @@ Le suivi des sprints est maintenu dans [`SPRINT_ROADMAP.md`](.ai/go_migration_v2
 | `internal/platform/halo/provider.go` | Provider Halo live pour Battle Pass / Challenges |
 | `internal/ctxkeys/ctxkeys.go` | Clés de contexte partagées titre + auth Halo |
 | `internal/domain/title/registry.go` | Registre des titres supportés |
-| `scripts/probe_battlepass_catalog.py` + `src/data/battlepass_probe.py` | Collecte hors ligne complète du catalogue battle pass live, persistance JSON + metadata + assets |
+| `internal/platform/duckdb/persist_sink.go` + `internal/platform/duckdb/home_repo.go` | Persistance fire-and-forget et cache joueur local des snapshots battle pass / challenges |
 
 ### Frontend web — shell joueur (2026-04-18)
 

@@ -26,7 +26,7 @@ VENV_PY  := .venv/bin/python
 LAUNCHER := $(VENV_PY) launcher.py
 
 .PHONY: install run sync add-player doctor update check test test-all clean help \
-        api web dev test-api test-parity test-web test-e2e test-e2e-ui check-types \
+        web dev test-parity test-web test-e2e test-e2e-ui check-types \
         generate-types install-web _check_venv
 
 ## Installe le venv et les dépendances (idempotent)
@@ -87,39 +87,21 @@ help:
 	@grep -E '^##' Makefile | sed 's/^## //'
 
 # =============================================================================
-# Migration FastAPI + React — cibles Slice 0a
+# Web frontend
 # =============================================================================
-
-## Lance l'API FastAPI en mode dev (port 8000, hot-reload)
-api: _check_venv
-	$(VENV_PY) -m uvicorn apps.api.app.main:app --host 127.0.0.1 --port 8000 --reload
 
 ## Lance le frontend React/Vite en mode dev (port 5173)
 web:
-	cd apps/web && npm run dev
-
-## (legacy Python) Lance API FastAPI + frontend en parallele
-dev-python: _check_venv
-	@echo "Demarrage API Python (port 8000) + Web (port 5173)..."
-	$(VENV_PY) -m uvicorn apps.api.app.main:app --host 127.0.0.1 --port 8000 --reload & \
-	cd apps/web && npm run dev
-
-## Lance uniquement les tests API (tests/api/)
-test-api: _check_venv
-	$(VENV_PY) -m pytest tests/api/ -v
+        cd apps/web && npm run dev
 
 ## Lance les tests de parité backend (tests/parity/)
 test-parity: _check_venv
-	$(VENV_PY) -m pytest tests/parity/ -v
+        $(VENV_PY) -m pytest tests/parity/ -v
 
-## Génère le fichier de types TypeScript depuis le schéma OpenAPI FastAPI
-## Prérequis : l'API doit être démarrée (make api ou make dev)
+## Génère le fichier de types TypeScript depuis le schéma OpenAPI Go
 ## Usage : make generate-types
 generate-types:
-	@command -v npx >/dev/null 2>&1 || (echo "npx requis" && exit 1)
-	@curl -s http://127.0.0.1:8000/api/v1/health > /dev/null 2>&1 || \
-		(echo "❌ API non joignable — lancez 'make api' d'abord." && exit 1)
-	cd apps/web && npm run generate-types
+        @command -v npx >/dev/null 2>&1 || (echo "npx requis" && exit 1)
 	@echo "✓ Types générés dans apps/web/src/lib/api/generated.ts"
 
 ## Installe les dépendances npm dans apps/web/

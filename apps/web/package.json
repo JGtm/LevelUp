@@ -16,7 +16,7 @@
     "test:e2e": "playwright test",
     "test:e2e:ui": "playwright test --ui",
     "test:e2e:report": "playwright show-report",
-    "generate-types": "openapi-typescript http://127.0.0.1:8000/api/openapi.json -o src/lib/api/generated.ts"
+    "generate-types": "openapi-typescript ../../apps/go-api/api/openapi.yaml -o src/lib/api/generated.ts"
   },
   "dependencies": {
     "@tailwindcss/typography": "^0.5.19",
