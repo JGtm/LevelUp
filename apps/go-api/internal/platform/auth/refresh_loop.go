@@ -33,11 +33,16 @@ const (
 // Le XSTSResult contient le nouveau token + userhash.
 type RefreshCallback func(result *XSTSResult)
 
+// XSTSAcquireFn est une fonction qui acquiert un token XSTS à partir d'un access_token.
+// Utilisé pour faciliter les tests unitaires (injection de dépendance).
+type XSTSAcquireFn func(ctx context.Context, accessToken string) (*XSTSResult, error)
+
 // RefreshLoop gère le refresh automatique des tokens.
 type RefreshLoop struct {
-	store    *TokenStore
-	onXSTS   RefreshCallback
-	interval time.Duration
+	store         *TokenStore
+	onXSTS        RefreshCallback
+	interval      time.Duration
+	acquireXSTSFn XSTSAcquireFn // nil → AcquireXSTSForRTA (prod)
 }
 
 // NewRefreshLoop crée un RefreshLoop.
@@ -135,7 +140,11 @@ func (r *RefreshLoop) refreshXSTS(ctx context.Context, tokens *StoredTokens) {
 		return
 	}
 
-	result, err := AcquireXSTSForRTA(ctx, tokens.AccessToken)
+	acquireFn := r.acquireXSTSFn
+	if acquireFn == nil {
+		acquireFn = AcquireXSTSForRTA
+	}
+	result, err := acquireFn(ctx, tokens.AccessToken)
 	if err != nil {
 		slog.ErrorContext(ctx, "refresh_loop: échec acquisition XSTS", "err", err)
 		return
@@ -146,10 +155,15 @@ func (r *RefreshLoop) refreshXSTS(ctx context.Context, tokens *StoredTokens) {
 		return
 	}
 
+	// Utiliser la vraie date d'expiration si NotAfter est renseigné.
+	expiresAt := result.NotAfter
+	if expiresAt.IsZero() {
+		expiresAt = time.Now().Add(xstsDefaultTTL)
+	}
 	slog.InfoContext(ctx, "refresh_loop: XSTS renouvelé",
 		"gamertag", result.Gamertag,
 		"xuid", result.XUID,
-		"expires_in", xstsDefaultTTL,
+		"expires_at", expiresAt,
 	)
 
 	if r.onXSTS != nil {

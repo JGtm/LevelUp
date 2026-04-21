@@ -1,6 +1,10 @@
 package auth
 
 import (
+	"context"
+	"encoding/json"
+	"net/http"
+	"net/http/httptest"
 	"testing"
 	"time"
 )
@@ -294,6 +298,207 @@ func TestRefreshLoop_New(t *testing.T) {
 	}
 	if called {
 		t.Error("callback should not have been called yet")
+	}
+}
+
+// --- RefreshLoop.check logic tests ---
+
+// refreshLoopWithMock crée un RefreshLoop avec une fonction XSTS mockée.
+func refreshLoopWithMock(t *testing.T, mockFn XSTSAcquireFn, callback RefreshCallback) (*RefreshLoop, *TokenStore) {
+	t.Helper()
+	store := NewTokenStore(t.TempDir() + "/tokens.json")
+	rl := NewRefreshLoop(store, callback)
+	rl.acquireXSTSFn = mockFn
+	return rl, store
+}
+
+func TestRefreshLoop_Check_SkipsWhenNoRefreshToken(t *testing.T) {
+	called := false
+	rl, store := refreshLoopWithMock(t,
+		func(_ context.Context, _ string) (*XSTSResult, error) {
+			called = true
+			return &XSTSResult{Token: "new"}, nil
+		},
+		nil,
+	)
+	// Store vide → pas de refresh_token
+	_ = store.Save(&StoredTokens{
+		AccessToken:   "at",
+		XSTSToken:     "old",
+		XSTSExpiresAt: time.Now().Add(5 * time.Minute), // < margin → devrait refresh, mais pas de RT
+	})
+	rl.check(context.Background())
+	if called {
+		t.Error("acquireXSTSFn ne doit pas être appelé sans refresh_token")
+	}
+}
+
+func TestRefreshLoop_Check_SkipsWhenXSTSValid(t *testing.T) {
+	called := false
+	rl, store := refreshLoopWithMock(t,
+		func(_ context.Context, _ string) (*XSTSResult, error) {
+			called = true
+			return &XSTSResult{Token: "new"}, nil
+		},
+		nil,
+	)
+	_ = store.Save(&StoredTokens{
+		AccessToken:    "at",
+		RefreshToken:   "rt",
+		OAuthExpiresAt: time.Now().Add(time.Hour),
+		XSTSToken:      "old",
+		XSTSExpiresAt:  time.Now().Add(30 * time.Minute), // > 20min margin → pas de refresh
+	})
+	rl.check(context.Background())
+	if called {
+		t.Error("acquireXSTSFn ne doit pas être appelé si XSTS encore valide > margin")
+	}
+}
+
+func TestRefreshLoop_Check_RefreshesWhenXSTSNearExpiry(t *testing.T) {
+	var callbackResult *XSTSResult
+	rl, store := refreshLoopWithMock(t,
+		func(_ context.Context, _ string) (*XSTSResult, error) {
+			return &XSTSResult{
+				Token:    "new-xsts",
+				UserHash: "uh",
+				NotAfter: time.Now().Add(60 * time.Minute),
+			}, nil
+		},
+		func(r *XSTSResult) { callbackResult = r },
+	)
+	_ = store.Save(&StoredTokens{
+		AccessToken:    "at",
+		RefreshToken:   "rt",
+		OAuthExpiresAt: time.Now().Add(time.Hour),
+		XSTSToken:      "old",
+		XSTSExpiresAt:  time.Now().Add(15 * time.Minute), // 15min < 20min margin → refresh
+	})
+	rl.check(context.Background())
+	if callbackResult == nil {
+		t.Fatal("callback doit être appelé après refresh XSTS")
+	}
+	if callbackResult.Token != "new-xsts" {
+		t.Errorf("callback reçu token=%q, want %q", callbackResult.Token, "new-xsts")
+	}
+	// Le store doit contenir le nouveau token
+	loaded, _ := store.Load()
+	if loaded.XSTSToken != "new-xsts" {
+		t.Errorf("store XSTSToken = %q, want %q", loaded.XSTSToken, "new-xsts")
+	}
+	// L'expiration doit utiliser NotAfter, pas xstsDefaultTTL
+	if loaded.XSTSExpiresAt.Sub(time.Now()) < 55*time.Minute {
+		t.Error("XSTSExpiresAt devrait refléter le NotAfter (~60min), pas le fallback 55min")
+	}
+}
+
+func TestRefreshLoop_Check_NoCallbackWhenNil(t *testing.T) {
+	rl, store := refreshLoopWithMock(t,
+		func(_ context.Context, _ string) (*XSTSResult, error) {
+			return &XSTSResult{Token: "new"}, nil
+		},
+		nil, // callback nil → ne doit pas paniquer
+	)
+	_ = store.Save(&StoredTokens{
+		AccessToken:    "at",
+		RefreshToken:   "rt",
+		OAuthExpiresAt: time.Now().Add(time.Hour),
+		XSTSToken:      "old",
+		XSTSExpiresAt:  time.Now().Add(5 * time.Minute),
+	})
+	// Ne doit pas paniquer
+	rl.check(context.Background())
+}
+
+// --- extractNotAfter edge cases ---
+
+func TestExtractNotAfter_WrongType(t *testing.T) {
+	// NotAfter est un nombre, pas une string
+	resp := map[string]any{"NotAfter": 12345}
+	got := extractNotAfter(resp)
+	if !got.IsZero() {
+		t.Errorf("extractNotAfter() = %v, want zero for wrong type", got)
+	}
+}
+
+func TestExtractNotAfter_InvalidFormat(t *testing.T) {
+	// String présente mais non parseable
+	resp := map[string]any{"NotAfter": "not-a-date"}
+	got := extractNotAfter(resp)
+	if !got.IsZero() {
+		t.Errorf("extractNotAfter() = %v, want zero for invalid format", got)
+	}
+}
+
+// --- IsXSTSValid avec la marge réelle 20min ---
+
+func TestIsXSTSValid_Margin20min_BoundaryBefore(t *testing.T) {
+	// Token avec 21min restants, marge 20min → encore valide (juste au-dessus)
+	s := &StoredTokens{XSTSToken: "tok", XSTSExpiresAt: time.Now().Add(21 * time.Minute)}
+	if !s.IsXSTSValid(20 * time.Minute) {
+		t.Error("21min restants avec marge 20min → doit être valide")
+	}
+}
+
+func TestIsXSTSValid_Margin20min_BoundaryAfter(t *testing.T) {
+	// Token avec 15min restants, marge 20min → expiré (sous la marge → refresh déclenché)
+	s := &StoredTokens{XSTSToken: "tok", XSTSExpiresAt: time.Now().Add(15 * time.Minute)}
+	if s.IsXSTSValid(20 * time.Minute) {
+		t.Error("15min restants avec marge 20min → doit être invalide (refresh requis)")
+	}
+}
+
+// --- requestXSTSTokenFull populates NotAfter ---
+
+func TestRequestXSTSTokenFull_PopulatesNotAfter(t *testing.T) {
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		_ = json.NewEncoder(w).Encode(map[string]any{
+			"Token":    "xsts_live_tok",
+			"NotAfter": "2026-04-21T15:00:00.0000000Z",
+			"DisplayClaims": map[string]any{
+				"xui": []any{map[string]any{"uhs": "hash123", "gtg": "Player", "xid": "111"}},
+			},
+		})
+	}))
+	defer srv.Close()
+	result, err := requestXSTSTokenFull(context.Background(), mockClient(srv.URL), "user_tok", "http://xboxlive.com")
+	if err != nil {
+		t.Fatalf("requestXSTSTokenFull() error = %v", err)
+	}
+	if result.Token != "xsts_live_tok" {
+		t.Errorf("Token = %q, want %q", result.Token, "xsts_live_tok")
+	}
+	if result.NotAfter.IsZero() {
+		t.Fatal("NotAfter doit être renseigné quand la réponse contient NotAfter")
+	}
+	want := time.Date(2026, 4, 21, 15, 0, 0, 0, time.UTC)
+	if !result.NotAfter.Equal(want) {
+		t.Errorf("NotAfter = %v, want %v", result.NotAfter, want)
+	}
+	if result.UserHash != "hash123" {
+		t.Errorf("UserHash = %q, want %q", result.UserHash, "hash123")
+	}
+}
+
+func TestRequestXSTSTokenFull_NoNotAfter_ZeroTime(t *testing.T) {
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		_ = json.NewEncoder(w).Encode(map[string]any{
+			"Token": "xsts_tok",
+			// pas de NotAfter
+			"DisplayClaims": map[string]any{
+				"xui": []any{map[string]any{"uhs": "uh"}},
+			},
+		})
+	}))
+	defer srv.Close()
+	result, err := requestXSTSTokenFull(context.Background(), mockClient(srv.URL), "user_tok", "http://xboxlive.com")
+	if err != nil {
+		t.Fatalf("requestXSTSTokenFull() error = %v", err)
+	}
+	if !result.NotAfter.IsZero() {
+		t.Errorf("NotAfter doit être zero quand absent de la réponse, got %v", result.NotAfter)
 	}
 }
 
