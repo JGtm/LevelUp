@@ -101,7 +101,7 @@ func run(dryRun bool, staticDir string) error {
 		if !ok {
 			slog.Warn("unmatched map file", "filename", filename, "extracted_name", mapName)
 			unmatched = append(unmatched, UnmatchedMap{
-				Filename:     filename,
+				Filename:      filename,
 				ExtractedName: mapName,
 			})
 			continue
@@ -138,8 +138,10 @@ func run(dryRun bool, staticDir string) error {
 
 	// 7. Écrire CSV des maps non reconnues
 	if len(unmatched) > 0 {
-		csvPath := "unmatched_maps.csv"
-		if err := writeUnmatchedCSV(csvPath, unmatched); err != nil {
+		csvPath := defaultUnmatchedCSVPath(rootDir)
+		if err := os.MkdirAll(filepath.Dir(csvPath), 0o755); err != nil {
+			slog.Warn("failed to create unmatched maps dir", "path", filepath.Dir(csvPath), "err", err)
+		} else if err := writeUnmatchedCSV(csvPath, unmatched); err != nil {
 			slog.Warn("failed to write CSV", "err", err)
 		} else {
 			slog.Info("unmatched maps written", "path", csvPath)
@@ -147,6 +149,10 @@ func run(dryRun bool, staticDir string) error {
 	}
 
 	return nil
+}
+
+func defaultUnmatchedCSVPath(repoRoot string) string {
+	return filepath.Join(repoRoot, "data", "investigation", "maps", "unmatched_maps.csv")
 }
 
 // extractMapName retire l'extension + suffixes courants.
