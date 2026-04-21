@@ -186,7 +186,7 @@ func (p *HaloProvider) loadExistingItemPaths(ctx context.Context) map[string]str
 	if metaPath == "" {
 		return map[string]struct{}{}
 	}
-	db, err := duckdb.OpenReadWrite(metaPath)
+	db, err := duckdb.OpenReadOnly(metaPath)
 	if err != nil {
 		return map[string]struct{}{}
 	}
@@ -361,7 +361,7 @@ func (p *HaloProvider) loadTrackDefinitionFromMetadata(
 		return nil, nil
 	}
 
-	db, err := duckdb.OpenReadWrite(metaPath)
+	db, err := duckdb.OpenReadOnly(metaPath)
 	if err != nil {
 		return nil, err
 	}
