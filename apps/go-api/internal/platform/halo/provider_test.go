@@ -6,7 +6,6 @@ import (
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
-	"os"
 	"path/filepath"
 	"strings"
 	"sync"
@@ -339,8 +338,8 @@ func TestGetChallenges_LiveOK(t *testing.T) {
 	if resp.Items[0].ImageURL == nil || *resp.Items[0].ImageURL == "" {
 		t.Fatal("expected image_url on enriched challenge")
 	}
-	if !strings.HasPrefix(*resp.Items[0].ImageURL, "data:image/png;base64,") {
-		t.Fatalf("expected data URL image, got %q", *resp.Items[0].ImageURL)
+	if resp.Items[0].ImageURL == nil || !strings.HasPrefix(*resp.Items[0].ImageURL, "/api/v1/assets/challenge-badge/") {
+		t.Fatalf("expected challenge badge API URL, got %v", resp.Items[0].ImageURL)
 	}
 }
 
@@ -622,136 +621,6 @@ func TestFetchChallengeDefinition_PersistsMetadataAfterLiveFetch(t *testing.T) {
 	}
 	if category != "Weekly" || difficulty != "Legendary" {
 		t.Fatalf("unexpected persisted metadata: %q / %q", category, difficulty)
-	}
-}
-
-func TestFetchChallengeBadgeDataURL_UsesLocalWeeklyCache(t *testing.T) {
-	tempDir := t.TempDir()
-	cacheDir := filepath.Join(tempDir, "challenge_badges")
-	if err := os.MkdirAll(cacheDir, 0o755); err != nil {
-		t.Fatalf("MkdirAll(cacheDir): %v", err)
-	}
-	pngBody := append(append([]byte{}, challengePNGSignature...), []byte("weekly-cache")...)
-	cachePath := filepath.Join(cacheDir, "weekly-action-heroic.png")
-	if err := os.WriteFile(cachePath, pngBody, 0o644); err != nil {
-		t.Fatalf("WriteFile(cache badge): %v", err)
-	}
-
-	p := NewHaloProvider().WithChallengeCache("", cacheDir)
-	imageURL := p.fetchChallengeBadgeDataURL(
-		context.Background(),
-		testTokens(),
-		"ChallengeContent/ClientChallengeDefinitions/WeeklyChallenges/Action/ch1.json",
-		"Weekly",
-		"Heroic",
-	)
-	if imageURL == nil || !strings.HasPrefix(*imageURL, "data:image/png;base64,") {
-		t.Fatalf("expected data URL from local cache, got %v", imageURL)
-	}
-}
-
-func TestFetchChallengeBadgeDataURL_PersistsLiveBadgeToLocalCache(t *testing.T) {
-	tempDir := t.TempDir()
-	cacheDir := filepath.Join(tempDir, "challenge_badges")
-	pngBody := append(append([]byte{}, challengePNGSignature...), []byte("live-weekly-cache")...)
-	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		switch r.URL.Path {
-		case "/hi/waypoint/file/images/weekly-action-heroic.png":
-			w.Header().Set("Content-Type", "image/png")
-			_, _ = w.Write(pngBody)
-		default:
-			http.NotFound(w, r)
-		}
-	}))
-	defer srv.Close()
-
-	p := newTestProvider("", srv.URL).WithChallengeCache("", cacheDir)
-	imageURL := p.fetchChallengeBadgeDataURL(
-		context.Background(),
-		testTokens(),
-		"ChallengeContent/ClientChallengeDefinitions/WeeklyChallenges/Action/ch1.json",
-		"Weekly",
-		"Heroic",
-	)
-	if imageURL == nil || !strings.HasPrefix(*imageURL, "data:image/png;base64,") {
-		t.Fatalf("expected data URL from live badge fetch, got %v", imageURL)
-	}
-
-	cachePath := filepath.Join(cacheDir, "weekly-action-heroic.png")
-	body, err := os.ReadFile(cachePath)
-	if err != nil {
-		t.Fatalf("expected persisted badge in local cache: %v", err)
-	}
-	if string(body) != string(pngBody) {
-		t.Fatalf("unexpected cached badge bytes")
-	}
-}
-
-func TestFetchChallengeBadgeDataURL_SeasonalFallsBackToWeekly(t *testing.T) {
-	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		switch r.URL.Path {
-		case "/hi/waypoint/file/images/weekly-legendary.png":
-			w.Header().Set("Content-Type", "image/png")
-			_, _ = w.Write(append(append([]byte{}, challengePNGSignature...), []byte("seasonal-weekly-fallback")...))
-		default:
-			http.NotFound(w, r)
-		}
-	}))
-	defer srv.Close()
-
-	p := newTestProvider("", srv.URL)
-	imageURL := p.fetchChallengeBadgeDataURL(
-		context.Background(),
-		testTokens(),
-		"ChallengeContent/ClientChallengeDefinitions/S5WinterChallenges/Legendary/LWinterMedalSplatter.json",
-		"Seasonal",
-		"Legendary",
-	)
-	if imageURL == nil || !strings.HasPrefix(*imageURL, "data:image/png;base64,") {
-		t.Fatalf("expected data URL from seasonal weekly fallback, got %v", imageURL)
-	}
-
-	candidates := buildChallengeBadgeCandidates(
-		"ChallengeContent/ClientChallengeDefinitions/S5WinterChallenges/Legendary/LWinterMedalSplatter.json",
-		"Seasonal",
-		"Legendary",
-	)
-	if len(candidates) == 0 || candidates[0] != "weekly-legendary" {
-		t.Fatalf("expected weekly fallback candidates first, got %v", candidates)
-	}
-}
-
-func TestFetchChallengeBadgeDataURL_WeeklyVehicleUsesVehicleBadgeFirst(t *testing.T) {
-	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		switch r.URL.Path {
-		case "/hi/waypoint/file/images/weekly-vehicle-heroic.png":
-			w.Header().Set("Content-Type", "image/png")
-			_, _ = w.Write(append(append([]byte{}, challengePNGSignature...), []byte("vehicle-weekly-badge")...))
-		default:
-			http.NotFound(w, r)
-		}
-	}))
-	defer srv.Close()
-
-	p := newTestProvider("", srv.URL)
-	imageURL := p.fetchChallengeBadgeDataURL(
-		context.Background(),
-		testTokens(),
-		"ChallengeContent/ClientChallengeDefinitions/WeeklyChallenges/Vehicle/ch4.json",
-		"Weekly",
-		"Heroic",
-	)
-	if imageURL == nil || !strings.HasPrefix(*imageURL, "data:image/png;base64,") {
-		t.Fatalf("expected data URL from weekly vehicle badge, got %v", imageURL)
-	}
-
-	candidates := buildChallengeBadgeCandidates(
-		"ChallengeContent/ClientChallengeDefinitions/WeeklyChallenges/Vehicle/ch4.json",
-		"Weekly",
-		"Heroic",
-	)
-	if len(candidates) == 0 || candidates[0] != "weekly-vehicle-heroic" {
-		t.Fatalf("expected vehicle badge stem first, got %v", candidates)
 	}
 }
 

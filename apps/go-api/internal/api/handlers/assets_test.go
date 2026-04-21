@@ -2,115 +2,119 @@ package handlers_test
 
 import (
 	"context"
+	"errors"
 	"net/http"
 	"net/http/httptest"
 	"testing"
-	"time"
 
 	"github.com/go-chi/chi/v5"
 
 	"levelup/go-api/internal/api/handlers"
-	"levelup/go-api/internal/platform/duckdb"
+	"levelup/go-api/internal/assets"
 )
 
-// stubMedalRepo implémente MedalImageRepo pour les tests.
-type stubMedalRepo struct {
-	entry    *duckdb.MedalImageEntry
-	upserted *duckdb.MedalImageEntry
+// stubResolver implements assets.Resolver for tests.
+type stubResolver struct {
+	result assets.Resolved
+	err    error
+	gotRef assets.Ref
 }
 
-func (s *stubMedalRepo) GetMedalImageCache(_ context.Context, _ string, _ int64) (*duckdb.MedalImageEntry, error) {
-	return s.entry, nil
+func (s *stubResolver) Get(_ context.Context, ref assets.Ref) (assets.Resolved, error) {
+	s.gotRef = ref
+	return s.result, s.err
 }
 
-func (s *stubMedalRepo) UpsertMedalImageCache(_ context.Context, e duckdb.MedalImageEntry) error {
-	s.upserted = &e
+func (s *stubResolver) Refresh(_ context.Context, ref assets.Ref) (assets.Resolved, error) {
+	return s.result, s.err
+}
+
+func (s *stubResolver) Warm(_ context.Context, _ ...assets.Ref) {}
+func (s *stubResolver) RegisterLocalFile(_ context.Context, _ assets.Ref, _ string) error {
 	return nil
 }
+func (s *stubResolver) Close(_ context.Context) error { return nil }
 
-// stubMapRepo implémente MapImageRepo pour les tests.
-type stubMapRepo struct {
-	entry    *duckdb.MapImageEntry
-	upserted *duckdb.MapImageEntry
-}
+var _ assets.Resolver = (*stubResolver)(nil)
+var _ = errors.Is(nil, assets.ErrNotFound)
 
-func (s *stubMapRepo) GetMapImageCache(_ context.Context, _ string, _ string) (*duckdb.MapImageEntry, error) {
-	return s.entry, nil
-}
-
-func (s *stubMapRepo) UpsertMapImageCache(_ context.Context, e duckdb.MapImageEntry) error {
-	s.upserted = &e
-	return nil
-}
-
-func newAssetTestRouter(h *handlers.AssetHandler) *chi.Mux {
+func newMedalTestRouter(h *handlers.AssetHandler) *chi.Mux {
 	r := chi.NewRouter()
 	r.Get("/assets/medals/{title_id}/{medal_id}/image", h.GetMedalImage)
 	return r
 }
 
-// TestMedalImageHandler_CacheHit vérifie qu'un cache hit retourne une redirection 302
-// sans appel UpsertMedalImageCache.
-func TestMedalImageHandler_CacheHit(t *testing.T) {
-	stub := &stubMedalRepo{
-		entry: &duckdb.MedalImageEntry{
-			TitleID:   "halo_infinite",
-			MedalID:   12345,
-			ImageURL:  "https://example.com/medal.png",
-			FetchedAt: time.Now(),
-		},
+func TestMedalImageHandler_URLPayload_Redirect(t *testing.T) {
+	stub := &stubResolver{
+		result: assets.Resolved{Payload: assets.URLPayload{URL: "https://example.com/medal.png"}},
 	}
-	r := newAssetTestRouter(handlers.NewAssetHandlerWithRepo(stub))
-
+	r := newMedalTestRouter(handlers.NewAssetHandler(stub))
 	req := httptest.NewRequest(http.MethodGet, "/assets/medals/halo_infinite/12345/image", nil)
 	w := httptest.NewRecorder()
 	r.ServeHTTP(w, req)
-
 	if w.Code != http.StatusFound {
-		t.Errorf("cache hit: attendu 302, obtenu %d", w.Code)
+		t.Errorf("URLPayload: attendu 302, obtenu %d", w.Code)
 	}
 	if loc := w.Header().Get("Location"); loc != "https://example.com/medal.png" {
-		t.Errorf("cache hit: Location=%q, attendu %q", loc, "https://example.com/medal.png")
+		t.Errorf("URLPayload: Location=%q", loc)
 	}
-	if stub.upserted != nil {
-		t.Error("cache hit: UpsertMedalImageCache ne doit pas être appelé")
+	if stub.gotRef.Kind != assets.KindMedalImage {
+		t.Errorf("Ref.Kind=%v, attendu KindMedalImage", stub.gotRef.Kind)
 	}
 }
 
-// TestMedalImageHandler_InvalidMedalID vérifie le rejet d'un medal_id non numérique.
-func TestMedalImageHandler_InvalidMedalID(t *testing.T) {
-	stub := &stubMedalRepo{}
-	r := newAssetTestRouter(handlers.NewAssetHandlerWithRepo(stub))
+func TestMedalImageHandler_BinaryPayload_Serve(t *testing.T) {
+	stub := &stubResolver{
+		result: assets.Resolved{Payload: assets.BinaryPayload{
+			ContentType: "image/png",
+			Bytes:       []byte{0x89, 0x50, 0x4e, 0x47},
+			ETag:        "abc123",
+		}},
+	}
+	r := newMedalTestRouter(handlers.NewAssetHandler(stub))
+	req := httptest.NewRequest(http.MethodGet, "/assets/medals/halo_infinite/12345/image", nil)
+	w := httptest.NewRecorder()
+	r.ServeHTTP(w, req)
+	if w.Code != http.StatusOK {
+		t.Errorf("BinaryPayload: attendu 200, obtenu %d", w.Code)
+	}
+	if ct := w.Header().Get("Content-Type"); ct != "image/png" {
+		t.Errorf("Content-Type=%q", ct)
+	}
+}
 
+func TestMedalImageHandler_InvalidMedalID(t *testing.T) {
+	stub := &stubResolver{}
+	r := newMedalTestRouter(handlers.NewAssetHandler(stub))
 	req := httptest.NewRequest(http.MethodGet, "/assets/medals/halo_infinite/not-a-number/image", nil)
 	w := httptest.NewRecorder()
 	r.ServeHTTP(w, req)
-
 	if w.Code != http.StatusBadRequest {
 		t.Errorf("medal_id invalide: attendu 400, obtenu %d", w.Code)
 	}
 }
 
-// TestMedalImageHandler_CacheMiss_Upserts vérifie qu'un cache miss déclenche un upsert.
-// Le fetch Waypoint est skippé ici (pas de serveur mock) — on vérifie uniquement
-// que l'absence d'entrée en cache produit un appel UpsertMedalImageCache.
-func TestMedalImageHandler_CacheMiss_Upserts(t *testing.T) {
-	stub := &stubMedalRepo{entry: nil} // cache vide
-	r := newAssetTestRouter(handlers.NewAssetHandlerWithRepo(stub))
-
+func TestMedalImageHandler_NotFound(t *testing.T) {
+	stub := &stubResolver{err: assets.ErrNotFound}
+	r := newMedalTestRouter(handlers.NewAssetHandler(stub))
 	req := httptest.NewRequest(http.MethodGet, "/assets/medals/halo_infinite/99999/image", nil)
 	w := httptest.NewRecorder()
 	r.ServeHTTP(w, req)
-
-	// Le fetch Waypoint peut échouer en test (pas de réseau) — on accepte 302 ou 502.
-	if w.Code != http.StatusFound && w.Code != http.StatusBadGateway {
-		t.Errorf("cache miss: attendu 302 ou 502, obtenu %d", w.Code)
+	if w.Code != http.StatusNotFound {
+		t.Errorf("ErrNotFound: attendu 404, obtenu %d", w.Code)
 	}
 }
 
-// ============================================================================
-// Tests pour GetMapImage (cache-aside maps)
-// ============================================================================
+func TestMedalImageHandler_Upstream(t *testing.T) {
+	stub := &stubResolver{err: assets.ErrUpstreamUnavailable}
+	r := newMedalTestRouter(handlers.NewAssetHandler(stub))
+	req := httptest.NewRequest(http.MethodGet, "/assets/medals/halo_infinite/99999/image", nil)
+	w := httptest.NewRecorder()
+	r.ServeHTTP(w, req)
+	if w.Code != http.StatusBadGateway {
+		t.Errorf("ErrUpstream: attendu 502, obtenu %d", w.Code)
+	}
+}
 
 func newMapTestRouter(h *handlers.AssetHandler) *chi.Mux {
 	r := chi.NewRouter()
@@ -118,61 +122,71 @@ func newMapTestRouter(h *handlers.AssetHandler) *chi.Mux {
 	return r
 }
 
-// TestMapImageHandler_CacheHit vérifie qu'un cache hit retourne une redirection 302
-// sans appel UpsertMapImageCache.
-func TestMapImageHandler_CacheHit(t *testing.T) {
-	stubMap := &stubMapRepo{
-		entry: &duckdb.MapImageEntry{
-			TitleID:  "halo_infinite",
-			MapID:    "aquarius",
-			ImageURL: "https://example.com/map.png",
-		},
+func TestMapImageHandler_URLPayload_Redirect(t *testing.T) {
+	stub := &stubResolver{
+		result: assets.Resolved{Payload: assets.URLPayload{URL: "https://example.com/map.png"}},
 	}
-	h := handlers.NewAssetHandlerWithMapRepo(stubMap)
-	r := newMapTestRouter(h)
-
+	r := newMapTestRouter(handlers.NewAssetHandler(stub))
 	req := httptest.NewRequest(http.MethodGet, "/assets/maps/halo_infinite/aquarius/image", nil)
 	w := httptest.NewRecorder()
 	r.ServeHTTP(w, req)
-
 	if w.Code != http.StatusFound {
-		t.Errorf("cache hit: attendu 302, obtenu %d", w.Code)
+		t.Errorf("URLPayload: attendu 302, obtenu %d", w.Code)
 	}
-	if loc := w.Header().Get("Location"); loc != "https://example.com/map.png" {
-		t.Errorf("cache hit: Location=%q, attendu %q", loc, "https://example.com/map.png")
+	if stub.gotRef.Kind != assets.KindMapImage {
+		t.Errorf("Ref.Kind=%v, attendu KindMapImage", stub.gotRef.Kind)
 	}
-	if stubMap.upserted != nil {
-		t.Error("cache hit: UpsertMapImageCache ne doit pas être appelé")
-	}
-}
-
-// TestMapImageHandler_EmptyMapID vérifie le rejet d'un map_id vide.
-func TestMapImageHandler_EmptyMapID(t *testing.T) {
-	stubMap := &stubMapRepo{}
-	h := handlers.NewAssetHandlerWithMapRepo(stubMap)
-	r := newMapTestRouter(h)
-
-	req := httptest.NewRequest(http.MethodGet, "/assets/maps/halo_infinite//image", nil)
-	w := httptest.NewRecorder()
-	r.ServeHTTP(w, req)
-
-	if w.Code != http.StatusBadRequest {
-		t.Errorf("map_id vide: attendu 400, obtenu %d", w.Code)
+	if stub.gotRef.ID != "aquarius" {
+		t.Errorf("Ref.ID=%q, attendu aquarius", stub.gotRef.ID)
 	}
 }
 
-// TestMapImageHandler_CacheMiss vérifie qu'un cache miss déclenche un fetch + upsert.
-func TestMapImageHandler_CacheMiss(t *testing.T) {
-	stubMap := &stubMapRepo{entry: nil} // cache vide
-	h := handlers.NewAssetHandlerWithMapRepo(stubMap)
-	r := newMapTestRouter(h)
-
+func TestMapImageHandler_NotFound(t *testing.T) {
+	stub := &stubResolver{err: assets.ErrNotFound}
+	r := newMapTestRouter(handlers.NewAssetHandler(stub))
 	req := httptest.NewRequest(http.MethodGet, "/assets/maps/halo_infinite/unknown_map/image", nil)
 	w := httptest.NewRecorder()
 	r.ServeHTTP(w, req)
+	if w.Code != http.StatusNotFound {
+		t.Errorf("ErrNotFound: attendu 404, obtenu %d", w.Code)
+	}
+}
 
-	// Le fetch Waypoint peut échouer en test (pas de réseau) — on accepte 302 ou 502.
-	if w.Code != http.StatusFound && w.Code != http.StatusBadGateway {
-		t.Errorf("cache miss: attendu 302 ou 502, obtenu %d", w.Code)
+func newBPTestRouter(h *handlers.AssetHandler) *chi.Mux {
+	r := chi.NewRouter()
+	r.Get("/assets/battlepass/{subdir}/*", h.GetBattlePassImage)
+	return r
+}
+
+func TestBattlePassImage_URLPayload(t *testing.T) {
+	stub := &stubResolver{
+		result: assets.Resolved{Payload: assets.URLPayload{URL: "https://example.com/bp.png"}},
+	}
+	r := newBPTestRouter(handlers.NewAssetHandler(stub))
+	req := httptest.NewRequest(http.MethodGet, "/assets/battlepass/track/season1/track.png", nil)
+	w := httptest.NewRecorder()
+	r.ServeHTTP(w, req)
+	if w.Code != http.StatusFound {
+		t.Errorf("BP URLPayload: attendu 302, obtenu %d", w.Code)
+	}
+}
+
+func TestChallengeBadgeHandler_URLPayload(t *testing.T) {
+	stub := &stubResolver{
+		result: assets.Resolved{Payload: assets.URLPayload{URL: "https://example.com/badge.png"}},
+	}
+	r := chi.NewRouter()
+	r.Get("/assets/challenge-badge/{title_id}/{badge_id}", handlers.NewAssetHandler(stub).GetChallengeBadge)
+	req := httptest.NewRequest(http.MethodGet, "/assets/challenge-badge/halo_infinite/daily-easy", nil)
+	w := httptest.NewRecorder()
+	r.ServeHTTP(w, req)
+	if w.Code != http.StatusFound {
+		t.Errorf("badge URLPayload: attendu 302, obtenu %d", w.Code)
+	}
+	if stub.gotRef.Kind != assets.KindChallengeBadge {
+		t.Errorf("Ref.Kind=%v, attendu KindChallengeBadge", stub.gotRef.Kind)
+	}
+	if stub.gotRef.ID != "daily-easy" {
+		t.Errorf("Ref.ID=%q, attendu daily-easy", stub.gotRef.ID)
 	}
 }

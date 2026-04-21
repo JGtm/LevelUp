@@ -1,74 +1,34 @@
-// Package handlers — assets.go : handler cache-aside pour les assets visuels Waypoint.
+// Package handlers — assets.go : handler unifié pour tous les assets visuels Waypoint.
 //
-// Sprint 54 D1.6 / D2.5 :
-//
-//	GET /api/v1/assets/medals/{title_id}/{medal_id}/image
-//
-// Pattern : check registry DuckDB → fetch Waypoint si absent → stockage local → réponse.
-// Le frontend ne sait pas si l'image vient du cache ou du réseau.
-// Singleflight par (title_id, medal_id) pour éviter N fetches parallèles sur le même asset.
+// Toute la logique local-first → API-fallback est dans internal/assets/.
+// Ce fichier contient uniquement les trampolines HTTP : parse les params chi,
+// construit assets.Ref, appelle resolver.Get, puis redirige ou sert.
 package handlers
 
 import (
-	"context"
-	"crypto/sha256"
-	"encoding/hex"
-	"fmt"
-	"io"
+	"errors"
 	"log/slog"
 	"net/http"
+	"path"
 	"strconv"
-	"time"
+	"strings"
 
 	"github.com/go-chi/chi/v5"
-	"golang.org/x/sync/singleflight"
 
-	"levelup/go-api/internal/platform/duckdb"
+	"levelup/go-api/internal/assets"
 )
 
-var medalSFGroup singleflight.Group
-var mapSFGroup singleflight.Group // cache-aside maps (Phase 2)
-
-// MedalImageRepo est l'interface minimale requise par le handler (testable par injection).
-type MedalImageRepo interface {
-	GetMedalImageCache(ctx context.Context, titleID string, medalID int64) (*duckdb.MedalImageEntry, error)
-	UpsertMedalImageCache(ctx context.Context, e duckdb.MedalImageEntry) error
-}
-
-// MapImageRepo est l'interface minimale pour le cache-aside des images de maps.
-type MapImageRepo interface {
-	GetMapImageCache(ctx context.Context, titleID string, mapID string) (*duckdb.MapImageEntry, error)
-	UpsertMapImageCache(ctx context.Context, e duckdb.MapImageEntry) error
-}
-
-// AssetHandler gère le cache-aside des images de médailles et assets Waypoint.
-// Utilise un MetadataRepo concret ou toute implémentation de MedalImageRepo/MapImageRepo.
+// AssetHandler gère le cache-aside unifié des assets visuels Halo.
 type AssetHandler struct {
-	repo    MedalImageRepo
-	mapRepo MapImageRepo
+	resolver assets.Resolver
 }
 
-// NewAssetHandler crée un AssetHandler depuis un MetadataRepo réel.
-func NewAssetHandler(repo *duckdb.MetadataRepo) *AssetHandler {
-	return &AssetHandler{repo: repo, mapRepo: repo}
+// NewAssetHandler crée un AssetHandler depuis un Resolver.
+func NewAssetHandler(resolver assets.Resolver) *AssetHandler {
+	return &AssetHandler{resolver: resolver}
 }
 
-// NewAssetHandlerWithRepo crée un AssetHandler depuis une interface (pour les tests).
-func NewAssetHandlerWithRepo(repo MedalImageRepo) *AssetHandler {
-	return &AssetHandler{repo: repo}
-}
-
-// NewAssetHandlerWithMapRepo crée un AssetHandler avec MapImageRepo injectable (tests).
-func NewAssetHandlerWithMapRepo(mapRepo MapImageRepo) *AssetHandler {
-	return &AssetHandler{mapRepo: mapRepo}
-}
-
-// NewAssetHandlerWithRepos crée un AssetHandler avec injection complète (tests).
-func NewAssetHandlerWithRepos(medalRepo MedalImageRepo, mapRepo MapImageRepo) *AssetHandler {
-	return &AssetHandler{repo: medalRepo, mapRepo: mapRepo}
-}
-
-// GetMedalImage sert l'image d'une médaille depuis le cache local ou Waypoint.
+// GetMedalImage sert l'image d'une médaille depuis le resolver.
 // GET /api/v1/assets/medals/{title_id}/{medal_id}/image
 func (h *AssetHandler) GetMedalImage(w http.ResponseWriter, r *http.Request) {
 	titleID := chi.URLParam(r, "title_id")
@@ -80,79 +40,21 @@ func (h *AssetHandler) GetMedalImage(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	ctx := r.Context()
+	ref := assets.Ref{
+		Kind:    assets.KindMedalImage,
+		TitleID: titleID,
+		ID:      strconv.FormatInt(medalID, 10),
+	}
 
-	entry, err := h.repo.GetMedalImageCache(ctx, titleID, medalID)
+	resolved, err := h.resolver.Get(r.Context(), ref)
 	if err != nil {
-		slog.Error("GetMedalImage: registry lookup failed", "title_id", titleID, "medal_id", medalID, "err", err)
-		http.Error(w, "erreur registry", http.StatusInternalServerError)
+		handleResolverError(w, err, "GetMedalImage", ref)
 		return
 	}
-
-	// Cache hit : redirection directe, aucun appel Waypoint.
-	if entry != nil && entry.ImageURL != "" {
-		slog.Debug("GetMedalImage: cache hit", "title_id", titleID, "medal_id", medalID)
-		http.Redirect(w, r, entry.ImageURL, http.StatusFound)
-		return
-	}
-
-	// Cache miss : fetch Waypoint via singleflight (anti-doublon si N requêtes simultanées).
-	slog.Info("GetMedalImage: cache miss, fetching from Waypoint", "title_id", titleID, "medal_id", medalID)
-	sfKey := fmt.Sprintf("%s:%d", titleID, medalID)
-	imgURLRaw, err, _ := medalSFGroup.Do(sfKey, func() (any, error) {
-		return fetchMedalImageURL(titleID, medalID)
-	})
-	if err != nil {
-		slog.Warn("GetMedalImage: Waypoint fetch failed", "title_id", titleID, "medal_id", medalID, "err", err)
-		http.Error(w, "fetch image Waypoint échoué", http.StatusBadGateway)
-		return
-	}
-
-	imgURL, _ := imgURLRaw.(string)
-
-	_ = h.repo.UpsertMedalImageCache(ctx, duckdb.MedalImageEntry{
-		TitleID:     titleID,
-		MedalID:     medalID,
-		ImageURL:    imgURL,
-		LocalPath:   "",
-		FetchedAt:   time.Now().UTC(),
-		ContentHash: sha256Hex([]byte(imgURL)),
-	})
-
-	http.Redirect(w, r, imgURL, http.StatusFound)
+	serveResolved(w, r, resolved)
 }
 
-// fetchMedalImageURL tente de résoudre l'URL d'image individuelle d'une médaille.
-// Waypoint expose des spritesheets — si l'URL individuelle est introuvable (404),
-// on retourne l'URL du spritesheet global ; le frontend découpe via sprite_index.
-func fetchMedalImageURL(titleID string, medalID int64) (string, error) {
-	url := fmt.Sprintf(
-		"https://gamecms-hacs.svc.halowaypoint.com/hi/Progression/file/medals/%s/%d.png",
-		titleID, medalID,
-	)
-
-	resp, err := http.Get(url) //nolint:noctx
-	if err != nil {
-		return "", fmt.Errorf("GET medal image: %w", err)
-	}
-	defer resp.Body.Close()
-	_, _ = io.ReadAll(resp.Body)
-
-	if resp.StatusCode == http.StatusNotFound {
-		url = fmt.Sprintf(
-			"https://gamecms-hacs.svc.halowaypoint.com/hi/Progression/file/medals/sprites/%s.png",
-			titleID,
-		)
-	}
-	return url, nil
-}
-
-func sha256Hex(data []byte) string {
-	h := sha256.Sum256(data)
-	return hex.EncodeToString(h[:])
-}
-
-// GetMapImage sert l'image d'une map depuis le cache local ou Waypoint.
+// GetMapImage sert l'image d'une map depuis le resolver.
 // GET /api/v1/assets/maps/{title_id}/{map_id}/image
 func (h *AssetHandler) GetMapImage(w http.ResponseWriter, r *http.Request) {
 	titleID := chi.URLParam(r, "title_id")
@@ -163,70 +65,118 @@ func (h *AssetHandler) GetMapImage(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	ctx := r.Context()
+	ref := assets.Ref{
+		Kind:    assets.KindMapImage,
+		TitleID: titleID,
+		ID:      mapID,
+	}
 
-	entry, err := h.mapRepo.GetMapImageCache(ctx, titleID, mapID)
+	resolved, err := h.resolver.Get(r.Context(), ref)
 	if err != nil {
-		slog.Error("GetMapImage: registry lookup failed", "title_id", titleID, "map_id", mapID, "err", err)
-		http.Error(w, "erreur registry", http.StatusInternalServerError)
+		handleResolverError(w, err, "GetMapImage", ref)
 		return
 	}
-
-	// Cache hit : redirection directe (local_path statique ou URL Waypoint).
-	if entry != nil && entry.ImageURL != "" {
-		slog.Debug("GetMapImage: cache hit", "title_id", titleID, "map_id", mapID)
-		http.Redirect(w, r, entry.ImageURL, http.StatusFound)
-		return
-	}
-
-	// Cache miss : fetch Waypoint via singleflight.
-	slog.Info("GetMapImage: cache miss, fetching from Waypoint", "title_id", titleID, "map_id", mapID)
-	sfKey := fmt.Sprintf("map:%s:%s", titleID, mapID)
-	imgURLRaw, err, _ := mapSFGroup.Do(sfKey, func() (any, error) {
-		return fetchMapImageURL(titleID, mapID)
-	})
-	if err != nil {
-		slog.Warn("GetMapImage: Waypoint fetch failed", "title_id", titleID, "map_id", mapID, "err", err)
-		http.Error(w, "fetch image Waypoint échoué", http.StatusBadGateway)
-		return
-	}
-
-	imgURL, _ := imgURLRaw.(string)
-
-	_ = h.mapRepo.UpsertMapImageCache(ctx, duckdb.MapImageEntry{
-		TitleID:     titleID,
-		MapID:       mapID,
-		ImageURL:    imgURL,
-		LocalPath:   "",
-		FetchedAt:   time.Now().UTC(),
-		ContentHash: sha256Hex([]byte(imgURL)),
-	})
-
-	http.Redirect(w, r, imgURL, http.StatusFound)
+	serveResolved(w, r, resolved)
 }
 
-// fetchMapImageURL tente de résoudre l'URL d'image d'une map depuis Waypoint.
-// Pattern URL : https://gamecms-hacs.svc.halowaypoint.com/hi/images/map-variants/{title_id}/{map_id}.png
-// Si 404, retourne URL placeholder ou fallback.
-func fetchMapImageURL(titleID string, mapID string) (string, error) {
-	// URL standard Waypoint pour les images de maps
-	url := fmt.Sprintf(
-		"https://gamecms-hacs.svc.halowaypoint.com/hi/images/map-variants/%s/%s.png",
-		titleID, mapID,
-	)
+// GetChallengeBadge sert l'image d'un badge de défi depuis le resolver.
+// GET /api/v1/assets/challenge-badge/{title_id}/{badge_id}
+func (h *AssetHandler) GetChallengeBadge(w http.ResponseWriter, r *http.Request) {
+	titleID := chi.URLParam(r, "title_id")
+	badgeID := chi.URLParam(r, "badge_id")
 
-	resp, err := http.Get(url) //nolint:noctx
+	if badgeID == "" || strings.ContainsAny(badgeID, "/\\") {
+		http.Error(w, "badge_id invalide", http.StatusBadRequest)
+		return
+	}
+
+	ref := assets.Ref{
+		Kind:    assets.KindChallengeBadge,
+		TitleID: titleID,
+		ID:      badgeID,
+	}
+
+	resolved, err := h.resolver.Get(r.Context(), ref)
 	if err != nil {
-		return "", fmt.Errorf("GET map image: %w", err)
+		handleResolverError(w, err, "GetChallengeBadge", ref)
+		return
 	}
-	defer resp.Body.Close()
-	_, _ = io.ReadAll(resp.Body)
+	serveResolved(w, r, resolved)
+}
 
-	if resp.StatusCode == http.StatusNotFound {
-		// Fallback : retourner une URL de placeholder ou essayer un autre endpoint.
-		// Pour l'instant, retourner l'URL même si 404 (frontend gérera le fallback).
-		return url, fmt.Errorf("map image not found on Waypoint: %s", mapID)
+// GetBattlePassImage sert les images Battle Pass depuis le resolver.
+// GET /api/v1/assets/battlepass/{subdir}/*
+func (h *AssetHandler) GetBattlePassImage(w http.ResponseWriter, r *http.Request) {
+	subDir := chi.URLParam(r, "subdir")
+	gamecmsPath := chi.URLParam(r, "*")
+
+	if subDir == "" || strings.ContainsAny(subDir, "/\\") {
+		http.Error(w, "subdir invalide", http.StatusBadRequest)
+		return
+	}
+	if gamecmsPath == "" {
+		http.Error(w, "chemin image manquant", http.StatusBadRequest)
+		return
+	}
+	cleaned := path.Clean(gamecmsPath)
+	if strings.Contains(cleaned, "..") {
+		http.Error(w, "chemin invalide", http.StatusBadRequest)
+		return
 	}
 
-	return url, nil
+	kind := assets.KindBPTrackImage
+	if subDir == "background" {
+		kind = assets.KindBPBackground
+	}
+
+	ref := assets.Ref{
+		Kind:    kind,
+		TitleID: "halo_infinite",
+		ID:      cleaned,
+		Variant: subDir,
+	}
+
+	resolved, err := h.resolver.Get(r.Context(), ref)
+	if err != nil {
+		handleResolverError(w, err, "GetBattlePassImage", ref)
+		return
+	}
+	serveResolved(w, r, resolved)
+}
+
+// serveResolved écrit la réponse HTTP depuis un Resolved.
+// URLPayload → 302, BinaryPayload → 200 + bytes.
+func serveResolved(w http.ResponseWriter, r *http.Request, res assets.Resolved) {
+	switch p := res.Payload.(type) {
+	case assets.URLPayload:
+		http.Redirect(w, r, p.URL, http.StatusFound)
+	case assets.BinaryPayload:
+		w.Header().Set("Content-Type", p.ContentType)
+		w.Header().Set("Cache-Control", "public, max-age=86400")
+		if p.ETag != "" {
+			w.Header().Set("ETag", `"`+p.ETag+`"`)
+		}
+		w.WriteHeader(http.StatusOK)
+		_, _ = w.Write(p.Bytes)
+	default:
+		http.Error(w, "payload inattendu", http.StatusInternalServerError)
+	}
+}
+
+// handleResolverError traduit les erreurs du resolver en réponses HTTP.
+func handleResolverError(w http.ResponseWriter, err error, op string, ref assets.Ref) {
+	switch {
+	case errors.Is(err, assets.ErrNotFound):
+		slog.Debug(op+": asset not found", ref.LogAttrs()...)
+		http.Error(w, "asset non trouvé", http.StatusNotFound)
+	case errors.Is(err, assets.ErrUpstreamUnavailable):
+		slog.Warn(op+": upstream unavailable", append(ref.LogAttrs(), "err", err)...)
+		http.Error(w, "source distante indisponible", http.StatusBadGateway)
+	case errors.Is(err, assets.ErrUnsupportedKind):
+		slog.Error(op+": unsupported kind", append(ref.LogAttrs(), "err", err)...)
+		http.Error(w, "type d'asset non supporté", http.StatusInternalServerError)
+	default:
+		slog.Error(op+": resolver error", append(ref.LogAttrs(), "err", err)...)
+		http.Error(w, "erreur interne", http.StatusInternalServerError)
+	}
 }

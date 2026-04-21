@@ -151,10 +151,20 @@ func main() {
 		slog.Error("ouverture shared_matches_v2 échouée", "err", err)
 		os.Exit(1)
 	}
-	metaDB, err := duckdb.OpenReadWrite(metaPath)
-	if err != nil {
-		slog.Error("ouverture metadata échouée", "err", err)
-		os.Exit(1)
+	// Retry sur metadata : hot-reload peut créer une fenêtre où l'ancien processus
+	// n'a pas encore libéré le verrou DuckDB (write-ahead lock).
+	var metaDB *duckdb.DB
+	for attempt := range 6 {
+		metaDB, err = duckdb.OpenReadWrite(metaPath)
+		if err == nil {
+			break
+		}
+		if attempt == 5 {
+			slog.Error("ouverture metadata échouée après 6 tentatives", "err", err)
+			os.Exit(1)
+		}
+		slog.Warn("metadata verrouillée, nouvelle tentative...", "attempt", attempt+1, "err", err)
+		time.Sleep(500 * time.Millisecond)
 	}
 	slog.Debug("DuckDB ouvert")
 
@@ -390,7 +400,7 @@ func startWatcherDaemon(ctx context.Context, cfg *config.AppConfig, settingsStor
 			metaPath := filepath.Join(cfg.RepoRoot, "data", "warehouse", "metadata.duckdb")
 			playerPath := filepath.Join(cfg.RepoRoot, "data", "players", gamertag, "stats.duckdb")
 			sink := duckdb.NewPersistSink(metaPath, playerPath, xuid)
-			return watcher.NewPlayerLiveRefresher(gamertag, xuid, sink)
+			return watcher.NewPlayerLiveRefresher(gamertag, xuid, metaPath, sink)
 		},
 		// RefreshRTAAuth est appelé on-demand par RunWithReconnect quand status=3 est reçu.
 		// Il acquiert un XSTS frais et pousse le nouveau header dans le daemon.
