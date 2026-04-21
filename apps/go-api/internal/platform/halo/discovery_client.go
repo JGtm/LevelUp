@@ -9,6 +9,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"log/slog"
 	"net/http"
 	"time"
 
@@ -45,6 +46,7 @@ func (p *HaloProvider) FetchAsset(
 
 	body, err := p.doGetWithLang(ctx, url, lang)
 	if err != nil {
+		slog.Debug("FetchAsset: request failed", "asset_type", assetType, "asset_id", assetID, "lang", lang, "err", err)
 		return nil, fmt.Errorf("fetch asset %s/%s [%s]: %w", assetType, assetID, lang, err)
 	}
 
@@ -78,6 +80,7 @@ func (p *HaloProvider) FetchMatchStats(
 
 	body, err := p.doGet(ctx, url, tokens)
 	if err != nil {
+		slog.Debug("FetchMatchStats: request failed", "match_id", matchID, "err", err)
 		return nil, fmt.Errorf("fetch match stats %s: %w", matchID, err)
 	}
 

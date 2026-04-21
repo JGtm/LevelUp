@@ -15,6 +15,7 @@ import (
 	"encoding/hex"
 	"fmt"
 	"io"
+	"log/slog"
 	"net/http"
 	"strconv"
 	"time"
@@ -57,6 +58,16 @@ func NewAssetHandlerWithRepo(repo MedalImageRepo) *AssetHandler {
 	return &AssetHandler{repo: repo}
 }
 
+// NewAssetHandlerWithMapRepo crée un AssetHandler avec MapImageRepo injectable (tests).
+func NewAssetHandlerWithMapRepo(mapRepo MapImageRepo) *AssetHandler {
+	return &AssetHandler{mapRepo: mapRepo}
+}
+
+// NewAssetHandlerWithRepos crée un AssetHandler avec injection complète (tests).
+func NewAssetHandlerWithRepos(medalRepo MedalImageRepo, mapRepo MapImageRepo) *AssetHandler {
+	return &AssetHandler{repo: medalRepo, mapRepo: mapRepo}
+}
+
 // GetMedalImage sert l'image d'une médaille depuis le cache local ou Waypoint.
 // GET /api/v1/assets/medals/{title_id}/{medal_id}/image
 func (h *AssetHandler) GetMedalImage(w http.ResponseWriter, r *http.Request) {
@@ -73,22 +84,26 @@ func (h *AssetHandler) GetMedalImage(w http.ResponseWriter, r *http.Request) {
 
 	entry, err := h.repo.GetMedalImageCache(ctx, titleID, medalID)
 	if err != nil {
+		slog.Error("GetMedalImage: registry lookup failed", "title_id", titleID, "medal_id", medalID, "err", err)
 		http.Error(w, "erreur registry", http.StatusInternalServerError)
 		return
 	}
 
 	// Cache hit : redirection directe, aucun appel Waypoint.
 	if entry != nil && entry.ImageURL != "" {
+		slog.Debug("GetMedalImage: cache hit", "title_id", titleID, "medal_id", medalID)
 		http.Redirect(w, r, entry.ImageURL, http.StatusFound)
 		return
 	}
 
 	// Cache miss : fetch Waypoint via singleflight (anti-doublon si N requêtes simultanées).
+	slog.Info("GetMedalImage: cache miss, fetching from Waypoint", "title_id", titleID, "medal_id", medalID)
 	sfKey := fmt.Sprintf("%s:%d", titleID, medalID)
 	imgURLRaw, err, _ := medalSFGroup.Do(sfKey, func() (any, error) {
 		return fetchMedalImageURL(titleID, medalID)
 	})
 	if err != nil {
+		slog.Warn("GetMedalImage: Waypoint fetch failed", "title_id", titleID, "medal_id", medalID, "err", err)
 		http.Error(w, "fetch image Waypoint échoué", http.StatusBadGateway)
 		return
 	}
@@ -152,22 +167,26 @@ func (h *AssetHandler) GetMapImage(w http.ResponseWriter, r *http.Request) {
 
 	entry, err := h.mapRepo.GetMapImageCache(ctx, titleID, mapID)
 	if err != nil {
+		slog.Error("GetMapImage: registry lookup failed", "title_id", titleID, "map_id", mapID, "err", err)
 		http.Error(w, "erreur registry", http.StatusInternalServerError)
 		return
 	}
 
 	// Cache hit : redirection directe (local_path statique ou URL Waypoint).
 	if entry != nil && entry.ImageURL != "" {
+		slog.Debug("GetMapImage: cache hit", "title_id", titleID, "map_id", mapID)
 		http.Redirect(w, r, entry.ImageURL, http.StatusFound)
 		return
 	}
 
 	// Cache miss : fetch Waypoint via singleflight.
+	slog.Info("GetMapImage: cache miss, fetching from Waypoint", "title_id", titleID, "map_id", mapID)
 	sfKey := fmt.Sprintf("map:%s:%s", titleID, mapID)
 	imgURLRaw, err, _ := mapSFGroup.Do(sfKey, func() (any, error) {
 		return fetchMapImageURL(titleID, mapID)
 	})
 	if err != nil {
+		slog.Warn("GetMapImage: Waypoint fetch failed", "title_id", titleID, "map_id", mapID, "err", err)
 		http.Error(w, "fetch image Waypoint échoué", http.StatusBadGateway)
 		return
 	}
