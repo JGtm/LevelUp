@@ -5,6 +5,8 @@ import (
 	"errors"
 	"os"
 	"path/filepath"
+	"strings"
+	"sync"
 	"testing"
 	"time"
 
@@ -550,5 +552,102 @@ func TestMediaService_GetMediaPage_LikersEnrichedOnItems(t *testing.T) {
 	}
 	if len(item.Likers) != 1 || item.Likers[0] != "Alice" {
 		t.Errorf("Likers = %v, want [Alice]", item.Likers)
+	}
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// safeDestPath
+// ─────────────────────────────────────────────────────────────────────────────
+
+func TestSafeDestPath_NoConflict(t *testing.T) {
+	dir := t.TempDir()
+	got := safeDestPath(dir, "clip.mp4")
+	if got != filepath.Join(dir, "clip.mp4") {
+		t.Errorf("expected original path, got %s", got)
+	}
+}
+
+func TestSafeDestPath_Conflict_AddsSuffix(t *testing.T) {
+	dir := t.TempDir()
+	// Créer le fichier en conflit
+	origPath := filepath.Join(dir, "clip.mp4")
+	if err := os.WriteFile(origPath, []byte("existing"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	got := safeDestPath(dir, "clip.mp4")
+	if got == origPath {
+		t.Error("expected a different path when conflict exists")
+	}
+	base := filepath.Base(got)
+	if !strings.HasSuffix(base, ".mp4") {
+		t.Errorf("expected .mp4 extension preserved, got %s", base)
+	}
+	if !strings.Contains(base, "_") {
+		t.Errorf("expected timestamp suffix in filename, got %s", base)
+	}
+}
+
+func TestSafeDestPath_PreservesExtension(t *testing.T) {
+	dir := t.TempDir()
+	for _, name := range []string{"shot.png", "video.mov", "clip.mp4"} {
+		origPath := filepath.Join(dir, name)
+		if err := os.WriteFile(origPath, []byte("x"), 0o644); err != nil {
+			t.Fatal(err)
+		}
+		got := safeDestPath(dir, name)
+		if filepath.Ext(got) != filepath.Ext(name) {
+			t.Errorf("%s: expected extension %s, got %s", name, filepath.Ext(name), filepath.Ext(got))
+		}
+	}
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// UploadMedia — uploads simultanés (même joueur, deux navigateurs)
+// ─────────────────────────────────────────────────────────────────────────────
+
+func TestMediaService_UploadMedia_ConcurrentSameDir_NamingConflict(t *testing.T) {
+	dir := t.TempDir()
+	svc := NewMediaService(&mockMediaRepo{})
+
+	buildReq := func() domain.UploadRequest {
+		return domain.UploadRequest{
+			Files: []domain.UploadedFile{
+				{OriginalName: "capture.mp4", Data: []byte("fake-video-data")},
+			},
+			CapturesDir: dir,
+			DBPath:      filepath.Join(dir, "stats.duckdb"),
+		}
+	}
+
+	var wg sync.WaitGroup
+	errs := make([]error, 2)
+	for i := range 2 {
+		wg.Add(1)
+		go func(idx int) {
+			defer wg.Done()
+			_, errs[idx] = svc.UploadMedia(context.Background(), buildReq())
+		}(i)
+	}
+	wg.Wait()
+
+	for i, err := range errs {
+		if err != nil {
+			t.Errorf("goroutine %d: unexpected error: %v", i, err)
+		}
+	}
+
+	// Au moins 1 fichier .mp4 doit exister dans le répertoire
+	entries, err := os.ReadDir(dir)
+	if err != nil {
+		t.Fatal(err)
+	}
+	mp4Files := 0
+	for _, e := range entries {
+		if strings.HasSuffix(e.Name(), ".mp4") {
+			mp4Files++
+		}
+	}
+	if mp4Files < 1 {
+		t.Errorf("expected at least 1 .mp4 file in dir, got %d", mp4Files)
 	}
 }

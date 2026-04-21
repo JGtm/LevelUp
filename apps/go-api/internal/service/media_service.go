@@ -9,6 +9,7 @@ import (
 	"path/filepath"
 	"sort"
 	"strings"
+	"time"
 
 	"levelup/go-api/internal/domain"
 	"levelup/go-api/internal/ops"
@@ -157,7 +158,7 @@ func (s *MediaService) UploadMedia(ctx context.Context, req domain.UploadRequest
 	}
 
 	for _, f := range req.Files {
-		dest := filepath.Join(req.CapturesDir, filepath.Base(f.OriginalName))
+		dest := safeDestPath(req.CapturesDir, f.OriginalName)
 		if err := os.WriteFile(dest, f.Data, 0o644); err != nil {
 			result.Errors = append(result.Errors, fmt.Sprintf("%s: %v", f.OriginalName, err))
 			slog.WarnContext(ctx, "upload: écriture fichier échouée",
@@ -305,4 +306,19 @@ func boolToLikeCount(liked bool) int {
 		return 1
 	}
 	return 0
+}
+
+// safeDestPath retourne un chemin de destination sûr pour un upload.
+// Si un fichier du même nom existe déjà, ajoute un suffixe timestamp
+// pour éviter les collisions silencieuses lors d'uploads simultanés.
+func safeDestPath(dir, originalName string) string {
+	base := filepath.Base(originalName)
+	dest := filepath.Join(dir, base)
+	if _, err := os.Stat(dest); os.IsNotExist(err) {
+		return dest
+	}
+	ext := filepath.Ext(base)
+	stem := strings.TrimSuffix(base, ext)
+	ts := time.Now().UTC().Format("20060102T150405Z")
+	return filepath.Join(dir, stem+"_"+ts+ext)
 }
