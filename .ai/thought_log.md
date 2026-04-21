@@ -1,5 +1,49 @@
 # Thought Log
 
+## [2026-04-21] fix(scheduler): éviter les syncs concurrentes watcher + auto-scheduler
+
+**Statut** : ✅ Complété
+
+**Décision technique** : Quand le watcher RTA détecte un joueur en jeu (état Watching/Syncing/Cooling), l'`AutoSyncScheduler` doit céder son tick pour ce joueur pour éviter deux `RunDelta` simultanées sur la même `stats.duckdb`. Solution : interface `PlayerActivityChecker` (définie dans le package scheduler pour éviter une dépendance circulaire), implémentée par `*StateProvider` du watcher. Câblage dans `main.go` : le scheduler est créé avant le watcher, mais son goroutine est lancé après — le watcher daemon est créé en premier, puis `autoScheduler.ActivityChecker` est assigné avant `go autoScheduler.Run(...)`.
+
+**Modifications** :
+- `internal/watcher/provider.go` : interface `PlayerActivityChecker` + méthode `IsPlayerActive(gamertag string) bool` sur `*StateProvider` — lit `pw.FSM().State() != StateIdle` sous `playersMu.RLock()`
+- `internal/scheduler/auto_sync.go` : interface `PlayerActivityChecker` locale + champ `ActivityChecker PlayerActivityChecker` dans `AutoSyncScheduler` + check en début de `syncPlayer` → `outcomeSkipped` avec log "auto_sync: watcher actif sur ce joueur — tick cédé"
+- `cmd/server/main.go` : réordonner — watcher daemon créé avant `go autoScheduler.Run(...)`, puis `autoScheduler.ActivityChecker = watcher.NewStateProvider(watcherDaemon)` si daemon non nil
+- `internal/scheduler/auto_sync_test.go` : 2 nouveaux tests `TestRunOnce_ActivityChecker_SkipsActivePlayer` et `TestRunOnce_ActivityChecker_SyncsIdlePlayer`
+
+**Résultats** :
+- `go build ./...` sans erreur
+- `go test ./internal/scheduler/... ./internal/watcher/...` → PASS (toutes suites)
+
+**Conclusion** : Le scheduler cède proprement son tick par joueur quand le watcher est actif. Les joueurs Idle sont syncés normalement. Pas de régression.
+
+## [2026-04-21] feat(watcher): feedback abonnement RTA par joueur + i18n états FSM — vérification finale
+
+**Statut** : ✅ Complété
+
+**Décision technique** : Ajout d'un retour granulaire par joueur indiquant si l'abonnement Xbox RTA a réussi ou échoué. Stockage thread-safe via `subscribeError error` + `sync.Mutex` dans `PlayerWatcher`, propagation dans `daemon.go` → `provider.go` → API JSON → type TS → badge UI. Traduction des états FSM (Idle/Watching/Syncing/Cooling) via `resolveStateLabel()` côté React, remplacement des labels "RTA" par des termes compréhensibles.
+
+**Modifications** :
+- `internal/watcher/player_watcher.go` : champ `subscribeError error` + accesseurs `SetSubscribeError`/`SubscribeError` thread-safe
+- `internal/watcher/daemon.go` : `connectAndSubscribe` → `pw.SetSubscribeError(err)` si échec, `nil` si succès + `slog.WarnContext`
+- `internal/watcher/provider.go` : `PlayerPresenceStatus.SubscribeError string` (omitempty) + renseigné dans `GetStatus()` sous lock
+- `internal/api/handlers/media_test.go` : correction 2 mocks `MediaUploadContextFactory` (6e retour `sharedMatchesDBPath` manquant)
+- `internal/watcher/watcher_test.go` : 2 nouveaux tests `TestPlayerWatcher_SubscribeError_DefaultNil`, `TestPlayerWatcher_SetSubscribeError`
+- `internal/watcher/daemon_test.go` : 2 nouveaux tests `TestStateProvider_SubscribeError_ExposedInStatus`, `TestStateProvider_SubscribeError_EmptyWhenNil` — correction index map `d.players["P1"]` (gamertag, pas XUID)
+- `apps/web/src/lib/api/types.ts` : `WatcherPlayerStatus.subscribe_error?: string`
+- `apps/web/src/features/settings/i18n.ts` : 6 nouvelles clés i18n FR/EN (watcherSubscribeError, watcherStateIdle/Watching/Syncing/Cooling, watcherInGame) + remplacement labels "RTA" par termes compréhensibles
+- `apps/web/src/features/settings/WatcherCard.tsx` : `resolveStateLabel()` + badge rouge `⚠ Échec surveillance` avec tooltip (message brut) + `watcherInGame` localisé
+- `apps/web/src/features/settings/WatcherCard.test.tsx` : mises à jour + 4 nouveaux tests (traduits états FSM, "En jeu", badge subscribe_error, absence badge sans erreur)
+
+**Résultats** :
+- **Go tests** : 40+ tests PASS (`ok levelup/go-api/internal/watcher 0.164s`), handlers PASS, middleware PASS
+- **TypeScript** : `tsc --noEmit` sans erreur
+- **React tests** : 19/19 PASS (15 anciens + 4 nouveaux)
+- **Logging** : `slog.WarnContext` sur échec Subscribe + `slog.InfoContext` sur présence détectée — couverture suffisante pour le diagnostic
+
+**Conclusion** : ✅ Feature complète. Badge d'erreur visible en UI avec message d'erreur brut en tooltip. Labels RTA remplacés par texte compréhensible. Tous les tests passent.
+
 ## [2026-04-21] feat(maps): vérification finale — logging + tests + rapport
 
 **Statut** : ✅ Complété

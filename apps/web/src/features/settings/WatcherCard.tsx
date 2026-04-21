@@ -173,6 +173,16 @@ function PlayersSelector({ t }: { t: SettingsText }) {
   )
 }
 
+function resolveStateLabel(state: string, t: SettingsText): string {
+  switch (state) {
+    case 'Idle':     return t.watcherStateIdle
+    case 'Watching': return t.watcherStateWatching
+    case 'Syncing':  return t.watcherStateSyncing
+    case 'Cooling':  return t.watcherStateCooling
+    default:         return state
+  }
+}
+
 function RTAStatus({ t }: { t: SettingsText }) {
   const { data } = useWatcherStatus()
   if (!data?.daemon_running) return null
@@ -190,8 +200,18 @@ function RTAStatus({ t }: { t: SettingsText }) {
           {data.players.map((p) => (
             <li key={p.xuid} className="flex items-center gap-2 text-xs text-muted-foreground">
               <span className="font-medium text-foreground">{p.gamertag}</span>
-              <span className="rounded bg-muted px-1 py-0.5 text-[10px]">{p.state}</span>
-              {p.in_game && <span className="text-green-500">●</span>}
+              <span className="rounded bg-muted px-1 py-0.5 text-[10px]">{resolveStateLabel(p.state, t)}</span>
+              {p.in_game && <span className="text-green-500 text-[10px]">{t.watcherInGame}</span>}
+              {p.subscribe_error ? (
+                <span
+                  className="rounded bg-destructive/15 px-1 py-0.5 text-[10px] text-destructive"
+                  title={p.subscribe_error}
+                >
+                  ⚠ {t.watcherSubscribeError}
+                </span>
+              ) : (
+                <span className="text-[10px] text-green-600">✓</span>
+              )}
             </li>
           ))}
         </ul>

@@ -6,11 +6,11 @@
 //   - Les callbacks de présence (RTA Xbox / Steam) pour piloter la FSM
 //
 // Cycle de vie :
-//   1. Présence détectée (RTA/Steam) → FSM Idle→Watching + démarrage MatchPoller
-//   2. Nouveau match détecté → FSM Watching→Syncing + envoi match_ids au sync
-//   3. Sync terminé → FSM Syncing→Cooling (cooldown)
-//   4. Cooldown expiré → FSM Cooling→Watching (si encore en jeu) ou →Idle
-//   5. Présence perdue → FSM →Idle + arrêt MatchPoller
+//  1. Présence détectée (RTA/Steam) → FSM Idle→Watching + démarrage MatchPoller
+//  2. Nouveau match détecté → FSM Watching→Syncing + envoi match_ids au sync
+//  3. Sync terminé → FSM Syncing→Cooling (cooldown)
+//  4. Cooldown expiré → FSM Cooling→Watching (si encore en jeu) ou →Idle
+//  5. Présence perdue → FSM →Idle + arrêt MatchPoller
 package watcher
 
 import (
@@ -46,7 +46,9 @@ type PlayerWatcher struct {
 
 	// inGame track si la présence dit "en jeu" (RTA ou Steam)
 	inGame bool
-	mu     sync.Mutex
+	// subscribeError conserve la dernière erreur d'abonnement RTA (nil si abonné avec succès)
+	subscribeError error
+	mu             sync.Mutex
 }
 
 // NewPlayerWatcher crée un watcher pour un joueur.
@@ -65,6 +67,20 @@ func NewPlayerWatcher(gamertag, xuid string, fetcher MatchFetcher, syncTrigger S
 // FSM retourne la FSM du watcher (pour lecture d'état).
 func (pw *PlayerWatcher) FSM() *FSM {
 	return pw.fsm
+}
+
+// SetSubscribeError enregistre (ou efface) la dernière erreur d'abonnement RTA.
+func (pw *PlayerWatcher) SetSubscribeError(err error) {
+	pw.mu.Lock()
+	pw.subscribeError = err
+	pw.mu.Unlock()
+}
+
+// SubscribeError retourne la dernière erreur d'abonnement RTA, ou nil si abonné.
+func (pw *PlayerWatcher) SubscribeError() error {
+	pw.mu.Lock()
+	defer pw.mu.Unlock()
+	return pw.subscribeError
 }
 
 // WithLiveRefresh configure le refresher live BP/Challenges.

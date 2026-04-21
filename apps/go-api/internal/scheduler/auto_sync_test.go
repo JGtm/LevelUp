@@ -31,12 +31,12 @@ import (
 
 // mockProvider implémente auth.TokenProvider de façon configurable.
 type mockProvider struct {
-	silentToken  string
-	silentErr    error
-	oauthToken   string
-	oauthErr     error
-	exchangeRes  *auth.ExchangeResult
-	exchangeErr  error
+	silentToken string
+	silentErr   error
+	oauthToken  string
+	oauthErr    error
+	exchangeRes *auth.ExchangeResult
+	exchangeErr error
 }
 
 // Vérification compile-time : mockProvider satisfait l'interface.
@@ -485,5 +485,85 @@ func TestRun_CancelCtxStops(t *testing.T) {
 		// Run() s'est terminé correctement
 	case <-time.After(2 * time.Second):
 		t.Error("Run() ne s'est pas terminé dans les 2 secondes après annulation du contexte")
+	}
+}
+
+// ---------------------------------------------------------------------------
+// Test : ActivityChecker — le scheduler saute un joueur actif
+// ---------------------------------------------------------------------------
+
+// mockActivityChecker implémente PlayerActivityChecker.
+type mockActivityChecker struct {
+	activePlayers map[string]bool
+}
+
+func (m *mockActivityChecker) IsPlayerActive(gamertag string) bool {
+	return m.activePlayers[gamertag]
+}
+
+func TestRunOnce_ActivityChecker_SkipsActivePlayer(t *testing.T) {
+	dir := t.TempDir()
+	provider := &mockProvider{}
+	syncCalled := false
+	factory := func(_, _, _ string, _ *domain.HaloTokens) scheduler.DeltaRunner {
+		syncCalled = true
+		return &mockRunner{}
+	}
+	s := newTestScheduler(t, dir, provider, nil, factory)
+
+	// Configurer un joueur avec DB + token valide
+	addPlayer(t, dir, "ActivePlayer", true)
+	provider.exchangeRes = &auth.ExchangeResult{}
+	s.TokenReader = func(_ context.Context, _ string, _ auth.TokenProvider) (string, error) {
+		return "token123", nil
+	}
+
+	// ActivityChecker dit que le joueur est actif
+	s.ActivityChecker = &mockActivityChecker{activePlayers: map[string]bool{"ActivePlayer": true}}
+
+	res := s.RunOnce(context.Background())
+
+	if res.Skipped != 1 {
+		t.Errorf("Skipped = %d, want 1", res.Skipped)
+	}
+	if res.Synced != 0 {
+		t.Errorf("Synced = %d, want 0 (joueur actif ne doit pas être syncé)", res.Synced)
+	}
+	if syncCalled {
+		t.Error("RunDelta ne doit pas être appelé quand le watcher est actif sur ce joueur")
+	}
+}
+
+func TestRunOnce_ActivityChecker_SyncsIdlePlayer(t *testing.T) {
+	dir := t.TempDir()
+	provider := &mockProvider{
+		exchangeRes: &auth.ExchangeResult{
+			Tokens:   &domain.HaloTokens{SpartanToken: "s", ClearanceToken: "c"},
+			Gamertag: "IdlePlayer",
+			XUID:     "xuid_IdlePlayer",
+		},
+	}
+	syncCalled := false
+	factory := func(_, _, _ string, _ *domain.HaloTokens) scheduler.DeltaRunner {
+		syncCalled = true
+		return &mockRunner{}
+	}
+	s := newTestScheduler(t, dir, provider, nil, factory)
+
+	addPlayer(t, dir, "IdlePlayer", true)
+	s.TokenReader = func(_ context.Context, _ string, _ auth.TokenProvider) (string, error) {
+		return "token123", nil
+	}
+
+	// ActivityChecker dit que le joueur est Idle (non actif)
+	s.ActivityChecker = &mockActivityChecker{activePlayers: map[string]bool{"IdlePlayer": false}}
+
+	res := s.RunOnce(context.Background())
+
+	if res.Synced != 1 {
+		t.Errorf("Synced = %d, want 1 (joueur idle doit être syncé normalement)", res.Synced)
+	}
+	if !syncCalled {
+		t.Error("RunDelta doit être appelé pour un joueur Idle")
 	}
 }

@@ -1972,6 +1972,7 @@ export interface WatcherPlayerStatus {
   state_since: string
   state_duration: string
   cooldown_left?: string
+  subscribe_error?: string
 }
 
 export interface WatcherStatusResponse {

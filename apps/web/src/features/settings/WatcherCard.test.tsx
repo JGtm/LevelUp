@@ -101,6 +101,12 @@ const t: SettingsText = {
   watcherSubscriptionsUpdated: 'Mis à jour',
   watcherRtaConnected: 'RTA connecté',
   watcherRtaDisconnected: 'RTA déconnecté',
+  watcherSubscribeError: 'Échec surveillance',
+  watcherStateIdle: 'En attente',
+  watcherStateWatching: 'En surveillance',
+  watcherStateSyncing: 'Synchronisation',
+  watcherStateCooling: 'Cooldown',
+  watcherInGame: 'En jeu',
   backfillTitle: 'Backfill',
   backfillMedals: 'Médailles',
   backfillSkill: 'CSR/MMR',
@@ -318,7 +324,7 @@ describe('WatcherCard', () => {
         daemon_running: true,
         rta_connected: true,
         players: [
-          { gamertag: 'PlayerOne', xuid: '0001', state: 'InGame', in_game: true, state_since: '', state_duration: '' },
+          { gamertag: 'PlayerOne', xuid: '0001', state: 'Watching', in_game: false, state_since: '', state_duration: '' },
         ],
       }
       renderWithProviders(<WatcherCard enabled={true} onToggle={vi.fn()} t={t} />)
@@ -326,7 +332,79 @@ describe('WatcherCard', () => {
         // PlayerOne apparaît à la fois dans le dropdown et dans la liste RTA → getAllByText
         const matches = screen.getAllByText('PlayerOne')
         expect(matches.length).toBeGreaterThanOrEqual(2) // option + span RTAStatus
-        expect(screen.getByText('InGame')).toBeInTheDocument()
+        // L'état est traduit via resolveStateLabel
+        expect(screen.getByText('En surveillance')).toBeInTheDocument()
+      })
+    })
+
+    it('traduit les états FSM (Idle → En attente)', async () => {
+      mockStatusData = {
+        ...baseStatusData,
+        daemon_running: true,
+        rta_connected: true,
+        players: [
+          { gamertag: 'P1', xuid: '0001', state: 'Idle', in_game: false, state_since: '', state_duration: '' },
+        ],
+      }
+      renderWithProviders(<WatcherCard enabled={true} onToggle={vi.fn()} t={t} />)
+      await waitFor(() => {
+        expect(screen.getByText('En attente')).toBeInTheDocument()
+      })
+    })
+
+    it('affiche "En jeu" quand in_game=true', async () => {
+      mockStatusData = {
+        ...baseStatusData,
+        daemon_running: true,
+        rta_connected: true,
+        players: [
+          { gamertag: 'P1', xuid: '0001', state: 'Watching', in_game: true, state_since: '', state_duration: '' },
+        ],
+      }
+      renderWithProviders(<WatcherCard enabled={true} onToggle={vi.fn()} t={t} />)
+      await waitFor(() => {
+        expect(screen.getByText('En jeu')).toBeInTheDocument()
+      })
+    })
+
+    it('affiche le badge Échec surveillance si subscribe_error est défini', async () => {
+      mockStatusData = {
+        ...baseStatusData,
+        daemon_running: true,
+        rta_connected: true,
+        players: [
+          {
+            gamertag: 'P1',
+            xuid: '0001',
+            state: 'Idle',
+            in_game: false,
+            state_since: '',
+            state_duration: '',
+            subscribe_error: 'rta: timeout',
+          },
+        ],
+      }
+      renderWithProviders(<WatcherCard enabled={true} onToggle={vi.fn()} t={t} />)
+      await waitFor(() => {
+        const badge = screen.getByText(/Échec surveillance/i)
+        expect(badge).toBeInTheDocument()
+        // Le tooltip contient le message d'erreur brut
+        expect(badge.closest('[title]')?.getAttribute('title')).toBe('rta: timeout')
+      })
+    })
+
+    it("n'affiche pas de badge d'erreur si subscribe_error est absent", async () => {
+      mockStatusData = {
+        ...baseStatusData,
+        daemon_running: true,
+        rta_connected: true,
+        players: [
+          { gamertag: 'P1', xuid: '0001', state: 'Watching', in_game: false, state_since: '', state_duration: '' },
+        ],
+      }
+      renderWithProviders(<WatcherCard enabled={true} onToggle={vi.fn()} t={t} />)
+      await waitFor(() => {
+        expect(screen.queryByText(/Échec surveillance/i)).not.toBeInTheDocument()
       })
     })
   })
