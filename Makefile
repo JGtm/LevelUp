@@ -73,10 +73,9 @@ API_PORT ?= 8000
 # Version depuis le fichier VERSION (ou tag Git en fallback)
 GO_VERSION := $(shell cat VERSION 2>/dev/null || git describe --tags --abbrev=0 2>/dev/null || echo "dev")
 # Racine du repo de données (contient db_profiles.json + data/players/).
-# Par défaut : repo Python LevelUp frère de ce repo. Surchargeable via env.
-# Note: $(abspath) ne gère pas les lettres de lecteur Windows (C:/) sous MSYS2 —
-# on utilise $(shell cd ../LevelUp && pwd -W) pour obtenir un chemin Windows natif.
-LEVELUP_DATA_ROOT ?= $(shell (cd ../LevelUp && pwd -W 2>/dev/null) || (cd ../LevelUp && pwd))
+# Laisser vide par défaut pour la résoudre au runtime depuis le repo courant.
+# Surchargeable via env si on veut pointer ailleurs.
+LEVELUP_DATA_ROOT ?=
 VITE_API_PROXY_TARGET ?= http://127.0.0.1:$(API_PORT)
 GO_LDFLAGS := -ldflags "-X main.version=$(GO_VERSION)"
 # air hot-reload — cygpath convertit le chemin Windows en chemin POSIX (MSYS2/Git Bash)
@@ -99,8 +98,10 @@ _go-api-run:
 		exit 0; \
 	fi
 	@$(GO_API_CLEANUP_CMD)
-	@cd $(GO_API_DIR) && CGO_ENABLED=1 \
-		LEVELUP_REPO_ROOT="$(LEVELUP_DATA_ROOT)" \
+	@REPO_ROOT="$(LEVELUP_DATA_ROOT)"; \
+	if [ -z "$$REPO_ROOT" ]; then REPO_ROOT="$$(pwd -W 2>/dev/null || pwd)"; fi; \
+	cd $(GO_API_DIR) && CGO_ENABLED=1 \
+		LEVELUP_REPO_ROOT="$$REPO_ROOT" \
 		LEVELUP_API_PORT="$(API_PORT)" \
 		$(AIR) -c .air.toml || true
 
@@ -114,6 +115,8 @@ dev:
 	@echo "  --> Ouvrir http://localhost:5173 dans le navigateur"
 	@echo ""
 	@$(LOAD_DOTENV); \
+	REPO_ROOT="$(LEVELUP_DATA_ROOT)"; \
+	if [ -z "$$REPO_ROOT" ]; then REPO_ROOT="$$(pwd -W 2>/dev/null || pwd)"; fi; \
 	TRAPPED=0; \
 	_cleanup() { \
 		if [ "$$TRAPPED" = "1" ]; then return; fi; \
@@ -128,7 +131,7 @@ dev:
 	}; \
 	trap _cleanup INT TERM; \
 	(cd $(GO_API_DIR) && CGO_ENABLED=1 \
-		LEVELUP_REPO_ROOT="$(LEVELUP_DATA_ROOT)" \
+		LEVELUP_REPO_ROOT="$$REPO_ROOT" \
 		LEVELUP_API_PORT="$(API_PORT)" \
 		$(AIR) -c .air.toml || true) & PID_API=$$!; \
 	(cd apps/web && VITE_API_PROXY_TARGET="$(VITE_API_PROXY_TARGET)" npm run dev) & PID_WEB=$$!; \

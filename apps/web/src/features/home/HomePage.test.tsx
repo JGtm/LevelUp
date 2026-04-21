@@ -4,7 +4,7 @@
  * Smoke : monte, spinner, puis Hero KPIs affichés depuis MSW.
  */
 import { describe, it, expect, vi } from 'vitest'
-import { fireEvent, screen, waitFor } from '@testing-library/react'
+import { fireEvent, screen, waitFor, within } from '@testing-library/react'
 import { http, HttpResponse } from 'msw'
 import type { ReactNode } from 'react'
 import { renderWithProviders } from '@/test/render-utils'
@@ -119,6 +119,8 @@ describe('HomePage', () => {
     expect(tierCards[0]).toHaveAttribute('data-obtained', 'true')
     expect(tierCards[1]).toHaveAttribute('data-current', 'true')
     expect(screen.getByTestId('home-battle-pass-active-tier-progress-fill')).toHaveStyle({ width: '30%' })
+    expect(screen.getByTestId('home-battle-pass-active-tier-progress-current')).toHaveTextContent('300 XP')
+    expect(screen.getByTestId('home-battle-pass-active-tier-progress-target')).toHaveTextContent('1 000 XP')
   })
 
   it('affiche les défis actifs détaillés triés du plus avancé au moins avancé', async () => {
@@ -200,29 +202,43 @@ describe('HomePage', () => {
 
     await waitFor(() => {
       expect(screen.getByText(/Défis actifs/i)).toBeInTheDocument()
+      expect(screen.getByTestId('home-challenges-completed')).toHaveTextContent('0 / 3 complétés')
       expect(
         screen.getByText((content) => content.replace(/\s+/g, ' ').includes('4 500 XP disponibles')),
       ).toBeInTheDocument()
     })
 
-    const titles = screen.getAllByTestId('home-challenge-title')
-    expect(titles.map((node) => node.textContent)).toEqual([
-      'Défi avancé',
+    const sectionTitles = screen.getAllByTestId('home-challenge-section-title')
+    expect(sectionTitles.map((node) => node.textContent)).toEqual(['Quotidien', 'Hebdo'])
+
+    const dailySection = screen.getByTestId('home-challenge-section-daily')
+    const weeklySection = screen.getByTestId('home-challenge-section-weekly')
+
+    expect(within(dailySection).getAllByTestId('home-challenge-title').map((node) => node.textContent)).toEqual([
       'Défi en cours',
+    ])
+    expect(within(weeklySection).getAllByTestId('home-challenge-title').map((node) => node.textContent)).toEqual([
+      'Défi avancé',
       'Défi pas commencé',
     ])
+    expect(screen.queryByTestId('home-challenge-kind')).not.toBeInTheDocument()
 
-    const kinds = screen.getAllByTestId('home-challenge-kind')
-    expect(kinds.map((node) => node.textContent)).toEqual(['Hebdo', 'Quotidien'])
-    expect(kinds[0]).toHaveClass('bg-sky-500/14')
-    expect(kinds[1]).toHaveClass('bg-amber-500/14')
+    const thumbs = screen.getAllByTestId('home-challenge-thumb')
+    expect(thumbs[0]).not.toHaveClass('bg-sky-500/8')
+    expect(thumbs[1]).not.toHaveClass('bg-amber-500/8')
+    expect(thumbs[2]).not.toHaveClass('bg-muted/35')
 
     expect(screen.getByText('Défi avancé')).toHaveClass('font-semibold')
     expect(screen.getByText('Presque terminé.')).toHaveClass('italic')
 
-    const fills = screen.getAllByTestId('home-challenge-progress-fill')
-    expect(fills[0]).toHaveStyle({ width: '70%' })
-    expect(fills[2]).toHaveStyle({ width: '0%' })
+    const dailyProgressRow = within(dailySection).getByTestId('home-challenge-progress-row')
+    expect(within(dailyProgressRow).getByTestId('home-challenge-progress-current')).toHaveTextContent('1 / 3')
+    expect(within(dailyProgressRow).getByTestId('home-challenge-progress-percent')).toHaveTextContent('33%')
+    expect(within(dailyProgressRow).getByTestId('home-challenge-progress-track')).toBeInTheDocument()
+
+    const weeklyFills = within(weeklySection).getAllByTestId('home-challenge-progress-fill')
+    expect(weeklyFills[0]).toHaveStyle({ width: '70%' })
+    expect(weeklyFills[1]).toHaveStyle({ width: '0%' })
     expect(challengeEndpointCalls).toBe(0)
   })
 

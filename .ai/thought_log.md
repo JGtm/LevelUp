@@ -1,5 +1,199 @@
 # Thought Log
 
+## [2026-04-21] fix(home): aligner la jauge des défis sur une seule ligne
+
+**Statut** : ✅ Complété
+
+**Décision technique** : la progression des cartes de défis restait empilée sur deux lignes. Le rendu est maintenant structuré sur une seule ligne `valeur courante - barre - pourcentage` pour coller à la demande visuelle réelle.
+
+**Modifications** :
+- `apps/web/src/features/home/HomeChallengesList.tsx` : remplacement du bloc vertical de progression par une grille à trois colonnes avec valeur courante à gauche, jauge au centre et pourcentage à droite.
+- `apps/web/src/features/home/HomePage.test.tsx` : ajout d'assertions sur la nouvelle ligne de progression (`1 / 3`, track et `33%`).
+
+**Résultats** :
+- `npm run test:run -- src/features/home/HomePage.test.tsx` : PASS
+
+**Conclusion** : les cartes de défis affichent désormais leur progression sur une seule ligne, sans séparation entre les valeurs et la barre.
+
+## [2026-04-21] fix(season-pass): placer la barre composite entre les valeurs extrêmes
+
+**Statut** : ✅ Complété
+
+**Décision technique** : la progression du palier actif devait afficher ses valeurs extrêmes sur la même ligne que la barre composite. Le rendu est maintenant structuré en trois colonnes: valeur courante, barre composite flexible, valeur cible.
+
+**Modifications** :
+- `apps/web/src/features/home/HomeBattlePassPanel.tsx` : la carte `Progression du palier` affiche désormais `partial_progress` à gauche et `xp_per_rank` à droite avec la barre composite au centre.
+- `apps/web/src/features/palmares/SeasonPassPage.tsx` : même layout appliqué à la vue Palmares pour garder un pattern cohérent.
+- `apps/web/src/features/home/HomePage.test.tsx` et `apps/web/src/features/palmares/SeasonPassPage.test.tsx` : assertions ajoutées sur les labels `300 XP` et `1 000 XP` autour de la barre.
+
+**Résultats** :
+- `npm run test:run -- src/features/home/HomePage.test.tsx src/features/palmares/SeasonPassPage.test.tsx` : PASS
+
+**Conclusion** : la barre composite du palier actif est maintenant rendue entre les deux valeurs de progression, sur la même ligne, dans la home comme dans Palmares.
+
+## [2026-04-21] fix(home): regrouper les défis actifs par sections Quotidien et Hebdo
+
+**Statut** : ✅ Complété
+
+**Décision technique** : l'étiquette par carte ne convenait pas. La home regroupe maintenant les défis actifs en deux sections simples, `Quotidien` et `Hebdo`, chacune avec un titre texte et un trait blanc sur toute la largeur utile des cartes.
+
+**Modifications** :
+- `apps/web/src/features/home/HomeChallengesList.tsx` : suppression du badge de cadence par carte, partition des items en sections `daily` / `weekly`, ajout d'un en-tête texte simple avec séparateur blanc pleine largeur.
+- `apps/web/src/features/home/HomePage.test.tsx` : adaptation du test ciblé pour valider les deux sections, la répartition des cartes et la disparition de `home-challenge-kind`.
+
+**Résultats** :
+- `npm run test:run -- src/features/home/HomePage.test.tsx` : PASS
+
+**Conclusion** : les défis actifs de la home sont désormais présentés par catégories `Quotidien` et `Hebdo`, avec un séparateur visuel simple et sans badge individuel.
+
+## [2026-04-21] fix(home): déplacer le badge Quotidien/Hebdo sur la vignette du défi
+
+**Statut** : ✅ Complété
+
+**Décision technique** : le badge de cadence devait quitter le bloc texte et se placer au-dessus de la vignette du défi. Le correctif retenu le rend dans une petite colonne dédiée au-dessus de l'image, sans overlay, pour respecter strictement la hiérarchie demandée.
+
+**Modifications** :
+- `apps/web/src/features/home/HomeChallengesList.tsx` : colonne dédiée à gauche avec `home-challenge-kind` au-dessus de `ChallengeThumb`, suppression du badge au-dessus du titre et abandon de l'overlay sur la vignette.
+
+**Résultats** :
+- `npm run test:run -- src/features/home/HomePage.test.tsx` : PASS
+
+**Conclusion** : les badges `Quotidien` / `Hebdo` / `Capstone` sont maintenant affichés au-dessus de la vignette du défi, sans overlay et sans occuper la ligne au-dessus du titre.
+
+## [2026-04-21] fix(home): supprimer la double teinte sur les vignettes de défis
+
+**Statut** : ✅ Complété
+
+**Décision technique** : le fond du thumb appliquait une seconde couche de teinte daily/weekly par-dessus le fond déjà coloré de la carte. Avec des PNG transparents, cela créait une nuance visuelle différente. Le correctif retire tout fond propre à la vignette : l'image est rendue dans un conteneur transparent, ce qui laisse voir uniquement le fond de la carte derrière les zones transparentes.
+
+**Modifications** :
+- `apps/web/src/features/home/HomeChallengesList.tsx` : suppression de l'overlay de fond sur `ChallengeThumb`, wrapper transparent conservé pour la taille et les coins.
+- `apps/web/src/features/home/HomePage.test.tsx` : assertions mises à jour pour vérifier l'absence de classes de fond sur les thumbs.
+
+**Résultats** :
+- `npm run test:run -- src/features/home/HomePage.test.tsx` : PASS
+
+**Conclusion** : les vignettes de défis n'ajoutent plus leur propre nuance; les PNG transparents laissent maintenant voir exactement le fond daily/weekly de la carte.
+
+## [2026-04-21] fix(home): aligner le compteur de défis dans le header de section
+
+**Statut** : ✅ Complété
+
+**Décision technique** : le titre `Défis actifs` devait rester fixe à gauche, avec `X / Y complétés` sur la même ligne à droite. Le compteur a donc été déplacé du contenu de carte vers le `CardHeader`, sans toucher au reste de la section.
+
+**Modifications** :
+- `apps/web/src/features/home/HomePage.tsx` : calcul de `challengesCompletedLabel`, `CardHeader` passé en ligne avec compteur à droite, suppression du compteur redondant dans `CardContent`.
+- `apps/web/src/features/home/HomePage.test.tsx` : assertion ajoutée sur `home-challenges-completed`.
+
+**Résultats** :
+- `npm run test:run -- src/features/home/HomePage.test.tsx` : PASS
+
+**Conclusion** : l'en-tête de la section défis affiche maintenant `Défis actifs` à gauche et `X / Y complétés` à droite sur une seule ligne.
+
+## [2026-04-21] fix(home): retirer la bordure du thumb de défi
+
+**Statut** : ✅ Complété
+
+**Décision technique** : le fond de la vignette devait reprendre la teinte daily/weekly/capstone, sans ajout de bordure. La précédente passe avait correctement remplacé le fond gris, mais introduisait une bordure non demandée sur le thumb. Le correctif retire cette bordure sur l'image comme sur le fallback texte, sans toucher au fond de cadence.
+
+**Modifications** :
+- `apps/web/src/features/home/HomeChallengesList.tsx` : suppression de la classe `border` sur `ChallengeThumb`.
+
+**Résultats** :
+- `npm run test:run -- src/features/home/HomePage.test.tsx` : PASS
+
+**Conclusion** : la vignette conserve maintenant le même fond que la carte de défi, sans contour ajouté.
+
+## [2026-04-21] fix(tooling): faire pointer l'API dev vers le cache badges du repo courant
+
+**Statut** : ✅ Complété
+
+**Décision technique** : le provider Go lisait bien le cache local en priorité et persistait les nouveaux badges live sur disque, mais le backend lancé via le `Makefile` racine injectait `LEVELUP_REPO_ROOT` depuis `../LevelUp` par défaut. Résultat : les weekly étaient écrits dans le sibling `LevelUp/data/cache/challenge_badges` au lieu de `LevelUp-go-migration/data/cache/challenge_badges`. Le correctif retenu garde le helper Go de résolution du cache partagé, mais corrige surtout la source du problème : le `Makefile` racine résout désormais le repo root au runtime depuis le workspace courant, sauf surcharge explicite.
+
+**Modifications** :
+- `Makefile` : `LEVELUP_DATA_ROOT` vide par défaut et calcul de `REPO_ROOT` au runtime dans `_go-api-run` et `dev`, au lieu de forcer `../LevelUp`.
+- `apps/go-api/internal/api/registry.go` : helper `challengeBadgeDirFromMetadataPath()` pour ramener le cache badges sous le vrai `data/cache/challenge_badges` partagé quand on part d'un `metadata.duckdb` title-aware.
+- `apps/go-api/internal/api/registry_test.go` : tests legacy/title-aware pour la résolution du répertoire de badges.
+
+**Résultats** :
+- `go test ./internal/api -run 'Test(ServiceRegistry_.*ResolveError|ChallengeBadgeDirFromMetadataPath_.*)' -count=1` : PASS
+- validation live après relance via `make go-api-dev` : `GET /api/v1/players/JGtm/pages/palmares/season-pass` renvoie les weekly avec `image_url`
+- validation disque : `data/cache/challenge_badges/weekly-normal.png`, `weekly-heroic.png` et `weekly-legendary.png` sont désormais créés dans `LevelUp-go-migration`
+
+**Conclusion** : le principe établi est rétabli sur le repo courant : utiliser d'abord le cache local des badges, puis persister localement les nouveaux badges récupérés live dans `data/cache/challenge_badges`.
+
+## [2026-04-21] feat(battlepass): persistance GameCMS des track definitions (battlepass_details)
+
+**Statut** : ✅ Complété
+
+**Décision technique** : Avant ce correctif, `PersistSink.writeBattlePass` écrivait le payload complet `/operations` (progression joueur) dans `battlepass_track_definitions`, sans jamais appeler GameCMS `/hi/Progression/file/{trackPath}`. Résultat : `xp_per_rank`, images et `battlepass_track_translations` toujours vides. Solution adoptée : miroir exact du pattern `challenges_details.go` — `HaloProvider.fetchRewardTrackDefinition` (cache metadata → fallback GameCMS → store) appelé depuis `fetchBattlePass` pour chaque track. L'INSERT dans `battlepass_track_definitions` retiré du `PersistSink`.
+
+**Modifications** :
+- `apps/go-api/internal/platform/halo/battlepass_details.go` (**nouveau**) : `fetchRewardTrackDefinition`, `loadTrackDefinitionFromMetadata`, `storeTrackDefinitionInMetadata`, helpers `trackDefinitionContentHash`, `collectTrackTranslations`, `nullableTrackString`
+- `apps/go-api/internal/platform/halo/provider.go` : champ `battlepassMetaPath`, méthode `WithBattlePassCache`, boucle fetch best-effort dans `fetchBattlePass`
+- `apps/go-api/internal/platform/duckdb/persist_sink.go` : suppression du bloc INSERT `battlepass_track_definitions` dans `writeBattlePass`
+- `apps/go-api/internal/api/registry.go` : `.WithBattlePassCache(pdb.Metadata.Path())` chaîné après `WithChallengeCache` dans `HomeCtxWithAuth` + `SeasonPassCtxWithAuth`
+- `apps/go-api/internal/watcher/live_refresh.go` + `apps/go-api/cmd/server/main.go` : `NewPlayerLiveRefresher` prend `metaPath string`, provider initialisé avec `WithBattlePassCache`
+
+**Résultats** : `go build ./...` propre, `TestSeasonPassRepoLoadSeasonPassTracks_UsesPlayerSnapshots` PASS, `./internal/platform/halo/...` PASS.
+
+**Conclusion** : Au prochain appel authentifié (`GetBattlePassWithRaw`), chaque `RewardTrackPath` présent dans le payload `/operations` sera fetché sur GameCMS, parsé, et persisté dans `battlepass_track_definitions` + `battlepass_track_translations` avec `xp_per_rank`, `battlepass_image_path`, `background_image_path` et les noms localisés fr-FR/en-US. Les appels suivants serviront depuis le cache metadata sans re-fetch GameCMS.
+
+## [2026-04-21] fix(challenges): rétablir le schéma de badges weekly-<difficulty> pour les défis saisonniers
+
+**Statut** : ✅ Complété
+
+**Décision technique** : le trou restant ne venait pas du frontend mais d'un mauvais schéma de stems côté provider Go pour les défis `S5WinterChallenges`. Les payloads live renvoyaient bien des weekly réels (`Bravoure dans la victoire`, `Oiseau de fête`, `Score Moar !`) sans `image_url`, et le code n'essayait que des stems sur-spécifiques du type `weekly-action-legendary`. Le correctif retenu rétablit en priorité le schéma simple `weekly-<difficulty>.png` pour les chemins saisonniers et la catégorie `Seasonal`, qui correspond au comportement attendu (`daily-normal`, `weekly-normal`, etc.).
+
+**Modifications** :
+- `apps/go-api/internal/platform/halo/challenges_details.go` : `buildChallengeBadgeCandidates()` essaie désormais `weekly-<difficulty>` pour les défis saisonniers avant les fallbacks plus spécifiques existants.
+- `apps/go-api/internal/platform/halo/provider_test.go` : le test `TestFetchChallengeBadgeDataURL_SeasonalFallsBackToWeekly` vérifie maintenant le stem prioritaire `weekly-legendary`.
+
+**Résultats** :
+- `go test ./internal/platform/halo -run 'TestFetchChallengeBadgeDataURL_(SeasonalFallsBackToWeekly|WeeklyVehicleUsesVehicleBadgeFirst)' -count=1` : PASS
+- validation live sur `GET /api/v1/players/JGtm/pages/palmares/season-pass` : `Bravoure dans la victoire`, `Oiseau de fête` et `Score Moar !` remontent tous avec `image_url`
+- validation live sur `GET /api/v1/players/Chocoboflor/pages/palmares/season-pass` : `Attention !`, `Bravoure dans la victoire` et `Score Moar !` remontent aussi avec `image_url`
+
+**Conclusion** : le backend utilise maintenant le bon schéma de badges hebdo pour les défis saisonniers actifs, et les cartes de défis manquantes réapparaissent bien dans le payload live.
+
+## [2026-04-21] fix(home): utiliser le vrai badge hebdo Vehicle au lieu d'un faux fallback UI
+
+**Statut** : ✅ Complété
+
+**Décision technique** : le problème ne venait pas d'une absence définitive d'image mais d'une résolution backend incomplète. `inferWeeklyFamily()` ne reconnaissait que `action`, `gametype` et `weapon`, donc un défi `WeeklyChallenges/Vehicle/...` n'essayait jamais `weekly-vehicle-<difficulty>.png`, alors que c'est précisément l'image hebdo attendue. Le faux fallback visuel React ajouté dans un second temps était une mauvaise direction et a été retiré.
+
+**Modifications** :
+- `apps/go-api/internal/platform/halo/challenges_details.go` : `inferWeeklyFamily()` extrait désormais génériquement la famille réelle sous `WeeklyChallenges/<family>/...`, ce qui couvre `vehicle` et autres familles hebdo présentes dans les paths réels.
+- `apps/go-api/internal/platform/halo/provider_test.go` : ajout d'un test anti-régression qui vérifie qu'un défi `WeeklyChallenges/Vehicle/...` essaie d'abord `weekly-vehicle-heroic.png`.
+- `apps/web/src/features/home/HomeChallengesList.tsx` et `apps/web/src/features/home/HomePage.test.tsx` : suppression du faux fallback visuel thématique ajouté par erreur ; retour au rendu nominal piloté par la vraie image backend.
+
+**Résultats** :
+- `go test ./internal/platform/halo -run 'TestFetchChallengeBadgeDataURL_(WeeklyVehicleUsesVehicleBadgeFirst|SeasonalFallsBackToWeekly)' -count=1` : PASS
+- `npm run test:run -- src/features/home/HomePage.test.tsx` : PASS (12/12)
+
+**Conclusion** : la home tente maintenant le vrai badge hebdo `vehicle` pour ce type de défi, et n'utilise plus le faux visuel frontend ajouté par erreur.
+
+## [2026-04-21] fix(home): restaurer les garde-fous backend et espacer les états UI
+
+**Statut** : ✅ Complété
+
+**Décision technique** : le 500 sur `GET /api/v1/players/{slug}/pages/home` provenait d'une régression combinée dans le slice home : la requête `Q26HomeMatches` dépendait de nouveau de `shared.v_match_full`, le resolver reprenait des chemins title-aware sur simple présence du répertoire, et le schéma player de base n'exposait plus `player_match_enrichment.session_label`. Le correctif retenu rétablit ces trois garde-fous au point de contrôle local, puis ajuste le rendu React pour que les états `Chargement` et `Accueil indisponible` respirent sous la L1.
+
+**Modifications** :
+- `apps/go-api/internal/platform/duckdb/queries_home_citations.go` : `Q26HomeMatches` rejoint `shared.match_registry` au lieu de `shared.v_match_full`
+- `apps/go-api/internal/config/player_resolver.go` : fallback legacy si les fichiers player/shared/metadata title-aware ne sont pas tous présents
+- `apps/go-api/internal/migration/steps_player.go` : `session_label` réintégré dans le schéma de base + migration `add_pme_session_label`
+- `apps/go-api/internal/config/pure_funcs_test.go`, `internal/platform/duckdb/player_repos_test.go`, `internal/platform/duckdb/pool_migration_test.go` : tests anti-régression resolver/home/session_label
+- `apps/web/src/components/shell/AppShell.tsx` : retour du `gap` sous la L1
+- `apps/web/src/features/home/HomePage.tsx` : état chargement recentré, états erreur/vide avec marge haute et largeur contrôlée
+
+**Résultats** :
+- `go test ./internal/config -run 'TestBuildPoolConfig_(HaloInfinite|FallsBackToLegacyWhenPlayerDBMissing)' -count=1` : PASS
+- `go test -tags=integration ./internal/platform/duckdb -run 'TestHomeRepo_LoadHomeMatches_DoesNotDependOnVMatchFull|TestGetOrOpen_AddsSessionLabelForLegacyPlayerSchema' -count=1` : PASS
+- vérification éditeur : aucune erreur sur `AppShell.tsx` et `HomePage.tsx`
+
+**Conclusion** : la route home est de nouveau protégée contre les deux causes principales déjà rencontrées en migration partielle, et l'affichage des états transitoires n'est plus collé à la navigation haute.
+
 ## [2026-04-21] feat(rta): câbler status=3 → refresh XSTS on-demand → reconnexion
 
 **Statut** : ✅ Complété

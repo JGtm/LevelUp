@@ -19,6 +19,34 @@ function pickFeaturedPass(passes: SeasonPassTrackSummary[]) {
     ?? null
 }
 
+function formatXPLabel(value: number, locale: string) {
+  return `${Math.max(0, value).toLocaleString(locale)} XP`
+}
+
+function buildCompositeProgressEdgeLabels({
+  partialProgress,
+  xpPerRank,
+  progressPercent,
+  locale,
+}: {
+  partialProgress: number
+  xpPerRank?: number | null
+  progressPercent: number
+  locale: string
+}) {
+  if (xpPerRank != null && xpPerRank > 0) {
+    return {
+      current: formatXPLabel(partialProgress, locale),
+      target: formatXPLabel(xpPerRank, locale),
+    }
+  }
+
+  return {
+    current: `${progressPercent.toLocaleString(locale, { maximumFractionDigits: 0 })} %`,
+    target: '100 %',
+  }
+}
+
 function CompositeTierProgressBar({ value }: { value?: number | null }) {
   const width = clampPercent(value)
 
@@ -124,10 +152,10 @@ export function HomeBattlePassPanel({
     return (
       <Card>
         <CardHeader>
-          <CardTitle className="text-base">Battle Pass</CardTitle>
+          <CardTitle className="text-base">Pass de combat</CardTitle>
         </CardHeader>
         <CardContent>
-          <p className="text-sm text-muted-foreground">Chargement du battle pass...</p>
+          <p className="text-sm text-muted-foreground">Chargement du pass de combat...</p>
         </CardContent>
       </Card>
     )
@@ -137,7 +165,7 @@ export function HomeBattlePassPanel({
     return (
       <Card>
         <CardHeader>
-          <CardTitle className="text-base">Battle Pass</CardTitle>
+          <CardTitle className="text-base">Pass de combat</CardTitle>
         </CardHeader>
         <CardContent>
           <p className="text-sm text-muted-foreground">
@@ -152,7 +180,7 @@ export function HomeBattlePassPanel({
     return (
       <Card>
         <CardHeader>
-          <CardTitle className="text-base">Battle Pass</CardTitle>
+          <CardTitle className="text-base">Pass de combat</CardTitle>
         </CardHeader>
         <CardContent>
           <EmptyStateNotice
@@ -172,6 +200,12 @@ export function HomeBattlePassPanel({
   const activeTierLabel = activeTier?.title ?? 'Palier a venir'
   const activeTierRank = featuredPass.active_tier_rank == null ? '—' : `#${featuredPass.active_tier_rank}`
   const tierProgress = clampPercent(featuredPass.active_tier_progress_percent)
+  const tierProgressLabels = buildCompositeProgressEdgeLabels({
+    partialProgress: featuredPass.partial_progress,
+    xpPerRank: featuredPass.xp_per_rank,
+    progressPercent: tierProgress,
+    locale: 'fr-FR',
+  })
 
   return (
     <Card className="relative overflow-hidden border-border/70 bg-card/95 shadow-sm">
@@ -187,7 +221,7 @@ export function HomeBattlePassPanel({
       <CardHeader className="relative space-y-4 pb-3">
         <div className="flex flex-wrap items-start justify-between gap-3">
           <div>
-            <CardTitle className="text-base">Battle Pass</CardTitle>
+            <CardTitle className="text-base">Pass de combat</CardTitle>
             <p className="mt-3 text-[11px] uppercase tracking-[0.28em] text-muted-foreground">{trackLabel}</p>
             <h3 className="mt-2 text-xl font-semibold tracking-tight text-foreground sm:text-2xl">
               {featuredPass.name}
@@ -265,7 +299,26 @@ export function HomeBattlePassPanel({
                   {tierProgress.toLocaleString('fr-FR', { maximumFractionDigits: 0 })} %
                 </p>
               </div>
-              <CompositeTierProgressBar value={tierProgress} />
+              <div
+                data-testid="home-battle-pass-active-tier-progress-row"
+                className="grid grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-3"
+              >
+                <span
+                  data-testid="home-battle-pass-active-tier-progress-current"
+                  className="shrink-0 whitespace-nowrap text-[11px] font-medium text-foreground/85 sm:text-xs"
+                >
+                  {tierProgressLabels.current}
+                </span>
+                <div className="min-w-0">
+                  <CompositeTierProgressBar value={tierProgress} />
+                </div>
+                <span
+                  data-testid="home-battle-pass-active-tier-progress-target"
+                  className="shrink-0 whitespace-nowrap text-[11px] font-medium text-foreground/85 sm:text-xs"
+                >
+                  {tierProgressLabels.target}
+                </span>
+              </div>
             </div>
           </div>
         )}

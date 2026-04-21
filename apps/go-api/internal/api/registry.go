@@ -220,8 +220,10 @@ func (r *ServiceRegistry) HomeCtxWithAuth(ctx context.Context, slug string) (por
 	}
 	sink := duckdb.NewPersistSink(pdb.Metadata.Path(), pdb.Player.Path(), pdb.XUID)
 	homeRepo := duckdb.NewHomeRepo(pdb)
-	challengeBadgeDir := filepath.Join(filepath.Dir(filepath.Dir(pdb.Metadata.Path())), "cache", "challenge_badges")
-	haloProvider := halo.DefaultHaloProvider.WithChallengeCache(pdb.Metadata.Path(), challengeBadgeDir)
+	challengeBadgeDir := challengeBadgeDirFromMetadataPath(pdb.Metadata.Path())
+	haloProvider := halo.DefaultHaloProvider.
+		WithChallengeCache(pdb.Metadata.Path(), challengeBadgeDir).
+		WithBattlePassCache(pdb.Metadata.Path())
 	svc := service.NewHomeService(homeRepo).
 		WithPersistSink(sink).
 		WithCacheRepo(homeRepo).
@@ -240,8 +242,10 @@ func (r *ServiceRegistry) SeasonPassCtxWithAuth(ctx context.Context, slug string
 	}
 	homeRepo := duckdb.NewHomeRepo(pdb)
 	sink := duckdb.NewPersistSink(pdb.Metadata.Path(), pdb.Player.Path(), pdb.XUID)
-	challengeBadgeDir := filepath.Join(filepath.Dir(filepath.Dir(pdb.Metadata.Path())), "cache", "challenge_badges")
-	haloProvider := halo.DefaultHaloProvider.WithChallengeCache(pdb.Metadata.Path(), challengeBadgeDir)
+	challengeBadgeDir := challengeBadgeDirFromMetadataPath(pdb.Metadata.Path())
+	haloProvider := halo.DefaultHaloProvider.
+		WithChallengeCache(pdb.Metadata.Path(), challengeBadgeDir).
+		WithBattlePassCache(pdb.Metadata.Path())
 	homeSvc := service.NewHomeService(homeRepo).
 		WithPersistSink(sink).
 		WithCacheRepo(homeRepo).
@@ -250,6 +254,27 @@ func (r *ServiceRegistry) SeasonPassCtxWithAuth(ctx context.Context, slug string
 	svc := service.NewSeasonPassService(spRepo, homeSvc, pdb.XUID, pdb.TitleSlug)
 	enriched := r.enrichWithHaloTokens(ctx, pdb)
 	return svc, enriched, nil
+}
+
+func challengeBadgeDirFromMetadataPath(metaPath string) string {
+	trimmed := strings.TrimSpace(metaPath)
+	if trimmed == "" {
+		return filepath.Join("data", "cache", "challenge_badges")
+	}
+
+	current := filepath.Dir(filepath.Clean(trimmed))
+	for {
+		if strings.EqualFold(filepath.Base(current), "data") {
+			return filepath.Join(current, "cache", "challenge_badges")
+		}
+		parent := filepath.Dir(current)
+		if parent == current {
+			break
+		}
+		current = parent
+	}
+
+	return filepath.Join(filepath.Dir(filepath.Dir(filepath.Clean(trimmed))), "cache", "challenge_badges")
 }
 
 // enrichWithHaloTokens injecte les HaloTokens dans le contexte si absents.

@@ -637,6 +637,7 @@ func buildChallengeBadgeCandidates(challengePath, category, difficulty string) [
 	cat := slugifyChallengeToken(category)
 	diff := slugifyChallengeToken(difficulty)
 	weeklyFamily := inferWeeklyFamily(normalizedPath)
+	seasonalPath := isSeasonalChallengePath(normalizedPath)
 	candidates := make([]string, 0, 6)
 
 	if strings.Contains(normalizedPath, "dailychallenges") && diff != "" {
@@ -645,19 +646,25 @@ func buildChallengeBadgeCandidates(challengePath, category, difficulty string) [
 	if strings.Contains(normalizedPath, "weeklychallenges") && weeklyFamily != "" && diff != "" {
 		candidates = append(candidates, "weekly-"+weeklyFamily+"-"+diff)
 	}
+	if seasonalPath && diff != "" {
+		candidates = append(candidates, "weekly-"+diff)
+	}
 	if strings.Contains(normalizedPath, "ultimate") || strings.Contains(normalizedPath, "capstone") {
 		if diff == "" {
 			diff = "mythic"
 		}
 		candidates = append(candidates, "capstone-"+diff)
 	}
-	if isSeasonalChallengePath(normalizedPath) && diff != "" {
+	if seasonalPath && diff != "" {
 		for _, family := range []string{"action", "gametype", "weapon"} {
 			candidates = append(candidates, "weekly-"+family+"-"+diff)
 		}
 	}
 	if cat == "daily" && diff != "" {
 		candidates = append(candidates, "daily-"+diff)
+	}
+	if cat == "seasonal" && diff != "" {
+		candidates = append(candidates, "weekly-"+diff)
 	}
 	if cat == "weekly" && weeklyFamily != "" && diff != "" {
 		candidates = append(candidates, "weekly-"+weeklyFamily+"-"+diff)
@@ -710,6 +717,16 @@ func slugifyChallengeToken(value string) string {
 }
 
 func inferWeeklyFamily(normalizedPath string) string {
+	const marker = "/weeklychallenges/"
+	index := strings.Index(normalizedPath, marker)
+	if index >= 0 {
+		remainder := normalizedPath[index+len(marker):]
+		segment, _, _ := strings.Cut(remainder, "/")
+		if family := slugifyChallengeToken(segment); family != "" {
+			return family
+		}
+	}
+
 	for _, token := range []string{"action", "gametype", "weapon"} {
 		if strings.Contains(normalizedPath, "/"+token+"/") {
 			return token
