@@ -539,6 +539,7 @@ export interface SettingsResponse {
   spnkr_auto_sync_interval_hours: number
   spnkr_auto_sync_interval_minutes: number
   watcher_presence_enabled: boolean
+  watcher_subscribed_players: string[]
   spnkr_refresh_with_backfill: boolean
   spnkr_refresh_backfill_medals: boolean
   spnkr_refresh_backfill_skill: boolean
@@ -1776,6 +1777,49 @@ export interface SessionCompareResponse {
   modes_table: Record<string, unknown>[]
 }
 
+export interface SessionDetailMatchRow {
+  match_id: string
+  start_time: string
+  outcome: number | null
+  playlist_name: string
+  pair_name: string
+  is_ranked: boolean
+  kills: number
+  deaths: number
+  assists: number
+  kda: number | null
+  accuracy: number | null
+  personal_score: number | null
+  performance_score: number | null
+  session_label: string | null
+  dominant_category: string | null
+  offensive_conversion: number | null
+  defensive_resistance: number | null
+}
+
+export interface SessionCompareSuggestion {
+  session_label: string
+  strategy: string
+  reason: string
+}
+
+export interface SessionPageRequest {
+  filters?: FilterContextInput
+  session_label?: string | null
+  compare_session_label?: string | null
+  enable_compare?: boolean
+}
+
+export interface SessionPageResponse {
+  current_session: SessionCompareEntry | null
+  available_sessions: string[]
+  matches: SessionDetailMatchRow[]
+  suggested_compare: SessionCompareSuggestion | null
+  compare_enabled: boolean
+  compare_session: SessionCompareEntry | null
+  compare_metrics: SessionCompareMetricRow[]
+}
+
 // ─── Sprint 54-C : Compare joueur vs joueur ───────────────────────────────────
 
 export interface NormalizedPlayerStats {
@@ -1914,4 +1958,42 @@ export interface InviteCode {
   created_by: string
   created_at: string
   expires_at: string
+}
+
+// ---------------------------------------------------------------------------
+// Watcher présence Xbox RTA
+// ---------------------------------------------------------------------------
+
+export interface WatcherPlayerStatus {
+  gamertag: string
+  xuid: string
+  state: string
+  in_game: boolean
+  state_since: string
+  state_duration: string
+  cooldown_left?: string
+}
+
+export interface WatcherStatusResponse {
+  daemon_running: boolean
+  rta_connected: boolean
+  token_valid: boolean
+  token_expires_at?: string
+  token_gamertag?: string
+  subscribed_players: string[]
+  players: WatcherPlayerStatus[]
+}
+
+export interface WatcherAuthAttempt {
+  attempt_id: string
+  user_code: string
+  verification_url: string
+  expires_in: number
+}
+
+export interface WatcherAuthStatus {
+  status: 'pending' | 'authorized' | 'failed' | 'expired'
+  error_code?: string
+  gamertag?: string
+  xuid?: string
 }

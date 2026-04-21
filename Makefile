@@ -32,12 +32,12 @@ help:
 
 ## Lance le frontend React/Vite en mode dev (port 5173)
 web:
-        cd apps/web && npm run dev
+	cd apps/web && npm run dev
 
 ## Génère le fichier de types TypeScript depuis le schéma OpenAPI Go
 ## Usage : make generate-types
 generate-types:
-        @command -v npx >/dev/null 2>&1 || (echo "npx requis" && exit 1)
+	@command -v npx >/dev/null 2>&1 || (echo "npx requis" && exit 1)
 	@echo "✓ Types générés dans apps/web/src/lib/api/generated.ts"
 
 ## Installe les dépendances npm dans apps/web/

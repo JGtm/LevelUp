@@ -85,7 +85,7 @@ func buildTestRouter(t *testing.T) http.Handler {
 	bootRepo := &mockBootstrapRepo{}
 	bootSvc := service.NewBootstrapService(cfg, bootRepo)
 
-	return api.NewRouter(cfg, bootRepo, bootSvc)
+	return api.NewRouter(cfg, bootRepo, bootSvc, nil)
 }
 
 // ---------------------------------------------------------------------------

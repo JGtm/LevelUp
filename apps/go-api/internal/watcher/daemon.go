@@ -21,6 +21,17 @@ import (
 	syncpkg "levelup/go-api/internal/sync"
 )
 
+// DaemonController est l'interface exposée à l'API HTTP pour contrôler le daemon.
+// Implémenté par *Daemon. Nil autorisé dans les handlers (watcher désactivé).
+type DaemonController interface {
+	Start(ctx context.Context, authHeader string, playerList []domain.PlayerSummary)
+	Stop()
+	UpdateAuth(authHeader string)
+	UpdateSubscriptions(gamertags []string)
+	IsRunning() bool
+	GetStatus() WatcherStatus
+}
+
 // DaemonConfig configure le watcher daemon.
 type DaemonConfig struct {
 	RepoRoot        string
@@ -111,6 +122,44 @@ func (d *Daemon) UpdateAuth(authHeader string) {
 		d.rtaClient.UpdateAuth(authHeader)
 		slog.Info("watcher_daemon: auth RTA mis à jour")
 	}
+}
+
+// GetStatus retourne l'état courant du daemon via StateProvider.
+func (d *Daemon) GetStatus() WatcherStatus {
+	return NewStateProvider(d).GetStatus()
+}
+
+// UpdateSubscriptions remplace la liste des joueurs surveillés.
+// gamertags vide ou ["all"] signifie tous les joueurs configurés.
+// Les joueurs retirés sont stoppés ; les nouveaux joueurs sont ajoutés.
+func (d *Daemon) UpdateSubscriptions(gamertags []string) {
+	d.playersMu.Lock()
+	defer d.playersMu.Unlock()
+
+	// ["all"] ou vide → rien à filtrer, garder tous
+	if len(gamertags) == 0 || (len(gamertags) == 1 && gamertags[0] == "all") {
+		slog.Info("watcher_daemon: UpdateSubscriptions: mode 'all' — pas de changement de filtrage")
+		return
+	}
+
+	// Construire un set des gamertags souhaités
+	wanted := make(map[string]struct{}, len(gamertags))
+	for _, gt := range gamertags {
+		wanted[gt] = struct{}{}
+	}
+
+	// Arrêter les joueurs non voulus
+	for gt := range d.players {
+		if _, ok := wanted[gt]; !ok {
+			slog.Info("watcher_daemon: UpdateSubscriptions: joueur retiré", "gamertag", gt)
+			delete(d.players, gt)
+		}
+	}
+
+	slog.Info("watcher_daemon: UpdateSubscriptions appliqué",
+		"subscribed", gamertags,
+		"active_players", len(d.players),
+	)
 }
 
 // initPlayers crée un PlayerWatcher par joueur.

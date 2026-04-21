@@ -7,13 +7,14 @@ import (
 	"levelup/go-api/internal/domain"
 )
 
-// Q26 : Home — matchs recents d un joueur avec KPIs pour le hero card.
+// Q26 : Home — matchs d un joueur avec KPIs pour le hero card.
 // Parametre : ?1 = xuid du joueur.
-// Retourne les 200 derniers matchs (hero card, highlights, recent matches, sessions).
+// Pas de LIMIT : tous les matchs sont chargés (hero card, highlights, recent matches, sessions).
 const Q26HomeMatches = `
 SELECT
     mp.match_id,
     r.start_time,
+    COALESCE(r.map_id, '')                                  AS map_id,
     COALESCE(r.map_name, '')                                AS map_name,
     COALESCE(r.map_name_fr, r.map_name, '')                 AS map_name_fr,
     COALESCE(r.pair_name, '')                               AS pair_name,
@@ -40,8 +41,7 @@ FROM shared.match_participants mp
 JOIN shared.v_match_full r ON r.match_id = mp.match_id
 LEFT JOIN player_match_enrichment pme ON pme.match_id = mp.match_id
 WHERE mp.xuid = ?
-ORDER BY r.start_time DESC
-LIMIT 200`
+ORDER BY r.start_time DESC`
 
 // Q26b : Home -- nombre total de matchs d un joueur (pas de LIMIT).
 // Parametre : ?1 = xuid du joueur.

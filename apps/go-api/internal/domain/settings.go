@@ -25,7 +25,8 @@ type SettingsResponse struct {
 	SpnkrAutoSyncEnabled               bool   `json:"spnkr_auto_sync_enabled"`
 	SpnkrAutoSyncIntervalHours         int    `json:"spnkr_auto_sync_interval_hours"`
 	SpnkrAutoSyncIntervalMinutes       int    `json:"spnkr_auto_sync_interval_minutes"`
-	WatcherPresenceEnabled             bool   `json:"watcher_presence_enabled"`
+	WatcherPresenceEnabled             bool     `json:"watcher_presence_enabled"`
+	WatcherSubscribedPlayers           []string `json:"watcher_subscribed_players"`
 	SpnkrRefreshWithBackfill           bool   `json:"spnkr_refresh_with_backfill"`
 	SpnkrRefreshBackfillMedals         bool   `json:"spnkr_refresh_backfill_medals"`
 	SpnkrRefreshBackfillSkill          bool   `json:"spnkr_refresh_backfill_skill"`
@@ -59,7 +60,8 @@ type UpdateSettingsRequest struct {
 	SpnkrAutoSyncEnabled               *bool   `json:"spnkr_auto_sync_enabled,omitempty"`
 	SpnkrAutoSyncIntervalHours         *int    `json:"spnkr_auto_sync_interval_hours,omitempty"`
 	SpnkrAutoSyncIntervalMinutes       *int    `json:"spnkr_auto_sync_interval_minutes,omitempty"`
-	WatcherPresenceEnabled             *bool   `json:"watcher_presence_enabled,omitempty"`
+	WatcherPresenceEnabled             *bool    `json:"watcher_presence_enabled,omitempty"`
+	WatcherSubscribedPlayers           []string `json:"watcher_subscribed_players,omitempty"`
 	SpnkrRefreshWithBackfill           *bool   `json:"spnkr_refresh_with_backfill,omitempty"`
 	SpnkrRefreshBackfillMedals         *bool   `json:"spnkr_refresh_backfill_medals,omitempty"`
 	SpnkrRefreshBackfillSkill          *bool   `json:"spnkr_refresh_backfill_skill,omitempty"`

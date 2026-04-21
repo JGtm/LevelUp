@@ -21,8 +21,8 @@ import (
 )
 
 // PersistSink centralise les écritures battlepass/challenges (fire-and-forget).
-// Les connexions RW sont maintenues en cache via openDBs pour ne pas ré-ouvrir
-// à chaque appel (coût d'ouverture DuckDB mutualisé).
+// Les ouvertures RW passent par le cache `openDBs`, puis sont relâchées en fin
+// d'écriture pour ne pas invalider les autres utilisateurs du même fichier.
 type PersistSink struct {
 	MetaPath   string // chemin vers metadata.duckdb
 	PlayerPath string // chemin vers stats.duckdb du joueur
@@ -86,6 +86,7 @@ func (s *PersistSink) writeBattlePass(ctx context.Context, trackPath string, bod
 	if err != nil {
 		return fmt.Errorf("open meta rw: %w", err)
 	}
+	defer db.Close()
 
 	hash := persistHash(body)
 	now := time.Now()
@@ -136,6 +137,7 @@ func (s *PersistSink) writeBattlePass(ctx context.Context, trackPath string, bod
 	if err != nil {
 		return fmt.Errorf("open player rw: %w", err)
 	}
+	defer pdb.Close()
 
 	for _, rawTrack := range payload.OperationRewardTracks {
 		if err := s.insertBattlePassSnapshot(
@@ -274,16 +276,20 @@ func (s *PersistSink) writeChallenges(ctx context.Context, body []byte) error {
 		db, err := OpenReadWrite(s.MetaPath)
 		if err != nil {
 			slog.Warn("persist_sink: open meta rw for challenges failed", "err", err)
-		} else if err := upsertWaypointAsset(ctx, db,
-			"halo_infinite",
-			s.XUID+"/challenge_deck",
-			"challenge_deck",
-			hash,
-			string(body),
-			now,
-		); err != nil {
-			slog.Warn("persist_sink: waypoint_assets_raw challenges upsert failed",
-				"xuid", s.XUID, "err", err)
+			defer db.Close()
+		} else {
+			defer db.Close()
+			if err := upsertWaypointAsset(ctx, db,
+				"halo_infinite",
+				s.XUID+"/challenge_deck",
+				"challenge_deck",
+				hash,
+				string(body),
+				now,
+			); err != nil {
+				slog.Warn("persist_sink: waypoint_assets_raw challenges upsert failed",
+					"xuid", s.XUID, "err", err)
+			}
 		}
 	}
 
@@ -296,6 +302,7 @@ func (s *PersistSink) writeChallenges(ctx context.Context, body []byte) error {
 	if err != nil {
 		return fmt.Errorf("open player rw: %w", err)
 	}
+	defer pdb.Close()
 
 	for _, deck := range raw.AssignedDecks {
 		deckExpiry := deck.Expiration.ISO8601Date

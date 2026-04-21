@@ -12,6 +12,7 @@ import { useAppShellStore } from '@/stores/appShellStore'
 import { useSettings, useUpdateSettings } from '@/features/settings/queries'
 import { useStartSyncAll, useJobStatus } from '@/features/setup/queries'
 import { getSettingsText, normalizeSettingsLocale } from '@/features/settings/i18n'
+import { WatcherCard } from '@/features/settings/WatcherCard'
 import type { SettingsResponse } from '@/lib/api/types'
 
 function ToggleRow({ label, value, onChange }: { label: string; value: boolean; onChange: (v: boolean) => void }) {
@@ -358,15 +359,11 @@ function SyncTab({ merged, handleChange, t }: TabProps) {
       </Card>
 
       {/* Détection de présence */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="text-base">{t.watcherTitle}</CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-1 divide-y divide-border/50">
-          <ToggleRow label={t.watcherPresenceEnabled} value={merged.watcher_presence_enabled ?? false} onChange={(v) => handleChange('watcher_presence_enabled', v)} />
-          <p className="py-2 text-xs text-muted-foreground">{t.watcherPresenceDescription}</p>
-        </CardContent>
-      </Card>
+      <WatcherCard
+        enabled={merged.watcher_presence_enabled ?? false}
+        onToggle={(v) => handleChange('watcher_presence_enabled', v)}
+        t={t}
+      />
 
       {/* Backfill */}
       <Card>

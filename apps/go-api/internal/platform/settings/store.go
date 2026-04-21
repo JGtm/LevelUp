@@ -33,7 +33,8 @@ type AppSettings struct {
 	SpnkrAutoSyncEnabled               bool   `json:"spnkr_auto_sync_enabled"`
 	SpnkrAutoSyncIntervalHours         int    `json:"spnkr_auto_sync_interval_hours"`
 	SpnkrAutoSyncIntervalMinutes       int    `json:"spnkr_auto_sync_interval_minutes"`
-	WatcherPresenceEnabled             bool   `json:"watcher_presence_enabled"`
+	WatcherPresenceEnabled             bool     `json:"watcher_presence_enabled"`
+	WatcherSubscribedPlayers           []string `json:"watcher_subscribed_players"`
 	SpnkrRefreshWithBackfill           bool   `json:"spnkr_refresh_with_backfill"`
 	SpnkrRefreshBackfillMedals         bool   `json:"spnkr_refresh_backfill_medals"`
 	SpnkrRefreshBackfillSkill          bool   `json:"spnkr_refresh_backfill_skill"`
@@ -198,6 +199,9 @@ func Apply(cfg *AppSettings, req *domain.UpdateSettingsRequest) {
 	if req.WatcherPresenceEnabled != nil {
 		cfg.WatcherPresenceEnabled = *req.WatcherPresenceEnabled
 	}
+	if req.WatcherSubscribedPlayers != nil {
+		cfg.WatcherSubscribedPlayers = req.WatcherSubscribedPlayers
+	}
 	if req.SpnkrRefreshWithBackfill != nil {
 		cfg.SpnkrRefreshWithBackfill = *req.SpnkrRefreshWithBackfill
 	}
@@ -252,6 +256,7 @@ func ToResponse(cfg *AppSettings) *domain.SettingsResponse {
 		SpnkrAutoSyncIntervalHours:         cfg.SpnkrAutoSyncIntervalHours,
 		SpnkrAutoSyncIntervalMinutes:       cfg.SpnkrAutoSyncIntervalMinutes,
 		WatcherPresenceEnabled:             cfg.WatcherPresenceEnabled,
+		WatcherSubscribedPlayers:           cfg.WatcherSubscribedPlayers,
 		SpnkrRefreshWithBackfill:           cfg.SpnkrRefreshWithBackfill,
 		SpnkrRefreshBackfillMedals:         cfg.SpnkrRefreshBackfillMedals,
 		SpnkrRefreshBackfillSkill:          cfg.SpnkrRefreshBackfillSkill,

@@ -28,12 +28,13 @@ import (
 
 // MediaIndexOptions configure l'indexation des médias.
 type MediaIndexOptions struct {
-	PlayerDBPath       string
-	SharedSocialDBPath string // shared_social.duckdb (cible d'écriture médias)
-	CapturesDir        string // répertoire captures du joueur
-	ForceRescan        bool   // réindexer tous les fichiers même connus
-	ToleranceMin       int    // tolérance d'association match en minutes (défaut 5)
-	Gamertag           string
+	PlayerDBPath        string
+	SharedSocialDBPath  string // shared_social.duckdb (cible d'écriture médias)
+	SharedMatchesDBPath string // shared_matches_v2.duckdb (lecture match_registry)
+	CapturesDir         string // répertoire captures du joueur
+	ForceRescan         bool   // réindexer tous les fichiers même connus
+	ToleranceMin        int    // tolérance d'association match en minutes (défaut 5)
+	Gamertag            string
 }
 
 // MediaIndexResult résume le résultat de l'indexation.
@@ -109,7 +110,7 @@ func IndexMedia(opts MediaIndexOptions) (MediaIndexResult, error) {
 	}
 
 	// Association avec les matchs
-	assoc, err := AssociateMediaWithMatches(db, opts.ToleranceMin)
+	assoc, err := AssociateMediaWithMatches(db, opts.SharedMatchesDBPath, opts.ToleranceMin)
 	if err != nil {
 		result.Errors = append(result.Errors, fmt.Sprintf("association: %v", err))
 	} else {
@@ -121,8 +122,17 @@ func IndexMedia(opts MediaIndexOptions) (MediaIndexResult, error) {
 
 // AssociateMediaWithMatches associe chaque média au match le plus proche en temps.
 // Portage de MediaIndexer.associate_with_matches() Python.
-func AssociateMediaWithMatches(db *sql.DB, toleranceMin int) (int, error) {
-	// Requête DuckDB : rapprocher par timestamp
+// sharedMatchesPath : chemin vers shared_matches_v2.duckdb (peut être vide — association ignorée).
+func AssociateMediaWithMatches(db *sql.DB, sharedMatchesPath string, toleranceMin int) (int, error) {
+	if sharedMatchesPath == "" {
+		return 0, nil
+	}
+	// ATTACH la DB des matchs en lecture seule pour accéder à match_registry.
+	if _, err := db.Exec(fmt.Sprintf(`ATTACH '%s' AS shared_matches (READ_ONLY)`, sharedMatchesPath)); err != nil {
+		return 0, fmt.Errorf("attach shared_matches: %w", err)
+	}
+	defer db.Exec(`DETACH shared_matches`) //nolint:errcheck
+
 	q := fmt.Sprintf(`
 		INSERT OR IGNORE INTO media_match_associations (media_file_id, match_id, delta_seconds)
 		SELECT
@@ -130,7 +140,7 @@ func AssociateMediaWithMatches(db *sql.DB, toleranceMin int) (int, error) {
 			mr.match_id,
 			ABS(DATEDIFF('second', mf.capture_start_utc, mr.start_time)) AS delta_s
 		FROM media_files mf
-		JOIN match_registry mr
+		JOIN shared_matches.match_registry mr
 		    ON ABS(DATEDIFF('minute', mf.capture_start_utc, mr.start_time)) <= %d
 		WHERE mf.id NOT IN (SELECT media_file_id FROM media_match_associations)
 	`, toleranceMin)
@@ -201,9 +211,12 @@ func generateThumbnail(videoPath, thumbPath string) error {
 // ─────────────────────────────────────────────────────────────────────────────
 
 func ensureMediaTables(db *sql.DB) error {
+	if _, err := db.Exec(`CREATE SEQUENCE IF NOT EXISTS media_files_id_seq START 1`); err != nil {
+		return err
+	}
 	_, err := db.Exec(`
 		CREATE TABLE IF NOT EXISTS media_files (
-			id INTEGER PRIMARY KEY,
+			id INTEGER PRIMARY KEY DEFAULT nextval('media_files_id_seq'),
 			file_path VARCHAR UNIQUE,
 			file_hash VARCHAR,
 			kind VARCHAR,

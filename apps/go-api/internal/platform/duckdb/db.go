@@ -20,80 +20,103 @@ import (
 
 // DB encapsule une connexion DuckDB ouverte.
 type DB struct {
-	sqlDB *sql.DB
-	path  string
+	sqlDB    *sql.DB
+	path     string
+	cacheKey string
+	closed   bool
+}
+
+type cachedDB struct {
+	db       *DB
+	refCount int
 }
 
 var (
 	openDBsMu sync.Mutex
-	openDBs   = map[string]*DB{}
+	openDBs   = map[string]*cachedDB{}
 )
 
 // OpenReadOnly ouvre une base DuckDB en lecture seule.
 // Le DSN est : "file.duckdb?access_mode=read_only".
 // Une seule instance par chemin est maintenue (cache process-level).
 func OpenReadOnly(path string) (*DB, error) {
-	openDBsMu.Lock()
-	defer openDBsMu.Unlock()
-
-	key := "ro:" + path
-	if db, ok := openDBs[key]; ok {
-		return db, nil
-	}
-
-	dsn := path + "?access_mode=read_only"
-	sqlDB, err := sql.Open("duckdb", dsn)
-	if err != nil {
-		return nil, fmt.Errorf("duckdb.OpenReadOnly(%s): %w", path, err)
-	}
-	// Vérification active de la connexion
-	if err := sqlDB.Ping(); err != nil {
-		sqlDB.Close()
-		return nil, fmt.Errorf("duckdb.OpenReadOnly ping(%s): %w", path, err)
-	}
-	// Pool conservateur : DuckDB ne supporte pas bien le parallélisme multi-writer.
-	// En read-only, plusieurs connexions sont possibles mais on reste raisonnable.
-	sqlDB.SetMaxOpenConns(4)
-	sqlDB.SetMaxIdleConns(2)
-
-	db := &DB{sqlDB: sqlDB, path: path}
-	openDBs[key] = db
-	return db, nil
+	return openCachedDB(
+		"ro:"+path,
+		path,
+		path+"?access_mode=read_only",
+		4,
+		2,
+		"OpenReadOnly",
+	)
 }
 
 // OpenReadWrite ouvre une base DuckDB en lecture-écriture.
 // Utilisé pour les migrations au démarrage. UNE seule connexion : pas de pool.
 func OpenReadWrite(path string) (*DB, error) {
+	return openCachedDB("rw:"+path, path, path, 1, 1, "OpenReadWrite")
+}
+
+func openCachedDB(
+	key, path, dsn string,
+	maxOpenConns, maxIdleConns int,
+	op string,
+) (*DB, error) {
 	openDBsMu.Lock()
 	defer openDBsMu.Unlock()
 
-	key := "rw:" + path
-	if db, ok := openDBs[key]; ok {
-		return db, nil
+	if cached, ok := openDBs[key]; ok {
+		if err := cached.db.sqlDB.Ping(); err == nil {
+			cached.refCount++
+			return cached.db, nil
+		}
+		_ = cached.db.sqlDB.Close()
+		delete(openDBs, key)
 	}
 
-	sqlDB, err := sql.Open("duckdb", path)
+	sqlDB, err := sql.Open("duckdb", dsn)
 	if err != nil {
-		return nil, fmt.Errorf("duckdb.OpenReadWrite(%s): %w", path, err)
+		return nil, fmt.Errorf("duckdb.%s(%s): %w", op, path, err)
 	}
 	if err := sqlDB.Ping(); err != nil {
 		sqlDB.Close()
-		return nil, fmt.Errorf("duckdb.OpenReadWrite ping(%s): %w", path, err)
+		return nil, fmt.Errorf("duckdb.%s ping(%s): %w", op, path, err)
 	}
 	sqlDB.SetMaxOpenConns(1)
 	sqlDB.SetMaxIdleConns(1)
+	if maxOpenConns > 1 {
+		sqlDB.SetMaxOpenConns(maxOpenConns)
+	}
+	if maxIdleConns > 1 {
+		sqlDB.SetMaxIdleConns(maxIdleConns)
+	}
 
-	db := &DB{sqlDB: sqlDB, path: path}
-	openDBs[key] = db
+	db := &DB{sqlDB: sqlDB, path: path, cacheKey: key}
+	openDBs[key] = &cachedDB{db: db, refCount: 1}
 	return db, nil
 }
 
 // Close ferme la connexion DuckDB. À appeler au shutdown.
 func (db *DB) Close() error {
+	if db == nil || db.sqlDB == nil {
+		return nil
+	}
+
 	openDBsMu.Lock()
 	defer openDBsMu.Unlock()
-	delete(openDBs, "ro:"+db.path)
-	delete(openDBs, "rw:"+db.path)
+
+	if db.closed {
+		return nil
+	}
+	if db.cacheKey != "" {
+		if cached, ok := openDBs[db.cacheKey]; ok {
+			if cached.refCount > 1 {
+				cached.refCount--
+				return nil
+			}
+			delete(openDBs, db.cacheKey)
+		}
+	}
+	db.closed = true
 	return db.sqlDB.Close()
 }
 

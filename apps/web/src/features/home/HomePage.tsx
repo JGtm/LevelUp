@@ -3,7 +3,6 @@
  */
 import { useState } from 'react'
 import { useParams, useNavigate } from '@tanstack/react-router'
-import { useQueryClient } from '@tanstack/react-query'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
@@ -12,12 +11,12 @@ import { PrivacyBanner } from '@/components/ui/privacy-banner'
 import { Spinner } from '@/components/ui/spinner'
 import { MatchCard } from '@/components/ui/match-card'
 import { Carousel, CarouselItem } from '@/components/ui/carousel'
+import { HomeBattlePassPanel } from './HomeBattlePassPanel'
 import { HomeHeroBanner } from './HomeHeroBanner'
 import { HomeChallengesList } from './HomeChallengesList'
 import { RecentMediaRail } from './RecentMediaRail'
-import { useHomePage, useBattlePass, useChallenges } from './queries'
+import { useHomePage, useChallenges, useSeasonPassPreview } from './queries'
 import { useSetMatchFavorite } from '@/features/match-history/queries'
-import { queryKeys } from '@/lib/query/keys'
 
 function KPICard({ label, value }: { label: string; value: string | number }) {
   return (
@@ -32,10 +31,13 @@ export function HomePage() {
   const { playerSlug } = useParams({ strict: false }) as { playerSlug: string }
   const navigate = useNavigate()
   const { data, isLoading, isError, refetch } = useHomePage(playerSlug)
-  const { data: bp } = useBattlePass(playerSlug)
+  const {
+    data: seasonPass,
+    isLoading: isSeasonPassLoading,
+    error: seasonPassError,
+  } = useSeasonPassPreview(playerSlug)
   const { data: challenges } = useChallenges(playerSlug)
   const [matchTab, setMatchTab] = useState<'recent' | 'favorites'>('recent')
-  const queryClient = useQueryClient()
   const favoriteMutation = useSetMatchFavorite(playerSlug)
 
   function goToMatch(matchId: string) {
@@ -119,26 +121,12 @@ export function HomePage() {
         </Card>
 
         {/* Battle Pass + Défis */}
-        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-          <Card>
-            <CardHeader>
-              <CardTitle className="text-base">Battle Pass</CardTitle>
-            </CardHeader>
-            <CardContent>
-              {bp?.available ? (
-                <div className="space-y-1">
-                  <p className="text-sm text-foreground">Rang <strong className="text-primary">{bp.rank}</strong></p>
-                  {bp.progress != null && (
-                    <div className="h-2 w-full rounded-full bg-muted">
-                      <div className="h-full rounded-full bg-primary" style={{ width: `${bp.progress}%` }} />
-                    </div>
-                  )}
-                </div>
-              ) : (
-                <p className="text-sm text-muted-foreground">Non disponible ({bp?.error_hint ?? 'live API non configurée'})</p>
-              )}
-            </CardContent>
-          </Card>
+        <div className="grid grid-cols-1 gap-4 xl:grid-cols-[minmax(0,1.35fr)_minmax(320px,0.65fr)]">
+          <HomeBattlePassPanel
+            loading={isSeasonPassLoading}
+            data={seasonPass}
+            errorHint={seasonPassError instanceof Error ? seasonPassError.message : null}
+          />
 
           <Card>
             <CardHeader>
@@ -272,19 +260,10 @@ export function HomePage() {
                       <MatchCard
                         match={m}
                         onClick={() => goToMatch(m.match_id)}
-                        onToggleFavorite={() => {
-                          favoriteMutation.mutate(
-                            { matchId: m.match_id, favorite: !m.is_favorite },
-                            {
-                              onSuccess: () => {
-                                void queryClient.invalidateQueries({
-                                  queryKey: queryKeys.home(playerSlug),
-                                })
-                              },
-                            },
-                          )
-                        }}
-                        favoriteDisabled={favoriteMutation.isPending}
+                        onToggleFavorite={() =>
+                          favoriteMutation.mutate({ matchId: m.match_id, favorite: !m.is_favorite })
+                        }
+                        favoriteDisabled={favoriteMutation.isPending && favoriteMutation.variables?.matchId === m.match_id}
                       />
                     </CarouselItem>
                   ))}
@@ -303,19 +282,10 @@ export function HomePage() {
                       <MatchCard
                         match={m}
                         onClick={() => goToMatch(m.match_id)}
-                        onToggleFavorite={() => {
-                          favoriteMutation.mutate(
-                            { matchId: m.match_id, favorite: false },
-                            {
-                              onSuccess: () => {
-                                void queryClient.invalidateQueries({
-                                  queryKey: queryKeys.home(playerSlug),
-                                })
-                              },
-                            },
-                          )
-                        }}
-                        favoriteDisabled={favoriteMutation.isPending}
+                        onToggleFavorite={() =>
+                          favoriteMutation.mutate({ matchId: m.match_id, favorite: false })
+                        }
+                        favoriteDisabled={favoriteMutation.isPending && favoriteMutation.variables?.matchId === m.match_id}
                       />
                     </CarouselItem>
                   ))}

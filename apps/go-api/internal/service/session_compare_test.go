@@ -1,6 +1,7 @@
 package service
 
 import (
+	"context"
 	"testing"
 	"time"
 
@@ -57,6 +58,12 @@ func TestSecondLastOrNil(t *testing.T) {
 	labels := []string{"S1", "S2", "S3"}
 	if got := secondLastOrNil(labels, nil); got != "S2" {
 		t.Fatalf("expected S2, got %s", got)
+	}
+	if got := secondLastOrNil(labels, ptr("override")); got != "override" {
+		t.Fatalf("expected override, got %s", got)
+	}
+	if got := secondLastOrNil([]string{"S1"}, nil); got != "" {
+		t.Fatalf("expected empty, got %s", got)
 	}
 }
 
@@ -137,5 +144,87 @@ func TestBuildCompareMetrics_TwoSessions(t *testing.T) {
 	metrics := buildCompareMetrics(a, b)
 	if len(metrics) < 4 {
 		t.Fatalf("expected >=4 metrics, got %d", len(metrics))
+	}
+}
+
+func TestSessionCompareService_Compare_AutoSelectsLatestSessions(t *testing.T) {
+	repo := &mockSessionPageStatsRepo{matches: makeSessionPageDataset()}
+	svc := NewSessionCompareService(nil, repo)
+
+	resp, err := svc.Compare(context.Background(), domain.SessionCompareRequest{})
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if resp.SessionA == nil || resp.SessionA.SessionLabel != "2026-04-21 19h30" {
+		t.Fatalf("unexpected session A: %#v", resp.SessionA)
+	}
+	if resp.SessionB == nil || resp.SessionB.SessionLabel != "2026-04-21 18h" {
+		t.Fatalf("unexpected session B: %#v", resp.SessionB)
+	}
+	if len(resp.Metrics) == 0 {
+		t.Fatal("expected comparison metrics")
+	}
+	assertSessionMetricPresent(t, resp.Metrics, "score")
+}
+
+func TestSessionCompareService_Compare_WithFilterAndSingleSession(t *testing.T) {
+	repo := &mockSessionPageStatsRepo{matches: makeSessionPageDataset()}
+	svc := NewSessionCompareService(nil, repo)
+	start := time.Date(2026, 4, 21, 19, 0, 0, 0, time.UTC)
+	end := time.Date(2026, 4, 21, 21, 0, 0, 0, time.UTC)
+
+	resp, err := svc.Compare(context.Background(), domain.SessionCompareRequest{
+		Filters: domain.FilterContextInput{
+			FilterMode: "period",
+			Period: domain.PeriodInput{
+				StartDate: &start,
+				EndDate:   &end,
+			},
+		},
+	})
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if len(resp.AvailableSessions) != 1 {
+		t.Fatalf("expected one filtered session, got %v", resp.AvailableSessions)
+	}
+	if resp.SessionA != nil || resp.SessionB != nil {
+		t.Fatalf("expected no compare entries when fewer than two sessions remain, got %#v %#v", resp.SessionA, resp.SessionB)
+	}
+	if len(resp.Metrics) != 0 {
+		t.Fatalf("expected no metrics, got %d", len(resp.Metrics))
+	}
+}
+
+func TestEffectiveKDA(t *testing.T) {
+	precomputed := 1.75
+	if got := effectiveKDA(domain.StatsMatchRow{KDA: &precomputed}); got == nil || *got != precomputed {
+		t.Fatalf("expected precomputed KDA, got %#v", got)
+	}
+	if got := effectiveKDA(domain.StatsMatchRow{Kills: 9, Deaths: 0}); got == nil || *got != 9 {
+		t.Fatalf("expected kills fallback, got %#v", got)
+	}
+	if got := effectiveKDA(domain.StatsMatchRow{Kills: 9, Deaths: 4}); got == nil || *got != 2.25 {
+		t.Fatalf("expected computed fallback, got %#v", got)
+	}
+}
+
+func TestClassifySessionCategory(t *testing.T) {
+	tests := []struct {
+		name  string
+		match domain.StatsMatchRow
+		want  string
+	}{
+		{name: "firefight", match: domain.StatsMatchRow{PlaylistName: "Firefight Normal"}, want: "Firefight"},
+		{name: "ranked", match: domain.StatsMatchRow{IsRanked: true, PlaylistName: "Arena"}, want: "Ranked"},
+		{name: "btb", match: domain.StatsMatchRow{PlaylistName: "Big Team Battle"}, want: "BTB"},
+		{name: "arena", match: domain.StatsMatchRow{PlaylistName: "Quick Play"}, want: "Arena"},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if got := classifySessionCategory(tt.match); got != tt.want {
+				t.Fatalf("expected %s, got %s", tt.want, got)
+			}
+		})
 	}
 }

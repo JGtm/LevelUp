@@ -64,7 +64,7 @@ export function Carousel({ children, className = '' }: CarouselProps) {
   useEffect(() => {
     updateScrollState()
     const el = trackRef.current
-    if (!el) return
+    if (!el || typeof ResizeObserver === 'undefined') return
     const ro = new ResizeObserver(updateScrollState)
     ro.observe(el)
     return () => ro.disconnect()
@@ -82,49 +82,33 @@ export function Carousel({ children, className = '' }: CarouselProps) {
 
   return (
     <div className={`relative ${className}`}>
-      {/* Flèche gauche + fade */}
-      <div
-        className={`pointer-events-none absolute inset-y-0 left-0 z-10 flex items-center transition-opacity duration-200 ${
-          canLeft ? 'opacity-100' : 'opacity-0'
-        }`}
-      >
-        <div className="h-full w-16 bg-gradient-to-r from-card via-card/60 to-transparent" />
-      </div>
+      {/* Bouton gauche */}
       <button
         type="button"
         onClick={() => scroll('left')}
+        disabled={!canLeft}
         aria-label="Précédent"
-        className={`absolute left-1 top-1/2 z-20 -translate-y-1/2 rounded-full border border-border bg-background/90 p-1.5 shadow-md backdrop-blur-sm transition-all duration-200 hover:bg-muted hover:scale-110 active:scale-95 ${
-          canLeft ? 'opacity-100' : 'opacity-0 pointer-events-none'
-        }`}
+        className="absolute left-0 inset-y-0 z-20 flex items-center justify-center w-9 rounded-l-lg border-y border-l border-border bg-background/95 backdrop-blur-sm transition-all duration-150 hover:bg-muted disabled:cursor-default disabled:opacity-30 disabled:hover:bg-background/95"
       >
         <ChevronLeftIcon />
       </button>
 
-      {/* Track scrollable */}
+      {/* Track scrollable — padding horizontal pour laisser place aux boutons */}
       <div
         ref={trackRef}
         onScroll={updateScrollState}
-        className="flex gap-3 overflow-x-auto scroll-smooth snap-x snap-mandatory pb-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+        className="flex gap-3 overflow-x-auto scroll-smooth snap-x snap-mandatory pb-1 px-10 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
       >
         {children}
       </div>
 
-      {/* Flèche droite + fade */}
-      <div
-        className={`pointer-events-none absolute inset-y-0 right-0 z-10 flex items-center transition-opacity duration-200 ${
-          canRight ? 'opacity-100' : 'opacity-0'
-        }`}
-      >
-        <div className="h-full w-16 bg-gradient-to-l from-card via-card/60 to-transparent" />
-      </div>
+      {/* Bouton droit */}
       <button
         type="button"
         onClick={() => scroll('right')}
+        disabled={!canRight}
         aria-label="Suivant"
-        className={`absolute right-1 top-1/2 z-20 -translate-y-1/2 rounded-full border border-border bg-background/90 p-1.5 shadow-md backdrop-blur-sm transition-all duration-200 hover:bg-muted hover:scale-110 active:scale-95 ${
-          canRight ? 'opacity-100' : 'opacity-0 pointer-events-none'
-        }`}
+        className="absolute right-0 inset-y-0 z-20 flex items-center justify-center w-9 rounded-r-lg border-y border-r border-border bg-background/95 backdrop-blur-sm transition-all duration-150 hover:bg-muted disabled:cursor-default disabled:opacity-30 disabled:hover:bg-background/95"
       >
         <ChevronRightIcon />
       </button>

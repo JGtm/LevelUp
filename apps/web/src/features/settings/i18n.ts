@@ -69,6 +69,22 @@ export interface SettingsText {
   watcherTitle: string
   watcherPresenceEnabled: string
   watcherPresenceDescription: string
+  watcherAuthButton: string
+  watcherAuthReconnect: string
+  watcherAuthInstructions: string
+  watcherAuthCopyCode: string
+  watcherAuthOpenLink: string
+  watcherAuthPending: string
+  watcherAuthSuccess: string
+  watcherAuthFailed: string
+  watcherTokenValid: string
+  watcherTokenExpired: string
+  watcherTokenMissing: string
+  watcherPlayersLabel: string
+  watcherPlayersAll: string
+  watcherSubscriptionsUpdated: string
+  watcherRtaConnected: string
+  watcherRtaDisconnected: string
 
   // Backfill
   backfillTitle: string
@@ -145,6 +161,22 @@ const FR_TEXT: SettingsText = {
   watcherPresenceEnabled: 'Détection automatique via Xbox RTA',
   watcherPresenceDescription:
     'Détecte automatiquement quand vous lancez ou quittez Halo Infinite pour déclencher une synchronisation. Nécessite un jeton XSTS valide.',
+  watcherAuthButton: 'Connecter via Xbox',
+  watcherAuthReconnect: 'Reconnecter Xbox',
+  watcherAuthInstructions: 'Rendez-vous sur {url} et entrez le code ci-dessous :',
+  watcherAuthCopyCode: 'Copier le code',
+  watcherAuthOpenLink: 'Ouvrir le lien',
+  watcherAuthPending: 'En attente de validation…',
+  watcherAuthSuccess: 'Connexion réussie ! Token XSTS valide.',
+  watcherAuthFailed: 'Échec de la connexion.',
+  watcherTokenValid: 'Jeton valide jusqu’au {date} ({gamertag})',
+  watcherTokenExpired: 'Jeton expiré',
+  watcherTokenMissing: 'Aucun jeton Xbox configuré',
+  watcherPlayersLabel: 'Joueurs surveillés',
+  watcherPlayersAll: 'Tous les joueurs',
+  watcherSubscriptionsUpdated: 'Abonnements mis à jour',
+  watcherRtaConnected: 'RTA connecté',
+  watcherRtaDisconnected: 'RTA déconnecté',
 
   backfillTitle: 'Données à inclure dans le backfill',
   backfillMedals: 'Médailles',
@@ -219,6 +251,22 @@ const EN_TEXT: SettingsText = {
   watcherPresenceEnabled: 'Automatic detection via Xbox RTA',
   watcherPresenceDescription:
     'Automatically detects when you launch or quit Halo Infinite to trigger a sync. Requires a valid XSTS token.',
+  watcherAuthButton: 'Connect via Xbox',
+  watcherAuthReconnect: 'Reconnect Xbox',
+  watcherAuthInstructions: 'Go to {url} and enter the code below:',
+  watcherAuthCopyCode: 'Copy code',
+  watcherAuthOpenLink: 'Open link',
+  watcherAuthPending: 'Waiting for validation…',
+  watcherAuthSuccess: 'Connected! XSTS token valid.',
+  watcherAuthFailed: 'Connection failed.',
+  watcherTokenValid: 'Valid until {date} ({gamertag})',
+  watcherTokenExpired: 'Token expired',
+  watcherTokenMissing: 'No Xbox token configured',
+  watcherPlayersLabel: 'Watched players',
+  watcherPlayersAll: 'All players',
+  watcherSubscriptionsUpdated: 'Subscriptions updated',
+  watcherRtaConnected: 'RTA connected',
+  watcherRtaDisconnected: 'RTA disconnected',
 
   backfillTitle: 'Data to include in backfill',
   backfillMedals: 'Medals',

@@ -336,9 +336,12 @@ func (p *HaloProvider) doGet(ctx context.Context, rawURL string, tokens *domain.
 			return nil, fmt.Errorf("doGet new request: %w", err)
 		}
 		req.Header.Set("Accept", "application/json")
-		req.Header.Set("x-343-authorization-spartan", tokens.SpartanToken)
-		if tokens.ClearanceToken != "" {
-			req.Header.Set("343-clearance", tokens.ClearanceToken)
+		// Auth headers uniquement si tokens fournis (API publiques vs privées)
+		if tokens != nil {
+			req.Header.Set("x-343-authorization-spartan", tokens.SpartanToken)
+			if tokens.ClearanceToken != "" {
+				req.Header.Set("343-clearance", tokens.ClearanceToken)
+			}
 		}
 
 		resp, err := p.client.Do(req)

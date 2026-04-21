@@ -67,15 +67,15 @@ func (r *MetadataRepo) GetExistingTranslations(
 	lang string,
 	freshnessDays int,
 ) (map[string]bool, error) {
-	query := `
+	query := fmt.Sprintf(`
 		SELECT asset_id
 		FROM asset_translations
 		WHERE asset_type = ?
 		  AND lang = ?
-		  AND fetched_at >= now() - INTERVAL ? DAY
-	`
+		  AND fetched_at >= now() - INTERVAL '%d DAY'
+	`, freshnessDays)
 
-	rows, err := r.meta.Query(ctx, query, assetType, lang, freshnessDays)
+	rows, err := r.meta.Query(ctx, query, assetType, lang)
 	if err != nil {
 		return nil, fmt.Errorf("GetExistingTranslations(%s, %s): %w", assetType, lang, err)
 	}
@@ -149,4 +149,53 @@ func (r *MetadataRepo) GetAssetTranslationCount(
 	}
 
 	return counts, rows.Err()
+}
+
+// GetAssetNameIndex retourne un mapping name→asset_id pour un type d'asset donné (langue en-US).
+// Utilisé par le script migrate-static-maps pour résoudre les noms de fichiers.
+func (r *MetadataRepo) GetAssetNameIndex(
+	ctx context.Context,
+	assetType string,
+) (map[string]string, error) {
+	query := `
+		SELECT asset_id, name
+		FROM asset_translations
+		WHERE asset_type = ?
+		  AND lang = 'en-US'
+	`
+
+	rows, err := r.meta.Query(ctx, query, assetType)
+	if err != nil {
+		return nil, fmt.Errorf("query asset_translations: %w", err)
+	}
+	defer rows.Close()
+
+	index := make(map[string]string)
+	for rows.Next() {
+		var assetID, name string
+		if err := rows.Scan(&assetID, &name); err != nil {
+			return nil, fmt.Errorf("scan: %w", err)
+		}
+		index[name] = assetID
+	}
+
+	return index, rows.Err()
+}
+
+// UpsertMapImageRegistry insère ou met à jour une entrée dans map_images_registry.
+// Utilisé par le script migrate-static-maps pour indexer les fichiers statiques.
+func (r *MetadataRepo) UpsertMapImageRegistry(
+	ctx context.Context,
+	titleID, mapID, localPath string,
+) error {
+	query := `
+		INSERT INTO map_images_registry (title_id, map_id, local_path, fetched_at)
+		VALUES (?, ?, ?, now())
+		ON CONFLICT (title_id, map_id) DO UPDATE SET
+			local_path = EXCLUDED.local_path,
+			fetched_at = now()
+	`
+
+	_, err := r.meta.Exec(ctx, query, titleID, mapID, localPath)
+	return err
 }

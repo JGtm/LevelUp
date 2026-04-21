@@ -183,10 +183,11 @@ func (s *MediaService) UploadMedia(ctx context.Context, req domain.UploadRequest
 		"captures_dir", req.CapturesDir, "tolerance_min", tol)
 
 	idxResult, err := ops.IndexMedia(ops.MediaIndexOptions{
-		PlayerDBPath:       req.DBPath,
-		SharedSocialDBPath: req.SharedSocialDBPath,
-		CapturesDir:        req.CapturesDir,
-		ToleranceMin:       tol,
+		PlayerDBPath:        req.DBPath,
+		SharedSocialDBPath:  req.SharedSocialDBPath,
+		SharedMatchesDBPath: req.SharedMatchesDBPath,
+		CapturesDir:         req.CapturesDir,
+		ToleranceMin:        tol,
 	})
 	if err != nil {
 		result.Errors = append(result.Errors, fmt.Sprintf("indexation: %v", err))

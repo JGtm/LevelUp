@@ -318,7 +318,7 @@ type ConfigProvider interface {
 // HomeRepository fournit les données pour la page d'accueil Mission Control.
 // Implémenté par platform/duckdb.HomeRepo.
 type HomeRepository interface {
-	// LoadHomeMatches charge les 200 derniers matchs du joueur avec les KPIs (Q26).
+	// LoadHomeMatches charge tous les matchs du joueur avec les KPIs (Q26).
 	LoadHomeMatches(ctx context.Context) ([]domain.HomeMatchRow, error)
 
 	// CountPlayerMatches retourne le nombre total de matchs du joueur (Q26b).

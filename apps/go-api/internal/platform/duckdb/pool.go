@@ -1,7 +1,10 @@
 // Package duckdb — PlayerPool : pool de connexions DuckDB par joueur.
 //
 // Architecture :
-//   - Une connexion read-only par base (player stats.duckdb + shared_matches_v2.duckdb).
+//   - Une connexion dédiée par base.
+//   - stats.duckdb du joueur et metadata.duckdb restent ouvertes en read-write,
+//     car le serveur relit et persiste des snapshots live dans le même process.
+//   - shared_matches_v2.duckdb reste ouverte en read-only.
 //   - ATTACH shared_matches_v2 est réalisé une seule fois à l'init du pool.
 //   - Le pool est global au processus et threadsafe (sync.Map + singleflight).
 //   - Aucun appel à duckdb.Connect() hors de ce package.
@@ -39,10 +42,10 @@ func (c PlayerPoolConfig) PoolKey() string {
 
 // PlayerDB regroupe les connexions DB nécessaires pour un joueur.
 type PlayerDB struct {
-	Player       *DB // stats.duckdb du joueur (avec shared attaché)
+	Player       *DB // stats.duckdb du joueur (RW, avec shared/meta attachés)
 	Shared       *DB // shared_matches_v2.duckdb
 	SharedSocial *DB // shared_social.duckdb (médias, likes, favoris de matchs)
-	Metadata     *DB // metadata.duckdb
+	Metadata     *DB // metadata.duckdb (RW)
 	XUID         string
 	Gamertag     string
 	TitleSlug    string // Sprint 44 : titre associé
@@ -103,7 +106,7 @@ func openPlayerDB(ctx context.Context, cfg PlayerPoolConfig) (*PlayerDB, error) 
 		return nil, fmt.Errorf("pool: migrate player db %s: %w", cfg.Gamertag, err)
 	}
 
-	playerDB, err := OpenReadOnly(cfg.PlayerDBPath)
+	playerDB, err := OpenReadWrite(cfg.PlayerDBPath)
 	if err != nil {
 		return nil, fmt.Errorf("pool: open player db %s: %w", cfg.Gamertag, err)
 	}
@@ -114,7 +117,7 @@ func openPlayerDB(ctx context.Context, cfg PlayerPoolConfig) (*PlayerDB, error) 
 		return nil, fmt.Errorf("pool: open shared db: %w", err)
 	}
 
-	metaDB, err := OpenReadOnly(cfg.MetaDBPath)
+	metaDB, err := OpenReadWrite(cfg.MetaDBPath)
 	if err != nil {
 		_ = playerDB.Close()
 		_ = sharedDB.Close()
@@ -122,12 +125,16 @@ func openPlayerDB(ctx context.Context, cfg PlayerPoolConfig) (*PlayerDB, error) 
 	}
 
 	// SharedSocial est optionnel : absent si le fichier n'existe pas encore.
+	// Ouvert en read-write pour permettre les écritures (favoris, likes).
 	var socialDB *DB
 	if cfg.SharedSocialDBPath != "" {
-		socialDB, err = OpenReadOnly(cfg.SharedSocialDBPath)
+		socialDB, err = OpenReadWrite(cfg.SharedSocialDBPath)
 		if err != nil {
 			// Non bloquant : la DB sera créée lors de la prochaine migration.
 			socialDB = nil
+		} else {
+			// Appliquer les migrations shared_social (idempotentes).
+			_ = migration.RunForDB(socialDB.SQLDb(), migration.TargetSharedSocial)
 		}
 	}
 
@@ -201,10 +208,12 @@ func attachShared(ctx context.Context, db *DB, sharedPath string) error {
 
 // attachMeta attache metadata.duckdb sous l'alias "meta" sur une connexion player.
 // Permet les JOIN sur meta.career_ranks, meta.weapon_labels, etc.
+// L'ATTACH reste en read-write pour conserver la meme configuration de fichier
+// que la connexion runtime metadata, et eviter les conflits DuckDB RO/RW.
 // Idempotent : ignore l'erreur si déjà attachée.
 func attachMeta(ctx context.Context, db *DB, metaPath string) error {
 	_, err := db.Exec(ctx,
-		fmt.Sprintf("ATTACH '%s' AS meta (READ_ONLY)", metaPath),
+		fmt.Sprintf("ATTACH '%s' AS meta", metaPath),
 	)
 	if err != nil {
 		// Déjà attachée — vérifier si accessible.

@@ -49,6 +49,72 @@ func TestGetOrOpen_RunsPlayerMigrationsForLegacySchema(t *testing.T) {
 	}
 }
 
+func TestGetOrOpen_AllowsRuntimeReadWriteHandlesOnPlayerAndMetadata(t *testing.T) {
+	duckdb.CloseAll()
+	t.Cleanup(duckdb.CloseAll)
+
+	ctx := context.Background()
+	dir := t.TempDir()
+	playerPath := filepath.Join(dir, "stats.duckdb")
+	sharedPath := filepath.Join(dir, "shared_matches_v2.duckdb")
+	metaPath := filepath.Join(dir, "metadata.duckdb")
+
+	seedLegacyPlayerDB(t, playerPath)
+	seedSharedDBForPoolTest(t, sharedPath)
+	seedMetaDBForPoolTest(t, metaPath)
+
+	pdb, err := duckdb.GetOrOpen(ctx, duckdb.PlayerPoolConfig{
+		Gamertag:     "RuntimeWriter",
+		XUID:         "xuid-runtime-001",
+		TitleSlug:    "halo_infinite",
+		PlayerDBPath: playerPath,
+		SharedDBPath: sharedPath,
+		MetaDBPath:   metaPath,
+	})
+	if err != nil {
+		t.Fatalf("GetOrOpen runtime writer: %v", err)
+	}
+
+	rwPlayer, err := duckdb.OpenReadWrite(playerPath)
+	if err != nil {
+		t.Fatalf("OpenReadWrite(player): %v", err)
+	}
+	defer rwPlayer.Close()
+
+	if _, err := rwPlayer.Exec(ctx, `
+		INSERT INTO sync_meta (key, value)
+		VALUES ('live_update', 'ok')
+		ON CONFLICT (key) DO UPDATE SET value = excluded.value`); err != nil {
+		t.Fatalf("rw player exec: %v", err)
+	}
+
+	var playerValue string
+	if err := pdb.Player.QueryRow(ctx, `SELECT value FROM sync_meta WHERE key = 'live_update'`).Scan(&playerValue); err != nil {
+		t.Fatalf("query sync_meta via pooled player db: %v", err)
+	}
+	if playerValue != "ok" {
+		t.Fatalf("unexpected sync_meta value: got %q want %q", playerValue, "ok")
+	}
+
+	rwMeta, err := duckdb.OpenReadWrite(metaPath)
+	if err != nil {
+		t.Fatalf("OpenReadWrite(metadata): %v", err)
+	}
+	defer rwMeta.Close()
+
+	if _, err := rwMeta.Exec(ctx, `INSERT INTO career_ranks (rank_id, rank_name) VALUES (2, 'Bronze')`); err != nil {
+		t.Fatalf("rw metadata exec: %v", err)
+	}
+
+	var rankCount int
+	if err := pdb.Metadata.QueryRow(ctx, `SELECT COUNT(*) FROM career_ranks WHERE rank_id = 2`).Scan(&rankCount); err != nil {
+		t.Fatalf("query career_ranks via pooled metadata db: %v", err)
+	}
+	if rankCount != 1 {
+		t.Fatalf("unexpected career_ranks count: got %d want 1", rankCount)
+	}
+}
+
 func seedLegacyPlayerDB(t *testing.T, path string) {
 	t.Helper()
 	ctx := context.Background()

@@ -3,6 +3,8 @@
 > Ce fichier trace l'origine, les transformations et la destination de chaque flux de données.
 > Mis à jour : 2026-04-18
 
+> Note bugfix 2026-04-21 : aucun flux de données modifié. Le correctif porte uniquement sur le cycle de vie des connexions DuckDB partagées (`metadata.duckdb`) afin d'éviter qu'une lecture temporaire des défis ferme la connexion réutilisée ensuite par le season pass/home.
+
 > Note tooling dev 2026-04-20 : aucun flux de données modifié dans cette passe. Les changements portent uniquement sur la chaîne de démarrage locale Go/React : port API configurable via `API_PORT`, réutilisation d'une API déjà active, et proxy Vite dev paramétrable via `VITE_API_PROXY_TARGET`.
 
 > Note média 2026-04-18 : les likes de la galerie React sont désormais persistés dans `players/{gamertag}/stats.duckdb`, table `media_files`, colonnes `liked` et `liked_at`, via `PATCH /players/{player_slug}/media/likes`. `POST /players/{player_slug}/pages/media` renvoie aussi `liked` + `like_count` pour la home et la galerie.

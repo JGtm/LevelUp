@@ -154,12 +154,13 @@ func runIndexMedia(cfg *config.AppConfig, args []string) error {
 	}
 	pr := title.NewPathResolver(cfg.RepoRoot)
 	result, err := ops.IndexMedia(ops.MediaIndexOptions{
-		Gamertag:           *gamertag,
-		PlayerDBPath:       pr.PlayerDBPath(*titleSlug, *gamertag),
-		SharedSocialDBPath: pr.LegacySharedSocialDBPath(),
-		CapturesDir:        pr.PlayerCapturesDir(*titleSlug, *gamertag),
-		ForceRescan:        *force,
-		ToleranceMin:       *tolMin,
+		Gamertag:            *gamertag,
+		PlayerDBPath:        pr.PlayerDBPath(*titleSlug, *gamertag),
+		SharedSocialDBPath:  pr.LegacySharedSocialDBPath(),
+		SharedMatchesDBPath: pr.LegacySharedDBPath(),
+		CapturesDir:         pr.PlayerCapturesDir(*titleSlug, *gamertag),
+		ForceRescan:         *force,
+		ToleranceMin:        *tolMin,
 	})
 	if err != nil {
 		return err
