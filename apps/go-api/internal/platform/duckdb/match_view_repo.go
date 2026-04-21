@@ -4,6 +4,8 @@ package duckdb
 import (
 	"context"
 	"fmt"
+	"strconv"
+	"strings"
 	"time"
 
 	"levelup/go-api/internal/domain"
@@ -149,14 +151,28 @@ func (r *MatchViewRepo) GetMatchMedals(ctx context.Context, xuid, matchID string
 	defer rows.Close()
 
 	var results []domain.MedalRaw
+	var medalIDs []int64
 	for rows.Next() {
 		var m domain.MedalRaw
-		if err := rows.Scan(&m.MedalID, &m.Count, &m.Label); err != nil {
+		if err := rows.Scan(&m.MedalID, &m.Count); err != nil {
 			return nil, fmt.Errorf("MatchViewRepo.GetMatchMedals scan: %w", err)
 		}
 		results = append(results, m)
+		medalIDs = append(medalIDs, m.MedalID)
 	}
-	return results, rows.Err()
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+
+	labels := r.lookupMedalLabels(ctx, medalIDs)
+	for index := range results {
+		if label, ok := labels[results[index].MedalID]; ok {
+			results[index].Label = label
+			continue
+		}
+		results[index].Label = strconv.FormatInt(results[index].MedalID, 10)
+	}
+	return results, nil
 }
 
 // GetMatchEvents retourne les events highlight du match (Q21).
@@ -195,14 +211,103 @@ func (r *MatchViewRepo) GetMatchWeaponKills(ctx context.Context, xuid, matchID s
 	defer rows.Close()
 
 	var results []domain.WeaponKillRaw
+	var weaponIDs []int64
 	for rows.Next() {
 		var w domain.WeaponKillRaw
-		if err := rows.Scan(&w.WeaponID, &w.WeaponLabel, &w.Kills); err != nil {
+		if err := rows.Scan(&w.WeaponID, &w.Kills); err != nil {
 			return nil, fmt.Errorf("MatchViewRepo.GetMatchWeaponKills scan: %w", err)
 		}
 		results = append(results, w)
+		weaponIDs = append(weaponIDs, w.WeaponID)
 	}
-	return results, rows.Err()
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+
+	labels := r.lookupWeaponLabels(ctx, weaponIDs)
+	for index := range results {
+		if label, ok := labels[results[index].WeaponID]; ok {
+			results[index].WeaponLabel = label
+			continue
+		}
+		results[index].WeaponLabel = strconv.FormatInt(results[index].WeaponID, 10)
+	}
+	return results, nil
+}
+
+func (r *MatchViewRepo) lookupMedalLabels(ctx context.Context, medalIDs []int64) map[int64]string {
+	return lookupLabelsByID(
+		ctx,
+		r.pdb.Metadata,
+		`SELECT medal_id, citation_name_display
+		 FROM citation_mappings
+		 WHERE medal_id IN (%s)
+		   AND citation_name_display IS NOT NULL
+		   AND citation_name_display <> ''`,
+		medalIDs,
+	)
+}
+
+func (r *MatchViewRepo) lookupWeaponLabels(ctx context.Context, weaponIDs []int64) map[int64]string {
+	return lookupLabelsByID(
+		ctx,
+		r.pdb.Metadata,
+		`SELECT weapon_id, COALESCE(label_fr, label_en, CAST(weapon_id AS VARCHAR)) AS weapon_label
+		 FROM weapon_labels
+		 WHERE weapon_id IN (%s)`,
+		weaponIDs,
+	)
+}
+
+func lookupLabelsByID(ctx context.Context, db *DB, queryTemplate string, ids []int64) map[int64]string {
+	labels := map[int64]string{}
+	query, args, ok := buildLookupQuery(queryTemplate, ids)
+	if !ok || db == nil {
+		return labels
+	}
+
+	rows, err := db.Query(ctx, query, args...)
+	if err != nil {
+		return labels
+	}
+	defer rows.Close()
+
+	for rows.Next() {
+		var id int64
+		var label string
+		if err := rows.Scan(&id, &label); err == nil && label != "" {
+			labels[id] = label
+		}
+	}
+	return labels
+}
+
+func buildLookupQuery(queryTemplate string, ids []int64) (string, []interface{}, bool) {
+	uniqueIDs := uniqueInt64s(ids)
+	if len(uniqueIDs) == 0 {
+		return "", nil, false
+	}
+
+	placeholders := make([]string, 0, len(uniqueIDs))
+	args := make([]interface{}, 0, len(uniqueIDs))
+	for _, id := range uniqueIDs {
+		placeholders = append(placeholders, "?")
+		args = append(args, id)
+	}
+	return fmt.Sprintf(queryTemplate, strings.Join(placeholders, ",")), args, true
+}
+
+func uniqueInt64s(ids []int64) []int64 {
+	seen := make(map[int64]struct{}, len(ids))
+	unique := make([]int64, 0, len(ids))
+	for _, id := range ids {
+		if _, ok := seen[id]; ok {
+			continue
+		}
+		seen[id] = struct{}{}
+		unique = append(unique, id)
+	}
+	return unique
 }
 
 // GetMatchKVPairs retourne les paires killer→victim du match (Q20).

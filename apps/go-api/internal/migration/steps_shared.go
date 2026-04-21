@@ -407,6 +407,20 @@ func init() {
 			return execScript(db, `DROP TABLE IF EXISTS media_likes;`)
 		},
 	})
+
+	// Colonnes i18n pour match_registry (map_name_fr, pair_name_fr, playlist_name_fr).
+	Register(Migration{
+		Name:        "add_match_registry_i18n_columns",
+		TargetDB:    TargetShared,
+		Description: "Ajoute map_name_fr, pair_name_fr, playlist_name_fr à match_registry (idempotent)",
+		ApplySchema: func(db *sql.DB) error {
+			return execScript(db, `
+				ALTER TABLE match_registry ADD COLUMN IF NOT EXISTS map_name_fr VARCHAR;
+				ALTER TABLE match_registry ADD COLUMN IF NOT EXISTS pair_name_fr VARCHAR;
+				ALTER TABLE match_registry ADD COLUMN IF NOT EXISTS playlist_name_fr VARCHAR;
+			`)
+		},
+	})
 }
 
 // applyHighlightEventsAutoincrement recrée highlight_events avec séquence.

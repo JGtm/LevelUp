@@ -296,6 +296,58 @@ func TestMatchViewRepo_GetMatchScoreboard_WithData(t *testing.T) {
 	}
 }
 
+func TestMatchViewRepo_GetMatchMedals_WithMetadataLabels(t *testing.T) {
+	pdb := newTestPlayerDB(t)
+	ctx := context.Background()
+	_, err := pdb.Player.Exec(ctx,
+		`INSERT INTO shared.medals_earned (medal_id, medal_name_id, xuid, match_id, count) VALUES (?,?,?,?,?)`,
+		uint64(1001), uint64(1001), pTestXUID, "m1", 2,
+	)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	repo := NewMatchViewRepo(pdb, pTestXUID)
+	rows, err := repo.GetMatchMedals(ctx, pTestXUID, "m1")
+	if err != nil {
+		t.Fatalf("GetMatchMedals: %v", err)
+	}
+	if len(rows) != 1 {
+		t.Fatalf("attendu 1 médaille, obtenu %d", len(rows))
+	}
+	if rows[0].Label != "Killing Spree" {
+		t.Errorf("label = %q, want %q", rows[0].Label, "Killing Spree")
+	}
+}
+
+func TestMatchViewRepo_GetMatchWeaponKills_WithMetadataLabels(t *testing.T) {
+	pdb := newTestPlayerDB(t)
+	ctx := context.Background()
+	_, err := pdb.Player.Exec(ctx,
+		`INSERT INTO shared.weapon_kills (match_id, xuid, weapon_id, kill_count) VALUES (?,?,?,?), (?,?,?,?)`,
+		"m1", pTestXUID, uint64(42), 3,
+		"m1", pTestXUID, uint64(42), 1,
+	)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	repo := NewMatchViewRepo(pdb, pTestXUID)
+	rows, err := repo.GetMatchWeaponKills(ctx, pTestXUID, "m1")
+	if err != nil {
+		t.Fatalf("GetMatchWeaponKills: %v", err)
+	}
+	if len(rows) != 1 {
+		t.Fatalf("attendu 1 arme, obtenu %d", len(rows))
+	}
+	if rows[0].WeaponLabel != "BR75" {
+		t.Errorf("weapon_label = %q, want %q", rows[0].WeaponLabel, "BR75")
+	}
+	if rows[0].Kills != 4 {
+		t.Errorf("kills = %d, want 4", rows[0].Kills)
+	}
+}
+
 // ---------------------------------------------------------------------------
 // SquadRepo
 // ---------------------------------------------------------------------------
