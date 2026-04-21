@@ -21,10 +21,24 @@ import (
 	"os/exec"
 	"path/filepath"
 	"strings"
+	"sync"
 	"time"
 
 	_ "github.com/duckdb/duckdb-go/v2"
 )
+
+// indexMu sérialise les IndexMedia par chemin de DB cible.
+// DuckDB ne supporte pas ATTACH/DETACH concurrent sur la même instance.
+var (
+	indexMuMap sync.Map // map[string]*sync.Mutex
+)
+
+func indexLock(path string) func() {
+	val, _ := indexMuMap.LoadOrStore(path, &sync.Mutex{})
+	mu := val.(*sync.Mutex)
+	mu.Lock()
+	return mu.Unlock
+}
 
 // MediaIndexOptions configure l'indexation des médias.
 type MediaIndexOptions struct {
@@ -60,6 +74,7 @@ var supportedExtensions = map[string]string{
 
 // IndexMedia scanne le répertoire captures et indexe les nouveaux fichiers.
 // Portage de MediaIndexer.scan_and_index() Python.
+// Thread-safe : sérialise les accès par chemin de DB cible (mutex par path).
 func IndexMedia(opts MediaIndexOptions) (MediaIndexResult, error) {
 	if opts.ToleranceMin == 0 {
 		opts.ToleranceMin = 5
@@ -70,6 +85,11 @@ func IndexMedia(opts MediaIndexOptions) (MediaIndexResult, error) {
 	if opts.SharedSocialDBPath != "" {
 		targetPath = opts.SharedSocialDBPath
 	}
+
+	// Sérialiser les IndexMedia sur le même fichier DB pour éviter la race
+	// ATTACH/DETACH dans AssociateMediaWithMatches (duckdb-go partage l'instance).
+	unlock := indexLock(targetPath)
+	defer unlock()
 
 	db, err := sql.Open("duckdb", targetPath)
 	if err != nil {

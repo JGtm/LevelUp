@@ -9,6 +9,7 @@ package ops
 import (
 	"os"
 	"path/filepath"
+	"sync"
 	"testing"
 )
 
@@ -261,5 +262,91 @@ func TestFindLatestParquetFiles_FallbackParquet(t *testing.T) {
 	}
 	if gotTS == "" {
 		t.Error("expected non-empty ts depuis fallback .parquet")
+	}
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// IndexMedia — concurrence (mutex par chemin DB)
+// ─────────────────────────────────────────────────────────────────────────────
+
+// TestIndexMedia_ConcurrentSameDB_NoRace vérifie que deux IndexMedia simultanés
+// sur la même shared_social.duckdb ne produisent pas d'erreur ATTACH/DETACH.
+// Sans le mutex indexLock, duckdb-go partage la même instance interne et
+// le second ATTACH échoue avec "already attached".
+func TestIndexMedia_ConcurrentSameDB_NoRace(t *testing.T) {
+	dir := t.TempDir()
+	dbPath := filepath.Join(dir, "shared_social.duckdb")
+
+	// Deux sous-répertoires avec chacun un fichier média
+	for _, sub := range []string{"player1", "player2"} {
+		capDir := filepath.Join(dir, sub)
+		if err := os.MkdirAll(capDir, 0o755); err != nil {
+			t.Fatal(err)
+		}
+		if err := os.WriteFile(filepath.Join(capDir, "clip.mp4"), []byte("x"), 0o644); err != nil {
+			t.Fatal(err)
+		}
+	}
+
+	makeOpts := func(sub string) MediaIndexOptions {
+		return MediaIndexOptions{
+			SharedSocialDBPath: dbPath,
+			CapturesDir:        filepath.Join(dir, sub),
+			ToleranceMin:       5,
+		}
+	}
+
+	var wg sync.WaitGroup
+	errs := make([]error, 2)
+	for i, sub := range []string{"player1", "player2"} {
+		wg.Add(1)
+		go func(idx int, s string) {
+			defer wg.Done()
+			_, errs[idx] = IndexMedia(makeOpts(s))
+		}(i, sub)
+	}
+	wg.Wait()
+
+	for i, err := range errs {
+		if err != nil {
+			t.Errorf("goroutine %d: IndexMedia error: %v", i, err)
+		}
+	}
+}
+
+// TestIndexMedia_ConcurrentSameDB_SameDir simule deux uploads depuis le même joueur
+// (deux navigateurs) : même DB et même répertoire, trois goroutines simultanées.
+func TestIndexMedia_ConcurrentSameDB_SameDir(t *testing.T) {
+	dir := t.TempDir()
+	dbPath := filepath.Join(dir, "shared_social.duckdb")
+	capDir := filepath.Join(dir, "captures")
+	if err := os.MkdirAll(capDir, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(capDir, "clip.mp4"), []byte("x"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+
+	optsVal := MediaIndexOptions{
+		SharedSocialDBPath: dbPath,
+		CapturesDir:        capDir,
+		ToleranceMin:       5,
+	}
+
+	var wg sync.WaitGroup
+	errs := make([]error, 3)
+	for i := range 3 {
+		wg.Add(1)
+		go func(idx int) {
+			defer wg.Done()
+			_, errs[idx] = IndexMedia(optsVal)
+		}(i)
+	}
+	wg.Wait()
+
+	for i, err := range errs {
+		if err != nil {
+			t.Errorf("goroutine %d: IndexMedia error: %v", i, err)
+		}
 	}
 }
