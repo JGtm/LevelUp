@@ -5,9 +5,13 @@ import (
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
+	"strings"
+	"sync"
 	"sync/atomic"
 	"testing"
 	"time"
+
+	"github.com/gorilla/websocket"
 )
 
 // =============================================================================
@@ -432,5 +436,67 @@ func TestNewSteamPoller(t *testing.T) {
 	}
 	if p.interval != defaultSteamInterval {
 		t.Errorf("interval = %v", p.interval)
+	}
+}
+
+// TestRTAClient_HandleMessage_SubscribeRefused_Status3 vérifie que status=3
+// (accès refusé / token expiré) déclenche la fermeture de la connexion WS.
+// Cela garantit que RunWithReconnect retente avec un token frais.
+func TestRTAClient_HandleMessage_SubscribeRefused_Status3(t *testing.T) {
+	// Créer un faux serveur WS qui reste ouvert (on veut observer la fermeture côté client)
+	closed := make(chan struct{}, 1)
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		upgrader := websocket.Upgrader{CheckOrigin: func(*http.Request) bool { return true }}
+		conn, err := upgrader.Upgrade(w, r, nil)
+		if err != nil {
+			return
+		}
+		defer conn.Close()
+		// Signaler quand le client ferme
+		conn.ReadMessage() //nolint:errcheck // on attend la fermeture
+		close(closed)
+	}))
+	defer srv.Close()
+
+	c := NewRTAClient("auth")
+
+	// Connecter au faux serveur
+	wsURL := "ws" + strings.TrimPrefix(srv.URL, "http")
+	c.connMu.Lock()
+	c.closeOnce = &sync.Once{}
+	dialer := websocket.Dialer{}
+	conn, _, err := dialer.Dial(wsURL, nil)
+	if err != nil {
+		c.connMu.Unlock()
+		t.Fatalf("dial: %v", err)
+	}
+	c.conn = conn
+	c.connected.Store(true)
+	c.connMu.Unlock()
+
+	ctx := context.Background()
+
+	// Enregistrer un pending subscribe
+	c.pendingMu.Lock()
+	c.pending[99] = pendingSub{xuid: "xuid-99", handler: func(PresenceEvent) {}}
+	c.pendingMu.Unlock()
+
+	// Simuler status=3 (accès refusé) : [1, 99, 3, 0]
+	c.handleMessage(ctx, []byte(`[1, 99, 3, 0]`))
+
+	// Le closeOnce doit avoir fermé la connexion (goroutine async → attendre max 500ms)
+	select {
+	case <-closed:
+		// OK : le serveur a détecté la fermeture
+	case <-time.After(500 * time.Millisecond):
+		t.Error("status=3 aurait dû fermer la connexion WS pour forcer un reconnect")
+	}
+
+	// Le pending doit avoir été retiré (delete avant le check status)
+	c.pendingMu.Lock()
+	_, stillPending := c.pending[99]
+	c.pendingMu.Unlock()
+	if stillPending {
+		t.Error("pending doit être supprimé après réception de la réponse")
 	}
 }

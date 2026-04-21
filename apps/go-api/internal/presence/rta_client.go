@@ -92,6 +92,10 @@ type RTAClient struct {
 
 	// connected indique si le WebSocket est actif
 	connected atomic.Bool
+
+	// closeOnce évite de fermer la connexion plusieurs fois pour la même cause.
+	// Réinitialisé à chaque Connect().
+	closeOnce *sync.Once
 }
 
 type pendingSub struct {
@@ -106,6 +110,7 @@ func NewRTAClient(authHeader string) *RTAClient {
 		pending:    make(map[int64]pendingSub),
 		subs:       make(map[int]*subscription),
 		xuidToSub:  make(map[string]int),
+		closeOnce:  &sync.Once{},
 	}
 	c.nextSeq.Store(1)
 	return c
@@ -119,6 +124,8 @@ func (c *RTAClient) Connect(ctx context.Context) error {
 	if c.conn != nil {
 		c.conn.Close()
 	}
+	// Réinitialiser le closeOnce pour que la nouvelle connexion puisse se fermer si besoin.
+	c.closeOnce = &sync.Once{}
 
 	slog.InfoContext(ctx, "rta: connexion WebSocket", "endpoint", rtaEndpoint)
 
@@ -324,6 +331,20 @@ func (c *RTAClient) handleSubscribeResponse(ctx context.Context, msg []json.RawM
 			"status", status,
 			"sub_id", subID,
 		)
+		if status == 3 {
+			// Status=3 = accès refusé, probablement token XSTS expiré.
+			// Fermer la connexion (une seule fois) pour forcer un reconnect
+			// via RunWithReconnect, qui repartira avec un token frais.
+			c.closeOnce.Do(func() {
+				slog.WarnContext(ctx, "rta: status=3 — fermeture connexion, forcer re-auth")
+				c.connMu.Lock()
+				conn := c.conn
+				c.connMu.Unlock()
+				if conn != nil {
+					go conn.Close()
+				}
+			})
+		}
 		return
 	}
 
