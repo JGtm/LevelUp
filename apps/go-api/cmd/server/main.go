@@ -395,6 +395,25 @@ func startWatcherDaemon(ctx context.Context, cfg *config.AppConfig, settingsStor
 		Token:    tokens.XSTSToken,
 		UserHash: tokens.XSTSUserHash,
 	}
+
+	// Refresh XSTS proactif : si un access_token est disponible, on acquiert un XSTS frais
+	// avant de démarrer le daemon. Évite le scénario où le token stocké a été sauvegardé
+	// avec une TTL erronée (ancien code 90min) et est déjà expiré côté Xbox.
+	if tokens.AccessToken != "" {
+		slog.Info("watcher: refresh XSTS proactif avant démarrage...")
+		if freshResult, err := auth.AcquireXSTSForRTA(ctx, tokens.AccessToken); err == nil {
+			if storeErr := store.UpdateXSTS(freshResult, 55*time.Minute); storeErr == nil {
+				xstsResult = freshResult
+				slog.Info("watcher: XSTS frais obtenu",
+					"gamertag", freshResult.Gamertag,
+					"not_after", freshResult.NotAfter,
+				)
+			}
+		} else {
+			slog.Warn("watcher: refresh XSTS proactif échoué, utilisation du token stocké", "err", err)
+		}
+	}
+
 	daemon.Start(ctx, xstsResult.AuthHeader(), playerSummaries)
 
 	// Refresh loop : met à jour les tokens XSTS et le daemon
