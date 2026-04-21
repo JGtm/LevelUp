@@ -147,6 +147,9 @@ To do.txt
 
 # Logs locaux (non trackés)
 data/logs/*
+/migrate-static-maps-dry.log
+/populate-maps.log
+/unmatched_maps.csv
 
 # Scripts temporaires / de débogage locaux
 *_tmp.py
