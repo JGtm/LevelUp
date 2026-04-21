@@ -15,7 +15,7 @@ import { HomeBattlePassPanel } from './HomeBattlePassPanel'
 import { HomeHeroBanner } from './HomeHeroBanner'
 import { HomeChallengesList } from './HomeChallengesList'
 import { RecentMediaRail } from './RecentMediaRail'
-import { useHomePage, useChallenges, useSeasonPassPreview } from './queries'
+import { useHomePage, useSeasonPassPreview } from './queries'
 import { useSetMatchFavorite } from '@/features/match-history/queries'
 
 function KPICard({ label, value }: { label: string; value: string | number }) {
@@ -36,7 +36,6 @@ export function HomePage() {
     isLoading: isSeasonPassLoading,
     error: seasonPassError,
   } = useSeasonPassPreview(playerSlug)
-  const { data: challenges } = useChallenges(playerSlug)
   const [matchTab, setMatchTab] = useState<'recent' | 'favorites'>('recent')
   const favoriteMutation = useSetMatchFavorite(playerSlug)
 
@@ -92,6 +91,7 @@ export function HomePage() {
   const recentMedia = data.recent_media ?? []
   const soloSession = data.solo_session ?? null
   const squadSession = data.squad_session ?? null
+  const challenges = seasonPass?.challenges
 
   return (
     <div className="relative isolate flex flex-col">
@@ -133,7 +133,9 @@ export function HomePage() {
               <CardTitle className="text-base">Défis actifs</CardTitle>
             </CardHeader>
             <CardContent>
-              {challenges?.available ? (
+              {isSeasonPassLoading && !seasonPass ? (
+                <p className="text-sm text-muted-foreground">Chargement des défis…</p>
+              ) : challenges?.available ? (
                 <div className="space-y-3">
                   <p className="text-sm text-foreground">
                     <strong className="text-primary">{challenges.completed ?? 0}</strong> / {challenges.total ?? 0} complétés
@@ -147,6 +149,8 @@ export function HomePage() {
                     <p className="text-xs text-muted-foreground">{challenges.xp_available.toLocaleString('fr-FR')} XP disponibles</p>
                   )}
                 </div>
+              ) : seasonPassError ? (
+                <p className="text-sm text-muted-foreground">Non disponible</p>
               ) : (
                 <p className="text-sm text-muted-foreground">Non disponible</p>
               )}

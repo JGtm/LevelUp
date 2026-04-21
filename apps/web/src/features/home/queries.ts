@@ -4,7 +4,7 @@
 import { useQuery } from '@tanstack/react-query'
 import { api } from '@/lib/api/client'
 import { queryKeys } from '@/lib/query/keys'
-import type { HomePageResponse, BattlePassResponse, ChallengesResponse, SeasonPassPageResponse } from '@/lib/api/types'
+import type { HomePageResponse, BattlePassResponse, SeasonPassPageResponse } from '@/lib/api/types'
 
 export function useHomePage(playerSlug: string) {
   return useQuery({
@@ -31,16 +31,6 @@ export function useSeasonPassPreview(playerSlug: string) {
     queryFn: () => api.get<SeasonPassPageResponse>(`/players/${playerSlug}/pages/palmares/season-pass`),
     enabled: !!playerSlug,
     staleTime: 5 * 60 * 1000,
-    retry: false,
-  })
-}
-
-export function useChallenges(playerSlug: string) {
-  return useQuery({
-    queryKey: queryKeys.challenges(playerSlug),
-    queryFn: () => api.get<ChallengesResponse>(`/players/${playerSlug}/challenges`),
-    enabled: !!playerSlug,
-    staleTime: 60 * 60 * 1000, // 1h
     retry: false,
   })
 }

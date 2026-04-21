@@ -122,46 +122,77 @@ describe('HomePage', () => {
   })
 
   it('affiche les défis actifs détaillés triés du plus avancé au moins avancé', async () => {
+    let challengeEndpointCalls = 0
     server.use(
-      http.get('/api/v1/players/:playerSlug/challenges', () => HttpResponse.json({
+      http.get('/api/v1/players/:playerSlug/challenges', () => {
+        challengeEndpointCalls += 1
+        return HttpResponse.json({ error: 'should not be called' }, { status: 500 })
+      }),
+      http.get('/api/v1/players/:playerSlug/pages/palmares/season-pass', () => HttpResponse.json({
+        title_slug: 'halo_infinite',
         available: true,
-        total: 3,
-        completed: 0,
-        xp_available: 4500,
-        next_expiry: '2026-04-20T18:00:00Z',
-        items: [
+        active_track_path: 'RewardTracks/TrackA',
+        challenges: {
+          available: true,
+          total: 3,
+          completed: 0,
+          xp_available: 4500,
+          next_expiry: '2026-04-20T18:00:00Z',
+          items: [
+            {
+              challenge_path: 'challenge/not-started',
+              tracking_id: 'c3',
+              title: 'Défi pas commencé',
+              description: 'Commence ce défi.',
+              image_url: 'https://example.com/challenge-3.png',
+              progress_current: 0,
+              progress_target: 5,
+              progress_percent: 0,
+            },
+            {
+              challenge_path: 'ChallengeContent/ClientChallengeDefinitions/WeeklyChallenges/Action/ch1.json',
+              tracking_id: 'c1',
+              title: 'Défi avancé',
+              description: 'Presque terminé.',
+              image_url: 'https://example.com/challenge-1.png',
+              progress_current: 7,
+              progress_target: 10,
+              progress_percent: 70,
+            },
+            {
+              challenge_path: 'ChallengeContent/ClientChallengeDefinitions/DailyChallenges/ch2.json',
+              tracking_id: 'c2',
+              title: 'Défi en cours',
+              description: 'Continue la progression.',
+              image_url: 'https://example.com/challenge-2.png',
+              progress_current: 1,
+              progress_target: 3,
+              progress_percent: 33.3,
+            },
+          ],
+          error_hint: null,
+        },
+        passes: [
           {
-            challenge_path: 'challenge/not-started',
-            tracking_id: 'c3',
-            title: 'Défi pas commencé',
-            description: 'Commence ce défi.',
-            image_url: 'https://example.com/challenge-3.png',
-            progress_current: 0,
-            progress_target: 5,
-            progress_percent: 0,
-          },
-          {
-            challenge_path: 'ChallengeContent/ClientChallengeDefinitions/WeeklyChallenges/Action/ch1.json',
-            tracking_id: 'c1',
-            title: 'Défi avancé',
-            description: 'Presque terminé.',
-            image_url: 'https://example.com/challenge-1.png',
-            progress_current: 7,
-            progress_target: 10,
-            progress_percent: 70,
-          },
-          {
-            challenge_path: 'ChallengeContent/ClientChallengeDefinitions/DailyChallenges/ch2.json',
-            tracking_id: 'c2',
-            title: 'Défi en cours',
-            description: 'Continue la progression.',
-            image_url: 'https://example.com/challenge-2.png',
-            progress_current: 1,
-            progress_target: 3,
-            progress_percent: 33.3,
+            reward_track_path: 'RewardTracks/TrackA',
+            name: 'Operation Alpha',
+            description: null,
+            status: 'active',
+            is_active: true,
+            is_owned: true,
+            has_reached_max_rank: false,
+            current_rank: 12,
+            partial_progress: 300,
+            xp_per_rank: 1000,
+            max_rank: 20,
+            completion_percent: 60,
+            active_tier_rank: 13,
+            active_tier_progress_percent: 30,
+            image_url: 'https://example.com/track-a.png',
+            background_image_url: 'https://example.com/bg-a.png',
+            tiers: [],
           },
         ],
-        error_hint: null,
       })),
     )
 
@@ -192,6 +223,7 @@ describe('HomePage', () => {
     const fills = screen.getAllByTestId('home-challenge-progress-fill')
     expect(fills[0]).toHaveStyle({ width: '70%' })
     expect(fills[2]).toHaveStyle({ width: '0%' })
+    expect(challengeEndpointCalls).toBe(0)
   })
 
   it('affiche les KPIs globaux (Parties, Taux de victoire, K/D)', async () => {
