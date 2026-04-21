@@ -26,6 +26,7 @@ import (
 )
 
 var medalSFGroup singleflight.Group
+var mapSFGroup singleflight.Group // cache-aside maps (Phase 2)
 
 // MedalImageRepo est l'interface minimale requise par le handler (testable par injection).
 type MedalImageRepo interface {
@@ -33,15 +34,22 @@ type MedalImageRepo interface {
 	UpsertMedalImageCache(ctx context.Context, e duckdb.MedalImageEntry) error
 }
 
+// MapImageRepo est l'interface minimale pour le cache-aside des images de maps.
+type MapImageRepo interface {
+	GetMapImageCache(ctx context.Context, titleID string, mapID string) (*duckdb.MapImageEntry, error)
+	UpsertMapImageCache(ctx context.Context, e duckdb.MapImageEntry) error
+}
+
 // AssetHandler gère le cache-aside des images de médailles et assets Waypoint.
-// Utilise un MetadataRepo concret ou toute implémentation de MedalImageRepo.
+// Utilise un MetadataRepo concret ou toute implémentation de MedalImageRepo/MapImageRepo.
 type AssetHandler struct {
-	repo MedalImageRepo
+	repo    MedalImageRepo
+	mapRepo MapImageRepo
 }
 
 // NewAssetHandler crée un AssetHandler depuis un MetadataRepo réel.
 func NewAssetHandler(repo *duckdb.MetadataRepo) *AssetHandler {
-	return &AssetHandler{repo: repo}
+	return &AssetHandler{repo: repo, mapRepo: repo}
 }
 
 // NewAssetHandlerWithRepo crée un AssetHandler depuis une interface (pour les tests).
@@ -127,4 +135,79 @@ func fetchMedalImageURL(titleID string, medalID int64) (string, error) {
 func sha256Hex(data []byte) string {
 	h := sha256.Sum256(data)
 	return hex.EncodeToString(h[:])
+}
+
+// GetMapImage sert l'image d'une map depuis le cache local ou Waypoint.
+// GET /api/v1/assets/maps/{title_id}/{map_id}/image
+func (h *AssetHandler) GetMapImage(w http.ResponseWriter, r *http.Request) {
+	titleID := chi.URLParam(r, "title_id")
+	mapID := chi.URLParam(r, "map_id")
+
+	if mapID == "" {
+		http.Error(w, "map_id requis", http.StatusBadRequest)
+		return
+	}
+
+	ctx := r.Context()
+
+	entry, err := h.mapRepo.GetMapImageCache(ctx, titleID, mapID)
+	if err != nil {
+		http.Error(w, "erreur registry", http.StatusInternalServerError)
+		return
+	}
+
+	// Cache hit : redirection directe (local_path statique ou URL Waypoint).
+	if entry != nil && entry.ImageURL != "" {
+		http.Redirect(w, r, entry.ImageURL, http.StatusFound)
+		return
+	}
+
+	// Cache miss : fetch Waypoint via singleflight.
+	sfKey := fmt.Sprintf("map:%s:%s", titleID, mapID)
+	imgURLRaw, err, _ := mapSFGroup.Do(sfKey, func() (any, error) {
+		return fetchMapImageURL(titleID, mapID)
+	})
+	if err != nil {
+		http.Error(w, "fetch image Waypoint échoué", http.StatusBadGateway)
+		return
+	}
+
+	imgURL, _ := imgURLRaw.(string)
+
+	_ = h.mapRepo.UpsertMapImageCache(ctx, duckdb.MapImageEntry{
+		TitleID:     titleID,
+		MapID:       mapID,
+		ImageURL:    imgURL,
+		LocalPath:   "",
+		FetchedAt:   time.Now().UTC(),
+		ContentHash: sha256Hex([]byte(imgURL)),
+	})
+
+	http.Redirect(w, r, imgURL, http.StatusFound)
+}
+
+// fetchMapImageURL tente de résoudre l'URL d'image d'une map depuis Waypoint.
+// Pattern URL : https://gamecms-hacs.svc.halowaypoint.com/hi/images/map-variants/{title_id}/{map_id}.png
+// Si 404, retourne URL placeholder ou fallback.
+func fetchMapImageURL(titleID string, mapID string) (string, error) {
+	// URL standard Waypoint pour les images de maps
+	url := fmt.Sprintf(
+		"https://gamecms-hacs.svc.halowaypoint.com/hi/images/map-variants/%s/%s.png",
+		titleID, mapID,
+	)
+
+	resp, err := http.Get(url) //nolint:noctx
+	if err != nil {
+		return "", fmt.Errorf("GET map image: %w", err)
+	}
+	defer resp.Body.Close()
+	_, _ = io.ReadAll(resp.Body)
+
+	if resp.StatusCode == http.StatusNotFound {
+		// Fallback : retourner une URL de placeholder ou essayer un autre endpoint.
+		// Pour l'instant, retourner l'URL même si 404 (frontend gérera le fallback).
+		return url, fmt.Errorf("map image not found on Waypoint: %s", mapID)
+	}
+
+	return url, nil
 }
