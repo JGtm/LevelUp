@@ -75,6 +75,7 @@ data/
 ## Go API — Points chauds récupérés le 2026-04-18
 
 - `apps/go-api/internal/platform/duckdb/db.go` + `internal/platform/duckdb/persist_sink.go` + `internal/platform/lab/provider.go` : le cache global des connexions DuckDB est désormais compté par références ; une ouverture temporaire de `metadata.duckdb` ne peut plus fermer `PlayerDB.Metadata` et casser la home / le season pass quand les défis et le battle pass chargent en parallèle.
+- `apps/go-api/internal/platform/duckdb/pool.go` + `queries_match.go` + `match_view_repo.go` : `metadata.duckdb` n'est plus attachée à `stats.duckdb` dans le pool joueur ; les labels médailles/armes de la vue match sont désormais enrichis via `PlayerDB.Metadata`, ce qui élimine les conflits DuckDB de type `same database file with a different configuration` / `Unique file handle conflict`.
 - `apps/go-api/internal/api/handlers/match_exclusion.go` : endpoints `PATCH /matches/{match_id}/exclusion` + `GET /match-exclusions` pour ignorer/réactiver des matchs au niveau joueur.
 - `apps/go-api/internal/platform/duckdb/match_exclusion_repo.go` : persistance `player_match_enrichment.is_excluded` avec UPSERT côté player DB.
 - `apps/go-api/internal/service/match_history_service.go` : filtrage des matchs exclus avant pagination, export CSV et agrégats de win rate.
