@@ -26,14 +26,17 @@ import (
 	"levelup/go-api/internal/platform/userstore"
 	"levelup/go-api/internal/port"
 	"levelup/go-api/internal/service"
+	"levelup/go-api/internal/watcher"
 )
 
 // NewRouter construit le routeur chi avec tous les endpoints.
 // Construction par injection de dépendances — pas d'état global.
+// daemon peut être nil si le watcher n'est pas actif au démarrage.
 func NewRouter(
 	cfg *config.AppConfig,
 	bootRepo port.BootstrapRepository,
 	bootSvc *service.BootstrapService,
+	daemon watcher.DaemonController,
 ) http.Handler {
 	// Sprint 14 : session store + Sprint 15 : attempt store auth
 	isProduction := cfg.SessionSecret != "CHANGE_ME_IN_PRODUCTION" // pragma: allowlist secret
@@ -89,6 +92,21 @@ func NewRouter(
 	} else {
 		gamertagSvc = platform_duckdb.NewGamertagRepo(sharedDB)
 	}
+
+	// Sprint 54 D1 / Phase 2 : AssetHandler — cache-aside pour médailles et maps.
+	var assetHandler *handlers.AssetHandler
+	if metadataPath := filepath.Join(cfg.RepoRoot, "data", "warehouse", "metadata.duckdb"); metadataPath != "" {
+		if metaDB, err := platform_duckdb.OpenReadWrite(metadataPath); err != nil {
+			slog.Warn("metadata DB unavailable for asset cache", "err", err)
+		} else {
+			metaRepo := platform_duckdb.NewMetadataRepoFromDB(metaDB)
+			assetHandler = handlers.NewAssetHandler(metaRepo)
+		}
+	}
+
+	// Fichiers statiques (images maps, médailles, armes…)
+	staticDir := filepath.Join(cfg.RepoRoot, "static")
+	r.Handle("/static/*", http.StripPrefix("/static/", http.FileServer(http.Dir(staticDir))))
 
 	// Health check (pas de préfixe /api/v1 — sondage infrastructurel)
 	r.Get("/health", handlers.NewHealthHandlerWithVersion(bootRepo, cfg.AppVersion).ServeHTTP)
@@ -155,6 +173,12 @@ func NewRouter(
 		// Galerie médias — version de flux pour polling léger
 		r.Get("/media/feed-version", handlers.GetMediaFeedVersion)
 
+		// Sprint 54 D1 / Phase 2 : Assets cache-aside (médailles + maps).
+		if assetHandler != nil {
+			r.Get("/assets/medals/{title_id}/{medal_id}/image", assetHandler.GetMedalImage)
+			r.Get("/assets/maps/{title_id}/{map_id}/image", assetHandler.GetMapImage)
+		}
+
 		// Endpoints P1 : pages par joueur (Sprint 37 — DI via ServiceRegistry)
 		r.Route("/players/{player_slug}", func(r chi.Router) {
 			filters := handlers.NewFiltersHandler(reg.Filters)
@@ -178,6 +202,8 @@ func NewRouter(
 			// Sprint 9 : Sessions
 			sessions := handlers.NewSessionsHandler(reg.Sessions)
 			r.Get("/pages/sessions", sessions.GetSessions)
+			sessionPage := handlers.NewSessionPageHandler(reg.SessionPage)
+			r.Post("/pages/sessions/detail", sessionPage.GetPage)
 
 			// Sprint 10 : Stats/Séries temporelles
 			stats := handlers.NewStatsHandler(reg.Stats)
@@ -255,6 +281,18 @@ func NewRouter(
 		// Endpoints P1 : répertoire gamertags
 		// Sprint 49 : route inconditionnelle — retourne 503 si shared DB absente.
 		r.Get("/directory/gamertags/search", handlers.NewGamertagHandler(gamertagSvc).Search)
+
+		// Watcher présence Xbox RTA — RequireAuth + RequireAdmin.
+		watcherAttempts := auth_platform.NewWatcherAttemptStore()
+		watcherHandler := handlers.NewWatcherHandler(cfg, settingsStore, daemon, tokenProvider, watcherAttempts)
+		r.Route("/watcher", func(r chi.Router) {
+			r.Use(middleware.RequireAuth(cfg.DemoMode, cfg.AuthMode))
+			r.Use(middleware.RequireAdmin())
+			r.Get("/status", watcherHandler.GetStatus)
+			r.Post("/auth/start", watcherHandler.StartAuth)
+			r.Get("/auth/{attempt_id}", watcherHandler.GetAuthStatus)
+			r.Patch("/subscriptions", watcherHandler.PatchSubscriptions)
+		})
 	})
 
 	return r

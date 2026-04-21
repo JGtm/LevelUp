@@ -160,3 +160,4 @@ data/ui_prefs.json
 apps/go-api/bin/
 apps/go-api/*.exe
 data/auth/
+bin/

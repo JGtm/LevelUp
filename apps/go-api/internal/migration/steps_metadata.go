@@ -187,6 +187,26 @@ func init() {
 			`)
 		},
 	})
+
+	Register(Migration{
+		Name:        "add_map_images_registry",
+		TargetDB:    TargetMetadata,
+		Description: "Table map_images_registry : cache-aside des images de maps avec local_path optionnel",
+		ApplySchema: func(db *sql.DB) error {
+			return execScript(db, `
+				CREATE TABLE IF NOT EXISTS map_images_registry (
+					title_id     VARCHAR NOT NULL,
+					map_id       VARCHAR NOT NULL,
+					image_url    VARCHAR NOT NULL DEFAULT '',
+					local_path   VARCHAR NOT NULL DEFAULT '',
+					fetched_at   TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT now(),
+					content_hash VARCHAR NOT NULL DEFAULT '',
+					PRIMARY KEY (title_id, map_id)
+				);
+				CREATE INDEX IF NOT EXISTS idx_map_images_registry_fetched ON map_images_registry(fetched_at);
+			`)
+		},
+	})
 }
 
 // applyWeaponLabels crée et peuple weapon_labels avec tous les IDs connus.
