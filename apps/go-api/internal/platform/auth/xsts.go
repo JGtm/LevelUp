@@ -26,10 +26,11 @@ const (
 
 // XSTSResult contient le token XSTS + userhash nécessaires pour la connexion RTA.
 type XSTSResult struct {
-	Token    string // XSTS token
-	UserHash string // userhash extraite de DisplayClaims
-	Gamertag string // gamertag extrait de DisplayClaims
-	XUID     string // xuid extrait de DisplayClaims
+	Token    string    // XSTS token
+	UserHash string    // userhash extraite de DisplayClaims
+	Gamertag string    // gamertag extrait de DisplayClaims
+	XUID     string    // xuid extrait de DisplayClaims
+	NotAfter time.Time // date d'expiration réelle (champ NotAfter de la réponse XSTS)
 }
 
 // AuthHeader retourne le header Authorization pour Xbox Live RTA.
@@ -93,7 +94,23 @@ func requestXSTSTokenFull(ctx context.Context, client *http.Client, userToken, r
 		UserHash: userHash,
 		Gamertag: gamertag,
 		XUID:     xuid,
+		NotAfter: extractNotAfter(resp),
 	}, nil
+}
+
+// extractNotAfter extrait la date d'expiration de la réponse XSTS.
+// Xbox Live renvoie un champ "NotAfter" au format RFC3339 (ex: "2024-01-01T13:00:00.0000000Z").
+func extractNotAfter(resp map[string]any) time.Time {
+	v, ok := resp["NotAfter"].(string)
+	if !ok || v == "" {
+		return time.Time{}
+	}
+	for _, layout := range []string{time.RFC3339Nano, time.RFC3339} {
+		if t, err := time.Parse(layout, v); err == nil {
+			return t
+		}
+	}
+	return time.Time{}
 }
 
 // extractUserHash extrait le userhash de DisplayClaims.xui[0].uhs.

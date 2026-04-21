@@ -137,6 +137,31 @@ func TestTokenStore_NestedDir(t *testing.T) {
 	}
 }
 
+// --- extractNotAfter tests ---
+
+func TestExtractNotAfter_Valid(t *testing.T) {
+	resp := map[string]any{
+		"NotAfter": "2026-04-21T14:00:00.0000000Z",
+	}
+	got := extractNotAfter(resp)
+	if got.IsZero() {
+		t.Fatal("extractNotAfter() returned zero, want parsed time")
+	}
+	want := time.Date(2026, 4, 21, 14, 0, 0, 0, time.UTC)
+	if !got.Equal(want) {
+		t.Errorf("extractNotAfter() = %v, want %v", got, want)
+	}
+}
+
+func TestExtractNotAfter_Missing(t *testing.T) {
+	got := extractNotAfter(map[string]any{"Token": "x"})
+	if !got.IsZero() {
+		t.Errorf("extractNotAfter() = %v, want zero", got)
+	}
+}
+
+// --- TokenStore UpdateXSTS tests ---
+
 func TestTokenStore_UpdateXSTS(t *testing.T) {
 	dir := t.TempDir()
 	store := NewTokenStore(dir + "/tokens.json")
@@ -146,13 +171,14 @@ func TestTokenStore_UpdateXSTS(t *testing.T) {
 		t.Fatal(err)
 	}
 
+	// Sans NotAfter → fallback sur le TTL passé
 	result := &XSTSResult{
 		Token:    "new-xsts",
 		UserHash: "new-hash",
 		Gamertag: "GT",
 		XUID:     "X",
 	}
-	if err := store.UpdateXSTS(result, 90*time.Minute); err != nil {
+	if err := store.UpdateXSTS(result, 55*time.Minute); err != nil {
 		t.Fatalf("UpdateXSTS() error = %v", err)
 	}
 
@@ -165,6 +191,28 @@ func TestTokenStore_UpdateXSTS(t *testing.T) {
 	}
 	if !loaded.IsXSTSValid(0) {
 		t.Error("XSTS should be valid after UpdateXSTS")
+	}
+}
+
+func TestTokenStore_UpdateXSTS_UsesNotAfter(t *testing.T) {
+	dir := t.TempDir()
+	store := NewTokenStore(dir + "/tokens.json")
+
+	notAfter := time.Now().Add(45 * time.Minute)
+	result := &XSTSResult{
+		Token:    "xsts",
+		UserHash: "uh",
+		NotAfter: notAfter,
+	}
+	if err := store.UpdateXSTS(result, 90*time.Minute); err != nil { // fallback ignoré
+		t.Fatalf("UpdateXSTS() error = %v", err)
+	}
+
+	loaded, _ := store.Load()
+	// L'expiration doit correspondre à NotAfter (±1s), pas à time.Now()+90min
+	diff := loaded.XSTSExpiresAt.Sub(notAfter)
+	if diff < -time.Second || diff > time.Second {
+		t.Errorf("XSTSExpiresAt = %v, want ~%v (diff %v)", loaded.XSTSExpiresAt, notAfter, diff)
 	}
 }
 

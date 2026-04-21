@@ -79,7 +79,12 @@ func (p *MSALProvider) Exchange(ctx context.Context, accessToken string) (*Excha
 		slog.ErrorContext(ctx, "provider: échec Exchange", "err", err)
 		return nil, err
 	}
-	slog.InfoContext(ctx, "provider: Exchange OK", "gamertag", result.Gamertag, "xuid", result.XUID)
+	if result.Gamertag != "" || result.XUID != "" {
+		slog.InfoContext(ctx, "provider: Exchange OK", "gamertag", result.Gamertag, "xuid", result.XUID)
+	} else {
+		// Le XSTS Halo (audience prod.xsts.halowaypoint.com) ne retourne pas gtg/xid.
+		slog.DebugContext(ctx, "provider: Exchange OK")
+	}
 	return result, nil
 }
 
