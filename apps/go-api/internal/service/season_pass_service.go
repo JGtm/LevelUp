@@ -30,6 +30,8 @@ func NewSeasonPassService(repo port.SeasonPassRepository, homeSvc port.HomeServi
 
 // GetSeasonPassPage construit la réponse Season Pass complète.
 // Combine les tracks persistées en DB avec les challenges (depuis le HomeService).
+// Si la DB ne contient aucune donnée (premier accès), tente un appel live via
+// GetBattlePass pour peupler battlepass_track_definitions, puis retente la lecture DB.
 func (s *SeasonPassService) GetSeasonPassPage(ctx context.Context) (domain.SeasonPassPageResponse, error) {
 	challenges := s.homeSvc.GetChallenges(ctx)
 
@@ -47,6 +49,28 @@ func (s *SeasonPassService) GetSeasonPassPage(ctx context.Context) (domain.Seaso
 		}, nil
 	}
 
+	// Fallback live : si la DB est vide, déclencher GetBattlePass pour
+	// peupler battlepass_track_definitions via fetchRewardTrackDefinition,
+	// puis retenter la lecture DB.
+	if len(tracks) == 0 {
+		bpResp := s.homeSvc.GetBattlePass(ctx)
+		if bpResp.Available {
+			slog.DebugContext(ctx, "season_pass: DB vide — données live reçues, nouvelle tentative DB",
+				"xuid", s.xuid)
+			if retried, rerr := s.repo.LoadSeasonPassTracks(ctx, s.xuid, s.titleSlug); rerr == nil {
+				tracks = retried
+			}
+		}
+	}
+
+	// Si des images de paliers sont manquantes (battlepass_item_definitions pas encore peuplé),
+	// déclencher GetBattlePass en arrière-plan pour peupler les définitions d'items.
+	// Les images apparaîtront au prochain rafraîchissement de la page.
+	if hasMissingTierImages(tracks) {
+		detachedCtx := context.WithoutCancel(ctx)
+		go func() { _ = s.homeSvc.GetBattlePass(detachedCtx) }()
+	}
+
 	resp := domain.SeasonPassPageResponse{
 		TitleSlug:  s.titleSlug,
 		Available:  len(tracks) > 0,
@@ -62,9 +86,22 @@ func (s *SeasonPassService) GetSeasonPassPage(ctx context.Context) (domain.Seaso
 		}
 	}
 	if len(tracks) == 0 {
-		hint := "aucune donnée Season Pass disponible — lancez une synchronisation"
+		hint := "aucune donnée de pass de combat disponible — lancez une synchronisation"
 		resp.ErrorHint = &hint
 	}
 
 	return resp, nil
+}
+
+// hasMissingTierImages retourne true si au moins un palier d'un pass n'a pas d'image_url.
+// Utilisé pour détecter que battlepass_item_definitions n'est pas encore peuplé.
+func hasMissingTierImages(tracks []domain.SeasonPassTrackSummary) bool {
+	for _, track := range tracks {
+		for _, tier := range track.Tiers {
+			if tier.ImageURL == nil {
+				return true
+			}
+		}
+	}
+	return false
 }
