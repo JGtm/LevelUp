@@ -28,6 +28,8 @@ Le sync écrit dans les player DBs : `player_match_enrichment` + `personal_score
 - Correctifs clés de cette passe : ordre de scan `MatchHistoryRepo` réaligné avec `is_excluded`, tests Go dupliqués renommés, `HomePage`/`SynthesisPage` tolérants aux fixtures partielles, specs Vitest réalignées avec l'UI actuelle.
 - Médias React : `PATCH /players/{player_slug}/media/likes` persiste désormais `liked` / `liked_at` dans `media_files`, et `POST /pages/media` expose l'état liked utilisé par la home et la galerie.
 - Workflow dev Go/React (2026-04-20) : `Makefile` racine accepte `API_PORT`, réutilise une API déjà saine sur ce port, et `apps/web/vite.config.ts` lit `VITE_API_PROXY_TARGET` pour suivre automatiquement le backend choisi en dev.
+- Nettoyage racine (2026-04-21) : les wrappers Python `LevelUp.bat`, `LevelUp.sh` et `run.sh` sont supprimés du worktree Go ; les points d'entrée locaux documentés sont désormais `make dev`, `make go-api-dev` et `make web`, et le déploiement VPS vit sous `scripts/deploy.sh`.
+- Hygiène repo maps (2026-04-21) : `titles.json` n'est plus gardé à la racine faute de consommateur runtime, `migrate-static-maps` écrit désormais son CSV de non-correspondances sous `data/investigation/maps/`, et les logs ponctuels `populate-maps.log` / `migrate-static-maps-dry.log` ne vivent plus en racine.
 
 ## État Actuel (2026-03-13) — v5.7 Stable
 
@@ -76,6 +78,7 @@ data/
 
 - `apps/go-api/internal/platform/duckdb/db.go` + `internal/platform/duckdb/persist_sink.go` + `internal/platform/lab/provider.go` : le cache global des connexions DuckDB est désormais compté par références ; une ouverture temporaire de `metadata.duckdb` ne peut plus fermer `PlayerDB.Metadata` et casser la home / le season pass quand les défis et le battle pass chargent en parallèle.
 - `apps/go-api/internal/platform/duckdb/pool.go` + `queries_match.go` + `match_view_repo.go` : `metadata.duckdb` n'est plus attachée à `stats.duckdb` dans le pool joueur ; les labels médailles/armes de la vue match sont désormais enrichis via `PlayerDB.Metadata`, ce qui élimine les conflits DuckDB de type `same database file with a different configuration` / `Unique file handle conflict`.
+- `apps/web/src/features/home/HomePage.tsx` + `queries.ts` + `apps/go-api/internal/platform/halo/provider.go` : la home ne déclenche plus un endpoint `/challenges` en plus du payload season pass ; les défis affichés viennent de `SeasonPassPageResponse.challenges`, et le provider Halo protège désormais les fetchs live `/decks` concurrents avec un `singleflight` par `xuid`.
 - `apps/go-api/internal/api/handlers/match_exclusion.go` : endpoints `PATCH /matches/{match_id}/exclusion` + `GET /match-exclusions` pour ignorer/réactiver des matchs au niveau joueur.
 - `apps/go-api/internal/platform/duckdb/match_exclusion_repo.go` : persistance `player_match_enrichment.is_excluded` avec UPSERT côté player DB.
 - `apps/go-api/internal/service/match_history_service.go` : filtrage des matchs exclus avant pagination, export CSV et agrégats de win rate.

@@ -1,5 +1,85 @@
 # Thought Log
 
+## [2026-04-21] chore(tooling): restaurer les sessions Copilot récentes du worktree go-migration
+
+**Statut** : ✅ Complété
+
+**Décision technique** : Les sessions disparues n'étaient pas supprimées, mais réparties entre plusieurs stockages VS Code. Le storage courant du dossier `LevelUp-go-migration` (`5156d182...`) ne contenait qu'une session récente visible, tandis qu'un storage orphelin `56582f0f...` pointant vers un workspace sauvegardé sous `AppData\Roaming\Code\Workspaces\1776005056134\workspace.json` conservait l'historique réel des 20 et 21 avril. La restauration retenue sauvegarde d'abord le storage cible, puis recopie uniquement les sessions `chatSessions` non vides, liées à `LevelUp-go-migration`, datées du 2026-04-20 et après, avec un vrai `customTitle`, ainsi que leurs `chatEditingSessions` et `chat-session-resources` associés.
+
+**Modifications** :
+- identification d'un storage Copilot orphelin `56582f0fa648bdc8328991a1d762bd42` contenant les sessions LevelUp manquantes
+- sauvegarde préalable du storage courant `5156d1821ec136ab01cd32ce7c67e7f2` (`chatSessions`, `chatEditingSessions`, `GitHub.copilot-chat/chat-session-resources`)
+- restauration de 27 sessions datées du 2026-04-20 au 2026-04-21 vers le storage du dossier courant
+- exclusion explicite des sessions sans titre et des sessions vides/placeholder
+
+**Résultats** :
+- 27 sessions Copilot récentes LevelUp restaurées dans le storage du dossier `LevelUp-go-migration`
+- les états d'édition et ressources associées ont été recopiés quand présents pour éviter une restauration partielle
+- aucune modification du code applicatif ou des fichiers métier du repo
+
+**Conclusion** : La perte relevait d'un éclatement de l'historique entre plusieurs identités de workspace VS Code, pas d'une suppression complète. Le dossier courant dispose désormais à nouveau des sessions récentes restaurables non `untitled`.
+
+## [2026-04-21] fix(home+halo): supprimer le double fetch challenges de la home
+
+**Statut** : ✅ Complété
+
+**Décision technique** : la home React déclenchait deux chemins distincts pour les défis : un `GET /players/{slug}/challenges` dédié et un `GET /players/{slug}/pages/palmares/season-pass` dont la réponse contient déjà `challenges`. Le correctif retenu supprime le doublon au point d'usage côté home en réutilisant `seasonPass.challenges`, puis ajoute un `singleflight` côté `HaloProvider` pour dédupliquer les fetchs live concurrents des challenges par `xuid` et contexte d'enrichissement.
+
+**Modifications** :
+- `apps/web/src/features/home/HomePage.tsx` : la carte `Défis actifs` lit désormais `seasonPass?.challenges` ; la home ne consomme plus de query dédiée `/challenges`.
+- `apps/web/src/features/home/queries.ts` : suppression de `useChallenges()`.
+- `apps/web/src/lib/query/keys.ts` : suppression de la clé `queryKeys.challenges` devenue morte.
+- `apps/web/src/features/home/HomePage.test.tsx` : les défis de la home sont injectés via le payload season pass ; test anti-régression pour vérifier que `/challenges` n'est plus appelé au montage.
+- `apps/go-api/internal/platform/halo/provider.go` : ajout d'un `singleflight.Group` pour partager un même fetch live challenges entre appels concurrents (`xuid + baseURL + contexte cache`).
+- `apps/go-api/internal/platform/halo/provider_test.go` : nouveau test concurrent qui vérifie qu'un seul appel live `/decks` part pour plusieurs appels simultanés.
+
+**Résultats** :
+- `go test ./internal/platform/halo -run 'TestGetChallengesWithRaw_ConcurrentCallsShareSingleflight|TestGetChallenges_(LiveOK|HTTP401|EmptyDecks)|TestGetBattlePass_(LiveOK|HTTP401|HTTP500ThenOK|MalformedJSON)' -count=1` : PASS.
+- `npm run test:run -- src/features/home/HomePage.test.tsx` : PASS (12/12).
+
+**Conclusion** : le doublon de fetch visible dans les logs `halo_provider: challenges fetched` est supprimé pour la home courante, et le backend ne renverra plus plusieurs appels Waypoint simultanés si deux requêtes concurrentes demandent les mêmes challenges.
+
+## [2026-04-21] chore(repo): sortir les artefacts maps de la racine
+
+**Statut** : ✅ Complété
+
+**Décision technique** : La racine du worktree Go contenait encore un mélange de configuration morte (`titles.json` non consommé par le runtime Go/React) et d'artefacts de validation (`unmatched_maps.csv`, `migrate-static-maps-dry.log`, `populate-maps.log`, `nul`). Le nettoyage retenu supprime les fichiers morts du dépôt, relocalise le CSV généré par `migrate-static-maps` sous `data/investigation/maps/`, et traite les logs maps comme artefacts purement locaux sous `data/logs/maps/`.
+
+**Modifications** :
+- suppression de `titles.json` à la racine (aucun lecteur runtime trouvé)
+- suppression des artefacts racine `unmatched_maps.csv`, `migrate-static-maps-dry.log` et `populate-maps.log`
+- mise à jour de `apps/go-api/cmd/migrate-static-maps/main.go` pour écrire le CSV des maps non reconnues sous `data/investigation/maps/unmatched_maps.csv`
+- ajout de règles `.gitignore` pour éviter le retour accidentel des anciens artefacts racine
+- copie locale des diagnostics existants sous `data/investigation/maps/` et `data/logs/maps/` avant nettoyage
+
+**Résultats** :
+- racine allégée des fichiers de validation maps sans rôle runtime
+- futur `unmatched_maps.csv` généré hors racine, dans un emplacement cohérent avec les autres artefacts d'investigation
+- aucun flux métier modifié ; changement limité à l'hygiène repo/outillage
+
+**Conclusion** : La racine redevient centrée sur les vrais points d'entrée et fichiers produit. Les sorties de diagnostic maps sont maintenant rangées avec les autres artefacts locaux, et le faux registre `titles.json` n'encombre plus le dépôt.
+
+## [2026-04-21] chore(repo): supprimer les launchers legacy et ranger les scripts racine
+
+**Statut** : ✅ Complété
+
+**Décision technique** : Le worktree `LevelUp-go-migration` contenait encore `LevelUp.bat`, `LevelUp.sh` et `run.sh`, tous branchés vers un `launcher.py` absent de cette racine. Plutôt que conserver des points d'entrée morts, le nettoyage retenu supprime ces wrappers, fait du `Makefile` la source de vérité locale (`make dev`, `make go-api-dev`, `make web`) et déplace le script opérationnel de déploiement sous `scripts/deploy.sh` pour sortir les scripts shell de la racine.
+
+**Modifications** :
+- suppression de `LevelUp.bat`, `LevelUp.sh` et `run.sh`
+- déplacement logique de `deploy.sh` vers `scripts/deploy.sh`
+- ajout de la cible explicite `go-api-dev` dans `Makefile`
+- mise à jour des workflows GitHub `deploy.yml` et `test-deploy-precheck.yml` vers `scripts/deploy.sh`
+- réalignement des docs actives (`README.md`, `docs/INSTALL.md`, `docs/FR/INSTALL.md`, `docs/COMMANDS.md`, `docs/FR/COMMANDS.md`, `docs/SYNC_GUIDE.md`, `docs/FR/SYNC_GUIDE.md`) sur les commandes Go/React
+- correction de `.github/copilot-instructions.md` pour refléter l'application des migrations via le backend Go
+
+**Résultats** :
+- `bash -n scripts/deploy.sh` : OK
+- `git diff --check` : OK
+- plus aucune référence cassée à `LevelUp.bat`, `LevelUp.sh`, `run.sh` ou `launcher.py` dans les docs actives nettoyées
+
+**Conclusion** : La racine du repo Go est plus lisible et n'expose plus de faux points d'entrée. Le démarrage local passe désormais clairement par le `Makefile`, et le seul script shell opérationnel racine a été rangé dans `scripts/`.
+
 ## [2026-04-21] fix(scheduler): éviter les syncs concurrentes watcher + auto-scheduler
 
 **Statut** : ✅ Complété
