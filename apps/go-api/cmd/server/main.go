@@ -379,7 +379,10 @@ func startWatcherDaemon(ctx context.Context, cfg *config.AppConfig, settingsStor
 		RequestsPerSecond: 1,
 	})
 
-	daemon := watcher.NewDaemon(watcher.DaemonConfig{
+	// daemon est déclaré ici pour permettre à la closure RefreshRTAAuth d'y référer
+	// avant que NewDaemon retourne (pattern forward-reference via pointeur).
+	var daemon *watcher.Daemon
+	daemon = watcher.NewDaemon(watcher.DaemonConfig{
 		RepoRoot:        cfg.RepoRoot,
 		SteamAPIKey:     os.Getenv("STEAM_API_KEY"),
 		MaxParallelSync: 2,
@@ -388,6 +391,30 @@ func startWatcherDaemon(ctx context.Context, cfg *config.AppConfig, settingsStor
 			playerPath := filepath.Join(cfg.RepoRoot, "data", "players", gamertag, "stats.duckdb")
 			sink := duckdb.NewPersistSink(metaPath, playerPath, xuid)
 			return watcher.NewPlayerLiveRefresher(gamertag, xuid, sink)
+		},
+		// RefreshRTAAuth est appelé on-demand par RunWithReconnect quand status=3 est reçu.
+		// Il acquiert un XSTS frais et pousse le nouveau header dans le daemon.
+		RefreshRTAAuth: func(ctx context.Context) error {
+			currentTokens, err := store.Load()
+			if err != nil {
+				return fmt.Errorf("refresh RTA auth: lecture token store: %w", err)
+			}
+			if currentTokens.AccessToken == "" {
+				return fmt.Errorf("refresh RTA auth: access_token absent")
+			}
+			result, err := auth.AcquireXSTSForRTA(ctx, currentTokens.AccessToken)
+			if err != nil {
+				return fmt.Errorf("refresh RTA auth: AcquireXSTSForRTA: %w", err)
+			}
+			if storeErr := store.UpdateXSTS(result, 55*time.Minute); storeErr != nil {
+				slog.WarnContext(ctx, "watcher: refresh RTA auth: impossible de persister XSTS", "err", storeErr)
+			}
+			daemon.UpdateAuth(result.AuthHeader())
+			slog.InfoContext(ctx, "watcher: refresh RTA auth on-demand OK",
+				"gamertag", result.Gamertag,
+				"not_after", result.NotAfter,
+			)
+			return nil
 		},
 	}, titleReg, syncTrigger)
 

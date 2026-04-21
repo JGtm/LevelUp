@@ -41,6 +41,12 @@ type DaemonConfig struct {
 	// LiveRefreshFactory est une factory optionnelle pour créer un LiveRefreshTrigger
 	// par joueur. Si nil, le rafraîchissement live BP/Challenges est désactivé.
 	LiveRefreshFactory func(gamertag, xuid string) LiveRefreshTrigger
+
+	// RefreshRTAAuth est appelé par le ReconnectManager quand un subscribe RTA est
+	// refusé avec status=3 (token XSTS expiré). Doit acquérir un XSTS frais et
+	// appeler daemon.UpdateAuth avec le nouveau header. Si nil, la reconnexion
+	// attend authRefreshRetryDelay (30s) avant de retenter.
+	RefreshRTAAuth func(ctx context.Context) error
 }
 
 // Daemon est le démon de surveillance de présence.
@@ -213,6 +219,8 @@ func (d *Daemon) connectAndSubscribe(ctx context.Context) {
 			return nil
 		},
 	)
+	// Brancher le callback de refresh on-demand fourni par la config.
+	reconnectMgr.OnAuthExpired = d.cfg.RefreshRTAAuth
 	reconnectMgr.RunWithReconnect(ctx)
 }
 

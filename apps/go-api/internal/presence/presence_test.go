@@ -3,6 +3,7 @@ package presence
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 	"net/http"
 	"net/http/httptest"
 	"strings"
@@ -498,5 +499,173 @@ func TestRTAClient_HandleMessage_SubscribeRefused_Status3(t *testing.T) {
 	c.pendingMu.Unlock()
 	if stillPending {
 		t.Error("pending doit être supprimé après réception de la réponse")
+	}
+}
+
+// =============================================================================
+// RunWithReconnect — scénarios auth expired
+// =============================================================================
+
+// newReconnectManagerForTest crée un ReconnectManager avec un waitFn instantané
+// (pas de vrais sleeps) et connecte les champs nécessaires pour les tests.
+func newReconnectManagerForTest(
+	client *RTAClient,
+	connectFunc func(context.Context) error,
+	onAuthExpired func(context.Context) error,
+) *ReconnectManager {
+	return &ReconnectManager{
+		client:        client,
+		policy:        DefaultReconnectPolicy(),
+		connectFunc:   connectFunc,
+		OnAuthExpired: onAuthExpired,
+		// waitFn instantané pour que les tests ne bloquent pas.
+		waitFn: func(ctx context.Context, _ time.Duration) bool {
+			select {
+			case <-ctx.Done():
+				return false
+			default:
+				return true
+			}
+		},
+	}
+}
+
+// TestReconnectManager_RunWithReconnect_AuthExpired_CallsOnAuthExpiredBeforeConnect
+// vérifie que OnAuthExpired est appelé avant connectFunc quand authExpired=true.
+func TestReconnectManager_RunWithReconnect_AuthExpired_CallsOnAuthExpiredBeforeConnect(t *testing.T) {
+	client := NewRTAClient("header")
+	client.authExpired.Store(true)
+
+	var order []string
+	var mu sync.Mutex
+
+	ctx, cancel := context.WithCancel(context.Background())
+
+	onAuthExpired := func(_ context.Context) error {
+		mu.Lock()
+		order = append(order, "onAuthExpired")
+		mu.Unlock()
+		return nil
+	}
+	connectFunc := func(_ context.Context) error {
+		mu.Lock()
+		order = append(order, "connectFunc")
+		mu.Unlock()
+		cancel() // arrêter la boucle après le premier connect
+		return nil
+	}
+
+	rm := newReconnectManagerForTest(client, connectFunc, onAuthExpired)
+	// connectFunc annule le ctx, donc ReadLoop retournera immédiatement car le contexte
+	// est déjà annulé quand la boucle principale le check après le connect réussi.
+	rm.RunWithReconnect(ctx)
+
+	mu.Lock()
+	defer mu.Unlock()
+	if len(order) < 2 {
+		t.Fatalf("attendu au moins 2 appels, got %v", order)
+	}
+	if order[0] != "onAuthExpired" {
+		t.Errorf("premier appel attendu 'onAuthExpired', got %q", order[0])
+	}
+	if order[1] != "connectFunc" {
+		t.Errorf("deuxième appel attendu 'connectFunc', got %q", order[1])
+	}
+}
+
+// TestReconnectManager_RunWithReconnect_AuthExpired_ResetAfterSuccess
+// vérifie que IsAuthExpired() retourne false après un refresh réussi.
+func TestReconnectManager_RunWithReconnect_AuthExpired_ResetAfterSuccess(t *testing.T) {
+	client := NewRTAClient("header")
+	client.authExpired.Store(true)
+
+	ctx, cancel := context.WithCancel(context.Background())
+
+	onAuthExpired := func(_ context.Context) error { return nil }
+	connectFunc := func(_ context.Context) error {
+		cancel()
+		return nil
+	}
+
+	rm := newReconnectManagerForTest(client, connectFunc, onAuthExpired)
+	rm.RunWithReconnect(ctx)
+
+	if client.IsAuthExpired() {
+		t.Error("authExpired devrait être false après un refresh réussi")
+	}
+}
+
+// TestReconnectManager_RunWithReconnect_AuthExpired_CallbackError
+// vérifie qu'un callback en erreur n'appelle pas connectFunc et applique le délai.
+func TestReconnectManager_RunWithReconnect_AuthExpired_CallbackError(t *testing.T) {
+	client := NewRTAClient("header")
+	client.authExpired.Store(true)
+
+	connectCalled := false
+	waitCalled := false
+
+	ctx, cancel := context.WithCancel(context.Background())
+
+	onAuthExpired := func(_ context.Context) error {
+		return fmt.Errorf("refresh échoué")
+	}
+	connectFunc := func(_ context.Context) error {
+		connectCalled = true
+		return nil
+	}
+
+	callCount := 0
+	rm := &ReconnectManager{
+		client:        client,
+		policy:        DefaultReconnectPolicy(),
+		connectFunc:   connectFunc,
+		OnAuthExpired: onAuthExpired,
+		waitFn: func(ctx context.Context, _ time.Duration) bool {
+			waitCalled = true
+			callCount++
+			if callCount >= 1 {
+				cancel() // arrêter après le premier wait
+			}
+			return false // annulation immédiate
+		},
+	}
+	rm.RunWithReconnect(ctx)
+
+	if connectCalled {
+		t.Error("connectFunc ne doit pas être appelé si OnAuthExpired échoue")
+	}
+	if !waitCalled {
+		t.Error("waitFn doit être appelé après un échec de OnAuthExpired")
+	}
+}
+
+// TestReconnectManager_RunWithReconnect_AuthExpired_NoCallback
+// vérifie le comportement quand OnAuthExpired est nil.
+func TestReconnectManager_RunWithReconnect_AuthExpired_NoCallback(t *testing.T) {
+	client := NewRTAClient("header")
+	client.authExpired.Store(true)
+
+	connectCalled := false
+	waitCalled := false
+	ctx, cancel := context.WithCancel(context.Background())
+
+	rm := &ReconnectManager{
+		client:      client,
+		policy:      DefaultReconnectPolicy(),
+		connectFunc: func(_ context.Context) error { connectCalled = true; return nil },
+		// OnAuthExpired intentionnellement nil
+		waitFn: func(ctx context.Context, _ time.Duration) bool {
+			waitCalled = true
+			cancel()
+			return false
+		},
+	}
+	rm.RunWithReconnect(ctx)
+
+	if connectCalled {
+		t.Error("connectFunc ne doit pas être appelé si OnAuthExpired est nil")
+	}
+	if !waitCalled {
+		t.Error("waitFn doit être appelé quand OnAuthExpired est nil")
 	}
 }
