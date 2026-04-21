@@ -66,4 +66,39 @@ func init() {
 			`)
 		},
 	})
+
+	// Ajout player_slug à media_files Go (schéma créé par ensureMediaTables sans cette colonne).
+	Register(Migration{
+		Name:        "add_player_slug_to_media_files",
+		TargetDB:    TargetSharedSocial,
+		Description: "Ajoute player_slug à media_files si absente (schéma Go ops/media.go)",
+		ApplySchema: func(db *sql.DB) error {
+			return execScript(db, `ALTER TABLE media_files ADD COLUMN IF NOT EXISTS player_slug VARCHAR;`)
+		},
+	})
+
+	// Ajout file_name à media_files Go.
+	Register(Migration{
+		Name:        "add_file_name_to_media_files",
+		TargetDB:    TargetSharedSocial,
+		Description: "Ajoute file_name à media_files si absente",
+		ApplySchema: func(db *sql.DB) error {
+			return execScript(db, `ALTER TABLE media_files ADD COLUMN IF NOT EXISTS file_name VARCHAR;`)
+		},
+	})
+
+	// Ajout thumbnail_path, capture_end_utc, status, mtime à media_files Go.
+	Register(Migration{
+		Name:        "add_missing_columns_to_media_files",
+		TargetDB:    TargetSharedSocial,
+		Description: "Ajoute thumbnail_path, capture_end_utc, status, mtime à media_files si absentes",
+		ApplySchema: func(db *sql.DB) error {
+			return execScript(db, `
+				ALTER TABLE media_files ADD COLUMN IF NOT EXISTS thumbnail_path VARCHAR;
+				ALTER TABLE media_files ADD COLUMN IF NOT EXISTS capture_end_utc TIMESTAMPTZ;
+				ALTER TABLE media_files ADD COLUMN IF NOT EXISTS status VARCHAR;
+				ALTER TABLE media_files ADD COLUMN IF NOT EXISTS mtime TIMESTAMPTZ;
+			`)
+		},
+	})
 }

@@ -203,7 +203,7 @@ func (cfg mediaQueryConfig) matchStartExpr() string {
 
 func (cfg mediaQueryConfig) timeOrderExpr() string {
 	if cfg.useSharedSocialSchema() {
-		return "COALESCE(mf.capture_end_utc, mf.updated_at, mf.created_at)"
+		return "COALESCE(mf.capture_end_utc, mf.indexed_at)"
 	}
 	return "COALESCE(mf.capture_end_utc, mf.mtime)"
 }

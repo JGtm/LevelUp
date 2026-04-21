@@ -122,7 +122,7 @@ func IndexMedia(opts MediaIndexOptions) (MediaIndexResult, error) {
 		if !opts.ForceRescan && known[hash] {
 			continue
 		}
-		if err := insertMediaFile(db, path, hash); err != nil {
+		if err := insertMediaFile(db, path, hash, opts.Gamertag); err != nil {
 			result.Errors = append(result.Errors, fmt.Sprintf("%s: insert: %v", path, err))
 			continue
 		}
@@ -237,11 +237,17 @@ func ensureMediaTables(db *sql.DB) error {
 	_, err := db.Exec(`
 		CREATE TABLE IF NOT EXISTS media_files (
 			id INTEGER PRIMARY KEY DEFAULT nextval('media_files_id_seq'),
+			player_slug VARCHAR,
 			file_path VARCHAR UNIQUE,
+			file_name VARCHAR,
 			file_hash VARCHAR,
 			kind VARCHAR,
+			thumbnail_path VARCHAR,
 			capture_start_utc TIMESTAMPTZ,
+			capture_end_utc TIMESTAMPTZ,
 			duration_seconds DOUBLE,
+			status VARCHAR,
+			mtime TIMESTAMPTZ,
 			liked BOOLEAN DEFAULT FALSE,
 			liked_at TIMESTAMPTZ,
 			discord_notified BOOLEAN DEFAULT FALSE,
@@ -317,7 +323,7 @@ func fileHash(path string) (string, error) {
 	return fmt.Sprintf("%x", h.Sum(nil))[:16], nil
 }
 
-func insertMediaFile(db *sql.DB, path, hash string) error {
+func insertMediaFile(db *sql.DB, path, hash, playerSlug string) error {
 	ext := strings.ToLower(filepath.Ext(path))
 	kind := supportedExtensions[ext]
 	fi, _ := os.Stat(path)
@@ -327,8 +333,8 @@ func insertMediaFile(db *sql.DB, path, hash string) error {
 		captureAt = &t
 	}
 	_, err := db.Exec(`
-		INSERT OR IGNORE INTO media_files (file_path, file_hash, kind, capture_start_utc)
-		VALUES (?, ?, ?, ?)
-	`, path, hash, kind, captureAt)
+		INSERT OR IGNORE INTO media_files (player_slug, file_path, file_name, file_hash, kind, capture_start_utc)
+		VALUES (?, ?, ?, ?, ?, ?)
+	`, playerSlug, path, filepath.Base(path), hash, kind, captureAt)
 	return err
 }
