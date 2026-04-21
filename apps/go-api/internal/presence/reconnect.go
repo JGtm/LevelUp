@@ -32,6 +32,11 @@ type ReconnectManager struct {
 	client      *RTAClient
 	policy      ReconnectPolicy
 	connectFunc func(ctx context.Context) error // Fonction de connexion + re-subscribe
+
+	// OnAuthExpired est appelé quand tous les subscribes ont été refusés (status=3).
+	// Doit acquérir un token XSTS frais et appeler client.UpdateAuth.
+	// Si nil ou si l'appel échoue, un délai de 30s est appliqué avant reconnexion.
+	OnAuthExpired func(ctx context.Context) error
 }
 
 // NewReconnectManager crée un gestionnaire de reconnexion.

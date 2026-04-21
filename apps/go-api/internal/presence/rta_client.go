@@ -93,6 +93,10 @@ type RTAClient struct {
 	// connected indique si le WebSocket est actif
 	connected atomic.Bool
 
+	// authExpired est positionné à true quand un subscribe retourne status=3.
+	// Permet à RunWithReconnect de déclencher un refresh XSTS avant de reconnecter.
+	authExpired atomic.Bool
+
 	// closeOnce évite de fermer la connexion plusieurs fois pour la même cause.
 	// Réinitialisé à chaque Connect().
 	closeOnce *sync.Once
@@ -124,8 +128,9 @@ func (c *RTAClient) Connect(ctx context.Context) error {
 	if c.conn != nil {
 		c.conn.Close()
 	}
-	// Réinitialiser le closeOnce pour que la nouvelle connexion puisse se fermer si besoin.
+	// Réinitialiser le closeOnce + authExpired pour la nouvelle connexion.
 	c.closeOnce = &sync.Once{}
+	c.authExpired.Store(false)
 
 	slog.InfoContext(ctx, "rta: connexion WebSocket", "endpoint", rtaEndpoint)
 
@@ -262,6 +267,18 @@ func (c *RTAClient) UpdateAuth(authHeader string) {
 	c.authHeader = authHeader
 }
 
+// IsAuthExpired retourne true si un subscribe a été refusé avec status=3
+// (token XSTS expiré). Utilisé par RunWithReconnect pour déclencher un refresh.
+func (c *RTAClient) IsAuthExpired() bool {
+	return c.authExpired.Load()
+}
+
+// ResetAuthExpired remet le flag à false. Appelé par RunWithReconnect après
+// avoir traité le refresh, juste avant la reconnexion.
+func (c *RTAClient) ResetAuthExpired() {
+	c.authExpired.Store(false)
+}
+
 // Subscriptions retourne la liste des XUIDs actuellement abonnés.
 func (c *RTAClient) Subscriptions() []string {
 	c.subsMu.RLock()
@@ -333,10 +350,11 @@ func (c *RTAClient) handleSubscribeResponse(ctx context.Context, msg []json.RawM
 		)
 		if status == 3 {
 			// Status=3 = accès refusé, probablement token XSTS expiré.
-			// Fermer la connexion (une seule fois) pour forcer un reconnect
-			// via RunWithReconnect, qui repartira avec un token frais.
+			// Signaler authExpired pour que RunWithReconnect rafraîchisse le token
+			// AVANT de reconnecter (évite la boucle infinie reconnect→status=3).
+			c.authExpired.Store(true)
 			c.closeOnce.Do(func() {
-				slog.WarnContext(ctx, "rta: status=3 — fermeture connexion, forcer re-auth")
+				slog.WarnContext(ctx, "rta: status=3 — authExpired signalé, fermeture connexion")
 				c.connMu.Lock()
 				conn := c.conn
 				c.connMu.Unlock()
