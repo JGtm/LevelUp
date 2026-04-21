@@ -30,13 +30,13 @@ import (
 
 // StoredTokens représente les tokens persistés sur disque.
 type StoredTokens struct {
-	AccessToken   string    `json:"access_token"`
-	RefreshToken  string    `json:"refresh_token"`
-	XSTSToken     string    `json:"xsts_token"`
-	XSTSUserHash  string    `json:"xsts_user_hash"`
-	XSTSGamertag  string    `json:"xsts_gamertag"`
-	XSTSXUID      string    `json:"xsts_xuid"`
-	XSTSExpiresAt time.Time `json:"xsts_expires_at"`
+	AccessToken    string    `json:"access_token"`
+	RefreshToken   string    `json:"refresh_token"`
+	XSTSToken      string    `json:"xsts_token"`
+	XSTSUserHash   string    `json:"xsts_user_hash"`
+	XSTSGamertag   string    `json:"xsts_gamertag"`
+	XSTSXUID       string    `json:"xsts_xuid"`
+	XSTSExpiresAt  time.Time `json:"xsts_expires_at"`
 	OAuthExpiresAt time.Time `json:"oauth_expires_at"`
 }
 
@@ -131,7 +131,9 @@ func (s *TokenStore) Save(tokens *StoredTokens) error {
 }
 
 // UpdateXSTS met à jour uniquement les champs XSTS dans le store.
-func (s *TokenStore) UpdateXSTS(result *XSTSResult, expiresIn time.Duration) error {
+// Utilise result.NotAfter comme date d'expiration réelle si disponible,
+// sinon fallback sur time.Now().Add(fallbackTTL).
+func (s *TokenStore) UpdateXSTS(result *XSTSResult, fallbackTTL time.Duration) error {
 	tokens, err := s.Load()
 	if err != nil {
 		return err
@@ -140,7 +142,11 @@ func (s *TokenStore) UpdateXSTS(result *XSTSResult, expiresIn time.Duration) err
 	tokens.XSTSUserHash = result.UserHash
 	tokens.XSTSGamertag = result.Gamertag
 	tokens.XSTSXUID = result.XUID
-	tokens.XSTSExpiresAt = time.Now().Add(expiresIn)
+	if !result.NotAfter.IsZero() {
+		tokens.XSTSExpiresAt = result.NotAfter
+	} else {
+		tokens.XSTSExpiresAt = time.Now().Add(fallbackTTL)
+	}
 	return s.Save(tokens)
 }
 

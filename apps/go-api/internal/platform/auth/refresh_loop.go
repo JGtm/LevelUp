@@ -18,10 +18,13 @@ const (
 	refreshCheckInterval = 5 * time.Minute
 	// oauthRefreshMargin : refresh l'access_token si expire dans < 10 min.
 	oauthRefreshMargin = 10 * time.Minute
-	// xstsRefreshMargin : refresh le XSTS si expire dans < 15 min.
-	xstsRefreshMargin = 15 * time.Minute
-	// xstsDefaultTTL est la durée de vie estimée d'un token XSTS (~90 min).
-	xstsDefaultTTL = 90 * time.Minute
+	// xstsRefreshMargin : refresh le XSTS si expire dans < 20 min.
+	// Marge volontairement large : un XSTS Xbox Live expire après ~60 min et
+	// un subscribe refusé (status=3) survient si le token expire entre deux reconnexions.
+	xstsRefreshMargin = 20 * time.Minute
+	// xstsDefaultTTL est utilisé comme fallback si NotAfter est absent de la réponse XSTS.
+	// Valeur conservatrice : un XSTS Xbox Live expire en pratique après 60 min.
+	xstsDefaultTTL = 55 * time.Minute
 	// oauthDefaultTTL est la durée de vie d'un access_token OAuth (~1h).
 	oauthDefaultTTL = 60 * time.Minute
 )
