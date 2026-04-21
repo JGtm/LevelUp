@@ -6,6 +6,8 @@
 //     car le serveur relit et persiste des snapshots live dans le même process.
 //   - shared_matches_v2.duckdb reste ouverte en read-only.
 //   - ATTACH shared_matches_v2 est réalisé une seule fois à l'init du pool.
+//   - metadata.duckdb n'est pas ATTACHée à stats.duckdb ; les lectures metadata
+//     passent par PlayerDB.Metadata pour éviter les conflits DuckDB sur un même fichier.
 //   - Le pool est global au processus et threadsafe (sync.Map + singleflight).
 //   - Aucun appel à duckdb.Connect() hors de ce package.
 package duckdb
@@ -42,7 +44,7 @@ func (c PlayerPoolConfig) PoolKey() string {
 
 // PlayerDB regroupe les connexions DB nécessaires pour un joueur.
 type PlayerDB struct {
-	Player       *DB // stats.duckdb du joueur (RW, avec shared/meta attachés)
+	Player       *DB // stats.duckdb du joueur (RW, avec shared attaché)
 	Shared       *DB // shared_matches_v2.duckdb
 	SharedSocial *DB // shared_social.duckdb (médias, likes, favoris de matchs)
 	Metadata     *DB // metadata.duckdb (RW)
@@ -116,6 +118,11 @@ func openPlayerDB(ctx context.Context, cfg PlayerPoolConfig) (*PlayerDB, error) 
 		_ = playerDB.Close()
 		return nil, fmt.Errorf("pool: open shared db: %w", err)
 	}
+	// Appliquer les migrations shared en read-write (idempotentes).
+	if rwShared, rwErr := OpenReadWrite(cfg.SharedDBPath); rwErr == nil {
+		_ = migration.RunForDB(rwShared.SQLDb(), migration.TargetShared)
+		_ = rwShared.Close()
+	}
 
 	metaDB, err := OpenReadWrite(cfg.MetaDBPath)
 	if err != nil {
@@ -144,14 +151,6 @@ func openPlayerDB(ctx context.Context, cfg PlayerPoolConfig) (*PlayerDB, error) 
 		_ = sharedDB.Close()
 		_ = metaDB.Close()
 		return nil, fmt.Errorf("pool: attach shared on player db: %w", err)
-	}
-
-	// ATTACH metadata sur la connexion player pour les JOIN career_ranks etc.
-	if err := attachMeta(ctx, playerDB, cfg.MetaDBPath); err != nil {
-		_ = playerDB.Close()
-		_ = sharedDB.Close()
-		_ = metaDB.Close()
-		return nil, fmt.Errorf("pool: attach meta on player db: %w", err)
 	}
 
 	// ATTACH shared_matches_v2 sur SharedSocial pour les JOIN match_registry dans Q37.
@@ -202,26 +201,6 @@ func attachShared(ctx context.Context, db *DB, sharedPath string) error {
 			return fmt.Errorf("attach shared: %w (attach err: %v)", pingErr, err)
 		}
 		// Accessible malgré l'erreur d'ATTACH → déjà attachée, OK.
-	}
-	return nil
-}
-
-// attachMeta attache metadata.duckdb sous l'alias "meta" sur une connexion player.
-// Permet les JOIN sur meta.career_ranks, meta.weapon_labels, etc.
-// L'ATTACH reste en read-write pour conserver la meme configuration de fichier
-// que la connexion runtime metadata, et eviter les conflits DuckDB RO/RW.
-// Idempotent : ignore l'erreur si déjà attachée.
-func attachMeta(ctx context.Context, db *DB, metaPath string) error {
-	_, err := db.Exec(ctx,
-		fmt.Sprintf("ATTACH '%s' AS meta", metaPath),
-	)
-	if err != nil {
-		// Déjà attachée — vérifier si accessible.
-		var count int
-		pingErr := db.QueryRow(ctx, "SELECT COUNT(*) FROM meta.career_ranks").Scan(&count)
-		if pingErr != nil {
-			return fmt.Errorf("attach meta: %w (attach err: %v)", pingErr, err)
-		}
 	}
 	return nil
 }

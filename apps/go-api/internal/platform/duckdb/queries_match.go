@@ -71,13 +71,12 @@ WHERE r.match_id = ?`
 
 // Q14 : Médailles d'un joueur pour un match.
 // Paramètres : ?1 = xuid, ?2 = match_id.
+// Les labels sont résolus ensuite via pdb.Metadata.
 const Q14MatchMedals = `
 SELECT
     me.medal_name_id,
-    me.count,
-    COALESCE(cm.citation_name_display, CAST(me.medal_name_id AS VARCHAR)) AS label
+    me.count
 FROM shared.medals_earned me
-LEFT JOIN meta.citation_mappings cm ON me.medal_name_id = cm.medal_id
 WHERE me.xuid = ? AND me.match_id = ?
 ORDER BY me.count DESC`
 
@@ -94,15 +93,14 @@ ORDER BY he.tick_count ASC`
 
 // Q16 : Weapon kills d'un joueur pour un match.
 // Paramètres : ?1 = xuid, ?2 = match_id.
+// Les labels sont résolus ensuite via pdb.Metadata.
 const Q16WeaponKills = `
 SELECT
     wk.weapon_id,
-    COALESCE(wl.label_fr, wl.label_en, CAST(wk.weapon_id AS VARCHAR)) AS weapon_label,
     SUM(wk.kill_count) AS kills
 FROM shared.weapon_kills wk
-LEFT JOIN meta.weapon_labels wl ON wk.weapon_id = wl.weapon_id
 WHERE wk.xuid = ? AND wk.match_id = ?
-GROUP BY wk.weapon_id, weapon_label
+GROUP BY wk.weapon_id
 ORDER BY kills DESC`
 
 // Q17 : Stats d'un joueur pour un match spécifique (match_participants).

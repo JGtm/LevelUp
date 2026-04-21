@@ -22,9 +22,9 @@ const (
 // ---------------------------------------------------------------------------
 
 // newTestPlayerDB crée un PlayerDB entièrement in-memory.
-// Player DB : simule stats.duckdb avec schémas shared + meta attachés.
+// Player DB : simule stats.duckdb avec shared attaché.
 // Shared DB : simule shared_matches_v2.duckdb (tables root + vue shared.*).
-// Meta DB   : simule metadata.duckdb (citation_mappings, career_ranks).
+// Meta DB   : simule metadata.duckdb séparée (citation_mappings, weapon_labels, career_ranks).
 func newTestPlayerDB(t *testing.T) *PlayerDB {
 	t.Helper()
 	player := openMemDB(t)
@@ -63,7 +63,7 @@ func newTestPlayerDBWithSharedSocial(t *testing.T) *PlayerDB {
 }
 
 // seedPlayerSchema initialise toutes les tables de la player DB.
-// Inclut les schémas shared et meta (simulation ATTACH).
+// Inclut le schéma shared simulé ; metadata reste sur pdb.Metadata.
 func seedPlayerSchema(t *testing.T, db *DB) { //nolint:funlen
 	t.Helper()
 	ctx := context.Background()
@@ -105,14 +105,6 @@ func seedPlayerSchema(t *testing.T, db *DB) { //nolint:funlen
 			       0::INTEGER AS kill_count, 0::BIGINT AS time_ms
 			FROM shared.match_participants WHERE FALSE`,
 		`CREATE VIEW shared.v_match_full AS SELECT * FROM shared.match_registry`,
-		// ── Schéma meta simulé (ATTACH metadata.duckdb)
-		`CREATE SCHEMA IF NOT EXISTS meta`,
-		`CREATE TABLE meta.citation_mappings (
-			citation_name_norm VARCHAR, citation_name_display VARCHAR,
-			mapping_type VARCHAR, category VARCHAR,
-			image_path VARCHAR, description VARCHAR, tier_targets VARCHAR,
-			medal_id UBIGINT, enabled BOOLEAN DEFAULT TRUE)`,
-		`CREATE TABLE meta.weapon_labels (weapon_id UBIGINT, label_en VARCHAR, label_fr VARCHAR)`,
 		// ── Tables player
 		`CREATE TABLE player_match_enrichment (
 			match_id VARCHAR PRIMARY KEY, performance_score DOUBLE,
@@ -287,7 +279,7 @@ func seedSharedDBSchema(t *testing.T, db *DB) {
 	}
 }
 
-// seedMetaDBSchema initialise pdb.Metadata (citation_mappings, career_ranks).
+// seedMetaDBSchema initialise pdb.Metadata (citation_mappings, weapon_labels, career_ranks).
 func seedMetaDBSchema(t *testing.T, db *DB) {
 	t.Helper()
 	ctx := context.Background()
@@ -297,6 +289,7 @@ func seedMetaDBSchema(t *testing.T, db *DB) {
 			mapping_type VARCHAR, category VARCHAR,
 			image_path VARCHAR, description VARCHAR, tier_targets VARCHAR,
 			medal_id UBIGINT, enabled BOOLEAN DEFAULT TRUE)`,
+		`CREATE TABLE weapon_labels (weapon_id UBIGINT, label_en VARCHAR, label_fr VARCHAR)`,
 		`CREATE TABLE career_ranks (rank_id INTEGER, rank_name VARCHAR)`,
 	}
 	for _, q := range ddl {
@@ -311,6 +304,8 @@ func seedMetaDBSchema(t *testing.T, db *DB) {
 	inserts := []row{
 		{`INSERT INTO citation_mappings (citation_name_norm,citation_name_display,mapping_type,category,enabled,medal_id) VALUES (?,?,?,?,?,?)`,
 			[]interface{}{"killing_spree", "Killing Spree", "medal", "combat", true, uint64(1001)}},
+		{`INSERT INTO weapon_labels (weapon_id,label_en,label_fr) VALUES (?,?,?)`,
+			[]interface{}{uint64(42), "Battle Rifle", "BR75"}},
 		{`INSERT INTO career_ranks VALUES (?,?)`, []interface{}{1, "Recruit"}},
 	}
 	for _, ins := range inserts {
