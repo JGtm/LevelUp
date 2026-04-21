@@ -122,10 +122,9 @@ func (f *GameCMSFetcher) fetchChallengeBadge(ctx context.Context, ref Ref) (Payl
 // fetchBPImage récupère une image Battle Pass (track image ou background).
 // ref.ID contient le chemin GameCMS complet (ex: "Progression/Seasons/S1/HIMPS1.png").
 func (f *GameCMSFetcher) fetchBPImage(ctx context.Context, ref Ref) (Payload, error) {
-	tokens, err := f.resolveTokens(ctx)
-	if err != nil {
-		return nil, fmt.Errorf("%w: tokens unavailable: %v", ErrUpstreamUnavailable, err)
-	}
+	// /hi/images/file/ est un endpoint public : les tokens sont optionnels.
+	// On les envoie s'ils sont disponibles, mais on ne bloque pas si absents.
+	tokens, _ := f.resolveTokens(ctx)
 	gamecmsPath := strings.TrimLeft(ref.ID, "/")
 	url := fmt.Sprintf("%s/hi/images/file/%s", f.baseURL, gamecmsPath)
 	resp, err := f.doGet(ctx, url, tokens)
@@ -143,8 +142,9 @@ func (f *GameCMSFetcher) fetchBPImage(ctx context.Context, ref Ref) (Payload, er
 	if err != nil {
 		return nil, fmt.Errorf("%w: read body: %v", ErrUpstreamUnavailable, err)
 	}
+	ct := http.DetectContentType(data)
 	return BinaryPayload{
-		ContentType: "image/png",
+		ContentType: ct,
 		Bytes:       data,
 		ETag:        contentHash(data),
 	}, nil
