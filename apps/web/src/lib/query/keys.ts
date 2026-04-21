@@ -45,7 +45,6 @@ export const queryKeys = {
   // Accueil / Home (Slice 5)
   home: (playerSlug: string) => ['home', playerSlug] as const,
   battlepass: (playerSlug: string) => ['home', playerSlug, 'battlepass'] as const,
-  challenges: (playerSlug: string) => ['home', playerSlug, 'challenges'] as const,
 
   // Palmares
   seasonPass: (playerSlug: string) => ['palmares', playerSlug, 'season-pass'] as const,

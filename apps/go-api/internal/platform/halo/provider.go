@@ -14,11 +14,14 @@ import (
 	"io"
 	"log/slog"
 	"net/http"
+	"strings"
 	"sync"
 	"time"
 
 	"levelup/go-api/internal/ctxkeys"
 	"levelup/go-api/internal/domain"
+
+	"golang.org/x/sync/singleflight"
 )
 
 // ---------------------------------------------------------------------------
@@ -115,6 +118,11 @@ type HaloProvider struct {
 
 // DefaultHaloProvider est l'instance globale du provider (60 req/min, 3 retries).
 var DefaultHaloProvider = NewHaloProvider()
+
+// challengesFetchSFGroup déduplique les fetchs live concurrents des challenges.
+// La clé inclut les paramètres d'enrichissement du provider pour ne partager
+// que des réponses construites dans le même contexte metadata/assets.
+var challengesFetchSFGroup singleflight.Group
 
 // NewHaloProvider crée un provider Halo avec les paramètres par défaut.
 func NewHaloProvider() *HaloProvider {
@@ -251,13 +259,44 @@ func (p *HaloProvider) GetChallengesWithRaw(ctx context.Context) (domain.Challen
 		return domain.ChallengesResponse{Available: false, ErrorHint: &hint}, nil
 	}
 
-	resp, raw, err := p.fetchChallenges(ctx, tokens, xuid)
+	type challengesFetchResult struct {
+		response domain.ChallengesResponse
+		rawBody  []byte
+	}
+
+	result, err, _ := challengesFetchSFGroup.Do(p.challengesFetchKey(xuid), func() (interface{}, error) {
+		resp, raw, fetchErr := p.fetchChallenges(ctx, tokens, xuid)
+		if fetchErr != nil {
+			return nil, fetchErr
+		}
+		return challengesFetchResult{response: resp, rawBody: raw}, nil
+	})
 	if err != nil {
 		slog.WarnContext(ctx, "halo_provider: challenges fetch failed", "xuid", xuid, "err", err)
 		hint := "fetch_error"
 		return domain.ChallengesResponse{Available: false, ErrorHint: &hint}, nil
 	}
-	return resp, raw
+
+	resolved, ok := result.(challengesFetchResult)
+	if !ok {
+		hint := "fetch_error"
+		slog.WarnContext(ctx, "halo_provider: challenges fetch invalid result", "xuid", xuid)
+		return domain.ChallengesResponse{Available: false, ErrorHint: &hint}, nil
+	}
+	return resolved.response, resolved.rawBody
+}
+
+func (p *HaloProvider) challengesFetchKey(xuid string) string {
+	base := p.challengesBaseURL
+	if base == "" {
+		base = defaultChallengesHost
+	}
+	return strings.Join([]string{
+		xuid,
+		base,
+		p.challengeMetaPath,
+		p.challengeBadgeDir,
+	}, "|")
 }
 
 // fetchChallenges appelle l'endpoint decks et parse la réponse.

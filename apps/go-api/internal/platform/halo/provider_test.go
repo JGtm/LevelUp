@@ -9,8 +9,10 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+	"sync"
 	"sync/atomic"
 	"testing"
+	"time"
 
 	"levelup/go-api/internal/ctxkeys"
 	"levelup/go-api/internal/domain"
@@ -385,6 +387,60 @@ func TestGetChallenges_HTTP401(t *testing.T) {
 	}
 	if atomic.LoadInt32(&callCount) != 1 {
 		t.Errorf("expected 1 call (no retry on 401), got %d", callCount)
+	}
+}
+
+func TestGetChallengesWithRaw_ConcurrentCallsShareSingleflight(t *testing.T) {
+	var callCount int32
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.URL.Path != "/hi/players/xuid(xuid-test)/decks" {
+			http.NotFound(w, r)
+			return
+		}
+		atomic.AddInt32(&callCount, 1)
+		time.Sleep(75 * time.Millisecond)
+		w.Header().Set("Content-Type", "application/json")
+		_ = json.NewEncoder(w).Encode(map[string]any{
+			"AssignedDecks": []any{},
+		})
+	}))
+	defer srv.Close()
+
+	p := newTestProvider("", srv.URL)
+	ctx := ctxWithAuth(testTokens(), "xuid-test")
+
+	const concurrentCalls = 6
+	results := make(chan domain.ChallengesResponse, concurrentCalls)
+	errs := make(chan error, concurrentCalls)
+	var wg sync.WaitGroup
+	for range concurrentCalls {
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			resp, _ := p.GetChallengesWithRaw(ctx)
+			results <- resp
+			errs <- nil
+		}()
+	}
+	wg.Wait()
+	close(results)
+	close(errs)
+
+	for err := range errs {
+		if err != nil {
+			t.Fatalf("unexpected error: %v", err)
+		}
+	}
+	for resp := range results {
+		if !resp.Available {
+			t.Fatalf("expected available=true, got error_hint=%v", resp.ErrorHint)
+		}
+		if resp.Total == nil || *resp.Total != 0 {
+			t.Fatalf("expected total=0, got %v", resp.Total)
+		}
+	}
+	if got := atomic.LoadInt32(&callCount); got != 1 {
+		t.Fatalf("expected a single live challenges call, got %d", got)
 	}
 }
 
