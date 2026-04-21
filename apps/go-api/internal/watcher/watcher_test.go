@@ -2,6 +2,7 @@ package watcher
 
 import (
 	"context"
+	"errors"
 	"testing"
 	"time"
 )
@@ -382,5 +383,28 @@ func TestPlayerWatcher_OnNewMatches_EmptyList(t *testing.T) {
 
 	if len(trigger.triggered) != 0 {
 		t.Error("empty match list should not trigger sync")
+	}
+}
+
+func TestPlayerWatcher_SubscribeError_DefaultNil(t *testing.T) {
+	pw := NewPlayerWatcher("p", "x", &mockFetcher{}, newMockSyncTrigger())
+	if pw.SubscribeError() != nil {
+		t.Error("SubscribeError devrait être nil par défaut")
+	}
+}
+
+func TestPlayerWatcher_SetSubscribeError(t *testing.T) {
+	pw := NewPlayerWatcher("p", "x", &mockFetcher{}, newMockSyncTrigger())
+
+	sentinel := errors.New("rta: connexion refusée")
+	pw.SetSubscribeError(sentinel)
+	if pw.SubscribeError() != sentinel {
+		t.Errorf("SubscribeError = %v, want %v", pw.SubscribeError(), sentinel)
+	}
+
+	// Reset
+	pw.SetSubscribeError(nil)
+	if pw.SubscribeError() != nil {
+		t.Error("SubscribeError devrait être nil après reset")
 	}
 }

@@ -85,6 +85,12 @@ export interface SettingsText {
   watcherSubscriptionsUpdated: string
   watcherRtaConnected: string
   watcherRtaDisconnected: string
+  watcherSubscribeError: string
+  watcherStateIdle: string
+  watcherStateWatching: string
+  watcherStateSyncing: string
+  watcherStateCooling: string
+  watcherInGame: string
 
   // Backfill
   backfillTitle: string
@@ -158,7 +164,7 @@ const FR_TEXT: SettingsText = {
   spnkrRefreshWithBackfill: 'Lancer un backfill après chaque synchronisation',
 
   watcherTitle: 'Détection de présence',
-  watcherPresenceEnabled: 'Détection automatique via Xbox RTA',
+  watcherPresenceEnabled: 'Détection automatique de présence Xbox',
   watcherPresenceDescription:
     'Détecte automatiquement quand vous lancez ou quittez Halo Infinite pour déclencher une synchronisation. Nécessite un jeton XSTS valide.',
   watcherAuthButton: 'Connecter via Xbox',
@@ -175,8 +181,14 @@ const FR_TEXT: SettingsText = {
   watcherPlayersLabel: 'Joueurs surveillés',
   watcherPlayersAll: 'Tous les joueurs',
   watcherSubscriptionsUpdated: 'Abonnements mis à jour',
-  watcherRtaConnected: 'RTA connecté',
-  watcherRtaDisconnected: 'RTA déconnecté',
+  watcherRtaConnected: 'Connexion Xbox active',
+  watcherRtaDisconnected: 'Connexion Xbox inactive',
+  watcherSubscribeError: 'Échec de la surveillance',
+  watcherStateIdle: 'En attente',
+  watcherStateWatching: 'En surveillance',
+  watcherStateSyncing: 'Synchronisation',
+  watcherStateCooling: 'Cooldown',
+  watcherInGame: 'En jeu',
 
   backfillTitle: 'Données à inclure dans le backfill',
   backfillMedals: 'Médailles',
@@ -248,7 +260,7 @@ const EN_TEXT: SettingsText = {
   spnkrRefreshWithBackfill: 'Run a backfill after each synchronisation',
 
   watcherTitle: 'Presence detection',
-  watcherPresenceEnabled: 'Automatic detection via Xbox RTA',
+  watcherPresenceEnabled: 'Automatic Xbox presence detection',
   watcherPresenceDescription:
     'Automatically detects when you launch or quit Halo Infinite to trigger a sync. Requires a valid XSTS token.',
   watcherAuthButton: 'Connect via Xbox',
@@ -265,8 +277,14 @@ const EN_TEXT: SettingsText = {
   watcherPlayersLabel: 'Watched players',
   watcherPlayersAll: 'All players',
   watcherSubscriptionsUpdated: 'Subscriptions updated',
-  watcherRtaConnected: 'RTA connected',
-  watcherRtaDisconnected: 'RTA disconnected',
+  watcherRtaConnected: 'Xbox connection active',
+  watcherRtaDisconnected: 'Xbox connection inactive',
+  watcherSubscribeError: 'Monitoring failed',
+  watcherStateIdle: 'Idle',
+  watcherStateWatching: 'Watching',
+  watcherStateSyncing: 'Syncing',
+  watcherStateCooling: 'Cooling',
+  watcherInGame: 'In game',
 
   backfillTitle: 'Data to include in backfill',
   backfillMedals: 'Medals',

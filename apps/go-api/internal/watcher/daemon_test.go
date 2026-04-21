@@ -2,6 +2,7 @@ package watcher
 
 import (
 	"context"
+	"errors"
 	"testing"
 
 	"levelup/go-api/internal/domain"
@@ -42,7 +43,7 @@ func TestDaemon_InitPlayers(t *testing.T) {
 		{Gamertag: "Player1", XUID: "1111", IsDemo: false},
 		{Gamertag: "Player2", XUID: "2222", IsDemo: false},
 		{Gamertag: "DemoPlayer", XUID: "3333", IsDemo: true}, // skip
-		{Gamertag: "NoXUID", XUID: "", IsDemo: false},         // skip
+		{Gamertag: "NoXUID", XUID: "", IsDemo: false},        // skip
 	}
 
 	d.initPlayers(context.Background(), players)
@@ -167,3 +168,40 @@ func TestDaemon_MakePresenceHandler(t *testing.T) {
 
 // Reimport presence package reference for the test (the test file already uses it via daemon.go)
 var _ syncpkg.SyncRunner = (*mockDaemonSyncRunner)(nil)
+
+func TestStateProvider_SubscribeError_ExposedInStatus(t *testing.T) {
+	d := NewDaemon(DaemonConfig{RepoRoot: "/repo"}, title.NewRegistry(), &mockDaemonSyncRunner{})
+	d.initPlayers(context.Background(), []domain.PlayerSummary{{Gamertag: "P1", XUID: "X1"}})
+
+	pw := d.players["P1"] // indexée par gamertag
+	pw.SetSubscribeError(errors.New("rta: timeout"))
+
+	p := NewStateProvider(d)
+	status := p.GetStatus()
+
+	if len(status.Players) != 1 {
+		t.Fatal("attendu 1 joueur")
+	}
+	if status.Players[0].SubscribeError == "" {
+		t.Error("SubscribeError devrait être non-vide")
+	}
+	if status.Players[0].SubscribeError != "rta: timeout" {
+		t.Errorf("SubscribeError = %q, want %q", status.Players[0].SubscribeError, "rta: timeout")
+	}
+}
+
+func TestStateProvider_SubscribeError_EmptyWhenNil(t *testing.T) {
+	d := NewDaemon(DaemonConfig{RepoRoot: "/repo"}, title.NewRegistry(), &mockDaemonSyncRunner{})
+	d.initPlayers(context.Background(), []domain.PlayerSummary{{Gamertag: "P1", XUID: "X1"}})
+
+	// Pas d'erreur définie
+	p := NewStateProvider(d)
+	status := p.GetStatus()
+
+	if len(status.Players) != 1 {
+		t.Fatal("attendu 1 joueur")
+	}
+	if status.Players[0].SubscribeError != "" {
+		t.Errorf("SubscribeError devrait être vide, got %q", status.Players[0].SubscribeError)
+	}
+}

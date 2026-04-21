@@ -185,11 +185,17 @@ func main() {
 	tokenProvider := auth.NewMSALProvider()
 	autoScheduler := scheduler.New(cfg, settingsStore, tokenProvider)
 	schedulerCtx, cancelScheduler := context.WithCancel(ctx)
-	go autoScheduler.Run(schedulerCtx)
 
-	// Watcher daemon (présence Xbox RTA + Steam) — démarré avant le router pour injection DI.
+	// Watcher daemon (présence Xbox RTA + Steam) — démarré avant le scheduler pour câbler
+	// l'ActivityChecker : quand un joueur est en état Watching/Syncing/Cooling, le scheduler
+	// cède son tick pour ce joueur et évite deux syncs concurrentes sur la même stats.duckdb.
 	var watcherDaemon *watcher.Daemon
 	watcherDaemon = startWatcherDaemon(ctx, cfg, settingsStore)
+	if watcherDaemon != nil {
+		autoScheduler.ActivityChecker = watcher.NewStateProvider(watcherDaemon)
+	}
+
+	go autoScheduler.Run(schedulerCtx)
 
 	// Convertir en interface (nil safe : un *Daemon nil ne doit pas devenir une interface non-nil)
 	var watcherCtrl watcher.DaemonController

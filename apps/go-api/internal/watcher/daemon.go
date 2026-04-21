@@ -205,6 +205,9 @@ func (d *Daemon) connectAndSubscribe(ctx context.Context) {
 				if err := d.rtaClient.Subscribe(connectCtx, pw.xuid, handler); err != nil {
 					slog.WarnContext(connectCtx, "watcher_daemon: échec subscribe",
 						"gamertag", pw.gamertag, "err", err)
+					pw.SetSubscribeError(err)
+				} else {
+					pw.SetSubscribeError(nil)
 				}
 			}
 			return nil

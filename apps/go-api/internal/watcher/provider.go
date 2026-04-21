@@ -13,25 +13,33 @@ import (
 type PlayerPresenceStatus struct {
 	Gamertag       string `json:"gamertag"`
 	XUID           string `json:"xuid"`
-	State          string `json:"state"`           // "Idle", "Watching", "Syncing", "Cooling"
-	InGame         bool   `json:"in_game"`         // présence active
-	StateSince     string `json:"state_since"`     // ISO 8601
-	StateDuration  string `json:"state_duration"`  // durée lisible
+	State          string `json:"state"`          // "Idle", "Watching", "Syncing", "Cooling"
+	InGame         bool   `json:"in_game"`        // présence active
+	StateSince     string `json:"state_since"`    // ISO 8601
+	StateDuration  string `json:"state_duration"` // durée lisible
 	CooldownLeft   string `json:"cooldown_left,omitempty"`
+	SubscribeError string `json:"subscribe_error,omitempty"` // erreur d'abonnement RTA, vide si OK
 }
 
 // WatcherStatus est le résumé global du watcher exposé à l'API.
 type WatcherStatus struct {
-	Running        bool                    `json:"running"`
-	RTAConnected   bool                    `json:"rta_connected"`
-	RTASubscribed  int                     `json:"rta_subscribed"`
-	PlayersWatched int                     `json:"players_watched"`
-	Players        []PlayerPresenceStatus  `json:"players"`
+	Running        bool                   `json:"running"`
+	RTAConnected   bool                   `json:"rta_connected"`
+	RTASubscribed  int                    `json:"rta_subscribed"`
+	PlayersWatched int                    `json:"players_watched"`
+	Players        []PlayerPresenceStatus `json:"players"`
 }
 
 // WatcherStateProvider fournit l'état du watcher en lecture seule.
 type WatcherStateProvider interface {
 	GetStatus() WatcherStatus
+}
+
+// PlayerActivityChecker permet au scheduler de savoir si un joueur est actuellement surveillé.
+// Un joueur est "actif" si sa FSM est en état Watching, Syncing ou Cooling (≠ Idle).
+// Retourner true indique au scheduler de sauter le tick pour ce joueur.
+type PlayerActivityChecker interface {
+	IsPlayerActive(gamertag string) bool
 }
 
 // StateProvider implémente WatcherStateProvider à partir du WatcherDaemon.
@@ -77,6 +85,9 @@ func (p *StateProvider) GetStatus() WatcherStatus {
 
 		pw.mu.Lock()
 		ps.InGame = pw.inGame
+		if pw.subscribeError != nil {
+			ps.SubscribeError = pw.subscribeError.Error()
+		}
 		pw.mu.Unlock()
 
 		if fsm.State() == StateCooling {
@@ -87,4 +98,23 @@ func (p *StateProvider) GetStatus() WatcherStatus {
 	}
 
 	return status
+}
+
+// IsPlayerActive retourne true si le joueur est en état Watching, Syncing ou Cooling.
+// Retourne false si le joueur est Idle ou inconnu du daemon.
+// Implémente PlayerActivityChecker.
+func (p *StateProvider) IsPlayerActive(gamertag string) bool {
+	if p.daemon == nil {
+		return false
+	}
+
+	p.daemon.playersMu.RLock()
+	defer p.daemon.playersMu.RUnlock()
+
+	pw, ok := p.daemon.players[gamertag]
+	if !ok {
+		return false
+	}
+
+	return pw.FSM().State() != StateIdle
 }

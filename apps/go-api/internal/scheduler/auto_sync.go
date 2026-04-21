@@ -41,6 +41,12 @@ import (
 
 const defaultIntervalHours = 6
 
+// PlayerActivityChecker est satisfait par watcher.StateProvider.
+// Défini ici pour éviter une dépendance circulaire scheduler→watcher.
+type PlayerActivityChecker interface {
+	IsPlayerActive(gamertag string) bool
+}
+
 // DeltaRunner abstrait l'exécution d'une sync delta (mockable dans les tests).
 type DeltaRunner interface {
 	RunDelta(ctx context.Context, opts domain.SyncOptions) (domain.SyncResult, error)
@@ -73,6 +79,10 @@ type AutoSyncScheduler struct {
 	EngineFactory EngineFactory
 	// TokenReader est exporté pour injection dans les tests.
 	TokenReader TokenReader
+	// ActivityChecker est optionnel. S'il est défini, le scheduler saute le tick
+	// pour les joueurs dont le watcher est en état Watching/Syncing/Cooling.
+	// Doit être défini avant d'appeler Run.
+	ActivityChecker PlayerActivityChecker
 }
 
 // New crée un AutoSyncScheduler avec les implémentations de production.
@@ -190,6 +200,15 @@ const (
 // syncPlayer effectue la résolution de tokens puis la sync delta pour un joueur.
 func (s *AutoSyncScheduler) syncPlayer(ctx context.Context, p domain.PlayerSummary) syncOutcome {
 	slog.DebugContext(ctx, "auto_sync: traitement joueur", "gamertag", p.Gamertag, "xuid", p.XUID)
+
+	// Si le watcher est actif sur ce joueur (Watching/Syncing/Cooling),
+	// on cède la priorité pour éviter deux sync concurrentes sur la même DB.
+	if s.ActivityChecker != nil && s.ActivityChecker.IsPlayerActive(p.Gamertag) {
+		slog.InfoContext(ctx, "auto_sync: watcher actif sur ce joueur — tick cédé",
+			"gamertag", p.Gamertag,
+		)
+		return outcomeSkipped
+	}
 
 	dbPath := filepath.Join(s.cfg.RepoRoot, "data", "players", p.Gamertag, "stats.duckdb")
 	if _, err := os.Stat(dbPath); os.IsNotExist(err) {
