@@ -118,11 +118,16 @@ Le dashboard affiche :
 - **Bouton Sync** : Déclenche une sync delta
 - **Bouton Full** : Déclenche une sync complète
 
-### Sync au Lancement
+### Démarrer la stack avant la sync
 
 ```bash
-# Lancer le dashboard avec sync
-python launcher.py run+refresh --player MonGamertag --delta
+make dev
+```
+
+Puis déclenchez une sync delta depuis l'UI, ou lancez :
+
+```bash
+python scripts/sync.py --delta --gamertag MonGamertag
 ```
 
 ---

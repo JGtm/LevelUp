@@ -203,36 +203,24 @@
 
 ## Quick start
 
-**Prerequisites**: Python 3.12+ recommended (3.10 minimum).
-
-### Windows (no technical knowledge required)
-
-```
-1. Download and extract the ZIP (or git clone)
-2. Double-click LevelUp.bat
-   → Python is installed automatically if missing
-   → .venv created, dependencies installed
-   → API starts on http://localhost:8000
-   → browser opens at http://localhost:5173
-3. In the browser: enter your gamertag
-4. Go to https://xbox.com/activate and enter the displayed code
-   → LevelUp retrieves your profile and starts the initial sync
-```
-
-**No Azure configuration required** — the app bundles its own client ID.
-
-### macOS / Linux
+**Prerequisites**: Go 1.26+, Node.js + npm, GNU Make, and Air for Go hot reload.
 
 ```bash
 git clone https://github.com/JGtm/LevelUp.git
 cd LevelUp
-python3 -m venv .venv && source .venv/bin/activate
-pip install -e ".[spnkr,api]"
 cd apps/web && npm install && cd ../..
-python launcher.py run
+go install github.com/air-verse/air@latest
+make dev
 ```
 
-Then follow the in-browser wizard (same 2-step flow).
+Open http://localhost:5173 in your browser, then follow the in-app wizard.
+
+Useful variants:
+
+```bash
+make go-api-dev
+make web
+```
 
 **Detailed docs**: [docs/INSTALL.md](docs/INSTALL.md)
 

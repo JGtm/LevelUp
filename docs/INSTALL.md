@@ -6,10 +6,10 @@ French version: [FR/INSTALL.md](FR/INSTALL.md)
 
 ---
 
-## Windows — Recommended install (no technical knowledge required)
+## Windows — Recommended local install
 
-LevelUp ships a one-click launcher that automates the entire setup.
-**You do not need to know what Python is.**
+This Go migration repo no longer ships one-click launchers.
+The standard entry point is now `make dev`.
 
 ### Step 1 — Download LevelUp
 
@@ -21,19 +21,27 @@ Extract the folder wherever you like (e.g. Desktop or `C:\LevelUp\`).
 > git clone https://github.com/JGtm/LevelUp_with_SPNKr.git
 > ```
 
-### Step 2 — Double-click `LevelUp.bat`
+### Step 2 — Install local tooling
 
-The launcher does **everything automatically**:
+1. Install Go 1.26+ and Node.js on your machine
+2. Install Air for Go hot reload:
+   ```bash
+   go install github.com/air-verse/air@latest
+   ```
+3. Install frontend dependencies:
+   ```bash
+   cd apps/web && npm install && cd ../..
+   ```
 
-1. Looks for Python on your PC
-2. If not found → downloads and installs it via `winget` (Windows 10/11 — answer `Y`)
-3. Creates an isolated environment (`.venv`)
-4. Installs all dependencies
-5. Starts the API (port 8000) and opens your browser at `http://localhost:5173`
+### Step 3 — Start the app
 
-> **First launch**: 2–5 minutes (downloads). Subsequent launches: a few seconds.
+```bash
+make dev
+```
 
-### Step 3 — Setup Wizard in the browser
+This starts the Go API on port 8000 and the Vite frontend on http://localhost:5173.
+
+### Step 4 — Setup Wizard in the browser
 
 On the first launch, LevelUp detects it is not yet configured and shows a **guided wizard**.
 Choose your path:
@@ -81,7 +89,7 @@ SPNKR_AZURE_CLIENT_ID=your_own_client_id
 See [CONFIGURATION.md](CONFIGURATION.md) for the full Azure registration walkthrough.
 This env var takes precedence over the bundled ID.
 
-### Step 4 — Smoke test (automatic check on 20 matches)
+### Step 5 — Smoke test (automatic check on 20 matches)
 
 After Xbox sign-in, the wizard automatically runs a **3-phase smoke test**:
 
@@ -118,58 +126,48 @@ If any check fails, the test offers to **retry**. When everything is green, two 
 
 ## macOS / Linux
 
-`LevelUp.bat` is Windows-only. On macOS/Linux:
+The local workflow is the same as on Windows:
 
-1. **Install Python 3.10+** if not already available
-   - macOS: `brew install python@3.12` or download from [python.org](https://www.python.org/downloads/)
-   - Linux: `sudo apt install python3.12 python3.12-venv` (Ubuntu/Debian) or equivalent
-2. In the extracted folder, create a virtual environment and install:
+1. Install Go 1.26+, Node.js + npm, and GNU Make
+2. Install Air:
    ```bash
-   python3 -m venv .venv
-   source .venv/bin/activate
-   pip install -e ".[spnkr]"
+   go install github.com/air-verse/air@latest
    ```
-3. Start LevelUp:
+3. Install frontend dependencies:
    ```bash
-   python launcher.py run
+   cd apps/web && npm install && cd ../..
    ```
-4. The browser opens at `http://localhost:5173` — the **Setup Wizard** appears and guides you
-   through the same steps (Xbox sign-in + smoke test) as on Windows.
+4. Start the stack:
+   ```bash
+   make dev
+   ```
 
-> **Note:** The automatic Python installer (`winget`) only works on Windows 10/11.
-> On macOS/Linux you manage Python yourself, but everything after that (wizard, sync, dashboard)
-> is fully cross-platform.
+Then open http://localhost:5173 and complete the in-app wizard.
 
 ---
 
 ## Developer install
 
 ### Requirements
-- Python 3.10+ (recommended: 3.12)
+- Go 1.26+
+- Node.js + npm
+- GNU Make
 - Git
 
 ```bash
 git clone https://github.com/JGtm/LevelUp_with_SPNKr.git
 cd LevelUp_with_SPNKr
-
-# Create virtual environment
-python -m venv .venv
-
-# Activate (Windows PowerShell)
-.venv\Scripts\Activate.ps1
-# Activate (Linux/macOS)
-source .venv/bin/activate
-
-# Full install (with dev tools)
-pip install -e ".[dev,spnkr]"
+cd apps/web && npm install && cd ../..
+go install github.com/air-verse/air@latest
+make dev
 ```
 
 ### Environment healthcheck
 
 ```bash
-python scripts/check_env.py
-# or
-python launcher.py doctor
+curl http://127.0.0.1:8000/health
+make go-api-test
+cd apps/web && npm run typecheck
 ```
 
 ### Tests
@@ -189,7 +187,8 @@ python -m pytest tests/test_duckdb_repository.py -v
 
 ```bash
 git pull origin main
-python launcher.py setup --update
+cd apps/web && npm install && cd ../..
+go install github.com/air-verse/air@latest
 ```
 
 See [CONFIGURATION.md](CONFIGURATION.md) for Azure token configuration.
@@ -248,21 +247,21 @@ docker compose down
 ### Full diagnostic
 
 ```bash
-python launcher.py doctor
+curl http://127.0.0.1:8000/health
+make go-api-test
+cd apps/web && npm run typecheck
 ```
 
 ### "Module not found" error
 
 ```bash
-python launcher.py setup
+cd apps/web && npm install
 ```
 
 ### DuckDB version error
 
 ```bash
-python -c "import duckdb; print(duckdb.__version__)"
-# Must be >= 1.4.0
-python launcher.py setup --update
+cd apps/go-api && go test ./... -count=1
 ```
 
 ### Expired OAuth token

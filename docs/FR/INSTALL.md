@@ -2,10 +2,10 @@
 
 > Guide complet pour installer et configurer LevelUp sur votre machine.
 
-## Installation recommandée (Windows — grand public)
+## Installation locale recommandée (Windows)
 
-LevelUp fournit un lanceur tout-en-un qui automatise l'intégralité de l'installation.
-**Vous n'avez pas besoin de savoir ce qu'est Python.**
+Ce dépôt Go n'embarque plus de lanceurs `LevelUp.bat` ou `LevelUp.sh`.
+Le point d'entrée standard est désormais `make dev`.
 
 ### Étape 1 — Télécharger LevelUp
 
@@ -17,19 +17,27 @@ Extrayez le dossier où vous voulez (ex. Bureau ou `C:\LevelUp\`).
 > git clone https://github.com/JGtm/LevelUp_with_SPNKr.git
 > ```
 
-### Étape 2 — Double-cliquer sur `LevelUp.bat`
+### Étape 2 — Installer l'outillage local
 
-Le lanceur fait **tout automatiquement** :
+1. Installez Go 1.26+ et Node.js sur votre machine
+2. Installez Air pour le hot reload Go :
+   ```bash
+   go install github.com/air-verse/air@latest
+   ```
+3. Installez les dépendances frontend :
+   ```bash
+   cd apps/web && npm install && cd ../..
+   ```
 
-1. Cherche Python sur votre PC
-2. Si absent → le télécharge et l'installe via `winget` (Windows 10/11 — vous répondez `O`)
-3. Crée un environnement isolé (`.venv`)
-4. Installe toutes les dépendances
-5. Lance le dashboard et ouvre votre navigateur sur `http://localhost:5173`
+### Étape 3 — Démarrer l'application
 
-> **Au premier lancement** : 2–5 minutes (téléchargements). Les suivants : quelques secondes.
+```bash
+make dev
+```
 
-### Étape 3 — Setup Wizard dans le navigateur
+Cela démarre l'API Go sur le port 8000 et le frontend Vite sur http://localhost:5173.
+
+### Étape 4 — Setup Wizard dans le navigateur
 
 Au premier lancement, LevelUp détecte qu'il n'est pas configuré et affiche un **wizard guidé**.
 Choisissez votre parcours :
@@ -47,12 +55,7 @@ Le parcours le plus simple.
 **Option A — Automatique (recommandée) : avec Azure CLI**
 
 Si [Azure CLI](https://aka.ms/installazurecli) est installé sur votre machine, LevelUp
-crée l'application automatiquement **sans visiter le portail Azure** :
-
-1. Double-cliquez sur `LevelUp.bat` (ou `./LevelUp.sh` sous macOS/Linux)
-2. LevelUp détecte `az` CLI et vous propose de se connecter (`az login`)
-3. L'application « LevelUp Halo » est créée automatiquement
-4. Le wizard passe directement à la connexion Xbox
+crée l'application automatiquement **sans visiter le portail Azure** pendant le wizard.
 
 **Option B — Manuelle : sans Azure CLI**
 
@@ -88,7 +91,7 @@ python scripts/spnkr_get_refresh_token.py --device-code
 Ce script affiche un code court à entrer sur https://microsoft.com/devicelogin et sauvegarde
 le token automatiquement dans `.env.local`.
 
-### Étape 4 — Smoke test (vérification automatique sur 20 matchs)
+### Étape 5 — Smoke test (vérification automatique sur 20 matchs)
 
 Après la connexion Xbox, le wizard lance automatiquement un **smoke test en 3 phases** :
 
@@ -126,33 +129,25 @@ Si un check échoue, le test propose de **relancer**. Si tout est vert, deux cho
 ## Installation pour développeurs
 
 ### Prérequis
-- Python 3.10+ (recommandé : 3.12)
+- Go 1.26+
+- Node.js + npm
+- GNU Make
 - Git
 
 ```bash
 git clone https://github.com/JGtm/LevelUp_with_SPNKr.git
 cd LevelUp_with_SPNKr
-
-# Créer l'environnement virtuel
-python -m venv .venv
-
-# Activer (Windows PowerShell)
-.venv\Scripts\Activate.ps1
-# Activer (Linux/macOS)
-source .venv/bin/activate
-
-# Installation complète (avec outils de dev)
-pip install -e ".[dev,spnkr]"
+cd apps/web && npm install && cd ../..
+go install github.com/air-verse/air@latest
+make dev
 ```
 
 ### Vérification de l'environnement
 
 ```bash
-# Healthcheck complet
-python scripts/check_env.py
-
-# Ou via le lanceur
-python launcher.py doctor
+curl http://127.0.0.1:8000/health
+make go-api-test
+cd apps/web && npm run typecheck
 ```
 
 ### Tests
@@ -172,7 +167,8 @@ python -m pytest tests/test_duckdb_repository.py -v
 
 ```bash
 git pull origin main
-python launcher.py setup --update
+cd apps/web && npm install && cd ../..
+go install github.com/air-verse/air@latest
 ```
 
 Voir [CONFIGURATION.md](CONFIGURATION.md) pour la configuration des tokens Azure.
@@ -188,7 +184,7 @@ Cette commande crée automatiquement l'entrée dans `db_profiles.json` et le dos
 ### 4. Premier Lancement
 
 ```bash
-python launcher.py run
+make dev
 ```
 
 ---
@@ -263,21 +259,21 @@ L'image Docker :
 ### Diagnostic complet
 
 ```bash
-python launcher.py doctor
+curl http://127.0.0.1:8000/health
+make go-api-test
+cd apps/web && npm run typecheck
 ```
 
 ### Erreur "Module not found"
 
 ```bash
-python launcher.py setup
+cd apps/web && npm install
 ```
 
 ### Erreur DuckDB (version incorrecte)
 
 ```bash
-python -c "import duckdb; print(duckdb.__version__)"
-# Doit être >= 1.4.0
-python launcher.py setup --update
+cd apps/go-api && go test ./... -count=1
 ```
 
 ### Problème de token OAuth expiré

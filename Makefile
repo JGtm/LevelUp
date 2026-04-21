@@ -34,6 +34,9 @@ help:
 web:
 	cd apps/web && npm run dev
 
+## Lance l'API Go seule en mode dev (air)
+go-api-dev: _go-api-run
+
 ## Génère le fichier de types TypeScript depuis le schéma OpenAPI Go
 ## Usage : make generate-types
 generate-types:

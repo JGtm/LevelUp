@@ -207,10 +207,16 @@ The dashboard displays:
 - **Sync button**: Triggers a delta sync
 - **Full button**: Triggers a full sync
 
-### Sync on Launch
+### Start the stack before syncing
 
 ```bash
-python launcher.py run+refresh --player YourGamertag --delta
+make dev
+```
+
+Then trigger a delta sync from the UI, or run:
+
+```bash
+python scripts/sync.py --delta --gamertag YourGamertag
 ```
 
 ---
