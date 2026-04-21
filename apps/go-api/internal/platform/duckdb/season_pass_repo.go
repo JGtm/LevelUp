@@ -6,6 +6,8 @@ import (
 	"database/sql"
 	"encoding/json"
 	"fmt"
+	"path"
+	"path/filepath"
 	"sort"
 	"strings"
 	"time"
@@ -23,6 +25,37 @@ type SeasonPassRepo struct {
 // NewSeasonPassRepo crée un SeasonPassRepo pour un joueur.
 func NewSeasonPassRepo(pdb *PlayerDB) *SeasonPassRepo {
 	return &SeasonPassRepo{pdb: pdb}
+}
+
+// battlepassCacheDir dérive data/cache/battlepass_assets/ depuis metadata.duckdb.
+func (r *SeasonPassRepo) battlepassCacheDir() string {
+	metaPath := r.pdb.Metadata.Path()
+	if metaPath == "" {
+		return ""
+	}
+	warehouseDir := filepath.Dir(metaPath)
+	dataDir := filepath.Dir(warehouseDir)
+	return filepath.Join(dataDir, "cache", "battlepass_assets")
+}
+
+// localBPImageURL retourne l'URL proxy locale incluant le chemin GameCMS complet.
+// Le handler décodera ce chemin pour construire l'URL GameCMS exacte lors du fetch.
+// Ne retourne jamais une URL GameCMS directe — le browser ne peut pas la charger.
+func localBPImageURL(gameCMSPath, cacheDir, subDir string) *string {
+	trimmed := strings.TrimSpace(strings.ReplaceAll(gameCMSPath, "\\", "/"))
+	if trimmed == "" {
+		return nil
+	}
+	// Vérification de sécurité : pas de traversal de répertoire.
+	cleaned := path.Clean("/" + strings.TrimLeft(trimmed, "/"))
+	if cleaned == "/" || cleaned == "." {
+		return nil
+	}
+	// Toujours retourner l'URL proxy — Go gérera le cache ou le fetch GameCMS.
+	// Le chemin complet est inclus pour que le handler construise la bonne URL GameCMS.
+	_ = cacheDir // la décision cache/fetch est dans le handler
+	u := "/api/v1/assets/battlepass/" + subDir + cleaned
+	return &u
 }
 
 // trackSnapshotState est l'état le plus récent d'un reward track pour un joueur.
@@ -204,13 +237,54 @@ func (r *SeasonPassRepo) LoadSeasonPassTracks(ctx context.Context, _, _ string) 
 		return nil, err
 	}
 
+	cacheDir := r.battlepassCacheDir()
 	for _, row := range trackRows {
 		prog := progressMap[row.rewardTrackPath]
 		prog.IsActive = row.rewardTrackPath == activeTrackPath
-		summary := buildTrackSummary(row, prog, itemMap)
+		summary := buildTrackSummary(row, prog, itemMap, cacheDir)
 		tracks = append(tracks, summary)
 	}
+
+	// Fallback : si battlepass_track_definitions est vide mais que des snapshots
+	// de progression existent en DB joueur, construire des résumés minimaux.
+	// Cela évite l'état "Non disponible" quand les définitions Waypoint n'ont jamais
+	// été persistées (ex: aucun appel live Go authentifié), mais que des données
+	// de progression sont déjà présentes depuis un sync Python antérieur.
+	if len(trackRows) == 0 && len(progressMap) > 0 {
+		for path, state := range progressMap {
+			state.IsActive = path == activeTrackPath
+			tracks = append(tracks, buildMinimalTrackSummary(path, state))
+		}
+		sort.Slice(tracks, func(i, j int) bool {
+			if tracks[i].IsActive != tracks[j].IsActive {
+				return tracks[i].IsActive
+			}
+			return tracks[i].CurrentRank > tracks[j].CurrentRank
+		})
+	}
+
 	return tracks, nil
+}
+
+// buildMinimalTrackSummary construit un SeasonPassTrackSummary depuis battlepass_snapshots
+// uniquement, quand battlepass_track_definitions est vide (aucun appel Waypoint persisté).
+func buildMinimalTrackSummary(path string, state trackSnapshotState) domain.SeasonPassTrackSummary {
+	name := path
+	if parts := strings.Split(path, "/"); len(parts) > 0 {
+		name = parts[len(parts)-1]
+	}
+	status := computeSeasonPassStatus(state)
+	isOwned := state.IsOwned || state.Rank > 0 || state.IsActive
+	return domain.SeasonPassTrackSummary{
+		RewardTrackPath:   path,
+		Name:              name,
+		Status:            status,
+		IsActive:          state.IsActive,
+		IsOwned:           isOwned,
+		HasReachedMaxRank: state.HasReachedMaxRank,
+		CurrentRank:       state.Rank,
+		PartialProgress:   state.Partial,
+	}
 }
 
 func (r *SeasonPassRepo) loadItemMetadataMap(
@@ -287,6 +361,7 @@ func buildTrackSummary(
 	row seasonPassTrackRow,
 	state trackSnapshotState,
 	itemMap map[string]seasonPassItemMeta,
+	cacheDir string,
 ) domain.SeasonPassTrackSummary {
 	payload := parseTrackPayload(row.rawPayloadJSON)
 	name := row.rewardTrackPath
@@ -324,10 +399,10 @@ func buildTrackSummary(
 		v := *xpPerRank
 		s.XPPerRank = &v
 	}
-	if imageURL := resolveTrackImageURL(row, payload); imageURL != nil {
+	if imageURL := resolveTrackImageURL(row, payload, cacheDir); imageURL != nil {
 		s.ImageURL = imageURL
 	}
-	if backgroundURL := resolveTrackBackgroundURL(row, payload); backgroundURL != nil {
+	if backgroundURL := resolveTrackBackgroundURL(row, payload, cacheDir); backgroundURL != nil {
 		s.BackgroundImageURL = backgroundURL
 	}
 	return s
@@ -442,24 +517,20 @@ func selectTierPreview(
 	return seasonPassItemMeta{}, false
 }
 
-func resolveTrackImageURL(row seasonPassTrackRow, payload *seasonPassTrackPayload) *string {
-	if url := normalizeGameCMSImageURL(coalesceNullString(row.battlepassImagePath)); url != nil {
-		return url
+func resolveTrackImageURL(row seasonPassTrackRow, payload *seasonPassTrackPayload, cacheDir string) *string {
+	p := coalesceNullString(row.battlepassImagePath)
+	if p == "" && payload != nil {
+		p = payload.BattlePassImage
 	}
-	if payload == nil {
-		return nil
-	}
-	return normalizeGameCMSImageURL(payload.BattlePassImage)
+	return localBPImageURL(p, cacheDir, "tracks")
 }
 
-func resolveTrackBackgroundURL(row seasonPassTrackRow, payload *seasonPassTrackPayload) *string {
-	if url := normalizeGameCMSImageURL(coalesceNullString(row.backgroundImagePath)); url != nil {
-		return url
+func resolveTrackBackgroundURL(row seasonPassTrackRow, payload *seasonPassTrackPayload, cacheDir string) *string {
+	p := coalesceNullString(row.backgroundImagePath)
+	if p == "" && payload != nil {
+		p = payload.BackgroundImagePath
 	}
-	if payload == nil {
-		return nil
-	}
-	return normalizeGameCMSImageURL(payload.BackgroundImagePath)
+	return localBPImageURL(p, cacheDir, "background")
 }
 
 func resolveXPPerRank(row seasonPassTrackRow, payload *seasonPassTrackPayload) *int {
