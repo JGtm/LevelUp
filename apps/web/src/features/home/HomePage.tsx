@@ -48,7 +48,7 @@ export function HomePage() {
 
   if (isLoading) {
     return (
-      <div className="flex h-full items-center justify-center">
+      <div className="flex min-h-[55vh] items-center justify-center px-6 py-10 sm:min-h-[60vh]">
         <Spinner size="lg" label="Chargement de l'accueil…" />
       </div>
     )
@@ -56,8 +56,8 @@ export function HomePage() {
 
   if (isError) {
     return (
-      <div className="flex flex-col">
-        <div className="p-6">
+      <div className="flex min-h-[40vh] flex-col px-6 pb-6 pt-4 sm:pt-6">
+        <div className="w-full max-w-3xl">
           <EmptyStateCard
             title="Accueil indisponible"
             description="La page d'accueil n'a pas pu être chargée pour ce joueur. Vérifie la session ou relance la requête."
@@ -71,8 +71,8 @@ export function HomePage() {
 
   if (!data) {
     return (
-      <div className="flex flex-col">
-        <div className="p-6">
+      <div className="flex min-h-[40vh] flex-col px-6 pb-6 pt-4 sm:pt-6">
+        <div className="w-full max-w-3xl">
           <EmptyStateCard
             title="Accueil vide"
             description="Aucune donnée d'accueil n'a été renvoyée pour ce joueur. Vérifie le bootstrap ou les données locales avant de continuer."
@@ -92,6 +92,9 @@ export function HomePage() {
   const soloSession = data.solo_session ?? null
   const squadSession = data.squad_session ?? null
   const challenges = seasonPass?.challenges
+  const challengesCompletedLabel = challenges?.available
+    ? `${challenges.completed ?? 0} / ${challenges.total ?? 0} complétés`
+    : null
 
   return (
     <div className="relative isolate flex flex-col">
@@ -129,17 +132,19 @@ export function HomePage() {
           />
 
           <Card>
-            <CardHeader>
+            <CardHeader className="flex flex-row items-center justify-between gap-3 space-y-0">
               <CardTitle className="text-base">Défis actifs</CardTitle>
+              {challengesCompletedLabel && (
+                <p data-testid="home-challenges-completed" className="shrink-0 text-sm text-foreground">
+                  <strong className="text-primary">{challenges.completed ?? 0}</strong> / {challenges.total ?? 0} complétés
+                </p>
+              )}
             </CardHeader>
             <CardContent>
               {isSeasonPassLoading && !seasonPass ? (
                 <p className="text-sm text-muted-foreground">Chargement des défis…</p>
               ) : challenges?.available ? (
                 <div className="space-y-3">
-                  <p className="text-sm text-foreground">
-                    <strong className="text-primary">{challenges.completed ?? 0}</strong> / {challenges.total ?? 0} complétés
-                  </p>
                   {Array.isArray(challenges.items) && challenges.items.length > 0 ? (
                     <HomeChallengesList items={challenges.items} />
                   ) : (

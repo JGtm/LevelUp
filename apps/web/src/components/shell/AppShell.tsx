@@ -11,7 +11,7 @@ import { ErrorBoundary } from './ErrorBoundary'
 
 export function AppShell() {
   return (
-    <div className="flex h-screen flex-col overflow-hidden bg-background text-foreground">
+    <div className="flex h-screen flex-col gap-3 overflow-hidden bg-background text-foreground sm:gap-4">
       {/* Barre de navigation L1 — toujours visible */}
       <NavL1 />
 

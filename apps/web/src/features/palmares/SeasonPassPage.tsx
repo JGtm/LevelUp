@@ -46,6 +46,34 @@ function ProgressBar({ value }: { value?: number | null }) {
   )
 }
 
+function formatXPLabel(value: number, locale: string) {
+  return `${Math.max(0, value).toLocaleString(locale)} XP`
+}
+
+function buildCompositeProgressEdgeLabels({
+  partialProgress,
+  xpPerRank,
+  progressPercent,
+  locale,
+}: {
+  partialProgress: number
+  xpPerRank?: number | null
+  progressPercent: number
+  locale: string
+}) {
+  if (xpPerRank != null && xpPerRank > 0) {
+    return {
+      current: formatXPLabel(partialProgress, locale),
+      target: formatXPLabel(xpPerRank, locale),
+    }
+  }
+
+  return {
+    current: `${progressPercent.toLocaleString(locale, { maximumFractionDigits: 0 })} %`,
+    target: '100 %',
+  }
+}
+
 function CompositeProgressBar({ value }: { value?: number | null }) {
   const width = value == null ? 0 : Math.max(0, Math.min(100, value))
   return (
@@ -197,6 +225,12 @@ function ActivePassShowcase({
   const tierProgress = pass.active_tier_progress_percent ?? 0
   const tierLabel = activeTier?.title ?? text.seasonPass.activeTierFallback
   const rankLabel = pass.active_tier_rank == null ? '—' : `#${pass.active_tier_rank}`
+  const progressLabels = buildCompositeProgressEdgeLabels({
+    partialProgress: pass.partial_progress,
+    xpPerRank: pass.xp_per_rank,
+    progressPercent: tierProgress,
+    locale: text.intlLocale,
+  })
 
   return (
     <Card className="relative overflow-hidden border-border/70 bg-card/95 shadow-sm">
@@ -283,7 +317,26 @@ function ActivePassShowcase({
                   {tierProgress.toLocaleString(text.intlLocale, { maximumFractionDigits: 0 })} %
                 </p>
               </div>
-              <CompositeProgressBar value={tierProgress} />
+              <div
+                data-testid="season-pass-active-tier-progress-row"
+                className="grid grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-3"
+              >
+                <span
+                  data-testid="season-pass-active-tier-progress-current"
+                  className="shrink-0 whitespace-nowrap text-[11px] font-medium text-foreground/85 sm:text-xs"
+                >
+                  {progressLabels.current}
+                </span>
+                <div className="min-w-0">
+                  <CompositeProgressBar value={tierProgress} />
+                </div>
+                <span
+                  data-testid="season-pass-active-tier-progress-target"
+                  className="shrink-0 whitespace-nowrap text-[11px] font-medium text-foreground/85 sm:text-xs"
+                >
+                  {progressLabels.target}
+                </span>
+              </div>
             </div>
           </div>
         )}

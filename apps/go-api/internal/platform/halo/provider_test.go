@@ -690,7 +690,7 @@ func TestFetchChallengeBadgeDataURL_PersistsLiveBadgeToLocalCache(t *testing.T) 
 func TestFetchChallengeBadgeDataURL_SeasonalFallsBackToWeekly(t *testing.T) {
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		switch r.URL.Path {
-		case "/hi/waypoint/file/images/weekly-action-legendary.png":
+		case "/hi/waypoint/file/images/weekly-legendary.png":
 			w.Header().Set("Content-Type", "image/png")
 			_, _ = w.Write(append(append([]byte{}, challengePNGSignature...), []byte("seasonal-weekly-fallback")...))
 		default:
@@ -716,8 +716,42 @@ func TestFetchChallengeBadgeDataURL_SeasonalFallsBackToWeekly(t *testing.T) {
 		"Seasonal",
 		"Legendary",
 	)
-	if len(candidates) == 0 || candidates[0] != "weekly-action-legendary" {
+	if len(candidates) == 0 || candidates[0] != "weekly-legendary" {
 		t.Fatalf("expected weekly fallback candidates first, got %v", candidates)
+	}
+}
+
+func TestFetchChallengeBadgeDataURL_WeeklyVehicleUsesVehicleBadgeFirst(t *testing.T) {
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		switch r.URL.Path {
+		case "/hi/waypoint/file/images/weekly-vehicle-heroic.png":
+			w.Header().Set("Content-Type", "image/png")
+			_, _ = w.Write(append(append([]byte{}, challengePNGSignature...), []byte("vehicle-weekly-badge")...))
+		default:
+			http.NotFound(w, r)
+		}
+	}))
+	defer srv.Close()
+
+	p := newTestProvider("", srv.URL)
+	imageURL := p.fetchChallengeBadgeDataURL(
+		context.Background(),
+		testTokens(),
+		"ChallengeContent/ClientChallengeDefinitions/WeeklyChallenges/Vehicle/ch4.json",
+		"Weekly",
+		"Heroic",
+	)
+	if imageURL == nil || !strings.HasPrefix(*imageURL, "data:image/png;base64,") {
+		t.Fatalf("expected data URL from weekly vehicle badge, got %v", imageURL)
+	}
+
+	candidates := buildChallengeBadgeCandidates(
+		"ChallengeContent/ClientChallengeDefinitions/WeeklyChallenges/Vehicle/ch4.json",
+		"Weekly",
+		"Heroic",
+	)
+	if len(candidates) == 0 || candidates[0] != "weekly-vehicle-heroic" {
+		t.Fatalf("expected vehicle badge stem first, got %v", candidates)
 	}
 }
 
