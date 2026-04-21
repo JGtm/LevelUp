@@ -28,6 +28,21 @@ func (s *stubMedalRepo) UpsertMedalImageCache(_ context.Context, e duckdb.MedalI
 	return nil
 }
 
+// stubMapRepo implémente MapImageRepo pour les tests.
+type stubMapRepo struct {
+	entry    *duckdb.MapImageEntry
+	upserted *duckdb.MapImageEntry
+}
+
+func (s *stubMapRepo) GetMapImageCache(_ context.Context, _ string, _ string) (*duckdb.MapImageEntry, error) {
+	return s.entry, nil
+}
+
+func (s *stubMapRepo) UpsertMapImageCache(_ context.Context, e duckdb.MapImageEntry) error {
+	s.upserted = &e
+	return nil
+}
+
 func newAssetTestRouter(h *handlers.AssetHandler) *chi.Mux {
 	r := chi.NewRouter()
 	r.Get("/assets/medals/{title_id}/{medal_id}/image", h.GetMedalImage)
@@ -84,6 +99,75 @@ func TestMedalImageHandler_CacheMiss_Upserts(t *testing.T) {
 	r := newAssetTestRouter(handlers.NewAssetHandlerWithRepo(stub))
 
 	req := httptest.NewRequest(http.MethodGet, "/assets/medals/halo_infinite/99999/image", nil)
+	w := httptest.NewRecorder()
+	r.ServeHTTP(w, req)
+
+	// Le fetch Waypoint peut échouer en test (pas de réseau) — on accepte 302 ou 502.
+	if w.Code != http.StatusFound && w.Code != http.StatusBadGateway {
+		t.Errorf("cache miss: attendu 302 ou 502, obtenu %d", w.Code)
+	}
+}
+
+// ============================================================================
+// Tests pour GetMapImage (cache-aside maps)
+// ============================================================================
+
+func newMapTestRouter(h *handlers.AssetHandler) *chi.Mux {
+	r := chi.NewRouter()
+	r.Get("/assets/maps/{title_id}/{map_id}/image", h.GetMapImage)
+	return r
+}
+
+// TestMapImageHandler_CacheHit vérifie qu'un cache hit retourne une redirection 302
+// sans appel UpsertMapImageCache.
+func TestMapImageHandler_CacheHit(t *testing.T) {
+	stubMap := &stubMapRepo{
+		entry: &duckdb.MapImageEntry{
+			TitleID:  "halo_infinite",
+			MapID:    "aquarius",
+			ImageURL: "https://example.com/map.png",
+		},
+	}
+	h := handlers.NewAssetHandlerWithMapRepo(stubMap)
+	r := newMapTestRouter(h)
+
+	req := httptest.NewRequest(http.MethodGet, "/assets/maps/halo_infinite/aquarius/image", nil)
+	w := httptest.NewRecorder()
+	r.ServeHTTP(w, req)
+
+	if w.Code != http.StatusFound {
+		t.Errorf("cache hit: attendu 302, obtenu %d", w.Code)
+	}
+	if loc := w.Header().Get("Location"); loc != "https://example.com/map.png" {
+		t.Errorf("cache hit: Location=%q, attendu %q", loc, "https://example.com/map.png")
+	}
+	if stubMap.upserted != nil {
+		t.Error("cache hit: UpsertMapImageCache ne doit pas être appelé")
+	}
+}
+
+// TestMapImageHandler_EmptyMapID vérifie le rejet d'un map_id vide.
+func TestMapImageHandler_EmptyMapID(t *testing.T) {
+	stubMap := &stubMapRepo{}
+	h := handlers.NewAssetHandlerWithMapRepo(stubMap)
+	r := newMapTestRouter(h)
+
+	req := httptest.NewRequest(http.MethodGet, "/assets/maps/halo_infinite//image", nil)
+	w := httptest.NewRecorder()
+	r.ServeHTTP(w, req)
+
+	if w.Code != http.StatusBadRequest {
+		t.Errorf("map_id vide: attendu 400, obtenu %d", w.Code)
+	}
+}
+
+// TestMapImageHandler_CacheMiss vérifie qu'un cache miss déclenche un fetch + upsert.
+func TestMapImageHandler_CacheMiss(t *testing.T) {
+	stubMap := &stubMapRepo{entry: nil} // cache vide
+	h := handlers.NewAssetHandlerWithMapRepo(stubMap)
+	r := newMapTestRouter(h)
+
+	req := httptest.NewRequest(http.MethodGet, "/assets/maps/halo_infinite/unknown_map/image", nil)
 	w := httptest.NewRecorder()
 	r.ServeHTTP(w, req)
 
