@@ -203,18 +203,26 @@ func (d *Daemon) connectAndSubscribe(ctx context.Context) {
 			if err := d.rtaClient.Connect(connectCtx); err != nil {
 				return err
 			}
-			// Re-souscrire tous les joueurs
+			// Re-souscrire tous les joueurs pour chaque titre tracké.
+			// Les titres trackés sont ceux enregistrés dans le TitleRegistry avec
+			// un XboxTitleID (ex: Halo Infinite, et tout futur titre Halo ajouté).
+			trackedTitles := d.titleReg.All()
 			d.playersMu.RLock()
 			defer d.playersMu.RUnlock()
 			for _, pw := range d.players {
 				handler := d.makePresenceHandler(ctx, pw)
-				if err := d.rtaClient.Subscribe(connectCtx, pw.xuid, handler); err != nil {
-					slog.WarnContext(connectCtx, "watcher_daemon: échec subscribe",
-						"gamertag", pw.gamertag, "err", err)
-					pw.SetSubscribeError(err)
-				} else {
-					pw.SetSubscribeError(nil)
+				var lastErr error
+				for _, td := range trackedTitles {
+					if td.XboxTitleID == "" {
+						continue
+					}
+					if err := d.rtaClient.Subscribe(connectCtx, pw.xuid, td.XboxTitleID, handler); err != nil {
+						slog.WarnContext(connectCtx, "watcher_daemon: échec subscribe",
+							"gamertag", pw.gamertag, "title", td.Name, "err", err)
+						lastErr = err
+					}
 				}
+				pw.SetSubscribeError(lastErr)
 			}
 			return nil
 		},
