@@ -347,7 +347,7 @@ func (r *SeasonPassRepo) loadItemMetadataMap(
 		itemMap[itemPath.String] = seasonPassItemMeta{
 			Title:       coalesceNullString(title),
 			Description: nullStringPtr(description),
-			ImageURL:    normalizeGameCMSImageURL(coalesceNullString(displayPath)),
+			ImageURL:    localBPImageURL(coalesceNullString(displayPath), "", "tier"),
 		}
 	}
 	if err := rows.Err(); err != nil {
