@@ -8,6 +8,7 @@ import { PageHeader } from '@/components/shell/PageHeader'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Spinner } from '@/components/ui/spinner'
+import { GamertagCombobox } from '@/components/ui/GamertagCombobox'
 import { useAppShellStore } from '@/stores/appShellStore'
 import { useSettings, useUpdateSettings } from '@/features/settings/queries'
 import { useStartSyncAll, useJobStatus } from '@/features/setup/queries'
@@ -413,17 +414,6 @@ function FriendGamertagesSection({
   value: string[]
   onChange: (v: string[]) => void
 }) {
-  const [draft, setDraft] = useState(value.join(', '))
-
-  const handleBlur = () => {
-    const parsed = draft
-      .split(',')
-      .map((s) => s.trim())
-      .filter(Boolean)
-    onChange(parsed)
-    setDraft(parsed.join(', '))
-  }
-
   return (
     <Card>
       <CardHeader>
@@ -432,15 +422,13 @@ function FriendGamertagesSection({
       <CardContent>
         <p className="text-sm text-muted-foreground mb-3">
           Gamertags des coéquipiers présélectionnés à l'ouverture de la page Escouade.
-          Séparer par des virgules.
+          Les joueurs déjà configurés dans l'app apparaissent en priorité.
         </p>
-        <input
-          type="text"
-          value={draft}
-          onChange={(e) => setDraft(e.target.value)}
-          onBlur={handleBlur}
-          placeholder="Pseudo1, Pseudo2, Pseudo3"
-          className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
+        <GamertagCombobox
+          selected={value}
+          onChange={onChange}
+          allowFreeInput={true}
+          placeholder="Rechercher ou saisir un gamertag…"
         />
       </CardContent>
     </Card>

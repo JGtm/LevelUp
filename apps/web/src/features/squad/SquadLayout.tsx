@@ -17,6 +17,7 @@ import { PageHeader } from '@/components/shell/PageHeader'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { EmptyStateCard } from '@/components/ui/empty-state'
 import { Spinner } from '@/components/ui/spinner'
+import { GamertagCombobox } from '@/components/ui/GamertagCombobox'
 import { SessionScopeSelector } from './SessionScopeSelector'
 import type {
   TeammateRow,
@@ -235,53 +236,23 @@ export function SquadLayout() {
           onSquadChange={setSquadSession}
         />
 
-        {/* Multiselect coéquipiers depuis les options */}
-        {availableOptions.length > 0 && (
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center justify-between text-base">
-                <span>Sélectionner des coéquipiers</span>
-                <span className="text-sm font-normal text-muted-foreground">
-                  {selectedGts.length}/{MAX_SELECTION}
-                  {selectedGts.length > 0 && (
-                    <button
-                      className="ml-2 text-xs text-muted-foreground hover:text-foreground"
-                      onClick={() => setSelectedGts([])}
-                    >
-                      ✕ Effacer
-                    </button>
-                  )}
-                </span>
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="flex flex-wrap gap-2">
-                {availableOptions.map((opt) => {
-                  const idx = selectedGts.indexOf(opt.gamertag)
-                  const isSelected = idx >= 0
-                  const color = isSelected ? CHART_COLORS[idx % CHART_COLORS.length] : undefined
-                  return (
-                    <button
-                      key={opt.xuid ?? opt.gamertag}
-                      onClick={() => toggleSelect(opt.gamertag)}
-                      disabled={!isSelected && selectedGts.length >= MAX_SELECTION}
-                      className={`flex items-center gap-1.5 rounded-full border px-3 py-1 text-sm transition-colors
-                        ${isSelected
-                          ? 'border-transparent text-white'
-                          : 'border-border text-muted-foreground hover:border-primary hover:text-foreground disabled:opacity-40'
-                        }`}
-                      style={isSelected ? { backgroundColor: color } : undefined}
-                    >
-                      {isSelected && <span className="text-xs">✓</span>}
-                      {opt.gamertag}
-                      <span className="text-xs opacity-70">({opt.encounter_count})</span>
-                    </button>
-                  )
-                })}
-              </div>
-            </CardContent>
-          </Card>
-        )}
+        {/* Sélecteur coéquipiers avec fuzzy search */}
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-base">Coéquipiers comparés</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <GamertagCombobox
+              selected={selectedGts}
+              onChange={setSelectedGts}
+              max={MAX_SELECTION}
+              frequentOptions={availableOptions}
+              colors={CHART_COLORS}
+              excludeGamertag={playerSlug}
+              placeholder={`Rechercher parmi ${availableOptions.length} coéquipiers…`}
+            />
+          </CardContent>
+        </Card>
 
         {/* KPI block si coéquipier(s) sélectionné(s) */}
         {selectedRows.length > 0 && (
