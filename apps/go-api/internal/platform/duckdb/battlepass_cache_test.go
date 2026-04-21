@@ -201,7 +201,7 @@ func TestSeasonPassRepoLoadSeasonPassTracks_UsesPlayerSnapshots(t *testing.T) {
 	if !active.IsActive || active.Status != domain.SeasonPassStatusActive || active.CurrentRank != 12 {
 		t.Fatalf("TrackA invalide: %+v", active)
 	}
-	if active.ImageURL == nil || *active.ImageURL != gameCMSImageBaseURL+"progression/track-a.png" {
+	if active.ImageURL == nil || *active.ImageURL != "/api/v1/assets/battlepass/tracks/progression/track-a.png" {
 		t.Fatalf("TrackA image_url invalide: %+v", active.ImageURL)
 	}
 	if active.Description == nil || *active.Description != "Escalade principale" {
@@ -216,7 +216,7 @@ func TestSeasonPassRepoLoadSeasonPassTracks_UsesPlayerSnapshots(t *testing.T) {
 	if len(active.Tiers) != 3 {
 		t.Fatalf("TrackA tiers len = %d, want 3", len(active.Tiers))
 	}
-	if active.Tiers[0].ImageURL == nil || *active.Tiers[0].ImageURL != gameCMSImageBaseURL+"progression/items/reward-1.png" {
+	if active.Tiers[0].ImageURL == nil || *active.Tiers[0].ImageURL != "/api/v1/assets/battlepass/tier/progression/items/reward-1.png" {
 		t.Fatalf("TrackA tier 1 image invalide: %+v", active.Tiers[0].ImageURL)
 	}
 	if !active.Tiers[1].IsObtained || active.Tiers[1].IsCurrent {
