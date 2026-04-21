@@ -16,6 +16,7 @@ import (
 
 	"levelup/go-api/internal/api/handlers"
 	"levelup/go-api/internal/api/middleware"
+	"levelup/go-api/internal/assets"
 	"levelup/go-api/internal/config"
 	titlePkg "levelup/go-api/internal/domain/title"
 	auth_platform "levelup/go-api/internal/platform/auth"
@@ -93,15 +94,19 @@ func NewRouter(
 		gamertagSvc = platform_duckdb.NewGamertagRepo(sharedDB)
 	}
 
-	// Sprint 54 D1 / Phase 2 : AssetHandler — cache-aside pour médailles et maps.
+	// AssetHandler — couche d'abstraction unifiée (local-first → API-fallback).
+	// Le resolver est créé ici pour accéder à reg.AnyPlayerTokens.
 	var assetHandler *handlers.AssetHandler
-	if metadataPath := filepath.Join(cfg.RepoRoot, "data", "warehouse", "metadata.duckdb"); metadataPath != "" {
-		if metaDB, err := platform_duckdb.OpenReadWrite(metadataPath); err != nil {
-			slog.Warn("metadata DB unavailable for asset cache", "err", err)
-		} else {
-			metaRepo := platform_duckdb.NewMetadataRepoFromDB(metaDB)
-			assetHandler = handlers.NewAssetHandler(metaRepo)
-		}
+	assetCfg := assets.AssetConfig{
+		CacheRootDir:  filepath.Join(cfg.RepoRoot, "data", "cache"),
+		MetaDBPath:    filepath.Join(cfg.RepoRoot, "data", "warehouse", "metadata.duckdb"),
+		StaticMapDir:  filepath.Join(cfg.RepoRoot, "static", "maps"),
+		TokenProvider: reg.AnyPlayerTokens,
+	}
+	if assetResolver, err := assets.New(assetCfg); err != nil {
+		slog.Warn("assets resolver non disponible", "err", err)
+	} else {
+		assetHandler = handlers.NewAssetHandler(assetResolver)
 	}
 
 	// Fichiers statiques (images maps, médailles, armes…)
@@ -173,10 +178,13 @@ func NewRouter(
 		// Galerie médias — version de flux pour polling léger
 		r.Get("/media/feed-version", handlers.GetMediaFeedVersion)
 
-		// Sprint 54 D1 / Phase 2 : Assets cache-aside (médailles + maps).
+		// Assets cache-aside unifiés (médailles, maps, battlepass, badges de défi).
+		// Couche d'abstraction DefaultResolver : local-first → API-fallback + DuckDB index.
 		if assetHandler != nil {
 			r.Get("/assets/medals/{title_id}/{medal_id}/image", assetHandler.GetMedalImage)
 			r.Get("/assets/maps/{title_id}/{map_id}/image", assetHandler.GetMapImage)
+			r.Get("/assets/battlepass/{subdir}/*", assetHandler.GetBattlePassImage)
+			r.Get("/assets/challenge-badge/{title_id}/{badge_id}", assetHandler.GetChallengeBadge)
 		}
 
 		// Endpoints P1 : pages par joueur (Sprint 37 — DI via ServiceRegistry)
@@ -210,7 +218,7 @@ func NewRouter(
 			r.Post("/pages/stats/query", stats.GetPage)
 
 			// Sprint 11 : Accueil/Home + Battle Pass + Challenges
-			home := handlers.NewHomeHandler(reg.HomeCtxWithAuth)
+			home := handlers.NewHomeHandler(reg.HomeCtxWithAuth, settingsStore)
 			r.Get("/pages/home", home.GetHomePage)
 			r.Get("/battlepass", home.GetBattlePass)
 			r.Get("/challenges", home.GetChallenges)

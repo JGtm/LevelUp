@@ -40,12 +40,18 @@ type PlayerLiveRefresher struct {
 
 // NewPlayerLiveRefresher crée un refresher pour un joueur.
 // sink est le PersistSink fire-and-forget pour persister les résultats.
-func NewPlayerLiveRefresher(gamertag, xuid string, sink *duckdb.PersistSink) *PlayerLiveRefresher {
+// metaPath est le chemin vers metadata.duckdb ; si non vide, les définitions
+// de Reward Tracks sont persistées dans battlepass_track_definitions.
+func NewPlayerLiveRefresher(gamertag, xuid, metaPath string, sink *duckdb.PersistSink) *PlayerLiveRefresher {
+	provider := halo.DefaultHaloProvider
+	if metaPath != "" {
+		provider = provider.WithBattlePassCache(metaPath)
+	}
 	return &PlayerLiveRefresher{
 		gamertag: gamertag,
 		xuid:     xuid,
 		interval: liveRefreshInterval,
-		provider: halo.DefaultHaloProvider,
+		provider: provider,
 		sink:     sink,
 	}
 }

@@ -1,5 +1,141 @@
 # Thought Log
 
+## [2026-04-21] feat(assets): abstraction layer P0→P6 — internal/assets/ complet
+
+**Statut** : ✅ Complété
+
+**Décision technique** : Création d'un package `internal/assets/` qui centralise toute la logique local-first → API-fallback pour les assets visuels Halo (médailles, maps, badges de défis, battle pass). Les handlers HTTP dans `internal/api/handlers/assets.go` sont devenus de simples trampolines : parse chi params → `Ref` → `resolver.Get()` → `serveResolved()`. La logique de singleflight, retry, write queue DuckDB et fetcher GameCMS est encapsulée dans `DefaultResolver`.
+
+**Décisions importantes** :
+- Les badges de défis ne renvoient plus de `data:image/png;base64,...` mais une URL `/api/v1/assets/challenge-badge/{title_id}/{badge_id}` — le payload devient une redirection ou un binaire servi via le resolver.
+- `battlepass_details.go` garde sa pré-cache fire-and-forget (tests existants passent) — la migration vers `resolver.Warm()` est reportée (les deux coexistent sans conflit).
+- `metaDB *platform_duckdb.DB` a été retiré de la signature `NewRouter` — le resolver crée sa propre connexion via `DuckDBIndexStore`.
+
+**Fichiers créés** :
+- `internal/assets/doc.go`, `kinds.go`, `ref.go`, `payload.go`, `errors.go`, `resolver.go`
+- `internal/assets/store.go`, `store_localfs.go`, `store_duckdb.go`
+- `internal/assets/fetcher.go`, `fetcher_gamecms.go`, `fetcher_chain.go`
+- `internal/assets/write_queue.go`, `metrics.go`, `resolver_default.go`, `wire.go`
+
+**Fichiers modifiés** :
+- `internal/api/handlers/assets.go` — handler réécrit, anciens repos supprimés
+- `internal/api/handlers/assets_test.go` — tests réécrits avec `stubResolver`
+- `internal/api/server.go` — crée le resolver via `assets.New()`, retire `metaDB`
+- `cmd/server/main.go` — mise à jour appel `NewRouter`
+- `internal/platform/halo/challenges_details.go` — suppression fetch base64, ajout `challengeBadgeAPIURL`
+- `internal/platform/halo/provider_test.go` — mise à jour tests challenge badge
+- `internal/watcher/live_refresh.go` — ajout `metaPath` + `WithBattlePassCache`
+- `internal/api/contract_helpers_test.go`, `internal/watcher/live_refresh_test.go` — alignement signatures
+
+**Résultats** :
+- `go build ./...` : OK
+- `go test ./internal/...` : 26/26 packages OK
+
+## [2026-04-21] fix(home): aligner les labels home sur la langue UI active
+
+**Statut** : ✅ Complété
+
+**Décision technique** : le bug ne venait plus du composant React mais du payload home, qui continuait à sérialiser les labels depuis `shared.match_registry` sans tenir compte de la locale active de l'application. Le correctif retenu fait désormais lire `Q26HomeMatches` depuis `shared.v_match_full`, transporte aussi `playlist_name_fr`, puis choisit FR/EN dans `internal/analysis/home.go` selon la langue des settings chargée par le handler home, c'est-à-dire la même source que le bootstrap React. Le frontend garde seulement la responsabilité du connecteur `sur/on` dans le titre de la carte.
+
+**Modifications** :
+- `apps/go-api/internal/platform/duckdb/queries_home_citations.go` + `home_repo.go` + `internal/domain/home.go` : la home lit désormais `shared.v_match_full` et transporte `playlist_name` + `playlist_name_fr` distinctement.
+- `apps/go-api/internal/analysis/home.go` : ajout d'un choix de labels par locale pour `map_ui`, `mode_ui`, `playlist_ui` et `outcome_label`, tout en conservant la normalisation du mode.
+- `apps/go-api/internal/service/home_service.go` + `internal/port/services.go` + `internal/api/handlers/home.go` + `internal/api/server.go` : `GetHomePage` reçoit maintenant la locale, dérivée du `settingsStore` utilisé aussi par le bootstrap.
+- `apps/web/src/features/home/HomePage.tsx` + `apps/web/src/components/ui/match-card.tsx` : la home React passe `appShellStore.locale` à `MatchCard`, qui choisit `sur` ou `on` selon la langue active.
+- Tests réalignés : `internal/analysis/home_test.go`, `internal/service/home_service_test.go`, `internal/service/season_pass_service_test.go`, `internal/platform/duckdb/player_repos_test.go`, `internal/api/handlers/home_test.go`, `apps/web/src/components/ui/match-card.test.tsx`.
+
+**Résultats** :
+- `go test ./internal/analysis -run 'TestBuildRecentMatches' -count=1` : PASS
+- `go test -tags=integration ./internal/platform/duckdb -run 'TestHomeRepo_LoadHomeMatches_(Empty|WithData|RequiresVMatchFull)' -count=1` : PASS
+- `npm run test:run -- src/components/ui/match-card.test.tsx` : PASS
+- `go test ./internal/service ...` et `go test ./internal/api/handlers ...` : validation partiellement bloquée par des erreurs préexistantes hors périmètre dans `apps/go-api/internal/platform/halo/challenges_details.go` (`pct` non défini)
+
+**Conclusion** : la home est maintenant alignée sur la vraie langue UI pour `mode_ui`, `playlist_ui`, `map_ui` et le titre rendu, sans réintroduire une seconde chaîne i18n côté frontend.
+
+## [2026-04-21] fix(home): faire servir les tuiles récentes depuis /static/maps au lieu du cache UUID
+
+**Statut** : ✅ Complété
+
+**Décision technique** : le dernier bug visible n'était plus dans le handler d'assets maps mais dans le payload home lui-même. `RecentMatchItem.map_image_url` continuait à être construit depuis `map_id` via `/api/v1/assets/maps/{title}/{uuid}/image`, ce qui relançait un fallback distant pour des maps pourtant déjà présentes en local. Le correctif retenu fait désormais préférer `mapStaticImagePath(mapName)` dans `internal/analysis/home.go`, avec fallback UUID uniquement si aucun nom de map local exploitable n'existe. La normalisation de `mode_ui` retire aussi désormais les préfixes d'expérience comme `Arena:` ou `Community:` avant suppression des suffixes `on/sur <map>`.
+
+**Modifications** :
+- `apps/go-api/internal/analysis/home.go` : `BuildRecentMatchesWithFavorites()` construit maintenant `map_image_url` via le chemin statique local `/static/maps/...` pour les maps connues, et `normalizeHomeModeLabel()` supprime aussi les préfixes d'expérience avant nettoyage du libellé.
+- `apps/go-api/internal/analysis/home_test.go` : ajout d'un test ciblé couvrant `Quick Play: Slayer on Bazaar -> mode_ui=Slayer` et `map_image_url=/static/maps/Bazaar.png`.
+- `apps/web/src/components/ui/match-card.tsx` + `match-card.test.tsx` : garde de normalisation alignée côté UI pour retirer aussi `Arena:` / `Community:` si un payload brut repasse un jour.
+
+**Résultats** :
+- `go test ./internal/analysis -run 'TestBuildRecentMatches' -count=1` : PASS
+- `npm run test:run -- src/components/ui/match-card.test.tsx` : PASS
+- validation runtime : `GET /api/v1/players/JGtm/pages/home` renvoie maintenant par exemple `{"map_ui":"Bazaar","mode_ui":"Team Slayer","playlist_ui":"Quick Play","map_image_url":"/static/maps/Bazaar.png"}`
+- validation HTTP : `GET /static/maps/Bazaar.png` répond `200 OK`
+
+**Conclusion** : la home ne renvoie plus d'URL UUID pour les maps locales connues, les tuiles consomment directement les assets du dossier `static/maps`, et les libellés `Arena:Team Slayer` / `Community:Slayer` n'apparaissent plus dans le titre affiché.
+
+## [2026-04-21] fix(battlepass): proxy images GameCMS — URL complète + retry hot-reload
+
+**Statut** : ✅ Complété
+
+**Décision technique** : deux bugs corrigés sur le panneau Season Pass.
+
+1. **ECONNRESET hot-reload** — le processus Air démarrait le nouveau serveur avant que l'ancien libère le verrou DuckDB sur `metadata.duckdb` → `os.Exit(1)` → seul le vieux serveur (sans route battlepass) restait actif → ECONNRESET côté Vite. Fix : boucle de 6 tentatives × 500 ms avant exit dans `main.go`.
+
+2. **URL GameCMS incorrecte dans le proxy** — `fetchAndCacheBPImage` construisait `https://gamecms.../hi/images/file/HIMPS1.png` (juste le basename) au lieu de `https://gamecms.../hi/images/file/Progression/Seasons/S1/BattlePass/HIMPS1.png` (chemin complet). Fix en 4 fichiers :
+   - `season_pass_repo.go` : `localBPImageURL` inclut désormais le chemin GameCMS complet dans l'URL proxy (`/api/v1/assets/battlepass/tracks/Progression/Seasons/S1/BattlePass/HIMPS1.png`)
+   - `server.go` : route `{subdir}/{filename}` → `{subdir}/*` (wildcard Chi pour multi-segments)
+   - `assets.go` : `GetBattlePassImage` lit `chi.URLParam(r, "*")` comme chemin complet, dérive le basename pour le cache local, passe le chemin complet à `fetchAndCacheBPImage`
+   - `assets.go` : `fetchAndCacheBPImage` ajoute `gamecmsPath string` et l'utilise pour construire l'URL GameCMS correcte
+
+**Contexte images en cache** : les 60 PNG hash-nommés dans `data/cache/battlepass_assets/tracks/` viennent de `preCacheBPTrackImages` appelé lors du premier fetch GameCMS (Operations). Pour les Season pass (HIMPS*), Python avait pré-peuplé `battlepass_track_definitions` → Go servait du cache sans jamais appeler `preCacheBPTrackImages` → aucun fichier HIMPS* en cache. Avec le fix, le proxy télécharge depuis GameCMS et met en cache avec le bon nom au premier appel.
+
+**`image_url: null` pour les Season tracks** : `battlepass_image_path` est NULL dans la DB pour tous les Season tracks (le champ `BattlePassImage` du JSON GameCMS est vide pour ces tracks). C'est un comportement correct de l'API Waypoint — ce n'est pas un bug.
+
+**Modifications** :
+- `apps/go-api/cmd/server/main.go` : retry loop x6 × 500ms sur `OpenReadWrite(metaPath)` avant exit
+- `apps/go-api/internal/platform/duckdb/season_pass_repo.go` : `localBPImageURL` génère des URL proxy avec chemin complet
+- `apps/go-api/internal/api/server.go` : route wildcard `{subdir}/*`
+- `apps/go-api/internal/api/handlers/assets.go` : `GetBattlePassImage` + `fetchAndCacheBPImage` adaptés
+- `apps/go-api/internal/platform/duckdb/battlepass_cache_test.go` : assertion URL proxy mise à jour
+
+**Résultats** :
+- `go test $(go list ./... | grep -v watcher)` : tous PASS
+- `watcher` test failure : préexistant (signature `NewPlayerLiveRefresher` désynchronisée), non causé par ces changements
+
+
+
+**Statut** : ✅ Complété
+
+**Décision technique** : le bug principal venait du handler d'assets maps, qui ignorait `local_path` dans `map_images_registry` et ne regardait que `image_url`. Le correctif retenu sert désormais d'abord le chemin statique local pour les maps connues, garde le fallback Waypoint pour les maps inconnues, puis simplifie la tuile React en hiérarchie `mode sur carte` + playlist + panneau stats réservé. Une seconde passe a aligné la home sur les labels de mode normalisés en retirant les suffixes `on/sur <map>` avant le rendu, pour éviter le doublon du nom de carte.
+
+**Modifications** :
+- `apps/go-api/internal/api/handlers/assets.go` : `GetMapImage()` redirige d'abord vers `local_path`, puis seulement vers `image_url` distant si aucun fichier local n'est indexé.
+- `apps/go-api/internal/api/handlers/assets_test.go` : test anti-régression ajouté pour la priorité au cache local des maps.
+- `apps/go-api/internal/platform/duckdb/queries_home_citations.go` + `internal/analysis/home.go` + `internal/domain/home.go` : la home transporte maintenant `playlist_ui` sur `RecentMatchItem`, avec playlist FR si disponible, et normalise `mode_ui` avant sérialisation en retirant les suffixes `on/sur <map>`.
+- `apps/web/src/components/ui/match-card.tsx` + `match-card.test.tsx` : la tuile affiche désormais un titre centré `mode sur carte`, une ligne playlist non grasse, un panneau stats clair réservé à une future itération, et garde en plus une protection locale contre les doublons de carte si un payload brut repasse.
+- `apps/web/src/lib/api/types.ts` : type `RecentMatchItem` aligné avec `playlist_ui`.
+
+**Résultats** :
+- `go test ./internal/api/handlers -run 'TestMapImageHandler_(CacheHit|LocalCacheHit|CacheMiss|EmptyMapID)' -count=1` : PASS
+- `go test ./internal/analysis -run 'TestBuildRecentMatches' -count=1` : PASS
+- `go test -tags=integration ./internal/platform/duckdb -run 'TestHomeRepo_LoadHomeMatches_(Empty|WithData|DoesNotDependOnVMatchFull)' -count=1` : PASS
+- `npm run test:run -- src/components/ui/match-card.test.tsx` : PASS
+
+**Conclusion** : les maps connues repartent sur le cache local attendu, les inconnues gardent le fetch distant via le handler, la tuile de match reflète maintenant la hiérarchie visuelle demandée sans figer prématurément le contenu des stats, et le titre n'affiche plus de libellé brut du type `Slayer on Aquarius sur Aquarius`.
+
+## [2026-04-21] fix(home): rendre la carte Défis compacte et non-stretch
+
+**Statut** : ✅ Complété
+
+**Décision technique** : la carte `Défis actifs` ne devait plus hériter mécaniquement de la hauteur du battle pass dans la grille. Le correctif retenu coupe le stretch de cette carte avec `self-start`, lui donne une min-height modérée, et centre les états vides / indisponibles dans un vrai `EmptyStateNotice`.
+
+**Modifications** :
+- `apps/web/src/features/home/HomePage.tsx` : carte défis passée en `flex self-start min-h-[14rem]`, `CardContent` en colonne flexible, états chargement/vide/indisponible centrés, message vide dédié `Aucun défi actif`.
+- `apps/web/src/features/home/HomePage.test.tsx` : assertions ajoutées sur la classe `self-start min-h-[14rem]` et nouveau test de l'état vide compact quand `items=[]`.
+
+**Résultats** :
+- `npm run test:run -- src/features/home/HomePage.test.tsx` : PASS
+
+**Conclusion** : la carte Défis garde maintenant une présence visuelle correcte quand elle est vide, mais ne s'étire plus artificiellement pour matcher la hauteur du battle pass.
+
 ## [2026-04-21] fix(home): aligner la jauge des défis sur une seule ligne
 
 **Statut** : ✅ Complété

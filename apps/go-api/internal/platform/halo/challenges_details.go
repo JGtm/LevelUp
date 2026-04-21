@@ -4,16 +4,13 @@ import (
 	"context"
 	"crypto/sha256"
 	"database/sql"
-	"encoding/base64"
 	"encoding/hex"
 	"encoding/json"
 	"fmt"
 	"io"
 	"log/slog"
 	"net/http"
-	"os"
 	"path"
-	"path/filepath"
 	"sort"
 	"strings"
 	"time"
@@ -21,8 +18,6 @@ import (
 	"levelup/go-api/internal/domain"
 	"levelup/go-api/internal/platform/duckdb"
 )
-
-var challengePNGSignature = []byte{0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a}
 
 type challengeDeckRaw struct {
 	Expiration struct {
@@ -132,9 +127,9 @@ func (p *HaloProvider) buildChallengeItem(
 		if localizedDescription := resolveChallengeLocalizedValue(def.Description, lang); localizedDescription != "" {
 			description = stringPtr(localizedDescription)
 		}
-		imageURL = p.fetchChallengeBadgeDataURL(ctx, tokens, ch.Path, def.Category, def.Difficulty)
+		imageURL = challengeBadgeAPIURL(ch.Path, def.Category, def.Difficulty)
 	} else {
-		imageURL = p.fetchChallengeBadgeDataURL(ctx, tokens, ch.Path, "", "")
+		imageURL = challengeBadgeAPIURL(ch.Path, "", "")
 	}
 
 	if current != nil && target != nil && *target > 0 {
@@ -197,46 +192,16 @@ func (p *HaloProvider) fetchChallengeDefinition(ctx context.Context, tokens *dom
 	return &def, nil
 }
 
-func (p *HaloProvider) fetchChallengeBadgeDataURL(
-	ctx context.Context,
-	tokens *domain.HaloTokens,
-	challengePath, category, difficulty string,
-) *string {
+// challengeBadgeAPIURL construit l'URL relative de l'image de badge d'un défi.
+// Retourne nil si aucun stem candidat n'est trouvé.
+// La résolution locale/distante est gérée par le DefaultResolver (endpoint /assets/challenge-badge/).
+func challengeBadgeAPIURL(challengePath, category, difficulty string) *string {
 	stems := buildChallengeBadgeCandidates(challengePath, category, difficulty)
 	if len(stems) == 0 {
 		return nil
 	}
-	for _, stem := range stems {
-		if body, err := p.readCachedChallengeBadge(stem); err == nil && len(body) > 0 {
-			slog.DebugContext(ctx, "halo_provider: challenge badge served from local cache",
-				"path", challengePath, "stem", stem)
-			dataURL := "data:image/png;base64," + base64.StdEncoding.EncodeToString(body)
-			return &dataURL
-		} else if err != nil {
-			slog.DebugContext(ctx, "halo_provider: challenge badge local cache read failed",
-				"path", challengePath, "stem", stem, "err", err)
-		}
-	}
-	base := p.gameCMSBaseURL
-	if base == "" {
-		base = defaultGameCMSHost
-	}
-	for _, stem := range stems {
-		url := fmt.Sprintf("%s/hi/waypoint/file/images/%s.png", strings.TrimRight(base, "/"), stem)
-		body, err := p.doGetWithAccept(ctx, url, tokens, "image/png")
-		if err != nil {
-			slog.DebugContext(ctx, "halo_provider: challenge badge unavailable",
-				"path", challengePath, "stem", stem, "err", err)
-			continue
-		}
-		if err := p.writeCachedChallengeBadge(stem, body); err != nil {
-			slog.DebugContext(ctx, "halo_provider: challenge badge local cache write failed",
-				"path", challengePath, "stem", stem, "err", err)
-		}
-		dataURL := "data:image/png;base64," + base64.StdEncoding.EncodeToString(body)
-		return &dataURL
-	}
-	return nil
+	url := "/api/v1/assets/challenge-badge/halo_infinite/" + stems[0]
+	return &url
 }
 
 func (p *HaloProvider) loadChallengeDefinitionFromMetadata(
@@ -393,66 +358,6 @@ func (p *HaloProvider) storeChallengeDefinitionInMetadata(
 	}
 
 	return nil
-}
-
-func (p *HaloProvider) challengeBadgeCacheDir() string {
-	if strings.TrimSpace(p.challengeBadgeDir) != "" {
-		return p.challengeBadgeDir
-	}
-	metaPath := strings.TrimSpace(p.challengeMetaPath)
-	if metaPath == "" {
-		return ""
-	}
-	warehouseDir := filepath.Dir(metaPath)
-	dataDir := filepath.Dir(warehouseDir)
-	return filepath.Join(dataDir, "cache", "challenge_badges")
-}
-
-func (p *HaloProvider) challengeBadgeCachePath(stem string) string {
-	cacheDir := p.challengeBadgeCacheDir()
-	if cacheDir == "" || strings.TrimSpace(stem) == "" {
-		return ""
-	}
-	return filepath.Join(cacheDir, stem+".png")
-}
-
-func (p *HaloProvider) readCachedChallengeBadge(stem string) ([]byte, error) {
-	cachePath := p.challengeBadgeCachePath(stem)
-	if cachePath == "" {
-		return nil, nil
-	}
-	body, err := os.ReadFile(cachePath)
-	if err != nil {
-		if os.IsNotExist(err) {
-			return nil, nil
-		}
-		return nil, err
-	}
-	if !isChallengePNG(body) {
-		return nil, nil
-	}
-	return body, nil
-}
-
-func (p *HaloProvider) writeCachedChallengeBadge(stem string, body []byte) error {
-	if !isChallengePNG(body) {
-		return nil
-	}
-	cachePath := p.challengeBadgeCachePath(stem)
-	if cachePath == "" {
-		return nil
-	}
-	if err := os.MkdirAll(filepath.Dir(cachePath), 0o755); err != nil {
-		return err
-	}
-	return os.WriteFile(cachePath, body, 0o644)
-}
-
-func isChallengePNG(body []byte) bool {
-	if len(body) < len(challengePNGSignature) {
-		return false
-	}
-	return string(body[:len(challengePNGSignature)]) == string(challengePNGSignature)
 }
 
 func challengeDefinitionContentHash(data []byte) string {

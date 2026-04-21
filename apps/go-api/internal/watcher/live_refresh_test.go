@@ -10,7 +10,7 @@ import (
 // --- tests PlayerLiveRefresher ---
 
 func TestPlayerLiveRefresher_OnPresenceActive_StartsOnce(t *testing.T) {
-	r := NewPlayerLiveRefresher("GT1", "xuid-001", nil)
+	r := NewPlayerLiveRefresher("GT1", "xuid-001", "", nil)
 	// Interval très court pour ne pas bloquer
 	r.interval = 24 * time.Hour
 
@@ -44,7 +44,7 @@ func TestPlayerLiveRefresher_OnPresenceActive_StartsOnce(t *testing.T) {
 }
 
 func TestPlayerLiveRefresher_OnPresenceInactive_Stops(t *testing.T) {
-	r := NewPlayerLiveRefresher("GT1", "xuid-001", nil)
+	r := NewPlayerLiveRefresher("GT1", "xuid-001", "", nil)
 	r.interval = 24 * time.Hour
 
 	ctx := context.Background()
@@ -62,7 +62,7 @@ func TestPlayerLiveRefresher_OnPresenceInactive_Stops(t *testing.T) {
 }
 
 func TestPlayerLiveRefresher_OnPresenceInactive_Idempotent(t *testing.T) {
-	r := NewPlayerLiveRefresher("GT1", "xuid-001", nil)
+	r := NewPlayerLiveRefresher("GT1", "xuid-001", "", nil)
 	ctx := context.Background()
 
 	// Sans activer d'abord — ne doit pas paniquer
@@ -71,7 +71,7 @@ func TestPlayerLiveRefresher_OnPresenceInactive_Idempotent(t *testing.T) {
 }
 
 func TestPlayerLiveRefresher_ConcurrentPresenceToggle(t *testing.T) {
-	r := NewPlayerLiveRefresher("GT1", "xuid-001", nil)
+	r := NewPlayerLiveRefresher("GT1", "xuid-001", "", nil)
 	r.interval = 24 * time.Hour
 	ctx := context.Background()
 
@@ -93,7 +93,7 @@ func TestPlayerLiveRefresher_ConcurrentPresenceToggle(t *testing.T) {
 }
 
 func TestPlayerLiveRefresher_TickerStopsOnContextCancel(t *testing.T) {
-	r := NewPlayerLiveRefresher("GT1", "xuid-001", nil)
+	r := NewPlayerLiveRefresher("GT1", "xuid-001", "", nil)
 	r.interval = 10 * time.Millisecond // tick rapide
 
 	ctx, cancel := context.WithCancel(context.Background())
@@ -118,10 +118,14 @@ func TestPlayerLiveRefresher_WithLiveRefresh_Integration(t *testing.T) {
 
 	trigger := &testLiveRefresh{
 		onActive: func() {
-			mu.Lock(); activeCalls++; mu.Unlock()
+			mu.Lock()
+			activeCalls++
+			mu.Unlock()
 		},
 		onInactive: func() {
-			mu.Lock(); inactiveCalls++; mu.Unlock()
+			mu.Lock()
+			inactiveCalls++
+			mu.Unlock()
 		},
 	}
 
