@@ -167,11 +167,12 @@ type UploadedFile struct {
 
 // UploadRequest regroupe les paramètres d'un upload multi-fichiers.
 type UploadRequest struct {
-	Files              []UploadedFile
-	CapturesDir        string // chemin absolu résolu par le handler
-	DBPath             string // chemin vers stats.duckdb du joueur (fallback)
-	SharedSocialDBPath string // chemin vers shared_social.duckdb (cible principale)
-	Tolerance          int    // tolérance association match (minutes)
+	Files               []UploadedFile
+	CapturesDir         string // chemin absolu résolu par le handler
+	DBPath              string // chemin vers stats.duckdb du joueur (fallback)
+	SharedSocialDBPath  string // chemin vers shared_social.duckdb (cible principale)
+	SharedMatchesDBPath string // chemin vers shared_matches_v2.duckdb (lecture match_registry)
+	Tolerance           int    // tolérance association match (minutes)
 }
 
 // UploadResult résume le résultat d'un upload multi-fichiers.

@@ -9,6 +9,7 @@ import (
 	"fmt"
 	"math"
 	"sort"
+	"strings"
 	"time"
 
 	"levelup/go-api/internal/analysis"
@@ -43,6 +44,7 @@ func (s *SessionCompareService) Compare(
 	if err != nil {
 		return domain.SessionCompareResponse{}, fmt.Errorf("SessionCompare load: %w", err)
 	}
+	matches = filterStatsMatchRows(matches, req.Filters)
 
 	// 2. Identifier les sessions disponibles.
 	sessionLabels := extractSessionLabels(matches)
@@ -169,13 +171,15 @@ func buildCompareEntry(matches []domain.StatsMatchRow, label string) *domain.Ses
 	end := maxTime.Format(time.RFC3339)
 
 	return &domain.SessionCompareEntry{
-		SessionLabel: label,
-		StartTime:    &start,
-		EndTime:      &end,
-		TotalMatches: len(matches),
-		Wins:         wins,
-		Losses:       losses,
-		KDA:          kda,
+		SessionLabel:     label,
+		StartTime:        &start,
+		EndTime:          &end,
+		TotalMatches:     len(matches),
+		Wins:             wins,
+		Losses:           losses,
+		KDA:              kda,
+		PerformanceScore: averagePerformanceScore(matches),
+		DominantCategory: dominantSessionCategoryPtr(matches),
 	}
 }
 
@@ -192,13 +196,116 @@ func buildCompareMetrics(a, b []domain.StatsMatchRow) []domain.SessionCompareMet
 
 	kpga := killsPerGame(a)
 	kpgb := killsPerGame(b)
-	metrics = append(metrics, compareMetric("kills_per_game", "Kills/game", kpga, kpgb, "%.1f"))
+	metrics = append(metrics, compareMetric("kills_per_match", "Kills/match", kpga, kpgb, "%.1f"))
 
 	dpga := deathsPerGame(a)
 	dpgb := deathsPerGame(b)
-	metrics = append(metrics, compareMetricInverse("deaths_per_game", "Deaths/game", dpga, dpgb, "%.1f"))
+	metrics = append(metrics, compareMetricInverse("deaths_per_match", "Deaths/match", dpga, dpgb, "%.1f"))
+
+	spa := averagePerformanceScore(a)
+	spb := averagePerformanceScore(b)
+	if spa != nil || spb != nil {
+		metrics = append(metrics, compareMetric(
+			"score",
+			"Score perf.",
+			derefFloat64(spa),
+			derefFloat64(spb),
+			"%.1f",
+		))
+	}
 
 	return metrics
+}
+
+func averagePerformanceScore(matches []domain.StatsMatchRow) *float64 {
+	count := 0
+	total := 0.0
+	for _, match := range matches {
+		if match.PerfScoreComputed == nil {
+			continue
+		}
+		count++
+		total += *match.PerfScoreComputed
+	}
+	if count == 0 {
+		return nil
+	}
+	value := math.Round((total/float64(count))*10) / 10
+	return &value
+}
+
+func dominantSessionCategoryPtr(matches []domain.StatsMatchRow) *string {
+	category := dominantSessionCategory(matches)
+	if category == "" {
+		return nil
+	}
+	return &category
+}
+
+func dominantSessionCategory(matches []domain.StatsMatchRow) string {
+	if len(matches) == 0 {
+		return ""
+	}
+	counts := map[string]int{}
+	for _, match := range matches {
+		category := classifySessionCategory(match)
+		counts[category]++
+	}
+	bestLabel := ""
+	bestCount := -1
+	for label, count := range counts {
+		if count > bestCount {
+			bestLabel = label
+			bestCount = count
+		}
+	}
+	return bestLabel
+}
+
+func sessionIsRanked(matches []domain.StatsMatchRow) bool {
+	if len(matches) == 0 {
+		return false
+	}
+	ranked := 0
+	for _, match := range matches {
+		if match.IsRanked {
+			ranked++
+		}
+	}
+	return ranked*2 >= len(matches)
+}
+
+func classifySessionCategory(match domain.StatsMatchRow) string {
+	lower := strings.ToLower(match.PlaylistName + " " + match.PairName)
+	switch {
+	case strings.Contains(lower, "firefight"):
+		return "Firefight"
+	case match.IsRanked || strings.Contains(lower, "ranked") || strings.Contains(lower, "classé"):
+		return "Ranked"
+	case strings.Contains(lower, "btb") || strings.Contains(lower, "big team"):
+		return "BTB"
+	default:
+		return "Arena"
+	}
+}
+
+func effectiveKDA(match domain.StatsMatchRow) *float64 {
+	if match.KDA != nil {
+		return match.KDA
+	}
+	if match.Deaths == 0 {
+		value := float64(match.Kills)
+		return &value
+	}
+	value := math.Round((float64(match.Kills)/float64(match.Deaths))*100) / 100
+	return &value
+}
+
+func derefFloat64(value *float64) float64 {
+	if value == nil {
+		return 0
+	}
+	return *value
 }
 
 func winRate(matches []domain.StatsMatchRow) float64 {

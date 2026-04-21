@@ -21,7 +21,7 @@ func NewHomeRepo(pdb *PlayerDB) *HomeRepo {
 	return &HomeRepo{pdb: pdb}
 }
 
-// LoadHomeMatches charge les 200 derniers matchs du joueur (Q26).
+// LoadHomeMatches charge tous les matchs du joueur (Q26).
 func (r *HomeRepo) LoadHomeMatches(ctx context.Context) ([]domain.HomeMatchRow, error) {
 	rows, err := r.pdb.Player.Query(ctx, Q26HomeMatches, r.pdb.XUID)
 	if err != nil {
@@ -35,6 +35,7 @@ func (r *HomeRepo) LoadHomeMatches(ctx context.Context) ([]domain.HomeMatchRow, 
 		if err := rows.Scan(
 			&row.MatchID,
 			&row.StartTime,
+			&row.MapID,
 			&row.MapName,
 			&row.MapNameFR,
 			&row.PairName,

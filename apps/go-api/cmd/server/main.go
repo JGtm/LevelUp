@@ -139,7 +139,7 @@ func main() {
 
 	slog.Debug("ouverture DuckDB", "shared", sharedPath, "metadata", metaPath, "shared_social", sharedSocialPath)
 
-	// --- 3a. Migrations (read-write, avant l'ouverture read-only) ---
+	// --- 3a. Migrations (read-write, avant l'ouverture des connexions runtime) ---
 	if err := runMigrations(metaPath, sharedPath, sharedSocialPath, cfg); err != nil {
 		slog.Debug("migrations ignorées (DB verrouillée), démarrage sans migration")
 	} else {
@@ -151,7 +151,7 @@ func main() {
 		slog.Error("ouverture shared_matches_v2 échouée", "err", err)
 		os.Exit(1)
 	}
-	metaDB, err := duckdb.OpenReadOnly(metaPath)
+	metaDB, err := duckdb.OpenReadWrite(metaPath)
 	if err != nil {
 		slog.Error("ouverture metadata échouée", "err", err)
 		os.Exit(1)
@@ -180,8 +180,25 @@ func main() {
 		slog.Warn("lecture career_ranks échouée", "err", err)
 	}
 
-	// --- 6. Routeur HTTP ---
-	router := api.NewRouter(cfg, bootRepo, bootSvc)
+	// --- 6. Scheduler, watcher, puis routeur HTTP ---
+	settingsStore := settings.NewStore(cfg.AppSettingsPath)
+	tokenProvider := auth.NewMSALProvider()
+	autoScheduler := scheduler.New(cfg, settingsStore, tokenProvider)
+	schedulerCtx, cancelScheduler := context.WithCancel(ctx)
+	go autoScheduler.Run(schedulerCtx)
+
+	// Watcher daemon (présence Xbox RTA + Steam) — démarré avant le router pour injection DI.
+	var watcherDaemon *watcher.Daemon
+	watcherDaemon = startWatcherDaemon(ctx, cfg, settingsStore)
+
+	// Convertir en interface (nil safe : un *Daemon nil ne doit pas devenir une interface non-nil)
+	var watcherCtrl watcher.DaemonController
+	if watcherDaemon != nil {
+		watcherCtrl = watcherDaemon
+	}
+
+	// Routeur HTTP — le daemon peut être nil si le watcher est désactivé.
+	router := api.NewRouter(cfg, bootRepo, bootSvc, watcherCtrl)
 
 	srv := &http.Server{
 		Addr:         cfg.ServerAddr(),
@@ -190,19 +207,6 @@ func main() {
 		WriteTimeout: 30 * time.Second,
 		IdleTimeout:  60 * time.Second,
 	}
-
-	// --- 6b. Scheduler de sync automatique ---
-	// Lit spnkr_auto_sync_enabled à chaque tick — ne fait rien si désactivé.
-	settingsStore := settings.NewStore(cfg.AppSettingsPath)
-	tokenProvider := auth.NewMSALProvider()
-	autoScheduler := scheduler.New(cfg, settingsStore, tokenProvider)
-	schedulerCtx, cancelScheduler := context.WithCancel(ctx)
-	go autoScheduler.Run(schedulerCtx)
-
-	// --- 6c. Watcher daemon (présence Xbox RTA + Steam) ---
-	// Démarré uniquement si un token store existe avec des tokens XSTS valides.
-	var watcherDaemon *watcher.Daemon
-	watcherDaemon = startWatcherDaemon(ctx, cfg, settingsStore)
 
 	// --- 7. Démarrage + graceful shutdown ---
 	// On bind le port en premier pour détecter immédiatement un conflit.

@@ -247,7 +247,7 @@ func (p *HaloProvider) loadChallengeDefinitionFromMetadata(
 	if metaPath == "" {
 		return nil, nil
 	}
-	db, err := duckdb.OpenReadOnly(metaPath)
+	db, err := duckdb.OpenReadWrite(metaPath)
 	if err != nil {
 		return nil, err
 	}

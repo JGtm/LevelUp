@@ -1,0 +1,294 @@
+// Package service — SessionPageService : page détail de session avec suggestion de comparaison.
+package service
+
+import (
+	"context"
+	"fmt"
+	"log/slog"
+	"math"
+	"strings"
+
+	"levelup/go-api/internal/domain"
+	"levelup/go-api/internal/port"
+)
+
+// SessionPageService construit la page de détail d'une session.
+type SessionPageService struct {
+	statsRepo port.StatsRepository
+}
+
+// NewSessionPageService crée un SessionPageService.
+func NewSessionPageService(statsRepo port.StatsRepository) *SessionPageService {
+	return &SessionPageService{statsRepo: statsRepo}
+}
+
+// GetPage retourne la page détail d'une session avec suggestion de comparaison.
+func (s *SessionPageService) GetPage(
+	ctx context.Context,
+	req domain.SessionPageRequest,
+) (domain.SessionPageResponse, error) {
+	if err := req.Validate(); err != nil {
+		return domain.SessionPageResponse{}, fmt.Errorf("SessionPageService.GetPage validate: %w", err)
+	}
+
+	rows, err := s.statsRepo.LoadStatsMatches(ctx)
+	if err != nil {
+		return domain.SessionPageResponse{}, fmt.Errorf("SessionPageService.GetPage load: %w", err)
+	}
+
+	filtered := filterStatsMatchRows(rows, req.Filters)
+	labels := extractSessionLabels(filtered)
+	if len(labels) == 0 {
+		slog.InfoContext(ctx, "session page: no sessions after filtering")
+		return domain.SessionPageResponse{
+			AvailableSessions: []string{},
+			Matches:           []domain.SessionDetailMatchRow{},
+			CompareMetrics:    []domain.SessionCompareMetricRow{},
+		}, nil
+	}
+
+	currentLabel := lastOrNil(labels, req.SessionLabel)
+	currentMatches := filterBySession(filtered, currentLabel)
+	currentEntry := buildCompareEntry(currentMatches, currentLabel)
+	if currentEntry == nil {
+		slog.WarnContext(ctx, "session page: current session not found after filtering",
+			"requested_session", derefString(req.SessionLabel),
+			"resolved_session", currentLabel,
+		)
+		return domain.SessionPageResponse{
+			AvailableSessions: labels,
+			Matches:           []domain.SessionDetailMatchRow{},
+			CompareMetrics:    []domain.SessionCompareMetricRow{},
+		}, nil
+	}
+
+	suggestion, candidateCount := buildSessionCompareSuggestion(labels, currentLabel, filtered)
+	compareLabel := resolveRequestedCompareLabel(req, suggestion)
+	compareEnabled := req.EnableCompare && compareLabel != "" && compareLabel != currentLabel
+
+	resp := domain.SessionPageResponse{
+		CurrentSession:    currentEntry,
+		AvailableSessions: labels,
+		Matches:           buildSessionDetailRows(currentMatches, currentEntry.DominantCategory),
+		SuggestedCompare:  suggestion,
+		CompareEnabled:    compareEnabled,
+		CompareMetrics:    []domain.SessionCompareMetricRow{},
+	}
+
+	if compareEnabled {
+		compareMatches := filterBySession(filtered, compareLabel)
+		resp.CompareSession = buildCompareEntry(compareMatches, compareLabel)
+		if resp.CompareSession != nil {
+			resp.CompareMetrics = buildCompareMetrics(currentMatches, compareMatches)
+		} else {
+			resp.CompareEnabled = false
+			slog.WarnContext(ctx, "session page: compare session missing after filtering",
+				"current_session", currentLabel,
+				"compare_session", compareLabel,
+			)
+		}
+	}
+
+	slog.InfoContext(ctx, "session page generated",
+		"resolved_session", currentLabel,
+		"available_sessions", len(labels),
+		"current_match_count", len(currentMatches),
+		"suggestion", suggestionLabel(suggestion),
+		"suggestion_candidates", candidateCount,
+		"compare_enabled", resp.CompareEnabled,
+		"compare_session", compareLabel,
+	)
+
+	return resp, nil
+}
+
+type sessionCandidate struct {
+	Label    string
+	Category string
+	IsRanked bool
+	Count    int
+	Index    int
+}
+
+func buildSessionCompareSuggestion(
+	labels []string,
+	currentLabel string,
+	rows []domain.StatsMatchRow,
+) (*domain.SessionCompareSuggestion, int) {
+	currentIndex := indexOfSessionLabel(labels, currentLabel)
+	if currentIndex == -1 {
+		return nil, 0
+	}
+
+	currentMatches := filterBySession(rows, currentLabel)
+	current := makeSessionCandidate(currentLabel, currentMatches, currentIndex)
+
+	best := sessionCandidate{}
+	bestScore := math.MinInt
+	candidateCount := 0
+	for i := currentIndex - 1; i >= 0; i-- {
+		label := labels[i]
+		candidate := makeSessionCandidate(label, filterBySession(rows, label), i)
+		if candidate.Count == 0 {
+			continue
+		}
+		candidateCount++
+		score := scoreSessionCandidate(current, candidate)
+		if score > bestScore {
+			bestScore = score
+			best = candidate
+		}
+	}
+
+	if candidateCount == 0 {
+		return nil, 0
+	}
+
+	strategy := "chronological-fallback"
+	if best.Category == current.Category && best.IsRanked == current.IsRanked {
+		strategy = "category-ranked-volume"
+		if best.Count != current.Count {
+			strategy = "category-ranked-close-volume"
+		}
+	}
+
+	return &domain.SessionCompareSuggestion{
+		SessionLabel: best.Label,
+		Strategy:     strategy,
+		Reason:       buildSuggestionReason(current, best),
+	}, candidateCount
+}
+
+func buildSessionDetailRows(
+	rows []domain.StatsMatchRow,
+	dominantCategory *string,
+) []domain.SessionDetailMatchRow {
+	out := make([]domain.SessionDetailMatchRow, 0, len(rows))
+	for _, row := range rows {
+		out = append(out, domain.SessionDetailMatchRow{
+			MatchID:          row.MatchID,
+			StartTime:        row.StartTime,
+			Outcome:          row.Outcome,
+			PlaylistName:     row.PlaylistName,
+			PairName:         row.PairName,
+			IsRanked:         row.IsRanked,
+			Kills:            row.Kills,
+			Deaths:           row.Deaths,
+			Assists:          row.Assists,
+			KDA:              effectiveKDA(row),
+			Accuracy:         row.Accuracy,
+			PersonalScore:    row.PersonalScore,
+			PerformanceScore: row.PerfScoreComputed,
+			SessionLabel:     row.SessionLabel,
+			DominantCategory: dominantCategory,
+			OffensiveConv:    row.OffensiveConversion,
+			DefensiveResist:  row.DefensiveResistance,
+		})
+	}
+	return out
+}
+
+func makeSessionCandidate(label string, rows []domain.StatsMatchRow, index int) sessionCandidate {
+	return sessionCandidate{
+		Label:    label,
+		Category: dominantSessionCategory(rows),
+		IsRanked: sessionIsRanked(rows),
+		Count:    len(rows),
+		Index:    index,
+	}
+}
+
+func scoreSessionCandidate(current, candidate sessionCandidate) int {
+	score := 0
+	if current.Category == candidate.Category {
+		score += 6
+	}
+	if current.IsRanked == candidate.IsRanked {
+		score += 3
+	}
+	diff := absInt(current.Count - candidate.Count)
+	switch {
+	case diff == 0:
+		score += 4
+	case diff == 1:
+		score += 3
+	case diff == 2:
+		score += 2
+	case diff <= 4:
+		score += 1
+	}
+	indexGap := absInt(current.Index - candidate.Index)
+	if indexGap == 1 {
+		score += 2
+	} else if indexGap <= 3 {
+		score += 1
+	}
+	return score
+}
+
+func buildSuggestionReason(current, candidate sessionCandidate) string {
+	parts := make([]string, 0, 3)
+	if current.Category == candidate.Category {
+		parts = append(parts, fmt.Sprintf("même catégorie %s", strings.ToLower(candidate.Category)))
+	}
+	if current.IsRanked == candidate.IsRanked {
+		if candidate.IsRanked {
+			parts = append(parts, "même statut classé")
+		} else {
+			parts = append(parts, "même statut social")
+		}
+	}
+	diff := absInt(current.Count - candidate.Count)
+	if diff == 0 {
+		parts = append(parts, "même volume")
+	} else {
+		parts = append(parts, fmt.Sprintf("écart de %d match(s)", diff))
+	}
+	if len(parts) == 0 {
+		return "session chronologiquement proche"
+	}
+	return strings.Join(parts, " · ")
+}
+
+func resolveRequestedCompareLabel(
+	req domain.SessionPageRequest,
+	suggestion *domain.SessionCompareSuggestion,
+) string {
+	if req.CompareSessionLabel != nil && *req.CompareSessionLabel != "" {
+		return *req.CompareSessionLabel
+	}
+	if suggestion == nil {
+		return ""
+	}
+	return suggestion.SessionLabel
+}
+
+func suggestionLabel(s *domain.SessionCompareSuggestion) string {
+	if s == nil {
+		return ""
+	}
+	return s.SessionLabel
+}
+
+func derefString(value *string) string {
+	if value == nil {
+		return ""
+	}
+	return *value
+}
+
+func indexOfSessionLabel(labels []string, target string) int {
+	for index, label := range labels {
+		if label == target {
+			return index
+		}
+	}
+	return -1
+}
+
+func absInt(value int) int {
+	if value < 0 {
+		return -value
+	}
+	return value
+}

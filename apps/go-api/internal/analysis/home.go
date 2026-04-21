@@ -220,6 +220,50 @@ func BuildHighlights(matches []domain.HomeMatchRow) []domain.HighlightItem {
 // BuildRecentMatches — timeline récente
 // ---------------------------------------------------------------------------
 
+// mapPNGNames contient les noms de maps (EN) dont l'image locale est au format PNG.
+// Tous les autres noms utilisent le format JPEG par défaut.
+var mapPNGNames = map[string]struct{}{
+	"Aquarius":                {},
+	"Aquarius - Ranked":       {},
+	"Bazaar":                  {},
+	"Behemoth":                {},
+	"Breaker":                 {},
+	"Breaker Heavies":         {},
+	"Catalyst":                {},
+	"Deadlock":                {},
+	"Deadlock Heavies":        {},
+	"Highpower":               {},
+	"Highpower Heavies":       {},
+	"Highpower Sentry Defense": {},
+	"Launch Site":             {},
+	"Recharge":                {},
+	"Recharge - Ranked":       {},
+	"Streets":                 {},
+	"Streets - Ranked":        {},
+}
+
+// mapStaticImagePath retourne l'URL relative de l'image de map servie par /static/maps/.
+// Le nom de la map est encodé pour les espaces et caractères spéciaux.
+func mapStaticImagePath(mapName string) string {
+	if mapName == "" {
+		return ""
+	}
+	ext := ".jpg"
+	if _, ok := mapPNGNames[mapName]; ok {
+		ext = ".png"
+	}
+	// Encoder les espaces manuellement — net/url.PathEscape encode aussi "/" ce qu'on ne veut pas.
+	encoded := ""
+	for _, c := range mapName {
+		if c == ' ' {
+			encoded += "%20"
+		} else {
+			encoded += string(c)
+		}
+	}
+	return "/static/maps/" + encoded + ext
+}
+
 // BuildRecentMatches construit la liste des derniers matchs pour la timeline.
 func BuildRecentMatches(matches []domain.HomeMatchRow, limit int) []domain.RecentMatchItem {
 	return BuildRecentMatchesWithFavorites(matches, limit, nil)
@@ -279,6 +323,9 @@ func BuildRecentMatchesWithFavorites(matches []domain.HomeMatchRow, limit int, f
 
 		isFav := favoriteIDs[m.MatchID]
 
+		// Construire l'URL de l'image de map via le cache-aside endpoint
+		mapImageURL := buildMapImageURL("halo_infinite", m.MapID)
+
 		items = append(items, domain.RecentMatchItem{
 			MatchID:                  m.MatchID,
 			Title:                    fmt.Sprintf("%s · %s", label, mapUI),
@@ -289,6 +336,7 @@ func BuildRecentMatchesWithFavorites(matches []domain.HomeMatchRow, limit int, f
 			IsFavorite:               isFav,
 			MapUI:                    &mapUI,
 			ModeUI:                   &modeUI,
+			MapImageURL:              mapImageURL,
 			Kills:                    &kills,
 			Deaths:                   &deaths,
 			Assists:                  &assists,
@@ -300,6 +348,16 @@ func BuildRecentMatchesWithFavorites(matches []domain.HomeMatchRow, limit int, f
 		})
 	}
 	return items
+}
+
+// buildMapImageURL construit l'URL du cache-aside endpoint pour une map donnée.
+// Retourne toujours un pointeur non-nil (le frontend gère les 404 avec fallback).
+func buildMapImageURL(titleID, mapID string) *string {
+	if mapID == "" {
+		return nil
+	}
+	url := fmt.Sprintf("/api/v1/assets/maps/%s/%s/image", titleID, mapID)
+	return &url
 }
 
 // float64PtrVal retourne la valeur pointée ou 0 si nil.

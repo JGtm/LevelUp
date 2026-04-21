@@ -108,11 +108,12 @@ func (d *DirMediaIndexer) ResetAndReindex(
 				})
 
 				if _, err := ops.IndexMedia(ops.MediaIndexOptions{
-					PlayerDBPath:       dbPath,
-					SharedSocialDBPath: filepath.Join(repoRoot, "data", "warehouse", "shared_social.duckdb"),
-					CapturesDir:        capturesDir,
-					ForceRescan:        true,
-					Gamertag:           gamertag,
+					PlayerDBPath:        dbPath,
+					SharedSocialDBPath:  filepath.Join(repoRoot, "data", "warehouse", "shared_social.duckdb"),
+					SharedMatchesDBPath: filepath.Join(repoRoot, "data", "warehouse", "shared_matches_v2.duckdb"),
+					CapturesDir:         capturesDir,
+					ForceRescan:         true,
+					Gamertag:            gamertag,
 				}); err != nil {
 					jobStore.Update(jobID, func(j *domain.AsyncJobStatus) {
 						w := fmt.Sprintf("WARN reindex %s: %v", gamertag, err)

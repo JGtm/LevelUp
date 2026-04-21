@@ -54,10 +54,11 @@ func (p *Provider) GetResources(
 	query domain.LabResourcesQuery,
 ) (*domain.LabResourcesResponse, error) {
 	metaPath := p.metadataDBPath(titleSlug)
-	metaDB, err := duckdb.OpenReadOnly(metaPath)
+	metaDB, err := duckdb.OpenReadWrite(metaPath)
 	if err != nil {
 		return nil, fmt.Errorf("lab resources open metadata: %w", err)
 	}
+	defer metaDB.Close()
 
 	repo := duckdb.NewMetadataRepoFromDB(metaDB)
 	currentSeason, err := repo.GetCurrentSeason(ctx, titleSlug)
@@ -174,10 +175,11 @@ func (p *Provider) loadMedalGuards(
 	ctx context.Context,
 	titleSlug string,
 ) (*domain.LabMedalGuardsReport, error) {
-	metaDB, err := duckdb.OpenReadOnly(p.metadataDBPath(titleSlug))
+	metaDB, err := duckdb.OpenReadWrite(p.metadataDBPath(titleSlug))
 	if err != nil {
 		return nil, nil
 	}
+	defer metaDB.Close()
 	entries, err := listAllMedalEntries(ctx, metaDB, titleSlug)
 	if err != nil {
 		if isMissingRelationError(err) {

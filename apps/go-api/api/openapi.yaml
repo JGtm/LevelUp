@@ -797,6 +797,33 @@ paths:
         "404":
           $ref: "#/components/responses/NotFound"
 
+  /players/{player_slug}/pages/sessions/detail:
+    post:
+      tags: [timeseries]
+      operationId: postSessionDetailPage
+      summary: "Détail d'une session avec suggestion de comparaison"
+      parameters:
+        - $ref: "#/components/parameters/PlayerSlug"
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              type: object
+              description: "SessionPageRequest — session ciblée, session de comparaison et filtres optionnels"
+      responses:
+        "200":
+          description: Détail de session avec suggestion similaire et comparaison intégrée
+          content:
+            application/json:
+              schema:
+                type: object
+                description: "SessionPageResponse — session courante, matchs détaillés, suggestion et éventuelle comparaison"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
   # -------------------------------------------------------------------------
   # Stats/Séries temporelles (Sprint 10) — POST /pages/stats/query (legacy).
   # -------------------------------------------------------------------------

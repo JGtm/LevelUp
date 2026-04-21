@@ -6,6 +6,8 @@
 
 Le suivi des sprints est maintenu dans [`SPRINT_ROADMAP.md`](.ai/go_migration_v2/SPRINT_ROADMAP.md).
 
+> Note backend 2026-04-21 : `internal/platform/duckdb/db.go` utilise désormais un cache de connexions ref-counted. Les ouvertures temporaires de `metadata.duckdb` côté défis/Lab/PersistSink ne peuvent plus invalider `PlayerDB.Metadata`, ce qui stabilise le chargement parallèle home + season pass.
+
 ## État actuel (Phase 11 — Sprint 49)
 
 ### Packages Go compilables localement (sans CGO/DuckDB)

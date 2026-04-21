@@ -74,6 +74,7 @@ data/
 
 ## Go API — Points chauds récupérés le 2026-04-18
 
+- `apps/go-api/internal/platform/duckdb/db.go` + `internal/platform/duckdb/persist_sink.go` + `internal/platform/lab/provider.go` : le cache global des connexions DuckDB est désormais compté par références ; une ouverture temporaire de `metadata.duckdb` ne peut plus fermer `PlayerDB.Metadata` et casser la home / le season pass quand les défis et le battle pass chargent en parallèle.
 - `apps/go-api/internal/api/handlers/match_exclusion.go` : endpoints `PATCH /matches/{match_id}/exclusion` + `GET /match-exclusions` pour ignorer/réactiver des matchs au niveau joueur.
 - `apps/go-api/internal/platform/duckdb/match_exclusion_repo.go` : persistance `player_match_enrichment.is_excluded` avec UPSERT côté player DB.
 - `apps/go-api/internal/service/match_history_service.go` : filtrage des matchs exclus avant pagination, export CSV et agrégats de win rate.
@@ -103,7 +104,7 @@ data/
 - `.ai/go_migration_v2/SYNTHESIS_TARGET_CONTRACT_AND_UI.md` : composition cible de `Synthèse` côté UI et contrat Go/React ; extraction recommandée hors `SquadHandler`, ajout d'une vraie `overview`, de previews lazy et migration des anciens `top-matches` / `encounters` de Carrière.
 - `.ai/go_migration_v2/UX_HOME_RECORD_SPARTAN_ADDITIONS.md` : cadrage d'ajouts inspirés de Spartan Record pour la home/record existante ; conserve la page actuelle, rejette le toggle global `Overall / Per Match`, ajoute `Spartan ID`, `Data Set`, tuiles de match en complément, hiérarchie médailles et stratégie d'images de maps dynamiques.
 - `.ai/go_migration_v2/DAMAGE_EFFICIENCY_INTEGRATION.md` : cadrage analytique et produit du `rendement combat` ; fixe les gardes-fous data, la taxonomie recommandée (`conversion offensive`, `resistance defensive`), les surfaces d'intégration Go/React, les impacts potentiels sur `Performance` / `LUSR` et la stratégie de tests.
-- `apps/web/src/features/home/HomePage.tsx` : home joueur avec quick actions en routes typées et unité de précision alignée sur le backend Go (`avg_accuracy` déjà en %).
+- `apps/web/src/features/home/HomePage.tsx` + `HomeBattlePassPanel.tsx` + `queries.ts` : home joueur avec quick actions en routes typées, unité de précision alignée sur le backend Go (`avg_accuracy` déjà en %), et section battle pass enrichie via l'endpoint season pass (image principale, rail horizontal des paliers, centrage du palier courant, progression composite du palier actif).
 - `apps/web/src/features/home/HomePage.tsx`, `career/CareerPage.tsx`, `timeseries/TimeseriesPage.tsx`, `squad/SquadPage.tsx`, `citations/CitationsPage.tsx`, `synthesis/SynthesisPage.tsx`, `session-compare/SessionComparePage.tsx`, `explorer/ExplorerPage.tsx` : plus de `return null` silencieux sur ce périmètre, avec placeholders explicites quand une section ne peut pas s'afficher.
 - `apps/web/package.json` : dépendance explicite `plotly.js`, requise au build par `react-plotly.js`.
 

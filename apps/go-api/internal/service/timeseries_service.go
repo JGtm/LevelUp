@@ -537,8 +537,8 @@ func buildMatchRows(matches []domain.StatsMatchRow) []domain.TimeseriesMatchRow 
 
 // buildAccuracyBuckets crée des buckets de 5 % pour la distribution de précision.
 func buildAccuracyBuckets(matches []domain.StatsMatchRow) []domain.DistributionBucket {
-	const binWidth = 5.0 // 5 % par bin (valeurs [0, 1] → converties en %)
-	counts := make([]int, 21)  // bins 0-5, 5-10, …, 95-100, 100+
+	const binWidth = 5.0      // 5 % par bin (valeurs [0, 1] → converties en %)
+	counts := make([]int, 21) // bins 0-5, 5-10, …, 95-100, 100+
 
 	for _, m := range matches {
 		if m.Accuracy == nil {
@@ -629,39 +629,4 @@ func buildRollingWRBuckets(matches []domain.StatsMatchRow) []domain.Distribution
 		})
 	}
 	return buckets
-}
-
-// ---------------------------------------------------------------------------
-// Filtrage des StatsMatchRow
-// ---------------------------------------------------------------------------
-
-// filterStatsMatchRows applique les filtres de contexte sur les StatsMatchRow
-// en passant par la couche FilterMatchRow partagée avec le reste des services.
-func filterStatsMatchRows(rows []domain.StatsMatchRow, f domain.FilterContextInput) []domain.StatsMatchRow {
-filterRows := make([]domain.FilterMatchRow, len(rows))
-for i, r := range rows {
-filterRows[i] = domain.FilterMatchRow{
-MatchID:      r.MatchID,
-StartTime:    &r.StartTime,
-PlaylistName: &r.PlaylistName,
-PairName:     &r.PairName,
-IsRanked:     r.IsRanked,
-SessionID:    r.SessionID,
-SessionLabel: r.SessionLabel,
-}
-}
-
-filtered := applyAllFilters(filterRows, f)
-keepIDs := make(map[string]struct{}, len(filtered))
-for _, fr := range filtered {
-keepIDs[fr.MatchID] = struct{}{}
-}
-
-out := make([]domain.StatsMatchRow, 0, len(filtered))
-for _, r := range rows {
-if _, ok := keepIDs[r.MatchID]; ok {
-out = append(out, r)
-}
-}
-return out
 }

@@ -15,6 +15,7 @@ import "time"
 type HomeMatchRow struct {
 	MatchID          string
 	StartTime        time.Time
+	MapID            string
 	MapName          string
 	MapNameFR        string
 	PairName         string

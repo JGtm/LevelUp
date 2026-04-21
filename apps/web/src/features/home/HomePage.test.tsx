@@ -39,6 +39,88 @@ describe('HomePage', () => {
     })
   })
 
+  it('affiche le visuel battle pass, le rail horizontal et la progression du palier actif sur la home', async () => {
+    server.use(
+      http.get('/api/v1/players/:playerSlug/pages/palmares/season-pass', () => HttpResponse.json({
+        title_slug: 'halo_infinite',
+        available: true,
+        active_track_path: 'RewardTracks/TrackA',
+        challenges: {
+          available: true,
+          total: 4,
+          completed: 1,
+          xp_available: 2000,
+          next_expiry: null,
+          items: [],
+          error_hint: null,
+        },
+        passes: [
+          {
+            reward_track_path: 'RewardTracks/TrackA',
+            name: 'Operation Alpha',
+            description: 'Escalade principale',
+            status: 'active',
+            is_active: true,
+            is_owned: true,
+            has_reached_max_rank: false,
+            current_rank: 12,
+            partial_progress: 300,
+            xp_per_rank: 1000,
+            max_rank: 20,
+            completion_percent: 60,
+            active_tier_rank: 13,
+            active_tier_progress_percent: 30,
+            image_url: 'https://example.com/track-a.png',
+            background_image_url: 'https://example.com/bg-a.png',
+            tiers: [
+              {
+                rank: 12,
+                title: 'Récompense 12',
+                description: null,
+                image_url: 'https://example.com/tier-12.png',
+                is_obtained: true,
+                is_current: false,
+                is_premium: false,
+              },
+              {
+                rank: 13,
+                title: 'Récompense 13',
+                description: 'Effet rare',
+                image_url: 'https://example.com/tier-13.png',
+                is_obtained: false,
+                is_current: true,
+                is_premium: true,
+              },
+              {
+                rank: 14,
+                title: 'Récompense 14',
+                description: null,
+                image_url: null,
+                is_obtained: false,
+                is_current: false,
+                is_premium: false,
+              },
+            ],
+          },
+        ],
+      })),
+    )
+
+    renderWithProviders(<HomePage />)
+
+    await waitFor(() => {
+      expect(screen.getByText('Operation Alpha')).toBeInTheDocument()
+      expect(screen.getByAltText('Illustration de Operation Alpha')).toBeInTheDocument()
+      expect(screen.getAllByText('Récompense 13').length).toBeGreaterThan(0)
+    })
+
+    const tierCards = screen.getAllByTestId('home-battle-pass-tier-card')
+    expect(tierCards).toHaveLength(3)
+    expect(tierCards[0]).toHaveAttribute('data-obtained', 'true')
+    expect(tierCards[1]).toHaveAttribute('data-current', 'true')
+    expect(screen.getByTestId('home-battle-pass-active-tier-progress-fill')).toHaveStyle({ width: '30%' })
+  })
+
   it('affiche les défis actifs détaillés triés du plus avancé au moins avancé', async () => {
     server.use(
       http.get('/api/v1/players/:playerSlug/challenges', () => HttpResponse.json({

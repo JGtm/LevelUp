@@ -131,9 +131,11 @@ func run(
 		slog.Info("assets distincts trouvés", "type", assetType, "count", len(assetIDs))
 
 		// 2. Construire cache version_id
+		// Note: nécessite auth API match stats, peut échouer en mode CLI standalone
 		versionCache, err := buildVersionCache(ctx, provider, assetType, assetIDs, sharedDB)
 		if err != nil {
-			return fmt.Errorf("buildVersionCache(%s): %w", assetType, err)
+			slog.Warn("buildVersionCache failed, using default version_id", "type", assetType, "err", err)
+			versionCache = make(map[string]string) // Cache vide, version_id par défaut sera utilisé
 		}
 		covered := len(versionCache)
 		slog.Info("version_ids récupérés", "type", assetType, "covered", covered, "total", len(assetIDs))
@@ -342,10 +344,11 @@ func fetchAllLangs(
 				assetID := assetID
 				_ = sem.Acquire(ctx, 1)
 
+				// Déterminer version_id (fallback à "1" si non disponible dans cache)
 				versionID, ok := versionCache[assetID]
 				if !ok {
-					sem.Release(1)
-					continue
+					versionID = "1" // Version par défaut quand match stats non accessible
+					slog.Debug("using default version_id", "asset_id", assetID, "version_id", versionID)
 				}
 
 				asset, err := provider.FetchAsset(ctx, assetType, "halo_infinite", assetID, versionID, lang)

@@ -1,5 +1,104 @@
 # Thought Log
 
+## [2026-04-21] fix(season-pass): sécuriser le cache global des connexions DuckDB
+
+**Statut** : Complété
+
+**Décision technique** : l'erreur `season_pass_repo: tracks query: sql: database is closed` venait d'un défaut de cycle de vie dans `internal/platform/duckdb/db.go`. `OpenReadOnly` et `OpenReadWrite` renvoyaient une instance globale partagée par chemin, mais une fermeture temporaire dans le provider défis (`metadata.duckdb`) pouvait fermer la même connexion déjà détenue par `PlayerDB.Metadata`. Le correctif retenu ajoute un comptage de références au cache global des connexions, puis relâche explicitement les ouvertures temporaires du Lab et du `PersistSink`.
+
+**Modifications** :
+- `apps/go-api/internal/platform/duckdb/db.go` : cache global DuckDB ref-counted (`cachedDB.refCount`), réouverture si handle devenu invalide, `Close()` décrémente avant de fermer réellement.
+- `apps/go-api/internal/platform/lab/provider.go` : `defer metaDB.Close()` sur les ouvertures read-only temporaires.
+- `apps/go-api/internal/platform/duckdb/persist_sink.go` : fermeture explicite des handles read-write temporaires battle pass / challenges.
+- `apps/go-api/internal/platform/duckdb/db_refcount_test.go` (nouveau) : test qui vérifie qu'une seconde référence `OpenReadOnly` fermée n'invalide pas la première.
+
+**Résultats** :
+- `go test ./internal/platform/duckdb ./internal/platform/halo -count=1` : PASS.
+- `go test ./internal/platform/duckdb ./internal/platform/halo ./internal/service -count=1` : `duckdb` et `halo` PASS ; échec hors périmètre dans `internal/service/media_service.go` (`req.SharedMatchesDBPath undefined`).
+
+**Conclusion** : la cause racine du `database is closed` côté season pass est corrigée au niveau de l'infrastructure DuckDB partagée. Le chemin home + challenges + season pass n'a plus de fermeture croisée des handles metadata.
+
+## [2026-04-21] fix(watcher): vérification finale — tests, logging, correction assets.go
+
+**Statut** : Complété
+
+**Décision technique** : Audit de la vérification finale du watcher Xbox RTA. Trois lacunes identifiées : absence totale de tests sur les nouveaux fichiers, logging slog incomplet dans `watcher_handler.go`, corruption syntaxique dans `assets.go`.
+
+**Modifications** :
+- `internal/platform/auth/watcher_attempt_store_test.go` (nouveau) : 8 tests `package auth_test` couvrant GetOrCreate (new/reuse/after-failed), Snapshot (found/not-found/copy), Update (applied/wrong-id)
+- `internal/api/handlers/watcher_handler_test.go` (nouveau) : 10 tests `package handlers_test` — GetStatus (no-daemon/running), StartAuth (OK/MSAL-error/reuse), GetAuthStatus (not-found), PatchSubscriptions (OK/empty→all/invalid-body/updates-daemon)
+- `internal/api/handlers/watcher_handler.go` : ajout `slog.Debug("watcher_handler: GetStatus appelé")`, `slog.Info("watcher_handler: démarrage Device Code Flow watcher")`, `slog.Debug("watcher_handler: GetAuthStatus", "attempt_id", ...)` dans les méthodes qui en manquaient
+- `internal/api/handlers/assets.go` : correction corruption syntaxique dans `MapImageRepo` interface et `AssetHandler` struct (champ `mapRepo MapImageRepo` manquant + méthode `UpsertMapImageCache` corrompue) ; `NewAssetHandler` passe maintenant `mapRepo: repo`
+- `apps/web/src/features/settings/WatcherCard.test.tsx` (nouveau) : 15 tests Vitest — toggle, token absent/valide/expiré, auth start, PlayersSelector, RTAStatus (daemon off/rta-on/rta-off/players non-vide)
+
+**Résultats** :
+- `go build ./...` → OK (incluant correction assets.go)
+- Tests Go watcher : 8 + 10 = 18 tests PASS
+- Tests React WatcherCard : 15/15 PASS
+
+**Conclusion** : couverture complète du watcher. Logging structuré présent sur tous les endpoints. Assets handler corrigé (corruption pré-existante).
+
+## [2026-04-21] feat(watcher): implémentation complète Xbox RTA watcher UI + endpoints Go
+
+**Statut** : Complété
+
+**Décision technique** : La plomberie watcher (RTAClient, Daemon, FSM) existait déjà. L'objectif était d'ajouter les pièces manquantes : endpoint d'acquisition XSTS, routes API, et UI React dans l'onglet Synchronisation des Settings.
+
+**Modifications**:
+- `internal/platform/settings/store.go` + `internal/domain/settings.go` : ajout `WatcherSubscribedPlayers []string` (défaut `["all"]`)
+- `internal/watcher/daemon.go` : interface `DaemonController`, méthode `UpdateSubscriptions(gamertags)`, `GetStatus()`
+- `internal/platform/auth/watcher_attempt_store.go` (nouveau) : store de tentative d'auth global (pas par session)
+- `internal/api/handlers/watcher_handler.go` (nouveau) : 4 endpoints GET status / POST auth/start / GET auth/{id} / PATCH subscriptions
+- `internal/api/server.go` : `NewRouter` accepte `watcher.DaemonController`, route `/api/v1/watcher/...` (RequireAuth + RequireAdmin)
+- `cmd/server/main.go` : `settingsStore` créé avant le router, daemon démarré avant `NewRouter`, passé comme `DaemonController`
+- `apps/web/src/lib/api/types.ts` : types `WatcherStatusResponse`, `WatcherAuthAttempt`, `WatcherAuthStatus`, `WatcherPlayerStatus`
+- `apps/web/src/features/settings/watcher-queries.ts` (nouveau) : 4 hooks TanStack Query
+- `apps/web/src/features/settings/i18n.ts` : 15 nouvelles clés watcher FR + EN
+- `apps/web/src/features/settings/WatcherCard.tsx` (nouveau) : composant React complet (token status, auth flow, sélecteur joueurs, RTA live)
+- `apps/web/src/features/settings/SettingsPage.tsx` : remplace l'ancien toggle simple par `<WatcherCard />`
+
+**Résultats** :
+- `go build ./...` + `go vet ./internal/watcher/... ./internal/platform/auth/... ./internal/api/... ./cmd/server/...` → OK
+- `npx tsc --noEmit` → OK (0 erreur)
+
+**Conclusion** : le système watcher est complet. Token XSTS acquis via Device Code Flow, persisté dans `watcher_tokens.json`, daemon rechargeable via `UpdateAuth`. UI React temps réel avec polling 10s (status) et 3s (auth poll).
+
+## [2026-04-21] fix(home): battle pass riche rendu sur la home via l'endpoint season pass
+
+**Statut** : Complété
+
+**Décision technique** : la demande utilisateur visait bien la section battle pass de la home, pas uniquement la page Palmarès > Season Pass. La home React s'appuie désormais directement sur l'endpoint riche `/pages/palmares/season-pass` via une query dédiée `useSeasonPassPreview`, et rend un panneau dédié `HomeBattlePassPanel` avec image principale, rail horizontal de paliers, centrage automatique du palier courant, cartes à bord blanc, grisé + pastille `✓` pour les paliers obtenus, et barre composite pour la progression du palier actif.
+
+**Résultats** :
+- `apps/web/src/features/home/HomeBattlePassPanel.tsx` ajouté pour encapsuler le rendu battle pass riche sur la home.
+- `apps/web/src/features/home/HomePage.tsx` remplace l'ancien bloc minimal `rang + barre` par ce panneau, avec une grille plus favorable au visuel battle pass.
+- `apps/web/src/features/home/queries.ts` ajoute `useSeasonPassPreview()` avec la même source de vérité que la page saison pass.
+- `apps/web/src/test/handlers.ts` expose un mock MSW par défaut pour `/pages/palmares/season-pass`.
+- `apps/web/src/features/home/HomePage.test.tsx` verrouille désormais la présence de l'image, du rail de paliers et de la barre composite du palier actif sur la home.
+- `apps/web/src/components/ui/carousel.tsx` protège désormais l'usage de `ResizeObserver` pour éviter les crashes jsdom sur les rails testés en Vitest.
+- Validation : `npm run test:run -- src/features/home/HomePage.test.tsx` PASS (12/12).
+
+**Conclusion** : le malentendu est levé côté produit et côté code. Le rendu battle pass riche demandé est maintenant bien visible sur la home elle-même.
+
+## [2026-04-20] feat(home): tuiles de matchs enrichies + bouton favori étoile
+
+**Statut** : Complété
+
+**Décision technique** :
+- Struct `RecentMatchItem` étendue avec les champs S56 (kills/deaths/assists/damage/perf_score/combat_yield/map_ui/mode_ui/is_favorite).
+- `GetFavoriteMatchIDs` ajouté à l'interface `SocialRepository` + implémentation `SocialRepo` + noop pour les tests.
+- `HomeService` enrichi d'un champ `socialRepo`/`playerSlug` et d'une méthode `WithSocial()` chainable (dégradation silencieuse si nil).
+- `BuildRecentMatchesWithFavorites` dans `analysis/home.go` : calcule les combat yields, marque les favoris.
+- `registry.go` : HomeCtx et HomeCtxWithAuth injectent désormais `duckdb.NewSocialRepo(pdb)` via `WithSocial`.
+- `MatchCard` React : props `onToggleFavorite`/`favoriteDisabled` câblées, bouton étoile amber discret dans l'overlay image supérieur-gauche.
+
+**Résultats observés** :
+- `go build ./...` → 0 erreur.
+- `MatchCard` accepte et affiche le bouton étoile (étoile pleine amber si favori, contour sinon).
+- Dégradation gracieuse si `shared_social.duckdb` absent (favoriteIDs = nil, aucun crash).
+
+**Conclusion** : toutes les 8 étapes de l'implémentation complétées. Backend Go compile, frontend TypeScript mis à jour.
+
 ## [2026-04-20] feat(home): marquer les défis quotidiens / hebdos sur la home React
 
 **Statut** : Complété
@@ -239,6 +338,29 @@
 
 1. **Faire un incrément léger mais visible** — la hauteur du visuel passe de `h-32 / sm:h-44 / lg:h-52` à `h-36 / sm:h-48 / lg:h-56`, soit environ +8 à +12% selon le breakpoint.
 2. **Conserver le reste du comportement inchangé** — sticky, radius et recouvrement par le contenu restent identiques ; seule l'emprise verticale de l'image augmente.
+
+## [2026-04-21] feat(sessions): première tranche page détail de session + suggestion de comparaison
+
+**Statut** : Complété
+
+**Décision technique** : démarrer la refonte Sessions par une tranche verticale légère mais exploitable. Le backend Go expose désormais un nouvel endpoint dédié `POST /players/{player_slug}/pages/sessions/detail` avec heuristique de suggestion chronologique/catégorielle et logs structurés, sans casser `GET /pages/sessions` ni `POST /pages/session-compare`. Côté web, la route joueur `stats/sessions` bascule sur une nouvelle page React branchée à ce endpoint, tout en réutilisant les structures de résumé et de métriques de la comparaison existante.
+
+**Résultats** :
+- `apps/go-api/internal/domain/session_page.go` : ajout des modèles `SessionPageRequest`, `SessionDetailMatchRow`, `SessionCompareSuggestion`, `SessionPageResponse`.
+- `apps/go-api/internal/service/session_page_service.go` : nouveau service de détail de session avec sélection de session active, suggestion similaire, comparaison intégrée et logs `slog`.
+- `apps/go-api/internal/service/stats_filters.go` : extraction du helper partagé `filterStatsMatchRows` pour réutilisation par Timeseries, Session Compare et Session Page.
+- `apps/go-api/internal/service/session_compare_service.go` : application des filtres, enrichissement des `SessionCompareEntry` (`performance_score`, `dominant_category`) et alignement des métriques avec le front (`kills_per_match`, `score`).
+- `apps/go-api/internal/api/handlers/session_page.go` + `internal/api/server.go` + `internal/api/registry.go` + `internal/port/services.go` : câblage complet du nouvel endpoint.
+- `apps/go-api/internal/service/session_page_service_test.go` + `internal/api/handlers/session_page_test.go` : couverture renforcée service/handler (sélection par défaut, suggestion, compare auto/manual, filtres période, absence totale de sessions, session demandée introuvable, compare manuel non résolu, session unique, 200/400/404/500, labels résolus non nuls dans le handler).
+- `apps/go-api/internal/service/session_compare_test.go` : couverture renforcée sur `Compare()` et ses helpers (auto-sélection A/B, filtrage réduisant à une seule session, `effectiveKDA`, classification Firefight/Ranked/BTB/Arena).
+- `apps/web/src/lib/api/types.ts` + `src/lib/query/keys.ts` + `src/features/session-detail/queries.ts` : types/query key/hook TanStack pour le nouvel endpoint.
+- `apps/web/src/features/session-detail/SessionDetailPage.tsx` + `src/routes/players/$playerSlug/stats/sessions.tsx` : première UI React branchée, avec sélection de session, suggestion lisible, activation de comparaison et table de matchs.
+- `apps/web/src/features/session-detail/SessionDetailPage.test.tsx` : couverture frontend ciblée sur le chargement, l'état vide, l'état erreur et l'activation de la comparaison suggérée.
+- `apps/go-api/api/openapi.yaml` : ajout du chemin `POST /players/{player_slug}/pages/sessions/detail`.
+- `apps/go-api/internal/api/contract_helpers_test.go` : helper réaligné sur la signature actuelle de `api.NewRouter(..., daemon)` pour débloquer les tests de contrat ciblés du package `internal/api`.
+- Validation : `go test ./internal/service ./internal/api/handlers ./internal/api -run 'SessionPage|SessionCompare|Sessions|Contract'` PASS. Couverture Go ciblée : `session_page.go` 100%, `session_page_service.go` 93.1%, `stats_filters.go` 100%, `session_compare_service.go` avec `Compare()` à 100% et helpers principaux couverts. `npx vitest run src/features/session-detail/SessionDetailPage.test.tsx --coverage --coverage.include=src/features/session-detail/SessionDetailPage.tsx` PASS, avec une couverture ciblée `SessionDetailPage.tsx` à 73.61% statements / 72.15% branches / 79.31% funcs. `npm run -s typecheck` reste en échec à cause d'erreurs **préexistantes hors périmètre** (`match-card.test.tsx`, `timeseries-heatmap.tsx`, auth pages, `appShellStore.test.ts`), tandis que `get_errors` ne remonte aucune erreur sur les nouveaux fichiers frontend touchés.
+
+**Conclusion** : la route Sessions n'est plus seulement un comparateur A/B. Une première page détail de session fonctionne bout en bout avec backend dédié, suggestion similaire et comparaison intégrée basique. Les prochaines tranches pourront enrichir les charts, le split view avancé et la logique de similarité solo sans reprendre le câblage fondamental.
 
 ### Résultats observés
 

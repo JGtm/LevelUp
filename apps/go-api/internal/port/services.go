@@ -96,6 +96,11 @@ type SessionCompareService interface {
 	Compare(ctx context.Context, req domain.SessionCompareRequest) (domain.SessionCompareResponse, error)
 }
 
+// SessionPageService construit la page détail de session.
+type SessionPageService interface {
+	GetPage(ctx context.Context, req domain.SessionPageRequest) (domain.SessionPageResponse, error)
+}
+
 // SquadService orchestre les pages Escouade et Synthèse.
 type SquadService interface {
 	GetSquadPage(ctx context.Context, playerXUID, gamertag, teammateXUID string) (*domain.SquadPageResponse, error)

@@ -126,6 +126,23 @@ const homeFixture = {
   squad_session: null,
 }
 
+const seasonPassFixture = {
+  title_slug: 'halo_infinite',
+  available: false,
+  error_hint: null,
+  active_track_path: null,
+  challenges: {
+    available: false,
+    total: null,
+    completed: null,
+    xp_available: null,
+    next_expiry: null,
+    items: [],
+    error_hint: null,
+  },
+  passes: [],
+}
+
 // setupStatusFixture supprimé (sprint 29) : GET /setup/status est un artefact mort.
 // L'état setup est porté par BootstrapResponse.setup_state.
 
@@ -471,6 +488,7 @@ export const handlers = [
   http.get(p(`/players/${SLUG}/challenges`), () =>
     HttpResponse.json({ available: false, total: null, completed: null, xp_available: null, next_expiry: null, items: [], error_hint: null }),
   ),
+  http.get(p(`/players/${SLUG}/pages/palmares/season-pass`), () => HttpResponse.json(seasonPassFixture)),
 
   // Leaderboard
   http.get(p(`/players/${SLUG}/pages/leaderboard`), ({ request }) => {

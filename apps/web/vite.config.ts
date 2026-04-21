@@ -27,6 +27,10 @@ export default defineConfig({
         target: apiProxyTarget,
         changeOrigin: true,
       },
+      '/static': {
+        target: apiProxyTarget,
+        changeOrigin: true,
+      },
     },
   },
   test: {

@@ -77,6 +77,15 @@ export const queryKeys = {
   sessionCompare: (playerSlug: string, filterHash: string, sessionA: string, sessionB: string) =>
     ['session-compare', playerSlug, filterHash, sessionA, sessionB] as const,
 
+  // Session Detail (session page revamp)
+  sessionDetail: (
+    playerSlug: string,
+    filterHash: string,
+    sessionLabel: string,
+    compareSessionLabel: string,
+    enableCompare: boolean,
+  ) => ['session-detail', playerSlug, filterHash, sessionLabel, compareSessionLabel, enableCompare] as const,
+
   // Last Match (Slice 4C)
   lastMatch: (playerSlug: string, filterHash: string) =>
     ['last-match', playerSlug, filterHash] as const,

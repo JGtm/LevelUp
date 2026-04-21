@@ -141,7 +141,7 @@ func NewRouter(
 		adminHandler := handlers.NewAdminHandler(users, invites)
 		r.Route("/admin", func(r chi.Router) {
 			r.Use(middleware.RequireAuth(cfg.DemoMode, cfg.AuthMode))
-			r.Use(middleware.RequireAdmin())
+			r.Use(middleware.RequireAdmin(cfg.DemoMode, cfg.AuthMode))
 			r.Get("/users", adminHandler.ListUsers)
 			r.Delete("/users/{username}", adminHandler.DeleteUser)
 			r.Patch("/users/{username}/role", adminHandler.ChangeRole)
@@ -287,7 +287,7 @@ func NewRouter(
 		watcherHandler := handlers.NewWatcherHandler(cfg, settingsStore, daemon, tokenProvider, watcherAttempts)
 		r.Route("/watcher", func(r chi.Router) {
 			r.Use(middleware.RequireAuth(cfg.DemoMode, cfg.AuthMode))
-			r.Use(middleware.RequireAdmin())
+			r.Use(middleware.RequireAdmin(cfg.DemoMode, cfg.AuthMode))
 			r.Get("/status", watcherHandler.GetStatus)
 			r.Post("/auth/start", watcherHandler.StartAuth)
 			r.Get("/auth/{attempt_id}", watcherHandler.GetAuthStatus)

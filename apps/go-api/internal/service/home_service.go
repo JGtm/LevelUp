@@ -103,7 +103,7 @@ func (s *HomeService) GetHomePage(ctx context.Context, gamertag string) (*domain
 
 	hero := analysis.BuildHeroCard(matches, gamertag, totalMatches)
 	highlights := analysis.BuildHighlights(matches)
-	recentMatches := analysis.BuildRecentMatchesWithFavorites(matches, 6, favoriteIDs)
+	recentMatches := analysis.BuildRecentMatchesWithFavorites(matches, len(matches), favoriteIDs)
 	favoriteMatches := buildFavoriteMatchList(recentMatches, matches, favoriteIDs)
 	recentMedia := analysis.BuildRecentMedia(media, 4)
 	soloSession := analysis.BuildSessionSummary(matches, sessions, false)
