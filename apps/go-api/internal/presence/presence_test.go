@@ -153,7 +153,7 @@ func TestNewRTAClient(t *testing.T) {
 
 func TestRTAClient_Subscribe_NotConnected(t *testing.T) {
 	c := NewRTAClient("auth")
-	err := c.Subscribe(context.Background(), "xuid-123", func(_ PresenceEvent) {})
+	err := c.Subscribe(context.Background(), "xuid-123", "1144039928", func(_ PresenceEvent) {})
 	if err == nil {
 		t.Error("expected error when not connected")
 	}
@@ -441,7 +441,8 @@ func TestNewSteamPoller(t *testing.T) {
 }
 
 // TestRTAClient_HandleMessage_SubscribeRefused_Status3 vérifie que status=3
-// (accès refusé / token expiré) déclenche la fermeture de la connexion WS.
+// (accès refusé / token expiré) déclenche la fermeture de la connexion WS
+// APRÈS un grace period de 2s si AUCUN subscribe n'a réussi entretemps.
 // Cela garantit que RunWithReconnect retente avec un token frais.
 func TestRTAClient_HandleMessage_SubscribeRefused_Status3(t *testing.T) {
 	// Créer un faux serveur WS qui reste ouvert (on veut observer la fermeture côté client)
@@ -485,20 +486,79 @@ func TestRTAClient_HandleMessage_SubscribeRefused_Status3(t *testing.T) {
 	// Simuler status=3 (accès refusé) : [1, 99, 3, 0]
 	c.handleMessage(ctx, []byte(`[1, 99, 3, 0]`))
 
-	// Le closeOnce doit avoir fermé la connexion (goroutine async → attendre max 500ms)
-	select {
-	case <-closed:
-		// OK : le serveur a détecté la fermeture
-	case <-time.After(500 * time.Millisecond):
-		t.Error("status=3 aurait dû fermer la connexion WS pour forcer un reconnect")
-	}
-
 	// Le pending doit avoir été retiré (delete avant le check status)
 	c.pendingMu.Lock()
 	_, stillPending := c.pending[99]
 	c.pendingMu.Unlock()
 	if stillPending {
 		t.Error("pending doit être supprimé après réception de la réponse")
+	}
+
+	// La fermeture est différée de 2s (grace period). On attend jusqu'à 3s.
+	select {
+	case <-closed:
+		// OK : le serveur a détecté la fermeture après le grace period
+	case <-time.After(3 * time.Second):
+		t.Error("status=3 sans aucun succès aurait dû fermer la connexion WS après le grace period")
+	}
+}
+
+// TestRTAClient_HandleMessage_Status3_IgnoredWhenSubSucceeded vérifie que status=3
+// est ignoré (pas de fermeture) si au moins un autre subscribe a réussi pendant
+// le grace period — ce qui indique que c'est une privacy denial individuelle,
+// pas une auth expirée globale.
+func TestRTAClient_HandleMessage_Status3_IgnoredWhenSubSucceeded(t *testing.T) {
+	closed := make(chan struct{}, 1)
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		upgrader := websocket.Upgrader{CheckOrigin: func(*http.Request) bool { return true }}
+		conn, err := upgrader.Upgrade(w, r, nil)
+		if err != nil {
+			return
+		}
+		defer conn.Close()
+		conn.ReadMessage() //nolint:errcheck
+		close(closed)
+	}))
+	defer srv.Close()
+
+	c := NewRTAClient("auth")
+	wsURL := "ws" + strings.TrimPrefix(srv.URL, "http")
+	c.connMu.Lock()
+	c.closeOnce = &sync.Once{}
+	dialer := websocket.Dialer{}
+	conn, _, err := dialer.Dial(wsURL, nil)
+	if err != nil {
+		c.connMu.Unlock()
+		t.Fatalf("dial: %v", err)
+	}
+	c.conn = conn
+	c.connected.Store(true)
+	c.connMu.Unlock()
+
+	ctx := context.Background()
+
+	// Simuler un subscribe RÉUSSI (status=0) sur sub_id=42
+	c.pendingMu.Lock()
+	c.pending[10] = pendingSub{xuid: "xuid-ok", handler: func(PresenceEvent) {}}
+	c.pendingMu.Unlock()
+	c.handleMessage(ctx, []byte(`[1, 10, 0, 42]`))
+
+	// Puis un status=3 — le grace period doit voir au moins 1 sub OK et NE PAS fermer
+	c.pendingMu.Lock()
+	c.pending[99] = pendingSub{xuid: "xuid-bad", handler: func(PresenceEvent) {}}
+	c.pendingMu.Unlock()
+	c.handleMessage(ctx, []byte(`[1, 99, 3, 0]`))
+
+	// Attendre 2.5s : la fermeture NE doit PAS arriver (au moins 1 sub OK)
+	select {
+	case <-closed:
+		t.Error("status=3 ne doit PAS fermer la connexion quand au moins 1 sub a réussi")
+	case <-time.After(2500 * time.Millisecond):
+		// OK : aucune fermeture, comportement attendu
+	}
+
+	if c.IsAuthExpired() {
+		t.Error("authExpired ne doit pas être set quand au moins 1 sub a réussi")
 	}
 }
 

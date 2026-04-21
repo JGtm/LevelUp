@@ -29,7 +29,10 @@ const (
 	rtaEndpoint = "wss://rta.xboxlive.com/connect"
 
 	// rtaPresenceTopicFmt est le template du topic de présence par XUID.
-	rtaPresenceTopicFmt = "https://userpresence.xboxlive.com/users/xuid(%s)/richpresence"
+	// Format officiel Microsoft (XSAPI title_presence_change_subscription.cpp) :
+	//   https://userpresence.xboxlive.com/users/xuid(<XUID>)/titles/<TITLE_ID>
+	// Cet abonnement notifie quand le joueur démarre/arrête le titre spécifié.
+	rtaPresenceTopicFmt = "https://userpresence.xboxlive.com/users/xuid(%s)/titles/%s"
 
 	// writeTimeout pour les messages WebSocket sortants.
 	writeTimeout = 10 * time.Second
@@ -97,6 +100,10 @@ type RTAClient struct {
 	// Permet à RunWithReconnect de déclencher un refresh XSTS avant de reconnecter.
 	authExpired atomic.Bool
 
+	// status3GraceStarted garantit qu'un seul timer de grâce tourne par connexion
+	// (évite N goroutines pour N status=3 reçus en burst).
+	status3GraceStarted atomic.Bool
+
 	// closeOnce évite de fermer la connexion plusieurs fois pour la même cause.
 	// Réinitialisé à chaque Connect().
 	closeOnce *sync.Once
@@ -131,11 +138,16 @@ func (c *RTAClient) Connect(ctx context.Context) error {
 	// Réinitialiser le closeOnce + authExpired pour la nouvelle connexion.
 	c.closeOnce = &sync.Once{}
 	c.authExpired.Store(false)
+	c.status3GraceStarted.Store(false)
 
 	slog.InfoContext(ctx, "rta: connexion WebSocket", "endpoint", rtaEndpoint)
 
 	dialer := websocket.Dialer{
 		HandshakeTimeout: 15 * time.Second,
+		// Sous-protocole obligatoire pour Xbox Live RTA. Sans cet en-tête
+		// Sec-WebSocket-Protocol, le serveur accepte la connexion mais refuse
+		// systématiquement tous les subscribes avec status=3.
+		Subprotocols: []string{"rta.xboxlive.com.V2"},
 	}
 	header := http.Header{}
 	header.Set("Authorization", c.authHeader)
@@ -166,8 +178,9 @@ func (c *RTAClient) Connect(ctx context.Context) error {
 	return nil
 }
 
-// Subscribe s'abonne au topic de présence d'un joueur.
-func (c *RTAClient) Subscribe(ctx context.Context, xuid string, handler EventHandler) error {
+// Subscribe s'abonne au topic de présence d'un titre pour un joueur.
+// titleID est le Title ID Xbox Live du jeu (ex: "1144039928" pour Halo Infinite).
+func (c *RTAClient) Subscribe(ctx context.Context, xuid, titleID string, handler EventHandler) error {
 	c.connMu.Lock()
 	conn := c.conn
 	c.connMu.Unlock()
@@ -176,7 +189,7 @@ func (c *RTAClient) Subscribe(ctx context.Context, xuid string, handler EventHan
 		return fmt.Errorf("rta: pas connecté")
 	}
 
-	topic := fmt.Sprintf(rtaPresenceTopicFmt, xuid)
+	topic := fmt.Sprintf(rtaPresenceTopicFmt, xuid, titleID)
 	seq := c.nextSeq.Add(1) - 1
 	msg := []any{rtaSubscribe, seq, topic}
 
@@ -273,6 +286,40 @@ func (c *RTAClient) IsAuthExpired() bool {
 	return c.authExpired.Load()
 }
 
+// evaluateStatus3AfterGrace attend 2s puis décide si le status=3 reçu indique
+// une vraie auth expirée (aucun subscribe n'a réussi) ou une simple privacy
+// denial individuelle (au moins un subscribe a réussi). Garantit qu'une seule
+// goroutine de grace tourne par connexion via status3GraceStarted CAS.
+func (c *RTAClient) evaluateStatus3AfterGrace(ctx context.Context) {
+	if !c.status3GraceStarted.CompareAndSwap(false, true) {
+		return // déjà une grace en cours pour cette connexion
+	}
+	select {
+	case <-ctx.Done():
+		return
+	case <-time.After(2 * time.Second):
+	}
+	c.subsMu.RLock()
+	successCount := len(c.subs)
+	c.subsMu.RUnlock()
+	if successCount > 0 {
+		slog.WarnContext(ctx, "rta: status=3 ignoré après grace (au moins 1 sub OK — privacy individuelle)",
+			"successful_subs", successCount,
+		)
+		return
+	}
+	c.authExpired.Store(true)
+	c.closeOnce.Do(func() {
+		slog.WarnContext(ctx, "rta: aucun sub réussi après grace — auth expirée, fermeture connexion")
+		c.connMu.Lock()
+		conn := c.conn
+		c.connMu.Unlock()
+		if conn != nil {
+			go conn.Close()
+		}
+	})
+}
+
 // ResetAuthExpired remet le flag à false. Appelé par RunWithReconnect après
 // avoir traité le refresh, juste avant la reconnexion.
 func (c *RTAClient) ResetAuthExpired() {
@@ -349,19 +396,16 @@ func (c *RTAClient) handleSubscribeResponse(ctx context.Context, msg []json.RawM
 			"sub_id", subID,
 		)
 		if status == 3 {
-			// Status=3 = accès refusé, probablement token XSTS expiré.
-			// Signaler authExpired pour que RunWithReconnect rafraîchisse le token
-			// AVANT de reconnecter (évite la boucle infinie reconnect→status=3).
-			c.authExpired.Store(true)
-			c.closeOnce.Do(func() {
-				slog.WarnContext(ctx, "rta: status=3 — authExpired signalé, fermeture connexion")
-				c.connMu.Lock()
-				conn := c.conn
-				c.connMu.Unlock()
-				if conn != nil {
-					go conn.Close()
-				}
-			})
+			// Status=3 sur userpresence.xboxlive.com a deux causes possibles :
+			//  1. Token XSTS expiré (refus global de tous les subs)
+			//  2. Privacy refusée pour ce XUID précis (le compte ne peut pas voir
+			//     la rich presence de cet utilisateur — pas friend, privacy strict, etc.)
+			//
+			// On diffère la décision de 2s : si au moins un autre subscribe réussit
+			// pendant ce délai, c'est forcément (1) faux → c'est de la privacy
+			// individuelle, on garde la connexion ouverte. Si AUCUN succès après 2s,
+			// c'est bien une auth expirée, on signale et on ferme pour reconnect.
+			go c.evaluateStatus3AfterGrace(ctx)
 		}
 		return
 	}

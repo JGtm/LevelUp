@@ -19,6 +19,7 @@ package presence
 import (
 	"encoding/json"
 	"fmt"
+	"strings"
 )
 
 // rtaPresencePayload est la structure JSON brute du payload RTA.
@@ -39,7 +40,25 @@ type rtaPresenceItem struct {
 
 // ParsePresencePayload parse un payload RTA en PresenceEvent.
 // xuid est passé en paramètre pour fallback si absent du payload.
+//
+// Deux formats sont supportés (source : XSAPI Microsoft
+// title_presence_change_subscription.cpp) :
+//
+//  1. Réponse initiale au subscribe : objet JSON XblPresenceRecord complet
+//     (xuid, presenceState, presenceDetails[]).
+//  2. Event push ultérieur sur /titles/<TID> : simple string JSON
+//     "<state>:<titleId>" (ex. "Started:1144039928", "Ended:1144039928").
 func ParsePresencePayload(raw json.RawMessage, fallbackXUID string) (PresenceEvent, error) {
+	// Cas 2 : payload string "state:titleId"
+	if len(raw) > 0 && raw[0] == '"' {
+		var s string
+		if err := json.Unmarshal(raw, &s); err != nil {
+			return PresenceEvent{}, fmt.Errorf("parse presence string: %w", err)
+		}
+		return parseTitleStateString(s, fallbackXUID), nil
+	}
+
+	// Cas 1 : payload objet XblPresenceRecord
 	var p rtaPresencePayload
 	if err := json.Unmarshal(raw, &p); err != nil {
 		return PresenceEvent{}, fmt.Errorf("parse presence: %w", err)
@@ -87,4 +106,23 @@ func ParsePresencePayload(raw json.RawMessage, fallbackXUID string) (PresenceEve
 	}
 
 	return event, nil
+}
+
+// parseTitleStateString parse un payload event court "<state>:<titleId>"
+// émis par les subscriptions TitlePresenceChangeSubscription (format XSAPI).
+// Exemples : "Started:1144039928" → {State:"Started", TitleID:"1144039928"}.
+func parseTitleStateString(s, fallbackXUID string) PresenceEvent {
+	state, titleID, _ := strings.Cut(s, ":")
+	event := PresenceEvent{
+		XUID:          fallbackXUID,
+		PresenceState: state,
+	}
+	if titleID != "" {
+		event.PresenceDetail = &PresenceDetail{
+			TitleID: titleID,
+			IsGame:  true,
+			State:   state,
+		}
+	}
+	return event
 }

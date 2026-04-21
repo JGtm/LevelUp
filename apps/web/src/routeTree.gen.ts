@@ -37,6 +37,7 @@ import { Route as PlayersPlayerSlugPalmaresSeasonPassRouteImport } from './route
 import { Route as PlayersPlayerSlugPalmaresRelationsRouteImport } from './routes/players/$playerSlug/palmares/relations'
 import { Route as PlayersPlayerSlugPalmaresCompareRouteImport } from './routes/players/$playerSlug/palmares/compare'
 import { Route as PlayersPlayerSlugMatchesMatchIdRouteImport } from './routes/players/$playerSlug/matches/$matchId'
+import { Route as PlayersPlayerSlugMatchesMatchIdReplayRouteImport } from './routes/players/$playerSlug/matches/$matchId/replay'
 
 const SetupRoute = SetupRouteImport.update({
   id: '/setup',
@@ -193,6 +194,12 @@ const PlayersPlayerSlugMatchesMatchIdRoute =
     path: '/matches/$matchId',
     getParentRoute: () => PlayersPlayerSlugRoute,
   } as any)
+const PlayersPlayerSlugMatchesMatchIdReplayRoute =
+  PlayersPlayerSlugMatchesMatchIdReplayRouteImport.update({
+    id: '/replay',
+    path: '/replay',
+    getParentRoute: () => PlayersPlayerSlugMatchesMatchIdRoute,
+  } as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
@@ -210,7 +217,7 @@ export interface FileRoutesByFullPath {
   '/players/$playerSlug/media': typeof PlayersPlayerSlugMediaRoute
   '/players/$playerSlug/squad': typeof PlayersPlayerSlugSquadRouteWithChildren
   '/players/$playerSlug/synthesis': typeof PlayersPlayerSlugSynthesisRoute
-  '/players/$playerSlug/matches/$matchId': typeof PlayersPlayerSlugMatchesMatchIdRoute
+  '/players/$playerSlug/matches/$matchId': typeof PlayersPlayerSlugMatchesMatchIdRouteWithChildren
   '/players/$playerSlug/palmares/compare': typeof PlayersPlayerSlugPalmaresCompareRoute
   '/players/$playerSlug/palmares/relations': typeof PlayersPlayerSlugPalmaresRelationsRoute
   '/players/$playerSlug/palmares/season-pass': typeof PlayersPlayerSlugPalmaresSeasonPassRoute
@@ -223,6 +230,7 @@ export interface FileRoutesByFullPath {
   '/players/$playerSlug/explorer/': typeof PlayersPlayerSlugExplorerIndexRoute
   '/players/$playerSlug/palmares/': typeof PlayersPlayerSlugPalmaresIndexRoute
   '/players/$playerSlug/squad/': typeof PlayersPlayerSlugSquadIndexRoute
+  '/players/$playerSlug/matches/$matchId/replay': typeof PlayersPlayerSlugMatchesMatchIdReplayRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
@@ -239,7 +247,7 @@ export interface FileRoutesByTo {
   '/players/$playerSlug/last-match': typeof PlayersPlayerSlugLastMatchRoute
   '/players/$playerSlug/media': typeof PlayersPlayerSlugMediaRoute
   '/players/$playerSlug/synthesis': typeof PlayersPlayerSlugSynthesisRoute
-  '/players/$playerSlug/matches/$matchId': typeof PlayersPlayerSlugMatchesMatchIdRoute
+  '/players/$playerSlug/matches/$matchId': typeof PlayersPlayerSlugMatchesMatchIdRouteWithChildren
   '/players/$playerSlug/palmares/compare': typeof PlayersPlayerSlugPalmaresCompareRoute
   '/players/$playerSlug/palmares/relations': typeof PlayersPlayerSlugPalmaresRelationsRoute
   '/players/$playerSlug/palmares/season-pass': typeof PlayersPlayerSlugPalmaresSeasonPassRoute
@@ -252,6 +260,7 @@ export interface FileRoutesByTo {
   '/players/$playerSlug/explorer': typeof PlayersPlayerSlugExplorerIndexRoute
   '/players/$playerSlug/palmares': typeof PlayersPlayerSlugPalmaresIndexRoute
   '/players/$playerSlug/squad': typeof PlayersPlayerSlugSquadIndexRoute
+  '/players/$playerSlug/matches/$matchId/replay': typeof PlayersPlayerSlugMatchesMatchIdReplayRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -270,7 +279,7 @@ export interface FileRoutesById {
   '/players/$playerSlug/media': typeof PlayersPlayerSlugMediaRoute
   '/players/$playerSlug/squad': typeof PlayersPlayerSlugSquadRouteWithChildren
   '/players/$playerSlug/synthesis': typeof PlayersPlayerSlugSynthesisRoute
-  '/players/$playerSlug/matches/$matchId': typeof PlayersPlayerSlugMatchesMatchIdRoute
+  '/players/$playerSlug/matches/$matchId': typeof PlayersPlayerSlugMatchesMatchIdRouteWithChildren
   '/players/$playerSlug/palmares/compare': typeof PlayersPlayerSlugPalmaresCompareRoute
   '/players/$playerSlug/palmares/relations': typeof PlayersPlayerSlugPalmaresRelationsRoute
   '/players/$playerSlug/palmares/season-pass': typeof PlayersPlayerSlugPalmaresSeasonPassRoute
@@ -283,6 +292,7 @@ export interface FileRoutesById {
   '/players/$playerSlug/explorer/': typeof PlayersPlayerSlugExplorerIndexRoute
   '/players/$playerSlug/palmares/': typeof PlayersPlayerSlugPalmaresIndexRoute
   '/players/$playerSlug/squad/': typeof PlayersPlayerSlugSquadIndexRoute
+  '/players/$playerSlug/matches/$matchId/replay': typeof PlayersPlayerSlugMatchesMatchIdReplayRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -315,6 +325,7 @@ export interface FileRouteTypes {
     | '/players/$playerSlug/explorer/'
     | '/players/$playerSlug/palmares/'
     | '/players/$playerSlug/squad/'
+    | '/players/$playerSlug/matches/$matchId/replay'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
@@ -344,6 +355,7 @@ export interface FileRouteTypes {
     | '/players/$playerSlug/explorer'
     | '/players/$playerSlug/palmares'
     | '/players/$playerSlug/squad'
+    | '/players/$playerSlug/matches/$matchId/replay'
   id:
     | '__root__'
     | '/'
@@ -374,6 +386,7 @@ export interface FileRouteTypes {
     | '/players/$playerSlug/explorer/'
     | '/players/$playerSlug/palmares/'
     | '/players/$playerSlug/squad/'
+    | '/players/$playerSlug/matches/$matchId/replay'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -586,6 +599,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof PlayersPlayerSlugMatchesMatchIdRouteImport
       parentRoute: typeof PlayersPlayerSlugRoute
     }
+    '/players/$playerSlug/matches/$matchId/replay': {
+      id: '/players/$playerSlug/matches/$matchId/replay'
+      path: '/replay'
+      fullPath: '/players/$playerSlug/matches/$matchId/replay'
+      preLoaderRoute: typeof PlayersPlayerSlugMatchesMatchIdReplayRouteImport
+      parentRoute: typeof PlayersPlayerSlugMatchesMatchIdRoute
+    }
   }
 }
 
@@ -608,6 +628,21 @@ const PlayersPlayerSlugSquadRouteWithChildren =
     PlayersPlayerSlugSquadRouteChildren,
   )
 
+interface PlayersPlayerSlugMatchesMatchIdRouteChildren {
+  PlayersPlayerSlugMatchesMatchIdReplayRoute: typeof PlayersPlayerSlugMatchesMatchIdReplayRoute
+}
+
+const PlayersPlayerSlugMatchesMatchIdRouteChildren: PlayersPlayerSlugMatchesMatchIdRouteChildren =
+  {
+    PlayersPlayerSlugMatchesMatchIdReplayRoute:
+      PlayersPlayerSlugMatchesMatchIdReplayRoute,
+  }
+
+const PlayersPlayerSlugMatchesMatchIdRouteWithChildren =
+  PlayersPlayerSlugMatchesMatchIdRoute._addFileChildren(
+    PlayersPlayerSlugMatchesMatchIdRouteChildren,
+  )
+
 interface PlayersPlayerSlugRouteChildren {
   PlayersPlayerSlugCareerRoute: typeof PlayersPlayerSlugCareerRoute
   PlayersPlayerSlugHomeRoute: typeof PlayersPlayerSlugHomeRoute
@@ -615,7 +650,7 @@ interface PlayersPlayerSlugRouteChildren {
   PlayersPlayerSlugMediaRoute: typeof PlayersPlayerSlugMediaRoute
   PlayersPlayerSlugSquadRoute: typeof PlayersPlayerSlugSquadRouteWithChildren
   PlayersPlayerSlugSynthesisRoute: typeof PlayersPlayerSlugSynthesisRoute
-  PlayersPlayerSlugMatchesMatchIdRoute: typeof PlayersPlayerSlugMatchesMatchIdRoute
+  PlayersPlayerSlugMatchesMatchIdRoute: typeof PlayersPlayerSlugMatchesMatchIdRouteWithChildren
   PlayersPlayerSlugPalmaresCompareRoute: typeof PlayersPlayerSlugPalmaresCompareRoute
   PlayersPlayerSlugPalmaresRelationsRoute: typeof PlayersPlayerSlugPalmaresRelationsRoute
   PlayersPlayerSlugPalmaresSeasonPassRoute: typeof PlayersPlayerSlugPalmaresSeasonPassRoute
@@ -634,7 +669,8 @@ const PlayersPlayerSlugRouteChildren: PlayersPlayerSlugRouteChildren = {
   PlayersPlayerSlugMediaRoute: PlayersPlayerSlugMediaRoute,
   PlayersPlayerSlugSquadRoute: PlayersPlayerSlugSquadRouteWithChildren,
   PlayersPlayerSlugSynthesisRoute: PlayersPlayerSlugSynthesisRoute,
-  PlayersPlayerSlugMatchesMatchIdRoute: PlayersPlayerSlugMatchesMatchIdRoute,
+  PlayersPlayerSlugMatchesMatchIdRoute:
+    PlayersPlayerSlugMatchesMatchIdRouteWithChildren,
   PlayersPlayerSlugPalmaresCompareRoute: PlayersPlayerSlugPalmaresCompareRoute,
   PlayersPlayerSlugPalmaresRelationsRoute:
     PlayersPlayerSlugPalmaresRelationsRoute,

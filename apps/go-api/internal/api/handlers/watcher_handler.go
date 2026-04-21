@@ -57,12 +57,12 @@ func NewWatcherHandler(
 
 // watcherStatusResponse est la réponse de GET /watcher/status.
 type watcherStatusResponse struct {
-	DaemonRunning     bool                         `json:"daemon_running"`
-	RTAConnected      bool                         `json:"rta_connected"`
-	TokenValid        bool                         `json:"token_valid"`
-	TokenExpiresAt    string                       `json:"token_expires_at,omitempty"`
-	TokenGamertag     string                       `json:"token_gamertag,omitempty"`
-	SubscribedPlayers []string                     `json:"subscribed_players"`
+	DaemonRunning     bool                           `json:"daemon_running"`
+	RTAConnected      bool                           `json:"rta_connected"`
+	TokenValid        bool                           `json:"token_valid"`
+	TokenExpiresAt    string                         `json:"token_expires_at,omitempty"`
+	TokenGamertag     string                         `json:"token_gamertag,omitempty"`
+	SubscribedPlayers []string                       `json:"subscribed_players"`
 	Players           []watcher.PlayerPresenceStatus `json:"players"`
 }
 

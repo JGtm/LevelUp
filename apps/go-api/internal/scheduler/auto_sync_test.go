@@ -54,6 +54,13 @@ func (m *mockProvider) TryOAuthRefresh(_ context.Context, _ string) (string, err
 	return m.oauthToken, m.oauthErr
 }
 
+func (m *mockProvider) AcquireAccessToken(_ context.Context, _, _ string) (string, error) {
+	if m.silentToken != "" && m.silentErr == nil {
+		return m.silentToken, nil
+	}
+	return m.oauthToken, m.oauthErr
+}
+
 func (m *mockProvider) Exchange(_ context.Context, _ string) (*auth.ExchangeResult, error) {
 	return m.exchangeRes, m.exchangeErr
 }
