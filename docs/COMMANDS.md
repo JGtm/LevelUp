@@ -5,7 +5,9 @@ French version: [FR/COMMANDS.md](FR/COMMANDS.md)
 ## Run the app
 
 ```bash
-python launcher.py run
+make dev
+make go-api-dev
+make web
 ```
 
 ## Sync

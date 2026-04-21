@@ -271,7 +271,7 @@ Quand tu ajoutes ou modifies une colonne, une table ou un index dans une DB Duck
 
 **Règles :**
 
-- Les migrations sont appliquées **automatiquement** au prochain lancement via `launcher.py → _run_migrations()`
+- Les migrations sont appliquées **automatiquement** au démarrage du backend Go via `apps/go-api/cmd/server/main.go` puis `migration.RunForDB(...)`
 - Chaque DB trace les migrations dans une table `schema_migrations` (colonnes : `name`, `applied_at`, `schema_done`, `backfill_done`)
 - Une migration déjà appliquée ne tourne **jamais** deux fois (idempotence garantie)
 - `target_db` détermine quelle DB reçoit la migration : `"player"` (stats.duckdb de chaque joueur), `"shared"` (shared_matches_v2.duckdb), `"shared_pve"` (shared_pve.duckdb), `"metadata"` (metadata.duckdb)

@@ -7,11 +7,14 @@
 ## 🚀 Lancement
 
 ```bash
-# Lancer le dashboard
-python launcher.py run
+# API Go + frontend Vite
+make dev
 
-# Lancer en mode debug
-streamlit run streamlit_app.py --server.runOnSave true
+# API Go seule
+make go-api-dev
+
+# Frontend seul
+make web
 ```
 
 ---

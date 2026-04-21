@@ -31,10 +31,10 @@ jobs:
           sys.exit(errors)
           EOF
 
-      - name: Validation syntaxe Bash (deploy.sh, scripts/*.sh)
+      - name: Validation syntaxe Bash (scripts/*.sh)
         run: |
           errors=0
-          for f in deploy.sh scripts/*.sh; do
+          for f in scripts/*.sh; do
             [[ -f "$f" ]] || continue
             if bash -n "$f" 2>&1; then echo "  ✅ $f"
             else echo "  ❌ $f"; errors=$((errors + 1)); fi
@@ -67,7 +67,7 @@ jobs:
           script: |
             git config --global --add safe.directory /opt/levelup
             cd /opt/levelup
-            bash /opt/levelup/deploy.sh
+            bash /opt/levelup/scripts/deploy.sh
 
   # ── Job 2 : Regen données démo ────────────────────────────────────────────
   deploy-demo:
@@ -88,7 +88,7 @@ jobs:
 
             # Regen données démo
             # Note : on supprime uniquement les données, PAS les fichiers de config stub.
-            # Les stubs (créés par deploy.sh) évitent que Docker crée des répertoires
+            # Les stubs (créés par scripts/deploy.sh) évitent que Docker crée des répertoires
             # fantômes si le regen échoue en cours de route.
             rm -rf data/demo/warehouse data/demo/players/DEMO/stats.duckdb
             # Supprimer les JSON — fichier ou répertoire fantôme (docker crée un dossier

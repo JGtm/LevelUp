@@ -52,10 +52,10 @@ jobs:
           sys.exit(errors)
           EOF
 
-      - name: Validation syntaxe Bash (deploy.sh, scripts/*.sh)
+      - name: Validation syntaxe Bash (scripts/*.sh)
         run: |
           errors=0
-          for f in deploy.sh scripts/*.sh; do
+          for f in scripts/*.sh; do
               [[ -f "$f" ]] || continue
               if bash -n "$f" 2>&1; then
                   echo "  ✅ $f"
@@ -181,10 +181,10 @@ jobs:
             exit 1
           fi
 
-      - name: "Cas D : Vérifier la syntaxe de deploy.sh"
+      - name: "Cas D : Vérifier la syntaxe de scripts/deploy.sh"
         run: |
-          bash -n deploy.sh
-          echo "  ✅ deploy.sh : syntaxe bash OK"
+          bash -n scripts/deploy.sh
+          echo "  ✅ scripts/deploy.sh : syntaxe bash OK"
 
   # ────────────────────────────────────────────────────────────────
   # Job 4 — Simulation end-to-end regen demo (sans données réelles)
