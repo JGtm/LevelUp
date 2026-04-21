@@ -10,6 +10,12 @@ Le suivi des sprints est maintenu dans [`SPRINT_ROADMAP.md`](.ai/go_migration_v2
 
 > Note backend 2026-04-21 bis : `internal/platform/duckdb/pool.go` n'attache plus `metadata.duckdb` sur `stats.duckdb`. Les rares lectures runtime de `citation_mappings` / `weapon_labels` ont été déplacées dans `MatchViewRepo` via `PlayerDB.Metadata`, afin d'éviter les conflits DuckDB entre connexion dédiée et ATTACH du même fichier.
 
+> Note tooling 2026-04-21 ter : nettoyage des launchers racine. Le worktree Go n'expose plus `LevelUp.bat`, `LevelUp.sh` ni `run.sh`; le point d'entrée local canonique passe par le `Makefile` (`make dev`, `make go-api-dev`, `make web`) et le déploiement VPS est rangé dans `scripts/deploy.sh`.
+
+> Note tooling 2026-04-21 quater : nettoyage des artefacts maps à la racine. `titles.json` n'a plus de lecteur côté Go/React, `migrate-static-maps` écrit maintenant `unmatched_maps.csv` sous `data/investigation/maps/`, et les logs manuels de validation maps doivent vivre sous `data/logs/maps/` plutôt qu'à la racine.
+
+> Note home/backend 2026-04-21 quinquies : la home React ne consomme plus `/players/{slug}/challenges` en parallèle du payload season pass. Les défis affichés viennent désormais de `SeasonPassPageResponse.challenges`, et `internal/platform/halo/provider.go` déduplique les fetchs live concurrents des challenges via `singleflight` pour éviter plusieurs appels Waypoint `/decks` sur le même `xuid`.
+
 ## État actuel (Phase 11 — Sprint 49)
 
 ### Packages Go compilables localement (sans CGO/DuckDB)
@@ -43,7 +49,8 @@ Le suivi des sprints est maintenu dans [`SPRINT_ROADMAP.md`](.ai/go_migration_v2
 | Fichier | Rôle |
 |---------|------|
 | `cmd/server/main.go` | Point d'entrée du serveur |
-| `Makefile` | Workflow dev racine (`go-api-run`, `go-api-dev`, `web-dev`) avec `API_PORT` configurable et réutilisation d'une API déjà active |
+| `Makefile` | Workflow dev racine (`dev`, `go-api-dev`, `web`) avec `API_PORT` configurable et réutilisation d'une API déjà active |
+| `scripts/deploy.sh` | Script de déploiement VPS hors racine, appelé par GitHub Actions |
 | `internal/api/server.go` | Assembly du router chi |
 | `internal/api/middleware/session.go` | Injection session HTTP + auth Halo dans le contexte |
 | `internal/service/bootstrap_service.go` | Bootstrap du shell React |

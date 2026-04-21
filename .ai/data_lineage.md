@@ -7,7 +7,13 @@
 
 > Note bugfix 2026-04-21 bis : aucun flux de données modifié non plus sur cette passe. Le backend Go ne joint simplement plus `meta.*` depuis `stats.duckdb` ; les labels médailles/armes de la vue match sont lus directement via la connexion dédiée `PlayerDB.Metadata`, ce qui ne change ni les tables sources ni les destinations persistées.
 
+> Note bugfix 2026-04-21 ter : pas de changement de schéma ni de destination persistée sur cette passe non plus. La home React lit maintenant les défis depuis `SeasonPassPageResponse.challenges` au lieu d'appeler aussi `/challenges`, et le provider Halo déduplique les fetchs live `/decks` concurrents ; les snapshots `challenge_snapshots` et le cache metadata restent inchangés.
+
 > Note tooling dev 2026-04-20 : aucun flux de données modifié dans cette passe. Les changements portent uniquement sur la chaîne de démarrage locale Go/React : port API configurable via `API_PORT`, réutilisation d'une API déjà active, et proxy Vite dev paramétrable via `VITE_API_PROXY_TARGET`.
+
+> Note tooling repo 2026-04-21 : aucun flux de données modifié non plus. Le nettoyage porte uniquement sur les points d'entrée et l'organisation du repo Go : suppression des wrappers `LevelUp.bat` / `LevelUp.sh` / `run.sh`, documentation réalignée sur `make dev`, et déplacement du script de déploiement vers `scripts/deploy.sh`.
+
+> Note hygiene repo 2026-04-21 : aucun flux métier modifié. Seule la sortie de diagnostic de `migrate-static-maps` change d'emplacement, de la racine vers `data/investigation/maps/unmatched_maps.csv`, et les logs ponctuels maps sont considérés comme artefacts locaux.
 
 > Note média 2026-04-18 : les likes de la galerie React sont désormais persistés dans `players/{gamertag}/stats.duckdb`, table `media_files`, colonnes `liked` et `liked_at`, via `PATCH /players/{player_slug}/media/likes`. `POST /players/{player_slug}/pages/media` renvoie aussi `liked` + `like_count` pour la home et la galerie.
 
