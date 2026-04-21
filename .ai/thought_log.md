@@ -1,5 +1,35 @@
 # Thought Log
 
+## [2026-04-21] feat(rta): câbler status=3 → refresh XSTS on-demand → reconnexion
+
+**Statut** : ✅ Complété
+
+**Décision technique** : Reprise du chantier watcher RTA auth refresh documenté dans `.ai/watcher-rta-auth-refresh-reprise.md`. Les briques de détection (`authExpired`, `IsAuthExpired`, `ResetAuthExpired`) étaient déjà présentes dans `rta_client.go`. Il manquait le câblage effectif dans `RunWithReconnect`, l'exposition du callback dans `DaemonConfig`, et la closure concrète dans `main.go`. Choix retenu : `refreshAuthIfNeeded()` helper dans `ReconnectManager` + `waitFn` injectable pour éviter les sleeps réels dans les tests.
+
+**Modifications** :
+- `presence/reconnect.go` : `refreshAuthIfNeeded()`, `wait()`, `waitFn` injectable, `authRefreshRetryDelay = 30s`, `RunWithReconnect` check `IsAuthExpired()` avant chaque `connectFunc`
+- `watcher/daemon.go` : `DaemonConfig.RefreshRTAAuth` + branchement `reconnectMgr.OnAuthExpired = d.cfg.RefreshRTAAuth` dans `connectAndSubscribe`
+- `cmd/server/main.go` : closure `RefreshRTAAuth` (store.Load → AcquireXSTSForRTA → UpdateXSTS → daemon.UpdateAuth) via pattern forward-reference `var daemon *watcher.Daemon`
+- `presence/presence_test.go` : 4 tests `TestReconnectManager_RunWithReconnect_AuthExpired_*`
+
+**Résultats** :
+- `go test ./internal/presence/... ./internal/watcher/...` : PASS
+- `go build ./...` : OK
+- tous les pre-commit hooks : Passed
+
+**Conclusion** : Le chantier est terminé selon sa définition de done. Un `status=3` ne provoque plus de boucle infinie de reconnexion : un refresh XSTS on-demand est exécuté avant chaque tentative de reconnexion suivante, le flag `authExpired` est reset uniquement après succès, et la boucle proactive `RefreshLoop` reste intacte.
+
+
+- mise a jour de `.ai/project_map.md` pour referencer explicitement ce document de reprise
+- ajout d'une note courte dans `project_map.md` pour signaler que ce point reste documente tant que le cablage n'est pas termine en code
+
+**Résultats** :
+- le seul chantier encore ouvert issu des sessions restaurees est maintenant capture dans un markdown actionnable
+- la reprise ne depend plus de l'UI Copilot ni de la consultation des transcripts JSONL
+- aucun code runtime n'a ete modifie dans cette passe, uniquement la documentation de reprise
+
+**Conclusion** : Le chantier peut etre repris proprement a partir d'un point d'entree unique dans `.ai/watcher-rta-auth-refresh-reprise.md`, avec un plan d'execution et des validations clairs.
+
 ## [2026-04-21] chore(tooling): restaurer les sessions Copilot récentes du worktree go-migration
 
 **Statut** : ✅ Complété
