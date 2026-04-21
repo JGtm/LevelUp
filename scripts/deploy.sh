@@ -2,10 +2,10 @@
 # deploy.sh — Script de mise à jour LevelUp sur VPS Ionos
 #
 # Usage (depuis le VPS) :
-#   /opt/levelup/deploy.sh
+#   /opt/levelup/scripts/deploy.sh
 #
 # Usage (depuis le poste local) :
-#   ssh deploy@212.227.206.42 '/opt/levelup/deploy.sh'
+#   ssh deploy@212.227.206.42 '/opt/levelup/scripts/deploy.sh'
 #
 # Prérequis : docker, docker compose, git installés sur le VPS.
 
