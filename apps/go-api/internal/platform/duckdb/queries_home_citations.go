@@ -26,7 +26,13 @@ SELECT
 	COALESCE(r.playlist_name, '')                            AS playlist_name,
 	COALESCE(r.playlist_name_fr, r.playlist_name, '')       AS playlist_name_fr,
     COALESCE(r.is_firefight, FALSE)                         AS is_firefight,
-    COALESCE(r.is_ranked, FALSE)                            AS is_ranked,
+    CASE
+		WHEN COALESCE(r.is_ranked, FALSE)
+			OR STRPOS(LOWER(COALESCE(r.playlist_name, '')), 'ranked') > 0
+			OR STRPOS(LOWER(COALESCE(r.pair_name, '')), 'ranked') > 0
+		THEN TRUE
+		ELSE FALSE
+	END                                                      AS is_ranked,
     pme.session_label,
     COALESCE(pme.is_with_friends, FALSE)                    AS is_with_friends,
     COALESCE(mp.outcome, 0)                                 AS outcome,
@@ -60,17 +66,65 @@ SELECT COUNT(*) FROM shared.match_participants WHERE xuid = ?`
 // Q26c : Home -- identité record compacte depuis career_progression.
 // Paramètre : aucun.
 const Q26cHomeSpartanIdentity = `
+WITH latest AS (
+	SELECT
+		cp.rank,
+		COALESCE(cp.current_xp, 0)        AS current_xp,
+		COALESCE(cp.xp_for_next_rank, 0) AS xp_for_next_rank,
+		COALESCE(cp.is_max_rank, FALSE)  AS is_max_rank,
+		NULLIF(TRIM(cp.rank_name), '')   AS rank_name,
+		NULLIF(TRIM(cp.rank_tier), '')   AS rank_tier
+	FROM career_progression cp
+	ORDER BY cp.recorded_at DESC
+	LIMIT 1
+),
+latest_adornment AS (
+	SELECT NULLIF(TRIM(cp.adornment_path), '') AS adornment_path
+	FROM career_progression cp
+	WHERE NULLIF(TRIM(cp.adornment_path), '') IS NOT NULL
+	ORDER BY cp.recorded_at DESC
+	LIMIT 1
+)
 SELECT
-	cp.rank,
-	COALESCE(cp.current_xp, 0)                        AS current_xp,
-	COALESCE(cp.xp_for_next_rank, 0)                 AS xp_for_next_rank,
-	COALESCE(cp.is_max_rank, FALSE)                  AS is_max_rank,
-	NULLIF(TRIM(cp.spartan_id), '')                  AS spartan_id,
-	NULLIF(TRIM(cp.rank_name), '')                   AS rank_name,
-	NULLIF(TRIM(cp.rank_tier), '')                   AS rank_tier
-FROM career_progression cp
-ORDER BY cp.recorded_at DESC
-LIMIT 1`
+	latest.rank,
+	latest.current_xp,
+	latest.xp_for_next_rank,
+	latest.is_max_rank,
+	(
+		SELECT NULLIF(TRIM(cp.spartan_id), '')
+		FROM career_progression cp
+		WHERE NULLIF(TRIM(cp.spartan_id), '') IS NOT NULL
+		ORDER BY cp.recorded_at DESC
+		LIMIT 1
+	) AS spartan_id,
+	latest.rank_name,
+	latest.rank_tier,
+	(
+		SELECT NULLIF(TRIM(cp.banner_image_url), '')
+		FROM career_progression cp
+		WHERE NULLIF(TRIM(cp.banner_image_url), '') IS NOT NULL
+		ORDER BY cp.recorded_at DESC
+		LIMIT 1
+	) AS banner_image_url,
+	(
+		SELECT NULLIF(TRIM(cp.emblem_image_url), '')
+		FROM career_progression cp
+		WHERE NULLIF(TRIM(cp.emblem_image_url), '') IS NOT NULL
+		ORDER BY cp.recorded_at DESC
+		LIMIT 1
+	) AS emblem_image_url,
+	(
+		SELECT NULLIF(TRIM(cp.backdrop_image_url), '')
+		FROM career_progression cp
+		WHERE NULLIF(TRIM(cp.backdrop_image_url), '') IS NOT NULL
+		ORDER BY cp.recorded_at DESC
+		LIMIT 1
+	) AS backdrop_image_url,
+	(
+		SELECT adornment_path
+		FROM latest_adornment
+	) AS adornment_path
+FROM latest`
 
 // Q26d : Home -- métadonnées du rang carrière courant depuis metadata.duckdb.
 // Paramètre : ?1 = rank_id.
@@ -80,12 +134,103 @@ SELECT
 	NULLIF(TRIM(title_fr), '') AS title_fr,
 	COALESCE(
 		NULLIF(TRIM(large_icon_path), ''),
-		NULLIF(TRIM(adornment_icon_path), ''),
 		NULLIF(TRIM(icon_path), '')
-	) AS image_path
+	) AS image_path,
+	NULLIF(TRIM(adornment_icon_path), '') AS adornment_path
 FROM career_ranks
 WHERE rank_id = ?
 LIMIT 1`
+
+// Q26e : Home -- meilleur rating historique par type (CSR ou LUSR).
+// Paramètre : ?1 = rating_type.
+const Q26eHomeSkillPeakByType = `
+SELECT
+	msr.rating_value,
+	NULLIF(TRIM(msr.tier_label), '') AS tier_label,
+	NULLIF(TRIM(msr.tier), '') AS tier,
+	COALESCE(msr.sub_tier, 0) AS sub_tier
+FROM match_skill_rank msr
+LEFT JOIN shared.match_registry mr ON mr.match_id = msr.match_id
+WHERE UPPER(
+	CASE
+		WHEN mr.match_id IS NOT NULL THEN CASE
+			WHEN COALESCE(mr.is_ranked, FALSE)
+				OR STRPOS(LOWER(COALESCE(mr.playlist_name, '')), 'ranked') > 0
+				OR STRPOS(LOWER(COALESCE(mr.pair_name, '')), 'ranked') > 0
+			THEN 'CSR'
+			ELSE 'LUSR'
+		END
+		WHEN UPPER(COALESCE(NULLIF(TRIM(msr.rating_type), ''), '')) = 'CSR' THEN 'CSR'
+		ELSE 'LUSR'
+	END
+) = UPPER(?)
+	AND msr.rating_value IS NOT NULL
+ORDER BY
+	msr.rating_value DESC,
+	COALESCE(msr.updated_at, msr.start_time, msr.created_at) DESC,
+	COALESCE(msr.sub_tier, 0) DESC,
+	msr.match_id DESC
+LIMIT 1`
+
+// Q26g : Home — 3 dernières playlists distinctes jouées avec leur dernier rang compétitif.
+// Paramètre : ?1 = xuid du joueur.
+// Retourne (playlist_name, is_ranked, rating_type, rating_value, tier, tier_fr, sub_tier, tier_label).
+// rating_* sont NULL pour les playlists sans rang calculé.
+const Q26gHomePlaylistRanks = `
+WITH recent_playlists AS (
+	SELECT
+		r.playlist_id,
+		COALESCE(MAX(r.playlist_name_fr), MAX(r.playlist_name), '') AS playlist_name,
+		MAX(CASE
+			WHEN COALESCE(r.is_ranked, FALSE)
+				OR STRPOS(LOWER(COALESCE(r.playlist_name, '')), 'ranked') > 0
+				OR STRPOS(LOWER(COALESCE(r.pair_name, '')), 'ranked') > 0
+			THEN 1 ELSE 0
+		END) > 0                                                     AS is_ranked,
+		MAX(r.start_time)                                            AS last_played
+	FROM shared.match_participants mp
+	JOIN shared.match_registry r ON r.match_id = mp.match_id
+	WHERE mp.xuid = ?
+	  AND NULLIF(TRIM(COALESCE(r.playlist_id, '')), '') IS NOT NULL
+	GROUP BY r.playlist_id
+	ORDER BY MAX(r.start_time) DESC
+	LIMIT 3
+),
+last_skill AS (
+	SELECT
+		r.playlist_id,
+		CASE
+			WHEN COALESCE(r.is_ranked, FALSE)
+				OR STRPOS(LOWER(COALESCE(r.playlist_name, '')), 'ranked') > 0
+				OR STRPOS(LOWER(COALESCE(r.pair_name, '')), 'ranked') > 0
+			THEN 'CSR'
+			ELSE 'LUSR'
+		END AS rating_type,
+		msr.rating_value,
+		NULLIF(TRIM(msr.tier), '')               AS tier,
+		NULLIF(TRIM(msr.tier_fr), '')            AS tier_fr,
+		COALESCE(msr.sub_tier, 0)                AS sub_tier,
+		NULLIF(TRIM(msr.tier_label), '')         AS tier_label,
+		ROW_NUMBER() OVER (
+			PARTITION BY r.playlist_id
+			ORDER BY COALESCE(msr.start_time, msr.updated_at, msr.created_at) DESC
+		) AS rn
+	FROM match_skill_rank msr
+	JOIN shared.match_registry r ON r.match_id = msr.match_id
+	WHERE msr.rating_value IS NOT NULL
+)
+SELECT
+	rp.playlist_name,
+	rp.is_ranked,
+	ls.rating_type,
+	ls.rating_value,
+	ls.tier,
+	ls.tier_fr,
+	ls.sub_tier,
+	ls.tier_label
+FROM recent_playlists rp
+LEFT JOIN last_skill ls ON ls.playlist_id = rp.playlist_id AND ls.rn = 1
+ORDER BY rp.last_played DESC`
 
 // Q27 : Home — sessions depuis player_match_enrichment.
 // Pas de parametre (les donnees sont dans la DB joueur).
@@ -242,7 +387,7 @@ func (cfg mediaQueryConfig) matchStartExpr() string {
 
 func (cfg mediaQueryConfig) timeOrderExpr() string {
 	if cfg.useSharedSocialSchema() {
-		return "COALESCE(mf.capture_end_utc, mf.indexed_at)"
+		return "COALESCE(mf.capture_end_utc, mf.updated_at, mf.created_at)"
 	}
 	return "COALESCE(mf.capture_end_utc, mf.mtime)"
 }

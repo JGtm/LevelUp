@@ -128,6 +128,7 @@ type seasonPassTrackPayload struct {
 	Description         any                 `json:"Description"`
 	XpPerRank           int                 `json:"XpPerRank"`
 	BattlePassImage     string              `json:"BattlePassImage"`
+	SummaryImagePath    string              `json:"SummaryImagePath"`
 	BackgroundImagePath string              `json:"BackgroundImagePath"`
 	Ranks               []seasonPassRankRaw `json:"Ranks"`
 }
@@ -140,10 +141,18 @@ type seasonPassRankRaw struct {
 
 type seasonPassRewardBucket struct {
 	InventoryRewards []seasonPassInventoryReward `json:"InventoryRewards"`
+	CurrencyRewards  []seasonPassCurrencyReward  `json:"CurrencyRewards"`
 }
 
 type seasonPassInventoryReward struct {
 	InventoryItemPath string `json:"InventoryItemPath"`
+}
+
+// seasonPassCurrencyReward représente une récompense en monnaie virtuelle (cR, XP boost…).
+// Certains paliers de Battle Pass donnent uniquement de la monnaie, sans InventoryItem.
+type seasonPassCurrencyReward struct {
+	CurrencyPath string `json:"CurrencyPath"`
+	Amount       int    `json:"Amount"`
 }
 
 type seasonPassItemMeta struct {
@@ -284,24 +293,40 @@ func (r *SeasonPassRepo) loadItemMetadataMap(
 	placeholders := strings.TrimRight(strings.Repeat("?,", len(itemPaths)), ",")
 	query := fmt.Sprintf(`
 		WITH latest AS (
-			SELECT inventory_item_path, content_hash, display_path, last_seen_at,
+			SELECT inventory_item_path, content_hash, display_path, raw_payload_json, last_seen_at,
 			       ROW_NUMBER() OVER (PARTITION BY inventory_item_path ORDER BY last_seen_at DESC) AS rn
 			FROM battlepass_item_definitions
 			WHERE is_current = TRUE
 		)
 		SELECT d.inventory_item_path,
 		       d.display_path,
-		       COALESCE(t_fr.title, t_en.title) AS title,
-		       COALESCE(t_fr.description, t_en.description) AS description
+		       COALESCE(
+		           t_fr.title,
+		           t_fr2.title,
+		           t_en.title,
+		           t_en2.title,
+		           json_extract_string(d.raw_payload_json, '$.CommonData.Title.translations.fr-FR'),
+		           json_extract_string(d.raw_payload_json, '$.CommonData.Title.translations.en-US'),
+		           json_extract_string(d.raw_payload_json, '$.CommonData.Title.value')
+		       ) AS title,
+		       COALESCE(t_fr.description, t_fr2.description, t_en.description, t_en2.description) AS description
 		FROM latest d
 		LEFT JOIN battlepass_item_translations t_fr
 		       ON t_fr.inventory_item_path = d.inventory_item_path
 		      AND t_fr.content_hash = d.content_hash
-		      AND t_fr.lang = 'fr'
+		      AND t_fr.lang = 'fr-FR'
+		LEFT JOIN battlepass_item_translations t_fr2
+		       ON t_fr2.inventory_item_path = d.inventory_item_path
+		      AND t_fr2.content_hash = d.content_hash
+		      AND t_fr2.lang = 'fr'
 		LEFT JOIN battlepass_item_translations t_en
 		       ON t_en.inventory_item_path = d.inventory_item_path
 		      AND t_en.content_hash = d.content_hash
-		      AND t_en.lang = 'en'
+		      AND t_en.lang = 'en-US'
+		LEFT JOIN battlepass_item_translations t_en2
+		       ON t_en2.inventory_item_path = d.inventory_item_path
+		      AND t_en2.content_hash = d.content_hash
+		      AND t_en2.lang = 'en'
 		WHERE d.rn = 1 AND d.inventory_item_path IN (%s)`, placeholders)
 
 	args := make([]any, 0, len(itemPaths))
@@ -532,7 +557,47 @@ func buildTierSummary(
 		IsObtained:  rank.Rank <= state.Rank,
 		IsCurrent:   rank.Rank == activeTierRank,
 		IsPremium:   isPremium,
+		FreeRewards: buildFreeRewardSummaries(rank.FreeRewards, itemMap),
 	}
+}
+
+// buildFreeRewardSummaries construit la liste des récompenses gratuites d'un palier.
+// Retourne nil si le bucket est vide (omitempty côté JSON).
+func buildFreeRewardSummaries(
+	bucket seasonPassRewardBucket,
+	itemMap map[string]seasonPassItemMeta,
+) []domain.SeasonPassItemSummary {
+	var items []domain.SeasonPassItemSummary
+	for _, reward := range bucket.InventoryRewards {
+		path := strings.TrimSpace(reward.InventoryItemPath)
+		if path == "" {
+			continue
+		}
+		meta, ok := itemMap[path]
+		if !ok {
+			continue
+		}
+		title := meta.Title
+		if title == "" {
+			title = path
+		}
+		items = append(items, domain.SeasonPassItemSummary{
+			Title:    title,
+			ImageURL: meta.ImageURL,
+		})
+	}
+	// Currency rewards gratuits
+	for _, reward := range bucket.CurrencyRewards {
+		meta, ok := currencyRewardMeta(reward)
+		if !ok {
+			continue
+		}
+		items = append(items, domain.SeasonPassItemSummary{
+			Title:    meta.Title,
+			ImageURL: meta.ImageURL,
+		})
+	}
+	return items
 }
 
 func selectTierPreview(
@@ -550,6 +615,7 @@ func selectTierPreview(
 	if preferPremium {
 		buckets[0], buckets[1] = buckets[1], buckets[0]
 	}
+	// 1. Inventory items (cosmétiques, armes…) avec méta résolue.
 	for _, entry := range buckets {
 		for _, reward := range entry.bucket.InventoryRewards {
 			path := strings.TrimSpace(reward.InventoryItemPath)
@@ -562,13 +628,92 @@ func selectTierPreview(
 			}
 		}
 	}
+	// 2. Fallback : currency rewards (cR, xpboost, rerollcurrency, softcurrency).
+	// Pour les paliers « purement monnaie », on rend le tier visible avec un titre
+	// localisé et, quand l'asset existe localement, une miniature.
+	for _, entry := range buckets {
+		for _, reward := range entry.bucket.CurrencyRewards {
+			if meta, ok := currencyRewardMeta(reward); ok {
+				return meta, entry.isPremium
+			}
+		}
+	}
 	return seasonPassItemMeta{}, false
+}
+
+// currencyImagePath mappe le slug d'une currency (basename lowercase du
+// CurrencyPath GameCMS, ex: "xpboost") vers son image officielle GameCMS,
+// telle que publiée dans /hi/Progression/file/metadata/metadata.json
+// (cf. https://den.dev/blog/halo-infinite-exchange-spartan-points/).
+//
+// Ces chemins sont relayés par le proxy /api/v1/assets/battlepass/tracks/{path}
+// qui les télécharge à la 1ère demande via le resolver puis sert depuis le
+// cache fichier — aucun asset à committer dans static/.
+var currencyImagePath = map[string]string{
+	"cr":             "progression/Currencies/Credit_Coin-SM.png",
+	"softcurrency":   "progression/StoreContent/ToggleTiles/SpartanPoints_Common_4x4.png",
+	"rerollcurrency": "progression/Currencies/1104-000-data-pad-e39bef84-2x2.png",
+	"xpboost":        "progression/Currencies/1103-000-xp-boost-5e92621a-2x2.png",
+	"xpgrant":        "progression/Currencies/1102-000-xp-grant-c77c6396-2x2.png",
+}
+
+// currencyTitleFR retourne le libellé français d'une currency, par slug lowercase.
+func currencyTitleFR(slug string, amount int) string {
+	var label string
+	switch slug {
+	case "cr":
+		label = "Crédits"
+	case "softcurrency":
+		label = "Crédits Spartan"
+	case "xpboost":
+		label = "Boost XP"
+	case "rerollcurrency":
+		label = "Relance défi"
+	default:
+		if slug == "" {
+			return ""
+		}
+		label = slug
+	}
+	if amount > 0 {
+		return fmt.Sprintf("%d × %s", amount, label)
+	}
+	return label
+}
+
+// currencyRewardMeta convertit une CurrencyReward en seasonPassItemMeta.
+// Retourne ok=false si le CurrencyPath est vide.
+func currencyRewardMeta(reward seasonPassCurrencyReward) (seasonPassItemMeta, bool) {
+	cleanPath := strings.TrimSpace(reward.CurrencyPath)
+	if cleanPath == "" {
+		return seasonPassItemMeta{}, false
+	}
+	slug := currencySlug(cleanPath)
+	title := currencyTitleFR(slug, reward.Amount)
+	meta := seasonPassItemMeta{Title: title}
+	if imgPath, ok := currencyImagePath[slug]; ok {
+		meta.ImageURL = localBPImageURL(imgPath, "tracks")
+	}
+	return meta, true
+}
+
+// currencySlug extrait le slug lowercase d'un CurrencyPath
+// (ex: "Currency/Currencies/xpboost.json" → "xpboost").
+func currencySlug(currencyPath string) string {
+	base := path.Base(strings.ReplaceAll(currencyPath, "\\", "/"))
+	if idx := strings.LastIndexByte(base, '.'); idx > 0 {
+		base = base[:idx]
+	}
+	return strings.ToLower(strings.TrimSpace(base))
 }
 
 func resolveTrackImageURL(row seasonPassTrackRow, payload *seasonPassTrackPayload) *string {
 	p := coalesceNullString(row.battlepassImagePath)
 	if p == "" && payload != nil {
 		p = payload.BattlePassImage
+		if p == "" {
+			p = payload.SummaryImagePath
+		}
 	}
 	return localBPImageURL(p, "tracks")
 }

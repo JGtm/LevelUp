@@ -85,7 +85,13 @@ SELECT
     r.pair_name,
     r.playlist_name,
     COALESCE(r.is_firefight, FALSE) AS is_firefight,
-    COALESCE(r.is_ranked, FALSE)    AS is_ranked,
+    CASE
+        WHEN COALESCE(r.is_ranked, FALSE)
+            OR STRPOS(LOWER(COALESCE(r.playlist_name, '')), 'ranked') > 0
+            OR STRPOS(LOWER(COALESCE(r.pair_name, '')), 'ranked') > 0
+        THEN TRUE
+        ELSE FALSE
+    END AS is_ranked,
     r.playable_duration_seconds,
     r.map_id,
     r.game_variant_name
@@ -240,12 +246,23 @@ LIMIT 1`
 // Paramètre : ? = match_id.
 const Q22MatchSkillRank = `
 SELECT
-    msr.rating_type,
+    CASE
+        WHEN mr.match_id IS NOT NULL THEN CASE
+            WHEN COALESCE(mr.is_ranked, FALSE)
+                OR STRPOS(LOWER(COALESCE(mr.playlist_name, '')), 'ranked') > 0
+                OR STRPOS(LOWER(COALESCE(mr.pair_name, '')), 'ranked') > 0
+            THEN 'CSR'
+            ELSE 'LUSR'
+        END
+        WHEN UPPER(COALESCE(NULLIF(TRIM(msr.rating_type), ''), '')) = 'CSR' THEN 'CSR'
+        ELSE 'LUSR'
+    END AS rating_type,
     msr.tier_label,
     msr.rating_value,
     msr.rating_delta,
     msr.playlist_group
 FROM match_skill_rank msr
+LEFT JOIN shared.match_registry mr ON mr.match_id = msr.match_id
 WHERE msr.match_id = ?
 LIMIT 1`
 

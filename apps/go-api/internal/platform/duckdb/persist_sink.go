@@ -17,6 +17,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"log/slog"
+	"strings"
 	"time"
 )
 
@@ -206,6 +207,86 @@ func (s *PersistSink) insertBattlePassSnapshot(
 		string(rawTrack),
 	)
 	return err
+}
+
+// ---------------------------------------------------------------------------
+// Track Definitions (battlepass_track_definitions)
+// ---------------------------------------------------------------------------
+
+// trackDefRaw est le struct de parsing minimal d'un JSON Reward Track GameCMS.
+// GameCMS utilise BattlePassImage (S05+) ou SummaryImagePath (S03/S04) selon les saisons.
+type trackDefRaw struct {
+	BattlePassImage     string `json:"BattlePassImage"`
+	SummaryImagePath    string `json:"SummaryImagePath"`
+	BackgroundImagePath string `json:"BackgroundImagePath"`
+	XpPerRank           int    `json:"XpPerRank"`
+}
+
+// UpsertTrackDefinition implémente halo.TrackDefinitionPersister.
+// Persiste la définition d'un Reward Track dans battlepass_track_definitions de metadata.duckdb.
+// Utilise UPDATE-first + INSERT-if-zero (idiome DuckDB) pour garantir l'idempotence.
+func (s *PersistSink) UpsertTrackDefinition(ctx context.Context, trackPath string, raw []byte) error {
+	var def trackDefRaw
+	_ = json.Unmarshal(raw, &def) // best-effort : champs manquants restent vides
+
+	db, err := OpenReadWrite(s.MetaPath)
+	if err != nil {
+		return fmt.Errorf("open meta rw: %w", err)
+	}
+	defer db.Close()
+
+	hash := persistHash(raw)
+	now := time.Now()
+
+	var xpArg any
+	if def.XpPerRank > 0 {
+		xpArg = def.XpPerRank
+	}
+	var bpImgArg, bgImgArg any
+	bpPath := strings.TrimSpace(def.BattlePassImage)
+	if bpPath == "" {
+		bpPath = strings.TrimSpace(def.SummaryImagePath)
+	}
+	if bpPath != "" {
+		bpImgArg = bpPath
+	}
+	if bg := strings.TrimSpace(def.BackgroundImagePath); bg != "" {
+		bgImgArg = bg
+	}
+
+	// Invalider les anciennes entrées de ce track (hash différent).
+	_, _ = db.Exec(ctx, `
+		UPDATE battlepass_track_definitions
+		SET is_current = FALSE, last_seen_at = ?
+		WHERE reward_track_path = ? AND content_hash <> ? AND is_current = TRUE`,
+		now, trackPath, hash)
+
+	// Tenter la mise à jour si le hash existe déjà.
+	res, err := db.Exec(ctx, `
+		UPDATE battlepass_track_definitions
+		SET xp_per_rank = ?, battlepass_image_path = ?, background_image_path = ?,
+		    raw_payload_json = ?, last_seen_at = ?, is_current = TRUE
+		WHERE reward_track_path = ? AND content_hash = ?`,
+		xpArg, bpImgArg, bgImgArg, string(raw), now, trackPath, hash)
+	if err != nil {
+		return fmt.Errorf("update battlepass_track_definitions: %w", err)
+	}
+	if n, _ := res.RowsAffected(); n > 0 {
+		return nil
+	}
+
+	// Aucune ligne mise à jour → insérer.
+	_, err = db.Exec(ctx, `
+		INSERT INTO battlepass_track_definitions
+			(reward_track_path, content_hash, xp_per_rank,
+			 battlepass_image_path, background_image_path,
+			 raw_payload_json, is_current, first_seen_at, last_seen_at)
+		VALUES (?, ?, ?, ?, ?, ?, TRUE, ?, ?)`,
+		trackPath, hash, xpArg, bpImgArg, bgImgArg, string(raw), now, now)
+	if err != nil {
+		return fmt.Errorf("insert battlepass_track_definitions: %w", err)
+	}
+	return nil
 }
 
 // ---------------------------------------------------------------------------
