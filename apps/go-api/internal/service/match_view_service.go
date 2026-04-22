@@ -137,11 +137,18 @@ func buildMatchHeader(
 	if meta.MapName != nil {
 		h.MapUI = *meta.MapName
 	}
+	if meta.MapAssetID != nil {
+		h.MapID = *meta.MapAssetID
+	}
 	if meta.PairName != nil {
 		h.ModeUI = *meta.PairName
 	}
 	if meta.PlaylistName != nil {
 		h.PlaylistLabel = *meta.PlaylistName
+	}
+	h.PlayableDurationSeconds = meta.PlayableDurationSeconds
+	if meta.MapAssetID != nil {
+		h.WaypointURL = fmt.Sprintf("https://www.halowaypoint.com/halo-infinite/matches/%s", matchID)
 	}
 
 	if stats != nil && stats.OutcomeCode != 0 {
@@ -264,9 +271,9 @@ func buildCombatTab(weapons []domain.WeaponKillRaw, events []domain.EventRaw) do
 	evtList := make([]domain.MatchHighlightEvent, 0, len(events))
 	for _, e := range events {
 		evtList = append(evtList, domain.MatchHighlightEvent{
-			EventType: e.EventType,
-			TickCount: e.TickCount,
-			ActorXUID: e.XUID,
+			EventType:   e.EventType,
+			EventTimeMS: e.TimeMS,
+			ActorXUID:   e.XUID,
 		})
 	}
 
