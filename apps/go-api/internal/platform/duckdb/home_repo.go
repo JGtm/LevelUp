@@ -11,6 +11,8 @@ import (
 	"levelup/go-api/internal/domain"
 )
 
+const homeCareerRankGameCMSBase = "https://gamecms-hacs.svc.halowaypoint.com"
+
 // HomeRepo fournit les données de la page d'accueil depuis DuckDB.
 type HomeRepo struct {
 	pdb *PlayerDB
@@ -127,7 +129,8 @@ func (r *HomeRepo) enrichSpartanIdentity(ctx context.Context, row *domain.HomeSp
 
 	var titleEN sql.NullString
 	var titleFR sql.NullString
-	if err := r.pdb.Metadata.QueryRow(ctx, Q26dHomeCareerRankMeta, row.RankNumber).Scan(&titleEN, &titleFR); err != nil {
+	var imagePath sql.NullString
+	if err := r.pdb.Metadata.QueryRow(ctx, Q26dHomeCareerRankMeta, row.RankNumber).Scan(&titleEN, &titleFR, &imagePath); err != nil {
 		return
 	}
 	if titleEN.Valid {
@@ -135,6 +138,47 @@ func (r *HomeRepo) enrichSpartanIdentity(ctx context.Context, row *domain.HomeSp
 	}
 	if titleFR.Valid {
 		row.RankTitleFR = stringPtr(titleFR.String)
+	}
+	if imagePath.Valid {
+		row.RankImageURL = buildHomeCareerRankImageURL(imagePath.String)
+	}
+}
+
+func buildHomeCareerRankImageURL(value string) *string {
+	trimmed := strings.TrimSpace(value)
+	if trimmed == "" {
+		return nil
+	}
+
+	lower := strings.ToLower(trimmed)
+	if strings.HasSuffix(lower, ".json") {
+		return nil
+	}
+	if strings.HasPrefix(lower, "http://") || strings.HasPrefix(lower, "https://") {
+		return &trimmed
+	}
+
+	cleaned := strings.TrimLeft(trimmed, "/")
+	if cleaned == "" {
+		return nil
+	}
+
+	switch {
+	case strings.HasPrefix(strings.ToLower(cleaned), "hi/images/file/"):
+		resolved := homeCareerRankGameCMSBase + "/" + cleaned
+		return &resolved
+	case strings.HasPrefix(strings.ToLower(cleaned), "images/file/"):
+		resolved := homeCareerRankGameCMSBase + "/hi/" + cleaned
+		return &resolved
+	case strings.HasPrefix(strings.ToLower(cleaned), "hi/progression/file/"):
+		resolved := homeCareerRankGameCMSBase + "/" + cleaned
+		return &resolved
+	case strings.HasPrefix(strings.ToLower(cleaned), "progression/file/"):
+		resolved := homeCareerRankGameCMSBase + "/hi/" + cleaned
+		return &resolved
+	default:
+		resolved := homeCareerRankGameCMSBase + "/hi/images/file/" + cleaned
+		return &resolved
 	}
 }
 

@@ -15,12 +15,14 @@
 //	levelup compare-db     --go-db PATH --python-db PATH [--json]
 //	levelup gate-check     [--gamertag X] [--json]
 //	levelup surface-status [--json]
+//	levelup sync-delta     --gamertag X [--max-matches N] [--match-type T] [--rps N]
 //
 // Variables d'environnement : LEVELUP_REPO_ROOT (auto-detecte si absent).
 //
 // Implementation des sous-commandes :
 //   - cmd_data.go    - backup, restore, archive, index-media, seed
 //   - cmd_ops.go     - healthcheck, diagnose, check-env, compare-db, gate-check, surface-status
+//   - cmd_sync.go    - sync-delta
 //   - cmd_notify.go  - notify-version, notify-sync
 package main
 
@@ -74,6 +76,8 @@ func main() {
 		exitErr = runGateCheck(cfg, args)
 	case "surface-status":
 		exitErr = runSurfaceStatus(cfg, args)
+	case "sync-delta":
+		exitErr = runSyncDelta(cfg, args)
 	case "migrate":
 		exitErr = runMigrate(cfg, args)
 	case "help", "--help", "-h":
@@ -110,6 +114,7 @@ Commandes:
   compare-db      Comparer la parite Go vs Python (DB joueur)
   gate-check      Verifier la checklist Gate Phase 4
   surface-status  Afficher le backend actif par surface (feature flags)
+	sync-delta      Lancer une sync delta joueur via refresh token OAuth env
   migrate         Migrer les donnees vers le namespace multi-titres
 
 Options globales:

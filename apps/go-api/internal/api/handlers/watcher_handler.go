@@ -14,12 +14,12 @@ import (
 	"encoding/json"
 	"log/slog"
 	"net/http"
-	"path/filepath"
 	"time"
 
 	"github.com/go-chi/chi/v5"
 
 	"levelup/go-api/internal/config"
+	"levelup/go-api/internal/domain/title"
 	auth_platform "levelup/go-api/internal/platform/auth"
 	settings_platform "levelup/go-api/internal/platform/settings"
 	"levelup/go-api/internal/watcher"
@@ -44,7 +44,8 @@ func NewWatcherHandler(
 	tokenProvider auth_platform.TokenProvider,
 	attempts *auth_platform.WatcherAttemptStore,
 ) *WatcherHandler {
-	tokenStorePath := filepath.Join(cfg.RepoRoot, "data", "cache", "watcher_tokens.json")
+	tokenStorePath := title.NewPathResolver(cfg.RepoRoot).WatcherTokensPath()
+	slog.Info("watcher: tokens path", "path", tokenStorePath)
 	return &WatcherHandler{
 		cfg:           cfg,
 		settingsStore: settingsStore,

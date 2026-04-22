@@ -53,6 +53,7 @@ func main() {
 		force           = flag.Bool("force", false, "Re-fetch même si déjà présent")
 		concurrencyFlag = flag.Int("concurrency", 10, "Requêtes parallèles max")
 		freshnessFlag   = flag.Int("freshness", 30, "Fraîcheur en jours")
+		titleID         = flag.String("title-id", titlePkg.DefaultSlug, "Slug du titre (ex: halo_infinite)")
 	)
 	flag.Parse()
 
@@ -72,11 +73,12 @@ func main() {
 		"force", *force,
 		"concurrency", *concurrencyFlag,
 		"freshness_days", *freshnessFlag,
+		"title_id", *titleID,
 	)
 
 	ctx := context.Background()
 
-	if err := run(ctx, cfg, types, langs, *dryRun, *force, *concurrencyFlag, *freshnessFlag); err != nil {
+	if err := run(ctx, cfg, types, langs, *dryRun, *force, *concurrencyFlag, *freshnessFlag, *titleID); err != nil {
 		slog.Error("populate-assets failed", "err", err)
 		os.Exit(1)
 	}
@@ -93,6 +95,7 @@ func run(
 	force bool,
 	concurrency int,
 	freshnessDays int,
+	titleID string,
 ) error {
 	// Ouvrir metadata.duckdb
 	pr := titlePkg.NewPathResolver(cfg.RepoRoot)
@@ -145,7 +148,7 @@ func run(
 		count, err := fetchAllLangs(
 			ctx, provider, metaRepo,
 			assetType, assetIDs, versionCache, langs,
-			concurrency, freshnessDays, force, dryRun,
+			concurrency, freshnessDays, force, dryRun, titleID,
 		)
 		if err != nil {
 			return fmt.Errorf("fetchAllLangs(%s): %w", assetType, err)
@@ -305,6 +308,7 @@ func fetchAllLangs(
 	freshnessDays int,
 	force bool,
 	dryRun bool,
+	titleID string,
 ) (int, error) {
 	totalCount := 0
 	var mu sync.Mutex
@@ -352,7 +356,7 @@ func fetchAllLangs(
 					slog.Debug("using default version_id", "asset_id", assetID, "version_id", versionID)
 				}
 
-				asset, err := provider.FetchAsset(ctx, assetType, "halo_infinite", assetID, versionID, lang)
+				asset, err := provider.FetchAsset(ctx, assetType, titleID, assetID, versionID, lang)
 				sem.Release(1)
 
 				if err != nil {

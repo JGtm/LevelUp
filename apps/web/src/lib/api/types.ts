@@ -14,6 +14,8 @@ export interface PlayerSummary {
   xuid: string
   waypoint_player: string
   is_demo: boolean
+  /** Sprint 44 : titre associé (ex: "halo_infinite"). */
+  title_slug?: string
 }
 
 export interface CapabilityMap {
@@ -111,6 +113,8 @@ export interface SessionContextResponse {
   locale: string
   hints_visible: boolean
   capabilities: CapabilityMap
+  /** Sprint 44 : titres disponibles pour le titre switcher. */
+  available_titles?: TitleSummary[]
 }
 
 // ---------------------------------------------------------------------------
@@ -953,6 +957,7 @@ export interface RecentMediaItem {
 export interface HomeCareerRankSummary {
   rank_number: number
   rank_title: string
+  rank_image_url?: string | null
   current_xp: number
   xp_for_next_rank: number
   progress_pct: number

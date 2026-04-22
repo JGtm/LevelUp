@@ -2,8 +2,10 @@ package sync
 
 import (
 	"context"
+	"encoding/json"
 	"net/http"
 	"net/http/httptest"
+	"strings"
 	"testing"
 	"time"
 )
@@ -259,5 +261,58 @@ func TestGetCareerRank_EmptyXUID(t *testing.T) {
 	_, err := c.GetCareerRank(context.Background(), "")
 	if err == nil {
 		t.Fatal("expected error for empty xuid")
+	}
+}
+
+func TestGetCareerRank_UsesCareerAndCustomizationEndpoints(t *testing.T) {
+	var careerCalls, customizationCalls int
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		switch {
+		case strings.HasSuffix(r.URL.Path, "/rewardtracks/careerranks/careerrank1"):
+			careerCalls++
+			_ = json.NewEncoder(w).Encode(map[string]any{
+				"CurrentProgress": map[string]any{
+					"Rank":              174,
+					"PartialProgress":   21840,
+					"HasReachedMaxRank": false,
+				},
+			})
+		case strings.HasSuffix(r.URL.Path, "/customization"):
+			customizationCalls++
+			if got := r.URL.Query().Get("view"); got != "public" {
+				t.Fatalf("view = %q, want public", got)
+			}
+			_ = json.NewEncoder(w).Encode(map[string]any{
+				"Appearance": map[string]any{"ServiceTag": "JGTM"},
+			})
+		default:
+			http.NotFound(w, r)
+		}
+	}))
+	defer srv.Close()
+
+	c := &HaloAPIClient{
+		http:           srv.Client(),
+		spartanToken:   "s",
+		clearanceToken: "c",
+		economyBaseURL: srv.URL,
+		minInterval:    time.Millisecond,
+	}
+
+	data, err := c.GetCareerRank(context.Background(), "2535469190789936")
+	if err != nil {
+		t.Fatalf("GetCareerRank: %v", err)
+	}
+	if data == nil {
+		t.Fatal("GetCareerRank returned nil")
+	}
+	if data.CurrentRank != 174 || data.CurrentXP != 21840 {
+		t.Fatalf("unexpected career data: %+v", data)
+	}
+	if data.SpartanID != "JGTM" {
+		t.Fatalf("SpartanID = %q", data.SpartanID)
+	}
+	if careerCalls != 1 || customizationCalls != 1 {
+		t.Fatalf("careerCalls=%d customizationCalls=%d", careerCalls, customizationCalls)
 	}
 }

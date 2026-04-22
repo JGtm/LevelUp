@@ -8,6 +8,7 @@ package sync
 import (
 	"context"
 	"database/sql"
+	"errors"
 	"fmt"
 	"strings"
 	"time"
@@ -118,4 +119,79 @@ func saveCareerRank(db *sql.DB, data *CareerRankData) error {
 	_ = SetSyncMeta(db, "current_rank", fmt.Sprintf("%d", data.CurrentRank))
 
 	return nil
+}
+
+func enrichCareerRankFromMetadata(db *sql.DB, data *CareerRankData) error {
+	if db == nil || data == nil {
+		return nil
+	}
+
+	var (
+		titleEN       string
+		tierType      sql.NullString
+		grade         sql.NullInt64
+		xpRequired    int
+		adornmentPath sql.NullString
+	)
+	err := db.QueryRow(
+		`SELECT title_en, tier_type, grade, xp_required, adornment_icon_path
+		 FROM career_ranks
+		 WHERE rank_id = ?`,
+		data.CurrentRank,
+	).Scan(&titleEN, &tierType, &grade, &xpRequired, &adornmentPath)
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return nil
+		}
+		return fmt.Errorf("enrichCareerRankFromMetadata row: %w", err)
+	}
+
+	data.XPForNextRank = xpRequired
+	if tierType.Valid {
+		data.CurrentRankTier = strings.TrimSpace(tierType.String)
+	}
+	data.CurrentRankName = buildCareerRankName(titleEN, data.CurrentRankTier, grade)
+	if adornmentPath.Valid {
+		data.AdornmentPath = strings.TrimSpace(adornmentPath.String)
+	}
+
+	var completedXP int
+	if err := db.QueryRow(
+		`SELECT COALESCE(SUM(xp_required), 0)
+		 FROM career_ranks
+		 WHERE rank_id < ?`,
+		data.CurrentRank,
+	).Scan(&completedXP); err != nil {
+		return fmt.Errorf("enrichCareerRankFromMetadata sum: %w", err)
+	}
+	data.XPTotal = completedXP + data.CurrentXP
+	return nil
+}
+
+func openCareerMetadataDB(path string) (*sql.DB, error) {
+	if strings.TrimSpace(path) == "" {
+		return nil, fmt.Errorf("openCareerMetadataDB: path vide")
+	}
+	db, err := sql.Open("duckdb", path+"?access_mode=read_only")
+	if err != nil {
+		return nil, fmt.Errorf("openCareerMetadataDB: %w", err)
+	}
+	db.SetMaxOpenConns(1)
+	return db, nil
+}
+
+func buildCareerRankName(titleEN, tierType string, grade sql.NullInt64) string {
+	titleEN = strings.TrimSpace(titleEN)
+	tierType = strings.TrimSpace(tierType)
+	if titleEN == "" {
+		return ""
+	}
+	parts := []string{titleEN}
+	if tierType != "" {
+		parts = append(parts, tierType)
+	}
+	if grade.Valid && grade.Int64 > 0 {
+		parts = append(parts, fmt.Sprintf("%d", grade.Int64))
+	}
+	return strings.Join(parts, " ")
 }

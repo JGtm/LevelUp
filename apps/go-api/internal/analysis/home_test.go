@@ -282,6 +282,7 @@ func TestBuildSpartanIdentity_UsesRequestedLanguage(t *testing.T) {
 		RankTier:      sp("Platinum"),
 		RankTitleEN:   sp("Lance Corporal"),
 		RankTitleFR:   sp("Caporal-chef"),
+		RankImageURL:  sp("https://example.test/career-rank.png"),
 		CurrentXP:     5000,
 		XPForNextRank: 10000,
 	}
@@ -298,6 +299,9 @@ func TestBuildSpartanIdentity_UsesRequestedLanguage(t *testing.T) {
 	}
 	if identityFR.CareerRank.ProgressPct != 50.0 {
 		t.Fatalf("FR ProgressPct: want 50, got %.2f", identityFR.CareerRank.ProgressPct)
+	}
+	if identityFR.CareerRank.RankImageURL == nil || *identityFR.CareerRank.RankImageURL != "https://example.test/career-rank.png" {
+		t.Fatalf("FR RankImageURL: got %#v", identityFR.CareerRank.RankImageURL)
 	}
 
 	identityEN := analysis.BuildSpartanIdentity(raw, "en")

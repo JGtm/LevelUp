@@ -22,6 +22,8 @@ Le suivi des sprints est maintenu dans [`SPRINT_ROADMAP.md`](.ai/go_migration_v2
 
 > Note home/record 2026-04-22 : `internal/platform/duckdb/home_repo.go` charge désormais aussi le dernier snapshot `career_progression` et l'enrichit via `metadata.career_ranks`, `internal/analysis/home.go` construit `spartan_identity` avec titre FR/EN + progression `%`, et `apps/web/src/features/home/HomePage.tsx` rend ce bloc dans `Performance globale` avec un `Spartan ID` compact et une barre composite partagée avec les panneaux Battle Pass.
 
+> Note home/record 2026-04-22 bis : l'exploration a confirmé que le `spartan_id` live était déjà présent dans le payload Home ; la passe suivante a donc ciblé le vrai manque structurel, à savoir le visuel de rang carrière. `internal/platform/duckdb/home_repo.go` dérive maintenant `rank_image_url` depuis la metadata carrière, `internal/domain/home.go` l'expose dans `spartan_identity.career_rank`, et `apps/web/src/features/home/HomePage.tsx` l'affiche à côté du titre de rang dans `Performance globale`.
+
 > Note home/backend 2026-04-21 quinquies : la home React ne consomme plus `/players/{slug}/challenges` en parallèle du payload season pass. Les défis affichés viennent désormais de `SeasonPassPageResponse.challenges`, et `internal/platform/halo/provider.go` déduplique les fetchs live concurrents des challenges via `singleflight` pour éviter plusieurs appels Waypoint `/decks` sur le même `xuid`.
 
 ## État actuel (Phase 11 — Sprint 49)

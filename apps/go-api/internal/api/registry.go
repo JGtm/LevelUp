@@ -17,6 +17,7 @@ import (
 	"levelup/go-api/internal/config"
 	"levelup/go-api/internal/ctxkeys"
 	"levelup/go-api/internal/domain"
+	"levelup/go-api/internal/domain/title"
 	"levelup/go-api/internal/platform/auth"
 	"levelup/go-api/internal/platform/duckdb"
 	"levelup/go-api/internal/platform/halo"
@@ -68,7 +69,8 @@ func (r *ServiceRegistry) Career(ctx context.Context, slug string) (port.CareerS
 	if err != nil {
 		return nil, err
 	}
-	return service.NewCareerService(duckdb.NewCareerRepo(pdb)), nil
+	return service.NewCareerService(duckdb.NewCareerRepo(pdb)).
+		WithTitleSlug(pdb.TitleSlug), nil
 }
 
 // Filters retourne un FiltersService pour le joueur.
@@ -163,7 +165,8 @@ func (r *ServiceRegistry) Stats(ctx context.Context, slug string) (port.StatsSer
 	if err != nil {
 		return nil, err
 	}
-	return service.NewStatsService(duckdb.NewStatsRepo(pdb)), nil
+	return service.NewStatsService(duckdb.NewStatsRepo(pdb)).
+		WithTitleSlug(pdb.TitleSlug), nil
 }
 
 // Timeseries retourne un TimeseriesService pour le joueur.
@@ -253,9 +256,15 @@ func (r *ServiceRegistry) SeasonPassCtxWithAuth(ctx context.Context, slug string
 	return svc, enriched, nil
 }
 
-// buildHaloProvider construit un HaloProvider configuré avec le resolver unifié.
-func (r *ServiceRegistry) buildHaloProvider(_ *duckdb.PlayerDB) *halo.HaloProvider {
-	return halo.DefaultHaloProvider.WithAssetResolver(r.assetResolver)
+// buildHaloProvider construit un HaloProvider configuré avec le resolver unifié et le titre du joueur.
+func (r *ServiceRegistry) buildHaloProvider(pdb *duckdb.PlayerDB) *halo.HaloProvider {
+	titleSlug := title.DefaultSlug
+	if pdb != nil && pdb.TitleSlug != "" {
+		titleSlug = pdb.TitleSlug
+	}
+	return halo.DefaultHaloProvider.
+		WithAssetResolver(r.assetResolver).
+		WithTitleSlug(titleSlug)
 }
 
 // enrichWithHaloTokens injecte les HaloTokens dans le contexte si absents.

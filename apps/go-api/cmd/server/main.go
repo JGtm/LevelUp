@@ -352,7 +352,8 @@ func startWatcherDaemon(ctx context.Context, cfg *config.AppConfig, settingsStor
 		return nil
 	}
 
-	tokenStorePath := filepath.Join(cfg.RepoRoot, "data", "cache", "watcher_tokens.json")
+	tokenStorePath := title.NewPathResolver(cfg.RepoRoot).WatcherTokensPath()
+	slog.Info("watcher: tokens path", "path", tokenStorePath)
 	store := auth.NewTokenStore(tokenStorePath)
 	tokens, err := store.Load()
 	if err != nil {

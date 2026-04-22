@@ -301,6 +301,7 @@ func buildHomeCareerRank(raw *domain.HomeSpartanIdentityRow, locale string) *dom
 	return &domain.HomeCareerRankSummary{
 		RankNumber:    raw.RankNumber,
 		RankTitle:     title,
+		RankImageURL:  copyOptionalString(raw.RankImageURL),
 		CurrentXP:     raw.CurrentXP,
 		XPForNextRank: raw.XPForNextRank,
 		ProgressPct:   computeHomeCareerProgressPct(raw.CurrentXP, raw.XPForNextRank, raw.IsMaxRank),

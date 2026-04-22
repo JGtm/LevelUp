@@ -181,6 +181,7 @@ func TestHomeService_GetHomePage_IncludesSpartanIdentity(t *testing.T) {
 			RankNumber:    25,
 			RankTitleFR:   strPtr("Caporal-chef"),
 			RankTitleEN:   strPtr("Lance Corporal"),
+			RankImageURL:  strPtr("https://example.test/rank.png"),
 			CurrentXP:     5000,
 			XPForNextRank: 10000,
 		},
@@ -202,6 +203,9 @@ func TestHomeService_GetHomePage_IncludesSpartanIdentity(t *testing.T) {
 	}
 	if got := resp.SpartanIdentity.CareerRank.RankTitle; got != "Caporal-chef" {
 		t.Fatalf("rank_title = %q, want Caporal-chef", got)
+	}
+	if resp.SpartanIdentity.CareerRank.RankImageURL == nil || *resp.SpartanIdentity.CareerRank.RankImageURL != "https://example.test/rank.png" {
+		t.Fatalf("rank_image_url = %#v, want https://example.test/rank.png", resp.SpartanIdentity.CareerRank.RankImageURL)
 	}
 	if got := resp.SpartanIdentity.CareerRank.ProgressPct; got != 50 {
 		t.Fatalf("progress_pct = %.2f, want 50", got)

@@ -65,6 +65,7 @@ describe('HomePage', () => {
           career_rank: {
             rank_number: 25,
             rank_title: 'Lance Corporal',
+            rank_image_url: 'https://example.test/ranks/lance-corporal.png',
             current_xp: 5000,
             xp_for_next_rank: 10000,
             progress_pct: 50,
@@ -86,6 +87,7 @@ describe('HomePage', () => {
       await waitFor(() => {
         expect(screen.getByTestId('home-spartan-id-value')).toHaveTextContent('JGTM')
         expect(screen.getByTestId('home-career-rank-title')).toHaveTextContent('Lance Corporal')
+        expect(screen.getByTestId('home-career-rank-image')).toHaveAttribute('src', 'https://example.test/ranks/lance-corporal.png')
         expect(screen.getByText('Career rank')).toBeInTheDocument()
       })
 
