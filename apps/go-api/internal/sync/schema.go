@@ -81,6 +81,9 @@ CREATE TABLE IF NOT EXISTS career_progression (
     is_max_rank     BOOLEAN DEFAULT FALSE,
     adornment_path  VARCHAR,
     spartan_id      VARCHAR,
+    banner_image_url VARCHAR,
+    emblem_image_url VARCHAR,
+    backdrop_image_url VARCHAR,
     recorded_at     TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 CREATE INDEX IF NOT EXISTS idx_career_xuid ON career_progression(xuid);

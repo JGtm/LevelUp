@@ -30,7 +30,8 @@ import (
 )
 
 const (
-	haloStatsHost = "https://halostats.svc.halowaypoint.com:443"
+	haloStatsHost   = "https://halostats.svc.halowaypoint.com:443"
+	haloGameCMSHost = "https://gamecms-hacs.svc.halowaypoint.com"
 	// maxRetries est le nombre de tentatives avant abandon (portage de tries=4 Python).
 	maxRetries = 4
 	// retryBaseDelay est le délai de base pour le backoff exponentiel.
@@ -79,6 +80,7 @@ type HaloAPIClient struct {
 	spartanToken   string
 	clearanceToken string
 	economyBaseURL string
+	gameCMSBaseURL string
 	// minInterval est l'intervalle minimum entre deux requêtes (rate limiting).
 	minInterval time.Duration
 	lastRequest time.Time
@@ -97,6 +99,7 @@ func NewHaloAPIClient(spartanToken, clearanceToken string, requestsPerSecond int
 		spartanToken:   spartanToken,
 		clearanceToken: clearanceToken,
 		economyBaseURL: "https://economy.svc.halowaypoint.com",
+		gameCMSBaseURL: haloGameCMSHost,
 		minInterval:    time.Second / time.Duration(requestsPerSecond),
 	}
 }
@@ -399,9 +402,42 @@ func (c *HaloAPIClient) GetCareerRank(ctx context.Context, xuid string) (*Career
 	)
 	customizationBody, ok, err := c.doPlayerGatedGet(ctx, customizationURL)
 	if err == nil && ok {
-		serviceTag, parseErr := parseCustomizationServiceTag(customizationBody)
-		if parseErr == nil {
-			data.SpartanID = serviceTag
+		appearance, parseErr := parseCustomizationAppearance(customizationBody)
+		if parseErr == nil && appearance != nil {
+			if appearance.ServiceTag != "" {
+				data.SpartanID = appearance.ServiceTag
+			}
+			if appearance.BannerImagePath != "" {
+				if resolved, resolveErr := c.resolveCustomizationImageURL(ctx, appearance.BannerImagePath); resolveErr == nil {
+					data.BannerImageURL = resolved
+				} else {
+					data.BannerImageURL = fallbackCustomizationBannerURL(appearance.BannerImagePath)
+				}
+			}
+			if data.BannerImageURL == "" {
+				data.BannerImageURL = fallbackCustomizationBannerFromEmblem(
+					c.gameCMSHost(),
+					appearance.EmblemPath,
+					appearance.EmblemConfigurationID,
+				)
+			}
+			if appearance.EmblemPath != "" {
+				if resolved, resolveErr := c.resolveCustomizationImageURL(ctx, appearance.EmblemPath); resolveErr == nil {
+					data.EmblemImageURL = resolved
+				} else {
+					data.EmblemImageURL = fallbackCustomizationEmblemURL(
+						appearance.EmblemPath,
+						appearance.EmblemConfigurationID,
+					)
+				}
+			}
+			if appearance.BackdropImagePath != "" {
+				if resolved, resolveErr := c.resolveCustomizationImageURL(ctx, appearance.BackdropImagePath); resolveErr == nil {
+					data.BackdropImageURL = resolved
+				} else {
+					data.BackdropImageURL = fallbackCustomizationBackdropURL(appearance.BackdropImagePath)
+				}
+			}
 		}
 	}
 
@@ -413,6 +449,13 @@ func (c *HaloAPIClient) economyHost() string {
 		return "https://economy.svc.halowaypoint.com"
 	}
 	return strings.TrimRight(c.economyBaseURL, "/")
+}
+
+func (c *HaloAPIClient) gameCMSHost() string {
+	if strings.TrimSpace(c.gameCMSBaseURL) == "" {
+		return haloGameCMSHost
+	}
+	return strings.TrimRight(c.gameCMSBaseURL, "/")
 }
 
 func (c *HaloAPIClient) doPlayerGatedGet(ctx context.Context, rawURL string) ([]byte, bool, error) {
@@ -474,14 +517,227 @@ func parseCareerProgressPayload(body []byte, xuid string) (*CareerRankData, erro
 	}, nil
 }
 
-func parseCustomizationServiceTag(body []byte) (string, error) {
-	var payload struct {
-		Appearance struct {
-			ServiceTag string `json:"ServiceTag"`
-		} `json:"Appearance"`
+type customizationAppearance struct {
+	ServiceTag            string
+	BannerImagePath       string
+	BackdropImagePath     string
+	EmblemPath            string
+	EmblemConfigurationID string
+}
+
+func parseCustomizationAppearance(body []byte) (*customizationAppearance, error) {
+	var payload map[string]any
+	if err := json.Unmarshal(body, &payload); err != nil {
+		return nil, err
 	}
+
+	return &customizationAppearance{
+		ServiceTag: firstNonEmptyPayloadString(payload,
+			[]string{"Appearance", "ServiceTag"},
+		),
+		BannerImagePath: firstNonEmptyPayloadString(payload,
+			[]string{"Appearance", "BannerImagePath"},
+			[]string{"Appearance", "NameplateImagePath"},
+			[]string{"Appearance", "PlayerTitlePath"},
+			[]string{"Appearance", "Nameplate", "NameplateImagePath"},
+			[]string{"Appearance", "Nameplate", "ImagePath"},
+			[]string{"Appearance", "Nameplate", "Path"},
+			[]string{"Appearance", "Banner", "BannerImagePath"},
+			[]string{"Appearance", "Banner", "ImagePath"},
+			[]string{"Appearance", "Banner", "Path"},
+		),
+		BackdropImagePath: firstNonEmptyPayloadString(payload,
+			[]string{"Appearance", "BackdropImagePath"},
+		),
+		EmblemPath: firstNonEmptyPayloadString(payload,
+			[]string{"Appearance", "Emblem", "EmblemPath"},
+			[]string{"Appearance", "EmblemPath"},
+		),
+		EmblemConfigurationID: stringifyCustomizationConfigurationID(firstNonEmptyPayloadValue(payload,
+			[]string{"Appearance", "Emblem", "ConfigurationId"},
+			[]string{"Appearance", "Emblem", "ConfigurationID"},
+		)),
+	}, nil
+}
+
+func firstNonEmptyPayloadString(payload map[string]any, keySets ...[]string) string {
+	for _, keys := range keySets {
+		if value := nestedPayloadString(payload, keys...); value != "" {
+			return value
+		}
+	}
+	return ""
+}
+
+func firstNonEmptyPayloadValue(payload map[string]any, keySets ...[]string) any {
+	for _, keys := range keySets {
+		if value := nestedPayloadValue(payload, keys...); value != nil {
+			return value
+		}
+	}
+	return nil
+}
+
+func stringifyCustomizationConfigurationID(value any) string {
+	switch v := value.(type) {
+	case nil:
+		return ""
+	case string:
+		return strings.TrimSpace(v)
+	case float64:
+		return strconv.FormatInt(int64(v), 10)
+	case json.Number:
+		return v.String()
+	default:
+		return strings.TrimSpace(fmt.Sprint(v))
+	}
+}
+
+func (c *HaloAPIClient) resolveCustomizationImageURL(ctx context.Context, inventoryPath string) (string, error) {
+	trimmed := strings.TrimSpace(strings.TrimLeft(inventoryPath, "/"))
+	if trimmed == "" {
+		return "", fmt.Errorf("resolveCustomizationImageURL: inventory path vide")
+	}
+
+	endpoint := fmt.Sprintf("%s/hi/progression/file/%s", c.gameCMSHost(), trimmed)
+	body, err := c.doGet(ctx, endpoint)
+	if err != nil {
+		return "", err
+	}
+
+	var payload map[string]any
 	if err := json.Unmarshal(body, &payload); err != nil {
 		return "", err
 	}
-	return strings.TrimSpace(payload.Appearance.ServiceTag), nil
+
+	mediaPath := extractCustomizationMediaPath(payload)
+	if mediaPath == "" {
+		return "", fmt.Errorf("resolveCustomizationImageURL: media path absent")
+	}
+	return buildCustomizationImageURL(c.gameCMSHost(), mediaPath), nil
+}
+
+func extractCustomizationMediaPath(payload map[string]any) string {
+	paths := [][]string{
+		{"CommonData", "DisplayPath", "Media", "MediaUrl", "Path"},
+		{"DisplayPath", "Media", "MediaUrl", "Path"},
+		{"ImagePath", "Media", "MediaUrl", "Path"},
+		{"CommonData", "ImagePath", "Media", "MediaUrl", "Path"},
+	}
+	for _, keys := range paths {
+		if value := nestedPayloadString(payload, keys...); value != "" {
+			return value
+		}
+	}
+	return ""
+}
+
+func nestedPayloadString(payload map[string]any, keys ...string) string {
+	value, ok := nestedPayloadValue(payload, keys...).(string)
+	if !ok {
+		return ""
+	}
+	return strings.TrimSpace(value)
+}
+
+func nestedPayloadValue(payload map[string]any, keys ...string) any {
+	current := any(payload)
+	for _, key := range keys {
+		asMap, ok := current.(map[string]any)
+		if !ok {
+			return nil
+		}
+		next, ok := asMap[key]
+		if !ok {
+			return nil
+		}
+		current = next
+	}
+	return current
+}
+
+func buildCustomizationImageURL(baseURL, mediaPath string) string {
+	trimmedBase := strings.TrimRight(strings.TrimSpace(baseURL), "/")
+	trimmedPath := strings.TrimSpace(mediaPath)
+	if trimmedBase == "" || trimmedPath == "" {
+		return ""
+	}
+	if strings.HasPrefix(strings.ToLower(trimmedPath), "http://") || strings.HasPrefix(strings.ToLower(trimmedPath), "https://") {
+		return trimmedPath
+	}
+	trimmedPath = strings.TrimLeft(trimmedPath, "/")
+	if strings.HasPrefix(strings.ToLower(trimmedPath), "hi/images/file/") {
+		return trimmedBase + "/" + trimmedPath
+	}
+	if strings.HasPrefix(strings.ToLower(trimmedPath), "images/file/") {
+		return trimmedBase + "/hi/" + trimmedPath
+	}
+	return trimmedBase + "/hi/images/file/" + trimmedPath
+}
+
+func fallbackCustomizationEmblemURL(emblemPath, configurationID string) string {
+	stem := customizationInventoryStem(emblemPath, "/Spartan/Emblems/")
+	if stem == "" || strings.TrimSpace(configurationID) == "" {
+		return ""
+	}
+	return fmt.Sprintf(
+		"%s/hi/Waypoint/file/images/emblems/%s_%s.png",
+		haloGameCMSHost,
+		stem,
+		strings.TrimSpace(configurationID),
+	)
+}
+
+func fallbackCustomizationBackdropURL(backdropPath string) string {
+	stem := customizationInventoryStem(backdropPath, "/Spartan/BackdropImages/")
+	if stem == "" {
+		return ""
+	}
+	return fmt.Sprintf("%s/hi/Waypoint/file/images/backdrops/%s.png", haloGameCMSHost, stem)
+}
+
+func fallbackCustomizationBannerURL(bannerPath string) string {
+	if stem := customizationInventoryStem(bannerPath, "/Spartan/Nameplates/"); stem != "" {
+		return fmt.Sprintf("%s/hi/Waypoint/file/images/nameplates/%s.png", haloGameCMSHost, stem)
+	}
+	if stem := customizationInventoryStem(bannerPath, "/Spartan/Banners/"); stem != "" {
+		return fmt.Sprintf("%s/hi/Waypoint/file/images/banners/%s.png", haloGameCMSHost, stem)
+	}
+	return ""
+}
+
+func fallbackCustomizationBannerFromEmblem(baseURL, emblemPath, configurationID string) string {
+	stem := customizationInventoryStem(emblemPath, "/Spartan/Emblems/")
+	if stem == "" {
+		return ""
+	}
+	config := strings.TrimSpace(configurationID)
+	if config == "" || config == "0" {
+		return ""
+	}
+	host := strings.TrimRight(strings.TrimSpace(baseURL), "/")
+	if host == "" {
+		host = haloGameCMSHost
+	}
+	return fmt.Sprintf(
+		"%s/hi/Waypoint/file/images/nameplates/%s_%s.png",
+		host,
+		stem,
+		config,
+	)
+}
+
+func customizationInventoryStem(rawPath, marker string) string {
+	trimmed := strings.TrimSpace(rawPath)
+	if trimmed == "" {
+		return ""
+	}
+	normalized := strings.ReplaceAll(trimmed, "\\", "/")
+	idx := strings.Index(strings.ToLower(normalized), strings.ToLower(marker))
+	if idx < 0 {
+		return ""
+	}
+	stem := normalized[idx+len(marker):]
+	stem = strings.TrimSuffix(stem, ".json")
+	return strings.TrimSpace(stem)
 }

@@ -17,10 +17,15 @@ import (
 
 // battlepassTrackDefinitionRaw représente la définition d'un Reward Track depuis GameCMS.
 // Structure : /hi/Progression/file/{RewardTrackPath}
+//
+// Note: GameCMS utilise deux noms différents pour l'image principale du pass selon
+// les saisons. BattlePassImage existe sur S05+, mais S03/S04 n'ont que SummaryImagePath.
+// On expose les deux et le consommateur prend BattlePassImage en priorité, fallback Summary.
 type battlepassTrackDefinitionRaw struct {
 	Name                any                    `json:"Name"`
 	Description         any                    `json:"Description"`
 	BattlePassImage     string                 `json:"BattlePassImage"`
+	SummaryImagePath    string                 `json:"SummaryImagePath"`
 	BackgroundImagePath string                 `json:"BackgroundImagePath"`
 	XpPerRank           int                    `json:"XpPerRank"`
 	Ranks               []battlepassRankDefRaw `json:"Ranks"`
@@ -101,6 +106,14 @@ func (p *HaloProvider) fetchRewardTrackDefinition(
 		slog.DebugContext(ctx, "halo_provider: reward track definition decode error",
 			"path", trimmed, "err", err)
 		return nil
+	}
+	if p.trackDefPersister != nil {
+		raw := jp.RawJSON
+		go func() {
+			if err := p.trackDefPersister.UpsertTrackDefinition(context.Background(), trimmed, raw); err != nil {
+				slog.Warn("halo_provider: track definition persist failed", "path", trimmed, "err", err)
+			}
+		}()
 	}
 	go p.warmBPTrackAssets(ctx, &def)
 	return &def

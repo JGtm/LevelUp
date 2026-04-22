@@ -25,6 +25,8 @@ func openCareerDB(t *testing.T) *sql.DB {
 			rank_name VARCHAR, rank_tier VARCHAR,
 			current_xp INTEGER, xp_for_next_rank INTEGER, xp_total INTEGER,
 			is_max_rank BOOLEAN, adornment_path VARCHAR, spartan_id VARCHAR,
+			banner_image_url VARCHAR,
+			emblem_image_url VARCHAR, backdrop_image_url VARCHAR,
 			recorded_at TIMESTAMPTZ
 		);
 		CREATE TABLE sync_meta (key VARCHAR PRIMARY KEY, value VARCHAR, updated_at TIMESTAMPTZ);
@@ -67,6 +69,7 @@ func TestSaveCareerRank(t *testing.T) {
 		XPForNextRank:   8000,
 		XPTotal:         50000,
 		IsMaxRank:       false,
+		BannerImageURL:  "https://example.test/banner.png",
 	}
 	err := saveCareerRank(db, data)
 	if err != nil {

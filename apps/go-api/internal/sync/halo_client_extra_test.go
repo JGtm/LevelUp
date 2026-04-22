@@ -265,7 +265,7 @@ func TestGetCareerRank_EmptyXUID(t *testing.T) {
 }
 
 func TestGetCareerRank_UsesCareerAndCustomizationEndpoints(t *testing.T) {
-	var careerCalls, customizationCalls int
+	var careerCalls, customizationCalls, progressionCalls int
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		switch {
 		case strings.HasSuffix(r.URL.Path, "/rewardtracks/careerranks/careerrank1"):
@@ -283,7 +283,48 @@ func TestGetCareerRank_UsesCareerAndCustomizationEndpoints(t *testing.T) {
 				t.Fatalf("view = %q, want public", got)
 			}
 			_ = json.NewEncoder(w).Encode(map[string]any{
-				"Appearance": map[string]any{"ServiceTag": "JGTM"},
+				"Appearance": map[string]any{
+					"ServiceTag":         "JGTM",
+					"NameplateImagePath": "Inventory/Spartan/Nameplates/test-banner.json",
+					"BackdropImagePath":  "Inventory/Spartan/BackdropImages/test-backdrop.json",
+					"Emblem": map[string]any{
+						"EmblemPath":      "Inventory/Spartan/Emblems/test-emblem.json",
+						"ConfigurationId": 987654,
+					},
+				},
+			})
+		case strings.Contains(r.URL.Path, "/hi/progression/file/Inventory/Spartan/Nameplates/"):
+			progressionCalls++
+			_ = json.NewEncoder(w).Encode(map[string]any{
+				"CommonData": map[string]any{
+					"DisplayPath": map[string]any{
+						"Media": map[string]any{
+							"MediaUrl": map[string]any{"Path": "progression/Nameplates/test-banner.png"},
+						},
+					},
+				},
+			})
+		case strings.Contains(r.URL.Path, "/hi/progression/file/Inventory/Spartan/BackdropImages/"):
+			progressionCalls++
+			_ = json.NewEncoder(w).Encode(map[string]any{
+				"CommonData": map[string]any{
+					"DisplayPath": map[string]any{
+						"Media": map[string]any{
+							"MediaUrl": map[string]any{"Path": "progression/Backdrops/test-backdrop.png"},
+						},
+					},
+				},
+			})
+		case strings.Contains(r.URL.Path, "/hi/progression/file/Inventory/Spartan/Emblems/"):
+			progressionCalls++
+			_ = json.NewEncoder(w).Encode(map[string]any{
+				"CommonData": map[string]any{
+					"DisplayPath": map[string]any{
+						"Media": map[string]any{
+							"MediaUrl": map[string]any{"Path": "progression/Emblems/test-emblem.png"},
+						},
+					},
+				},
 			})
 		default:
 			http.NotFound(w, r)
@@ -296,6 +337,7 @@ func TestGetCareerRank_UsesCareerAndCustomizationEndpoints(t *testing.T) {
 		spartanToken:   "s",
 		clearanceToken: "c",
 		economyBaseURL: srv.URL,
+		gameCMSBaseURL: srv.URL,
 		minInterval:    time.Millisecond,
 	}
 
@@ -312,7 +354,88 @@ func TestGetCareerRank_UsesCareerAndCustomizationEndpoints(t *testing.T) {
 	if data.SpartanID != "JGTM" {
 		t.Fatalf("SpartanID = %q", data.SpartanID)
 	}
-	if careerCalls != 1 || customizationCalls != 1 {
-		t.Fatalf("careerCalls=%d customizationCalls=%d", careerCalls, customizationCalls)
+	if data.BannerImageURL != srv.URL+"/hi/images/file/progression/Nameplates/test-banner.png" {
+		t.Fatalf("BannerImageURL = %q", data.BannerImageURL)
+	}
+	if data.EmblemImageURL != srv.URL+"/hi/images/file/progression/Emblems/test-emblem.png" {
+		t.Fatalf("EmblemImageURL = %q", data.EmblemImageURL)
+	}
+	if data.BackdropImageURL != srv.URL+"/hi/images/file/progression/Backdrops/test-backdrop.png" {
+		t.Fatalf("BackdropImageURL = %q", data.BackdropImageURL)
+	}
+	if careerCalls != 1 || customizationCalls != 1 || progressionCalls != 3 {
+		t.Fatalf(
+			"careerCalls=%d customizationCalls=%d progressionCalls=%d",
+			careerCalls,
+			customizationCalls,
+			progressionCalls,
+		)
+	}
+}
+
+func TestGetCareerRank_DerivesBannerFromEmblemWhenNameplateMissing(t *testing.T) {
+	var customizationCalls int
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		switch {
+		case strings.HasSuffix(r.URL.Path, "/rewardtracks/careerranks/careerrank1"):
+			_ = json.NewEncoder(w).Encode(map[string]any{
+				"CurrentProgress": map[string]any{
+					"Rank":              177,
+					"PartialProgress":   10100,
+					"HasReachedMaxRank": false,
+				},
+			})
+		case strings.HasSuffix(r.URL.Path, "/customization"):
+			customizationCalls++
+			_ = json.NewEncoder(w).Encode(map[string]any{
+				"Appearance": map[string]any{
+					"ServiceTag":      "OKLM",
+					"PlayerTitlePath": nil,
+					"Emblem": map[string]any{
+						"EmblemPath":      "Inventory/Spartan/Emblems/104-001-343other-prop-79c5fbd5.json",
+						"ConfigurationId": 372285867,
+					},
+				},
+			})
+		case strings.Contains(r.URL.Path, "/hi/progression/file/Inventory/Spartan/Emblems/"):
+			_ = json.NewEncoder(w).Encode(map[string]any{
+				"CommonData": map[string]any{
+					"DisplayPath": map[string]any{
+						"Media": map[string]any{
+							"MediaUrl": map[string]any{"Path": "progression/Inventory/Emblems/343other_propaganda_emblem.png"},
+						},
+					},
+				},
+			})
+		default:
+			http.NotFound(w, r)
+		}
+	}))
+	defer srv.Close()
+
+	c := &HaloAPIClient{
+		http:           srv.Client(),
+		spartanToken:   "s",
+		clearanceToken: "c",
+		economyBaseURL: srv.URL,
+		gameCMSBaseURL: srv.URL,
+		minInterval:    time.Millisecond,
+	}
+
+	data, err := c.GetCareerRank(context.Background(), "2533274823110022")
+	if err != nil {
+		t.Fatalf("GetCareerRank: %v", err)
+	}
+	if data == nil {
+		t.Fatal("GetCareerRank returned nil")
+	}
+	if data.BannerImageURL != srv.URL+"/hi/Waypoint/file/images/nameplates/104-001-343other-prop-79c5fbd5_372285867.png" {
+		t.Fatalf("BannerImageURL = %q", data.BannerImageURL)
+	}
+	if data.EmblemImageURL != srv.URL+"/hi/images/file/progression/Inventory/Emblems/343other_propaganda_emblem.png" {
+		t.Fatalf("EmblemImageURL = %q", data.EmblemImageURL)
+	}
+	if customizationCalls != 1 {
+		t.Fatalf("customizationCalls=%d", customizationCalls)
 	}
 }

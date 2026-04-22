@@ -18,16 +18,19 @@ import (
 // CareerRankData contient les données d'un snapshot de rang.
 // Portage de src/data/sync/models.py CareerRankData.
 type CareerRankData struct {
-	XUID            string
-	CurrentRank     int
-	CurrentRankName string
-	CurrentRankTier string
-	CurrentXP       int
-	XPForNextRank   int
-	XPTotal         int
-	IsMaxRank       bool
-	AdornmentPath   string
-	SpartanID       string
+	XUID             string
+	CurrentRank      int
+	CurrentRankName  string
+	CurrentRankTier  string
+	CurrentXP        int
+	XPForNextRank    int
+	XPTotal          int
+	IsMaxRank        bool
+	AdornmentPath    string
+	SpartanID        string
+	BannerImageURL   string
+	EmblemImageURL   string
+	BackdropImageURL string
 }
 
 // syncCareerRank récupère la progression du rang carrière via le client Halo.
@@ -104,11 +107,13 @@ func saveCareerRank(db *sql.DB, data *CareerRankData) error {
 		INSERT INTO career_progression (
 			xuid, rank, rank_name, rank_tier,
 			current_xp, xp_for_next_rank, xp_total,
-			is_max_rank, adornment_path, spartan_id, recorded_at
-		) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+			is_max_rank, adornment_path, spartan_id,
+			banner_image_url, emblem_image_url, backdrop_image_url, recorded_at
+		) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
 		data.XUID, data.CurrentRank, data.CurrentRankName, data.CurrentRankTier,
 		data.CurrentXP, data.XPForNextRank, data.XPTotal,
-		data.IsMaxRank, data.AdornmentPath, data.SpartanID, now,
+		data.IsMaxRank, data.AdornmentPath, data.SpartanID,
+		data.BannerImageURL, data.EmblemImageURL, data.BackdropImageURL, now,
 	)
 	if err != nil {
 		return fmt.Errorf("saveCareerRank: %w", err)
