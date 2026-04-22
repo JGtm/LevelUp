@@ -21,22 +21,24 @@ type MatchViewResponse struct {
 
 // MatchViewHeader : en-tête du match.
 type MatchViewHeader struct {
-	MatchID        string     `json:"match_id"`
-	StartTime      *time.Time `json:"start_time,omitempty"`
-	StartTimeLabel string     `json:"start_time_label"`
-	OutcomeCode    *int       `json:"outcome_code,omitempty"`
-	OutcomeLabel   string     `json:"outcome_label"`
-	OutcomeColor   string     `json:"outcome_color"`
-	ScoreLabel     string     `json:"score_label,omitempty"`
-	DominanceFlag  bool       `json:"dominance_flag"`
-	HadBotTeammate bool       `json:"had_bot_teammate"`
-	MapUI          string     `json:"map_ui"`
-	MapID          string     `json:"map_id,omitempty"`
-	ModeUI         string     `json:"mode_ui"`
-	PlaylistLabel  string     `json:"playlist_label"`
-	PerfDisplay    string     `json:"performance_display"`
-	PerfColor      *string    `json:"performance_color,omitempty"`
-	IsExcluded     bool       `json:"is_excluded"`
+	MatchID                 string     `json:"match_id"`
+	StartTime               *time.Time `json:"start_time,omitempty"`
+	StartTimeLabel          string     `json:"start_time_label"`
+	OutcomeCode             *int       `json:"outcome_code,omitempty"`
+	OutcomeLabel            string     `json:"outcome_label"`
+	OutcomeColor            string     `json:"outcome_color"`
+	ScoreLabel              string     `json:"score_label,omitempty"`
+	DominanceFlag           bool       `json:"dominance_flag"`
+	HadBotTeammate          bool       `json:"had_bot_teammate"`
+	MapUI                   string     `json:"map_ui"`
+	MapID                   string     `json:"map_id,omitempty"`
+	ModeUI                  string     `json:"mode_ui"`
+	PlaylistLabel           string     `json:"playlist_label"`
+	PerfDisplay             string     `json:"performance_display"`
+	PerfColor               *string    `json:"performance_color,omitempty"`
+	IsExcluded              bool       `json:"is_excluded"`
+	PlayableDurationSeconds *int64     `json:"playable_duration_seconds,omitempty"`
+	WaypointURL             string     `json:"waypoint_url,omitempty"`
 }
 
 // MatchViewRank : rang CSR ou LUSR pour ce match.
@@ -45,6 +47,7 @@ type MatchViewRank struct {
 	TierLabel  *string  `json:"tier_label,omitempty"`
 	NumericVal *float64 `json:"numeric_value,omitempty"`
 	DeltaValue *float64 `json:"delta_value,omitempty"`
+	IconURL    string   `json:"icon_url,omitempty"`
 }
 
 // ---------------------------------------------------------------------------
@@ -53,12 +56,17 @@ type MatchViewRank struct {
 
 // MatchSummaryKpis : KPIs personnels du résumé.
 type MatchSummaryKpis struct {
-	Kills       *int     `json:"kills,omitempty"`
-	Deaths      *int     `json:"deaths,omitempty"`
-	Assists     *int     `json:"assists,omitempty"`
-	KDA         *float64 `json:"kda,omitempty"`
-	DamageDealt *float64 `json:"damage_dealt,omitempty"`
-	AverageLife string   `json:"average_life,omitempty"`
+	Kills           *int     `json:"kills,omitempty"`
+	Deaths          *int     `json:"deaths,omitempty"`
+	Assists         *int     `json:"assists,omitempty"`
+	KDA             *float64 `json:"kda,omitempty"`
+	DamageDealt     *float64 `json:"damage_dealt,omitempty"`
+	AverageLife     string   `json:"average_life,omitempty"`
+	HeadshotKills   *int     `json:"headshot_kills,omitempty"`
+	MaxKillingSpree *int     `json:"max_killing_spree,omitempty"`
+	PerfectKills    *int     `json:"perfect_kills,omitempty"`
+	Accuracy        *float64 `json:"accuracy,omitempty"`
+	PersonalScore   *int     `json:"personal_score,omitempty"`
 }
 
 // MatchPersonalResult : résultat personnel du joueur.
@@ -69,12 +77,19 @@ type MatchPersonalResult struct {
 	RankInTeam   *int   `json:"rank_in_team,omitempty"`
 }
 
-// MatchExpectedStats : comparaison réel vs attendu.
+// MatchExpectedStats : comparaison réel vs attendu + moyennes historiques.
 type MatchExpectedStats struct {
 	HasExpectedData bool     `json:"has_expected_data"`
 	ExpectedKills   *float64 `json:"expected_kills,omitempty"`
 	ExpectedDeaths  *float64 `json:"expected_deaths,omitempty"`
 	ExpectedAssists *float64 `json:"expected_assists,omitempty"`
+	// Moyennes historiques sur le mode (HistAvg)
+	HasHistAvg       bool     `json:"has_hist_avg"`
+	HistAvgKills     *float64 `json:"hist_avg_kills,omitempty"`
+	HistAvgDeaths    *float64 `json:"hist_avg_deaths,omitempty"`
+	HistAvgAssists   *float64 `json:"hist_avg_assists,omitempty"`
+	HistMatchCount   int      `json:"hist_match_count,omitempty"`
+	HistModeCategory string   `json:"hist_mode_category,omitempty"`
 }
 
 // MatchMedal : une médaille gagnée dans le match.
@@ -120,41 +135,75 @@ type MatchHighlightEvent struct {
 	ActorXUID *string `json:"actor_xuid,omitempty"`
 }
 
+// MatchTugOfWarBin : tranche temporelle de la timeline tug-of-war.
+type MatchTugOfWarBin struct {
+	BinStart   int `json:"bin_start"`
+	BinEnd     int `json:"bin_end"`
+	TeamKills  int `json:"team_kills"`
+	EnemyKills int `json:"enemy_kills"`
+	NetKills   int `json:"net_kills"`
+}
+
+// MatchImpactBadge : badge d'impact calculé (premier sang, finisseur…).
+type MatchImpactBadge struct {
+	Key   string `json:"key"`
+	Label string `json:"label"`
+	Value string `json:"value,omitempty"`
+}
+
+// MatchKDTimelinePoint : point K/D sur la timeline du match.
+type MatchKDTimelinePoint struct {
+	TimeSeconds int `json:"time_seconds"`
+	Kills       int `json:"kills"`
+	Deaths      int `json:"deaths"`
+}
+
 // MatchCombatTab : contenu de l'onglet Combat.
 type MatchCombatTab struct {
-	WeaponKills     []MatchWeaponKill     `json:"weapon_kills"`
-	HighlightEvents []MatchHighlightEvent `json:"highlight_events"`
-	Charts          []interface{}         `json:"charts"`
+	WeaponKills     []MatchWeaponKill      `json:"weapon_kills"`
+	HighlightEvents []MatchHighlightEvent  `json:"highlight_events"`
+	TugOfWar        []MatchTugOfWarBin     `json:"tug_of_war"`
+	ImpactBadges    []MatchImpactBadge     `json:"impact_badges"`
+	KDTimeline      []MatchKDTimelinePoint `json:"kd_timeline"`
+	NemesisDuels    []MatchNemesisRow      `json:"nemesis_duels"`
 }
 
 // ---------------------------------------------------------------------------
 // Onglet équipe
 // ---------------------------------------------------------------------------
 
-// MatchScoreboardRow : ligne du scoreboard (25+ colonnes).
+// MatchScoreboardRow : ligne du scoreboard.
 type MatchScoreboardRow struct {
-	XUID        string   `json:"xuid"`
-	Gamertag    string   `json:"gamertag"`
-	TeamSide    *string  `json:"team_side,omitempty"`
-	IsMe        bool     `json:"is_me"`
-	Rank        *int     `json:"rank,omitempty"`
-	Kills       *int     `json:"kills,omitempty"`
-	Deaths      *int     `json:"deaths,omitempty"`
-	Assists     *int     `json:"assists,omitempty"`
-	KDA         *float64 `json:"kda,omitempty"`
-	Accuracy    *float64 `json:"accuracy,omitempty"`
-	DamageDealt *float64 `json:"damage_dealt,omitempty"`
-	DamageTaken *float64 `json:"damage_taken,omitempty"`
-	ShotsFired  *int     `json:"shots_fired,omitempty"`
-	ShotsHit    *int     `json:"shots_hit,omitempty"`
-	// Sprint 41 T1 : colonnes supplémentaires
+	XUID             string   `json:"xuid"`
+	Gamertag         string   `json:"gamertag"`
+	TeamSide         *string  `json:"team_side,omitempty"`
+	IsMe             bool     `json:"is_me"`
+	Rank             *int     `json:"rank,omitempty"`
+	Score            *int     `json:"score,omitempty"`
+	Kills            *int     `json:"kills,omitempty"`
+	Deaths           *int     `json:"deaths,omitempty"`
+	Assists          *int     `json:"assists,omitempty"`
+	KDA              *float64 `json:"kda,omitempty"`
+	Accuracy         *float64 `json:"accuracy,omitempty"`
+	DamageDealt      *float64 `json:"damage_dealt,omitempty"`
+	DamageTaken      *float64 `json:"damage_taken,omitempty"`
+	ShotsFired       *int     `json:"shots_fired,omitempty"`
+	ShotsHit         *int     `json:"shots_hit,omitempty"`
 	AvgLifeSeconds   *float64 `json:"avg_life_seconds,omitempty"`
 	HeadshotKills    *int     `json:"headshot_kills,omitempty"`
 	MaxKillingSpree  *int     `json:"max_killing_spree,omitempty"`
+	PerfectKills     *int     `json:"perfect_kills,omitempty"`
 	GrenadeKills     *int     `json:"grenade_kills,omitempty"`
 	MeleeKills       *int     `json:"melee_kills,omitempty"`
 	PowerWeaponKills *int     `json:"power_weapon_kills,omitempty"`
 	OutcomeLabel     string   `json:"outcome_label"`
+	// Combat yield (V7)
+	TopWeaponID         *int64   `json:"top_weapon_id,omitempty"`
+	TopWeaponLabel      string   `json:"top_weapon_label,omitempty"`
+	OffensiveConversion *float64 `json:"offensive_conversion,omitempty"`
+	DefensiveResistance *float64 `json:"defensive_resistance,omitempty"`
+	DamagePerKill       *float64 `json:"damage_per_kill,omitempty"`
+	DamagePerDeath      *float64 `json:"damage_per_death,omitempty"`
 }
 
 // MatchNemesisRow : adversaire fréquent (kills reçus de lui).
@@ -165,19 +214,55 @@ type MatchNemesisRow struct {
 	IKilled  int    `json:"i_killed"`
 }
 
+// MatchRosterRow : ligne condensée du roster (tous les participants).
+type MatchRosterRow struct {
+	XUID        string   `json:"xuid"`
+	Gamertag    string   `json:"gamertag"`
+	TeamSide    *string  `json:"team_side,omitempty"`
+	IsMe        bool     `json:"is_me"`
+	IsBot       bool     `json:"is_bot"`
+	Kills       *int     `json:"kills,omitempty"`
+	Deaths      *int     `json:"deaths,omitempty"`
+	Assists     *int     `json:"assists,omitempty"`
+	KDA         *float64 `json:"kda,omitempty"`
+	DamageDealt *float64 `json:"damage_dealt,omitempty"`
+	DamageTaken *float64 `json:"damage_taken,omitempty"`
+}
+
+// MatchEncounterRow : historique de rencontres avec un participant du match.
+type MatchEncounterRow struct {
+	XUID          string `json:"xuid"`
+	Gamertag      string `json:"gamertag"`
+	CountTogether int    `json:"count_together"`
+	IsAlly        bool   `json:"is_ally"`
+}
+
 // MatchTeamTab : contenu de l'onglet Équipe.
 type MatchTeamTab struct {
+	Roster     []MatchRosterRow     `json:"roster"`
 	Scoreboard []MatchScoreboardRow `json:"scoreboard"`
 	Nemesis    []MatchNemesisRow    `json:"nemesis"`
+	Encounters []MatchEncounterRow  `json:"encounters"`
 }
 
 // ---------------------------------------------------------------------------
 // Onglets médias et citations
 // ---------------------------------------------------------------------------
 
+// MatchAssociatedMedia : média associé au match (typé).
+type MatchAssociatedMedia struct {
+	FileID          string  `json:"file_id"`
+	FileName        string  `json:"file_name"`
+	FilePath        string  `json:"file_path"`
+	ThumbnailURL    *string `json:"thumbnail_url,omitempty"`
+	DurationSeconds *int    `json:"duration_seconds,omitempty"`
+	CaptureTime     *string `json:"capture_time,omitempty"`
+	Liked           bool    `json:"liked"`
+}
+
 // MatchMediaTab : contenu de l'onglet Médias.
 type MatchMediaTab struct {
-	MediaItems []interface{} `json:"media_items"`
+	MediaItems []MatchAssociatedMedia `json:"media_items"`
 }
 
 // MatchCitationsTab : contenu de l'onglet Citations.
@@ -286,6 +371,14 @@ type KVPairRaw struct {
 	VictimGT   string
 	KillCount  int
 	TimeMS     int64
+}
+
+// MatchNeighbors : matchs adjacents (prev/next) pour la navigation de la page détail.
+type MatchNeighbors struct {
+	PreviousMatchID *string `json:"previous_match_id"`
+	NextMatchID     *string `json:"next_match_id"`
+	CurrentIndex    int     `json:"current_index"`
+	TotalMatches    int     `json:"total_matches"`
 }
 
 // MatchViewRawRow : DEPRECATED — conservé le temps de migrer les appelants.
