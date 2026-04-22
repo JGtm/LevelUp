@@ -62,7 +62,16 @@ func NewErrorTracker(cfg ErrorTrackerConfig) *ErrorTracker {
 }
 
 // Middleware retourne le http.Handler middleware.
+// DÉSACTIVÉ EN DUR — l'alerting Discord 500/taux d'erreur n'est pas souhaité.
+// Réactiver en supprimant le return immédiat ci-dessous.
 func (et *ErrorTracker) Middleware(next http.Handler) http.Handler {
+	return next
+}
+
+// middlewareDisabled est conservé pour référence future.
+//
+//nolint:unused
+func (et *ErrorTracker) middlewareDisabled(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		etw := &errorTrackWriter{ResponseWriter: w, status: http.StatusOK}
 		next.ServeHTTP(etw, r)

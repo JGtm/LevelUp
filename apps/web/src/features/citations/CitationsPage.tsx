@@ -3,7 +3,7 @@
  */
 import { useParams } from '@tanstack/react-router'
 import { PageHeader } from '@/components/shell/PageHeader'
-import { Spinner } from '@/components/ui/spinner'
+import { PageLoader } from '@/components/ui/spinner'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { EmptyStateCard, EmptyStateNotice } from '@/components/ui/empty-state'
@@ -24,9 +24,7 @@ export function CitationsPage() {
 
   if (isLoading) {
     return (
-      <div className="flex h-full items-center justify-center">
-        <Spinner size="lg" label="Chargement des citations…" />
-      </div>
+      <PageLoader label="Chargement des citations…" />
     )
   }
 

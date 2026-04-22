@@ -19,6 +19,22 @@ vi.mock('@tanstack/react-router', async (importOriginal) => {
 
 describe('SeasonPassPage', () => {
   it('affiche le hero actif, le carrousel de paliers et la progression du palier courant', async () => {
+    const originalScrollTo = HTMLElement.prototype.scrollTo
+    const originalScrollIntoView = HTMLElement.prototype.scrollIntoView
+    const scrollToMock = vi.fn()
+    const scrollIntoViewMock = vi.fn()
+    Object.defineProperty(HTMLElement.prototype, 'scrollTo', {
+      configurable: true,
+      writable: true,
+      value: scrollToMock,
+    })
+    Object.defineProperty(HTMLElement.prototype, 'scrollIntoView', {
+      configurable: true,
+      writable: true,
+      value: scrollIntoViewMock,
+    })
+
+    try {
     server.use(
       http.get('/api/v1/players/:playerSlug/pages/palmares/season-pass', () => HttpResponse.json({
         title_slug: 'halo_infinite',
@@ -112,6 +128,9 @@ describe('SeasonPassPage', () => {
       expect(screen.getAllByText('Récompense 13').length).toBeGreaterThan(0)
     })
 
+    expect(scrollToMock).toHaveBeenCalledWith(expect.objectContaining({ behavior: 'smooth' }))
+    expect(scrollIntoViewMock).not.toHaveBeenCalled()
+
     expect(screen.getByAltText('Illustration de Operation Alpha')).toBeInTheDocument()
 
     const tierCards = screen.getAllByTestId('season-pass-tier-card')
@@ -124,5 +143,17 @@ describe('SeasonPassPage', () => {
     expect(screen.getByTestId('season-pass-active-tier-progress-target')).toHaveTextContent('1 000 XP')
     expect(screen.getByText('Autres passes')).toBeInTheDocument()
     expect(screen.getByText('Operation Beta')).toBeInTheDocument()
+    } finally {
+      Object.defineProperty(HTMLElement.prototype, 'scrollTo', {
+        configurable: true,
+        writable: true,
+        value: originalScrollTo,
+      })
+      Object.defineProperty(HTMLElement.prototype, 'scrollIntoView', {
+        configurable: true,
+        writable: true,
+        value: originalScrollIntoView,
+      })
+    }
   })
 })

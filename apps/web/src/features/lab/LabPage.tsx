@@ -10,7 +10,7 @@ import {
   CardTitle,
 } from '@/components/ui/card'
 import { EmptyStateCard, EmptyStateNotice } from '@/components/ui/empty-state'
-import { Spinner } from '@/components/ui/spinner'
+import { PageLoader } from '@/components/ui/spinner'
 import type {
   LabAssetSummary,
   LabContractsResponse,
@@ -413,9 +413,7 @@ function ResourcesPanel({
 }) {
   if (isLoading) {
     return (
-      <div className="flex min-h-[320px] items-center justify-center">
-        <Spinner size="lg" label={text.resources.loading} />
-      </div>
+      <PageLoader label={text.resources.loading} />
     )
   }
 

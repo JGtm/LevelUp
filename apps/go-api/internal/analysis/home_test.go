@@ -152,6 +152,128 @@ func TestBuildRecentMatches_Limit(t *testing.T) {
 	}
 }
 
+func TestBuildRecentMatches_NormalizesModeLabel(t *testing.T) {
+	now := time.Now()
+	items := analysis.BuildRecentMatches([]domain.HomeMatchRow{{
+		MatchID:      "m1",
+		StartTime:    now,
+		MapName:      "Aquarius",
+		MapNameFR:    "Aquarius",
+		PairName:     "Slayer on Aquarius",
+		PairNameFR:   "Slayer sur Aquarius",
+		PlaylistName: "Ranked Arena",
+		Outcome:      2,
+	}}, 6)
+
+	if len(items) != 1 {
+		t.Fatalf("want 1 item, got %d", len(items))
+	}
+	if items[0].ModeUI == nil || *items[0].ModeUI != "Slayer" {
+		t.Fatalf("ModeUI: want Slayer, got %v", items[0].ModeUI)
+	}
+	if items[0].MapUI == nil || *items[0].MapUI != "Aquarius" {
+		t.Fatalf("MapUI: want Aquarius, got %v", items[0].MapUI)
+	}
+	if items[0].PlaylistUI == nil || *items[0].PlaylistUI != "Ranked Arena" {
+		t.Fatalf("PlaylistUI: want Ranked Arena, got %v", items[0].PlaylistUI)
+	}
+}
+
+func TestBuildRecentMatchesForLocale_UsesRequestedLanguage(t *testing.T) {
+	now := time.Now()
+	match := domain.HomeMatchRow{
+		MatchID:           "m-locale",
+		StartTime:         now,
+		MapName:           "Bazaar",
+		MapNameFR:         "Bazaar",
+		PairName:          "Team Slayer on Bazaar",
+		PairNameFR:        "Slayer en équipe sur Bazaar",
+		GameVariantName:   "Arena:Slayer",
+		GameVariantNameFR: "Assassin : Arène",
+		PlaylistName:      "Quick Play",
+		PlaylistNameFR:    "Partie rapide",
+		Outcome:           2,
+	}
+
+	itemsFR := analysis.BuildRecentMatchesForLocale([]domain.HomeMatchRow{match}, 6, "fr")
+	if itemsFR[0].ModeUI == nil || *itemsFR[0].ModeUI != "Assassin" {
+		t.Fatalf("FR ModeUI: want Assassin, got %v", itemsFR[0].ModeUI)
+	}
+	if itemsFR[0].PlaylistUI == nil || *itemsFR[0].PlaylistUI != "Partie rapide" {
+		t.Fatalf("FR PlaylistUI: want Partie rapide, got %v", itemsFR[0].PlaylistUI)
+	}
+	if itemsFR[0].OutcomeLabel != "Victoire" {
+		t.Fatalf("FR OutcomeLabel: want Victoire, got %q", itemsFR[0].OutcomeLabel)
+	}
+
+	itemsEN := analysis.BuildRecentMatchesForLocale([]domain.HomeMatchRow{match}, 6, "en")
+	if itemsEN[0].ModeUI == nil || *itemsEN[0].ModeUI != "Slayer" {
+		t.Fatalf("EN ModeUI: want Slayer, got %v", itemsEN[0].ModeUI)
+	}
+	if itemsEN[0].PlaylistUI == nil || *itemsEN[0].PlaylistUI != "Quick Play" {
+		t.Fatalf("EN PlaylistUI: want Quick Play, got %v", itemsEN[0].PlaylistUI)
+	}
+	if itemsEN[0].OutcomeLabel != "Victory" {
+		t.Fatalf("EN OutcomeLabel: want Victory, got %q", itemsEN[0].OutcomeLabel)
+	}
+}
+
+func TestBuildRecentMatches_UsesLocalStaticMapImageAndStripsExperiencePrefix(t *testing.T) {
+	now := time.Now()
+	items := analysis.BuildRecentMatches([]domain.HomeMatchRow{{
+		MatchID:       "m2",
+		StartTime:     now,
+		MapID:         "3e1e4cec-4f2c-44c6-b8d2-96b85c66c702",
+		MapName:       "Bazaar",
+		PairName:      "Quick Play: Slayer on Bazaar",
+		PlaylistName:  "Quick Play",
+		TeamID:        1,
+		Team0Score:    1,
+		Team1Score:    3,
+		DominanceFlag: 3,
+		Outcome:       3,
+	}}, 6)
+
+	if len(items) != 1 {
+		t.Fatalf("want 1 item, got %d", len(items))
+	}
+	if items[0].ModeUI == nil || *items[0].ModeUI != "Slayer" {
+		t.Fatalf("ModeUI: want Slayer, got %v", items[0].ModeUI)
+	}
+	if items[0].MapImageURL == nil || *items[0].MapImageURL != "/static/maps/Bazaar.png" {
+		t.Fatalf("MapImageURL: want /static/maps/Bazaar.png, got %v", items[0].MapImageURL)
+	}
+	if items[0].ScoreLabel == nil || *items[0].ScoreLabel != "3-1" {
+		t.Fatalf("ScoreLabel: want 3-1, got %v", items[0].ScoreLabel)
+	}
+	if len(items[0].NarrativeBadges) != 1 || items[0].NarrativeBadges[0] != "remontada" {
+		t.Fatalf("NarrativeBadges: want [remontada], got %#v", items[0].NarrativeBadges)
+	}
+}
+
+func TestBuildRecentMatches_MapsDominanceBadge(t *testing.T) {
+	now := time.Now()
+	items := analysis.BuildRecentMatches([]domain.HomeMatchRow{{
+		MatchID:       "m-domination",
+		StartTime:     now,
+		MapName:       "Recharge",
+		PairName:      "Slayer",
+		PlaylistName:  "Quick Play",
+		Outcome:       2,
+		TeamID:        0,
+		Team0Score:    50,
+		Team1Score:    13,
+		DominanceFlag: 1,
+	}}, 6)
+
+	if len(items) != 1 {
+		t.Fatalf("want 1 item, got %d", len(items))
+	}
+	if len(items[0].NarrativeBadges) != 1 || items[0].NarrativeBadges[0] != "dominant" {
+		t.Fatalf("NarrativeBadges: want [dominant], got %#v", items[0].NarrativeBadges)
+	}
+}
+
 // ---------------------------------------------------------------------------
 // BuildRecentMedia
 // ---------------------------------------------------------------------------

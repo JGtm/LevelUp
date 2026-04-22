@@ -13,6 +13,25 @@ import { getPalmaresText, normalizePalmaresLocale } from './i18n'
 import { PalmaresShell } from './PalmaresShell'
 import { useSeasonPassPage } from './queries'
 
+function centerTierInRail(container: HTMLDivElement | null, item: HTMLDivElement | null) {
+  if (!container || !item) {
+    return
+  }
+
+  const maxScrollLeft = Math.max(0, container.scrollWidth - container.clientWidth)
+  const targetLeft = Math.max(
+    0,
+    Math.min(item.offsetLeft - (container.clientWidth - item.offsetWidth) / 2, maxScrollLeft),
+  )
+
+  if (typeof container.scrollTo === 'function') {
+    container.scrollTo({ left: targetLeft, behavior: 'smooth' })
+    return
+  }
+
+  container.scrollLeft = targetLeft
+}
+
 function statusVariant(status: SeasonPassStatus) {
   switch (status) {
     case 'active':
@@ -213,13 +232,14 @@ function ActivePassShowcase({
   pass: SeasonPassTrackSummary
   text: ReturnType<typeof getPalmaresText>
 }) {
+  const tiersRailRef = useRef<HTMLDivElement | null>(null)
   const activeTier = pass.tiers?.find((tier) => tier.is_current)
     ?? pass.tiers?.find((tier) => tier.rank === pass.active_tier_rank)
     ?? null
   const activeTierRef = useRef<HTMLDivElement | null>(null)
 
   useEffect(() => {
-    activeTierRef.current?.scrollIntoView?.({ behavior: 'smooth', block: 'nearest', inline: 'center' })
+    centerTierInRail(tiersRailRef.current, activeTierRef.current)
   }, [pass.active_tier_rank, pass.tiers])
 
   const tierProgress = pass.active_tier_progress_percent ?? 0
@@ -292,7 +312,10 @@ function ActivePassShowcase({
             <div className="relative">
               <div className="pointer-events-none absolute inset-y-0 left-0 z-10 w-10 bg-gradient-to-r from-background to-transparent" aria-hidden="true" />
               <div className="pointer-events-none absolute inset-y-0 right-0 z-10 w-10 bg-gradient-to-l from-background to-transparent" aria-hidden="true" />
-              <div className="flex gap-4 overflow-x-auto pb-4 pr-6 pt-1 [scrollbar-width:none]">
+              <div
+                ref={tiersRailRef}
+                className="flex gap-4 overflow-x-auto pb-4 pr-6 pt-1 [scrollbar-width:none]"
+              >
                 {pass.tiers.map((tier) => (
                   <SeasonPassTierCard
                     key={tier.rank}

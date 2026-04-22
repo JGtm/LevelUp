@@ -1,7 +1,7 @@
 /**
  * Tests unitaires — MatchCard (Sprint 56).
  *
- * Vérifie : badge résultat, K/A/D, image map, CombatYieldBar, performance score.
+ * Vérifie : image map, hiérarchie titre/sous-titre, score et badges narratifs.
  */
 import { describe, it, expect, vi } from 'vitest'
 import { render, screen } from '@testing-library/react'
@@ -15,8 +15,11 @@ const WIN_MATCH: RecentMatchItem = {
   started_at: '2026-04-10T20:00:00Z',
   outcome_label: 'Victoire',
   outcome_tone: 'win',
+  score_label: '50-42',
+  narrative_badges: ['dominant', 'remontada'],
   map_ui: 'Aquarius',
-  mode_ui: 'Slayer',
+  mode_ui: 'Assassin : Arène',
+  playlist_ui: 'Arène classée',
   kills: 15,
   assists: 4,
   deaths: 2,
@@ -41,42 +44,38 @@ const LOSS_MATCH: RecentMatchItem = {
 }
 
 describe('MatchCard', () => {
-  it('affiche le badge victoire en vert', () => {
+  it('n\'affiche plus la pastille de résultat', () => {
     render(<MatchCard match={WIN_MATCH} />)
-    const badge = screen.getByText('Victoire')
-    expect(badge).toBeTruthy()
-    expect(badge.className).toContain('success')
+    expect(screen.queryByText('Victoire')).toBeNull()
   })
 
-  it('affiche le badge défaite en rouge', () => {
-    render(<MatchCard match={LOSS_MATCH} />)
-    const badge = screen.getByText('Défaite')
-    expect(badge).toBeTruthy()
-    expect(badge.className).toContain('destructive')
+  it('affiche le titre centré mode sur carte et la playlist', () => {
+    render(<MatchCard match={WIN_MATCH} locale="fr" />)
+    expect(screen.getByText('Assassin sur Aquarius')).toBeTruthy()
+    expect(screen.queryByText('Assassin : Arène sur Aquarius')).toBeNull()
+    expect(screen.getByText('Arène classée')).toBeTruthy()
   })
 
-  it('affiche les stats K/A/D', () => {
-    render(<MatchCard match={WIN_MATCH} />)
-    expect(screen.getByText('15')).toBeTruthy() // kills
-    expect(screen.getByText('4')).toBeTruthy()  // assists
-    expect(screen.getByText('2')).toBeTruthy()  // deaths
-  })
-
-  it("affiche le nom de la map et du mode", () => {
-    render(<MatchCard match={WIN_MATCH} />)
-    // "Aquarius" apparaît dans l'image fallback + le titre → getAllByText
-    expect(screen.getAllByText('Aquarius').length).toBeGreaterThan(0)
-    expect(screen.getByText('Slayer')).toBeTruthy()
-  })
-
-  it('affiche le performance score positif', () => {
-    render(<MatchCard match={WIN_MATCH} />)
-    expect(screen.getByText('+12')).toBeTruthy()
+  it('utilise le connecteur anglais quand la locale UI est en', () => {
+    render(<MatchCard match={WIN_MATCH} locale="en" />)
+    expect(screen.getByText('Assassin on Aquarius')).toBeTruthy()
   })
 
   it('rend sans crasher quand les champs S56 sont absents', () => {
     render(<MatchCard match={LOSS_MATCH} />)
-    expect(screen.getByText('Défaite')).toBeTruthy()
+    expect(screen.getByText('Empyrean · CTF')).toBeTruthy()
+    expect(screen.getByTestId('match-card-score').textContent).toBe('')
+  })
+
+  it('affiche le score et les badges narratifs dans une section fixe', () => {
+    render(<MatchCard match={WIN_MATCH} />)
+    const panel = screen.getByTestId('match-card-stats-panel')
+    expect(panel).toBeTruthy()
+    expect(panel.className).toContain('h-28')
+    expect(screen.getByTestId('match-card-score').textContent).toBe('50-42')
+    expect(screen.getByText('DOMINATION')).toBeTruthy()
+    expect(screen.getByText('REMONTADA')).toBeTruthy()
+    expect(screen.getByTestId('match-card-badges-row').className).toContain('min-h-6')
   })
 
   it('affiche un placeholder quand map_image_url est null', () => {

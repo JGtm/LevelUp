@@ -413,7 +413,7 @@ func TestHomeHandler_GetBattlePass_PlayerNotFound(t *testing.T) {
 	factory := func(ctx context.Context, _ string) (port.HomeService, context.Context, string, string, error) {
 		return nil, ctx, "", "", errors.New("not_found")
 	}
-	r := newHomeRouter(factory)
+	r := newHomeRouter(factory, nil)
 	req := httptest.NewRequest(http.MethodGet, "/players/unknown/battlepass", nil)
 	w := httptest.NewRecorder()
 	r.ServeHTTP(w, req)
@@ -426,7 +426,7 @@ func TestHomeHandler_GetChallenges_PlayerNotFound(t *testing.T) {
 	factory := func(ctx context.Context, _ string) (port.HomeService, context.Context, string, string, error) {
 		return nil, ctx, "", "", errors.New("not_found")
 	}
-	r := newHomeRouter(factory)
+	r := newHomeRouter(factory, nil)
 	req := httptest.NewRequest(http.MethodGet, "/players/unknown/challenges", nil)
 	w := httptest.NewRecorder()
 	r.ServeHTTP(w, req)

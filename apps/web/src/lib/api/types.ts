@@ -907,10 +907,13 @@ export interface RecentMatchItem {
   started_at: string | null
   outcome_label: string
   outcome_tone: string
+  score_label?: string | null
+  narrative_badges?: string[]
   is_favorite: boolean
   /** S56 — champs enrichis pour MatchCard */
   map_ui?: string | null
   mode_ui?: string | null
+  playlist_ui?: string | null
   kills?: number | null
   assists?: number | null
   deaths?: number | null
@@ -1547,20 +1550,6 @@ export interface MatchViewResponse {
   citations_tab: MatchCitationsTab
   /** Sprint 54-B : avertissement privacy */
   privacy_warning?: MatchPrivacyWarning | null
-}
-
-export interface LastMatchResolveRequest {
-  filters: FilterContextInput
-  current_index?: number | null
-}
-
-export interface LastMatchResolveResponse {
-  current_match_id: string
-  total_matches_in_scope: number
-  current_index: number
-  previous_match_id: string | null
-  next_match_id: string | null
-  session_tracking_key: string
 }
 
 // ---------------------------------------------------------------------------

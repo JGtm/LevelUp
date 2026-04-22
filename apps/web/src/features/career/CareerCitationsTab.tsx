@@ -8,7 +8,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { EmptyStateCard, EmptyStateNotice } from '@/components/ui/empty-state'
 import { PlotlyChart } from '@/components/ui/plotly-chart'
-import { Spinner } from '@/components/ui/spinner'
+import { PageLoader } from '@/components/ui/spinner'
 import { useCitationsPage } from '@/features/citations/queries'
 import { DEFAULT_FILTER_CONTEXT } from '@/stores/globalFilterStore'
 
@@ -24,9 +24,7 @@ export function CareerCitationsTab() {
 
   if (isLoading) {
     return (
-      <div className="flex h-64 items-center justify-center">
-        <Spinner size="lg" label="Chargement des citations…" />
-      </div>
+      <PageLoader label="Chargement des citations…" />
     )
   }
 

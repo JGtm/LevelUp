@@ -9,6 +9,12 @@
 
 > Note bugfix 2026-04-21 ter : pas de changement de schéma ni de destination persistée sur cette passe non plus. La home React lit maintenant les défis depuis `SeasonPassPageResponse.challenges` au lieu d'appeler aussi `/challenges`, et le provider Halo déduplique les fetchs live `/decks` concurrents ; les snapshots `challenge_snapshots` et le cache metadata restent inchangés.
 
+> Note bugfix 2026-04-21 quater : aucun nouveau flux métier ni nouvelle persistance sur cette passe. Le handler Go des assets maps sert désormais d'abord `map_images_registry.local_path` pour les maps déjà indexées localement, et la home transporte `playlist_ui` ainsi qu'un `mode_ui` déjà normalisé sur les matchs récents pour piloter la présentation des tuiles React sans doublonner le nom de carte.
+
+> Note bugfix 2026-04-21 quinquies : aucun flux persistant supplémentaire sur cette passe non plus. Le changement porte sur la valeur sérialisée de `recent_matches[].map_image_url` : pour les maps connues, la home publie maintenant directement `/static/maps/<Map>.<ext>` à partir du nom de map, avec fallback vers l'endpoint cache-aside UUID seulement si aucun asset local ne peut être déduit. `mode_ui` retire aussi les préfixes d'expérience (`Arena:`, `Community:`) avant rendu. Aucune table ni colonne n'est modifiée.
+
+> Note bugfix 2026-04-21 sexies : aucun flux persistant ni schéma supplémentaire sur cette passe non plus. La source des labels home passe de `shared.match_registry` à `shared.v_match_full` pour les matchs récents, afin de consommer les variantes localisées déjà calculées (`map_name_fr`, `pair_name_fr`, `playlist_name_fr`). Le payload `recent_matches[]` choisit maintenant FR ou EN selon la langue active de l'application, mais aucune donnée nouvelle n'est écrite en base.
+
 > Note tooling dev 2026-04-20 : aucun flux de données modifié dans cette passe. Les changements portent uniquement sur la chaîne de démarrage locale Go/React : port API configurable via `API_PORT`, réutilisation d'une API déjà active, et proxy Vite dev paramétrable via `VITE_API_PROXY_TARGET`.
 
 > Note tooling repo 2026-04-21 : aucun flux de données modifié non plus. Le nettoyage porte uniquement sur les points d'entrée et l'organisation du repo Go : suppression des wrappers `LevelUp.bat` / `LevelUp.sh` / `run.sh`, documentation réalignée sur `make dev`, et déplacement du script de déploiement vers `scripts/deploy.sh`.

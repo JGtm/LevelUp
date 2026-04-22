@@ -72,10 +72,16 @@ func seedPlayerSchema(t *testing.T, db *DB) { //nolint:funlen
 		`CREATE SCHEMA IF NOT EXISTS shared`,
 		`CREATE TABLE shared.match_registry (
 			match_id VARCHAR PRIMARY KEY, start_time TIMESTAMPTZ,
+			playlist_id VARCHAR,
+			map_id VARCHAR,
+			pair_id VARCHAR,
+			game_variant_id VARCHAR,
 			last_updated_at TIMESTAMPTZ, map_name VARCHAR, map_name_fr VARCHAR,
 			pair_name VARCHAR, pair_name_fr VARCHAR,
+			game_variant_name VARCHAR,
 			playlist_name VARCHAR, playlist_name_fr VARCHAR,
 			is_firefight BOOLEAN DEFAULT FALSE, is_ranked BOOLEAN DEFAULT FALSE,
+			team_0_score INTEGER, team_1_score INTEGER,
 			duration_seconds INTEGER)`,
 		`CREATE TABLE shared.match_participants (
 			match_id VARCHAR, xuid VARCHAR, gamertag VARCHAR,
@@ -109,6 +115,7 @@ func seedPlayerSchema(t *testing.T, db *DB) { //nolint:funlen
 		`CREATE TABLE player_match_enrichment (
 			match_id VARCHAR PRIMARY KEY, performance_score DOUBLE,
 			session_id INTEGER, session_label VARCHAR,
+			dominance_flag TINYINT DEFAULT 0,
 			is_with_friends BOOLEAN DEFAULT FALSE,
 			is_excluded BOOLEAN DEFAULT FALSE,
 			updated_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP)`,
@@ -140,10 +147,10 @@ func seedPlayerSchema(t *testing.T, db *DB) { //nolint:funlen
 	}
 	inserts := []row{
 		{`INSERT INTO shared.match_registry
-			(match_id,start_time,last_updated_at,map_name,pair_name,playlist_name,is_ranked,duration_seconds)
-			VALUES (?,?,?,?,?,?,?,?)`,
-			[]interface{}{"m1", "2025-01-10 14:00:00+00", "2025-01-10 14:30:00+00",
-				"Aquarius", "Slayer", "Ranked Slayer", true, 600}},
+			(match_id,start_time,playlist_id,map_id,pair_id,game_variant_id,last_updated_at,map_name,pair_name,game_variant_name,playlist_name,is_ranked,team_0_score,team_1_score,duration_seconds)
+			VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`,
+			[]interface{}{"m1", "2025-01-10 14:00:00+00", "playlist-ranked-slayer", "aquarius", "pair-slayer", "variant-slayer", "2025-01-10 14:30:00+00",
+				"Aquarius", "Slayer", "Arena:Slayer", "Ranked Slayer", true, 1, 3, 600}},
 		{`INSERT INTO shared.match_participants
 			(match_id,xuid,gamertag,outcome,kills,deaths,assists,kda,accuracy,personal_score,
 			 damage_dealt,damage_taken,time_played_seconds,team_mmr,enemy_mmr,
@@ -154,9 +161,9 @@ func seedPlayerSchema(t *testing.T, db *DB) { //nolint:funlen
 				8.0, 5.0, 1, true, 1, 45.0}},
 		{`INSERT INTO shared.xuid_aliases VALUES (?,?)`, []interface{}{pTestXUID, pTestGamertag}},
 		{`INSERT INTO player_match_enrichment
-			(match_id,performance_score,session_id,session_label,is_with_friends,is_excluded)
-			VALUES (?,?,?,?,?,?)`,
-			[]interface{}{"m1", 85.5, 1, "Session 1", false, false}},
+			(match_id,performance_score,session_id,session_label,dominance_flag,is_with_friends,is_excluded)
+			VALUES (?,?,?,?,?,?,?)`,
+			[]interface{}{"m1", 85.5, 1, "Session 1", 3, false, false}},
 		{`INSERT INTO career_progression
 			(rank,current_xp,recorded_at,rank_name,rank_tier,xp_for_next_rank,xp_total,is_max_rank)
 			VALUES (?,?,?,?,?,?,?,?)`,
@@ -236,10 +243,16 @@ func seedSharedDBSchema(t *testing.T, db *DB) {
 		`CREATE SCHEMA IF NOT EXISTS shared`,
 		`CREATE TABLE shared.match_registry (
 			match_id VARCHAR PRIMARY KEY, start_time TIMESTAMPTZ,
+			playlist_id VARCHAR,
+			map_id VARCHAR,
+			pair_id VARCHAR,
+			game_variant_id VARCHAR,
 			map_name VARCHAR, map_name_fr VARCHAR,
+			game_variant_name VARCHAR,
 			pair_name VARCHAR, pair_name_fr VARCHAR,
 			playlist_name VARCHAR, playlist_name_fr VARCHAR,
-			is_firefight BOOLEAN DEFAULT FALSE, is_ranked BOOLEAN DEFAULT FALSE)`,
+			is_firefight BOOLEAN DEFAULT FALSE, is_ranked BOOLEAN DEFAULT FALSE,
+			team_0_score INTEGER, team_1_score INTEGER)`,
 		`CREATE TABLE shared.match_participants (
 			match_id VARCHAR, xuid VARCHAR, gamertag VARCHAR,
 			outcome INTEGER DEFAULT 0,
@@ -266,8 +279,8 @@ func seedSharedDBSchema(t *testing.T, db *DB) {
 		args []interface{}
 	}
 	inserts := []row{
-		{`INSERT INTO shared.match_registry (match_id,start_time,map_name,pair_name,playlist_name,is_ranked) VALUES (?,?,?,?,?,?)`,
-			[]interface{}{"m1", "2025-01-10 14:00:00+00", "Aquarius", "Slayer", "Ranked Slayer", true}},
+		{`INSERT INTO shared.match_registry (match_id,start_time,playlist_id,map_id,pair_id,game_variant_id,map_name,game_variant_name,pair_name,playlist_name,is_ranked,team_0_score,team_1_score) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?)`,
+			[]interface{}{"m1", "2025-01-10 14:00:00+00", "playlist-ranked-slayer", "aquarius", "pair-slayer", "variant-slayer", "Aquarius", "Arena:Slayer", "Slayer", "Ranked Slayer", true, 1, 3}},
 		{`INSERT INTO shared.match_participants (match_id,xuid,gamertag,outcome,kills,deaths,team_id,kda) VALUES (?,?,?,?,?,?,?,?)`,
 			[]interface{}{"m1", pTestXUID, pTestGamertag, 2, 10, 5, 1, 1.5}},
 		{`INSERT INTO shared.xuid_aliases VALUES (?,?)`, []interface{}{pTestXUID, pTestGamertag}},
@@ -289,6 +302,14 @@ func seedMetaDBSchema(t *testing.T, db *DB) {
 			mapping_type VARCHAR, category VARCHAR,
 			image_path VARCHAR, description VARCHAR, tier_targets VARCHAR,
 			medal_id UBIGINT, enabled BOOLEAN DEFAULT TRUE)`,
+		`CREATE TABLE asset_translations (
+			asset_id VARCHAR,
+			asset_type VARCHAR,
+			lang VARCHAR,
+			name VARCHAR,
+			description VARCHAR,
+			fetched_at TIMESTAMPTZ,
+			PRIMARY KEY (asset_id, asset_type, lang))`,
 		`CREATE TABLE weapon_labels (weapon_id UBIGINT, label_en VARCHAR, label_fr VARCHAR)`,
 		`CREATE TABLE career_ranks (rank_id INTEGER, rank_name VARCHAR)`,
 	}
@@ -348,6 +369,95 @@ func TestHomeRepo_LoadHomeMatches_WithData(t *testing.T) {
 	}
 	if rows[0].MatchID != "m1" {
 		t.Errorf("match_id = %q, want m1", rows[0].MatchID)
+	}
+	if rows[0].TeamID != 1 {
+		t.Errorf("team_id = %d, want 1", rows[0].TeamID)
+	}
+	if rows[0].Team0Score != 1 || rows[0].Team1Score != 3 {
+		t.Errorf("team scores = %d-%d, want 1-3", rows[0].Team0Score, rows[0].Team1Score)
+	}
+	if rows[0].DominanceFlag != 3 {
+		t.Errorf("dominance_flag = %d, want 3", rows[0].DominanceFlag)
+	}
+}
+
+func TestHomeRepo_LoadHomeMatches_DoesNotDependOnVMatchFull(t *testing.T) {
+	pdb := newTestPlayerDB(t)
+	ctx := context.Background()
+	if _, err := pdb.Player.Exec(ctx, "DROP VIEW shared.v_match_full"); err != nil {
+		t.Fatalf("DROP VIEW shared.v_match_full: %v", err)
+	}
+
+	repo := NewHomeRepo(pdb)
+	rows, err := repo.LoadHomeMatches(ctx)
+	if err != nil {
+		t.Fatalf("LoadHomeMatches without shared.v_match_full: %v", err)
+	}
+	if len(rows) != 1 {
+		t.Fatalf("attendu 1 match, obtenu %d", len(rows))
+	}
+}
+
+func TestHomeRepo_LoadHomeMatches_FallsBackToMetadataAssetTranslations(t *testing.T) {
+	pdb := newTestPlayerDB(t)
+	ctx := context.Background()
+
+	if _, err := pdb.Player.Exec(ctx, `
+		UPDATE shared.match_registry
+		SET map_id = ?,
+		    map_name = ?,
+		    map_name_fr = NULL,
+		    pair_id = ?,
+		    pair_name = ?,
+		    pair_name_fr = NULL,
+		    game_variant_id = ?,
+		    game_variant_name = ?,
+		    playlist_id = ?,
+		    playlist_name = ?,
+		    playlist_name_fr = NULL
+		WHERE match_id = ?
+	`, "map-curfew", "Curfew", "pair-team-slayer", "Team Slayer", "variant-arena-slayer", "Arena:Slayer", "playlist-quick-play", "Quick Play", "m1"); err != nil {
+		t.Fatalf("UPDATE shared.match_registry: %v", err)
+	}
+
+	inserts := []struct {
+		assetID   string
+		assetType string
+		name      string
+	}{
+		{assetID: "map-curfew", assetType: "map", name: "Couvre-feu"},
+		{assetID: "pair-team-slayer", assetType: "pair", name: "Slayer en équipe"},
+		{assetID: "variant-arena-slayer", assetType: "game_variant", name: "Assassin : Arène"},
+		{assetID: "playlist-quick-play", assetType: "playlist", name: "Partie rapide"},
+	}
+	for _, insert := range inserts {
+		if _, err := pdb.Metadata.Exec(ctx, `
+			INSERT INTO asset_translations (asset_id, asset_type, lang, name, description, fetched_at)
+			VALUES (?, ?, 'fr-FR', ?, '', now())
+		`, insert.assetID, insert.assetType, insert.name); err != nil {
+			t.Fatalf("INSERT asset_translations (%s): %v", insert.assetType, err)
+		}
+	}
+
+	repo := NewHomeRepo(pdb)
+	rows, err := repo.LoadHomeMatches(ctx)
+	if err != nil {
+		t.Fatalf("LoadHomeMatches translation fallback: %v", err)
+	}
+	if len(rows) != 1 {
+		t.Fatalf("attendu 1 match, obtenu %d", len(rows))
+	}
+	if rows[0].MapNameFR != "Couvre-feu" {
+		t.Fatalf("MapNameFR = %q, want Couvre-feu", rows[0].MapNameFR)
+	}
+	if rows[0].PairNameFR != "Slayer en équipe" {
+		t.Fatalf("PairNameFR = %q, want Slayer en équipe", rows[0].PairNameFR)
+	}
+	if rows[0].GameVariantNameFR != "Assassin : Arène" {
+		t.Fatalf("GameVariantNameFR = %q, want Assassin : Arène", rows[0].GameVariantNameFR)
+	}
+	if rows[0].PlaylistNameFR != "Partie rapide" {
+		t.Fatalf("PlaylistNameFR = %q, want Partie rapide", rows[0].PlaylistNameFR)
 	}
 }
 

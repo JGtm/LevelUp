@@ -12,8 +12,11 @@ import (
 	"path/filepath"
 	"strings"
 
+	"fmt"
+
 	"levelup/go-api/internal/config"
 	"levelup/go-api/internal/ctxkeys"
+	"levelup/go-api/internal/domain"
 	"levelup/go-api/internal/platform/auth"
 	"levelup/go-api/internal/platform/duckdb"
 	"levelup/go-api/internal/platform/halo"
@@ -66,15 +69,6 @@ func (r *ServiceRegistry) Filters(ctx context.Context, slug string) (port.Filter
 		return nil, err
 	}
 	return service.NewFiltersService(duckdb.NewFiltersRepo(pdb)), nil
-}
-
-// LastMatch retourne un LastMatchService pour le joueur.
-func (r *ServiceRegistry) LastMatch(ctx context.Context, slug string) (port.LastMatchService, error) {
-	pdb, err := r.resolve(ctx, slug)
-	if err != nil {
-		return nil, err
-	}
-	return service.NewLastMatchService(duckdb.NewStatsRepo(pdb)), nil
 }
 
 // MatchView retourne un MatchViewService pour le joueur.
@@ -443,4 +437,27 @@ func oauthRefreshTokenForPlayer(gamertag string) string {
 		return r
 	}, key)
 	return os.Getenv("SPNKR_OAUTH_REFRESH_TOKEN_" + key)
+}
+
+// AnyPlayerTokens retourne les tokens Halo du premier joueur disponible dans le pool.
+// Utilisé par les handlers d'assets qui ont besoin de tokens mais ne sont pas
+// rattachés à un joueur spécifique.
+func (r *ServiceRegistry) AnyPlayerTokens(ctx context.Context) (*domain.HaloTokens, error) {
+	var tokens *domain.HaloTokens
+	duckdb.IteratePool(func(pdb *duckdb.PlayerDB) bool {
+		if cached := halo.GetCachedPlayerTokens(pdb.XUID); cached != nil {
+			tokens = cached
+			return false // stop
+		}
+		if result := r.refreshTokensFromDB(ctx, pdb, pdb.XUID); result != nil {
+			halo.SetCachedPlayerTokens(pdb.XUID, result.Tokens)
+			tokens = result.Tokens
+			return false // stop
+		}
+		return true // continuer avec le joueur suivant
+	})
+	if tokens == nil {
+		return nil, fmt.Errorf("aucun token Halo disponible")
+	}
+	return tokens, nil
 }

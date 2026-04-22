@@ -56,7 +56,7 @@ func TestHomeService_GetHomePage_OK(t *testing.T) {
 	}
 	svc := NewHomeService(repo)
 
-	resp, err := svc.GetHomePage(context.Background(), "TestGT")
+	resp, err := svc.GetHomePage(context.Background(), "TestGT", "fr")
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -73,7 +73,7 @@ func TestHomeService_GetHomePage_Empty(t *testing.T) {
 	}
 	svc := NewHomeService(repo)
 
-	resp, err := svc.GetHomePage(context.Background(), "TestGT")
+	resp, err := svc.GetHomePage(context.Background(), "TestGT", "fr")
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -86,7 +86,7 @@ func TestHomeService_GetHomePage_MatchesError(t *testing.T) {
 	repo := &mockHomeRepo{matchErr: errors.New("fail")}
 	svc := NewHomeService(repo)
 
-	_, err := svc.GetHomePage(context.Background(), "GT")
+	_, err := svc.GetHomePage(context.Background(), "GT", "fr")
 	if err == nil {
 		t.Error("expected error when matches fail")
 	}
@@ -99,7 +99,7 @@ func TestHomeService_GetHomePage_SessionsError(t *testing.T) {
 	}
 	svc := NewHomeService(repo)
 
-	_, err := svc.GetHomePage(context.Background(), "GT")
+	_, err := svc.GetHomePage(context.Background(), "GT", "fr")
 	if err == nil {
 		t.Error("expected error when sessions fail")
 	}
@@ -114,12 +114,58 @@ func TestHomeService_GetHomePage_MediaGraceful(t *testing.T) {
 	}
 	svc := NewHomeService(repo)
 
-	resp, err := svc.GetHomePage(context.Background(), "GT")
+	resp, err := svc.GetHomePage(context.Background(), "GT", "fr")
 	if err != nil {
 		t.Fatalf("expected graceful degradation on media error, got: %v", err)
 	}
 	if resp == nil {
 		t.Fatal("expected non-nil response")
+	}
+}
+
+func TestHomeService_GetHomePage_RespectsLocale(t *testing.T) {
+	now := time.Now()
+	repo := &mockHomeRepo{
+		matches: []domain.HomeMatchRow{{
+			MatchID:        "m1",
+			StartTime:      now,
+			MapName:        "Bazaar",
+			MapNameFR:      "Bazaar",
+			PairName:       "Team Slayer on Bazaar",
+			PairNameFR:     "Slayer en équipe sur Bazaar",
+			PlaylistName:   "Quick Play",
+			PlaylistNameFR: "Partie rapide",
+			Outcome:        2,
+		}},
+	}
+	svc := NewHomeService(repo)
+
+	respFR, err := svc.GetHomePage(context.Background(), "GT", "fr")
+	if err != nil {
+		t.Fatalf("unexpected FR error: %v", err)
+	}
+	if got := *respFR.RecentMatches[0].ModeUI; got != "Slayer en équipe" {
+		t.Fatalf("FR ModeUI = %q, want %q", got, "Slayer en équipe")
+	}
+	if got := *respFR.RecentMatches[0].PlaylistUI; got != "Partie rapide" {
+		t.Fatalf("FR PlaylistUI = %q, want %q", got, "Partie rapide")
+	}
+	if got := respFR.RecentMatches[0].OutcomeLabel; got != "Victoire" {
+		t.Fatalf("FR OutcomeLabel = %q, want %q", got, "Victoire")
+	}
+
+	respEN, err := svc.GetHomePage(context.Background(), "GT", "en")
+	if err != nil {
+		t.Fatalf("unexpected EN error: %v", err)
+	}
+	if got := *respEN.RecentMatches[0].ModeUI; got != "Team Slayer" {
+		t.Fatalf("EN ModeUI = %q, want %q", got, "Team Slayer")
+	}
+	if got := *respEN.RecentMatches[0].PlaylistUI; got != "Quick Play" {
+		t.Fatalf("EN PlaylistUI = %q, want %q", got, "Quick Play")
+	}
+	if got := respEN.RecentMatches[0].OutcomeLabel; got != "Victory" {
+		t.Fatalf("EN OutcomeLabel = %q, want %q", got, "Victory")
 	}
 }
 

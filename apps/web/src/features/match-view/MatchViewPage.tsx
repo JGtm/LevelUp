@@ -5,7 +5,7 @@ import { useState } from 'react'
 import { useParams, useRouter, Link } from '@tanstack/react-router'
 import { useQueryClient } from '@tanstack/react-query'
 import { PageHeader } from '@/components/shell/PageHeader'
-import { Spinner } from '@/components/ui/spinner'
+import { PageLoader } from '@/components/ui/spinner'
 import { Card, CardContent } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
@@ -98,9 +98,7 @@ export function MatchViewPage() {
 
   if (isLoading) {
     return (
-      <div className="flex h-full items-center justify-center">
-        <Spinner size="lg" label="Chargement du match…" />
-      </div>
+      <PageLoader label="Chargement du match…" />
     )
   }
 
@@ -110,9 +108,11 @@ export function MatchViewPage() {
         <Card>
           <CardContent className="py-8 text-center">
             <p className="font-medium text-destructive">Match introuvable ou erreur de chargement.</p>
-            <button onClick={() => refetch()} className="mt-2 text-sm text-primary underline">
-              Réessayer
-            </button>
+            <div className="mt-4">
+              <Button variant="outline" size="sm" onClick={() => refetch()}>
+                Réessayer
+              </Button>
+            </div>
           </CardContent>
         </Card>
       </div>

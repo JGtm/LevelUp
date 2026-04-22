@@ -14,6 +14,12 @@ Le suivi des sprints est maintenu dans [`SPRINT_ROADMAP.md`](.ai/go_migration_v2
 
 > Note tooling 2026-04-21 quater : nettoyage des artefacts maps à la racine. `titles.json` n'a plus de lecteur côté Go/React, `migrate-static-maps` écrit maintenant `unmatched_maps.csv` sous `data/investigation/maps/`, et les logs manuels de validation maps doivent vivre sous `data/logs/maps/` plutôt qu'à la racine.
 
+> Note home/match tiles 2026-04-21 : les tuiles de matchs récents ne dépendent plus implicitement d'un fetch distant pour les maps connues ; `internal/api/handlers/assets.go` sert maintenant `local_path` depuis `map_images_registry` avant `image_url`, `internal/analysis/home.go` normalise `mode_ui` en retirant les suffixes `on/sur <map>`, et `apps/web/src/components/ui/match-card.tsx` affiche désormais un titre centré `mode sur carte`, une ligne playlist, puis un panneau stats réservé sans redoubler le nom de carte.
+
+> Note home/match tiles runtime 2026-04-21 : la dernière régression venait encore du payload home et non du handler d'assets. `internal/analysis/home.go` publie maintenant `recent_matches[].map_image_url` directement vers `/static/maps/<Map>.<ext>` pour les maps connues au lieu de l'endpoint UUID `/api/v1/assets/maps/...`, et la normalisation de `mode_ui` retire aussi les préfixes d'expérience `Arena:` / `Community:`. Validation live confirmée sur `GET /api/v1/players/JGtm/pages/home` et `GET /static/maps/Bazaar.png`.
+
+> Note home/i18n 2026-04-21 : la home backend choisit maintenant les labels FR/EN à la source. `internal/platform/duckdb/queries_home_citations.go` s'appuie sur `shared.v_match_full` au lieu de `match_registry`, expose `playlist_name_fr`, et `internal/api/handlers/home.go` transmet la langue des settings à `HomeService.GetHomePage(...)`. `apps/web/src/components/ui/match-card.tsx` ne conserve qu'un choix de connecteur `sur/on` à partir de `appShellStore.locale`.
+
 > Note home/backend 2026-04-21 quinquies : la home React ne consomme plus `/players/{slug}/challenges` en parallèle du payload season pass. Les défis affichés viennent désormais de `SeasonPassPageResponse.challenges`, et `internal/platform/halo/provider.go` déduplique les fetchs live concurrents des challenges via `singleflight` pour éviter plusieurs appels Waypoint `/decks` sur le même `xuid`.
 
 ## État actuel (Phase 11 — Sprint 49)

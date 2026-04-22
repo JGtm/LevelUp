@@ -10,9 +10,11 @@ package handlers
 import (
 	"context"
 	"net/http"
+	"strings"
 
 	"github.com/go-chi/chi/v5"
 
+	settings_platform "levelup/go-api/internal/platform/settings"
 	"levelup/go-api/internal/port"
 )
 
@@ -21,12 +23,27 @@ type HomeAuthFactory func(ctx context.Context, slug string) (svc port.HomeServic
 
 // HomeHandler gère les endpoints de la page d'accueil Mission Control.
 type HomeHandler struct {
-	newSvc HomeAuthFactory
+	newSvc        HomeAuthFactory
+	settingsStore *settings_platform.Store
 }
 
 // NewHomeHandler crée un HomeHandler.
-func NewHomeHandler(newSvc HomeAuthFactory) *HomeHandler {
-	return &HomeHandler{newSvc: newSvc}
+func NewHomeHandler(newSvc HomeAuthFactory, settingsStore *settings_platform.Store) *HomeHandler {
+	return &HomeHandler{newSvc: newSvc, settingsStore: settingsStore}
+}
+
+func (h *HomeHandler) locale() string {
+	if h.settingsStore == nil {
+		return "fr"
+	}
+	settings, err := h.settingsStore.Load()
+	if err != nil || settings == nil {
+		return "fr"
+	}
+	if strings.HasPrefix(strings.ToLower(strings.TrimSpace(settings.Lang)), "en") {
+		return "en"
+	}
+	return "fr"
 }
 
 // GetHomePage retourne la page d'accueil agrégée.
@@ -39,7 +56,7 @@ func (h *HomeHandler) GetHomePage(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	page, err := svc.GetHomePage(ctx, gamertag)
+	page, err := svc.GetHomePage(ctx, gamertag, h.locale())
 	if err != nil {
 		writeError(w, http.StatusInternalServerError, "home_page_error", "erreur chargement page d'accueil")
 		return

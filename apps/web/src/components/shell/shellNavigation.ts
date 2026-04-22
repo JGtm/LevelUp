@@ -51,12 +51,6 @@ export const PLAYER_PRIMARY_NAV_ITEMS: ShellNavItem[] = [
 
 export const PLAYER_SECONDARY_NAV_ITEMS: ShellNavItem[] = [
   {
-    to: '/players/$playerSlug/last-match',
-    label: 'Dernier match',
-    eyebrow: 'Live',
-    description: 'Revenir vite sur la dernière partie.',
-  },
-  {
     to: '/players/$playerSlug/profile/citations',
     label: 'Citations',
     eyebrow: 'Référentiel',

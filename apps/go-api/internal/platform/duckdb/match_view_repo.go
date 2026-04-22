@@ -50,7 +50,7 @@ func (r *MatchViewRepo) GetPlayerMatchStats(ctx context.Context, xuid, matchID s
 	defer cancel()
 
 	var s domain.PlayerMatchStatsRaw
-	err := r.pdb.Player.QueryRow(ctx, Q17PlayerMatchStats, xuid, matchID).Scan(
+	err := r.pdb.Player.QueryRow(ctx, Q17PlayerMatchStats, matchID, xuid).Scan(
 		&s.OutcomeCode,
 		&s.TeamID,
 		&s.RankInTeam,

@@ -40,6 +40,22 @@ describe('HomePage', () => {
   })
 
   it('affiche le visuel battle pass, le rail horizontal et la progression du palier actif sur la home', async () => {
+    const originalScrollTo = HTMLElement.prototype.scrollTo
+    const originalScrollIntoView = HTMLElement.prototype.scrollIntoView
+    const scrollToMock = vi.fn()
+    const scrollIntoViewMock = vi.fn()
+    Object.defineProperty(HTMLElement.prototype, 'scrollTo', {
+      configurable: true,
+      writable: true,
+      value: scrollToMock,
+    })
+    Object.defineProperty(HTMLElement.prototype, 'scrollIntoView', {
+      configurable: true,
+      writable: true,
+      value: scrollIntoViewMock,
+    })
+
+    try {
     server.use(
       http.get('/api/v1/players/:playerSlug/pages/palmares/season-pass', () => HttpResponse.json({
         title_slug: 'halo_infinite',
@@ -114,6 +130,9 @@ describe('HomePage', () => {
       expect(screen.getAllByText('Récompense 13').length).toBeGreaterThan(0)
     })
 
+    expect(scrollToMock).toHaveBeenCalledWith(expect.objectContaining({ behavior: 'smooth' }))
+    expect(scrollIntoViewMock).not.toHaveBeenCalled()
+
     const tierCards = screen.getAllByTestId('home-battle-pass-tier-card')
     expect(tierCards).toHaveLength(3)
     expect(tierCards[0]).toHaveAttribute('data-obtained', 'true')
@@ -121,6 +140,18 @@ describe('HomePage', () => {
     expect(screen.getByTestId('home-battle-pass-active-tier-progress-fill')).toHaveStyle({ width: '30%' })
     expect(screen.getByTestId('home-battle-pass-active-tier-progress-current')).toHaveTextContent('300 XP')
     expect(screen.getByTestId('home-battle-pass-active-tier-progress-target')).toHaveTextContent('1 000 XP')
+    } finally {
+      Object.defineProperty(HTMLElement.prototype, 'scrollTo', {
+        configurable: true,
+        writable: true,
+        value: originalScrollTo,
+      })
+      Object.defineProperty(HTMLElement.prototype, 'scrollIntoView', {
+        configurable: true,
+        writable: true,
+        value: originalScrollIntoView,
+      })
+    }
   })
 
   it('affiche les défis actifs détaillés triés du plus avancé au moins avancé', async () => {
@@ -203,6 +234,7 @@ describe('HomePage', () => {
     await waitFor(() => {
       expect(screen.getByText(/Défis actifs/i)).toBeInTheDocument()
       expect(screen.getByTestId('home-challenges-completed')).toHaveTextContent('0 / 3 complétés')
+      expect(screen.getByTestId('home-challenges-card')).toHaveClass('self-start', 'min-h-[14rem]')
       expect(
         screen.getByText((content) => content.replace(/\s+/g, ' ').includes('4 500 XP disponibles')),
       ).toBeInTheDocument()
@@ -240,6 +272,57 @@ describe('HomePage', () => {
     expect(weeklyFills[0]).toHaveStyle({ width: '70%' })
     expect(weeklyFills[1]).toHaveStyle({ width: '0%' })
     expect(challengeEndpointCalls).toBe(0)
+  })
+
+  it('affiche un état vide compact pour les défis quand aucun item actif n’est détaillé', async () => {
+    server.use(
+      http.get('/api/v1/players/:playerSlug/pages/palmares/season-pass', () => HttpResponse.json({
+        title_slug: 'halo_infinite',
+        available: true,
+        active_track_path: 'RewardTracks/TrackA',
+        challenges: {
+          available: true,
+          total: 5,
+          completed: 5,
+          xp_available: 0,
+          next_expiry: null,
+          items: [],
+          error_hint: null,
+        },
+        passes: [
+          {
+            reward_track_path: 'RewardTracks/TrackA',
+            name: 'Operation Alpha',
+            description: null,
+            status: 'active',
+            is_active: true,
+            is_owned: true,
+            has_reached_max_rank: false,
+            current_rank: 12,
+            partial_progress: 300,
+            xp_per_rank: 1000,
+            max_rank: 20,
+            completion_percent: 60,
+            active_tier_rank: 13,
+            active_tier_progress_percent: 30,
+            image_url: 'https://example.com/track-a.png',
+            background_image_url: 'https://example.com/bg-a.png',
+            tiers: [],
+          },
+        ],
+      })),
+    )
+
+    renderWithProviders(<HomePage />)
+
+    await waitFor(() => {
+      expect(screen.getByTestId('home-challenges-card')).toHaveClass('self-start', 'min-h-[14rem]')
+      expect(screen.getByText('Aucun défi actif')).toBeInTheDocument()
+      expect(screen.getByText(/Tous les défis visibles sont terminés/i)).toBeInTheDocument()
+    })
+
+    expect(screen.queryByTestId('home-challenge-item')).not.toBeInTheDocument()
+    expect(screen.getByTestId('home-challenges-completed')).toHaveTextContent('5 / 5 complétés')
   })
 
   it('affiche les KPIs globaux (Parties, Taux de victoire, K/D)', async () => {

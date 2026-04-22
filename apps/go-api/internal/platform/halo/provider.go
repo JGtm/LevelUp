@@ -18,6 +18,7 @@ import (
 	"sync"
 	"time"
 
+	"levelup/go-api/internal/assets"
 	"levelup/go-api/internal/ctxkeys"
 	"levelup/go-api/internal/domain"
 
@@ -107,11 +108,14 @@ type HaloProvider struct {
 	limiter    *rateLimiter
 	maxRetries int
 	// Overridables pour les tests : vides en production (→ fallback vers les constantes).
-	battlePassBaseURL string
-	challengesBaseURL string
-	gameCMSBaseURL    string
-	challengeMetaPath string
-	challengeBadgeDir string
+	battlePassBaseURL  string
+	challengesBaseURL  string
+	gameCMSBaseURL     string
+	challengeMetaPath  string
+	challengeBadgeDir  string
+	battlepassMetaPath string // chemin vers metadata.duckdb pour le cache des track definitions
+	// assetResolver est le resolver unifié (P4/P5). Nil = mode legacy (challengeMetaPath, battlepassMetaPath).
+	assetResolver assets.Resolver
 	// Sprint 54 B5 : cache process-level de la privacy par xuid.
 	privacyCache privacyTTLCache
 }
@@ -123,6 +127,11 @@ var DefaultHaloProvider = NewHaloProvider()
 // La clé inclut les paramètres d'enrichissement du provider pour ne partager
 // que des réponses construites dans le même contexte metadata/assets.
 var challengesFetchSFGroup singleflight.Group
+
+// battlePassTrackFetchSFGroup déduplique les fetchs live concurrents d'une même
+// reward track Battle Pass dans un même processus. La clé inclut le chemin
+// metadata cible pour éviter de mélanger deux caches distincts.
+var battlePassTrackFetchSFGroup singleflight.Group
 
 // NewHaloProvider crée un provider Halo avec les paramètres par défaut.
 func NewHaloProvider() *HaloProvider {
@@ -144,6 +153,17 @@ func (p *HaloProvider) WithChallengeCache(metaPath, badgeDir string) *HaloProvid
 	clone := *p
 	clone.challengeMetaPath = metaPath
 	clone.challengeBadgeDir = badgeDir
+	return &clone
+}
+
+// WithBattlePassCache retourne une copie du provider avec le chemin vers metadata.duckdb
+// utilisé pour cacher les définitions de Reward Tracks (battlepass_track_definitions + translations).
+func (p *HaloProvider) WithBattlePassCache(metaPath string) *HaloProvider {
+	if p == nil {
+		return nil
+	}
+	clone := *p
+	clone.battlepassMetaPath = metaPath
 	return &clone
 }
 
@@ -214,6 +234,21 @@ func (p *HaloProvider) fetchBattlePass(ctx context.Context, tokens *domain.HaloT
 
 	rank, progress, trackPath := parseBattlePassTrack(raw.ActiveOperationRewardTrackPath, raw.OperationRewardTracks)
 	slog.DebugContext(ctx, "halo_provider: battle_pass fetched", "xuid", xuid, "rank", rank, "track", trackPath)
+
+	// Fetch et persistance des définitions GameCMS pour tous les tracks (best-effort).
+	// Symétrique au pattern challenges_details : cache metadata → fallback GameCMS → store.
+	if p.battlepassMetaPath != "" {
+		for _, t := range raw.OperationRewardTracks {
+			if t.RewardTrackPath == "" {
+				continue
+			}
+			if def := p.fetchRewardTrackDefinition(ctx, tokens, t.RewardTrackPath); def == nil {
+				slog.DebugContext(ctx, "halo_provider: reward track definition unavailable",
+					"track", t.RewardTrackPath)
+			}
+		}
+	}
+
 	return domain.BattlePassResponse{
 		Available:   true,
 		Rank:        &rank,

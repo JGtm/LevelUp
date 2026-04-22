@@ -17,14 +17,23 @@ SELECT
     COALESCE(r.map_id, '')                                  AS map_id,
     COALESCE(r.map_name, '')                                AS map_name,
     COALESCE(r.map_name_fr, r.map_name, '')                 AS map_name_fr,
+	COALESCE(r.pair_id, '')                                  AS pair_id,
     COALESCE(r.pair_name, '')                               AS pair_name,
     COALESCE(r.pair_name_fr, r.pair_name, '')               AS pair_name_fr,
-    COALESCE(r.playlist_name, '')                           AS playlist_name,
+	COALESCE(r.game_variant_id, '')                          AS game_variant_id,
+	COALESCE(r.game_variant_name, '')                        AS game_variant_name,
+	COALESCE(r.playlist_id, '')                              AS playlist_id,
+	COALESCE(r.playlist_name, '')                            AS playlist_name,
+	COALESCE(r.playlist_name_fr, r.playlist_name, '')       AS playlist_name_fr,
     COALESCE(r.is_firefight, FALSE)                         AS is_firefight,
     COALESCE(r.is_ranked, FALSE)                            AS is_ranked,
     pme.session_label,
     COALESCE(pme.is_with_friends, FALSE)                    AS is_with_friends,
     COALESCE(mp.outcome, 0)                                 AS outcome,
+	COALESCE(mp.team_id, -1)                                AS team_id,
+	COALESCE(r.team_0_score, -1)                            AS team_0_score,
+	COALESCE(r.team_1_score, -1)                            AS team_1_score,
+	COALESCE(pme.dominance_flag, 0)                         AS dominance_flag,
     COALESCE(mp.kills, 0)                                   AS kills,
     COALESCE(mp.deaths, 0)                                  AS deaths,
     COALESCE(mp.assists, 0)                                 AS assists,
@@ -38,7 +47,7 @@ SELECT
     mp.damage_taken,
     pme.performance_score
 FROM shared.match_participants mp
-JOIN shared.v_match_full r ON r.match_id = mp.match_id
+JOIN shared.match_registry r ON r.match_id = mp.match_id
 LEFT JOIN player_match_enrichment pme ON pme.match_id = mp.match_id
 WHERE mp.xuid = ?
 ORDER BY r.start_time DESC`

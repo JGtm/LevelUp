@@ -5,6 +5,25 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { EmptyStateNotice } from '@/components/ui/empty-state'
 import type { SeasonPassPageResponse, SeasonPassTierSummary, SeasonPassTrackSummary } from '@/lib/api/types'
 
+function centerTierInRail(container: HTMLDivElement | null, item: HTMLDivElement | null) {
+  if (!container || !item) {
+    return
+  }
+
+  const maxScrollLeft = Math.max(0, container.scrollWidth - container.clientWidth)
+  const targetLeft = Math.max(
+    0,
+    Math.min(item.offsetLeft - (container.clientWidth - item.offsetWidth) / 2, maxScrollLeft),
+  )
+
+  if (typeof container.scrollTo === 'function') {
+    container.scrollTo({ left: targetLeft, behavior: 'smooth' })
+    return
+  }
+
+  container.scrollLeft = targetLeft
+}
+
 function clampPercent(value?: number | null) {
   if (value == null) {
     return 0
@@ -138,6 +157,7 @@ export function HomeBattlePassPanel({
   data?: SeasonPassPageResponse
   errorHint?: string | null
 }) {
+  const tiersRailRef = useRef<HTMLDivElement | null>(null)
   const featuredPass = pickFeaturedPass(data?.passes ?? [])
   const activeTier = featuredPass?.tiers?.find((tier) => tier.is_current)
     ?? featuredPass?.tiers?.find((tier) => tier.rank === featuredPass.active_tier_rank)
@@ -145,7 +165,7 @@ export function HomeBattlePassPanel({
   const activeTierRef = useRef<HTMLDivElement | null>(null)
 
   useEffect(() => {
-    activeTierRef.current?.scrollIntoView?.({ behavior: 'smooth', block: 'nearest', inline: 'center' })
+    centerTierInRail(tiersRailRef.current, activeTierRef.current)
   }, [featuredPass?.active_tier_rank, featuredPass?.tiers])
 
   if (loading) {
@@ -275,7 +295,10 @@ export function HomeBattlePassPanel({
             <div className="relative">
               <div className="pointer-events-none absolute inset-y-0 left-0 z-10 w-10 bg-gradient-to-r from-background to-transparent" aria-hidden="true" />
               <div className="pointer-events-none absolute inset-y-0 right-0 z-10 w-10 bg-gradient-to-l from-background to-transparent" aria-hidden="true" />
-              <div className="flex gap-4 overflow-x-auto px-6 pb-4 pt-1 [scrollbar-width:none] snap-x snap-mandatory">
+              <div
+                ref={tiersRailRef}
+                className="flex gap-4 overflow-x-auto px-6 pb-4 pt-1 [scrollbar-width:none] snap-x snap-mandatory"
+              >
                 {featuredPass.tiers.map((tier) => (
                   <BattlePassTierCard
                     key={tier.rank}

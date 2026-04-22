@@ -13,29 +13,39 @@ import "time"
 
 // HomeMatchRow est une ligne brute chargée depuis Q26 (matchs du home).
 type HomeMatchRow struct {
-	MatchID          string
-	StartTime        time.Time
-	MapID            string
-	MapName          string
-	MapNameFR        string
-	PairName         string
-	PairNameFR       string
-	PlaylistName     string
-	IsFirefight      bool
-	IsRanked         bool
-	SessionLabel     *string
-	IsWithFriends    bool
-	Outcome          int
-	Kills            int
-	Deaths           int
-	Assists          int
-	KDA              *float64
-	Ratio            *float64
-	Accuracy         *float64
-	TimePlayedSecs   *int
-	DamageDealt      *float64
-	DamageTaken      *float64
-	PerformanceScore *float64
+	MatchID           string
+	StartTime         time.Time
+	MapID             string
+	MapName           string
+	MapNameFR         string
+	PairID            string
+	PairName          string
+	PairNameFR        string
+	GameVariantID     string
+	GameVariantName   string
+	GameVariantNameFR string
+	PlaylistID        string
+	PlaylistName      string
+	PlaylistNameFR    string
+	IsFirefight       bool
+	IsRanked          bool
+	SessionLabel      *string
+	IsWithFriends     bool
+	Outcome           int
+	TeamID            int
+	Team0Score        int
+	Team1Score        int
+	DominanceFlag     int
+	Kills             int
+	Deaths            int
+	Assists           int
+	KDA               *float64
+	Ratio             *float64
+	Accuracy          *float64
+	TimePlayedSecs    *int
+	DamageDealt       *float64
+	DamageTaken       *float64
+	PerformanceScore  *float64
 }
 
 // HomeSessionRow est une ligne brute chargée depuis Q27 (sessions enrichment).
@@ -100,16 +110,19 @@ type HighlightItem struct {
 
 // RecentMatchItem représente un match récent dans la timeline.
 type RecentMatchItem struct {
-	MatchID      string     `json:"match_id"`
-	Title        string     `json:"title"`
-	Detail       string     `json:"detail"`
-	StartedAt    *time.Time `json:"started_at,omitempty"`
-	OutcomeLabel string     `json:"outcome_label"`
-	OutcomeTone  string     `json:"outcome_tone"`
-	IsFavorite   bool       `json:"is_favorite"`
+	MatchID         string     `json:"match_id"`
+	Title           string     `json:"title"`
+	Detail          string     `json:"detail"`
+	StartedAt       *time.Time `json:"started_at,omitempty"`
+	OutcomeLabel    string     `json:"outcome_label"`
+	OutcomeTone     string     `json:"outcome_tone"`
+	ScoreLabel      *string    `json:"score_label,omitempty"`
+	NarrativeBadges []string   `json:"narrative_badges,omitempty"`
+	IsFavorite      bool       `json:"is_favorite"`
 	// S56 — champs enrichis pour MatchCard
 	MapUI                    *string  `json:"map_ui,omitempty"`
 	ModeUI                   *string  `json:"mode_ui,omitempty"`
+	PlaylistUI               *string  `json:"playlist_ui,omitempty"`
 	Kills                    *int     `json:"kills,omitempty"`
 	Deaths                   *int     `json:"deaths,omitempty"`
 	Assists                  *int     `json:"assists,omitempty"`
@@ -151,13 +164,13 @@ type RecentMediaItem struct {
 
 // HomePageResponse est la réponse agrégée de la page d'accueil Mission Control.
 type HomePageResponse struct {
-	Hero           HomeHeroCard        `json:"hero"`
-	Highlights     []HighlightItem     `json:"highlights"`
-	RecentMatches  []RecentMatchItem   `json:"recent_matches"`
-	FavoriteMatches []RecentMatchItem  `json:"favorite_matches"`
-	RecentMedia    []RecentMediaItem   `json:"recent_media"`
-	SoloSession    *SessionSummaryItem `json:"solo_session,omitempty"`
-	SquadSession   *SessionSummaryItem `json:"squad_session,omitempty"`
+	Hero            HomeHeroCard        `json:"hero"`
+	Highlights      []HighlightItem     `json:"highlights"`
+	RecentMatches   []RecentMatchItem   `json:"recent_matches"`
+	FavoriteMatches []RecentMatchItem   `json:"favorite_matches"`
+	RecentMedia     []RecentMediaItem   `json:"recent_media"`
+	SoloSession     *SessionSummaryItem `json:"solo_session,omitempty"`
+	SquadSession    *SessionSummaryItem `json:"squad_session,omitempty"`
 }
 
 // BattlePassResponse contient les informations Battle Pass live ou depuis le cache DB.

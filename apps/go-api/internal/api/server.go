@@ -261,10 +261,6 @@ func NewRouter(
 			sc := handlers.NewSessionCompareHandler(reg.SessionCompare)
 			r.Post("/pages/session-compare", sc.Compare)
 
-			// Sprint 33 : Last Match Resolve
-			lm := handlers.NewLastMatchHandler(reg.LastMatch)
-			r.Post("/pages/last-match/resolve", lm.Resolve)
-
 			// Exclusion manuelle de matchs non pertinents
 			excl := handlers.NewMatchExclusionHandler(reg.MatchExclusion)
 			r.Patch("/matches/{match_id}/exclusion", excl.SetExclusion)

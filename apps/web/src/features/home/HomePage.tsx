@@ -17,6 +17,7 @@ import { HomeChallengesList } from './HomeChallengesList'
 import { RecentMediaRail } from './RecentMediaRail'
 import { useHomePage, useSeasonPassPreview } from './queries'
 import { useSetMatchFavorite } from '@/features/match-history/queries'
+import { useAppShellStore } from '@/stores/appShellStore'
 
 function KPICard({ label, value }: { label: string; value: string | number }) {
   return (
@@ -30,6 +31,7 @@ function KPICard({ label, value }: { label: string; value: string | number }) {
 export function HomePage() {
   const { playerSlug } = useParams({ strict: false }) as { playerSlug: string }
   const navigate = useNavigate()
+  const locale = useAppShellStore((s) => s.locale)
   const { data, isLoading, isError, refetch } = useHomePage(playerSlug)
   const {
     data: seasonPass,
@@ -56,8 +58,8 @@ export function HomePage() {
 
   if (isError) {
     return (
-      <div className="flex min-h-[40vh] flex-col px-6 pb-6 pt-4 sm:pt-6">
-        <div className="w-full max-w-3xl">
+      <div className="flex min-h-[55vh] items-center justify-center px-6 py-10">
+        <div className="mx-auto w-full max-w-lg">
           <EmptyStateCard
             title="Accueil indisponible"
             description="La page d'accueil n'a pas pu être chargée pour ce joueur. Vérifie la session ou relance la requête."
@@ -71,8 +73,8 @@ export function HomePage() {
 
   if (!data) {
     return (
-      <div className="flex min-h-[40vh] flex-col px-6 pb-6 pt-4 sm:pt-6">
-        <div className="w-full max-w-3xl">
+      <div className="flex min-h-[55vh] items-center justify-center px-6 py-10">
+        <div className="mx-auto w-full max-w-lg">
           <EmptyStateCard
             title="Accueil vide"
             description="Aucune donnée d'accueil n'a été renvoyée pour ce joueur. Vérifie le bootstrap ou les données locales avant de continuer."
@@ -131,7 +133,7 @@ export function HomePage() {
             errorHint={seasonPassError instanceof Error ? seasonPassError.message : null}
           />
 
-          <Card>
+          <Card data-testid="home-challenges-card" className="flex min-h-[14rem] self-start flex-col">
             <CardHeader className="flex flex-row items-center justify-between gap-3 space-y-0">
               <CardTitle className="text-base">Défis actifs</CardTitle>
               {challengesCompletedLabel && (
@@ -140,24 +142,44 @@ export function HomePage() {
                 </p>
               )}
             </CardHeader>
-            <CardContent>
+            <CardContent className="flex flex-1 flex-col">
               {isSeasonPassLoading && !seasonPass ? (
-                <p className="text-sm text-muted-foreground">Chargement des défis…</p>
+                <div className="flex flex-1 items-center justify-center">
+                  <p className="text-sm text-muted-foreground">Chargement des défis…</p>
+                </div>
               ) : challenges?.available ? (
                 <div className="space-y-3">
                   {Array.isArray(challenges.items) && challenges.items.length > 0 ? (
                     <HomeChallengesList items={challenges.items} />
                   ) : (
-                    <p className="text-xs text-muted-foreground">Aucun défi actif détaillé disponible pour le moment.</p>
+                    <div className="flex min-h-[8.5rem] items-center justify-center">
+                      <EmptyStateNotice
+                        title="Aucun défi actif"
+                        description="Tous les défis visibles sont terminés ou aucun défi détaillé n'est disponible pour le moment."
+                        className="w-full max-w-sm"
+                      />
+                    </div>
                   )}
                   {challenges.xp_available != null && challenges.xp_available > 0 && (
                     <p className="text-xs text-muted-foreground">{challenges.xp_available.toLocaleString('fr-FR')} XP disponibles</p>
                   )}
                 </div>
               ) : seasonPassError ? (
-                <p className="text-sm text-muted-foreground">Non disponible</p>
+                <div className="flex flex-1 items-center justify-center">
+                  <EmptyStateNotice
+                    title="Défis indisponibles"
+                    description="Les défis actifs n'ont pas pu être chargés pour le moment."
+                    className="w-full max-w-sm"
+                  />
+                </div>
               ) : (
-                <p className="text-sm text-muted-foreground">Non disponible</p>
+                <div className="flex flex-1 items-center justify-center">
+                  <EmptyStateNotice
+                    title="Défis indisponibles"
+                    description="Aucune donnée de défis n'est disponible pour le moment."
+                    className="w-full max-w-sm"
+                  />
+                </div>
               )}
             </CardContent>
           </Card>
@@ -268,6 +290,7 @@ export function HomePage() {
                     <CarouselItem key={m.match_id} className="w-72">
                       <MatchCard
                         match={m}
+                        locale={locale}
                         onClick={() => goToMatch(m.match_id)}
                         onToggleFavorite={() =>
                           favoriteMutation.mutate({ matchId: m.match_id, favorite: !m.is_favorite })
@@ -290,6 +313,7 @@ export function HomePage() {
                     <CarouselItem key={m.match_id} className="w-72">
                       <MatchCard
                         match={m}
+                        locale={locale}
                         onClick={() => goToMatch(m.match_id)}
                         onToggleFavorite={() =>
                           favoriteMutation.mutate({ matchId: m.match_id, favorite: false })
