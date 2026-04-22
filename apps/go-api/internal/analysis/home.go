@@ -52,9 +52,6 @@ var homeOutcomeTones = map[int]string{
 	homeOutcomeDNF:  "dnf",
 }
 
-var homeStripModeMapRe = regexp.MustCompile(`(?i)\s+(?:on|sur)\s+.+$`)
-var homeStripForgeRe = regexp.MustCompile(`(?i)\s*-\s*Forge\b`)
-var homeStripRankedRe = regexp.MustCompile(`(?i)\s*-\s*Ranked\b`)
 var homeUUIDRe = regexp.MustCompile(`(?i)^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$`)
 
 // labelFR retourne fr si non vide, sinon en.
@@ -128,35 +125,10 @@ func buildHomeNarrativeBadges(dominanceFlag int) []string {
 	}
 }
 
+// normalizeHomeModeLabel est un alias interne vers NormalizeModeLabel.
+// Conservé pour ne pas casser les appelants internes au package.
 func normalizeHomeModeLabel(raw string, mapLabels ...string) string {
-	normalized := strings.TrimSpace(raw)
-	if normalized == "" {
-		return ""
-	}
-
-	if separator := strings.Index(normalized, " : "); separator > 0 {
-		normalized = strings.TrimSpace(normalized[:separator])
-	} else if separator := strings.LastIndex(normalized, ":"); separator >= 0 && separator < len(normalized)-1 {
-		normalized = strings.TrimSpace(normalized[separator+1:])
-	}
-
-	for _, mapLabel := range mapLabels {
-		trimmedMap := strings.TrimSpace(mapLabel)
-		if trimmedMap == "" {
-			continue
-		}
-		mapSpecificRe := regexp.MustCompile(`(?i)\s+(?:on|sur)\s+` + regexp.QuoteMeta(trimmedMap) + `$`)
-		updated := mapSpecificRe.ReplaceAllString(normalized, "")
-		if updated != normalized {
-			normalized = updated
-			break
-		}
-	}
-
-	normalized = homeStripModeMapRe.ReplaceAllString(normalized, "")
-	normalized = homeStripForgeRe.ReplaceAllString(normalized, "")
-	normalized = homeStripRankedRe.ReplaceAllString(normalized, "")
-	return strings.TrimSpace(normalized)
+	return NormalizeModeLabel(raw, mapLabels...)
 }
 
 // ---------------------------------------------------------------------------
@@ -268,14 +240,40 @@ func BuildSpartanIdentity(raw *domain.HomeSpartanIdentityRow, locale string) *do
 	if raw.SpartanID != nil {
 		identity.SpartanID = copyOptionalString(raw.SpartanID)
 	}
+	if raw.BannerImageURL != nil {
+		identity.BannerImageURL = copyOptionalString(raw.BannerImageURL)
+	}
+	if raw.EmblemImageURL != nil {
+		identity.EmblemImageURL = copyOptionalString(raw.EmblemImageURL)
+	}
+	if raw.BackdropImageURL != nil {
+		identity.BackdropImageURL = copyOptionalString(raw.BackdropImageURL)
+	}
+	if peak := buildHomeSkillPeak(raw.HighestCSR); peak != nil {
+		identity.HighestCSR = peak
+	}
+	if peak := buildHomeSkillPeak(raw.HighestLUSR); peak != nil {
+		identity.HighestLUSR = peak
+	}
 	if rank := buildHomeCareerRank(raw, locale); rank != nil {
 		identity.CareerRank = rank
 	}
 
-	if identity.SpartanID == nil && identity.CareerRank == nil {
+	if identity.SpartanID == nil && identity.CareerRank == nil && identity.BannerImageURL == nil && identity.EmblemImageURL == nil && identity.BackdropImageURL == nil && identity.HighestCSR == nil && identity.HighestLUSR == nil {
 		return nil
 	}
 	return identity
+}
+
+func buildHomeSkillPeak(raw *domain.HomeSkillPeakRow) *domain.HomeSkillPeakSummary {
+	if raw == nil || raw.RatingValue <= 0 {
+		return nil
+	}
+	return &domain.HomeSkillPeakSummary{
+		RatingValue:   raw.RatingValue,
+		TierLabel:     copyOptionalString(raw.TierLabel),
+		BadgeImageURL: copyOptionalString(raw.BadgeImageURL),
+	}
 }
 
 func buildHomeCareerRank(raw *domain.HomeSpartanIdentityRow, locale string) *domain.HomeCareerRankSummary {
@@ -299,13 +297,14 @@ func buildHomeCareerRank(raw *domain.HomeSpartanIdentityRow, locale string) *dom
 	}
 
 	return &domain.HomeCareerRankSummary{
-		RankNumber:    raw.RankNumber,
-		RankTitle:     title,
-		RankImageURL:  copyOptionalString(raw.RankImageURL),
-		CurrentXP:     raw.CurrentXP,
-		XPForNextRank: raw.XPForNextRank,
-		ProgressPct:   computeHomeCareerProgressPct(raw.CurrentXP, raw.XPForNextRank, raw.IsMaxRank),
-		IsMaxRank:     raw.IsMaxRank,
+		RankNumber:        raw.RankNumber,
+		RankTitle:         title,
+		RankImageURL:      copyOptionalString(raw.RankImageURL),
+		AdornmentImageURL: copyOptionalString(raw.AdornmentImageURL),
+		CurrentXP:         raw.CurrentXP,
+		XPForNextRank:     raw.XPForNextRank,
+		ProgressPct:       computeHomeCareerProgressPct(raw.CurrentXP, raw.XPForNextRank, raw.IsMaxRank),
+		IsMaxRank:         raw.IsMaxRank,
 	}
 }
 
