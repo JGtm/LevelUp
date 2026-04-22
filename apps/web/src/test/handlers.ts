@@ -462,7 +462,19 @@ export const handlers = [
   // Career
   http.get(p(`/players/${SLUG}/pages/career`), () => HttpResponse.json(careerFixture)),
   http.get(p(`/players/${SLUG}/pages/career/top-matches`), () => HttpResponse.json({ items: [] })),
-  http.get(p(`/players/${SLUG}/pages/career/encounters`), () => HttpResponse.json({ items: [] })),
+  http.get(p(`/players/${SLUG}/pages/career/encounters`), () =>
+    HttpResponse.json({
+      teammates: [
+        { xuid: '1', gamertag: 'DuoAlpha', match_count: 80, as_teammate: 60, as_enemy: 20, avg_kda: 1.6 },
+        { xuid: '2', gamertag: 'QueueGhost', match_count: 50, as_teammate: 45, as_enemy: 5, avg_kda: 1.3 },
+        { xuid: '3', gamertag: 'SynergyOne', match_count: 30, as_teammate: 30, as_enemy: 0, avg_kda: 2.1 },
+      ],
+      enemies: [
+        { xuid: '4', gamertag: 'NemesisBravo', match_count: 40, as_teammate: 5, as_enemy: 35, avg_kda: 0.8 },
+      ],
+      total: 4,
+    }),
+  ),
   http.post(p(`/players/${SLUG}/pages/citations`), () => HttpResponse.json(citationsFixture)),
 
   // Match History
