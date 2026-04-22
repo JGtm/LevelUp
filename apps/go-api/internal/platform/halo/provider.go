@@ -167,6 +167,18 @@ func (p *HaloProvider) WithBattlePassCache(metaPath string) *HaloProvider {
 	return &clone
 }
 
+// WithAssetResolver câble le resolver unifié (P4/P5).
+// Quand non-nil, les opérations de fetch/cache de définitions et d'images
+// sont déléguées au resolver au lieu d'écrire directement dans DuckDB.
+func (p *HaloProvider) WithAssetResolver(resolver assets.Resolver) *HaloProvider {
+	if p == nil {
+		return nil
+	}
+	clone := *p
+	clone.assetResolver = resolver
+	return &clone
+}
+
 // ---------------------------------------------------------------------------
 // GetBattlePass
 // ---------------------------------------------------------------------------
@@ -236,8 +248,24 @@ func (p *HaloProvider) fetchBattlePass(ctx context.Context, tokens *domain.HaloT
 	slog.DebugContext(ctx, "halo_provider: battle_pass fetched", "xuid", xuid, "rank", rank, "track", trackPath)
 
 	// Fetch et persistance des définitions GameCMS pour tous les tracks (best-effort).
-	// Symétrique au pattern challenges_details : cache metadata → fallback GameCMS → store.
-	if p.battlepassMetaPath != "" {
+	// Branche P4/P5 : resolver unifié (Warm fire-and-forget).
+	// Branche legacy : metadata.duckdb direct via battlepassMetaPath.
+	if p.assetResolver != nil {
+		var trackRefs []assets.Ref
+		for _, t := range raw.OperationRewardTracks {
+			if t.RewardTrackPath == "" {
+				continue
+			}
+			trackRefs = append(trackRefs, assets.Ref{
+				Kind:    assets.KindRewardTrackDefinition,
+				TitleID: "halo_infinite",
+				ID:      t.RewardTrackPath,
+			})
+		}
+		if len(trackRefs) > 0 {
+			go p.assetResolver.Warm(context.Background(), trackRefs...)
+		}
+	} else if p.battlepassMetaPath != "" {
 		for _, t := range raw.OperationRewardTracks {
 			if t.RewardTrackPath == "" {
 				continue
