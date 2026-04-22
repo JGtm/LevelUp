@@ -20,6 +20,8 @@ Le suivi des sprints est maintenu dans [`SPRINT_ROADMAP.md`](.ai/go_migration_v2
 
 > Note home/i18n 2026-04-21 : la home backend choisit maintenant les labels FR/EN à la source. `internal/platform/duckdb/queries_home_citations.go` s'appuie sur `shared.v_match_full` au lieu de `match_registry`, expose `playlist_name_fr`, et `internal/api/handlers/home.go` transmet la langue des settings à `HomeService.GetHomePage(...)`. `apps/web/src/components/ui/match-card.tsx` ne conserve qu'un choix de connecteur `sur/on` à partir de `appShellStore.locale`.
 
+> Note home/record 2026-04-22 : `internal/platform/duckdb/home_repo.go` charge désormais aussi le dernier snapshot `career_progression` et l'enrichit via `metadata.career_ranks`, `internal/analysis/home.go` construit `spartan_identity` avec titre FR/EN + progression `%`, et `apps/web/src/features/home/HomePage.tsx` rend ce bloc dans `Performance globale` avec un `Spartan ID` compact et une barre composite partagée avec les panneaux Battle Pass.
+
 > Note home/backend 2026-04-21 quinquies : la home React ne consomme plus `/players/{slug}/challenges` en parallèle du payload season pass. Les défis affichés viennent désormais de `SeasonPassPageResponse.challenges`, et `internal/platform/halo/provider.go` déduplique les fetchs live concurrents des challenges via `singleflight` pour éviter plusieurs appels Waypoint `/decks` sur le même `xuid`.
 
 ## État actuel (Phase 11 — Sprint 49)

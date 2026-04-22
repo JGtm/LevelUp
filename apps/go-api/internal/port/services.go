@@ -58,6 +58,7 @@ type MatchHistoryService interface {
 // MatchViewService construit la vue détaillée d'un match.
 type MatchViewService interface {
 	GetMatchView(ctx context.Context, matchID string) (domain.MatchViewResponse, error)
+	GetMatchNeighbors(ctx context.Context, matchID string) (domain.MatchNeighbors, error)
 }
 
 // MatchExclusionService gère le marquage et la liste des matchs non pertinents.

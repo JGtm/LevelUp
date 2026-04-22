@@ -4,11 +4,12 @@
  * Smoke : monte, spinner, puis Hero KPIs affichés depuis MSW.
  */
 import { describe, it, expect, vi } from 'vitest'
-import { fireEvent, screen, waitFor, within } from '@testing-library/react'
+import { act, fireEvent, screen, waitFor, within } from '@testing-library/react'
 import { http, HttpResponse } from 'msw'
 import type { ReactNode } from 'react'
 import { renderWithProviders } from '@/test/render-utils'
 import { server } from '@/test/setup'
+import { useAppShellStore } from '@/stores/appShellStore'
 import { HomePage } from './HomePage'
 
 vi.mock('@tanstack/react-router', async (importOriginal) => {
@@ -37,6 +38,67 @@ describe('HomePage', () => {
     await waitFor(() => {
       expect(screen.getByText(/Performance globale/i)).toBeInTheDocument()
     })
+  })
+
+  it('affiche le Spartan ID et le rang carrière localisé dans Performance globale', async () => {
+    const previousLocale = useAppShellStore.getState().locale
+    act(() => {
+      useAppShellStore.setState({ locale: 'en' })
+    })
+
+    server.use(
+      http.get('/api/v1/players/:playerSlug/pages/home', () => HttpResponse.json({
+        hero: {
+          player_name: 'TestPlayer',
+          kpis: {
+            win_rate: 0.55,
+            global_ratio: 1.2,
+            avg_accuracy: 42,
+            total_matches: 120,
+            wins: 66,
+            losses: 54,
+          },
+          trend: null,
+        },
+        spartan_identity: {
+          spartan_id: 'JGTM',
+          career_rank: {
+            rank_number: 25,
+            rank_title: 'Lance Corporal',
+            current_xp: 5000,
+            xp_for_next_rank: 10000,
+            progress_pct: 50,
+            is_max_rank: false,
+          },
+        },
+        highlights: [],
+        recent_matches: [],
+        favorite_matches: [],
+        recent_media: [],
+        solo_session: null,
+        squad_session: null,
+      })),
+    )
+
+    try {
+      renderWithProviders(<HomePage />)
+
+      await waitFor(() => {
+        expect(screen.getByTestId('home-spartan-id-value')).toHaveTextContent('JGTM')
+        expect(screen.getByTestId('home-career-rank-title')).toHaveTextContent('Lance Corporal')
+        expect(screen.getByText('Career rank')).toBeInTheDocument()
+      })
+
+      expect(screen.getByText('Rank 25')).toBeInTheDocument()
+      expect(screen.getByText('Current progress')).toBeInTheDocument()
+      expect(screen.getByTestId('home-career-rank-progress-current')).toHaveTextContent('5,000 XP')
+      expect(screen.getByTestId('home-career-rank-progress-target')).toHaveTextContent('10,000 XP')
+      expect(screen.getByTestId('home-career-rank-progress-fill')).toHaveStyle({ width: '50%' })
+    } finally {
+      act(() => {
+        useAppShellStore.setState({ locale: previousLocale })
+      })
+    }
   })
 
   it('affiche le visuel battle pass, le rail horizontal et la progression du palier actif sur la home', async () => {

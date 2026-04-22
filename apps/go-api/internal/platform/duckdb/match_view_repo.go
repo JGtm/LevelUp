@@ -364,3 +364,115 @@ func (r *MatchViewRepo) GetMatchNeighbors(ctx context.Context, xuid, matchID str
 		TotalMatches:    total,
 	}, nil
 }
+
+// GetMatchSkillRank retourne le rang compétitif pour ce match (Q22).
+// Utilise la player DB (match_skill_rank).
+func (r *MatchViewRepo) GetMatchSkillRank(ctx context.Context, matchID string) (*domain.SkillRankRaw, error) {
+	ctx, cancel := context.WithTimeout(ctx, 5*time.Second)
+	defer cancel()
+
+	var row domain.SkillRankRaw
+	err := r.pdb.Player.QueryRow(ctx, Q22MatchSkillRank, matchID).Scan(
+		&row.RatingType,
+		&row.TierLabel,
+		&row.RatingValue,
+		&row.RatingDelta,
+		&row.PlaylistGroup,
+	)
+	if err != nil {
+		// Absent pour les matchs non-ranked ou sans donnée skill → nil sans erreur
+		return nil, nil //nolint:nilerr
+	}
+	return &row, nil
+}
+
+// GetMatchEncounters retourne l'historique de rencontres avec les participants (Q23).
+// Utilise la player DB (avec shared. attaché).
+func (r *MatchViewRepo) GetMatchEncounters(ctx context.Context, matchID, myXUID string) ([]domain.EncounterRaw, error) {
+	ctx, cancel := context.WithTimeout(ctx, 20*time.Second)
+	defer cancel()
+
+	rows, err := r.pdb.Player.Query(ctx, Q23MatchEncounters,
+		matchID, myXUID, // this_match WHERE
+		matchID, myXUID, // my_team WHERE
+		myXUID, // me.xuid = ?
+	)
+	if err != nil {
+		return nil, fmt.Errorf("MatchViewRepo.GetMatchEncounters: %w", err)
+	}
+	defer rows.Close()
+
+	var results []domain.EncounterRaw
+	for rows.Next() {
+		var enc domain.EncounterRaw
+		var isAllyInt int // DuckDB BOOLEAN scanné en int dans certains drivers
+		if err := rows.Scan(&enc.XUID, &enc.Gamertag, &enc.CountTogether, &isAllyInt); err != nil {
+			return nil, fmt.Errorf("MatchViewRepo.GetMatchEncounters scan: %w", err)
+		}
+		enc.IsAlly = isAllyInt != 0
+		results = append(results, enc)
+	}
+	return results, rows.Err()
+}
+
+// GetMatchMedia retourne les médias associés au match (Q24).
+// Utilise shared_social DB.
+func (r *MatchViewRepo) GetMatchMedia(ctx context.Context, matchID, playerSlug string) ([]domain.MediaAssocRaw, error) {
+	if r.pdb.SharedSocial == nil {
+		return nil, nil
+	}
+
+	ctx, cancel := context.WithTimeout(ctx, 10*time.Second)
+	defer cancel()
+
+	rows, err := r.pdb.SharedSocial.Query(ctx, Q24MatchMedia, matchID, playerSlug)
+	if err != nil {
+		// Absence de la table ou DB non configurée → résultat vide sans erreur bloquante
+		return nil, nil //nolint:nilerr
+	}
+	defer rows.Close()
+
+	var results []domain.MediaAssocRaw
+	for rows.Next() {
+		var m domain.MediaAssocRaw
+		var captureTime *time.Time
+		if err := rows.Scan(
+			&m.FileID,
+			&m.FileName,
+			&m.FilePath,
+			&m.ThumbnailPath,
+			&captureTime,
+			&m.Liked,
+		); err != nil {
+			return nil, fmt.Errorf("MatchViewRepo.GetMatchMedia scan: %w", err)
+		}
+		if captureTime != nil {
+			s := captureTime.Format(time.RFC3339)
+			m.CaptureTime = &s
+		}
+		results = append(results, m)
+	}
+	return results, rows.Err()
+}
+
+// GetMatchExpectedStats retourne les stats attendues pour ce match (Q26).
+// Utilise la player DB (avec shared. attaché).
+func (r *MatchViewRepo) GetMatchExpectedStats(ctx context.Context, matchID, xuid string) (*domain.ExpectedStatsRaw, error) {
+	ctx, cancel := context.WithTimeout(ctx, 5*time.Second)
+	defer cancel()
+
+	var row domain.ExpectedStatsRaw
+	err := r.pdb.Player.QueryRow(ctx, Q26MatchExpectedStats, matchID, xuid).Scan(
+		&row.KillsExpected,
+		&row.DeathsExpected,
+		&row.AssistsExpected,
+		&row.KillsStddev,
+		&row.DeathsStddev,
+		&row.AssistsStddev,
+	)
+	if err != nil {
+		// Colonnes absentes ou match introuvable → nil sans erreur
+		return nil, nil //nolint:nilerr
+	}
+	return &row, nil
+}

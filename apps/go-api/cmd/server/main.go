@@ -400,9 +400,9 @@ func startWatcherDaemon(ctx context.Context, cfg *config.AppConfig, settingsStor
 			metaPath := filepath.Join(cfg.RepoRoot, "data", "warehouse", "metadata.duckdb")
 			playerPath := filepath.Join(cfg.RepoRoot, "data", "players", gamertag, "stats.duckdb")
 			sink := duckdb.NewPersistSink(metaPath, playerPath, xuid)
-			// resolver nil : le watcher utilise le chemin legacy (battlepassMetaPath).
-			// Le resolver unifié est géré par api.ServiceRegistry (server.go).
-			return watcher.NewPlayerLiveRefresher(gamertag, xuid, metaPath, sink, nil)
+			// resolver nil : le watcher ne pré-chauffe pas les définitions BP.
+			// Les définitions sont chargées à la demande via l'endpoint HTTP (resolver HTTP).
+			return watcher.NewPlayerLiveRefresher(gamertag, xuid, sink, nil)
 		},
 		// RefreshRTAAuth est appelé on-demand par RunWithReconnect quand status=3 est reçu.
 		// Il acquiert un XSTS frais et pousse le nouveau header dans le daemon.

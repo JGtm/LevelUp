@@ -78,6 +78,74 @@ func (r *HomeRepo) LoadHomeMatches(ctx context.Context) ([]domain.HomeMatchRow, 
 	return result, nil
 }
 
+// LoadSpartanIdentity charge le bloc record compact depuis career_progression et metadata.
+// Dégrade silencieusement si la carrière n'est pas synchronisée pour le joueur.
+func (r *HomeRepo) LoadSpartanIdentity(ctx context.Context) (*domain.HomeSpartanIdentityRow, error) {
+	var row domain.HomeSpartanIdentityRow
+	var spartanID sql.NullString
+	var rankName sql.NullString
+	var rankTier sql.NullString
+
+	err := r.pdb.Player.QueryRow(ctx, Q26cHomeSpartanIdentity).Scan(
+		&row.RankNumber,
+		&row.CurrentXP,
+		&row.XPForNextRank,
+		&row.IsMaxRank,
+		&spartanID,
+		&rankName,
+		&rankTier,
+	)
+	if err != nil {
+		if err == sql.ErrNoRows || isTableNotFoundErr(err) {
+			return nil, nil
+		}
+		return nil, err
+	}
+
+	if spartanID.Valid {
+		row.SpartanID = stringPtr(spartanID.String)
+	}
+	if rankName.Valid {
+		row.RankName = stringPtr(rankName.String)
+	}
+	if rankTier.Valid {
+		row.RankTier = stringPtr(rankTier.String)
+	}
+
+	r.enrichSpartanIdentity(ctx, &row)
+
+	if row.SpartanID == nil && row.RankNumber <= 0 {
+		return nil, nil
+	}
+	return &row, nil
+}
+
+func (r *HomeRepo) enrichSpartanIdentity(ctx context.Context, row *domain.HomeSpartanIdentityRow) {
+	if row == nil || row.RankNumber <= 0 || r.pdb == nil || r.pdb.Metadata == nil {
+		return
+	}
+
+	var titleEN sql.NullString
+	var titleFR sql.NullString
+	if err := r.pdb.Metadata.QueryRow(ctx, Q26dHomeCareerRankMeta, row.RankNumber).Scan(&titleEN, &titleFR); err != nil {
+		return
+	}
+	if titleEN.Valid {
+		row.RankTitleEN = stringPtr(titleEN.String)
+	}
+	if titleFR.Valid {
+		row.RankTitleFR = stringPtr(titleFR.String)
+	}
+}
+
+func stringPtr(value string) *string {
+	trimmed := strings.TrimSpace(value)
+	if trimmed == "" {
+		return nil
+	}
+	return &trimmed
+}
+
 func (r *HomeRepo) enrichHomeMatchTranslations(ctx context.Context, matches []domain.HomeMatchRow) {
 	if len(matches) == 0 || r.pdb == nil || r.pdb.Metadata == nil {
 		return

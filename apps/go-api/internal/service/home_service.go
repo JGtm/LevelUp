@@ -74,6 +74,12 @@ func (s *HomeService) GetHomePage(ctx context.Context, gamertag, locale string) 
 		return nil, err
 	}
 
+	spartanIdentity, err := s.repo.LoadSpartanIdentity(ctx)
+	if err != nil {
+		slog.WarnContext(ctx, "home: LoadSpartanIdentity failed", "err", err)
+		spartanIdentity = nil
+	}
+
 	totalMatches, err := s.repo.CountPlayerMatches(ctx)
 	if err != nil {
 		// Fallback sur len(matches) si la query échoue.
@@ -111,6 +117,7 @@ func (s *HomeService) GetHomePage(ctx context.Context, gamertag, locale string) 
 
 	return &domain.HomePageResponse{
 		Hero:            hero,
+		SpartanIdentity: analysis.BuildSpartanIdentity(spartanIdentity, locale),
 		Highlights:      highlights,
 		RecentMatches:   recentMatches,
 		FavoriteMatches: favoriteMatches,

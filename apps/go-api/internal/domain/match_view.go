@@ -385,6 +385,43 @@ type MatchNeighbors struct {
 	TotalMatches    int     `json:"total_matches"`
 }
 
+// SkillRankRaw : données brutes de Q22 (match_skill_rank — player DB).
+type SkillRankRaw struct {
+	RatingType    string
+	TierLabel     *string
+	RatingValue   *float64
+	RatingDelta   *float64
+	PlaylistGroup *string
+}
+
+// EncounterRaw : données brutes de Q23 (participants du match + historique commun).
+type EncounterRaw struct {
+	XUID          string
+	Gamertag      string
+	CountTogether int
+	IsAlly        bool
+}
+
+// MediaAssocRaw : données brutes de Q24 (media_files + media_match_associations).
+type MediaAssocRaw struct {
+	FileID        string
+	FileName      string
+	FilePath      string
+	ThumbnailPath *string
+	CaptureTime   *string
+	Liked         bool
+}
+
+// ExpectedStatsRaw : données brutes de Q26 (match_participants expected columns).
+type ExpectedStatsRaw struct {
+	KillsExpected   *float64
+	DeathsExpected  *float64
+	AssistsExpected *float64
+	KillsStddev     *float64
+	DeathsStddev    *float64
+	AssistsStddev   *float64
+}
+
 // MatchViewRawRow : DEPRECATED — conservé le temps de migrer les appelants.
 // Préférer MatchMetaRaw + PlayerMatchStatsRaw.
 type MatchViewRawRow = struct {

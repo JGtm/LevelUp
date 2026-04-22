@@ -12,18 +12,23 @@ import (
 // --- mock ---
 
 type mockHomeRepo struct {
-	matches    []domain.HomeMatchRow
-	matchErr   error
-	matchCount int
-	countErr   error
-	sessions   []domain.HomeSessionRow
-	sessionErr error
-	media      []domain.HomeMediaRow
-	mediaErr   error
+	matches     []domain.HomeMatchRow
+	matchErr    error
+	identity    *domain.HomeSpartanIdentityRow
+	identityErr error
+	matchCount  int
+	countErr    error
+	sessions    []domain.HomeSessionRow
+	sessionErr  error
+	media       []domain.HomeMediaRow
+	mediaErr    error
 }
 
 func (m *mockHomeRepo) LoadHomeMatches(_ context.Context) ([]domain.HomeMatchRow, error) {
 	return m.matches, m.matchErr
+}
+func (m *mockHomeRepo) LoadSpartanIdentity(_ context.Context) (*domain.HomeSpartanIdentityRow, error) {
+	return m.identity, m.identityErr
 }
 func (m *mockHomeRepo) CountPlayerMatches(_ context.Context) (int, error) {
 	if m.matchCount > 0 {
@@ -166,6 +171,40 @@ func TestHomeService_GetHomePage_RespectsLocale(t *testing.T) {
 	}
 	if got := respEN.RecentMatches[0].OutcomeLabel; got != "Victory" {
 		t.Fatalf("EN OutcomeLabel = %q, want %q", got, "Victory")
+	}
+}
+
+func TestHomeService_GetHomePage_IncludesSpartanIdentity(t *testing.T) {
+	repo := &mockHomeRepo{
+		identity: &domain.HomeSpartanIdentityRow{
+			SpartanID:     strPtr("JGTM"),
+			RankNumber:    25,
+			RankTitleFR:   strPtr("Caporal-chef"),
+			RankTitleEN:   strPtr("Lance Corporal"),
+			CurrentXP:     5000,
+			XPForNextRank: 10000,
+		},
+	}
+	svc := NewHomeService(repo)
+
+	resp, err := svc.GetHomePage(context.Background(), "GT", "fr")
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if resp.SpartanIdentity == nil || resp.SpartanIdentity.SpartanID == nil {
+		t.Fatal("expected spartan_identity with spartan_id")
+	}
+	if got := *resp.SpartanIdentity.SpartanID; got != "JGTM" {
+		t.Fatalf("spartan_id = %q, want JGTM", got)
+	}
+	if resp.SpartanIdentity.CareerRank == nil {
+		t.Fatal("expected career_rank")
+	}
+	if got := resp.SpartanIdentity.CareerRank.RankTitle; got != "Caporal-chef" {
+		t.Fatalf("rank_title = %q, want Caporal-chef", got)
+	}
+	if got := resp.SpartanIdentity.CareerRank.ProgressPct; got != 50 {
+		t.Fatalf("progress_pct = %.2f, want 50", got)
 	}
 }
 

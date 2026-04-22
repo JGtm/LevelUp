@@ -57,6 +57,31 @@ ORDER BY r.start_time DESC`
 const Q26bCountPlayerMatches = `
 SELECT COUNT(*) FROM shared.match_participants WHERE xuid = ?`
 
+// Q26c : Home -- identité record compacte depuis career_progression.
+// Paramètre : aucun.
+const Q26cHomeSpartanIdentity = `
+SELECT
+	cp.rank,
+	COALESCE(cp.current_xp, 0)                        AS current_xp,
+	COALESCE(cp.xp_for_next_rank, 0)                 AS xp_for_next_rank,
+	COALESCE(cp.is_max_rank, FALSE)                  AS is_max_rank,
+	NULLIF(TRIM(cp.spartan_id), '')                  AS spartan_id,
+	NULLIF(TRIM(cp.rank_name), '')                   AS rank_name,
+	NULLIF(TRIM(cp.rank_tier), '')                   AS rank_tier
+FROM career_progression cp
+ORDER BY cp.recorded_at DESC
+LIMIT 1`
+
+// Q26d : Home -- métadonnées du rang carrière courant depuis metadata.duckdb.
+// Paramètre : ?1 = rank_id.
+const Q26dHomeCareerRankMeta = `
+SELECT
+	NULLIF(TRIM(title_en), '') AS title_en,
+	NULLIF(TRIM(title_fr), '') AS title_fr
+FROM career_ranks
+WHERE rank_id = ?
+LIMIT 1`
+
 // Q27 : Home — sessions depuis player_match_enrichment.
 // Pas de parametre (les donnees sont dans la DB joueur).
 // Retourne les matchs avec un label de session pour le resumé solo/escouade.

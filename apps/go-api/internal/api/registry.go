@@ -9,7 +9,6 @@ import (
 	"context"
 	"log/slog"
 	"os"
-	"path/filepath"
 	"strings"
 
 	"fmt"
@@ -254,38 +253,9 @@ func (r *ServiceRegistry) SeasonPassCtxWithAuth(ctx context.Context, slug string
 	return svc, enriched, nil
 }
 
-// buildHaloProvider construit un HaloProvider configuré pour le joueur :
-// si le resolver est disponible, il est passé au provider (P4/P5) ;
-// sinon, on retombe sur le mode legacy avec les chemins metadata/badge.
-func (r *ServiceRegistry) buildHaloProvider(pdb *duckdb.PlayerDB) *halo.HaloProvider {
-	if r.assetResolver != nil {
-		return halo.DefaultHaloProvider.WithAssetResolver(r.assetResolver)
-	}
-	challengeBadgeDir := challengeBadgeDirFromMetadataPath(pdb.Metadata.Path())
-	return halo.DefaultHaloProvider.
-		WithChallengeCache(pdb.Metadata.Path(), challengeBadgeDir).
-		WithBattlePassCache(pdb.Metadata.Path())
-}
-
-func challengeBadgeDirFromMetadataPath(metaPath string) string {
-	trimmed := strings.TrimSpace(metaPath)
-	if trimmed == "" {
-		return filepath.Join("data", "cache", "challenge_badges")
-	}
-
-	current := filepath.Dir(filepath.Clean(trimmed))
-	for {
-		if strings.EqualFold(filepath.Base(current), "data") {
-			return filepath.Join(current, "cache", "challenge_badges")
-		}
-		parent := filepath.Dir(current)
-		if parent == current {
-			break
-		}
-		current = parent
-	}
-
-	return filepath.Join(filepath.Dir(filepath.Dir(filepath.Clean(trimmed))), "cache", "challenge_badges")
+// buildHaloProvider construit un HaloProvider configuré avec le resolver unifié.
+func (r *ServiceRegistry) buildHaloProvider(_ *duckdb.PlayerDB) *halo.HaloProvider {
+	return halo.DefaultHaloProvider.WithAssetResolver(r.assetResolver)
 }
 
 // enrichWithHaloTokens injecte les HaloTokens dans le contexte si absents.

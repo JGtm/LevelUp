@@ -9,6 +9,7 @@ package api
 import (
 	"log/slog"
 	"net/http"
+	"os"
 	"path/filepath"
 
 	"github.com/go-chi/chi/v5"
@@ -96,19 +97,19 @@ func NewRouter(
 	// Le resolver est créé ici pour accéder à reg.AnyPlayerTokens.
 	// Il est aussi passé au ServiceRegistry pour que les HaloProviders délèguent
 	// le cache/fetch des définitions BP/challenges au resolver (P4/P5).
-	var assetHandler *handlers.AssetHandler
 	assetCfg := assets.AssetConfig{
 		CacheRootDir:  filepath.Join(cfg.RepoRoot, "data", "cache"),
 		MetaDBPath:    filepath.Join(cfg.RepoRoot, "data", "warehouse", "metadata.duckdb"),
 		StaticMapDir:  filepath.Join(cfg.RepoRoot, "static", "maps"),
 		TokenProvider: reg.AnyPlayerTokens,
 	}
-	if assetResolver, err := assets.New(assetCfg); err != nil {
-		slog.Warn("assets resolver non disponible", "err", err)
-	} else {
-		assetHandler = handlers.NewAssetHandler(assetResolver)
-		reg.WithAssetResolver(assetResolver)
+	assetResolver, err := assets.New(assetCfg)
+	if err != nil {
+		slog.Error("assets resolver non disponible — arrêt du serveur", "err", err)
+		os.Exit(1)
 	}
+	assetHandler := handlers.NewAssetHandler(assetResolver)
+	reg.WithAssetResolver(assetResolver)
 
 	// Fichiers statiques (images maps, médailles, armes…)
 	staticDir := filepath.Join(cfg.RepoRoot, "static")
@@ -181,12 +182,10 @@ func NewRouter(
 
 		// Assets cache-aside unifiés (médailles, maps, battlepass, badges de défi).
 		// Couche d'abstraction DefaultResolver : local-first → API-fallback + DuckDB index.
-		if assetHandler != nil {
-			r.Get("/assets/medals/{title_id}/{medal_id}/image", assetHandler.GetMedalImage)
-			r.Get("/assets/maps/{title_id}/{map_id}/image", assetHandler.GetMapImage)
-			r.Get("/assets/battlepass/{subdir}/*", assetHandler.GetBattlePassImage)
-			r.Get("/assets/challenge-badge/{title_id}/{badge_id}", assetHandler.GetChallengeBadge)
-		}
+		r.Get("/assets/medals/{title_id}/{medal_id}/image", assetHandler.GetMedalImage)
+		r.Get("/assets/maps/{title_id}/{map_id}/image", assetHandler.GetMapImage)
+		r.Get("/assets/battlepass/{subdir}/*", assetHandler.GetBattlePassImage)
+		r.Get("/assets/challenge-badge/{title_id}/{badge_id}", assetHandler.GetChallengeBadge)
 
 		// Endpoints P1 : pages par joueur (Sprint 37 — DI via ServiceRegistry)
 		r.Route("/players/{player_slug}", func(r chi.Router) {

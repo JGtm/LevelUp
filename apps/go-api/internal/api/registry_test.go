@@ -3,7 +3,6 @@ package api
 import (
 	"context"
 	"errors"
-	"path/filepath"
 	"testing"
 
 	"levelup/go-api/internal/platform/duckdb"
@@ -156,21 +155,5 @@ func TestServiceRegistry_Leaderboard_ResolveError(t *testing.T) {
 	_, _, _, err := reg.Leaderboard(context.Background(), "x")
 	if !errors.Is(err, errResolve) {
 		t.Fatalf("expected resolve error, got %v", err)
-	}
-}
-
-func TestChallengeBadgeDirFromMetadataPath_LegacyWarehouse(t *testing.T) {
-	metaPath := filepath.Join("data", "warehouse", "metadata.duckdb")
-	want := filepath.Join("data", "cache", "challenge_badges")
-	if got := challengeBadgeDirFromMetadataPath(metaPath); got != want {
-		t.Fatalf("challengeBadgeDirFromMetadataPath() = %q, want %q", got, want)
-	}
-}
-
-func TestChallengeBadgeDirFromMetadataPath_TitleAwareWarehouseUsesSharedDataRoot(t *testing.T) {
-	metaPath := filepath.Join("data", "titles", "halo_infinite", "warehouse", "metadata.duckdb")
-	want := filepath.Join("data", "cache", "challenge_badges")
-	if got := challengeBadgeDirFromMetadataPath(metaPath); got != want {
-		t.Fatalf("challengeBadgeDirFromMetadataPath() = %q, want %q", got, want)
 	}
 }
