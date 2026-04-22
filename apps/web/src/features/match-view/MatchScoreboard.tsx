@@ -25,13 +25,14 @@ const COLS: ColDef[] = [
   { key: 'perfect_kills', label: 'Perf', inverted: false },
   { key: 'power_weapon_kills', label: 'PW', inverted: false },
   { key: 'melee_kills', label: 'CàC', inverted: false },
-  { key: 'betrayals', label: 'Trahis.', inverted: true },
   { key: 'shots_fired', label: 'Tirs', inverted: false },
   { key: 'shots_hit', label: 'Touchés', inverted: false },
-  { key: 'shots_accuracy', label: 'Préc.', inverted: false, fmt: (v) => `${v.toFixed(1)}%` },
+  { key: 'kda', label: 'KDA', inverted: false, fmt: (v) => v.toFixed(2) },
   { key: 'damage_dealt', label: 'Dmg+', inverted: false, fmt: (v) => v.toFixed(0) },
   { key: 'damage_taken', label: 'Dmg-', inverted: true, fmt: (v) => v.toFixed(0) },
-  { key: 'damage_efficiency', label: 'Eff.', inverted: false, fmt: (v) => v.toFixed(2) },
+  { key: 'offensive_conversion', label: 'Off.', inverted: false, fmt: (v) => `${(v * 100).toFixed(0)}%` },
+  { key: 'defensive_resistance', label: 'Déf.', inverted: false, fmt: (v) => `${(v * 100).toFixed(0)}%` },
+  { key: 'damage_per_kill', label: 'Dmg/K', inverted: true, fmt: (v) => v.toFixed(0) },
 ]
 
 type Extremes = { min: number | null; max: number | null }
@@ -124,7 +125,11 @@ export function MatchScoreboard({ rows, weaponKills, medals, citations }: Props)
                           </td>
                         )
                       })}
-                      <td className="py-1 text-right text-muted-foreground">{row.average_life ?? '—'}</td>
+                      <td className="py-1 text-right text-muted-foreground">
+                        {row.avg_life_seconds != null
+                          ? `${row.avg_life_seconds.toFixed(0)}s`
+                          : (row.average_life ?? '—')}
+                      </td>
                       <td className="py-1 pl-2 text-right text-muted-foreground whitespace-nowrap">{row.outcome_label}</td>
                     </tr>
                     {isExpanded && (

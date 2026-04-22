@@ -1532,6 +1532,7 @@ export interface MatchScoreboardRow {
   damage_dealt: number | null
   damage_taken: number | null
   average_life: string | null
+  avg_life_seconds?: number | null
   headshot_kills: number | null
   max_killing_spree: number | null
   perfect_kills: number | null
