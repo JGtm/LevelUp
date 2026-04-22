@@ -9,7 +9,10 @@ import { PageLoader } from '@/components/ui/spinner'
 import { Card, CardContent } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
-import { PlotlyChart } from '@/components/ui/plotly-chart'
+import {
+  AreaChart, Area, LineChart, Line,
+  XAxis, YAxis, Tooltip, CartesianGrid, ResponsiveContainer,
+} from 'recharts'
 import { useMatchView, useMatchNeighbors } from './queries'
 import { MatchScoreboard } from './MatchScoreboard'
 import { ExpectedCardsSection, MatchRankBadge, KdIndicatorCard } from './MatchStatCards'
@@ -355,13 +358,100 @@ export function MatchViewPage() {
                 </CardContent>
               </Card>
             )}
-            {combat_tab.charts.map((fig, i) => (
-              <Card key={i}>
+
+            {/* Impact badges */}
+            {combat_tab.impact_badges.length > 0 && (
+              <Card>
                 <CardContent className="py-4">
-                  <PlotlyChart figure={fig} />
+                  <p className="mb-3 text-sm font-semibold text-foreground">Moments clés</p>
+                  <div className="flex flex-wrap gap-2">
+                    {combat_tab.impact_badges.map((b) => (
+                      <Badge key={b.key} variant="outline" className="text-xs">
+                        {b.label}
+                      </Badge>
+                    ))}
+                  </div>
                 </CardContent>
               </Card>
-            ))}
+            )}
+
+            {/* K/D Timeline */}
+            {combat_tab.kd_timeline.length > 1 && (
+              <Card>
+                <CardContent className="py-4">
+                  <p className="mb-3 text-sm font-semibold text-foreground">Timeline K/D</p>
+                  <ResponsiveContainer width="100%" height={200}>
+                    <LineChart data={combat_tab.kd_timeline} margin={{ top: 4, right: 8, left: 0, bottom: 0 }}>
+                      <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" />
+                      <XAxis
+                        dataKey="time_seconds"
+                        tickFormatter={(v: number) => `${Math.floor(v / 60)}m`}
+                        tick={{ fontSize: 10 }}
+                        stroke="var(--muted-foreground)"
+                      />
+                      <YAxis tick={{ fontSize: 10 }} stroke="var(--muted-foreground)" />
+                      <Tooltip
+                        formatter={(v: number, name: string) => [v, name === 'kills' ? 'Kills' : 'Deaths']}
+                        labelFormatter={(v: number) => `${Math.floor(v / 60)}m${v % 60}s`}
+                      />
+                      <Line type="monotone" dataKey="kills" stroke="var(--success)" dot={false} strokeWidth={2} name="kills" />
+                      <Line type="monotone" dataKey="deaths" stroke="var(--destructive)" dot={false} strokeWidth={2} name="deaths" />
+                    </LineChart>
+                  </ResponsiveContainer>
+                </CardContent>
+              </Card>
+            )}
+
+            {/* Tug-of-War */}
+            {combat_tab.tug_of_war.length > 1 && (
+              <Card>
+                <CardContent className="py-4">
+                  <p className="mb-3 text-sm font-semibold text-foreground">Tir à la corde (kills nets)</p>
+                  <ResponsiveContainer width="100%" height={160}>
+                    <AreaChart data={combat_tab.tug_of_war} margin={{ top: 4, right: 8, left: 0, bottom: 0 }}>
+                      <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" />
+                      <XAxis
+                        dataKey="bin_start"
+                        tickFormatter={(v: number) => `${Math.floor(v / 60)}m`}
+                        tick={{ fontSize: 10 }}
+                        stroke="var(--muted-foreground)"
+                      />
+                      <YAxis tick={{ fontSize: 10 }} stroke="var(--muted-foreground)" />
+                      <Tooltip
+                        formatter={(v: number) => [v, 'Kills nets']}
+                        labelFormatter={(v: number) => `${Math.floor(v / 60)}m${v % 60}s`}
+                      />
+                      <Area
+                        type="monotone"
+                        dataKey="net_kills"
+                        stroke="var(--primary)"
+                        fill="var(--primary)"
+                        fillOpacity={0.2}
+                      />
+                    </AreaChart>
+                  </ResponsiveContainer>
+                </CardContent>
+              </Card>
+            )}
+
+            {/* Nemesis duels */}
+            {combat_tab.nemesis_duels.length > 0 && (
+              <Card>
+                <CardContent className="py-4">
+                  <p className="mb-3 text-sm font-semibold text-foreground">Duels nemesis</p>
+                  <div className="space-y-1">
+                    {combat_tab.nemesis_duels.map((n) => (
+                      <div key={n.xuid} className="flex items-center justify-between text-sm">
+                        <span className="text-foreground">{n.gamertag}</span>
+                        <span className="text-xs text-muted-foreground">
+                          {n.killed_me} kills reçus · {n.i_killed} kills rendus
+                        </span>
+                      </div>
+                    ))}
+                  </div>
+                </CardContent>
+              </Card>
+            )}
           </div>
         )}
 
@@ -385,6 +475,25 @@ export function MatchViewPage() {
                         <span className="text-foreground">{n.gamertag}</span>
                         <span className="text-xs text-muted-foreground">
                           {n.killed_me} kills reçus · {n.i_killed} kills rendus
+                        </span>
+                      </div>
+                    ))}
+                  </div>
+                </CardContent>
+              </Card>
+            )}
+
+            {team_tab.encounters && team_tab.encounters.length > 0 && (
+              <Card>
+                <CardContent className="py-4">
+                  <p className="mb-3 text-sm font-semibold text-foreground">Joueurs fréquents</p>
+                  <div className="space-y-1">
+                    {team_tab.encounters.map((e) => (
+                      <div key={e.xuid} className="flex items-center justify-between text-sm">
+                        <span className="text-foreground">{e.gamertag}</span>
+                        <span className="text-xs text-muted-foreground">
+                          {e.count_together} matchs ensemble
+                          {e.is_ally ? ' · Coéquipier' : ' · Adversaire'}
                         </span>
                       </div>
                     ))}
