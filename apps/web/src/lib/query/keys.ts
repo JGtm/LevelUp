@@ -89,6 +89,10 @@ export const queryKeys = {
   comparePlayer: (playerSlug: string, targetGamertag: string) =>
     ['compare', playerSlug, targetGamertag] as const,
 
+  // Navigation prev/next entre matchs (V7)
+  matchNeighbors: (playerSlug: string, matchId: string) =>
+    ['match-neighbors', playerSlug, matchId] as const,
+
   // Classement CSR (Sprint 54-E)
   leaderboard: (playerSlug: string, season?: string, playlist?: string) =>
     ['leaderboard', playerSlug, season ?? '', playlist ?? ''] as const,

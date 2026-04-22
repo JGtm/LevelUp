@@ -1552,6 +1552,14 @@ export interface MatchViewResponse {
   privacy_warning?: MatchPrivacyWarning | null
 }
 
+/** Navigation prev/next entre matchs adjacents d'un joueur (ordre chronologique). */
+export interface MatchNeighbors {
+  previous_match_id: string | null
+  next_match_id: string | null
+  current_index: number
+  total_matches: number
+}
+
 // ---------------------------------------------------------------------------
 // Citations (Slice 2B)
 // ---------------------------------------------------------------------------
