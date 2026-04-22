@@ -10,6 +10,7 @@ import (
 	"testing"
 
 	"levelup/go-api/internal/domain"
+	titlepkg "levelup/go-api/internal/domain/title"
 )
 
 const (
@@ -34,11 +35,12 @@ func newTestPlayerDB(t *testing.T) *PlayerDB {
 	seedSharedDBSchema(t, shared)
 	seedMetaDBSchema(t, meta)
 	return &PlayerDB{
-		Player:   player,
-		Shared:   shared,
-		Metadata: meta,
-		XUID:     pTestXUID,
-		Gamertag: pTestGamertag,
+		Player:    player,
+		Shared:    shared,
+		Metadata:  meta,
+		XUID:      pTestXUID,
+		Gamertag:  pTestGamertag,
+		TitleSlug: titlepkg.DefaultSlug,
 	}
 }
 
@@ -59,6 +61,7 @@ func newTestPlayerDBWithSharedSocial(t *testing.T) *PlayerDB {
 		Metadata:     meta,
 		XUID:         pTestXUID,
 		Gamertag:     pTestGamertag,
+		TitleSlug:    titlepkg.DefaultSlug,
 	}
 }
 
@@ -123,10 +126,16 @@ func seedPlayerSchema(t *testing.T, db *DB) { //nolint:funlen
 			rank INTEGER, current_xp INTEGER, recorded_at TIMESTAMPTZ,
 			rank_name VARCHAR, rank_tier VARCHAR,
 			xp_for_next_rank INTEGER, xp_total INTEGER, is_max_rank BOOLEAN DEFAULT FALSE,
-			spartan_id VARCHAR)`,
+			adornment_path VARCHAR,
+			spartan_id VARCHAR,
+			banner_image_url VARCHAR,
+			emblem_image_url VARCHAR,
+			backdrop_image_url VARCHAR)`,
 		`CREATE TABLE match_skill_rank (
-			match_id VARCHAR PRIMARY KEY, rating_value DOUBLE,
-			rating_deviation DOUBLE, tier_label VARCHAR, playlist_group VARCHAR)`,
+			match_id VARCHAR PRIMARY KEY, rating_type VARCHAR, rating_value DOUBLE,
+			rating_deviation DOUBLE, tier VARCHAR, tier_fr VARCHAR, sub_tier SMALLINT,
+			tier_label VARCHAR, rating_delta DOUBLE, playlist_group VARCHAR,
+			start_time TIMESTAMPTZ, created_at TIMESTAMPTZ, updated_at TIMESTAMPTZ)`,
 		`CREATE TABLE match_citations (match_id VARCHAR, citation_name_norm VARCHAR, value INTEGER)`,
 		`CREATE TABLE media_files (
 			file_path VARCHAR PRIMARY KEY, file_name VARCHAR, kind VARCHAR,
@@ -166,12 +175,14 @@ func seedPlayerSchema(t *testing.T, db *DB) { //nolint:funlen
 			VALUES (?,?,?,?,?,?,?)`,
 			[]interface{}{"m1", 85.5, 1, "Session 1", 3, false, false}},
 		{`INSERT INTO career_progression
-			(rank,current_xp,recorded_at,rank_name,rank_tier,xp_for_next_rank,xp_total,is_max_rank,spartan_id)
-			VALUES (?,?,?,?,?,?,?,?,?)`,
+			(rank,current_xp,recorded_at,rank_name,rank_tier,xp_for_next_rank,xp_total,is_max_rank,adornment_path,spartan_id,banner_image_url,emblem_image_url,backdrop_image_url)
+			VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?)`,
 			[]interface{}{25, 5000, "2025-01-10 12:00:00+00",
-				"Platinum 1", "Platinum", 10000, 50000, false, "JGTM"}},
-		{`INSERT INTO match_skill_rank VALUES (?,?,?,?,?)`,
-			[]interface{}{"m1", 1250.5, 50.0, "Gold", "ranked"}},
+				"Platinum 1", "Platinum", 10000, 50000, false, "Progression/RewardTracks/CareerRanks/platinum1-adornment.png", "JGTM", "https://gamecms-hacs.svc.halowaypoint.com/hi/images/file/progression/Nameplates/test-banner.png", "https://gamecms-hacs.svc.halowaypoint.com/hi/images/file/progression/Emblems/test-emblem.png", "https://gamecms-hacs.svc.halowaypoint.com/hi/Waypoint/file/images/backdrops/test-backdrop.png"}},
+		{`INSERT INTO match_skill_rank VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?)`,
+			[]interface{}{"m1", "CSR", 1250.5, 50.0, "Gold", "Or", 3, "Gold 3", nil, "ranked", "2025-01-10 14:00:00+00", "2025-01-10 14:00:00+00", "2025-01-10 14:00:00+00"}},
+		{`INSERT INTO match_skill_rank VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?)`,
+			[]interface{}{"m2", "LUSR", 1750.0, 40.0, "Platinum", "Platine", 5, "Platinum V", 15.0, "social", "2025-01-11 14:00:00+00", "2025-01-11 14:00:00+00", "2025-01-11 14:00:00+00"}},
 		{`INSERT INTO match_citations VALUES (?,?,?)`,
 			[]interface{}{"m1", "killing_spree", 3}},
 		{`INSERT INTO media_files (file_path,file_name,kind,mtime,status) VALUES (?,?,?,?,?)`,
@@ -485,17 +496,189 @@ func TestHomeRepo_LoadSpartanIdentity_WithData(t *testing.T) {
 	if identity.SpartanID == nil || *identity.SpartanID != "JGTM" {
 		t.Fatalf("SpartanID = %v, want JGTM", identity.SpartanID)
 	}
+	if identity.BannerImageURL == nil || *identity.BannerImageURL != "/api/v1/assets/spartan/banner/halo_infinite/hi/images/file/progression/Nameplates/test-banner.png" {
+		t.Fatalf("BannerImageURL = %v, want internal banner asset URL", identity.BannerImageURL)
+	}
+	if identity.EmblemImageURL == nil || *identity.EmblemImageURL != "/api/v1/assets/spartan/emblem/halo_infinite/hi/images/file/progression/Emblems/test-emblem.png" {
+		t.Fatalf("EmblemImageURL = %v, want internal emblem asset URL", identity.EmblemImageURL)
+	}
+	if identity.BackdropImageURL == nil || *identity.BackdropImageURL != "/api/v1/assets/spartan/backdrop/halo_infinite/hi/Waypoint/file/images/backdrops/test-backdrop.png" {
+		t.Fatalf("BackdropImageURL = %v, want internal backdrop asset URL", identity.BackdropImageURL)
+	}
 	if identity.RankTitleFR == nil || *identity.RankTitleFR != "Caporal-chef" {
 		t.Fatalf("RankTitleFR = %v, want Caporal-chef", identity.RankTitleFR)
 	}
 	if identity.RankTitleEN == nil || *identity.RankTitleEN != "Lance Corporal" {
 		t.Fatalf("RankTitleEN = %v, want Lance Corporal", identity.RankTitleEN)
 	}
-	if identity.RankImageURL == nil || *identity.RankImageURL != "https://gamecms-hacs.svc.halowaypoint.com/hi/images/file/Progression/RewardTracks/CareerRanks/platinum1-large.png" {
-		t.Fatalf("RankImageURL = %v, want large icon URL", identity.RankImageURL)
+	if identity.RankImageURL == nil || *identity.RankImageURL != "/api/v1/assets/spartan/career-rank/halo_infinite/Progression/RewardTracks/CareerRanks/platinum1-large.png" {
+		t.Fatalf("RankImageURL = %v, want internal career-rank asset URL", identity.RankImageURL)
+	}
+	if identity.AdornmentImageURL == nil || *identity.AdornmentImageURL != "/api/v1/assets/spartan/career-rank/halo_infinite/Progression/RewardTracks/CareerRanks/platinum1-adornment.png" {
+		t.Fatalf("AdornmentImageURL = %v, want internal career adornment asset URL", identity.AdornmentImageURL)
 	}
 	if identity.CurrentXP != 5000 || identity.XPForNextRank != 10000 {
 		t.Fatalf("progress = %d/%d, want 5000/10000", identity.CurrentXP, identity.XPForNextRank)
+	}
+	if identity.HighestCSR == nil {
+		t.Fatal("expected HighestCSR")
+	}
+	if identity.HighestCSR.RatingValue != 1250.5 {
+		t.Fatalf("HighestCSR.RatingValue = %v, want 1250.5", identity.HighestCSR.RatingValue)
+	}
+	if identity.HighestCSR.TierLabel == nil || *identity.HighestCSR.TierLabel != "Gold 3" {
+		t.Fatalf("HighestCSR.TierLabel = %v, want Gold 3", identity.HighestCSR.TierLabel)
+	}
+	if identity.HighestCSR.BadgeImageURL == nil || *identity.HighestCSR.BadgeImageURL != "/static/ranks/120px-HINF-CSR_Gold3.png" {
+		t.Fatalf("HighestCSR.BadgeImageURL = %v, want Gold3 badge", identity.HighestCSR.BadgeImageURL)
+	}
+	if identity.HighestLUSR == nil {
+		t.Fatal("expected HighestLUSR")
+	}
+	if identity.HighestLUSR.RatingValue != 1750.0 {
+		t.Fatalf("HighestLUSR.RatingValue = %v, want 1750", identity.HighestLUSR.RatingValue)
+	}
+	if identity.HighestLUSR.TierLabel == nil || *identity.HighestLUSR.TierLabel != "Platinum V" {
+		t.Fatalf("HighestLUSR.TierLabel = %v, want Platinum V", identity.HighestLUSR.TierLabel)
+	}
+	if identity.HighestLUSR.BadgeImageURL == nil || *identity.HighestLUSR.BadgeImageURL != "/static/ranks/120px-HINF-CSR_Platinum5.png" {
+		t.Fatalf("HighestLUSR.BadgeImageURL = %v, want Platinum5 badge", identity.HighestLUSR.BadgeImageURL)
+	}
+}
+
+func TestHomeRepo_LoadSpartanIdentity_FallsBackToLatestNonEmptyIdentityAssets(t *testing.T) {
+	pdb := newTestPlayerDB(t)
+	ctx := context.Background()
+	if _, err := pdb.Player.Exec(ctx, `
+		INSERT INTO career_progression
+			(rank,current_xp,recorded_at,rank_name,rank_tier,xp_for_next_rank,xp_total,is_max_rank,adornment_path,spartan_id,banner_image_url,emblem_image_url,backdrop_image_url)
+		VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?)
+	`, 26, 6400, "2025-01-11 12:00:00+00", "Platinum 2", "Platinum", 12000, 62000, false, "", "", "", "", ""); err != nil {
+		t.Fatalf("INSERT newer career_progression: %v", err)
+	}
+
+	repo := NewHomeRepo(pdb)
+	identity, err := repo.LoadSpartanIdentity(context.Background())
+	if err != nil {
+		t.Fatalf("LoadSpartanIdentity: %v", err)
+	}
+	if identity == nil {
+		t.Fatal("expected non-nil identity")
+	}
+	if identity.RankNumber != 26 {
+		t.Fatalf("RankNumber = %d, want 26", identity.RankNumber)
+	}
+	if identity.BannerImageURL == nil || *identity.BannerImageURL != "/api/v1/assets/spartan/banner/halo_infinite/hi/images/file/progression/Nameplates/test-banner.png" {
+		t.Fatalf("BannerImageURL = %v, want fallback banner", identity.BannerImageURL)
+	}
+	if identity.SpartanID == nil || *identity.SpartanID != "JGTM" {
+		t.Fatalf("SpartanID = %v, want fallback JGTM", identity.SpartanID)
+	}
+	if identity.EmblemImageURL == nil || *identity.EmblemImageURL != "/api/v1/assets/spartan/emblem/halo_infinite/hi/images/file/progression/Emblems/test-emblem.png" {
+		t.Fatalf("EmblemImageURL = %v, want fallback emblem", identity.EmblemImageURL)
+	}
+	if identity.BackdropImageURL == nil || *identity.BackdropImageURL != "/api/v1/assets/spartan/backdrop/halo_infinite/hi/Waypoint/file/images/backdrops/test-backdrop.png" {
+		t.Fatalf("BackdropImageURL = %v, want fallback backdrop", identity.BackdropImageURL)
+	}
+}
+
+func TestHomeRepo_LoadSpartanIdentity_ClassifiesRankedRowsAsCSR(t *testing.T) {
+	pdb := newTestPlayerDB(t)
+	ctx := context.Background()
+	if _, err := pdb.Player.Exec(ctx, `UPDATE match_skill_rank SET rating_type = 'LUSR' WHERE match_id = ?`, "m1"); err != nil {
+		t.Fatalf("UPDATE match_skill_rank: %v", err)
+	}
+
+	repo := NewHomeRepo(pdb)
+	identity, err := repo.LoadSpartanIdentity(ctx)
+	if err != nil {
+		t.Fatalf("LoadSpartanIdentity: %v", err)
+	}
+	if identity == nil {
+		t.Fatal("expected non-nil identity")
+	}
+	if identity.HighestCSR == nil {
+		t.Fatal("expected HighestCSR")
+	}
+	if identity.HighestCSR.RatingValue != 1250.5 {
+		t.Fatalf("HighestCSR.RatingValue = %v, want 1250.5", identity.HighestCSR.RatingValue)
+	}
+	if identity.HighestCSR.TierLabel == nil || *identity.HighestCSR.TierLabel != "Gold 3" {
+		t.Fatalf("HighestCSR.TierLabel = %v, want Gold 3", identity.HighestCSR.TierLabel)
+	}
+	if identity.HighestLUSR == nil || identity.HighestLUSR.RatingValue != 1750.0 {
+		t.Fatalf("HighestLUSR = %#v, want rating 1750", identity.HighestLUSR)
+	}
+}
+
+func TestHomeRepo_LoadSpartanIdentity_InfersCSRFromRankedPlaylistName(t *testing.T) {
+	pdb := newTestPlayerDB(t)
+	ctx := context.Background()
+	if _, err := pdb.Player.Exec(ctx, `UPDATE match_skill_rank SET rating_type = 'LUSR' WHERE match_id = ?`, "m1"); err != nil {
+		t.Fatalf("UPDATE match_skill_rank: %v", err)
+	}
+	if _, err := pdb.Player.Exec(ctx, `
+		UPDATE shared.match_registry
+		SET is_ranked = FALSE,
+			playlist_name = 'Ranked Arena',
+			pair_name = 'Arena'
+		WHERE match_id = ?
+	`, "m1"); err != nil {
+		t.Fatalf("UPDATE shared.match_registry: %v", err)
+	}
+
+	repo := NewHomeRepo(pdb)
+	identity, err := repo.LoadSpartanIdentity(ctx)
+	if err != nil {
+		t.Fatalf("LoadSpartanIdentity: %v", err)
+	}
+	if identity == nil || identity.HighestCSR == nil {
+		t.Fatal("expected HighestCSR")
+	}
+	if identity.HighestCSR.RatingValue != 1250.5 {
+		t.Fatalf("HighestCSR.RatingValue = %v, want 1250.5", identity.HighestCSR.RatingValue)
+	}
+}
+
+func TestHomeRepo_LoadRecentPlaylistRanks_InfersCSRFromRankedPlaylistName(t *testing.T) {
+	pdb := newTestPlayerDB(t)
+	ctx := context.Background()
+	if _, err := pdb.Player.Exec(ctx, `
+		UPDATE match_skill_rank
+		SET rating_type = 'LUSR'
+		WHERE match_id = ?
+	`, "m1"); err != nil {
+		t.Fatalf("UPDATE match_skill_rank: %v", err)
+	}
+	if _, err := pdb.Player.Exec(ctx, `
+		UPDATE shared.match_registry
+		SET is_ranked = FALSE,
+			playlist_name = 'Ranked Arena',
+			pair_name = 'Arena'
+		WHERE match_id = ?
+	`, "m1"); err != nil {
+		t.Fatalf("UPDATE shared.match_registry: %v", err)
+	}
+
+	repo := NewHomeRepo(pdb)
+	ranks, err := repo.LoadRecentPlaylistRanks(ctx)
+	if err != nil {
+		t.Fatalf("LoadRecentPlaylistRanks: %v", err)
+	}
+	if len(ranks) != 1 {
+		t.Fatalf("len(ranks) = %d, want 1", len(ranks))
+	}
+	if !ranks[0].IsRanked {
+		t.Fatal("expected playlist to be inferred as ranked")
+	}
+	if ranks[0].RatingType == nil || *ranks[0].RatingType != "CSR" {
+		t.Fatalf("RatingType = %v, want CSR", ranks[0].RatingType)
+	}
+	if ranks[0].RatingValue == nil || *ranks[0].RatingValue != 1250.5 {
+		t.Fatalf("RatingValue = %v, want 1250.5", ranks[0].RatingValue)
+	}
+	if ranks[0].TierLabel == nil || *ranks[0].TierLabel != "Gold 3" {
+		t.Fatalf("TierLabel = %v, want Gold 3", ranks[0].TierLabel)
 	}
 }
 
@@ -600,6 +783,18 @@ func TestStatsRepo_LoadStatsMatches_WithData(t *testing.T) {
 	}
 	if len(rows) != 1 {
 		t.Errorf("attendu 1, obtenu %d", len(rows))
+	}
+	if rows[0].OffensiveConversion == nil {
+		t.Fatal("offensive_conversion nil")
+	}
+	if rows[0].DefensiveResistance == nil {
+		t.Fatal("defensive_resistance nil")
+	}
+	if got := *rows[0].OffensiveConversion; got != 0.8 {
+		t.Fatalf("offensive_conversion = %.3f, want 0.800", got)
+	}
+	if got := *rows[0].DefensiveResistance; got != 1.3333333333333333 {
+		t.Fatalf("defensive_resistance = %.16f, want 1.3333333333333333", got)
 	}
 }
 
@@ -772,6 +967,38 @@ func TestMediaRepo_LoadMediaFiles_WithSharedSocialSchema(t *testing.T) {
 	}
 	if len(options.Modes) != 1 || options.Modes[0].Value != "Slayer" {
 		t.Fatalf("Modes = %+v, want Slayer", options.Modes)
+	}
+}
+
+func TestLeaderboardRepo_GetLocalLeaderboard_UsesCurrentPlayerCSR(t *testing.T) {
+	pdb := newTestPlayerDB(t)
+	repo := NewLeaderboardRepo(pdb)
+
+	entries, err := repo.GetLocalLeaderboard(context.Background(), titlepkg.DefaultSlug, "", "")
+	if err != nil {
+		t.Fatalf("GetLocalLeaderboard: %v", err)
+	}
+	if len(entries) != 1 {
+		t.Fatalf("attendu 1 entrée, obtenu %d", len(entries))
+	}
+	entry := entries[0]
+	if entry.XUID != pTestXUID {
+		t.Fatalf("xuid = %q, want %q", entry.XUID, pTestXUID)
+	}
+	if entry.Gamertag != pTestGamertag {
+		t.Fatalf("gamertag = %q, want %q", entry.Gamertag, pTestGamertag)
+	}
+	if entry.CSRValue != 1251 {
+		t.Fatalf("csr_value = %d, want 1251", entry.CSRValue)
+	}
+	if entry.Tier != "Gold" {
+		t.Fatalf("tier = %q, want Gold", entry.Tier)
+	}
+	if entry.SubTier != 3 {
+		t.Fatalf("sub_tier = %d, want 3", entry.SubTier)
+	}
+	if !entry.IsLocal {
+		t.Fatal("attendu is_local=true")
 	}
 }
 

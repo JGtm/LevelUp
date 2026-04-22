@@ -284,6 +284,61 @@ func TestMatchViewRepo_GetMatchEnrichment_NotFound(t *testing.T) {
 	}
 }
 
+func TestMatchViewRepo_GetMatchSkillRank_ClassifiesRankedMatchAsCSR(t *testing.T) {
+	pdb := newTestPlayerDB(t)
+	ctx := context.Background()
+	if _, err := pdb.Player.Exec(ctx, `UPDATE match_skill_rank SET rating_type = 'LUSR' WHERE match_id = ?`, "m1"); err != nil {
+		t.Fatalf("UPDATE match_skill_rank: %v", err)
+	}
+
+	repo := NewMatchViewRepo(pdb, pTestXUID)
+	rank, err := repo.GetMatchSkillRank(ctx, "m1")
+	if err != nil {
+		t.Fatalf("GetMatchSkillRank: %v", err)
+	}
+	if rank == nil {
+		t.Fatal("expected non-nil rank")
+	}
+	if rank.RatingType != "CSR" {
+		t.Fatalf("RatingType = %q, want CSR", rank.RatingType)
+	}
+	if rank.TierLabel == nil || *rank.TierLabel != "Gold 3" {
+		t.Fatalf("TierLabel = %v, want Gold 3", rank.TierLabel)
+	}
+	if rank.RatingValue == nil || *rank.RatingValue != 1250.5 {
+		t.Fatalf("RatingValue = %v, want 1250.5", rank.RatingValue)
+	}
+}
+
+func TestMatchViewRepo_GetMatchSkillRank_InfersCSRFromRankedPlaylistName(t *testing.T) {
+	pdb := newTestPlayerDB(t)
+	ctx := context.Background()
+	if _, err := pdb.Player.Exec(ctx, `UPDATE match_skill_rank SET rating_type = 'LUSR' WHERE match_id = ?`, "m1"); err != nil {
+		t.Fatalf("UPDATE match_skill_rank: %v", err)
+	}
+	if _, err := pdb.Player.Exec(ctx, `
+		UPDATE shared.match_registry
+		SET is_ranked = FALSE,
+			playlist_name = 'Ranked Arena',
+			pair_name = 'Arena'
+		WHERE match_id = ?
+	`, "m1"); err != nil {
+		t.Fatalf("UPDATE shared.match_registry: %v", err)
+	}
+
+	repo := NewMatchViewRepo(pdb, pTestXUID)
+	rank, err := repo.GetMatchSkillRank(ctx, "m1")
+	if err != nil {
+		t.Fatalf("GetMatchSkillRank: %v", err)
+	}
+	if rank == nil {
+		t.Fatal("expected non-nil rank")
+	}
+	if rank.RatingType != "CSR" {
+		t.Fatalf("RatingType = %q, want CSR", rank.RatingType)
+	}
+}
+
 func TestMatchViewRepo_GetMatchScoreboard_WithData(t *testing.T) {
 	pdb := newTestPlayerDB(t)
 	repo := NewMatchViewRepo(pdb, pTestXUID)

@@ -5,13 +5,17 @@ import (
 	"context"
 	"database/sql"
 	"fmt"
+	"net/url"
+	"path"
+	"strconv"
 	"strings"
 	"time"
 
 	"levelup/go-api/internal/domain"
+	titlepkg "levelup/go-api/internal/domain/title"
 )
 
-const homeCareerRankGameCMSBase = "https://gamecms-hacs.svc.halowaypoint.com"
+const homeIdentityAssetBasePath = "/api/v1/assets/spartan"
 
 // HomeRepo fournit les données de la page d'accueil depuis DuckDB.
 type HomeRepo struct {
@@ -87,6 +91,10 @@ func (r *HomeRepo) LoadSpartanIdentity(ctx context.Context) (*domain.HomeSpartan
 	var spartanID sql.NullString
 	var rankName sql.NullString
 	var rankTier sql.NullString
+	var bannerImageURL sql.NullString
+	var emblemImageURL sql.NullString
+	var backdropImageURL sql.NullString
+	var adornmentImagePath sql.NullString
 
 	err := r.pdb.Player.QueryRow(ctx, Q26cHomeSpartanIdentity).Scan(
 		&row.RankNumber,
@@ -96,6 +104,10 @@ func (r *HomeRepo) LoadSpartanIdentity(ctx context.Context) (*domain.HomeSpartan
 		&spartanID,
 		&rankName,
 		&rankTier,
+		&bannerImageURL,
+		&emblemImageURL,
+		&backdropImageURL,
+		&adornmentImagePath,
 	)
 	if err != nil {
 		if err == sql.ErrNoRows || isTableNotFoundErr(err) {
@@ -113,10 +125,24 @@ func (r *HomeRepo) LoadSpartanIdentity(ctx context.Context) (*domain.HomeSpartan
 	if rankTier.Valid {
 		row.RankTier = stringPtr(rankTier.String)
 	}
+	if bannerImageURL.Valid {
+		row.BannerImageURL = buildHomeIdentityAssetURL("banner", r.titleSlug(), bannerImageURL.String)
+	}
+	if emblemImageURL.Valid {
+		row.EmblemImageURL = buildHomeIdentityAssetURL("emblem", r.titleSlug(), emblemImageURL.String)
+	}
+	if backdropImageURL.Valid {
+		row.BackdropImageURL = buildHomeIdentityAssetURL("backdrop", r.titleSlug(), backdropImageURL.String)
+	}
+	if adornmentImagePath.Valid {
+		row.AdornmentImageURL = buildHomeIdentityAssetURL("career-rank", r.titleSlug(), adornmentImagePath.String)
+	}
 
 	r.enrichSpartanIdentity(ctx, &row)
+	row.HighestCSR = r.loadHomeSkillPeak(ctx, "CSR")
+	row.HighestLUSR = r.loadHomeSkillPeak(ctx, "LUSR")
 
-	if row.SpartanID == nil && row.RankNumber <= 0 {
+	if row.SpartanID == nil && row.RankNumber <= 0 && row.BannerImageURL == nil && row.EmblemImageURL == nil && row.BackdropImageURL == nil && row.HighestCSR == nil && row.HighestLUSR == nil {
 		return nil, nil
 	}
 	return &row, nil
@@ -130,7 +156,8 @@ func (r *HomeRepo) enrichSpartanIdentity(ctx context.Context, row *domain.HomeSp
 	var titleEN sql.NullString
 	var titleFR sql.NullString
 	var imagePath sql.NullString
-	if err := r.pdb.Metadata.QueryRow(ctx, Q26dHomeCareerRankMeta, row.RankNumber).Scan(&titleEN, &titleFR, &imagePath); err != nil {
+	var adornmentPath sql.NullString
+	if err := r.pdb.Metadata.QueryRow(ctx, Q26dHomeCareerRankMeta, row.RankNumber).Scan(&titleEN, &titleFR, &imagePath, &adornmentPath); err != nil {
 		return
 	}
 	if titleEN.Valid {
@@ -140,46 +167,140 @@ func (r *HomeRepo) enrichSpartanIdentity(ctx context.Context, row *domain.HomeSp
 		row.RankTitleFR = stringPtr(titleFR.String)
 	}
 	if imagePath.Valid {
-		row.RankImageURL = buildHomeCareerRankImageURL(imagePath.String)
+		row.RankImageURL = buildHomeIdentityAssetURL("career-rank", r.titleSlug(), imagePath.String)
+	}
+	if row.AdornmentImageURL == nil && adornmentPath.Valid {
+		row.AdornmentImageURL = buildHomeIdentityAssetURL("career-rank", r.titleSlug(), adornmentPath.String)
 	}
 }
 
-func buildHomeCareerRankImageURL(value string) *string {
-	trimmed := strings.TrimSpace(value)
+func (r *HomeRepo) loadHomeSkillPeak(ctx context.Context, ratingType string) *domain.HomeSkillPeakRow {
+	if r == nil || r.pdb == nil || r.pdb.Player == nil {
+		return nil
+	}
+
+	var ratingValue sql.NullFloat64
+	var tierLabel sql.NullString
+	var tier sql.NullString
+	var subTier sql.NullInt16
+	if err := r.pdb.Player.QueryRow(ctx, Q26eHomeSkillPeakByType, ratingType).Scan(&ratingValue, &tierLabel, &tier, &subTier); err != nil {
+		if err == sql.ErrNoRows || isTableNotFoundErr(err) {
+			return nil
+		}
+		return nil
+	}
+	if !ratingValue.Valid {
+		return nil
+	}
+
+	peak := &domain.HomeSkillPeakRow{RatingValue: ratingValue.Float64}
+	if tierLabel.Valid {
+		peak.TierLabel = stringPtr(tierLabel.String)
+	}
+	peak.BadgeImageURL = buildHomeSkillPeakBadgeURL(optionalNullStringValue(tier), optionalNullStringValue(tierLabel), optionalNullInt16Value(subTier))
+	return peak
+}
+
+// LoadRecentPlaylistRanks retourne les 3 dernières playlists distinctes jouées avec leur
+// dernier rang compétitif connu (Q26g). Retourne (nil, nil) si aucune donnée.
+func (r *HomeRepo) LoadRecentPlaylistRanks(ctx context.Context) ([]domain.HomePlaylistRank, error) {
+	if r == nil || r.pdb == nil || r.pdb.Player == nil {
+		return nil, nil
+	}
+
+	rows, err := r.pdb.Player.Query(ctx, Q26gHomePlaylistRanks, r.pdb.XUID)
+	if err != nil {
+		if isTableNotFoundErr(err) {
+			return nil, nil
+		}
+		return nil, err
+	}
+	defer rows.Close()
+
+	var result []domain.HomePlaylistRank
+	for rows.Next() {
+		var playlistName sql.NullString
+		var isRanked sql.NullBool
+		var ratingType sql.NullString
+		var ratingValue sql.NullFloat64
+		var tier sql.NullString
+		var tierFR sql.NullString
+		var subTier sql.NullInt16
+		var tierLabel sql.NullString
+
+		if err := rows.Scan(&playlistName, &isRanked, &ratingType, &ratingValue, &tier, &tierFR, &subTier, &tierLabel); err != nil {
+			return nil, err
+		}
+
+		item := domain.HomePlaylistRank{
+			PlaylistName: playlistName.String,
+			IsRanked:     isRanked.Bool,
+		}
+		if ratingValue.Valid {
+			rt := strings.ToUpper(strings.TrimSpace(ratingType.String))
+			item.RatingType = &rt
+			item.RatingValue = &ratingValue.Float64
+			if tierLabel.Valid {
+				item.TierLabel = stringPtr(tierLabel.String)
+			}
+			item.BadgeImageURL = buildHomeSkillPeakBadgeURL(
+				optionalNullStringValue(tier),
+				optionalNullStringValue(tierLabel),
+				optionalNullInt16Value(subTier),
+			)
+		}
+		result = append(result, item)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return result, nil
+}
+
+func (r *HomeRepo) titleSlug() string {
+	if r == nil || r.pdb == nil {
+		return titlepkg.DefaultSlug
+	}
+	trimmed := strings.TrimSpace(r.pdb.TitleSlug)
 	if trimmed == "" {
-		return nil
+		return titlepkg.DefaultSlug
 	}
+	return trimmed
+}
 
-	lower := strings.ToLower(trimmed)
-	if strings.HasSuffix(lower, ".json") {
-		return nil
-	}
-	if strings.HasPrefix(lower, "http://") || strings.HasPrefix(lower, "https://") {
-		return &trimmed
-	}
-
-	cleaned := strings.TrimLeft(trimmed, "/")
+func buildHomeIdentityAssetURL(imageType string, titleID string, value string) *string {
+	cleaned := normalizeHomeIdentityAssetPath(value)
 	if cleaned == "" {
 		return nil
 	}
 
-	switch {
-	case strings.HasPrefix(strings.ToLower(cleaned), "hi/images/file/"):
-		resolved := homeCareerRankGameCMSBase + "/" + cleaned
-		return &resolved
-	case strings.HasPrefix(strings.ToLower(cleaned), "images/file/"):
-		resolved := homeCareerRankGameCMSBase + "/hi/" + cleaned
-		return &resolved
-	case strings.HasPrefix(strings.ToLower(cleaned), "hi/progression/file/"):
-		resolved := homeCareerRankGameCMSBase + "/" + cleaned
-		return &resolved
-	case strings.HasPrefix(strings.ToLower(cleaned), "progression/file/"):
-		resolved := homeCareerRankGameCMSBase + "/hi/" + cleaned
-		return &resolved
-	default:
-		resolved := homeCareerRankGameCMSBase + "/hi/images/file/" + cleaned
-		return &resolved
+	resolved := fmt.Sprintf("%s/%s/%s/%s", homeIdentityAssetBasePath, imageType, titleID, cleaned)
+	return &resolved
+}
+
+func normalizeHomeIdentityAssetPath(value string) string {
+	trimmed := strings.TrimSpace(value)
+	if trimmed == "" {
+		return ""
 	}
+
+	lower := strings.ToLower(trimmed)
+	if strings.HasSuffix(lower, ".json") {
+		return ""
+	}
+	if strings.HasPrefix(lower, "http://") || strings.HasPrefix(lower, "https://") {
+		parsed, err := url.Parse(trimmed)
+		if err != nil {
+			return ""
+		}
+		trimmed = strings.TrimSpace(parsed.Path)
+	}
+
+	cleaned := path.Clean(strings.TrimLeft(trimmed, "/"))
+	if cleaned == "" || cleaned == "." || cleaned == ".." || strings.HasPrefix(cleaned, "../") {
+		return ""
+	}
+	return cleaned
 }
 
 func stringPtr(value string) *string {
@@ -188,6 +309,96 @@ func stringPtr(value string) *string {
 		return nil
 	}
 	return &trimmed
+}
+
+func optionalNullStringValue(value sql.NullString) string {
+	if !value.Valid {
+		return ""
+	}
+	return strings.TrimSpace(value.String)
+}
+
+func optionalNullInt16Value(value sql.NullInt16) int {
+	if !value.Valid {
+		return 0
+	}
+	return int(value.Int16)
+}
+
+func buildHomeSkillPeakBadgeURL(tier string, tierLabel string, subTier int) *string {
+	normalizedTier, normalizedSubTier := normalizeHomeSkillPeakBadgeParts(tier, tierLabel, subTier)
+	if normalizedTier == "" {
+		return nil
+	}
+	if strings.EqualFold(normalizedTier, "Onyx") {
+		path := "/static/ranks/120px-HINF-CSR_Onyx.png"
+		return &path
+	}
+	if normalizedSubTier < 1 || normalizedSubTier > 6 {
+		return nil
+	}
+	path := fmt.Sprintf("/static/ranks/120px-HINF-CSR_%s%d.png", normalizedTier, normalizedSubTier)
+	return &path
+}
+
+func normalizeHomeSkillPeakBadgeParts(tier string, tierLabel string, subTier int) (string, int) {
+	normalizedTier := canonicalHomeSkillTierName(tier)
+	derivedSubTier := subTier
+	if normalizedTier == "" && strings.TrimSpace(tierLabel) != "" {
+		parts := strings.Fields(strings.TrimSpace(tierLabel))
+		if len(parts) > 0 {
+			normalizedTier = canonicalHomeSkillTierName(parts[0])
+		}
+		if derivedSubTier <= 0 && len(parts) > 1 {
+			derivedSubTier = parseHomeSkillPeakSubTier(parts[len(parts)-1])
+		}
+	}
+	return normalizedTier, derivedSubTier
+}
+
+func canonicalHomeSkillTierName(value string) string {
+	switch strings.ToLower(strings.TrimSpace(value)) {
+	case "bronze":
+		return "Bronze"
+	case "silver":
+		return "Silver"
+	case "gold":
+		return "Gold"
+	case "platinum":
+		return "Platinum"
+	case "diamond":
+		return "Diamond"
+	case "onyx":
+		return "Onyx"
+	default:
+		return ""
+	}
+}
+
+func parseHomeSkillPeakSubTier(value string) int {
+	trimmed := strings.TrimSpace(value)
+	if trimmed == "" {
+		return 0
+	}
+	if numeric, err := strconv.Atoi(trimmed); err == nil {
+		return numeric
+	}
+	switch strings.ToUpper(trimmed) {
+	case "I":
+		return 1
+	case "II":
+		return 2
+	case "III":
+		return 3
+	case "IV":
+		return 4
+	case "V":
+		return 5
+	case "VI":
+		return 6
+	default:
+		return 0
+	}
 }
 
 func (r *HomeRepo) enrichHomeMatchTranslations(ctx context.Context, matches []domain.HomeMatchRow) {

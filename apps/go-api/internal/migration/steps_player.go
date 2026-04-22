@@ -44,6 +44,9 @@ func init() {
 					is_max_rank BOOLEAN DEFAULT FALSE,
 					adornment_path VARCHAR DEFAULT '',
 					spartan_id VARCHAR DEFAULT '',
+					banner_image_url VARCHAR DEFAULT '',
+					emblem_image_url VARCHAR DEFAULT '',
+					backdrop_image_url VARCHAR DEFAULT '',
 					recorded_at TIMESTAMP
 				);
 				CREATE TABLE IF NOT EXISTS sessions (
@@ -87,6 +90,22 @@ func init() {
 		TargetDB:    TargetPlayer,
 		Description: "Séquence auto-increment + spartan_id sur career_progression",
 		ApplySchema: applyCareerProgressionSequence,
+	})
+
+	Register(Migration{
+		Name:        "add_career_identity_assets",
+		TargetDB:    TargetPlayer,
+		Description: "Colonnes d'assets de customisation sur career_progression",
+		ApplySchema: applyCareerProgressionIdentityAssets,
+	})
+
+	Register(Migration{
+		Name:        "add_career_banner_image",
+		TargetDB:    TargetPlayer,
+		Description: "Colonne banner_image_url sur career_progression",
+		ApplySchema: func(db *sql.DB) error {
+			return addColumnIfMissing(db, "career_progression", "banner_image_url", "VARCHAR")
+		},
 	})
 
 	Register(Migration{
@@ -371,6 +390,7 @@ func applyCareerProgressionSequence(db *sql.DB) error {
 				rank_tier VARCHAR, current_xp INTEGER, xp_for_next_rank INTEGER,
 				xp_total INTEGER, is_max_rank BOOLEAN DEFAULT FALSE,
 				adornment_path VARCHAR, spartan_id VARCHAR,
+				emblem_image_url VARCHAR, backdrop_image_url VARCHAR,
 				recorded_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 			);
 			CREATE INDEX IF NOT EXISTS idx_career_xuid ON career_progression(xuid);
@@ -388,12 +408,23 @@ func applyCareerProgressionSequence(db *sql.DB) error {
 			rank_tier VARCHAR, current_xp INTEGER, xp_for_next_rank INTEGER,
 			xp_total INTEGER, is_max_rank BOOLEAN DEFAULT FALSE,
 			adornment_path VARCHAR, spartan_id VARCHAR,
+			emblem_image_url VARCHAR, backdrop_image_url VARCHAR,
 			recorded_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 		);
 		INSERT INTO career_progression SELECT * FROM _career_backup;
 		DROP TABLE IF EXISTS _career_backup;
 		CREATE INDEX IF NOT EXISTS idx_career_xuid ON career_progression(xuid);
 	`, startVal))
+}
+
+func applyCareerProgressionIdentityAssets(db *sql.DB) error {
+	if err := addColumnIfMissing(db, "career_progression", "banner_image_url", "VARCHAR"); err != nil {
+		return err
+	}
+	if err := addColumnIfMissing(db, "career_progression", "emblem_image_url", "VARCHAR"); err != nil {
+		return err
+	}
+	return addColumnIfMissing(db, "career_progression", "backdrop_image_url", "VARCHAR")
 }
 
 // applyFixMvSessionStats recrée mv_session_stats avec session_id VARCHAR.
