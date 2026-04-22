@@ -17600,3 +17600,26 @@ La page Synthèse (route `/players/$playerSlug/synthesis`) était inaccessible d
 **Résultat** : Handler season-pass répond en <20s, 60/100 tiers avec image après redémarrage (données du run précédent). Backfill relancé automatiquement.
 
 **Commit** : `1d0a8cda`
+
+## [2026-04-22] refactor(mode): unifier la normalisation des labels de mode de jeu
+
+**Statut** : ✅ Complété
+
+**Décision technique** : Il existait deux fonctions de normalisation non-équivalentes dans le projet Go : `normalizeHomeModeLabel` (homepage, logique complète) et `stripModeSuffix` (match-history + filtres, logique incomplète — manquait le ` : ` extraction et le `sur` français). Alignement sur la logique Python `resolve_display_mode` + `translate_pair_name` de la branche `v7/cockpit`.
+
+Logique canonique (4 étapes) :
+1. Strip map-label connu : `" sur {map}"` / `" on {map}"` → retiré en priorité
+2. Extraction du mode : format FR `" : "` → prend avant ; format technique `":"` → prend après le dernier `:`
+3. Strip générique `" sur/on .+"` résiduel (FR + EN)
+4. Strip `" - Forge"` et `" - Ranked"`
+
+**Fichiers créés** : `internal/analysis/mode_label.go` — `NormalizeModeLabel(raw string, mapLabels ...string) string`
+
+**Fichiers modifiés** :
+- `internal/analysis/home.go` : suppression des regex `homeStripModeMapRe/ForgeRe/RankedRe`, `normalizeHomeModeLabel` devient un alias vers `NormalizeModeLabel`
+- `internal/service/filters_service.go` : suppression des regex locales `stripOnRe/ForgeRe/RankedRe` et de `stripModeSuffix`, `modeUI` appelle `analysis.NormalizeModeLabel`
+- `internal/service/match_history_service.go` : `enrichRow` appelle `analysis.NormalizeModeLabel` au lieu de `stripModeSuffix`
+
+**Résultats** : `go build ./...` → 0 erreur. `go test ./internal/analysis/ ./internal/service/` → OK.
+
+**Conclusion** : une seule source de vérité pour la normalisation des modes. `"Assassin : Classé"` → `"Assassin"` est maintenant correct dans l'historique ET la home.
