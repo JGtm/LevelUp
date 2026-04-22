@@ -19,20 +19,22 @@ func main() {
 	var (
 		dryRun    bool
 		staticDir string
+		titleID   string
 	)
 	flag.BoolVar(&dryRun, "dry-run", false, "Afficher les actions sans écrire en DB")
 	flag.StringVar(&staticDir, "static-dir", "static/maps", "Répertoire contenant les images (relatif à la racine)")
+	flag.StringVar(&titleID, "title-id", titlePkg.DefaultSlug, "Slug du titre (ex: halo_infinite)")
 	flag.Parse()
 
 	slog.SetDefault(slog.New(slog.NewTextHandler(os.Stdout, &slog.HandlerOptions{Level: slog.LevelInfo})))
 
-	if err := run(dryRun, staticDir); err != nil {
+	if err := run(dryRun, staticDir, titleID); err != nil {
 		slog.Error("migrate-static-maps failed", "err", err)
 		os.Exit(1)
 	}
 }
 
-func run(dryRun bool, staticDir string) error {
+func run(dryRun bool, staticDir, titleID string) error {
 	ctx := context.Background()
 
 	// 1. Charger config
@@ -118,7 +120,7 @@ func run(dryRun bool, staticDir string) error {
 				"local_path", localPath,
 			)
 		} else {
-			if err := metaRepo.UpsertMapImageRegistry(ctx, "halo_infinite", mapID, localPath); err != nil {
+			if err := metaRepo.UpsertMapImageRegistry(ctx, titleID, mapID, localPath); err != nil {
 				slog.Warn("upsert failed", "map_id", mapID, "err", err)
 				continue
 			}

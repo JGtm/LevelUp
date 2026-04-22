@@ -20,6 +20,7 @@ import (
 	"levelup/go-api/internal/assets"
 	"levelup/go-api/internal/ctxkeys"
 	"levelup/go-api/internal/domain"
+	"levelup/go-api/internal/domain/title"
 
 	"golang.org/x/sync/singleflight"
 )
@@ -112,6 +113,8 @@ type HaloProvider struct {
 	gameCMSBaseURL    string
 	// assetResolver est le resolver unifié (P4/P5).
 	assetResolver assets.Resolver
+	// titleSlug est le titre courant (ex: "halo_infinite").
+	titleSlug string
 	// Sprint 54 B5 : cache process-level de la privacy par xuid.
 	privacyCache privacyTTLCache
 }
@@ -145,6 +148,29 @@ func (p *HaloProvider) WithAssetResolver(resolver assets.Resolver) *HaloProvider
 	clone := *p
 	clone.assetResolver = resolver
 	return &clone
+}
+
+// WithTitleSlug configure le slug du titre pour ce provider (ex: "halo_infinite").
+// Si slug est vide, le DefaultSlug ("halo_infinite") est utilisé comme fallback.
+func (p *HaloProvider) WithTitleSlug(slug string) *HaloProvider {
+	if p == nil {
+		return nil
+	}
+	clone := *p
+	if slug == "" {
+		clone.titleSlug = title.DefaultSlug
+	} else {
+		clone.titleSlug = slug
+	}
+	return &clone
+}
+
+// titleID retourne le titleSlug effectif, avec fallback sur DefaultSlug.
+func (p *HaloProvider) titleID() string {
+	if p.titleSlug == "" {
+		return title.DefaultSlug
+	}
+	return p.titleSlug
 }
 
 // ---------------------------------------------------------------------------
@@ -224,7 +250,7 @@ func (p *HaloProvider) fetchBattlePass(ctx context.Context, tokens *domain.HaloT
 			}
 			trackRefs = append(trackRefs, assets.Ref{
 				Kind:    assets.KindRewardTrackDefinition,
-				TitleID: "halo_infinite",
+				TitleID: p.titleID(),
 				ID:      t.RewardTrackPath,
 			})
 		}

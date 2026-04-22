@@ -124,9 +124,9 @@ func (p *HaloProvider) buildChallengeItem(
 		if localizedDescription := resolveChallengeLocalizedValue(def.Description, lang); localizedDescription != "" {
 			description = stringPtr(localizedDescription)
 		}
-		imageURL = challengeBadgeAPIURL(ch.Path, def.Category, def.Difficulty)
+		imageURL = challengeBadgeAPIURL(ch.Path, def.Category, def.Difficulty, p.titleID())
 	} else {
-		imageURL = challengeBadgeAPIURL(ch.Path, "", "")
+		imageURL = challengeBadgeAPIURL(ch.Path, "", "", p.titleID())
 	}
 
 	if current != nil && target != nil && *target > 0 {
@@ -164,7 +164,7 @@ func (p *HaloProvider) fetchChallengeDefinition(ctx context.Context, _ *domain.H
 
 	ref := assets.Ref{
 		Kind:    assets.KindChallengeDefinition,
-		TitleID: "halo_infinite",
+		TitleID: p.titleID(),
 		ID:      trimmed,
 	}
 	resolved, err := p.assetResolver.Get(ctx, ref)
@@ -187,12 +187,12 @@ func (p *HaloProvider) fetchChallengeDefinition(ctx context.Context, _ *domain.H
 // challengeBadgeAPIURL construit l'URL relative de l'image de badge d'un défi.
 // Retourne nil si aucun stem candidat n'est trouvé.
 // La résolution locale/distante est gérée par le DefaultResolver (endpoint /assets/challenge-badge/).
-func challengeBadgeAPIURL(challengePath, category, difficulty string) *string {
+func challengeBadgeAPIURL(challengePath, category, difficulty, titleID string) *string {
 	stems := buildChallengeBadgeCandidates(challengePath, category, difficulty)
 	if len(stems) == 0 {
 		return nil
 	}
-	url := "/api/v1/assets/challenge-badge/halo_infinite/" + stems[0]
+	url := "/api/v1/assets/challenge-badge/" + titleID + "/" + stems[0]
 	return &url
 }
 

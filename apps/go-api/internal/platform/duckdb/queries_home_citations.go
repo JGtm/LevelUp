@@ -77,7 +77,12 @@ LIMIT 1`
 const Q26dHomeCareerRankMeta = `
 SELECT
 	NULLIF(TRIM(title_en), '') AS title_en,
-	NULLIF(TRIM(title_fr), '') AS title_fr
+	NULLIF(TRIM(title_fr), '') AS title_fr,
+	COALESCE(
+		NULLIF(TRIM(large_icon_path), ''),
+		NULLIF(TRIM(adornment_icon_path), ''),
+		NULLIF(TRIM(icon_path), '')
+	) AS image_path
 FROM career_ranks
 WHERE rank_id = ?
 LIMIT 1`

@@ -150,12 +150,27 @@ export function HomePage() {
 
                 {careerRank && (
                   <div className="rounded-xl border border-border bg-muted/60 px-4 py-4">
-                    <div className="flex flex-wrap items-start justify-between gap-3">
-                      <div>
-                        <p className="text-xs uppercase tracking-[0.22em] text-muted-foreground">{labels.careerRank}</p>
-                        <p data-testid="home-career-rank-title" className="mt-2 text-xl font-semibold text-foreground">
-                          {careerRank.rank_title}
-                        </p>
+                    <div className="flex flex-wrap items-start justify-between gap-4">
+                      <div className="flex min-w-0 items-start gap-4">
+                        {careerRank.rank_image_url && (
+                          <div className="rounded-2xl border border-border/80 bg-background/70 p-2 shadow-sm">
+                            <img
+                              data-testid="home-career-rank-image"
+                              src={careerRank.rank_image_url}
+                              alt={`${labels.careerRank} ${careerRank.rank_title}`}
+                              className="h-20 w-20 object-contain sm:h-24 sm:w-24"
+                              loading="lazy"
+                              decoding="async"
+                            />
+                          </div>
+                        )}
+
+                        <div>
+                          <p className="text-xs uppercase tracking-[0.22em] text-muted-foreground">{labels.careerRank}</p>
+                          <p data-testid="home-career-rank-title" className="mt-2 text-xl font-semibold text-foreground">
+                            {careerRank.rank_title}
+                          </p>
+                        </div>
                       </div>
                       <Badge variant="outline">{`${labels.rankPrefix} ${careerRank.rank_number}`}</Badge>
                     </div>

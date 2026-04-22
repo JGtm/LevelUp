@@ -121,12 +121,17 @@ type dbProfileEntry struct {
 // Si titleFilter est non vide, ne retourne que les joueurs de ce titre.
 func (c *AppConfig) LoadPlayers(titleFilter ...string) ([]domain.PlayerSummary, error) {
 	if c.DemoMode {
+		titleSlug := "halo_infinite"
+		if len(titleFilter) > 0 && titleFilter[0] != "" {
+			titleSlug = titleFilter[0]
+		}
 		return []domain.PlayerSummary{{
 			PlayerSlug:     "demo-player",
 			Gamertag:       "DemoPlayer",
 			XUID:           "0",
 			WaypointPlayer: "DemoPlayer",
 			IsDemo:         true,
+			TitleSlug:      titleSlug,
 		}}, nil
 	}
 
@@ -180,6 +185,7 @@ func (c *AppConfig) loadPlayersV2(data []byte, titleFilter ...string) ([]domain.
 			XUID:           p.XUID,
 			WaypointPlayer: wp,
 			IsDemo:         false,
+			TitleSlug:      "halo_infinite",
 		})
 	}
 	return players, nil
@@ -213,6 +219,7 @@ func (c *AppConfig) loadPlayersV3(data []byte, titleFilter ...string) ([]domain.
 				XUID:           p.XUID,
 				WaypointPlayer: wp,
 				IsDemo:         false,
+				TitleSlug:      titleSlug,
 			})
 		}
 	}

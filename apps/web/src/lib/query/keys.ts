@@ -51,8 +51,8 @@ export const queryKeys = {
   palmaresRelations: (playerSlug: string) => ['palmares', playerSlug, 'relations'] as const,
 
   // Escouade / Teammates (Slice 6)
-  teammates: (playerSlug: string, filterHash: string) =>
-    ['teammates', playerSlug, filterHash] as const,
+  teammates: (playerSlug: string, filterHash: string, selectedGts: string[]) =>
+    ['teammates', playerSlug, filterHash, [...selectedGts].sort().join(',')] as const,
 
   // Synthèse (Slice 7 — Sprint 55 D8 : scopeHash = period + filtres)
   synthesis: (playerSlug: string, scopeHash: string) =>

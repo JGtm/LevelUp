@@ -312,7 +312,15 @@ func seedMetaDBSchema(t *testing.T, db *DB) {
 			fetched_at TIMESTAMPTZ,
 			PRIMARY KEY (asset_id, asset_type, lang))`,
 		`CREATE TABLE weapon_labels (weapon_id UBIGINT, label_en VARCHAR, label_fr VARCHAR)`,
-		`CREATE TABLE career_ranks (rank_id INTEGER, rank_name VARCHAR, title_en VARCHAR, title_fr VARCHAR)`,
+		`CREATE TABLE career_ranks (
+			rank_id INTEGER,
+			rank_name VARCHAR,
+			title_en VARCHAR,
+			title_fr VARCHAR,
+			icon_path VARCHAR,
+			large_icon_path VARCHAR,
+			adornment_icon_path VARCHAR
+		)`,
 	}
 	for _, q := range ddl {
 		if _, err := db.Exec(ctx, q); err != nil {
@@ -328,8 +336,8 @@ func seedMetaDBSchema(t *testing.T, db *DB) {
 			[]interface{}{"killing_spree", "Killing Spree", "medal", "combat", true, uint64(1001)}},
 		{`INSERT INTO weapon_labels (weapon_id,label_en,label_fr) VALUES (?,?,?)`,
 			[]interface{}{uint64(42), "Battle Rifle", "BR75"}},
-		{`INSERT INTO career_ranks VALUES (?,?,?,?)`, []interface{}{1, "Recruit", "Recruit", "Recrue"}},
-		{`INSERT INTO career_ranks VALUES (?,?,?,?)`, []interface{}{25, "Platinum 1", "Lance Corporal", "Caporal-chef"}},
+		{`INSERT INTO career_ranks VALUES (?,?,?,?,?,?,?)`, []interface{}{1, "Recruit", "Recruit", "Recrue", nil, nil, nil}},
+		{`INSERT INTO career_ranks VALUES (?,?,?,?,?,?,?)`, []interface{}{25, "Platinum 1", "Lance Corporal", "Caporal-chef", "Progression/RewardTracks/CareerRanks/platinum1.png", "Progression/RewardTracks/CareerRanks/platinum1-large.png", "Progression/RewardTracks/CareerRanks/platinum1-adornment.png"}},
 	}
 	for _, ins := range inserts {
 		if _, err := db.Exec(ctx, ins.q, ins.args...); err != nil {
@@ -482,6 +490,9 @@ func TestHomeRepo_LoadSpartanIdentity_WithData(t *testing.T) {
 	}
 	if identity.RankTitleEN == nil || *identity.RankTitleEN != "Lance Corporal" {
 		t.Fatalf("RankTitleEN = %v, want Lance Corporal", identity.RankTitleEN)
+	}
+	if identity.RankImageURL == nil || *identity.RankImageURL != "https://gamecms-hacs.svc.halowaypoint.com/hi/images/file/Progression/RewardTracks/CareerRanks/platinum1-large.png" {
+		t.Fatalf("RankImageURL = %v, want large icon URL", identity.RankImageURL)
 	}
 	if identity.CurrentXP != 5000 || identity.XPForNextRank != 10000 {
 		t.Fatalf("progress = %d/%d, want 5000/10000", identity.CurrentXP, identity.XPForNextRank)

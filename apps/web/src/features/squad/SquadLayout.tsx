@@ -148,7 +148,24 @@ function TeammateRowItem({
 export function SquadLayout() {
   const { playerSlug } = useParams({ strict: false }) as { playerSlug: string }
   const { filterContext, filterContextHash } = useGlobalFilterStore()
-  const [selectedGts, setSelectedGts] = useState<string[]>([])
+  const storageKey = `squad-teammates-${playerSlug}`
+
+  const [selectedGts, setSelectedGts] = useState<string[]>(() => {
+    try {
+      const stored = localStorage.getItem(storageKey)
+      return stored ? (JSON.parse(stored) as string[]) : []
+    } catch {
+      return []
+    }
+  })
+  const [confirmedGts, setConfirmedGts] = useState<string[]>(() => {
+    try {
+      const stored = localStorage.getItem(storageKey)
+      return stored ? (JSON.parse(stored) as string[]) : []
+    } catch {
+      return []
+    }
+  })
   const [compareTarget, setCompareTarget] = useState<string | null>(null)
   const [soloSession, setSoloSession] = useState<string | null>(null)
   const [squadSession, setSquadSession] = useState<string | null>(null)
@@ -156,16 +173,28 @@ export function SquadLayout() {
   const matchRoute = useMatchRoute()
   const { data: settings } = useSettings()
 
-  // Init depuis les amis par défaut dans les settings (une seule fois)
+  // Init depuis les amis par défaut dans les settings si localStorage vide
   useEffect(() => {
     if (settings?.friend_gamertags?.length && selectedGts.length === 0) {
-      setSelectedGts(settings.friend_gamertags.slice(0, MAX_SELECTION))
+      const initial = settings.friend_gamertags.slice(0, MAX_SELECTION)
+      setSelectedGts(initial)
+      setConfirmedGts(initial)
+      localStorage.setItem(storageKey, JSON.stringify(initial))
     }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [settings?.friend_gamertags])
+
+  const isDirty =
+    JSON.stringify([...selectedGts].sort()) !== JSON.stringify([...confirmedGts].sort())
+
+  const handleConfirm = () => {
+    setConfirmedGts(selectedGts)
+    localStorage.setItem(storageKey, JSON.stringify(selectedGts))
+  }
 
   const request: TeammatesQueryRequest = {
     filters: filterContext,
-    selected_gamertags: selectedGts.length > 0 ? selectedGts : undefined,
+    selected_gamertags: confirmedGts.length > 0 ? confirmedGts : undefined,
     picked_solo_session_label: soloSession,
     picked_squad_session_label: squadSession,
   }
@@ -173,6 +202,7 @@ export function SquadLayout() {
     playerSlug,
     request,
     filterContextHash,
+    confirmedGts,
   )
 
   const toggleSelect = (gamertag: string) => {
@@ -208,7 +238,7 @@ export function SquadLayout() {
   const teammates = data.teammates ?? []
   const solo_reference = data.solo_reference ?? null
 
-  const selectedRows = selectedGts
+  const selectedRows = confirmedGts
     .map((gt) => teammates.find((t) => t.gamertag === gt))
     .filter(Boolean) as TeammateRow[]
 
@@ -239,7 +269,7 @@ export function SquadLayout() {
           <CardHeader>
             <CardTitle className="text-base">Coéquipiers comparés</CardTitle>
           </CardHeader>
-          <CardContent>
+          <CardContent className="flex flex-col gap-3">
             <GamertagCombobox
               selected={selectedGts}
               onChange={setSelectedGts}
@@ -249,6 +279,22 @@ export function SquadLayout() {
               excludeGamertag={playerSlug}
               placeholder={`Rechercher parmi ${availableOptions.length} coéquipiers…`}
             />
+            <div className="flex items-center justify-between gap-3 pt-1">
+              <span className="text-xs text-muted-foreground">
+                {isDirty
+                  ? 'Sélection modifiée — clique sur Appliquer pour mettre à jour les graphiques.'
+                  : selectedGts.length === 0
+                    ? 'Sélectionne jusqu\'à 3 coéquipiers puis clique sur Appliquer.'
+                    : `${confirmedGts.length} coéquipier${confirmedGts.length > 1 ? 's' : ''} comparé${confirmedGts.length > 1 ? 's' : ''}.`}
+              </span>
+              <button
+                onClick={handleConfirm}
+                disabled={selectedGts.length === 0 && confirmedGts.length === 0}
+                className="shrink-0 rounded-md bg-primary px-4 py-1.5 text-sm font-medium text-primary-foreground hover:bg-primary/90 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+              >
+                Appliquer
+              </button>
+            </div>
           </CardContent>
         </Card>
 

@@ -62,14 +62,14 @@ func makeMatchJSON(matchID string, players int) map[string]any {
 		gt := fmt.Sprintf("Player%d", i)
 		xuid := fmt.Sprintf("xuid(%016d)", i)
 		coreStats := map[string]any{
-			"Kills":              float64(10 + i),
-			"Deaths":             float64(5 + i),
-			"Assists":            float64(3 + i),
-			"ShotsFired":         float64(100),
-			"ShotsHit":           float64(50),
-			"PersonalScore":      float64(1000 + i*100),
-			"DamageDealt":        float64(2500.0),
-			"DamageTaken":        float64(2000.0),
+			"Kills":               float64(10 + i),
+			"Deaths":              float64(5 + i),
+			"Assists":             float64(3 + i),
+			"ShotsFired":          float64(100),
+			"ShotsHit":            float64(50),
+			"PersonalScore":       float64(1000 + i*100),
+			"DamageDealt":         float64(2500.0),
+			"DamageTaken":         float64(2000.0),
 			"AverageLifeDuration": "PT30S",
 			"Medals": []any{
 				map[string]any{"NameId": float64(100 + i), "Count": float64(2)},
@@ -104,16 +104,16 @@ func makeMatchJSON(matchID string, players int) map[string]any {
 	return map[string]any{
 		"MatchId": matchID,
 		"MatchInfo": map[string]any{
-			"StartTime":            "2025-01-15T14:30:00Z",
-			"EndTime":              "2025-01-15T14:40:00Z",
-			"MapVariant":           map[string]any{"AssetId": "map-asset-001", "PublicName": "Aquarius"},
-			"GameVariantCategory":  float64(9),
-			"PlaylistExperience":   "Arena:Slayer",
-			"Playlist":             map[string]any{"AssetId": "playlist-001", "PublicName": "Ranked Arena"},
-			"UgcGameVariant":       map[string]any{"AssetId": "gv-001", "PublicName": "Slayer"},
-			"Duration":             "PT10M0S",
-			"PlayableDuration":     "PT9M30S",
-			"LifecycleMode":        float64(3),
+			"StartTime":           "2025-01-15T14:30:00Z",
+			"EndTime":             "2025-01-15T14:40:00Z",
+			"MapVariant":          map[string]any{"AssetId": "map-asset-001", "PublicName": "Aquarius"},
+			"GameVariantCategory": float64(9),
+			"PlaylistExperience":  "Arena:Slayer",
+			"Playlist":            map[string]any{"AssetId": "playlist-001", "PublicName": "Ranked Arena"},
+			"UgcGameVariant":      map[string]any{"AssetId": "gv-001", "PublicName": "Slayer"},
+			"Duration":            "PT10M0S",
+			"PlayableDuration":    "PT9M30S",
+			"LifecycleMode":       float64(3),
 		},
 		"Players": playersArr,
 	}
@@ -760,6 +760,83 @@ func TestRunPostSyncPipeline_NoError(t *testing.T) {
 		if count == 0 {
 			t.Error("career_progression: attendu ≥ 1 après CareerSynced=true")
 		}
+	}
+}
+
+func TestEnrichCareerRankFromMetadata(t *testing.T) {
+	metaDB := openMemDB(t)
+	_, err := metaDB.Exec(`CREATE TABLE career_ranks (
+		rank_id INTEGER,
+		title_en VARCHAR,
+		tier_type VARCHAR,
+		grade INTEGER,
+		xp_required INTEGER,
+		adornment_icon_path VARCHAR
+	)`)
+	if err != nil {
+		t.Fatalf("CREATE career_ranks: %v", err)
+	}
+	_, err = metaDB.Exec(`INSERT INTO career_ranks VALUES
+		(173, 'Colonel', 'Platinum', 1, 25000, 'a-173'),
+		(174, 'Colonel', 'Platinum', 2, 35000, 'a-174')`)
+	if err != nil {
+		t.Fatalf("INSERT career_ranks: %v", err)
+	}
+
+	data := &CareerRankData{XUID: "123", CurrentRank: 174, CurrentXP: 21840}
+	if err := enrichCareerRankFromMetadata(metaDB, data); err != nil {
+		t.Fatalf("enrichCareerRankFromMetadata: %v", err)
+	}
+	if data.CurrentRankName != "Colonel Platinum 2" {
+		t.Fatalf("CurrentRankName = %q", data.CurrentRankName)
+	}
+	if data.CurrentRankTier != "Platinum" {
+		t.Fatalf("CurrentRankTier = %q", data.CurrentRankTier)
+	}
+	if data.XPForNextRank != 35000 {
+		t.Fatalf("XPForNextRank = %d", data.XPForNextRank)
+	}
+	if data.XPTotal != 46840 {
+		t.Fatalf("XPTotal = %d", data.XPTotal)
+	}
+	if data.AdornmentPath != "a-174" {
+		t.Fatalf("AdornmentPath = %q", data.AdornmentPath)
+	}
+}
+
+func TestRunConditionalPostSync_NoInsertedMatches_StillSyncsCareer(t *testing.T) {
+	playerDB, sharedDB := newInMemoryDBs(t)
+
+	mock := &mockHaloClient{
+		careerData: &CareerRankData{
+			XUID:            "1234567890123456",
+			CurrentRank:     42,
+			CurrentRankName: "Onyx",
+			CurrentXP:       1000,
+			SpartanID:       "SR-TEST-4242",
+		},
+	}
+
+	e := &SyncEngine{gamertag: "TestPlayer", xuid: "1234567890123456"}
+
+	r := e.runConditionalPostSync(context.Background(), playerDB, sharedDB, mock, 0)
+
+	if !r.CareerSynced {
+		t.Fatal("CareerSynced devrait être true même sans nouveau match")
+	}
+	if r.PerfScoresComputed != 0 || r.LUSRUpdated != 0 || r.ViewsRefreshed != 0 {
+		t.Fatalf("pipeline sans matchs ne doit pas recalculer les agrégats: %+v", r)
+	}
+
+	var spartanID string
+	err := playerDB.QueryRow(
+		"SELECT spartan_id FROM career_progression ORDER BY recorded_at DESC LIMIT 1",
+	).Scan(&spartanID)
+	if err != nil {
+		t.Fatalf("QueryRow career_progression.spartan_id: %v", err)
+	}
+	if spartanID != "SR-TEST-4242" {
+		t.Fatalf("spartan_id: attendu %q, obtenu %q", "SR-TEST-4242", spartanID)
 	}
 }
 

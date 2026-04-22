@@ -173,7 +173,7 @@ func TestBootstrapService_Build_WithPlayers(t *testing.T) {
 	appSettings := filepath.Join(dir, "app_settings.json")
 
 	// Un joueur configuré
-	profilesJSON := `{"version":"3.0","profiles":{"halo-infinite":{"testplayer":{"db_path":"data/players/testplayer/stats.duckdb","xuid":"xuid-tp"}}}}`
+	profilesJSON := `{"version":"3.0","profiles":{"halo_infinite":{"testplayer":{"db_path":"data/players/testplayer/stats.duckdb","xuid":"xuid-tp"}}}}`
 	if err := os.WriteFile(dbProfiles, []byte(profilesJSON), 0600); err != nil {
 		t.Fatal(err)
 	}
@@ -225,7 +225,7 @@ func TestBootstrapService_BuildPlayersList_WithPlayer(t *testing.T) {
 	dbProfiles := filepath.Join(dir, "db_profiles.json")
 	appSettings := filepath.Join(dir, "app_settings.json")
 
-	profilesJSON := `{"version":"3.0","profiles":{"halo-infinite":{"player1":{"db_path":"data/players/player1/stats.duckdb","xuid":"xuid-1"}}}}`
+	profilesJSON := `{"version":"3.0","profiles":{"halo_infinite":{"player1":{"db_path":"data/players/player1/stats.duckdb","xuid":"xuid-1"}}}}`
 	if err := os.WriteFile(dbProfiles, []byte(profilesJSON), 0600); err != nil {
 		t.Fatal(err)
 	}

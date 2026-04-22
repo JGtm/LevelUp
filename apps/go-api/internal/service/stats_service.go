@@ -13,10 +13,12 @@ package service
 import (
 	"context"
 	"fmt"
+	"log/slog"
 	"math"
 
 	"levelup/go-api/internal/analysis"
 	"levelup/go-api/internal/domain"
+	"levelup/go-api/internal/domain/title"
 	"levelup/go-api/internal/port"
 )
 
@@ -24,6 +26,7 @@ import (
 type StatsService struct {
 	statsRepo port.StatsRepository
 	metaRepo  port.MetadataRepository // optionnel — Sprint 54-A7
+	titleSlug string                  // titre courant, ex: "halo_infinite"
 }
 
 // NewStatsService crée un StatsService.
@@ -34,6 +37,12 @@ func NewStatsService(repo port.StatsRepository) *StatsService {
 // WithMetadataRepo injecte le repository de métadonnées (saisons).
 func (s *StatsService) WithMetadataRepo(r port.MetadataRepository) *StatsService {
 	s.metaRepo = r
+	return s
+}
+
+// WithTitleSlug configure le slug du titre (ex: "halo_infinite").
+func (s *StatsService) WithTitleSlug(slug string) *StatsService {
+	s.titleSlug = slug
 	return s
 }
 
@@ -344,7 +353,12 @@ func (s *StatsService) resolveCurrentSeason(ctx context.Context) *domain.Current
 	if s.metaRepo == nil {
 		return syntheticSeasonResult()
 	}
-	season, err := s.metaRepo.GetCurrentSeason(ctx, "halo_infinite")
+	titleID := s.titleSlug
+	if titleID == "" {
+		titleID = title.DefaultSlug
+	}
+	slog.DebugContext(ctx, "resolveCurrentSeason", "titleSlug", titleID)
+	season, err := s.metaRepo.GetCurrentSeason(ctx, titleID)
 	if err != nil || season == nil {
 		return syntheticSeasonResult()
 	}

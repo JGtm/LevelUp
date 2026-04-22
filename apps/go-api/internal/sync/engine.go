@@ -17,6 +17,7 @@ import (
 	"database/sql"
 	"fmt"
 	"log/slog"
+	"strings"
 	"time"
 
 	_ "github.com/duckdb/duckdb-go/v2" // driver DuckDB
@@ -34,11 +35,12 @@ const (
 
 // SyncEngine orchestre la synchronisation des données Halo d'un joueur.
 type SyncEngine struct {
-	gamertag     string
-	xuid         string
-	playerDBPath string
-	sharedDBPath string
-	tokens       *domain.HaloTokens
+	gamertag       string
+	xuid           string
+	playerDBPath   string
+	sharedDBPath   string
+	metadataDBPath string
+	tokens         *domain.HaloTokens
 }
 
 // NewSyncEngine crée un moteur de sync pour un joueur.
@@ -53,11 +55,12 @@ func NewSyncEngine(
 ) *SyncEngine {
 	pr := titlePkg.NewPathResolver(repoRoot)
 	return &SyncEngine{
-		gamertag:     gamertag,
-		xuid:         xuid,
-		playerDBPath: pr.PlayerDBPath(titlePkg.DefaultSlug, gamertag),
-		sharedDBPath: pr.SharedDBPath(titlePkg.DefaultSlug),
-		tokens:       tokens,
+		gamertag:       gamertag,
+		xuid:           xuid,
+		playerDBPath:   pr.PlayerDBPath(titlePkg.DefaultSlug, gamertag),
+		sharedDBPath:   pr.SharedDBPath(titlePkg.DefaultSlug),
+		metadataDBPath: pr.MetadataDBPath(titlePkg.DefaultSlug),
+		tokens:         tokens,
 	}
 }
 
@@ -237,9 +240,8 @@ done:
 	)
 
 	// ─── Pipeline post-sync ─────────────────────────────────────────────────────
-	if result.MatchesInserted > 0 {
-		slog.InfoContext(ctx, "sync: lancement pipeline post-sync", "gamertag", e.gamertag)
-		postResult := e.runPostSyncPipeline(ctx, playerDB, sharedDB, client)
+	postResult := e.runConditionalPostSync(ctx, playerDB, sharedDB, client, result.MatchesInserted)
+	if result.MatchesInserted > 0 || postResult.CareerSynced {
 		result.PostSync = &postResult
 		slog.InfoContext(ctx, "sync: pipeline post-sync terminé",
 			"gamertag", e.gamertag,
@@ -248,8 +250,6 @@ done:
 			"career_synced", postResult.CareerSynced,
 			"views_refreshed", postResult.ViewsRefreshed,
 		)
-	} else {
-		slog.DebugContext(ctx, "sync: aucun match inséré — pipeline post-sync ignoré", "gamertag", e.gamertag)
 	}
 
 	// ─── sync_meta ──────────────────────────────────────────────────────────────
@@ -271,6 +271,25 @@ done:
 		"status", result.Status(),
 	)
 	return result, nil
+}
+
+// runConditionalPostSync exécute le pipeline complet si des matchs ont été insérés,
+// sinon rafraîchit au moins la carrière pour mettre à jour le snapshot joueur.
+func (e *SyncEngine) runConditionalPostSync(
+	ctx context.Context,
+	playerDB, sharedDB *sql.DB,
+	client HaloClient,
+	matchesInserted int,
+) domain.PostSyncResult {
+	if matchesInserted > 0 {
+		slog.InfoContext(ctx, "sync: lancement pipeline post-sync", "gamertag", e.gamertag)
+		return e.runPostSyncPipeline(ctx, playerDB, sharedDB, client)
+	}
+
+	slog.DebugContext(ctx, "sync: aucun match inséré — refresh carrière seul", "gamertag", e.gamertag)
+	return domain.PostSyncResult{
+		CareerSynced: e.runCareerSync(ctx, playerDB, client),
+	}
 }
 
 // processMatch récupère, transforme et insère un match dans les deux DBs.
@@ -414,19 +433,7 @@ func (e *SyncEngine) runPostSyncPipeline(
 	}
 
 	// 3. Career rank
-	slog.DebugContext(ctx, "post-sync: sync career rank", "gamertag", e.gamertag, "xuid", e.xuid)
-	if data, err := syncCareerRank(ctx, client, e.xuid); err != nil {
-		slog.WarnContext(ctx, "post-sync: career rank échoué", "gamertag", e.gamertag, "err", err)
-	} else if data != nil {
-		if err := saveCareerRank(playerDB, data); err != nil {
-			slog.WarnContext(ctx, "post-sync: sauvegarde career échouée", "gamertag", e.gamertag, "err", err)
-		} else {
-			r.CareerSynced = true
-			slog.DebugContext(ctx, "post-sync: career rank sauvegardé",
-				"gamertag", e.gamertag, "rank", data.CurrentRank, "rank_name", data.CurrentRankName,
-			)
-		}
-	}
+	r.CareerSynced = e.runCareerSync(ctx, playerDB, client)
 
 	// 4. Aggregates (materialized views)
 	slog.DebugContext(ctx, "post-sync: refresh aggregates player", "gamertag", e.gamertag)
@@ -443,4 +450,39 @@ func (e *SyncEngine) runPostSyncPipeline(
 	}
 
 	return r
+}
+
+func (e *SyncEngine) runCareerSync(
+	ctx context.Context,
+	playerDB *sql.DB,
+	client HaloClient,
+) bool {
+	slog.DebugContext(ctx, "post-sync: sync career rank", "gamertag", e.gamertag, "xuid", e.xuid)
+	data, err := syncCareerRank(ctx, client, e.xuid)
+	if err != nil {
+		slog.WarnContext(ctx, "post-sync: career rank échoué", "gamertag", e.gamertag, "err", err)
+		return false
+	}
+	if data == nil {
+		return false
+	}
+	if strings.TrimSpace(e.metadataDBPath) != "" {
+		metaDB, err := openCareerMetadataDB(e.metadataDBPath)
+		if err != nil {
+			slog.WarnContext(ctx, "post-sync: ouverture metadata échouée", "gamertag", e.gamertag, "err", err)
+		} else {
+			defer metaDB.Close()
+			if err := enrichCareerRankFromMetadata(metaDB, data); err != nil {
+				slog.WarnContext(ctx, "post-sync: enrichissement carrière metadata échoué", "gamertag", e.gamertag, "err", err)
+			}
+		}
+	}
+	if err := saveCareerRank(playerDB, data); err != nil {
+		slog.WarnContext(ctx, "post-sync: sauvegarde career échouée", "gamertag", e.gamertag, "err", err)
+		return false
+	}
+	slog.DebugContext(ctx, "post-sync: career rank sauvegardé",
+		"gamertag", e.gamertag, "rank", data.CurrentRank, "rank_name", data.CurrentRankName,
+	)
+	return true
 }

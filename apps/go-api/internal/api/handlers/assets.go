@@ -16,6 +16,7 @@ import (
 	"github.com/go-chi/chi/v5"
 
 	"levelup/go-api/internal/assets"
+	"levelup/go-api/internal/ctxkeys"
 )
 
 // AssetHandler gère le cache-aside unifié des assets visuels Halo.
@@ -131,7 +132,7 @@ func (h *AssetHandler) GetBattlePassImage(w http.ResponseWriter, r *http.Request
 
 	ref := assets.Ref{
 		Kind:    kind,
-		TitleID: "halo_infinite",
+		TitleID: ctxkeys.TitleSlug(r.Context()),
 		ID:      cleaned,
 		Variant: subDir,
 	}

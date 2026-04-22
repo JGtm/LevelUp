@@ -7,7 +7,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"path"
-	"path/filepath"
 	"sort"
 	"strings"
 	"time"
@@ -27,21 +26,10 @@ func NewSeasonPassRepo(pdb *PlayerDB) *SeasonPassRepo {
 	return &SeasonPassRepo{pdb: pdb}
 }
 
-// battlepassCacheDir dérive data/cache/battlepass_assets/ depuis metadata.duckdb.
-func (r *SeasonPassRepo) battlepassCacheDir() string {
-	metaPath := r.pdb.Metadata.Path()
-	if metaPath == "" {
-		return ""
-	}
-	warehouseDir := filepath.Dir(metaPath)
-	dataDir := filepath.Dir(warehouseDir)
-	return filepath.Join(dataDir, "cache", "battlepass_assets")
-}
-
 // localBPImageURL retourne l'URL proxy locale incluant le chemin GameCMS complet.
 // Le handler décodera ce chemin pour construire l'URL GameCMS exacte lors du fetch.
 // Ne retourne jamais une URL GameCMS directe — le browser ne peut pas la charger.
-func localBPImageURL(gameCMSPath, cacheDir, subDir string) *string {
+func localBPImageURL(gameCMSPath, subDir string) *string {
 	trimmed := strings.TrimSpace(strings.ReplaceAll(gameCMSPath, "\\", "/"))
 	if trimmed == "" {
 		return nil
@@ -53,7 +41,6 @@ func localBPImageURL(gameCMSPath, cacheDir, subDir string) *string {
 	}
 	// Toujours retourner l'URL proxy — Go gérera le cache ou le fetch GameCMS.
 	// Le chemin complet est inclus pour que le handler construise la bonne URL GameCMS.
-	_ = cacheDir // la décision cache/fetch est dans le handler
 	u := "/api/v1/assets/battlepass/" + subDir + cleaned
 	return &u
 }
@@ -237,11 +224,10 @@ func (r *SeasonPassRepo) LoadSeasonPassTracks(ctx context.Context, _, _ string) 
 		return nil, err
 	}
 
-	cacheDir := r.battlepassCacheDir()
 	for _, row := range trackRows {
 		prog := progressMap[row.rewardTrackPath]
 		prog.IsActive = row.rewardTrackPath == activeTrackPath
-		summary := buildTrackSummary(row, prog, itemMap, cacheDir)
+		summary := buildTrackSummary(row, prog, itemMap)
 		tracks = append(tracks, summary)
 	}
 
@@ -347,7 +333,7 @@ func (r *SeasonPassRepo) loadItemMetadataMap(
 		itemMap[itemPath.String] = seasonPassItemMeta{
 			Title:       coalesceNullString(title),
 			Description: nullStringPtr(description),
-			ImageURL:    localBPImageURL(coalesceNullString(displayPath), "", "tier"),
+			ImageURL:    localBPImageURL(coalesceNullString(displayPath), "tier"),
 		}
 	}
 	if err := rows.Err(); err != nil {
@@ -414,7 +400,7 @@ func (r *SeasonPassRepo) fillItemsFromAssetIndex(
 		}
 		itemMap[id.String] = seasonPassItemMeta{
 			Title:    coalesceNullString(title),
-			ImageURL: localBPImageURL(coalesceNullString(displayPath), "", "tier"),
+			ImageURL: localBPImageURL(coalesceNullString(displayPath), "tier"),
 		}
 	}
 }
@@ -424,7 +410,6 @@ func buildTrackSummary(
 	row seasonPassTrackRow,
 	state trackSnapshotState,
 	itemMap map[string]seasonPassItemMeta,
-	cacheDir string,
 ) domain.SeasonPassTrackSummary {
 	payload := parseTrackPayload(row.rawPayloadJSON)
 	name := row.rewardTrackPath
@@ -462,10 +447,10 @@ func buildTrackSummary(
 		v := *xpPerRank
 		s.XPPerRank = &v
 	}
-	if imageURL := resolveTrackImageURL(row, payload, cacheDir); imageURL != nil {
+	if imageURL := resolveTrackImageURL(row, payload); imageURL != nil {
 		s.ImageURL = imageURL
 	}
-	if backgroundURL := resolveTrackBackgroundURL(row, payload, cacheDir); backgroundURL != nil {
+	if backgroundURL := resolveTrackBackgroundURL(row, payload); backgroundURL != nil {
 		s.BackgroundImageURL = backgroundURL
 	}
 	return s
@@ -580,20 +565,20 @@ func selectTierPreview(
 	return seasonPassItemMeta{}, false
 }
 
-func resolveTrackImageURL(row seasonPassTrackRow, payload *seasonPassTrackPayload, cacheDir string) *string {
+func resolveTrackImageURL(row seasonPassTrackRow, payload *seasonPassTrackPayload) *string {
 	p := coalesceNullString(row.battlepassImagePath)
 	if p == "" && payload != nil {
 		p = payload.BattlePassImage
 	}
-	return localBPImageURL(p, cacheDir, "tracks")
+	return localBPImageURL(p, "tracks")
 }
 
-func resolveTrackBackgroundURL(row seasonPassTrackRow, payload *seasonPassTrackPayload, cacheDir string) *string {
+func resolveTrackBackgroundURL(row seasonPassTrackRow, payload *seasonPassTrackPayload) *string {
 	p := coalesceNullString(row.backgroundImagePath)
 	if p == "" && payload != nil {
 		p = payload.BackgroundImagePath
 	}
-	return localBPImageURL(p, cacheDir, "background")
+	return localBPImageURL(p, "background")
 }
 
 func resolveXPPerRank(row seasonPassTrackRow, payload *seasonPassTrackPayload) *int {

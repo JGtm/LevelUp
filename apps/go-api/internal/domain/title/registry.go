@@ -261,6 +261,12 @@ func (p *PathResolver) AppSettingsPath() string {
 	return filepath.Join(p.repoRoot, "app_settings.json")
 }
 
+// WatcherTokensPath retourne le chemin du fichier de tokens watcher.
+// Ex: data/auth/watcher_tokens.json
+func (p *PathResolver) WatcherTokensPath() string {
+	return filepath.Join(p.repoRoot, "data", "auth", "watcher_tokens.json")
+}
+
 // --- Validation ---
 
 // ValidateTitle vérifie qu'un slug est valide dans le registre.

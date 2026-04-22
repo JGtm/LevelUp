@@ -57,8 +57,6 @@ interface SettingsDraftState {
   setShowHints: (value: boolean) => void
   setTheme: (theme: UiTheme) => void
   toggleTheme: () => void
-  /** @deprecated Utiliser setLastPlayerSlugForTitle */
-  setLastPlayerSlug: (slug: string | null) => void
   /** Définit le dernier slug joueur pour un titre donné */
   setLastPlayerSlugForTitle: (titleSlug: string, slug: string | null) => void
   /** Récupère le dernier slug joueur pour un titre donné */
@@ -115,17 +113,6 @@ export const useSettingsDraftStore = create<SettingsDraftState>()(
           localUiPrefs: {
             ...state.localUiPrefs,
             theme: state.localUiPrefs.theme === 'dark' ? 'light' : 'dark',
-          },
-        })),
-
-      setLastPlayerSlug: (slug) =>
-        set((state) => ({
-          localUiPrefs: {
-            ...state.localUiPrefs,
-            lastPlayerSlugByTitle: {
-              ...state.localUiPrefs.lastPlayerSlugByTitle,
-              halo_infinite: slug,
-            },
           },
         })),
 

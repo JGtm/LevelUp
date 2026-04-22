@@ -51,7 +51,7 @@ func resolveDemoPlayer(ctx context.Context, cfg *AppConfig, titleSlug string) (*
 
 // resolveRealPlayer trouve le joueur par slug dans db_profiles.json.
 func resolveRealPlayer(ctx context.Context, cfg *AppConfig, slug, titleSlug string) (*duckdb.PlayerDB, error) {
-	players, err := cfg.LoadPlayers()
+	players, err := cfg.LoadPlayers(titleSlug)
 	if err != nil {
 		return nil, fmt.Errorf("ResolvePlayer: %w", err)
 	}

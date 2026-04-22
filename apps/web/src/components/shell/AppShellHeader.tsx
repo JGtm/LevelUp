@@ -19,18 +19,47 @@ function UtilityLink({ to, label }: { to: '/settings' | '/changelog'; label: str
   )
 }
 
+function TitleSwitcher() {
+  const availableTitles = useAppShellStore((s) => s.availableTitles)
+  const currentTitleSlug = useAppShellStore((s) => s.currentTitleSlug)
+  const isTitleSwitching = useAppShellStore((s) => s.isTitleSwitching)
+  const switchTitle = useAppShellStore((s) => s.switchTitle)
+
+  const currentTitle =
+    availableTitles.find((t) => t.slug === currentTitleSlug)?.name ?? currentTitleSlug
+
+  if (availableTitles.length <= 1) {
+    return (
+      <Badge variant="outline" className="border-border bg-background/70 text-muted-foreground">
+        {currentTitle}
+      </Badge>
+    )
+  }
+
+  return (
+    <select
+      value={currentTitleSlug}
+      disabled={isTitleSwitching}
+      onChange={(e) => { void switchTitle(e.target.value) }}
+      aria-label="Changer de titre"
+      className="rounded-full border border-border bg-background/70 px-3 py-1 text-sm font-medium text-muted-foreground outline-none transition focus:border-ring hover:border-border hover:bg-primary/10 hover:text-primary disabled:opacity-50 cursor-pointer"
+    >
+      {availableTitles.map((t) => (
+        <option key={t.slug} value={t.slug} className="text-foreground">
+          {t.name}
+        </option>
+      ))}
+    </select>
+  )
+}
+
 export function AppShellHeader() {
   const navigate = useNavigate()
   const pathname = useRouterState({ select: (state) => state.location.pathname })
   const currentPlayer = useAppShellStore((s) => s.currentPlayer)
   const availablePlayers = useAppShellStore((s) => s.availablePlayers)
   const setCurrentPlayer = useAppShellStore((s) => s.setCurrentPlayer)
-  const currentTitleSlug = useAppShellStore((s) => s.currentTitleSlug)
-  const availableTitles = useAppShellStore((s) => s.availableTitles)
   const linkedHaloIdentity = useAppShellStore((s) => s.linkedHaloIdentity)
-
-  const currentTitle =
-    availableTitles.find((title) => title.slug === currentTitleSlug)?.name ?? currentTitleSlug
 
   function handlePlayerChange(nextPlayerSlug: string) {
     const nextPlayer = availablePlayers.find((player) => player.player_slug === nextPlayerSlug)
@@ -59,9 +88,7 @@ export function AppShellHeader() {
             />
             <div className="min-w-0">
               <div className="flex flex-wrap items-center gap-2">
-                <Badge variant="outline" className="border-border bg-background/70 text-muted-foreground">
-                  {currentTitle}
-                </Badge>
+                <TitleSwitcher />
               </div>
               <p className="mt-2 max-w-2xl text-sm leading-6 text-muted-foreground">
                 Un shell plus compact, sans sidebar, pour lire vite et plonger plus loin quand

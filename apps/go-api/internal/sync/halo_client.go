@@ -78,6 +78,7 @@ type HaloAPIClient struct {
 	http           *http.Client
 	spartanToken   string
 	clearanceToken string
+	economyBaseURL string
 	// minInterval est l'intervalle minimum entre deux requêtes (rate limiting).
 	minInterval time.Duration
 	lastRequest time.Time
@@ -95,6 +96,7 @@ func NewHaloAPIClient(spartanToken, clearanceToken string, requestsPerSecond int
 		},
 		spartanToken:   spartanToken,
 		clearanceToken: clearanceToken,
+		economyBaseURL: "https://economy.svc.halowaypoint.com",
 		minInterval:    time.Second / time.Duration(requestsPerSecond),
 	}
 }
@@ -369,35 +371,117 @@ func (c *HaloAPIClient) GetCareerRank(ctx context.Context, xuid string) (*Career
 	if strings.TrimSpace(xuid) == "" {
 		return nil, errors.New("GetCareerRank: xuid vide")
 	}
-	rawURL := fmt.Sprintf(
-		"https://economy.svc.halowaypoint.com/hi/players/xuid(%s)/customization",
-		url.PathEscape(xuid))
-
-	req, err := http.NewRequestWithContext(ctx, http.MethodGet, rawURL, nil)
+	progressURL := fmt.Sprintf(
+		"%s/hi/players/xuid(%s)/rewardtracks/careerranks/careerrank1",
+		c.economyHost(),
+		url.PathEscape(xuid),
+	)
+	progressBody, ok, err := c.doPlayerGatedGet(ctx, progressURL)
 	if err != nil {
-		return nil, fmt.Errorf("GetCareerRank: new request: %w", err)
+		return nil, fmt.Errorf("GetCareerRank progression: %w", err)
 	}
-	req.Header.Set("Accept", "application/json")
-	req.Header.Set("x-343-authorization-spartan", c.spartanToken)
-	req.Header.Set("343-clearance", c.clearanceToken)
+	if !ok {
+		return nil, nil
+	}
 
-	c.rateWait(ctx)
-	resp, err := c.http.Do(req)
+	data, err := parseCareerProgressPayload(progressBody, xuid)
 	if err != nil {
-		return nil, fmt.Errorf("GetCareerRank HTTP: %w", err)
+		return nil, fmt.Errorf("GetCareerRank progression decode: %w", err)
 	}
-	defer resp.Body.Close()
-
-	if resp.StatusCode == http.StatusForbidden || resp.StatusCode == http.StatusUnauthorized {
-		return nil, nil // token joueur absent ou insuffisant — skip gracieux
-	}
-	if resp.StatusCode != http.StatusOK {
-		return nil, fmt.Errorf("GetCareerRank: status %d", resp.StatusCode)
+	if data == nil {
+		return nil, nil
 	}
 
-	var body map[string]any
-	if err := json.NewDecoder(resp.Body).Decode(&body); err != nil {
-		return nil, fmt.Errorf("GetCareerRank decode: %w", err)
+	customizationURL := fmt.Sprintf(
+		"%s/hi/players/xuid(%s)/customization?view=public",
+		c.economyHost(),
+		url.PathEscape(xuid),
+	)
+	customizationBody, ok, err := c.doPlayerGatedGet(ctx, customizationURL)
+	if err == nil && ok {
+		serviceTag, parseErr := parseCustomizationServiceTag(customizationBody)
+		if parseErr == nil {
+			data.SpartanID = serviceTag
+		}
 	}
-	return parseCareerRank(body, xuid), nil
+
+	return data, nil
+}
+
+func (c *HaloAPIClient) economyHost() string {
+	if strings.TrimSpace(c.economyBaseURL) == "" {
+		return "https://economy.svc.halowaypoint.com"
+	}
+	return strings.TrimRight(c.economyBaseURL, "/")
+}
+
+func (c *HaloAPIClient) doPlayerGatedGet(ctx context.Context, rawURL string) ([]byte, bool, error) {
+	body, err := c.doGet(ctx, rawURL)
+	if err != nil {
+		if isAuthErr(err) {
+			return nil, false, nil
+		}
+		return nil, false, err
+	}
+	return body, true, nil
+}
+
+func isAuthErr(err error) bool {
+	if err == nil {
+		return false
+	}
+	s := err.Error()
+	return contains(s, "HTTP 401") || contains(s, "HTTP 403")
+}
+
+func parseCareerProgressPayload(body []byte, xuid string) (*CareerRankData, error) {
+	type progress struct {
+		Rank              int  `json:"Rank"`
+		PartialProgress   int  `json:"PartialProgress"`
+		HasReachedMaxRank bool `json:"HasReachedMaxRank"`
+	}
+	type alternateTrack struct {
+		Result struct {
+			CurrentProgress *progress `json:"CurrentProgress"`
+		} `json:"Result"`
+	}
+	var payload struct {
+		CurrentProgress *progress        `json:"CurrentProgress"`
+		RewardTracks    []alternateTrack `json:"RewardTracks"`
+	}
+	if err := json.Unmarshal(body, &payload); err != nil {
+		return nil, err
+	}
+
+	current := payload.CurrentProgress
+	if current == nil {
+		for _, track := range payload.RewardTracks {
+			if track.Result.CurrentProgress != nil {
+				current = track.Result.CurrentProgress
+				break
+			}
+		}
+	}
+	if current == nil {
+		return nil, nil
+	}
+
+	return &CareerRankData{
+		XUID:        xuid,
+		CurrentRank: current.Rank,
+		CurrentXP:   current.PartialProgress,
+		IsMaxRank:   current.HasReachedMaxRank,
+	}, nil
+}
+
+func parseCustomizationServiceTag(body []byte) (string, error) {
+	var payload struct {
+		Appearance struct {
+			ServiceTag string `json:"ServiceTag"`
+		} `json:"Appearance"`
+	}
+	if err := json.Unmarshal(body, &payload); err != nil {
+		return "", err
+	}
+	return strings.TrimSpace(payload.Appearance.ServiceTag), nil
 }

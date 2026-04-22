@@ -17,6 +17,8 @@
 
 > Note home/record 2026-04-22 : aucun nouveau flux persistant non plus sur cette passe. La home lit désormais le dernier snapshot `career_progression` de la player DB (`spartan_id`, `rank`, `current_xp`, `xp_for_next_rank`) puis l'enrichit avec `metadata.career_ranks.title_en/title_fr` pour publier `spartan_identity` dans `/pages/home`. Le frontend React consomme cette payload pour rendre un bloc `Spartan ID` compact et une progression de rang carrière localisée, sans nouvelle écriture en base.
 
+> Note home/record 2026-04-22 bis : toujours aucun nouveau flux persistant ni changement de schéma. L'enrichissement Home lit maintenant aussi `metadata.career_ranks.large_icon_path` / `adornment_icon_path` / `icon_path` pour publier `spartan_identity.career_rank.rank_image_url`. La destination reste uniquement la payload HTTP `/pages/home`; aucune donnée supplémentaire n'est écrite dans DuckDB.
+
 > Note tooling dev 2026-04-20 : aucun flux de données modifié dans cette passe. Les changements portent uniquement sur la chaîne de démarrage locale Go/React : port API configurable via `API_PORT`, réutilisation d'une API déjà active, et proxy Vite dev paramétrable via `VITE_API_PROXY_TARGET`.
 
 > Note tooling repo 2026-04-21 : aucun flux de données modifié non plus. Le nettoyage porte uniquement sur les points d'entrée et l'organisation du repo Go : suppression des wrappers `LevelUp.bat` / `LevelUp.sh` / `run.sh`, documentation réalignée sur `make dev`, et déplacement du script de déploiement vers `scripts/deploy.sh`.

@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"levelup/go-api/internal/config"
+	"levelup/go-api/internal/ctxkeys"
 	"levelup/go-api/internal/domain"
 	titlePkg "levelup/go-api/internal/domain/title"
 	"levelup/go-api/internal/port"
@@ -49,11 +50,18 @@ func (s *BootstrapService) WithUserStoreEmpty(fn func() (bool, error)) *Bootstra
 // Build construit la réponse bootstrap complète.
 // sess peut être nil si la session n'est pas encore initialisée.
 func (s *BootstrapService) Build(ctx context.Context, sess *domain.SessionData) (*domain.BootstrapResponse, error) {
-	players, err := s.cfg.LoadPlayers()
+	// Sprint 44 : titre courant depuis la session, fallback halo_infinite.
+	currentTitleSlug := titlePkg.DefaultSlug
+	if sess != nil && sess.CurrentTitleSlug != "" {
+		currentTitleSlug = sess.CurrentTitleSlug
+	}
+
+	players, err := s.cfg.LoadPlayers(currentTitleSlug)
 	if err != nil {
 		slog.WarnContext(ctx, "bootstrap: erreur chargement joueurs", "err", err)
 		players = []domain.PlayerSummary{}
 	}
+	slog.DebugContext(ctx, "bootstrap: filtrage joueurs", "title", currentTitleSlug, "count", len(players))
 
 	appSettings, err := s.cfg.LoadAppSettings()
 	if err != nil {
@@ -82,12 +90,6 @@ func (s *BootstrapService) Build(ctx context.Context, sess *domain.SessionData) 
 		}
 		p := players[idx]
 		currentPlayer = &p
-	}
-
-	// Sprint 44 : titre courant depuis la session, fallback halo_infinite.
-	currentTitleSlug := titlePkg.DefaultSlug
-	if sess != nil && sess.CurrentTitleSlug != "" {
-		currentTitleSlug = sess.CurrentTitleSlug
 	}
 
 	// Sprint 54-B / 55-E : privacy match du joueur courant.
@@ -173,8 +175,9 @@ func (s *BootstrapService) fetchPrivacyNonBlocking(ctx context.Context, xuid str
 }
 
 // BuildPlayersList construit la liste des joueurs pour GET /api/v1/players.
-func (s *BootstrapService) BuildPlayersList(_ context.Context) (*domain.PlayersListResponse, error) {
-	players, err := s.cfg.LoadPlayers()
+func (s *BootstrapService) BuildPlayersList(ctx context.Context) (*domain.PlayersListResponse, error) {
+	titleSlug := ctxkeys.TitleSlug(ctx)
+	players, err := s.cfg.LoadPlayers(titleSlug)
 	if err != nil {
 		return nil, fmt.Errorf("BuildPlayersList: %w", err)
 	}

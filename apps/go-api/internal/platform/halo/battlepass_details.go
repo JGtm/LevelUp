@@ -81,7 +81,7 @@ func (p *HaloProvider) fetchRewardTrackDefinition(
 
 	ref := assets.Ref{
 		Kind:    assets.KindRewardTrackDefinition,
-		TitleID: "halo_infinite",
+		TitleID: p.titleID(),
 		ID:      trimmed,
 	}
 	resolved, err := p.assetResolver.Get(ctx, ref)
@@ -116,14 +116,14 @@ func (p *HaloProvider) warmBPTrackAssets(ctx context.Context, def *battlepassTra
 	if bp := strings.TrimSpace(def.BattlePassImage); bp != "" {
 		refs = append(refs, assets.Ref{
 			Kind:    assets.KindBPTrackImage,
-			TitleID: "halo_infinite",
+			TitleID: p.titleID(),
 			ID:      bp,
 		})
 	}
 	if bg := strings.TrimSpace(def.BackgroundImagePath); bg != "" {
 		refs = append(refs, assets.Ref{
 			Kind:    assets.KindBPBackground,
-			TitleID: "halo_infinite",
+			TitleID: p.titleID(),
 			ID:      bg,
 		})
 	}
@@ -132,7 +132,7 @@ func (p *HaloProvider) warmBPTrackAssets(ctx context.Context, def *battlepassTra
 			if ip := strings.TrimSpace(r.InventoryItemPath); ip != "" {
 				refs = append(refs, assets.Ref{
 					Kind:    assets.KindRewardTrackDefinition,
-					TitleID: "halo_infinite",
+					TitleID: p.titleID(),
 					ID:      ip,
 				})
 			}
@@ -141,7 +141,7 @@ func (p *HaloProvider) warmBPTrackAssets(ctx context.Context, def *battlepassTra
 			if ip := strings.TrimSpace(r.InventoryItemPath); ip != "" {
 				refs = append(refs, assets.Ref{
 					Kind:    assets.KindRewardTrackDefinition,
-					TitleID: "halo_infinite",
+					TitleID: p.titleID(),
 					ID:      ip,
 				})
 			}

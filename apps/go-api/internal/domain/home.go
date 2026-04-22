@@ -72,6 +72,7 @@ type HomeSpartanIdentityRow struct {
 	RankTier      *string
 	RankTitleEN   *string
 	RankTitleFR   *string
+	RankImageURL  *string
 	CurrentXP     int
 	XPForNextRank int
 	IsMaxRank     bool
@@ -110,6 +111,7 @@ type HomeHeroCard struct {
 type HomeCareerRankSummary struct {
 	RankNumber    int     `json:"rank_number"`
 	RankTitle     string  `json:"rank_title"`
+	RankImageURL  *string `json:"rank_image_url,omitempty"`
 	CurrentXP     int     `json:"current_xp"`
 	XPForNextRank int     `json:"xp_for_next_rank"`
 	ProgressPct   float64 `json:"progress_pct"`

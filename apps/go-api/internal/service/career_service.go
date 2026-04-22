@@ -7,10 +7,12 @@ package service
 import (
 	"context"
 	"fmt"
+	"log/slog"
 	"math"
 	"time"
 
 	"levelup/go-api/internal/domain"
+	"levelup/go-api/internal/domain/title"
 	"levelup/go-api/internal/port"
 )
 
@@ -23,8 +25,9 @@ const (
 
 // CareerService construit les réponses pour la page Carrière.
 type CareerService struct {
-	repo     port.CareerRepository
-	metaRepo port.MetadataRepository // optionnel — nil = fallback synthétique
+	repo      port.CareerRepository
+	metaRepo  port.MetadataRepository // optionnel — nil = fallback synthétique
+	titleSlug string                  // titre courant, ex: "halo_infinite"
 }
 
 // NewCareerService crée un CareerService.
@@ -35,6 +38,12 @@ func NewCareerService(repo port.CareerRepository) *CareerService {
 // WithMetadataRepo injecte le repository de métadonnées (saisons, etc.).
 func (s *CareerService) WithMetadataRepo(r port.MetadataRepository) *CareerService {
 	s.metaRepo = r
+	return s
+}
+
+// WithTitleSlug configure le slug du titre (ex: "halo_infinite").
+func (s *CareerService) WithTitleSlug(slug string) *CareerService {
+	s.titleSlug = slug
 	return s
 }
 
@@ -377,7 +386,11 @@ func (s *CareerService) resolveCurrentSeason(ctx context.Context) *domain.Curren
 	if s.metaRepo == nil {
 		return syntheticSeasonResult()
 	}
-	titleID := "halo_infinite"
+	titleID := s.titleSlug
+	if titleID == "" {
+		titleID = title.DefaultSlug
+	}
+	slog.DebugContext(ctx, "resolveCurrentSeason", "titleSlug", titleID)
 	season, err := s.metaRepo.GetCurrentSeason(ctx, titleID)
 	if err != nil || season == nil {
 		return syntheticSeasonResult()
