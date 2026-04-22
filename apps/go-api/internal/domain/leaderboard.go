@@ -8,7 +8,10 @@ type LeaderboardEntry struct {
 	TitleSlug string `json:"title_slug"`
 	XUID      string `json:"xuid"`
 	Gamertag  string `json:"gamertag"`
-	CSR       int    `json:"csr"`
+	CSR       int    `json:"-"`
+	CSRValue  int    `json:"csr_value"`
+	Tier      string `json:"tier"`
+	SubTier   int    `json:"sub_tier"`
 	Playlist  string `json:"playlist,omitempty"`
 	Season    string `json:"season,omitempty"`
 	IsLocal   bool   `json:"is_local"` // true = données DuckDB locale
@@ -26,8 +29,8 @@ type LeaderboardRequest struct {
 // LeaderboardResponse est la réponse de GET .../pages/leaderboard.
 type LeaderboardResponse struct {
 	Entries    []LeaderboardEntry `json:"entries"`
-	Season     string             `json:"season"`
-	Playlist   string             `json:"playlist"`
+	Season     string             `json:"season_id"`
+	Playlist   string             `json:"playlist_id"`
 	TitleSlug  string             `json:"title_slug"`
-	TotalLocal int                `json:"total_local"`
+	TotalLocal int                `json:"total"`
 }

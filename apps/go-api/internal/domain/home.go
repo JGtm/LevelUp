@@ -65,17 +65,30 @@ type HomeMediaRow struct {
 }
 
 // HomeSpartanIdentityRow est la projection brute de l'identité record pour la home.
+type HomeSkillPeakRow struct {
+	RatingValue   float64
+	TierLabel     *string
+	BadgeImageURL *string
+}
+
+// HomeSpartanIdentityRow est la projection brute de l'identité record pour la home.
 type HomeSpartanIdentityRow struct {
-	SpartanID     *string
-	RankNumber    int
-	RankName      *string
-	RankTier      *string
-	RankTitleEN   *string
-	RankTitleFR   *string
-	RankImageURL  *string
-	CurrentXP     int
-	XPForNextRank int
-	IsMaxRank     bool
+	SpartanID         *string
+	BannerImageURL    *string
+	EmblemImageURL    *string
+	BackdropImageURL  *string
+	HighestCSR        *HomeSkillPeakRow
+	HighestLUSR       *HomeSkillPeakRow
+	RankNumber        int
+	RankName          *string
+	RankTier          *string
+	RankTitleEN       *string
+	RankTitleFR       *string
+	RankImageURL      *string
+	AdornmentImageURL *string
+	CurrentXP         int
+	XPForNextRank     int
+	IsMaxRank         bool
 }
 
 // ---------------------------------------------------------------------------
@@ -109,19 +122,42 @@ type HomeHeroCard struct {
 
 // HomeCareerRankSummary représente le rang carrière courant dans la home.
 type HomeCareerRankSummary struct {
-	RankNumber    int     `json:"rank_number"`
-	RankTitle     string  `json:"rank_title"`
-	RankImageURL  *string `json:"rank_image_url,omitempty"`
-	CurrentXP     int     `json:"current_xp"`
-	XPForNextRank int     `json:"xp_for_next_rank"`
-	ProgressPct   float64 `json:"progress_pct"`
-	IsMaxRank     bool    `json:"is_max_rank"`
+	RankNumber        int     `json:"rank_number"`
+	RankTitle         string  `json:"rank_title"`
+	RankImageURL      *string `json:"rank_image_url,omitempty"`
+	AdornmentImageURL *string `json:"adornment_image_url,omitempty"`
+	CurrentXP         int     `json:"current_xp"`
+	XPForNextRank     int     `json:"xp_for_next_rank"`
+	ProgressPct       float64 `json:"progress_pct"`
+	IsMaxRank         bool    `json:"is_max_rank"`
+}
+
+// HomeSkillPeakSummary représente un pic historique CSR ou LUSR affiché sur la home.
+type HomeSkillPeakSummary struct {
+	RatingValue   float64 `json:"rating_value"`
+	TierLabel     *string `json:"tier_label,omitempty"`
+	BadgeImageURL *string `json:"badge_image_url,omitempty"`
+}
+
+// HomePlaylistRank associe une playlist récente à son dernier rang compétitif connu.
+type HomePlaylistRank struct {
+	PlaylistName  string   `json:"playlist_name"`
+	IsRanked      bool     `json:"is_ranked"`
+	RatingType    *string  `json:"rating_type,omitempty"` // "CSR" | "LUSR" — nil si aucun rang calculé
+	RatingValue   *float64 `json:"rating_value,omitempty"`
+	TierLabel     *string  `json:"tier_label,omitempty"`
+	BadgeImageURL *string  `json:"badge_image_url,omitempty"`
 }
 
 // HomeSpartanIdentity représente le bloc identitaire compact de la home.
 type HomeSpartanIdentity struct {
-	SpartanID  *string                `json:"spartan_id,omitempty"`
-	CareerRank *HomeCareerRankSummary `json:"career_rank,omitempty"`
+	BannerImageURL   *string                `json:"banner_image_url,omitempty"`
+	SpartanID        *string                `json:"spartan_id,omitempty"`
+	EmblemImageURL   *string                `json:"emblem_image_url,omitempty"`
+	BackdropImageURL *string                `json:"backdrop_image_url,omitempty"`
+	HighestCSR       *HomeSkillPeakSummary  `json:"highest_csr,omitempty"`
+	HighestLUSR      *HomeSkillPeakSummary  `json:"highest_lusr,omitempty"`
+	CareerRank       *HomeCareerRankSummary `json:"career_rank,omitempty"`
 }
 
 // ---------------------------------------------------------------------------
@@ -195,14 +231,17 @@ type RecentMediaItem struct {
 
 // HomePageResponse est la réponse agrégée de la page d'accueil Mission Control.
 type HomePageResponse struct {
-	Hero            HomeHeroCard         `json:"hero"`
-	SpartanIdentity *HomeSpartanIdentity `json:"spartan_identity,omitempty"`
-	Highlights      []HighlightItem      `json:"highlights"`
-	RecentMatches   []RecentMatchItem    `json:"recent_matches"`
-	FavoriteMatches []RecentMatchItem    `json:"favorite_matches"`
-	RecentMedia     []RecentMediaItem    `json:"recent_media"`
-	SoloSession     *SessionSummaryItem  `json:"solo_session,omitempty"`
-	SquadSession    *SessionSummaryItem  `json:"squad_session,omitempty"`
+	Hero                HomeHeroCard         `json:"hero"`
+	SpartanIdentity     *HomeSpartanIdentity `json:"spartan_identity,omitempty"`
+	Highlights          []HighlightItem      `json:"highlights"`
+	RecentMatches       []RecentMatchItem    `json:"recent_matches"`
+	FavoriteMatches     []RecentMatchItem    `json:"favorite_matches"`
+	RecentMedia         []RecentMediaItem    `json:"recent_media"`
+	SoloSession         *SessionSummaryItem  `json:"solo_session,omitempty"`
+	SquadSession        *SessionSummaryItem  `json:"squad_session,omitempty"`
+	HasRankedHistory    bool                 `json:"has_ranked_history"`
+	HasUnrankedHistory  bool                 `json:"has_unranked_history"`
+	RecentPlaylistRanks []HomePlaylistRank   `json:"recent_playlist_ranks,omitempty"`
 }
 
 // BattlePassResponse contient les informations Battle Pass live ou depuis le cache DB.
