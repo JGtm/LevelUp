@@ -1,8 +1,8 @@
 /**
  * MatchViewPage — détail d'un match (5 onglets).
  */
-import { useState } from 'react'
-import { useParams, useRouter, Link } from '@tanstack/react-router'
+import { useState, useEffect, useCallback } from 'react'
+import { useParams, useRouter, Link, useNavigate } from '@tanstack/react-router'
 import { useQueryClient } from '@tanstack/react-query'
 import { PageHeader } from '@/components/shell/PageHeader'
 import { PageLoader } from '@/components/ui/spinner'
@@ -10,7 +10,7 @@ import { Card, CardContent } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { PlotlyChart } from '@/components/ui/plotly-chart'
-import { useMatchView } from './queries'
+import { useMatchView, useMatchNeighbors } from './queries'
 import { MatchScoreboard } from './MatchScoreboard'
 import { ExpectedCardsSection, MatchRankBadge, KdIndicatorCard } from './MatchStatCards'
 import { useSetMatchExclusion } from '@/features/match-history/queries'
@@ -78,6 +78,70 @@ function MatchBreadcrumb({ playerSlug, matchLabel }: MatchBreadcrumbProps) {
 
 type TabId = 'summary' | 'combat' | 'team' | 'media' | 'citations'
 
+// ─── Navigation prev/next ──────────────────────────────────────────────────
+
+interface MatchNavigationProps {
+  playerSlug: string
+  matchId: string
+}
+
+function MatchNavigation({ playerSlug, matchId }: MatchNavigationProps) {
+  const navigate = useNavigate()
+  const { data: neighbors } = useMatchNeighbors(playerSlug, matchId)
+
+  const goTo = useCallback(
+    (targetMatchId: string | null | undefined) => {
+      if (!targetMatchId) return
+      void navigate({
+        to: '/players/$playerSlug/matches/$matchId',
+        params: { playerSlug, matchId: targetMatchId },
+      })
+    },
+    [navigate, playerSlug],
+  )
+
+  // Raccourcis clavier ← / →
+  useEffect(() => {
+    function onKey(e: KeyboardEvent) {
+      if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement) return
+      if (e.key === 'ArrowLeft') goTo(neighbors?.previous_match_id)
+      if (e.key === 'ArrowRight') goTo(neighbors?.next_match_id)
+    }
+    window.addEventListener('keydown', onKey)
+    return () => window.removeEventListener('keydown', onKey)
+  }, [goTo, neighbors])
+
+  if (!neighbors) return null
+
+  return (
+    <div className="flex items-center gap-2">
+      <Button
+        variant="ghost"
+        size="sm"
+        disabled={!neighbors.previous_match_id}
+        onClick={() => goTo(neighbors.previous_match_id)}
+        title="Match précédent (←)"
+        aria-label="Match précédent"
+      >
+        ◀
+      </Button>
+      <span className="text-xs text-muted-foreground tabular-nums">
+        {neighbors.current_index + 1} / {neighbors.total_matches}
+      </span>
+      <Button
+        variant="ghost"
+        size="sm"
+        disabled={!neighbors.next_match_id}
+        onClick={() => goTo(neighbors.next_match_id)}
+        title="Match suivant (→)"
+        aria-label="Match suivant"
+      >
+        ▶
+      </Button>
+    </div>
+  )
+}
+
 const TABS: { id: TabId; label: string }[] = [
   { id: 'summary', label: 'Résumé' },
   { id: 'combat', label: 'Combat' },
@@ -125,10 +189,13 @@ export function MatchViewPage() {
   return (
     <div className="flex flex-col">
       <MatchBreadcrumb playerSlug={playerSlug} matchLabel={matchLabel} />
-      <PageHeader
-        title={`${header.map_ui} — ${header.mode_ui}`}
-        subtitle={header.start_time_label}
-      />
+      <div className="flex items-center justify-between px-6 pt-4">
+        <PageHeader
+          title={`${header.map_ui} — ${header.mode_ui}`}
+          subtitle={header.start_time_label}
+        />
+        <MatchNavigation playerSlug={playerSlug} matchId={matchId} />
+      </div>
 
       {/* Sprint 54-B : avertissement privacy */}
       {data.privacy_warning && (
