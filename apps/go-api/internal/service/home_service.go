@@ -97,6 +97,13 @@ func (s *HomeService) GetHomePage(ctx context.Context, gamertag, locale string) 
 		media = nil
 	}
 
+	playlistRanks, err := s.repo.LoadRecentPlaylistRanks(ctx)
+	if err != nil {
+		slog.WarnContext(ctx, "home: LoadRecentPlaylistRanks failed", "err", err)
+		playlistRanks = nil
+	}
+	hasRankedHistory, hasUnrankedHistory := inferHomeSkillHistory(matches)
+
 	// Charger les favoris si le social repo est disponible (dégradation silencieuse sinon).
 	var favoriteIDs map[string]bool
 	if s.socialRepo != nil && s.playerSlug != "" {
@@ -116,15 +123,37 @@ func (s *HomeService) GetHomePage(ctx context.Context, gamertag, locale string) 
 	squadSession := analysis.BuildSessionSummary(matches, sessions, true)
 
 	return &domain.HomePageResponse{
-		Hero:            hero,
-		SpartanIdentity: analysis.BuildSpartanIdentity(spartanIdentity, locale),
-		Highlights:      highlights,
-		RecentMatches:   recentMatches,
-		FavoriteMatches: favoriteMatches,
-		RecentMedia:     recentMedia,
-		SoloSession:     soloSession,
-		SquadSession:    squadSession,
+		Hero:                hero,
+		SpartanIdentity:     analysis.BuildSpartanIdentity(spartanIdentity, locale),
+		Highlights:          highlights,
+		RecentMatches:       recentMatches,
+		FavoriteMatches:     favoriteMatches,
+		RecentMedia:         recentMedia,
+		SoloSession:         soloSession,
+		SquadSession:        squadSession,
+		HasRankedHistory:    hasRankedHistory,
+		HasUnrankedHistory:  hasUnrankedHistory,
+		RecentPlaylistRanks: playlistRanks,
 	}, nil
+}
+
+func inferHomeSkillHistory(matches []domain.HomeMatchRow) (bool, bool) {
+	hasRankedHistory := false
+	hasUnrankedHistory := false
+	for _, match := range matches {
+		if match.IsFirefight {
+			continue
+		}
+		if match.IsRanked {
+			hasRankedHistory = true
+		} else {
+			hasUnrankedHistory = true
+		}
+		if hasRankedHistory && hasUnrankedHistory {
+			break
+		}
+	}
+	return hasRankedHistory, hasUnrankedHistory
 }
 
 // buildFavoriteMatchList construit la liste des matchs favoris à partir de tous les matchs
