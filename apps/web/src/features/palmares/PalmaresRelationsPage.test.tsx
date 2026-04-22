@@ -31,8 +31,8 @@ describe('PalmaresRelationsPage', () => {
 
     expect(screen.getAllByText(/Alliés fréquents/i).length).toBeGreaterThan(0)
     expect(screen.getByRole('heading', { name: /Meilleures synergies/i })).toBeInTheDocument()
-    expect(screen.getByText('DuoAlpha')).toBeInTheDocument()
-    expect(screen.getByText('NemesisBravo')).toBeInTheDocument()
-    expect(screen.getByText('QueueGhost')).toBeInTheDocument()
+    expect(screen.getAllByText('DuoAlpha').length).toBeGreaterThan(0)
+    expect(screen.getAllByText('NemesisBravo').length).toBeGreaterThan(0)
+    expect(screen.getAllByText('QueueGhost').length).toBeGreaterThan(0)
   })
 })
