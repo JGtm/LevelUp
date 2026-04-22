@@ -119,7 +119,10 @@ func TestContractRoutesRegistered(t *testing.T) {
 	// - citations/commendations/media/synthesis : OpenAPI aligné sur POST (chi)
 	// - match-history/export : OpenAPI aligné sur GET (chi)
 	// - gamertag search : route inconditionnelle avec 503 si DB absente
-	notYetImplemented := map[string]bool{}
+	// TODO : POST /players/{player_slug}/pages/last-match/resolve (pas encore implémenté)
+	notYetImplemented := map[string]bool{
+		"POST /api/v1/players/{*}/pages/last-match/resolve": true,
+	}
 
 	for path, pathItem := range doc.Paths {
 		for method := range pathItem {

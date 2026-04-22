@@ -158,7 +158,7 @@ func (s *MatchViewService) GetMatchView(ctx context.Context, matchID string) (do
 
 	// Durée pour les bins tug-of-war
 	var durationMS int64
-	if meta.PlayableDurationSeconds != nil {
+	if meta != nil && meta.PlayableDurationSeconds != nil {
 		durationMS = *meta.PlayableDurationSeconds * 1000
 	}
 

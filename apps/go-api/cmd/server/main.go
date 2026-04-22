@@ -116,9 +116,11 @@ func main() {
 	)
 
 	// --- 3. Connexions DuckDB ---
-	sharedPath := filepath.Join(cfg.RepoRoot, "data", "warehouse", "shared_matches_v2.duckdb")
-	metaPath := filepath.Join(cfg.RepoRoot, "data", "warehouse", "metadata.duckdb")
-	sharedSocialPath := filepath.Join(cfg.RepoRoot, "data", "warehouse", "shared_social.duckdb")
+	pr := title.NewPathResolver(cfg.RepoRoot)
+	titleSlug := title.DefaultSlug
+	sharedPath := pr.SharedDBPath(titleSlug)
+	metaPath := pr.MetadataDBPath(titleSlug)
+	sharedSocialPath := pr.SharedSocialDBPath(titleSlug)
 
 	// En DEMO_MODE, utiliser les fixtures de démo si les DBs prod n'existent pas.
 	if cfg.DemoMode {
@@ -140,7 +142,7 @@ func main() {
 	slog.Debug("ouverture DuckDB", "shared", sharedPath, "metadata", metaPath, "shared_social", sharedSocialPath)
 
 	// --- 3a. Migrations (read-write, avant l'ouverture des connexions runtime) ---
-	if err := runMigrations(metaPath, sharedPath, sharedSocialPath, cfg); err != nil {
+	if err := runMigrations(metaPath, sharedPath, sharedSocialPath, pr.SharedPVEDBPath(titleSlug), cfg); err != nil {
 		slog.Debug("migrations ignorées (DB verrouillée), démarrage sans migration")
 	} else {
 		slog.Debug("migrations appliquées")
@@ -272,7 +274,7 @@ func strPtr(s string) *string { return &s }
 // runMigrations applique les migrations DuckDB dans l'ordre :
 // metadata → shared → shared_pve → shared_social.
 // Les migrations player sont gérées à l'ouverture de chaque player DB.
-func runMigrations(metaPath, sharedPath, sharedSocialPath string, cfg *config.AppConfig) error {
+func runMigrations(metaPath, sharedPath, sharedSocialPath, pvePath string, cfg *config.AppConfig) error {
 	// Ensure all step init() have been registered (side-effect imports).
 	_ = migration.All()
 
@@ -299,7 +301,6 @@ func runMigrations(metaPath, sharedPath, sharedSocialPath string, cfg *config.Ap
 	sharedDB.Close()
 
 	// 3. shared_pve.duckdb (optionnel, fichier peut ne pas exister)
-	pvePath := filepath.Join(cfg.RepoRoot, "data", "warehouse", "shared_pve.duckdb")
 	if _, err := os.Stat(pvePath); err == nil {
 		pveDB, err := duckdb.OpenReadWrite(pvePath)
 		if err != nil {
@@ -392,14 +393,16 @@ func startWatcherDaemon(ctx context.Context, cfg *config.AppConfig, settingsStor
 	// daemon est déclaré ici pour permettre à la closure RefreshRTAAuth d'y référer
 	// avant que NewDaemon retourne (pattern forward-reference via pointeur).
 	var daemon *watcher.Daemon
+	watcherPR := title.NewPathResolver(cfg.RepoRoot)
+	watcherSlug := title.DefaultSlug
 	daemon = watcher.NewDaemon(watcher.DaemonConfig{
 		RepoRoot:        cfg.RepoRoot,
 		SteamAPIKey:     os.Getenv("STEAM_API_KEY"),
 		MaxParallelSync: 2,
 		LiveRefreshFactory: func(gamertag, xuid string) watcher.LiveRefreshTrigger {
-			metaPath := filepath.Join(cfg.RepoRoot, "data", "warehouse", "metadata.duckdb")
-			playerPath := filepath.Join(cfg.RepoRoot, "data", "players", gamertag, "stats.duckdb")
-			sink := duckdb.NewPersistSink(metaPath, playerPath, xuid)
+			wMetaPath := watcherPR.MetadataDBPath(watcherSlug)
+			wPlayerPath := watcherPR.PlayerDBPath(watcherSlug, gamertag)
+			sink := duckdb.NewPersistSink(wMetaPath, wPlayerPath, xuid)
 			// resolver nil : le watcher ne pré-chauffe pas les définitions BP.
 			// Les définitions sont chargées à la demande via l'endpoint HTTP (resolver HTTP).
 			return watcher.NewPlayerLiveRefresher(gamertag, xuid, sink, nil)

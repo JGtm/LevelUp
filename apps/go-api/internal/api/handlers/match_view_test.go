@@ -25,6 +25,10 @@ func (m *mockMatchViewService) GetMatchView(_ context.Context, _ string) (domain
 	return m.resp, m.err
 }
 
+func (m *mockMatchViewService) GetMatchNeighbors(_ context.Context, _ string) (domain.MatchNeighbors, error) {
+	return domain.MatchNeighbors{}, nil
+}
+
 func newMatchViewRouter(factory handlers.ServiceFactory[port.MatchViewService]) *chi.Mux {
 	r := chi.NewRouter()
 	h := handlers.NewMatchViewHandler(factory)

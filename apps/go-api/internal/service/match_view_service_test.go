@@ -54,6 +54,21 @@ func (m *mockMatchViewRepo) GetMatchWeaponKills(_ context.Context, _, _ string) 
 func (m *mockMatchViewRepo) GetMatchKVPairs(_ context.Context, _ string) ([]domain.KVPairRaw, error) {
 	return m.kvPairs, m.kvErr
 }
+func (m *mockMatchViewRepo) GetMatchNeighbors(_ context.Context, _, _ string) (*domain.MatchNeighbors, error) {
+	return nil, nil
+}
+func (m *mockMatchViewRepo) GetMatchEncounters(_ context.Context, _, _ string) ([]domain.EncounterRaw, error) {
+	return nil, nil
+}
+func (m *mockMatchViewRepo) GetMatchSkillRank(_ context.Context, _ string) (*domain.SkillRankRaw, error) {
+	return nil, nil
+}
+func (m *mockMatchViewRepo) GetMatchMedia(_ context.Context, _, _ string) ([]domain.MediaAssocRaw, error) {
+	return nil, nil
+}
+func (m *mockMatchViewRepo) GetMatchExpectedStats(_ context.Context, _, _ string) (*domain.ExpectedStatsRaw, error) {
+	return nil, nil
+}
 
 // --- tests ---
 
