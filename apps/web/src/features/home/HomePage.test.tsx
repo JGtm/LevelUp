@@ -62,10 +62,24 @@ describe('HomePage', () => {
         },
         spartan_identity: {
           spartan_id: 'JGTM',
+          banner_image_url: 'https://example.test/identity/nameplate.png',
+          emblem_image_url: 'https://example.test/identity/emblem.png',
+          backdrop_image_url: 'https://example.test/identity/backdrop.png',
+          highest_csr: {
+            rating_value: 1525,
+            tier_label: 'Gold 3',
+            badge_image_url: '/static/ranks/120px-HINF-CSR_Gold3.png',
+          },
+          highest_lusr: {
+            rating_value: 1750,
+            tier_label: 'Platinum V',
+            badge_image_url: '/static/ranks/120px-HINF-CSR_Platinum5.png',
+          },
           career_rank: {
             rank_number: 25,
             rank_title: 'Lance Corporal',
             rank_image_url: 'https://example.test/ranks/lance-corporal.png',
+            adornment_image_url: 'https://example.test/ranks/lance-corporal-adornment.png',
             current_xp: 5000,
             xp_for_next_rank: 10000,
             progress_pct: 50,
@@ -85,11 +99,31 @@ describe('HomePage', () => {
       renderWithProviders(<HomePage />)
 
       await waitFor(() => {
+        const spartanBanner = screen.getByTestId('home-spartan-identity-banner')
+        expect(screen.getByTestId('home-spartan-gamertag')).toHaveTextContent('TestPlayer')
         expect(screen.getByTestId('home-spartan-id-value')).toHaveTextContent('JGTM')
+        expect(screen.getByTestId('home-spartan-emblem-image')).toHaveAttribute('src', 'https://example.test/identity/emblem.png')
+        expect(screen.getByTestId('home-skill-peaks-panel')).toBeInTheDocument()
+        expect(screen.getByTestId('home-highest-csr-value')).toHaveTextContent('1,525')
+        expect(screen.getByTestId('home-highest-csr-tier')).toHaveTextContent('Gold 3')
+        expect(screen.getByTestId('home-highest-csr-badge')).toHaveAttribute('src', '/static/ranks/120px-HINF-CSR_Gold3.png')
+        expect(screen.getByTestId('home-highest-lusr-value')).toHaveTextContent('1,750')
+        expect(screen.getByTestId('home-highest-lusr-tier')).toHaveTextContent('Platinum V')
+        expect(screen.getByTestId('home-highest-lusr-badge')).toHaveAttribute('src', '/static/ranks/120px-HINF-CSR_Platinum5.png')
+        expect(within(spartanBanner).queryByTestId('home-highest-csr-card')).not.toBeInTheDocument()
+        expect(within(spartanBanner).queryByTestId('home-highest-lusr-card')).not.toBeInTheDocument()
         expect(screen.getByTestId('home-career-rank-title')).toHaveTextContent('Lance Corporal')
         expect(screen.getByTestId('home-career-rank-image')).toHaveAttribute('src', 'https://example.test/ranks/lance-corporal.png')
+        expect(screen.getByTestId('home-spartan-adornment-image')).toHaveAttribute('src', 'https://example.test/ranks/lance-corporal-adornment.png')
         expect(screen.getByText('Career rank')).toBeInTheDocument()
+        expect(screen.getByText('Highest CSR')).toBeInTheDocument()
+        expect(screen.getByText('Highest LUSR')).toBeInTheDocument()
+        expect(screen.getByTestId('home-spartan-backdrop-image')).toHaveAttribute('src', 'https://example.test/identity/backdrop.png')
       })
+
+      expect(screen.getByTestId('home-spartan-banner-shell')).toBeInTheDocument()
+      expect(screen.getByTestId('home-spartan-banner-surface').getAttribute('style') ?? '').toContain('https://example.test/identity/nameplate.png')
+      expect(screen.queryByText('Spartan ID')).not.toBeInTheDocument()
 
       expect(screen.getByText('Rank 25')).toBeInTheDocument()
       expect(screen.getByText('Current progress')).toBeInTheDocument()
@@ -101,6 +135,49 @@ describe('HomePage', () => {
         useAppShellStore.setState({ locale: previousLocale })
       })
     }
+  })
+
+  it('ne réutilise pas le backdrop comme bannière quand la nameplate est absente', async () => {
+    server.use(
+      http.get('/api/v1/players/:playerSlug/pages/home', () => HttpResponse.json({
+        hero: {
+          player_name: 'TestPlayer',
+          kpis: {
+            win_rate: 0.55,
+            global_ratio: 1.2,
+            avg_accuracy: 42,
+            total_matches: 120,
+            wins: 66,
+            losses: 54,
+          },
+          trend: null,
+        },
+        spartan_identity: {
+          spartan_id: 'JGTM',
+          banner_image_url: null,
+          emblem_image_url: 'https://example.test/identity/emblem.png',
+          backdrop_image_url: 'https://example.test/identity/backdrop.png',
+          career_rank: null,
+        },
+        highlights: [],
+        recent_matches: [],
+        favorite_matches: [],
+        recent_media: [],
+        solo_session: null,
+        squad_session: null,
+      })),
+    )
+
+    renderWithProviders(<HomePage />)
+
+    await waitFor(() => {
+      expect(screen.getByTestId('home-spartan-backdrop-image')).toHaveAttribute('src', 'https://example.test/identity/backdrop.png')
+      expect(screen.getByTestId('home-spartan-id-value')).toHaveTextContent('JGTM')
+    })
+
+    expect(screen.getByTestId('home-spartan-banner-shell')).toBeInTheDocument()
+    expect(screen.queryByTestId('home-spartan-banner-surface')).not.toBeInTheDocument()
+    expect(screen.queryByText('Spartan ID')).not.toBeInTheDocument()
   })
 
   it('affiche le visuel battle pass, le rail horizontal et la progression du palier actif sur la home', async () => {
