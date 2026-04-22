@@ -100,6 +100,13 @@ const (
 // HaloProvider
 // ---------------------------------------------------------------------------
 
+// TrackDefinitionPersister est notifié après chaque fetch réussi d'une définition de
+// Reward Track depuis GameCMS, pour la persister dans battlepass_track_definitions.
+// Implémenté par platform/duckdb.PersistSink.
+type TrackDefinitionPersister interface {
+	UpsertTrackDefinition(ctx context.Context, trackPath string, raw []byte) error
+}
+
 // HaloProvider est le client HTTP pour l'API Halo Infinite (343 Industries).
 // Thread-safe : une seule instance par processus.
 // Les tokens et le XUID sont lus depuis le contexte via ctxkeys.HaloTokens / ctxkeys.HaloXUID.
@@ -113,6 +120,8 @@ type HaloProvider struct {
 	gameCMSBaseURL    string
 	// assetResolver est le resolver unifié (P4/P5).
 	assetResolver assets.Resolver
+	// trackDefPersister persiste les définitions de tracks dans battlepass_track_definitions.
+	trackDefPersister TrackDefinitionPersister
 	// titleSlug est le titre courant (ex: "halo_infinite").
 	titleSlug string
 	// Sprint 54 B5 : cache process-level de la privacy par xuid.
@@ -147,6 +156,18 @@ func (p *HaloProvider) WithAssetResolver(resolver assets.Resolver) *HaloProvider
 	}
 	clone := *p
 	clone.assetResolver = resolver
+	return &clone
+}
+
+// WithTrackDefPersister câble le persister de définitions de tracks.
+// Quand présent, chaque fetch réussi d'un Reward Track JSON est persisté dans
+// battlepass_track_definitions pour que LoadSeasonPassTracks puisse servir les images.
+func (p *HaloProvider) WithTrackDefPersister(persister TrackDefinitionPersister) *HaloProvider {
+	if p == nil {
+		return nil
+	}
+	clone := *p
+	clone.trackDefPersister = persister
 	return &clone
 }
 

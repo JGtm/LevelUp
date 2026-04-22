@@ -161,6 +161,9 @@ func NewInMemoryPlayer(t *testing.T) *sql.DB {
 			is_max_rank BOOLEAN DEFAULT FALSE,
 			adornment_path VARCHAR DEFAULT '',
 			spartan_id VARCHAR DEFAULT '',
+			banner_image_url VARCHAR DEFAULT '',
+			emblem_image_url VARCHAR DEFAULT '',
+			backdrop_image_url VARCHAR DEFAULT '',
 			recorded_at TIMESTAMP
 		)`,
 		`CREATE TABLE schema_migrations (

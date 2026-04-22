@@ -34,6 +34,9 @@ func openMemForCareer(t *testing.T) *sql.DB {
 		is_max_rank BOOLEAN,
 		adornment_path VARCHAR,
 		spartan_id VARCHAR,
+		banner_image_url VARCHAR,
+		emblem_image_url VARCHAR,
+		backdrop_image_url VARCHAR,
 		recorded_at TIMESTAMP
 	)`)
 	if err != nil {
@@ -130,6 +133,7 @@ func TestSaveCareerRank_Insert(t *testing.T) {
 		CurrentRankName: "Private",
 		CurrentXP:       500,
 		XPTotal:         10000,
+		BannerImageURL:  "https://example.test/banner.png",
 	}
 
 	if err := saveCareerRank(db, data); err != nil {
@@ -142,6 +146,14 @@ func TestSaveCareerRank_Insert(t *testing.T) {
 	}
 	if cnt != 1 {
 		t.Errorf("attendu 1 ligne insérée, obtenu %d", cnt)
+	}
+
+	var bannerURL string
+	if err := db.QueryRow("SELECT banner_image_url FROM career_progression WHERE xuid = 'xuid-save-001'").Scan(&bannerURL); err != nil {
+		t.Fatalf("SELECT banner_image_url: %v", err)
+	}
+	if bannerURL != "https://example.test/banner.png" {
+		t.Errorf("banner_image_url attendu https://example.test/banner.png, obtenu %q", bannerURL)
 	}
 }
 
