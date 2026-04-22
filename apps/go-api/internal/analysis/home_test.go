@@ -276,15 +276,19 @@ func TestBuildRecentMatches_MapsDominanceBadge(t *testing.T) {
 
 func TestBuildSpartanIdentity_UsesRequestedLanguage(t *testing.T) {
 	raw := &domain.HomeSpartanIdentityRow{
-		SpartanID:     sp("JGTM"),
-		RankNumber:    25,
-		RankName:      sp("Platinum 1"),
-		RankTier:      sp("Platinum"),
-		RankTitleEN:   sp("Lance Corporal"),
-		RankTitleFR:   sp("Caporal-chef"),
-		RankImageURL:  sp("https://example.test/career-rank.png"),
-		CurrentXP:     5000,
-		XPForNextRank: 10000,
+		SpartanID:         sp("JGTM"),
+		BannerImageURL:    sp("https://example.test/banner.png"),
+		EmblemImageURL:    sp("https://example.test/emblem.png"),
+		BackdropImageURL:  sp("https://example.test/backdrop.png"),
+		RankNumber:        25,
+		RankName:          sp("Platinum 1"),
+		RankTier:          sp("Platinum"),
+		RankTitleEN:       sp("Lance Corporal"),
+		RankTitleFR:       sp("Caporal-chef"),
+		RankImageURL:      sp("https://example.test/career-rank.png"),
+		AdornmentImageURL: sp("https://example.test/career-adornment.png"),
+		CurrentXP:         5000,
+		XPForNextRank:     10000,
 	}
 
 	identityFR := analysis.BuildSpartanIdentity(raw, "fr")
@@ -300,8 +304,20 @@ func TestBuildSpartanIdentity_UsesRequestedLanguage(t *testing.T) {
 	if identityFR.CareerRank.ProgressPct != 50.0 {
 		t.Fatalf("FR ProgressPct: want 50, got %.2f", identityFR.CareerRank.ProgressPct)
 	}
+	if identityFR.EmblemImageURL == nil || *identityFR.EmblemImageURL != "https://example.test/emblem.png" {
+		t.Fatalf("FR EmblemImageURL: got %#v", identityFR.EmblemImageURL)
+	}
+	if identityFR.BannerImageURL == nil || *identityFR.BannerImageURL != "https://example.test/banner.png" {
+		t.Fatalf("FR BannerImageURL: got %#v", identityFR.BannerImageURL)
+	}
+	if identityFR.BackdropImageURL == nil || *identityFR.BackdropImageURL != "https://example.test/backdrop.png" {
+		t.Fatalf("FR BackdropImageURL: got %#v", identityFR.BackdropImageURL)
+	}
 	if identityFR.CareerRank.RankImageURL == nil || *identityFR.CareerRank.RankImageURL != "https://example.test/career-rank.png" {
 		t.Fatalf("FR RankImageURL: got %#v", identityFR.CareerRank.RankImageURL)
+	}
+	if identityFR.CareerRank.AdornmentImageURL == nil || *identityFR.CareerRank.AdornmentImageURL != "https://example.test/career-adornment.png" {
+		t.Fatalf("FR AdornmentImageURL: got %#v", identityFR.CareerRank.AdornmentImageURL)
 	}
 
 	identityEN := analysis.BuildSpartanIdentity(raw, "en")
