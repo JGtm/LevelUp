@@ -110,28 +110,28 @@ func RunGateCheck4(cfg GateCheckConfig) *GateReport {
 			"shared-db",
 			"shared_matches_v2.duckdb accessible en lecture",
 			func() (bool, string) {
-				return checkDBAccessible(pr.LegacySharedDBPath())
+				return checkDBAccessible(pr.SharedDBPath("halo_infinite"))
 			},
 		},
 		{
 			"metadata-db",
 			"metadata.duckdb accessible en lecture",
 			func() (bool, string) {
-				return checkDBAccessible(pr.LegacyMetadataDBPath())
+				return checkDBAccessible(pr.MetadataDBPath("halo_infinite"))
 			},
 		},
 		{
 			"shared-tables",
 			"Tables critiques présentes dans shared_matches_v2.duckdb",
 			func() (bool, string) {
-				return checkSharedTables(pr.LegacySharedDBPath())
+				return checkSharedTables(pr.SharedDBPath("halo_infinite"))
 			},
 		},
 		{
 			"shared-views",
 			"Vues V6 présentes (v_gamertag_lookup, v_match_full, v_weapon_kills)",
 			func() (bool, string) {
-				return checkSharedViews(pr.LegacySharedDBPath())
+				return checkSharedViews(pr.SharedDBPath("halo_infinite"))
 			},
 		},
 		{
@@ -272,7 +272,7 @@ func checkSharedViews(dbPath string) (bool, string) {
 
 func checkMigrationsApplied(repoRoot, gamertag string) (bool, string) {
 	pr := titlePkg.NewPathResolver(repoRoot)
-	dbPath := filepath.Join(pr.LegacyPlayerDir(gamertag), "stats.duckdb")
+	dbPath := pr.PlayerDBPath("halo_infinite", gamertag)
 	if _, err := os.Stat(dbPath); err != nil {
 		return false, fmt.Sprintf("DB joueur absente: %s", dbPath)
 	}

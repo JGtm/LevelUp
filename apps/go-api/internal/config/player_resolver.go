@@ -44,7 +44,7 @@ func resolveDemoPlayer(ctx context.Context, cfg *AppConfig, titleSlug string) (*
 		PlayerDBPath:       filepath.Join(dir, "stats.duckdb"),
 		SharedDBPath:       filepath.Join(dir, "shared_matches_v2.duckdb"),
 		MetaDBPath:         filepath.Join(dir, "metadata.duckdb"),
-		SharedSocialDBPath: filepath.Join(cfg.RepoRoot, "data", "warehouse", "shared_social.duckdb"),
+		SharedSocialDBPath: title.NewPathResolver(cfg.RepoRoot).SharedSocialDBPath(titleSlug),
 	}
 	return duckdb.GetOrOpen(ctx, pcfg)
 }
@@ -72,37 +72,17 @@ func resolveRealPlayer(ctx context.Context, cfg *AppConfig, slug, titleSlug stri
 }
 
 // buildPoolConfig construit un PlayerPoolConfig depuis un PlayerSummary.
-// Utilise le PathResolver pour résoudre les chemins title-aware, avec fallback
-// legacy automatique si le répertoire title-aware n'existe pas encore sur disque.
+// Utilise le PathResolver pour résoudre les chemins title-aware.
 func buildPoolConfig(cfg *AppConfig, p *domain.PlayerSummary, titleSlug string) duckdb.PlayerPoolConfig {
-	reg := title.NewRegistry()
-	pr := title.NewPathResolver(cfg.RepoRoot, reg)
-
-	// Si le titre est connu ET que le répertoire title-aware existe sur disque,
-	// utiliser les chemins title-aware. Sinon, fallback legacy (data/players/, data/warehouse/).
-	if reg.Exists(titleSlug) {
-		titleDir := pr.TitleDataDir(titleSlug)
-		if _, err := os.Stat(titleDir); err == nil {
-			return duckdb.PlayerPoolConfig{
-				Gamertag:           p.Gamertag,
-				XUID:               p.XUID,
-				TitleSlug:          titleSlug,
-				PlayerDBPath:       pr.PlayerDBPath(titleSlug, p.Gamertag),
-				SharedDBPath:       pr.SharedDBPath(titleSlug),
-				MetaDBPath:         pr.MetadataDBPath(titleSlug),
-				SharedSocialDBPath: pr.LegacySharedSocialDBPath(),
-			}
-		}
-	}
-	// Legacy fallback
+	pr := title.NewPathResolver(cfg.RepoRoot)
 	return duckdb.PlayerPoolConfig{
 		Gamertag:           p.Gamertag,
 		XUID:               p.XUID,
 		TitleSlug:          titleSlug,
-		PlayerDBPath:       filepath.Join(pr.LegacyPlayerDir(p.Gamertag), "stats.duckdb"),
-		SharedDBPath:       pr.LegacySharedDBPath(),
-		MetaDBPath:         pr.LegacyMetadataDBPath(),
-		SharedSocialDBPath: pr.LegacySharedSocialDBPath(),
+		PlayerDBPath:       pr.PlayerDBPath(titleSlug, p.Gamertag),
+		SharedDBPath:       pr.SharedDBPath(titleSlug),
+		MetaDBPath:         pr.MetadataDBPath(titleSlug),
+		SharedSocialDBPath: pr.SharedSocialDBPath(titleSlug),
 	}
 }
 
@@ -115,15 +95,7 @@ func SharedDBPath(cfg *AppConfig, titleSlug string) string {
 	if cfg.DemoMode {
 		return filepath.Join(cfg.DemoFixturesDir, "shared_matches_v2.duckdb")
 	}
-	reg := title.NewRegistry()
-	pr := title.NewPathResolver(cfg.RepoRoot, reg)
-	if reg.Exists(titleSlug) {
-		p := pr.SharedDBPath(titleSlug)
-		if _, err := os.Stat(p); err == nil {
-			return p
-		}
-	}
-	return pr.LegacySharedDBPath()
+	return title.NewPathResolver(cfg.RepoRoot).SharedDBPath(titleSlug)
 }
 
 // readXUIDFile lit le XUID depuis un fichier texte (1 ligne).

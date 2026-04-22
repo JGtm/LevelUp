@@ -159,28 +159,6 @@ func TestPathResolver_JobsCachePath(t *testing.T) {
 	}
 }
 
-// --- Legacy paths ---
-
-func TestPathResolver_LegacySharedDBPath(t *testing.T) {
-	r := NewRegistry()
-	pr := NewPathResolver("/repo", r)
-	got := pr.LegacySharedDBPath()
-	want := filepath.Join("/repo", "data", "warehouse", "shared_matches_v2.duckdb")
-	if got != want {
-		t.Errorf("LegacySharedDBPath: got %q, want %q", got, want)
-	}
-}
-
-func TestPathResolver_LegacyPlayerDir(t *testing.T) {
-	r := NewRegistry()
-	pr := NewPathResolver("/repo", r)
-	got := pr.LegacyPlayerDir("TestGT")
-	want := filepath.Join("/repo", "data", "players", "TestGT")
-	if got != want {
-		t.Errorf("LegacyPlayerDir: got %q, want %q", got, want)
-	}
-}
-
 // --- Validation ---
 
 func TestPathResolver_ValidateTitle_OK(t *testing.T) {
@@ -278,24 +256,6 @@ func TestPathResolver_AppSettingsPath(t *testing.T) {
 	r := NewRegistry()
 	pr := NewPathResolver("/repo", r)
 	got := pr.AppSettingsPath()
-	if got == "" {
-		t.Error("expected non-empty path")
-	}
-}
-
-func TestPathResolver_LegacyMetadataDBPath(t *testing.T) {
-	r := NewRegistry()
-	pr := NewPathResolver("/repo", r)
-	got := pr.LegacyMetadataDBPath()
-	if got == "" {
-		t.Error("expected non-empty path")
-	}
-}
-
-func TestPathResolver_LegacyDemoFixturesDir(t *testing.T) {
-	r := NewRegistry()
-	pr := NewPathResolver("/repo", r)
-	got := pr.LegacyDemoFixturesDir()
 	if got == "" {
 		t.Error("expected non-empty path")
 	}

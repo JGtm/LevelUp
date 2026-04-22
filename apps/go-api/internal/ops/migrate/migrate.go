@@ -53,7 +53,7 @@ func BuildPlan(repoRoot, titleSlug string) (*Plan, error) {
 	plan := &Plan{TitleSlug: titleSlug}
 
 	// 1. data/warehouse/ → data/titles/{title}/warehouse/
-	legacyWarehouse := pr.LegacyWarehouseDir()
+	legacyWarehouse := filepath.Join(repoRoot, "data", "warehouse")
 	if dirExists(legacyWarehouse) {
 		plan.Operations = append(plan.Operations, MoveOp{
 			Source: legacyWarehouse,

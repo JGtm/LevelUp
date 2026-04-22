@@ -209,10 +209,7 @@ func (p *Provider) metadataDBPath(titleSlug string) string {
 	}
 	registry := titlePkg.NewRegistry()
 	resolver := titlePkg.NewPathResolver(p.cfg.RepoRoot, registry)
-	if registry.Exists(titleSlug) {
-		return resolver.MetadataDBPath(titleSlug)
-	}
-	return resolver.LegacyMetadataDBPath()
+	return resolver.MetadataDBPath(titleSlug)
 }
 
 func buildFileStatus(path string) (domain.LabFileStatus, error) {
