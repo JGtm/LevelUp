@@ -190,3 +190,55 @@ func TestChallengeBadgeHandler_URLPayload(t *testing.T) {
 		t.Errorf("Ref.ID=%q, attendu daily-easy", stub.gotRef.ID)
 	}
 }
+
+func TestSpartanImageHandler_EmblemPath(t *testing.T) {
+	stub := &stubResolver{
+		result: assets.Resolved{Payload: assets.URLPayload{URL: "https://example.com/emblem.png"}},
+	}
+	r := chi.NewRouter()
+	r.Get("/assets/spartan/{image_type}/{title_id}/*", handlers.NewAssetHandler(stub).GetSpartanImage)
+	req := httptest.NewRequest(http.MethodGet, "/assets/spartan/emblem/halo_infinite/hi/images/file/progression/Emblems/test-emblem.png", nil)
+	w := httptest.NewRecorder()
+	r.ServeHTTP(w, req)
+	if w.Code != http.StatusFound {
+		t.Errorf("spartan emblem URLPayload: attendu 302, obtenu %d", w.Code)
+	}
+	if stub.gotRef.Kind != assets.KindSpartanEmblem {
+		t.Errorf("Ref.Kind=%v, attendu KindSpartanEmblem", stub.gotRef.Kind)
+	}
+	if stub.gotRef.ID != "hi/images/file/progression/Emblems/test-emblem.png" {
+		t.Errorf("Ref.ID=%q, attendu chemin emblem complet", stub.gotRef.ID)
+	}
+}
+
+func TestSpartanImageHandler_BannerPath(t *testing.T) {
+	stub := &stubResolver{
+		result: assets.Resolved{Payload: assets.URLPayload{URL: "https://example.com/banner.png"}},
+	}
+	r := chi.NewRouter()
+	r.Get("/assets/spartan/{image_type}/{title_id}/*", handlers.NewAssetHandler(stub).GetSpartanImage)
+	req := httptest.NewRequest(http.MethodGet, "/assets/spartan/banner/halo_infinite/hi/images/file/progression/Nameplates/test-banner.png", nil)
+	w := httptest.NewRecorder()
+	r.ServeHTTP(w, req)
+	if w.Code != http.StatusFound {
+		t.Errorf("spartan banner URLPayload: attendu 302, obtenu %d", w.Code)
+	}
+	if stub.gotRef.Kind != assets.KindSpartanBanner {
+		t.Errorf("Ref.Kind=%v, attendu KindSpartanBanner", stub.gotRef.Kind)
+	}
+	if stub.gotRef.ID != "hi/images/file/progression/Nameplates/test-banner.png" {
+		t.Errorf("Ref.ID=%q, attendu chemin banner complet", stub.gotRef.ID)
+	}
+}
+
+func TestSpartanImageHandler_InvalidType(t *testing.T) {
+	stub := &stubResolver{}
+	r := chi.NewRouter()
+	r.Get("/assets/spartan/{image_type}/{title_id}/*", handlers.NewAssetHandler(stub).GetSpartanImage)
+	req := httptest.NewRequest(http.MethodGet, "/assets/spartan/nameplate/halo_infinite/test.png", nil)
+	w := httptest.NewRecorder()
+	r.ServeHTTP(w, req)
+	if w.Code != http.StatusBadRequest {
+		t.Errorf("image_type invalide: attendu 400, obtenu %d", w.Code)
+	}
+}

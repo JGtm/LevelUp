@@ -91,7 +91,15 @@ func (s *LocalFSStore) PersistBinary(_ context.Context, ref Ref, p BinaryPayload
 // extensionForKind retourne l'extension de fichier par défaut pour un Kind.
 func extensionForKind(k Kind) string {
 	switch k {
-	case KindMedalImage, KindMapImage, KindChallengeBadge, KindBPTrackImage, KindBPBackground:
+	case KindMedalImage,
+		KindMapImage,
+		KindChallengeBadge,
+		KindBPTrackImage,
+		KindBPBackground,
+		KindSpartanEmblem,
+		KindSpartanBanner,
+		KindSpartanBackdrop,
+		KindCareerRankImage:
 		return ".png"
 	default:
 		return ".json"

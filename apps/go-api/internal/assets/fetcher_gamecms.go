@@ -36,7 +36,14 @@ func NewGameCMSFetcher(client *http.Client, tokens TokenProvider, baseURL string
 // Supports retourne true pour les kinds servis par GameCMS.
 func (f *GameCMSFetcher) Supports(k Kind) bool {
 	switch k {
-	case KindMedalImage, KindChallengeBadge, KindBPTrackImage, KindBPBackground,
+	case KindMedalImage,
+		KindChallengeBadge,
+		KindBPTrackImage,
+		KindBPBackground,
+		KindSpartanEmblem,
+		KindSpartanBanner,
+		KindSpartanBackdrop,
+		KindCareerRankImage,
 		KindMedalMetadata, KindChallengeDefinition, KindRewardTrackDefinition:
 		return true
 	}
@@ -50,8 +57,8 @@ func (f *GameCMSFetcher) Fetch(ctx context.Context, ref Ref) (Payload, error) {
 		return f.fetchMedalImage(ctx, ref)
 	case KindChallengeBadge:
 		return f.fetchChallengeBadge(ctx, ref)
-	case KindBPTrackImage, KindBPBackground:
-		return f.fetchBPImage(ctx, ref)
+	case KindBPTrackImage, KindBPBackground, KindSpartanEmblem, KindSpartanBanner, KindSpartanBackdrop, KindCareerRankImage:
+		return f.fetchGameCMSImage(ctx, ref)
 	case KindMedalMetadata:
 		return f.fetchMedalMetadata(ctx, ref)
 	case KindChallengeDefinition:
@@ -119,24 +126,28 @@ func (f *GameCMSFetcher) fetchChallengeBadge(ctx context.Context, ref Ref) (Payl
 	}, nil
 }
 
-// fetchBPImage récupère une image Battle Pass (track image ou background).
-// ref.ID contient le chemin GameCMS complet (ex: "Progression/Seasons/S1/HIMPS1.png").
-func (f *GameCMSFetcher) fetchBPImage(ctx context.Context, ref Ref) (Payload, error) {
-	// /hi/images/file/ est un endpoint public : les tokens sont optionnels.
-	// On les envoie s'ils sont disponibles, mais on ne bloque pas si absents.
+// fetchGameCMSImage récupère une image binaire via GameCMS / Waypoint.
+// ref.ID peut contenir un chemin relatif (ex: "Progression/..."), un chemin
+// déjà préfixé (ex: "hi/images/file/...", "hi/Waypoint/file/..."), ou une
+// URL absolue déjà résolue.
+func (f *GameCMSFetcher) fetchGameCMSImage(ctx context.Context, ref Ref) (Payload, error) {
+	// Les images sont généralement publiques ; on envoie les tokens si disponibles,
+	// sans échouer si le provider n'en a pas sous la main.
 	tokens, _ := f.resolveTokens(ctx)
-	gamecmsPath := strings.TrimLeft(ref.ID, "/")
-	url := fmt.Sprintf("%s/hi/images/file/%s", f.baseURL, gamecmsPath)
+	url := buildGameCMSImageFetchURL(f.baseURL, ref.ID)
+	if url == "" {
+		return nil, ErrNotFound
+	}
 	resp, err := f.doGet(ctx, url, tokens)
 	if err != nil {
-		return nil, fmt.Errorf("%w: BP image GET: %v", ErrUpstreamUnavailable, err)
+		return nil, fmt.Errorf("%w: image GET: %v", ErrUpstreamUnavailable, err)
 	}
 	defer resp.Body.Close()
 	if resp.StatusCode == http.StatusNotFound {
 		return nil, ErrNotFound
 	}
 	if resp.StatusCode != http.StatusOK {
-		return nil, fmt.Errorf("%w: BP image status %d", ErrUpstreamUnavailable, resp.StatusCode)
+		return nil, fmt.Errorf("%w: image status %d", ErrUpstreamUnavailable, resp.StatusCode)
 	}
 	data, err := io.ReadAll(resp.Body)
 	if err != nil {
@@ -148,6 +159,36 @@ func (f *GameCMSFetcher) fetchBPImage(ctx context.Context, ref Ref) (Payload, er
 		Bytes:       data,
 		ETag:        contentHash(data),
 	}, nil
+}
+
+func buildGameCMSImageFetchURL(baseURL, raw string) string {
+	trimmed := strings.TrimSpace(raw)
+	if trimmed == "" {
+		return ""
+	}
+
+	lower := strings.ToLower(trimmed)
+	if strings.HasSuffix(lower, ".json") {
+		return ""
+	}
+	if strings.HasPrefix(lower, "http://") || strings.HasPrefix(lower, "https://") {
+		return trimmed
+	}
+
+	cleaned := strings.TrimLeft(trimmed, "/")
+	lowerCleaned := strings.ToLower(cleaned)
+	switch {
+	case strings.HasPrefix(lowerCleaned, "hi/images/file/"),
+		strings.HasPrefix(lowerCleaned, "hi/progression/file/"),
+		strings.HasPrefix(lowerCleaned, "hi/waypoint/file/"):
+		return fmt.Sprintf("%s/%s", baseURL, cleaned)
+	case strings.HasPrefix(lowerCleaned, "images/file/"),
+		strings.HasPrefix(lowerCleaned, "progression/file/"),
+		strings.HasPrefix(lowerCleaned, "waypoint/file/"):
+		return fmt.Sprintf("%s/hi/%s", baseURL, cleaned)
+	default:
+		return fmt.Sprintf("%s/hi/images/file/%s", baseURL, cleaned)
+	}
 }
 
 // fetchMedalMetadata récupère le JSON des métadonnées de médailles.

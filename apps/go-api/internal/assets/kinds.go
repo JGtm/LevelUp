@@ -26,6 +26,22 @@ const (
 	// Source : GameCMS, chemin fourni dans la définition du track.
 	KindBPBackground Kind = "bp-background"
 
+	// KindSpartanEmblem est l'image d'emblème du bloc identitaire Spartan.
+	// Source : GameCMS / Waypoint selon le chemin stocké en BDD.
+	KindSpartanEmblem Kind = "spartan-emblem"
+
+	// KindSpartanBanner est la bannière/nameplate du bloc identitaire Spartan.
+	// Source : GameCMS / Waypoint selon le chemin stocké en BDD.
+	KindSpartanBanner Kind = "spartan-banner"
+
+	// KindSpartanBackdrop est l'image de fond du bloc identitaire Spartan.
+	// Source : GameCMS / Waypoint selon le chemin stocké en BDD.
+	KindSpartanBackdrop Kind = "spartan-backdrop"
+
+	// KindCareerRankImage est le visuel du rang carrière courant.
+	// Source : GameCMS, chemin fourni par metadata.career_ranks.
+	KindCareerRankImage Kind = "career-rank-image"
+
 	// KindMedalMetadata est la liste JSON des métadonnées de médailles.
 	// Source : https://gamecms-hacs.svc.halowaypoint.com/hi/Progression/file/Metadata/Metadata.json
 	KindMedalMetadata Kind = "medal-meta"
@@ -50,6 +66,10 @@ var allKinds = map[Kind]struct{}{
 	KindChallengeBadge:        {},
 	KindBPTrackImage:          {},
 	KindBPBackground:          {},
+	KindSpartanEmblem:         {},
+	KindSpartanBanner:         {},
+	KindSpartanBackdrop:       {},
+	KindCareerRankImage:       {},
 	KindMedalMetadata:         {},
 	KindChallengeDefinition:   {},
 	KindRewardTrackDefinition: {},
@@ -65,7 +85,15 @@ func (k Kind) Valid() bool {
 // IsBinary retourne true si ce Kind correspond à des bytes binaires (image).
 func (k Kind) IsBinary() bool {
 	switch k {
-	case KindMedalImage, KindMapImage, KindChallengeBadge, KindBPTrackImage, KindBPBackground:
+	case KindMedalImage,
+		KindMapImage,
+		KindChallengeBadge,
+		KindBPTrackImage,
+		KindBPBackground,
+		KindSpartanEmblem,
+		KindSpartanBanner,
+		KindSpartanBackdrop,
+		KindCareerRankImage:
 		return true
 	}
 	return false

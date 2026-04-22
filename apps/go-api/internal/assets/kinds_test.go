@@ -6,6 +6,7 @@ func TestKind_Valid_KnownKinds(t *testing.T) {
 	known := []Kind{
 		KindMedalImage, KindMapImage, KindChallengeBadge,
 		KindBPTrackImage, KindBPBackground,
+		KindSpartanEmblem, KindSpartanBanner, KindSpartanBackdrop, KindCareerRankImage,
 		KindMedalMetadata, KindChallengeDefinition,
 		KindRewardTrackDefinition, KindAssetTranslation,
 	}
@@ -23,7 +24,17 @@ func TestKind_Valid_UnknownKind(t *testing.T) {
 }
 
 func TestKind_IsBinary_ImageKinds(t *testing.T) {
-	binary := []Kind{KindMedalImage, KindMapImage, KindChallengeBadge, KindBPTrackImage, KindBPBackground}
+	binary := []Kind{
+		KindMedalImage,
+		KindMapImage,
+		KindChallengeBadge,
+		KindBPTrackImage,
+		KindBPBackground,
+		KindSpartanEmblem,
+		KindSpartanBanner,
+		KindSpartanBackdrop,
+		KindCareerRankImage,
+	}
 	for _, k := range binary {
 		if !k.IsBinary() {
 			t.Errorf("Kind %q devrait être binaire", k)

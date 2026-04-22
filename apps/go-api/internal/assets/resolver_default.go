@@ -69,7 +69,7 @@ func (r *DefaultResolver) Get(ctx context.Context, ref Ref) (Resolved, error) {
 			entry, err := r.index.LookupIndex(ctx, ref)
 			if err != nil {
 				slog.Debug("assets: index lookup error", append(ref.LogAttrs(), "err", err)...)
-			} else if entry != nil && entry.URL != "" {
+			} else if entry != nil && (entry.URL != "" || entry.LocalPath != "" || len(entry.RawJSON) > 0) {
 				r.metrics.IncHit(ref.Kind, SourceLocalDB)
 				r.metrics.ObserveLatency(ref.Kind, SourceLocalDB, time.Since(start))
 				slog.Debug("assets: cache_hit_index", append(ref.LogAttrs(), "latency_ms", time.Since(start).Milliseconds())...)
