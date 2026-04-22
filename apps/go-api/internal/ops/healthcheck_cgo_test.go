@@ -108,8 +108,8 @@ func TestRunHealthcheck_EmptyDir(t *testing.T) {
 
 func TestRunHealthcheck_WithDBs(t *testing.T) {
 	dir := t.TempDir()
-	// Créer la structure minimale : data/warehouse/
-	warehouseDir := filepath.Join(dir, "data", "warehouse")
+	// Créer la structure title-aware : data/titles/halo_infinite/warehouse/
+	warehouseDir := filepath.Join(dir, "data", "titles", "halo_infinite", "warehouse")
 	if err := os.MkdirAll(warehouseDir, 0o755); err != nil {
 		t.Fatal(err)
 	}

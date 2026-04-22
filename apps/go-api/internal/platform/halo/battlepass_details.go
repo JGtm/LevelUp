@@ -21,11 +21,18 @@ import (
 	"path"
 	"path/filepath"
 	"strings"
+	"sync"
 	"time"
 
 	"levelup/go-api/internal/domain"
 	"levelup/go-api/internal/platform/duckdb"
 )
+
+// bpMetaWriteMu sérialise toutes les écritures dans metadata.duckdb depuis ce package.
+// DuckDB ne supporte pas les transactions concurrentes sur le même fichier.
+// Sans ce mutex, les 30 goroutines preCacheBPItemDefinitions (une par track)
+// créent des violations de clé primaire → FatalException.
+var bpMetaWriteMu sync.Mutex
 
 // battlepassTrackDefinitionRaw représente la définition d'un Reward Track depuis GameCMS.
 // Structure : /hi/Progression/file/{RewardTrackPath}
@@ -96,61 +103,64 @@ func (p *HaloProvider) fetchRewardTrackDefinition(
 		return nil
 	}
 
-	// 1. Tenter le cache metadata local.
-	if cached, err := p.loadTrackDefinitionFromMetadata(ctx, trimmed); err == nil && cached != nil {
-		slog.DebugContext(ctx, "halo_provider: reward track definition served from metadata cache",
-			"path", trimmed)
-		// Pré-cacher les définitions d'items manquantes en arrière-plan (best-effort).
-		var tokCopy domain.HaloTokens
-		if tokens != nil {
-			tokCopy = *tokens
+	sfKey := strings.TrimSpace(p.battlepassMetaPath) + "|" + trimmed
+	value, err, _ := battlePassTrackFetchSFGroup.Do(sfKey, func() (any, error) {
+		if cached, err := p.loadTrackDefinitionFromMetadata(ctx, trimmed); err == nil && cached != nil {
+			slog.DebugContext(ctx, "halo_provider: reward track definition served from metadata cache",
+				"path", trimmed)
+			// Pré-cacher les définitions d'items manquantes en arrière-plan (best-effort).
+			var tokCopy domain.HaloTokens
+			if tokens != nil {
+				tokCopy = *tokens
+			}
+			go p.preCacheBPItemDefinitions(cached.Ranks, tokCopy)
+			return cached, nil
+		} else if err != nil {
+			slog.DebugContext(ctx, "halo_provider: reward track definition metadata cache read failed",
+				"path", trimmed, "err", err)
 		}
-		go p.preCacheBPItemDefinitions(cached.Ranks, tokCopy)
-		return cached
-	} else if err != nil {
-		slog.DebugContext(ctx, "halo_provider: reward track definition metadata cache read failed",
-			"path", trimmed, "err", err)
-	}
 
-	// 2. Fallback : fetch GameCMS.
-	base := p.gameCMSBaseURL
-	if base == "" {
-		base = defaultGameCMSHost
-	}
-	url := fmt.Sprintf("%s/hi/Progression/file/%s", strings.TrimRight(base, "/"), strings.TrimLeft(trimmed, "/"))
-	body, err := p.doGet(ctx, url, tokens)
+		base := p.gameCMSBaseURL
+		if base == "" {
+			base = defaultGameCMSHost
+		}
+		url := fmt.Sprintf("%s/hi/Progression/file/%s", strings.TrimRight(base, "/"), strings.TrimLeft(trimmed, "/"))
+		body, err := p.doGet(ctx, url, tokens)
+		if err != nil {
+			return nil, err
+		}
+
+		var def battlepassTrackDefinitionRaw
+		if err := json.Unmarshal(body, &def); err != nil {
+			return nil, fmt.Errorf("decode reward track definition: %w", err)
+		}
+
+		if err := p.storeTrackDefinitionInMetadata(ctx, trimmed, body, &def); err != nil {
+			slog.WarnContext(ctx, "halo_provider: reward track definition metadata cache write failed",
+				"path", trimmed, "err", err)
+		} else {
+			slog.InfoContext(ctx, "halo_provider: reward track definition persisted from GameCMS",
+				"path", trimmed, "xp_per_rank", def.XpPerRank)
+			// Pré-cacher les images du track en arrière-plan (fire-and-forget).
+			// Tokens copiés par valeur pour éviter toute race condition.
+			var tokCopy domain.HaloTokens
+			if tokens != nil {
+				tokCopy = *tokens
+			}
+			go p.preCacheBPTrackImages(def.BattlePassImage, def.BackgroundImagePath, tokCopy)
+			// Pré-cacher les définitions d'items en arrière-plan (best-effort).
+			go p.preCacheBPItemDefinitions(def.Ranks, tokCopy)
+		}
+
+		return &def, nil
+	})
 	if err != nil {
-		slog.DebugContext(ctx, "halo_provider: reward track definition GameCMS unavailable",
+		slog.DebugContext(ctx, "halo_provider: reward track definition fetch failed",
 			"path", trimmed, "err", err)
 		return nil
 	}
-
-	var def battlepassTrackDefinitionRaw
-	if err := json.Unmarshal(body, &def); err != nil {
-		slog.DebugContext(ctx, "halo_provider: reward track definition decode failed",
-			"path", trimmed, "err", err)
-		return nil
-	}
-
-	// 3. Persister la définition pour les prochains appels.
-	if err := p.storeTrackDefinitionInMetadata(ctx, trimmed, body, &def); err != nil {
-		slog.WarnContext(ctx, "halo_provider: reward track definition metadata cache write failed",
-			"path", trimmed, "err", err)
-	} else {
-		slog.InfoContext(ctx, "halo_provider: reward track definition persisted from GameCMS",
-			"path", trimmed, "xp_per_rank", def.XpPerRank)
-		// Pré-cacher les images du track en arrière-plan (fire-and-forget).
-		// Tokens copiés par valeur pour éviter toute race condition.
-		var tokCopy domain.HaloTokens
-		if tokens != nil {
-			tokCopy = *tokens
-		}
-		go p.preCacheBPTrackImages(def.BattlePassImage, def.BackgroundImagePath, tokCopy)
-		// Pré-cacher les définitions d'items en arrière-plan (best-effort).
-		go p.preCacheBPItemDefinitions(def.Ranks, tokCopy)
-	}
-
-	return &def
+	def, _ := value.(*battlepassTrackDefinitionRaw)
+	return def
 }
 
 // ---------------------------------------------------------------------------
@@ -272,6 +282,10 @@ func (p *HaloProvider) storeItemDefinitionInMetadata(
 	if metaPath == "" || def == nil || len(body) == 0 {
 		return nil
 	}
+
+	bpMetaWriteMu.Lock()
+	defer bpMetaWriteMu.Unlock()
+
 	db, err := duckdb.OpenReadWrite(metaPath)
 	if err != nil {
 		return err
@@ -284,8 +298,18 @@ func (p *HaloProvider) storeItemDefinitionInMetadata(
 	quality := strings.TrimSpace(def.CommonData.Quality)
 	itemType := strings.TrimSpace(def.CommonData.ItemType)
 
+	tx, err := db.SQLDb().BeginTx(ctx, nil)
+	if err != nil {
+		return fmt.Errorf("storeItemDefinition: begin tx: %w", err)
+	}
+	defer func() {
+		if err != nil {
+			_ = tx.Rollback()
+		}
+	}()
+
 	// 1. Invalider les anciens hashes.
-	if _, err := db.Exec(ctx, `
+	if _, err = tx.ExecContext(ctx, `
 		UPDATE battlepass_item_definitions
 		SET is_current = FALSE, last_seen_at = ?
 		WHERE inventory_item_path = ? AND content_hash <> ? AND is_current = TRUE`,
@@ -294,7 +318,7 @@ func (p *HaloProvider) storeItemDefinitionInMetadata(
 	}
 
 	// 2. UPSERT battlepass_item_definitions.
-	if _, err := db.Exec(ctx, `
+	if _, err = tx.ExecContext(ctx, `
 		INSERT INTO battlepass_item_definitions
 			(inventory_item_path, content_hash, quality, item_type, display_path,
 			 raw_payload_json, is_current, first_seen_at, last_seen_at)
@@ -327,7 +351,7 @@ func (p *HaloProvider) storeItemDefinitionInMetadata(
 		langs[lang] = struct{}{}
 	}
 	for lang := range langs {
-		if _, err := db.Exec(ctx, `
+		if _, err = tx.ExecContext(ctx, `
 			INSERT INTO battlepass_item_translations
 				(inventory_item_path, content_hash, lang, title, description, first_seen_at, last_seen_at)
 			VALUES (?, ?, ?, ?, ?, ?, ?)
@@ -344,6 +368,9 @@ func (p *HaloProvider) storeItemDefinitionInMetadata(
 		}
 	}
 
+	if err = tx.Commit(); err != nil {
+		return fmt.Errorf("storeItemDefinition: commit: %w", err)
+	}
 	slog.DebugContext(ctx, "battlepass: item definition persisted",
 		"path", itemPath, "display_path", displayPath)
 	return nil
@@ -438,7 +465,8 @@ func (p *HaloProvider) storeTrackDefinitionInMetadata(
 	if metaPath == "" || def == nil || len(body) == 0 {
 		return nil
 	}
-
+	bpMetaWriteMu.Lock()
+	defer bpMetaWriteMu.Unlock()
 	db, err := duckdb.OpenReadWrite(metaPath)
 	if err != nil {
 		return err
@@ -448,8 +476,18 @@ func (p *HaloProvider) storeTrackDefinitionInMetadata(
 	contentHash := trackDefinitionContentHash(body)
 	now := time.Now()
 
+	tx, err := db.SQLDb().BeginTx(ctx, nil)
+	if err != nil {
+		return fmt.Errorf("storeTrackDefinition: begin tx: %w", err)
+	}
+	defer func() {
+		if err != nil {
+			_ = tx.Rollback()
+		}
+	}()
+
 	// 1. Invalider les anciens hashes.
-	if _, err := db.Exec(ctx, `
+	if _, err = tx.ExecContext(ctx, `
 		UPDATE battlepass_track_definitions
 		SET is_current = FALSE,
 		    last_seen_at = ?
@@ -467,7 +505,7 @@ func (p *HaloProvider) storeTrackDefinitionInMetadata(
 		xpPerRank = def.XpPerRank
 	}
 
-	if _, err := db.Exec(ctx, `
+	if _, err = tx.ExecContext(ctx, `
 		INSERT INTO battlepass_track_definitions
 			(reward_track_path, content_hash, xp_per_rank,
 			 battlepass_image_path, background_image_path,
@@ -505,7 +543,7 @@ func (p *HaloProvider) storeTrackDefinitionInMetadata(
 	}
 
 	for lang := range langs {
-		if _, err := db.Exec(ctx, `
+		if _, err = tx.ExecContext(ctx, `
 			INSERT INTO battlepass_track_translations
 				(reward_track_path, content_hash, lang, track_name, first_seen_at, last_seen_at)
 			VALUES (?, ?, ?, ?, ?, ?)
@@ -523,6 +561,9 @@ func (p *HaloProvider) storeTrackDefinitionInMetadata(
 		}
 	}
 
+	if err = tx.Commit(); err != nil {
+		return fmt.Errorf("storeTrackDefinition: commit: %w", err)
+	}
 	return nil
 }
 
@@ -574,16 +615,26 @@ func nullableTrackString(value string) any {
 // ---------------------------------------------------------------------------
 
 // battlepassImageCacheDir dérive le répertoire de cache images depuis battlepassMetaPath.
-// Convention : data/warehouse/metadata.duckdb → data/cache/battlepass_assets/
+// Remonte l'arborescence jusqu'au répertoire "data/" pour construire data/cache/battlepass_assets/,
+// quelle que soit la profondeur du chemin metadata (legacy ou title-aware).
 func (p *HaloProvider) battlepassImageCacheDir() string {
 	metaPath := strings.TrimSpace(p.battlepassMetaPath)
 	if metaPath == "" {
 		return ""
 	}
-	// data/warehouse/metadata.duckdb → data/cache/battlepass_assets
-	warehouseDir := filepath.Dir(metaPath)
-	dataDir := filepath.Dir(warehouseDir)
-	return filepath.Join(dataDir, "cache", "battlepass_assets")
+	current := filepath.Dir(filepath.Clean(metaPath))
+	for {
+		if strings.EqualFold(filepath.Base(current), "data") {
+			return filepath.Join(current, "cache", "battlepass_assets")
+		}
+		parent := filepath.Dir(current)
+		if parent == current {
+			break
+		}
+		current = parent
+	}
+	// Fallback structurel : deux niveaux au-dessus du metadata (ne devrait pas arriver).
+	return filepath.Join(filepath.Dir(filepath.Dir(filepath.Clean(metaPath))), "cache", "battlepass_assets")
 }
 
 // preCacheBPTrackImages télécharge en arrière-plan les images d'un track Battle Pass

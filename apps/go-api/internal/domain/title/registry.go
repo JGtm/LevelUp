@@ -195,6 +195,12 @@ func (p *PathResolver) SharedPVEDBPath(titleSlug string) string {
 	return filepath.Join(p.WarehouseDir(titleSlug), "shared_pve.duckdb")
 }
 
+// SharedSocialDBPath retourne le chemin de la base sociale partagée d'un titre.
+// Ex: data/titles/halo_infinite/warehouse/shared_social.duckdb
+func (p *PathResolver) SharedSocialDBPath(titleSlug string) string {
+	return filepath.Join(p.WarehouseDir(titleSlug), "shared_social.duckdb")
+}
+
 // PlayerDir retourne le répertoire d'un joueur pour un titre.
 // Ex: data/titles/halo_infinite/players/Chocoboflor/
 func (p *PathResolver) PlayerDir(titleSlug, gamertag string) string {
@@ -253,39 +259,6 @@ func (p *PathResolver) DBProfilesPath() string {
 // AppSettingsPath retourne le chemin de app_settings.json (global).
 func (p *PathResolver) AppSettingsPath() string {
 	return filepath.Join(p.repoRoot, "app_settings.json")
-}
-
-// --- Legacy paths (rétrocompatibilité pré-migration) ---
-
-// LegacyWarehouseDir retourne le chemin legacy warehouse (avant namespace).
-// Ex: data/warehouse/
-func (p *PathResolver) LegacyWarehouseDir() string {
-	return filepath.Join(p.repoRoot, "data", "warehouse")
-}
-
-// LegacySharedDBPath retourne le chemin legacy de la base partagée.
-func (p *PathResolver) LegacySharedDBPath() string {
-	return filepath.Join(p.LegacyWarehouseDir(), "shared_matches_v2.duckdb")
-}
-
-// LegacySharedSocialDBPath retourne le chemin legacy de la base sociale partagée.
-func (p *PathResolver) LegacySharedSocialDBPath() string {
-	return filepath.Join(p.LegacyWarehouseDir(), "shared_social.duckdb")
-}
-
-// LegacyMetadataDBPath retourne le chemin legacy de la base metadata.
-func (p *PathResolver) LegacyMetadataDBPath() string {
-	return filepath.Join(p.LegacyWarehouseDir(), "metadata.duckdb")
-}
-
-// LegacyPlayerDir retourne le chemin legacy d'un joueur.
-func (p *PathResolver) LegacyPlayerDir(gamertag string) string {
-	return filepath.Join(p.repoRoot, "data", "players", gamertag)
-}
-
-// LegacyDemoFixturesDir retourne le chemin legacy des fixtures démo.
-func (p *PathResolver) LegacyDemoFixturesDir() string {
-	return filepath.Join(p.repoRoot, "tests", "fixtures", "ref_player")
 }
 
 // --- Validation ---

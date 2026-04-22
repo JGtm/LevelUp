@@ -70,36 +70,36 @@ func RunHealthcheck(opts HealthcheckOptions) HealthReport {
 		checks = append(checks, checkFileExists(filepath.Base(cfg), cfg))
 	}
 
-	// 4. Répertoires de données (legacy + title-aware)
+	// 4. Répertoires de données
 	for _, dir := range []string{
-		pr.LegacyWarehouseDir(),
-		filepath.Join(opts.RepoRoot, "data", "players"),
+		pr.WarehouseDir("halo_infinite"),
+		filepath.Join(pr.TitleDataDir("halo_infinite"), "players"),
 	} {
 		checks = append(checks, checkDirExists(filepath.Base(dir), dir))
 	}
 
-	// 5. Bases DuckDB critiques (legacy paths — rétrocompatibilité)
+	// 5. Bases DuckDB critiques
 	for _, db := range []struct{ name, path string }{
-		{"shared_matches_v2", pr.LegacySharedDBPath()},
-		{"metadata", pr.LegacyMetadataDBPath()},
+		{"shared_matches_v2", pr.SharedDBPath("halo_infinite")},
+		{"metadata", pr.MetadataDBPath("halo_infinite")},
 	} {
 		checks = append(checks, checkDuckDB(db.name, db.path))
 	}
 
-	// 6. shared_pve.duckdb (optionnel, legacy path)
-	pvePath := filepath.Join(pr.LegacyWarehouseDir(), "shared_pve.duckdb")
+	// 6. shared_pve.duckdb (optionnel)
+	pvePath := pr.SharedPVEDBPath("halo_infinite")
 	if _, err := os.Stat(pvePath); err == nil {
 		checks = append(checks, checkDuckDB("shared_pve", pvePath))
 	}
 
 	// 7. Joueurs configurés
-	playersDir := filepath.Join(opts.RepoRoot, "data", "players")
+	playersDir := filepath.Join(pr.TitleDataDir("halo_infinite"), "players")
 	if entries, err := os.ReadDir(playersDir); err == nil {
 		for _, e := range entries {
 			if !e.IsDir() {
 				continue
 			}
-			dbPath := filepath.Join(playersDir, e.Name(), "stats.duckdb")
+			dbPath := pr.PlayerDBPath("halo_infinite", e.Name())
 			checks = append(checks, checkDuckDB("player:"+e.Name(), dbPath))
 		}
 	}

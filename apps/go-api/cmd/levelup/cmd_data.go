@@ -156,8 +156,8 @@ func runIndexMedia(cfg *config.AppConfig, args []string) error {
 	result, err := ops.IndexMedia(ops.MediaIndexOptions{
 		Gamertag:            *gamertag,
 		PlayerDBPath:        pr.PlayerDBPath(*titleSlug, *gamertag),
-		SharedSocialDBPath:  pr.LegacySharedSocialDBPath(),
-		SharedMatchesDBPath: pr.LegacySharedDBPath(),
+		SharedSocialDBPath:  pr.SharedSocialDBPath(*titleSlug),
+		SharedMatchesDBPath: pr.SharedDBPath(*titleSlug),
 		CapturesDir:         pr.PlayerCapturesDir(*titleSlug, *gamertag),
 		ForceRescan:         *force,
 		ToleranceMin:        *tolMin,
