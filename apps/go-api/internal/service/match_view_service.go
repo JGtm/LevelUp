@@ -574,6 +574,7 @@ func buildTeamTabFull(
 			Score:               toIntPtr(s.PersonalScore),
 			PerfectKills:        &s.PerfectKills,
 			TopWeaponID:         s.TopWeaponID,
+			TopWeaponLabel:      s.TopWeaponLabel,
 			OffensiveConversion: oc,
 			DefensiveResistance: dr,
 			DamagePerKill:       dpk,

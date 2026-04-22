@@ -337,6 +337,7 @@ type ScoreboardRaw struct {
 	PowerWeaponKills *int
 	PerfectKills     int
 	TopWeaponID      *int64
+	TopWeaponLabel   string
 }
 
 // MatchEnrichmentRaw : données brutes de Q18.
