@@ -1,9 +1,9 @@
 // Package halo — battlepass_details.go : persistance des définitions de tracks Battle Pass.
 //
-// Pattern symétrique à challenges_details.go :
-//   - loadTrackDefinitionFromMetadata : cache metadata → nil si absent
-//   - storeTrackDefinitionInMetadata  : UPDATE is_current=false + UPSERT definitions + translations
-//   - fetchRewardTrackDefinition      : cache metadata → fallback GameCMS → store
+// Pattern :
+//   - Si HaloProvider.assetResolver != nil (P4/P5) :
+//     toutes les opérations (fetch, cache, images, items) sont déléguées au resolver.
+//   - Sinon (legacy) : chemin metadata.duckdb direct via battlepassMetaPath.
 //
 // La source de vérité est GameCMS (/hi/Progression/file/{trackPath}), pas le payload
 // d'opérations /economy/operations qui ne contient que la progression joueur.
@@ -24,6 +24,7 @@ import (
 	"sync"
 	"time"
 
+	"levelup/go-api/internal/assets"
 	"levelup/go-api/internal/domain"
 	"levelup/go-api/internal/platform/duckdb"
 )
@@ -32,6 +33,7 @@ import (
 // DuckDB ne supporte pas les transactions concurrentes sur le même fichier.
 // Sans ce mutex, les 30 goroutines preCacheBPItemDefinitions (une par track)
 // créent des violations de clé primaire → FatalException.
+// LEGACY : utilisé uniquement quand assetResolver est nil.
 var bpMetaWriteMu sync.Mutex
 
 // battlepassTrackDefinitionRaw représente la définition d'un Reward Track depuis GameCMS.
@@ -88,7 +90,9 @@ type battlepassItemMediaUrlRaw struct {
 
 // fetchRewardTrackDefinition charge la définition d'un track depuis le cache metadata,
 // ou le fetche depuis GameCMS en cas de miss, puis le persiste.
-// Retourne nil immédiatement si battlepassMetaPath est vide (pas de persistance → fetch inutile).
+//
+// Si p.assetResolver != nil (P4/P5) : déléguée au resolver (KindRewardTrackDefinition).
+// Sinon (legacy) : chemin metadata.duckdb direct via battlepassMetaPath.
 func (p *HaloProvider) fetchRewardTrackDefinition(
 	ctx context.Context,
 	tokens *domain.HaloTokens,
@@ -98,7 +102,38 @@ func (p *HaloProvider) fetchRewardTrackDefinition(
 	if trimmed == "" {
 		return nil
 	}
-	// Sans chemin de persistance il n'y a rien à stocker : skip silencieux.
+
+	// Branche P4/P5 : déléguer au resolver unifié.
+	if p.assetResolver != nil {
+		ref := assets.Ref{
+			Kind:    assets.KindRewardTrackDefinition,
+			TitleID: "halo_infinite",
+			ID:      trimmed,
+		}
+		resolved, err := p.assetResolver.Get(ctx, ref)
+		if err != nil {
+			slog.DebugContext(ctx, "halo_provider: reward track definition resolver miss",
+				"path", trimmed, "err", err)
+			return nil
+		}
+		jp, ok := resolved.Payload.(assets.JSONPayload)
+		if !ok {
+			slog.DebugContext(ctx, "halo_provider: reward track definition unexpected payload type",
+				"path", trimmed)
+			return nil
+		}
+		var def battlepassTrackDefinitionRaw
+		if err := json.Unmarshal(jp.RawJSON, &def); err != nil {
+			slog.DebugContext(ctx, "halo_provider: reward track definition decode error",
+				"path", trimmed, "err", err)
+			return nil
+		}
+		// Pré-cacher les images et items en arrière-plan via le resolver.
+		go p.warmBPTrackAssets(ctx, &def)
+		return &def
+	}
+
+	// Branche legacy : metadata.duckdb direct.
 	if strings.TrimSpace(p.battlepassMetaPath) == "" {
 		return nil
 	}
@@ -108,7 +143,6 @@ func (p *HaloProvider) fetchRewardTrackDefinition(
 		if cached, err := p.loadTrackDefinitionFromMetadata(ctx, trimmed); err == nil && cached != nil {
 			slog.DebugContext(ctx, "halo_provider: reward track definition served from metadata cache",
 				"path", trimmed)
-			// Pré-cacher les définitions d'items manquantes en arrière-plan (best-effort).
 			var tokCopy domain.HaloTokens
 			if tokens != nil {
 				tokCopy = *tokens
@@ -141,14 +175,11 @@ func (p *HaloProvider) fetchRewardTrackDefinition(
 		} else {
 			slog.InfoContext(ctx, "halo_provider: reward track definition persisted from GameCMS",
 				"path", trimmed, "xp_per_rank", def.XpPerRank)
-			// Pré-cacher les images du track en arrière-plan (fire-and-forget).
-			// Tokens copiés par valeur pour éviter toute race condition.
 			var tokCopy domain.HaloTokens
 			if tokens != nil {
 				tokCopy = *tokens
 			}
 			go p.preCacheBPTrackImages(def.BattlePassImage, def.BackgroundImagePath, tokCopy)
-			// Pré-cacher les définitions d'items en arrière-plan (best-effort).
 			go p.preCacheBPItemDefinitions(def.Ranks, tokCopy)
 		}
 
@@ -161,6 +192,52 @@ func (p *HaloProvider) fetchRewardTrackDefinition(
 	}
 	def, _ := value.(*battlepassTrackDefinitionRaw)
 	return def
+}
+
+// warmBPTrackAssets pré-cache les images et les items d'un track via le resolver.
+// Appelé dans une goroutine (fire-and-forget).
+func (p *HaloProvider) warmBPTrackAssets(ctx context.Context, def *battlepassTrackDefinitionRaw) {
+	if def == nil || p.assetResolver == nil {
+		return
+	}
+	var refs []assets.Ref
+	if bp := strings.TrimSpace(def.BattlePassImage); bp != "" {
+		refs = append(refs, assets.Ref{
+			Kind:    assets.KindBPTrackImage,
+			TitleID: "halo_infinite",
+			ID:      bp,
+		})
+	}
+	if bg := strings.TrimSpace(def.BackgroundImagePath); bg != "" {
+		refs = append(refs, assets.Ref{
+			Kind:    assets.KindBPBackground,
+			TitleID: "halo_infinite",
+			ID:      bg,
+		})
+	}
+	for _, rank := range def.Ranks {
+		for _, r := range rank.FreeRewards.InventoryRewards {
+			if ip := strings.TrimSpace(r.InventoryItemPath); ip != "" {
+				refs = append(refs, assets.Ref{
+					Kind:    assets.KindRewardTrackDefinition,
+					TitleID: "halo_infinite",
+					ID:      ip,
+				})
+			}
+		}
+		for _, r := range rank.PaidRewards.InventoryRewards {
+			if ip := strings.TrimSpace(r.InventoryItemPath); ip != "" {
+				refs = append(refs, assets.Ref{
+					Kind:    assets.KindRewardTrackDefinition,
+					TitleID: "halo_infinite",
+					ID:      ip,
+				})
+			}
+		}
+	}
+	if len(refs) > 0 {
+		p.assetResolver.Warm(ctx, refs...)
+	}
 }
 
 // ---------------------------------------------------------------------------

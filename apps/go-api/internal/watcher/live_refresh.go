@@ -10,6 +10,7 @@ import (
 	"sync"
 	"time"
 
+	"levelup/go-api/internal/assets"
 	"levelup/go-api/internal/ctxkeys"
 	"levelup/go-api/internal/platform/duckdb"
 	"levelup/go-api/internal/platform/halo"
@@ -40,11 +41,14 @@ type PlayerLiveRefresher struct {
 
 // NewPlayerLiveRefresher crée un refresher pour un joueur.
 // sink est le PersistSink fire-and-forget pour persister les résultats.
-// metaPath est le chemin vers metadata.duckdb ; si non vide, les définitions
-// de Reward Tracks sont persistées dans battlepass_track_definitions.
-func NewPlayerLiveRefresher(gamertag, xuid, metaPath string, sink *duckdb.PersistSink) *PlayerLiveRefresher {
+// metaPath est le chemin vers metadata.duckdb ; si non vide et resolver nil,
+// les définitions de Reward Tracks sont persistées en mode legacy.
+// resolver, si non nil, délègue le cache/fetch au resolver unifié (P4/P5).
+func NewPlayerLiveRefresher(gamertag, xuid, metaPath string, sink *duckdb.PersistSink, resolver assets.Resolver) *PlayerLiveRefresher {
 	provider := halo.DefaultHaloProvider
-	if metaPath != "" {
+	if resolver != nil {
+		provider = provider.WithAssetResolver(resolver)
+	} else if metaPath != "" {
 		provider = provider.WithBattlePassCache(metaPath)
 	}
 	return &PlayerLiveRefresher{

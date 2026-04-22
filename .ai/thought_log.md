@@ -1,5 +1,15 @@
 # Thought Log
 
+## [2026-04-22] feat(assets): P4/P5/P6 — câbler battlepass + challenges via assets.Resolver
+
+**Statut** : ✅ Complété
+
+**Décision technique** : implémentation des phases P4-P6 du plan PLAN_ASSETS_ABSTRACTION. Le `HaloProvider` reçoit désormais un `assets.Resolver` via `WithAssetResolver()`. Quand le resolver est présent (chemin P4/P5), toutes les opérations de fetch/cache de définitions (tracks BP, challenges) et d'images sont déléguées au `DefaultResolver` (via `Get(ctx, Ref{Kind, TitleID, ID})`). Le chemin legacy (metadata.duckdb direct + mutex `bpMetaWriteMu`) reste opérationnel en `else` pour rétrocompatibilité. Le `ServiceRegistry` (`registry.go`) reçoit le resolver via `WithAssetResolver()` et le passe au `HaloProvider` dans `buildHaloProvider()`. Le `server.go` chaîne `reg.WithAssetResolver(assetResolver)` immédiatement après la création du resolver. Le watcher `live_refresh.go` accepte désormais un `assets.Resolver` en paramètre (nil → legacy). Fichiers modifiés : `provider.go`, `battlepass_details.go`, `challenges_details.go`, `registry.go`, `server.go`, `live_refresh.go`, `cmd/server/main.go`.
+
+**Résultats observés** : `go build ./...` → 0 erreur. Tests `assets`, `platform/halo`, `watcher` → OK. Tests `TestContractRoutesRegistered` et `match_view_test.go` étaient déjà en échec avant nos changements (régressions préexistantes).
+
+**Conclusion** : le mutex `bpMetaWriteMu` reste comme fallback legacy mais n'est plus activé quand le resolver est configuré. Les FatalExceptions DuckDB sur les écritures concurrentes sont désormais structurellement évitées côté resolver (WriteQueue mono-goroutine). La prochaine étape naturelle serait P6 finale : supprimer le chemin legacy et le mutex une fois la stabilité confirmée en production.
+
 ## [2026-04-22] fix(battlepass): coalescer les fetchs concurrents des reward tracks
 
 **Statut** : ✅ Complété

@@ -14,6 +14,7 @@ import (
 
 	"fmt"
 
+	"levelup/go-api/internal/assets"
 	"levelup/go-api/internal/config"
 	"levelup/go-api/internal/ctxkeys"
 	"levelup/go-api/internal/domain"
@@ -33,8 +34,9 @@ type PlayerResolver func(ctx context.Context, slug string) (*duckdb.PlayerDB, er
 // ServiceRegistry centralise la construction des services métier.
 // Chaque méthode résout le joueur puis construit le service injecté.
 type ServiceRegistry struct {
-	resolve  PlayerResolver
-	provider auth.TokenProvider
+	resolve       PlayerResolver
+	provider      auth.TokenProvider
+	assetResolver assets.Resolver // nil si le resolver n'est pas configuré (mode legacy)
 }
 
 // NewServiceRegistry crée un ServiceRegistry câblé avec config.ResolvePlayer.
@@ -47,6 +49,14 @@ func NewServiceRegistry(cfg *config.AppConfig, provider auth.TokenProvider) *Ser
 		},
 		provider: provider,
 	}
+}
+
+// WithAssetResolver attache le resolver unifié d'assets au ServiceRegistry.
+// Quand présent, les providers Halo créés par HomeCtxWithAuth et SeasonPassCtxWithAuth
+// délèguent le cache/fetch au resolver au lieu d'écrire directement dans DuckDB.
+func (r *ServiceRegistry) WithAssetResolver(resolver assets.Resolver) *ServiceRegistry {
+	r.assetResolver = resolver
+	return r
 }
 
 // ---------------------------------------------------------------------------
@@ -214,10 +224,7 @@ func (r *ServiceRegistry) HomeCtxWithAuth(ctx context.Context, slug string) (por
 	}
 	sink := duckdb.NewPersistSink(pdb.Metadata.Path(), pdb.Player.Path(), pdb.XUID)
 	homeRepo := duckdb.NewHomeRepo(pdb)
-	challengeBadgeDir := challengeBadgeDirFromMetadataPath(pdb.Metadata.Path())
-	haloProvider := halo.DefaultHaloProvider.
-		WithChallengeCache(pdb.Metadata.Path(), challengeBadgeDir).
-		WithBattlePassCache(pdb.Metadata.Path())
+	haloProvider := r.buildHaloProvider(pdb)
 	svc := service.NewHomeService(homeRepo).
 		WithPersistSink(sink).
 		WithCacheRepo(homeRepo).
@@ -236,10 +243,7 @@ func (r *ServiceRegistry) SeasonPassCtxWithAuth(ctx context.Context, slug string
 	}
 	homeRepo := duckdb.NewHomeRepo(pdb)
 	sink := duckdb.NewPersistSink(pdb.Metadata.Path(), pdb.Player.Path(), pdb.XUID)
-	challengeBadgeDir := challengeBadgeDirFromMetadataPath(pdb.Metadata.Path())
-	haloProvider := halo.DefaultHaloProvider.
-		WithChallengeCache(pdb.Metadata.Path(), challengeBadgeDir).
-		WithBattlePassCache(pdb.Metadata.Path())
+	haloProvider := r.buildHaloProvider(pdb)
 	homeSvc := service.NewHomeService(homeRepo).
 		WithPersistSink(sink).
 		WithCacheRepo(homeRepo).
@@ -248,6 +252,19 @@ func (r *ServiceRegistry) SeasonPassCtxWithAuth(ctx context.Context, slug string
 	svc := service.NewSeasonPassService(spRepo, homeSvc, pdb.XUID, pdb.TitleSlug)
 	enriched := r.enrichWithHaloTokens(ctx, pdb)
 	return svc, enriched, nil
+}
+
+// buildHaloProvider construit un HaloProvider configuré pour le joueur :
+// si le resolver est disponible, il est passé au provider (P4/P5) ;
+// sinon, on retombe sur le mode legacy avec les chemins metadata/badge.
+func (r *ServiceRegistry) buildHaloProvider(pdb *duckdb.PlayerDB) *halo.HaloProvider {
+	if r.assetResolver != nil {
+		return halo.DefaultHaloProvider.WithAssetResolver(r.assetResolver)
+	}
+	challengeBadgeDir := challengeBadgeDirFromMetadataPath(pdb.Metadata.Path())
+	return halo.DefaultHaloProvider.
+		WithChallengeCache(pdb.Metadata.Path(), challengeBadgeDir).
+		WithBattlePassCache(pdb.Metadata.Path())
 }
 
 func challengeBadgeDirFromMetadataPath(metaPath string) string {

@@ -15,6 +15,7 @@ import (
 	"strings"
 	"time"
 
+	"levelup/go-api/internal/assets"
 	"levelup/go-api/internal/domain"
 	"levelup/go-api/internal/platform/duckdb"
 )
@@ -164,6 +165,32 @@ func (p *HaloProvider) fetchChallengeDefinition(ctx context.Context, tokens *dom
 	if trimmed == "" {
 		return nil, nil
 	}
+
+	// Branche P4/P5 : déléguer au resolver unifié.
+	if p.assetResolver != nil {
+		ref := assets.Ref{
+			Kind:    assets.KindChallengeDefinition,
+			TitleID: "halo_infinite",
+			ID:      trimmed,
+		}
+		resolved, err := p.assetResolver.Get(ctx, ref)
+		if err != nil {
+			slog.DebugContext(ctx, "halo_provider: challenge definition resolver miss",
+				"path", trimmed, "err", err)
+			return nil, err
+		}
+		jp, ok := resolved.Payload.(assets.JSONPayload)
+		if !ok {
+			return nil, fmt.Errorf("challenge definition unexpected payload type for %s", trimmed)
+		}
+		var def challengeDefinitionRaw
+		if err := json.Unmarshal(jp.RawJSON, &def); err != nil {
+			return nil, fmt.Errorf("challenge definition decode: %w", err)
+		}
+		return &def, nil
+	}
+
+	// Branche legacy : metadata.duckdb direct.
 	if cached, err := p.loadChallengeDefinitionFromMetadata(ctx, trimmed); err == nil && cached != nil {
 		slog.DebugContext(ctx, "halo_provider: challenge definition served from metadata cache",
 			"path", trimmed)

@@ -85,8 +85,6 @@ func NewRouter(
 	// TokenProvider : MSAL Device Code Flow (implémentation par défaut).
 	tokenProvider := auth_platform.NewMSALProvider()
 	reg := NewServiceRegistry(cfg, tokenProvider)
-
-	// Gamertag search — service global (shared DB, pas de résolution joueur).
 	var gamertagSvc port.GamertagSearchService
 	if sharedDB, err := platform_duckdb.OpenReadOnly(config.SharedDBPath(cfg, "")); err != nil {
 		slog.Warn("shared DB unavailable for gamertag search", "err", err)
@@ -96,6 +94,8 @@ func NewRouter(
 
 	// AssetHandler — couche d'abstraction unifiée (local-first → API-fallback).
 	// Le resolver est créé ici pour accéder à reg.AnyPlayerTokens.
+	// Il est aussi passé au ServiceRegistry pour que les HaloProviders délèguent
+	// le cache/fetch des définitions BP/challenges au resolver (P4/P5).
 	var assetHandler *handlers.AssetHandler
 	assetCfg := assets.AssetConfig{
 		CacheRootDir:  filepath.Join(cfg.RepoRoot, "data", "cache"),
@@ -107,6 +107,7 @@ func NewRouter(
 		slog.Warn("assets resolver non disponible", "err", err)
 	} else {
 		assetHandler = handlers.NewAssetHandler(assetResolver)
+		reg.WithAssetResolver(assetResolver)
 	}
 
 	// Fichiers statiques (images maps, médailles, armes…)
@@ -203,6 +204,7 @@ func NewRouter(
 			// Sprint 8 : Match View + Explorer
 			mv := handlers.NewMatchViewHandler(reg.MatchView)
 			r.Get("/matches/{match_id}", mv.GetMatchView)
+			r.Get("/matches/{match_id}/neighbors", mv.GetMatchNeighbors)
 
 			explorer := handlers.NewExplorerHandler(reg.ExplorerCtx, reg.MatchHistoryCtx)
 			r.Post("/pages/explorer/player-query", explorer.QueryPlayer)
