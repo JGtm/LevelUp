@@ -225,27 +225,22 @@ function ActivePassShowcase({
               <Badge variant={statusVariant(pass.status)}>{text.seasonPass.status[pass.status] ?? pass.status}</Badge>
             </div>
           </div>
-          <p className="max-w-3xl text-sm leading-7 text-muted-foreground sm:text-base">
-            {pass.description ?? text.seasonPass.noDescription}
-          </p>
-        </div>
-
-        <div className="overflow-hidden rounded-[2rem] border border-white/15 bg-slate-950/80 shadow-[0_30px_90px_-50px_rgba(15,23,42,0.9)]">
-          {pass.image_url ? (
-            <img
-              src={pass.image_url}
-              alt={`Illustration de ${pass.name}`}
-              className="h-52 w-full object-cover sm:h-64 xl:h-72"
-            />
-          ) : (
-            <div className="flex h-52 w-full items-center justify-center bg-[radial-gradient(circle_at_top,rgba(14,165,233,0.18),transparent_45%),linear-gradient(135deg,rgba(15,23,42,1),rgba(51,65,85,0.95))] px-6 text-center text-white sm:h-64 xl:h-72">
-              <div>
-                <p className="text-xs uppercase tracking-[0.34em] text-slate-300">{text.seasonPass.activePassTitle}</p>
-                <p className="mt-3 text-2xl font-semibold sm:text-3xl">{pass.name}</p>
-              </div>
-            </div>
+          {pass.description && (
+            <p className="max-w-3xl text-sm leading-7 text-muted-foreground sm:text-base">
+              {pass.description}
+            </p>
           )}
         </div>
+
+        {pass.background_image_url && (
+          <div className="overflow-hidden rounded-[2rem] border border-white/15 bg-slate-950/80 shadow-[0_30px_90px_-50px_rgba(15,23,42,0.9)]">
+            <img
+              src={pass.background_image_url}
+              alt={`Illustration de ${pass.name}`}
+              className="aspect-[986/248] w-full object-cover"
+            />
+          </div>
+        )}
 
         {pass.tiers && pass.tiers.length > 0 && (
           <div className="space-y-5">
