@@ -958,14 +958,35 @@ export interface HomeCareerRankSummary {
   rank_number: number
   rank_title: string
   rank_image_url?: string | null
+  adornment_image_url?: string | null
   current_xp: number
   xp_for_next_rank: number
   progress_pct: number
   is_max_rank: boolean
 }
 
+export interface HomeSkillPeakSummary {
+  rating_value: number
+  tier_label?: string | null
+  badge_image_url?: string | null
+}
+
+export interface HomePlaylistRank {
+  playlist_name: string
+  is_ranked: boolean
+  rating_type?: string | null   // "CSR" | "LUSR" — absent si aucun rang calculé
+  rating_value?: number | null
+  tier_label?: string | null
+  badge_image_url?: string | null
+}
+
 export interface HomeSpartanIdentity {
+  banner_image_url?: string | null
   spartan_id?: string | null
+  emblem_image_url?: string | null
+  backdrop_image_url?: string | null
+  highest_csr?: HomeSkillPeakSummary | null
+  highest_lusr?: HomeSkillPeakSummary | null
   career_rank?: HomeCareerRankSummary | null
 }
 
@@ -978,8 +999,11 @@ export interface HomePageResponse {
   recent_media: RecentMediaItem[]
   solo_session: SessionSummaryItem | null
   squad_session: SessionSummaryItem | null
+  has_ranked_history?: boolean
+  has_unranked_history?: boolean
   /** Sprint 54-B9 : signal discret si les données sont partielles (compte privé). */
   privacy_warning?: MatchPrivacyWarning | null
+  recent_playlist_ranks?: HomePlaylistRank[]
 }
 
 export interface BattlePassResponse {
@@ -1014,6 +1038,11 @@ export interface ChallengesResponse {
 
 export type SeasonPassStatus = 'active' | 'in_progress' | 'completed' | 'not_started'
 
+export interface SeasonPassItemSummary {
+  title: string
+  image_url?: string | null
+}
+
 export interface SeasonPassTierSummary {
   rank: number
   title: string
@@ -1022,6 +1051,7 @@ export interface SeasonPassTierSummary {
   is_obtained: boolean
   is_current: boolean
   is_premium: boolean
+  free_rewards?: SeasonPassItemSummary[]
 }
 
 export interface SeasonPassTrackSummary {
