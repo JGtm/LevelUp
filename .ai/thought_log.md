@@ -1,5 +1,125 @@
 # Thought Log
 
+## [2026-04-22] fix(runtime): réaligner plusieurs endpoints sur les schémas et routes réellement présents
+
+**Statut** : ✅ Complété
+
+**Décision technique** : les erreurs runtime observées venaient de trois dérives distinctes mais proches: 1) `Q23StatsMatches` lisait `shared.match_participants.offensive_conversion` / `defensive_resistance` alors que ces colonnes n'existent pas dans le schéma live; le correctif a donc été de dériver ces deux métriques à la lecture dans [apps/go-api/internal/platform/duckdb/queries_career.go](apps/go-api/internal/platform/duckdb/queries_career.go). 2) La galerie média shared_social triait sur `mf.indexed_at`, colonne absente du schéma courant; le fallback est maintenant `capture_end_utc -> updated_at -> created_at` dans [apps/go-api/internal/platform/duckdb/queries_home_citations.go](apps/go-api/internal/platform/duckdb/queries_home_citations.go). 3) Le classement lisait encore `shared.match_participants.csr_after`, vestige legacy indisponible; [apps/go-api/internal/platform/duckdb/leaderboard_repo.go](apps/go-api/internal/platform/duckdb/leaderboard_repo.go) lit désormais le CSR courant du joueur depuis `match_skill_rank` avec la même heuristique CSR/LUSR que la Home. Enfin, la page Palmares Relations ne devait pas créer un nouveau backend: [apps/web/src/features/palmares/queries.ts](apps/web/src/features/palmares/queries.ts) se branche maintenant sur `/pages/career/encounters`, déjà existant, puis adapte la payload côté client.
+
+**Résultats observés** : validation backend OK avec `go test -tags=integration ./internal/platform/duckdb -run 'Test(StatsRepo_LoadStatsMatches_WithData|MediaRepo_LoadMediaFiles_WithSharedSocialSchema|LeaderboardRepo_GetLocalLeaderboard_UsesCurrentPlayerCSR)' -count=1` et `go test ./internal/service -run 'Test(LeaderboardService_|HomeService_GetHomePage_OK)' -count=1`. Validation frontend OK avec `npm run test:run -- src/features/home/HomePage.test.tsx src/features/home/HomeRankingStates.test.tsx src/features/home/HomeRecentPlaylistsCard.test.tsx src/features/palmares/PalmaresRelationsPage.test.tsx src/features/leaderboard/LeaderboardBlock.test.tsx` (29 tests verts).
+
+**Conclusion** : les erreurs runtime rapportées n'étaient pas liées entre elles par un même handler, mais par un même pattern de drift: code récent supposant des colonnes/routes non présentes dans l'état live. Les surfaces concernées sont maintenant réalignées sur les sources et schémas effectivement disponibles.
+
+## [2026-04-22] feat(home): états UX explicites pour CSR/LUSR absents sur la page d'accueil
+
+**Statut** : ✅ Complété
+
+**Décision technique** : le frontend ne pouvait pas distinguer proprement `jamais joué` de `rang absent` avec les seuls pics `highest_csr` / `highest_lusr`. Le correctif a donc été porté au bon niveau de vérité métier: `apps/go-api/internal/service/home_service.go` calcule désormais `has_ranked_history` et `has_unranked_history` à partir des matchs Home hors Firefight, puis les expose dans `HomePageResponse`. Côté React, [apps/web/src/features/home/HomePage.tsx](apps/web/src/features/home/HomePage.tsx) rend maintenant des états distincts pour chaque carte de pic (`valeur`, `En placement`, `Sans classement`, `Aucune partie classée/non classée`) et affiche un bloc compact `Aucun classement disponible` ou `Classements indisponibles` quand aucun historique exploitable n'existe. [apps/web/src/features/home/HomeRecentPlaylistsCard.tsx](apps/web/src/features/home/HomeRecentPlaylistsCard.tsx) n'utilise plus `Unranked.png` que pour le vrai cas `classé + pas encore placé`.
+
+**Résultats observés** : validation Go ciblée OK avec `go test ./internal/service -run TestHomeService_GetHomePage_OK -count=1`. Validation frontend OK avec `npm run test:run -- src/features/home/HomePage.test.tsx src/features/home/HomeRankingStates.test.tsx src/features/home/HomeRecentPlaylistsCard.test.tsx` (19 tests verts).
+
+**Conclusion** : la Home décrit maintenant correctement les états compétitifs manquants sans confondre `jamais joué`, `placement`, `sans classement` et `donnée partielle`, tout en gardant le fallback visuel `Unranked` limité au seul cas UX pertinent.
+
+## [2026-04-22] feat(home): section "Playlists récentes & Rang compétitif" à gauche des Sessions récentes
+
+**Statut** : ✅ Complété
+
+**Décision technique** : ajout d'une nouvelle card `HomeRecentPlaylistsCard` positionnée dans un grid `xl:grid-cols-[minmax(320px,0.65fr)_minmax(0,1.35fr)]` à gauche des "Sessions récentes" — même largeur que la card "Défis actifs" existante. La card affiche (1) les 3 dernières playlists distinctes dérivées de `recent_matches.playlist_ui` (frontend only, zéro requête supplémentaire) et (2) le dernier rang CSR ou LUSR connu via un nouveau champ `last_skill_rank` dans `HomePageResponse`. Si le joueur a joué classé mais n'a pas encore de rang (`has_played_ranked=true` + `last_skill_rank=nil`), l'image `Unranked.png` est affichée. Les deux images (rang et non-classé) sont contraintes à `h-20 w-20 object-contain` pour harmonisation. Côté backend : nouvelle requête `Q26fHomeLastSkillRank` ordonnée par `start_time DESC`, nouveau champ `LoadLastSkillRank` sur l'interface `HomeRepository` + implémentation `HomeRepo`, et champs `LastSkillRank`/`HasPlayedRanked` ajoutés à `HomePageResponse`. Build Go et TypeScript sans erreurs.
+
+**Résultats observés** : `go build ./...` passe sans erreur. Aucune erreur TypeScript sur les fichiers modifiés.
+
+**Conclusion** : fonctionnalité complète et cohérente avec l'architecture V6 existante (réutilise `buildHomeSkillPeakBadgeURL` et la logique de normalisation de tier déjà en place).
+
+## [2026-04-22] fix(home): dériver CSR/LUSR depuis is_ranked au lieu du rating_type stocké
+
+**Statut** : ✅ Complété
+
+**Décision technique** : le problème visible sur JGtm ne venait ni du layout Home ni d'une absence de lecture CSR côté repo, mais du fait que les surfaces Home / Match View faisaient confiance à `match_skill_rank.rating_type`. Or, dans le backend Go actif, le post-sync branché ne calcule que le LUSR, tandis que des lignes de matchs classés peuvent déjà exister en base avec un `rating_type='LUSR'` hérité ou mal étiqueté. Le correctif a donc été porté au point de vérité métier lisible aujourd'hui : `shared.match_registry.is_ranked`. `Q22MatchSkillRank`, `Q26eHomeSkillPeakByType` et `Q26fHomeLastSkillRank` dérivent maintenant le type effectif en `CSR` si le match est classé, sinon `LUSR`, avec fallback sur `match_skill_rank.rating_type` uniquement si la ligne `shared.match_registry` est absente.
+
+**Résultats observés** : les tests ciblés `go test -tags=integration ./internal/platform/duckdb -run 'Test(HomeRepo_LoadSpartanIdentity_(WithData|FallsBackToLatestNonEmptyIdentityAssets|ClassifiesRankedRowsAsCSR)|HomeRepo_LoadLastSkillRank_ClassifiesRankedRowsAsCSR|MatchViewRepo_GetMatchSkillRank_ClassifiesRankedMatchAsCSR)' -count=1` passent. Les régressions couvertes valident explicitement qu'un match classé stocké en `LUSR` ressort désormais en `CSR` pour la Home et la Match View.
+
+**Conclusion** : tant qu'un pipeline CSR dédié n'est pas réellement branché en écriture dans le sync Go, la lecture produit ne doit pas traiter `rating_type` comme source d'autorité. La règle métier fiable est désormais codée côté requêtes: match classé = `CSR`, match non classé = `LUSR`.
+
+## [2026-04-22] feat(home): afficher les pics historiques CSR et LUSR dans le bandeau Spartan
+
+**Statut** : ✅ Complété
+
+**Décision technique** : le bon point d'intégration était déjà le bloc `spartan_identity` de la Home, pas une nouvelle surface ou un fallback frontend isolé. Les pics ont donc été branchés DB-first depuis `match_skill_rank`, avec un meilleur enregistrement par `rating_type` (`CSR` et `LUSR`) chargé dans `HomeRepo.LoadSpartanIdentity()`. Le backend publie aussi un `badge_image_url` dérivé des assets statiques existants `/static/ranks/120px-HINF-CSR_<Tier><SubTier>.png` afin que la Home React puisse rendre immédiatement deux cartes compactes à droite du `Spartan ID` sans réinventer de mapping côté client.
+
+**Résultats observés** : validation backend ciblée OK avec `go test -tags=integration ./internal/platform/duckdb -run TestHomeRepo_LoadSpartanIdentity_WithData -count=1` puis `go test ./internal/analysis ./internal/service -run 'Test(BuildSpartanIdentity_UsesRequestedLanguage|HomeService_GetHomePage_IncludesSpartanIdentity)' -count=1`. Validation frontend OK avec `npm run test:run -- src/features/home/HomePage.test.tsx`. Le bandeau Home affiche maintenant deux cartes `Highest CSR` / `Highest LUSR` avec badge, valeur et tier label, dans le même bloc identitaire que l'emblème, le Spartan ID et le rang carrière.
+
+**Conclusion** : la Home expose désormais les meilleurs CSR/LUSR historiques sur le chemin de données déjà existant (`domain/home.go` → `queries_home_citations.go` / `home_repo.go` → `analysis/home.go` → `HomePage.tsx`), sans nouveau schéma et sans logique compétitive dispersée hors du bloc Spartan.
+
+## [2026-04-22] fix(home): restaurer la vraie bannière Spartan via le fallback nameplate legacy
+
+**Statut** : ✅ Complété
+
+**Décision technique** : l'archéologie ciblée de la branche `v7/cockpit` a montré que la bannière Python ne venait pas d'un champ `BannerImagePath` explicite. Le flux legacy utilisait d'abord `player_title_path`, puis reconstruisait une URL Waypoint de `nameplate` depuis `emblem_path + configuration_id` quand `player_title_path` était nul. Le backend Go n'avait porté ni `PlayerTitlePath` ni ce fallback dérivé, d'où l'absence persistante de bannière malgré des données emblème/backdrop correctes. Le correctif a donc été appliqué à la racine dans `internal/sync/halo_client.go` : ajout de `PlayerTitlePath` aux clés candidates, puis génération de `banner_image_url` via `hi/Waypoint/file/images/nameplates/<emblem_stem>_<configuration_id>.png` quand aucun champ bannière direct n'est disponible.
+
+**Résultats observés** : validation ciblée réussie avec `go test ./internal/sync -run 'TestGetCareerRank_(UsesCareerAndCustomizationEndpoints|DerivesBannerFromEmblemWhenNameplateMissing)'`. Une resync batch `go run ./cmd/levelup sync-delta --all --max-matches 1` a ensuite resynchronisé `Chocoboflor`, `JGtm` et `Madina97294` (`career_synced=true`, `XxDaemonGamerxX` ignoré faute de token). Vérification HTTP finale sur le serveur local actif : `GET /api/v1/players/JGtm/pages/home?lang=fr` et `GET /api/v1/players/Chocoboflor/pages/home?lang=fr` publient maintenant tous deux `banner_image_url` via `/api/v1/assets/spartan/banner/halo_infinite/hi/Waypoint/file/images/nameplates/...`, en plus de `emblem_image_url`, `backdrop_image_url` et `adornment_image_url`.
+
+**Conclusion** : la bannière Home suit enfin le même mécanisme que le legacy Python `v7/cockpit`. Le problème n'était ni un mauvais rendu React ni une confusion persistante avec le backdrop, mais un fallback de source de données qui n'avait jamais été porté côté Go.
+
+## [2026-04-22] fix(home): ajouter l'adornment carrière et une sync batch multi-joueurs
+
+**Statut** : ✅ Complété
+
+**Décision technique** : le manque de bannière n'était pas un simple oubli frontend. Un probe Go live sur l'endpoint Waypoint `customization?view=public` a montré que les profils resynchronisés exposent `ServiceTag`, `BackdropImagePath`, `Emblem` et `ActionPosePath`, mais aucune clé `Banner`/`Nameplate`; `PlayerTitlePath` est `null`. En revanche, la sync carrière persistait bien `adornment_path` dans `career_progression` pour les joueurs resynchronisés. Le correctif a donc été double : 1) la Home Go relit désormais aussi `career_progression.adornment_path` et l'expose comme `spartan_identity.career_rank.adornment_image_url`, avec fallback metadata si besoin ; 2) la Home React rend un vrai shell de bannière décoratif permanent et superpose l'adornment carrière comme ornement visuel du bloc identitaire. En parallèle, la CLI `levelup sync-delta` accepte maintenant `--all` pour relancer la sync delta sur tous les profils configurés sans boucle manuelle externe.
+
+**Résultats observés** : validations ciblées OK avec `go test ./internal/analysis ./internal/service -run 'Test(BuildSpartanIdentity_UsesRequestedLanguage|HomeService_GetHomePage_IncludesSpartanIdentity)'`, `go test -tags=integration ./internal/platform/duckdb -run 'TestHomeRepo_LoadSpartanIdentity_(WithData|FallsBackToLatestNonEmptyIdentityAssets)'` et `npm run test:run -- src/features/home/HomePage.test.tsx`. Exécution live : `go run ./cmd/levelup sync-delta --all --max-matches 1` a synchronisé `Chocoboflor`, `JGtm` et `Madina97294` avec `career_synced=true`, et a ignoré `XxDaemonGamerxX` faute de token disponible. Vérification HTTP finale : les trois joueurs synchronisés servent maintenant `spartan_id`, `emblem_image_url`, `backdrop_image_url` et `adornment_image_url`; `banner_image_url` reste absent car non fourni par la customisation publique Halo sur ces profils.
+
+**Conclusion** : la Home ne traite plus les joueurs un par un côté outillage, et le rendu Spartan peut enfin afficher un ornement réel pour tous les profils resynchronisés. L'absence de bannière réelle sur ces profils vient de la source Waypoint elle-même, pas d'une confusion persistante avec le backdrop.
+
+## [2026-04-22] fix(home): ne plus confondre backdrop et bannière dans l'identité Spartan
+
+**Statut** : ✅ Complété
+
+**Décision technique** : le rendu Home restait trompeur même quand `banner_image_url` était vide, car `backdrop_image_url` occupait encore toute la surface du bandeau et donnait l'impression d'être la bannière. Le correctif est purement frontend dans [apps/web/src/features/home/HomePage.tsx](apps/web/src/features/home/HomePage.tsx) : le backdrop n'est plus utilisé comme fond plein écran du bloc, il devient un visuel secondaire décoratif séparé, et le libellé textuel littéral `Spartan ID` a été retiré.
+
+**Résultats observés** : validation ciblée réussie avec `npm run test:run -- src/features/home/HomePage.test.tsx`. Un test anti-régression a été ajouté pour garantir que, sans `banner_image_url`, aucune `home-spartan-banner-surface` n'est rendue même si un `backdrop_image_url` est présent, et que le texte `Spartan ID` n'apparaît plus.
+
+**Conclusion** : la Home ne présente plus le backdrop comme une bannière de substitution et n'affiche plus le libellé `Spartan ID` au-dessus du service tag.
+
+## [2026-04-22] fix(home): resynchroniser JGtm pour restaurer l'identité Spartan en home
+
+**Statut** : ✅ Complété
+
+**Décision technique** : le symptôme live `Identité Spartan indisponible` sur JGtm ne venait ni du frontend React ni du fallback SQL Home. La vérification directe de `career_progression` a montré 73 snapshots avec `spartan_id=0`, `banner=0`, `emblem=0`, `backdrop=0`. La correction utile était donc opérationnelle et Go-native : lancer une vraie sync delta via `go run ./cmd/levelup sync-delta --gamertag JGtm --max-matches 1` après libération du lock DuckDB pris par le serveur local.
+
+**Résultats observés** : la sync Go a inséré 1 match et exécuté la post-sync avec `career_synced=true`. `career_progression` contient maintenant 74 lignes dont un snapshot `2026-04-22T18:18:46Z` avec `spartan_id="OKLM"`, `emblem_image_url` et `backdrop_image_url` renseignés. Vérification HTTP après redémarrage de l'API : `GET /api/v1/players/JGtm/pages/home` renvoie bien `spartan_identity.spartan_id="OKLM"` ainsi que les URLs d'assets proxyfiées pour l'emblème et le backdrop. Observation distincte : `banner_image_url` reste vide même après cette resync live.
+
+**Conclusion** : l'incident utilisateur sur le Spartan ID de JGtm était un problème de données obsolètes en base, désormais résolu par resync Go. S'il faut afficher une bannière pour ce joueur précis, ce sera une investigation séparée sur les champs réels de customisation renvoyés par l'amont, pas un problème de projection Home.
+
+## [2026-04-22] fix(home): séparer banner et backdrop dans l'identité Spartan
+
+**Statut** : ✅ Complété
+
+**Décision technique** : le bandeau Home confondait encore deux concepts distincts du legacy Halo, en utilisant `backdrop_image_url` comme bannière visuelle. Le correctif a été fait à la racine du flux de données : `career_progression` persiste maintenant aussi `banner_image_url`, `GetCareerRank()` tente plusieurs clés de customisation (`BannerImagePath`, `NameplateImagePath`, etc.), le resolver d'assets expose un kind dédié `spartan-banner`, et la Home React rend désormais deux calques séparés : `banner_image_url` pour la nameplate centrale et `backdrop_image_url` comme fond.
+
+**Résultats observés** : validations ciblées backend OK avec `go test ./internal/assets ./internal/api/handlers ./internal/analysis ./internal/service -run 'Test(GameCMSFetcher_|Kind_|SpartanImageHandler_|BuildSpartanIdentity_UsesRequestedLanguage|HomeService_GetHomePage_IncludesSpartanIdentity)'`, `go test -tags=integration ./internal/sync -run 'Test(GetCareerRank_UsesCareerAndCustomizationEndpoints|SaveCareerRank|ParseCareerRank_)'`, `go test ./internal/migration`, `go test -tags=integration ./internal/platform/duckdb -run 'TestHomeRepo_LoadSpartanIdentity_(WithData|FallsBackToLatestNonEmptyIdentityAssets)' -v`. Validation frontend OK avec `npm run test:run -- src/features/home/HomePage.test.tsx`.
+
+**Conclusion** : l'identité Spartan de la home respecte maintenant le modèle legacy vérifié dans le repo (`banner/nameplate` distinct de `backdrop`), sans fallback UI trompeur ni hotlink direct GameCMS.
+
+## [2026-04-22] refactor(home): brancher les assets Spartan sur le resolver cache-aside unifié
+
+**Statut** : ✅ Complété
+
+**Décision technique** : les URLs d'identité Spartan ne doivent plus pointer directement vers GameCMS / Waypoint depuis la payload Home. Le bon point d'intégration est la couche `internal/assets/` déjà utilisée pour maps, battle pass et badges. Le correctif ajoute donc trois `Kind` binaires dédiés (`spartan-emblem`, `spartan-backdrop`, `career-rank-image`), un handler HTTP `/api/v1/assets/spartan/{image_type}/{title_id}/*`, puis fait produire par `HomeRepo` des URLs internes `/api/v1/assets/...` à partir du chemin canonique stocké en BDD. Le resolver conserve ensuite le pattern standard : FS local → index DuckDB → fetch distant → persistance locale.
+
+**Résultats observés** : validations ciblées OK avec `go test ./internal/assets ./internal/api/handlers -run 'Test(GameCMSFetcher_|Kind_|SpartanImageHandler_|ChallengeBadgeHandler_|BattlePassImage_|MapImageHandler_|MedalImageHandler_)'` et `go test -tags=integration ./internal/platform/duckdb -run 'TestHomeRepo_LoadSpartanIdentity_(WithData|FallsBackToLatestNonEmptyIdentityAssets)' -v`. Les tests HomeRepo valident désormais que `emblem_image_url`, `backdrop_image_url` et `rank_image_url` sortent sous forme d'URLs internes d'assets et non plus d'URLs GameCMS directes.
+
+**Conclusion** : le bloc Spartan ID est maintenant raccordé au même pipeline de cache d'assets que le reste du produit. Le frontend ne hotlinke plus directement les visuels d'identité vers l'amont ; la persistance locale est pilotée par les requêtes d'assets standard.
+
+## [2026-04-22] fix(home): relire l'identité Spartan depuis la BDD et rendre un vrai bandeau visuel
+
+**Statut** : ✅ Complété
+
+**Décision technique** : le diagnostic live a montré que le problème n'était pas un bug JSX isolé. La Home lisait uniquement la dernière ligne de `career_progression`, ce qui faisait disparaître `spartan_id` dès qu'un snapshot récent n'en contenait plus, et aucun champ BDD ne transportait encore les visuels de customisation pour approcher le rendu SpartanRecord. Le correctif reste DB-first : `career_progression` stocke maintenant `emblem_image_url` et `backdrop_image_url`, `GetCareerRank` résout ces visuels depuis l'endpoint `customization` puis `gamecms`, `Q26cHomeSpartanIdentity` retombe sur la dernière valeur non vide de `spartan_id`/assets au lieu de dépendre strictement du dernier snapshot, et la Home React remplace les deux cartes plates par un bandeau identitaire unique avec fond, emblème, gamertag, Spartan ID et rang carrière.
+
+**Résultats observés** : validations backend passées avec `go test ./internal/analysis ./internal/service ./internal/sync -run 'Test(BuildSpartanIdentity_UsesRequestedLanguage|HomeService_GetHomePage_IncludesSpartanIdentity|GetCareerRank_UsesCareerAndCustomizationEndpoints)'` et `go test -tags=integration ./internal/platform/duckdb -run 'TestHomeRepo_LoadSpartanIdentity_(WithData|FallsBackToLatestNonEmptyIdentityAssets)' -v`. Validation frontend passée avec `npm run test:run -- src/features/home/HomePage.test.tsx -t "affiche le Spartan ID et le rang carrière localisé dans Performance globale"`. Diagnostics VS Code sur les fichiers modifiés : aucune erreur.
+
+**Conclusion** : la Home sert désormais une identité Spartan plus robuste depuis la BDD existante, ne perd plus le `spartan_id` dès qu'une ligne récente est incomplète, et dispose d'un rendu visuel cohérent avec l'inspiration SpartanRecord sans fallback UI inventé.
+
 ## [2026-04-22] feat(multi-title): architecture multi-titre complète A1-D4
 
 **Statut** : ✅ Complété
