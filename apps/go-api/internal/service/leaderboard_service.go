@@ -32,6 +32,12 @@ func (s *LeaderboardService) GetPage(ctx context.Context, req domain.Leaderboard
 
 	// Ré-indexer les rangs après merge (locaux d'abord).
 	for i := range local {
+		if local[i].CSRValue == 0 {
+			local[i].CSRValue = local[i].CSR
+		}
+		if local[i].Tier == "" {
+			local[i].Tier = "—"
+		}
 		local[i].Rank = i + 1
 	}
 

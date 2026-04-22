@@ -12,6 +12,7 @@ import (
 	"strings"
 	"time"
 
+	"levelup/go-api/internal/analysis"
 	"levelup/go-api/internal/domain"
 	"levelup/go-api/internal/port"
 )
@@ -233,7 +234,7 @@ func enrichRows(rows []domain.MatchHistoryRawRow, mapWR map[string][2]int, waypo
 }
 
 func enrichRow(r domain.MatchHistoryRawRow, mapWR map[string][2]int, waypoint string) domain.MatchHistoryRow {
-	mu := stripModeSuffix(coalesce(r.PairNameFR, r.PairName))
+	mu := analysis.NormalizeModeLabel(coalesce(r.PairNameFR, r.PairName))
 	mapU := coalesce(r.MapNameFR, r.MapName)
 	playlist := coalesce(r.PlaylistName, nil)
 

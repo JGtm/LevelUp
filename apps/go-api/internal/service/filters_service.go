@@ -6,22 +6,17 @@ package service
 
 import (
 	"context"
-	"regexp"
 	"sort"
 	"strings"
 	"time"
 
+	"levelup/go-api/internal/analysis"
 	"levelup/go-api/internal/domain"
 	"levelup/go-api/internal/port"
 )
 
 // Constantes expérience (ordre affiché dans l'UI).
 var experienceLabels = []string{"PVP non classé", "PVP classé", "PVE"}
-
-// stripOnRe retire " on NomCarte" et les suffixes Forge/Ranked des modes.
-var stripOnRe = regexp.MustCompile(`(?i) on .+$`)
-var stripForgeRe = regexp.MustCompile(`(?i)\s*-\s*Forge\b`)
-var stripRankedRe = regexp.MustCompile(`(?i)\s*-\s*Ranked\b`)
 
 // FiltersService calcule FilterContextResolved depuis les données du repo.
 type FiltersService struct {
@@ -87,19 +82,12 @@ func ResolveFiltersFromRows(
 // Helpers d'enrichissement
 // ---------------------------------------------------------------------------
 
-func stripModeSuffix(s string) string {
-	s = stripOnRe.ReplaceAllString(s, "")
-	s = stripForgeRe.ReplaceAllString(s, "")
-	s = stripRankedRe.ReplaceAllString(s, "")
-	return strings.TrimSpace(s)
-}
-
 func modeUI(row domain.FilterMatchRow) string {
 	raw := derefStr(row.PairNameFR)
 	if raw == "" {
 		raw = derefStr(row.PairName)
 	}
-	return stripModeSuffix(raw)
+	return analysis.NormalizeModeLabel(raw)
 }
 
 func mapUI(row domain.FilterMatchRow) string {

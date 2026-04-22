@@ -12,16 +12,18 @@ import (
 // --- mock ---
 
 type mockHomeRepo struct {
-	matches     []domain.HomeMatchRow
-	matchErr    error
-	identity    *domain.HomeSpartanIdentityRow
-	identityErr error
-	matchCount  int
-	countErr    error
-	sessions    []domain.HomeSessionRow
-	sessionErr  error
-	media       []domain.HomeMediaRow
-	mediaErr    error
+	matches                []domain.HomeMatchRow
+	matchErr               error
+	identity               *domain.HomeSpartanIdentityRow
+	identityErr            error
+	matchCount             int
+	countErr               error
+	sessions               []domain.HomeSessionRow
+	sessionErr             error
+	media                  []domain.HomeMediaRow
+	mediaErr               error
+	recentPlaylistRanks    []domain.HomePlaylistRank
+	recentPlaylistRanksErr error
 }
 
 func (m *mockHomeRepo) LoadHomeMatches(_ context.Context) ([]domain.HomeMatchRow, error) {
@@ -42,6 +44,9 @@ func (m *mockHomeRepo) LoadHomeSessions(_ context.Context) ([]domain.HomeSession
 func (m *mockHomeRepo) LoadRecentMedia(_ context.Context, _ int) ([]domain.HomeMediaRow, error) {
 	return m.media, m.mediaErr
 }
+func (m *mockHomeRepo) LoadRecentPlaylistRanks(_ context.Context) ([]domain.HomePlaylistRank, error) {
+	return m.recentPlaylistRanks, m.recentPlaylistRanksErr
+}
 
 // --- tests ---
 
@@ -49,8 +54,8 @@ func TestHomeService_GetHomePage_OK(t *testing.T) {
 	now := time.Now()
 	repo := &mockHomeRepo{
 		matches: []domain.HomeMatchRow{
-			{MatchID: "m1", StartTime: now, MapName: "Aquarius", PairName: "Slayer", Outcome: 2, Kills: 10, Deaths: 5, Assists: 3},
-			{MatchID: "m2", StartTime: now.Add(-1 * time.Hour), MapName: "Streets", PairName: "CTF", Outcome: 3, Kills: 5, Deaths: 10, Assists: 1},
+			{MatchID: "m1", StartTime: now, MapName: "Aquarius", PairName: "Slayer", Outcome: 2, Kills: 10, Deaths: 5, Assists: 3, IsRanked: true},
+			{MatchID: "m2", StartTime: now.Add(-1 * time.Hour), MapName: "Streets", PairName: "CTF", Outcome: 3, Kills: 5, Deaths: 10, Assists: 1, IsRanked: false},
 		},
 		sessions: []domain.HomeSessionRow{
 			{MatchID: "m1", SessionLabel: strPtr("Session 1"), StartTime: &now},
@@ -67,6 +72,12 @@ func TestHomeService_GetHomePage_OK(t *testing.T) {
 	}
 	if resp == nil {
 		t.Fatal("expected non-nil response")
+	}
+	if !resp.HasRankedHistory {
+		t.Fatal("expected HasRankedHistory")
+	}
+	if !resp.HasUnrankedHistory {
+		t.Fatal("expected HasUnrankedHistory")
 	}
 }
 
@@ -177,13 +188,17 @@ func TestHomeService_GetHomePage_RespectsLocale(t *testing.T) {
 func TestHomeService_GetHomePage_IncludesSpartanIdentity(t *testing.T) {
 	repo := &mockHomeRepo{
 		identity: &domain.HomeSpartanIdentityRow{
-			SpartanID:     strPtr("JGTM"),
-			RankNumber:    25,
-			RankTitleFR:   strPtr("Caporal-chef"),
-			RankTitleEN:   strPtr("Lance Corporal"),
-			RankImageURL:  strPtr("https://example.test/rank.png"),
-			CurrentXP:     5000,
-			XPForNextRank: 10000,
+			SpartanID:         strPtr("JGTM"),
+			BannerImageURL:    strPtr("https://example.test/banner.png"),
+			EmblemImageURL:    strPtr("https://example.test/emblem.png"),
+			BackdropImageURL:  strPtr("https://example.test/backdrop.png"),
+			RankNumber:        25,
+			RankTitleFR:       strPtr("Caporal-chef"),
+			RankTitleEN:       strPtr("Lance Corporal"),
+			RankImageURL:      strPtr("https://example.test/rank.png"),
+			AdornmentImageURL: strPtr("https://example.test/adornment.png"),
+			CurrentXP:         5000,
+			XPForNextRank:     10000,
 		},
 	}
 	svc := NewHomeService(repo)
@@ -198,6 +213,15 @@ func TestHomeService_GetHomePage_IncludesSpartanIdentity(t *testing.T) {
 	if got := *resp.SpartanIdentity.SpartanID; got != "JGTM" {
 		t.Fatalf("spartan_id = %q, want JGTM", got)
 	}
+	if resp.SpartanIdentity.EmblemImageURL == nil || *resp.SpartanIdentity.EmblemImageURL != "https://example.test/emblem.png" {
+		t.Fatalf("emblem_image_url = %#v, want https://example.test/emblem.png", resp.SpartanIdentity.EmblemImageURL)
+	}
+	if resp.SpartanIdentity.BannerImageURL == nil || *resp.SpartanIdentity.BannerImageURL != "https://example.test/banner.png" {
+		t.Fatalf("banner_image_url = %#v, want https://example.test/banner.png", resp.SpartanIdentity.BannerImageURL)
+	}
+	if resp.SpartanIdentity.BackdropImageURL == nil || *resp.SpartanIdentity.BackdropImageURL != "https://example.test/backdrop.png" {
+		t.Fatalf("backdrop_image_url = %#v, want https://example.test/backdrop.png", resp.SpartanIdentity.BackdropImageURL)
+	}
 	if resp.SpartanIdentity.CareerRank == nil {
 		t.Fatal("expected career_rank")
 	}
@@ -206,6 +230,9 @@ func TestHomeService_GetHomePage_IncludesSpartanIdentity(t *testing.T) {
 	}
 	if resp.SpartanIdentity.CareerRank.RankImageURL == nil || *resp.SpartanIdentity.CareerRank.RankImageURL != "https://example.test/rank.png" {
 		t.Fatalf("rank_image_url = %#v, want https://example.test/rank.png", resp.SpartanIdentity.CareerRank.RankImageURL)
+	}
+	if resp.SpartanIdentity.CareerRank.AdornmentImageURL == nil || *resp.SpartanIdentity.CareerRank.AdornmentImageURL != "https://example.test/adornment.png" {
+		t.Fatalf("adornment_image_url = %#v, want https://example.test/adornment.png", resp.SpartanIdentity.CareerRank.AdornmentImageURL)
 	}
 	if got := resp.SpartanIdentity.CareerRank.ProgressPct; got != 50 {
 		t.Fatalf("progress_pct = %.2f, want 50", got)
