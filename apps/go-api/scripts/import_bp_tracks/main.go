@@ -1,17 +1,15 @@
-// Script one-shot : importe les définitions de tracks Battle Pass depuis
+// Script one-shot : importe les traductions de tracks Battle Pass depuis
 // data/investigation/battlepass/*/tracks/*.json dans metadata.duckdb.
 //
-// La clé `SummaryImagePath` des fichiers locaux correspond à `BattlePassImage`
-// dans battlepass_track_definitions (champ côté GameCMS = `BattlePassImage`,
-// mais les fichiers locaux ont gardé le nom `SummaryImagePath`).
+// Les fichiers locaux contiennent les noms multilingues (Name.translations).
+// Ce script NE touche PAS à battlepass_track_definitions (index DuckDB fragile) :
+// il lit le content_hash existant depuis la DB et n'écrit que dans battlepass_track_translations.
 //
 // Usage : cd apps/go-api && go run ./scripts/import_bp_tracks/
 package main
 
 import (
-	"crypto/sha256"
 	"database/sql"
-	"encoding/hex"
 	"encoding/json"
 	"fmt"
 	"log/slog"
@@ -28,11 +26,10 @@ import (
 type trackJSON struct {
 	TrackID             string         `json:"TrackId"`
 	XpPerRank           int            `json:"XpPerRank"`
-	SummaryImagePath    string         `json:"SummaryImagePath"`    // = BattlePassImage côté GameCMS
-	BackgroundImagePath string         `json:"BackgroundImagePath"` // identique
+	SummaryImagePath    string         `json:"SummaryImagePath"`
+	BackgroundImagePath string         `json:"BackgroundImagePath"`
 	Name                localizedField `json:"Name"`
 	Description         localizedField `json:"Description"`
-	// Ranks non utilisé ici (import des items géré séparément)
 }
 
 type localizedField struct {
@@ -41,7 +38,7 @@ type localizedField struct {
 }
 
 func main() {
-	dbPath := filepath.Join("..", "..", "data", "warehouse", "metadata.duckdb")
+	dbPath := filepath.Join("..", "..", "data", "titles", "halo_infinite", "warehouse", "metadata.duckdb")
 	if _, err := os.Stat(dbPath); err != nil {
 		slog.Error("metadata.duckdb introuvable", "path", dbPath)
 		os.Exit(1)
@@ -54,6 +51,22 @@ func main() {
 	}
 	defer db.Close()
 
+	// Charger les content_hash existants depuis battlepass_track_definitions.
+	// Clé : reward_track_path → content_hash (is_current=TRUE).
+	dbHashes := map[string]string{}
+	rows, err := db.Query(`SELECT reward_track_path, content_hash FROM battlepass_track_definitions WHERE is_current = TRUE`)
+	if err != nil {
+		slog.Error("lecture battlepass_track_definitions", "err", err)
+		os.Exit(1)
+	}
+	for rows.Next() {
+		var path, hash string
+		rows.Scan(&path, &hash)
+		dbHashes[path] = hash
+	}
+	rows.Close()
+	slog.Info("tracks en DB", "count", len(dbHashes))
+
 	// Glob : tous les fichiers tracks pour tous les gamertags.
 	glob := filepath.Join("..", "..", "data", "investigation", "battlepass", "*", "tracks", "*.json")
 	files, err := filepath.Glob(glob)
@@ -64,10 +77,9 @@ func main() {
 	slog.Info("fichiers tracks trouvés", "count", len(files))
 
 	now := time.Now()
-	inserted, skipped, dups := 0, 0, 0
+	written, skipped, dups, notInDB := 0, 0, 0, 0
 
-	// Dé-dupliquer : un même track peut exister dans plusieurs sous-répertoires
-	// (ex: Chocoboflor/ et JGtm/). On garde la première occurrence.
+	// Dé-dupliquer : un même track peut exister dans plusieurs sous-répertoires.
 	seen := map[string]struct{}{}
 
 	for _, fpath := range files {
@@ -86,101 +98,75 @@ func main() {
 		}
 
 		// Déduire le reward_track_path depuis le nom de fichier.
-		// Le fichier s'appelle p.ex. "S03BattlePass-f9f98509d7.json"
-		// → reward_track_path = "RewardTracks/Operations/S03BattlePass.json"
-		base := filepath.Base(fpath) // "S03BattlePass-f9f98509d7.json"
-		// Supprimer le hash suffixe "-xxxxxxxxxx"
-		namePart := strings.TrimSuffix(base, filepath.Ext(base)) // "S03BattlePass-f9f98509d7"
-		// Trouver le dernier "-" suivi d'exactement 10 chars hex
+		base := filepath.Base(fpath)
+		namePart := strings.TrimSuffix(base, filepath.Ext(base))
 		idx := strings.LastIndex(namePart, "-")
 		if idx > 0 && len(namePart)-idx-1 == 10 {
 			namePart = namePart[:idx]
 		}
 		rewardTrackPath := fmt.Sprintf("RewardTracks/Operations/%s.json", namePart)
 
-		// Dé-dupliquer par reward_track_path.
 		if _, alreadySeen := seen[rewardTrackPath]; alreadySeen {
 			dups++
 			continue
 		}
 		seen[rewardTrackPath] = struct{}{}
 
-		// Calculer le content_hash (SHA256[:8] en hex, comme le serveur Go).
-		h := sha256.Sum256(raw)
-		contentHash := hex.EncodeToString(h[:8])
-
-		// Invalider les anciens hashes pour ce track.
-		_, err = db.Exec(`
-			UPDATE battlepass_track_definitions
-			SET is_current = FALSE, last_seen_at = ?
-			WHERE reward_track_path = ? AND content_hash <> ? AND is_current = TRUE`,
-			now, rewardTrackPath, contentHash)
-		if err != nil {
-			slog.Warn("update is_current", "path", rewardTrackPath, "err", err)
-		}
-
-		// UPSERT dans battlepass_track_definitions.
-		// SummaryImagePath local = BattlePassImage dans le schema.
-		bpImage := strings.TrimSpace(t.SummaryImagePath)
-		bgImage := strings.TrimSpace(t.BackgroundImagePath)
-		var xpPerRank any
-		if t.XpPerRank > 0 {
-			xpPerRank = t.XpPerRank
-		}
-
-		_, err = db.Exec(`
-			INSERT INTO battlepass_track_definitions
-				(reward_track_path, content_hash, xp_per_rank,
-				 battlepass_image_path, background_image_path,
-				 raw_payload_json, is_current, first_seen_at, last_seen_at)
-			VALUES (?, ?, ?, ?, ?, ?, TRUE, ?, ?)
-			ON CONFLICT (reward_track_path, content_hash) DO UPDATE SET
-				xp_per_rank             = excluded.xp_per_rank,
-				battlepass_image_path   = excluded.battlepass_image_path,
-				background_image_path   = excluded.background_image_path,
-				raw_payload_json        = excluded.raw_payload_json,
-				last_seen_at            = excluded.last_seen_at,
-				is_current              = TRUE`,
-			rewardTrackPath, contentHash, xpPerRank,
-			nullStr(bpImage), nullStr(bgImage),
-			string(raw), now, now)
-		if err != nil {
-			slog.Warn("insert track def", "path", rewardTrackPath, "err", err)
-			skipped++
+		// Lire le content_hash depuis la DB (ne pas recalculer depuis le fichier local
+		// dont le contenu peut différer du payload GameCMS).
+		contentHash, ok := dbHashes[rewardTrackPath]
+		if !ok {
+			slog.Warn("track absent de battlepass_track_definitions, ignoré", "path", rewardTrackPath)
+			notInDB++
 			continue
 		}
 
-		// Traductions dans battlepass_track_translations.
+		// Construire la liste des langues à écrire (toujours inclure en-US).
 		langs := map[string]struct{}{"en-US": {}}
 		for lang := range t.Name.Translations {
 			langs[lang] = struct{}{}
 		}
+
+		trackWritten := 0
 		for lang := range langs {
 			name := t.Name.Translations[lang]
 			if name == "" {
 				name = t.Name.Value
 			}
-			_, _ = db.Exec(`
-				INSERT INTO battlepass_track_translations
-					(reward_track_path, content_hash, lang, track_name, first_seen_at, last_seen_at)
-				VALUES (?, ?, ?, ?, ?, ?)
-				ON CONFLICT (reward_track_path, content_hash, lang) DO UPDATE SET
-					track_name   = excluded.track_name,
-					last_seen_at = excluded.last_seen_at`,
-				rewardTrackPath, contentHash, lang, nullStr(name), now, now)
+			if name == "" {
+				continue
+			}
+			// INSERT only — battlepass_track_translations est vide au premier passage.
+			// En cas de re-run, l'INSERT silencieusement ignore les conflits via le fallback UPDATE.
+			resT, _ := db.Exec(`
+				UPDATE battlepass_track_translations
+				SET track_name=?, last_seen_at=?
+				WHERE reward_track_path=? AND content_hash=? AND lang=?`,
+				name, now, rewardTrackPath, contentHash, lang)
+			if n, _ := resT.RowsAffected(); n == 0 {
+				_, _ = db.Exec(`
+					INSERT INTO battlepass_track_translations
+						(reward_track_path, content_hash, lang, track_name, first_seen_at, last_seen_at)
+					VALUES (?, ?, ?, ?, ?, ?)`,
+					rewardTrackPath, contentHash, lang, name, now, now)
+			}
+			trackWritten++
 		}
 
-		slog.Info("track importé", "path", rewardTrackPath, "hash", contentHash, "name", t.Name.Value)
-		inserted++
+		slog.Info("traductions écrites", "path", rewardTrackPath, "langs", trackWritten, "name_en", t.Name.Value)
+		written++
 	}
 
 	// Vérification finale.
-	var totalTracks int
-	_ = db.QueryRow(`SELECT COUNT(*) FROM battlepass_track_definitions WHERE is_current = TRUE`).Scan(&totalTracks)
+	var totalTransl int
+	_ = db.QueryRow(`SELECT COUNT(*) FROM battlepass_track_translations`).Scan(&totalTransl)
 
 	slog.Info("import terminé",
-		"inserted", inserted, "skipped", skipped, "dups_ignored", dups,
-		"total_tracks_in_db", totalTracks)
+		"tracks_written", written,
+		"skipped", skipped,
+		"dups_ignored", dups,
+		"not_in_db", notInDB,
+		"total_translations", totalTransl)
 }
 
 func nullStr(s string) any {
