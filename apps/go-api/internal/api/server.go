@@ -186,6 +186,7 @@ func NewRouter(
 		r.Get("/assets/maps/{title_id}/{map_id}/image", assetHandler.GetMapImage)
 		r.Get("/assets/battlepass/{subdir}/*", assetHandler.GetBattlePassImage)
 		r.Get("/assets/challenge-badge/{title_id}/{badge_id}", assetHandler.GetChallengeBadge)
+		r.Get("/assets/spartan/{image_type}/{title_id}/*", assetHandler.GetSpartanImage)
 
 		// Endpoints P1 : pages par joueur (Sprint 37 — DI via ServiceRegistry)
 		r.Route("/players/{player_slug}", func(r chi.Router) {

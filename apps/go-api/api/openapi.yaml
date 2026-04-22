@@ -1047,25 +1047,19 @@ paths:
     get:
       tags: [leaderboard]
       operationId: getLeaderboardPage
-      summary: "Classement des joueurs connus (locaux en premier)"
+      summary: "Résumé CSR local du joueur courant"
       parameters:
         - $ref: "#/components/parameters/PlayerSlug"
-        - name: season_id
+        - name: season
           in: query
           schema:
             type: string
           description: Filtrer par saison
-        - name: playlist_id
+        - name: playlist
           in: query
           schema:
             type: string
           description: Filtrer par playlist
-        - name: metric
-          in: query
-          schema:
-            type: string
-            default: win_rate
-          description: Métrique de classement
       responses:
         "200":
           description: Classement des joueurs
@@ -3196,14 +3190,20 @@ components:
 
     LeaderboardEntry:
       type: object
-      required: [rank, gamertag, score, is_local]
+      required: [rank, gamertag, csr_value, tier, sub_tier, is_local]
       properties:
         rank:
           type: integer
+        title_slug:
+          type: string
         gamertag:
           type: string
-        score:
-          type: number
+        csr_value:
+          type: integer
+        tier:
+          type: string
+        sub_tier:
+          type: integer
         is_local:
           type: boolean
         xuid:
@@ -3212,20 +3212,20 @@ components:
 
     LeaderboardResponse:
       type: object
-      required: [entries, metric, season_id, playlist_id]
+      required: [entries, season_id, playlist_id, title_slug, total]
       properties:
         entries:
           type: array
           items:
             $ref: "#/components/schemas/LeaderboardEntry"
-        metric:
-          type: string
         season_id:
           type: string
           nullable: true
         playlist_id:
           type: string
           nullable: true
+        title_slug:
+          type: string
         total:
           type: integer
 

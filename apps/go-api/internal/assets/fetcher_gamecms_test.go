@@ -23,6 +23,7 @@ func TestGameCMSFetcher_Supports(t *testing.T) {
 	f := NewGameCMSFetcher(nil, nil, "")
 	supported := []Kind{
 		KindMedalImage, KindChallengeBadge, KindBPTrackImage, KindBPBackground,
+		KindSpartanEmblem, KindSpartanBanner, KindSpartanBackdrop, KindCareerRankImage,
 		KindMedalMetadata, KindChallengeDefinition, KindRewardTrackDefinition,
 	}
 	for _, k := range supported {
@@ -199,6 +200,54 @@ func TestGameCMSFetcher_BPImage_NotFound(t *testing.T) {
 	_, err := f.Fetch(context.Background(), ref)
 	if !errors.Is(err, ErrNotFound) {
 		t.Errorf("attendu ErrNotFound, got %v", err)
+	}
+}
+
+func TestGameCMSFetcher_SpartanIdentityImages_OK(t *testing.T) {
+	cases := []struct {
+		name     string
+		ref      Ref
+		wantPath string
+	}{
+		{
+			name:     "emblem waypoint path preserved",
+			ref:      Ref{Kind: KindSpartanEmblem, TitleID: "halo_infinite", ID: "hi/Waypoint/file/images/emblems/test_123.png"},
+			wantPath: "/hi/Waypoint/file/images/emblems/test_123.png",
+		},
+		{
+			name:     "career rank defaults to images file",
+			ref:      Ref{Kind: KindCareerRankImage, TitleID: "halo_infinite", ID: "Progression/RewardTracks/CareerRanks/platinum1-large.png"},
+			wantPath: "/hi/images/file/Progression/RewardTracks/CareerRanks/platinum1-large.png",
+		},
+		{
+			name:     "banner path preserved",
+			ref:      Ref{Kind: KindSpartanBanner, TitleID: "halo_infinite", ID: "hi/images/file/progression/Nameplates/test-banner.png"},
+			wantPath: "/hi/images/file/progression/Nameplates/test-banner.png",
+		},
+	}
+
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			var gotPath string
+			srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				gotPath = r.URL.Path
+				w.WriteHeader(http.StatusOK)
+				_, _ = w.Write([]byte{0x89, 0x50, 0x4e, 0x47, 0x0d})
+			}))
+			defer srv.Close()
+
+			f := NewGameCMSFetcher(srv.Client(), stubTokens, srv.URL)
+			res, err := f.Fetch(context.Background(), tc.ref)
+			if err != nil {
+				t.Fatalf("erreur inattendue: %v", err)
+			}
+			if _, ok := res.(BinaryPayload); !ok {
+				t.Fatal("attendu BinaryPayload")
+			}
+			if gotPath != tc.wantPath {
+				t.Fatalf("path = %q, want %q", gotPath, tc.wantPath)
+			}
+		})
 	}
 }
 

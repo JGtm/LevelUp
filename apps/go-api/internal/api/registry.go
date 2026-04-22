@@ -226,7 +226,7 @@ func (r *ServiceRegistry) HomeCtxWithAuth(ctx context.Context, slug string) (por
 	}
 	sink := duckdb.NewPersistSink(pdb.Metadata.Path(), pdb.Player.Path(), pdb.XUID)
 	homeRepo := duckdb.NewHomeRepo(pdb)
-	haloProvider := r.buildHaloProvider(pdb)
+	haloProvider := r.buildHaloProvider(pdb).WithTrackDefPersister(sink)
 	svc := service.NewHomeService(homeRepo).
 		WithPersistSink(sink).
 		WithCacheRepo(homeRepo).
@@ -245,7 +245,7 @@ func (r *ServiceRegistry) SeasonPassCtxWithAuth(ctx context.Context, slug string
 	}
 	homeRepo := duckdb.NewHomeRepo(pdb)
 	sink := duckdb.NewPersistSink(pdb.Metadata.Path(), pdb.Player.Path(), pdb.XUID)
-	haloProvider := r.buildHaloProvider(pdb)
+	haloProvider := r.buildHaloProvider(pdb).WithTrackDefPersister(sink)
 	homeSvc := service.NewHomeService(homeRepo).
 		WithPersistSink(sink).
 		WithCacheRepo(homeRepo).

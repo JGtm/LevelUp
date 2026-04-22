@@ -145,6 +145,62 @@ func (h *AssetHandler) GetBattlePassImage(w http.ResponseWriter, r *http.Request
 	serveResolved(w, r, resolved)
 }
 
+// GetSpartanImage sert les visuels du bloc identitaire Spartan via le resolver.
+// GET /api/v1/assets/spartan/{image_type}/{title_id}/*
+func (h *AssetHandler) GetSpartanImage(w http.ResponseWriter, r *http.Request) {
+	imageType := chi.URLParam(r, "image_type")
+	titleID := chi.URLParam(r, "title_id")
+	gamecmsPath := chi.URLParam(r, "*")
+
+	kind, ok := spartanImageKind(imageType)
+	if !ok {
+		http.Error(w, "image_type invalide", http.StatusBadRequest)
+		return
+	}
+	if titleID == "" {
+		http.Error(w, "title_id requis", http.StatusBadRequest)
+		return
+	}
+	if gamecmsPath == "" {
+		http.Error(w, "chemin image manquant", http.StatusBadRequest)
+		return
+	}
+
+	cleaned := path.Clean(gamecmsPath)
+	if strings.Contains(cleaned, "..") {
+		http.Error(w, "chemin invalide", http.StatusBadRequest)
+		return
+	}
+
+	ref := assets.Ref{
+		Kind:    kind,
+		TitleID: titleID,
+		ID:      cleaned,
+	}
+
+	resolved, err := h.resolver.Get(r.Context(), ref)
+	if err != nil {
+		handleResolverError(w, err, "GetSpartanImage", ref)
+		return
+	}
+	serveResolved(w, r, resolved)
+}
+
+func spartanImageKind(imageType string) (assets.Kind, bool) {
+	switch strings.TrimSpace(imageType) {
+	case "emblem":
+		return assets.KindSpartanEmblem, true
+	case "banner":
+		return assets.KindSpartanBanner, true
+	case "backdrop":
+		return assets.KindSpartanBackdrop, true
+	case "career-rank":
+		return assets.KindCareerRankImage, true
+	default:
+		return "", false
+	}
+}
+
 // serveResolved écrit la réponse HTTP depuis un Resolved.
 // URLPayload → 302, BinaryPayload → 200 + bytes.
 func serveResolved(w http.ResponseWriter, r *http.Request, res assets.Resolved) {

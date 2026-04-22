@@ -363,6 +363,10 @@ type HomeRepository interface {
 	// LoadRecentMedia charge les médias récents du joueur (Q28).
 	// Si la table media_files n'existe pas, retourne (nil, nil) sans erreur.
 	LoadRecentMedia(ctx context.Context, limit int) ([]domain.HomeMediaRow, error)
+
+	// LoadRecentPlaylistRanks retourne les 3 dernières playlists distinctes avec leur rang (Q26g).
+	// Retourne (nil, nil) si aucune donnée disponible.
+	LoadRecentPlaylistRanks(ctx context.Context) ([]domain.HomePlaylistRank, error)
 }
 
 // Ensure compile-time check pour HomeRepository.
@@ -384,6 +388,9 @@ func (n *noopHomeRepo) LoadHomeSessions(_ context.Context) ([]domain.HomeSession
 	return nil, nil
 }
 func (n *noopHomeRepo) LoadRecentMedia(_ context.Context, _ int) ([]domain.HomeMediaRow, error) {
+	return nil, nil
+}
+func (n *noopHomeRepo) LoadRecentPlaylistRanks(_ context.Context) ([]domain.HomePlaylistRank, error) {
 	return nil, nil
 }
 
