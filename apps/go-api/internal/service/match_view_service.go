@@ -78,14 +78,34 @@ func (s *MatchViewService) GetMatchView(ctx context.Context, matchID string) (do
 	team := buildTeamTab(scoreboard, kvPairs, s.xuid)
 
 	return domain.MatchViewResponse{
-		Header:       header,
-		Rank:         rank,
-		SummaryTab:   summary,
-		CombatTab:    combat,
-		TeamTab:      team,
-		MediaTab:     domain.MatchMediaTab{MediaItems: []interface{}{}},
-		CitationsTab: domain.MatchCitationsTab{Commendations: []domain.MatchCitation{}, Medals: []domain.MatchMedal{}},
+		Header:     header,
+		Rank:       rank,
+		SummaryTab: summary,
+		CombatTab:  combat,
+		TeamTab:    team,
+		MediaTab:   domain.MatchMediaTab{MediaItems: []domain.MatchAssociatedMedia{}}, CitationsTab: domain.MatchCitationsTab{Commendations: []domain.MatchCitation{}, Medals: []domain.MatchMedal{}},
 	}, nil
+}
+
+// GetMatchNeighbors retourne les matchs adjacents pour la navigation prev/next.
+func (s *MatchViewService) GetMatchNeighbors(ctx context.Context, matchID string) (domain.MatchNeighbors, error) {
+	slog.Info("match_view: GetMatchNeighbors", "match_id", matchID, "xuid", s.xuid)
+	n, err := s.repo.GetMatchNeighbors(ctx, s.xuid, matchID)
+	if err != nil {
+		slog.Warn("match_view: neighbors indisponibles", "match_id", matchID, "err", err)
+		return domain.MatchNeighbors{}, nil
+	}
+	if n == nil {
+		return domain.MatchNeighbors{}, nil
+	}
+	slog.Info("match_view: neighbors chargés",
+		"match_id", matchID,
+		"current_index", n.CurrentIndex,
+		"total", n.TotalMatches,
+		"has_prev", n.PreviousMatchID != nil,
+		"has_next", n.NextMatchID != nil,
+	)
+	return *n, nil
 }
 
 // ---------------------------------------------------------------------------
@@ -253,7 +273,10 @@ func buildCombatTab(weapons []domain.WeaponKillRaw, events []domain.EventRaw) do
 	return domain.MatchCombatTab{
 		WeaponKills:     wkList,
 		HighlightEvents: evtList,
-		Charts:          []interface{}{},
+		TugOfWar:        []domain.MatchTugOfWarBin{},
+		ImpactBadges:    []domain.MatchImpactBadge{},
+		KDTimeline:      []domain.MatchKDTimelinePoint{},
+		NemesisDuels:    []domain.MatchNemesisRow{},
 	}
 }
 
@@ -307,8 +330,10 @@ func buildTeamTab(scoreboard []domain.ScoreboardRaw, kvPairs []domain.KVPairRaw,
 	sortNemesisByKilledMe(nemesisList)
 
 	return domain.MatchTeamTab{
+		Roster:     []domain.MatchRosterRow{},
 		Scoreboard: rows,
 		Nemesis:    nemesisList,
+		Encounters: []domain.MatchEncounterRow{},
 	}
 }
 

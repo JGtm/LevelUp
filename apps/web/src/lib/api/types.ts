@@ -1383,6 +1383,10 @@ export interface MatchViewHeader {
   performance_display: string
   performance_color: string | null
   is_excluded: boolean
+  /** V7 : durée jouable réelle en secondes */
+  playable_duration_seconds?: number | null
+  /** V7 : lien Waypoint vers la replay */
+  waypoint_url?: string | null
 }
 
 export interface MatchViewRank {
@@ -1414,6 +1418,12 @@ export interface MatchSummaryKpis {
   kda: number | null
   damage_dealt: number | null
   average_life: string | null
+  /** V7 */
+  headshot_kills?: number | null
+  max_killing_spree?: number | null
+  perfect_kills?: number | null
+  accuracy?: number | null
+  personal_score?: number | null
 }
 
 export interface MatchPersonalResult {
@@ -1428,6 +1438,13 @@ export interface MatchExpectedStats {
   expected_kills: number | null
   expected_deaths: number | null
   expected_assists: number | null
+  /** V7 — moyennes historiques sur le mode */
+  has_hist_avg?: boolean
+  hist_avg_kills?: number | null
+  hist_avg_deaths?: number | null
+  hist_avg_assists?: number | null
+  hist_match_count?: number
+  hist_mode_category?: string | null
 }
 
 export interface MatchSummaryTab {
@@ -1453,10 +1470,34 @@ export interface MatchHighlightEvent {
   weapon_id: number | null
 }
 
+export interface MatchTugOfWarBin {
+  bin_start: number
+  bin_end: number
+  team_kills: number
+  enemy_kills: number
+  net_kills: number
+}
+
+export interface MatchImpactBadge {
+  key: string
+  label: string
+  value?: string | null
+}
+
+export interface MatchKDTimelinePoint {
+  time_seconds: number
+  kills: number
+  deaths: number
+}
+
 export interface MatchCombatTab {
   weapon_kills: MatchWeaponKill[]
   highlight_events: MatchHighlightEvent[]
-  charts: PlotlyFigurePayload[]
+  /** V7 */
+  tug_of_war: MatchTugOfWarBin[]
+  impact_badges: MatchImpactBadge[]
+  kd_timeline: MatchKDTimelinePoint[]
+  nemesis_duels: MatchNemesisRow[]
 }
 
 export interface MatchScoreboardRow {
@@ -1465,25 +1506,30 @@ export interface MatchScoreboardRow {
   team_side: string | null
   is_me: boolean
   rank: number | null
+  score: number | null
   kills: number | null
   deaths: number | null
   assists: number | null
-  betrayals: number | null
-  suicides: number | null
+  kda?: number | null
   shots_fired: number | null
   shots_hit: number | null
   shots_accuracy: number | null
   damage_dealt: number | null
   damage_taken: number | null
-  damage_efficiency: number | null
   average_life: string | null
-  objectives_stolen: number | null
   headshot_kills: number | null
   max_killing_spree: number | null
   perfect_kills: number | null
   power_weapon_kills: number | null
   melee_kills: number | null
   outcome_label: string
+  /** V7 — combat yield */
+  top_weapon_id?: number | null
+  top_weapon_label?: string | null
+  offensive_conversion?: number | null
+  defensive_resistance?: number | null
+  damage_per_kill?: number | null
+  damage_per_death?: number | null
 }
 
 export interface MatchRosterRow {
