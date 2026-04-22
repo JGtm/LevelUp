@@ -1,5 +1,37 @@
 # Thought Log
 
+## [2026-04-22] feat(match-view): plan 10-commits portage page Match Détail Go — COMPLÉTÉ
+
+**Statut** : ✅ Complété (commits 1–10 sur `feat/v7-assets-abstraction`)
+
+**Décision technique principale** : portage complet de la page Match Détail depuis Python/Streamlit vers Go/React, en 10 commits atomiques. Errgroup pour la parallélisation des 11 goroutines DB dans le service. Séparation domaine/repo/service/analysis respectée.
+
+**Commits réalisés** :
+- C1 `629db3c4` : suppression route `last-match`
+- C2 `8f7e8ca1+d33d796a` : endpoint `/matches/{id}/neighbors` + Q25 + UI prev/next
+- C3 `ee3c40e3` : enrichissement domaine Go + types TS (SkillRankRaw, EncounterRaw, MediaAssocRaw, ExpectedStatsRaw, MatchTugOfWarBin, MatchImpactBadge, MatchKDTimelinePoint, MatchNeighbors)
+- C4 `a1a7deec` : Q12 (perfect_kills, top_weapon), Q13 (playable_duration, map_id), Q21 fix time_ms
+- C5 (dans `d33d796a`) : Q22–Q26 SQL + raw types domaine + impls repo + interface port
+- C6 `ae094df3` : modules analysis Go (match_history_avg, tug_of_war, match_impact, kd_timeline)
+- C7 `29f93904` : service enrichi — errgroup 11 goroutines, buildRankBlock, buildSummaryTabFull, buildCombatTabFull, buildTeamTabFull, buildMediaTab
+- C8 `c1557de5` : front React enrichi — TugOfWar (AreaChart), KDTimeline (LineChart), ImpactBadges, Encounters, scoreboard V7 sans colonnes obsolètes
+- C9 `003c3b0b` : tests Go analysis (19 tests, 100% pass)
+- C10 (ce commit) : thought_log + coverage_baseline
+
+**Résultats** : `go build ./...` → 0 erreur. `go test ./internal/analysis/...` → 100% OK. TypeScript `--noEmit` → 0 erreur.
+
+**Points de vigilance restants** : `MatchScoreboardRow.average_life` (string, from Python) vs `avg_life_seconds` (float, from Go) — les deux coexistent dans le type TS, le scoreboard préfère `avg_life_seconds`. La vue `v_gamertag_lookup` doit être présente dans shared_matches_v2.duckdb (garantie V6).
+
+## [2026-04-22] refactor(arch): supprimer les Legacy paths — consolidation multi-titres Sprint 44
+
+**Statut** : ✅ Complété (sauf metadata.duckdb déféré — WAL verrou actif)
+
+**Décision technique** : suppression totale des 6 méthodes `Legacy*` du `PathResolver` (pas de redirection, suppression nette). Ajout de `SharedSocialDBPath(titleSlug)` title-aware manquante. Fix `battlepassImageCacheDir()` avec walk vers `data/` pour gérer n'importe quelle profondeur. Remplacement de tous les call sites runtime dans `gate.go`, `healthcheck.go`, `player_resolver.go`, `cmd_data.go`, `migrate/migrate.go`, `lab/provider.go`. Chantier 2 : `static/battlepass-assets/` → `data/cache/battlepass_assets/static/`. Chantier 3 : suppression `data/cache/challenge-badge/` et `static/i18n/`.
+
+**Résultats observés** : `go build ./...` propre, `go test ./...` 100% OK (30 packages). Commit `cda1cddf` sur `feat/v7-assets-abstraction`.
+
+**Conclusion** : `data/warehouse/` coexiste encore avec `data/titles/halo_infinite/warehouse/` car `metadata.duckdb` a un WAL actif (verrou OS). À supprimer quand le serveur sera arrêté : copier `data/warehouse/metadata.duckdb` → `data/titles/halo_infinite/warehouse/metadata.duckdb`, puis `rm -rf data/warehouse/`.
+
 ## [2026-04-22] P6 — Nettoyage exhaustif legacy assets
 
 **Statut** : ✅ Complété
