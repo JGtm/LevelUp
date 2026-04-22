@@ -234,7 +234,7 @@ func TestRunOnce_NoToken(t *testing.T) {
 	dir := t.TempDir()
 	provider := &mockProvider{}
 
-	noToken := func(_ context.Context, _ string, _ auth.TokenProvider) (string, error) {
+	noToken := func(_ context.Context, _ string, _ string, _ auth.TokenProvider) (string, error) {
 		return "", nil
 	}
 	s := newTestScheduler(t, dir, provider, noToken, nil)
@@ -254,7 +254,7 @@ func TestRunOnce_TokenReadError(t *testing.T) {
 	dir := t.TempDir()
 	provider := &mockProvider{}
 
-	tokenErr := func(_ context.Context, _ string, _ auth.TokenProvider) (string, error) {
+	tokenErr := func(_ context.Context, _ string, _ string, _ auth.TokenProvider) (string, error) {
 		return "", errors.New("DuckDB: base corrompue")
 	}
 	s := newTestScheduler(t, dir, provider, tokenErr, nil)
@@ -276,7 +276,7 @@ func TestRunOnce_ExchangeError(t *testing.T) {
 		exchangeErr: errors.New("XSTS: token expiré"),
 	}
 
-	validToken := func(_ context.Context, _ string, _ auth.TokenProvider) (string, error) {
+	validToken := func(_ context.Context, _ string, _ string, _ auth.TokenProvider) (string, error) {
 		return "access_token_valide", nil
 	}
 	s := newTestScheduler(t, dir, provider, validToken, nil)
@@ -298,7 +298,7 @@ func TestRunOnce_DeltaError(t *testing.T) {
 		},
 	}
 
-	validToken := func(_ context.Context, _ string, _ auth.TokenProvider) (string, error) {
+	validToken := func(_ context.Context, _ string, _ string, _ auth.TokenProvider) (string, error) {
 		return "access_token_valide", nil
 	}
 	factory := func(_, _, _ string, _ *domain.HaloTokens) scheduler.DeltaRunner {
@@ -331,7 +331,7 @@ func TestRunOnce_DeltaPartialSuccess(t *testing.T) {
 		},
 	}
 
-	validToken := func(_ context.Context, _ string, _ auth.TokenProvider) (string, error) {
+	validToken := func(_ context.Context, _ string, _ string, _ auth.TokenProvider) (string, error) {
 		return "tok", nil
 	}
 	factory := func(_, _, _ string, _ *domain.HaloTokens) scheduler.DeltaRunner {
@@ -363,7 +363,7 @@ func TestRunOnce_FullSuccess(t *testing.T) {
 		},
 	}
 
-	msalToken := func(_ context.Context, _ string, _ auth.TokenProvider) (string, error) {
+	msalToken := func(_ context.Context, _ string, _ string, _ auth.TokenProvider) (string, error) {
 		return "msal_access_token", nil
 	}
 	factory := func(_, _, _ string, _ *domain.HaloTokens) scheduler.DeltaRunner {
@@ -398,7 +398,7 @@ func TestRunOnce_MultiPlayer_MixedOutcomes(t *testing.T) {
 		},
 	}
 
-	tokenReader := func(_ context.Context, dbPath string, _ auth.TokenProvider) (string, error) {
+	tokenReader := func(_ context.Context, dbPath string, _ string, _ auth.TokenProvider) (string, error) {
 		if filepath.Base(filepath.Dir(dbPath)) == "PlayerNoToken" {
 			return "", nil // pas de token
 		}
@@ -521,7 +521,7 @@ func TestRunOnce_ActivityChecker_SkipsActivePlayer(t *testing.T) {
 	// Configurer un joueur avec DB + token valide
 	addPlayer(t, dir, "ActivePlayer", true)
 	provider.exchangeRes = &auth.ExchangeResult{}
-	s.TokenReader = func(_ context.Context, _ string, _ auth.TokenProvider) (string, error) {
+	s.TokenReader = func(_ context.Context, _ string, _ string, _ auth.TokenProvider) (string, error) {
 		return "token123", nil
 	}
 
@@ -558,7 +558,7 @@ func TestRunOnce_ActivityChecker_SyncsIdlePlayer(t *testing.T) {
 	s := newTestScheduler(t, dir, provider, nil, factory)
 
 	addPlayer(t, dir, "IdlePlayer", true)
-	s.TokenReader = func(_ context.Context, _ string, _ auth.TokenProvider) (string, error) {
+	s.TokenReader = func(_ context.Context, _ string, _ string, _ auth.TokenProvider) (string, error) {
 		return "token123", nil
 	}
 
