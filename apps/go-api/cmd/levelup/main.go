@@ -15,7 +15,7 @@
 //	levelup compare-db     --go-db PATH --python-db PATH [--json]
 //	levelup gate-check     [--gamertag X] [--json]
 //	levelup surface-status [--json]
-//	levelup sync-delta     --gamertag X [--max-matches N] [--match-type T] [--rps N]
+//	levelup sync-delta     (--gamertag X | --all) [--max-matches N] [--match-type T] [--rps N]
 //
 // Variables d'environnement : LEVELUP_REPO_ROOT (auto-detecte si absent).
 //
@@ -114,7 +114,7 @@ Commandes:
   compare-db      Comparer la parite Go vs Python (DB joueur)
   gate-check      Verifier la checklist Gate Phase 4
   surface-status  Afficher le backend actif par surface (feature flags)
-	sync-delta      Lancer une sync delta joueur via refresh token OAuth env
+	sync-delta      Lancer une sync delta pour un joueur ou pour tous les joueurs configures
   migrate         Migrer les donnees vers le namespace multi-titres
 
 Options globales:
