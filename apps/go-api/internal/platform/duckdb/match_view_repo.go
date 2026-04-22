@@ -37,6 +37,9 @@ func (r *MatchViewRepo) GetMatchMeta(ctx context.Context, matchID string) (*doma
 		&row.PlaylistName,
 		&row.IsFirefight,
 		&row.IsRanked,
+		&row.PlayableDurationSeconds,
+		&row.MapAssetID,
+		&row.GameVariantName,
 	)
 	if err != nil {
 		return nil, fmt.Errorf("MatchViewRepo.GetMatchMeta: %w", err)
@@ -97,7 +100,8 @@ func (r *MatchViewRepo) GetMatchScoreboard(ctx context.Context, matchID string) 
 	ctx, cancel := context.WithTimeout(ctx, 15*time.Second)
 	defer cancel()
 
-	rows, err := r.pdb.Player.Query(ctx, Q12MatchScoreboard, matchID)
+	// Q12 utilise 3 fois match_id : medals CTE, weapons CTE, WHERE
+	rows, err := r.pdb.Player.Query(ctx, Q12MatchScoreboard, matchID, matchID, matchID)
 	if err != nil {
 		return nil, fmt.Errorf("MatchViewRepo.GetMatchScoreboard: %w", err)
 	}
@@ -131,6 +135,8 @@ func (r *MatchViewRepo) GetMatchScoreboard(ctx context.Context, matchID string) 
 			&s.GrenadeKills,
 			&s.MeleeKills,
 			&s.PowerWeaponKills,
+			&s.PerfectKills,
+			&s.TopWeaponID,
 		); err != nil {
 			return nil, fmt.Errorf("MatchViewRepo.GetMatchScoreboard scan: %w", err)
 		}
@@ -190,8 +196,7 @@ func (r *MatchViewRepo) GetMatchEvents(ctx context.Context, matchID string) ([]d
 	var results []domain.EventRaw
 	for rows.Next() {
 		var e domain.EventRaw
-		var tsUTC interface{} // timestamp_utc ignoré (3e colonne)
-		if err := rows.Scan(&e.EventType, &e.TickCount, &tsUTC, &e.XUID); err != nil {
+		if err := rows.Scan(&e.EventType, &e.TimeMS, &e.XUID); err != nil {
 			return nil, fmt.Errorf("MatchViewRepo.GetMatchEvents scan: %w", err)
 		}
 		results = append(results, e)
@@ -338,4 +343,24 @@ func (r *MatchViewRepo) GetMatchKVPairs(ctx context.Context, matchID string) ([]
 		results = append(results, kv)
 	}
 	return results, rows.Err()
+}
+
+// GetMatchNeighbors retourne les matchs précédent/suivant pour la navigation (Q25).
+func (r *MatchViewRepo) GetMatchNeighbors(ctx context.Context, xuid, matchID string) (*domain.MatchNeighbors, error) {
+	ctx, cancel := context.WithTimeout(ctx, 10*time.Second)
+	defer cancel()
+
+	row := r.pdb.Player.QueryRow(ctx, Q25NeighborMatches, xuid, matchID)
+	var nextID, prevID *string
+	var currentIdx, total int
+	if err := row.Scan(&nextID, &prevID, &currentIdx, &total); err != nil {
+		// Match introuvable dans le scope → voisins vides
+		return &domain.MatchNeighbors{TotalMatches: 0}, nil
+	}
+	return &domain.MatchNeighbors{
+		PreviousMatchID: prevID,
+		NextMatchID:     nextID,
+		CurrentIndex:    currentIdx,
+		TotalMatches:    total,
+	}, nil
 }

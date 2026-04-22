@@ -130,9 +130,9 @@ type MatchWeaponKill struct {
 
 // MatchHighlightEvent : événement filmé horodaté.
 type MatchHighlightEvent struct {
-	EventType string  `json:"event_type"`
-	TickCount *int64  `json:"tick_count,omitempty"`
-	ActorXUID *string `json:"actor_xuid,omitempty"`
+	EventType   string  `json:"event_type"`
+	EventTimeMS *int64  `json:"event_time_ms,omitempty"`
+	ActorXUID   *string `json:"actor_xuid,omitempty"`
 }
 
 // MatchTugOfWarBin : tranche temporelle de la timeline tug-of-war.
@@ -277,14 +277,17 @@ type MatchCitationsTab struct {
 
 // MatchMetaRaw : données brutes de la requête Q13 (match_registry).
 type MatchMetaRaw struct {
-	MatchID         string
-	StartTime       *time.Time
-	DurationSeconds *float64
-	MapName         *string
-	PairName        *string
-	PlaylistName    *string
-	IsFirefight     bool
-	IsRanked        bool
+	MatchID                 string
+	StartTime               *time.Time
+	DurationSeconds         *float64
+	MapName                 *string
+	PairName                *string
+	PlaylistName            *string
+	IsFirefight             bool
+	IsRanked                bool
+	PlayableDurationSeconds *int64
+	MapAssetID              *string
+	GameVariantName         *string
 }
 
 // PlayerMatchStatsRaw : données brutes de Q17 (match_participants filtré par xuid).
@@ -308,21 +311,20 @@ type PlayerMatchStatsRaw struct {
 
 // ScoreboardRaw : données brutes de Q12 (une ligne du scoreboard).
 type ScoreboardRaw struct {
-	XUID          string
-	Gamertag      string
-	TeamID        *int
-	RankInTeam    *int
-	OutcomeCode   int
-	PersonalScore *float64
-	Kills         int
-	Deaths        int
-	Assists       int
-	KDA           *float64
-	Accuracy      *float64
-	TimePlayed    *float64
-	TeamMMR       *float64
-	EnemyMMR      *float64
-	// Sprint 41 T1 : colonnes détail damage + accuracy + special kills
+	XUID             string
+	Gamertag         string
+	TeamID           *int
+	RankInTeam       *int
+	OutcomeCode      int
+	PersonalScore    *float64
+	Kills            int
+	Deaths           int
+	Assists          int
+	KDA              *float64
+	Accuracy         *float64
+	TimePlayed       *float64
+	TeamMMR          *float64
+	EnemyMMR         *float64
 	ShotsFired       *int
 	ShotsHit         *int
 	DamageDealt      *float64
@@ -333,6 +335,8 @@ type ScoreboardRaw struct {
 	GrenadeKills     *int
 	MeleeKills       *int
 	PowerWeaponKills *int
+	PerfectKills     int
+	TopWeaponID      *int64
 }
 
 // MatchEnrichmentRaw : données brutes de Q18.
@@ -352,7 +356,7 @@ type MedalRaw struct {
 // EventRaw : données brutes de Q21.
 type EventRaw struct {
 	EventType string
-	TickCount *int64
+	TimeMS    *int64
 	XUID      *string
 }
 

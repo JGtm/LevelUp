@@ -22,8 +22,24 @@ ORDER BY match_count DESC
 LIMIT 50`
 
 // Q12 : Match view — scoreboard complet d'un match.
-// Paramètre : ? = match_id.
+// Paramètres : ?1 = match_id (medals), ?2 = match_id (weapons), ?3 = match_id (WHERE).
 const Q12MatchScoreboard = `
+WITH me_perfect AS (
+    SELECT xuid, COALESCE(SUM(count), 0) AS perfect_kills
+    FROM shared.medals_earned
+    WHERE match_id = ? AND medal_name_id = 1512363953
+    GROUP BY xuid
+),
+top_weapons AS (
+    SELECT xuid, effective_weapon_id AS top_weapon_id
+    FROM (
+        SELECT xuid, effective_weapon_id, SUM(kill_count) AS wk,
+               ROW_NUMBER() OVER (PARTITION BY xuid ORDER BY SUM(kill_count) DESC) AS rn
+        FROM shared.v_weapon_kills
+        WHERE match_id = ? AND effective_weapon_id NOT IN (0, 1, 2)
+        GROUP BY xuid, effective_weapon_id
+    ) t WHERE rn = 1
+)
 SELECT
     p.xuid,
     COALESCE(xa.gamertag, p.xuid)  AS gamertag,
@@ -48,9 +64,13 @@ SELECT
     p.max_killing_spree,
     p.grenade_kills,
     p.melee_kills,
-    p.power_weapon_kills
+    p.power_weapon_kills,
+    COALESCE(m.perfect_kills, 0)   AS perfect_kills,
+    w.top_weapon_id
 FROM shared.match_participants p
 LEFT JOIN shared.xuid_aliases xa ON p.xuid = xa.xuid
+LEFT JOIN me_perfect m ON p.xuid = m.xuid
+LEFT JOIN top_weapons w ON p.xuid = w.xuid
 WHERE p.match_id = ?
 ORDER BY p.team_id, p.rank NULLS LAST`
 
@@ -65,7 +85,10 @@ SELECT
     r.pair_name,
     r.playlist_name,
     COALESCE(r.is_firefight, FALSE) AS is_firefight,
-    COALESCE(r.is_ranked, FALSE)    AS is_ranked
+    COALESCE(r.is_ranked, FALSE)    AS is_ranked,
+    r.playable_duration_seconds,
+    r.map_id,
+    r.game_variant_name
 FROM shared.match_registry r
 WHERE r.match_id = ?`
 
@@ -178,13 +201,37 @@ ORDER BY kvf.time_ms ASC`
 
 // Q21 : Événements highlight avec xuid pour un match complet.
 // Paramètre : ? = match_id.
-// Utilisé pour afficher les events dans le combat tab.
+// Utilise time_ms (colonne réelle) — pas tick_count.
 const Q21MatchEventsWithXUID = `
 SELECT
     he.event_type,
-    he.tick_count,
-    he.timestamp_utc,
+    he.time_ms,
     he.xuid
 FROM shared.highlight_events he
 WHERE he.match_id = ?
-ORDER BY he.tick_count ASC`
+ORDER BY he.time_ms ASC NULLS LAST`
+
+// Q25 : Navigation prev/next entre matchs adjacents d'un joueur (chronologie globale).
+// Paramètres : ?1 = xuid, ?2 = match_id, ?3 = xuid (réutilisé pour la CTE).
+// Ordre : start_time DESC (plus récent = index 0).
+const Q25NeighborMatches = `
+WITH ordered AS (
+    SELECT
+        mr.match_id,
+        mr.start_time,
+        ROW_NUMBER() OVER (ORDER BY mr.start_time DESC) - 1 AS idx,
+        COUNT(*) OVER () AS total
+    FROM shared.match_registry mr
+    JOIN shared.match_participants mp
+        ON mr.match_id = mp.match_id AND mp.xuid = ?
+),
+current AS (
+    SELECT idx, total FROM ordered WHERE match_id = ?
+)
+SELECT
+    (SELECT match_id FROM ordered WHERE idx = c.idx - 1) AS next_match_id,
+    (SELECT match_id FROM ordered WHERE idx = c.idx + 1) AS prev_match_id,
+    c.idx    AS current_index,
+    c.total  AS total_matches
+FROM current c
+LIMIT 1`
