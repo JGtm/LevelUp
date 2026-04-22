@@ -11,15 +11,22 @@ const (
 	SeasonPassStatusNotStarted SeasonPassStatus = "not_started"
 )
 
+// SeasonPassItemSummary représente un item de récompense (image + titre).
+type SeasonPassItemSummary struct {
+	Title    string  `json:"title"`
+	ImageURL *string `json:"image_url,omitempty"`
+}
+
 // SeasonPassTierSummary représente un palier individuel avec son visuel principal.
 type SeasonPassTierSummary struct {
-	Rank        int     `json:"rank"`
-	Title       string  `json:"title"`
-	Description *string `json:"description,omitempty"`
-	ImageURL    *string `json:"image_url,omitempty"`
-	IsObtained  bool    `json:"is_obtained"`
-	IsCurrent   bool    `json:"is_current"`
-	IsPremium   bool    `json:"is_premium"`
+	Rank        int                     `json:"rank"`
+	Title       string                  `json:"title"`
+	Description *string                 `json:"description,omitempty"`
+	ImageURL    *string                 `json:"image_url,omitempty"`
+	IsObtained  bool                    `json:"is_obtained"`
+	IsCurrent   bool                    `json:"is_current"`
+	IsPremium   bool                    `json:"is_premium"`
+	FreeRewards []SeasonPassItemSummary `json:"free_rewards,omitempty"`
 }
 
 // SeasonPassTrackSummary résume un Battle Pass / Operation Reward Track.
