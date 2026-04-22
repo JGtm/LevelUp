@@ -27,6 +27,7 @@ import (
 	"database/sql"
 	"log/slog"
 	"os"
+	"strings"
 	"time"
 
 	_ "github.com/duckdb/duckdb-go/v2" //nolint:blank-imports // driver DuckDB requis pour sql.Open("duckdb", ...)
@@ -56,10 +57,11 @@ type DeltaRunner interface {
 // La factory par défaut utilise sync.NewSyncEngine.
 type EngineFactory func(repoRoot, gamertag, xuid string, tokens *domain.HaloTokens) DeltaRunner
 
-// TokenReader lit l'access_token depuis la DB d'un joueur (via sync_meta).
+// TokenReader lit l'access_token depuis la DB d'un joueur (via sync_meta) et/ou
+// depuis l'environnement (SPNKR_OAUTH_REFRESH_TOKEN_<GAMERTAG>).
 // Retourne ("", nil) si aucun token utilisable n'est trouvé.
 // Abstraction nécessaire pour mocker dans les tests sans créer de vraie DB DuckDB.
-type TokenReader func(ctx context.Context, dbPath string, provider auth.TokenProvider) (string, error)
+type TokenReader func(ctx context.Context, dbPath string, gamertag string, provider auth.TokenProvider) (string, error)
 
 // RunOnceResult agrège les compteurs d'un cycle de sync.
 type RunOnceResult struct {
@@ -220,7 +222,7 @@ func (s *AutoSyncScheduler) syncPlayer(ctx context.Context, p domain.PlayerSumma
 		return outcomeSkipped
 	}
 
-	accessToken, err := s.TokenReader(ctx, dbPath, s.provider)
+	accessToken, err := s.TokenReader(ctx, dbPath, p.Gamertag, s.provider)
 	if err != nil {
 		slog.ErrorContext(ctx, "auto_sync: lecture token échouée",
 			"gamertag", p.Gamertag,
@@ -338,9 +340,13 @@ func defaultEngineFactory(repoRoot, gamertag, xuid string, tokens *domain.HaloTo
 }
 
 // defaultTokenReader lit sync_meta depuis stats.duckdb du joueur et rafraîchit l'access_token.
-// Tente TrySilentRefresh (MSAL) puis TryOAuthRefresh (OAuth v2 legacy) en fallback.
+// Ordre de recherche du refresh_token :
+//  1. sync_meta.oauth_refresh_token (DuckDB)
+//  2. Variable d'environnement SPNKR_OAUTH_REFRESH_TOKEN_<GAMERTAG> (.env.local)
+//
+// Tente TrySilentRefresh (MSAL) d'abord, puis TryOAuthRefresh sur le refresh_token trouvé.
 // La connexion DB est fermée avant de retourner.
-func defaultTokenReader(ctx context.Context, dbPath string, provider auth.TokenProvider) (string, error) {
+func defaultTokenReader(ctx context.Context, dbPath string, gamertag string, provider auth.TokenProvider) (string, error) {
 	db, err := sql.Open("duckdb", dbPath)
 	if err != nil {
 		return "", err
@@ -356,6 +362,22 @@ func defaultTokenReader(ctx context.Context, dbPath string, provider auth.TokenP
 	if err := db.QueryRowContext(ctx,
 		"SELECT value FROM sync_meta WHERE key = 'oauth_refresh_token'").Scan(&refreshToken); err != nil {
 		slog.DebugContext(ctx, "auto_sync: oauth_refresh_token absent de sync_meta", "db", dbPath)
+	}
+
+	// Fallback : variable d'environnement SPNKR_OAUTH_REFRESH_TOKEN_<GAMERTAG>
+	// (chargée depuis .env.local au démarrage via config.Load).
+	if refreshToken == "" && gamertag != "" {
+		key := strings.ToUpper(gamertag)
+		key = strings.Map(func(r rune) rune {
+			if r == ' ' || r == '-' || r == '.' {
+				return '_'
+			}
+			return r
+		}, key)
+		if v := os.Getenv("SPNKR_OAUTH_REFRESH_TOKEN_" + key); v != "" {
+			refreshToken = v
+			slog.DebugContext(ctx, "auto_sync: refresh_token lu depuis env var", "gamertag", gamertag)
+		}
 	}
 
 	if cacheJSON != "" {
