@@ -33,7 +33,6 @@ import (
 	"fmt"
 	"log/slog"
 	"os"
-	"path/filepath"
 	"strings"
 	"sync"
 
@@ -41,6 +40,7 @@ import (
 
 	"levelup/go-api/internal/config"
 	"levelup/go-api/internal/domain"
+	titlePkg "levelup/go-api/internal/domain/title"
 	"levelup/go-api/internal/platform/duckdb"
 	"levelup/go-api/internal/platform/halo"
 )
@@ -95,7 +95,8 @@ func run(
 	freshnessDays int,
 ) error {
 	// Ouvrir metadata.duckdb
-	metaPath := filepath.Join(cfg.RepoRoot, "data", "warehouse", "metadata.duckdb")
+	pr := titlePkg.NewPathResolver(cfg.RepoRoot)
+	metaPath := pr.MetadataDBPath(titlePkg.DefaultSlug)
 	metaDB, err := duckdb.OpenReadWrite(metaPath)
 	if err != nil {
 		return fmt.Errorf("open metadata.duckdb: %w", err)
@@ -105,7 +106,7 @@ func run(
 	metaRepo := duckdb.NewMetadataRepoFromDB(metaDB)
 
 	// Ouvrir shared_matches_v2.duckdb
-	sharedPath := filepath.Join(cfg.RepoRoot, "data", "warehouse", "shared_matches_v2.duckdb")
+	sharedPath := pr.SharedDBPath(titlePkg.DefaultSlug)
 	sharedDB, err := duckdb.OpenReadOnly(sharedPath)
 	if err != nil {
 		return fmt.Errorf("open shared_matches_v2.duckdb: %w", err)

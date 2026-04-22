@@ -208,7 +208,7 @@ func TestFileExists_NotExists(t *testing.T) {
 // ---------------------------------------------------------------------------
 
 func TestResolveCapturesDir_WithTitle(t *testing.T) {
-	got := resolveCapturesDir("halo-infinite", "Player1")
+	got := resolveCapturesDir("", "halo-infinite", "Player1")
 	want := filepath.Join("data", "titles", "halo-infinite", "players", "Player1", "captures")
 	if got != want {
 		t.Errorf("got %q, want %q", got, want)
@@ -216,8 +216,8 @@ func TestResolveCapturesDir_WithTitle(t *testing.T) {
 }
 
 func TestResolveCapturesDir_WithoutTitle(t *testing.T) {
-	got := resolveCapturesDir("", "Player1")
-	want := filepath.Join("data", "players", "Player1", "captures")
+	got := resolveCapturesDir("", "", "Player1")
+	want := filepath.Join("data", "titles", "halo_infinite", "players", "Player1", "captures")
 	if got != want {
 		t.Errorf("got %q, want %q", got, want)
 	}

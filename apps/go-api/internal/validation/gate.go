@@ -153,7 +153,7 @@ func RunGateCheck4(cfg GateCheckConfig) *GateReport {
 				if cfg.Gamertag == "" {
 					return true, "ignoré (pas de gamertag configuré)"
 				}
-				return checkPlayerDB(filepath.Join(cfg.RepoRoot, "data", "players", cfg.Gamertag, "stats.duckdb"))
+				return checkPlayerDB(titlePkg.NewPathResolver(cfg.RepoRoot).PlayerDBPath(titlePkg.DefaultSlug, cfg.Gamertag))
 			},
 		},
 		{

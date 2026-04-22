@@ -475,7 +475,7 @@ func TestMediaHandler_PostUploadMedia_NotConfigured(t *testing.T) {
 	factory := func(_ context.Context, slug string) (port.MediaService, error) {
 		return &mockMediaService{}, nil
 	}
-	h := handlers.NewMediaHandler(factory, nil)
+	h := handlers.NewMediaHandler(factory, nil, "")
 	r := chi.NewRouter()
 	r.Route("/players/{player_slug}", func(r chi.Router) {
 		r.Post("/media/upload", h.PostUploadMedia)

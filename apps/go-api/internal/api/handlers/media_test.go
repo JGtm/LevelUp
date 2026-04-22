@@ -54,7 +54,7 @@ func (m *mockMediaService) UploadMedia(_ context.Context, _ domain.UploadRequest
 
 func newMediaRouter(factory handlers.ServiceFactory[port.MediaService]) *chi.Mux {
 	r := chi.NewRouter()
-	h := handlers.NewMediaHandler(factory, nil)
+	h := handlers.NewMediaHandler(factory, nil, "")
 	r.Route("/players/{player_slug}", func(r chi.Router) {
 		r.Post("/pages/media", h.GetMediaLibrary)
 		r.Patch("/media/likes", h.PatchMediaLike)
@@ -171,7 +171,7 @@ func newUploadRouter(
 	uploadFactory handlers.MediaUploadContextFactory,
 ) *chi.Mux {
 	r := chi.NewRouter()
-	h := handlers.NewMediaHandler(svcFactory, uploadFactory)
+	h := handlers.NewMediaHandler(svcFactory, uploadFactory, "")
 	r.Route("/players/{player_slug}", func(r chi.Router) {
 		r.Post("/pages/media", h.GetMediaLibrary)
 		r.Post("/media/upload", h.PostUploadMedia)
@@ -351,7 +351,7 @@ func TestMediaHandler_PatchLike_BumpsVersion(t *testing.T) {
 		return mock, nil
 	}
 	r := chi.NewRouter()
-	h := handlers.NewMediaHandler(factory, nil)
+	h := handlers.NewMediaHandler(factory, nil, "")
 	r.Route("/players/{player_slug}", func(r chi.Router) {
 		r.Patch("/media/likes", h.PatchMediaLike)
 	})

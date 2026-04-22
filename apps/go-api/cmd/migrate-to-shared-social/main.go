@@ -19,6 +19,8 @@ import (
 	"path/filepath"
 
 	_ "github.com/duckdb/duckdb-go/v2"
+
+	titlePkg "levelup/go-api/internal/domain/title"
 )
 
 func main() {
@@ -41,8 +43,9 @@ func main() {
 }
 
 func run(repoRoot string, dryRun bool) error {
-	socialPath := filepath.Join(repoRoot, "data", "warehouse", "shared_social.duckdb")
-	sharedPath := filepath.Join(repoRoot, "data", "warehouse", "shared_matches_v2.duckdb")
+	pr := titlePkg.NewPathResolver(repoRoot)
+	socialPath := pr.SharedSocialDBPath(titlePkg.DefaultSlug)
+	sharedPath := pr.SharedDBPath(titlePkg.DefaultSlug)
 	profilesPath := filepath.Join(repoRoot, "db_profiles.json")
 
 	// Ouvrir la DB cible en lecture-écriture.
@@ -288,7 +291,7 @@ func resolveDBPath(repoRoot string, p profileEntry) string {
 		return filepath.Join(repoRoot, p.DBPath)
 	}
 	if p.Gamertag != "" {
-		return filepath.Join(repoRoot, "data", "players", p.Gamertag, "stats.duckdb")
+		return titlePkg.NewPathResolver(repoRoot).PlayerDBPath(titlePkg.DefaultSlug, p.Gamertag)
 	}
 	return ""
 }
