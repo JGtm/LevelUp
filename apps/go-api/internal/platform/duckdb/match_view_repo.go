@@ -142,7 +142,27 @@ func (r *MatchViewRepo) GetMatchScoreboard(ctx context.Context, matchID string) 
 		}
 		results = append(results, s)
 	}
-	return results, rows.Err()
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+
+	// Résolution des labels d'armes top-weapon pour chaque joueur du scoreboard
+	var topWeaponIDs []int64
+	for _, s := range results {
+		if s.TopWeaponID != nil {
+			topWeaponIDs = append(topWeaponIDs, *s.TopWeaponID)
+		}
+	}
+	if len(topWeaponIDs) > 0 {
+		labels := r.lookupWeaponLabels(ctx, topWeaponIDs)
+		for i := range results {
+			if results[i].TopWeaponID != nil {
+				results[i].TopWeaponLabel = labels[*results[i].TopWeaponID]
+			}
+		}
+	}
+
+	return results, nil
 }
 
 // GetMatchMedals retourne les médailles du joueur dans ce match (Q14).
