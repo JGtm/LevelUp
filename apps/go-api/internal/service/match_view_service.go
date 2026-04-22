@@ -11,6 +11,8 @@ import (
 	"math"
 	"time"
 
+	"golang.org/x/sync/errgroup"
+	"levelup/go-api/internal/analysis"
 	"levelup/go-api/internal/domain"
 	"levelup/go-api/internal/port"
 )
@@ -36,54 +38,145 @@ func NewMatchViewService(repo port.MatchViewRepository, xuid string) *MatchViewS
 }
 
 // GetMatchView retourne la réponse complète pour un match.
-func (s *MatchViewService) GetMatchView(ctx context.Context, matchID string) (domain.MatchViewResponse, error) {
+func (s *MatchViewService) GetMatchView(ctx context.Context, matchID string) (domain.MatchViewResponse, error) { //nolint:cyclop
+	// --- Appels séquentiels bloquants (meta est nécessaire pour la suite) ---
 	meta, err := s.repo.GetMatchMeta(ctx, matchID)
 	if err != nil {
 		return domain.MatchViewResponse{}, fmt.Errorf("MatchViewService: meta: %w", err)
 	}
 
-	stats, err := s.repo.GetPlayerMatchStats(ctx, s.xuid, matchID)
-	if err != nil {
-		slog.Warn("match_view: stats indisponibles", "match_id", matchID, "err", err)
+	// --- Appels parallèles via errgroup ---
+	var (
+		stats      *domain.PlayerMatchStatsRaw
+		enrich     *domain.MatchEnrichmentRaw
+		scoreboard []domain.ScoreboardRaw
+		medals     []domain.MedalRaw
+		events     []domain.EventRaw
+		weapons    []domain.WeaponKillRaw
+		kvPairs    []domain.KVPairRaw
+		skillRank  *domain.SkillRankRaw
+		encounters []domain.EncounterRaw
+		media      []domain.MediaAssocRaw
+		expected   *domain.ExpectedStatsRaw
+	)
+
+	g, gctx := errgroup.WithContext(ctx)
+
+	g.Go(func() error {
+		var e error
+		stats, e = s.repo.GetPlayerMatchStats(gctx, s.xuid, matchID)
+		if e != nil {
+			slog.Warn("match_view: stats indisponibles", "match_id", matchID, "err", e)
+		}
+		return nil
+	})
+	g.Go(func() error {
+		var e error
+		enrich, e = s.repo.GetMatchEnrichment(gctx, matchID)
+		if e != nil {
+			slog.Warn("match_view: enrichment indisponible", "match_id", matchID, "err", e)
+		}
+		return nil
+	})
+	g.Go(func() error {
+		var e error
+		scoreboard, e = s.repo.GetMatchScoreboard(gctx, matchID)
+		if e != nil {
+			slog.Warn("match_view: scoreboard indisponible", "match_id", matchID, "err", e)
+		}
+		return nil
+	})
+	g.Go(func() error {
+		var e error
+		medals, e = s.repo.GetMatchMedals(gctx, s.xuid, matchID)
+		if e != nil {
+			slog.Warn("match_view: medals indisponibles", "match_id", matchID, "err", e)
+		}
+		return nil
+	})
+	g.Go(func() error {
+		var e error
+		events, e = s.repo.GetMatchEvents(gctx, matchID)
+		if e != nil {
+			slog.Warn("match_view: events indisponibles", "match_id", matchID, "err", e)
+		}
+		return nil
+	})
+	g.Go(func() error {
+		var e error
+		weapons, e = s.repo.GetMatchWeaponKills(gctx, s.xuid, matchID)
+		if e != nil {
+			slog.Warn("match_view: weapons indisponibles", "match_id", matchID, "err", e)
+		}
+		return nil
+	})
+	g.Go(func() error {
+		var e error
+		kvPairs, e = s.repo.GetMatchKVPairs(gctx, matchID)
+		if e != nil {
+			slog.Warn("match_view: kv_pairs indisponibles", "match_id", matchID, "err", e)
+		}
+		return nil
+	})
+	g.Go(func() error {
+		var e error
+		skillRank, e = s.repo.GetMatchSkillRank(gctx, matchID)
+		if e != nil {
+			slog.Warn("match_view: skill_rank indisponible", "match_id", matchID, "err", e)
+		}
+		return nil
+	})
+	g.Go(func() error {
+		var e error
+		encounters, e = s.repo.GetMatchEncounters(gctx, matchID, s.xuid)
+		if e != nil {
+			slog.Warn("match_view: encounters indisponibles", "match_id", matchID, "err", e)
+		}
+		return nil
+	})
+	g.Go(func() error {
+		var e error
+		// playerSlug = xuid (identifiant de stockage dans shared_social)
+		media, e = s.repo.GetMatchMedia(gctx, matchID, s.xuid)
+		if e != nil {
+			slog.Warn("match_view: media indisponibles", "match_id", matchID, "err", e)
+		}
+		return nil
+	})
+	g.Go(func() error {
+		var e error
+		expected, e = s.repo.GetMatchExpectedStats(gctx, matchID, s.xuid)
+		if e != nil {
+			slog.Warn("match_view: expected_stats indisponibles", "match_id", matchID, "err", e)
+		}
+		return nil
+	})
+
+	if err := g.Wait(); err != nil {
+		return domain.MatchViewResponse{}, err
 	}
-	enrich, err := s.repo.GetMatchEnrichment(ctx, matchID)
-	if err != nil {
-		slog.Warn("match_view: enrichment indisponible", "match_id", matchID, "err", err)
-	}
-	scoreboard, err := s.repo.GetMatchScoreboard(ctx, matchID)
-	if err != nil {
-		slog.Warn("match_view: scoreboard indisponible", "match_id", matchID, "err", err)
-	}
-	medals, err := s.repo.GetMatchMedals(ctx, s.xuid, matchID)
-	if err != nil {
-		slog.Warn("match_view: medals indisponibles", "match_id", matchID, "err", err)
-	}
-	events, err := s.repo.GetMatchEvents(ctx, matchID)
-	if err != nil {
-		slog.Warn("match_view: events indisponibles", "match_id", matchID, "err", err)
-	}
-	weapons, err := s.repo.GetMatchWeaponKills(ctx, s.xuid, matchID)
-	if err != nil {
-		slog.Warn("match_view: weapons indisponibles", "match_id", matchID, "err", err)
-	}
-	kvPairs, err := s.repo.GetMatchKVPairs(ctx, matchID)
-	if err != nil {
-		slog.Warn("match_view: kv_pairs indisponibles", "match_id", matchID, "err", err)
+
+	// Durée pour les bins tug-of-war
+	var durationMS int64
+	if meta.PlayableDurationSeconds != nil {
+		durationMS = *meta.PlayableDurationSeconds * 1000
 	}
 
 	header := buildMatchHeader(matchID, meta, stats, enrich, scoreboard)
-	rank := domain.MatchViewRank{RatingType: "none"}
-	summary := buildSummaryTab(stats, medals)
-	combat := buildCombatTab(weapons, events)
-	team := buildTeamTab(scoreboard, kvPairs, s.xuid)
+	rank := buildRankBlock(skillRank)
+	summary := buildSummaryTabFull(stats, medals, expected)
+	combat := buildCombatTabFull(weapons, events, kvPairs, s.xuid, durationMS)
+	team := buildTeamTabFull(scoreboard, kvPairs, encounters, s.xuid)
+	mediaTab := buildMediaTab(media)
 
 	return domain.MatchViewResponse{
-		Header:     header,
-		Rank:       rank,
-		SummaryTab: summary,
-		CombatTab:  combat,
-		TeamTab:    team,
-		MediaTab:   domain.MatchMediaTab{MediaItems: []domain.MatchAssociatedMedia{}}, CitationsTab: domain.MatchCitationsTab{Commendations: []domain.MatchCitation{}, Medals: []domain.MatchMedal{}},
+		Header:       header,
+		Rank:         rank,
+		SummaryTab:   summary,
+		CombatTab:    combat,
+		TeamTab:      team,
+		MediaTab:     mediaTab,
+		CitationsTab: domain.MatchCitationsTab{Commendations: []domain.MatchCitation{}, Medals: []domain.MatchMedal{}},
 	}, nil
 }
 
@@ -197,17 +290,31 @@ func buildScoreLabel(scoreboard []domain.ScoreboardRaw) string {
 	return ""
 }
 
+// buildRankBlock construit le bloc rank depuis SkillRankRaw.
+func buildRankBlock(sr *domain.SkillRankRaw) domain.MatchViewRank {
+	if sr == nil {
+		return domain.MatchViewRank{RatingType: "none"}
+	}
+	rank := domain.MatchViewRank{RatingType: sr.RatingType}
+	if sr.TierLabel != nil {
+		rank.TierLabel = sr.TierLabel
+	}
+	rank.NumericVal = sr.RatingValue
+	rank.DeltaValue = sr.RatingDelta
+	return rank
+}
+
 // ---------------------------------------------------------------------------
 // Summary Tab
 // ---------------------------------------------------------------------------
 
-func buildSummaryTab(stats *domain.PlayerMatchStatsRaw, medals []domain.MedalRaw) domain.MatchSummaryTab {
+func buildSummaryTabFull(stats *domain.PlayerMatchStatsRaw, medals []domain.MedalRaw, expected *domain.ExpectedStatsRaw) domain.MatchSummaryTab {
 	tab := domain.MatchSummaryTab{
 		KPIs:           domain.MatchSummaryKpis{},
 		PersonalResult: domain.MatchPersonalResult{OutcomeLabel: "-", OutcomeColor: "#94a3b8"},
 		Medals:         convertMedals(medals),
 		Citations:      []domain.MatchCitation{},
-		ExpectedStats:  domain.MatchExpectedStats{},
+		ExpectedStats:  buildExpectedStats(expected),
 	}
 
 	if stats == nil {
@@ -215,12 +322,14 @@ func buildSummaryTab(stats *domain.PlayerMatchStatsRaw, medals []domain.MedalRaw
 	}
 
 	tab.KPIs = domain.MatchSummaryKpis{
-		Kills:       &stats.Kills,
-		Deaths:      &stats.Deaths,
-		Assists:     &stats.Assists,
-		KDA:         stats.KDA,
-		DamageDealt: stats.DamageDealt,
-		AverageLife: formatLifeSeconds(stats.AvgLifeSeconds),
+		Kills:         &stats.Kills,
+		Deaths:        &stats.Deaths,
+		Assists:       &stats.Assists,
+		KDA:           stats.KDA,
+		DamageDealt:   stats.DamageDealt,
+		AverageLife:   formatLifeSeconds(stats.AvgLifeSeconds),
+		Accuracy:      stats.Accuracy,
+		PersonalScore: toIntPtr(stats.PersonalScore),
 	}
 
 	if stats.OutcomeCode != 0 {
@@ -237,6 +346,28 @@ func buildSummaryTab(stats *domain.PlayerMatchStatsRaw, medals []domain.MedalRaw
 	}
 
 	return tab
+}
+
+// buildExpectedStats construit le bloc de stats attendues.
+func buildExpectedStats(e *domain.ExpectedStatsRaw) domain.MatchExpectedStats {
+	if e == nil {
+		return domain.MatchExpectedStats{}
+	}
+	return domain.MatchExpectedStats{
+		HasExpectedData: e.KillsExpected != nil || e.DeathsExpected != nil,
+		ExpectedKills:   e.KillsExpected,
+		ExpectedDeaths:  e.DeathsExpected,
+		ExpectedAssists: e.AssistsExpected,
+		HasHistAvg:      false, // calculé séparément via ComputeModeCategoryAverages si historique disponible
+	}
+}
+
+func toIntPtr(f *float64) *int {
+	if f == nil {
+		return nil
+	}
+	v := int(math.Round(*f))
+	return &v
 }
 
 func convertMedals(raw []domain.MedalRaw) []domain.MatchMedal {
@@ -258,7 +389,13 @@ func convertMedals(raw []domain.MedalRaw) []domain.MatchMedal {
 // Combat Tab
 // ---------------------------------------------------------------------------
 
-func buildCombatTab(weapons []domain.WeaponKillRaw, events []domain.EventRaw) domain.MatchCombatTab {
+func buildCombatTabFull(
+	weapons []domain.WeaponKillRaw,
+	events []domain.EventRaw,
+	kvPairs []domain.KVPairRaw,
+	myXUID string,
+	durationMS int64,
+) domain.MatchCombatTab {
 	wkList := make([]domain.MatchWeaponKill, 0, len(weapons))
 	for _, w := range weapons {
 		wkList = append(wkList, domain.MatchWeaponKill{
@@ -277,44 +414,170 @@ func buildCombatTab(weapons []domain.WeaponKillRaw, events []domain.EventRaw) do
 		})
 	}
 
+	// Tug-of-war
+	tugEvents := buildTugEvents(kvPairs, myXUID)
+	tugBins := analysis.ComputeTugOfWar(tugEvents, durationMS, 0)
+	tugDomain := make([]domain.MatchTugOfWarBin, 0, len(tugBins))
+	for _, b := range tugBins {
+		allyKills := 0
+		enemyKills := 0
+		if b.Delta > 0 {
+			allyKills = b.Delta
+		} else {
+			enemyKills = -b.Delta
+		}
+		tugDomain = append(tugDomain, domain.MatchTugOfWarBin{
+			BinStart:   int(b.BinStartMS / 1000),
+			BinEnd:     int(b.BinEndMS / 1000),
+			TeamKills:  allyKills,
+			EnemyKills: enemyKills,
+			NetKills:   b.CumDelta,
+		})
+	}
+
+	// Impact badges
+	impactInput := buildImpactInput(kvPairs, myXUID)
+	badges := analysis.ComputeSingleMatchImpact(impactInput)
+	badgesDomain := make([]domain.MatchImpactBadge, 0, len(badges))
+	for _, b := range badges {
+		badgesDomain = append(badgesDomain, domain.MatchImpactBadge{
+			Key:   b.BadgeKey,
+			Label: b.BadgeFR,
+		})
+	}
+
+	// KD timeline
+	kdEvents := buildKDEvents(kvPairs, myXUID)
+	kdPoints := analysis.ComputeKDTimeline(kdEvents, myXUID)
+	kdDomain := make([]domain.MatchKDTimelinePoint, 0, len(kdPoints))
+	for _, p := range kdPoints {
+		kdDomain = append(kdDomain, domain.MatchKDTimelinePoint{
+			TimeSeconds: int(p.TimeMS / 1000),
+			Kills:       p.CumKills,
+			Deaths:      p.CumDeaths,
+		})
+	}
+
 	return domain.MatchCombatTab{
 		WeaponKills:     wkList,
 		HighlightEvents: evtList,
-		TugOfWar:        []domain.MatchTugOfWarBin{},
-		ImpactBadges:    []domain.MatchImpactBadge{},
-		KDTimeline:      []domain.MatchKDTimelinePoint{},
+		TugOfWar:        tugDomain,
+		ImpactBadges:    badgesDomain,
+		KDTimeline:      kdDomain,
 		NemesisDuels:    []domain.MatchNemesisRow{},
 	}
+}
+
+func buildTugEvents(kvPairs []domain.KVPairRaw, myXUID string) []analysis.TugOfWarEvent {
+	events := make([]analysis.TugOfWarEvent, 0, len(kvPairs))
+	for _, kv := range kvPairs {
+		isAlly := kv.KillerXUID == myXUID
+		events = append(events, analysis.TugOfWarEvent{
+			TimeMS:    kv.TimeMS,
+			IsAlly:    isAlly,
+			EventType: "kill",
+		})
+	}
+	return events
+}
+
+func buildImpactInput(kvPairs []domain.KVPairRaw, myXUID string) analysis.MatchImpactInput {
+	impactEvents := make([]analysis.ImpactEvent, 0, len(kvPairs))
+	myKills := 0
+	for _, kv := range kvPairs {
+		impactEvents = append(impactEvents, analysis.ImpactEvent{
+			TimeMS:     kv.TimeMS,
+			KillerXUID: kv.KillerXUID,
+			VictimXUID: kv.VictimXUID,
+		})
+		if kv.KillerXUID == myXUID {
+			myKills += kv.KillCount
+		}
+	}
+	return analysis.MatchImpactInput{
+		KillEvents: impactEvents,
+		MyXUID:     myXUID,
+		MyKills:    myKills,
+	}
+}
+
+func buildKDEvents(kvPairs []domain.KVPairRaw, myXUID string) []analysis.KDEvent {
+	events := make([]analysis.KDEvent, 0, len(kvPairs)*2)
+	for _, kv := range kvPairs {
+		if kv.KillerXUID == myXUID {
+			events = append(events, analysis.KDEvent{
+				TimeMS:    kv.TimeMS,
+				IsKill:    true,
+				ActorXUID: myXUID,
+			})
+		}
+		if kv.VictimXUID == myXUID {
+			events = append(events, analysis.KDEvent{
+				TimeMS:    kv.TimeMS,
+				IsKill:    false,
+				ActorXUID: myXUID,
+			})
+		}
+	}
+	return events
 }
 
 // ---------------------------------------------------------------------------
 // Team Tab
 // ---------------------------------------------------------------------------
 
-func buildTeamTab(scoreboard []domain.ScoreboardRaw, kvPairs []domain.KVPairRaw, myXUID string) domain.MatchTeamTab {
+func buildTeamTabFull(
+	scoreboard []domain.ScoreboardRaw,
+	kvPairs []domain.KVPairRaw,
+	encounters []domain.EncounterRaw,
+	myXUID string,
+) domain.MatchTeamTab {
 	rows := make([]domain.MatchScoreboardRow, 0, len(scoreboard))
 	for _, s := range scoreboard {
+		// Combat Yield calculé pour ce joueur
+		var oc, dr, dpk, dpd *float64
+		if s.DamageDealt != nil && s.DamageTaken != nil {
+			cy := analysis.ComputeCombatYield(s.Kills, s.Assists, *s.DamageDealt, *s.DamageTaken, s.Deaths)
+			oc = &cy.OffensiveConversion
+			dr = &cy.DefensiveResistance
+		}
+		if s.DamageDealt != nil && s.Kills > 0 {
+			v := *s.DamageDealt / float64(s.Kills)
+			dpk = &v
+		}
+		if s.DamageTaken != nil && s.Deaths > 0 {
+			v := *s.DamageTaken / float64(s.Deaths)
+			dpd = &v
+		}
+
 		row := domain.MatchScoreboardRow{
-			XUID:             s.XUID,
-			Gamertag:         s.Gamertag,
-			IsMe:             s.XUID == myXUID,
-			Rank:             s.RankInTeam,
-			Kills:            &s.Kills,
-			Deaths:           &s.Deaths,
-			Assists:          &s.Assists,
-			KDA:              s.KDA,
-			Accuracy:         s.Accuracy,
-			DamageDealt:      s.DamageDealt,
-			DamageTaken:      s.DamageTaken,
-			ShotsFired:       s.ShotsFired,
-			ShotsHit:         s.ShotsHit,
-			AvgLifeSeconds:   s.AvgLifeSeconds,
-			HeadshotKills:    s.HeadshotKills,
-			MaxKillingSpree:  s.MaxKillingSpree,
-			GrenadeKills:     s.GrenadeKills,
-			MeleeKills:       s.MeleeKills,
-			PowerWeaponKills: s.PowerWeaponKills,
-			OutcomeLabel:     outcomeLabel(s.OutcomeCode),
+			XUID:                s.XUID,
+			Gamertag:            s.Gamertag,
+			IsMe:                s.XUID == myXUID,
+			Rank:                s.RankInTeam,
+			Kills:               &s.Kills,
+			Deaths:              &s.Deaths,
+			Assists:             &s.Assists,
+			KDA:                 s.KDA,
+			Accuracy:            s.Accuracy,
+			DamageDealt:         s.DamageDealt,
+			DamageTaken:         s.DamageTaken,
+			ShotsFired:          s.ShotsFired,
+			ShotsHit:            s.ShotsHit,
+			AvgLifeSeconds:      s.AvgLifeSeconds,
+			HeadshotKills:       s.HeadshotKills,
+			MaxKillingSpree:     s.MaxKillingSpree,
+			GrenadeKills:        s.GrenadeKills,
+			MeleeKills:          s.MeleeKills,
+			PowerWeaponKills:    s.PowerWeaponKills,
+			OutcomeLabel:        outcomeLabel(s.OutcomeCode),
+			Score:               toIntPtr(s.PersonalScore),
+			PerfectKills:        &s.PerfectKills,
+			TopWeaponID:         s.TopWeaponID,
+			OffensiveConversion: oc,
+			DefensiveResistance: dr,
+			DamagePerKill:       dpk,
+			DamagePerDeath:      dpd,
 		}
 		if s.TeamID != nil {
 			team := fmt.Sprintf("t%d", *s.TeamID)
@@ -340,8 +603,43 @@ func buildTeamTab(scoreboard []domain.ScoreboardRaw, kvPairs []domain.KVPairRaw,
 		Roster:     []domain.MatchRosterRow{},
 		Scoreboard: rows,
 		Nemesis:    nemesisList,
-		Encounters: []domain.MatchEncounterRow{},
+		Encounters: convertEncounters(encounters),
 	}
+}
+
+func convertEncounters(raw []domain.EncounterRaw) []domain.MatchEncounterRow {
+	if len(raw) == 0 {
+		return []domain.MatchEncounterRow{}
+	}
+	result := make([]domain.MatchEncounterRow, 0, len(raw))
+	for _, e := range raw {
+		result = append(result, domain.MatchEncounterRow{
+			XUID:          e.XUID,
+			Gamertag:      e.Gamertag,
+			CountTogether: e.CountTogether,
+			IsAlly:        e.IsAlly,
+		})
+	}
+	return result
+}
+
+// buildMediaTab construit l'onglet médias.
+func buildMediaTab(media []domain.MediaAssocRaw) domain.MatchMediaTab {
+	if len(media) == 0 {
+		return domain.MatchMediaTab{MediaItems: []domain.MatchAssociatedMedia{}}
+	}
+	items := make([]domain.MatchAssociatedMedia, 0, len(media))
+	for _, m := range media {
+		items = append(items, domain.MatchAssociatedMedia{
+			FileID:       m.FileID,
+			FileName:     m.FileName,
+			FilePath:     m.FilePath,
+			ThumbnailURL: m.ThumbnailPath,
+			CaptureTime:  m.CaptureTime,
+			Liked:        m.Liked,
+		})
+	}
+	return domain.MatchMediaTab{MediaItems: items}
 }
 
 type nemesisEntry struct {
