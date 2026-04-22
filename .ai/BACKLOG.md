@@ -1,6 +1,6 @@
 ﻿— Tâches et TODO centralisés
 
-> Mis à jour le 2026-04-18.
+> Mis à jour le 2026-04-22.
 
 ---
 
@@ -9,6 +9,27 @@
 ---
 
 ## 📋 Backlog
+
+---
+
+### [Multi-titre] Migration `static/` vers une arborescence title-scoped
+
+**Noté le** : 2026-04-22 | **Priorité** : Basse — ne bloque pas Halo Infinite seul
+
+**Contexte** : `static/maps/`, `static/medals/`, `static/ranks/`, `static/weapons-assets/` etc. sont actuellement flat (tous les assets au même niveau, sans sous-dossier par titre). Quand un second titre sera ajouté, les assets de maps/médailles/rangs risquent de conflictuer si deux titres ont des IDs identiques.
+
+**Ce qui doit être fait quand un second titre est intégré** :
+1. Créer `static/maps/halo_infinite/` et déplacer les PNG/JPG actuels dedans
+2. Faire de même pour `static/medals/`, `static/ranks/`, `static/weapons-assets/`, `static/commendations/` si elles sont titre-spécifiques
+3. Mettre à jour `AssetConfig.StaticMapDir` → `filepath.Join(cfg.RepoRoot, "static", "maps", titleSlug)` dans `server.go`
+4. Mettre à jour `mapStaticImagePath()` dans `internal/analysis/home.go` pour inclure le titre dans l'URL générée
+5. Relancer `migrate-static-maps --title-id halo_infinite` pour réindexer les chemins en DB
+
+**Point de vigilance** : `static/` est servi par `http.FileServer` sur `/static/*` — les URLs côté frontend et DB (`map_images_registry.local_path`) dépendent de cette structure. La migration nécessite une mise à jour synchronisée DB + FS + frontend.
+
+**Conditions de déblocage** : onboarding effectif d'un second titre dans `db_profiles.json`.
+
+---
 
 ---
 
