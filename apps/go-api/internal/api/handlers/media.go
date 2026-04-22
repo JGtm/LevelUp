@@ -22,6 +22,7 @@ import (
 	"github.com/go-chi/chi/v5"
 
 	"levelup/go-api/internal/domain"
+	titlePkg "levelup/go-api/internal/domain/title"
 	"levelup/go-api/internal/port"
 )
 
@@ -47,6 +48,7 @@ type MediaUploadContextFactory func(ctx context.Context, slug string) (
 type MediaHandler struct {
 	newSvc    ServiceFactory[port.MediaService]
 	newUpload MediaUploadContextFactory
+	repoRoot  string
 }
 
 // NewMediaHandler crée un MediaHandler.
@@ -54,8 +56,9 @@ type MediaHandler struct {
 func NewMediaHandler(
 	newSvc ServiceFactory[port.MediaService],
 	newUpload MediaUploadContextFactory,
+	repoRoot string,
 ) *MediaHandler {
-	return &MediaHandler{newSvc: newSvc, newUpload: newUpload}
+	return &MediaHandler{newSvc: newSvc, newUpload: newUpload, repoRoot: repoRoot}
 }
 
 // GetMediaLibrary retourne la page paginée de la galerie médias.
@@ -160,7 +163,7 @@ func (h *MediaHandler) PostUploadMedia(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	capturesDir := resolveCapturesDir(titleSlug, gamertag)
+	capturesDir := resolveCapturesDir(h.repoRoot, titleSlug, gamertag)
 	slog.InfoContext(r.Context(), "upload: requête reçue",
 		"player", gamertag, "files", len(files), "captures_dir", capturesDir)
 
@@ -219,15 +222,13 @@ func parseUploadedFiles(r *http.Request) ([]domain.UploadedFile, error) {
 	return out, nil
 }
 
-// resolveCapturesDir construit le chemin captures title-aware.
-// Utilise le même calcul que PathResolver.PlayerCapturesDir.
-// Pour une résolution complète (avec repoRoot), le handler devrait recevoir
-// le PathResolver — ici on utilise le chemin relatif standard.
-func resolveCapturesDir(titleSlug, gamertag string) string {
-	if titleSlug != "" {
-		return filepath.Join("data", "titles", titleSlug, "players", gamertag, "captures")
+// resolveCapturesDir construit le chemin captures title-aware via PathResolver.
+// repoRoot peut être vide : dans ce cas le chemin retourné est relatif (à éviter en production).
+func resolveCapturesDir(repoRoot, titleSlug, gamertag string) string {
+	if titleSlug == "" {
+		titleSlug = titlePkg.DefaultSlug
 	}
-	return filepath.Join("data", "players", gamertag, "captures")
+	return titlePkg.NewPathResolver(repoRoot).PlayerCapturesDir(titleSlug, gamertag)
 }
 
 // ---------------------------------------------------------------------------

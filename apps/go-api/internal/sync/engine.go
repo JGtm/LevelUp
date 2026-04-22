@@ -17,12 +17,12 @@ import (
 	"database/sql"
 	"fmt"
 	"log/slog"
-	"path/filepath"
 	"time"
 
 	_ "github.com/duckdb/duckdb-go/v2" // driver DuckDB
 
 	"levelup/go-api/internal/domain"
+	titlePkg "levelup/go-api/internal/domain/title"
 )
 
 const (
@@ -51,11 +51,12 @@ func NewSyncEngine(
 	repoRoot, gamertag, xuid string,
 	tokens *domain.HaloTokens,
 ) *SyncEngine {
+	pr := titlePkg.NewPathResolver(repoRoot)
 	return &SyncEngine{
 		gamertag:     gamertag,
 		xuid:         xuid,
-		playerDBPath: filepath.Join(repoRoot, "data", "players", gamertag, "stats.duckdb"),
-		sharedDBPath: filepath.Join(repoRoot, "data", "warehouse", "shared_matches_v2.duckdb"),
+		playerDBPath: pr.PlayerDBPath(titlePkg.DefaultSlug, gamertag),
+		sharedDBPath: pr.SharedDBPath(titlePkg.DefaultSlug),
 		tokens:       tokens,
 	}
 }

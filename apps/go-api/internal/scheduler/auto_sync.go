@@ -27,13 +27,13 @@ import (
 	"database/sql"
 	"log/slog"
 	"os"
-	"path/filepath"
 	"time"
 
 	_ "github.com/duckdb/duckdb-go/v2" //nolint:blank-imports // driver DuckDB requis pour sql.Open("duckdb", ...)
 
 	"levelup/go-api/internal/config"
 	"levelup/go-api/internal/domain"
+	titlePkg "levelup/go-api/internal/domain/title"
 	"levelup/go-api/internal/platform/auth"
 	settings_platform "levelup/go-api/internal/platform/settings"
 	"levelup/go-api/internal/sync"
@@ -210,7 +210,7 @@ func (s *AutoSyncScheduler) syncPlayer(ctx context.Context, p domain.PlayerSumma
 		return outcomeSkipped
 	}
 
-	dbPath := filepath.Join(s.cfg.RepoRoot, "data", "players", p.Gamertag, "stats.duckdb")
+	dbPath := titlePkg.NewPathResolver(s.cfg.RepoRoot).PlayerDBPath(titlePkg.DefaultSlug, p.Gamertag)
 	if _, err := os.Stat(dbPath); os.IsNotExist(err) {
 		slog.InfoContext(ctx, "auto_sync: DB joueur absente, joueur ignoré",
 			"gamertag", p.Gamertag,

@@ -128,12 +128,12 @@ func newTestScheduler(
 	return s
 }
 
-// addPlayer crée la structure data/players/{gamertag}/ dans repoRoot et enregistre
+// addPlayer crée la structure data/titles/halo_infinite/players/{gamertag}/ dans repoRoot et enregistre
 // le joueur dans db_profiles.json (format v2.1).
 func addPlayer(t *testing.T, repoRoot, gamertag string, withDB bool) {
 	t.Helper()
 
-	playerDir := filepath.Join(repoRoot, "data", "players", gamertag)
+	playerDir := filepath.Join(repoRoot, "data", "titles", "halo_infinite", "players", gamertag)
 	if err := os.MkdirAll(playerDir, 0o755); err != nil {
 		t.Fatalf("MkdirAll %s: %v", playerDir, err)
 	}
@@ -411,13 +411,13 @@ func TestRunOnce_MultiPlayer_MixedOutcomes(t *testing.T) {
 	s := newTestScheduler(t, dir, provider, tokenReader, factory)
 
 	// Joueur 1 : DB absente → Skipped par le scheduler (avant même le tokenReader)
-	playerDir1 := filepath.Join(dir, "data", "players", "PlayerNoDb")
+	playerDir1 := filepath.Join(dir, "data", "titles", "halo_infinite", "players", "PlayerNoDb")
 	if err := os.MkdirAll(playerDir1, 0o755); err != nil {
 		t.Fatal(err)
 	}
 
 	// Joueur 2 : DB présente mais tokenReader retourne ""
-	playerDir2 := filepath.Join(dir, "data", "players", "PlayerNoToken")
+	playerDir2 := filepath.Join(dir, "data", "titles", "halo_infinite", "players", "PlayerNoToken")
 	if err := os.MkdirAll(playerDir2, 0o755); err != nil {
 		t.Fatal(err)
 	}
@@ -426,7 +426,7 @@ func TestRunOnce_MultiPlayer_MixedOutcomes(t *testing.T) {
 	}
 
 	// Joueur 3 : DB présente, token OK, sync réussie
-	playerDir3 := filepath.Join(dir, "data", "players", "PlayerOK")
+	playerDir3 := filepath.Join(dir, "data", "titles", "halo_infinite", "players", "PlayerOK")
 	if err := os.MkdirAll(playerDir3, 0o755); err != nil {
 		t.Fatal(err)
 	}

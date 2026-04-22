@@ -18,11 +18,11 @@ import (
 	"flag"
 	"fmt"
 	"os"
-	"path/filepath"
 	"time"
 
 	"levelup/go-api/internal/config"
 	"levelup/go-api/internal/domain"
+	titlePkg "levelup/go-api/internal/domain/title"
 	"levelup/go-api/internal/metadata"
 	"levelup/go-api/internal/notify"
 	"levelup/go-api/internal/platform/duckdb"
@@ -317,10 +317,10 @@ func runStaging(cfg *config.AppConfig, _ []string) error {
 // ─── helpers ─────────────────────────────────────────────────────────────────
 
 func openMetadataDB(cfg *config.AppConfig) (*duckdb.DB, error) {
-	metaPath := filepath.Join(cfg.RepoRoot, "data", "warehouse", "metadata.duckdb")
 	if cfg.RepoRoot == "" {
 		return nil, fmt.Errorf("LEVELUP_REPO_ROOT non défini — ne peut pas localiser metadata.duckdb")
 	}
+	metaPath := titlePkg.NewPathResolver(cfg.RepoRoot).MetadataDBPath(titlePkg.DefaultSlug)
 	return duckdb.OpenReadWrite(metaPath)
 }
 

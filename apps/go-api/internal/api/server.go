@@ -99,7 +99,7 @@ func NewRouter(
 	// le cache/fetch des définitions BP/challenges au resolver (P4/P5).
 	assetCfg := assets.AssetConfig{
 		CacheRootDir:  filepath.Join(cfg.RepoRoot, "data", "cache"),
-		MetaDBPath:    filepath.Join(cfg.RepoRoot, "data", "warehouse", "metadata.duckdb"),
+		MetaDBPath:    titlePkg.NewPathResolver(cfg.RepoRoot).MetadataDBPath(titlePkg.DefaultSlug),
 		StaticMapDir:  filepath.Join(cfg.RepoRoot, "static", "maps"),
 		TokenProvider: reg.AnyPlayerTokens,
 	}
@@ -241,7 +241,7 @@ func NewRouter(
 			r.Post("/pages/citations", citations.GetCitations)
 			r.Post("/pages/commendations", citations.GetCommendations)
 
-			media := handlers.NewMediaHandler(reg.Media, reg.MediaUpload)
+			media := handlers.NewMediaHandler(reg.Media, reg.MediaUpload, cfg.RepoRoot)
 			r.Post("/pages/media", media.GetMediaLibrary)
 			r.Patch("/media/likes", media.PatchMediaLike)
 			r.Post("/media/upload", media.PostUploadMedia)

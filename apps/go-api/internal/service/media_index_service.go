@@ -14,6 +14,7 @@ import (
 	_ "github.com/duckdb/duckdb-go/v2"
 
 	"levelup/go-api/internal/domain"
+	titlePkg "levelup/go-api/internal/domain/title"
 	"levelup/go-api/internal/ops"
 	"levelup/go-api/internal/platform/jobs"
 )
@@ -44,7 +45,9 @@ func (d *DirMediaIndexer) ResetAndReindex(
 	jobStore *jobs.Store,
 	jobID string,
 ) error {
-	playersDir := filepath.Join(repoRoot, "data", "players")
+	pr := titlePkg.NewPathResolver(repoRoot)
+	titleSlug := titlePkg.DefaultSlug
+	playersDir := filepath.Join(pr.TitleDataDir(titleSlug), "players")
 
 	entries, err := os.ReadDir(playersDir)
 	if err != nil {
@@ -78,7 +81,7 @@ func (d *DirMediaIndexer) ResetAndReindex(
 		}
 
 		gamertag := entry.Name()
-		dbPath := filepath.Join(playersDir, gamertag, "stats.duckdb")
+		dbPath := pr.PlayerDBPath(titleSlug, gamertag)
 
 		// Mettre à jour la progression (0–50% pour reset, 50–100% pour reindex).
 		pct := (i * 50) / total
@@ -98,7 +101,7 @@ func (d *DirMediaIndexer) ResetAndReindex(
 		}
 
 		if reindexAfter {
-			capturesDir := filepath.Join(playersDir, gamertag, "media")
+			capturesDir := filepath.Join(pr.PlayerDir(titleSlug, gamertag), "media")
 			if _, err := os.Stat(capturesDir); err == nil {
 				reindexPct := 50 + (i*50)/total
 				reindexStep := fmt.Sprintf("Réindexation : %s (%d/%d)", gamertag, i+1, total)
@@ -109,8 +112,8 @@ func (d *DirMediaIndexer) ResetAndReindex(
 
 				if _, err := ops.IndexMedia(ops.MediaIndexOptions{
 					PlayerDBPath:        dbPath,
-					SharedSocialDBPath:  filepath.Join(repoRoot, "data", "warehouse", "shared_social.duckdb"),
-					SharedMatchesDBPath: filepath.Join(repoRoot, "data", "warehouse", "shared_matches_v2.duckdb"),
+					SharedSocialDBPath:  pr.SharedSocialDBPath(titleSlug),
+					SharedMatchesDBPath: pr.SharedDBPath(titleSlug),
 					CapturesDir:         capturesDir,
 					ForceRescan:         true,
 					Gamertag:            gamertag,
