@@ -2,6 +2,7 @@ import { useEffect, useRef } from 'react'
 
 import { Badge } from '@/components/ui/badge'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+import { buildCompositeProgressEdgeLabels, clampCompositeProgress, CompositeProgressBar } from '@/components/ui/composite-progress-bar'
 import { EmptyStateNotice } from '@/components/ui/empty-state'
 import type { SeasonPassPageResponse, SeasonPassTierSummary, SeasonPassTrackSummary } from '@/lib/api/types'
 
@@ -24,70 +25,11 @@ function centerTierInRail(container: HTMLDivElement | null, item: HTMLDivElement
   container.scrollLeft = targetLeft
 }
 
-function clampPercent(value?: number | null) {
-  if (value == null) {
-    return 0
-  }
-  return Math.max(0, Math.min(100, value))
-}
-
 function pickFeaturedPass(passes: SeasonPassTrackSummary[]) {
   return passes.find((pass) => pass.is_active)
     ?? passes.find((pass) => pass.status === 'in_progress')
     ?? passes[0]
     ?? null
-}
-
-function formatXPLabel(value: number, locale: string) {
-  return `${Math.max(0, value).toLocaleString(locale)} XP`
-}
-
-function buildCompositeProgressEdgeLabels({
-  partialProgress,
-  xpPerRank,
-  progressPercent,
-  locale,
-}: {
-  partialProgress: number
-  xpPerRank?: number | null
-  progressPercent: number
-  locale: string
-}) {
-  if (xpPerRank != null && xpPerRank > 0) {
-    return {
-      current: formatXPLabel(partialProgress, locale),
-      target: formatXPLabel(xpPerRank, locale),
-    }
-  }
-
-  return {
-    current: `${progressPercent.toLocaleString(locale, { maximumFractionDigits: 0 })} %`,
-    target: '100 %',
-  }
-}
-
-function CompositeTierProgressBar({ value }: { value?: number | null }) {
-  const width = clampPercent(value)
-
-  return (
-    <div
-      className="h-3 w-full overflow-hidden rounded-full border border-slate-300/70 bg-slate-200/70"
-      style={{
-        backgroundImage:
-          'repeating-linear-gradient(90deg, rgba(148,163,184,0.18) 0 18px, rgba(255,255,255,0.28) 18px 24px)',
-      }}
-    >
-      <div
-        data-testid="home-battle-pass-active-tier-progress-fill"
-        className="h-full rounded-full bg-sky-500 transition-[width]"
-        style={{
-          width: `${width}%`,
-          backgroundImage:
-            'repeating-linear-gradient(90deg, rgba(255,255,255,0.22) 0 18px, rgba(14,165,233,0.92) 18px 24px)',
-        }}
-      />
-    </div>
-  )
 }
 
 function BattlePassTierCard({
@@ -216,10 +158,10 @@ export function HomeBattlePassPanel({
   const rankValue = featuredPass.max_rank
     ? `${featuredPass.current_rank}/${featuredPass.max_rank}`
     : featuredPass.current_rank.toLocaleString('fr-FR')
-  const completionPercent = clampPercent(featuredPass.completion_percent)
+  const completionPercent = clampCompositeProgress(featuredPass.completion_percent)
   const activeTierLabel = activeTier?.title ?? 'Palier a venir'
   const activeTierRank = featuredPass.active_tier_rank == null ? '—' : `#${featuredPass.active_tier_rank}`
-  const tierProgress = clampPercent(featuredPass.active_tier_progress_percent)
+  const tierProgress = clampCompositeProgress(featuredPass.active_tier_progress_percent)
   const tierProgressLabels = buildCompositeProgressEdgeLabels({
     partialProgress: featuredPass.partial_progress,
     xpPerRank: featuredPass.xp_per_rank,
@@ -333,7 +275,7 @@ export function HomeBattlePassPanel({
                   {tierProgressLabels.current}
                 </span>
                 <div className="min-w-0">
-                  <CompositeTierProgressBar value={tierProgress} />
+                  <CompositeProgressBar value={tierProgress} fillTestId="home-battle-pass-active-tier-progress-fill" />
                 </div>
                 <span
                   data-testid="home-battle-pass-active-tier-progress-target"

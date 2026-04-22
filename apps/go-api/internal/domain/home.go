@@ -64,6 +64,19 @@ type HomeMediaRow struct {
 	MatchStartTime *time.Time
 }
 
+// HomeSpartanIdentityRow est la projection brute de l'identité record pour la home.
+type HomeSpartanIdentityRow struct {
+	SpartanID     *string
+	RankNumber    int
+	RankName      *string
+	RankTier      *string
+	RankTitleEN   *string
+	RankTitleFR   *string
+	CurrentXP     int
+	XPForNextRank int
+	IsMaxRank     bool
+}
+
 // ---------------------------------------------------------------------------
 // Blocs Hero Card
 // ---------------------------------------------------------------------------
@@ -91,6 +104,22 @@ type HomeHeroCard struct {
 	PlayerName string     `json:"player_name"`
 	KPIs       HeroKPIs   `json:"kpis"`
 	Trend      *HeroTrend `json:"trend,omitempty"`
+}
+
+// HomeCareerRankSummary représente le rang carrière courant dans la home.
+type HomeCareerRankSummary struct {
+	RankNumber    int     `json:"rank_number"`
+	RankTitle     string  `json:"rank_title"`
+	CurrentXP     int     `json:"current_xp"`
+	XPForNextRank int     `json:"xp_for_next_rank"`
+	ProgressPct   float64 `json:"progress_pct"`
+	IsMaxRank     bool    `json:"is_max_rank"`
+}
+
+// HomeSpartanIdentity représente le bloc identitaire compact de la home.
+type HomeSpartanIdentity struct {
+	SpartanID  *string                `json:"spartan_id,omitempty"`
+	CareerRank *HomeCareerRankSummary `json:"career_rank,omitempty"`
 }
 
 // ---------------------------------------------------------------------------
@@ -164,13 +193,14 @@ type RecentMediaItem struct {
 
 // HomePageResponse est la réponse agrégée de la page d'accueil Mission Control.
 type HomePageResponse struct {
-	Hero            HomeHeroCard        `json:"hero"`
-	Highlights      []HighlightItem     `json:"highlights"`
-	RecentMatches   []RecentMatchItem   `json:"recent_matches"`
-	FavoriteMatches []RecentMatchItem   `json:"favorite_matches"`
-	RecentMedia     []RecentMediaItem   `json:"recent_media"`
-	SoloSession     *SessionSummaryItem `json:"solo_session,omitempty"`
-	SquadSession    *SessionSummaryItem `json:"squad_session,omitempty"`
+	Hero            HomeHeroCard         `json:"hero"`
+	SpartanIdentity *HomeSpartanIdentity `json:"spartan_identity,omitempty"`
+	Highlights      []HighlightItem      `json:"highlights"`
+	RecentMatches   []RecentMatchItem    `json:"recent_matches"`
+	FavoriteMatches []RecentMatchItem    `json:"favorite_matches"`
+	RecentMedia     []RecentMediaItem    `json:"recent_media"`
+	SoloSession     *SessionSummaryItem  `json:"solo_session,omitempty"`
+	SquadSession    *SessionSummaryItem  `json:"squad_session,omitempty"`
 }
 
 // BattlePassResponse contient les informations Battle Pass live ou depuis le cache DB.

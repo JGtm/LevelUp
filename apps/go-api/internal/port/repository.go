@@ -134,6 +134,21 @@ type MatchViewRepository interface {
 
 	// GetMatchKVPairs retourne les paires killer→victim du match (Q20).
 	GetMatchKVPairs(ctx context.Context, matchID string) ([]domain.KVPairRaw, error)
+
+	// GetMatchNeighbors retourne les matchs précédent/suivant (Q25).
+	GetMatchNeighbors(ctx context.Context, xuid, matchID string) (*domain.MatchNeighbors, error)
+
+	// GetMatchSkillRank retourne le rang compétitif pour ce match (Q22).
+	GetMatchSkillRank(ctx context.Context, matchID string) (*domain.SkillRankRaw, error)
+
+	// GetMatchEncounters retourne l'historique de rencontres avec les participants (Q23).
+	GetMatchEncounters(ctx context.Context, matchID, myXUID string) ([]domain.EncounterRaw, error)
+
+	// GetMatchMedia retourne les médias associés au match (Q24).
+	GetMatchMedia(ctx context.Context, matchID, playerSlug string) ([]domain.MediaAssocRaw, error)
+
+	// GetMatchExpectedStats retourne les stats attendues pour ce match (Q26).
+	GetMatchExpectedStats(ctx context.Context, matchID, xuid string) (*domain.ExpectedStatsRaw, error)
 }
 
 // ExplorerRepository fournit les données pour l'explorer.
@@ -238,6 +253,21 @@ func (n *noopMatchViewRepo) GetMatchWeaponKills(_ context.Context, _, _ string) 
 func (n *noopMatchViewRepo) GetMatchKVPairs(_ context.Context, _ string) ([]domain.KVPairRaw, error) {
 	return nil, nil
 }
+func (n *noopMatchViewRepo) GetMatchNeighbors(_ context.Context, _, _ string) (*domain.MatchNeighbors, error) {
+	return nil, nil
+}
+func (n *noopMatchViewRepo) GetMatchSkillRank(_ context.Context, _ string) (*domain.SkillRankRaw, error) {
+	return nil, nil
+}
+func (n *noopMatchViewRepo) GetMatchEncounters(_ context.Context, _, _ string) ([]domain.EncounterRaw, error) {
+	return nil, nil
+}
+func (n *noopMatchViewRepo) GetMatchMedia(_ context.Context, _, _ string) ([]domain.MediaAssocRaw, error) {
+	return nil, nil
+}
+func (n *noopMatchViewRepo) GetMatchExpectedStats(_ context.Context, _, _ string) (*domain.ExpectedStatsRaw, error) {
+	return nil, nil
+}
 
 // noopExplorerRepo — impl nulle pour le check de compilation uniquement.
 type noopExplorerRepo struct{}
@@ -321,6 +351,9 @@ type HomeRepository interface {
 	// LoadHomeMatches charge tous les matchs du joueur avec les KPIs (Q26).
 	LoadHomeMatches(ctx context.Context) ([]domain.HomeMatchRow, error)
 
+	// LoadSpartanIdentity charge l'identité record compacte (Spartan ID + rang carrière).
+	LoadSpartanIdentity(ctx context.Context) (*domain.HomeSpartanIdentityRow, error)
+
 	// CountPlayerMatches retourne le nombre total de matchs du joueur (Q26b).
 	CountPlayerMatches(ctx context.Context) (int, error)
 
@@ -339,6 +372,9 @@ var _ HomeRepository = (*noopHomeRepo)(nil)
 type noopHomeRepo struct{}
 
 func (n *noopHomeRepo) LoadHomeMatches(_ context.Context) ([]domain.HomeMatchRow, error) {
+	return nil, nil
+}
+func (n *noopHomeRepo) LoadSpartanIdentity(_ context.Context) (*domain.HomeSpartanIdentityRow, error) {
 	return nil, nil
 }
 func (n *noopHomeRepo) CountPlayerMatches(_ context.Context) (int, error) {

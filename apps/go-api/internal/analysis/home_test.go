@@ -274,6 +274,41 @@ func TestBuildRecentMatches_MapsDominanceBadge(t *testing.T) {
 	}
 }
 
+func TestBuildSpartanIdentity_UsesRequestedLanguage(t *testing.T) {
+	raw := &domain.HomeSpartanIdentityRow{
+		SpartanID:     sp("JGTM"),
+		RankNumber:    25,
+		RankName:      sp("Platinum 1"),
+		RankTier:      sp("Platinum"),
+		RankTitleEN:   sp("Lance Corporal"),
+		RankTitleFR:   sp("Caporal-chef"),
+		CurrentXP:     5000,
+		XPForNextRank: 10000,
+	}
+
+	identityFR := analysis.BuildSpartanIdentity(raw, "fr")
+	if identityFR == nil || identityFR.SpartanID == nil || *identityFR.SpartanID != "JGTM" {
+		t.Fatalf("FR SpartanID: got %#v", identityFR)
+	}
+	if identityFR.CareerRank == nil {
+		t.Fatal("FR CareerRank: want non-nil")
+	}
+	if identityFR.CareerRank.RankTitle != "Caporal-chef" {
+		t.Fatalf("FR RankTitle: want Caporal-chef, got %q", identityFR.CareerRank.RankTitle)
+	}
+	if identityFR.CareerRank.ProgressPct != 50.0 {
+		t.Fatalf("FR ProgressPct: want 50, got %.2f", identityFR.CareerRank.ProgressPct)
+	}
+
+	identityEN := analysis.BuildSpartanIdentity(raw, "en")
+	if identityEN == nil || identityEN.CareerRank == nil {
+		t.Fatal("EN CareerRank: want non-nil")
+	}
+	if identityEN.CareerRank.RankTitle != "Lance Corporal" {
+		t.Fatalf("EN RankTitle: want Lance Corporal, got %q", identityEN.CareerRank.RankTitle)
+	}
+}
+
 // ---------------------------------------------------------------------------
 // BuildRecentMedia
 // ---------------------------------------------------------------------------

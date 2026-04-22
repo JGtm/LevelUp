@@ -1,14 +1,27 @@
 # Thought Log
 
-## [2026-04-22] feat(assets): P4/P5/P6 — câbler battlepass + challenges via assets.Resolver
+## [2026-04-22] P6 — Nettoyage exhaustif legacy assets
 
 **Statut** : ✅ Complété
 
-**Décision technique** : implémentation des phases P4-P6 du plan PLAN_ASSETS_ABSTRACTION. Le `HaloProvider` reçoit désormais un `assets.Resolver` via `WithAssetResolver()`. Quand le resolver est présent (chemin P4/P5), toutes les opérations de fetch/cache de définitions (tracks BP, challenges) et d'images sont déléguées au `DefaultResolver` (via `Get(ctx, Ref{Kind, TitleID, ID})`). Le chemin legacy (metadata.duckdb direct + mutex `bpMetaWriteMu`) reste opérationnel en `else` pour rétrocompatibilité. Le `ServiceRegistry` (`registry.go`) reçoit le resolver via `WithAssetResolver()` et le passe au `HaloProvider` dans `buildHaloProvider()`. Le `server.go` chaîne `reg.WithAssetResolver(assetResolver)` immédiatement après la création du resolver. Le watcher `live_refresh.go` accepte désormais un `assets.Resolver` en paramètre (nil → legacy). Fichiers modifiés : `provider.go`, `battlepass_details.go`, `challenges_details.go`, `registry.go`, `server.go`, `live_refresh.go`, `cmd/server/main.go`.
+**Décision technique principale** : Suppression de tout le code DuckDB-direct dans `battlepass_details.go`, `challenges_details.go`, `provider.go` et `registry.go`. Toute résolution d'asset passe désormais exclusivement par `assets.Resolver`. L'échec de `assets.New` est fatal dans `server.go` (`os.Exit`). Les tests legacy ont été remplacés par des tests utilisant un `mockResolver` interne au package.
 
-**Résultats observés** : `go build ./...` → 0 erreur. Tests `assets`, `platform/halo`, `watcher` → OK. Tests `TestContractRoutesRegistered` et `match_view_test.go` étaient déjà en échec avant nos changements (régressions préexistantes).
+**Fichiers modifiés** : `battlepass_details.go` (153 L, 100% resolver), `challenges_details.go` (legacy DuckDB supprimé), `provider.go` (struct allégée — champs `challengeMetaPath`, `battlepassMetaPath`, `challengeBadgeDir` supprimés), `registry.go` (`buildHaloProvider` = 1 ligne), `server.go` (`os.Exit` sur failure assets.New), `live_refresh.go` (signature sans `metaPath`), `cmd/server/main.go`, tests `battlepass_details_test.go` et `provider_test.go` (legacy supprimé, `mockResolver` introduit).
+
+**Résultats** : `go build ./...` → 0 erreur. Tests assets, halo, watcher → OK. Échecs pré-existants (non causés par P6) : `TestContractRoutesRegistered` (route `last-match/resolve` manquante), `match_view_test` (`GetMatchNeighbors` manquante).
+
 
 **Conclusion** : le mutex `bpMetaWriteMu` reste comme fallback legacy mais n'est plus activé quand le resolver est configuré. Les FatalExceptions DuckDB sur les écritures concurrentes sont désormais structurellement évitées côté resolver (WriteQueue mono-goroutine). La prochaine étape naturelle serait P6 finale : supprimer le chemin legacy et le mutex une fois la stabilité confirmée en production.
+
+## [2026-04-22] feat(home): ajouter Spartan ID + rang carrière dans Performance globale
+
+**Statut** : ✅ Complété
+
+**Décision technique** : la home ne devait pas récupérer ces données via un nouvel endpoint ni réutiliser opportunistement la page Carrière. Le correctif ajoute un sous-contrat dédié `spartan_identity` à `GET /pages/home`, alimenté DB-first par le dernier snapshot `career_progression` (`spartan_id`, rang, XP courante, XP cible) puis enrichi avec `metadata.career_ranks.title_en/title_fr` pour le titre localisé. Côté React, `Performance globale` rend un bloc compact inspiré du `serviceTag` de SpartanRecord, avec `Spartan ID`, rang carrière courant et barre composite `current_xp -> xp_for_next_rank`. La barre composite a été factorisée dans `apps/web/src/components/ui/composite-progress-bar.tsx` pour éviter un troisième copier-coller après home battle pass et palmarès.
+
+**Résultats observés** : validations ciblées backend passées avec `go test ./internal/analysis -run 'Test(BuildSpartanIdentity_UsesRequestedLanguage|BuildRecentMatchesForLocale_UsesRequestedLanguage)' -count=1` et `go test -tags=integration ./internal/platform/duckdb -run 'TestHomeRepo_(LoadSpartanIdentity_WithData|LoadHomeMatches_(Empty|WithData|DoesNotDependOnVMatchFull|FallsBackToMetadataAssetTranslations))' -count=1`. Validations frontend passées avec `npm run test:run -- src/features/home/HomePage.test.tsx src/features/palmares/SeasonPassPage.test.tsx`. Le `tsc -b` global reste en échec pour des erreurs préexistantes hors périmètre (`match-card.test.tsx`, `timeseries-heatmap.tsx`, `match-view/*`, `stores/appShellStore.test.ts`, etc.), mais aucun diagnostic n'est remonté sur les fichiers modifiés pour cette tâche.
+
+**Conclusion** : la home expose et rend maintenant un vrai bloc record compact, source DB directe, avec titre de rang carrière aligné sur la langue active de l'application et progression visuelle cohérente avec les autres surfaces React.
 
 ## [2026-04-22] fix(battlepass): coalescer les fetchs concurrents des reward tracks
 

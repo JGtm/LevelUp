@@ -6,6 +6,7 @@ import { useParams, useNavigate } from '@tanstack/react-router'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
+import { CompositeProgressBar } from '@/components/ui/composite-progress-bar'
 import { EmptyStateCard, EmptyStateNotice } from '@/components/ui/empty-state'
 import { PrivacyBanner } from '@/components/ui/privacy-banner'
 import { Spinner } from '@/components/ui/spinner'
@@ -90,13 +91,32 @@ export function HomePage() {
   const highlights = data.highlights ?? []
   const recentMatches = data.recent_matches ?? []
   const favoriteMatches = data.favorite_matches ?? []
-  const recentMedia = data.recent_media ?? []
+  const spartanIdentity = data.spartan_identity ?? null
+  const careerRank = spartanIdentity?.career_rank ?? null
   const soloSession = data.solo_session ?? null
   const squadSession = data.squad_session ?? null
   const challenges = seasonPass?.challenges
+  const challengesCompleted = challenges?.completed ?? 0
+  const challengesTotal = challenges?.total ?? 0
   const challengesCompletedLabel = challenges?.available
-    ? `${challenges.completed ?? 0} / ${challenges.total ?? 0} complétés`
+    ? `${challengesCompleted} / ${challengesTotal} complétés`
     : null
+  const numberLocale = locale === 'en' ? 'en-US' : 'fr-FR'
+  const labels = locale === 'en'
+    ? {
+      spartanId: 'Spartan ID',
+      careerRank: 'Career rank',
+      currentProgress: 'Current progress',
+      rankPrefix: 'Rank',
+      maxRank: 'Max rank',
+    }
+    : {
+      spartanId: 'Spartan ID',
+      careerRank: 'Rang carrière',
+      currentProgress: 'Progression actuelle',
+      rankPrefix: 'Rang',
+      maxRank: 'Rang max',
+    }
 
   return (
     <div className="relative isolate flex flex-col">
@@ -113,7 +133,70 @@ export function HomePage() {
           <CardHeader>
             <CardTitle className="text-base">Performance globale</CardTitle>
           </CardHeader>
-          <CardContent>
+          <CardContent className="space-y-4">
+            {(spartanIdentity?.spartan_id || careerRank) && (
+              <div className="grid gap-3 xl:grid-cols-[minmax(220px,0.5fr)_minmax(0,1fr)]">
+                {spartanIdentity?.spartan_id && (
+                  <div className="rounded-xl border border-border bg-muted/60 px-4 py-4">
+                    <p className="text-xs uppercase tracking-[0.22em] text-muted-foreground">{labels.spartanId}</p>
+                    <p
+                      data-testid="home-spartan-id-value"
+                      className="mt-3 text-3xl font-semibold tracking-[0.28em] text-primary sm:text-4xl"
+                    >
+                      {spartanIdentity.spartan_id}
+                    </p>
+                  </div>
+                )}
+
+                {careerRank && (
+                  <div className="rounded-xl border border-border bg-muted/60 px-4 py-4">
+                    <div className="flex flex-wrap items-start justify-between gap-3">
+                      <div>
+                        <p className="text-xs uppercase tracking-[0.22em] text-muted-foreground">{labels.careerRank}</p>
+                        <p data-testid="home-career-rank-title" className="mt-2 text-xl font-semibold text-foreground">
+                          {careerRank.rank_title}
+                        </p>
+                      </div>
+                      <Badge variant="outline">{`${labels.rankPrefix} ${careerRank.rank_number}`}</Badge>
+                    </div>
+
+                    <div className="mt-4 space-y-3">
+                      <div className="flex items-center justify-between gap-3 text-xs text-muted-foreground">
+                        <span>{labels.currentProgress}</span>
+                        <span>
+                          {careerRank.is_max_rank
+                            ? labels.maxRank
+                            : `${careerRank.progress_pct.toLocaleString(numberLocale, { maximumFractionDigits: 0 })} %`}
+                        </span>
+                      </div>
+                      <div className="grid grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-3">
+                        <span
+                          data-testid="home-career-rank-progress-current"
+                          className="shrink-0 whitespace-nowrap text-[11px] font-medium text-foreground/85 sm:text-xs"
+                        >
+                          {`${careerRank.current_xp.toLocaleString(numberLocale)} XP`}
+                        </span>
+                        <div className="min-w-0">
+                          <CompositeProgressBar
+                            value={careerRank.progress_pct}
+                            fillTestId="home-career-rank-progress-fill"
+                          />
+                        </div>
+                        <span
+                          data-testid="home-career-rank-progress-target"
+                          className="shrink-0 whitespace-nowrap text-[11px] font-medium text-foreground/85 sm:text-xs"
+                        >
+                          {careerRank.is_max_rank
+                            ? labels.maxRank
+                            : `${careerRank.xp_for_next_rank.toLocaleString(numberLocale)} XP`}
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
+
             <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-6">
               <KPICard label="Parties" value={hero.kpis.total_matches.toLocaleString('fr-FR')} />
               <KPICard label="Taux de victoire" value={`${(hero.kpis.win_rate * 100).toFixed(0)}%`} />
@@ -138,7 +221,7 @@ export function HomePage() {
               <CardTitle className="text-base">Défis actifs</CardTitle>
               {challengesCompletedLabel && (
                 <p data-testid="home-challenges-completed" className="shrink-0 text-sm text-foreground">
-                  <strong className="text-primary">{challenges.completed ?? 0}</strong> / {challenges.total ?? 0} complétés
+                  <strong className="text-primary">{challengesCompleted}</strong> / {challengesTotal} complétés
                 </p>
               )}
             </CardHeader>

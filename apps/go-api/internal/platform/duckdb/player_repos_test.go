@@ -122,7 +122,8 @@ func seedPlayerSchema(t *testing.T, db *DB) { //nolint:funlen
 		`CREATE TABLE career_progression (
 			rank INTEGER, current_xp INTEGER, recorded_at TIMESTAMPTZ,
 			rank_name VARCHAR, rank_tier VARCHAR,
-			xp_for_next_rank INTEGER, xp_total INTEGER, is_max_rank BOOLEAN DEFAULT FALSE)`,
+			xp_for_next_rank INTEGER, xp_total INTEGER, is_max_rank BOOLEAN DEFAULT FALSE,
+			spartan_id VARCHAR)`,
 		`CREATE TABLE match_skill_rank (
 			match_id VARCHAR PRIMARY KEY, rating_value DOUBLE,
 			rating_deviation DOUBLE, tier_label VARCHAR, playlist_group VARCHAR)`,
@@ -165,10 +166,10 @@ func seedPlayerSchema(t *testing.T, db *DB) { //nolint:funlen
 			VALUES (?,?,?,?,?,?,?)`,
 			[]interface{}{"m1", 85.5, 1, "Session 1", 3, false, false}},
 		{`INSERT INTO career_progression
-			(rank,current_xp,recorded_at,rank_name,rank_tier,xp_for_next_rank,xp_total,is_max_rank)
-			VALUES (?,?,?,?,?,?,?,?)`,
+			(rank,current_xp,recorded_at,rank_name,rank_tier,xp_for_next_rank,xp_total,is_max_rank,spartan_id)
+			VALUES (?,?,?,?,?,?,?,?,?)`,
 			[]interface{}{25, 5000, "2025-01-10 12:00:00+00",
-				"Platinum 1", "Platinum", 10000, 50000, false}},
+				"Platinum 1", "Platinum", 10000, 50000, false, "JGTM"}},
 		{`INSERT INTO match_skill_rank VALUES (?,?,?,?,?)`,
 			[]interface{}{"m1", 1250.5, 50.0, "Gold", "ranked"}},
 		{`INSERT INTO match_citations VALUES (?,?,?)`,
@@ -311,7 +312,7 @@ func seedMetaDBSchema(t *testing.T, db *DB) {
 			fetched_at TIMESTAMPTZ,
 			PRIMARY KEY (asset_id, asset_type, lang))`,
 		`CREATE TABLE weapon_labels (weapon_id UBIGINT, label_en VARCHAR, label_fr VARCHAR)`,
-		`CREATE TABLE career_ranks (rank_id INTEGER, rank_name VARCHAR)`,
+		`CREATE TABLE career_ranks (rank_id INTEGER, rank_name VARCHAR, title_en VARCHAR, title_fr VARCHAR)`,
 	}
 	for _, q := range ddl {
 		if _, err := db.Exec(ctx, q); err != nil {
@@ -327,7 +328,8 @@ func seedMetaDBSchema(t *testing.T, db *DB) {
 			[]interface{}{"killing_spree", "Killing Spree", "medal", "combat", true, uint64(1001)}},
 		{`INSERT INTO weapon_labels (weapon_id,label_en,label_fr) VALUES (?,?,?)`,
 			[]interface{}{uint64(42), "Battle Rifle", "BR75"}},
-		{`INSERT INTO career_ranks VALUES (?,?)`, []interface{}{1, "Recruit"}},
+		{`INSERT INTO career_ranks VALUES (?,?,?,?)`, []interface{}{1, "Recruit", "Recruit", "Recrue"}},
+		{`INSERT INTO career_ranks VALUES (?,?,?,?)`, []interface{}{25, "Platinum 1", "Lance Corporal", "Caporal-chef"}},
 	}
 	for _, ins := range inserts {
 		if _, err := db.Exec(ctx, ins.q, ins.args...); err != nil {
@@ -458,6 +460,31 @@ func TestHomeRepo_LoadHomeMatches_FallsBackToMetadataAssetTranslations(t *testin
 	}
 	if rows[0].PlaylistNameFR != "Partie rapide" {
 		t.Fatalf("PlaylistNameFR = %q, want Partie rapide", rows[0].PlaylistNameFR)
+	}
+}
+
+func TestHomeRepo_LoadSpartanIdentity_WithData(t *testing.T) {
+	pdb := newTestPlayerDB(t)
+	repo := NewHomeRepo(pdb)
+
+	identity, err := repo.LoadSpartanIdentity(context.Background())
+	if err != nil {
+		t.Fatalf("LoadSpartanIdentity: %v", err)
+	}
+	if identity == nil {
+		t.Fatal("expected non-nil identity")
+	}
+	if identity.SpartanID == nil || *identity.SpartanID != "JGTM" {
+		t.Fatalf("SpartanID = %v, want JGTM", identity.SpartanID)
+	}
+	if identity.RankTitleFR == nil || *identity.RankTitleFR != "Caporal-chef" {
+		t.Fatalf("RankTitleFR = %v, want Caporal-chef", identity.RankTitleFR)
+	}
+	if identity.RankTitleEN == nil || *identity.RankTitleEN != "Lance Corporal" {
+		t.Fatalf("RankTitleEN = %v, want Lance Corporal", identity.RankTitleEN)
+	}
+	if identity.CurrentXP != 5000 || identity.XPForNextRank != 10000 {
+		t.Fatalf("progress = %d/%d, want 5000/10000", identity.CurrentXP, identity.XPForNextRank)
 	}
 }
 

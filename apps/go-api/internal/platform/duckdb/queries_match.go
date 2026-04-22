@@ -235,3 +235,73 @@ SELECT
     c.total  AS total_matches
 FROM current c
 LIMIT 1`
+
+// Q22 : Rang compétitif du joueur pour ce match (match_skill_rank — player DB).
+// Paramètre : ? = match_id.
+const Q22MatchSkillRank = `
+SELECT
+    msr.rating_type,
+    msr.tier_label,
+    msr.rating_value,
+    msr.rating_delta,
+    msr.playlist_group
+FROM match_skill_rank msr
+WHERE msr.match_id = ?
+LIMIT 1`
+
+// Q23 : Rencontres historiques avec chaque participant de ce match.
+// Paramètres : ?1 = match_id, ?2 = myXUID (this_match excl.), ?3 = match_id,
+//
+//	?4 = myXUID (my_team), ?5 = myXUID (me.xuid=?).
+const Q23MatchEncounters = `
+WITH this_match AS (
+    SELECT p.xuid, p.team_id, COALESCE(xa.gamertag, p.xuid) AS gamertag
+    FROM shared.match_participants p
+    LEFT JOIN shared.xuid_aliases xa ON p.xuid = xa.xuid
+    WHERE p.match_id = ? AND p.xuid != ?
+),
+my_team AS (
+    SELECT team_id FROM shared.match_participants
+    WHERE match_id = ? AND xuid = ?
+    LIMIT 1
+)
+SELECT
+    tm.xuid,
+    tm.gamertag,
+    COUNT(DISTINCT hist.match_id) AS count_together,
+    (tm.team_id = (SELECT team_id FROM my_team)) AS is_ally
+FROM this_match tm
+LEFT JOIN shared.match_participants me ON me.xuid = ?
+LEFT JOIN shared.match_participants hist
+    ON hist.match_id = me.match_id AND hist.xuid = tm.xuid
+GROUP BY tm.xuid, tm.gamertag, tm.team_id
+ORDER BY count_together DESC`
+
+// Q24 : Médias associés à un match pour un joueur (shared_social DB).
+// Paramètres : ?1 = match_id, ?2 = player_slug.
+const Q24MatchMedia = `
+SELECT
+    mf.id               AS file_id,
+    mf.file_name,
+    mf.file_path,
+    mf.thumbnail_path,
+    mf.capture_end_utc,
+    COALESCE(mf.liked, FALSE) AS liked
+FROM media_files mf
+JOIN media_match_associations mma ON mf.id = mma.media_file_id
+WHERE mma.match_id = ?
+  AND mf.player_slug = ?
+ORDER BY mf.capture_end_utc ASC NULLS LAST`
+
+// Q26 : Stats attendues du joueur pour ce match (match_participants expected columns).
+// Paramètres : ?1 = match_id, ?2 = xuid.
+const Q26MatchExpectedStats = `
+SELECT
+    p.kills_expected,
+    p.deaths_expected,
+    p.assists_expected,
+    p.kills_stddev,
+    p.deaths_stddev,
+    p.assists_stddev
+FROM shared.match_participants p
+WHERE p.match_id = ? AND p.xuid = ?`

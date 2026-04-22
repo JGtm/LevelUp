@@ -258,6 +258,88 @@ func BuildHeroCard(matches []domain.HomeMatchRow, gamertag string, totalMatches 
 	return domain.HomeHeroCard{PlayerName: gamertag, KPIs: kpis, Trend: trend}
 }
 
+// BuildSpartanIdentity construit le bloc identitaire compact de la home.
+func BuildSpartanIdentity(raw *domain.HomeSpartanIdentityRow, locale string) *domain.HomeSpartanIdentity {
+	if raw == nil {
+		return nil
+	}
+
+	identity := &domain.HomeSpartanIdentity{}
+	if raw.SpartanID != nil {
+		identity.SpartanID = copyOptionalString(raw.SpartanID)
+	}
+	if rank := buildHomeCareerRank(raw, locale); rank != nil {
+		identity.CareerRank = rank
+	}
+
+	if identity.SpartanID == nil && identity.CareerRank == nil {
+		return nil
+	}
+	return identity
+}
+
+func buildHomeCareerRank(raw *domain.HomeSpartanIdentityRow, locale string) *domain.HomeCareerRankSummary {
+	if raw == nil || raw.RankNumber <= 0 {
+		return nil
+	}
+
+	title := strings.TrimSpace(labelForLocale(locale, optionalStringValue(raw.RankTitleFR), optionalStringValue(raw.RankTitleEN)))
+	if title == "" {
+		title = strings.TrimSpace(optionalStringValue(raw.RankName))
+	}
+	if title == "" {
+		title = strings.TrimSpace(optionalStringValue(raw.RankTier))
+	}
+	if title == "" {
+		if normalizeHomeLocale(locale) == "en" {
+			title = fmt.Sprintf("Rank %d", raw.RankNumber)
+		} else {
+			title = fmt.Sprintf("Rang %d", raw.RankNumber)
+		}
+	}
+
+	return &domain.HomeCareerRankSummary{
+		RankNumber:    raw.RankNumber,
+		RankTitle:     title,
+		CurrentXP:     raw.CurrentXP,
+		XPForNextRank: raw.XPForNextRank,
+		ProgressPct:   computeHomeCareerProgressPct(raw.CurrentXP, raw.XPForNextRank, raw.IsMaxRank),
+		IsMaxRank:     raw.IsMaxRank,
+	}
+}
+
+func computeHomeCareerProgressPct(currentXP, xpForNext int, isMaxRank bool) float64 {
+	if isMaxRank {
+		return 100.0
+	}
+	if xpForNext <= 0 {
+		return 0.0
+	}
+	pct := float64(currentXP) / float64(xpForNext) * 100.0
+	if pct > 100.0 {
+		pct = 100.0
+	}
+	return round2(pct)
+}
+
+func copyOptionalString(value *string) *string {
+	if value == nil {
+		return nil
+	}
+	trimmed := strings.TrimSpace(*value)
+	if trimmed == "" {
+		return nil
+	}
+	return &trimmed
+}
+
+func optionalStringValue(value *string) string {
+	if value == nil {
+		return ""
+	}
+	return *value
+}
+
 // ---------------------------------------------------------------------------
 // BuildHighlights — faits saillants
 // ---------------------------------------------------------------------------

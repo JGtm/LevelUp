@@ -4,6 +4,7 @@ import { useParams } from '@tanstack/react-router'
 
 import { Badge } from '@/components/ui/badge'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+import { buildCompositeProgressEdgeLabels, CompositeProgressBar } from '@/components/ui/composite-progress-bar'
 import { EmptyStateCard, EmptyStateNotice } from '@/components/ui/empty-state'
 import { Spinner } from '@/components/ui/spinner'
 import type { SeasonPassStatus, SeasonPassTierSummary, SeasonPassTrackSummary } from '@/lib/api/types'
@@ -61,57 +62,6 @@ function ProgressBar({ value }: { value?: number | null }) {
   return (
     <div className="h-2 w-full overflow-hidden rounded-full bg-muted">
       <div className="h-full rounded-full bg-primary transition-[width]" style={{ width: `${width}%` }} />
-    </div>
-  )
-}
-
-function formatXPLabel(value: number, locale: string) {
-  return `${Math.max(0, value).toLocaleString(locale)} XP`
-}
-
-function buildCompositeProgressEdgeLabels({
-  partialProgress,
-  xpPerRank,
-  progressPercent,
-  locale,
-}: {
-  partialProgress: number
-  xpPerRank?: number | null
-  progressPercent: number
-  locale: string
-}) {
-  if (xpPerRank != null && xpPerRank > 0) {
-    return {
-      current: formatXPLabel(partialProgress, locale),
-      target: formatXPLabel(xpPerRank, locale),
-    }
-  }
-
-  return {
-    current: `${progressPercent.toLocaleString(locale, { maximumFractionDigits: 0 })} %`,
-    target: '100 %',
-  }
-}
-
-function CompositeProgressBar({ value }: { value?: number | null }) {
-  const width = value == null ? 0 : Math.max(0, Math.min(100, value))
-  return (
-    <div
-      className="h-3 w-full overflow-hidden rounded-full border border-slate-300/70 bg-slate-200/70"
-      style={{
-        backgroundImage:
-          'repeating-linear-gradient(90deg, rgba(148,163,184,0.18) 0 18px, rgba(255,255,255,0.28) 18px 24px)',
-      }}
-    >
-      <div
-        data-testid="season-pass-active-tier-progress-fill"
-        className="h-full rounded-full bg-sky-500 transition-[width]"
-        style={{
-          width: `${width}%`,
-          backgroundImage:
-            'repeating-linear-gradient(90deg, rgba(255,255,255,0.22) 0 18px, rgba(14,165,233,0.92) 18px 24px)',
-        }}
-      />
     </div>
   )
 }
@@ -351,7 +301,7 @@ function ActivePassShowcase({
                   {progressLabels.current}
                 </span>
                 <div className="min-w-0">
-                  <CompositeProgressBar value={tierProgress} />
+                  <CompositeProgressBar value={tierProgress} fillTestId="season-pass-active-tier-progress-fill" />
                 </div>
                 <span
                   data-testid="season-pass-active-tier-progress-target"

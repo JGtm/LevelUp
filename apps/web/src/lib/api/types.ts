@@ -950,8 +950,23 @@ export interface RecentMediaItem {
   like_count: number
 }
 
+export interface HomeCareerRankSummary {
+  rank_number: number
+  rank_title: string
+  current_xp: number
+  xp_for_next_rank: number
+  progress_pct: number
+  is_max_rank: boolean
+}
+
+export interface HomeSpartanIdentity {
+  spartan_id?: string | null
+  career_rank?: HomeCareerRankSummary | null
+}
+
 export interface HomePageResponse {
   hero: HomeHeroCard
+  spartan_identity?: HomeSpartanIdentity | null
   highlights: HighlightItem[]
   recent_matches: RecentMatchItem[]
   favorite_matches: RecentMatchItem[]

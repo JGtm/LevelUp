@@ -41,15 +41,11 @@ type PlayerLiveRefresher struct {
 
 // NewPlayerLiveRefresher crée un refresher pour un joueur.
 // sink est le PersistSink fire-and-forget pour persister les résultats.
-// metaPath est le chemin vers metadata.duckdb ; si non vide et resolver nil,
-// les définitions de Reward Tracks sont persistées en mode legacy.
-// resolver, si non nil, délègue le cache/fetch au resolver unifié (P4/P5).
-func NewPlayerLiveRefresher(gamertag, xuid, metaPath string, sink *duckdb.PersistSink, resolver assets.Resolver) *PlayerLiveRefresher {
+// resolver, si non nil, délègue le cache/fetch au resolver unifié.
+func NewPlayerLiveRefresher(gamertag, xuid string, sink *duckdb.PersistSink, resolver assets.Resolver) *PlayerLiveRefresher {
 	provider := halo.DefaultHaloProvider
 	if resolver != nil {
 		provider = provider.WithAssetResolver(resolver)
-	} else if metaPath != "" {
-		provider = provider.WithBattlePassCache(metaPath)
 	}
 	return &PlayerLiveRefresher{
 		gamertag: gamertag,
