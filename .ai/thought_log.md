@@ -1,5 +1,27 @@
 # Thought Log
 
+## [2026-04-22] feat(multi-title): architecture multi-titre complète A1-D4
+
+**Statut** : ✅ Complété
+
+**Décision technique principale** : Implémentation complète du plan d'assainissement multi-titre en 9 groupes (A-D). Approche : pas de réécriture architecturale, extensions minimales via le pattern `WithTitleSlug()` (clone pattern déjà utilisé pour `WithAssetResolver`). Le titre circule du contexte HTTP → `ctxkeys.TitleSlug(ctx)` → providers/services. Les CLIs reçoivent `--title-id` avec fallback `title.DefaultSlug`.
+
+**Groupes implémentés** :
+- A1-A3 : FS cleanup (challenge_badges/ mergé, battlepass_assets/ supprimé, data/players junction supprimé)
+- B1 : watcher_tokens.json déplacé dans data/auth/ + PathResolver.WatcherTokensPath()
+- B2-B3 : bootstrap_service + player_resolver filtrés par titleSlug
+- C1 : CareerService + StatsService `.WithTitleSlug()` + wiring dans registry.go
+- C2 : HaloProvider `.WithTitleSlug()` + `.titleID()` + 7 hardcodes `"halo_infinite"` remplacés
+- C3 : CLIs migrate-static-maps + populate-assets — flag `--title-id` propagé jusqu'à `FetchAsset`
+- D1 : types.ts `SessionContextResponse.available_titles` ajouté
+- D2 : `setLastPlayerSlug` @deprecated supprimé de settingsDraftStore
+- D3 : `PlayerSummary.TitleSlug` peuplé Go + TS (v2=halo_infinite implicite, v3=clé titre)
+- D4 : `TitleSwitcher` dans `AppShellHeader` (badge statique ≤1 titre, `<select>` sinon)
+
+**Résultats** : `go build ./...` → 0 erreur. `go test ./...` → 29/29 packages OK (fixture corrigée : `halo-infinite` → `halo_infinite`). Commit `f55b8dc4` sur `feat/v7-assets-abstraction`.
+
+**Conclusion** : base technique multi-titre posée. Pour un deuxième titre, il suffira d'ajouter une entrée dans `db_profiles.json` avec une clé de slug différente — tout le reste s'adapte automatiquement.
+
 ## [2026-04-22] feat(season-pass): traductions multilingues des Battle Pass
 
 **Statut** : ✅ Complété
