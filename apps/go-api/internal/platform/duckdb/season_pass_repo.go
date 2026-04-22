@@ -191,11 +191,11 @@ func (r *SeasonPassRepo) LoadSeasonPassTracks(ctx context.Context, _, _ string) 
 		LEFT JOIN battlepass_track_translations t_fr
 		       ON t_fr.reward_track_path = d.reward_track_path
 		      AND t_fr.content_hash = d.content_hash
-		      AND t_fr.lang = 'fr'
+		      AND t_fr.lang = 'fr-FR'
 		LEFT JOIN battlepass_track_translations t_en
 		       ON t_en.reward_track_path = d.reward_track_path
 		      AND t_en.content_hash = d.content_hash
-		      AND t_en.lang = 'en'
+		      AND t_en.lang = 'en-US'
 		WHERE d.rn = 1
 		ORDER BY d.is_current DESC, d.last_seen_at DESC`
 
@@ -353,7 +353,70 @@ func (r *SeasonPassRepo) loadItemMetadataMap(
 	if err := rows.Err(); err != nil {
 		return nil, err
 	}
+
+	// Fallback : pour les items absents de battlepass_item_definitions (ex: joueurs sans
+	// investigation JSON), chercher dans asset_index où warmBPTrackAssets stocke les JSONs
+	// fetches en arrière-plan (kind='track-def').
+	missing := make([]string, 0, len(itemPaths))
+	for _, p := range itemPaths {
+		if _, found := itemMap[p]; !found {
+			missing = append(missing, p)
+		}
+	}
+	if len(missing) > 0 {
+		r.fillItemsFromAssetIndex(ctx, missing, itemMap)
+	}
+
 	return itemMap, nil
+}
+
+// fillItemsFromAssetIndex complète itemMap avec les items présents dans asset_index
+// (stockés par warmBPTrackAssets lors du précédent appel GetBattlePass).
+// Best-effort : toute erreur est silencieusement ignorée.
+func (r *SeasonPassRepo) fillItemsFromAssetIndex(
+	ctx context.Context,
+	paths []string,
+	itemMap map[string]seasonPassItemMeta,
+) {
+	placeholders := strings.TrimRight(strings.Repeat("?,", len(paths)), ",")
+	query := fmt.Sprintf(`
+		SELECT id,
+		       json_extract_string(raw_json, '$.CommonData.DisplayPath.Media.MediaUrl.Path') AS display_path,
+		       json_extract_string(raw_json, '$.CommonData.Title.value')                    AS title
+		FROM asset_index
+		WHERE kind = 'track-def'
+		  AND id IN (%s)
+		  AND raw_json IS NOT NULL`, placeholders)
+
+	args := make([]any, len(paths))
+	for i, p := range paths {
+		args[i] = p
+	}
+
+	rows, err := r.pdb.Metadata.Query(ctx, query, args...)
+	if err != nil {
+		return
+	}
+	defer rows.Close()
+
+	for rows.Next() {
+		var id sql.NullString
+		var displayPath sql.NullString
+		var title sql.NullString
+		if err := rows.Scan(&id, &displayPath, &title); err != nil {
+			continue
+		}
+		if !id.Valid || id.String == "" {
+			continue
+		}
+		if _, already := itemMap[id.String]; already {
+			continue
+		}
+		itemMap[id.String] = seasonPassItemMeta{
+			Title:    coalesceNullString(title),
+			ImageURL: localBPImageURL(coalesceNullString(displayPath), "", "tier"),
+		}
+	}
 }
 
 // buildTrackSummary construit un SeasonPassTrackSummary depuis les données brutes.
@@ -639,18 +702,20 @@ func localizedText(value any) string {
 	case string:
 		return strings.TrimSpace(typed)
 	case map[string]any:
+		// Format résolu Halo : {"value": "Operation: Ground Zero", "status": "Resolved"}
+		// La clé "value" contient le texte déjà localisé.
+		if v, ok := typed["value"].(string); ok && strings.TrimSpace(v) != "" {
+			return strings.TrimSpace(v)
+		}
+		// Clés de langue explicites (stockées par le système de traduction interne).
 		for _, key := range []string{"fr", "en", "default"} {
 			candidate, ok := typed[key].(string)
 			if ok && strings.TrimSpace(candidate) != "" {
 				return strings.TrimSpace(candidate)
 			}
 		}
-		for _, raw := range typed {
-			candidate, ok := raw.(string)
-			if ok && strings.TrimSpace(candidate) != "" {
-				return strings.TrimSpace(candidate)
-			}
-		}
+		// Pas de fallback générique sur toutes les valeurs : évite de retourner des
+		// champs méta Halo comme "Status": "Ready" ou "StringId": "...".
 	}
 	return ""
 }
