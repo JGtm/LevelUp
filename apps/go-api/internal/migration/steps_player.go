@@ -22,6 +22,7 @@ func init() {
 					match_id VARCHAR PRIMARY KEY,
 					performance_score DOUBLE,
 					session_id VARCHAR,
+					session_label VARCHAR,
 					is_with_friends BOOLEAN DEFAULT FALSE,
 					teammates_signature VARCHAR,
 					created_at TIMESTAMP,
@@ -230,6 +231,15 @@ func init() {
 			}
 			_ = createIndexSafe(db, "CREATE INDEX IF NOT EXISTS idx_psa_match_xuid ON personal_score_awards(match_id, xuid)")
 			return nil
+		},
+	})
+
+	Register(Migration{
+		Name:        "add_pme_session_label",
+		TargetDB:    TargetPlayer,
+		Description: "Colonne session_label sur player_match_enrichment",
+		ApplySchema: func(db *sql.DB) error {
+			return addColumnIfMissing(db, "player_match_enrichment", "session_label", "VARCHAR")
 		},
 	})
 

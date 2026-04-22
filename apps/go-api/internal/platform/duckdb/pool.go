@@ -87,6 +87,14 @@ func GetOrOpen(ctx context.Context, cfg PlayerPoolConfig) (*PlayerDB, error) {
 	return result.(*PlayerDB), nil
 }
 
+// IteratePool parcourt tous les PlayerDB ouverts dans le pool.
+// La fonction f reçoit chaque PlayerDB ; retourner false arrête l'itération.
+func IteratePool(f func(*PlayerDB) bool) {
+	globalPool.Range(func(_, value any) bool {
+		return f(value.(*PlayerDB))
+	})
+}
+
 // CloseAll ferme toutes les connexions du pool. À appeler au shutdown.
 func CloseAll() {
 	globalPool.Range(func(key, value any) bool {

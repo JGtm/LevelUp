@@ -7,7 +7,9 @@ package analysis
 import (
 	"fmt"
 	"math"
+	"regexp"
 	"sort"
+	"strings"
 	"time"
 
 	"levelup/go-api/internal/domain"
@@ -18,10 +20,15 @@ import (
 // ---------------------------------------------------------------------------
 
 const (
-	homeOutcomeWin  = 2
-	homeOutcomeLoss = 3
-	homeOutcomeTie  = 1
-	homeOutcomeDNF  = 4
+	homeOutcomeWin                = 2
+	homeOutcomeLoss               = 3
+	homeOutcomeTie                = 1
+	homeOutcomeDNF                = 4
+	homeDominanceDomination       = 1
+	homeDominanceHumiliation      = 2
+	homeDominanceRemontada        = 3
+	homeDominanceDebacle          = 4
+	homeDominanceCounterRemontada = 5
 )
 
 var homeOutcomeLabels = map[int]string{
@@ -31,6 +38,13 @@ var homeOutcomeLabels = map[int]string{
 	homeOutcomeDNF:  "Abandon",
 }
 
+var homeOutcomeLabelsEN = map[int]string{
+	homeOutcomeWin:  "Victory",
+	homeOutcomeLoss: "Defeat",
+	homeOutcomeTie:  "Tie",
+	homeOutcomeDNF:  "DNF",
+}
+
 var homeOutcomeTones = map[int]string{
 	homeOutcomeWin:  "win",
 	homeOutcomeLoss: "loss",
@@ -38,12 +52,111 @@ var homeOutcomeTones = map[int]string{
 	homeOutcomeDNF:  "dnf",
 }
 
+var homeStripModeMapRe = regexp.MustCompile(`(?i)\s+(?:on|sur)\s+.+$`)
+var homeStripForgeRe = regexp.MustCompile(`(?i)\s*-\s*Forge\b`)
+var homeStripRankedRe = regexp.MustCompile(`(?i)\s*-\s*Ranked\b`)
+var homeUUIDRe = regexp.MustCompile(`(?i)^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$`)
+
 // labelFR retourne fr si non vide, sinon en.
 func labelFR(fr, en string) string {
 	if fr != "" {
 		return fr
 	}
 	return en
+}
+
+func normalizeHomeLocale(locale string) string {
+	if strings.HasPrefix(strings.ToLower(strings.TrimSpace(locale)), "en") {
+		return "en"
+	}
+	return "fr"
+}
+
+func labelForLocale(locale, fr, en string) string {
+	if normalizeHomeLocale(locale) == "en" {
+		if strings.TrimSpace(en) != "" {
+			return en
+		}
+		return fr
+	}
+	return labelFR(fr, en)
+}
+
+func outcomeLabelForLocale(outcome int, locale string) string {
+	if normalizeHomeLocale(locale) == "en" {
+		if label, ok := homeOutcomeLabelsEN[outcome]; ok {
+			return label
+		}
+		return "Match"
+	}
+	if label, ok := homeOutcomeLabels[outcome]; ok {
+		return label
+	}
+	return "Match"
+}
+
+func buildHomeScoreLabel(match domain.HomeMatchRow) *string {
+	if match.Team0Score < 0 || match.Team1Score < 0 {
+		return nil
+	}
+
+	leftScore := match.Team0Score
+	rightScore := match.Team1Score
+	if match.TeamID == 1 {
+		leftScore = match.Team1Score
+		rightScore = match.Team0Score
+	}
+
+	label := fmt.Sprintf("%d-%d", leftScore, rightScore)
+	return &label
+}
+
+func buildHomeNarrativeBadges(dominanceFlag int) []string {
+	switch dominanceFlag {
+	case homeDominanceDomination:
+		return []string{"dominant"}
+	case homeDominanceHumiliation:
+		return []string{"humiliation"}
+	case homeDominanceRemontada:
+		return []string{"remontada"}
+	case homeDominanceDebacle:
+		return []string{"debacle"}
+	case homeDominanceCounterRemontada:
+		return []string{"contre_remontada"}
+	default:
+		return nil
+	}
+}
+
+func normalizeHomeModeLabel(raw string, mapLabels ...string) string {
+	normalized := strings.TrimSpace(raw)
+	if normalized == "" {
+		return ""
+	}
+
+	if separator := strings.Index(normalized, " : "); separator > 0 {
+		normalized = strings.TrimSpace(normalized[:separator])
+	} else if separator := strings.LastIndex(normalized, ":"); separator >= 0 && separator < len(normalized)-1 {
+		normalized = strings.TrimSpace(normalized[separator+1:])
+	}
+
+	for _, mapLabel := range mapLabels {
+		trimmedMap := strings.TrimSpace(mapLabel)
+		if trimmedMap == "" {
+			continue
+		}
+		mapSpecificRe := regexp.MustCompile(`(?i)\s+(?:on|sur)\s+` + regexp.QuoteMeta(trimmedMap) + `$`)
+		updated := mapSpecificRe.ReplaceAllString(normalized, "")
+		if updated != normalized {
+			normalized = updated
+			break
+		}
+	}
+
+	normalized = homeStripModeMapRe.ReplaceAllString(normalized, "")
+	normalized = homeStripForgeRe.ReplaceAllString(normalized, "")
+	normalized = homeStripRankedRe.ReplaceAllString(normalized, "")
+	return strings.TrimSpace(normalized)
 }
 
 // ---------------------------------------------------------------------------
@@ -223,29 +336,30 @@ func BuildHighlights(matches []domain.HomeMatchRow) []domain.HighlightItem {
 // mapPNGNames contient les noms de maps (EN) dont l'image locale est au format PNG.
 // Tous les autres noms utilisent le format JPEG par défaut.
 var mapPNGNames = map[string]struct{}{
-	"Aquarius":                {},
-	"Aquarius - Ranked":       {},
-	"Bazaar":                  {},
-	"Behemoth":                {},
-	"Breaker":                 {},
-	"Breaker Heavies":         {},
-	"Catalyst":                {},
-	"Deadlock":                {},
-	"Deadlock Heavies":        {},
-	"Highpower":               {},
-	"Highpower Heavies":       {},
+	"Aquarius":                 {},
+	"Aquarius - Ranked":        {},
+	"Bazaar":                   {},
+	"Behemoth":                 {},
+	"Breaker":                  {},
+	"Breaker Heavies":          {},
+	"Catalyst":                 {},
+	"Deadlock":                 {},
+	"Deadlock Heavies":         {},
+	"Highpower":                {},
+	"Highpower Heavies":        {},
 	"Highpower Sentry Defense": {},
-	"Launch Site":             {},
-	"Recharge":                {},
-	"Recharge - Ranked":       {},
-	"Streets":                 {},
-	"Streets - Ranked":        {},
+	"Launch Site":              {},
+	"Recharge":                 {},
+	"Recharge - Ranked":        {},
+	"Streets":                  {},
+	"Streets - Ranked":         {},
 }
 
 // mapStaticImagePath retourne l'URL relative de l'image de map servie par /static/maps/.
 // Le nom de la map est encodé pour les espaces et caractères spéciaux.
 func mapStaticImagePath(mapName string) string {
-	if mapName == "" {
+	mapName = strings.TrimSpace(mapName)
+	if mapName == "" || homeUUIDRe.MatchString(mapName) {
 		return ""
 	}
 	ext := ".jpg"
@@ -266,15 +380,27 @@ func mapStaticImagePath(mapName string) string {
 
 // BuildRecentMatches construit la liste des derniers matchs pour la timeline.
 func BuildRecentMatches(matches []domain.HomeMatchRow, limit int) []domain.RecentMatchItem {
-	return BuildRecentMatchesWithFavorites(matches, limit, nil)
+	return BuildRecentMatchesForLocale(matches, limit, "fr")
+}
+
+// BuildRecentMatchesForLocale construit la liste des derniers matchs pour la locale demandée.
+func BuildRecentMatchesForLocale(matches []domain.HomeMatchRow, limit int, locale string) []domain.RecentMatchItem {
+	return BuildRecentMatchesWithFavoritesForLocale(matches, limit, nil, locale)
 }
 
 // BuildRecentMatchesWithFavorites construit la liste des derniers matchs avec le flag favori.
 // favoriteIDs est un set de match_id favoris (nil = social repo indisponible).
 func BuildRecentMatchesWithFavorites(matches []domain.HomeMatchRow, limit int, favoriteIDs map[string]bool) []domain.RecentMatchItem {
+	return BuildRecentMatchesWithFavoritesForLocale(matches, limit, favoriteIDs, "fr")
+}
+
+// BuildRecentMatchesWithFavoritesForLocale construit la liste des derniers matchs avec le flag favori
+// en choisissant les labels selon la langue active de l'interface.
+func BuildRecentMatchesWithFavoritesForLocale(matches []domain.HomeMatchRow, limit int, favoriteIDs map[string]bool, locale string) []domain.RecentMatchItem {
 	if len(matches) == 0 {
 		return nil
 	}
+	locale = normalizeHomeLocale(locale)
 	if len(matches) > limit {
 		matches = matches[:limit]
 	}
@@ -283,7 +409,7 @@ func BuildRecentMatchesWithFavorites(matches []domain.HomeMatchRow, limit int, f
 		if m.MatchID == "" {
 			continue
 		}
-		label := outcomeLabel(m.Outcome)
+		label := outcomeLabelForLocale(m.Outcome, locale)
 		tone := outcomeTone(m.Outcome)
 		ratioStr := "-"
 		if m.Ratio != nil {
@@ -295,8 +421,15 @@ func BuildRecentMatchesWithFavorites(matches []domain.HomeMatchRow, limit int, f
 		}
 		t := m.StartTime
 
-		mapUI := labelFR(m.MapNameFR, m.MapName)
-		modeUI := labelFR(m.PairNameFR, m.PairName)
+		mapUI := labelForLocale(locale, m.MapNameFR, m.MapName)
+		modeUI := normalizeHomeModeLabel(labelForLocale(locale, firstNonEmpty(m.GameVariantNameFR, m.PairNameFR), firstNonEmpty(m.GameVariantName, m.PairName)), m.MapNameFR, m.MapName)
+		var playlistUI *string
+		if m.PlaylistName != "" || m.PlaylistNameFR != "" {
+			playlist := labelForLocale(locale, m.PlaylistNameFR, m.PlaylistName)
+			playlistUI = &playlist
+		}
+		scoreLabel := buildHomeScoreLabel(m)
+		narrativeBadges := buildHomeNarrativeBadges(m.DominanceFlag)
 
 		kills := m.Kills
 		deaths := m.Deaths
@@ -323,8 +456,8 @@ func BuildRecentMatchesWithFavorites(matches []domain.HomeMatchRow, limit int, f
 
 		isFav := favoriteIDs[m.MatchID]
 
-		// Construire l'URL de l'image de map via le cache-aside endpoint
-		mapImageURL := buildMapImageURL("halo_infinite", m.MapID)
+		// Préférer l'asset local /static/maps pour les maps connues ; fallback cache-aside sinon.
+		mapImageURL := buildMapImageURL("halo_infinite", m.MapID, m.MapName, m.MapNameFR)
 
 		items = append(items, domain.RecentMatchItem{
 			MatchID:                  m.MatchID,
@@ -333,9 +466,12 @@ func BuildRecentMatchesWithFavorites(matches []domain.HomeMatchRow, limit int, f
 			StartedAt:                &t,
 			OutcomeLabel:             label,
 			OutcomeTone:              tone,
+			ScoreLabel:               scoreLabel,
+			NarrativeBadges:          narrativeBadges,
 			IsFavorite:               isFav,
 			MapUI:                    &mapUI,
 			ModeUI:                   &modeUI,
+			PlaylistUI:               playlistUI,
 			MapImageURL:              mapImageURL,
 			Kills:                    &kills,
 			Deaths:                   &deaths,
@@ -350,9 +486,24 @@ func BuildRecentMatchesWithFavorites(matches []domain.HomeMatchRow, limit int, f
 	return items
 }
 
-// buildMapImageURL construit l'URL du cache-aside endpoint pour une map donnée.
-// Retourne toujours un pointeur non-nil (le frontend gère les 404 avec fallback).
-func buildMapImageURL(titleID, mapID string) *string {
+func firstNonEmpty(values ...string) string {
+	for _, value := range values {
+		if strings.TrimSpace(value) != "" {
+			return value
+		}
+	}
+	return ""
+}
+
+// buildMapImageURL construit l'URL d'image d'une map.
+// Priorité au fichier statique local quand le nom de map est connu ; fallback sur le cache-aside UUID sinon.
+func buildMapImageURL(titleID, mapID, mapName, mapNameFR string) *string {
+	if localPath := mapStaticImagePath(mapName); localPath != "" {
+		return &localPath
+	}
+	if localPath := mapStaticImagePath(mapNameFR); localPath != "" {
+		return &localPath
+	}
 	if mapID == "" {
 		return nil
 	}

@@ -114,6 +114,9 @@ data/warehouse/match_facts/
 data/warehouse/*.duckdb
 data/warehouse/*.wal
 data/warehouse/metadata.db
+data/titles/halo_infinite/warehouse/metadata.duckdb
+data/titles/halo_infinite/warehouse/shared_matches_v2.duckdb
+data/titles/halo_infinite/warehouse/shared_social.duckdb
 
 # Fichiers temporaires d'import SPNKr
 *.tmp.*.db

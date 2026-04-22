@@ -85,10 +85,6 @@ export const queryKeys = {
     enableCompare: boolean,
   ) => ['session-detail', playerSlug, filterHash, sessionLabel, compareSessionLabel, enableCompare] as const,
 
-  // Last Match (Slice 4C)
-  lastMatch: (playerSlug: string, filterHash: string) =>
-    ['last-match', playerSlug, filterHash] as const,
-
   // Compare joueur vs joueur (Sprint 54-C)
   comparePlayer: (playerSlug: string, targetGamertag: string) =>
     ['compare', playerSlug, targetGamertag] as const,

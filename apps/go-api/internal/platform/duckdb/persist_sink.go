@@ -6,7 +6,7 @@
 // de persistance ne fait jamais échouer la réponse HTTP.
 //
 // Connexions :
-//   - metadata.duckdb : battlepass_track_definitions + waypoint_assets_raw
+//   - metadata.duckdb : waypoint_assets_raw (blob brut archivage)
 //   - stats.duckdb    : battlepass_snapshots + challenge_snapshots (append-only)
 package duckdb
 
@@ -49,8 +49,9 @@ func persistHash(data []byte) string {
 // ---------------------------------------------------------------------------
 
 // PersistBattlePass lance une goroutine fire-and-forget pour sauvegarder les
-// données BP dans battlepass_track_definitions, waypoint_assets_raw et
-// battlepass_snapshots (par joueur).
+// données BP dans waypoint_assets_raw (archivage) et battlepass_snapshots
+// (par joueur). Les définitions de tracks sont la responsabilité du HaloProvider
+// via fetchRewardTrackDefinition (battlepass_details.go).
 func (s *PersistSink) PersistBattlePass(trackPath string, rawBody []byte) {
 	if s.MetaPath == "" || trackPath == "" || len(rawBody) == 0 {
 		return
@@ -78,9 +79,15 @@ type battlePassTrackRaw struct {
 	BoostXP int  `json:"BoostXp"`
 }
 
-// writeBattlePass effectue les UPSERTs dans metadata.duckdb puis écrit des
-// snapshots append-only dans stats.duckdb pour refléter la progression réelle
-// du joueur par reward track.
+// writeBattlePass persiste le blob brut /operations dans waypoint_assets_raw et
+// écrit des snapshots append-only dans stats.duckdb pour refléter la progression
+// réelle du joueur par reward track.
+//
+// NOTE : battlepass_track_definitions n'est plus écrit ici.
+// La persistance des définitions de tracks (raw_payload_json, xp_per_rank, images,
+// translations) est la responsabilité du HaloProvider qui dispose des tokens Halo
+// et fetche la définition GameCMS (/hi/Progression/file/{trackPath}) — voir
+// battlepass_details.go / fetchRewardTrackDefinition.
 func (s *PersistSink) writeBattlePass(ctx context.Context, trackPath string, body []byte) error {
 	db, err := OpenReadWrite(s.MetaPath)
 	if err != nil {
@@ -91,7 +98,7 @@ func (s *PersistSink) writeBattlePass(ctx context.Context, trackPath string, bod
 	hash := persistHash(body)
 	now := time.Now()
 
-	// 1. Sauvegarder le blob brut dans waypoint_assets_raw.
+	// 1. Sauvegarder le blob brut dans waypoint_assets_raw (archivage).
 	if err := upsertWaypointAsset(ctx, db,
 		"halo_infinite",
 		s.XUID+"/battlepass_operations",
@@ -100,25 +107,8 @@ func (s *PersistSink) writeBattlePass(ctx context.Context, trackPath string, bod
 		string(body),
 		now,
 	); err != nil {
-		// Non-fatal : on continue vers battlepass_track_definitions.
 		slog.Warn("persist_sink: waypoint_assets_raw BP upsert failed",
 			"xuid", s.XUID, "err", err)
-	}
-
-	// 2. Persister la définition de track active.
-	_, err = db.Exec(ctx, `
-		INSERT INTO battlepass_track_definitions
-			(reward_track_path, content_hash, raw_payload_json,
-			 is_current, first_seen_at, last_seen_at)
-		VALUES (?, ?, ?, ?, ?, ?)
-		ON CONFLICT (reward_track_path, content_hash) DO UPDATE SET
-			raw_payload_json = excluded.raw_payload_json,
-			last_seen_at     = excluded.last_seen_at,
-			is_current       = excluded.is_current`,
-		trackPath, hash, string(body), true, now, now,
-	)
-	if err != nil {
-		return fmt.Errorf("battlepass_track_definitions upsert: %w", err)
 	}
 
 	if s.PlayerPath == "" || s.XUID == "" {

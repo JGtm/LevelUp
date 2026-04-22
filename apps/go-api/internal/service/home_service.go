@@ -19,12 +19,12 @@ const battlePassCacheTTL = 1 * time.Hour
 
 // HomeService orchestre les données de la page d'accueil.
 type HomeService struct {
-	repo        port.HomeRepository
-	cacheRepo   port.BattlePassCacheRepository
-	provider    *halo.HaloProvider
-	sink        *duckdb.PersistSink // nil → pas de persistance (tests, joueurs sans auth)
-	socialRepo  port.SocialRepository
-	playerSlug  string
+	repo       port.HomeRepository
+	cacheRepo  port.BattlePassCacheRepository
+	provider   *halo.HaloProvider
+	sink       *duckdb.PersistSink // nil → pas de persistance (tests, joueurs sans auth)
+	socialRepo port.SocialRepository
+	playerSlug string
 }
 
 // NewHomeService crée un HomeService avec le repository et le provider Halo.
@@ -68,7 +68,7 @@ func (s *HomeService) WithSocial(repo port.SocialRepository, playerSlug string) 
 
 // GetHomePage retourne la page d'accueil agrégée (hero card, highlights, matchs récents,
 // médias récents, résumés de sessions solo et escouade).
-func (s *HomeService) GetHomePage(ctx context.Context, gamertag string) (*domain.HomePageResponse, error) {
+func (s *HomeService) GetHomePage(ctx context.Context, gamertag, locale string) (*domain.HomePageResponse, error) {
 	matches, err := s.repo.LoadHomeMatches(ctx)
 	if err != nil {
 		return nil, err
@@ -103,8 +103,8 @@ func (s *HomeService) GetHomePage(ctx context.Context, gamertag string) (*domain
 
 	hero := analysis.BuildHeroCard(matches, gamertag, totalMatches)
 	highlights := analysis.BuildHighlights(matches)
-	recentMatches := analysis.BuildRecentMatchesWithFavorites(matches, len(matches), favoriteIDs)
-	favoriteMatches := buildFavoriteMatchList(recentMatches, matches, favoriteIDs)
+	recentMatches := analysis.BuildRecentMatchesWithFavoritesForLocale(matches, len(matches), favoriteIDs, locale)
+	favoriteMatches := buildFavoriteMatchList(recentMatches, matches, favoriteIDs, locale)
 	recentMedia := analysis.BuildRecentMedia(media, 4)
 	soloSession := analysis.BuildSessionSummary(matches, sessions, false)
 	squadSession := analysis.BuildSessionSummary(matches, sessions, true)
@@ -122,12 +122,12 @@ func (s *HomeService) GetHomePage(ctx context.Context, gamertag string) (*domain
 
 // buildFavoriteMatchList construit la liste des matchs favoris à partir de tous les matchs
 // chargés (pas limités à 6), en appliquant le flag IsFavorite.
-func buildFavoriteMatchList(recent []domain.RecentMatchItem, all []domain.HomeMatchRow, favoriteIDs map[string]bool) []domain.RecentMatchItem {
+func buildFavoriteMatchList(recent []domain.RecentMatchItem, all []domain.HomeMatchRow, favoriteIDs map[string]bool, locale string) []domain.RecentMatchItem {
 	if len(favoriteIDs) == 0 {
 		return nil
 	}
 	// Construire la liste complète des matchs favoris (pas limités aux 6 récents).
-	allItems := analysis.BuildRecentMatchesWithFavorites(all, len(all), favoriteIDs)
+	allItems := analysis.BuildRecentMatchesWithFavoritesForLocale(all, len(all), favoriteIDs, locale)
 	var favorites []domain.RecentMatchItem
 	for _, item := range allItems {
 		if item.IsFavorite {

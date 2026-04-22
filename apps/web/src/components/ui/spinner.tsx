@@ -31,10 +31,19 @@ export function Spinner({ size = 'md', label, className = '' }: SpinnerProps) {
   )
 }
 
-/** Overlay de chargement centré sur toute la page */
+/** Overlay de chargement centré sur toute la page (setup, auth) */
 export function PageSpinner({ label = 'Chargement…' }: { label?: string }) {
   return (
     <div className="flex min-h-screen items-center justify-center">
+      <Spinner size="lg" label={label} />
+    </div>
+  )
+}
+
+/** Spinner centré dans le contenu d'une page normale (dans le layout avec navbar) */
+export function PageLoader({ label }: { label?: string }) {
+  return (
+    <div className="flex min-h-[55vh] items-center justify-center">
       <Spinner size="lg" label={label} />
     </div>
   )

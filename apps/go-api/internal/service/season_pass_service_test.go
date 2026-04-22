@@ -25,7 +25,7 @@ type mockHomeServiceForSP struct {
 	challenges domain.ChallengesResponse
 }
 
-func (m *mockHomeServiceForSP) GetHomePage(_ context.Context, _ string) (*domain.HomePageResponse, error) {
+func (m *mockHomeServiceForSP) GetHomePage(_ context.Context, _ string, _ string) (*domain.HomePageResponse, error) {
 	return nil, nil
 }
 func (m *mockHomeServiceForSP) GetBattlePass(_ context.Context) domain.BattlePassResponse {
@@ -145,4 +145,74 @@ func TestSeasonPassService_ChallengesAlwaysPresent(t *testing.T) {
 	}
 }
 
+// mockHomeServiceForSPWithBP retourne Available=true depuis GetBattlePass,
+// simulant un appel live réussi qui peuplera battlepass_track_definitions.
+type mockHomeServiceForSPWithBP struct {
+	mockHomeServiceForSP
+	bpAvailable bool
+	// afterBPCall : tracks à retourner lors du 2e appel LoadSeasonPassTracks
+	tracksAfterBP []domain.SeasonPassTrackSummary
+}
 
+func (m *mockHomeServiceForSPWithBP) GetBattlePass(_ context.Context) domain.BattlePassResponse {
+	return domain.BattlePassResponse{Available: m.bpAvailable}
+}
+
+// mockSeasonPassRepoWithRetry simule un repo qui retourne des tracks au 2e appel.
+type mockSeasonPassRepoWithRetry struct {
+	callCount        int
+	secondCallTracks []domain.SeasonPassTrackSummary
+}
+
+func (r *mockSeasonPassRepoWithRetry) LoadSeasonPassTracks(_ context.Context, _, _ string) ([]domain.SeasonPassTrackSummary, error) {
+	r.callCount++
+	if r.callCount >= 2 {
+		return r.secondCallTracks, nil
+	}
+	return nil, nil
+}
+
+func TestSeasonPassService_GetSeasonPassPage_LiveFallback_PopulatesOnRetry(t *testing.T) {
+	rewardTrack := "RewardTracks/Operations/OpLive.json"
+	repo := &mockSeasonPassRepoWithRetry{
+		secondCallTracks: []domain.SeasonPassTrackSummary{
+			{RewardTrackPath: rewardTrack, Name: "Op Live", IsActive: true, CurrentRank: 5},
+		},
+	}
+	homeSvc := &mockHomeServiceForSPWithBP{bpAvailable: true}
+	svc := NewSeasonPassService(repo, homeSvc, "xuid-live", "HaloInfinite")
+
+	resp, err := svc.GetSeasonPassPage(context.Background())
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if !resp.Available {
+		t.Error("expected Available=true after live fallback")
+	}
+	if len(resp.Passes) != 1 {
+		t.Fatalf("expected 1 pass, got %d", len(resp.Passes))
+	}
+	if resp.Passes[0].Name != "Op Live" {
+		t.Errorf("unexpected pass name: %q", resp.Passes[0].Name)
+	}
+	if repo.callCount != 2 {
+		t.Errorf("expected 2 DB calls (initial + retry), got %d", repo.callCount)
+	}
+}
+
+func TestSeasonPassService_GetSeasonPassPage_LiveFallback_StillEmptyAfterBP(t *testing.T) {
+	repo := &mockSeasonPassRepo{tracks: nil}
+	homeSvc := &mockHomeServiceForSPWithBP{bpAvailable: true}
+	svc := NewSeasonPassService(repo, homeSvc, "xuid-live", "HaloInfinite")
+
+	resp, err := svc.GetSeasonPassPage(context.Background())
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if resp.Available {
+		t.Error("expected Available=false when DB still empty after BP call")
+	}
+	if resp.ErrorHint == nil {
+		t.Error("expected ErrorHint when no data")
+	}
+}

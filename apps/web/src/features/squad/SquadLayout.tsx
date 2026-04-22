@@ -16,7 +16,7 @@ import { useSettings } from '@/features/settings/queries'
 import { PageHeader } from '@/components/shell/PageHeader'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { EmptyStateCard } from '@/components/ui/empty-state'
-import { Spinner } from '@/components/ui/spinner'
+import { PageLoader } from '@/components/ui/spinner'
 import { GamertagCombobox } from '@/components/ui/GamertagCombobox'
 import { SessionScopeSelector } from './SessionScopeSelector'
 import type {
@@ -185,9 +185,7 @@ export function SquadLayout() {
 
   if (isLoading)
     return (
-      <div className="flex items-center justify-center min-h-64">
-        <Spinner size="lg" />
-      </div>
+      <PageLoader />
     )
   if (isError)
     return <div className="p-8 text-center text-destructive">Erreur : {String(error)}</div>

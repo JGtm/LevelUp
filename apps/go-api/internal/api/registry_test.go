@@ -31,14 +31,6 @@ func TestServiceRegistry_Filters_ResolveError(t *testing.T) {
 	}
 }
 
-func TestServiceRegistry_LastMatch_ResolveError(t *testing.T) {
-	reg := &ServiceRegistry{resolve: failResolver}
-	_, err := reg.LastMatch(context.Background(), "x")
-	if !errors.Is(err, errResolve) {
-		t.Fatalf("expected resolve error, got %v", err)
-	}
-}
-
 func TestServiceRegistry_MatchView_ResolveError(t *testing.T) {
 	reg := &ServiceRegistry{resolve: failResolver}
 	_, err := reg.MatchView(context.Background(), "x")

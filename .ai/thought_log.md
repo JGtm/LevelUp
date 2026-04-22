@@ -1,5 +1,95 @@
 # Thought Log
 
+## [2026-04-22] fix(battlepass): coalescer les fetchs concurrents des reward tracks
+
+**Statut** : ✅ Complété
+
+**Décision technique** : le crash `duplicate key` sur `battlepass_track_definitions` n'était pas dû à l'UPSERT SQL lui-même, mais à des rafales concurrentes du flux `cache miss -> GameCMS -> store` pour une même reward track. Le correctif applique un `singleflight` process-level sur la clé `metadataPath|trackPath` et englobe aussi la lecture du cache metadata, pour éviter les ouvertures read-only concurrentes juste avant l'écriture read-write.
+
+**Résultats observés** : validation ciblée réussie avec `go test ./internal/platform/halo -run 'TestFetchRewardTrackDefinition_(FetchesAndPersistsFromGameCMS|CoalescesConcurrentFetches)' -count=1`. Le nouveau test concurrent impose un seul hit GameCMS pour 8 appels parallèles sur la même track.
+
+**Conclusion** : le chemin Battle Pass ne doit plus lancer plusieurs fetch/store concurrents pour une même reward track dans un même processus. Les logs `metadata verrouillée` avec plusieurs `server.exe` restent, eux, cohérents avec des processus de dev concurrents distincts.
+
+## [2026-04-21] fix(home): brancher score_label sur le vrai score de match DuckDB
+
+**Statut** : ✅ Complété
+
+**Décision technique** : la home lisait la mauvaise source. `Q26HomeMatches` et `BuildRecentMatches` utilisaient `team_0_ps_score/team_1_ps_score`, alors que le score de match demandé par l'utilisateur est déjà stocké dans `shared.match_registry.team_0_score/team_1_score`. Le correctif recâble `internal/domain/home.go`, `internal/platform/duckdb/queries_home_citations.go`, `internal/platform/duckdb/home_repo.go` et `internal/analysis/home.go` sur ces colonnes réelles, toujours orientées équipe du joueur d'abord via `team_id`. Côté React, la tuile n'affiche plus de tiret de secours quand `score_label` est absent : elle rend seulement la donnée fournie par l'API.
+
+**Résultats observés** : vérification directe en Go sur le match réel `81c0fc99-1cfe-4047-8bb7-81ce7d51743f` : `match_registry.team_0_score/team_1_score = 1-3`, `team_0_ps_score/team_1_ps_score = NULL/NULL`. Validations ciblées exécutées : `go test ./internal/analysis -run 'TestBuildRecentMatches' -count=1`, `go test -tags=integration ./internal/platform/duckdb -run 'TestHomeRepo_LoadHomeMatches_(Empty|WithData|DoesNotDependOnVMatchFull|FallsBackToMetadataAssetTranslations)' -count=1`, `npm run test:run -- src/components/ui/match-card.test.tsx`. Validation runtime : l'API relancée sur `:8000` renvoie maintenant des `recent_matches[].score_label` réels (`40-50`, `3-1`, `50-42`, etc.).
+
+**Conclusion** : le score de la tuile home est désormais branché sur la bonne colonne DB côté Go, visible dans le payload HTTP réel, sans fallback UI parasite.
+
+## [2026-04-21] fix(home): ajouter la section score et badges narratifs sur les tuiles match
+
+**Statut** : ✅ Complété
+
+**Décision technique** : la home ne transportait ni le score de match ni le badge narratif, donc le correctif a été fait en deux couches. Côté Go, `Q26HomeMatches` expose désormais `team_id`, `team_0_ps_score`, `team_1_ps_score` et `dominance_flag`, puis `internal/analysis/home.go` construit `recent_matches[].score_label` orienté équipe du joueur d'abord, ainsi que `recent_matches[].narrative_badges` à partir du `dominance_flag` (`dominant`, `humiliation`, `remontada`, `debacle`, `contre_remontada`). Côté React, `apps/web/src/components/ui/match-card-presentation.ts` centralise la palette issue du projet Python legacy (`#4CAF50`, `#F44336`, `#9E9E9E`) et le mapping des badges, puis `MatchCard` rend un panneau fixe sous la playlist avec score large, fond atténué par résultat et ligne de badges de hauteur stable.
+
+**Résultats observés** : les tuiles home affichent maintenant un score lisible (`50-42`) coloré selon victoire/défaite, avec badges narratifs sous le score sans variation de hauteur entre cartes avec ou sans badge. Validations ciblées exécutées : `go test ./internal/analysis -run 'TestBuildRecentMatches' -count=1`, `go test -tags=integration ./internal/platform/duckdb -run 'TestHomeRepo_LoadHomeMatches_(Empty|WithData|DoesNotDependOnVMatchFull|FallsBackToMetadataAssetTranslations)' -count=1`, `npm run test:run -- src/components/ui/match-card-presentation.test.ts src/components/ui/match-card.test.tsx` ✅.
+
+**Conclusion** : les tuiles match home ont maintenant une zone score dédiée, homogène et pilotée par une abstraction simple pour les couleurs et badges narratifs.
+
+## [2026-04-21] fix(home): supprimer le scroll vertical involontaire vers le pass de combat
+
+**Statut** : ✅ Complété
+
+**Décision technique** : la cause était locale au frontend React. [apps/web/src/features/home/HomeBattlePassPanel.tsx](apps/web/src/features/home/HomeBattlePassPanel.tsx) appelait `scrollIntoView()` sur le palier actif au montage, ce qui pouvait forcer le navigateur à scroller toute la page jusqu'à la section Battle Pass / Défis. Le correctif remplace ce comportement par un recentrage horizontal strict dans le rail scrollable via `scrollTo({ left })`, sans toucher au scroll vertical du document. La même correction a été appliquée au showcase Palmares dans [apps/web/src/features/palmares/SeasonPassPage.tsx](apps/web/src/features/palmares/SeasonPassPage.tsx), qui utilisait le même pattern.
+
+**Résultats observés** : les tests frontend ciblés passent avec assertion explicite anti-régression sur l'absence de `scrollIntoView()` et l'usage de `scrollTo()` : `npm run test:run -- src/features/home/HomePage.test.tsx src/features/palmares/SeasonPassPage.test.tsx` ✅. Diagnostics VS Code sur les fichiers modifiés : aucune erreur.
+
+**Conclusion** : le rechargement de la home ne doit plus sauter jusqu'au bloc pass de combat / défis ; seul le rail interne des paliers se recentre désormais.
+
+## [2026-04-21] fix(home): retirer la pastille de résultat sur les tuiles de match
+
+**Statut** : ✅ Complété
+
+**Décision technique** : la pastille de résultat était injectée uniquement côté React dans `apps/web/src/components/ui/match-card.tsx`, via un badge overlay positionné sur l'image. Le correctif retire ce rendu localement, sans modifier le contrat API ni déplacer l'information ailleurs.
+
+**Résultats observés** : `MatchCard` n'affiche plus de badge `Victoire` / `Défaite` par-dessus l'image de map. Validation ciblée : `npm run test:run -- src/components/ui/match-card.test.tsx` ✅ (8 tests passants).
+
+**Conclusion** : la tuile garde l'image, le titre, la playlist, le panneau stats réservé et le bouton favori, mais ne superpose plus le résultat du match sur le visuel.
+
+## [2026-04-21] fix(home): mode_ui branché sur game_variant traduit côté Go
+
+**Statut** : ✅ Complété
+
+**Décision technique** : le hardcode React ajouté juste avant était une erreur. Le correctif final recâble la home sur la vraie source DB-first du mode affiché : `shared.match_registry.game_variant_id/game_variant_name` enrichi via `metadata.asset_translations` (`asset_type='game_variant'`) dans `HomeRepo`, puis `BuildRecentMatchesWithFavoritesForLocale()` préfère `game_variant_name_fr` à `pair_name`. Le mapping FR inventé dans `apps/web/src/components/ui/match-card.tsx` a été supprimé.
+
+**Résultats observés** : la home Go transporte maintenant `game_variant_*` jusqu'à `mode_ui`; la normalisation gère à la fois `Arena:Slayer` et `Assassin : Arène`. Validations ciblées : `go test ./internal/analysis -run TestBuildRecentMatchesForLocale_UsesRequestedLanguage -count=1`, `go test -tags=integration ./internal/platform/duckdb -run TestHomeRepo_LoadHomeMatches_FallsBackToMetadataAssetTranslations -count=1`, `npm run test:run -- src/components/ui/match-card.test.tsx`.
+
+**Conclusion** : le titre des tuiles home ne dépend plus d'un mapping UI ad hoc ; il vient du backend Go à partir des traductions de variante de jeu en BDD.
+
+## [2026-04-21] fix(home): traduction des modes normalisés sur les tuiles React
+
+**Statut** : ✅ Complété
+
+**Décision technique** : le point visible restant était strictement dans le rendu des tuiles home : `playlist_ui` sortait déjà correctement en français après le fallback backend, mais `mode_ui` pouvait encore arriver en anglais (`Team Slayer`). Le correctif final est branché directement dans `apps/web/src/components/ui/match-card.tsx` : après normalisation (`Arena:...`, suffixe `on/sur <map>`), la tuile applique une localisation FR ciblée des modes les plus courants avant de composer le titre `mode sur carte`.
+
+**Résultats observés** : le cas utilisateur bloquant `Team Slayer sur Curfew / Quick Play` est maintenant rendu en `Slayer en équipe sur Curfew / Partie rapide` sur la carte. Validation locale : `npm run test:run -- src/components/ui/match-card.test.tsx` ✅.
+
+**Conclusion** : la tuile home n'affiche plus le libellé anglais brut `Team Slayer` quand la locale UI est en français, même si le backend fournit encore ponctuellement `mode_ui` en anglais.
+
+## [2026-04-21] fix(home): fallback FR metadata pour les tuiles récentes
+
+**Statut** : En cours
+
+**Décision technique** : la home ne dépend plus uniquement des colonnes `*_fr` de `shared.match_registry`, qui peuvent rester vides ou recyclées depuis l'anglais via `COALESCE`. `HomeRepo.LoadHomeMatches()` recharge désormais les libellés FR manquants ou identiques à l'anglais depuis `metadata.asset_translations` via `map_id`, `pair_id` et `playlist_id`, sans réintroduire la dépendance fragile à `shared.v_match_full`.
+
+**Résultats observés** : le test d'intégration `TestHomeRepo_LoadHomeMatches_FallsBackToMetadataAssetTranslations` couvre maintenant le cas `Team Slayer` / `Quick Play` -> `Slayer en équipe` / `Partie rapide`. Validation locale : `go test -tags=integration ./internal/platform/duckdb -run 'TestHomeRepo_LoadHomeMatches_(WithData|DoesNotDependOnVMatchFull|FallsBackToMetadataAssetTranslations)' -count=1`, `go test ./internal/service -run 'TestHomeService' -count=1`, `go build ./cmd/server`.
+
+**Conclusion / prochaine étape** : redémarrer le serveur Go local encore chargé avec l'ancien binaire pour que la payload home sur `:8000` reflète le correctif.
+
+## [2026-04-21] test(assets): couverture unitaire internal/assets/ — 81%
+
+**Statut** : ✅ Complété
+
+**Décision technique** : Ajout de 9 fichiers de tests unitaires couvrant 77 cas. Les stubs sont en `package assets` (boîte blanche) pour accéder aux fonctions privées (`isLockError`, `backoffDuration`, `detectContentType`, `entryToPayload`). `store_duckdb_test.go` utilise `t.TempDir()` avec une vraie DB DuckDB volatile. `fetcher_gamecms_test.go` utilise `httptest.NewServer`. Couverture finale : **81.1%** (les 19% restants : `wire.go` et `store_duckdb.go` couverts en partie, `payload.go` méthodes `isPayload()` privées non invocables directement). **27/27 packages OK.**
+
+**Commit** : `9806fbad` — `test(assets): couverture unitaire du package internal/assets/ (81%)`
+
+---
+
 ## [2026-04-21] feat(assets): abstraction layer P0→P6 — internal/assets/ complet
 
 **Statut** : ✅ Complété
@@ -17317,3 +17407,15 @@ La page Synthèse (route `/players/$playerSlug/synthesis`) était inaccessible d
 - SynthesisHighlightsSection.tsx créé (~100 lignes)
 
 **Conclusion** : La page Synthèse est maintenant accessible en L1 et expose tous les blocs Sprint 55 (D4-D9 côté Go, D4-D7 côté React). La branche de travail est `feat/synthesis-nav-and-page-blocks`.
+
+## [2026-04-21] fix(battlepass): contention OpenReadWrite metadata.duckdb — Complété
+
+**Statut** : Complété
+
+**Problème** : `loadExistingItemPaths` et `loadTrackDefinitionFromMetadata` utilisaient `OpenReadWrite` (MaxOpenConns=1, pool partagé avec les goroutines de write). Pendant `preCacheBPItemDefinitions` (100+ UPSERTs), le handler season-pass attendait une connexion → timeout 30s.
+
+**Décision** : Passer les deux fonctions de lecture en `OpenReadOnly` (pool séparé, 4 connexions). Les writes (`storeTrackDefinitionInMetadata`, `storeItemDefinitionInMetadata`) restent en `OpenReadWrite`.
+
+**Résultat** : Handler season-pass répond en <20s, 60/100 tiers avec image après redémarrage (données du run précédent). Backfill relancé automatiquement.
+
+**Commit** : `1d0a8cda`

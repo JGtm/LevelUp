@@ -38,14 +38,23 @@ func (r *HomeRepo) LoadHomeMatches(ctx context.Context) ([]domain.HomeMatchRow, 
 			&row.MapID,
 			&row.MapName,
 			&row.MapNameFR,
+			&row.PairID,
 			&row.PairName,
 			&row.PairNameFR,
+			&row.GameVariantID,
+			&row.GameVariantName,
+			&row.PlaylistID,
 			&row.PlaylistName,
+			&row.PlaylistNameFR,
 			&row.IsFirefight,
 			&row.IsRanked,
 			&row.SessionLabel,
 			&row.IsWithFriends,
 			&row.Outcome,
+			&row.TeamID,
+			&row.Team0Score,
+			&row.Team1Score,
+			&row.DominanceFlag,
 			&row.Kills,
 			&row.Deaths,
 			&row.Assists,
@@ -61,7 +70,146 @@ func (r *HomeRepo) LoadHomeMatches(ctx context.Context) ([]domain.HomeMatchRow, 
 		}
 		result = append(result, row)
 	}
-	return result, rows.Err()
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+
+	r.enrichHomeMatchTranslations(ctx, result)
+	return result, nil
+}
+
+func (r *HomeRepo) enrichHomeMatchTranslations(ctx context.Context, matches []domain.HomeMatchRow) {
+	if len(matches) == 0 || r.pdb == nil || r.pdb.Metadata == nil {
+		return
+	}
+
+	mapNames, _ := r.loadHomeAssetTranslationNames(ctx, "map", collectMissingHomeAssetIDs(matches, "map"))
+	pairNames, _ := r.loadHomeAssetTranslationNames(ctx, "pair", collectMissingHomeAssetIDs(matches, "pair"))
+	gameVariantNames, _ := r.loadHomeAssetTranslationNames(ctx, "game_variant", collectMissingHomeAssetIDs(matches, "game_variant"))
+	playlistNames, _ := r.loadHomeAssetTranslationNames(ctx, "playlist", collectMissingHomeAssetIDs(matches, "playlist"))
+
+	for i := range matches {
+		if needsHomeAssetTranslation(matches[i].MapNameFR, matches[i].MapName) {
+			if name := strings.TrimSpace(mapNames[matches[i].MapID]); name != "" {
+				matches[i].MapNameFR = name
+			}
+		}
+		if needsHomeAssetTranslation(matches[i].PairNameFR, matches[i].PairName) {
+			if name := strings.TrimSpace(pairNames[matches[i].PairID]); name != "" {
+				matches[i].PairNameFR = name
+			}
+		}
+		if needsHomeAssetTranslation(matches[i].GameVariantNameFR, matches[i].GameVariantName) {
+			if name := strings.TrimSpace(gameVariantNames[matches[i].GameVariantID]); name != "" {
+				matches[i].GameVariantNameFR = name
+			}
+		}
+		if needsHomeAssetTranslation(matches[i].PlaylistNameFR, matches[i].PlaylistName) {
+			if name := strings.TrimSpace(playlistNames[matches[i].PlaylistID]); name != "" {
+				matches[i].PlaylistNameFR = name
+			}
+		}
+	}
+}
+
+func collectMissingHomeAssetIDs(matches []domain.HomeMatchRow, assetType string) []string {
+	ids := make(map[string]struct{})
+	for _, match := range matches {
+		var assetID string
+		var labelFR string
+		var labelEN string
+
+		switch assetType {
+		case "map":
+			assetID = match.MapID
+			labelFR = match.MapNameFR
+			labelEN = match.MapName
+		case "pair":
+			assetID = match.PairID
+			labelFR = match.PairNameFR
+			labelEN = match.PairName
+		case "game_variant":
+			assetID = match.GameVariantID
+			labelFR = match.GameVariantNameFR
+			labelEN = match.GameVariantName
+		case "playlist":
+			assetID = match.PlaylistID
+			labelFR = match.PlaylistNameFR
+			labelEN = match.PlaylistName
+		default:
+			return nil
+		}
+
+		if strings.TrimSpace(assetID) == "" || !needsHomeAssetTranslation(labelFR, labelEN) {
+			continue
+		}
+		ids[assetID] = struct{}{}
+	}
+
+	result := make([]string, 0, len(ids))
+	for assetID := range ids {
+		result = append(result, assetID)
+	}
+	return result
+}
+
+func (r *HomeRepo) loadHomeAssetTranslationNames(ctx context.Context, assetType string, assetIDs []string) (map[string]string, error) {
+	if len(assetIDs) == 0 {
+		return nil, nil
+	}
+
+	placeholders := strings.TrimRight(strings.Repeat("?,", len(assetIDs)), ",")
+	query := fmt.Sprintf(`
+		SELECT asset_id, name, lang
+		FROM asset_translations
+		WHERE asset_type = ?
+		  AND lang IN ('fr-FR', 'fr')
+		  AND name IS NOT NULL
+		  AND TRIM(name) != ''
+		  AND asset_id IN (%s)
+		ORDER BY asset_id, CASE WHEN lang = 'fr-FR' THEN 0 ELSE 1 END
+	`, placeholders)
+
+	args := make([]any, 0, len(assetIDs)+1)
+	args = append(args, assetType)
+	for _, assetID := range assetIDs {
+		args = append(args, assetID)
+	}
+
+	rows, err := r.pdb.Metadata.Query(ctx, query, args...)
+	if err != nil {
+		if isTableNotFoundErr(err) {
+			return nil, nil
+		}
+		return nil, err
+	}
+	defer rows.Close()
+
+	translations := make(map[string]string)
+	for rows.Next() {
+		var assetID string
+		var name string
+		var lang string
+		if err := rows.Scan(&assetID, &name, &lang); err != nil {
+			return nil, err
+		}
+		if _, exists := translations[assetID]; !exists {
+			translations[assetID] = name
+		}
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return translations, nil
+}
+
+func needsHomeAssetTranslation(labelFR, labelEN string) bool {
+	trimmedFR := strings.TrimSpace(labelFR)
+	if trimmedFR == "" {
+		return true
+	}
+	trimmedEN := strings.TrimSpace(labelEN)
+	return trimmedEN != "" && strings.EqualFold(trimmedFR, trimmedEN)
 }
 
 // CountPlayerMatches retourne le nombre total de matchs du joueur (Q26b).

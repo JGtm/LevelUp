@@ -9,6 +9,8 @@ import (
 	"net/http/httptest"
 	"os"
 	"path/filepath"
+	"sync"
+	"sync/atomic"
 	"testing"
 
 	"levelup/go-api/internal/domain"
@@ -392,6 +394,69 @@ func TestFetchRewardTrackDefinition_FetchesAndPersistsFromGameCMS(t *testing.T) 
 	}
 	if loaded.XpPerRank != 1000 {
 		t.Errorf("XpPerRank persisté: attendu 1000, got %d", loaded.XpPerRank)
+	}
+}
+
+func TestFetchRewardTrackDefinition_CoalescesConcurrentFetches(t *testing.T) {
+	db, metaPath := openTestMetaDB(t)
+	if err := db.Close(); err != nil {
+		t.Fatalf("close: %v", err)
+	}
+
+	trackPath := "RewardTracks/Operations/S13Op01.json"
+	responseDef := map[string]any{
+		"Name":      "Operation 1",
+		"XpPerRank": 1000,
+	}
+
+	var gameCMSHits int32
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.URL.Path != "/hi/Progression/file/"+trackPath {
+			http.Error(w, "wrong path: "+r.URL.Path, http.StatusNotFound)
+			return
+		}
+		atomic.AddInt32(&gameCMSHits, 1)
+		w.Header().Set("Content-Type", "application/json")
+		_ = json.NewEncoder(w).Encode(responseDef)
+	}))
+	defer srv.Close()
+
+	p := newTestProvider("", srv.URL)
+	p.battlepassMetaPath = metaPath
+
+	const callers = 8
+	results := make(chan *battlepassTrackDefinitionRaw, callers)
+	var wg sync.WaitGroup
+	for range callers {
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			results <- p.fetchRewardTrackDefinition(context.Background(), testTokens(), trackPath)
+		}()
+	}
+	wg.Wait()
+	close(results)
+
+	for result := range results {
+		if result == nil {
+			t.Fatal("attendu une définition coalescée, got nil")
+		}
+		if result.XpPerRank != 1000 {
+			t.Fatalf("XpPerRank: attendu 1000, got %d", result.XpPerRank)
+		}
+	}
+
+	if got := atomic.LoadInt32(&gameCMSHits); got != 1 {
+		t.Fatalf("attendu un seul hit GameCMS, got %d", got)
+	}
+
+	p2 := NewHaloProvider().WithBattlePassCache(metaPath)
+	loaded, err := p2.loadTrackDefinitionFromMetadata(context.Background(), trackPath)
+	if err != nil {
+		t.Fatalf("loadTrackDefinitionFromMetadata après coalescence: %v", err)
+	}
+	if loaded == nil {
+		t.Fatal("définition non persistée après fetch concurrent")
 	}
 }
 

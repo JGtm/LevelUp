@@ -39,7 +39,7 @@ type FiltersService interface {
 
 // HomeService construit les réponses de la page d'accueil Mission Control.
 type HomeService interface {
-	GetHomePage(ctx context.Context, gamertag string) (*domain.HomePageResponse, error)
+	GetHomePage(ctx context.Context, gamertag, locale string) (*domain.HomePageResponse, error)
 	GetBattlePass(ctx context.Context) domain.BattlePassResponse
 	GetChallenges(ctx context.Context) domain.ChallengesResponse
 }
@@ -47,11 +47,6 @@ type HomeService interface {
 // SeasonPassService construit la réponse de la page Season Pass (palmares).
 type SeasonPassService interface {
 	GetSeasonPassPage(ctx context.Context) (domain.SeasonPassPageResponse, error)
-}
-
-// LastMatchService résout le dernier match joué.
-type LastMatchService interface {
-	Resolve(ctx context.Context, req domain.LastMatchResolveRequest) (domain.LastMatchResolveResponse, error)
 }
 
 // MatchHistoryService construit les réponses d'historique de matchs.
