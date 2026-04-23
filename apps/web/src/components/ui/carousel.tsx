@@ -81,34 +81,34 @@ export function Carousel({ children, className = '' }: CarouselProps) {
   }
 
   return (
-    <div className={`relative ${className}`}>
-      {/* Bouton gauche */}
+    <div className={`flex items-stretch gap-0 ${className}`}>
+      {/* Bouton gauche — dans le flux, ne chevauche pas les tuiles */}
       <button
         type="button"
         onClick={() => scroll('left')}
         disabled={!canLeft}
         aria-label="Précédent"
-        className="absolute left-0 inset-y-0 z-20 flex items-center justify-center w-9 rounded-l-lg border-y border-l border-border bg-background/95 backdrop-blur-sm transition-all duration-150 hover:bg-muted disabled:cursor-default disabled:opacity-30 disabled:hover:bg-background/95"
+        className="shrink-0 flex items-center justify-center w-9 rounded-l-lg border-y border-l border-border bg-background/95 backdrop-blur-sm transition-all duration-150 hover:bg-muted disabled:cursor-default disabled:opacity-30 disabled:hover:bg-background/95"
       >
         <ChevronLeftIcon />
       </button>
 
-      {/* Track scrollable — padding horizontal pour laisser place aux boutons */}
+      {/* Track scrollable */}
       <div
         ref={trackRef}
         onScroll={updateScrollState}
-        className="flex gap-3 overflow-x-auto scroll-smooth snap-x snap-mandatory pb-1 px-10 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+        className="flex-1 flex gap-3 overflow-x-auto scroll-smooth snap-x snap-mandatory pb-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
       >
         {children}
       </div>
 
-      {/* Bouton droit */}
+      {/* Bouton droit — dans le flux, ne chevauche pas les tuiles */}
       <button
         type="button"
         onClick={() => scroll('right')}
         disabled={!canRight}
         aria-label="Suivant"
-        className="absolute right-0 inset-y-0 z-20 flex items-center justify-center w-9 rounded-r-lg border-y border-r border-border bg-background/95 backdrop-blur-sm transition-all duration-150 hover:bg-muted disabled:cursor-default disabled:opacity-30 disabled:hover:bg-background/95"
+        className="shrink-0 flex items-center justify-center w-9 rounded-r-lg border-y border-r border-border bg-background/95 backdrop-blur-sm transition-all duration-150 hover:bg-muted disabled:cursor-default disabled:opacity-30 disabled:hover:bg-background/95"
       >
         <ChevronRightIcon />
       </button>
