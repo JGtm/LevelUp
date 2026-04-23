@@ -578,6 +578,10 @@ func BuildRecentMatchesWithFavoritesForLocale(matches []domain.HomeMatchRow, lim
 			accuracy = m.Accuracy
 		}
 
+		// Solo / Escouade
+		isWithFriends := m.IsWithFriends
+		iwf := &isWithFriends
+
 		// Préférer l'asset local /static/maps pour les maps connues ; fallback cache-aside sinon.
 		mapImageURL := buildMapImageURL("halo_infinite", m.MapID, m.MapName, m.MapNameFR)
 
@@ -611,12 +615,17 @@ func BuildRecentMatchesWithFavoritesForLocale(matches []domain.HomeMatchRow, lim
 			SkillRankImageURL:        m.SkillRankImageURL,
 			SkillProgressPct:         skillProgressPct,
 			SkillPointsInTier:        skillPointsInTier,
+			KDA:                      m.KDA,
 			DurationSecs:             m.TimePlayedSecs,
 			Accuracy:                 accuracy,
 			AvgLifeSecs:              m.AvgLifeSeconds,
 			TeamMMR:                  m.TeamMMR,
 			EnemyMMR:                 m.EnemyMMR,
 			DeltaMMR:                 mmrDelta(m.TeamMMR, m.EnemyMMR),
+			IsWithFriends:            iwf,
+			RankInTeam:               m.RankInTeam,
+			HeadshotKills:            intPtrIfPos(m.HeadshotKills),
+			PerfectKills:             intPtrIfPos(m.PerfectKills),
 		})
 	}
 	return items
@@ -1085,6 +1094,14 @@ func earliestStartTime(matches []domain.HomeMatchRow) *time.Time {
 		}
 	}
 	return earliest
+}
+
+// intPtrIfPos retourne un pointeur vers v si v > 0, nil sinon.
+func intPtrIfPos(v int) *int {
+	if v > 0 {
+		return &v
+	}
+	return nil
 }
 
 // latestEndTime retourne l'heure de fin estimée du dernier match de la session.

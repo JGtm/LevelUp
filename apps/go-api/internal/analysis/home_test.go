@@ -361,6 +361,94 @@ func TestBuildRecentMedia_WithData(t *testing.T) {
 }
 
 // ---------------------------------------------------------------------------
+// BuildSessionSummaries
+// ---------------------------------------------------------------------------
+
+func TestBuildSessionSummaries_RetourneNSessionsTrieesDesc(t *testing.T) {
+	t1 := time.Now()
+	t2 := t1.Add(-1 * time.Hour)
+	t3 := t1.Add(-2 * time.Hour)
+	l1, l2, l3 := "session-1", "session-2", "session-3"
+
+	sessions := []domain.HomeSessionRow{
+		{MatchID: "m1", SessionLabel: &l1, IsWithFriends: false, StartTime: &t1},
+		{MatchID: "m2", SessionLabel: &l2, IsWithFriends: false, StartTime: &t2},
+		{MatchID: "m3", SessionLabel: &l3, IsWithFriends: false, StartTime: &t3},
+	}
+	matches := []domain.HomeMatchRow{
+		homeMatchAt("m1", 2, fp(1.5), t1),
+		homeMatchAt("m2", 3, fp(0.8), t2),
+		homeMatchAt("m3", 2, fp(2.0), t3),
+	}
+
+	result := analysis.BuildSessionSummaries(matches, sessions, false, 10)
+	if len(result) != 3 {
+		t.Fatalf("want 3 sessions, got %d", len(result))
+	}
+	if result[0].SessionLabel != l1 {
+		t.Errorf("first: want %s, got %s", l1, result[0].SessionLabel)
+	}
+	if result[1].SessionLabel != l2 {
+		t.Errorf("second: want %s, got %s", l2, result[1].SessionLabel)
+	}
+}
+
+func TestBuildSessionSummaries_LimitRespectee(t *testing.T) {
+	t1 := time.Now()
+	t2 := t1.Add(-1 * time.Hour)
+	t3 := t1.Add(-2 * time.Hour)
+	l1, l2, l3 := "session-1", "session-2", "session-3"
+
+	sessions := []domain.HomeSessionRow{
+		{MatchID: "m1", SessionLabel: &l1, IsWithFriends: false, StartTime: &t1},
+		{MatchID: "m2", SessionLabel: &l2, IsWithFriends: false, StartTime: &t2},
+		{MatchID: "m3", SessionLabel: &l3, IsWithFriends: false, StartTime: &t3},
+	}
+	matches := []domain.HomeMatchRow{
+		homeMatchAt("m1", 2, fp(1.5), t1),
+		homeMatchAt("m2", 3, fp(0.8), t2),
+		homeMatchAt("m3", 2, fp(2.0), t3),
+	}
+
+	result := analysis.BuildSessionSummaries(matches, sessions, false, 2)
+	if len(result) != 2 {
+		t.Fatalf("limit 2: want 2, got %d", len(result))
+	}
+}
+
+func TestBuildSessionSummaries_FiltreEscouade(t *testing.T) {
+	now := time.Now()
+	soloLabel := "solo-session"
+	squadLabel := "squad-session"
+
+	sessions := []domain.HomeSessionRow{
+		{MatchID: "m1", SessionLabel: &soloLabel, IsWithFriends: false, StartTime: &now},
+		{MatchID: "m2", SessionLabel: &squadLabel, IsWithFriends: true, StartTime: &now},
+	}
+	matches := []domain.HomeMatchRow{
+		homeMatchAt("m1", 2, fp(1.0), now),
+		homeMatchAt("m2", 3, fp(0.5), now),
+	}
+
+	soloResult := analysis.BuildSessionSummaries(matches, sessions, false, 5)
+	squadResult := analysis.BuildSessionSummaries(matches, sessions, true, 5)
+
+	if len(soloResult) != 1 || soloResult[0].SessionLabel != soloLabel {
+		t.Errorf("solo: want [%s], got %v", soloLabel, soloResult)
+	}
+	if len(squadResult) != 1 || squadResult[0].SessionLabel != squadLabel {
+		t.Errorf("squad: want [%s], got %v", squadLabel, squadResult)
+	}
+}
+
+func TestBuildSessionSummaries_Vide(t *testing.T) {
+	result := analysis.BuildSessionSummaries(nil, nil, false, 5)
+	if result != nil {
+		t.Errorf("want nil, got %v", result)
+	}
+}
+
+// ---------------------------------------------------------------------------
 // BuildSessionSummary
 // ---------------------------------------------------------------------------
 
