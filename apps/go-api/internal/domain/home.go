@@ -13,39 +13,47 @@ import "time"
 
 // HomeMatchRow est une ligne brute chargée depuis Q26 (matchs du home).
 type HomeMatchRow struct {
-	MatchID           string
-	StartTime         time.Time
-	MapID             string
-	MapName           string
-	MapNameFR         string
-	PairID            string
-	PairName          string
-	PairNameFR        string
-	GameVariantID     string
-	GameVariantName   string
-	GameVariantNameFR string
-	PlaylistID        string
-	PlaylistName      string
-	PlaylistNameFR    string
-	IsFirefight       bool
-	IsRanked          bool
-	SessionLabel      *string
-	IsWithFriends     bool
-	Outcome           int
-	TeamID            int
-	Team0Score        int
-	Team1Score        int
-	DominanceFlag     int
-	Kills             int
-	Deaths            int
-	Assists           int
-	KDA               *float64
-	Ratio             *float64
-	Accuracy          *float64
-	TimePlayedSecs    *int
-	DamageDealt       *float64
-	DamageTaken       *float64
-	PerformanceScore  *float64
+	MatchID            string
+	StartTime          time.Time
+	MapID              string
+	MapName            string
+	MapNameFR          string
+	PairID             string
+	PairName           string
+	PairNameFR         string
+	GameVariantID      string
+	GameVariantName    string
+	GameVariantNameFR  string
+	PlaylistID         string
+	PlaylistName       string
+	PlaylistNameFR     string
+	IsFirefight        bool
+	IsRanked           bool
+	SessionLabel       *string
+	IsWithFriends      bool
+	Outcome            int
+	TeamID             int
+	Team0Score         int
+	Team1Score         int
+	DominanceFlag      int
+	Kills              int
+	Deaths             int
+	Assists            int
+	KDA                *float64
+	Ratio              *float64
+	Accuracy           *float64
+	TimePlayedSecs     *int
+	DamageDealt        *float64
+	DamageTaken        *float64
+	PerformanceScore   *float64
+	SkillRatingValue   *float64
+	SkillRatingType    string
+	SkillTier          *string
+	SkillSubTier       int
+	SkillTierLabel     *string
+	SkillRatingDelta   *float64
+	SkillPlaylistGroup *string
+	SkillRankImageURL  *string
 }
 
 // HomeSessionRow est une ligne brute chargée depuis Q27 (sessions enrichment).
@@ -199,6 +207,14 @@ type RecentMatchItem struct {
 	DamageDealt              *float64 `json:"damage_dealt,omitempty"`
 	DamageTaken              *float64 `json:"damage_taken,omitempty"`
 	MapImageURL              *string  `json:"map_image_url,omitempty"`
+	SkillRatingValue         *int     `json:"skill_rating_value,omitempty"`
+	SkillRatingType          *string  `json:"skill_rating_type,omitempty"`
+	SkillTierLabel           *string  `json:"skill_tier_label,omitempty"`
+	SkillRatingDelta         *float64 `json:"skill_rating_delta,omitempty"`
+	SkillPlaylistGroup       *string  `json:"skill_playlist_group,omitempty"`
+	SkillRankImageURL        *string  `json:"skill_rank_image_url,omitempty"`
+	SkillProgressPct         *float64 `json:"skill_progress_pct,omitempty"`
+	SkillPointsInTier        *int     `json:"skill_points_in_tier,omitempty"`
 }
 
 // ---------------------------------------------------------------------------

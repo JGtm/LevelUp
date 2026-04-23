@@ -2,6 +2,7 @@
  * timelineChart — Perf / Winrate / MMR sur les matchs en escouade (série temporelle).
  */
 import type { SquadTimeseriesPoint, PlotlyFigurePayload } from '@/lib/api/types'
+import { getPerfColor } from '@/lib/perf-color'
 
 export function buildTimelineChart(
   points: SquadTimeseriesPoint[],
@@ -13,13 +14,7 @@ export function buildTimelineChart(
   const perfs = points.map((p) => p.avg_performance ?? 0)
 
   // Couleur des barres par seuil de perf
-  const perfColors = perfs.map((v) => {
-    if (v >= 80) return '#10B981'
-    if (v >= 65) return '#06B6D4'
-    if (v >= 50) return '#F59E0B'
-    if (v >= 35) return '#F97316'
-    return '#EF4444'
-  })
+  const perfColors = perfs.map((v) => getPerfColor(v))
 
   const traces: PlotlyFigurePayload['data'] = [
     {

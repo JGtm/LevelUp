@@ -187,6 +187,7 @@
     border-color: var(--border);
   }
   body {
+    font-family: 'Roboto', system-ui, sans-serif;
     background-color: var(--background);
     color: var(--foreground);
     overflow-x: hidden;

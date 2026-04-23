@@ -51,10 +51,25 @@ SELECT
     mp.time_played_seconds,
     mp.damage_dealt,
     mp.damage_taken,
-    pme.performance_score
+    pme.performance_score,
+    msr.rating_value                                        AS skill_rating_value,
+    CASE
+        WHEN COALESCE(r.is_ranked, FALSE)
+            OR STRPOS(LOWER(COALESCE(r.playlist_name, '')), 'ranked') > 0
+            OR STRPOS(LOWER(COALESCE(r.pair_name, '')), 'ranked') > 0
+        THEN 'CSR'
+        WHEN UPPER(COALESCE(NULLIF(TRIM(msr.rating_type), ''), '')) = 'CSR' THEN 'CSR'
+        ELSE 'LUSR'
+    END                                                      AS skill_rating_type,
+    msr.tier                                                AS skill_tier,
+    COALESCE(msr.sub_tier, 0)                               AS skill_sub_tier,
+    msr.tier_label                                          AS skill_tier_label,
+    msr.rating_delta                                        AS skill_rating_delta,
+    msr.playlist_group                                      AS skill_playlist_group
 FROM shared.match_participants mp
 JOIN shared.match_registry r ON r.match_id = mp.match_id
 LEFT JOIN player_match_enrichment pme ON pme.match_id = mp.match_id
+LEFT JOIN match_skill_rank msr ON msr.match_id = mp.match_id
 WHERE mp.xuid = ?
 ORDER BY r.start_time DESC`
 

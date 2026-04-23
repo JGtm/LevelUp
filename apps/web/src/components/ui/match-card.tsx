@@ -8,6 +8,7 @@
  *  - Section score colorée selon le résultat avec badges narratifs
  */
 import type { RecentMatchItem } from '@/lib/api/types'
+import { getPerfColor } from '@/lib/perf-color'
 import { getMatchCardOutcomeStyle, getMatchNarrativeBadgeMeta } from './match-card-presentation'
 
 export interface MatchCardProps {
@@ -69,6 +70,15 @@ export function MatchCard({ match: m, locale = 'fr', onClick, onToggleFavorite, 
   const scoreLabel = m.score_label?.trim() ?? ''
   const narrativeBadges = m.narrative_badges ?? []
 
+  const perfScore = m.performance_score_relative
+  const skillValue = m.skill_rating_value
+  const skillType = m.skill_rating_type ?? 'LUSR'
+  const skillTierLabel = m.skill_tier_label
+  const skillDelta = m.skill_rating_delta
+  const skillPlaylist = m.skill_playlist_group
+  const skillBadgeURL = m.skill_rank_image_url
+  const hasPerfOrSkill = perfScore != null || skillValue != null
+
   return (
     <div
       className="rounded-xl overflow-hidden border border-border bg-[#1d2328] flex flex-col cursor-default hover:border-border transition-colors"
@@ -76,8 +86,8 @@ export function MatchCard({ match: m, locale = 'fr', onClick, onToggleFavorite, 
       role={onClick ? 'button' : undefined}
       tabIndex={onClick ? 0 : undefined}
     >
-      {/* Image de la map */}
-      <div className="relative h-48 bg-muted overflow-hidden flex-shrink-0">
+      {/* Image de la map — ratio 16/9, rogné sans déformation */}
+      <div className="relative aspect-video bg-muted overflow-hidden flex-shrink-0">
         {m.map_image_url ? (
           <img
             src={m.map_image_url}
@@ -137,22 +147,24 @@ export function MatchCard({ match: m, locale = 'fr', onClick, onToggleFavorite, 
 
         <div
           data-testid="match-card-stats-panel"
-          className="mt-auto flex h-28 flex-col items-center justify-center rounded-lg border px-3 py-3 text-center"
+          className="mt-auto mx-10 flex min-h-[68px] flex-col items-center justify-center rounded-lg border px-3 py-2 text-center"
           style={{
             backgroundColor: outcomeStyle.panelBackground,
             borderColor: outcomeStyle.panelBorder,
           }}
         >
+          {/* Score + badges centrés ensemble en hauteur */}
+          <div className="flex flex-col items-center gap-2">
           <p
             data-testid="match-card-score"
-            className="text-4xl font-black leading-none tracking-tight"
+            className="text-2xl font-bold leading-none tracking-tight"
             style={{ color: outcomeStyle.scoreColor }}
           >
             {scoreLabel}
           </p>
           <div
             data-testid="match-card-badges-row"
-            className="mt-3 flex min-h-6 flex-wrap items-center justify-center gap-2"
+            className="flex flex-wrap items-center justify-center gap-1.5"
           >
             {narrativeBadges.map((badgeType) => {
               const badgeMeta = getMatchNarrativeBadgeMeta(badgeType)
@@ -173,7 +185,63 @@ export function MatchCard({ match: m, locale = 'fr', onClick, onToggleFavorite, 
               )
             })}
           </div>
+          </div>
         </div>
+
+        {/* Bloc perf + skill rating */}
+        {hasPerfOrSkill && (
+          <div className="mx-3 mb-2 flex justify-center">
+          <div className="inline-flex items-stretch gap-0 rounded-lg bg-white/5 overflow-hidden">
+            {/* Colonne gauche : Performance */}
+            {perfScore != null && (
+              <div className="flex items-center justify-center shrink-0 px-3 py-2">
+                <span
+                  className="text-3xl font-black leading-none"
+                  style={{ color: getPerfColor(perfScore) }}
+                >
+                  {perfScore}
+                </span>
+              </div>
+            )}
+            {/* Séparateur vertical fin blanc */}
+            {perfScore != null && skillValue != null && (
+              <div className="w-px bg-white/20 shrink-0 self-stretch my-2" />
+            )}
+            {/* Colonne droite : Skill rating */}
+            {skillValue != null && (
+              <div className="flex items-center gap-2 min-w-0 flex-1 px-3 py-2">
+                {/* Badge de rang */}
+                {skillBadgeURL && (
+                  <img
+                    src={skillBadgeURL}
+                    alt={skillTierLabel ?? skillType}
+                    className="h-10 w-10 shrink-0 object-contain"
+                    loading="lazy"
+                  />
+                )}
+                {/* Infos texte */}
+                <div className="flex flex-col gap-1 min-w-0 flex-1">
+                  {/* Titre du rang */}
+                  {skillTierLabel && (
+                    <span className="text-xs font-bold text-white leading-none truncate">
+                      {skillTierLabel}
+                    </span>
+                  )}
+                  {/* Delta sur sa propre ligne */}
+                  {skillDelta != null && (
+                    <span
+                      className="text-[10px] font-semibold leading-none"
+                      style={{ color: skillDelta >= 0 ? '#22c55e' : '#ef4444' }}
+                    >
+                      {skillDelta >= 0 ? `+${skillDelta.toFixed(1)}` : skillDelta.toFixed(1)} pts
+                    </span>
+                  )}
+                </div>
+              </div>
+            )}
+          </div>
+          </div>
+        )}
       </div>
     </div>
   )

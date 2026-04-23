@@ -196,8 +196,8 @@ func TestBuildRecentMatchesForLocale_UsesRequestedLanguage(t *testing.T) {
 	}
 
 	itemsFR := analysis.BuildRecentMatchesForLocale([]domain.HomeMatchRow{match}, 6, "fr")
-	if itemsFR[0].ModeUI == nil || *itemsFR[0].ModeUI != "Assassin" {
-		t.Fatalf("FR ModeUI: want Assassin, got %v", itemsFR[0].ModeUI)
+	if itemsFR[0].ModeUI == nil || *itemsFR[0].ModeUI != "Slayer en équipe" {
+		t.Fatalf("FR ModeUI: want Slayer en équipe, got %v", itemsFR[0].ModeUI)
 	}
 	if itemsFR[0].PlaylistUI == nil || *itemsFR[0].PlaylistUI != "Partie rapide" {
 		t.Fatalf("FR PlaylistUI: want Partie rapide, got %v", itemsFR[0].PlaylistUI)
@@ -207,8 +207,8 @@ func TestBuildRecentMatchesForLocale_UsesRequestedLanguage(t *testing.T) {
 	}
 
 	itemsEN := analysis.BuildRecentMatchesForLocale([]domain.HomeMatchRow{match}, 6, "en")
-	if itemsEN[0].ModeUI == nil || *itemsEN[0].ModeUI != "Slayer" {
-		t.Fatalf("EN ModeUI: want Slayer, got %v", itemsEN[0].ModeUI)
+	if itemsEN[0].ModeUI == nil || *itemsEN[0].ModeUI != "Team Slayer" {
+		t.Fatalf("EN ModeUI: want Team Slayer, got %v", itemsEN[0].ModeUI)
 	}
 	if itemsEN[0].PlaylistUI == nil || *itemsEN[0].PlaylistUI != "Quick Play" {
 		t.Fatalf("EN PlaylistUI: want Quick Play, got %v", itemsEN[0].PlaylistUI)
