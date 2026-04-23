@@ -40,28 +40,35 @@ La sync achievements est inconditionnelle, systématique, idempotente.
 
 ```
 internal/sync/engine.go
-  └── run()                              ← point d'intégration principal
-      └── runPostSyncPipeline()          ← pipeline post-match, toujours exécuté
-          ├── batchComputePerformanceScores()
-          ├── batchComputeLUSR()
-          ├── runCareerSync()            ← modèle à suivre
-          ├── refreshAggregates()
-          └── [NOUVEAU] runAchievementsSync()  ← à ajouter ici
-              ↑ utilise e.tokens.MSAccessToken (voir §3 — option A)
+  └── run()
+      └── runConditionalPostSync()        ← dispatcher selon matchesInserted
+          ├── matchesInserted > 0
+          │   └── runPostSyncPipeline()
+          │       ├── batchComputePerformanceScores()
+          │       ├── batchComputeLUSR()
+          │       ├── runCareerSync()
+          │       ├── refreshAggregates()
+          │       └── [NOUVEAU] runAchievementsSync()   ← chemin "avec matchs"
+          └── matchesInserted == 0
+              ├── runCareerSync()          ← déjà présent
+              └── [NOUVEAU] runAchievementsSync()       ← chemin "sans match"
+                  ↑ utilise e.tokens.MSAccessToken (voir §3 — option A)
 
 internal/scheduler/auto_sync.go
-  └── syncPlayer()                       ← appelle engine.RunDelta() — aucune modif nécessaire
+  └── syncPlayer()                        ← appelle engine.RunDelta() — aucune modif nécessaire
 
 internal/api/handlers/sync_handler.go
-  └── handler sync manuelle              ← appelle RunDelta() — aucune modif nécessaire
+  └── handler sync manuelle               ← appelle RunDelta() — aucune modif nécessaire
 ```
 
 > **Aucune modification** dans `syncPlayer()` ni dans le handler HTTP : la logique est intégrée
-> dans `run()` via `runPostSyncPipeline()`, qui s'exécute dans tous les chemins de sync.
+> dans `runConditionalPostSync()`, qui est le seul dispatcher depuis `run()`.
 
-> **Cas "0 nouveau match"** : `runPostSyncPipeline()` est appelé inconditionnellement (voir
-> `run()` dans `engine.go`). La sync achievements s'exécute donc même si aucun nouveau match
-> n'a été inséré — comportement intentionnel et cohérent avec la décision §1.
+> **Cas "0 nouveau match"** : `runConditionalPostSync()` n'appelle **pas** `runPostSyncPipeline()`
+> quand `matchesInserted == 0` — il retourne directement un `PostSyncResult` avec `runCareerSync()`.
+> Les achievements sont un système indépendant des matchs (comme la carrière) : ils doivent être
+> synchronisés dans **les deux branches**, d'où l'ajout de `runAchievementsSync()` aussi dans la
+> branche `else`.
 
 ---
 
@@ -182,20 +189,47 @@ SyncAchievements(ctx, client, metadataDB, playerDB, xuid) error
 
 ### 5.3 Intégration dans `engine.go`
 
+`runAchievementsSync()` est une méthode du `SyncEngine`, appelée depuis **deux endroits** :
+- Dans `runPostSyncPipeline()` (chemin `matchesInserted > 0`)
+- Dans la branche `else` de `runConditionalPostSync()` (chemin `matchesInserted == 0`), aux côtés de `runCareerSync()`
+
+Elle ouvre `metadataDB` **localement** via `e.metadataDBPath`, exactement comme `runCareerSync()` le fait pour la carrière :
+
 ```go
-// Dans runPostSyncPipeline() :
+// Dans runConditionalPostSync() — branche 0 match :
+return domain.PostSyncResult{
+    CareerSynced:       e.runCareerSync(ctx, playerDB, client),
+    AchievementsSynced: e.runAchievementsSync(ctx, playerDB),
+}
+
+// Dans runPostSyncPipeline() — chemin > 0 match :
 // 5. Achievements Xbox
-slog.DebugContext(ctx, "post-sync: sync achievements", "gamertag", e.gamertag)
-xstsResult, err := authpkg.AcquireXSTSForRTA(ctx, e.tokens.MSAccessToken)
-if err != nil {
-    slog.WarnContext(ctx, "post-sync: XSTS RTA échoué", "gamertag", e.gamertag, "err", err)
-} else {
-    xboxClient := newXboxHTTPClient(xstsResult)
-    if err := SyncAchievements(ctx, xboxClient, metadataDB, playerDB, e.xuid); err != nil {
-        slog.WarnContext(ctx, "post-sync: achievements échoué", "gamertag", e.gamertag, "err", err)
-    } else {
-        r.AchievementsSynced = true
+r.AchievementsSynced = e.runAchievementsSync(ctx, playerDB)
+return r
+```
+
+```go
+// runAchievementsSync — méthode SyncEngine (pattern identique à runCareerSync)
+func (e *SyncEngine) runAchievementsSync(ctx context.Context, playerDB *sql.DB) bool {
+    slog.DebugContext(ctx, "post-sync: sync achievements", "gamertag", e.gamertag)
+    xstsResult, err := authpkg.AcquireXSTSForRTA(ctx, e.tokens.MSAccessToken)
+    if err != nil {
+        slog.WarnContext(ctx, "post-sync: XSTS RTA échoué", "gamertag", e.gamertag, "err", err)
+        return false
     }
+    xboxClient := newXboxHTTPClient(xstsResult)
+    // metadataDB ouvert localement — pas un paramètre de runPostSyncPipeline()
+    metaDB, err := openDB(e.metadataDBPath)
+    if err != nil {
+        slog.WarnContext(ctx, "post-sync: ouverture metadata échouée", "gamertag", e.gamertag, "err", err)
+        return false
+    }
+    defer metaDB.Close()
+    if err := SyncAchievements(ctx, xboxClient, metaDB, playerDB, e.xuid); err != nil {
+        slog.WarnContext(ctx, "post-sync: achievements échoué", "gamertag", e.gamertag, "err", err)
+        return false
+    }
+    return true
 }
 ```
 
@@ -286,7 +320,7 @@ Ces endpoints sont **Phase 2** — la sync est le livrable Phase 1.
 - [ ] **Étape 5** — `achievements.go` : structs JSON + `SyncAchievements()` + upserts DuckDB
 - [ ] **Étape 6** — `achievements_test.go` : tests unitaires avec mock client
 - [ ] **Étape 7** — `domain/sync.go` : champs `AchievementsSynced` / `AchievementsCount` dans `PostSyncResult`
-- [ ] **Étape 8** — `engine.go` : appel `runAchievementsSync()` dans `runPostSyncPipeline()`
+- [ ] **Étape 8** — `engine.go` : méthode `runAchievementsSync()` + appel dans `runPostSyncPipeline()` **ET** dans la branche `0 match` de `runConditionalPostSync()`
 - [ ] **Étape 9** — Tests d'intégration + vérification que la sync est bien déclenchée sur les 3 chemins (manuel, auto, scheduled)
 - [ ] **Étape 10** *(Phase 2)* — Endpoints API `GET /achievements` et `GET /players/{slug}/achievements`
 
@@ -297,7 +331,7 @@ Ces endpoints sont **Phase 2** — la sync est le livrable Phase 1.
 | Sujet | Décision |
 |-------|----------|
 | Fréquence | Chaque sync, sans condition temporelle |
-| Cas 0 match | `runPostSyncPipeline()` s'exécute inconditionnellement — achievements synced même si 0 match inséré |
+| Cas 0 match | `runConditionalPostSync()` n'appelle **pas** `runPostSyncPipeline()` si `matchesInserted == 0`. `runAchievementsSync()` est donc appelé dans **les deux** branches de `runConditionalPostSync()`, comme `runCareerSync()` |
 | Erreur API Xbox | `slog.Warn` + continuation (non bloquant, même pattern que `runCareerSync`) |
 | Auth | Option A : `MSAccessToken` stocké dans `HaloTokens` dès `ExchangeAccessToken()`, passé au `SyncEngine` via `EngineFactory()` |
 | Idempotence | `ON CONFLICT (...) DO UPDATE SET ...` — safe à rejouer N fois (`INSERT OR REPLACE` inexistant en DuckDB) |
