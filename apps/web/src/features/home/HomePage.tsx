@@ -18,6 +18,7 @@ import { HomeRecentPlaylistsCard } from './HomeRecentPlaylistsCard'
 import { RecentMediaRail } from './RecentMediaRail'
 import { useHomePage, useSeasonPassPreview } from './queries'
 import { useSetMatchFavorite } from '@/features/match-history/queries'
+import { InfoTooltip } from '@/components/ui/info-tooltip'
 import { useAppShellStore } from '@/stores/appShellStore'
 import { getPerfColor } from '@/lib/perf-color'
 import type { HomeSkillPeakSummary, SessionSummaryItem } from '@/lib/api/types'
@@ -174,17 +175,30 @@ function SessionCarouselCard({ sessions, idx, onIdxChange, variant, onNavigate }
             onClick={() => onNavigate(session.session_label)}
             aria-label={`Voir le détail de la session ${session.session_label}`}
           >
-            {/* Score de performance + label de session */}
-            <div className="mb-2 flex items-baseline gap-2">
-              {session.avg_performance != null && (
-                <span
-                  className="text-2xl font-black leading-none"
-                  style={{ color: getPerfColor(session.avg_performance) }}
-                >
-                  {Math.round(session.avg_performance)}
-                </span>
+            {/* Scores de performance */}
+            <div className="mb-2 flex items-baseline gap-3">
+              {session.avg_team_performance != null && (
+                <>
+                  <span
+                    className="text-2xl font-black leading-none"
+                    style={{ color: getPerfColor(session.avg_team_performance) }}
+                  >
+                    {Math.round(session.avg_team_performance)}
+                  </span>
+                  <span className="text-xs text-muted-foreground">Équipe</span>
+                </>
               )}
-              <span className="truncate text-xs text-muted-foreground">{session.session_label}</span>
+              {session.avg_player_performance != null && (
+                <>
+                  <span
+                    className="text-2xl font-black leading-none"
+                    style={{ color: getPerfColor(session.avg_player_performance) }}
+                  >
+                    {Math.round(session.avg_player_performance)}
+                  </span>
+                  <span className="text-xs text-muted-foreground">Perso</span>
+                </>
+              )}
             </div>
 
             {/* Barre d'outcomes */}
@@ -195,9 +209,57 @@ function SessionCarouselCard({ sessions, idx, onIdxChange, variant, onNavigate }
               dnfs={session.dnfs}
             />
 
-            {/* Compteurs W/L */}
-            <p className="mt-1.5 text-xs text-muted-foreground">
-              {session.match_count} parties · {(session.win_rate * 100).toFixed(0)}% V
+            {/* Décompte des outcomes avec nombre de parties */}
+            <p className="mt-1.5 flex flex-wrap gap-x-2 text-xs">
+              <span className="font-medium text-foreground">{session.match_count} partie{session.match_count > 1 ? 's' : ''}</span>
+              {session.wins > 0 && (
+                <span className="text-emerald-500">{session.wins} Victoire{session.wins > 1 ? 's' : ''}</span>
+              )}
+              {session.losses > 0 && (
+                <span className="text-red-500">{session.losses} Défaite{session.losses > 1 ? 's' : ''}</span>
+              )}
+              {session.draws > 0 && (
+                <span className="text-blue-500">{session.draws} Égalité{session.draws > 1 ? 's' : ''}</span>
+              )}
+              {session.dnfs > 0 && (
+                <span className="text-violet-500">{session.dnfs} Non terminé{session.dnfs > 1 ? 's' : ''}</span>
+              )}
+            </p>
+
+            {/* FDA moyen + playlist dominante + mode dominant */}
+            <p className="mt-0.5 text-xs text-muted-foreground">
+              {session.avg_kda != null && (
+                <span>
+                  FDA{' '}
+                  <span
+                    className={
+                      session.avg_kda < 0
+                        ? 'text-red-500'
+                        : session.avg_kda <= 1
+                          ? 'text-blue-400'
+                          : 'text-green-400'
+                    }
+                  >
+                    {session.avg_kda.toFixed(2)}
+                  </span>
+                </span>
+              )}
+              {(session.avg_kda != null && (session.dominant_playlist || session.dominant_mode)) && ' · '}
+              {session.dominant_playlist && (
+                <span className="font-bold text-white">{session.dominant_playlist}</span>
+              )}
+              {session.dominant_playlist && session.dominant_mode && ' · '}
+              {session.dominant_mode && (
+                <span className="font-bold text-white">{session.dominant_mode}</span>
+              )}
+              {(session.dominant_playlist || session.dominant_mode) && (
+                <span className="ml-1 inline-flex">
+                  <InfoTooltip
+                    content="Playlist et mode les plus joués lors de cette session"
+                    iconClass="w-3 h-3"
+                  />
+                </span>
+              )}
             </p>
 
             {/* Date de début + durée */}
@@ -205,7 +267,7 @@ function SessionCarouselCard({ sessions, idx, onIdxChange, variant, onNavigate }
               <p className="mt-0.5 text-xs text-muted-foreground">
                 {formatSessionDate(session.started_at)}
                 {session.ended_at
-                  ? ` · ${formatSessionDuration(session.started_at, session.ended_at)}`
+                  ? ` · Durée de la session : ${formatSessionDuration(session.started_at, session.ended_at)}`
                   : null}
               </p>
             )}

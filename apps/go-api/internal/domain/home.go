@@ -42,9 +42,12 @@ type HomeMatchRow struct {
 	KDA                *float64
 	Ratio              *float64
 	Accuracy           *float64
+	AvgLifeSeconds     *float64
 	TimePlayedSecs     *int
 	DamageDealt        *float64
 	DamageTaken        *float64
+	TeamMMR            *float64
+	EnemyMMR           *float64
 	PerformanceScore   *float64
 	SkillRatingValue   *float64
 	SkillRatingType    string
@@ -195,26 +198,42 @@ type RecentMatchItem struct {
 	NarrativeBadges []string   `json:"narrative_badges,omitempty"`
 	IsFavorite      bool       `json:"is_favorite"`
 	// S56 — champs enrichis pour MatchCard
-	MapUI                    *string  `json:"map_ui,omitempty"`
-	ModeUI                   *string  `json:"mode_ui,omitempty"`
-	PlaylistUI               *string  `json:"playlist_ui,omitempty"`
-	Kills                    *int     `json:"kills,omitempty"`
-	Deaths                   *int     `json:"deaths,omitempty"`
-	Assists                  *int     `json:"assists,omitempty"`
-	PerformanceScoreRelative *int     `json:"performance_score_relative,omitempty"`
-	OffensiveConversion      *float64 `json:"offensive_conversion,omitempty"`
-	DefensiveResistance      *float64 `json:"defensive_resistance,omitempty"`
-	DamageDealt              *float64 `json:"damage_dealt,omitempty"`
-	DamageTaken              *float64 `json:"damage_taken,omitempty"`
-	MapImageURL              *string  `json:"map_image_url,omitempty"`
-	SkillRatingValue         *int     `json:"skill_rating_value,omitempty"`
-	SkillRatingType          *string  `json:"skill_rating_type,omitempty"`
-	SkillTierLabel           *string  `json:"skill_tier_label,omitempty"`
-	SkillRatingDelta         *float64 `json:"skill_rating_delta,omitempty"`
-	SkillPlaylistGroup       *string  `json:"skill_playlist_group,omitempty"`
-	SkillRankImageURL        *string  `json:"skill_rank_image_url,omitempty"`
-	SkillProgressPct         *float64 `json:"skill_progress_pct,omitempty"`
-	SkillPointsInTier        *int     `json:"skill_points_in_tier,omitempty"`
+	MapUI                    *string            `json:"map_ui,omitempty"`
+	ModeUI                   *string            `json:"mode_ui,omitempty"`
+	PlaylistUI               *string            `json:"playlist_ui,omitempty"`
+	Kills                    *int               `json:"kills,omitempty"`
+	Deaths                   *int               `json:"deaths,omitempty"`
+	Assists                  *int               `json:"assists,omitempty"`
+	PerformanceScoreRelative *int               `json:"performance_score_relative,omitempty"`
+	OffensiveConversion      *float64           `json:"offensive_conversion,omitempty"`
+	DefensiveResistance      *float64           `json:"defensive_resistance,omitempty"`
+	DamageDealt              *float64           `json:"damage_dealt,omitempty"`
+	DamageTaken              *float64           `json:"damage_taken,omitempty"`
+	MapImageURL              *string            `json:"map_image_url,omitempty"`
+	SkillRatingValue         *int               `json:"skill_rating_value,omitempty"`
+	SkillRatingType          *string            `json:"skill_rating_type,omitempty"`
+	SkillTierLabel           *string            `json:"skill_tier_label,omitempty"`
+	SkillRatingDelta         *float64           `json:"skill_rating_delta,omitempty"`
+	SkillPlaylistGroup       *string            `json:"skill_playlist_group,omitempty"`
+	SkillRankImageURL        *string            `json:"skill_rank_image_url,omitempty"`
+	SkillProgressPct         *float64           `json:"skill_progress_pct,omitempty"`
+	SkillPointsInTier        *int               `json:"skill_points_in_tier,omitempty"`
+	DurationSecs             *int               `json:"duration_secs,omitempty"`
+	Accuracy                 *float64           `json:"accuracy,omitempty"`
+	AvgLifeSecs              *float64           `json:"avg_life_secs,omitempty"`
+	TeamMMR                  *float64           `json:"team_mmr,omitempty"`
+	EnemyMMR                 *float64           `json:"enemy_mmr,omitempty"`
+	DeltaMMR                 *float64           `json:"delta_mmr,omitempty"`
+	TopMedals                []RecentMatchMedal `json:"top_medals,omitempty"`
+}
+
+// RecentMatchMedal est une médaille compacte pour l'affichage dans MatchCard.
+type RecentMatchMedal struct {
+	MedalID     int64  `json:"medal_id"`
+	Name        string `json:"name"`
+	Count       int    `json:"count"`
+	Description string `json:"description,omitempty"`
+	ImageURL    string `json:"image_url"`
 }
 
 // ---------------------------------------------------------------------------
@@ -223,11 +242,21 @@ type RecentMatchItem struct {
 
 // SessionSummaryItem est le résumé d'une session (solo ou escouade).
 type SessionSummaryItem struct {
-	SessionLabel string     `json:"session_label"`
-	MatchCount   int        `json:"match_count"`
-	WinRate      float64    `json:"win_rate"`
-	GlobalRatio  *float64   `json:"global_ratio,omitempty"`
-	StartedAt    *time.Time `json:"started_at,omitempty"`
+	SessionLabel         string     `json:"session_label"`
+	MatchCount           int        `json:"match_count"`
+	WinRate              float64    `json:"win_rate"`
+	GlobalRatio          *float64   `json:"global_ratio,omitempty"`
+	StartedAt            *time.Time `json:"started_at,omitempty"`
+	EndedAt              *time.Time `json:"ended_at,omitempty"`
+	Wins                 int        `json:"wins"`
+	Losses               int        `json:"losses"`
+	Draws                int        `json:"draws"`
+	DNFs                 int        `json:"dnfs"`
+	AvgPlayerPerformance *float64   `json:"avg_player_performance,omitempty"`
+	AvgTeamPerformance   *float64   `json:"avg_team_performance,omitempty"`
+	AvgKDA               *float64   `json:"avg_kda,omitempty"`
+	DominantPlaylist     *string    `json:"dominant_playlist,omitempty"`
+	DominantMode         *string    `json:"dominant_mode,omitempty"`
 }
 
 // ---------------------------------------------------------------------------
@@ -255,6 +284,8 @@ type HomePageResponse struct {
 	RecentMedia         []RecentMediaItem    `json:"recent_media"`
 	SoloSession         *SessionSummaryItem  `json:"solo_session,omitempty"`
 	SquadSession        *SessionSummaryItem  `json:"squad_session,omitempty"`
+	SoloSessions        []SessionSummaryItem `json:"solo_sessions,omitempty"`
+	SquadSessions       []SessionSummaryItem `json:"squad_sessions,omitempty"`
 	HasRankedHistory    bool                 `json:"has_ranked_history"`
 	HasUnrankedHistory  bool                 `json:"has_unranked_history"`
 	RecentPlaylistRanks []HomePlaylistRank   `json:"recent_playlist_ranks,omitempty"`
