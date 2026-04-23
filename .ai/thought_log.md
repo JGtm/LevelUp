@@ -1,5 +1,15 @@
 # Thought Log
 
+## [2026-04-23] docs(.ai): corrections bloquantes PLAN_ACHIEVEMENTS_SYNC.md
+
+**Statut** : ✅ Complété
+
+**Décision technique** : relecture du plan achievements et identification de 5 corrections bloquantes avant implémentation. (1) **Auth option A** — `HaloTokens` ne contenait que `SpartanToken`+`ClearanceToken`; l'`accessToken` Microsoft était jeté après `provider.Exchange()`. Solution retenue : ajouter `MSAccessToken string` à `domain.HaloTokens` et le stocker dans `ExchangeAccessToken()` — zéro diff dans le scheduler/handlers, appel `AcquireXSTSForRTA` lazy dans `runAchievementsSync()`. (2) **Migrations Go** — les fichiers `src/data/migration/steps/add_*.py` ne sont pas exécutés par `migration.RunForDB()` (Go). Remplacés par des blocs `Register()` dans `steps_metadata.go` et `steps_player.go`. (3) **SQL DuckDB** — `INSERT OR REPLACE` n'existe pas en DuckDB; remplacé par `ON CONFLICT (...) DO UPDATE SET`. (4) **`GetAchievementDefinitions`** — signature incorrecte (`xuid` inutile, les définitions sont globales au titre via l'endpoint titlehub). (5) **Ordre étapes** — `domain/sync.go` (dépendance) doit précéder `engine.go`; `xbox_client.go` séparé de `achievements.go`.
+
+**Résultats observés** : plan mis à jour avec 10 étapes ordonnées, section §3 Auth complète, §6 migrations Go correctes, §9 tableau contraintes mis à jour.
+
+**Conclusion** : plan prêt pour implémentation. Prochaine étape : Étape 1 (`domain/auth.go`) puis Étape 2 (`halo_exchange.go`).
+
 ## [2026-04-22] fix(runtime): réaligner plusieurs endpoints sur les schémas et routes réellement présents
 
 **Statut** : ✅ Complété
