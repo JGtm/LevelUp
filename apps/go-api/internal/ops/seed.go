@@ -103,14 +103,18 @@ func SeedCareerRanks(opts SeedOptions) (SeedResult, error) {
 
 // CitationMapping représente une règle citation → médaille(s).
 type CitationMapping struct {
-	CitationKey string
-	Mode        string // pvp, pve, composite
+	Norm        string
+	Display     string
+	MappingType string // medal | composite | pve
+	Category    string
+	ImagePath   string
+	TierTargets string // CSV ex: "10,20,30,50,100"
 	MedalIDs    []int64
 	Description string
 }
 
-// SeedCitationMappings insère les 45 règles PVP + 7 PVE + composites.
-// Portage de populate_citation_mappings.py Python.
+// SeedCitationMappings insère les mappings citation → médaille dans citation_mappings.
+// Portage de populate_citation_mappings.py Python (schéma v6 complet).
 func SeedCitationMappings(opts SeedOptions) (SeedResult, error) {
 	db, err := sql.Open("duckdb", opts.MetaDBPath)
 	if err != nil {
@@ -119,11 +123,15 @@ func SeedCitationMappings(opts SeedOptions) (SeedResult, error) {
 	defer db.Close()
 
 	if _, err := db.Exec(`CREATE TABLE IF NOT EXISTS citation_mappings (
-		citation_key VARCHAR,
-		mode VARCHAR,
-		medal_id BIGINT,
-		description VARCHAR,
-		PRIMARY KEY (citation_key, medal_id)
+		citation_name_norm    VARCHAR NOT NULL,
+		citation_name_display VARCHAR NOT NULL,
+		mapping_type          VARCHAR NOT NULL DEFAULT 'medal',
+		category              VARCHAR,
+		image_path            VARCHAR,
+		description           VARCHAR,
+		tier_targets          VARCHAR,
+		medal_id              UBIGINT,
+		enabled               BOOLEAN NOT NULL DEFAULT TRUE
 	)`); err != nil {
 		return SeedResult{Component: "citation_mappings"}, err
 	}
@@ -131,9 +139,22 @@ func SeedCitationMappings(opts SeedOptions) (SeedResult, error) {
 	mappings := defaultCitationMappings()
 	inserted, skipped := 0, 0
 	for _, m := range mappings {
-		for _, medalID := range m.MedalIDs {
-			res, err := db.Exec(`INSERT OR IGNORE INTO citation_mappings VALUES (?,?,?,?)`,
-				m.CitationKey, m.Mode, medalID, m.Description)
+		medalIDs := m.MedalIDs
+		if len(medalIDs) == 0 {
+			medalIDs = []int64{0}
+		}
+		for _, medalID := range medalIDs {
+			var medalArg interface{}
+			if medalID > 0 {
+				medalArg = uint64(medalID) //nolint:gosec
+			}
+			res, err := db.Exec(
+				`INSERT INTO citation_mappings
+					(citation_name_norm, citation_name_display, mapping_type, category, image_path, description, tier_targets, medal_id, enabled)
+				VALUES (?,?,?,?,?,?,?,?,TRUE)
+				ON CONFLICT DO NOTHING`,
+				m.Norm, m.Display, m.MappingType, m.Category, m.ImagePath, m.Description, m.TierTargets, medalArg,
+			)
 			if err != nil {
 				return SeedResult{Component: "citation_mappings"}, err
 			}
@@ -153,32 +174,52 @@ func SeedCitationMappings(opts SeedOptions) (SeedResult, error) {
 }
 
 // defaultCitationMappings retourne les mappings par défaut.
-// Portage des listes hardcodées dans populate_citation_mappings.py.
+// Portage des listes de populate_citation_mappings.py (schéma v6).
+// Note : les 84 citations complètes de production incluent image_path et tier_targets
+// peuplés par Python. Ce seed couvre les entrées de base pour les installs fraîches / CI.
 func defaultCitationMappings() []CitationMapping {
 	return []CitationMapping{
 		// PvE
-		{CitationKey: "grunt_slayer", Mode: "pve", MedalIDs: []int64{1257}, Description: "Élimine des Grunts"},
-		{CitationKey: "elite_slayer", Mode: "pve", MedalIDs: []int64{1258}, Description: "Élimine des Élites"},
-		{CitationKey: "boss_kills", Mode: "pve", MedalIDs: []int64{1259}, Description: "Élimine des boss"},
-		{CitationKey: "wave_completed", Mode: "pve", MedalIDs: []int64{1260}, Description: "Vague complétée"},
-		{CitationKey: "firefight_win", Mode: "pve", MedalIDs: []int64{1261}, Description: "Victoire Firefight"},
-		{CitationKey: "firefight_mvp", Mode: "pve", MedalIDs: []int64{1262}, Description: "MVP Firefight"},
-		{CitationKey: "pve_killing_spree", Mode: "pve", MedalIDs: []int64{1263}, Description: "Série de kills PvE"},
+		{Norm: "grunt_slayer", Display: "Chasseur de Grunts", MappingType: "pve", Category: "Ennemi",
+			TierTargets: "50,100,250,500,1000", MedalIDs: []int64{1257}, Description: "Élimine des Grunts"},
+		{Norm: "elite_slayer", Display: "Chasseur d'Élites", MappingType: "pve", Category: "Ennemi",
+			TierTargets: "25,50,100,250,500", MedalIDs: []int64{1258}, Description: "Élimine des Élites"},
+		{Norm: "boss_kills", Display: "Tueur de boss", MappingType: "pve", Category: "Ennemi",
+			TierTargets: "5,10,25,50,100", MedalIDs: []int64{1259}, Description: "Élimine des boss"},
+		{Norm: "wave_completed", Display: "Vague complétée", MappingType: "pve", Category: "Mode de jeu",
+			TierTargets: "10,25,50,100,250", MedalIDs: []int64{1260}, Description: "Vague complétée"},
+		{Norm: "firefight_win", Display: "Victoire Firefight", MappingType: "pve", Category: "Mode de jeu",
+			TierTargets: "5,10,25,50,100", MedalIDs: []int64{1261}, Description: "Victoire Firefight"},
+		{Norm: "firefight_mvp", Display: "MVP Firefight", MappingType: "pve", Category: "Mode de jeu",
+			TierTargets: "5,10,25,50,100", MedalIDs: []int64{1262}, Description: "MVP Firefight"},
+		{Norm: "pve_killing_spree", Display: "Série de kills PvE", MappingType: "pve", Category: "Mode de jeu",
+			TierTargets: "10,25,50,100,250", MedalIDs: []int64{1263}, Description: "Série de kills PvE"},
 		// PvP multi-kills
-		{CitationKey: "double_kill", Mode: "pvp", MedalIDs: []int64{1001}, Description: "Double Kill"},
-		{CitationKey: "triple_kill", Mode: "pvp", MedalIDs: []int64{1002}, Description: "Triple Kill"},
-		{CitationKey: "overkill", Mode: "pvp", MedalIDs: []int64{1003}, Description: "Overkill"},
-		{CitationKey: "killtacular", Mode: "pvp", MedalIDs: []int64{1004}, Description: "Killtacular"},
-		{CitationKey: "killing_frenzy", Mode: "pvp", MedalIDs: []int64{1005}, Description: "Killing Frenzy"},
+		{Norm: "double_kill", Display: "Double Kill", MappingType: "medal", Category: "Multijoueur",
+			TierTargets: "10,25,50,100,250", MedalIDs: []int64{1001}, Description: "Double Kill"},
+		{Norm: "triple_kill", Display: "Triple Kill", MappingType: "medal", Category: "Multijoueur",
+			TierTargets: "5,10,25,50,100", MedalIDs: []int64{1002}, Description: "Triple Kill"},
+		{Norm: "overkill", Display: "Overkill", MappingType: "medal", Category: "Multijoueur",
+			TierTargets: "5,10,25,50,100", MedalIDs: []int64{1003}, Description: "Overkill"},
+		{Norm: "killtacular", Display: "Killtacular", MappingType: "medal", Category: "Multijoueur",
+			TierTargets: "3,5,10,25,50", MedalIDs: []int64{1004}, Description: "Killtacular"},
+		{Norm: "killing_frenzy", Display: "Killing Frenzy", MappingType: "medal", Category: "Multijoueur",
+			TierTargets: "3,5,10,25,50", MedalIDs: []int64{1005}, Description: "Killing Frenzy"},
 		// PvP séries
-		{CitationKey: "killing_spree", Mode: "pvp", MedalIDs: []int64{1100}, Description: "Série 5 kills"},
-		{CitationKey: "killing_rampage", Mode: "pvp", MedalIDs: []int64{1101}, Description: "Kills Rampage"},
+		{Norm: "killing_spree", Display: "Série de kills", MappingType: "medal", Category: "Multijoueur",
+			TierTargets: "10,25,50,100,250", MedalIDs: []int64{1100}, Description: "Série 5 kills"},
+		{Norm: "killing_rampage", Display: "Rampage", MappingType: "medal", Category: "Multijoueur",
+			TierTargets: "5,10,25,50,100", MedalIDs: []int64{1101}, Description: "Kills Rampage"},
 		// Objectif
-		{CitationKey: "flag_runner", Mode: "pvp", MedalIDs: []int64{1200}, Description: "Transport drapeau"},
-		{CitationKey: "flag_capture", Mode: "pvp", MedalIDs: []int64{1201}, Description: "Capture drapeau"},
+		{Norm: "flag_runner", Display: "Porteur de drapeau", MappingType: "medal", Category: "Mode de jeu",
+			TierTargets: "10,25,50,100,250", MedalIDs: []int64{1200}, Description: "Transport drapeau"},
+		{Norm: "flag_capture", Display: "Capture de drapeau", MappingType: "medal", Category: "Mode de jeu",
+			TierTargets: "5,10,25,50,100", MedalIDs: []int64{1201}, Description: "Capture drapeau"},
 		// Composites
-		{CitationKey: "grenade_mastery", Mode: "composite", MedalIDs: []int64{1300, 1301}, Description: "Maîtrise grenades"},
-		{CitationKey: "vehicle_mastery", Mode: "composite", MedalIDs: []int64{1400, 1401, 1402}, Description: "Maîtrise véhicules"},
+		{Norm: "grenade_mastery", Display: "Maîtrise des grenades", MappingType: "composite", Category: "Multijoueur",
+			TierTargets: "10,25,50,100,250", MedalIDs: []int64{1300, 1301}, Description: "Maîtrise grenades"},
+		{Norm: "vehicle_mastery", Display: "Maîtrise des véhicules", MappingType: "composite", Category: "Multijoueur",
+			TierTargets: "10,25,50,100,250", MedalIDs: []int64{1400, 1401, 1402}, Description: "Maîtrise véhicules"},
 	}
 }
 

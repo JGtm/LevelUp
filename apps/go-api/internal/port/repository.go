@@ -367,6 +367,14 @@ type HomeRepository interface {
 	// LoadRecentPlaylistRanks retourne les 3 dernières playlists distinctes avec leur rang (Q26g).
 	// Retourne (nil, nil) si aucune donnée disponible.
 	LoadRecentPlaylistRanks(ctx context.Context) ([]domain.HomePlaylistRank, error)
+
+	// LoadMatchMedals charge les médailles du joueur pour un lot de matchs (Q26h).
+	// Retourne un map match_id → médailles triées count DESC. Dégradation silencieuse.
+	LoadMatchMedals(ctx context.Context, matchIDs []string) (map[string][]domain.RecentMatchMedal, error)
+
+	// LoadMatchCitations charge les citations progressées pour un lot de matchs (Q26i+Q26j).
+	// Retourne un map match_id → []HomeMatchCitationRaw. Dégradation silencieuse.
+	LoadMatchCitations(ctx context.Context, matchIDs []string) (map[string][]domain.HomeMatchCitationRaw, error)
 }
 
 // Ensure compile-time check pour HomeRepository.
@@ -392,6 +400,14 @@ func (n *noopHomeRepo) LoadRecentMedia(_ context.Context, _ int) ([]domain.HomeM
 }
 func (n *noopHomeRepo) LoadRecentPlaylistRanks(_ context.Context) ([]domain.HomePlaylistRank, error) {
 	return nil, nil
+}
+
+func (n *noopHomeRepo) LoadMatchMedals(_ context.Context, _ []string) (map[string][]domain.RecentMatchMedal, error) {
+	return map[string][]domain.RecentMatchMedal{}, nil
+}
+
+func (n *noopHomeRepo) LoadMatchCitations(_ context.Context, _ []string) (map[string][]domain.HomeMatchCitationRaw, error) {
+	return map[string][]domain.HomeMatchCitationRaw{}, nil
 }
 
 // SquadRepository fournit les données pour la page Escouade.

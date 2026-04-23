@@ -10,10 +10,12 @@
 import type { RecentMatchItem } from '@/lib/api/types'
 import { getPerfColor } from '@/lib/perf-color'
 import { getMatchCardOutcomeStyle, getMatchNarrativeBadgeMeta } from './match-card-presentation'
+import { CitationProgressRing } from './citation-progress-ring'
 
 export interface MatchCardProps {
   match: RecentMatchItem
   locale?: 'fr' | 'en'
+  timezone?: string
   onClick?: () => void
   onToggleFavorite?: () => void
   favoriteDisabled?: boolean
@@ -21,6 +23,26 @@ export interface MatchCardProps {
 
 function escapeRegExp(value: string): string {
   return value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
+}
+
+function formatMatchDuration(secs: number): string {
+  const m = Math.floor(secs / 60)
+  const s = secs % 60
+  return `${m}m ${s.toString().padStart(2, '0')}s`
+}
+
+function formatMatchDateTime(isoDate: string, timezone: string, locale: 'fr' | 'en'): string {
+  const date = new Date(isoDate)
+  if (isNaN(date.getTime())) return ''
+  const intlLocale = locale === 'en' ? 'en-GB' : 'fr-FR'
+  return new Intl.DateTimeFormat(intlLocale, {
+    timeZone: timezone,
+    day: 'numeric',
+    month: 'short',
+    year: 'numeric',
+    hour: '2-digit',
+    minute: '2-digit',
+  }).format(date)
 }
 
 function normalizeModeLabel(modeLabel: string | null | undefined, mapLabel: string | null | undefined): string | null {
@@ -64,7 +86,7 @@ function buildMatchHeading(match: RecentMatchItem, locale: 'fr' | 'en'): string 
   return normalizedMode ?? match.map_ui ?? match.title
 }
 
-export function MatchCard({ match: m, locale = 'fr', onClick, onToggleFavorite, favoriteDisabled }: MatchCardProps) {
+export function MatchCard({ match: m, locale = 'fr', timezone = 'UTC', onClick, onToggleFavorite, favoriteDisabled }: MatchCardProps) {
   const heading = buildMatchHeading(m, locale)
   const outcomeStyle = getMatchCardOutcomeStyle(m.outcome_tone)
   const scoreLabel = m.score_label?.trim() ?? ''
@@ -78,6 +100,23 @@ export function MatchCard({ match: m, locale = 'fr', onClick, onToggleFavorite, 
   const skillPlaylist = m.skill_playlist_group
   const skillBadgeURL = m.skill_rank_image_url
   const hasPerfOrSkill = perfScore != null || skillValue != null
+
+  const kills = m.kills ?? 0
+  const assists = m.assists ?? 0
+  const deaths = m.deaths ?? 0
+  const hasKDA = m.kills != null || m.assists != null || m.deaths != null
+  const kdaTotal = kills + assists + deaths
+
+  const offConv = m.offensive_conversion ?? 0
+  const defRes = m.defensive_resistance ?? 0
+  const hasDamageBar = m.offensive_conversion != null || m.defensive_resistance != null
+  const damageTotal = offConv + defRes
+
+  const hasAccuracyLine = m.accuracy != null || m.avg_life_secs != null
+
+  const isWithFriends = m.is_with_friends
+  const rankInTeam = m.rank_in_team
+  const hasMatchMeta = isWithFriends != null || rankInTeam != null
 
   return (
     <div
@@ -143,18 +182,39 @@ export function MatchCard({ match: m, locale = 'fr', onClick, onToggleFavorite, 
               {m.playlist_ui}
             </p>
           )}
+          {narrativeBadges.length > 0 && (
+            <div
+              data-testid="match-card-badges-row"
+              className="flex flex-wrap items-center justify-center gap-1.5 pt-1"
+            >
+              {narrativeBadges.map((badgeType) => {
+                const badgeMeta = getMatchNarrativeBadgeMeta(badgeType)
+                if (!badgeMeta) return null
+                return (
+                  <span
+                    key={badgeType}
+                    className="rounded px-2 py-1 text-[10px] font-black uppercase tracking-[0.12em]"
+                    style={{
+                      backgroundColor: badgeMeta.color,
+                      color: badgeMeta.textColor,
+                    }}
+                  >
+                    {badgeMeta.label}
+                  </span>
+                )
+              })}
+            </div>
+          )}
         </div>
 
         <div
           data-testid="match-card-stats-panel"
-          className="mt-auto mx-10 flex min-h-[68px] flex-col items-center justify-center rounded-lg border px-3 py-2 text-center"
+          className="mt-auto -mx-3 flex flex-col items-center justify-center border-y px-3 py-2 text-center"
           style={{
             backgroundColor: outcomeStyle.panelBackground,
             borderColor: outcomeStyle.panelBorder,
           }}
         >
-          {/* Score + badges centrés ensemble en hauteur */}
-          <div className="flex flex-col items-center gap-2">
           <p
             data-testid="match-card-score"
             className="text-2xl font-bold leading-none tracking-tight"
@@ -162,87 +222,306 @@ export function MatchCard({ match: m, locale = 'fr', onClick, onToggleFavorite, 
           >
             {scoreLabel}
           </p>
-          <div
-            data-testid="match-card-badges-row"
-            className="flex flex-wrap items-center justify-center gap-1.5"
-          >
-            {narrativeBadges.map((badgeType) => {
-              const badgeMeta = getMatchNarrativeBadgeMeta(badgeType)
-              if (!badgeMeta) {
-                return null
-              }
-              return (
-                <span
-                  key={badgeType}
-                  className="rounded px-2 py-1 text-[10px] font-black uppercase tracking-[0.12em]"
-                  style={{
-                    backgroundColor: badgeMeta.color,
-                    color: badgeMeta.textColor,
-                  }}
-                >
-                  {badgeMeta.label}
-                </span>
-              )
-            })}
-          </div>
-          </div>
         </div>
 
-        {/* Bloc perf + skill rating */}
-        {hasPerfOrSkill && (
-          <div className="mx-3 mb-2 flex justify-center">
-          <div className="inline-flex items-stretch gap-0 rounded-lg bg-white/5 overflow-hidden">
-            {/* Colonne gauche : Performance */}
-            {perfScore != null && (
-              <div className="flex items-center justify-center shrink-0 px-3 py-2">
-                <span
-                  className="text-3xl font-black leading-none"
-                  style={{ color: getPerfColor(perfScore) }}
-                >
-                  {perfScore}
-                </span>
+        {/* Badge solo/escouade + placement */}
+        {hasMatchMeta && (
+          <div className="flex items-center justify-center gap-3 pt-2 pb-0.5">
+            {isWithFriends != null && (
+              <span
+                className="rounded-full px-2.5 py-0.5 text-[10px] font-bold uppercase tracking-wider leading-none"
+                style={isWithFriends
+                  ? { backgroundColor: 'rgba(56,189,248,0.15)', color: '#38bdf8' }
+                  : { backgroundColor: 'rgba(168,85,247,0.15)', color: '#a855f7' }
+                }
+              >
+                {isWithFriends ? 'Escouade' : 'Solo'}
+              </span>
+            )}
+            {rankInTeam != null && (
+              <span className="text-[10px] font-medium text-muted-foreground leading-none">
+                Placement : #{rankInTeam}
+              </span>
+            )}
+          </div>
+        )}
+
+        {/* Bloc perf + skill rating + barre KDA */}
+        {(hasPerfOrSkill || hasKDA || hasDamageBar) && (
+          <div className="-mx-3 mb-2 bg-white/5 overflow-hidden">
+            {/* Ligne du haut : Performance + Skill — centrée */}
+            {hasPerfOrSkill && (
+              <div className="flex items-center justify-center gap-0 pt-3 pb-1.5">
+                {/* Colonne gauche : Performance */}
+                {perfScore != null && (
+                  <div className="flex items-center justify-center shrink-0 px-3">
+                    <span
+                      className="text-[36px] font-black leading-none"
+                      style={{ color: getPerfColor(perfScore) }}
+                    >
+                      {perfScore}
+                    </span>
+                  </div>
+                )}
+                {/* Séparateur vertical fin blanc */}
+                {perfScore != null && skillValue != null && (
+                  <div className="w-px self-stretch bg-white/20 shrink-0 my-1" />
+                )}
+                {/* Colonne droite : Skill rating */}
+                {skillValue != null && (
+                  <div className="flex items-center gap-2 px-3">
+                    {/* Badge de rang */}
+                    {skillBadgeURL && (
+                      <img
+                        src={skillBadgeURL}
+                        alt={skillTierLabel ?? skillType}
+                        className="h-[44px] w-[44px] shrink-0 object-contain"
+                        loading="lazy"
+                      />
+                    )}
+                    {/* Infos texte */}
+                    <div className="flex flex-col gap-1">
+                      {/* Titre du rang */}
+                      {skillTierLabel && (
+                        <span className="text-sm font-bold text-white leading-none">
+                          {skillTierLabel}
+                        </span>
+                      )}
+                      {/* Delta sur sa propre ligne */}
+                      {skillDelta != null && (
+                        <span
+                          className="text-xs font-semibold leading-none"
+                          style={{ color: skillDelta >= 0 ? '#22c55e' : '#ef4444' }}
+                        >
+                          {skillDelta >= 0 ? `+${skillDelta.toFixed(1)}` : skillDelta.toFixed(1)} pts
+                        </span>
+                      )}
+                    </div>
+                  </div>
+                )}
               </div>
             )}
-            {/* Séparateur vertical fin blanc */}
-            {perfScore != null && skillValue != null && (
-              <div className="w-px bg-white/20 shrink-0 self-stretch my-2" />
-            )}
-            {/* Colonne droite : Skill rating */}
-            {skillValue != null && (
-              <div className="flex items-center gap-2 min-w-0 flex-1 px-3 py-2">
-                {/* Badge de rang */}
-                {skillBadgeURL && (
-                  <img
-                    src={skillBadgeURL}
-                    alt={skillTierLabel ?? skillType}
-                    className="h-10 w-10 shrink-0 object-contain"
-                    loading="lazy"
-                  />
-                )}
-                {/* Infos texte */}
-                <div className="flex flex-col gap-1 min-w-0 flex-1">
-                  {/* Titre du rang */}
-                  {skillTierLabel && (
-                    <span className="text-xs font-bold text-white leading-none truncate">
-                      {skillTierLabel}
-                    </span>
-                  )}
-                  {/* Delta sur sa propre ligne */}
-                  {skillDelta != null && (
-                    <span
-                      className="text-[10px] font-semibold leading-none"
-                      style={{ color: skillDelta >= 0 ? '#22c55e' : '#ef4444' }}
-                    >
-                      {skillDelta >= 0 ? `+${skillDelta.toFixed(1)}` : skillDelta.toFixed(1)} pts
-                    </span>
-                  )}
+
+            {/* Barre composite frags / assistances / décès */}
+            {hasKDA && (
+              <div data-testid="match-card-kda-bar" className="px-3 pt-2.5 pb-2 space-y-1.5">
+                <div className="h-2 w-full rounded-full overflow-hidden flex">
+                  {kills > 0 && <div className="h-full bg-[#4CAF50]" style={{ width: kdaTotal > 0 ? `${(kills / kdaTotal) * 100}%` : '0%' }} />}
+                  {assists > 0 && <div className="h-full bg-[#38BDF8]" style={{ width: kdaTotal > 0 ? `${(assists / kdaTotal) * 100}%` : '0%' }} />}
+                  {deaths > 0 && <div className="h-full bg-[#F44336]" style={{ width: kdaTotal > 0 ? `${(deaths / kdaTotal) * 100}%` : '0%' }} />}
+                </div>
+                <div className="flex justify-center gap-5 mt-2">
+                  <div className="flex flex-col items-center gap-0.5">
+                    <span className="text-sm font-bold text-white leading-none">{kills}</span>
+                    <span className="text-[10px] font-medium leading-none" style={{ color: '#4CAF50' }}>frags</span>
+                  </div>
+                  <div className="flex flex-col items-center gap-0.5">
+                    <span className="text-sm font-bold text-white leading-none">{assists}</span>
+                    <span className="text-[10px] font-medium leading-none" style={{ color: '#38BDF8' }}>assist.</span>
+                  </div>
+                  <div className="flex flex-col items-center gap-0.5">
+                    <span className="text-sm font-bold text-white leading-none">{deaths}</span>
+                    <span className="text-[10px] font-medium leading-none" style={{ color: '#F44336' }}>morts</span>
+                  </div>
                 </div>
               </div>
             )}
-          </div>
+
+            {/* Barre composite rendement offensif / résistance défensive */}
+            {hasDamageBar && (
+              <>
+                {m.kda != null && (
+                  <div className="flex items-center justify-center gap-0 pt-3 pb-2">
+                    {/* Colonne gauche : Tirs à la tête — espace réservé même si absent */}
+                    <div className="w-16 flex flex-col items-center gap-0.5">
+                      {m.headshot_kills != null && m.headshot_kills > 0 ? (
+                        <>
+                          <span className="text-lg font-black text-white leading-none">{m.headshot_kills}</span>
+                          <span className="text-[10px] font-medium leading-none text-muted-foreground">T. tête</span>
+                        </>
+                      ) : null}
+                    </div>
+                    {/* Centre : KDA */}
+                    <div className="flex flex-col items-center gap-0.5 px-3">
+                      <span
+                        className={`text-2xl font-black leading-none ${m.kda > 1 ? 'text-green-400' : m.kda >= 0 ? 'text-blue-400' : 'text-red-400'}`}
+                      >
+                        {m.kda.toFixed(2)}
+                      </span>
+                      <span className="text-[10px] font-medium leading-none text-muted-foreground">KDA</span>
+                    </div>
+                    {/* Colonne droite : Frags parfaits — espace réservé même si absent */}
+                    <div className="w-16 flex flex-col items-center gap-0.5">
+                      {m.perfect_kills != null && m.perfect_kills > 0 ? (
+                        <>
+                          <span className="text-lg font-black leading-none" style={{ color: '#F59E0B' }}>{m.perfect_kills}</span>
+                          <span className="text-[10px] font-medium leading-none" style={{ color: '#F59E0B' }}>Parfaits</span>
+                        </>
+                      ) : null}
+                    </div>
+                  </div>
+                )}
+              <div data-testid="match-card-damage-bar" className="px-3 pt-2.5 pb-2 space-y-1.5">
+                <div className="h-2 w-full rounded-full overflow-hidden flex">
+                  {offConv > 0 && <div className="h-full bg-[#4CAF50]" style={{ width: damageTotal > 0 ? `${(offConv / damageTotal) * 100}%` : '0%' }} />}
+                  {defRes > 0 && <div className="h-full bg-[#38BDF8]" style={{ width: damageTotal > 0 ? `${(defRes / damageTotal) * 100}%` : '0%' }} />}
+                </div>
+                <div className="flex justify-center gap-5 mt-2">
+                  <div className="flex flex-col items-center gap-0.5">
+                    <span className="text-sm font-bold text-white leading-none">{offConv.toFixed(2)}</span>
+                    <span className="text-[10px] font-medium leading-none" style={{ color: '#4CAF50' }}>Rendement</span>
+                  </div>
+                  <div className="flex flex-col items-center gap-0.5">
+                    <span className="text-sm font-bold text-white leading-none">{defRes.toFixed(2)}</span>
+                    <span className="text-[10px] font-medium leading-none" style={{ color: '#38BDF8' }}>Résistance</span>
+                  </div>
+                </div>
+              </div>
+            </>)}
+
+            {/* Précision et vie moyenne */}
+            {hasAccuracyLine && (
+              <div data-testid="match-card-accuracy-line" className="px-3 pt-2.5 pb-2 flex justify-center gap-5">
+                {m.accuracy != null && (
+                  <div className="flex flex-col items-center gap-0.5">
+                    <span className="text-sm font-bold text-white leading-none">{m.accuracy.toFixed(0)} %</span>
+                    <span className="text-[10px] font-medium leading-none text-muted-foreground">Précision</span>
+                  </div>
+                )}
+                {m.avg_life_secs != null && (
+                  <div className="flex flex-col items-center gap-0.5">
+                    <span className="text-sm font-bold text-white leading-none">{m.avg_life_secs.toFixed(1)} s</span>
+                    <span className="text-[10px] font-medium leading-none text-muted-foreground">Vie moy.</span>
+                  </div>
+                )}
+              </div>
+            )}
+
+            {/* MMR face-off : Équipe vs Adversaires */}
+            {m.team_mmr != null && m.enemy_mmr != null && (
+              <div data-testid="match-card-mmr" className="px-3 pt-2.5 pb-2 flex flex-col items-center gap-1">
+                <div className="flex w-full items-center">
+                  <div className="flex flex-1 flex-col items-center gap-0.5">
+                    <span className="text-sm font-bold text-white leading-none">{Math.round(m.team_mmr)}</span>
+                    <span className="text-[10px] font-medium leading-none text-muted-foreground">Équipe</span>
+                  </div>
+                  <div className="w-8 flex justify-center">
+                    <span className="text-muted-foreground/50 text-[13px] leading-none">⟷</span>
+                  </div>
+                  <div className="flex flex-1 flex-col items-center gap-0.5">
+                    <span className="text-sm font-bold text-white leading-none">{Math.round(m.enemy_mmr)}</span>
+                    <span className="text-[10px] font-medium leading-none text-muted-foreground">Adversaires</span>
+                  </div>
+                </div>
+                {m.delta_mmr != null && (
+                  <span
+                    className="rounded px-1.5 py-0.5 text-[9px] font-bold leading-none"
+                    style={{
+                      backgroundColor:
+                        m.delta_mmr > 10 ? 'rgba(34,197,94,0.15)'
+                        : m.delta_mmr < -10 ? 'rgba(239,68,68,0.15)'
+                        : 'rgba(96,165,250,0.15)',
+                      color:
+                        m.delta_mmr > 10 ? '#22c55e'
+                        : m.delta_mmr < -10 ? '#ef4444'
+                        : '#60a5fa',
+                    }}
+                  >
+                    {m.delta_mmr > 0 ? `+${Math.round(m.delta_mmr)}` : Math.round(m.delta_mmr)}
+                  </span>
+                )}
+              </div>
+            )}
+
+            {/* Médailles — max 4, triées par count DESC */}
+            {m.top_medals && m.top_medals.length > 0 && (
+              <div
+                data-testid="match-card-medals"
+                className="px-3 pb-3 pt-2.5 flex justify-center gap-3 border-t border-white/[0.06] mt-3"
+              >
+                {m.top_medals.slice(0, 4).map((medal) => (
+                  <div
+                    key={medal.medal_id}
+                    title={medal.description ?? medal.name ?? undefined}
+                    className="flex flex-col items-center gap-0.5 cursor-default"
+                  >
+                    <img
+                      src={medal.image_url}
+                      alt={medal.name ?? String(medal.medal_id)}
+                      className="w-8 h-8 object-contain"
+                      onError={(e) => { (e.currentTarget as HTMLImageElement).style.display = 'none' }}
+                    />
+                    {medal.name && medal.name.trim() !== '' && (
+                      <span className="text-[9px] text-muted-foreground/80 leading-tight text-center max-w-[40px] truncate">
+                        {medal.name}
+                      </span>
+                    )}
+                    <span className="text-[9px] font-semibold text-foreground/70 leading-none">
+                      ×{medal.count}
+                    </span>
+                  </div>
+                ))}
+              </div>
+            )}
+
+            {/* Citations — max 3, filtrées et triées par delta DESC */}
+            {m.top_citations && m.top_citations.length > 0 && (
+              <div
+                data-testid="match-card-citations"
+                className="px-3 pb-3 pt-2.5 flex justify-center gap-3 border-t border-white/[0.06] mt-3"
+              >
+                {m.top_citations.map((cit) => (
+                  <div
+                    key={cit.key}
+                    title={cit.description ?? cit.name}
+                    className="flex flex-col items-center gap-0.5 cursor-default"
+                  >
+                    <CitationProgressRing
+                      pct={cit.progress_pct}
+                      imageUrl={cit.image_url ?? undefined}
+                      isNewlyMastered={cit.is_newly_mastered}
+                    />
+                    {cit.name && (
+                      <span className="text-[9px] text-muted-foreground/80 leading-tight text-center max-w-[40px] truncate">
+                        {cit.name}
+                      </span>
+                    )}
+                    <span className="text-[9px] font-semibold text-sky-400 leading-none">
+                      +{cit.delta}
+                    </span>
+                    {cit.is_newly_mastered && (
+                      <span className="text-[8px] font-bold text-yellow-400 leading-none">
+                        Maîtrisé !
+                      </span>
+                    )}
+                  </div>
+                ))}
+              </div>
+            )}
           </div>
         )}
       </div>
+
+      {/* Footer : durée et date/heure du match — ancré en bas de la tuile */}
+      {(m.duration_secs != null && m.duration_secs > 0 || m.started_at) && (
+        <div
+          data-testid="match-card-footer"
+          className="border-t border-white/10 px-3 py-2 text-center bg-white/[0.02]"
+        >
+          {m.duration_secs != null && m.duration_secs > 0 && (
+            <p className="text-[11px] text-muted-foreground leading-tight">
+              <span className="font-semibold text-muted-foreground/90">Durée :</span>{' '}
+              {formatMatchDuration(m.duration_secs)}
+            </p>
+          )}
+          {m.started_at && (
+            <p className="text-[11px] text-muted-foreground/70 leading-tight">
+              <span className="font-semibold text-muted-foreground/90">Date :</span>{' '}
+              {formatMatchDateTime(m.started_at, timezone, locale)}
+            </p>
+          )}
+        </div>
+      )}
     </div>
   )
 }

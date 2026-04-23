@@ -118,9 +118,20 @@ func (s *HomeService) GetHomePage(ctx context.Context, gamertag, locale string) 
 	highlights := analysis.BuildHighlights(matches)
 	recentMatches := analysis.BuildRecentMatchesWithFavoritesForLocale(matches, len(matches), favoriteIDs, locale)
 	favoriteMatches := buildFavoriteMatchList(recentMatches, matches, favoriteIDs, locale)
+
+	// Enrichissement médailles : batch sur tous les match_id récents + favoris.
+	enrichMatchesWithMedals(ctx, s.repo, recentMatches)
+	enrichMatchesWithMedals(ctx, s.repo, favoriteMatches)
+
+	// Enrichissement citations : batch sur les mêmes lots.
+	enrichMatchesWithCitations(ctx, s.repo, recentMatches)
+	enrichMatchesWithCitations(ctx, s.repo, favoriteMatches)
+
 	recentMedia := analysis.BuildRecentMedia(media, 4)
 	soloSession := analysis.BuildSessionSummary(matches, sessions, false)
 	squadSession := analysis.BuildSessionSummary(matches, sessions, true)
+	soloSessions := analysis.BuildSessionSummaries(matches, sessions, false, 20)
+	squadSessions := analysis.BuildSessionSummaries(matches, sessions, true, 20)
 
 	return &domain.HomePageResponse{
 		Hero:                hero,
@@ -131,6 +142,8 @@ func (s *HomeService) GetHomePage(ctx context.Context, gamertag, locale string) 
 		RecentMedia:         recentMedia,
 		SoloSession:         soloSession,
 		SquadSession:        squadSession,
+		SoloSessions:        soloSessions,
+		SquadSessions:       squadSessions,
 		HasRankedHistory:    hasRankedHistory,
 		HasUnrankedHistory:  hasUnrankedHistory,
 		RecentPlaylistRanks: playlistRanks,
@@ -154,6 +167,60 @@ func inferHomeSkillHistory(matches []domain.HomeMatchRow) (bool, bool) {
 		}
 	}
 	return hasRankedHistory, hasUnrankedHistory
+}
+
+// enrichMatchesWithMedals injecte les TopMedals (max 4, sélection par rareté/count)
+// dans chaque RecentMatchItem via un appel batch sur le repo.
+func enrichMatchesWithMedals(ctx context.Context, repo port.HomeRepository, items []domain.RecentMatchItem) {
+	if len(items) == 0 {
+		return
+	}
+	matchIDs := make([]string, len(items))
+	for i, item := range items {
+		matchIDs[i] = item.MatchID
+	}
+	medalsMap, err := repo.LoadMatchMedals(ctx, matchIDs)
+	if err != nil || len(medalsMap) == 0 {
+		return
+	}
+	for i, item := range items {
+		if all, ok := medalsMap[item.MatchID]; ok {
+			items[i].TopMedals = selectTopMedals(all, 4)
+		}
+	}
+}
+
+// selectTopMedals sélectionne au plus n médailles parmi la liste, en privilégiant
+// les médailles avec le plus grand count (déjà triées count DESC par Q26h).
+func selectTopMedals(medals []domain.RecentMatchMedal, n int) []domain.RecentMatchMedal {
+	if len(medals) <= n {
+		return medals
+	}
+	return medals[:n]
+}
+
+// maxCitationSnippets est le nombre maximum de citations affichées par MatchCard.
+const maxCitationSnippets = 3
+
+// enrichMatchesWithCitations injecte les TopCitations (max 3, filtre citations déjà masterisées)
+// dans chaque RecentMatchItem via un appel batch sur le repo.
+func enrichMatchesWithCitations(ctx context.Context, repo port.HomeRepository, items []domain.RecentMatchItem) {
+	if len(items) == 0 {
+		return
+	}
+	matchIDs := make([]string, len(items))
+	for i, item := range items {
+		matchIDs[i] = item.MatchID
+	}
+	citationsMap, err := repo.LoadMatchCitations(ctx, matchIDs)
+	if err != nil || len(citationsMap) == 0 {
+		return
+	}
+	for i, item := range items {
+		if rows, ok := citationsMap[item.MatchID]; ok && len(rows) > 0 {
+			items[i].TopCitations = analysis.BuildCitationSnippets(rows, maxCitationSnippets)
+		}
+	}
 }
 
 // buildFavoriteMatchList construit la liste des matchs favoris à partir de tous les matchs

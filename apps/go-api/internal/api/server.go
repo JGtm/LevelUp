@@ -113,6 +113,9 @@ func NewRouter(
 
 	// Fichiers statiques (images maps, médailles, armes…)
 	staticDir := filepath.Join(cfg.RepoRoot, "static")
+	// Handler spécial pour /static/commendations/* : fallback vers noms URL-encodés
+	// pour les fichiers dont le nom décodé contient des caractères interdits Windows (ex: ?).
+	r.Handle("/static/commendations/*", newCommendationHandler(staticDir))
 	r.Handle("/static/*", http.StripPrefix("/static/", http.FileServer(http.Dir(staticDir))))
 
 	// Health check (pas de préfixe /api/v1 — sondage infrastructurel)
