@@ -120,7 +120,7 @@ export function MatchCard({ match: m, locale = 'fr', timezone = 'UTC', onClick, 
 
   return (
     <div
-      className="rounded-xl overflow-hidden border border-border bg-[#1d2328] flex flex-col cursor-default hover:border-border transition-colors"
+      className="rounded-xl overflow-hidden border border-border bg-[#1d2328] flex flex-col h-full cursor-default hover:border-border transition-colors"
       onClick={onClick}
       role={onClick ? 'button' : undefined}
       tabIndex={onClick ? 0 : undefined}
@@ -173,7 +173,7 @@ export function MatchCard({ match: m, locale = 'fr', timezone = 'UTC', onClick, 
 
       {/* Corps */}
       <div className="flex flex-1 flex-col gap-3 px-3 py-3">
-        <div className="space-y-1 text-center">
+        <div className="min-h-[3.5rem] flex flex-col justify-center space-y-1 text-center">
           <p className="text-sm font-semibold text-foreground leading-tight">
             {heading}
           </p>
@@ -209,7 +209,7 @@ export function MatchCard({ match: m, locale = 'fr', timezone = 'UTC', onClick, 
 
         <div
           data-testid="match-card-stats-panel"
-          className="mt-auto -mx-3 flex flex-col items-center justify-center border-y px-3 py-2 text-center"
+          className="-mx-3 flex flex-col items-center justify-center border-y px-3 py-2 text-center"
           style={{
             backgroundColor: outcomeStyle.panelBackground,
             borderColor: outcomeStyle.panelBorder,
@@ -224,9 +224,10 @@ export function MatchCard({ match: m, locale = 'fr', timezone = 'UTC', onClick, 
           </p>
         </div>
 
-        {/* Badge solo/escouade + placement */}
-        {hasMatchMeta && (
-          <div className="flex items-center justify-center gap-3 pt-2 pb-0.5">
+        {/* Badge solo/escouade + placement — zone réservée h fixe pour alignement */}
+        <div className="min-h-[2rem] flex items-center justify-center gap-3">
+          {hasMatchMeta && (
+            <>
             {isWithFriends != null && (
               <span
                 className="rounded-full px-2.5 py-0.5 text-[10px] font-bold uppercase tracking-wider leading-none"
@@ -243,8 +244,9 @@ export function MatchCard({ match: m, locale = 'fr', timezone = 'UTC', onClick, 
                 Placement : #{rankInTeam}
               </span>
             )}
-          </div>
-        )}
+            </>
+          )}
+        </div>
 
         {/* Bloc perf + skill rating + barre KDA */}
         {(hasPerfOrSkill || hasKDA || hasDamageBar) && (

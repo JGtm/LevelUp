@@ -123,7 +123,7 @@ interface CarouselItemProps {
 
 export function CarouselItem({ children, className = '' }: CarouselItemProps) {
   return (
-    <div className={`shrink-0 snap-start ${className}`}>
+    <div className={`shrink-0 snap-start flex flex-col h-full ${className}`}>
       {children}
     </div>
   )
