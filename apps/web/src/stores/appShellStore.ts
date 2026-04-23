@@ -24,6 +24,7 @@ interface AppShellState {
 
   // Configuration
   locale: 'fr' | 'en'
+  userTimezone: string
   hintsVisible: boolean
   capabilities: CapabilityMap | null
 
@@ -78,6 +79,7 @@ export const useAppShellStore = create<AppShellState>((set, get) => ({
   availableTitles: [],
   isTitleSwitching: false,
   locale: 'fr',
+  userTimezone: 'Europe/Paris',
   hintsVisible: true,
   capabilities: null,
   setupRequired: false,
@@ -101,6 +103,7 @@ export const useAppShellStore = create<AppShellState>((set, get) => ({
       currentTitleSlug: titleSlug,
       availableTitles: data.available_titles ?? [],
       locale: (data.locale as 'fr' | 'en') ?? 'fr',
+      userTimezone: data.settings_excerpt?.user_timezone || 'Europe/Paris',
       hintsVisible: data.hints_visible_default,
       capabilities: data.capabilities ?? DEFAULT_CAPABILITIES,
       setupRequired: data.setup_required,

@@ -1,10 +1,9 @@
 /**
  * HomePage — Accueil Mission Control (Slice 5).
  */
-import { useState } from 'react'
+import { useState, useRef, useEffect } from 'react'
 import { useParams, useNavigate } from '@tanstack/react-router'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
-import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { CompositeProgressBar } from '@/components/ui/composite-progress-bar'
 import { EmptyStateCard, EmptyStateNotice } from '@/components/ui/empty-state'
@@ -20,13 +19,210 @@ import { RecentMediaRail } from './RecentMediaRail'
 import { useHomePage, useSeasonPassPreview } from './queries'
 import { useSetMatchFavorite } from '@/features/match-history/queries'
 import { useAppShellStore } from '@/stores/appShellStore'
-import type { HomeSkillPeakSummary } from '@/lib/api/types'
+import { getPerfColor } from '@/lib/perf-color'
+import type { HomeSkillPeakSummary, SessionSummaryItem } from '@/lib/api/types'
 
 function KPICard({ label, value }: { label: string; value: string | number }) {
   return (
     <div className="rounded-lg border border-border bg-muted px-4 py-3 text-center">
       <p className="text-xs text-muted-foreground">{label}</p>
       <p className="text-xl font-bold text-primary">{value}</p>
+    </div>
+  )
+}
+
+function ChevronUpIcon() {
+  return (
+    <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+      <path d="m18 15-6-6-6 6" />
+    </svg>
+  )
+}
+
+function ChevronDownIcon() {
+  return (
+    <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+      <path d="m6 9 6 6 6-6" />
+    </svg>
+  )
+}
+
+// Barre d'outcomes 4 segments proportionnels.
+interface OutcomeBarProps { wins: number; draws: number; losses: number; dnfs: number }
+function OutcomeBar({ wins, draws, losses, dnfs }: OutcomeBarProps) {
+  const total = wins + draws + losses + dnfs
+  if (total === 0) return null
+  const pct = (n: number) => `${(n / total) * 100}%`
+  return (
+    <div className="flex h-1.5 w-full overflow-hidden rounded-full gap-px">
+      {wins   > 0 && <div style={{ width: pct(wins),   backgroundColor: '#10B981' }} />}
+      {draws  > 0 && <div style={{ width: pct(draws),  backgroundColor: '#3B82F6' }} />}
+      {dnfs   > 0 && <div style={{ width: pct(dnfs),   backgroundColor: '#8B5CF6' }} />}
+      {losses > 0 && <div style={{ width: pct(losses), backgroundColor: '#EF4444' }} />}
+    </div>
+  )
+}
+
+function formatSessionDate(startedAt: string | null): string {
+  if (!startedAt) return ''
+  const d = new Date(startedAt)
+  return (
+    d.toLocaleDateString('fr-FR', { day: 'numeric', month: 'short' }) +
+    ' à ' +
+    d.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' })
+  )
+}
+
+function formatSessionDuration(startedAt: string | null, endedAt: string | null): string {
+  if (!startedAt || !endedAt) return ''
+  const diffMs = new Date(endedAt).getTime() - new Date(startedAt).getTime()
+  if (diffMs <= 0) return ''
+  const totalMin = Math.round(diffMs / 60000)
+  const h = Math.floor(totalMin / 60)
+  const m = totalMin % 60
+  if (h === 0) return `${m}min`
+  return `${h}h${m > 0 ? String(m).padStart(2, '0') : ''}`
+}
+
+interface SessionCarouselCardProps {
+  sessions: SessionSummaryItem[]
+  idx: number
+  onIdxChange: (idx: number) => void
+  variant: 'solo' | 'squad'
+  playerSlug: string
+  onNavigate: (sessionLabel: string) => void
+}
+
+function SessionCarouselCard({ sessions, idx, onIdxChange, variant, onNavigate }: SessionCarouselCardProps) {
+  const [displayIdx, setDisplayIdx] = useState(idx)
+  const [isAnimating, setIsAnimating] = useState(false)
+  const contentRef = useRef<HTMLDivElement>(null)
+  const cleanupRef = useRef<(() => void) | null>(null)
+
+  // Nettoyage si le composant est démonté en cours d'animation
+  useEffect(() => () => { cleanupRef.current?.() }, [])
+
+  const handleChange = (newIdx: number) => {
+    if (isAnimating) return
+    const el = contentRef.current
+    if (!el) {
+      setDisplayIdx(newIdx)
+      onIdxChange(newIdx)
+      return
+    }
+
+    const dir = newIdx < displayIdx ? 'up' : 'down'
+    if (cleanupRef.current) cleanupRef.current()
+    setIsAnimating(true)
+
+    const exitY = dir === 'up' ? '-10px' : '10px'
+    el.style.transition = 'transform 0.1s ease-in, opacity 0.1s ease-in'
+    el.style.transform = `translateY(${exitY})`
+    el.style.opacity = '0'
+
+    const t1 = setTimeout(() => {
+      setDisplayIdx(newIdx)
+      onIdxChange(newIdx)
+      const entryY = dir === 'up' ? '10px' : '-10px'
+      el.style.transition = 'none'
+      el.style.transform = `translateY(${entryY})`
+      el.style.opacity = '0'
+
+      const rafId = requestAnimationFrame(() => {
+        requestAnimationFrame(() => {
+          el.style.transition = 'transform 0.15s ease-out, opacity 0.12s ease-out'
+          el.style.transform = 'translateY(0)'
+          el.style.opacity = '1'
+          const t2 = setTimeout(() => setIsAnimating(false), 160)
+          cleanupRef.current = () => clearTimeout(t2)
+        })
+      })
+      cleanupRef.current = () => cancelAnimationFrame(rafId)
+    }, 110)
+
+    cleanupRef.current = () => clearTimeout(t1)
+  }
+
+  const session = sessions[displayIdx]
+  const total = sessions.length
+  const variantLabel = variant === 'solo' ? 'Solo' : 'Escouade'
+  const cardClass = variant === 'solo' ? 'rounded-md bg-muted p-3' : 'rounded-md bg-primary/10 p-3'
+  const chevronBottomCls = 'flex w-full cursor-pointer items-center justify-center py-2 text-muted-foreground/40 transition-colors hover:text-muted-foreground focus-visible:outline-none focus-visible:text-foreground disabled:cursor-not-allowed disabled:opacity-20'
+
+  return (
+    <div className="flex flex-col">
+      {/* Ligne supérieure : label variant (absolu à gauche) + chevron haut centré */}
+      <div className="relative mb-1 flex w-full items-center justify-center">
+        <span className="absolute left-0 text-xs font-semibold text-muted-foreground">{variantLabel}</span>
+        <button
+          type="button"
+          disabled={displayIdx === 0 || isAnimating}
+          onClick={() => handleChange(displayIdx - 1)}
+          className={chevronBottomCls}
+          aria-label="Session plus récente"
+        >
+          <ChevronUpIcon />
+        </button>
+      </div>
+
+      {/* Contenu animé */}
+      <div ref={contentRef}>
+        {session ? (
+          <button
+            type="button"
+            className={`${cardClass} w-full cursor-pointer text-left hover:opacity-80 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring`}
+            onClick={() => onNavigate(session.session_label)}
+            aria-label={`Voir le détail de la session ${session.session_label}`}
+          >
+            {/* Score de performance + label de session */}
+            <div className="mb-2 flex items-baseline gap-2">
+              {session.avg_performance != null && (
+                <span
+                  className="text-2xl font-black leading-none"
+                  style={{ color: getPerfColor(session.avg_performance) }}
+                >
+                  {Math.round(session.avg_performance)}
+                </span>
+              )}
+              <span className="truncate text-xs text-muted-foreground">{session.session_label}</span>
+            </div>
+
+            {/* Barre d'outcomes */}
+            <OutcomeBar
+              wins={session.wins}
+              draws={session.draws}
+              losses={session.losses}
+              dnfs={session.dnfs}
+            />
+
+            {/* Compteurs W/L */}
+            <p className="mt-1.5 text-xs text-muted-foreground">
+              {session.match_count} parties · {(session.win_rate * 100).toFixed(0)}% V
+            </p>
+
+            {/* Date de début + durée */}
+            {session.started_at && (
+              <p className="mt-0.5 text-xs text-muted-foreground">
+                {formatSessionDate(session.started_at)}
+                {session.ended_at
+                  ? ` · ${formatSessionDuration(session.started_at, session.ended_at)}`
+                  : null}
+              </p>
+            )}
+          </button>
+        ) : null}
+      </div>
+
+      {/* Chevron bas */}
+      <button
+        type="button"
+        disabled={displayIdx >= total - 1 || isAnimating}
+        onClick={() => handleChange(displayIdx + 1)}
+        className={chevronBottomCls}
+        aria-label="Session plus ancienne"
+      >
+        <ChevronDownIcon />
+      </button>
     </div>
   )
 }
@@ -118,6 +314,7 @@ export function HomePage() {
   const { playerSlug } = useParams({ strict: false }) as { playerSlug: string }
   const navigate = useNavigate()
   const locale = useAppShellStore((s) => s.locale)
+  const userTimezone = useAppShellStore((s) => s.userTimezone)
   const { data, isLoading, isError, refetch } = useHomePage(playerSlug)
   const {
     data: seasonPass,
@@ -125,12 +322,22 @@ export function HomePage() {
     error: seasonPassError,
   } = useSeasonPassPreview(playerSlug)
   const [matchTab, setMatchTab] = useState<'recent' | 'favorites'>('recent')
+  const [soloIdx, setSoloIdx] = useState(0)
+  const [squadIdx, setSquadIdx] = useState(0)
   const favoriteMutation = useSetMatchFavorite(playerSlug)
 
   function goToMatch(matchId: string) {
     void navigate({
       to: '/players/$playerSlug/matches/$matchId',
       params: { playerSlug, matchId },
+    })
+  }
+
+  function goToSession(sessionLabel: string) {
+    void navigate({
+      to: '/players/$playerSlug/stats/sessions',
+      params: { playerSlug },
+      search: { session: sessionLabel },
     })
   }
 
@@ -197,6 +404,8 @@ export function HomePage() {
   const identityMonogram = hero.player_name.trim().slice(0, 1).toUpperCase() || 'S'
   const soloSession = data.solo_session ?? null
   const squadSession = data.squad_session ?? null
+  const soloSessions = data.solo_sessions ?? (soloSession ? [soloSession] : [])
+  const squadSessions = data.squad_sessions ?? (squadSession ? [squadSession] : [])
   const challenges = seasonPass?.challenges
   const challengesCompleted = challenges?.completed ?? 0
   const challengesTotal = challenges?.total ?? 0
@@ -517,21 +726,27 @@ export function HomePage() {
               <CardTitle className="text-base">Sessions récentes</CardTitle>
             </CardHeader>
             <CardContent>
-              {soloSession || squadSession ? (
-                <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-                  {soloSession && (
-                    <div className="rounded-md bg-muted p-3">
-                      <Badge variant="secondary" className="mb-2">Solo</Badge>
-                      <p className="text-sm font-medium">{soloSession.session_label}</p>
-                      <p className="text-xs text-muted-foreground">{soloSession.match_count} parties · {(soloSession.win_rate * 100).toFixed(0)}% W</p>
-                    </div>
+              {soloSessions.length > 0 || squadSessions.length > 0 ? (
+                <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                  {soloSessions.length > 0 && (
+                    <SessionCarouselCard
+                      sessions={soloSessions}
+                      idx={soloIdx}
+                      onIdxChange={setSoloIdx}
+                      variant="solo"
+                      playerSlug={playerSlug}
+                      onNavigate={goToSession}
+                    />
                   )}
-                  {squadSession && (
-                    <div className="rounded-md bg-primary/10 p-3">
-                      <Badge variant="default" className="mb-2">Escouade</Badge>
-                      <p className="text-sm font-medium">{squadSession.session_label}</p>
-                      <p className="text-xs text-muted-foreground">{squadSession.match_count} parties · {(squadSession.win_rate * 100).toFixed(0)}% W</p>
-                    </div>
+                  {squadSessions.length > 0 && (
+                    <SessionCarouselCard
+                      sessions={squadSessions}
+                      idx={squadIdx}
+                      onIdxChange={setSquadIdx}
+                      variant="squad"
+                      playerSlug={playerSlug}
+                      onNavigate={goToSession}
+                    />
                   )}
                 </div>
               ) : (
@@ -618,6 +833,7 @@ export function HomePage() {
                       <MatchCard
                         match={m}
                         locale={locale}
+                        timezone={userTimezone}
                         onClick={() => goToMatch(m.match_id)}
                         onToggleFavorite={() =>
                           favoriteMutation.mutate({ matchId: m.match_id, favorite: !m.is_favorite })
@@ -641,6 +857,7 @@ export function HomePage() {
                       <MatchCard
                         match={m}
                         locale={locale}
+                        timezone={userTimezone}
                         onClick={() => goToMatch(m.match_id)}
                         onToggleFavorite={() =>
                           favoriteMutation.mutate({ matchId: m.match_id, favorite: false })
