@@ -1,5 +1,79 @@
 # Thought Log
 
+## [2026-04-23] fix(duckdb): timezone TIMESTAMP naïfs — SET TimeZone à l'ouverture connexion
+
+**Statut** : ✅ Complété — commit f4a0c464
+
+**Décision technique** :
+- Cause racine : timestamps dans `shared_matches_v2.duckdb` stockés en heure Paris (session Python = Europe/Paris) mais lus par Go comme UTC → décalage +2h (CEST) ou +1h (CET) à l'affichage
+- Correctif au niveau connexion via `duckdb.NewConnector` (duckdb-go v2) + `connInitFn` qui exécute `SET TimeZone='<user_timezone>'` sur chaque connexion du pool
+- DST géré automatiquement par DuckDB (base IANA) — aucune logique applicative nécessaire
+- `sanitizeTimezone()` : validation whitelist caractères IANA avant injection dans SET
+
+**Résultats** : 10 tests unitaires + 5 intégration + 4 config — tous verts
+
+**Conclusion** : Aucune migration DB. La timezone vient de `app_settings.json` → dynamique. Futur changement de timezone dans les Settings = reconnexion → nouvelle session correcte.
+
+---
+
+## [2026-04-23] feat(home): SessionCarouselCard — contenu enrichi (perf score, barre outcomes, date/durée, badge hors card)
+
+**Statut** : ✅ Complété
+
+**Décision technique** :
+- Ajout de 6 champs dans `domain.SessionSummaryItem` : `Wins`, `Losses`, `Draws`, `DNFs`, `AvgPerformance`, `EndedAt`
+- `BuildSessionSummaries` : comptage des outcomes via `switch m.Outcome` + calcul perf différencié solo (moyenne brute) / squad (`ComputeSquadPerformanceScore`)
+- Helper `latestEndTime` pour calculer la fin de session depuis `StartTime + TimePlayedSecs` du dernier match
+- `outcome-color.ts` créé comme utilitaire réutilisable (`getOutcomeColor`, `OUTCOME_COLORS`)
+- `SessionCarouselCard` restructurée : badge variant déplacé sur la ligne du chevron haut (`Solo`/`Escouade` en texte), contenu animé enrichi avec score perf (coloré via `getPerfColor`), `OutcomeBar` à 4 segments, compteurs W/L, date + durée
+
+**Résultats observés** :
+- `go build ./cmd/server` → ✅ OK
+- `go test ./internal/analysis/ -run TestBuildSession -v` → 8/8 tests PASS
+- TypeScript : 0 erreur sur `HomePage.tsx`, `types.ts`, `outcome-color.ts`
+
+**Conclusion** : implémentation validée, prête à merger.
+
+## [2026-04-23] docs(.ai): enrichissement décisionnel PLAN_ACHIEVEMENTS_SYNC.md
+
+**Statut** : ✅ Complété
+
+**Décision technique** : conservation de la structure du plan achievements existant, mais ajout non destructif des points manquants avant implémentation. Les compléments portent sur : (1) le chaînage réel `attempt store -> session -> handlers sync` si `MSAccessToken` est finalement stocké dans `HaloTokens`; (2) les variantes ouvertes A/B/C pour l'accès au token Microsoft; (3) la question cross-player sur les routes manuelles; (4) la stratégie d'écriture dans `metadata.duckdb`, distincte du pattern lecture seule de `runCareerSync()`; (5) le besoin d'un header Xbox complet `userhash + xsts_token`; (6) la publication de `PostSyncResult` quand seuls les achievements réussissent; (7) la normalisation du schéma (`snake_case` vs `camelCase`, `TIMESTAMP` vs `TIMESTAMPTZ`).
+
+**Résultats observés** : [.ai/PLAN_ACHIEVEMENTS_SYNC.md](.ai/PLAN_ACHIEVEMENTS_SYNC.md) contient maintenant des sections explicites `Constats vérifiés`, `Variantes possibles`, `Écriture dans metadata.duckdb`, `Publication du résultat post-sync` et `Décisions encore ouvertes`. Le document n'affirme plus implicitement que le plan est prêt sans arbitrage.
+
+**Conclusion** : le plan est désormais exploitable comme support de décision. L'implémentation peut attendre un arbitrage sur l'auth Microsoft, le write path metadata et le niveau d'exposition du résultat achievements.
+
+## [2026-04-23] docs(.ai): consolidation du plan sync multi-joueurs / conflits DuckDB
+
+**Statut** : ✅ Complété
+
+**Décision technique** : fusion des ébauches contradictoires autour du sync Go en un plan unique. La version consolidée retient explicitement : package neutre `internal/platform/dblease`, `AcquireLeaseCtx` pour les vrais flux de sync, migration de `OpenPlayerDB` / `OpenSharedDB` vers des handles `*duckdb.DB`, sérialisation de `PersistSink` via une queue par joueur, fast path `matchExistsInRegistry` avec compteur `MatchesReused`, et normalisation des lecteurs auxiliaires (`defaultTokenReader`, `openCareerMetadataDB`) via le cache DuckDB existant.
+
+**Résultats observés** : [.ai/fix-duckdb-conflicts-plan.md](.ai/fix-duckdb-conflicts-plan.md) ne mélange plus plusieurs variantes A/B/C/D ni le backlog de logging générique. Le périmètre, l’ordre d’implémentation, les impacts fichiers, les tests et les points de vigilance sont maintenant cohérents entre eux.
+
+**Conclusion** : le document consolidé peut servir de source unique pour l’implémentation. Le backlog plus large de logging/handlers reste séparé dans `.ai/PLAN_logging_tests_go_api.md`.
+
+## [2026-04-23] docs(.ai): renforcement metadata du plan DuckDB
+
+**Statut** : ✅ Complété
+
+**Décision technique** : ajout d'un addendum explicite sur `metadata.duckdb` pour couvrir les cas que le premier plan consolidé laissait seulement implicites : `metadata` doit être traitée comme une base partagée par titre, ouverte en read-only par défaut sur les parcours runtime, protégée par un lease `MetaPath` sur les writes `PersistSink`, et drainée au shutdown via `duckdb.CloseAll()`. La validation du plan inclut maintenant aussi le scénario hot-reload Air (`server.exe~`) observé en dev local.
+
+**Résultats observés** : [.ai/fix-duckdb-conflicts-plan.md](.ai/fix-duckdb-conflicts-plan.md) intègre maintenant ces renforcements dans les décisions, les étapes, les impacts, la validation et les points de vigilance. [.ai/fix-duckdb-conflicts-plan-original.md](.ai/fix-duckdb-conflicts-plan-original.md) contient un addendum metadata aligné sur les mêmes constats.
+
+**Conclusion** : le plan ne se limite plus aux conflits intra-process du sync et couvre explicitement les verrous metadata liés au cycle de vie runtime / hot-reload qui apparaissaient dans les logs Windows.
+
+## [2026-04-23] docs(.ai): corrections de completude du plan DuckDB
+
+**Statut** : ✅ Complété
+
+**Décision technique** : correction des trous residuels identifies lors de la comparaison entre le plan consolide et l'original. Les ajouts portent sur : retrait explicite du blank import DuckDB devenu inutile dans `auto_sync.go`, inventaire obligatoire des writers metadata restants, ordre exact du shutdown (`cancelScheduler` -> watcher -> `srv.Shutdown` -> `duckdb.CloseAll` -> handles racine), logs distincts pour timeout de lease `MetaPath`, maintien de `NewPersistSink` exporte pour les tests, et cadrage Air plus concret (`kill_delay`, `stop_timeout`, critere de 10 hot-reloads sans warning metadata).
+
+**Résultats observés** : [.ai/fix-duckdb-conflicts-plan.md](.ai/fix-duckdb-conflicts-plan.md) couvre maintenant les oublis reels que l'analyse avait releves, sans changer le fond du plan. [.ai/fix-duckdb-conflicts-plan-original.md](.ai/fix-duckdb-conflicts-plan-original.md) est aligne sur les manques communs aux deux versions.
+
+**Conclusion** : le plan est maintenant plus precis sur metadata, le cycle de vie process et les criteres d'acceptation runtime ; il laisse moins de place a des interpretations implicites au moment de l'implementation.
+
 ## [2026-04-23] docs(.ai): corrections bloquantes PLAN_ACHIEVEMENTS_SYNC.md
 
 **Statut** : ✅ Complété
