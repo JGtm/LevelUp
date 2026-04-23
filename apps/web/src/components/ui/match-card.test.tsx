@@ -102,4 +102,28 @@ describe('MatchCard', () => {
     card.click()
     expect(handler).toHaveBeenCalledOnce()
   })
+
+  it('affiche la barre KDA avec les labels frags/assist./morts', () => {
+    render(<MatchCard match={WIN_MATCH} />)
+    const bar = screen.getByTestId('match-card-kda-bar')
+    expect(bar).toBeTruthy()
+    expect(screen.getByText('15 frags')).toBeTruthy()
+    expect(screen.getByText('4 assist.')).toBeTruthy()
+    expect(screen.getByText('2 morts')).toBeTruthy()
+  })
+
+  it('affiche la barre KDA même sans bloc perf/skill', () => {
+    render(<MatchCard match={LOSS_MATCH} />)
+    const bar = screen.getByTestId('match-card-kda-bar')
+    expect(bar).toBeTruthy()
+    expect(screen.getByText('5 frags')).toBeTruthy()
+    expect(screen.getByText('2 assist.')).toBeTruthy()
+    expect(screen.getByText('10 morts')).toBeTruthy()
+  })
+
+  it('n\'affiche pas la barre KDA si tous les champs sont null', () => {
+    const matchNoKDA: RecentMatchItem = { ...LOSS_MATCH, kills: null, assists: null, deaths: null }
+    render(<MatchCard match={matchNoKDA} />)
+    expect(screen.queryByTestId('match-card-kda-bar')).toBeNull()
+  })
 })

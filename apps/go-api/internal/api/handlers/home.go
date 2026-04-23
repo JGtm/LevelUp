@@ -9,6 +9,7 @@ package handlers
 
 import (
 	"context"
+	"log/slog"
 	"net/http"
 	"strings"
 
@@ -58,6 +59,7 @@ func (h *HomeHandler) GetHomePage(w http.ResponseWriter, r *http.Request) {
 
 	page, err := svc.GetHomePage(ctx, gamertag, h.locale())
 	if err != nil {
+		slog.ErrorContext(ctx, "home: GetHomePage error", "err", err, "gamertag", gamertag)
 		writeError(w, http.StatusInternalServerError, "home_page_error", "erreur chargement page d'accueil")
 		return
 	}

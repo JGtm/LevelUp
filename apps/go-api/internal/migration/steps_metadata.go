@@ -214,6 +214,29 @@ func init() {
 		Description: "Table mode_name_tr : traductions des modes de jeu (FR/EN), portage depuis metadata-prebuilt",
 		ApplySchema: applyModeNameTr,
 	})
+
+	Register(Migration{
+		Name:        "add_citation_mappings",
+		TargetDB:    TargetMetadata,
+		Description: "Table citation_mappings : mappings médaille→citation avec paliers, images et flags (portage populate_citation_mappings.py)",
+		ApplySchema: func(db *sql.DB) error {
+			return execScript(db, `
+				CREATE TABLE IF NOT EXISTS citation_mappings (
+					citation_name_norm    VARCHAR NOT NULL,
+					citation_name_display VARCHAR NOT NULL,
+					mapping_type          VARCHAR NOT NULL DEFAULT 'medal',
+					category              VARCHAR,
+					image_path            VARCHAR,
+					description           VARCHAR,
+					tier_targets          VARCHAR,
+					medal_id              UBIGINT,
+					enabled               BOOLEAN NOT NULL DEFAULT TRUE
+				);
+				CREATE INDEX IF NOT EXISTS idx_citation_mappings_norm ON citation_mappings(citation_name_norm);
+				CREATE INDEX IF NOT EXISTS idx_citation_mappings_medal ON citation_mappings(medal_id);
+			`)
+		},
+	})
 }
 
 // applyModeNameTr crée et peuple mode_name_tr avec les traductions connues.

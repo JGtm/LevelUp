@@ -936,13 +936,29 @@ export interface RecentMatchItem {
   skill_rank_image_url?: string | null
   skill_progress_pct?: number | null
   skill_points_in_tier?: number | null
+  kda?: number | null
   duration_secs?: number | null
   accuracy?: number | null
   avg_life_secs?: number | null
   team_mmr?: number | null
   enemy_mmr?: number | null
   delta_mmr?: number | null
+  is_with_friends?: boolean | null
+  rank_in_team?: number | null
+  headshot_kills?: number | null
+  perfect_kills?: number | null
   top_medals?: RecentMatchMedal[] | null
+  top_citations?: MatchCitationSnippet[] | null
+}
+
+export interface MatchCitationSnippet {
+  key: string
+  name: string
+  description?: string | null
+  image_url?: string | null
+  delta: number
+  progress_pct: number
+  is_newly_mastered?: boolean
 }
 
 export interface RecentMatchMedal {

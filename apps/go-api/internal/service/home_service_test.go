@@ -48,6 +48,14 @@ func (m *mockHomeRepo) LoadRecentPlaylistRanks(_ context.Context) ([]domain.Home
 	return m.recentPlaylistRanks, m.recentPlaylistRanksErr
 }
 
+func (m *mockHomeRepo) LoadMatchMedals(_ context.Context, _ []string) (map[string][]domain.RecentMatchMedal, error) {
+	return map[string][]domain.RecentMatchMedal{}, nil
+}
+
+func (m *mockHomeRepo) LoadMatchCitations(_ context.Context, _ []string) (map[string][]domain.HomeMatchCitationRaw, error) {
+	return map[string][]domain.HomeMatchCitationRaw{}, nil
+}
+
 // --- tests ---
 
 func TestHomeService_GetHomePage_OK(t *testing.T) {

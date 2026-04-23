@@ -30,7 +30,7 @@ func NewHomeRepo(pdb *PlayerDB) *HomeRepo {
 
 // LoadHomeMatches charge tous les matchs du joueur (Q26).
 func (r *HomeRepo) LoadHomeMatches(ctx context.Context) ([]domain.HomeMatchRow, error) {
-	rows, err := r.pdb.Player.Query(ctx, Q26HomeMatches, r.pdb.XUID)
+	rows, err := r.pdb.Player.Query(ctx, Q26HomeMatches, r.pdb.XUID, r.pdb.XUID)
 	if err != nil {
 		return nil, err
 	}
@@ -68,9 +68,12 @@ func (r *HomeRepo) LoadHomeMatches(ctx context.Context) ([]domain.HomeMatchRow, 
 			&row.KDA,
 			&row.Ratio,
 			&row.Accuracy,
+			&row.AvgLifeSeconds,
 			&row.TimePlayedSecs,
 			&row.DamageDealt,
 			&row.DamageTaken,
+			&row.TeamMMR,
+			&row.EnemyMMR,
 			&row.PerformanceScore,
 			&row.SkillRatingValue,
 			&row.SkillRatingType,
@@ -79,6 +82,9 @@ func (r *HomeRepo) LoadHomeMatches(ctx context.Context) ([]domain.HomeMatchRow, 
 			&row.SkillTierLabel,
 			&row.SkillRatingDelta,
 			&row.SkillPlaylistGroup,
+			&row.RankInTeam,
+			&row.HeadshotKills,
+			&row.PerfectKills,
 		); err != nil {
 			return nil, err
 		}
@@ -691,6 +697,230 @@ func (r *HomeRepo) LoadRecentMedia(ctx context.Context, limit int) ([]domain.Hom
 		result = append(result, row)
 	}
 	return result, rows.Err()
+}
+
+// LoadMatchMedals charge les médailles d'un joueur pour un lot de matchs (Q26h).
+// Retourne un map match_id → []domain.RecentMatchMedal, trié par count DESC.
+// Labels résolus via medal_definitions (name_fr) en priorité, citation_mappings en fallback.
+func (r *HomeRepo) LoadMatchMedals(ctx context.Context, matchIDs []string) (map[string][]domain.RecentMatchMedal, error) {
+	result := make(map[string][]domain.RecentMatchMedal)
+	if len(matchIDs) == 0 {
+		return result, nil
+	}
+
+	placeholders := make([]string, len(matchIDs))
+	args := make([]interface{}, 0, len(matchIDs)+1)
+	args = append(args, r.pdb.XUID)
+	for i, id := range matchIDs {
+		placeholders[i] = "?"
+		args = append(args, id)
+	}
+	query := fmt.Sprintf(Q26hMatchMedalsTemplate, strings.Join(placeholders, ", "))
+
+	rows, err := r.pdb.Player.Query(ctx, query, args...)
+	if err != nil {
+		return result, nil // dégradation silencieuse
+	}
+	defer rows.Close()
+
+	type rawRow struct {
+		matchID string
+		medalID int64
+		count   int
+	}
+	var rawRows []rawRow
+	var medalIDsList []int64
+	seen := make(map[int64]struct{})
+	for rows.Next() {
+		var rr rawRow
+		if err := rows.Scan(&rr.matchID, &rr.medalID, &rr.count); err != nil {
+			continue
+		}
+		rawRows = append(rawRows, rr)
+		if _, ok := seen[rr.medalID]; !ok {
+			seen[rr.medalID] = struct{}{}
+			medalIDsList = append(medalIDsList, rr.medalID)
+		}
+	}
+	if err := rows.Err(); err != nil {
+		return result, nil
+	}
+
+	metaMap := resolveMedalLabels(ctx, r.pdb.Metadata, medalIDsList)
+
+	for _, rr := range rawRows {
+		meta := metaMap[rr.medalID]
+		result[rr.matchID] = append(result[rr.matchID], domain.RecentMatchMedal{
+			MedalID:     rr.medalID,
+			Name:        meta.label,
+			Count:       rr.count,
+			Description: meta.description,
+			ImageURL:    fmt.Sprintf("/static/medals/icons/%d.png", rr.medalID),
+		})
+	}
+	return result, nil
+}
+
+// medalLabel contient le nom localisé et la description d'une médaille.
+type medalLabel struct {
+	label       string
+	description string
+}
+
+// resolveMedalLabels résout les noms FR des médailles depuis medal_definitions.
+// Les médailles sans entrée dans medal_definitions retournent label="".
+func resolveMedalLabels(ctx context.Context, db *DB, medalIDs []int64) map[int64]medalLabel {
+	result := make(map[int64]medalLabel, len(medalIDs))
+	if len(medalIDs) == 0 || db == nil {
+		return result
+	}
+
+	q, mArgs, ok := buildLookupQuery(
+		`SELECT medal_name_id,
+		        COALESCE(NULLIF(TRIM(name_fr),''), NULLIF(TRIM(name_en),'')),
+		        COALESCE(NULLIF(TRIM(description_fr),''), NULLIF(TRIM(description_en),''), '')
+		 FROM medal_definitions
+		 WHERE medal_name_id IN (%s)`,
+		medalIDs,
+	)
+	if !ok {
+		return result
+	}
+	mRows, err := db.Query(ctx, q, mArgs...)
+	if err != nil {
+		return result
+	}
+	defer mRows.Close()
+	for mRows.Next() {
+		var id int64
+		var name, desc string
+		if err := mRows.Scan(&id, &name, &desc); err == nil && name != "" {
+			result[id] = medalLabel{label: name, description: desc}
+		}
+	}
+	return result
+}
+
+// LoadMatchCitations charge les citations progressées pour un lot de matchs (Q26i + Q26j).
+// Retourne un map match_id → []domain.HomeMatchCitationRaw, dégradation silencieuse.
+func (r *HomeRepo) LoadMatchCitations(ctx context.Context, matchIDs []string) (map[string][]domain.HomeMatchCitationRaw, error) {
+	result := make(map[string][]domain.HomeMatchCitationRaw)
+	if len(matchIDs) == 0 || r.pdb == nil || r.pdb.Player == nil {
+		return result, nil
+	}
+
+	// Étape 1 : charger les deltas + cumulatifs depuis match_citations (player DB).
+	placeholders := make([]string, len(matchIDs))
+	args := make([]interface{}, len(matchIDs))
+	for i, id := range matchIDs {
+		placeholders[i] = "?"
+		args[i] = id
+	}
+	query := fmt.Sprintf(Q26iMatchCitationsTemplate, strings.Join(placeholders, ", "))
+
+	rows, err := r.pdb.Player.Query(ctx, query, args...)
+	if err != nil {
+		if isTableNotFoundErr(err) {
+			return result, nil
+		}
+		return result, nil // dégradation silencieuse
+	}
+	defer rows.Close()
+
+	type citIntermediate struct {
+		norm       string
+		delta      int
+		cumulative int
+	}
+	rawByMatch := make(map[string][]citIntermediate)
+	normsSeen := make(map[string]struct{})
+	for rows.Next() {
+		var matchID, norm string
+		var delta, cumulative int
+		if err := rows.Scan(&matchID, &norm, &delta, &cumulative); err != nil {
+			continue
+		}
+		rawByMatch[matchID] = append(rawByMatch[matchID], citIntermediate{norm, delta, cumulative})
+		normsSeen[norm] = struct{}{}
+	}
+	if err := rows.Err(); err != nil {
+		return result, nil
+	}
+	if len(rawByMatch) == 0 {
+		return result, nil
+	}
+
+	// Étape 2 : charger les métadonnées (display, image_path, tier_targets) depuis metadata.
+	norms := make([]string, 0, len(normsSeen))
+	for n := range normsSeen {
+		norms = append(norms, n)
+	}
+	metaMap := r.loadCitationMappingMeta(ctx, norms)
+
+	// Étape 3 : merger.
+	for matchID, cits := range rawByMatch {
+		for _, c := range cits {
+			meta := metaMap[c.norm]
+			var imgPath *string
+			if meta.imagePath != "" {
+				imgPath = &meta.imagePath
+			}
+			result[matchID] = append(result[matchID], domain.HomeMatchCitationRaw{
+				Norm:        c.norm,
+				Display:     meta.display,
+				Description: meta.description,
+				ImagePath:   safeStringValue(imgPath),
+				TierTargets: meta.tierTargets,
+				Delta:       c.delta,
+				Cumulative:  c.cumulative,
+			})
+		}
+	}
+	return result, nil
+}
+
+type citationMeta struct {
+	display     string
+	imagePath   string
+	tierTargets string
+	description string
+}
+
+// loadCitationMappingMeta interroge citation_mappings sur pdb.Metadata pour un ensemble de norms.
+func (r *HomeRepo) loadCitationMappingMeta(ctx context.Context, norms []string) map[string]citationMeta {
+	result := make(map[string]citationMeta, len(norms))
+	if len(norms) == 0 || r.pdb == nil || r.pdb.Metadata == nil {
+		return result
+	}
+
+	placeholders := make([]string, len(norms))
+	args := make([]interface{}, len(norms))
+	for i, n := range norms {
+		placeholders[i] = "?"
+		args[i] = n
+	}
+	query := fmt.Sprintf(Q26jCitationMappingsForNormsTemplate, strings.Join(placeholders, ", "))
+
+	rows, err := r.pdb.Metadata.Query(ctx, query, args...)
+	if err != nil {
+		return result
+	}
+	defer rows.Close()
+	for rows.Next() {
+		var norm, display, imagePath, tierTargets, description string
+		if err := rows.Scan(&norm, &display, &imagePath, &tierTargets, &description); err != nil {
+			continue
+		}
+		result[norm] = citationMeta{display: display, imagePath: imagePath, tierTargets: tierTargets, description: description}
+	}
+	return result
+}
+
+func safeStringValue(s *string) string {
+	if s == nil {
+		return ""
+	}
+	return *s
 }
 
 // isTableNotFoundErr détecte les erreurs "table not found" DuckDB.

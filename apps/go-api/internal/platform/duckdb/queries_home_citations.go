@@ -11,6 +11,12 @@ import (
 // Parametre : ?1 = xuid du joueur.
 // Pas de LIMIT : tous les matchs sont chargés (hero card, highlights, recent matches, sessions).
 const Q26HomeMatches = `
+WITH perfect AS (
+    SELECT match_id, COALESCE(SUM(count), 0) AS perfect_kills
+    FROM shared.medals_earned
+    WHERE xuid = ? AND medal_name_id = 1512363953
+    GROUP BY match_id
+)
 SELECT
     mp.match_id,
     r.start_time,
@@ -68,11 +74,15 @@ SELECT
     COALESCE(msr.sub_tier, 0)                               AS skill_sub_tier,
     msr.tier_label                                          AS skill_tier_label,
     msr.rating_delta                                        AS skill_rating_delta,
-    msr.playlist_group                                      AS skill_playlist_group
+    msr.playlist_group                                      AS skill_playlist_group,
+    mp.rank                                                 AS rank_in_team,
+    COALESCE(mp.headshot_kills, 0)                          AS headshot_kills,
+    COALESCE(perfect.perfect_kills, 0)                      AS perfect_kills
 FROM shared.match_participants mp
 JOIN shared.match_registry r ON r.match_id = mp.match_id
 LEFT JOIN player_match_enrichment pme ON pme.match_id = mp.match_id
 LEFT JOIN match_skill_rank msr ON msr.match_id = mp.match_id
+LEFT JOIN perfect ON perfect.match_id = mp.match_id
 WHERE mp.xuid = ?
 ORDER BY r.start_time DESC`
 
@@ -88,6 +98,40 @@ FROM shared.medals_earned me
 WHERE me.xuid = ?
   AND me.match_id IN (%s)
 ORDER BY me.match_id, me.count DESC`
+
+// Q26i : Home — citations progressées par match, avec cumul global au moment du match.
+// Les match_id sont injectés dynamiquement via IN (%s).
+// Requête sur pdb.Player uniquement (match_citations est dans stats.duckdb).
+const Q26iMatchCitationsTemplate = `
+SELECT
+    mc.match_id,
+    mc.citation_name_norm,
+    mc.value                AS match_delta,
+    cum.total               AS cumulative_total
+FROM match_citations mc
+JOIN (
+    SELECT citation_name_norm, SUM(value) AS total
+    FROM match_citations
+    GROUP BY citation_name_norm
+) cum ON cum.citation_name_norm = mc.citation_name_norm
+WHERE mc.match_id IN (%s)
+  AND mc.value > 0
+ORDER BY mc.match_id, mc.value DESC`
+
+// Q26j : Home — métadonnées citations depuis metadata.duckdb pour un ensemble de norms.
+// Les citation_name_norm sont injectés dynamiquement via IN (%s).
+// GROUP BY car une citation peut avoir plusieurs medal_id rows.
+const Q26jCitationMappingsForNormsTemplate = `
+SELECT
+    citation_name_norm,
+    citation_name_display,
+    COALESCE(image_path, '')   AS image_path,
+    COALESCE(tier_targets, '') AS tier_targets,
+    COALESCE(MAX(description), '') AS description
+FROM citation_mappings
+WHERE citation_name_norm IN (%s)
+  AND enabled IS NOT FALSE
+GROUP BY citation_name_norm, citation_name_display, image_path, tier_targets`
 
 // Q26b : Home -- nombre total de matchs d un joueur (pas de LIMIT).
 // Parametre : ?1 = xuid du joueur.
