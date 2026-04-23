@@ -572,6 +572,12 @@ func BuildRecentMatchesWithFavoritesForLocale(matches []domain.HomeMatchRow, lim
 
 		isFav := favoriteIDs[m.MatchID]
 
+		// Précision brute (de HomeMatchRow, déjà en %).
+		var accuracy *float64
+		if m.Accuracy != nil {
+			accuracy = m.Accuracy
+		}
+
 		// Préférer l'asset local /static/maps pour les maps connues ; fallback cache-aside sinon.
 		mapImageURL := buildMapImageURL("halo_infinite", m.MapID, m.MapName, m.MapNameFR)
 
@@ -605,6 +611,12 @@ func BuildRecentMatchesWithFavoritesForLocale(matches []domain.HomeMatchRow, lim
 			SkillRankImageURL:        m.SkillRankImageURL,
 			SkillProgressPct:         skillProgressPct,
 			SkillPointsInTier:        skillPointsInTier,
+			DurationSecs:             m.TimePlayedSecs,
+			Accuracy:                 accuracy,
+			AvgLifeSecs:              m.AvgLifeSeconds,
+			TeamMMR:                  m.TeamMMR,
+			EnemyMMR:                 m.EnemyMMR,
+			DeltaMMR:                 mmrDelta(m.TeamMMR, m.EnemyMMR),
 		})
 	}
 	return items
@@ -626,6 +638,15 @@ func buildMapImageURL(titleID, mapID, mapName, mapNameFR string) *string {
 	return &url
 }
 
+// mmrDelta calcule team_mmr - enemy_mmr ; retourne nil si l'un ou l'autre est absent.
+func mmrDelta(team, enemy *float64) *float64 {
+	if team == nil || enemy == nil {
+		return nil
+	}
+	v := *team - *enemy
+	return &v
+}
+
 // float64PtrVal retourne la valeur pointée ou 0 si nil.
 func float64PtrVal(p *float64) float64 {
 	if p == nil {
@@ -635,8 +656,236 @@ func float64PtrVal(p *float64) float64 {
 }
 
 // ---------------------------------------------------------------------------
-// BuildSessionSummary — résumé dernière session
+// BuildSessionSummaries / BuildSessionSummary — résumés de sessions
 // ---------------------------------------------------------------------------
+
+// BuildSessionSummaries construit la liste des N dernières sessions (solo ou escouade),
+// triées de la plus récente à la plus ancienne.
+func BuildSessionSummaries(
+	matches []domain.HomeMatchRow,
+	sessions []domain.HomeSessionRow,
+	squadMode bool,
+	limit int,
+) []domain.SessionSummaryItem {
+	if len(sessions) == 0 || len(matches) == 0 {
+		return nil
+	}
+
+	// Filtrer par mode.
+	var filtered []domain.HomeSessionRow
+	for _, s := range sessions {
+		if s.IsWithFriends == squadMode && s.SessionLabel != nil {
+			filtered = append(filtered, s)
+		}
+	}
+	if len(filtered) == 0 {
+		return nil
+	}
+
+	// Collecter les labels distincts triés par date décroissante.
+	labels := distinctSessionLabels(filtered)
+
+	// Construire le résumé pour chaque label, jusqu'à la limite.
+	var result []domain.SessionSummaryItem
+	for _, lbl := range labels {
+		if limit > 0 && len(result) >= limit {
+			break
+		}
+		// Rassembler les match_ids de ce label.
+		matchIDSet := make(map[string]bool)
+		for _, s := range filtered {
+			if s.SessionLabel != nil && *s.SessionLabel == lbl {
+				matchIDSet[s.MatchID] = true
+			}
+		}
+		// Filtrer les matchs.
+		var sessionMatches []domain.HomeMatchRow
+		for _, m := range matches {
+			if matchIDSet[m.MatchID] {
+				sessionMatches = append(sessionMatches, m)
+			}
+		}
+		if len(sessionMatches) == 0 {
+			continue
+		}
+
+		// Compter les outcomes.
+		var wins, losses, draws, dnfs int
+		for _, m := range sessionMatches {
+			switch m.Outcome {
+			case domain.OutcomeWin:
+				wins++
+			case domain.OutcomeLoss:
+				losses++
+			case domain.OutcomeDraw:
+				draws++
+			default:
+				dnfs++
+			}
+		}
+
+		// Performance joueur : toujours la moyenne des PerformanceScore personnels.
+		var avgPlayerPerf *float64
+		{
+			var sum float64
+			var count int
+			for _, m := range sessionMatches {
+				if m.PerformanceScore != nil {
+					sum += *m.PerformanceScore
+					count++
+				}
+			}
+			if count > 0 {
+				v := round1(sum / float64(count))
+				avgPlayerPerf = &v
+			}
+		}
+
+		// Performance équipe : uniquement en mode escouade.
+		var avgTeamPerf *float64
+		if squadMode {
+			var scores []*float64
+			var winRates, kdas, kills []float64
+			for _, m := range sessionMatches {
+				scores = append(scores, m.PerformanceScore)
+				wr := 0.0
+				if m.Outcome == domain.OutcomeWin {
+					wr = 100.0
+				} else if m.Outcome == domain.OutcomeDraw {
+					wr = 50.0
+				}
+				winRates = append(winRates, wr)
+				kda := 0.0
+				if m.KDA != nil {
+					kda = *m.KDA
+				}
+				kdas = append(kdas, kda)
+				kills = append(kills, float64(m.Kills))
+			}
+			sq := ComputeSquadPerformanceScore(scores, winRates, kdas, kills)
+			avgTeamPerf = sq.Score
+		}
+
+		// K/D moyen sur la session.
+		var avgKDA *float64
+		{
+			var sum float64
+			var count int
+			for _, m := range sessionMatches {
+				if m.KDA != nil {
+					sum += *m.KDA
+					count++
+				}
+			}
+			if count > 0 {
+				v := round1(sum / float64(count))
+				avgKDA = &v
+			}
+		}
+
+		// Mode dominant : pair (map+mode) le plus joué sur la session (nom FR).
+		var dominantMode *string
+		{
+			freq := make(map[string]int)
+			for _, m := range sessionMatches {
+				if m.PairNameFR != "" {
+					freq[m.PairNameFR]++
+				}
+			}
+			var best string
+			var bestCount int
+			for name, cnt := range freq {
+				if cnt > bestCount || (cnt == bestCount && name < best) {
+					best = name
+					bestCount = cnt
+				}
+			}
+			if best != "" {
+				dominantMode = &best
+			}
+		}
+
+		// Playlist dominante : playlist FR la plus jouée sur la session.
+		var dominantPlaylist *string
+		{
+			freq := make(map[string]int)
+			for _, m := range sessionMatches {
+				name := m.PlaylistNameFR
+				if name == "" {
+					name = m.PlaylistName
+				}
+				if name != "" {
+					freq[name]++
+				}
+			}
+			var best string
+			var bestCount int
+			for name, cnt := range freq {
+				if cnt > bestCount || (cnt == bestCount && name < best) {
+					best = name
+					bestCount = cnt
+				}
+			}
+			if best != "" {
+				dominantPlaylist = &best
+			}
+		}
+
+		kpis := ComputeKPIs(sessionMatches, len(sessionMatches))
+		item := domain.SessionSummaryItem{
+			SessionLabel:         lbl,
+			MatchCount:           len(sessionMatches),
+			WinRate:              kpis.WinRate,
+			GlobalRatio:          kpis.GlobalRatio,
+			Wins:                 wins,
+			Losses:               losses,
+			Draws:                draws,
+			DNFs:                 dnfs,
+			AvgPlayerPerformance: avgPlayerPerf,
+			AvgTeamPerformance:   avgTeamPerf,
+			AvgKDA:               avgKDA,
+			DominantPlaylist:     dominantPlaylist,
+			DominantMode:         dominantMode,
+		}
+		if earliest := earliestStartTime(sessionMatches); earliest != nil {
+			item.StartedAt = earliest
+		}
+		if ended := latestEndTime(sessionMatches); ended != nil {
+			item.EndedAt = ended
+		}
+		result = append(result, item)
+	}
+	return result
+}
+
+// distinctSessionLabels retourne les labels distincts triés par start_time DESC.
+func distinctSessionLabels(sessions []domain.HomeSessionRow) []string {
+	// Calculer le start_time max par label.
+	labelTimes := make(map[string]time.Time)
+	for _, s := range sessions {
+		if s.SessionLabel == nil || *s.SessionLabel == "" {
+			continue
+		}
+		lbl := *s.SessionLabel
+		if s.StartTime != nil {
+			if t, ok := labelTimes[lbl]; !ok || s.StartTime.After(t) {
+				labelTimes[lbl] = *s.StartTime
+			}
+		} else {
+			if _, ok := labelTimes[lbl]; !ok {
+				labelTimes[lbl] = time.Time{}
+			}
+		}
+	}
+	labels := make([]string, 0, len(labelTimes))
+	for lbl := range labelTimes {
+		labels = append(labels, lbl)
+	}
+	sort.Slice(labels, func(i, j int) bool {
+		return labelTimes[labels[i]].After(labelTimes[labels[j]])
+	})
+	return labels
+}
 
 // BuildSessionSummary construit le résumé de la dernière session solo ou escouade.
 func BuildSessionSummary(
@@ -836,4 +1085,23 @@ func earliestStartTime(matches []domain.HomeMatchRow) *time.Time {
 		}
 	}
 	return earliest
+}
+
+// latestEndTime retourne l'heure de fin estimée du dernier match de la session.
+func latestEndTime(matches []domain.HomeMatchRow) *time.Time {
+	var latest *domain.HomeMatchRow
+	for i := range matches {
+		if latest == nil || matches[i].StartTime.After(latest.StartTime) {
+			latest = &matches[i]
+		}
+	}
+	if latest == nil {
+		return nil
+	}
+	if latest.TimePlayedSecs != nil && *latest.TimePlayedSecs > 0 {
+		t := latest.StartTime.Add(time.Duration(*latest.TimePlayedSecs) * time.Second)
+		return &t
+	}
+	t := latest.StartTime
+	return &t
 }

@@ -936,6 +936,21 @@ export interface RecentMatchItem {
   skill_rank_image_url?: string | null
   skill_progress_pct?: number | null
   skill_points_in_tier?: number | null
+  duration_secs?: number | null
+  accuracy?: number | null
+  avg_life_secs?: number | null
+  team_mmr?: number | null
+  enemy_mmr?: number | null
+  delta_mmr?: number | null
+  top_medals?: RecentMatchMedal[] | null
+}
+
+export interface RecentMatchMedal {
+  medal_id: number
+  name: string
+  count: number
+  description?: string | null
+  image_url: string
 }
 
 export interface SessionSummaryItem {
@@ -944,6 +959,16 @@ export interface SessionSummaryItem {
   win_rate: number
   global_ratio: number | null
   started_at: string | null
+  ended_at: string | null
+  wins: number
+  losses: number
+  draws: number
+  dnfs: number
+  avg_player_performance: number | null
+  avg_team_performance: number | null
+  avg_kda: number | null
+  dominant_playlist: string | null
+  dominant_mode: string | null
 }
 
 export interface RecentMediaItem {
@@ -1007,6 +1032,8 @@ export interface HomePageResponse {
   recent_media: RecentMediaItem[]
   solo_session: SessionSummaryItem | null
   squad_session: SessionSummaryItem | null
+  solo_sessions?: SessionSummaryItem[]
+  squad_sessions?: SessionSummaryItem[]
   has_ranked_history?: boolean
   has_unranked_history?: boolean
   /** Sprint 54-B9 : signal discret si les données sont partielles (compte privé). */
