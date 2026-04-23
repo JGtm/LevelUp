@@ -179,6 +179,8 @@
   --radius-md: calc(var(--radius) - 2px);
   --radius-lg: var(--radius);
   --radius-xl: calc(var(--radius) + 4px);
+  --animate-session-slide-down: session-slide-down 0.18s ease-out;
+  --animate-session-slide-up: session-slide-up 0.18s ease-out;
 }
 
 /* ─── Base styles ───────────────────────────────────────────────────────────── */
@@ -199,4 +201,14 @@
   .app-shell-width {
     max-width: 1320px;
   }
+}
+
+@keyframes session-slide-down {
+  from { opacity: 0; transform: translateY(-10px); }
+  to   { opacity: 1; transform: translateY(0);     }
+}
+
+@keyframes session-slide-up {
+  from { opacity: 0; transform: translateY(10px); }
+  to   { opacity: 1; transform: translateY(0);    }
 }

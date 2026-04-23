@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { useParams } from '@tanstack/react-router'
+import { useParams, useSearch } from '@tanstack/react-router'
 
 import { PageHeader } from '@/components/shell/PageHeader'
 import { Badge } from '@/components/ui/badge'
@@ -171,10 +171,11 @@ function SessionCompareMetrics({ metrics }: { metrics: SessionCompareMetricRow[]
 
 export function SessionDetailPage() {
   const { playerSlug } = useParams({ strict: false }) as { playerSlug: string }
+  const { session: initialSession } = useSearch({ strict: false }) as { session?: string }
   const filterContext = useGlobalFilterStore((state) => state.filterContext)
   const filterContextHash = useGlobalFilterStore((state) => state.filterContextHash)
 
-  const [sessionLabel, setSessionLabel] = useState('')
+  const [sessionLabel, setSessionLabel] = useState(initialSession ?? '')
   const [compareSessionLabel, setCompareSessionLabel] = useState('')
   const [enableCompare, setEnableCompare] = useState(false)
 
