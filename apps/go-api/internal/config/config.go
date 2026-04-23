@@ -30,6 +30,9 @@ type AppConfig struct {
 	// Sprint 40 T2 : Discord webhook URL pour alerting 500 + taux d'erreur.
 	// Lit LEVELUP_DISCORD_WEBHOOK_URL ; fallback sur discord_webhook_url dans app_settings.json.
 	DiscordWebhookURL string
+	// UserTimezone : timezone IANA lue depuis user_timezone dans app_settings.json.
+	// Utilisée pour configurer les sessions DuckDB (SET TimeZone).
+	UserTimezone string
 	// Auth locale : répertoire contenant users.json et invites.json.
 	AuthDir string
 	// AuthMode : "none" (défaut) ou "password".
@@ -92,7 +95,25 @@ func Load() (*AppConfig, error) {
 	}
 	appSettingsPath := getEnvOrDefault("LEVELUP_APP_SETTINGS", filepath.Join(repoRoot, "app_settings.json"))
 	cfg.FeatureFlags = LoadFeatureFlags(appSettingsPath)
+	cfg.UserTimezone = loadUserTimezone(appSettingsPath)
 	return cfg, nil
+}
+
+// loadUserTimezone lit user_timezone depuis app_settings.json.
+// Retourne "Europe/Paris" par défaut si le fichier est absent ou le champ manquant.
+func loadUserTimezone(settingsPath string) string {
+	data, err := os.ReadFile(settingsPath)
+	if err != nil {
+		return "Europe/Paris"
+	}
+	var m map[string]any
+	if err := json.Unmarshal(data, &m); err != nil {
+		return "Europe/Paris"
+	}
+	if s, ok := m["user_timezone"].(string); ok && s != "" {
+		return s
+	}
+	return "Europe/Paris"
 }
 
 // dbProfilesFile représente le format du fichier db_profiles.json (v2.1).

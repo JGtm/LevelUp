@@ -12,10 +12,12 @@ package duckdb
 import (
 	"context"
 	"database/sql"
+	"database/sql/driver"
 	"fmt"
+	"log/slog"
 	"sync"
 
-	_ "github.com/duckdb/duckdb-go/v2" // driver duckdb
+	duckdb "github.com/duckdb/duckdb-go/v2"
 )
 
 // DB encapsule une connexion DuckDB ouverte.
@@ -36,10 +38,35 @@ var (
 	openDBs   = map[string]*cachedDB{}
 )
 
+// sanitizeTimezone valide un nom de timezone IANA pour éviter les injections SQL.
+// Retourne "" si la valeur contient des caractères non autorisés.
+func sanitizeTimezone(tz string) string {
+	for _, c := range tz {
+		switch {
+		case c >= 'A' && c <= 'Z':
+		case c >= 'a' && c <= 'z':
+		case c >= '0' && c <= '9':
+		case c == '/' || c == '_' || c == '-' || c == '+':
+		default:
+			return ""
+		}
+	}
+	return tz
+}
+
 // OpenReadOnly ouvre une base DuckDB en lecture seule.
 // Le DSN est : "file.duckdb?access_mode=read_only".
 // Une seule instance par chemin est maintenue (cache process-level).
-func OpenReadOnly(path string) (*DB, error) {
+// timezone (optionnel) : nom IANA (ex: "Europe/Paris") — appliqué via SET TimeZone sur chaque connexion.
+func OpenReadOnly(path string, timezone ...string) (*DB, error) {
+	tz := ""
+	if len(timezone) > 0 {
+		raw := timezone[0]
+		tz = sanitizeTimezone(raw)
+		if tz == "" && raw != "" {
+			slog.Warn("duckdb: timezone invalide ignorée", "input", raw, "path", path)
+		}
+	}
 	return openCachedDB(
 		"ro:"+path,
 		path,
@@ -47,19 +74,30 @@ func OpenReadOnly(path string) (*DB, error) {
 		4,
 		2,
 		"OpenReadOnly",
+		tz,
 	)
 }
 
 // OpenReadWrite ouvre une base DuckDB en lecture-écriture.
 // Utilisé pour les migrations au démarrage. UNE seule connexion : pas de pool.
-func OpenReadWrite(path string) (*DB, error) {
-	return openCachedDB("rw:"+path, path, path, 1, 1, "OpenReadWrite")
+// timezone (optionnel) : nom IANA (ex: "Europe/Paris") — appliqué via SET TimeZone sur chaque connexion.
+func OpenReadWrite(path string, timezone ...string) (*DB, error) {
+	tz := ""
+	if len(timezone) > 0 {
+		raw := timezone[0]
+		tz = sanitizeTimezone(raw)
+		if tz == "" && raw != "" {
+			slog.Warn("duckdb: timezone invalide ignorée", "input", raw, "path", path)
+		}
+	}
+	return openCachedDB("rw:"+path, path, path, 1, 1, "OpenReadWrite", tz)
 }
 
 func openCachedDB(
 	key, path, dsn string,
 	maxOpenConns, maxIdleConns int,
 	op string,
+	timezone string,
 ) (*DB, error) {
 	openDBsMu.Lock()
 	defer openDBsMu.Unlock()
@@ -73,9 +111,24 @@ func openCachedDB(
 		delete(openDBs, key)
 	}
 
-	sqlDB, err := sql.Open("duckdb", dsn)
-	if err != nil {
-		return nil, fmt.Errorf("duckdb.%s(%s): %w", op, path, err)
+	var sqlDB *sql.DB
+	if timezone != "" {
+		tz := timezone
+		connector, err := duckdb.NewConnector(dsn, func(execer driver.ExecerContext) error {
+			_, initErr := execer.ExecContext(context.Background(), "SET TimeZone='"+tz+"'", nil)
+			return initErr
+		})
+		if err != nil {
+			return nil, fmt.Errorf("duckdb.%s connector(%s): %w", op, path, err)
+		}
+		slog.Debug("duckdb: timezone appliquée", "timezone", timezone, "path", path)
+		sqlDB = sql.OpenDB(connector)
+	} else {
+		var err error
+		sqlDB, err = sql.Open("duckdb", dsn)
+		if err != nil {
+			return nil, fmt.Errorf("duckdb.%s(%s): %w", op, path, err)
+		}
 	}
 	if err := sqlDB.Ping(); err != nil {
 		sqlDB.Close()

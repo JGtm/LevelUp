@@ -45,6 +45,7 @@ func resolveDemoPlayer(ctx context.Context, cfg *AppConfig, titleSlug string) (*
 		SharedDBPath:       filepath.Join(dir, "shared_matches_v2.duckdb"),
 		MetaDBPath:         filepath.Join(dir, "metadata.duckdb"),
 		SharedSocialDBPath: title.NewPathResolver(cfg.RepoRoot).SharedSocialDBPath(titleSlug),
+		UserTimezone:       cfg.UserTimezone,
 	}
 	return duckdb.GetOrOpen(ctx, pcfg)
 }
@@ -83,6 +84,7 @@ func buildPoolConfig(cfg *AppConfig, p *domain.PlayerSummary, titleSlug string) 
 		SharedDBPath:       pr.SharedDBPath(titleSlug),
 		MetaDBPath:         pr.MetadataDBPath(titleSlug),
 		SharedSocialDBPath: pr.SharedSocialDBPath(titleSlug),
+		UserTimezone:       cfg.UserTimezone,
 	}
 }
 

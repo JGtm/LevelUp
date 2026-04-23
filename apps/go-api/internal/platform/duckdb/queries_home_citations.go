@@ -48,9 +48,12 @@ SELECT
          THEN CAST(COALESCE(mp.kills, 0) AS DOUBLE) / CAST(mp.deaths AS DOUBLE)
          ELSE CAST(COALESCE(mp.kills, 0) AS DOUBLE) END     AS ratio,
     mp.accuracy,
-    mp.time_played_seconds,
+    mp.avg_life_seconds,
+    NULLIF(COALESCE(NULLIF(mp.time_played_seconds, 0), r.playable_duration_seconds), 0) AS time_played_seconds,
     mp.damage_dealt,
     mp.damage_taken,
+    mp.team_mmr,
+    mp.enemy_mmr,
     pme.performance_score,
     msr.rating_value                                        AS skill_rating_value,
     CASE
@@ -72,6 +75,19 @@ LEFT JOIN player_match_enrichment pme ON pme.match_id = mp.match_id
 LEFT JOIN match_skill_rank msr ON msr.match_id = mp.match_id
 WHERE mp.xuid = ?
 ORDER BY r.start_time DESC`
+
+// Q26h : Home — médailles par match pour un joueur, lots de match_id.
+// Paramètres : ?1 = xuid. Les match_id sont injectés dynamiquement via IN (%s).
+// Requête sur pdb.Player (shared attaché) ; labels résolus ensuite via metadata.
+const Q26hMatchMedalsTemplate = `
+SELECT
+    me.match_id,
+    me.medal_name_id,
+    COALESCE(me.count, 1) AS count
+FROM shared.medals_earned me
+WHERE me.xuid = ?
+  AND me.match_id IN (%s)
+ORDER BY me.match_id, me.count DESC`
 
 // Q26b : Home -- nombre total de matchs d un joueur (pas de LIMIT).
 // Parametre : ?1 = xuid du joueur.

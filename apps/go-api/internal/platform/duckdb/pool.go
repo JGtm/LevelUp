@@ -31,6 +31,7 @@ type PlayerPoolConfig struct {
 	SharedDBPath       string
 	MetaDBPath         string
 	SharedSocialDBPath string // shared_social.duckdb (médias, likes, favoris)
+	UserTimezone       string // timezone IANA pour la lecture des TIMESTAMP (ex: "Europe/Paris")
 }
 
 // PoolKey retourne la clé unique du pool pour ce joueur.
@@ -116,23 +117,23 @@ func openPlayerDB(ctx context.Context, cfg PlayerPoolConfig) (*PlayerDB, error) 
 		return nil, fmt.Errorf("pool: migrate player db %s: %w", cfg.Gamertag, err)
 	}
 
-	playerDB, err := OpenReadWrite(cfg.PlayerDBPath)
+	playerDB, err := OpenReadWrite(cfg.PlayerDBPath, cfg.UserTimezone)
 	if err != nil {
 		return nil, fmt.Errorf("pool: open player db %s: %w", cfg.Gamertag, err)
 	}
 
-	sharedDB, err := OpenReadOnly(cfg.SharedDBPath)
+	sharedDB, err := OpenReadOnly(cfg.SharedDBPath, cfg.UserTimezone)
 	if err != nil {
 		_ = playerDB.Close()
 		return nil, fmt.Errorf("pool: open shared db: %w", err)
 	}
-	// Appliquer les migrations shared en read-write (idempotentes).
+	// Appliquer les migrations shared en read-write (idempotentes) — sans timezone (migration uniquement).
 	if rwShared, rwErr := OpenReadWrite(cfg.SharedDBPath); rwErr == nil {
 		_ = migration.RunForDB(rwShared.SQLDb(), migration.TargetShared)
 		_ = rwShared.Close()
 	}
 
-	metaDB, err := OpenReadWrite(cfg.MetaDBPath)
+	metaDB, err := OpenReadWrite(cfg.MetaDBPath, cfg.UserTimezone)
 	if err != nil {
 		_ = playerDB.Close()
 		_ = sharedDB.Close()
@@ -143,7 +144,7 @@ func openPlayerDB(ctx context.Context, cfg PlayerPoolConfig) (*PlayerDB, error) 
 	// Ouvert en read-write pour permettre les écritures (favoris, likes).
 	var socialDB *DB
 	if cfg.SharedSocialDBPath != "" {
-		socialDB, err = OpenReadWrite(cfg.SharedSocialDBPath)
+		socialDB, err = OpenReadWrite(cfg.SharedSocialDBPath, cfg.UserTimezone)
 		if err != nil {
 			// Non bloquant : la DB sera créée lors de la prochaine migration.
 			socialDB = nil
