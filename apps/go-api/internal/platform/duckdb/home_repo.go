@@ -11,6 +11,7 @@ import (
 	"strings"
 	"time"
 
+	"levelup/go-api/internal/analysis"
 	"levelup/go-api/internal/domain"
 	titlepkg "levelup/go-api/internal/domain/title"
 )
@@ -71,9 +72,25 @@ func (r *HomeRepo) LoadHomeMatches(ctx context.Context) ([]domain.HomeMatchRow, 
 			&row.DamageDealt,
 			&row.DamageTaken,
 			&row.PerformanceScore,
+			&row.SkillRatingValue,
+			&row.SkillRatingType,
+			&row.SkillTier,
+			&row.SkillSubTier,
+			&row.SkillTierLabel,
+			&row.SkillRatingDelta,
+			&row.SkillPlaylistGroup,
 		); err != nil {
 			return nil, err
 		}
+		tier := ""
+		if row.SkillTier != nil {
+			tier = *row.SkillTier
+		}
+		tierLabel := ""
+		if row.SkillTierLabel != nil {
+			tierLabel = *row.SkillTierLabel
+		}
+		row.SkillRankImageURL = buildHomeSkillPeakBadgeURL(tier, tierLabel, row.SkillSubTier)
 		result = append(result, row)
 	}
 	if err := rows.Err(); err != nil {
@@ -411,13 +428,45 @@ func (r *HomeRepo) enrichHomeMatchTranslations(ctx context.Context, matches []do
 	gameVariantNames, _ := r.loadHomeAssetTranslationNames(ctx, "game_variant", collectMissingHomeAssetIDs(matches, "game_variant"))
 	playlistNames, _ := r.loadHomeAssetTranslationNames(ctx, "playlist", collectMissingHomeAssetIDs(matches, "playlist"))
 
+	// mode_name_tr : collecte les modes EN de TOUS les matchs (sans filtre needsTranslation).
+	// Quand pair_name est un UUID brut, fallback sur le nom dans pairNames (asset_translations).
+	modeENSet := make(map[string]struct{})
+	for _, m := range matches {
+		if en := analysis.NormalizeModeLabel(m.PairName); en != "" {
+			modeENSet[en] = struct{}{}
+		}
+		// Si pair_name est un UUID (non normalisable en mode lisible), enrichir depuis asset_translations
+		if assetName := strings.TrimSpace(pairNames[m.PairID]); assetName != "" {
+			if en2 := analysis.NormalizeModeLabel(assetName); en2 != "" {
+				modeENSet[en2] = struct{}{}
+			}
+		}
+	}
+	modeENList := make([]string, 0, len(modeENSet))
+	for k := range modeENSet {
+		modeENList = append(modeENList, k)
+	}
+	modeNamesFR, _ := r.loadHomeModeNameTranslations(ctx, modeENList)
+
 	for i := range matches {
 		if needsHomeAssetTranslation(matches[i].MapNameFR, matches[i].MapName) {
 			if name := strings.TrimSpace(mapNames[matches[i].MapID]); name != "" {
 				matches[i].MapNameFR = name
 			}
 		}
-		if needsHomeAssetTranslation(matches[i].PairNameFR, matches[i].PairName) {
+		// Priorité 1 : mode_name_tr appliqué sur tous les matchs (pair_name_fr peut contenir une valeur EN non traduite)
+		modeEN := analysis.NormalizeModeLabel(matches[i].PairName)
+		modeFR := modeNamesFR[modeEN]
+		// Si PairName est un UUID (non normalisable), tenter via le nom dans asset_translations
+		if modeFR == "" {
+			if assetName := strings.TrimSpace(pairNames[matches[i].PairID]); assetName != "" {
+				modeFR = modeNamesFR[analysis.NormalizeModeLabel(assetName)]
+			}
+		}
+		if modeFR != "" {
+			matches[i].PairNameFR = modeFR
+		} else if needsHomeAssetTranslation(matches[i].PairNameFR, matches[i].PairName) {
+			// Priorité 2 : asset_translations (nom complet de paire, fallback)
 			if name := strings.TrimSpace(pairNames[matches[i].PairID]); name != "" {
 				matches[i].PairNameFR = name
 			}
@@ -518,6 +567,51 @@ func (r *HomeRepo) loadHomeAssetTranslationNames(ctx context.Context, assetType 
 		}
 		if _, exists := translations[assetID]; !exists {
 			translations[assetID] = name
+		}
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return translations, nil
+}
+
+// loadHomeModeNameTranslations résout les noms FR des modes depuis mode_name_tr.
+// modeENNames est la liste de noms EN extraits de pair_name via NormalizeModeLabel.
+func (r *HomeRepo) loadHomeModeNameTranslations(ctx context.Context, modeENNames []string) (map[string]string, error) {
+	if len(modeENNames) == 0 {
+		return nil, nil
+	}
+
+	placeholders := strings.TrimRight(strings.Repeat("?,", len(modeENNames)), ",")
+	query := fmt.Sprintf(`
+		SELECT mode_en, name
+		FROM mode_name_tr
+		WHERE lang = 'fr'
+		  AND mode_en IN (%s)
+	`, placeholders)
+
+	args := make([]any, len(modeENNames))
+	for i, name := range modeENNames {
+		args[i] = name
+	}
+
+	rows, err := r.pdb.Metadata.Query(ctx, query, args...)
+	if err != nil {
+		if isTableNotFoundErr(err) {
+			return nil, nil
+		}
+		return nil, err
+	}
+	defer rows.Close()
+
+	translations := make(map[string]string)
+	for rows.Next() {
+		var modeEN, nameFR string
+		if err := rows.Scan(&modeEN, &nameFR); err != nil {
+			continue
+		}
+		if strings.TrimSpace(nameFR) != "" {
+			translations[modeEN] = nameFR
 		}
 	}
 	if err := rows.Err(); err != nil {

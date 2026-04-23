@@ -207,6 +207,104 @@ func init() {
 			`)
 		},
 	})
+
+	Register(Migration{
+		Name:        "add_mode_name_tr",
+		TargetDB:    TargetMetadata,
+		Description: "Table mode_name_tr : traductions des modes de jeu (FR/EN), portage depuis metadata-prebuilt",
+		ApplySchema: applyModeNameTr,
+	})
+}
+
+// applyModeNameTr crée et peuple mode_name_tr avec les traductions connues.
+func applyModeNameTr(db *sql.DB) error {
+	if _, err := db.Exec(`
+		CREATE TABLE IF NOT EXISTS mode_name_tr (
+			mode_en VARCHAR NOT NULL,
+			lang    VARCHAR NOT NULL,
+			name    VARCHAR NOT NULL,
+			PRIMARY KEY (mode_en, lang)
+		)
+	`); err != nil {
+		return err
+	}
+
+	type modeRow struct{ modeEN, lang, name string }
+	rows := []modeRow{
+		{"Assault", "en", "Assault"},
+		{"Attrition", "en", "Attrition"},
+		{"CTF", "en", "CTF"},
+		{"CTF 3 Captures", "en", "CTF (3 Captures)"},
+		{"Escalation Slayer", "en", "Escalation Slayer"},
+		{"Extraction", "en", "Extraction"},
+		{"FFA Slayer", "en", "FFA Slayer"},
+		{"Fiesta CTF", "en", "Fiesta CTF"},
+		{"Fiesta Slayer", "en", "Fiesta Slayer"},
+		{"Fiesta Total Control", "en", "Fiesta Total Control"},
+		{"Heroic KOTH", "en", "King of the Hill (Heroic)"},
+		{"Heroic King of the Hill", "en", "King of the Hill (Heroic)"},
+		{"King of the Hill", "en", "King of the Hill"},
+		{"Land Grab", "en", "Land Grab"},
+		{"Legendary King of the Hill", "en", "King of the Hill (Legendary)"},
+		{"Neutral Bomb", "en", "Neutral Bomb"},
+		{"Neutral Bomb Squad", "en", "Neutral Bomb Squad"},
+		{"Neutral Flag CTF", "en", "Neutral Flag CTF"},
+		{"Oddball", "en", "Oddball"},
+		{"One Bomb", "en", "One Bomb"},
+		{"One Flag CTF", "en", "One Flag CTF"},
+		{"Sentry Defense", "en", "Sentry Defense"},
+		{"Shotty Snipe Slayer FFA", "en", "Shotty Snipers FFA"},
+		{"Shotty Snipes Slayer", "en", "Shotty Snipers"},
+		{"Slayer", "en", "Slayer"},
+		{"Stockpile", "en", "Stockpile"},
+		{"Strongholds", "en", "Strongholds"},
+		{"Team Slayer", "en", "Team Slayer"},
+		{"Team Snipers", "en", "Team Snipers"},
+		{"Total Control", "en", "Total Control"},
+		{"VIP", "en", "VIP"},
+		// FR
+		{"Assault", "fr", "Assaut"},
+		{"Attrition", "fr", "Attrition"},
+		{"CTF", "fr", "Capture du drapeau"},
+		{"CTF 3 Captures", "fr", "CDD 3 captures"},
+		{"Escalation Slayer", "fr", "Escalade"},
+		{"Extraction", "fr", "Extraction"},
+		{"FFA Slayer", "fr", "Chacun pour soi"},
+		{"Fiesta CTF", "fr", "Fiesta CDD"},
+		{"Fiesta Slayer", "fr", "Fiesta"},
+		{"Fiesta Total Control", "fr", "Fiesta Contrôle total"},
+		{"Heroic KOTH", "fr", "Roi de la colline héroïque"},
+		{"Heroic King of the Hill", "fr", "Roi de la colline héroïque"},
+		{"King of the Hill", "fr", "Roi de la colline"},
+		{"Land Grab", "fr", "Bases"},
+		{"Legendary King of the Hill", "fr", "Roi de la colline légendaire"},
+		{"Neutral Bomb", "fr", "Bombe neutre"},
+		{"Neutral Bomb Squad", "fr", "Escouade bombe neutre"},
+		{"Neutral Flag CTF", "fr", "Drapeau neutre"},
+		{"Oddball", "fr", "Oddball"},
+		{"One Bomb", "fr", "Bombe neutre"},
+		{"One Flag CTF", "fr", "Drapeau neutre"},
+		{"Sentry Defense", "fr", "Défense sentinelle"},
+		{"Shotty Snipe Slayer FFA", "fr", "Fusils snipers à grenaille FFA"},
+		{"Shotty Snipes Slayer", "fr", "Fusils snipers à grenaille"},
+		{"Slayer", "fr", "Assassin"},
+		{"Stockpile", "fr", "Stockage"},
+		{"Strongholds", "fr", "Bases"},
+		{"Team Slayer", "fr", "Assassin en équipe"},
+		{"Team Snipers", "fr", "Snipers en équipe"},
+		{"Total Control", "fr", "Contrôle total"},
+		{"VIP", "fr", "VIP"},
+	}
+
+	for _, r := range rows {
+		if _, err := db.Exec(
+			"INSERT OR IGNORE INTO mode_name_tr (mode_en, lang, name) VALUES (?, ?, ?)",
+			r.modeEN, r.lang, r.name,
+		); err != nil {
+			return err
+		}
+	}
+	return nil
 }
 
 // applyWeaponLabels crée et peuple weapon_labels avec tous les IDs connus.
