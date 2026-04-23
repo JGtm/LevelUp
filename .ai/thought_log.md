@@ -1,5 +1,35 @@
 # Thought Log
 
+## [2026-04-23] docs(cli): commande add-title + documentation ADD_TITLE
+
+**Statut** : ✅ Complété
+
+**Décision technique** :
+- Implémentation de `levelup add-title` dans `cmd/levelup/cmd_title.go` : dérive le slug du nom, crée les répertoires `data/titles/<slug>/warehouse/` + `players/`, initialise `shared_pve.duckdb` si `firefight` est dans `--capabilities`, ajoute la section dans `db_profiles.json`, imprime le snippet Go à coller dans `registry.go`.
+- `initPveDB` : utilise `duckdb.OpenReadWrite` (vrai init DuckDB, pas un fichier vide) pour que les migrations PvE s'appliquent correctement au démarrage.
+- Docs `docs/ADD_TITLE.md` (EN) + `docs/FR/ADD_TITLE.md` (FR) créés et synchronisés : tableau 6 étapes clair, étapes 2/3/4 marquées "automatisé par add-title" avec fallback manuel.
+- Correctif cohérence : ancienne formulation "4 étapes dont 1 manuelle" remplacée par tableau 6 lignes reflétant la réalité.
+
+**Résultats** : `go build ./cmd/levelup/` ✅
+
+**Conclusion** : La commande couvre toute la bootstrap mécanique ; l'enregistrement dans registry.go reste manuel (nécessite `make build`).
+
+---
+
+## [2025-07-15] feat(home): snippets de citations dans MatchCard
+
+**Statut** : ✅ Complété
+
+**Décision technique** :
+- Architecture full-stack en 9 phases : migration DDL (steps_metadata), seed réécrit, domain structs, SQL constants (Q26i+Q26j), repo `LoadMatchCitations` (dégradation silencieuse, aucun xuid — match_citations est par-player DB), analysis `BuildCitationSnippets` (pur, sans DB), port interface + noop, service `enrichMatchesWithCitations` (après medals), TS types, composant SVG ring, MatchCard.
+- Filtre clé : si `cumul - delta >= lastTier`, la citation était déjà masterisée avant le match → ignorée.
+- `buildLookupQuery` ne supporte que `[]int64` → placeholders manuels pour les norm strings.
+- Mock test `mockHomeRepo` mis à jour avec `LoadMatchCitations` (stub vide) pour satisfaire l'interface.
+
+**Résultats** : `go build ./...` ✅ · `go vet` (packages modifiés) ✅
+
+**Fichiers modifiés** : steps_metadata.go, ops/seed.go, domain/home.go, queries_home_citations.go, home_repo.go, analysis/citation_snippets.go (NEW), port/repository.go, service/home_service.go, service/home_service_test.go (stub), types.ts, citation-progress-ring.tsx (NEW), match-card.tsx
+
 ## [2026-04-23] fix(duckdb): timezone TIMESTAMP naïfs — SET TimeZone à l'ouverture connexion
 
 **Statut** : ✅ Complété — commit f4a0c464

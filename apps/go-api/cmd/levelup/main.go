@@ -16,6 +16,7 @@
 //	levelup gate-check     [--gamertag X] [--json]
 //	levelup surface-status [--json]
 //	levelup sync-delta     (--gamertag X | --all) [--max-matches N] [--match-type T] [--rps N]
+//	levelup add-title      --name "Nom du jeu" [--slug s] [--capabilities c1,c2] [--xbox-id X] [--steam-id S]
 //
 // Variables d'environnement : LEVELUP_REPO_ROOT (auto-detecte si absent).
 //
@@ -24,6 +25,7 @@
 //   - cmd_ops.go     - healthcheck, diagnose, check-env, compare-db, gate-check, surface-status
 //   - cmd_sync.go    - sync-delta
 //   - cmd_notify.go  - notify-version, notify-sync
+//   - cmd_title.go   - add-title
 package main
 
 import (
@@ -80,6 +82,8 @@ func main() {
 		exitErr = runSyncDelta(cfg, args)
 	case "migrate":
 		exitErr = runMigrate(cfg, args)
+	case "add-title":
+		exitErr = runAddTitle(cfg, args)
 	case "help", "--help", "-h":
 		printUsage()
 	default:
@@ -116,6 +120,7 @@ Commandes:
   surface-status  Afficher le backend actif par surface (feature flags)
 	sync-delta      Lancer une sync delta pour un joueur ou pour tous les joueurs configures
   migrate         Migrer les donnees vers le namespace multi-titres
+  add-title       Initialiser l'arborescence d'un nouveau titre de jeu
 
 Options globales:
   LEVELUP_REPO_ROOT        Racine du repo (auto-detecte si absent)
