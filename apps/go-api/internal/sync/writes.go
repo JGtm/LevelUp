@@ -79,8 +79,9 @@ func InsertParticipants(db *sql.DB, rows []ParticipantRow) error {
 				time_played_seconds, avg_life_seconds,
 				kills_expected, deaths_expected, kills_stddev,
 				team_mmr, enemy_mmr,
+				headshot_kills,
 				created_at
-			) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+			) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
 			row.MatchID, row.XUID, row.Gamertag,
 			row.TeamID, row.Outcome, row.Rank, row.Score,
 			row.Kills, row.Deaths, row.Assists,
@@ -90,6 +91,7 @@ func InsertParticipants(db *sql.DB, rows []ParticipantRow) error {
 			row.TimePlayedSeconds, row.AvgLifeSeconds,
 			row.KillsExpected, row.DeathsExpected, row.KillsStddev,
 			row.TeamMMR, row.EnemyMMR,
+			row.HeadshotKills,
 			now,
 		)
 		if err != nil {

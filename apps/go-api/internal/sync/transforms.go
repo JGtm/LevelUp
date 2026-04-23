@@ -71,6 +71,7 @@ type ParticipantRow struct {
 	KillsStddev       *float64
 	TeamMMR           *float64
 	EnemyMMR          *float64
+	HeadshotKills     *int
 }
 
 // MedalRow représente une ligne dans medals_earned (shared).
@@ -221,6 +222,7 @@ func ExtractParticipants(matchJSON map[string]any) []ParticipantRow {
 			row.DamageTaken = floatPtrFrom(core, "DamageTaken")
 			row.PersonalScore = intPtrFrom(core, "PersonalScore")
 			row.AvgLifeSeconds = floatPtrFrom(core, "AverageLifeDuration")
+			row.HeadshotKills = intPtrFrom(core, "HeadshotKills")
 
 			// KDA dérivé
 			if row.Kills != nil && row.Deaths != nil && row.Assists != nil {
