@@ -504,7 +504,7 @@ func BuildRecentMatchesWithFavoritesForLocale(matches []domain.HomeMatchRow, lim
 		t := m.StartTime
 
 		mapUI := labelForLocale(locale, m.MapNameFR, m.MapName)
-		modeUI := normalizeHomeModeLabel(labelForLocale(locale, firstNonEmpty(m.GameVariantNameFR, m.PairNameFR), firstNonEmpty(m.GameVariantName, m.PairName)), m.MapNameFR, m.MapName)
+		modeUI := normalizeHomeModeLabel(labelForLocale(locale, m.PairNameFR, m.PairName), m.MapNameFR, m.MapName)
 		var playlistUI *string
 		if m.PlaylistName != "" || m.PlaylistNameFR != "" {
 			playlist := labelForLocale(locale, m.PlaylistNameFR, m.PlaylistName)
@@ -521,6 +521,40 @@ func BuildRecentMatchesWithFavoritesForLocale(matches []domain.HomeMatchRow, lim
 		if m.PerformanceScore != nil {
 			v := int(math.Round(*m.PerformanceScore))
 			perfScoreRel = &v
+		}
+
+		var skillRatingVal *int
+		var skillRatingType *string
+		if m.SkillRatingValue != nil {
+			v := int(math.Round(*m.SkillRatingValue))
+			skillRatingVal = &v
+			t := m.SkillRatingType
+			skillRatingType = &t
+		}
+
+		// Enrichissement skill tier : passer les champs nullable directement.
+		var skillTierLabel *string
+		if m.SkillTierLabel != nil && *m.SkillTierLabel != "" {
+			skillTierLabel = m.SkillTierLabel
+		}
+		var skillPlaylistGroup *string
+		if m.SkillPlaylistGroup != nil && *m.SkillPlaylistGroup != "" {
+			skillPlaylistGroup = m.SkillPlaylistGroup
+		}
+
+		// Progression dans le tier : approximation sur une fenêtre de 50 pts.
+		var skillProgressPct *float64
+		var skillPointsInTier *int
+		if m.SkillRatingValue != nil {
+			const tierSize = 50.0
+			pts := math.Mod(*m.SkillRatingValue, tierSize)
+			if pts < 0 {
+				pts += tierSize
+			}
+			pct := pts / tierSize * 100.0
+			skillProgressPct = &pct
+			p := int(math.Round(pts))
+			skillPointsInTier = &p
 		}
 
 		var offConv, defRes *float64
@@ -563,18 +597,17 @@ func BuildRecentMatchesWithFavoritesForLocale(matches []domain.HomeMatchRow, lim
 			DefensiveResistance:      defRes,
 			DamageDealt:              m.DamageDealt,
 			DamageTaken:              m.DamageTaken,
+			SkillRatingValue:         skillRatingVal,
+			SkillRatingType:          skillRatingType,
+			SkillTierLabel:           skillTierLabel,
+			SkillRatingDelta:         m.SkillRatingDelta,
+			SkillPlaylistGroup:       skillPlaylistGroup,
+			SkillRankImageURL:        m.SkillRankImageURL,
+			SkillProgressPct:         skillProgressPct,
+			SkillPointsInTier:        skillPointsInTier,
 		})
 	}
 	return items
-}
-
-func firstNonEmpty(values ...string) string {
-	for _, value := range values {
-		if strings.TrimSpace(value) != "" {
-			return value
-		}
-	}
-	return ""
 }
 
 // buildMapImageURL construit l'URL d'image d'une map.

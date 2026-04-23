@@ -928,6 +928,14 @@ export interface RecentMatchItem {
   damage_dealt?: number | null
   damage_taken?: number | null
   map_image_url?: string | null
+  skill_rating_value?: number | null
+  skill_rating_type?: string | null
+  skill_tier_label?: string | null
+  skill_rating_delta?: number | null
+  skill_playlist_group?: string | null
+  skill_rank_image_url?: string | null
+  skill_progress_pct?: number | null
+  skill_points_in_tier?: number | null
 }
 
 export interface SessionSummaryItem {
