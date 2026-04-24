@@ -474,3 +474,30 @@ func (r *ServiceRegistry) AnyPlayerTokens(ctx context.Context) (*domain.HaloToke
 	}
 	return tokens, nil
 }
+
+// RefreshTokensForXUID tente un refresh silencieux pour le joueur identifié par son XUID.
+// Recherche le PlayerDB dans le pool, puis tente MSAL ou OAuth v2 refresh.
+// Met à jour le cache process si le refresh réussit.
+// Appelé par PlayerLiveRefresher quand le cache process est expiré.
+func (r *ServiceRegistry) RefreshTokensForXUID(ctx context.Context, xuid string) (*domain.HaloTokens, error) {
+	if cached := halo.GetCachedPlayerTokens(xuid); cached != nil {
+		return cached, nil
+	}
+	var pdb *duckdb.PlayerDB
+	duckdb.IteratePool(func(p *duckdb.PlayerDB) bool {
+		if p.XUID == xuid {
+			pdb = p
+			return false // stop
+		}
+		return true
+	})
+	if pdb == nil {
+		return nil, fmt.Errorf("halo_auth: joueur xuid=%s introuvable dans le pool", xuid)
+	}
+	result := r.refreshTokensFromDB(ctx, pdb, xuid)
+	if result == nil {
+		return nil, fmt.Errorf("halo_auth: refresh impossible pour xuid=%s", xuid)
+	}
+	halo.SetCachedPlayerTokens(xuid, result.Tokens)
+	return result.Tokens, nil
+}

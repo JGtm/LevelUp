@@ -212,8 +212,17 @@ func main() {
 		}
 		return nil
 	}
+	// tokenRefresher est un getter lazy qui tente un refresh MSAL/OAuth v2 depuis la DB
+	// quand le cache process de tokens est expiré (~50 min). Évite que le watcher
+	// cesse de rafraîchir le BP après une longue session sans appel HTTP de l'UI.
+	tokenRefresher := func(ctx context.Context, xuid string) (*domain.HaloTokens, error) {
+		if reg != nil {
+			return reg.RefreshTokensForXUID(ctx, xuid)
+		}
+		return nil, fmt.Errorf("registry non initialisé")
+	}
 	var watcherDaemon *watcher.Daemon
-	watcherDaemon = startWatcherDaemon(ctx, cfg, settingsStore, notifierGetter)
+	watcherDaemon = startWatcherDaemon(ctx, cfg, settingsStore, notifierGetter, tokenRefresher)
 	if watcherDaemon != nil {
 		autoScheduler.ActivityChecker = watcher.NewStateProvider(watcherDaemon)
 	}
@@ -355,7 +364,7 @@ func RunPlayerMigrations(playerDBPath string) error {
 // startWatcherDaemon tente de démarrer le daemon de présence.
 // Retourne nil si watcher_presence_enabled est false ou si les prérequis ne sont pas remplis.
 // getNotifier est un getter lazy (xuid → SessionNotifier) injecté par main ; peut être nil.
-func startWatcherDaemon(ctx context.Context, cfg *config.AppConfig, settingsStore *settings.Store, getNotifier func(xuid string) port.SessionNotifier) *watcher.Daemon {
+func startWatcherDaemon(ctx context.Context, cfg *config.AppConfig, settingsStore *settings.Store, getNotifier func(xuid string) port.SessionNotifier, tokenRefresher func(ctx context.Context, xuid string) (*domain.HaloTokens, error)) *watcher.Daemon {
 	// Vérifier que le watcher est activé dans les settings
 	appSettings, err := settingsStore.Load()
 	if err != nil {
@@ -421,7 +430,8 @@ func startWatcherDaemon(ctx context.Context, cfg *config.AppConfig, settingsStor
 			sink := duckdb.NewPersistSink(wMetaPath, wPlayerPath, xuid)
 			// resolver nil : le watcher ne pré-chauffe pas les définitions BP.
 			// Les définitions sont chargées à la demande via l'endpoint HTTP (resolver HTTP).
-			refresher := watcher.NewPlayerLiveRefresher(gamertag, xuid, sink, nil)
+			refresher := watcher.NewPlayerLiveRefresher(gamertag, xuid, sink, nil).
+				WithTokenRefresher(tokenRefresher)
 			if getNotifier != nil {
 				if n := getNotifier(xuid); n != nil {
 					refresher = refresher.WithSessionNotifier(n)
