@@ -6,12 +6,14 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"sync"
 	"testing"
 	"time"
 )
 
 // stubFetcher est un Fetcher de test.
 type stubFetcher struct {
+	mu        sync.Mutex
 	payload   Payload
 	err       error
 	supported bool
@@ -21,7 +23,9 @@ type stubFetcher struct {
 func (f *stubFetcher) Supports(_ Kind) bool { return f.supported }
 
 func (f *stubFetcher) Fetch(_ context.Context, _ Ref) (Payload, error) {
+	f.mu.Lock()
 	f.calls++
+	f.mu.Unlock()
 	return f.payload, f.err
 }
 

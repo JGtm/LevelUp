@@ -152,6 +152,8 @@ func (h *SetupHandler) CreatePlayer(w http.ResponseWriter, r *http.Request) {
 // POST /setup/smoke-test → 202 AsyncJobStatus.
 func (h *SetupHandler) SmokeTest(w http.ResponseWriter, r *http.Request) {
 	job := h.jobStore.Create(domain.JobTypeSetupSmokeTest, "")
+	// Snapshot avant le go func() : la goroutine modifie in-place le job dans le store.
+	jobSnapshot := *job
 
 	go func() {
 		step := "Vérification de l'environnement"
@@ -189,7 +191,7 @@ func (h *SetupHandler) SmokeTest(w http.ResponseWriter, r *http.Request) {
 		})
 	}()
 
-	writeJSON(w, http.StatusAccepted, job)
+	writeJSON(w, http.StatusAccepted, &jobSnapshot)
 }
 
 // ---------------------------------------------------------------------------

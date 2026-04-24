@@ -16,6 +16,7 @@ import (
 	"levelup/go-api/internal/api/middleware"
 	"levelup/go-api/internal/config"
 	"levelup/go-api/internal/domain"
+	auth_platform "levelup/go-api/internal/platform/auth"
 	"levelup/go-api/internal/platform/jobs"
 	settings_platform "levelup/go-api/internal/platform/settings"
 	go_sync "levelup/go-api/internal/sync"
@@ -26,14 +27,16 @@ type SyncHandler struct {
 	cfg           *config.AppConfig
 	settingsStore *settings_platform.Store
 	jobStore      *jobs.Store
+	provider      auth_platform.TokenProvider
 }
 
 // NewSyncHandler crée un SyncHandler.
-func NewSyncHandler(cfg *config.AppConfig, settingsStore *settings_platform.Store, jobStore *jobs.Store) *SyncHandler {
+func NewSyncHandler(cfg *config.AppConfig, settingsStore *settings_platform.Store, jobStore *jobs.Store, provider auth_platform.TokenProvider) *SyncHandler {
 	return &SyncHandler{
 		cfg:           cfg,
 		settingsStore: settingsStore,
 		jobStore:      jobStore,
+		provider:      provider,
 	}
 }
 
@@ -103,9 +106,11 @@ func (h *SyncHandler) StartInitialSync(w http.ResponseWriter, r *http.Request) {
 	}
 
 	job := h.jobStore.Create(domain.JobTypeInitialSync, req.PlayerSlug)
+	// Snapshot avant le go func() : la goroutine modifie in-place le job dans le store.
+	jobSnapshot := *job
 
 	go func() {
-		engine := go_sync.NewSyncEngine(h.cfg.RepoRoot, gamertag, xuid, tokens)
+		engine := go_sync.NewSyncEngine(h.cfg.RepoRoot, gamertag, xuid, tokens, h.provider)
 		opts := domain.DefaultSyncOptions()
 		opts.MaxMatches = req.MaxMatches
 
@@ -121,7 +126,7 @@ func (h *SyncHandler) StartInitialSync(w http.ResponseWriter, r *http.Request) {
 		h.jobStore.SetStatus(job.JobID, domain.JobStatusSucceeded, &summary)
 	}()
 
-	writeJSON(w, http.StatusAccepted, job)
+	writeJSON(w, http.StatusAccepted, &jobSnapshot)
 }
 
 // StartDeltaSync lance une synchronisation delta pour un joueur donné.
@@ -168,9 +173,11 @@ func (h *SyncHandler) StartDeltaSync(w http.ResponseWriter, r *http.Request) {
 	}
 
 	job := h.jobStore.Create(domain.JobTypeInitialSync, playerSlug)
+	// Snapshot avant le go func() : la goroutine modifie in-place le job dans le store.
+	jobSnapshot2 := *job
 
 	go func() {
-		engine := go_sync.NewSyncEngine(h.cfg.RepoRoot, gamertag, xuid, tokens)
+		engine := go_sync.NewSyncEngine(h.cfg.RepoRoot, gamertag, xuid, tokens, h.provider)
 		opts := domain.DefaultSyncOptions()
 
 		result, err := engine.RunDelta(context.Background(), opts)
@@ -185,7 +192,7 @@ func (h *SyncHandler) StartDeltaSync(w http.ResponseWriter, r *http.Request) {
 		h.jobStore.SetStatus(job.JobID, domain.JobStatusSucceeded, &summary)
 	}()
 
-	writeJSON(w, http.StatusAccepted, job)
+	writeJSON(w, http.StatusAccepted, &jobSnapshot2)
 }
 
 // StartSyncAll lance une synchronisation delta pour tous les joueurs configurés.
@@ -209,6 +216,8 @@ func (h *SyncHandler) StartSyncAll(w http.ResponseWriter, r *http.Request) {
 	}
 
 	job := h.jobStore.Create(domain.JobTypeDeltaSyncAll, "all")
+	// Snapshot avant le go func() : la goroutine modifie in-place le job dans le store.
+	jobSnapshot3 := *job
 
 	go func() {
 		total := len(players)
@@ -221,7 +230,7 @@ func (h *SyncHandler) StartSyncAll(w http.ResponseWriter, r *http.Request) {
 				j.ProgressPct = &pct
 			})
 
-			engine := go_sync.NewSyncEngine(h.cfg.RepoRoot, p.Gamertag, p.XUID, tokens)
+			engine := go_sync.NewSyncEngine(h.cfg.RepoRoot, p.Gamertag, p.XUID, tokens, h.provider)
 			opts := domain.DefaultSyncOptions()
 			if _, err := engine.RunDelta(context.Background(), opts); err != nil {
 				failed++
@@ -238,5 +247,5 @@ func (h *SyncHandler) StartSyncAll(w http.ResponseWriter, r *http.Request) {
 		}
 	}()
 
-	writeJSON(w, http.StatusAccepted, job)
+	writeJSON(w, http.StatusAccepted, &jobSnapshot3)
 }

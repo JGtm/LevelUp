@@ -112,6 +112,9 @@ func (h *SettingsHandler) PostMediaResetIndex(w http.ResponseWriter, r *http.Req
 	}
 
 	job := h.jobStore.Create(domain.JobTypeReindexMedia, "")
+	// Snapshot avant le go func() : la goroutine modifie in-place le job dans le store.
+	// La copie doit être lue avant tout write concurrent.
+	jobSnapshot := *job
 
 	// Charger le dossier captures configuré dans les settings.
 	capturesBaseDir := ""
@@ -154,13 +157,15 @@ func (h *SettingsHandler) PostMediaResetIndex(w http.ResponseWriter, r *http.Req
 		})
 	}()
 
-	writeJSON(w, http.StatusAccepted, job)
+	writeJSON(w, http.StatusAccepted, &jobSnapshot)
 }
 
 // PostMediaScan lance une indexation non-destructive des médias pour tous les joueurs.
 // POST /settings/media/scan — retourne un AsyncJobStatus (202).
 func (h *SettingsHandler) PostMediaScan(w http.ResponseWriter, r *http.Request) {
 	job := h.jobStore.Create(domain.JobTypeScanMedia, "")
+	// Snapshot avant le go func() : la goroutine modifie in-place le job dans le store.
+	jobSnapshot := *job
 
 	capturesBaseDir := ""
 	if h.settingsStore != nil {
@@ -201,5 +206,5 @@ func (h *SettingsHandler) PostMediaScan(w http.ResponseWriter, r *http.Request) 
 		})
 	}()
 
-	writeJSON(w, http.StatusAccepted, job)
+	writeJSON(w, http.StatusAccepted, &jobSnapshot)
 }
