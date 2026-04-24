@@ -155,7 +155,7 @@ func (e *SyncEngine) BackfillWeaponKillsForMatches(
 // ─────────────────────────────────────────────────────────────────────────────
 
 // getKillsForPlayer récupère les kills d'un joueur dans un match depuis shared DB.
-// Utilise highlight_events (event_type='Killed') pour les kills du joueur.
+// Utilise highlight_events (event_type='kill') pour les kills du joueur.
 func getKillsForPlayer(db *sql.DB, matchID, xuid string) ([]analysis.Kill, error) {
 	rows, err := db.Query(`
 		SELECT
@@ -166,7 +166,7 @@ func getKillsForPlayer(db *sql.DB, matchID, xuid string) ([]analysis.Kill, error
 		LEFT JOIN killer_victim_pairs kv
 			ON kv.match_id = he.match_id AND kv.killer_xuid = he.xuid
 			AND ABS(COALESCE(kv.time_ms, 0) - COALESCE(he.time_ms, 0)) < 300
-		WHERE he.match_id = ? AND he.xuid = ? AND he.event_type = 'Killed'
+		WHERE he.match_id = ? AND he.xuid = ? AND he.event_type = 'kill'
 		ORDER BY he.time_ms`, matchID, xuid)
 	if err != nil {
 		return nil, fmt.Errorf("getKillsForPlayer: %w", err)

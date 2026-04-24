@@ -17,11 +17,16 @@ import (
 	"database/sql"
 	"fmt"
 	"log/slog"
+	"os"
+	"strconv"
 	"strings"
 	"time"
 
+	"levelup/go-api/internal/analysis"
+	"levelup/go-api/internal/assets"
 	"levelup/go-api/internal/domain"
 	titlePkg "levelup/go-api/internal/domain/title"
+	"levelup/go-api/internal/platform/auth"
 )
 
 const (
@@ -37,6 +42,11 @@ type SyncEngine struct {
 	sharedDBPath   string
 	metadataDBPath string
 	tokens         *domain.HaloTokens
+	// provider est utilisé pour résoudre l'access_token Xbox Live (achievements).
+	// Nil si non défini (les achievements seront ignorés).
+	provider auth.TokenProvider
+	// resolver est utilisé pour le pré-warming des images d'achievements (optionnel).
+	resolver assets.Resolver
 }
 
 // NewSyncEngine crée un moteur de sync pour un joueur.
@@ -45,9 +55,11 @@ type SyncEngine struct {
 //   - gamertag    : gamertag Halo du joueur
 //   - xuid        : XUID numérique (sans "xuid()")
 //   - tokens      : tokens Halo frais obtenus après Device Code Flow
+//   - provider    : TokenProvider pour résoudre l'access_token Xbox Live
 func NewSyncEngine(
 	repoRoot, gamertag, xuid string,
 	tokens *domain.HaloTokens,
+	provider auth.TokenProvider,
 ) *SyncEngine {
 	pr := titlePkg.NewPathResolver(repoRoot)
 	return &SyncEngine{
@@ -57,7 +69,15 @@ func NewSyncEngine(
 		sharedDBPath:   pr.SharedDBPath(titlePkg.DefaultSlug),
 		metadataDBPath: pr.MetadataDBPath(titlePkg.DefaultSlug),
 		tokens:         tokens,
+		provider:       provider,
 	}
+}
+
+// WithResolver attache un Resolver pour le pré-warming des images d'achievements.
+// Retourne le même engine pour permettre le chaînage.
+func (e *SyncEngine) WithResolver(r assets.Resolver) *SyncEngine {
+	e.resolver = r
+	return e
 }
 
 // RunDelta synchronise uniquement les matchs nouveaux depuis la dernière sync.
@@ -248,7 +268,7 @@ done:
 
 	// ─── Pipeline post-sync ─────────────────────────────────────────────────────
 	postResult := e.runConditionalPostSync(ctx, playerDB, sharedDB, client, result.MatchesInserted)
-	if result.MatchesInserted > 0 || postResult.CareerSynced {
+	if result.MatchesInserted > 0 || postResult.CareerSynced || postResult.AchievementsSynced {
 		result.PostSync = &postResult
 		slog.InfoContext(ctx, "sync: pipeline post-sync terminé",
 			"gamertag", e.gamertag,
@@ -256,6 +276,7 @@ done:
 			"lusr_updated", postResult.LUSRUpdated,
 			"career_synced", postResult.CareerSynced,
 			"views_refreshed", postResult.ViewsRefreshed,
+			"achievements_synced", postResult.AchievementsSynced,
 		)
 	}
 
@@ -295,7 +316,8 @@ func (e *SyncEngine) runConditionalPostSync(
 
 	slog.DebugContext(ctx, "sync: aucun match inséré — refresh carrière seul", "gamertag", e.gamertag)
 	return domain.PostSyncResult{
-		CareerSynced: e.runCareerSync(ctx, playerDB, client),
+		CareerSynced:       e.runCareerSync(ctx, playerDB, client),
+		AchievementsSynced: e.runAchievementsSync(ctx, playerDB),
 	}
 }
 
@@ -372,6 +394,17 @@ func (e *SyncEngine) processMatch(
 		)
 	}
 
+	// ─── highlight_events + killer_victim_pairs ──────────────────────────────────────
+	if opts.WithHighlightEvents {
+		if err := processHighlightEvents(ctx, client, sharedDB, matchID, result); err != nil {
+			// Non-bloquant : on logge et on continue (pas de return).
+			slog.WarnContext(ctx, "processMatch: highlight_events non chargés",
+				"gamertag", e.gamertag, "match_id", matchID, "err", err,
+			)
+			result.Warnings = append(result.Warnings, fmt.Sprintf("highlight_events %s: %v", matchID, err))
+		}
+	}
+
 	// ─── player_match_enrichment (player DB) ───────────────────────────────────
 	if err := UpsertPlayerEnrichment(playerDB, matchID, ""); err != nil {
 		slog.ErrorContext(ctx, "processMatch: UpsertPlayerEnrichment échoué",
@@ -385,6 +418,81 @@ func (e *SyncEngine) processMatch(
 	slog.DebugContext(ctx, "processMatch: terminé",
 		"gamertag", e.gamertag, "match_id", matchID,
 		"duration_ms", time.Since(start).Milliseconds(),
+	)
+	return nil
+}
+
+// processHighlightEvents télécharge le chunk highlight events, le parse et
+// insère les events + paires killer/victim dans la shared DB.
+// Retourne une erreur uniquement en cas de défaillance fatale (non-nil = warning dans processMatch).
+func processHighlightEvents(
+	ctx context.Context,
+	client HaloClient,
+	sharedDB *sql.DB,
+	matchID string,
+	result *domain.SyncResult,
+) error {
+	data, filmMajorVersion, found, err := client.GetHighlightEventsChunk(ctx, matchID)
+	if err != nil {
+		return fmt.Errorf("GetHighlightEventsChunk: %w", err)
+	}
+	if !found || len(data) == 0 {
+		slog.DebugContext(ctx, "processHighlightEvents: film absent ou chunk vide",
+			"match_id", matchID, "found", found, "data_len", len(data),
+		)
+		return nil // Film indisponible ou pas de chunk — pas d'erreur.
+	}
+
+	events, err := analysis.ParseHighlightEvents(data, filmMajorVersion)
+	if err != nil {
+		return fmt.Errorf("ParseHighlightEvents: %w", err)
+	}
+	if len(events) == 0 {
+		slog.DebugContext(ctx, "processHighlightEvents: aucun event extrait",
+			"match_id", matchID, "film_version", filmMajorVersion, "data_len", len(data),
+		)
+		return nil
+	}
+
+	n, err := InsertHighlightEvents(sharedDB, matchID, events)
+	if err != nil {
+		return fmt.Errorf("InsertHighlightEvents: %w", err)
+	}
+
+	// Upsert les gamertags extraits depuis le film (source la plus fiable).
+	aliasCount := 0
+	for _, ev := range events {
+		if ev.XUID != 0 && ev.Gamertag != "" {
+			if uErr := UpsertXUIDAlias(sharedDB, strconv.FormatUint(ev.XUID, 10), ev.Gamertag); uErr == nil {
+				aliasCount++
+			}
+		}
+	}
+
+	if n > 0 {
+		result.EventsInserted += n
+		if markErr := MarkEventsLoaded(sharedDB, matchID); markErr != nil {
+			slog.WarnContext(ctx, "MarkEventsLoaded échoué", "match_id", matchID, "err", markErr)
+		}
+	}
+
+	pairsErr := InsertKillerVictimPairsFromEvents(sharedDB, matchID, events)
+	if pairsErr != nil {
+		slog.WarnContext(ctx, "InsertKillerVictimPairs échoué", "match_id", matchID, "err", pairsErr)
+		// Non-bloquant : on continue.
+	} else {
+		if markErr := MarkKillerVictimLoaded(sharedDB, matchID); markErr != nil {
+			slog.WarnContext(ctx, "MarkKillerVictimLoaded échoué", "match_id", matchID, "err", markErr)
+		}
+	}
+
+	slog.DebugContext(ctx, "processHighlightEvents: terminé",
+		"match_id", matchID,
+		"film_version", filmMajorVersion,
+		"events_parsed", len(events),
+		"events_inserted", n,
+		"aliases_upserted", aliasCount,
+		"killer_victim_err", pairsErr,
 	)
 	return nil
 }
@@ -456,6 +564,9 @@ func (e *SyncEngine) runPostSyncPipeline(
 		r.ViewsRefreshed += n
 	}
 
+	// 5. Achievements Xbox (fire-and-forget, non bloquant en cas d'erreur token)
+	r.AchievementsSynced = e.runAchievementsSync(ctx, playerDB)
+
 	return r
 }
 
@@ -492,4 +603,99 @@ func (e *SyncEngine) runCareerSync(
 		"gamertag", e.gamertag, "rank", data.CurrentRank, "rank_name", data.CurrentRankName,
 	)
 	return true
+}
+
+// runAchievementsSync récupère les achievements Xbox pour le joueur et les persiste.
+// Retourne true si la sync a réussi, false en cas d'erreur (non bloquante).
+// Nécessite e.provider non nil ; skippé silencieusement sinon.
+func (e *SyncEngine) runAchievementsSync(ctx context.Context, playerDB *sql.DB) bool {
+	if e.provider == nil {
+		slog.DebugContext(ctx, "achievements: provider nil — sync ignorée", "gamertag", e.gamertag)
+		return false
+	}
+
+	// Résoudre l'access_token depuis sync_meta DuckDB.
+	accessToken, err := resolveAccessTokenFromDB(ctx, playerDB, e.gamertag, e.provider)
+	if err != nil {
+		slog.WarnContext(ctx, "achievements: échec résolution access_token",
+			"gamertag", e.gamertag, "err", err)
+		return false
+	}
+	if accessToken == "" {
+		slog.InfoContext(ctx, "achievements: aucun access_token disponible — sync ignorée",
+			"gamertag", e.gamertag)
+		return false
+	}
+
+	// Obtenir un XSTS token pour Xbox Live.
+	xstsResult, err := auth.AcquireXSTSForRTA(ctx, accessToken)
+	if err != nil {
+		slog.WarnContext(ctx, "achievements: échec acquisition XSTS",
+			"gamertag", e.gamertag, "err", err)
+		return false
+	}
+
+	// Ouvrir la DB metadata (lecture-écriture pour l'upsert).
+	metadataDB, err := sql.Open("duckdb", e.metadataDBPath)
+	if err != nil {
+		slog.WarnContext(ctx, "achievements: ouverture metadata DB échouée",
+			"gamertag", e.gamertag, "err", err)
+		return false
+	}
+	defer metadataDB.Close() //nolint:errcheck
+	metadataDB.SetMaxOpenConns(1)
+
+	client := NewXboxHTTPClient(xstsResult)
+	if err := SyncAchievements(ctx, client, e.resolver, metadataDB, playerDB, e.xuid); err != nil {
+		slog.WarnContext(ctx, "achievements: sync échouée",
+			"gamertag", e.gamertag, "err", err)
+		return false
+	}
+
+	slog.InfoContext(ctx, "achievements: sync terminée avec succès", "gamertag", e.gamertag)
+	return true
+}
+
+// resolveAccessTokenFromDB lit le cache MSAL et le refresh token depuis sync_meta (DB déjà ouverte),
+// puis tente TrySilentRefresh ou TryOAuthRefresh selon ce qui est disponible.
+// Retourne ("", nil) si aucun token n'est disponible (non fatal).
+func resolveAccessTokenFromDB(
+	ctx context.Context,
+	playerDB *sql.DB,
+	gamertag string,
+	provider auth.TokenProvider,
+) (string, error) {
+	var cacheJSON, refreshToken string
+	if err := playerDB.QueryRowContext(ctx,
+		"SELECT value FROM sync_meta WHERE key = 'msal_token_cache'").Scan(&cacheJSON); err != nil {
+		slog.DebugContext(ctx, "achievements: msal_token_cache absent", "gamertag", gamertag)
+	}
+	if err := playerDB.QueryRowContext(ctx,
+		"SELECT value FROM sync_meta WHERE key = 'oauth_refresh_token'").Scan(&refreshToken); err != nil {
+		slog.DebugContext(ctx, "achievements: oauth_refresh_token absent", "gamertag", gamertag)
+	}
+
+	// Fallback env var SPNKR_OAUTH_REFRESH_TOKEN_<GAMERTAG>
+	if refreshToken == "" && gamertag != "" {
+		key := strings.ToUpper(strings.NewReplacer(" ", "_", "-", "_", ".", "_").Replace(gamertag))
+		if v := os.Getenv("SPNKR_OAUTH_REFRESH_TOKEN_" + key); v != "" {
+			refreshToken = v
+		}
+	}
+
+	if cacheJSON != "" {
+		token, err := provider.TrySilentRefresh(ctx, cacheJSON)
+		if err == nil && token != "" {
+			return token, nil
+		}
+	}
+
+	if refreshToken != "" {
+		token, err := provider.TryOAuthRefresh(ctx, refreshToken)
+		if err == nil && token != "" {
+			return token, nil
+		}
+	}
+
+	return "", nil
 }

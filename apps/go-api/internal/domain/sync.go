@@ -29,6 +29,10 @@ type SyncOptions struct {
 	WithParticipants bool
 	// WithMedals active l'extraction des médailles de tous les joueurs.
 	WithMedals bool
+	// WithHighlightEvents active le parsing du chunk highlight events (kills, deaths, medals, mode).
+	// Alimente highlight_events et killer_victim_pairs dans shared_matches_v2.
+	// Activé par défaut (identique au comportement Python).
+	WithHighlightEvents bool
 	// RequestsPerSecond contrôle le rate limiting vers l'API Halo.
 	RequestsPerSecond int
 }
@@ -54,11 +58,12 @@ func (o SyncOptions) Validate() error {
 // DefaultSyncOptions retourne les options par défaut (portage de SyncOptions() Python).
 func DefaultSyncOptions() SyncOptions {
 	return SyncOptions{
-		MatchType:         "matchmaking",
-		MaxMatches:        200,
-		WithParticipants:  true,
-		WithMedals:        true,
-		RequestsPerSecond: 10,
+		MatchType:           "matchmaking",
+		MaxMatches:          200,
+		WithParticipants:    true,
+		WithMedals:          true,
+		WithHighlightEvents: true,
+		RequestsPerSecond:   10,
 	}
 }
 
@@ -69,6 +74,7 @@ type SyncResult struct {
 	MatchesSkipped   int
 	MedalsInserted   int
 	ParticipantsDone int
+	EventsInserted   int
 	InsertedMatchIDs []string
 	Errors           []string
 	Warnings         []string
@@ -105,4 +111,5 @@ type PostSyncResult struct {
 	LUSRUpdated        int
 	CareerSynced       bool
 	ViewsRefreshed     int
+	AchievementsSynced bool
 }

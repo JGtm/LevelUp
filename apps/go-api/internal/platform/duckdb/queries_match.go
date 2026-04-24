@@ -109,16 +109,17 @@ FROM shared.medals_earned me
 WHERE me.xuid = ? AND me.match_id = ?
 ORDER BY me.count DESC`
 
-// Q15 : Events highlight d'un joueur pour un match.
-// Paramètres : ?1 = xuid, ?2 = match_id.
+// Q15 : Events highlight d'un match (tous les joueurs).
+// Paramètre : ?1 = match_id.
 const Q15MatchEvents = `
 SELECT
     he.event_type,
-    he.tick_count,
-    he.timestamp_utc
+    he.time_ms,
+    he.xuid,
+    he.type_hint
 FROM shared.highlight_events he
 WHERE he.match_id = ?
-ORDER BY he.tick_count ASC`
+ORDER BY he.time_ms ASC`
 
 // Q16 : Weapon kills d'un joueur pour un match.
 // Paramètres : ?1 = xuid, ?2 = match_id.

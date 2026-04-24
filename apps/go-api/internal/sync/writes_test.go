@@ -7,6 +7,7 @@ import (
 	"testing"
 	"time"
 
+	"levelup/go-api/internal/domain"
 	intsync "levelup/go-api/internal/sync"
 	"levelup/go-api/internal/sync/testutil"
 )
@@ -272,5 +273,66 @@ func TestMarkWeaponKillsDone(t *testing.T) {
 	_ = db.QueryRow("SELECT backfill_completed FROM match_registry WHERE match_id = 'm2'").Scan(&bits)
 	if bits&intsync.MBitWeaponKillsNoFilm == 0 {
 		t.Errorf("expected MBitWeaponKillsNoFilm set, got bits=%d", bits)
+	}
+}
+
+func TestWriteSessionAssignments_UpdatesRows(t *testing.T) {
+	db := testutil.NewInMemoryPlayer(t)
+
+	// Seed deux matchs dans player_match_enrichment.
+	_, err := db.Exec(`INSERT INTO player_match_enrichment (match_id) VALUES ('m1'), ('m2'), ('m3')`)
+	if err != nil {
+		t.Fatalf("seed: %v", err)
+	}
+
+	assignments := []domain.SessionAssignment{
+		{MatchID: "m1", SessionID: 1, SessionLabel: "Session 1"},
+		{MatchID: "m2", SessionID: 1, SessionLabel: "Session 1"},
+		{MatchID: "m3", SessionID: 2, SessionLabel: "Session 2"},
+	}
+	n, err := intsync.WriteSessionAssignments(db, assignments)
+	if err != nil {
+		t.Fatalf("WriteSessionAssignments: %v", err)
+	}
+	if n != 3 {
+		t.Errorf("expected 3 rows updated, got %d", n)
+	}
+
+	// Vérifier les valeurs écrites.
+	var sid, slabel string
+	_ = db.QueryRow("SELECT session_id, session_label FROM player_match_enrichment WHERE match_id = 'm1'").Scan(&sid, &slabel)
+	if sid != "1" || slabel != "Session 1" {
+		t.Errorf("m1: got session_id=%q session_label=%q, want 1 / 'Session 1'", sid, slabel)
+	}
+	_ = db.QueryRow("SELECT session_id, session_label FROM player_match_enrichment WHERE match_id = 'm3'").Scan(&sid, &slabel)
+	if sid != "2" || slabel != "Session 2" {
+		t.Errorf("m3: got session_id=%q session_label=%q, want 2 / 'Session 2'", sid, slabel)
+	}
+}
+
+func TestWriteSessionAssignments_EmptySlice(t *testing.T) {
+	db := testutil.NewInMemoryPlayer(t)
+	n, err := intsync.WriteSessionAssignments(db, nil)
+	if err != nil {
+		t.Fatalf("WriteSessionAssignments(nil): %v", err)
+	}
+	if n != 0 {
+		t.Errorf("expected 0, got %d", n)
+	}
+}
+
+func TestWriteSessionAssignments_MissingMatchID_Zero(t *testing.T) {
+	db := testutil.NewInMemoryPlayer(t)
+
+	// Aucune ligne dans la table — l'UPDATE ne doit pas échouer, juste 0 lignes affectées.
+	assignments := []domain.SessionAssignment{
+		{MatchID: "nonexistent", SessionID: 1, SessionLabel: "S1"},
+	}
+	n, err := intsync.WriteSessionAssignments(db, assignments)
+	if err != nil {
+		t.Fatalf("WriteSessionAssignments: %v", err)
+	}
+	if n != 0 {
+		t.Errorf("expected 0 rows updated for missing match_id, got %d", n)
 	}
 }
