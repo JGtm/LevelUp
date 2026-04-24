@@ -3,6 +3,7 @@ package service
 
 import (
 	"context"
+	"database/sql"
 	"fmt"
 	"log/slog"
 	"os"
@@ -10,6 +11,8 @@ import (
 	"sort"
 	"strings"
 	"time"
+
+	_ "github.com/duckdb/duckdb-go/v2"
 
 	"levelup/go-api/internal/domain"
 	"levelup/go-api/internal/ops"
@@ -21,12 +24,17 @@ const maxMediaPageSize = 100
 
 // MediaService orchestre les données de la galerie médias.
 type MediaService struct {
-	repo port.MediaRepository
+	repo     port.MediaRepository
+	timezone string // IANA assaini à la construction (ex: "Europe/Paris")
 }
 
-// NewMediaService crée un MediaService avec le repository injecté.
-func NewMediaService(repo port.MediaRepository) *MediaService {
-	return &MediaService{repo: repo}
+// NewMediaService crée un MediaService avec le repository et la timezone injectés.
+// La timezone est validée par SanitizeMediaTimezone (caractères IANA autorisés uniquement).
+func NewMediaService(repo port.MediaRepository, timezone string) *MediaService {
+	return &MediaService{
+		repo:     repo,
+		timezone: ops.SanitizeMediaTimezone(timezone),
+	}
 }
 
 // GetMediaPage construit la réponse paginée de la galerie médias.
@@ -177,18 +185,29 @@ func (s *MediaService) UploadMedia(ctx context.Context, req domain.UploadRequest
 
 	tol := req.Tolerance
 	if tol <= 0 {
-		tol = 5
+		tol = 2
+	}
+
+	// Construction de la map basename → unix ts client (pour le filename parser)
+	captureTimes := make(map[string]*int64, len(req.Files))
+	for _, f := range req.Files {
+		if f.CaptureTimeUnix != nil {
+			captureTimeUnix := f.CaptureTimeUnix
+			captureTimes[f.OriginalName] = captureTimeUnix
+		}
 	}
 
 	slog.InfoContext(ctx, "upload: démarrage indexation",
-		"captures_dir", req.CapturesDir, "tolerance_min", tol)
+		"captures_dir", req.CapturesDir, "buffer_min", tol, "timezone", s.timezone)
 
 	idxResult, err := ops.IndexMedia(ops.MediaIndexOptions{
 		PlayerDBPath:        req.DBPath,
 		SharedSocialDBPath:  req.SharedSocialDBPath,
 		SharedMatchesDBPath: req.SharedMatchesDBPath,
 		CapturesDir:         req.CapturesDir,
-		ToleranceMin:        tol,
+		BufferMin:           tol,
+		Timezone:            s.timezone,
+		CaptureTimes:        captureTimes,
 	})
 	if err != nil {
 		result.Errors = append(result.Errors, fmt.Sprintf("indexation: %v", err))
@@ -214,6 +233,80 @@ func (s *MediaService) UploadMedia(ctx context.Context, req domain.UploadRequest
 		"thumbnails", result.Thumbnails,
 		"errors", len(result.Errors),
 	)
+	return result, nil
+}
+
+// ReassociateMedia recrée toutes les associations médias↔matchs depuis zéro.
+// Avant de supprimer, crée un snapshot horodaté (backup) dans la même DB.
+func (s *MediaService) ReassociateMedia(ctx context.Context, req domain.ReassociateRequest) (*domain.ReassociateResult, error) {
+	result := &domain.ReassociateResult{}
+
+	// Sélectionner la DB cible (shared_social si dispo, sinon stats.duckdb).
+	targetPath := req.DBPath
+	if req.SharedSocialDBPath != "" {
+		targetPath = req.SharedSocialDBPath
+	}
+	if targetPath == "" {
+		return nil, fmt.Errorf("ReassociateMedia: aucun chemin DB fourni")
+	}
+
+	bufferMin := req.BufferMin
+	if bufferMin <= 0 {
+		bufferMin = 2
+	}
+
+	// Ouvrir la DB en lecture-écriture.
+	db, err := sql.Open("duckdb", targetPath)
+	if err != nil {
+		return nil, fmt.Errorf("ouverture DB: %w", err)
+	}
+	defer db.Close() //nolint:errcheck
+
+	// Appliquer la timezone pour les opérations sur timestamps.
+	if tz := ops.SanitizeMediaTimezone(s.timezone); tz != "" {
+		if _, err := db.Exec("SET TimeZone = '" + tz + "'"); err != nil {
+			slog.WarnContext(ctx, "ReassociateMedia: SET TimeZone échoué",
+				"timezone", s.timezone, "err", err)
+		}
+	}
+
+	// 1 — Backup : snapshot horodaté avant suppression.
+	backupTable := fmt.Sprintf("media_match_associations_bak_%s",
+		time.Now().UTC().Format("20060102T150405Z"))
+	createBackupSQL := fmt.Sprintf(
+		`CREATE TABLE %s AS SELECT * FROM media_match_associations`, backupTable)
+	if _, err := db.Exec(createBackupSQL); err != nil {
+		return nil, fmt.Errorf("backup table: %w", err)
+	}
+	result.BackupTable = backupTable
+	slog.InfoContext(ctx, "ReassociateMedia: backup créé", "table", backupTable)
+
+	// 2 — Compter puis supprimer les anciennes associations.
+	var oldCount int
+	if err := db.QueryRowContext(ctx, "SELECT COUNT(*) FROM media_match_associations").Scan(&oldCount); err != nil {
+		slog.WarnContext(ctx, "ReassociateMedia: COUNT avant suppression échoué", "err", err)
+	}
+	if _, err := db.Exec("DELETE FROM media_match_associations"); err != nil {
+		result.Errors = append(result.Errors, fmt.Sprintf("DELETE: %v", err))
+		return result, fmt.Errorf("supprimer associations: %w", err)
+	}
+	result.DeletedAssoc = oldCount
+	slog.InfoContext(ctx, "ReassociateMedia: associations supprimées", "count", oldCount)
+
+	// 3 — Re-créer les associations.
+	newAssoc, err := ops.AssociateMediaWithMatches(db, req.SharedMatchesDBPath, bufferMin, s.timezone)
+	if err != nil {
+		result.Errors = append(result.Errors, fmt.Sprintf("association: %v", err))
+		slog.ErrorContext(ctx, "ReassociateMedia: association échouée", "err", err)
+	}
+	result.NewAssoc = newAssoc
+
+	slog.InfoContext(ctx, "ReassociateMedia: terminé",
+		"backup_table", backupTable,
+		"deleted", result.DeletedAssoc,
+		"new_assoc", newAssoc,
+		"errors", len(result.Errors))
+
 	return result, nil
 }
 

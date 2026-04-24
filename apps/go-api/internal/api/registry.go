@@ -37,6 +37,7 @@ type ServiceRegistry struct {
 	resolve       PlayerResolver
 	provider      auth.TokenProvider
 	assetResolver assets.Resolver // nil si le resolver n'est pas configuré (mode legacy)
+	timezone      string          // IANA (ex: "Europe/Paris"), propagé aux services médias
 }
 
 // NewServiceRegistry crée un ServiceRegistry câblé avec config.ResolvePlayer.
@@ -48,6 +49,7 @@ func NewServiceRegistry(cfg *config.AppConfig, provider auth.TokenProvider) *Ser
 			return config.ResolvePlayer(ctx, cfg, slug, titleSlug)
 		},
 		provider: provider,
+		timezone: cfg.UserTimezone,
 	}
 }
 
@@ -97,7 +99,7 @@ func (r *ServiceRegistry) Media(ctx context.Context, slug string) (port.MediaSer
 	if err != nil {
 		return nil, err
 	}
-	return service.NewMediaService(duckdb.NewMediaRepo(pdb)), nil
+	return service.NewMediaService(duckdb.NewMediaRepo(pdb), r.timezone), nil
 }
 
 // MediaUpload retourne un MediaService + métadonnées joueur pour l'upload.
@@ -109,7 +111,7 @@ func (r *ServiceRegistry) MediaUpload(ctx context.Context, slug string) (
 	if err != nil {
 		return nil, "", "", "", "", "", err
 	}
-	svc := service.NewMediaService(duckdb.NewMediaRepo(pdb))
+	svc := service.NewMediaService(duckdb.NewMediaRepo(pdb), r.timezone)
 	sharedSocialPath := ""
 	if pdb.SharedSocial != nil {
 		sharedSocialPath = pdb.SharedSocial.Path()

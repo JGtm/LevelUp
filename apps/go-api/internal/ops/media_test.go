@@ -6,6 +6,7 @@ import (
 	"path/filepath"
 	"strings"
 	"testing"
+	"time"
 )
 
 func TestWalkMediaDir_EmptyPure(t *testing.T) {
@@ -139,5 +140,129 @@ func TestInsertMediaFile_UTCTimestamp(t *testing.T) {
 	utcTime := fi.ModTime().UTC()
 	if utcTime.Location().String() != "UTC" {
 		t.Errorf("expected UTC, got %s", utcTime.Location())
+	}
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// SanitizeMediaTimezone
+// ─────────────────────────────────────────────────────────────────────────────
+
+func TestSanitizeMediaTimezone_ValidIANA(t *testing.T) {
+	cases := []string{
+		"Europe/Paris",
+		"America/New_York",
+		"UTC",
+		"Asia/Tokyo",
+		"Etc/GMT+2",
+		"Pacific/Auckland",
+	}
+	for _, tz := range cases {
+		got := SanitizeMediaTimezone(tz)
+		if got != tz {
+			t.Errorf("SanitizeMediaTimezone(%q) = %q, want %q", tz, got, tz)
+		}
+	}
+}
+
+func TestSanitizeMediaTimezone_Invalid(t *testing.T) {
+	bad := []string{
+		"Europe/Paris'; DROP TABLE x; --",
+		"bad tz",
+		"Europe/Paris\x00",
+		"Zone!Name",
+		"Zone@Name",
+	}
+	for _, tz := range bad {
+		got := SanitizeMediaTimezone(tz)
+		if got != "" {
+			t.Errorf("SanitizeMediaTimezone(%q) = %q, want \"\" (sanitized)", tz, got)
+		}
+	}
+}
+
+func TestSanitizeMediaTimezone_Empty(t *testing.T) {
+	if got := SanitizeMediaTimezone(""); got != "" {
+		t.Errorf("expected empty, got %q", got)
+	}
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// parseCaptureTimeFromFilename
+// ─────────────────────────────────────────────────────────────────────────────
+
+func TestParseCaptureTimeFromFilename_XboxFormat_CET(t *testing.T) {
+	// CET = UTC+1 (décembre = hiver)
+	loc, err := time.LoadLocation("Europe/Paris")
+	if err != nil {
+		t.Skip("timezone Europe/Paris non disponible")
+	}
+	name := "Halo Infinite 2024.12.15 - 21.30.45.01.mp4"
+	got := parseCaptureTimeFromFilename(name, loc)
+	if got == nil {
+		t.Fatal("expected non-nil result")
+	}
+	// Paris CET = UTC+1 → 21:30:45 Paris = 20:30:45 UTC
+	want := time.Date(2024, 12, 15, 20, 30, 45, 0, time.UTC)
+	if !got.Equal(want) {
+		t.Errorf("got %v, want %v", got, want)
+	}
+}
+
+func TestParseCaptureTimeFromFilename_XboxFormat_CEST(t *testing.T) {
+	// CEST = UTC+2 (juillet = été)
+	loc, err := time.LoadLocation("Europe/Paris")
+	if err != nil {
+		t.Skip("timezone Europe/Paris non disponible")
+	}
+	name := "Halo Infinite 2024.07.15 - 22.00.00.01.mp4"
+	got := parseCaptureTimeFromFilename(name, loc)
+	if got == nil {
+		t.Fatal("expected non-nil result")
+	}
+	// CEST = UTC+2 → 22:00:00 Paris = 20:00:00 UTC
+	want := time.Date(2024, 7, 15, 20, 0, 0, 0, time.UTC)
+	if !got.Equal(want) {
+		t.Errorf("got %v, want %v", got, want)
+	}
+}
+
+func TestParseCaptureTimeFromFilename_NoMatch(t *testing.T) {
+	loc, _ := time.LoadLocation("Europe/Paris")
+	cases := []string{
+		"OBS-Recording-2024-01-01.mp4",
+		"clip.mp4",
+		"screenshot.png",
+		"Halo Infinite.mp4",
+	}
+	for _, name := range cases {
+		if got := parseCaptureTimeFromFilename(name, loc); got != nil {
+			t.Errorf("parseCaptureTimeFromFilename(%q) = %v, want nil", name, got)
+		}
+	}
+}
+
+func TestParseCaptureTimeFromFilename_NilLoc_ReturnsNil(t *testing.T) {
+	name := "Halo Infinite 2024.12.15 - 21.30.45.01.mp4"
+	if got := parseCaptureTimeFromFilename(name, nil); got != nil {
+		t.Errorf("expected nil with nil loc, got %v", got)
+	}
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// mustAtoi
+// ─────────────────────────────────────────────────────────────────────────────
+
+func TestMustAtoi(t *testing.T) {
+	if mustAtoi("42") != 42 {
+		t.Error("mustAtoi(\"42\") != 42")
+	}
+	if mustAtoi("0") != 0 {
+		t.Error("mustAtoi(\"0\") != 0")
+	}
+	if mustAtoi("abc") != 0 {
+		t.Error("mustAtoi(\"abc\") != 0 (expected fallback)")
+	}
+	if mustAtoi("") != 0 {
+		t.Error("mustAtoi(\"\") != 0")
 	}
 }

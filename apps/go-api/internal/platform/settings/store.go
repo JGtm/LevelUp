@@ -15,33 +15,33 @@ import (
 // Seuls les champs exposés par l'API sont typés — les champs inconnus sont
 // préservés dans Extra pour ne pas les effacer lors d'un PATCH.
 type AppSettings struct {
-	Lang                               string `json:"lang"`
-	DiscordLang                        string `json:"discord_lang"`
-	UserTimezone                       string `json:"user_timezone"`
-	NormalizeModeLabels                bool   `json:"normalize_mode_labels"`
-	ShowRecords                        bool   `json:"show_records"`
-	RefreshClearsCaches                bool   `json:"refresh_clears_caches"`
-	CareerTopExcludeBTB                bool   `json:"career_top_exclude_btb"`
-	MediaCapturesBaseDir               string `json:"media_captures_base_dir"`
-	MediaToleranceMinutes              int    `json:"media_tolerance_minutes"`
-	DiscordNotificationsEnabled        bool   `json:"discord_notifications_enabled"`
-	DiscordWebhookURL                  string `json:"discord_webhook_url"` // jamais exposé côté API
-	DiscordNotifySync                  bool   `json:"discord_notify_sync"`
-	DiscordNotifyBackfill              bool   `json:"discord_notify_backfill"`
-	DiscordNotifyNewVersion            bool   `json:"discord_notify_new_version"`
-	DiscordNotifyNewMedia              bool   `json:"discord_notify_new_media"`
-	SpnkrAutoSyncEnabled               bool   `json:"spnkr_auto_sync_enabled"`
-	SpnkrAutoSyncIntervalHours         int    `json:"spnkr_auto_sync_interval_hours"`
-	SpnkrAutoSyncIntervalMinutes       int    `json:"spnkr_auto_sync_interval_minutes"`
+	Lang                               string   `json:"lang"`
+	DiscordLang                        string   `json:"discord_lang"`
+	UserTimezone                       string   `json:"user_timezone"`
+	NormalizeModeLabels                bool     `json:"normalize_mode_labels"`
+	ShowRecords                        bool     `json:"show_records"`
+	RefreshClearsCaches                bool     `json:"refresh_clears_caches"`
+	CareerTopExcludeBTB                bool     `json:"career_top_exclude_btb"`
+	MediaCapturesBaseDir               string   `json:"media_captures_base_dir"`
+	MediaBufferMinutes                 int      `json:"media_buffer_minutes"`
+	DiscordNotificationsEnabled        bool     `json:"discord_notifications_enabled"`
+	DiscordWebhookURL                  string   `json:"discord_webhook_url"` // jamais exposé côté API
+	DiscordNotifySync                  bool     `json:"discord_notify_sync"`
+	DiscordNotifyBackfill              bool     `json:"discord_notify_backfill"`
+	DiscordNotifyNewVersion            bool     `json:"discord_notify_new_version"`
+	DiscordNotifyNewMedia              bool     `json:"discord_notify_new_media"`
+	SpnkrAutoSyncEnabled               bool     `json:"spnkr_auto_sync_enabled"`
+	SpnkrAutoSyncIntervalHours         int      `json:"spnkr_auto_sync_interval_hours"`
+	SpnkrAutoSyncIntervalMinutes       int      `json:"spnkr_auto_sync_interval_minutes"`
 	WatcherPresenceEnabled             bool     `json:"watcher_presence_enabled"`
 	WatcherSubscribedPlayers           []string `json:"watcher_subscribed_players"`
-	SpnkrRefreshWithBackfill           bool   `json:"spnkr_refresh_with_backfill"`
-	SpnkrRefreshBackfillMedals         bool   `json:"spnkr_refresh_backfill_medals"`
-	SpnkrRefreshBackfillSkill          bool   `json:"spnkr_refresh_backfill_skill"`
-	SpnkrRefreshBackfillAliases        bool   `json:"spnkr_refresh_backfill_aliases"`
-	SpnkrRefreshBackfillPersonalScores bool   `json:"spnkr_refresh_backfill_personal_scores"`
-	SpnkrRefreshBackfillPerfScores     bool   `json:"spnkr_refresh_backfill_performance_scores"`
-	SpnkrRefreshBackfillLUSR           bool   `json:"spnkr_refresh_backfill_lusr"`
+	SpnkrRefreshWithBackfill           bool     `json:"spnkr_refresh_with_backfill"`
+	SpnkrRefreshBackfillMedals         bool     `json:"spnkr_refresh_backfill_medals"`
+	SpnkrRefreshBackfillSkill          bool     `json:"spnkr_refresh_backfill_skill"`
+	SpnkrRefreshBackfillAliases        bool     `json:"spnkr_refresh_backfill_aliases"`
+	SpnkrRefreshBackfillPersonalScores bool     `json:"spnkr_refresh_backfill_personal_scores"`
+	SpnkrRefreshBackfillPerfScores     bool     `json:"spnkr_refresh_backfill_performance_scores"`
+	SpnkrRefreshBackfillLUSR           bool     `json:"spnkr_refresh_backfill_lusr"`
 	SpnkrRefreshBackfillEvents         bool     `json:"spnkr_refresh_backfill_events"`
 	SpnkrRefreshBackfillWeapons        bool     `json:"spnkr_refresh_backfill_weapons"`
 	// Escouade — gamertags des amis par défaut
@@ -166,8 +166,8 @@ func Apply(cfg *AppSettings, req *domain.UpdateSettingsRequest) {
 	if req.MediaCapturesBaseDir != nil {
 		cfg.MediaCapturesBaseDir = *req.MediaCapturesBaseDir
 	}
-	if req.MediaToleranceMinutes != nil {
-		cfg.MediaToleranceMinutes = *req.MediaToleranceMinutes
+	if req.MediaBufferMinutes != nil {
+		cfg.MediaBufferMinutes = *req.MediaBufferMinutes
 	}
 	if req.DiscordNotificationsEnabled != nil {
 		cfg.DiscordNotificationsEnabled = *req.DiscordNotificationsEnabled
@@ -245,7 +245,7 @@ func ToResponse(cfg *AppSettings) *domain.SettingsResponse {
 		RefreshClearsCaches:                cfg.RefreshClearsCaches,
 		CareerTopExcludeBTB:                cfg.CareerTopExcludeBTB,
 		MediaCapturesBaseDir:               cfg.MediaCapturesBaseDir,
-		MediaToleranceMinutes:              cfg.MediaToleranceMinutes,
+		MediaBufferMinutes:                 cfg.MediaBufferMinutes,
 		DiscordNotificationsEnabled:        cfg.DiscordNotificationsEnabled,
 		DiscordWebhookURLPresent:           cfg.DiscordWebhookURL != "",
 		DiscordNotifySync:                  cfg.DiscordNotifySync,
@@ -278,11 +278,11 @@ func Defaults() *AppSettings {
 // defaultSettings retourne les valeurs par défaut de app_settings.json.
 func defaultSettings() *AppSettings {
 	return &AppSettings{
-		Lang:                  "en",
-		DiscordLang:           "fr",
-		UserTimezone:          "Europe/Paris",
-		MediaToleranceMinutes: 10,
-		CanSelfProvision:      true,
-		CanStartInitialSync:   true,
+		Lang:                "en",
+		DiscordLang:         "fr",
+		UserTimezone:        "Europe/Paris",
+		MediaBufferMinutes:  2,
+		CanSelfProvision:    true,
+		CanStartInitialSync: true,
 	}
 }

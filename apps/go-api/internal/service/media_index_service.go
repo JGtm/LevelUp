@@ -24,8 +24,10 @@ import (
 type MediaIndexer interface {
 	// ResetAndReindex supprime toutes les entrées media_files + media_match_associations
 	// pour tous les joueurs sous repoRoot, puis réindexe si reindexAfter=true.
+	// capturesBaseDir : si non vide, les captures sont lues depuis {capturesBaseDir}/{gamertag}/
+	// plutôt que depuis le chemin interne data/titles/.../captures/.
 	// Rapporte la progression via jobStore pour le job jobID.
-	ResetAndReindex(ctx context.Context, repoRoot string, reindexAfter bool, jobStore *jobs.Store, jobID string) error
+	ResetAndReindex(ctx context.Context, repoRoot string, capturesBaseDir string, reindexAfter bool, jobStore *jobs.Store, jobID string) error
 }
 
 // DirMediaIndexer est l'implémentation par défaut de MediaIndexer.
@@ -41,6 +43,7 @@ func NewDirMediaIndexer() *DirMediaIndexer {
 func (d *DirMediaIndexer) ResetAndReindex(
 	ctx context.Context,
 	repoRoot string,
+	capturesBaseDir string,
 	reindexAfter bool,
 	jobStore *jobs.Store,
 	jobID string,
@@ -101,7 +104,12 @@ func (d *DirMediaIndexer) ResetAndReindex(
 		}
 
 		if reindexAfter {
-			capturesDir := filepath.Join(pr.PlayerDir(titleSlug, gamertag), "media")
+			var capturesDir string
+			if capturesBaseDir != "" {
+				capturesDir = filepath.Join(capturesBaseDir, gamertag)
+			} else {
+				capturesDir = filepath.Join(pr.PlayerDir(titleSlug, gamertag), "media")
+			}
 			if _, err := os.Stat(capturesDir); err == nil {
 				reindexPct := 50 + (i*50)/total
 				reindexStep := fmt.Sprintf("Réindexation : %s (%d/%d)", gamertag, i+1, total)

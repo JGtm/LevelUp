@@ -262,7 +262,11 @@ export function useUploadMedia(playerSlug: string) {
   return useMutation({
     mutationFn: (files: File[]) => {
       const form = new FormData()
+      // Envoyer file.lastModified (ms → s Unix) pour chaque fichier pour
+      // permettre au backend de corriger le mtime serveur (priorité 2).
+      const captureTimes = files.map((f) => Math.floor(f.lastModified / 1000))
       files.forEach((f) => form.append('files', f, f.name))
+      form.append('capture_times', JSON.stringify(captureTimes))
       return api.postForm<MediaUploadResponse>(
         `/players/${playerSlug}/media/upload`,
         form,

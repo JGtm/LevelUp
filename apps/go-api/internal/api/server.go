@@ -245,10 +245,12 @@ func NewRouter(
 			r.Post("/pages/citations", citations.GetCitations)
 			r.Post("/pages/commendations", citations.GetCommendations)
 
-			media := handlers.NewMediaHandler(reg.Media, reg.MediaUpload, cfg.RepoRoot)
+			media := handlers.NewMediaHandler(reg.Media, reg.MediaUpload, cfg.RepoRoot).
+				WithSettingsStore(settingsStore)
 			r.Post("/pages/media", media.GetMediaLibrary)
 			r.Patch("/media/likes", media.PatchMediaLike)
 			r.Post("/media/upload", media.PostUploadMedia)
+			r.Post("/media/reassociate", media.PostReassociateMedia)
 
 			// Sprint 32 : Explorer matches-query + Match History export
 			r.Post("/pages/explorer/matches-query", explorer.QueryMatches)

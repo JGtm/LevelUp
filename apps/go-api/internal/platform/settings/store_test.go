@@ -154,17 +154,17 @@ func TestApply_BoolFields(t *testing.T) {
 func TestApply_MediaFields(t *testing.T) {
 	cfg := settings.Defaults()
 	dir := "/captures"
-	tol := 20
+	buf := 20
 	req := &domain.UpdateSettingsRequest{
-		MediaCapturesBaseDir:  &dir,
-		MediaToleranceMinutes: &tol,
+		MediaCapturesBaseDir: &dir,
+		MediaBufferMinutes:   &buf,
 	}
 	settings.Apply(cfg, req)
 	if cfg.MediaCapturesBaseDir != "/captures" {
 		t.Errorf("expected /captures, got %q", cfg.MediaCapturesBaseDir)
 	}
-	if cfg.MediaToleranceMinutes != 20 {
-		t.Errorf("expected 20, got %d", cfg.MediaToleranceMinutes)
+	if cfg.MediaBufferMinutes != 20 {
+		t.Errorf("expected 20, got %d", cfg.MediaBufferMinutes)
 	}
 }
 
