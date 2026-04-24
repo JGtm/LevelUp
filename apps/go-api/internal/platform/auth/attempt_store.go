@@ -33,8 +33,8 @@ type Attempt struct {
 	ErrorCode   string
 	ErrorDetail string
 
-	// Référence interne au Device Code Flow MSAL (jamais exposé)
-	DevFlow *DeviceCodeFlow
+	// Référence interne au Device Code Flow (jamais exposé)
+	DevFlow DeviceFlow
 
 	// HaloTokens contient les tokens Halo obtenus après ExchangeAccessToken.
 	// Transférés en session lors du prochain GetDeviceFlowStatus.

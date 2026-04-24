@@ -1,5 +1,31 @@
 # Thought Log
 
+## [2026-04-24] feat(auth): SISU/PoP provider — Phases 1-5
+
+**Statut** : ✅ Complété
+
+**Décision technique** :
+Migration complète MSAL → SISU/PoP selon `PLAN_SISU_MIGRATION.md`.
+Architecture choisie : interface `DeviceFlow` (6 méthodes) + implémentations privées `msalDeviceFlow` / `sisuDeviceFlow` plutôt que struct concrète avec champ `FlowType` (anti-pattern polymorphisme manuel).
+`SISUProvider` stocke un contexte éphémère `sisuFlowContext` protégé par mutex entre `InitDeviceFlow` et `Exchange`.
+Signature PoP ECDSA P-256 : format IEEE P1363 (r‖s 64 octets), payload avec Windows FILETIME, header base64 standard.
+
+**Périmètre livré** :
+- Phase 1 : `pop_signing.go` + tests (11 tests)
+- Phase 2 : `device_token.go` + tests (4 tests)
+- Phase 3 : `sisu_client.go` + tests (7 tests)
+- Phase 4 : `xbox_device_code.go` + tests (6 tests)
+- Phase 5a : `DeviceFlow` interface, `SISUProvider`, cascade de refactoring sur handlers/scheduler/stores
+- Phase 5c : `AppSettings.AuthProvider` + `buildTokenProvider` dans `main.go`
+- Phase 5d : `domain/settings.go` + `settings/store.go`
+- Fix `scripts/warm_bp_assets/main.go` (accès champs → méthodes getter)
+
+**Résultats** : `go test ./...` — 30 packages `ok`, zéro FAIL, zéro régression.
+
+**Conclusion** : Livré. Phase 6 (frontend) hors périmètre de cette itération.
+
+---
+
 ## [2026-04-24] fix(watcher): rafraîchissement autonome des tokens Halo dans PlayerLiveRefresher
 
 **Statut** : ✅ Complété
