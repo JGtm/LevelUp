@@ -12,6 +12,7 @@ import (
 
 	"levelup/go-api/internal/assets"
 	"levelup/go-api/internal/ctxkeys"
+	"levelup/go-api/internal/domain"
 	"levelup/go-api/internal/platform/duckdb"
 	"levelup/go-api/internal/platform/halo"
 	"levelup/go-api/internal/port"
@@ -30,12 +31,13 @@ const liveRefreshInterval = 5 * time.Minute
 // PlayerLiveRefresher implémente LiveRefreshTrigger pour un joueur.
 // Démarre un ticker au moment de la présence active et arrête à la déconnexion.
 type PlayerLiveRefresher struct {
-	gamertag string
-	xuid     string
-	interval time.Duration
-	provider *halo.HaloProvider
-	sink     *duckdb.PersistSink
-	notifier port.SessionNotifier // nil si non configuré
+	gamertag       string
+	xuid           string
+	interval       time.Duration
+	provider       *halo.HaloProvider
+	sink           *duckdb.PersistSink
+	notifier       port.SessionNotifier // nil si non configuré
+	tokenRefresher func(ctx context.Context, xuid string) (*domain.HaloTokens, error)
 
 	notifierWarnOnce sync.Once // log Warn une seule fois si notifier nil
 	cancelMu         sync.Mutex
@@ -63,6 +65,14 @@ func NewPlayerLiveRefresher(gamertag, xuid string, sink *duckdb.PersistSink, res
 // Retourne le refresher pour permettre le chaînage.
 func (r *PlayerLiveRefresher) WithSessionNotifier(n port.SessionNotifier) *PlayerLiveRefresher {
 	r.notifier = n
+	return r
+}
+
+// WithTokenRefresher configure la fonction de refresh de tokens Halo.
+// Appelée quand GetCachedPlayerTokens retourne nil (cache process expiré après ~50 min).
+// Permet au watcher de se réauthentifier sans dépendre d'une requête HTTP de l'UI.
+func (r *PlayerLiveRefresher) WithTokenRefresher(fn func(ctx context.Context, xuid string) (*domain.HaloTokens, error)) *PlayerLiveRefresher {
+	r.tokenRefresher = fn
 	return r
 }
 
@@ -131,10 +141,19 @@ func (r *PlayerLiveRefresher) runTicker(ctx context.Context) {
 }
 
 // refresh re-fetche Battle Pass et Challenges si des tokens valides sont disponibles.
-// Utilise halo.GetCachedPlayerTokens — tokens peuplés par le dernier accès via l'UI web.
+// Tente d'abord le cache process ; si expiré, utilise tokenRefresher (MSAL / OAuth v2 via DB).
 // Si aucun token n'est disponible, la fonction est un no-op.
 func (r *PlayerLiveRefresher) refresh(ctx context.Context) {
 	tokens := halo.GetCachedPlayerTokens(r.xuid)
+	if tokens == nil && r.tokenRefresher != nil {
+		refreshed, err := r.tokenRefresher(ctx, r.xuid)
+		if err != nil {
+			slog.DebugContext(ctx, "live_refresh: refresh tokens échoué, skip",
+				"gamertag", r.gamertag, "err", err)
+			return
+		}
+		tokens = refreshed
+	}
 	if tokens == nil {
 		slog.DebugContext(ctx, "live_refresh: tokens non disponibles, skip",
 			"gamertag", r.gamertag)
