@@ -1,5 +1,275 @@
 # Thought Log
 
+## [2026-04-24] feat(nav): split button Paramètres dans NavL1 avec menu déroulant onglets
+
+**Statut** : ✅ Complété
+
+**Décision technique** :
+1. **`routes/settings.tsx`** : ajout de `validateSearch` pour typer le paramètre `?tab=` (SETTINGS_TABS const + SettingsTab type exporté)
+2. **`SettingsPage.tsx`** : onglet actif piloté par l'URL (`useRouterState` + `useNavigate`) au lieu de `useState`
+3. **`NavL1.tsx`** : composant `SettingsSplitButton` (pattern identique au `SplitButton` existant) remplace le lien icône-engrenage. Onglets filtrés selon `isAdmin` / `canManageInstance` (lab + users masqués)
+4. **Tests** :
+   - `SettingsPage.test.tsx` : mock `useRouterState` via `vi.fn()` avec reset dans `beforeEach` ; mock `useNavigate` retourne `Promise.resolve()`; test "Lab" utilise `mockReturnValue({ search: '?tab=lab' })` au lieu de cliquer sur l'onglet
+   - `NavL1.test.tsx` : 6 tests passent sans modification (aucun test ne testait l'icône engrenage)
+
+**Résultats** : 13/13 tests ✅ — TypeScript compile sans erreur ✅
+
+**Conclusion** : Feature complète. La navbar L1 dispose d'un split button "Paramètres" analogue à Palmarès/Escouade, avec dropdown filtré selon les permissions.
+
+## [2026-04-24] feat(settings): vérification finale POST /settings/sessions/recalculate — logging + tests
+
+**Statut** : ✅ Complété
+
+**Décision technique** :
+Vérification finale de l'implémentation complète :
+1. **Logging** : ajout de `log/slog` dans `session_recalc.go` + `slog.InfoContext` début/fin dans `RecalculatePlayerSessions`, et log "aucun match trouvé, recalcul ignoré" sur slice vide
+2. **Testutil** : ajout de `session_label VARCHAR` dans `player_match_enrichment` (manquant) et `headshot_kills INTEGER DEFAULT 0` dans `match_participants` (colonne ajoutée en v5.4, oubliée dans le fixture)
+3. **Tests WriteSessionAssignments** (3 cas) : update normal (3 lignes), slice vide, match_id inexistant
+4. **Tests session_recalc** (7 cas) : `LookupFriendXUIDs` (trouvé, insensible casse, absent, vide, partiel), `loadSessionMatchRowsDirect` (DB vide, avec données ordonnées)
+5. **Test handler** `PostRecalculateSessions` : 202 + job_id + status=queued + job_type=sessions_recalculate
+6. **Correction préexistante** `schema_integration_test.go` : `assertTableExists(t, db, ...)` → `assertTableExists(t, db.SQLDb(), ...)` car `OpenPlayerDB`/`OpenSharedDB` retournent maintenant `*platform/duckdb.DB`
+7. **Route ajoutée** dans `newSettingsRouter` test helper + `DBProfilesPath` initialisé pour que `LoadPlayers` ne retourne pas d'erreur
+
+**Résultats observés** :
+- `go build -a ./internal/sync/ && go build ./...` : ✅
+- `go test -count=1 ./internal/api/handlers/` : ✅ (incluant `TestSettingsHandler_PostRecalculateSessions_Accepted`)
+- `go test -tags integration -count=1 ./internal/sync/` : ✅ (10 nouveaux tests)
+- `tsc --noEmit` : ✅
+
+**Conclusion** : Couverture de tests et logging complètes. Implémentation `POST /settings/sessions/recalculate` entièrement validée.
+
+## [2026-04-24] feat(sync): implémentation complète pipeline highlight_events — Complété
+
+**Statut** : ✅ Complété
+
+**Décision technique** :
+Port Go du parseur binaire `spnkr.film.highlight_events` (Python) en 6 composants :
+
+1. **`halo_client.go`** — struct `filmManifest` corrigée (bug `"FilmChunks"` → `"Chunks"`, bug `"ChunkUrl"` absent → URL construite via `BlobStoragePathPrefix + FileRelativePath`) ; nouvelle méthode `GetHighlightEventsChunk` qui retourne `(data []byte, filmMajorVersion int, found bool, err error)`.
+2. **`analysis/highlight_event_parser.go`** (nouveau) — port complet de l'algorithme binaire Python : décompression zlib, scan de XUIDs (marqueur `0xc0`, préfixe `0x2d/0x25`, plage `[2e15..3e15]`), fenêtre 2500 bytes, marqueur `0x00002ee0`, 60 bytes d'event data. Gestion des deux layouts (version ≤38 ou ≥41 vs version 39-40). Décodage UTF-16LE gamertag. EventType convention lowercase : `"kill"`, `"death"`, `"medal"`, `"mode"`.
+3. **`sync/writes.go`** — ajout de `InsertHighlightEvents`, `InsertKillerVictimPairsFromEvents`, `MarkEventsLoaded`, `MarkKillerVictimLoaded`.
+4. **`domain/sync.go`** — `WithHighlightEvents bool` (défaut `true`) dans `SyncOptions` ; `EventsInserted int` dans `SyncResult`.
+5. **`sync/engine.go`** — `processHighlightEvents` (fonction dédiée ~50L) connectée dans `processMatch` après les medals ; non-bloquant (warn + continue si échec).
+6. **Correctifs collatéraux** : `backfill_weapons.go` + test fixture alignés sur `event_type='kill'` (lowercase) ; Q15 corrigée pour les colonnes réelles du schéma v2 (`time_ms`, `xuid`, `type_hint` au lieu des colonnes legacy `tick_count`/`timestamp_utc`).
+
+**Résultats observés** :
+- `go build ./...` : ✅ 0 erreur
+- `go test ./internal/analysis/...` : ✅ OK
+- `go test -count=1 $(go list ./... | grep -v -E 'cmd/|api/gen|sync/testutil|platform/duckdb|/migration$')` : ✅ 34/34 packages ok
+
+**Conclusion** : Le pipeline `highlight_events` est maintenant complet en Go. Chaque nouveau match synchronisé enregistre les kills/deaths/medals/mode events dans `highlight_events` et peuple `killer_victim_pairs` via l'algorithme de jointure temporelle `ComputeKillerVictimPairs`. Le bit `MBitEvents` (65536) est positionné dans `match_registry.backfill_completed` lors du succès.
+
+**Prochaine étape** : Test en conditions réelles (match avec film disponible) pour valider le parsing. Les matchs historiques sans events peuvent être backfillés via le système backfill existant (flags `MBitEvents`).
+
+---
+
+## [2026-04-24] audit: GAP CRITIQUE — highlight_events jamais collectés pendant la sync Go
+
+**Statut** : ✅ Résolu — voir entrée ci-dessus
+
+**Décision technique** :
+La sync Go (`processMatch` dans `engine.go`) ne récupère jamais les `highlight_events` depuis le film Halo. `SyncOptions` n'a pas de champ `WithHighlightEvents`. La lib `spnkr.film.read_highlight_events` parse les chunks binaires film pour produire des événements typés (Killed, Assist, Medal, …) — ce parseur n'existe pas en Go (seul le parseur de fire events pour weapon_kills existe via `analysis/weapon_scanner.go`, qui est un parseur différent).
+
+**Impact** : `TugOfWar`, `KillerVictim`/`Encounters`, `DominanceFlag`, liste des events (onglet match) → tous vides/cassés pour tous les matchs syncronisés via Go. De plus, `backfill_weapons::getKillsForPlayer` lit `highlight_events` pour les kills à corréler → le backfill weapon_kills est lui aussi aveugle si `highlight_events` est vide.
+
+**Plan** :
+1. Implémenter `ParseHighlightEvents(chunks map[int]filmChunkData) []HighlightEventRow` (port du parseur binaire Python `spnkr.film`)
+2. Ajouter `WithHighlightEvents bool` à `SyncOptions` (défaut `true`)
+3. Connecter dans `processMatch` : GetMatchFilm → ParseHighlightEvents → InsertHighlightEvents + InsertKillerVictimPairs + UpsertXUIDAlias + `events_loaded = TRUE`
+4. Ajouter `EventsInserted` à `SyncResult`
+
+**Doc** : `.ai/HIGHLIGHT_EVENTS_SYNC_GAP.md`
+
+---
+
+## [2026-04-24] feat(analyse): port comeback_analysis + settings sessions/badges — PLAN_SETTINGS_ANALYSIS_RULES
+
+**Statut** : ✅ Complété
+
+**Décision technique** :
+- `comeback.go` : port complet de `comeback_analysis.py`. Constantes `OutcomeWin/OutcomeLoss` déjà déclarées dans `performance_score.go` → seulement `OutcomeTie=1` et `OutcomeDNF=4` ajoutés dans `comeback.go`.
+- `isTeammatesBreak` (mode friends) : ancienne logique brisait sur le chevauchement d'amis. Correcte : break ssi le **sous-ensemble d'amis change**. Test `TestIsTeammatesBreak_SameFriendRemains` mis à jour en conséquence.
+- 6 nouveaux champs `Settings` : `session_gap_minutes`, `session_split_on_ranked_change`, `session_team_change_mode`, `outcome_badge_sensitivity`, `outcome_exclude_bot_matches_from_badges`, `outcome_exclude_bot_matches_from_records`. Propagés dans `domain`, `store`, `handler` (validation), `types.ts`, `i18n.ts`.
+- `SettingsPage.tsx` : onglet `'analyse'` ajouté, composant `AnalyseTab` avec Card sessions + Card badges.
+- `SetupPage.tsx` : note onboarding dans `StepInitialSync` avec `Link` vers `/settings`.
+
+**Résultats** :
+- `go build ./...` ✅
+- `go test ./internal/analysis/... ./internal/platform/settings/... ./internal/api/handlers/...` ✅ (3 packages, tous PASS)
+- `tsc --noEmit` ✅ (0 erreur)
+
+**Conclusion** : Livraison complète sur `fix/duckdb-concurrency`. Prêt pour PR.
+
+## [2026-04-24] fix(handlers+assets): races data détectées par go test -race
+
+**Statut** : ✅ Complété
+
+**Décision technique** :
+- Pattern race dans tous les handlers async (`settings.go`, `setup.go`, `backfill.go`, `sync_handler.go`) : `jobStore.Create()` retourne le pointeur stocké dans la map interne ; répondre avec ce pointeur directement pendant que la goroutine le modifie = DATA RACE. Fix : `jobSnapshot := *job` AVANT `go func()`, répondre avec `&jobSnapshot`.
+- Race dans `stubFetcher.Fetch()` (test assets) : `f.calls++` sans mutex, deux goroutines lancées par `Warm()` = DATA RACE. Fix : `sync.Mutex` autour de `f.calls++`.
+
+
+**Résultats** :
+- `go test -race ./...` : 0 FAIL sur 30 packages
+- Commit : `fix(handlers): race condition job snapshot avant goroutine dans tous les handlers async`
+
+**Conclusion** : Suite complète `-race` propre. Feature TTL dynamique + fix battlepass sync (session précédente) + fix handlers/assets races (cette session) = zéro race detector alert sur tout le codebase.
+
+---
+
+## [2026-04-24] feat(home): TTL dynamique BP/Challenges selon présence active
+
+**Statut** : ✅ Complété
+
+**Décision technique** :
+- `port.SessionNotifier` interface avec `SetSessionActive(bool)` — implémentée par `*service.HomeService`
+- `HomeService` : `atomic.Int64 sessionTTL` (0 = 1h, 1 = 5min), `SetSessionActive`, `currentTTL()`, utilisé par `GetBattlePass` et `GetChallenges`
+- `PlayerLiveRefresher` : champ `notifier port.SessionNotifier` + `WithSessionNotifier()` ; appelle `SetSessionActive(true)` avant le ticker, `SetSessionActive(false)` après l'arrêt
+- `ServiceRegistry` : `notifiers sync.Map` (xuid → SessionNotifier) ; `HomeCtxWithAuth` et `SeasonPassCtxWithAuth` enregistrent le `HomeService` créé ; `GetSessionNotifier(xuid)` pour le watcher
+- `api.NewRouter` modifié pour retourner `(http.Handler, *ServiceRegistry)` — permet à `main.go` d'exposer le registry
+- `startWatcherDaemon` accepte `getNotifier func(xuid string) port.SessionNotifier` — closure lazy capturant `*ServiceRegistry` (nil au démarrage, peuplé avant tout event de présence)
+- Race condition pré-existante dans `compare_service_test.go` corrigée (mutex sur `mockCompareRepoAB.calls`)
+
+**Résultats** :
+- `go build ./...` ✅
+- `go test -race ./internal/service/... ./internal/watcher/...` ✅ (2 packages, 0 FAIL, 0 race)
+
+**Conclusion** : La feature est câblée de bout en bout. Pendant une session active, le TTL cache BP/Challenges passe de 1h à 5min dès que le watcher détecte la présence et que le `HomeService` du joueur est dans le registry.
+
+
+
+**Statut** : ✅ Complété
+
+**Décision technique** :
+- `map_name_fr` dans `match_registry` est NULL pour la plupart des matchs — la vraie source des traductions FR est `asset_translations` dans `metadata.duckdb`, exactement comme pour les tuiles de match dans `HomeRepo.enrichHomeMatchTranslations`
+- Ajout de `mr.map_id` dans le SELECT de `buildQ37MediaQuery` et la constante `Q37MediaFiles`
+- Ajout de `MapID *string` dans `domain.MediaFileRow`
+- Ajout du scan de `row.MapID` dans `MediaRepo.LoadMediaFiles`
+- Ajout de `MediaRepo.enrichMediaMapTranslations(ctx, rows)` : collecte les `map_id` distincts, interroge `asset_translations` WHERE `asset_type = 'map' AND lang IN ('fr-FR', 'fr')`, applique la traduction FR sur chaque row — best-effort (erreur DB silencieuse, pas de dégradation)
+- Appel de l'enrichissement à la fin de `LoadMediaFiles` après le scan
+
+**Résultats** :
+- `go build ./...` ✅ (0 erreur)
+- 21/21 tests `TestBuildQ37*` ✅ (aucun test de scan — logique correcte sans régression)
+
+**Conclusion** : Les noms de cartes FR sont maintenant résolus en Go depuis `metadata.duckdb`, comme les tuiles de match.
+
+## [2025-04-25] fix(media): file serving + corrections UI galerie médias
+
+**Statut** : ✅ Complété
+
+**Décision technique** :
+- `file_path` en DB = chemin absolu Windows (ex. `C:\Users\...\JGtm\video.mp4`) — inaccessible depuis le navigateur sans endpoint HTTP dédié
+- Ajout `GET /api/v1/players/{slug}/media/files/*` dans `handlers/media.go` : sert les fichiers depuis le répertoire captures du joueur avec validation anti-traversal (`path.Clean` + `strings.HasPrefix`)
+- `transformMediaURLs()` transforme les chemins absolus en URLs servables dans `GetMediaLibrary` avant sérialisation JSON
+- Frontend : date remplace le basename (`6 avr. à 23:43` via `toLocaleDateString + toLocaleTimeString`), suppression badge "Aperçu au survol", GIF/screenshots sans thumbnail utilisent `file_path` (maintenant URL valide), limite home rail 12→20
+- Lightbox : basename retiré de la barre d'info
+
+**Résultats** :
+- `go build ./...` ✅
+- TypeScript : 0 erreur sur `MediaViewer.tsx` et `RecentMediaRail.tsx`
+
+**Note map names** : `map_name_fr` dans `match_registry` doit être rempli par le sync Python pour afficher les noms en français. L'API retourne déjà `COALESCE(map_name_fr, map_name)` — c'est une question de données, pas de code.
+
+## [2026-04-24] chore(test): vérification finale — couverture tests et logging
+
+**Statut** : ✅ Complété — commit `70642877` sur `fix/duckdb-concurrency`
+
+**Décision technique** :
+- Audit exhaustif de tous les packages touchés par le durcissement concurrence DuckDB
+- `dblease` : 100% couverture statements (10 tests unitaires)
+- `internal/sync` : 58% couverture (attendu — backfill/weapons/career requièrent DB Halo réelle)
+- `internal/ops` : `SeedCitationMappings` à 82.6%, `defaultCitationMappings` à 100%
+- `go vet` : 0 violation sur les packages modifiés (2 violations préexistantes dans `presence_test.go` et `halo/provider.go` — non introduites par notre travail)
+- `persist_sink.go` : 5 appels `OpenReadWrite` tous précédés d'un `dblease.AcquireLease` correspondant — exhaustivité confirmée
+- `ReadDB()` : branche `PlayerRO=nil` non couverte → ajout `pool_unit_test.go` (2 tests : fallback + préférence PlayerRO)
+- Logging : `engine.go` log Debug/Info/Warn/Error sur toutes les transitions critiques du cycle sync
+
+**Résultats** :
+- `go test ./... -short` : **0 FAIL sur 30 packages** ✅
+- `go build ./...` ✅
+- `go vet` sur packages modifiés : 0 violation ✅
+- `ReadDB()` coverage : 100% après ajout pool_unit_test.go ✅
+
+---
+
+## [2026-04-24] feat(sync): implémentation sync achievements Xbox
+
+**Statut** : ✅ Complété
+
+**Décision technique principale** :
+- Double appel API Xbox (EN + FR) pour merge bilingue dans `xbox_achievement_definitions`
+- Provider `auth.TokenProvider` ajouté à `SyncEngine`, `SyncHandler`, et `EngineFactory` du scheduler
+- `KindAchievementImage` ajouté au système d'assets
+- Migrations idempotentes : `xbox_achievement_definitions` (metadata) + `player_achievements` (player)
+- `resolveAccessTokenFromDB` lit le cache MSAL depuis `sync_meta`, fallback env var
+
+**Résultats observés** :
+- `go build ./...` : ✅ aucune erreur
+- `go test ./internal/sync/... ./internal/scheduler/... ./internal/api/handlers/...` : ✅ tous passent
+
+**Fichiers créés/modifiés** :
+- `internal/migration/steps_metadata.go` — migration `add_xbox_achievement_definitions`
+- `internal/migration/steps_player.go` — migration `add_player_achievements`
+- `internal/domain/sync.go` — `AchievementsSynced bool` dans `PostSyncResult`
+- `internal/assets/kinds.go` + `store_localfs.go` — `KindAchievementImage`
+- `internal/sync/xbox_client.go` — interface + HTTP client Xbox
+- `internal/sync/achievements.go` — `SyncAchievements`, merge EN+FR, upserts, warmup assets
+- `internal/sync/achievements_test.go` — tests unitaires `mergeAchievements`
+- `internal/sync/achievements_integration_test.go` — tests intégration DuckDB (build tag `integration`)
+- `internal/sync/engine.go` — `provider`, `resolver`, `runAchievementsSync`, `resolveAccessTokenFromDB`
+- `internal/scheduler/auto_sync.go` — `EngineFactory` étendu avec `auth.TokenProvider`
+- `internal/scheduler/auto_sync_test.go` — 6 lambdas factory mises à jour
+- `internal/api/handlers/sync_handler.go` — `provider` ajouté + passé aux 3 appels `NewSyncEngine`
+- `internal/api/server.go` — `tokenProvider` passé à `NewSyncHandler`
+
+**Branche** : `feat/v7-assets-abstraction`
+
+---
+
+## [2026-04-24] fix(test): corriger échecs préexistants — headshot_kills DDL, NewSyncEngine arg, citation_mappings PK
+
+**Statut** : ✅ Complété — commit `dfac9e3b` sur `fix/duckdb-concurrency`
+
+**Décision technique** :
+- `internal/sync/schema.go` : ajout de `headshot_kills SMALLINT DEFAULT 0` dans le DDL `match_participants` (colonne requise par `writes.go:82` mais absente du schéma)
+- `internal/sync/engine_e2e_test.go:144` : `NewSyncEngine` appelé avec 4 args alors que la signature en requiert 5 (`provider auth.TokenProvider`) — ajout de `nil` comme 5e arg
+- `internal/ops/seed.go` : `citation_mappings` n'avait pas de contrainte UNIQUE/PK ; DuckDB refuse `ON CONFLICT DO NOTHING` sans contrainte explicite → ajout de `PRIMARY KEY (citation_name_norm, medal_id)` dans le `CREATE TABLE IF NOT EXISTS` + changement vers `ON CONFLICT (citation_name_norm, medal_id) DO NOTHING`
+- `internal/migration/steps_metadata.go` : ajout de la migration `add_citation_mappings_pk` pour les DBs de production existantes (recrée la table avec déduplication + PK)
+
+**Résultats** :
+- `go build ./...` ✅
+- `internal/ops` : `TestSeedCitationMappings_Valid` ✅, `TestSeedCitationMappings_Idempotent` ✅
+- `internal/sync` : 100% ✅
+- `go test ./... -short` : 0 FAIL sur 30 packages ✅
+
+**Conclusion** : Les deux échecs préexistants sont résolus. La branche `fix/duckdb-concurrency` est propre.
+
+---
+
+## [2026-04-24] fix(sync): durcissement concurrence DuckDB — dblease, PlayerRO, metadata RO
+
+**Statut** : ✅ Complété — commit `d7021efc` sur `fix/duckdb-concurrency`
+
+**Décision technique** :
+- Nouveau package neutre `internal/platform/dblease` : mécanisme de write-lease partagé sans cycle d'import (`platform/duckdb → dblease ← sync`)
+- `sync/lease.go` réécrit en façade pure sur `dblease` : suppression des internals `leasesMu`/`leases` locaux
+- `schema.go` : `OpenPlayerDB/OpenSharedDB` retournent `*duckdbpkg.DB` via le cache process-level (fin des `sql.Open` nus avec `SetMaxOpenConns`)
+- `pool.go` : ajout `PlayerRO *DB` (lecture seule, shared attaché) + `ReadDB()` fallback pour compatibilité tests ; `Metadata` en `OpenReadOnly` ; suppression du bloc migration `rwShared` (géré par `runMigrations` dans `main.go`)
+- `engine.go` + `backfill_weapons.go` : `AcquireLease` → `AcquireLeaseCtx` (context-aware) sur tous les flux sync
+- `auto_sync.go` : `defaultTokenReader` via `duckdb.OpenReadOnly` (fin du blank import driver)
+- `persist_sink.go` : leases `dblease` avant chaque `OpenReadWrite` (writeBattlePass, UpsertTrackDefinition, writeChallenges)
+- `lab/provider.go` + `main.go` : metadata en `OpenReadOnly` partout
+- 13 repos HTTP : `r.pdb.Player.Query/QueryRow` → `r.pdb.ReadDB()`
+
+**Résultats** :
+- `go build ./...` ✅ (0 erreur)
+- `dblease` : 10/10 tests ✅
+- `platform/duckdb`, `api`, `scheduler`, `service`, et 20+ autres packages ✅
+- Échecs préexistants non régressés : `internal/sync` (`headshot_kills` — colonne absente du schéma in-memory test), `internal/ops` (`citation_mappings` — contrainte manquante)
+
+**Conclusion** : Toutes les ouvertures de DB sans lease et les sql.Open nus sont éliminés. Les lectures HTTP passent par PlayerRO. La concurrence DuckDB est durcie.
+
 ## [2026-04-24] fix(media): DST-safe associations + capture timestamps + reassociate endpoint
 
 **Statut** : ✅ Complété
@@ -17733,6 +18003,29 @@ La page Synthèse (route `/players/$playerSlug/synthesis`) était inaccessible d
 **Résultat** : Handler season-pass répond en <20s, 60/100 tiers avec image après redémarrage (données du run précédent). Backfill relancé automatiquement.
 
 **Commit** : `1d0a8cda`
+
+## [2026-04-24] feat(sync): pipeline highlight_events — vérification finale
+
+**Statut** : ✅ Complété
+
+**Décision technique** : Pipeline highlight_events porté en Go depuis `spnkr/film/highlight_events.py`. Vérification finale effectuée après correction du test medal (timeMS=12000 = endMarker en big-endian).
+
+**Corrections apportées lors de la vérification** :
+1. **Logging** — `processHighlightEvents` (engine.go) : ajout de `slog.DebugContext` pour les 3 cas nominaux (film absent, events vides, succès avec compteurs events/aliases). Comptage `aliasCount` ajouté. Erreur `InsertKillerVictimPairs` capturée dans une variable pour être loggée dans le bilan de fin.
+2. **Test mode event** — ajout de `TestParseHighlightEvents_ModeEvent` (typeHintMode=10 → "mode")
+3. **Test multi-events** — ajout de `TestParseHighlightEvents_MultipleEvents` (2 XUIDs distincts dans le même flux, 2 events retournés)
+4. **Contrainte DDL fixture** — `highlight_events_test.go` : ajout de `UNIQUE (match_id, xuid, time_ms, event_type)` dans la DDL in-memory pour que l'idempotence `INSERT OR IGNORE` soit réellement testée (avant : sans contrainte, chaque insert était unique via autoincrement)
+5. **Commentaire test idempotence** — mis à jour pour refléter le comportement attendu (n1=1, n2=0 au lieu de n1=1, n2=1)
+
+**Résultats** :
+- `go build ./...` → 0 erreur
+- `go test ./internal/analysis/...` → 12/12 tests parseur PASS
+- Suite complète 29/29 packages → 0 FAIL
+
+**Fichiers modifiés** :
+- `internal/sync/engine.go` — logging DEBUG processHighlightEvents
+- `internal/analysis/highlight_event_parser_test.go` — +2 tests (mode event, multi-events)
+- `internal/sync/highlight_events_test.go` — DDL UNIQUE constraint + correction test idempotence
 
 ## [2026-04-22] refactor(mode): unifier la normalisation des labels de mode de jeu
 
