@@ -256,6 +256,395 @@ func TestDoGet_ServerError_Retry(t *testing.T) {
 	}
 }
 
+// ─── redirectTransport ──────────────────────────────────────────────────────
+
+// redirectTransport redirige toutes les requêtes HTTP vers un serveur httptest.
+// Permet de tester GetMatchFilm et GetHighlightEventsChunk sans modifier les
+// URL hardcodées dans fetchFilmManifest / downloadBlob.
+type redirectTransport struct{ host string }
+
+func (rt *redirectTransport) RoundTrip(req *http.Request) (*http.Response, error) {
+	req2 := req.Clone(req.Context())
+	req2.URL.Scheme = "http"
+	req2.URL.Host = rt.host
+	return http.DefaultTransport.RoundTrip(req2)
+}
+
+// newFilmTestClient crée un HaloAPIClient dont toutes les requêtes sont
+// redirigées vers srv — utile pour tester la couche film (manifest + blob).
+func newFilmTestClient(srv *httptest.Server) *HaloAPIClient {
+	host := strings.TrimPrefix(srv.URL, "http://")
+	return &HaloAPIClient{
+		http:           &http.Client{Transport: &redirectTransport{host: host}},
+		spartanToken:   "s",
+		clearanceToken: "c",
+		minInterval:    time.Millisecond,
+	}
+}
+
+// ─── TestBuildChunkURL ──────────────────────────────────────────────────────
+
+func TestBuildChunkURL_EmptyRelativePath(t *testing.T) {
+	got := buildChunkURL("https://blob.example.com/prefix/", "")
+	if got != "https://blob.example.com/prefix/" {
+		t.Fatalf("got %q", got)
+	}
+}
+
+func TestBuildChunkURL_BasicConcatenation(t *testing.T) {
+	got := buildChunkURL("https://blob.example.com", "chunks/c0.bin")
+	want := "https://blob.example.com/chunks/c0.bin"
+	if got != want {
+		t.Fatalf("got %q, want %q", got, want)
+	}
+}
+
+func TestBuildChunkURL_TrailingSlashOnPrefix(t *testing.T) {
+	got := buildChunkURL("https://blob.example.com/prefix/", "chunks/c0.bin")
+	want := "https://blob.example.com/prefix/chunks/c0.bin"
+	if got != want {
+		t.Fatalf("got %q, want %q", got, want)
+	}
+}
+
+func TestBuildChunkURL_PathWithLeadingSlash(t *testing.T) {
+	got := buildChunkURL("https://blob.example.com", "/chunks/c0.bin")
+	want := "https://blob.example.com/chunks/c0.bin"
+	if got != want {
+		t.Fatalf("got %q, want %q", got, want)
+	}
+}
+
+func TestBuildChunkURL_EmptyPrefix(t *testing.T) {
+	got := buildChunkURL("", "chunks/c0.bin")
+	if got != "chunks/c0.bin" {
+		t.Fatalf("got %q", got)
+	}
+}
+
+// ─── TestGetMatchFilm ────────────────────────────────────────────────────────
+
+const testFilmMatchUUID = "00000000-0000-0000-0000-000000000001"
+
+// filmManifestJSON construit un manifest JSON pour les tests film.
+func filmManifestJSON(prefix string, chunks []map[string]any) map[string]any {
+	return map[string]any{
+		"BlobStoragePathPrefix": prefix,
+		"CustomData": map[string]any{
+			"FilmMajorVersion": 2,
+			"Chunks":           chunks,
+		},
+	}
+}
+
+func filmChunkEntry(index, chunkType int, path string) map[string]any {
+	return map[string]any{
+		"Index": index, "ChunkType": chunkType,
+		"ChunkSize": 4, "ChunkStartTimeOffsetMilliseconds": index * 500,
+		"DurationMilliseconds": 500, "FileRelativePath": path,
+	}
+}
+
+func TestGetMatchFilm_BasicPrefix(t *testing.T) {
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if strings.Contains(r.URL.Path, "/spectate") {
+			json.NewEncoder(w).Encode(filmManifestJSON(
+				"http://blobs.test/base/",
+				[]map[string]any{filmChunkEntry(0, filmChunkTypeReplicationData, "chunk0.bin")},
+			))
+			return
+		}
+		w.Write([]byte("DATA"))
+	}))
+	defer srv.Close()
+
+	c := newFilmTestClient(srv)
+	chunks, found, err := c.GetMatchFilm(context.Background(), testFilmMatchUUID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !found {
+		t.Fatal("expected found=true")
+	}
+	if len(chunks) != 1 {
+		t.Fatalf("expected 1 chunk, got %d", len(chunks))
+	}
+	if string(chunks[0].Data) != "DATA" {
+		t.Fatalf("unexpected chunk data: %q", chunks[0].Data)
+	}
+}
+
+func TestGetMatchFilm_MultiChunk(t *testing.T) {
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if strings.Contains(r.URL.Path, "/spectate") {
+			json.NewEncoder(w).Encode(filmManifestJSON(
+				"http://blobs.test/",
+				[]map[string]any{
+					filmChunkEntry(0, filmChunkTypeHeader, "header.bin"),
+					filmChunkEntry(1, filmChunkTypeReplicationData, "c1.bin"),
+					filmChunkEntry(2, filmChunkTypeReplicationData, "c2.bin"),
+				},
+			))
+			return
+		}
+		w.Write([]byte("CHUNK"))
+	}))
+	defer srv.Close()
+
+	c := newFilmTestClient(srv)
+	chunks, found, err := c.GetMatchFilm(context.Background(), testFilmMatchUUID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !found {
+		t.Fatal("expected found=true")
+	}
+	// Seul ChunkType=2 (REPLICATION_DATA) est retourné ; header (type=1) ignoré.
+	if len(chunks) != 2 {
+		t.Fatalf("expected 2 chunks (type=2 only), got %d", len(chunks))
+	}
+	if _, hasHeader := chunks[0]; hasHeader {
+		t.Fatal("index 0 (header) ne devrait pas être dans le résultat")
+	}
+}
+
+func TestGetMatchFilm_FilmAbsent(t *testing.T) {
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		w.WriteHeader(404)
+	}))
+	defer srv.Close()
+
+	c := newFilmTestClient(srv)
+	_, found, err := c.GetMatchFilm(context.Background(), testFilmMatchUUID)
+	if err != nil {
+		t.Fatalf("expected nil error for 404, got %v", err)
+	}
+	if found {
+		t.Fatal("expected found=false for 404")
+	}
+}
+
+func TestGetMatchFilm_DownloadFails(t *testing.T) {
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if strings.Contains(r.URL.Path, "/spectate") {
+			json.NewEncoder(w).Encode(filmManifestJSON(
+				"http://blobs.test/",
+				[]map[string]any{filmChunkEntry(0, filmChunkTypeReplicationData, "bad.bin")},
+			))
+			return
+		}
+		w.WriteHeader(500)
+	}))
+	defer srv.Close()
+
+	c := newFilmTestClient(srv)
+	_, _, err := c.GetMatchFilm(context.Background(), testFilmMatchUUID)
+	if err == nil {
+		t.Fatal("expected error when blob download returns 500")
+	}
+}
+
+// ─── TestGetHighlightEventsChunk ─────────────────────────────────────────────
+
+func TestGetHighlightEventsChunk_Found(t *testing.T) {
+	const payload = "HEV_BYTES"
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if strings.Contains(r.URL.Path, "/spectate") {
+			manifest := filmManifestJSON("http://blobs.test/", []map[string]any{
+				filmChunkEntry(0, filmChunkTypeReplicationData, "c0.bin"),
+				filmChunkEntry(1, filmChunkTypeHighlightEvents, "hev.bin"),
+			})
+			manifest["CustomData"].(map[string]any)["FilmMajorVersion"] = 3
+			json.NewEncoder(w).Encode(manifest)
+			return
+		}
+		w.Write([]byte(payload))
+	}))
+	defer srv.Close()
+
+	c := newFilmTestClient(srv)
+	data, version, found, err := c.GetHighlightEventsChunk(context.Background(), testFilmMatchUUID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !found {
+		t.Fatal("expected found=true")
+	}
+	if version != 3 {
+		t.Fatalf("expected version=3, got %d", version)
+	}
+	if string(data) != payload {
+		t.Fatalf("unexpected data: %q", data)
+	}
+}
+
+func TestGetHighlightEventsChunk_NoChunk(t *testing.T) {
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if strings.Contains(r.URL.Path, "/spectate") {
+			// Manifest sans ChunkType=3.
+			json.NewEncoder(w).Encode(filmManifestJSON(
+				"http://blobs.test/",
+				[]map[string]any{filmChunkEntry(0, filmChunkTypeReplicationData, "c0.bin")},
+			))
+			return
+		}
+		w.Write([]byte("DATA"))
+	}))
+	defer srv.Close()
+
+	c := newFilmTestClient(srv)
+	data, version, found, err := c.GetHighlightEventsChunk(context.Background(), testFilmMatchUUID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if found {
+		t.Fatal("expected found=false (pas de ChunkType=3)")
+	}
+	if data != nil || version != 0 {
+		t.Fatalf("expected nil/0, got data=%v version=%d", data, version)
+	}
+}
+
+func TestGetHighlightEventsChunk_FilmAbsent(t *testing.T) {
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		w.WriteHeader(404)
+	}))
+	defer srv.Close()
+
+	c := newFilmTestClient(srv)
+	_, _, found, err := c.GetHighlightEventsChunk(context.Background(), testFilmMatchUUID)
+	if err != nil {
+		t.Fatalf("expected nil error for absent film, got %v", err)
+	}
+	if found {
+		t.Fatal("expected found=false for absent film")
+	}
+}
+
+// ─── TestFallbackCustomization ──────────────────────────────────────────────
+
+func TestFallbackCustomizationEmblemURL_Valid(t *testing.T) {
+	got := fallbackCustomizationEmblemURL(
+		"Inventory/Spartan/Emblems/343other_propaganda_emblem.json",
+		"987654",
+	)
+	want := haloGameCMSHost + "/hi/Waypoint/file/images/emblems/343other_propaganda_emblem_987654.png"
+	if got != want {
+		t.Fatalf("got %q, want %q", got, want)
+	}
+}
+
+func TestFallbackCustomizationEmblemURL_EmptyConfig(t *testing.T) {
+	got := fallbackCustomizationEmblemURL("Inventory/Spartan/Emblems/test.json", "")
+	if got != "" {
+		t.Fatalf("expected empty for empty configurationID, got %q", got)
+	}
+}
+
+func TestFallbackCustomizationEmblemURL_BadPath(t *testing.T) {
+	got := fallbackCustomizationEmblemURL("Inventory/Spartan/Backdrops/other.json", "123")
+	if got != "" {
+		t.Fatalf("expected empty when marker not found, got %q", got)
+	}
+}
+
+func TestFallbackCustomizationBackdropURL_Valid(t *testing.T) {
+	got := fallbackCustomizationBackdropURL("Inventory/Spartan/BackdropImages/test-backdrop.json")
+	want := haloGameCMSHost + "/hi/Waypoint/file/images/backdrops/test-backdrop.png"
+	if got != want {
+		t.Fatalf("got %q, want %q", got, want)
+	}
+}
+
+func TestFallbackCustomizationBackdropURL_EmptyPath(t *testing.T) {
+	got := fallbackCustomizationBackdropURL("")
+	if got != "" {
+		t.Fatalf("expected empty, got %q", got)
+	}
+}
+
+func TestFallbackCustomizationBannerURL_Nameplate(t *testing.T) {
+	got := fallbackCustomizationBannerURL("Inventory/Spartan/Nameplates/104-001-prop-abcdef.json")
+	want := haloGameCMSHost + "/hi/Waypoint/file/images/nameplates/104-001-prop-abcdef.png"
+	if got != want {
+		t.Fatalf("got %q, want %q", got, want)
+	}
+}
+
+func TestFallbackCustomizationBannerURL_Banner(t *testing.T) {
+	got := fallbackCustomizationBannerURL("Inventory/Spartan/Banners/banner-test.json")
+	want := haloGameCMSHost + "/hi/Waypoint/file/images/banners/banner-test.png"
+	if got != want {
+		t.Fatalf("got %q, want %q", got, want)
+	}
+}
+
+func TestFallbackCustomizationBannerURL_EmptyPath(t *testing.T) {
+	got := fallbackCustomizationBannerURL("")
+	if got != "" {
+		t.Fatalf("expected empty, got %q", got)
+	}
+}
+
+func TestFallbackCustomizationBannerFromEmblem_Valid(t *testing.T) {
+	got := fallbackCustomizationBannerFromEmblem(
+		"https://custom.host.test",
+		"Inventory/Spartan/Emblems/343other_propaganda_emblem.json",
+		"987654",
+	)
+	want := "https://custom.host.test/hi/Waypoint/file/images/nameplates/343other_propaganda_emblem_987654.png"
+	if got != want {
+		t.Fatalf("got %q, want %q", got, want)
+	}
+}
+
+func TestFallbackCustomizationBannerFromEmblem_EmptyBaseURLFallsBackToGameCMS(t *testing.T) {
+	got := fallbackCustomizationBannerFromEmblem(
+		"",
+		"Inventory/Spartan/Emblems/test_emblem.json",
+		"111",
+	)
+	want := haloGameCMSHost + "/hi/Waypoint/file/images/nameplates/test_emblem_111.png"
+	if got != want {
+		t.Fatalf("got %q, want %q", got, want)
+	}
+}
+
+func TestFallbackCustomizationBannerFromEmblem_ZeroConfig(t *testing.T) {
+	got := fallbackCustomizationBannerFromEmblem(
+		"https://host.test",
+		"Inventory/Spartan/Emblems/test_emblem.json",
+		"0",
+	)
+	if got != "" {
+		t.Fatalf("expected empty for configurationID=0, got %q", got)
+	}
+}
+
+func TestFallbackCustomizationBannerFromEmblem_BadPath(t *testing.T) {
+	got := fallbackCustomizationBannerFromEmblem(
+		"https://host.test",
+		"Inventory/Spartan/Nameplates/test.json",
+		"123",
+	)
+	if got != "" {
+		t.Fatalf("expected empty when Emblems marker missing, got %q", got)
+	}
+}
+
+// TestCustomizationInventoryStem_WindowsPath vérifie la normalisation des séparateurs Windows.
+func TestCustomizationInventoryStem_WindowsPath(t *testing.T) {
+	got := customizationInventoryStem(
+		`Inventory\Spartan\Emblems\test_emblem.json`,
+		"/Spartan/Emblems/",
+	)
+	if got != "test_emblem" {
+		t.Fatalf("got %q, want %q", got, "test_emblem")
+	}
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+
 func TestGetCareerRank_EmptyXUID(t *testing.T) {
 	c := NewHaloAPIClient("s", "c", 10)
 	_, err := c.GetCareerRank(context.Background(), "")

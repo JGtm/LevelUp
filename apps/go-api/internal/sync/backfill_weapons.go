@@ -77,7 +77,7 @@ func BackfillWeaponKillsForMatch(
 
 	xuidToPI, err := getXuidToPI(sharedDB, matchID)
 	if err != nil {
-		slog.Warn("backfill_weapons: xuidToPI non disponible", "match_id", matchID, "err", err)
+		slog.WarnContext(ctx, "backfill_weapons: xuidToPI non disponible", "match_id", matchID, "err", err)
 		xuidToPI = map[string]int{}
 	}
 
@@ -101,7 +101,7 @@ func BackfillWeaponKillsForMatch(
 		return true, fmt.Errorf("BackfillWeaponKillsForMatch insert(%s): %w", matchID, err)
 	}
 	if err := MarkWeaponKillsDone(sharedDB, matchID, false); err != nil {
-		slog.Warn("backfill_weapons: MarkWeaponKillsDone failed", "match_id", matchID, "err", err)
+		slog.WarnContext(ctx, "backfill_weapons: MarkWeaponKillsDone failed", "match_id", matchID, "err", err)
 	}
 
 	return true, nil
@@ -138,7 +138,7 @@ func (e *SyncEngine) BackfillWeaponKillsForMatches(
 		}
 		found, procErr := BackfillWeaponKillsForMatch(ctx, client, sharedDB, matchID, e.xuid)
 		if procErr != nil {
-			slog.Warn("backfill_weapons: erreur match", "match_id", matchID, "err", procErr)
+			slog.WarnContext(ctx, "backfill_weapons: erreur match", "match_id", matchID, "err", procErr)
 			continue
 		}
 		if found {

@@ -3,6 +3,7 @@
 package sync
 
 import (
+	"context"
 	"database/sql"
 	"testing"
 
@@ -168,6 +169,120 @@ func TestMarkWeaponKillsDone_NoFilm(t *testing.T) {
 }
 
 func ptrU64(v uint64) *uint64 { return &v }
+
+// ─── weaponTestClient ────────────────────────────────────────────────────────
+
+// weaponTestClient est un mock minimal de HaloClient pour les tests BackfillWeaponKillsForMatch.
+type weaponTestClient struct {
+	filmChunks  map[int]filmChunkData
+	filmPresent bool
+	filmErr     error
+}
+
+func (w *weaponTestClient) GetMatchHistory(_ context.Context, _, _ string, _, _ int) ([]MatchHistoryEntry, error) {
+	return nil, nil
+}
+func (w *weaponTestClient) GetMatchStats(_ context.Context, _ string) (map[string]any, error) {
+	return nil, nil
+}
+func (w *weaponTestClient) GetMatchFilm(_ context.Context, _ string) (map[int]filmChunkData, bool, error) {
+	return w.filmChunks, w.filmPresent, w.filmErr
+}
+func (w *weaponTestClient) GetHighlightEventsChunk(_ context.Context, _ string) ([]byte, int, bool, error) {
+	return nil, 0, false, nil
+}
+func (w *weaponTestClient) GetCareerRank(_ context.Context, _ string) (*CareerRankData, error) {
+	return nil, nil
+}
+
+// ─── TestBackfillWeaponKillsForMatch ─────────────────────────────────────────
+
+// TestBackfillWeaponKillsForMatch_NoFilm vérifie que le pipeline s'arrête
+// proprement quand le film est absent (404/410) et que MBitWeaponKillsNoFilm est posé.
+func TestBackfillWeaponKillsForMatch_NoFilm(t *testing.T) {
+	db := openWeaponDB(t)
+	db.Exec(`INSERT INTO match_registry (match_id) VALUES ('m_nofilm')`)
+
+	client := &weaponTestClient{filmPresent: false}
+	found, err := BackfillWeaponKillsForMatch(context.Background(), client, db, "m_nofilm", "xuid1")
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if found {
+		t.Fatal("expected found=false when film absent")
+	}
+
+	var bits int
+	db.QueryRow("SELECT backfill_completed FROM match_registry WHERE match_id='m_nofilm'").Scan(&bits)
+	if bits&int(MBitWeaponKillsNoFilm) == 0 {
+		t.Fatal("expected MBitWeaponKillsNoFilm bit set")
+	}
+}
+
+// TestBackfillWeaponKillsForMatch_WithHighlightEvents vérifie le pipeline complet
+// quand le film est présent et que des highlight_events existent pour le joueur.
+// Les chunks binaires vides génèrent 0 fire events → le pipeline court-circuite sur kills==0.
+func TestBackfillWeaponKillsForMatch_WithHighlightEvents(t *testing.T) {
+	db := openWeaponDB(t)
+	db.Exec(`INSERT INTO match_registry (match_id) VALUES ('m_hev')`)
+	db.Exec(`INSERT INTO highlight_events VALUES ('m_hev', 'xuid1', 'kill', 5000)`)
+	db.Exec(`INSERT INTO highlight_events VALUES ('m_hev', 'xuid1', 'kill', 10000)`)
+
+	client := &weaponTestClient{
+		filmPresent: true,
+		filmChunks: map[int]filmChunkData{
+			0: {Data: []byte{}, StartMS: 0, DurationMS: 1000},
+		},
+	}
+	found, err := BackfillWeaponKillsForMatch(context.Background(), client, db, "m_hev", "xuid1")
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if !found {
+		t.Fatal("expected found=true when film present")
+	}
+
+	var bits int
+	db.QueryRow("SELECT backfill_completed FROM match_registry WHERE match_id='m_hev'").Scan(&bits)
+	if bits&int(MBitWeaponKills) == 0 {
+		t.Fatal("expected MBitWeaponKills bit set")
+	}
+}
+
+// TestBackfillWeaponKillsForMatch_EmptyHighlightEvents vérifie que le pipeline
+// se termine sans erreur quand highlight_events ne contient pas de kills pour le joueur.
+func TestBackfillWeaponKillsForMatch_EmptyHighlightEvents(t *testing.T) {
+	db := openWeaponDB(t)
+	db.Exec(`INSERT INTO match_registry (match_id) VALUES ('m_empty')`)
+
+	client := &weaponTestClient{
+		filmPresent: true,
+		filmChunks: map[int]filmChunkData{
+			0: {Data: []byte{}, StartMS: 0, DurationMS: 1000},
+		},
+	}
+	found, err := BackfillWeaponKillsForMatch(context.Background(), client, db, "m_empty", "xuid1")
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if !found {
+		t.Fatal("expected found=true when film present")
+	}
+
+	var bits int
+	db.QueryRow("SELECT backfill_completed FROM match_registry WHERE match_id='m_empty'").Scan(&bits)
+	if bits&int(MBitWeaponKills) == 0 {
+		t.Fatal("expected MBitWeaponKills bit set (early exit path)")
+	}
+
+	var killCount int
+	db.QueryRow("SELECT COUNT(*) FROM weapon_kills WHERE match_id='m_empty'").Scan(&killCount)
+	if killCount != 0 {
+		t.Fatalf("expected 0 weapon_kills rows, got %d", killCount)
+	}
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
 
 func TestAttributionsToRows(t *testing.T) {
 	attrs := []analysis.KillAttribution{
