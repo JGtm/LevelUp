@@ -1,5 +1,70 @@
 # Thought Log
 
+## [2026-04-24] feat(help): glossaire enrichi + cache disque 24h
+
+**Statut** : ✅ Complété
+
+**Décision technique** :
+Complément de la page Aide (itération 2) :
+- Formules corrigées avec les vraies valeurs du code Go (`combat_yield.go`, `comeback.go`, `skill_config.go`)
+- Nouvelle section « Badges narratifs de match » (5 badges + entrée d'explication générale) avec conditions exactes et exemples chiffrés
+- Exemples ajoutés sur toutes les entrées qui en bénéficient
+- `HelpHandler.ttl` passé à 24h (contenu quasi-statique)
+- Cache disque ajouté : `data/cache/help_release_notes_{lang}.json` — écriture atomique (tmp→rename), TTL identique au cache mémoire. Survie aux redémarrages sans ré-invoquer git.
+- Test `TestHelpHandler_DiskCacheSurvivesRestart` ajouté.
+
+**Résultats** : 7/7 tests PASS · `go build` ✅ · `npm run build` ✅
+
+**Conclusion** : Livré.
+
+---
+
+## [2026-04-24] feat(help): page Aide — Notes de version & Glossaire
+
+**Statut** : ✅ Complété
+
+**Décision technique** :
+Nouvelle page `/help` (route globale, accessible sans joueur actif) avec deux onglets :
+- **Notes de version** : handler Go `HelpHandler` reconstruit l'historique complet via `git log --all -- README.md` → `git show <sha>:README.md` pour chaque commit, extrait les blocs `**vX.Y` de la section What's new, déduplique par version et trie décroissant. Cache mémoire TTL 5 min. Fallback `os.ReadFile` si git indisponible.
+- **Glossaire & Concepts** : contenu statique FR/EN dans `i18n.ts` — 10 concepts (LUSR, Performance, Rendement, Résistance, Sessions, Escouade, Sync, Backfill, Normalisation modes, Fréquences rafraîchissement) organisés en 3 catégories avec cards collapsibles formule+exemple.
+
+`HelpSplitButton` extrait dans son propre fichier pour garder NavL1.tsx sous contrôle (~504 L vs 500 L limite — dette mineure documentée).
+
+**Résultats** :
+- `go build ./...` : ✅ OK
+- `go test ./internal/api/handlers/... -run TestHelp` : 6/6 PASS
+- `npm run build` : ✅ 1146 modules transformés, chunk `help-*.js` 14 kB (gzip 5.68 kB)
+
+**Conclusion** : Livré. La reconstruction git fonctionne sur le repo réel (tous commits README parcourus). Prochaine étape possible : i18n du label "Aide" dans NavL1 si le projet adopte un système i18n global pour la navigation.
+
+---
+
+## [2026-04-24] feat(auth): SISU/PoP provider — Phases 1-5
+
+**Statut** : ✅ Complété
+
+**Décision technique** :
+Migration complète MSAL → SISU/PoP selon `PLAN_SISU_MIGRATION.md`.
+Architecture choisie : interface `DeviceFlow` (6 méthodes) + implémentations privées `msalDeviceFlow` / `sisuDeviceFlow` plutôt que struct concrète avec champ `FlowType` (anti-pattern polymorphisme manuel).
+`SISUProvider` stocke un contexte éphémère `sisuFlowContext` protégé par mutex entre `InitDeviceFlow` et `Exchange`.
+Signature PoP ECDSA P-256 : format IEEE P1363 (r‖s 64 octets), payload avec Windows FILETIME, header base64 standard.
+
+**Périmètre livré** :
+- Phase 1 : `pop_signing.go` + tests (11 tests)
+- Phase 2 : `device_token.go` + tests (4 tests)
+- Phase 3 : `sisu_client.go` + tests (7 tests)
+- Phase 4 : `xbox_device_code.go` + tests (6 tests)
+- Phase 5a : `DeviceFlow` interface, `SISUProvider`, cascade de refactoring sur handlers/scheduler/stores
+- Phase 5c : `AppSettings.AuthProvider` + `buildTokenProvider` dans `main.go`
+- Phase 5d : `domain/settings.go` + `settings/store.go`
+- Fix `scripts/warm_bp_assets/main.go` (accès champs → méthodes getter)
+
+**Résultats** : `go test ./...` — 30 packages `ok`, zéro FAIL, zéro régression.
+
+**Conclusion** : Livré. Phase 6 (frontend) hors périmètre de cette itération.
+
+---
+
 ## [2026-04-24] fix(watcher): rafraîchissement autonome des tokens Halo dans PlayerLiveRefresher
 
 **Statut** : ✅ Complété

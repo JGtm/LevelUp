@@ -49,6 +49,28 @@ import (
 // version est injectée au build via -ldflags "-X main.version=X.Y.Z".
 var version = "dev"
 
+// buildTokenProvider instancie le TokenProvider selon app_settings.json:auth_provider.
+// Par défaut (valeur vide ou "msal") : MSALProvider.
+// Si "sisu" : SISUProvider (authentification native Xbox, sans app Azure).
+func buildTokenProvider(settingsStore *settings.Store) auth.TokenProvider {
+	s, err := settingsStore.Load()
+	if err != nil {
+		slog.Warn("buildTokenProvider: impossible de lire les settings, utilisation MSAL", "err", err)
+		return auth.NewMSALProvider()
+	}
+	switch s.AuthProvider {
+	case "sisu":
+		slog.Info("buildTokenProvider: SISU provider activé")
+		return auth.NewSISUProvider()
+	default:
+		if s.AuthProvider != "" && s.AuthProvider != "msal" {
+			slog.Warn("buildTokenProvider: valeur auth_provider inconnue, utilisation MSAL", "value", s.AuthProvider)
+		}
+		slog.Info("buildTokenProvider: MSAL provider activé")
+		return auth.NewMSALProvider()
+	}
+}
+
 func main() {
 	// --- 0. Health-check mode (Docker HEALTHCHECK) ---
 	if len(os.Args) == 2 && os.Args[1] == "-health-check" {
@@ -195,7 +217,7 @@ func main() {
 
 	// --- 6. Scheduler, watcher, puis routeur HTTP ---
 	settingsStore := settings.NewStore(cfg.AppSettingsPath)
-	tokenProvider := auth.NewMSALProvider()
+	tokenProvider := buildTokenProvider(settingsStore)
 	autoScheduler := scheduler.New(cfg, settingsStore, tokenProvider)
 	schedulerCtx, cancelScheduler := context.WithCancel(ctx)
 
@@ -238,7 +260,7 @@ func main() {
 	// Routeur HTTP — le daemon peut être nil si le watcher est désactivé.
 	// reg est assigné ici : la closure notifierGetter y accède de manière lazy (joueur actif après démarrage).
 	var router http.Handler
-	router, reg = api.NewRouter(cfg, bootRepo, bootSvc, watcherCtrl)
+	router, reg = api.NewRouter(cfg, bootRepo, bootSvc, watcherCtrl, tokenProvider)
 
 	srv := &http.Server{
 		Addr:         cfg.ServerAddr(),

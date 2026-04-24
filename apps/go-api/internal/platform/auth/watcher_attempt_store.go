@@ -28,8 +28,8 @@ type WatcherAttempt struct {
 	ErrorCode    string
 	ErrorDetail  string
 
-	// Référence interne au Device Code Flow MSAL (jamais exposé)
-	DevFlow *DeviceCodeFlow
+	// Référence interne au Device Code Flow (jamais exposé)
+	DevFlow DeviceFlow
 }
 
 // WatcherAttemptStore est le registre de la tentative d'auth watcher.

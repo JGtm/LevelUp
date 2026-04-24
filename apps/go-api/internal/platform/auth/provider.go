@@ -1,8 +1,8 @@
-// Package auth — provider.go : interface TokenProvider et implémentation MSAL.
+// Package auth — provider.go : interface TokenProvider, DeviceFlow, et implémentations.
 //
 // TokenProvider abstrait l'acquisition de tokens Halo Infinite.
 // L'appelant ne connaît pas le mécanisme utilisé (MSAL Device Code Flow,
-// silent refresh depuis DuckDB, ou futur legacy OAuth2 refresh token).
+// silent refresh depuis DuckDB, ou SISU/PoP natif Xbox).
 package auth
 
 import (
@@ -10,12 +10,60 @@ import (
 	"log/slog"
 )
 
+// DeviceFlow abstrait un flow interactif d'authentification (MSAL ou SISU).
+// Chaque provider retourne sa propre implémentation privée.
+type DeviceFlow interface {
+	// Accesseurs pour l'UI / sérialisation HTTP.
+	GetMessage() string
+	GetUserCode() string        // vide si SISU
+	GetVerificationURL() string // microsoft.com/devicelogin (MSAL) ou URL OAuth directe (SISU)
+	GetExpiresIn() int
+	GetFlowType() string // "msal" | "sisu"
+
+	// AcquireToken bloque jusqu'à l'authentification et retourne l'access_token Microsoft.
+	// Bloquant — à appeler dans une goroutine.
+	AcquireToken(ctx context.Context) (string, error)
+}
+
+// stubDeviceFlow implémente DeviceFlow pour les tests unitaires.
+type stubDeviceFlow struct {
+	message         string
+	userCode        string
+	verificationURL string
+	expiresIn       int
+	flowType        string
+}
+
+func (f *stubDeviceFlow) GetMessage() string         { return f.message }
+func (f *stubDeviceFlow) GetUserCode() string        { return f.userCode }
+func (f *stubDeviceFlow) GetVerificationURL() string { return f.verificationURL }
+func (f *stubDeviceFlow) GetExpiresIn() int          { return f.expiresIn }
+func (f *stubDeviceFlow) GetFlowType() string        { return f.flowType }
+func (f *stubDeviceFlow) AcquireToken(_ context.Context) (string, error) {
+	// Stub : retourne immédiatement (utilisé uniquement dans les tests où AcquireToken n'est pas exercé).
+	return "", nil
+}
+
+// NewStubDeviceFlow crée un DeviceFlow de test sans dépendance MSAL/réseau.
+// flowType : "msal" | "sisu".
+func NewStubDeviceFlow(userCode, verificationURL, message string, expiresIn int, flowType string) DeviceFlow {
+	if flowType == "" {
+		flowType = "msal"
+	}
+	return &stubDeviceFlow{
+		message:         message,
+		userCode:        userCode,
+		verificationURL: verificationURL,
+		expiresIn:       expiresIn,
+		flowType:        flowType,
+	}
+}
+
 // TokenProvider abstrait l'acquisition de tokens Halo pour les appels API.
 type TokenProvider interface {
 	// InitDeviceFlow démarre un Device Code Flow interactif.
-	// Le *DeviceCodeFlow retourné expose UserCode, VerificationURL, ExpiresIn
-	// et la méthode AcquireToken(ctx) — bloquante.
-	InitDeviceFlow(ctx context.Context) (*DeviceCodeFlow, error)
+	// Le DeviceFlow retourné expose les accesseurs UI et AcquireToken.
+	InitDeviceFlow(ctx context.Context) (DeviceFlow, error)
 
 	// TrySilentRefresh tente un refresh non-interactif depuis un cache persisté.
 	// cacheJSON : cache sérialisé (JSON) stocké dans sync_meta DuckDB ; "" si absent.
@@ -37,16 +85,19 @@ type MSALProvider struct{}
 // NewMSALProvider crée un MSALProvider.
 func NewMSALProvider() *MSALProvider { return &MSALProvider{} }
 
+// Vérification compile-time : MSALProvider implémente TokenProvider.
+var _ TokenProvider = (*MSALProvider)(nil)
+
 // InitDeviceFlow démarre un Device Code Flow Microsoft.
 // Crée un cache en mémoire vide pour stocker le résultat MSAL après complétion.
-func (p *MSALProvider) InitDeviceFlow(ctx context.Context) (*DeviceCodeFlow, error) {
+func (p *MSALProvider) InitDeviceFlow(ctx context.Context) (DeviceFlow, error) {
 	slog.DebugContext(ctx, "provider: démarrage Device Code Flow")
 	flow, err := InitDeviceFlow(ctx, &InMemoryCacheAccessor{})
 	if err != nil {
 		slog.ErrorContext(ctx, "provider: échec InitDeviceFlow", "err", err)
 		return nil, err
 	}
-	slog.DebugContext(ctx, "provider: Device Code Flow prêt", "user_code", flow.UserCode)
+	slog.DebugContext(ctx, "provider: Device Code Flow prêt", "user_code", flow.GetUserCode())
 	return flow, nil
 }
 

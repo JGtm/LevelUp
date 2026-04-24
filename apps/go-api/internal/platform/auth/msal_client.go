@@ -35,35 +35,28 @@ const (
 // XboxScopes sont les scopes requis pour Xbox Live.
 var XboxScopes = []string{"Xboxlive.signin", "Xboxlive.offline_access"}
 
-// DeviceCodeFlow regroupe les données d'un flow en cours.
-// NewDeviceCodeFlow crée un DeviceCodeFlow avec les champs exportés initialisés.
-// Le champ interne MSAL est laissé à zéro — AppeleToken échouera immédiatement
-// (utilisé uniquement dans les stubs de test et les clients non-MSAL).
-func NewDeviceCodeFlow(userCode, verificationURL, message string, expiresIn int) *DeviceCodeFlow {
-	return &DeviceCodeFlow{
-		Message:         message,
-		UserCode:        userCode,
-		VerificationURL: verificationURL,
-		ExpiresIn:       expiresIn,
-	}
+// msalDeviceFlow implémente DeviceFlow via MSAL Device Code Flow.
+// Privé — créé uniquement par InitDeviceFlow.
+type msalDeviceFlow struct {
+	message         string
+	userCode        string
+	verificationURL string
+	expiresIn       int
+	dc              public.DeviceCode
 }
 
-type DeviceCodeFlow struct {
-	// Message contient le texte à afficher à l'utilisateur (localisé par Microsoft).
-	Message string
-	// UserCode est le code court à entrer sur microsoft.com/devicelogin.
-	UserCode string
-	// VerificationURL est l'URL de vérification.
-	VerificationURL string
-	// ExpiresIn est le nombre de secondes avant expiration.
-	ExpiresIn int
-	// internal field for AuthenticationResult
-	dc public.DeviceCode
-}
+func (f *msalDeviceFlow) GetMessage() string         { return f.message }
+func (f *msalDeviceFlow) GetUserCode() string        { return f.userCode }
+func (f *msalDeviceFlow) GetVerificationURL() string { return f.verificationURL }
+func (f *msalDeviceFlow) GetExpiresIn() int          { return f.expiresIn }
+func (f *msalDeviceFlow) GetFlowType() string        { return "msal" }
+
+// Vérification compile-time : msalDeviceFlow implémente DeviceFlow.
+var _ DeviceFlow = (*msalDeviceFlow)(nil)
 
 // AcquireToken attend la complétion du Device Code Flow et retourne l'access_token.
 // Bloquant — doit être appelé dans une goroutine.
-func (f *DeviceCodeFlow) AcquireToken(ctx context.Context) (string, error) {
+func (f *msalDeviceFlow) AcquireToken(ctx context.Context) (string, error) {
 	result, err := f.dc.AuthenticationResult(ctx)
 	if err != nil {
 		return "", fmt.Errorf("MSAL AuthenticationResult: %w", err)
@@ -73,7 +66,7 @@ func (f *DeviceCodeFlow) AcquireToken(ctx context.Context) (string, error) {
 
 // InitDeviceFlow initie un Device Code Flow Microsoft.
 // cacheAccessor peut être nil pour utiliser un cache en mémoire.
-func InitDeviceFlow(ctx context.Context, cacheAccessor cache.ExportReplace) (*DeviceCodeFlow, error) {
+func InitDeviceFlow(ctx context.Context, cacheAccessor cache.ExportReplace) (*msalDeviceFlow, error) {
 	opts := []public.Option{
 		public.WithAuthority(MSALAuthority),
 	}
@@ -96,11 +89,11 @@ func InitDeviceFlow(ctx context.Context, cacheAccessor cache.ExportReplace) (*De
 		expiresIn = 0
 	}
 
-	return &DeviceCodeFlow{
-		Message:         dc.Result.Message,
-		UserCode:        dc.Result.UserCode,
-		VerificationURL: dc.Result.VerificationURL,
-		ExpiresIn:       expiresIn,
+	return &msalDeviceFlow{
+		message:         dc.Result.Message,
+		userCode:        dc.Result.UserCode,
+		verificationURL: dc.Result.VerificationURL,
+		expiresIn:       expiresIn,
 		dc:              dc,
 	}, nil
 }

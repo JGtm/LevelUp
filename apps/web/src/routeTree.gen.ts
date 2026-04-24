@@ -14,6 +14,7 @@ import { Route as SettingsRouteImport } from './routes/settings'
 import { Route as RegisterRouteImport } from './routes/register'
 import { Route as LoginRouteImport } from './routes/login'
 import { Route as LabRouteImport } from './routes/lab'
+import { Route as HelpRouteImport } from './routes/help'
 import { Route as ChangelogRouteImport } from './routes/changelog'
 import { Route as AdminRouteImport } from './routes/admin'
 import { Route as IndexRouteImport } from './routes/index'
@@ -61,6 +62,11 @@ const LoginRoute = LoginRouteImport.update({
 const LabRoute = LabRouteImport.update({
   id: '/lab',
   path: '/lab',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const HelpRoute = HelpRouteImport.update({
+  id: '/help',
+  path: '/help',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ChangelogRoute = ChangelogRouteImport.update({
@@ -198,6 +204,7 @@ export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/admin': typeof AdminRoute
   '/changelog': typeof ChangelogRoute
+  '/help': typeof HelpRoute
   '/lab': typeof LabRoute
   '/login': typeof LoginRoute
   '/register': typeof RegisterRoute
@@ -228,6 +235,7 @@ export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/admin': typeof AdminRoute
   '/changelog': typeof ChangelogRoute
+  '/help': typeof HelpRoute
   '/lab': typeof LabRoute
   '/login': typeof LoginRoute
   '/register': typeof RegisterRoute
@@ -258,6 +266,7 @@ export interface FileRoutesById {
   '/': typeof IndexRoute
   '/admin': typeof AdminRoute
   '/changelog': typeof ChangelogRoute
+  '/help': typeof HelpRoute
   '/lab': typeof LabRoute
   '/login': typeof LoginRoute
   '/register': typeof RegisterRoute
@@ -290,6 +299,7 @@ export interface FileRouteTypes {
     | '/'
     | '/admin'
     | '/changelog'
+    | '/help'
     | '/lab'
     | '/login'
     | '/register'
@@ -320,6 +330,7 @@ export interface FileRouteTypes {
     | '/'
     | '/admin'
     | '/changelog'
+    | '/help'
     | '/lab'
     | '/login'
     | '/register'
@@ -349,6 +360,7 @@ export interface FileRouteTypes {
     | '/'
     | '/admin'
     | '/changelog'
+    | '/help'
     | '/lab'
     | '/login'
     | '/register'
@@ -380,6 +392,7 @@ export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   AdminRoute: typeof AdminRoute
   ChangelogRoute: typeof ChangelogRoute
+  HelpRoute: typeof HelpRoute
   LabRoute: typeof LabRoute
   LoginRoute: typeof LoginRoute
   RegisterRoute: typeof RegisterRoute
@@ -423,6 +436,13 @@ declare module '@tanstack/react-router' {
       path: '/lab'
       fullPath: '/lab'
       preLoaderRoute: typeof LabRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/help': {
+      id: '/help'
+      path: '/help'
+      fullPath: '/help'
+      preLoaderRoute: typeof HelpRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/changelog': {
@@ -670,6 +690,7 @@ const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   AdminRoute: AdminRoute,
   ChangelogRoute: ChangelogRoute,
+  HelpRoute: HelpRoute,
   LabRoute: LabRoute,
   LoginRoute: LoginRoute,
   RegisterRoute: RegisterRoute,

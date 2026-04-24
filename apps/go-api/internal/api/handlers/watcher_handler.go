@@ -156,9 +156,9 @@ func (h *WatcherHandler) StartAuth(w http.ResponseWriter, r *http.Request) {
 	}
 
 	h.attempts.Update(attempt.AttemptID, func(a *auth_platform.WatcherAttempt) {
-		a.UserCode = flow.UserCode
-		a.VerificationURI = flow.VerificationURL
-		a.ExpiresInSec = flow.ExpiresIn
+		a.UserCode = flow.GetUserCode()
+		a.VerificationURI = flow.GetVerificationURL()
+		a.ExpiresInSec = flow.GetExpiresIn()
 		a.DevFlow = flow
 	})
 
@@ -230,10 +230,10 @@ func (h *WatcherHandler) PatchSubscriptions(w http.ResponseWriter, r *http.Reque
 	})
 }
 
-// pollWatcherAuth attend la validation MSAL puis acquiert le token XSTS.
-func (h *WatcherHandler) pollWatcherAuth(attemptID string, flow *auth_platform.DeviceCodeFlow, parentCtx context.Context) {
+// pollWatcherAuth attend la validation du Device Code Flow puis acquiert le token XSTS.
+func (h *WatcherHandler) pollWatcherAuth(attemptID string, flow auth_platform.DeviceFlow, parentCtx context.Context) {
 	// Utiliser un contexte indépendant pour que l'auth survive à la requête HTTP
-	ctx, cancel := context.WithTimeout(context.Background(), time.Duration(flow.ExpiresIn)*time.Second)
+	ctx, cancel := context.WithTimeout(context.Background(), time.Duration(flow.GetExpiresIn())*time.Second)
 	defer cancel()
 
 	_ = parentCtx // ignoré intentionnellement
