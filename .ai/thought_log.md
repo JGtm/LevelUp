@@ -1,5 +1,44 @@
 # Thought Log
 
+## [2026-04-24] feat(help): glossaire enrichi + cache disque 24h
+
+**Statut** : ✅ Complété
+
+**Décision technique** :
+Complément de la page Aide (itération 2) :
+- Formules corrigées avec les vraies valeurs du code Go (`combat_yield.go`, `comeback.go`, `skill_config.go`)
+- Nouvelle section « Badges narratifs de match » (5 badges + entrée d'explication générale) avec conditions exactes et exemples chiffrés
+- Exemples ajoutés sur toutes les entrées qui en bénéficient
+- `HelpHandler.ttl` passé à 24h (contenu quasi-statique)
+- Cache disque ajouté : `data/cache/help_release_notes_{lang}.json` — écriture atomique (tmp→rename), TTL identique au cache mémoire. Survie aux redémarrages sans ré-invoquer git.
+- Test `TestHelpHandler_DiskCacheSurvivesRestart` ajouté.
+
+**Résultats** : 7/7 tests PASS · `go build` ✅ · `npm run build` ✅
+
+**Conclusion** : Livré.
+
+---
+
+## [2026-04-24] feat(help): page Aide — Notes de version & Glossaire
+
+**Statut** : ✅ Complété
+
+**Décision technique** :
+Nouvelle page `/help` (route globale, accessible sans joueur actif) avec deux onglets :
+- **Notes de version** : handler Go `HelpHandler` reconstruit l'historique complet via `git log --all -- README.md` → `git show <sha>:README.md` pour chaque commit, extrait les blocs `**vX.Y` de la section What's new, déduplique par version et trie décroissant. Cache mémoire TTL 5 min. Fallback `os.ReadFile` si git indisponible.
+- **Glossaire & Concepts** : contenu statique FR/EN dans `i18n.ts` — 10 concepts (LUSR, Performance, Rendement, Résistance, Sessions, Escouade, Sync, Backfill, Normalisation modes, Fréquences rafraîchissement) organisés en 3 catégories avec cards collapsibles formule+exemple.
+
+`HelpSplitButton` extrait dans son propre fichier pour garder NavL1.tsx sous contrôle (~504 L vs 500 L limite — dette mineure documentée).
+
+**Résultats** :
+- `go build ./...` : ✅ OK
+- `go test ./internal/api/handlers/... -run TestHelp` : 6/6 PASS
+- `npm run build` : ✅ 1146 modules transformés, chunk `help-*.js` 14 kB (gzip 5.68 kB)
+
+**Conclusion** : Livré. La reconstruction git fonctionne sur le repo réel (tous commits README parcourus). Prochaine étape possible : i18n du label "Aide" dans NavL1 si le projet adopte un système i18n global pour la navigation.
+
+---
+
 ## [2026-04-24] feat(auth): SISU/PoP provider — Phases 1-5
 
 **Statut** : ✅ Complété
