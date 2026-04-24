@@ -329,8 +329,8 @@ func defaultSettings() *AppSettings {
 		CanSelfProvision:    true,
 		CanStartInitialSync: true,
 		// Règles de sessions
-		SessionGapMinutes:     120,     // 2 heures — historique Python
-		SessionTeamChangeMode: "group", // comportement actuel isTeammatesBreak
+		SessionGapMinutes:     120,       // 2 heures — historique Python
+		SessionTeamChangeMode: "friends", // amis seulement — moins sensible aux randoms
 		// Règles de badges narratifs
 		OutcomeExcludeBotMatchesFromBadges:  true,       // bots faussent les scores adverses
 		OutcomeExcludeBotMatchesFromRecords: false,      // pas de changement de comportement par défaut

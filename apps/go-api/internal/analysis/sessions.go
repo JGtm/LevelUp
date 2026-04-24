@@ -23,6 +23,7 @@ func DefaultSessionOptions() domain.SessionComputeOptions {
 		GapMinutes:          DefaultSessionGapMinutes,
 		CutoffHour:          defaultCutoffHour,
 		SplitOnRankedChange: false,
+		TeamChangeMode:      domain.TeamChangeModeFriends,
 		Mode:                domain.SessionModeContext,
 	}
 }

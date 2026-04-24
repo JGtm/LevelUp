@@ -289,8 +289,8 @@ func TestDefaults_SessionAndBadgeFields(t *testing.T) {
 	if d.SessionGapMinutes != 120 {
 		t.Errorf("SessionGapMinutes default = %d, want 120", d.SessionGapMinutes)
 	}
-	if d.SessionTeamChangeMode != "group" {
-		t.Errorf("SessionTeamChangeMode default = %q, want 'group'", d.SessionTeamChangeMode)
+	if d.SessionTeamChangeMode != "friends" {
+		t.Errorf("SessionTeamChangeMode default = %q, want 'friends'", d.SessionTeamChangeMode)
 	}
 	if d.SessionSplitOnRankedChange {
 		t.Error("SessionSplitOnRankedChange default should be false")

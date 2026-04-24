@@ -61,7 +61,6 @@ export function SettingsPage() {
 
   const [localSettings, setLocalSettings] = useState<Partial<SettingsResponse>>({})
   const [saveStatus, setSaveStatus] = useState<'saved' | 'error' | null>(null)
-  const [showRecalcConfirm, setShowRecalcConfirm] = useState(false)
   const saveTimerRef = useState<ReturnType<typeof setTimeout> | null>(null)
 
   const routerState = useRouterState()
@@ -473,6 +472,7 @@ function AnalyseTab({ merged, handleChange, t }: TabProps) {
   const activeSyncJobId = useAppShellStore((s) => s.activeSyncJobId)
   const syncRunning = !!activeSyncJobId
   const recalculate = useRecalculateSessions()
+  const [showRecalcConfirm, setShowRecalcConfirm] = useState(false)
 
   return (
     <>
@@ -508,7 +508,7 @@ function AnalyseTab({ merged, handleChange, t }: TabProps) {
             <div className="flex items-center justify-between">
               <span className="text-sm text-foreground">{t.sessionTeamChangeLabel}</span>
               <select
-                value={merged.session_team_change_mode ?? 'group'}
+                value={merged.session_team_change_mode ?? 'friends'}
                 onChange={(e) =>
                   handleChange(
                     'session_team_change_mode',
