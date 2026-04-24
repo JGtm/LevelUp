@@ -149,7 +149,7 @@ func TestWatcherHandler_GetStatus_WithDaemonRunning(t *testing.T) {
 
 func TestWatcherHandler_StartAuth_OK(t *testing.T) {
 	provider := &stubTokenProvider{
-		initFlowFlow: auth_platform.NewDeviceCodeFlow("ABCD-1234", "https://microsoft.com/devicelogin", "msg", 300),
+		initFlowFlow: auth_platform.NewStubDeviceFlow("ABCD-1234", "https://microsoft.com/devicelogin", "msg", 300, "msal"),
 	}
 	r := newWatcherRouter(t, nil, provider)
 
@@ -191,7 +191,7 @@ func TestWatcherHandler_StartAuth_MSALError_500(t *testing.T) {
 
 func TestWatcherHandler_StartAuth_ReusesExisting(t *testing.T) {
 	provider := &stubTokenProvider{
-		initFlowFlow: auth_platform.NewDeviceCodeFlow("CODE99", "https://microsoft.com/devicelogin", "msg", 300),
+		initFlowFlow: auth_platform.NewStubDeviceFlow("CODE99", "https://microsoft.com/devicelogin", "msg", 300, "msal"),
 	}
 	r := newWatcherRouter(t, nil, provider)
 

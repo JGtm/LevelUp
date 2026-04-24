@@ -173,7 +173,7 @@ export function SettingsPage() {
           <AnalyseTab merged={merged} handleChange={handleChange} t={t} />
         )}
         {activeTab === 'lab' && <LabTab t={t} />}
-        {activeTab === 'users' && <UsersTab t={t} />}
+        {activeTab === 'users' && <UsersTab merged={merged} handleChange={handleChange} t={t} />}
       </div>
     </div>
   )
@@ -307,19 +307,41 @@ function GeneralTab({ merged, handleChange, t }: TabProps) {
 
 // ─── Onglet Utilisateurs ────────────────────────────────────────────────────
 
-function UsersTab({ t }: { t: ReturnType<typeof getSettingsText> }) {
+function UsersTab({ merged, handleChange, t }: TabProps) {
   return (
-    <Card className="border-border bg-card">
-      <CardContent className="flex flex-col gap-4 p-6 md:flex-row md:items-center md:justify-between">
-        <div>
-          <p className="mt-2 text-lg font-semibold text-foreground">{t.usersTitle}</p>
-          <p className="mt-1 text-sm text-muted-foreground">{t.usersDescription}</p>
-        </div>
-        <Link to="/admin">
-          <Button>{t.openUsersButton}</Button>
-        </Link>
-      </CardContent>
-    </Card>
+    <>
+      <Card className="border-border bg-card">
+        <CardContent className="flex flex-col gap-4 p-6 md:flex-row md:items-center md:justify-between">
+          <div>
+            <p className="mt-2 text-lg font-semibold text-foreground">{t.usersTitle}</p>
+            <p className="mt-1 text-sm text-muted-foreground">{t.usersDescription}</p>
+          </div>
+          <Link to="/admin">
+            <Button>{t.openUsersButton}</Button>
+          </Link>
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-base">{t.authProviderTitle}</CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-2 divide-y divide-border/50">
+          <div className="flex items-center justify-between py-2">
+            <span className="text-sm text-foreground">{t.authProviderLabel}</span>
+            <select
+              value={merged.auth_provider ?? 'msal'}
+              onChange={(e) => handleChange('auth_provider', e.target.value)}
+              className="rounded border border-input px-2 py-1 text-sm"
+            >
+              <option value="msal">{t.authProviderMsal}</option>
+              <option value="sisu">{t.authProviderSisu}</option>
+            </select>
+          </div>
+          <p className="pt-2 text-xs text-muted-foreground">{t.authProviderHint}</p>
+        </CardContent>
+      </Card>
+    </>
   )
 }
 

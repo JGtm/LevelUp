@@ -63,6 +63,10 @@ type AppSettings struct {
 	CanSelfProvision    bool `json:"can_self_provision"`
 	CanStartInitialSync bool `json:"can_start_initial_sync"`
 
+	// AuthProvider détermine le mécanisme d'authentification Microsoft/Halo.
+	// Valeurs : "msal" (défaut, Azure app) | "sisu" (Xbox natif, sans Azure app).
+	AuthProvider string `json:"auth_provider"`
+
 	// raw conserve tous les autres champs pour ne pas les perdre au Save
 	raw map[string]json.RawMessage
 }
@@ -268,6 +272,9 @@ func Apply(cfg *AppSettings, req *domain.UpdateSettingsRequest) {
 	if req.OutcomeBadgeSensitivity != nil {
 		cfg.OutcomeBadgeSensitivity = *req.OutcomeBadgeSensitivity
 	}
+	if req.AuthProvider != nil {
+		cfg.AuthProvider = *req.AuthProvider
+	}
 }
 
 // ToResponse convertit AppSettings en SettingsResponse (sans discord_webhook_url).
@@ -311,6 +318,7 @@ func ToResponse(cfg *AppSettings) *domain.SettingsResponse {
 		OutcomeExcludeBotMatchesFromBadges:  cfg.OutcomeExcludeBotMatchesFromBadges,
 		OutcomeExcludeBotMatchesFromRecords: cfg.OutcomeExcludeBotMatchesFromRecords,
 		OutcomeBadgeSensitivity:             cfg.OutcomeBadgeSensitivity,
+		AuthProvider:                        cfg.AuthProvider,
 	}
 }
 

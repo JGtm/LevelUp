@@ -42,7 +42,7 @@ type mockProvider struct {
 // Vérification compile-time : mockProvider satisfait l'interface.
 var _ auth.TokenProvider = (*mockProvider)(nil)
 
-func (m *mockProvider) InitDeviceFlow(_ context.Context) (*auth.DeviceCodeFlow, error) {
+func (m *mockProvider) InitDeviceFlow(_ context.Context) (auth.DeviceFlow, error) {
 	return nil, nil
 }
 
