@@ -1,5 +1,35 @@
 # Thought Log
 
+## [2026-04-24] fix(watcher): rafraîchissement autonome des tokens Halo dans PlayerLiveRefresher
+
+**Statut** : ✅ Complété
+
+**Décision technique** :
+Diagnostic et correction du battlepass affichant des données périmées (palier 72 au lieu de 79).
+
+**Cause racine identifiée** :
+Le `PlayerLiveRefresher` utilisait `halo.GetCachedPlayerTokens` (cache process, TTL 50 min).
+Après 50 min sans requête HTTP de l'UI, le cache expire → le ticker détecte `nil` et saute
+le refresh BP en silence. La DB garde la dernière snapshot, potentiellement vieille de plusieurs heures.
+
+**Solution** :
+- `ServiceRegistry.RefreshTokensForXUID(ctx, xuid)` : cherche le PlayerDB dans le pool par XUID,
+  tente MSAL silent refresh ou OAuth v2 depuis DB (même logique que `refreshTokensFromDB`).
+  Met à jour `SetCachedPlayerTokens` si réussi.
+- `PlayerLiveRefresher.WithTokenRefresher(fn)` : injecte une `func(ctx, xuid) (*HaloTokens, error)`.
+  Appelée dans `refresh()` quand `GetCachedPlayerTokens` retourne nil.
+- `main.go` : closure `tokenRefresher` lazy (pattern identique à `notifierGetter`),
+  passée en paramètre de `startWatcherDaemon`, câblée dans `LiveRefreshFactory`.
+
+**Résultats** :
+- `go build ./...` ✅
+- `go test -race ./internal/watcher/... ./internal/api/...` : 0 FAIL ✅
+- Commit `f2616bfe` sur `fix/duckdb-concurrency`
+
+**Branche** : `fix/duckdb-concurrency`
+
+---
+
 ## [2026-04-24] feat(film): vérification finale pipeline BlobStoragePathPrefix — tests + logging
 
 **Statut** : ✅ Complété
