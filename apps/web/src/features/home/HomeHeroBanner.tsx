@@ -1,40 +1,55 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
+import { useAppShellStore } from '@/stores/appShellStore'
 
-const HEADER_IMAGES = [
-  '/echoes-within-header.webp',
-  '/Infinite.png',
-  '/Infinite-2.png',
-  '/LoneWolves.png',
-]
+/**
+ * Images headers par titre (slug → liste de chemins dans /public/titles/{slug}/).
+ * Pour ajouter un nouveau jeu, créer public/titles/{slug}/ et y lister ses images.
+ */
+const HEADER_IMAGES_BY_TITLE: Record<string, string[]> = {
+  halo_infinite: [
+    '/titles/halo_infinite/echoes-within-header.webp',
+    '/titles/halo_infinite/Infinite.png',
+    '/titles/halo_infinite/LoneWolves.png',
+  ],
+}
 
 const ROTATION_INTERVAL_MS = 45_000
 
-function pickOther(current: string): string {
-  const others = HEADER_IMAGES.filter((img) => img !== current)
+function pickOther(images: string[], current: string): string {
+  const others = images.filter((img) => img !== current)
   return others[Math.floor(Math.random() * others.length)]
 }
 
 /**
  * HomeHeroBanner — bandeau visuel décoratif de l'accueil.
- * Effectue une rotation aléatoire entre les images toutes les 45 secondes.
+ * Effectue une rotation aléatoire entre les images du titre courant toutes les 45 secondes.
  */
 export function HomeHeroBanner() {
+  const titleSlug = useAppShellStore((s) => s.currentTitleSlug)
+  const images = useMemo(
+    () => HEADER_IMAGES_BY_TITLE[titleSlug] ?? HEADER_IMAGES_BY_TITLE['halo_infinite'] ?? [],
+    [titleSlug],
+  )
+
   const [src, setSrc] = useState(
-    () => HEADER_IMAGES[Math.floor(Math.random() * HEADER_IMAGES.length)],
+    () => images[Math.floor(Math.random() * images.length)] ?? '',
   )
   const [visible, setVisible] = useState(true)
 
+  // Relancer le timer et réinitialiser le src quand le titre change
   useEffect(() => {
+    if (images.length === 0) return
+    setSrc(images[Math.floor(Math.random() * images.length)] ?? '')
     const timer = setInterval(() => {
       setVisible(false)
       setTimeout(() => {
-        setSrc((prev) => pickOther(prev))
+        setSrc((prev) => pickOther(images, prev))
         setVisible(true)
       }, 600)
     }, ROTATION_INTERVAL_MS)
 
     return () => clearInterval(timer)
-  }, [])
+  }, [images])
 
   return (
     <div

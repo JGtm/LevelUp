@@ -42,11 +42,12 @@ au prochain démarrage du serveur.
 | Étape | Action | Qui |
 |------:|--------|-----|
 | 1 | Enregistrer le descripteur dans `registry.go` + `make build` | **Manuel** |
-| 2 | Créer les répertoires disque | Automatisé par `add-title` |
+| 2 | Créer les répertoires disque + dossier images frontend | Automatisé par `add-title` |
 | 3 | Initialiser `shared_pve.duckdb` (si Firefight) | Automatisé par `add-title --capabilities firefight` |
 | 4 | Ajouter la section dans `db_profiles.json` | Automatisé par `add-title` |
 | 5 | Démarrer le serveur (création DuckDB + migrations) | Automatique au démarrage |
-| 6 | (Optionnel) Pré-remplir les référentiels `metadata.duckdb` | Manuel selon le titre |
+| 6 | Ajouter les images du hero banner de la home page | **Manuel** |
+| 7 | (Optionnel) Pré-remplir les référentiels `metadata.duckdb` | Manuel selon le titre |
 
 ---
 
@@ -217,7 +218,27 @@ Aucune modification de routeur n'est nécessaire — toutes les routes
 
 ---
 
-## Étape 6 — (Optionnel) Pré-remplir les données de référence
+## Étape 6 — Ajouter les images du hero banner
+
+`add-title` crée automatiquement le dossier `apps/web/public/titles/<slug>/`.
+Y déposer les visuels header du titre (`.webp` ou `.png`), puis les référencer dans
+`apps/web/src/features/home/HomeHeroBanner.tsx` dans `HEADER_IMAGES_BY_TITLE` :
+
+```ts
+const HEADER_IMAGES_BY_TITLE: Record<string, string[]> = {
+  halo_infinite: [ /* … */ ],
+  halo_mcc: [
+    '/titles/halo_mcc/header-1.webp',
+    '/titles/halo_mcc/header-2.png',
+  ],
+}
+```
+
+Si aucune image n'est fournie, le banner ne s'affiche pas silencieusement (fallback tableau vide).
+
+---
+
+## Étape 7 — (Optionnel) Pré-remplir les données de référence
 
 `metadata.duckdb` contient les tables de référence (labels d'armes, rangs de
 carrière, noms de cartes, etc.). Pour un nouveau titre, ces tables démarrent vides.
@@ -247,6 +268,8 @@ Ou inspecter manuellement chaque point :
 - [ ] Les tables `schema_migrations` sont remplies dans chaque base de données
 - [ ] `GET /api/v1/bootstrap` retourne le titre dans la liste `titles`
 - [ ] Une requête joueur avec `X-LevelUp-Title: <slug>` retourne HTTP 200
+- [ ] `apps/web/public/titles/<slug>/` existe et contient au moins une image header
+- [ ] `HEADER_IMAGES_BY_TITLE` dans `HomeHeroBanner.tsx` a une entrée pour `<slug>`
 
 ---
 
