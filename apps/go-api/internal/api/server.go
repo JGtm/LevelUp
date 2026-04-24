@@ -166,6 +166,7 @@ func NewRouter(
 		r.Get("/settings", settingsHandler.GetSettings)
 		r.Patch("/settings", settingsHandler.PatchSettings)
 		r.Post("/settings/media/reset-index", settingsHandler.PostMediaResetIndex)
+		r.Post("/settings/media/scan", settingsHandler.PostMediaScan)
 
 		setupHandler := handlers.NewSetupHandler(cfg, sessionStore, settingsStore, jobStore,
 			service.NewProfileService(cfg.DBProfilesPath, cfg.RepoRoot))

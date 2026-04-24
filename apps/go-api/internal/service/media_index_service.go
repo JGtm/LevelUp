@@ -28,6 +28,11 @@ type MediaIndexer interface {
 	// plutôt que depuis le chemin interne data/titles/.../captures/.
 	// Rapporte la progression via jobStore pour le job jobID.
 	ResetAndReindex(ctx context.Context, repoRoot string, capturesBaseDir string, reindexAfter bool, jobStore *jobs.Store, jobID string) error
+
+	// ScanAllMedia indexe les médias de tous les joueurs sans supprimer les entrées
+	// existantes (opération non-destructive). ForceRescan=false : seuls les nouveaux
+	// fichiers sont insérés.
+	ScanAllMedia(ctx context.Context, repoRoot string, capturesBaseDir string, jobStore *jobs.Store, jobID string) error
 }
 
 // DirMediaIndexer est l'implémentation par défaut de MediaIndexer.
@@ -132,6 +137,86 @@ func (d *DirMediaIndexer) ResetAndReindex(
 					})
 				}
 			}
+		}
+	}
+
+	return nil
+}
+
+// ScanAllMedia indexe les médias de tous les joueurs (non-destructif, ForceRescan=false).
+func (d *DirMediaIndexer) ScanAllMedia(
+	ctx context.Context,
+	repoRoot string,
+	capturesBaseDir string,
+	jobStore *jobs.Store,
+	jobID string,
+) error {
+	pr := titlePkg.NewPathResolver(repoRoot)
+	titleSlug := titlePkg.DefaultSlug
+	playersDir := filepath.Join(pr.TitleDataDir(titleSlug), "players")
+
+	entries, err := os.ReadDir(playersDir)
+	if err != nil {
+		if os.IsNotExist(err) {
+			step := "Aucun joueur trouvé"
+			jobStore.SetStatus(jobID, domain.JobStatusSucceeded, &step)
+			return nil
+		}
+		return fmt.Errorf("ScanAllMedia: lecture %s: %w", playersDir, err)
+	}
+
+	var playerDirs []os.DirEntry
+	for _, e := range entries {
+		if e.IsDir() {
+			playerDirs = append(playerDirs, e)
+		}
+	}
+
+	total := len(playerDirs)
+	if total == 0 {
+		step := "Aucun joueur trouvé"
+		jobStore.SetStatus(jobID, domain.JobStatusSucceeded, &step)
+		return nil
+	}
+
+	for i, entry := range playerDirs {
+		if ctx.Err() != nil {
+			return ctx.Err()
+		}
+
+		gamertag := entry.Name()
+		dbPath := pr.PlayerDBPath(titleSlug, gamertag)
+
+		var capturesDir string
+		if capturesBaseDir != "" {
+			capturesDir = filepath.Join(capturesBaseDir, gamertag)
+		} else {
+			capturesDir = filepath.Join(pr.PlayerDir(titleSlug, gamertag), "media")
+		}
+
+		if _, err := os.Stat(capturesDir); err != nil {
+			continue // dossier absent, on passe
+		}
+
+		pct := (i * 100) / total
+		step := fmt.Sprintf("Scan médias : %s (%d/%d)", gamertag, i+1, total)
+		jobStore.Update(jobID, func(j *domain.AsyncJobStatus) {
+			j.CurrentStep = &step
+			j.ProgressPct = &pct
+		})
+
+		if _, err := ops.IndexMedia(ops.MediaIndexOptions{
+			PlayerDBPath:        dbPath,
+			SharedSocialDBPath:  pr.SharedSocialDBPath(titleSlug),
+			SharedMatchesDBPath: pr.SharedDBPath(titleSlug),
+			CapturesDir:         capturesDir,
+			ForceRescan:         false,
+			Gamertag:            gamertag,
+		}); err != nil {
+			jobStore.Update(jobID, func(j *domain.AsyncJobStatus) {
+				w := fmt.Sprintf("WARN scan %s: %v", gamertag, err)
+				j.Warnings = append(j.Warnings, w)
+			})
 		}
 	}
 

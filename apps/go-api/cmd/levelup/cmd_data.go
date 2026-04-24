@@ -146,6 +146,7 @@ func runIndexMedia(cfg *config.AppConfig, args []string) error {
 	titleSlug := fs.String("title", title.DefaultSlug, "Slug du titre (ex: halo_infinite)")
 	force := fs.Bool("force-rescan", false, "Réindexer tous les fichiers")
 	bufMin := fs.Int("buffer-min", 2, "Buffer autour de la fenêtre match pour l'association (minutes)")
+	capturesDir := fs.String("captures-dir", "", "Dossier contenant les captures du joueur (optionnel, remplace le chemin interne)")
 	if err := fs.Parse(args); err != nil {
 		return err
 	}
@@ -153,12 +154,16 @@ func runIndexMedia(cfg *config.AppConfig, args []string) error {
 		return fmt.Errorf("--gamertag est obligatoire")
 	}
 	pr := title.NewPathResolver(cfg.RepoRoot)
+	resolvedCapturesDir := pr.PlayerCapturesDir(*titleSlug, *gamertag)
+	if *capturesDir != "" {
+		resolvedCapturesDir = *capturesDir
+	}
 	result, err := ops.IndexMedia(ops.MediaIndexOptions{
 		Gamertag:            *gamertag,
 		PlayerDBPath:        pr.PlayerDBPath(*titleSlug, *gamertag),
 		SharedSocialDBPath:  pr.SharedSocialDBPath(*titleSlug),
 		SharedMatchesDBPath: pr.SharedDBPath(*titleSlug),
-		CapturesDir:         pr.PlayerCapturesDir(*titleSlug, *gamertag),
+		CapturesDir:         resolvedCapturesDir,
 		ForceRescan:         *force,
 		BufferMin:           *bufMin,
 		Timezone:            cfg.UserTimezone,

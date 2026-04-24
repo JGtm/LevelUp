@@ -1,5 +1,24 @@
 # Thought Log
 
+## [2026-04-24] fix(media): DST-safe associations + capture timestamps + reassociate endpoint
+
+**Statut** : ✅ Complété
+
+**Décision technique** :
+- `SET TimeZone='Europe/Paris'` appliqué après `sql.Open` dans `IndexMedia` et `AssociateMediaWithMatches` — corrige les décalages ±1h/2h CEST/CET sur `match_registry.start_time` (TIMESTAMP naïf Paris)
+- SQL changé de `ABS(DATEDIFF('minute', capture_start_utc, start_time)) <= tolerance` vers `capture_start_utc BETWEEN (start_time - INTERVAL 'N minutes') AND (end_time + INTERVAL 'N minutes')` — fenêtre match complète
+- `insertMediaFile` : priorité (1) Xbox filename datetime → UTC via `parseCaptureTimeFromFilename`, (2) `file.lastModified` du client, (3) mtime serveur (upload time)
+- `SanitizeMediaTimezone` : whitelist IANA chars pour prévenir injection SQL dans `SET TimeZone = '...'`
+- Nouveau endpoint `POST /media/reassociate` : backup table horodatée, suppression + recalcul des associations
+- `MediaBufferMinutes` = 2 min (remplace `MediaToleranceMinutes` = 10 min — plus besoin de compenser un mtime imprécis)
+- Frontend : `capture_times` envoyé comme JSON `[]int64` (file.lastModified / 1000)
+
+**Résultats** : `go build ./...` ✅ · tous les tests médias ✅ · `TestSeedCitationMappings_*` FAIL préexistant (non-régressé)
+
+**Conclusion** : branche `fix/media-timestamps` prête pour PR — commit `411e5012`
+
+---
+
 ## [2026-04-23] docs(cli): commande add-title + documentation ADD_TITLE
 
 **Statut** : ✅ Complété

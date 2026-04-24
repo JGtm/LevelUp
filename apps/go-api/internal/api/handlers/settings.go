@@ -156,3 +156,50 @@ func (h *SettingsHandler) PostMediaResetIndex(w http.ResponseWriter, r *http.Req
 
 	writeJSON(w, http.StatusAccepted, job)
 }
+
+// PostMediaScan lance une indexation non-destructive des médias pour tous les joueurs.
+// POST /settings/media/scan — retourne un AsyncJobStatus (202).
+func (h *SettingsHandler) PostMediaScan(w http.ResponseWriter, r *http.Request) {
+	job := h.jobStore.Create(domain.JobTypeScanMedia, "")
+
+	capturesBaseDir := ""
+	if h.settingsStore != nil {
+		if cfg, err := h.settingsStore.Load(); err == nil {
+			capturesBaseDir = cfg.MediaCapturesBaseDir
+		}
+	}
+
+	go func() {
+		step := "Scan médias en cours"
+		h.jobStore.SetStatus(job.JobID, domain.JobStatusRunning, &step)
+
+		err := h.mediaIndexer.ScanAllMedia(
+			context.Background(),
+			h.cfg.RepoRoot,
+			capturesBaseDir,
+			h.jobStore,
+			job.JobID,
+		)
+		if err != nil {
+			errMsg := err.Error()
+			h.jobStore.Update(job.JobID, func(j *domain.AsyncJobStatus) {
+				j.Status = domain.JobStatusFailed
+				j.Error = &domain.JobErrorDetail{
+					Code:    "media_scan_error",
+					Message: errMsg,
+				}
+			})
+			return
+		}
+
+		done := "Scan médias terminé"
+		pct := 100
+		h.jobStore.Update(job.JobID, func(j *domain.AsyncJobStatus) {
+			j.Status = domain.JobStatusSucceeded
+			j.ProgressPct = &pct
+			j.CurrentStep = &done
+		})
+	}()
+
+	writeJSON(w, http.StatusAccepted, job)
+}
