@@ -131,7 +131,8 @@ func SeedCitationMappings(opts SeedOptions) (SeedResult, error) {
 		description           VARCHAR,
 		tier_targets          VARCHAR,
 		medal_id              UBIGINT,
-		enabled               BOOLEAN NOT NULL DEFAULT TRUE
+		enabled               BOOLEAN NOT NULL DEFAULT TRUE,
+		PRIMARY KEY (citation_name_norm, medal_id)
 	)`); err != nil {
 		return SeedResult{Component: "citation_mappings"}, err
 	}
@@ -152,7 +153,7 @@ func SeedCitationMappings(opts SeedOptions) (SeedResult, error) {
 				`INSERT INTO citation_mappings
 					(citation_name_norm, citation_name_display, mapping_type, category, image_path, description, tier_targets, medal_id, enabled)
 				VALUES (?,?,?,?,?,?,?,?,TRUE)
-				ON CONFLICT DO NOTHING`,
+				ON CONFLICT (citation_name_norm, medal_id) DO NOTHING`,
 				m.Norm, m.Display, m.MappingType, m.Category, m.ImagePath, m.Description, m.TierTargets, medalArg,
 			)
 			if err != nil {
