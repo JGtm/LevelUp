@@ -458,13 +458,9 @@ func oauthRefreshTokenForPlayer(gamertag string) string {
 func (r *ServiceRegistry) AnyPlayerTokens(ctx context.Context) (*domain.HaloTokens, error) {
 	var tokens *domain.HaloTokens
 	duckdb.IteratePool(func(pdb *duckdb.PlayerDB) bool {
-		if cached := halo.GetCachedPlayerTokens(pdb.XUID); cached != nil {
-			tokens = cached
-			return false // stop
-		}
-		if result := r.refreshTokensFromDB(ctx, pdb, pdb.XUID); result != nil {
-			halo.SetCachedPlayerTokens(pdb.XUID, result.Tokens)
-			tokens = result.Tokens
+		t, err := r.RefreshTokensForXUID(ctx, pdb.XUID)
+		if err == nil && t != nil {
+			tokens = t
 			return false // stop
 		}
 		return true // continuer avec le joueur suivant
