@@ -260,7 +260,7 @@ func main() {
 	// Routeur HTTP — le daemon peut être nil si le watcher est désactivé.
 	// reg est assigné ici : la closure notifierGetter y accède de manière lazy (joueur actif après démarrage).
 	var router http.Handler
-	router, reg = api.NewRouter(cfg, bootRepo, bootSvc, watcherCtrl)
+	router, reg = api.NewRouter(cfg, bootRepo, bootSvc, watcherCtrl, tokenProvider)
 
 	srv := &http.Server{
 		Addr:         cfg.ServerAddr(),
