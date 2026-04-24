@@ -85,12 +85,14 @@ func (h *BackfillHandler) StartBackfill(w http.ResponseWriter, r *http.Request) 
 	scope := buildSyncScope(req)
 
 	job := h.jobStore.Create(domain.JobTypeBackfill, req.PlayerSlug)
+	// Snapshot avant le go func() : la goroutine modifie in-place le job dans le store.
+	jobSnapshot := *job
 
 	go func() {
 		step := "Détection des données manquantes"
 		h.jobStore.SetStatus(job.JobID, domain.JobStatusRunning, &step)
 
-		engine := go_sync.NewSyncEngine(h.cfg.RepoRoot, gamertag, xuid, tokens)
+		engine := go_sync.NewSyncEngine(h.cfg.RepoRoot, gamertag, xuid, tokens, nil)
 
 		// ── Phase 1 : détection ──────────────────────────────────────────
 		missing, err := engine.RunBackfill(context.Background(), scope)
@@ -166,7 +168,7 @@ func (h *BackfillHandler) StartBackfill(w http.ResponseWriter, r *http.Request) 
 		})
 	}()
 
-	writeJSON(w, http.StatusAccepted, job)
+	writeJSON(w, http.StatusAccepted, &jobSnapshot)
 }
 
 // buildSyncScope construit un SyncScope depuis le payload de requête.
