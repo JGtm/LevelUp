@@ -1,5 +1,39 @@
 # Thought Log
 
+## [2026-04-24] feat(film): vérification finale pipeline BlobStoragePathPrefix — tests + logging
+
+**Statut** : ✅ Complété
+
+**Décision technique** :
+Vérification finale du périmètre `feat/v7-assets-abstraction` / plan `PLAN_BLOB_STORAGE_PREFIX_FILM.md` :
+
+1. **Compilation** : `go build ./...` ✅ — aucune erreur
+2. **Tests unitaires** (sans tag integration) : 0 FAIL
+3. **Tests d'intégration** (DuckDB) : 0 FAIL — 7.9 s
+4. **Correction logging** : `backfill_weapons.go` utilisait `slog.Warn` (sans contexte) pour 3 appels alors que `ctx` était disponible → corrigé en `slog.WarnContext(ctx, ...)` pour cohérence avec le reste du codebase
+
+**Couverture mesurée** :
+
+| Fichier / Fonction | Couverture |
+|---|---|
+| `buildChunkURL` | 100% |
+| `GetMatchFilm` | 93.3% |
+| `GetHighlightEventsChunk` | 91.7% |
+| `fetchFilmManifest` | 83.3% |
+| `BackfillWeaponKillsForMatch` | 81.2% |
+| `InsertHighlightEvents` | 86.7% |
+| `InsertKillerVictimPairsFromEvents` | 88.9% |
+| `ParseHighlightEvents` | 90% |
+| `scanEvents` | 90% |
+| `internal/sync` global | 76% |
+| `internal/analysis` global | 81.6% |
+
+**Points 0% hors périmètre** (non bloquants) :
+- `BackfillWeaponKillsForMatches` (méthode SyncEngine wrappant la boucle) — orchestration de haut niveau sans logique propre, couvert par tests e2e futurs
+- `fallbackCustomizationEmblemURL/BackdropURL/BannerURL` — fonctions customization hors périmètre plan
+
+**Conclusion** : Périmètre complet. Aucune régression. Logging cohérent. Plan `PLAN_BLOB_STORAGE_PREFIX_FILM.md` entièrement fermé.
+
 ## [2026-04-24] feat(nav): split button Paramètres dans NavL1 avec menu déroulant onglets
 
 **Statut** : ✅ Complété
