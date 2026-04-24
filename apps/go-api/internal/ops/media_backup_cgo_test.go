@@ -7,10 +7,15 @@
 package ops
 
 import (
+	"database/sql"
 	"os"
 	"path/filepath"
+	"strings"
 	"sync"
 	"testing"
+	"time"
+
+	_ "github.com/duckdb/duckdb-go/v2"
 )
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -348,5 +353,201 @@ func TestIndexMedia_ConcurrentSameDB_SameDir(t *testing.T) {
 		if err != nil {
 			t.Errorf("goroutine %d: IndexMedia error: %v", i, err)
 		}
+	}
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// insertMediaFile — chaîne de priorité des timestamps
+// ─────────────────────────────────────────────────────────────────────────────
+
+// openInsertTestDB crée une DB DuckDB temporaire avec les tables médias.
+func openInsertTestDB(t *testing.T) (*sql.DB, string) {
+	t.Helper()
+	dir := t.TempDir()
+	path := filepath.Join(dir, "test.duckdb")
+	db, err := sql.Open("duckdb", path)
+	if err != nil {
+		t.Fatalf("sql.Open: %v", err)
+	}
+	if err := ensureMediaTables(db); err != nil {
+		db.Close()
+		t.Fatalf("ensureMediaTables: %v", err)
+	}
+	t.Cleanup(func() { db.Close() })
+	return db, dir
+}
+
+// readCaptureAt retourne capture_start_utc en UTC (string) pour le hash donné.
+func readCaptureAt(t *testing.T, db *sql.DB, hash string) string {
+	t.Helper()
+	var v string
+	// AT TIME ZONE 'UTC' force la représentation UTC indépendamment du TimeZone de session.
+	if err := db.QueryRow(
+		"SELECT CAST(capture_start_utc AT TIME ZONE 'UTC' AS VARCHAR) FROM media_files WHERE file_hash = ?", hash,
+	).Scan(&v); err != nil {
+		t.Fatalf("QueryRow capture_start_utc (hash=%s): %v", hash, err)
+	}
+	return v
+}
+
+// TestInsertMediaFile_Priority1_XboxFilename vérifie que le datetime Xbox
+// est utilisé en priorité même si un captureTimeUnix client est fourni.
+func TestInsertMediaFile_Priority1_XboxFilename(t *testing.T) {
+	loc, err := time.LoadLocation("Europe/Paris")
+	if err != nil {
+		t.Skip("timezone Europe/Paris non disponible")
+	}
+	db, dir := openInsertTestDB(t)
+
+	// Nom Xbox (CET décembre = UTC+1) : 21:30:45 Paris → 20:30:45 UTC
+	name := "Halo Infinite 2024.12.15 - 21.30.45.01.mp4"
+	path := filepath.Join(dir, name)
+	if err := os.WriteFile(path, []byte("x"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+
+	// captureTimeUnix pointe sur 2000-01-01 (doit être ignoré au profit du filename)
+	clientTs := int64(946684800)
+	if err := insertMediaFile(db, path, "hash_p1", "spartan", &clientTs, loc); err != nil {
+		t.Fatalf("insertMediaFile: %v", err)
+	}
+
+	v := readCaptureAt(t, db, "hash_p1")
+	// 20:30:45 UTC (pas 2000-01-01)
+	if !strings.Contains(v, "20:30:45") {
+		t.Errorf("Priority1: capture_start_utc = %q, want \"20:30:45\" UTC (Xbox filename)", v)
+	}
+	if strings.Contains(v, "2000") {
+		t.Errorf("Priority1: client ts (2000-01-01) ne doit pas être utilisé, got %q", v)
+	}
+}
+
+// TestInsertMediaFile_Priority2_ClientTimestamp vérifie que file.lastModified
+// est utilisé quand le filename ne matche pas le pattern Xbox.
+func TestInsertMediaFile_Priority2_ClientTimestamp(t *testing.T) {
+	db, dir := openInsertTestDB(t)
+
+	name := "OBS-recording.mp4"
+	path := filepath.Join(dir, name)
+	if err := os.WriteFile(path, []byte("x"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+
+	// 2024-06-01 12:00:00 UTC
+	clientTs := int64(1717243200)
+	if err := insertMediaFile(db, path, "hash_p2", "spartan", &clientTs, nil); err != nil {
+		t.Fatalf("insertMediaFile: %v", err)
+	}
+
+	v := readCaptureAt(t, db, "hash_p2")
+	if !strings.Contains(v, "2024-06-01") || !strings.Contains(v, "12:00:00") {
+		t.Errorf("Priority2: capture_start_utc = %q, want \"2024-06-01 12:00:00\" UTC", v)
+	}
+}
+
+// TestInsertMediaFile_Priority3_MtimeFallback vérifie le fallback sur mtime
+// quand ni le filename ni le captureTimeUnix ne sont disponibles.
+func TestInsertMediaFile_Priority3_MtimeFallback(t *testing.T) {
+	db, dir := openInsertTestDB(t)
+
+	name := "OBS-fallback.mp4"
+	path := filepath.Join(dir, name)
+	if err := os.WriteFile(path, []byte("x"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+
+	beforeWrite := time.Now().UTC().Add(-time.Second)
+	if err := insertMediaFile(db, path, "hash_p3", "spartan", nil, nil); err != nil {
+		t.Fatalf("insertMediaFile: %v", err)
+	}
+	afterWrite := time.Now().UTC().Add(time.Second)
+
+	v := readCaptureAt(t, db, "hash_p3")
+	// Vérifier que la date extraite est dans la fenêtre d'écriture.
+	parsed, err := time.Parse("2006-01-02 15:04:05-07:00", v)
+	if err != nil {
+		// DuckDB peut retourner "+00" sans les deux points → essayer d'autres formats
+		parsed, err = time.Parse("2006-01-02 15:04:05+00", v)
+	}
+	if err == nil {
+		if parsed.Before(beforeWrite) || parsed.After(afterWrite) {
+			t.Errorf("Priority3: mtime fallback %q hors fenêtre [%v, %v]", v, beforeWrite, afterWrite)
+		}
+	} else {
+		// Vérification minimale : valeur non vide
+		if v == "" {
+			t.Error("Priority3: capture_start_utc ne doit pas être vide (fallback mtime)")
+		}
+	}
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// AssociateMediaWithMatches — timezone SET TimeZone + fenêtre BETWEEN
+// ─────────────────────────────────────────────────────────────────────────────
+
+// TestAssociateMediaWithMatches_TimezoneWindow vérifie que SET TimeZone corrige
+// le TIMESTAMP naïf Paris et que la fenêtre [start_time - buffer, end_time + buffer] fonctionne.
+func TestAssociateMediaWithMatches_TimezoneWindow(t *testing.T) {
+	dir := t.TempDir()
+
+	// DB de la galerie (media_files + associations)
+	socialPath := filepath.Join(dir, "shared_social.duckdb")
+	dbSocial, err := sql.Open("duckdb", socialPath)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer dbSocial.Close()
+	if err := ensureMediaTables(dbSocial); err != nil {
+		t.Fatal(err)
+	}
+
+	// DB des matchs (match_registry avec start_time/end_time en heure Paris naïve)
+	matchesPath := filepath.Join(dir, "shared_matches.duckdb")
+	dbMatches, err := sql.Open("duckdb", matchesPath)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer dbMatches.Close()
+
+	_, err = dbMatches.Exec(`
+		CREATE TABLE match_registry (
+			match_id VARCHAR PRIMARY KEY,
+			start_time TIMESTAMP,
+			end_time   TIMESTAMP
+		)
+	`)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	// Match CEST (été, UTC+2) : 22:00 → 22:15 Paris = 20:00 → 20:15 UTC
+	_, err = dbMatches.Exec(`
+		INSERT INTO match_registry VALUES (
+			'match-tz-test',
+			TIMESTAMP '2024-07-20 22:00:00',
+			TIMESTAMP '2024-07-20 22:15:00'
+		)
+	`)
+	if err != nil {
+		t.Fatal(err)
+	}
+	dbMatches.Close()
+
+	// Insérer un média capturé à 20:08 UTC (dans la fenêtre corrigée DST)
+	captureUTC := time.Date(2024, 7, 20, 20, 8, 0, 0, time.UTC)
+	_, err = dbSocial.Exec(`
+		INSERT INTO media_files (player_slug, file_path, file_name, file_hash, kind, capture_start_utc)
+		VALUES ('spartan', '/cap/clip.mp4', 'clip.mp4', 'hash-tz', 'video', ?)
+	`, captureUTC)
+	if err != nil {
+		t.Fatalf("INSERT media_files: %v", err)
+	}
+
+	n, err := AssociateMediaWithMatches(dbSocial, matchesPath, 2, "Europe/Paris")
+	if err != nil {
+		t.Fatalf("AssociateMediaWithMatches: %v", err)
+	}
+	if n != 1 {
+		t.Errorf("AssociateMediaWithMatches = %d associations, want 1 (DST Paris CEST corrigé)", n)
 	}
 }
