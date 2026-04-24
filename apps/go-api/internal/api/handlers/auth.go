@@ -29,7 +29,7 @@ type AuthHandler struct {
 	sessionStore *session.Store
 	attempts     *auth_platform.AttemptStore
 	demoMode     bool
-	userStore    UserLinker                 // optionnel — lie gamertag→user après Device Code Flow
+	userStore    UserLinker                  // optionnel — lie gamertag→user après Device Code Flow
 	provider     auth_platform.TokenProvider // abstrait le mécanisme d'acquisition de tokens
 }
 
@@ -89,9 +89,9 @@ func (h *AuthHandler) StartDeviceFlow(w http.ResponseWriter, r *http.Request) {
 
 	// Remplir les champs de la tentative.
 	h.attempts.Update(attempt.AttemptID, func(a *auth_platform.Attempt) {
-		a.UserCode = flow.UserCode
-		a.VerificationURI = flow.VerificationURL
-		a.ExpiresInSec = flow.ExpiresIn
+		a.UserCode = flow.GetUserCode()
+		a.VerificationURI = flow.GetVerificationURL()
+		a.ExpiresInSec = flow.GetExpiresIn()
 		a.DevFlow = flow
 	})
 
@@ -152,8 +152,8 @@ func (h *AuthHandler) GetDeviceFlowStatus(w http.ResponseWriter, r *http.Request
 
 // pollDeviceFlow attend la complétion du Device Code Flow dans une goroutine.
 // Enchaîne ensuite la chaîne d'échange Halo pour obtenir les tokens.
-func (h *AuthHandler) pollDeviceFlow(attemptID string, flow *auth_platform.DeviceCodeFlow) {
-	ctx, cancel := context.WithTimeout(context.Background(), time.Duration(flow.ExpiresIn)*time.Second)
+func (h *AuthHandler) pollDeviceFlow(attemptID string, flow auth_platform.DeviceFlow) {
+	ctx, cancel := context.WithTimeout(context.Background(), time.Duration(flow.GetExpiresIn())*time.Second)
 	defer cancel()
 
 	accessToken, err := flow.AcquireToken(ctx)

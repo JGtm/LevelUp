@@ -49,6 +49,10 @@ type SettingsResponse struct {
 	OutcomeExcludeBotMatchesFromBadges  bool   `json:"outcome_exclude_bot_matches_from_badges"`
 	OutcomeExcludeBotMatchesFromRecords bool   `json:"outcome_exclude_bot_matches_from_records"`
 	OutcomeBadgeSensitivity             string `json:"outcome_badge_sensitivity"`
+
+	// AuthProvider indique le mécanisme d'authentification actif.
+	// Valeurs : "msal" (défaut) | "sisu" (Xbox natif).
+	AuthProvider string `json:"auth_provider"`
 }
 
 // UpdateSettingsRequest contient les champs modifiables (tous optionnels).
@@ -96,6 +100,9 @@ type UpdateSettingsRequest struct {
 	OutcomeExcludeBotMatchesFromBadges  *bool   `json:"outcome_exclude_bot_matches_from_badges,omitempty"`
 	OutcomeExcludeBotMatchesFromRecords *bool   `json:"outcome_exclude_bot_matches_from_records,omitempty"`
 	OutcomeBadgeSensitivity             *string `json:"outcome_badge_sensitivity,omitempty"`
+
+	// AuthProvider bascule le mécanisme d'authentification. "msal" | "sisu".
+	AuthProvider *string `json:"auth_provider,omitempty"`
 }
 
 // MediaResetRequest est le corps de POST /settings/media/reset-index.

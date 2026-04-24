@@ -812,10 +812,10 @@ func runDeviceFlow(ctx context.Context) (string, error) {
 	}
 	// Afficher les instructions clairement.
 	fmt.Printf("\n=== AUTHENTIFICATION REQUISE ===\n")
-	fmt.Printf("1. Ouvrez :  %s\n", flow.VerificationURL)
-	fmt.Printf("2. Entrez le code :  %s\n", flow.UserCode)
+	fmt.Printf("1. Ouvrez :  %s\n", flow.GetVerificationURL())
+	fmt.Printf("2. Entrez le code :  %s\n", flow.GetUserCode())
 	fmt.Printf("3. Connectez-vous avec votre compte Microsoft Xbox\n")
-	fmt.Printf("Code valide %d secondes.\n\n", flow.ExpiresIn)
+	fmt.Printf("Code valide %d secondes.\n\n", flow.GetExpiresIn())
 
 	// Attendre la complétion (bloquant).
 	token, err := flow.AcquireToken(ctx)

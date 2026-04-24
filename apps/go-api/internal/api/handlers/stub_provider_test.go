@@ -13,7 +13,7 @@ import (
 // stubTokenProvider implémente auth_platform.TokenProvider pour les tests.
 type stubTokenProvider struct {
 	initFlowErr    error
-	initFlowFlow   *auth_platform.DeviceCodeFlow
+	initFlowFlow   auth_platform.DeviceFlow
 	exchangeErr    error
 	exchangeResult *auth_platform.ExchangeResult
 }
@@ -21,14 +21,14 @@ type stubTokenProvider struct {
 // Vérification compile-time : stubTokenProvider implémente TokenProvider.
 var _ auth_platform.TokenProvider = (*stubTokenProvider)(nil)
 
-func (s *stubTokenProvider) InitDeviceFlow(_ context.Context) (*auth_platform.DeviceCodeFlow, error) {
+func (s *stubTokenProvider) InitDeviceFlow(_ context.Context) (auth_platform.DeviceFlow, error) {
 	if s.initFlowErr != nil {
 		return nil, s.initFlowErr
 	}
 	if s.initFlowFlow != nil {
 		return s.initFlowFlow, nil
 	}
-	return auth_platform.NewDeviceCodeFlow("STUB1234", "https://microsoft.com/devicelogin", "Stub message", 0), nil
+	return auth_platform.NewStubDeviceFlow("STUB1234", "https://microsoft.com/devicelogin", "Stub message", 0, "msal"), nil
 }
 
 func (s *stubTokenProvider) TrySilentRefresh(_ context.Context, _ string) (string, error) {

@@ -93,7 +93,7 @@ func TestAuthHandler_StartDeviceFlow_ProviderError(t *testing.T) {
 // retourne 200 avec user_code et verification_url.
 func TestAuthHandler_StartDeviceFlow_Success(t *testing.T) {
 	// ExpiresIn=1 : le contexte du polling expirera après 1s (pas de vrai MSAL).
-	flow := auth_platform.NewDeviceCodeFlow("TEST42", "https://microsoft.com/devicelogin", "Entrez TEST42", 1)
+	flow := auth_platform.NewStubDeviceFlow("TEST42", "https://microsoft.com/devicelogin", "Entrez TEST42", 1, "msal")
 	provider := &stubTokenProvider{initFlowFlow: flow}
 	r, _ := newAuthRouterWithProvider(t, false, provider)
 
