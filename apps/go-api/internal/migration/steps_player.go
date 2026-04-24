@@ -201,6 +201,19 @@ func init() {
 	})
 
 	Register(Migration{
+		Name:        "add_media_capture_start_utc",
+		TargetDB:    TargetPlayer,
+		Description: "Colonne capture_start_utc TIMESTAMPTZ sur media_files (nécessaire pour l'indexation et l'association aux matchs)",
+		ApplySchema: func(db *sql.DB) error {
+			exists, err := tableExists(db, "media_files")
+			if err != nil || !exists {
+				return err
+			}
+			return addColumnIfMissing(db, "media_files", "capture_start_utc", "TIMESTAMPTZ")
+		},
+	})
+
+	Register(Migration{
 		Name:        "add_performance_score",
 		TargetDB:    TargetPlayer,
 		Description: "Colonnes optionnelles sur match_stats (accuracy, session_id, perf...)",
@@ -360,6 +373,24 @@ func init() {
 			return execScript(db, `
 				DROP TABLE IF EXISTS media_match_associations;
 				DROP TABLE IF EXISTS media_files;
+			`)
+		},
+	})
+
+	Register(Migration{
+		Name:        "add_player_achievements",
+		TargetDB:    TargetPlayer,
+		Description: "Table player_achievements : progression et statut de déverrouillage des achievements Xbox",
+		ApplySchema: func(db *sql.DB) error {
+			return execScript(db, `
+				CREATE TABLE IF NOT EXISTS player_achievements (
+					achievement_id    VARCHAR PRIMARY KEY,
+					unlocked          BOOLEAN NOT NULL DEFAULT FALSE,
+					unlocked_at       TIMESTAMP,
+					current_progress  INTEGER,
+					target_progress   INTEGER,
+					fetched_at        TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+				);
 			`)
 		},
 	})

@@ -10,6 +10,7 @@ import (
 	"log/slog"
 	"os"
 	"strings"
+	"sync"
 
 	"fmt"
 
@@ -38,6 +39,7 @@ type ServiceRegistry struct {
 	provider      auth.TokenProvider
 	assetResolver assets.Resolver // nil si le resolver n'est pas configuré (mode legacy)
 	timezone      string          // IANA (ex: "Europe/Paris"), propagé aux services médias
+	notifiers     sync.Map        // xuid → port.SessionNotifier (HomeService par joueur)
 }
 
 // NewServiceRegistry crée un ServiceRegistry câblé avec config.ResolvePlayer.
@@ -59,6 +61,15 @@ func NewServiceRegistry(cfg *config.AppConfig, provider auth.TokenProvider) *Ser
 func (r *ServiceRegistry) WithAssetResolver(resolver assets.Resolver) *ServiceRegistry {
 	r.assetResolver = resolver
 	return r
+}
+
+// GetSessionNotifier retourne le SessionNotifier enregistré pour le xuid donné.
+// Retourne nil si aucun HomeService n'a encore été créé pour ce joueur (cold start).
+func (r *ServiceRegistry) GetSessionNotifier(xuid string) port.SessionNotifier {
+	if v, ok := r.notifiers.Load(xuid); ok {
+		return v.(port.SessionNotifier)
+	}
+	return nil
 }
 
 // ---------------------------------------------------------------------------
@@ -221,6 +232,7 @@ func (r *ServiceRegistry) HomeCtx(ctx context.Context, slug string) (port.HomeSe
 // Si la session HTTP porte déjà des tokens, ils sont réutilisés.
 // Sinon, tente un refresh silencieux depuis le cache MSAL stocké dans sync_meta.
 // Un PersistSink est configuré pour la persistance fire-and-forget des données BP/challenges.
+// Le HomeService créé est enregistré comme SessionNotifier pour ce joueur (TTL dynamique).
 func (r *ServiceRegistry) HomeCtxWithAuth(ctx context.Context, slug string) (port.HomeService, context.Context, string, string, error) {
 	pdb, err := r.resolve(ctx, slug)
 	if err != nil {
@@ -234,12 +246,14 @@ func (r *ServiceRegistry) HomeCtxWithAuth(ctx context.Context, slug string) (por
 		WithCacheRepo(homeRepo).
 		WithHaloProvider(haloProvider).
 		WithSocial(duckdb.NewSocialRepo(pdb), slug)
+	r.notifiers.Store(pdb.XUID, port.SessionNotifier(svc))
 	enriched := r.enrichWithHaloTokens(ctx, pdb)
 	return svc, enriched, pdb.XUID, pdb.Gamertag, nil
 }
 
 // SeasonPassCtxWithAuth retourne un SeasonPassService + contexte enrichi avec les HaloTokens.
 // Réutilise HomeCtxWithAuth pour la résolution des tokens et le cacheRepo BP/challenges.
+// Le HomeService créé est enregistré comme SessionNotifier pour ce joueur (TTL dynamique).
 func (r *ServiceRegistry) SeasonPassCtxWithAuth(ctx context.Context, slug string) (port.SeasonPassService, context.Context, error) {
 	pdb, err := r.resolve(ctx, slug)
 	if err != nil {
@@ -252,6 +266,7 @@ func (r *ServiceRegistry) SeasonPassCtxWithAuth(ctx context.Context, slug string
 		WithPersistSink(sink).
 		WithCacheRepo(homeRepo).
 		WithHaloProvider(haloProvider)
+	r.notifiers.Store(pdb.XUID, port.SessionNotifier(homeSvc))
 	spRepo := duckdb.NewSeasonPassRepo(pdb)
 	svc := service.NewSeasonPassService(spRepo, homeSvc, pdb.XUID, pdb.TitleSlug)
 	enriched := r.enrichWithHaloTokens(ctx, pdb)

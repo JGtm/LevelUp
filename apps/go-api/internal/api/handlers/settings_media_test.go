@@ -50,6 +50,25 @@ func (m *mockMediaIndexer) ResetAndReindex(
 	return nil
 }
 
+func (m *mockMediaIndexer) ScanAllMedia(
+	_ context.Context,
+	_ string,
+	_ string,
+	jobStore *jobs.Store,
+	jobID string,
+) error {
+	if m.simulateError {
+		return &mediaIndexError{msg: "erreur simulée"}
+	}
+	pct := 100
+	step := "Scan médias terminé (mock)"
+	jobStore.Update(jobID, func(j *domain.AsyncJobStatus) {
+		j.ProgressPct = &pct
+		j.CurrentStep = &step
+	})
+	return nil
+}
+
 // Vérification compile-time que mockMediaIndexer implémente service.MediaIndexer.
 var _ service.MediaIndexer = (*mockMediaIndexer)(nil)
 

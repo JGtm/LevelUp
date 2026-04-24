@@ -275,6 +275,108 @@ function SplitButton({ section, isActive, resolvedDefaultPath, resolvePath }: Sp
   )
 }
 
+// ─── SettingsSplitButton ─────────────────────────────────────────────────────
+
+interface SettingsTabItem {
+  key: string
+  label: string
+  tab: string
+}
+
+interface SettingsSplitButtonProps {
+  tabs: SettingsTabItem[]
+  isActive: boolean
+}
+
+function SettingsSplitButton({ tabs, isActive }: SettingsSplitButtonProps) {
+  const [open, setOpen] = useState(false)
+  const ref = useRef<HTMLDivElement>(null)
+
+  useEffect(() => {
+    function handleClickOutside(e: MouseEvent) {
+      if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false)
+    }
+    document.addEventListener('mousedown', handleClickOutside)
+    return () => document.removeEventListener('mousedown', handleClickOutside)
+  }, [])
+
+  const wrapperClass = [
+    'flex items-stretch rounded-md overflow-hidden text-sm font-medium transition-colors',
+    isActive
+      ? 'bg-sidebar-primary text-sidebar-primary-foreground'
+      : 'text-sidebar-foreground/70 hover:bg-sidebar-accent hover:text-sidebar-accent-foreground',
+  ].join(' ')
+
+  return (
+    <div ref={ref} className="relative ml-1">
+      <div className={wrapperClass}>
+        <Link
+          to="/settings"
+          className="px-2 py-1.5"
+          aria-label="Paramètres"
+          title="Paramètres"
+          aria-current={isActive ? 'page' : undefined}
+        >
+          <svg
+            xmlns="http://www.w3.org/2000/svg"
+            className="h-4 w-4"
+            viewBox="0 0 20 20"
+            fill="currentColor"
+            aria-hidden="true"
+          >
+            <path
+              fillRule="evenodd"
+              d="M11.49 3.17c-.38-1.56-2.6-1.56-2.98 0a1.532 1.532 0 01-2.286.948c-1.372-.836-2.942.734-2.106 2.106.54.886.061 2.042-.947 2.287-1.561.379-1.561 2.6 0 2.978a1.532 1.532 0 01.947 2.287c-.836 1.372.734 2.942 2.106 2.106a1.532 1.532 0 012.287.947c.379 1.561 2.6 1.561 2.978 0a1.533 1.533 0 012.287-.947c1.372.836 2.942-.734 2.106-2.106a1.533 1.533 0 01.947-2.287c1.561-.379 1.561-2.6 0-2.978a1.532 1.532 0 01-.947-2.287c.836-1.372-.734-2.942-2.106-2.106a1.532 1.532 0 01-2.287-.947zM10 13a3 3 0 100-6 3 3 0 000 6z"
+              clipRule="evenodd"
+            />
+          </svg>
+        </Link>
+
+        <span className="mx-0.5 h-4 w-px self-center rounded-full bg-current opacity-20" aria-hidden="true" />
+
+        <button
+          type="button"
+          onClick={() => setOpen((v) => !v)}
+          className="px-1.5 py-1.5 cursor-pointer"
+          aria-label="Onglets Paramètres"
+          aria-expanded={open}
+          aria-haspopup="menu"
+        >
+          <svg
+            xmlns="http://www.w3.org/2000/svg"
+            className={`h-3 w-3 transition-transform ${open ? 'rotate-180' : ''}`}
+            viewBox="0 0 12 12"
+            fill="currentColor"
+            aria-hidden="true"
+          >
+            <path d="M6 8L1 3h10z" />
+          </svg>
+        </button>
+      </div>
+
+      {open && (
+        <div
+          role="menu"
+          className="absolute right-0 top-full mt-1 z-50 min-w-[12rem] rounded-md border border-border bg-popover py-1 shadow-lg"
+        >
+          {tabs.map((item) => (
+            <Link
+              key={item.key}
+              to="/settings"
+              search={{ tab: item.tab as 'general' | 'sync' | 'analyse' | 'lab' | 'users' }}
+              role="menuitem"
+              onClick={() => setOpen(false)}
+              className="block px-3 py-1.5 text-sm text-popover-foreground hover:bg-accent hover:text-accent-foreground whitespace-nowrap"
+            >
+              {item.label}
+            </Link>
+          ))}
+        </div>
+      )}
+    </div>
+  )
+}
+
 // ─── Composant principal ──────────────────────────────────────────────────────
 
 export function NavL1() {
@@ -282,6 +384,8 @@ export function NavL1() {
   const currentPlayer = useAppShellStore((s) => s.currentPlayer)
   const availablePlayers = useAppShellStore((s) => s.availablePlayers)
   const setCurrentPlayer = useAppShellStore((s) => s.setCurrentPlayer)
+  const isAdmin = useAppShellStore((s) => s.isAdmin)
+  const canManageInstance = useAppShellStore((s) => s.capabilities?.can_manage_instance ?? false)
   const routerState = useRouterState()
   const pathname = routerState.location.pathname
   const playerSlug = currentPlayer?.player_slug ?? ''
@@ -380,27 +484,17 @@ export function NavL1() {
 
       <ThemeToggle className="ml-2" />
 
-      {/* ── Lien Paramètres ─────────────────────────────────────────────── */}
-      <Link
-        to="/settings"
-        className="ml-1 shrink-0 rounded-md p-1.5 text-muted-foreground transition-colors hover:bg-sidebar-accent hover:text-sidebar-foreground [&.active]:text-sidebar-foreground"
-        title="Paramètres"
-        aria-label="Paramètres"
-      >
-        <svg
-          xmlns="http://www.w3.org/2000/svg"
-          className="h-4 w-4"
-          viewBox="0 0 20 20"
-          fill="currentColor"
-          aria-hidden="true"
-        >
-          <path
-            fillRule="evenodd"
-            d="M11.49 3.17c-.38-1.56-2.6-1.56-2.98 0a1.532 1.532 0 01-2.286.948c-1.372-.836-2.942.734-2.106 2.106.54.886.061 2.042-.947 2.287-1.561.379-1.561 2.6 0 2.978a1.532 1.532 0 01.947 2.287c-.836 1.372.734 2.942 2.106 2.106a1.532 1.532 0 012.287.947c.379 1.561 2.6 1.561 2.978 0a1.533 1.533 0 012.287-.947c1.372.836 2.942-.734 2.106-2.106a1.533 1.533 0 01.947-2.287c1.561-.379 1.561-2.6 0-2.978a1.532 1.532 0 01-.947-2.287c.836-1.372-.734-2.942-2.106-2.106a1.532 1.532 0 01-2.287-.947zM10 13a3 3 0 100-6 3 3 0 000 6z"
-            clipRule="evenodd"
-          />
-        </svg>
-      </Link>
+      {/* ── Split button Paramètres ──────────────────────────────────────── */}
+      <SettingsSplitButton
+        isActive={pathname.startsWith('/settings')}
+        tabs={[
+          { key: 'general', label: 'Général', tab: 'general' },
+          { key: 'sync', label: 'Synchronisation', tab: 'sync' },
+          { key: 'analyse', label: 'Analyse', tab: 'analyse' },
+          ...(canManageInstance ? [{ key: 'lab', label: 'Lab', tab: 'lab' }] : []),
+          ...(isAdmin ? [{ key: 'users', label: 'Utilisateurs', tab: 'users' }] : []),
+        ]}
+      />
     </nav>
   )
 }

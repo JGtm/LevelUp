@@ -39,6 +39,7 @@ import (
 	"levelup/go-api/internal/platform/halo"
 	"levelup/go-api/internal/platform/settings"
 	"levelup/go-api/internal/platform/userstore"
+	"levelup/go-api/internal/port"
 	"levelup/go-api/internal/scheduler"
 	"levelup/go-api/internal/service"
 	syncpkg "levelup/go-api/internal/sync"
@@ -201,8 +202,18 @@ func main() {
 	// Watcher daemon (présence Xbox RTA + Steam) — démarré avant le scheduler pour câbler
 	// l'ActivityChecker : quand un joueur est en état Watching/Syncing/Cooling, le scheduler
 	// cède son tick pour ce joueur et évite deux syncs concurrentes sur la même stats.duckdb.
+	//
+	// Le notifierGetter est un getter lazy : il référence reg via une closure afin que le
+	// LiveRefreshFactory puisse lier le SessionNotifier quand il est appelé (après le démarrage).
+	var reg *api.ServiceRegistry
+	notifierGetter := func(xuid string) port.SessionNotifier {
+		if reg != nil {
+			return reg.GetSessionNotifier(xuid)
+		}
+		return nil
+	}
 	var watcherDaemon *watcher.Daemon
-	watcherDaemon = startWatcherDaemon(ctx, cfg, settingsStore)
+	watcherDaemon = startWatcherDaemon(ctx, cfg, settingsStore, notifierGetter)
 	if watcherDaemon != nil {
 		autoScheduler.ActivityChecker = watcher.NewStateProvider(watcherDaemon)
 	}
@@ -216,7 +227,9 @@ func main() {
 	}
 
 	// Routeur HTTP — le daemon peut être nil si le watcher est désactivé.
-	router := api.NewRouter(cfg, bootRepo, bootSvc, watcherCtrl)
+	// reg est assigné ici : la closure notifierGetter y accède de manière lazy (joueur actif après démarrage).
+	var router http.Handler
+	router, reg = api.NewRouter(cfg, bootRepo, bootSvc, watcherCtrl)
 
 	srv := &http.Server{
 		Addr:         cfg.ServerAddr(),
@@ -341,7 +354,8 @@ func RunPlayerMigrations(playerDBPath string) error {
 
 // startWatcherDaemon tente de démarrer le daemon de présence.
 // Retourne nil si watcher_presence_enabled est false ou si les prérequis ne sont pas remplis.
-func startWatcherDaemon(ctx context.Context, cfg *config.AppConfig, settingsStore *settings.Store) *watcher.Daemon {
+// getNotifier est un getter lazy (xuid → SessionNotifier) injecté par main ; peut être nil.
+func startWatcherDaemon(ctx context.Context, cfg *config.AppConfig, settingsStore *settings.Store, getNotifier func(xuid string) port.SessionNotifier) *watcher.Daemon {
 	// Vérifier que le watcher est activé dans les settings
 	appSettings, err := settingsStore.Load()
 	if err != nil {
@@ -407,7 +421,13 @@ func startWatcherDaemon(ctx context.Context, cfg *config.AppConfig, settingsStor
 			sink := duckdb.NewPersistSink(wMetaPath, wPlayerPath, xuid)
 			// resolver nil : le watcher ne pré-chauffe pas les définitions BP.
 			// Les définitions sont chargées à la demande via l'endpoint HTTP (resolver HTTP).
-			return watcher.NewPlayerLiveRefresher(gamertag, xuid, sink, nil)
+			refresher := watcher.NewPlayerLiveRefresher(gamertag, xuid, sink, nil)
+			if getNotifier != nil {
+				if n := getNotifier(xuid); n != nil {
+					refresher = refresher.WithSessionNotifier(n)
+				}
+			}
+			return refresher
 		},
 		// RefreshRTAAuth est appelé on-demand par RunWithReconnect quand status=3 est reçu.
 		// Il acquiert un XSTS frais et pousse le nouveau header dans le daemon.

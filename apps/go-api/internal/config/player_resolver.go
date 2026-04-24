@@ -100,6 +100,15 @@ func SharedDBPath(cfg *AppConfig, titleSlug string) string {
 	return title.NewPathResolver(cfg.RepoRoot).SharedDBPath(titleSlug)
 }
 
+// PlayerDBPath retourne le chemin vers la base DuckDB stats d'un joueur.
+// titleSlug : titre courant, vide = halo_infinite.
+func PlayerDBPath(cfg *AppConfig, titleSlug, gamertag string) string {
+	if titleSlug == "" {
+		titleSlug = title.DefaultSlug
+	}
+	return title.NewPathResolver(cfg.RepoRoot).PlayerDBPath(titleSlug, gamertag)
+}
+
 // readXUIDFile lit le XUID depuis un fichier texte (1 ligne).
 func readXUIDFile(path string) (string, error) {
 	data, err := os.ReadFile(path)

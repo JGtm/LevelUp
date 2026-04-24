@@ -307,6 +307,13 @@ func ensureMediaTables(db *sql.DB) error {
 	if _, err := db.Exec(`CREATE SEQUENCE IF NOT EXISTS media_files_id_seq START 1`); err != nil {
 		return err
 	}
+
+	// Si la table existe avec l'ancien schéma (id VARCHAR, issu de create_base_player_schema)
+	// et qu'elle est vide, on la supprime pour la recréer correctement.
+	if err := dropLegacyMediaFilesIfNeeded(db); err != nil {
+		return err
+	}
+
 	_, err := db.Exec(`
 		CREATE TABLE IF NOT EXISTS media_files (
 			id INTEGER PRIMARY KEY DEFAULT nextval('media_files_id_seq'),
@@ -330,6 +337,28 @@ func ensureMediaTables(db *sql.DB) error {
 	if err != nil {
 		return err
 	}
+	// Migration idempotente : ajoute les colonnes absentes dans les DBs créées
+	// par d'anciennes migrations qui n'avaient pas capture_start_utc.
+	// ADD COLUMN IF NOT EXISTS évite d'avorter la connexion.
+	for _, col := range []struct{ name, typ string }{
+		{"capture_start_utc", "TIMESTAMPTZ"},
+		{"capture_end_utc", "TIMESTAMPTZ"},
+		{"file_hash", "VARCHAR"},
+		{"kind", "VARCHAR"},
+		{"thumbnail_path", "VARCHAR"},
+		{"player_slug", "VARCHAR"},
+		{"duration_seconds", "DOUBLE"},
+		{"status", "VARCHAR"},
+		{"mtime", "TIMESTAMPTZ"},
+		{"indexed_at", "TIMESTAMPTZ DEFAULT NOW()"},
+		{"liked", "BOOLEAN DEFAULT FALSE"},
+		{"liked_at", "TIMESTAMPTZ"},
+		{"discord_notified", "BOOLEAN DEFAULT FALSE"},
+	} {
+		if _, err := db.Exec("ALTER TABLE media_files ADD COLUMN IF NOT EXISTS " + col.name + " " + col.typ); err != nil {
+			return fmt.Errorf("ensureMediaTables: ajout colonne %s: %w", col.name, err)
+		}
+	}
 	_, err = db.Exec(`
 		CREATE TABLE IF NOT EXISTS media_match_associations (
 			media_file_id INTEGER,
@@ -339,6 +368,36 @@ func ensureMediaTables(db *sql.DB) error {
 		)
 	`)
 	return err
+}
+
+// dropLegacyMediaFilesIfNeeded supprime la table media_files si elle a l'ancien schéma
+// (id VARCHAR, issue de create_base_player_schema) et qu'elle est vide.
+// Ceci permet à ensureMediaTables de recréer la table avec le bon schéma.
+func dropLegacyMediaFilesIfNeeded(db *sql.DB) error {
+	// Vérifier si la colonne id est de type VARCHAR (ancien schéma).
+	var dataType string
+	err := db.QueryRow(
+		"SELECT data_type FROM information_schema.columns WHERE table_schema = 'main' AND table_name = 'media_files' AND column_name = 'id'",
+	).Scan(&dataType)
+	if err != nil {
+		// Table inexistante ou autre erreur → rien à faire.
+		return nil //nolint:nilerr
+	}
+	if dataType != "VARCHAR" {
+		return nil // Schéma déjà correct ou inconnu.
+	}
+	// Vérifier que la table est vide avant de la supprimer.
+	var count int
+	if err := db.QueryRow("SELECT COUNT(*) FROM media_files").Scan(&count); err != nil || count > 0 {
+		return nil // Table non-vide ou erreur : on ne touche pas aux données.
+	}
+	if _, err := db.Exec("DROP TABLE media_files"); err != nil {
+		return fmt.Errorf("dropLegacyMediaFilesIfNeeded: DROP TABLE: %w", err)
+	}
+	if _, err := db.Exec("DROP TABLE IF EXISTS media_match_associations"); err != nil {
+		return fmt.Errorf("dropLegacyMediaFilesIfNeeded: DROP TABLE media_match_associations: %w", err)
+	}
+	return nil
 }
 
 func loadKnownHashes(db *sql.DB) (map[string]bool, error) {

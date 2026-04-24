@@ -8,7 +8,7 @@
  *   ready                   → redirect vers /
  */
 import { useState, useEffect, useRef } from 'react'
-import { useNavigate } from '@tanstack/react-router'
+import { Link, useNavigate } from '@tanstack/react-router'
 import { useQueryClient } from '@tanstack/react-query'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -308,6 +308,14 @@ function StepInitialSync({ playerSlug }: { playerSlug: string }) {
       <p className="text-sm text-muted-foreground">
         Nous allons télécharger vos matchs Halo Infinite et calculer vos statistiques.
         Cela prend environ 2–4 minutes selon votre historique.
+      </p>
+      <p className="text-xs text-muted-foreground">
+        Les règles de regroupement des sessions et les badges de performance sont configurables
+        dans{' '}
+        <Link to="/settings" className="underline hover:text-foreground">
+          Paramètres → Analyse
+        </Link>{' '}
+        après la synchronisation.
       </p>
 
       {!resolvedJobId && (

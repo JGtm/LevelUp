@@ -30,10 +30,16 @@ func NewSeasonPassService(repo port.SeasonPassRepository, homeSvc port.HomeServi
 
 // GetSeasonPassPage construit la réponse Season Pass complète.
 // Combine les tracks persistées en DB avec les challenges (depuis le HomeService).
+// Rafraîchit les snapshots de progression BP si le TTL d'1h est expiré (symétrie
+// avec GetChallenges), garantissant que loadTrackSnapshots lit un rang à jour.
 // Si la DB ne contient aucune donnée (premier accès), tente un appel live via
 // GetBattlePass pour peupler battlepass_track_definitions, puis retente la lecture DB.
 func (s *SeasonPassService) GetSeasonPassPage(ctx context.Context) (domain.SeasonPassPageResponse, error) {
 	challenges := s.homeSvc.GetChallenges(ctx)
+
+	// Rafraîchit les snapshots BP si le cache est expiré, avant la lecture des tracks.
+	// Persist synchrone dans GetBattlePass → snapshots à jour en DB avant LoadSeasonPassTracks.
+	_ = s.homeSvc.GetBattlePass(ctx)
 
 	tracks, err := s.repo.LoadSeasonPassTracks(ctx, s.xuid, s.titleSlug)
 	if err != nil {

@@ -99,7 +99,8 @@ func extensionForKind(k Kind) string {
 		KindSpartanEmblem,
 		KindSpartanBanner,
 		KindSpartanBackdrop,
-		KindCareerRankImage:
+		KindCareerRankImage,
+		KindAchievementImage:
 		return ".png"
 	default:
 		return ".json"

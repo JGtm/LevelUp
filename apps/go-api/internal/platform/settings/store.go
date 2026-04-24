@@ -24,6 +24,8 @@ type AppSettings struct {
 	CareerTopExcludeBTB                bool     `json:"career_top_exclude_btb"`
 	MediaCapturesBaseDir               string   `json:"media_captures_base_dir"`
 	MediaBufferMinutes                 int      `json:"media_buffer_minutes"`
+	MediaWatcherEnabled                bool     `json:"media_watcher_enabled"`
+	MediaWatcherDebounceSeconds        int      `json:"media_watcher_debounce_seconds"`
 	DiscordNotificationsEnabled        bool     `json:"discord_notifications_enabled"`
 	DiscordWebhookURL                  string   `json:"discord_webhook_url"` // jamais exposé côté API
 	DiscordNotifySync                  bool     `json:"discord_notify_sync"`
@@ -46,6 +48,16 @@ type AppSettings struct {
 	SpnkrRefreshBackfillWeapons        bool     `json:"spnkr_refresh_backfill_weapons"`
 	// Escouade — gamertags des amis par défaut
 	FriendGamertags []string `json:"friend_gamertags"`
+
+	// --- Règles de sessions ---
+	SessionGapMinutes          int    `json:"session_gap_minutes"`
+	SessionSplitOnRankedChange bool   `json:"session_split_on_ranked_change"`
+	SessionTeamChangeMode      string `json:"session_team_change_mode"`
+
+	// --- Règles de badges narratifs ---
+	OutcomeExcludeBotMatchesFromBadges  bool   `json:"outcome_exclude_bot_matches_from_badges"`
+	OutcomeExcludeBotMatchesFromRecords bool   `json:"outcome_exclude_bot_matches_from_records"`
+	OutcomeBadgeSensitivity             string `json:"outcome_badge_sensitivity"`
 
 	// Capabilities (défaut : true)
 	CanSelfProvision    bool `json:"can_self_provision"`
@@ -166,8 +178,14 @@ func Apply(cfg *AppSettings, req *domain.UpdateSettingsRequest) {
 	if req.MediaCapturesBaseDir != nil {
 		cfg.MediaCapturesBaseDir = *req.MediaCapturesBaseDir
 	}
-	if req.MediaBufferMinutes != nil {
-		cfg.MediaBufferMinutes = *req.MediaBufferMinutes
+	if req.MediaToleranceMinutes != nil {
+		cfg.MediaBufferMinutes = *req.MediaToleranceMinutes
+	}
+	if req.MediaWatcherEnabled != nil {
+		cfg.MediaWatcherEnabled = *req.MediaWatcherEnabled
+	}
+	if req.MediaWatcherDebounceSeconds != nil {
+		cfg.MediaWatcherDebounceSeconds = *req.MediaWatcherDebounceSeconds
 	}
 	if req.DiscordNotificationsEnabled != nil {
 		cfg.DiscordNotificationsEnabled = *req.DiscordNotificationsEnabled
@@ -232,41 +250,67 @@ func Apply(cfg *AppSettings, req *domain.UpdateSettingsRequest) {
 	if req.FriendGamertags != nil {
 		cfg.FriendGamertags = req.FriendGamertags
 	}
+	if req.SessionGapMinutes != nil {
+		cfg.SessionGapMinutes = *req.SessionGapMinutes
+	}
+	if req.SessionSplitOnRankedChange != nil {
+		cfg.SessionSplitOnRankedChange = *req.SessionSplitOnRankedChange
+	}
+	if req.SessionTeamChangeMode != nil {
+		cfg.SessionTeamChangeMode = *req.SessionTeamChangeMode
+	}
+	if req.OutcomeExcludeBotMatchesFromBadges != nil {
+		cfg.OutcomeExcludeBotMatchesFromBadges = *req.OutcomeExcludeBotMatchesFromBadges
+	}
+	if req.OutcomeExcludeBotMatchesFromRecords != nil {
+		cfg.OutcomeExcludeBotMatchesFromRecords = *req.OutcomeExcludeBotMatchesFromRecords
+	}
+	if req.OutcomeBadgeSensitivity != nil {
+		cfg.OutcomeBadgeSensitivity = *req.OutcomeBadgeSensitivity
+	}
 }
 
 // ToResponse convertit AppSettings en SettingsResponse (sans discord_webhook_url).
 func ToResponse(cfg *AppSettings) *domain.SettingsResponse {
 	return &domain.SettingsResponse{
-		Lang:                               cfg.Lang,
-		DiscordLang:                        cfg.DiscordLang,
-		UserTimezone:                       cfg.UserTimezone,
-		NormalizeModeLabels:                cfg.NormalizeModeLabels,
-		ShowRecords:                        cfg.ShowRecords,
-		RefreshClearsCaches:                cfg.RefreshClearsCaches,
-		CareerTopExcludeBTB:                cfg.CareerTopExcludeBTB,
-		MediaCapturesBaseDir:               cfg.MediaCapturesBaseDir,
-		MediaBufferMinutes:                 cfg.MediaBufferMinutes,
-		DiscordNotificationsEnabled:        cfg.DiscordNotificationsEnabled,
-		DiscordWebhookURLPresent:           cfg.DiscordWebhookURL != "",
-		DiscordNotifySync:                  cfg.DiscordNotifySync,
-		DiscordNotifyBackfill:              cfg.DiscordNotifyBackfill,
-		DiscordNotifyNewVersion:            cfg.DiscordNotifyNewVersion,
-		DiscordNotifyNewMedia:              cfg.DiscordNotifyNewMedia,
-		SpnkrAutoSyncEnabled:               cfg.SpnkrAutoSyncEnabled,
-		SpnkrAutoSyncIntervalHours:         cfg.SpnkrAutoSyncIntervalHours,
-		SpnkrAutoSyncIntervalMinutes:       cfg.SpnkrAutoSyncIntervalMinutes,
-		WatcherPresenceEnabled:             cfg.WatcherPresenceEnabled,
-		WatcherSubscribedPlayers:           cfg.WatcherSubscribedPlayers,
-		SpnkrRefreshWithBackfill:           cfg.SpnkrRefreshWithBackfill,
-		SpnkrRefreshBackfillMedals:         cfg.SpnkrRefreshBackfillMedals,
-		SpnkrRefreshBackfillSkill:          cfg.SpnkrRefreshBackfillSkill,
-		SpnkrRefreshBackfillAliases:        cfg.SpnkrRefreshBackfillAliases,
-		SpnkrRefreshBackfillPersonalScores: cfg.SpnkrRefreshBackfillPersonalScores,
-		SpnkrRefreshBackfillPerfScores:     cfg.SpnkrRefreshBackfillPerfScores,
-		SpnkrRefreshBackfillLUSR:           cfg.SpnkrRefreshBackfillLUSR,
-		SpnkrRefreshBackfillEvents:         cfg.SpnkrRefreshBackfillEvents,
-		SpnkrRefreshBackfillWeapons:        cfg.SpnkrRefreshBackfillWeapons,
-		FriendGamertags:                    cfg.FriendGamertags,
+		Lang:                                cfg.Lang,
+		DiscordLang:                         cfg.DiscordLang,
+		UserTimezone:                        cfg.UserTimezone,
+		NormalizeModeLabels:                 cfg.NormalizeModeLabels,
+		ShowRecords:                         cfg.ShowRecords,
+		RefreshClearsCaches:                 cfg.RefreshClearsCaches,
+		CareerTopExcludeBTB:                 cfg.CareerTopExcludeBTB,
+		MediaCapturesBaseDir:                cfg.MediaCapturesBaseDir,
+		MediaToleranceMinutes:               cfg.MediaBufferMinutes,
+		MediaWatcherEnabled:                 cfg.MediaWatcherEnabled,
+		MediaWatcherDebounceSeconds:         cfg.MediaWatcherDebounceSeconds,
+		DiscordNotificationsEnabled:         cfg.DiscordNotificationsEnabled,
+		DiscordWebhookURLPresent:            cfg.DiscordWebhookURL != "",
+		DiscordNotifySync:                   cfg.DiscordNotifySync,
+		DiscordNotifyBackfill:               cfg.DiscordNotifyBackfill,
+		DiscordNotifyNewVersion:             cfg.DiscordNotifyNewVersion,
+		DiscordNotifyNewMedia:               cfg.DiscordNotifyNewMedia,
+		SpnkrAutoSyncEnabled:                cfg.SpnkrAutoSyncEnabled,
+		SpnkrAutoSyncIntervalHours:          cfg.SpnkrAutoSyncIntervalHours,
+		SpnkrAutoSyncIntervalMinutes:        cfg.SpnkrAutoSyncIntervalMinutes,
+		WatcherPresenceEnabled:              cfg.WatcherPresenceEnabled,
+		WatcherSubscribedPlayers:            cfg.WatcherSubscribedPlayers,
+		SpnkrRefreshWithBackfill:            cfg.SpnkrRefreshWithBackfill,
+		SpnkrRefreshBackfillMedals:          cfg.SpnkrRefreshBackfillMedals,
+		SpnkrRefreshBackfillSkill:           cfg.SpnkrRefreshBackfillSkill,
+		SpnkrRefreshBackfillAliases:         cfg.SpnkrRefreshBackfillAliases,
+		SpnkrRefreshBackfillPersonalScores:  cfg.SpnkrRefreshBackfillPersonalScores,
+		SpnkrRefreshBackfillPerfScores:      cfg.SpnkrRefreshBackfillPerfScores,
+		SpnkrRefreshBackfillLUSR:            cfg.SpnkrRefreshBackfillLUSR,
+		SpnkrRefreshBackfillEvents:          cfg.SpnkrRefreshBackfillEvents,
+		SpnkrRefreshBackfillWeapons:         cfg.SpnkrRefreshBackfillWeapons,
+		FriendGamertags:                     cfg.FriendGamertags,
+		SessionGapMinutes:                   cfg.SessionGapMinutes,
+		SessionSplitOnRankedChange:          cfg.SessionSplitOnRankedChange,
+		SessionTeamChangeMode:               cfg.SessionTeamChangeMode,
+		OutcomeExcludeBotMatchesFromBadges:  cfg.OutcomeExcludeBotMatchesFromBadges,
+		OutcomeExcludeBotMatchesFromRecords: cfg.OutcomeExcludeBotMatchesFromRecords,
+		OutcomeBadgeSensitivity:             cfg.OutcomeBadgeSensitivity,
 	}
 }
 
@@ -284,5 +328,12 @@ func defaultSettings() *AppSettings {
 		MediaBufferMinutes:  2,
 		CanSelfProvision:    true,
 		CanStartInitialSync: true,
+		// Règles de sessions
+		SessionGapMinutes:     120,     // 2 heures — historique Python
+		SessionTeamChangeMode: "group", // comportement actuel isTeammatesBreak
+		// Règles de badges narratifs
+		OutcomeExcludeBotMatchesFromBadges:  true,       // bots faussent les scores adverses
+		OutcomeExcludeBotMatchesFromRecords: false,      // pas de changement de comportement par défaut
+		OutcomeBadgeSensitivity:             "standard", // seuils historiques Python
 	}
 }

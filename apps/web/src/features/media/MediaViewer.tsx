@@ -1,17 +1,16 @@
-import { useEffect, useState } from 'react'
+import React, { useEffect, useState } from 'react'
 import { Link } from '@tanstack/react-router'
 import { Badge } from '@/components/ui/badge'
 import type { MediaItemRow } from '@/lib/api/types'
 
-function formatMediaDate(value: string | null) {
+function formatMediaDate(value: string | null | undefined) {
   if (!value) {
     return null
   }
-  return new Date(value).toLocaleDateString('fr-FR', {
-    day: '2-digit',
-    month: '2-digit',
-    year: '2-digit',
-  })
+  const d = new Date(value)
+  const datePart = d.toLocaleDateString('fr-FR', { day: 'numeric', month: 'short' })
+  const timePart = d.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' })
+  return `${datePart} à ${timePart}`
 }
 
 function formatLightboxHeading(item: MediaItemRow, index: number, total: number) {
@@ -41,6 +40,26 @@ function LikersLine({ likers, totalLikers }: { likers?: string[]; totalLikers?: 
   return <p className="text-[11px] text-rose-400 leading-tight">{label}</p>
 }
 
+function HeartIcon({ filled, className }: { filled: boolean; className?: string }) {
+  return (
+    <svg
+      xmlns="http://www.w3.org/2000/svg"
+      viewBox="0 0 24 24"
+      fill={filled ? 'currentColor' : 'none'}
+      stroke="currentColor"
+      strokeWidth={2}
+      className={className}
+      aria-hidden="true"
+    >
+      <path
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        d="M21 8.25c0-2.485-2.099-4.5-4.688-4.5-1.935 0-3.597 1.126-4.312 2.733-.715-1.607-2.377-2.733-4.313-2.733C5.1 3.75 3 5.765 3 8.25c0 7.22 9 12 9 12s9-4.78 9-12z"
+      />
+    </svg>
+  )
+}
+
 interface MediaLikeButtonProps {
   isLiked: boolean
   likeCount: number
@@ -56,23 +75,32 @@ function MediaLikeButton({
   compact = false,
   disabled = false,
 }: MediaLikeButtonProps) {
+  const [isAnimating, setIsAnimating] = useState(false)
+
+  function handleClick(event: React.MouseEvent) {
+    event.stopPropagation()
+    onToggle()
+    setIsAnimating(true)
+    setTimeout(() => setIsAnimating(false), 250)
+  }
+
   return (
     <button
       type="button"
       disabled={disabled}
-      onClick={(event) => {
-        event.stopPropagation()
-        onToggle()
-      }}
+      onClick={handleClick}
       className={compact
-        ? `absolute right-1.5 top-1.5 flex h-7 min-w-7 items-center justify-center gap-1 rounded-full px-2 text-[11px] font-semibold transition-colors disabled:cursor-not-allowed disabled:opacity-60 ${isLiked ? 'bg-destructive text-white' : 'bg-black/45 text-white/70 hover:bg-destructive/70 hover:text-white'}`
-        : `inline-flex items-center gap-2 rounded-full border px-3 py-1.5 text-xs font-medium transition-colors disabled:cursor-not-allowed disabled:opacity-60 ${isLiked ? 'border-destructive bg-destructive text-white' : 'border-white/20 bg-black/35 text-white/85 hover:border-destructive hover:bg-destructive/70'}`}
+        ? `absolute right-1.5 top-1.5 flex h-7 min-w-7 items-center justify-center gap-1 rounded-full px-2 text-[11px] font-semibold transition-colors disabled:cursor-not-allowed disabled:opacity-60 ${isLiked ? 'bg-black/55 text-rose-400' : 'bg-black/45 text-white/50 hover:text-rose-300'}`
+        : `inline-flex items-center gap-2 rounded-full border px-3 py-1.5 text-xs font-medium transition-colors disabled:cursor-not-allowed disabled:opacity-60 ${isLiked ? 'border-rose-500/40 bg-rose-500/10 text-rose-400' : 'border-white/20 bg-black/35 text-white/85 hover:border-rose-400/40 hover:text-rose-300'}`}
       aria-label={isLiked ? 'Retirer le like' : 'Liker'}
     >
-      <span aria-hidden="true">♥</span>
+      <HeartIcon
+        filled={isLiked}
+        className={`transition-transform duration-200 ${compact ? 'h-4 w-4' : 'h-3.5 w-3.5'} ${isAnimating ? 'scale-125' : 'scale-100'}`}
+      />
       {compact
         ? likeCount > 0 && <span>{likeCount}</span>
-        : <span>{isLiked ? `Aimé · ${likeCount}` : `Liker · ${likeCount}`}</span>}
+        : <span>{likeCount}</span>}
     </button>
   )
 }
@@ -85,18 +113,17 @@ interface MediaThumbnailCardProps {
 }
 
 export function MediaThumbnailCard({ item, onToggleLike, onOpen, likeDisabled = false }: MediaThumbnailCardProps) {
-  const [isPreviewing, setIsPreviewing] = useState(false)
-  const showPreview = item.kind === 'clip' && isPreviewing
+  const [isHovering, setIsHovering] = useState(false)
   const dateStr = formatMediaDate(item.capture_end_utc)
 
   return (
     <article
       className="group relative overflow-hidden rounded-lg border bg-muted transition-shadow hover:shadow-md"
       onClick={onOpen}
-      onMouseEnter={() => setIsPreviewing(true)}
-      onMouseLeave={() => setIsPreviewing(false)}
-      onFocus={() => setIsPreviewing(true)}
-      onBlur={() => setIsPreviewing(false)}
+      onMouseEnter={() => setIsHovering(true)}
+      onMouseLeave={() => setIsHovering(false)}
+      onFocus={() => setIsHovering(true)}
+      onBlur={() => setIsHovering(false)}
       onKeyDown={(event) => {
         if (event.key === 'Enter' || event.key === ' ') {
           event.preventDefault()
@@ -107,32 +134,31 @@ export function MediaThumbnailCard({ item, onToggleLike, onOpen, likeDisabled = 
       tabIndex={0}
     >
       <div className="relative aspect-video overflow-hidden bg-muted">
-        {showPreview ? (
-          <video
-            src={item.file_path}
-            poster={item.thumbnail_path ?? undefined}
-            autoPlay
-            loop
-            muted
-            playsInline
-            preload="metadata"
+        {isHovering && item.kind === 'clip' && item.thumbnail_path ? (
+          // GIF thumbnail animé au survol — key force le remontage pour redémarrer depuis la frame 1
+          <img
+            key="gif-active"
+            src={item.thumbnail_path}
+            alt=""
+            aria-hidden="true"
             className="h-full w-full object-cover"
           />
-        ) : item.thumbnail_path ? (
+        ) : item.thumbnail_path && item.kind !== 'clip' ? (
           <img
             src={item.thumbnail_path}
             alt={item.basename}
             className="h-full w-full object-cover transition-transform duration-200 group-hover:scale-105"
           />
+        ) : item.kind === 'screenshot' ? (
+          <img
+            src={item.file_path}
+            alt={item.basename}
+            className="h-full w-full object-cover transition-transform duration-200 group-hover:scale-105"
+          />
         ) : (
           <div className="flex h-full w-full items-center justify-center text-2xl text-muted-foreground">
-            {item.kind === 'clip' ? '▶' : '🖼'}
+            ▶
           </div>
-        )}
-        {item.kind === 'clip' && !showPreview && (
-          <span className="absolute bottom-2 left-2 rounded-full bg-black/55 px-2 py-0.5 text-[11px] font-medium text-white">
-            Aperçu au survol
-          </span>
         )}
         <MediaLikeButton
           compact
@@ -150,8 +176,9 @@ export function MediaThumbnailCard({ item, onToggleLike, onOpen, likeDisabled = 
           </Badge>
           {item.map_name && <span className="truncate text-xs text-muted-foreground">{item.map_name}</span>}
         </div>
-        <p className="truncate text-xs text-muted-foreground" title={item.basename}>{item.basename}</p>
-        {dateStr && <p className="text-xs text-muted-foreground">{dateStr}</p>}        <LikersLine likers={item.likers} totalLikers={item.total_likers} />      </div>
+        {dateStr && <p className="text-xs text-muted-foreground">{dateStr}</p>}
+        <LikersLine likers={item.likers} totalLikers={item.total_likers} />
+      </div>
     </article>
   )
 }
@@ -249,22 +276,23 @@ export function MediaLightbox({ items, onToggleLike, startIndex, onClose, likeDi
         <div className="flex flex-col gap-1 bg-black/60 px-4 py-2">
           <div className="flex items-center gap-2">
           <Badge variant="secondary" className="text-xs">{item.kind}</Badge>
-          <span className="truncate text-xs text-white/60">{item.basename}</span>
           <MediaLikeButton
             isLiked={item.liked}
             likeCount={item.like_count}
             onToggle={() => onToggleLike(item)}
             disabled={likeDisabled}
           />
-          {item.match_id && item.owner_gamertag && (
+          {item.match_id && item.owner_gamertag ? (
             <Link
               to="/players/$playerSlug/matches/$matchId"
               params={{ playerSlug: item.owner_gamertag, matchId: item.match_id }}
-              className="ml-auto whitespace-nowrap text-xs text-primary underline hover:text-primary/80"
+              className="ml-auto inline-flex items-center gap-1 whitespace-nowrap rounded border border-white/20 bg-white/5 px-2 py-1 text-xs text-white/80 transition-colors hover:border-white/40 hover:text-white"
               onClick={(event) => event.stopPropagation()}
             >
               Voir le match →
             </Link>
+          ) : (
+            <span className="ml-auto whitespace-nowrap text-xs text-white/35 italic">Aucun match associé</span>
           )}
           </div>
           <LikersLine likers={item.likers} totalLikers={item.total_likers} />

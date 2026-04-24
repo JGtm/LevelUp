@@ -154,10 +154,10 @@ func TestApply_BoolFields(t *testing.T) {
 func TestApply_MediaFields(t *testing.T) {
 	cfg := settings.Defaults()
 	dir := "/captures"
-	buf := 20
+	tol := 20
 	req := &domain.UpdateSettingsRequest{
-		MediaCapturesBaseDir: &dir,
-		MediaBufferMinutes:   &buf,
+		MediaCapturesBaseDir:  &dir,
+		MediaToleranceMinutes: &tol,
 	}
 	settings.Apply(cfg, req)
 	if cfg.MediaCapturesBaseDir != "/captures" {
@@ -165,6 +165,16 @@ func TestApply_MediaFields(t *testing.T) {
 	}
 	if cfg.MediaBufferMinutes != 20 {
 		t.Errorf("expected 20, got %d", cfg.MediaBufferMinutes)
+	}
+}
+
+func TestApply_MediaWatcherEnabled(t *testing.T) {
+	cfg := settings.Defaults()
+	tr := true
+	req := &domain.UpdateSettingsRequest{MediaWatcherEnabled: &tr}
+	settings.Apply(cfg, req)
+	if !cfg.MediaWatcherEnabled {
+		t.Error("expected MediaWatcherEnabled=true after Apply")
 	}
 }
 
@@ -269,5 +279,106 @@ func TestStore_Load_DefaultCapabilities(t *testing.T) {
 	}
 	if !cfg.CanStartInitialSync {
 		t.Error("absent can_start_initial_sync should default to true")
+	}
+}
+
+// ─── Nouveaux champs Analyse (sessions + badges) ─────────────────────────────
+
+func TestDefaults_SessionAndBadgeFields(t *testing.T) {
+	d := settings.Defaults()
+	if d.SessionGapMinutes != 120 {
+		t.Errorf("SessionGapMinutes default = %d, want 120", d.SessionGapMinutes)
+	}
+	if d.SessionTeamChangeMode != "group" {
+		t.Errorf("SessionTeamChangeMode default = %q, want 'group'", d.SessionTeamChangeMode)
+	}
+	if d.SessionSplitOnRankedChange {
+		t.Error("SessionSplitOnRankedChange default should be false")
+	}
+	if d.OutcomeBadgeSensitivity != "standard" {
+		t.Errorf("OutcomeBadgeSensitivity default = %q, want 'standard'", d.OutcomeBadgeSensitivity)
+	}
+	if !d.OutcomeExcludeBotMatchesFromBadges {
+		t.Error("OutcomeExcludeBotMatchesFromBadges default should be true")
+	}
+	if d.OutcomeExcludeBotMatchesFromRecords {
+		t.Error("OutcomeExcludeBotMatchesFromRecords default should be false")
+	}
+}
+
+func TestApply_SessionGapMinutes(t *testing.T) {
+	d := settings.Defaults()
+	gap := 60
+	req := &domain.UpdateSettingsRequest{SessionGapMinutes: &gap}
+	settings.Apply(d, req)
+	if d.SessionGapMinutes != 60 {
+		t.Errorf("SessionGapMinutes = %d after Apply, want 60", d.SessionGapMinutes)
+	}
+}
+
+func TestApply_SessionTeamChangeMode(t *testing.T) {
+	d := settings.Defaults()
+	mode := "ignore"
+	req := &domain.UpdateSettingsRequest{SessionTeamChangeMode: &mode}
+	settings.Apply(d, req)
+	if d.SessionTeamChangeMode != "ignore" {
+		t.Errorf("SessionTeamChangeMode = %q after Apply, want 'ignore'", d.SessionTeamChangeMode)
+	}
+}
+
+func TestApply_SessionSplitOnRankedChange(t *testing.T) {
+	d := settings.Defaults()
+	v := true
+	req := &domain.UpdateSettingsRequest{SessionSplitOnRankedChange: &v}
+	settings.Apply(d, req)
+	if !d.SessionSplitOnRankedChange {
+		t.Error("SessionSplitOnRankedChange should be true after Apply(true)")
+	}
+}
+
+func TestApply_OutcomeBadgeSensitivity(t *testing.T) {
+	d := settings.Defaults()
+	sens := "strict"
+	req := &domain.UpdateSettingsRequest{OutcomeBadgeSensitivity: &sens}
+	settings.Apply(d, req)
+	if d.OutcomeBadgeSensitivity != "strict" {
+		t.Errorf("OutcomeBadgeSensitivity = %q after Apply, want 'strict'", d.OutcomeBadgeSensitivity)
+	}
+}
+
+func TestApply_OutcomeExcludeBotFields(t *testing.T) {
+	d := settings.Defaults()
+	exclBadges := false
+	exclRecords := true
+	req := &domain.UpdateSettingsRequest{
+		OutcomeExcludeBotMatchesFromBadges:  &exclBadges,
+		OutcomeExcludeBotMatchesFromRecords: &exclRecords,
+	}
+	settings.Apply(d, req)
+	if d.OutcomeExcludeBotMatchesFromBadges {
+		t.Error("OutcomeExcludeBotMatchesFromBadges should be false after Apply(false)")
+	}
+	if !d.OutcomeExcludeBotMatchesFromRecords {
+		t.Error("OutcomeExcludeBotMatchesFromRecords should be true after Apply(true)")
+	}
+}
+
+func TestToResponse_NewAnalyseFields(t *testing.T) {
+	d := settings.Defaults()
+	resp := settings.ToResponse(d)
+	if resp.SessionGapMinutes != d.SessionGapMinutes {
+		t.Error("ToResponse: SessionGapMinutes not mapped")
+	}
+	if resp.SessionTeamChangeMode != d.SessionTeamChangeMode {
+		t.Error("ToResponse: SessionTeamChangeMode not mapped")
+	}
+	if resp.OutcomeBadgeSensitivity != d.OutcomeBadgeSensitivity {
+		t.Error("ToResponse: OutcomeBadgeSensitivity not mapped")
+	}
+	if resp.OutcomeExcludeBotMatchesFromBadges != d.OutcomeExcludeBotMatchesFromBadges {
+		t.Error("ToResponse: OutcomeExcludeBotMatchesFromBadges not mapped")
+	}
+	if resp.OutcomeExcludeBotMatchesFromRecords != d.OutcomeExcludeBotMatchesFromRecords {
+		t.Error("ToResponse: OutcomeExcludeBotMatchesFromRecords not mapped")
 	}
 }

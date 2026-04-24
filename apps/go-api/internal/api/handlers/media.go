@@ -2,10 +2,11 @@
 //
 // Endpoints :
 //
-//	POST /api/v1/players/{player_slug}/pages/media      → MediaPageResponse
-//	PATCH /api/v1/players/{player_slug}/media/likes      → MediaLikeResponse
-//	POST /api/v1/players/{player_slug}/media/upload      → UploadResult (multipart)
-//	POST /api/v1/players/{player_slug}/media/reassociate → ReassociateResult
+//	POST /api/v1/players/{player_slug}/pages/media            → MediaPageResponse
+//	PATCH /api/v1/players/{player_slug}/media/likes            → MediaLikeResponse
+//	POST /api/v1/players/{player_slug}/media/upload            → UploadResult (multipart)
+//	POST /api/v1/players/{player_slug}/media/reassociate       → ReassociateResult
+//	GET  /api/v1/players/{player_slug}/media/files/*           → fichier servi depuis captures
 package handlers
 
 import (
@@ -16,6 +17,7 @@ import (
 	"io"
 	"log/slog"
 	"net/http"
+	"path"
 	"path/filepath"
 	"strings"
 	"sync/atomic"
@@ -97,6 +99,9 @@ func (h *MediaHandler) GetMediaLibrary(w http.ResponseWriter, r *http.Request) {
 		writeError(w, http.StatusInternalServerError, "media_page_error", err.Error())
 		return
 	}
+
+	// Transformer les chemins absolus en URLs servables
+	h.transformMediaURLs(slug, resp.Items.Items)
 
 	writeJSON(w, http.StatusOK, resp)
 }
@@ -322,4 +327,87 @@ func BumpMediaFeedVersion() {
 func GetMediaFeedVersion(w http.ResponseWriter, _ *http.Request) {
 	v := atomic.LoadInt64(&mediaFeedVersion)
 	writeJSON(w, http.StatusOK, map[string]int64{"version": v})
+}
+
+// filePathToURL transforme un chemin absolu en URL servable via l'API.
+// Retourne le chemin original si la transformation n'est pas possible.
+func (h *MediaHandler) filePathToURL(slug, absPath, capturesBase string) string {
+	playerDir := filepath.Join(capturesBase, slug)
+	relPath, err := filepath.Rel(playerDir, filepath.Clean(absPath))
+	if err != nil || strings.HasPrefix(relPath, "..") {
+		return absPath
+	}
+	return "/api/v1/players/" + slug + "/media/files/" + filepath.ToSlash(relPath)
+}
+
+// transformMediaURLs transforme les chemins absolus des items en URLs servables.
+func (h *MediaHandler) transformMediaURLs(slug string, items []domain.MediaItem) {
+	if h.settingsStore == nil {
+		return
+	}
+	cfg, err := h.settingsStore.Load()
+	if err != nil {
+		return
+	}
+	capturesBase := cfg.MediaCapturesBaseDir
+	if capturesBase == "" {
+		return
+	}
+	capturesBase = filepath.Clean(capturesBase)
+	for i := range items {
+		items[i].FilePath = h.filePathToURL(slug, items[i].FilePath, capturesBase)
+		if items[i].ThumbnailPath != nil {
+			u := h.filePathToURL(slug, *items[i].ThumbnailPath, capturesBase)
+			items[i].ThumbnailPath = &u
+		}
+	}
+}
+
+// ServeMediaFile sert un fichier depuis le répertoire captures du joueur.
+// GET /api/v1/players/{player_slug}/media/files/*
+func (h *MediaHandler) ServeMediaFile(w http.ResponseWriter, r *http.Request) {
+	slug := chi.URLParam(r, "player_slug")
+	rpath := chi.URLParam(r, "*")
+
+	if h.settingsStore == nil {
+		http.Error(w, "file serving not configured", http.StatusServiceUnavailable)
+		return
+	}
+
+	// Nettoyer le chemin URL (gère les "..")
+	cleanURL := path.Clean("/" + rpath)
+	if strings.Contains(cleanURL, "..") {
+		http.Error(w, "invalid path", http.StatusBadRequest)
+		return
+	}
+	cleanURL = strings.TrimPrefix(cleanURL, "/")
+	if cleanURL == "" || cleanURL == "." {
+		http.Error(w, "not found", http.StatusNotFound)
+		return
+	}
+
+	capturesBase := ""
+	if cfg, err := h.settingsStore.Load(); err == nil {
+		capturesBase = cfg.MediaCapturesBaseDir
+	}
+	var playerDir string
+	if capturesBase != "" {
+		playerDir = filepath.Join(capturesBase, slug)
+	} else {
+		pr := titlePkg.NewPathResolver(h.repoRoot)
+		playerDir = pr.PlayerCapturesDir(titlePkg.DefaultSlug, slug)
+	}
+
+	absPath := filepath.Join(playerDir, filepath.FromSlash(cleanURL))
+
+	// Anti-traversal : vérifier que le chemin résolu est dans playerDir
+	cleanPlayerDir := filepath.Clean(playerDir)
+	cleanAbsPath := filepath.Clean(absPath)
+	if cleanAbsPath != cleanPlayerDir &&
+		!strings.HasPrefix(cleanAbsPath, cleanPlayerDir+string(filepath.Separator)) {
+		http.Error(w, "forbidden", http.StatusForbidden)
+		return
+	}
+
+	http.ServeFile(w, r, absPath)
 }

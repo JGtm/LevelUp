@@ -3067,8 +3067,40 @@ components:
           type: boolean
         discord_notify_new_media:
           type: boolean
+        spnkr_auto_sync_enabled:
+          type: boolean
+        spnkr_auto_sync_interval_hours:
+          type: integer
+        spnkr_auto_sync_interval_minutes:
+          type: integer
+        watcher_presence_enabled:
+          type: boolean
+        watcher_subscribed_players:
+          type: array
+          items:
+            type: string
         spnkr_refresh_with_backfill:
           type: boolean
+        spnkr_refresh_backfill_medals:
+          type: boolean
+        spnkr_refresh_backfill_skill:
+          type: boolean
+        spnkr_refresh_backfill_aliases:
+          type: boolean
+        spnkr_refresh_backfill_personal_scores:
+          type: boolean
+        spnkr_refresh_backfill_performance_scores:
+          type: boolean
+        spnkr_refresh_backfill_lusr:
+          type: boolean
+        spnkr_refresh_backfill_events:
+          type: boolean
+        spnkr_refresh_backfill_weapons:
+          type: boolean
+        friend_gamertags:
+          type: array
+          items:
+            type: string
 
     CreatePlayerProfileResponse:
       type: object

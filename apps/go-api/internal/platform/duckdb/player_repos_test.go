@@ -661,7 +661,7 @@ func TestHomeRepo_LoadRecentPlaylistRanks_InfersCSRFromRankedPlaylistName(t *tes
 	}
 
 	repo := NewHomeRepo(pdb)
-	ranks, err := repo.LoadRecentPlaylistRanks(ctx)
+	ranks, err := repo.LoadRecentPlaylistRanks(ctx, "fr")
 	if err != nil {
 		t.Fatalf("LoadRecentPlaylistRanks: %v", err)
 	}

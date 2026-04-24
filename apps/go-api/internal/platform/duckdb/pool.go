@@ -1,9 +1,8 @@
 // Package duckdb — PlayerPool : pool de connexions DuckDB par joueur.
 //
 // Architecture :
-//   - Player : stats.duckdb en lecture/écriture (sync engine) avec shared attaché.
-//   - PlayerRO : stats.duckdb en lecture seule (handlers HTTP) avec shared attaché.
-//   - ReadDB() retourne PlayerRO si disponible, sinon Player (fallback pour les tests).
+//   - Player : stats.duckdb en lecture/écriture (sync engine et handlers HTTP) avec shared attaché.
+//   - ReadDB() retourne Player (connexion unique — DuckDB interdit RW+RO sur le même fichier).
 //   - Shared : shared_matches_v2.duckdb en lecture seule.
 //   - Metadata : metadata.duckdb en lecture seule (PersistSink ouvre sa propre connexion RW).
 //   - SharedSocial : shared_social.duckdb en lecture/écriture (médias, likes, favoris).
@@ -44,8 +43,7 @@ func (c PlayerPoolConfig) PoolKey() string {
 
 // PlayerDB regroupe les connexions DB nécessaires pour un joueur.
 type PlayerDB struct {
-	Player       *DB // stats.duckdb du joueur (RW, avec shared attaché) — réservé au moteur sync
-	PlayerRO     *DB // stats.duckdb du joueur (RO, avec shared attaché) — lecture des handlers HTTP
+	Player       *DB // stats.duckdb du joueur (RW, avec shared attaché) — sync engine et handlers HTTP
 	Shared       *DB // shared_matches_v2.duckdb
 	SharedSocial *DB // shared_social.duckdb (médias, likes, favoris de matchs)
 	Metadata     *DB // metadata.duckdb (RO)
@@ -54,12 +52,8 @@ type PlayerDB struct {
 	TitleSlug    string // Sprint 44 : titre associé
 }
 
-// ReadDB retourne la connexion de lecture préférée.
-// Retourne PlayerRO si disponible (production), sinon Player (fallback tests).
+// ReadDB retourne la connexion de lecture (Player RW — connexion unique par joueur).
 func (pdb *PlayerDB) ReadDB() *DB {
-	if pdb.PlayerRO != nil {
-		return pdb.PlayerRO
-	}
 	return pdb.Player
 }
 
@@ -110,9 +104,7 @@ func CloseAll() {
 	globalPool.Range(func(key, value any) bool {
 		pdb := value.(*PlayerDB)
 		_ = pdb.Player.Close()
-		if pdb.PlayerRO != nil {
-			_ = pdb.PlayerRO.Close()
-		}
+
 		_ = pdb.Shared.Close()
 		if pdb.SharedSocial != nil {
 			_ = pdb.SharedSocial.Close()
@@ -134,16 +126,9 @@ func openPlayerDB(ctx context.Context, cfg PlayerPoolConfig) (*PlayerDB, error) 
 		return nil, fmt.Errorf("pool: open player db %s: %w", cfg.Gamertag, err)
 	}
 
-	playerRO, err := OpenReadOnly(cfg.PlayerDBPath, cfg.UserTimezone)
-	if err != nil {
-		_ = playerDB.Close()
-		return nil, fmt.Errorf("pool: open player db RO %s: %w", cfg.Gamertag, err)
-	}
-
 	sharedDB, err := OpenReadOnly(cfg.SharedDBPath, cfg.UserTimezone)
 	if err != nil {
 		_ = playerDB.Close()
-		_ = playerRO.Close()
 		return nil, fmt.Errorf("pool: open shared db: %w", err)
 	}
 	// Les migrations shared sont gérées par runMigrations() dans main.go.
@@ -151,7 +136,6 @@ func openPlayerDB(ctx context.Context, cfg PlayerPoolConfig) (*PlayerDB, error) 
 	metaDB, err := OpenReadOnly(cfg.MetaDBPath, cfg.UserTimezone)
 	if err != nil {
 		_ = playerDB.Close()
-		_ = playerRO.Close()
 		_ = sharedDB.Close()
 		return nil, fmt.Errorf("pool: open metadata db: %w", err)
 	}
@@ -170,22 +154,12 @@ func openPlayerDB(ctx context.Context, cfg PlayerPoolConfig) (*PlayerDB, error) 
 		}
 	}
 
-	// ATTACH shared sur la connexion player RW pour les requêtes join (sync engine)
+	// ATTACH shared sur la connexion player RW pour les requêtes join (sync engine et handlers HTTP)
 	if err := attachShared(ctx, playerDB, cfg.SharedDBPath); err != nil {
 		_ = playerDB.Close()
-		_ = playerRO.Close()
 		_ = sharedDB.Close()
 		_ = metaDB.Close()
 		return nil, fmt.Errorf("pool: attach shared on player db: %w", err)
-	}
-
-	// ATTACH shared sur la connexion player RO pour les handlers HTTP
-	if err := attachShared(ctx, playerRO, cfg.SharedDBPath); err != nil {
-		_ = playerDB.Close()
-		_ = playerRO.Close()
-		_ = sharedDB.Close()
-		_ = metaDB.Close()
-		return nil, fmt.Errorf("pool: attach shared on playerRO: %w", err)
 	}
 
 	// ATTACH shared_matches_v2 sur SharedSocial pour les JOIN match_registry dans Q37.
@@ -198,7 +172,6 @@ func openPlayerDB(ctx context.Context, cfg PlayerPoolConfig) (*PlayerDB, error) 
 
 	return &PlayerDB{
 		Player:       playerDB,
-		PlayerRO:     playerRO,
 		Shared:       sharedDB,
 		SharedSocial: socialDB,
 		Metadata:     metaDB,

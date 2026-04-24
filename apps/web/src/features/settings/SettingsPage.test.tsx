@@ -8,6 +8,7 @@ import { beforeEach, describe, it, expect, vi } from 'vitest'
 import { screen, waitFor, fireEvent } from '@testing-library/react'
 import { renderWithProviders } from '@/test/render-utils'
 import { useAppShellStore } from '@/stores/appShellStore'
+import { useRouterState } from '@tanstack/react-router'
 import { SettingsPage } from './SettingsPage'
 
 vi.mock('@tanstack/react-router', async (importOriginal) => {
@@ -15,8 +16,9 @@ vi.mock('@tanstack/react-router', async (importOriginal) => {
   return {
     ...actual,
     Link: ({ to, children }: { to: string; children: React.ReactNode }) => <a href={to}>{children}</a>,
-    useNavigate: () => vi.fn(),
+    useNavigate: () => () => Promise.resolve(),
     useParams: () => ({ playerSlug: 'test-player' }),
+    useRouterState: vi.fn().mockReturnValue({ location: { pathname: '/settings', search: '' } }),
   }
 })
 
@@ -33,6 +35,9 @@ const ENABLED_CAPABILITIES = {
 }
 
 beforeEach(() => {
+  vi.mocked(useRouterState).mockReturnValue({
+    location: { pathname: '/settings', search: '' },
+  } as ReturnType<typeof useRouterState>)
   useAppShellStore.setState({
     currentPlayer: null,
     availablePlayers: [],
@@ -77,10 +82,10 @@ describe('SettingsPage', () => {
   })
 
   it('affiche le CTA vers le Lab quand la capacité instance est active', async () => {
+    vi.mocked(useRouterState).mockReturnValue({
+      location: { pathname: '/settings', search: '?tab=lab' },
+    } as ReturnType<typeof useRouterState>)
     renderWithProviders(<SettingsPage />)
-    // Attendre que l'onglet Lab soit visible (page chargée), puis l'activer
-    const labTab = await waitFor(() => screen.getByRole('tab', { name: /^Lab$/i }))
-    fireEvent.click(labTab)
     await waitFor(() => {
       expect(screen.getByText(/Lab interne/i)).toBeInTheDocument()
       expect(screen.getByRole('link', { name: /Ouvrir le Lab/i })).toHaveAttribute('href', '/lab')

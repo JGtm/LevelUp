@@ -510,11 +510,9 @@ export function HomePage() {
         <PrivacyBanner warning={data.privacy_warning} />
 
         {/* Hero KPIs */}
-        <Card>
-          <CardHeader>
-            <CardTitle className="text-base">Performance globale</CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-4">
+        <div>
+          <h2 className="mb-4 text-base font-semibold">Performance globale</h2>
+          <div className="space-y-4">
             {spartanIdentity && (
               <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_minmax(18rem,19.5rem)] lg:items-start">
                 <div className="overflow-hidden rounded-2xl border border-border bg-muted/60 shadow-sm">
@@ -705,16 +703,110 @@ export function HomePage() {
               </div>
             )}
 
-            <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-6">
-              <KPICard label="Parties" value={hero.kpis.total_matches.toLocaleString('fr-FR')} />
-              <KPICard label="Taux de victoire" value={`${(hero.kpis.win_rate * 100).toFixed(0)}%`} />
-              <KPICard label="K/D" value={hero.kpis.global_ratio?.toFixed(2) ?? '—'} />
-              <KPICard label="Victoires" value={hero.kpis.wins.toLocaleString('fr-FR')} />
-              <KPICard label="Défaites" value={hero.kpis.losses.toLocaleString('fr-FR')} />
-              <KPICard label="Précision" value={hero.kpis.avg_accuracy != null ? `${hero.kpis.avg_accuracy.toFixed(0)}%` : '—'} />
+            <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-7">
+              {/* 1 — Parties */}
+              <KPICard label={locale === 'en' ? 'Matches' : 'Parties'} value={hero.kpis.total_matches.toLocaleString(numberLocale)} />
+
+              {/* 2 — KDA/FDA coloré comme les tuiles match */}
+              {(() => {
+                const kda = hero.kpis.avg_kda
+                const kdaColor = kda == null ? 'text-muted-foreground' : kda > 1 ? 'text-green-400' : kda >= 0 ? 'text-blue-400' : 'text-red-400'
+                return (
+                  <div className="rounded-lg border border-border bg-muted px-4 py-3 text-center">
+                    <p className="text-xs text-muted-foreground">{locale === 'en' ? 'KDA' : 'FDA'}</p>
+                    <p className={`text-xl font-bold ${kdaColor}`}>{kda != null ? kda.toFixed(2) : '—'}</p>
+                  </div>
+                )
+              })()}
+
+              {/* 3 — Taux de victoire + barre composite outcomes */}
+              <div className="rounded-lg border border-border bg-muted px-4 py-3 text-center">
+                <p className="text-xs text-muted-foreground">{locale === 'en' ? 'Win rate' : 'Taux de victoire'}</p>
+                <p className="text-xl font-bold text-primary">{`${(hero.kpis.win_rate * 100).toFixed(0)}%`}</p>
+                <div className="mt-2">
+                  <OutcomeBar
+                    wins={hero.kpis.wins}
+                    draws={hero.kpis.draws ?? 0}
+                    losses={hero.kpis.losses}
+                    dnfs={hero.kpis.dnfs ?? 0}
+                  />
+                </div>
+              </div>
+
+              {/* 4 — Durée totale */}
+              {(() => {
+                const secs = hero.kpis.total_playtime_secs ?? 0
+                const totalMin = Math.floor(secs / 60)
+                const h = Math.floor(totalMin / 60)
+                const m = totalMin % 60
+                const formatted = secs <= 0 ? '—' : h === 0 ? `${m}min` : `${h}h${m > 0 ? String(m).padStart(2, '0') : ''}`
+                return <KPICard label={locale === 'en' ? 'Total time' : 'Durée totale'} value={formatted} />
+              })()}
+
+              {/* 5 — Rendement / Résistance (barre composite) */}
+              {(() => {
+                const offConv = hero.kpis.avg_offensive_conversion
+                const defRes = hero.kpis.avg_defensive_resistance
+                const hasData = offConv != null || defRes != null
+                const off = offConv ?? 0
+                const def = defRes ?? 0
+                const total = off + def
+                return (
+                  <div className="rounded-lg border border-border bg-muted px-4 py-3 text-center">
+                    <p className="text-xs text-muted-foreground mb-1.5">{locale === 'en' ? 'Off. / Def.' : 'Rendement / Résist.'}</p>
+                    {hasData ? (
+                      <>
+                        <div className="h-2 w-full rounded-full overflow-hidden flex">
+                          {off > 0 && <div className="h-full bg-[#4CAF50]" style={{ width: total > 0 ? `${(off / total) * 100}%` : '50%' }} />}
+                          {def > 0 && <div className="h-full bg-[#38BDF8]" style={{ width: total > 0 ? `${(def / total) * 100}%` : '50%' }} />}
+                        </div>
+                        <div className="flex justify-center gap-3 mt-2">
+                          <div className="flex flex-col items-center gap-0.5">
+                            <span className="text-sm font-bold leading-none" style={{ color: '#4CAF50' }}>{off.toFixed(2)}</span>
+                            <span className="text-[10px] leading-none text-muted-foreground">{locale === 'en' ? 'Offens.' : 'Rdmt'}</span>
+                          </div>
+                          <div className="flex flex-col items-center gap-0.5">
+                            <span className="text-sm font-bold leading-none" style={{ color: '#38BDF8' }}>{def.toFixed(2)}</span>
+                            <span className="text-[10px] leading-none text-muted-foreground">{locale === 'en' ? 'Defens.' : 'Résist.'}</span>
+                          </div>
+                        </div>
+                      </>
+                    ) : (
+                      <p className="text-xl font-bold text-muted-foreground">—</p>
+                    )}
+                  </div>
+                )
+              })()}
+
+              {/* 6 — Précision avec code couleur */}
+              {(() => {
+                const acc = hero.kpis.avg_accuracy
+                const accColor = acc == null
+                  ? 'text-primary'
+                  : acc > 55 ? 'text-green-400' : acc >= 40 ? 'text-amber-400' : 'text-red-400'
+                return (
+                  <div className="rounded-lg border border-border bg-muted px-4 py-3 text-center">
+                    <p className="text-xs text-muted-foreground">{locale === 'en' ? 'Accuracy' : 'Précision'}</p>
+                    <p className={`text-xl font-bold ${accColor}`}>{acc != null ? `${acc.toFixed(0)}%` : '—'}</p>
+                  </div>
+                )
+              })()}
+
+              {/* 7 — Arme favorite */}
+              <div className="rounded-lg border border-border bg-muted px-4 py-3 text-center">
+                <p className="text-xs text-muted-foreground">{locale === 'en' ? 'Fav. weapon' : 'Arme favorite'}</p>
+                <p className="truncate text-sm font-bold text-primary leading-tight mt-1">
+                  {hero.kpis.favorite_weapon_name || '—'}
+                </p>
+                {hero.kpis.favorite_weapon_kills > 0 && (
+                  <p className="text-xs text-muted-foreground mt-0.5">
+                    {hero.kpis.favorite_weapon_kills.toLocaleString(numberLocale)} {locale === 'en' ? 'kills' : 'kills'}
+                  </p>
+                )}
+              </div>
             </div>
-          </CardContent>
-        </Card>
+          </div>
+        </div>
 
         {/* Battle Pass + Défis */}
         <div className="grid grid-cols-1 gap-4 xl:grid-cols-[minmax(0,1.35fr)_minmax(320px,0.65fr)]">

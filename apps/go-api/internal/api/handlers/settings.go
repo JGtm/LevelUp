@@ -8,6 +8,8 @@ package handlers
 import (
 	"context"
 	"encoding/json"
+	"fmt"
+	"log/slog"
 	"net/http"
 
 	"levelup/go-api/internal/config"
@@ -15,6 +17,7 @@ import (
 	"levelup/go-api/internal/platform/jobs"
 	settings_platform "levelup/go-api/internal/platform/settings"
 	"levelup/go-api/internal/service"
+	go_sync "levelup/go-api/internal/sync"
 )
 
 // SettingsHandler gère les endpoints de configuration.
@@ -77,6 +80,33 @@ func (h *SettingsHandler) PatchSettings(w http.ResponseWriter, r *http.Request) 
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 		writeError(w, http.StatusBadRequest, "invalid_body", "Corps de requête JSON invalide.")
 		return
+	}
+
+	// Validation des champs analyse.
+	if req.SessionGapMinutes != nil && *req.SessionGapMinutes < 0 {
+		writeError(w, http.StatusBadRequest, "invalid_session_gap",
+			"session_gap_minutes doit être ≥ 0.")
+		return
+	}
+	if req.SessionTeamChangeMode != nil {
+		switch *req.SessionTeamChangeMode {
+		case "ignore", "group", "friends":
+			// valide
+		default:
+			writeError(w, http.StatusBadRequest, "invalid_team_change_mode",
+				"session_team_change_mode doit être \"ignore\", \"group\" ou \"friends\".")
+			return
+		}
+	}
+	if req.OutcomeBadgeSensitivity != nil {
+		switch *req.OutcomeBadgeSensitivity {
+		case "relaxed", "standard", "strict":
+			// valide
+		default:
+			writeError(w, http.StatusBadRequest, "invalid_badge_sensitivity",
+				"outcome_badge_sensitivity doit être \"relaxed\", \"standard\" ou \"strict\".")
+			return
+		}
 	}
 
 	cfg, err := h.settingsStore.Load()
@@ -198,6 +228,74 @@ func (h *SettingsHandler) PostMediaScan(w http.ResponseWriter, r *http.Request) 
 		}
 
 		done := "Scan médias terminé"
+		pct := 100
+		h.jobStore.Update(job.JobID, func(j *domain.AsyncJobStatus) {
+			j.Status = domain.JobStatusSucceeded
+			j.ProgressPct = &pct
+			j.CurrentStep = &done
+		})
+	}()
+
+	writeJSON(w, http.StatusAccepted, &jobSnapshot)
+}
+
+// PostRecalculateSessions lance un recalcul des sessions pour tous les joueurs.
+// POST /settings/sessions/recalculate — retourne un AsyncJobStatus (202).
+func (h *SettingsHandler) PostRecalculateSessions(w http.ResponseWriter, r *http.Request) {
+	settingsCfg := settings_platform.Defaults()
+	if h.settingsStore != nil {
+		if cfg, err := h.settingsStore.Load(); err == nil {
+			settingsCfg = cfg
+		}
+	}
+
+	players, err := h.cfg.LoadPlayers()
+	if err != nil {
+		writeError(w, http.StatusInternalServerError, "players_load_error",
+			"Impossible de charger les joueurs configurés.")
+		return
+	}
+
+	job := h.jobStore.Create(domain.JobTypeSessionsRecalc, "")
+	// Snapshot avant le go func() : la goroutine modifie in-place le job dans le store.
+	jobSnapshot := *job
+
+	gapMinutes := settingsCfg.SessionGapMinutes
+	if gapMinutes <= 0 {
+		gapMinutes = 120
+	}
+	opts := domain.SessionComputeOptions{
+		GapMinutes:          gapMinutes,
+		SplitOnRankedChange: settingsCfg.SessionSplitOnRankedChange,
+		TeamChangeMode:      domain.TeamChangeMode(settingsCfg.SessionTeamChangeMode),
+		Mode:                domain.SessionModeContext,
+	}
+	friendGamertags := settingsCfg.FriendGamertags
+	sharedDBPath := config.SharedDBPath(h.cfg, "")
+
+	go func() {
+		step := "Recalcul des sessions en cours"
+		h.jobStore.SetStatus(job.JobID, domain.JobStatusRunning, &step)
+
+		total := 0
+		for _, p := range players {
+			if p.XUID == "" {
+				continue
+			}
+			playerDBPath := config.PlayerDBPath(h.cfg, "", p.Gamertag)
+			n, err := go_sync.RecalculatePlayerSessions(
+				context.Background(), playerDBPath, sharedDBPath, p.XUID,
+				opts, friendGamertags,
+			)
+			if err != nil {
+				slog.Warn("sessions recalculate: erreur joueur",
+					"gamertag", p.Gamertag, "err", err)
+				continue
+			}
+			total += n
+		}
+
+		done := fmt.Sprintf("Sessions recalculées (%d matchs mis à jour)", total)
 		pct := 100
 		h.jobStore.Update(job.JobID, func(j *domain.AsyncJobStatus) {
 			j.Status = domain.JobStatusSucceeded

@@ -74,6 +74,7 @@ func NewInMemoryShared(t *testing.T) *sql.DB {
 			kills_stddev DOUBLE,
 			team_mmr DOUBLE,
 			enemy_mmr DOUBLE,
+			headshot_kills INTEGER DEFAULT 0,
 			created_at TIMESTAMP,
 			PRIMARY KEY (match_id, xuid)
 		)`,
@@ -140,6 +141,7 @@ func NewInMemoryPlayer(t *testing.T) *sql.DB {
 			match_id VARCHAR PRIMARY KEY,
 			performance_score DOUBLE,
 			session_id VARCHAR,
+			session_label VARCHAR,
 			is_with_friends BOOLEAN DEFAULT FALSE,
 			teammates_signature VARCHAR,
 			created_at TIMESTAMP,

@@ -53,12 +53,17 @@ func (r *MediaRepo) LoadMediaFiles(ctx context.Context, filters domain.MediaFilt
 			&row.Liked,
 			&row.MapName,
 			&row.ModeName,
+			&row.MapID,
 		); err != nil {
 			return nil, fmt.Errorf("LoadMediaFiles scan: %w", err)
 		}
 		result = append(result, row)
 	}
-	return result, rows.Err()
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	r.enrichMediaMapTranslations(ctx, result)
+	return result, nil
 }
 
 // CountMediaFiles retourne le nombre total de fichiers médias actifs selon les filtres.
@@ -202,6 +207,65 @@ func joinStrings(ss []string) string {
 		out += s
 	}
 	return out
+}
+
+// enrichMediaMapTranslations résout les noms de cartes en français depuis asset_translations (metadata.duckdb).
+// Même mécanisme que HomeRepo.enrichHomeMatchTranslations.
+func (r *MediaRepo) enrichMediaMapTranslations(ctx context.Context, rows []domain.MediaFileRow) {
+	if r.pdb.Metadata == nil || len(rows) == 0 {
+		return
+	}
+
+	seen := make(map[string]struct{})
+	for _, row := range rows {
+		if row.MapID != nil && *row.MapID != "" {
+			seen[*row.MapID] = struct{}{}
+		}
+	}
+	if len(seen) == 0 {
+		return
+	}
+
+	placeholders := make([]string, 0, len(seen))
+	args := make([]any, 0, len(seen)+1)
+	args = append(args, "map")
+	for id := range seen {
+		placeholders = append(placeholders, "?")
+		args = append(args, id)
+	}
+
+	q := `SELECT asset_id, name
+FROM asset_translations
+WHERE asset_type = ?
+  AND lang IN ('fr-FR', 'fr')
+  AND asset_id IN (` + joinStrings(placeholders) + `)
+ORDER BY lang DESC`
+
+	dbRows, err := r.pdb.Metadata.Query(ctx, q, args...)
+	if err != nil {
+		return
+	}
+	defer dbRows.Close()
+
+	translations := make(map[string]string)
+	for dbRows.Next() {
+		var assetID, name string
+		if err := dbRows.Scan(&assetID, &name); err != nil {
+			continue
+		}
+		if _, ok := translations[assetID]; !ok {
+			translations[assetID] = name
+		}
+	}
+
+	for i := range rows {
+		if rows[i].MapID == nil {
+			continue
+		}
+		if nameFR, ok := translations[*rows[i].MapID]; ok && nameFR != "" {
+			rows[i].MapName = &nameFR
+		}
+	}
 }
 
 func (r *MediaRepo) loadMediaLabelValues(ctx context.Context, query string, args []any) ([]domain.LabelValue, error) {

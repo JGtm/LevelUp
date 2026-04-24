@@ -50,7 +50,7 @@ func (t *Trigger) RunSync(ctx context.Context, gamertag, xuid string, matchIDs [
 		return fmt.Errorf("trigger: get tokens: %w", err)
 	}
 
-	engine := NewSyncEngine(t.repoRoot, gamertag, xuid, tokens)
+	engine := NewSyncEngine(t.repoRoot, gamertag, xuid, tokens, nil)
 
 	opts := t.defaultOpts
 	// Le watcher détecte les matchs mais le RunDelta va re-fetch l'historique API

@@ -249,20 +249,21 @@ LIMIT 1`
 
 // Q26g : Home — 3 dernières playlists distinctes jouées avec leur dernier rang compétitif.
 // Paramètre : ?1 = xuid du joueur.
-// Retourne (playlist_name, is_ranked, rating_type, rating_value, tier, tier_fr, sub_tier, tier_label).
+// Retourne (playlist_id, playlist_name, is_ranked, rating_type, rating_value, tier, tier_fr, sub_tier, tier_label).
+// playlist_name_fr est résolu en Go depuis asset_translations (même source que les tuiles de matchs).
 // rating_* sont NULL pour les playlists sans rang calculé.
 const Q26gHomePlaylistRanks = `
 WITH recent_playlists AS (
 	SELECT
 		r.playlist_id,
-		COALESCE(MAX(r.playlist_name_fr), MAX(r.playlist_name), '') AS playlist_name,
+		COALESCE(MAX(r.playlist_name), '') AS playlist_name,
 		MAX(CASE
 			WHEN COALESCE(r.is_ranked, FALSE)
 				OR STRPOS(LOWER(COALESCE(r.playlist_name, '')), 'ranked') > 0
 				OR STRPOS(LOWER(COALESCE(r.pair_name, '')), 'ranked') > 0
 			THEN 1 ELSE 0
-		END) > 0                                                     AS is_ranked,
-		MAX(r.start_time)                                            AS last_played
+		END) > 0                           AS is_ranked,
+		MAX(r.start_time)                  AS last_played
 	FROM shared.match_participants mp
 	JOIN shared.match_registry r ON r.match_id = mp.match_id
 	WHERE mp.xuid = ?
@@ -295,6 +296,7 @@ last_skill AS (
 	WHERE msr.rating_value IS NOT NULL
 )
 SELECT
+	rp.playlist_id,
 	rp.playlist_name,
 	rp.is_ranked,
 	ls.rating_type,
@@ -335,6 +337,19 @@ LEFT JOIN media_match_associations mma ON mf.file_path = mma.media_path
 WHERE mf.status = 'active'
 ORDER BY mf.mtime DESC
 LIMIT ?`
+
+// Q26k : Home — arme favorite (kills totaux) du joueur toutes armes confondues.
+// Paramètre : ?1 = xuid.
+// Requête sur pdb.Player (shared attaché). Label résolu ensuite via pdb.Metadata.
+const Q26kFavoriteWeapon = `
+SELECT
+    COALESCE(wk.reconciled_as, wk.weapon_id) AS weapon_id,
+    SUM(wk.kill_count)                        AS total_kills
+FROM shared.weapon_kills wk
+WHERE wk.xuid = ?
+GROUP BY weapon_id
+ORDER BY total_kills DESC
+LIMIT 1`
 
 // =============================================================================
 // Sprint 13 — Citations + Médias
@@ -403,7 +418,8 @@ SELECT
     mma.match_start_time,
     COALESCE(mf.liked, FALSE) AS liked,
     ` + q37MediaMapLabelExpr + ` AS map_name,
-    ` + q37MediaModeLabelExpr + ` AS mode_name
+    ` + q37MediaModeLabelExpr + ` AS mode_name,
+    mr.map_id
 ` + q37MediaFromClause + `
 WHERE mf.status = 'active'
 ORDER BY mf.mtime DESC
@@ -462,7 +478,7 @@ func (cfg mediaQueryConfig) matchStartExpr() string {
 
 func (cfg mediaQueryConfig) timeOrderExpr() string {
 	if cfg.useSharedSocialSchema() {
-		return "COALESCE(mf.capture_end_utc, mf.updated_at, mf.created_at)"
+		return "COALESCE(mf.capture_end_utc, mf.mtime, mf.indexed_at)"
 	}
 	return "COALESCE(mf.capture_end_utc, mf.mtime)"
 }
@@ -529,7 +545,8 @@ func buildQ37MediaQuery(
     ` + queryCfg.matchStartExpr() + ` AS match_start_time,
     COALESCE(mf.liked, FALSE) AS liked,
     ` + q37MediaMapLabelExpr + ` AS map_name,
-    ` + q37MediaModeLabelExpr + ` AS mode_name
+    ` + q37MediaModeLabelExpr + ` AS mode_name,
+    mr.map_id
 ` + queryCfg.fromClause() + `
 ` + whereClause + `
 ORDER BY ` + orderBy + `
