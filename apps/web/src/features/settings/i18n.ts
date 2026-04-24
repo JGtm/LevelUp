@@ -149,6 +149,13 @@ export interface SettingsText {
   badgeExcludeBotsFromBadgesHint: string
   badgeExcludeBotsFromRecordsLabel: string
   badgeExcludeBotsFromRecordsHint: string
+
+  // Admin — Fournisseur d'authentification
+  authProviderTitle: string
+  authProviderLabel: string
+  authProviderMsal: string
+  authProviderSisu: string
+  authProviderHint: string
 }
 
 const FR_TEXT: SettingsText = {
@@ -315,6 +322,15 @@ const FR_TEXT: SettingsText = {
   badgeExcludeBotsFromRecordsHint:
     'Les matchs avec bots peuvent produire des stats atypiques ' +
     'qui fausseraient vos records personnels.',
+
+  authProviderTitle: "Fournisseur d'authentification",
+  authProviderLabel: 'Provider',
+  authProviderMsal: 'MSAL (Azure)',
+  authProviderSisu: 'SISU (Xbox natif)',
+  authProviderHint:
+    'MSAL utilise une app Azure enregistrée. ' +
+    'SISU utilise le client Xbox natif (000000004c20a908) sans configuration Azure. ' +
+    'Modification prise en compte au redémarrage du serveur.',
 }
 
 const EN_TEXT: SettingsText = {
@@ -482,6 +498,15 @@ const EN_TEXT: SettingsText = {
   badgeExcludeBotsFromRecordsHint:
     'Bot matches can produce atypical stats ' +
     'that would distort your personal records.',
+
+  authProviderTitle: 'Authentication provider',
+  authProviderLabel: 'Provider',
+  authProviderMsal: 'MSAL (Azure)',
+  authProviderSisu: 'SISU (native Xbox)',
+  authProviderHint:
+    'MSAL uses a registered Azure app. ' +
+    'SISU uses the native Xbox client (000000004c20a908) with no Azure configuration required. ' +
+    'Change takes effect on server restart.',
 }
 
 const TEXT: Record<SettingsLocale, SettingsText> = {

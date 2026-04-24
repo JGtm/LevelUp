@@ -34,13 +34,18 @@ import (
 // NewRouter construit le routeur chi avec tous les endpoints.
 // Construction par injection de dépendances — pas d'état global.
 // daemon peut être nil si le watcher n'est pas actif au démarrage.
+// tokenProvider peut être nil : MSALProvider est utilisé par défaut.
 // Retourne aussi le *ServiceRegistry pour permettre au démon watcher de lier le TTL dynamique.
 func NewRouter(
 	cfg *config.AppConfig,
 	bootRepo port.BootstrapRepository,
 	bootSvc *service.BootstrapService,
 	daemon watcher.DaemonController,
+	tokenProvider auth_platform.TokenProvider,
 ) (http.Handler, *ServiceRegistry) {
+	if tokenProvider == nil {
+		tokenProvider = auth_platform.NewMSALProvider()
+	}
 	// Sprint 14 : session store + Sprint 15 : attempt store auth
 	isProduction := cfg.SessionSecret != "CHANGE_ME_IN_PRODUCTION" // pragma: allowlist secret
 	sessionStore := session_platform.NewStore(cfg.SessionDir, session_platform.DefaultTTL, cfg.SessionSecret)
@@ -84,8 +89,6 @@ func NewRouter(
 	r.Use(errorTracker.Middleware)
 
 	// Sprint 37 : ServiceRegistry — câblage par injection de dépendances.
-	// TokenProvider : MSAL Device Code Flow (implémentation par défaut).
-	tokenProvider := auth_platform.NewMSALProvider()
 	reg := NewServiceRegistry(cfg, tokenProvider)
 	var gamertagSvc port.GamertagSearchService
 	if sharedDB, err := platform_duckdb.OpenReadOnly(config.SharedDBPath(cfg, "")); err != nil {
@@ -131,6 +134,10 @@ func NewRouter(
 		// Sprint 43 : changelog (markdown brut)
 		changelog := handlers.NewChangelogHandler(cfg.RepoRoot)
 		r.Get("/changelog", changelog.GetChangelog)
+
+		// Aide : notes de version extraites du README (EN/FR)
+		help := handlers.NewHelpHandler(cfg.RepoRoot)
+		r.Get("/help/release-notes", help.GetReleaseNotes)
 
 		// Sprint 14 : contexte de session
 		sessionHandler := handlers.NewSessionHandler(sessionStore)
