@@ -68,7 +68,7 @@ func TestMediaService_GetMediaPage_OK(t *testing.T) {
 		},
 		count: 50,
 	}
-	svc := NewMediaService(repo)
+	svc := NewMediaService(repo, "")
 
 	resp, err := svc.GetMediaPage(context.Background(), domain.MediaPageRequest{Page: 1})
 	if err != nil {
@@ -96,7 +96,7 @@ func TestMediaService_GetMediaPage_ZeroPage(t *testing.T) {
 		files: []domain.MediaFileRow{},
 		count: 0,
 	}
-	svc := NewMediaService(repo)
+	svc := NewMediaService(repo, "")
 
 	resp, err := svc.GetMediaPage(context.Background(), domain.MediaPageRequest{Page: 0})
 	if err != nil {
@@ -109,7 +109,7 @@ func TestMediaService_GetMediaPage_ZeroPage(t *testing.T) {
 
 func TestMediaService_GetMediaPage_NegativePage(t *testing.T) {
 	repo := &mockMediaRepo{files: []domain.MediaFileRow{}, count: 0}
-	svc := NewMediaService(repo)
+	svc := NewMediaService(repo, "")
 
 	resp, err := svc.GetMediaPage(context.Background(), domain.MediaPageRequest{Page: -5})
 	if err != nil {
@@ -122,7 +122,7 @@ func TestMediaService_GetMediaPage_NegativePage(t *testing.T) {
 
 func TestMediaService_GetMediaPage_FilesError(t *testing.T) {
 	repo := &mockMediaRepo{filesErr: errors.New("db fail")}
-	svc := NewMediaService(repo)
+	svc := NewMediaService(repo, "")
 
 	_, err := svc.GetMediaPage(context.Background(), domain.MediaPageRequest{Page: 1})
 	if err == nil {
@@ -135,7 +135,7 @@ func TestMediaService_GetMediaPage_CountError_Graceful(t *testing.T) {
 		files:    []domain.MediaFileRow{{FileName: "a.mp4", FilePath: "/a.mp4", Kind: "video"}},
 		countErr: errors.New("count fail"),
 	}
-	svc := NewMediaService(repo)
+	svc := NewMediaService(repo, "")
 
 	resp, err := svc.GetMediaPage(context.Background(), domain.MediaPageRequest{Page: 1})
 	if err != nil {
@@ -151,7 +151,7 @@ func TestMediaService_GetMediaPage_NoMore(t *testing.T) {
 		files: []domain.MediaFileRow{{FileName: "a.mp4", FilePath: "/a.mp4", Kind: "video"}},
 		count: 1,
 	}
-	svc := NewMediaService(repo)
+	svc := NewMediaService(repo, "")
 
 	resp, err := svc.GetMediaPage(context.Background(), domain.MediaPageRequest{Page: 1})
 	if err != nil {
@@ -164,7 +164,7 @@ func TestMediaService_GetMediaPage_NoMore(t *testing.T) {
 
 func TestMediaService_GetMediaPage_PageSizeFromPagination(t *testing.T) {
 	repo := &mockMediaRepo{files: []domain.MediaFileRow{}, count: 0}
-	svc := NewMediaService(repo)
+	svc := NewMediaService(repo, "")
 
 	resp, err := svc.GetMediaPage(context.Background(), domain.MediaPageRequest{
 		Pagination: domain.PaginationRequest{Page: 2, PageSize: 4},
@@ -182,7 +182,7 @@ func TestMediaService_GetMediaPage_PageSizeFromPagination(t *testing.T) {
 
 func TestMediaService_SetMediaLike_OK(t *testing.T) {
 	repo := &mockMediaRepo{setOK: true}
-	svc := NewMediaService(repo)
+	svc := NewMediaService(repo, "")
 
 	resp, err := svc.SetMediaLike(context.Background(), domain.MediaLikeRequest{
 		FilePath: "/clips/clip1.mp4",
@@ -198,7 +198,7 @@ func TestMediaService_SetMediaLike_OK(t *testing.T) {
 
 func TestMediaService_SetMediaLike_NotFound(t *testing.T) {
 	repo := &mockMediaRepo{setOK: false}
-	svc := NewMediaService(repo)
+	svc := NewMediaService(repo, "")
 
 	_, err := svc.SetMediaLike(context.Background(), domain.MediaLikeRequest{
 		FilePath: "/clips/missing.mp4",
@@ -214,7 +214,7 @@ func TestMediaService_SetMediaLike_NotFound(t *testing.T) {
 // ─────────────────────────────────────────────────────────────────────────────
 
 func TestMediaService_UploadMedia_NoFiles(t *testing.T) {
-	svc := NewMediaService(&mockMediaRepo{})
+	svc := NewMediaService(&mockMediaRepo{}, "")
 	result, err := svc.UploadMedia(context.Background(), domain.UploadRequest{
 		Files:       nil,
 		CapturesDir: t.TempDir(),
@@ -232,7 +232,7 @@ func TestMediaService_UploadMedia_SavesToDisk(t *testing.T) {
 	dir := t.TempDir()
 	// DBPath pointe vers un fichier inexistant → IndexMedia échouera mais les
 	// fichiers doivent quand même être écrits sur disque avant l'indexation.
-	svc := NewMediaService(&mockMediaRepo{})
+	svc := NewMediaService(&mockMediaRepo{}, "")
 	req := domain.UploadRequest{
 		Files: []domain.UploadedFile{
 			{OriginalName: "clip.mp4", Data: []byte("fake video bytes")},
@@ -260,7 +260,7 @@ func TestMediaService_UploadMedia_SavesToDisk(t *testing.T) {
 func TestMediaService_UploadMedia_CreatesCapturesDir(t *testing.T) {
 	base := t.TempDir()
 	captures := filepath.Join(base, "new", "captures")
-	svc := NewMediaService(&mockMediaRepo{})
+	svc := NewMediaService(&mockMediaRepo{}, "")
 	req := domain.UploadRequest{
 		Files:       []domain.UploadedFile{{OriginalName: "a.mp4", Data: []byte("x")}},
 		CapturesDir: captures,
@@ -276,8 +276,8 @@ func TestMediaService_UploadMedia_CreatesCapturesDir(t *testing.T) {
 
 func TestMediaService_UploadMedia_ToleranceDefault(t *testing.T) {
 	dir := t.TempDir()
-	svc := NewMediaService(&mockMediaRepo{})
-	// Tolerance=0 → doit utiliser 5 par défaut (pas de panique)
+	svc := NewMediaService(&mockMediaRepo{}, "")
+	// Tolerance=0 → doit utiliser 2 par défaut (pas de panique)
 	req := domain.UploadRequest{
 		Files:       []domain.UploadedFile{{OriginalName: "a.mp4", Data: []byte("x")}},
 		CapturesDir: dir,
@@ -296,7 +296,7 @@ func TestMediaService_UploadMedia_ToleranceDefault(t *testing.T) {
 
 func TestMediaService_UploadMedia_PathTraversalBlocked(t *testing.T) {
 	dir := t.TempDir()
-	svc := NewMediaService(&mockMediaRepo{})
+	svc := NewMediaService(&mockMediaRepo{}, "")
 	// Un nom de fichier avec path traversal doit être nettoyé par filepath.Base
 	req := domain.UploadRequest{
 		Files: []domain.UploadedFile{
@@ -330,7 +330,7 @@ func TestMediaService_UploadMedia_PathTraversalBlocked(t *testing.T) {
 
 func TestMediaService_GetMediaPage_KindFilterPassedToRepo(t *testing.T) {
 	repo := &mockMediaRepo{files: []domain.MediaFileRow{}, count: 0}
-	svc := NewMediaService(repo)
+	svc := NewMediaService(repo, "")
 
 	_, err := svc.GetMediaPage(context.Background(), domain.MediaPageRequest{
 		Page:       1,
@@ -346,7 +346,7 @@ func TestMediaService_GetMediaPage_KindFilterPassedToRepo(t *testing.T) {
 
 func TestMediaService_GetMediaPage_LikedOnly_PassedToRepo(t *testing.T) {
 	repo := &mockMediaRepo{files: []domain.MediaFileRow{}, count: 0}
-	svc := NewMediaService(repo)
+	svc := NewMediaService(repo, "")
 
 	_, err := svc.GetMediaPage(context.Background(), domain.MediaPageRequest{
 		Page:      1,
@@ -362,7 +362,7 @@ func TestMediaService_GetMediaPage_LikedOnly_PassedToRepo(t *testing.T) {
 
 func TestMediaService_GetMediaPage_MapAndModeFilters(t *testing.T) {
 	repo := &mockMediaRepo{files: []domain.MediaFileRow{}, count: 0}
-	svc := NewMediaService(repo)
+	svc := NewMediaService(repo, "")
 
 	_, err := svc.GetMediaPage(context.Background(), domain.MediaPageRequest{
 		Page:       1,
@@ -400,7 +400,7 @@ func TestMediaService_GetMediaPage_FilterOptionsFallbackToLoadedItems(t *testing
 		count:         1,
 		filterOptsErr: errors.New("options indisponibles"),
 	}
-	svc := NewMediaService(repo)
+	svc := NewMediaService(repo, "")
 
 	resp, err := svc.GetMediaPage(context.Background(), domain.MediaPageRequest{Page: 1})
 	if err != nil {
@@ -433,7 +433,7 @@ func TestMediaService_GetMediaPage_FilterOptionsCompleteEmptyRepoValues(t *testi
 			Modes: []domain.LabelValue{{Label: modeName, Value: modeName}},
 		},
 	}
-	svc := NewMediaService(repo)
+	svc := NewMediaService(repo, "")
 
 	resp, err := svc.GetMediaPage(context.Background(), domain.MediaPageRequest{Page: 1})
 	if err != nil {
@@ -453,7 +453,7 @@ func TestMediaService_GetMediaPage_FilterOptionsCompleteEmptyRepoValues(t *testi
 
 func TestMediaService_SetMediaLike_EmptyFilePath(t *testing.T) {
 	repo := &mockMediaRepo{setOK: true}
-	svc := NewMediaService(repo)
+	svc := NewMediaService(repo, "")
 
 	_, err := svc.SetMediaLike(context.Background(), domain.MediaLikeRequest{
 		FilePath: "",
@@ -466,7 +466,7 @@ func TestMediaService_SetMediaLike_EmptyFilePath(t *testing.T) {
 
 func TestMediaService_SetMediaLike_WithLikerSlug_CallsToggle(t *testing.T) {
 	repo := &mockMediaRepo{setOK: true}
-	svc := NewMediaService(repo)
+	svc := NewMediaService(repo, "")
 
 	_, err := svc.SetMediaLike(context.Background(), domain.MediaLikeRequest{
 		FilePath:      "/clips/g1.mp4",
@@ -487,7 +487,7 @@ func TestMediaService_SetMediaLike_WithLikerSlug_CallsToggle(t *testing.T) {
 
 func TestMediaService_SetMediaLike_ToggleError_NonBlocking(t *testing.T) {
 	repo := &mockMediaRepo{setOK: true, toggleErr: errors.New("shared db error")}
-	svc := NewMediaService(repo)
+	svc := NewMediaService(repo, "")
 
 	// L'erreur ToggleSharedLike ne doit pas faire échouer SetMediaLike
 	resp, err := svc.SetMediaLike(context.Background(), domain.MediaLikeRequest{
@@ -510,7 +510,7 @@ func TestMediaService_SetMediaLike_LikersEnrichedInResponse(t *testing.T) {
 			"/clips/g1.mp4": {Names: []string{"Alice", "Bob"}, Total: 3},
 		},
 	}
-	svc := NewMediaService(repo)
+	svc := NewMediaService(repo, "")
 
 	resp, err := svc.SetMediaLike(context.Background(), domain.MediaLikeRequest{
 		FilePath: "/clips/g1.mp4",
@@ -537,7 +537,7 @@ func TestMediaService_GetMediaPage_LikersEnrichedOnItems(t *testing.T) {
 			"/clips/g1.mp4": {Names: []string{"Alice"}, Total: 1},
 		},
 	}
-	svc := NewMediaService(repo)
+	svc := NewMediaService(repo, "")
 
 	resp, err := svc.GetMediaPage(context.Background(), domain.MediaPageRequest{Page: 1})
 	if err != nil {
@@ -607,7 +607,7 @@ func TestSafeDestPath_PreservesExtension(t *testing.T) {
 
 func TestMediaService_UploadMedia_ConcurrentSameDir_NamingConflict(t *testing.T) {
 	dir := t.TempDir()
-	svc := NewMediaService(&mockMediaRepo{})
+	svc := NewMediaService(&mockMediaRepo{}, "")
 
 	buildReq := func() domain.UploadRequest {
 		return domain.UploadRequest{
@@ -649,5 +649,44 @@ func TestMediaService_UploadMedia_ConcurrentSameDir_NamingConflict(t *testing.T)
 	}
 	if mp4Files < 1 {
 		t.Errorf("expected at least 1 .mp4 file in dir, got %d", mp4Files)
+	}
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// NewMediaService — timezone stockée + sanitisée
+// ─────────────────────────────────────────────────────────────────────────────
+
+func TestNewMediaService_TimezoneStored(t *testing.T) {
+	svc := NewMediaService(&mockMediaRepo{}, "Europe/Paris")
+	if svc.timezone != "Europe/Paris" {
+		t.Errorf("timezone = %q, want \"Europe/Paris\"", svc.timezone)
+	}
+}
+
+func TestNewMediaService_InvalidTimezone_StoredEmpty(t *testing.T) {
+	// Timezone avec injection SQL → doit être sanitisée à ""
+	svc := NewMediaService(&mockMediaRepo{}, "bad;tz")
+	if svc.timezone != "" {
+		t.Errorf("expected sanitized empty timezone, got %q", svc.timezone)
+	}
+}
+
+func TestNewMediaService_EmptyTimezone(t *testing.T) {
+	svc := NewMediaService(&mockMediaRepo{}, "")
+	if svc.timezone != "" {
+		t.Errorf("expected \"\", got %q", svc.timezone)
+	}
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// ReassociateMedia — sans accès DuckDB réel (DB vide/absente)
+// ─────────────────────────────────────────────────────────────────────────────
+
+func TestReassociateMedia_NoDB_ReturnsError(t *testing.T) {
+	// DBPath et SharedSocialDBPath vides → erreur
+	svc := NewMediaService(&mockMediaRepo{}, "Europe/Paris")
+	_, err := svc.ReassociateMedia(context.Background(), domain.ReassociateRequest{})
+	if err == nil {
+		t.Error("expected error when no DB path provided")
 	}
 }

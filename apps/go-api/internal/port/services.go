@@ -75,6 +75,7 @@ type MediaService interface {
 	GetMediaPage(ctx context.Context, req domain.MediaPageRequest) (*domain.MediaPageResponse, error)
 	SetMediaLike(ctx context.Context, req domain.MediaLikeRequest) (*domain.MediaLikeResponse, error)
 	UploadMedia(ctx context.Context, req domain.UploadRequest) (*domain.UploadResult, error)
+	ReassociateMedia(ctx context.Context, req domain.ReassociateRequest) (*domain.ReassociateResult, error)
 }
 
 // SocialService gère les interactions sociales (favoris de matchs).

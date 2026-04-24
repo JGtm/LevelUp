@@ -292,7 +292,7 @@ func TestIndexMedia_ConcurrentSameDB_NoRace(t *testing.T) {
 		return MediaIndexOptions{
 			SharedSocialDBPath: dbPath,
 			CapturesDir:        filepath.Join(dir, sub),
-			ToleranceMin:       5,
+			BufferMin:          2,
 		}
 	}
 
@@ -330,7 +330,7 @@ func TestIndexMedia_ConcurrentSameDB_SameDir(t *testing.T) {
 	optsVal := MediaIndexOptions{
 		SharedSocialDBPath: dbPath,
 		CapturesDir:        capDir,
-		ToleranceMin:       5,
+		BufferMin:          2,
 	}
 
 	var wg sync.WaitGroup

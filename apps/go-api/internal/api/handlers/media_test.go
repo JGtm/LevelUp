@@ -20,12 +20,14 @@ import (
 
 // mockMediaService implémente port.MediaService.
 type mockMediaService struct {
-	page      *domain.MediaPageResponse
-	pageErr   error
-	like      *domain.MediaLikeResponse
-	likeErr   error
-	upload    *domain.UploadResult
-	uploadErr error
+	page           *domain.MediaPageResponse
+	pageErr        error
+	like           *domain.MediaLikeResponse
+	likeErr        error
+	upload         *domain.UploadResult
+	uploadErr      error
+	reassociate    *domain.ReassociateResult
+	reassociateErr error
 }
 
 func (m *mockMediaService) GetMediaPage(_ context.Context, _ domain.MediaPageRequest) (*domain.MediaPageResponse, error) {
@@ -50,6 +52,16 @@ func (m *mockMediaService) UploadMedia(_ context.Context, _ domain.UploadRequest
 		return m.upload, nil
 	}
 	return &domain.UploadResult{}, nil
+}
+
+func (m *mockMediaService) ReassociateMedia(_ context.Context, _ domain.ReassociateRequest) (*domain.ReassociateResult, error) {
+	if m.reassociateErr != nil {
+		return nil, m.reassociateErr
+	}
+	if m.reassociate != nil {
+		return m.reassociate, nil
+	}
+	return &domain.ReassociateResult{}, nil
 }
 
 func newMediaRouter(factory handlers.ServiceFactory[port.MediaService]) *chi.Mux {
@@ -381,5 +393,162 @@ func TestMediaHandler_PatchLike_BumpsVersion(t *testing.T) {
 	v2 := versionNow()
 	if v2 <= v1 {
 		t.Errorf("expected version to increase after like: %d → %d", v1, v2)
+	}
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// PostReassociateMedia
+// ─────────────────────────────────────────────────────────────────────────────
+
+func newReassociateRouter(
+	svcFactory handlers.ServiceFactory[port.MediaService],
+	uploadFactory handlers.MediaUploadContextFactory,
+) *chi.Mux {
+	r := chi.NewRouter()
+	h := handlers.NewMediaHandler(svcFactory, uploadFactory, "")
+	r.Route("/players/{player_slug}", func(r chi.Router) {
+		r.Post("/media/reassociate", h.PostReassociateMedia)
+	})
+	return r
+}
+
+func TestReassociateHandler_NoUploadFactory(t *testing.T) {
+	svcFactory := func(_ context.Context, _ string) (port.MediaService, error) {
+		return &mockMediaService{}, nil
+	}
+	r := newReassociateRouter(svcFactory, nil)
+	req := httptest.NewRequest(http.MethodPost, "/players/test-player/media/reassociate", nil)
+	w := httptest.NewRecorder()
+	r.ServeHTTP(w, req)
+
+	if w.Code != http.StatusNotImplemented {
+		t.Fatalf("expected 501, got %d", w.Code)
+	}
+}
+
+func TestReassociateHandler_PlayerNotFound(t *testing.T) {
+	svcFactory := func(_ context.Context, _ string) (port.MediaService, error) {
+		return &mockMediaService{}, nil
+	}
+	uploadFactory := func(_ context.Context, _ string) (port.MediaService, string, string, string, string, string, error) {
+		return nil, "", "", "", "", "", errors.New("player_not_found")
+	}
+	r := newReassociateRouter(svcFactory, uploadFactory)
+	req := httptest.NewRequest(http.MethodPost, "/players/unknown/media/reassociate", nil)
+	w := httptest.NewRecorder()
+	r.ServeHTTP(w, req)
+
+	if w.Code != http.StatusNotFound {
+		t.Fatalf("expected 404, got %d", w.Code)
+	}
+}
+
+func TestReassociateHandler_OK(t *testing.T) {
+	expected := &domain.ReassociateResult{
+		BackupTable:  "media_match_associations_bak_20240101T120000Z",
+		DeletedAssoc: 5,
+		NewAssoc:     7,
+	}
+	mock := &mockMediaService{reassociate: expected}
+	r := newReassociateRouter(
+		func(_ context.Context, _ string) (port.MediaService, error) { return mock, nil },
+		makeUploadFactory(mock),
+	)
+	req := httptest.NewRequest(http.MethodPost, "/players/test-player/media/reassociate", nil)
+	w := httptest.NewRecorder()
+	r.ServeHTTP(w, req)
+
+	if w.Code != http.StatusOK {
+		t.Fatalf("expected 200, got %d: %s", w.Code, w.Body.String())
+	}
+	var result domain.ReassociateResult
+	if err := json.NewDecoder(w.Body).Decode(&result); err != nil {
+		t.Fatalf("decode response: %v", err)
+	}
+	if result.DeletedAssoc != 5 {
+		t.Errorf("DeletedAssoc = %d, want 5", result.DeletedAssoc)
+	}
+	if result.NewAssoc != 7 {
+		t.Errorf("NewAssoc = %d, want 7", result.NewAssoc)
+	}
+}
+
+func TestReassociateHandler_ServiceError(t *testing.T) {
+	mock := &mockMediaService{reassociateErr: errors.New("db_error")}
+	r := newReassociateRouter(
+		func(_ context.Context, _ string) (port.MediaService, error) { return mock, nil },
+		makeUploadFactory(mock),
+	)
+	req := httptest.NewRequest(http.MethodPost, "/players/test-player/media/reassociate", nil)
+	w := httptest.NewRecorder()
+	r.ServeHTTP(w, req)
+
+	if w.Code != http.StatusInternalServerError {
+		t.Fatalf("expected 500, got %d", w.Code)
+	}
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// parseUploadedFiles — capture_times
+// ─────────────────────────────────────────────────────────────────────────────
+
+// buildMultipartRequestWithCaptureTimes construit une requête multipart avec le champ capture_times.
+func buildMultipartRequestWithCaptureTimes(t *testing.T, route string, files map[string][]byte, captureTimes string) *http.Request {
+	t.Helper()
+	var buf bytes.Buffer
+	mw := multipart.NewWriter(&buf)
+	for name, data := range files {
+		fw, err := mw.CreateFormFile("files", name)
+		if err != nil {
+			t.Fatalf("createFormFile: %v", err)
+		}
+		fw.Write(data) //nolint:errcheck
+	}
+	if captureTimes != "" {
+		_ = mw.WriteField("capture_times", captureTimes)
+	}
+	mw.Close()
+	req := httptest.NewRequest(http.MethodPost, route, &buf)
+	req.Header.Set("Content-Type", mw.FormDataContentType())
+	return req
+}
+
+func TestUploadHandler_WithCaptureTimes_OK(t *testing.T) {
+	expected := &domain.UploadResult{Saved: 1, NewIndexed: 1}
+	mock := &mockMediaService{upload: expected}
+	r := newUploadRouter(
+		func(_ context.Context, _ string) (port.MediaService, error) { return mock, nil },
+		makeUploadFactory(mock),
+	)
+	// Envoyer capture_times JSON valide aligné sur files
+	req := buildMultipartRequestWithCaptureTimes(t, "/players/test-player/media/upload",
+		map[string][]byte{"clip.mp4": []byte("fake")},
+		`[1700000000]`,
+	)
+	w := httptest.NewRecorder()
+	r.ServeHTTP(w, req)
+
+	if w.Code != http.StatusOK {
+		t.Fatalf("expected 200, got %d: %s", w.Code, w.Body.String())
+	}
+}
+
+func TestUploadHandler_WithCaptureTimes_InvalidJSON_Ignored(t *testing.T) {
+	// capture_times JSON invalide → ignoré (pas 400)
+	mock := &mockMediaService{upload: &domain.UploadResult{Saved: 1}}
+	r := newUploadRouter(
+		func(_ context.Context, _ string) (port.MediaService, error) { return mock, nil },
+		makeUploadFactory(mock),
+	)
+	req := buildMultipartRequestWithCaptureTimes(t, "/players/test-player/media/upload",
+		map[string][]byte{"clip.mp4": []byte("fake")},
+		`not-json`,
+	)
+	w := httptest.NewRecorder()
+	r.ServeHTTP(w, req)
+
+	// Le JSON invalide est loggué et ignoré, l'upload doit réussir
+	if w.Code != http.StatusOK {
+		t.Fatalf("expected 200 (capture_times invalide ignoré), got %d: %s", w.Code, w.Body.String())
 	}
 }

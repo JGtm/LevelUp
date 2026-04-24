@@ -113,6 +113,14 @@ func (h *SettingsHandler) PostMediaResetIndex(w http.ResponseWriter, r *http.Req
 
 	job := h.jobStore.Create(domain.JobTypeReindexMedia, "")
 
+	// Charger le dossier captures configuré dans les settings.
+	capturesBaseDir := ""
+	if h.settingsStore != nil {
+		if cfg, err := h.settingsStore.Load(); err == nil {
+			capturesBaseDir = cfg.MediaCapturesBaseDir
+		}
+	}
+
 	go func() {
 		step := "Reset index médias en cours"
 		h.jobStore.SetStatus(job.JobID, domain.JobStatusRunning, &step)
@@ -120,6 +128,7 @@ func (h *SettingsHandler) PostMediaResetIndex(w http.ResponseWriter, r *http.Req
 		err := h.mediaIndexer.ResetAndReindex(
 			context.Background(),
 			h.cfg.RepoRoot,
+			capturesBaseDir,
 			req.ReindexAfterReset,
 			h.jobStore,
 			job.JobID,

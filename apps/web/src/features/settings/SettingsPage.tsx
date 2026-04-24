@@ -216,6 +216,17 @@ function GeneralTab({ merged, handleChange, t }: TabProps) {
         </CardHeader>
         <CardContent className="space-y-1 divide-y divide-border/50">
           <ToggleRow label={t.mediaWatcherEnabled} value={merged.media_watcher_enabled ?? false} onChange={(v) => handleChange('media_watcher_enabled', v)} />
+          <div className="flex flex-col gap-1 py-2">
+            <span className="text-sm text-foreground">{t.mediaBaseDirLabel}</span>
+            <input
+              type="text"
+              value={merged.media_captures_base_dir ?? ''}
+              onChange={(e) => handleChange('media_captures_base_dir', e.target.value)}
+              placeholder={t.mediaBaseDirPlaceholder}
+              className="w-full rounded border border-input px-2 py-1 text-sm font-mono"
+            />
+            <span className="text-xs text-muted-foreground">{t.mediaBaseDirHint}</span>
+          </div>
           <div className="flex items-center justify-between py-2">
             <span className="text-sm text-foreground">{t.mediaToleranceLabel}</span>
             <input

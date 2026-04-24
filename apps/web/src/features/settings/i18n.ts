@@ -55,6 +55,9 @@ export interface SettingsText {
   mediaWatcherEnabled: string
   mediaToleranceLabel: string
   mediaNoBaseDir: string
+  mediaBaseDirLabel: string
+  mediaBaseDirPlaceholder: string
+  mediaBaseDirHint: string
 
   // Synchronisation SPNKr
   spnkrTitle: string
@@ -154,6 +157,10 @@ const FR_TEXT: SettingsText = {
   mediaWatcherEnabled: 'Surveillance automatique des médias',
   mediaToleranceLabel: 'Tolérance association (min)',
   mediaNoBaseDir: "La surveillance des médias est activée mais aucun dossier source n'est défini.",
+  mediaBaseDirLabel: 'Dossier des captures',
+  mediaBaseDirPlaceholder: 'Ex : C:\\Users\\Moi\\Videos\\Captures ou /mnt/captures',
+  mediaBaseDirHint: 'Sous-dossiers par gamertag attendus : {chemin}/{gamertag}/',
+
 
   spnkrTitle: 'Synchronisation périodique',
   spnkrAutoSync: 'Synchronisation automatique',
@@ -250,6 +257,10 @@ const EN_TEXT: SettingsText = {
   mediaWatcherEnabled: 'Automatic media watcher',
   mediaToleranceLabel: 'Association tolerance (min)',
   mediaNoBaseDir: 'Media watcher is enabled but no source folder is defined.',
+  mediaBaseDirLabel: 'Captures folder',
+  mediaBaseDirPlaceholder: 'e.g. C:\\Users\\Me\\Videos\\Captures or /mnt/captures',
+  mediaBaseDirHint: 'Subfolders by gamertag expected: {path}/{gamertag}/',
+
 
   spnkrTitle: 'Periodic synchronisation',
   spnkrAutoSync: 'Automatic synchronisation',

@@ -145,7 +145,7 @@ func runIndexMedia(cfg *config.AppConfig, args []string) error {
 	gamertag := fs.String("gamertag", "", "Gamertag du joueur (obligatoire)")
 	titleSlug := fs.String("title", title.DefaultSlug, "Slug du titre (ex: halo_infinite)")
 	force := fs.Bool("force-rescan", false, "Réindexer tous les fichiers")
-	tolMin := fs.Int("tolerance-min", 5, "Tolérance association match (minutes)")
+	bufMin := fs.Int("buffer-min", 2, "Buffer autour de la fenêtre match pour l'association (minutes)")
 	if err := fs.Parse(args); err != nil {
 		return err
 	}
@@ -160,7 +160,8 @@ func runIndexMedia(cfg *config.AppConfig, args []string) error {
 		SharedMatchesDBPath: pr.SharedDBPath(*titleSlug),
 		CapturesDir:         pr.PlayerCapturesDir(*titleSlug, *gamertag),
 		ForceRescan:         *force,
-		ToleranceMin:        *tolMin,
+		BufferMin:           *bufMin,
+		Timezone:            cfg.UserTimezone,
 	})
 	if err != nil {
 		return err

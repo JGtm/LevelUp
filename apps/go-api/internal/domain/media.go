@@ -161,8 +161,9 @@ type MediaLikeResponse struct {
 
 // UploadedFile est un fichier reçu via multipart/form-data.
 type UploadedFile struct {
-	OriginalName string
-	Data         []byte
+	OriginalName    string
+	Data            []byte
+	CaptureTimeUnix *int64 // mtime du fichier côté client (secondes Unix), optionnel
 }
 
 // UploadRequest regroupe les paramètres d'un upload multi-fichiers.
@@ -172,7 +173,23 @@ type UploadRequest struct {
 	DBPath              string // chemin vers stats.duckdb du joueur (fallback)
 	SharedSocialDBPath  string // chemin vers shared_social.duckdb (cible principale)
 	SharedMatchesDBPath string // chemin vers shared_matches_v2.duckdb (lecture match_registry)
-	Tolerance           int    // tolérance association match (minutes)
+	Tolerance           int    // buffer association match (minutes, défaut 2)
+}
+
+// ReassociateRequest configure une ré-association forcée des médias.
+type ReassociateRequest struct {
+	DBPath              string
+	SharedSocialDBPath  string
+	SharedMatchesDBPath string
+	BufferMin           int // 0 → défaut 2 min
+}
+
+// ReassociateResult résume le résultat de la ré-association.
+type ReassociateResult struct {
+	BackupTable  string   `json:"backup_table"`         // nom de la table snapshot
+	DeletedAssoc int      `json:"deleted_associations"` // lignes supprimées
+	NewAssoc     int      `json:"new_associations"`     // nouvelles associations créées
+	Errors       []string `json:"errors,omitempty"`
 }
 
 // UploadResult résume le résultat d'un upload multi-fichiers.

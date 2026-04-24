@@ -8,7 +8,8 @@
 //	    PlayerDBPath:    "data/players/SpartanB/stats.duckdb",
 //	    CapturesDir:     "data/players/SpartanB/captures",
 //	    ForceRescan:     false,
-//	    ToleranceMin:    5,
+//	    BufferMin:       2,
+//	    Timezone:        "Europe/Paris",
 //	})
 package ops
 
@@ -17,9 +18,12 @@ import (
 	"database/sql"
 	"fmt"
 	"io"
+	"log/slog"
 	"os"
 	"os/exec"
 	"path/filepath"
+	"regexp"
+	"strconv"
 	"strings"
 	"sync"
 	"time"
@@ -47,8 +51,10 @@ type MediaIndexOptions struct {
 	SharedMatchesDBPath string // shared_matches_v2.duckdb (lecture match_registry)
 	CapturesDir         string // répertoire captures du joueur
 	ForceRescan         bool   // réindexer tous les fichiers même connus
-	ToleranceMin        int    // tolérance d'association match en minutes (défaut 5)
+	BufferMin           int    // buffer en minutes autour de [start_time, end_time] (défaut 2)
 	Gamertag            string
+	Timezone            string            // IANA (ex: "Europe/Paris") — SET TimeZone à l'ouverture
+	CaptureTimes        map[string]*int64 // basename → unix ts client (optionnel, depuis upload)
 }
 
 // MediaIndexResult résume le résultat de l'indexation.
@@ -76,8 +82,8 @@ var supportedExtensions = map[string]string{
 // Portage de MediaIndexer.scan_and_index() Python.
 // Thread-safe : sérialise les accès par chemin de DB cible (mutex par path).
 func IndexMedia(opts MediaIndexOptions) (MediaIndexResult, error) {
-	if opts.ToleranceMin == 0 {
-		opts.ToleranceMin = 5
+	if opts.BufferMin <= 0 {
+		opts.BufferMin = 2
 	}
 
 	// Utiliser shared_social.duckdb si disponible, sinon fallback sur stats.duckdb (transition).
@@ -97,6 +103,34 @@ func IndexMedia(opts MediaIndexOptions) (MediaIndexResult, error) {
 	}
 	defer db.Close()
 
+	// Appliquer la timezone après ouverture pour un DATEDIFF correct (DST).
+	tz := SanitizeMediaTimezone(opts.Timezone)
+	if tz != "" {
+		if _, err := db.Exec("SET TimeZone = '" + tz + "'"); err != nil {
+			slog.Warn("IndexMedia: SET TimeZone échoué, DST possiblement incorrect",
+				"timezone", tz, "err", err)
+		} else {
+			slog.Debug("IndexMedia: SET TimeZone appliqué", "timezone", tz)
+		}
+	}
+
+	// Calculer loc une seule fois pour le filename parser.
+	var loc *time.Location
+	if opts.Timezone != "" {
+		if l, err := time.LoadLocation(opts.Timezone); err == nil {
+			loc = l
+		} else {
+			slog.Warn("IndexMedia: timezone invalide pour filename parser",
+				"timezone", opts.Timezone, "err", err)
+		}
+	}
+
+	slog.Debug("IndexMedia: démarrage",
+		"captures_dir", opts.CapturesDir,
+		"buffer_min", opts.BufferMin,
+		"timezone", opts.Timezone,
+		"force_rescan", opts.ForceRescan)
+
 	if err := ensureMediaTables(db); err != nil {
 		return MediaIndexResult{}, err
 	}
@@ -112,6 +146,7 @@ func IndexMedia(opts MediaIndexOptions) (MediaIndexResult, error) {
 		return MediaIndexResult{}, fmt.Errorf("scan répertoire: %w", err)
 	}
 	result.Scanned = len(mediaFiles)
+	slog.Debug("IndexMedia: scan répertoire", "scanned", result.Scanned)
 
 	for _, path := range mediaFiles {
 		hash, err := fileHash(path)
@@ -122,37 +157,70 @@ func IndexMedia(opts MediaIndexOptions) (MediaIndexResult, error) {
 		if !opts.ForceRescan && known[hash] {
 			continue
 		}
-		if err := insertMediaFile(db, path, hash, opts.Gamertag); err != nil {
+		var clientTs *int64
+		if opts.CaptureTimes != nil {
+			clientTs = opts.CaptureTimes[filepath.Base(path)]
+		}
+		if err := insertMediaFile(db, path, hash, opts.Gamertag, clientTs, loc); err != nil {
 			result.Errors = append(result.Errors, fmt.Sprintf("%s: insert: %v", path, err))
 			continue
 		}
 		result.NewFiles++
 	}
 
+	slog.Debug("IndexMedia: scan terminé",
+		"scanned", result.Scanned, "new_files", result.NewFiles)
+
 	// Association avec les matchs
-	assoc, err := AssociateMediaWithMatches(db, opts.SharedMatchesDBPath, opts.ToleranceMin)
+	assoc, err := AssociateMediaWithMatches(db, opts.SharedMatchesDBPath, opts.BufferMin, opts.Timezone)
 	if err != nil {
 		result.Errors = append(result.Errors, fmt.Sprintf("association: %v", err))
 	} else {
 		result.Associated = assoc
 	}
 
+	slog.Info("IndexMedia: terminé",
+		"scanned", result.Scanned,
+		"new_files", result.NewFiles,
+		"associated", result.Associated,
+		"errors", len(result.Errors))
+
 	return result, nil
 }
 
-// AssociateMediaWithMatches associe chaque média au match le plus proche en temps.
+// AssociateMediaWithMatches associe chaque média au match dans la fenêtre [start_time, end_time].
 // Portage de MediaIndexer.associate_with_matches() Python.
 // sharedMatchesPath : chemin vers shared_matches_v2.duckdb (peut être vide — association ignorée).
-func AssociateMediaWithMatches(db *sql.DB, sharedMatchesPath string, toleranceMin int) (int, error) {
+// bufferMin : buffer en minutes autour de la fenêtre du match (défaut 2).
+// timezone : IANA pour SET TimeZone (nécessaire car start_time est un TIMESTAMP naïf Paris).
+func AssociateMediaWithMatches(db *sql.DB, sharedMatchesPath string, bufferMin int, timezone string) (int, error) {
 	if sharedMatchesPath == "" {
 		return 0, nil
 	}
+	if bufferMin <= 0 {
+		bufferMin = 2
+	}
+
+	// SET TimeZone pour interpréter correctement les TIMESTAMP naïfs de match_registry.
+	if tz := SanitizeMediaTimezone(timezone); tz != "" {
+		if _, err := db.Exec("SET TimeZone = '" + tz + "'"); err != nil {
+			slog.Warn("AssociateMediaWithMatches: SET TimeZone échoué",
+				"timezone", tz, "err", err)
+		}
+	}
+	slog.Debug("AssociateMediaWithMatches: démarrage",
+		"shared_matches_path", sharedMatchesPath,
+		"buffer_min", bufferMin,
+		"timezone", timezone)
+
 	// ATTACH la DB des matchs en lecture seule pour accéder à match_registry.
 	if _, err := db.Exec(fmt.Sprintf(`ATTACH '%s' AS shared_matches (READ_ONLY)`, sharedMatchesPath)); err != nil {
 		return 0, fmt.Errorf("attach shared_matches: %w", err)
 	}
 	defer db.Exec(`DETACH shared_matches`) //nolint:errcheck
 
+	// La capture doit se situer dans [start_time - buffer, end_time + buffer].
+	// start_time et end_time sont des TIMESTAMP naïfs en heure Paris — SET TimeZone les corrige.
 	q := fmt.Sprintf(`
 		INSERT OR IGNORE INTO media_match_associations (media_file_id, match_id, delta_seconds)
 		SELECT
@@ -161,14 +229,19 @@ func AssociateMediaWithMatches(db *sql.DB, sharedMatchesPath string, toleranceMi
 			ABS(DATEDIFF('second', mf.capture_start_utc, mr.start_time)) AS delta_s
 		FROM media_files mf
 		JOIN shared_matches.match_registry mr
-		    ON ABS(DATEDIFF('minute', mf.capture_start_utc, mr.start_time)) <= %d
+			ON mf.capture_start_utc
+				BETWEEN (mr.start_time - INTERVAL '%d minutes')
+				    AND (mr.end_time   + INTERVAL '%d minutes')
 		WHERE mf.id NOT IN (SELECT media_file_id FROM media_match_associations)
-	`, toleranceMin)
+	`, bufferMin, bufferMin)
 	res, err := db.Exec(q)
 	if err != nil {
+		slog.Error("AssociateMediaWithMatches: erreur SQL", "err", err)
 		return 0, err
 	}
 	n, _ := res.RowsAffected()
+	slog.Info("AssociateMediaWithMatches: terminé",
+		"associations_created", n, "buffer_min", bufferMin, "timezone", timezone)
 	return int(n), nil
 }
 
@@ -323,18 +396,97 @@ func fileHash(path string) (string, error) {
 	return fmt.Sprintf("%x", h.Sum(nil))[:16], nil
 }
 
-func insertMediaFile(db *sql.DB, path, hash, playerSlug string) error {
+func insertMediaFile(db *sql.DB, path, hash, playerSlug string, captureTimeUnix *int64, loc *time.Location) error {
 	ext := strings.ToLower(filepath.Ext(path))
 	kind := supportedExtensions[ext]
-	fi, _ := os.Stat(path)
+
 	var captureAt *time.Time
-	if fi != nil {
-		t := fi.ModTime().UTC()
-		captureAt = &t
+
+	// Priorité 1 : datetime extraite du nom de fichier Xbox.
+	if t := parseCaptureTimeFromFilename(filepath.Base(path), loc); t != nil {
+		captureAt = t
+		slog.Debug("insertMediaFile: datetime extraite du nom de fichier",
+			"file", filepath.Base(path), "capture_start_utc", *t)
 	}
+
+	// Priorité 2 : mtime client fourni par le navigateur (file.lastModified).
+	if captureAt == nil && captureTimeUnix != nil && *captureTimeUnix > 0 {
+		t := time.Unix(*captureTimeUnix, 0).UTC()
+		captureAt = &t
+		slog.Debug("insertMediaFile: datetime depuis file.lastModified client",
+			"file", filepath.Base(path), "capture_start_utc", t)
+	}
+
+	// Priorité 3 : mtime filesystem (fallback — incorrect sur serveur, correct en local).
+	if captureAt == nil {
+		fi, _ := os.Stat(path)
+		if fi != nil {
+			t := fi.ModTime().UTC()
+			captureAt = &t
+			slog.Debug("insertMediaFile: datetime depuis mtime filesystem (fallback)",
+				"file", filepath.Base(path), "capture_start_utc", t)
+		}
+	}
+
 	_, err := db.Exec(`
 		INSERT OR IGNORE INTO media_files (player_slug, file_path, file_name, file_hash, kind, capture_start_utc)
 		VALUES (?, ?, ?, ?, ?, ?)
 	`, playerSlug, path, filepath.Base(path), hash, kind, captureAt)
 	return err
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Helpers timezone + filename parser
+// ─────────────────────────────────────────────────────────────────────────────
+
+// SanitizeMediaTimezone valide un nom de timezone IANA pour éviter l'injection SQL.
+// Retourne "" si la valeur contient des caractères non autorisés.
+// Exportée pour être utilisée par service.NewMediaService.
+func SanitizeMediaTimezone(tz string) string {
+	for _, c := range tz {
+		switch {
+		case c >= 'A' && c <= 'Z':
+		case c >= 'a' && c <= 'z':
+		case c >= '0' && c <= '9':
+		case c == '/' || c == '_' || c == '-' || c == '+':
+		default:
+			return ""
+		}
+	}
+	return tz
+}
+
+// xboxFilenameRe matche le pattern Xbox :
+// "Halo Infinite 2024.11.15 - 21.30.45.01.mp4"
+// Groupe 1=année 2=mois 3=jour 4=heure 5=min 6=sec
+var xboxFilenameRe = regexp.MustCompile(
+	`(\d{4})\.(\d{2})\.(\d{2}) - (\d{2})\.(\d{2})\.(\d{2})`)
+
+// parseCaptureTimeFromFilename tente d'extraire la datetime depuis le nom de fichier Xbox.
+// Retourne nil si aucun pattern connu n'est trouvé.
+// La datetime est interprétée comme heure locale (loc), puis convertie en UTC.
+func parseCaptureTimeFromFilename(name string, loc *time.Location) *time.Time {
+	if loc == nil {
+		return nil
+	}
+	if m := xboxFilenameRe.FindStringSubmatch(name); m != nil {
+		year := mustAtoi(m[1])
+		month := mustAtoi(m[2])
+		day := mustAtoi(m[3])
+		hour := mustAtoi(m[4])
+		min := mustAtoi(m[5])
+		sec := mustAtoi(m[6])
+		if year == 0 {
+			return nil
+		}
+		t := time.Date(year, time.Month(month), day, hour, min, sec, 0, loc).UTC()
+		return &t
+	}
+	return nil
+}
+
+// mustAtoi convertit une string en int, retourne 0 en cas d'erreur.
+func mustAtoi(s string) int {
+	n, _ := strconv.Atoi(s)
+	return n
 }
