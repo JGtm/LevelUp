@@ -20,7 +20,10 @@ import (
 func newSettingsRouter(t *testing.T, demoMode bool) *chi.Mux {
 	t.Helper()
 	dir := t.TempDir()
-	cfg := &config.AppConfig{DemoMode: demoMode}
+	cfg := &config.AppConfig{
+		DemoMode:       demoMode,
+		DBProfilesPath: filepath.Join(dir, "db_profiles.json"),
+	}
 	settingsStore := settings_platform.NewStore(filepath.Join(dir, "app_settings.json"))
 	jobStore := jobs.NewStore(filepath.Join(dir, "jobs.json"))
 	h := handlers.NewSettingsHandler(cfg, settingsStore, jobStore)
@@ -29,6 +32,7 @@ func newSettingsRouter(t *testing.T, demoMode bool) *chi.Mux {
 	r.Get("/settings", h.GetSettings)
 	r.Patch("/settings", h.PatchSettings)
 	r.Post("/settings/media/reset-index", h.PostMediaResetIndex)
+	r.Post("/settings/sessions/recalculate", h.PostRecalculateSessions)
 	return r
 }
 
@@ -127,5 +131,130 @@ func TestSettingsHandler_PostMediaReset_OK(t *testing.T) {
 
 	if w.Code != http.StatusAccepted {
 		t.Fatalf("expected 202, got %d: %s", w.Code, w.Body.String())
+	}
+}
+
+// ─── Validation des nouveaux champs Analyse ───────────────────────────────────
+
+func patch(t *testing.T, r *chi.Mux, body string) *httptest.ResponseRecorder {
+	t.Helper()
+	req := httptest.NewRequest(http.MethodPatch, "/settings", bytes.NewReader([]byte(body)))
+	req.Header.Set("Content-Type", "application/json")
+	w := httptest.NewRecorder()
+	r.ServeHTTP(w, req)
+	return w
+}
+
+func TestSettingsHandler_Patch_SessionGapNegative_400(t *testing.T) {
+	r := newSettingsRouter(t, false)
+	w := patch(t, r, `{"session_gap_minutes": -1}`)
+	if w.Code != http.StatusBadRequest {
+		t.Errorf("expected 400 for negative gap, got %d", w.Code)
+	}
+}
+
+func TestSettingsHandler_Patch_SessionGapZero_OK(t *testing.T) {
+	r := newSettingsRouter(t, false)
+	w := patch(t, r, `{"session_gap_minutes": 0}`)
+	if w.Code != http.StatusOK {
+		t.Errorf("expected 200 for gap=0, got %d: %s", w.Code, w.Body.String())
+	}
+}
+
+func TestSettingsHandler_Patch_InvalidBadgeSensitivity_400(t *testing.T) {
+	r := newSettingsRouter(t, false)
+	w := patch(t, r, `{"outcome_badge_sensitivity": "invalid"}`)
+	if w.Code != http.StatusBadRequest {
+		t.Errorf("expected 400 for invalid sensitivity, got %d", w.Code)
+	}
+}
+
+func TestSettingsHandler_Patch_ValidBadgeSensitivityStrict_200(t *testing.T) {
+	r := newSettingsRouter(t, false)
+	w := patch(t, r, `{"outcome_badge_sensitivity": "strict"}`)
+	if w.Code != http.StatusOK {
+		t.Errorf("expected 200 for sensitivity=strict, got %d: %s", w.Code, w.Body.String())
+	}
+}
+
+func TestSettingsHandler_Patch_ValidTeamChangeModeFriends_200(t *testing.T) {
+	r := newSettingsRouter(t, false)
+	w := patch(t, r, `{"session_team_change_mode": "friends"}`)
+	if w.Code != http.StatusOK {
+		t.Errorf("expected 200 for team_change_mode=friends, got %d: %s", w.Code, w.Body.String())
+	}
+}
+
+func TestSettingsHandler_Patch_InvalidTeamChangeMode_400(t *testing.T) {
+	r := newSettingsRouter(t, false)
+	w := patch(t, r, `{"session_team_change_mode": "random"}`)
+	if w.Code != http.StatusBadRequest {
+		t.Errorf("expected 400 for invalid team_change_mode, got %d", w.Code)
+	}
+}
+
+func TestSettingsHandler_Patch_AnalyseRoundTrip(t *testing.T) {
+	r := newSettingsRouter(t, false)
+
+	// PATCH
+	patchBody := `{
+		"session_gap_minutes": 90,
+		"session_team_change_mode": "ignore",
+		"session_split_on_ranked_change": true,
+		"outcome_badge_sensitivity": "relaxed",
+		"outcome_exclude_bot_matches_from_badges": false,
+		"outcome_exclude_bot_matches_from_records": true
+	}`
+	pw := patch(t, r, patchBody)
+	if pw.Code != http.StatusOK {
+		t.Fatalf("PATCH failed (%d): %s", pw.Code, pw.Body.String())
+	}
+
+	// GET → vérifier que les valeurs sont persistées.
+	req := httptest.NewRequest(http.MethodGet, "/settings", nil)
+	gw := httptest.NewRecorder()
+	r.ServeHTTP(gw, req)
+	if gw.Code != http.StatusOK {
+		t.Fatalf("GET failed (%d): %s", gw.Code, gw.Body.String())
+	}
+
+	var got map[string]interface{}
+	if err := json.Unmarshal(gw.Body.Bytes(), &got); err != nil {
+		t.Fatalf("json decode: %v", err)
+	}
+	if got["session_gap_minutes"] != float64(90) {
+		t.Errorf("session_gap_minutes = %v, want 90", got["session_gap_minutes"])
+	}
+	if got["session_team_change_mode"] != "ignore" {
+		t.Errorf("session_team_change_mode = %v, want 'ignore'", got["session_team_change_mode"])
+	}
+	if got["outcome_badge_sensitivity"] != "relaxed" {
+		t.Errorf("outcome_badge_sensitivity = %v, want 'relaxed'", got["outcome_badge_sensitivity"])
+	}
+}
+
+func TestSettingsHandler_PostRecalculateSessions_Accepted(t *testing.T) {
+	r := newSettingsRouter(t, false)
+
+	req := httptest.NewRequest(http.MethodPost, "/settings/sessions/recalculate", nil)
+	w := httptest.NewRecorder()
+	r.ServeHTTP(w, req)
+
+	if w.Code != http.StatusAccepted {
+		t.Fatalf("expected 202 Accepted, got %d: %s", w.Code, w.Body.String())
+	}
+
+	var body map[string]interface{}
+	if err := json.Unmarshal(w.Body.Bytes(), &body); err != nil {
+		t.Fatalf("invalid JSON response: %v", err)
+	}
+	if body["job_id"] == "" || body["job_id"] == nil {
+		t.Errorf("expected non-empty job_id in response, got %v", body)
+	}
+	if body["status"] != "queued" {
+		t.Errorf("expected status=queued, got %v", body["status"])
+	}
+	if body["job_type"] != "sessions_recalculate" {
+		t.Errorf("expected job_type=sessions_recalculate, got %v", body["job_type"])
 	}
 }

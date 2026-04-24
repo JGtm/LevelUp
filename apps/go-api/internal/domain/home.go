@@ -111,12 +111,20 @@ type HomeSpartanIdentityRow struct {
 
 // HeroKPIs contient les KPIs globaux du joueur affichés dans le hero card.
 type HeroKPIs struct {
-	WinRate      float64  `json:"win_rate"`
-	GlobalRatio  *float64 `json:"global_ratio,omitempty"`
-	AvgAccuracy  *float64 `json:"avg_accuracy,omitempty"`
-	TotalMatches int      `json:"total_matches"`
-	Wins         int      `json:"wins"`
-	Losses       int      `json:"losses"`
+	WinRate                float64  `json:"win_rate"`
+	GlobalRatio            *float64 `json:"global_ratio,omitempty"`
+	AvgKDA                 *float64 `json:"avg_kda,omitempty"`
+	AvgAccuracy            *float64 `json:"avg_accuracy,omitempty"`
+	TotalMatches           int      `json:"total_matches"`
+	Wins                   int      `json:"wins"`
+	Draws                  int      `json:"draws"`
+	DNFs                   int      `json:"dnfs"`
+	Losses                 int      `json:"losses"`
+	TotalPlaytimeSecs      int      `json:"total_playtime_secs"`
+	FavoriteWeaponName     string   `json:"favorite_weapon_name,omitempty"`
+	FavoriteWeaponKills    int      `json:"favorite_weapon_kills,omitempty"`
+	AvgOffensiveConversion *float64 `json:"avg_offensive_conversion,omitempty"`
+	AvgDefensiveResistance *float64 `json:"avg_defensive_resistance,omitempty"`
 }
 
 // HeroTrend représente la variation des métriques clés sur une fenêtre glissante.

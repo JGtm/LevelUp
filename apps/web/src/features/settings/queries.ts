@@ -27,3 +27,15 @@ export function useUpdateSettings() {
     },
   })
 }
+
+export function useScanMedia() {
+  return useMutation({
+    mutationFn: () => api.post<unknown>('/settings/media/scan', {}),
+  })
+}
+
+export function useRecalculateSessions() {
+  return useMutation({
+    mutationFn: () => api.post<{ job_id: string }>('/settings/sessions/recalculate', {}),
+  })
+}

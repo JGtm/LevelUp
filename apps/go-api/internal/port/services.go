@@ -49,6 +49,13 @@ type SeasonPassService interface {
 	GetSeasonPassPage(ctx context.Context) (domain.SeasonPassPageResponse, error)
 }
 
+// SessionNotifier est notifié des changements de présence active d'un joueur.
+// Implémenté par *service.HomeService pour ajuster le TTL cache BP/Challenges
+// en fonction de l'état de session (actif → 5 min, inactif → 1 h).
+type SessionNotifier interface {
+	SetSessionActive(active bool)
+}
+
 // MatchHistoryService construit les réponses d'historique de matchs.
 type MatchHistoryService interface {
 	GetPage(ctx context.Context, req domain.MatchHistoryQueryRequest) (domain.MatchHistoryPageResponse, error)

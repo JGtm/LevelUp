@@ -60,7 +60,7 @@ func runSyncDelta(cfg *config.AppConfig, args []string) error {
 		return fmt.Errorf("exchange Halo: %w", err)
 	}
 
-	engine := go_sync.NewSyncEngine(cfg.RepoRoot, player.Gamertag, player.XUID, result.Tokens)
+	engine := go_sync.NewSyncEngine(cfg.RepoRoot, player.Gamertag, player.XUID, result.Tokens, provider)
 	opts := domain.DefaultSyncOptions()
 	opts.MatchType = *matchType
 	opts.MaxMatches = *maxMatches
@@ -146,7 +146,7 @@ func runSyncDeltaAll(
 			continue
 		}
 
-		engine := go_sync.NewSyncEngine(cfg.RepoRoot, player.Gamertag, player.XUID, result.Tokens)
+		engine := go_sync.NewSyncEngine(cfg.RepoRoot, player.Gamertag, player.XUID, result.Tokens, provider)
 		syncResult, syncErr := engine.RunDelta(ctx, opts)
 		if syncErr != nil {
 			failed++

@@ -53,6 +53,7 @@ func (h *HomeHandler) GetHomePage(w http.ResponseWriter, r *http.Request) {
 	slug := chi.URLParam(r, "player_slug")
 	svc, ctx, _, gamertag, err := h.newSvc(r.Context(), slug)
 	if err != nil {
+		slog.ErrorContext(r.Context(), "home: newSvc error", "slug", slug, "err", err)
 		writeError(w, http.StatusNotFound, "player_not_found", "joueur introuvable")
 		return
 	}

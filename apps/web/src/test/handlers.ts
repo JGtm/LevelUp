@@ -116,7 +116,7 @@ const matchHistoryFixture = {
 const homeFixture = {
   hero: {
     player_name: 'TestPlayer',
-    kpis: { win_rate: 55.0, global_ratio: 1.2, avg_accuracy: 42.0, total_matches: 120, wins: 66, losses: 54 },
+    kpis: { win_rate: 55.0, global_ratio: 1.2, avg_kda: 1.5, avg_accuracy: 42.0, total_matches: 120, wins: 66, draws: 2, dnfs: 0, losses: 52, total_playtime_secs: 180000, favorite_weapon_name: 'BR75', favorite_weapon_kills: 320, avg_offensive_conversion: 1.1, avg_defensive_resistance: 1.4 },
     trend: null,
   },
   highlights: [],
@@ -164,6 +164,11 @@ const settingsFixture = {
   discord_notify_backfill: false,
   discord_notify_new_version: false,
   discord_notify_new_media: false,
+  spnkr_auto_sync_enabled: false,
+  spnkr_auto_sync_interval_hours: 0,
+  spnkr_auto_sync_interval_minutes: 360,
+  watcher_presence_enabled: false,
+  watcher_subscribed_players: [],
   spnkr_refresh_with_backfill: false,
   spnkr_refresh_backfill_medals: false,
   spnkr_refresh_backfill_skill: false,
@@ -173,6 +178,7 @@ const settingsFixture = {
   spnkr_refresh_backfill_lusr: false,
   spnkr_refresh_backfill_events: false,
   spnkr_refresh_backfill_weapons: false,
+  friend_gamertags: [],
 }
 
 const emptyKPIs = {

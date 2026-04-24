@@ -44,7 +44,7 @@ func (m *mockHomeRepo) LoadHomeSessions(_ context.Context) ([]domain.HomeSession
 func (m *mockHomeRepo) LoadRecentMedia(_ context.Context, _ int) ([]domain.HomeMediaRow, error) {
 	return m.media, m.mediaErr
 }
-func (m *mockHomeRepo) LoadRecentPlaylistRanks(_ context.Context) ([]domain.HomePlaylistRank, error) {
+func (m *mockHomeRepo) LoadRecentPlaylistRanks(_ context.Context, _ string) ([]domain.HomePlaylistRank, error) {
 	return m.recentPlaylistRanks, m.recentPlaylistRanksErr
 }
 
@@ -54,6 +54,10 @@ func (m *mockHomeRepo) LoadMatchMedals(_ context.Context, _ []string) (map[strin
 
 func (m *mockHomeRepo) LoadMatchCitations(_ context.Context, _ []string) (map[string][]domain.HomeMatchCitationRaw, error) {
 	return map[string][]domain.HomeMatchCitationRaw{}, nil
+}
+
+func (m *mockHomeRepo) LoadFavoriteWeapon(_ context.Context, _ string) (string, int, error) {
+	return "", 0, nil
 }
 
 // --- tests ---
@@ -429,4 +433,151 @@ func TestHomeService_GetBattlePass_NoCacheRepo(t *testing.T) {
 	if resp.FromCache {
 		t.Error("expected FromCache=false when no cache repo")
 	}
+}
+
+// ---------------------------------------------------------------------------
+// Tests TTL dynamique (SetSessionActive / currentTTL)
+// ---------------------------------------------------------------------------
+
+func TestHomeService_DefaultTTL_Is1Hour(t *testing.T) {
+	svc := NewHomeService(&mockHomeRepo{})
+	if got := svc.currentTTL(); got != battlePassCacheTTLDefault {
+		t.Errorf("TTL par défaut attendu %v, obtenu %v", battlePassCacheTTLDefault, got)
+	}
+}
+
+func TestHomeService_SetSessionActive_True_ReducesTTL(t *testing.T) {
+	svc := NewHomeService(&mockHomeRepo{})
+	svc.SetSessionActive(true)
+	if got := svc.currentTTL(); got != battlePassCacheTTLActive {
+		t.Errorf("TTL session active attendu %v, obtenu %v", battlePassCacheTTLActive, got)
+	}
+}
+
+func TestHomeService_SetSessionActive_False_RestoresTTL(t *testing.T) {
+	svc := NewHomeService(&mockHomeRepo{})
+	svc.SetSessionActive(true)
+	svc.SetSessionActive(false)
+	if got := svc.currentTTL(); got != battlePassCacheTTLDefault {
+		t.Errorf("TTL restauré attendu %v, obtenu %v", battlePassCacheTTLDefault, got)
+	}
+}
+
+func TestHomeService_SetSessionActive_Idempotent_True(t *testing.T) {
+	svc := NewHomeService(&mockHomeRepo{})
+	svc.SetSessionActive(true)
+	svc.SetSessionActive(true)
+	if got := svc.currentTTL(); got != battlePassCacheTTLActive {
+		t.Errorf("double SetSessionActive(true) : TTL attendu %v, obtenu %v", battlePassCacheTTLActive, got)
+	}
+}
+
+func TestHomeService_SetSessionActive_Idempotent_False(t *testing.T) {
+	svc := NewHomeService(&mockHomeRepo{})
+	// Double false sans true préalable — ne doit pas paniquer et TTL = 1h
+	svc.SetSessionActive(false)
+	svc.SetSessionActive(false)
+	if got := svc.currentTTL(); got != battlePassCacheTTLDefault {
+		t.Errorf("double SetSessionActive(false) : TTL attendu %v, obtenu %v", battlePassCacheTTLDefault, got)
+	}
+}
+
+// mockBattlePassCacheRepoWithTTL capture le TTL passé par le service.
+type mockBattlePassCacheRepoWithTTL struct {
+	mockBattlePassCacheRepo
+	lastBPTTL time.Duration
+	lastChTTL time.Duration
+}
+
+func (m *mockBattlePassCacheRepoWithTTL) LoadCachedBattlePass(_ context.Context, ttl time.Duration) (*domain.BattlePassResponse, bool, error) {
+	m.lastBPTTL = ttl
+	m.bpCalls++
+	return m.bpResp, m.bpHit, m.bpErr
+}
+
+func (m *mockBattlePassCacheRepoWithTTL) LoadCachedChallenges(_ context.Context, ttl time.Duration) (*domain.ChallengesResponse, bool, error) {
+	m.lastChTTL = ttl
+	m.chCalls++
+	return m.chResp, m.chHit, m.chErr
+}
+
+func TestGetBattlePass_UsesActiveTTL_WhenSessionActive(t *testing.T) {
+	cacheRepo := &mockBattlePassCacheRepoWithTTL{}
+	svc := NewHomeService(&mockHomeRepo{}).WithCacheRepo(cacheRepo)
+	svc.SetSessionActive(true)
+	svc.GetBattlePass(context.Background())
+	if cacheRepo.lastBPTTL != battlePassCacheTTLActive {
+		t.Errorf("TTL transmis au cache attendu %v, obtenu %v", battlePassCacheTTLActive, cacheRepo.lastBPTTL)
+	}
+}
+
+func TestGetBattlePass_UsesDefaultTTL_WhenSessionInactive(t *testing.T) {
+	cacheRepo := &mockBattlePassCacheRepoWithTTL{}
+	svc := NewHomeService(&mockHomeRepo{}).WithCacheRepo(cacheRepo)
+	svc.GetBattlePass(context.Background())
+	if cacheRepo.lastBPTTL != battlePassCacheTTLDefault {
+		t.Errorf("TTL transmis au cache attendu %v, obtenu %v", battlePassCacheTTLDefault, cacheRepo.lastBPTTL)
+	}
+}
+
+func TestGetChallenges_UsesActiveTTL_WhenSessionActive(t *testing.T) {
+	cacheRepo := &mockBattlePassCacheRepoWithTTL{}
+	svc := NewHomeService(&mockHomeRepo{}).WithCacheRepo(cacheRepo)
+	svc.SetSessionActive(true)
+	svc.GetChallenges(context.Background())
+	if cacheRepo.lastChTTL != battlePassCacheTTLActive {
+		t.Errorf("TTL challenges transmis attendu %v, obtenu %v", battlePassCacheTTLActive, cacheRepo.lastChTTL)
+	}
+}
+
+func TestGetChallenges_UsesDefaultTTL_WhenSessionInactive(t *testing.T) {
+	cacheRepo := &mockBattlePassCacheRepoWithTTL{}
+	svc := NewHomeService(&mockHomeRepo{}).WithCacheRepo(cacheRepo)
+	svc.GetChallenges(context.Background())
+	if cacheRepo.lastChTTL != battlePassCacheTTLDefault {
+		t.Errorf("TTL challenges transmis attendu %v, obtenu %v", battlePassCacheTTLDefault, cacheRepo.lastChTTL)
+	}
+}
+
+func TestGetBattlePass_NoSink_StillWorksAfterSetSessionActive(t *testing.T) {
+	// Sans PersistSink — ne doit pas paniquer même avec session active
+	svc := NewHomeService(&mockHomeRepo{})
+	svc.SetSessionActive(true)
+	_ = svc.GetBattlePass(context.Background())
+}
+
+func TestGetChallenges_NoSink_StillWorksAfterSetSessionActive(t *testing.T) {
+	svc := NewHomeService(&mockHomeRepo{})
+	svc.SetSessionActive(true)
+	_ = svc.GetChallenges(context.Background())
+}
+
+func TestGetBattlePass_NoCacheRepo_LiveFallback_WithSessionActive(t *testing.T) {
+	// Sans cacheRepo, le TTL dynamique ne casse pas le fallback live
+	svc := NewHomeService(&mockHomeRepo{})
+	svc.SetSessionActive(true)
+	resp := svc.GetBattlePass(context.Background())
+	if resp.FromCache {
+		t.Error("expected FromCache=false without cache repo")
+	}
+}
+
+func TestHomeService_ConcurrentSetSessionActive(t *testing.T) {
+	svc := NewHomeService(&mockHomeRepo{})
+	done := make(chan struct{})
+
+	// N goroutines alternent SetSessionActive
+	for i := 0; i < 20; i++ {
+		go func(i int) {
+			svc.SetSessionActive(i%2 == 0)
+		}(i)
+	}
+	// M goroutines lisent currentTTL (pas de data race attendu)
+	for i := 0; i < 10; i++ {
+		go func() {
+			_ = svc.currentTTL()
+		}()
+	}
+	close(done)
+	// Pas d'assertion sur la valeur finale — on vérifie l'absence de race (-race flag)
 }

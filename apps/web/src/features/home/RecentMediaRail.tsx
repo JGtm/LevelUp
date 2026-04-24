@@ -7,7 +7,7 @@ import { Spinner } from '@/components/ui/spinner'
 import { useRecentMediaRail, useToggleMediaLike } from '@/features/media/queries'
 import { MediaLightbox, MediaThumbnailCard } from '@/features/media/MediaViewer'
 
-const HOME_MEDIA_LIMIT = 12
+const HOME_MEDIA_LIMIT = 20
 
 type MediaTab = 'recent' | 'liked'
 

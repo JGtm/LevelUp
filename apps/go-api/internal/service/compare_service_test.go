@@ -3,6 +3,7 @@ package service
 import (
 	"context"
 	"errors"
+	"sync"
 	"testing"
 	"time"
 
@@ -102,11 +103,14 @@ type mockCompareRepoAB struct {
 	bErr    error
 	xuid    string
 	xuidErr error
+	mu      sync.Mutex
 	calls   int
 }
 
 func (m *mockCompareRepoAB) GetLocalStats(_ context.Context, xuid, _ string) (*domain.NormalizedPlayerStats, error) {
+	m.mu.Lock()
 	m.calls++
+	m.mu.Unlock()
 	if xuid == "xuid-b" || (m.a != nil && xuid != "xuid-a") {
 		if m.bErr != nil {
 			return nil, m.bErr

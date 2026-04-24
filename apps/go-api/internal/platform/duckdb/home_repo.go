@@ -742,6 +742,36 @@ func (r *HomeRepo) LoadRecentMedia(ctx context.Context, limit int) ([]domain.Hom
 	return result, rows.Err()
 }
 
+// LoadFavoriteWeapon retourne le nom localisé et le nombre de kills de l'arme la plus utilisée
+// par le joueur sur l'ensemble de ses matchs (Q26k).
+// Dégradation silencieuse : retourne ("", 0, nil) si la table weapon_kills est vide ou absente.
+func (r *HomeRepo) LoadFavoriteWeapon(ctx context.Context, locale string) (string, int, error) {
+	var weaponID uint64
+	var totalKills int
+	err := r.pdb.ReadDB().QueryRow(ctx, Q26kFavoriteWeapon, r.pdb.XUID).Scan(&weaponID, &totalKills)
+	if err != nil {
+		return "", 0, nil //nolint:nilerr // dégradation silencieuse
+	}
+
+	// Résolution du label depuis metadata.
+	nameCol := "COALESCE(name_fr, name_en, '')"
+	if locale == "en" {
+		nameCol = "COALESCE(name_en, name_fr, '')"
+	}
+	var weaponName string
+	metaErr := r.pdb.Metadata.QueryRow(ctx,
+		"SELECT "+nameCol+" FROM weapon_labels WHERE weapon_id = ?",
+		weaponID,
+	).Scan(&weaponName)
+	if metaErr != nil || weaponName == "" {
+		weaponName = "Inconnue"
+		if locale == "en" {
+			weaponName = "Unknown"
+		}
+	}
+	return weaponName, totalKills, nil
+}
+
 // LoadMatchMedals charge les médailles d'un joueur pour un lot de matchs (Q26h).
 // Retourne un map match_id → []domain.RecentMatchMedal, trié par count DESC.
 // Labels résolus via medal_definitions (name_fr) en priorité, citation_mappings en fallback.

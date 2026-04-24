@@ -47,7 +47,7 @@ func newSyncRouter(t *testing.T, canStart bool) (*chi.Mux, *jobs.Store) {
 	jobStore := jobs.NewStore(filepath.Join(dir, "jobs.json"))
 	settingsStore := settings_platform.NewStore(settingsPath)
 
-	h := handlers.NewSyncHandler(cfg, settingsStore, jobStore)
+	h := handlers.NewSyncHandler(cfg, settingsStore, jobStore, nil)
 	r := chi.NewRouter()
 	r.Post("/sync/initial", h.StartInitialSync)
 	return r, jobStore

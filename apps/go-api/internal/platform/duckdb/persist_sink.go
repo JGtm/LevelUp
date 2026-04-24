@@ -68,6 +68,17 @@ func (s *PersistSink) PersistBattlePass(trackPath string, rawBody []byte) {
 	}()
 }
 
+// PersistBattlePassSync persiste les données BP de manière synchrone.
+// Contrairement à PersistBattlePass (fire-and-forget), cette variante bloque
+// jusqu'à la fin des écritures, garantissant que les snapshots sont en DB
+// avant la prochaine lecture (ex: Season Pass page).
+func (s *PersistSink) PersistBattlePassSync(ctx context.Context, trackPath string, rawBody []byte) error {
+	if s.MetaPath == "" || trackPath == "" || len(rawBody) == 0 {
+		return nil
+	}
+	return s.writeBattlePass(ctx, trackPath, rawBody)
+}
+
 // battlePassTrackRaw est le struct de parsing best-effort d'un track depuis /operations.
 type battlePassTrackRaw struct {
 	RewardTrackPath string `json:"RewardTrackPath"`

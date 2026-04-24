@@ -130,8 +130,8 @@ func TestOpenPlayerDB_CreatesAndSchemas(t *testing.T) {
 		t.Fatalf("OpenPlayerDB: %v", err)
 	}
 	defer db.Close()
-	assertTableExists(t, db, "player_match_enrichment")
-	assertTableExists(t, db, "sync_meta")
+	assertTableExists(t, db.SQLDb(), "player_match_enrichment")
+	assertTableExists(t, db.SQLDb(), "sync_meta")
 }
 
 func TestOpenSharedDB_CreatesAndSchemas(t *testing.T) {
@@ -142,6 +142,6 @@ func TestOpenSharedDB_CreatesAndSchemas(t *testing.T) {
 		t.Fatalf("OpenSharedDB: %v", err)
 	}
 	defer db.Close()
-	assertTableExists(t, db, "match_registry")
-	assertTableExists(t, db, "match_participants")
+	assertTableExists(t, db.SQLDb(), "match_registry")
+	assertTableExists(t, db.SQLDb(), "match_participants")
 }

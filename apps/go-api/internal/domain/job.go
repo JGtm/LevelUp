@@ -26,6 +26,7 @@ const (
 	JobTypeBackfill       JobType = "backfill"
 	JobTypeReindexMedia   JobType = "reindex_media"
 	JobTypeScanMedia      JobType = "scan_media"
+	JobTypeSessionsRecalc JobType = "sessions_recalculate"
 	JobTypeOther          JobType = "other"
 )
 

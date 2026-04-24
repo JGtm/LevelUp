@@ -53,7 +53,7 @@ type DeltaRunner interface {
 
 // EngineFactory crée un DeltaRunner pour un joueur donné.
 // La factory par défaut utilise sync.NewSyncEngine.
-type EngineFactory func(repoRoot, gamertag, xuid string, tokens *domain.HaloTokens) DeltaRunner
+type EngineFactory func(repoRoot, gamertag, xuid string, tokens *domain.HaloTokens, provider auth.TokenProvider) DeltaRunner
 
 // TokenReader lit l'access_token depuis la DB d'un joueur (via sync_meta) et/ou
 // depuis l'environnement (SPNKR_OAUTH_REFRESH_TOKEN_<GAMERTAG>).
@@ -256,7 +256,7 @@ func (s *AutoSyncScheduler) syncPlayer(ctx context.Context, p domain.PlayerSumma
 	)
 
 	slog.InfoContext(ctx, "auto_sync: démarrage sync delta", "gamertag", p.Gamertag)
-	runner := s.EngineFactory(s.cfg.RepoRoot, p.Gamertag, p.XUID, result.Tokens)
+	runner := s.EngineFactory(s.cfg.RepoRoot, p.Gamertag, p.XUID, result.Tokens, s.provider)
 	syncResult, err := runner.RunDelta(ctx, domain.DefaultSyncOptions())
 	if err != nil {
 		slog.ErrorContext(ctx, "auto_sync: RunDelta échoué",
@@ -333,8 +333,8 @@ func safePrefix(s string, n int) string {
 // ---------------------------------------------------------------------------
 
 // defaultEngineFactory crée un sync.SyncEngine réel.
-func defaultEngineFactory(repoRoot, gamertag, xuid string, tokens *domain.HaloTokens) DeltaRunner {
-	return sync.NewSyncEngine(repoRoot, gamertag, xuid, tokens)
+func defaultEngineFactory(repoRoot, gamertag, xuid string, tokens *domain.HaloTokens, provider auth.TokenProvider) DeltaRunner {
+	return sync.NewSyncEngine(repoRoot, gamertag, xuid, tokens, provider)
 }
 
 // defaultTokenReader lit sync_meta depuis stats.duckdb du joueur et rafraîchit l'access_token.

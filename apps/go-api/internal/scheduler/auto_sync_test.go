@@ -301,7 +301,7 @@ func TestRunOnce_DeltaError(t *testing.T) {
 	validToken := func(_ context.Context, _ string, _ string, _ auth.TokenProvider) (string, error) {
 		return "access_token_valide", nil
 	}
-	factory := func(_, _, _ string, _ *domain.HaloTokens) scheduler.DeltaRunner {
+	factory := func(_, _, _ string, _ *domain.HaloTokens, _ auth.TokenProvider) scheduler.DeltaRunner {
 		return runner
 	}
 	s := newTestScheduler(t, dir, provider, validToken, factory)
@@ -334,7 +334,7 @@ func TestRunOnce_DeltaPartialSuccess(t *testing.T) {
 	validToken := func(_ context.Context, _ string, _ string, _ auth.TokenProvider) (string, error) {
 		return "tok", nil
 	}
-	factory := func(_, _, _ string, _ *domain.HaloTokens) scheduler.DeltaRunner {
+	factory := func(_, _, _ string, _ *domain.HaloTokens, _ auth.TokenProvider) scheduler.DeltaRunner {
 		return runner
 	}
 	s := newTestScheduler(t, dir, provider, validToken, factory)
@@ -366,7 +366,7 @@ func TestRunOnce_FullSuccess(t *testing.T) {
 	msalToken := func(_ context.Context, _ string, _ string, _ auth.TokenProvider) (string, error) {
 		return "msal_access_token", nil
 	}
-	factory := func(_, _, _ string, _ *domain.HaloTokens) scheduler.DeltaRunner {
+	factory := func(_, _, _ string, _ *domain.HaloTokens, _ auth.TokenProvider) scheduler.DeltaRunner {
 		return runner
 	}
 	s := newTestScheduler(t, dir, provider, msalToken, factory)
@@ -404,7 +404,7 @@ func TestRunOnce_MultiPlayer_MixedOutcomes(t *testing.T) {
 		}
 		return "access_token", nil
 	}
-	factory := func(_, _, _ string, _ *domain.HaloTokens) scheduler.DeltaRunner {
+	factory := func(_, _, _ string, _ *domain.HaloTokens, _ auth.TokenProvider) scheduler.DeltaRunner {
 		return runner
 	}
 	// Créer le scheduler d'abord (écrit db_profiles.json vide)
@@ -512,7 +512,7 @@ func TestRunOnce_ActivityChecker_SkipsActivePlayer(t *testing.T) {
 	dir := t.TempDir()
 	provider := &mockProvider{}
 	syncCalled := false
-	factory := func(_, _, _ string, _ *domain.HaloTokens) scheduler.DeltaRunner {
+	factory := func(_, _, _ string, _ *domain.HaloTokens, _ auth.TokenProvider) scheduler.DeltaRunner {
 		syncCalled = true
 		return &mockRunner{}
 	}
@@ -551,7 +551,7 @@ func TestRunOnce_ActivityChecker_SyncsIdlePlayer(t *testing.T) {
 		},
 	}
 	syncCalled := false
-	factory := func(_, _, _ string, _ *domain.HaloTokens) scheduler.DeltaRunner {
+	factory := func(_, _, _ string, _ *domain.HaloTokens, _ auth.TokenProvider) scheduler.DeltaRunner {
 		syncCalled = true
 		return &mockRunner{}
 	}

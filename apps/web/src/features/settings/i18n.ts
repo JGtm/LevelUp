@@ -1,5 +1,11 @@
 export type SettingsLocale = 'fr' | 'en'
 
+export interface HintBullets {
+  intro: string
+  items: string[]
+  outro?: string
+}
+
 export interface SettingsText {
   // Page
   pageTitle: string
@@ -11,6 +17,7 @@ export interface SettingsText {
   // Onglets
   tabGeneral: string
   tabSync: string
+  tabAnalyse: string
   tabLab: string
   tabUsers: string
 
@@ -58,6 +65,10 @@ export interface SettingsText {
   mediaBaseDirLabel: string
   mediaBaseDirPlaceholder: string
   mediaBaseDirHint: string
+  mediaScanButton: string
+  mediaScanRunning: string
+  mediaScanDone: string
+  mediaScanError: string
 
   // Synchronisation SPNKr
   spnkrTitle: string
@@ -105,6 +116,39 @@ export interface SettingsText {
   backfillLUSR: string
   backfillEvents: string
   backfillWeapons: string
+
+  // Onglet Analyse — Sessions
+  analyseTitle: string
+  sessionGroupingTitle: string
+  sessionGapLabel: string
+  sessionGapUnit: string
+  sessionGapHint: string
+  sessionTeamChangeLabel: string
+  sessionTeamChangeIgnore: string
+  sessionTeamChangeGroup: string
+  sessionTeamChangeFriends: string
+  sessionTeamChangeHint: HintBullets
+  sessionSplitRankedLabel: string
+  sessionSplitRankedHint: string
+  sessionRecalcButton: string
+  sessionRecalcRunning: string
+  sessionRecalcPending: string
+  sessionRecalcConfirmTitle: string
+  sessionRecalcConfirmBody: string
+  sessionRecalcConfirmOk: string
+  sessionRecalcConfirmCancel: string
+
+  // Onglet Analyse — Badges de performance
+  badgesTitle: string
+  badgeSensitivityLabel: string
+  badgeSensitivityRelaxed: string
+  badgeSensitivityStandard: string
+  badgeSensitivityStrict: string
+  badgeSensitivityHint: HintBullets
+  badgeExcludeBotsFromBadgesLabel: string
+  badgeExcludeBotsFromBadgesHint: string
+  badgeExcludeBotsFromRecordsLabel: string
+  badgeExcludeBotsFromRecordsHint: string
 }
 
 const FR_TEXT: SettingsText = {
@@ -116,6 +160,7 @@ const FR_TEXT: SettingsText = {
 
   tabGeneral: 'Général',
   tabSync: 'Synchronisation',
+  tabAnalyse: 'Analyse',
   tabLab: 'Lab',
   tabUsers: 'Utilisateurs',
 
@@ -159,8 +204,10 @@ const FR_TEXT: SettingsText = {
   mediaNoBaseDir: "La surveillance des médias est activée mais aucun dossier source n'est défini.",
   mediaBaseDirLabel: 'Dossier des captures',
   mediaBaseDirPlaceholder: 'Ex : C:\\Users\\Moi\\Videos\\Captures ou /mnt/captures',
-  mediaBaseDirHint: 'Sous-dossiers par gamertag attendus : {chemin}/{gamertag}/',
-
+  mediaBaseDirHint: 'Sous-dossiers par gamertag attendus : {chemin}/{gamertag}/',  mediaScanButton: 'Indexer les médias',
+  mediaScanRunning: 'Indexation en cours…',
+  mediaScanDone: '✓ Indexation lancée',
+  mediaScanError: '✗ Échec de l’indexation',
 
   spnkrTitle: 'Synchronisation périodique',
   spnkrAutoSync: 'Synchronisation automatique',
@@ -206,6 +253,68 @@ const FR_TEXT: SettingsText = {
   backfillLUSR: 'LUSR',
   backfillEvents: 'Événements',
   backfillWeapons: 'Armes',
+
+  // Onglet Analyse — Sessions
+  analyseTitle: 'Paramètres d’analyse',
+  sessionGroupingTitle: 'Regroupement de sessions',
+  sessionGapLabel: 'Délai entre deux sessions',
+  sessionGapUnit: 'min',
+  sessionGapHint:
+    'Deux matchs séparés de plus de X minutes appartiennent à des sessions différentes. ' +
+    '120 min (2 h) est le réglage recommandé pour une soirée de jeu classique.',
+  sessionTeamChangeLabel: 'Composition de l’équipe',
+  sessionTeamChangeIgnore: 'Ignorer la composition',
+  sessionTeamChangeGroup: 'Changement de groupe (défaut)',
+  sessionTeamChangeFriends: 'Changement d’amis seulement',
+  sessionTeamChangeHint: {
+    intro: 'Détermine si un changement de composition de votre groupe déclenche une nouvelle session.',
+    items: [
+      '« Ignorer la composition » : les changements de groupe n\'ont aucun effet.',
+      '« Changement de groupe » : toute arrivée ou départ d\'un joueur démarre une nouvelle session (comportement par défaut).',
+      '« Amis seulement » : seul un changement parmi les joueurs de Mon escouade (Paramètres → Général) est pris en compte.',
+    ],
+  },
+  sessionSplitRankedLabel: 'Dissocier si passage classé ↔ social',
+  sessionSplitRankedHint:
+    'Active une nouvelle session dès que vous basculez entre une playlist classée et une playlist sociale. ' +
+    'Utile si vous séparez vos stats ranked des sessions casual.',
+  sessionRecalcButton: 'Recalculer les sessions',
+  sessionRecalcRunning: 'Synchronisation en cours…',
+  sessionRecalcPending: 'Recalcul programmé à la fin du job en cours',
+  sessionRecalcConfirmTitle: 'Recalculer les sessions ?',
+  sessionRecalcConfirmBody:
+    'Les sessions existantes seront supprimées et recalculées à partir de vos matchs. ' +
+    'L\'opération est rapide mais irréversible.',
+  sessionRecalcConfirmOk: 'Recalculer',
+  sessionRecalcConfirmCancel: 'Annuler',
+
+  // Onglet Analyse — Badges de performance
+  badgesTitle: 'Badges de performance',
+  badgeSensitivityLabel: 'Sensibilité des badges',
+  badgeSensitivityRelaxed: 'Souple',
+  badgeSensitivityStandard: 'Standard',
+  badgeSensitivityStrict: 'Strict',
+  badgeSensitivityHint: {
+    intro:
+      'LevelUp analyse l'évolution du score d'équipe pour détecter les moments décisifs. ' +
+      'Un « écart » est l'avance d'une équipe exprimée en % du score final maximum. ' +
+      'Exemple : un match terminé 50-30 a un écart de 40 %.',
+    items: [
+      '« Souple » : écart ≥ 25 % — plus de badges.',
+      '« Standard » : écart ≥ 40 % — seuils historiques (recommandé).',
+      '« Strict » : écart ≥ 60 % — uniquement les matchs très marquants.',
+    ],
+    outro: 'Ce réglage nécessite un recalcul des badges (job automatique).',
+  },
+  badgeExcludeBotsFromBadgesLabel: 'Exclure les matchs avec bots des attributions de badges',
+  badgeExcludeBotsFromBadgesHint:
+    'Quand Halo Infinite manque de joueurs, il remplace les absents par des bots. ' +
+    'Les performances des bots étant variables, un badge Domination ou Humiliation obtenu ' +
+    'contre des bots ne reflète pas votre niveau réel.',
+  badgeExcludeBotsFromRecordsLabel: 'Exclure les matchs avec bots des records carrière',
+  badgeExcludeBotsFromRecordsHint:
+    'Les matchs avec bots peuvent produire des stats atypiques ' +
+    'qui fausseraient vos records personnels.',
 }
 
 const EN_TEXT: SettingsText = {
@@ -217,6 +326,7 @@ const EN_TEXT: SettingsText = {
 
   tabGeneral: 'General',
   tabSync: 'Synchronisation',
+  tabAnalyse: 'Analysis',
   tabLab: 'Lab',
   tabUsers: 'Users',
 
@@ -260,6 +370,10 @@ const EN_TEXT: SettingsText = {
   mediaBaseDirLabel: 'Captures folder',
   mediaBaseDirPlaceholder: 'e.g. C:\\Users\\Me\\Videos\\Captures or /mnt/captures',
   mediaBaseDirHint: 'Subfolders by gamertag expected: {path}/{gamertag}/',
+  mediaScanButton: 'Index media',
+  mediaScanRunning: 'Indexing…',
+  mediaScanDone: '✓ Indexation started',
+  mediaScanError: '✗ Indexation failed',
 
 
   spnkrTitle: 'Periodic synchronisation',
@@ -306,6 +420,68 @@ const EN_TEXT: SettingsText = {
   backfillLUSR: 'LUSR',
   backfillEvents: 'Events',
   backfillWeapons: 'Weapons',
+
+  // Analyse tab — Sessions
+  analyseTitle: 'Analysis settings',
+  sessionGroupingTitle: 'Session grouping',
+  sessionGapLabel: 'Gap between sessions',
+  sessionGapUnit: 'min',
+  sessionGapHint:
+    'Two matches separated by more than X minutes belong to different sessions. ' +
+    '120 min (2 h) is the recommended setting for a typical gaming evening.',
+  sessionTeamChangeLabel: 'Team composition',
+  sessionTeamChangeIgnore: 'Ignore composition',
+  sessionTeamChangeGroup: 'Group change (default)',
+  sessionTeamChangeFriends: 'Friends change only',
+  sessionTeamChangeHint: {
+    intro: 'Determines whether a change in your squad composition triggers a new session.',
+    items: [
+      '"Ignore composition": group changes have no effect.',
+      '"Group change": any player joining or leaving starts a new session (default behaviour).',
+      '"Friends only": only a change among players listed in My squad (Settings → General) is taken into account.',
+    ],
+  },
+  sessionSplitRankedLabel: 'Split on ranked ↔ social switch',
+  sessionSplitRankedHint:
+    'Starts a new session whenever you switch between a ranked and a social playlist. ' +
+    'Useful if you separate your ranked stats from casual sessions.',
+  sessionRecalcButton: 'Recalculate sessions',
+  sessionRecalcRunning: 'Sync in progress…',
+  sessionRecalcPending: 'Recalculation scheduled after current job',
+  sessionRecalcConfirmTitle: 'Recalculate sessions?',
+  sessionRecalcConfirmBody:
+    'Existing sessions will be deleted and recalculated from your matches. ' +
+    'The operation is fast but irreversible.',
+  sessionRecalcConfirmOk: 'Recalculate',
+  sessionRecalcConfirmCancel: 'Cancel',
+
+  // Analyse tab — Performance badges
+  badgesTitle: 'Performance badges',
+  badgeSensitivityLabel: 'Badge sensitivity',
+  badgeSensitivityRelaxed: 'Relaxed',
+  badgeSensitivityStandard: 'Standard',
+  badgeSensitivityStrict: 'Strict',
+  badgeSensitivityHint: {
+    intro:
+      'LevelUp analyses the score curve over the match to detect decisive moments. ' +
+      'A "gap" is one team\'s lead expressed as % of the final max score. ' +
+      'Example: a match ending 50-30 has a 40 % gap (Standard threshold).',
+    items: [
+      '"Relaxed": gap ≥ 25 % — more badges.',
+      '"Standard": gap ≥ 40 % — historical thresholds (recommended).',
+      '"Strict": gap ≥ 60 % — only very decisive matches.',
+    ],
+    outro: 'This setting requires a badge recalculation (automatic job).',
+  },
+  badgeExcludeBotsFromBadgesLabel: 'Exclude bot matches from badges attributions',
+  badgeExcludeBotsFromBadgesHint:
+    'When Halo Infinite runs short of players, it substitutes bots. ' +
+    'Bots performances may vary a lot, a Domination or Humiliation badge ' +
+    'earned against bots does not reflect your real level.',
+  badgeExcludeBotsFromRecordsLabel: 'Exclude bot matches from career records',
+  badgeExcludeBotsFromRecordsHint:
+    'Bot matches can produce atypical stats ' +
+    'that would distort your personal records.',
 }
 
 const TEXT: Record<SettingsLocale, SettingsText> = {

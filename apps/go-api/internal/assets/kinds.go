@@ -57,6 +57,10 @@ const (
 	// KindAssetTranslation est la traduction JSON d'un asset (map, playlist, game variant…).
 	// Source : DiscoveryUGC API.
 	KindAssetTranslation Kind = "asset-translation"
+
+	// KindAchievementImage est l'icône d'un achievement Xbox (PNG).
+	// Source : URL image retournée par l'API Xbox Achievements v2.
+	KindAchievementImage Kind = "achievement-image"
 )
 
 // allKinds liste tous les kinds valides (pour validation).
@@ -74,6 +78,7 @@ var allKinds = map[Kind]struct{}{
 	KindChallengeDefinition:   {},
 	KindRewardTrackDefinition: {},
 	KindAssetTranslation:      {},
+	KindAchievementImage:      {},
 }
 
 // Valid retourne true si k est un Kind connu.
@@ -93,7 +98,8 @@ func (k Kind) IsBinary() bool {
 		KindSpartanEmblem,
 		KindSpartanBanner,
 		KindSpartanBackdrop,
-		KindCareerRankImage:
+		KindCareerRankImage,
+		KindAchievementImage:
 		return true
 	}
 	return false

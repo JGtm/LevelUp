@@ -3,6 +3,7 @@
   "media_enabled": false,
   "media_captures_base_dir": "",
   "media_buffer_minutes": 1,
+  "media_watcher_enabled": false,
   "refresh_clears_caches": false,
   "spnkr_refresh_with_backfill": false,
   "spnkr_refresh_backfill_medals": false,

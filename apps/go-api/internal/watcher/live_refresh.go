@@ -14,6 +14,7 @@ import (
 	"levelup/go-api/internal/ctxkeys"
 	"levelup/go-api/internal/platform/duckdb"
 	"levelup/go-api/internal/platform/halo"
+	"levelup/go-api/internal/port"
 )
 
 // LiveRefreshTrigger est l'interface de rafraîchissement live.
@@ -34,9 +35,11 @@ type PlayerLiveRefresher struct {
 	interval time.Duration
 	provider *halo.HaloProvider
 	sink     *duckdb.PersistSink
+	notifier port.SessionNotifier // nil si non configuré
 
-	cancelMu sync.Mutex
-	cancel   context.CancelFunc
+	notifierWarnOnce sync.Once // log Warn une seule fois si notifier nil
+	cancelMu         sync.Mutex
+	cancel           context.CancelFunc
 }
 
 // NewPlayerLiveRefresher crée un refresher pour un joueur.
@@ -56,9 +59,26 @@ func NewPlayerLiveRefresher(gamertag, xuid string, sink *duckdb.PersistSink, res
 	}
 }
 
+// WithSessionNotifier configure le notifier de présence (implémente port.SessionNotifier).
+// Retourne le refresher pour permettre le chaînage.
+func (r *PlayerLiveRefresher) WithSessionNotifier(n port.SessionNotifier) *PlayerLiveRefresher {
+	r.notifier = n
+	return r
+}
+
 // OnPresenceActive démarre le ticker de rafraîchissement.
 // Sans effet si le ticker tourne déjà.
 func (r *PlayerLiveRefresher) OnPresenceActive(ctx context.Context) {
+	// Notifier avant le ticker pour que le TTL réduit soit effectif dès le démarrage.
+	if r.notifier != nil {
+		r.notifier.SetSessionActive(true)
+	} else {
+		r.notifierWarnOnce.Do(func() {
+			slog.WarnContext(ctx, "live_refresh: aucun SessionNotifier configuré — TTL dynamique inactif",
+				"gamertag", r.gamertag)
+		})
+	}
+
 	r.cancelMu.Lock()
 	defer r.cancelMu.Unlock()
 
@@ -74,6 +94,7 @@ func (r *PlayerLiveRefresher) OnPresenceActive(ctx context.Context) {
 	slog.InfoContext(ctx, "live_refresh: ticker démarré",
 		"gamertag", r.gamertag,
 		"interval", r.interval,
+		"notifier_configured", r.notifier != nil,
 	)
 }
 
@@ -86,6 +107,11 @@ func (r *PlayerLiveRefresher) OnPresenceInactive(ctx context.Context) {
 		r.cancel()
 		r.cancel = nil
 		slog.InfoContext(ctx, "live_refresh: ticker arrêté", "gamertag", r.gamertag)
+	}
+
+	// Notifier après l'arrêt du ticker pour garantir l'ordre (plus de refresh en cours).
+	if r.notifier != nil {
+		r.notifier.SetSessionActive(false)
 	}
 }
 

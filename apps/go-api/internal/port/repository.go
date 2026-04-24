@@ -366,7 +366,7 @@ type HomeRepository interface {
 
 	// LoadRecentPlaylistRanks retourne les 3 dernières playlists distinctes avec leur rang (Q26g).
 	// Retourne (nil, nil) si aucune donnée disponible.
-	LoadRecentPlaylistRanks(ctx context.Context) ([]domain.HomePlaylistRank, error)
+	LoadRecentPlaylistRanks(ctx context.Context, locale string) ([]domain.HomePlaylistRank, error)
 
 	// LoadMatchMedals charge les médailles du joueur pour un lot de matchs (Q26h).
 	// Retourne un map match_id → médailles triées count DESC. Dégradation silencieuse.
@@ -375,6 +375,10 @@ type HomeRepository interface {
 	// LoadMatchCitations charge les citations progressées pour un lot de matchs (Q26i+Q26j).
 	// Retourne un map match_id → []HomeMatchCitationRaw. Dégradation silencieuse.
 	LoadMatchCitations(ctx context.Context, matchIDs []string) (map[string][]domain.HomeMatchCitationRaw, error)
+
+	// LoadFavoriteWeapon retourne le nom localisé et les kills totaux de l'arme favorite (Q26k).
+	// Dégradation silencieuse : retourne ("", 0, nil) si aucune donnée.
+	LoadFavoriteWeapon(ctx context.Context, locale string) (string, int, error)
 }
 
 // Ensure compile-time check pour HomeRepository.
@@ -398,7 +402,7 @@ func (n *noopHomeRepo) LoadHomeSessions(_ context.Context) ([]domain.HomeSession
 func (n *noopHomeRepo) LoadRecentMedia(_ context.Context, _ int) ([]domain.HomeMediaRow, error) {
 	return nil, nil
 }
-func (n *noopHomeRepo) LoadRecentPlaylistRanks(_ context.Context) ([]domain.HomePlaylistRank, error) {
+func (n *noopHomeRepo) LoadRecentPlaylistRanks(_ context.Context, _ string) ([]domain.HomePlaylistRank, error) {
 	return nil, nil
 }
 
@@ -408,6 +412,10 @@ func (n *noopHomeRepo) LoadMatchMedals(_ context.Context, _ []string) (map[strin
 
 func (n *noopHomeRepo) LoadMatchCitations(_ context.Context, _ []string) (map[string][]domain.HomeMatchCitationRaw, error) {
 	return map[string][]domain.HomeMatchCitationRaw{}, nil
+}
+
+func (n *noopHomeRepo) LoadFavoriteWeapon(_ context.Context, _ string) (string, int, error) {
+	return "", 0, nil
 }
 
 // SquadRepository fournit les données pour la page Escouade.

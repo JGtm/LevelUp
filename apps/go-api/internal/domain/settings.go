@@ -15,7 +15,9 @@ type SettingsResponse struct {
 	RefreshClearsCaches                bool     `json:"refresh_clears_caches"`
 	CareerTopExcludeBTB                bool     `json:"career_top_exclude_btb"`
 	MediaCapturesBaseDir               string   `json:"media_captures_base_dir"`
-	MediaBufferMinutes                 int      `json:"media_buffer_minutes"`
+	MediaToleranceMinutes              int      `json:"media_tolerance_minutes"`
+	MediaWatcherEnabled                bool     `json:"media_watcher_enabled"`
+	MediaWatcherDebounceSeconds        int      `json:"media_watcher_debounce_seconds"`
 	DiscordNotificationsEnabled        bool     `json:"discord_notifications_enabled"`
 	DiscordWebhookURLPresent           bool     `json:"discord_webhook_url_present"`
 	DiscordNotifySync                  bool     `json:"discord_notify_sync"`
@@ -37,6 +39,16 @@ type SettingsResponse struct {
 	SpnkrRefreshBackfillEvents         bool     `json:"spnkr_refresh_backfill_events"`
 	SpnkrRefreshBackfillWeapons        bool     `json:"spnkr_refresh_backfill_weapons"`
 	FriendGamertags                    []string `json:"friend_gamertags"`
+
+	// --- Règles de sessions ---
+	SessionGapMinutes          int    `json:"session_gap_minutes"`
+	SessionSplitOnRankedChange bool   `json:"session_split_on_ranked_change"`
+	SessionTeamChangeMode      string `json:"session_team_change_mode"`
+
+	// --- Règles de badges narratifs ---
+	OutcomeExcludeBotMatchesFromBadges  bool   `json:"outcome_exclude_bot_matches_from_badges"`
+	OutcomeExcludeBotMatchesFromRecords bool   `json:"outcome_exclude_bot_matches_from_records"`
+	OutcomeBadgeSensitivity             string `json:"outcome_badge_sensitivity"`
 }
 
 // UpdateSettingsRequest contient les champs modifiables (tous optionnels).
@@ -50,7 +62,9 @@ type UpdateSettingsRequest struct {
 	RefreshClearsCaches                *bool    `json:"refresh_clears_caches,omitempty"`
 	CareerTopExcludeBTB                *bool    `json:"career_top_exclude_btb,omitempty"`
 	MediaCapturesBaseDir               *string  `json:"media_captures_base_dir,omitempty"`
-	MediaBufferMinutes                 *int     `json:"media_buffer_minutes,omitempty"`
+	MediaToleranceMinutes              *int     `json:"media_tolerance_minutes,omitempty"`
+	MediaWatcherEnabled                *bool    `json:"media_watcher_enabled,omitempty"`
+	MediaWatcherDebounceSeconds        *int     `json:"media_watcher_debounce_seconds,omitempty"`
 	DiscordNotificationsEnabled        *bool    `json:"discord_notifications_enabled,omitempty"`
 	DiscordWebhookURL                  *string  `json:"discord_webhook_url,omitempty"` // écriture seule
 	DiscordNotifySync                  *bool    `json:"discord_notify_sync,omitempty"`
@@ -72,6 +86,16 @@ type UpdateSettingsRequest struct {
 	SpnkrRefreshBackfillEvents         *bool    `json:"spnkr_refresh_backfill_events,omitempty"`
 	SpnkrRefreshBackfillWeapons        *bool    `json:"spnkr_refresh_backfill_weapons,omitempty"`
 	FriendGamertags                    []string `json:"friend_gamertags,omitempty"`
+
+	// --- Règles de sessions ---
+	SessionGapMinutes          *int    `json:"session_gap_minutes,omitempty"`
+	SessionSplitOnRankedChange *bool   `json:"session_split_on_ranked_change,omitempty"`
+	SessionTeamChangeMode      *string `json:"session_team_change_mode,omitempty"`
+
+	// --- Règles de badges narratifs ---
+	OutcomeExcludeBotMatchesFromBadges  *bool   `json:"outcome_exclude_bot_matches_from_badges,omitempty"`
+	OutcomeExcludeBotMatchesFromRecords *bool   `json:"outcome_exclude_bot_matches_from_records,omitempty"`
+	OutcomeBadgeSensitivity             *string `json:"outcome_badge_sensitivity,omitempty"`
 }
 
 // MediaResetRequest est le corps de POST /settings/media/reset-index.

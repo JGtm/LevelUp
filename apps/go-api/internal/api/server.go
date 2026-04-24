@@ -34,12 +34,13 @@ import (
 // NewRouter construit le routeur chi avec tous les endpoints.
 // Construction par injection de dépendances — pas d'état global.
 // daemon peut être nil si le watcher n'est pas actif au démarrage.
+// Retourne aussi le *ServiceRegistry pour permettre au démon watcher de lier le TTL dynamique.
 func NewRouter(
 	cfg *config.AppConfig,
 	bootRepo port.BootstrapRepository,
 	bootSvc *service.BootstrapService,
 	daemon watcher.DaemonController,
-) http.Handler {
+) (http.Handler, *ServiceRegistry) {
 	// Sprint 14 : session store + Sprint 15 : attempt store auth
 	isProduction := cfg.SessionSecret != "CHANGE_ME_IN_PRODUCTION" // pragma: allowlist secret
 	sessionStore := session_platform.NewStore(cfg.SessionDir, session_platform.DefaultTTL, cfg.SessionSecret)
@@ -167,6 +168,7 @@ func NewRouter(
 		r.Patch("/settings", settingsHandler.PatchSettings)
 		r.Post("/settings/media/reset-index", settingsHandler.PostMediaResetIndex)
 		r.Post("/settings/media/scan", settingsHandler.PostMediaScan)
+		r.Post("/settings/sessions/recalculate", settingsHandler.PostRecalculateSessions)
 
 		setupHandler := handlers.NewSetupHandler(cfg, sessionStore, settingsStore, jobStore,
 			service.NewProfileService(cfg.DBProfilesPath, cfg.RepoRoot))
@@ -175,7 +177,7 @@ func NewRouter(
 
 		// Sprint 17 : Jobs longs persistants + sync initiale
 		r.Get("/jobs/{job_id}", handlers.NewJobsHandler(jobStore).GetJob)
-		syncH := handlers.NewSyncHandler(cfg, settingsStore, jobStore)
+		syncH := handlers.NewSyncHandler(cfg, settingsStore, jobStore, tokenProvider)
 		r.Post("/sync/initial", syncH.StartInitialSync)
 		r.Post("/sync/all", syncH.StartSyncAll)
 		// Sprint 51-B3 : Pipeline backfill (weapon kills + détection des autres types)
@@ -252,6 +254,7 @@ func NewRouter(
 			r.Patch("/media/likes", media.PatchMediaLike)
 			r.Post("/media/upload", media.PostUploadMedia)
 			r.Post("/media/reassociate", media.PostReassociateMedia)
+			r.Get("/media/files/*", media.ServeMediaFile)
 
 			// Sprint 32 : Explorer matches-query + Match History export
 			r.Post("/pages/explorer/matches-query", explorer.QueryMatches)
@@ -307,5 +310,5 @@ func NewRouter(
 		})
 	})
 
-	return r
+	return r, reg
 }

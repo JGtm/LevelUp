@@ -4,6 +4,7 @@ package service
 import (
 	"context"
 	"log/slog"
+	"sync/atomic"
 	"time"
 
 	"levelup/go-api/internal/analysis"
@@ -14,8 +15,11 @@ import (
 	"levelup/go-api/internal/platform/duckdb"
 )
 
-// battlePassCacheTTL est la durée de vie du cache local avant appel live.
-const battlePassCacheTTL = 1 * time.Hour
+// Durées de vie du cache BP/Challenges selon l'état de session.
+const (
+	battlePassCacheTTLDefault = 1 * time.Hour   // hors session
+	battlePassCacheTTLActive  = 5 * time.Minute // session active (symétrie avec liveRefreshInterval)
+)
 
 // HomeService orchestre les données de la page d'accueil.
 type HomeService struct {
@@ -25,6 +29,7 @@ type HomeService struct {
 	sink       *duckdb.PersistSink // nil → pas de persistance (tests, joueurs sans auth)
 	socialRepo port.SocialRepository
 	playerSlug string
+	sessionTTL atomic.Int64 // TTL en nanosecondes ; 0 = défaut (1h)
 }
 
 // NewHomeService crée un HomeService avec le repository et le provider Halo.
@@ -66,6 +71,33 @@ func (s *HomeService) WithSocial(repo port.SocialRepository, playerSlug string) 
 	return s
 }
 
+// SetSessionActive bascule le TTL cache BP/Challenges selon la présence du joueur.
+// true → 5 min (symétrie avec liveRefreshInterval), false → 1 h (défaut).
+// Implémente port.SessionNotifier. Thread-safe via atomic.Int64.
+func (s *HomeService) SetSessionActive(active bool) {
+	if active {
+		s.sessionTTL.Store(battlePassCacheTTLActive.Nanoseconds())
+		slog.Info("home_service: session active — TTL cache réduit",
+			"ttl", battlePassCacheTTLActive,
+			"player", s.playerSlug,
+		)
+	} else {
+		s.sessionTTL.Store(0)
+		slog.Info("home_service: session inactive — TTL cache restauré",
+			"ttl", battlePassCacheTTLDefault,
+			"player", s.playerSlug,
+		)
+	}
+}
+
+// currentTTL retourne le TTL effectif selon l'état de session courant.
+func (s *HomeService) currentTTL() time.Duration {
+	if ns := s.sessionTTL.Load(); ns > 0 {
+		return time.Duration(ns)
+	}
+	return battlePassCacheTTLDefault
+}
+
 // GetHomePage retourne la page d'accueil agrégée (hero card, highlights, matchs récents,
 // médias récents, résumés de sessions solo et escouade).
 func (s *HomeService) GetHomePage(ctx context.Context, gamertag, locale string) (*domain.HomePageResponse, error) {
@@ -97,7 +129,7 @@ func (s *HomeService) GetHomePage(ctx context.Context, gamertag, locale string) 
 		media = nil
 	}
 
-	playlistRanks, err := s.repo.LoadRecentPlaylistRanks(ctx)
+	playlistRanks, err := s.repo.LoadRecentPlaylistRanks(ctx, locale)
 	if err != nil {
 		slog.WarnContext(ctx, "home: LoadRecentPlaylistRanks failed", "err", err)
 		playlistRanks = nil
@@ -115,6 +147,13 @@ func (s *HomeService) GetHomePage(ctx context.Context, gamertag, locale string) 
 	}
 
 	hero := analysis.BuildHeroCard(matches, gamertag, totalMatches)
+
+	// Arme favorite — dégradation silencieuse si la table weapon_kills est absente.
+	if wName, wKills, wErr := s.repo.LoadFavoriteWeapon(ctx, locale); wErr == nil && wName != "" {
+		hero.KPIs.FavoriteWeaponName = wName
+		hero.KPIs.FavoriteWeaponKills = wKills
+	}
+
 	highlights := analysis.BuildHighlights(matches)
 	recentMatches := analysis.BuildRecentMatchesWithFavoritesForLocale(matches, len(matches), favoriteIDs, locale)
 	favoriteMatches := buildFavoriteMatchList(recentMatches, matches, favoriteIDs, locale)
@@ -241,39 +280,43 @@ func buildFavoriteMatchList(recent []domain.RecentMatchItem, all []domain.HomeMa
 }
 
 // GetBattlePass retourne les infos Battle Pass (cache DB d'abord, live en fallback).
-// Si le cache DB contient une entrée récente (< 1h), elle est retournée sans appel réseau.
+// Le TTL cache est dynamique : 5 min pendant une session active, 1 h sinon.
 // Si un PersistSink est configuré et que le live est appelé, les données sont persistées
-// en arrière-plan (fire-and-forget).
+// de manière synchrone avant le retour (garantit que loadTrackSnapshots lit un rang à jour).
 func (s *HomeService) GetBattlePass(ctx context.Context) domain.BattlePassResponse {
+	ttl := s.currentTTL()
 	if s.cacheRepo != nil {
-		if cached, hit, err := s.cacheRepo.LoadCachedBattlePass(ctx, battlePassCacheTTL); err == nil && hit {
-			slog.DebugContext(ctx, "home: BattlePass servi depuis cache DB")
+		if cached, hit, err := s.cacheRepo.LoadCachedBattlePass(ctx, ttl); err == nil && hit {
+			slog.DebugContext(ctx, "home: BattlePass servi depuis cache DB", "ttl_used", ttl)
 			return *cached
 		}
 	}
-	slog.DebugContext(ctx, "home: BattlePass cache miss → appel live")
+	slog.DebugContext(ctx, "home: BattlePass cache miss → appel live", "ttl_used", ttl)
 	resp, raw := s.provider.GetBattlePassWithRaw(ctx)
 	if s.sink != nil && resp.Available && resp.RewardTrack != nil {
-		s.sink.PersistBattlePass(*resp.RewardTrack, raw)
+		if err := s.sink.PersistBattlePassSync(ctx, *resp.RewardTrack, raw); err != nil {
+			slog.WarnContext(ctx, "home: BattlePass persist failed", "err", err)
+		}
 	}
 	return resp
 }
 
 // GetChallenges retourne les défis actifs (cache DB d'abord, live en fallback).
-// Si le cache DB contient des snapshots récents (< 1h), ils sont retournés sans appel réseau.
+// Le TTL cache est dynamique : 5 min pendant une session active, 1 h sinon (symétrie GetBattlePass).
 // Si un PersistSink est configuré et que le live est appelé, les snapshots sont persistés
 // en arrière-plan (fire-and-forget).
 func (s *HomeService) GetChallenges(ctx context.Context) domain.ChallengesResponse {
+	ttl := s.currentTTL()
 	if s.cacheRepo != nil {
-		if cached, hit, err := s.cacheRepo.LoadCachedChallenges(ctx, battlePassCacheTTL); err == nil && hit {
+		if cached, hit, err := s.cacheRepo.LoadCachedChallenges(ctx, ttl); err == nil && hit {
 			if cacheChallengesAreRenderable(cached) {
-				slog.DebugContext(ctx, "home: Challenges servis depuis cache DB")
+				slog.DebugContext(ctx, "home: Challenges servis depuis cache DB", "ttl_used", ttl)
 				return *cached
 			}
-			slog.DebugContext(ctx, "home: Challenges cache incomplet → fallback live")
+			slog.DebugContext(ctx, "home: Challenges cache incomplet → fallback live", "ttl_used", ttl)
 		}
 	}
-	slog.DebugContext(ctx, "home: Challenges cache miss → appel live")
+	slog.DebugContext(ctx, "home: Challenges cache miss → appel live", "ttl_used", ttl)
 	resp, raw := s.provider.GetChallengesWithRaw(ctx)
 	if s.sink != nil && resp.Available {
 		s.sink.PersistChallenges(raw)

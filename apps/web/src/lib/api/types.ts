@@ -554,6 +554,14 @@ export interface SettingsResponse {
   spnkr_refresh_backfill_events: boolean
   spnkr_refresh_backfill_weapons: boolean
   friend_gamertags: string[]
+  // --- Règles de sessions ---
+  session_gap_minutes: number
+  session_split_on_ranked_change: boolean
+  session_team_change_mode: 'ignore' | 'group' | 'friends'
+  // --- Règles de badges narratifs ---
+  outcome_exclude_bot_matches_from_badges: boolean
+  outcome_exclude_bot_matches_from_records: boolean
+  outcome_badge_sensitivity: 'relaxed' | 'standard' | 'strict'
 }
 
 export type UpdateSettingsRequest = Partial<
@@ -880,10 +888,18 @@ export interface ExplorerPlayerQueryResponse {
 export interface HeroKPIs {
   win_rate: number
   global_ratio: number | null
+  avg_kda: number | null
   avg_accuracy: number | null
   total_matches: number
   wins: number
+  draws: number
+  dnfs: number
   losses: number
+  total_playtime_secs: number
+  favorite_weapon_name: string
+  favorite_weapon_kills: number
+  avg_offensive_conversion: number | null
+  avg_defensive_resistance: number | null
 }
 
 export interface HeroTrend {

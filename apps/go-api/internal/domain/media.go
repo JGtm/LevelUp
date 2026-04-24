@@ -78,6 +78,7 @@ type MediaFileRow struct {
 	Liked          bool
 	MapName        *string
 	ModeName       *string
+	MapID          *string
 }
 
 // MediaLikersInfo contient les likers d'un média (max 3 noms + total).
