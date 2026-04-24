@@ -57,6 +57,24 @@ const (
 	SessionModeContext SessionComputeMode = "context" // gap + coéquipiers + ranked
 )
 
+// TeamChangeMode contrôle comment les changements de composition d'équipe
+// déclenchent une rupture de session.
+type TeamChangeMode string
+
+const (
+	// TeamChangeModeIgnore : ignorer la composition — sessions découpées par le
+	// temps uniquement.
+	TeamChangeModeIgnore TeamChangeMode = "ignore"
+
+	// TeamChangeModeGroup : nouvelle session dès qu'un coéquipier quitte ou rejoint
+	// (comportement par défaut).
+	TeamChangeModeGroup TeamChangeMode = "group"
+
+	// TeamChangeModeFriends : nouvelle session uniquement si un joueur de
+	// FriendsXUIDs change.
+	TeamChangeModeFriends TeamChangeMode = "friends"
+)
+
 // SessionComputeOptions configure l'algorithme de découpage en sessions.
 type SessionComputeOptions struct {
 	// GapMinutes est le délai minimal (en minutes) entre deux matchs pour démarrer
@@ -67,12 +85,17 @@ type SessionComputeOptions struct {
 	// considérée comme terminée. Défaut = 8 (8h du matin).
 	CutoffHour int
 
-	// FriendsXUIDs est la liste des XUIDs d'amis. Quand non vide, seuls les amis
-	// déclenchent une rupture de session sur changement de coéquipiers.
+	// FriendsXUIDs est la liste des XUIDs d'amis. Utilisé en mode TeamChangeModeFriends.
 	FriendsXUIDs []string
 
 	// SplitOnRankedChange déclenche une rupture de session quand le mode ranked/social change.
 	SplitOnRankedChange bool
+
+	// TeamChangeMode contrôle la réaction aux changements de coéquipiers.
+	// Valeurs : "ignore" | "group" (défaut) | "friends".
+	// Chaîne vide → comportement rétrocompatible (group si FriendsXUIDs vide,
+	// friends sinon).
+	TeamChangeMode TeamChangeMode
 
 	// Mode choisit l'algorithme (gap simple ou context).
 	Mode SessionComputeMode

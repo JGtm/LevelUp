@@ -65,8 +65,22 @@ func ComputeSessionsWithContext(rows []domain.SessionMatchRow, opts domain.Sessi
 		if i > 0 {
 			prev := sorted[i-1]
 			gapBreak := sorted[i].StartTime.Sub(prev.StartTime) > threshold
-			teammatesBreak := isTeammatesBreak(prev.TeammatesSig, r.TeammatesSig, friendSet)
 			rankedBreak := opts.SplitOnRankedChange && (prev.IsRanked != r.IsRanked)
+			var teammatesBreak bool
+			switch opts.TeamChangeMode {
+			case domain.TeamChangeModeIgnore:
+				// ignorer la composition — pas de rupture sur coéquipiers
+				teammatesBreak = false
+			case domain.TeamChangeModeFriends:
+				// rupture uniquement si un ami (FriendsXUIDs) change
+				teammatesBreak = isTeammatesBreak(prev.TeammatesSig, r.TeammatesSig, friendSet)
+			case domain.TeamChangeModeGroup:
+				// rupture dès qu'un coéquipier quelconque change (ignorer FriendsXUIDs)
+				teammatesBreak = isTeammatesBreak(prev.TeammatesSig, r.TeammatesSig, nil)
+			default:
+				// rétrocompatibilité : comportement historique (group si pas d'amis, friends sinon)
+				teammatesBreak = isTeammatesBreak(prev.TeammatesSig, r.TeammatesSig, friendSet)
+			}
 			if gapBreak || teammatesBreak || rankedBreak {
 				sessionID++
 			}
@@ -209,15 +223,17 @@ func isTeammatesBreak(prevSig, currSig *string, friendSet map[string]struct{}) b
 		return false
 	}
 	if friendSet == nil {
+		// mode "group" : tout changement de composition = rupture
 		return true
 	}
+	// mode "friends" : rupture uniquement si le sous-ensemble d'amis change
 	prevFriends := filterFriends(parseXUIDs(prevStr), friendSet)
 	currFriends := filterFriends(parseXUIDs(currStr), friendSet)
-	if len(prevFriends) > 0 && len(currFriends) == 0 {
+	if len(prevFriends) != len(currFriends) {
 		return true
 	}
-	for _, xuid := range currFriends {
-		if sliceContains(prevFriends, xuid) {
+	for _, xuid := range prevFriends {
+		if !sliceContains(currFriends, xuid) {
 			return true
 		}
 	}

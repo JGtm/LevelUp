@@ -2,7 +2,7 @@
 
 > Branche : `copilot/fetch-halo-infinite-achievements`  
 > Statut : **En cours de planification**  
-> Mis à jour : 2026-04-23 (rev. décisions tranchées)
+> Mis à jour : 2026-04-24 (rev. assets Kind + multilinguisme + contrat API + pagination)
 
 ---
 
@@ -28,13 +28,58 @@ La sync achievements est inconditionnelle, systématique, idempotente.
 
 | Endpoint | Description |
 |----------|-------------|
-| `GET https://achievements.xboxlive.com/users/xuid({xuid})/achievements?titleId=1144039928` | Progression joueur (achievements débloqués) |
-| `GET https://achievements.xboxlive.com/users/xuid({xuid})/achievements/{achievementId}` | Détail d'un achievement |
-| `GET https://titlehub.xboxlive.com/titles/titleid/1144039928/decoration/Achievement` | Définitions statiques du titre |
+| `GET https://achievements.xboxlive.com/users/xuid({xuid})/achievements?titleId=1144039928` | Progression joueur (achievements débloqués) — **paginé** |
+| `GET https://achievements.xboxlive.com/users/xuid({xuid})/achievements/{scid}/{achievementId}` | Détail d'un achievement unique |
+| `GET https://titlehub.xboxlive.com/titles/titleid/1144039928/decoration/Achievement` | Définitions statiques du titre (Phase 2) |
 
 - **Title ID Halo Infinite (Xbox)** : `1144039928`
+- **SCID Halo Infinite** : à récupérer depuis la réponse API (`service_config_id` dans chaque achievement)
 - **Auth** : XSTS token avec `RelyingParty = http://xboxlive.com` (déjà géré par `internal/platform/auth/xsts.go`)
-- Header requis : `Authorization: XBL3.0 x=<userhash>;<xsts_token>`
+- Headers requis :
+  - `Authorization: XBL3.0 x=<userhash>;<xsts_token>`
+  - `x-xbl-contract-version: 2` (API v2 Xbox One/Halo Infinite — **obligatoire**, sans ce header l'API retourne les schémas Xbox 360 v1)
+  - `Accept-Language: fr-FR,fr;q=0.9,en-US;q=0.8,en;q=0.7` (voir §2.4)
+
+### Structure JSON de réponse (API v2)
+
+```json
+{
+  "achievements": [
+    {
+      "id": "1",
+      "serviceConfigId": "...",
+      "name": "Soldat de fer",
+      "description": "Terminez une partie Ranked sans mourir.",
+      "lockedDescription": "Accomplissez quelque chose d'exceptionnel.",
+      "isSecret": false,
+      "progressState": "Achieved",
+      "progression": {
+        "requirements": [{"id": "1", "current": "1", "target": "1", ...}],
+        "timeUnlocked": "2024-01-15T18:30:00Z"
+      },
+      "mediaAssets": [
+        {
+          "name": "default",
+          "type": "Icon",
+          "url": "https://achievements.xboxlive.com/images/..."
+        }
+      ],
+      "rewards": [{"type": "Gamerscore", "value": "10", ...}],
+      "achievementType": "Persistent",
+      "participationType": "Individual"
+    }
+  ],
+  "pagingInfo": {
+    "continuationToken": "3",
+    "totalRecords": 87
+  }
+}
+```
+
+**Points clés** :
+- `name`, `description`, `lockedDescription` → **localisés** selon `Accept-Language`
+- `mediaAssets[].url` → URL **absolue** directe (ne passe pas par GameCMS)
+- `pagingInfo.continuationToken` → non nul si d'autres pages existent (query param `?skipItems=N`)
 
 ### 2.2 Points d'intégration dans le code existant
 
@@ -69,6 +114,29 @@ internal/api/handlers/sync_handler.go
 > Les achievements sont un système indépendant des matchs (comme la carrière) : ils doivent être
 > synchronisés dans **les deux branches**, d'où l'ajout de `runAchievementsSync()` aussi dans la
 > branche `else`.
+
+### 2.4 Stratégie multilingue
+
+L'API Xbox renvoie `name`, `description` et `lockedDescription` dans la langue demandée via
+`Accept-Language`. Le projet supporte `fr-FR` et `en-US` (pattern existant dans `career_ranks` :
+colonnes `title_en` / `title_fr`).
+
+**Décision** : appeler `GetPlayerAchievements` **deux fois** par sync (une fois par langue), et
+stockqer les textes dans des colonnes suffixées dans `xbox_achievement_definitions` :
+
+```sql
+name_en        VARCHAR,   -- Accept-Language: en-US
+name_fr        VARCHAR,   -- Accept-Language: fr-FR
+description_en VARCHAR,
+description_fr VARCHAR,
+locked_desc_en VARCHAR,
+locked_desc_fr VARCHAR,
+```
+
+Alternative écartée : table séparée de traductions (surcharge inutile pour 2 langues fixes et ~100 achievements).
+
+**`image_url`** : l'URL de l'icône ne dépend pas de la langue — elle est identique quelle que soit
+la langue de la requête. Un seul appel (en-US) suffit pour la récupérer.
 
 ### 2.3 Constats vérifiés dans le code actuel
 
@@ -238,17 +306,27 @@ la session appelante. Ce point est résolu nativement.
 ```sql
 CREATE TABLE IF NOT EXISTS xbox_achievement_definitions (
     achievement_id   VARCHAR PRIMARY KEY,
-    name             VARCHAR NOT NULL,
-    description      VARCHAR,
-    locked_desc      VARCHAR,
+    -- Textes localisés (2 langues, pattern identique à career_ranks)
+    name_en          VARCHAR NOT NULL DEFAULT '',
+    name_fr          VARCHAR NOT NULL DEFAULT '',
+    description_en   VARCHAR,
+    description_fr   VARCHAR,
+    locked_desc_en   VARCHAR,
+    locked_desc_fr   VARCHAR,
     gamerscore       INTEGER NOT NULL DEFAULT 0,
+    -- URL absolue de l'icône (mediaAssets[type=Icon].url depuis l'API Xbox)
+    -- Invariante selon la langue — récupérée depuis la réponse en-US
     image_url        VARCHAR,
     is_secret        BOOLEAN NOT NULL DEFAULT false,
-    rarity_category  VARCHAR,   -- "Common" | "Uncommon" | "Rare" | "Ultra Rare"
+    rarity_category  VARCHAR,   -- "Common" | "Rare" (2 valeurs Xbox)
     rarity_percent   FLOAT,
     fetched_at       TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 ```
+
+> **Abandon de `name VARCHAR` / `description VARCHAR` mono-langue** : les textes Xbox sont
+> localisés via `Accept-Language` — une seule colonne stockerait silencieusement la mauvaise
+> langue selon l'ordre des appels. Colonnes `_en` / `_fr` explicites, comme `career_ranks`.
 
 ### 4.2 `stats.duckdb` (par joueur) — progression
 
@@ -286,8 +364,10 @@ internal/sync/
 
 ```
 XboxAchievementsClient        interface (mockable)
-  └── GetPlayerAchievements(ctx, xuid) ([]PlayerAchievement, error)
+  └── GetPlayerAchievements(ctx, xuid, lang string) ([]PlayerAchievement, error)
         ↑ endpoint achievements.xboxlive.com — progression par joueur (Phase 1)
+        ↑ lang = "en-US" ou "fr-FR" → Accept-Language header
+        ↑ gère la pagination interne (loop sur continuationToken)
 
   // Phase 2 uniquement :
   // GetAchievementDefinitions(ctx) ([]AchievementDef, error)
@@ -300,17 +380,78 @@ xboxHTTPClient               implémentation concrète
 > Le client stocke `authHeader string` (résultat de `xstsResult.AuthHeader()`), pas le token brut.
 > `XSTSResult.AuthHeader()` est déjà implémenté dans `internal/platform/auth/xsts.go`.
 
+**Headers envoyés par `xboxHTTPClient`** :
+```
+Authorization:           XBL3.0 x=<userhash>;<xsts_token>
+x-xbl-contract-version:  2
+Accept-Language:         <lang>  (ex: "en-US" ou "fr-FR")
+Accept:                  application/json
+```
+
+**Pagination** : `GetPlayerAchievements` boucle jusqu'à `pagingInfo.continuationToken == ""`
+en ajoutant `?skipItems=N` (ou `&continuationToken=...`) à chaque page.
+
+### 5.1 bis `KindAchievementImage` — intégration au resolver assets
+
+Chaque achievement expose une ou plusieurs entrées `mediaAssets[]` — en pratique une icône
+(`type: "Icon"`) avec une URL absolue (ex: `https://achievements.xboxlive.com/images/{path}.png`).
+Cette URL **ne passe pas par GameCMS** — elle est directement servable.
+
+**Ce que le plan original oubliait** : ces images ne sont pas cachées. Sans `Kind`, elles ne
+passent ni par `LocalFSStore` ni par `DuckDBIndexStore`. À chaque affichage le client ferait
+une requête directe vers Xbox, ou pire, le frontend ne les afficherait pas du tout.
+
+**Décision** : ajouter `KindAchievementImage` dans `internal/assets/kinds.go` et un fetcher
+HTTP simple (URL absolue, authentification XSTS non requise pour les images publiques) :
+
+```go
+// kinds.go
+// KindAchievementImage est l'icône d'un achievement Xbox (PNG).
+// Source : URL absolue contenue dans mediaAssets[type=Icon].url (API Xbox v2).
+// L'URL est stockée dans xbox_achievement_definitions.image_url.
+KindAchievementImage Kind = "achievement-image"
+```
+
+`Ref` pour une image d'achievement :
+```go
+assets.Ref{
+    Kind:    assets.KindAchievementImage,
+    TitleID: "halo_infinite",
+    ID:      achievement_id,   // ex: "1"
+    // Variant: vide (une seule icône par achievement)
+}
+```
+
+L'URL absolue est persistée dans `asset_index` (colonne `url`) via le resolver standard —
+aucun fetcher GameCMS nécessaire. Un `XboxImageFetcher` (ou réutilisation du `GenericURLFetcher`
+existant si présent) effectue un `GET` direct sur `image_url` depuis `xbox_achievement_definitions`.
+
+> **Note** : le caching des images est Phase 1, mais peut être implémenté dans le même lot que
+> `SyncAchievements` puisque l'URL est déjà connue après l'appel API. Warm optionnel (fire-and-forget).
+
 ### 5.2 `achievements.go` — responsabilités
 
 ```
 PlayerAchievement            struct (mapping JSON → DuckDB player)
+  achievement_id, name_en, name_fr, description_en, description_fr,
+  locked_desc_en, locked_desc_fr, gamerscore, image_url, is_secret,
+  rarity_category, rarity_percent,
+  unlocked, unlocked_at, current_progress, target_progress
 
 // AchievementDef réservé Phase 2 (endpoint titlehub)
 
 SyncAchievements(ctx, client, playerDB, xuid) error
-  1. Appel GetPlayerAchievements(xuid) → upsert player_achievements dans stats.duckdb
+  1. GetPlayerAchievements(xuid, "en-US") → slice EN
+  2. GetPlayerAchievements(xuid, "fr-FR") → slice FR
+  3. Merger EN + FR (clé = achievement_id)
+  4. Upsert player_achievements dans stats.duckdb
      (ON CONFLICT (achievement_id) DO UPDATE SET ...)
+  5. [Optionnel Phase 1] Warm des images via resolver.Warm(KindAchievementImage refs)
 ```
+
+> Les deux appels API (EN + FR) sont faits séquentiellement — même jeu de progression,
+> seuls `name`/`description`/`lockedDescription` diffèrent. `image_url` et `progressState`
+> sont lus depuis la réponse EN-US (premier appel).
 
 Phase 1 ne touche pas `metadata.duckdb` — aucun write lock concurrentiel.
 
@@ -407,6 +548,37 @@ Register(Migration{
 })
 ```
 
+### `steps_metadata.go` — `xbox_achievement_definitions` (colonnes multilingues)
+
+> Le schéma reflète la structure multilingue décrite en §2.4 et §4.1.
+
+```go
+Register(Migration{
+    Name:        "add_xbox_achievement_definitions",
+    TargetDB:    TargetMetadata,
+    Description: "Table xbox_achievement_definitions (référentiel achievements Halo Infinite — bilingue EN/FR)",
+    ApplySchema: func(db *sql.DB) error {
+        return execScript(db, `
+            CREATE TABLE IF NOT EXISTS xbox_achievement_definitions (
+                achievement_id   VARCHAR PRIMARY KEY,
+                name_en          VARCHAR NOT NULL DEFAULT '',
+                name_fr          VARCHAR NOT NULL DEFAULT '',
+                description_en   VARCHAR,
+                description_fr   VARCHAR,
+                locked_desc_en   VARCHAR,
+                locked_desc_fr   VARCHAR,
+                gamerscore       INTEGER NOT NULL DEFAULT 0,
+                image_url        VARCHAR,
+                is_secret        BOOLEAN NOT NULL DEFAULT false,
+                rarity_category  VARCHAR,
+                rarity_percent   FLOAT,
+                fetched_at       TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            );
+        `)
+    },
+})
+```
+
 ### `steps_player.go` — ajouter un bloc `Register()`
 
 ```go
@@ -448,22 +620,27 @@ Ces endpoints sont **Phase 2** — la sync est le livrable Phase 1.
     `steps_player.go` (`player_achievements`)
 - [ ] **Étape 2** — `domain/sync.go` : ajouter `AchievementsSynced bool` à `PostSyncResult` +
     étendre la condition d'attachement (`|| postResult.AchievementsSynced`)
-- [ ] **Étape 3** — `xbox_client.go` : interface `XboxAchievementsClient` (Phase 1 : méthode
-    `GetPlayerAchievements` uniquement) + implémentation `xboxHTTPClient` avec `authHeader string`
-- [ ] **Étape 4** — `achievements.go` : struct `PlayerAchievement` + `SyncAchievements(ctx,
-    client, playerDB, xuid)` + upsert `ON CONFLICT DO UPDATE`
-- [ ] **Étape 5** — `achievements_test.go` : tests unitaires avec mock `XboxAchievementsClient`
-- [ ] **Étape 6** — `engine.go` :
+- [ ] **Étape 3** — `kinds.go` : ajouter `KindAchievementImage` + `allKinds` + `IsBinary()`
+    + extension de fichier `.png` dans `store_localfs.go`
+- [ ] **Étape 4** — `xbox_client.go` : interface `XboxAchievementsClient` (Phase 1 :
+    `GetPlayerAchievements(ctx, xuid, lang string)` avec pagination interne et headers
+    `x-xbl-contract-version: 2` + `Accept-Language`) + implémentation `xboxHTTPClient`
+- [ ] **Étape 5** — `achievements.go` : struct `PlayerAchievement` (champs bilingues) +
+    `SyncAchievements(ctx, client, resolver, playerDB, xuid)` — 2 appels EN+FR, merge,
+    upsert `ON CONFLICT DO UPDATE` + `resolver.Warm(KindAchievementImage)` fire-and-forget
+- [ ] **Étape 6** — `achievements_test.go` : tests unitaires avec mock `XboxAchievementsClient`
+    (couvre pagination, merge EN+FR, upsert, warm assets)
+- [ ] **Étape 7** — `engine.go` :
     - Ajouter champ `provider auth.TokenProvider` à `SyncEngine` + mettre à jour `NewSyncEngine`
     - Ajouter helper non-exporté `resolveAccessToken(ctx, playerDB, gamertag, provider) (string, error)`
-    - Ajouter méthode `runAchievementsSync(ctx, playerDB)` (voir §3.1)
+    - Ajouter méthode `runAchievementsSync(ctx, playerDB)` (voir §3.1) — passe le resolver
     - Brancher dans `runPostSyncPipeline()` et dans la branche `0 match` de `runConditionalPostSync()`
-- [ ] **Étape 7** — `auto_sync.go` : mettre à jour `EngineFactory` + `defaultEngineFactory` +
+- [ ] **Étape 8** — `auto_sync.go` : mettre à jour `EngineFactory` + `defaultEngineFactory` +
     `syncPlayer()` pour passer `s.provider`
-- [ ] **Étape 8** — Handler sync manuelle : passer le provider à `EngineFactory`
-- [ ] **Étape 9** — Tests d'intégration : 3 chemins (manuel, auto, scheduled), cas `0 match`,
-    cas `career=false` / `achievements=true`
-- [ ] **Étape 10** *(Phase 2)* — `GetAchievementDefinitions` + peuplement `metadata.duckdb` +
+- [ ] **Étape 9** — Handler sync manuelle : passer le provider à `EngineFactory`
+- [ ] **Étape 10** — Tests d'intégration : 3 chemins (manuel, auto, scheduled), cas `0 match`,
+    cas `career=false` / `achievements=true`, cas pagination (>1 page)
+- [ ] **Étape 11** *(Phase 2)* — `GetAchievementDefinitions` + peuplement `metadata.duckdb` +
     endpoints API `GET /achievements` et `GET /players/{slug}/achievements`
 
 ---
@@ -482,6 +659,11 @@ Ces endpoints sont **Phase 2** — la sync est le livrable Phase 1.
 | Progression | Upsert à chaque sync dans `stats.duckdb` du joueur (`player_achievements`) |
 | Write lock metadata | Aucun write sur `metadata.duckdb` depuis le hot path joueur — risque de lock DuckDB éliminé |
 | Header Xbox | `xboxHTTPClient` stocke `authHeader string` = `xstsResult.AuthHeader()` |
+| **Header contrat** | `x-xbl-contract-version: 2` **obligatoire** — sans lui, l'API retourne le schéma Xbox 360 v1 (champs différents, `image_id int` au lieu de `mediaAssets[]`) |
+| **`Accept-Language`** | Deux appels par sync : `en-US` puis `fr-FR` — textes mergés avant upsert. `image_url` invariant, lu depuis la réponse EN-US |
+| **Multilinguisme** | Colonnes `name_en` / `name_fr` / `description_en` / `description_fr` / `locked_desc_en` / `locked_desc_fr` — pattern `career_ranks` |
+| **Pagination** | `GetPlayerAchievements` boucle sur `pagingInfo.continuationToken` — géré en interne dans le client, opaque pour `SyncAchievements` |
+| **`KindAchievementImage`** | Nouveau Kind dans `internal/assets/kinds.go` — images cachées via `LocalFSStore` + `DuckDBIndexStore` comme tous les autres assets visuels. Warm fire-and-forget après upsert |
 | Publication PostSync | Condition étendue : `matchesInserted > 0 \|\| CareerSynced \|\| AchievementsSynced` |
 | `AchievementsCount` | **Supprimé en Phase 1** — booléen suffisant |
 | Cross-player achievements | Résolu nativement par Option B : chaque joueur utilise son propre token depuis sa `playerDB` |
