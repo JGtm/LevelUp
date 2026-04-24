@@ -12,6 +12,7 @@ import { useRef, useEffect, useState } from 'react'
 import { useAppShellStore } from '@/stores/appShellStore'
 import { ThemeToggle } from './ThemeToggle'
 import { buildPlayerDestination } from './shellNavigation'
+import { HelpSplitButton } from './HelpSplitButton'
 import { useJobStatus } from '@/features/setup/queries'
 // ─── SyncStatusIndicator ───────────────────────────────────────────────────
 
@@ -452,6 +453,9 @@ export function NavL1() {
             </Link>
           )
         })}
+
+      {/* ── Aide (toujours visible) ─────────────────────────────────────── */}
+      <HelpSplitButton isActive={pathname.startsWith('/help')} />
 
       {/* ── Spacer ──────────────────────────────────────────────────────── */}
       <div className="flex-1" />
