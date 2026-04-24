@@ -65,9 +65,9 @@ func TestGetKillsForPlayer_Empty(t *testing.T) {
 
 func TestGetKillsForPlayer_WithData(t *testing.T) {
 	db := openWeaponDB(t)
-	db.Exec(`INSERT INTO highlight_events VALUES ('m1', 'xuid1', 'Killed', 5000)`)
-	db.Exec(`INSERT INTO highlight_events VALUES ('m1', 'xuid1', 'Killed', 10000)`)
-	db.Exec(`INSERT INTO highlight_events VALUES ('m1', 'xuid2', 'Killed', 7000)`)
+	db.Exec(`INSERT INTO highlight_events VALUES ('m1', 'xuid1', 'kill', 5000)`)
+	db.Exec(`INSERT INTO highlight_events VALUES ('m1', 'xuid1', 'kill', 10000)`)
+	db.Exec(`INSERT INTO highlight_events VALUES ('m1', 'xuid2', 'kill', 7000)`)
 
 	kills, err := getKillsForPlayer(db, "m1", "xuid1")
 	if err != nil {

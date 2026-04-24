@@ -76,6 +76,11 @@ func (m *mockHaloClient) GetMatchFilm(_ context.Context, _ string) (map[int]film
 	return nil, false, nil
 }
 
+// GetHighlightEventsChunk retourne toujours (nil, 0, false, nil) : chunk absent.
+func (m *mockHaloClient) GetHighlightEventsChunk(_ context.Context, _ string) ([]byte, int, bool, error) {
+	return nil, 0, false, nil
+}
+
 // GetCareerRank retourne la progression de carrière configurée.
 func (m *mockHaloClient) GetCareerRank(_ context.Context, _ string) (*CareerRankData, error) {
 	if m.getCareerErr != nil {

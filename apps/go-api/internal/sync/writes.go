@@ -8,7 +8,11 @@ package sync
 import (
 	"database/sql"
 	"fmt"
+	"strconv"
 	"time"
+
+	"levelup/go-api/internal/analysis"
+	"levelup/go-api/internal/domain"
 )
 
 // ──────────────────────────────────────────────────────────────────────────────
@@ -189,6 +193,29 @@ func nullStr(s string) *string {
 	return &s
 }
 
+// WriteSessionAssignments écrit session_id et session_label dans player_match_enrichment.
+// Seules les lignes dont le match_id existe déjà sont mises à jour (UPDATE).
+// Retourne le nombre de lignes affectées.
+func WriteSessionAssignments(db *sql.DB, assignments []domain.SessionAssignment) (int, error) {
+	updated := 0
+	for _, a := range assignments {
+		result, err := db.Exec(`
+			UPDATE player_match_enrichment
+			SET    session_id    = ?,
+			       session_label = ?,
+			       updated_at    = CURRENT_TIMESTAMP
+			WHERE  match_id = ?`,
+			strconv.Itoa(a.SessionID), a.SessionLabel, a.MatchID,
+		)
+		if err != nil {
+			return updated, fmt.Errorf("WriteSessionAssignments(%s): %w", a.MatchID, err)
+		}
+		n, _ := result.RowsAffected()
+		updated += int(n)
+	}
+	return updated, nil
+}
+
 // ─────────────────────────────────────────────────────────────────────────────
 // Weapon kills (Sprint 41 T2)
 // ─────────────────────────────────────────────────────────────────────────────
@@ -249,6 +276,110 @@ func MarkWeaponKillsDone(db *sql.DB, matchID string, noFilm bool) error {
 		WHERE match_id = ?`, bit, matchID)
 	if err != nil {
 		return fmt.Errorf("MarkWeaponKillsDone(%s): %w", matchID, err)
+	}
+	return nil
+}
+
+// ──────────────────────────────────────────────────────────────────────────────
+// Highlight events writes
+// ──────────────────────────────────────────────────────────────────────────────
+
+// InsertHighlightEvents insère les événements highlight en lot (INSERT OR IGNORE).
+// Retourne le nombre de lignes effectivement insérées.
+func InsertHighlightEvents(db *sql.DB, matchID string, events []analysis.HighlightEvent) (int, error) {
+	if len(events) == 0 {
+		return 0, nil
+	}
+	stmt, err := db.Prepare(`
+		INSERT OR IGNORE INTO highlight_events
+			(match_id, event_type, time_ms, xuid, type_hint)
+		VALUES (?, ?, ?, ?, ?)`)
+	if err != nil {
+		return 0, fmt.Errorf("InsertHighlightEvents prepare(%s): %w", matchID, err)
+	}
+	defer stmt.Close()
+
+	inserted := 0
+	for _, ev := range events {
+		xuid := strconv.FormatUint(ev.XUID, 10)
+		res, execErr := stmt.Exec(matchID, ev.EventType, ev.TimeMS, xuid, ev.TypeHint)
+		if execErr != nil {
+			return inserted, fmt.Errorf("InsertHighlightEvents exec(%s): %w", matchID, execErr)
+		}
+		if n, _ := res.RowsAffected(); n > 0 {
+			inserted++
+		}
+	}
+	return inserted, nil
+}
+
+// InsertKillerVictimPairsFromEvents calcule et insère les paires killer→victim
+// depuis les highlight events d'un match (INSERT OR IGNORE).
+func InsertKillerVictimPairsFromEvents(
+	db *sql.DB,
+	matchID string,
+	events []analysis.HighlightEvent,
+) error {
+	// Convertir HighlightEvent → analysis.RawEvent pour l'algorithme de jointure.
+	raw := make([]analysis.RawEvent, 0, len(events))
+	for _, ev := range events {
+		if ev.EventType != "kill" && ev.EventType != "death" {
+			continue
+		}
+		raw = append(raw, analysis.RawEvent{
+			EventType: ev.EventType,
+			XUID:      strconv.FormatUint(ev.XUID, 10),
+			Gamertag:  ev.Gamertag,
+			TimeMS:    int64(ev.TimeMS),
+		})
+	}
+
+	const toleranceMS = int64(5)
+	pairs := analysis.ComputeKillerVictimPairs(raw, toleranceMS)
+	if len(pairs) == 0 {
+		return nil
+	}
+
+	stmt, err := db.Prepare(`
+		INSERT OR IGNORE INTO killer_victim_pairs
+			(match_id, killer_xuid, victim_xuid, created_at)
+		VALUES (?, ?, ?, ?)`)
+	if err != nil {
+		return fmt.Errorf("InsertKillerVictimPairs prepare(%s): %w", matchID, err)
+	}
+	defer stmt.Close()
+
+	now := time.Now().UTC()
+	for _, p := range pairs {
+		if _, execErr := stmt.Exec(matchID, p.KillerXUID, p.VictimXUID, now); execErr != nil {
+			return fmt.Errorf("InsertKillerVictimPairs exec(%s): %w", matchID, execErr)
+		}
+	}
+	return nil
+}
+
+// MarkEventsLoaded positionne le bit MBitEvents dans backfill_completed
+// et passe events_loaded = TRUE (source de vérité pour le backfill).
+func MarkEventsLoaded(db *sql.DB, matchID string) error {
+	_, err := db.Exec(`
+		UPDATE match_registry
+		SET backfill_completed = COALESCE(backfill_completed, 0) | ?,
+		    events_loaded = TRUE
+		WHERE match_id = ?`, MBitEvents, matchID)
+	if err != nil {
+		return fmt.Errorf("MarkEventsLoaded(%s): %w", matchID, err)
+	}
+	return nil
+}
+
+// MarkKillerVictimLoaded positionne le bit MBitKillerVictim dans match_registry.backfill_completed.
+func MarkKillerVictimLoaded(db *sql.DB, matchID string) error {
+	_, err := db.Exec(`
+		UPDATE match_registry
+		SET backfill_completed = COALESCE(backfill_completed, 0) | ?
+		WHERE match_id = ?`, MBitKillerVictim, matchID)
+	if err != nil {
+		return fmt.Errorf("MarkKillerVictimLoaded(%s): %w", matchID, err)
 	}
 	return nil
 }

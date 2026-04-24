@@ -58,9 +58,13 @@ type HaloClient interface {
 	GetMatchHistory(ctx context.Context, gamertag, matchType string, start, count int) ([]MatchHistoryEntry, error)
 	// GetMatchStats récupère les stats détaillées d'un match (JSON brut).
 	GetMatchStats(ctx context.Context, matchID string) (map[string]any, error)
-	// GetMatchFilm récupère les chunks du film d'un match.
+	// GetMatchFilm récupère les chunks REPLICATION_DATA du film d'un match.
 	// Retourne (nil, false, nil) si le film est absent (404/410 — normal pour vieux matchs).
 	GetMatchFilm(ctx context.Context, matchID string) (map[int]filmChunkData, bool, error)
+	// GetHighlightEventsChunk télécharge le chunk highlight events (ChunkType=3) du film.
+	// Retourne (data, filmMajorVersion, true, nil) si disponible.
+	// Retourne (nil, 0, false, nil) si le film est absent ou sans chunk highlight events.
+	GetHighlightEventsChunk(ctx context.Context, matchID string) ([]byte, int, bool, error)
 	// GetCareerRank récupère la progression du rang carrière via l'API Economy.
 	// Retourne (nil, nil) si le token est absent ou insuffisant.
 	GetCareerRank(ctx context.Context, xuid string) (*CareerRankData, error)
@@ -186,62 +190,119 @@ func (c *HaloAPIClient) GetMatchStats(ctx context.Context, matchID string) (map[
 
 const haloUGCHost = "https://discovery-infiniteugc.svc.halowaypoint.com"
 
-// filmManifest représente la réponse JSON de l'endpoint film spectate.
+// Constantes pour les types de chunks film Halo.
+const (
+	filmChunkTypeHeader          = 1
+	filmChunkTypeReplicationData = 2
+	filmChunkTypeHighlightEvents = 3
+)
+
+// filmManifest représente la réponse JSON de l'endpoint /hi/films/matches/{id}/spectate.
+// Structure validée contre spnkr/models/discovery_ugc.py (FilmCustomData + FilmChunk).
 type filmManifest struct {
-	CustomData struct {
-		FilmChunks []filmChunk `json:"FilmChunks"`
+	BlobStoragePathPrefix string `json:"BlobStoragePathPrefix"`
+	CustomData            struct {
+		FilmMajorVersion int         `json:"FilmMajorVersion"`
+		Chunks           []filmChunk `json:"Chunks"`
 	} `json:"CustomData"`
 }
 
 // filmChunk décrit un segment binaire du film Halo.
 type filmChunk struct {
+	Index                            int    `json:"Index"`
 	ChunkType                        int    `json:"ChunkType"`
-	FileSize                         int    `json:"FileSize"`
+	ChunkSize                        int    `json:"ChunkSize"`
 	ChunkStartTimeOffsetMilliseconds int    `json:"ChunkStartTimeOffsetMilliseconds"`
 	DurationMilliseconds             int    `json:"DurationMilliseconds"`
-	ChunkURL                         string `json:"ChunkUrl"`
+	FileRelativePath                 string `json:"FileRelativePath"`
 }
 
-// GetMatchFilm télécharge le manifest film d'un match et retourne les chunks indexés.
-// Retourne (chunks, true, nil) si le film est disponible.
-// Retourne (nil, false, nil) si le film est absent (404/410) — normal pour vieux matchs.
-func (c *HaloAPIClient) GetMatchFilm(ctx context.Context, matchID string) (map[int]filmChunkData, bool, error) {
+// buildChunkURL construit l'URL complète d'un chunk depuis le prefix et le chemin relatif.
+func buildChunkURL(blobPrefix, fileRelativePath string) string {
+	name := strings.TrimLeft(fileRelativePath, "/")
+	if name == "" {
+		return blobPrefix
+	}
+	if blobPrefix != "" && blobPrefix[len(blobPrefix)-1] != '/' {
+		return blobPrefix + "/" + name
+	}
+	return blobPrefix + name
+}
+
+// fetchFilmManifest télécharge et décode le manifest film d'un match.
+// Retourne (manifest, true, nil) si disponible, (nil, false, nil) si absent (404/410).
+func (c *HaloAPIClient) fetchFilmManifest(ctx context.Context, matchID string) (*filmManifest, bool, error) {
 	if !rexUUID.MatchString(matchID) {
-		return nil, false, fmt.Errorf("GetMatchFilm: matchID n'est pas un UUID valide %q", matchID)
+		return nil, false, fmt.Errorf("fetchFilmManifest: matchID invalide %q", matchID)
 	}
 	endpoint := fmt.Sprintf("%s/hi/films/matches/%s/spectate", haloUGCHost, url.PathEscape(matchID))
 	body, err := c.doGet(ctx, endpoint)
 	if err != nil {
-		// 404/410 = film expiré ou non disponible, pas une erreur permanente.
 		if isNotFoundErr(err) {
 			return nil, false, nil
 		}
-		return nil, false, fmt.Errorf("GetMatchFilm manifest(%s): %w", matchID, err)
+		return nil, false, fmt.Errorf("fetchFilmManifest(%s): %w", matchID, err)
 	}
-
 	var manifest filmManifest
 	if err := json.Unmarshal(body, &manifest); err != nil {
-		return nil, false, fmt.Errorf("GetMatchFilm decode(%s): %w", matchID, err)
+		return nil, false, fmt.Errorf("fetchFilmManifest decode(%s): %w", matchID, err)
+	}
+	return &manifest, true, nil
+}
+
+// GetMatchFilm télécharge le manifest film d'un match et retourne les chunks REPLICATION_DATA.
+// Seuls les chunks ChunkType==2 (REPLICATION_DATA) sont retournés — pour le weapon scanner.
+// Retourne (chunks, true, nil) si le film est disponible.
+// Retourne (nil, false, nil) si le film est absent (404/410) — normal pour vieux matchs.
+func (c *HaloAPIClient) GetMatchFilm(ctx context.Context, matchID string) (map[int]filmChunkData, bool, error) {
+	manifest, found, err := c.fetchFilmManifest(ctx, matchID)
+	if err != nil || !found {
+		return nil, found, err
 	}
 
-	chunks := manifest.CustomData.FilmChunks
-	if len(chunks) == 0 {
-		return nil, false, nil
-	}
-
-	result := make(map[int]filmChunkData, len(chunks))
-	for i, chunk := range chunks {
-		data, err := c.downloadBlob(ctx, chunk.ChunkURL)
-		if err != nil {
-			return nil, false, fmt.Errorf("GetMatchFilm chunk %d(%s): %w", i, matchID, err)
+	result := make(map[int]filmChunkData)
+	for _, chunk := range manifest.CustomData.Chunks {
+		if chunk.ChunkType != filmChunkTypeReplicationData {
+			continue
 		}
-		result[i] = filmChunkData{
+		chunkURL := buildChunkURL(manifest.BlobStoragePathPrefix, chunk.FileRelativePath)
+		data, err := c.downloadBlob(ctx, chunkURL)
+		if err != nil {
+			return nil, false, fmt.Errorf("GetMatchFilm chunk %d(%s): %w", chunk.Index, matchID, err)
+		}
+		result[chunk.Index] = filmChunkData{
 			Data:       data,
 			StartMS:    chunk.ChunkStartTimeOffsetMilliseconds,
 			DurationMS: chunk.DurationMilliseconds,
 		}
 	}
+	if len(result) == 0 {
+		return nil, false, nil
+	}
 	return result, true, nil
+}
+
+// GetHighlightEventsChunk télécharge le chunk highlight events (ChunkType=3) du film.
+// Retourne (data, filmMajorVersion, true, nil) si disponible.
+// Retourne (nil, 0, false, nil) si le film est absent ou sans chunk highlight events.
+func (c *HaloAPIClient) GetHighlightEventsChunk(ctx context.Context, matchID string) ([]byte, int, bool, error) {
+	manifest, found, err := c.fetchFilmManifest(ctx, matchID)
+	if err != nil || !found {
+		return nil, 0, found, err
+	}
+
+	for _, chunk := range manifest.CustomData.Chunks {
+		if chunk.ChunkType != filmChunkTypeHighlightEvents {
+			continue
+		}
+		chunkURL := buildChunkURL(manifest.BlobStoragePathPrefix, chunk.FileRelativePath)
+		data, err := c.downloadBlob(ctx, chunkURL)
+		if err != nil {
+			return nil, 0, false, fmt.Errorf("GetHighlightEventsChunk(%s): %w", matchID, err)
+		}
+		return data, manifest.CustomData.FilmMajorVersion, true, nil
+	}
+	return nil, 0, false, nil
 }
 
 // filmChunkData encapsule les données binaires d'un chunk film.
