@@ -88,9 +88,28 @@ func NewSISUProviderWithIDs(appID, titleID string) *SISUProvider {
 // Vérification compile-time : SISUProvider implémente TokenProvider.
 var _ TokenProvider = (*SISUProvider)(nil)
 
+// sisuProviderURLs regroupe les URLs des endpoints utilisés par InitDeviceFlow.
+// Permet l'injection en test via initDeviceFlowWithURLs.
+type sisuProviderURLs struct {
+	deviceAuth string
+	xboxDevice string
+	sisuAuth   string
+}
+
+var defaultSISUProviderURLs = sisuProviderURLs{
+	deviceAuth: deviceAuthURL,
+	xboxDevice: xboxDeviceCodeURL,
+	sisuAuth:   sisuAuthenticateURL,
+}
+
 // InitDeviceFlow démarre un Device Code Flow Xbox natif + initialise la session SISU.
 // Stocke le sisuFlowContext (kp, deviceToken, sessionID, codeVerifier) pour Exchange.
 func (p *SISUProvider) InitDeviceFlow(ctx context.Context) (DeviceFlow, error) {
+	return p.initDeviceFlowWithURLs(ctx, defaultSISUProviderURLs)
+}
+
+// initDeviceFlowWithURLs est la version testable avec URLs configurables.
+func (p *SISUProvider) initDeviceFlowWithURLs(ctx context.Context, urls sisuProviderURLs) (DeviceFlow, error) {
 	slog.DebugContext(ctx, "sisu_provider: démarrage InitDeviceFlow")
 
 	kp, err := GeneratePoPKeyPair()
@@ -98,12 +117,12 @@ func (p *SISUProvider) InitDeviceFlow(ctx context.Context) (DeviceFlow, error) {
 		return nil, fmt.Errorf("sisu_provider: GeneratePoPKeyPair: %w", err)
 	}
 
-	deviceToken, err := RequestDeviceToken(ctx, nil, kp)
+	deviceToken, err := requestDeviceTokenWithURL(ctx, nil, kp, urls.deviceAuth)
 	if err != nil {
 		return nil, fmt.Errorf("sisu_provider: RequestDeviceToken: %w", err)
 	}
 
-	dcResult, err := StartXboxDeviceCode(ctx, p.appID)
+	dcResult, err := startXboxDeviceCodeWithURL(ctx, nil, p.appID, urls.xboxDevice)
 	if err != nil {
 		return nil, fmt.Errorf("sisu_provider: StartXboxDeviceCode: %w", err)
 	}
@@ -113,7 +132,7 @@ func (p *SISUProvider) InitDeviceFlow(ctx context.Context) (DeviceFlow, error) {
 		return nil, fmt.Errorf("sisu_provider: GeneratePKCE: %w", err)
 	}
 
-	sisuSession, err := InitSISUSession(ctx, nil, kp, deviceToken, p.appID, p.titleID, codeChallenge, "sisu-state")
+	sisuSession, err := initSISUSessionWithURL(ctx, nil, kp, deviceToken, p.appID, p.titleID, codeChallenge, "sisu-state", urls.sisuAuth)
 	if err != nil {
 		return nil, fmt.Errorf("sisu_provider: InitSISUSession: %w", err)
 	}
