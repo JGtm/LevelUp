@@ -296,9 +296,9 @@ const FR_TEXT: SettingsText = {
   badgeSensitivityStrict: 'Strict',
   badgeSensitivityHint: {
     intro:
-      'LevelUp analyse l'évolution du score d'équipe pour détecter les moments décisifs. ' +
-      'Un « écart » est l'avance d'une équipe exprimée en % du score final maximum. ' +
-      'Exemple : un match terminé 50-30 a un écart de 40 %.',
+      "LevelUp analyse l'évolution du score d'équipe pour détecter les moments décisifs. " +
+      "Un « écart » est l'avance d'une équipe exprimée en % du score final maximum. " +
+      "Exemple : un match terminé 50-30 a un écart de 40 %.",
     items: [
       '« Souple » : écart ≥ 25 % — plus de badges.',
       '« Standard » : écart ≥ 40 % — seuils historiques (recommandé).',
