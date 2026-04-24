@@ -259,6 +259,20 @@ func TestBuildFeatureFlags_Discord(t *testing.T) {
 	}
 }
 
+func TestBuildFeatureFlags_Tailscale(t *testing.T) {
+	cfg := &config.AppConfig{}
+
+	flagsOff := buildFeatureFlags(cfg, map[string]interface{}{})
+	if flagsOff.TailscaleEnabled {
+		t.Error("TailscaleEnabled should default to false")
+	}
+
+	flagsOn := buildFeatureFlags(cfg, map[string]interface{}{"tailscale_enabled": true})
+	if !flagsOn.TailscaleEnabled {
+		t.Error("TailscaleEnabled should be true when tailscale_enabled=true in settings")
+	}
+}
+
 // ---------------------------------------------------------------------------
 // BuildAvailableTitles
 // ---------------------------------------------------------------------------

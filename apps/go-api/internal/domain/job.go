@@ -25,6 +25,7 @@ const (
 	JobTypeDeltaSyncAll   JobType = "delta_sync_all"
 	JobTypeBackfill       JobType = "backfill"
 	JobTypeReindexMedia   JobType = "reindex_media"
+	JobTypeScanMedia      JobType = "scan_media"
 	JobTypeOther          JobType = "other"
 )
 
