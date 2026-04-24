@@ -141,7 +141,7 @@ func newTestEngine(t *testing.T) (*SyncEngine, string) {
 		SpartanToken:   "test-spartan-token",
 		ClearanceToken: "test-clearance-token",
 	}
-	engine := NewSyncEngine(repoRoot, gamertag, xuid, tokens)
+	engine := NewSyncEngine(repoRoot, gamertag, xuid, tokens, nil)
 	return engine, repoRoot
 }
 

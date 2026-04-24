@@ -237,6 +237,53 @@ func init() {
 			`)
 		},
 	})
+
+	Register(Migration{
+		Name:        "add_citation_mappings_pk",
+		TargetDB:    TargetMetadata,
+		Description: "Ajout PRIMARY KEY (citation_name_norm, medal_id) sur citation_mappings (nécessaire pour ON CONFLICT DO NOTHING)",
+		ApplySchema: func(db *sql.DB) error {
+			// DuckDB ne supporte pas ALTER TABLE ADD CONSTRAINT PK.
+			// On recrée la table avec déduplication si la PK n'existe pas encore.
+			return execScript(db, `
+				CREATE TABLE IF NOT EXISTS citation_mappings_v2 AS
+					SELECT DISTINCT ON (citation_name_norm, COALESCE(medal_id, 0))
+						citation_name_norm, citation_name_display, mapping_type,
+						category, image_path, description, tier_targets, medal_id, enabled
+					FROM citation_mappings;
+				DROP TABLE IF EXISTS citation_mappings;
+				ALTER TABLE citation_mappings_v2 RENAME TO citation_mappings;
+				ALTER TABLE citation_mappings ADD PRIMARY KEY (citation_name_norm, medal_id);
+				CREATE INDEX IF NOT EXISTS idx_citation_mappings_norm ON citation_mappings(citation_name_norm);
+				CREATE INDEX IF NOT EXISTS idx_citation_mappings_medal ON citation_mappings(medal_id);
+			`)
+		},
+	})
+
+	Register(Migration{
+		Name:        "add_xbox_achievement_definitions",
+		TargetDB:    TargetMetadata,
+		Description: "Table xbox_achievement_definitions : référentiel achievements Halo Infinite (bilingue EN/FR)",
+		ApplySchema: func(db *sql.DB) error {
+			return execScript(db, `
+				CREATE TABLE IF NOT EXISTS xbox_achievement_definitions (
+					achievement_id   VARCHAR PRIMARY KEY,
+					name_en          VARCHAR NOT NULL DEFAULT '',
+					name_fr          VARCHAR NOT NULL DEFAULT '',
+					description_en   VARCHAR,
+					description_fr   VARCHAR,
+					locked_desc_en   VARCHAR,
+					locked_desc_fr   VARCHAR,
+					gamerscore       INTEGER NOT NULL DEFAULT 0,
+					image_url        VARCHAR,
+					is_secret        BOOLEAN NOT NULL DEFAULT FALSE,
+					rarity_category  VARCHAR,
+					rarity_percent   FLOAT,
+					fetched_at       TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+				);
+			`)
+		},
+	})
 }
 
 // applyModeNameTr crée et peuple mode_name_tr avec les traductions connues.
