@@ -55,7 +55,7 @@ func (r *CitationsRepo) LoadCitationTotals(ctx context.Context) ([]domain.Citati
 	ctx, cancel := context.WithTimeout(ctx, 10*time.Second)
 	defer cancel()
 
-	rows, err := r.pdb.Player.Query(ctx, Q35CitationTotals)
+	rows, err := r.pdb.ReadDB().Query(ctx, Q35CitationTotals)
 	if err != nil {
 		return nil, fmt.Errorf("LoadCitationTotals: %w", err)
 	}
@@ -80,7 +80,7 @@ func (r *CitationsRepo) LoadMedalTotals(ctx context.Context, xuid string) ([]dom
 	ctx, cancel := context.WithTimeout(ctx, 10*time.Second)
 	defer cancel()
 
-	rows, err := r.pdb.Player.Query(ctx, Q36aMedalTotals, xuid)
+	rows, err := r.pdb.ReadDB().Query(ctx, Q36aMedalTotals, xuid)
 	if err != nil {
 		return nil, fmt.Errorf("LoadMedalTotals: %w", err)
 	}

@@ -33,7 +33,7 @@ func (r *FiltersRepo) LoadMatchesForFilters(ctx context.Context) ([]domain.Filte
 		query = Q4MatchesForFilters
 	}
 
-	rows, err := r.pdb.Player.Query(ctx, query, r.pdb.XUID)
+	rows, err := r.pdb.ReadDB().Query(ctx, query, r.pdb.XUID)
 	if err != nil {
 		return nil, fmt.Errorf("FiltersRepo.LoadMatchesForFilters: %w", err)
 	}
@@ -86,7 +86,7 @@ func (r *FiltersRepo) GetPlayerMatchCount(ctx context.Context) (int, error) {
 func (r *FiltersRepo) hasMVPlayerMatches(ctx context.Context) bool {
 	ctx2, cancel := context.WithTimeout(ctx, 3*time.Second)
 	defer cancel()
-	rows, err := r.pdb.Player.Query(ctx2, "SELECT 1 FROM shared.mv_player_matches LIMIT 0")
+	rows, err := r.pdb.ReadDB().Query(ctx2, "SELECT 1 FROM shared.mv_player_matches LIMIT 0")
 	if err != nil {
 		return false
 	}

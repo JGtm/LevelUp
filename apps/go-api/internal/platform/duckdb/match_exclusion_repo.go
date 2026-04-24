@@ -49,7 +49,7 @@ func (r *MatchExclusionRepo) ListExcluded(ctx context.Context) ([]domain.Exclude
 	ctx, cancel := context.WithTimeout(ctx, 30*time.Second)
 	defer cancel()
 
-	rows, err := r.pdb.Player.Query(ctx, `
+	rows, err := r.pdb.ReadDB().Query(ctx, `
 		SELECT
 			pme.match_id,
 			COALESCE(r.start_time, pme.updated_at)  AS start_time,

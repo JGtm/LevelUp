@@ -28,7 +28,7 @@ func (r *MatchViewRepo) GetMatchMeta(ctx context.Context, matchID string) (*doma
 	defer cancel()
 
 	var row domain.MatchMetaRaw
-	err := r.pdb.Player.QueryRow(ctx, Q13MatchMeta, matchID).Scan(
+	err := r.pdb.ReadDB().QueryRow(ctx, Q13MatchMeta, matchID).Scan(
 		&row.MatchID,
 		&row.StartTime,
 		&row.DurationSeconds,
@@ -53,7 +53,7 @@ func (r *MatchViewRepo) GetPlayerMatchStats(ctx context.Context, xuid, matchID s
 	defer cancel()
 
 	var s domain.PlayerMatchStatsRaw
-	err := r.pdb.Player.QueryRow(ctx, Q17PlayerMatchStats, matchID, xuid).Scan(
+	err := r.pdb.ReadDB().QueryRow(ctx, Q17PlayerMatchStats, matchID, xuid).Scan(
 		&s.OutcomeCode,
 		&s.TeamID,
 		&s.RankInTeam,
@@ -83,7 +83,7 @@ func (r *MatchViewRepo) GetMatchEnrichment(ctx context.Context, matchID string) 
 	defer cancel()
 
 	var e domain.MatchEnrichmentRaw
-	err := r.pdb.Player.QueryRow(ctx, Q18MatchEnrichment, matchID).Scan(
+	err := r.pdb.ReadDB().QueryRow(ctx, Q18MatchEnrichment, matchID).Scan(
 		&e.PerformanceScore,
 		&e.IsWithFriends,
 		&e.IsExcluded,
@@ -101,7 +101,7 @@ func (r *MatchViewRepo) GetMatchScoreboard(ctx context.Context, matchID string) 
 	defer cancel()
 
 	// Q12 utilise 3 fois match_id : medals CTE, weapons CTE, WHERE
-	rows, err := r.pdb.Player.Query(ctx, Q12MatchScoreboard, matchID, matchID, matchID)
+	rows, err := r.pdb.ReadDB().Query(ctx, Q12MatchScoreboard, matchID, matchID, matchID)
 	if err != nil {
 		return nil, fmt.Errorf("MatchViewRepo.GetMatchScoreboard: %w", err)
 	}
@@ -170,7 +170,7 @@ func (r *MatchViewRepo) GetMatchMedals(ctx context.Context, xuid, matchID string
 	ctx, cancel := context.WithTimeout(ctx, 10*time.Second)
 	defer cancel()
 
-	rows, err := r.pdb.Player.Query(ctx, Q14MatchMedals, xuid, matchID)
+	rows, err := r.pdb.ReadDB().Query(ctx, Q14MatchMedals, xuid, matchID)
 	if err != nil {
 		return nil, fmt.Errorf("MatchViewRepo.GetMatchMedals: %w", err)
 	}
@@ -206,7 +206,7 @@ func (r *MatchViewRepo) GetMatchEvents(ctx context.Context, matchID string) ([]d
 	ctx, cancel := context.WithTimeout(ctx, 15*time.Second)
 	defer cancel()
 
-	rows, err := r.pdb.Player.Query(ctx, Q21MatchEventsWithXUID, matchID)
+	rows, err := r.pdb.ReadDB().Query(ctx, Q21MatchEventsWithXUID, matchID)
 	if err != nil {
 		// La table peut être absente sur certains matchs → retourner vide
 		return nil, nil
@@ -229,7 +229,7 @@ func (r *MatchViewRepo) GetMatchWeaponKills(ctx context.Context, xuid, matchID s
 	ctx, cancel := context.WithTimeout(ctx, 10*time.Second)
 	defer cancel()
 
-	rows, err := r.pdb.Player.Query(ctx, Q16WeaponKills, xuid, matchID)
+	rows, err := r.pdb.ReadDB().Query(ctx, Q16WeaponKills, xuid, matchID)
 	if err != nil {
 		return nil, nil
 	}
@@ -340,7 +340,7 @@ func (r *MatchViewRepo) GetMatchKVPairs(ctx context.Context, matchID string) ([]
 	ctx, cancel := context.WithTimeout(ctx, 15*time.Second)
 	defer cancel()
 
-	rows, err := r.pdb.Player.Query(ctx, Q20KVPairs, matchID)
+	rows, err := r.pdb.ReadDB().Query(ctx, Q20KVPairs, matchID)
 	if err != nil {
 		// Vue v_killer_victim_full peut être absente dans certaines DBs → vide
 		return nil, nil
@@ -370,7 +370,7 @@ func (r *MatchViewRepo) GetMatchNeighbors(ctx context.Context, xuid, matchID str
 	ctx, cancel := context.WithTimeout(ctx, 10*time.Second)
 	defer cancel()
 
-	row := r.pdb.Player.QueryRow(ctx, Q25NeighborMatches, xuid, matchID)
+	row := r.pdb.ReadDB().QueryRow(ctx, Q25NeighborMatches, xuid, matchID)
 	var nextID, prevID *string
 	var currentIdx, total int
 	if err := row.Scan(&nextID, &prevID, &currentIdx, &total); err != nil {
@@ -392,7 +392,7 @@ func (r *MatchViewRepo) GetMatchSkillRank(ctx context.Context, matchID string) (
 	defer cancel()
 
 	var row domain.SkillRankRaw
-	err := r.pdb.Player.QueryRow(ctx, Q22MatchSkillRank, matchID).Scan(
+	err := r.pdb.ReadDB().QueryRow(ctx, Q22MatchSkillRank, matchID).Scan(
 		&row.RatingType,
 		&row.TierLabel,
 		&row.RatingValue,
@@ -412,7 +412,7 @@ func (r *MatchViewRepo) GetMatchEncounters(ctx context.Context, matchID, myXUID 
 	ctx, cancel := context.WithTimeout(ctx, 20*time.Second)
 	defer cancel()
 
-	rows, err := r.pdb.Player.Query(ctx, Q23MatchEncounters,
+	rows, err := r.pdb.ReadDB().Query(ctx, Q23MatchEncounters,
 		matchID, myXUID, // this_match WHERE
 		matchID, myXUID, // my_team WHERE
 		myXUID, // me.xuid = ?
@@ -482,7 +482,7 @@ func (r *MatchViewRepo) GetMatchExpectedStats(ctx context.Context, matchID, xuid
 	defer cancel()
 
 	var row domain.ExpectedStatsRaw
-	err := r.pdb.Player.QueryRow(ctx, Q26MatchExpectedStats, matchID, xuid).Scan(
+	err := r.pdb.ReadDB().QueryRow(ctx, Q26MatchExpectedStats, matchID, xuid).Scan(
 		&row.KillsExpected,
 		&row.DeathsExpected,
 		&row.AssistsExpected,

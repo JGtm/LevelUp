@@ -30,7 +30,7 @@ func NewHomeRepo(pdb *PlayerDB) *HomeRepo {
 
 // LoadHomeMatches charge tous les matchs du joueur (Q26).
 func (r *HomeRepo) LoadHomeMatches(ctx context.Context) ([]domain.HomeMatchRow, error) {
-	rows, err := r.pdb.Player.Query(ctx, Q26HomeMatches, r.pdb.XUID, r.pdb.XUID)
+	rows, err := r.pdb.ReadDB().Query(ctx, Q26HomeMatches, r.pdb.XUID, r.pdb.XUID)
 	if err != nil {
 		return nil, err
 	}
@@ -119,7 +119,7 @@ func (r *HomeRepo) LoadSpartanIdentity(ctx context.Context) (*domain.HomeSpartan
 	var backdropImageURL sql.NullString
 	var adornmentImagePath sql.NullString
 
-	err := r.pdb.Player.QueryRow(ctx, Q26cHomeSpartanIdentity).Scan(
+	err := r.pdb.ReadDB().QueryRow(ctx, Q26cHomeSpartanIdentity).Scan(
 		&row.RankNumber,
 		&row.CurrentXP,
 		&row.XPForNextRank,
@@ -206,7 +206,7 @@ func (r *HomeRepo) loadHomeSkillPeak(ctx context.Context, ratingType string) *do
 	var tierLabel sql.NullString
 	var tier sql.NullString
 	var subTier sql.NullInt16
-	if err := r.pdb.Player.QueryRow(ctx, Q26eHomeSkillPeakByType, ratingType).Scan(&ratingValue, &tierLabel, &tier, &subTier); err != nil {
+	if err := r.pdb.ReadDB().QueryRow(ctx, Q26eHomeSkillPeakByType, ratingType).Scan(&ratingValue, &tierLabel, &tier, &subTier); err != nil {
 		if err == sql.ErrNoRows || isTableNotFoundErr(err) {
 			return nil
 		}
@@ -226,12 +226,13 @@ func (r *HomeRepo) loadHomeSkillPeak(ctx context.Context, ratingType string) *do
 
 // LoadRecentPlaylistRanks retourne les 3 dernières playlists distinctes jouées avec leur
 // dernier rang compétitif connu (Q26g). Retourne (nil, nil) si aucune donnée.
-func (r *HomeRepo) LoadRecentPlaylistRanks(ctx context.Context) ([]domain.HomePlaylistRank, error) {
+// Le nom de playlist est résolu depuis asset_translations (metadata) puis adapté à la locale.
+func (r *HomeRepo) LoadRecentPlaylistRanks(ctx context.Context, locale string) ([]domain.HomePlaylistRank, error) {
 	if r == nil || r.pdb == nil || r.pdb.Player == nil {
 		return nil, nil
 	}
 
-	rows, err := r.pdb.Player.Query(ctx, Q26gHomePlaylistRanks, r.pdb.XUID)
+	rows, err := r.pdb.ReadDB().Query(ctx, Q26gHomePlaylistRanks, r.pdb.XUID)
 	if err != nil {
 		if isTableNotFoundErr(err) {
 			return nil, nil
@@ -240,8 +241,15 @@ func (r *HomeRepo) LoadRecentPlaylistRanks(ctx context.Context) ([]domain.HomePl
 	}
 	defer rows.Close()
 
-	var result []domain.HomePlaylistRank
+	type rawItem struct {
+		playlistID   string
+		playlistName string
+		item         domain.HomePlaylistRank
+	}
+
+	var raws []rawItem
 	for rows.Next() {
+		var playlistID sql.NullString
 		var playlistName sql.NullString
 		var isRanked sql.NullBool
 		var ratingType sql.NullString
@@ -251,7 +259,7 @@ func (r *HomeRepo) LoadRecentPlaylistRanks(ctx context.Context) ([]domain.HomePl
 		var subTier sql.NullInt16
 		var tierLabel sql.NullString
 
-		if err := rows.Scan(&playlistName, &isRanked, &ratingType, &ratingValue, &tier, &tierFR, &subTier, &tierLabel); err != nil {
+		if err := rows.Scan(&playlistID, &playlistName, &isRanked, &ratingType, &ratingValue, &tier, &tierFR, &subTier, &tierLabel); err != nil {
 			return nil, err
 		}
 
@@ -272,12 +280,47 @@ func (r *HomeRepo) LoadRecentPlaylistRanks(ctx context.Context) ([]domain.HomePl
 				optionalNullInt16Value(subTier),
 			)
 		}
-		result = append(result, item)
+		raws = append(raws, rawItem{
+			playlistID:   playlistID.String,
+			playlistName: playlistName.String,
+			item:         item,
+		})
 	}
 	if err := rows.Err(); err != nil {
 		return nil, err
 	}
+
+	// Enrichissement FR depuis asset_translations (même source que les tuiles de matchs).
+	playlistIDs := make([]string, 0, len(raws))
+	for _, raw := range raws {
+		if raw.playlistID != "" {
+			playlistIDs = append(playlistIDs, raw.playlistID)
+		}
+	}
+	assetNames, _ := r.loadHomeAssetTranslationNames(ctx, "playlist", playlistIDs)
+
+	result := make([]domain.HomePlaylistRank, 0, len(raws))
+	for _, raw := range raws {
+		nameFR := strings.TrimSpace(assetNames[raw.playlistID])
+		raw.item.PlaylistName = resolvePlaylistNameForLocale(locale, nameFR, raw.playlistName)
+		result = append(result, raw.item)
+	}
 	return result, nil
+}
+
+// resolvePlaylistNameForLocale retourne le nom de playlist adapté à la locale.
+// Pour "en*" → préfère l'anglais ; sinon → préfère le français.
+func resolvePlaylistNameForLocale(locale, fr, en string) string {
+	if strings.HasPrefix(strings.ToLower(strings.TrimSpace(locale)), "en") {
+		if strings.TrimSpace(en) != "" {
+			return en
+		}
+		return fr
+	}
+	if strings.TrimSpace(fr) != "" {
+		return fr
+	}
+	return en
 }
 
 func (r *HomeRepo) titleSlug() string {
@@ -638,13 +681,13 @@ func needsHomeAssetTranslation(labelFR, labelEN string) bool {
 // CountPlayerMatches retourne le nombre total de matchs du joueur (Q26b).
 func (r *HomeRepo) CountPlayerMatches(ctx context.Context) (int, error) {
 	var count int
-	err := r.pdb.Player.QueryRow(ctx, Q26bCountPlayerMatches, r.pdb.XUID).Scan(&count)
+	err := r.pdb.ReadDB().QueryRow(ctx, Q26bCountPlayerMatches, r.pdb.XUID).Scan(&count)
 	return count, err
 }
 
 // LoadHomeSessions charge les sessions avec label depuis player_match_enrichment (Q27).
 func (r *HomeRepo) LoadHomeSessions(ctx context.Context) ([]domain.HomeSessionRow, error) {
-	rows, err := r.pdb.Player.Query(ctx, Q27HomeSessions)
+	rows, err := r.pdb.ReadDB().Query(ctx, Q27HomeSessions)
 	if err != nil {
 		return nil, err
 	}
@@ -670,7 +713,7 @@ func (r *HomeRepo) LoadHomeSessions(ctx context.Context) ([]domain.HomeSessionRo
 // LoadRecentMedia charge les médias récents du joueur (Q28).
 // Retourne une liste vide si la table media_files n'existe pas.
 func (r *HomeRepo) LoadRecentMedia(ctx context.Context, limit int) ([]domain.HomeMediaRow, error) {
-	rows, err := r.pdb.Player.Query(ctx, Q28RecentMedia, limit)
+	rows, err := r.pdb.ReadDB().Query(ctx, Q28RecentMedia, limit)
 	if err != nil {
 		// La table media_files peut ne pas exister — dégradation silencieuse.
 		if isTableNotFoundErr(err) {
@@ -717,7 +760,7 @@ func (r *HomeRepo) LoadMatchMedals(ctx context.Context, matchIDs []string) (map[
 	}
 	query := fmt.Sprintf(Q26hMatchMedalsTemplate, strings.Join(placeholders, ", "))
 
-	rows, err := r.pdb.Player.Query(ctx, query, args...)
+	rows, err := r.pdb.ReadDB().Query(ctx, query, args...)
 	if err != nil {
 		return result, nil // dégradation silencieuse
 	}
@@ -818,7 +861,7 @@ func (r *HomeRepo) LoadMatchCitations(ctx context.Context, matchIDs []string) (m
 	}
 	query := fmt.Sprintf(Q26iMatchCitationsTemplate, strings.Join(placeholders, ", "))
 
-	rows, err := r.pdb.Player.Query(ctx, query, args...)
+	rows, err := r.pdb.ReadDB().Query(ctx, query, args...)
 	if err != nil {
 		if isTableNotFoundErr(err) {
 			return result, nil
@@ -952,7 +995,7 @@ func (r *HomeRepo) LoadCachedBattlePass(ctx context.Context, ttl time.Duration) 
 
 	var trackPath string
 	var rank, progress int
-	err := r.pdb.Player.QueryRow(ctx, query, r.pdb.XUID).Scan(&trackPath, &rank, &progress)
+	err := r.pdb.ReadDB().QueryRow(ctx, query, r.pdb.XUID).Scan(&trackPath, &rank, &progress)
 	if err != nil {
 		if err == sql.ErrNoRows {
 			return nil, false, nil
@@ -996,7 +1039,7 @@ func (r *HomeRepo) LoadCachedChallenges(ctx context.Context, ttl time.Duration) 
 		) t
 		WHERE rn = 1`, secs)
 
-	rows, err := r.pdb.Player.Query(ctx, query, r.pdb.XUID)
+	rows, err := r.pdb.ReadDB().Query(ctx, query, r.pdb.XUID)
 	if err != nil {
 		if isTableNotFoundErr(err) {
 			return nil, false, nil

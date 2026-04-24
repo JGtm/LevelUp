@@ -117,11 +117,18 @@ func (e *SyncEngine) BackfillWeaponKillsForMatches(
 	ctx context.Context,
 	matchIDs []string,
 ) (done, noFilm int, err error) {
-	sharedDB, err := OpenSharedDB(e.sharedDBPath)
+	relShared, err := AcquireLeaseCtx(ctx, e.sharedDBPath)
+	if err != nil {
+		return 0, 0, fmt.Errorf("BackfillWeaponKillsForMatches lease shared: %w", err)
+	}
+	defer relShared()
+
+	sharedHandle, err := OpenSharedDB(e.sharedDBPath)
 	if err != nil {
 		return 0, 0, fmt.Errorf("BackfillWeaponKillsForMatches OpenSharedDB: %w", err)
 	}
-	defer sharedDB.Close()
+	defer sharedHandle.Close()
+	sharedDB := sharedHandle.SQLDb()
 
 	client := NewHaloAPIClient(e.tokens.SpartanToken, e.tokens.ClearanceToken, 3)
 

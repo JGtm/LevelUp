@@ -1,15 +1,14 @@
 // Package duckdb — PlayerPool : pool de connexions DuckDB par joueur.
 //
 // Architecture :
-//   - Une connexion dédiée par base.
-//   - stats.duckdb du joueur et metadata.duckdb restent ouvertes en read-write,
-//     car le serveur relit et persiste des snapshots live dans le même process.
-//   - shared_matches_v2.duckdb reste ouverte en read-only.
-//   - ATTACH shared_matches_v2 est réalisé une seule fois à l'init du pool.
-//   - metadata.duckdb n'est pas ATTACHée à stats.duckdb ; les lectures metadata
-//     passent par PlayerDB.Metadata pour éviter les conflits DuckDB sur un même fichier.
+//   - Player : stats.duckdb en lecture/écriture (sync engine) avec shared attaché.
+//   - PlayerRO : stats.duckdb en lecture seule (handlers HTTP) avec shared attaché.
+//   - ReadDB() retourne PlayerRO si disponible, sinon Player (fallback pour les tests).
+//   - Shared : shared_matches_v2.duckdb en lecture seule.
+//   - Metadata : metadata.duckdb en lecture seule (PersistSink ouvre sa propre connexion RW).
+//   - SharedSocial : shared_social.duckdb en lecture/écriture (médias, likes, favoris).
+//   - Les migrations shared sont exécutées par runMigrations() dans main.go, pas ici.
 //   - Le pool est global au processus et threadsafe (sync.Map + singleflight).
-//   - Aucun appel à duckdb.Connect() hors de ce package.
 package duckdb
 
 import (
@@ -45,13 +44,23 @@ func (c PlayerPoolConfig) PoolKey() string {
 
 // PlayerDB regroupe les connexions DB nécessaires pour un joueur.
 type PlayerDB struct {
-	Player       *DB // stats.duckdb du joueur (RW, avec shared attaché)
+	Player       *DB // stats.duckdb du joueur (RW, avec shared attaché) — réservé au moteur sync
+	PlayerRO     *DB // stats.duckdb du joueur (RO, avec shared attaché) — lecture des handlers HTTP
 	Shared       *DB // shared_matches_v2.duckdb
 	SharedSocial *DB // shared_social.duckdb (médias, likes, favoris de matchs)
-	Metadata     *DB // metadata.duckdb (RW)
+	Metadata     *DB // metadata.duckdb (RO)
 	XUID         string
 	Gamertag     string
 	TitleSlug    string // Sprint 44 : titre associé
+}
+
+// ReadDB retourne la connexion de lecture préférée.
+// Retourne PlayerRO si disponible (production), sinon Player (fallback tests).
+func (pdb *PlayerDB) ReadDB() *DB {
+	if pdb.PlayerRO != nil {
+		return pdb.PlayerRO
+	}
+	return pdb.Player
 }
 
 // GlobalPool est le registre process-level des PlayerDB par gamertag (slug).
@@ -101,6 +110,9 @@ func CloseAll() {
 	globalPool.Range(func(key, value any) bool {
 		pdb := value.(*PlayerDB)
 		_ = pdb.Player.Close()
+		if pdb.PlayerRO != nil {
+			_ = pdb.PlayerRO.Close()
+		}
 		_ = pdb.Shared.Close()
 		if pdb.SharedSocial != nil {
 			_ = pdb.SharedSocial.Close()
@@ -122,20 +134,24 @@ func openPlayerDB(ctx context.Context, cfg PlayerPoolConfig) (*PlayerDB, error) 
 		return nil, fmt.Errorf("pool: open player db %s: %w", cfg.Gamertag, err)
 	}
 
+	playerRO, err := OpenReadOnly(cfg.PlayerDBPath, cfg.UserTimezone)
+	if err != nil {
+		_ = playerDB.Close()
+		return nil, fmt.Errorf("pool: open player db RO %s: %w", cfg.Gamertag, err)
+	}
+
 	sharedDB, err := OpenReadOnly(cfg.SharedDBPath, cfg.UserTimezone)
 	if err != nil {
 		_ = playerDB.Close()
+		_ = playerRO.Close()
 		return nil, fmt.Errorf("pool: open shared db: %w", err)
 	}
-	// Appliquer les migrations shared en read-write (idempotentes) — sans timezone (migration uniquement).
-	if rwShared, rwErr := OpenReadWrite(cfg.SharedDBPath); rwErr == nil {
-		_ = migration.RunForDB(rwShared.SQLDb(), migration.TargetShared)
-		_ = rwShared.Close()
-	}
+	// Les migrations shared sont gérées par runMigrations() dans main.go.
 
-	metaDB, err := OpenReadWrite(cfg.MetaDBPath, cfg.UserTimezone)
+	metaDB, err := OpenReadOnly(cfg.MetaDBPath, cfg.UserTimezone)
 	if err != nil {
 		_ = playerDB.Close()
+		_ = playerRO.Close()
 		_ = sharedDB.Close()
 		return nil, fmt.Errorf("pool: open metadata db: %w", err)
 	}
@@ -154,12 +170,22 @@ func openPlayerDB(ctx context.Context, cfg PlayerPoolConfig) (*PlayerDB, error) 
 		}
 	}
 
-	// ATTACH shared sur la connexion player pour les requêtes join
+	// ATTACH shared sur la connexion player RW pour les requêtes join (sync engine)
 	if err := attachShared(ctx, playerDB, cfg.SharedDBPath); err != nil {
 		_ = playerDB.Close()
+		_ = playerRO.Close()
 		_ = sharedDB.Close()
 		_ = metaDB.Close()
 		return nil, fmt.Errorf("pool: attach shared on player db: %w", err)
+	}
+
+	// ATTACH shared sur la connexion player RO pour les handlers HTTP
+	if err := attachShared(ctx, playerRO, cfg.SharedDBPath); err != nil {
+		_ = playerDB.Close()
+		_ = playerRO.Close()
+		_ = sharedDB.Close()
+		_ = metaDB.Close()
+		return nil, fmt.Errorf("pool: attach shared on playerRO: %w", err)
 	}
 
 	// ATTACH shared_matches_v2 sur SharedSocial pour les JOIN match_registry dans Q37.
@@ -172,6 +198,7 @@ func openPlayerDB(ctx context.Context, cfg PlayerPoolConfig) (*PlayerDB, error) 
 
 	return &PlayerDB{
 		Player:       playerDB,
+		PlayerRO:     playerRO,
 		Shared:       sharedDB,
 		SharedSocial: socialDB,
 		Metadata:     metaDB,

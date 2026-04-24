@@ -25,7 +25,7 @@ func (r *CareerRepo) GetLatestRank(ctx context.Context) (*domain.CareerRankData,
 	defer cancel()
 
 	var row domain.CareerRankData
-	err := r.pdb.Player.QueryRow(ctx, Q6CareerLatestRank).Scan(
+	err := r.pdb.ReadDB().QueryRow(ctx, Q6CareerLatestRank).Scan(
 		&row.RankNumber,
 		&row.CurrentXP,
 		&row.RecordedAt,
@@ -47,7 +47,7 @@ func (r *CareerRepo) GetXPHistory(ctx context.Context) ([]domain.XPHistoryPoint,
 	ctx, cancel := context.WithTimeout(ctx, 15*time.Second)
 	defer cancel()
 
-	rows, err := r.pdb.Player.Query(ctx, Q7CareerXPHistory)
+	rows, err := r.pdb.ReadDB().Query(ctx, Q7CareerXPHistory)
 	if err != nil {
 		return nil, fmt.Errorf("CareerRepo.GetXPHistory: %w", err)
 	}
@@ -69,7 +69,7 @@ func (r *CareerRepo) GetLUSRHistory(ctx context.Context) ([]domain.LUSRCheckpoin
 	ctx, cancel := context.WithTimeout(ctx, 15*time.Second)
 	defer cancel()
 
-	rows, err := r.pdb.Player.Query(ctx, Q8LUSRHistory)
+	rows, err := r.pdb.ReadDB().Query(ctx, Q8LUSRHistory)
 	if err != nil {
 		return nil, fmt.Errorf("CareerRepo.GetLUSRHistory: %w", err)
 	}
@@ -93,7 +93,7 @@ func (r *CareerRepo) GetTopMatches(ctx context.Context) ([]domain.TopMatchRawRow
 	ctx, cancel := context.WithTimeout(ctx, 15*time.Second)
 	defer cancel()
 
-	rows, err := r.pdb.Player.Query(ctx, Q9TopMatches, r.pdb.XUID)
+	rows, err := r.pdb.ReadDB().Query(ctx, Q9TopMatches, r.pdb.XUID)
 	if err != nil {
 		return nil, fmt.Errorf("CareerRepo.GetTopMatches: %w", err)
 	}

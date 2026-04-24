@@ -1,59 +1,37 @@
-// Package sync — lease.go : write lease par chemin DB.
+// Package sync — lease.go : façade sur internal/platform/dblease.
 //
-// Garantit qu'une seule goroutine à la fois écrit dans une base DuckDB donnée.
-// Portage du _db_lock asyncio.Lock() Python — adapté au modèle goroutines Go.
+// Ce fichier délègue entièrement au package dblease pour éviter
+// la duplication de la map de mutex et les cycles d'import entre
+// internal/sync et internal/platform/duckdb (PersistSink).
+//
+// Graphe d'import garanti sans cycle :
+//
+//	internal/sync → internal/platform/dblease
+//	internal/platform/duckdb → internal/platform/dblease
+//	internal/platform/dblease → (stdlib uniquement)
 //
 // Usage :
 //
-//	release, err := AcquireLease(dbPath, 5*time.Second)
+//	release, err := AcquireLeaseCtx(ctx, dbPath)
 //	if err != nil { return err }
 //	defer release()
 package sync
 
 import (
-	"fmt"
-	"sync"
+	"context"
 	"time"
+
+	"levelup/go-api/internal/platform/dblease"
 )
 
-var (
-	leasesMu sync.Mutex
-	leases   = map[string]*sync.Mutex{}
-)
-
-// leaseMutex retourne (et crée si absent) le mutex associé à un chemin DB.
-func leaseMutex(path string) *sync.Mutex {
-	leasesMu.Lock()
-	defer leasesMu.Unlock()
-	if mu, ok := leases[path]; ok {
-		return mu
-	}
-	mu := &sync.Mutex{}
-	leases[path] = mu
-	return mu
+// AcquireLease est une façade sur dblease.AcquireLease.
+// Préférer AcquireLeaseCtx pour les flux de sync longs.
+func AcquireLease(path string, timeout time.Duration) (func(), error) {
+	return dblease.AcquireLease(path, timeout)
 }
 
-// AcquireLease tente d'acquérir le verrou d'écriture pour un chemin DB.
-//
-// Retourne une fonction release() à appeler (via defer) une fois l'écriture terminée.
-// Retourne une erreur si le verrou n'est pas disponible dans le délai imparti.
-//
-// Implémentation via TryLock + polling pour éviter les fuites de goroutines :
-// l'ancienne version (go func { mu.Lock() }) laissait une goroutine bloquée indéfiniment
-// si le timeout survenait avant l'acquisition.
-//
-// Portage du comportement du _db_lock Python avec timeout 5s.
-func AcquireLease(path string, timeout time.Duration) (func(), error) {
-	mu := leaseMutex(path)
-	deadline := time.Now().Add(timeout)
-
-	for {
-		if mu.TryLock() {
-			return func() { mu.Unlock() }, nil
-		}
-		if time.Now().After(deadline) {
-			return nil, fmt.Errorf("write lease timeout (%v) pour %s — autre sync en cours?", timeout, path)
-		}
-		time.Sleep(5 * time.Millisecond)
-	}
+// AcquireLeaseCtx est une façade sur dblease.AcquireLeaseCtx.
+// L'attente s'arrête si le contexte est annulé.
+func AcquireLeaseCtx(ctx context.Context, path string) (func(), error) {
+	return dblease.AcquireLeaseCtx(ctx, path)
 }

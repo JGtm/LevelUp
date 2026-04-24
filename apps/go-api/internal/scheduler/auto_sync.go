@@ -24,18 +24,16 @@ package scheduler
 
 import (
 	"context"
-	"database/sql"
 	"log/slog"
 	"os"
 	"strings"
 	"time"
 
-	_ "github.com/duckdb/duckdb-go/v2" //nolint:blank-imports // driver DuckDB requis pour sql.Open("duckdb", ...)
-
 	"levelup/go-api/internal/config"
 	"levelup/go-api/internal/domain"
 	titlePkg "levelup/go-api/internal/domain/title"
 	"levelup/go-api/internal/platform/auth"
+	duckdb "levelup/go-api/internal/platform/duckdb"
 	settings_platform "levelup/go-api/internal/platform/settings"
 	"levelup/go-api/internal/sync"
 )
@@ -347,19 +345,18 @@ func defaultEngineFactory(repoRoot, gamertag, xuid string, tokens *domain.HaloTo
 // Tente TrySilentRefresh (MSAL) d'abord, puis TryOAuthRefresh sur le refresh_token trouvé.
 // La connexion DB est fermée avant de retourner.
 func defaultTokenReader(ctx context.Context, dbPath string, gamertag string, provider auth.TokenProvider) (string, error) {
-	db, err := sql.Open("duckdb", dbPath)
+	db, err := duckdb.OpenReadOnly(dbPath)
 	if err != nil {
 		return "", err
 	}
-	db.SetMaxOpenConns(1)
 	defer db.Close() //nolint:errcheck // best-effort à la fermeture
 
 	var cacheJSON, refreshToken string
-	if err := db.QueryRowContext(ctx,
+	if err := db.SQLDb().QueryRowContext(ctx,
 		"SELECT value FROM sync_meta WHERE key = 'msal_token_cache'").Scan(&cacheJSON); err != nil {
 		slog.DebugContext(ctx, "auto_sync: msal_token_cache absent de sync_meta", "db", dbPath)
 	}
-	if err := db.QueryRowContext(ctx,
+	if err := db.SQLDb().QueryRowContext(ctx,
 		"SELECT value FROM sync_meta WHERE key = 'oauth_refresh_token'").Scan(&refreshToken); err != nil {
 		slog.DebugContext(ctx, "auto_sync: oauth_refresh_token absent de sync_meta", "db", dbPath)
 	}

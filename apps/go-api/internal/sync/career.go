@@ -13,6 +13,8 @@ import (
 	"strings"
 	"time"
 	"unicode"
+
+	duckdbpkg "levelup/go-api/internal/platform/duckdb"
 )
 
 // CareerRankData contient les données d'un snapshot de rang.
@@ -173,15 +175,14 @@ func enrichCareerRankFromMetadata(db *sql.DB, data *CareerRankData) error {
 	return nil
 }
 
-func openCareerMetadataDB(path string) (*sql.DB, error) {
+func openCareerMetadataDB(path string) (*duckdbpkg.DB, error) {
 	if strings.TrimSpace(path) == "" {
 		return nil, fmt.Errorf("openCareerMetadataDB: path vide")
 	}
-	db, err := sql.Open("duckdb", path+"?access_mode=read_only")
+	db, err := duckdbpkg.OpenReadOnly(path)
 	if err != nil {
 		return nil, fmt.Errorf("openCareerMetadataDB: %w", err)
 	}
-	db.SetMaxOpenConns(1)
 	return db, nil
 }
 

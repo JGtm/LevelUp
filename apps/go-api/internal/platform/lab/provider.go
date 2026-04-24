@@ -54,7 +54,7 @@ func (p *Provider) GetResources(
 	query domain.LabResourcesQuery,
 ) (*domain.LabResourcesResponse, error) {
 	metaPath := p.metadataDBPath(titleSlug)
-	metaDB, err := duckdb.OpenReadWrite(metaPath)
+	metaDB, err := duckdb.OpenReadOnly(metaPath)
 	if err != nil {
 		return nil, fmt.Errorf("lab resources open metadata: %w", err)
 	}
@@ -175,7 +175,7 @@ func (p *Provider) loadMedalGuards(
 	ctx context.Context,
 	titleSlug string,
 ) (*domain.LabMedalGuardsReport, error) {
-	metaDB, err := duckdb.OpenReadWrite(p.metadataDBPath(titleSlug))
+	metaDB, err := duckdb.OpenReadOnly(p.metadataDBPath(titleSlug))
 	if err != nil {
 		return nil, nil
 	}
