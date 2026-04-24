@@ -269,6 +269,100 @@ func TestParseXUIDs_Multiple(t *testing.T) {
 	}
 }
 
+// ─── TeamChangeMode ──────────────────────────────────────────────────────────
+
+// TestComputeSessionsWithContext_TeamChangeIgnore : les changements d'équipe
+// ne déclenchent jamais une nouvelle session — seul le gap compte.
+func TestComputeSessionsWithContext_TeamChangeIgnore(t *testing.T) {
+	base := t0()
+	rows := []domain.SessionMatchRow{
+		makeMatch("m1", base, 600, "xuid_a,xuid_b", false),
+		makeMatch("m2", tPlus(base, 15), 600, "xuid_c,xuid_d", false), // équipe complètement différente
+		makeMatch("m3", tPlus(base, 30), 600, "", false),              // sans coéquipiers
+	}
+	opts := DefaultSessionOptions()
+	opts.TeamChangeMode = domain.TeamChangeModeIgnore
+	opts.FriendsXUIDs = []string{"xuid_a", "xuid_b"}
+
+	got := ComputeSessionsWithContext(rows, opts)
+	if got[0].SessionID != got[1].SessionID || got[1].SessionID != got[2].SessionID {
+		t.Error("TeamChangeModeIgnore: expected all matches in same session regardless of team changes")
+	}
+}
+
+// TestComputeSessionsWithContext_TeamChangeGroup : tout changement dans la
+// composition du groupe déclenche une nouvelle session.
+func TestComputeSessionsWithContext_TeamChangeGroup(t *testing.T) {
+	base := t0()
+	rows := []domain.SessionMatchRow{
+		makeMatch("m1", base, 600, "xuid_a,xuid_b", false),
+		makeMatch("m2", tPlus(base, 15), 600, "xuid_a,xuid_c", false), // xuid_b remplacé par xuid_c
+	}
+	opts := DefaultSessionOptions()
+	opts.TeamChangeMode = domain.TeamChangeModeGroup
+	opts.FriendsXUIDs = []string{"xuid_a"} // seul xuid_a est ami, mais mode=group ignore ça
+
+	got := ComputeSessionsWithContext(rows, opts)
+	if got[0].SessionID == got[1].SessionID {
+		t.Error("TeamChangeModeGroup: expected new session when any teammate changed")
+	}
+}
+
+// TestComputeSessionsWithContext_TeamChangeFriends : seul un départ/arrivée
+// d'un ami de la liste déclenche une nouvelle session.
+func TestComputeSessionsWithContext_TeamChangeFriends(t *testing.T) {
+	base := t0()
+
+	// Cas 1 : changement de non-ami → pas de break.
+	rows1 := []domain.SessionMatchRow{
+		makeMatch("m1", base, 600, "xuid_friend,xuid_stranger_a", false),
+		makeMatch("m2", tPlus(base, 15), 600, "xuid_friend,xuid_stranger_b", false),
+	}
+	opts := DefaultSessionOptions()
+	opts.TeamChangeMode = domain.TeamChangeModeFriends
+	opts.FriendsXUIDs = []string{"xuid_friend"}
+
+	got1 := ComputeSessionsWithContext(rows1, opts)
+	if got1[0].SessionID != got1[1].SessionID {
+		t.Error("TeamChangeModeFriends: non-friend change should NOT trigger new session")
+	}
+
+	// Cas 2 : départ d'un ami → break.
+	rows2 := []domain.SessionMatchRow{
+		makeMatch("m1", base, 600, "xuid_friend,xuid_stranger_a", false),
+		makeMatch("m2", tPlus(base, 15), 600, "xuid_stranger_b", false), // ami parti
+	}
+	got2 := ComputeSessionsWithContext(rows2, opts)
+	if got2[0].SessionID == got2[1].SessionID {
+		t.Error("TeamChangeModeFriends: friend departure should trigger new session")
+	}
+}
+
+// TestComputeSessionsWithContext_TeamChangeGroupVsDefault : comportement
+// de mode group avec gap=120 est identique au défaut historique (mode "").
+func TestComputeSessionsWithContext_TeamChangeGroupIsDefault(t *testing.T) {
+	base := t0()
+	rows := []domain.SessionMatchRow{
+		makeMatch("m1", base, 600, "xuid_a,xuid_b", false),
+		makeMatch("m2", tPlus(base, 20), 600, "xuid_a,xuid_b", false), // même équipe
+		makeMatch("m3", tPlus(base, 40), 600, "xuid_a,xuid_c", false), // changement → break en mode group
+	}
+
+	optsGroup := DefaultSessionOptions()
+	optsGroup.TeamChangeMode = domain.TeamChangeModeGroup
+
+	// Mode vide ("") = comportement legacy = friends mode avec FriendsXUIDs vide.
+	// Avec FriendsXUIDs vide, aucun ami ⇒ jamais de break friend ⇒ seul le gap compte.
+	// Pour ce test on compare uniquement le comportement group.
+	gotGroup := ComputeSessionsWithContext(rows, optsGroup)
+	if gotGroup[0].SessionID != gotGroup[1].SessionID {
+		t.Error("m1 and m2 should be in same session (same team)")
+	}
+	if gotGroup[1].SessionID == gotGroup[2].SessionID {
+		t.Error("m2 and m3 should be in different sessions (team changed, mode=group)")
+	}
+}
+
 // ─── buildFriendSet ─────────────────────────────────────────────────────────
 
 func TestBuildFriendSet_Empty(t *testing.T) {

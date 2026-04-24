@@ -341,10 +341,12 @@ func TestIsTeammatesBreak_FriendLeftSession(t *testing.T) {
 }
 
 func TestIsTeammatesBreak_SameFriendRemains(t *testing.T) {
+	// x1 (ami) reste dans les deux matchs, seul x2→x3 change (non-ami).
+	// Avec le mode "friends", le sous-ensemble d'amis {x1} est inchangé → pas de rupture.
 	a, b := "x1,x2", "x1,x3"
 	friends := map[string]struct{}{"x1": {}}
-	if !isTeammatesBreak(&a, &b, friends) {
-		t.Error("should break when friend overlap detected with sig change")
+	if isTeammatesBreak(&a, &b, friends) {
+		t.Error("friend x1 unchanged, only non-friend changed: should NOT break")
 	}
 }
 
