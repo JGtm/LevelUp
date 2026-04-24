@@ -1,175 +1,118 @@
 # Plan — BlobStoragePathPrefix pour les chunks film
 
+> **Mise à jour 24 avr. 2026** — Les phases 1 et 3 ont été implémentées (avec une approche
+> différente du plan initial). Le gap highlight_events est également comblé. Ce document
+> décrit l'état réel du code et les tests restant à écrire.
+
 ## Contexte
 
-Le commit Grunt `1e9efc4` (19 avr. 2026) ajoute un champ `BlobStoragePathPrefix?: string` sur
-l'interface `AssetBase`, ce qui inclut `FilmAsset`. Ce champ indique un préfixe de blob storage
-à concaténer avec les chemins relatifs présents dans `Files.FileRelativePaths` (et potentiellement
-dans d'autres champs de `CustomData`).
-
-### Hypothèse actuelle dans notre code
-
-`filmChunk.ChunkURL` est toujours une URL absolue pre-signed Azure Blob. `downloadBlob` passe
-directement cette URL sans auth header (pre-signed = auto-signée).
-
-```go
-// halo_client.go
-type filmChunk struct {
-    ChunkURL string `json:"ChunkUrl"`  // URL absolue aujourd'hui
-    ...
-}
-
-data, err := c.downloadBlob(ctx, chunk.ChunkURL)
-```
-
-### Risque
-
-Si Halo migre le format du manifest film vers des chemins relatifs + `BlobStoragePathPrefix`
-(pattern déjà observé dans d'autres assets UGC), `ChunkURL` deviendrait un chemin relatif
-(ex. `chunks/match-uuid-xxxx/chunk-0.bin`) et `downloadBlob` échouerait silencieusement
-avec une erreur URL malformée ou un 404 sans message clair.
-
-Ce n'est **pas un bug aujourd'hui** — c'est une hypothèse fragile non défendue par le code.
+Le commit Grunt `1e9efc4` (19 avr. 2026) ajoute `BlobStoragePathPrefix?: string` sur `AssetBase`.
+Initialement identifié comme un risque futur, ce pattern est **déjà implémenté** dans notre code.
 
 ---
 
-## Plan d'implémentation
+## État de l'implémentation (code réel)
 
-### Phase 1 — Enrichir le struct + détecter le format (défensif)
+### Structure manifest — différente du plan initial
 
-**Fichier** : `apps/go-api/internal/sync/halo_client.go`
-
-1. Ajouter `BlobStoragePathPrefix` dans `filmManifest` au niveau `CustomData` :
+`BlobStoragePathPrefix` est au niveau **racine** du manifest (pas dans `CustomData`).
+Les chunks utilisent `FileRelativePath` (toujours relatif — plus de gestion URL absolue/relative) :
 
 ```go
+// halo_client.go — structure réelle
 type filmManifest struct {
-    CustomData struct {
-        BlobStoragePathPrefix string      `json:"BlobStoragePathPrefix"`
-        FilmChunks            []filmChunk `json:"FilmChunks"`
+    BlobStoragePathPrefix string `json:"BlobStoragePathPrefix"`
+    CustomData            struct {
+        FilmMajorVersion int         `json:"FilmMajorVersion"`
+        Chunks           []filmChunk `json:"Chunks"`
     } `json:"CustomData"`
 }
-```
 
-2. Ajouter une fonction helper `resolveChunkURL(prefix, rawURL string) (string, error)` :
-
-```go
-// resolveChunkURL construit l'URL finale d'un chunk.
-// Si rawURL est déjà absolu, le prefix est ignoré.
-// Si rawURL est relatif, il est concaténé au prefix.
-// Retourne une erreur si rawURL est relatif et prefix est vide.
-func resolveChunkURL(prefix, rawURL string) (string, error) {
-    if strings.HasPrefix(rawURL, "http://") || strings.HasPrefix(rawURL, "https://") {
-        return rawURL, nil
-    }
-    if strings.TrimSpace(prefix) == "" {
-        return "", fmt.Errorf("resolveChunkURL: ChunkUrl %q est relatif mais BlobStoragePathPrefix est absent", rawURL)
-    }
-    return strings.TrimRight(prefix, "/") + "/" + strings.TrimLeft(rawURL, "/"), nil
+type filmChunk struct {
+    Index            int    `json:"Index"`
+    ChunkType        int    `json:"ChunkType"`
+    FileRelativePath string `json:"FileRelativePath"`
+    // ...
 }
 ```
 
-3. Remplacer l'appel direct dans `GetMatchFilm` :
+### `buildChunkURL` — remplace `resolveChunkURL` du plan
+
+Plus simple : `FileRelativePath` est toujours relatif, pas besoin de distinguer absolu/relatif.
 
 ```go
-for i, chunk := range chunks {
-    resolvedURL, err := resolveChunkURL(manifest.CustomData.BlobStoragePathPrefix, chunk.ChunkURL)
-    if err != nil {
-        return nil, false, fmt.Errorf("GetMatchFilm chunk %d(%s): %w", i, matchID, err)
+func buildChunkURL(blobPrefix, fileRelativePath string) string {
+    name := strings.TrimLeft(fileRelativePath, "/")
+    if name == "" {
+        return blobPrefix
     }
-    data, err := c.downloadBlob(ctx, resolvedURL)
-    ...
+    if blobPrefix != "" && blobPrefix[len(blobPrefix)-1] != '/' {
+        return blobPrefix + "/" + name
+    }
+    return blobPrefix + name
 }
 ```
 
-### Phase 2 — Tests
+### `fetchFilmManifest` — factorisation partagée
 
-**Fichier** : `apps/go-api/internal/sync/halo_client_extra_test.go` (ou nouveau `film_blob_test.go`)
+Factorisée et utilisée par les deux méthodes :
+- `GetMatchFilm` → chunks `ChunkType=2` (weapon scanner)
+- `GetHighlightEventsChunk` → chunk `ChunkType=3` (highlight events)
 
-#### Tests unitaires `resolveChunkURL`
+### Pipeline highlight events — implémenté en Go ✅
+
+**Anciennement un gap fonctionnel, maintenant comblé :**
+
+```
+GetHighlightEventsChunk (ChunkType=3)
+  → analysis.ParseHighlightEvents (zlib decompress + scan binaire)
+  → InsertHighlightEvents (INSERT OR IGNORE, idempotent)
+  → InsertKillerVictimPairsFromEvents (via analysis.ComputeKillerVictimPairs)
+  → MarkEventsLoaded (events_loaded = TRUE, MBitEvents dans backfill_completed)
+```
+
+Câblé dans `processHighlightEvents` → appelé depuis `processMatch` via `opts.WithHighlightEvents`.
+
+---
+
+## Travail restant — Tests
+
+### Tests unitaires `buildChunkURL`
+
+**Fichier** : `apps/go-api/internal/sync/halo_client_extra_test.go`
 
 | Test | Cas | Vérification |
 |------|-----|-------------|
-| `TestResolveChunkURL_AbsoluteURL_NoPrefix` | URL absolue, prefix vide | URL retournée telle quelle |
-| `TestResolveChunkURL_AbsoluteURL_WithPrefix` | URL absolue, prefix non vide | URL retournée telle quelle — prefix ignoré |
-| `TestResolveChunkURL_RelativeWithPrefix` | Chemin relatif + prefix → URL absolue | Concaténation correcte |
-| `TestResolveChunkURL_RelativeWithPrefix_TrailingSlash` | Prefix avec slash final + path avec slash initial | Pas de double slash dans l'URL résultante |
-| `TestResolveChunkURL_RelativeWithoutPrefix` | Chemin relatif, prefix vide | Erreur explicite avec le rawURL dans le message |
-| `TestResolveChunkURL_EmptyURL` | `rawURL` vide | Erreur explicite |
+| `TestBuildChunkURL_EmptyRelativePath` | Prefix seul, path vide | Retourne le prefix tel quel |
+| `TestBuildChunkURL_BasicConcatenation` | `prefix="https://blob.example.com"`, `path="chunks/c0.bin"` | `"https://blob.example.com/chunks/c0.bin"` |
+| `TestBuildChunkURL_TrailingSlashOnPrefix` | Prefix avec `/` final + path avec `/` initial | Pas de double slash |
+| `TestBuildChunkURL_PathWithLeadingSlash` | `path="/chunks/c0.bin"` | Slash initial supprimé |
+| `TestBuildChunkURL_EmptyPrefix` | `prefix=""`, `path="chunks/c0.bin"` | Retourne `"chunks/c0.bin"` (erreur détectée plus tard par downloadBlob) |
 
-#### Tests d'intégration `GetMatchFilm`
+### Tests d'intégration `GetMatchFilm`
 
 | Test | Cas | Ce que ça protège |
 |------|-----|------------------|
-| `TestGetMatchFilm_AbsoluteURLs_NoPrefix` | Manifest sans prefix, ChunkUrl absolues **(comportement actuel)** | **Non-régression** — chemin nominal inchangé après la PR |
-| `TestGetMatchFilm_UsesBlobPrefix_SingleChunk` | Prefix + 1 ChunkUrl relatif | Nouveau format pris en charge |
-| `TestGetMatchFilm_UsesBlobPrefix_MultiChunk` | Prefix + N ChunkUrl relatifs | Tous les chunks résolus, pas seulement le premier |
-| `TestGetMatchFilm_AbsoluteURLs_PrefixPresent` | Prefix non vide + ChunkUrl absolues | Prefix ignoré sur les absolus (format mixte) |
-| `TestGetMatchFilm_RelativeURL_NoPrefixInManifest` | Pas de prefix, ChunkUrl relatif | Erreur remontée avec match_id + index dans le message |
+| `TestGetMatchFilm_BasicPrefix` | Manifest avec prefix + 1 chunk relatif **(chemin nominal)** | Téléchargement correct via `buildChunkURL` |
+| `TestGetMatchFilm_MultiChunk` | Prefix + N chunks | Tous les chunks résolus |
+| `TestGetMatchFilm_FilmAbsent` | 404 sur le manifest | Retour `(nil, false, nil)` |
+| `TestGetMatchFilm_DownloadFails` | Manifest OK, `downloadBlob` échoue | Erreur remontée avec chunk index + match_id |
 
-### Phase 3 — Logging
+### Tests d'intégration `GetHighlightEventsChunk`
 
-Le `slog.Warn` ne doit **pas** être optionnel — c'est le seul signal d'alerte opérationnel si
-l'API bascule.
+| Test | Cas | Ce que ça protège |
+|------|-----|------------------|
+| `TestGetHighlightEventsChunk_Found` | Manifest avec chunk ChunkType=3 | Retourne les données + filmMajorVersion |
+| `TestGetHighlightEventsChunk_NoChunk` | Manifest sans ChunkType=3 | Retour `(nil, 0, false, nil)` |
+| `TestGetHighlightEventsChunk_FilmAbsent` | 404 | Retour `(nil, 0, false, nil)` |
 
-Deux points de log obligatoires :
+### Non-régression pipeline weapon kills
 
-**A. Log par chunk au moment de la résolution** (dans la boucle, remplace le log unique pre-boucle) :
+> **Objectif** : garantir que `buildChunkURL` ne casse pas le pipeline complet film → `weapon_kills`.
+> Depuis l'implémentation des highlight events en Go, `getKillsForPlayer` lira des données
+> réelles pour les nouveaux matchs — la dépendance est maintenant entièrement gérée en Go.
 
-```go
-for i, chunk := range chunks {
-    resolvedURL, err := resolveChunkURL(manifest.CustomData.BlobStoragePathPrefix, chunk.ChunkURL)
-    if err != nil {
-        // Log explicite avant de retourner l'erreur — visible dans les traces sync.
-        slog.ErrorContext(ctx, "GetMatchFilm: impossible de résoudre l'URL du chunk",
-            "match_id", matchID,
-            "chunk_index", i,
-            "raw_url", chunk.ChunkURL,
-            "prefix", manifest.CustomData.BlobStoragePathPrefix,
-            "err", err,
-        )
-        return nil, false, fmt.Errorf("GetMatchFilm chunk %d(%s): %w", i, matchID, err)
-    }
-    // Log warn si résolution via prefix (format non nominal).
-    if resolvedURL != chunk.ChunkURL {
-        slog.WarnContext(ctx, "GetMatchFilm: chunk résolu via BlobStoragePathPrefix",
-            "match_id", matchID,
-            "chunk_index", i,
-            "resolved_url", resolvedURL,
-        )
-    }
-    data, err := c.downloadBlob(ctx, resolvedURL)
-    ...
-}
-```
-
-**Pourquoi par chunk et pas pre-boucle :** un manifest en format mixte (certains chunks absolus,
-d'autres relatifs) serait invisible avec un log unique. Le warn par chunk garantit la traçabilité
-exacte.
-
-**B. Test de vérification du logging** : utiliser `slog/slogtest` ou un handler de capture pour
-vérifier que :
-- Le `slog.Warn` est émis exactement une fois par chunk relatif résolu
-- Le `slog.Error` est émis si `resolveChunkURL` échoue
-- Aucun log n'est émis sur le chemin nominal (URLs absolues, pas de prefix)
-
-### Phase 4 — Non-régression pipeline weapon kills
-
-> **Objectif** : garantir que la résolution d'URL (`resolveChunkURL`) ne casse pas
-> le pipeline complet film → `weapon_kills`.
-
-**Clarification architecture** (important pour cibler les bons tests) :
-
-- Les `highlight_events` ne sont **pas** parsés depuis le film binaire en Go.
-- **Le backfill events n'est pas du tout implémenté en Go** : `warnUnimplemented` dans
-  `internal/api/handlers/backfill.go` (l.155) le confirme — quand `scope.Events` est actif,
-  Go détecte les matchs avec `events_loaded = false` mais n'exécute rien et émet un warning.
-- Conséquence directe : `getKillsForPlayer` lit `highlight_events WHERE event_type='Killed'`
-  pour alimenter `CorrelateKillsGlobal`. Si la table est vide, zero attributions → `weapon_kills` vide.
-- **C'est un gap fonctionnel** : sans implémentation du backfill events, le pipeline weapon kills
-  dépend de données historiques Python ou est inopérant sur les nouveaux matchs.
-- Le film binaire nourrit **uniquement** `weapon_kills` via `BackfillWeaponKillsForMatch`.
-
-**Tests déjà présents (non-régression micro, `analysis/`)** — à NE PAS redoubler :
+**Tests déjà présents — à NE PAS redoubler :**
 
 | Fichier | Couverture |
 |---------|-----------|
@@ -178,81 +121,30 @@ vérifier que :
 | `weapon_correlation_test.go` | `CorrelateKillsGlobal` (melee, grenade, fire event, fallback formulaA/timeline), `AttributionFromEvent` |
 | `weapon_reconciliation_test.go` | `CountConfidentAttributions`, `ComputeSurplus`, `FindBestSurplus`, `AssignSentinels`, `ReconcileAPIAggregates` |
 | `backfill_weapons_test.go` | `getKillsForPlayer`, `getXuidToPI`, `InsertWeaponKills`, `MarkWeaponKillsDone`, `attributionsToRows` |
-
-Ces tests couvrent chaque maillon de la chaîne sur des entrées triviales. Ce qui manque : un test
-bout-en-bout qui passe de vrais octets binaires jusqu'à l'insertion en DB.
+| `highlight_events_test.go` | `InsertHighlightEvents` (empty/insert/idempotent), `InsertKillerVictimPairsFromEvents`, `MarkEventsLoaded` |
 
 **Tests à ajouter** — fichier : `apps/go-api/internal/sync/backfill_weapons_test.go`
-(tag `//go:build integration`)
 
 | Test | Scénario | Ce que ça protège |
 |------|----------|------------------|
-| `TestBackfillWeaponKillsForMatch_NoFilm` | `GetMatchFilm` retourne `false` (film absent) | Retour `(false, nil)`, aucun write en DB |
-| `TestBackfillWeaponKillsForMatch_AbsoluteURLs` | Mock retourne des chunks binaires de fixture (URLs absolues, sans prefix) | **Non-régression chemin actuel** — même résultat après introduction de `resolveChunkURL` |
-| `TestBackfillWeaponKillsForMatch_WithBlobPrefix` | Mock retourne les mêmes chunks via prefix + URL relative | Même résultat en DB que le cas AbsoluteURLs |
-| `TestBackfillWeaponKillsForMatch_RelativeURL_NoPrefix` | Mock retourne un chunk relatif sans prefix dans le manifest | Erreur remontée, `weapon_kills` non modifiée |
+| `TestBackfillWeaponKillsForMatch_NoFilm` | `GetMatchFilm` retourne `false` | Retour `(false, nil)`, aucun write |
+| `TestBackfillWeaponKillsForMatch_WithHighlightEvents` | highlight_events seedés en DB + chunks binaires de fixture | **Non-régression** : pipeline complet fonctionne quand `highlight_events` est alimenté par Go |
+| `TestBackfillWeaponKillsForMatch_EmptyHighlightEvents` | highlight_events vide pour le match | `weapon_kills` vide mais pas d'erreur (comportement intentionnel) |
 
-**Structure du test de non-régression (AbsoluteURLs)** :
-
-```go
-// TestBackfillWeaponKillsForMatch_AbsoluteURLs est le test de non-régression
-// central : il vérifie que l'introduction de resolveChunkURL ne change pas
-// le comportement observé sur les URLs absolues (chemin 100% actuel).
-func TestBackfillWeaponKillsForMatch_AbsoluteURLs(t *testing.T) {
-    db := openWeaponDB(t)
-    // Seeder highlight_events avec 2 kills pour "xuid1"
-    db.Exec(`INSERT INTO highlight_events VALUES ('m1', 'xuid1', 'Killed', 5000)`)
-    db.Exec(`INSERT INTO highlight_events VALUES ('m1', 'xuid1', 'Killed', 10000)`)
-    db.Exec(`INSERT INTO match_registry (match_id) VALUES ('m1')`)
-
-    // Mock retournant des chunks binaires de fixture (octets FormulaA connus)
-    mock := &mockHaloClient{
-        filmChunks: map[int]filmChunkData{
-            0: {Data: buildTestChunkWithKills(5000, 10000), Offset: 0, Duration: 15000},
-        },
-        filmPresent: true,
-    }
-
-    found, err := BackfillWeaponKillsForMatch(context.Background(), mock, db, "m1", "xuid1")
-    if err != nil {
-        t.Fatalf("erreur inattendue: %v", err)
-    }
-    if !found {
-        t.Fatal("expected film found")
-    }
-
-    // Vérifier que weapon_kills a bien été alimentée (non-régression)
-    var count int
-    db.QueryRow("SELECT COUNT(*) FROM weapon_kills WHERE match_id='m1' AND xuid='xuid1'").Scan(&count)
-    if count == 0 {
-        t.Fatal("weapon_kills non alimentée après BackfillWeaponKillsForMatch")
-    }
-}
-```
-
-> **Note sur les fixtures binaires** : `buildTestChunkWithKills()` est un helper de test qui
-> construit des octets avec le pattern `FormulaAPattern = []byte{0x20, 0x00, 0x02}` et
-> `FrameMarker = []byte{0xA0, 0x7B, 0x42}` connus de `weapon_scanner.go`. Ce helper
-> appartient au package `sync_test` et dépend de constantes exportées depuis `analysis`.
+> **Note** : `buildTestChunkWithKills()` est un helper qui construit des octets avec
+> `FormulaAPattern = []byte{0x20, 0x00, 0x02}` et `FrameMarker = []byte{0xA0, 0x7B, 0x42}`
+> (constantes de `weapon_scanner.go`).
 
 ---
 
 ## Périmètre
 
-- **In scope** : `filmManifest` / `GetMatchFilm` / `downloadBlob` uniquement.
-- **Out of scope** : les autres assets UGC (maps, game variants) — leur téléchargement ne passe
-  pas par `downloadBlob` et ne souffre pas du même problème.
+- **In scope** : `filmManifest` / `GetMatchFilm` / `GetHighlightEventsChunk` / `buildChunkURL`.
+- **Out of scope** : autres assets UGC (maps, game variants) — pas concernés par `buildChunkURL`.
 - **Aucune migration DB** — changement purement dans la couche client HTTP.
-- **Aucun changement d'interface** `HaloClient` — `GetMatchFilm` garde la même signature.
 
 ---
 
-## Effort estimé
+## Branche
 
-| Phase | Complexité |
-|-------|-----------|
-| Phase 1 — struct + resolveChunkURL + GetMatchFilm | ~30 lignes |
-| Phase 2 — 4 tests unitaires | ~80 lignes |
-| Phase 3 — log warn | ~5 lignes |
-
-Branche suggérée : `fix/film-blob-storage-prefix`
+`feat/v7-assets-abstraction` (implémentation déjà mergée sur cette branche)

@@ -141,40 +141,82 @@ func ComputeKPIs(matches []domain.HomeMatchRow, totalMatches int) domain.HeroKPI
 	if len(matches) == 0 {
 		return domain.HeroKPIs{}
 	}
-	var wins, losses int
+	var wins, losses, draws, dnfs int
 	var ratioSum, ratioCount float64
+	var kdaSum, kdaCount float64
 	var accSum, accCount float64
+	var totalPlaytime int
+	var offSum, offCount float64
+	var defSum, defCount float64
 
 	for _, m := range matches {
-		if m.Outcome == homeOutcomeWin {
+		switch m.Outcome {
+		case homeOutcomeWin:
 			wins++
-		} else if m.Outcome == homeOutcomeLoss {
+		case homeOutcomeLoss:
 			losses++
+		case homeOutcomeTie:
+			draws++
+		case homeOutcomeDNF:
+			dnfs++
 		}
 		if m.Ratio != nil {
 			ratioSum += *m.Ratio
 			ratioCount++
 		}
+		if m.KDA != nil {
+			kdaSum += *m.KDA
+			kdaCount++
+		}
 		if m.Accuracy != nil {
 			accSum += *m.Accuracy
 			accCount++
+		}
+		if m.TimePlayedSecs != nil {
+			totalPlaytime += *m.TimePlayedSecs
+		}
+		if m.DamageDealt != nil && m.DamageTaken != nil {
+			cy := ComputeCombatYield(m.Kills, m.Assists, *m.DamageDealt, *m.DamageTaken, m.Deaths)
+			if cy.OffensiveConversion > 0 {
+				offSum += cy.OffensiveConversion
+				offCount++
+			}
+			if cy.DefensiveResistance > 0 {
+				defSum += cy.DefensiveResistance
+				defCount++
+			}
 		}
 	}
 
 	total := len(matches)
 	kpis := domain.HeroKPIs{
-		WinRate:      float64(wins) / float64(total),
-		TotalMatches: totalMatches,
-		Wins:         wins,
-		Losses:       losses,
+		WinRate:           float64(wins) / float64(total),
+		TotalMatches:      totalMatches,
+		Wins:              wins,
+		Draws:             draws,
+		DNFs:              dnfs,
+		Losses:            losses,
+		TotalPlaytimeSecs: totalPlaytime,
 	}
 	if ratioCount > 0 {
 		v := round2(ratioSum / ratioCount)
 		kpis.GlobalRatio = &v
 	}
+	if kdaCount > 0 {
+		v := round2(kdaSum / kdaCount)
+		kpis.AvgKDA = &v
+	}
 	if accCount > 0 {
 		v := round1(accSum / accCount)
 		kpis.AvgAccuracy = &v
+	}
+	if offCount > 0 {
+		v := round2(offSum / offCount)
+		kpis.AvgOffensiveConversion = &v
+	}
+	if defCount > 0 {
+		v := round2(defSum / defCount)
+		kpis.AvgDefensiveResistance = &v
 	}
 	return kpis
 }
