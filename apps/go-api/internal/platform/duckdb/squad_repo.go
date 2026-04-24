@@ -25,7 +25,7 @@ func (r *SquadRepo) LoadTopTeammates(ctx context.Context, xuid string) ([]domain
 	ctx, cancel := context.WithTimeout(ctx, 15*time.Second)
 	defer cancel()
 
-	rows, err := r.pdb.Player.Query(ctx, Q29TopTeammates, xuid, xuid)
+	rows, err := r.pdb.ReadDB().Query(ctx, Q29TopTeammates, xuid, xuid)
 	if err != nil {
 		return nil, fmt.Errorf("LoadTopTeammates: %w", err)
 	}
@@ -56,7 +56,7 @@ func (r *SquadRepo) LoadSquadMatches(ctx context.Context, playerXUID, teammateXU
 	ctx, cancel := context.WithTimeout(ctx, 15*time.Second)
 	defer cancel()
 
-	rows, err := r.pdb.Player.Query(ctx, Q30SquadMatches, teammateXUID, playerXUID)
+	rows, err := r.pdb.ReadDB().Query(ctx, Q30SquadMatches, teammateXUID, playerXUID)
 	if err != nil {
 		return nil, fmt.Errorf("LoadSquadMatches: %w", err)
 	}
@@ -101,7 +101,7 @@ func (r *SquadRepo) LoadTeammateMatches(ctx context.Context, playerXUID, teammat
 	ctx, cancel := context.WithTimeout(ctx, 15*time.Second)
 	defer cancel()
 
-	rows, err := r.pdb.Player.Query(ctx, Q31TeammateMatches, playerXUID, teammateXUID)
+	rows, err := r.pdb.ReadDB().Query(ctx, Q31TeammateMatches, playerXUID, teammateXUID)
 	if err != nil {
 		return nil, fmt.Errorf("LoadTeammateMatches: %w", err)
 	}
@@ -149,7 +149,7 @@ func (r *SquadRepo) LoadImpactEvents(ctx context.Context, matchIDs []string) ([]
 	}
 	query := fmt.Sprintf(Q32SquadImpactEventsTemplate, strings.Join(placeholders, ","))
 
-	rows, err := r.pdb.Player.Query(ctx, query, args...)
+	rows, err := r.pdb.ReadDB().Query(ctx, query, args...)
 	if err != nil {
 		return nil, fmt.Errorf("LoadImpactEvents: %w", err)
 	}
@@ -177,7 +177,7 @@ func (r *SquadRepo) LoadSynthesisHeatmap(ctx context.Context, xuid string) ([]do
 	ctx, cancel := context.WithTimeout(ctx, 15*time.Second)
 	defer cancel()
 
-	rows, err := r.pdb.Player.Query(ctx, Q33SynthesisHeatmap, xuid)
+	rows, err := r.pdb.ReadDB().Query(ctx, Q33SynthesisHeatmap, xuid)
 	if err != nil {
 		return nil, fmt.Errorf("LoadSynthesisHeatmap: %w", err)
 	}
@@ -204,7 +204,7 @@ func (r *SquadRepo) LoadSynthesisMatches(ctx context.Context, xuid string) ([]do
 	ctx, cancel := context.WithTimeout(ctx, 30*time.Second)
 	defer cancel()
 
-	rows, err := r.pdb.Player.Query(ctx, Q33bSynthesisMatches, xuid)
+	rows, err := r.pdb.ReadDB().Query(ctx, Q33bSynthesisMatches, xuid)
 	if err != nil {
 		return nil, fmt.Errorf("LoadSynthesisMatches: %w", err)
 	}

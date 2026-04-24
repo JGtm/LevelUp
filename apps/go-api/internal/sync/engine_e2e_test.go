@@ -408,7 +408,7 @@ func TestRunDelta_NewMatches(t *testing.T) {
 	defer sharedDB.Close()
 
 	// Initially no known matches
-	known, err := loadKnownMatchIDs(playerDB)
+	known, err := loadKnownMatchIDs(playerDB.SQLDb())
 	if err != nil {
 		t.Fatalf("loadKnownMatchIDs: %v", err)
 	}
@@ -423,7 +423,7 @@ func TestRunDelta_NewMatches(t *testing.T) {
 			t.Errorf("match %s ne devrait pas être connu", id)
 			continue
 		}
-		if err := engine.processMatch(context.Background(), mock, sharedDB, playerDB, &result, id, opts); err != nil {
+		if err := engine.processMatch(context.Background(), mock, sharedDB.SQLDb(), playerDB.SQLDb(), &result, id, opts); err != nil {
 			t.Fatalf("processMatch(%s): %v", id, err)
 		}
 	}
@@ -433,7 +433,7 @@ func TestRunDelta_NewMatches(t *testing.T) {
 	}
 
 	// After processing, known should contain 2
-	known2, err := loadKnownMatchIDs(playerDB)
+	known2, err := loadKnownMatchIDs(playerDB.SQLDb())
 	if err != nil {
 		t.Fatalf("loadKnownMatchIDs 2nd call: %v", err)
 	}

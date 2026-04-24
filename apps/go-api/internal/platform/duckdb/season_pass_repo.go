@@ -63,7 +63,7 @@ func (r *SeasonPassRepo) loadTrackSnapshots(ctx context.Context) (trackProgressM
 	ctx, cancel := context.WithTimeout(ctx, 5*time.Second)
 	defer cancel()
 
-	rows, err := r.pdb.Player.Query(ctx, `
+	rows, err := r.pdb.ReadDB().Query(ctx, `
 		SELECT reward_track_path, is_active, current_rank, partial_progress,
 		       is_owned, has_reached_max_rank, snapshot_at
 		FROM (

@@ -19,6 +19,8 @@ import (
 	"log/slog"
 	"strings"
 	"time"
+
+	"levelup/go-api/internal/platform/dblease"
 )
 
 // PersistSink centralise les écritures battlepass/challenges (fire-and-forget).
@@ -90,6 +92,12 @@ type battlePassTrackRaw struct {
 // et fetche la définition GameCMS (/hi/Progression/file/{trackPath}) — voir
 // battlepass_details.go / fetchRewardTrackDefinition.
 func (s *PersistSink) writeBattlePass(ctx context.Context, trackPath string, body []byte) error {
+	relMeta, err := dblease.AcquireLease(s.MetaPath, dblease.MetadataLeaseTimeout)
+	if err != nil {
+		return fmt.Errorf("writeBattlePass lease meta: %w", err)
+	}
+	defer relMeta()
+
 	db, err := OpenReadWrite(s.MetaPath)
 	if err != nil {
 		return fmt.Errorf("open meta rw: %w", err)
@@ -123,6 +131,12 @@ func (s *PersistSink) writeBattlePass(ctx context.Context, trackPath string, bod
 	if err := json.Unmarshal(body, &payload); err != nil {
 		return fmt.Errorf("parse battlepass body: %w", err)
 	}
+
+	relPlayer, err := dblease.AcquireLease(s.PlayerPath, dblease.PlayerLeaseTimeout)
+	if err != nil {
+		return fmt.Errorf("writeBattlePass lease player: %w", err)
+	}
+	defer relPlayer()
 
 	pdb, err := OpenReadWrite(s.PlayerPath)
 	if err != nil {
@@ -228,6 +242,12 @@ type trackDefRaw struct {
 func (s *PersistSink) UpsertTrackDefinition(ctx context.Context, trackPath string, raw []byte) error {
 	var def trackDefRaw
 	_ = json.Unmarshal(raw, &def) // best-effort : champs manquants restent vides
+
+	relMeta, err := dblease.AcquireLease(s.MetaPath, dblease.MetadataLeaseTimeout)
+	if err != nil {
+		return fmt.Errorf("UpsertTrackDefinition lease meta: %w", err)
+	}
+	defer relMeta()
 
 	db, err := OpenReadWrite(s.MetaPath)
 	if err != nil {
@@ -344,22 +364,27 @@ func (s *PersistSink) writeChallenges(ctx context.Context, body []byte) error {
 
 	// 1. Sauvegarder le blob brut dans waypoint_assets_raw (metadata.duckdb).
 	if s.MetaPath != "" {
-		db, err := OpenReadWrite(s.MetaPath)
-		if err != nil {
-			slog.Warn("persist_sink: open meta rw for challenges failed", "err", err)
-			defer db.Close()
+		relMeta, leaseErr := dblease.AcquireLease(s.MetaPath, dblease.MetadataLeaseTimeout)
+		if leaseErr != nil {
+			slog.Warn("persist_sink: meta lease for challenges failed", "err", leaseErr)
 		} else {
-			defer db.Close()
-			if err := upsertWaypointAsset(ctx, db,
-				"halo_infinite",
-				s.XUID+"/challenge_deck",
-				"challenge_deck",
-				hash,
-				string(body),
-				now,
-			); err != nil {
-				slog.Warn("persist_sink: waypoint_assets_raw challenges upsert failed",
-					"xuid", s.XUID, "err", err)
+			defer relMeta()
+			db, err := OpenReadWrite(s.MetaPath)
+			if err != nil {
+				slog.Warn("persist_sink: open meta rw for challenges failed", "err", err)
+			} else {
+				defer db.Close()
+				if err := upsertWaypointAsset(ctx, db,
+					"halo_infinite",
+					s.XUID+"/challenge_deck",
+					"challenge_deck",
+					hash,
+					string(body),
+					now,
+				); err != nil {
+					slog.Warn("persist_sink: waypoint_assets_raw challenges upsert failed",
+						"xuid", s.XUID, "err", err)
+				}
 			}
 		}
 	}
@@ -368,6 +393,12 @@ func (s *PersistSink) writeChallenges(ctx context.Context, body []byte) error {
 	if s.PlayerPath == "" || s.XUID == "" {
 		return nil
 	}
+
+	relPlayer, err := dblease.AcquireLease(s.PlayerPath, dblease.PlayerLeaseTimeout)
+	if err != nil {
+		return fmt.Errorf("writeChallenges lease player: %w", err)
+	}
+	defer relPlayer()
 
 	pdb, err := OpenReadWrite(s.PlayerPath)
 	if err != nil {

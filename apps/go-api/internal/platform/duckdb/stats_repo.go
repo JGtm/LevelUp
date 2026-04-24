@@ -26,7 +26,7 @@ func (r *StatsRepo) LoadStatsMatches(ctx context.Context) ([]domain.StatsMatchRo
 	ctx, cancel := context.WithTimeout(ctx, 120*time.Second)
 	defer cancel()
 
-	rows, err := r.pdb.Player.Query(ctx, Q23StatsMatches, r.pdb.XUID)
+	rows, err := r.pdb.ReadDB().Query(ctx, Q23StatsMatches, r.pdb.XUID)
 	if err != nil {
 		return nil, fmt.Errorf("StatsRepo.LoadStatsMatches: %w", err)
 	}
@@ -78,7 +78,7 @@ func (r *StatsRepo) LoadLUSRHistory(ctx context.Context) ([]domain.LUSRMatchRati
 	ctx, cancel := context.WithTimeout(ctx, 60*time.Second)
 	defer cancel()
 
-	rows, err := r.pdb.Player.Query(ctx, Q24LUSRHistory)
+	rows, err := r.pdb.ReadDB().Query(ctx, Q24LUSRHistory)
 	if err != nil {
 		return nil, fmt.Errorf("StatsRepo.LoadLUSRHistory: %w", err)
 	}
@@ -109,7 +109,7 @@ func (r *StatsRepo) LoadMatchParticipants(ctx context.Context) ([]domain.Partici
 	ctx, cancel := context.WithTimeout(ctx, 120*time.Second)
 	defer cancel()
 
-	rows, err := r.pdb.Player.Query(ctx, Q25MatchParticipants, r.pdb.XUID)
+	rows, err := r.pdb.ReadDB().Query(ctx, Q25MatchParticipants, r.pdb.XUID)
 	if err != nil {
 		return nil, fmt.Errorf("StatsRepo.LoadMatchParticipants: %w", err)
 	}

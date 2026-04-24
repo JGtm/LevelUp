@@ -56,7 +56,7 @@ func (r *PrivacyStateRepo) LoadPrivacyState(ctx context.Context, xuid string) (*
 	defer cancel()
 
 	var s domain.PlayerPrivacyState
-	err := r.pdb.Player.QueryRow(ctx,
+	err := r.pdb.ReadDB().QueryRow(ctx,
 		`SELECT xuid, is_private, observed_at, source
 		   FROM player_privacy_state
 		  WHERE xuid = ?`,

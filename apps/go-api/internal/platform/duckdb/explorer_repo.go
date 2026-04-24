@@ -25,7 +25,7 @@ func NewExplorerRepo(pdb *PlayerDB, xuid string) *ExplorerRepo {
 // Q19 retourne 10 colonnes : match_id, start_time, map_ui, mode_ui,
 // player1_team_id, player2_team_id, player1_outcome, player1_kills, player1_deaths, player1_kda.
 func (r *ExplorerRepo) GetCommonMatches(ctx context.Context, xuid1, xuid2 string) ([]domain.CommonMatchRaw, error) {
-	rows, err := r.pdb.Player.Query(ctx, Q19CommonMatches, xuid1, xuid2)
+	rows, err := r.pdb.ReadDB().Query(ctx, Q19CommonMatches, xuid1, xuid2)
 	if err != nil {
 		return nil, fmt.Errorf("ExplorerRepo.GetCommonMatches: query: %w", err)
 	}
@@ -59,7 +59,7 @@ func (r *ExplorerRepo) GetCommonMatches(ctx context.Context, xuid1, xuid2 string
 // ResolveXUIDByGamertag résout un gamertag en xuid via xuid_aliases (ILIKE).
 func (r *ExplorerRepo) ResolveXUIDByGamertag(ctx context.Context, gamertag string) (string, error) {
 	const q = `SELECT xuid FROM shared.xuid_aliases WHERE gamertag ILIKE ? LIMIT 1`
-	row := r.pdb.Player.QueryRow(ctx, q, gamertag)
+	row := r.pdb.ReadDB().QueryRow(ctx, q, gamertag)
 	var xuid string
 	if err := row.Scan(&xuid); err != nil {
 		return "", fmt.Errorf("ExplorerRepo.ResolveXUIDByGamertag(%q): %w", gamertag, err)

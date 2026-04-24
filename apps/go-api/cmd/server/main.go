@@ -157,7 +157,7 @@ func main() {
 	// n'a pas encore libéré le verrou DuckDB (write-ahead lock).
 	var metaDB *duckdb.DB
 	for attempt := range 6 {
-		metaDB, err = duckdb.OpenReadWrite(metaPath)
+		metaDB, err = duckdb.OpenReadOnly(metaPath)
 		if err == nil {
 			break
 		}
@@ -260,6 +260,7 @@ func main() {
 	if err := srv.Shutdown(shutdownCtx); err != nil {
 		slog.Error("shutdown", "err", err)
 	}
+	duckdb.CloseAll()
 	if err := sharedDB.Close(); err != nil {
 		slog.Warn("fermeture shared DB", "err", err)
 	}

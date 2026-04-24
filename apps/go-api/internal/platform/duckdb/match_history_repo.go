@@ -24,7 +24,7 @@ func (r *MatchHistoryRepo) LoadAll(ctx context.Context) ([]domain.MatchHistoryRa
 	ctx, cancel := context.WithTimeout(ctx, 60*time.Second)
 	defer cancel()
 
-	rows, err := r.pdb.Player.Query(ctx, Q5MatchHistory, r.pdb.XUID, r.pdb.XUID)
+	rows, err := r.pdb.ReadDB().Query(ctx, Q5MatchHistory, r.pdb.XUID, r.pdb.XUID)
 	if err != nil {
 		return nil, fmt.Errorf("MatchHistoryRepo.LoadAll: %w", err)
 	}

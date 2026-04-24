@@ -60,7 +60,7 @@ func (r *LeaderboardRepo) GetLocalLeaderboard(ctx context.Context, titleSlug, se
 		LIMIT 1`
 
 	playlistFilter := "%" + playlist + "%"
-	rows, err := r.pdb.Player.Query(ctx, q, playlist, playlistFilter)
+	rows, err := r.pdb.ReadDB().Query(ctx, q, playlist, playlistFilter)
 	if err != nil {
 		return nil, fmt.Errorf("LeaderboardRepo.GetLocalLeaderboard: %w", err)
 	}

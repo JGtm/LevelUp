@@ -20,8 +20,6 @@ import (
 	"strings"
 	"time"
 
-	_ "github.com/duckdb/duckdb-go/v2" // driver DuckDB
-
 	"levelup/go-api/internal/domain"
 	titlePkg "levelup/go-api/internal/domain/title"
 )
@@ -29,8 +27,6 @@ import (
 const (
 	// historyPageSize est le nombre de matchs demandés par page API.
 	historyPageSize = 25
-	// leaseTimeout est le délai max pour acquérir un write lease.
-	leaseTimeout = 10 * time.Second
 )
 
 // SyncEngine orchestre la synchronisation des données Halo d'un joueur.
@@ -78,22 +74,31 @@ func (e *SyncEngine) RunFull(ctx context.Context, opts domain.SyncOptions) (doma
 // RunBackfill détecte les matchs avec données manquantes et retourne la liste.
 // Le scope doit être Resolve() avant appel. Retourne la liste des match_ids manquants.
 func (e *SyncEngine) RunBackfill(ctx context.Context, scope *SyncScope) ([]string, error) {
-	_ = ctx // reserved for future cancellation support
+	relPlayer, err := AcquireLeaseCtx(ctx, e.playerDBPath)
+	if err != nil {
+		return nil, fmt.Errorf("RunBackfill lease player: %w", err)
+	}
+	defer relPlayer()
 
-	// ─── Write leases (lecture seule suffit pour la détection) ───────────
-	playerDB, err := OpenPlayerDB(e.playerDBPath)
+	relShared, err := AcquireLeaseCtx(ctx, e.sharedDBPath)
+	if err != nil {
+		return nil, fmt.Errorf("RunBackfill lease shared: %w", err)
+	}
+	defer relShared()
+
+	playerHandle, err := OpenPlayerDB(e.playerDBPath)
 	if err != nil {
 		return nil, fmt.Errorf("RunBackfill OpenPlayerDB: %w", err)
 	}
-	defer playerDB.Close()
+	defer playerHandle.Close()
 
-	sharedDB, err := OpenSharedDB(e.sharedDBPath)
+	sharedHandle, err := OpenSharedDB(e.sharedDBPath)
 	if err != nil {
 		return nil, fmt.Errorf("RunBackfill OpenSharedDB: %w", err)
 	}
-	defer sharedDB.Close()
+	defer sharedHandle.Close()
 
-	return FindMatchesMissingData(playerDB, sharedDB, e.xuid, scope)
+	return FindMatchesMissingData(playerHandle.SQLDb(), sharedHandle.SQLDb(), e.xuid, scope)
 }
 
 // run est le cœur du moteur de sync. isDelta=true → stop dès un match connu.
@@ -123,35 +128,37 @@ func (e *SyncEngine) run(ctx context.Context, opts domain.SyncOptions, isDelta b
 
 	// ─── Write leases ──────────────────────────────────────────────────────────
 	slog.DebugContext(ctx, "sync: acquisition lease player DB", "gamertag", e.gamertag, "db", e.playerDBPath)
-	relPlayer, err := AcquireLease(e.playerDBPath, leaseTimeout)
+	relPlayer, err := AcquireLeaseCtx(ctx, e.playerDBPath)
 	if err != nil {
-		slog.ErrorContext(ctx, "sync: lease player DB échouée", "gamertag", e.gamertag, "err", err, "timeout", leaseTimeout)
+		slog.ErrorContext(ctx, "sync: lease player DB échouée", "gamertag", e.gamertag, "err", err)
 		return result, fmt.Errorf("run: %w", err)
 	}
 	defer relPlayer()
 
 	slog.DebugContext(ctx, "sync: acquisition lease shared DB", "gamertag", e.gamertag, "db", e.sharedDBPath)
-	relShared, err := AcquireLease(e.sharedDBPath, leaseTimeout)
+	relShared, err := AcquireLeaseCtx(ctx, e.sharedDBPath)
 	if err != nil {
-		slog.ErrorContext(ctx, "sync: lease shared DB échouée", "gamertag", e.gamertag, "err", err, "timeout", leaseTimeout)
+		slog.ErrorContext(ctx, "sync: lease shared DB échouée", "gamertag", e.gamertag, "err", err)
 		return result, fmt.Errorf("run: %w", err)
 	}
 	defer relShared()
 
 	// ─── Ouverture des DBs ─────────────────────────────────────────────────────
-	playerDB, err := OpenPlayerDB(e.playerDBPath)
+	playerHandle, err := OpenPlayerDB(e.playerDBPath)
 	if err != nil {
 		slog.ErrorContext(ctx, "sync: ouverture player DB échouée", "gamertag", e.gamertag, "db", e.playerDBPath, "err", err)
 		return result, fmt.Errorf("run OpenPlayerDB: %w", err)
 	}
-	defer playerDB.Close()
+	defer playerHandle.Close()
+	playerDB := playerHandle.SQLDb()
 
-	sharedDB, err := OpenSharedDB(e.sharedDBPath)
+	sharedHandle, err := OpenSharedDB(e.sharedDBPath)
 	if err != nil {
 		slog.ErrorContext(ctx, "sync: ouverture shared DB échouée", "gamertag", e.gamertag, "db", e.sharedDBPath, "err", err)
 		return result, fmt.Errorf("run OpenSharedDB: %w", err)
 	}
-	defer sharedDB.Close()
+	defer sharedHandle.Close()
+	sharedDB := sharedHandle.SQLDb()
 	slog.DebugContext(ctx, "sync: DBs ouvertes", "gamertag", e.gamertag)
 
 	// ─── Match IDs déjà connus (player DB) ───────────────────────────────────
@@ -472,7 +479,7 @@ func (e *SyncEngine) runCareerSync(
 			slog.WarnContext(ctx, "post-sync: ouverture metadata échouée", "gamertag", e.gamertag, "err", err)
 		} else {
 			defer metaDB.Close()
-			if err := enrichCareerRankFromMetadata(metaDB, data); err != nil {
+			if err := enrichCareerRankFromMetadata(metaDB.SQLDb(), data); err != nil {
 				slog.WarnContext(ctx, "post-sync: enrichissement carrière metadata échoué", "gamertag", e.gamertag, "err", err)
 			}
 		}

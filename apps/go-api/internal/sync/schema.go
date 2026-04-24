@@ -10,6 +10,8 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+
+	duckdbpkg "levelup/go-api/internal/platform/duckdb"
 )
 
 // playerSchemaSQL crée les tables minimales dans stats.duckdb d'un joueur.
@@ -185,41 +187,40 @@ func EnsureSharedSchema(db *sql.DB) error {
 	return execScript(db, sharedSchemaSQL)
 }
 
-// OpenPlayerDB ouvre stats.duckdb d'un joueur en lecture/écriture.
+// OpenPlayerDB ouvre stats.duckdb d'un joueur en lecture/écriture via le cache process-level.
 // Crée le répertoire si nécessaire. Applique le schéma player si absent.
-func OpenPlayerDB(path string) (*sql.DB, error) {
+// Retourne un *duckdbpkg.DB ref-compté ; appeler .Close() quand terminé.
+func OpenPlayerDB(path string) (*duckdbpkg.DB, error) {
 	if err := os.MkdirAll(filepath.Dir(path), 0o755); err != nil {
 		return nil, fmt.Errorf("OpenPlayerDB mkdir %s: %w", path, err)
 	}
-	db, err := sql.Open("duckdb", path)
+	handle, err := duckdbpkg.OpenReadWrite(path)
 	if err != nil {
 		return nil, fmt.Errorf("OpenPlayerDB open %s: %w", path, err)
 	}
-	// DuckDB n'est pas conçu pour le multi-writer concurrent — 1 connexion active.
-	db.SetMaxOpenConns(1)
-	if err := EnsurePlayerSchema(db); err != nil {
-		db.Close()
+	if err := EnsurePlayerSchema(handle.SQLDb()); err != nil {
+		handle.Close()
 		return nil, fmt.Errorf("OpenPlayerDB schema %s: %w", path, err)
 	}
-	return db, nil
+	return handle, nil
 }
 
-// OpenSharedDB ouvre shared_matches_v2.duckdb en lecture/écriture.
+// OpenSharedDB ouvre shared_matches_v2.duckdb en lecture/écriture via le cache process-level.
 // Applique le schéma shared si absent.
-func OpenSharedDB(path string) (*sql.DB, error) {
+// Retourne un *duckdbpkg.DB ref-compté ; appeler .Close() quand terminé.
+func OpenSharedDB(path string) (*duckdbpkg.DB, error) {
 	if err := os.MkdirAll(filepath.Dir(path), 0o755); err != nil {
 		return nil, fmt.Errorf("OpenSharedDB mkdir %s: %w", path, err)
 	}
-	db, err := sql.Open("duckdb", path)
+	handle, err := duckdbpkg.OpenReadWrite(path)
 	if err != nil {
 		return nil, fmt.Errorf("OpenSharedDB open %s: %w", path, err)
 	}
-	db.SetMaxOpenConns(1)
-	if err := EnsureSharedSchema(db); err != nil {
-		db.Close()
+	if err := EnsureSharedSchema(handle.SQLDb()); err != nil {
+		handle.Close()
 		return nil, fmt.Errorf("OpenSharedDB schema %s: %w", path, err)
 	}
-	return db, nil
+	return handle, nil
 }
 
 // execScript exécute un script SQL multi-instructions séparées par ";".

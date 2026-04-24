@@ -24,7 +24,7 @@ func (r *SessionsRepo) LoadSessionMatches(ctx context.Context) ([]domain.Session
 	ctx, cancel := context.WithTimeout(ctx, 60*time.Second)
 	defer cancel()
 
-	rows, err := r.pdb.Player.Query(ctx, Q22SessionMatches, r.pdb.XUID, r.pdb.XUID)
+	rows, err := r.pdb.ReadDB().Query(ctx, Q22SessionMatches, r.pdb.XUID, r.pdb.XUID)
 	if err != nil {
 		return nil, fmt.Errorf("SessionsRepo.LoadSessionMatches: %w", err)
 	}
