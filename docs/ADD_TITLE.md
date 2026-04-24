@@ -40,11 +40,12 @@ DuckDB file creation and schema migrations happen automatically at next server s
 | Step | Action | Who |
 |-----:|--------|-----|
 | 1 | Register the descriptor in `registry.go` + `make build` | **Manual** |
-| 2 | Create on-disk directories | Automated by `add-title` |
+| 2 | Create on-disk directories + frontend image folder | Automated by `add-title` |
 | 3 | Initialize `shared_pve.duckdb` (if Firefight) | Automated by `add-title --capabilities firefight` |
 | 4 | Add the title section to `db_profiles.json` | Automated by `add-title` |
 | 5 | Start the server (DuckDB creation + migrations) | Automatic at startup |
-| 6 | (Optional) Pre-populate `metadata.duckdb` referentials | Manual, title-specific |
+| 6 | Add header banner images for the home page | **Manual** |
+| 7 | (Optional) Pre-populate `metadata.duckdb` referentials | Manual, title-specific |
 
 ---
 
@@ -209,7 +210,27 @@ title-aware through the middleware and `ResolvePlayer`.
 
 ---
 
-## Step 6 — (Optional) Pre-populate referential data
+## Step 6 — Add header banner images
+
+`add-title` creates the folder `apps/web/public/titles/<slug>/` automatically.
+Drop the title's header visuals there (`.webp` or `.png`), then register them in
+`apps/web/src/features/home/HomeHeroBanner.tsx` inside `HEADER_IMAGES_BY_TITLE`:
+
+```ts
+const HEADER_IMAGES_BY_TITLE: Record<string, string[]> = {
+  halo_infinite: [ /* … */ ],
+  halo_mcc: [
+    '/titles/halo_mcc/header-1.webp',
+    '/titles/halo_mcc/header-2.png',
+  ],
+}
+```
+
+If no images are provided the banner silently shows nothing (empty array fallback).
+
+---
+
+## Step 7 — (Optional) Pre-populate referential data
 
 `metadata.duckdb` contains referential tables (weapon labels, career ranks, map names,
 etc.). For a new title these tables start empty.
@@ -239,6 +260,8 @@ Or inspect each point manually:
 - [ ] `schema_migrations` tables are populated in each database
 - [ ] `GET /api/v1/bootstrap` returns the title in the `titles` list
 - [ ] A player request with `X-LevelUp-Title: <slug>` returns HTTP 200
+- [ ] `apps/web/public/titles/<slug>/` exists and contains at least one header image
+- [ ] `HEADER_IMAGES_BY_TITLE` in `HomeHeroBanner.tsx` has an entry for `<slug>`
 
 ---
 

@@ -128,6 +128,9 @@ func createTitleDirs(repoRoot, slug string) error {
 	dirs := []string{
 		pr.WarehouseDir(slug),
 		pr.PlayerDir(slug, ""), // data/titles/<slug>/players/
+		// Dossier frontend pour les images du hero banner (home page).
+		// Placer ici les visuels header du titre (webp/png).
+		filepath.Join(repoRoot, "apps", "web", "public", "titles", slug),
 	}
 	// PlayerDir avec gamertag vide retourne le répertoire players/ du titre.
 	// On le normalise : supprimer le trailing segment vide que filepath.Join ajouterait.
@@ -226,6 +229,14 @@ func printRegistrySnippet(name, slug, capsStr, xboxID, steamID string) {
 	fmt.Printf("  })\n")
 	fmt.Println()
 	fmt.Println("  Puis : make build")
+	fmt.Println()
+	fmt.Println("┌─────────────────────────────────────────────────────────────────────┐")
+	fmt.Println("│  Étape frontend — ajouter les images du hero banner                 │")
+	fmt.Println("└─────────────────────────────────────────────────────────────────────┘")
+	fmt.Println()
+	fmt.Printf("  Dossier créé : apps/web/public/titles/%s/\n", slug)
+	fmt.Println("  Y déposer les images header (webp ou png), puis les référencer dans :")
+	fmt.Println("  apps/web/src/features/home/HomeHeroBanner.tsx — HEADER_IMAGES_BY_TITLE")
 	fmt.Println()
 }
 
