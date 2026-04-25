@@ -493,3 +493,76 @@ L'API utilise une sélection de titre **par header** (`X-LevelUp-Title`). Les UR
 - `PathResolver` fournit des méthodes `Legacy*` (`LegacySharedDBPath`, `LegacyPlayerDir`, etc.) pour le layout plat `data/warehouse/`
 - Les fichiers `db_profiles.json` v2.1 sont auto-détectés et lus comme profils `halo_infinite` implicites
 - `LoadPlayers()` sans filtre de titre retourne les joueurs de tous les titres
+
+---
+
+## Schéma canonique services + adaptateurs sémantiques (Phase A–E plan multi-titres)
+
+Au-dessus du layout par titre, LevelUp expose un schéma canonique services et
+deux adaptateurs par titre. Cela découple les services produit du schéma DuckDB
+spécifique à un titre et de ses libellés/unités.
+
+```text
+handler HTTP → service produit → games.Resolver
+                                    ├─ Data(slug)     → games.TitleDataAdapter
+                                    └─ Semantic(slug) → games.TitleSemanticAdapter
+```
+
+### Packages
+
+| Package | Rôle |
+|---------|------|
+| `internal/games/canonical/` | Enum `FieldKey` (43 clés), enums (`Outcome`, `MatchType`, `RatingType`, `Bucket`, `GroupBy`), scopes (`StatsScope`, `TimeseriesQuery`, `CareerOptions`), types match/career/timeseries — stables, agnostiques, consommés par les services |
+| `internal/games/mappings/` | Loader TOML strict (`go-toml/v2`), validation (locales, formats, collisions `display_order`, conversions d'unités), `FieldMappingSet`, registry |
+| `internal/games/halo_infinite/` | Implémentation HI : `DataAdapter` (wrap des repos existants), `SemanticAdapter` (wrap du `FieldMappingSet`) |
+| `internal/games/synthetic_title_b/` | Corpus synthétique de tests d'isolation cross-titres uniquement — jamais référencé par le code de production |
+| `internal/games/{adapter,resolver}.go` | Interfaces `TitleDataAdapter` + `TitleSemanticAdapter`, `StaticResolver` |
+
+### Mappings TOML (versionnés Git)
+
+```text
+config/
+  titles/
+    halo_infinite/
+      mappings/
+        fields.toml           # 43 FieldKey × labels EN/FR + format + group + display_order
+    synthetic_title_b/
+      mappings/
+        fields.toml           # corpus synthétique de tests
+```
+
+Chaque `fields.toml` porte un `[meta].schema_version` (cf. `tools/mappings/CHANGELOG.md`).
+
+### API HTTP (derrière `MULTI_TITLE_API_ENABLED=true`)
+
+- `GET /api/v1/titles/{slug}/field-mappings?locale=fr` — expose le
+  `FieldMappingSet` d'un titre avec ETag + `Cache-Control: max-age=300`.
+- `GET /api/v1/titles/{slug}/preview/career?xuid=...&locale=fr` — preuve
+  end-to-end du pipeline canonique (data adapter + semantic adapter).
+  Retourne `not_supported_reason` pour les capabilities `not_exposed` au lieu
+  d'une erreur silencieuse.
+
+### Hook frontend (Phase D)
+
+```ts
+import { useFieldLabel } from '@/lib/i18n/fieldMappings'
+
+const label = useFieldLabel('kills') // → 'Éliminations' (FR) / 'Kills' (EN) / 'kills' (fallback)
+```
+
+Le hook lit `currentTitleSlug` et `locale` depuis `appShellStore`, fetche les
+field mappings via TanStack Query (cache `staleTime: Infinity` — versionnés Git,
+pas de hot-reload prod), et retombe gracieusement sur la `key` si l'endpoint
+est absent (flag off, 404, etc.).
+
+### Dégradation par capability
+
+Chaque `TitleDataAdapter` expose une `Capabilities() games.CapabilityMap` qui
+reflète le support produit par-titre. Un appel `Load*` sur une capability
+marquée `not_exposed` retourne `games.ErrCapabilityNotSupported`, traduit en
+aval par les services produit en un `not_supported_reason` explicite plutôt
+qu'en payload vide silencieux.
+
+Voir [`.ai/PLAN_MULTI_TITLE_ADAPTERS_AND_MAPPINGS.md`](../../.ai/PLAN_MULTI_TITLE_ADAPTERS_AND_MAPPINGS.md)
+pour le rationale et [`tools/mappings/CHANGELOG.md`](../../tools/mappings/CHANGELOG.md)
+pour l'historique de versioning des TOML.
