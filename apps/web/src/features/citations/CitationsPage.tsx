@@ -2,7 +2,6 @@
  * CitationsPage — commendations Halo 5 + médailles Halo Infinite.
  */
 import { useParams } from '@tanstack/react-router'
-import { PageHeader } from '@/components/shell/PageHeader'
 import { PageLoader } from '@/components/ui/spinner'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
@@ -45,19 +44,13 @@ export function CitationsPage() {
 
   if (!data) {
     return (
-      <div className="flex flex-col">
-        <PageHeader
-          title="Citations"
-          subtitle="Commendations et médailles dans la période sélectionnée"
+      <div className="p-6">
+        <EmptyStateCard
+          title="Citations indisponibles"
+          description="Aucune réponse exploitable n'a été renvoyée pour cette page. Vérifie le chargement des agrégats de citations."
+          actionLabel="Réessayer"
+          onAction={() => refetch()}
         />
-        <div className="p-6">
-          <EmptyStateCard
-            title="Citations indisponibles"
-            description="Aucune réponse exploitable n'a été renvoyée pour cette page. Vérifie le chargement des agrégats de citations."
-            actionLabel="Réessayer"
-            onAction={() => refetch()}
-          />
-        </div>
       </div>
     )
   }
@@ -65,13 +58,7 @@ export function CitationsPage() {
   const { commendations, medals_summary, deltas, distribution_chart } = data
 
   return (
-    <div className="flex flex-col">
-      <PageHeader
-        title="Citations"
-        subtitle="Commendations et médailles dans la période sélectionnée"
-      />
-
-      <div className="space-y-6 p-6">
+    <div className="space-y-6 p-6">
         {/* Delta filtre vs complet */}
         <div className="grid grid-cols-3 gap-4">
           {[
@@ -192,7 +179,6 @@ export function CitationsPage() {
             )}
           </CardContent>
         </Card>
-      </div>
     </div>
   )
 }

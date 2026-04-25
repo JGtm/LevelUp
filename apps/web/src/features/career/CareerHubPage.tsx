@@ -4,7 +4,6 @@
  * Remplace CareerPage qui assemblait progression + analytics (top matchs, encounters).
  */
 import { useParams, useSearch, useNavigate } from '@tanstack/react-router'
-import { PageHeader } from '@/components/shell/PageHeader'
 import { CareerProgressionTab } from './CareerProgressionTab'
 import { CareerCitationsTab } from './CareerCitationsTab'
 
@@ -32,11 +31,6 @@ export function CareerHubPage() {
 
   return (
     <div className="flex flex-col">
-      <PageHeader
-        title="Carrière"
-        subtitle="Capital long terme — progression de rang et maîtrise"
-      />
-
       {/* Tabs deep-linkables */}
       <div className="border-b border-border bg-background px-6">
         <nav className="-mb-px flex gap-1" aria-label="Onglets Carrière">

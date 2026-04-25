@@ -3,7 +3,6 @@
  */
 import { useState } from 'react'
 import { useParams, useNavigate } from '@tanstack/react-router'
-import { PageHeader } from '@/components/shell/PageHeader'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { Spinner } from '@/components/ui/spinner'
@@ -66,8 +65,6 @@ export function ExplorerPage() {
 
   return (
     <div className="flex flex-col">
-      <PageHeader title="Explorer" subtitle="Recherche de matchs et de joueurs" />
-
       <div className="p-6 space-y-6">
         {/* Onglets mode */}
         <div className="flex gap-2">

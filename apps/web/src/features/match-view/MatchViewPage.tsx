@@ -4,7 +4,6 @@
 import { useState, useEffect, useCallback } from 'react'
 import { useParams, useRouter, Link, useNavigate } from '@tanstack/react-router'
 import { useQueryClient } from '@tanstack/react-query'
-import { PageHeader } from '@/components/shell/PageHeader'
 import { PageLoader } from '@/components/ui/spinner'
 import { Card, CardContent } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
@@ -193,10 +192,12 @@ export function MatchViewPage() {
     <div className="flex flex-col">
       <MatchBreadcrumb playerSlug={playerSlug} matchLabel={matchLabel} />
       <div className="flex items-center justify-between px-6 pt-4">
-        <PageHeader
-          title={`${header.map_ui} — ${header.mode_ui}`}
-          subtitle={header.start_time_label}
-        />
+        <div>
+          <h1 className="text-2xl font-semibold tracking-tight text-foreground sm:text-3xl">
+            {header.map_ui} — {header.mode_ui}
+          </h1>
+          <p className="mt-1 text-sm text-muted-foreground">{header.start_time_label}</p>
+        </div>
         <MatchNavigation playerSlug={playerSlug} matchId={matchId} />
       </div>
 

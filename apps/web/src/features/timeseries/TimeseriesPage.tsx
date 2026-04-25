@@ -3,7 +3,6 @@
  */
 import { useState } from 'react'
 import { useParams } from '@tanstack/react-router'
-import { PageHeader } from '@/components/shell/PageHeader'
 import { PageLoader } from '@/components/ui/spinner'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
@@ -71,19 +70,13 @@ export function TimeseriesPage() {
 
   if (!data) {
     return (
-      <div className="flex flex-col">
-        <PageHeader
-          title="Séries temporelles"
-          subtitle="Vue analytique des performances"
+      <div className="p-6">
+        <EmptyStateCard
+          title="Séries temporelles indisponibles"
+          description="Le backend n'a renvoyé aucune charge utile pour cette page. Vérifie les filtres, les données locales ou la requête API."
+          actionLabel="Réessayer"
+          onAction={() => refetch()}
         />
-        <div className="p-6">
-          <EmptyStateCard
-            title="Séries temporelles indisponibles"
-            description="Le backend n'a renvoyé aucune charge utile pour cette page. Vérifie les filtres, les données locales ou la requête API."
-            actionLabel="Réessayer"
-            onAction={() => refetch()}
-          />
-        </div>
       </div>
     )
   }
@@ -92,11 +85,6 @@ export function TimeseriesPage() {
 
   return (
     <div className="flex flex-col">
-      <PageHeader
-        title="Séries temporelles"
-        subtitle={`${data.total_matches.toLocaleString('fr-FR')} parties analysées`}
-      />
-
       {/* Onglets */}
       <div className="flex gap-0 border-b bg-background px-6">
         {TABS.map((tab) => (

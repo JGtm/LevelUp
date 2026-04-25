@@ -2,7 +2,6 @@ import type { ReactNode } from 'react'
 
 import { Link } from '@tanstack/react-router'
 
-import { PageHeader } from '@/components/shell/PageHeader'
 import { useAppShellStore } from '@/stores/appShellStore'
 
 import { getPalmaresText, normalizePalmaresLocale, type PalmaresTab } from './i18n'
@@ -23,8 +22,6 @@ export function PalmaresShell({
 
   return (
     <div className="flex flex-col gap-6 p-6">
-      <PageHeader title={text.page.title} subtitle={text.page.subtitle} inset={false} />
-
       <div className="flex flex-wrap gap-2 rounded-3xl border border-border bg-card/90 p-2 shadow-sm">
         {TAB_ORDER.map((tab) => {
           const href =

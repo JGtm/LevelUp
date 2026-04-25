@@ -3,7 +3,6 @@
  */
 import { useState } from 'react'
 import { useParams } from '@tanstack/react-router'
-import { PageHeader } from '@/components/shell/PageHeader'
 import { Spinner } from '@/components/ui/spinner'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
@@ -136,19 +135,13 @@ export function SessionComparePage() {
 
   if (!data) {
     return (
-      <div className="flex flex-col">
-        <PageHeader
-          title="Comparaison de sessions"
-          subtitle="Sélectionnez deux sessions pour les comparer"
+      <div className="p-6">
+        <EmptyStateCard
+          title="Comparaison indisponible"
+          description="Aucune réponse exploitable n'a été renvoyée pour cette page. Vérifie les sessions calculées et les filtres actifs."
+          actionLabel="Réessayer"
+          onAction={() => refetch()}
         />
-        <div className="p-6">
-          <EmptyStateCard
-            title="Comparaison indisponible"
-            description="Aucune réponse exploitable n'a été renvoyée pour cette page. Vérifie les sessions calculées et les filtres actifs."
-            actionLabel="Réessayer"
-            onAction={() => refetch()}
-          />
-        </div>
       </div>
     )
   }
@@ -158,11 +151,6 @@ export function SessionComparePage() {
 
   return (
     <div className="flex flex-col">
-      <PageHeader
-        title="Comparaison de sessions"
-        subtitle="Sélectionnez deux sessions pour les comparer"
-      />
-
       <div className="space-y-6 p-6">
         {hasAvailableSessions ? (
           <>

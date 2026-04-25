@@ -1,6 +1,5 @@
 import { startTransition, useDeferredValue, useEffect, useMemo, useState } from 'react'
 
-import { PageHeader } from '@/components/shell/PageHeader'
 import { Badge } from '@/components/ui/badge'
 import {
   Card,
@@ -867,31 +866,19 @@ export function LabPage() {
   if (!canManageInstance) {
     return (
       <div className="p-6">
-        <PageHeader
-          title={text.page.title}
-          subtitle={text.page.accessSubtitle}
-          inset={false}
+        <EmptyStateCard
+          title={text.page.accessDeniedTitle}
+          description={text.page.accessDeniedDescription}
         />
-        <div className="mt-6">
-          <EmptyStateCard
-            title={text.page.accessDeniedTitle}
-            description={text.page.accessDeniedDescription}
-          />
-        </div>
       </div>
     )
   }
 
   return (
     <div className="space-y-6 p-6">
-      <PageHeader
-        title={text.page.title}
-        subtitle={text.page.subtitle}
-        inset={false}
-        actions={
-          <Badge variant="outline">{text.page.currentTitleBadge}: {currentTitleSlug}</Badge>
-        }
-      />
+      <div className="flex justify-end">
+        <Badge variant="outline">{text.page.currentTitleBadge}: {currentTitleSlug}</Badge>
+      </div>
 
       <div className="flex flex-wrap gap-2 rounded-full bg-muted p-1">
         {TAB_VALUES.map((tab) => (

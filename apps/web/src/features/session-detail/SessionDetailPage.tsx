@@ -1,7 +1,6 @@
 import { useState } from 'react'
 import { useParams, useSearch } from '@tanstack/react-router'
 
-import { PageHeader } from '@/components/shell/PageHeader'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
@@ -218,19 +217,13 @@ export function SessionDetailPage() {
 
   if (!data) {
     return (
-      <div className="flex flex-col">
-        <PageHeader
-          title="Sessions"
-          subtitle="Lecture détaillée d'une session avec suggestion de comparaison intelligente."
+      <div className="p-6">
+        <EmptyStateCard
+          title="Sessions indisponibles"
+          description="Aucune réponse exploitable n'a été renvoyée pour cette page. Vérifie les sessions calculées et les filtres actifs."
+          actionLabel="Réessayer"
+          onAction={() => refetch()}
         />
-        <div className="p-6">
-          <EmptyStateCard
-            title="Sessions indisponibles"
-            description="Aucune réponse exploitable n'a été renvoyée pour cette page. Vérifie les sessions calculées et les filtres actifs."
-            actionLabel="Réessayer"
-            onAction={() => refetch()}
-          />
-        </div>
       </div>
     )
   }
@@ -243,11 +236,9 @@ export function SessionDetailPage() {
 
   return (
     <div className="flex flex-col">
-      <PageHeader
-        title="Sessions"
-        subtitle="Lecture détaillée d'une session solo avec suggestion de comparaison intégrée."
-        actions={
-          suggestionAvailable && !enableCompare ? (
+      <div className="space-y-6 p-6">
+        {suggestionAvailable && !enableCompare && (
+          <div className="flex justify-end">
             <Button
               variant="outline"
               onClick={() => {
@@ -257,11 +248,8 @@ export function SessionDetailPage() {
             >
               Comparer à la session proche
             </Button>
-          ) : undefined
-        }
-      />
-
-      <div className="space-y-6 p-6">
+          </div>
+        )}
         {hasSessions ? (
           <>
             <Card>

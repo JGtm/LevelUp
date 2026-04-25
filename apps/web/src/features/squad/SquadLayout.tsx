@@ -13,7 +13,6 @@ import { Outlet, useParams, Link, useMatchRoute } from '@tanstack/react-router'
 import { useGlobalFilterStore } from '@/stores/globalFilterStore'
 import { useTeammates } from './queries'
 import { useSettings } from '@/features/settings/queries'
-import { PageHeader } from '@/components/shell/PageHeader'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { EmptyStateCard } from '@/components/ui/empty-state'
 import { PageLoader } from '@/components/ui/spinner'
@@ -221,14 +220,11 @@ export function SquadLayout() {
     return <div className="p-8 text-center text-destructive">Erreur : {String(error)}</div>
   if (!data) {
     return (
-      <div className="flex flex-col gap-6">
-        <PageHeader title="Escouade" subtitle="Analyse des coéquipiers et des synergies" />
-        <div className="px-6">
-          <EmptyStateCard
-            title="Données d'escouade indisponibles"
-            description="Aucune réponse exploitable n'a été renvoyée pour cette page. Vérifie les filtres ou la disponibilité des matchs partagés."
-          />
-        </div>
+      <div className="px-6">
+        <EmptyStateCard
+          title="Données d'escouade indisponibles"
+          description="Aucune réponse exploitable n'a été renvoyée pour cette page. Vérifie les filtres ou la disponibilité des matchs partagés."
+        />
       </div>
     )
   }
@@ -250,11 +246,6 @@ export function SquadLayout() {
   return (
     <SquadContext.Provider value={{ selectedRows, soloReference: solo_reference, pageData: data ?? null }}>
       <div className="flex flex-col gap-6">
-        <PageHeader
-          title="Escouade"
-          subtitle={`${availableOptions.length} coéquipiers fréquents · ${data.total_matches} matchs`}
-        />
-
         {/* Sélecteur de session (solo / escouade) */}
         <SessionScopeSelector
           sessionLabels={data.session_labels ?? { solo: [], squad: [] }}
