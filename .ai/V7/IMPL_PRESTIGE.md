@@ -378,18 +378,27 @@ Pas d'E2E automatisés cette itération. À ajouter en Phase 6 future si le beso
 - [x] Tailles fichiers conformes CLAUDE.md (max 327 L)
 - [x] Compliance check vs matrice de traçabilité passé
 - [x] Entrée thought_log
-- [ ] Commit Phase 1
+- [x] Commit Phase 1 (`c0ac7b5b`)
 
 ### Phase 2 — Domain & Service
-- [ ] Calculs palier / baseline / stretch
-- [ ] State machine lifecycle
-- [ ] Évaluateur threshold + cumulative
-- [ ] PP amounts + level
-- [ ] Service orchestrateur
-- [ ] Implémentations repositories
-- [ ] Tests unitaires ≥ 80 % couverture
-- [ ] Tests intégration repos
-- [ ] Logging structuré complet
+- [x] tuning.go — chargement TOML + DefaultTuning + Validate + helpers (CooldownDuration, PPForTier, PopulationCapTier, WinRateMinForWindow)
+- [x] stretch.go — ComputeStretchRatio (MetricCount + MetricRatio bornées)
+- [x] palier.go — CalculatePalier avec popSize (cap désactivé < 50), DataTracking → RejectInsufficientData
+- [x] baseline.go — ComputeBaseline + CheckStaleness (60j) + RecoveryDataTier + AdvanceRecovery + MarkStale
+- [x] lifecycle.go — Commit / MarkCompleted/Expired/Abandoned + CanEditTarget (libre/pilote) + CooldownEndsAt + IsCooldownActive
+- [x] pp_amounts.go — PPForCompletion (matrice tier × isSquad × dataTier) + PPForArc/Match/Streak/Medal
+- [x] level.go — LevelFromPP avec ProgressRatio
+- [x] squad_target.go — CollectiveTargetTotal + CollectiveBaseline + ValidateResizeForRemoval
+- [x] evaluator.go — EvaluateThreshold + EvaluateCumulative + win_rate min matches + WindowDeadline
+- [x] telemetry.go — TelemetryEmitter (best-effort, slog.Warn sur échec)
+- [x] service.go + service_evaluate.go — Service interface + CreateChallenge avec recompute palier sur édition libre + SuggestTemplates/SuggestNext + EvaluateForUser
+- [x] Repos DuckDB (5 player + 3 social + 2 metadata = 10 structs implémentant les interfaces)
+- [x] Tests unitaires (47 sous-tests : stretch/palier/level + baseline/lifecycle/squad + evaluator/pp/tuning)
+- [x] Tests intégration repos (6 tests : Challenge roundtrip + UpdateStatus + List filter + EmitEvent bumps total + Leaderboard per-title + Template Replace/List/Get)
+- [x] Logging structuré (slog.InfoContext création/abandon/completion, slog.WarnContext baseline insuffisante / palier rejeté / telemetry failed)
+- [x] Tailles fichiers conformes CLAUDE.md (max prestige_social_repo.go 409 L)
+- [x] Aucune régression (`go test ./internal/...` complet)
+- [x] Compliance check passé
 - [ ] Entrée thought_log
 - [ ] Commit Phase 2
 

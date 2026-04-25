@@ -1,0 +1,268 @@
+package prestige
+
+import (
+	"testing"
+	"time"
+)
+
+// ─────────── Evaluator threshold ───────────
+
+func TestEvaluateThreshold_TargetReached(t *testing.T) {
+	tuning := DefaultTuning()
+	c := Challenge{
+		Status:      StatusActive,
+		Metric:      "FieldKDA",
+		Target:      1.5,
+		WindowType:  WindowSession,
+		WindowValue: "1",
+		EvalType:    EvalThreshold,
+	}
+	matches := []MatchSample{
+		{MetricValue: 1.6}, {MetricValue: 1.7}, {MetricValue: 1.5},
+		{MetricValue: 1.4}, {MetricValue: 1.6}, // 5+ matchs requis pour win_rate, pas KDA
+	}
+	res := EvaluateThreshold(tuning, c, matches, time.Now())
+	if !res.StatusChanged {
+		t.Fatalf("expected status change")
+	}
+	if res.NewStatus != StatusCompleted {
+		t.Errorf("got %s want completed", res.NewStatus)
+	}
+	if res.Reason != EvalReasonTargetReached {
+		t.Errorf("got reason %s", res.Reason)
+	}
+}
+
+func TestEvaluateThreshold_BelowTarget(t *testing.T) {
+	tuning := DefaultTuning()
+	c := Challenge{
+		Status:      StatusActive,
+		Metric:      "FieldKDA",
+		Target:      2.0,
+		WindowType:  WindowSession,
+		WindowValue: "1",
+	}
+	matches := []MatchSample{
+		{MetricValue: 1.0}, {MetricValue: 1.2},
+	}
+	res := EvaluateThreshold(tuning, c, matches, time.Now())
+	if res.StatusChanged {
+		t.Error("expected no status change")
+	}
+	if res.Reason != EvalReasonProgress {
+		t.Errorf("got reason %s want progress", res.Reason)
+	}
+}
+
+func TestEvaluateThreshold_WinRateInsufficient(t *testing.T) {
+	tuning := DefaultTuning()
+	c := Challenge{
+		Status:      StatusActive,
+		Metric:      "FieldWinRate",
+		Target:      60.0,
+		WindowType:  WindowSession,
+		WindowValue: "1",
+	}
+	// Seulement 3 matchs (min session = 5)
+	matches := []MatchSample{
+		{IsWin: true}, {IsWin: true}, {IsWin: true},
+	}
+	res := EvaluateThreshold(tuning, c, matches, time.Now())
+	if res.StatusChanged {
+		t.Error("should not change status with insufficient matches")
+	}
+	if res.Reason != EvalReasonInsufficient {
+		t.Errorf("got %s want insufficient", res.Reason)
+	}
+}
+
+func TestEvaluateThreshold_WinRateMet(t *testing.T) {
+	tuning := DefaultTuning()
+	c := Challenge{
+		Status:      StatusActive,
+		Metric:      "FieldWinRate",
+		Target:      60.0,
+		WindowType:  WindowSession,
+		WindowValue: "1",
+	}
+	matches := []MatchSample{
+		{IsWin: true}, {IsWin: true}, {IsWin: true},
+		{IsWin: true}, {IsWin: false}, // 4/5 = 80%
+	}
+	res := EvaluateThreshold(tuning, c, matches, time.Now())
+	if !res.StatusChanged {
+		t.Error("expected status change at 80% win rate")
+	}
+	if res.NewStatus != StatusCompleted {
+		t.Errorf("got %s want completed", res.NewStatus)
+	}
+}
+
+func TestEvaluateThreshold_DeadlinePassedMissed(t *testing.T) {
+	tuning := DefaultTuning()
+	deadline := "2026-01-01"
+	c := Challenge{
+		Status:      StatusActive,
+		Metric:      "FieldKDA",
+		Target:      2.0,
+		WindowType:  WindowDeadline,
+		WindowValue: deadline,
+	}
+	now := time.Date(2026, 6, 1, 0, 0, 0, 0, time.UTC) // après deadline
+	matches := []MatchSample{{MetricValue: 1.0}}
+	res := EvaluateThreshold(tuning, c, matches, now)
+	if res.NewStatus != StatusExpired {
+		t.Errorf("got %s want expired", res.NewStatus)
+	}
+	if res.Reason != EvalReasonDeadlinePassed {
+		t.Errorf("got %s want deadline_passed", res.Reason)
+	}
+}
+
+// ─────────── Evaluator cumulative ───────────
+
+func TestEvaluateCumulative_TargetReached(t *testing.T) {
+	tuning := DefaultTuning()
+	c := Challenge{
+		Status:   StatusActive,
+		Metric:   "medal:Killtacular",
+		Target:   5.0,
+		EvalType: EvalCumulative,
+	}
+	events := []MedalEvent{
+		{MedalID: "Killtacular", Count: 2},
+		{MedalID: "Killtacular", Count: 3},
+	}
+	res := EvaluateCumulative(tuning, c, events, time.Now())
+	if !res.StatusChanged {
+		t.Error("expected status change")
+	}
+	if res.NewStatus != StatusCompleted {
+		t.Errorf("got %s want completed", res.NewStatus)
+	}
+	if res.NewValue != 5.0 {
+		t.Errorf("got value %.2f want 5", res.NewValue)
+	}
+}
+
+func TestEvaluateCumulative_DeadlinePassedMissed(t *testing.T) {
+	tuning := DefaultTuning()
+	c := Challenge{
+		Status:      StatusActive,
+		Target:      10.0,
+		WindowType:  WindowDeadline,
+		WindowValue: "2026-01-01",
+	}
+	now := time.Date(2026, 6, 1, 0, 0, 0, 0, time.UTC)
+	events := []MedalEvent{{Count: 3}}
+	res := EvaluateCumulative(tuning, c, events, now)
+	if res.NewStatus != StatusExpired {
+		t.Errorf("got %s want expired", res.NewStatus)
+	}
+}
+
+// ─────────── PP amounts ───────────
+
+func TestPPForCompletion_TierMatrix(t *testing.T) {
+	tuning := DefaultTuning()
+	cases := []struct {
+		tier     Tier
+		isSquad  bool
+		dataTier DataTier
+		want     int
+	}{
+		{TierNormal, false, DataFull, 50},
+		{TierHeroic, false, DataFull, 75},
+		{TierLegendary, false, DataFull, 125},
+		{TierMythic, false, DataFull, 200},
+
+		// Squad +20%
+		{TierNormal, true, DataFull, 60},
+		{TierMythic, true, DataFull, 240},
+
+		// Estimated /2
+		{TierHeroic, false, DataEstimated, 38}, // 75 * 0.5 = 37.5 → round 38
+		{TierMythic, false, DataEstimated, 100},
+
+		// Tracking = 0
+		{TierMythic, false, DataTracking, 0},
+		{TierMythic, true, DataTracking, 0},
+	}
+	for _, tc := range cases {
+		got := PPForCompletion(tuning, tc.tier, tc.isSquad, tc.dataTier)
+		if got != tc.want {
+			t.Errorf("tier=%s squad=%v dt=%s: got %d want %d",
+				tc.tier, tc.isSquad, tc.dataTier, got, tc.want)
+		}
+	}
+}
+
+func TestPPForArcCompletion(t *testing.T) {
+	tuning := DefaultTuning()
+	if got := PPForArcCompletion(tuning); got != 200 {
+		t.Errorf("got %d want 200", got)
+	}
+}
+
+func TestPPForMatch(t *testing.T) {
+	tuning := DefaultTuning()
+	if got := PPForMatch(tuning, false); got != 10 {
+		t.Errorf("loss got %d want 10", got)
+	}
+	if got := PPForMatch(tuning, true); got != 25 {
+		t.Errorf("win got %d want 25", got)
+	}
+}
+
+func TestPPForStreak(t *testing.T) {
+	tuning := DefaultTuning()
+	if got := PPForStreak(tuning); got != 30 {
+		t.Errorf("got %d want 30", got)
+	}
+}
+
+func TestPPForMedal_Bounds(t *testing.T) {
+	tuning := DefaultTuning()
+	if got := PPForMedal(tuning, 0); got != 5 {
+		t.Errorf("min got %d want 5", got)
+	}
+	if got := PPForMedal(tuning, 1); got != 20 {
+		t.Errorf("max got %d want 20", got)
+	}
+	// Test clamp
+	if got := PPForMedal(tuning, -0.5); got != 5 {
+		t.Errorf("negative clamp got %d want 5", got)
+	}
+	if got := PPForMedal(tuning, 1.5); got != 20 {
+		t.Errorf("over-1 clamp got %d want 20", got)
+	}
+}
+
+// ─────────── Tuning ───────────
+
+func TestDefaultTuning_Validate(t *testing.T) {
+	if err := DefaultTuning().Validate(); err != nil {
+		t.Errorf("DefaultTuning should be valid, got %v", err)
+	}
+}
+
+func TestTuning_LoadFromFile_Fallback(t *testing.T) {
+	// Fichier inexistant → fallback DefaultTuning + warn (pas d'erreur retournée)
+	got := LoadTuning("/nonexistent/path/tuning.toml")
+	if err := got.Validate(); err != nil {
+		t.Errorf("fallback should be valid, got %v", err)
+	}
+}
+
+func TestTuning_CooldownDuration(t *testing.T) {
+	tuning := DefaultTuning()
+	if d := tuning.CooldownDuration(StatusExpired); d != 12*time.Hour {
+		t.Errorf("expired got %v want 12h", d)
+	}
+	if d := tuning.CooldownDuration(StatusAbandoned); d != 48*time.Hour {
+		t.Errorf("abandoned got %v want 48h", d)
+	}
+	if d := tuning.CooldownDuration(StatusActive); d != 0 {
+		t.Errorf("active should have no cooldown, got %v", d)
+	}
+}

@@ -1,0 +1,409 @@
+// Package duckdb — repositories Prestige cross-joueurs (shared_social.duckdb).
+//
+// Implémente prestige.PrestigeRepo, prestige.SquadRepo, prestige.SquadChallengeRepo.
+
+package duckdb
+
+import (
+	"context"
+	"database/sql"
+	"errors"
+	"fmt"
+	"strings"
+	"time"
+
+	"levelup/go-api/internal/prestige"
+)
+
+// ─────────── PrestigeRepo ───────────
+
+// PrestigeSocialRepo implémente prestige.PrestigeRepo.
+type PrestigeSocialRepo struct{ db *DB }
+
+func NewPrestigeSocialRepo(db *DB) *PrestigeSocialRepo { return &PrestigeSocialRepo{db: db} }
+
+var _ prestige.PrestigeRepo = (*PrestigeSocialRepo)(nil)
+
+func (r *PrestigeSocialRepo) EmitEvent(ctx context.Context, ev prestige.PrestigeEvent) error {
+	ctx, cancel := context.WithTimeout(ctx, 5*time.Second)
+	defer cancel()
+	_, err := r.db.Exec(ctx, `
+		INSERT INTO prestige_events (id, user_id, title_slug, source_type, source_id, pp_amount, tier, created_at)
+		VALUES (?,?,?,?,?,?,?,?)
+	`, ev.ID, ev.UserID, ev.TitleSlug, ev.SourceType, nullableStr(ev.SourceID),
+		ev.PPAmount, nullableStr(string(ev.Tier)), ev.CreatedAt)
+	if err != nil {
+		return fmt.Errorf("PrestigeRepo.EmitEvent: %w", err)
+	}
+	// Mettre à jour user_prestige (upsert)
+	if err := r.bumpUserPrestige(ctx, ev.UserID, ev.TitleSlug, ev.PPAmount, ev.CreatedAt); err != nil {
+		return fmt.Errorf("PrestigeRepo.EmitEvent bump: %w", err)
+	}
+	return nil
+}
+
+// bumpUserPrestige ajoute pp_amount au total + recalcule current_level (côté client).
+//
+// Le current_level est calculé par le service via LevelFromPP — ici on stocke
+// juste la valeur reçue. L'appelant doit avoir pré-calculé current_level, ou
+// laisser à 0 si non disponible (cas par défaut).
+func (r *PrestigeSocialRepo) bumpUserPrestige(ctx context.Context, userID, titleSlug string, delta int, at time.Time) error {
+	_, err := r.db.Exec(ctx, `
+		INSERT INTO user_prestige (user_id, title_slug, total_pp, current_level, updated_at)
+		VALUES (?, ?, ?, 0, ?)
+		ON CONFLICT (user_id, title_slug) DO UPDATE SET
+			total_pp = user_prestige.total_pp + EXCLUDED.total_pp,
+			updated_at = EXCLUDED.updated_at
+	`, userID, titleSlug, delta, at)
+	return err
+}
+
+func (r *PrestigeSocialRepo) GetUserPrestige(ctx context.Context, userID, titleSlug string) (prestige.UserPrestige, error) {
+	ctx, cancel := context.WithTimeout(ctx, 5*time.Second)
+	defer cancel()
+	var up prestige.UserPrestige
+	err := r.db.QueryRow(ctx, `
+		SELECT user_id, title_slug, total_pp, current_level, updated_at
+		FROM user_prestige WHERE user_id = ? AND title_slug = ?
+	`, userID, titleSlug).Scan(&up.UserID, &up.TitleSlug, &up.TotalPP, &up.CurrentLevel, &up.UpdatedAt)
+	if errors.Is(err, sql.ErrNoRows) {
+		return prestige.UserPrestige{UserID: userID, TitleSlug: titleSlug}, nil
+	}
+	return up, err
+}
+
+func (r *PrestigeSocialRepo) GetUserPrestigeCrossTitle(ctx context.Context, userID string) (prestige.UserPrestige, error) {
+	ctx, cancel := context.WithTimeout(ctx, 5*time.Second)
+	defer cancel()
+	var up prestige.UserPrestige
+	up.UserID = userID
+	err := r.db.QueryRow(ctx, `
+		SELECT COALESCE(SUM(total_pp), 0), MAX(updated_at)
+		FROM user_prestige WHERE user_id = ?
+	`, userID).Scan(&up.TotalPP, &up.UpdatedAt)
+	return up, err
+}
+
+func (r *PrestigeSocialRepo) UpsertUserPrestige(ctx context.Context, up prestige.UserPrestige) error {
+	ctx, cancel := context.WithTimeout(ctx, 5*time.Second)
+	defer cancel()
+	_, err := r.db.Exec(ctx, `
+		INSERT INTO user_prestige (user_id, title_slug, total_pp, current_level, updated_at)
+		VALUES (?, ?, ?, ?, ?)
+		ON CONFLICT (user_id, title_slug) DO UPDATE SET
+			total_pp = EXCLUDED.total_pp,
+			current_level = EXCLUDED.current_level,
+			updated_at = EXCLUDED.updated_at
+	`, up.UserID, up.TitleSlug, up.TotalPP, up.CurrentLevel, up.UpdatedAt)
+	return err
+}
+
+func (r *PrestigeSocialRepo) ListEvents(ctx context.Context, userID, titleSlug string, since time.Time) ([]prestige.PrestigeEvent, error) {
+	ctx, cancel := context.WithTimeout(ctx, 10*time.Second)
+	defer cancel()
+	rows, err := r.db.Query(ctx, `
+		SELECT id, user_id, title_slug, source_type, COALESCE(source_id, ''),
+		       pp_amount, COALESCE(tier, ''), created_at
+		FROM prestige_events
+		WHERE user_id = ? AND title_slug = ? AND created_at >= ?
+		ORDER BY created_at DESC
+	`, userID, titleSlug, since)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var out []prestige.PrestigeEvent
+	for rows.Next() {
+		var ev prestige.PrestigeEvent
+		var tier string
+		if err := rows.Scan(&ev.ID, &ev.UserID, &ev.TitleSlug, &ev.SourceType,
+			&ev.SourceID, &ev.PPAmount, &tier, &ev.CreatedAt); err != nil {
+			return nil, err
+		}
+		ev.Tier = prestige.Tier(tier)
+		out = append(out, ev)
+	}
+	return out, rows.Err()
+}
+
+func (r *PrestigeSocialRepo) GetLeaderboard(ctx context.Context, userIDs []string, titleSlug *string, since time.Time) ([]prestige.LeaderboardEntry, error) {
+	ctx, cancel := context.WithTimeout(ctx, 10*time.Second)
+	defer cancel()
+	if len(userIDs) == 0 {
+		return nil, nil
+	}
+	// Construire les placeholders ?,?,?,...
+	placeholders := strings.Repeat("?,", len(userIDs))
+	placeholders = placeholders[:len(placeholders)-1]
+
+	args := make([]any, 0, len(userIDs)+1)
+	for _, uid := range userIDs {
+		args = append(args, uid)
+	}
+
+	var q string
+	if titleSlug != nil && *titleSlug != "" {
+		q = fmt.Sprintf(`
+			SELECT user_id, title_slug, total_pp
+			FROM user_prestige
+			WHERE user_id IN (%s) AND title_slug = ?
+			ORDER BY total_pp DESC
+		`, placeholders)
+		args = append(args, *titleSlug)
+	} else {
+		// Cross-titre : SUM par user
+		q = fmt.Sprintf(`
+			SELECT user_id, '' AS title_slug, COALESCE(SUM(total_pp), 0) AS total_pp
+			FROM user_prestige
+			WHERE user_id IN (%s)
+			GROUP BY user_id
+			ORDER BY total_pp DESC
+		`, placeholders)
+	}
+
+	rows, err := r.db.Query(ctx, q, args...)
+	if err != nil {
+		return nil, fmt.Errorf("GetLeaderboard: %w", err)
+	}
+	defer rows.Close()
+	var out []prestige.LeaderboardEntry
+	for rows.Next() {
+		var e prestige.LeaderboardEntry
+		if err := rows.Scan(&e.UserID, &e.TitleSlug, &e.TotalPP); err != nil {
+			return nil, err
+		}
+		out = append(out, e)
+	}
+	return out, rows.Err()
+}
+
+// ─────────── SquadRepo ───────────
+
+// PrestigeSquadRepo implémente prestige.SquadRepo.
+type PrestigeSquadRepo struct{ db *DB }
+
+func NewPrestigeSquadRepo(db *DB) *PrestigeSquadRepo { return &PrestigeSquadRepo{db: db} }
+
+var _ prestige.SquadRepo = (*PrestigeSquadRepo)(nil)
+
+func (r *PrestigeSquadRepo) Create(ctx context.Context, s prestige.Squad) error {
+	ctx, cancel := context.WithTimeout(ctx, 5*time.Second)
+	defer cancel()
+	_, err := r.db.Exec(ctx,
+		`INSERT INTO squad (id, name, created_by, created_at) VALUES (?, ?, ?, ?)`,
+		s.ID, s.Name, s.CreatedBy, s.CreatedAt)
+	return err
+}
+
+func (r *PrestigeSquadRepo) Get(ctx context.Context, id string) (prestige.Squad, error) {
+	ctx, cancel := context.WithTimeout(ctx, 5*time.Second)
+	defer cancel()
+	var s prestige.Squad
+	err := r.db.QueryRow(ctx,
+		`SELECT id, name, created_by, created_at FROM squad WHERE id = ?`, id,
+	).Scan(&s.ID, &s.Name, &s.CreatedBy, &s.CreatedAt)
+	return s, err
+}
+
+func (r *PrestigeSquadRepo) AddMember(ctx context.Context, m prestige.SquadMember) error {
+	ctx, cancel := context.WithTimeout(ctx, 5*time.Second)
+	defer cancel()
+	_, err := r.db.Exec(ctx,
+		`INSERT INTO squad_member (squad_id, user_id, joined_at) VALUES (?, ?, ?)
+		 ON CONFLICT (squad_id, user_id) DO NOTHING`,
+		m.SquadID, m.UserID, m.JoinedAt)
+	return err
+}
+
+func (r *PrestigeSquadRepo) RemoveMember(ctx context.Context, squadID, userID string) error {
+	ctx, cancel := context.WithTimeout(ctx, 5*time.Second)
+	defer cancel()
+	_, err := r.db.Exec(ctx,
+		`DELETE FROM squad_member WHERE squad_id = ? AND user_id = ?`, squadID, userID)
+	return err
+}
+
+func (r *PrestigeSquadRepo) ListMembers(ctx context.Context, squadID string) ([]prestige.SquadMember, error) {
+	ctx, cancel := context.WithTimeout(ctx, 10*time.Second)
+	defer cancel()
+	rows, err := r.db.Query(ctx,
+		`SELECT squad_id, user_id, joined_at FROM squad_member WHERE squad_id = ?`, squadID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var out []prestige.SquadMember
+	for rows.Next() {
+		var m prestige.SquadMember
+		if err := rows.Scan(&m.SquadID, &m.UserID, &m.JoinedAt); err != nil {
+			return nil, err
+		}
+		out = append(out, m)
+	}
+	return out, rows.Err()
+}
+
+func (r *PrestigeSquadRepo) ListSquadsForUser(ctx context.Context, userID string) ([]prestige.Squad, error) {
+	ctx, cancel := context.WithTimeout(ctx, 10*time.Second)
+	defer cancel()
+	rows, err := r.db.Query(ctx, `
+		SELECT s.id, s.name, s.created_by, s.created_at
+		FROM squad s JOIN squad_member sm ON sm.squad_id = s.id
+		WHERE sm.user_id = ?
+		ORDER BY s.created_at DESC
+	`, userID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var out []prestige.Squad
+	for rows.Next() {
+		var s prestige.Squad
+		if err := rows.Scan(&s.ID, &s.Name, &s.CreatedBy, &s.CreatedAt); err != nil {
+			return nil, err
+		}
+		out = append(out, s)
+	}
+	return out, rows.Err()
+}
+
+// ─────────── SquadChallengeRepo ───────────
+
+// PrestigeSquadChallengeRepo implémente prestige.SquadChallengeRepo.
+type PrestigeSquadChallengeRepo struct{ db *DB }
+
+func NewPrestigeSquadChallengeRepo(db *DB) *PrestigeSquadChallengeRepo {
+	return &PrestigeSquadChallengeRepo{db: db}
+}
+
+var _ prestige.SquadChallengeRepo = (*PrestigeSquadChallengeRepo)(nil)
+
+func (r *PrestigeSquadChallengeRepo) Create(ctx context.Context, sc prestige.SquadChallenge) error {
+	ctx, cancel := context.WithTimeout(ctx, 5*time.Second)
+	defer cancel()
+	_, err := r.db.Exec(ctx, `
+		INSERT INTO squad_challenge (
+			id, squad_id, template_id, title_slug, mode, eval_type,
+			window_type, window_value, target_per_member, expires_at, created_by, created_at
+		) VALUES (?,?,?,?,?,?,?,?,?,?,?,?)
+	`, sc.ID, sc.SquadID, nullableStr(sc.TemplateID), sc.TitleSlug,
+		string(sc.Mode), string(sc.EvalType),
+		string(sc.WindowType), sc.WindowValue, sc.TargetPerMember,
+		sc.ExpiresAt, sc.CreatedBy, sc.CreatedAt)
+	return err
+}
+
+func (r *PrestigeSquadChallengeRepo) Get(ctx context.Context, id string) (prestige.SquadChallenge, error) {
+	ctx, cancel := context.WithTimeout(ctx, 5*time.Second)
+	defer cancel()
+	var sc prestige.SquadChallenge
+	var mode, evalType, windowType string
+	err := r.db.QueryRow(ctx, `
+		SELECT id, squad_id, COALESCE(template_id, ''), title_slug, mode, eval_type,
+		       window_type, COALESCE(window_value, ''), COALESCE(target_per_member, 0),
+		       expires_at, created_by, created_at
+		FROM squad_challenge WHERE id = ?
+	`, id).Scan(&sc.ID, &sc.SquadID, &sc.TemplateID, &sc.TitleSlug, &mode, &evalType,
+		&windowType, &sc.WindowValue, &sc.TargetPerMember,
+		&sc.ExpiresAt, &sc.CreatedBy, &sc.CreatedAt)
+	if err != nil {
+		return sc, err
+	}
+	sc.Mode = prestige.SquadMode(mode)
+	sc.EvalType = prestige.EvalType(evalType)
+	sc.WindowType = prestige.WindowType(windowType)
+	return sc, nil
+}
+
+func (r *PrestigeSquadChallengeRepo) ListBySquad(ctx context.Context, squadID string) ([]prestige.SquadChallenge, error) {
+	ctx, cancel := context.WithTimeout(ctx, 10*time.Second)
+	defer cancel()
+	rows, err := r.db.Query(ctx, `
+		SELECT id, squad_id, COALESCE(template_id, ''), title_slug, mode, eval_type,
+		       window_type, COALESCE(window_value, ''), COALESCE(target_per_member, 0),
+		       expires_at, created_by, created_at
+		FROM squad_challenge WHERE squad_id = ? ORDER BY created_at DESC
+	`, squadID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var out []prestige.SquadChallenge
+	for rows.Next() {
+		var sc prestige.SquadChallenge
+		var mode, evalType, windowType string
+		if err := rows.Scan(&sc.ID, &sc.SquadID, &sc.TemplateID, &sc.TitleSlug,
+			&mode, &evalType, &windowType, &sc.WindowValue, &sc.TargetPerMember,
+			&sc.ExpiresAt, &sc.CreatedBy, &sc.CreatedAt); err != nil {
+			return nil, err
+		}
+		sc.Mode = prestige.SquadMode(mode)
+		sc.EvalType = prestige.EvalType(evalType)
+		sc.WindowType = prestige.WindowType(windowType)
+		out = append(out, sc)
+	}
+	return out, rows.Err()
+}
+
+func (r *PrestigeSquadChallengeRepo) AddParticipant(ctx context.Context, p prestige.SquadChallengeParticipant) error {
+	ctx, cancel := context.WithTimeout(ctx, 5*time.Second)
+	defer cancel()
+	_, err := r.db.Exec(ctx, `
+		INSERT INTO squad_challenge_participant (
+			squad_challenge_id, user_id, chosen_tier, data_tier,
+			current_value, completed_at, is_private, joined_at
+		) VALUES (?,?,?,?,?,?,?,?)
+		ON CONFLICT (squad_challenge_id, user_id) DO NOTHING
+	`, p.SquadChallengeID, p.UserID, nullableStr(string(p.ChosenTier)), string(p.DataTier),
+		p.CurrentValue, p.CompletedAt, p.IsPrivate, p.JoinedAt)
+	return err
+}
+
+func (r *PrestigeSquadChallengeRepo) UpdateParticipantProgress(ctx context.Context, challengeID, userID string, value float64, completedAt *time.Time) error {
+	ctx, cancel := context.WithTimeout(ctx, 5*time.Second)
+	defer cancel()
+	_, err := r.db.Exec(ctx, `
+		UPDATE squad_challenge_participant
+		SET current_value = ?, completed_at = ?
+		WHERE squad_challenge_id = ? AND user_id = ?
+	`, value, completedAt, challengeID, userID)
+	return err
+}
+
+func (r *PrestigeSquadChallengeRepo) ListParticipants(ctx context.Context, challengeID string) ([]prestige.SquadChallengeParticipant, error) {
+	ctx, cancel := context.WithTimeout(ctx, 10*time.Second)
+	defer cancel()
+	rows, err := r.db.Query(ctx, `
+		SELECT squad_challenge_id, user_id, COALESCE(chosen_tier, ''), data_tier,
+		       current_value, completed_at, is_private, joined_at
+		FROM squad_challenge_participant WHERE squad_challenge_id = ?
+	`, challengeID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var out []prestige.SquadChallengeParticipant
+	for rows.Next() {
+		var p prestige.SquadChallengeParticipant
+		var tier, dataTier string
+		if err := rows.Scan(&p.SquadChallengeID, &p.UserID, &tier, &dataTier,
+			&p.CurrentValue, &p.CompletedAt, &p.IsPrivate, &p.JoinedAt); err != nil {
+			return nil, err
+		}
+		p.ChosenTier = prestige.Tier(tier)
+		p.DataTier = prestige.DataTier(dataTier)
+		out = append(out, p)
+	}
+	return out, rows.Err()
+}
+
+func (r *PrestigeSquadChallengeRepo) CountActiveParticipants(ctx context.Context, challengeID string) (int, error) {
+	ctx, cancel := context.WithTimeout(ctx, 5*time.Second)
+	defer cancel()
+	var n int
+	err := r.db.QueryRow(ctx, `
+		SELECT COUNT(*) FROM squad_challenge_participant
+		WHERE squad_challenge_id = ? AND completed_at IS NULL
+	`, challengeID).Scan(&n)
+	return n, err
+}
