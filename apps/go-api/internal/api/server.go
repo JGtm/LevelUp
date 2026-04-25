@@ -20,6 +20,7 @@ import (
 	"levelup/go-api/internal/assets"
 	"levelup/go-api/internal/config"
 	titlePkg "levelup/go-api/internal/domain/title"
+	"levelup/go-api/internal/games/mappings"
 	auth_platform "levelup/go-api/internal/platform/auth"
 	platform_duckdb "levelup/go-api/internal/platform/duckdb"
 	jobs_platform "levelup/go-api/internal/platform/jobs"
@@ -79,6 +80,16 @@ func NewRouter(
 	titleRegistry := titlePkg.NewRegistry()
 	r.Use(middleware.TitleExtractor(titleRegistry))
 
+	// Phase A multi-titres : chargement des FieldMappingSet TOML par titre.
+	// Erreur de chargement → log mais ne bloque pas le boot (les autres titres
+	// restent disponibles). L'endpoint /field-mappings n'est exposé que si le
+	// flag MULTI_TITLE_API_ENABLED est activé.
+	fieldMappingsRegistry := mappings.NewRegistry()
+	multiTitleSlugs := []string{titlePkg.DefaultSlug}
+	for _, err := range fieldMappingsRegistry.LoadFromConfigDir(cfg.RepoRoot, multiTitleSlugs, slog.Default()) {
+		slog.Warn("field_mappings_load_warning", "err", err.Error())
+	}
+
 	// Sprint 40 T1 : validation de contrat (dev mode, no-op si LEVELUP_CONTRACT_VALIDATE != 1).
 	r.Use(middleware.ContractValidate)
 
@@ -130,6 +141,17 @@ func NewRouter(
 		// Endpoints P0 : bootstrap + liste joueurs
 		r.Get("/bootstrap", handlers.NewBootstrapHandler(bootSvc).ServeHTTP)
 		r.Get("/players", handlers.NewPlayersHandler(bootSvc).ServeHTTP)
+
+		// Phase A multi-titres : exposition des field mappings TOML.
+		// Endpoint enregistré uniquement si MULTI_TITLE_API_ENABLED=true.
+		if handlers.MultiTitleAPIEnabled() {
+			fieldMappingsHandler := handlers.NewFieldMappingsHandler(fieldMappingsRegistry, slog.Default())
+			r.Get("/titles/{slug}/field-mappings", fieldMappingsHandler.ServeHTTP)
+			slog.Info("multi_title_api_enabled",
+				"slugs", fieldMappingsRegistry.Slugs(),
+				"endpoint", "/api/v1/titles/{slug}/field-mappings",
+			)
+		}
 
 		// Sprint 43 : changelog (markdown brut)
 		changelog := handlers.NewChangelogHandler(cfg.RepoRoot)
