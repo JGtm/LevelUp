@@ -20,6 +20,7 @@ type MediaPageRequest struct {
 	Kind          string            `json:"kind,omitempty"`        // filtre type legacy : "clip" | "screenshot"
 	KindFilter    string            `json:"kind_filter,omitempty"` // filtre type moderne
 	SectionFilter string            `json:"section_filter,omitempty"`
+	AuthorSlugs   []string          `json:"author_slugs,omitempty"` // si non vide : whitelist player_slug (prend le pas sur SectionFilter)
 	MapFilter     string            `json:"map_filter,omitempty"`
 	ModeFilter    string            `json:"mode_filter,omitempty"`
 	GroupBy       string            `json:"group_by,omitempty"`
@@ -29,11 +30,30 @@ type MediaPageRequest struct {
 
 // MediaFilters regroupe les paramètres de filtrage/tri pour le repository.
 type MediaFilters struct {
-	KindFilter string // "clip" | "screenshot" | "" (aucun)
-	MapFilter  string // filtre ILIKE sur le libellé de carte exposé à l'UI
-	ModeFilter string // filtre ILIKE sur le mode normalisé exposé à l'UI
-	LikedOnly  bool   // restreindre aux médias likés
-	Sort       string // "date_desc" | "date_asc" | "map_asc" | "mode_asc"
+	KindFilter    string   // "clip" | "screenshot" | "" (aucun)
+	SectionFilter string   // "" (toutes sources) | "mine" (player_slug courant) | "teammate" (autres)
+	AuthorSlugs   []string // whitelist explicite de player_slug (prend le pas sur SectionFilter si non vide)
+	MapFilter     string   // filtre ILIKE sur le libellé de carte exposé à l'UI
+	ModeFilter   string // filtre ILIKE sur le mode normalisé exposé à l'UI
+	// ModeFilterCandidates : si non vide, le repo a expansé ModeFilter (FR) en
+	// liste de raw EN via mode_name_tr → le SQL utilise un OR sur chaque variant.
+	ModeFilterCandidates []string
+	LikedOnly            bool   // restreindre aux médias likés
+	Sort                 string // "date_desc" | "date_asc" | "map_asc" | "mode_asc"
+	GroupBy              string // "" | "owner" | "map" | "mode" | "session" | "liked"
+}
+
+// MediaAuthor décrit un auteur sélectionnable dans le filtre Auteurs.
+type MediaAuthor struct {
+	PlayerSlug string `json:"player_slug"`
+	Gamertag   string `json:"gamertag"`
+	IsSelf     bool   `json:"is_self"`
+	MediaCount int    `json:"media_count"` // nombre de fichiers détectés dans son dossier (best-effort)
+}
+
+// MediaAuthorsResponse regroupe la liste d'auteurs disponibles pour le filtre.
+type MediaAuthorsResponse struct {
+	Authors []MediaAuthor `json:"authors"`
 }
 
 // ResolvePage retourne le numéro de page normalisé.
