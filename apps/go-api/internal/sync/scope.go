@@ -69,9 +69,11 @@ type SyncScope struct {
 
 	// ── Flags force ─────────────────────────────────────────────────────
 	ForceMedals              bool
+	ForceEvents              bool
 	ForceSkill               bool
 	ForceAccuracy            bool
 	ForceShots               bool
+	ForcePersonalScores      bool
 	ForcePerformanceScores   bool
 	ForceParticipantsShots   bool
 	ForceParticipantsDamage  bool
@@ -269,9 +271,11 @@ func (s *SyncScope) applyForceImplications() {
 		}
 	}
 	imply(&s.ForceMedals, &s.Medals)
+	imply(&s.ForceEvents, &s.Events)
 	imply(&s.ForceSkill, &s.Skill)
 	imply(&s.ForceAccuracy, &s.Accuracy)
 	imply(&s.ForceShots, &s.Shots)
+	imply(&s.ForcePersonalScores, &s.PersonalScores)
 	imply(&s.ForcePerformanceScores, &s.PerformanceScores)
 	imply(&s.ForceParticipantsShots, &s.ParticipantsShots)
 	imply(&s.ForceParticipantsDamage, &s.ParticipantsDamage)

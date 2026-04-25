@@ -68,6 +68,48 @@ func TestBuildSyncScope_ForceRescanAllData(t *testing.T) {
 	if !scope.ForceMedals || !scope.ForceSkill || !scope.ForceWeapons {
 		t.Fatal("expected all force flags when AllData+ForceRescan")
 	}
+	if !scope.ForceAliases || !scope.ForceLUSR || !scope.ForcePerformanceScores {
+		t.Fatal("expected ForceAliases/ForceLUSR/ForcePerformanceScores when AllData+ForceRescan")
+	}
+	if !scope.ForceEvents || !scope.ForcePersonalScores {
+		t.Fatal("expected ForceEvents/ForcePersonalScores when AllData+ForceRescan")
+	}
+}
+
+func TestBuildSyncScope_ForceRescanAliasesAndLUSR(t *testing.T) {
+	req := domain.BackfillStartRequest{
+		Aliases:     true,
+		LUSR:        true,
+		ForceRescan: true,
+	}
+	scope := buildSyncScope(req)
+	if !scope.ForceAliases {
+		t.Fatal("expected ForceAliases when Aliases+ForceRescan")
+	}
+	if !scope.ForceLUSR {
+		t.Fatal("expected ForceLUSR when LUSR+ForceRescan")
+	}
+	if scope.ForceMedals || scope.ForceSkill || scope.ForceWeapons {
+		t.Fatal("expected non-requested force flags to remain false")
+	}
+}
+
+func TestBuildSyncScope_ForceRescanEventsAndPersonalScores(t *testing.T) {
+	req := domain.BackfillStartRequest{
+		Events:         true,
+		PersonalScores: true,
+		ForceRescan:    true,
+	}
+	scope := buildSyncScope(req)
+	if !scope.ForceEvents {
+		t.Fatal("expected ForceEvents when Events+ForceRescan")
+	}
+	if !scope.ForcePersonalScores {
+		t.Fatal("expected ForcePersonalScores when PersonalScores+ForceRescan")
+	}
+	if scope.ForceMedals || scope.ForceSkill || scope.ForceWeapons {
+		t.Fatal("expected non-requested force flags to remain false")
+	}
 }
 
 func TestNewBackfillHandler(t *testing.T) {

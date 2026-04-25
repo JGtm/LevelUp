@@ -42,9 +42,11 @@ func NewBackfillFlagSet() (*flag.FlagSet, *BackfillCLI, *SyncScope) {
 	// ── Types de données ──
 	fs.BoolVar(&scope.Medals, "medals", false, "Backfill les médailles")
 	fs.BoolVar(&scope.Events, "events", false, "Backfill les highlight events")
+	fs.BoolVar(&scope.ForceEvents, "force-events", false, "Force rescan events pour TOUS les matchs")
 	fs.BoolVar(&scope.Skill, "skill", false, "Backfill les stats skill/MMR")
 	fs.BoolVar(&scope.ForceSkill, "force-skill", false, "Force rescan skill/MMR pour TOUS les matchs")
 	fs.BoolVar(&scope.PersonalScores, "personal-scores", false, "Backfill personal score awards")
+	fs.BoolVar(&scope.ForcePersonalScores, "force-personal-scores", false, "Force rescan personal scores pour TOUS les matchs")
 	fs.BoolVar(&scope.PerformanceScores, "performance-scores", false, "Calculer les scores de performance manquants")
 	fs.BoolVar(&scope.ForcePerformanceScores, "force-performance-scores", false, "Force le calcul pour TOUS les matchs")
 	fs.BoolVar(&scope.Aliases, "aliases", false, "Mettre à jour les aliases XUID")
