@@ -93,6 +93,22 @@ Deux fichiers séparés plutôt qu'un seul : responsabilités UI distinctes.
 
 ---
 
+## [2026-04-25] plan(weapon_family) + 2 audits préparatoires Phase A multi-titres
+
+**Statut** : Complété — 3 documents `.ai/` créés sur branche `feat/accessibility-okabe-ito` (commit isolé recommandé hors PR accessibilité)
+
+**Décision technique** :
+
+1. **`.ai/PLAN_WEAPON_FAMILY_CANONICAL.md`** — couche canonique cross-titres pour les armes Halo. Concept : `weapon_family` (`battle_rifle`, `assault_rifle`, `sniper_rifle`…) regroupe les armes équivalentes au-delà des `weapon_id` filmshell par-titre. Stockage : nouvelle DB globale `data/warehouse/canonical_metadata.duckdb` (tables `weapon_families` + `weapon_family_translations`) + colonne `family_key` ajoutée à `weapon_labels` de chaque titre. Source de vérité : `config/canonical/weapon_families.toml` (global) + `config/titles/{slug}/mappings/weapon_families.toml` (par-titre). Articulation avec `TitleSemanticAdapter` du plan multi-titres : 2 nouvelles méthodes (`WeaponFamilies()` + `WeaponFamilyOf()`). Plan en 3 phases (référentiel global 1j + mapping HI 1j + adapter+endpoint 0.5–1j = 2.5–3j). Annexe : 26 familles initiales couvrant Halo CE → Infinite. Bloqué par : Phase A multi-titres + arrivée d'un second titre réel.
+
+2. **`.ai/AUDIT_I18N_REACT_2026-04-25.md`** — audit de l'i18n React existant (pré-requis Phase D plan multi-titres). Constat : pas de react-i18next, pattern artisanal `feature/i18n.ts` avec dictionnaires typés FR/EN. 9 fichiers totalisant ~2 500L. Locale globale via `appShellStore.locale` (Zustand). ~150–200 clés métier candidates au TOML, ~70 % du volume reste en i18n React (UI, glossaire, settings). Anti-pattern résiduel : ternaires `locale === 'en' ? 'X' : 'Y'` dans 4 composants (timeseries-scatter, timeseries-kda-bars, MatchViewPage, SquadContributionsPage). Effort Phase D réévalué à 5j (vs 3–4j initialement, marge +30 % confirmée). Lint anti-hardcode doit parser AST (pas grep naïf) à cause des dicts imbriqués. Aucun risque bloquant.
+
+3. **`.ai/AUDIT_WEAPONS_2026-04-25.md`** — audit du référentiel `weapon_labels` HI (pré-requis Phase 2 plan weapon_family). 42 weapon_id seedés via `applyWeaponLabels` (steps_metadata.go:380). Distribution : 3 sentinelles (Grenade/Melee/Vehicle), 32 armes principales mappables, 5 variantes/skins (Energy Sword × 4, Gravity Hammer × 3, Bandit × 2, Sidekick × 1, Shock Rifle × 2), 2 easter eggs. Couverture famille : 88 % (37/42 mappables). Confirme « variantes du même titre = même famille ». 3 ajustements remontés au plan weapon_family : (1) ajouter 6 familles HI manquantes au référentiel (`shock_rifle`, `stalker_rifle`, `heatwave`, `sentinel_beam`, `ravager`, `mutilator`) → ~32 familles totales au lieu de 26 ; (2) expliciter `family_key = NULL` valide pour sentinelles ; (3) relever seuil test CI couverture de 60 % à 85 %. Anomalies détectées : `Fuel Rod SPNKr` et `M41 SPNKr` ont le même label FR (à investiguer), Bandit Evo / M392 Bandit dédoublonnés sous `dmr`. Esquisse complète du `weapon_families.toml` HI (~37 lignes mapping) fournie en §8.
+
+**Résultat** : 3 documents prêts. Aucun code applicatif modifié, juste des fichiers `.ai/` → safe sur la branche accessibilité Okabe-Ito en cours.
+
+**Conclusion / prochaine étape** : Phase A multi-titres peut démarrer dès qu'on bascule sur sa branche dédiée. Note : ces 3 fichiers `.ai/` mériteraient un commit isolé `docs(.ai): plans multi-titles weapon_family + audits préparatoires` séparé du PR accessibilité Okabe-Ito en cours pour éviter de mélanger les sujets dans la review.
+
 ## [2026-04-25] plan(multi-titles): décisions §16 validées
 
 **Statut** : Complété — toutes les décisions ouvertes sont tranchées
