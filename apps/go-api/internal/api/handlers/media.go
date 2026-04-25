@@ -49,10 +49,19 @@ type MediaUploadContextFactory func(ctx context.Context, slug string) (
 	port.MediaService, string, string, string, string, string, error,
 )
 
+// MediaPlayerContextFactory résout slug → (titleSlug, gamertag) sans construire de service.
+// Utilisée par les endpoints méta-données (ex : liste des auteurs).
+type MediaPlayerContextFactory func(ctx context.Context, slug string) (titleSlug, gamertag string, err error)
+
+// MediaProfilesProvider liste les profils connus pour un titre (db_profiles.json).
+type MediaProfilesProvider func(ctx context.Context, titleSlug string) ([]domain.PlayerSummary, error)
+
 // MediaHandler gère les endpoints de la galerie médias.
 type MediaHandler struct {
 	newSvc        ServiceFactory[port.MediaService]
 	newUpload     MediaUploadContextFactory
+	newPlayerCtx  MediaPlayerContextFactory
+	loadProfiles  MediaProfilesProvider
 	repoRoot      string
 	settingsStore *settings.Store
 }
@@ -70,6 +79,14 @@ func NewMediaHandler(
 // WithSettingsStore injecte le settings store pour lire media_captures_base_dir.
 func (h *MediaHandler) WithSettingsStore(store *settings.Store) *MediaHandler {
 	h.settingsStore = store
+	return h
+}
+
+// WithAuthorsContext câble la résolution slug → (titleSlug, gamertag) et la liste
+// des profils du titre. Sans ces deux callbacks, GetMediaAuthors retourne 501.
+func (h *MediaHandler) WithAuthorsContext(playerCtx MediaPlayerContextFactory, loadProfiles MediaProfilesProvider) *MediaHandler {
+	h.newPlayerCtx = playerCtx
+	h.loadProfiles = loadProfiles
 	return h
 }
 
@@ -287,6 +304,66 @@ func (h *MediaHandler) PostReassociateMedia(w http.ResponseWriter, r *http.Reque
 
 	writeJSON(w, http.StatusOK, result)
 	BumpMediaFeedVersion()
+}
+
+// GetMediaAuthors retourne la liste des profils db_profiles.json ayant au moins
+// un fichier média dans leur dossier captures (croisement avec le filesystem).
+// GET /api/v1/players/{player_slug}/media/authors
+func (h *MediaHandler) GetMediaAuthors(w http.ResponseWriter, r *http.Request) {
+	if h.newPlayerCtx == nil || h.loadProfiles == nil {
+		writeError(w, http.StatusNotImplemented, "authors_not_configured", "authors context non configuré")
+		return
+	}
+
+	slug := chi.URLParam(r, "player_slug")
+	titleSlug, currentGamertag, err := h.newPlayerCtx(r.Context(), slug)
+	if err != nil {
+		writeError(w, http.StatusNotFound, "player_not_found", err.Error())
+		return
+	}
+
+	profiles, err := h.loadProfiles(r.Context(), titleSlug)
+	if err != nil {
+		writeError(w, http.StatusInternalServerError, "profiles_load_error", err.Error())
+		return
+	}
+
+	authors := make([]domain.MediaAuthor, 0, len(profiles))
+	for _, p := range profiles {
+		dir := h.resolveCapturesDir(titleSlug, p.Gamertag)
+		count := countMediaInDir(dir)
+		if count == 0 {
+			continue
+		}
+		authors = append(authors, domain.MediaAuthor{
+			PlayerSlug: p.PlayerSlug,
+			Gamertag:   p.Gamertag,
+			IsSelf:     strings.EqualFold(p.Gamertag, currentGamertag),
+			MediaCount: count,
+		})
+	}
+
+	writeJSON(w, http.StatusOK, domain.MediaAuthorsResponse{Authors: authors})
+}
+
+// countMediaInDir compte les fichiers média (extensions allowedMediaExts) dans un
+// dossier — best-effort, retourne 0 sur erreur ou dossier inexistant. Ne descend
+// pas en récursif (le sous-dossier `thumbs/` est ignoré naturellement comme dossier).
+func countMediaInDir(dir string) int {
+	entries, err := os.ReadDir(dir)
+	if err != nil {
+		return 0
+	}
+	n := 0
+	for _, e := range entries {
+		if e.IsDir() {
+			continue
+		}
+		if allowedMediaExts[strings.ToLower(filepath.Ext(e.Name()))] {
+			n++
+		}
+	}
+	return n
 }
 
 // resolveCapturesDir construit le chemin captures pour un joueur.

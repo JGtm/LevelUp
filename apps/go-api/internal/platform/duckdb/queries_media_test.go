@@ -295,36 +295,94 @@ func TestBuildQ37MediaQuery_SharedSocialSchemaUsesPlayerScopedJoin(t *testing.T)
 	if !strings.Contains(q, "mf.id = mma.media_file_id") {
 		t.Errorf("expected shared_social join on media_file_id, got: %s", q)
 	}
-	if !strings.Contains(q, "mf.player_slug = ?") {
-		t.Errorf("expected player_slug filter, got: %s", q)
-	}
 	if !strings.Contains(q, "mr.start_time AS match_start_time") {
 		t.Errorf("expected match_start_time from match_registry, got: %s", q)
 	}
 	if strings.Contains(q, "mf.status = 'active'") {
 		t.Errorf("did not expect legacy status filter in shared_social query, got: %s", q)
 	}
-	if len(args) != 3 {
-		t.Fatalf("args len = %d, want 3", len(args))
+	// Default SectionFilter "" = "Tous auteurs" → pas de contrainte player_slug.
+	if strings.Contains(q, "mf.player_slug") {
+		t.Errorf("default section filter should not constrain player_slug, got: %s", q)
 	}
-	if args[0] != "HeroPlayer" || args[1] != 24 || args[2] != 0 {
+	if len(args) != 2 {
+		t.Fatalf("args len = %d, want 2 (limit, offset)", len(args))
+	}
+	if args[0] != 24 || args[1] != 0 {
+		t.Fatalf("args = %v, want [24 0]", args)
+	}
+}
+
+func TestBuildQ37MediaQuery_SectionFilterMineScopesToPlayer(t *testing.T) {
+	q, args := buildQ37MediaQuery(domain.MediaFilters{SectionFilter: "mine"}, 24, 0, mediaQueryConfig{playerSlug: "HeroPlayer"})
+
+	if !strings.Contains(q, "mf.player_slug = ?") {
+		t.Errorf("expected mine to filter on player_slug =, got: %s", q)
+	}
+	if len(args) != 3 || args[0] != "HeroPlayer" {
 		t.Fatalf("args = %v, want [HeroPlayer 24 0]", args)
 	}
 }
 
-func TestBuildQ37MediaMapOptionsQuery_SharedSocialSchemaKeepsPlayerScope(t *testing.T) {
+func TestBuildQ37MediaQuery_SectionFilterTeammateExcludesPlayer(t *testing.T) {
+	q, args := buildQ37MediaQuery(domain.MediaFilters{SectionFilter: "teammate"}, 24, 0, mediaQueryConfig{playerSlug: "HeroPlayer"})
+
+	if !strings.Contains(q, "mf.player_slug <> ?") {
+		t.Errorf("expected teammate to filter on player_slug <>, got: %s", q)
+	}
+	if len(args) != 3 || args[0] != "HeroPlayer" {
+		t.Fatalf("args = %v, want [HeroPlayer 24 0]", args)
+	}
+}
+
+func TestBuildQ37MediaQuery_AuthorSlugsBuildsInClause(t *testing.T) {
+	q, args := buildQ37MediaQuery(
+		domain.MediaFilters{AuthorSlugs: []string{"alice", "bob"}},
+		24, 0, mediaQueryConfig{playerSlug: "HeroPlayer"},
+	)
+
+	if !strings.Contains(q, "mf.player_slug IN (?,?)") {
+		t.Errorf("expected IN clause from AuthorSlugs, got: %s", q)
+	}
+	if len(args) != 4 || args[0] != "alice" || args[1] != "bob" {
+		t.Fatalf("args = %v, want [alice bob 24 0]", args)
+	}
+}
+
+func TestBuildQ37MediaQuery_GroupByMapPrefixesOrderBy(t *testing.T) {
+	q, _ := buildQ37MediaQuery(domain.MediaFilters{GroupBy: "map"}, 24, 0, mediaQueryConfig{playerSlug: "HeroPlayer"})
+
+	if !strings.Contains(q, "ORDER BY COALESCE("+q37MediaMapLabelExpr+", '~zzz') ASC,") {
+		t.Errorf("expected GroupBy=map to prefix ORDER BY with map expr, got: %s", q)
+	}
+}
+
+func TestBuildQ37MediaQuery_ModeFilterCandidatesBuildsOrClause(t *testing.T) {
+	q, args := buildQ37MediaQuery(
+		domain.MediaFilters{ModeFilterCandidates: []string{"Slayer", "CTF"}},
+		24, 0, mediaQueryConfig{playerSlug: "HeroPlayer"},
+	)
+
+	if !strings.Contains(q, " ILIKE ? OR ") {
+		t.Errorf("expected OR clause from ModeFilterCandidates, got: %s", q)
+	}
+	// args : 2 candidats + limit + offset
+	if len(args) != 4 || args[0] != "%Slayer%" || args[1] != "%CTF%" {
+		t.Fatalf("args = %v, want [%%Slayer%% %%CTF%% 24 0]", args)
+	}
+}
+
+func TestBuildQ37MediaMapOptionsQuery_SharedSocialSchemaDefaultNoPlayerScope(t *testing.T) {
 	q, args := buildQ37MediaMapOptionsQuery(domain.MediaFilters{ModeFilter: "Slayer"}, mediaQueryConfig{playerSlug: "HeroPlayer"})
 
 	if !strings.Contains(q, "mf.id = mma.media_file_id") {
 		t.Errorf("expected shared_social join on media_file_id, got: %s", q)
 	}
-	if !strings.Contains(q, "mf.player_slug = ?") {
-		t.Errorf("expected player_slug filter, got: %s", q)
+	if strings.Contains(q, "mf.player_slug") {
+		t.Errorf("default section filter should not constrain player_slug, got: %s", q)
 	}
-	if len(args) != 2 {
-		t.Fatalf("args len = %d, want 2", len(args))
-	}
-	if args[0] != "HeroPlayer" {
-		t.Fatalf("args[0] = %v, want HeroPlayer", args[0])
+	// args : [mode_ilike] uniquement
+	if len(args) != 1 {
+		t.Fatalf("args len = %d, want 1 (mode filter)", len(args))
 	}
 }

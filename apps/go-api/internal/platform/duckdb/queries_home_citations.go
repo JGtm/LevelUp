@@ -466,11 +466,32 @@ func (cfg mediaQueryConfig) fromClause() string {
 	return q37LegacyMediaFromClause
 }
 
-func (cfg mediaQueryConfig) baseWhereClause() ([]string, []any) {
-	if cfg.useSharedSocialSchema() {
-		return []string{"mf.player_slug = ?"}, []any{cfg.playerSlug}
+// baseWhereClause renvoie les contraintes de base + le filtre de section (ownership).
+//
+//	"" (vide)   → sources visibles : mine + teammate (pas de contrainte player_slug)
+//	"mine"      → uniquement player_slug courant
+//	"teammate"  → uniquement les autres (player_slug != courant)
+//
+// En schéma legacy (pas de player_slug), seul "mine" et "" donnent des résultats ;
+// "teammate" force WHERE FALSE pour cohérence (rien à montrer).
+func (cfg mediaQueryConfig) baseWhereClause(sectionFilter string) ([]string, []any) {
+	if !cfg.useSharedSocialSchema() {
+		switch sectionFilter {
+		case "teammate":
+			return []string{"FALSE"}, nil
+		default:
+			return []string{"mf.status = 'active'"}, nil
+		}
 	}
-	return []string{"mf.status = 'active'"}, nil
+	switch sectionFilter {
+	case "mine":
+		return []string{"mf.player_slug = ?"}, []any{cfg.playerSlug}
+	case "teammate":
+		return []string{"mf.player_slug <> ?"}, []any{cfg.playerSlug}
+	default:
+		// Tous auteurs — pas de contrainte sur player_slug
+		return nil, nil
+	}
 }
 
 func (cfg mediaQueryConfig) matchStartExpr() string {
@@ -487,12 +508,54 @@ func (cfg mediaQueryConfig) timeOrderExpr() string {
 	return "COALESCE(mf.capture_end_utc, mf.mtime)"
 }
 
+// groupOrderExpr retourne l'expression de tri primaire pour grouper les médias.
+// Le tri secondaire (date / map / mode) reste appliqué après. Retourne ("", "")
+// si le groupement est inconnu ou ne s'applique pas au schéma courant.
+func (cfg mediaQueryConfig) groupOrderExpr(groupBy string) (expr, direction string) {
+	switch groupBy {
+	case "owner":
+		if cfg.useSharedSocialSchema() {
+			return "mf.player_slug", "ASC"
+		}
+		return "", ""
+	case "map":
+		return "COALESCE(" + q37MediaMapLabelExpr + ", '~zzz')", "ASC"
+	case "mode":
+		return "COALESCE(" + q37MediaModeLabelExpr + ", '~zzz')", "ASC"
+	case "session":
+		// Le groupement par session est calculé côté frontend (proximité temporelle) ;
+		// pour le ORDER BY backend, on s'aligne juste sur la date pour que les sessions
+		// apparaissent contiguës. Pas de troncature SQL — la heuristique côté UI fait
+		// foi.
+		return cfg.timeOrderExpr(), "DESC"
+	case "liked":
+		return "COALESCE(mf.liked, FALSE)", "DESC"
+	}
+	return "", ""
+}
+
 func buildQ37MediaWhereClause(
 	f domain.MediaFilters,
 	whereCfg mediaWhereConfig,
 	queryCfg mediaQueryConfig,
 ) (string, []any) {
-	where, args := queryCfg.baseWhereClause()
+	// AuthorSlugs prend le pas sur SectionFilter quand non vide (whitelist
+	// explicite plus restrictive que mine/teammate/all).
+	var where []string
+	var args []any
+	if len(f.AuthorSlugs) > 0 && queryCfg.useSharedSocialSchema() {
+		placeholders := make([]string, len(f.AuthorSlugs))
+		for i, slug := range f.AuthorSlugs {
+			placeholders[i] = "?"
+			args = append(args, slug)
+		}
+		where = []string{"mf.player_slug IN (" + strings.Join(placeholders, ",") + ")"}
+	} else {
+		where, args = queryCfg.baseWhereClause(f.SectionFilter)
+		if len(where) == 0 {
+			where = []string{"TRUE"}
+		}
+	}
 
 	if f.KindFilter != "" {
 		where = append(where, "mf.kind = ?")
@@ -505,9 +568,21 @@ func buildQ37MediaWhereClause(
 		where = append(where, q37MediaMapLabelExpr+" ILIKE ?")
 		args = append(args, "%"+f.MapFilter+"%")
 	}
-	if whereCfg.includeModeFilter && f.ModeFilter != "" {
-		where = append(where, q37MediaModeLabelExpr+" ILIKE ?")
-		args = append(args, "%"+f.ModeFilter+"%")
+	if whereCfg.includeModeFilter {
+		// Si ModeFilterCandidates est présent (FR → liste de raw EN via
+		// mode_name_tr), on construit un OR pour matcher chaque variant. Sinon
+		// fallback sur l'ancien ILIKE simple sur ModeFilter.
+		if len(f.ModeFilterCandidates) > 0 {
+			parts := make([]string, len(f.ModeFilterCandidates))
+			for i, candidate := range f.ModeFilterCandidates {
+				parts[i] = q37MediaModeLabelExpr + " ILIKE ?"
+				args = append(args, "%"+candidate+"%")
+			}
+			where = append(where, "("+strings.Join(parts, " OR ")+")")
+		} else if f.ModeFilter != "" {
+			where = append(where, q37MediaModeLabelExpr+" ILIKE ?")
+			args = append(args, "%"+f.ModeFilter+"%")
+		}
 	}
 
 	return "WHERE " + strings.Join(where, " AND "), args
@@ -537,6 +612,10 @@ func buildQ37MediaQuery(
 		orderBy = "COALESCE(" + q37MediaMapLabelExpr + ", '') ASC, " + queryCfg.timeOrderExpr() + " DESC"
 	case "mode_asc":
 		orderBy = "COALESCE(" + q37MediaModeLabelExpr + ", '') ASC, " + queryCfg.timeOrderExpr() + " DESC"
+	}
+
+	if groupExpr, groupDir := queryCfg.groupOrderExpr(f.GroupBy); groupExpr != "" {
+		orderBy = groupExpr + " " + groupDir + ", " + orderBy
 	}
 
 	q := `SELECT

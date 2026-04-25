@@ -213,6 +213,16 @@ func (r *ServiceRegistry) MediaUpload(ctx context.Context, slug string) (
 	return svc, pdb.Gamertag, pdb.TitleSlug, pdb.Player.Path(), sharedSocialPath, sharedMatchesPath, nil
 }
 
+// MediaPlayerCtx résout slug → (titleSlug, gamertag) sans construire de service.
+// Signature conforme à handlers.MediaPlayerContextFactory.
+func (r *ServiceRegistry) MediaPlayerCtx(ctx context.Context, slug string) (string, string, error) {
+	pdb, err := r.resolve(ctx, slug)
+	if err != nil {
+		return "", "", err
+	}
+	return pdb.TitleSlug, pdb.Gamertag, nil
+}
+
 // Social retourne un SocialService pour le joueur.
 func (r *ServiceRegistry) Social(ctx context.Context, slug string) (port.SocialService, error) {
 	pdb, err := r.resolve(ctx, slug)
