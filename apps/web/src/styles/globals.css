@@ -183,6 +183,60 @@
   --animate-session-slide-up: session-slide-up 0.18s ease-out;
 }
 
+/* ─── Tokens sémantiques accessibilité (palette "default" en fallback CSS) ─── */
+/* Écrasés dynamiquement par applyPalette() via JS selon la préférence.        */
+/* Ces valeurs garantissent un rendu correct même si JS est désactivé.         */
+:root {
+  /* Perf tiers */
+  --ac-perf-tier-1: #10B981;
+  --ac-perf-tier-2: #06B6D4;
+  --ac-perf-tier-3: #F59E0B;
+  --ac-perf-tier-4: #F97316;
+  --ac-perf-tier-5: #EF4444;
+  /* Outcomes */
+  --ac-outcome-win:  #10B981;
+  --ac-outcome-loss: #EF4444;
+  --ac-outcome-draw: #3B82F6;
+  --ac-outcome-dnf:  #8B5CF6;
+  /* Divergent */
+  --ac-divergent-pos:     #22C55E;
+  --ac-divergent-neutral: #60A5FA;
+  --ac-divergent-neg:     #EF4444;
+  /* Statuts UI */
+  --ac-success:     #10B981;
+  --ac-warning:     #F59E0B;
+  --ac-info:        #3B82F6;
+  --ac-destructive: #EF4444;
+  /* Comparaisons */
+  --ac-compare-a: #818CF8;
+  --ac-compare-b: #D97706;
+  /* Chart series */
+  --ac-chart-series-1: #93C5FD;
+  --ac-chart-series-2: #6366F1;
+  --ac-chart-series-3: #4F46E5;
+  --ac-chart-series-4: #4338CA;
+  --ac-chart-series-5: #3730A3;
+  --ac-chart-series-6: #10B981;
+  --ac-chart-series-7: #F59E0B;
+  --ac-chart-series-8: #EC4899;
+  /* Badges narratifs */
+  --ac-narrative-dominant:               #00DC82;
+  --ac-narrative-dominant-text:          #052E16;
+  --ac-narrative-humiliation:            #8B5CF6;
+  --ac-narrative-humiliation-text:       #F8FAFC;
+  --ac-narrative-remontada:              #0072B2;
+  --ac-narrative-remontada-text:         #F8FAFC;
+  --ac-narrative-debacle:                #D55E00;
+  --ac-narrative-debacle-text:           #FFF7ED;
+  --ac-narrative-contre-remontada:       #33D6FF;
+  --ac-narrative-contre-remontada-text:  #082F49;
+  /* Heatmaps */
+  --ac-heatmap-cold:           #EF4444;
+  --ac-heatmap-hot:            #10B981;
+  --ac-heatmap-divergent-low:  #FF4B4B;
+  --ac-heatmap-divergent-high: #00DC82;
+}
+
 /* ─── Base styles ───────────────────────────────────────────────────────────── */
 @layer base {
   * {
