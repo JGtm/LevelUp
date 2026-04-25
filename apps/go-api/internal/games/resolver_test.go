@@ -41,44 +41,48 @@ func (s *stubSemantic) SchemaVersion() int                { return 1 }
 func (s *stubSemantic) Fields() *mappings.FieldMappingSet { return nil }
 func (s *stubSemantic) Ranks() *mappings.RankCatalog      { return mappings.NewRankCatalog(s.slug, nil) }
 
+// hiSlug constante locale aux tests pour réutiliser le littéral du titre
+// par défaut sans déclencher goconst sur les multiples occurrences.
+const hiSlug = "halo_infinite"
+
 func TestStaticResolver_DefaultSlug(t *testing.T) {
 	t.Parallel()
-	r := NewStaticResolver("halo_infinite")
-	if r.DefaultSlug() != "halo_infinite" {
+	r := NewStaticResolver(hiSlug)
+	if r.DefaultSlug() != hiSlug {
 		t.Errorf("DefaultSlug = %q", r.DefaultSlug())
 	}
 	rEmpty := NewStaticResolver("")
-	if rEmpty.DefaultSlug() != "halo_infinite" {
+	if rEmpty.DefaultSlug() != hiSlug {
 		t.Errorf("default DefaultSlug = %q", rEmpty.DefaultSlug())
 	}
 }
 
 func TestStaticResolver_RegisterAndResolve(t *testing.T) {
 	t.Parallel()
-	r := NewStaticResolver("halo_infinite")
-	r.RegisterData(&stubData{slug: "halo_infinite"})
-	r.RegisterSemantic(&stubSemantic{slug: "halo_infinite"})
+	r := NewStaticResolver(hiSlug)
+	r.RegisterData(&stubData{slug: hiSlug})
+	r.RegisterSemantic(&stubSemantic{slug: hiSlug})
 
-	d, err := r.Data("halo_infinite")
+	d, err := r.Data(hiSlug)
 	if err != nil {
 		t.Fatalf("Data err: %v", err)
 	}
-	if d.TitleSlug() != "halo_infinite" {
+	if d.TitleSlug() != hiSlug {
 		t.Errorf("Data slug = %q", d.TitleSlug())
 	}
 
-	s, err := r.Semantic("halo_infinite")
+	s, err := r.Semantic(hiSlug)
 	if err != nil {
 		t.Fatalf("Semantic err: %v", err)
 	}
-	if s.TitleSlug() != "halo_infinite" {
+	if s.TitleSlug() != hiSlug {
 		t.Errorf("Semantic slug = %q", s.TitleSlug())
 	}
 }
 
 func TestStaticResolver_Unknown(t *testing.T) {
 	t.Parallel()
-	r := NewStaticResolver("halo_infinite")
+	r := NewStaticResolver(hiSlug)
 	if _, err := r.Data("unknown"); !errors.Is(err, ErrTitleNotResolved) {
 		t.Errorf("Data err = %v, want ErrTitleNotResolved", err)
 	}
@@ -89,8 +93,8 @@ func TestStaticResolver_Unknown(t *testing.T) {
 
 func TestStaticResolver_Slugs_Union(t *testing.T) {
 	t.Parallel()
-	r := NewStaticResolver("halo_infinite")
-	r.RegisterData(&stubData{slug: "halo_infinite"})
+	r := NewStaticResolver(hiSlug)
+	r.RegisterData(&stubData{slug: hiSlug})
 	r.RegisterSemantic(&stubSemantic{slug: "test_title"})
 	slugs := r.Slugs()
 	if len(slugs) != 2 {
