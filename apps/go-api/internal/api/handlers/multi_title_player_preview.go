@@ -24,6 +24,7 @@ import (
 
 	"levelup/go-api/internal/games"
 	"levelup/go-api/internal/games/canonical"
+	"levelup/go-api/internal/games/mappings"
 )
 
 // PlayerCareerAdapterFactory résout le slug joueur en TitleDataAdapter
@@ -44,6 +45,7 @@ type MultiTitlePlayerPreviewHandler struct {
 	semanticFactory SemanticAdapterFactory
 	defaultSlug     string
 	logger          *slog.Logger
+	recorder        *mappings.LookupRecorder
 }
 
 // NewMultiTitlePlayerPreviewHandler injecte les factories.
@@ -64,6 +66,7 @@ func NewMultiTitlePlayerPreviewHandler(
 		semanticFactory: semantic,
 		defaultSlug:     defaultSlug,
 		logger:          logger,
+		recorder:        mappings.NewLookupRecorder(logger),
 	}
 }
 
@@ -129,10 +132,10 @@ func (h *MultiTitlePlayerPreviewHandler) GetCareerPreview(w http.ResponseWriter,
 		}
 	}
 	if snap.CurrentXP != nil {
-		dto.CurrentXP = labeledIntFromCanonical(canonical.FieldCurrentXP, *snap.CurrentXP, locale, semantic)
+		dto.CurrentXP = labeledIntFromCanonical(canonical.FieldCurrentXP, *snap.CurrentXP, locale, semantic, h.recorder)
 	}
 	if snap.XPForNextRank != nil {
-		dto.XPForNextRank = labeledIntFromCanonical(canonical.FieldXPForNextRank, *snap.XPForNextRank, locale, semantic)
+		dto.XPForNextRank = labeledIntFromCanonical(canonical.FieldXPForNextRank, *snap.XPForNextRank, locale, semantic, h.recorder)
 	}
 
 	h.logger.Debug("multi_title_player_preview_served",

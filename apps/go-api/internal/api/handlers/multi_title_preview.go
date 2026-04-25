@@ -17,6 +17,7 @@ import (
 
 	"levelup/go-api/internal/games"
 	"levelup/go-api/internal/games/canonical"
+	"levelup/go-api/internal/games/mappings"
 )
 
 // MultiTitlePreviewHandler expose un preview de la couche canonique pour
@@ -24,15 +25,21 @@ import (
 type MultiTitlePreviewHandler struct {
 	resolver games.Resolver
 	logger   *slog.Logger
+	recorder *mappings.LookupRecorder
 }
 
 // NewMultiTitlePreviewHandler injecte le resolver pour résoudre l'adapter
-// du titre courant.
+// du titre courant. Un LookupRecorder partagé est créé pour rate-limiter les
+// `field_lookup_missing` quand un caller demande un FieldKey absent du TOML.
 func NewMultiTitlePreviewHandler(r games.Resolver, logger *slog.Logger) *MultiTitlePreviewHandler {
 	if logger == nil {
 		logger = slog.Default()
 	}
-	return &MultiTitlePreviewHandler{resolver: r, logger: logger}
+	return &MultiTitlePreviewHandler{
+		resolver: r,
+		logger:   logger,
+		recorder: mappings.NewLookupRecorder(logger),
+	}
 }
 
 // careerPreviewDTO combine la lecture canonique et les libellés sémantiques
@@ -114,10 +121,10 @@ func (h *MultiTitlePreviewHandler) GetCareerPreview(w http.ResponseWriter, r *ht
 		}
 	}
 	if snap.CurrentXP != nil {
-		dto.CurrentXP = labeledIntFromCanonical(canonical.FieldCurrentXP, *snap.CurrentXP, locale, semantic)
+		dto.CurrentXP = labeledIntFromCanonical(canonical.FieldCurrentXP, *snap.CurrentXP, locale, semantic, h.recorder)
 	}
 	if snap.XPForNextRank != nil {
-		dto.XPForNextRank = labeledIntFromCanonical(canonical.FieldXPForNextRank, *snap.XPForNextRank, locale, semantic)
+		dto.XPForNextRank = labeledIntFromCanonical(canonical.FieldXPForNextRank, *snap.XPForNextRank, locale, semantic, h.recorder)
 	}
 
 	h.writeJSON(w, http.StatusOK, dto)
@@ -126,8 +133,13 @@ func (h *MultiTitlePreviewHandler) GetCareerPreview(w http.ResponseWriter, r *ht
 
 // labeledIntFromCanonical résout le libellé d'un FieldKey via le SemanticAdapter
 // et empaquette la valeur avec ce libellé.
+//
+// Si recorder est fourni et que le FieldKey est absent du TOML (cas de bug ou
+// d'oubli au moment d'enrichir le canonique sans mettre à jour le TOML), un
+// log Warn `field_lookup_missing` rate-limité est émis.
 func labeledIntFromCanonical(
 	key canonical.FieldKey, value int, locale string, semantic games.TitleSemanticAdapter,
+	recorder *mappings.LookupRecorder,
 ) *labeledIntDTO {
 	out := &labeledIntDTO{Value: value}
 	if semantic == nil {
@@ -137,6 +149,9 @@ func labeledIntFromCanonical(
 	}
 	mapping, ok := semantic.Fields().Get(key)
 	if !ok {
+		if recorder != nil {
+			recorder.Record(semantic.TitleSlug(), string(key), locale)
+		}
 		out.Label = string(key)
 		out.Fallback = true
 		return out

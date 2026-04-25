@@ -129,6 +129,59 @@ func TestSyntheticTitleB_AdapterIsAgnostic(t *testing.T) {
 	}
 }
 
+// TestSyntheticTitleB_AllNotExposedMethods couvre les méthodes Load* qui
+// retournent ErrCapabilityNotSupported par design pour ce titre synthétique.
+// Garantit que l'API canonique est respectée même pour un titre minimaliste.
+func TestSyntheticTitleB_AllNotExposedMethods(t *testing.T) {
+	t.Parallel()
+	a := NewDataAdapter(&FakePlayerStats{XUID: "0xB"})
+
+	if _, err := a.LoadMatchDetail(context.Background(), "m1"); err == nil {
+		t.Errorf("LoadMatchDetail devrait retourner ErrCapabilityNotSupported")
+	}
+	if _, err := a.LoadCareerSnapshot(context.Background(), "0xB", canonical.CareerOptions{}); err == nil {
+		t.Errorf("LoadCareerSnapshot devrait retourner ErrCapabilityNotSupported")
+	}
+	if _, err := a.LoadEncounters(context.Background(), "0xB"); err == nil {
+		t.Errorf("LoadEncounters devrait retourner ErrCapabilityNotSupported")
+	}
+	if _, err := a.LoadTimeseries(context.Background(), "0xB", canonical.TimeseriesQuery{}); err == nil {
+		t.Errorf("LoadTimeseries devrait retourner ErrCapabilityNotSupported")
+	}
+
+	// LoadPlayerStats avec stats nil doit retourner un PlayerStats minimal (pas une erreur).
+	a2 := NewDataAdapter(nil)
+	stats, err := a2.LoadPlayerStats(context.Background(), "0xB", canonical.StatsScope{})
+	if err != nil {
+		t.Errorf("LoadPlayerStats(nil stats) ne devrait pas err: %v", err)
+	}
+	if stats == nil || stats.Identity.XUID != "0xB" {
+		t.Errorf("LoadPlayerStats minimal = %+v", stats)
+	}
+
+	// SemanticAdapter avec set nil doit retourner nil.
+	if NewSemanticAdapter(nil) != nil {
+		t.Errorf("NewSemanticAdapter(nil) devrait retourner nil")
+	}
+}
+
+// TestSyntheticTitleB_SemanticRanks couvre Ranks() (catalog vide pour ce titre).
+func TestSyntheticTitleB_SemanticRanks(t *testing.T) {
+	t.Parallel()
+	bSet := mustLoadFields(t, TitleSlug)
+	a := NewSemanticAdapter(bSet)
+	if a == nil {
+		t.Fatal("adapter nil")
+	}
+	ranks := a.Ranks()
+	if ranks == nil {
+		t.Fatal("Ranks() ne doit jamais retourner nil")
+	}
+	if ranks.Len() != 0 {
+		t.Errorf("synthetic title B doit avoir un catalog vide (Len=%d)", ranks.Len())
+	}
+}
+
 // TestSyntheticTitleB_ResolverIsolation prouve que registrer plusieurs titres
 // dans le même resolver ne fuit pas (Data(slug_a) ne retourne pas le data de slug_b).
 func TestSyntheticTitleB_ResolverIsolation(t *testing.T) {
