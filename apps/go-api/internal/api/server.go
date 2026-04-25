@@ -20,6 +20,7 @@ import (
 	"levelup/go-api/internal/api/middleware"
 	"levelup/go-api/internal/assets"
 	"levelup/go-api/internal/config"
+	"levelup/go-api/internal/domain"
 	titlePkg "levelup/go-api/internal/domain/title"
 	"levelup/go-api/internal/games"
 	halo_games "levelup/go-api/internal/games/halo_infinite"
@@ -352,12 +353,21 @@ func NewRouter(
 			r.Post("/pages/citations", citations.GetCitations)
 			r.Post("/pages/commendations", citations.GetCommendations)
 
+			// FIXME(prestige-phase4): WithAuthorsContext n'existe pas sur MediaHandler
+			// (régression préexistante, non liée à Prestige). À restaurer quand la
+			// méthode sera réintroduite. Référence : reg.MediaPlayerCtx + cfg.LoadPlayers.
 			media := handlers.NewMediaHandler(reg.Media, reg.MediaUpload, cfg.RepoRoot).
 				WithSettingsStore(settingsStore)
+			_ = reg.MediaPlayerCtx // garde la signature accessible
+			_ = func(_ context.Context, titleSlug string) ([]domain.PlayerSummary, error) {
+				return cfg.LoadPlayers(titleSlug)
+			}
 			r.Post("/pages/media", media.GetMediaLibrary)
 			r.Patch("/media/likes", media.PatchMediaLike)
 			r.Post("/media/upload", media.PostUploadMedia)
 			r.Post("/media/reassociate", media.PostReassociateMedia)
+			// FIXME(prestige-phase4): GetMediaAuthors absente — régression préexistante.
+			// r.Get("/media/authors", media.GetMediaAuthors)
 			r.Get("/media/files/*", media.ServeMediaFile)
 
 			// Sprint 32 : Explorer matches-query + Match History export
