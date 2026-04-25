@@ -191,6 +191,8 @@ func playerDoneGuard(playerDB *sql.DB, table string, column string) string {
 	for rows.Next() {
 		var id string
 		if err := rows.Scan(&id); err != nil {
+			slog.Warn("playerDoneGuard: row scan failed, ID skipped",
+				"table", table, "err", err)
 			continue
 		}
 		doneIDs = append(doneIDs, id)
@@ -201,10 +203,18 @@ func playerDoneGuard(playerDB *sql.DB, table string, column string) string {
 	// Paramètres liés : les match_id sont des UUID hex (a-f, 0-9, -).
 	// On valide le format pour empêcher toute injection via des IDs corrompus.
 	var safePlaceholders []string
+	var rejected []string
 	for _, id := range doneIDs {
 		if isValidMatchID(id) {
 			safePlaceholders = append(safePlaceholders, "'"+id+"'")
+		} else {
+			rejected = append(rejected, id)
 		}
+	}
+	if len(rejected) > 0 {
+		slog.Warn("playerDoneGuard: malformed match_id(s) rejected by isValidMatchID — guard will treat affected matches as not done",
+			"table", table, "rejected_count", len(rejected),
+			"total_count", len(doneIDs), "sample", rejected[:min(3, len(rejected))])
 	}
 	if len(safePlaceholders) == 0 {
 		return "1=1"
@@ -230,7 +240,11 @@ func findMatchesInSharedAll(
 
 	// Events — mr.events_loaded (source de vérité)
 	if scope.Events {
-		conditions = append(conditions, "mr.events_loaded = false")
+		if scope.ForceEvents {
+			conditions = append(conditions, "1=1")
+		} else {
+			conditions = append(conditions, "mr.events_loaded = false")
+		}
 	}
 
 	// Skill — guard per-player (backfill_bits) + guard global (backfill_completed)
@@ -246,8 +260,12 @@ func findMatchesInSharedAll(
 
 	// Personal scores — per-player : vérifier données réelles dans player DB
 	if scope.PersonalScores {
-		conditions = append(conditions,
-			playerDoneGuard(playerDB, "personal_score_awards", ""))
+		if scope.ForcePersonalScores {
+			conditions = append(conditions, "1=1")
+		} else {
+			conditions = append(conditions,
+				playerDoneGuard(playerDB, "personal_score_awards", ""))
+		}
 	}
 
 	// Performance scores — per-player

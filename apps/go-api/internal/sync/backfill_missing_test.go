@@ -251,6 +251,83 @@ func TestFindMatchesMissingData_ForceSkill(t *testing.T) {
 	}
 }
 
+// ForceEvents : sans force, events_loaded=TRUE doit éliminer les matchs.
+// Avec force, ils sont tous retournés.
+func TestFindMatchesMissingData_EventsLoadedExcludesWithoutForce(t *testing.T) {
+	pdb := openPlayerForAll(t)
+	sdb := openSharedForAll(t)
+	// Marquer les 3 matchs comme already loaded
+	sdb.Exec("UPDATE match_registry SET events_loaded=TRUE")
+
+	scope := &SyncScope{Events: true}
+	result, err := FindMatchesMissingData(pdb, sdb, "xuid1", scope)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(result) != 0 {
+		t.Fatalf("expected 0 (events already loaded), got %d", len(result))
+	}
+}
+
+func TestFindMatchesMissingData_ForceEvents(t *testing.T) {
+	pdb := openPlayerForAll(t)
+	sdb := openSharedForAll(t)
+	// Marquer les 3 matchs comme already loaded — sans force ils seraient ignorés
+	sdb.Exec("UPDATE match_registry SET events_loaded=TRUE")
+
+	scope := &SyncScope{Events: true, ForceEvents: true}
+	result, err := FindMatchesMissingData(pdb, sdb, "xuid1", scope)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(result) != 3 {
+		t.Fatalf("expected 3 for force_events, got %d", len(result))
+	}
+}
+
+// ForcePersonalScores : sans force, des entrées dans personal_score_awards
+// (avec un match_id hex valide qui matche celui de match_registry)
+// doivent éliminer les matchs. Avec force, ils sont tous retournés.
+//
+// Note : on utilise des UUIDs hex car playerDoneGuard valide les match_id via
+// isValidMatchID (a-f, 0-9, -) avant de construire la clause NOT IN.
+func TestFindMatchesMissingData_ForcePersonalScores(t *testing.T) {
+	pdb := openPlayerForAll(t)
+	sdb := openSharedForAll(t)
+
+	// Créer 3 matchs avec des match_id hex valides
+	hexIDs := []string{"aaaaaaaa-1111", "bbbbbbbb-2222", "cccccccc-3333"}
+	sdb.Exec("DELETE FROM match_registry")
+	sdb.Exec("DELETE FROM match_participants")
+	for _, id := range hexIDs {
+		sdb.Exec("INSERT INTO match_registry (match_id) VALUES (?)", id)
+		sdb.Exec(`INSERT INTO match_participants (match_id, xuid, kills, deaths, accuracy, team_mmr, shots_fired, shots_hit)
+			VALUES (?, 'xuid1', 10, 5, NULL, NULL, NULL, NULL)`, id)
+		// Marquer comme déjà fait dans le player DB
+		pdb.Exec("INSERT INTO personal_score_awards (match_id) VALUES (?)", id)
+	}
+
+	// Sans force : tous filtrés par la guard
+	scopeNoForce := &SyncScope{PersonalScores: true}
+	resultNoForce, err := FindMatchesMissingData(pdb, sdb, "xuid1", scopeNoForce)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(resultNoForce) != 0 {
+		t.Fatalf("expected 0 (personal_scores already present), got %d", len(resultNoForce))
+	}
+
+	// Avec force : tous retournés
+	scopeForce := &SyncScope{PersonalScores: true, ForcePersonalScores: true}
+	resultForce, err := FindMatchesMissingData(pdb, sdb, "xuid1", scopeForce)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(resultForce) != 3 {
+		t.Fatalf("expected 3 for force_personal_scores, got %d", len(resultForce))
+	}
+}
+
 func TestFindMatchesMissingData_AssetsScope(t *testing.T) {
 	pdb := openPlayerForAll(t)
 	sdb := openSharedForAll(t)

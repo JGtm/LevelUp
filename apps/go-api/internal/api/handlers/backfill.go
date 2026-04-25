@@ -204,9 +204,13 @@ func buildSyncScope(req domain.BackfillStartRequest) *go_sync.SyncScope {
 
 	if req.ForceRescan {
 		scope.ForceMedals = req.Medals || req.AllData
+		scope.ForceEvents = req.Events || req.AllData
 		scope.ForceSkill = req.Skill || req.AllData
 		scope.ForceWeapons = req.Weapons || req.AllData
+		scope.ForcePersonalScores = req.PersonalScores || req.AllData
 		scope.ForcePerformanceScores = req.PerformanceScores || req.AllData
+		scope.ForceAliases = req.Aliases || req.AllData
+		scope.ForceLUSR = req.LUSR || req.AllData
 	}
 
 	scope.Resolve()

@@ -252,6 +252,8 @@ func TestSyncScope_Resolve_ForceAllGranular(t *testing.T) {
 		{"ForceShots→Shots", func(s *SyncScope) { s.ForceShots = true }, func(s *SyncScope) bool { return s.Shots }},
 		{"ForceEndTime→EndTime", func(s *SyncScope) { s.ForceEndTime = true }, func(s *SyncScope) bool { return s.EndTime }},
 		{"ForceAliases→Aliases", func(s *SyncScope) { s.ForceAliases = true }, func(s *SyncScope) bool { return s.Aliases }},
+		{"ForceEvents→Events", func(s *SyncScope) { s.ForceEvents = true }, func(s *SyncScope) bool { return s.Events }},
+		{"ForcePersonalScores→PersonalScores", func(s *SyncScope) { s.ForcePersonalScores = true }, func(s *SyncScope) bool { return s.PersonalScores }},
 		{"ForceAssets→Assets", func(s *SyncScope) { s.ForceAssets = true }, func(s *SyncScope) bool { return s.Assets }},
 		{"ForceCitations→Citations", func(s *SyncScope) { s.ForceCitations = true }, func(s *SyncScope) bool { return s.Citations }},
 		{"ForceComebackBadges→ComebackBadges", func(s *SyncScope) { s.ForceComebackBadges = true }, func(s *SyncScope) bool { return s.ComebackBadges }},
