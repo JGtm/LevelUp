@@ -257,9 +257,10 @@ func AssociateMediaWithMatches(db *sql.DB, sharedMatchesPath string, bufferMin i
 // Génération de miniatures (ffprobe/ffmpeg)
 // ─────────────────────────────────────────────────────────────────────────────
 
-// GenerateThumbnails génère des miniatures pour les nouvelles vidéos.
-// Portage de MediaIndexer.generate_thumbnails_for_new() Python.
-// Nécessite ffmpeg dans le PATH.
+// GenerateThumbnails génère des miniatures animées WebP pour les nouvelles vidéos.
+// Les GIFs legacy déjà présents sur disque sont conservés tels quels (pas de
+// regénération) — le backfill DB reconnaît les deux formats.
+// Nécessite ffmpeg compilé avec libwebp dans le PATH.
 func GenerateThumbnails(videosDir, thumbsDir string) (int, []string) {
 	os.MkdirAll(thumbsDir, 0o755) //nolint:errcheck
 	generated := 0
@@ -279,9 +280,12 @@ func GenerateThumbnails(videosDir, thumbsDir string) (int, []string) {
 			continue
 		}
 		base := strings.TrimSuffix(e.Name(), filepath.Ext(e.Name()))
-		thumbPath := filepath.Join(thumbsDir, base+".gif")
+		thumbPath := filepath.Join(thumbsDir, base+".webp")
 		if _, err := os.Stat(thumbPath); err == nil {
-			continue // déjà générée
+			continue // WebP déjà généré
+		}
+		if _, err := os.Stat(filepath.Join(thumbsDir, base+".gif")); err == nil {
+			continue // GIF legacy présent, on le garde (pas de backfill bulk)
 		}
 		srcPath := filepath.Join(videosDir, e.Name())
 		if err := generateAnimatedThumbnail(srcPath, thumbPath); err != nil {
@@ -293,39 +297,28 @@ func GenerateThumbnails(videosDir, thumbsDir string) (int, []string) {
 	return generated, errs
 }
 
-// generateAnimatedThumbnail génère un GIF animé (3 s à partir de t=5s, 10 fps, 480px) via ffmpeg two-pass palette.
-func generateAnimatedThumbnail(videoPath, gifPath string) error {
-	// Two-pass ffmpeg : 1) générer la palette optimale, 2) l'appliquer au GIF.
-	// Filtre : fps=10, scale=480:-1 (largeur 480, hauteur proportionnelle), dithering sierra2_4a.
-	palette := gifPath + ".palette.png"
-	defer os.Remove(palette) //nolint:errcheck
-
-	// Pass 1 — palette
-	pass1 := exec.Command("ffmpeg", "-y",
+// generateAnimatedThumbnail génère un WebP animé (3 s à partir de t=5s, 10 fps,
+// 480px) via ffmpeg/libwebp en single-pass. Beaucoup plus compact qu'un GIF
+// (~25-35 % de taille) et 24-bit (vs palette 8-bit du GIF) pour des couleurs
+// fidèles à la source. Compatible avec gif-hover-thumbnail.tsx (Image()/canvas
+// indifférents au format animé).
+func generateAnimatedThumbnail(videoPath, webpPath string) error {
+	cmd := exec.Command("ffmpeg", "-y",
 		"-ss", "5",
 		"-t", "3",
 		"-i", videoPath,
-		"-vf", "fps=10,scale=480:-1:flags=lanczos,palettegen=stats_mode=diff",
-		palette,
+		"-an",
+		"-vf", "fps=10,scale=480:-1:flags=lanczos",
+		"-c:v", "libwebp",
+		"-loop", "0",
+		"-q:v", "75",
+		"-compression_level", "6",
+		"-preset", "picture",
+		webpPath,
 	)
-	pass1.Stdout = nil
-	pass1.Stderr = nil
-	if err := pass1.Run(); err != nil {
-		return fmt.Errorf("palettegen: %w", err)
-	}
-
-	// Pass 2 — GIF
-	pass2 := exec.Command("ffmpeg", "-y",
-		"-ss", "5",
-		"-t", "3",
-		"-i", videoPath,
-		"-i", palette,
-		"-lavfi", "fps=10,scale=480:-1:flags=lanczos[x];[x][1:v]paletteuse=dither=sierra2_4a",
-		gifPath,
-	)
-	pass2.Stdout = nil
-	pass2.Stderr = nil
-	return pass2.Run()
+	cmd.Stdout = nil
+	cmd.Stderr = nil
+	return cmd.Run()
 }
 
 // BackfillThumbnailPaths met à jour thumbnail_path en DB pour toutes les vidéos
@@ -345,7 +338,10 @@ func BackfillThumbnailPaths(db *sql.DB, videosDir, thumbsDir string) (int, error
 		if e.IsDir() {
 			continue
 		}
-		if strings.ToLower(filepath.Ext(e.Name())) != ".gif" {
+		switch strings.ToLower(filepath.Ext(e.Name())) {
+		case ".webp", ".gif":
+			// formats supportés (webp = nouveau, gif = legacy conservé)
+		default:
 			continue
 		}
 		base := strings.TrimSuffix(e.Name(), filepath.Ext(e.Name()))
