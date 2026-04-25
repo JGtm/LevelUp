@@ -159,6 +159,8 @@ type seasonPassItemMeta struct {
 	Title       string
 	Description *string
 	ImageURL    *string
+	Quality     *string
+	ItemType    *string
 }
 
 // LoadSeasonPassTracks charge toutes les tracks connues avec traductions.
@@ -293,7 +295,7 @@ func (r *SeasonPassRepo) loadItemMetadataMap(
 	placeholders := strings.TrimRight(strings.Repeat("?,", len(itemPaths)), ",")
 	query := fmt.Sprintf(`
 		WITH latest AS (
-			SELECT inventory_item_path, content_hash, display_path, raw_payload_json, last_seen_at,
+			SELECT inventory_item_path, content_hash, quality, item_type, display_path, raw_payload_json, last_seen_at,
 			       ROW_NUMBER() OVER (PARTITION BY inventory_item_path ORDER BY last_seen_at DESC) AS rn
 			FROM battlepass_item_definitions
 			WHERE is_current = TRUE
@@ -309,7 +311,24 @@ func (r *SeasonPassRepo) loadItemMetadataMap(
 		           json_extract_string(d.raw_payload_json, '$.CommonData.Title.translations.en-US'),
 		           json_extract_string(d.raw_payload_json, '$.CommonData.Title.value')
 		       ) AS title,
-		       COALESCE(t_fr.description, t_fr2.description, t_en.description, t_en2.description) AS description
+		       COALESCE(
+		           t_fr.description,
+		           t_fr2.description,
+		           t_en.description,
+		           t_en2.description,
+		           json_extract_string(d.raw_payload_json, '$.CommonData.Description.translations.fr-FR'),
+		           json_extract_string(d.raw_payload_json, '$.CommonData.Description.translations.en-US'),
+		           json_extract_string(d.raw_payload_json, '$.CommonData.Description.value')
+		       ) AS description,
+		       COALESCE(
+		           NULLIF(d.quality, ''),
+		           json_extract_string(d.raw_payload_json, '$.CommonData.Quality')
+		       ) AS quality,
+		       COALESCE(
+		           NULLIF(d.item_type, ''),
+		           json_extract_string(d.raw_payload_json, '$.CommonData.Type'),
+		           json_extract_string(d.raw_payload_json, '$.CommonData.ItemType')
+		       ) AS item_type
 		FROM latest d
 		LEFT JOIN battlepass_item_translations t_fr
 		       ON t_fr.inventory_item_path = d.inventory_item_path
@@ -349,7 +368,9 @@ func (r *SeasonPassRepo) loadItemMetadataMap(
 		var displayPath sql.NullString
 		var title sql.NullString
 		var description sql.NullString
-		if err := rows.Scan(&itemPath, &displayPath, &title, &description); err != nil {
+		var quality sql.NullString
+		var itemType sql.NullString
+		if err := rows.Scan(&itemPath, &displayPath, &title, &description, &quality, &itemType); err != nil {
 			return nil, fmt.Errorf("season_pass_repo: items scan: %w", err)
 		}
 		if !itemPath.Valid || itemPath.String == "" {
@@ -359,6 +380,8 @@ func (r *SeasonPassRepo) loadItemMetadataMap(
 			Title:       coalesceNullString(title),
 			Description: nullStringPtr(description),
 			ImageURL:    localBPImageURL(coalesceNullString(displayPath), "tier"),
+			Quality:     nullStringPtr(quality),
+			ItemType:    nullStringPtr(itemType),
 		}
 	}
 	if err := rows.Err(); err != nil {
@@ -393,7 +416,16 @@ func (r *SeasonPassRepo) fillItemsFromAssetIndex(
 	query := fmt.Sprintf(`
 		SELECT id,
 		       json_extract_string(raw_json, '$.CommonData.DisplayPath.Media.MediaUrl.Path') AS display_path,
-		       json_extract_string(raw_json, '$.CommonData.Title.value')                    AS title
+		       json_extract_string(raw_json, '$.CommonData.Title.value')                    AS title,
+		       COALESCE(
+		           json_extract_string(raw_json, '$.CommonData.Description.translations.fr-FR'),
+		           json_extract_string(raw_json, '$.CommonData.Description.value')
+		       )                                                                            AS description,
+		       json_extract_string(raw_json, '$.CommonData.Quality')                        AS quality,
+		       COALESCE(
+		           json_extract_string(raw_json, '$.CommonData.Type'),
+		           json_extract_string(raw_json, '$.CommonData.ItemType')
+		       )                                                                            AS item_type
 		FROM asset_index
 		WHERE kind = 'track-def'
 		  AND id IN (%s)
@@ -414,7 +446,10 @@ func (r *SeasonPassRepo) fillItemsFromAssetIndex(
 		var id sql.NullString
 		var displayPath sql.NullString
 		var title sql.NullString
-		if err := rows.Scan(&id, &displayPath, &title); err != nil {
+		var description sql.NullString
+		var quality sql.NullString
+		var itemType sql.NullString
+		if err := rows.Scan(&id, &displayPath, &title, &description, &quality, &itemType); err != nil {
 			continue
 		}
 		if !id.Valid || id.String == "" {
@@ -424,8 +459,11 @@ func (r *SeasonPassRepo) fillItemsFromAssetIndex(
 			continue
 		}
 		itemMap[id.String] = seasonPassItemMeta{
-			Title:    coalesceNullString(title),
-			ImageURL: localBPImageURL(coalesceNullString(displayPath), "tier"),
+			Title:       coalesceNullString(title),
+			Description: nullStringPtr(description),
+			ImageURL:    localBPImageURL(coalesceNullString(displayPath), "tier"),
+			Quality:     nullStringPtr(quality),
+			ItemType:    nullStringPtr(itemType),
 		}
 	}
 }
@@ -554,6 +592,8 @@ func buildTierSummary(
 		Title:       title,
 		Description: meta.Description,
 		ImageURL:    meta.ImageURL,
+		Quality:     meta.Quality,
+		ItemType:    meta.ItemType,
 		IsObtained:  rank.Rank <= state.Rank,
 		IsCurrent:   rank.Rank == activeTierRank,
 		IsPremium:   isPremium,
@@ -582,8 +622,11 @@ func buildFreeRewardSummaries(
 			title = path
 		}
 		items = append(items, domain.SeasonPassItemSummary{
-			Title:    title,
-			ImageURL: meta.ImageURL,
+			Title:       title,
+			Description: meta.Description,
+			ImageURL:    meta.ImageURL,
+			Quality:     meta.Quality,
+			ItemType:    meta.ItemType,
 		})
 	}
 	// Currency rewards gratuits

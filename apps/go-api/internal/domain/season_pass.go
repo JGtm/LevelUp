@@ -12,9 +12,17 @@ const (
 )
 
 // SeasonPassItemSummary représente un item de récompense (image + titre).
+//
+// Quality est la rareté brute renvoyée par GameCMS ("Common", "Rare", "Epic",
+// "Legendary", "Mythic"). ItemType est la catégorie brute ("ArmorCoating",
+// "WeaponCharm", "SpartanEmblem"…). Le frontend assure le mapping vers des
+// libellés/couleurs localisés.
 type SeasonPassItemSummary struct {
-	Title    string  `json:"title"`
-	ImageURL *string `json:"image_url,omitempty"`
+	Title       string  `json:"title"`
+	Description *string `json:"description,omitempty"`
+	ImageURL    *string `json:"image_url,omitempty"`
+	Quality     *string `json:"quality,omitempty"`
+	ItemType    *string `json:"item_type,omitempty"`
 }
 
 // SeasonPassTierSummary représente un palier individuel avec son visuel principal.
@@ -23,6 +31,8 @@ type SeasonPassTierSummary struct {
 	Title       string                  `json:"title"`
 	Description *string                 `json:"description,omitempty"`
 	ImageURL    *string                 `json:"image_url,omitempty"`
+	Quality     *string                 `json:"quality,omitempty"`
+	ItemType    *string                 `json:"item_type,omitempty"`
 	IsObtained  bool                    `json:"is_obtained"`
 	IsCurrent   bool                    `json:"is_current"`
 	IsPremium   bool                    `json:"is_premium"`
