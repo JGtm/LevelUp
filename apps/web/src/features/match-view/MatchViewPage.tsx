@@ -18,6 +18,7 @@ import { ExpectedCardsSection, MatchRankBadge, KdIndicatorCard } from './MatchSt
 import { useSetMatchExclusion } from '@/features/match-history/queries'
 import { queryKeys } from '@/lib/query/keys'
 import { PrivacyBanner } from '@/components/ui/privacy-banner'
+import { useFieldMappings } from '@/lib/i18n/fieldMappings'
 
 // ─── Breadcrumb ───────────────────────────────────────────────────────────────
 
@@ -161,6 +162,9 @@ export function MatchViewPage() {
   const { data, isLoading, isError, refetch } = useMatchView(playerSlug, matchId)
   const queryClient = useQueryClient()
   const excludeMutation = useSetMatchExclusion(playerSlug)
+  const { data: fieldMappings } = useFieldMappings()
+  const labelOf = (key: string, fallback: string): string =>
+    fieldMappings?.fields[key]?.label ?? fallback
 
   if (isLoading) {
     return (
@@ -277,11 +281,11 @@ export function MatchViewPage() {
             {/* KPI grid principale */}
             <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-6">
               {[
-                { label: 'Kills', value: summary_tab.kpis.kills },
-                { label: 'Deaths', value: summary_tab.kpis.deaths },
-                { label: 'Assists', value: summary_tab.kpis.assists },
-                { label: 'KDA', value: summary_tab.kpis.kda?.toFixed(2) },
-                { label: 'Damage', value: summary_tab.kpis.damage_dealt?.toFixed(0) },
+                { label: labelOf('kills', 'Kills'), value: summary_tab.kpis.kills },
+                { label: labelOf('deaths', 'Deaths'), value: summary_tab.kpis.deaths },
+                { label: labelOf('assists', 'Assists'), value: summary_tab.kpis.assists },
+                { label: labelOf('kda', 'KDA'), value: summary_tab.kpis.kda?.toFixed(2) },
+                { label: labelOf('damage_dealt', 'Damage'), value: summary_tab.kpis.damage_dealt?.toFixed(0) },
                 { label: 'Vie moy.', value: summary_tab.kpis.average_life },
               ].map((kpi) => (
                 <Card key={kpi.label}>
@@ -392,7 +396,7 @@ export function MatchViewPage() {
                       />
                       <YAxis tick={{ fontSize: 10 }} stroke="var(--muted-foreground)" />
                       <Tooltip
-                        formatter={(v: number, name: string) => [v, name === 'kills' ? 'Kills' : 'Deaths']}
+                        formatter={(v: number, name: string) => [v, name === 'kills' ? labelOf('kills', 'Kills') : labelOf('deaths', 'Deaths')]}
                         labelFormatter={(v: number) => `${Math.floor(v / 60)}m${v % 60}s`}
                       />
                       <Line type="monotone" dataKey="kills" stroke="var(--success)" dot={false} strokeWidth={2} name="kills" />

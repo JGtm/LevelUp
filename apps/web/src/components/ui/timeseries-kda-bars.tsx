@@ -10,6 +10,7 @@ import { EmptyStateNotice } from './empty-state'
 import type { TimeseriesMatchRow } from '@/lib/api/types'
 import { resolveToken, useColorPaletteVersion } from '@/lib/accessibility'
 import { outcomeScale } from '@/lib/accessibility/scales'
+import { useFieldMappings } from '@/lib/i18n/fieldMappings'
 
 const Plot = lazy(() =>
   import('react-plotly.js').then((m) => ({ default: m.default })),
@@ -39,27 +40,30 @@ function outcomeColor(outcome: number | null): string {
 
 export function TimeseriesKdaBars({ rows, height = 320 }: TimeseriesKdaBarsProps) {
   const paletteVersion = useColorPaletteVersion()
+  const { data: fieldMappings } = useFieldMappings()
+  const killsLabel = fieldMappings?.fields['kills']?.label ?? 'Kills'
+  const deathsLabel = fieldMappings?.fields['deaths']?.label ?? 'Morts'
   const { traces, layout } = useMemo(() => {
     const xs = rows.map((r) => r.start_time)
 
     const killsTrace: Plotly.Data = {
       type: 'bar',
-      name: 'Kills',
+      name: killsLabel,
       x: xs,
       y: rows.map((r) => r.kills),
       marker: {
         color: rows.map((r) => `${outcomeColor(r.outcome)}cc`),
       },
-      hovertemplate: '%{x|%d/%m/%Y}<br>Kills : <b>%{y}</b><extra></extra>',
+      hovertemplate: `%{x|%d/%m/%Y}<br>${killsLabel} : <b>%{y}</b><extra></extra>`,
     }
 
     const deathsTrace: Plotly.Data = {
       type: 'bar',
-      name: 'Morts',
+      name: deathsLabel,
       x: xs,
       y: rows.map((r) => -r.deaths),
       marker: { color: `${resolveToken('outcome-loss')}44` },
-      hovertemplate: '%{x|%d/%m/%Y}<br>Morts : <b>%{customdata}</b><extra></extra>',
+      hovertemplate: `%{x|%d/%m/%Y}<br>${deathsLabel} : <b>%{customdata}</b><extra></extra>`,
       customdata: rows.map((r) => r.deaths),
     }
 
@@ -112,7 +116,7 @@ export function TimeseriesKdaBars({ rows, height = 320 }: TimeseriesKdaBarsProps
     }
 
     return { traces: [killsTrace, deathsTrace, kdLine], layout }
-  }, [rows, height, paletteVersion])
+  }, [rows, height, paletteVersion, killsLabel, deathsLabel])
 
   if (rows.length === 0) {
     return (

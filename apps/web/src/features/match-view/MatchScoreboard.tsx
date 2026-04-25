@@ -4,10 +4,11 @@
  * inverti pour les colonnes négatives (deaths, damage_taken).
  * E1 : expansion de ligne avec PlayerDetailPanel.
  */
-import { useState } from 'react'
+import { useState, useMemo } from 'react'
 import { Card, CardContent } from '@/components/ui/card'
 import { PlayerDetailPanel } from './PlayerDetailPanel'
 import type { MatchScoreboardRow, MatchWeaponKill, MatchMedal, MatchCitation } from '@/lib/api/types'
+import { useFieldMappings, type FieldMappingsResponse } from '@/lib/i18n/fieldMappings'
 
 interface ColDef {
   key: keyof MatchScoreboardRow
@@ -16,24 +17,35 @@ interface ColDef {
   fmt?: (v: number) => string
 }
 
-const COLS: ColDef[] = [
-  { key: 'kills', label: 'K', inverted: false },
-  { key: 'deaths', label: 'D', inverted: true },
-  { key: 'assists', label: 'A', inverted: false },
-  { key: 'headshot_kills', label: 'HS', inverted: false },
-  { key: 'max_killing_spree', label: 'Spree', inverted: false },
-  { key: 'perfect_kills', label: 'Perf', inverted: false },
-  { key: 'power_weapon_kills', label: 'PW', inverted: false },
-  { key: 'melee_kills', label: 'CàC', inverted: false },
-  { key: 'shots_fired', label: 'Tirs', inverted: false },
-  { key: 'shots_hit', label: 'Touchés', inverted: false },
-  { key: 'kda', label: 'KDA', inverted: false, fmt: (v) => v.toFixed(2) },
-  { key: 'damage_dealt', label: 'Dmg+', inverted: false, fmt: (v) => v.toFixed(0) },
-  { key: 'damage_taken', label: 'Dmg-', inverted: true, fmt: (v) => v.toFixed(0) },
-  { key: 'offensive_conversion', label: 'Off.', inverted: false, fmt: (v) => `${(v * 100).toFixed(0)}%` },
-  { key: 'defensive_resistance', label: 'Déf.', inverted: false, fmt: (v) => `${(v * 100).toFixed(0)}%` },
-  { key: 'damage_per_kill', label: 'Dmg/K', inverted: true, fmt: (v) => v.toFixed(0) },
-]
+/**
+ * Construit les colonnes du scoreboard. Les libellés courts (K, D, A, HS, Tirs)
+ * restent en abréviations FR pour des raisons d'espace, mais le `kda` colonne
+ * récupère son libellé canonique depuis le backend (Phase D plan multi-titres).
+ * Quand un futur titre redéfinira `kda` en `KAD` ou autre, le scoreboard
+ * suivra automatiquement.
+ */
+function buildCols(fieldMappings?: FieldMappingsResponse): ColDef[] {
+  const labelOf = (key: string, fallback: string): string =>
+    fieldMappings?.fields[key]?.label ?? fallback
+  return [
+    { key: 'kills', label: labelOf('kills', 'K'), inverted: false },
+    { key: 'deaths', label: labelOf('deaths', 'D'), inverted: true },
+    { key: 'assists', label: labelOf('assists', 'A'), inverted: false },
+    { key: 'headshot_kills', label: labelOf('headshot_kills', 'HS'), inverted: false },
+    { key: 'max_killing_spree', label: labelOf('max_killing_spree', 'Spree'), inverted: false },
+    { key: 'perfect_kills', label: 'Perf', inverted: false },
+    { key: 'power_weapon_kills', label: labelOf('power_weapon_kills', 'PW'), inverted: false },
+    { key: 'melee_kills', label: labelOf('melee_kills', 'CàC'), inverted: false },
+    { key: 'shots_fired', label: labelOf('shots_fired', 'Tirs'), inverted: false },
+    { key: 'shots_hit', label: labelOf('shots_hit', 'Touchés'), inverted: false },
+    { key: 'kda', label: labelOf('kda', 'KDA'), inverted: false, fmt: (v) => v.toFixed(2) },
+    { key: 'damage_dealt', label: labelOf('damage_dealt', 'Dmg+'), inverted: false, fmt: (v) => v.toFixed(0) },
+    { key: 'damage_taken', label: labelOf('damage_taken', 'Dmg-'), inverted: true, fmt: (v) => v.toFixed(0) },
+    { key: 'offensive_conversion', label: 'Off.', inverted: false, fmt: (v) => `${(v * 100).toFixed(0)}%` },
+    { key: 'defensive_resistance', label: 'Déf.', inverted: false, fmt: (v) => `${(v * 100).toFixed(0)}%` },
+    { key: 'damage_per_kill', label: 'Dmg/K', inverted: true, fmt: (v) => v.toFixed(0) },
+  ]
+}
 
 type Extremes = { min: number | null; max: number | null }
 
@@ -71,7 +83,9 @@ interface Props {
 
 export function MatchScoreboard({ rows, weaponKills, medals, citations }: Props) {
   const [expandedXuid, setExpandedXuid] = useState<string | null>(null)
-  const extremes = Object.fromEntries(COLS.map((c) => [c.key, getExtremes(rows, c.key)]))
+  const { data: fieldMappings } = useFieldMappings()
+  const cols = useMemo(() => buildCols(fieldMappings), [fieldMappings])
+  const extremes = Object.fromEntries(cols.map((c) => [c.key, getExtremes(rows, c.key)]))
   const { mvp, lvp } = getMvpLvpXuids(rows)
 
   // Grouper par team_side
@@ -89,11 +103,11 @@ export function MatchScoreboard({ rows, weaponKills, medals, citations }: Props)
             <thead>
               <tr className="border-b border-border text-muted-foreground">
                 <th className="pb-1 text-left pr-2">Joueur</th>
-                {COLS.map((c) => (
+                {cols.map((c) => (
                   <th key={String(c.key)} className="pb-1 text-right pr-2">{c.label}</th>
                 ))}
                 <th className="pb-1 text-right">Vie moy.</th>
-                <th className="pb-1 text-right pl-2">Résultat</th>
+                <th className="pb-1 text-right pl-2">{fieldMappings?.fields['outcome']?.label ?? 'Résultat'}</th>
               </tr>
             </thead>
             <tbody>
@@ -116,7 +130,7 @@ export function MatchScoreboard({ rows, weaponKills, medals, citations }: Props)
                           <span className="ml-1 rounded px-1 py-0 text-[10px] font-bold bg-muted text-muted-foreground">LVP</span>
                         )}
                       </td>
-                      {COLS.map((c) => {
+                      {cols.map((c) => {
                         const val = row[c.key] as number | null
                         const formatted = val == null ? '—' : c.fmt ? c.fmt(val) : String(val)
                         return (
@@ -134,7 +148,7 @@ export function MatchScoreboard({ rows, weaponKills, medals, citations }: Props)
                     </tr>
                     {isExpanded && (
                       <tr key={`${row.xuid}-detail`}>
-                        <td colSpan={COLS.length + 3} className="p-0">
+                        <td colSpan={cols.length + 3} className="p-0">
                           <PlayerDetailPanel
                             row={row}
                             weaponKills={row.is_me ? weaponKills : undefined}

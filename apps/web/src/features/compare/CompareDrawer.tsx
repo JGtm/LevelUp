@@ -5,6 +5,7 @@
  * Usage :
  *   <CompareDrawer playerSlug={slug} open={open} onClose={() => setOpen(false)} />
  */
+import { useFieldMappings } from '@/lib/i18n/fieldMappings'
 import { useAppShellStore } from '@/stores/appShellStore'
 
 import { CompareSurface } from './CompareSurface'
@@ -19,7 +20,8 @@ interface CompareDrawerProps {
 /** Tiroir principal de comparaison. */
 export function CompareDrawer({ playerSlug, open, onClose }: CompareDrawerProps) {
   const locale = normalizeCompareLocale(useAppShellStore((state) => state.locale))
-  const text = getCompareText(locale)
+  const { data: fieldMappings } = useFieldMappings()
+  const text = getCompareText(locale, fieldMappings)
 
   if (!open) return null
 

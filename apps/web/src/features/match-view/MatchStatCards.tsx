@@ -10,6 +10,7 @@
 import type { MatchViewRank, MatchExpectedStats, MatchNemesisRow } from '@/lib/api/types'
 import { skillDeltaScale, kdScale } from '@/lib/accessibility/scales'
 import { tokenCssVar } from '@/lib/accessibility'
+import { useFieldMappings } from '@/lib/i18n/fieldMappings'
 
 // ---------------------------------------------------------------------------
 // C3 — StatExpectedCard (réel vs attendu)
@@ -69,24 +70,27 @@ interface ExpectedCardsSectionProps {
 
 export function ExpectedCardsSection({ kpis, expectedStats }: ExpectedCardsSectionProps) {
   const { has_expected_data, expected_kills, expected_deaths, expected_assists } = expectedStats
+  const { data: fieldMappings } = useFieldMappings()
+  const labelOf = (key: string, fallback: string): string =>
+    fieldMappings?.fields[key]?.label ?? fallback
   return (
     <div className="grid grid-cols-3 gap-3">
       <StatExpectedCard
-        label="Kills"
+        label={labelOf('kills', 'Kills')}
         actual={kpis.kills}
         expected={expected_kills}
         lowerIsBetter={false}
         hasData={has_expected_data}
       />
       <StatExpectedCard
-        label="Deaths"
+        label={labelOf('deaths', 'Deaths')}
         actual={kpis.deaths}
         expected={expected_deaths}
         lowerIsBetter={true}
         hasData={has_expected_data}
       />
       <StatExpectedCard
-        label="Assists"
+        label={labelOf('assists', 'Assists')}
         actual={kpis.assists}
         expected={expected_assists}
         lowerIsBetter={false}

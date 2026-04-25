@@ -122,6 +122,37 @@ export function normalizeCompareLocale(locale?: string | null): CompareLocale {
   return locale === 'en' ? 'en' : 'fr'
 }
 
-export function getCompareText(locale?: string | null): CompareText {
-  return TEXT[normalizeCompareLocale(locale)]
+/**
+ * Mapping des clés `metrics` du dict local vers les FieldKey canoniques
+ * (Phase D plan multi-titres). Une clé absente reste résolue via le dict local.
+ */
+const METRIC_TO_FIELD_KEY: Record<string, string> = {
+  win_rate: 'win_rate',
+  kda: 'kda',
+  kdr: 'kdr',
+  accuracy: 'accuracy',
+}
+
+/**
+ * Retourne le bloc CompareText pour une locale, avec override optionnel des
+ * `metrics` par les FieldMappings backend (TOML versionnés Git, Phase D).
+ *
+ * Si fieldMappings est fourni, les clés mappées via METRIC_TO_FIELD_KEY sont
+ * remplacées par leur libellé canonique. Les autres clés restent inchangées.
+ */
+export function getCompareText(
+  locale?: string | null,
+  fieldMappings?: { fields: Record<string, { label: string }> },
+): CompareText {
+  const base = TEXT[normalizeCompareLocale(locale)]
+  if (!fieldMappings) return base
+  const merged: CompareText = {
+    ...base,
+    metrics: { ...base.metrics },
+  }
+  for (const [metricKey, fieldKey] of Object.entries(METRIC_TO_FIELD_KEY)) {
+    const canonical = fieldMappings.fields[fieldKey]?.label
+    if (canonical) merged.metrics[metricKey] = canonical
+  }
+  return merged
 }

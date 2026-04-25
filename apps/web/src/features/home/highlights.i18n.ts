@@ -118,9 +118,36 @@ export function resolveTitle(locale: string | null | undefined, key: string | un
   return getHighlightText(locale).titles[key] ?? key
 }
 
-/** Résout un label de slide. */
-export function resolveLabel(locale: string | null | undefined, key: string | undefined): string {
+/**
+ * Mapping des highlight.slide.* vers les FieldKey canoniques (Phase D plan
+ * multi-titres). Une clé absente de cette table reste résolue uniquement par
+ * le dict local (pas de FieldKey équivalent).
+ */
+const SLIDE_TO_FIELD_KEY: Record<string, string> = {
+  'highlight.slide.headshots': 'headshot_kills',
+  'highlight.slide.accuracy': 'accuracy',
+  'highlight.slide.kills': 'kills',
+  'highlight.slide.deaths': 'deaths',
+  'highlight.slide.assists': 'assists',
+}
+
+/**
+ * Résout un label de slide.
+ *
+ * Si fieldMappings est fourni et que la clé highlight a un FieldKey canonique
+ * équivalent, le libellé du backend TOML prime. Sinon fallback sur le dict
+ * local (rétrocompatibilité quand l'endpoint /field-mappings est absent).
+ */
+export function resolveLabel(
+  locale: string | null | undefined,
+  key: string | undefined,
+  fieldMappings?: { fields: Record<string, { label: string }> },
+): string {
   if (!key) return ''
+  const fieldKey = SLIDE_TO_FIELD_KEY[key]
+  if (fieldKey && fieldMappings?.fields[fieldKey]) {
+    return fieldMappings.fields[fieldKey].label
+  }
   return getHighlightText(locale).labels[key] ?? key
 }
 

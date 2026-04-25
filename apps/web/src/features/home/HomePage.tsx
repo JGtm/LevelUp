@@ -24,6 +24,7 @@ import { getPerfColor } from '@/lib/perf-color'
 import { kdScale, accuracyScale } from '@/lib/accessibility/scales'
 import { tokenCssVar } from '@/lib/accessibility'
 import type { HomeSkillPeakSummary, SessionSummaryItem, HighlightItem, HighlightSlide, HighlightValueColor } from '@/lib/api/types'
+import { useFieldMappings } from '@/lib/i18n/fieldMappings'
 import { getHighlightText, resolveTitle, resolveLabel, resolveDetail, resolveColSpan } from './highlights.i18n'
 import { getKPIText } from './kpi.i18n'
 import { getSpartanIdentityText } from './spartanIdentity.i18n'
@@ -69,6 +70,7 @@ function highlightColorStyle(color?: HighlightValueColor): CSSProperties | undef
 function SerieTile({ title, slides, locale, className }: { title: string; slides: HighlightSlide[]; locale: string | null | undefined; className?: string }) {
   const [idx, setIdx] = useState(0)
   const [fading, setFading] = useState(false)
+  const { data: fieldMappings } = useFieldMappings()
   useEffect(() => {
     if (slides.length <= 1) return
     const iv = window.setInterval(() => {
@@ -81,7 +83,7 @@ function SerieTile({ title, slides, locale, className }: { title: string; slides
     return () => window.clearInterval(iv)
   }, [slides.length])
   const s = slides[idx]
-  const slideLabel = s.label_key ? resolveLabel(locale, s.label_key) : (s.label ?? '')
+  const slideLabel = s.label_key ? resolveLabel(locale, s.label_key, fieldMappings) : (s.label ?? '')
   const slideDetail = s.detail_key
     ? resolveDetail(locale, s.detail_key, s.detail_params)
     : (s.detail ?? '')
@@ -462,6 +464,7 @@ export function HomePage() {
   const navigate = useNavigate()
   const locale = useAppShellStore((s) => s.locale)
   const userTimezone = useAppShellStore((s) => s.userTimezone)
+  const { data: fieldMappings } = useFieldMappings()
   const { data, isLoading, isError, refetch } = useHomePage(playerSlug)
   const {
     data: seasonPass,
@@ -553,6 +556,11 @@ export function HomePage() {
     : null
   const numberLocale = locale === 'en' ? 'en-US' : 'fr-FR'
   const kpiText = getKPIText(locale)
+  // Phase D multi-titres : résout les libellés métier via le backend TOML.
+  // Fallback gracieux sur les libellés locaux de kpi.i18n.ts si l'endpoint
+  // est absent (flag MULTI_TITLE_API_ENABLED off ou 404).
+  const labelOf = (key: string, fallback: string): string =>
+    fieldMappings?.fields[key]?.label ?? fallback
   const spartanText = getSpartanIdentityText(locale)
   const labels = spartanText.labels
   const hasPrivacyWarning = !!data.privacy_warning?.level && data.privacy_warning.level !== 'none'
@@ -753,7 +761,7 @@ export function HomePage() {
 
             <div className="kpi-stats-grid items-stretch">
               {/* 1 — Parties */}
-              <KPICard label={kpiText.labels.matches} value={hero.kpis.total_matches.toLocaleString(numberLocale)} compact />
+              <KPICard label={labelOf('total_matches_played', kpiText.labels.matches)} value={hero.kpis.total_matches.toLocaleString(numberLocale)} compact />
 
               {/* 2 — KDA/FDA coloré comme les tuiles match */}
               {(() => {
@@ -761,7 +769,7 @@ export function HomePage() {
                 const kdaStyle = kda != null ? { color: tokenCssVar(kdScale(kda)) } : undefined
                 return (
                   <div className="flex h-full flex-col items-center justify-center rounded-lg border border-border bg-muted px-2 py-3 text-center">
-                    <p className="text-xs text-muted-foreground">{kpiText.labels.kda}</p>
+                    <p className="text-xs text-muted-foreground">{labelOf('kda', kpiText.labels.kda)}</p>
                     <p className="text-xl font-bold text-muted-foreground" style={kdaStyle}>{kda != null ? kda.toFixed(2) : '—'}</p>
                   </div>
                 )
@@ -776,7 +784,7 @@ export function HomePage() {
                 const neutral = draws + dnfs
                 return (
                   <div className="flex h-full flex-col items-center justify-center rounded-lg border border-border bg-muted px-4 py-3 text-center">
-                    <p className="text-xs text-muted-foreground">{kpiText.labels.winRate}</p>
+                    <p className="text-xs text-muted-foreground">{labelOf('win_rate', kpiText.labels.winRate)}</p>
                     <p className="text-xl font-bold text-primary">{`${(hero.kpis.win_rate * 100).toFixed(0)}%`}</p>
                     <div className="mt-2 w-full">
                       <OutcomeBar wins={wins} draws={draws} losses={losses} dnfs={dnfs} />
@@ -874,7 +882,7 @@ export function HomePage() {
                 const accStyle = acc != null ? { color: tokenCssVar(accuracyScale(acc)) } : undefined
                 return (
                   <div className="flex h-full flex-col items-center justify-center rounded-lg border border-border bg-muted px-2 py-3 text-center">
-                    <p className="text-xs text-muted-foreground">{kpiText.labels.accuracy}</p>
+                    <p className="text-xs text-muted-foreground">{labelOf('accuracy', kpiText.labels.accuracy)}</p>
                     <p className="text-xl font-bold text-primary" style={accStyle}>{acc != null ? `${acc.toFixed(0)}%` : '—'}</p>
                   </div>
                 )

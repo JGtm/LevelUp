@@ -7,6 +7,7 @@
  */
 import type { MatchScoreboardRow, MatchWeaponKill, MatchMedal, MatchCitation } from '@/lib/api/types'
 import { tokenCssVar } from '@/lib/accessibility'
+import { useFieldMappings } from '@/lib/i18n/fieldMappings'
 
 interface Props {
   row: MatchScoreboardRow
@@ -28,25 +29,28 @@ function StatLine({ label, value }: { label: string; value: React.ReactNode }) {
 }
 
 export function PlayerDetailPanel({ row, weaponKills, medals, citations }: Props) {
+  const { data: fieldMappings } = useFieldMappings()
+  const labelOf = (key: string, fallback: string): string =>
+    fieldMappings?.fields[key]?.label ?? fallback
   return (
     <div className="bg-[#151a1f]/80 border border-border rounded-b px-4 py-3 space-y-3">
       {/* Stats de combat */}
       <div>
         <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground mb-1">Statistiques</p>
         <div className="grid grid-cols-2 sm:grid-cols-3 gap-x-6">
-          <StatLine label="Kills" value={row.kills} />
-          <StatLine label="Deaths" value={row.deaths} />
-          <StatLine label="Assists" value={row.assists} />
-          <StatLine label="KDA" value={
+          <StatLine label={labelOf('kills', 'Kills')} value={row.kills} />
+          <StatLine label={labelOf('deaths', 'Deaths')} value={row.deaths} />
+          <StatLine label={labelOf('assists', 'Assists')} value={row.assists} />
+          <StatLine label={labelOf('kda', 'KDA')} value={
             row.kills != null && row.deaths != null
               ? ((row.kills + (row.assists ?? 0)) / Math.max(1, row.deaths)).toFixed(2)
               : null
           } />
           <StatLine label="Damage infligé" value={row.damage_dealt?.toFixed(0)} />
           <StatLine label="Damage reçu" value={row.damage_taken?.toFixed(0)} />
-          <StatLine label="Précision" value={row.shots_accuracy != null ? `${(row.shots_accuracy * 100).toFixed(1)}%` : null} />
-          <StatLine label="Tirs effectués" value={row.shots_fired} />
-          <StatLine label="Tirs touchés" value={row.shots_hit} />
+          <StatLine label={labelOf('accuracy', 'Précision')} value={row.shots_accuracy != null ? `${(row.shots_accuracy * 100).toFixed(1)}%` : null} />
+          <StatLine label={labelOf('shots_fired', 'Tirs effectués')} value={row.shots_fired} />
+          <StatLine label={labelOf('shots_hit', 'Tirs touchés')} value={row.shots_hit} />
           <StatLine label="Efficacité" value={row.damage_efficiency?.toFixed(2)} />
           <StatLine label="Vie moyenne" value={row.average_life} />
           <StatLine label="Trahisons" value={row.betrayals} />

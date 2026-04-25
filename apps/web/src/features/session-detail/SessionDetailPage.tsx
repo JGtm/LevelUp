@@ -13,6 +13,7 @@ import { useGlobalFilterStore } from '@/stores/globalFilterStore'
 
 import { outcomeScale } from '@/lib/accessibility/scales'
 import { tokenCssVar } from '@/lib/accessibility'
+import { useFieldMappings } from '@/lib/i18n/fieldMappings'
 import { useSessionDetailPage } from './queries'
 
 function SessionSummaryCard({
@@ -25,6 +26,9 @@ function SessionSummaryCard({
   tone: 'primary' | 'compare'
 }) {
   const toneClass = tone === 'primary' ? 'border-primary/20 bg-primary/5' : 'border-compare-b bg-compare-b/10'
+  const { data: fieldMappings } = useFieldMappings()
+  const labelOf = (key: string, fallback: string): string =>
+    fieldMappings?.fields[key]?.label ?? fallback
 
   if (!entry) {
     return (
@@ -56,7 +60,7 @@ function SessionSummaryCard({
       <CardContent className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
         <SessionStat label="Matchs" value={entry.total_matches.toString()} />
         <SessionStat label="Victoires / Défaites" value={`${entry.wins} / ${entry.losses}`} />
-        <SessionStat label="KDA" value={formatNumber(entry.kda, 2)} />
+        <SessionStat label={labelOf('kda', 'KDA')} value={formatNumber(entry.kda, 2)} />
         <SessionStat label="Score perf." value={formatNumber(entry.performance_score, 1)} />
       </CardContent>
     </Card>

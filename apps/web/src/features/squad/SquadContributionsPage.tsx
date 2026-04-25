@@ -8,6 +8,7 @@ import { EmptyStateNotice } from '@/components/ui/empty-state'
 import type { TeammateRow, TeammateKPIs, PlotlyFigurePayload } from '@/lib/api/types'
 import { useSquadContext } from './SquadLayout'
 import { resolveToken, getSeriesColors } from '@/lib/accessibility'
+import { useFieldMappings, type FieldMappingsResponse } from '@/lib/i18n/fieldMappings'
 
 // ─── Helper graphique ─────────────────────────────────────────────────────────
 
@@ -16,8 +17,16 @@ const SERIES_TOKENS = ['narrative-dominant', 'perf-tier-3', 'perf-tier-1'] as co
 function buildRadarChart(
   rows: TeammateRow[],
   soloRef: TeammateKPIs | null,
+  fieldMappings?: FieldMappingsResponse,
 ): PlotlyFigurePayload {
-  const axes = ['Taux de victoire', 'K/D', 'Kills/partie', 'Assists/partie', 'Précision']
+  // Phase D plan multi-titres : libellés axes du radar issus du backend TOML
+  // avec fallback sur les valeurs FR locales si l'endpoint est absent.
+  const winRate = fieldMappings?.fields['win_rate']?.label ?? 'Taux de victoire'
+  const kdr = fieldMappings?.fields['kdr']?.label ?? 'K/D'
+  const kills = fieldMappings?.fields['kills']?.label ?? 'Kills'
+  const assists = fieldMappings?.fields['assists']?.label ?? 'Assists'
+  const accuracy = fieldMappings?.fields['accuracy']?.label ?? 'Précision'
+  const axes = [winRate, kdr, `${kills}/partie`, `${assists}/partie`, accuracy]
   const norm = (v: number | null, max: number) =>
     v != null ? Math.min(100, (v / max) * 100) : 0
 
@@ -75,9 +84,10 @@ function buildRadarChart(
 
 export function SquadContributionsPage() {
   const { selectedRows, soloReference } = useSquadContext()
+  const { data: fieldMappings } = useFieldMappings()
 
   const chart =
-    selectedRows.length > 0 ? buildRadarChart(selectedRows, soloReference) : null
+    selectedRows.length > 0 ? buildRadarChart(selectedRows, soloReference, fieldMappings) : null
 
   return (
     <Card>

@@ -9,6 +9,7 @@ import { useQuery } from '@tanstack/react-query'
 import { api } from '@/lib/api/client'
 import { queryKeys } from '@/lib/query/keys'
 import type { HomePageResponse } from '@/lib/api/types'
+import { useFieldMappings } from '@/lib/i18n/fieldMappings'
 
 // ─── Cellule unitaire ─────────────────────────────────────────────────────────
 
@@ -45,6 +46,9 @@ export function KPIBar() {
     enabled: !!playerSlug,
     staleTime: 5 * 60 * 1000,
   })
+  const { data: fieldMappings } = useFieldMappings()
+  const labelOf = (key: string, fallback: string): string =>
+    fieldMappings?.fields[key]?.label ?? fallback
 
   // Pas de données = barre invisible (évite le flash)
   if (!data?.hero?.kpis) return null
@@ -57,10 +61,10 @@ export function KPIBar() {
   return (
     <div className="rounded-[28px] border border-border bg-card/90 p-4 shadow-sm backdrop-blur">
       <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
-        <KPIItem label="Matchs" value={kpis.total_matches.toLocaleString('fr-FR')} />
-        <KPIItem label="Win rate" value={wr} emphasis />
-        <KPIItem label="K/D" value={kd} />
-        <KPIItem label="Précision" value={acc} />
+        <KPIItem label={labelOf('total_matches_played', 'Matchs')} value={kpis.total_matches.toLocaleString('fr-FR')} />
+        <KPIItem label={labelOf('win_rate', 'Win rate')} value={wr} emphasis />
+        <KPIItem label={labelOf('kdr', 'K/D')} value={kd} />
+        <KPIItem label={labelOf('accuracy', 'Précision')} value={acc} />
       </div>
     </div>
   )

@@ -11,6 +11,7 @@ import { buildHsPkChart } from './charts/hsPkChart'
 import { buildTimelineChart } from './charts/timelineChart'
 import { buildHeatmapChart } from './charts/heatmapChart'
 import { getSeriesColors, resolveToken } from '@/lib/accessibility'
+import { useFieldMappings, type FieldMappingsResponse } from '@/lib/i18n/fieldMappings'
 
 // ─── Helpers graphiques ───────────────────────────────────────────────────────
 
@@ -19,8 +20,15 @@ const CHART_COLORS = getSeriesColors(3, ['narrative-dominant', 'perf-tier-3', 'd
 function buildSynergiesChart(
   rows: TeammateRow[],
   soloRef: TeammateKPIs | null,
+  fieldMappings?: FieldMappingsResponse,
 ): PlotlyFigurePayload {
-  const metrics = ['Taux de victoire', 'K/D', 'Kills/partie', 'Assists/partie']
+  const labelOf = (key: string, fallback: string): string =>
+    fieldMappings?.fields[key]?.label ?? fallback
+  const winRate = labelOf('win_rate', 'Taux de victoire')
+  const kdr = labelOf('kdr', 'K/D')
+  const kills = labelOf('kills', 'Kills')
+  const assists = labelOf('assists', 'Assists')
+  const metrics = [winRate, kdr, `${kills}/partie`, `${assists}/partie`]
   const extract = (k: TeammateKPIs) => [
     k.win_rate * 100,
     k.kd_ratio ?? 0,
@@ -62,9 +70,10 @@ function buildSynergiesChart(
 
 export function SquadSynergiesPage() {
   const { selectedRows, soloReference, pageData } = useSquadContext()
+  const { data: fieldMappings } = useFieldMappings()
 
   const chart =
-    selectedRows.length > 0 ? buildSynergiesChart(selectedRows, soloReference) : null
+    selectedRows.length > 0 ? buildSynergiesChart(selectedRows, soloReference, fieldMappings) : null
 
   const hsPkChart = selectedRows.length > 0 ? buildHsPkChart(selectedRows) : null
   const timelineChart =

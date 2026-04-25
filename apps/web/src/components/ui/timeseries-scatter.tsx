@@ -10,6 +10,7 @@ import { Spinner } from './spinner'
 import { EmptyStateNotice } from './empty-state'
 import type { CorrelationDataPair } from '@/lib/api/types'
 import { resolveToken, useColorPaletteVersion } from '@/lib/accessibility'
+import { useFieldMappings } from '@/lib/i18n/fieldMappings'
 
 const Plot = lazy(() =>
   import('react-plotly.js').then((m) => ({ default: m.default })),
@@ -34,16 +35,33 @@ const TEXT = '#9ba3af'
 const OUTCOME_WIN = 2
 const OUTCOME_LOSS = 3
 
-const LABEL_CONFIGS: Record<
-  string,
-  { xLabel: string; yLabel: string; title: string }
-> = {
-  kills_vs_kd: { xLabel: 'Kills', yLabel: 'K/D', title: 'Kills → K/D' },
-  lifespan_vs_kills: { xLabel: 'Durée de vie (s)', yLabel: 'Kills', title: 'Durée de vie → Kills' },
-  accuracy_vs_kda: { xLabel: 'Précision (%)', yLabel: 'KDA', title: 'Précision → KDA' },
-  lifespan_vs_deaths: { xLabel: 'Durée de vie (s)', yLabel: 'Morts', title: 'Durée de vie → Morts' },
-  kills_vs_deaths: { xLabel: 'Kills', yLabel: 'Morts', title: 'Kills → Morts' },
-  mmr_team_vs_enemy: { xLabel: 'MMR équipe', yLabel: 'MMR adversaires', title: 'MMR équipe vs adversaires' },
+/**
+ * Construit le LABEL_CONFIGS dynamique en injectant les libellés canoniques
+ * (Phase D plan multi-titres) avec fallback sur les valeurs FR locales.
+ *
+ * Note : `Durée de vie`, `K/D`, `KDA`, `MMR équipe/adversaires`, `Précision`
+ * ne sont pas (encore) tous des FieldKey canoniques — ils restent locaux.
+ */
+function buildLabelConfigs(
+  fieldMappings?: { fields: Record<string, { label: string }> },
+): Record<string, { xLabel: string; yLabel: string; title: string }> {
+  const labelOf = (key: string, fallback: string): string =>
+    fieldMappings?.fields[key]?.label ?? fallback
+  const kills = labelOf('kills', 'Kills')
+  const deaths = labelOf('deaths', 'Morts')
+  const accuracy = labelOf('accuracy', 'Précision')
+  const kda = labelOf('kda', 'KDA')
+  const kdr = labelOf('kdr', 'K/D')
+  const teamMMR = labelOf('team_mmr', 'MMR équipe')
+  const enemyMMR = labelOf('enemy_mmr', 'MMR adversaires')
+  return {
+    kills_vs_kd: { xLabel: kills, yLabel: kdr, title: `${kills} → ${kdr}` },
+    lifespan_vs_kills: { xLabel: 'Durée de vie (s)', yLabel: kills, title: `Durée de vie → ${kills}` },
+    accuracy_vs_kda: { xLabel: `${accuracy} (%)`, yLabel: kda, title: `${accuracy} → ${kda}` },
+    lifespan_vs_deaths: { xLabel: 'Durée de vie (s)', yLabel: deaths, title: `Durée de vie → ${deaths}` },
+    kills_vs_deaths: { xLabel: kills, yLabel: deaths, title: `${kills} → ${deaths}` },
+    mmr_team_vs_enemy: { xLabel: teamMMR, yLabel: enemyMMR, title: `${teamMMR} vs ${enemyMMR}` },
+  }
 }
 
 export function TimeseriesScatter({ points, height = 320 }: TimeseriesScatterProps) {
@@ -55,10 +73,12 @@ export function TimeseriesScatter({ points, height = 320 }: TimeseriesScatterPro
 
   const [activeLabel, setActiveLabel] = useState<string>(() => availableLabels[0] ?? 'kills_vs_kd')
   const paletteVersion = useColorPaletteVersion()
+  const { data: fieldMappings } = useFieldMappings()
+  const labelConfigs = useMemo(() => buildLabelConfigs(fieldMappings), [fieldMappings])
 
   const { traces, layout } = useMemo(() => {
     const filtered = points.filter((p) => p.label === activeLabel)
-    const cfg = LABEL_CONFIGS[activeLabel] ?? { xLabel: 'X', yLabel: 'Y', title: activeLabel }
+    const cfg = labelConfigs[activeLabel] ?? { xLabel: 'X', yLabel: 'Y', title: activeLabel }
 
     const wins = filtered.filter((p) => p.outcome === OUTCOME_WIN)
     const losses = filtered.filter((p) => p.outcome === OUTCOME_LOSS)
@@ -113,7 +133,7 @@ export function TimeseriesScatter({ points, height = 320 }: TimeseriesScatterPro
     }
 
     return { traces, layout }
-  }, [points, activeLabel, height, paletteVersion])
+  }, [points, activeLabel, height, paletteVersion, labelConfigs])
 
   if (points.length === 0) {
     return (
@@ -138,7 +158,7 @@ export function TimeseriesScatter({ points, height = 320 }: TimeseriesScatterPro
                 : 'bg-white/5 text-gray-400 hover:bg-white/10',
             ].join(' ')}
           >
-            {LABEL_CONFIGS[lbl]?.title ?? lbl}
+            {labelConfigs[lbl]?.title ?? lbl}
           </button>
         ))}
       </div>

@@ -5,6 +5,7 @@
 import { useState } from 'react'
 import { useParams } from '@tanstack/react-router'
 import { useGlobalFilterStore } from '@/stores/globalFilterStore'
+import { useFieldMappings } from '@/lib/i18n/fieldMappings'
 import { useSynthesisPage } from './queries'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { EmptyStateCard, EmptyStateNotice } from '@/components/ui/empty-state'
@@ -151,6 +152,9 @@ function StatCell({ label, value }: { label: string; value: string }) {
 
 interface SynthesisOverviewSectionProps { overview: SynthesisOverview }
 function SynthesisOverviewSection({ overview }: SynthesisOverviewSectionProps) {
+  const { data: fieldMappings } = useFieldMappings()
+  const labelOf = (key: string, fallback: string): string =>
+    fieldMappings?.fields[key]?.label ?? fallback
   const kd = overview.total_deaths > 0
     ? (overview.total_kills / overview.total_deaths).toFixed(2)
     : String(overview.total_kills)
@@ -161,9 +165,9 @@ function SynthesisOverviewSection({ overview }: SynthesisOverviewSectionProps) {
         <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
           <StatCell label="Victoires" value={String(overview.total_wins)} />
           <StatCell label="Défaites" value={String(overview.total_losses)} />
-          <StatCell label="Kills" value={String(overview.total_kills)} />
+          <StatCell label={labelOf('kills', 'Kills')} value={String(overview.total_kills)} />
           <StatCell label="K/D moyen" value={kd} />
-          <StatCell label="Win Rate" value={`${(overview.win_rate * 100).toFixed(1)}%`} />
+          <StatCell label={labelOf('win_rate', 'Win Rate')} value={`${(overview.win_rate * 100).toFixed(1)}%`} />
           {overview.best_kills_match != null && (
             <StatCell label="Meilleur match" value={`${overview.best_kills_match}K`} />
           )}
