@@ -8,7 +8,7 @@ import { Suspense, lazy, useMemo } from 'react'
 import { Spinner } from './spinner'
 import { EmptyStateNotice } from './empty-state'
 import type { TimeseriesMatchRow } from '@/lib/api/types'
-import { resolveToken } from '@/lib/accessibility/resolveToken'
+import { resolveToken, useColorPaletteVersion } from '@/lib/accessibility'
 import { outcomeScale } from '@/lib/accessibility/scales'
 
 const Plot = lazy(() =>
@@ -38,6 +38,7 @@ function outcomeColor(outcome: number | null): string {
 }
 
 export function TimeseriesKdaBars({ rows, height = 320 }: TimeseriesKdaBarsProps) {
+  const paletteVersion = useColorPaletteVersion()
   const { traces, layout } = useMemo(() => {
     const xs = rows.map((r) => r.start_time)
 
@@ -111,7 +112,7 @@ export function TimeseriesKdaBars({ rows, height = 320 }: TimeseriesKdaBarsProps
     }
 
     return { traces: [killsTrace, deathsTrace, kdLine], layout }
-  }, [rows, height])
+  }, [rows, height, paletteVersion])
 
   if (rows.length === 0) {
     return (
