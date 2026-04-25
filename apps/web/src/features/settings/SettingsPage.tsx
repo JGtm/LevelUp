@@ -4,28 +4,28 @@
 import { useState, useEffect } from 'react'
 import { Link, useNavigate, useRouterState } from '@tanstack/react-router'
 
-import { PageHeader } from '@/components/shell/PageHeader'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Spinner } from '@/components/ui/spinner'
 import { GamertagCombobox } from '@/components/ui/GamertagCombobox'
 import { useAppShellStore } from '@/stores/appShellStore'
-import { useSettings, useUpdateSettings, useScanMedia, useRecalculateSessions } from '@/features/settings/queries'
+import { useSettings, useUpdateSettings, useScanMedia, useRecalculateSessions, useStartBackfill } from '@/features/settings/queries'
 import { useStartSyncAll, useJobStatus } from '@/features/setup/queries'
 import { getSettingsText, normalizeSettingsLocale } from '@/features/settings/i18n'
 import type { HintBullets } from '@/features/settings/i18n'
-import { WatcherCard } from '@/features/settings/WatcherCard'
+import { WatcherSectionBody } from '@/features/settings/WatcherCard'
 import type { SettingsResponse } from '@/lib/api/types'
 
-function ToggleRow({ label, value, onChange }: { label: string; value: boolean; onChange: (v: boolean) => void }) {
+function ToggleRow({ label, value, onChange, disabled }: { label: string; value: boolean; onChange: (v: boolean) => void; disabled?: boolean }) {
   return (
-    <div className="flex items-center justify-between py-2">
+    <div className={`flex items-center justify-between py-2 ${disabled ? 'opacity-40' : ''}`}>
       <span className="text-sm text-foreground">{label}</span>
       <button
-        onClick={() => onChange(!value)}
-        className={`relative inline-flex h-5 w-9 flex-shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors ${
-          value ? 'bg-primary' : 'bg-muted'
-        }`}
+        onClick={() => !disabled && onChange(!value)}
+        disabled={disabled}
+        className={`relative inline-flex h-5 w-9 flex-shrink-0 rounded-full border-2 border-transparent transition-colors ${
+          disabled ? 'cursor-not-allowed' : 'cursor-pointer'
+        } ${value && !disabled ? 'bg-primary' : 'bg-muted'}`}
       >
         <span
           className={`pointer-events-none inline-block h-4 w-4 rounded-full bg-background shadow ring-0 transition-transform ${
@@ -116,21 +116,19 @@ export function SettingsPage() {
 
   return (
     <div className="flex flex-col">
-      <PageHeader
-        title={t.pageTitle}
-        subtitle={t.pageSubtitle}
-        actions={
-          saveStatus === 'saved' ? (
+      {saveStatus && (
+        <div className="flex justify-end px-6 pt-4">
+          {saveStatus === 'saved' ? (
             <span className="text-sm text-success" role="status" aria-live="polite">
               {t.savedStatus}
             </span>
-          ) : saveStatus === 'error' ? (
+          ) : (
             <span className="text-sm text-destructive" role="alert">
               {t.errorStatus}
             </span>
-          ) : undefined
-        }
-      />
+          )}
+        </div>
+      )}
 
       {/* Onglets */}
       <div className="border-b border-border px-6">
@@ -238,9 +236,9 @@ function GeneralTab({ merged, handleChange, t }: TabProps) {
         </CardHeader>
         <CardContent className="space-y-1 divide-y divide-border/50">
           <ToggleRow label={t.discordEnabled} value={merged.discord_notifications_enabled ?? false} onChange={(v) => handleChange('discord_notifications_enabled', v)} />
-          <ToggleRow label={t.discordNotifySync} value={merged.discord_notify_sync ?? false} onChange={(v) => handleChange('discord_notify_sync', v)} />
-          <ToggleRow label={t.discordNotifyBackfill} value={merged.discord_notify_backfill ?? false} onChange={(v) => handleChange('discord_notify_backfill', v)} />
-          <ToggleRow label={t.discordNotifyNewMedia} value={merged.discord_notify_new_media ?? false} onChange={(v) => handleChange('discord_notify_new_media', v)} />
+          <ToggleRow label={t.discordNotifySync} value={merged.discord_notify_sync ?? false} onChange={(v) => handleChange('discord_notify_sync', v)} disabled={!merged.discord_notifications_enabled} />
+          <ToggleRow label={t.discordNotifyBackfill} value={merged.discord_notify_backfill ?? false} onChange={(v) => handleChange('discord_notify_backfill', v)} disabled={!merged.discord_notifications_enabled} />
+          <ToggleRow label={t.discordNotifyNewMedia} value={merged.discord_notify_new_media ?? false} onChange={(v) => handleChange('discord_notify_new_media', v)} disabled={!merged.discord_notifications_enabled} />
         </CardContent>
       </Card>
 
@@ -364,6 +362,170 @@ function LabTab({ t }: { t: ReturnType<typeof getSettingsText> }) {
   )
 }
 
+// ─── Card Backfill (recalcul rétroactif) ─────────────────────────────────────
+
+interface BackfillCardProps {
+  t: ReturnType<typeof getSettingsText>
+}
+
+function BackfillCard({ t }: BackfillCardProps) {
+  const availablePlayers = useAppShellStore((s) => s.availablePlayers)
+  const realPlayers = availablePlayers.filter((p) => !p.is_demo)
+  const firstSlug = realPlayers[0]?.player_slug ?? ''
+
+  const [scope, setScope] = useState({
+    medals: false,
+    skill: false,
+    aliases: false,
+    personal_scores: false,
+    performance_scores: false,
+    lusr: false,
+    events: false,
+    weapons: false,
+  })
+  const [selectedSlug, setSelectedSlug] = useState<string>(firstSlug)
+  const [forceRescan, setForceRescan] = useState(false)
+  const [showForceConfirm, setShowForceConfirm] = useState(false)
+  const [activeJobId, setActiveJobId] = useState<string | null>(null)
+
+  // Si la liste de joueurs arrive après le premier render, initialiser selectedSlug.
+  useEffect(() => {
+    if (!selectedSlug && firstSlug) setSelectedSlug(firstSlug)
+  }, [firstSlug, selectedSlug])
+
+  const startBackfill = useStartBackfill()
+  const { data: jobStatus } = useJobStatus(activeJobId ?? '', !!activeJobId)
+
+  const running =
+    !!activeJobId &&
+    jobStatus?.status !== 'succeeded' &&
+    jobStatus?.status !== 'failed' &&
+    jobStatus?.status !== 'cancelled' &&
+    jobStatus?.status !== 'interrupted'
+
+  const anyChecked = Object.values(scope).some(Boolean)
+  const canRun = anyChecked && !!selectedSlug && !running && !startBackfill.isPending
+
+  function runBackfill(force: boolean) {
+    startBackfill.mutate(
+      { player_slug: selectedSlug, ...scope, force_rescan: force },
+      { onSuccess: (job) => setActiveJobId(job.job_id) },
+    )
+  }
+
+  function handleRunClick() {
+    if (!canRun) return
+    if (forceRescan) {
+      setShowForceConfirm(true)
+    } else {
+      runBackfill(false)
+    }
+  }
+
+  function confirmForce() {
+    setShowForceConfirm(false)
+    runBackfill(true)
+  }
+
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle className="text-base">{t.backfillTitle}</CardTitle>
+      </CardHeader>
+      <CardContent className="space-y-4">
+        {/* Sélection des types de données */}
+        <div className="grid grid-cols-2 gap-x-6 gap-y-1 py-1 sm:grid-cols-3">
+          {(
+            [
+              ['medals', t.backfillMedals],
+              ['skill', t.backfillSkill],
+              ['aliases', t.backfillAliases],
+              ['personal_scores', t.backfillPersonalScores],
+              ['performance_scores', t.backfillPerfScores],
+              ['lusr', t.backfillLUSR],
+              ['events', t.backfillEvents],
+              ['weapons', t.backfillWeapons],
+            ] as const
+          ).map(([field, label]) => (
+            <ToggleRow
+              key={field}
+              label={label}
+              value={scope[field]}
+              onChange={(v) => setScope((s) => ({ ...s, [field]: v }))}
+              disabled={running}
+            />
+          ))}
+        </div>
+
+        {/* Joueur */}
+        <div className="flex items-center justify-between gap-3 border-t border-border/50 pt-3 text-sm">
+          <span>{t.backfillPlayerLabel}</span>
+          <select
+            value={selectedSlug}
+            onChange={(e) => setSelectedSlug(e.target.value)}
+            disabled={running || realPlayers.length === 0}
+            className="rounded-md border border-input bg-background px-2 py-1 text-sm disabled:cursor-not-allowed disabled:opacity-50"
+          >
+            {realPlayers.map((p) => (
+              <option key={p.player_slug} value={p.player_slug}>{p.gamertag}</option>
+            ))}
+          </select>
+        </div>
+
+        {/* Forcer */}
+        <ToggleRow
+          label={t.backfillForceLabel}
+          value={forceRescan}
+          onChange={setForceRescan}
+          disabled={running}
+        />
+
+        {/* Bouton + hint */}
+        <div className="flex flex-col gap-2">
+          <Button
+            onClick={handleRunClick}
+            disabled={!canRun}
+            className="self-start"
+          >
+            {running ? t.backfillRunningLabel : t.backfillRunButton}
+          </Button>
+          {!anyChecked && (
+            <p className="text-xs text-muted-foreground">{t.backfillNoScopeHint}</p>
+          )}
+        </div>
+
+        {/* Confirmation forcer */}
+        {showForceConfirm && (
+          <div className="rounded-md border border-border bg-muted/40 p-3 text-sm">
+            <p className="font-medium text-foreground">{t.backfillForceConfirmTitle}</p>
+            <p className="mt-1 text-xs text-muted-foreground">{t.backfillForceConfirmBody}</p>
+            <div className="mt-3 flex gap-2">
+              <Button variant="destructive" size="sm" onClick={confirmForce}>
+                {t.backfillForceConfirmOk}
+              </Button>
+              <Button variant="outline" size="sm" onClick={() => setShowForceConfirm(false)}>
+                {t.backfillForceConfirmCancel}
+              </Button>
+            </div>
+          </div>
+        )}
+
+        {/* Warnings retournés par le backend après exécution */}
+        {jobStatus?.status === 'succeeded' && jobStatus.warnings && jobStatus.warnings.length > 0 && (
+          <div className="rounded-md border border-amber-500/40 bg-amber-500/5 p-3 text-sm">
+            <p className="font-medium text-amber-700 dark:text-amber-400">{t.backfillWarningsHeader}</p>
+            <ul className="mt-1 list-disc pl-5 text-xs text-muted-foreground">
+              {jobStatus.warnings.map((w, i) => (
+                <li key={i}>{w}</li>
+              ))}
+            </ul>
+          </div>
+        )}
+      </CardContent>
+    </Card>
+  )
+}
+
 // ─── Onglet Synchronisation ──────────────────────────────────────────────────
 
 function SyncTab({ merged, handleChange, t }: TabProps) {
@@ -417,67 +579,66 @@ function SyncTab({ merged, handleChange, t }: TabProps) {
         </CardContent>
       </Card>
 
-      {/* Synchronisation périodique */}
+      {/* Synchronisation automatique (planifiée + watcher fusionnés) */}
       <Card>
         <CardHeader>
-          <CardTitle className="text-base">{t.spnkrTitle}</CardTitle>
+          <CardTitle className="text-base">{t.autoSyncTitle}</CardTitle>
         </CardHeader>
-        <CardContent className="space-y-1 divide-y divide-border/50">
-          <ToggleRow label={t.spnkrAutoSync} value={merged.spnkr_auto_sync_enabled ?? false} onChange={(v) => handleChange('spnkr_auto_sync_enabled', v)} />
-          <div className="flex items-center justify-between py-3 text-sm">
-            <span>{t.spnkrAutoSyncIntervalMinutes}</span>
-            <div className="flex items-center gap-1.5">
-              <input
-                type="number"
-                min={5}
-                max={1440}
-                className="w-20 rounded border border-border bg-background px-2 py-1 text-right text-sm"
-                value={merged.spnkr_auto_sync_interval_minutes ?? 360}
-                onChange={(e) => handleChange('spnkr_auto_sync_interval_minutes', parseInt(e.target.value, 10) || 360)}
+        <CardContent className="divide-y divide-border/50">
+          {/* Sous-section : Synchronisation planifiée */}
+          <div className="pb-4">
+            <h3 className="mb-1 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+              {t.schedulerSectionTitle}
+            </h3>
+            <div className="space-y-1 divide-y divide-border/30">
+              <ToggleRow
+                label={t.spnkrAutoSync}
+                value={merged.spnkr_auto_sync_enabled ?? false}
+                onChange={(v) => handleChange('spnkr_auto_sync_enabled', v)}
               />
-              <span className="text-muted-foreground">{t.spnkrAutoSyncIntervalMinutesUnit}</span>
+              <div
+                className={`flex items-center justify-between py-3 text-sm ${
+                  merged.spnkr_auto_sync_enabled ? '' : 'opacity-40'
+                }`}
+              >
+                <span>{t.spnkrAutoSyncIntervalMinutes}</span>
+                <div className="flex items-center gap-1.5">
+                  <input
+                    type="number"
+                    min={5}
+                    max={1440}
+                    disabled={!merged.spnkr_auto_sync_enabled}
+                    className="w-20 rounded border border-border bg-background px-2 py-1 text-right text-sm disabled:cursor-not-allowed"
+                    value={merged.spnkr_auto_sync_interval_minutes ?? 360}
+                    onChange={(e) => handleChange('spnkr_auto_sync_interval_minutes', parseInt(e.target.value, 10) || 360)}
+                  />
+                  <span className="text-muted-foreground">{t.spnkrAutoSyncIntervalMinutesUnit}</span>
+                </div>
+              </div>
             </div>
           </div>
-          <ToggleRow label={t.spnkrRefreshWithBackfill} value={merged.spnkr_refresh_with_backfill ?? false} onChange={(v) => handleChange('spnkr_refresh_with_backfill', v)} />
-        </CardContent>
-      </Card>
 
-      {/* Détection de présence */}
-      <WatcherCard
-        enabled={merged.watcher_presence_enabled ?? false}
-        onToggle={(v) => handleChange('watcher_presence_enabled', v)}
-        t={t}
-      />
-
-      {/* Backfill */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="text-base">{t.backfillTitle}</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="grid grid-cols-2 gap-x-6 gap-y-1 py-1 sm:grid-cols-3">
-            {(
-              [
-                ['spnkr_refresh_backfill_medals', t.backfillMedals],
-                ['spnkr_refresh_backfill_skill', t.backfillSkill],
-                ['spnkr_refresh_backfill_aliases', t.backfillAliases],
-                ['spnkr_refresh_backfill_personal_scores', t.backfillPersonalScores],
-                ['spnkr_refresh_backfill_performance_scores', t.backfillPerfScores],
-                ['spnkr_refresh_backfill_lusr', t.backfillLUSR],
-                ['spnkr_refresh_backfill_events', t.backfillEvents],
-                ['spnkr_refresh_backfill_weapons', t.backfillWeapons],
-              ] as const
-            ).map(([field, label]) => (
+          {/* Sous-section : Détection de présence Xbox (watcher RTA/XSTS) */}
+          <div className="pt-4">
+            <h3 className="mb-1 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+              {t.watcherSectionTitle}
+            </h3>
+            <div className="space-y-1 divide-y divide-border/30">
               <ToggleRow
-                key={field}
-                label={label}
-                value={(merged as Record<string, boolean>)[field] ?? false}
-                onChange={(v) => handleChange(field, v)}
+                label={t.watcherPresenceEnabled}
+                value={merged.watcher_presence_enabled ?? false}
+                onChange={(v) => handleChange('watcher_presence_enabled', v)}
               />
-            ))}
+              <div className="pt-1">
+                <WatcherSectionBody enabled={merged.watcher_presence_enabled ?? false} t={t} />
+              </div>
+            </div>
           </div>
         </CardContent>
       </Card>
+
+      {/* Backfill — Recalcul rétroactif */}
+      <BackfillCard t={t} />
 
       {/* Escouade — amis par défaut */}
       <FriendGamertagesSection

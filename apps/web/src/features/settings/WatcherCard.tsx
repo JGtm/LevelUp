@@ -221,6 +221,22 @@ function RTAStatus({ t }: { t: SettingsText }) {
 }
 
 export function WatcherCard({ enabled, onToggle, t }: WatcherCardProps) {
+  return (
+    <Card>
+      <CardHeader>
+        <div className="flex items-center justify-between">
+          <CardTitle className="text-base">{t.watcherTitle}</CardTitle>
+          <Toggle value={enabled} onChange={onToggle} />
+        </div>
+      </CardHeader>
+      <CardContent className={enabled ? 'space-y-1 divide-y divide-border/50' : undefined}>
+        <WatcherSectionBody enabled={enabled} t={t} />
+      </CardContent>
+    </Card>
+  )
+}
+
+export function WatcherSectionBody({ enabled, t }: { enabled: boolean; t: SettingsText }) {
   const startAuth = useStartWatcherAuth()
   const [currentAttempt, setCurrentAttempt] = useState<{
     id: string
@@ -242,39 +258,28 @@ export function WatcherCard({ enabled, onToggle, t }: WatcherCardProps) {
     })
   }
 
+  if (!enabled) {
+    return <p className="text-xs text-muted-foreground">{t.watcherPresenceDescription}</p>
+  }
+
   return (
-    <Card>
-      <CardHeader>
-        <div className="flex items-center justify-between">
-          <CardTitle className="text-base">{t.watcherTitle}</CardTitle>
-          <Toggle value={enabled} onChange={onToggle} />
+    <>
+      <div className="pb-2">
+        <TokenStatus t={t} onStartAuth={handleStartAuth} />
+      </div>
+      {currentAttempt && (
+        <div className="py-2">
+          <AuthFlow
+            attemptId={currentAttempt.id}
+            userCode={currentAttempt.userCode}
+            verificationUrl={currentAttempt.verificationUrl}
+            expiresIn={currentAttempt.expiresIn}
+            t={t}
+          />
         </div>
-      </CardHeader>
-      {enabled && (
-        <CardContent className="space-y-1 divide-y divide-border/50">
-          <div className="pb-2">
-            <TokenStatus t={t} onStartAuth={handleStartAuth} />
-          </div>
-          {currentAttempt && (
-            <div className="py-2">
-              <AuthFlow
-                attemptId={currentAttempt.id}
-                userCode={currentAttempt.userCode}
-                verificationUrl={currentAttempt.verificationUrl}
-                expiresIn={currentAttempt.expiresIn}
-                t={t}
-              />
-            </div>
-          )}
-          <PlayersSelector t={t} />
-          <RTAStatus t={t} />
-        </CardContent>
       )}
-      {!enabled && (
-        <CardContent>
-          <p className="text-xs text-muted-foreground">{t.watcherPresenceDescription}</p>
-        </CardContent>
-      )}
-    </Card>
+      <PlayersSelector t={t} />
+      <RTAStatus t={t} />
+    </>
   )
 }

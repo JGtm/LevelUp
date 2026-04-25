@@ -518,6 +518,26 @@ export interface InitialSyncStartRequest {
 }
 
 // ---------------------------------------------------------------------------
+// Backfill (recalcul rétroactif)
+// ---------------------------------------------------------------------------
+
+export interface BackfillStartRequest {
+  player_slug: string
+  medals?: boolean
+  events?: boolean
+  skill?: boolean
+  personal_scores?: boolean
+  performance_scores?: boolean
+  aliases?: boolean
+  weapons?: boolean
+  lusr?: boolean
+  all_data?: boolean
+  max_matches?: number
+  dry_run?: boolean
+  force_rescan?: boolean
+}
+
+// ---------------------------------------------------------------------------
 // Settings (Slice 1)
 // ---------------------------------------------------------------------------
 
@@ -544,15 +564,6 @@ export interface SettingsResponse {
   spnkr_auto_sync_interval_minutes: number
   watcher_presence_enabled: boolean
   watcher_subscribed_players: string[]
-  spnkr_refresh_with_backfill: boolean
-  spnkr_refresh_backfill_medals: boolean
-  spnkr_refresh_backfill_skill: boolean
-  spnkr_refresh_backfill_aliases: boolean
-  spnkr_refresh_backfill_personal_scores: boolean
-  spnkr_refresh_backfill_performance_scores: boolean
-  spnkr_refresh_backfill_lusr: boolean
-  spnkr_refresh_backfill_events: boolean
-  spnkr_refresh_backfill_weapons: boolean
   friend_gamertags: string[]
   // --- Règles de sessions ---
   session_gap_minutes: number
@@ -916,10 +927,36 @@ export interface HomeHeroCard {
   trend: HeroTrend | null
 }
 
-export interface HighlightItem {
-  title: string
+export type HighlightValueColor =
+  | 'positive'
+  | 'warning'
+  | 'neutral'
+  | 'negative'
+  | 'perf-excellent'
+  | 'perf-good'
+  | 'perf-ok'
+  | 'perf-low'
+  | 'perf-bad'
+
+export interface HighlightSlide {
+  label_key?: string
+  label?: string
   value: string
-  detail: string
+  detail?: string
+  detail_key?: string
+  detail_params?: Record<string, string | number>
+  value_color?: HighlightValueColor
+}
+
+export interface HighlightItem {
+  title_key?: string
+  title?: string
+  value: string
+  detail?: string
+  detail_key?: string
+  detail_params?: Record<string, string | number>
+  value_color?: HighlightValueColor
+  slides?: HighlightSlide[]
 }
 
 export interface RecentMatchItem {
@@ -1109,7 +1146,12 @@ export type SeasonPassStatus = 'active' | 'in_progress' | 'completed' | 'not_sta
 
 export interface SeasonPassItemSummary {
   title: string
+  description?: string | null
   image_url?: string | null
+  /** Rareté brute renvoyée par GameCMS : Common / Rare / Epic / Legendary / Mythic. */
+  quality?: string | null
+  /** Catégorie brute : ArmorCoating, WeaponCharm, SpartanEmblem… */
+  item_type?: string | null
 }
 
 export interface SeasonPassTierSummary {
@@ -1117,6 +1159,8 @@ export interface SeasonPassTierSummary {
   title: string
   description?: string | null
   image_url?: string | null
+  quality?: string | null
+  item_type?: string | null
   is_obtained: boolean
   is_current: boolean
   is_premium: boolean
