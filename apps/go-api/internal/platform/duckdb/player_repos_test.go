@@ -505,12 +505,6 @@ func TestHomeRepo_LoadSpartanIdentity_WithData(t *testing.T) {
 	if identity.BackdropImageURL == nil || *identity.BackdropImageURL != "/api/v1/assets/spartan/backdrop/halo_infinite/hi/Waypoint/file/images/backdrops/test-backdrop.png" {
 		t.Fatalf("BackdropImageURL = %v, want internal backdrop asset URL", identity.BackdropImageURL)
 	}
-	if identity.RankTitleFR == nil || *identity.RankTitleFR != "Caporal-chef" {
-		t.Fatalf("RankTitleFR = %v, want Caporal-chef", identity.RankTitleFR)
-	}
-	if identity.RankTitleEN == nil || *identity.RankTitleEN != "Lance Corporal" {
-		t.Fatalf("RankTitleEN = %v, want Lance Corporal", identity.RankTitleEN)
-	}
 	if identity.RankImageURL == nil || *identity.RankImageURL != "/api/v1/assets/spartan/career-rank/halo_infinite/Progression/RewardTracks/CareerRanks/platinum1-large.png" {
 		t.Fatalf("RankImageURL = %v, want internal career-rank asset URL", identity.RankImageURL)
 	}

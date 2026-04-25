@@ -97,10 +97,6 @@ type HomeSpartanIdentityRow struct {
 	RankNumber        int
 	RankName          *string
 	RankTier          *string
-	RankTitleEN       *string
-	RankTitleFR       *string
-	NextRankTitleEN   *string
-	NextRankTitleFR   *string
 	RankImageURL      *string
 	AdornmentImageURL *string
 	CurrentXP         int

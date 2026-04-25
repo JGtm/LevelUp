@@ -6,6 +6,7 @@ import (
 
 	"levelup/go-api/internal/analysis"
 	"levelup/go-api/internal/domain"
+	"levelup/go-api/internal/games/mappings"
 )
 
 // ---------------------------------------------------------------------------
@@ -283,15 +284,20 @@ func TestBuildSpartanIdentity_UsesRequestedLanguage(t *testing.T) {
 		RankNumber:        25,
 		RankName:          sp("Platinum 1"),
 		RankTier:          sp("Platinum"),
-		RankTitleEN:       sp("Lance Corporal"),
-		RankTitleFR:       sp("Caporal-chef"),
 		RankImageURL:      sp("https://example.test/career-rank.png"),
 		AdornmentImageURL: sp("https://example.test/career-adornment.png"),
 		CurrentXP:         5000,
 		XPForNextRank:     10000,
 	}
 
-	identityFR := analysis.BuildSpartanIdentity(raw, "fr")
+	ranks := mappings.NewRankCatalog("halo_infinite", []mappings.RankEntry{
+		{
+			ID:    25,
+			Title: map[string]string{"en": "Lance Corporal", "fr": "Caporal-chef"},
+		},
+	})
+
+	identityFR := analysis.BuildSpartanIdentity(raw, "fr", ranks)
 	if identityFR == nil || identityFR.SpartanID == nil || *identityFR.SpartanID != "JGTM" {
 		t.Fatalf("FR SpartanID: got %#v", identityFR)
 	}
@@ -320,7 +326,7 @@ func TestBuildSpartanIdentity_UsesRequestedLanguage(t *testing.T) {
 		t.Fatalf("FR AdornmentImageURL: got %#v", identityFR.CareerRank.AdornmentImageURL)
 	}
 
-	identityEN := analysis.BuildSpartanIdentity(raw, "en")
+	identityEN := analysis.BuildSpartanIdentity(raw, "en", ranks)
 	if identityEN == nil || identityEN.CareerRank == nil {
 		t.Fatal("EN CareerRank: want non-nil")
 	}

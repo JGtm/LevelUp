@@ -8,6 +8,8 @@ import (
 
 	"levelup/go-api/internal/analysis"
 	"levelup/go-api/internal/domain"
+	"levelup/go-api/internal/games"
+	"levelup/go-api/internal/games/mappings"
 	"levelup/go-api/internal/platform/halo"
 	"levelup/go-api/internal/port"
 
@@ -27,6 +29,7 @@ type HomeService struct {
 	sink       *duckdb.PersistSink // nil → pas de persistance (tests, joueurs sans auth)
 	socialRepo port.SocialRepository
 	playerSlug string
+	semantic   games.TitleSemanticAdapter // nil → libellés rangs construits via fallbacks (RankName)
 }
 
 // NewHomeService crée un HomeService avec le repository et le provider Halo.
@@ -65,6 +68,14 @@ func (s *HomeService) WithCacheRepo(r port.BattlePassCacheRepository) *HomeServi
 func (s *HomeService) WithSocial(repo port.SocialRepository, playerSlug string) *HomeService {
 	s.socialRepo = repo
 	s.playerSlug = playerSlug
+	return s
+}
+
+// WithSemanticAdapter injecte le SemanticAdapter du titre courant pour résoudre
+// les libellés des rangs de carrière (Ranks() expose un *mappings.RankCatalog).
+// Si nil, les libellés tombent sur le fallback RankName de la player DB.
+func (s *HomeService) WithSemanticAdapter(semantic games.TitleSemanticAdapter) *HomeService {
+	s.semantic = semantic
 	return s
 }
 
@@ -148,9 +159,14 @@ func (s *HomeService) GetHomePage(ctx context.Context, gamertag, locale string) 
 	soloSessions := analysis.BuildSessionSummaries(matches, sessions, false, 20)
 	squadSessions := analysis.BuildSessionSummaries(matches, sessions, true, 20)
 
+	var rankCatalog *mappings.RankCatalog
+	if s.semantic != nil {
+		rankCatalog = s.semantic.Ranks()
+	}
+
 	return &domain.HomePageResponse{
 		Hero:                hero,
-		SpartanIdentity:     analysis.BuildSpartanIdentity(spartanIdentity, locale),
+		SpartanIdentity:     analysis.BuildSpartanIdentity(spartanIdentity, locale, rankCatalog),
 		Highlights:          highlights,
 		RecentMatches:       recentMatches,
 		FavoriteMatches:     favoriteMatches,

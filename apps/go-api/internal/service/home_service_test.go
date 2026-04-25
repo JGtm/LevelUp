@@ -7,6 +7,8 @@ import (
 	"time"
 
 	"levelup/go-api/internal/domain"
+	"levelup/go-api/internal/games/halo_infinite"
+	"levelup/go-api/internal/games/mappings"
 )
 
 // --- mock ---
@@ -205,15 +207,34 @@ func TestHomeService_GetHomePage_IncludesSpartanIdentity(t *testing.T) {
 			EmblemImageURL:    strPtr("https://example.test/emblem.png"),
 			BackdropImageURL:  strPtr("https://example.test/backdrop.png"),
 			RankNumber:        25,
-			RankTitleFR:       strPtr("Caporal-chef"),
-			RankTitleEN:       strPtr("Lance Corporal"),
 			RankImageURL:      strPtr("https://example.test/rank.png"),
 			AdornmentImageURL: strPtr("https://example.test/adornment.png"),
 			CurrentXP:         5000,
 			XPForNextRank:     10000,
 		},
 	}
-	svc := NewHomeService(repo)
+	// Injecte un SemanticAdapter avec un catalog minimal (rang 25 = Caporal-chef en FR).
+	ranks := mappings.NewRankCatalog("halo_infinite", []mappings.RankEntry{
+		{ID: 25, Title: map[string]string{"en": "Lance Corporal", "fr": "Caporal-chef"}},
+	})
+	fields, ferr := mappings.LoadFieldsFromBytes("test.toml", []byte(`
+[meta]
+title_slug     = "halo_infinite"
+schema_version = 1
+
+[fields.kills]
+labels        = { en = "Kills", fr = "Éliminations" }
+storage_unit  = "count"
+display_unit  = "count"
+format        = "integer"
+display_order = 10
+group         = "combat"
+`))
+	if ferr != nil {
+		t.Fatalf("load fields: %v", ferr)
+	}
+	semantic := halo_infinite.NewSemanticAdapter(fields, ranks)
+	svc := NewHomeService(repo).WithSemanticAdapter(semantic)
 
 	resp, err := svc.GetHomePage(context.Background(), "GT", "fr")
 	if err != nil {
