@@ -1,17 +1,10 @@
 /**
  * MediaPage — Galerie de médias (Slice 8).
  * Types ref: MediaItemRow, MediaQueryRequest, MediaPageResponse
- *
- * Features :
- * - Grille responsive avec thumbnails
- * - Lightbox (navigation ◀▶, vidéo auto-play, fermeture Escape)
- * - Likes persistés côté backend (player DB)
- * - Toolbar : type, section, tri, ordre
  */
 import { useState, useEffect, useRef } from 'react'
 import { useParams } from '@tanstack/react-router'
 import { Card, CardContent } from '@/components/ui/card'
-import { Spinner } from '@/components/ui/spinner'
 import type { LabelValue, MediaItemRow, MediaQueryRequest } from '@/lib/api/types'
 import { useAppShellStore } from '@/stores/appShellStore'
 import { MediaLightbox, MediaThumbnailCard } from './MediaViewer'
@@ -32,6 +25,24 @@ function buildFallbackOptions(items: MediaItemRow[], key: 'map_name' | 'mode_nam
   )).sort((left, right) => left.localeCompare(right))
 
   return labels.map((label) => ({ label, value: label }))
+}
+
+function extractErrorMessage(error: unknown): string {
+  if (!error) return ''
+  if (error instanceof Error) return error.message
+  if (typeof error === 'string') return error
+  if (typeof error === 'object') {
+    const maybe = error as { message?: unknown; error?: unknown; detail?: unknown }
+    if (typeof maybe.message === 'string') return maybe.message
+    if (typeof maybe.error === 'string') return maybe.error
+    if (typeof maybe.detail === 'string') return maybe.detail
+    try {
+      return JSON.stringify(error)
+    } catch {
+      return String(error)
+    }
+  }
+  return String(error)
 }
 
 export function MediaPage() {
@@ -81,13 +92,6 @@ export function MediaPage() {
   }, [feedVersion, playerSlug, queryClient])
   const pagination = data?.items?.pagination
   const totalPages = pagination ? Math.ceil(pagination.total / PAGE_SIZE) : 1
-  const totalLabel = data
-    ? text.buildSubtitle({
-        mine: data.total_mine,
-        teammates: data.total_teammates,
-        unassigned: data.total_unassigned,
-      })
-    : text.gallerySubtitle
 
   function handleKindChange(value: string) {
     setKindFilter(value)
@@ -136,8 +140,10 @@ export function MediaPage() {
         />
       )}
 
-      <div className="flex flex-col gap-3 px-6 pt-6 sm:flex-row sm:items-center sm:justify-between">
-        <p className="text-sm text-muted-foreground">{totalLabel}</p>
+      {/* Zone d'upload pleine largeur (vient en premier pour rapprocher les filtres de la grille) */}
+      <UploadButton playerSlug={playerSlug} fullWidth />
+
+      <div className="px-6">
         <MediaToolbar
           text={text}
           kindFilter={kindFilter}
@@ -159,13 +165,8 @@ export function MediaPage() {
         />
       </div>
 
-      {/* Zone d'upload pleine largeur */}
-      <UploadButton playerSlug={playerSlug} fullWidth />
-
-      {isLoading ? (
-        <div className="flex min-h-64 items-center justify-center"><Spinner size="lg" /></div>
-      ) : isError ? (
-        <div className="p-8 text-center text-destructive">{text.errorPrefix} {String(error)}</div>
+      {isLoading ? null : isError ? (
+        <div className="p-8 text-center text-destructive">{text.errorPrefix} {extractErrorMessage(error)}</div>
       ) : mediaItems.length === 0 ? (
         <Card>
           <CardContent className="p-12 text-center text-muted-foreground">
