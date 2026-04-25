@@ -454,9 +454,6 @@ export function NavL1() {
           )
         })}
 
-      {/* ── Aide (toujours visible) ─────────────────────────────────────── */}
-      <HelpSplitButton isActive={pathname.startsWith('/help')} />
-
       {/* ── Spacer ──────────────────────────────────────────────────────── */}
       <div className="flex-1" />
 
@@ -487,6 +484,11 @@ export function NavL1() {
       )}
 
       <ThemeToggle className="ml-2" />
+
+      {/* ── Aide ────────────────────────────────────────────────────────── */}
+      <div className="ml-1">
+        <HelpSplitButton isActive={pathname.startsWith('/help')} />
+      </div>
 
       {/* ── Split button Paramètres ──────────────────────────────────────── */}
       <SettingsSplitButton
