@@ -174,6 +174,15 @@ issues:
         - funlen
         - gocyclo
 
+    # Multi-titres : packages Go nommés avec underscore par convention
+    # produit (cohérence avec title.DefaultSlug = "halo_infinite" et les
+    # configs config/titles/{slug}/). Renommer en haloinfinite/synthetictitleb
+    # ferait perdre la lisibilité 1-pour-1 avec les slugs canoniques.
+    - path: "internal/games/(halo_infinite|synthetic_title_b)/"
+      linters:
+        - revive
+      text: "var-naming: don't use an underscore in package name"
+
 output:
   formats:
     - format: colored-line-number

@@ -55,7 +55,7 @@ func newPlayerPreviewHandler(
 		return semantic, semanticErr
 	}
 	return NewMultiTitlePlayerPreviewHandler(
-		dataFactory, semanticFactory, "halo_infinite",
+		dataFactory, semanticFactory, defaultMultiTitleSlug,
 		slog.New(slog.NewJSONHandler(io.Discard, nil)),
 	)
 }
@@ -91,7 +91,7 @@ func TestMultiTitlePlayerPreview_HappyPath(t *testing.T) {
 	if err := json.Unmarshal(w.Body.Bytes(), &body); err != nil {
 		t.Fatalf("unmarshal: %v", err)
 	}
-	if body.TitleSlug != "halo_infinite" {
+	if body.TitleSlug != defaultMultiTitleSlug {
 		t.Errorf("title_slug = %q", body.TitleSlug)
 	}
 	if body.XUID != "0xPLAYER" {
@@ -233,7 +233,7 @@ func TestNewMultiTitlePlayerPreviewHandler_Defaults(t *testing.T) {
 	if h == nil {
 		t.Fatal("handler nil")
 	}
-	if h.defaultSlug != "halo_infinite" {
+	if h.defaultSlug != defaultMultiTitleSlug {
 		t.Errorf("defaultSlug fallback = %q", h.defaultSlug)
 	}
 	if h.logger == nil {

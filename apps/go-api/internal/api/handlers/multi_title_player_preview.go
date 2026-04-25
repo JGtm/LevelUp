@@ -27,6 +27,10 @@ import (
 	"levelup/go-api/internal/games/mappings"
 )
 
+// defaultMultiTitleSlug est le slug par défaut quand aucun n'est fourni au
+// constructeur. Centralisé pour éviter la duplication (goconst).
+const defaultMultiTitleSlug = "halo_infinite"
+
 // PlayerCareerAdapterFactory résout le slug joueur en TitleDataAdapter
 // player-scoped (avec CareerRepo injecté). Implémenté par
 // ServiceRegistry.TitleDataAdapter dans api/registry.go.
@@ -59,7 +63,7 @@ func NewMultiTitlePlayerPreviewHandler(
 		logger = slog.Default()
 	}
 	if defaultSlug == "" {
-		defaultSlug = "halo_infinite"
+		defaultSlug = defaultMultiTitleSlug
 	}
 	return &MultiTitlePlayerPreviewHandler{
 		dataFactory:     data,

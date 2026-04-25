@@ -16,6 +16,7 @@ import (
 	"net/http/httptest"
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 )
 
@@ -71,18 +72,38 @@ func TestSmoke_FieldMappings_FlagOff_RouteAbsent(t *testing.T) {
 	}
 }
 
-func TestSmoke_FieldMappings_FlagOn_HappyPath(t *testing.T) {
+// TestSmoke_FieldMappings_FlagOn_RouteRegistered : flag on → la route est
+// bien enregistrée dans le routeur. On ne peut pas tester le happy path
+// complet ici car buildTestRouter utilise son propre tmpDir, donc on
+// vérifie juste que la route est exposée (le handler répond 404 sur le
+// titre non chargé, mais c'est différent d'un 404 routeur).
+//
+// Le helper writeSmokeTOML est conservé pour de futurs tests d'intégration
+// qui pourraient copier le TOML dans un tmpDir partagé avec le routeur.
+func TestSmoke_FieldMappings_FlagOn_RouteRegistered(t *testing.T) {
 	t.Setenv("MULTI_TITLE_API_ENABLED", "true")
 	t.Setenv("LEVELUP_DEMO_MODE", "true")
 
-	// Note : buildTestRouter recrée son propre tmpDir → on doit forcer l'utilisation
-	// du nôtre via une variante. Ici on fait simple : on smoke-teste avec
-	// buildTestRouter standard (qui utilise un tmpDir vide), donc le registry
-	// chargera 0 titre. L'endpoint répond alors 404 sur halo_infinite.
-	// Pour un vrai smoke test "happy path", il faut un test d'intégration
-	// dédié qui copie le TOML du repo. Voir tests Phase A
-	// (handlers/field_mappings_test.go) qui couvrent le happy path avec stub.
-	t.Skip("smoke happy path nécessite un repoRoot peuplé — couvert par TestFieldMappingsHandler_Success_FR dans handlers/")
+	// Sanity check du helper writeSmokeTOML (pour qu'il reste exercé).
+	tmpDir := writeSmokeTOML(t)
+	if _, err := os.Stat(filepath.Join(tmpDir, "config", "titles", "halo_infinite", "mappings", "fields.toml")); err != nil {
+		t.Fatalf("writeSmokeTOML n'a pas écrit le fichier: %v", err)
+	}
+
+	router := buildTestRouter(t)
+	req := httptest.NewRequest("GET", "/api/v1/titles/halo_infinite/field-mappings?locale=fr", nil)
+	w := httptest.NewRecorder()
+	router.ServeHTTP(w, req)
+
+	// Avec un buildTestRouter qui utilise un tmpDir vide (sans TOML), la
+	// route est exposée mais le titre n'est pas chargé → réponse 404 du
+	// handler (avec body JSON), pas un 404 routeur.
+	if w.Code != http.StatusNotFound {
+		t.Errorf("status = %d, want 404 (titre non chargé)", w.Code)
+	}
+	if w.Header().Get("Content-Type") != "" && !strings.Contains(w.Header().Get("Content-Type"), "json") {
+		t.Errorf("flag on devrait passer par le handler avec body JSON, Content-Type = %q", w.Header().Get("Content-Type"))
+	}
 }
 
 func TestSmoke_PreviewCareer_FlagOn_NotFoundForUnloadedTitle(t *testing.T) {
