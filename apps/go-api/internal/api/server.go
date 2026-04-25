@@ -20,6 +20,8 @@ import (
 	"levelup/go-api/internal/assets"
 	"levelup/go-api/internal/config"
 	titlePkg "levelup/go-api/internal/domain/title"
+	"levelup/go-api/internal/games"
+	halo_games "levelup/go-api/internal/games/halo_infinite"
 	"levelup/go-api/internal/games/mappings"
 	auth_platform "levelup/go-api/internal/platform/auth"
 	platform_duckdb "levelup/go-api/internal/platform/duckdb"
@@ -89,6 +91,22 @@ func NewRouter(
 	for _, err := range fieldMappingsRegistry.LoadFromConfigDir(cfg.RepoRoot, multiTitleSlugs, slog.Default()) {
 		slog.Warn("field_mappings_load_warning", "err", err.Error())
 	}
+
+	// Phase B multi-titres : resolver des adapters par titre.
+	// Le resolver est exposé aux services produit qui veulent consommer la
+	// couche canonique. En Phase B, seul le SemanticAdapter HI est câblé
+	// (le DataAdapter HI sera registré endpoint par endpoint en Phase C).
+	titleResolver := games.NewStaticResolver(titlePkg.DefaultSlug)
+	if hiFields, ok := fieldMappingsRegistry.Get(titlePkg.DefaultSlug); ok {
+		if sem := halo_games.NewSemanticAdapter(hiFields); sem != nil {
+			titleResolver.RegisterSemantic(sem)
+			slog.Info("title_semantic_adapter_registered",
+				"title_slug", sem.TitleSlug(),
+				"schema_version", sem.SchemaVersion(),
+			)
+		}
+	}
+	_ = titleResolver // utilisé en Phase C par les services migrés
 
 	// Sprint 40 T1 : validation de contrat (dev mode, no-op si LEVELUP_CONTRACT_VALIDATE != 1).
 	r.Use(middleware.ContractValidate)
