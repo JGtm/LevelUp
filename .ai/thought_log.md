@@ -1,5 +1,35 @@
 # Thought Log
 
+## [2026-04-25] fix(multi-title): finition câblage SemanticAdapter dans ServiceRegistry (dette résiduelle)
+
+**Statut** : Complété — non commité (working tree)
+
+**Contexte** : suite immédiate du fix précédent. La "dette" annoncée — pas d'injection du SemanticAdapter dans les factories Home de `registry.go` — s'est avérée déjà résolue à 90 % : `ServiceRegistry` portait déjà un champ `titleResolver`, un setter `WithTitleResolver`, un helper `semanticFor(slug)`, et les factories `HomeCtx` + `HomeCtxWithAuth` injectaient déjà l'adapter. `server.go` câblait déjà `NewServiceRegistry(...).WithTitleResolver(titleResolver)`. Restait juste un trou de cohérence : `SeasonPassCtxWithAuth` créait un `HomeService` interne (utilisé comme `SessionNotifier` et pour le cache BP) sans appeler `WithSemanticAdapter`.
+
+**Décision technique** : ajout d'une seule ligne `.WithSemanticAdapter(r.semanticFor(pdb.TitleSlug))` dans la chaîne `homeSvc` de `SeasonPassCtxWithAuth`. Coût : 1 ligne. Bénéfice : si demain quelqu'un appelle `GetHomePage` ou un autre code-path lecteur de l'adapter sur ce homeSvc stocké comme notifier, ça marchera ; pas de dette résiduelle de "câbler partout sauf ici".
+
+**Résultats observés** : `go build ./...` clean ; `go test ./...` clean. Pas de régression.
+
+**Conclusion / prochaine étape** : pour que le `rank_title` en prod vienne réellement du `RankCatalog` (et non du fallback `RankName` "Platinum 1"), il faut peupler la table `career_rank_translations` dans `metadata.duckdb` via la CLI `cmd/refresh-career-ranks/` (one-shot, fetch GameCMS Waypoint). Sans ça, le catalog reste vide et le `lookupRankLabel` retourne "" → fallback `RankName`. Tant que la CLI n'a pas tourné, le comportement utilisateur est inchangé même avec le câblage complet.
+
+## [2026-04-25] fix(multi-title): finition wiring RankCatalog + tests post-suppression RankTitleFR/EN
+
+**Statut** : Complété — non commité (working tree)
+
+**Contexte** : terminal du dev runner spamme un build error `internal/api/server.go:100:43: not enough arguments in call to halo_games.NewSemanticAdapter` + boucles de retry de lock sur `metadata.duckdb` (PID 11564). Investigation : la signature de `NewSemanticAdapter` a évolué (ajout `*mappings.RankCatalog`) mais le câblage au boot et plusieurs tests n'avaient pas suivi. Le lock DuckDB est un effet collatéral : Air ne pouvait pas remplacer le binaire faute de build vert.
+
+**Décisions techniques** :
+
+1. **server.go boot wiring** — Après ouverture de `metadata.duckdb`, charger un `*mappings.RankCatalog` via `halo_infinite.LoadRankCatalog` puis le passer en 2e argument à `NewSemanticAdapter`. La résolution est cached par path donc réutilise le pool existant. Échec gracieux (catalog vide) si la table `career_rank_translations` est absente.
+
+2. **Adaptation `SemanticAdapterFactory`** — `titleResolver.Semantic` est synchrone `(slug→adapter)` mais `handlers.SemanticAdapterFactory` attend `(ctx, slug)`. Closure d'une ligne dans `server.go` qui ignore le `ctx` (résolution in-memory, pas de risque d'annulation).
+
+3. **Suppression cohérente de `RankTitleFR/EN/NextRankTitleFR/EN`** — Ces champs avaient été retirés de `domain.HomeSpartanIdentityRow` mais 3 tests les référençaient encore (`home_test.go`, `home_service_test.go`, `player_repos_test.go`). Tests alignés sur la nouvelle source de vérité (`RankCatalog` injecté via `WithSemanticAdapter`). `player_repos_test.go` perd l'assertion FR/EN puisque le SQL loader ne SELECT plus ces colonnes — pas de couverture utile perdue.
+
+**Résultats observés** : `go build ./...` clean ; `go test ./...` clean (aucun FAIL, aucune cascade build_failed). Les warnings `go vet` préexistants (`presence_test.go`, `halo/provider.go`) ne sont pas liés et restent à traiter dans une dette séparée.
+
+**Conclusion / prochaine étape** : le user doit `taskkill /PID 11564 /F` pour libérer le lock zombie sur `metadata.duckdb`, puis Air relancera correctement avec le binaire à jour. Câblage `WithSemanticAdapter` côté `registry.go` (HomeCtx, HomeCtxWithAuth) à compléter si on veut qu'en prod les libellés rangs viennent réellement du catalog plutôt que du fallback `RankName` — pas dans le scope de ce fix, à traiter explicitement.
+
 ## [2026-04-25] feat(multi-title): exécution complète du plan PLAN_MULTI_TITLE_ADAPTERS_AND_MAPPINGS (Phases A–F)
 
 **Statut** : Complété — 5 commits + 1 commit doc/Phase F sur `feat/multi-title-adapters-and-mappings`
