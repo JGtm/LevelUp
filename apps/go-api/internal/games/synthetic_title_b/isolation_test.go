@@ -94,7 +94,7 @@ func TestSyntheticTitleB_AdapterIsAgnostic(t *testing.T) {
 	hiSet := mustLoadFields(t, "halo_infinite")
 	bSet := mustLoadFields(t, TitleSlug)
 
-	hiSemantic := halo_infinite.NewSemanticAdapter(hiSet)
+	hiSemantic := halo_infinite.NewSemanticAdapter(hiSet, nil)
 	bSemantic := NewSemanticAdapter(bSet)
 
 	// Les deux semantic adapters implémentent strictement la même interface.
@@ -138,7 +138,7 @@ func TestSyntheticTitleB_ResolverIsolation(t *testing.T) {
 	bSet := mustLoadFields(t, TitleSlug)
 
 	resolver := games.NewStaticResolver("halo_infinite")
-	resolver.RegisterSemantic(halo_infinite.NewSemanticAdapter(hiSet))
+	resolver.RegisterSemantic(halo_infinite.NewSemanticAdapter(hiSet, nil))
 	resolver.RegisterSemantic(NewSemanticAdapter(bSet))
 	resolver.RegisterData(halo_infinite.NewDataAdapter(nil, nil))
 	resolver.RegisterData(NewDataAdapter(&FakePlayerStats{XUID: "0xB", Kills: 42}))

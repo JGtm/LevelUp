@@ -284,6 +284,26 @@ func init() {
 			`)
 		},
 	})
+
+	Register(Migration{
+		Name:        "add_career_rank_translations",
+		TargetDB:    TargetMetadata,
+		Description: "Table career_rank_translations : libellés rangs de carrière dans toutes les langues exposées par GameCMS",
+		ApplySchema: func(db *sql.DB) error {
+			return execScript(db, `
+				CREATE TABLE IF NOT EXISTS career_rank_translations (
+					rank_id  INTEGER NOT NULL,
+					lang     VARCHAR NOT NULL,
+					title    VARCHAR,
+					subtitle VARCHAR,
+					tier     VARCHAR,
+					fetched_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+					PRIMARY KEY (rank_id, lang)
+				);
+				CREATE INDEX IF NOT EXISTS idx_career_rank_translations_lookup ON career_rank_translations(rank_id, lang);
+			`)
+		},
+	})
 }
 
 // applyModeNameTr crée et peuple mode_name_tr avec les traductions connues.

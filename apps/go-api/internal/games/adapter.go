@@ -84,10 +84,16 @@ type TitleDataAdapter interface {
 }
 
 // TitleSemanticAdapter expose les libellés et la présentation pour un titre.
+//
+// Ranks() retourne le catalog des rangs de carrière localisés. Peut retourner
+// un catalog vide (Len() == 0) si la table career_rank_translations n'a pas
+// encore été peuplée — les services consommateurs doivent alors dégrader
+// proprement (ex: afficher uniquement le rank_id).
 type TitleSemanticAdapter interface {
 	TitleSlug() string
 	SchemaVersion() int
 	Fields() *mappings.FieldMappingSet
+	Ranks() *mappings.RankCatalog
 }
 
 // Resolver injecte les adapters d'un titre courant aux services produit.

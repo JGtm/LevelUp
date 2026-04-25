@@ -27,7 +27,7 @@ func TestSemanticAdapter_TitleSlug(t *testing.T) {
 	if err != nil {
 		t.Fatalf("load: %v", err)
 	}
-	a := NewSemanticAdapter(set)
+	a := NewSemanticAdapter(set, nil)
 	if a == nil {
 		t.Fatal("nil adapter")
 	}
@@ -39,7 +39,7 @@ func TestSemanticAdapter_TitleSlug(t *testing.T) {
 func TestSemanticAdapter_SchemaVersion(t *testing.T) {
 	t.Parallel()
 	set, _ := mappings.LoadFieldsFromBytes("x.toml", []byte(minimalToml))
-	a := NewSemanticAdapter(set)
+	a := NewSemanticAdapter(set, nil)
 	if got := a.SchemaVersion(); got != 7 {
 		t.Errorf("SchemaVersion = %d, want 7", got)
 	}
@@ -48,7 +48,7 @@ func TestSemanticAdapter_SchemaVersion(t *testing.T) {
 func TestSemanticAdapter_Fields_Exposes(t *testing.T) {
 	t.Parallel()
 	set, _ := mappings.LoadFieldsFromBytes("x.toml", []byte(minimalToml))
-	a := NewSemanticAdapter(set)
+	a := NewSemanticAdapter(set, nil)
 	if _, ok := a.Fields().Get(canonical.FieldKills); !ok {
 		t.Errorf("FieldKills introuvable via SemanticAdapter")
 	}
@@ -56,7 +56,7 @@ func TestSemanticAdapter_Fields_Exposes(t *testing.T) {
 
 func TestSemanticAdapter_NilSet(t *testing.T) {
 	t.Parallel()
-	if a := NewSemanticAdapter(nil); a != nil {
-		t.Errorf("NewSemanticAdapter(nil) devrait retourner nil")
+	if a := NewSemanticAdapter(nil, nil); a != nil {
+		t.Errorf("NewSemanticAdapter(nil, nil) devrait retourner nil")
 	}
 }
