@@ -911,6 +911,8 @@ export interface HeroKPIs {
   total_playtime_secs: number
   favorite_weapon_name: string
   favorite_weapon_kills: number
+  favorite_playlist_name: string
+  favorite_playlist_count: number
   avg_offensive_conversion: number | null
   avg_defensive_resistance: number | null
 }

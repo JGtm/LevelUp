@@ -860,7 +860,20 @@ export function HomePage() {
                 return <KPICard label={locale === 'en' ? 'Total time' : 'Durée totale'} value={formatted} />
               })()}
 
-              {/* 5 — Rendement / Résistance (barre composite) */}
+              {/* 5 — Playlist favorite */}
+              <div className="flex h-full flex-col items-center justify-center rounded-lg border border-border bg-muted px-4 py-3 text-center">
+                <p className="text-xs text-muted-foreground">{locale === 'en' ? 'Fav. playlist' : 'Playlist fav.'}</p>
+                <p className="w-full truncate text-sm font-bold text-primary leading-tight mt-1">
+                  {hero.kpis.favorite_playlist_name || '—'}
+                </p>
+                {hero.kpis.favorite_playlist_count > 0 && (
+                  <p className="text-xs text-muted-foreground mt-0.5">
+                    {hero.kpis.favorite_playlist_count.toLocaleString(numberLocale)} {locale === 'en' ? 'matches' : 'parties'}
+                  </p>
+                )}
+              </div>
+
+              {/* 7 — Rendement / Résistance (barre composite) */}
               {(() => {
                 const offConv = hero.kpis.avg_offensive_conversion
                 const defRes = hero.kpis.avg_defensive_resistance
@@ -889,7 +902,7 @@ export function HomePage() {
                 )
               })()}
 
-              {/* 6 — Précision avec code couleur */}
+              {/* 8 — Précision avec code couleur */}
               {(() => {
                 const acc = hero.kpis.avg_accuracy
                 const accStyle = acc != null ? { color: tokenCssVar(accuracyScale(acc)) } : undefined
@@ -901,7 +914,7 @@ export function HomePage() {
                 )
               })()}
 
-              {/* 7 — Arme favorite */}
+              {/* 9 — Arme favorite */}
               <div className="flex h-full flex-col items-center justify-center rounded-lg border border-border bg-muted px-4 py-3 text-center">
                 <p className="text-xs text-muted-foreground">{locale === 'en' ? 'Fav. weapon' : 'Arme favorite'}</p>
                 <p className="w-full truncate text-sm font-bold text-primary leading-tight mt-1">
@@ -985,7 +998,7 @@ export function HomePage() {
 
           {/* Sessions récentes */}
           <Card>
-            <CardHeader>
+            <CardHeader className="space-y-0 pb-3">
               <CardTitle className="text-base">Sessions récentes</CardTitle>
             </CardHeader>
             <CardContent>
