@@ -16,6 +16,7 @@ import { HomeHeroBanner } from './HomeHeroBanner'
 import { HomeChallengesList } from './HomeChallengesList'
 import { HomeRecentPlaylistsCard } from './HomeRecentPlaylistsCard'
 import { RecentMediaRail } from './RecentMediaRail'
+import { ChallengesCarousel } from '@/features/prestige/components/ChallengesCarousel'
 import { useHomePage, useSeasonPassPreview } from './queries'
 import { useSetMatchFavorite } from '@/features/match-history/queries'
 import { InfoTooltip } from '@/components/ui/info-tooltip'
@@ -995,6 +996,17 @@ export function HomePage() {
             </CardContent>
           </Card>
         </div>
+
+        {/* Carousel défis Prestige (au-dessus des Faits Marquants) */}
+        <Card>
+          <CardContent className="pt-4">
+            <ChallengesCarousel
+              userId={playerSlug}
+              titleSlug="halo_infinite"
+              playerSlug={playerSlug}
+            />
+          </CardContent>
+        </Card>
 
         {/* Highlights */}
         <Card>

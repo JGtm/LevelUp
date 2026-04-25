@@ -23,6 +23,52 @@
 
 ---
 
+## [2026-04-26] feat(prestige): Phase 4 frontend + Phase 5 — nav L1 + composants + page Objectifs
+
+**Statut** : Complété — frontend Prestige minimal mais fonctionnel livré. Conclut la séquence Phases 1-5.
+
+**Contexte** : Suite de Phase 4 backend. Nav L1 refactor + API client typé + composants core + page Objectifs + Leaderboard PP placeholder + carousel home.
+
+**Décisions techniques** :
+- **Nav L1 refactor** dans `NavL1.tsx` : 5 changements simultanés : `Synthèse` retirée du L1 et ajoutée comme onglet Stats ; `Pass saisonnier` retiré de Palmarès et ajouté comme onglet Carrière ; `Palmarès` renommé en `Communauté` ; nouvel onglet `Leaderboard PP` dans Communauté ; nouvelle entrée L1 `Objectifs` (split button avec onglets Défis et Mon parcours). `matchPathname` ajusté pour que la route `/synthesis` highlight Stats et `/palmares/season-pass` highlight Carrière.
+- **API client web typé** dans `apps/web/src/lib/prestige.ts` : 8 enums + 7 interfaces alignées sur les structs Go + namespace `prestigeApi` avec 14 méthodes (CRUD défis, arcs, prestige, leaderboard, squad). Tous les appels passent par `api.get/post/patch/delete` du client central.
+- **Couleurs paliers en `TIER_COLORS`** : exception explicite à la règle CLAUDE.md "pas de hex" — couleurs identitaires de gamification (Annexe F). Commentaire `eslint-disable-next-line` documente l'intention.
+- **Composants minimaux mais fonctionnels** : `ChallengeCard` (tuile carousel + grid), `MomentCard` (carte cérémonielle 16:9 avec halo Mythic, format compact + plein), `ChallengesCarousel` (home page avec switch Actifs/Terminés + bouton + Nouveau).
+- **Page Objectifs avec 2 onglets** : Défis (libres + pilotés en sections séparées + toggle mode pilote désactivé en Phase 5) + Mon parcours (Prestige Badge + arcs en cours + historique placeholder). Les requêtes utilisent React Query avec `retry: false` pour gérer gracieusement le cas PRESTIGE_ENABLED=false (404 → message feature désactivée).
+- **LeaderboardPP placeholder** : page complète mais affiche un message "feature non activée" tant que le wiring backend n'est pas fait.
+- **Carousel branché sur home** au-dessus de la section Highlights, cohérent avec Axe 8 du plan.
+- **Routes TanStack file-based** : `/players/$playerSlug/objectifs/index.tsx` + `/players/$playerSlug/palmares/prestige.tsx`. routeTree.gen.ts sera régénéré au prochain `pnpm dev`.
+- **Erreurs typecheck préexistantes hors scope** : 12+ erreurs sur match-view (recharts types), settings, setup, stores existaient avant Phase 5 et ne sont pas liées au module Prestige. Une seule erreur sur NavL1 (Settings link sans `search`) est antérieure aussi. Aucune erreur typecheck sur les fichiers Prestige nouveaux.
+
+**Résultats observés** :
+- Build Go vert, tests unitaires + intégration verts (87 sous-tests Prestige au total)
+- Aucune erreur typecheck sur les fichiers Prestige (`grep prestige|objectifs` typecheck = vide)
+- Nav L1 refactor sans casser les routes existantes (mêmes paths, juste réorganisation visuelle)
+
+**Conclusion / livraison finale** :
+
+Le module Prestige est livré sur 5 phases :
+- Phase 1 (`c0ac7b5b`) : foundation — migrations + types + interfaces
+- Phase 2 (`a02b8f32`) : domain pur + service + repos DuckDB
+- Phase 3 (`ded74f90`) : handlers HTTP + sync hook + feature flag PRESTIGE_ENABLED
+- Phase 4 backend (`d61de8ac`) : gaps + contenu Halo (15 templates + 4 arcs) + loader + BaselineProvider + script analyze
+- Phase 4 frontend + Phase 5 (commit en cours) : nav L1 + API client + composants + page Objectifs + carousel home
+
+**Ce qui reste à faire avant un déploiement de production** :
+- Câblage routes Prestige dans `server.go` (instancier `prestige.Service` avec les 10 repos + `BaselineProvider` Halo, ajouter `r.Route("/api/v1", ...)` derrière le flag) — délibérément reporté pour ne pas modifier le boot existant.
+- Tests d'intégration end-to-end (création défi via API → match simulé → évaluation → vérif PP) — squelettes prêts, à brancher.
+- Page Objectifs : enrichir le formulaire de création (3 modes auto/libre/hybride), brancher la mutation `createChallenge`, gérer l'optimistic UI.
+- Génération des moment cards à la validation (génération PNG côté serveur ou client) — composant `MomentCard` prêt à recevoir les données.
+- Calage post-alpha : exécuter `scripts/analyze_prestige_tuning.py` après 4-6 semaines.
+
+**Conformité globale** :
+- 5 commits structurés, chacun avec entrée thought_log
+- Discipline qualité tenue : compliance check à chaque phase, conformité CLAUDE.md (max 500L par fichier, fonctions ≤ 80L, pas de pandas/sqlite, slog structuré, tests stdlib + mocks)
+- Aucune régression sur l'existant (`go test ./internal/...` complet vert à chaque phase)
+- Feature flag `PRESTIGE_ENABLED` permet la désactivation totale du module sans toucher au reste
+
+---
+
 ## [2026-04-26] feat(prestige): Phase 4 backend — gaps Phase 2/3 comblés + contenu Halo + loader + BaselineProvider
 
 **Statut** : Complété — partie backend de Phase 4 livrée. Frontend (nav refactor + API client + composants + page Objectifs) à suivre dans les commits Phase 4 frontend / Phase 5.
