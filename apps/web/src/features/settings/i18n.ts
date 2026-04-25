@@ -170,6 +170,17 @@ export interface SettingsText {
   authProviderMsal: string
   authProviderSisu: string
   authProviderHint: string
+
+  // Onglet Accessibilité
+  tabAccessibility: string
+  accessibilityTitle: string
+  accessibilityDescription: string
+  paletteLabel: string
+  paletteDefault: string
+  paletteDefaultDesc: string
+  paletteOkabeIto: string
+  paletteOkabeItoDesc: string
+  previewLabel: string
 }
 
 const FR_TEXT: SettingsText = {
@@ -360,6 +371,16 @@ const FR_TEXT: SettingsText = {
     'MSAL utilise une app Azure enregistrée. ' +
     'SISU utilise le client Xbox natif (000000004c20a908) sans configuration Azure. ' +
     'Modification prise en compte au redémarrage du serveur.',
+
+  tabAccessibility: 'Accessibilité',
+  accessibilityTitle: 'Accessibilité visuelle',
+  accessibilityDescription: 'Choisissez une palette de couleurs adaptée à votre vision. La palette Okabe-Ito (2008) est conçue pour être perceptible par les personnes daltonniennes.',
+  paletteLabel: 'Palette de couleurs',
+  paletteDefault: 'Standard (défaut)',
+  paletteDefaultDesc: 'Palette originale de LevelUp.',
+  paletteOkabeIto: 'Okabe-Ito (daltonisme)',
+  paletteOkabeItoDesc: 'Palette universellement lisible, distinguable en cas de deutéranopie, protanopie et tritanopie.',
+  previewLabel: 'Aperçu',
 }
 
 const EN_TEXT: SettingsText = {
@@ -551,6 +572,16 @@ const EN_TEXT: SettingsText = {
     'MSAL uses a registered Azure app. ' +
     'SISU uses the native Xbox client (000000004c20a908) with no Azure configuration required. ' +
     'Change takes effect on server restart.',
+
+  tabAccessibility: 'Accessibility',
+  accessibilityTitle: 'Visual accessibility',
+  accessibilityDescription: 'Choose a colour palette suited to your vision. The Okabe-Ito (2008) palette is designed to be distinguishable for people with colour vision deficiencies.',
+  paletteLabel: 'Colour palette',
+  paletteDefault: 'Standard (default)',
+  paletteDefaultDesc: 'Original LevelUp palette.',
+  paletteOkabeIto: 'Okabe-Ito (colour-blind safe)',
+  paletteOkabeItoDesc: 'Universally readable, distinguishable under deuteranopia, protanopia and tritanopia.',
+  previewLabel: 'Preview',
 }
 
 const TEXT: Record<SettingsLocale, SettingsText> = {

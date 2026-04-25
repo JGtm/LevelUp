@@ -14,6 +14,7 @@ import { useStartSyncAll, useJobStatus } from '@/features/setup/queries'
 import { getSettingsText, normalizeSettingsLocale } from '@/features/settings/i18n'
 import type { HintBullets } from '@/features/settings/i18n'
 import { WatcherSectionBody } from '@/features/settings/WatcherCard'
+import { AccessibilityTab } from '@/features/settings/AccessibilityTab'
 import type { SettingsResponse } from '@/lib/api/types'
 
 function ToggleRow({ label, value, onChange, disabled }: { label: string; value: boolean; onChange: (v: boolean) => void; disabled?: boolean }) {
@@ -72,9 +73,10 @@ export function SettingsPage() {
       | 'analyse'
       | 'lab'
       | 'users'
+      | 'accessibility'
       | null) ?? 'general'
 
-  function setActiveTab(tab: 'general' | 'sync' | 'analyse' | 'lab' | 'users') {
+  function setActiveTab(tab: 'general' | 'sync' | 'analyse' | 'lab' | 'users' | 'accessibility') {
     navigate({ to: '/settings', search: { tab }, replace: true }).catch(() => {})
   }
 
@@ -138,9 +140,10 @@ export function SettingsPage() {
               { id: 'general', label: t.tabGeneral },
               { id: 'sync', label: t.tabSync },
               { id: 'analyse', label: t.tabAnalyse },
+              { id: 'accessibility', label: t.tabAccessibility },
               ...(canManageInstance ? [{ id: 'lab', label: t.tabLab }] : []),
               ...(isAdmin ? [{ id: 'users', label: t.tabUsers }] : []),
-            ] as { id: 'general' | 'sync' | 'analyse' | 'lab' | 'users'; label: string }[]
+            ] as { id: 'general' | 'sync' | 'analyse' | 'lab' | 'users' | 'accessibility'; label: string }[]
           ).map(({ id, label }) => (
             <button
               key={id}
@@ -172,6 +175,7 @@ export function SettingsPage() {
         )}
         {activeTab === 'lab' && <LabTab t={t} />}
         {activeTab === 'users' && <UsersTab merged={merged} handleChange={handleChange} t={t} />}
+        {activeTab === 'accessibility' && <AccessibilityTab t={t} />}
       </div>
     </div>
   )
