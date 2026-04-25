@@ -9,6 +9,7 @@ import { Suspense, lazy, useMemo } from 'react'
 import { Spinner } from './spinner'
 import { EmptyStateNotice } from './empty-state'
 import type { DistributionBucket } from '@/lib/api/types'
+import { resolveToken, useColorPaletteVersion } from '@/lib/accessibility'
 
 const Plot = lazy(() =>
   import('react-plotly.js').then((m) => ({ default: m.default })),
@@ -33,11 +34,13 @@ const TEXT = '#9ba3af'
 
 export function TimeseriesHistogram({
   buckets,
-  color = '#33D6FF',
+  color,
   xAxisLabel,
   height = 280,
 }: TimeseriesHistogramProps) {
+  const paletteVersion = useColorPaletteVersion()
   const { traces, layout } = useMemo(() => {
+    const resolvedColor = color ?? resolveToken('perf-tier-2')
     const labels = buckets.map((b) => `${b.bin_start}–${b.bin_end}`)
     const counts = buckets.map((b) => b.count)
 
@@ -46,7 +49,7 @@ export function TimeseriesHistogram({
         type: 'bar',
         x: labels,
         y: counts,
-        marker: { color, opacity: 0.85 },
+        marker: { color: resolvedColor, opacity: 0.85 },
         hovertemplate: '%{x}<br>Matchs : <b>%{y}</b><extra></extra>',
       },
     ]
@@ -75,7 +78,7 @@ export function TimeseriesHistogram({
     }
 
     return { traces, layout }
-  }, [buckets, color, xAxisLabel, height])
+  }, [buckets, color, xAxisLabel, height, paletteVersion])
 
   if (buckets.length === 0) {
     return (

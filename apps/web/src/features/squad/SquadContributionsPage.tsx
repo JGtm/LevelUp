@@ -7,10 +7,11 @@ import { Card, CardContent } from '@/components/ui/card'
 import { EmptyStateNotice } from '@/components/ui/empty-state'
 import type { TeammateRow, TeammateKPIs, PlotlyFigurePayload } from '@/lib/api/types'
 import { useSquadContext } from './SquadLayout'
+import { resolveToken, getSeriesColors } from '@/lib/accessibility'
 
 // ─── Helper graphique ─────────────────────────────────────────────────────────
 
-const CHART_COLORS = ['#7C3AED', '#F59E0B', '#10B981']
+const SERIES_TOKENS = ['narrative-dominant', 'perf-tier-3', 'perf-tier-1'] as const
 
 function buildRadarChart(
   rows: TeammateRow[],
@@ -28,6 +29,7 @@ function buildRadarChart(
     norm(k.accuracy, 1) * 100,
   ]
 
+  const colors = getSeriesColors(rows.length, [...SERIES_TOKENS])
   const traces: PlotlyFigurePayload['data'] = rows.map((row, i) => {
     const vals = makeVals(row.with_kpis)
     return {
@@ -36,13 +38,14 @@ function buildRadarChart(
       r: [...vals, vals[0]],
       theta: [...axes, axes[0]],
       fill: 'toself',
-      marker: { color: CHART_COLORS[i % CHART_COLORS.length] },
-      line: { color: CHART_COLORS[i % CHART_COLORS.length] },
+      marker: { color: colors[i] },
+      line: { color: colors[i] },
     }
   })
 
   if (soloRef) {
     const vals = makeVals(soloRef)
+    const refColor = resolveToken('perf-tier-2')
     traces.push({
       type: 'scatterpolar',
       name: 'Solo ref',
@@ -50,8 +53,8 @@ function buildRadarChart(
       theta: [...axes, axes[0]],
       fill: 'toself',
       opacity: 0.4,
-      marker: { color: '#06B6D4' },
-      line: { color: '#06B6D4', dash: 'dot' },
+      marker: { color: refColor },
+      line: { color: refColor, dash: 'dot' },
     })
   }
 

@@ -17,6 +17,7 @@ import { TimeseriesHeatmap } from '@/components/ui/timeseries-heatmap'
 import { TimeseriesScatter } from '@/components/ui/timeseries-scatter'
 import { TimeseriesKdaBars } from '@/components/ui/timeseries-kda-bars'
 import type { TimeseriesKpiCard } from '@/lib/api/types'
+import { resolveToken } from '@/lib/accessibility'
 
 type TabId = 'summary' | 'cumul' | 'form' | 'intensity' | 'distributions' | 'combat'
 
@@ -153,7 +154,7 @@ export function TimeseriesPage() {
               </CardHeader>
               <CardContent className="pb-4">
                 <TimeseriesLineChart
-                  series={[{ name: 'K/D cumulé', points: cumul_tab.cumulative_kd ?? [], color: '#0072B2' }]}
+                  series={[{ name: 'K/D cumulé', points: cumul_tab.cumulative_kd ?? [], color: resolveToken('perf-tier-1') }]}
                   yAxisLabel="K/D"
                   referenceY={1}
                   referenceLabel="K/D = 1"
@@ -166,7 +167,7 @@ export function TimeseriesPage() {
               </CardHeader>
               <CardContent className="pb-4">
                 <TimeseriesLineChart
-                  series={[{ name: 'Kills – Morts cumulés', points: cumul_tab.cumulative_net ?? [], color: '#00DC82', fill: 'tozeroy' }]}
+                  series={[{ name: 'Kills – Morts cumulés', points: cumul_tab.cumulative_net ?? [], color: resolveToken('divergent-pos'), fill: 'tozeroy' }]}
                   yAxisLabel="Net"
                   referenceY={0}
                 />
@@ -178,7 +179,7 @@ export function TimeseriesPage() {
               </CardHeader>
               <CardContent className="pb-4">
                 <TimeseriesLineChart
-                  series={[{ name: 'K/D glissant', points: cumul_tab.rolling_kd ?? [], color: '#FFB703' }]}
+                  series={[{ name: 'K/D glissant', points: cumul_tab.rolling_kd ?? [], color: resolveToken('perf-tier-3') }]}
                   yAxisLabel="K/D"
                   referenceY={1}
                   referenceLabel="K/D = 1"
@@ -230,7 +231,7 @@ export function TimeseriesPage() {
               </CardHeader>
               <CardContent className="pb-4">
                 <TimeseriesLineChart
-                  series={[{ name: 'EWMA K/D', points: form_tab.ewma_kd_points ?? [], color: '#33D6FF' }]}
+                  series={[{ name: 'EWMA K/D', points: form_tab.ewma_kd_points ?? [], color: resolveToken('perf-tier-2') }]}
                   yAxisLabel="K/D lissé"
                   referenceY={1}
                   referenceLabel="K/D = 1"
@@ -257,7 +258,7 @@ export function TimeseriesPage() {
               </CardHeader>
               <CardContent className="pb-4">
                 <TimeseriesLineChart
-                  series={[{ name: 'Score/min', points: intensity_tab.score_per_min_data ?? [], color: '#FFB703', fill: 'tozeroy' }]}
+                  series={[{ name: 'Score/min', points: intensity_tab.score_per_min_data ?? [], color: resolveToken('perf-tier-3'), fill: 'tozeroy' }]}
                   yAxisLabel="pts/min"
                 />
               </CardContent>
@@ -276,7 +277,7 @@ export function TimeseriesPage() {
                 <CardContent className="pb-4">
                   <TimeseriesHistogram
                     buckets={distributions_tab.kda_buckets ?? []}
-                    color="#33D6FF"
+                    color={resolveToken('perf-tier-2')}
                     xAxisLabel="K/D"
                   />
                 </CardContent>
@@ -288,7 +289,7 @@ export function TimeseriesPage() {
                 <CardContent className="pb-4">
                   <TimeseriesHistogram
                     buckets={distributions_tab.kills_buckets ?? []}
-                    color="#00DC82"
+                    color={resolveToken('divergent-pos')}
                     xAxisLabel="Kills / match"
                   />
                 </CardContent>
@@ -300,7 +301,7 @@ export function TimeseriesPage() {
                 <CardContent className="pb-4">
                   <TimeseriesHistogram
                     buckets={distributions_tab.accuracy_buckets ?? []}
-                    color="#FFB703"
+                    color={resolveToken('perf-tier-3')}
                     xAxisLabel="Précision (%)"
                   />
                 </CardContent>
@@ -312,7 +313,7 @@ export function TimeseriesPage() {
                 <CardContent className="pb-4">
                   <TimeseriesHistogram
                     buckets={distributions_tab.score_per_min_buckets ?? []}
-                    color="#8B5CF6"
+                    color={resolveToken('narrative-dominant')}
                     xAxisLabel="Score / min"
                   />
                 </CardContent>
@@ -324,7 +325,7 @@ export function TimeseriesPage() {
                 <CardContent className="pb-4">
                   <TimeseriesHistogram
                     buckets={distributions_tab.rolling_wr_buckets ?? []}
-                    color="#FF4B4B"
+                    color={resolveToken('divergent-neg')}
                     xAxisLabel="Win Rate (%)"
                   />
                 </CardContent>

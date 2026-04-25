@@ -310,22 +310,22 @@ export function MatchCard({ match: m, locale = 'fr', timezone = 'UTC', onClick, 
             {hasKDA && (
               <div data-testid="match-card-kda-bar" className="px-3 pt-2.5 pb-2 space-y-1.5">
                 <div className="h-2 w-full rounded-full overflow-hidden flex">
-                  {kills > 0 && <div className="h-full bg-[#4CAF50]" style={{ width: kdaTotal > 0 ? `${(kills / kdaTotal) * 100}%` : '0%' }} />}
-                  {assists > 0 && <div className="h-full bg-[#38BDF8]" style={{ width: kdaTotal > 0 ? `${(assists / kdaTotal) * 100}%` : '0%' }} />}
-                  {deaths > 0 && <div className="h-full bg-[#F44336]" style={{ width: kdaTotal > 0 ? `${(deaths / kdaTotal) * 100}%` : '0%' }} />}
+                  {kills > 0 && <div className="h-full" style={{ width: kdaTotal > 0 ? `${(kills / kdaTotal) * 100}%` : '0%', backgroundColor: tokenCssVar('outcome-win') }} />}
+                  {assists > 0 && <div className="h-full" style={{ width: kdaTotal > 0 ? `${(assists / kdaTotal) * 100}%` : '0%', backgroundColor: tokenCssVar('perf-tier-2') }} />}
+                  {deaths > 0 && <div className="h-full" style={{ width: kdaTotal > 0 ? `${(deaths / kdaTotal) * 100}%` : '0%', backgroundColor: tokenCssVar('outcome-loss') }} />}
                 </div>
                 <div className="flex justify-center gap-5 mt-2">
                   <div className="flex flex-col items-center gap-0.5">
                     <span className="text-sm font-bold text-white leading-none">{kills}</span>
-                    <span className="text-[10px] font-medium leading-none" style={{ color: '#4CAF50' }}>frags</span>
+                    <span className="text-[10px] font-medium leading-none" style={{ color: tokenCssVar('outcome-win') }}>frags</span>
                   </div>
                   <div className="flex flex-col items-center gap-0.5">
                     <span className="text-sm font-bold text-white leading-none">{assists}</span>
-                    <span className="text-[10px] font-medium leading-none" style={{ color: '#38BDF8' }}>assist.</span>
+                    <span className="text-[10px] font-medium leading-none" style={{ color: tokenCssVar('perf-tier-2') }}>assist.</span>
                   </div>
                   <div className="flex flex-col items-center gap-0.5">
                     <span className="text-sm font-bold text-white leading-none">{deaths}</span>
-                    <span className="text-[10px] font-medium leading-none" style={{ color: '#F44336' }}>morts</span>
+                    <span className="text-[10px] font-medium leading-none" style={{ color: tokenCssVar('outcome-loss') }}>morts</span>
                   </div>
                 </div>
               </div>
@@ -359,8 +359,8 @@ export function MatchCard({ match: m, locale = 'fr', timezone = 'UTC', onClick, 
                     <div className="w-16 flex flex-col items-center gap-0.5">
                       {m.perfect_kills != null && m.perfect_kills > 0 ? (
                         <>
-                          <span className="text-lg font-black leading-none" style={{ color: '#F59E0B' }}>{m.perfect_kills}</span>
-                          <span className="text-[10px] font-medium leading-none" style={{ color: '#F59E0B' }}>Parfaits</span>
+                          <span className="text-lg font-black leading-none" style={{ color: tokenCssVar('perf-tier-3') }}>{m.perfect_kills}</span>
+                          <span className="text-[10px] font-medium leading-none" style={{ color: tokenCssVar('perf-tier-3') }}>Parfaits</span>
                         </>
                       ) : null}
                     </div>
@@ -368,17 +368,17 @@ export function MatchCard({ match: m, locale = 'fr', timezone = 'UTC', onClick, 
                 )}
               <div data-testid="match-card-damage-bar" className="px-3 pt-2.5 pb-2 space-y-1.5">
                 <div className="h-2 w-full rounded-full overflow-hidden flex">
-                  {offConv > 0 && <div className="h-full bg-[#4CAF50]" style={{ width: damageTotal > 0 ? `${(offConv / damageTotal) * 100}%` : '0%' }} />}
-                  {defRes > 0 && <div className="h-full bg-[#38BDF8]" style={{ width: damageTotal > 0 ? `${(defRes / damageTotal) * 100}%` : '0%' }} />}
+                  {offConv > 0 && <div className="h-full" style={{ width: damageTotal > 0 ? `${(offConv / damageTotal) * 100}%` : '0%', backgroundColor: tokenCssVar('outcome-win') }} />}
+                  {defRes > 0 && <div className="h-full" style={{ width: damageTotal > 0 ? `${(defRes / damageTotal) * 100}%` : '0%', backgroundColor: tokenCssVar('perf-tier-2') }} />}
                 </div>
                 <div className="flex justify-center gap-5 mt-2">
                   <div className="flex flex-col items-center gap-0.5">
                     <span className="text-sm font-bold text-white leading-none">{offConv.toFixed(2)}</span>
-                    <span className="text-[10px] font-medium leading-none" style={{ color: '#4CAF50' }}>Rendement</span>
+                    <span className="text-[10px] font-medium leading-none" style={{ color: tokenCssVar('outcome-win') }}>Rendement</span>
                   </div>
                   <div className="flex flex-col items-center gap-0.5">
                     <span className="text-sm font-bold text-white leading-none">{defRes.toFixed(2)}</span>
-                    <span className="text-[10px] font-medium leading-none" style={{ color: '#38BDF8' }}>Résistance</span>
+                    <span className="text-[10px] font-medium leading-none" style={{ color: tokenCssVar('perf-tier-2') }}>Résistance</span>
                   </div>
                 </div>
               </div>
