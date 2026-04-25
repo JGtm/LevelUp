@@ -6,7 +6,6 @@ import { useState } from 'react'
 import { useParams } from '@tanstack/react-router'
 import { useGlobalFilterStore } from '@/stores/globalFilterStore'
 import { useSynthesisPage } from './queries'
-import { PageHeader } from '@/components/shell/PageHeader'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { EmptyStateCard, EmptyStateNotice } from '@/components/ui/empty-state'
 import { PageLoader } from '@/components/ui/spinner'
@@ -295,17 +294,11 @@ export function SynthesisPage() {
   if (isError) return <div className="p-8 text-center text-destructive">Erreur : {String(error)}</div>
   if (!data) {
     return (
-      <div className="flex flex-col gap-6">
-        <PageHeader
-          title="Synthèse"
-          subtitle="Bilan global et comparaison solo / escouade"
+      <div className="px-6">
+        <EmptyStateCard
+          title="Synthèse indisponible"
+          description="Aucune charge utile n'a été renvoyée pour cette page. Vérifie les agrégats solo/escouade et le contexte de filtres."
         />
-        <div className="px-6">
-          <EmptyStateCard
-            title="Synthèse indisponible"
-            description="Aucune charge utile n'a été renvoyée pour cette page. Vérifie les agrégats solo/escouade et le contexte de filtres."
-          />
-        </div>
       </div>
     )
   }
@@ -324,23 +317,19 @@ export function SynthesisPage() {
 
   return (
     <div className="flex flex-col gap-6">
-      <PageHeader
-        title="Synthèse"
-        subtitle="Bilan global et comparaison solo / escouade"
-        actions={
-          <div className="flex gap-1 rounded-lg border p-1">
-            {PERIOD_OPTIONS.map((opt) => (
-              <button
-                key={opt.value}
-                onClick={() => setPeriod(opt.value)}
-                className={`rounded px-3 py-1 text-sm transition-colors ${period === opt.value ? 'bg-primary text-primary-foreground' : 'text-muted-foreground hover:bg-muted'}`}
-              >
-                {opt.label}
-              </button>
-            ))}
-          </div>
-        }
-      />
+      <div className="flex justify-end px-6 pt-6">
+        <div className="flex gap-1 rounded-lg border p-1">
+          {PERIOD_OPTIONS.map((opt) => (
+            <button
+              key={opt.value}
+              onClick={() => setPeriod(opt.value)}
+              className={`rounded px-3 py-1 text-sm transition-colors ${period === opt.value ? 'bg-primary text-primary-foreground' : 'text-muted-foreground hover:bg-muted'}`}
+            >
+              {opt.label}
+            </button>
+          ))}
+        </div>
+      </div>
 
       {/* Bloc 0 — Scope */}
       {data.scope && <ScopeBar scope={data.scope} />}

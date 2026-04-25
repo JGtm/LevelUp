@@ -14,54 +14,121 @@
 
 ## What's new
 
-**v7.0 — Mission Control challenges, live + persisted**
-- **Active challenges back on Home V7** — the Mission Control home now restores the active challenge card from HaloStats `/decks`, with the real deck expiry, badge, localized title/description and the player's actual `x/y` progress
-- **Challenge data persisted cleanly** — current player challenge states are now historized in each player DB via `challenge_snapshots`, while shared challenge definitions live in `metadata.duckdb`
-- **Multi-language challenge catalog** — challenge titles and descriptions are stored from all CMS-exposed languages, normalized to BCP-47, with `en-US` fallback when the requested locale is missing
-- **Live-first, failsafe behavior** — if `metadata.duckdb` is locked by another process, the Home page still renders challenge data live and simply skips persistence for that refresh
-- **Discord — new media notifications** — a Discord embed with GIF or screenshot thumbnail is sent whenever new captures are indexed; each file is notified once (anti-spam via `discord_notified_at`); toggle `discord_notify_new_media` in Settings
-- **Media V2 — persistent likes, better grouping, lighter grid** — screenshots and videos can now be liked directly from the grid, grouped by liked state, session, or solo/squad context, and keep their like state across reloads through resilient UI preference storage. The grid also uses native thumbnails, a shared lightbox, and the local heart assets for liked / unliked states
+**v7.0 — New React app, Mission Control & multi-title support**
 
-**v6.5 — Heatmap escouade & paramètres fiabilisés**
-- **Heatmap d'intensité par joueur** (Teammates) — nouvelle visualisation : heatmap match × phase (début/milieu/fin) pour chaque membre de l'escouade. Voir qui frappe tôt, qui accélère en fin de match. Toggle pour afficher tous ensemble ou joueur par joueur
-- **Notifications Discord séparées** — les alertes sync et backfill ont maintenant chacune leur propre toggle ; désactiver l'une n'affecte pas l'autre
-- **Paramètres plus robustes** — les réglages sont écrits de façon sécurisée (écriture atomique + sauvegarde automatique) ; le fichier ne peut plus se corrompre en cas de crash ou d'arrêt forcé
-- **Corrections** — les records (meilleure performance) ne s'affichent plus par défaut quand ils avaient été désactivés
+Major overhaul. LevelUp leaves Streamlit behind for a **React 19 + Go API** app with a **fully redesigned UX/UI** and **fully automated synchronization**. Close to 400 commits of work — here's what it changes for you:
 
-**v6.4 — Filtres médias, CSR escouade & aides à la lecture**
-- **Filtres de la médiathèque** — filtrez vos clips et screenshots par propriétaire (mes captures / coéquipiers / sans match associé), carte, mode, résultat (victoire / défaite…) et contexte solo vs escouade. Triez par date, carte, mode ou résultat en un clic
-- **Aides à la lecture** — une case à cocher dans la barre latérale affiche ou masque les ~45 cartouches d'explication sur chaque page ; désactivable pour une interface plus épurée
-- **Récapitulatif carrière redessiné** — 8 cartes compactes côte à côte : Matchs, Durée totale, Frags, Morts, Assists, Précision, Temps en vie, Résultats. Chaque carte compare votre valeur à votre moyenne historique (code couleur vert/or/rouge à ±8 %)
-- **Win/Loss intégré dans Timeseries** — la page Win/Loss devient un onglet dans Timeseries ; onglets renommés : Résumé · Cartes & Modes · Progression · Avancé
-- **CSR des coéquipiers automatique** — lors d'un sync sur un match classé, le rang de tous les co-joueurs enregistrés est récupéré et distribué automatiquement — plus besoin que chacun synchronise son propre compte
-- **Badges Remontada/Collapse pour les coéquipiers** — calculés pour vos co-joueurs synchronisés en même temps que vous
-- **Panneau de légende fixe** (Teammates) — un panneau flottant affiche la couleur de chaque membre de l'escouade pendant tout votre défilement dans la section squad
-- **Préférences mémorisées entre sessions** — le joueur sélectionné et la langue sont mémorisés dans le navigateur ; les filtres survivent aux mises à jour
+**A completely rebuilt app — new UX/UI**
+- **React 19 + Tailwind frontend** — instant navigation between pages, shareable URLs for every match/session/player, dark/light theme, full FR/EN i18n
+- **Unified design system** — palette, typography, spacing and components (cards, buttons, modals, tooltips, carousels, lightbox) harmonized across the whole app; no more patchwork Streamlit pages
+- **Two-level navigation** — L1 bar (Home / Synthesis / Explorer / Squad / Hall of Fame / Media / Help / Settings) plus contextual L2 tabs; everything is one click away, no more scrolling sidebar
+- **Modern interactions** — page transitions, deep links (`?session=`, prev/next match), hovers, side drawers, visual feedback on every action, responsive UI
+- **Go API backend** — Python → Go switch for a lighter server, faster startup, smaller memory footprint
+- **Multi-title support** — the app now handles multiple Halo games (Infinite and beyond) via a **TitleSwitcher** in the nav bar; `levelup add-title` CLI command to register a new title
+- **Built-in Help page** — release notes (in-app changelog) plus a glossary of Halo terms, with a local 24 h cache for offline reading
 
-**v6.3 — Noms localisés, records escouade & détails médailles**
-- **Cartes et modes dans votre langue** — noms de cartes, playlists et modes de jeu en français (ou anglais) sur toutes les pages : filtres, tableaux, graphiques et histogramme de winrate
-- **Description des médailles au survol** — survolez une médaille dans le scoreboard ou la section Citations pour lire sa description
-- **Records all-time de l'escouade** — la page Teammates affiche les meilleurs records en carrière pour chaque membre (K/D, kills, séries…) avec annotations colorées par joueur et vue détaillée par carte
-- **Badge Top Killer** 🔫 — affiché sur la timeline Impact pour le premier joueur à atteindre 10 kills dans le match
-- **Histogramme temps de premier kill/mort revu** — graphique en papillon miroir avec intervalles de 15 secondes et temps réel de jeu (décompte pré-partie soustrait)
-- **Dernier match amélioré** — carte et mode fusionnés ; les cartes MMR, Kills et Deaths affichent aussi le score équipe adverse avec un écart coloré ; le score de performance apparaît directement à côté du rating
-- **Médailles et citations en grille 4 colonnes** — scoreboard plus lisible ; armes en grille 2 colonnes avec bonne proportion de miniatures
-- **Recherche partielle par ID de match** (Explorer) — tapez 3+ caractères d'un ID de match pour filtrer instantanément la liste
-- **Histogramme de cadence de kills** — nouveau graphique (onglet Combat) : kills par intervalles de 15 secondes pour vous et les ennemis, avec moyenne mobile par équipe
-- **Heatmap d'intensité de match** — visualise la densité de kills par phase sur l'ensemble de vos matchs
-- **Auto-indexation de la médiathèque** — vos clips sont re-scannés automatiquement en arrière-plan après chaque sync
-- **Corrections** — citation Spartan Carnage corrigée ; noms corrects dans les notifications Discord ; calendar de filtres avec navigation libre entre les années
+**Home "Mission Control" — fully redesigned**
+- **Multi-title hero banner** — dynamic per-game banner with dedicated artwork
+- **Live Battle Pass panel** — dedicated card with operation artwork, tier progression and upcoming reward, refreshed on every visit
+- **Active challenges restored** — Mission Control challenge cards with real deck expiry, badge, localized title/description and your actual `x/y` progress in real time
+- **Multi-language challenge catalog** — titles and descriptions stored in **26 languages** (BCP-47), with `en-US` fallback when the requested locale is missing
+- **Clean historization** — your challenges are snapshotted into your player DB (`challenge_snapshots`), shared definitions live in `metadata.duckdb`
+- **Live-first, failsafe** — if the metadata DB is locked, the Home still renders challenges live and simply skips persistence (no blocking)
+- **Enriched match tiles** — KDA, squad, rank, headshots, citations, perf score and both team scores right on each tile
+- **Sessions carousel** — color-coded FDA, dominant playlist/mode, hover tooltip
+- **Liked-media tab** + recent matches carousel on the Home
+- **Synthesis page** — new L1 section with weekly highlights, top rivalries and career summary stats
 
-**v6.2 — Badges Comeback & vue escouade unifiée**
-- **Badges Remontada / Collapse / Contre-Remontada** — l'app détecte les scénarios de comeback dans votre historique : *Remontada* (vous étiez perdants à mi-match et vous avez gagné), *Collapse* (vous meniez et avez perdu), *Contre-Remontada* (vous avez stoppé le comeback adverse)
-- **Vue escouade unifiée** — les vues 1-vs-1 et escouade fusionnent ; vous obtenez les mêmes graphiques riches pour 1, 2 ou 3 amis
-- **Graphique Kills ↑ / Morts ↓** — kills et morts fusionnés en un seul graphique miroir par membre, pour comparer les arcs K/D d'un coup d'œil
-- **Noms de modes cohérents** — les libellés de modes de jeu sont désormais homogènes sur toutes les pages et tous les graphiques
+**Media V2 — likes, Discord notifications, upload**
+- **Persistent likes** — like your screenshots and clips directly from the grid, state kept across reloads
+- **Smart grouping** — by favorites, session, or solo/squad context
+- **Lighter grid** — native thumbnails, shared lightbox, heart icons for liked / unliked
+- **Drag-and-drop upload** — add your manual captures straight from the Media page
+- **Non-destructive scanning** — automatic background re-indexing with a dedicated `--captures-dir` option
+- **Discord notifications for new media** — embed with a GIF or screenshot thumbnail whenever a new capture is indexed; anti-spam (each file notified once); toggle `discord_notify_new_media` in Settings
 
-**v6.1 — Sync plus rapide, bugs corrigés**
-- **Sync ~30–40 % plus rapide** — chaque synchronisation se termine nettement plus vite
-- **Noms de rangs corrects** — le rang affiché correspond désormais au vrai palier (ex. « Lance Corporal Diamond 1 »)
-- Corrections : scores de performance et vues matérialisées toujours à jour après sync
+**Dedicated Match page & richer visualizations**
+- **Clean URL per match** — `/players/{gamertag}/matches/{id}`, shareable, with prev/next match navigation
+- **Tug-of-War timeline** — dynamic curve of team score swings
+- **KD Timeline** — kills/deaths evolution by phase with a moving average
+- **Impact Badges** — narrative badges (Top Killer, Silent Hero, False Brother, Comeback Champion…) computed per match
+- **Encounters panel** — list of players you've crossed paths with in earlier matches
+- **Combat Yield & Perfect Kills** — new metrics in the match view
+- **V7 scoreboard** — higher info density: expected stats, skill rank, linked media, citations
+
+**Rebuilt authentication**
+- **SISU/PoP provider** — new Xbox authentication with Proof-of-Possession for more stable sessions and fewer reconnects
+- **Local auth** — username/password mode for single-user / LAN deployments
+
+**Xbox achievements & match events**
+- **Xbox achievements sync** — your Xbox achievements are pulled automatically from the Halo API on every sync
+- **Highlight events** — binary parser of match films to extract all major events (medals, clutches, spawns)
+- **Weapon kills backfill** — weapon used per frag reconstructed from the film (POV ~87 %)
+- **Comeback badges for teammates** — Remontada / Collapse / Counter-Remontada computed for squad members synced alongside you
+
+**Hall of Fame & Season Pass**
+- **Multilingual Season Pass** — Battle Pass translations in 26 languages, tier images from GameCMS
+- **Relations / Leaderboard** — new Hall of Fame pages: crossed players, per-player stats, career micro-leaderboard
+- **Compare drawer** — redesigned session/player comparison UI
+
+**Automated sync & real-time presence**
+- **100 % automatic sync** — no more manual `python scripts/sync.py`: the app syncs your matches on its own, continuously in the background, as soon as a new game is played
+- **Immediate end-of-match trigger** — as soon as a player finishes a match, the watcher fetches the stats without waiting for the next tick
+- **Xbox RTA presence + Steam polling** — real-time online detection to know who's playing and sync at the right moment
+- **Smart scheduler** — sync cadence adapts to player activity; no useless requests when nobody's playing
+- **Autonomous token refresh** — no more interruptions: Halo tokens renew themselves in the background
+- **Proactive reconnection** — status=3 handling with on-demand XSTS refresh, automatic reconnect on startup
+
+**Settings & admin**
+- **Settings auto-save** — settings persist immediately with an ephemeral visual indicator
+- **Admin page** — supervision UI (auth provider, job status, privacy)
+- **Browser preferences** — selected player, language and filters remembered across sessions
+- **Configurable API endpoints** — Halo Stats, SPNKr, CMS… all configurable from Settings
+
+**Assets & maps**
+- **Cache-aside map images** — map artwork downloaded and cached locally, no more repeated external requests
+- **`populate-assets` CLI** — Go command to pre-download every asset (maps, medals, Battle Pass tiers) ahead of offline use
+
+**v6.5 — Squad heatmap & hardened settings**
+- **Per-player intensity heatmap** (Teammates) — new visualization: match × phase (early/mid/late) heatmap for every squad member. See who strikes early, who ramps up late. Toggle between "all together" and "player by player"
+- **Separate Discord notifications** — sync and backfill alerts now have their own toggle each; disabling one doesn't affect the other
+- **More robust settings** — preferences are written safely (atomic write + automatic backup); the file can no longer be corrupted on crash or forced shutdown
+- **Fixes** — records (best performance) no longer appear by default when they had been disabled
+
+**v6.4 — Media filters, squad CSR & reading aids**
+- **Media library filters** — filter your clips and screenshots by owner (my captures / teammates / no linked match), map, mode, outcome (win / loss…) and solo vs squad context. Sort by date, map, mode or outcome in one click
+- **Reading aids** — a sidebar checkbox shows or hides the ~45 explanatory callouts across the pages; disable it for a cleaner UI
+- **Redesigned career summary** — 8 compact cards side by side: Matches, Total time, Frags, Deaths, Assists, Accuracy, Time alive, Outcomes. Each card compares your value to your all-time average (green/gold/red color code at ±8 %)
+- **Win/Loss folded into Timeseries** — the Win/Loss page becomes a tab inside Timeseries; tabs renamed: Summary · Maps & Modes · Progression · Advanced
+- **Automatic teammate CSR** — when syncing a ranked match, the rank of every registered co-player is pulled and distributed automatically — no need for each one to sync their own account anymore
+- **Remontada/Collapse badges for teammates** — computed for squad members synced alongside you
+- **Sticky legend panel** (Teammates) — a floating panel displays each squad member's color for the whole scroll through the squad section
+- **Cross-session preferences** — selected player and language are remembered in the browser; filters survive updates
+
+**v6.3 — Localized names, squad records & medal details**
+- **Maps and modes in your language** — map, playlist and game mode names in French (or English) across every page: filters, tables, charts and winrate histogram
+- **Medal descriptions on hover** — hover a medal in the scoreboard or the Citations section to read its description
+- **All-time squad records** — the Teammates page shows career bests for each member (K/D, kills, streaks…) with per-player colored annotations and a per-map detail view
+- **Top Killer badge** — shown on the Impact timeline for the first player to reach 10 kills in a match
+- **Reworked first-kill/first-death histogram** — mirrored butterfly chart with 15-second buckets and real in-game time (pre-match countdown subtracted)
+- **Improved Last Match view** — map and mode merged; MMR, Kills and Deaths cards also display the opposing team score with a color-coded gap; the performance score appears right next to the rating
+- **Medals and citations in a 4-column grid** — clearer scoreboard; weapons in a 2-column grid with well-proportioned thumbnails
+- **Partial match ID search** (Explorer) — type 3+ characters of a match ID to instantly filter the list
+- **Kill cadence histogram** — new chart (Combat tab): kills by 15-second buckets for you and the enemy team, with per-team moving average
+- **Match intensity heatmap** — visualize kill density per phase across all your matches
+- **Auto-indexing media library** — your clips are re-scanned automatically in the background after each sync
+- **Fixes** — Spartan Carnage citation corrected; correct names in Discord notifications; filter calendar with free navigation across years
+
+**v6.2 — Comeback badges & unified squad view**
+- **Remontada / Collapse / Counter-Remontada badges** — the app detects comeback scenarios in your history: *Remontada* (you were losing at mid-match and won), *Collapse* (you were winning and lost), *Counter-Remontada* (you stopped the enemy comeback)
+- **Unified squad view** — 1-vs-1 and squad views merge; you get the same rich charts for 1, 2 or 3 friends
+- **Kills ↑ / Deaths ↓ chart** — kills and deaths merged into a single mirrored chart per member, to compare K/D arcs at a glance
+- **Consistent mode names** — game mode labels are now homogeneous across every page and every chart
+
+**v6.1 — Faster sync, bugs fixed**
+- **Sync ~30–40 % faster** — every synchronization completes noticeably faster
+- **Correct rank names** — the displayed rank now matches the actual tier (e.g. "Lance Corporal Diamond 1")
+- Fixes: performance scores and materialized views always up to date after sync
 
 ---
 

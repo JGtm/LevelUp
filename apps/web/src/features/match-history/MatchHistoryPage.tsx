@@ -3,7 +3,6 @@
  */
 import { useState } from 'react'
 import { useParams } from '@tanstack/react-router'
-import { PageHeader } from '@/components/shell/PageHeader'
 import { PageLoader } from '@/components/ui/spinner'
 import { PrivacyBanner } from '@/components/ui/privacy-banner'
 import { MatchHistoryTable } from './MatchHistoryTable'
@@ -57,11 +56,6 @@ export function MatchHistoryPage() {
 
   return (
     <div className="flex flex-col">
-      <PageHeader
-        title="Historique des parties"
-        subtitle={data ? `${data.summary.total_matches_scoped.toLocaleString('fr-FR')} parties dans la période` : undefined}
-      />
-
       <div className="p-6">
         {/* Sprint 54-B : avertissement privacy */}
         <PrivacyBanner warning={data?.privacy_warning} className="mb-4" />

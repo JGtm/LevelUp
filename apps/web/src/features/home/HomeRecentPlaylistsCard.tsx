@@ -95,6 +95,14 @@ export function HomeRecentPlaylistsCard({
                     {item.playlist_name || 'Playlist inconnue'}
                   </p>
 
+                  {item.rating_value != null && (
+                    <p className="text-xs font-semibold tabular-nums text-foreground">
+                      {item.rating_type === 'LUSR'
+                        ? `${Math.round(item.rating_value)} pts`
+                        : `${Math.round(item.rating_value)} CSR`}
+                    </p>
+                  )}
+
                   {item.tier_label ? (
                     <p
                       data-testid="home-rank-tier-label"
@@ -109,13 +117,7 @@ export function HomeRecentPlaylistsCard({
                     >
                       En placement
                     </p>
-                  ) : item.rating_value != null ? (
-                    <p className="text-xs text-muted-foreground">
-                      {item.rating_type === 'LUSR'
-                        ? `${Math.round(item.rating_value)} pts`
-                        : `${Math.round(item.rating_value)} CSR`}
-                    </p>
-                  ) : (
+                  ) : item.rating_value == null && (
                     <p
                       data-testid="home-rank-neutral-label"
                       className="text-xs text-muted-foreground"

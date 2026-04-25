@@ -1,5 +1,674 @@
 # Thought Log
 
+## [2026-04-25] feat(battle-pass): exposition Quality/ItemType/Description + couleurs de rareté (home + page Pass)
+
+**Statut** : Complété
+
+**Contexte** : Suite au lightbox des rewards (entrée précédente), le payload remontait `title` + `image_url` seulement. GameCMS expose en réalité davantage : `Quality` (rareté Halo : Common/Rare/Epic/Legendary/Mythic), `Type` (catégorie : ArmorCoating, WeaponCharm, SpartanEmblem…), `Title` et `Description` localisés. Sur 1039 items réels du repo : 541 Epic, 238 Legendary, 228 Rare, 32 sans rareté.
+
+**Décisions techniques** :
+- **Domain Go** (`internal/domain/season_pass.go`) : ajout de `Quality`, `ItemType`, `Description` (déjà présent sur tier) sur `SeasonPassItemSummary` ET `SeasonPassTierSummary`. Tous `*string` (omitempty) — l'API peut renvoyer NULL et le frontend gère.
+- **Repo Go** (`platform/duckdb/season_pass_repo.go`) : `seasonPassItemMeta` étendu, SQL avec `COALESCE(NULLIF(d.quality,''), json_extract_string(d.raw_payload_json, '$.CommonData.Quality'))` — fallback JSON parce que la colonne `quality` est parfois vide (le script `import_bp_items` lit `cd.ItemType` qui n'existe pas dans le JSON brut, le bon nom est `cd.Type`). Pareil pour `item_type` qui essaie `Type` puis `ItemType`.
+- **Helper frontend** (`features/palmares/rarity.ts`) — module pur, aucune JSX :
+  - `normalizeRarity()` : tolérant à la casse, mappe Common/Normal → common, etc.
+  - `rarityStyle()` : retourne `{ bg, badge, glow }` — convention Halo Infinite : **fond coloré** (dégradé radial subtil), pas de bordure (l'utilisateur a explicitement demandé un fond coloré, pas une bordure). Le `glow` est un drop-shadow léger (Légendaire/Mythique surtout).
+  - `rarityLabel()` : libellés FR/EN.
+  - `itemTypeLabel()` : 25 mappings PascalCase → français (`ArmorCoating` → "Revêtement d'armure"). Fallback : décompose le PascalCase en mots espacés.
+- **UI** :
+  - `BattlePassRewardCard` (home, carrousel) : fond coloré derrière l'image. Comme les PNG GameCMS ont une transparence, la teinte de rareté apparaît autour du modèle 3D du cosmétique.
+  - `SeasonPassTierCard` (page Pass) : même approche — suppression du `bg-gradient-to-br from-slate-200 via-slate-100 to-white` (qui masquait tout).
+  - `BattlePassRewardLightbox` : fond coloré sur la zone image principale, badge de rareté avec couleur officielle, sous-titre `#rank · Type localisé`. La bordure colorée a été retirée. Glow hérité de la rareté sur le container.
+- **Couleurs Halo Infinite** (vérifié via WebSearch + sources Halopedia/TweakTown) : Common gris, Rare bleu, Epic violet, Legendary or, Mythic rouge. Tailwind : slate-500 / sky-500 / purple-500 / amber-400 / rose-500.
+- **Volontairement laissé en dette** : `import_bp_items.go` continue à lire `cd.ItemType` (champ inexistant) — ne casse rien grâce au fallback JSON dans le SQL. À fixer si le script est rejoué pour repeupler la table en propre.
+
+**Résultats observés** :
+- `go build ./...` OK. `go test ./internal/service/ -run SeasonPass` OK.
+- `tsc --noEmit` OK. `SeasonPassPage.test.tsx` (1 test) vert. Test `battle pass` de la home vert.
+- 2 échecs préexistants dans `HomePage.test.tsx` (KPIs `K/D` et `clip-epic.mp4`) sans rapport.
+
+**Conclusion** : Pipeline data → UI complet pour la rareté/catégorie. Si on veut surfacer plus tard une icône par `ItemType` (ex: petit svg arme/armure/emblème), le mapping est concentré dans `rarity.ts` — ajouter un champ `icon` à `RarityStyle` ou un map séparé. Pas de migration DB nécessaire (les colonnes `quality`/`item_type` existent déjà).
+
+## [2026-04-25] docs(help): précision sur les prérequis Xbox de la détection de présence (RTA)
+
+**Statut** : Complété
+
+**Contexte** : Dans le glossaire de la page Aide (entrée « Synchronisation »), la puce « Détection de présence » décrivait le veilleur RTA mais ne mentionnait pas que les notifications RTA dépendent des paramètres de confidentialité Xbox de l'utilisateur. Question utilisateur : les joueurs doivent-ils rendre publics leur statut de connexion et leur jeu actif ?
+
+**Vérification** : `apps/go-api/internal/presence/rta_client.go` gère explicitement `status=3` lors du subscribe RTA et commente les deux causes possibles : (1) jeton XSTS expiré, (2) « Privacy refusée pour ce XUID — pas friend, privacy strict, etc. ». La distinction est faite via une fenêtre de grâce de 2 s (`evaluateStatus3AfterGrace`) — si au moins un autre subscribe réussit pendant la grâce, c'est un refus de confidentialité par utilisateur, pas une expiration globale du jeton. Donc la confidentialité Xbox bloque effectivement la lecture RTA.
+
+**Décision** : Édition FR uniquement de `apps/web/src/features/help/i18n.ts` (l'entrée EN « Sync » n'expose pas les trois déclencheurs au même niveau de détail — pas d'ajout de prérequis à un endroit où le contexte n'existe pas). Ajout d'un paragraphe « Prérequis côté Xbox » qui cite explicitement les paramètres « Vous voir en ligne » et « Vous voir jouer à un jeu » réglés sur « Tout le monde », et précise que les autres déclencheurs (manuel + planifié) continuent de fonctionner si le RTA est silencieux.
+
+**Conclusion** : L'utilisateur saura à présent diagnostiquer une détection de présence muette en vérifiant ses paramètres de confidentialité Xbox plutôt qu'en suspectant un bug du veilleur. Si EN ré-aligne le glossaire sur la version FR, ajouter le même paragraphe.
+
+## [2026-04-25] feat(battle-pass): lightbox de détail des récompenses (Home + page Pass de combat)
+
+**Statut** : Complété
+
+**Contexte** : Sur la home (`HomeBattlePassPanel`) et sur la page Battle Pass (`SeasonPassPage`), les rewards du carousel n'étaient pas cliquables. L'utilisateur voulait un mode lecteur qui ouvre l'image en taille originale avec le titre, le rang et la description de la récompense.
+
+**Décisions techniques** :
+- Composant unique `apps/web/src/features/palmares/BattlePassRewardLightbox.tsx` : prend une `RewardLightboxData` (`title`, `rank`, `imageUrl`, `description`, `badges`) et gère overlay + Escape + clic backdrop. Fermeture pilotée par le parent (state `null` ⇒ fermé). Pas de gestion de navigation prev/next (un seul reward affiché à la fois — différent de `MediaLightbox` qui parcourt une collection homogène).
+- Les badges sont typés (`current` / `obtained` / `free` / `premium` / `upcoming`) et mappés vers les variantes existantes du composant `Badge` (pas de nouvelle variante).
+- Côté Home, la `RewardCard` interne récupère désormais aussi `description` du tier (uniquement pour les items « paid » et « empty » — les `free_rewards` n'ont pas de description dans le type `SeasonPassItemSummary`). La carte est convertie de `<div>` en `<button>` cliquable avec focus visible.
+- Côté `SeasonPassPage`, le wrapper `<div>` du `SeasonPassTierCard` reste un `<div>` (préserve le `data-testid="season-pass-tier-card"` et la `ref` HTMLDivElement utilisée par les tests et par le centrage du rail). Le contenu interne est wrappé en `<button>`.
+
+**Résultats observés** :
+- `tsc --noEmit` OK.
+- `HomePage.test.tsx` (battle pass uniquement) et `SeasonPassPage.test.tsx` : verts. Les data-testids existants (`home-battle-pass-tier-card`, `season-pass-tier-card`) sont conservés.
+- 2 échecs préexistants dans `HomePage.test.tsx` (Hero KPIs `K/D` et media rail `clip-epic.mp4`) sans rapport avec le battle pass.
+
+**Conclusion** : Comportement de lightbox uniformisé entre les deux entrées (carousel home compact + page Pass dédiée). Si le besoin d'une description pour les `free_rewards` apparaît plus tard, il faudra étendre le type API `SeasonPassItemSummary` côté backend.
+
+## [2026-04-25] feat(media): tuiles — date+heure courte sous l'étiquette Clip/map
+
+**Statut** : Complété
+
+**Contexte** : Les tuiles de `MediaThumbnailCard` (page Médias et carrousel "Médias récents" du Home) n'affichaient que le badge `kind` + `map_name`. La date était optionnelle via `formatMediaDate(item.capture_end_utc)` mais souvent vide quand `capture_end_utc` est null.
+
+**Décisions techniques** :
+- `formatMediaDate` : format court `JJ/MM/AA HH:MM` (ex. `15/03/26 14:32`) — plus dense que `15 mars à 14:32` pour rester lisible sur les tuiles 240px du carrousel et sur les colonnes étroites de la grille (jusqu'à `xl:grid-cols-6`). Ajout d'un guard `Number.isNaN(d.getTime())` pour les dates invalides.
+- Fallback `item.capture_end_utc ?? item.match_start_time` : on utilise la fin de capture si dispo (plus précise), sinon le début du match. Évite que la date disparaisse pour les médias non encore associés à une fin de capture.
+
+**Résultats observés** : Modif localisée à `apps/web/src/features/media/MediaViewer.tsx`. Aucun test ne couvrait la date, donc rien à mettre à jour. Les deux pages (MediaPage et RecentMediaRail) consomment le même composant → bénéfice partagé.
+
+## [2026-04-25] feat(home): Faits marquants — retour de la tuile Volume (8ᵉ tuile)
+
+**Statut** : ✅ Complété
+
+**Contexte** : Avec les largeurs adaptatives (col-span 2 pour Plus belle victoire / Série), il y a de la place pour réintroduire la tuile « Volume » qui avait été remplacée par Stats par min. Volume affiche le nombre de parties + un détail composable (FDA moyen + taux de victoire).
+
+**Décisions techniques** :
+- **Backend** (`analysis/home.go`) : nouveau bloc Highlight 7 (Volume) inséré entre Stats par min. et Série. `Value` = nombre de parties, `DetailKey = highlight.detail.volume_kda_wr` avec params `{kda, wr}` si FDA dispo, sinon `highlight.detail.volume_wr` avec `{wr}`. `wr` arrondi côté backend (`math.Round`).
+- **Front** (`highlights.i18n.ts`) : ajout de `highlight.title.volume` (FR « Volume », EN « Volume ») + 2 clés détail : `volume_kda_wr` (`FDA 2.47 · 65% victoires` / `KDA 2.47 · 65% win rate`) et `volume_wr` (`Taux de victoire 65%` / `Win rate 65%`).
+- **Col-span** : `highlight.title.volume → 1`. Grille passe à `lg:grid-cols-10` (total des spans = 10 : 6×1 + 2×2). Ajout de `10: 'lg:grid-cols-10'` implicite via la nouvelle valeur de la classe de grille.
+
+**Ordre final (8 tuiles)** : Perf moyenne · ΔMMR · Plus belle victoire · Pic FDA · Maîtrise · Stats par min. · **Volume** · Série.
+
+**Résultats observés** :
+- `go build ./...` OK, tests Highlights OK. `tsc --noEmit` OK. `HomePage.test.tsx` baseline préservée.
+
+## [2026-04-25] feat(home): Faits marquants — largeurs adaptatives (col-span)
+
+**Statut** : ✅ Complété
+
+**Contexte** : Répartir la largeur des tuiles selon la densité de leur contenu. LUSR/CSR tient en 3 caractères (`+35pts`), Série affiche des labels longs (« Folie meurtrière (max) ») + détails paramétrés.
+
+**Décisions techniques** :
+- Grille passe de `lg:grid-cols-7` → `lg:grid-cols-9` (9 colonnes).
+- Mapping `titleKey → colSpan` dans `highlights.i18n.ts` (fonction `resolveColSpan`). Total = 9 :
+  - Perf moyenne : 1, LUSR/CSR : 1, Pic FDA : 1, Maîtrise : 1, Stats par min. : 1
+  - Plus belle victoire : 2, Série : 2
+- Mapping `colSpan → classe Tailwind statique` dans `HomePage.tsx` (`COL_SPAN_CLASS`) — Tailwind JIT exige des classes littérales, pas de `lg:col-span-${n}` dynamique.
+- `HighlightTile` et `SerieTile` acceptent désormais un `className` externe qui porte le `lg:col-span-*`.
+
+**Résultats observés** :
+- `tsc --noEmit` OK.
+- `HomePage.test.tsx` baseline préservée (2 échecs préexistants indépendants).
+
+**Conclusion / prochaine étape** :
+- Si besoin d'ajuster (ex. Pic FDA en span 2 à cause du détail map+mode parfois long), changer uniquement `COL_SPANS` dans `highlights.i18n.ts`.
+
+## [2026-04-25] refactor(home): Faits marquants — i18n propre + label sur 2 lignes
+
+**Statut** : ✅ Complété
+
+**Contexte** : Deux retours utilisateur :
+1. Les libellés étaient hardcodés en FR côté backend alors que le projet a une i18n complète.
+2. Sur les tuiles à défilement (Maîtrise, Stats par min., Série), le titre et le label étaient concaténés (« Maîtrise · Tirs à la tête ») → préférable sur 2 lignes.
+
+**Décisions techniques** :
+- **Backend — `domain/home.go`** : enrichissement des types.
+  - `HighlightItem` : ajout `TitleKey`, `DetailKey`, `DetailParams map[string]any`. `Title` et `Detail` conservés comme fallback legacy, omis pour les nouvelles tuiles.
+  - `HighlightSlide` : idem avec `LabelKey`, `DetailKey`, `DetailParams`.
+- **Backend — `analysis/home.go`** : tous les libellés FR remplacés par des clés stables :
+  - Titres : `highlight.title.perf_avg` / `skill_delta_{lusr|csr}` / `best_underdog_win` / `kda_peak` / `mastery` / `per_minute` / `serie`.
+  - Labels slides : `highlight.slide.{headshots|perfect_kills|accuracy|kills|deaths|assists|killing_spree_max|win_streak|favorite_map}`.
+  - Détails paramétrés : `highlight.detail.win_streak` (param `count`) pour gérer le pluriel `victoire/victoires`, `highlight.detail.favorite_map` (params `wins`, `losses`, `wr`) pour `3V/0D · 75% victoires`.
+  - Conservés en dur côté backend : les détails `{map} · {mode}` (noms propres Halo, localisation faite via les colonnes `*_name_fr` du registry).
+- **Front — `features/home/highlights.i18n.ts`** (nouveau) : dictionnaires FR/EN suivant la convention existante (`getHighlightText(locale)`), plus des helpers `resolveTitle`/`resolveLabel`/`resolveDetail`. Les détails paramétrés sont des fonctions `(params) => string` — gère pluriel et format.
+- **Front — `lib/api/types.ts`** : `HighlightItem` et `HighlightSlide` exposent `title_key` / `label_key` / `detail_key` / `detail_params` (tous optionnels, `title`/`label` passent en optionnels aussi).
+- **Front — `HomePage.tsx`** :
+  - `HighlightTile` et `SerieTile` acceptent `locale` et utilisent les helpers pour résoudre titres/labels/détails.
+  - `SerieTile` : passage à **2 lignes** pour le header de la tuile (titre sur une ligne, label de slide dessous, avec `text-[11px]` et opacité réduite pour hiérarchie).
+  - Tooltip du titre de section : réduit à une seule phrase (l'intro sur la fenêtre), la liste des 7 tuiles a été supprimée suite au retour utilisateur.
+- **Tests** (`home_test.go`) : assertions migrées vers `TitleKey`/`LabelKey`/`DetailKey`/`DetailParams`. Helper `titles` renommé `titleKeys`.
+
+**Résultats observés** :
+- `go build ./...` OK. `go test ./internal/analysis -run Highlights` : tous les tests Highlights (`SerieTile`, `MaitriseTile`, `PerMinuteTile`, `WithRatioAndTrend`, `NegativeTrend`) verts.
+- `tsc --noEmit` OK.
+- `HomePage.test.tsx` : baseline inchangée (2 échecs préexistants indépendants).
+- Test préexistant `TestIsSessionPotentiallyActive_Yesterday` flaky (échec sans mes modifs, lié à minuit/timezone).
+
+**Conclusion / prochaine étape** :
+- Reste en suspens : adapter les largeurs de tuiles au contenu (discussion A/B/C).
+
+## [2026-04-25] refactor(ui): suppression de PageHeader sur toutes les pages
+
+**Statut** : ✅ Complété
+
+**Contexte** : Le composant `PageHeader` (kicker « LevelUp » + titre + subtitle) apparaissait en haut de toutes les pages. Redondant avec le menu de gauche (NavL1) et l'onglet navigateur, il occupait ~110 px verticaux sans valeur informative.
+
+**Décision technique** : Suppression complète (Option A). 18 pages nettoyées + suppression du fichier `apps/web/src/components/shell/PageHeader.tsx`. Les blocs `actions` (toolbar Media, bouton Comparer Career, statut de sauvegarde Settings, bouton Comparer session-detail, badge Lab, sélecteur période Synthesis) sont replacés en tête du conteneur p-6 avec `flex justify-end` ou une structure dédiée. `MatchViewPage` : remplacement par un `<h1>` + `<p>` directs pour conserver la hiérarchie d'accessibilité avec la breadcrumb.
+
+**Clés i18n laissées en place** (intentionnel) :
+- `help/i18n.ts` : `page.title` toujours utilisé pour `aria-label` du tablist.
+- `settings/i18n.ts` : `pageTitle`/`pageSubtitle` référencés par `WatcherCard.test.tsx` — non touché pour éviter d'élargir le scope.
+- `palmares/i18n.ts`, `lab/i18n.ts`, `media/i18n.ts`, `help/i18n.ts` : `page.*` devenus orphelins dans certains cas — conservés pour éviter un refactor transverse hors scope.
+
+**Résultats observés** :
+- `grep PageHeader` : 0 occurrence dans `apps/web/src`.
+- `tsc --noEmit` : aucune nouvelle erreur. Les erreurs restantes (Spinner dans CareerPage/LabPage, tooltip MatchViewPage, `asChild` replay.tsx) sont préexistantes (vérifié via `git stash` avant/après).
+
+**Prochaine étape** : nettoyage des clés i18n orphelines à faire dans une passe dédiée si besoin.
+
+## [2026-04-25] refactor(home): Faits marquants — nettoyage détails + InfoTooltip titre + Pic FDA sans préfixe
+
+**Statut** : ✅ Complété
+
+**Contexte** : Trois retouches sur « Faits marquants » :
+1. Pic FDA récent : `FDA 10.33` → `10.33` (préfixe redondant avec le titre).
+2. Détails `sur N parties` retirés des tuiles qui ne portaient que ça (redondant, expliqué en tooltip).
+3. `InfoTooltip` à côté du titre « Faits marquants » : fenêtre analysée + rôle de chaque tuile.
+
+**Décisions techniques** :
+- `analysis/home.go` : `Detail` vide sur Performance moyenne, LUSR/CSR, 3 slides Maîtrise, 3 slides Stats par min. Conservés : Plus belle victoire / Pic FDA (map · mode), Carte fétiche (V/D · WR%), Victoires consécutives (« plus longue série de la fenêtre »). Pic FDA : `Value` passe de `FDA %.2f` à `%.2f`.
+- `HomePage.tsx` : `CardTitle` passe en `flex items-center gap-1.5` avec `<InfoTooltip content={...}>` contenant liste structurée (fenêtre + 7 tuiles). `HighlightTile` et `SerieTile` : `detail` conditionné sur non-vide (évite une ligne vide).
+
+**Divergences observées** (hors mon edit, conservées) : labels slides raccourcis (« Précision moyenne » → « Précision », « X / min » → « X »). Cohérent car `SerieTile` préfixe déjà par le titre de tuile. Tests mis à jour.
+
+**Résultats observés** :
+- Tests Go Highlights tous verts. `tsc --noEmit` front OK. `HomePage.test.tsx` : baseline préservée.
+- Test préexistant flaky indépendant : `TestIsSessionPotentiallyActive_Yesterday` (échec aussi sans mes modifs).
+
+**À vérifier après ce commit** (remarques utilisateur) :
+1. Hardcoding des labels dans le tooltip — à confirmer : est-ce que je me suis accordé cette liberté ?
+2. Layout des tuiles à défilement : passer le label sur une 2ᵉ ligne sous le titre (plutôt que « Maîtrise · Tirs à la tête » sur une seule ligne, rendre deux lignes `Maîtrise` puis `Tirs à la tête`).
+
+## [2026-04-25] feat(home): Faits marquants — remplacer Volume par « Stats par min. »
+
+**Statut** : ✅ Complété
+
+**Contexte** : Tuile « Volume » jugée peu différenciante. Remplacée par une tuile à défilement **« Stats par min. »** (3 slides) : Frags/min, Morts/min, Assistances/min. On reste à **7 tuiles** au total (Volume est remplacé, pas retiré).
+
+**Décisions techniques** :
+- **Backend** (`analysis/home.go`) : nouvelle fonction `buildPerMinuteHighlight(window)`. Agrégation globale sur la fenêtre : somme des kills/deaths/assists divisée par la somme des `TimePlayedSecs/60` (seuls les matchs avec `time_played_seconds > 0` sont pris en compte). Valeurs affichées avec 2 décimales. Couleur `neutral` pour les 3 slides (pas de référence existante pour un code couleur par-minute — un taux de morts élevé n'est pas automatiquement mauvais en mode objectif).
+- **BuildHighlights** : bloc « Volume » (inline) supprimé, remplacé par l'appel à `buildPerMinuteHighlight`. Si aucune donnée → tuile omise (fenêtre sans temps joué).
+- **Frontend** : grille inchangée à `lg:grid-cols-7`. La tuile « Stats par min. » utilise automatiquement `SerieTile` via le champ `slides` (aucune modif côté front nécessaire).
+- **Ordre final** (7 tuiles) : Perf moyenne · ΔMMR · Plus belle victoire · Pic FDA · Maîtrise · **Stats par min.** · Série.
+- **Test** : `TestBuildHighlights_PerMinuteTile` dans `home_test.go` — fenêtre 2 matchs (30 kills / 10 morts / 20 assists sur 600s = 10 min → 3.00 / 1.00 / 2.00 par minute).
+
+**Résultats observés** :
+- `go build ./...` OK. `go test ./internal/analysis ./internal/service` OK (incl. test `PerMinuteTile`).
+- `tsc --noEmit` front OK.
+- `HomePage.test.tsx` : baseline conservée (2 échecs préexistants indépendants).
+
+## [2026-04-25] feat(home): Faits marquants — 7ᵉ tuile « Maîtrise » à défilement
+
+**Statut** : ✅ Complété
+
+**Contexte** : Ajouter une seconde tuile à défilement, intitulée **« Maîtrise »**, insérée **avant Volume** (donc 5ᵉ position). 3 slides :
+1. Tirs à la tête (somme sur la fenêtre)
+2. Frags parfaits (somme)
+3. Précision moyenne (%)
+
+**Décisions techniques** :
+- **Backend** (`analysis/home.go`) : nouvelle fonction `buildMaitriseHighlight(window)`. Agrège `HeadshotKills` et `PerfectKills` (somme) et calcule la moyenne de `Accuracy` sur les matchs où la valeur est non-nil.
+  - HS / Perfects : `positive` si > 0, sinon `neutral`.
+  - Précision : seuils alignés sur la tuile « Précision » de Performance globale (`HomePage.tsx` ligne 880) — `> 55` → `positive` (vert), `≥ 40` → `warning` (ambre), sinon `negative` (rouge).
+  - Si aucun slide exploitable → tuile omise.
+- **Domain** (`domain/home.go`) : commentaire de `HighlightItem.ValueColor` enrichi pour inclure `"warning"`.
+- **Frontend** :
+  - `types.ts` : ajout de `'warning'` dans `HighlightValueColor`.
+  - `HomePage.tsx` : `highlightColorClass` mappe `warning` → `text-amber-400` (même classe Tailwind que la Précision de Performance globale).
+  - Grille : `lg:grid-cols-6` → `lg:grid-cols-7` pour accueillir la 7ᵉ tuile (mobile 2 cols, tablet 3 cols, desktop 7 cols en une ligne).
+- **Ordre final** : Perf moyenne · ΔMMR · Plus belle victoire · Pic FDA · **Maîtrise** · Volume · Série.
+- **Test** : `TestBuildHighlights_MaitriseTile` dans `home_test.go` — fenêtre 3 matchs (HS 5+3+2=10, Perfects 1+0+0=1, Précision moy. (60+50+40)/3=50% → `warning`).
+
+**Résultats observés** :
+- `go build ./...` OK. `go test ./internal/analysis ./internal/service` OK (incl. nouveau test).
+- `tsc --noEmit` côté front OK.
+- `HomePage.test.tsx` : baseline conservée (2 échecs préexistants indépendants, 13 passed).
+
+**Conclusion / prochaine étape** :
+- À valider en browser : deux tuiles défilantes côte à côte (Maîtrise + Série). Les intervalles sont désynchronisés naturellement car chaque `setInterval` démarre à son propre mount.
+
+## [2026-04-25] feat(backfill): ajout des flags ForceEvents et ForcePersonalScores
+
+**Statut** : ✅ Complété
+
+**Contexte** : Suite au fix précédent qui ajoutait `ForceAliases` et `ForceLUSR` dans `buildSyncScope`, deux types restaient sans flag de force (`Events`, `PersonalScores`) — le rapport d'exploration avait montré qu'aucun `ForceEvents` ni `ForcePersonalScores` n'existait dans `SyncScope`. L'utilisateur a explicitement demandé de les ajouter de A à Z.
+
+**Décision** : Câblage complet sur 5 fichiers + 4 tests, en suivant le patron `ForceSkill`/`ForcePerformanceScores` existant.
+
+**Implémentation** :
+
+1. **`apps/go-api/internal/sync/scope.go`** : ajout des champs `ForceEvents`, `ForcePersonalScores` dans la struct `SyncScope` (section "Flags force"). Ajout des deux `imply()` correspondants dans `applyForceImplications()` pour garantir `ForceX → X = true` après `Resolve()`.
+
+2. **`apps/go-api/internal/sync/backfill.go`** (`findMatchesInSharedAll`) : enveloppement des conditions `Events` et `PersonalScores` avec un `if scope.ForceX { conditions = append("1=1") } else { ... condition habituelle ... }`. Pattern identique à `ForceSkill` (ligne 238) et `ForcePerformanceScores` (ligne 256).
+
+3. **`apps/go-api/internal/sync/backfill_cli.go`** : ajout des flags CLI `--force-events` et `--force-personal-scores` à côté de `--events` et `--personal-scores` (cohérent avec `--force-skill` à côté de `--skill`).
+
+4. **`apps/go-api/internal/api/handlers/backfill.go`** (`buildSyncScope`) : ajout du mapping `scope.ForceEvents = req.Events || req.AllData` et `scope.ForcePersonalScores = req.PersonalScores || req.AllData` dans le bloc `if req.ForceRescan`.
+
+5. **Tests** :
+   - `apps/go-api/internal/sync/scope_test.go` : ajout des deux entrées dans la table de `TestSyncScope_Resolve_ForceAllGranular` (`ForceEvents→Events`, `ForcePersonalScores→PersonalScores`).
+   - `apps/go-api/internal/sync/backfill_missing_test.go` (build tag `integration`) : 3 tests dédiés — `TestFindMatchesMissingData_EventsLoadedExcludesWithoutForce`, `TestFindMatchesMissingData_ForceEvents`, `TestFindMatchesMissingData_ForcePersonalScores` (avec sans-force + avec-force dans le même test). Subtilité rencontrée : `playerDoneGuard()` valide les match_id via `isValidMatchID()` qui exige `[0-9a-f-]` — donc les fixtures `match1/2/3` (contenant `m`, `t`) sont rejetées et la guard renvoie `1=1` (tout passer). J'ai donc utilisé des UUIDs hex valides (`aaaaaaaa-1111`, etc.) dans le test PersonalScores pour reproduire le scénario "déjà fait".
+   - `apps/go-api/internal/api/handlers/backfill_test.go` : `TestBuildSyncScope_ForceRescanAllData` étendu (vérifie aussi `ForceEvents`/`ForcePersonalScores`) + nouveau test ciblé `TestBuildSyncScope_ForceRescanEventsAndPersonalScores`.
+
+**Côté UI (apps/web)** : aucun changement nécessaire — l'UI envoie déjà `events: true, personal_scores: true, force_rescan: true` dans `BackfillStartRequest`, et le mapping côté Go propage maintenant correctement le force aux bons flags.
+
+**Résultats observés** :
+- `go build ./...` → OK
+- `go test ./internal/api/handlers/ -run TestBuildSyncScope` → 7/7 (4 existants + 3 ajoutés)
+- `go test ./internal/sync/ -run TestSyncScope_Resolve_ForceAllGranular` → 11 sous-tests passent (9 existants + 2 ajoutés)
+- `go test -tags integration ./internal/sync/` → toute la suite verte (incluant les 3 nouveaux tests détection)
+- `go test ./internal/sync/ -run TestNewBackfillFlagSet` → 4/4 passent (CLI flagset non régressé)
+
+**Conclusion** : les 8 types de l'UI peuvent maintenant être forcés individuellement via `force_rescan` côté backend (medals, events, skill, personal_scores, performance_scores, aliases, weapons, lusr). Le force ne s'applique qu'aux types cochés (conforme au wording UI). Reste hors scope : le **portage Go** des 6 types non implémentés (medals/events/skill/personal_scores/performance_scores/aliases/lusr) — la détection fonctionne, l'exécution non.
+
+---
+
+## [2026-04-25] fix(backfill): Force scopé aux options sélectionnées + mapping Aliases/LUSR
+
+**Statut** : ✅ Complété
+
+**Contexte** : Suite au feature "Lancer le recalcul rétroactif" (2026-04-24), un retour utilisateur a soulevé deux points :
+1. Le toggle "Forcer le recalcul complet" était trompeur : on pouvait croire qu'il forçait *tous* les types, pas seulement ceux cochés.
+2. Le mapping `buildSyncScope` côté Go (`apps/go-api/internal/api/handlers/backfill.go:205-210`) oubliait `ForceAliases` et `ForceLUSR` — donc cocher `aliases` + `force_rescan` n'avait aucun effet (idem `lusr`).
+
+**Décision** :
+- Côté UI : clarifier le wording → "Forcer le recalcul complet **pour les options sélectionnées**" (FR) / "Force full rescan **for selected options**" (EN). Confirmation reformulée pour rester cohérente.
+- Côté backend : compléter `buildSyncScope` avec `scope.ForceAliases = req.Aliases || req.AllData` et `scope.ForceLUSR = req.LUSR || req.AllData`. Pas de `ForceEvents`/`ForcePersonalScores` car ces 2 flags n'existent pas dans `SyncScope` (limite backend, hors scope ici).
+
+**Implémentation** :
+- `apps/web/src/features/settings/i18n.ts` : `backfillForceLabel` + `backfillForceConfirmBody` mis à jour FR/EN.
+- `apps/go-api/internal/api/handlers/backfill.go` : 2 lignes ajoutées dans `buildSyncScope`.
+- `apps/go-api/internal/api/handlers/backfill_test.go` : `TestBuildSyncScope_ForceRescanAllData` étendu (vérifie aussi ForceAliases/ForceLUSR/ForcePerformanceScores) + nouveau test `TestBuildSyncScope_ForceRescanAliasesAndLUSR`.
+
+**Résultats observés** :
+- `npx tsc --noEmit` → 0 erreur.
+- `go test ./internal/api/handlers/ -run TestBuildSyncScope` → 6/6 passent.
+
+**Conclusion** : le force est maintenant effectivement scopé aux types cochés, conforme au wording UI. Petit nettoyage technique : si on souhaite plus tard pouvoir forcer `events` et `personal_scores`, il faudra d'abord ajouter `ForceEvents` et `ForcePersonalScores` dans `SyncScope` côté Go (pas urgent — ces 2 types ne sont de toute façon pas encore implémentés).
+
+---
+
+## [2026-04-25] feat(home): Faits marquants — 6ᵉ tuile « Série » à défilement
+
+**Statut** : ✅ Complété
+
+**Contexte** : Enrichir la zone « Faits marquants » de la Home. Demande utilisateur : une 6ᵉ tuile intitulée « Série » qui défile automatiquement (fluide, auto) entre 3 mesures : **Folie meurtrière (max)**, **Victoires consécutives (max)**, **Carte fétiche** (sans mode, juste la map).
+
+**Décisions techniques** :
+- **Backend**
+  - `domain/home.go` : ajout de `MaxKillingSpree *int` à `HomeMatchRow` + nouveau type `HighlightSlide {Label, Value, Detail, ValueColor}`, et champ optionnel `Slides []HighlightSlide` sur `HighlightItem`. Quand `Slides` est non vide, `Value`/`Detail` portent le slide 0 (compat front non-carrousel).
+  - `queries_home_citations.go` (Q26) : ajout de `mp.max_killing_spree AS max_killing_spree` (colonne déjà présente dans `shared.match_participants`, voir `migration/steps_shared.go:73`).
+  - `home_repo.go` : scan de `row.MaxKillingSpree` (pointeur, tolère NULL).
+  - `analysis/home.go` : nouvelle fonction `buildSerieHighlight(window)` + 3 helpers dédiés :
+    - `sliceBestKillingSpree` : max(MaxKillingSpree) sur window, couleur `positive`. Detail = `map · mode`.
+    - `sliceBestWinStreak` : plus longue séquence `Outcome==homeOutcomeWin` (parcours chrono ascendant — window arrive DESC, on lit en sens inverse). Couleur `positive` si ≥ 3, sinon `neutral`. Gère singulier/pluriel.
+    - `sliceFavoriteMap` : groupement par `MapID` (min 2 parties), meilleur WR, départage par volume. Couleur `positive` ≥ 60%, `negative` < 40%, sinon `neutral`. Détail = `{V}V/{D}D · {WR}% victoires`.
+  - Si aucun slide ne peut être calculé → tuile omise (pas d'entrée vide).
+- **Frontend**
+  - `lib/api/types.ts` : exports `HighlightValueColor` + `HighlightSlide` + champ optionnel `slides?` sur `HighlightItem`.
+  - `features/home/HomePage.tsx` : extraction de `highlightColorClass`/`highlightColorStyle` (fin du dédoublonnage inline existant). Nouveau composant `SerieTile` : `setInterval` toutes les 4s avec crossfade 250ms (`opacity-0 → opacity-100` via classe conditionnelle `transition-opacity duration-200`). Indicateurs de slide (petits tirets) sous la tuile, `aria-live="polite"`, cleanup d'interval au démontage. Wrapper `HighlightTile` qui route vers `SerieTile` si `slides` présent, sinon rendu classique.
+  - Grille : `grid-cols-2 sm:grid-cols-5` → `grid-cols-2 sm:grid-cols-3 lg:grid-cols-6` pour accueillir la 6ᵉ tuile sans casser le responsive.
+- **Test** : `TestBuildHighlights_SerieTile` dans `home_test.go` forge une fenêtre de 5 matchs (1 session) pour vérifier les 3 slides : spree=7, streak=3 victoires (ordre chrono ASC sur w,l,w,w,w), carte fétiche=Aquarius (3V/0D vs Streets 1V/1D).
+
+**Points d'attention** :
+- `HomePage.test.tsx` avait déjà 2 échecs préexistants sur la branche (« KPIs globaux », « rail média ») — indépendants. J'ai introduit momentanément un 3ᵉ échec (remplacement involontaire de `"Aucun point saillant disponible"` par `"Aucun fait marquant disponible"` dans le `EmptyStateNotice`), restauré à l'identique. Baseline retrouvée : 13 passed / 2 failed (inchangé).
+
+**Résultats observés** :
+- `go build ./...` OK, `go test ./internal/analysis ./internal/service ./internal/domain/...` OK.
+- `tsc --noEmit` côté front OK.
+
+**Conclusion / prochaine étape** :
+- Feature fonctionnelle. Rotation visuelle à vérifier en browser (non testée). Si 4s paraît trop rapide/lent à l'usage, ajuster `setInterval(..., 4000)` dans `SerieTile`.
+
+## [2026-04-25] docs(readme): section « What's new » v7.0 enrichie — bilan end-user depuis v6.2
+
+**Statut** : ✅ Complété
+
+**Contexte** : Le README listait seulement 6 bullets pour v7.0 (challenges Mission Control + Media V2 + Discord) alors qu'il y a ~377 commits entre `v6.5.0` et `HEAD`. Point de vue end-user : valoriser l'ampleur du travail accompli.
+
+**Décisions techniques** :
+- Analyse déléguée à un sous-agent Explore pour parcourir `git log v6.5.0..HEAD` (377 commits) et identifier les features user-facing.
+- Identifié le gros changement : **refonte complète Streamlit → React 19 + Go API**. Titre final : « New React app, Mission Control & multi-title support ».
+- Organisé en 10 sections thématiques : app/frontend (avec UX/UI design system), Home Mission Control, Media V2, Match dédié, Auth SISU/PoP, Achievements/highlights, Hall of Fame/Season Pass, Automated sync/RTA, Settings/admin, Assets/maps.
+- Après feedback utilisateur : emojis retirés des titres de section (préférence projet, mémoire ajoutée).
+- Après feedback utilisateur : section enrichie avec « refonte UX/UI » (design system unifié, navigation 2 niveaux, interactions modernes) et « synchronisation automatisée » (sync 100 % auto, déclenchement fin de partie, scheduler intelligent).
+- Après feedback utilisateur : **section entière traduite en anglais** — le README racine est en anglais, le miroir français vit dans `docs/FR/README.md` (mémoire projet ajoutée pour éviter la rechute).
+- Les entrées v6.1–v6.5 restent en français dans le README racine (legacy à traduire à terme).
+
+**Résultats observés** :
+- Section v7.0 passe de 6 bullets à ~50 bullets en anglais répartis en 10 sections.
+- Mémoires ajoutées : `feedback_no_emojis.md`, `project_readme_languages.md`.
+
+**Conclusion / prochaine étape** : le README FR (`docs/FR/README.md`) contient déjà sa propre version v7.0 (3 paragraphes plus concis). Si on veut un miroir complet, enrichir la section v7.0 française côté FR dans un commit séparé. Les entrées v6.x FR du README racine mériteraient une traduction lors d'un prochain passage.
+
+---
+
+## [2026-04-25] docs(readme): README racine 100 % EN + miroir FR complet
+
+**Statut** : ✅ Complété
+
+**Contexte** : Suite à la clarification utilisateur (README racine = anglais, `docs/FR/README.md` = français), deux corrections demandées :
+1. Traduire les entrées v6.1–v6.5 restantes en français dans le README racine.
+2. Recréer `docs/FR/README.md` en miroir complet et à jour de la version anglaise.
+
+**Décisions techniques** :
+- **README racine** : traduction de tout le bloc « Dernières nouveautés » v6.5 → v6.1 en anglais. Le fichier est désormais 100 % anglais, sans aucune phrase française résiduelle.
+- **docs/FR/README.md** : réécriture complète (le fichier legacy datait de v5-v6, parlait encore de Streamlit, avait une section Architecture/Tables orpheline). Nouvelle version = miroir 1:1 de la structure anglaise, avec :
+  - Toutes les sections What's new v7.0 → v6.1 en français
+  - Features, Captures d'écran, Démarrage rapide, Configuration, Documentation, Contribution, Stack technique, Limitations, Licence, Remerciements
+  - Chemins adaptés au fichier localisé en `docs/FR/` : `../screenshots/*` pour les images, `INSTALL.md` / `CONFIGURATION.md` en liens relatifs (les cibles existent en anglais dans `docs/`), `../../README.md` pour pointer vers la version anglaise, `../../LICENSE` pour la licence.
+  - Pas de section « Architecture v6 » détaillée dans le miroir (le README anglais ne l'a pas non plus), alignement complet avec la version source.
+- **Liens vérifiés** : `docs/screenshots/*`, `docs/INSTALL.md`, `docs/CONFIGURATION.md`, `docs/ACKNOWLEDGMENTS.md` existent ; `LICENSE` à la racine manque mais le README EN a déjà ce lien cassé — non corrigé côté traduction pour rester fidèle.
+
+**Résultats observés** :
+- README racine : entrées v6.x traduites en anglais, cohérent avec la section v7.0.
+- docs/FR/README.md : recréé à neuf, ~320 lignes, structure identique à l'EN.
+
+**Correction critique post-écriture** : le parseur `extractWhatsNewBlocks` (`apps/go-api/internal/api/handlers/help.go`) attend strictement `## What's new` ou `## Dernières nouveautés`. J'avais renommé le titre FR en `## Nouveautés` → aucun bloc parsé, la page Aide aurait affiché le README complet sans mise en forme. Corrigé en remettant `## Dernières nouveautés`. Vérifié via dry-run du parseur sur les 2 README : **6 blocs détectés** (v7.0 → v6.1) avec 51 puces pour v7.0, confirmant que l'onglet Notes de version rendra bien chaque version comme un bloc séparé avec sa liste à puces. Note : le paragraphe d'intro « Major overhaul / Refonte majeure » est **volontairement ignoré** par le parseur (lignes entre le heading et la première `**vX.Y`) — c'est conforme au comportement attendu, il reste visible dans le README mais pas dans les notes de version in-app.
+
+**Tests** : `go test ./internal/api/handlers/ -run TestHelp -v` → 7/7 passent.
+
+**Conclusion / prochaine étape** : les deux README sont désormais cohérents (anglais à la racine, français miroir dans `docs/FR/`). Séparément : le lien `LICENSE` à la racine (absent du repo) est à traiter comme une issue indépendante — soit créer le fichier, soit retirer le lien dans les deux README.
+
+## [2026-04-25] feat(help): glossaire — toutes les sections visibles par défaut, chevron par section
+
+**Statut** : ✅ Complété
+
+**Contexte** : Retour utilisateur — afficher par défaut tableaux/exemples/formules ; garder un mécanisme de repli, mais avec **un chevron à côté de chaque section** plutôt qu'un chevron global qui pilote tout.
+
+**Décisions techniques** :
+- **GlossaryTab.tsx** : extraction d'un sous-composant `CollapsibleSection({ label, sectionName, children })` qui encapsule le label majuscule + chevron + contenu, avec état local `useState(true)` (ouvert par défaut). Réutilisé pour les blocs Exemple et Formule. Le bouton englobe tout le header de la section (clic n'importe où sur la ligne pour replier/déplier).
+- Suppression du chevron global qui était dans `CardHeader`. Le titre de la carte n'est plus interactif.
+- ARIA : `aria-expanded` sur le bouton, `aria-label` distinct selon l'état (« Réduire la section X » / « Afficher la section X »), chevron marqué `aria-hidden`.
+- **i18n.ts** : suppression des deux mentions « Le détail des N composantes est disponible en dépliant la formule (chevron en haut à droite de cette carte) » dans LUSR et Score de performance — devenues fausses (le chevron n'est plus en haut à droite, et le tableau est visible par défaut).
+
+**Résultats observés** :
+- `apps/web/node_modules/.bin/tsc --noEmit` → exit 0.
+- Pas de tests existants sur `GlossaryTab` à casser (vérifié via Grep).
+
+**Conclusion / prochaine étape** : aucune. L'UX correspond maintenant à ce que l'utilisateur attendait : tout est lisible immédiatement, et le repli est offert section par section pour ceux qui veulent compacter une carte trop dense (typiquement la formule avec son tableau ASCII).
+
+---
+
+## [2026-04-24] feat(settings): bouton "Lancer le recalcul rétroactif" + découplage sync/backfill
+
+**Statut** : ✅ Complété (front)
+
+**Contexte** : Dans l'onglet *Paramètres › Synchronisation*, 9 flags backfill étaient persistés mais jamais lus côté Go — dead code total : `spnkr_refresh_with_backfill` (toggle "Lancer un backfill après chaque synchronisation") + 8 `spnkr_refresh_backfill_*` (médailles/skill/alias/personal_scores/perf_scores/LUSR/events/weapons). De plus, sync et backfill sont deux algorithmes distincts (forward vs rétroactif — `RunDelta` vs `RunBackfill` + `FindMatchesMissingData`), donc un backfill après sync n'est pas redondant mais le couplage implicite n'avait pas de sens.
+
+**Décision** : Découpler les deux et offrir un déclenchement manuel explicite :
+- Suppression du toggle "Lancer un backfill après chaque synchronisation" (dead code).
+- Suppression des 9 champs dead code de `SettingsResponse` côté front (`apps/web/src/lib/api/types.ts` + fixture MSW `apps/web/src/test/handlers.ts`) — le backend continue de les renvoyer mais le front les ignore désormais.
+- Refonte de la card "Données à inclure dans le backfill" → **"Recalcul rétroactif"** (FR) / "Backfill" (EN) avec :
+  - 8 cases (state local non persisté, ne pollue plus `app_settings.json`)
+  - Sélecteur de joueur (`availablePlayers` — `player_slug`)
+  - Toggle "Forcer le rescan complet"
+  - Bouton "Lancer le recalcul rétroactif" :
+    - Désactivé si aucune case cochée
+    - Mode normal → exécute directement `POST /backfill/start`
+    - Mode force → confirmation inline (pattern `setShowRecalcConfirm` de AnalyseTab)
+  - Affichage du `AsyncJobStatus.warnings` après complétion (liste à puces amber) — honnête sur les 6 types pas encore portés en Go.
+
+**Limites connues (follow-up)** :
+- Seul `weapons` est réellement exécuté côté Go (`BackfillWeaponKillsForMatches`). Les 6 autres types (medals, events, skill, personal_scores, performance_scores, aliases, lusr) sont détectés par `FindMatchesMissingData()` mais ajoutent un warning `"XXX non implémenté en Go"` via `warnUnimplemented()` (backfill.go:218). Portage Go estimé à 570-910 LOC — chantier backend séparé.
+- Rendement/résistance (CombatYield) ne sont **pas** concernés : métriques analytiques pures calculées à la volée depuis kills/assists/damage_dealt/damage_taken/deaths, aucun storage ni fetch API.
+
+**Implémentation** :
+- `apps/web/src/lib/api/types.ts` : ajout de `BackfillStartRequest` + retrait des 9 champs dead code.
+- `apps/web/src/features/settings/queries.ts` : ajout de `useStartBackfill()`.
+- `apps/web/src/features/settings/i18n.ts` : suppression de `spnkrRefreshWithBackfill`, renommage `backfillTitle` (FR "Recalcul rétroactif" / EN "Backfill"), ajout de 10 clés (`backfillPlayerLabel`, `backfillForceLabel`, `backfillRunButton`, `backfillRunningLabel`, `backfillNoScopeHint`, `backfillForceConfirmTitle|Body|Ok|Cancel`, `backfillWarningsHeader`) × 2 locales.
+- `apps/web/src/features/settings/SettingsPage.tsx` : nouveau composant `BackfillCard` avec state local (8 scope + player + force + job id) + polling via `useJobStatus` + confirmation inline force.
+- `apps/web/src/test/handlers.ts` : fixture MSW nettoyée.
+
+**Résultats observés** :
+- `npx tsc --noEmit` → 0 erreur
+- `npx vitest run src/features/settings/` → 26/26 (WatcherCard 19 + settings 7) tests passent.
+
+**Conclusion / prochaine étape** : UI livrable immédiatement pour le type `weapons` qui fonctionne end-to-end. Pour rendre les 6 autres types fonctionnels il faudra un plan séparé de portage Go (estimé 570-910 LOC) — d'ici là les warnings `"XXX non implémenté en Go"` remontés par l'endpoint informent honnêtement l'utilisateur.
+
+---
+
+## [2026-04-24] fix(home): Faits marquants — "Plus belle victoire" + couleur MMR cohérente
+
+**Statut** : ✅ Complété
+
+**Contexte** : Retour utilisateur sur la Home › Faits marquants, tuile « Belle victoire » :
+1. Titre à renommer en « Plus belle victoire ».
+2. L'écart MMR négatif (désavantage surmonté) s'affichait en **vert** alors qu'un nombre négatif doit être **rouge**. Règle demandée : delta > 0 → vert, delta ≈ 0 → bleu (même bleu que la résistance défensive dans la barre composite), delta < 0 → rouge.
+
+**Décisions techniques** :
+- `apps/go-api/internal/analysis/home.go` (highlight 3) : titre `"Belle victoire"` → `"Plus belle victoire"`. Remplacement de `ValueColor: "positive"` en dur par une logique tripartite basée sur `delta = team_mmr - enemy_mmr` avec seuil `mmrNeutralThreshold = 25.0` :
+  - `delta > 25` → `"positive"` (vert, `text-green-400`)
+  - `delta < -25` → `"negative"` (rouge, `text-red-400`)
+  - sinon → `"neutral"` (bleu, `text-blue-400` ≈ `#60a5fa`, identique au bleu Défensif de `combat-yield-bar.tsx`).
+- Front déjà aligné : `HomePage.tsx` mappe `neutral → text-blue-400`, `positive → text-green-400`, `negative → text-red-400`. Aucune modif front nécessaire.
+
+**Résultats observés** :
+- `go build ./internal/analysis/...` OK.
+- Aucun test existant ne référence ce highlight (grep `Belle victoire` / `bestMMRUnderdogWin` dans les `*_test.go` : rien).
+
+**Conclusion / prochaine étape** :
+- Fix cosmétique minimal, pas de migration de données. Le seuil de 25 MMR pour la zone neutre est arbitraire mais cohérent avec les écarts typiques (p80 des écarts ≫ 25). À ajuster si retour utilisateur.
+
+## [2026-04-24] feat(help): glossaire — suppression emojis, exemples toujours visibles, francisation FR
+
+**Statut** : ✅ Complété
+
+**Contexte** : Retour utilisateur sur la page Aide › Glossaire — trois demandes :
+1. Supprimer tous les emojis (🏆 💀 ⚡ 💔 🔄 sur les badges narratifs).
+2. Rendre les exemples toujours visibles (ils étaient cachés derrière le bouton "Détails").
+3. Versions FR : éliminer tout terme anglais résiduel (Win/Loss/Tie, DNF, ranked/arena/btb/fun, KDA, leadThreshold, comebackThreshold, MMR, shots_fired, sync, backfill, BTB Slayer, heatmap, leaderboard, etc.) + ajouter des paragraphes (`\n\n`) dans les longues définitions.
+
+**Décisions techniques** :
+- `GlossaryTab.tsx` : refonte de la mécanique d'expansion. L'exemple est désormais rendu inconditionnellement après la définition (séparé par un `border-t`). Seule la **formule** reste expandable (chevron). Le drapeau interne `hasDetails` devient `hasFormula`. La définition adopte `whitespace-pre-line` pour exploiter les `\n\n` ajoutés dans les contenus.
+- `i18n.ts` (FR) : réécriture complète des 4 sections du glossaire. Choix de traduction :
+  - `kills` → éliminations · `deaths` → morts · `assists` → assistances · `damage` → dégâts
+  - `Win/Loss/Tie/DNF` → Victoire/Défaite/Égalité/abandon
+  - `ranked/arena/btb/fun` → compétitif/arène/grande équipe/ludique
+  - `KDA` → Ratio EMA (Éliminations/Morts/Assistances)
+  - `leadThreshold/comebackThreshold/leadPct/comebackPct` → seuil d'avance / seuil de retournement
+  - `MMR` → niveau estimé · `bots` → robots · `headshots` → tirs à la tête
+  - `sync (delta)` → synchronisation (incrémentale) · `backfill` → recalcul rétroactif
+  - `cache query` → cache court · `Background auto` → Indexation automatique en arrière-plan
+  - `heatmap` → carte de chaleur · `leaderboard` → tableau de classement · `drilldown` → exploration détaillée · `playlist` → liste de jeu · `season pass` → passe saisonnier · `nemesis` → ennemis récurrents
+  - `BTB Slayer` (exemple normalisation) → exemple unifié en « Grande équipe — Massacre »
+  - Numéros décimaux : virgule à la française (0,83 au lieu de 0.83). LUSR conservé (marque LevelUp).
+- `i18n.ts` (EN) : termes anglais natifs préservés, seuls les emojis retirés sur 5 entrées de badges.
+- Ajout de `\n\n` dans les définitions ≥ 3 phrases pour aérer (LUSR, Score de performance, Rendement offensif, Résistance défensive, Ratio EMA, Comment les badges sont calculés, Contre-Remontada, Synchronisation, Sessions, Escouade).
+- Ajout d'exemples manquants pour Escouade, Explorer, Palmarès (qui n'en avaient pas) afin que la nouvelle UX "exemple toujours visible" soit cohérente.
+
+**Résultats observés** :
+- `Grep [🏆💀⚡💔🔄]` sur `apps/web/src/features/help` → aucune occurrence.
+- Pas d'`old_string` non trouvé lors des édits → fichier cohérent.
+
+**Conclusion / prochaine étape** : aucune. Le composant et le contenu sont alignés sur les 3 demandes utilisateur.
+
+---
+
+## [2026-04-24] feat(help): glossaire — détail Score de performance, FDA, sync à 3 modes, normalisation/fréquences enrichies
+
+**Statut** : ✅ Complété
+
+**Contexte** : Second tour de retours utilisateur sur Aide › Glossaire :
+1. Score de performance trop succinct → détailler le calcul.
+2. « Ratio EMA » est une mauvaise traduction → c'est **FDA** (Frags / Décès / Assistances). Subtilité : Halo affiche « Morts » dans son interface mais le sigle utilise « Décès ». La formule officielle (retournée par l'API) compte une assistance comme **1/3 frag** (et non assistance entière comme dans la définition KDA générique).
+3. Description de Normalisation des modes encore truffée d'exemples anglais (« BTB Slayer », « Big Team Battle »).
+4. « Synchronisation » se confond avec les 3 modes de déclenchement (manuelle, planifiée, watcher) — il faut les nommer et les expliquer.
+5. « Fréquences de rafraîchissement » trop vague — exiger des exemples concrets : passe de combat, défis, succès Halo, données de matchs, etc.
+
+**Décisions techniques** :
+- **Approche d'édition** : les Edit en chaîne échouaient sur certaines chaînes longues à cause de l'interaction `\n` littéral / séquence d'échappement JSON. Bascule sur scripts Python jetables (`.tmp_help_patch*.py`) qui font des `str.replace` exacts sur le source UTF-8, puis suppression des scripts. Plus fiable et plus rapide pour des chaînes multilignes complexes.
+- **Score de performance** : description en 5 paragraphes (principe percentile, mesures inversées, mesures optionnelles, seuil 10 parties + repli FDA, bonus robot). Formule détaillée en 4 étapes + tableau des 13 poids exacts (vérifiés contre `apps/go-api/internal/analysis/performance_score.go:28-43`) + formule du bonus robot vérifiée contre `applyBotBonus` (`facteur = ((MMR_adverse − MMR_équipe) / MMR_équipe) / 0,30`, plafonné [−1 ; 1] ; victoire `max(0,5 ; 3 + 2×facteur)` ; défaite `5 + 2×facteur`). Exemple concret avec 4 mesures détaillées + lecture du résultat.
+- **Ratio EMA → Ratio FDA** : terme renommé, formule corrigée (`(frags + assistances/3) / max(1, morts)`, conforme au champ `KDA` de l'API utilisé en priorité dans `computeNormalizedMetrics`). Définition explique l'écart Décès/Morts dans le sigle vs l'interface Halo. Exemples mis à jour (15/4/6 → 2,72 et non 3,17).
+- **Normalisation des modes** : description et exemples 100 % français. Exemples de variantes brutes en français (« Massacre Grande équipe » / « Grande équipe Massacre » / « Massacre — Grande équipe » → « Grande équipe — Massacre » ; « CDD » / « Drapeau » / « Capture du drapeau » → « Capture du drapeau »).
+- **Synchronisation** : description rebrandée en "3 déclencheurs" : manuelle (bouton Paramètres), planifiée (ordonnanceur fixe configurable), détection de présence (veilleur RTA/XSTS quasi instantané). Exemple comparatif des 3 modes sur le même scénario "5 parties jouées".
+- **Fréquences de rafraîchissement** : description recadrée sur "rythmes différents selon le coût d'appel à Halo et la fraîcheur attendue". Exemples concrets en 4 catégories : lecture directe Halo (passe de combat, défis, succès, rang Spartan), cache court 5–10 min DuckDB (Stats, Palmarès, Escouade, Explorer paginé), mise à jour à la sync uniquement (détail des parties, LUSR/CSR par partie, stats coéquipiers), indexation auto en arrière-plan (médias).
+
+**Résultats observés** :
+- `npx tsc --noEmit` (apps/web) → exit 0, pas d'erreurs.
+- `Grep "Ratio EMA|EMA"` sur apps/web/src → 0 occurrence résiduelle.
+- Toutes les chaînes anglaises identifiées par l'utilisateur dans la version FR du glossaire ont disparu.
+
+**Conclusion / prochaine étape** : aucune. Glossaire entièrement aligné sur les 5 retours.
+
+---
+
+## [2026-04-24] feat(help): glossaire — LUSR détaillé (8 composantes), tableaux ASCII pour LUSR + Score perf, Fréquences enrichies (4 canaux)
+
+**Statut** : ✅ Complété
+
+**Contexte** : Troisième tour de retours sur Aide › Glossaire :
+1. LUSR : description trop pauvre par rapport au Score de performance — détailler toutes les entrées du calcul.
+2. Présenter les entrées des deux scores (LUSR et Score de performance) sous forme de **tableau** avec poids.
+3. Fréquences de rafraîchissement : trop léger — exiger battle pass, défis, données de carrière, succès Xbox, sync et backfill (avec fréquences différentes), et renvoyer vers les sections existantes si redondant.
+
+**Décisions techniques** :
+- **Source de vérité LUSR** : lecture de [skill_rating.go](apps/go-api/internal/analysis/skill_rating.go). Surprises par rapport à l'ancienne formule du glossaire :
+  - **8 composantes** au composite (et non 5) : `kills_vs_expected` 0,27 · `deaths_vs_expected` 0,24 · `offensive_conversion` 0,16 · `damage_efficiency` 0,10 · `accuracy_delta` 0,10 · `defensive_resistance` 0,06 · `win_factor` 0,05 · `medal_exploit` 0,04 (Σ = 1,02 renormalisé).
+  - Pas de "poids de groupe" 1,0/0,8/0,7/0,25 dans le code Go actuel — c'était un héritage Python. Suppression.
+  - Pas de plafond ±100 par partie. Suppression.
+  - **5 composantes** (precision, damage_eff, medal_exploit, off_conv, def_res) sont comparées à la **moyenne glissante des 50 dernières parties** du joueur (vrai différenciateur fonctionnel, mis en avant dans la définition).
+  - **Force adverse** : `μ_opp = μ × clamp(KE_adverse / KE_équipe, 0,5 ; 2,0)`, `σ_opp = 150` constant.
+  - Familles réelles : `ranked` · `ranked challenge` · `big_team_battle` · `firefight` · `custom` · `arena` (défaut). Pas de "social", "fun", "ludique" comme j'avais initialement traduit.
+  - Constantes du moteur : μ₀=1500, σ₀=350, σ_min=60, σ_max=350, β=200, τ=25, K=32, P(égalité)=0,06, dérive 1pt/jour après 1j (cap 14j).
+  - Win factors réels : 2 (Victoire)=1,0 · 1 (Égalité)=0,5 · 3 (Défaite)=0,0 · 4 (Abandon)=0,15.
+- **Tableaux ASCII** : utilisation du rendu `<code>` du composant (`font-mono whitespace-pre-wrap` confirmé dans `GlossaryTab.tsx:78`) — les tableaux s'alignent correctement avec des espaces fixes et caractères `─`. Format adopté : header + ligne de séparation + lignes de données. Colonnes Poids · Mesure · Sens/Calcul · Type/Référence selon le contexte.
+- **LUSR — formule** : récrite intégralement avec bloc Constantes + bloc Score composite + tableau des 8 composantes + bloc Mise à jour TrueSkill + liste des familles.
+- **LUSR — exemple** : enrichi pour montrer le calcul `μ − 3σ` avant et après dérive d'inactivité (1700/80 → LUSR 1460 ; après 14 jours σ=93 → LUSR 1421 sans aucune partie jouée).
+- **Score de performance — formule** : refonte en tableau (Poids · Mesure · Sens · Type), conservation du bloc bonus robot inchangé. La formule reste correcte côté code ([performance_score.go:28-43](apps/go-api/internal/analysis/performance_score.go#L28-L43)).
+- **Fréquences de rafraîchissement** : 4 canaux clairement nommés (lecture directe live, lecture directe + cache disque 24 h, cache mémoire 5–10 min, mise à jour à la sync). Exemples couvrent passe de combat, défis, succès Xbox, données de carrière, référentiels (paliers/cartes/passe), agrégats DuckDB, détail parties, LUSR/CSR, score de performance, citations, badges, médias indexés. Renvois explicites vers `Synchronisation` (3 modes de déclenchement) et `Recalcul rétroactif` (reprise sur historique) pour éviter la duplication.
+
+**Résultats observés** :
+- `apps/web/node_modules/.bin/tsc --noEmit` → exit 0, pas d'erreurs.
+- Tableaux ASCII alignés vérifiés à la lecture (espaces fixes, séparateurs `─` en bonne position).
+- Plus de référence à des familles fictives (social, fun, ludique) ou à un plafond Δμ inexistant.
+
+**Conclusion / prochaine étape** : aucune. Le glossaire est maintenant aligné sur la vraie implémentation Go (LUSR comme Score de performance), avec tableaux comparables côte à côte. Si le moteur LUSR évolue (nouvelles composantes, changement de poids), le tableau de la formule reste l'unique endroit à mettre à jour.
+
+---
+
+## [2026-04-25] fix(help): tableau scrollable + Score de performance — évolution temporelle et pédagogique du chevron
+
+**Statut** : ✅ Complété
+
+**Contexte** : Retours utilisateur sur la version précédente du glossaire :
+1. « Je ne vois pas le tableau » → bug de rendu : la grille `sm:grid-cols-2` rétrécit chaque carte ; combiné à `whitespace-pre-wrap` sur le `<code>` de la formule, les colonnes ASCII se faisaient wrapper et l'alignement était cassé visuellement (le user croyait que le tableau n'existait pas, ou ne savait pas qu'il fallait cliquer le chevron).
+2. Score de performance : il faut expliquer que la valeur **évolue avec le temps** et avec **l'évolution du niveau** du joueur.
+
+**Décisions techniques** :
+- **GlossaryTab.tsx:89** : `whitespace-pre-wrap` → `whitespace-pre overflow-x-auto`. Conserve l'alignement ASCII strict ; un scroll horizontal apparaît si la carte est trop étroite. Plus juste qu'élargir les cartes (qui aurait déséquilibré la grille des autres entrées).
+- **Mention explicite du chevron** dans la définition courte du Score de performance ET du LUSR : « Le détail des 13 mesures et de leurs poids est disponible en dépliant la formule (chevron en haut à droite de cette carte) ». Évite que l'utilisateur cherche le tableau dans la définition.
+- **Score de performance — 3 nouveaux paragraphes sur l'évolution** :
+  - *Évolution dans le temps* : l'historique de référence est constitué de toutes les parties précédant celle évaluée (`history := matches[:i]` dans [performance_score.go:118](apps/go-api/internal/analysis/performance_score.go#L118)). L'échantillon de comparaison s'agrandit à chaque nouvelle partie.
+  - *Évolution avec le niveau* : la référence étant le joueur lui-même, le score s'auto-recalibre. Conséquence importante (et contre-intuitive) explicitée : un joueur en progression rapide voit ses scores stagner ou baisser même en jouant mieux en absolu, parce que la distribution se déplace plus vite que les gains. Un joueur expérimenté plafonné a des scores plus stables.
+  - *Recalcul rétroactif* : mention de l'option `spnkr_refresh_backfill_performance_scores` qui peut faire bouger un score affiché sur une partie ancienne après une sync — utile si l'utilisateur s'étonne de voir un chiffre changer.
+
+**Résultats observés** :
+- `apps/web/node_modules/.bin/tsc --noEmit` → exit 0.
+- Le tableau ASCII s'aligne maintenant correctement quel que soit la largeur de la carte (scroll horizontal si nécessaire).
+
+**Conclusion / prochaine étape** : aucune. Si plus tard on veut un tableau mieux intégré (HTML `<table>` plutôt qu'ASCII), il faudra étendre le type `GlossaryEntry` pour accepter une structure tabulaire au lieu d'une string, et générer le markup côté composant — mais l'approche ASCII a l'avantage de rester homogène avec le reste de la formule (constantes, étapes, blocs).
+
+---
+
+## [2026-04-24] feat(settings): fusion "Synchronisation périodique" + "Détection de présence" en une card à 2 toggles
+
+**Statut** : ✅ Complété
+
+**Contexte** : Dans l'onglet *Paramètres › Synchronisation*, deux cards coexistaient pour les deux mécanismes de sync automatique (scheduler SPNKR périodique + watcher RTA/XSTS). Problème remonté par l'utilisateur : la card "Synchronisation périodique" n'avait qu'un seul toggle alors qu'elle couvrait implicitement deux méthodes distinctes, et le watcher vivait dans une card séparée alors qu'il est conceptuellement la même chose que la "Détection de présence".
+
+**Décision** : Fusion en une seule card `Synchronisation automatique` avec deux sous-sections clairement séparées par un divider, chacune avec son propre toggle :
+- **Scheduler périodique** → toggle `spnkr_auto_sync_enabled` + intervalle + backfill
+- **Détection de présence Xbox** → toggle `watcher_presence_enabled` + bloc XSTS/RTA
+
+**Implémentation** :
+- `i18n.ts` : 3 nouvelles clés (`autoSyncTitle`, `schedulerSectionTitle`, `watcherSectionTitle`) × 2 locales (fr/en).
+- `WatcherCard.tsx` : extraction de `WatcherSectionBody` (TokenStatus + AuthFlow + PlayersSelector + RTAStatus) comme sous-composant exportable sans Card wrapper. L'ancien `WatcherCard` est conservé (il réutilise désormais `WatcherSectionBody`) pour préserver ses 19 tests existants.
+- `SettingsPage.tsx` (SyncTab) : remplacement des 2 cards par 1 card à 2 sous-sections ; le sous-bloc scheduler respecte le flag `spnkr_auto_sync_enabled` (intervalle + backfill grisés si OFF), le sous-bloc watcher masque automatiquement TokenStatus/AuthFlow/PlayersSelector/RTAStatus si OFF (comportement préservé).
+
+**Résultats observés** :
+- `npx vitest run src/features/settings/WatcherCard.test.tsx` → 19/19 passent.
+- `npx tsc --noEmit` → pas d'erreurs.
+- Les deux toggles sont indépendants : on peut activer l'un sans l'autre, conformément au backend (2 champs distincts déjà exposés côté Go).
+
+**Conclusion / prochaine étape** : aucune régression fonctionnelle, seulement un regroupement UI. Aucun changement backend requis (les 2 flags existaient déjà).
+
+**Suivi (même jour)** — Retours utilisateur :
+1. « Scheduler » n'est pas français → renommé **"Synchronisation planifiée"** (FR) / "Scheduled synchronisation" (EN).
+2. Le toggle watcher paraissait absent : il était placé inline à côté d'un `<h3>` discret (asymétrie avec le toggle scheduler logé dans un `ToggleRow` standard). Correctif : les deux sous-sections utilisent désormais le même pattern — `<h3>` discret en tête + `ToggleRow` standard comme première ligne (label `t.spnkrAutoSync` / `t.watcherPresenceEnabled`) + options dépendantes en dessous (séparées par un divider léger `divide-border/30`).
+3. Parent/enfant fonctionnel ? **Non, vérifié via l'explorer du backend Go** :
+   - `watcher_presence_enabled` démarre `watcher.Daemon` (main.go:400-492)
+   - `spnkr_auto_sync_enabled` gouverne `AutoSyncScheduler.Run()` (auto_sync.go:123-126)
+   - Le watcher appelle directement `sync.Trigger.RunSync()` → `SyncEngine.RunDelta()` sans passer par le scheduler (player_watcher.go:179 + trigger.go:41)
+   - Les deux sont **peers indépendants**, coordonnés uniquement pour éviter les doubles-syncs (scheduler yield si watcher en Watching/Syncing/Cooling — auto_sync.go:206-210)
+   - Donc : pas de relation master→slave à implémenter côté UI ; les deux toggles restent indépendants.
+
+---
+
+## [2026-04-24] fix: "Arme favorite" toujours vide — analyse kills + résolution ID→label
+
+**Statut** : ✅ Complété
+
+**Contexte** : La case "Arme favorite" affichait systématiquement "—" malgré la présence de 6 922 lignes dans `weapon_kills` pour JGtm.
+
+**Analyse des bugs en cascade** :
+
+### 1. `GROUP BY` sur alias refusé par DuckDB (Q26kFavoriteWeapon)
+```sql
+-- ❌ avant
+GROUP BY weapon_id  -- alias non résolu par DuckDB
+
+-- ✅ après
+GROUP BY COALESCE(wk.reconciled_as, wk.weapon_id)
+```
+
+### 2. Colonnes `kill_count` inexistantes (Q16 + CTE `top_weapons`)
+Le schéma réel de `weapon_kills` est **per-event** (1 ligne = 1 kill), sans colonne `kills` ni `kill_count`.
+```sql
+-- ❌ avant
+SUM(wk.kill_count)   -- colonne inexistante → erreur silencieuse
+SUM(kills)           -- idem
+
+-- ✅ après
+COUNT(*)             -- 1 ligne = 1 kill
+```
+
+### 3. Résolution label : bug `uint64` bit63=1 avec `database/sql`
+Les weapon_id Halo dépassent `int64.MaxValue` (bit 63 = 1).
+`database/sql` ne supporte pas `uint64` → le paramètre `?` transmis en `uint64` échoue silencieusement → `WHERE weapon_id = ?` ne trouve rien → fallback "Inconnue".
+
+**Contournement** : injecter le weapon_id comme **littéral décimal** dans la query (valeur interne constante, pas user input → pas d'injection SQL).
+```go
+// ❌ avant — échoue silencieusement pour IDs avec bit63=1
+r.pdb.Metadata.QueryRow(ctx, "SELECT name_fr FROM weapon_labels WHERE weapon_id = ?", weaponID)
+
+// ✅ après
+r.pdb.Metadata.QueryRow(ctx,
+    fmt.Sprintf("SELECT name_fr FROM weapon_labels WHERE weapon_id = %d", weaponID)) //nolint:gosec
+```
+
+### 4. Colonnes `label_fr`/`label_en` vs `name_fr`/`name_en` (lookupWeaponLabels)
+Le test fixture utilisait `label_fr`/`label_en` mais la table production a `name_fr`/`name_en`. `lookupWeaponLabels` a été réécrite avec littéraux décimaux + bons noms de colonnes.
+
+**Fichiers modifiés** :
+- `internal/platform/duckdb/queries_home_citations.go` — Q26k GROUP BY
+- `internal/platform/duckdb/queries_match.go` — Q16 COUNT(*), CTE top_weapons COUNT(*)
+- `internal/platform/duckdb/home_repo.go` — résolution label via littéral décimal
+- `internal/platform/duckdb/match_view_repo.go` — lookupWeaponLabels réécrite
+- `internal/platform/duckdb/match_repos_test.go` — fixture alignée sur schéma per-event
+- `internal/platform/duckdb/player_repos_test.go` — fixture weapon_kills avec PK
+
+**Règle à retenir** : Pour tout `WHERE column = ?` sur un `UBIGINT` Halo (weapon_id, medal_id…) via `database/sql`, toujours injecter en littéral décimal `fmt.Sprintf("... = %d", id)` avec `//nolint:gosec` justifié (valeur interne, pas user input).
+
+**Conclusion** : Livré.
+
+---
+
 ## [2026-04-24] feat(help): glossaire enrichi + cache disque 24h
 
 **Statut** : ✅ Complété

@@ -421,6 +421,7 @@ func init() {
 			`)
 		},
 	})
+
 }
 
 // applyHighlightEventsAutoincrement recrée highlight_events avec séquence.

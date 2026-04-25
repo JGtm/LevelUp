@@ -3,7 +3,6 @@
  */
 import { useState } from 'react'
 import { useParams } from '@tanstack/react-router'
-import { PageHeader } from '@/components/shell/PageHeader'
 import { PageLoader } from '@/components/ui/spinner'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
@@ -55,19 +54,13 @@ export function CareerPage() {
 
   if (!data) {
     return (
-      <div className="flex flex-col">
-        <PageHeader
-          title="Carrière"
-          subtitle="Progression de rang et statistiques globales"
+      <div className="p-6">
+        <EmptyStateCard
+          title="Données de carrière indisponibles"
+          description="Aucune réponse exploitable n'a été renvoyée pour cette page. Vérifie la source de données ou relance le chargement."
+          actionLabel="Réessayer"
+          onAction={() => refetch()}
         />
-        <div className="p-6">
-          <EmptyStateCard
-            title="Données de carrière indisponibles"
-            description="Aucune réponse exploitable n'a été renvoyée pour cette page. Vérifie la source de données ou relance le chargement."
-            actionLabel="Réessayer"
-            onAction={() => refetch()}
-          />
-        </div>
       </div>
     )
   }
@@ -79,17 +72,12 @@ export function CareerPage() {
 
   return (
     <div className="flex flex-col">
-      <PageHeader
-        title="Carrière"
-        subtitle="Progression de rang et statistiques globales"
-        actions={
+      <div className="space-y-6 p-6">
+        <div className="flex justify-end">
           <Button size="sm" variant="outline" onClick={() => setCompareOpen(true)}>
             Comparer
           </Button>
-        }
-      />
-
-      <div className="space-y-6 p-6">
+        </div>
         {/* Résumé + progression */}
         <CareerSummaryCard
           summary={data.summary}
