@@ -6,8 +6,10 @@ const testPlayerSlug = "test-player"
 
 // Identifiants Halo de test partagés (xuid + variantes utilisés dans plusieurs tests).
 const (
-	testXUID    = "xuid"
-	testXUID1   = "xuid-1"
-	testXUID1B  = "xuid1"
-	testChallID = "ch_1"
+	testXUID      = "xuid"
+	testXUID1     = "xuid-1"
+	testXUID1B    = "xuid1"
+	testChallID   = "ch_1"
+	testGamertag  = "TestPlayer"
+	testTitleSlug = "halo_infinite"
 )

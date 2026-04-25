@@ -51,7 +51,7 @@ func TestMatchHistoryHandler_Query_OK(t *testing.T) {
 		if slug != testPlayerSlug {
 			return nil, "", "", errors.New("player_not_found")
 		}
-		return mock, testXUID1, "TestPlayer", nil
+		return mock, testXUID1, testGamertag, nil
 	}
 	r := newMatchHistoryRouter(factory)
 	body, _ := json.Marshal(domain.MatchHistoryQueryRequest{Pagination: domain.PaginationRequest{Page: 1, PageSize: 20}})

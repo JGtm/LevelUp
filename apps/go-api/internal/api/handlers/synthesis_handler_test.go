@@ -48,7 +48,7 @@ func newSynthesisTestRouter(factory handlers.ContextFactory[port.SynthesisServic
 
 func synthesisContextFactory(svc port.SynthesisService, err error) handlers.ContextFactory[port.SynthesisService] {
 	return func(_ context.Context, _ string) (port.SynthesisService, string, string, error) {
-		return svc, "test-xuid", "TestPlayer", err
+		return svc, "test-xuid", testGamertag, err
 	}
 }
 

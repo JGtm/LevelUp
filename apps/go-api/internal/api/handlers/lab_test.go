@@ -48,17 +48,17 @@ var _ port.LabProvider = (*stubLabProvider)(nil)
 func newLabHandlerForTest(t *testing.T, cfg *config.AppConfig) *handlers.LabHandler {
 	t.Helper()
 	provider := &stubLabProvider{
-		resources: &domain.LabResourcesResponse{TitleSlug: "halo_infinite", MetadataDBPath: "metadata.duckdb"},
+		resources: &domain.LabResourcesResponse{TitleSlug: testTitleSlug, MetadataDBPath: "metadata.duckdb"},
 		contracts: &domain.LabContractsResponse{
 			Summary: domain.LabOpenAPISummary{Status: "OK"},
 		},
-		diagnostics: &domain.LabDiagnosticsResponse{TitleSlug: "halo_infinite"},
+		diagnostics: &domain.LabDiagnosticsResponse{TitleSlug: testTitleSlug},
 	}
 	return handlers.NewLabHandler(service.NewLabService(cfg, provider))
 }
 
 func withTitle(req *http.Request) *http.Request {
-	ctx := ctxkeys.WithTitleSlug(req.Context(), "halo_infinite")
+	ctx := ctxkeys.WithTitleSlug(req.Context(), testTitleSlug)
 	return req.WithContext(ctx)
 }
 

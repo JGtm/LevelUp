@@ -214,7 +214,7 @@ func makeUploadFactory(mock *mockMediaService) handlers.MediaUploadContextFactor
 		if slug != testPlayerSlug {
 			return nil, "", "", "", "", "", errors.New("player_not_found")
 		}
-		return mock, "TestPlayer", "halo_infinite", "/data/players/TestPlayer/stats.duckdb", "", "", nil
+		return mock, "TestPlayer", testTitleSlug, "/data/players/TestPlayer/stats.duckdb", "", "", nil
 	}
 }
 

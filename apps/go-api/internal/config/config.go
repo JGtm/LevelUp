@@ -116,7 +116,7 @@ func loadUserTimezone(settingsPath string) string {
 	if s, ok := m["user_timezone"].(string); ok && s != "" {
 		return s
 	}
-	return "Europe/Paris"
+	return defaultUserTimezone
 }
 
 // dbProfilesFile représente le format du fichier db_profiles.json (v2.1).

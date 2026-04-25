@@ -31,7 +31,7 @@ func (m *mockMatchHistoryRepo) LoadMapWinRates(_ context.Context) (map[string][2
 
 func TestMatchHistoryService_GetPage_OK(t *testing.T) {
 	now := time.Now()
-	mapName := "Aquarius"
+	mapName := aquariusMap
 	pairName := slayerMode
 	repo := &mockMatchHistoryRepo{
 		rows: []domain.MatchHistoryRawRow{

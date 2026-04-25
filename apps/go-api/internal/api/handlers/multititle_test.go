@@ -46,7 +46,7 @@ func newCompareMultiTitleRouter(svc *captureCompareService) *chi.Mux {
 	})
 
 	factory := func(_ context.Context, slug string) (port.CompareService, string, string, error) {
-		return svc, testXUID1, "TestPlayer", nil
+		return svc, testXUID1, testGamertag, nil
 	}
 
 	r := chi.NewRouter()
@@ -60,7 +60,7 @@ func newCompareMultiTitleRouter(svc *captureCompareService) *chi.Mux {
 
 // TestCompare_TitleSlug_HaloInfinite vérifie que halo_infinite est propagé par défaut.
 func TestCompare_TitleSlug_HaloInfinite(t *testing.T) {
-	svc := &captureCompareService{resp: domain.CompareResponse{TitleSlug: "halo_infinite"}}
+	svc := &captureCompareService{resp: domain.CompareResponse{TitleSlug: testTitleSlug}}
 	r := newCompareMultiTitleRouter(svc)
 
 	body, _ := json.Marshal(domain.CompareRequest{TargetGamertag: "OtherPlayer"})
@@ -75,7 +75,7 @@ func TestCompare_TitleSlug_HaloInfinite(t *testing.T) {
 	}
 
 	got := ctxkeys.TitleSlug(svc.capturedCtx)
-	if got != "halo_infinite" {
+	if got != testTitleSlug {
 		t.Errorf("expected title_slug halo_infinite in ctx, got %q", got)
 	}
 }
@@ -105,7 +105,7 @@ func TestCompare_TitleSlug_HaloMCC(t *testing.T) {
 // TestCompare_NoTitleMixing vérifie que deux requêtes avec des titres différents
 // ne partagent pas le même contexte (absence de mélange de données).
 func TestCompare_NoTitleMixing(t *testing.T) {
-	svcHI := &captureCompareService{resp: domain.CompareResponse{TitleSlug: "halo_infinite"}}
+	svcHI := &captureCompareService{resp: domain.CompareResponse{TitleSlug: testTitleSlug}}
 	svcMCC := &captureCompareService{resp: domain.CompareResponse{TitleSlug: "halo_mcc"}}
 
 	rHI := newCompareMultiTitleRouter(svcHI)
@@ -130,7 +130,7 @@ func TestCompare_NoTitleMixing(t *testing.T) {
 	if slugHI == slugMCC {
 		t.Errorf("title slugs should differ between requests: both %q", slugHI)
 	}
-	if slugHI != "halo_infinite" {
+	if slugHI != testTitleSlug {
 		t.Errorf("req1: want halo_infinite, got %q", slugHI)
 	}
 	if slugMCC != "halo_mcc" {
@@ -161,7 +161,7 @@ func newLeaderboardMultiTitleRouter(svc *captureLeaderboardService) *chi.Mux {
 	})
 
 	factory := func(_ context.Context, slug string) (port.LeaderboardService, string, string, error) {
-		return svc, testXUID1, "TestPlayer", nil
+		return svc, testXUID1, testGamertag, nil
 	}
 
 	r := chi.NewRouter()
@@ -187,7 +187,7 @@ func TestLeaderboard_TitleSlug_HaloInfinite(t *testing.T) {
 	}
 
 	got := ctxkeys.TitleSlug(svc.capturedCtx)
-	if got != "halo_infinite" {
+	if got != testTitleSlug {
 		t.Errorf("expected halo_infinite, got %q", got)
 	}
 }

@@ -177,7 +177,7 @@ func TestGetMatchPrivacy_NoXUID(t *testing.T) {
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
-	if info.Hint != "auth_required" {
+	if info.Hint != errHintAuthRequired {
 		t.Errorf("expected hint=auth_required, got %q", info.Hint)
 	}
 }
@@ -189,7 +189,7 @@ func TestGetMatchPrivacy_NoTokens(t *testing.T) {
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
-	if info.Hint != "auth_required" {
+	if info.Hint != errHintAuthRequired {
 		t.Errorf("expected hint=auth_required (no tokens), got %q", info.Hint)
 	}
 }

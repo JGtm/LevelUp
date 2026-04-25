@@ -34,9 +34,9 @@ func ComputeImpactSummary(
 			byMatch[e.MatchID] = &matchEvents{}
 		}
 		switch e.EventType {
-		case "kill":
+		case EventTypeKill:
 			byMatch[e.MatchID].kills = append(byMatch[e.MatchID].kills, e)
-		case "death":
+		case EventTypeDeath:
 			byMatch[e.MatchID].deaths = append(byMatch[e.MatchID].deaths, e)
 		}
 	}
