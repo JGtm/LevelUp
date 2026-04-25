@@ -11,11 +11,12 @@ import (
 	"math"
 	"time"
 
-	"golang.org/x/sync/errgroup"
 	"levelup/go-api/internal/analysis"
 	"levelup/go-api/internal/domain"
 	"levelup/go-api/internal/games"
 	"levelup/go-api/internal/port"
+
+	"golang.org/x/sync/errgroup"
 )
 
 // outcomeColors : couleur hex par code d'outcome Halo Infinite.

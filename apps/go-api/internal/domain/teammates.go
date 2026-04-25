@@ -13,11 +13,11 @@ import "time"
 
 // TeammatesQueryRequest est le corps de POST /pages/teammates.
 type TeammatesQueryRequest struct {
-	SelectedGamertags  []string            `json:"selected_gamertags"`
-	Filters            *FilterContextInput `json:"filters,omitempty"`
+	SelectedGamertags []string            `json:"selected_gamertags"`
+	Filters           *FilterContextInput `json:"filters,omitempty"`
 	// Filtres de session exclusifs : renseigner l'un ou l'autre, pas les deux.
-	PickedSoloSession  *string             `json:"picked_solo_session_label,omitempty"`
-	PickedSquadSession *string             `json:"picked_squad_session_label,omitempty"`
+	PickedSoloSession  *string `json:"picked_solo_session_label,omitempty"`
+	PickedSquadSession *string `json:"picked_squad_session_label,omitempty"`
 }
 
 // ---------------------------------------------------------------------------
@@ -87,7 +87,7 @@ type TeammatesPageResponse struct {
 	TotalMatches  int               `json:"total_matches"`
 	SessionLabels SessionLabelsList `json:"session_labels"`
 	// Sprint N : données graphiques par coéquipier sélectionné
-	Timeseries   []SquadTimeseriesPoint              `json:"timeseries,omitempty"`
-	MapBreakdown []MapBreakdownRow                   `json:"map_breakdown,omitempty"`
-	MatchSeries  map[string][]SquadMatchSeriesPoint  `json:"match_series,omitempty"`
+	Timeseries   []SquadTimeseriesPoint             `json:"timeseries,omitempty"`
+	MapBreakdown []MapBreakdownRow                  `json:"map_breakdown,omitempty"`
+	MatchSeries  map[string][]SquadMatchSeriesPoint `json:"match_series,omitempty"`
 }

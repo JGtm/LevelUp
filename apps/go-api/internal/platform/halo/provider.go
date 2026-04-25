@@ -134,7 +134,9 @@ type HaloProvider struct {
 	// titleSlug est le titre courant (ex: "halo_infinite").
 	titleSlug string
 	// Sprint 54 B5 : cache process-level de la privacy par xuid.
-	privacyCache privacyTTLCache
+	// Pointeur pour permettre les clones de HaloProvider (With*) sans copier
+	// le mutex interne — les clones partagent le même cache.
+	privacyCache *privacyTTLCache
 }
 
 // DefaultHaloProvider est l'instance globale du provider (60 req/min, 3 retries).
@@ -151,8 +153,9 @@ func NewHaloProvider() *HaloProvider {
 		client: &http.Client{
 			Timeout: providerHTTPTimeout,
 		},
-		limiter:    newRateLimiter(60),
-		maxRetries: providerMaxRetries,
+		limiter:      newRateLimiter(60),
+		maxRetries:   providerMaxRetries,
+		privacyCache: &privacyTTLCache{entries: make(map[string]privacyCacheEntry)},
 	}
 }
 

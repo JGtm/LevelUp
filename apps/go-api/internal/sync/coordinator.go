@@ -27,12 +27,12 @@ type CoordinatorRequest struct {
 
 // Coordinator coordonne les syncs avec contrôle de concurrence.
 type Coordinator struct {
-	runner       SyncRunner
-	maxParallel  int
-	sem          chan struct{}
-	inFlightMu   sync.Mutex
-	inFlight     map[string]bool // gamertag → en cours
-	onComplete   func(gamertag string, err error)
+	runner      SyncRunner
+	maxParallel int
+	sem         chan struct{}
+	inFlightMu  sync.Mutex
+	inFlight    map[string]bool // gamertag → en cours
+	onComplete  func(gamertag string, err error)
 }
 
 // NewCoordinator crée un coordinateur avec limite de syncs parallèles.
