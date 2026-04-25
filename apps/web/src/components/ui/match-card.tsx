@@ -11,6 +11,8 @@ import type { RecentMatchItem } from '@/lib/api/types'
 import { getPerfColor } from '@/lib/perf-color'
 import { getMatchCardOutcomeStyle, getMatchNarrativeBadgeMeta } from './match-card-presentation'
 import { CitationProgressRing } from './citation-progress-ring'
+import { skillDeltaScale, kdScale, mmrDeltaScale } from '@/lib/accessibility/scales'
+import { tokenCssVar } from '@/lib/accessibility'
 
 export interface MatchCardProps {
   match: RecentMatchItem
@@ -293,7 +295,7 @@ export function MatchCard({ match: m, locale = 'fr', timezone = 'UTC', onClick, 
                       {skillDelta != null && (
                         <span
                           className="text-xs font-semibold leading-none"
-                          style={{ color: skillDelta >= 0 ? '#22c55e' : '#ef4444' }}
+                          style={{ color: tokenCssVar(skillDeltaScale(skillDelta)) }}
                         >
                           {skillDelta >= 0 ? `+${skillDelta.toFixed(1)}` : skillDelta.toFixed(1)} pts
                         </span>
@@ -346,7 +348,8 @@ export function MatchCard({ match: m, locale = 'fr', timezone = 'UTC', onClick, 
                     {/* Centre : KDA */}
                     <div className="flex flex-col items-center gap-0.5 px-3">
                       <span
-                        className={`text-2xl font-black leading-none ${m.kda > 1 ? 'text-green-400' : m.kda >= 0 ? 'text-blue-400' : 'text-red-400'}`}
+                        className="text-2xl font-black leading-none"
+                        style={{ color: tokenCssVar(kdScale(m.kda)) }}
                       >
                         {m.kda.toFixed(2)}
                       </span>
@@ -418,16 +421,14 @@ export function MatchCard({ match: m, locale = 'fr', timezone = 'UTC', onClick, 
                 {m.delta_mmr != null && (
                   <span
                     className="rounded px-1.5 py-0.5 text-[9px] font-bold leading-none"
-                    style={{
-                      backgroundColor:
-                        m.delta_mmr > 10 ? 'rgba(34,197,94,0.15)'
-                        : m.delta_mmr < -10 ? 'rgba(239,68,68,0.15)'
-                        : 'rgba(96,165,250,0.15)',
-                      color:
-                        m.delta_mmr > 10 ? '#22c55e'
-                        : m.delta_mmr < -10 ? '#ef4444'
-                        : '#60a5fa',
-                    }}
+                    style={(() => {
+                      const t = mmrDeltaScale(m.delta_mmr)
+                      const c = tokenCssVar(t)
+                      return {
+                        backgroundColor: `color-mix(in srgb, ${c} 15%, transparent)`,
+                        color: c,
+                      }
+                    })()}
                   >
                     {m.delta_mmr > 0 ? `+${Math.round(m.delta_mmr)}` : Math.round(m.delta_mmr)}
                   </span>

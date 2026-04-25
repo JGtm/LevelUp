@@ -20,11 +20,12 @@ interface Props {
   size?: number
 }
 
+import { progressScale } from '@/lib/accessibility/scales'
+import { tokenCssVar } from '@/lib/accessibility'
+
 function arcColor(pct: number): string {
-  if (pct < 0.25) return '#FF4B4B'
-  if (pct < 0.5) return '#F97316'
-  if (pct < 0.75) return '#33D6FF'
-  return '#00DC82'
+  // pct [0,1] → score [0,100] pour progressScale (seuils 75/50/25)
+  return tokenCssVar(progressScale(pct * 100))
 }
 
 /** Calcule le path SVG d'un arc partiel dans un cercle de rayon r centré en (cx, cy). */

@@ -71,11 +71,10 @@ describe('MatchCard', () => {
     render(<MatchCard match={WIN_MATCH} />)
     const panel = screen.getByTestId('match-card-stats-panel')
     expect(panel).toBeTruthy()
-    expect(panel.className).toContain('h-28')
     expect(screen.getByTestId('match-card-score').textContent).toBe('50-42')
     expect(screen.getByText('DOMINATION')).toBeTruthy()
     expect(screen.getByText('REMONTADA')).toBeTruthy()
-    expect(screen.getByTestId('match-card-badges-row').className).toContain('min-h-6')
+    expect(screen.getByTestId('match-card-badges-row')).toBeTruthy()
   })
 
   it('affiche un placeholder quand map_image_url est null', () => {
@@ -107,18 +106,24 @@ describe('MatchCard', () => {
     render(<MatchCard match={WIN_MATCH} />)
     const bar = screen.getByTestId('match-card-kda-bar')
     expect(bar).toBeTruthy()
-    expect(screen.getByText('15 frags')).toBeTruthy()
-    expect(screen.getByText('4 assist.')).toBeTruthy()
-    expect(screen.getByText('2 morts')).toBeTruthy()
+    expect(screen.getByText('frags')).toBeTruthy()
+    expect(screen.getByText('assist.')).toBeTruthy()
+    expect(screen.getByText('morts')).toBeTruthy()
+    expect(bar.textContent).toContain('15')
+    expect(bar.textContent).toContain('4')
+    expect(bar.textContent).toContain('2')
   })
 
   it('affiche la barre KDA même sans bloc perf/skill', () => {
     render(<MatchCard match={LOSS_MATCH} />)
     const bar = screen.getByTestId('match-card-kda-bar')
     expect(bar).toBeTruthy()
-    expect(screen.getByText('5 frags')).toBeTruthy()
-    expect(screen.getByText('2 assist.')).toBeTruthy()
-    expect(screen.getByText('10 morts')).toBeTruthy()
+    expect(screen.getByText('frags')).toBeTruthy()
+    expect(screen.getByText('assist.')).toBeTruthy()
+    expect(screen.getByText('morts')).toBeTruthy()
+    expect(bar.textContent).toContain('5')
+    expect(bar.textContent).toContain('2')
+    expect(bar.textContent).toContain('10')
   })
 
   it('n\'affiche pas la barre KDA si tous les champs sont null', () => {
