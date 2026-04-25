@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { useAppShellStore } from '@/stores/appShellStore'
 
 /**
@@ -14,6 +14,7 @@ const HEADER_IMAGES_BY_TITLE: Record<string, string[]> = {
 }
 
 const ROTATION_INTERVAL_MS = 45_000
+const FADE_DURATION_MS = 900
 
 function pickOther(images: string[], current: string): string {
   const others = images.filter((img) => img !== current)
@@ -23,6 +24,7 @@ function pickOther(images: string[], current: string): string {
 /**
  * HomeHeroBanner — bandeau visuel décoratif de l'accueil.
  * Effectue une rotation aléatoire entre les images du titre courant toutes les 45 secondes.
+ * Utilise deux couches superposées pour un vrai cross-fade simultané (pas de noir entre images).
  */
 export function HomeHeroBanner() {
   const titleSlug = useAppShellStore((s) => s.currentTitleSlug)
@@ -31,21 +33,46 @@ export function HomeHeroBanner() {
     [titleSlug],
   )
 
-  const [src, setSrc] = useState(
-    () => images[Math.floor(Math.random() * images.length)] ?? '',
-  )
-  const [visible, setVisible] = useState(true)
+  // Deux couches (A=0, B=1) qui alternent. La couche inactive reçoit la prochaine
+  // image pendant qu'elle est à opacity:0, puis les deux transitionnent simultanément.
+  const [srcs, setSrcs] = useState<[string, string]>(() => [
+    images[Math.floor(Math.random() * images.length)] ?? '',
+    '',
+  ])
+  const [activeIdx, setActiveIdx] = useState(0)
 
-  // Relancer le timer et réinitialiser le src quand le titre change
+  // Refs pour lire l'état courant dans setInterval sans stale closure
+  const srcsRef = useRef(srcs)
+  srcsRef.current = srcs
+  const activeIdxRef = useRef(activeIdx)
+  activeIdxRef.current = activeIdx
+
   useEffect(() => {
     if (images.length === 0) return
-    setSrc(images[Math.floor(Math.random() * images.length)] ?? '')
+    const initial = images[Math.floor(Math.random() * images.length)] ?? ''
+    setSrcs([initial, ''])
+    setActiveIdx(0)
+
     const timer = setInterval(() => {
-      setVisible(false)
-      setTimeout(() => {
-        setSrc((prev) => pickOther(images, prev))
-        setVisible(true)
-      }, 600)
+      const currentActive = activeIdxRef.current
+      const currentSrc = srcsRef.current[currentActive]
+      const nextSrc = pickOther(images, currentSrc)
+      const nextIdx = currentActive === 0 ? 1 : 0
+
+      // 1. Charger la nouvelle image dans la couche inactive (encore à opacity:0)
+      setSrcs((prev) => {
+        const next = [...prev] as [string, string]
+        next[nextIdx] = nextSrc
+        return next
+      })
+
+      // 2. Double rAF : laisser le navigateur peindre le background-image sur la couche
+      //    inactive avant de déclencher le cross-fade (évite tout flash)
+      requestAnimationFrame(() => {
+        requestAnimationFrame(() => {
+          setActiveIdx(nextIdx)
+        })
+      })
     }, ROTATION_INTERVAL_MS)
 
     return () => clearInterval(timer)
@@ -61,12 +88,22 @@ export function HomeHeroBanner() {
       <div className="pointer-events-none absolute inset-0 bg-gradient-to-r from-background/20 via-transparent to-background/28" />
       <div className="pointer-events-none absolute inset-x-0 bottom-0 h-16 bg-gradient-to-t from-background/45 to-transparent" />
 
-      <img
-        src={src}
-        alt=""
-        className="block h-36 w-full object-cover object-center sm:h-48 lg:h-56"
-        style={{ transition: 'opacity 0.6s ease', opacity: visible ? 1 : 0 }}
-      />
+      <div className="relative h-36 w-full sm:h-48 lg:h-56">
+        {srcs.map((src, i) => (
+          <div
+            key={i}
+            style={{
+              position: 'absolute',
+              inset: 0,
+              backgroundImage: src ? `url(${src})` : undefined,
+              backgroundSize: 'cover',
+              backgroundPosition: 'center',
+              transition: `opacity ${FADE_DURATION_MS}ms ease`,
+              opacity: activeIdx === i ? 1 : 0,
+            }}
+          />
+        ))}
+      </div>
     </div>
   )
 }
