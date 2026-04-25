@@ -122,10 +122,7 @@ export function MatchCard({ match: m, locale = 'fr', timezone = 'UTC', onClick, 
 
   return (
     <div
-      className="rounded-xl overflow-hidden border border-border bg-[#1d2328] flex flex-col h-full cursor-default hover:border-border transition-colors"
-      onClick={onClick}
-      role={onClick ? 'button' : undefined}
-      tabIndex={onClick ? 0 : undefined}
+      className="rounded-xl overflow-hidden border border-border bg-[#1d2328] flex flex-col h-full transition-colors"
     >
       {/* Image de la map — ratio 16/9, rogné sans déformation */}
       <div className="relative aspect-video bg-muted overflow-hidden flex-shrink-0">
@@ -176,37 +173,49 @@ export function MatchCard({ match: m, locale = 'fr', timezone = 'UTC', onClick, 
       {/* Corps */}
       <div className="flex flex-1 flex-col gap-3 px-3 py-3">
         <div className="min-h-[3.5rem] flex flex-col justify-center space-y-1 text-center">
-          <p className="text-sm font-semibold text-foreground leading-tight">
-            {heading}
-          </p>
+          {onClick ? (
+            <button
+              type="button"
+              onClick={onClick}
+              className="group inline-flex items-center gap-1 text-sm font-semibold text-foreground leading-tight hover:underline cursor-pointer bg-transparent border-none p-0"
+            >
+              {heading}
+              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16" fill="currentColor" className="h-3 w-3 shrink-0 opacity-40 group-hover:opacity-90 transition-opacity" aria-hidden="true">
+                <path d="M6.22 8.72a.75.75 0 0 0 1.06 1.06l5.22-5.22v1.69a.75.75 0 0 0 1.5 0v-3.5a.75.75 0 0 0-.75-.75h-3.5a.75.75 0 0 0 0 1.5h1.69L6.22 8.72Z" />
+                <path d="M3.5 6.75c0-.69.56-1.25 1.25-1.25H7A.75.75 0 0 0 7 4H4.75A2.75 2.75 0 0 0 2 6.75v4.5A2.75 2.75 0 0 0 4.75 14h4.5A2.75 2.75 0 0 0 12 11.25V9a.75.75 0 0 0-1.5 0v2.25c0 .69-.56 1.25-1.25 1.25h-4.5c-.69 0-1.25-.56-1.25-1.25v-4.5Z" />
+              </svg>
+            </button>
+          ) : (
+            <p className="text-sm font-semibold text-foreground leading-tight">
+              {heading}
+            </p>
+          )}
           {m.playlist_ui && (
             <p className="text-xs text-muted-foreground leading-tight">
               {m.playlist_ui}
             </p>
           )}
-          {narrativeBadges.length > 0 && (
-            <div
-              data-testid="match-card-badges-row"
-              className="flex flex-wrap items-center justify-center gap-1.5 pt-1"
-            >
-              {narrativeBadges.map((badgeType) => {
-                const badgeMeta = getMatchNarrativeBadgeMeta(badgeType)
-                if (!badgeMeta) return null
-                return (
-                  <span
-                    key={badgeType}
-                    className="rounded px-2 py-1 text-[10px] font-black uppercase tracking-[0.12em]"
-                    style={{
-                      backgroundColor: badgeMeta.color,
-                      color: badgeMeta.textColor,
-                    }}
-                  >
-                    {badgeMeta.label}
-                  </span>
-                )
-              })}
-            </div>
-          )}
+          <div
+            data-testid="match-card-badges-row"
+            className="min-h-[1.625rem] flex flex-wrap items-center justify-center gap-1.5 pt-1"
+          >
+            {narrativeBadges.map((badgeType) => {
+              const badgeMeta = getMatchNarrativeBadgeMeta(badgeType)
+              if (!badgeMeta) return null
+              return (
+                <span
+                  key={badgeType}
+                  className="rounded px-2 py-1 text-[10px] font-black uppercase tracking-[0.12em]"
+                  style={{
+                    backgroundColor: badgeMeta.color,
+                    color: badgeMeta.textColor,
+                  }}
+                >
+                  {badgeMeta.label}
+                </span>
+              )
+            })}
+          </div>
         </div>
 
         <div
@@ -353,7 +362,7 @@ export function MatchCard({ match: m, locale = 'fr', timezone = 'UTC', onClick, 
                       >
                         {m.kda.toFixed(2)}
                       </span>
-                      <span className="text-[10px] font-medium leading-none text-muted-foreground">KDA</span>
+                      <span className="text-[10px] font-medium leading-none text-muted-foreground">FDA</span>
                     </div>
                     {/* Colonne droite : Frags parfaits — espace réservé même si absent */}
                     <div className="w-16 flex flex-col items-center gap-0.5">
