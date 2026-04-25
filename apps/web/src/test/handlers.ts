@@ -169,15 +169,6 @@ const settingsFixture = {
   spnkr_auto_sync_interval_minutes: 360,
   watcher_presence_enabled: false,
   watcher_subscribed_players: [],
-  spnkr_refresh_with_backfill: false,
-  spnkr_refresh_backfill_medals: false,
-  spnkr_refresh_backfill_skill: false,
-  spnkr_refresh_backfill_aliases: false,
-  spnkr_refresh_backfill_personal_scores: false,
-  spnkr_refresh_backfill_performance_scores: false,
-  spnkr_refresh_backfill_lusr: false,
-  spnkr_refresh_backfill_events: false,
-  spnkr_refresh_backfill_weapons: false,
   friend_gamertags: [],
 }
 

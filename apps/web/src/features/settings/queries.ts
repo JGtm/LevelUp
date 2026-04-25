@@ -7,7 +7,12 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { api } from '@/lib/api/client'
 import { queryKeys } from '@/lib/query/keys'
-import type { SettingsResponse, UpdateSettingsRequest } from '@/lib/api/types'
+import type {
+  AsyncJobStatus,
+  BackfillStartRequest,
+  SettingsResponse,
+  UpdateSettingsRequest,
+} from '@/lib/api/types'
 
 export function useSettings() {
   return useQuery({
@@ -37,5 +42,12 @@ export function useScanMedia() {
 export function useRecalculateSessions() {
   return useMutation({
     mutationFn: () => api.post<{ job_id: string }>('/settings/sessions/recalculate', {}),
+  })
+}
+
+export function useStartBackfill() {
+  return useMutation({
+    mutationFn: (req: BackfillStartRequest) =>
+      api.post<AsyncJobStatus>('/backfill/start', req),
   })
 }

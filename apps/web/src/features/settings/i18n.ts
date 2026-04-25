@@ -70,6 +70,11 @@ export interface SettingsText {
   mediaScanDone: string
   mediaScanError: string
 
+  // Synchronisation automatique (scheduler + watcher fusionnés)
+  autoSyncTitle: string
+  schedulerSectionTitle: string
+  watcherSectionTitle: string
+
   // Synchronisation SPNKr
   spnkrTitle: string
   spnkrAutoSync: string
@@ -77,7 +82,6 @@ export interface SettingsText {
   spnkrAutoSyncIntervalUnit: string
   spnkrAutoSyncIntervalMinutes: string
   spnkrAutoSyncIntervalMinutesUnit: string
-  spnkrRefreshWithBackfill: string
 
   // Détection de présence
   watcherTitle: string
@@ -116,6 +120,16 @@ export interface SettingsText {
   backfillLUSR: string
   backfillEvents: string
   backfillWeapons: string
+  backfillPlayerLabel: string
+  backfillForceLabel: string
+  backfillRunButton: string
+  backfillRunningLabel: string
+  backfillNoScopeHint: string
+  backfillForceConfirmTitle: string
+  backfillForceConfirmBody: string
+  backfillForceConfirmOk: string
+  backfillForceConfirmCancel: string
+  backfillWarningsHeader: string
 
   // Onglet Analyse — Sessions
   analyseTitle: string
@@ -216,13 +230,16 @@ const FR_TEXT: SettingsText = {
   mediaScanDone: '✓ Indexation lancée',
   mediaScanError: '✗ Échec de l’indexation',
 
+  autoSyncTitle: 'Synchronisation automatique',
+  schedulerSectionTitle: 'Synchronisation planifiée',
+  watcherSectionTitle: 'Synchronisation par détection de présence Xbox',
+
   spnkrTitle: 'Synchronisation périodique',
   spnkrAutoSync: 'Synchronisation automatique',
   spnkrAutoSyncInterval: 'Intervalle (heures)',
   spnkrAutoSyncIntervalUnit: 'h',
   spnkrAutoSyncIntervalMinutes: 'Intervalle (minutes)',
   spnkrAutoSyncIntervalMinutesUnit: 'min',
-  spnkrRefreshWithBackfill: 'Lancer un backfill après chaque synchronisation',
 
   watcherTitle: 'Détection de présence',
   watcherPresenceEnabled: 'Détection automatique de présence Xbox',
@@ -251,7 +268,7 @@ const FR_TEXT: SettingsText = {
   watcherStateCooling: 'Cooldown',
   watcherInGame: 'En jeu',
 
-  backfillTitle: 'Données à inclure dans le backfill',
+  backfillTitle: 'Recalcul rétroactif',
   backfillMedals: 'Médailles',
   backfillSkill: 'Classement (CSR/MMR)',
   backfillAliases: 'Alias gamertag',
@@ -260,6 +277,18 @@ const FR_TEXT: SettingsText = {
   backfillLUSR: 'LUSR',
   backfillEvents: 'Événements',
   backfillWeapons: 'Armes',
+  backfillPlayerLabel: 'Joueur',
+  backfillForceLabel: 'Forcer le recalcul complet pour les options sélectionnées',
+  backfillRunButton: 'Lancer le recalcul rétroactif',
+  backfillRunningLabel: 'Recalcul rétroactif en cours…',
+  backfillNoScopeHint: 'Sélectionnez au moins un type de données.',
+  backfillForceConfirmTitle: 'Forcer un rescan complet ?',
+  backfillForceConfirmBody:
+    'Cette opération rescanne tous les matchs existants pour les options sélectionnées ' +
+    '(y compris ceux déjà traités). Peut prendre plusieurs minutes selon l\'historique.',
+  backfillForceConfirmOk: 'Forcer',
+  backfillForceConfirmCancel: 'Annuler',
+  backfillWarningsHeader: 'Avertissements',
 
   // Onglet Analyse — Sessions
   analyseTitle: 'Paramètres d’analyse',
@@ -392,13 +421,16 @@ const EN_TEXT: SettingsText = {
   mediaScanError: '✗ Indexation failed',
 
 
+  autoSyncTitle: 'Automatic synchronisation',
+  schedulerSectionTitle: 'Scheduled synchronisation',
+  watcherSectionTitle: 'Xbox presence detection triggered synchronisation',
+
   spnkrTitle: 'Periodic synchronisation',
   spnkrAutoSync: 'Automatic synchronisation',
   spnkrAutoSyncInterval: 'Interval (hours)',
   spnkrAutoSyncIntervalUnit: 'h',
   spnkrAutoSyncIntervalMinutes: 'Interval (minutes)',
   spnkrAutoSyncIntervalMinutesUnit: 'min',
-  spnkrRefreshWithBackfill: 'Run a backfill after each synchronisation',
 
   watcherTitle: 'Presence detection',
   watcherPresenceEnabled: 'Automatic Xbox presence detection',
@@ -427,7 +459,7 @@ const EN_TEXT: SettingsText = {
   watcherStateCooling: 'Cooling',
   watcherInGame: 'In game',
 
-  backfillTitle: 'Data to include in backfill',
+  backfillTitle: 'Backfill',
   backfillMedals: 'Medals',
   backfillSkill: 'Ranking (CSR/MMR)',
   backfillAliases: 'Gamertag aliases',
@@ -436,6 +468,18 @@ const EN_TEXT: SettingsText = {
   backfillLUSR: 'LUSR',
   backfillEvents: 'Events',
   backfillWeapons: 'Weapons',
+  backfillPlayerLabel: 'Player',
+  backfillForceLabel: 'Force full rescan for selected options',
+  backfillRunButton: 'Run backfill',
+  backfillRunningLabel: 'Backfill running…',
+  backfillNoScopeHint: 'Select at least one data type.',
+  backfillForceConfirmTitle: 'Force a full rescan?',
+  backfillForceConfirmBody:
+    'This will rescan all existing matches for the selected options ' +
+    '(including ones already processed). May take several minutes depending on history size.',
+  backfillForceConfirmOk: 'Force',
+  backfillForceConfirmCancel: 'Cancel',
+  backfillWarningsHeader: 'Warnings',
 
   // Analyse tab — Sessions
   analyseTitle: 'Analysis settings',
