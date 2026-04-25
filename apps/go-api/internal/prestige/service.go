@@ -44,6 +44,39 @@ type Service interface {
 	GetUserPrestige(ctx context.Context, userID, titleSlug string) (UserPrestige, error)
 	SuggestTemplates(ctx context.Context, userID, titleSlug string, count int) ([]Template, error)
 	SuggestNext(ctx context.Context, completedID string) ([]Template, error)
+
+	// Arcs
+	CreateArc(ctx context.Context, req CreateArcRequest) (Arc, error)
+	ListArcs(ctx context.Context, userID, titleSlug string) ([]Arc, error)
+	GetArc(ctx context.Context, id string) (Arc, error)
+
+	// Escouade
+	CreateSquadChallenge(ctx context.Context, req CreateSquadChallengeRequest) (SquadChallenge, error)
+	JoinSquadChallenge(ctx context.Context, challengeID, userID string, chosenTier Tier, isPrivate bool) error
+	GetSquadChallenge(ctx context.Context, id string) (SquadChallenge, error)
+	ListSquadChallenges(ctx context.Context, squadID string) ([]SquadChallenge, error)
+}
+
+// CreateArcRequest est l'entrée pour créer un arc libre.
+type CreateArcRequest struct {
+	UserID      string
+	TitleSlug   string
+	Title       string
+	Description string
+}
+
+// CreateSquadChallengeRequest est l'entrée pour créer un défi d'escouade.
+type CreateSquadChallengeRequest struct {
+	SquadID         string
+	TemplateID      string
+	TitleSlug       string
+	Mode            SquadMode
+	EvalType        EvalType
+	WindowType      WindowType
+	WindowValue     string
+	TargetPerMember float64
+	ExpiresAt       *time.Time
+	CreatedBy       string
 }
 
 // ---------- DTOs ----------
@@ -138,6 +171,11 @@ func (s *service) CreateChallenge(ctx context.Context, req CreateChallengeReques
 		return Challenge{}, err
 	}
 
+	// Vérification quotas (mode pilote uniquement). Le mode libre n'a pas de plafond.
+	if err := s.checkQuotas(ctx, req); err != nil {
+		return Challenge{}, err
+	}
+
 	now := s.deps.Now()
 
 	// Calculer la baseline et le palier.
@@ -202,6 +240,61 @@ func (s *service) CreateChallenge(ctx context.Context, req CreateChallengeReques
 		"mode", c.Mode, "cadence", c.Cadence)
 
 	return c, nil
+}
+
+// checkQuotas valide les plafonds simultanés et anti-farming en mode pilote.
+//
+// Règles (Axe 7) :
+//   - Mode libre : pas de plafond, retourne nil immédiatement
+//   - Mode pilote : applique daily_max, weekly_max, monthly_max, total_active_max
+//   - Anti-farming : max free_new_per_day défis libres créés/jour (s'applique
+//     uniquement quand un mode pilote est aussi actif côté joueur — sinon
+//     le mode libre reste sans contrainte par design)
+//
+// Le seul mode contraint à la création est ModePilote. Le mode libre passe
+// toujours (anti-smurf via baseline + palier suffit).
+func (s *service) checkQuotas(ctx context.Context, req CreateChallengeRequest) error {
+	if req.Mode != ModePilote {
+		return nil
+	}
+
+	q := s.deps.Tuning.QuotasPilote
+
+	totalActive, err := s.deps.Challenges.CountActiveTotal(ctx, req.UserID, req.TitleSlug)
+	if err != nil {
+		return fmt.Errorf("count active total: %w", err)
+	}
+	if totalActive >= q.TotalActiveMax {
+		return fmt.Errorf("%w: %d défis pilote actifs (max %d)",
+			ErrInvalidInput, totalActive, q.TotalActiveMax)
+	}
+
+	cadenceMax := cadenceQuotaMax(q, req.Cadence)
+	if cadenceMax > 0 {
+		actives, err := s.deps.Challenges.CountActiveByCadence(ctx, req.UserID, req.TitleSlug, req.Cadence)
+		if err != nil {
+			return fmt.Errorf("count by cadence: %w", err)
+		}
+		if actives >= cadenceMax {
+			return fmt.Errorf("%w: %d défis %s actifs (max %d)",
+				ErrInvalidInput, actives, req.Cadence, cadenceMax)
+		}
+	}
+	return nil
+}
+
+// cadenceQuotaMax retourne le plafond de simultanés selon la cadence.
+// 0 si non applicable (mode libre ou cadence inconnue).
+func cadenceQuotaMax(q QuotasPiloteTuning, c Cadence) int {
+	switch c {
+	case CadenceDaily:
+		return q.DailyMax
+	case CadenceWeekly:
+		return q.WeeklyMax
+	case CadenceMonthly:
+		return q.MonthlyMax
+	}
+	return 0
 }
 
 // validateCreateRequest applique les validations basiques d'entrée.

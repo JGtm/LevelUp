@@ -80,6 +80,28 @@ func (m *mockPrestigeService) SuggestNext(ctx context.Context, completedID strin
 	return m.suggestNextResp, m.suggestNextErr
 }
 
+func (m *mockPrestigeService) CreateArc(ctx context.Context, _ prestige.CreateArcRequest) (prestige.Arc, error) {
+	return prestige.Arc{}, nil
+}
+func (m *mockPrestigeService) ListArcs(ctx context.Context, _, _ string) ([]prestige.Arc, error) {
+	return nil, nil
+}
+func (m *mockPrestigeService) GetArc(ctx context.Context, _ string) (prestige.Arc, error) {
+	return prestige.Arc{}, nil
+}
+func (m *mockPrestigeService) CreateSquadChallenge(ctx context.Context, _ prestige.CreateSquadChallengeRequest) (prestige.SquadChallenge, error) {
+	return prestige.SquadChallenge{}, nil
+}
+func (m *mockPrestigeService) JoinSquadChallenge(ctx context.Context, _, _ string, _ prestige.Tier, _ bool) error {
+	return nil
+}
+func (m *mockPrestigeService) GetSquadChallenge(ctx context.Context, _ string) (prestige.SquadChallenge, error) {
+	return prestige.SquadChallenge{}, nil
+}
+func (m *mockPrestigeService) ListSquadChallenges(ctx context.Context, _ string) ([]prestige.SquadChallenge, error) {
+	return nil, nil
+}
+
 // ─────────── Helpers ───────────
 
 func newRouter(svc prestige.Service) *chi.Mux {

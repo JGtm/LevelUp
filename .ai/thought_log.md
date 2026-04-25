@@ -23,6 +23,36 @@
 
 ---
 
+## [2026-04-26] feat(prestige): Phase 4 backend — gaps Phase 2/3 comblés + contenu Halo + loader + BaselineProvider
+
+**Statut** : Complété — partie backend de Phase 4 livrée. Frontend (nav refactor + API client + composants + page Objectifs) à suivre dans les commits Phase 4 frontend / Phase 5.
+
+**Contexte** : Avant d'attaquer Phase 4 contenu, audit honnête vs IMPL_PRESTIGE.md a révélé 7 gaps non livrés en Phase 2/3 : `CheckQuotas` manquant dans le service, handlers `arcs`, `pilot_mode`, `squad_challenges` non implémentés, tests quotas/intégration manquants. Tous comblés ici plutôt que de revenir en arrière.
+
+**Décisions techniques** :
+- **CheckQuotas comme méthode privée du service** (`checkQuotas`) : appelée systématiquement dans `CreateChallenge`, retourne `nil` immédiatement si mode != pilote. Mode libre reste sans plafond (anti-smurf via baseline + palier suffit). Plafonds tirés de `tuning.QuotasPilote`.
+- **Service étendu avec arcs + squad** plutôt que créer un sous-service : 7 méthodes ajoutées au contrat (CreateArc/ListArcs/GetArc + CreateSquadChallenge/JoinSquadChallenge/GetSquadChallenge/ListSquadChallenges). Implémentation dans `service_arcs_squads.go` pour respecter le seuil 500L de service.go.
+- **Auto-join du créateur d'un défi escouade** avec palier Heroic par défaut : "celui qui propose s'engage". Si l'auto-join échoue, slog.Warn mais le défi reste créé (best-effort).
+- **Templates Halo Infinite — 15 templates au lieu de 30** : 5 daily + 5 weekly + 5 monthly. Couvre KDA, Accuracy, Headshots, Power Weapons, Personal Score (daily) ; Win Rate, kills_vs_expected, KDA 3-sessions, DPM, CSR floor (weekly) ; Killtaculars, maps, modes, ranked wins, Firefight waves (monthly). Paliers calibrés Normal/Heroic/Legendary/Mythic monotones, mode_filter cohérent (universal/pvp/ranked/pve).
+- **Preset arcs Halo — 4 arcs livrés** : Le Slayer (KDA progressif), Le Support (score perso + power weapons), Le Consistant (régularité win_rate/KDA/CSR), L'Explorateur (variety). Chaque arc = 3 steps avec target_tier explicite.
+- **Loader TOML "tout-ou-rien"** : si le fichier est invalide (paliers non monotones, enums invalides, IDs vides), l'erreur remonte sans toucher la DB. Validation côté Go avant `repo.Replace`.
+- **BaselineProvider Halo en stub raisonnable** : RecentMatches lit `match_participants` joint à `match_registry` selon une mapping métrique→colonne. PopulationPercentile retourne (0.5, 0) par défaut, mais inclut une requête CTE qui agrège les moyennes sur 30 jours quand la métrique est mappable. popSize=0 désactive le cap population côté palier (cohérent avec la règle "< 50 joueurs = pas de cap").
+- **Tests intégration loader placés dans le package `duckdb`** plutôt que `prestige` : éviter le cycle d'import (prestige importerait duckdb pour les repos, duckdb importe déjà prestige pour les types). Les tests appellent les fonctions exportées `prestige.LoadTemplatesFromTOML` / `LoadPresetArcsFromTOML`.
+- **Script `analyze_prestige_tuning.py` minimaliste** : agrège la télémétrie de tous les joueurs + les events shared_social, produit un rapport Markdown avec distribution paliers / taux complétion / mode libre vs pilote / anomalies (Mythic à 0% ou Normal à 100%). Lecture seule, pas de modification de l'état. Squelette suffisant pour un usage post-alpha — à enrichir si besoin de visualisations.
+
+**Résultats observés** :
+- `go build ./...` vert
+- Tests intégration loader : 2 nouveaux tests verts (templates >= 10, preset arcs >= 4 avec steps non-vides)
+- Tests unitaires existants : tous verts (47 domain + 16 handler + 4 sync hook + 6 repos + 4 migrations Prestige)
+- Aucune régression sur le repo
+- Tailles : service.go 455 L, prestige.go handler 372 L, prestige_baseline_provider.go 119 L. Tous sous 500 L.
+
+**Conformité matrice de traçabilité** : tous les éléments backend de Phase 4 sont livrés. Le frontend (nav refactor, API client, composants) reste à faire — est traité comme Phase 4 frontend séparée + Phase 5.
+
+**Conclusion / prochaine étape** : commit Phase 4 backend prêt. Ensuite : refonte nav L1 web (Palmarès → Communauté + Synthèse → Stats + Pass saisonnier → Carrière + Objectifs en L1) + API client typé + composants ChallengeCard/MomentCard/ChallengesCarousel + page Objectifs.
+
+---
+
 ## [2026-04-25] feat(prestige): Phase 3 — Handlers HTTP + sync hook avec feature flag
 
 **Statut** : Complété — Phase 3 du plan IMPL_PRESTIGE.md livrée. Câblage final des routes dans server.go reporté Phase 4 (dépend du BaselineProvider Halo).

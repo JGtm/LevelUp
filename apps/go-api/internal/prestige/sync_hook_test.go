@@ -46,6 +46,24 @@ func (m *mockService) SuggestNext(ctx context.Context, _ string) ([]Template, er
 	return nil, nil
 }
 
+func (m *mockService) CreateArc(ctx context.Context, _ CreateArcRequest) (Arc, error) {
+	return Arc{}, nil
+}
+func (m *mockService) ListArcs(ctx context.Context, _, _ string) ([]Arc, error) { return nil, nil }
+func (m *mockService) GetArc(ctx context.Context, _ string) (Arc, error)        { return Arc{}, nil }
+func (m *mockService) CreateSquadChallenge(ctx context.Context, _ CreateSquadChallengeRequest) (SquadChallenge, error) {
+	return SquadChallenge{}, nil
+}
+func (m *mockService) JoinSquadChallenge(ctx context.Context, _, _ string, _ Tier, _ bool) error {
+	return nil
+}
+func (m *mockService) GetSquadChallenge(ctx context.Context, _ string) (SquadChallenge, error) {
+	return SquadChallenge{}, nil
+}
+func (m *mockService) ListSquadChallenges(ctx context.Context, _ string) ([]SquadChallenge, error) {
+	return nil, nil
+}
+
 func TestIsEnabled_Defaults(t *testing.T) {
 	t.Setenv(FeatureFlagEnv, "")
 	if IsEnabled() {
