@@ -1,0 +1,35 @@
+# ─────────────────────────────────────────────────────────────────────────────
+# Halo Infinite — arcs preset (séquences narratives de défis).
+#
+# Chargé en metadata.duckdb (tables preset_arc + preset_arc_step).
+# Contenu rempli en Phase 4 (≥ 4 arcs : Slayer, Support, Consistant, Explorateur).
+# ─────────────────────────────────────────────────────────────────────────────
+
+[meta]
+schema_version = 1
+title_slug     = "halo_infinite"
+
+# Section des arcs, vide pour Phase 1 — alimentée en Phase 4.
+# Exemple de structure attendue (commenté jusqu'au remplissage) :
+#
+# [[arcs]]
+# id              = "halo_infinite.slayer"
+# title_en        = "The Slayer"
+# title_fr        = "Le Slayer"
+# description_en  = "Become the offensive force your team needs."
+# description_fr  = "Deviens la force offensive de ton équipe."
+#
+#   [[arcs.steps]]
+#   position     = 1
+#   template_id  = "halo_infinite.weekly.kills_per_min_low"
+#   target_tier  = "normal"
+#
+#   [[arcs.steps]]
+#   position     = 2
+#   template_id  = "halo_infinite.weekly.kills_per_min_mid"
+#   target_tier  = "heroic"
+#
+#   [[arcs.steps]]
+#   position     = 3
+#   template_id  = "halo_infinite.weekly.kills_per_min_high"
+#   target_tier  = "legendary"

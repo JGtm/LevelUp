@@ -1,0 +1,35 @@
+# ─────────────────────────────────────────────────────────────────────────────
+# Halo Infinite — catalogue de templates de défis.
+#
+# Chargé en metadata.duckdb (table challenge_template).
+# Contenu rempli en Phase 4 (~30 templates).
+#
+# Convention :
+#   - id : slug stable (ne jamais réutiliser un id retiré)
+#   - metric : référence un FieldKey de internal/games/canonical/fields.go
+#   - cibles monotones : normal < heroic < legendary < mythic
+# ─────────────────────────────────────────────────────────────────────────────
+
+[meta]
+schema_version = 1
+title_slug     = "halo_infinite"
+
+# Section des templates, vide pour Phase 1 — alimentée en Phase 4.
+# Exemple de structure attendue (commenté jusqu'au remplissage) :
+#
+# [[templates]]
+# id              = "halo_infinite.daily.kda_session"
+# metric          = "FieldKDA"
+# window_type     = "session"
+# window_value    = "1"
+# cadence         = "daily"
+# eval_type       = "threshold"
+# mode_filter     = "universal"
+# label_en        = "Stay sharp"
+# label_fr        = "Reste affûté"
+# description_en  = "Maintain a strong KDA across one full session."
+# description_fr  = "Maintiens un bon KDA sur une session complète."
+# normal_target   = 1.10
+# heroic_target   = 1.35
+# legendary_target = 1.60
+# mythic_target   = 2.00
