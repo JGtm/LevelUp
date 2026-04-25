@@ -33,8 +33,8 @@ WITH me_perfect AS (
 top_weapons AS (
     SELECT xuid, effective_weapon_id AS top_weapon_id
     FROM (
-        SELECT xuid, effective_weapon_id, SUM(kill_count) AS wk,
-               ROW_NUMBER() OVER (PARTITION BY xuid ORDER BY SUM(kill_count) DESC) AS rn
+        SELECT xuid, effective_weapon_id, COUNT(*) AS wk,
+               ROW_NUMBER() OVER (PARTITION BY xuid ORDER BY COUNT(*) DESC) AS rn
         FROM shared.v_weapon_kills
         WHERE match_id = ? AND effective_weapon_id NOT IN (0, 1, 2)
         GROUP BY xuid, effective_weapon_id
@@ -127,7 +127,7 @@ ORDER BY he.time_ms ASC`
 const Q16WeaponKills = `
 SELECT
     wk.weapon_id,
-    SUM(wk.kill_count) AS kills
+    COUNT(*) AS kills
 FROM shared.weapon_kills wk
 WHERE wk.xuid = ? AND wk.match_id = ?
 GROUP BY wk.weapon_id

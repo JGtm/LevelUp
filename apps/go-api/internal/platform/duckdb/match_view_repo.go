@@ -274,14 +274,36 @@ func (r *MatchViewRepo) lookupMedalLabels(ctx context.Context, medalIDs []int64)
 }
 
 func (r *MatchViewRepo) lookupWeaponLabels(ctx context.Context, weaponIDs []int64) map[int64]string {
-	return lookupLabelsByID(
-		ctx,
-		r.pdb.Metadata,
-		`SELECT weapon_id, COALESCE(label_fr, label_en, CAST(weapon_id AS VARCHAR)) AS weapon_label
+	labels := map[int64]string{}
+	if len(weaponIDs) == 0 || r.pdb.Metadata == nil {
+		return labels
+	}
+	// Contournement driver : database/sql ne supporte pas uint64 avec bit63=1.
+	// On injecte les IDs comme littéraux décimaux (valeurs internes, pas user input).
+	unique := uniqueInt64s(weaponIDs)
+	parts := make([]string, len(unique))
+	for i, id := range unique {
+		parts[i] = fmt.Sprintf("%d", uint64(id)) //nolint:gosec
+	}
+	query := fmt.Sprintf( //nolint:gosec
+		`SELECT weapon_id, COALESCE(name_fr, name_en, CAST(weapon_id AS VARCHAR)) AS weapon_label
 		 FROM weapon_labels
 		 WHERE weapon_id IN (%s)`,
-		weaponIDs,
+		strings.Join(parts, ","),
 	)
+	rows, err := r.pdb.Metadata.Query(ctx, query)
+	if err != nil {
+		return labels
+	}
+	defer rows.Close()
+	for rows.Next() {
+		var id int64
+		var label string
+		if err := rows.Scan(&id, &label); err == nil && label != "" {
+			labels[id] = label
+		}
+	}
+	return labels
 }
 
 func lookupLabelsByID(ctx context.Context, db *DB, queryTemplate string, ids []int64) map[int64]string {

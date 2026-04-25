@@ -379,9 +379,8 @@ func TestMatchViewRepo_GetMatchWeaponKills_WithMetadataLabels(t *testing.T) {
 	pdb := newTestPlayerDB(t)
 	ctx := context.Background()
 	_, err := pdb.Player.Exec(ctx,
-		`INSERT INTO shared.weapon_kills (match_id, xuid, weapon_id, kill_count) VALUES (?,?,?,?), (?,?,?,?)`,
-		"m1", pTestXUID, uint64(42), 3,
-		"m1", pTestXUID, uint64(42), 1,
+		`INSERT INTO shared.weapon_kills (match_id, xuid, weapon_id, kills) VALUES (?,?,?,?)`,
+		"m1", pTestXUID, uint64(42), 4,
 	)
 	if err != nil {
 		t.Fatal(err)
