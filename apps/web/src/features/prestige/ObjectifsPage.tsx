@@ -7,12 +7,13 @@
  * Toggle "Défis pilotés" (mode pilote) en tête de l'onglet Défis.
  * Phase 5 : version minimale fonctionnelle, à enrichir avec vrais flows UX.
  */
+import { useState } from 'react'
 import { useSearch, useNavigate } from '@tanstack/react-router'
-import { useQuery } from '@tanstack/react-query'
 import { useAppShellStore } from '@/stores/appShellStore'
-import { prestigeApi } from '@/lib/prestige'
 import type { Challenge, Arc, UserPrestige } from '@/lib/prestige'
 import { ChallengeCard } from './components/ChallengeCard'
+import { CreateChallengeForm } from './components/CreateChallengeForm'
+import { useChallenges, useArcs, useMyPrestige, useAbandonChallenge } from './hooks'
 
 type TabKey = 'challenges' | 'parcours'
 
@@ -95,11 +96,9 @@ interface TabProps {
 }
 
 function ChallengesTab({ userId, titleSlug }: TabProps) {
-  const { data, isLoading, isError } = useQuery({
-    queryKey: ['prestige', 'challenges', userId, titleSlug],
-    queryFn: () => prestigeApi.listActiveChallenges(userId, titleSlug),
-    retry: false,
-  })
+  const { data, isLoading, isError } = useChallenges(userId, titleSlug)
+  const abandon = useAbandonChallenge(userId, titleSlug)
+  const [showForm, setShowForm] = useState(false)
 
   if (isError) {
     return (
@@ -113,6 +112,25 @@ function ChallengesTab({ userId, titleSlug }: TabProps) {
   const libres = challenges.filter((c) => c.mode === 'libre')
   const pilotes = challenges.filter((c) => c.mode === 'pilote')
 
+  if (showForm) {
+    return (
+      <div className="rounded-lg border border-border bg-card p-4">
+        <CreateChallengeForm
+          userId={userId}
+          titleSlug={titleSlug}
+          onSuccess={() => setShowForm(false)}
+          onCancel={() => setShowForm(false)}
+        />
+      </div>
+    )
+  }
+
+  const handleAbandon = (id: string) => {
+    if (confirm('Abandonner ce défi ? Cooldown 48h sur la métrique.')) {
+      abandon.mutate(id)
+    }
+  }
+
   return (
     <div className="space-y-4">
       <PilotModeToggle />
@@ -124,12 +142,18 @@ function ChallengesTab({ userId, titleSlug }: TabProps) {
           </h2>
           <button
             type="button"
+            onClick={() => setShowForm(true)}
             className="rounded-md border border-border px-3 py-1 text-xs hover:bg-accent"
           >
             + Nouveau défi
           </button>
         </header>
-        <ChallengeGrid challenges={libres} loading={isLoading} emptyMessage="Aucun défi libre actif." />
+        <ChallengeGrid
+          challenges={libres}
+          loading={isLoading}
+          emptyMessage="Aucun défi libre actif."
+          onAbandon={handleAbandon}
+        />
       </section>
 
       {pilotes.length > 0 && (
@@ -137,7 +161,7 @@ function ChallengesTab({ userId, titleSlug }: TabProps) {
           <h2 className="mb-2 text-sm font-semibold uppercase text-muted-foreground">
             Défis pilotés ({pilotes.length})
           </h2>
-          <ChallengeGrid challenges={pilotes} loading={false} emptyMessage="" />
+          <ChallengeGrid challenges={pilotes} loading={false} emptyMessage="" onAbandon={handleAbandon} />
         </section>
       )}
     </div>
@@ -170,9 +194,10 @@ interface ChallengeGridProps {
   challenges: Challenge[]
   loading: boolean
   emptyMessage: string
+  onAbandon?: (id: string) => void
 }
 
-function ChallengeGrid({ challenges, loading, emptyMessage }: ChallengeGridProps) {
+function ChallengeGrid({ challenges, loading, emptyMessage, onAbandon }: ChallengeGridProps) {
   if (loading) {
     return (
       <div className="grid grid-cols-1 gap-2 sm:grid-cols-2 lg:grid-cols-3">
@@ -192,8 +217,31 @@ function ChallengeGrid({ challenges, loading, emptyMessage }: ChallengeGridProps
   return (
     <div className="grid grid-cols-1 gap-2 sm:grid-cols-2 lg:grid-cols-3">
       {challenges.map((c) => (
-        <ChallengeCard key={c.id} challenge={c} />
+        <ChallengeCardWithActions key={c.id} challenge={c} onAbandon={onAbandon} />
       ))}
+    </div>
+  )
+}
+
+function ChallengeCardWithActions({
+  challenge,
+  onAbandon,
+}: {
+  challenge: Challenge
+  onAbandon?: (id: string) => void
+}) {
+  return (
+    <div className="space-y-1">
+      <ChallengeCard challenge={challenge} />
+      {onAbandon && challenge.status === 'active' && (
+        <button
+          type="button"
+          onClick={() => onAbandon(challenge.id)}
+          className="text-xs text-muted-foreground hover:text-destructive"
+        >
+          Abandonner
+        </button>
+      )}
     </div>
   )
 }
@@ -201,17 +249,8 @@ function ChallengeGrid({ challenges, loading, emptyMessage }: ChallengeGridProps
 // ───────────────── Onglet Mon parcours ─────────────────
 
 function ParcoursTab({ userId, titleSlug }: TabProps) {
-  const { data: prestigeData, isError: prestigeErr } = useQuery({
-    queryKey: ['prestige', 'me', userId, titleSlug],
-    queryFn: () => prestigeApi.getMyPrestige(userId, titleSlug),
-    retry: false,
-  })
-
-  const { data: arcsData } = useQuery({
-    queryKey: ['prestige', 'arcs', userId, titleSlug],
-    queryFn: () => prestigeApi.listArcs(userId, titleSlug),
-    retry: false,
-  })
+  const { data: prestigeData, isError: prestigeErr } = useMyPrestige(userId, titleSlug)
+  const { data: arcsData } = useArcs(userId, titleSlug)
 
   if (prestigeErr) {
     return (
