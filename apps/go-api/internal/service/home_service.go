@@ -156,7 +156,7 @@ func (s *HomeService) GetHomePage(ctx context.Context, gamertag, locale string) 
 
 	highlights := analysis.BuildHighlights(matches)
 	recentMatches := analysis.BuildRecentMatchesWithFavoritesForLocale(matches, len(matches), favoriteIDs, locale)
-	favoriteMatches := buildFavoriteMatchList(recentMatches, matches, favoriteIDs, locale)
+	favoriteMatches := buildFavoriteMatchList(matches, favoriteIDs, locale)
 
 	// Enrichissement médailles : batch sur tous les match_id récents + favoris.
 	enrichMatchesWithMedals(ctx, s.repo, recentMatches)
@@ -270,7 +270,6 @@ func enrichMatchesWithCitations(ctx context.Context, repo port.HomeRepository, i
 // buildFavoriteMatchList construit la liste des matchs favoris à partir de tous les matchs
 // chargés (pas limités à 6), en appliquant le flag IsFavorite.
 func buildFavoriteMatchList(
-	recent []domain.RecentMatchItem,
 	all []domain.HomeMatchRow,
 	favoriteIDs map[string]bool,
 	locale string,

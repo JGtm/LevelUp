@@ -321,7 +321,6 @@ func (p *HaloProvider) fetchBattlePass(ctx context.Context, tokens *domain.HaloT
 
 // parseBattlePassTrack extrait rank, progress et trackPath depuis les opérations.
 func parseBattlePassTrack(activePath string, tracks []battlePassTrack) (rank, progress int, trackPath string) {
-	trackPath = activePath
 	for _, t := range tracks {
 		if t.RewardTrackPath == activePath {
 			return t.CurrentProgress.Rank, t.CurrentProgress.PartialProgress, activePath

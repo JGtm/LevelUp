@@ -59,6 +59,9 @@ func TestDecodePositionFrame_ValidFrame_Boost(t *testing.T) {
 
 // ---------- ScanFirstMovements with data ----------
 
+// buildValidFrame construit une frame test ; baseType est paramétré pour l'extension future.
+//
+//nolint:unparam // baseType est gardé pour clarifier l'intention de la frame
 func buildValidFrame(baseType, playerIdx byte) []byte {
 	data := make([]byte, 20)
 	data[0] = frameMarkerB0

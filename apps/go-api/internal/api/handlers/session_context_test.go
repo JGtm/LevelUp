@@ -18,7 +18,7 @@ import (
 	"levelup/go-api/internal/platform/session"
 )
 
-func newSessionContextRouter(t *testing.T) (*chi.Mux, *session.Store) {
+func newSessionContextRouter(t *testing.T) *chi.Mux {
 	t.Helper()
 	dir := t.TempDir()
 	store := session.NewStore(filepath.Join(dir, "sessions"), time.Hour, "test-secret-32bytesXXXXXXXXXXX")
@@ -26,11 +26,11 @@ func newSessionContextRouter(t *testing.T) (*chi.Mux, *session.Store) {
 	r := chi.NewRouter()
 	r.Use(middleware.WithSession(store, false))
 	r.Post("/session/context", h.PostContext)
-	return r, store
+	return r
 }
 
 func TestSessionHandler_PostContext_OK(t *testing.T) {
-	r, _ := newSessionContextRouter(t)
+	r := newSessionContextRouter(t)
 	slug := "test-player"
 	locale := "fr"
 	body, _ := json.Marshal(domain.SessionContextRequest{
@@ -49,7 +49,7 @@ func TestSessionHandler_PostContext_OK(t *testing.T) {
 }
 
 func TestSessionHandler_PostContext_InvalidBody(t *testing.T) {
-	r, _ := newSessionContextRouter(t)
+	r := newSessionContextRouter(t)
 	req := httptest.NewRequest(http.MethodPost, "/session/context", bytes.NewReader([]byte("{bad")))
 	req.Header.Set("Content-Type", "application/json")
 	w := httptest.NewRecorder()
@@ -61,7 +61,7 @@ func TestSessionHandler_PostContext_InvalidBody(t *testing.T) {
 }
 
 func TestSessionHandler_PostContext_TitleSwitch(t *testing.T) {
-	r, _ := newSessionContextRouter(t)
+	r := newSessionContextRouter(t)
 	titleSlug := "halo_infinite"
 	body, _ := json.Marshal(domain.SessionContextRequest{
 		TitleSlug: &titleSlug,
@@ -86,7 +86,7 @@ func TestSessionHandler_PostContext_TitleSwitch(t *testing.T) {
 }
 
 func TestSessionHandler_PostContext_AvailableTitles(t *testing.T) {
-	r, _ := newSessionContextRouter(t)
+	r := newSessionContextRouter(t)
 	body, _ := json.Marshal(domain.SessionContextRequest{})
 
 	req := httptest.NewRequest(http.MethodPost, "/session/context", bytes.NewReader(body))
@@ -118,7 +118,7 @@ func TestSessionHandler_PostContext_AvailableTitles(t *testing.T) {
 }
 
 func TestSessionHandler_PostContext_TitleSwitchResetsPlayer(t *testing.T) {
-	r, _ := newSessionContextRouter(t)
+	r := newSessionContextRouter(t)
 
 	// Step 1: set a player
 	slug := "my-player"
@@ -132,7 +132,9 @@ func TestSessionHandler_PostContext_TitleSwitchResetsPlayer(t *testing.T) {
 	}
 
 	// Extract session cookie
-	cookies := w1.Result().Cookies()
+	respCk1 := w1.Result()
+	cookies := respCk1.Cookies()
+	_ = respCk1.Body.Close()
 
 	// Step 2: switch title → player should be reset
 	titleSlug := "halo_infinite"
@@ -159,7 +161,7 @@ func TestSessionHandler_PostContext_TitleSwitchResetsPlayer(t *testing.T) {
 }
 
 func TestSessionHandler_PostContext_UnknownTitleIgnored(t *testing.T) {
-	r, _ := newSessionContextRouter(t)
+	r := newSessionContextRouter(t)
 
 	// Set a player first
 	slug := "my-player"
@@ -168,7 +170,9 @@ func TestSessionHandler_PostContext_UnknownTitleIgnored(t *testing.T) {
 	req1.Header.Set("Content-Type", "application/json")
 	w1 := httptest.NewRecorder()
 	r.ServeHTTP(w1, req1)
-	cookies := w1.Result().Cookies()
+	respCk2 := w1.Result()
+	cookies := respCk2.Cookies()
+	_ = respCk2.Body.Close()
 
 	// Try unknown title → should be silently ignored
 	badTitle := "fortnite_infinite"
@@ -196,7 +200,7 @@ func TestSessionHandler_PostContext_UnknownTitleIgnored(t *testing.T) {
 }
 
 func TestSessionHandler_PostContext_Propagation(t *testing.T) {
-	r, _ := newSessionContextRouter(t)
+	r := newSessionContextRouter(t)
 
 	// Step 1: set locale
 	locale := "en"
@@ -205,7 +209,9 @@ func TestSessionHandler_PostContext_Propagation(t *testing.T) {
 	req1.Header.Set("Content-Type", "application/json")
 	w1 := httptest.NewRecorder()
 	r.ServeHTTP(w1, req1)
-	cookies := w1.Result().Cookies()
+	respCk3 := w1.Result()
+	cookies := respCk3.Cookies()
+	_ = respCk3.Body.Close()
 
 	// Step 2: verify locale persisted in subsequent call
 	body2, _ := json.Marshal(domain.SessionContextRequest{})

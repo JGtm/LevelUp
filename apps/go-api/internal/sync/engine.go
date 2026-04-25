@@ -659,6 +659,8 @@ func (e *SyncEngine) runAchievementsSync(ctx context.Context, playerDB *sql.DB) 
 // resolveAccessTokenFromDB lit le cache MSAL et le refresh token depuis sync_meta (DB déjà ouverte),
 // puis tente TrySilentRefresh ou TryOAuthRefresh selon ce qui est disponible.
 // Retourne ("", nil) si aucun token n'est disponible (non fatal).
+//
+//nolint:unparam // contrat documenté : second retour non-nil est réservé aux futures erreurs fatales (DB)
 func resolveAccessTokenFromDB(
 	ctx context.Context,
 	playerDB *sql.DB,

@@ -192,6 +192,8 @@ func newUploadRouter(
 }
 
 // buildMultipartRequest construit une requête multipart avec les fichiers donnés.
+//
+//nolint:unparam // route est gardé pour ouvrir l'helper à d'autres routes média
 func buildMultipartRequest(t *testing.T, route string, files map[string][]byte) *http.Request {
 	t.Helper()
 	var buf bytes.Buffer

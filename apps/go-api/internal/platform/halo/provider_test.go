@@ -34,6 +34,9 @@ func testTokens() *domain.HaloTokens {
 	return &domain.HaloTokens{SpartanToken: "spartan_test", ClearanceToken: "clear_test"}
 }
 
+// ctxWithAuth construit un contexte avec auth Halo (tokens + xuid).
+//
+//nolint:unparam // xuid est gardé pour l'extension future à d'autres tests
 func ctxWithAuth(tokens *domain.HaloTokens, xuid string) context.Context {
 	return ctxkeys.WithHaloAuth(context.Background(), tokens, xuid)
 }

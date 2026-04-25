@@ -102,7 +102,7 @@ type battlePassTrackRaw struct {
 // translations) est la responsabilité du HaloProvider qui dispose des tokens Halo
 // et fetche la définition GameCMS (/hi/Progression/file/{trackPath}) — voir
 // battlepass_details.go / fetchRewardTrackDefinition.
-func (s *PersistSink) writeBattlePass(ctx context.Context, trackPath string, body []byte) error {
+func (s *PersistSink) writeBattlePass(ctx context.Context, _ string, body []byte) error {
 	relMeta, err := dblease.AcquireLease(s.MetaPath, dblease.MetadataLeaseTimeout)
 	if err != nil {
 		return fmt.Errorf("writeBattlePass lease meta: %w", err)

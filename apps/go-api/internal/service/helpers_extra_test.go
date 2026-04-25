@@ -90,7 +90,7 @@ func TestComputeSoloReference_WithSolo(t *testing.T) {
 	}
 	ref := computeSoloReference(matches)
 	if ref == nil {
-		t.Error("expected non-nil reference")
+		t.Fatal("expected non-nil reference")
 	}
 	if ref.MatchCount != 1 {
 		t.Errorf("expected 1 solo match, got %d", ref.MatchCount)
