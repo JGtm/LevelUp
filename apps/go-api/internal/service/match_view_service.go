@@ -14,6 +14,7 @@ import (
 	"golang.org/x/sync/errgroup"
 	"levelup/go-api/internal/analysis"
 	"levelup/go-api/internal/domain"
+	"levelup/go-api/internal/games"
 	"levelup/go-api/internal/port"
 )
 
@@ -30,11 +31,24 @@ var outcomeColors = map[int]string{
 type MatchViewService struct {
 	repo port.MatchViewRepository
 	xuid string
+	// dataAdapter (optionnel, Phase C+ multi-titres) : point d'extension pour
+	// router LoadMatchDetail via la couche canonique. À ce jour, le service
+	// utilise le repo direct car canonical.MatchDetail ne couvre pas encore
+	// la totalité du payload Match View (4 onglets + header). Le hook est en
+	// place pour permettre une bascule incrémentale.
+	dataAdapter games.TitleDataAdapter
 }
 
 // NewMatchViewService crée un MatchViewService.
 func NewMatchViewService(repo port.MatchViewRepository, xuid string) *MatchViewService {
 	return &MatchViewService{repo: repo, xuid: xuid}
+}
+
+// WithDataAdapter injecte le DataAdapter multi-titres pour activer une
+// future bascule LoadMatchDetail. Dégradation gracieuse si nil.
+func (s *MatchViewService) WithDataAdapter(a games.TitleDataAdapter) *MatchViewService {
+	s.dataAdapter = a
+	return s
 }
 
 // GetMatchView retourne la réponse complète pour un match.

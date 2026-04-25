@@ -14,6 +14,7 @@ import (
 
 	"levelup/go-api/internal/analysis"
 	"levelup/go-api/internal/domain"
+	"levelup/go-api/internal/games"
 	"levelup/go-api/internal/port"
 )
 
@@ -44,11 +45,25 @@ var availableColumns = []string{
 type MatchHistoryService struct {
 	repo           port.MatchHistoryRepository
 	waypointPlayer string
+	// dataAdapter (optionnel, Phase C+ multi-titres) : point d'extension pour
+	// router LoadMatchSummaries via la couche canonique quand elle évoluera
+	// pour porter tous les champs MatchHistoryRawRow. À ce jour, le service
+	// utilise le repo direct car canonical.MatchSummary ne couvre pas encore
+	// la totalité du payload (delta_mmr, performance_score, etc.). Le hook
+	// est en place pour permettre une bascule incrémentale.
+	dataAdapter games.TitleDataAdapter
 }
 
 // NewMatchHistoryService crée un MatchHistoryService.
 func NewMatchHistoryService(repo port.MatchHistoryRepository, waypointPlayer string) *MatchHistoryService {
 	return &MatchHistoryService{repo: repo, waypointPlayer: waypointPlayer}
+}
+
+// WithDataAdapter injecte le DataAdapter multi-titres pour activer une
+// future bascule LoadMatchSummaries. Dégradation gracieuse si nil.
+func (s *MatchHistoryService) WithDataAdapter(a games.TitleDataAdapter) *MatchHistoryService {
+	s.dataAdapter = a
+	return s
 }
 
 // GetPage charge tous les matchs, applique filtres+pagination et retourne la réponse.

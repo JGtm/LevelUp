@@ -88,6 +88,17 @@ func (r *ServiceRegistry) semanticFor(slug string) games.TitleSemanticAdapter {
 	return sem
 }
 
+// dataAdapterForPDB retourne un TitleDataAdapter player-scoped HI ou nil si
+// le titre courant ne supporte pas la couche multi-titres player-scoped.
+// Utilisé par les factories de services pour câbler la bascule Phase C+
+// sans la dupliquer à chaque endroit.
+func (r *ServiceRegistry) dataAdapterForPDB(pdb *duckdb.PlayerDB) games.TitleDataAdapter {
+	if pdb == nil || pdb.TitleSlug != title.DefaultSlug {
+		return nil
+	}
+	return halo_games.NewDataAdapter(duckdb.NewCareerRepo(pdb), slog.Default())
+}
+
 // GetSessionNotifier retourne le SessionNotifier enregistré pour le xuid donné.
 // Retourne nil si aucun HomeService n'a encore été créé pour ce joueur (cold start).
 func (r *ServiceRegistry) GetSessionNotifier(xuid string) port.SessionNotifier {
@@ -116,10 +127,8 @@ func (r *ServiceRegistry) Career(ctx context.Context, slug string) (port.CareerS
 	}
 	careerRepo := duckdb.NewCareerRepo(pdb)
 	svc := service.NewCareerService(careerRepo).WithTitleSlug(pdb.TitleSlug)
-	if pdb.TitleSlug == title.DefaultSlug {
-		// CareerRepo implémente CareerSource (GetLatestRank + GetEncounters).
-		dataAdapter := halo_games.NewDataAdapter(careerRepo, slog.Default())
-		svc = svc.WithDataAdapter(dataAdapter)
+	if a := r.dataAdapterForPDB(pdb); a != nil {
+		svc = svc.WithDataAdapter(a)
 	}
 	return svc, nil
 }
@@ -157,12 +166,21 @@ func (r *ServiceRegistry) Filters(ctx context.Context, slug string) (port.Filter
 }
 
 // MatchView retourne un MatchViewService pour le joueur.
+//
+// Phase C+ multi-titres : injecte le DataAdapter HI pour permettre une
+// future bascule LoadMatchDetail (le service utilise le hook WithDataAdapter
+// pour préparer la migration sans la déclencher tant que canonical.MatchDetail
+// ne couvre pas la totalité du payload Match View).
 func (r *ServiceRegistry) MatchView(ctx context.Context, slug string) (port.MatchViewService, error) {
 	pdb, err := r.resolve(ctx, slug)
 	if err != nil {
 		return nil, err
 	}
-	return service.NewMatchViewService(duckdb.NewMatchViewRepo(pdb, pdb.XUID), pdb.XUID), nil
+	svc := service.NewMatchViewService(duckdb.NewMatchViewRepo(pdb, pdb.XUID), pdb.XUID)
+	if a := r.dataAdapterForPDB(pdb); a != nil {
+		svc = svc.WithDataAdapter(a)
+	}
+	return svc, nil
 }
 
 // Media retourne un MediaService pour le joueur.
@@ -244,12 +262,19 @@ func (r *ServiceRegistry) Stats(ctx context.Context, slug string) (port.StatsSer
 }
 
 // Timeseries retourne un TimeseriesService pour le joueur.
+//
+// Phase C+ multi-titres : injecte le DataAdapter HI pour permettre une
+// future bascule LoadTimeseries.
 func (r *ServiceRegistry) Timeseries(ctx context.Context, slug string) (port.TimeseriesService, error) {
 	pdb, err := r.resolve(ctx, slug)
 	if err != nil {
 		return nil, err
 	}
-	return service.NewTimeseriesService(duckdb.NewStatsRepo(pdb)), nil
+	svc := service.NewTimeseriesService(duckdb.NewStatsRepo(pdb))
+	if a := r.dataAdapterForPDB(pdb); a != nil {
+		svc = svc.WithDataAdapter(a)
+	}
+	return svc, nil
 }
 
 // ---------------------------------------------------------------------------
@@ -286,7 +311,8 @@ func (r *ServiceRegistry) HomeCtx(ctx context.Context, slug string) (port.HomeSe
 	}
 	svc := service.NewHomeService(duckdb.NewHomeRepo(pdb)).
 		WithSocial(duckdb.NewSocialRepo(pdb), slug).
-		WithSemanticAdapter(r.semanticFor(pdb.TitleSlug))
+		WithSemanticAdapter(r.semanticFor(pdb.TitleSlug)).
+		WithDataAdapter(r.dataAdapterForPDB(pdb))
 	return svc, pdb.XUID, pdb.Gamertag, nil
 }
 
@@ -308,7 +334,8 @@ func (r *ServiceRegistry) HomeCtxWithAuth(ctx context.Context, slug string) (por
 		WithCacheRepo(homeRepo).
 		WithHaloProvider(haloProvider).
 		WithSocial(duckdb.NewSocialRepo(pdb), slug).
-		WithSemanticAdapter(r.semanticFor(pdb.TitleSlug))
+		WithSemanticAdapter(r.semanticFor(pdb.TitleSlug)).
+		WithDataAdapter(r.dataAdapterForPDB(pdb))
 	r.notifiers.Store(pdb.XUID, port.SessionNotifier(svc))
 	enriched := r.enrichWithHaloTokens(ctx, pdb)
 	return svc, enriched, pdb.XUID, pdb.Gamertag, nil
@@ -329,7 +356,8 @@ func (r *ServiceRegistry) SeasonPassCtxWithAuth(ctx context.Context, slug string
 		WithPersistSink(sink).
 		WithCacheRepo(homeRepo).
 		WithHaloProvider(haloProvider).
-		WithSemanticAdapter(r.semanticFor(pdb.TitleSlug))
+		WithSemanticAdapter(r.semanticFor(pdb.TitleSlug)).
+		WithDataAdapter(r.dataAdapterForPDB(pdb))
 	r.notifiers.Store(pdb.XUID, port.SessionNotifier(homeSvc))
 	spRepo := duckdb.NewSeasonPassRepo(pdb)
 	svc := service.NewSeasonPassService(spRepo, homeSvc, pdb.XUID, pdb.TitleSlug)
@@ -420,6 +448,9 @@ func (r *ServiceRegistry) MatchHistoryCtx(ctx context.Context, slug string) (por
 		return nil, "", "", err
 	}
 	svc := service.NewMatchHistoryService(duckdb.NewMatchHistoryRepo(pdb), pdb.Gamertag)
+	if a := r.dataAdapterForPDB(pdb); a != nil {
+		svc = svc.WithDataAdapter(a)
+	}
 	return svc, pdb.XUID, pdb.Gamertag, nil
 }
 

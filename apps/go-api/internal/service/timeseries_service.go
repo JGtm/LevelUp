@@ -18,17 +18,31 @@ import (
 
 	"levelup/go-api/internal/analysis"
 	"levelup/go-api/internal/domain"
+	"levelup/go-api/internal/games"
 	"levelup/go-api/internal/port"
 )
 
 // TimeseriesService construit la réponse timeseries au format FastAPI.
 type TimeseriesService struct {
 	statsRepo port.StatsRepository
+	// dataAdapter (optionnel, Phase C+ multi-titres) : point d'extension pour
+	// router LoadTimeseries via la couche canonique. À ce jour, le service
+	// utilise le repo direct car canonical.MetricSeries ne couvre pas encore
+	// la totalité du payload (5 onglets : win_loss/accuracy/objective/form/
+	// lusr). Le hook est en place pour permettre une bascule incrémentale.
+	dataAdapter games.TitleDataAdapter
 }
 
 // NewTimeseriesService crée un TimeseriesService.
 func NewTimeseriesService(repo port.StatsRepository) *TimeseriesService {
 	return &TimeseriesService{statsRepo: repo}
+}
+
+// WithDataAdapter injecte le DataAdapter multi-titres pour activer une
+// future bascule LoadTimeseries. Dégradation gracieuse si nil.
+func (s *TimeseriesService) WithDataAdapter(a games.TitleDataAdapter) *TimeseriesService {
+	s.dataAdapter = a
+	return s
 }
 
 // GetPage construit la réponse complète avec 5 onglets.

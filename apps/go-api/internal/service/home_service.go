@@ -30,6 +30,12 @@ type HomeService struct {
 	socialRepo port.SocialRepository
 	playerSlug string
 	semantic   games.TitleSemanticAdapter // nil → libellés rangs construits via fallbacks (RankName)
+	// dataAdapter (optionnel, Phase C+ multi-titres) : point d'extension pour
+	// router LoadPlayerStats via la couche canonique. À ce jour, le service
+	// utilise le repo direct car canonical.PlayerStats ne couvre pas encore
+	// la totalité du payload home KPIs (favorite_playlist, avg_kda, etc.).
+	// Le hook est en place pour permettre une bascule incrémentale.
+	dataAdapter games.TitleDataAdapter
 }
 
 // NewHomeService crée un HomeService avec le repository et le provider Halo.
@@ -76,6 +82,13 @@ func (s *HomeService) WithSocial(repo port.SocialRepository, playerSlug string) 
 // Si nil, les libellés tombent sur le fallback RankName de la player DB.
 func (s *HomeService) WithSemanticAdapter(semantic games.TitleSemanticAdapter) *HomeService {
 	s.semantic = semantic
+	return s
+}
+
+// WithDataAdapter injecte le DataAdapter multi-titres pour activer une
+// future bascule LoadPlayerStats. Dégradation gracieuse si nil.
+func (s *HomeService) WithDataAdapter(a games.TitleDataAdapter) *HomeService {
+	s.dataAdapter = a
 	return s
 }
 
