@@ -229,6 +229,151 @@ func (h *PrestigeHandler) SuggestTemplates(w http.ResponseWriter, r *http.Reques
 	writeJSON(w, http.StatusOK, map[string]any{"templates": templates})
 }
 
+// ─────────── Arcs ───────────
+
+type createArcBody struct {
+	UserID      string `json:"user_id"`
+	TitleSlug   string `json:"title_slug"`
+	Title       string `json:"title"`
+	Description string `json:"description,omitempty"`
+}
+
+// CreateArc gère POST /arcs.
+func (h *PrestigeHandler) CreateArc(w http.ResponseWriter, r *http.Request) {
+	var body createArcBody
+	if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
+		writeError(w, http.StatusBadRequest, "invalid_body", err.Error())
+		return
+	}
+	a, err := h.svc.CreateArc(r.Context(), prestige.CreateArcRequest{
+		UserID:      body.UserID,
+		TitleSlug:   body.TitleSlug,
+		Title:       body.Title,
+		Description: body.Description,
+	})
+	if err != nil {
+		writeServiceError(w, err)
+		return
+	}
+	writeJSON(w, http.StatusCreated, a)
+}
+
+// GetArc gère GET /arcs/{id}.
+func (h *PrestigeHandler) GetArc(w http.ResponseWriter, r *http.Request) {
+	id := chi.URLParam(r, "id")
+	if id == "" {
+		writeError(w, http.StatusBadRequest, "missing_id", "id requis")
+		return
+	}
+	a, err := h.svc.GetArc(r.Context(), id)
+	if err != nil {
+		writeServiceError(w, err)
+		return
+	}
+	writeJSON(w, http.StatusOK, a)
+}
+
+// ListArcs gère GET /arcs?user_id=&title_slug=.
+func (h *PrestigeHandler) ListArcs(w http.ResponseWriter, r *http.Request) {
+	userID := r.URL.Query().Get("user_id")
+	titleSlug := r.URL.Query().Get("title_slug")
+	if userID == "" || titleSlug == "" {
+		writeError(w, http.StatusBadRequest, "missing_params", "user_id et title_slug requis")
+		return
+	}
+	arcs, err := h.svc.ListArcs(r.Context(), userID, titleSlug)
+	if err != nil {
+		writeServiceError(w, err)
+		return
+	}
+	writeJSON(w, http.StatusOK, map[string]any{"arcs": arcs, "count": len(arcs)})
+}
+
+// ─────────── Squad challenges ───────────
+
+type createSquadChallengeBody struct {
+	SquadID         string  `json:"squad_id"`
+	TemplateID      string  `json:"template_id,omitempty"`
+	TitleSlug       string  `json:"title_slug"`
+	Mode            string  `json:"mode"`
+	EvalType        string  `json:"eval_type"`
+	WindowType      string  `json:"window_type"`
+	WindowValue     string  `json:"window_value,omitempty"`
+	TargetPerMember float64 `json:"target_per_member,omitempty"`
+	CreatedBy       string  `json:"created_by"`
+}
+
+// CreateSquadChallenge gère POST /squads/{squad_id}/challenges.
+func (h *PrestigeHandler) CreateSquadChallenge(w http.ResponseWriter, r *http.Request) {
+	squadID := chi.URLParam(r, "squad_id")
+	if squadID == "" {
+		writeError(w, http.StatusBadRequest, "missing_squad_id", "squad_id requis")
+		return
+	}
+	var body createSquadChallengeBody
+	if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
+		writeError(w, http.StatusBadRequest, "invalid_body", err.Error())
+		return
+	}
+	body.SquadID = squadID
+	sc, err := h.svc.CreateSquadChallenge(r.Context(), prestige.CreateSquadChallengeRequest{
+		SquadID:         body.SquadID,
+		TemplateID:      body.TemplateID,
+		TitleSlug:       body.TitleSlug,
+		Mode:            prestige.SquadMode(body.Mode),
+		EvalType:        prestige.EvalType(body.EvalType),
+		WindowType:      prestige.WindowType(body.WindowType),
+		WindowValue:     body.WindowValue,
+		TargetPerMember: body.TargetPerMember,
+		CreatedBy:       body.CreatedBy,
+	})
+	if err != nil {
+		writeServiceError(w, err)
+		return
+	}
+	writeJSON(w, http.StatusCreated, sc)
+}
+
+// ListSquadChallenges gère GET /squads/{squad_id}/challenges.
+func (h *PrestigeHandler) ListSquadChallenges(w http.ResponseWriter, r *http.Request) {
+	squadID := chi.URLParam(r, "squad_id")
+	if squadID == "" {
+		writeError(w, http.StatusBadRequest, "missing_squad_id", "squad_id requis")
+		return
+	}
+	list, err := h.svc.ListSquadChallenges(r.Context(), squadID)
+	if err != nil {
+		writeServiceError(w, err)
+		return
+	}
+	writeJSON(w, http.StatusOK, map[string]any{"squad_challenges": list, "count": len(list)})
+}
+
+type joinSquadChallengeBody struct {
+	UserID     string `json:"user_id"`
+	ChosenTier string `json:"chosen_tier,omitempty"`
+	IsPrivate  bool   `json:"is_private,omitempty"`
+}
+
+// JoinSquadChallenge gère POST /squad-challenges/{id}/join.
+func (h *PrestigeHandler) JoinSquadChallenge(w http.ResponseWriter, r *http.Request) {
+	id := chi.URLParam(r, "id")
+	if id == "" {
+		writeError(w, http.StatusBadRequest, "missing_id", "id requis")
+		return
+	}
+	var body joinSquadChallengeBody
+	if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
+		writeError(w, http.StatusBadRequest, "invalid_body", err.Error())
+		return
+	}
+	if err := h.svc.JoinSquadChallenge(r.Context(), id, body.UserID, prestige.Tier(body.ChosenTier), body.IsPrivate); err != nil {
+		writeServiceError(w, err)
+		return
+	}
+	w.WriteHeader(http.StatusNoContent)
+}
+
 // ─────────── Helper d'erreurs ───────────
 
 // writeServiceError mappe les erreurs du service vers des codes HTTP.

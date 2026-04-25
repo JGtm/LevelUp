@@ -1,35 +1,279 @@
 # ─────────────────────────────────────────────────────────────────────────────
 # Halo Infinite — catalogue de templates de défis.
 #
-# Chargé en metadata.duckdb (table challenge_template).
-# Contenu rempli en Phase 4 (~30 templates).
+# Chargé en metadata.duckdb (table challenge_template) au boot.
 #
 # Convention :
-#   - id : slug stable (ne jamais réutiliser un id retiré)
+#   - id : slug stable, ne jamais réutiliser un id retiré
 #   - metric : référence un FieldKey de internal/games/canonical/fields.go
 #   - cibles monotones : normal < heroic < legendary < mythic
+#   - mode_filter : universal | pvp | ranked | pve
+#
+# Les valeurs sont des points de départ — à recalibrer après alpha via
+# scripts/analyze_prestige_tuning.py.
 # ─────────────────────────────────────────────────────────────────────────────
 
 [meta]
 schema_version = 1
 title_slug     = "halo_infinite"
 
-# Section des templates, vide pour Phase 1 — alimentée en Phase 4.
-# Exemple de structure attendue (commenté jusqu'au remplissage) :
-#
-# [[templates]]
-# id              = "halo_infinite.daily.kda_session"
-# metric          = "FieldKDA"
-# window_type     = "session"
-# window_value    = "1"
-# cadence         = "daily"
-# eval_type       = "threshold"
-# mode_filter     = "universal"
-# label_en        = "Stay sharp"
-# label_fr        = "Reste affûté"
-# description_en  = "Maintain a strong KDA across one full session."
-# description_fr  = "Maintiens un bon KDA sur une session complète."
-# normal_target   = 1.10
-# heroic_target   = 1.35
-# legendary_target = 1.60
-# mythic_target   = 2.00
+# ═════════════════════ QUOTIDIENS (cadence=daily) ════════════════════════════
+
+[[templates]]
+id              = "halo_infinite.daily.kda_session"
+metric          = "FieldKDA"
+window_type     = "session"
+window_value    = "1"
+cadence         = "daily"
+eval_type       = "threshold"
+mode_filter     = "universal"
+label_en        = "Stay sharp"
+label_fr        = "Reste affûté"
+description_en  = "Maintain a strong KDA across one full session."
+description_fr  = "Maintiens un bon KDA sur une session complète."
+normal_target   = 1.10
+heroic_target   = 1.35
+legendary_target = 1.65
+mythic_target   = 2.10
+
+[[templates]]
+id              = "halo_infinite.daily.accuracy_session"
+metric          = "FieldAccuracy"
+window_type     = "session"
+window_value    = "1"
+cadence         = "daily"
+eval_type       = "threshold"
+mode_filter     = "universal"
+label_en        = "Steady aim"
+label_fr        = "Visée stable"
+description_en  = "Hit your targets cleanly across one session."
+description_fr  = "Touche tes cibles proprement sur une session."
+normal_target   = 0.42
+heroic_target   = 0.50
+legendary_target = 0.58
+mythic_target   = 0.65
+
+[[templates]]
+id              = "halo_infinite.daily.headshots_session"
+metric          = "FieldHeadshotKills"
+window_type     = "session"
+window_value    = "1"
+cadence         = "daily"
+eval_type       = "threshold"
+mode_filter     = "universal"
+label_en        = "Crown breaker"
+label_fr        = "Briseur de couronnes"
+description_en  = "Land precise headshots throughout the session."
+description_fr  = "Place des headshots précis tout au long de la session."
+normal_target   = 4.0
+heroic_target   = 7.0
+legendary_target = 11.0
+mythic_target   = 16.0
+
+[[templates]]
+id              = "halo_infinite.daily.power_weapon_session"
+metric          = "FieldPowerWeaponKills"
+window_type     = "session"
+window_value    = "1"
+cadence         = "daily"
+eval_type       = "threshold"
+mode_filter     = "pvp"
+label_en        = "Power player"
+label_fr        = "Maître des armes lourdes"
+description_en  = "Convert power weapons into eliminations this session."
+description_fr  = "Convertis les armes lourdes en éliminations cette session."
+normal_target   = 2.0
+heroic_target   = 4.0
+legendary_target = 6.0
+mythic_target   = 9.0
+
+[[templates]]
+id              = "halo_infinite.daily.personal_score_session"
+metric          = "FieldPersonalScore"
+window_type     = "session"
+window_value    = "1"
+cadence         = "daily"
+eval_type       = "threshold"
+mode_filter     = "universal"
+label_en        = "Score machine"
+label_fr        = "Machine à score"
+description_en  = "Stack personal score across one session."
+description_fr  = "Empile du score perso sur une session."
+normal_target   = 800.0
+heroic_target   = 1200.0
+legendary_target = 1600.0
+mythic_target   = 2200.0
+
+# ═════════════════════ HEBDOMADAIRES (cadence=weekly) ════════════════════════
+
+[[templates]]
+id              = "halo_infinite.weekly.win_rate_3sessions"
+metric          = "FieldWinRate"
+window_type     = "session"
+window_value    = "3"
+cadence         = "weekly"
+eval_type       = "threshold"
+mode_filter     = "pvp"
+label_en        = "Winning streak"
+label_fr        = "Série gagnante"
+description_en  = "Keep a strong win rate across 3 sessions."
+description_fr  = "Garde un bon taux de victoire sur 3 sessions."
+normal_target   = 50.0
+heroic_target   = 60.0
+legendary_target = 70.0
+mythic_target   = 80.0
+
+[[templates]]
+id              = "halo_infinite.weekly.kills_vs_expected"
+metric          = "kills_vs_expected"
+window_type     = "session"
+window_value    = "3"
+cadence         = "weekly"
+eval_type       = "threshold"
+mode_filter     = "pvp"
+label_en        = "Above expectations"
+label_fr        = "Au-dessus des attentes"
+description_en  = "Outperform your MMR's predicted kill rate."
+description_fr  = "Dépasse le taux de kills attendu pour ton MMR."
+normal_target   = 1.10
+heroic_target   = 1.25
+legendary_target = 1.40
+mythic_target   = 1.65
+
+[[templates]]
+id              = "halo_infinite.weekly.kda_3sessions"
+metric          = "FieldKDA"
+window_type     = "session"
+window_value    = "3"
+cadence         = "weekly"
+eval_type       = "threshold"
+mode_filter     = "universal"
+label_en        = "Consistent slayer"
+label_fr        = "Slayer constant"
+description_en  = "Sustain a high KDA across 3 sessions."
+description_fr  = "Tiens un KDA élevé sur 3 sessions."
+normal_target   = 1.20
+heroic_target   = 1.50
+legendary_target = 1.80
+mythic_target   = 2.20
+
+[[templates]]
+id              = "halo_infinite.weekly.damage_per_min"
+metric          = "FieldDamageDealt"
+window_type     = "session"
+window_value    = "3"
+cadence         = "weekly"
+eval_type       = "threshold"
+mode_filter     = "universal"
+label_en        = "Pressure cooker"
+label_fr        = "Cocotte-minute"
+description_en  = "Deal sustained damage per minute over 3 sessions."
+description_fr  = "Inflige des dégâts par minute soutenus sur 3 sessions."
+normal_target   = 600.0
+heroic_target   = 800.0
+legendary_target = 1000.0
+mythic_target   = 1300.0
+
+[[templates]]
+id              = "halo_infinite.weekly.csr_floor"
+metric          = "FieldCSRValue"
+window_type     = "session"
+window_value    = "3"
+cadence         = "weekly"
+eval_type       = "threshold"
+mode_filter     = "ranked"
+label_en        = "Climbing the ladder"
+label_fr        = "Grimper l'échelle"
+description_en  = "Hold a stable CSR floor across 3 sessions."
+description_fr  = "Tiens un plancher CSR stable sur 3 sessions."
+normal_target   = 1200.0
+heroic_target   = 1400.0
+legendary_target = 1600.0
+mythic_target   = 1800.0
+
+# ═════════════════════ MENSUELS (cadence=monthly) ════════════════════════════
+
+[[templates]]
+id              = "halo_infinite.monthly.killtaculars"
+metric          = "medal:Killtacular"
+window_type     = "rolling_days"
+window_value    = "30"
+cadence         = "monthly"
+eval_type       = "cumulative"
+mode_filter     = "universal"
+label_en        = "Killtacular hunter"
+label_fr        = "Chasseur de Killtacular"
+description_en  = "Earn Killtacular medals over the month."
+description_fr  = "Obtiens des médailles Killtacular sur le mois."
+normal_target   = 3.0
+heroic_target   = 7.0
+legendary_target = 12.0
+mythic_target   = 20.0
+
+[[templates]]
+id              = "halo_infinite.monthly.maps_explored"
+metric          = "maps_played_distinct"
+window_type     = "rolling_days"
+window_value    = "30"
+cadence         = "monthly"
+eval_type       = "cumulative"
+mode_filter     = "universal"
+label_en        = "Cartographer"
+label_fr        = "Cartographe"
+description_en  = "Play matches on different maps over the month."
+description_fr  = "Joue sur des maps différentes sur le mois."
+normal_target   = 5.0
+heroic_target   = 8.0
+legendary_target = 12.0
+mythic_target   = 16.0
+
+[[templates]]
+id              = "halo_infinite.monthly.modes_played"
+metric          = "modes_played_distinct"
+window_type     = "rolling_days"
+window_value    = "30"
+cadence         = "monthly"
+eval_type       = "cumulative"
+mode_filter     = "universal"
+label_en        = "Versatility"
+label_fr        = "Polyvalence"
+description_en  = "Play different game modes over the month."
+description_fr  = "Joue à différents modes de jeu sur le mois."
+normal_target   = 3.0
+heroic_target   = 5.0
+legendary_target = 7.0
+mythic_target   = 9.0
+
+[[templates]]
+id              = "halo_infinite.monthly.ranked_wins"
+metric          = "ranked_wins"
+window_type     = "rolling_days"
+window_value    = "30"
+cadence         = "monthly"
+eval_type       = "cumulative"
+mode_filter     = "ranked"
+label_en        = "Ranked grinder"
+label_fr        = "Grinder classé"
+description_en  = "Accumulate ranked wins over the month."
+description_fr  = "Accumule des victoires classées sur le mois."
+normal_target   = 8.0
+heroic_target   = 16.0
+legendary_target = 25.0
+mythic_target   = 40.0
+
+[[templates]]
+id              = "halo_infinite.monthly.firefight_waves"
+metric          = "FieldWavesCompleted"
+window_type     = "rolling_days"
+window_value    = "30"
+cadence         = "monthly"
+eval_type       = "cumulative"
+mode_filter     = "pve"
+label_en        = "Wave breaker"
+label_fr        = "Briseur de vagues"
+description_en  = "Survive waves in Firefight matches this month."
+description_fr  = "Survis aux vagues en Firefight ce mois."
+normal_target   = 30.0
+heroic_target   = 60.0
+legendary_target = 100.0
+mythic_target   = 150.0
