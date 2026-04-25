@@ -54,7 +54,9 @@ func (p *Provider) GetResources(
 	query domain.LabResourcesQuery,
 ) (*domain.LabResourcesResponse, error) {
 	metaPath := p.metadataDBPath(titleSlug)
-	metaDB, err := duckdb.OpenReadOnly(metaPath)
+	// OpenReadWriteShared : partage la même instance DuckDB que le pool joueur ;
+	// OpenReadOnly créerait une 2e config sur le même fichier → erreur DuckDB.
+	metaDB, err := duckdb.OpenReadWriteShared(metaPath)
 	if err != nil {
 		return nil, fmt.Errorf("lab resources open metadata: %w", err)
 	}
@@ -175,7 +177,8 @@ func (p *Provider) loadMedalGuards(
 	ctx context.Context,
 	titleSlug string,
 ) (*domain.LabMedalGuardsReport, error) {
-	metaDB, err := duckdb.OpenReadOnly(p.metadataDBPath(titleSlug))
+	// OpenReadWriteShared : voir commentaire dans GetResources (config DuckDB unique par fichier).
+	metaDB, err := duckdb.OpenReadWriteShared(p.metadataDBPath(titleSlug))
 	if err != nil {
 		return nil, nil
 	}

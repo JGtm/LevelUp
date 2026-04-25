@@ -78,6 +78,22 @@ func OpenReadOnly(path string, timezone ...string) (*DB, error) {
 	)
 }
 
+// OpenReadWriteShared ouvre une base DuckDB en lecture-écriture avec un pool de connexions
+// (4 conns max, comme OpenReadOnly). À utiliser pour les bases partagées (ex: metadata.duckdb)
+// qui reçoivent des lectures concurrentes ET des écritures occasionnelles.
+// Partage la même clé de cache que OpenReadWrite : si l'un est déjà ouvert, l'autre le réutilise.
+func OpenReadWriteShared(path string, timezone ...string) (*DB, error) {
+	tz := ""
+	if len(timezone) > 0 {
+		raw := timezone[0]
+		tz = sanitizeTimezone(raw)
+		if tz == "" && raw != "" {
+			slog.Warn("duckdb: timezone invalide ignorée", "input", raw, "path", path)
+		}
+	}
+	return openCachedDB("rw:"+path, path, path, 4, 2, "OpenReadWriteShared", tz)
+}
+
 // OpenReadWrite ouvre une base DuckDB en lecture-écriture.
 // Utilisé pour les migrations au démarrage. UNE seule connexion : pas de pool.
 // timezone (optionnel) : nom IANA (ex: "Europe/Paris") — appliqué via SET TimeZone sur chaque connexion.

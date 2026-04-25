@@ -133,7 +133,10 @@ func openPlayerDB(ctx context.Context, cfg PlayerPoolConfig) (*PlayerDB, error) 
 	}
 	// Les migrations shared sont gérées par runMigrations() dans main.go.
 
-	metaDB, err := OpenReadOnly(cfg.MetaDBPath, cfg.UserTimezone)
+	// metadata.duckdb est ouverte en RW partagé : le DuckDBIndexStore (assets) a besoin d'y
+	// écrire (table asset_index). Les deux utilisent la clé cache "rw:path", donc une seule
+	// sql.DB est créée. OpenReadWriteShared garantit maxOpenConns=4 pour les lectures concurrentes.
+	metaDB, err := OpenReadWriteShared(cfg.MetaDBPath, cfg.UserTimezone)
 	if err != nil {
 		_ = playerDB.Close()
 		_ = sharedDB.Close()
