@@ -106,8 +106,8 @@ func (p *HaloProvider) buildActiveChallengeItems(ctx context.Context, tokens *do
 }
 
 func (p *HaloProvider) buildChallengeItem(
-	ctx context.Context,
-	tokens *domain.HaloTokens,
+	_ context.Context,
+	_ *domain.HaloTokens,
 	ch challengeDeckItemRaw,
 	def *challengeDefinitionRaw,
 	lang string,

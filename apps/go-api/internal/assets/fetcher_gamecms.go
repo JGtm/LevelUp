@@ -194,7 +194,7 @@ func buildGameCMSImageFetchURL(baseURL, raw string) string {
 }
 
 // fetchMedalMetadata récupère le JSON des métadonnées de médailles.
-func (f *GameCMSFetcher) fetchMedalMetadata(ctx context.Context, ref Ref) (Payload, error) {
+func (f *GameCMSFetcher) fetchMedalMetadata(ctx context.Context, _ Ref) (Payload, error) {
 	url := fmt.Sprintf("%s/hi/Progression/file/Metadata/Metadata.json", f.baseURL)
 	resp, err := f.doGet(ctx, url, nil)
 	if err != nil {

@@ -68,10 +68,6 @@ func TestComputeSynthesisTopWeeks_MultipleWeeks(t *testing.T) {
 	if len(result) > 5 {
 		t.Fatalf("expected max 5, got %d", len(result))
 	}
-	if result[0].MatchCount < result[len(result)-1].MatchCount {
-		// Top weeks should be sorted by some quality metric
-		// Just verify it returns something meaningful
-	}
 }
 
 func TestComputeSynthesisTopWeeks_NoKDA(t *testing.T) {

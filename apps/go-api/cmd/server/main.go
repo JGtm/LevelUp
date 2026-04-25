@@ -166,7 +166,7 @@ func main() {
 	slog.Debug("ouverture DuckDB", "shared", sharedPath, "metadata", metaPath, "shared_social", sharedSocialPath)
 
 	// --- 3a. Migrations (read-write, avant l'ouverture des connexions runtime) ---
-	if err := runMigrations(metaPath, sharedPath, sharedSocialPath, pr.SharedPVEDBPath(titleSlug), cfg); err != nil {
+	if err := runMigrations(metaPath, sharedPath, sharedSocialPath, pr.SharedPVEDBPath(titleSlug)); err != nil {
 		slog.Debug("migrations ignorées (DB verrouillée), démarrage sans migration")
 	} else {
 		slog.Debug("migrations appliquées")
@@ -351,7 +351,7 @@ func strPtr(s string) *string { return &s }
 // runMigrations applique les migrations DuckDB dans l'ordre :
 // metadata → shared → shared_pve → shared_social.
 // Les migrations player sont gérées à l'ouverture de chaque player DB.
-func runMigrations(metaPath, sharedPath, sharedSocialPath, pvePath string, cfg *config.AppConfig) error {
+func runMigrations(metaPath, sharedPath, sharedSocialPath, pvePath string) error {
 	// Ensure all step init() have been registered (side-effect imports).
 	_ = migration.All()
 

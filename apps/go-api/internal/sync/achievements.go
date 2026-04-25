@@ -228,7 +228,7 @@ func upsertPlayerAchievements(ctx context.Context, db *sql.DB, achievements []Pl
 
 // warmAchievementImages pré-chauffe le cache local des icônes d'achievements.
 // Exécuté en goroutine (fire-and-forget) pour ne pas bloquer la sync.
-func warmAchievementImages(ctx context.Context, resolver assets.Resolver, achievements []PlayerAchievement) {
+func warmAchievementImages(_ context.Context, resolver assets.Resolver, achievements []PlayerAchievement) {
 	refs := make([]assets.Ref, 0, len(achievements))
 	for _, a := range achievements {
 		if a.ImageURL != "" {

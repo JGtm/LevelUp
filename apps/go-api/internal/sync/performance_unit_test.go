@@ -47,8 +47,8 @@ func TestExtractMatchMetrics_ZeroDurationFallback(t *testing.T) {
 		Deaths:            5,
 	}
 	m := extractMatchMetrics(&row)
-	// Zero duration → falls back to 600s (10 min)
-	expectedKPM := 10.0 / 10.0
+	// Zero duration → falls back to 600s (10 min) → 10 kills / 10 min = 1.0 KPM.
+	const expectedKPM = 1.0
 	if math.Abs(m.KPM-expectedKPM) > 0.01 {
 		t.Errorf("zero duration fallback: KPM = %v, want %v", m.KPM, expectedKPM)
 	}

@@ -189,7 +189,8 @@ func buildVersionCache(
 	sharedDB *duckdb.DB,
 ) (map[string]string, error) {
 	// Mapping asset_id → match_id représentatif
-	assetToMatch, err := getRepresentativeMatches(ctx, assetType, assetIDs, sharedDB)
+	assetToMatch, err := getRepresentativeMatches(ctx, assetType, sharedDB)
+	_ = assetIDs // garde la variable pour la trace explicite des assets traités
 	if err != nil {
 		return nil, err
 	}
@@ -256,7 +257,6 @@ func buildVersionCache(
 func getRepresentativeMatches(
 	ctx context.Context,
 	assetType halo.AssetType,
-	assetIDs []string,
 	sharedDB *duckdb.DB,
 ) (map[string]string, error) {
 	columnMap := map[halo.AssetType]string{
