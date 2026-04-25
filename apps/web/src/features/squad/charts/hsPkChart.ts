@@ -3,8 +3,9 @@
  * Un groupe de barres par coéquipier sélectionné, barmode overlay.
  */
 import type { TeammateRow, PlotlyFigurePayload } from '@/lib/api/types'
+import { getSeriesColors } from '@/lib/accessibility'
 
-const CHART_COLORS = ['#7C3AED', '#F59E0B', '#10B981']
+const SERIES_TOKENS = ['perf-tier-1', 'perf-tier-2', 'perf-tier-3'] as const
 
 export function buildHsPkChart(rows: TeammateRow[]): PlotlyFigurePayload | null {
   if (rows.length === 0) return null
@@ -12,6 +13,7 @@ export function buildHsPkChart(rows: TeammateRow[]): PlotlyFigurePayload | null 
   const labels = rows.map((r) => r.gamertag)
   const hsValues = rows.map((r) => r.with_kpis.headshot_kills_per_game ?? 0)
   const pkValues = rows.map((r) => r.with_kpis.perfect_kills_per_game ?? 0)
+  const colors = getSeriesColors(rows.length, [...SERIES_TOKENS])
 
   const traces: PlotlyFigurePayload['data'] = [
     {
@@ -20,7 +22,7 @@ export function buildHsPkChart(rows: TeammateRow[]): PlotlyFigurePayload | null 
       x: labels,
       y: hsValues,
       marker: {
-        color: rows.map((_, i) => CHART_COLORS[i % CHART_COLORS.length]),
+        color: colors,
         opacity: 0.85,
       },
     },
@@ -30,10 +32,10 @@ export function buildHsPkChart(rows: TeammateRow[]): PlotlyFigurePayload | null 
       x: labels,
       y: pkValues,
       marker: {
-        color: rows.map((_, i) => CHART_COLORS[i % CHART_COLORS.length]),
+        color: colors,
         opacity: 0.45,
         line: {
-          color: rows.map((_, i) => CHART_COLORS[i % CHART_COLORS.length]),
+          color: colors,
           width: rows.map((r) =>
             (r.with_kpis.perfect_kills_per_game ?? 0) > 0 ? 2.5 : 0,
           ),

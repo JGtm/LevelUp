@@ -21,6 +21,10 @@ export { resolveToken } from './resolveToken'
 
 // Hooks React (usage : composants JSX)
 export { useColor, useScaleColor } from './useColor'
+export { useColorPaletteVersion } from './useColorPaletteVersion'
+
+// Helpers Plotly (usage : chart builders)
+export { buildDivergentColorscale, buildOrdinalColorscale, getSeriesColors } from './plotlyColorscale'
 
 // Palettes brutes (usage : ThemeProvider uniquement)
 export { defaultPalette } from './palettes/default'

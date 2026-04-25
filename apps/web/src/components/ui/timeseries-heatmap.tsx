@@ -9,6 +9,7 @@ import { Suspense, lazy, useMemo } from 'react'
 import { Spinner } from './spinner'
 import { EmptyStateNotice } from './empty-state'
 import type { IntensityHeatmapPoint } from '@/lib/api/types'
+import { buildDivergentColorscale, buildOrdinalColorscale, useColorPaletteVersion } from '@/lib/accessibility'
 
 const Plot = lazy(() =>
   import('react-plotly.js').then((m) => ({ default: m.default })),
@@ -35,6 +36,7 @@ export function TimeseriesHeatmap({
   colorBy = 'count',
   height = 300,
 }: TimeseriesHeatmapProps) {
+  const paletteVersion = useColorPaletteVersion()
   const { traces, layout } = useMemo(() => {
     // Construire une matrice 7 jours × 24 heures.
     const matrix: (number | null)[][] = Array.from({ length: 7 }, () =>
@@ -61,18 +63,8 @@ export function TimeseriesHeatmap({
         x: hours,
         y: DAYS,
         colorscale: colorBy === 'count'
-          ? [
-              [0, '#1d2328'],
-              [0.2, '#1a3a5e'],
-              [0.5, '#0072B2'],
-              [0.8, '#33D6FF'],
-              [1, '#ffffff'],
-            ]
-          : [
-              [0, '#FF4B4B'],
-              [0.5, '#1d2328'],
-              [1, '#00DC82'],
-            ],
+          ? buildOrdinalColorscale(['perf-tier-5', 'perf-tier-4', 'perf-tier-3', 'perf-tier-2', 'perf-tier-1'])
+          : buildDivergentColorscale('divergent-neg', 'divergent-neutral', 'divergent-pos'),
         text: hoverMatrix,
         hovertemplate: '%{text}<extra></extra>',
         showscale: true,
@@ -107,7 +99,7 @@ export function TimeseriesHeatmap({
     }
 
     return { traces, layout }
-  }, [data, colorBy, height])
+  }, [data, colorBy, height, paletteVersion])
 
   if (data.length === 0) {
     return (

@@ -2,26 +2,22 @@
  * heatmapChart — Win rate par carte (heatmap horizontale).
  */
 import type { MapBreakdownRow, PlotlyFigurePayload } from '@/lib/api/types'
-
-const HEATMAP_COLORSCALE = [
-  [0, '#EF4444'],
-  [0.35, '#F97316'],
-  [0.5, '#F59E0B'],
-  [0.65, '#06B6D4'],
-  [1, '#10B981'],
-]
+import { buildOrdinalColorscale } from '@/lib/accessibility'
 
 export function buildHeatmapChart(
   rows: MapBreakdownRow[],
 ): PlotlyFigurePayload | null {
   if (rows.length === 0) return null
 
-  // Trier par win rate décroissant
+  // Tokens dans l'ordre croissant : 0 % = tier-5 (mauvais), 100 % = tier-1 (excellent)
+  const colorscale = buildOrdinalColorscale([
+    'perf-tier-5', 'perf-tier-4', 'perf-tier-3', 'perf-tier-2', 'perf-tier-1',
+  ])
+
   const sorted = [...rows].sort((a, b) => b.win_rate - a.win_rate)
   const maps = sorted.map((r) => r.map_ui)
   const winrates = sorted.map((r) => r.win_rate)
   const counts = sorted.map((r) => r.match_count)
-
   const customdata = counts.map((c, i) => [c, winrates[i]])
 
   return {
@@ -31,7 +27,7 @@ export function buildHeatmapChart(
         z: [winrates],
         x: maps,
         y: ['Win rate (%)'],
-        colorscale: HEATMAP_COLORSCALE as unknown as string,
+        colorscale: colorscale as unknown as string,
         zmin: 0,
         zmax: 100,
         customdata: [customdata],
