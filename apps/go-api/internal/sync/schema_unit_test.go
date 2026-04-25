@@ -4,6 +4,8 @@ import (
 	"testing"
 )
 
+const helloLiteral = "hello"
+
 // ── splitSQL ─────────────────────────────────────────────────────────────────
 
 func TestSplitSQL_SingleStatement(t *testing.T) {
@@ -50,13 +52,13 @@ func TestSplitSQL_WhitespaceStatements(t *testing.T) {
 // ── trimSpace ────────────────────────────────────────────────────────────────
 
 func TestTrimSpace_Normal(t *testing.T) {
-	if got := trimSpace("  hello  "); got != "hello" {
+	if got := trimSpace("  hello  "); got != helloLiteral {
 		t.Fatalf("expected 'hello', got %q", got)
 	}
 }
 
 func TestTrimSpace_Tabs(t *testing.T) {
-	if got := trimSpace("\t\nhello\r\n"); got != "hello" {
+	if got := trimSpace("\t\nhello\r\n"); got != helloLiteral {
 		t.Fatalf("expected 'hello', got %q", got)
 	}
 }
@@ -68,7 +70,7 @@ func TestTrimSpace_Empty(t *testing.T) {
 }
 
 func TestTrimSpace_NoWhitespace(t *testing.T) {
-	if got := trimSpace("hello"); got != "hello" {
+	if got := trimSpace(helloLiteral); got != helloLiteral {
 		t.Fatalf("expected 'hello', got %q", got)
 	}
 }

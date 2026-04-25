@@ -14,6 +14,13 @@ import (
 	"levelup/go-api/internal/port"
 )
 
+// États possibles renvoyés par resolveSetupState et ResolveAuthState.
+const (
+	bootstrapSetupReady              = "ready"
+	bootstrapSetupProfileReadyNoSync = "profile_ready_no_sync"
+	bootstrapAuthMissing             = "missing"
+)
+
 // BootstrapService construit le BootstrapResponse pour l'endpoint /api/v1/bootstrap.
 type BootstrapService struct {
 	cfg              *config.AppConfig
@@ -239,17 +246,17 @@ func (s *BootstrapService) resolveSetupState(ctx context.Context, players []doma
 	}
 	// Vérifier si des matchs existent dans la shared DB.
 	if s.bootRepo == nil {
-		return "profile_ready_no_sync"
+		return bootstrapSetupProfileReadyNoSync
 	}
 	count, err := s.bootRepo.GetMatchCount(ctx)
 	if err != nil {
 		slog.WarnContext(ctx, "bootstrap: erreur GetMatchCount pour setup_state", "err", err)
-		return "profile_ready_no_sync"
+		return bootstrapSetupProfileReadyNoSync
 	}
 	if count > 0 {
-		return "ready"
+		return bootstrapSetupReady
 	}
-	return "profile_ready_no_sync"
+	return bootstrapSetupProfileReadyNoSync
 }
 
 // resolveUsername retourne le username de la session (ou nil).
@@ -276,12 +283,12 @@ func (s *BootstrapService) isFirstLaunch() bool {
 // ResolveAuthState déduit l'état d'authentification depuis la session.
 func ResolveAuthState(sess *domain.SessionData) string {
 	if sess == nil || !sess.AuthReady {
-		return "missing"
+		return bootstrapAuthMissing
 	}
 	if sess.LinkedHaloIdentity == nil || sess.LinkedHaloIdentity.Gamertag == "" {
 		return "partial"
 	}
-	return "ready"
+	return bootstrapSetupReady
 }
 
 // ResolveLinkedIdentity extrait l'identité Halo liée si présente dans la session.

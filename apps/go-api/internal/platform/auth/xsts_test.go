@@ -15,7 +15,7 @@ func TestXSTSResult_AuthHeader(t *testing.T) {
 	r := &XSTSResult{
 		Token:    "xsts-token-abc",
 		UserHash: "hash123",
-		Gamertag: "TestPlayer",
+		Gamertag: testGamertagInternal,
 		XUID:     "12345",
 	}
 	want := "XBL3.0 x=hash123;xsts-token-abc"

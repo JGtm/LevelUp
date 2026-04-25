@@ -72,19 +72,19 @@ func TestAttemptStore_Update(t *testing.T) {
 	attempt, _ := store.GetOrCreate("session-4")
 
 	store.Update(attempt.AttemptID, func(a *auth.Attempt) {
-		a.Status = "authorized"
-		a.Gamertag = "TestPlayer"
+		a.Status = auth.AttemptStatusAuthorized
+		a.Gamertag = testGamertag
 	})
 
 	snapshot := store.Snapshot(attempt.AttemptID)
 	if snapshot == nil {
 		t.Fatal("expected snapshot, got nil")
 	}
-	if snapshot.Status != "authorized" {
+	if snapshot.Status != auth.AttemptStatusAuthorized {
 		t.Errorf("expected 'authorized', got %q", snapshot.Status)
 	}
-	if snapshot.Gamertag != "TestPlayer" {
-		t.Errorf("expected gamertag 'TestPlayer', got %q", snapshot.Gamertag)
+	if snapshot.Gamertag != testGamertag {
+		t.Errorf("expected gamertag %q, got %q", testGamertag, snapshot.Gamertag)
 	}
 }
 

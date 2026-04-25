@@ -392,13 +392,16 @@ func formatDateFR(t time.Time) string {
 	return t.Format("02/01/2006 15:04")
 }
 
+// zeroDuration est le format MM:SS retourné quand la durée est nulle ou invalide.
+const zeroDuration = "0:00"
+
 func formatLifeSeconds(secs *float64) string {
 	if secs == nil {
-		return "0:00"
+		return zeroDuration
 	}
 	total := int(*secs)
 	if total < 0 {
-		return "0:00"
+		return zeroDuration
 	}
 	mm := total / 60
 	ss := total % 60

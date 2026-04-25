@@ -42,7 +42,7 @@ func TestTeammatesHandler_OK(t *testing.T) {
 		if slug != testPlayerSlug {
 			return nil, "", "", errors.New("player_not_found")
 		}
-		return mock, "xuid-1", "TestPlayer", nil
+		return mock, testXUID1, "TestPlayer", nil
 	}
 	r := newTeammatesRouter(factory)
 	body, _ := json.Marshal(domain.TeammatesQueryRequest{})
@@ -75,7 +75,7 @@ func TestTeammatesHandler_PlayerNotFound(t *testing.T) {
 func TestTeammatesHandler_ServiceError(t *testing.T) {
 	mock := &mockTeammatesService{pageErr: errors.New("db_error")}
 	factory := func(_ context.Context, _ string) (port.TeammatesService, string, string, error) {
-		return mock, "xuid", "gt", nil
+		return mock, testXUID, "gt", nil
 	}
 	r := newTeammatesRouter(factory)
 	body, _ := json.Marshal(domain.TeammatesQueryRequest{})
@@ -92,7 +92,7 @@ func TestTeammatesHandler_ServiceError(t *testing.T) {
 func TestTeammatesHandler_InvalidBody(t *testing.T) {
 	mock := &mockTeammatesService{}
 	factory := func(_ context.Context, _ string) (port.TeammatesService, string, string, error) {
-		return mock, "xuid", "gt", nil
+		return mock, testXUID, "gt", nil
 	}
 	r := newTeammatesRouter(factory)
 	req := httptest.NewRequest(http.MethodPost, "/players/test-player/pages/teammates",

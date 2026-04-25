@@ -32,6 +32,13 @@ const (
 	homeDominanceCounterRemontada = 5
 )
 
+// Codes couleur sémantiques utilisés dans les blocs JSON du Home (highlights).
+const (
+	homeColorPositive = "positive"
+	homeColorNeutral  = "neutral"
+	homeColorNegative = "negative"
+)
+
 var homeOutcomeLabels = map[int]string{
 	homeOutcomeWin:  "Victoire",
 	homeOutcomeLoss: "Défaite",
@@ -559,11 +566,11 @@ func highlightPerfColor(perf float64) string {
 func highlightKDAColor(kda float64) string {
 	switch {
 	case kda > 1:
-		return "positive"
+		return homeColorPositive
 	case kda >= 0:
-		return "neutral"
+		return homeColorNeutral
 	default:
-		return "negative"
+		return homeColorNegative
 	}
 }
 
@@ -660,11 +667,11 @@ func BuildHighlights(matches []domain.HomeMatchRow) []domain.HighlightItem {
 			if deltaSum > 0 {
 				sign = "+"
 			}
-			color := "neutral"
+			color := homeColorNeutral
 			if deltaSum > 0 {
-				color = "positive"
+				color = homeColorPositive
 			} else if deltaSum < 0 {
-				color = "negative"
+				color = homeColorNegative
 			}
 			highlights = append(highlights, domain.HighlightItem{
 				TitleKey:   titleKey,
@@ -686,11 +693,11 @@ func BuildHighlights(matches []domain.HomeMatchRow) []domain.HighlightItem {
 			}
 			// Couleur : négatif = rouge (désavantage), ≈ 0 = bleu (équilibré), positif = vert (avantage).
 			const mmrNeutralThreshold = 25.0
-			color := "neutral"
+			color := homeColorNeutral
 			if delta > mmrNeutralThreshold {
-				color = "positive"
+				color = homeColorPositive
 			} else if delta < -mmrNeutralThreshold {
-				color = "negative"
+				color = homeColorNegative
 			}
 			highlights = append(highlights, domain.HighlightItem{
 				TitleKey:   "highlight.title.best_underdog_win",
@@ -775,9 +782,9 @@ func buildMaitriseHighlight(window []domain.HomeMatchRow) *domain.HighlightItem 
 		hsSum += m.HeadshotKills
 		perfSum += m.PerfectKills
 	}
-	hsColor := "neutral"
+	hsColor := homeColorNeutral
 	if hsSum > 0 {
-		hsColor = "positive"
+		hsColor = homeColorPositive
 	}
 	slides = append(slides, domain.HighlightSlide{
 		LabelKey:   "highlight.slide.headshots",
@@ -786,9 +793,9 @@ func buildMaitriseHighlight(window []domain.HomeMatchRow) *domain.HighlightItem 
 	})
 
 	// Slide 2 : Frags parfaits (somme).
-	perfColor := "neutral"
+	perfColor := homeColorNeutral
 	if perfSum > 0 {
-		perfColor = "positive"
+		perfColor = homeColorPositive
 	}
 	slides = append(slides, domain.HighlightSlide{
 		LabelKey:   "highlight.slide.perfect_kills",
@@ -808,9 +815,9 @@ func buildMaitriseHighlight(window []domain.HomeMatchRow) *domain.HighlightItem 
 	if accN > 0 {
 		avg := accSum / float64(accN)
 		// Seuils alignés sur Performance globale (HomePage.tsx) : > 55 vert, ≥ 40 ambre, sinon rouge.
-		color := "negative"
+		color := homeColorNegative
 		if avg > 55 {
-			color = "positive"
+			color = homeColorPositive
 		} else if avg >= 40 {
 			color = "warning"
 		}
@@ -858,9 +865,9 @@ func buildPerMinuteHighlight(window []domain.HomeMatchRow) *domain.HighlightItem
 	}
 	minutes := totalSecs / 60.0
 	slides := []domain.HighlightSlide{
-		{LabelKey: "highlight.slide.kills", Value: fmt.Sprintf("%.2f", float64(kills)/minutes), ValueColor: "neutral"},
-		{LabelKey: "highlight.slide.deaths", Value: fmt.Sprintf("%.2f", float64(deaths)/minutes), ValueColor: "neutral"},
-		{LabelKey: "highlight.slide.assists", Value: fmt.Sprintf("%.2f", float64(assists)/minutes), ValueColor: "neutral"},
+		{LabelKey: "highlight.slide.kills", Value: fmt.Sprintf("%.2f", float64(kills)/minutes), ValueColor: homeColorNeutral},
+		{LabelKey: "highlight.slide.deaths", Value: fmt.Sprintf("%.2f", float64(deaths)/minutes), ValueColor: homeColorNeutral},
+		{LabelKey: "highlight.slide.assists", Value: fmt.Sprintf("%.2f", float64(assists)/minutes), ValueColor: homeColorNeutral},
 	}
 	first := slides[0]
 	return &domain.HighlightItem{
@@ -927,7 +934,7 @@ func sliceBestKillingSpree(window []domain.HomeMatchRow) *domain.HighlightSlide 
 		LabelKey:   "highlight.slide.killing_spree_max",
 		Value:      fmt.Sprintf("%d", bestVal),
 		Detail:     fmt.Sprintf("%s · %s", labelFR(best.MapNameFR, best.MapName), labelFR(best.PairNameFR, best.PairName)),
-		ValueColor: "positive",
+		ValueColor: homeColorPositive,
 	}
 }
 
@@ -950,9 +957,9 @@ func sliceBestWinStreak(window []domain.HomeMatchRow) *domain.HighlightSlide {
 	if best == 0 {
 		return nil
 	}
-	color := "neutral"
+	color := homeColorNeutral
 	if best >= 3 {
-		color = "positive"
+		color = homeColorPositive
 	}
 	return &domain.HighlightSlide{
 		LabelKey:     "highlight.slide.win_streak",
@@ -1001,11 +1008,11 @@ func sliceFavoriteMap(window []domain.HomeMatchRow) *domain.HighlightSlide {
 	if best == nil {
 		return nil
 	}
-	color := "neutral"
+	color := homeColorNeutral
 	if bestWR >= 0.6 {
-		color = "positive"
+		color = homeColorPositive
 	} else if bestWR < 0.4 {
-		color = "negative"
+		color = homeColorNegative
 	}
 	return &domain.HighlightSlide{
 		LabelKey:  "highlight.slide.favorite_map",

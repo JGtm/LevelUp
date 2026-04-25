@@ -12,6 +12,9 @@ import (
 	"levelup/go-api/internal/domain"
 )
 
+// defaultUserTimezone est le timezone IANA utilisé en l'absence de configuration.
+const defaultUserTimezone = "Europe/Paris"
+
 // AppConfig centralise la configuration de l'application.
 type AppConfig struct {
 	RepoRoot        string
@@ -104,11 +107,11 @@ func Load() (*AppConfig, error) {
 func loadUserTimezone(settingsPath string) string {
 	data, err := os.ReadFile(settingsPath)
 	if err != nil {
-		return "Europe/Paris"
+		return defaultUserTimezone
 	}
 	var m map[string]any
 	if err := json.Unmarshal(data, &m); err != nil {
-		return "Europe/Paris"
+		return defaultUserTimezone
 	}
 	if s, ok := m["user_timezone"].(string); ok && s != "" {
 		return s

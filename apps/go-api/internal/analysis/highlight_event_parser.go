@@ -54,11 +54,19 @@ var medalSortingWeights = map[int]bool{
 // endMarker est le marqueur de fin d'un bloc event dans le flux binaire.
 var endMarker = []byte{0x00, 0x00, 0x2e, 0xe0}
 
+// EventType* sont les valeurs possibles du champ HighlightEvent.EventType.
+const (
+	EventTypeKill  = "kill"
+	EventTypeDeath = "death"
+	EventTypeMedal = "medal"
+	EventTypeMode  = "mode"
+)
+
 // HighlightEvent représente un événement parsé depuis le chunk highlight events.
 type HighlightEvent struct {
 	XUID      uint64
 	Gamertag  string
-	EventType string // "kill", "death", "medal", "mode"
+	EventType string // EventTypeKill | EventTypeDeath | EventTypeMedal | EventTypeMode
 	TypeHint  int
 	IsMedal   bool
 	TimeMS    int
@@ -190,15 +198,15 @@ func decodeEventBytes(b []byte, xuid uint64, version int) (HighlightEvent, error
 // Retourne une erreur si la combinaison est inconnue.
 func inferEventType(typeHint int, isMedal bool) (string, error) {
 	if isMedal && medalSortingWeights[typeHint] {
-		return "medal", nil
+		return EventTypeMedal, nil
 	}
 	switch typeHint {
 	case typeHintMode:
-		return "mode", nil
+		return EventTypeMode, nil
 	case typeHintDeath:
-		return "death", nil
+		return EventTypeDeath, nil
 	case typeHintKill:
-		return "kill", nil
+		return EventTypeKill, nil
 	}
 	return "", fmt.Errorf("type_hint=%d isMedal=%v non reconnu", typeHint, isMedal)
 }

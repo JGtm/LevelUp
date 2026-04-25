@@ -8,6 +8,8 @@ import (
 	"time"
 )
 
+const helloLiteral = "hello"
+
 // ─── embeds.go ───────────────────────────────────────────────────────────────
 
 func TestFormatDuration_Seconds(t *testing.T) {
@@ -47,15 +49,15 @@ func TestFormatDuration_Negative(t *testing.T) {
 }
 
 func TestTruncate_Short(t *testing.T) {
-	got := truncate("hello", 10)
-	if got != "hello" {
+	got := truncate(helloLiteral, 10)
+	if got != helloLiteral {
 		t.Errorf("truncate short = %q", got)
 	}
 }
 
 func TestTruncate_Long(t *testing.T) {
 	got := truncate("hello world", 5)
-	if got != "hello" {
+	if got != helloLiteral {
 		t.Errorf("truncate long = %q, want 'hello'", got)
 	}
 }
@@ -393,8 +395,8 @@ func TestBoolValDefault(t *testing.T) {
 }
 
 func TestStrVal(t *testing.T) {
-	m := map[string]any{"name": "hello"}
-	if strVal(m, "name") != "hello" {
+	m := map[string]any{"name": helloLiteral}
+	if strVal(m, "name") != helloLiteral {
 		t.Error("expected hello")
 	}
 	if strVal(m, "missing") != "" {
@@ -403,8 +405,8 @@ func TestStrVal(t *testing.T) {
 }
 
 func TestStrValDefault(t *testing.T) {
-	m := map[string]any{"name": "hello"}
-	if strValDefault(m, "name", "default") != "hello" {
+	m := map[string]any{"name": helloLiteral}
+	if strValDefault(m, "name", "default") != helloLiteral {
 		t.Error("expected hello")
 	}
 	if strValDefault(m, "missing", "fallback") != "fallback" {

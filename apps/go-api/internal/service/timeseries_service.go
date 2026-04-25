@@ -280,7 +280,7 @@ func computeRegressionStats(matches []domain.StatsMatchRow) domain.TimeseriesReg
 	// Trend detection.
 	var trend *string
 	if math.Abs(slope) < 0.001 {
-		t := "stable"
+		t := trendLabelStable
 		trend = &t
 	} else if slope > 0 {
 		t := "improving"

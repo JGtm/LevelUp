@@ -57,9 +57,9 @@ func ComputeKillerVictimPairs(events []RawEvent, toleranceMS int64) []KVPair {
 	var kills, deaths []timedEvent
 	for _, e := range events {
 		switch e.EventType {
-		case "kill":
+		case EventTypeKill:
 			kills = append(kills, timedEvent{e.TimeMS, e})
-		case "death":
+		case EventTypeDeath:
 			deaths = append(deaths, timedEvent{e.TimeMS, e})
 		}
 	}

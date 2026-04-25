@@ -44,7 +44,7 @@ func TestWatcherAttemptStore_GetOrCreate_AfterFailed(t *testing.T) {
 
 	// Marquer la tentative comme échouée
 	store.Update(a1.AttemptID, func(a *auth.WatcherAttempt) {
-		a.Status = "failed"
+		a.Status = auth.AttemptStatusFailed
 	})
 
 	// GetOrCreate doit créer une nouvelle tentative
@@ -84,8 +84,8 @@ func TestWatcherAttemptStore_Update_Applied(t *testing.T) {
 	attempt, _ := store.GetOrCreate()
 
 	store.Update(attempt.AttemptID, func(a *auth.WatcherAttempt) {
-		a.Status = "authorized"
-		a.Gamertag = "TestPlayer"
+		a.Status = auth.AttemptStatusAuthorized
+		a.Gamertag = testGamertag
 		a.UserCode = "ABCD-1234"
 	})
 
@@ -93,11 +93,11 @@ func TestWatcherAttemptStore_Update_Applied(t *testing.T) {
 	if snap == nil {
 		t.Fatal("expected snapshot after update")
 	}
-	if snap.Status != "authorized" {
+	if snap.Status != auth.AttemptStatusAuthorized {
 		t.Errorf("expected status 'authorized', got %q", snap.Status)
 	}
-	if snap.Gamertag != "TestPlayer" {
-		t.Errorf("expected gamertag 'TestPlayer', got %q", snap.Gamertag)
+	if snap.Gamertag != testGamertag {
+		t.Errorf("expected gamertag %q, got %q", testGamertag, snap.Gamertag)
 	}
 }
 
@@ -107,7 +107,7 @@ func TestWatcherAttemptStore_Update_WrongID_NoOp(t *testing.T) {
 
 	// Update sur un ID inconnu ne doit pas paniquer
 	store.Update("wrong-id", func(a *auth.WatcherAttempt) {
-		a.Status = "authorized"
+		a.Status = auth.AttemptStatusAuthorized
 	})
 }
 
@@ -116,10 +116,10 @@ func TestWatcherAttemptStore_Snapshot_IsCopy(t *testing.T) {
 	attempt, _ := store.GetOrCreate()
 
 	snap1 := store.Snapshot(attempt.AttemptID)
-	snap1.Status = "authorized" // modifier la copie
+	snap1.Status = auth.AttemptStatusAuthorized // modifier la copie
 
 	snap2 := store.Snapshot(attempt.AttemptID)
-	if snap2.Status != "pending" {
+	if snap2.Status != auth.AttemptStatusPending {
 		t.Error("Snapshot must return a copy; original should remain 'pending'")
 	}
 }

@@ -86,13 +86,21 @@ type PlaylistGroupConfig struct {
 	WeightFactor float64
 }
 
+// Identifiants des groupes LUSR utilisés dans PlaylistGroups et GetPlaylistGroup.
+const (
+	playlistGroupRanked = "ranked"
+	playlistGroupArena  = "arena"
+	playlistGroupBTB    = "btb"
+	playlistGroupFun    = "fun"
+)
+
 // PlaylistGroups mappe le nom de groupe → config.
 // Portage de src/analysis/playlist_groups.py.
 var PlaylistGroups = map[string]PlaylistGroupConfig{
-	"ranked": {WeightFactor: 1.0},
-	"arena":  {WeightFactor: 0.8},
-	"btb":    {WeightFactor: 0.7},
-	"fun":    {WeightFactor: 0.25},
+	playlistGroupRanked: {WeightFactor: 1.0},
+	playlistGroupArena:  {WeightFactor: 0.8},
+	playlistGroupBTB:    {WeightFactor: 0.7},
+	playlistGroupFun:    {WeightFactor: 0.25},
 }
 
 // GetPlaylistGroup détermine le groupe LUSR d'une playlist.
@@ -108,18 +116,18 @@ func GetPlaylistGroup(playlistName, pairName *string) string {
 	// Détection simplifiée basée sur des keywords.
 	for _, s := range []string{pn, pp} {
 		if containsI(s, "ranked") || containsI(s, "classé") {
-			return "ranked"
+			return playlistGroupRanked
 		}
 		if containsI(s, "btb") || containsI(s, "big team") {
-			return "btb"
+			return playlistGroupBTB
 		}
 		if containsI(s, "fiesta") || containsI(s, "rumble") ||
 			containsI(s, "action sack") || containsI(s, "swat") ||
 			containsI(s, "griffball") || containsI(s, "infection") {
-			return "fun"
+			return playlistGroupFun
 		}
 	}
-	return "arena" // default social
+	return playlistGroupArena // default social
 }
 
 // ── Tiers LUSR ──────────────────────────────────────────────────────────────

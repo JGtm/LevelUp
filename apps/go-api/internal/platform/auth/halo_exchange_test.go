@@ -168,7 +168,7 @@ func TestRequestXSTSToken_Success(t *testing.T) {
 		_ = json.NewEncoder(w).Encode(map[string]any{
 			"Token": "xsts_tok",
 			"DisplayClaims": map[string]any{
-				"xui": []any{map[string]any{"gtg": "TestPlayer", "xid": "9876"}},
+				"xui": []any{map[string]any{"gtg": testGamertagInternal, "xid": "9876"}},
 			},
 		})
 	}))
@@ -180,8 +180,8 @@ func TestRequestXSTSToken_Success(t *testing.T) {
 	if token != "xsts_tok" {
 		t.Errorf("expected xsts_tok, got %q", token)
 	}
-	if gamertag != "TestPlayer" {
-		t.Errorf("expected TestPlayer, got %q", gamertag)
+	if gamertag != testGamertagInternal {
+		t.Errorf("expected %s, got %q", testGamertagInternal, gamertag)
 	}
 	if xuid != "9876" {
 		t.Errorf("expected 9876, got %q", xuid)

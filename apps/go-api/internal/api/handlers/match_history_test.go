@@ -51,7 +51,7 @@ func TestMatchHistoryHandler_Query_OK(t *testing.T) {
 		if slug != testPlayerSlug {
 			return nil, "", "", errors.New("player_not_found")
 		}
-		return mock, "xuid-1", "TestPlayer", nil
+		return mock, testXUID1, "TestPlayer", nil
 	}
 	r := newMatchHistoryRouter(factory)
 	body, _ := json.Marshal(domain.MatchHistoryQueryRequest{Pagination: domain.PaginationRequest{Page: 1, PageSize: 20}})
@@ -84,7 +84,7 @@ func TestMatchHistoryHandler_Query_PlayerNotFound(t *testing.T) {
 func TestMatchHistoryHandler_Query_ServiceError(t *testing.T) {
 	mock := &mockMatchHistoryService{pageErr: errors.New("db_error")}
 	factory := func(_ context.Context, _ string) (port.MatchHistoryService, string, string, error) {
-		return mock, "xuid", "gt", nil
+		return mock, testXUID, "gt", nil
 	}
 	r := newMatchHistoryRouter(factory)
 	body, _ := json.Marshal(domain.MatchHistoryQueryRequest{})
@@ -104,7 +104,7 @@ func TestMatchHistoryHandler_Export_MissingToken(t *testing.T) {
 		if slug != testPlayerSlug {
 			return nil, "", "", errors.New("player_not_found")
 		}
-		return mock, "xuid", "gt", nil
+		return mock, testXUID, "gt", nil
 	}
 	r := newMatchHistoryRouter(factory)
 	req := httptest.NewRequest(http.MethodGet, "/players/test-player/pages/match-history/export", nil)
