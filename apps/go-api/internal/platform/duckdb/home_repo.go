@@ -754,14 +754,15 @@ func (r *HomeRepo) LoadFavoriteWeapon(ctx context.Context, locale string) (strin
 	}
 
 	// Résolution du label depuis metadata.
+	// Contournement driver : database/sql ne supporte pas uint64 avec bit63=1.
+	// weapon_id est une valeur interne (pas user input) → littéral décimal sûr.
 	nameCol := "COALESCE(name_fr, name_en, '')"
 	if locale == "en" {
 		nameCol = "COALESCE(name_en, name_fr, '')"
 	}
 	var weaponName string
 	metaErr := r.pdb.Metadata.QueryRow(ctx,
-		"SELECT "+nameCol+" FROM weapon_labels WHERE weapon_id = ?",
-		weaponID,
+		fmt.Sprintf("SELECT %s FROM weapon_labels WHERE weapon_id = %d", nameCol, weaponID), //nolint:gosec
 	).Scan(&weaponName)
 	if metaErr != nil || weaponName == "" {
 		weaponName = "Inconnue"

@@ -344,10 +344,10 @@ LIMIT ?`
 const Q26kFavoriteWeapon = `
 SELECT
     COALESCE(wk.reconciled_as, wk.weapon_id) AS weapon_id,
-    SUM(wk.kill_count)                        AS total_kills
+    COUNT(*)                                  AS total_kills
 FROM shared.weapon_kills wk
 WHERE wk.xuid = ?
-GROUP BY weapon_id
+GROUP BY COALESCE(wk.reconciled_as, wk.weapon_id)
 ORDER BY total_kills DESC
 LIMIT 1`
 

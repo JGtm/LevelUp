@@ -106,7 +106,7 @@ func seedPlayerSchema(t *testing.T, db *DB) { //nolint:funlen
 			match_id VARCHAR, xuid VARCHAR,
 			event_type VARCHAR, tick_count INTEGER, timestamp_utc TIMESTAMPTZ, time_ms BIGINT)`,
 		`CREATE TABLE shared.weapon_kills (
-			match_id VARCHAR, xuid VARCHAR, weapon_id UBIGINT, kill_count INTEGER)`,
+			match_id VARCHAR, xuid VARCHAR, weapon_id UBIGINT, kills INTEGER DEFAULT 0, PRIMARY KEY (match_id, xuid, weapon_id))`,
 		`CREATE VIEW shared.v_gamertag_lookup AS SELECT xuid, gamertag FROM shared.xuid_aliases`,
 		`CREATE VIEW shared.v_killer_victim_full AS
 			SELECT match_id, xuid::VARCHAR AS killer_xuid, gamertag::VARCHAR AS killer_gamertag,
