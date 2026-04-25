@@ -138,8 +138,8 @@ func TestParseHighlightEvents_KillEvent(t *testing.T) {
 	if ev.XUID != xuid {
 		t.Errorf("XUID: got %d, want %d", ev.XUID, xuid)
 	}
-	if ev.EventType != "kill" {
-		t.Errorf("EventType: got %q, want %q", ev.EventType, "kill")
+	if ev.EventType != EventTypeKill {
+		t.Errorf("EventType: got %q, want %q", ev.EventType, EventTypeKill)
 	}
 	if ev.TimeMS != timeMS {
 		t.Errorf("TimeMS: got %d, want %d", ev.TimeMS, timeMS)
@@ -162,8 +162,8 @@ func TestParseHighlightEvents_DeathEvent(t *testing.T) {
 	if len(events) == 0 {
 		t.Fatal("expected at least 1 event, got 0")
 	}
-	if events[0].EventType != "death" {
-		t.Errorf("EventType: got %q, want %q", events[0].EventType, "death")
+	if events[0].EventType != EventTypeDeath {
+		t.Errorf("EventType: got %q, want %q", events[0].EventType, EventTypeDeath)
 	}
 }
 
@@ -242,7 +242,7 @@ func TestParseHighlightEvents_MultipleEvents(t *testing.T) {
 	for _, ev := range events {
 		types[ev.EventType] = true
 	}
-	if !types["kill"] || !types["death"] {
+	if !types[EventTypeKill] || !types[EventTypeDeath] {
 		t.Errorf("expected both kill and death events, got types=%v", types)
 	}
 }
@@ -268,8 +268,8 @@ func TestParseHighlightEvents_VersionLayout39(t *testing.T) {
 		t.Fatal("expected at least 1 event, got 0")
 	}
 	ev := events[0]
-	if ev.EventType != "kill" {
-		t.Errorf("EventType: got %q, want %q", ev.EventType, "kill")
+	if ev.EventType != EventTypeKill {
+		t.Errorf("EventType: got %q, want %q", ev.EventType, EventTypeKill)
 	}
 	if ev.Gamertag != gamertag {
 		t.Errorf("Gamertag v39: got %q, want %q", ev.Gamertag, gamertag)
@@ -324,14 +324,14 @@ func TestDecodeUTF16LE_Empty(t *testing.T) {
 
 func TestInferEventType_Kill(t *testing.T) {
 	ev, err := inferEventType(typeHintKill, false)
-	if err != nil || ev != "kill" {
+	if err != nil || ev != EventTypeKill {
 		t.Errorf("inferEventType kill: got %q, %v", ev, err)
 	}
 }
 
 func TestInferEventType_Death(t *testing.T) {
 	ev, err := inferEventType(typeHintDeath, false)
-	if err != nil || ev != "death" {
+	if err != nil || ev != EventTypeDeath {
 		t.Errorf("inferEventType death: got %q, %v", ev, err)
 	}
 }
@@ -354,7 +354,7 @@ func TestInferEventType_Medal(t *testing.T) {
 func TestInferEventType_MedalNotInWeights_Kill(t *testing.T) {
 	// typeHint=50 mais isMedal=false → kill (50 == typeHintKill)
 	ev, err := inferEventType(50, false)
-	if err != nil || ev != "kill" {
+	if err != nil || ev != EventTypeKill {
 		t.Errorf("inferEventType type50 not medal: got %q, %v", ev, err)
 	}
 }
