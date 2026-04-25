@@ -1,11 +1,13 @@
-import type { LabelValue } from '@/lib/api/types'
+import { useEffect, useRef, useState } from 'react'
+import type { LabelValue, MediaAuthor } from '@/lib/api/types'
 import { Select } from '@/components/ui/select'
 import type { MediaText } from './i18n'
 
 interface MediaToolbarProps {
   text: MediaText
   kindFilter: string
-  sectionFilter: string
+  authorSlugs: string[]
+  authors: MediaAuthor[]
   mapFilter: string
   modeFilter: string
   groupBy: string
@@ -14,12 +16,152 @@ interface MediaToolbarProps {
   mapOptions: LabelValue[]
   modeOptions: LabelValue[]
   onKindChange: (value: string) => void
-  onSectionChange: (value: string) => void
+  onAuthorSlugsChange: (slugs: string[]) => void
   onMapChange: (value: string) => void
   onModeChange: (value: string) => void
   onSortChange: (value: string) => void
   onGroupByChange: (value: string) => void
   onLikedOnlyChange: (value: boolean) => void
+}
+
+interface AuthorsMultiSelectProps {
+  text: MediaText
+  authors: MediaAuthor[]
+  selected: string[]
+  onChange: (slugs: string[]) => void
+}
+
+// Sentinelle pour exprimer "0 sélectionné" (sinon [] = tous, sémantique backend).
+const NONE_SENTINEL = '__no_authors_selected__'
+
+function AuthorsMultiSelect({ text, authors, selected, onChange }: AuthorsMultiSelectProps) {
+  const [open, setOpen] = useState(false)
+  const containerRef = useRef<HTMLDivElement | null>(null)
+
+  useEffect(() => {
+    if (!open) return
+    function handlePointer(event: MouseEvent) {
+      if (containerRef.current && !containerRef.current.contains(event.target as Node)) {
+        setOpen(false)
+      }
+    }
+    function handleEscape(event: KeyboardEvent) {
+      if (event.key === 'Escape') setOpen(false)
+    }
+    document.addEventListener('mousedown', handlePointer)
+    document.addEventListener('keydown', handleEscape)
+    return () => {
+      document.removeEventListener('mousedown', handlePointer)
+      document.removeEventListener('keydown', handleEscape)
+    }
+  }, [open])
+
+  const allChecked = selected.length === 0
+  const noneChecked = selected.length === 1 && selected[0] === NONE_SENTINEL
+  const indeterminate = !allChecked && !noneChecked
+
+  function isAuthorChecked(slug: string): boolean {
+    if (allChecked) return true
+    if (noneChecked) return false
+    return selected.includes(slug)
+  }
+
+  let summary: string
+  if (allChecked) {
+    summary = text.toolbar.allAuthors
+  } else if (noneChecked) {
+    summary = '0'
+  } else if (selected.length === 1) {
+    const match = authors.find((a) => a.player_slug === selected[0])
+    summary = match?.gamertag ?? selected[0]
+  } else {
+    summary = `${selected.length}/${authors.length}`
+  }
+
+  function normalize(next: string[]): string[] {
+    if (next.length === 0) return [NONE_SENTINEL]
+    if (next.length === authors.length) return []
+    return next
+  }
+
+  function toggleAll() {
+    if (allChecked) {
+      onChange([NONE_SENTINEL])
+    } else {
+      onChange([])
+    }
+  }
+
+  function toggleOne(slug: string) {
+    let base: string[]
+    if (allChecked) base = authors.map((a) => a.player_slug)
+    else if (noneChecked) base = []
+    else base = selected
+
+    const next = base.includes(slug) ? base.filter((s) => s !== slug) : [...base, slug]
+    onChange(normalize(next))
+  }
+
+  return (
+    <div ref={containerRef} className="relative">
+      <button
+        type="button"
+        aria-label={text.toolbar.authorsAriaLabel}
+        aria-haspopup="listbox"
+        aria-expanded={open}
+        onClick={() => setOpen((v) => !v)}
+        className="flex h-8 items-center gap-1 rounded-md border border-input bg-background px-2 text-xs text-foreground shadow-sm hover:border-border"
+      >
+        <span className="max-w-[10rem] truncate">{summary}</span>
+        <span className="opacity-60" aria-hidden="true">▾</span>
+      </button>
+      {open && (
+        <div
+          role="listbox"
+          aria-multiselectable="true"
+          className="absolute left-0 top-9 z-20 max-h-72 w-56 overflow-y-auto rounded-md border border-input bg-popover p-1 text-xs shadow-md"
+        >
+          {authors.length === 0 ? (
+            <div className="px-2 py-3 text-center text-muted-foreground">{text.toolbar.noAuthors}</div>
+          ) : (
+            <>
+              <label className="flex cursor-pointer items-center gap-2 rounded px-2 py-1.5 font-semibold hover:bg-accent">
+                <input
+                  type="checkbox"
+                  checked={allChecked}
+                  ref={(el) => {
+                    if (el) el.indeterminate = indeterminate
+                  }}
+                  onChange={toggleAll}
+                  className="rounded"
+                />
+                <span>{text.toolbar.allAuthorsToggle}</span>
+              </label>
+              <div className="my-1 h-px bg-border" aria-hidden="true" />
+              {authors.map((author) => (
+                <label
+                  key={author.player_slug}
+                  className="flex cursor-pointer items-center gap-2 rounded px-2 py-1.5 hover:bg-accent"
+                >
+                  <input
+                    type="checkbox"
+                    checked={isAuthorChecked(author.player_slug)}
+                    onChange={() => toggleOne(author.player_slug)}
+                    className="rounded"
+                  />
+                  <span className="flex-1 truncate">{author.gamertag}</span>
+                  {author.is_self && (
+                    <span className="text-[10px] uppercase tracking-wide opacity-60">{text.toolbar.mine}</span>
+                  )}
+                  <span className="text-[10px] tabular-nums opacity-50">{author.media_count}</span>
+                </label>
+              ))}
+            </>
+          )}
+        </div>
+      )}
+    </div>
+  )
 }
 
 function withSelectedOption(options: LabelValue[], selectedValue: string) {
@@ -32,7 +174,8 @@ function withSelectedOption(options: LabelValue[], selectedValue: string) {
 export function MediaToolbar({
   text,
   kindFilter,
-  sectionFilter,
+  authorSlugs,
+  authors,
   mapFilter,
   modeFilter,
   groupBy,
@@ -41,7 +184,7 @@ export function MediaToolbar({
   mapOptions,
   modeOptions,
   onKindChange,
-  onSectionChange,
+  onAuthorSlugsChange,
   onMapChange,
   onModeChange,
   onSortChange,
@@ -52,11 +195,6 @@ export function MediaToolbar({
     { value: '', label: text.toolbar.allTypes },
     { value: 'screenshot', label: text.toolbar.screenshots },
     { value: 'clip', label: text.toolbar.clips },
-  ]
-  const sectionOptions = [
-    { value: '', label: text.toolbar.allAuthors },
-    { value: 'mine', label: text.toolbar.mine },
-    { value: 'teammate', label: text.toolbar.teammates },
   ]
   const sortOptions = [
     { value: 'date_desc', label: text.toolbar.dateDesc },
@@ -91,16 +229,12 @@ export function MediaToolbar({
           <option key={option.value} value={option.value}>{option.label}</option>
         ))}
       </Select>
-      <Select
-        aria-label={text.toolbar.sectionAriaLabel}
-        className={compactSelectClass}
-        value={sectionFilter}
-        onChange={(event) => onSectionChange(event.target.value)}
-      >
-        {sectionOptions.map((option) => (
-          <option key={option.value} value={option.value}>{option.label}</option>
-        ))}
-      </Select>
+      <AuthorsMultiSelect
+        text={text}
+        authors={authors}
+        selected={authorSlugs}
+        onChange={onAuthorSlugsChange}
+      />
       <Select
         aria-label={text.toolbar.mapAriaLabel}
         className={compactSelectClass}

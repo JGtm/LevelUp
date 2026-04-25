@@ -1490,6 +1490,8 @@ export interface MediaQueryRequest {
   sort?: string
   kind_filter?: string | null
   section_filter?: string | null
+  /** Whitelist explicite de player_slug ; prend le pas sur section_filter si non vide. */
+  author_slugs?: string[] | null
   map_filter?: string | null
   mode_filter?: string | null
   group_by?: string | null
@@ -1503,6 +1505,17 @@ export interface MediaPageResponse {
   total_teammates: number
   total_unassigned: number
   available_filters: MediaAvailableFilters
+}
+
+export interface MediaAuthor {
+  player_slug: string
+  gamertag: string
+  is_self: boolean
+  media_count: number
+}
+
+export interface MediaAuthorsResponse {
+  authors: MediaAuthor[]
 }
 
 export interface MediaLikeRequest {
