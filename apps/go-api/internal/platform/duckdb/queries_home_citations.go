@@ -668,7 +668,8 @@ func buildQ37MediaMapOptionsQuery(f domain.MediaFilters, queryCfg mediaQueryConf
 		includeModeFilter: true,
 	}, queryCfg)
 
-	q := `SELECT DISTINCT ` + q37MediaMapLabelExpr + ` AS label
+	// Retourne (map_id, label_raw) pour permettre l'enrichissement FR via asset_translations.
+	q := `SELECT DISTINCT COALESCE(mr.map_id, '') AS map_id, ` + q37MediaMapLabelExpr + ` AS label
 ` + queryCfg.fromClause() + `
 ` + whereClause + `
   AND ` + q37MediaMapLabelExpr + ` IS NOT NULL
@@ -688,7 +689,9 @@ func buildQ37MediaModeOptionsQuery(f domain.MediaFilters, queryCfg mediaQueryCon
 		includeModeFilter: false,
 	}, queryCfg)
 
-	q := `SELECT DISTINCT ` + q37MediaModeLabelExpr + ` AS label
+	// Retourne (pair_name_raw, label_normalisé) pour permettre normalisation
+	// canonique (NormalizeModeLabel) puis lookup FR (mode_name_tr) côté Go.
+	q := `SELECT DISTINCT COALESCE(mr.pair_name, '') AS pair_name_raw, ` + q37MediaModeLabelExpr + ` AS label
 ` + queryCfg.fromClause() + `
 ` + whereClause + `
   AND ` + q37MediaModeLabelExpr + ` IS NOT NULL

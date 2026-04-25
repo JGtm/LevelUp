@@ -4,8 +4,11 @@ package duckdb
 import (
 	"context"
 	"fmt"
+	"sort"
+	"strings"
 	"time"
 
+	"levelup/go-api/internal/analysis"
 	"levelup/go-api/internal/domain"
 )
 
@@ -32,6 +35,7 @@ func (r *MediaRepo) LoadMediaFiles(ctx context.Context, filters domain.MediaFilt
 	ctx, cancel := context.WithTimeout(ctx, 10*time.Second)
 	defer cancel()
 
+	filters = r.expandModeFilter(ctx, filters)
 	q, args := buildQ37MediaQuery(filters, limit, offset, r.queryConfig())
 	rows, err := r.socialDB().Query(ctx, q, args...)
 	if err != nil {
@@ -71,6 +75,7 @@ func (r *MediaRepo) CountMediaFiles(ctx context.Context, filters domain.MediaFil
 	ctx, cancel := context.WithTimeout(ctx, 5*time.Second)
 	defer cancel()
 
+	filters = r.expandModeFilter(ctx, filters)
 	q, args := buildQ37MediaCountQuery(filters, r.queryConfig())
 	var count int
 	err := r.socialDB().QueryRow(ctx, q, args...).Scan(&count)
@@ -80,24 +85,31 @@ func (r *MediaRepo) CountMediaFiles(ctx context.Context, filters domain.MediaFil
 	return count, nil
 }
 
-// LoadMediaFilterOptions retourne les valeurs distinctes des filtres carte/mode.
+// LoadMediaFilterOptions retourne les valeurs distinctes des filtres carte/mode,
+// avec libellés enrichis en FR (asset_translations + mode_name_tr de metadata.duckdb)
+// et déduplication par libellé FR. Pour les modes, plusieurs raw EN qui se
+// normalisent vers le même FR (ex: "Capture the Flag", "CTF - Ranked", "CTF on
+// Bazaar" → "Capture du drapeau") sont fusionnés en une seule entrée.
 func (r *MediaRepo) LoadMediaFilterOptions(ctx context.Context, filters domain.MediaFilters) (domain.MediaFilterOptions, error) {
 	ctx, cancel := context.WithTimeout(ctx, 5*time.Second)
 	defer cancel()
 
+	filters = r.expandModeFilter(ctx, filters)
 	queryCfg := r.queryConfig()
 
 	mapQuery, mapArgs := buildQ37MediaMapOptionsQuery(filters, queryCfg)
-	maps, err := r.loadMediaLabelValues(ctx, mapQuery, mapArgs)
+	mapPairs, err := r.loadMediaIDLabelPairs(ctx, mapQuery, mapArgs)
 	if err != nil {
 		return domain.MediaFilterOptions{}, fmt.Errorf("LoadMediaFilterOptions maps: %w", err)
 	}
+	maps := r.translateMapFilterOptions(ctx, mapPairs)
 
 	modeQuery, modeArgs := buildQ37MediaModeOptionsQuery(filters, queryCfg)
-	modes, err := r.loadMediaLabelValues(ctx, modeQuery, modeArgs)
+	modePairs, err := r.loadMediaIDLabelPairs(ctx, modeQuery, modeArgs)
 	if err != nil {
 		return domain.MediaFilterOptions{}, fmt.Errorf("LoadMediaFilterOptions modes: %w", err)
 	}
+	modes := r.translateModeFilterOptions(ctx, modePairs)
 
 	return domain.MediaFilterOptions{Maps: maps, Modes: modes}, nil
 }
@@ -268,24 +280,237 @@ ORDER BY lang DESC`
 	}
 }
 
-func (r *MediaRepo) loadMediaLabelValues(ctx context.Context, query string, args []any) ([]domain.LabelValue, error) {
+// mediaFilterOptionPair regroupe l'id source (map_id ou pair_name brut) et le
+// label SQL utilisé pour le filtrage et l'affichage par défaut.
+type mediaFilterOptionPair struct {
+	id    string
+	label string
+}
+
+func (r *MediaRepo) loadMediaIDLabelPairs(ctx context.Context, query string, args []any) ([]mediaFilterOptionPair, error) {
 	rows, err := r.socialDB().Query(ctx, query, args...)
 	if err != nil {
 		return nil, err
 	}
 	defer rows.Close()
 
-	options := make([]domain.LabelValue, 0)
+	pairs := make([]mediaFilterOptionPair, 0)
 	for rows.Next() {
-		var label string
-		if err := rows.Scan(&label); err != nil {
+		var id, label string
+		if err := rows.Scan(&id, &label); err != nil {
 			return nil, err
 		}
-		if label == "" {
+		if strings.TrimSpace(label) == "" {
 			continue
 		}
-		options = append(options, domain.LabelValue{Label: label, Value: label})
+		pairs = append(pairs, mediaFilterOptionPair{id: id, label: label})
+	}
+	return pairs, rows.Err()
+}
+
+// translateMapFilterOptions enrichit les libellés de cartes en FR via
+// asset_translations + dédup par libellé FR. Value reste le label SQL brut
+// (pour que le filtre ILIKE matche), Label devient le FR.
+func (r *MediaRepo) translateMapFilterOptions(ctx context.Context, pairs []mediaFilterOptionPair) []domain.LabelValue {
+	if len(pairs) == 0 {
+		return []domain.LabelValue{}
+	}
+	idsSet := make(map[string]struct{})
+	for _, p := range pairs {
+		if p.id != "" {
+			idsSet[p.id] = struct{}{}
+		}
+	}
+	ids := make([]string, 0, len(idsSet))
+	for id := range idsSet {
+		ids = append(ids, id)
+	}
+	translations := r.loadAssetTranslationNames(ctx, "map", ids)
+
+	seen := make(map[string]bool)
+	options := make([]domain.LabelValue, 0, len(pairs))
+	for _, p := range pairs {
+		labelFR := translations[p.id]
+		if labelFR == "" {
+			labelFR = p.label
+		}
+		if seen[labelFR] {
+			continue
+		}
+		seen[labelFR] = true
+		options = append(options, domain.LabelValue{Label: labelFR, Value: p.label})
+	}
+	sort.Slice(options, func(i, j int) bool { return options[i].Label < options[j].Label })
+	return options
+}
+
+// translateModeFilterOptions normalise (analysis.NormalizeModeLabel) puis traduit
+// chaque mode en FR via mode_name_tr, et déduplique par libellé FR. Value reste
+// le label FR : le repo ré-expanse côté ModeFilter (FR → liste raw EN candidates)
+// avant la query (cf. expandModeFilter), pour que le ILIKE matche tous les variants.
+func (r *MediaRepo) translateModeFilterOptions(ctx context.Context, pairs []mediaFilterOptionPair) []domain.LabelValue {
+	if len(pairs) == 0 {
+		return []domain.LabelValue{}
+	}
+	enSet := make(map[string]struct{})
+	for _, p := range pairs {
+		// p.id contient le pair_name brut, p.label la version regex-normalisée
+		if en := analysis.NormalizeModeLabel(p.id); en != "" {
+			enSet[en] = struct{}{}
+		}
+		if en := analysis.NormalizeModeLabel(p.label); en != "" {
+			enSet[en] = struct{}{}
+		}
+	}
+	enList := make([]string, 0, len(enSet))
+	for en := range enSet {
+		enList = append(enList, en)
+	}
+	translations := r.loadModeNameTranslations(ctx, enList)
+
+	seen := make(map[string]bool)
+	options := make([]domain.LabelValue, 0, len(pairs))
+	for _, p := range pairs {
+		labelFR := translations[analysis.NormalizeModeLabel(p.id)]
+		if labelFR == "" {
+			labelFR = translations[analysis.NormalizeModeLabel(p.label)]
+		}
+		if labelFR == "" {
+			labelFR = p.label
+		}
+		if seen[labelFR] {
+			continue
+		}
+		seen[labelFR] = true
+		// Value = labelFR pour que le frontend envoie le FR au backend ; le repo
+		// ré-expanse via expandModeFilter() avant la SQL query.
+		options = append(options, domain.LabelValue{Label: labelFR, Value: labelFR})
+	}
+	sort.Slice(options, func(i, j int) bool { return options[i].Label < options[j].Label })
+	return options
+}
+
+// expandModeFilter convertit un ModeFilter exprimé en FR (ex: "Capture du
+// drapeau") vers la liste de raw EN candidates (ex: ["Capture the Flag", "CTF",
+// …]) via reverse mode_name_tr lookup. Le SQL utilise alors un OR sur chaque
+// variant ILIKE pour matcher tous les médias quel que soit leur pair_name brut.
+// Si aucune correspondance trouvée, ModeFilter reste tel quel et le SQL fallback
+// sur l'ILIKE simple existant.
+func (r *MediaRepo) expandModeFilter(ctx context.Context, filters domain.MediaFilters) domain.MediaFilters {
+	if filters.ModeFilter == "" || len(filters.ModeFilterCandidates) > 0 {
+		return filters
+	}
+	if r.pdb == nil || r.pdb.Metadata == nil {
+		return filters
+	}
+	candidates := r.reverseModeNameLookup(ctx, filters.ModeFilter)
+	if len(candidates) > 0 {
+		filters.ModeFilterCandidates = candidates
+	}
+	return filters
+}
+
+// reverseModeNameLookup : étant donné un nom FR (ex: "Capture du drapeau"),
+// retourne la liste des mode_en présents dans mode_name_tr ayant ce libellé.
+// Best-effort : retourne nil sur erreur ou table absente.
+func (r *MediaRepo) reverseModeNameLookup(ctx context.Context, modeFR string) []string {
+	if r.pdb == nil || r.pdb.Metadata == nil || strings.TrimSpace(modeFR) == "" {
+		return nil
+	}
+	q := `SELECT DISTINCT mode_en FROM mode_name_tr WHERE lang = 'fr' AND name = ?`
+	rows, err := r.pdb.Metadata.Query(ctx, q, modeFR)
+	if err != nil {
+		return nil
+	}
+	defer rows.Close()
+	var out []string
+	for rows.Next() {
+		var en string
+		if err := rows.Scan(&en); err != nil {
+			continue
+		}
+		if en = strings.TrimSpace(en); en != "" {
+			out = append(out, en)
+		}
+	}
+	return out
+}
+
+// loadAssetTranslationNames lit les traductions FR depuis metadata.asset_translations.
+// Retourne map[asset_id]→nom FR. Best-effort.
+func (r *MediaRepo) loadAssetTranslationNames(ctx context.Context, assetType string, assetIDs []string) map[string]string {
+	out := make(map[string]string)
+	if r.pdb == nil || r.pdb.Metadata == nil || len(assetIDs) == 0 {
+		return out
 	}
 
-	return options, rows.Err()
+	placeholders := make([]string, len(assetIDs))
+	args := make([]any, 0, len(assetIDs)+1)
+	args = append(args, assetType)
+	for i, id := range assetIDs {
+		placeholders[i] = "?"
+		args = append(args, id)
+	}
+
+	q := `SELECT asset_id, name
+FROM asset_translations
+WHERE asset_type = ?
+  AND lang IN ('fr-FR', 'fr')
+  AND name IS NOT NULL
+  AND TRIM(name) != ''
+  AND asset_id IN (` + joinStrings(placeholders) + `)
+ORDER BY asset_id, CASE WHEN lang = 'fr-FR' THEN 0 ELSE 1 END`
+
+	rows, err := r.pdb.Metadata.Query(ctx, q, args...)
+	if err != nil {
+		return out
+	}
+	defer rows.Close()
+	for rows.Next() {
+		var id, name string
+		if err := rows.Scan(&id, &name); err != nil {
+			continue
+		}
+		if _, exists := out[id]; !exists {
+			out[id] = name
+		}
+	}
+	return out
+}
+
+// loadModeNameTranslations lit les traductions FR depuis metadata.mode_name_tr,
+// keyed par mode_en (déjà normalisé via analysis.NormalizeModeLabel).
+func (r *MediaRepo) loadModeNameTranslations(ctx context.Context, modeENNames []string) map[string]string {
+	out := make(map[string]string)
+	if r.pdb == nil || r.pdb.Metadata == nil || len(modeENNames) == 0 {
+		return out
+	}
+
+	placeholders := make([]string, len(modeENNames))
+	args := make([]any, len(modeENNames))
+	for i, name := range modeENNames {
+		placeholders[i] = "?"
+		args[i] = name
+	}
+
+	q := `SELECT mode_en, name
+FROM mode_name_tr
+WHERE lang = 'fr'
+  AND mode_en IN (` + joinStrings(placeholders) + `)`
+
+	rows, err := r.pdb.Metadata.Query(ctx, q, args...)
+	if err != nil {
+		return out
+	}
+	defer rows.Close()
+	for rows.Next() {
+		var modeEN, name string
+		if err := rows.Scan(&modeEN, &name); err != nil {
+			continue
+		}
+		if strings.TrimSpace(name) != "" {
+			out[modeEN] = name
+		}
+	}
+	return out
 }
