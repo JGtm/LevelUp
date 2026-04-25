@@ -24,7 +24,7 @@ func TestGameCMSFetcher_Supports(t *testing.T) {
 	supported := []Kind{
 		KindMedalImage, KindChallengeBadge, KindBPTrackImage, KindBPBackground,
 		KindSpartanEmblem, KindSpartanBanner, KindSpartanBackdrop, KindCareerRankImage,
-		KindMedalMetadata, KindChallengeDefinition, KindRewardTrackDefinition,
+		KindMedalMetadata, KindChallengeDefinition, KindRewardTrackDefinition, KindBPItemDefinition,
 	}
 	for _, k := range supported {
 		if !f.Supports(k) {
@@ -283,6 +283,74 @@ func TestGameCMSFetcher_RewardTrackDefinition_NotFound(t *testing.T) {
 	_, err := f.Fetch(context.Background(), ref)
 	if !errors.Is(err, ErrNotFound) {
 		t.Errorf("attendu ErrNotFound, got %v", err)
+	}
+}
+
+func TestGameCMSFetcher_BPItemDefinition_OK(t *testing.T) {
+	itemJSON := `{"CommonData":{"Quality":"Legendary","Type":"ArmorCoating"}}`
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.URL.Path != "/hi/Progression/file/Inventory/Armor/Coatings/coat-01.json" {
+			t.Errorf("unexpected path: %s", r.URL.Path)
+		}
+		w.Header().Set("Content-Type", "application/json")
+		_, _ = w.Write([]byte(itemJSON))
+	}))
+	defer srv.Close()
+
+	f := NewGameCMSFetcher(srv.Client(), stubTokens, srv.URL)
+	ref := Ref{Kind: KindBPItemDefinition, TitleID: "hi", ID: "Inventory/Armor/Coatings/coat-01.json"}
+
+	payload, err := f.Fetch(context.Background(), ref)
+	if err != nil {
+		t.Fatalf("Fetch: %v", err)
+	}
+	jp, ok := payload.(JSONPayload)
+	if !ok {
+		t.Fatal("attendu JSONPayload")
+	}
+	if string(jp.RawJSON) != itemJSON {
+		t.Errorf("RawJSON = %q, want %q", string(jp.RawJSON), itemJSON)
+	}
+}
+
+func TestGameCMSFetcher_BPItemDefinition_NotFound(t *testing.T) {
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusNotFound)
+	}))
+	defer srv.Close()
+
+	f := NewGameCMSFetcher(srv.Client(), stubTokens, srv.URL)
+	ref := Ref{Kind: KindBPItemDefinition, TitleID: "hi", ID: "Inventory/Missing.json"}
+
+	_, err := f.Fetch(context.Background(), ref)
+	if !errors.Is(err, ErrNotFound) {
+		t.Errorf("attendu ErrNotFound, got %v", err)
+	}
+}
+
+func TestGameCMSFetcher_BPItemDefinition_TokensRequired(t *testing.T) {
+	var gotAuth string
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		gotAuth = r.Header.Get("x-343-authorization-spartan")
+		_, _ = w.Write([]byte(`{}`))
+	}))
+	defer srv.Close()
+
+	f := NewGameCMSFetcher(srv.Client(), stubTokens, srv.URL)
+	ref := Ref{Kind: KindBPItemDefinition, TitleID: "hi", ID: "Inventory/Item.json"}
+	_, _ = f.Fetch(context.Background(), ref)
+
+	if gotAuth != "spartan-test" {
+		t.Errorf("x-343-authorization-spartan = %q, want %q", gotAuth, "spartan-test")
+	}
+}
+
+func TestGameCMSFetcher_BPItemDefinition_TokensUnavailable_Fails(t *testing.T) {
+	f := NewGameCMSFetcher(nil, failingTokens, "http://localhost")
+	ref := Ref{Kind: KindBPItemDefinition, TitleID: "hi", ID: "Inventory/Item.json"}
+	_, err := f.Fetch(context.Background(), ref)
+	if err == nil {
+		t.Error("attendu erreur quand tokens indisponibles")
 	}
 }
 

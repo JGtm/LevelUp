@@ -54,6 +54,11 @@ const (
 	// Source : https://gamecms-hacs.svc.halowaypoint.com/hi/Progression/file/{trackPath}
 	KindRewardTrackDefinition Kind = "track-def"
 
+	// KindBPItemDefinition est la définition JSON d'un item inventaire Battle Pass.
+	// Source : https://gamecms-hacs.svc.halowaypoint.com/hi/Progression/file/{InventoryItemPath}
+	// Persisté dans battlepass_item_definitions + battlepass_item_translations (metadata.duckdb).
+	KindBPItemDefinition Kind = "bp-item-def"
+
 	// KindAssetTranslation est la traduction JSON d'un asset (map, playlist, game variant…).
 	// Source : DiscoveryUGC API.
 	KindAssetTranslation Kind = "asset-translation"
@@ -77,6 +82,7 @@ var allKinds = map[Kind]struct{}{
 	KindMedalMetadata:         {},
 	KindChallengeDefinition:   {},
 	KindRewardTrackDefinition: {},
+	KindBPItemDefinition:      {},
 	KindAssetTranslation:      {},
 	KindAchievementImage:      {},
 }

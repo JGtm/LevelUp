@@ -107,6 +107,13 @@ type TrackDefinitionPersister interface {
 	UpsertTrackDefinition(ctx context.Context, trackPath string, raw []byte) error
 }
 
+// ItemDefinitionPersister est notifié après chaque fetch réussi d'un item Battle Pass
+// depuis GameCMS, pour la persister dans battlepass_item_definitions + _translations.
+// Implémenté par platform/duckdb.PersistSink.
+type ItemDefinitionPersister interface {
+	UpsertItemDefinition(ctx context.Context, itemPath string, raw []byte) error
+}
+
 // HaloProvider est le client HTTP pour l'API Halo Infinite (343 Industries).
 // Thread-safe : une seule instance par processus.
 // Les tokens et le XUID sont lus depuis le contexte via ctxkeys.HaloTokens / ctxkeys.HaloXUID.
@@ -122,6 +129,8 @@ type HaloProvider struct {
 	assetResolver assets.Resolver
 	// trackDefPersister persiste les définitions de tracks dans battlepass_track_definitions.
 	trackDefPersister TrackDefinitionPersister
+	// itemDefPersister persiste les définitions d'items dans battlepass_item_definitions.
+	itemDefPersister ItemDefinitionPersister
 	// titleSlug est le titre courant (ex: "halo_infinite").
 	titleSlug string
 	// Sprint 54 B5 : cache process-level de la privacy par xuid.
@@ -168,6 +177,18 @@ func (p *HaloProvider) WithTrackDefPersister(persister TrackDefinitionPersister)
 	}
 	clone := *p
 	clone.trackDefPersister = persister
+	return &clone
+}
+
+// WithItemDefPersister câble le persister de définitions d'items Battle Pass.
+// Quand présent, chaque item résolu via KindBPItemDefinition est persisté dans
+// battlepass_item_definitions et battlepass_item_translations.
+func (p *HaloProvider) WithItemDefPersister(persister ItemDefinitionPersister) *HaloProvider {
+	if p == nil {
+		return nil
+	}
+	clone := *p
+	clone.itemDefPersister = persister
 	return &clone
 }
 

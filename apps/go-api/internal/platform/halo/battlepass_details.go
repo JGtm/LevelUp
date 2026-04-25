@@ -125,42 +125,77 @@ func (p *HaloProvider) warmBPTrackAssets(ctx context.Context, def *battlepassTra
 	if def == nil || p.assetResolver == nil {
 		return
 	}
-	var refs []assets.Ref
+	var imageRefs []assets.Ref
 	if bp := strings.TrimSpace(def.BattlePassImage); bp != "" {
-		refs = append(refs, assets.Ref{
+		imageRefs = append(imageRefs, assets.Ref{
 			Kind:    assets.KindBPTrackImage,
 			TitleID: p.titleID(),
 			ID:      bp,
 		})
 	}
 	if bg := strings.TrimSpace(def.BackgroundImagePath); bg != "" {
-		refs = append(refs, assets.Ref{
+		imageRefs = append(imageRefs, assets.Ref{
 			Kind:    assets.KindBPBackground,
 			TitleID: p.titleID(),
 			ID:      bg,
 		})
 	}
+	if len(imageRefs) > 0 {
+		p.assetResolver.Warm(ctx, imageRefs...)
+	}
+
+	// Résoudre + persister chaque item BP individuellement pour déclencher
+	// UpsertItemDefinition sur chaque JSON résolu (structured write path).
+	itemPaths := p.collectTrackItemPaths(def)
+	for _, ip := range itemPaths {
+		p.resolveAndPersistItem(ctx, ip)
+	}
+}
+
+// collectTrackItemPaths extrait les InventoryItemPath uniques d'une définition de track.
+func (p *HaloProvider) collectTrackItemPaths(def *battlepassTrackDefinitionRaw) []string {
+	seen := make(map[string]struct{})
 	for _, rank := range def.Ranks {
 		for _, r := range rank.FreeRewards.InventoryRewards {
 			if ip := strings.TrimSpace(r.InventoryItemPath); ip != "" {
-				refs = append(refs, assets.Ref{
-					Kind:    assets.KindRewardTrackDefinition,
-					TitleID: p.titleID(),
-					ID:      ip,
-				})
+				seen[ip] = struct{}{}
 			}
 		}
 		for _, r := range rank.PaidRewards.InventoryRewards {
 			if ip := strings.TrimSpace(r.InventoryItemPath); ip != "" {
-				refs = append(refs, assets.Ref{
-					Kind:    assets.KindRewardTrackDefinition,
-					TitleID: p.titleID(),
-					ID:      ip,
-				})
+				seen[ip] = struct{}{}
 			}
 		}
 	}
-	if len(refs) > 0 {
-		p.assetResolver.Warm(ctx, refs...)
+	paths := make([]string, 0, len(seen))
+	for ip := range seen {
+		paths = append(paths, ip)
+	}
+	return paths
+}
+
+// resolveAndPersistItem résout un item via KindBPItemDefinition et persiste son JSON
+// structuré si un ItemDefinitionPersister est câblé.
+func (p *HaloProvider) resolveAndPersistItem(ctx context.Context, itemPath string) {
+	ref := assets.Ref{
+		Kind:    assets.KindBPItemDefinition,
+		TitleID: p.titleID(),
+		ID:      itemPath,
+	}
+	resolved, err := p.assetResolver.Get(ctx, ref)
+	if err != nil {
+		slog.DebugContext(ctx, "halo_provider: bp item resolver miss", "path", itemPath, "err", err)
+		return
+	}
+	if p.itemDefPersister == nil {
+		return
+	}
+	jp, ok := resolved.Payload.(assets.JSONPayload)
+	if !ok {
+		return
+	}
+	raw := jp.RawJSON
+	if err := p.itemDefPersister.UpsertItemDefinition(context.Background(), itemPath, raw); err != nil {
+		slog.Warn("halo_provider: item definition persist failed", "path", itemPath, "err", err)
 	}
 }

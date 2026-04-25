@@ -4,21 +4,19 @@ package duckdb
 
 import "testing"
 
-// TestReadDB_FallbackToPlayer vérifie que ReadDB retourne Player quand PlayerRO est nil.
-func TestReadDB_FallbackToPlayer(t *testing.T) {
+// TestReadDB_ReturnsPlayer vérifie que ReadDB retourne la connexion Player (RW unique).
+func TestReadDB_ReturnsPlayer(t *testing.T) {
 	sentinel := &DB{}
-	pdb := &PlayerDB{Player: sentinel, PlayerRO: nil}
+	pdb := &PlayerDB{Player: sentinel}
 	if got := pdb.ReadDB(); got != sentinel {
-		t.Errorf("ReadDB() avec PlayerRO=nil doit retourner Player, obtenu %v", got)
+		t.Errorf("ReadDB() doit retourner Player, obtenu %v", got)
 	}
 }
 
-// TestReadDB_PrefersPlayerRO vérifie que ReadDB retourne PlayerRO quand il est non-nil.
-func TestReadDB_PrefersPlayerRO(t *testing.T) {
-	player := &DB{}
-	playerRO := &DB{}
-	pdb := &PlayerDB{Player: player, PlayerRO: playerRO}
-	if got := pdb.ReadDB(); got != playerRO {
-		t.Errorf("ReadDB() avec PlayerRO non-nil doit retourner PlayerRO, obtenu %v", got)
+// TestReadDB_NilPlayer vérifie que ReadDB retourne nil quand Player est nil.
+func TestReadDB_NilPlayer(t *testing.T) {
+	pdb := &PlayerDB{}
+	if got := pdb.ReadDB(); got != nil {
+		t.Errorf("ReadDB() avec Player nil doit retourner nil, obtenu %v", got)
 	}
 }

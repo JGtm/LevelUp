@@ -295,57 +295,26 @@ func (r *SeasonPassRepo) loadItemMetadataMap(
 	placeholders := strings.TrimRight(strings.Repeat("?,", len(itemPaths)), ",")
 	query := fmt.Sprintf(`
 		WITH latest AS (
-			SELECT inventory_item_path, content_hash, quality, item_type, display_path, raw_payload_json, last_seen_at,
+			SELECT inventory_item_path, content_hash, quality, item_type, display_path, last_seen_at,
 			       ROW_NUMBER() OVER (PARTITION BY inventory_item_path ORDER BY last_seen_at DESC) AS rn
 			FROM battlepass_item_definitions
 			WHERE is_current = TRUE
 		)
 		SELECT d.inventory_item_path,
 		       d.display_path,
-		       COALESCE(
-		           t_fr.title,
-		           t_fr2.title,
-		           t_en.title,
-		           t_en2.title,
-		           json_extract_string(d.raw_payload_json, '$.CommonData.Title.translations.fr-FR'),
-		           json_extract_string(d.raw_payload_json, '$.CommonData.Title.translations.en-US'),
-		           json_extract_string(d.raw_payload_json, '$.CommonData.Title.value')
-		       ) AS title,
-		       COALESCE(
-		           t_fr.description,
-		           t_fr2.description,
-		           t_en.description,
-		           t_en2.description,
-		           json_extract_string(d.raw_payload_json, '$.CommonData.Description.translations.fr-FR'),
-		           json_extract_string(d.raw_payload_json, '$.CommonData.Description.translations.en-US'),
-		           json_extract_string(d.raw_payload_json, '$.CommonData.Description.value')
-		       ) AS description,
-		       COALESCE(
-		           NULLIF(d.quality, ''),
-		           json_extract_string(d.raw_payload_json, '$.CommonData.Quality')
-		       ) AS quality,
-		       COALESCE(
-		           NULLIF(d.item_type, ''),
-		           json_extract_string(d.raw_payload_json, '$.CommonData.Type'),
-		           json_extract_string(d.raw_payload_json, '$.CommonData.ItemType')
-		       ) AS item_type
+		       COALESCE(t_fr.title, t_en.title)       AS title,
+		       COALESCE(t_fr.description, t_en.description) AS description,
+		       d.quality,
+		       d.item_type
 		FROM latest d
 		LEFT JOIN battlepass_item_translations t_fr
 		       ON t_fr.inventory_item_path = d.inventory_item_path
 		      AND t_fr.content_hash = d.content_hash
 		      AND t_fr.lang = 'fr-FR'
-		LEFT JOIN battlepass_item_translations t_fr2
-		       ON t_fr2.inventory_item_path = d.inventory_item_path
-		      AND t_fr2.content_hash = d.content_hash
-		      AND t_fr2.lang = 'fr'
 		LEFT JOIN battlepass_item_translations t_en
 		       ON t_en.inventory_item_path = d.inventory_item_path
 		      AND t_en.content_hash = d.content_hash
 		      AND t_en.lang = 'en-US'
-		LEFT JOIN battlepass_item_translations t_en2
-		       ON t_en2.inventory_item_path = d.inventory_item_path
-		      AND t_en2.content_hash = d.content_hash
-		      AND t_en2.lang = 'en'
 		WHERE d.rn = 1 AND d.inventory_item_path IN (%s)`, placeholders)
 
 	args := make([]any, 0, len(itemPaths))
@@ -405,7 +374,9 @@ func (r *SeasonPassRepo) loadItemMetadataMap(
 }
 
 // fillItemsFromAssetIndex complète itemMap avec les items présents dans asset_index
-// (stockés par warmBPTrackAssets lors du précédent appel GetBattlePass).
+// (stockés par warmBPTrackAssets lors d'appels précédents).
+// Cherche d'abord dans le nouveau kind 'bp-item-def', puis dans l'ancien 'track-def'
+// pour la rétrocompatibilité avec les items mis en cache avant ce déploiement.
 // Best-effort : toute erreur est silencieusement ignorée.
 func (r *SeasonPassRepo) fillItemsFromAssetIndex(
 	ctx context.Context,
@@ -416,7 +387,11 @@ func (r *SeasonPassRepo) fillItemsFromAssetIndex(
 	query := fmt.Sprintf(`
 		SELECT id,
 		       json_extract_string(raw_json, '$.CommonData.DisplayPath.Media.MediaUrl.Path') AS display_path,
-		       json_extract_string(raw_json, '$.CommonData.Title.value')                    AS title,
+		       COALESCE(
+		           json_extract_string(raw_json, '$.CommonData.Title.translations.fr-FR'),
+		           json_extract_string(raw_json, '$.CommonData.Title.translations.en-US'),
+		           json_extract_string(raw_json, '$.CommonData.Title.value')
+		       )                                                                            AS title,
 		       COALESCE(
 		           json_extract_string(raw_json, '$.CommonData.Description.translations.fr-FR'),
 		           json_extract_string(raw_json, '$.CommonData.Description.value')
@@ -427,7 +402,7 @@ func (r *SeasonPassRepo) fillItemsFromAssetIndex(
 		           json_extract_string(raw_json, '$.CommonData.ItemType')
 		       )                                                                            AS item_type
 		FROM asset_index
-		WHERE kind = 'track-def'
+		WHERE kind IN ('bp-item-def', 'track-def')
 		  AND id IN (%s)
 		  AND raw_json IS NOT NULL`, placeholders)
 

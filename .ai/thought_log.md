@@ -1,5 +1,43 @@
 # Thought Log
 
+## [2026-04-25] feat(bp-item-persister): pipeline Kinds complet pour les items Battle Pass
+
+**Statut** : Complété — branche `feat/bp-item-persister`
+
+**Contexte** : Les tracks Battle Pass étaient déjà persistés via un write path structuré (`UpsertTrackDefinition` / `battlepass_track_definitions`). Les items (cosmétiques, récompenses de palier) n'avaient pas d'équivalent — ils vivaient uniquement dans `asset_index` avec `kind='track-def'` (aliasing incorrect) ou dans `battlepass_item_definitions` peuplé seulement par un script Python one-shot. La colonne `item_type` était vide car `import_bp_items.go` lisait `cd.ItemType` au lieu de `cd.Type`.
+
+**Décisions techniques** :
+
+1. **`KindBPItemDefinition Kind = "bp-item-def"`** (`assets/kinds.go`) — nouveau Kind distinct de `track-def`. Enregistré dans `allKinds`, non-binaire (JSON). Le fetcher GameCMS résout le même endpoint `/hi/Progression/file/{itemPath}` que les tracks, mais avec un type clair et une persistance structurée dédiée.
+
+2. **`ItemDefinitionPersister` interface** (`platform/halo/provider.go`) — miroir exact de `TrackDefinitionPersister`. Implémenté par `PersistSink`. Câblé via `WithItemDefPersister()`.
+
+3. **`UpsertItemDefinition`** (`platform/duckdb/persist_sink.go`) — parse `cd.Type` (prioritaire) puis `cd.ItemType`, `cd.Quality`, `cd.DisplayPath.Media.MediaUrl.Path`. Upsert dans `battlepass_item_definitions` + `battlepass_item_translations` (fr-FR + en-US) via UPDATE-first + INSERT-if-zero (idiome DuckDB, idempotent). Corrige le bug `import_bp_items.go` pour les nouvelles insertions.
+
+4. **`warmBPTrackAssets` refactoré** (`platform/halo/battlepass_details.go`) — les images de track sont `Warm()` en lot (comportement inchangé). Les items sont résolus individuellement via `resolveAndPersistItem()` → `assetResolver.Get(KindBPItemDefinition)` → `UpsertItemDefinition`. Chaque nouvel item vu lors d'un appel live est automatiquement persisté en structuré.
+
+5. **`registry.go`** — `.WithTrackDefPersister(sink).WithItemDefPersister(sink)` dans `HomeCtxWithAuth` et `SeasonPassCtxWithAuth`.
+
+6. **`fetcher_gamecms.go`** — `Supports()` et `Fetch()` étendus pour `KindBPItemDefinition`.
+
+7. **`season_pass_repo.go` simplifié** — `loadItemMetadataMap` : suppression des 6 `json_extract_string` fallbacks pour quality/item_type/description. Le SQL lit maintenant `d.quality`, `d.item_type` directement + JOIN translations propre (fr-FR + en-US seulement). `fillItemsFromAssetIndex` : cherche `kind IN ('bp-item-def', 'track-def')` pour rétrocompatibilité de la période de transition.
+
+8. **`cmd/backfill_bp_items/main.go`** — CLI one-shot : lit `asset_index WHERE kind IN ('bp-item-def', 'track-def') AND raw_json LIKE '%CommonData%' AND id NOT LIKE 'RewardTracks/%'`, distingue les items des tracks (absence de clé `Ranks`), appelle `UpsertItemDefinition` pour chaque. Flag `--dry-run`. Les nouveaux items n'ont pas besoin de ce script (persistance automatique via live flow).
+
+**Résultats observés** :
+- `go build ./...` : clean.
+- `go test ./...` : tous packages PASS (0 FAIL).
+- Couverture de tests ajoutée :
+  - `battlepass_details_test.go` : `collectTrackItemPaths` (déduplication, cas vide), `resolveAndPersistItem` (4 cas : OK, miss, nil persister, payload binaire), `warmBPTrackAssets` (nil def, nil resolver, flux complet images+items).
+  - `persist_sink_item_test.go` : `itemDefLocalizedText` (5 cas), `UpsertItemDefinition` (insert, idempotent × 3, invalidation hash, fallback `ItemType`, champs vides).
+  - `fetcher_gamecms_test.go` : `fetchBPItemDefinition` (OK, 404, tokens requis, tokens indisponibles), `Supports` étendu.
+  - `backfill_bp_items/main_test.go` : `isItemJSON` (5 cas).
+  - `pool_unit_test.go` : corrigé (référence à `PlayerRO` supprimé, remplacé par `TestReadDB_ReturnsPlayer` + `TestReadDB_NilPlayer`).
+
+**Conclusion** : L'architecture est maintenant symétrique : tracks et items ont chacun leur Kind, leur persister, et leur table structurée. La lecture dans `season_pass_repo.go` ne dépend plus de `json_extract_string` pour les données critiques. Le backfill one-shot migre les items déjà en cache.
+
+---
+
 ## [2026-04-25] feat(battle-pass): exposition Quality/ItemType/Description + couleurs de rareté (home + page Pass)
 
 **Statut** : Complété
