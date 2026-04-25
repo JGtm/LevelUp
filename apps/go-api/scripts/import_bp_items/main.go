@@ -20,7 +20,8 @@ import (
 type itemCommonData struct {
 	ID          string          `json:"Id"`
 	Quality     string          `json:"Quality"`
-	ItemType    string          `json:"ItemType"`
+	Type        string          `json:"Type"`     // champ GameCMS réel (prioritaire)
+	ItemType    string          `json:"ItemType"` // ancien format, fallback
 	DisplayPath itemDisplayPath `json:"DisplayPath"`
 	Title       localizedValue  `json:"Title"`
 	Description localizedValue  `json:"Description"`
@@ -97,7 +98,10 @@ func main() {
 
 		displayPath := cd.DisplayPath.Media.MediaURL.Path
 		quality := cd.Quality
-		itemType := cd.ItemType
+		itemType := cd.Type
+		if itemType == "" {
+			itemType = cd.ItemType
+		}
 
 		_, err = db.Exec(`
 			INSERT INTO battlepass_item_definitions

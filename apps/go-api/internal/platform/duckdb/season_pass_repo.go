@@ -377,6 +377,8 @@ func (r *SeasonPassRepo) loadItemMetadataMap(
 // (stockés par warmBPTrackAssets lors d'appels précédents).
 // Cherche d'abord dans le nouveau kind 'bp-item-def', puis dans l'ancien 'track-def'
 // pour la rétrocompatibilité avec les items mis en cache avant ce déploiement.
+// TODO(expiry:2026-08-01): supprimer 'track-def' de la liste une fois tous les items
+// migrés vers 'bp-item-def' via le live flow ou le backfill.
 // Best-effort : toute erreur est silencieusement ignorée.
 func (r *SeasonPassRepo) fillItemsFromAssetIndex(
 	ctx context.Context,
