@@ -135,6 +135,14 @@ data/
 - `apps/web/src/features/home/HomePage.tsx`, `career/CareerPage.tsx`, `timeseries/TimeseriesPage.tsx`, `squad/SquadPage.tsx`, `citations/CitationsPage.tsx`, `synthesis/SynthesisPage.tsx`, `session-compare/SessionComparePage.tsx`, `explorer/ExplorerPage.tsx` : plus de `return null` silencieux sur ce périmètre, avec placeholders explicites quand une section ne peut pas s'afficher.
 - `apps/web/src/features/palmares/SeasonPassPage.tsx` : la carte de progression du palier actif reprend le même layout composite que la home, avec valeur courante à gauche, barre au centre et valeur cible à droite.
 - `apps/web/package.json` : dépendance explicite `plotly.js`, requise au build par `react-plotly.js`.
+- `apps/web/src/lib/accessibility/` : système d'accessibilité Okabe-Ito (Phases 1-7, 2026-04-25) :
+  - `palettes.ts` : `defaultPalette` + `okabePalette` (Okabe-Ito 2008). `applyPalette(palette, key)` écrit les 40 variables CSS `--ac-*` sur `:root`.
+  - `semantic-tokens.ts` : union type `SemanticToken` (40 tokens : `perf-tier-1..5`, `outcome-win/loss/draw/dnf`, `divergent-pos/neg/neutral`, `narrative-dominant/secondary`, etc.).
+  - `resolver.ts` : `resolveToken(token)` — lit `getComputedStyle()` synchronement (usage Plotly). `tokenCssVar(token)` — retourne `var(--ac-token)` pour JSX réactif.
+  - `scales.ts` : `makeOrdinalScale`, `makeDivergentScale`, `makeCategoricalScale`. 8 instances exportées : `perfScale`, `accuracyScale`, `kdScale`, `progressScale`, `mmrDeltaScale`, `skillDeltaScale`, `outcomeScale`, `narrativeScale`.
+  - `plotlyColorscale.ts` : `buildOrdinalColorscale(tokens[])`, `buildDivergentColorscale(neg, neutral, pos)`, `getSeriesColors(n, tokens[])`.
+  - `useColorPaletteVersion.ts` : hook React — `MutationObserver` sur `style` de `:root` → version incrémentale → force re-render des `useMemo` Plotly lors de changement de palette.
+  - `index.ts` : barrel export de tous les symboles publics du module.
 
 ### Accès aux Données
 - `src/data/repositories/duckdb_repo.py` : Repository principal DuckDB (splitté: `_awards_repo`, `_diagnostic_repo`, `_legacy_compat`, `_match_queries_helpers`, `_match_queries_polars`, `_metadata_resolution`, `_schema_introspection`, `_archives_repo`, `_events_repo`, `_medals_repo`, `_gamertag_resolver`)

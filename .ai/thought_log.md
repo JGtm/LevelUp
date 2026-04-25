@@ -1,5 +1,66 @@
 # Thought Log
 
+## [2026-04-25] feat(accessibility): Implémentation Okabe-Ito complète (Phases 1-7)
+
+**Statut** : Complété — branche `feat/bp-item-persister`
+
+**Contexte** : L'application React utilisait des couleurs hexadécimales hardcodées dispersées dans ~20 fichiers (charts Plotly, composants UI, pages). Ces couleurs ne respectaient pas les normes d'accessibilité pour les daltoniens (deutéranopie / protanopie), et n'étaient pas réactives au changement de thème. L'objectif était d'implémenter un système de palette Okabe-Ito (2008) complet avec réactivité en temps réel.
+
+**Décisions techniques** :
+
+1. **Architecture 6 couches** : Palettes brutes → Tokens sémantiques (40 tokens `SemanticToken`) → Resolver CSS → Variables CSS `--ac-*` → Scales → Composants. Séparation stricte entre `resolveToken()` (lecture DOM synchrone pour Plotly) et `tokenCssVar()` (référence CSS var pour JSX réactif).
+
+2. **Palettes** (`lib/accessibility/palettes.ts`) : `defaultPalette` (couleurs existantes) + `okabePalette` (Okabe-Ito 2008). `applyPalette(palette, key)` écrit toutes les `--ac-*` sur `:root`, idempotent par clé. 8 couleurs Okabe-Ito mappées aux 40 tokens sémantiques.
+
+3. **8 scales** (`lib/accessibility/scales.ts`) : `makeOrdinalScale`, `makeDivergentScale`, `makeCategoricalScale`. Instances : `perfScale`, `accuracyScale`, `kdScale`, `progressScale`, `mmrDeltaScale`, `skillDeltaScale`, `outcomeScale`, `narrativeScale`.
+
+4. **Réactivité Plotly** (`lib/accessibility/useColorPaletteVersion.ts`) : `MutationObserver` sur l'attribut `style` de `:root` → version incrémentale → ajoutée aux deps des `useMemo` Plotly. Sans cela, les charts Plotly gardent les couleurs de la palette précédente après changement.
+
+5. **Helpers Plotly** (`lib/accessibility/plotlyColorscale.ts`) : `buildOrdinalColorscale(tokens[])`, `buildDivergentColorscale(neg, neutral, pos)`, `getSeriesColors(n, tokens[])`.
+
+6. **Store + ThemeProvider** : `colorPalette: 'default' | 'okabe-ito'` dans `settingsDraftStore` (Zustand persist). `ThemeProvider` réagit via `useLayoutEffect` → `applyPalette()`.
+
+7. **UI settings** (`features/settings/AccessibilityTab.tsx`) : onglet `Accessibilité` avec radio Standard/Okabe-Ito, swatches de preview, i18n FR/EN. Toujours visible (pas de garde admin).
+
+8. **Migration call-sites** : 7 fichiers avec hex hardcodés migrés :
+   - `HomePage.tsx` : `HIGHLIGHT_COLOR_MAP`, `tokenCssVar()` pour outcomes/KDA/précision
+   - `SessionDetailPage.tsx` : `matchOutcomeTone()` retourne `{className, style}`
+   - `timeseries-kda-bars.tsx`, `timeseries-histogram.tsx`, `timeseries-heatmap.tsx` : `resolveToken()` + `paletteVersion` deps
+   - `TimeseriesPage.tsx` : 6 couleurs de charts migrées
+   - `match-card.tsx` : fills KDA/damage en `tokenCssVar()`
+   - `SquadContributionsPage.tsx`, `timelineChart.ts`, `SynthesisPage.tsx` : `getSeriesColors()` + `resolveToken()`
+   - `hsPkChart.ts`, `heatmapChart.ts` : colorscales Plotly via helpers
+
+**Résultats observés** :
+- 7 commits successifs (Phases 1-7), aucune régression introduite.
+- Suite de tests finale : **26 fichiers de test passent, 258 tests verts**. 10 fichiers échouent (18 tests), tous préexistants (failures SessionDetailPage, etc.) — vérifiés via `git stash` avant nos changements.
+- Corrections de tests nécessitées : `match-card-presentation.test.ts` (hex → CSS vars), `match-card.test.tsx` (split DOM text nodes), 2 fichiers.
+- Corrections build : CRLF pre-commit hook (2× staging after auto-fix), `matchOutcomeTone` call-site update, `OUTCOME_INT_KEY` map pour clés entières.
+
+**Conclusion / prochaine étape** : Système d'accessibilité complet et opérationnel. Pour ajouter une 3e palette : (1) créer l'objet `Palette` dans `palettes.ts`, (2) ajouter la valeur au type `ColorPalette`, (3) câbler dans `ThemeProvider`. Aucune modification des composants nécessaire.
+
+---
+
+## [2026-04-25] plan(multi-titles): adapters + TOML mappings sémantiques
+
+**Statut** : Complété — plan rédigé, pas d'implémentation
+
+**Contexte** : Discussion produit sur le support multi-titres. Le canonique provider (`HALO_CANONICAL_MODEL.md`) et le namespace par titre (`ADR_S44_MULTI_TITLE_NAMESPACE.md`) sont déjà actés mais il manquait un plan opératoire pour deux couches distinctes : (1) la couche structurelle qui transforme le stockage DuckDB d'un titre vers un schéma canonique services consommé par les services produit ; (2) la couche sémantique qui décrit, par titre, comment afficher chaque champ et chaque asset (libellés, unités, formats, ordres).
+
+**Décision technique** : Plan documenté dans `.ai/PLAN_MULTI_TITLE_ADAPTERS_AND_MAPPINGS.md`. Trois couches strictement séparées : Stockage (DuckDB par titre), Adaptateur structurel (`internal/games/{slug}/adapter.go` qui implémente une interface `GameAdapter` Go), Mapping sémantique (`data/titles/{slug}/mappings/*.toml` parsés au boot par un loader Go typé). Endpoint dédié `GET /api/v1/titles/{slug}/field-mappings?locale=fr` exposé au frontend pour qu'il consomme les libellés sans hardcode. Bascule incrémentale endpoint par endpoint avec golden parity HI strict (diff = 0). Corpus synthétique d'un titre B (~0.5–1j) pour valider l'isolement et l'agnosticité des services. TOML choisi (vs JSON/YAML) pour diff Git lisible, commentaires natifs, parsing Go strict via `pelletier/go-toml/v2`. Logging structuré slog à toutes les frontières (`adapter_loaded`, `mappings_loaded`, `field_lookup_missing`, `capability_not_supported`). Tests unitaires loader/format >=90%, adapter HI >=85%, golden parity sur Home/MatchView/Career/Synthesis/Timeseries, smoke E2E Playwright FR/EN, tests d'isolation cross-titres. Idées complémentaires intégrées : schema versioning des TOML, conversion d'unités `storage_unit` vs `display_unit`, tokens design system, audit cohérence labels TOML <-> i18n React, génération doc auto.
+
+**Résultat** : Plan exhaustif de 15 sections couvrant problème, périmètre, architecture, schémas TOML, loader, logging, tests unitaires, tests de non-régression, plan de bascule en 6 phases (A-F), idées complémentaires, risques, critères d'acceptation. Aligné sur les cadrages existants S44 sans les dupliquer.
+
+**Conclusion / prochaine étape** : Plan prêt à être discuté avec Guillaume avant implémentation. Si validé, attaquer Phase A (fondation `internal/games/canonical/` + loader + premier `fields.toml` HI) sans bascule, en parallèle du reste du sprint courant.
+
+## [2026-04-25] feat(home): playlist favorite dans la barre KPIs
+
+**Statut** : Complété
+
+**Décision technique** : Calcul dans `ComputeKPIs` via comptage par `PlaylistID` (déjà présent dans `HomeMatchRow` / Q26). Helper `dominantKey` isolé pour retourner l'ID et le count max. Deux nouveaux champs dans `HeroKPIs` : `FavoritePlaylistName` / `FavoritePlaylistCount`. Tuile insérée entre "Durée totale" et "Rendement/Résistance" — gabarit identique à "Arme favorite" (texte tronqué + sous-titre nombre de parties), sans barre composite.
+
+**Résultat** : 9 tuiles KPIs au total, compilé sans erreur Go.
+
 ## [2026-04-25] feat(bp-item-persister): pipeline Kinds complet pour les items Battle Pass
 
 **Statut** : Complété — branche `feat/bp-item-persister`
