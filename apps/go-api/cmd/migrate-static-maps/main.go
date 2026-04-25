@@ -34,6 +34,7 @@ func main() {
 	}
 }
 
+//nolint:funlen // orchestrateur de migration: pipeline lineaire 5 etapes, decoupage prematuré
 func run(dryRun bool, staticDir, titleID string) error {
 	ctx := context.Background()
 

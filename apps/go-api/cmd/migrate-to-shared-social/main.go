@@ -108,6 +108,8 @@ func run(repoRoot string, dryRun bool) error {
 }
 
 // migratePlayerMedia copie media_files et media_match_associations d'un joueur vers shared_social.
+//
+//nolint:funlen // pipeline de migration séquentiel : open, scan, transform, insert, close
 func migratePlayerMedia(dst *sql.DB, srcPath, gamertag string, dryRun bool) (int, int, error) {
 	src, err := sql.Open("duckdb", srcPath+"?access_mode=read_only")
 	if err != nil {

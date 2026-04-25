@@ -213,8 +213,8 @@ func TestGeneratePKCE(t *testing.T) {
 		t.Error("challenge vide")
 	}
 	// Vérifier que challenge = base64url(sha256(verifier)) — spec PKCE S256
-	import_sha256 := sha256.Sum256([]byte(verifier))
-	expected := base64.RawURLEncoding.EncodeToString(import_sha256[:])
+	importSha256 := sha256.Sum256([]byte(verifier))
+	expected := base64.RawURLEncoding.EncodeToString(importSha256[:])
 	if challenge != expected {
 		t.Errorf("challenge incohérent avec verifier: attendu %q, obtenu %q", expected, challenge)
 	}

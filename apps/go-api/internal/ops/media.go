@@ -81,6 +81,8 @@ var supportedExtensions = map[string]string{
 // IndexMedia scanne le répertoire captures et indexe les nouveaux fichiers.
 // Portage de MediaIndexer.scan_and_index() Python.
 // Thread-safe : sérialise les accès par chemin de DB cible (mutex par path).
+//
+//nolint:funlen // portage fidèle de MediaIndexer.scan_and_index Python — séquentiel
 func IndexMedia(opts MediaIndexOptions) (MediaIndexResult, error) {
 	if opts.BufferMin <= 0 {
 		opts.BufferMin = 2

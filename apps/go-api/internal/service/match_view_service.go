@@ -53,7 +53,9 @@ func (s *MatchViewService) WithDataAdapter(a games.TitleDataAdapter) *MatchViewS
 }
 
 // GetMatchView retourne la réponse complète pour un match.
-func (s *MatchViewService) GetMatchView(ctx context.Context, matchID string) (domain.MatchViewResponse, error) { //nolint:cyclop
+//
+//nolint:funlen,cyclop // 11 sections séquentielles d'enrichissement bloquant : meta + analyses + médias
+func (s *MatchViewService) GetMatchView(ctx context.Context, matchID string) (domain.MatchViewResponse, error) {
 	// --- Appels séquentiels bloquants (meta est nécessaire pour la suite) ---
 	meta, err := s.repo.GetMatchMeta(ctx, matchID)
 	if err != nil {

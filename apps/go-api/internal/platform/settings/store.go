@@ -157,6 +157,8 @@ func (s *Store) Save(cfg *AppSettings) error {
 }
 
 // Apply applique un UpdateSettingsRequest partiel sur un AppSettings existant.
+//
+//nolint:funlen // série de N if-else parallèle pour chaque champ optionnel — découpage prématuré
 func Apply(cfg *AppSettings, req *domain.UpdateSettingsRequest) {
 	if req.Lang != nil {
 		cfg.Lang = *req.Lang

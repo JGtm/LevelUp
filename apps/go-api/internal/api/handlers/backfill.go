@@ -34,6 +34,8 @@ func NewBackfillHandler(cfg *config.AppConfig, jobStore *jobs.Store) *BackfillHa
 
 // StartBackfill déclenche le pipeline backfill pour un joueur.
 // POST /backfill/start → 202 AsyncJobStatus.
+//
+//nolint:funlen // pipeline d'orchestration : validation, lookup, conflit, lancement goroutine
 func (h *BackfillHandler) StartBackfill(w http.ResponseWriter, r *http.Request) {
 	var req domain.BackfillStartRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {

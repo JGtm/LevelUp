@@ -335,7 +335,7 @@ type itemDefCommonData struct {
 	ItemType    string `json:"ItemType"`
 	DisplayPath struct {
 		Media struct {
-			MediaUrl struct {
+			MediaURL struct {
 				Path string `json:"Path"`
 			} `json:"MediaUrl"`
 		} `json:"Media"`
@@ -384,7 +384,7 @@ func (s *PersistSink) UpsertItemDefinition(ctx context.Context, itemPath string,
 	if itemType == "" {
 		itemType = strings.TrimSpace(cd.ItemType)
 	}
-	displayPath := strings.TrimSpace(cd.DisplayPath.Media.MediaUrl.Path)
+	displayPath := strings.TrimSpace(cd.DisplayPath.Media.MediaURL.Path)
 
 	var qualityArg, itemTypeArg, displayPathArg any
 	if q := strings.TrimSpace(cd.Quality); q != "" {
@@ -530,7 +530,7 @@ func (s *PersistSink) PersistChallenges(rawBody []byte) {
 // deckChallengeRaw est le struct de parsing best-effort d'un challenge depuis /decks.
 // Les champs sont lenients : si un champ est absent, il reste à zéro/vide.
 type deckChallengeRaw struct {
-	TrackingId      string `json:"TrackingId"`
+	TrackingID      string `json:"TrackingId"`
 	XPReward        int    `json:"XPReward"`
 	SecXPReward     int    `json:"SecondaryXpReward"`
 	Threshold       int    `json:"Threshold"`
@@ -625,7 +625,7 @@ func (s *PersistSink) writeChallenges(ctx context.Context, body []byte) error {
 
 // insertSnapshot insère un snapshot de défi si l'état a changé depuis le dernier
 // enregistrement (déduplication par state_hash sur les dernières 24h).
-// Retourne nil sans insérer si le challenge n'a pas de TrackingId.
+// Retourne nil sans insérer si le challenge n'a pas de TrackingID.
 func (s *PersistSink) insertSnapshot(
 	ctx context.Context,
 	db *DB,
@@ -637,11 +637,11 @@ func (s *PersistSink) insertSnapshot(
 	if err := json.Unmarshal(rawCh, &ch); err != nil {
 		return nil // skip malformed
 	}
-	if ch.TrackingId == "" {
+	if ch.TrackingID == "" {
 		return nil // pas d'identifiant stable → skip
 	}
 
-	chPath := "Challenges/Tracking/" + ch.TrackingId
+	chPath := "Challenges/Tracking/" + ch.TrackingID
 	stateHash := persistHash(rawCh)
 
 	// Déduplication : ne pas insérer si un snapshot identique existe dans les 24h.
@@ -673,7 +673,7 @@ func (s *PersistSink) insertSnapshot(
 			 status, progress_current, progress_target, xp_reward,
 			 can_reroll, expires_at, state_hash)
 		VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-		at, s.XUID, chPath, ch.TrackingId,
+		at, s.XUID, chPath, ch.TrackingID,
 		status, ch.CurrentProgress, ch.Threshold, ch.XPReward,
 		ch.CanReroll, expiresAt, stateHash,
 	)

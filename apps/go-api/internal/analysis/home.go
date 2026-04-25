@@ -1311,7 +1311,11 @@ func BuildSessionSummaries(
 	labels := distinctSessionLabels(filtered)
 
 	// Construire le résumé pour chaque label, jusqu'à la limite.
-	var result []domain.SessionSummaryItem
+	resultCap := len(labels)
+	if limit > 0 && limit < resultCap {
+		resultCap = limit
+	}
+	result := make([]domain.SessionSummaryItem, 0, resultCap)
 	for _, lbl := range labels {
 		if limit > 0 && len(result) >= limit {
 			break
