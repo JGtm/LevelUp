@@ -23,6 +23,34 @@
 
 ---
 
+## [2026-04-25] feat(prestige): Phase 3 — Handlers HTTP + sync hook avec feature flag
+
+**Statut** : Complété — Phase 3 du plan IMPL_PRESTIGE.md livrée. Câblage final des routes dans server.go reporté Phase 4 (dépend du BaselineProvider Halo).
+
+**Contexte** : Suite de Phase 2 (domain + service + repos). Phase 3 = couche API HTTP qui consomme `prestige.Service` + point d'extension post-sync derrière feature flag `PRESTIGE_ENABLED`.
+
+**Décisions techniques** :
+- **Handler unique `PrestigeHandler`** plutôt que 5 handlers fragmentés (challenges, arcs, prestige, templates, pilot_mode) : le module a un service unique, toutes les routes sont closely related, et l'éclatement multiplierait le boilerplate sans gain de lisibilité. 1 fichier, 9 routes, mapping erreurs centralisé.
+- **`writeServiceError`** mappe les sentinelles du service vers des codes HTTP cohérents : ErrChallengeNotFound → 404, ErrInvalidInput → 400, ErrNotEditable → 403, ErrAlreadyTerminal → 409, ErrCooldownActive → 429. Un cas particulier détecte le rejet "too easy" via "stretch" dans le message d'erreur (cohérent avec la formulation `fmt.Errorf("%w: stretch=...", ErrInvalidInput)` du service).
+- **Feature flag via env var** plutôt que config struct : `PRESTIGE_ENABLED` lu à chaque appel de `IsEnabled()`. Lecture rare (post-sync), surcoût négligeable, permet le toggle sans redémarrage. Valeurs reconnues : 1/true/yes/on insensible à la casse.
+- **`RunPostSyncHook` best-effort** : signature `func(...) ` (pas d'erreur retournée). Log warn sur échec mais ne propage rien. Le sync engine ne doit JAMAIS échouer à cause de Prestige.
+- **Routes pas câblées dans server.go** : décision consciente. Le `prestige.Service` nécessite un `BaselineProvider` (interface définie en Phase 2) qui devra être implémenté par l'adaptateur Halo. Cet adaptateur arrive en Phase 4 avec les templates et le nav refactor frontend. Phase 3 livre des handlers compilables et testés, prêts à être branchés.
+- **Mocks tests handler** : struct typée capturant les derniers paramètres reçus (lastCreate, lastUpdate, etc.) — pattern simple et lisible inspiré de `squad_test.go`. Pas de testify ni de gomock pour rester aligné conventions.
+- **Bug fix réactif** : les tests `Get/List` mock-retournaient des `Challenge` avec champs enum vides → UnmarshalJSON refuse → 500. Fix en complétant les mocks avec valeurs valides plutôt que d'affaiblir la validation. Cohérent avec la décision Phase 1 d'avoir un UnmarshalJSON strict.
+
+**Résultats observés** :
+- `go build ./...` vert
+- 4 sous-tests sync hook (flag on/off, nil safe, error logged)
+- 16 sous-tests handler (Create OK/TooEasy/BadJSON, Get NotFound/OK, List OK/MissingParams, Update NotEditable/OK, Abandon AlreadyTerminal/OK, SuggestNext, GetMyPrestige, SuggestTemplates)
+- Aucune régression `go test ./internal/...` complet vert
+- Tailles : prestige.go handler 248 L, sync_hook.go 67 L, sync_hook_test.go 110 L, prestige_test.go 308 L. Tous sous 500 L.
+
+**Conformité matrice de traçabilité** : tous les éléments Phase 3 livrés OU explicitement reportés Phase 4 (câblage server.go).
+
+**Conclusion / prochaine étape** : Phase 3 prête à committer. Phase 4 (templates Halo Infinite ~30, presets arcs ≥4, refonte nav L1 web Palmarès→Communauté + Synthèse→Stats + Pass→Carrière + Objectifs en L1, BaselineProvider Halo, câblage routes server.go) sera la plus volumineuse car embarque le contenu éditorial + le frontend.
+
+---
+
 ## [2026-04-25] feat(prestige): Phase 2 — Domain pur + Service + Repos DuckDB
 
 **Statut** : Complété — Phase 2 du plan IMPL_PRESTIGE.md livrée.

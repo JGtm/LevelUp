@@ -1,0 +1,355 @@
+package handlers
+
+import (
+	"bytes"
+	"context"
+	"encoding/json"
+	"errors"
+	"net/http"
+	"net/http/httptest"
+	"testing"
+
+	"github.com/go-chi/chi/v5"
+
+	"levelup/go-api/internal/prestige"
+)
+
+// mockPrestigeService est l'implémentation in-memory pour tester le handler.
+type mockPrestigeService struct {
+	createResp      prestige.Challenge
+	createErr       error
+	getResp         prestige.Challenge
+	getErr          error
+	listResp        []prestige.Challenge
+	listErr         error
+	updateResp      prestige.Challenge
+	updateErr       error
+	abandonErr      error
+	suggestNextResp []prestige.Template
+	suggestNextErr  error
+	mePrestige      prestige.UserPrestige
+	meErr           error
+	suggestTplResp  []prestige.Template
+	suggestTplErr   error
+
+	lastCreate      prestige.CreateChallengeRequest
+	lastUpdate      prestige.UpdateChallengePatch
+	lastUpdateID    string
+	lastAbandonID   string
+	lastSuggestNext string
+}
+
+func (m *mockPrestigeService) CreateChallenge(ctx context.Context, req prestige.CreateChallengeRequest) (prestige.Challenge, error) {
+	m.lastCreate = req
+	return m.createResp, m.createErr
+}
+
+func (m *mockPrestigeService) UpdateChallenge(ctx context.Context, id string, patch prestige.UpdateChallengePatch) (prestige.Challenge, error) {
+	m.lastUpdateID = id
+	m.lastUpdate = patch
+	return m.updateResp, m.updateErr
+}
+
+func (m *mockPrestigeService) AbandonChallenge(ctx context.Context, id string) error {
+	m.lastAbandonID = id
+	return m.abandonErr
+}
+
+func (m *mockPrestigeService) GetChallenge(ctx context.Context, id string) (prestige.Challenge, error) {
+	return m.getResp, m.getErr
+}
+
+func (m *mockPrestigeService) ListActiveChallenges(ctx context.Context, userID, titleSlug string) ([]prestige.Challenge, error) {
+	return m.listResp, m.listErr
+}
+
+func (m *mockPrestigeService) EvaluateForUser(ctx context.Context, userID, titleSlug string) ([]prestige.EvaluationOutcome, error) {
+	return nil, nil
+}
+
+func (m *mockPrestigeService) GetUserPrestige(ctx context.Context, userID, titleSlug string) (prestige.UserPrestige, error) {
+	return m.mePrestige, m.meErr
+}
+
+func (m *mockPrestigeService) SuggestTemplates(ctx context.Context, userID, titleSlug string, count int) ([]prestige.Template, error) {
+	return m.suggestTplResp, m.suggestTplErr
+}
+
+func (m *mockPrestigeService) SuggestNext(ctx context.Context, completedID string) ([]prestige.Template, error) {
+	m.lastSuggestNext = completedID
+	return m.suggestNextResp, m.suggestNextErr
+}
+
+// ─────────── Helpers ───────────
+
+func newRouter(svc prestige.Service) *chi.Mux {
+	h := NewPrestigeHandler(svc)
+	r := chi.NewRouter()
+	r.Post("/challenges", h.CreateChallenge)
+	r.Get("/challenges", h.ListActiveChallenges)
+	r.Get("/challenges/{id}", h.GetChallenge)
+	r.Patch("/challenges/{id}", h.UpdateChallenge)
+	r.Delete("/challenges/{id}", h.AbandonChallenge)
+	r.Post("/challenges/{id}/suggest-next", h.SuggestNext)
+	r.Get("/prestige/me", h.GetMyPrestige)
+	r.Get("/templates/suggest", h.SuggestTemplates)
+	return r
+}
+
+// ─────────── Tests ───────────
+
+func TestPrestigeHandler_CreateChallenge_Success(t *testing.T) {
+	mock := &mockPrestigeService{
+		createResp: prestige.Challenge{ID: "ch_1", UserID: "u1", Tier: prestige.TierHeroic},
+	}
+	router := newRouter(mock)
+
+	body := `{"user_id":"u1","title_slug":"halo_infinite","metric":"FieldKDA","target":1.5,"window_type":"session","cadence":"weekly","eval_type":"threshold","mode":"libre"}`
+	req := httptest.NewRequest(http.MethodPost, "/challenges", bytes.NewBufferString(body))
+	w := httptest.NewRecorder()
+	router.ServeHTTP(w, req)
+
+	if w.Code != http.StatusCreated {
+		t.Fatalf("expected 201, got %d (body=%s)", w.Code, w.Body.String())
+	}
+	if mock.lastCreate.Metric != "FieldKDA" {
+		t.Errorf("metric not propagated: %q", mock.lastCreate.Metric)
+	}
+	if mock.lastCreate.WindowType != prestige.WindowSession {
+		t.Errorf("window_type not parsed: %q", mock.lastCreate.WindowType)
+	}
+}
+
+func TestPrestigeHandler_CreateChallenge_TooEasy(t *testing.T) {
+	// Erreur ErrInvalidInput contenant "stretch" → 400 challenge_too_easy
+	mock := &mockPrestigeService{
+		createErr: errors.New("prestige: invalid input: stretch=1.05 below min"),
+	}
+	router := newRouter(mock)
+
+	body := `{"user_id":"u1","title_slug":"halo_infinite","metric":"FieldKDA","target":0.5,"window_type":"session","cadence":"weekly","eval_type":"threshold","mode":"libre"}`
+	req := httptest.NewRequest(http.MethodPost, "/challenges", bytes.NewBufferString(body))
+	w := httptest.NewRecorder()
+	router.ServeHTTP(w, req)
+
+	if w.Code != http.StatusBadRequest {
+		t.Errorf("expected 400, got %d", w.Code)
+	}
+}
+
+func TestPrestigeHandler_CreateChallenge_BadJSON(t *testing.T) {
+	router := newRouter(&mockPrestigeService{})
+	req := httptest.NewRequest(http.MethodPost, "/challenges", bytes.NewBufferString(`{not json`))
+	w := httptest.NewRecorder()
+	router.ServeHTTP(w, req)
+
+	if w.Code != http.StatusBadRequest {
+		t.Errorf("expected 400, got %d", w.Code)
+	}
+}
+
+func TestPrestigeHandler_GetChallenge_NotFound(t *testing.T) {
+	mock := &mockPrestigeService{getErr: prestige.ErrChallengeNotFound}
+	router := newRouter(mock)
+
+	req := httptest.NewRequest(http.MethodGet, "/challenges/missing_id", nil)
+	w := httptest.NewRecorder()
+	router.ServeHTTP(w, req)
+
+	if w.Code != http.StatusNotFound {
+		t.Errorf("expected 404, got %d", w.Code)
+	}
+}
+
+func TestPrestigeHandler_GetChallenge_OK(t *testing.T) {
+	mock := &mockPrestigeService{
+		getResp: prestige.Challenge{
+			ID: "ch_1", Status: prestige.StatusActive,
+			WindowType: prestige.WindowSession, Cadence: prestige.CadenceFree,
+			EvalType: prestige.EvalThreshold, Mode: prestige.ModeLibre,
+			DataTier: prestige.DataFull,
+		},
+	}
+	router := newRouter(mock)
+
+	req := httptest.NewRequest(http.MethodGet, "/challenges/ch_1", nil)
+	w := httptest.NewRecorder()
+	router.ServeHTTP(w, req)
+
+	if w.Code != http.StatusOK {
+		t.Fatalf("expected 200, got %d", w.Code)
+	}
+	var got prestige.Challenge
+	if err := json.NewDecoder(w.Body).Decode(&got); err != nil {
+		t.Fatalf("decode: %v", err)
+	}
+	if got.ID != "ch_1" {
+		t.Errorf("got ID %q", got.ID)
+	}
+}
+
+func TestPrestigeHandler_ListActiveChallenges(t *testing.T) {
+	complete := func(id string) prestige.Challenge {
+		return prestige.Challenge{
+			ID: id, Status: prestige.StatusActive,
+			WindowType: prestige.WindowSession, Cadence: prestige.CadenceFree,
+			EvalType: prestige.EvalThreshold, Mode: prestige.ModeLibre,
+			DataTier: prestige.DataFull,
+		}
+	}
+	mock := &mockPrestigeService{
+		listResp: []prestige.Challenge{complete("ch_a"), complete("ch_b")},
+	}
+	router := newRouter(mock)
+
+	req := httptest.NewRequest(http.MethodGet, "/challenges?user_id=u1&title_slug=halo_infinite", nil)
+	w := httptest.NewRecorder()
+	router.ServeHTTP(w, req)
+
+	if w.Code != http.StatusOK {
+		t.Fatalf("expected 200, got %d", w.Code)
+	}
+	var resp struct {
+		Challenges []prestige.Challenge `json:"challenges"`
+		Count      int                  `json:"count"`
+	}
+	if err := json.NewDecoder(w.Body).Decode(&resp); err != nil {
+		t.Fatalf("decode: %v", err)
+	}
+	if resp.Count != 2 {
+		t.Errorf("count got %d want 2", resp.Count)
+	}
+}
+
+func TestPrestigeHandler_ListActiveChallenges_MissingParams(t *testing.T) {
+	router := newRouter(&mockPrestigeService{})
+	req := httptest.NewRequest(http.MethodGet, "/challenges", nil)
+	w := httptest.NewRecorder()
+	router.ServeHTTP(w, req)
+	if w.Code != http.StatusBadRequest {
+		t.Errorf("expected 400, got %d", w.Code)
+	}
+}
+
+func TestPrestigeHandler_UpdateChallenge_NotEditable(t *testing.T) {
+	mock := &mockPrestigeService{updateErr: prestige.ErrNotEditable}
+	router := newRouter(mock)
+
+	body := `{"target":1.7}`
+	req := httptest.NewRequest(http.MethodPatch, "/challenges/ch_1", bytes.NewBufferString(body))
+	w := httptest.NewRecorder()
+	router.ServeHTTP(w, req)
+
+	if w.Code != http.StatusForbidden {
+		t.Errorf("expected 403, got %d", w.Code)
+	}
+}
+
+func TestPrestigeHandler_UpdateChallenge_OK(t *testing.T) {
+	target := 1.7
+	mock := &mockPrestigeService{
+		updateResp: prestige.Challenge{ID: "ch_1", Target: target},
+	}
+	router := newRouter(mock)
+
+	body := `{"target":1.7}`
+	req := httptest.NewRequest(http.MethodPatch, "/challenges/ch_1", bytes.NewBufferString(body))
+	w := httptest.NewRecorder()
+	router.ServeHTTP(w, req)
+
+	if w.Code != http.StatusOK {
+		t.Fatalf("expected 200, got %d (body=%s)", w.Code, w.Body.String())
+	}
+	if mock.lastUpdateID != "ch_1" {
+		t.Errorf("ID not propagated: %q", mock.lastUpdateID)
+	}
+	if mock.lastUpdate.Target == nil || *mock.lastUpdate.Target != 1.7 {
+		t.Errorf("target not propagated: %v", mock.lastUpdate.Target)
+	}
+}
+
+func TestPrestigeHandler_AbandonChallenge_AlreadyTerminal(t *testing.T) {
+	mock := &mockPrestigeService{abandonErr: prestige.ErrAlreadyTerminal}
+	router := newRouter(mock)
+
+	req := httptest.NewRequest(http.MethodDelete, "/challenges/ch_1", nil)
+	w := httptest.NewRecorder()
+	router.ServeHTTP(w, req)
+
+	if w.Code != http.StatusConflict {
+		t.Errorf("expected 409, got %d", w.Code)
+	}
+}
+
+func TestPrestigeHandler_AbandonChallenge_OK(t *testing.T) {
+	mock := &mockPrestigeService{}
+	router := newRouter(mock)
+
+	req := httptest.NewRequest(http.MethodDelete, "/challenges/ch_1", nil)
+	w := httptest.NewRecorder()
+	router.ServeHTTP(w, req)
+
+	if w.Code != http.StatusNoContent {
+		t.Errorf("expected 204, got %d", w.Code)
+	}
+	if mock.lastAbandonID != "ch_1" {
+		t.Errorf("ID not propagated: %q", mock.lastAbandonID)
+	}
+}
+
+func TestPrestigeHandler_SuggestNext(t *testing.T) {
+	mock := &mockPrestigeService{
+		suggestNextResp: []prestige.Template{
+			{ID: "tpl_higher", LabelEN: "Push it"},
+		},
+	}
+	router := newRouter(mock)
+
+	req := httptest.NewRequest(http.MethodPost, "/challenges/ch_1/suggest-next", nil)
+	w := httptest.NewRecorder()
+	router.ServeHTTP(w, req)
+
+	if w.Code != http.StatusOK {
+		t.Fatalf("expected 200, got %d", w.Code)
+	}
+	if mock.lastSuggestNext != "ch_1" {
+		t.Errorf("ID not propagated: %q", mock.lastSuggestNext)
+	}
+}
+
+func TestPrestigeHandler_GetMyPrestige_PerTitle(t *testing.T) {
+	mock := &mockPrestigeService{
+		mePrestige: prestige.UserPrestige{UserID: "u1", TitleSlug: "halo_infinite", TotalPP: 1500, CurrentLevel: 2},
+	}
+	router := newRouter(mock)
+
+	req := httptest.NewRequest(http.MethodGet, "/prestige/me?user_id=u1&title_slug=halo_infinite", nil)
+	w := httptest.NewRecorder()
+	router.ServeHTTP(w, req)
+
+	if w.Code != http.StatusOK {
+		t.Fatalf("expected 200, got %d", w.Code)
+	}
+	var got prestige.UserPrestige
+	if err := json.NewDecoder(w.Body).Decode(&got); err != nil {
+		t.Fatalf("decode: %v", err)
+	}
+	if got.TotalPP != 1500 {
+		t.Errorf("got total_pp %d want 1500", got.TotalPP)
+	}
+}
+
+func TestPrestigeHandler_SuggestTemplates(t *testing.T) {
+	mock := &mockPrestigeService{
+		suggestTplResp: []prestige.Template{{ID: "t1"}, {ID: "t2"}, {ID: "t3"}},
+	}
+	router := newRouter(mock)
+
+	req := httptest.NewRequest(http.MethodGet, "/templates/suggest?user_id=u1&title_slug=halo_infinite&count=3", nil)
+	w := httptest.NewRecorder()
+	router.ServeHTTP(w, req)
+
+	if w.Code != http.StatusOK {
+		t.Fatalf("expected 200, got %d", w.Code)
+	}
+}
