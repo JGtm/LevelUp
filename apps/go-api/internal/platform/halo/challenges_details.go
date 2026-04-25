@@ -4,13 +4,10 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"io"
 	"log/slog"
-	"net/http"
 	"path"
 	"sort"
 	"strings"
-	"time"
 
 	"levelup/go-api/internal/assets"
 	"levelup/go-api/internal/domain"
@@ -194,54 +191,6 @@ func challengeBadgeAPIURL(challengePath, category, difficulty, titleID string) *
 	}
 	url := "/api/v1/assets/challenge-badge/" + titleID + "/" + stems[0]
 	return &url
-}
-
-func (p *HaloProvider) doGetWithAccept(ctx context.Context, rawURL string, tokens *domain.HaloTokens, accept string) ([]byte, error) {
-	var lastErr error
-	for attempt := 0; attempt < p.maxRetries; attempt++ {
-		if err := p.limiter.Wait(ctx); err != nil {
-			return nil, err
-		}
-
-		req, err := http.NewRequestWithContext(ctx, http.MethodGet, rawURL, nil)
-		if err != nil {
-			return nil, fmt.Errorf("doGetWithAccept new request: %w", err)
-		}
-		req.Header.Set("Accept", accept)
-		req.Header.Set("x-343-authorization-spartan", tokens.SpartanToken)
-		if tokens.ClearanceToken != "" {
-			req.Header.Set("343-clearance", tokens.ClearanceToken)
-		}
-
-		resp, err := p.client.Do(req)
-		if err != nil {
-			lastErr = err
-		} else {
-			body, readErr := io.ReadAll(resp.Body)
-			_ = resp.Body.Close()
-			if readErr != nil {
-				lastErr = readErr
-			} else if resp.StatusCode == http.StatusOK {
-				return body, nil
-			} else if resp.StatusCode == http.StatusNotFound {
-				return nil, fmt.Errorf("doGetWithAccept %s: 404", rawURL)
-			} else if resp.StatusCode >= 500 {
-				lastErr = fmt.Errorf("doGetWithAccept %s: %d", rawURL, resp.StatusCode)
-			} else {
-				return nil, fmt.Errorf("doGetWithAccept %s: %d", rawURL, resp.StatusCode)
-			}
-		}
-
-		if attempt < p.maxRetries-1 {
-			backoff := providerRetryBase * time.Duration(1<<attempt)
-			select {
-			case <-ctx.Done():
-				return nil, ctx.Err()
-			case <-time.After(backoff):
-			}
-		}
-	}
-	return nil, lastErr
 }
 
 func resolveChallengeCurrentProgress(ch challengeDeckItemRaw) *int {

@@ -14,8 +14,6 @@ import (
 	"levelup/go-api/internal/domain"
 )
 
-const gameCMSImageBaseURL = "https://gamecms-hacs.svc.halowaypoint.com/hi/images/file/"
-
 // SeasonPassRepo implémente port.SeasonPassRepository.
 type SeasonPassRepo struct {
 	pdb *PlayerDB
@@ -868,22 +866,6 @@ func localizedText(value any) string {
 		// champs méta Halo comme "Status": "Ready" ou "StringId": "...".
 	}
 	return ""
-}
-
-func normalizeGameCMSImageURL(path string) *string {
-	trimmed := strings.TrimSpace(path)
-	if trimmed == "" {
-		return nil
-	}
-	if strings.HasPrefix(trimmed, "http://") || strings.HasPrefix(trimmed, "https://") {
-		return &trimmed
-	}
-	trimmed = strings.TrimLeft(trimmed, "/")
-	if trimmed == "" {
-		return nil
-	}
-	url := gameCMSImageBaseURL + trimmed
-	return &url
 }
 
 func coalesceNullString(value sql.NullString) string {

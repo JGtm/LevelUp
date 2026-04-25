@@ -39,8 +39,6 @@ func (m *mockSynthesisRepo) LoadEncounters(_ context.Context, _ string) ([]domai
 
 // --- helpers ---
 
-func ptrFloat(v float64) *float64 { return &v }
-
 func makeSynthRows(n int) []domain.SynthesisMatchRow {
 	rows := make([]domain.SynthesisMatchRow, n)
 	for i := range rows {

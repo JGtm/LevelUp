@@ -62,9 +62,6 @@ func CheckCardinalityGuard(waypointCount, localCount int, tolerancePct float64) 
 	}
 }
 
-// requiredFields sont les champs obligatoires pour chaque MedalEntry.
-var requiredFields = []string{"MedalID", "Label", "Category", "Rarity"}
-
 // CheckRequiredFieldsGuard vérifie que chaque entrée a les champs requis non vides.
 func CheckRequiredFieldsGuard(entries []MedalEntry) GuardResult {
 	var missing []string
