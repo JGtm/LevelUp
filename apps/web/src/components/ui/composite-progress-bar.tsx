@@ -43,21 +43,11 @@ export function CompositeProgressBar({
   const width = clampCompositeProgress(value)
 
   return (
-    <div
-      className="h-3 w-full overflow-hidden rounded-full border border-slate-300/70 bg-slate-200/70"
-      style={{
-        backgroundImage:
-          'repeating-linear-gradient(90deg, rgba(148,163,184,0.18) 0 18px, rgba(255,255,255,0.28) 18px 24px)',
-      }}
-    >
+    <div className="h-2 w-full overflow-hidden rounded-full bg-muted-foreground/25">
       <div
         data-testid={fillTestId}
-        className="h-full rounded-full bg-sky-500 transition-[width]"
-        style={{
-          width: `${width}%`,
-          backgroundImage:
-            'repeating-linear-gradient(90deg, rgba(255,255,255,0.22) 0 18px, rgba(14,165,233,0.92) 18px 24px)',
-        }}
+        className="h-full rounded-full bg-sky-500 transition-all duration-300"
+        style={{ width: `${width}%` }}
       />
     </div>
   )
