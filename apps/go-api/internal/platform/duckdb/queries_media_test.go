@@ -258,8 +258,8 @@ func TestBuildQ37MediaMapOptionsQuery_IgnoresCurrentMapFilter(t *testing.T) {
 	if !strings.Contains(q, q37MediaModeLabelExpr+" ILIKE ?") {
 		t.Error("expected mode filter to stay applied for map options")
 	}
-	if !strings.Contains(q, "SELECT DISTINCT "+q37MediaMapLabelExpr+" AS label") {
-		t.Error("expected distinct map label selection")
+	if !strings.Contains(q, "AS map_id, "+q37MediaMapLabelExpr+" AS label") {
+		t.Error("expected distinct (map_id, label) selection for FR enrichment")
 	}
 	if len(args) != 2 {
 		t.Fatalf("args len = %d, want 2", len(args))
@@ -278,8 +278,8 @@ func TestBuildQ37MediaModeOptionsQuery_UsesNormalizedModeLabels(t *testing.T) {
 	if !strings.Contains(q, q37MediaMapLabelExpr+" ILIKE ?") {
 		t.Error("expected map filter to stay applied for mode options")
 	}
-	if !strings.Contains(q, "SELECT DISTINCT "+q37MediaModeLabelExpr+" AS label") {
-		t.Error("expected distinct normalized mode label selection")
+	if !strings.Contains(q, "AS pair_name_raw, "+q37MediaModeLabelExpr+" AS label") {
+		t.Error("expected distinct (pair_name_raw, label) selection for FR enrichment")
 	}
 	if !strings.Contains(q, "regexp_replace") {
 		t.Error("expected normalized mode expression in options query")
