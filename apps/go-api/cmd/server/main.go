@@ -177,23 +177,27 @@ func main() {
 		os.Exit(1)
 	}
 	// Retry sur metadata : hot-reload peut créer une fenêtre où l'ancien processus
-	// n'a pas encore libéré le verrou DuckDB (write-ahead lock).
+	// n'a pas encore libéré le verrou DuckDB (write-ahead lock). Sur Windows, après un
+	// SIGKILL d'air, l'OS peut mettre plusieurs secondes à libérer les HANDLEs DuckDB
+	// orphelins ; 6×500 ms = 3 s ne suffisait pas dans certains cas observés.
 	// IMPORTANT : OpenReadWriteShared (et non OpenReadOnly) pour partager la même
 	// instance DuckDB que le pool joueur (pool.go) et le DuckDBIndexStore (assets).
 	// Sinon DuckDB rejette toute deuxième connexion sur le même fichier avec
 	// "Can't open a connection to same database file with a different configuration".
+	const metaOpenAttempts = 12
+	const metaOpenDelay = 500 * time.Millisecond
 	var metaDB *duckdb.DB
-	for attempt := range 6 {
+	for attempt := range metaOpenAttempts {
 		metaDB, err = duckdb.OpenReadWriteShared(metaPath)
 		if err == nil {
 			break
 		}
-		if attempt == 5 {
-			slog.Error("ouverture metadata échouée après 6 tentatives", "err", err)
+		if attempt == metaOpenAttempts-1 {
+			slog.Error("ouverture metadata échouée", "attempts", metaOpenAttempts, "err", err)
 			os.Exit(1)
 		}
-		slog.Warn("metadata verrouillée, nouvelle tentative...", "attempt", attempt+1, "err", err)
-		time.Sleep(500 * time.Millisecond)
+		slog.Warn("metadata verrouillée, nouvelle tentative...", "attempt", attempt+1, "max", metaOpenAttempts, "err", err)
+		time.Sleep(metaOpenDelay)
 	}
 	slog.Debug("DuckDB ouvert")
 

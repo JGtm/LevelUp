@@ -1,5 +1,19 @@
 # Thought Log
 
+## [2026-04-25] fix(go-api): retry metadata.duckdb plus tolérant au hot-reload Windows
+
+**Statut** : Complété — Commit 1/4 du plan shutdown DuckDB
+
+**Contexte** : Logs serveur avec WARN/ERROR récurrents `metadata verrouillée, nouvelle tentative...` au démarrage après un hot-reload `air`. Ancien process `server.exe` tient encore le file lock Windows quand le nouveau démarre — la fenêtre de retry 6×500 ms = 3 s ne suffit pas dans certains cas (SIGKILL d'air après 2 s `stop_timeout` → cleanup OS lent).
+
+**Décision technique** : Bumper le retry dans `cmd/server/main.go` à 12×500 ms = 6 s, en extrayant les valeurs en constantes nommées (`metaOpenAttempts`, `metaOpenDelay`) pour lisibilité. Logs enrichis avec `attempt`/`max` pour faciliter le diagnostic. Choix linéaire (vs backoff exponentiel) pour rester prévisible et cohérent avec l'existant.
+
+**Résultats** : `go build ./cmd/server/` OK. Diff minimal (7 lignes nettes). Aucun changement de comportement runtime hors démarrage.
+
+**Conclusion / prochaine étape** : Filet de sécurité posé. Commits 2-4 attaquent la cause profonde (refcount metaDB, WaitGroup watcher, alignement timeouts air ↔ Go shutdown).
+
+---
+
 ## [2026-04-25] refactor(home): i18n complet de la home (barre KPI + bloc identité Spartan)
 
 **Statut** : Complété
