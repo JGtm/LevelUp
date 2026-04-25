@@ -15,6 +15,7 @@ interface SpartanIdentityTextDict {
     currentProgress: string
     rankPrefix: string
     maxRank: string
+    progressTowardsRank: (n: number) => string
   }
   emptyPanel: {
     titleUnavailable: string
@@ -32,6 +33,7 @@ const FR: SpartanIdentityTextDict = {
     currentProgress: 'Progression actuelle',
     rankPrefix: 'Rang',
     maxRank: 'Rang max',
+    progressTowardsRank: (name: string) => `Progression vers ${name}`,
   },
   emptyPanel: {
     titleUnavailable: 'Classements indisponibles',
@@ -49,6 +51,7 @@ const EN: SpartanIdentityTextDict = {
     currentProgress: 'Current progress',
     rankPrefix: 'Rank',
     maxRank: 'Max rank',
+    progressTowardsRank: (name: string) => `Progress towards ${name}`,
   },
   emptyPanel: {
     titleUnavailable: 'Rankings unavailable',

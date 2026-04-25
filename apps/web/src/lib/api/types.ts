@@ -1063,6 +1063,7 @@ export interface RecentMediaItem {
 export interface HomeCareerRankSummary {
   rank_number: number
   rank_title: string
+  next_rank_title?: string
   rank_image_url?: string | null
   adornment_image_url?: string | null
   current_xp: number

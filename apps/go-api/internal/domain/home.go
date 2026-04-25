@@ -99,6 +99,8 @@ type HomeSpartanIdentityRow struct {
 	RankTier          *string
 	RankTitleEN       *string
 	RankTitleFR       *string
+	NextRankTitleEN   *string
+	NextRankTitleFR   *string
 	RankImageURL      *string
 	AdornmentImageURL *string
 	CurrentXP         int
@@ -149,6 +151,7 @@ type HomeHeroCard struct {
 type HomeCareerRankSummary struct {
 	RankNumber        int     `json:"rank_number"`
 	RankTitle         string  `json:"rank_title"`
+	NextRankTitle     string  `json:"next_rank_title,omitempty"`
 	RankImageURL      *string `json:"rank_image_url,omitempty"`
 	AdornmentImageURL *string `json:"adornment_image_url,omitempty"`
 	CurrentXP         int     `json:"current_xp"`

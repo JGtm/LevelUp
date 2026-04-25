@@ -361,9 +361,12 @@ func buildHomeCareerRank(raw *domain.HomeSpartanIdentityRow, locale string) *dom
 		}
 	}
 
+	nextTitle := strings.TrimSpace(labelForLocale(locale, optionalStringValue(raw.NextRankTitleFR), optionalStringValue(raw.NextRankTitleEN)))
+
 	return &domain.HomeCareerRankSummary{
 		RankNumber:        raw.RankNumber,
 		RankTitle:         title,
+		NextRankTitle:     nextTitle,
 		RankImageURL:      copyOptionalString(raw.RankImageURL),
 		AdornmentImageURL: copyOptionalString(raw.AdornmentImageURL),
 		CurrentXP:         raw.CurrentXP,
