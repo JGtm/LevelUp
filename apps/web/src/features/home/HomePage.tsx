@@ -887,12 +887,12 @@ export function HomePage() {
                     {hasData ? (
                       <div className="w-full">
                         <div className="h-2 w-full rounded-full overflow-hidden flex">
-                          {off > 0 && <div className="h-full bg-[#4CAF50]" style={{ width: total > 0 ? `${(off / total) * 100}%` : '50%' }} />}
-                          {def > 0 && <div className="h-full bg-[#38BDF8]" style={{ width: total > 0 ? `${(def / total) * 100}%` : '50%' }} />}
+                          {off > 0 && <div className="h-full" style={{ width: total > 0 ? `${(off / total) * 100}%` : '50%', backgroundColor: tokenCssVar('divergent-pos') }} />}
+                          {def > 0 && <div className="h-full" style={{ width: total > 0 ? `${(def / total) * 100}%` : '50%', backgroundColor: tokenCssVar('divergent-neutral') }} />}
                         </div>
                         <div className="flex justify-center gap-3 mt-2">
-                          <span className="text-sm font-bold leading-none" style={{ color: '#4CAF50' }}>{off.toFixed(2)}</span>
-                          <span className="text-sm font-bold leading-none" style={{ color: '#38BDF8' }}>{def.toFixed(2)}</span>
+                          <span className="text-sm font-bold leading-none" style={{ color: tokenCssVar('divergent-pos') }}>{off.toFixed(2)}</span>
+                          <span className="text-sm font-bold leading-none" style={{ color: tokenCssVar('divergent-neutral') }}>{def.toFixed(2)}</span>
                         </div>
                       </div>
                     ) : (

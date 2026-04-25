@@ -32,7 +32,7 @@ export function StatExpectedCard({ label, actual, expected, lowerIsBetter = fals
   return (
     <div
       className={`rounded-lg border px-4 py-3 text-center ${
-        hasData ? 'border-border bg-[#1d2328]' : 'border-border/40 bg-[#1d2328]/50 opacity-50'
+        hasData ? 'border-border bg-card' : 'border-border/40 bg-card/50 opacity-50'
       }`}
     >
       <p className="text-xs text-muted-foreground uppercase tracking-wide mb-1">{label}</p>
@@ -42,9 +42,14 @@ export function StatExpectedCard({ label, actual, expected, lowerIsBetter = fals
           attendu {expected.toFixed(1)}{' '}
           {delta != null && (
             <span
-              className={`font-semibold ${
-                isFavorable ? 'text-[#00DC82]' : isFavorable === false ? 'text-[#FF4B4B]' : 'text-muted-foreground'
-              }`}
+              className="font-semibold"
+              style={{
+                color: isFavorable
+                  ? tokenCssVar('divergent-pos')
+                  : isFavorable === false
+                    ? tokenCssVar('divergent-neg')
+                    : undefined,
+              }}
             >
               ({delta > 0 ? '+' : ''}{delta.toFixed(1)})
             </span>

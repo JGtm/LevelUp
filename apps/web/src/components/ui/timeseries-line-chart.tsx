@@ -9,6 +9,7 @@ import { Suspense, lazy, useMemo } from 'react'
 import { Spinner } from './spinner'
 import { EmptyStateNotice } from './empty-state'
 import type { CumulativePoint } from '@/lib/api/types'
+import { resolveToken, useColorPaletteVersion } from '@/lib/accessibility'
 
 const Plot = lazy(() =>
   import('react-plotly.js').then((m) => ({ default: m.default })),
@@ -47,6 +48,7 @@ export function TimeseriesLineChart({
   referenceLabel,
   height = 300,
 }: TimeseriesLineChartProps) {
+  const paletteVersion = useColorPaletteVersion()
   const { traces, layout } = useMemo(() => {
     const traces: Plotly.Data[] = series.map((s) => ({
       type: 'scatter',
@@ -67,7 +69,7 @@ export function TimeseriesLineChart({
         name: referenceLabel ?? 'Référence',
         x: series[0]?.points.map((p) => p.start_time) ?? [],
         y: series[0]?.points.map(() => referenceY) ?? [],
-        line: { color: '#9ba3af', width: 1, dash: 'dot' },
+        line: { color: resolveToken('divergent-neutral'), width: 1, dash: 'dot' },
         hoverinfo: 'skip',
       } as Plotly.Data)
     }
@@ -101,7 +103,7 @@ export function TimeseriesLineChart({
     }
 
     return { traces, layout }
-  }, [series, yAxisLabel, referenceY, referenceLabel, height])
+  }, [series, yAxisLabel, referenceY, referenceLabel, height, paletteVersion])
 
   const empty = series.every((s) => s.points.length === 0)
   if (empty) {

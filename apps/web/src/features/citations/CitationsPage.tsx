@@ -9,6 +9,7 @@ import { EmptyStateCard, EmptyStateNotice } from '@/components/ui/empty-state'
 import { PlotlyChart } from '@/components/ui/plotly-chart'
 import { useCitationsPage } from './queries'
 import { useGlobalFilterStore } from '@/stores/globalFilterStore'
+import { tokenCssVar } from '@/lib/accessibility'
 
 export function CitationsPage() {
   const { playerSlug } = useParams({ strict: false }) as { playerSlug: string }
@@ -163,7 +164,7 @@ export function CitationsPage() {
                       className="flex flex-col items-center rounded-lg bg-muted/40 p-2 text-center"
                       title={m.description ?? m.name}
                     >
-                      <span className="text-lg font-bold text-[#33D6FF]">{m.count_filtered}</span>
+                      <span className="text-lg font-bold" style={{ color: tokenCssVar('perf-tier-2') }}>{m.count_filtered}</span>
                       <span className="mt-0.5 text-[10px] leading-tight text-muted-foreground line-clamp-2">{m.name}</span>
                       {m.count_total !== m.count_filtered && (
                         <span className="text-[9px] text-muted-foreground">/{m.count_total}</span>

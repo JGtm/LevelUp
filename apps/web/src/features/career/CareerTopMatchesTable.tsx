@@ -6,6 +6,7 @@ import { useNavigate, useParams } from '@tanstack/react-router'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import type { CareerTopMatch } from '@/lib/api/types'
+import { tokenCssVar } from '@/lib/accessibility'
 
 interface Props {
   items: CareerTopMatch[]
@@ -93,10 +94,10 @@ export function CareerTopMatchesTable({ items, variant, title, playerSlug: slugP
                       <span className="ml-1 text-xs text-muted-foreground">· {m.mode_ui}</span>
                     )}
                   </td>
-                  <td className="py-1.5 text-right text-[#33D6FF] font-mono">
+                  <td className="py-1.5 text-right font-mono" style={{ color: tokenCssVar('perf-tier-2') }}>
                     {m.kills ?? '—'}
                   </td>
-                  <td className="py-1.5 text-right text-[#FF4B4B] font-mono">
+                  <td className="py-1.5 text-right font-mono" style={{ color: tokenCssVar('divergent-neg') }}>
                     {m.deaths ?? '—'}
                   </td>
                   <td className="py-1.5 text-right text-muted-foreground font-mono">

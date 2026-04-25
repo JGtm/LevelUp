@@ -188,10 +188,10 @@ func ComputeKPIs(matches []domain.HomeMatchRow, totalMatches int) domain.HeroKPI
 				defCount++
 			}
 		}
-		if m.PlaylistID != "" {
+		if name := labelFR(m.PlaylistNameFR, m.PlaylistName); name != "" && !homeUUIDRe.MatchString(name) && m.PlaylistID != "" {
 			playlistCounts[m.PlaylistID]++
 			if _, seen := playlistNames[m.PlaylistID]; !seen {
-				playlistNames[m.PlaylistID] = m.PlaylistName
+				playlistNames[m.PlaylistID] = name
 			}
 		}
 	}

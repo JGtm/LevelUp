@@ -9,6 +9,7 @@
  * Tooltip : dégâts bruts (dmg/kill et dmg/death), jamais le ratio interne.
  */
 import { useState } from 'react'
+import { tokenCssVar } from '@/lib/accessibility'
 
 /** p80 et clip factor — miroir des constantes Go combat_yield.go */
 const OC_P80 = 0.83
@@ -48,14 +49,14 @@ function Tooltip({ offensiveConversion, defensiveResistance, damagePerKill, dama
   return (
     <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 z-50 w-48 rounded-md bg-popover border border-border px-3 py-2 text-xs shadow-lg pointer-events-none">
       <div className="flex justify-between gap-2 mb-1">
-        <span className="text-[#4ade80] font-semibold">Offensif</span>
+        <span className="font-semibold" style={{ color: tokenCssVar('divergent-pos') }}>Offensif</span>
         <span className="text-muted-foreground">{offensiveConversion != null ? offensiveConversion.toFixed(2) : '—'}</span>
       </div>
       {damagePerKill != null && (
         <div className="text-muted-foreground mb-1">{Math.round(damagePerKill)} dmg/kill</div>
       )}
       <div className="flex justify-between gap-2 mb-1">
-        <span className="text-[#60a5fa] font-semibold">Défensif</span>
+        <span className="font-semibold" style={{ color: tokenCssVar('divergent-neutral') }}>Défensif</span>
         <span className="text-muted-foreground">{defensiveResistance != null ? defensiveResistance.toFixed(2) : '—'}</span>
       </div>
       {damagePerDeath != null && (
@@ -95,7 +96,7 @@ export function CombatYieldBar({
             className="h-2 rounded-l-full transition-all duration-300"
             style={{
               width: ocWidth,
-              backgroundColor: ocWidth > 0 ? '#4ade80' : 'transparent',
+              backgroundColor: ocWidth > 0 ? tokenCssVar('divergent-pos') : 'transparent',
               opacity: ocWidth > 0 ? 1 : 0,
             }}
           />
@@ -112,7 +113,7 @@ export function CombatYieldBar({
             className="h-2 rounded-r-full transition-all duration-300"
             style={{
               width: drWidth,
-              backgroundColor: drWidth > 0 ? '#60a5fa' : 'transparent',
+              backgroundColor: drWidth > 0 ? tokenCssVar('divergent-neutral') : 'transparent',
               opacity: drWidth > 0 ? 1 : 0,
             }}
           />
