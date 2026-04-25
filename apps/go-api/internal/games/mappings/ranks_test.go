@@ -22,6 +22,8 @@ func TestNormalizeLang(t *testing.T) {
 	}
 }
 
+const expectedFullLabel = "Bronze I BRONZE"
+
 func TestRankEntry_FullLabel(t *testing.T) {
 	t.Parallel()
 	entry := RankEntry{
@@ -33,19 +35,19 @@ func TestRankEntry_FullLabel(t *testing.T) {
 
 	// Locale présente partout.
 	label, fallback := entry.FullLabel("en")
-	if label != "Bronze I BRONZE" || fallback {
+	if label != expectedFullLabel || fallback {
 		t.Errorf("EN = (%q, %v)", label, fallback)
 	}
 
 	// Locale FR seulement pour Title → fallback EN sur Subtitle/Tier.
 	label, fallback = entry.FullLabel("fr")
-	if label != "Bronze I BRONZE" || !fallback {
+	if label != expectedFullLabel || !fallback {
 		t.Errorf("FR partial = (%q, %v) — want fallback=true", label, fallback)
 	}
 
 	// Locale inconnue → tout EN.
 	label, fallback = entry.FullLabel("de")
-	if label != "Bronze I BRONZE" || !fallback {
+	if label != expectedFullLabel || !fallback {
 		t.Errorf("DE inconnue = (%q, %v) — want fallback=true", label, fallback)
 	}
 
@@ -91,7 +93,7 @@ func TestRankCatalog_Lifecycle(t *testing.T) {
 	}
 
 	// FullLabel ID connu.
-	if label, ok := c.FullLabel(1, "en"); !ok || label != "Bronze I BRONZE" {
+	if label, ok := c.FullLabel(1, "en"); !ok || label != expectedFullLabel {
 		t.Errorf("FullLabel(1, en) = (%q, %v)", label, ok)
 	}
 	// FullLabel ID inconnu.

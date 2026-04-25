@@ -7,6 +7,7 @@ import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { Spinner } from '@/components/ui/spinner'
 import type { CareerEncounter } from '@/lib/api/types'
+import { useFieldMappings } from '@/lib/i18n/fieldMappings'
 import { useCareerEncounters } from './queries'
 
 interface Props {
