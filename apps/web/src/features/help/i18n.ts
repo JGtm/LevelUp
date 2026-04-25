@@ -57,164 +57,171 @@ const FR_TEXT: HelpText = {
           {
             term: 'LUSR',
             definition:
-              "Score de compétence basé sur TrueSkill 2, adapté à Halo Infinite. C'est l'équivalent du CSR (rang classé) pour les modes non-classés : là où le CSR est attribué officiellement par Halo pour les playlists ranked, le LUSR est calculé localement par LevelUp sur tous les autres modes (arena, btb, social, fun…), en appliquant la même logique TrueSkill. Calculé séparément pour chaque groupe de playlist. Démarre à 1 500, avec une incertitude initiale (σ) de 350 qui diminue au fil des matchs. Seuls les résultats Win/Loss/Tie sont pris en compte — les DNF comptent faiblement (0.15). Un bonus de dérive s'applique en cas d'inactivité prolongée (> 1 jour) pour refléter la rouille éventuelle.",
+              "Indice de compétence fondé sur TrueSkill 2 (Microsoft Research), adapté à Halo Infinite. C'est l'équivalent du CSR (rang classé officiel) pour les modes non classés : là où le CSR est attribué par Halo pour les listes de jeu compétitives, le LUSR est calculé localement par LevelUp sur tous les autres modes (arène, grande équipe, Firefight, parties personnalisées…), en appliquant la même logique TrueSkill.\n\nChaque joueur est représenté par deux nombres : sa moyenne estimée μ (talent supposé) et son incertitude σ (à quel point on est sûr de cette estimation). L'affichage public est μ − 3σ : on retire volontairement l'incertitude pour éviter de gonfler le rang d'un joueur dont on connaît mal le niveau.\n\nLe calcul est séparé par famille de listes de jeu (compétitif, arène, grande équipe, Firefight, parties personnalisées). Une famille = un état μ/σ indépendant, pour qu'une mauvaise série en social ne pollue pas votre niveau classé.\n\nÀ chaque partie, LevelUp calcule un score composite [0 ; 1] qui mesure votre performance « objective », puis l'injecte dans la formule TrueSkill pour mettre à jour μ et σ. Le score composite agrège 8 mesures (voir le tableau dans la formule) avec deux particularités importantes :\n\n• Cinq de ces mesures (précision, efficacité de dégâts, exploit médailles, conversion offensive, résistance défensive) sont comparées à votre **propre moyenne glissante sur les 50 dernières parties** — et non à une référence absolue. Le score s'ajuste donc à votre niveau actuel : progresser devient plus difficile à mesure que vous progressez.\n\n• Le niveau adverse est estimé via le ratio des « kills attendus » (mesure de niveau retournée par l'API Halo) entre les deux équipes, plafonné dans [0,5 × ; 2,0 ×] votre μ. Battre une équipe plus forte vous fait monter davantage qu'écraser une équipe faible.\n\nRésultats pris en compte : Victoire (poids 1,0), Égalité (0,5), Défaite (0,0). Les abandons comptent faiblement (0,15) pour ne pas vous pénaliser sur une déconnexion subie sans pour autant les ignorer totalement.\n\nDérive d'inactivité : au-delà d'une journée sans jouer dans la famille concernée, σ remonte d'1 point par jour (plafonné à 14 jours). Conséquence : la partie suivante a plus d'impact sur μ (positif comme négatif), pour rattraper l'éventuelle évolution de votre vrai niveau pendant la pause.",
             formula:
-              'LUSR affiché = μ − 3σ\n\nΔμ = 32 × (score_composite − 0.5) × poids_groupe\nScore composite = 0.31×(kills/attendus) + 0.28×(morts attendus/morts) + 0.23×(dégâts/attendus) + 0.13×(précision delta) + 0.05×(win factor)\n\nPoids groupes : ranked 1.0 · arena 0.8 · btb 0.7 · fun 0.25\nCap : ±100 pts par match',
+              'LUSR affiché = μ − 3σ\n\nConstantes du moteur TrueSkill :\n• μ initial : 1 500 · σ initial : 350\n• σ minimum : 60 · σ maximum : 350\n• β (variabilité par partie) : 200 · τ (dynamique du talent) : 25\n• K (Elo) : 32 · probabilité d\'égalité : 0,06\n• Dérive d\'inactivité : 1 point/jour au-delà d\'1 jour, plafonné à 14 jours\n• Force adverse : μ adversaire = μ × clamp(KE_adverse / KE_équipe, 0,5 ; 2,0)\n  (KE = kills attendus, mesure de niveau renvoyée par l\'API Halo)\n• σ adversaire : 150 (constant)\n\nScore composite = Σ (composante × poids) / Σ (poids actifs), borné [0 ; 1]\nSi une composante est absente sur la partie, son poids est exclu du dénominateur.\n\nTableau des 8 composantes (somme = 1,02, renormalisée automatiquement) :\n\nPoids  Composante                Calcul                              Référence\n─────  ────────────────────────  ──────────────────────────────────  ─────────────────────\n0,27   Frags vs attendus         frags / kills_expected (API)        sigmoïde autour de 1\n0,24   Morts vs attendues        deaths_expected (API) / morts       sigmoïde autour de 1\n0,16   Conversion offensive      225 × (frags + ass/3) / dégâts      moyenne 50 parties (P80=0,83)\n0,10   Efficacité de dégâts      dégâts infligés / total dégâts      moyenne 50 parties\n0,10   Écart de précision        précision − moyenne 50 parties      0,5 + delta × 2, borné [0;1]\n0,06   Résistance défensive      dégâts reçus / (225 × morts)        moyenne 50 parties (P80=1,59)\n0,05   Facteur de victoire       Victoire 1,0 · Égalité 0,5 ·        — (valeur fixe)\n                                 Défaite 0,0 · Abandon 0,15\n0,04   Exploit médailles         score d\'exploit pondéré            moyenne 50 parties (défaut 5,0)\n\nMise à jour TrueSkill (post-calcul du composite) :\nΔμ = K × (composite − 0,5)\nΔσ ajustée selon la formule TrueSkill (atténuation v(t), w(t) avec marge d\'égalité)\npuis σ recombinée avec τ pour réinjecter une part de dynamique.\n\nFamilles de listes de jeu (états μ/σ séparés) :\nranked · ranked challenge · big_team_battle · firefight · custom · arena (défaut)',
             example:
-              'Un joueur avec μ = 1 700 et σ = 80 affiche LUSR 1 460. Après 2 semaines sans jouer, σ monte de ~13 points (1 pt/jour, plafonné à 14 jours), rendant le prochain match plus "impactant" dans les deux sens.',
+              "Un joueur avec μ = 1 700 et σ = 80 affiche un LUSR de 1 460 (= 1 700 − 3 × 80).\n\nAprès deux semaines sans jouer, σ remonte d'environ 13 points (1 point par jour, plafonné à 14 jours) pour atteindre 93. Le LUSR affiché tombe alors à 1 421 (= 1 700 − 3 × 93) sans qu'aucune partie n'ait été jouée — l'incertitude grimpe parce que LevelUp ne sait plus aussi bien où se situe le joueur.\n\nLa partie de retour aura plus d'impact qu'une partie habituelle (positif comme négatif), pour recaler μ vers son nouveau niveau réel.",
           },
           {
             term: 'Score de performance',
             definition:
-              "Score relatif 0–100 qui mesure votre contribution sur un match par rapport à votre propre historique. Calculé à partir de 13 métriques pondérées — chaque métrique est convertie en percentile sur vos matchs passés. Nécessite au minimum 10 matchs historiques pour être activé. Résiste aux bots : si des bots étaient dans votre équipe, un bonus correctif est appliqué selon l'écart MMR.",
+              "Score relatif de 0 à 100 qui mesure votre contribution sur une partie par rapport à votre propre historique. Calculé à partir de 13 mesures pondérées — chacune est convertie en rang percentile sur vos parties passées (votre place dans votre propre distribution).\n\nLe principe : pour chaque mesure, on regarde quelle proportion de vos parties précédentes affichaient une valeur inférieure ou égale à la vôtre. Une partie où vous obtenez votre meilleur score depuis 100 parties donne un percentile proche de 100 ; une partie médiane donne un percentile autour de 50. Le score final est la moyenne pondérée de ces 13 percentiles, normalisée entre 0 et 100.\n\nÉvolution dans le temps — le score n'est pas figé. Pour chaque partie, l'historique de référence est constitué de **toutes vos parties précédentes** (jusqu'à la veille de celle qu'on évalue). Plus vous jouez, plus l'échantillon de comparaison s'agrandit et se précise.\n\nÉvolution avec votre niveau — comme la référence est votre propre historique, le score s'auto-recalibre quand vous progressez. Une partie « excellente » d'il y a un an peut devenir simplement « correcte » comparée à votre niveau actuel : si vos performances montent, le seuil pour décrocher un percentile élevé monte avec elles. Conséquence directe : un débutant en progression rapide voit ses scores stagner ou baisser même quand il joue mieux en valeur absolue, parce que sa propre distribution se déplace plus vite que ses gains. À l'inverse, un joueur expérimenté dont le niveau plafonne aura des scores plus stables.\n\nRecalcul rétroactif — chaque score affiché correspond à l'historique tel qu'il était au moment où la partie a été jouée. Cependant, lors d'une synchronisation avec recalcul activé (option « rafraîchir les scores de performance »), toute la série est recalculée depuis le début avec l'historique à jour. Une partie passée peut donc voir son score bouger légèrement après un tel recalcul, surtout si elle se trouvait près du seuil des 10 parties d'activation.\n\nLes mesures « inversées » (morts par minute) sont traitées dans le sens contraire : moins vous mourez, plus le percentile est élevé. Les mesures optionnelles (précision, dégâts, médailles, etc.) ne sont prises en compte que si la donnée est disponible — leur poids est exclu du dénominateur sinon, ce qui évite de pénaliser un mode sans précision tracée.\n\nIl faut au moins 10 parties dans l'historique pour activer le score. En dessous de ce seuil, un repli simple sur le rang percentile du seul ratio FDA est utilisé.\n\nRésistance aux robots : si des robots étaient présents dans votre équipe, un bonus correctif est appliqué après le calcul. Il dépend de l'écart de niveau estimé entre les deux équipes (delta des MMR rapporté à 30 %, plafonné à ±1). Sur une victoire le bonus vaut au minimum 0,5 point et au maximum 5 ; sur une défaite il monte jusqu'à 7. Cette correction reflète le fait qu'un robot coéquipier alourdit votre équipe — il serait injuste de pénaliser votre percentile pour cela.",
             formula:
-              'Score = Σ(percentile_rang × poids) / Σ(poids actifs), normalisé 0–100\n\nPoids principaux :\n0.14 × kills/min · 0.11 × KDA · 0.10 × morts/min (inversé)\n0.10 × score personnel/min · 0.09 × kills vs attendus\n0.09 × rendement offensif · 0.07 × morts vs attendues\n0.06 × dégâts/min · 0.06 × médailles héroïques\n0.05 × résistance défensive · 0.04 × précision · 0.04 × rang vs attendu',
+              'Étape 1 — normalisation par minute pour les mesures de volume.\nÉtape 2 — calcul du rang percentile pour chaque mesure sur votre historique.\nÉtape 3 — moyenne pondérée des percentiles :\nScore brut = Σ(percentile × poids) / Σ(poids actifs)\nÉtape 4 — bornage [0 ; 100] et arrondi à 0,1.\n\nSi une mesure optionnelle est absente, son poids n\'entre pas dans le dénominateur.\n\nTableau des 13 mesures (somme = 1,01, renormalisée automatiquement) :\n\nPoids  Mesure                          Sens       Type\n─────  ──────────────────────────────  ─────────  ──────────\n0,14   Frags par minute                normal     requise\n0,11   Ratio FDA                       normal     requise\n0,10   Morts par minute                inversé    requise\n0,10   Score personnel par minute      normal     optionnelle\n0,09   Frags / frags attendus          normal     optionnelle\n0,09   Rendement offensif              normal     optionnelle\n0,07   Morts attendues / morts         normal     optionnelle\n0,06   Dégâts par minute               normal     optionnelle\n0,06   Score d\'exploit médailles       normal     optionnelle\n0,06   Assistances par minute          normal     requise\n0,05   Résistance défensive            normal     optionnelle\n0,04   Précision                       normal     optionnelle\n0,04   Rang final vs rang attendu      normal     optionnelle\n\nSens « inversé » = moins c\'est élevé, mieux c\'est (rang percentile inversé).\n\nBonus robot coéquipier (appliqué après le calcul) :\nfacteur = ((MMR_adverse − MMR_équipe) / MMR_équipe) / 0,30, borné [−1 ; 1]\nVictoire : bonus = max(0,5 ; 3,0 + facteur × 2,0)\nDéfaite : bonus = 5,0 + facteur × 2,0\nBonus ajouté avant le bornage final.',
             example:
-              '80/100 sur un match = vous étiez dans le top 20 % de vos propres performances historiques sur cet ensemble de métriques.',
+              "Vous avez 200 parties dans l'historique. Sur la partie courante :\n• Frags par minute : meilleur que 78 % de vos parties → percentile 78 (poids 0,14)\n• Ratio FDA : meilleur que 65 % → percentile 65 (poids 0,11)\n• Morts par minute (inversé) : vous êtes mort moins souvent que dans 82 % de vos parties → percentile 82 (poids 0,10)\n• Précision absente sur ce mode → mesure ignorée, son poids 0,04 est retiré du dénominateur\n• … (les 9 autres mesures suivent le même calcul)\n\nMoyenne pondérée des percentiles ≈ 72 → score affiché 72/100.\nLecture : sur ces 12 mesures, vous étiez en moyenne dans les 28 % les plus performants de votre propre historique.",
           },
           {
             term: 'Rendement offensif',
             definition:
-              "Efficacité offensive : mesure combien de dégâts il vous faut pour convertir une élimination. Le coefficient 225 repose sur le postulat qu'un Spartan a 225 points de vie total (90 de vie de base + 135 de bouclier), convention officielle Halo Infinite. Au-dessus de 1.0 = vous éliminez avec moins de dégâts qu'attendu (précision, headshots qui sautent le bouclier). En dessous = vous gaspillez des dégâts (assists non convertis, suivi insuffisant).",
+              "Efficacité offensive : mesure la quantité de dégâts nécessaire pour convertir une élimination. Le coefficient 225 repose sur le postulat qu'un Spartan possède 225 points de vie au total (90 de vie de base et 135 de bouclier), convention officielle de Halo Infinite.\n\nAu-dessus de 1,0 : vous éliminez avec moins de dégâts qu'attendu (précision, tirs à la tête qui ignorent le bouclier).\nEn dessous de 1,0 : vous gaspillez des dégâts (assistances non converties, suivi insuffisant).",
             formula:
-              'Rendement offensif = 225 × (kills + assists/3) / dégâts infligés\n\nP80 de référence (données réelles) : 0.83\n(= 83 % des matchs ont un rendement ≤ 0.83)',
+              'Rendement offensif = 225 × (éliminations + assistances/3) / dégâts infligés\n\nP80 de référence (données réelles) : 0,83\n(soit 83 % des parties ont un rendement ≤ 0,83)',
             example:
-              '10 kills, 6 assists, 2 800 dégâts → 225 × (10 + 2) / 2 800 ≈ 0.96 : au-dessus du P80, vous convertissez efficacement.\n6 kills, 2 assists, 2 800 dégâts → 225 × (6 + 0.67) / 2 800 ≈ 0.54 : beaucoup de dégâts pour peu d\'éliminations.',
+              "10 éliminations, 6 assistances, 2 800 dégâts → 225 × (10 + 2) / 2 800 ≈ 0,96 : au-dessus du P80, vous convertissez efficacement.\n6 éliminations, 2 assistances, 2 800 dégâts → 225 × (6 + 0,67) / 2 800 ≈ 0,54 : beaucoup de dégâts pour peu d'éliminations.",
           },
           {
             term: 'Résistance défensive',
             definition:
-              "Mesure combien de dégâts vous absorbez par mort. Repose sur le même postulat : un Spartan a 225 points de vie (90 de base + 135 de bouclier). Au-dessus de 1.0 = vous mourez après avoir encaissé plus qu'une vie de Spartan (bonne résistance, vous forcez les ennemis à vider leur chargeur). En dessous = vous mourrez rapidement, souvent surpris ou mal positionnés.",
+              "Mesure la quantité de dégâts que vous absorbez par mort. Repose sur le même postulat : un Spartan possède 225 points de vie (90 de base et 135 de bouclier).\n\nAu-dessus de 1,0 : vous mourez après avoir encaissé plus qu'une vie de Spartan (bonne résistance, vous obligez les adversaires à vider leur chargeur).\nEn dessous de 1,0 : vous mourez rapidement, souvent surpris ou mal positionnés.",
             formula:
-              'Résistance défensive = dégâts reçus / (225 × morts)\n\nP80 de référence (données réelles) : 1.59',
+              'Résistance défensive = dégâts reçus / (225 × morts)\n\nP80 de référence (données réelles) : 1,59',
             example:
-              '5 morts, 1 400 dégâts reçus → 1 400 / (225 × 5) ≈ 1.24 : au-dessus de 1.0, vous absorbez en moyenne 1.24× la vie d\'un Spartan avant de mourir.\n5 morts, 750 dégâts reçus → 750 / 1 125 ≈ 0.67 : vous mourez tôt dans les échanges.',
+              "5 morts, 1 400 dégâts reçus → 1 400 / (225 × 5) ≈ 1,24 : au-dessus de 1,0, vous absorbez en moyenne 1,24 fois la vie d'un Spartan avant de mourir.\n5 morts, 750 dégâts reçus → 750 / 1 125 ≈ 0,67 : vous mourez tôt dans les échanges.",
           },
           {
-            term: 'KDA',
+            term: 'Ratio FDA',
             definition:
-              "Ratio kills/deaths/assists classique, avec un plancher à 1 mort pour éviter la division par zéro. Les assists comptent intégralement (contrairement au rendement offensif où elles valent 1/3). Métrique de référence mais sensible au volume — un joueur très actif peut avoir un KDA identique à un joueur passif.",
-            formula: 'KDA = (kills + assists) / max(1, morts)',
+              "Ratio Frags / Décès / Assistances retourné directement par l'API Halo. C'est la mesure « tout-en-un » que Halo affiche pour évaluer un joueur sur une partie : on additionne les frags et un tiers des assistances, puis on divise par le nombre de décès (avec un plancher d'un décès pour éviter la division par zéro).\n\nLa lettre D du sigle vient de « Décès » mais Halo affiche le mot « Morts » dans son interface — les deux désignent la même chose. Le poids d'un tiers pour une assistance reflète le fait qu'aider à abattre un adversaire vaut moins que le tuer soi-même.\n\nMesure de référence mais sensible au volume : un joueur très actif (beaucoup de frags et de morts) peut afficher le même ratio FDA qu'un joueur passif (peu d'engagements). Le score de performance complète cette lecture en intégrant 12 autres mesures.",
+            formula: 'FDA = (frags + assistances / 3) / max(1, morts)',
             example:
-              '15 kills, 4 assists, 6 morts → KDA = 19/6 ≈ 3.17\n0 kill, 0 assist, 0 mort → KDA = 0/1 = 0 (plancher à 1 mort)',
+              "15 frags, 4 assistances, 6 morts → FDA = (15 + 4/3) / 6 ≈ 2,72\n20 frags, 0 assistance, 5 morts → FDA = 20 / 5 = 4,00\n0 frag, 0 assistance, 0 mort → FDA = 0 / 1 = 0 (plancher d'une mort)",
           },
         ],
       },
       {
-        title: 'Badges narratifs de match',
+        title: 'Badges narratifs de partie',
         entries: [
           {
             term: 'Comment les badges sont calculés',
             definition:
-              "Les badges sont déterminés à partir de la courbe de score reconstruite match par match, en analysant l'évolution du score kill par kill. Seuls les matchs Win ou Loss reçoivent un badge (Tie et DNF sont exclus). Les matchs avec des bots coéquipiers peuvent être exclus selon les préférences. Sensibilité par défaut : « standard » (leadPct = 40 %, comebackPct = 35 %).",
+              "Les badges sont déterminés à partir de la courbe de score reconstruite partie par partie, en analysant l'évolution du score élimination après élimination. Seules les Victoires et Défaites reçoivent un badge (Égalités et abandons sont exclus).\n\nLes parties avec des robots coéquipiers peuvent être exclues selon vos préférences. La sensibilité par défaut est « standard » : seuil d'avance fixé à 40 % et seuil de retournement à 35 %.",
             formula:
-              'Seuils (sensibilité standard) :\n• leadThreshold = score_final_max × 0.40\n• comebackThreshold = score_final_max × 0.35\n\nPriorité de détection :\n1. Contre-Remontada (priorité max)\n2. Remontada\n3. Débandade\n4. Domination\n5. Humiliation',
+              "Seuils (sensibilité standard) :\n• Seuil d'avance = score_final_max × 0,40\n• Seuil de retournement = score_final_max × 0,35\n\nPriorité de détection :\n1. Contre-Remontada (priorité maximale)\n2. Remontada\n3. Débandade\n4. Domination\n5. Humiliation",
             example:
-              'Match final 50–32 (score_final_max = 50) :\nleadThreshold = 50 × 0.40 = 20 kills d\'avance\ncomebackThreshold = 50 × 0.35 = 17.5 kills de retard/avance avant retournement',
+              "Partie finale 50–32 (score_final_max = 50) :\nSeuil d'avance = 50 × 0,40 = 20 éliminations d'écart\nSeuil de retournement = 50 × 0,35 = 17,5 éliminations d'écart avant qu'un retournement soit reconnu",
           },
           {
-            term: 'Domination 🏆',
+            term: 'Domination',
             definition:
-              "Victoire dans laquelle votre équipe a maintenu une avance significative et constante tout au long du match, sans jamais être réellement menacée. Badge de maîtrise totale.",
+              "Victoire dans laquelle votre équipe a maintenu une avance importante et constante tout au long de la partie, sans jamais être réellement menacée. Badge de maîtrise totale.",
             formula:
-              'Conditions : Win + avance max joueur ≥ leadThreshold\n(et jamais de retournement ≥ comebackThreshold)',
+              "Conditions : Victoire + avance maximale du joueur ≥ seuil d'avance\n(et aucun retournement ≥ seuil de retournement)",
             example:
-              'Score final 50–28. Votre équipe a toujours mené d\'au moins 20 kills → Domination. Si à un moment l\'adversaire avait remonté à –5 de vous, c\'est trop peu pour déclencher un autre badge.',
+              "Score final 50–28. Votre équipe a toujours mené d'au moins 20 éliminations → Domination. Si à un moment l'adversaire avait remonté à 5 éliminations d'écart, c'est trop peu pour déclencher un autre badge.",
           },
           {
-            term: 'Humiliation 💀',
+            term: 'Humiliation',
             definition:
               "Défaite dans laquelle l'adversaire a maintenu une avance écrasante du début à la fin. Votre équipe n'a jamais vraiment été en position de renverser la tendance.",
             formula:
-              'Conditions : Loss + avance max adverse ≥ leadThreshold\n(et jamais de retournement ≥ comebackThreshold)',
+              "Conditions : Défaite + avance maximale adverse ≥ seuil d'avance\n(et aucun retournement ≥ seuil de retournement)",
             example:
-              'Score final 32–50. L\'adversaire a toujours mené de 20+ kills → Humiliation.',
+              "Score final 32–50. L'adversaire a toujours mené de 20 éliminations ou plus → Humiliation.",
           },
           {
-            term: 'Remontada ⚡',
+            term: 'Remontada',
             definition:
-              "Victoire après avoir été significativement menés. Votre équipe était en position défavorable (retard ≥ seuil) à un moment du match avant de retourner la situation et gagner.",
+              "Victoire arrachée après avoir été nettement menés. Votre équipe était en position défavorable (retard ≥ seuil) à un moment de la partie avant de renverser la situation et de l'emporter.",
             formula:
-              'Conditions : Win + l\'adversaire avait une avance ≥ comebackThreshold avant la fin du match',
+              "Conditions : Victoire + l'adversaire avait une avance ≥ seuil de retournement avant la fin de la partie",
             example:
-              'Score final 50–45. À mi-match vous étiez à –18 kills. Vous avez renversé → Remontada.',
+              "Score final 50–45. À mi-partie vous étiez en retard de 18 éliminations. Vous avez renversé la tendance → Remontada.",
           },
           {
-            term: 'Débandade 💔',
+            term: 'Débandade',
             definition:
-              "Défaite après avoir été en position de force. Votre équipe menait significativement à un moment du match avant de s'effondrer et perdre.",
+              "Défaite après avoir été en position de force. Votre équipe menait nettement à un moment de la partie avant de s'effondrer et de perdre.",
             formula:
-              'Conditions : Loss + votre équipe avait une avance ≥ comebackThreshold avant la fin du match',
+              'Conditions : Défaite + votre équipe avait une avance ≥ seuil de retournement avant la fin de la partie',
             example:
-              'Score final 45–50. À mi-match vous meniez de +18 kills. L\'adversaire a rattrapé → Débandade.',
+              "Score final 45–50. À mi-partie vous meniez de 18 éliminations. L'adversaire a rattrapé → Débandade.",
           },
           {
-            term: 'Contre-Remontada 🔄',
+            term: 'Contre-Remontada',
             definition:
-              "Badge le plus rare : victoire après un double retournement. Votre équipe a d'abord mené, puis été rattrapée et dépassée, avant de reprendre l'avantage et gagner. Les deux équipes ont eu une avance significative à un moment.",
+              "Le badge le plus rare : victoire après un double retournement. Votre équipe a d'abord mené, puis a été rattrapée et dépassée, avant de reprendre l'avantage et de gagner.\n\nLes deux équipes ont eu une avance significative à un moment de la partie.",
             formula:
-              'Conditions : Win + votre équipe avait une avance ≥ comebackThreshold à un moment\n+ l\'adversaire avait aussi une avance ≥ comebackThreshold à un autre moment\n(priorité maximale — détecté avant Remontada)',
+              "Conditions : Victoire + votre équipe avait une avance ≥ seuil de retournement à un moment\n+ l'adversaire avait aussi une avance ≥ seuil de retournement à un autre moment\n(priorité maximale — détectée avant Remontada)",
             example:
-              'Vous meniez +20 en première moitié. Adversaire remonte et vous dépasse de –18. Vous repartez et gagnez 50–47 → Contre-Remontada.',
+              "Vous meniez de 20 éliminations en première moitié. L'adversaire est remonté et vous a dépassés de 18. Vous êtes repartis et avez gagné 50–47 → Contre-Remontada.",
           },
         ],
       },
       {
-        title: 'Données & Synchronisation',
+        title: 'Données et synchronisation',
         entries: [
           {
             term: 'Synchronisation',
             definition:
-              "Processus de récupération des matchs depuis l'API Waypoint de Halo et d'écriture dans la base DuckDB locale. En mode delta (par défaut), seuls les nouveaux matchs non encore enregistrés sont récupérés. Un sync complet peut être forcé depuis les Paramètres.",
+              "Processus de récupération des parties depuis l'interface Halo Waypoint et d'écriture dans la base DuckDB locale. En mode incrémental (par défaut), seules les nouvelles parties non encore enregistrées sont récupérées ; une synchronisation complète peut être forcée depuis les Paramètres.\n\nTrois déclencheurs coexistent :\n\n• Synchronisation manuelle — vous appuyez sur le bouton « Synchroniser » dans les Paramètres. C'est la méthode de référence après une longue session ou pour rattraper un retard ponctuel.\n\n• Synchronisation planifiée — un ordonnanceur interne déclenche une synchronisation incrémentale à intervalle fixe (par exemple toutes les 30 minutes). Activable et configurable depuis Paramètres › Synchronisation. Utile pour garder la base à jour en arrière-plan tant que l'application tourne, indépendamment de votre activité de jeu.\n\n• Détection de présence — un veilleur écoute les notifications Xbox en temps réel via un canal RTA (authentifié par jeton XSTS) et déclenche automatiquement une synchronisation dès qu'il détecte la fin d'une de vos parties. Réaction quasi immédiate, sans attendre le prochain tour de l'ordonnanceur.\n\nPrérequis côté Xbox : pour que les notifications RTA soient effectivement reçues, votre profil Xbox doit autoriser la lecture publique de votre statut de connexion et de votre activité de jeu en cours (paramètres « Vous voir en ligne » et « Vous voir jouer à un jeu » réglés sur « Tout le monde »). Si ces paramètres sont restreints (Amis uniquement, Bloqué), le canal RTA refuse l'abonnement et la détection de présence reste silencieuse — la synchronisation planifiée et la synchronisation manuelle continuent en revanche de fonctionner normalement.",
             example:
-              'Vous avez joué 5 matchs depuis la dernière sync. La sync delta récupère ces 5 matchs uniquement, sans retoucher aux 500 matchs déjà stockés.',
+              "Vous lancez Halo, jouez 5 parties, puis fermez le jeu :\n• Détection de présence active → chaque fin de partie déclenche une synchronisation, vos 5 parties sont remontées au fil de l'eau.\n• Synchronisation planifiée seule (toutes les 30 min) → vos 5 parties sont remontées en 1 ou 2 passes, avec un délai maximum d'environ 30 minutes.\n• Aucune des deux activée → vous ouvrez LevelUp plus tard et appuyez sur « Synchroniser » : les 5 parties sont récupérées d'un coup, sans retoucher aux 500 déjà stockées.",
           },
           {
-            term: 'Backfill',
+            term: 'Recalcul rétroactif',
             definition:
-              "Re-calcul ou remplissage rétroactif de données manquantes sur l'historique déjà synchronisé. Utile après une mise à jour qui introduit un nouveau champ (ex. shots_fired, skill rank, médailles) : le backfill recalcule ce champ pour tous les matchs existants.",
+              "Recalcul ou remplissage rétroactif de données manquantes sur l'historique déjà synchronisé. Utile après une mise à jour qui introduit un nouveau champ (par exemple : tirs effectués, rang de compétence, médailles) : le recalcul rétroactif applique ce champ à toutes les parties existantes.",
             example:
-              'Après l\'ajout du calcul de badge en v6.2, un backfill a été lancé pour calculer les badges Remontada/Débandade/Contre-Remontada sur tout l\'historique déjà synchronisé.',
+              "Après l'ajout du calcul de badges en version 6.2, un recalcul rétroactif a été lancé pour produire les badges Remontada, Débandade et Contre-Remontada sur tout l'historique déjà synchronisé.",
           },
           {
             term: 'Normalisation des modes',
             definition:
-              "Résolution d'un nom d'affichage unique à partir des variantes brutes renvoyées par l'API Waypoint. L'API peut retourner « BTB Slayer », « BTB-Slayer » ou « Big Team Battle Slayer » pour le même mode — la normalisation les unifie en « BTB — Slayer » via la table mode_pair_overrides.",
+              "Résolution d'un nom d'affichage unique et lisible en français à partir des variantes brutes renvoyées par l'interface Halo Waypoint. Une même playlist peut remonter sous plusieurs intitulés selon la version du jeu, la saison ou le canal d'où elle est lue.\n\nLevelUp consolide ces variantes en un seul nom français via une table de correspondance et applique le même traitement aux noms de cartes lorsque c'est nécessaire. Cela garantit qu'une partie de « Capture du drapeau » sur « Aquarius » apparaît toujours sous le même libellé dans vos statistiques, votre Explorer et votre Palmarès, peu importe sous quel intitulé brut Halo l'a renvoyée.",
             example:
-              'La table mode_pair_overrides dans metadata.duckdb contient ~29 surcharges FR/EN pour les cas ambigus.',
+              "L'interface Halo peut renvoyer « Massacre Grande équipe », « Grande équipe Massacre » ou « Massacre — Grande équipe » pour la même playlist : les trois sont unifiées en « Grande équipe — Massacre ».\n« Capture du drapeau », « CDD » et « Drapeau » → unifiés en « Capture du drapeau ».\nLa table de correspondance (mode_pair_overrides) contient une trentaine d'entrées en français et en anglais pour couvrir les cas ambigus.",
           },
           {
             term: 'Fréquences de rafraîchissement',
-            definition: 'LevelUp utilise plusieurs niveaux de fraîcheur des données selon la page.',
+            definition:
+              "Toutes les données affichées par LevelUp ne sont pas rafraîchies au même rythme. Le choix dépend de trois critères : le coût de l'appel à l'interface Halo (certaines requêtes sont lentes ou limitées en débit), la fraîcheur réellement attendue par l'utilisateur, et la possibilité ou non de calculer la donnée à partir de la base locale.\n\nQuatre canaux coexistent :\n\n• Lecture directe Halo à chaque ouverture de page — pour les données « live » qui changent à chaque partie et que l'utilisateur s'attend à voir à jour immédiatement.\n\n• Lecture directe Halo avec cache disque 24 h — pour les données qui changent peu (seuils de rangs, libellés de cartes, descriptions de défis), mais qui sont lourdes à récupérer.\n\n• Cache mémoire court de 5 à 10 minutes sur la base DuckDB locale — pour les agrégats et listes consultés en boucle pendant une session de navigation.\n\n• Mise à jour à la synchronisation uniquement — pour le détail des parties et les calculs dérivés (LUSR, score de performance, citations, agrégats coéquipiers). La synchronisation elle-même a ses propres déclencheurs : voir l'entrée « Synchronisation » pour les trois modes (manuelle, planifiée, détection de présence) et l'entrée « Recalcul rétroactif » pour les opérations de reprise sur l'historique.",
             example:
-              'Live (à chaque ouverture de page) : Accueil, Dernier match.\nCache query 5–10 min : Stats, Palmarès, Escouade.\nSync manuel : déclenché depuis le bouton Synchroniser dans les Paramètres.\nBackground auto : les médias sont ré-indexés après chaque sync.',
+              "Lecture directe Halo à chaque ouverture (page Accueil) :\n• Passe de combat saisonnier — niveau et points actuels, repris à chaque rafraîchissement de page.\n• Défis en cours (quotidiens, hebdomadaires, événements) — état d'avancement et récompenses.\n• Succès Xbox Halo Infinite — liste des succès débloqués et progression.\n• Données de carrière — rang Spartan courant, progression vers le palier suivant.\n\nLecture directe Halo avec cache disque 24 h :\n• Référentiel des paliers de carrière (noms, seuils de points)\n• Référentiel des cartes et modes (libellés français, images)\n• Métadonnées du passe de combat saisonnier (récompenses par palier)\nLe cache disque évite de retaper l'interface Halo à chaque ouverture pour des données quasi statiques.\n\nCache mémoire court (5 à 10 minutes) sur DuckDB local :\n• Pages Statistiques et Palmarès (agrégats sur tout l'historique)\n• Page Escouade (synergies, contributions par coéquipier)\n• Listes de parties paginées dans l'Explorer\n\nMise à jour à la synchronisation uniquement :\n• Détail des parties (frags, dégâts, médailles, événements filmés)\n• Rang LUSR par partie (calculé localement) et CSR officiel par partie\n• Score de performance par partie\n• Citations et badges narratifs\n• Statistiques de coéquipiers sur les parties communes\n→ Voir « Synchronisation » pour les trois modes de déclenchement (manuelle, planifiée, détection de présence).\n\nMise à jour au recalcul rétroactif :\n• Champs ajoutés par une nouvelle version sur des parties anciennes (ex. badges Remontada après v6.2)\n→ Voir « Recalcul rétroactif » pour le déclenchement et la portée.\n\nIndexation automatique en arrière-plan :\n• Les fichiers médias locaux (captures, clips) sont ré-indexés après chaque synchronisation.",
           },
         ],
       },
       {
-        title: 'Navigation & Organisation',
+        title: 'Navigation et organisation',
         entries: [
           {
             term: 'Sessions',
             definition:
-              "Regroupement automatique de matchs consécutifs séparés par moins de 2 heures d'inactivité. Une session représente une « soirée de jeu » continue. L'analyse des sessions permet d'étudier comment votre performance évolue au fil d'une même session (fatigue, warm-up, etc.).",
+              "Regroupement automatique de parties consécutives séparées par moins de 2 heures d'inactivité. Une session représente une « soirée de jeu » continue.\n\nL'analyse des sessions permet d'étudier comment votre performance évolue au fil d'une même session (fatigue, échauffement, etc.).",
             example:
-              '5 matchs joués entre 20h00 et 22h30 → 1 session.\nUn 6ème match joué à 01h00 → nouvelle session distincte.',
+              '5 parties jouées entre 20 h 00 et 22 h 30 → 1 session.\nUne 6ᵉ partie jouée à 1 h 00 → nouvelle session distincte.',
           },
           {
             term: 'Escouade',
             definition:
-              "Groupe de joueurs synchronisés sur LevelUp qui partagent des matchs communs. Les pages Escouade calculent des stats agrégées sur les matchs joués ensemble : synergies, contributions, heatmap d'intensité. Un joueur ne fait partie de votre escouade que s'il est lui-même synchronisé dans l'app.",
+              "Groupe de joueurs synchronisés sur LevelUp qui partagent des parties communes. Les pages Escouade calculent des statistiques agrégées sur les parties jouées ensemble : synergies, contributions, carte de chaleur d'intensité.\n\nUn joueur n'apparaît dans votre escouade que s'il est lui-même synchronisé dans l'application.",
+            example:
+              "Si trois de vos coéquipiers réguliers utilisent LevelUp, votre page Escouade affichera vos parties jouées avec eux et leurs statistiques sur cet échantillon commun.",
           },
           {
             term: 'Explorer',
             definition:
-              "Vue drilldown de tous vos matchs avec filtres en cascade : carte, mode, playlist, résultat, date, session. Permet une analyse fine et la navigation vers la vue détaillée de chaque match.",
+              "Vue d'exploration détaillée de toutes vos parties avec filtres en cascade : carte, mode, liste de jeu, résultat, date, session. Permet une analyse fine et la navigation vers la vue détaillée de chaque partie.",
+            example:
+              "Filtrer par carte « Streets », mode « Capture du drapeau », résultat « Victoire » sur les 30 derniers jours pour isoler vos parties gagnées récemment dans cette configuration.",
           },
           {
             term: 'Palmarès',
             definition:
-              "Section regroupant vos classements (leaderboard local par playlist/saison), vos relations (alliés fréquents, némésis, victimes), la comparaison face-à-face avec un autre joueur, et votre pass saisonnier Halo.",
+              "Section regroupant vos classements (tableau local par liste de jeu et par saison), vos relations (alliés fréquents, ennemis récurrents, victimes habituelles), la comparaison face-à-face avec un autre joueur, et votre passe saisonnier Halo.",
+            example:
+              "Le sous-onglet Relations met en évidence vos cinq alliés les plus fréquents et leur taux de victoire commun, ainsi que vos cinq ennemis récurrents et le solde des affrontements.",
           },
         ],
       },
@@ -301,7 +308,7 @@ const EN_TEXT: HelpText = {
               'Final score 50–32 (final_max_score = 50):\nleadThreshold = 50 × 0.40 = 20 kills lead\ncomebackThreshold = 50 × 0.35 = 17.5 kills gap before a reversal triggers',
           },
           {
-            term: 'Domination 🏆',
+            term: 'Domination',
             definition:
               'Victory in which your team maintained a significant and consistent lead throughout the match, never truly threatened. A badge of total control.',
             formula:
@@ -310,7 +317,7 @@ const EN_TEXT: HelpText = {
               'Final 50–28. Your team always led by 20+ kills → Domination. If at some point the enemy closed to −5, that\'s too narrow to trigger another badge.',
           },
           {
-            term: 'Humiliation 💀',
+            term: 'Humiliation',
             definition:
               "Defeat in which the enemy maintained an overwhelming lead from start to finish. Your team never had a real chance to turn things around.",
             formula:
@@ -319,7 +326,7 @@ const EN_TEXT: HelpText = {
               'Final 32–50. The enemy always led by 20+ kills → Humiliation.',
           },
           {
-            term: 'Comeback ⚡',
+            term: 'Comeback',
             definition:
               'Victory after being significantly behind. Your team was in a losing position (deficit ≥ threshold) at some point before turning the match around and winning.',
             formula:
@@ -328,7 +335,7 @@ const EN_TEXT: HelpText = {
               'Final 50–45. At mid-match you were −18 kills behind. You reversed it → Comeback.',
           },
           {
-            term: 'Collapse 💔',
+            term: 'Collapse',
             definition:
               'Defeat after being in a strong position. Your team led significantly at some point before falling apart and losing.',
             formula:
@@ -337,7 +344,7 @@ const EN_TEXT: HelpText = {
               'Final 45–50. At mid-match you led by +18 kills. The enemy caught up → Collapse.',
           },
           {
-            term: 'Counter-Comeback 🔄',
+            term: 'Counter-Comeback',
             definition:
               'The rarest badge: victory after a double reversal. Your team led, then was overtaken and fell behind, before reclaiming the advantage and winning. Both teams had a significant lead at some point.',
             formula:
