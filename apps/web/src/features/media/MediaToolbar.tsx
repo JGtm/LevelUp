@@ -207,7 +207,7 @@ export function MediaToolbar({
     { value: 'owner', label: text.toolbar.byOwner },
     { value: 'map', label: text.toolbar.byMap },
     { value: 'mode', label: text.toolbar.byMode },
-    { value: 'week', label: text.toolbar.byWeek },
+    { value: 'session', label: text.toolbar.bySession },
   ]
   const safeMapOptions = withSelectedOption(mapOptions, mapFilter)
   const safeModeOptions = withSelectedOption(modeOptions, modeFilter)

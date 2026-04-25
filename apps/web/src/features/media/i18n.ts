@@ -20,7 +20,6 @@ export interface MediaText {
     filterLabel: string
     sortLabel: string
     kindAriaLabel: string
-    sectionAriaLabel: string
     mapAriaLabel: string
     modeAriaLabel: string
     sortAriaLabel: string
@@ -34,7 +33,6 @@ export interface MediaText {
     clips: string
     allAuthors: string
     mine: string
-    teammates: string
     allMaps: string
     allModes: string
     dateDesc: string
@@ -45,10 +43,7 @@ export interface MediaText {
     byOwner: string
     byMap: string
     byMode: string
-    byWeek: string
     bySession: string
-    likedFirst: string
-    likedOnly: string
   }
 }
 
@@ -72,7 +67,6 @@ const FR_TEXT: MediaText = {
     filterLabel: 'Filtres :',
     sortLabel: 'Tri :',
     kindAriaLabel: 'Type de média',
-    sectionAriaLabel: 'Auteur du média',
     mapAriaLabel: 'Carte de la galerie',
     modeAriaLabel: 'Mode de la galerie',
     sortAriaLabel: 'Tri de la galerie',
@@ -86,7 +80,6 @@ const FR_TEXT: MediaText = {
     clips: 'Clips',
     allAuthors: 'Tous les auteurs',
     mine: 'Mes captures',
-    teammates: 'Coéquipiers',
     allMaps: 'Toutes cartes',
     allModes: 'Tous modes',
     dateDesc: 'Date ↓',
@@ -97,10 +90,7 @@ const FR_TEXT: MediaText = {
     byOwner: 'Par auteur',
     byMap: 'Par carte',
     byMode: 'Par mode',
-    byWeek: 'Par semaine',
     bySession: 'Par session',
-    likedFirst: 'Aimés en premier',
-    likedOnly: 'Aimés',
   },
 }
 
@@ -124,7 +114,6 @@ const EN_TEXT: MediaText = {
     filterLabel: 'Filters:',
     sortLabel: 'Sort:',
     kindAriaLabel: 'Media type',
-    sectionAriaLabel: 'Media author',
     mapAriaLabel: 'Media map',
     modeAriaLabel: 'Media mode',
     sortAriaLabel: 'Media sorting',
@@ -138,7 +127,6 @@ const EN_TEXT: MediaText = {
     clips: 'Clips',
     allAuthors: 'All authors',
     mine: 'My captures',
-    teammates: 'Teammates',
     allMaps: 'All maps',
     allModes: 'All modes',
     dateDesc: 'Date ↓',
@@ -149,10 +137,7 @@ const EN_TEXT: MediaText = {
     byOwner: 'By author',
     byMap: 'By map',
     byMode: 'By mode',
-    byWeek: 'By week',
     bySession: 'By session',
-    likedFirst: 'Liked first',
-    likedOnly: '♥ Liked',
   },
 }
 
