@@ -77,11 +77,11 @@ func (p *SteamPoller) Run(ctx context.Context) {
 
 // steamPlayerSummary est la réponse partielle de l'API Steam.
 type steamPlayerSummary struct {
-	SteamID        string `json:"steamid"`
-	GameID         string `json:"gameid"`         // présent uniquement si en jeu
-	GameExtraInfo  string `json:"gameextrainfo"`  // nom du jeu
-	PersonaState   int    `json:"personastate"`
-	PersonaName    string `json:"personaname"`
+	SteamID       string `json:"steamid"`
+	GameID        string `json:"gameid"`        // présent uniquement si en jeu
+	GameExtraInfo string `json:"gameextrainfo"` // nom du jeu
+	PersonaState  int    `json:"personastate"`
+	PersonaName   string `json:"personaname"`
 }
 
 type steamAPIResponse struct {

@@ -10,9 +10,10 @@ import (
 	"fmt"
 	"math"
 
-	"golang.org/x/sync/errgroup"
 	"levelup/go-api/internal/domain"
 	"levelup/go-api/internal/port"
+
+	"golang.org/x/sync/errgroup"
 )
 
 // CompareService orchestre la comparaison joueur A vs joueur B.
