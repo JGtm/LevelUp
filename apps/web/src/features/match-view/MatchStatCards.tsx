@@ -8,6 +8,8 @@
  * NATIVE_COMPONENTS items C3, C4, C5.
  */
 import type { MatchViewRank, MatchExpectedStats, MatchNemesisRow } from '@/lib/api/types'
+import { skillDeltaScale, kdScale } from '@/lib/accessibility/scales'
+import { tokenCssVar } from '@/lib/accessibility'
 
 // ---------------------------------------------------------------------------
 // C3 — StatExpectedCard (réel vs attendu)
@@ -102,11 +104,13 @@ export function MatchRankBadge({ rank, hadBotTeammate = false }: MatchRankBadgeP
   if (rank.rating_type === 'none' || !rank.tier_label) return null
 
   const delta = rank.delta_value
-  const deltaColor =
-    delta == null ? 'text-muted-foreground'
-    : delta > 0 ? 'text-[#00DC82]'
-    : delta < 0 ? 'text-[#FF4B4B]'
-    : 'text-muted-foreground'
+  const deltaToken = delta != null ? skillDeltaScale(delta) : null
+  const deltaColor = deltaToken === 'divergent-neutral' || deltaToken === null
+    ? 'text-muted-foreground'
+    : undefined
+  const deltaStyle = deltaToken && deltaToken !== 'divergent-neutral'
+    ? { color: tokenCssVar(deltaToken) }
+    : undefined
 
   return (
     <div className="flex items-center gap-3 rounded-lg border border-border bg-[#1d2328] px-4 py-3">
@@ -120,7 +124,10 @@ export function MatchRankBadge({ rank, hadBotTeammate = false }: MatchRankBadgeP
         </div>
       </div>
       {delta != null && (
-        <span className={`text-xl font-semibold ${deltaColor}`}>
+        <span
+          className={`text-xl font-semibold ${deltaColor ?? ''}`}
+          style={deltaStyle}
+        >
           {delta > 0 ? '+' : ''}{delta.toFixed(0)}
         </span>
       )}
@@ -145,8 +152,6 @@ export function KdIndicatorCard({ nemesis }: KdIndicatorCardProps) {
   if (!nemesis) return null
 
   const kd = nemesis.killed_me > 0 ? nemesis.i_killed / nemesis.killed_me : nemesis.i_killed
-  const favorable = kd >= 1.0
-  const kdColor = favorable ? 'text-[#00DC82]' : 'text-[#FF4B4B]'
 
   return (
     <div className="rounded-lg border border-border bg-[#1d2328] px-4 py-3">
@@ -154,7 +159,10 @@ export function KdIndicatorCard({ nemesis }: KdIndicatorCardProps) {
         K/D vs nemesis
       </p>
       <div className="flex items-baseline gap-2">
-        <span className={`text-2xl font-bold ${kdColor}`}>{kd.toFixed(2)}</span>
+        <span
+          className="text-2xl font-bold"
+          style={{ color: tokenCssVar(kdScale(kd)) }}
+        >{kd.toFixed(2)}</span>
         <span className="text-sm text-muted-foreground">vs {nemesis.gamertag}</span>
       </div>
       <p className="text-xs text-muted-foreground mt-0.5">

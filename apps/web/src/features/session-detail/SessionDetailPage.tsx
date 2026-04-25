@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import type React from 'react'
 import { useParams, useSearch } from '@tanstack/react-router'
 
 import { Badge } from '@/components/ui/badge'
@@ -10,6 +11,8 @@ import { Spinner } from '@/components/ui/spinner'
 import type { SessionCompareEntry, SessionCompareMetricRow, SessionDetailMatchRow } from '@/lib/api/types'
 import { useGlobalFilterStore } from '@/stores/globalFilterStore'
 
+import { outcomeScale } from '@/lib/accessibility/scales'
+import { tokenCssVar } from '@/lib/accessibility'
 import { useSessionDetailPage } from './queries'
 
 function SessionSummaryCard({
@@ -103,7 +106,7 @@ function SessionMatchesTable({ matches }: { matches: SessionDetailMatchRow[] }) 
               <td className="px-3 py-3 text-right tabular-nums">{formatPercent(match.accuracy)}</td>
               <td className="px-3 py-3 text-right tabular-nums">{formatNumber(match.performance_score, 1)}</td>
               <td className="px-3 py-3 text-right">
-                <span className={matchOutcomeTone(match.outcome)}>{matchOutcomeLabel(match.outcome)}</span>
+                {(() => { const tone = matchOutcomeTone(match.outcome); return <span className={tone.className} style={tone.style}>{matchOutcomeLabel(match.outcome)}</span> })()}
               </td>
             </tr>
           ))}
@@ -406,12 +409,12 @@ function matchOutcomeLabel(outcome: number | null) {
   return '—'
 }
 
-function matchOutcomeTone(outcome: number | null) {
-  if (outcome === 2) {
-    return 'font-medium text-emerald-600'
-  }
-  if (outcome === 3) {
-    return 'font-medium text-rose-600'
-  }
-  return 'text-muted-foreground'
+const OUTCOME_INT_KEY: Record<number, string> = { 2: 'win', 1: 'draw', 3: 'loss', 4: 'dnf' }
+
+function matchOutcomeTone(outcome: number | null): { className: string; style?: React.CSSProperties } {
+  if (outcome == null) return { className: 'text-muted-foreground' }
+  const key = OUTCOME_INT_KEY[outcome]
+  const token = key ? outcomeScale(key) : null
+  if (!token) return { className: 'text-muted-foreground' }
+  return { className: 'font-medium', style: { color: tokenCssVar(token) } }
 }

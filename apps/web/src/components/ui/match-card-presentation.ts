@@ -1,3 +1,6 @@
+import { outcomeScale, narrativeScale } from '@/lib/accessibility/scales'
+import { tokenCssVar } from '@/lib/accessibility'
+
 export interface MatchCardOutcomeStyle {
   scoreColor: string
   panelBackground: string
@@ -10,53 +13,47 @@ export interface MatchNarrativeBadgeMeta {
   textColor: string
 }
 
+function hexToRgba(cssVar: string, alpha: number): string {
+  // En runtime, le composant aura la vraie couleur via CSS var.
+  // Pour panelBackground/panelBorder on construit une valeur color-mix compatible.
+  return `color-mix(in srgb, ${cssVar} ${Math.round(alpha * 100)}%, transparent)`
+}
+
 const DEFAULT_OUTCOME_STYLE: MatchCardOutcomeStyle = {
-  scoreColor: '#9E9E9E',
+  scoreColor: tokenCssVar('divergent-neutral'),
   panelBackground: 'rgba(158, 158, 158, 0.12)',
   panelBorder: 'rgba(158, 158, 158, 0.28)',
 }
 
-const OUTCOME_STYLES: Record<string, MatchCardOutcomeStyle> = {
-  win: {
-    scoreColor: '#4CAF50',
-    panelBackground: 'rgba(76, 175, 80, 0.14)',
-    panelBorder: 'rgba(76, 175, 80, 0.34)',
-  },
-  loss: {
-    scoreColor: '#F44336',
-    panelBackground: 'rgba(244, 67, 54, 0.14)',
-    panelBorder: 'rgba(244, 67, 54, 0.34)',
-  },
-  tie: {
-    scoreColor: '#9E9E9E',
-    panelBackground: 'rgba(158, 158, 158, 0.14)',
-    panelBorder: 'rgba(158, 158, 158, 0.3)',
-  },
-  dnf: {
-    scoreColor: '#9E9E9E',
-    panelBackground: 'rgba(158, 158, 158, 0.14)',
-    panelBorder: 'rgba(158, 158, 158, 0.3)',
-  },
-}
-
-const NARRATIVE_BADGE_META: Record<string, MatchNarrativeBadgeMeta> = {
-  dominant: { label: 'DOMINATION', color: '#00DC82', textColor: '#052e16' },
-  humiliation: { label: 'HUMILIATION', color: '#8B5CF6', textColor: '#f8fafc' },
-  remontada: { label: 'REMONTADA', color: '#0072B2', textColor: '#f8fafc' },
-  debacle: { label: 'DÉBÂCLE', color: '#D55E00', textColor: '#fff7ed' },
-  contre_remontada: { label: 'CONTRE-REMONTADA', color: '#33D6FF', textColor: '#082f49' },
-}
-
 export function getMatchCardOutcomeStyle(tone: string | null | undefined): MatchCardOutcomeStyle {
-  if (!tone) {
-    return DEFAULT_OUTCOME_STYLE
+  const key = tone ?? 'dnf'
+  const token = outcomeScale(key === 'tie' ? 'draw' : key)
+  if (!token) return DEFAULT_OUTCOME_STYLE
+
+  const color = tokenCssVar(token)
+  return {
+    scoreColor: color,
+    panelBackground: hexToRgba(color, 0.14),
+    panelBorder: hexToRgba(color, 0.34),
   }
-  return OUTCOME_STYLES[tone] ?? DEFAULT_OUTCOME_STYLE
+}
+
+const NARRATIVE_LABELS: Record<string, string> = {
+  dominant:         'DOMINATION',
+  humiliation:      'HUMILIATION',
+  remontada:        'REMONTADA',
+  debacle:          'DÉBÂCLE',
+  contre_remontada: 'CONTRE-REMONTADA',
 }
 
 export function getMatchNarrativeBadgeMeta(type: string | null | undefined): MatchNarrativeBadgeMeta | null {
-  if (!type) {
-    return null
+  if (!type) return null
+  const token = narrativeScale(type)
+  if (!token) return null
+
+  return {
+    label:     NARRATIVE_LABELS[type] ?? type,
+    color:     tokenCssVar(token),
+    textColor: tokenCssVar(`${token}-text` as Parameters<typeof tokenCssVar>[0]),
   }
-  return NARRATIVE_BADGE_META[type] ?? null
 }

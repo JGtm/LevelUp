@@ -8,6 +8,8 @@ import { Suspense, lazy, useMemo } from 'react'
 import { Spinner } from './spinner'
 import { EmptyStateNotice } from './empty-state'
 import type { TimeseriesMatchRow } from '@/lib/api/types'
+import { resolveToken } from '@/lib/accessibility/resolveToken'
+import { outcomeScale } from '@/lib/accessibility/scales'
 
 const Plot = lazy(() =>
   import('react-plotly.js').then((m) => ({ default: m.default })),
@@ -27,13 +29,12 @@ export interface TimeseriesKdaBarsProps {
 const BG = '#1d2328'
 const GRID = '#2a3038'
 const TEXT = '#9ba3af'
-const OUTCOME_WIN = 2
-const OUTCOME_LOSS = 3
+const OUTCOME_INT_KEY: Record<number, string> = { 2: 'win', 1: 'draw', 3: 'loss', 4: 'dnf' }
 
 function outcomeColor(outcome: number | null): string {
-  if (outcome === OUTCOME_WIN) return '#00DC82'
-  if (outcome === OUTCOME_LOSS) return '#FF4B4B'
-  return '#FFB703'
+  const key = outcome != null ? OUTCOME_INT_KEY[outcome] : null
+  const token = key ? outcomeScale(key) : null
+  return token ? resolveToken(token) : resolveToken('outcome-draw')
 }
 
 export function TimeseriesKdaBars({ rows, height = 320 }: TimeseriesKdaBarsProps) {
@@ -56,7 +57,7 @@ export function TimeseriesKdaBars({ rows, height = 320 }: TimeseriesKdaBarsProps
       name: 'Morts',
       x: xs,
       y: rows.map((r) => -r.deaths),
-      marker: { color: '#FF4B4B44' },
+      marker: { color: `${resolveToken('outcome-loss')}44` },
       hovertemplate: '%{x|%d/%m/%Y}<br>Morts : <b>%{customdata}</b><extra></extra>',
       customdata: rows.map((r) => r.deaths),
     }
@@ -68,7 +69,7 @@ export function TimeseriesKdaBars({ rows, height = 320 }: TimeseriesKdaBarsProps
       x: xs,
       y: rows.map((r) => (r.deaths > 0 ? r.kills / r.deaths : r.kills)),
       yaxis: 'y2',
-      line: { color: '#33D6FF', width: 1.5 },
+      line: { color: resolveToken('perf-tier-2'), width: 1.5 },
       hovertemplate: '%{x|%d/%m/%Y}<br>K/D : <b>%{y:.2f}</b><extra></extra>',
     }
 
@@ -97,8 +98,8 @@ export function TimeseriesKdaBars({ rows, height = 320 }: TimeseriesKdaBarsProps
         overlaying: 'y',
         side: 'right',
         showgrid: false,
-        title: { text: 'K/D', font: { color: '#33D6FF', size: 10 } },
-        tickfont: { color: '#33D6FF', size: 10 },
+        title: { text: 'K/D', font: { color: resolveToken('perf-tier-2'), size: 10 } },
+        tickfont: { color: resolveToken('perf-tier-2'), size: 10 },
         rangemode: 'tozero',
       },
       legend: {

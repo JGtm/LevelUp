@@ -1,43 +1,35 @@
 /**
- * perf-color.ts — Palette de couleurs du score de performance.
+ * perf-color.ts — Wrappers de compatibilité vers la couche accessibilité.
  *
- * Échelle à 5 paliers cohérente avec le cockpit legacy v7 :
- *   ≥ 80 → vert    (#10B981)
- *   ≥ 65 → cyan    (#06B6D4)
- *   ≥ 50 → amber   (#F59E0B)
- *   ≥ 35 → orange  (#F97316)
- *   <  35 → rouge   (#EF4444)
+ * Ces fonctions existaient avant la migration. Les call-sites qui les utilisent
+ * encore reçoivent la CSS var `var(--ac-perf-tier-N)` — réactive automatiquement
+ * aux changements de palette via cascade CSS.
+ *
+ * Seuils canoniques : instances.ts (perfScale [80, 65, 50, 35])
  */
+import { perfScale } from './accessibility/scales'
+import { tokenCssVar } from './accessibility'
 
 export interface PerfColorLevel {
   color: string
   label: string
 }
 
-const PERF_LEVELS: readonly { threshold: number; color: string; label: string }[] = [
-  { threshold: 80, color: '#10B981', label: 'Excellent' },
-  { threshold: 65, color: '#06B6D4', label: 'Bon' },
-  { threshold: 50, color: '#F59E0B', label: 'Correct' },
-  { threshold: 35, color: '#F97316', label: 'Faible' },
-  { threshold: 0,  color: '#EF4444', label: 'Mauvais' },
-]
-
-/**
- * Retourne la couleur hex correspondant à un score de performance (0–100).
- */
-export function getPerfColor(score: number): string {
-  for (const level of PERF_LEVELS) {
-    if (score >= level.threshold) return level.color
-  }
-  return '#EF4444'
+const LABELS: Record<string, string> = {
+  'perf-tier-1': 'Excellent',
+  'perf-tier-2': 'Bon',
+  'perf-tier-3': 'Correct',
+  'perf-tier-4': 'Faible',
+  'perf-tier-5': 'Mauvais',
 }
 
-/**
- * Retourne la couleur et le label correspondant à un score de performance.
- */
+/** Retourne la CSS var correspondant à un score de performance (0–100). */
+export function getPerfColor(score: number): string {
+  return tokenCssVar(perfScale(score))
+}
+
+/** Retourne la CSS var et le label correspondant à un score de performance. */
 export function getPerfColorLevel(score: number): PerfColorLevel {
-  for (const level of PERF_LEVELS) {
-    if (score >= level.threshold) return { color: level.color, label: level.label }
-  }
-  return { color: '#EF4444', label: 'Mauvais' }
+  const token = perfScale(score)
+  return { color: tokenCssVar(token), label: LABELS[token] ?? 'Mauvais' }
 }

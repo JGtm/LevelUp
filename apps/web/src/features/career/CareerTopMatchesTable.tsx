@@ -15,24 +15,19 @@ interface Props {
   playerSlug?: string
 }
 
-const BADGE_STYLE: Record<string, { label: string; color: string }> = {
-  dominant: { label: 'DOMINATION', color: '#00DC82' },
-  humiliation: { label: 'HUMILIATION', color: '#8B5CF6' },
-  remontada: { label: 'REMONTADA', color: '#0072B2' },
-  debacle: { label: 'DÉBÂCLE', color: '#D55E00' },
-  contre_remontada: { label: 'CONTRE-REMONTADA', color: '#33D6FF' },
-}
+import { getMatchNarrativeBadgeMeta } from '@/components/ui/match-card-presentation'
 
 function MatchBadge({ type }: { type: string | null }) {
-  if (!type) return null
-  const style = BADGE_STYLE[type]
-  if (!style) return <span className="text-xs text-muted-foreground">{type}</span>
+  const meta = getMatchNarrativeBadgeMeta(type)
+  if (!meta) {
+    return type ? <span className="text-xs text-muted-foreground">{type}</span> : null
+  }
   return (
     <span
-      className="rounded px-1.5 py-0.5 text-xs font-semibold text-primary-foreground"
-      style={{ backgroundColor: style.color }}
+      className="rounded px-1.5 py-0.5 text-xs font-semibold"
+      style={{ backgroundColor: meta.color, color: meta.textColor }}
     >
-      {style.label}
+      {meta.label}
     </span>
   )
 }

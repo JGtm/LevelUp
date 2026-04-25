@@ -21,6 +21,8 @@ import { useSetMatchFavorite } from '@/features/match-history/queries'
 import { InfoTooltip } from '@/components/ui/info-tooltip'
 import { useAppShellStore } from '@/stores/appShellStore'
 import { getPerfColor } from '@/lib/perf-color'
+import { kdScale, accuracyScale } from '@/lib/accessibility/scales'
+import { tokenCssVar } from '@/lib/accessibility'
 import type { HomeSkillPeakSummary, SessionSummaryItem, HighlightItem, HighlightSlide, HighlightValueColor } from '@/lib/api/types'
 import { getHighlightText, resolveTitle, resolveLabel, resolveDetail, resolveColSpan } from './highlights.i18n'
 
@@ -44,26 +46,22 @@ function KPICard({ label, value, compact = false }: { label: string; value: stri
   )
 }
 
-const PERF_HEX: Record<string, string> = {
-  'perf-excellent': '#10B981',
-  'perf-good': '#06B6D4',
-  'perf-ok': '#F59E0B',
-  'perf-low': '#F97316',
-  'perf-bad': '#EF4444',
-}
-
-function highlightColorClass(color?: HighlightValueColor): string {
-  if (color?.startsWith('perf-')) return ''
-  if (color === 'positive') return 'text-green-400'
-  if (color === 'warning') return 'text-amber-400'
-  if (color === 'negative') return 'text-red-400'
-  if (color === 'neutral') return 'text-blue-400'
-  return 'text-primary'
+const HIGHLIGHT_COLOR_MAP: Record<string, string> = {
+  positive:        tokenCssVar('divergent-pos'),
+  warning:         tokenCssVar('perf-tier-2'),
+  negative:        tokenCssVar('divergent-neg'),
+  neutral:         tokenCssVar('perf-tier-3'),
+  'perf-excellent': tokenCssVar('perf-tier-1'),
+  'perf-good':     tokenCssVar('perf-tier-2'),
+  'perf-ok':       tokenCssVar('perf-tier-3'),
+  'perf-low':      tokenCssVar('perf-tier-4'),
+  'perf-bad':      tokenCssVar('perf-tier-5'),
 }
 
 function highlightColorStyle(color?: HighlightValueColor): CSSProperties | undefined {
-  if (color?.startsWith('perf-')) return { color: PERF_HEX[color] }
-  return undefined
+  if (!color) return undefined
+  const cssVar = HIGHLIGHT_COLOR_MAP[color]
+  return cssVar ? { color: cssVar } : undefined
 }
 
 function SerieTile({ title, slides, locale, className }: { title: string; slides: HighlightSlide[]; locale: string | null | undefined; className?: string }) {
@@ -92,7 +90,7 @@ function SerieTile({ title, slides, locale, className }: { title: string; slides
         className={`transition-opacity duration-200 ${fading ? 'opacity-0' : 'opacity-100'}`}
         aria-live="polite"
       >
-        <p className={`text-base font-bold ${highlightColorClass(s.value_color)}`} style={highlightColorStyle(s.value_color)}>{s.value}</p>
+        <p className="text-base font-bold" style={highlightColorStyle(s.value_color)}>{s.value}</p>
         <p className="text-[11px] text-muted-foreground/80 leading-tight">{slideLabel}</p>
         {slideDetail ? <p className="text-xs text-muted-foreground">{slideDetail}</p> : null}
       </div>
@@ -119,7 +117,7 @@ function HighlightTile({ h, locale }: { h: HighlightItem; locale: string | null 
   return (
     <div className={`rounded-md border border-border p-3 ${spanClass}`}>
       <p className="text-xs font-medium text-muted-foreground">{title}</p>
-      <p className={`text-base font-bold ${highlightColorClass(h.value_color)}`} style={highlightColorStyle(h.value_color)}>{h.value}</p>
+      <p className="text-base font-bold" style={highlightColorStyle(h.value_color)}>{h.value}</p>
       {detail ? <p className="text-xs text-muted-foreground">{detail}</p> : null}
     </div>
   )
@@ -149,10 +147,10 @@ function OutcomeBar({ wins, draws, losses, dnfs }: OutcomeBarProps) {
   const pct = (n: number) => `${(n / total) * 100}%`
   return (
     <div className="flex h-1.5 w-full overflow-hidden rounded-full gap-px">
-      {wins   > 0 && <div style={{ width: pct(wins),   backgroundColor: '#10B981' }} />}
-      {draws  > 0 && <div style={{ width: pct(draws),  backgroundColor: '#3B82F6' }} />}
-      {dnfs   > 0 && <div style={{ width: pct(dnfs),   backgroundColor: '#8B5CF6' }} />}
-      {losses > 0 && <div style={{ width: pct(losses), backgroundColor: '#EF4444' }} />}
+      {wins   > 0 && <div style={{ width: pct(wins),   backgroundColor: tokenCssVar('outcome-win') }} />}
+      {draws  > 0 && <div style={{ width: pct(draws),  backgroundColor: tokenCssVar('outcome-draw') }} />}
+      {dnfs   > 0 && <div style={{ width: pct(dnfs),   backgroundColor: tokenCssVar('outcome-dnf') }} />}
+      {losses > 0 && <div style={{ width: pct(losses), backgroundColor: tokenCssVar('outcome-loss') }} />}
     </div>
   )
 }
@@ -306,16 +304,16 @@ function SessionCarouselCard({ sessions, idx, onIdxChange, variant, onNavigate }
             <p className="mt-1.5 flex flex-wrap gap-x-2 text-xs">
               <span className="font-medium text-foreground">{session.match_count} partie{session.match_count > 1 ? 's' : ''}</span>
               {session.wins > 0 && (
-                <span className="text-emerald-500">{session.wins} Victoire{session.wins > 1 ? 's' : ''}</span>
+                <span style={{ color: tokenCssVar('outcome-win') }}>{session.wins} Victoire{session.wins > 1 ? 's' : ''}</span>
               )}
               {session.losses > 0 && (
-                <span className="text-red-500">{session.losses} Défaite{session.losses > 1 ? 's' : ''}</span>
+                <span style={{ color: tokenCssVar('outcome-loss') }}>{session.losses} Défaite{session.losses > 1 ? 's' : ''}</span>
               )}
               {session.draws > 0 && (
-                <span className="text-blue-500">{session.draws} Égalité{session.draws > 1 ? 's' : ''}</span>
+                <span style={{ color: tokenCssVar('outcome-draw') }}>{session.draws} Égalité{session.draws > 1 ? 's' : ''}</span>
               )}
               {session.dnfs > 0 && (
-                <span className="text-violet-500">{session.dnfs} Non terminé{session.dnfs > 1 ? 's' : ''}</span>
+                <span style={{ color: tokenCssVar('outcome-dnf') }}>{session.dnfs} Non terminé{session.dnfs > 1 ? 's' : ''}</span>
               )}
             </p>
 
@@ -324,15 +322,7 @@ function SessionCarouselCard({ sessions, idx, onIdxChange, variant, onNavigate }
               {session.avg_kda != null && (
                 <span>
                   FDA{' '}
-                  <span
-                    className={
-                      session.avg_kda < 0
-                        ? 'text-red-500'
-                        : session.avg_kda <= 1
-                          ? 'text-blue-400'
-                          : 'text-green-400'
-                    }
-                  >
+                  <span style={{ color: tokenCssVar(kdScale(session.avg_kda)) }}>
                     {session.avg_kda.toFixed(2)}
                   </span>
                 </span>
@@ -802,11 +792,11 @@ export function HomePage() {
               {/* 2 — KDA/FDA coloré comme les tuiles match */}
               {(() => {
                 const kda = hero.kpis.avg_kda
-                const kdaColor = kda == null ? 'text-muted-foreground' : kda > 1 ? 'text-green-400' : kda >= 0 ? 'text-blue-400' : 'text-red-400'
+                const kdaStyle = kda != null ? { color: tokenCssVar(kdScale(kda)) } : undefined
                 return (
                   <div className="flex h-full flex-col items-center justify-center rounded-lg border border-border bg-muted px-2 py-3 text-center">
                     <p className="text-xs text-muted-foreground">{locale === 'en' ? 'KDA' : 'FDA'}</p>
-                    <p className={`text-xl font-bold ${kdaColor}`}>{kda != null ? kda.toFixed(2) : '—'}</p>
+                    <p className="text-xl font-bold text-muted-foreground" style={kdaStyle}>{kda != null ? kda.toFixed(2) : '—'}</p>
                   </div>
                 )
               })()}
@@ -826,9 +816,9 @@ export function HomePage() {
                       <OutcomeBar wins={wins} draws={draws} losses={losses} dnfs={dnfs} />
                     </div>
                     <div className="mt-1.5 flex justify-center gap-3 text-xs font-semibold tabular-nums">
-                      <span style={{ color: '#10B981' }}>{wins}</span>
-                      <span style={{ color: '#EF4444' }}>{losses}</span>
-                      {neutral > 0 && <span style={{ color: '#3B82F6' }}>{neutral}</span>}
+                      <span style={{ color: tokenCssVar('outcome-win') }}>{wins}</span>
+                      <span style={{ color: tokenCssVar('outcome-loss') }}>{losses}</span>
+                      {neutral > 0 && <span style={{ color: tokenCssVar('outcome-draw') }}>{neutral}</span>}
                     </div>
                   </div>
                 )
@@ -902,13 +892,11 @@ export function HomePage() {
               {/* 6 — Précision avec code couleur */}
               {(() => {
                 const acc = hero.kpis.avg_accuracy
-                const accColor = acc == null
-                  ? 'text-primary'
-                  : acc > 55 ? 'text-green-400' : acc >= 40 ? 'text-amber-400' : 'text-red-400'
+                const accStyle = acc != null ? { color: tokenCssVar(accuracyScale(acc)) } : undefined
                 return (
                   <div className="flex h-full flex-col items-center justify-center rounded-lg border border-border bg-muted px-2 py-3 text-center">
                     <p className="text-xs text-muted-foreground">{locale === 'en' ? 'Accuracy' : 'Précision'}</p>
-                    <p className={`text-xl font-bold ${accColor}`}>{acc != null ? `${acc.toFixed(0)}%` : '—'}</p>
+                    <p className="text-xl font-bold text-primary" style={accStyle}>{acc != null ? `${acc.toFixed(0)}%` : '—'}</p>
                   </div>
                 )
               })()}
