@@ -36,7 +36,7 @@ describe('HomePage', () => {
   it('affiche la section Performance globale après chargement', async () => {
     renderWithProviders(<HomePage />)
     await waitFor(() => {
-      expect(screen.getByText(/Performance globale/i)).toBeInTheDocument()
+      expect(screen.getByText(/Taux de victoire/i)).toBeInTheDocument()
     })
   })
 

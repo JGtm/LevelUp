@@ -516,6 +516,200 @@ func TestBuildSessionSummary_SquadModeFiltering(t *testing.T) {
 }
 
 // ---------------------------------------------------------------------------
+// BuildHighlights — Série (slide tile)
+// ---------------------------------------------------------------------------
+
+func TestBuildHighlights_SerieTile(t *testing.T) {
+	// Fenêtre : 5 matchs avec un label de session, 2 maps, streak de 3 victoires,
+	// plus haute folie meurtrière = 7.
+	now := time.Now()
+	label := "s1"
+	spree := func(v int) *int { return &v }
+	mk := func(id, mapID, mapName string, outcome int, killingSpree *int, offset time.Duration) domain.HomeMatchRow {
+		lbl := label
+		return domain.HomeMatchRow{
+			MatchID:         id,
+			StartTime:       now.Add(offset),
+			MapID:           mapID,
+			MapName:         mapName,
+			MapNameFR:       mapName,
+			PairName:        "Slayer",
+			PairNameFR:      "Massacre",
+			SessionLabel:    &lbl,
+			Outcome:         outcome,
+			MaxKillingSpree: killingSpree,
+		}
+	}
+	// Order disque (DESC) : m5=W(spree 7), m4=W, m3=W, m2=L, m1=W.
+	// Ordre chrono (ASC)  : m1=W, m2=L, m3=W, m4=W, m5=W → plus longue série = 3.
+	matches := []domain.HomeMatchRow{
+		mk("m5", "map-a", "Aquarius", 2, spree(7), 4*time.Minute), // plus récent
+		mk("m4", "map-a", "Aquarius", 2, spree(4), 3*time.Minute),
+		mk("m3", "map-a", "Aquarius", 2, spree(5), 2*time.Minute),
+		mk("m2", "map-b", "Streets", 3, spree(3), 1*time.Minute),
+		mk("m1", "map-b", "Streets", 2, spree(2), 0), // plus ancien
+	}
+
+	got := analysis.BuildHighlights(matches)
+
+	var serie *domain.HighlightItem
+	for i := range got {
+		if got[i].TitleKey == "highlight.title.serie" {
+			serie = &got[i]
+			break
+		}
+	}
+	if serie == nil {
+		t.Fatalf("want Série highlight, got titleKeys=%v", titleKeys(got))
+	}
+	if len(serie.Slides) != 3 {
+		t.Fatalf("want 3 slides, got %d", len(serie.Slides))
+	}
+	// Slide 1 : Folie meurtrière max = 7.
+	if serie.Slides[0].LabelKey != "highlight.slide.killing_spree_max" || serie.Slides[0].Value != "7" {
+		t.Errorf("slide 0 spree: got key=%q value=%q", serie.Slides[0].LabelKey, serie.Slides[0].Value)
+	}
+	// Slide 2 : Victoires consécutives = 3 (w,w,w en début chronologique).
+	if serie.Slides[1].LabelKey != "highlight.slide.win_streak" || serie.Slides[1].Value != "3" {
+		t.Errorf("slide 1 streak: got key=%q value=%q", serie.Slides[1].LabelKey, serie.Slides[1].Value)
+	}
+	if serie.Slides[1].DetailKey != "highlight.detail.win_streak" {
+		t.Errorf("slide 1 streak detailKey: got %q", serie.Slides[1].DetailKey)
+	}
+	if count, _ := serie.Slides[1].DetailParams["count"].(int); count != 3 {
+		t.Errorf("slide 1 streak count param: want 3, got %v", serie.Slides[1].DetailParams["count"])
+	}
+	// Slide 3 : Carte fétiche = Aquarius (3V sur 3 parties = 100%, vs Streets 1V/2).
+	if serie.Slides[2].LabelKey != "highlight.slide.favorite_map" || serie.Slides[2].Value != "Aquarius" {
+		t.Errorf("slide 2 map: got key=%q value=%q", serie.Slides[2].LabelKey, serie.Slides[2].Value)
+	}
+	if serie.Slides[2].DetailKey != "highlight.detail.favorite_map" {
+		t.Errorf("slide 2 map detailKey: got %q", serie.Slides[2].DetailKey)
+	}
+	// Value top-level copie slide 0.
+	if serie.Value != serie.Slides[0].Value {
+		t.Errorf("top value: want %q, got %q", serie.Slides[0].Value, serie.Value)
+	}
+}
+
+func TestBuildHighlights_MaitriseTile(t *testing.T) {
+	now := time.Now()
+	label := "s1"
+	acc := func(v float64) *float64 { return &v }
+	mk := func(id string, outcome, hs, perf int, a *float64, offset time.Duration) domain.HomeMatchRow {
+		lbl := label
+		return domain.HomeMatchRow{
+			MatchID:       id,
+			StartTime:     now.Add(offset),
+			MapID:         "map-a",
+			MapName:       "Aquarius",
+			MapNameFR:     "Aquarius",
+			PairName:      "Slayer",
+			PairNameFR:    "Massacre",
+			SessionLabel:  &lbl,
+			Outcome:       outcome,
+			HeadshotKills: hs,
+			PerfectKills:  perf,
+			Accuracy:      a,
+		}
+	}
+	// 3 matchs, précisions 60, 50, 40 → moyenne 50 → "warning" (≥ 40, ≤ 55).
+	matches := []domain.HomeMatchRow{
+		mk("m3", 2, 5, 1, acc(60), 2*time.Minute),
+		mk("m2", 2, 3, 0, acc(50), 1*time.Minute),
+		mk("m1", 3, 2, 0, acc(40), 0),
+	}
+
+	got := analysis.BuildHighlights(matches)
+	var m *domain.HighlightItem
+	for i := range got {
+		if got[i].TitleKey == "highlight.title.mastery" {
+			m = &got[i]
+			break
+		}
+	}
+	if m == nil {
+		t.Fatalf("want Maîtrise highlight, got titleKeys=%v", titleKeys(got))
+	}
+	if len(m.Slides) != 3 {
+		t.Fatalf("want 3 slides, got %d", len(m.Slides))
+	}
+	if m.Slides[0].LabelKey != "highlight.slide.headshots" || m.Slides[0].Value != "10" {
+		t.Errorf("slide HS: got key=%q value=%q", m.Slides[0].LabelKey, m.Slides[0].Value)
+	}
+	if m.Slides[1].LabelKey != "highlight.slide.perfect_kills" || m.Slides[1].Value != "1" {
+		t.Errorf("slide perfects: got key=%q value=%q", m.Slides[1].LabelKey, m.Slides[1].Value)
+	}
+	if m.Slides[2].LabelKey != "highlight.slide.accuracy" || m.Slides[2].Value != "50%" {
+		t.Errorf("slide accuracy: got key=%q value=%q", m.Slides[2].LabelKey, m.Slides[2].Value)
+	}
+	if m.Slides[2].ValueColor != "warning" {
+		t.Errorf("slide accuracy color: want warning, got %q", m.Slides[2].ValueColor)
+	}
+}
+
+func TestBuildHighlights_PerMinuteTile(t *testing.T) {
+	now := time.Now()
+	label := "s1"
+	secs := func(v int) *int { return &v }
+	mk := func(id string, outcome, k, d, a int, tsecs *int, offset time.Duration) domain.HomeMatchRow {
+		lbl := label
+		return domain.HomeMatchRow{
+			MatchID:        id,
+			StartTime:      now.Add(offset),
+			MapID:          "map-a",
+			MapName:        "Aquarius",
+			MapNameFR:      "Aquarius",
+			PairName:       "Slayer",
+			PairNameFR:     "Massacre",
+			SessionLabel:   &lbl,
+			Outcome:        outcome,
+			Kills:          k,
+			Deaths:         d,
+			Assists:        a,
+			TimePlayedSecs: tsecs,
+		}
+	}
+	// 2 matchs : 30 kills / 10 morts / 20 assists sur 600s = 10 min → 3.00 / 1.00 / 2.00 par minute.
+	matches := []domain.HomeMatchRow{
+		mk("m2", 2, 20, 5, 12, secs(360), 1*time.Minute),
+		mk("m1", 2, 10, 5, 8, secs(240), 0),
+	}
+
+	got := analysis.BuildHighlights(matches)
+	var h *domain.HighlightItem
+	for i := range got {
+		if got[i].TitleKey == "highlight.title.per_minute" {
+			h = &got[i]
+			break
+		}
+	}
+	if h == nil {
+		t.Fatalf("want Stats par min. highlight, got titleKeys=%v", titleKeys(got))
+	}
+	if len(h.Slides) != 3 {
+		t.Fatalf("want 3 slides, got %d", len(h.Slides))
+	}
+	if h.Slides[0].LabelKey != "highlight.slide.kills" || h.Slides[0].Value != "3.00" {
+		t.Errorf("slide kpm: got key=%q value=%q", h.Slides[0].LabelKey, h.Slides[0].Value)
+	}
+	if h.Slides[1].LabelKey != "highlight.slide.deaths" || h.Slides[1].Value != "1.00" {
+		t.Errorf("slide dpm: got key=%q value=%q", h.Slides[1].LabelKey, h.Slides[1].Value)
+	}
+	if h.Slides[2].LabelKey != "highlight.slide.assists" || h.Slides[2].Value != "2.00" {
+		t.Errorf("slide apm: got key=%q value=%q", h.Slides[2].LabelKey, h.Slides[2].Value)
+	}
+}
+
+func titleKeys(items []domain.HighlightItem) []string {
+	out := make([]string, len(items))
+	for i, it := range items {
+		out[i] = it.TitleKey
+	}
+	return out
+}
+
+// ---------------------------------------------------------------------------
 // Helper
 // ---------------------------------------------------------------------------
 

@@ -1,7 +1,7 @@
 /**
  * HomePage — Accueil Mission Control (Slice 5).
  */
-import { useState, useRef, useEffect } from 'react'
+import { useState, useRef, useEffect, type CSSProperties } from 'react'
 import { useParams, useNavigate } from '@tanstack/react-router'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
@@ -21,13 +21,106 @@ import { useSetMatchFavorite } from '@/features/match-history/queries'
 import { InfoTooltip } from '@/components/ui/info-tooltip'
 import { useAppShellStore } from '@/stores/appShellStore'
 import { getPerfColor } from '@/lib/perf-color'
-import type { HomeSkillPeakSummary, SessionSummaryItem } from '@/lib/api/types'
+import type { HomeSkillPeakSummary, SessionSummaryItem, HighlightItem, HighlightSlide, HighlightValueColor } from '@/lib/api/types'
+import { getHighlightText, resolveTitle, resolveLabel, resolveDetail, resolveColSpan } from './highlights.i18n'
 
-function KPICard({ label, value }: { label: string; value: string | number }) {
+// Grille fine de 20 sous-unités sur lg+. On utilise arbitrary values Tailwind v4
+// pour autoriser un span > 12 (les classes col-span-N s'arrêtent à 12). Les classes
+// sont littérales (JIT) et conditionnées par le breakpoint lg.
+const HIGHLIGHT_SPAN_CLASS: Record<number, string> = {
+  1: 'lg:[grid-column:span_1/span_1]',
+  2: 'lg:[grid-column:span_2/span_2]',
+  3: 'lg:[grid-column:span_3/span_3]',
+  4: 'lg:[grid-column:span_4/span_4]',
+  5: 'lg:[grid-column:span_5/span_5]',
+}
+
+function KPICard({ label, value, compact = false }: { label: string; value: string | number; compact?: boolean }) {
   return (
-    <div className="rounded-lg border border-border bg-muted px-4 py-3 text-center">
+    <div className={`flex h-full flex-col items-center justify-center rounded-lg border border-border bg-muted py-3 text-center ${compact ? 'px-2' : 'px-4'}`}>
       <p className="text-xs text-muted-foreground">{label}</p>
       <p className="text-xl font-bold text-primary">{value}</p>
+    </div>
+  )
+}
+
+const PERF_HEX: Record<string, string> = {
+  'perf-excellent': '#10B981',
+  'perf-good': '#06B6D4',
+  'perf-ok': '#F59E0B',
+  'perf-low': '#F97316',
+  'perf-bad': '#EF4444',
+}
+
+function highlightColorClass(color?: HighlightValueColor): string {
+  if (color?.startsWith('perf-')) return ''
+  if (color === 'positive') return 'text-green-400'
+  if (color === 'warning') return 'text-amber-400'
+  if (color === 'negative') return 'text-red-400'
+  if (color === 'neutral') return 'text-blue-400'
+  return 'text-primary'
+}
+
+function highlightColorStyle(color?: HighlightValueColor): CSSProperties | undefined {
+  if (color?.startsWith('perf-')) return { color: PERF_HEX[color] }
+  return undefined
+}
+
+function SerieTile({ title, slides, locale, className }: { title: string; slides: HighlightSlide[]; locale: string | null | undefined; className?: string }) {
+  const [idx, setIdx] = useState(0)
+  const [fading, setFading] = useState(false)
+  useEffect(() => {
+    if (slides.length <= 1) return
+    const iv = window.setInterval(() => {
+      setFading(true)
+      window.setTimeout(() => {
+        setIdx((i) => (i + 1) % slides.length)
+        setFading(false)
+      }, 250)
+    }, 4000)
+    return () => window.clearInterval(iv)
+  }, [slides.length])
+  const s = slides[idx]
+  const slideLabel = s.label_key ? resolveLabel(locale, s.label_key) : (s.label ?? '')
+  const slideDetail = s.detail_key
+    ? resolveDetail(locale, s.detail_key, s.detail_params)
+    : (s.detail ?? '')
+  return (
+    <div className={`rounded-md border border-border p-3 ${className ?? ''}`}>
+      <p className="text-xs font-medium text-muted-foreground leading-tight">{title}</p>
+      <div
+        className={`transition-opacity duration-200 ${fading ? 'opacity-0' : 'opacity-100'}`}
+        aria-live="polite"
+      >
+        <p className={`text-base font-bold ${highlightColorClass(s.value_color)}`} style={highlightColorStyle(s.value_color)}>{s.value}</p>
+        <p className="text-[11px] text-muted-foreground/80 leading-tight">{slideLabel}</p>
+        {slideDetail ? <p className="text-xs text-muted-foreground">{slideDetail}</p> : null}
+      </div>
+      {slides.length > 1 ? (
+        <div className="mt-1 flex gap-1" aria-hidden="true">
+          {slides.map((_, i) => (
+            <span key={i} className={`h-1 w-4 rounded-full ${i === idx ? 'bg-primary' : 'bg-border'}`} />
+          ))}
+        </div>
+      ) : null}
+    </div>
+  )
+}
+
+function HighlightTile({ h, locale }: { h: HighlightItem; locale: string | null | undefined }) {
+  const title = h.title_key ? resolveTitle(locale, h.title_key) : (h.title ?? '')
+  const spanClass = HIGHLIGHT_SPAN_CLASS[resolveColSpan(h.title_key)] ?? ''
+  if (h.slides && h.slides.length > 0) {
+    return <SerieTile title={title} slides={h.slides} locale={locale} className={spanClass} />
+  }
+  const detail = h.detail_key
+    ? resolveDetail(locale, h.detail_key, h.detail_params)
+    : (h.detail ?? '')
+  return (
+    <div className={`rounded-md border border-border p-3 ${spanClass}`}>
+      <p className="text-xs font-medium text-muted-foreground">{title}</p>
+      <p className={`text-base font-bold ${highlightColorClass(h.value_color)}`} style={highlightColorStyle(h.value_color)}>{h.value}</p>
+      {detail ? <p className="text-xs text-muted-foreground">{detail}</p> : null}
     </div>
   )
 }
@@ -511,7 +604,6 @@ export function HomePage() {
 
         {/* Hero KPIs */}
         <div>
-          <h2 className="mb-4 text-base font-semibold">Performance globale</h2>
           <div className="space-y-4">
             {spartanIdentity && (
               <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_minmax(18rem,19.5rem)] lg:items-start">
@@ -703,16 +795,16 @@ export function HomePage() {
               </div>
             )}
 
-            <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-7">
+            <div className="kpi-stats-grid items-stretch">
               {/* 1 — Parties */}
-              <KPICard label={locale === 'en' ? 'Matches' : 'Parties'} value={hero.kpis.total_matches.toLocaleString(numberLocale)} />
+              <KPICard label={locale === 'en' ? 'Matches' : 'Parties'} value={hero.kpis.total_matches.toLocaleString(numberLocale)} compact />
 
               {/* 2 — KDA/FDA coloré comme les tuiles match */}
               {(() => {
                 const kda = hero.kpis.avg_kda
                 const kdaColor = kda == null ? 'text-muted-foreground' : kda > 1 ? 'text-green-400' : kda >= 0 ? 'text-blue-400' : 'text-red-400'
                 return (
-                  <div className="rounded-lg border border-border bg-muted px-4 py-3 text-center">
+                  <div className="flex h-full flex-col items-center justify-center rounded-lg border border-border bg-muted px-2 py-3 text-center">
                     <p className="text-xs text-muted-foreground">{locale === 'en' ? 'KDA' : 'FDA'}</p>
                     <p className={`text-xl font-bold ${kdaColor}`}>{kda != null ? kda.toFixed(2) : '—'}</p>
                   </div>
@@ -720,26 +812,61 @@ export function HomePage() {
               })()}
 
               {/* 3 — Taux de victoire + barre composite outcomes */}
-              <div className="rounded-lg border border-border bg-muted px-4 py-3 text-center">
-                <p className="text-xs text-muted-foreground">{locale === 'en' ? 'Win rate' : 'Taux de victoire'}</p>
-                <p className="text-xl font-bold text-primary">{`${(hero.kpis.win_rate * 100).toFixed(0)}%`}</p>
-                <div className="mt-2">
-                  <OutcomeBar
-                    wins={hero.kpis.wins}
-                    draws={hero.kpis.draws ?? 0}
-                    losses={hero.kpis.losses}
-                    dnfs={hero.kpis.dnfs ?? 0}
-                  />
-                </div>
-              </div>
+              {(() => {
+                const wins = hero.kpis.wins
+                const losses = hero.kpis.losses
+                const draws = hero.kpis.draws ?? 0
+                const dnfs = hero.kpis.dnfs ?? 0
+                const neutral = draws + dnfs
+                return (
+                  <div className="flex h-full flex-col items-center justify-center rounded-lg border border-border bg-muted px-4 py-3 text-center">
+                    <p className="text-xs text-muted-foreground">{locale === 'en' ? 'Win rate' : 'Taux de victoire'}</p>
+                    <p className="text-xl font-bold text-primary">{`${(hero.kpis.win_rate * 100).toFixed(0)}%`}</p>
+                    <div className="mt-2 w-full">
+                      <OutcomeBar wins={wins} draws={draws} losses={losses} dnfs={dnfs} />
+                    </div>
+                    <div className="mt-1.5 flex justify-center gap-3 text-xs font-semibold tabular-nums">
+                      <span style={{ color: '#10B981' }}>{wins}</span>
+                      <span style={{ color: '#EF4444' }}>{losses}</span>
+                      {neutral > 0 && <span style={{ color: '#3B82F6' }}>{neutral}</span>}
+                    </div>
+                  </div>
+                )
+              })()}
 
               {/* 4 — Durée totale */}
               {(() => {
                 const secs = hero.kpis.total_playtime_secs ?? 0
-                const totalMin = Math.floor(secs / 60)
-                const h = Math.floor(totalMin / 60)
-                const m = totalMin % 60
-                const formatted = secs <= 0 ? '—' : h === 0 ? `${m}min` : `${h}h${m > 0 ? String(m).padStart(2, '0') : ''}`
+                let formatted: string
+                if (secs <= 0) {
+                  formatted = '—'
+                } else {
+                  const totalMin = Math.floor(secs / 60)
+                  const h = Math.floor(totalMin / 60)
+                  const totalDays = Math.floor(h / 24)
+                  if (totalDays >= 365) {
+                    const years = Math.floor(totalDays / 365)
+                    const remDays = totalDays % 365
+                    const months = Math.floor(remDays / 30)
+                    const days = remDays % 30
+                    const parts = [locale === 'en' ? `${years}y` : `${years}a`]
+                    if (months > 0) parts.push(locale === 'en' ? `${months}mo` : `${months}m`)
+                    if (days > 0) parts.push(`${days}j`)
+                    formatted = parts.join(' ')
+                  } else if (totalDays >= 30) {
+                    const months = Math.floor(totalDays / 30)
+                    const days = totalDays % 30
+                    const parts = [locale === 'en' ? `${months}mo` : `${months}m`]
+                    if (days > 0) parts.push(`${days}j`)
+                    formatted = parts.join(' ')
+                  } else if (totalDays >= 1) {
+                    const remH = h % 24
+                    formatted = remH > 0 ? `${totalDays}j ${remH}h` : `${totalDays}j`
+                  } else {
+                    const m = totalMin % 60
+                    formatted = h === 0 ? `${m}min` : `${h}h${m > 0 ? String(m).padStart(2, '0') : ''}`
+                  }
+                }
                 return <KPICard label={locale === 'en' ? 'Total time' : 'Durée totale'} value={formatted} />
               })()}
 
@@ -752,25 +879,19 @@ export function HomePage() {
                 const def = defRes ?? 0
                 const total = off + def
                 return (
-                  <div className="rounded-lg border border-border bg-muted px-4 py-3 text-center">
+                  <div className="flex h-full flex-col items-center justify-center rounded-lg border border-border bg-muted px-4 py-3 text-center">
                     <p className="text-xs text-muted-foreground mb-1.5">{locale === 'en' ? 'Off. / Def.' : 'Rendement / Résist.'}</p>
                     {hasData ? (
-                      <>
+                      <div className="w-full">
                         <div className="h-2 w-full rounded-full overflow-hidden flex">
                           {off > 0 && <div className="h-full bg-[#4CAF50]" style={{ width: total > 0 ? `${(off / total) * 100}%` : '50%' }} />}
                           {def > 0 && <div className="h-full bg-[#38BDF8]" style={{ width: total > 0 ? `${(def / total) * 100}%` : '50%' }} />}
                         </div>
                         <div className="flex justify-center gap-3 mt-2">
-                          <div className="flex flex-col items-center gap-0.5">
-                            <span className="text-sm font-bold leading-none" style={{ color: '#4CAF50' }}>{off.toFixed(2)}</span>
-                            <span className="text-[10px] leading-none text-muted-foreground">{locale === 'en' ? 'Offens.' : 'Rdmt'}</span>
-                          </div>
-                          <div className="flex flex-col items-center gap-0.5">
-                            <span className="text-sm font-bold leading-none" style={{ color: '#38BDF8' }}>{def.toFixed(2)}</span>
-                            <span className="text-[10px] leading-none text-muted-foreground">{locale === 'en' ? 'Defens.' : 'Résist.'}</span>
-                          </div>
+                          <span className="text-sm font-bold leading-none" style={{ color: '#4CAF50' }}>{off.toFixed(2)}</span>
+                          <span className="text-sm font-bold leading-none" style={{ color: '#38BDF8' }}>{def.toFixed(2)}</span>
                         </div>
-                      </>
+                      </div>
                     ) : (
                       <p className="text-xl font-bold text-muted-foreground">—</p>
                     )}
@@ -785,7 +906,7 @@ export function HomePage() {
                   ? 'text-primary'
                   : acc > 55 ? 'text-green-400' : acc >= 40 ? 'text-amber-400' : 'text-red-400'
                 return (
-                  <div className="rounded-lg border border-border bg-muted px-4 py-3 text-center">
+                  <div className="flex h-full flex-col items-center justify-center rounded-lg border border-border bg-muted px-2 py-3 text-center">
                     <p className="text-xs text-muted-foreground">{locale === 'en' ? 'Accuracy' : 'Précision'}</p>
                     <p className={`text-xl font-bold ${accColor}`}>{acc != null ? `${acc.toFixed(0)}%` : '—'}</p>
                   </div>
@@ -793,9 +914,9 @@ export function HomePage() {
               })()}
 
               {/* 7 — Arme favorite */}
-              <div className="rounded-lg border border-border bg-muted px-4 py-3 text-center">
+              <div className="flex h-full flex-col items-center justify-center rounded-lg border border-border bg-muted px-4 py-3 text-center">
                 <p className="text-xs text-muted-foreground">{locale === 'en' ? 'Fav. weapon' : 'Arme favorite'}</p>
-                <p className="truncate text-sm font-bold text-primary leading-tight mt-1">
+                <p className="w-full truncate text-sm font-bold text-primary leading-tight mt-1">
                   {hero.kpis.favorite_weapon_name || '—'}
                 </p>
                 {hero.kpis.favorite_weapon_kills > 0 && (
@@ -916,17 +1037,16 @@ export function HomePage() {
         {/* Highlights */}
         <Card>
           <CardHeader>
-            <CardTitle className="text-base">Points saillants</CardTitle>
+            <CardTitle className="flex items-center gap-1.5 text-base">
+              {getHighlightText(locale).section.title}
+              <InfoTooltip content={<p>{getHighlightText(locale).section.tooltipIntro}</p>} />
+            </CardTitle>
           </CardHeader>
           <CardContent>
             {highlights.length > 0 ? (
-              <div className="grid grid-cols-1 gap-2 sm:grid-cols-3">
+              <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 lg:[grid-template-columns:repeat(20,minmax(0,1fr))]">
                 {highlights.map((h, i) => (
-                  <div key={i} className="rounded-md border border-border p-3">
-                    <p className="text-xs font-medium text-muted-foreground">{h.title}</p>
-                    <p className="text-base font-bold text-primary">{h.value}</p>
-                    <p className="text-xs text-muted-foreground">{h.detail}</p>
-                  </div>
+                  <HighlightTile key={i} h={h} locale={locale} />
                 ))}
               </div>
             ) : (

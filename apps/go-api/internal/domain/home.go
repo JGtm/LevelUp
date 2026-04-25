@@ -60,6 +60,7 @@ type HomeMatchRow struct {
 	RankInTeam         *int
 	HeadshotKills      int
 	PerfectKills       int
+	MaxKillingSpree    *int
 }
 
 // HomeSessionRow est une ligne brute chargée depuis Q27 (sessions enrichment).
@@ -187,10 +188,32 @@ type HomeSpartanIdentity struct {
 // ---------------------------------------------------------------------------
 
 // HighlightItem est un fait saillant synthétique pour la zone signaux.
+// ValueColor indique la couleur sémantique de Value : "positive", "warning", "neutral", "negative" ou "".
+// Slides permet à une tuile unique de faire défiler plusieurs faits (ex. « Série »).
+// Quand Slides est non vide, Value/Detail portent le premier slide ; le front défile les autres.
+//
+// TitleKey est la clé i18n (ex: "highlight.title.perf_avg"). Le front la résout.
+// DetailKey + DetailParams permettent de rendre un détail traduit avec paramètres.
 type HighlightItem struct {
-	Title  string `json:"title"`
-	Value  string `json:"value"`
-	Detail string `json:"detail"`
+	TitleKey     string           `json:"title_key,omitempty"`
+	Title        string           `json:"title,omitempty"` // legacy fallback, ne pas remplir pour les nouvelles tuiles
+	Value        string           `json:"value"`
+	Detail       string           `json:"detail,omitempty"` // détail déjà localisé (legacy) ou vide
+	DetailKey    string           `json:"detail_key,omitempty"`
+	DetailParams map[string]any   `json:"detail_params,omitempty"`
+	ValueColor   string           `json:"value_color,omitempty"`
+	Slides       []HighlightSlide `json:"slides,omitempty"`
+}
+
+// HighlightSlide est un fait secondaire dans une tuile à défilement.
+type HighlightSlide struct {
+	LabelKey     string         `json:"label_key,omitempty"`
+	Label        string         `json:"label,omitempty"` // legacy fallback
+	Value        string         `json:"value"`
+	Detail       string         `json:"detail,omitempty"`
+	DetailKey    string         `json:"detail_key,omitempty"`
+	DetailParams map[string]any `json:"detail_params,omitempty"`
+	ValueColor   string         `json:"value_color,omitempty"`
 }
 
 // ---------------------------------------------------------------------------
