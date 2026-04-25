@@ -14,12 +14,20 @@ import (
 	"context"
 	"log/slog"
 	"sync"
+	"time"
 
 	"levelup/go-api/internal/domain"
 	"levelup/go-api/internal/domain/title"
 	"levelup/go-api/internal/presence"
 	syncpkg "levelup/go-api/internal/sync"
 )
+
+// stopWaitTimeout est le délai max pendant lequel Stop() attend que les
+// goroutines internes (connectAndSubscribe, consumeQueue) retournent après
+// l'annulation du ctx. Au-delà, on rend la main pour ne jamais bloquer le
+// shutdown global — les goroutines qui ignoreraient le ctx seront tuées par
+// l'OS lors de l'os.Exit().
+const stopWaitTimeout = 3 * time.Second
 
 // DaemonController est l'interface exposée à l'API HTTP pour contrôler le daemon.
 // Implémenté par *Daemon. Nil autorisé dans les handlers (watcher désactivé).
@@ -62,6 +70,12 @@ type Daemon struct {
 
 	running bool
 	cancel  context.CancelFunc
+
+	// wg track les goroutines internes lancées dans Start() pour que Stop()
+	// puisse les attendre. Sans ce tracking, les goroutines connectAndSubscribe
+	// et consumeQueue peuvent encore toucher metaDB après que main.go a fait
+	// duckdb.CloseAll() → handles DuckDB orphelins lors d'un SIGKILL d'air.
+	wg sync.WaitGroup
 }
 
 // NewDaemon crée un watcher daemon (non démarré).
@@ -97,15 +111,25 @@ func (d *Daemon) Start(ctx context.Context, authHeader string, playerList []doma
 	d.initPlayers(ctx, playerList)
 
 	// Connecter RTA + souscrire les présences
-	go d.connectAndSubscribe(ctx)
+	d.wg.Add(1)
+	go func() {
+		defer d.wg.Done()
+		d.connectAndSubscribe(ctx)
+	}()
 
 	// Consommer la queue de matchs
-	go d.consumeQueue(ctx)
+	d.wg.Add(1)
+	go func() {
+		defer d.wg.Done()
+		d.consumeQueue(ctx)
+	}()
 
 	slog.InfoContext(ctx, "watcher_daemon: démarré")
 }
 
-// Stop arrête le daemon proprement.
+// Stop arrête le daemon proprement et attend que ses goroutines internes
+// retournent (avec un timeout dur de stopWaitTimeout pour ne jamais bloquer
+// le shutdown global).
 func (d *Daemon) Stop() {
 	if d.cancel != nil {
 		d.cancel()
@@ -113,6 +137,22 @@ func (d *Daemon) Stop() {
 	if d.rtaClient != nil {
 		_ = d.rtaClient.Close()
 	}
+
+	// Attendre les goroutines internes avec un timeout dur.
+	done := make(chan struct{})
+	go func() {
+		d.wg.Wait()
+		close(done)
+	}()
+	select {
+	case <-done:
+		slog.Info("watcher_daemon: goroutines internes terminées")
+	case <-time.After(stopWaitTimeout):
+		slog.Warn("watcher_daemon: timeout sur Wait — goroutines internes non terminées",
+			"timeout", stopWaitTimeout,
+		)
+	}
+
 	d.running = false
 	slog.Info("watcher_daemon: arrêté")
 }
