@@ -79,7 +79,7 @@ func (h *AuthHandler) StartDeviceFlow(w http.ResponseWriter, r *http.Request) {
 	flow, err := h.provider.InitDeviceFlow(r.Context())
 	if err != nil {
 		h.attempts.Update(attempt.AttemptID, func(a *auth_platform.Attempt) {
-			a.Status = "failed"
+			a.Status = auth_platform.AttemptStatusFailed
 			a.ErrorCode = "msal_init_error"
 			a.ErrorDetail = err.Error()
 		})
@@ -119,7 +119,7 @@ func (h *AuthHandler) GetDeviceFlowStatus(w http.ResponseWriter, r *http.Request
 	}
 
 	// Si l'auth a réussi, transférer les données Halo dans la session.
-	if snapshot.Status == "authorized" || snapshot.Status == "provisioned" {
+	if snapshot.Status == auth_platform.AttemptStatusAuthorized || snapshot.Status == auth_platform.AttemptStatusProvisioned {
 		sess.AuthReady = true
 		if snapshot.Gamertag != "" {
 			sess.LinkedHaloIdentity = &domain.HaloIdentity{
@@ -159,7 +159,7 @@ func (h *AuthHandler) pollDeviceFlow(attemptID string, flow auth_platform.Device
 	accessToken, err := flow.AcquireToken(ctx)
 	if err != nil {
 		h.attempts.Update(attemptID, func(a *auth_platform.Attempt) {
-			a.Status = "failed"
+			a.Status = auth_platform.AttemptStatusFailed
 			a.ErrorCode = "msal_acquire_error"
 			a.ErrorDetail = err.Error()
 		})
@@ -170,7 +170,7 @@ func (h *AuthHandler) pollDeviceFlow(attemptID string, flow auth_platform.Device
 	result, err := h.provider.Exchange(ctx, accessToken)
 	if err != nil {
 		h.attempts.Update(attemptID, func(a *auth_platform.Attempt) {
-			a.Status = "failed"
+			a.Status = auth_platform.AttemptStatusFailed
 			a.ErrorCode = "halo_exchange_error"
 			a.ErrorDetail = err.Error()
 		})
@@ -180,7 +180,7 @@ func (h *AuthHandler) pollDeviceFlow(attemptID string, flow auth_platform.Device
 	// Marquer comme autorisé et stocker tokens + identité dans l'attempt store.
 	// GetDeviceFlowStatus les transférera dans la session lors du prochain poll.
 	h.attempts.Update(attemptID, func(a *auth_platform.Attempt) {
-		a.Status = "authorized"
+		a.Status = auth_platform.AttemptStatusAuthorized
 		a.SpartanToken = result.Tokens.SpartanToken
 		a.ClearanceToken = result.Tokens.ClearanceToken
 		a.Gamertag = result.Gamertag

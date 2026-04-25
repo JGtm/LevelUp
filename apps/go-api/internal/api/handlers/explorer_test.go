@@ -60,10 +60,10 @@ func TestExplorerHandler_QueryPlayer_OK(t *testing.T) {
 		if slug != testPlayerSlug {
 			return nil, "", "", errors.New("not found")
 		}
-		return mock, "xuid", "gt", nil
+		return mock, testXUID, "gt", nil
 	}
 	matchHistF := func(_ context.Context, _ string) (port.MatchHistoryService, string, string, error) {
-		return &mockMatchHistoryForExplorer{}, "xuid", "gt", nil
+		return &mockMatchHistoryForExplorer{}, testXUID, "gt", nil
 	}
 	r := newExplorerRouter(explorerF, matchHistF)
 
@@ -83,7 +83,7 @@ func TestExplorerHandler_QueryPlayer_PlayerNotFound(t *testing.T) {
 		return nil, "", "", errors.New("player_not_found")
 	}
 	matchHistF := func(_ context.Context, _ string) (port.MatchHistoryService, string, string, error) {
-		return &mockMatchHistoryForExplorer{}, "xuid", "gt", nil
+		return &mockMatchHistoryForExplorer{}, testXUID, "gt", nil
 	}
 	r := newExplorerRouter(explorerF, matchHistF)
 
@@ -101,10 +101,10 @@ func TestExplorerHandler_QueryPlayer_PlayerNotFound(t *testing.T) {
 func TestExplorerHandler_QueryPlayer_MissingGamertag(t *testing.T) {
 	mock := &mockExplorerService{}
 	explorerF := func(_ context.Context, _ string) (port.ExplorerService, string, string, error) {
-		return mock, "xuid", "gt", nil
+		return mock, testXUID, "gt", nil
 	}
 	matchHistF := func(_ context.Context, _ string) (port.MatchHistoryService, string, string, error) {
-		return &mockMatchHistoryForExplorer{}, "xuid", "gt", nil
+		return &mockMatchHistoryForExplorer{}, testXUID, "gt", nil
 	}
 	r := newExplorerRouter(explorerF, matchHistF)
 
@@ -122,10 +122,10 @@ func TestExplorerHandler_QueryPlayer_MissingGamertag(t *testing.T) {
 func TestExplorerHandler_QueryPlayer_ServiceError(t *testing.T) {
 	mock := &mockExplorerService{err: errors.New("db_error")}
 	explorerF := func(_ context.Context, _ string) (port.ExplorerService, string, string, error) {
-		return mock, "xuid", "gt", nil
+		return mock, testXUID, "gt", nil
 	}
 	matchHistF := func(_ context.Context, _ string) (port.MatchHistoryService, string, string, error) {
-		return &mockMatchHistoryForExplorer{}, "xuid", "gt", nil
+		return &mockMatchHistoryForExplorer{}, testXUID, "gt", nil
 	}
 	r := newExplorerRouter(explorerF, matchHistF)
 

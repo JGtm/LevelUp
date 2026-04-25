@@ -18,6 +18,7 @@ func tempStorePath(t *testing.T) string {
 const (
 	testPass  = "Xk9mP2vL"
 	testPass2 = "Qr7nW4jT"
+	testUser  = "Alice"
 )
 
 func TestNewStore_IsEmpty(t *testing.T) {
@@ -33,11 +34,11 @@ func TestNewStore_IsEmpty(t *testing.T) {
 
 func TestCreate_And_Authenticate(t *testing.T) {
 	s := NewStore(tempStorePath(t))
-	user, err := s.Create("Alice", testPass, domain.RoleAdmin)
+	user, err := s.Create(testUser, testPass, domain.RoleAdmin)
 	if err != nil {
 		t.Fatalf("Create: %v", err)
 	}
-	if user.Username != "Alice" {
+	if user.Username != testUser {
 		t.Errorf("username = %q, want Alice", user.Username)
 	}
 	if user.Role != domain.RoleAdmin {
@@ -51,18 +52,18 @@ func TestCreate_And_Authenticate(t *testing.T) {
 	}
 
 	// Authenticate — succès.
-	auth, err := s.Authenticate("Alice", testPass)
+	auth, err := s.Authenticate(testUser, testPass)
 	if err != nil {
 		t.Fatalf("Authenticate: %v", err)
 	}
-	if auth.Username != "Alice" {
+	if auth.Username != testUser {
 		t.Errorf("auth username = %q, want Alice", auth.Username)
 	}
 }
 
 func TestCreate_DuplicateSlug(t *testing.T) {
 	s := NewStore(tempStorePath(t))
-	_, _ = s.Create("Alice", testPass, domain.RoleUser)
+	_, _ = s.Create(testUser, testPass, domain.RoleUser)
 	_, err := s.Create("alice", testPass2, domain.RoleUser) // même slug
 	if err != ErrUserAlreadyExists {
 		t.Errorf("err = %v, want ErrUserAlreadyExists", err)
@@ -93,9 +94,9 @@ func TestCreate_ValidationErrors(t *testing.T) {
 
 func TestAuthenticate_WrongPassword(t *testing.T) {
 	s := NewStore(tempStorePath(t))
-	_, _ = s.Create("Alice", testPass, domain.RoleUser)
+	_, _ = s.Create(testUser, testPass, domain.RoleUser)
 
-	_, err := s.Authenticate("Alice", "wrongXk9")
+	_, err := s.Authenticate(testUser, "wrongXk9")
 	if err != ErrInvalidCredentials {
 		t.Errorf("wrong pass: err = %v, want ErrInvalidCredentials", err)
 	}
@@ -112,13 +113,13 @@ func TestAuthenticate_UnknownUser(t *testing.T) {
 
 func TestGet_ExistingAndMissing(t *testing.T) {
 	s := NewStore(tempStorePath(t))
-	_, _ = s.Create("Alice", testPass, domain.RoleUser)
+	_, _ = s.Create(testUser, testPass, domain.RoleUser)
 
-	user, err := s.Get("Alice")
+	user, err := s.Get(testUser)
 	if err != nil {
 		t.Fatalf("Get existing: %v", err)
 	}
-	if user.Username != "Alice" {
+	if user.Username != testUser {
 		t.Errorf("username = %q, want Alice", user.Username)
 	}
 
@@ -127,7 +128,7 @@ func TestGet_ExistingAndMissing(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Get lowercase: %v", err)
 	}
-	if user2.Username != "Alice" {
+	if user2.Username != testUser {
 		t.Errorf("username = %q, want Alice", user2.Username)
 	}
 
@@ -139,7 +140,7 @@ func TestGet_ExistingAndMissing(t *testing.T) {
 
 func TestList(t *testing.T) {
 	s := NewStore(tempStorePath(t))
-	_, _ = s.Create("Alice", testPass, domain.RoleAdmin)
+	_, _ = s.Create(testUser, testPass, domain.RoleAdmin)
 	_, _ = s.Create("Bob", testPass2, domain.RoleUser)
 
 	list, err := s.List()
@@ -153,9 +154,9 @@ func TestList(t *testing.T) {
 
 func TestDelete(t *testing.T) {
 	s := NewStore(tempStorePath(t))
-	_, _ = s.Create("Alice", testPass, domain.RoleUser)
+	_, _ = s.Create(testUser, testPass, domain.RoleUser)
 
-	if err := s.Delete("Alice"); err != nil {
+	if err := s.Delete(testUser); err != nil {
 		t.Fatalf("Delete: %v", err)
 	}
 
@@ -165,7 +166,7 @@ func TestDelete(t *testing.T) {
 	}
 
 	// Delete utilisateur inexistant.
-	err := s.Delete("Alice")
+	err := s.Delete(testUser)
 	if err != ErrUserNotFound {
 		t.Errorf("Delete missing: err = %v, want ErrUserNotFound", err)
 	}
@@ -173,12 +174,12 @@ func TestDelete(t *testing.T) {
 
 func TestSetRole(t *testing.T) {
 	s := NewStore(tempStorePath(t))
-	_, _ = s.Create("Alice", testPass, domain.RoleUser)
+	_, _ = s.Create(testUser, testPass, domain.RoleUser)
 
-	if err := s.SetRole("Alice", domain.RoleAdmin); err != nil {
+	if err := s.SetRole(testUser, domain.RoleAdmin); err != nil {
 		t.Fatalf("SetRole: %v", err)
 	}
-	user, _ := s.Get("Alice")
+	user, _ := s.Get(testUser)
 	if user.Role != domain.RoleAdmin {
 		t.Errorf("role = %q, want admin", user.Role)
 	}
@@ -192,26 +193,26 @@ func TestSetRole(t *testing.T) {
 
 func TestResetPassword(t *testing.T) {
 	s := NewStore(tempStorePath(t))
-	_, _ = s.Create("Alice", testPass, domain.RoleUser)
+	_, _ = s.Create(testUser, testPass, domain.RoleUser)
 
-	if err := s.ResetPassword("Alice", testPass2); err != nil {
+	if err := s.ResetPassword(testUser, testPass2); err != nil {
 		t.Fatalf("ResetPassword: %v", err)
 	}
 
 	// Ancien mot de passe ne fonctionne plus.
-	_, err := s.Authenticate("Alice", testPass)
+	_, err := s.Authenticate(testUser, testPass)
 	if err != ErrInvalidCredentials {
 		t.Errorf("old pass should fail: err = %v", err)
 	}
 
 	// Nouveau mot de passe fonctionne.
-	_, err = s.Authenticate("Alice", testPass2)
+	_, err = s.Authenticate(testUser, testPass2)
 	if err != nil {
 		t.Errorf("new pass should work: err = %v", err)
 	}
 
 	// Password trop court.
-	err = s.ResetPassword("Alice", "shrt")
+	err = s.ResetPassword(testUser, "shrt")
 	if err != ErrPasswordTooShort {
 		t.Errorf("short pass: err = %v, want ErrPasswordTooShort", err)
 	}
@@ -219,12 +220,12 @@ func TestResetPassword(t *testing.T) {
 
 func TestLinkIdentity(t *testing.T) {
 	s := NewStore(tempStorePath(t))
-	_, _ = s.Create("Alice", testPass, domain.RoleUser)
+	_, _ = s.Create(testUser, testPass, domain.RoleUser)
 
-	if err := s.LinkIdentity("Alice", "AliceGT", "xuid123"); err != nil {
+	if err := s.LinkIdentity(testUser, "AliceGT", "xuid123"); err != nil {
 		t.Fatalf("LinkIdentity: %v", err)
 	}
-	user, _ := s.Get("Alice")
+	user, _ := s.Get(testUser)
 	if user.Gamertag != "AliceGT" {
 		t.Errorf("gamertag = %q, want AliceGT", user.Gamertag)
 	}
@@ -241,12 +242,12 @@ func TestLinkIdentity(t *testing.T) {
 
 func TestUpdateLastLogin(t *testing.T) {
 	s := NewStore(tempStorePath(t))
-	_, _ = s.Create("Alice", testPass, domain.RoleUser)
+	_, _ = s.Create(testUser, testPass, domain.RoleUser)
 
-	if err := s.UpdateLastLogin("Alice"); err != nil {
+	if err := s.UpdateLastLogin(testUser); err != nil {
 		t.Fatalf("UpdateLastLogin: %v", err)
 	}
-	user, _ := s.Get("Alice")
+	user, _ := s.Get(testUser)
 	if user.LastLoginAt == "" {
 		t.Error("LastLoginAt devrait être défini")
 	}
@@ -255,15 +256,15 @@ func TestUpdateLastLogin(t *testing.T) {
 func TestPersistence(t *testing.T) {
 	path := tempStorePath(t)
 	s1 := NewStore(path)
-	_, _ = s1.Create("Alice", testPass, domain.RoleAdmin)
+	_, _ = s1.Create(testUser, testPass, domain.RoleAdmin)
 
 	// Nouvel objet Store sur le même fichier.
 	s2 := NewStore(path)
-	user, err := s2.Get("Alice")
+	user, err := s2.Get(testUser)
 	if err != nil {
 		t.Fatalf("persistence Get: %v", err)
 	}
-	if user.Username != "Alice" {
+	if user.Username != testUser {
 		t.Errorf("persistence username = %q, want Alice", user.Username)
 	}
 }
@@ -274,7 +275,7 @@ func TestFilePermissions(t *testing.T) {
 	}
 	path := tempStorePath(t)
 	s := NewStore(path)
-	_, _ = s.Create("Alice", testPass, domain.RoleUser)
+	_, _ = s.Create(testUser, testPass, domain.RoleUser)
 
 	info, err := os.Stat(path)
 	if err != nil {

@@ -275,17 +275,25 @@ func sessionIsRanked(matches []domain.StatsMatchRow) bool {
 	return ranked*2 >= len(matches)
 }
 
+// Catégories de session retournées par classifySessionCategory.
+const (
+	sessionCategoryFirefight = "Firefight"
+	sessionCategoryRanked    = "Ranked"
+	sessionCategoryBTB       = "BTB"
+	sessionCategoryArena     = "Arena"
+)
+
 func classifySessionCategory(match domain.StatsMatchRow) string {
 	lower := strings.ToLower(match.PlaylistName + " " + match.PairName)
 	switch {
 	case strings.Contains(lower, "firefight"):
-		return "Firefight"
+		return sessionCategoryFirefight
 	case match.IsRanked || strings.Contains(lower, "ranked") || strings.Contains(lower, "classé"):
-		return "Ranked"
+		return sessionCategoryRanked
 	case strings.Contains(lower, "btb") || strings.Contains(lower, "big team"):
-		return "BTB"
+		return sessionCategoryBTB
 	default:
-		return "Arena"
+		return sessionCategoryArena
 	}
 }
 

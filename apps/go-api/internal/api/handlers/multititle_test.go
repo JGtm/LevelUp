@@ -46,7 +46,7 @@ func newCompareMultiTitleRouter(svc *captureCompareService) *chi.Mux {
 	})
 
 	factory := func(_ context.Context, slug string) (port.CompareService, string, string, error) {
-		return svc, "xuid-1", "TestPlayer", nil
+		return svc, testXUID1, "TestPlayer", nil
 	}
 
 	r := chi.NewRouter()
@@ -161,7 +161,7 @@ func newLeaderboardMultiTitleRouter(svc *captureLeaderboardService) *chi.Mux {
 	})
 
 	factory := func(_ context.Context, slug string) (port.LeaderboardService, string, string, error) {
-		return svc, "xuid-1", "TestPlayer", nil
+		return svc, testXUID1, "TestPlayer", nil
 	}
 
 	r := chi.NewRouter()

@@ -7,15 +7,17 @@ import (
 	"levelup/go-api/internal/domain"
 )
 
+const heroPlaylist = "Hero"
+
 // ---------------------------------------------------------------------------
 // formatRankLabel
 // ---------------------------------------------------------------------------
 
 func TestFormatRankLabel_WithLabel(t *testing.T) {
-	lbl := "Hero"
+	lbl := heroPlaylist
 	rank := &domain.CareerRankData{RankLabel: &lbl}
 	got := formatRankLabel(rank)
-	if got != "Hero" {
+	if got != heroPlaylist {
 		t.Errorf("expected Hero, got %s", got)
 	}
 }
@@ -267,10 +269,10 @@ func TestBuildCareerSummary_Nil(t *testing.T) {
 }
 
 func TestBuildCareerSummary_WithData(t *testing.T) {
-	lbl := "Hero"
+	lbl := heroPlaylist
 	xp := 100000
 	nextXP := 5000
-	name := "Hero"
+	name := heroPlaylist
 	tier := "I"
 	rank := &domain.CareerRankData{
 		RankNumber:    272,
@@ -283,7 +285,7 @@ func TestBuildCareerSummary_WithData(t *testing.T) {
 		RecordedAt:    time.Now(),
 	}
 	s := buildCareerSummary(rank)
-	if s.RankLabel != "Hero" {
+	if s.RankLabel != heroPlaylist {
 		t.Errorf("expected Hero, got %s", s.RankLabel)
 	}
 	if s.XPTotal != 100000 {

@@ -9,6 +9,8 @@ import (
 	"levelup/go-api/internal/domain"
 )
 
+const slayerMode = "Slayer"
+
 // --- mock ---
 
 type mockMatchHistoryRepo struct {
@@ -30,7 +32,7 @@ func (m *mockMatchHistoryRepo) LoadMapWinRates(_ context.Context) (map[string][2
 func TestMatchHistoryService_GetPage_OK(t *testing.T) {
 	now := time.Now()
 	mapName := "Aquarius"
-	pairName := "Slayer"
+	pairName := slayerMode
 	repo := &mockMatchHistoryRepo{
 		rows: []domain.MatchHistoryRawRow{
 			{MatchID: "m1", StartTime: &now, MapName: &mapName, PairName: &pairName, Outcome: 2, Kills: 10, Deaths: 5},

@@ -13,6 +13,12 @@ import (
 	"levelup/go-api/internal/domain"
 )
 
+// Codes de langue Waypoint utilisés pour l'i18n des challenges et BP.
+const (
+	langFR = "fr-FR"
+	langEN = "en-US"
+)
+
 type challengeDeckRaw struct {
 	Expiration struct {
 		ISO8601Date string `json:"ISO8601Date"`
@@ -51,7 +57,7 @@ type challengeDefinitionRaw struct {
 func (p *HaloProvider) buildActiveChallengeItems(ctx context.Context, tokens *domain.HaloTokens, decks []challengeDeckRaw) []domain.ChallengeItem {
 	seen := make(map[string]struct{})
 	items := make([]domain.ChallengeItem, 0)
-	lang := "fr-FR"
+	lang := langFR
 
 	for _, deck := range decks {
 		for _, ch := range deck.ActiveChallenges {
@@ -257,20 +263,20 @@ func resolveChallengeLocalizedValue(data any, lang string) string {
 func normalizeChallengeLang(lang string) string {
 	switch strings.ToLower(strings.TrimSpace(lang)) {
 	case "fr", "fr-fr":
-		return "fr-FR"
+		return langFR
 	case "en", "en-us":
-		return "en-US"
+		return langEN
 	default:
-		return "fr-FR"
+		return langFR
 	}
 }
 
 func challengeLanguageCandidates(lang string) []string {
-	if lang == "fr-FR" {
-		return []string{"fr-FR", "fr"}
+	if lang == langFR {
+		return []string{langFR, "fr"}
 	}
-	if lang == "en-US" {
-		return []string{"en-US", "en-GB", "en"}
+	if lang == langEN {
+		return []string{langEN, "en-GB", "en"}
 	}
 	short := strings.Split(lang, "-")[0]
 	return []string{lang, short}

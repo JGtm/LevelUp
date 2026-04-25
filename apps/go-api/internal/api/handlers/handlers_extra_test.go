@@ -146,7 +146,7 @@ func TestMatchHistoryHandler_Export_OK(t *testing.T) {
 		if slug != testPlayerSlug {
 			return nil, "", "", errors.New("not_found")
 		}
-		return mock, "xuid1", "Player1", nil
+		return mock, testXUID1B, "Player1", nil
 	}
 	r := newMatchHistoryRouter(factory)
 	req := httptest.NewRequest(http.MethodGet, "/players/test-player/pages/match-history/export?token="+makeExportToken(t), nil)
@@ -213,13 +213,13 @@ func TestExplorerHandler_QueryMatches_OK(t *testing.T) {
 		page: domain.MatchHistoryPageResponse{},
 	}
 	explorerF := func(_ context.Context, _ string) (port.ExplorerService, string, string, error) {
-		return &mockExplorerService{}, "xuid1", "GT", nil
+		return &mockExplorerService{}, testXUID1B, "GT", nil
 	}
 	matchHistF := func(_ context.Context, slug string) (port.MatchHistoryService, string, string, error) {
 		if slug != testPlayerSlug {
 			return nil, "", "", errors.New("not_found")
 		}
-		return mockMH, "xuid1", "GT", nil
+		return mockMH, testXUID1B, "GT", nil
 	}
 	r := newExplorerRouter(explorerF, matchHistF)
 	body := `{"filters":{},"pagination":{"page":1,"per_page":20}}`
@@ -320,7 +320,7 @@ func TestCitationsHandler_GetCitations_WithCategoryFilter(t *testing.T) {
 		if slug != testPlayerSlug {
 			return nil, "", "", errors.New("not_found")
 		}
-		return mock, "xuid1", "GT", nil
+		return mock, testXUID1B, "GT", nil
 	}
 	r := newCitationsRouter(factory)
 	body := `{"category":"Multikill"}`
@@ -346,7 +346,7 @@ func TestCitationsHandler_GetCommendations_WithCategoryFilter(t *testing.T) {
 		if slug != testPlayerSlug {
 			return nil, "", "", errors.New("not_found")
 		}
-		return mock, "xuid1", "GT", nil
+		return mock, testXUID1B, "GT", nil
 	}
 	r := newCitationsRouter(factory)
 	body := `{"category":"Combat"}`
@@ -502,7 +502,7 @@ func TestMatchHistoryHandler_Query_WithExportHint(t *testing.T) {
 		if slug != testPlayerSlug {
 			return nil, "", "", errors.New("not_found")
 		}
-		return mock, "xuid1", "Player1", nil
+		return mock, testXUID1B, "Player1", nil
 	}
 	r := newMatchHistoryRouter(factory)
 	body := `{"filters":{},"pagination":{"page":1,"page_size":20},"include_export_hint":true}`

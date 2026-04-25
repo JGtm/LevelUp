@@ -25,6 +25,13 @@ import (
 	"golang.org/x/sync/singleflight"
 )
 
+// Hints d'erreur retournés dans domain.*Response.ErrorHint pour signaler
+// pourquoi un appel live a échoué côté provider Waypoint.
+const (
+	errHintAuthRequired = "auth_required"
+	errHintFetchError   = "fetch_error"
+)
+
 // ---------------------------------------------------------------------------
 // Rate limiter (token bucket)
 // ---------------------------------------------------------------------------
@@ -236,14 +243,14 @@ func (p *HaloProvider) GetBattlePassWithRaw(ctx context.Context) (domain.BattleP
 	tokens := ctxkeys.HaloTokens(ctx)
 	xuid := ctxkeys.HaloXUID(ctx)
 	if tokens == nil || xuid == "" {
-		hint := "auth_required"
+		hint := errHintAuthRequired
 		return domain.BattlePassResponse{Available: false, ErrorHint: &hint}, nil
 	}
 
 	resp, raw, err := p.fetchBattlePass(ctx, tokens, xuid)
 	if err != nil {
 		slog.WarnContext(ctx, "halo_provider: battle_pass fetch failed", "xuid", xuid, "err", err)
-		hint := "fetch_error"
+		hint := errHintFetchError
 		return domain.BattlePassResponse{Available: false, ErrorHint: &hint}, nil
 	}
 	return resp, raw
@@ -345,7 +352,7 @@ func (p *HaloProvider) GetChallengesWithRaw(ctx context.Context) (domain.Challen
 	tokens := ctxkeys.HaloTokens(ctx)
 	xuid := ctxkeys.HaloXUID(ctx)
 	if tokens == nil || xuid == "" {
-		hint := "auth_required"
+		hint := errHintAuthRequired
 		return domain.ChallengesResponse{Available: false, ErrorHint: &hint}, nil
 	}
 
@@ -363,13 +370,13 @@ func (p *HaloProvider) GetChallengesWithRaw(ctx context.Context) (domain.Challen
 	})
 	if err != nil {
 		slog.WarnContext(ctx, "halo_provider: challenges fetch failed", "xuid", xuid, "err", err)
-		hint := "fetch_error"
+		hint := errHintFetchError
 		return domain.ChallengesResponse{Available: false, ErrorHint: &hint}, nil
 	}
 
 	resolved, ok := result.(challengesFetchResult)
 	if !ok {
-		hint := "fetch_error"
+		hint := errHintFetchError
 		slog.WarnContext(ctx, "halo_provider: challenges fetch invalid result", "xuid", xuid)
 		return domain.ChallengesResponse{Available: false, ErrorHint: &hint}, nil
 	}

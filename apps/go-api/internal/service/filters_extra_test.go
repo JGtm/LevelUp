@@ -7,6 +7,11 @@ import (
 	"levelup/go-api/internal/domain"
 )
 
+const (
+	helloLiteral = "hello"
+	aquariusMap  = "Aquarius"
+)
+
 // ---------- applySessionFilter ----------
 
 func TestApplySessionFilter_Empty(t *testing.T) {
@@ -101,8 +106,8 @@ func TestDerefStr_Nil(t *testing.T) {
 }
 
 func TestDerefStr_Value(t *testing.T) {
-	s := "hello"
-	if got := derefStr(&s); got != "hello" {
+	s := helloLiteral
+	if got := derefStr(&s); got != helloLiteral {
 		t.Errorf("expected hello, got %s", got)
 	}
 }
@@ -204,7 +209,7 @@ func TestFilterBySet_WithValues(t *testing.T) {
 // ---------- mapUI ----------
 
 func TestMapUI_FRPreferred(t *testing.T) {
-	en, fr := "Aquarius", "Verseau"
+	en, fr := aquariusMap, "Verseau"
 	row := domain.FilterMatchRow{MapName: &en, MapNameFR: &fr}
 	if got := mapUI(row); got != "Verseau" {
 		t.Errorf("expected FR, got %s", got)
@@ -212,9 +217,9 @@ func TestMapUI_FRPreferred(t *testing.T) {
 }
 
 func TestMapUI_FallbackEN(t *testing.T) {
-	en := "Aquarius"
+	en := aquariusMap
 	row := domain.FilterMatchRow{MapName: &en}
-	if got := mapUI(row); got != "Aquarius" {
+	if got := mapUI(row); got != aquariusMap {
 		t.Errorf("expected EN fallback, got %s", got)
 	}
 }

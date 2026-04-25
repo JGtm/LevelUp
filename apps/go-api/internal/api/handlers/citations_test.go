@@ -48,7 +48,7 @@ func TestCitationsHandler_GetCitations_OK(t *testing.T) {
 		if slug != testPlayerSlug {
 			return nil, "", "", errors.New("player_not_found")
 		}
-		return mock, "xuid-1", "TestPlayer", nil
+		return mock, testXUID1, "TestPlayer", nil
 	}
 	r := newCitationsRouter(factory)
 	req := httptest.NewRequest(http.MethodPost, "/players/test-player/pages/citations", nil)
@@ -77,7 +77,7 @@ func TestCitationsHandler_GetCitations_PlayerNotFound(t *testing.T) {
 func TestCitationsHandler_GetCitations_ServiceError(t *testing.T) {
 	mock := &mockCitationsService{citationsErr: errors.New("db_error")}
 	factory := func(_ context.Context, _ string) (port.CitationsService, string, string, error) {
-		return mock, "xuid", "gt", nil
+		return mock, testXUID, "gt", nil
 	}
 	r := newCitationsRouter(factory)
 	req := httptest.NewRequest(http.MethodPost, "/players/test-player/pages/citations", nil)
@@ -92,7 +92,7 @@ func TestCitationsHandler_GetCitations_ServiceError(t *testing.T) {
 func TestCitationsHandler_GetCitations_InvalidBody(t *testing.T) {
 	mock := &mockCitationsService{citationsPage: &domain.CitationsPageResponse{}}
 	factory := func(_ context.Context, _ string) (port.CitationsService, string, string, error) {
-		return mock, "xuid", "gt", nil
+		return mock, testXUID, "gt", nil
 	}
 	r := newCitationsRouter(factory)
 	body := strings.NewReader("{invalid json")
@@ -109,7 +109,7 @@ func TestCitationsHandler_GetCitations_InvalidBody(t *testing.T) {
 func TestCitationsHandler_GetCommendations_OK(t *testing.T) {
 	mock := &mockCitationsService{commendationsPage: &domain.CommendationsPageResponse{}}
 	factory := func(_ context.Context, _ string) (port.CitationsService, string, string, error) {
-		return mock, "xuid-1", "TestPlayer", nil
+		return mock, testXUID1, "TestPlayer", nil
 	}
 	r := newCitationsRouter(factory)
 	req := httptest.NewRequest(http.MethodPost, "/players/test-player/pages/commendations", nil)
@@ -124,7 +124,7 @@ func TestCitationsHandler_GetCommendations_OK(t *testing.T) {
 func TestCitationsHandler_GetCommendations_ServiceError(t *testing.T) {
 	mock := &mockCitationsService{commendationsErr: errors.New("db_error")}
 	factory := func(_ context.Context, _ string) (port.CitationsService, string, string, error) {
-		return mock, "xuid", "gt", nil
+		return mock, testXUID, "gt", nil
 	}
 	r := newCitationsRouter(factory)
 	req := httptest.NewRequest(http.MethodPost, "/players/test-player/pages/commendations", nil)

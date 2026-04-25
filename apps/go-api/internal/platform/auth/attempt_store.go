@@ -17,6 +17,15 @@ import (
 	"github.com/google/uuid"
 )
 
+// Statuts possibles d'une Attempt (champ Status).
+const (
+	AttemptStatusPending     = "pending"
+	AttemptStatusAuthorized  = "authorized"
+	AttemptStatusProvisioned = "provisioned"
+	AttemptStatusFailed      = "failed"
+	AttemptStatusExpired     = "expired"
+)
+
 // Attempt représente une tentative Device Code Flow en cours.
 type Attempt struct {
 	AttemptID       string

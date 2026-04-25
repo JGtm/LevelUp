@@ -19,6 +19,10 @@ import (
 	"levelup/go-api/internal/port"
 )
 
+// trendLabelStable est le label retourné quand une tendance est stable
+// (delta nul, fenêtre identique). Partagé entre career_service et timeseries_service.
+const trendLabelStable = "stable"
+
 // Constantes domaine Halo Infinite.
 const (
 	xpHeroTotal       = 9_319_350
@@ -445,7 +449,7 @@ func buildLUSRSummary(history []domain.LUSRCheckpointDTO) domain.LUSRSummary {
 		case delta < 0:
 			s = fmt.Sprintf("%.0f", delta)
 		default:
-			s = "stable"
+			s = trendLabelStable
 		}
 		trendLabel = &s
 	}

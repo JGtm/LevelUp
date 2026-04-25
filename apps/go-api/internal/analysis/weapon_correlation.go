@@ -11,6 +11,14 @@ import (
 	"sort"
 )
 
+// Niveaux de confiance d'attribution arme (utilisés par weapon_correlation et weapon_parser).
+const (
+	confidenceHigh   = "high"
+	confidenceMedium = "medium"
+	confidenceLow    = "low"
+	confidenceNone   = "none"
+)
+
 // Kill représente un kill à attribuer.
 type Kill struct {
 	MatchID   string
@@ -113,8 +121,8 @@ func makeSentinel(kill Kill, matchID string, weaponID uint64) KillAttribution {
 		XUID:            kill.XUID,
 		TimeMS:          kill.TimeMS,
 		WeaponID:        &wid,
-		Confidence:      "none",
-		AttributionPath: "none",
+		Confidence:      confidenceNone,
+		AttributionPath: confidenceNone,
 	}
 }
 
@@ -216,11 +224,11 @@ func fallbackFormulaA(
 	var conf string
 	switch {
 	case widInt != nil && !swap:
-		conf = "medium"
+		conf = confidenceMedium
 	case widInt != nil:
-		conf = "low"
+		conf = confidenceLow
 	default:
-		conf = "none"
+		conf = confidenceNone
 	}
 
 	piPtr := &pi

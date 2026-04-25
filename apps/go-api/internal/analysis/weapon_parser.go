@@ -137,12 +137,12 @@ func FindChunkAtTime(chunksSorted []int, timing []ChunkTiming, tMS int) int {
 func ComputeConfidence(weaponID uint64, deltaMS int) string {
 	t := GetTiming(weaponID)
 	if deltaMS < t.SwapMS {
-		return "high"
+		return confidenceHigh
 	}
 	if deltaMS <= t.TravelMax {
-		return "medium"
+		return confidenceMedium
 	}
-	return "low"
+	return confidenceLow
 }
 
 // ══════════════════════════════════════════════════════════════════════════════

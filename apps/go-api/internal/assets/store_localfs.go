@@ -11,6 +11,12 @@ import (
 	"strings"
 )
 
+// MIME types des assets binaires gérés par le package.
+const (
+	MimeImagePNG  = "image/png"
+	MimeImageJPEG = "image/jpeg"
+)
+
 // LocalFSStore implémente BinaryStore sur le filesystem local.
 // Les binaires sont stockés sous {RootDir}/{kind}/{titleID}/{id}[.{variant}].{ext}
 // L'écriture est atomique via tmp+rename.
@@ -110,10 +116,10 @@ func extensionForKind(k Kind) string {
 // detectContentType détecte le MIME type depuis les magic bytes.
 func detectContentType(data []byte) string {
 	if len(data) >= 8 && bytes.Equal(data[:8], []byte{0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a}) {
-		return "image/png"
+		return MimeImagePNG
 	}
 	if len(data) >= 3 && bytes.Equal(data[:3], []byte{0xff, 0xd8, 0xff}) {
-		return "image/jpeg"
+		return MimeImageJPEG
 	}
 	return "application/octet-stream"
 }

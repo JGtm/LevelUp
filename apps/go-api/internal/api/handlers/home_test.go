@@ -57,7 +57,7 @@ func TestHomeHandler_GetHomePage_OK(t *testing.T) {
 		if slug != testPlayerSlug {
 			return nil, ctx, "", "", errors.New("player_not_found")
 		}
-		return mock, ctx, "xuid-1", "TestPlayer", nil
+		return mock, ctx, testXUID1, "TestPlayer", nil
 	}
 	r := newHomeRouter(factory, nil)
 	req := httptest.NewRequest(http.MethodGet, "/players/test-player/pages/home", nil)
@@ -89,7 +89,7 @@ func TestHomeHandler_GetHomePage_PlayerNotFound(t *testing.T) {
 func TestHomeHandler_GetHomePage_ServiceError(t *testing.T) {
 	mock := &mockHomeService{pageErr: errors.New("db_error")}
 	factory := func(ctx context.Context, _ string) (port.HomeService, context.Context, string, string, error) {
-		return mock, ctx, "xuid", "gt", nil
+		return mock, ctx, testXUID, "gt", nil
 	}
 	r := newHomeRouter(factory, nil)
 	req := httptest.NewRequest(http.MethodGet, "/players/test-player/pages/home", nil)
@@ -104,7 +104,7 @@ func TestHomeHandler_GetHomePage_ServiceError(t *testing.T) {
 func TestHomeHandler_GetBattlePass_OK(t *testing.T) {
 	mock := &mockHomeService{battlePass: domain.BattlePassResponse{}}
 	factory := func(ctx context.Context, _ string) (port.HomeService, context.Context, string, string, error) {
-		return mock, ctx, "xuid", "gt", nil
+		return mock, ctx, testXUID, "gt", nil
 	}
 	r := newHomeRouter(factory, nil)
 	req := httptest.NewRequest(http.MethodGet, "/players/test-player/battlepass", nil)
@@ -119,7 +119,7 @@ func TestHomeHandler_GetBattlePass_OK(t *testing.T) {
 func TestHomeHandler_GetChallenges_OK(t *testing.T) {
 	mock := &mockHomeService{challenges: domain.ChallengesResponse{}}
 	factory := func(ctx context.Context, _ string) (port.HomeService, context.Context, string, string, error) {
-		return mock, ctx, "xuid", "gt", nil
+		return mock, ctx, testXUID, "gt", nil
 	}
 	r := newHomeRouter(factory, nil)
 	req := httptest.NewRequest(http.MethodGet, "/players/test-player/challenges", nil)
@@ -140,7 +140,7 @@ func TestHomeHandler_GetHomePage_UsesSettingsLanguage(t *testing.T) {
 	settingsStore := settings_platform.NewStore(settingsPath)
 	mock := &mockHomeService{page: &domain.HomePageResponse{}}
 	factory := func(ctx context.Context, _ string) (port.HomeService, context.Context, string, string, error) {
-		return mock, ctx, "xuid", "gt", nil
+		return mock, ctx, testXUID, "gt", nil
 	}
 	r := newHomeRouter(factory, settingsStore)
 	req := httptest.NewRequest(http.MethodGet, "/players/test-player/pages/home", nil)
