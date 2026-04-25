@@ -139,6 +139,8 @@ export function MediaPage() {
           startIndex={lightboxIdx}
           onClose={() => setLightboxIdx(null)}
           likeDisabled={toggleMediaLike.isPending}
+          hasNextPage={page < totalPages}
+          onLoadNextPage={() => setPage((current) => current + 1)}
         />
       )}
 

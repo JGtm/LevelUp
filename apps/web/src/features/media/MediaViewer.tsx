@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react'
+import React, { useCallback, useEffect, useRef, useState } from 'react'
 import { Link } from '@tanstack/react-router'
 import { Badge } from '@/components/ui/badge'
 import { GifHoverThumbnail } from '@/components/ui/gif-hover-thumbnail'
@@ -190,38 +190,95 @@ interface MediaLightboxProps {
   startIndex: number
   onClose: () => void
   likeDisabled?: boolean
+  hasNextPage?: boolean
+  onLoadNextPage?: () => void
 }
 
-export function MediaLightbox({ items, onToggleLike, startIndex, onClose, likeDisabled = false }: MediaLightboxProps) {
+const IMAGE_AUTOCHAIN_DELAY_MS = 7000
+const FADE_TRANSITION_MS = 250
+
+export function MediaLightbox({
+  items,
+  onToggleLike,
+  startIndex,
+  onClose,
+  likeDisabled = false,
+  hasNextPage = false,
+  onLoadNextPage,
+}: MediaLightboxProps) {
   const [index, setIndex] = useState(startIndex)
+  const [autoChain, setAutoChain] = useState(false)
+  const [pendingPageAdvance, setPendingPageAdvance] = useState(false)
+  const [contentVisible, setContentVisible] = useState(true)
 
   useEffect(() => {
     setIndex(startIndex)
   }, [startIndex])
 
+  // Quand une nouvelle page arrive après une demande d'avance, saute à l'item 0.
   useEffect(() => {
-    function onKeyDown(event: KeyboardEvent) {
-      if (event.key === 'ArrowLeft') {
-        setIndex((current) => Math.max(0, current - 1))
-      }
-      if (event.key === 'ArrowRight') {
-        setIndex((current) => Math.min(items.length - 1, current + 1))
-      }
-      if (event.key === 'Escape') {
-        onClose()
-      }
+    if (pendingPageAdvance && items.length > 0) {
+      setIndex(0)
+      setPendingPageAdvance(false)
     }
-
-    window.addEventListener('keydown', onKeyDown)
-    return () => window.removeEventListener('keydown', onKeyDown)
-  }, [items.length, onClose])
+  }, [items, pendingPageAdvance])
 
   const item = items[index]
+  const isLast = index >= items.length - 1
+  const isClip = item?.kind === 'clip'
+  const canAdvanceFurther = !isLast || hasNextPage
+
+  // Brève transition fade-in à chaque changement d'item (atténue la coupure
+  // quand l'auto-chain enchaîne deux médias).
+  useEffect(() => {
+    if (!item) return
+    setContentVisible(false)
+    const timer = window.setTimeout(() => setContentVisible(true), 30)
+    return () => window.clearTimeout(timer)
+  }, [item?.file_path])
+
+  const goNext = useCallback(() => {
+    setIndex((current) => {
+      if (current < items.length - 1) return current + 1
+      if (hasNextPage && onLoadNextPage && !pendingPageAdvance) {
+        setPendingPageAdvance(true)
+        onLoadNextPage()
+      }
+      return current
+    })
+  }, [items.length, hasNextPage, onLoadNextPage, pendingPageAdvance])
+
+  const goPrev = useCallback(() => {
+    setIndex((current) => Math.max(0, current - 1))
+  }, [])
+
+  useEffect(() => {
+    function onKeyDown(event: KeyboardEvent) {
+      if (event.key === 'ArrowLeft') goPrev()
+      if (event.key === 'ArrowRight') goNext()
+      if (event.key === 'Escape') onClose()
+    }
+    window.addEventListener('keydown', onKeyDown)
+    return () => window.removeEventListener('keydown', onKeyDown)
+  }, [goNext, goPrev, onClose])
+
+  // Image auto-advance — clips s'enchaînent via onEnded sur le <video>.
+  useEffect(() => {
+    if (!autoChain || !item || isClip || !canAdvanceFurther || pendingPageAdvance) return
+    const timeout = setTimeout(goNext, IMAGE_AUTOCHAIN_DELAY_MS)
+    return () => clearTimeout(timeout)
+  }, [autoChain, item, isClip, canAdvanceFurther, pendingPageAdvance, goNext])
+
+  const handleVideoEnded = useCallback(() => {
+    if (autoChain && canAdvanceFurther && !pendingPageAdvance) goNext()
+  }, [autoChain, canAdvanceFurther, pendingPageAdvance, goNext])
+
   if (!item) {
     return null
   }
 
   const heading = formatLightboxHeading(item, index, items.length)
+  const autoChainLabel = autoChain ? 'Enchaînement actif' : 'Activer l\'enchaînement'
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/90" onClick={onClose}>
@@ -239,34 +296,61 @@ export function MediaLightbox({ items, onToggleLike, startIndex, onClose, likeDi
         </div>
 
         <div className="relative flex items-center justify-center overflow-hidden bg-black" style={{ maxHeight: '80vh' }}>
-          {item.kind === 'clip' ? (
-            <video
-              src={item.file_path}
-              controls
-              autoPlay
-              playsInline
-              preload="metadata"
-              className="max-h-full max-w-full"
-            />
-          ) : (
-            <img src={item.file_path} alt={item.basename} className="max-h-full max-w-full object-contain" />
-          )}
+          <div
+            className="flex max-h-full max-w-full items-center justify-center transition-opacity ease-out"
+            style={{
+              opacity: contentVisible ? 1 : 0,
+              transitionDuration: `${FADE_TRANSITION_MS}ms`,
+            }}
+          >
+            {isClip ? (
+              <video
+                key={item.file_path}
+                src={item.file_path}
+                controls
+                autoPlay
+                playsInline
+                preload="metadata"
+                onEnded={handleVideoEnded}
+                className="max-h-full max-w-full"
+              />
+            ) : (
+              <img src={item.file_path} alt={item.basename} className="max-h-full max-w-full object-contain" />
+            )}
+          </div>
+
+          <button
+            type="button"
+            onClick={() => setAutoChain((current) => !current)}
+            aria-pressed={autoChain}
+            aria-label={autoChainLabel}
+            title={autoChainLabel}
+            className={`absolute right-2 top-2 inline-flex items-center gap-1.5 rounded-full border px-3 py-1.5 text-xs font-medium backdrop-blur transition-colors ${
+              autoChain
+                ? 'border-rose-400/60 bg-rose-500/20 text-rose-200 hover:bg-rose-500/30'
+                : 'border-white/20 bg-black/60 text-white/85 hover:border-white/40 hover:text-white'
+            }`}
+          >
+            <span aria-hidden="true">⏵</span>
+            <span>Enchaîner</span>
+          </button>
 
           {index > 0 && (
             <button
               type="button"
-              onClick={() => setIndex((current) => Math.max(0, current - 1))}
+              onClick={goPrev}
               className="absolute left-2 top-1/2 flex h-10 w-10 -translate-y-1/2 items-center justify-center rounded-full bg-black/50 text-2xl text-white hover:bg-black/80"
               aria-label="Précédent"
             >
               ◀
             </button>
           )}
-          {index < items.length - 1 && (
+          {canAdvanceFurther && (
             <button
               type="button"
-              onClick={() => setIndex((current) => Math.min(items.length - 1, current + 1))}
-              className="absolute right-2 top-1/2 flex h-10 w-10 -translate-y-1/2 items-center justify-center rounded-full bg-black/50 text-2xl text-white hover:bg-black/80"
+              onClick={goNext}
+              disabled={pendingPageAdvance}
+              className="absolute right-2 top-1/2 flex h-10 w-10 -translate-y-1/2 items-center justify-center rounded-full bg-black/50 text-2xl text-white hover:bg-black/80 disabled:cursor-wait disabled:opacity-60"
               aria-label="Suivant"
             >
               ▶
