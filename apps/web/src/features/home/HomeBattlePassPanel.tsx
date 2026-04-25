@@ -5,6 +5,8 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { buildCompositeProgressEdgeLabels, clampCompositeProgress } from '@/components/ui/composite-progress-bar'
 import { EmptyStateNotice } from '@/components/ui/empty-state'
 import type { SeasonPassItemSummary, SeasonPassPageResponse, SeasonPassTierSummary, SeasonPassTrackSummary } from '@/lib/api/types'
+import { BattlePassRewardLightbox, type RewardLightboxData } from '@/features/palmares/BattlePassRewardLightbox'
+import { normalizeRarity, rarityStyle } from '@/features/palmares/rarity'
 
 function ChevronLeftIcon() {
   return (
@@ -51,6 +53,9 @@ interface RewardCard {
   rank: number
   title: string
   image_url?: string | null
+  description?: string | null
+  quality?: string | null
+  item_type?: string | null
   is_obtained: boolean
   is_current: boolean
   is_free: boolean
@@ -76,16 +81,43 @@ function buildTierGroups(tiers: SeasonPassTierSummary[]): TierGroup[] {
     const base = { rank: tier.rank, is_obtained: tier.is_obtained, is_current: tier.is_current }
 
     if (tier.is_premium) {
-      cards.push({ ...base, key: `${tier.rank}-paid`, title: tier.title, image_url: tier.image_url, is_free: false })
+      cards.push({
+        ...base,
+        key: `${tier.rank}-paid`,
+        title: tier.title,
+        image_url: tier.image_url,
+        description: tier.description ?? null,
+        quality: tier.quality ?? null,
+        item_type: tier.item_type ?? null,
+        is_free: false,
+      })
     }
 
     for (let i = 0; i < freeItems.length; i++) {
       const r = freeItems[i]
-      cards.push({ ...base, key: `${tier.rank}-free-${i}`, title: r.title, image_url: r.image_url, is_free: true })
+      cards.push({
+        ...base,
+        key: `${tier.rank}-free-${i}`,
+        title: r.title,
+        image_url: r.image_url,
+        description: r.description ?? null,
+        quality: r.quality ?? null,
+        item_type: r.item_type ?? null,
+        is_free: true,
+      })
     }
 
     if (cards.length === 0) {
-      cards.push({ ...base, key: `${tier.rank}-empty`, title: tier.title || `Palier ${tier.rank}`, image_url: tier.image_url, is_free: false })
+      cards.push({
+        ...base,
+        key: `${tier.rank}-empty`,
+        title: tier.title || `Palier ${tier.rank}`,
+        image_url: tier.image_url,
+        description: tier.description ?? null,
+        quality: tier.quality ?? null,
+        item_type: tier.item_type ?? null,
+        is_free: false,
+      })
     }
 
     groups.push({ rank: tier.rank, is_current: tier.is_current, is_obtained: tier.is_obtained, cards })
@@ -93,15 +125,21 @@ function buildTierGroups(tiers: SeasonPassTierSummary[]): TierGroup[] {
   return groups
 }
 
-function BattlePassRewardCard({ card }: { card: RewardCard }) {
+function BattlePassRewardCard({ card, onOpen }: { card: RewardCard; onOpen: (card: RewardCard) => void }) {
+  const rarityTier = normalizeRarity(card.quality)
+  const rarityStyles = rarityStyle(rarityTier)
+  const imageBackground = rarityStyles
+    ? `${rarityStyles.bg} ${rarityStyles.glow}`
+    : 'bg-transparent'
   return (
-    <div
-      className={[
-        'w-14 sm:w-16 xl:w-[4.5rem] space-y-1',
-        card.is_free ? '' : '',
-      ].filter(Boolean).join(' ')}
+    <button
+      type="button"
+      onClick={() => onOpen(card)}
+      aria-label={`Voir le détail de ${card.title}`}
+      data-rarity={rarityTier ?? 'none'}
+      className="group block w-14 sm:w-16 xl:w-[4.5rem] space-y-1 text-left transition-transform duration-150 hover:scale-105 focus:outline-none focus-visible:ring-2 focus-visible:ring-sky-400/70 focus-visible:rounded-lg"
     >
-      <div className="relative aspect-[4/5] w-full overflow-hidden rounded-lg bg-transparent">
+      <div className={`relative aspect-[4/5] w-full overflow-hidden rounded-lg ${imageBackground}`}>
         {card.is_obtained && (
           <div className="absolute right-1 top-1 z-10 flex h-4 min-w-4 items-center justify-center rounded-full bg-emerald-500 px-1 text-[8px] font-semibold text-white shadow-sm">
             ✓
@@ -121,16 +159,18 @@ function BattlePassRewardCard({ card }: { card: RewardCard }) {
         )}
       </div>
       <p className="line-clamp-2 text-[8px] font-medium leading-tight text-foreground/80">{card.title}</p>
-    </div>
+    </button>
   )
 }
 
 function BattlePassTierGroup({
   group,
   anchorRef,
+  onOpenCard,
 }: {
   group: TierGroup
   anchorRef?: (node: HTMLDivElement | null) => void
+  onOpenCard: (card: RewardCard) => void
 }) {
   const borderClasses = [
     'flex gap-1.5 rounded-xl border p-1.5',
@@ -152,7 +192,7 @@ function BattlePassTierGroup({
       <p className="px-0.5 text-[8px] font-semibold text-muted-foreground">#{group.rank}</p>
       <div className={borderClasses}>
         {group.cards.map((card) => (
-          <BattlePassRewardCard key={card.key} card={card} />
+          <BattlePassRewardCard key={card.key} card={card} onOpen={onOpenCard} />
         ))}
       </div>
     </div>
@@ -174,6 +214,24 @@ export function HomeBattlePassPanel({
 
   const [canLeft, setCanLeft] = useState(false)
   const [canRight, setCanRight] = useState(false)
+  const [activeReward, setActiveReward] = useState<RewardLightboxData | null>(null)
+
+  const handleOpenCard = useCallback((card: RewardCard) => {
+    const badges: RewardLightboxData['badges'] = []
+    if (card.is_current) badges.push({ label: 'Palier actuel', tone: 'current' })
+    if (card.is_obtained) badges.push({ label: 'Obtenu', tone: 'obtained' })
+    if (card.is_free) badges.push({ label: 'Gratuit', tone: 'free' })
+    else badges.push({ label: 'Premium', tone: 'premium' })
+    setActiveReward({
+      title: card.title,
+      rank: card.rank,
+      imageUrl: card.image_url ?? null,
+      description: card.description ?? null,
+      quality: card.quality ?? null,
+      itemType: card.item_type ?? null,
+      badges,
+    })
+  }, [])
 
   const updateScrollState = useCallback(() => {
     const el = tiersRailRef.current
@@ -326,6 +384,7 @@ export function HomeBattlePassPanel({
                     key={group.rank}
                     group={group}
                     anchorRef={group.is_current ? (node) => { activeTierRef.current = node } : undefined}
+                    onOpenCard={handleOpenCard}
                   />
                 ))}
               </div>
@@ -371,6 +430,7 @@ export function HomeBattlePassPanel({
           </div>
         )}
       </CardContent>
+      <BattlePassRewardLightbox reward={activeReward} onClose={() => setActiveReward(null)} />
     </Card>
   )
 }

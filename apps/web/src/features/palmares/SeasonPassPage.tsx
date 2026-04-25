@@ -1,4 +1,4 @@
-import { useEffect, useRef } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 
 import { useParams } from '@tanstack/react-router'
 
@@ -10,9 +10,11 @@ import { Spinner } from '@/components/ui/spinner'
 import type { SeasonPassStatus, SeasonPassTierSummary, SeasonPassTrackSummary } from '@/lib/api/types'
 import { useAppShellStore } from '@/stores/appShellStore'
 
+import { BattlePassRewardLightbox, type RewardLightboxData } from './BattlePassRewardLightbox'
 import { getPalmaresText, normalizePalmaresLocale } from './i18n'
 import { PalmaresShell } from './PalmaresShell'
 import { useSeasonPassPage } from './queries'
+import { normalizeRarity, rarityStyle } from './rarity'
 
 function centerTierInRail(container: HTMLDivElement | null, item: HTMLDivElement | null) {
   if (!container || !item) {
@@ -119,13 +121,18 @@ function SeasonPassCard({ pass, intlLocale, statusLabel, labels }: {
   )
 }
 
-function SeasonPassTierCard({ tier, labels, activeRef }: {
+function SeasonPassTierCard({ tier, labels, activeRef, onOpen }: {
   tier: SeasonPassTierSummary
   labels: { obtained: string; upcoming: string }
   activeRef?: (node: HTMLDivElement | null) => void
+  onOpen: (tier: SeasonPassTierSummary) => void
 }) {
+  const rarityTier = normalizeRarity(tier.quality)
+  const rarityStyles = rarityStyle(rarityTier)
   const imageClasses = [
-    'relative overflow-hidden rounded-[1.35rem] border border-white/80 bg-slate-950/85 shadow-[0_18px_45px_-28px_rgba(15,23,42,0.85)]',
+    'relative overflow-hidden rounded-[1.35rem] border border-white/80 shadow-[0_18px_45px_-28px_rgba(15,23,42,0.85)]',
+    rarityStyles?.bg ?? 'bg-slate-950/85',
+    rarityStyles?.glow ?? '',
     tier.is_current ? 'ring-2 ring-sky-400/70 ring-offset-2 ring-offset-background' : '',
     tier.is_obtained && !tier.is_current ? 'opacity-65 grayscale-[0.7]' : '',
   ].filter(Boolean).join(' ')
@@ -138,14 +145,19 @@ function SeasonPassTierCard({ tier, labels, activeRef }: {
       data-obtained={tier.is_obtained ? 'true' : 'false'}
       className="snap-center shrink-0"
     >
-      <div className="w-40 space-y-3">
+      <button
+        type="button"
+        onClick={() => onOpen(tier)}
+        aria-label={`Voir le détail de ${tier.title}`}
+        className="block w-40 space-y-3 text-left transition-transform duration-150 hover:scale-[1.03] focus:outline-none focus-visible:ring-2 focus-visible:ring-sky-400/70 focus-visible:rounded-[1.4rem]"
+      >
         <div className={imageClasses}>
           {tier.is_obtained && (
             <div className="absolute right-2 top-2 z-10 flex h-7 min-w-7 items-center justify-center rounded-full bg-emerald-500 px-2 text-[11px] font-semibold text-white shadow-sm">
               ✓
             </div>
           )}
-          <div className="aspect-[4/5] w-full bg-gradient-to-br from-slate-200 via-slate-100 to-white">
+          <div className="aspect-[4/5] w-full">
             {tier.image_url ? (
               <img
                 src={tier.image_url}
@@ -170,7 +182,7 @@ function SeasonPassTierCard({ tier, labels, activeRef }: {
           </div>
           <p className="line-clamp-2 text-sm font-semibold text-foreground">{tier.title}</p>
         </div>
-      </div>
+      </button>
     </div>
   )
 }
@@ -187,6 +199,24 @@ function ActivePassShowcase({
     ?? pass.tiers?.find((tier) => tier.rank === pass.active_tier_rank)
     ?? null
   const activeTierRef = useRef<HTMLDivElement | null>(null)
+  const [selectedReward, setSelectedReward] = useState<RewardLightboxData | null>(null)
+
+  const handleOpenTier = useCallback((tier: SeasonPassTierSummary) => {
+    const badges: RewardLightboxData['badges'] = []
+    if (tier.is_current) badges.push({ label: text.seasonPass.active, tone: 'current' })
+    if (tier.is_obtained) badges.push({ label: text.seasonPass.obtained, tone: 'obtained' })
+    else if (!tier.is_current) badges.push({ label: text.seasonPass.upcoming, tone: 'upcoming' })
+    if (tier.is_premium) badges.push({ label: text.seasonPass.premium, tone: 'premium' })
+    setSelectedReward({
+      title: tier.title,
+      rank: tier.rank,
+      imageUrl: tier.image_url ?? null,
+      description: tier.description ?? null,
+      quality: tier.quality ?? null,
+      itemType: tier.item_type ?? null,
+      badges,
+    })
+  }, [text.seasonPass.active, text.seasonPass.obtained, text.seasonPass.upcoming, text.seasonPass.premium])
 
   useEffect(() => {
     centerTierInRail(tiersRailRef.current, activeTierRef.current)
@@ -267,6 +297,7 @@ function ActivePassShowcase({
                     tier={tier}
                     labels={{ obtained: text.seasonPass.obtained, upcoming: text.seasonPass.upcoming }}
                     activeRef={tier.is_current ? (node) => { activeTierRef.current = node } : undefined}
+                    onOpen={handleOpenTier}
                   />
                 ))}
               </div>
@@ -309,6 +340,7 @@ function ActivePassShowcase({
           </div>
         )}
       </CardContent>
+      <BattlePassRewardLightbox reward={selectedReward} onClose={() => setSelectedReward(null)} />
     </Card>
   )
 }
