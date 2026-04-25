@@ -1,5 +1,29 @@
 # Thought Log
 
+## [2026-04-25] fix(go-api): WaitGroup watcher daemon + scheduler au shutdown
+
+**Statut** : Complété — Commits 2/4 et 3/4 du plan shutdown DuckDB (D + C combinés)
+
+**Audit refcount metaDB (phase D)** : grep exhaustif des 4 sites `OpenReadWriteShared(metaPath)` :
+- `cmd/server/main.go:191` (démarrage) → fermé `cmd/server/main.go:315` (shutdown). ✓
+- `pool.go:139` (`openPlayerDB`) → fermé dans `CloseAll()` ; tous les paths d'erreur ferment proprement (lignes 141-143, 161-166). ✓
+- `lab/provider.go:59` (`GetResources`) → `defer Close()`. ✓
+- `lab/provider.go:181` (`loadMedalGuards`) → `defer Close()`. ✓
+
+**Conclusion D** : aucun bug de refcount, aucun fix nécessaire. Mécanisme cache/refcount dans `db.go:179-186` correct. Pas de commit pour la phase D — refus d'un commit cosmétique.
+
+**Cause profonde réelle (phase C)** : `Daemon.Stop()` appelait `cancel()` + `rtaClient.Close()` mais ne **n'attendait pas** ses 2 goroutines internes (`connectAndSubscribe`, `consumeQueue`). De même, `cancelScheduler()` dans main.go ne wait pas la goroutine `autoScheduler.Run`. Résultat : ces goroutines pouvaient encore toucher `metaDB` après que `duckdb.CloseAll()` ait commencé → handles DuckDB orphelins lors d'un SIGKILL d'air.
+
+**Décision technique** :
+- Daemon : `sync.WaitGroup` interne, wrap des 2 goroutines dans `Start()`, `Wait()` dans `Stop()` borné par `stopWaitTimeout = 3s` (timeout dur via `select` + `time.After` pour ne jamais bloquer le shutdown global). Toutes les goroutines respectent déjà `<-ctx.Done()`, donc le Wait devrait être quasi-instantané.
+- main.go : même pattern pour le scheduler — `var schedulerWG sync.WaitGroup` local, wrap du `go autoScheduler.Run`, `Wait()` borné à 3 s **après** `srv.Shutdown()` et **avant** `duckdb.CloseAll()`.
+
+**Résultats** : `go build` + `go vet` + `go test ./internal/watcher/...` → tous OK. Diff : +68 lignes / -4 lignes sur 2 fichiers. Aucune modification de signature publique.
+
+**Conclusion / prochaine étape** : la cause profonde est traitée. Reste le commit 4 — alignement `air.stop_timeout` 2 s → 20 s pour laisser au shutdown gracieux Go le temps de s'exécuter sans être SIGKILL'd.
+
+---
+
 ## [2026-04-25] fix(go-api): retry metadata.duckdb plus tolérant au hot-reload Windows
 
 **Statut** : Complété — Commit 1/4 du plan shutdown DuckDB

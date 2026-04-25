@@ -26,6 +26,7 @@ import (
 	"os/signal"
 	"path/filepath"
 	"strings"
+	"sync"
 	"syscall"
 	"time"
 
@@ -257,7 +258,15 @@ func main() {
 		autoScheduler.ActivityChecker = watcher.NewStateProvider(watcherDaemon)
 	}
 
-	go autoScheduler.Run(schedulerCtx)
+	// schedulerWG track la goroutine du scheduler pour que le shutdown attende
+	// qu'elle retourne (sur ctx.Done()) avant duckdb.CloseAll(). Sans ce wait,
+	// un cycle RunOnce en cours peut encore toucher metaDB après la fermeture.
+	var schedulerWG sync.WaitGroup
+	schedulerWG.Add(1)
+	go func() {
+		defer schedulerWG.Done()
+		autoScheduler.Run(schedulerCtx)
+	}()
 
 	// Convertir en interface (nil safe : un *Daemon nil ne doit pas devenir une interface non-nil)
 	var watcherCtrl watcher.DaemonController
@@ -312,6 +321,21 @@ func main() {
 	if err := srv.Shutdown(shutdownCtx); err != nil {
 		slog.Error("shutdown", "err", err)
 	}
+
+	// Attendre la goroutine du scheduler avec un timeout dur pour que les
+	// connexions DuckDB qu'elle pourrait tenir soient libérées avant CloseAll.
+	schedulerDone := make(chan struct{})
+	go func() {
+		schedulerWG.Wait()
+		close(schedulerDone)
+	}()
+	select {
+	case <-schedulerDone:
+		slog.Debug("scheduler terminé")
+	case <-time.After(3 * time.Second):
+		slog.Warn("scheduler: timeout sur Wait — RunOnce probablement en cours")
+	}
+
 	duckdb.CloseAll()
 	if err := sharedDB.Close(); err != nil {
 		slog.Warn("fermeture shared DB", "err", err)
