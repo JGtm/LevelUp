@@ -27,6 +27,7 @@ import (
 // internal/platform/duckdb/CareerRepo.
 type CareerSource interface {
 	GetLatestRank(ctx context.Context) (*domain.CareerRankData, error)
+	GetEncounters(ctx context.Context) ([]domain.EncounterRawRow, error)
 }
 
 // DataAdapter est l'implémentation HI de games.TitleDataAdapter.
@@ -120,6 +121,52 @@ func (a *DataAdapter) LoadCareerSnapshot(ctx context.Context, xuid string, opts 
 	}
 
 	return projectCareerSnapshot(xuid, row), nil
+}
+
+// LoadEncounters wrappe CareerSource.GetEncounters et projette le résultat
+// vers le canonique services.
+//
+// Comportement :
+//   - career source nil → ErrCapabilityNotSupported ;
+//   - aucune entrée trouvée → slice vide, pas d'erreur ;
+//   - autre erreur → propagée avec contexte.
+//
+// L'argument xuid est ignoré : le CareerRepo HI résout déjà l'identité du
+// joueur courant via son PlayerDB. Le paramètre est conservé dans la
+// signature canonique pour permettre à un futur titre B de s'en servir.
+func (a *DataAdapter) LoadEncounters(ctx context.Context, xuid string) ([]canonical.EncounterRow, error) {
+	if a.career == nil {
+		a.logger.Warn("capability_not_supported",
+			"title_slug", a.TitleSlug(),
+			"capability", "career.encounters",
+		)
+		return nil, games.ErrCapabilityNotSupported
+	}
+
+	rows, err := a.career.GetEncounters(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	out := make([]canonical.EncounterRow, 0, len(rows))
+	for _, r := range rows {
+		out = append(out, projectEncounterRow(r))
+	}
+	return out, nil
+}
+
+func projectEncounterRow(r domain.EncounterRawRow) canonical.EncounterRow {
+	row := canonical.EncounterRow{
+		Identity:   canonical.PlayerIdentity{XUID: r.XUID, Gamertag: r.Gamertag},
+		MatchCount: r.MatchCount,
+		AsTeammate: r.AsTeammate,
+		AsEnemy:    r.AsEnemy,
+	}
+	if r.AvgKDA != nil {
+		v := *r.AvgKDA
+		row.AvgKDA = &v
+	}
+	return row
 }
 
 // LoadTimeseries n'est pas câblée en Phase B.

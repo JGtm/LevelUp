@@ -21,3 +21,15 @@ type CareerHistoryEntry struct {
 	Rank       *AssetReference
 	XP         *int
 }
+
+// EncounterRow représente un joueur croisé fréquemment, dans le canonique.
+//
+// Les compteurs `AsTeammate` et `AsEnemy` permettent au consommateur de
+// décider du rangement (équipe vs adversaire) sans logique titre-spécifique.
+type EncounterRow struct {
+	Identity   PlayerIdentity
+	MatchCount int
+	AsTeammate int
+	AsEnemy    int
+	AvgKDA     *float64
+}

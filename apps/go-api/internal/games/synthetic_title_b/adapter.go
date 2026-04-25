@@ -87,6 +87,10 @@ func (a *DataAdapter) LoadCareerSnapshot(ctx context.Context, xuid string, opts 
 	return nil, games.ErrCapabilityNotSupported
 }
 
+func (a *DataAdapter) LoadEncounters(ctx context.Context, xuid string) ([]canonical.EncounterRow, error) {
+	return nil, games.ErrCapabilityNotSupported
+}
+
 func (a *DataAdapter) LoadTimeseries(ctx context.Context, xuid string, query canonical.TimeseriesQuery) (*canonical.MetricSeries, error) {
 	return nil, games.ErrCapabilityNotSupported
 }

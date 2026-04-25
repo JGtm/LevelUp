@@ -6,6 +6,7 @@ package service
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"log/slog"
 	"math"
@@ -13,6 +14,8 @@ import (
 
 	"levelup/go-api/internal/domain"
 	"levelup/go-api/internal/domain/title"
+	"levelup/go-api/internal/games"
+	"levelup/go-api/internal/games/canonical"
 	"levelup/go-api/internal/port"
 )
 
@@ -28,6 +31,12 @@ type CareerService struct {
 	repo      port.CareerRepository
 	metaRepo  port.MetadataRepository // optionnel — nil = fallback synthétique
 	titleSlug string                  // titre courant, ex: "halo_infinite"
+	// dataAdapter (optionnel) — Phase C+ multi-titres. Quand fourni, GetEncounters
+	// passe par games.TitleDataAdapter.LoadEncounters au lieu d'appeler le repo
+	// directement. Préserve une parité comportementale stricte : projection
+	// canonical.EncounterRow → domain.EncounterDTO identique à la version repo.
+	// Activé via WithDataAdapter.
+	dataAdapter games.TitleDataAdapter
 }
 
 // NewCareerService crée un CareerService.
@@ -44,6 +53,17 @@ func (s *CareerService) WithMetadataRepo(r port.MetadataRepository) *CareerServi
 // WithTitleSlug configure le slug du titre (ex: "halo_infinite").
 func (s *CareerService) WithTitleSlug(slug string) *CareerService {
 	s.titleSlug = slug
+	return s
+}
+
+// WithDataAdapter injecte un games.TitleDataAdapter optionnel pour faire
+// passer GetEncounters par la couche multi-titres (Phase C+).
+//
+// Si nil ou si LoadEncounters retourne ErrCapabilityNotSupported, le service
+// retombe sur l'appel direct repo.GetEncounters. Cette dégradation gracieuse
+// permet d'activer/désactiver la bascule sans casser le service.
+func (s *CareerService) WithDataAdapter(a games.TitleDataAdapter) *CareerService {
+	s.dataAdapter = a
 	return s
 }
 
@@ -103,26 +123,23 @@ func (s *CareerService) GetTopMatches(ctx context.Context) (domain.CareerTopMatc
 }
 
 // GetEncounters retourne les joueurs les plus fréquemment croisés.
+//
+// Phase C+ multi-titres : si un dataAdapter est injecté et que sa capability
+// career.progression est supportée, la lecture passe par LoadEncounters avec
+// projection canonical.EncounterRow → domain.EncounterDTO. Sinon fallback
+// gracieux sur s.repo.GetEncounters (parité comportementale par construction).
 func (s *CareerService) GetEncounters(ctx context.Context) (domain.CareerEncountersResponse, error) {
-	rows, err := s.repo.GetEncounters(ctx)
+	rows, err := s.loadEncounterRows(ctx)
 	if err != nil {
 		return domain.CareerEncountersResponse{}, fmt.Errorf("CareerService.GetEncounters: %w", err)
 	}
 
 	var teammates, enemies []domain.EncounterDTO
 	for _, r := range rows {
-		dto := domain.EncounterDTO{
-			Gamertag:   r.Gamertag,
-			XUID:       r.XUID,
-			MatchCount: r.MatchCount,
-			AsTeammate: r.AsTeammate,
-			AsEnemy:    r.AsEnemy,
-			AvgKDA:     r.AvgKDA,
-		}
 		if r.AsTeammate >= r.AsEnemy {
-			teammates = append(teammates, dto)
+			teammates = append(teammates, r)
 		} else {
-			enemies = append(enemies, dto)
+			enemies = append(enemies, r)
 		}
 	}
 
@@ -131,6 +148,56 @@ func (s *CareerService) GetEncounters(ctx context.Context) (domain.CareerEncount
 		Enemies:   enemies,
 		Total:     len(rows),
 	}, nil
+}
+
+// loadEncounterRows centralise la résolution repo/adapter et garantit la
+// même forme de sortie []domain.EncounterDTO quel que soit le chemin.
+func (s *CareerService) loadEncounterRows(ctx context.Context) ([]domain.EncounterDTO, error) {
+	if s.dataAdapter != nil {
+		canonicalRows, err := s.dataAdapter.LoadEncounters(ctx, "")
+		if err == nil {
+			out := make([]domain.EncounterDTO, 0, len(canonicalRows))
+			for _, r := range canonicalRows {
+				out = append(out, encounterDTOFromCanonical(r))
+			}
+			return out, nil
+		}
+		if !errors.Is(err, games.ErrCapabilityNotSupported) {
+			return nil, err
+		}
+		// capability not supported → fallback repo
+	}
+
+	rows, err := s.repo.GetEncounters(ctx)
+	if err != nil {
+		return nil, err
+	}
+	out := make([]domain.EncounterDTO, 0, len(rows))
+	for _, r := range rows {
+		out = append(out, domain.EncounterDTO{
+			Gamertag:   r.Gamertag,
+			XUID:       r.XUID,
+			MatchCount: r.MatchCount,
+			AsTeammate: r.AsTeammate,
+			AsEnemy:    r.AsEnemy,
+			AvgKDA:     r.AvgKDA,
+		})
+	}
+	return out, nil
+}
+
+// encounterDTOFromCanonical projette canonical.EncounterRow → domain.EncounterDTO
+// avec strictement la même forme JSON que la projection legacy depuis
+// domain.EncounterRawRow. Garantit la parité de payload pour la golden parity.
+func encounterDTOFromCanonical(r canonical.EncounterRow) domain.EncounterDTO {
+	return domain.EncounterDTO{
+		Gamertag:   r.Identity.Gamertag,
+		XUID:       r.Identity.XUID,
+		MatchCount: r.MatchCount,
+		AsTeammate: r.AsTeammate,
+		AsEnemy:    r.AsEnemy,
+		AvgKDA:     r.AvgKDA,
+	}
 }
 
 // ---------------------------------------------------------------------------
