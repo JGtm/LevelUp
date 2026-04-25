@@ -1,5 +1,88 @@
 # Thought Log
 
+## [2026-04-25] feat(web): TopProgressBar — barre de chargement de page sous NavL1
+
+**Statut** : Complété — composant livré, intégré dans `AppShell`, tests + typecheck + lint verts.
+
+**Contexte** : L'utilisateur demande l'équivalent de la barre de progression de navigation du projet voisin CSstat (`apps/web/src/components/layout/TopProgressBar.tsx`), à placer juste sous la NavL1 et à la couleur du thème.
+
+**Décisions techniques** :
+- **Approche click + pathname** mirrorée de CSstat plutôt que `routerState.isLoading` : les routes TanStack du projet n'utilisent pas de `loader:`, donc l'état `isLoading` du router resterait à `false`. Le tracking par event `click` sur `<a>` + détection du changement de `location.pathname` via `useRouterState({ select })` reste donc le seul signal exploitable.
+- **Couleur** `bg-sidebar-primary` (le bleu accent oklch utilisé pour l'onglet actif de la NavL1) plutôt que `bg-primary` (presque blanc en thème sombre — invisible sur la nav). Reste cohérent visuellement avec la nav du dessus et suit automatiquement le thème clair/sombre.
+- **Glow dynamique** via `color-mix(in oklch, var(--sidebar-primary) 60%, transparent)` dans la `box-shadow` arbitraire Tailwind, pour ne pas hardcoder une teinte (CSstat hardcodait `rgba(250,204,21,0.6)`).
+- **Position** : sous-élément en flux normal du wrapper `flex flex-col` de l'AppShell. Pas de `fixed top-0` (qui chevaucherait la NavL1) ; la cohabitation avec le `gap-3 sm:gap-4` de l'AppShell impose un wrapper `<div className="shrink-0">` regroupant `NavL1` + bar pour éviter que le gap n'éloigne la barre de la nav.
+
+**Résultats observés** :
+- `npx tsc --noEmit` vert
+- `npx vitest run src/components/shell/` vert (4 fichiers, 22 tests dont 10 nouveaux pour TopProgressBar)
+- `npx eslint` vert sur les 3 fichiers touchés
+- Couverture tests : état initial, click déclenchant l'affichage, paliers 15/50/75/90, complétion à 100 % au changement de pathname, ignorance des modificateurs (ctrl/meta/shift/middle), liens externes/hash/mailto/tel, target="_blank", URL identique, safety net 8 s, vérification de la classe `bg-sidebar-primary`.
+- Pas de logging ajouté : composant UI passif (zéro async, zéro erreur applicative à tracer) — un `console.log` ici serait du bruit aligné avec le reste de `components/shell/` qui n'en utilise pas.
+
+**Conclusion / prochaine étape** : Feature complète et câblée. Reste un test visuel manuel souhaitable dans le navigateur (changements de route entre `/players/.../home` ↔ `/stats/...` ↔ `/squad/...`) pour valider la fluidité perçue de l'animation et le rendu de la couleur en thème clair vs sombre.
+
+---
+
+## [2026-04-25] feat(prestige): Phase 2 — Domain pur + Service + Repos DuckDB
+
+**Statut** : Complété — Phase 2 du plan IMPL_PRESTIGE.md livrée.
+
+**Contexte** : Suite de la livraison Prestige après Phase 1 (squelette structurel). Phase 2 = cœur métier : calculs purs (palier, baseline, stretch, lifecycle, evaluator, PP, level, squad target), orchestrateur Service, implémentations DuckDB des 10 interfaces de repository.
+
+**Décisions techniques** :
+- **Tuning chargé en TOML avec fallback DefaultTuning** : si `config/prestige/tuning.toml` est absent ou invalide, le système boot quand même via DefaultTuning() avec slog.Warn. Validate() vérifie monotonie des stretch thresholds et PP, levels[0]==0, etc.
+- **Repos splittés en 10 structs distinctes** : les interfaces `prestige.ChallengeRepo`, `ArcRepo`, `MomentCardRepo`, etc. partagent des noms de méthodes (`Create`, `Get`, `List`) avec des signatures de retour différentes — incompatibles avec une struct unique. Chaque interface a son struct dédié, tous partagent un `*DB`. Compile-time assertions `var _ prestige.XxxRepo = (*PrestigeXxxRepo)(nil)` à chaque struct.
+- **PrestigeRepo.EmitEvent fait un upsert atomique sur user_prestige** : `INSERT ... ON CONFLICT DO UPDATE` avec `total_pp = total_pp + EXCLUDED.total_pp`. Évite une transaction explicite côté service.
+- **Service split en service.go + service_evaluate.go** pour rester sous 500 L de CLAUDE.md (le tout faisait 506 L). Frontière naturelle : EvaluateForUser et applyTransition sont une responsabilité distincte du CRUD défis.
+- **Stretch normalisé pour les métriques bornées** : KDA, accuracy, win_rate, performance_score → `1 + (target - baseline) / (ceiling - baseline)`. Garde le palier interprétable comme "fraction du headroom restant que l'objectif vise". Métriques compteurs (kills/min, damage/min) → ratio brut.
+- **BaselineProvider en interface du package prestige** : abstraction pour découpler Prestige de la sémantique métier des matchs. Sera implémentée par les adaptateurs `internal/games/...` en Phase 3.
+- **Telemetry best-effort avec slog.Warn sur échec** : un échec d'écriture télémétrie ne casse jamais le flux principal. Cohérent avec son rôle de calage post-alpha.
+
+**Résultats observés** :
+- `go build ./...` vert
+- 47 sous-tests domain pur verts (stretch/palier/level/baseline/lifecycle/squad/evaluator/pp/tuning)
+- 6 tests intégration repos verts (sur DuckDB temporaire avec migrations Phase 1 réelles) :
+  - Challenge create/get roundtrip + UpdateStatus + List filter
+  - PrestigeRepo.EmitEvent bumps user_prestige.total_pp
+  - Leaderboard per-title trié par PP
+  - Template Replace + ListByTitle + GetByID + Suggest avec exclusion
+- Aucune régression : `go test ./internal/...` complet vert
+- Tailles fichiers : max 409 L (prestige_social_repo.go), tous sous 500 L
+
+**Conformité matrice de traçabilité** : tous les éléments Phase 2 livrés (palier avec popSize cap < 50, baseline staleness 60j + recovery, win_rate min matches, target_per_member, recompute palier sur édition libre, telemetry).
+
+**Conclusion / prochaine étape** : Phase 2 prête à committer. Phase 3 (handlers HTTP + sync hook + auto-attribution + quotas + suggestion post-completion) attaque la couche API qui consomme `Service`. Le feature flag `PRESTIGE_ENABLED` arrive en Phase 3.
+
+---
+
+## [2026-04-25] feat(prestige): Phase 1 — Foundation (migrations + types + interfaces)
+
+**Statut** : Complété — Phase 1 du plan IMPL_PRESTIGE.md livrée.
+
+**Contexte** : Démarrage de l'implémentation du système Prestige (défis personnels et d'escouade, arcs narratifs, PP, leaderboard) spécifié dans `.ai/V7/PLAN_challenges_xp_system.md` et planifié en 5 phases dans `.ai/V7/IMPL_PRESTIGE.md`. Phase 1 = squelette structurel sans logique métier : migrations DB, types domain, interfaces repository, configuration de tuning externalisée.
+
+**Décisions techniques** :
+- **3 fichiers de migration séparés** plutôt que d'étendre les fichiers existants : `steps_shared_social_prestige.go`, `steps_player_prestige.go`, `steps_metadata_prestige.go`. Lisibilité accrue, blast radius limité — les tables média/likes existantes restent intactes.
+- **Champs critiques ajoutés à la table `challenge`** d'après l'audit de la passe 2 du plan : `position` (ordre dans l'arc), `target_per_member` (défis collectifs), `last_palier_recompute_at` (mode libre — recalcul à chaque édition).
+- **Tables ajoutées au-delà du minimum** : `prestige_telemetry` (calage post-alpha — Annexe E du plan) et `baseline_state` (reset 60j d'inactivité — Axe 2). Anticipées en Phase 1 pour éviter une migration intermédiaire.
+- **TOML tuning exhaustif** dès Phase 1 : toutes les valeurs (stretch, paliers PP, niveaux, cooldowns, quotas pilote, win_rate min matches, suggestion +15%, squad pool 6-9) externalisées. Modifiables sans redéploiement, conformément au verrou Annexe E.
+- **Marshalling JSON strict** sur tous les enums : `UnmarshalJSON` rejette toute valeur inconnue. Évite la corruption silencieuse via API.
+- **Helper test générique** `roundtripJSON[T any]` avec `reflect.DeepEqual` pour gérer pointeurs/slices/time.Time uniformément sur 14 structs.
+
+**Résultats observés** :
+- `go build ./...` vert
+- `go test ./internal/prestige/...` vert (37 sous-tests sur enums + types)
+- `go test -tags=integration -run TestPrestige_ ./internal/migration/...` vert (4 tests : create tables sur 3 bases + idempotence shared_social sur 3 passes)
+- Aucune régression : `go test ./internal/...` complet vert sur l'ensemble du repo
+- Tailles : enums.go 327 L, types.go 269 L (max), tous sous le seuil 500 L de CLAUDE.md
+- Aucune fonction > 80 L ; aucun import pandas/sqlite
+
+**Conformité matrice de traçabilité** : tous les éléments Phase 1 du plan sont livrés (cf. matrice fin de IMPL_PRESTIGE.md). Le compliance check explicite a été passé point par point avant ce commit.
+
+**Conclusion / prochaine étape** : Phase 1 prête à committer. Phase 2 (domain pur — palier, baseline, lifecycle, evaluator) attaque les calculs et la logique. À écrire en TDD selon la discipline qualité posée dans le plan d'impl. Pas de modification de l'API sync à ce stade — le feature flag `PRESTIGE_ENABLED` n'arrive qu'en Phase 3.
+
+---
+
 ## [2026-04-25] fix(server): refermer metaDB ouvert pour LoadRankCatalog au boot — régression réintroduite
 
 **Statut** : Complété — non commité (working tree)

@@ -1,0 +1,395 @@
+package prestige
+
+import (
+	"context"
+	"crypto/rand"
+	"encoding/hex"
+	"errors"
+	"fmt"
+	"log/slog"
+	"time"
+)
+
+// service.go — orchestrateur du module Prestige.
+//
+// Référence : Annexe E du plan conceptuel (surface API du module).
+//
+// Le Service est l'unique point d'entrée pour les autres packages
+// (sync, api/handlers). Les internes (palier, baseline, lifecycle, evaluator)
+// ne sont pas exposés directement en dehors du package.
+
+// ---------- Erreurs publiques ----------
+
+var (
+	ErrChallengeNotFound = errors.New("prestige: challenge not found")
+	ErrArcNotFound       = errors.New("prestige: arc not found")
+	ErrUserNotFound      = errors.New("prestige: user not found")
+	ErrInvalidInput      = errors.New("prestige: invalid input")
+)
+
+// ---------- Service ----------
+
+// Service est le contrat exposé du module Prestige.
+type Service interface {
+	CreateChallenge(ctx context.Context, req CreateChallengeRequest) (Challenge, error)
+	UpdateChallenge(ctx context.Context, id string, patch UpdateChallengePatch) (Challenge, error)
+	AbandonChallenge(ctx context.Context, id string) error
+	GetChallenge(ctx context.Context, id string) (Challenge, error)
+	ListActiveChallenges(ctx context.Context, userID, titleSlug string) ([]Challenge, error)
+
+	// EvaluateForUser ré-évalue tous les défis actifs d'un joueur sur un titre.
+	// Appelé par le sync hook après ingestion des nouveaux matchs.
+	EvaluateForUser(ctx context.Context, userID, titleSlug string) ([]EvaluationOutcome, error)
+
+	GetUserPrestige(ctx context.Context, userID, titleSlug string) (UserPrestige, error)
+	SuggestTemplates(ctx context.Context, userID, titleSlug string, count int) ([]Template, error)
+	SuggestNext(ctx context.Context, completedID string) ([]Template, error)
+}
+
+// ---------- DTOs ----------
+
+// CreateChallengeRequest est l'entrée pour créer un défi.
+type CreateChallengeRequest struct {
+	UserID          string
+	TitleSlug       string
+	ArcID           string // vide si standalone
+	TemplateID      string // vide si défi 100 % libre
+	Metric          string
+	Target          float64
+	WindowType      WindowType
+	WindowValue     string
+	Cadence         Cadence
+	EvalType        EvalType
+	Mode            ChallengeMode
+	Label           string
+	IsPrivate       bool
+	TargetPerMember float64 // pour défis collectifs (0 sinon)
+	Position        int     // ordre dans l'arc (0 si standalone)
+}
+
+// UpdateChallengePatch décrit une édition partielle d'un défi.
+//
+// Tous les champs sont optionnels. Si Target != nil, le palier est recalculé
+// sur la baseline courante (mode libre uniquement — sinon ErrNotEditable).
+type UpdateChallengePatch struct {
+	Target *float64
+	Label  *string
+}
+
+// EvaluationOutcome est le résultat d'une évaluation pour un défi donné.
+type EvaluationOutcome struct {
+	ChallengeID string
+	OldStatus   ChallengeStatus
+	NewStatus   ChallengeStatus
+	NewValue    float64
+	PPCredited  int
+	Reason      EvalReason
+}
+
+// ---------- Implémentation ----------
+
+// Deps regroupe les dépendances du service.
+type Deps struct {
+	Tuning           Tuning
+	Challenges       ChallengeRepo
+	Arcs             ArcRepo
+	Moments          MomentCardRepo
+	Prestige         PrestigeRepo
+	Telemetry        TelemetryRepo
+	BaselineState    BaselineStateRepo
+	Templates        TemplateRepo
+	PresetArcs       PresetArcRepo
+	SquadChallenges  SquadChallengeRepo
+	Squads           SquadRepo
+	BaselineProvider BaselineProvider // fournit les MatchData pour calculer la baseline
+	Now              func() time.Time
+}
+
+// BaselineProvider est l'abstraction des sources de matchs pour la baseline.
+//
+// Implémentée hors du package par les adaptateurs `internal/games/...` —
+// le module Prestige reste découplé de la sémantique métier des matchs.
+type BaselineProvider interface {
+	RecentMatches(ctx context.Context, userID, titleSlug, metric string, window int) ([]MatchData, error)
+	PopulationPercentile(ctx context.Context, titleSlug, metric string, target float64) (percentile float64, popSize int, err error)
+}
+
+// service est l'implémentation par défaut.
+type service struct {
+	deps    Deps
+	emitter *TelemetryEmitter
+}
+
+// NewService construit un service Prestige.
+func NewService(d Deps) Service {
+	if d.Now == nil {
+		d.Now = func() time.Time { return time.Now().UTC() }
+	}
+	return &service{
+		deps:    d,
+		emitter: NewTelemetryEmitter(d.Telemetry, d.Now),
+	}
+}
+
+// ---------- CreateChallenge ----------
+
+func (s *service) CreateChallenge(ctx context.Context, req CreateChallengeRequest) (Challenge, error) {
+	if err := validateCreateRequest(req); err != nil {
+		return Challenge{}, err
+	}
+
+	now := s.deps.Now()
+
+	// Calculer la baseline et le palier.
+	baseline, err := s.computeBaselineFor(ctx, req.UserID, req.TitleSlug, req.Metric)
+	if err != nil {
+		return Challenge{}, fmt.Errorf("baseline: %w", err)
+	}
+
+	stretch := ComputeStretchRatio(req.Target, baseline.Value, metricCeiling(req.Metric), metricKindFor(req.Metric))
+	pop, popSize, err := s.deps.BaselineProvider.PopulationPercentile(ctx, req.TitleSlug, req.Metric, req.Target)
+	if err != nil {
+		// Pop indispo : on continue avec popSize=0, le cap sera désactivé
+		slog.WarnContext(ctx, "prestige: population percentile unavailable", "err", err)
+		pop, popSize = 0, 0
+	}
+
+	tier, reject := CalculatePalier(s.deps.Tuning, CalculatePalierInput{
+		Stretch:              stretch,
+		PopulationPercentile: pop,
+		PopulationSize:       popSize,
+		DataTier:             baseline.DataTier,
+	})
+
+	c := Challenge{
+		ID:              newID("ch"),
+		UserID:          req.UserID,
+		TitleSlug:       req.TitleSlug,
+		ArcID:           req.ArcID,
+		Position:        req.Position,
+		TemplateID:      req.TemplateID,
+		Metric:          req.Metric,
+		Target:          req.Target,
+		TargetPerMember: req.TargetPerMember,
+		WindowType:      req.WindowType,
+		WindowValue:     req.WindowValue,
+		Cadence:         req.Cadence,
+		EvalType:        req.EvalType,
+		Mode:            req.Mode,
+		Tier:            tier,
+		DataTier:        baseline.DataTier,
+		Label:           req.Label,
+		Status:          StatusActive,
+		CreatedAt:       now,
+		CommittedAt:     &now,
+		IsPrivate:       req.IsPrivate,
+	}
+
+	// En cas de rejet "too_easy", on retourne une erreur sans persister.
+	if reject == RejectTooEasy {
+		s.emitter.EmitRejected(ctx, req.UserID, c, stretch, baseline.Value, reject)
+		return Challenge{}, fmt.Errorf("%w: stretch=%.2f below min", ErrInvalidInput, stretch)
+	}
+
+	// data=tracking : on persiste mais sans bonus PP futur (DataTier déjà = tracking).
+	if err := s.deps.Challenges.Create(ctx, c); err != nil {
+		return Challenge{}, fmt.Errorf("persist challenge: %w", err)
+	}
+
+	s.emitter.EmitCreated(ctx, c, stretch, baseline.Value)
+	slog.InfoContext(ctx, "prestige: challenge created",
+		"challenge_id", c.ID, "user_id", c.UserID, "tier", c.Tier,
+		"mode", c.Mode, "cadence", c.Cadence)
+
+	return c, nil
+}
+
+// validateCreateRequest applique les validations basiques d'entrée.
+func validateCreateRequest(req CreateChallengeRequest) error {
+	if req.UserID == "" || req.TitleSlug == "" || req.Metric == "" {
+		return fmt.Errorf("%w: user_id/title_slug/metric requis", ErrInvalidInput)
+	}
+	if req.Target <= 0 {
+		return fmt.Errorf("%w: target must be > 0", ErrInvalidInput)
+	}
+	if !req.WindowType.Valid() || !req.Cadence.Valid() ||
+		!req.EvalType.Valid() || !req.Mode.Valid() {
+		return fmt.Errorf("%w: enum invalide", ErrInvalidInput)
+	}
+	return nil
+}
+
+// computeBaselineFor charge les matchs récents et calcule la baseline.
+func (s *service) computeBaselineFor(ctx context.Context, userID, titleSlug, metric string) (Baseline, error) {
+	matches, err := s.deps.BaselineProvider.RecentMatches(
+		ctx, userID, titleSlug, metric, s.deps.Tuning.Baseline.WindowMatches,
+	)
+	if err != nil {
+		return Baseline{}, err
+	}
+	return ComputeBaseline(s.deps.Tuning, userID, titleSlug, metric, matches), nil
+}
+
+// ---------- UpdateChallenge ----------
+
+func (s *service) UpdateChallenge(ctx context.Context, id string, patch UpdateChallengePatch) (Challenge, error) {
+	c, err := s.deps.Challenges.Get(ctx, id)
+	if err != nil {
+		return Challenge{}, ErrChallengeNotFound
+	}
+
+	if patch.Label != nil {
+		if err := s.deps.Challenges.UpdateLabel(ctx, id, *patch.Label); err != nil {
+			return Challenge{}, fmt.Errorf("update label: %w", err)
+		}
+		c.Label = *patch.Label
+	}
+
+	if patch.Target != nil {
+		if !CanEditTarget(c) {
+			return Challenge{}, ErrNotEditable
+		}
+		oldTier := c.Tier
+		newTier, baseline, stretch, err := s.recomputeTier(ctx, c, *patch.Target)
+		if err != nil {
+			return Challenge{}, err
+		}
+		now := s.deps.Now()
+		if err := s.deps.Challenges.UpdateTarget(ctx, id, *patch.Target, newTier, baseline.DataTier, now); err != nil {
+			return Challenge{}, fmt.Errorf("update target: %w", err)
+		}
+		c.Target = *patch.Target
+		c.Tier = newTier
+		c.DataTier = baseline.DataTier
+		c.LastPalierRecomputeAt = &now
+
+		s.emitter.EmitPalierRecomputed(ctx, c, oldTier, stretch, baseline.Value)
+	}
+
+	return c, nil
+}
+
+// recomputeTier recharge la baseline et calcule un nouveau palier pour la cible donnée.
+func (s *service) recomputeTier(ctx context.Context, c Challenge, target float64) (Tier, Baseline, float64, error) {
+	baseline, err := s.computeBaselineFor(ctx, c.UserID, c.TitleSlug, c.Metric)
+	if err != nil {
+		return TierNormal, Baseline{}, 0, err
+	}
+	stretch := ComputeStretchRatio(target, baseline.Value, metricCeiling(c.Metric), metricKindFor(c.Metric))
+	pop, popSize, _ := s.deps.BaselineProvider.PopulationPercentile(ctx, c.TitleSlug, c.Metric, target)
+	tier, _ := CalculatePalier(s.deps.Tuning, CalculatePalierInput{
+		Stretch:              stretch,
+		PopulationPercentile: pop,
+		PopulationSize:       popSize,
+		DataTier:             baseline.DataTier,
+	})
+	return tier, baseline, stretch, nil
+}
+
+// ---------- AbandonChallenge ----------
+
+func (s *service) AbandonChallenge(ctx context.Context, id string) error {
+	c, err := s.deps.Challenges.Get(ctx, id)
+	if err != nil {
+		return ErrChallengeNotFound
+	}
+	if !CanAbandon(c) {
+		return ErrAlreadyTerminal
+	}
+	now := s.deps.Now()
+	updated, err := MarkAbandoned(c, now)
+	if err != nil {
+		return err
+	}
+	if err := s.deps.Challenges.UpdateStatus(ctx, id, updated.Status, now); err != nil {
+		return fmt.Errorf("update status: %w", err)
+	}
+	s.emitter.EmitTransition(ctx, updated, TelemetryAbandoned)
+	slog.InfoContext(ctx, "prestige: challenge abandoned", "challenge_id", id)
+	return nil
+}
+
+// ---------- GetChallenge / ListActiveChallenges ----------
+
+func (s *service) GetChallenge(ctx context.Context, id string) (Challenge, error) {
+	c, err := s.deps.Challenges.Get(ctx, id)
+	if err != nil {
+		return Challenge{}, ErrChallengeNotFound
+	}
+	return c, nil
+}
+
+func (s *service) ListActiveChallenges(ctx context.Context, userID, titleSlug string) ([]Challenge, error) {
+	active := StatusActive
+	return s.deps.Challenges.List(ctx, ChallengeFilter{
+		UserID:    userID,
+		TitleSlug: titleSlug,
+		Status:    &active,
+	})
+}
+
+// ---------- GetUserPrestige ----------
+
+func (s *service) GetUserPrestige(ctx context.Context, userID, titleSlug string) (UserPrestige, error) {
+	if titleSlug == "" {
+		return s.deps.Prestige.GetUserPrestigeCrossTitle(ctx, userID)
+	}
+	return s.deps.Prestige.GetUserPrestige(ctx, userID, titleSlug)
+}
+
+// ---------- Suggestions ----------
+
+func (s *service) SuggestTemplates(ctx context.Context, userID, titleSlug string, count int) ([]Template, error) {
+	if count <= 0 {
+		count = s.deps.Tuning.Suggestion.AlternativesCount
+	}
+	// TODO Phase 3 : exclure les templates déjà tentés (lookup dans challenges).
+	return s.deps.Templates.Suggest(ctx, titleSlug, nil, count)
+}
+
+func (s *service) SuggestNext(ctx context.Context, completedID string) ([]Template, error) {
+	c, err := s.deps.Challenges.Get(ctx, completedID)
+	if err != nil {
+		return nil, ErrChallengeNotFound
+	}
+	return s.deps.Templates.Suggest(ctx, c.TitleSlug, []string{c.TemplateID}, s.deps.Tuning.Suggestion.AlternativesCount)
+}
+
+// EvaluateForUser, evaluateOne, applyTransition : voir service_evaluate.go
+
+// ---------- Helpers ----------
+
+// metricCeiling retourne le plafond physique d'une métrique (0 = pas de plafond).
+//
+// Utilisé pour le calcul de stretch normalisé sur les métriques bornées.
+// Référence : Annexe A du plan conceptuel.
+func metricCeiling(metric string) float64 {
+	switch metric {
+	case "FieldAccuracy", "accuracy":
+		return 1.0
+	case "FieldWinRate", "win_rate":
+		return 100.0
+	case "performance_score":
+		return 100.0
+	}
+	return 0
+}
+
+// metricKindFor classe la métrique pour le calcul de stretch.
+func metricKindFor(metric string) MetricKind {
+	switch metric {
+	case "FieldAccuracy", "accuracy",
+		"FieldWinRate", "win_rate",
+		"FieldKDA", "FieldKDR", "kda", "kdr",
+		"performance_score":
+		return MetricRatio
+	}
+	return MetricCount
+}
+
+// newID génère un identifiant aléatoire préfixé.
+func newID(prefix string) string {
+	var buf [8]byte
+	_, _ = rand.Read(buf[:])
+	return prefix + "_" + hex.EncodeToString(buf[:])
+}
