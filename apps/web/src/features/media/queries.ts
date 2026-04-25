@@ -5,6 +5,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { api } from '@/lib/api/client'
 import { queryKeys } from '@/lib/query/keys'
 import type {
+  MediaAuthorsResponse,
   MediaAvailableFilters,
   MediaItemRow,
   MediaLikeRequest,
@@ -170,6 +171,7 @@ export function useMediaPage(
     s: request.sort,
     k: request.kind_filter,
     sec: request.section_filter,
+    auth: request.author_slugs,
     map: request.map_filter,
     mod: request.mode_filter,
     g: request.group_by,
@@ -294,6 +296,16 @@ export function useFeedVersion(playerSlug: string) {
     select: (data) => data.version,
     notifyOnChangeProps: ['data'],
     staleTime: 0,
+  })
+}
+
+/** Liste des auteurs (db_profiles ∩ ≥1 média sur disque) pour le filtre Auteur. */
+export function useMediaAuthors(playerSlug: string) {
+  return useQuery({
+    queryKey: queryKeys.mediaAuthors(playerSlug),
+    queryFn: () => api.get<MediaAuthorsResponse>(`/players/${playerSlug}/media/authors`),
+    enabled: !!playerSlug,
+    staleTime: 5 * 60 * 1000,
   })
 }
 

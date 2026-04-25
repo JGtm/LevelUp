@@ -11,7 +11,7 @@ import { MediaLightbox, MediaThumbnailCard } from './MediaViewer'
 import { MediaToolbar } from './MediaToolbar'
 import { UploadButton } from './UploadButton'
 import { getMediaText } from './i18n'
-import { useMediaPage, useToggleMediaLike, useFeedVersion } from './queries'
+import { useMediaAuthors, useMediaPage, useToggleMediaLike, useFeedVersion } from './queries'
 import { useQueryClient } from '@tanstack/react-query'
 import { queryKeys } from '@/lib/query/keys'
 
@@ -51,7 +51,7 @@ export function MediaPage() {
   const text = getMediaText(locale)
   const [page, setPage] = useState(1)
   const [kindFilter, setKindFilter] = useState('')
-  const [sectionFilter, setSectionFilter] = useState('')
+  const [authorSlugs, setAuthorSlugs] = useState<string[]>([])
   const [mapFilter, setMapFilter] = useState('')
   const [modeFilter, setModeFilter] = useState('')
   const [groupBy, setGroupBy] = useState('')
@@ -62,7 +62,7 @@ export function MediaPage() {
   const request: MediaQueryRequest = {
     sort: sortKey,
     kind_filter: kindFilter || null,
-    section_filter: sectionFilter || null,
+    author_slugs: authorSlugs.length > 0 ? authorSlugs : null,
     map_filter: mapFilter || null,
     mode_filter: modeFilter || null,
     group_by: groupBy || null,
@@ -71,6 +71,8 @@ export function MediaPage() {
   }
 
   const { data, isLoading, isError, error, isFetching } = useMediaPage(playerSlug, request, page)
+  const { data: authorsData } = useMediaAuthors(playerSlug)
+  const authors = authorsData?.authors ?? []
   const toggleMediaLike = useToggleMediaLike(playerSlug)
   const mediaItems: MediaItemRow[] = data?.items?.items ?? []
   const mapOptions = data?.available_filters.maps?.length
@@ -98,8 +100,8 @@ export function MediaPage() {
     setPage(1)
   }
 
-  function handleSectionChange(value: string) {
-    setSectionFilter(value)
+  function handleAuthorSlugsChange(slugs: string[]) {
+    setAuthorSlugs(slugs)
     setPage(1)
   }
 
@@ -147,7 +149,8 @@ export function MediaPage() {
         <MediaToolbar
           text={text}
           kindFilter={kindFilter}
-          sectionFilter={sectionFilter}
+          authorSlugs={authorSlugs}
+          authors={authors}
           mapFilter={mapFilter}
           modeFilter={modeFilter}
           groupBy={groupBy}
@@ -156,7 +159,7 @@ export function MediaPage() {
           mapOptions={mapOptions}
           modeOptions={modeOptions}
           onKindChange={handleKindChange}
-          onSectionChange={handleSectionChange}
+          onAuthorSlugsChange={handleAuthorSlugsChange}
           onMapChange={handleMapChange}
           onModeChange={handleModeChange}
           onSortChange={handleSortChange}
