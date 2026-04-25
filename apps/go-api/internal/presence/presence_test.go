@@ -333,7 +333,7 @@ func TestSteamPoller_Active(t *testing.T) {
 	var inactiveCount atomic.Int32
 
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		json.NewEncoder(w).Encode(map[string]any{
+		_ = json.NewEncoder(w).Encode(map[string]any{
 			"response": map[string]any{
 				"players": []map[string]any{{
 					"steamid":       "76561198000000000",
@@ -370,7 +370,7 @@ func TestSteamPoller_Active(t *testing.T) {
 	defer resp.Body.Close()
 
 	var result steamAPIResponse
-	json.NewDecoder(resp.Body).Decode(&result)
+	_ = json.NewDecoder(resp.Body).Decode(&result)
 
 	if len(result.Response.Players) != 1 {
 		t.Fatalf("expected 1 player, got %d", len(result.Response.Players))
@@ -382,7 +382,7 @@ func TestSteamPoller_Active(t *testing.T) {
 
 func TestSteamPoller_Inactive(t *testing.T) {
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
-		json.NewEncoder(w).Encode(map[string]any{
+		_ = json.NewEncoder(w).Encode(map[string]any{
 			"response": map[string]any{
 				"players": []map[string]any{{
 					"steamid":      "76561198000000000",
@@ -397,7 +397,7 @@ func TestSteamPoller_Inactive(t *testing.T) {
 	var result steamAPIResponse
 	resp, _ := http.Get(srv.URL)
 	defer resp.Body.Close()
-	json.NewDecoder(resp.Body).Decode(&result)
+	_ = json.NewDecoder(resp.Body).Decode(&result)
 
 	if len(result.Response.Players) != 1 {
 		t.Fatal("expected 1 player")
@@ -409,7 +409,7 @@ func TestSteamPoller_Inactive(t *testing.T) {
 
 func TestSteamPoller_EmptyPlayers(t *testing.T) {
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
-		json.NewEncoder(w).Encode(map[string]any{
+		_ = json.NewEncoder(w).Encode(map[string]any{
 			"response": map[string]any{
 				"players": []any{},
 			},
@@ -420,7 +420,7 @@ func TestSteamPoller_EmptyPlayers(t *testing.T) {
 	var result steamAPIResponse
 	resp, _ := http.Get(srv.URL)
 	defer resp.Body.Close()
-	json.NewDecoder(resp.Body).Decode(&result)
+	_ = json.NewDecoder(resp.Body).Decode(&result)
 
 	if len(result.Response.Players) != 0 {
 		t.Errorf("expected 0 players, got %d", len(result.Response.Players))

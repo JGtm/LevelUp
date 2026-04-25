@@ -18,29 +18,6 @@ import (
 	"levelup/go-api/internal/domain"
 )
 
-// newPrivacyTestServer crée un serveur de test qui répond à matches-privacy.
-func newPrivacyTestServer(resp privacyResponse, statusCode int) (*httptest.Server, *atomic.Int32) {
-	var calls atomic.Int32
-	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		calls.Add(1)
-		w.Header().Set("Content-Type", "application/json")
-		w.WriteHeader(statusCode)
-		_ = json.NewEncoder(w).Encode(resp)
-	}))
-	return srv, &calls
-}
-
-// newPrivacyProvider crée un HaloProvider pointant vers un serveur de test.
-func newPrivacyProvider(statsBaseURL string) *HaloProvider {
-	p := NewHaloProvider()
-	p.limiter = newRateLimiter(600)
-	p.maxRetries = 1
-	// Injecter la base URL via le provider générique — on surcharge defaultStatsHost
-	// en réécrivant directement la méthode via le serveur de test dans les URLs.
-	_ = statsBaseURL
-	return p
-}
-
 // privacyCtx construit un contexte avec tokens + xuid.
 func privacyCtx(xuid string) context.Context {
 	return ctxkeys.WithHaloAuth(context.Background(),

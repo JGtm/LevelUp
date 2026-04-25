@@ -9,7 +9,7 @@ import (
 func TestReadLastNotifiedVersion_InvalidJSON(t *testing.T) {
 	dir := t.TempDir()
 	p := filepath.Join(dir, "settings.json")
-	os.WriteFile(p, []byte("not json"), 0o644)
+	_ = os.WriteFile(p, []byte("not json"), 0o644)
 	v := readLastNotifiedVersion(p)
 	if v != "" {
 		t.Fatalf("expected empty, got %q", v)
@@ -19,7 +19,7 @@ func TestReadLastNotifiedVersion_InvalidJSON(t *testing.T) {
 func TestReadLastNotifiedVersion_Valid(t *testing.T) {
 	dir := t.TempDir()
 	p := filepath.Join(dir, "settings.json")
-	os.WriteFile(p, []byte(`{"last_notified_version":"1.2.3"}`), 0o644)
+	_ = os.WriteFile(p, []byte(`{"last_notified_version":"1.2.3"}`), 0o644)
 	v := readLastNotifiedVersion(p)
 	if v != "1.2.3" {
 		t.Fatalf("expected 1.2.3, got %q", v)
@@ -41,7 +41,7 @@ func TestWriteLastNotifiedVersion_NewFile(t *testing.T) {
 func TestWriteLastNotifiedVersion_ExistingFile(t *testing.T) {
 	dir := t.TempDir()
 	p := filepath.Join(dir, "settings.json")
-	os.WriteFile(p, []byte(`{"theme":"dark","last_notified_version":"1.0.0"}`), 0o644)
+	_ = os.WriteFile(p, []byte(`{"theme":"dark","last_notified_version":"1.0.0"}`), 0o644)
 	if err := writeLastNotifiedVersion(p, "1.1.0"); err != nil {
 		t.Fatal(err)
 	}
@@ -62,7 +62,7 @@ func TestExtractWhatsNew_WithReadme(t *testing.T) {
 	dir := t.TempDir()
 	readme := filepath.Join(dir, "README.md")
 	content := "# LevelUp\n\n**v2.1** — New features\n- Feature A\n- Feature B\n\n**v2.0** — Old\n- Old feature\n"
-	os.WriteFile(readme, []byte(content), 0o644)
+	_ = os.WriteFile(readme, []byte(content), 0o644)
 
 	settings := filepath.Join(dir, "settings.json")
 	result := extractWhatsNew("v2.1.0", settings)
@@ -74,7 +74,7 @@ func TestExtractWhatsNew_WithReadme(t *testing.T) {
 func TestExtractWhatsNew_InvalidVersion(t *testing.T) {
 	dir := t.TempDir()
 	readme := filepath.Join(dir, "README.md")
-	os.WriteFile(readme, []byte("# test"), 0o644)
+	_ = os.WriteFile(readme, []byte("# test"), 0o644)
 
 	settings := filepath.Join(dir, "settings.json")
 	result := extractWhatsNew("x", settings)

@@ -150,8 +150,6 @@ func TestSeasonPassService_ChallengesAlwaysPresent(t *testing.T) {
 type mockHomeServiceForSPWithBP struct {
 	mockHomeServiceForSP
 	bpAvailable bool
-	// afterBPCall : tracks à retourner lors du 2e appel LoadSeasonPassTracks
-	tracksAfterBP []domain.SeasonPassTrackSummary
 }
 
 func (m *mockHomeServiceForSPWithBP) GetBattlePass(_ context.Context) domain.BattlePassResponse {

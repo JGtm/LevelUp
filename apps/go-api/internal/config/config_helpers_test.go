@@ -18,7 +18,7 @@ func TestGetEnvOrDefault_EnvSet(t *testing.T) {
 }
 
 func TestGetEnvOrDefault_EnvNotSet(t *testing.T) {
-	os.Unsetenv("_TEST_LEVELUP_KEY2")
+	_ = os.Unsetenv("_TEST_LEVELUP_KEY2")
 	got := getEnvOrDefault("_TEST_LEVELUP_KEY2", "default")
 	if got != "default" {
 		t.Errorf("expected default, got %s", got)
@@ -46,7 +46,7 @@ func TestGetEnvInt_InvalidInt(t *testing.T) {
 }
 
 func TestGetEnvInt_Empty(t *testing.T) {
-	os.Unsetenv("_TEST_PORT_EMPTY")
+	_ = os.Unsetenv("_TEST_PORT_EMPTY")
 	got := getEnvInt("_TEST_PORT_EMPTY", 3000)
 	if got != 3000 {
 		t.Errorf("expected default 3000, got %d", got)
@@ -205,7 +205,7 @@ func TestLoadEnvLocal_SetsVars(t *testing.T) {
 	if err := os.WriteFile(envFile, []byte(content), 0o600); err != nil {
 		t.Fatal(err)
 	}
-	os.Unsetenv("SPNKR_OAUTH_REFRESH_TOKEN_TESTGT")
+	_ = os.Unsetenv("SPNKR_OAUTH_REFRESH_TOKEN_TESTGT")
 	loadEnvLocal(envFile)
 	if got := os.Getenv("SPNKR_OAUTH_REFRESH_TOKEN_TESTGT"); got != "my_token" {
 		t.Errorf("expected my_token, got %q", got)
@@ -238,7 +238,7 @@ func TestLoadEnvLocal_QuotedValue(t *testing.T) {
 	if err := os.WriteFile(envFile, []byte(content), 0o600); err != nil {
 		t.Fatal(err)
 	}
-	os.Unsetenv("SPNKR_OAUTH_REFRESH_TOKEN_QUOTED")
+	_ = os.Unsetenv("SPNKR_OAUTH_REFRESH_TOKEN_QUOTED")
 	loadEnvLocal(envFile)
 	if got := os.Getenv("SPNKR_OAUTH_REFRESH_TOKEN_QUOTED"); got != "quoted_token" {
 		t.Errorf("expected quoted_token, got %q", got)

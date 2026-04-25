@@ -1,6 +1,7 @@
 // Package sync — achievements_test.go : tests unitaires pour la sync des achievements.
 //
-// Tests purs (pas de DuckDB) : merge bilingue, parseAchievementItem, warmAchievementImages, mock client.
+// Tests purs (pas de DuckDB) : merge bilingue, parseAchievementItem, warmAchievementImages.
+// Le mock XboxAchievementsClient vit dans achievements_mocks_integration_test.go (tag integration).
 // Pour les tests d'intégration DuckDB, voir achievements_integration_test.go.
 package sync
 
@@ -9,35 +10,6 @@ import (
 	"testing"
 	"time"
 )
-
-// ---------------------------------------------------------------------------
-// Mock XboxAchievementsClient
-// ---------------------------------------------------------------------------
-
-// mockXboxClient implémente XboxAchievementsClient pour les tests.
-type mockXboxClient struct {
-	// responses est une map lang → slice de achievements.
-	responses map[string][]PlayerAchievementRaw
-	// err retourné si non nil.
-	err error
-	// callCount compte les appels par lang.
-	callCount map[string]int
-}
-
-func newMockXboxClient() *mockXboxClient {
-	return &mockXboxClient{
-		responses: make(map[string][]PlayerAchievementRaw),
-		callCount: make(map[string]int),
-	}
-}
-
-func (m *mockXboxClient) GetPlayerAchievements(_ context.Context, _, lang string) ([]PlayerAchievementRaw, error) {
-	m.callCount[lang]++
-	if m.err != nil {
-		return nil, m.err
-	}
-	return m.responses[lang], nil
-}
 
 // ---------------------------------------------------------------------------
 // Fixtures partagées (utilisées aussi par achievements_integration_test.go)

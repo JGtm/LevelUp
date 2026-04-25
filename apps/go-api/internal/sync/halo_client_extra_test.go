@@ -16,7 +16,7 @@ func TestDoGet_Success(t *testing.T) {
 			t.Error("missing spartan header")
 		}
 		w.WriteHeader(200)
-		w.Write([]byte(`{"ok":true}`))
+		_, _ = w.Write([]byte(`{"ok":true}`))
 	}))
 	defer srv.Close()
 
@@ -181,7 +181,7 @@ func TestBackoff_CancelledContext(t *testing.T) {
 func TestGetMatchHistory_Success(t *testing.T) {
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(200)
-		w.Write([]byte(`{"Results":[{"MatchId":"abc-123","MatchInfo":{"StartTime":"2025-01-01T00:00:00Z"}}]}`))
+		_, _ = w.Write([]byte(`{"Results":[{"MatchId":"abc-123","MatchInfo":{"StartTime":"2025-01-01T00:00:00Z"}}]}`))
 	}))
 	defer srv.Close()
 
@@ -206,7 +206,7 @@ func TestGetMatchHistory_Success(t *testing.T) {
 func TestGetMatchStats_SuccessViaDoGet(t *testing.T) {
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(200)
-		w.Write([]byte(`{"Players":[{"XUID":"123"}]}`))
+		_, _ = w.Write([]byte(`{"Players":[{"XUID":"123"}]}`))
 	}))
 	defer srv.Close()
 
@@ -234,7 +234,7 @@ func TestDoGet_ServerError_Retry(t *testing.T) {
 			return
 		}
 		w.WriteHeader(200)
-		w.Write([]byte(`ok`))
+		_, _ = w.Write([]byte(`ok`))
 	}))
 	defer srv.Close()
 
@@ -348,13 +348,13 @@ func filmChunkEntry(index, chunkType int, path string) map[string]any {
 func TestGetMatchFilm_BasicPrefix(t *testing.T) {
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if strings.Contains(r.URL.Path, "/spectate") {
-			json.NewEncoder(w).Encode(filmManifestJSON(
+			_ = json.NewEncoder(w).Encode(filmManifestJSON(
 				"http://blobs.test/base/",
 				[]map[string]any{filmChunkEntry(0, filmChunkTypeReplicationData, "chunk0.bin")},
 			))
 			return
 		}
-		w.Write([]byte("DATA"))
+		_, _ = w.Write([]byte("DATA"))
 	}))
 	defer srv.Close()
 
@@ -377,7 +377,7 @@ func TestGetMatchFilm_BasicPrefix(t *testing.T) {
 func TestGetMatchFilm_MultiChunk(t *testing.T) {
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if strings.Contains(r.URL.Path, "/spectate") {
-			json.NewEncoder(w).Encode(filmManifestJSON(
+			_ = json.NewEncoder(w).Encode(filmManifestJSON(
 				"http://blobs.test/",
 				[]map[string]any{
 					filmChunkEntry(0, filmChunkTypeHeader, "header.bin"),
@@ -387,7 +387,7 @@ func TestGetMatchFilm_MultiChunk(t *testing.T) {
 			))
 			return
 		}
-		w.Write([]byte("CHUNK"))
+		_, _ = w.Write([]byte("CHUNK"))
 	}))
 	defer srv.Close()
 
@@ -427,7 +427,7 @@ func TestGetMatchFilm_FilmAbsent(t *testing.T) {
 func TestGetMatchFilm_DownloadFails(t *testing.T) {
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if strings.Contains(r.URL.Path, "/spectate") {
-			json.NewEncoder(w).Encode(filmManifestJSON(
+			_ = json.NewEncoder(w).Encode(filmManifestJSON(
 				"http://blobs.test/",
 				[]map[string]any{filmChunkEntry(0, filmChunkTypeReplicationData, "bad.bin")},
 			))
@@ -455,10 +455,10 @@ func TestGetHighlightEventsChunk_Found(t *testing.T) {
 				filmChunkEntry(1, filmChunkTypeHighlightEvents, "hev.bin"),
 			})
 			manifest["CustomData"].(map[string]any)["FilmMajorVersion"] = 3
-			json.NewEncoder(w).Encode(manifest)
+			_ = json.NewEncoder(w).Encode(manifest)
 			return
 		}
-		w.Write([]byte(payload))
+		_, _ = w.Write([]byte(payload))
 	}))
 	defer srv.Close()
 
@@ -482,13 +482,13 @@ func TestGetHighlightEventsChunk_NoChunk(t *testing.T) {
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if strings.Contains(r.URL.Path, "/spectate") {
 			// Manifest sans ChunkType=3.
-			json.NewEncoder(w).Encode(filmManifestJSON(
+			_ = json.NewEncoder(w).Encode(filmManifestJSON(
 				"http://blobs.test/",
 				[]map[string]any{filmChunkEntry(0, filmChunkTypeReplicationData, "c0.bin")},
 			))
 			return
 		}
-		w.Write([]byte("DATA"))
+		_, _ = w.Write([]byte("DATA"))
 	}))
 	defer srv.Close()
 

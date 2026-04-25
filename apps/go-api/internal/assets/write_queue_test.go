@@ -33,12 +33,6 @@ func (s *stubIndex) PersistIndex(_ context.Context, _ Ref, e IndexEntry) error {
 
 func (s *stubIndex) EnsureTable(_ context.Context) error { return nil }
 
-// isLockError est référencée dans write_queue.go depuis platform/duckdb.
-// On définit un stub lockErr pour tester les retries.
-type lockErrType struct{}
-
-func (lockErrType) Error() string { return "database is locked" }
-
 func TestWriteQueue_Enqueue_Persists(t *testing.T) {
 	idx := &stubIndex{available: true}
 	q := NewWriteQueue(idx, nil)
