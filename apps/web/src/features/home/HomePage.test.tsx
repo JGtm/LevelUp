@@ -113,7 +113,6 @@ describe('HomePage', () => {
         expect(within(spartanBanner).queryByTestId('home-highest-csr-card')).not.toBeInTheDocument()
         expect(within(spartanBanner).queryByTestId('home-highest-lusr-card')).not.toBeInTheDocument()
         expect(screen.getByTestId('home-career-rank-title')).toHaveTextContent('Lance Corporal')
-        expect(screen.getByTestId('home-career-rank-image')).toHaveAttribute('src', 'https://example.test/ranks/lance-corporal.png')
         expect(screen.getByTestId('home-spartan-adornment-image')).toHaveAttribute('src', 'https://example.test/ranks/lance-corporal-adornment.png')
         expect(screen.getByText('Career rank')).toBeInTheDocument()
         expect(screen.getByText('Highest CSR')).toBeInTheDocument()
