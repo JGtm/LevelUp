@@ -124,7 +124,13 @@ func PollXboxDeviceCode(ctx context.Context, clientID, deviceCode string, interv
 }
 
 // pollXboxDeviceCodeWithURL est la version testable avec URL configurable.
-func pollXboxDeviceCodeWithURL(ctx context.Context, client *http.Client, clientID, deviceCode string, interval int, targetURL string) (string, string, error) {
+func pollXboxDeviceCodeWithURL(
+	ctx context.Context,
+	client *http.Client,
+	clientID, deviceCode string,
+	interval int,
+	targetURL string,
+) (string, string, error) {
 	if client == nil {
 		client = &http.Client{Timeout: 20 * time.Second}
 	}

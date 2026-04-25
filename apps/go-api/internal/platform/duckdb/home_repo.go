@@ -166,7 +166,9 @@ func (r *HomeRepo) LoadSpartanIdentity(ctx context.Context) (*domain.HomeSpartan
 	row.HighestCSR = r.loadHomeSkillPeak(ctx, "CSR")
 	row.HighestLUSR = r.loadHomeSkillPeak(ctx, "LUSR")
 
-	if row.SpartanID == nil && row.RankNumber <= 0 && row.BannerImageURL == nil && row.EmblemImageURL == nil && row.BackdropImageURL == nil && row.HighestCSR == nil && row.HighestLUSR == nil {
+	if row.SpartanID == nil && row.RankNumber <= 0 &&
+		row.BannerImageURL == nil && row.EmblemImageURL == nil && row.BackdropImageURL == nil &&
+		row.HighestCSR == nil && row.HighestLUSR == nil {
 		return nil, nil
 	}
 	return &row, nil

@@ -126,7 +126,12 @@ func (r *PrestigeSocialRepo) ListEvents(ctx context.Context, userID, titleSlug s
 	return out, rows.Err()
 }
 
-func (r *PrestigeSocialRepo) GetLeaderboard(ctx context.Context, userIDs []string, titleSlug *string, since time.Time) ([]prestige.LeaderboardEntry, error) {
+func (r *PrestigeSocialRepo) GetLeaderboard(
+	ctx context.Context,
+	userIDs []string,
+	titleSlug *string,
+	since time.Time,
+) ([]prestige.LeaderboardEntry, error) {
 	ctx, cancel := context.WithTimeout(ctx, 10*time.Second)
 	defer cancel()
 	if len(userIDs) == 0 {
@@ -359,7 +364,12 @@ func (r *PrestigeSquadChallengeRepo) AddParticipant(ctx context.Context, p prest
 	return err
 }
 
-func (r *PrestigeSquadChallengeRepo) UpdateParticipantProgress(ctx context.Context, challengeID, userID string, value float64, completedAt *time.Time) error {
+func (r *PrestigeSquadChallengeRepo) UpdateParticipantProgress(
+	ctx context.Context,
+	challengeID, userID string,
+	value float64,
+	completedAt *time.Time,
+) error {
 	ctx, cancel := context.WithTimeout(ctx, 5*time.Second)
 	defer cancel()
 	_, err := r.db.Exec(ctx, `

@@ -124,8 +124,10 @@ type DistributionBucket struct {
 }
 
 // CorrelationDataPair est une paire (x, y) pour un scatter plot de corrélation.
+// Label exemples : "kills_vs_kd", "lifespan_vs_kills", "accuracy_vs_kda",
+// "lifespan_vs_deaths", "kills_vs_deaths", "mmr_team_vs_enemy".
 type CorrelationDataPair struct {
-	Label   string  `json:"label"` // ex: "kills_vs_kd" | "lifespan_vs_kills" | "accuracy_vs_kda" | "lifespan_vs_deaths" | "kills_vs_deaths" | "mmr_team_vs_enemy"
+	Label   string  `json:"label"`
 	X       float64 `json:"x"`
 	Y       float64 `json:"y"`
 	Outcome *int    `json:"outcome"` // nil si inconnu ; 2=victoire, 3=défaite, 1=égalité
