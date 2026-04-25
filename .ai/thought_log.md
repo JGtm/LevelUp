@@ -1,5 +1,44 @@
 # Thought Log
 
+## [2026-04-26] chore(lint): nettoyage golangci-lint sur la branche feat/multi-title-adapters-and-mappings
+
+**Statut** : Complété — 144 warnings éliminés sur 152 (-95 %). Les 8 restants sont dans des fichiers WIP user (prestige + media) et seront traités par le user lors de la finalisation de ces features.
+
+**Contexte** : Demande utilisateur "fais tout à 100% sur cette branche" après avoir constaté que des éditions précédentes avaient été perdues lors d'un reset/restore intermédiaire. Cohabitation avec un autre agent éditant en parallèle les fichiers media et prestige.
+
+**Décisions techniques** :
+- **Stratégie de commit** : isoler chaque type de warning dans son propre commit pour faciliter la review et la rollback. 7 commits chronologiques :
+  - `8cd470a5` chore(lint): supprimer code mort (unused) dans 9 fichiers
+  - `81a95ed2` chore(lint): refaire les eliminations unused/errcheck perdues
+  - `fe40aaae` chore(lint): extraire constantes pour 32 warnings goconst
+  - `681875d7` chore(lint): finir les goconst restants (cross-fichiers)
+  - `a777e60a` chore(lint): casser les lignes >150 chars (lll)
+  - `ccba29bf` chore(lint): unparam + staticcheck + bodyclose + ineffassign batch
+  - `1f97bcc5` chore(lint): funlen + gocyclo + prealloc + revive batch
+  - `cd053708` chore(lint): finir les warnings residuels
+- **Const partagées** plutôt que littéraux dispersés : `EventTypeKill/Death/Medal/Mode`, `homeColorPositive/Neutral/Negative`, `confidenceHigh/Medium/Low/None`, `AttemptStatusPending/Authorized/...`, `MimeImagePNG/JPEG`, `defaultUserTimezone`, `langFR/EN`, `errHintAuthRequired/FetchError`, `bootstrapSetupReady/...`, `trendLabelStable`, `zeroDuration`, `sessionCategoryFirefight/Ranked/BTB/Arena`, `playlistGroupRanked/Arena/BTB/Fun`, plus const test partagés (`testGamertag`, `testTitleSlug`, `testXUID*`, `aquariusMap`, `slayerMode`, `heroPlaylist`, `helloLiteral`).
+- **Annotations `//nolint`** réservées aux cas où le refactoring est hors-scope ou casserait l'API : fonctions `funlen` qui sont des orchestrateurs séquentiels (StartBackfill, IndexMedia, Apply settings, GetMatchView, etc.), `gocyclo` sur LoadSpartanIdentity / enrichHomeMatchTranslations / buildChallengeBadgeCandidates, `unparam` pour helpers tests dont le param est gardé pour extension future, `parseCareerRank` (referencé sous tag integration), `resolveAccessTokenFromDB` (contrat d'erreur documenté).
+- **Skip explicite des fichiers WIP du user** : `media_test.go`, `prestige_test.go`, `media_repo.go`, `domain/media.go`, `queries_home_citations.go`, `prestige/evaluator.go`, `service_quotas_test.go`, `media_service_test.go`. Ces fichiers contiennent des changements non-committés ou récemment committés par l'autre agent ; toucher pourrait créer des conflits.
+- **`.golangci.yml`** : exclusion du dossier parasite `apps/go-api/apps/` (artefact d'un agent qui a écrit au mauvais endroit).
+- **Renommages var-naming revive** : `MediaUrl` → `MediaURL` et `TrackingId` → `TrackingID` dans `persist_sink.go`, en gardant les JSON tags `"MediaUrl"` et `"TrackingId"` pour ne pas casser le parsing API Halo.
+- **bodyclose `session_context_test.go`** : remplacement de `cookies := w.Result().Cookies()` par 3 lignes (`resp := w.Result()` + `cookies := resp.Cookies()` + `_ = resp.Body.Close()`).
+
+**Résultats observés** :
+- 152 warnings → 8 warnings (-95 %).
+- 0 errcheck, 0 unused, 0 lll (sauf 1 dans queries_home_citations.go user-WIP), 0 funlen, 0 prealloc, 0 unparam, 0 staticcheck, 0 bodyclose, 0 ineffassign, 0 govet, 0 noctx, 0 copylocks.
+- 4 goconst restants : tous dans `prestige_test.go`, `prestige/evaluator.go`, `media_service_test.go` (WIP user).
+- 2 gofmt restants : `domain/media.go`, `prestige/service_quotas_test.go` (WIP user).
+- 1 gocyclo restant : `media_repo.go` enrichMediaMapTranslations (WIP user).
+- 1 lll restant : `queries_home_citations.go:447` (WIP user).
+- Tests verts sur tous les paquets touchés (sauf `TestIsSessionPotentiallyActive_Yesterday` flaky pré-existant : dépend de l'heure courante < 8h).
+
+**Conclusion / prochaine étape** : 
+- Branche prête pour merge côté lint Go.
+- Le user peut finir son WIP media + prestige et appliquer les patterns établis (`testGamertag`, `slayerMode`, `aquariusMap`, `EventTypeKill`, `testTitleSlug`) pour clean les 8 derniers warnings.
+- Le test flaky `TestIsSessionPotentiallyActive_Yesterday` (analysis/sessions_test.go:209) devrait être annoté `//nolint` ou réécrit pour ne pas dépendre de `time.Now()` à minuit.
+
+---
+
 ## [2026-04-25] feat(web): TopProgressBar — barre de chargement de page sous NavL1
 
 **Statut** : Complété — composant livré, intégré dans `AppShell`, tests + typecheck + lint verts.
