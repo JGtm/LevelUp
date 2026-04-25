@@ -862,7 +862,7 @@ export function HomePage() {
 
               {/* 5 — Playlist favorite */}
               <div className="flex h-full flex-col items-center justify-center rounded-lg border border-border bg-muted px-4 py-3 text-center">
-                <p className="text-xs text-muted-foreground">{locale === 'en' ? 'Fav. playlist' : 'Playlist fav.'}</p>
+                <p className="text-xs text-muted-foreground">{locale === 'en' ? 'Favorite playlist' : 'Playlist favorite'}</p>
                 <p className="w-full truncate text-sm font-bold text-primary leading-tight mt-1">
                   {hero.kpis.favorite_playlist_name || '—'}
                 </p>
