@@ -71,6 +71,9 @@ type fakeSemantic struct {
 func (f *fakeSemantic) TitleSlug() string                 { return "halo_infinite" }
 func (f *fakeSemantic) SchemaVersion() int                { return f.set.SchemaVersion() }
 func (f *fakeSemantic) Fields() *mappings.FieldMappingSet { return f.set }
+func (f *fakeSemantic) Ranks() *mappings.RankCatalog {
+	return mappings.NewRankCatalog("halo_infinite", nil)
+}
 
 // fakeResolver utilisé dans les tests preview.
 type fakeResolver struct {
