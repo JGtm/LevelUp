@@ -32,10 +32,11 @@ describe('MediaPage', () => {
     expect(container).toBeTruthy()
   })
 
-  it('affiche le spinner pendant le chargement', () => {
+  it("ne rend pas de loader plein écran pendant le chargement (TopProgressBar globale)", () => {
     const { container } = renderWithProviders(<MediaPage />)
-    // MediaPage utilise <Spinner size="lg" /> sans label — vérifier la présence du SVG
-    expect(container.querySelector('.animate-spin')).toBeInTheDocument()
+    // Le spinner local de la page a été retiré — feedback global via TopProgressBar.
+    // La toolbar reste visible mais la zone de contenu est vide pendant le fetch.
+    expect(container.querySelector('.animate-spin')).not.toBeInTheDocument()
   })
 
   it('affiche le titre Médias après chargement', async () => {
@@ -49,7 +50,7 @@ describe('MediaPage', () => {
     renderWithProviders(<MediaPage />)
     await waitFor(() => {
       expect(screen.getByText('Tous types')).toBeInTheDocument()
-      expect(screen.getByText('Screenshots')).toBeInTheDocument()
+      expect(screen.getByText('Captures')).toBeInTheDocument()
     })
   })
 
@@ -70,8 +71,8 @@ describe('MediaPage', () => {
   it('distingue filtres et tri dans la toolbar', async () => {
     renderWithProviders(<MediaPage />)
     await waitFor(() => {
-      expect(screen.getByText('Filtrer :')).toBeInTheDocument()
-      expect(screen.getByText('Trier :')).toBeInTheDocument()
+      expect(screen.getByText('Filtres :')).toBeInTheDocument()
+      expect(screen.getByText('Tri :')).toBeInTheDocument()
     })
   })
 
@@ -131,7 +132,7 @@ describe('MediaPage', () => {
     })
     renderWithProviders(<MediaPage />)
     await waitFor(() => {
-      expect(screen.getByText('Filter:')).toBeInTheDocument()
+      expect(screen.getByText('Filters:')).toBeInTheDocument()
       expect(screen.getByText('Sort:')).toBeInTheDocument()
       expect(screen.getByRole('option', { name: 'All maps' })).toBeInTheDocument()
       expect(screen.getByRole('option', { name: 'All modes' })).toBeInTheDocument()
@@ -147,30 +148,27 @@ describe('MediaPage', () => {
     })
   })
 
-  it('affiche la checkbox Likés seulement', async () => {
+  it('affiche le toggle Aimés seulement', async () => {
     renderWithProviders(<MediaPage />)
     await waitFor(() => {
-      // Checkbox likedOnly
-      const checkbox = document.querySelector('input[type="checkbox"]')
-      expect(checkbox).toBeInTheDocument()
+      expect(screen.getByLabelText('Afficher seulement les médias aimés')).toBeInTheDocument()
     })
   })
 
-  it('checkbox likedOnly est décochée par défaut', async () => {
+  it('toggle Aimés est désactivé par défaut', async () => {
     renderWithProviders(<MediaPage />)
     await waitFor(() => {
-      const checkbox = document.querySelector('input[type="checkbox"]') as HTMLInputElement
-      expect(checkbox).not.toBeNull()
-      expect(checkbox.checked).toBe(false)
+      const toggle = screen.getByLabelText('Afficher seulement les médias aimés')
+      expect(toggle).toHaveAttribute('aria-pressed', 'false')
     })
   })
 
   it('cliquer sur un filtre de type ne lève pas d\'erreur', async () => {
     renderWithProviders(<MediaPage />)
     await waitFor(() => {
-      expect(screen.getByText('Screenshots')).toBeInTheDocument()
+      expect(screen.getByText('Captures')).toBeInTheDocument()
     })
     // Cliquer ne doit pas lever d'exception
-    expect(() => fireEvent.click(screen.getByText('Screenshots'))).not.toThrow()
+    expect(() => fireEvent.click(screen.getByText('Captures'))).not.toThrow()
   })
 })

@@ -2,13 +2,20 @@ export type MediaLocale = 'fr' | 'en'
 
 export interface MediaText {
   title: string
-  gallerySubtitle: string
-  buildSubtitle: (totals: { mine: number; teammates: number; unassigned: number }) => string
   emptyState: string
   errorPrefix: string
   previousPage: string
   nextPage: string
   pageLabel: (page: number, totalPages: number) => string
+  groupSection: {
+    sessionOfPrefix: string
+    likedSection: string
+    notLikedSection: string
+    unknownOwner: string
+    unknownMap: string
+    unknownMode: string
+    unknownSession: string
+  }
   toolbar: {
     filterLabel: string
     sortLabel: string
@@ -18,6 +25,10 @@ export interface MediaText {
     modeAriaLabel: string
     sortAriaLabel: string
     groupAriaLabel: string
+    likedOnlyAriaLabel: string
+    authorsAriaLabel: string
+    allAuthorsToggle: string
+    noAuthors: string
     allTypes: string
     screenshots: string
     clips: string
@@ -35,6 +46,7 @@ export interface MediaText {
     byMap: string
     byMode: string
     byWeek: string
+    bySession: string
     likedFirst: string
     likedOnly: string
   }
@@ -42,27 +54,37 @@ export interface MediaText {
 
 const FR_TEXT: MediaText = {
   title: 'Médias',
-  gallerySubtitle: 'Galerie de captures et clips',
-  buildSubtitle: ({ mine, teammates, unassigned }) =>
-    `${mine} perso · ${teammates} équipe · ${unassigned} non assigné`,
   emptyState: 'Aucun média disponible pour ces filtres.',
   errorPrefix: 'Erreur :',
   previousPage: '← Précédent',
   nextPage: 'Suivant →',
   pageLabel: (page, totalPages) => `Page ${page} / ${totalPages}`,
+  groupSection: {
+    sessionOfPrefix: 'Session du',
+    likedSection: 'Aimés',
+    notLikedSection: 'Non aimés',
+    unknownOwner: 'Auteur inconnu',
+    unknownMap: 'Carte inconnue',
+    unknownMode: 'Mode inconnu',
+    unknownSession: 'Session inconnue',
+  },
   toolbar: {
-    filterLabel: 'Filtrer :',
-    sortLabel: 'Trier :',
+    filterLabel: 'Filtres :',
+    sortLabel: 'Tri :',
     kindAriaLabel: 'Type de média',
     sectionAriaLabel: 'Auteur du média',
     mapAriaLabel: 'Carte de la galerie',
     modeAriaLabel: 'Mode de la galerie',
     sortAriaLabel: 'Tri de la galerie',
     groupAriaLabel: 'Groupement de la galerie',
+    likedOnlyAriaLabel: 'Afficher seulement les médias aimés',
+    authorsAriaLabel: 'Filtrer par auteur',
+    allAuthorsToggle: 'Tous',
+    noAuthors: 'Aucun auteur disponible',
     allTypes: 'Tous types',
-    screenshots: 'Screenshots',
+    screenshots: 'Captures',
     clips: 'Clips',
-    allAuthors: 'Tous auteurs',
+    allAuthors: 'Tous les auteurs',
     mine: 'Mes captures',
     teammates: 'Coéquipiers',
     allMaps: 'Toutes cartes',
@@ -76,6 +98,7 @@ const FR_TEXT: MediaText = {
     byMap: 'Par carte',
     byMode: 'Par mode',
     byWeek: 'Par semaine',
+    bySession: 'Par session',
     likedFirst: 'Aimés en premier',
     likedOnly: 'Aimés',
   },
@@ -83,16 +106,22 @@ const FR_TEXT: MediaText = {
 
 const EN_TEXT: MediaText = {
   title: 'Media',
-  gallerySubtitle: 'Gallery of screenshots and clips',
-  buildSubtitle: ({ mine, teammates, unassigned }) =>
-    `${mine} personal · ${teammates} team · ${unassigned} unassigned`,
   emptyState: 'No media available for the current filters.',
   errorPrefix: 'Error:',
   previousPage: '← Previous',
   nextPage: 'Next →',
   pageLabel: (page, totalPages) => `Page ${page} / ${totalPages}`,
+  groupSection: {
+    sessionOfPrefix: 'Session of',
+    likedSection: 'Liked',
+    notLikedSection: 'Not liked',
+    unknownOwner: 'Unknown author',
+    unknownMap: 'Unknown map',
+    unknownMode: 'Unknown mode',
+    unknownSession: 'Unknown session',
+  },
   toolbar: {
-    filterLabel: 'Filter:',
+    filterLabel: 'Filters:',
     sortLabel: 'Sort:',
     kindAriaLabel: 'Media type',
     sectionAriaLabel: 'Media author',
@@ -100,6 +129,10 @@ const EN_TEXT: MediaText = {
     modeAriaLabel: 'Media mode',
     sortAriaLabel: 'Media sorting',
     groupAriaLabel: 'Media grouping',
+    likedOnlyAriaLabel: 'Show liked media only',
+    authorsAriaLabel: 'Filter by author',
+    allAuthorsToggle: 'All',
+    noAuthors: 'No authors available',
     allTypes: 'All types',
     screenshots: 'Screenshots',
     clips: 'Clips',
@@ -117,6 +150,7 @@ const EN_TEXT: MediaText = {
     byMap: 'By map',
     byMode: 'By mode',
     byWeek: 'By week',
+    bySession: 'By session',
     likedFirst: 'Liked first',
     likedOnly: '♥ Liked',
   },
