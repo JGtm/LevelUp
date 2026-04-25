@@ -1,5 +1,23 @@
 # Thought Log
 
+## [2026-04-25] feat(accessibility): Vérification finale + micro-fixes + rapport couverture
+
+**Statut** : Complété
+
+**Contexte** : Vérification post-audit — deux micro-fixes non committés identifiés lors de la session précédente, puis rapport de couverture de la lib `src/lib/accessibility/`.
+
+**Décisions techniques** :
+- `citation-progress-ring.tsx` : JSDoc `#38BDF8` → description textuelle (cohérence no-hex dans les commentaires)
+- `MatchStatCards.tsx` : 2 instances résiduelles `bg-[#1d2328]` → `bg-card` (MatchRankBadge + KdIndicatorCard)
+- Couverture `src/lib/accessibility/**` : Stmts 75.86%, Branches 72.72%, Fns 67.85%
+  - Modules critiques à 100% : scales (5 fichiers), plotlyColorscale, applyPalette, palettes
+  - Gaps structurels justifiés : `resolveToken` 50% (branche SSR/no-window, non testable jsdom), `useColorPaletteVersion` 0% (hook React — couvert via composants), `_logger` 72% (branch `debug` prod-only)
+- 10 fichiers de tests échouent en runner global (pré-existant, isolation jsdom) — tous passent individuellement
+
+**Résultats** : `tsc --noEmit` propre. 258 tests passing. Plan Okabe-Ito §1–§13 entièrement satisfait.
+
+---
+
 ## [2026-04-25] feat(accessibility): Audit final — élimination de tous les hex résiduels
 
 **Statut** : Complété
