@@ -24,12 +24,15 @@ import type { UpdateSettingsRequest } from '@/lib/api/types'
 // ---------------------------------------------------------------------------
 
 export type UiTheme = 'dark' | 'light'
+export type ColorPalette = 'default' | 'okabe-ito'
 
 interface LocalUiPrefs {
   /** Afficher les hints contextuels dans l'UI */
   showHints: boolean
   /** Thème visuel local de l'application */
   theme: UiTheme
+  /** Palette de couleurs (accessibilité daltoniens) */
+  colorPalette: ColorPalette
   /** Dernier slug joueur sélectionné par titre (restaure le contexte au rechargement) */
   lastPlayerSlugByTitle: Record<string, string | null>
 }
@@ -57,6 +60,7 @@ interface SettingsDraftState {
   setShowHints: (value: boolean) => void
   setTheme: (theme: UiTheme) => void
   toggleTheme: () => void
+  setColorPalette: (palette: ColorPalette) => void
   /** Définit le dernier slug joueur pour un titre donné */
   setLastPlayerSlugForTitle: (titleSlug: string, slug: string | null) => void
   /** Récupère le dernier slug joueur pour un titre donné */
@@ -70,6 +74,7 @@ interface SettingsDraftState {
 const DEFAULT_LOCAL_UI_PREFS: LocalUiPrefs = {
   showHints: true,
   theme: 'dark',
+  colorPalette: 'default',
   lastPlayerSlugByTitle: {},
 }
 
@@ -114,6 +119,11 @@ export const useSettingsDraftStore = create<SettingsDraftState>()(
             ...state.localUiPrefs,
             theme: state.localUiPrefs.theme === 'dark' ? 'light' : 'dark',
           },
+        })),
+
+      setColorPalette: (palette) =>
+        set((state) => ({
+          localUiPrefs: { ...state.localUiPrefs, colorPalette: palette },
         })),
 
       setLastPlayerSlugForTitle: (titleSlug, slug) =>
