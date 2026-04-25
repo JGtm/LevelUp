@@ -36,6 +36,7 @@ type stubSemantic struct{ slug string }
 func (s *stubSemantic) TitleSlug() string                 { return s.slug }
 func (s *stubSemantic) SchemaVersion() int                { return 1 }
 func (s *stubSemantic) Fields() *mappings.FieldMappingSet { return nil }
+func (s *stubSemantic) Ranks() *mappings.RankCatalog      { return mappings.NewRankCatalog(s.slug, nil) }
 
 func TestStaticResolver_DefaultSlug(t *testing.T) {
 	t.Parallel()

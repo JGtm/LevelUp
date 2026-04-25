@@ -19,6 +19,8 @@ import (
 	"levelup/go-api/internal/ctxkeys"
 	"levelup/go-api/internal/domain"
 	"levelup/go-api/internal/domain/title"
+	"levelup/go-api/internal/games"
+	halo_games "levelup/go-api/internal/games/halo_infinite"
 	"levelup/go-api/internal/platform/auth"
 	"levelup/go-api/internal/platform/duckdb"
 	"levelup/go-api/internal/platform/halo"
@@ -84,6 +86,29 @@ func (r *ServiceRegistry) Career(ctx context.Context, slug string) (port.CareerS
 	}
 	return service.NewCareerService(duckdb.NewCareerRepo(pdb)).
 		WithTitleSlug(pdb.TitleSlug), nil
+}
+
+// TitleDataAdapter retourne un games.TitleDataAdapter player-scoped pour le
+// joueur courant.
+//
+// Phase C+ du plan multi-titres : cette méthode est le point d'injection
+// utilisé par les handlers /api/v1/players/{slug}/... pour consommer la
+// couche canonique. Le PlayerDB est résolu avec son CareerRepo, ce qui
+// active la capability career.progression pour ce DataAdapter.
+//
+// Retourne ErrTitleNotResolved si le slug courant n'est pas halo_infinite
+// (les autres titres viendront avec leurs propres factories).
+func (r *ServiceRegistry) TitleDataAdapter(ctx context.Context, slug string) (games.TitleDataAdapter, error) {
+	pdb, err := r.resolve(ctx, slug)
+	if err != nil {
+		return nil, err
+	}
+	if pdb.TitleSlug != title.DefaultSlug {
+		return nil, fmt.Errorf("%w: %q (seul halo_infinite a un DataAdapter player-scoped pour le moment)",
+			games.ErrTitleNotResolved, pdb.TitleSlug)
+	}
+	careerRepo := duckdb.NewCareerRepo(pdb)
+	return halo_games.NewDataAdapter(careerRepo, slog.Default()), nil
 }
 
 // Filters retourne un FiltersService pour le joueur.
