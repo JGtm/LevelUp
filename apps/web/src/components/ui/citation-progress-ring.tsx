@@ -9,7 +9,7 @@ interface CitationProgressRingProps {
 
 /**
  * Anneau SVG de progression pour une citation (commendation Halo 5G).
- * - Arc bleu #38BDF8 proportionnel à pct (0–100)
+ * - Arc coloré proportionnel à pct (0–100), couleur via resolveToken
  * - Anneau doré + pastille ✓ si isNewlyMastered
  * - Image de la citation centrée (si imageUrl défini)
  */

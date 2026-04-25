@@ -118,7 +118,7 @@ export function MatchRankBadge({ rank, hadBotTeammate = false }: MatchRankBadgeP
     : undefined
 
   return (
-    <div className="flex items-center gap-3 rounded-lg border border-border bg-[#1d2328] px-4 py-3">
+    <div className="flex items-center gap-3 rounded-lg border border-border bg-card px-4 py-3">
       <div className="flex-1">
         <p className="text-xs text-muted-foreground uppercase tracking-wide">{rank.rating_type}</p>
         <div className="flex items-baseline gap-2 mt-0.5">
@@ -159,7 +159,7 @@ export function KdIndicatorCard({ nemesis }: KdIndicatorCardProps) {
   const kd = nemesis.killed_me > 0 ? nemesis.i_killed / nemesis.killed_me : nemesis.i_killed
 
   return (
-    <div className="rounded-lg border border-border bg-[#1d2328] px-4 py-3">
+    <div className="rounded-lg border border-border bg-card px-4 py-3">
       <p className="text-xs text-muted-foreground uppercase tracking-wide mb-1">
         K/D vs nemesis
       </p>
