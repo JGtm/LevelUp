@@ -1,5 +1,27 @@
 # Thought Log
 
+## [2026-04-25] chore(air): aligner stop_timeout sur le shutdown gracieux Go
+
+**Statut** : Complété — Commit 4/4 du plan shutdown DuckDB
+
+**Contexte** : `apps/go-api/.air.toml` avait `stop_timeout = 2000` (2 s) alors que le shutdown Go côté serveur peut prendre jusqu'à ~18 s (`srv.Shutdown` 15 s + Wait scheduler/watcher ~3 s). Conséquence : air SIGKILL le process avant la libération des handles DuckDB → fichier `metadata.duckdb` encore verrouillé au prochain démarrage sur Windows.
+
+**Décision technique** : Bumper `stop_timeout` à 20000 ms (20 s) — uniquement dans le tooling de dev air, **aucun impact prod** (Linux K8s a son propre `terminationGracePeriodSeconds`). Comment inline dans le fichier pour expliquer la dépendance avec le shutdown Go.
+
+**Choix rejeté** : réduire `srv.Shutdown` à 1.5 s côté Go pour rester sous les 2 s d'air. Mauvais pour la prod (couperait des requêtes longues legitimement en cours sur K8s SIGTERM). Préférence pour le tweak air dev-only.
+
+**Résultats** : 1 ligne modifiée (`2000` → `20000`) + comment de 4 lignes. Aucun changement Go. Fin du plan shutdown DuckDB en 4 commits sur `feat/accessibility-okabe-ito`.
+
+**Conclusion** : la chaîne complète est maintenant cohérente :
+1. Air laisse 20 s pour le shutdown gracieux (commit 4)
+2. Go shutdown ferme HTTP en ≤15 s + attend scheduler/watcher (commit 3)
+3. metaDB.Close() est appelé une fois que plus aucune goroutine ne le touche (commit 3)
+4. Si malgré tout un cas Windows lent persiste, le retry au démarrage absorbe ≤6 s (commit 1)
+
+À tester en pratique : faire 5-6 hot-reloads consécutifs avec le watcher activé et vérifier qu'aucun WARN `metadata verrouillée` n'apparaît dans les logs. Si ça reste propre, on peut envisager de revenir au retry 6×500 ms initial du commit 1 (mais pas urgent — coût zéro).
+
+---
+
 ## [2026-04-25] fix(go-api): WaitGroup watcher daemon + scheduler au shutdown
 
 **Statut** : Complété — Commits 2/4 et 3/4 du plan shutdown DuckDB (D + C combinés)
