@@ -178,9 +178,13 @@ func main() {
 	}
 	// Retry sur metadata : hot-reload peut créer une fenêtre où l'ancien processus
 	// n'a pas encore libéré le verrou DuckDB (write-ahead lock).
+	// IMPORTANT : OpenReadWriteShared (et non OpenReadOnly) pour partager la même
+	// instance DuckDB que le pool joueur (pool.go) et le DuckDBIndexStore (assets).
+	// Sinon DuckDB rejette toute deuxième connexion sur le même fichier avec
+	// "Can't open a connection to same database file with a different configuration".
 	var metaDB *duckdb.DB
 	for attempt := range 6 {
-		metaDB, err = duckdb.OpenReadOnly(metaPath)
+		metaDB, err = duckdb.OpenReadWriteShared(metaPath)
 		if err == nil {
 			break
 		}
