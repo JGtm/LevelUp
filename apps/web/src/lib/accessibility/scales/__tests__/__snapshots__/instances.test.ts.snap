@@ -1,0 +1,39 @@
+// Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
+
+exports[`instances — snapshot des seuils > snapshot complet des instances (drift guard) 1`] = `
+{
+  "accuracy": [
+    "perf-tier-1",
+    "perf-tier-3",
+    "perf-tier-5",
+  ],
+  "kd": [
+    "perf-tier-1",
+    "perf-tier-3",
+    "perf-tier-5",
+  ],
+  "mmrDelta": [
+    "divergent-pos",
+    "divergent-neutral",
+    "divergent-neg",
+  ],
+  "perf": [
+    "perf-tier-1",
+    "perf-tier-2",
+    "perf-tier-3",
+    "perf-tier-4",
+    "perf-tier-5",
+  ],
+  "progress": [
+    "perf-tier-1",
+    "perf-tier-2",
+    "perf-tier-4",
+    "perf-tier-5",
+  ],
+  "skillDelta": [
+    "divergent-pos",
+    "divergent-neutral",
+    "divergent-neg",
+  ],
+}
+`;
