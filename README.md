@@ -89,6 +89,11 @@ Major overhaul. LevelUp leaves Streamlit behind for a **React 19 + Go API** app 
 - **Cache-aside map images** — map artwork downloaded and cached locally, no more repeated external requests
 - **`populate-assets` CLI** — Go command to pre-download every asset (maps, medals, Battle Pass tiers) ahead of offline use
 
+**Colour accessibility**
+- **Colour-blind safe palette** — a new Okabe-Ito palette (designed in 2008, universally recommended) is available in Settings → Accessibility; it replaces every colour in the app — charts, performance indicators, match outcomes, K/D ratings — with tones that remain distinguishable under deuteranopia, protanopia and tritanopia
+- **Live preview** — the palette switches instantly across the whole app without a page reload; a swatch preview lets you compare before committing
+- **Persistent preference** — your choice is saved in the browser and restored automatically on every visit
+
 **v6.5 — Squad heatmap & hardened settings**
 - **Per-player intensity heatmap** (Teammates) — new visualization: match × phase (early/mid/late) heatmap for every squad member. See who strikes early, who ramps up late. Toggle between "all together" and "player by player"
 - **Separate Discord notifications** — sync and backfill alerts now have their own toggle each; disabling one doesn't affect the other
