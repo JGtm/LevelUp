@@ -121,6 +121,11 @@ interface L1Section {
   tabs?: L1Tab[]
 }
 
+// Refonte nav L1 (Phase 4 Prestige) :
+// - Synthèse devient un onglet de Stats (transverse : sa famille naturelle)
+// - Pass saisonnier devient un onglet de Carrière (progression temporelle)
+// - Palmarès renommé en "Communauté" + ajout onglet Leaderboard PP
+// - Nouvelle entrée L1 "Objectifs" (page Prestige : Défis + Mon parcours)
 const L1_SECTIONS: L1Section[] = [
   {
     key: 'home',
@@ -132,11 +137,12 @@ const L1_SECTIONS: L1Section[] = [
     key: 'stats',
     label: 'Stats',
     defaultPath: '/players/$playerSlug/stats/history',
-    matchPathname: (p) => /\/players\/[^/]+\/stats\//.test(p),
+    matchPathname: (p) => /\/players\/[^/]+\/(stats\/|synthesis)/.test(p),
     tabs: [
       { key: 'history', label: 'Historique', path: '/players/$playerSlug/stats/history' },
       { key: 'timeseries', label: 'Séries', path: '/players/$playerSlug/stats/timeseries' },
       { key: 'sessions', label: 'Sessions', path: '/players/$playerSlug/stats/sessions' },
+      { key: 'synthesis', label: 'Synthèse', path: '/players/$playerSlug/synthesis' },
     ],
   },
   {
@@ -148,12 +154,6 @@ const L1_SECTIONS: L1Section[] = [
       { key: 'synergies', label: 'Synergies', path: '/players/$playerSlug/squad/synergies' },
       { key: 'contributions', label: 'Contributions', path: '/players/$playerSlug/squad/contributions' },
     ],
-  },
-  {
-    key: 'synthesis',
-    label: 'Synthèse',
-    defaultPath: '/players/$playerSlug/synthesis',
-    matchPathname: (p) => /\/players\/[^/]+\/synthesis/.test(p),
   },
   {
     key: 'explorer',
@@ -168,25 +168,37 @@ const L1_SECTIONS: L1Section[] = [
     matchPathname: (p) => /\/players\/[^/]+\/media/.test(p),
   },
   {
-    key: 'palmares',
-    label: 'Palmarès',
-    defaultPath: '/players/$playerSlug/palmares',
-    matchPathname: (p) => /\/players\/[^/]+\/palmares(?:\/|$)/.test(p),
+    key: 'career',
+    label: 'Carrière',
+    defaultPath: '/players/$playerSlug/career',
+    matchPathname: (p) => /\/players\/[^/]+\/(career|profile|palmares\/season-pass)/.test(p),
     tabs: [
-      { key: 'leaderboard', label: 'Classements', path: '/players/$playerSlug/palmares' },
-      { key: 'relations', label: 'Relations', path: '/players/$playerSlug/palmares/relations' },
-      { key: 'compare', label: 'Face-à-face', path: '/players/$playerSlug/palmares/compare' },
+      { key: 'progression', label: 'Progression', path: '/players/$playerSlug/career' },
+      { key: 'citations', label: 'Citations', path: '/players/$playerSlug/career?tab=citations' },
       { key: 'season-pass', label: 'Pass saisonnier', path: '/players/$playerSlug/palmares/season-pass' },
     ],
   },
   {
-    key: 'career',
-    label: 'Carrière',
-    defaultPath: '/players/$playerSlug/career',
-    matchPathname: (p) => /\/players\/[^/]+\/(career|profile)/.test(p),
+    key: 'community',
+    label: 'Communauté',
+    defaultPath: '/players/$playerSlug/palmares',
+    matchPathname: (p) => /\/players\/[^/]+\/palmares(?:\/|$)/.test(p) &&
+      !/\/palmares\/season-pass/.test(p),
     tabs: [
-      { key: 'progression', label: 'Progression', path: '/players/$playerSlug/career' },
-      { key: 'citations', label: 'Citations', path: '/players/$playerSlug/career?tab=citations' },
+      { key: 'leaderboard', label: 'Classements', path: '/players/$playerSlug/palmares' },
+      { key: 'relations', label: 'Relations', path: '/players/$playerSlug/palmares/relations' },
+      { key: 'compare', label: 'Face-à-face', path: '/players/$playerSlug/palmares/compare' },
+      { key: 'prestige-leaderboard', label: 'Leaderboard PP', path: '/players/$playerSlug/palmares/prestige' },
+    ],
+  },
+  {
+    key: 'objectifs',
+    label: 'Objectifs',
+    defaultPath: '/players/$playerSlug/objectifs',
+    matchPathname: (p) => /\/players\/[^/]+\/objectifs/.test(p),
+    tabs: [
+      { key: 'challenges', label: 'Défis', path: '/players/$playerSlug/objectifs' },
+      { key: 'parcours', label: 'Mon parcours', path: '/players/$playerSlug/objectifs?tab=parcours' },
     ],
   },
 ]
