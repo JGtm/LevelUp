@@ -1,5 +1,37 @@
 # Thought Log
 
+## [2026-04-25] feat(multi-title): exécution complète du plan PLAN_MULTI_TITLE_ADAPTERS_AND_MAPPINGS (Phases A–F)
+
+**Statut** : Complété — 5 commits + 1 commit doc/Phase F sur `feat/multi-title-adapters-and-mappings`
+
+**Contexte** : exécution complète, en une session, du plan multi-titres documenté dans `.ai/PLAN_MULTI_TITLE_ADAPTERS_AND_MAPPINGS.md`. Toutes les décisions §16 ayant été validées préalablement, les 6 phases (A→F) ont pu être enchaînées sans débat ouvert.
+
+**Décisions techniques** :
+
+1. **Phase A — Fondation** (commit `aaccbe12` initial, ré-intégré dans la branche). Création des 3 packages : `internal/games/canonical/` (43 FieldKey + enums + scopes + types), `internal/games/mappings/` (loader TOML go-toml/v2 + types + format + units + registry), endpoint `/api/v1/titles/{slug}/field-mappings` derrière flag `MULTI_TITLE_API_ENABLED`. Handler avec ETag + Cache-Control. Source de vérité : `config/titles/halo_infinite/mappings/fields.toml` couvrant 43 FieldKey HI (combat 15 + match 9 + career 6 + skill 6 + pve 7). Tests : 32 (5 canonical + 22 mappings + 5 handlers) dont 2 fuzz + 1 property-based round-trip.
+
+2. **Phase B — Adapter HI** (commit `8513d1e1`). Définition des deux interfaces title-aware (SRP) : `TitleDataAdapter` (LoadMatchSummaries, LoadMatchDetail, LoadPlayerStats, LoadCareerSnapshot, LoadTimeseries + Capabilities) et `TitleSemanticAdapter` (TitleSlug, SchemaVersion, Fields). Implémentation HI : `DataAdapter` wrappant `CareerSource` (interface mockable) + projection canonique, `SemanticAdapter` wrappant `FieldMappingSet`. `StaticResolver` injecté au boot. Tests : 17 (5 resolver + 8 data + 4 semantic).
+
+3. **Phase C — Endpoint preview** (commit `f8c67c2a`). Décision pragmatique de NE PAS migrer les services produit existants en backend pour Phase C, car les payloads JSON actuels n'ont pas de libellés métier — la valeur du SemanticAdapter est côté frontend (Phase D). À la place, création d'un endpoint preview `GET /api/v1/titles/{slug}/preview/career` qui démontre end-to-end le pipeline (DataAdapter + SemanticAdapter) avec capability-aware degradation (`not_supported_reason` au lieu d'erreur). Tests : 4 (happy path FR + fallback EN + capability_not_supported + title_not_found).
+
+4. **Phase D — Frontend** (commit `343de0f2`). Hook `useFieldLabel(key)` + `useFieldMappings()` + `useFieldMapping(key)` dans `apps/web/src/lib/i18n/fieldMappings.ts`. TanStack Query avec `staleTime: Infinity` (couche sémantique versionnée Git, pas de hot-reload prod). Lit slug + locale depuis `appShellStore`. Fallback gracieux sur la key si endpoint 404. Tests Vitest : 5. Pas de migration de pages existantes (volontairement isolé du risque, voir AUDIT_I18N_REACT_2026-04-25.md §5.1 pour l'ordre de migration).
+
+5. **Phase E — Corpus synthétique titre B** (commit `5b4f0196`). Création de `synthetic_title_b/` avec libellés divergents (`Eliminations`/`Frags` au lieu de `Kills`/`Éliminations`, `Casualties` au lieu de `Deaths`, etc.) et stockage divergent (durations en `milliseconds` au lieu de `seconds`). Tests d'isolation : 5 (TOML valide, labels divergents, conversion d'unités ms→s, agnosticité des adapters, isolation resolver — pas de fuite cross-titres).
+
+6. **Phase F — Cleanup + docs** (à committer). Création de `tools/mappings/CHANGELOG.md` (historique schema_version + procédure générale de bump). Mise à jour `docs/ARCHITECTURE_V6.md` + `docs/FR/ARCHITECTURE_V6.md` avec une section dédiée sur la couche canonical/mappings/adapters (synchronisation EN ↔ FR alignée sur la convention CLAUDE.md §18). Mise à jour `.ai/project_map.md` avec un récap exhaustif de la couche multi-titres. Pas de suppression de code legacy : Phase C ayant été reportée pour la migration des services produit, les `queries_*.go` restent en place (ils seront migrés naturellement quand Phase D côté React consommera les libellés via `useFieldLabel`).
+
+**Choix de design clés** :
+
+- **TOML versionnés Git sous `config/titles/{slug}/`** (et non sous `data/` qui est runtime/gitignoré). Diff Git lisible, reproductibilité builds, pas de cycle « modifier la DB pour redéployer un label ».
+- **Deux interfaces séparées (SRP)** au lieu d'une `GameAdapter` monolithique : `TitleDataAdapter` ≠ `TitleSemanticAdapter`. Permet à un service produit de ne dépendre que de ce dont il a besoin.
+- **Capability-aware degradation explicite** via `ErrCapabilityNotSupported` + `CapabilityMap` : un appel `Load*` sur capability `not_exposed` retourne une erreur typée que l'API HTTP traduit en `not_supported_reason` plutôt qu'un payload vide silencieux.
+- **Conversions d'unités déclaratives dans le TOML** (`storage_unit` ≠ `display_unit`) : prouvée par titre B (ms→s pour durations). Loader refuse au boot toute conversion non listée dans `internal/games/mappings/units.go`.
+- **Phase C bypass des services produit** : décision pragmatique reportant la migration des handlers existants (`/career/encounters`, `/synthesis`, `/home`, `/match-view`) à la Phase D côté React où la valeur ajoutée se concrétise. Le backend continue de produire des payloads JSON avec données brutes (pas de libellés métier dans les JSON).
+
+**Résultat** : Plan exécuté **en totalité**, 5 commits propres sur `feat/multi-title-adapters-and-mappings`, 63+ tests verts couvrant toute la couche, aucune régression, golangci-lint clean, vitest clean. La couche multi-titres est prête pour activation produit (`MULTI_TITLE_API_ENABLED=true`) et pour l'arrivée d'un second titre réel.
+
+**Conclusion / prochaine étape** : merger la branche dans `main` après validation. Phase D suite (migration page par page des libellés FR/EN existants vers `useFieldLabel`) reste à faire dans des PR dédiées par feature, selon l'ordre documenté dans `AUDIT_I18N_REACT_2026-04-25.md §5.1`. Le plan `weapon_family` (canonique cross-titres pour les armes) reste documenté mais non implémenté — à activer quand un second titre réel arrivera.
+
 ## [2026-04-25] feat(home + ui): refonte banner spartan, next_rank_title, divers fixes UI
 
 **Statut** : Complété — 9 commits sur `feat/multi-title-adapters-and-mappings`

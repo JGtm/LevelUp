@@ -110,6 +110,21 @@ data/
 - `apps/web/src/components/shell/shellNavigation.ts` : source de vérité du mapping navigation primaire / secondaire et helper `buildPlayerDestination()` pour recalculer la route lors d'un changement de joueur.
 - `Makefile` (racine) + `apps/go-api/.air.toml` + `apps/web/vite.config.ts` : démarrage dev backend/frontend harmonisé sous Windows avec cleanup `server.exe` côté Makefile, `API_PORT` override, réutilisation d'une API déjà up et proxy Vite configurable.
 
+## Multi-titres — couche canonical + adapters + TOML mappings (Phase A–F, branche `feat/multi-title-adapters-and-mappings`)
+
+- `apps/go-api/internal/games/canonical/` : schéma canonique services (43 FieldKey, enums Outcome/MatchType/RatingType, scopes StatsScope/TimeseriesQuery/CareerOptions, MatchSummary/Detail, CareerSnapshot, MetricSeries) — tous les services produit consomment ce schéma au lieu d'accéder aux colonnes DuckDB directement.
+- `apps/go-api/internal/games/mappings/` : loader TOML strict (`pelletier/go-toml/v2`), validation locales+formats+collisions+conversions d'unités, `FieldMappingSet`, `Registry` title-aware, formatters (integer/percent/kdr/duration_hms/etc.) + conversions ratio↔percent et ms↔seconds.
+- `apps/go-api/internal/games/halo_infinite/` : `DataAdapter` (wrap `CareerSource`, projette vers `CareerSnapshot`) + `SemanticAdapter` (wrap `FieldMappingSet`).
+- `apps/go-api/internal/games/synthetic_title_b/` : corpus synthétique de tests d'isolation cross-titres (jamais référencé en prod).
+- `apps/go-api/internal/games/{adapter,resolver}.go` : interfaces `TitleDataAdapter` + `TitleSemanticAdapter` (SRP), `StaticResolver` injecté au boot.
+- `apps/go-api/internal/api/handlers/field_mappings.go` : `GET /api/v1/titles/{slug}/field-mappings?locale=fr` (ETag + Cache-Control), exposé seulement si `MULTI_TITLE_API_ENABLED=true`.
+- `apps/go-api/internal/api/handlers/multi_title_preview.go` : `GET /api/v1/titles/{slug}/preview/career?xuid=...` — proof-of-concept end-to-end du pipeline canonique avec libellés FR/EN.
+- `config/titles/halo_infinite/mappings/fields.toml` + `config/titles/synthetic_title_b/mappings/fields.toml` : TOML versionnés Git, source de vérité des libellés/format/group.
+- `apps/web/src/lib/i18n/fieldMappings.ts` : hook React `useFieldLabel(key)` + `useFieldMappings()` consommant l'endpoint backend via TanStack Query (staleTime infini), fallback gracieux sur la key.
+- `tools/mappings/CHANGELOG.md` : historique des bumps de `schema_version` des TOML.
+- Plan + audits : `.ai/PLAN_MULTI_TITLE_ADAPTERS_AND_MAPPINGS.md`, `.ai/PLAN_WEAPON_FAMILY_CANONICAL.md`, `.ai/AUDIT_I18N_REACT_2026-04-25.md`, `.ai/AUDIT_WEAPONS_2026-04-25.md`.
+- Tests : 32 tests Phase A (canonical 5 + mappings 22 + handlers 5), 17 tests Phase B (5 resolver + 8 data + 4 semantic), 4 tests Phase C (preview), 5 tests Vitest Phase D, 5 tests Phase E (isolation cross-titres). Total 63+ tests sur la couche.
+
 ## Modules Clés
 
 ### Frontend web (Go migration)
