@@ -206,15 +206,18 @@ FROM latest`
 // Paramètre : ?1 = rank_id.
 const Q26dHomeCareerRankMeta = `
 SELECT
-	NULLIF(TRIM(title_en), '') AS title_en,
-	NULLIF(TRIM(title_fr), '') AS title_fr,
+	NULLIF(TRIM(cr.title_en), '') AS title_en,
+	NULLIF(TRIM(cr.title_fr), '') AS title_fr,
 	COALESCE(
-		NULLIF(TRIM(large_icon_path), ''),
-		NULLIF(TRIM(icon_path), '')
+		NULLIF(TRIM(cr.large_icon_path), ''),
+		NULLIF(TRIM(cr.icon_path), '')
 	) AS image_path,
-	NULLIF(TRIM(adornment_icon_path), '') AS adornment_path
-FROM career_ranks
-WHERE rank_id = ?
+	NULLIF(TRIM(cr.adornment_icon_path), '') AS adornment_path,
+	NULLIF(TRIM(nr.title_en), '') AS next_title_en,
+	NULLIF(TRIM(nr.title_fr), '') AS next_title_fr
+FROM career_ranks cr
+LEFT JOIN career_ranks nr ON nr.rank_id = cr.rank_id + 1
+WHERE cr.rank_id = ?
 LIMIT 1`
 
 // Q26e : Home -- meilleur rating historique par type (CSR ou LUSR).

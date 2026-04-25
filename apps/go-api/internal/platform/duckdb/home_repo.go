@@ -177,11 +177,8 @@ func (r *HomeRepo) enrichSpartanIdentity(ctx context.Context, row *domain.HomeSp
 		return
 	}
 
-	var titleEN sql.NullString
-	var titleFR sql.NullString
-	var imagePath sql.NullString
-	var adornmentPath sql.NullString
-	if err := r.pdb.Metadata.QueryRow(ctx, Q26dHomeCareerRankMeta, row.RankNumber).Scan(&titleEN, &titleFR, &imagePath, &adornmentPath); err != nil {
+	var titleEN, titleFR, imagePath, adornmentPath, nextTitleEN, nextTitleFR sql.NullString
+	if err := r.pdb.Metadata.QueryRow(ctx, Q26dHomeCareerRankMeta, row.RankNumber).Scan(&titleEN, &titleFR, &imagePath, &adornmentPath, &nextTitleEN, &nextTitleFR); err != nil {
 		return
 	}
 	if titleEN.Valid {
@@ -189,6 +186,12 @@ func (r *HomeRepo) enrichSpartanIdentity(ctx context.Context, row *domain.HomeSp
 	}
 	if titleFR.Valid {
 		row.RankTitleFR = stringPtr(titleFR.String)
+	}
+	if nextTitleEN.Valid {
+		row.NextRankTitleEN = stringPtr(nextTitleEN.String)
+	}
+	if nextTitleFR.Valid {
+		row.NextRankTitleFR = stringPtr(nextTitleFR.String)
 	}
 	if imagePath.Valid {
 		row.RankImageURL = buildHomeIdentityAssetURL("career-rank", r.titleSlug(), imagePath.String)
