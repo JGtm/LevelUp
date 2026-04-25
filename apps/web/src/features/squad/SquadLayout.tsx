@@ -18,6 +18,7 @@ import { EmptyStateCard } from '@/components/ui/empty-state'
 import { PageLoader } from '@/components/ui/spinner'
 import { GamertagCombobox } from '@/components/ui/GamertagCombobox'
 import { SessionScopeSelector } from './SessionScopeSelector'
+import { getSeriesColors } from '@/lib/accessibility'
 import type {
   TeammateRow,
   TeammateKPIs,
@@ -48,7 +49,7 @@ export function useSquadContext(): SquadContextValue {
 // ─── Constante ────────────────────────────────────────────────────────────────
 
 const MAX_SELECTION = 3
-const CHART_COLORS = ['#7C3AED', '#F59E0B', '#10B981']
+const CHART_COLORS = getSeriesColors(3, ['narrative-dominant', 'perf-tier-3', 'divergent-pos'])
 
 // ─── KPI Block ────────────────────────────────────────────────────────────────
 

@@ -11,6 +11,7 @@ import { PlotlyChart } from '@/components/ui/plotly-chart'
 import { PageLoader } from '@/components/ui/spinner'
 import { useCitationsPage } from '@/features/citations/queries'
 import { DEFAULT_FILTER_CONTEXT } from '@/stores/globalFilterStore'
+import { tokenCssVar } from '@/lib/accessibility'
 
 export function CareerCitationsTab() {
   const { playerSlug } = useParams({ strict: false }) as { playerSlug: string }
@@ -179,7 +180,7 @@ export function CareerCitationsTab() {
                     className="flex flex-col items-center rounded-lg bg-muted/40 p-2 text-center"
                     title={m.description ?? m.name}
                   >
-                    <span className="text-lg font-bold text-[#33D6FF]">{m.count_filtered}</span>
+                    <span className="text-lg font-bold" style={{ color: tokenCssVar('perf-tier-2') }}>{m.count_filtered}</span>
                     <span className="mt-0.5 text-[10px] leading-tight text-muted-foreground line-clamp-2">
                       {m.name}
                     </span>

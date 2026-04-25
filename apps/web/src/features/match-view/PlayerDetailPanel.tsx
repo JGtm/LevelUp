@@ -6,6 +6,7 @@
  * Pour les autres joueurs, affiche les stats complètes du scoreboard.
  */
 import type { MatchScoreboardRow, MatchWeaponKill, MatchMedal, MatchCitation } from '@/lib/api/types'
+import { tokenCssVar } from '@/lib/accessibility'
 
 interface Props {
   row: MatchScoreboardRow
@@ -62,7 +63,7 @@ export function PlayerDetailPanel({ row, weaponKills, medals, citations }: Props
             {weaponKills.slice(0, 5).map((w) => (
               <div key={w.weapon_id} className="flex items-center justify-between text-xs">
                 <span className="text-muted-foreground">{w.weapon_label ?? `#${w.weapon_id}`}</span>
-                <span className="text-[#33D6FF] font-mono font-semibold">{w.kill_count} kills</span>
+                <span className="font-mono font-semibold" style={{ color: tokenCssVar('perf-tier-2') }}>{w.kill_count} kills</span>
               </div>
             ))}
           </div>

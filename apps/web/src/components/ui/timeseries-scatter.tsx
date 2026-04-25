@@ -9,6 +9,7 @@ import { Suspense, lazy, useMemo, useState } from 'react'
 import { Spinner } from './spinner'
 import { EmptyStateNotice } from './empty-state'
 import type { CorrelationDataPair } from '@/lib/api/types'
+import { resolveToken, useColorPaletteVersion } from '@/lib/accessibility'
 
 const Plot = lazy(() =>
   import('react-plotly.js').then((m) => ({ default: m.default })),
@@ -53,6 +54,7 @@ export function TimeseriesScatter({ points, height = 320 }: TimeseriesScatterPro
   }, [points])
 
   const [activeLabel, setActiveLabel] = useState<string>(() => availableLabels[0] ?? 'kills_vs_kd')
+  const paletteVersion = useColorPaletteVersion()
 
   const { traces, layout } = useMemo(() => {
     const filtered = points.filter((p) => p.label === activeLabel)
@@ -77,9 +79,9 @@ export function TimeseriesScatter({ points, height = 320 }: TimeseriesScatterPro
     })
 
     const traces: Plotly.Data[] = [
-      ...(wins.length > 0 ? [makeTrace(wins, 'Victoire', '#00DC82')] : []),
-      ...(losses.length > 0 ? [makeTrace(losses, 'Défaite', '#FF4B4B')] : []),
-      ...(unknowns.length > 0 ? [makeTrace(unknowns, 'Inconnu', '#9ba3af')] : []),
+      ...(wins.length > 0 ? [makeTrace(wins, 'Victoire', resolveToken('outcome-win'))] : []),
+      ...(losses.length > 0 ? [makeTrace(losses, 'Défaite', resolveToken('outcome-loss'))] : []),
+      ...(unknowns.length > 0 ? [makeTrace(unknowns, 'Inconnu', resolveToken('divergent-neutral'))] : []),
     ]
 
     const layout: Partial<Plotly.Layout> = {
@@ -111,7 +113,7 @@ export function TimeseriesScatter({ points, height = 320 }: TimeseriesScatterPro
     }
 
     return { traces, layout }
-  }, [points, activeLabel, height])
+  }, [points, activeLabel, height, paletteVersion])
 
   if (points.length === 0) {
     return (

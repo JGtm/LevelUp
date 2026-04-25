@@ -41,6 +41,30 @@
 
 ---
 
+## [2026-04-25] plan(multi-titles): décisions §16 validées
+
+**Statut** : Complété — toutes les décisions ouvertes sont tranchées
+
+**Décision technique** : Validation par Guillaume des 8 recommandations par défaut du plan §16, sans dérive. Médailles hybride DB/TOML, weapon_labels restent en DB, TOML définitif, EN+FR seulement, pas de hot-reload prod, schema versioning au cas par cas, lint Node simple, cache ETag + Cache-Control combinés.
+
+Observation produit additionnelle sur les armes : les armes Halo reviennent largement d'un titre à l'autre avec variantes de noms (`MA37` vs `AR`, `BR55` vs `BR75`) + nouveautés à chaque jeu. Implication pour le design : les `weapon_id` filmshell restent par-titre dans la metadata DuckDB ; une éventuelle couche supérieure `weapon_family` (canonique cross-titres genre `battle_rifle`, `assault_rifle`) sera à introduire plus tard quand un vrai second titre arrivera. Hors scope de ce plan, mais noté pour mémoire.
+
+**Résultat** : Plan §16 transformé en table « Décisions tranchées (validées) » avec référence vers les sections concernées. TL;DR mis à jour. Note dédiée armes ajoutée pour expliciter la trajectoire long terme.
+
+**Conclusion / prochaine étape** : Plan finalisé. Phase A peut être attaquée. Pré-requis recommandé : audit i18n React (~0.5j) avant attaque pour calibrer Phase D.
+
+## [2026-04-25] plan(multi-titles): revue critique double passe
+
+**Statut** : Complété — plan révisé sur demande
+
+**Décision technique** : Double passe de revue de `.ai/PLAN_MULTI_TITLE_ADAPTERS_AND_MAPPINGS.md`. Première passe (cohérence interne) a remonté ~20 trous : `FieldKey` mal nommé (`FieldDurationSecond` vs valeur `duration_seconds`), `GameAdapter` monolithique violant SRP, TOML sous `data/` (gitignoré) au lieu de `config/`, ambiguïté `storage_unit` vs `display_unit`, manque de stratégie médailles/i18n DB legacy, manque de versioning OpenAPI, pas de test fuzz, fixtures golden avec gamertag réel `jgtm` (privacy/repro), ordre Phase C MVP vs Phase D MVP incohérents. Deuxième passe (œil neuf) a remonté ~10 trous additionnels : pas de TL;DR, diagramme oubliant fetcher live, liste exhaustive FieldKey absente, `StatsScope`/`TimeseriesQuery` mentionnés mais non définis, idées core (12.8/12.9 conversions/enums) noyées dans les bonus, manque budget perf golden parity, manque estimation effort, manque section décisions ouvertes.
+
+Corrections appliquées : ajout TL;DR + §16 décisions ouvertes (8 questions à trancher) + §17 annexe FieldKey exhaustive (~38 keys) + §18 estimation effort (14–20j). Split `GameAdapter` en `TitleDataAdapter` + `TitleSemanticAdapter` (SRP). Déplacement TOML `data/` -> `config/` avec note explicite. Conversion d'unités `storage_unit`/`display_unit` intégrée dès §6.2 au lieu d'être en bonus. §6.7 médailles tranché (DB hybride), §6.8 i18n DB legacy tranché (modes -> TOML, weapons restent DB), §6.9 frontière TOML vs i18n React. §8.3 rate-limit borné précisé. §9.2 fuzz + property-based ajoutés. §10.1 fixtures synthétiques + budget perf < 30s + procédure régen. §11 Phase A pas no-op pur (feature flag), Phase C/D MVP cohérent (`/career/encounters` partout). §13 risque perf endpoint ajouté. Endpoint OpenAPI versionné explicitement. Tableau 18j détaillé phase par phase.
+
+**Résultat** : Plan passé de ~700L à ~870L, toutes les décisions tranchables sont tranchées ; les 8 ouvertes sont listées en §16 pour validation Guillaume avant implémentation.
+
+**Conclusion / prochaine étape** : Plan prêt pour validation. Si OK, attaque Phase A (3–4j) après audit i18n React (~0.5j) recommandé en pré-requis.
+
 ## [2026-04-25] plan(multi-titles): adapters + TOML mappings sémantiques
 
 **Statut** : Complété — plan rédigé, pas d'implémentation

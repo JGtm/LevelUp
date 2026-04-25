@@ -217,6 +217,13 @@ const FR_TEXT: HelpText = {
               "Filtrer par carte « Streets », mode « Capture du drapeau », résultat « Victoire » sur les 30 derniers jours pour isoler vos parties gagnées récemment dans cette configuration.",
           },
           {
+            term: 'Accessibilité couleurs',
+            definition:
+              "Paramètre de l'onglet Accessibilité (Paramètres) permettant de basculer toute l'interface sur la palette Okabe-Ito (2008). Cette palette utilise 8 couleurs distinguables par les trois principaux types de daltonisme (protanopie, deutéranopie, tritanopie). Le choix est persisté localement et n'affecte pas les autres joueurs.",
+            example:
+              "Si les barres de performance rouge/vert se ressemblent sur votre écran, activez la palette Okabe-Ito : les mêmes niveaux de performance sont alors encodés en bleu ciel, bleu-vert, jaune, orange et vermillon — distincts pour tous les types de vision.",
+          },
+          {
             term: 'Palmarès',
             definition:
               "Section regroupant vos classements (tableau local par liste de jeu et par saison), vos relations (alliés fréquents, ennemis récurrents, victimes habituelles), la comparaison face-à-face avec un autre joueur, et votre passe saisonnier Halo.",
@@ -405,6 +412,13 @@ const EN_TEXT: HelpText = {
             term: 'Explorer',
             definition:
               'Drilldown view of all your matches with cascade filters: map, mode, playlist, outcome, date, session. Enables fine-grained analysis and navigation to each match detail view.',
+          },
+          {
+            term: 'Color Accessibility',
+            definition:
+              'Setting in the Accessibility tab (Settings) that switches the entire interface to the Okabe-Ito (2008) color palette. This palette uses 8 colors distinguishable by the three main types of color blindness (protanopia, deuteranopia, tritanopia). The preference is stored locally and does not affect other players.',
+            example:
+              'If the red/green performance bars look the same on your screen, enable the Okabe-Ito palette: the same performance levels will then be encoded in sky blue, bluish green, yellow, orange and vermillion — distinct for all vision types.',
           },
           {
             term: 'Palmares',

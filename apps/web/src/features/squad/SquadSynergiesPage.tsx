@@ -10,10 +10,11 @@ import { useSquadContext } from './SquadLayout'
 import { buildHsPkChart } from './charts/hsPkChart'
 import { buildTimelineChart } from './charts/timelineChart'
 import { buildHeatmapChart } from './charts/heatmapChart'
+import { getSeriesColors, resolveToken } from '@/lib/accessibility'
 
 // ─── Helpers graphiques ───────────────────────────────────────────────────────
 
-const CHART_COLORS = ['#7C3AED', '#F59E0B', '#10B981']
+const CHART_COLORS = getSeriesColors(3, ['narrative-dominant', 'perf-tier-3', 'divergent-pos'])
 
 function buildSynergiesChart(
   rows: TeammateRow[],
@@ -41,7 +42,7 @@ function buildSynergiesChart(
       name: 'Référence solo',
       x: metrics,
       y: extract(soloRef),
-      marker: { color: '#94A3B8' },
+      marker: { color: resolveToken('divergent-neutral') },
     })
 
   return {
@@ -126,4 +127,3 @@ export function SquadSynergiesPage() {
     </div>
   )
 }
-

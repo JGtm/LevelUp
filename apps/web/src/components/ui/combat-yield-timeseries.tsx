@@ -9,6 +9,7 @@ import { Suspense, lazy, useMemo } from 'react'
 import { Spinner } from './spinner'
 import { EmptyStateNotice } from './empty-state'
 import type { MatchHistoryRow } from '@/lib/api/types'
+import { resolveToken, useColorPaletteVersion } from '@/lib/accessibility'
 
 const Plot = lazy(() =>
   import('react-plotly.js').then((m) => ({ default: m.default })),
@@ -29,6 +30,7 @@ export interface CombatYieldTimeseriesProps {
 }
 
 export function CombatYieldTimeseries({ rows }: CombatYieldTimeseriesProps) {
+  const paletteVersion = useColorPaletteVersion()
   const filtered = useMemo(
     () => rows.filter(
       (r) => r.offensive_conversion != null || r.defensive_resistance != null
@@ -49,6 +51,9 @@ export function CombatYieldTimeseries({ rows }: CombatYieldTimeseriesProps) {
   const ocValues = filtered.map((r) => r.offensive_conversion ?? null)
   const drValues = filtered.map((r) => r.defensive_resistance ?? null)
 
+  const ocColor = resolveToken('divergent-pos')
+  const drColor = resolveToken('divergent-neutral')
+
   const data: Plotly.Data[] = [
     {
       type: 'scatter',
@@ -56,8 +61,8 @@ export function CombatYieldTimeseries({ rows }: CombatYieldTimeseriesProps) {
       name: 'Offensif (OC)',
       x: dates,
       y: ocValues,
-      line: { color: '#4ade80', width: 2 },
-      marker: { color: '#4ade80', size: 5 },
+      line: { color: ocColor, width: 2 },
+      marker: { color: ocColor, size: 5 },
       connectgaps: false,
       hovertemplate: '%{x|%d/%m/%Y}<br>OC: %{y:.2f}<extra></extra>',
     },
@@ -67,8 +72,8 @@ export function CombatYieldTimeseries({ rows }: CombatYieldTimeseriesProps) {
       name: 'Défensif (DR)',
       x: dates,
       y: drValues,
-      line: { color: '#60a5fa', width: 2 },
-      marker: { color: '#60a5fa', size: 5 },
+      line: { color: drColor, width: 2 },
+      marker: { color: drColor, size: 5 },
       connectgaps: false,
       hovertemplate: '%{x|%d/%m/%Y}<br>DR: %{y:.2f}<extra></extra>',
     },
@@ -79,7 +84,7 @@ export function CombatYieldTimeseries({ rows }: CombatYieldTimeseriesProps) {
       name: `p80 OC (${OC_P80})`,
       x: [dates[0], dates[dates.length - 1]],
       y: [OC_P80, OC_P80],
-      line: { color: '#4ade80', width: 1, dash: 'dot' },
+      line: { color: ocColor, width: 1, dash: 'dot' },
       hoverinfo: 'none',
       showlegend: true,
     },
@@ -90,7 +95,7 @@ export function CombatYieldTimeseries({ rows }: CombatYieldTimeseriesProps) {
       name: `p80 DR (${DR_P80})`,
       x: [dates[0], dates[dates.length - 1]],
       y: [DR_P80, DR_P80],
-      line: { color: '#60a5fa', width: 1, dash: 'dot' },
+      line: { color: drColor, width: 1, dash: 'dot' },
       hoverinfo: 'none',
       showlegend: true,
     },
@@ -99,17 +104,17 @@ export function CombatYieldTimeseries({ rows }: CombatYieldTimeseriesProps) {
   const layout: Partial<Plotly.Layout> = {
     paper_bgcolor: 'transparent',
     plot_bgcolor: 'transparent',
-    font: { color: '#9ca3af', size: 11 },
+    font: { color: resolveToken('perf-tier-3'), size: 11 },
     margin: { t: 10, r: 10, b: 50, l: 50 },
     xaxis: {
       type: 'date',
-      gridcolor: '#374151',
-      linecolor: '#4b5563',
+      gridcolor: 'rgba(255,255,255,0.08)',
+      linecolor: 'rgba(255,255,255,0.12)',
       tickformat: '%d/%m',
     },
     yaxis: {
-      gridcolor: '#374151',
-      linecolor: '#4b5563',
+      gridcolor: 'rgba(255,255,255,0.08)',
+      linecolor: 'rgba(255,255,255,0.12)',
       rangemode: 'tozero',
     },
     legend: {

@@ -11,6 +11,8 @@ import { Button } from '@/components/ui/button'
 import type { MatchHistoryRow, PaginationMeta } from '@/lib/api/types'
 import { useSetMatchExclusion } from './queries'
 import { queryKeys } from '@/lib/query/keys'
+import { tokenCssVar } from '@/lib/accessibility'
+import { mmrDeltaScale } from '@/lib/accessibility/scales'
 
 interface Props {
   rows: MatchHistoryRow[]
@@ -199,7 +201,7 @@ export function MatchHistoryTable({
                   <td className="px-4 py-2 text-right font-mono text-sm">
                     {row.delta_mmr != null ? (
                       <span
-                        className={row.delta_mmr >= 0 ? 'text-[#00DC82]' : 'text-[#FF4B4B]'}
+                        style={{ color: tokenCssVar(mmrDeltaScale(row.delta_mmr)) }}
                       >
                         {row.delta_mmr >= 0 ? '+' : ''}
                         {row.delta_mmr.toFixed(0)}
