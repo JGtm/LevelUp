@@ -99,7 +99,11 @@ func NewRouter(
 	titleResolver := games.NewStaticResolver(titlePkg.DefaultSlug)
 	if hiFields, ok := fieldMappingsRegistry.Get(titlePkg.DefaultSlug); ok {
 		// Charger le catalog des rangs HI depuis metadata.duckdb (career_rank_translations).
-		// OpenReadWriteShared est cached par path → réutilise le pool existant ouvert dans cmd/server.
+		// OpenReadWriteShared est cached par path → réutilise le pool existant ouvert dans
+		// cmd/server. IMPORTANT : Close() pour décrémenter le refCount sinon le sql.DB
+		// reste ouvert au shutdown (le metaDB.Close() de cmd/server décrémente seulement
+		// d'un cran), ce qui retient le HANDLE Windows et provoque le verrou
+		// "metadata verrouillée" au prochain hot-reload Air.
 		var hiRanks *mappings.RankCatalog
 		hiMetaPath := titlePkg.NewPathResolver(cfg.RepoRoot).MetadataDBPath(titlePkg.DefaultSlug)
 		if metaDB, err := platform_duckdb.OpenReadWriteShared(hiMetaPath); err == nil {
@@ -108,6 +112,9 @@ func NewRouter(
 				slog.Info("rank_catalog_loaded", "title_slug", titlePkg.DefaultSlug, "ranks", catalog.Len())
 			} else {
 				slog.Warn("rank_catalog_load_failed", "err", err.Error())
+			}
+			if closeErr := metaDB.Close(); closeErr != nil {
+				slog.Warn("rank_catalog_meta_db_close_failed", "err", closeErr.Error())
 			}
 		} else {
 			slog.Warn("rank_catalog_meta_db_open_failed", "err", err.Error())

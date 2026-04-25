@@ -1,5 +1,19 @@
 # Thought Log
 
+## [2026-04-25] fix(server): refermer metaDB ouvert pour LoadRankCatalog au boot — régression réintroduite
+
+**Statut** : Complété — non commité (working tree)
+
+**Contexte** : Guillaume signale que les WARN/ERROR `metadata verrouillée, nouvelle tentative...` réapparaissent au hot-reload Air, alors que le plan en 4 commits (`e3542688`, `de9f8de5`, `35565a79`) avait été appliqué et était censé clore le sujet. Audit du commit récent `8e43ee44` (feat career-ranks) : `internal/api/server.go` ouvre `metadata.duckdb` via `platform_duckdb.OpenReadWriteShared(hiMetaPath)` au boot du router pour appeler `halo_infinite.LoadRankCatalog`, mais **ne referme jamais ce handle**.
+
+**Cause** : `OpenReadWriteShared` est cached par path. cmd/server l'a déjà ouvert avec refCount=1 (cmd/server/main.go:192). Mon nouvel ouvreur incrémente refCount à 2. Au shutdown, `metaDB.Close()` de cmd/server (ligne 343) ne décrémente que d'un cran (refCount: 2→1) et le `*sql.DB` sous-jacent n'est jamais fermé → HANDLE Windows retenu → fichier locked au prochain démarrage. Exactement le pattern que `de9f8de5` avait fermé pour le watcher / scheduler — réintroduit ailleurs.
+
+**Décision technique** : ajout d'un `metaDB.Close()` explicite après `LoadRankCatalog`, dans la même branche conditionnelle, avec log de warn en cas d'erreur fermeture. Pas un `defer` parce que le scope de la branche `if` est étroit et la fermeture doit se faire avant que `NewSemanticAdapter` ne consomme `hiRanks`. Comment in-line dans le code rappelant le piège du refcount partagé.
+
+**Résultats observés** : `go build ./...` clean, tests api/service clean. À tester en pratique sur 5-6 hot-reloads consécutifs.
+
+**Conclusion / prochaine étape** : régression que j'ai introduite, fix-up direct. Audit à faire systématiquement sur tout `OpenReadWriteShared` introduit dans du code de boot — la lib doc-string ne rappelle pas suffisamment que chaque appel doit avoir son `Close()` symétrique même quand le path est déjà ouvert ailleurs. À mentionner si on touche `db.go` un jour.
+
 ## [2026-04-25] fix(multi-title): finition câblage SemanticAdapter dans ServiceRegistry (dette résiduelle)
 
 **Statut** : Complété — non commité (working tree)
