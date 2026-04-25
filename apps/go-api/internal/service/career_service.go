@@ -68,8 +68,12 @@ func (s *CareerService) WithDataAdapter(a games.TitleDataAdapter) *CareerService
 }
 
 // GetCareerPage retourne la réponse complète de la page Carrière.
+//
+// Phase C+ multi-titres : GetLatestRank passe par DataAdapter.LoadCareerSnapshot
+// quand le service a un dataAdapter ; sinon fallback repo direct. Parité de
+// payload garantie par projectionLatestRankFromCanonical.
 func (s *CareerService) GetCareerPage(ctx context.Context) (domain.CareerPageResponse, error) {
-	rank, err := s.repo.GetLatestRank(ctx)
+	rank, err := s.loadLatestRank(ctx)
 	if err != nil {
 		return domain.CareerPageResponse{}, fmt.Errorf("CareerService.GetCareerPage: %w", err)
 	}
@@ -148,6 +152,62 @@ func (s *CareerService) GetEncounters(ctx context.Context) (domain.CareerEncount
 		Enemies:   enemies,
 		Total:     len(rows),
 	}, nil
+}
+
+// loadLatestRank centralise la résolution repo/adapter pour GetLatestRank.
+// Si dataAdapter est fourni et supporte career.progression, passe par
+// LoadCareerSnapshot et reconstitue un *domain.CareerRankData strictement
+// identique à celui que repo.GetLatestRank aurait retourné.
+func (s *CareerService) loadLatestRank(ctx context.Context) (*domain.CareerRankData, error) {
+	if s.dataAdapter != nil {
+		snap, err := s.dataAdapter.LoadCareerSnapshot(ctx, "", canonical.CareerOptions{})
+		if err == nil {
+			return rankDataFromCanonical(snap), nil
+		}
+		if !errors.Is(err, games.ErrCapabilityNotSupported) {
+			return nil, err
+		}
+	}
+	return s.repo.GetLatestRank(ctx)
+}
+
+// rankDataFromCanonical projette canonical.CareerSnapshot → *domain.CareerRankData.
+// Préserve la forme exacte attendue par buildCareerSummary / summaryXPTotal.
+func rankDataFromCanonical(snap *canonical.CareerSnapshot) *domain.CareerRankData {
+	if snap == nil {
+		return nil
+	}
+	row := &domain.CareerRankData{
+		RankNumber: snap.RankNumber,
+		IsMaxRank:  snap.IsMaxRank,
+	}
+	if snap.RecordedAt != nil {
+		row.RecordedAt = *snap.RecordedAt
+	}
+	if snap.CurrentXP != nil {
+		row.CurrentXP = *snap.CurrentXP
+	}
+	if snap.XPForNextRank != nil {
+		v := *snap.XPForNextRank
+		row.XPForNextRank = &v
+	}
+	if snap.XPTotal != nil {
+		v := *snap.XPTotal
+		row.XPTotal = &v
+	}
+	if snap.RankTier != nil {
+		v := *snap.RankTier
+		row.RankTier = &v
+	}
+	if snap.RankName != nil {
+		v := *snap.RankName
+		row.RankName = &v
+	}
+	if snap.CurrentRank != nil && snap.CurrentRank.ID != "" {
+		v := snap.CurrentRank.ID
+		row.RankLabel = &v
+	}
+	return row
 }
 
 // loadEncounterRows centralise la résolution repo/adapter et garantit la

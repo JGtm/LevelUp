@@ -103,7 +103,10 @@ func LoadFieldsFromBytes(path string, raw []byte) (*FieldMappingSet, error) {
 			groupOrders[mapping.Group] = make(map[int]string)
 		}
 		if other, dup := groupOrders[mapping.Group][mapping.DisplayOrder]; dup {
-			errs = append(errs, fmt.Errorf("[fields.%s]: display_order %d collisionne avec [fields.%s] dans le groupe %q", name, mapping.DisplayOrder, other, mapping.Group))
+			errs = append(errs, fmt.Errorf(
+				"[fields.%s]: display_order %d collisionne avec [fields.%s] dans le groupe %q",
+				name, mapping.DisplayOrder, other, mapping.Group,
+			))
 			continue
 		}
 		groupOrders[mapping.Group][mapping.DisplayOrder] = name

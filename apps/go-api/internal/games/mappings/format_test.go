@@ -182,6 +182,99 @@ func FuzzLoadFieldsFromBytes(f *testing.F) {
 
 // TestFormatRoundTripPercent vérifie que percent → ratio → percent garde
 // la valeur d'entrée à 1e-9 près (property-based léger).
+func TestFormatValueSeconds(t *testing.T) {
+	t.Parallel()
+	cases := []struct {
+		in   any
+		want string
+	}{
+		{45, "45s"},
+		{60.5, "60s"}, // FormatFloat 'f' 0 tronque (banker's truncation)
+		{0, "0s"},
+	}
+	for _, tc := range cases {
+		got, err := FormatValue(tc.in, FormatSeconds)
+		if err != nil {
+			t.Errorf("FormatValue(%v, seconds) err: %v", tc.in, err)
+		}
+		if got != tc.want {
+			t.Errorf("seconds(%v) = %q, want %q", tc.in, got, tc.want)
+		}
+	}
+}
+
+func TestFormatValueString(t *testing.T) {
+	t.Parallel()
+	if got, _ := FormatValue("hello", FormatString); got != "hello" {
+		t.Errorf("string('hello') = %q", got)
+	}
+	if got, _ := FormatValue(42, FormatString); got != "42" {
+		t.Errorf("string(int) = %q (devrait être fmt %%v)", got)
+	}
+}
+
+func TestFormatValueDateTime(t *testing.T) {
+	t.Parallel()
+	if got, _ := FormatValue("2026-04-25T12:00:00Z", FormatDateTime); got != "2026-04-25T12:00:00Z" {
+		t.Errorf("datetime = %q", got)
+	}
+}
+
+func TestFormatValueEnum(t *testing.T) {
+	t.Parallel()
+	if got, _ := FormatValue("win", FormatEnum); got != "win" {
+		t.Errorf("enum = %q", got)
+	}
+}
+
+func TestFormatValueBoolean_NonBool(t *testing.T) {
+	t.Parallel()
+	// Type non-bool retourne empty (comportement du switch sans default).
+	if got, _ := FormatValue("not a bool", FormatBoolean); got != "" {
+		t.Errorf("boolean(string) = %q, want empty", got)
+	}
+}
+
+func TestToFloat_AllNumericTypes(t *testing.T) {
+	t.Parallel()
+	// Couvre les branches restantes de toFloat (uint, uint32, uint64, float32).
+	if got, _ := FormatValue(uint(42), FormatInteger); got != "42" {
+		t.Errorf("uint = %q", got)
+	}
+	if got, _ := FormatValue(uint32(43), FormatInteger); got != "43" {
+		t.Errorf("uint32 = %q", got)
+	}
+	if got, _ := FormatValue(uint64(44), FormatInteger); got != "44" {
+		t.Errorf("uint64 = %q", got)
+	}
+	if got, _ := FormatValue(float32(3.7), FormatInteger); got != "3" {
+		t.Errorf("float32 = %q", got)
+	}
+	if got, _ := FormatValue(int32(7), FormatInteger); got != "7" {
+		t.Errorf("int32 = %q", got)
+	}
+}
+
+func TestFormatValueErrorWrongType(t *testing.T) {
+	t.Parallel()
+	// Type non-numérique sur un format numérique → erreur.
+	if _, err := FormatValue("not a number", FormatInteger); err == nil {
+		t.Errorf("integer(string) devrait err")
+	}
+	if _, err := FormatValue("not a number", FormatPercent1); err == nil {
+		t.Errorf("percent(string) devrait err")
+	}
+	if _, err := FormatValue("not a number", FormatKDR2); err == nil {
+		t.Errorf("kdr(string) devrait err")
+	}
+	if _, err := FormatValue("not a number", FormatSeconds); err == nil {
+		t.Errorf("seconds(string) devrait err")
+	}
+	if _, err := FormatValue("not a number", FormatDurationHMS); err == nil {
+		t.Errorf("duration_hms(string) devrait err")
+	}
+}
+
 func TestFormatRoundTripPercent(t *testing.T) {
 	t.Parallel()
 	values := []float64{0, 0.5, 1, 25, 50, 75, 99.99, 100}
