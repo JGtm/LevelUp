@@ -202,22 +202,22 @@ SELECT
 	) AS adornment_path
 FROM latest`
 
-// Q26d : Home -- métadonnées du rang carrière courant depuis metadata.duckdb.
+// Q26d : Home -- assets visuels du rang carrière courant depuis metadata.duckdb.
+//
+// Les libellés (title FR/EN, next_rank_title) ne sont PAS lus ici : ils
+// proviennent du TitleSemanticAdapter (career_rank_translations) côté service.
+// Le repo storage reste exclusivement responsable des paths d'assets.
+//
 // Paramètre : ?1 = rank_id.
 const Q26dHomeCareerRankMeta = `
 SELECT
-	NULLIF(TRIM(cr.title_en), '') AS title_en,
-	NULLIF(TRIM(cr.title_fr), '') AS title_fr,
 	COALESCE(
-		NULLIF(TRIM(cr.large_icon_path), ''),
-		NULLIF(TRIM(cr.icon_path), '')
+		NULLIF(TRIM(large_icon_path), ''),
+		NULLIF(TRIM(icon_path), '')
 	) AS image_path,
-	NULLIF(TRIM(cr.adornment_icon_path), '') AS adornment_path,
-	NULLIF(TRIM(nr.title_en), '') AS next_title_en,
-	NULLIF(TRIM(nr.title_fr), '') AS next_title_fr
-FROM career_ranks cr
-LEFT JOIN career_ranks nr ON nr.rank_id = cr.rank_id + 1
-WHERE cr.rank_id = ?
+	NULLIF(TRIM(adornment_icon_path), '') AS adornment_path
+FROM career_ranks
+WHERE rank_id = ?
 LIMIT 1`
 
 // Q26e : Home -- meilleur rating historique par type (CSR ou LUSR).

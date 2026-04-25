@@ -13,6 +13,7 @@ import (
 	"time"
 
 	"levelup/go-api/internal/domain"
+	"levelup/go-api/internal/games/mappings"
 )
 
 // ---------------------------------------------------------------------------
@@ -296,7 +297,11 @@ func BuildHeroCard(matches []domain.HomeMatchRow, gamertag string, totalMatches 
 }
 
 // BuildSpartanIdentity construit le bloc identitaire compact de la home.
-func BuildSpartanIdentity(raw *domain.HomeSpartanIdentityRow, locale string) *domain.HomeSpartanIdentity {
+//
+// ranks (peut être nil) est consulté pour résoudre RankTitle + NextRankTitle dans
+// la locale demandée. Si nil ou si l'entrée est absente du catalog, fallback sur
+// raw.RankName (libellé pré-construit côté player DB) puis sur "Rank N".
+func BuildSpartanIdentity(raw *domain.HomeSpartanIdentityRow, locale string, ranks *mappings.RankCatalog) *domain.HomeSpartanIdentity {
 	if raw == nil {
 		return nil
 	}
@@ -320,7 +325,7 @@ func BuildSpartanIdentity(raw *domain.HomeSpartanIdentityRow, locale string) *do
 	if peak := buildHomeSkillPeak(raw.HighestLUSR); peak != nil {
 		identity.HighestLUSR = peak
 	}
-	if rank := buildHomeCareerRank(raw, locale); rank != nil {
+	if rank := buildHomeCareerRank(raw, locale, ranks); rank != nil {
 		identity.CareerRank = rank
 	}
 
@@ -341,12 +346,18 @@ func buildHomeSkillPeak(raw *domain.HomeSkillPeakRow) *domain.HomeSkillPeakSumma
 	}
 }
 
-func buildHomeCareerRank(raw *domain.HomeSpartanIdentityRow, locale string) *domain.HomeCareerRankSummary {
+func buildHomeCareerRank(raw *domain.HomeSpartanIdentityRow, locale string, ranks *mappings.RankCatalog) *domain.HomeCareerRankSummary {
 	if raw == nil || raw.RankNumber <= 0 {
 		return nil
 	}
 
-	title := strings.TrimSpace(labelForLocale(locale, optionalStringValue(raw.RankTitleFR), optionalStringValue(raw.RankTitleEN)))
+	loc := normalizeHomeLocale(locale)
+
+	// Priorité : RankCatalog (metadata.duckdb / GameCMS) > RankName (libellé
+	// pré-build côté player DB) > RankTier > "Rang N". Le fallback player-DB
+	// couvre les cas où le SemanticAdapter n'est pas injecté dans le HomeService
+	// (tests, mode dégradé).
+	title := lookupRankLabel(ranks, raw.RankNumber, loc)
 	if title == "" {
 		title = strings.TrimSpace(optionalStringValue(raw.RankName))
 	}
@@ -354,14 +365,20 @@ func buildHomeCareerRank(raw *domain.HomeSpartanIdentityRow, locale string) *dom
 		title = strings.TrimSpace(optionalStringValue(raw.RankTier))
 	}
 	if title == "" {
-		if normalizeHomeLocale(locale) == "en" {
+		if loc == "en" {
 			title = fmt.Sprintf("Rank %d", raw.RankNumber)
 		} else {
 			title = fmt.Sprintf("Rang %d", raw.RankNumber)
 		}
 	}
 
-	nextTitle := strings.TrimSpace(labelForLocale(locale, optionalStringValue(raw.NextRankTitleFR), optionalStringValue(raw.NextRankTitleEN)))
+	var nextTitle string
+	if !raw.IsMaxRank && ranks != nil {
+		if next, ok := ranks.Next(raw.RankNumber); ok {
+			label, _ := next.FullLabel(loc)
+			nextTitle = strings.TrimSpace(label)
+		}
+	}
 
 	return &domain.HomeCareerRankSummary{
 		RankNumber:        raw.RankNumber,
@@ -374,6 +391,19 @@ func buildHomeCareerRank(raw *domain.HomeSpartanIdentityRow, locale string) *dom
 		ProgressPct:       computeHomeCareerProgressPct(raw.CurrentXP, raw.XPForNextRank, raw.IsMaxRank),
 		IsMaxRank:         raw.IsMaxRank,
 	}
+}
+
+// lookupRankLabel retourne le libellé localisé du rang via le catalog, ou ""
+// si ranks est nil ou si l'entrée est absente.
+func lookupRankLabel(ranks *mappings.RankCatalog, rankID int, locale string) string {
+	if ranks == nil {
+		return ""
+	}
+	label, ok := ranks.FullLabel(rankID, locale)
+	if !ok {
+		return ""
+	}
+	return strings.TrimSpace(label)
 }
 
 func computeHomeCareerProgressPct(currentXP, xpForNext int, isMaxRank bool) float64 {

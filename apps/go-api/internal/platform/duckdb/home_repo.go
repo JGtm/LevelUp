@@ -172,26 +172,18 @@ func (r *HomeRepo) LoadSpartanIdentity(ctx context.Context) (*domain.HomeSpartan
 	return &row, nil
 }
 
+// enrichSpartanIdentity hydrate les paths d'assets visuels du rang carrière
+// (image rang + adornment) depuis metadata.duckdb. Les libellés (rang courant,
+// rang suivant) sont résolus en aval par le service via le SemanticAdapter
+// (cf. mappings.RankCatalog) — ils ne passent plus par le repo storage.
 func (r *HomeRepo) enrichSpartanIdentity(ctx context.Context, row *domain.HomeSpartanIdentityRow) {
 	if row == nil || row.RankNumber <= 0 || r.pdb == nil || r.pdb.Metadata == nil {
 		return
 	}
 
-	var titleEN, titleFR, imagePath, adornmentPath, nextTitleEN, nextTitleFR sql.NullString
-	if err := r.pdb.Metadata.QueryRow(ctx, Q26dHomeCareerRankMeta, row.RankNumber).Scan(&titleEN, &titleFR, &imagePath, &adornmentPath, &nextTitleEN, &nextTitleFR); err != nil {
+	var imagePath, adornmentPath sql.NullString
+	if err := r.pdb.Metadata.QueryRow(ctx, Q26dHomeCareerRankMeta, row.RankNumber).Scan(&imagePath, &adornmentPath); err != nil {
 		return
-	}
-	if titleEN.Valid {
-		row.RankTitleEN = stringPtr(titleEN.String)
-	}
-	if titleFR.Valid {
-		row.RankTitleFR = stringPtr(titleFR.String)
-	}
-	if nextTitleEN.Valid {
-		row.NextRankTitleEN = stringPtr(nextTitleEN.String)
-	}
-	if nextTitleFR.Valid {
-		row.NextRankTitleFR = stringPtr(nextTitleFR.String)
 	}
 	if imagePath.Valid {
 		row.RankImageURL = buildHomeIdentityAssetURL("career-rank", r.titleSlug(), imagePath.String)
