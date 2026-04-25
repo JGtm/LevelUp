@@ -1,5 +1,24 @@
 # Thought Log
 
+## [2026-04-25] feat(accessibility): Audit final — élimination de tous les hex résiduels
+
+**Statut** : Complété
+
+**Contexte** : Grep exhaustif post-Phases 1-7 : hex résiduels dans 12 fichiers non couverts (career, citations, match-history, match-view, squad, combat-yield, timeseries-scatter/line, citation-progress-ring).
+
+**Décisions techniques** :
+- `combat-yield-bar/timeseries` : OC → `divergent-pos`, DR → `divergent-neutral`
+- `citation-progress-ring` : `resolveToken()` (SVG n'accepte pas CSS vars dans `stroke`)
+- `SquadLayout`/`SquadSynergiesPage` : `CHART_COLORS` → `getSeriesColors()` palette-réactif
+- `MatchStatCards` : `bg-[#1d2328]` → `bg-card`
+- `timeseries-scatter/line` : `paletteVersion` ajouté dans deps `useMemo`
+- `help/i18n.ts` : entrée glossaire "Accessibilité couleurs" FR + EN
+- `CLAUDE.md` : règle 20 — aucun hex/Tailwind color hors `lib/accessibility/palettes/`
+
+**Résultats** : 0 régression. `tsc --noEmit` propre. Checklist §13 du plan satisfaite.
+
+---
+
 ## [2026-04-25] feat(accessibility): Implémentation Okabe-Ito complète (Phases 1-7)
 
 **Statut** : Complété — branche `feat/bp-item-persister`
