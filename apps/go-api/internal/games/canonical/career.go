@@ -3,16 +3,31 @@ package canonical
 import "time"
 
 // CareerSnapshot représente la progression carrière d'un joueur.
+//
+// Le bloc Rank* est volontairement riche pour permettre aux services
+// produit de reconstruire un libellé complet (RankLabel + RankTier + RankNumber)
+// sans dépendre du SemanticAdapter. RecordedAt et XPTotal alimentent les
+// projections d'historique XP.
 type CareerSnapshot struct {
 	Player          PlayerIdentity
 	CurrentRank     *AssetReference
 	CurrentXP       *int
 	XPForNextRank   *int
+	XPTotal         *int
 	NextRank        *AssetReference
 	History         []CareerHistoryEntry
 	HighestCSR      *int
 	HighestLUSR     *float64
 	HighestRatingAt *time.Time
+
+	// Bloc Rank* enrichi (utile pour la page Carrière complète, pas seulement
+	// pour la home preview). Ces champs sont peuplés à partir du provider
+	// quand disponibles, sinon laissés à zéro.
+	RankNumber int
+	RankTier   *string
+	RankName   *string
+	IsMaxRank  bool
+	RecordedAt *time.Time
 }
 
 // CareerHistoryEntry est une entrée de progression carrière historisée.

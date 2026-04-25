@@ -231,6 +231,54 @@ func TestCareerService_GetEncounters_DataAdapterParity(t *testing.T) {
 	}
 }
 
+// TestCareerService_GetCareerPage_DataAdapterParity : la bascule GetLatestRank
+// par DataAdapter doit produire exactement le même CareerPageResponse que la
+// version repo legacy, sur les mêmes données.
+func TestCareerService_GetCareerPage_DataAdapterParity(t *testing.T) {
+	t.Parallel()
+
+	rankLabel := "Diamond 3"
+	rankName := "Diamant 3"
+	rankTier := "DIAMOND"
+	xpForNext := 1234
+	xpTotal := 5_000_000
+	rankData := &domain.CareerRankData{
+		RankNumber:    25,
+		CurrentXP:     500,
+		RecordedAt:    time.Date(2026, 4, 25, 12, 0, 0, 0, time.UTC),
+		RankLabel:     &rankLabel,
+		RankName:      &rankName,
+		RankTier:      &rankTier,
+		XPForNextRank: &xpForNext,
+		XPTotal:       &xpTotal,
+		IsMaxRank:     false,
+	}
+
+	// Path 1 : repo direct.
+	repoLegacy := &mockCareerRepo{rank: rankData}
+	svcLegacy := NewCareerService(repoLegacy)
+	respLegacy, err := svcLegacy.GetCareerPage(context.Background())
+	if err != nil {
+		t.Fatalf("legacy: %v", err)
+	}
+
+	// Path 2 : DataAdapter.
+	repoAdapter := &mockCareerRepo{rank: rankData}
+	dataAdapter := halo_games.NewDataAdapter(repoAdapter, slog.New(slog.NewJSONHandler(io.Discard, nil)))
+	svcAdapter := NewCareerService(repoAdapter).WithDataAdapter(dataAdapter)
+	respAdapter, err := svcAdapter.GetCareerPage(context.Background())
+	if err != nil {
+		t.Fatalf("adapter: %v", err)
+	}
+
+	// Parité Summary (cœur de la page).
+	jsonLegacy, _ := json.Marshal(respLegacy.Summary)
+	jsonAdapter, _ := json.Marshal(respAdapter.Summary)
+	if string(jsonLegacy) != string(jsonAdapter) {
+		t.Errorf("Summary parity cassée :\nlegacy=  %s\nadapter= %s", jsonLegacy, jsonAdapter)
+	}
+}
+
 // TestCareerService_GetEncounters_AdapterFallbackOnUnsupported prouve que si
 // le DataAdapter retourne ErrCapabilityNotSupported, le service retombe sur
 // le repo sans propager l'erreur (dégradation gracieuse).

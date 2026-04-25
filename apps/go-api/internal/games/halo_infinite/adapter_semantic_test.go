@@ -60,3 +60,28 @@ func TestSemanticAdapter_NilSet(t *testing.T) {
 		t.Errorf("NewSemanticAdapter(nil, nil) devrait retourner nil")
 	}
 }
+
+func TestSemanticAdapter_Ranks_NilDefault(t *testing.T) {
+	t.Parallel()
+	set, _ := mappings.LoadFieldsFromBytes("x.toml", []byte(minimalToml))
+	a := NewSemanticAdapter(set, nil)
+	ranks := a.Ranks()
+	if ranks == nil {
+		t.Fatal("Ranks() ne doit jamais retourner nil (catalog vide attendu)")
+	}
+	if ranks.Len() != 0 {
+		t.Errorf("Ranks() = %d entrées, want 0 (catalog vide par défaut)", ranks.Len())
+	}
+}
+
+func TestSemanticAdapter_Ranks_PassThrough(t *testing.T) {
+	t.Parallel()
+	set, _ := mappings.LoadFieldsFromBytes("x.toml", []byte(minimalToml))
+	custom := mappings.NewRankCatalog("halo_infinite", []mappings.RankEntry{
+		{ID: 1, Title: map[string]string{"en": "Bronze 1", "fr": "Bronze 1"}},
+	})
+	a := NewSemanticAdapter(set, custom)
+	if a.Ranks() != custom {
+		t.Errorf("Ranks() doit pointer sur le catalog injecté")
+	}
+}

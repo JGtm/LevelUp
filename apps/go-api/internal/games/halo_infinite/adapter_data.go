@@ -182,13 +182,29 @@ func projectCareerSnapshot(xuid string, row *domain.CareerRankData) *canonical.C
 	}
 
 	xp := row.CurrentXP
+	recordedAt := row.RecordedAt
 	snap := &canonical.CareerSnapshot{
-		Player:    canonical.PlayerIdentity{XUID: xuid},
-		CurrentXP: &xp,
+		Player:     canonical.PlayerIdentity{XUID: xuid},
+		CurrentXP:  &xp,
+		RankNumber: row.RankNumber,
+		IsMaxRank:  row.IsMaxRank,
+		RecordedAt: &recordedAt,
 	}
 	if row.XPForNextRank != nil {
 		v := *row.XPForNextRank
 		snap.XPForNextRank = &v
+	}
+	if row.XPTotal != nil {
+		v := *row.XPTotal
+		snap.XPTotal = &v
+	}
+	if row.RankTier != nil {
+		v := *row.RankTier
+		snap.RankTier = &v
+	}
+	if row.RankName != nil {
+		v := *row.RankName
+		snap.RankName = &v
 	}
 	if row.RankLabel != nil || row.RankName != nil {
 		snap.CurrentRank = &canonical.AssetReference{

@@ -229,6 +229,94 @@ func TestFieldMappingLabelFallback(t *testing.T) {
 	}
 }
 
+func TestLoadFieldsFromFile_NotFound(t *testing.T) {
+	t.Parallel()
+	_, err := LoadFieldsFromFile("/nonexistent/path/fields.toml")
+	if err == nil {
+		t.Errorf("LoadFieldsFromFile devrait err pour fichier absent")
+	}
+}
+
+func TestFieldMappingDescriptionFallback(t *testing.T) {
+	t.Parallel()
+	tomlBody := `
+[meta]
+title_slug = "x"
+schema_version = 1
+
+[fields.kills]
+labels = { en = "Kills", fr = "Éliminations" }
+description = { en = "Total kills.", fr = "Total éliminations." }
+storage_unit = "count"
+display_unit = "count"
+format = "integer"
+display_order = 1
+group = "combat"
+`
+	set, err := LoadFieldsFromBytes("x.toml", []byte(tomlBody))
+	if err != nil {
+		t.Fatalf("load: %v", err)
+	}
+	m, _ := set.Get("kills")
+
+	// Description FR connue.
+	desc, fb := m.Description("fr")
+	if desc != "Total éliminations." || fb {
+		t.Errorf("Description FR = (%q, %v)", desc, fb)
+	}
+
+	// Locale inconnue → fallback EN.
+	desc, fb = m.Description("xx")
+	if desc != "Total kills." || !fb {
+		t.Errorf("Description XX = (%q, %v), want fallback=true", desc, fb)
+	}
+}
+
+func TestFieldMappingDescription_NoDescription(t *testing.T) {
+	t.Parallel()
+	// minimalValidTOML n'a pas de description.
+	set, _ := LoadFieldsFromBytes("x.toml", []byte(minimalValidTOML))
+	m, _ := set.Get("kills")
+	desc, fb := m.Description("fr")
+	if desc != "" {
+		t.Errorf("Description sans config = %q, want vide", desc)
+	}
+	_ = fb
+}
+
+func TestFieldMappingSet_All_OrderStable(t *testing.T) {
+	t.Parallel()
+	set, _ := LoadFieldsFromBytes("x.toml", []byte(minimalValidTOML))
+	all := set.All()
+	if len(all) != 1 {
+		t.Errorf("All() len = %d", len(all))
+	}
+}
+
+func TestFieldMappingSet_Keys(t *testing.T) {
+	t.Parallel()
+	set, _ := LoadFieldsFromBytes("x.toml", []byte(minimalValidTOML))
+	keys := set.Keys()
+	if len(keys) != 1 || keys[0] != "kills" {
+		t.Errorf("Keys = %v", keys)
+	}
+}
+
+func TestRegistry_LoadFromConfigDir_MissingFile(t *testing.T) {
+	t.Parallel()
+	r := NewRegistry()
+	errs := r.LoadFromConfigDir("/nonexistent", []string{"halo_infinite"}, nil)
+	if len(errs) == 0 {
+		t.Errorf("LoadFromConfigDir devrait err pour dir absent")
+	}
+	if len(r.Slugs()) != 0 {
+		t.Errorf("aucun slug ne devrait être chargé")
+	}
+	if _, ok := r.Get("halo_infinite"); ok {
+		t.Errorf("Get sur slug non chargé devrait être absent")
+	}
+}
+
 func TestFieldMappingSetOrderedByGroup(t *testing.T) {
 	t.Parallel()
 	tomlBody := `

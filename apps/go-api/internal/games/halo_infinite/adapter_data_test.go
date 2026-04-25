@@ -160,3 +160,166 @@ func TestLoadTimeseries_NotImplemented(t *testing.T) {
 		t.Errorf("err = %v", err)
 	}
 }
+
+func TestLoadMatchDetail_NotImplemented(t *testing.T) {
+	t.Parallel()
+	a := newSilentAdapter(&stubCareer{})
+	_, err := a.LoadMatchDetail(context.Background(), "match-1")
+	if !errors.Is(err, games.ErrCapabilityNotSupported) {
+		t.Errorf("err = %v", err)
+	}
+}
+
+func TestLoadPlayerStats_NotImplemented(t *testing.T) {
+	t.Parallel()
+	a := newSilentAdapter(&stubCareer{})
+	_, err := a.LoadPlayerStats(context.Background(), "0xABC", canonical.StatsScope{})
+	if !errors.Is(err, games.ErrCapabilityNotSupported) {
+		t.Errorf("err = %v", err)
+	}
+}
+
+func TestLoadEncounters_NoSource_ReturnsCapabilityError(t *testing.T) {
+	t.Parallel()
+	a := newSilentAdapter(nil)
+	_, err := a.LoadEncounters(context.Background(), "0xABC")
+	if !errors.Is(err, games.ErrCapabilityNotSupported) {
+		t.Errorf("err = %v, want ErrCapabilityNotSupported", err)
+	}
+}
+
+func TestLoadEncounters_HappyPath_Projection(t *testing.T) {
+	t.Parallel()
+	avg := 1.42
+	stub := &stubCareer{
+		encounters: []domain.EncounterRawRow{
+			{Gamertag: "Ally", XUID: "x1", MatchCount: 10, AsTeammate: 8, AsEnemy: 2, AvgKDA: &avg},
+			{Gamertag: "Foe", XUID: "x2", MatchCount: 3, AsTeammate: 1, AsEnemy: 2, AvgKDA: nil},
+		},
+	}
+	a := newSilentAdapter(stub)
+	rows, err := a.LoadEncounters(context.Background(), "0xABC")
+	if err != nil {
+		t.Fatalf("err = %v", err)
+	}
+	if len(rows) != 2 {
+		t.Fatalf("len = %d, want 2", len(rows))
+	}
+	if rows[0].Identity.Gamertag != "Ally" || rows[0].Identity.XUID != "x1" {
+		t.Errorf("row[0] identity = %+v", rows[0].Identity)
+	}
+	if rows[0].AvgKDA == nil || *rows[0].AvgKDA != 1.42 {
+		t.Errorf("row[0] AvgKDA = %v", rows[0].AvgKDA)
+	}
+	if rows[1].AvgKDA != nil {
+		t.Errorf("row[1] AvgKDA devrait être nil")
+	}
+}
+
+func TestLoadEncounters_PropagatesError(t *testing.T) {
+	t.Parallel()
+	stub := &stubCareer{encountersErr: errors.New("connection lost")}
+	a := newSilentAdapter(stub)
+	_, err := a.LoadEncounters(context.Background(), "0xABC")
+	if err == nil || errors.Is(err, games.ErrCapabilityNotSupported) {
+		t.Errorf("err = %v, want propagation", err)
+	}
+}
+
+func TestProjectEncounterRow_NilAvgKDA(t *testing.T) {
+	t.Parallel()
+	row := projectEncounterRow(domain.EncounterRawRow{
+		XUID: "x", Gamertag: "GT", MatchCount: 1, AsTeammate: 1, AsEnemy: 0, AvgKDA: nil,
+	})
+	if row.AvgKDA != nil {
+		t.Errorf("AvgKDA devrait être nil")
+	}
+	if row.Identity.XUID != "x" || row.Identity.Gamertag != "GT" {
+		t.Errorf("identity = %+v", row.Identity)
+	}
+}
+
+func TestProjectCareerSnapshot_RankLabelOnly(t *testing.T) {
+	t.Parallel()
+	rankLabel := "Iron 1"
+	row := &domain.CareerRankData{
+		RankNumber: 1,
+		CurrentXP:  0,
+		RankLabel:  &rankLabel,
+	}
+	snap := projectCareerSnapshot("0xABC", row)
+	if snap.CurrentRank == nil {
+		t.Fatal("CurrentRank nil")
+	}
+	if snap.CurrentRank.ID != "Iron 1" {
+		t.Errorf("ID = %q, want Iron 1 (rankID fallback sur RankLabel)", snap.CurrentRank.ID)
+	}
+}
+
+func TestProjectCareerSnapshot_NilRow(t *testing.T) {
+	t.Parallel()
+	snap := projectCareerSnapshot("0xXYZ", nil)
+	if snap == nil {
+		t.Fatal("snapshot nil pour row nil")
+	}
+	if snap.Player.XUID != "0xXYZ" {
+		t.Errorf("Player.XUID = %q", snap.Player.XUID)
+	}
+	if snap.CurrentRank != nil || snap.CurrentXP != nil {
+		t.Errorf("snapshot devrait être minimal pour row nil")
+	}
+}
+
+func TestRankID_AllVariants(t *testing.T) {
+	t.Parallel()
+	label := "L"
+	name := "N"
+	cases := []struct {
+		row  *domain.CareerRankData
+		want string
+	}{
+		{&domain.CareerRankData{RankLabel: &label, RankName: &name}, "L"}, // RankLabel prioritaire
+		{&domain.CareerRankData{RankLabel: nil, RankName: &name}, "N"},    // fallback RankName
+		{&domain.CareerRankData{RankLabel: nil, RankName: nil}, ""},       // vide
+	}
+	for _, tc := range cases {
+		if got := rankID(tc.row); got != tc.want {
+			t.Errorf("rankID(%+v) = %q, want %q", tc.row, got, tc.want)
+		}
+	}
+}
+
+func TestStringDeref_NilFallback(t *testing.T) {
+	t.Parallel()
+	if got := stringDeref(nil, "fallback"); got != "fallback" {
+		t.Errorf("nil → %q", got)
+	}
+	v := "value"
+	if got := stringDeref(&v, "fallback"); got != "value" {
+		t.Errorf("non-nil → %q", got)
+	}
+}
+
+func TestIsNoRowsErr(t *testing.T) {
+	t.Parallel()
+	if isNoRowsErr(nil) {
+		t.Errorf("nil ne devrait pas être noRows")
+	}
+	if !isNoRowsErr(errSentinelNoRows) {
+		t.Errorf("sentinel devrait être noRows")
+	}
+	if isNoRowsErr(errors.New("other")) {
+		t.Errorf("autre erreur ne devrait pas être noRows")
+	}
+}
+
+func TestNewDataAdapter_NilLogger_UsesDefault(t *testing.T) {
+	t.Parallel()
+	a := NewDataAdapter(nil, nil)
+	if a == nil {
+		t.Fatal("adapter nil")
+	}
+	if a.logger == nil {
+		t.Errorf("logger devrait avoir été remplacé par slog.Default()")
+	}
+}
