@@ -171,7 +171,7 @@ func TestBuildLUSRSummary_Empty(t *testing.T) {
 
 func TestBuildLUSRSummary_SinglePoint(t *testing.T) {
 	tier := "Gold"
-	pg := "Ranked"
+	pg := sessionCategoryRanked
 	now := time.Now()
 	history := []domain.LUSRCheckpointDTO{
 		{RatingValue: 1500.0, TierLabel: &tier, PlaylistGroup: &pg, RecordedAt: &now},

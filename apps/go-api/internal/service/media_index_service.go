@@ -19,6 +19,9 @@ import (
 	"levelup/go-api/internal/platform/jobs"
 )
 
+// stepNoPlayerFound est le label de step renvoye quand aucun joueur n'a ete trouve.
+const stepNoPlayerFound = "Aucun joueur trouvé"
+
 // MediaIndexer est l'interface d'abstraction pour le reset + reindex des médias.
 // Facilite les mocks dans les tests.
 type MediaIndexer interface {
@@ -61,7 +64,7 @@ func (d *DirMediaIndexer) ResetAndReindex(
 	if err != nil {
 		// Si le répertoire n'existe pas, il n'y a rien à réinitialiser.
 		if os.IsNotExist(err) {
-			step := "Aucun joueur trouvé"
+			step := stepNoPlayerFound
 			jobStore.SetStatus(jobID, domain.JobStatusSucceeded, &step)
 			return nil
 		}
@@ -78,7 +81,7 @@ func (d *DirMediaIndexer) ResetAndReindex(
 
 	total := len(playerDirs)
 	if total == 0 {
-		step := "Aucun joueur trouvé"
+		step := stepNoPlayerFound
 		jobStore.SetStatus(jobID, domain.JobStatusSucceeded, &step)
 		return nil
 	}
@@ -158,7 +161,7 @@ func (d *DirMediaIndexer) ScanAllMedia(
 	entries, err := os.ReadDir(playersDir)
 	if err != nil {
 		if os.IsNotExist(err) {
-			step := "Aucun joueur trouvé"
+			step := stepNoPlayerFound
 			jobStore.SetStatus(jobID, domain.JobStatusSucceeded, &step)
 			return nil
 		}
@@ -174,7 +177,7 @@ func (d *DirMediaIndexer) ScanAllMedia(
 
 	total := len(playerDirs)
 	if total == 0 {
-		step := "Aucun joueur trouvé"
+		step := stepNoPlayerFound
 		jobStore.SetStatus(jobID, domain.JobStatusSucceeded, &step)
 		return nil
 	}

@@ -48,7 +48,7 @@ func TestCitationsHandler_GetCitations_OK(t *testing.T) {
 		if slug != testPlayerSlug {
 			return nil, "", "", errors.New("player_not_found")
 		}
-		return mock, testXUID1, "TestPlayer", nil
+		return mock, testXUID1, testGamertag, nil
 	}
 	r := newCitationsRouter(factory)
 	req := httptest.NewRequest(http.MethodPost, "/players/test-player/pages/citations", nil)
@@ -109,7 +109,7 @@ func TestCitationsHandler_GetCitations_InvalidBody(t *testing.T) {
 func TestCitationsHandler_GetCommendations_OK(t *testing.T) {
 	mock := &mockCitationsService{commendationsPage: &domain.CommendationsPageResponse{}}
 	factory := func(_ context.Context, _ string) (port.CitationsService, string, string, error) {
-		return mock, testXUID1, "TestPlayer", nil
+		return mock, testXUID1, testGamertag, nil
 	}
 	r := newCitationsRouter(factory)
 	req := httptest.NewRequest(http.MethodPost, "/players/test-player/pages/commendations", nil)

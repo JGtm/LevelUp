@@ -45,7 +45,7 @@ type fakeData struct {
 	err  error
 }
 
-func (f *fakeData) TitleSlug() string                 { return "halo_infinite" }
+func (f *fakeData) TitleSlug() string                 { return defaultMultiTitleSlug }
 func (f *fakeData) Capabilities() games.CapabilityMap { return f.caps }
 func (f *fakeData) LoadMatchSummaries(_ context.Context, _ []string) ([]canonical.MatchSummary, error) {
 	return nil, nil
@@ -71,11 +71,11 @@ type fakeSemantic struct {
 	set *mappings.FieldMappingSet
 }
 
-func (f *fakeSemantic) TitleSlug() string                 { return "halo_infinite" }
+func (f *fakeSemantic) TitleSlug() string                 { return defaultMultiTitleSlug }
 func (f *fakeSemantic) SchemaVersion() int                { return f.set.SchemaVersion() }
 func (f *fakeSemantic) Fields() *mappings.FieldMappingSet { return f.set }
 func (f *fakeSemantic) Ranks() *mappings.RankCatalog {
-	return mappings.NewRankCatalog("halo_infinite", nil)
+	return mappings.NewRankCatalog(defaultMultiTitleSlug, nil)
 }
 
 // fakeResolver utilisé dans les tests preview.
@@ -97,7 +97,7 @@ func (f *fakeResolver) Semantic(slug string) (games.TitleSemanticAdapter, error)
 	}
 	return f.semantic, nil
 }
-func (f *fakeResolver) DefaultSlug() string { return "halo_infinite" }
+func (f *fakeResolver) DefaultSlug() string { return defaultMultiTitleSlug }
 
 func newPreviewHandler(t *testing.T, snap *canonical.CareerSnapshot) *MultiTitlePreviewHandler {
 	t.Helper()
@@ -143,7 +143,7 @@ func TestPreviewCareer_HappyPath(t *testing.T) {
 	if err := json.Unmarshal(w.Body.Bytes(), &body); err != nil {
 		t.Fatalf("unmarshal: %v", err)
 	}
-	if body.TitleSlug != "halo_infinite" || body.Locale != "fr" || body.XUID != "0xABC" {
+	if body.TitleSlug != defaultMultiTitleSlug || body.Locale != "fr" || body.XUID != "0xABC" {
 		t.Errorf("DTO meta = %+v", body)
 	}
 	if body.CurrentRank == nil || body.CurrentRank.DefaultLabel != "Diamant 3" {

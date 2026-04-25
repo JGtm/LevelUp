@@ -74,7 +74,7 @@ func (m *mockMatchViewRepo) GetMatchExpectedStats(_ context.Context, _, _ string
 
 func TestMatchViewService_GetMatchView_OK(t *testing.T) {
 	now := time.Now()
-	mapN, pairN, plN := "Aquarius", "Slayer", "Ranked"
+	mapN, pairN, plN := aquariusMap, slayerMode, sessionCategoryRanked
 	dur := 600.0
 	repo := &mockMatchViewRepo{
 		meta: &domain.MatchMetaRaw{

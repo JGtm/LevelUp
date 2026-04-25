@@ -57,7 +57,7 @@ func TestHomeHandler_GetHomePage_OK(t *testing.T) {
 		if slug != testPlayerSlug {
 			return nil, ctx, "", "", errors.New("player_not_found")
 		}
-		return mock, ctx, testXUID1, "TestPlayer", nil
+		return mock, ctx, testXUID1, testGamertag, nil
 	}
 	r := newHomeRouter(factory, nil)
 	req := httptest.NewRequest(http.MethodGet, "/players/test-player/pages/home", nil)

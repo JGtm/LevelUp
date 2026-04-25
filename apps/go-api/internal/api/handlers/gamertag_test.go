@@ -33,7 +33,7 @@ func newGamertagRouter(svc port.GamertagSearchService) *chi.Mux {
 }
 
 func TestGamertagHandler_Search_OK(t *testing.T) {
-	expected := []domain.GamertagSearchResult{{Gamertag: "TestPlayer", XUID: "123"}}
+	expected := []domain.GamertagSearchResult{{Gamertag: testGamertag, XUID: "123"}}
 	svc := &mockGamertagSearchService{results: expected}
 	r := newGamertagRouter(svc)
 
@@ -49,7 +49,7 @@ func TestGamertagHandler_Search_OK(t *testing.T) {
 	if err := json.Unmarshal(w.Body.Bytes(), &resp); err != nil {
 		t.Fatalf("unmarshal: %v", err)
 	}
-	if len(resp.Items) != 1 || resp.Items[0].Gamertag != "TestPlayer" {
+	if len(resp.Items) != 1 || resp.Items[0].Gamertag != testGamertag {
 		t.Errorf("unexpected items: %+v", resp.Items)
 	}
 }
