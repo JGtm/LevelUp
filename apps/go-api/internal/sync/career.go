@@ -58,6 +58,9 @@ func syncCareerRank(
 }
 
 // parseCareerRank extrait les données de rang depuis la réponse API.
+// Utilisée par career_test.go et career_integration_test.go (tag integration).
+//
+//nolint:unused // référencée uniquement depuis les tests sous tag integration
 func parseCareerRank(body map[string]interface{}, xuid string) *CareerRankData {
 	data := &CareerRankData{XUID: xuid}
 

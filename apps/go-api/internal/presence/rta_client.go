@@ -375,9 +375,15 @@ func (c *RTAClient) handleSubscribeResponse(ctx context.Context, msg []json.RawM
 	var seq int64
 	var status int
 	var subID int
-	json.Unmarshal(msg[1], &seq)
-	json.Unmarshal(msg[2], &status)
-	json.Unmarshal(msg[3], &subID)
+	if err := json.Unmarshal(msg[1], &seq); err != nil {
+		slog.WarnContext(ctx, "rta: subscribe response seq invalide", "err", err)
+	}
+	if err := json.Unmarshal(msg[2], &status); err != nil {
+		slog.WarnContext(ctx, "rta: subscribe response status invalide", "err", err)
+	}
+	if err := json.Unmarshal(msg[3], &subID); err != nil {
+		slog.WarnContext(ctx, "rta: subscribe response sub_id invalide", "err", err)
+	}
 
 	c.pendingMu.Lock()
 	ps, ok := c.pending[seq]
@@ -438,7 +444,10 @@ func (c *RTAClient) handleEvent(ctx context.Context, msg []json.RawMessage) {
 		return
 	}
 	var subID int
-	json.Unmarshal(msg[1], &subID)
+	if err := json.Unmarshal(msg[1], &subID); err != nil {
+		slog.WarnContext(ctx, "rta: event sub_id invalide", "err", err)
+		return
+	}
 
 	c.dispatchPayload(ctx, subID, msg[2])
 }

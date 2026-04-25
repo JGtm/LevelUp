@@ -21,7 +21,7 @@ func TestLoadNotifyConfig_MissingFile(t *testing.T) {
 
 func TestLoadNotifyConfig_InvalidJSON(t *testing.T) {
 	p := filepath.Join(t.TempDir(), "bad.json")
-	os.WriteFile(p, []byte("{invalid"), 0644)
+	_ = os.WriteFile(p, []byte("{invalid"), 0644)
 	cfg := LoadNotifyConfig(p)
 	if cfg.WebhookURL != "" {
 		t.Fatal("expected empty webhook for bad JSON")
@@ -34,7 +34,7 @@ func TestLoadNotifyConfig_NotEnabled(t *testing.T) {
 		"discord_notifications_enabled": false,
 		"discord_webhook_url":           "https://discord.com/api/webhooks/123/abc",
 	})
-	os.WriteFile(p, data, 0644)
+	_ = os.WriteFile(p, data, 0644)
 	cfg := LoadNotifyConfig(p)
 	if cfg.WebhookURL != "" {
 		t.Fatal("expected empty webhook when disabled")
@@ -51,7 +51,7 @@ func TestLoadNotifyConfig_ValidConfig(t *testing.T) {
 		"discord_notify_new_media":      true,
 		"discord_notify_new_version":    true,
 	})
-	os.WriteFile(p, data, 0644)
+	_ = os.WriteFile(p, data, 0644)
 	cfg := LoadNotifyConfig(p)
 	if cfg.WebhookURL != "https://discord.com/api/webhooks/123/abc" {
 		t.Fatalf("unexpected webhook: %s", cfg.WebhookURL)
@@ -70,7 +70,7 @@ func TestLoadNotifyConfig_InvalidURL(t *testing.T) {
 		"discord_notifications_enabled": true,
 		"discord_webhook_url":           "https://example.com/not-discord",
 	})
-	os.WriteFile(p, data, 0644)
+	_ = os.WriteFile(p, data, 0644)
 	cfg := LoadNotifyConfig(p)
 	if cfg.WebhookURL != "" {
 		t.Fatal("expected empty for invalid URL prefix")

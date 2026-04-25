@@ -83,8 +83,8 @@ func buildRawChunk(xuid uint64, gamertag string, typeHint, timeMS int, isMedal b
 func zlibCompress(data []byte) []byte {
 	var buf bytes.Buffer
 	w := zlib.NewWriter(&buf)
-	w.Write(data)
-	w.Close()
+	_, _ = w.Write(data)
+	_ = w.Close()
 	return buf.Bytes()
 }
 

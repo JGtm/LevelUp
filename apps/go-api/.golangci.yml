@@ -78,6 +78,7 @@ issues:
     - vendor
     - bin
     - scripts
+    - apps  # dossier dupliqué accidentel (apps/go-api/apps/go-api/...) — à nettoyer hors lint
   exclude-rules:
     # defer db.Close() / rows.Close() : pattern idiomatique Go, l'erreur est informationnelle
     - linters: [errcheck]
