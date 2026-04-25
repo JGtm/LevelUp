@@ -403,13 +403,15 @@ Pas d'E2E automatisés cette itération. À ajouter en Phase 6 future si le beso
 - [ ] Commit Phase 2
 
 ### Phase 3 — API & Sync hook
-- [ ] Handlers challenges / arcs / prestige / squad / templates
-- [ ] Routes enregistrées
-- [ ] Hook post-sync derrière feature flag
-- [ ] Tests handlers (mocks)
-- [ ] Test intégration flux complet
-- [ ] Test feature flag
-- [ ] Entrée thought_log
+- [x] Handler `PrestigeHandler` unifié (`internal/api/handlers/prestige.go`) couvrant : POST/GET/PATCH/DELETE /challenges, GET /challenges (list), POST /challenges/:id/suggest-next, GET /prestige/me (par titre + cross-titre), GET /templates/suggest
+- [x] Mapping erreurs service → HTTP : 400 invalid_input/too_easy, 403 not_editable, 404 not_found, 409 already_terminal, 429 cooldown_active
+- [x] Hook post-sync (`internal/prestige/sync_hook.go`) avec feature flag `PRESTIGE_ENABLED` (env var, valeurs 1/true/yes/on insensible à la casse)
+- [x] `RunPostSyncHook` best-effort : log warn sur erreur, jamais propagation pour ne pas casser le sync
+- [x] Tests handler avec mock service (16 sous-tests)
+- [x] Tests sync hook (4 sous-tests : flag off skip, flag on call, nil service safe, service error logged)
+- [x] Build + tests verts, aucune régression
+- [ ] Routes câblées dans `server.go` — **reporté Phase 4** : nécessite un `BaselineProvider` Halo (à construire avec les adaptateurs Halo) pour instancier le `prestige.Service`
+- [x] Entrée thought_log
 - [ ] Commit Phase 3
 
 ### Phase 4 — Templates + nav refactor

@@ -1,0 +1,111 @@
+package prestige
+
+import (
+	"context"
+	"errors"
+	"testing"
+)
+
+// Mock minimal de Service pour valider que le hook respecte le feature flag.
+type mockService struct {
+	called bool
+}
+
+func (m *mockService) CreateChallenge(ctx context.Context, _ CreateChallengeRequest) (Challenge, error) {
+	return Challenge{}, nil
+}
+
+func (m *mockService) UpdateChallenge(ctx context.Context, _ string, _ UpdateChallengePatch) (Challenge, error) {
+	return Challenge{}, nil
+}
+
+func (m *mockService) AbandonChallenge(ctx context.Context, _ string) error { return nil }
+
+func (m *mockService) GetChallenge(ctx context.Context, _ string) (Challenge, error) {
+	return Challenge{}, nil
+}
+
+func (m *mockService) ListActiveChallenges(ctx context.Context, _, _ string) ([]Challenge, error) {
+	return nil, nil
+}
+
+func (m *mockService) EvaluateForUser(ctx context.Context, _, _ string) ([]EvaluationOutcome, error) {
+	m.called = true
+	return nil, nil
+}
+
+func (m *mockService) GetUserPrestige(ctx context.Context, _, _ string) (UserPrestige, error) {
+	return UserPrestige{}, nil
+}
+
+func (m *mockService) SuggestTemplates(ctx context.Context, _, _ string, _ int) ([]Template, error) {
+	return nil, nil
+}
+
+func (m *mockService) SuggestNext(ctx context.Context, _ string) ([]Template, error) {
+	return nil, nil
+}
+
+func TestIsEnabled_Defaults(t *testing.T) {
+	t.Setenv(FeatureFlagEnv, "")
+	if IsEnabled() {
+		t.Error("expected disabled when env var empty")
+	}
+	t.Setenv(FeatureFlagEnv, "false")
+	if IsEnabled() {
+		t.Error("expected disabled when explicitly false")
+	}
+}
+
+func TestIsEnabled_TruthyValues(t *testing.T) {
+	for _, v := range []string{"1", "true", "TRUE", "yes", "on"} {
+		t.Setenv(FeatureFlagEnv, v)
+		if !IsEnabled() {
+			t.Errorf("expected enabled for %q", v)
+		}
+	}
+}
+
+func TestRunPostSyncHook_DisabledSkipsService(t *testing.T) {
+	t.Setenv(FeatureFlagEnv, "false")
+	mock := &mockService{}
+	RunPostSyncHook(context.Background(), mock, "u1", "halo_infinite")
+	if mock.called {
+		t.Error("service should not be called when flag is off")
+	}
+}
+
+func TestRunPostSyncHook_EnabledCallsService(t *testing.T) {
+	t.Setenv(FeatureFlagEnv, "true")
+	mock := &mockService{}
+	RunPostSyncHook(context.Background(), mock, "u1", "halo_infinite")
+	if !mock.called {
+		t.Error("service should be called when flag is on")
+	}
+}
+
+func TestRunPostSyncHook_NilServiceSurvives(t *testing.T) {
+	t.Setenv(FeatureFlagEnv, "true")
+	// Doit pas paniquer ni planter
+	defer func() {
+		if r := recover(); r != nil {
+			t.Errorf("hook panicked with nil service: %v", r)
+		}
+	}()
+	RunPostSyncHook(context.Background(), nil, "u1", "halo_infinite")
+}
+
+// Mock qui retourne une erreur pour vérifier que le hook log mais ne propage pas.
+type failingService struct {
+	mockService
+}
+
+func (f *failingService) EvaluateForUser(ctx context.Context, _, _ string) ([]EvaluationOutcome, error) {
+	return nil, errors.New("simulated failure")
+}
+
+func TestRunPostSyncHook_ServiceErrorIsLoggedNotPropagated(t *testing.T) {
+	t.Setenv(FeatureFlagEnv, "true")
+	// Pas de retour d'erreur — RunPostSyncHook est void par design (best-effort).
+	RunPostSyncHook(context.Background(), &failingService{}, "u1", "halo_infinite")
+}
