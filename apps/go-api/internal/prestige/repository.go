@@ -1,0 +1,144 @@
+package prestige
+
+import (
+	"context"
+	"time"
+)
+
+// repository.go — interfaces de persistance du module Prestige.
+//
+// Les implémentations vivent dans internal/platform/duckdb/ et sont injectées
+// dans le service via constructor (DI). La couche `domain` (palier, baseline,
+// lifecycle, evaluator) ne doit jamais importer ces interfaces — elle reçoit
+// des données déjà chargées.
+
+// ---------- ChallengeRepo (stats.duckdb par joueur) ----------
+
+// ChallengeRepo gère la persistance des défis individuels.
+type ChallengeRepo interface {
+	Create(ctx context.Context, c Challenge) error
+	Get(ctx context.Context, id string) (Challenge, error)
+	List(ctx context.Context, filter ChallengeFilter) ([]Challenge, error)
+	UpdateStatus(ctx context.Context, id string, status ChallengeStatus, at time.Time) error
+	UpdateLabel(ctx context.Context, id, label string) error
+	UpdateTarget(ctx context.Context, id string, target float64, tier Tier, dataTier DataTier, at time.Time) error
+	CountActiveByCadence(ctx context.Context, userID, titleSlug string, cadence Cadence) (int, error)
+	CountActiveTotal(ctx context.Context, userID, titleSlug string) (int, error)
+	CountCreatedSince(ctx context.Context, userID, titleSlug string, mode ChallengeMode, since time.Time) (int, error)
+}
+
+// ChallengeFilter filtre la liste des défis.
+type ChallengeFilter struct {
+	UserID    string
+	TitleSlug string
+	Status    *ChallengeStatus // nil = tous statuts
+	ArcID     *string          // nil = tous, "" interdit (utilise NoArc à la place)
+	Mode      *ChallengeMode
+	Limit     int
+}
+
+// ---------- ArcRepo (stats.duckdb par joueur) ----------
+
+// ArcRepo gère la persistance des arcs (preset ou libres).
+type ArcRepo interface {
+	Create(ctx context.Context, a Arc) error
+	Get(ctx context.Context, id string) (Arc, error)
+	ListByUser(ctx context.Context, userID, titleSlug string) ([]Arc, error)
+	MarkCompleted(ctx context.Context, id string, at time.Time) error
+}
+
+// ---------- MomentCardRepo (stats.duckdb par joueur) ----------
+
+// MomentCardRepo gère la persistance des cartes générées.
+type MomentCardRepo interface {
+	Create(ctx context.Context, mc MomentCard) error
+	GetByChallenge(ctx context.Context, challengeID string) (MomentCard, error)
+	ListRecent(ctx context.Context, userID, titleSlug string, limit int) ([]MomentCard, error)
+}
+
+// ---------- PrestigeRepo (shared_social.duckdb, cross-joueurs) ----------
+
+// PrestigeRepo gère les événements PP, totaux et leaderboards.
+type PrestigeRepo interface {
+	EmitEvent(ctx context.Context, ev PrestigeEvent) error
+	GetUserPrestige(ctx context.Context, userID, titleSlug string) (UserPrestige, error)
+	GetUserPrestigeCrossTitle(ctx context.Context, userID string) (UserPrestige, error)
+	UpsertUserPrestige(ctx context.Context, up UserPrestige) error
+	ListEvents(ctx context.Context, userID, titleSlug string, since time.Time) ([]PrestigeEvent, error)
+	GetLeaderboard(ctx context.Context, userIDs []string, titleSlug *string, since time.Time) ([]LeaderboardEntry, error)
+}
+
+// LeaderboardEntry est une ligne du leaderboard PP.
+//
+// Affichage décomposé brut/bonus/total (Axe 5). RawScore vient du module
+// stats existant (rating brut), BonusScore est calculé par Prestige
+// (somme des bonus de paliers complétés sur la période).
+type LeaderboardEntry struct {
+	UserID     string  `json:"user_id"`
+	TitleSlug  string  `json:"title_slug,omitempty"`
+	TotalPP    int     `json:"total_pp"`
+	Level      Level   `json:"level"`
+	RawScore   float64 `json:"raw_score"`
+	BonusScore float64 `json:"bonus_score"`
+}
+
+// ---------- TelemetryRepo (stats.duckdb par joueur) ----------
+
+// TelemetryRepo gère le journal d'événements pour le calage post-alpha.
+type TelemetryRepo interface {
+	Emit(ctx context.Context, ev PrestigeTelemetry) error
+}
+
+// ---------- BaselineStateRepo (stats.duckdb par joueur) ----------
+
+// BaselineStateRepo gère l'état de fraîcheur des baselines pour le reset 60j.
+type BaselineStateRepo interface {
+	Get(ctx context.Context, userID, titleSlug, metric string) (BaselineState, error)
+	Upsert(ctx context.Context, st BaselineState) error
+}
+
+// ---------- TemplateRepo (metadata.duckdb) ----------
+
+// TemplateRepo gère le catalogue de défis pré-calibrés.
+type TemplateRepo interface {
+	ListByTitle(ctx context.Context, titleSlug string) ([]Template, error)
+	GetByID(ctx context.Context, id string) (Template, error)
+	Suggest(ctx context.Context, titleSlug string, excludeIDs []string, count int) ([]Template, error)
+	Replace(ctx context.Context, titleSlug string, templates []Template) error
+}
+
+// ---------- PresetArcRepo (metadata.duckdb) ----------
+
+// PresetArcRepo gère le catalogue d'arcs preset.
+type PresetArcRepo interface {
+	ListByTitle(ctx context.Context, titleSlug string) ([]PresetArc, error)
+	GetByID(ctx context.Context, id string) (PresetArc, error)
+	GetSteps(ctx context.Context, presetArcID string) ([]PresetArcStep, error)
+	Replace(ctx context.Context, titleSlug string, arcs []PresetArc, steps []PresetArcStep) error
+}
+
+// ---------- SquadChallengeRepo (shared_social.duckdb) ----------
+
+// SquadChallengeRepo gère les défis d'escouade.
+type SquadChallengeRepo interface {
+	Create(ctx context.Context, sc SquadChallenge) error
+	Get(ctx context.Context, id string) (SquadChallenge, error)
+	ListBySquad(ctx context.Context, squadID string) ([]SquadChallenge, error)
+
+	AddParticipant(ctx context.Context, p SquadChallengeParticipant) error
+	UpdateParticipantProgress(ctx context.Context, challengeID, userID string, value float64, completedAt *time.Time) error
+	ListParticipants(ctx context.Context, challengeID string) ([]SquadChallengeParticipant, error)
+	CountActiveParticipants(ctx context.Context, challengeID string) (int, error)
+}
+
+// ---------- SquadRepo (shared_social.duckdb) ----------
+
+// SquadRepo gère les groupes Prestige.
+type SquadRepo interface {
+	Create(ctx context.Context, s Squad) error
+	Get(ctx context.Context, id string) (Squad, error)
+	AddMember(ctx context.Context, m SquadMember) error
+	RemoveMember(ctx context.Context, squadID, userID string) error
+	ListMembers(ctx context.Context, squadID string) ([]SquadMember, error)
+	ListSquadsForUser(ctx context.Context, userID string) ([]Squad, error)
+}

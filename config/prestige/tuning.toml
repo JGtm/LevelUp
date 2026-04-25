@@ -1,0 +1,137 @@
+# ─────────────────────────────────────────────────────────────────────────────
+# Prestige tuning — paramètres de calage du système de défis.
+#
+# Toutes les valeurs ici sont MODIFIABLES SANS REDÉPLOIEMENT.
+# Chargées au démarrage du module Prestige et relisibles via SIGHUP (Phase ≥ 3).
+#
+# Verrous à NE PAS toucher avant 6 mois (voir Annexe E du plan) :
+#   - anti_smurf_min_stretch (0.08)
+#   - state machine
+#   - title_slug scope
+#
+# Les autres valeurs sont des points de départ — à recalibrer après alpha
+# via scripts/analyze_prestige_tuning.py.
+# ─────────────────────────────────────────────────────────────────────────────
+
+schema_version = 1
+
+[anti_smurf]
+# Écart minimal cible/baseline pour qu'un défi soit accepté.
+# Stretch < 1 + min_stretch → rejet "too_easy".
+min_stretch = 0.08
+
+# Taille minimale de la population active (par métrique) pour appliquer
+# le cap de percentile. En dessous, le palier est purement personnel.
+population_min_threshold = 50
+
+# Inactivité (en jours) avant que la baseline soit marquée "stale".
+baseline_stale_days = 60
+
+# Nombre de matchs en data_tier=estimated après un reset, avant retour au plein bonus.
+recovery_matches = 10
+
+[stretch_thresholds]
+# Seuils de stretch ratio pour déterminer le palier personnel.
+# Comparaison sur le ratio (target / baseline) pour les compteurs,
+# ou (target - baseline) / headroom pour les ratios bornés.
+normal    = 1.08
+heroic    = 1.25
+legendary = 1.50
+mythic    = 1.85
+
+[population_caps]
+# Plafond du palier selon la position de la cible dans la population.
+# Le palier final = min(palier_personnel, cap_population).
+below_median        = "normal"     # cible < p50 → cap Normal
+below_p75           = "heroic"     # p50 ≤ cible < p75 → cap Heroic
+below_p90           = "legendary"  # p75 ≤ cible < p90 → cap Legendary
+above_p90           = "mythic"     # cible ≥ p90 → Mythic éligible
+
+[pp_amounts]
+# PP attribués à la complétion d'un défi selon palier.
+# Le mode escouade applique un bonus de +20 % sur ces valeurs.
+normal    = 50
+heroic    = 75
+legendary = 125
+mythic    = 200
+
+# Multiplicateur escouade (sur palier personnel).
+squad_multiplier = 1.20
+
+# Bonus arc complété (en plus des PP de chaque défi).
+arc_completion_bonus = 200
+
+# Streak : 3 sessions consécutives avec activité.
+streak_3_sessions = 30
+
+# PP par action de match.
+match_played   = 10
+match_won      = 15
+medal_min      = 5
+medal_max      = 20
+
+[data_tier]
+# Multiplicateurs PP selon la qualité des données.
+full      = 1.0
+estimated = 0.5
+tracking  = 0.0
+
+[levels]
+# Paliers Prestige : seuils PP pour atteindre chaque niveau.
+# Index 0 = Recrue (départ), niveau max = Légendaire.
+thresholds = [0, 500, 1500, 3000, 6000, 12000]
+names      = ["Recrue", "Soldat", "Vétéran", "Spécialiste", "Élite", "Légendaire"]
+
+[baseline]
+# Fenêtre glissante pour calculer la baseline d'une métrique.
+# 20 matchs du même mode = équilibre entre stabilité et récence.
+window_matches = 20
+
+# Seuils de qualité des données (cohérents avec data_tier).
+matches_full      = 10  # ≥ 10 matchs → full
+matches_estimated = 5   # 5..9 → estimated, < 5 → tracking
+
+[win_rate_min_matches]
+# Nombre minimal de matchs joués sur la fenêtre pour qu'un défi
+# de win_rate soit évaluable. En dessous, progression affichée
+# mais pas de validation.
+session       = 5
+rolling_7d    = 8
+rolling_14d   = 15
+rolling_30d   = 25
+
+[cooldowns]
+# Cooldowns en heures sur la métrique après la fin d'un défi.
+# Mode pilote uniquement — le mode libre n'a pas de cooldown.
+expired_hours   = 12
+abandoned_hours = 48
+completed_hours = 0
+
+[quotas_pilote]
+# Plafonds simultanés par cadence (mode pilote uniquement).
+daily_max     = 3
+weekly_max    = 5
+monthly_max   = 2
+
+# Plafond absolu tous types confondus (mode pilote).
+total_active_max = 12
+
+# Anti-farming : nombre max de défis libres NOUVEAUX par jour
+# (s'applique après épuisement du stock auto).
+free_new_per_day = 3
+
+[squad_pool]
+# Renouvellement automatique du pool de défis d'escouade.
+refresh_period_days = 7
+
+# Nombre de défis générés dans le pool.
+size_min = 6
+size_max = 9
+
+[suggestion]
+# "Prochain défi" suggéré après complétion :
+# stretch supplémentaire sur la même métrique.
+next_palier_extra_stretch = 0.15
+
+# Nombre d'alternatives proposées si pas de défi actif.
+alternatives_count = 3
