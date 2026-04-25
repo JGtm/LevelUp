@@ -118,11 +118,10 @@ describe('HomePage', () => {
         expect(screen.getByText('Career rank')).toBeInTheDocument()
         expect(screen.getByText('Highest CSR')).toBeInTheDocument()
         expect(screen.getByText('Highest LUSR')).toBeInTheDocument()
-        expect(screen.getByTestId('home-spartan-backdrop-image')).toHaveAttribute('src', 'https://example.test/identity/backdrop.png')
       })
 
       expect(screen.getByTestId('home-spartan-banner-shell')).toBeInTheDocument()
-      expect(screen.getByTestId('home-spartan-banner-surface').getAttribute('style') ?? '').toContain('https://example.test/identity/nameplate.png')
+      expect(screen.getByTestId('home-spartan-banner-surface')).toHaveAttribute('src', 'https://example.test/identity/nameplate.png')
       expect(screen.queryByText('Spartan ID')).not.toBeInTheDocument()
 
       expect(screen.getByText('Rank 25')).toBeInTheDocument()
@@ -171,7 +170,6 @@ describe('HomePage', () => {
     renderWithProviders(<HomePage />)
 
     await waitFor(() => {
-      expect(screen.getByTestId('home-spartan-backdrop-image')).toHaveAttribute('src', 'https://example.test/identity/backdrop.png')
       expect(screen.getByTestId('home-spartan-id-value')).toHaveTextContent('JGTM')
     })
 

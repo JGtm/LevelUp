@@ -539,14 +539,6 @@ export function HomePage() {
   const csrState = resolveSkillPeakState(highestCSR, hasRankedHistory, 'ranked')
   const lusrState = resolveSkillPeakState(highestLUSR, hasUnrankedHistory, 'unranked')
   const careerRank = spartanIdentity?.career_rank ?? null
-  const bannerSurfaceStyle = spartanIdentity?.banner_image_url
-    ? {
-      backgroundImage: `url(${spartanIdentity.banner_image_url})`,
-      backgroundPosition: 'center',
-      backgroundSize: 'cover',
-    }
-    : undefined
-  const backdropImageUrl = spartanIdentity?.backdrop_image_url ?? null
   const careerAdornmentUrl = careerRank?.adornment_image_url ?? null
   const identityMonogram = hero.player_name.trim().slice(0, 1).toUpperCase() || 'S'
   const soloSession = data.solo_session ?? null
@@ -591,52 +583,35 @@ export function HomePage() {
                     data-testid="home-spartan-identity-banner"
                     className="relative overflow-hidden bg-slate-950"
                   >
+                    {spartanIdentity.banner_image_url && (
+                      <img
+                        data-testid="home-spartan-banner-surface"
+                        src={spartanIdentity.banner_image_url}
+                        alt=""
+                        aria-hidden="true"
+                        className="absolute inset-0 h-full w-full object-cover"
+                        loading="lazy"
+                        decoding="async"
+                      />
+                    )}
                     {careerAdornmentUrl && (
-                      <div className="pointer-events-none absolute inset-x-0 top-3 z-[1] flex justify-center px-6">
+                      <div className="pointer-events-none absolute right-2 top-0 z-[1] flex h-full items-start">
                         <img
                           data-testid="home-spartan-adornment-image"
                           src={careerAdornmentUrl}
                           alt=""
                           aria-hidden="true"
-                          className="h-16 w-auto max-w-[min(22rem,70vw)] object-contain opacity-85 drop-shadow-[0_14px_20px_rgba(8,15,28,0.48)] sm:h-20"
+                          className="h-full w-auto object-contain object-top drop-shadow-[0_14px_20px_rgba(8,15,28,0.48)]"
                           loading="lazy"
                           decoding="async"
                         />
                       </div>
                     )}
-                    {backdropImageUrl && (
-                      <div className="pointer-events-none absolute right-4 top-4 hidden h-24 w-40 overflow-hidden rounded-2xl border border-white/10 bg-slate-950/35 shadow-[0_14px_32px_rgba(8,15,28,0.4)] sm:block">
-                        <img
-                          data-testid="home-spartan-backdrop-image"
-                          src={backdropImageUrl}
-                          alt=""
-                          aria-hidden="true"
-                          className="h-full w-full object-cover opacity-55 saturate-[0.85]"
-                          loading="lazy"
-                          decoding="async"
-                        />
-                        <div className="absolute inset-0 bg-[linear-gradient(135deg,rgba(8,15,28,0.86),rgba(8,15,28,0.28),rgba(8,15,28,0.78))]" />
-                      </div>
-                    )}
-                    <div className="pointer-events-none absolute inset-x-0 top-1/2 flex -translate-y-1/2 justify-center px-5 sm:px-6">
-                      <div
-                        data-testid="home-spartan-banner-shell"
-                        className="relative h-24 w-full max-w-[34rem] overflow-hidden rounded-[28px] border border-cyan-100/12 bg-[linear-gradient(90deg,rgba(8,15,28,0.9),rgba(20,33,54,0.76),rgba(8,15,28,0.9))] shadow-[0_18px_34px_rgba(8,15,28,0.45)] sm:h-28"
-                      >
-                        <div className="absolute inset-[1px] rounded-[26px] border border-white/6" />
-                        <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,rgba(97,221,255,0.12),transparent_58%)]" />
-                        <div className="absolute inset-x-10 top-1/2 h-px -translate-y-1/2 bg-cyan-100/15" />
-                        {bannerSurfaceStyle && (
-                          <div
-                            data-testid="home-spartan-banner-surface"
-                            className="absolute inset-0 bg-center bg-cover bg-no-repeat opacity-95"
-                            style={bannerSurfaceStyle}
-                          />
-                        )}
-                      </div>
-                    </div>
-                    <div className="absolute inset-0 bg-[linear-gradient(115deg,rgba(8,15,28,0.94),rgba(17,24,39,0.82),rgba(8,15,28,0.92))]" />
-                    <div className="relative flex flex-col gap-6 px-5 py-8 text-white sm:px-6 lg:flex-row lg:items-center lg:justify-between">
+                    <div
+                      data-testid="home-spartan-banner-shell"
+                      className="relative flex flex-col gap-6 pt-1 pb-5 pl-5 pr-28 text-white sm:pl-6 sm:pr-32 lg:flex-row lg:items-start lg:justify-between"
+                      style={{ textShadow: '0 1px 6px rgba(0,0,0,0.85)' }}
+                    >
                       <div className="flex min-w-0 items-center gap-4">
                         <div className="flex h-20 w-20 shrink-0 items-center justify-center overflow-hidden rounded-full border-2 border-cyan-300/60 bg-slate-950/60 shadow-[0_0_0_4px_rgba(8,15,28,0.35)] sm:h-24 sm:w-24">
                           {spartanIdentity.emblem_image_url ? (
@@ -675,12 +650,10 @@ export function HomePage() {
 
                       {careerRank && (
                         <div className="flex items-center gap-4 self-start lg:self-center">
-                          <div className="min-w-0 text-right lg:max-w-[16rem]">
-                            <p className="text-[11px] uppercase tracking-[0.28em] text-cyan-100/70">{labels.careerRank}</p>
-                            <p data-testid="home-career-rank-title" className="mt-2 text-lg font-semibold text-white sm:text-xl">
+                          <div className="min-w-0 rounded-xl bg-slate-950/50 px-3 py-2 text-right backdrop-blur-sm lg:max-w-[16rem]">
+                            <p data-testid="home-career-rank-title" className="text-lg font-semibold text-white sm:text-xl">
                               {careerRank.rank_title}
                             </p>
-                            <p className="mt-2 text-sm text-cyan-100/80">{`${labels.rankPrefix} ${careerRank.rank_number}`}</p>
                           </div>
 
                           {careerRank.rank_image_url && (
@@ -704,7 +677,11 @@ export function HomePage() {
                     <div className="border-t border-border/70 bg-background/80 px-5 py-4 sm:px-6">
                       <div className="space-y-3">
                         <div className="flex items-center justify-between gap-3 text-xs text-muted-foreground">
-                          <span>{labels.currentProgress}</span>
+                          <span>
+                            {careerRank.is_max_rank
+                              ? labels.maxRank
+                              : labels.progressTowardsRank(careerRank.next_rank_title ?? '')}
+                          </span>
                           <span>
                             {careerRank.is_max_rank
                               ? labels.maxRank
@@ -806,8 +783,8 @@ export function HomePage() {
                     </div>
                     <div className="mt-1.5 flex justify-center gap-3 text-xs font-semibold tabular-nums">
                       <span style={{ color: tokenCssVar('outcome-win') }}>{wins}</span>
-                      <span style={{ color: tokenCssVar('outcome-loss') }}>{losses}</span>
                       {neutral > 0 && <span style={{ color: tokenCssVar('outcome-draw') }}>{neutral}</span>}
+                      <span style={{ color: tokenCssVar('outcome-loss') }}>{losses}</span>
                     </div>
                   </div>
                 )
