@@ -31,7 +31,12 @@ type SyncHandler struct {
 }
 
 // NewSyncHandler crée un SyncHandler.
-func NewSyncHandler(cfg *config.AppConfig, settingsStore *settings_platform.Store, jobStore *jobs.Store, provider auth_platform.TokenProvider) *SyncHandler {
+func NewSyncHandler(
+	cfg *config.AppConfig,
+	settingsStore *settings_platform.Store,
+	jobStore *jobs.Store,
+	provider auth_platform.TokenProvider,
+) *SyncHandler {
 	return &SyncHandler{
 		cfg:           cfg,
 		settingsStore: settingsStore,

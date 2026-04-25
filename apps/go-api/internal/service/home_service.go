@@ -269,7 +269,12 @@ func enrichMatchesWithCitations(ctx context.Context, repo port.HomeRepository, i
 
 // buildFavoriteMatchList construit la liste des matchs favoris à partir de tous les matchs
 // chargés (pas limités à 6), en appliquant le flag IsFavorite.
-func buildFavoriteMatchList(recent []domain.RecentMatchItem, all []domain.HomeMatchRow, favoriteIDs map[string]bool, locale string) []domain.RecentMatchItem {
+func buildFavoriteMatchList(
+	recent []domain.RecentMatchItem,
+	all []domain.HomeMatchRow,
+	favoriteIDs map[string]bool,
+	locale string,
+) []domain.RecentMatchItem {
 	if len(favoriteIDs) == 0 {
 		return nil
 	}

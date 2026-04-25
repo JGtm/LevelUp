@@ -104,7 +104,14 @@ func (r *PrestigeChallengeRepo) UpdateLabel(ctx context.Context, id, label strin
 	return err
 }
 
-func (r *PrestigeChallengeRepo) UpdateTarget(ctx context.Context, id string, target float64, tier prestige.Tier, dataTier prestige.DataTier, at time.Time) error {
+func (r *PrestigeChallengeRepo) UpdateTarget(
+	ctx context.Context,
+	id string,
+	target float64,
+	tier prestige.Tier,
+	dataTier prestige.DataTier,
+	at time.Time,
+) error {
 	ctx, cancel := context.WithTimeout(ctx, 5*time.Second)
 	defer cancel()
 	_, err := r.db.Exec(ctx, `
@@ -137,7 +144,12 @@ func (r *PrestigeChallengeRepo) CountActiveTotal(ctx context.Context, userID, ti
 	return n, err
 }
 
-func (r *PrestigeChallengeRepo) CountCreatedSince(ctx context.Context, userID, titleSlug string, mode prestige.ChallengeMode, since time.Time) (int, error) {
+func (r *PrestigeChallengeRepo) CountCreatedSince(
+	ctx context.Context,
+	userID, titleSlug string,
+	mode prestige.ChallengeMode,
+	since time.Time,
+) (int, error) {
 	ctx, cancel := context.WithTimeout(ctx, 5*time.Second)
 	defer cancel()
 	var n int

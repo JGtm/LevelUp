@@ -286,7 +286,10 @@ func listSnapshots(
 		var titleID string
 		var item domain.LabSnapshotSummary
 		var payload string
-		if err := rows.Scan(&titleID, &item.ResourceKey, &item.Version, &item.FetchedAt, &item.ContentHash, &item.ETag, &item.SourceURL, &payload); err != nil {
+		if err := rows.Scan(
+			&titleID, &item.ResourceKey, &item.Version, &item.FetchedAt,
+			&item.ContentHash, &item.ETag, &item.SourceURL, &payload,
+		); err != nil {
 			return nil, fmt.Errorf("scan snapshot: %w", err)
 		}
 		item.PayloadSize = len(payload)
@@ -398,7 +401,10 @@ func listAssets(
 		var rawJSON string
 		var contentHash string
 		var item domain.LabAssetSummary
-		if err := rows.Scan(&titleID, &item.AssetID, &item.AssetType, &item.VersionID, &name, &description, &rawJSON, &item.FetchedAt, &contentHash); err != nil {
+		if err := rows.Scan(
+			&titleID, &item.AssetID, &item.AssetType, &item.VersionID,
+			&name, &description, &rawJSON, &item.FetchedAt, &contentHash,
+		); err != nil {
 			return nil, fmt.Errorf("scan asset: %w", err)
 		}
 		item.Name = name
@@ -505,7 +511,11 @@ func listMedals(
 		var rawJSON string
 		var contentHash string
 		var item domain.LabMedalSummary
-		if err := rows.Scan(&titleID, &item.MedalID, &item.NameID, &item.DescriptionID, &item.SpriteIndex, &item.Difficulty, &item.MedalType, &personalScore, &rawJSON, &item.FetchedAt, &contentHash); err != nil {
+		if err := rows.Scan(
+			&titleID, &item.MedalID, &item.NameID, &item.DescriptionID,
+			&item.SpriteIndex, &item.Difficulty, &item.MedalType,
+			&personalScore, &rawJSON, &item.FetchedAt, &contentHash,
+		); err != nil {
 			return nil, fmt.Errorf("scan medal: %w", err)
 		}
 		items = append(items, item)
@@ -528,7 +538,11 @@ func loadSelectedMedal(
 		WHERE title_id = ? AND medal_id = ?`, titleSlug, medalID)
 	var titleID string
 	var item domain.LabMedalDetail
-	if err := row.Scan(&titleID, &item.MedalID, &item.NameID, &item.DescriptionID, &item.SpriteIndex, &item.Difficulty, &item.MedalType, &item.PersonalScore, &item.RawJSON, &item.FetchedAt, &item.ContentHash); err != nil {
+	if err := row.Scan(
+		&titleID, &item.MedalID, &item.NameID, &item.DescriptionID,
+		&item.SpriteIndex, &item.Difficulty, &item.MedalType,
+		&item.PersonalScore, &item.RawJSON, &item.FetchedAt, &item.ContentHash,
+	); err != nil {
 		if errors.Is(err, sql.ErrNoRows) || isMissingRelationError(err) {
 			return nil, nil
 		}
@@ -555,7 +569,11 @@ func listAllMedalEntries(
 	var entries []metadata_guard.MedalEntry
 	for rows.Next() {
 		var entry metadata_guard.MedalEntry
-		if err := rows.Scan(&entry.TitleID, &entry.MedalID, &entry.Label, &entry.Description, &entry.Category, &entry.Rarity, &entry.ImageURL, &entry.SpriteIdx, &entry.RawJSON); err != nil {
+		if err := rows.Scan(
+			&entry.TitleID, &entry.MedalID, &entry.Label, &entry.Description,
+			&entry.Category, &entry.Rarity, &entry.ImageURL,
+			&entry.SpriteIdx, &entry.RawJSON,
+		); err != nil {
 			return nil, fmt.Errorf("scan medal guard entry: %w", err)
 		}
 		entries = append(entries, entry)
@@ -668,7 +686,11 @@ func sortMethodMismatches(items []domain.LabMethodMismatch) {
 func scanSeasonCalendar(rows *sql.Rows) (domain.SeasonCalendar, error) {
 	var season domain.SeasonCalendar
 	var endDate sql.NullTime
-	if err := rows.Scan(&season.TitleID, &season.SeasonID, &season.Version, &season.Name, &season.StartDate, &endDate, &season.FetchedAt, &season.ContentHash, &season.ETag, &season.SourceURL); err != nil {
+	if err := rows.Scan(
+		&season.TitleID, &season.SeasonID, &season.Version, &season.Name,
+		&season.StartDate, &endDate, &season.FetchedAt,
+		&season.ContentHash, &season.ETag, &season.SourceURL,
+	); err != nil {
 		return domain.SeasonCalendar{}, fmt.Errorf("scan season calendar: %w", err)
 	}
 	if endDate.Valid {

@@ -39,7 +39,12 @@ type UserLinker interface {
 }
 
 // NewAuthHandler crée un AuthHandler.
-func NewAuthHandler(sessionStore *session.Store, attempts *auth_platform.AttemptStore, demoMode bool, provider auth_platform.TokenProvider) *AuthHandler {
+func NewAuthHandler(
+	sessionStore *session.Store,
+	attempts *auth_platform.AttemptStore,
+	demoMode bool,
+	provider auth_platform.TokenProvider,
+) *AuthHandler {
 	return &AuthHandler{
 		sessionStore: sessionStore,
 		attempts:     attempts,
