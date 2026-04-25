@@ -179,6 +179,14 @@ func IndexMedia(opts MediaIndexOptions) (MediaIndexResult, error) {
 		result.Associated = assoc
 	}
 
+	// Lier les miniatures existantes sur disque aux enregistrements dont thumbnail_path est NULL.
+	thumbsDir := filepath.Join(opts.CapturesDir, "thumbs")
+	if n, backfillErr := BackfillThumbnailPaths(db, opts.CapturesDir, thumbsDir); backfillErr != nil {
+		result.Errors = append(result.Errors, fmt.Sprintf("backfill_thumbnails: %v", backfillErr))
+	} else {
+		result.Thumbnails += n
+	}
+
 	slog.Info("IndexMedia: terminé",
 		"scanned", result.Scanned,
 		"new_files", result.NewFiles,
@@ -271,12 +279,12 @@ func GenerateThumbnails(videosDir, thumbsDir string) (int, []string) {
 			continue
 		}
 		base := strings.TrimSuffix(e.Name(), filepath.Ext(e.Name()))
-		thumbPath := filepath.Join(thumbsDir, base+".jpg")
+		thumbPath := filepath.Join(thumbsDir, base+".gif")
 		if _, err := os.Stat(thumbPath); err == nil {
 			continue // déjà générée
 		}
 		srcPath := filepath.Join(videosDir, e.Name())
-		if err := generateThumbnail(srcPath, thumbPath); err != nil {
+		if err := generateAnimatedThumbnail(srcPath, thumbPath); err != nil {
 			errs = append(errs, fmt.Sprintf("%s: %v", e.Name(), err))
 			continue
 		}
@@ -285,18 +293,87 @@ func GenerateThumbnails(videosDir, thumbsDir string) (int, []string) {
 	return generated, errs
 }
 
-// generateThumbnail génère une miniature à t=5s via ffmpeg.
-func generateThumbnail(videoPath, thumbPath string) error {
-	cmd := exec.Command("ffmpeg", "-y",
+// generateAnimatedThumbnail génère un GIF animé (3 s à partir de t=5s, 10 fps, 480px) via ffmpeg two-pass palette.
+func generateAnimatedThumbnail(videoPath, gifPath string) error {
+	// Two-pass ffmpeg : 1) générer la palette optimale, 2) l'appliquer au GIF.
+	// Filtre : fps=10, scale=480:-1 (largeur 480, hauteur proportionnelle), dithering sierra2_4a.
+	palette := gifPath + ".palette.png"
+	defer os.Remove(palette) //nolint:errcheck
+
+	// Pass 1 — palette
+	pass1 := exec.Command("ffmpeg", "-y",
 		"-ss", "5",
+		"-t", "3",
 		"-i", videoPath,
-		"-vframes", "1",
-		"-q:v", "2",
-		thumbPath,
+		"-vf", "fps=10,scale=480:-1:flags=lanczos,palettegen=stats_mode=diff",
+		palette,
 	)
-	cmd.Stdout = nil
-	cmd.Stderr = nil
-	return cmd.Run()
+	pass1.Stdout = nil
+	pass1.Stderr = nil
+	if err := pass1.Run(); err != nil {
+		return fmt.Errorf("palettegen: %w", err)
+	}
+
+	// Pass 2 — GIF
+	pass2 := exec.Command("ffmpeg", "-y",
+		"-ss", "5",
+		"-t", "3",
+		"-i", videoPath,
+		"-i", palette,
+		"-lavfi", "fps=10,scale=480:-1:flags=lanczos[x];[x][1:v]paletteuse=dither=sierra2_4a",
+		gifPath,
+	)
+	pass2.Stdout = nil
+	pass2.Stderr = nil
+	return pass2.Run()
+}
+
+// BackfillThumbnailPaths met à jour thumbnail_path en DB pour toutes les vidéos
+// dont le fichier miniature existe déjà dans thumbsDir mais dont la colonne est NULL.
+// Appelé après GenerateThumbnails pour lier les miniatures générées aux enregistrements.
+func BackfillThumbnailPaths(db *sql.DB, videosDir, thumbsDir string) (int, error) {
+	entries, err := os.ReadDir(thumbsDir)
+	if err != nil {
+		if os.IsNotExist(err) {
+			return 0, nil
+		}
+		return 0, fmt.Errorf("BackfillThumbnailPaths ReadDir: %w", err)
+	}
+
+	updated := 0
+	for _, e := range entries {
+		if e.IsDir() {
+			continue
+		}
+		if strings.ToLower(filepath.Ext(e.Name())) != ".gif" {
+			continue
+		}
+		base := strings.TrimSuffix(e.Name(), filepath.Ext(e.Name()))
+		thumbAbs := filepath.Join(thumbsDir, e.Name())
+
+		// Stripper le suffixe hash (éventuellement ajouté par le Python indexer)
+		// Ex: "Halo Infinite 2025-12-18 17-40-46_9430c6551833" → "Halo Infinite 2025-12-18 17-40-46"
+		videoBase := thumbHashSuffixRe.ReplaceAllString(base, "")
+
+		// Mettre à jour la vidéo dont file_name commence par videoBase (n'importe quelle extension vidéo).
+		// On utilise LIKE 'base.%' pour éviter les faux positifs de préfixe.
+		res, err := db.Exec(`
+			UPDATE media_files
+			SET thumbnail_path = ?
+			WHERE thumbnail_path IS NULL
+			  AND kind = 'video'
+			  AND file_name LIKE ?
+		`, thumbAbs, videoBase+".%")
+		if err != nil {
+			slog.Warn("BackfillThumbnailPaths: update échoué",
+				"base", base, "err", err)
+			continue
+		}
+		n, _ := res.RowsAffected()
+		updated += int(n)
+	}
+	slog.Info("BackfillThumbnailPaths: terminé", "updated", updated)
+	return updated, nil
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -514,6 +591,10 @@ func SanitizeMediaTimezone(tz string) string {
 	}
 	return tz
 }
+
+// thumbHashSuffixRe matche le suffixe hash ajouté aux miniatures GIF.
+// Ex: "Halo Infinite 2025-12-18 17-40-46_9430c6551833" → base "Halo Infinite 2025-12-18 17-40-46"
+var thumbHashSuffixRe = regexp.MustCompile(`_[0-9a-fA-F]{6,}$`)
 
 // xboxFilenameRe matche le pattern Xbox :
 // "Halo Infinite 2024.11.15 - 21.30.45.01.mp4"

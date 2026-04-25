@@ -17,6 +17,7 @@ import (
 	"io"
 	"log/slog"
 	"net/http"
+	"os"
 	"path"
 	"path/filepath"
 	"strings"
@@ -263,7 +264,7 @@ func (h *MediaHandler) PostReassociateMedia(w http.ResponseWriter, r *http.Reque
 	}
 
 	slug := chi.URLParam(r, "player_slug")
-	svc, _, _, dbPath, sharedSocialDBPath, sharedMatchesDBPath, err := h.newUpload(r.Context(), slug)
+	svc, gamertag, titleSlug, dbPath, sharedSocialDBPath, sharedMatchesDBPath, err := h.newUpload(r.Context(), slug)
 	if err != nil {
 		writeError(w, http.StatusNotFound, "player_not_found", err.Error())
 		return
@@ -273,6 +274,7 @@ func (h *MediaHandler) PostReassociateMedia(w http.ResponseWriter, r *http.Reque
 		DBPath:              dbPath,
 		SharedSocialDBPath:  sharedSocialDBPath,
 		SharedMatchesDBPath: sharedMatchesDBPath,
+		CapturesDir:         h.resolveCapturesDir(titleSlug, gamertag),
 		BufferMin:           2,
 	}
 
@@ -331,29 +333,45 @@ func GetMediaFeedVersion(w http.ResponseWriter, _ *http.Request) {
 
 // filePathToURL transforme un chemin absolu en URL servable via l'API.
 // Retourne le chemin original si la transformation n'est pas possible.
+// filePathToURL transforme un chemin absolu en URL servable via l'API.
+// Tente d'abord capturesBase (depuis les settings), puis le chemin interne data/ du repo.
+// Retourne le chemin original si aucune correspondance.
 func (h *MediaHandler) filePathToURL(slug, absPath, capturesBase string) string {
-	playerDir := filepath.Join(capturesBase, slug)
-	relPath, err := filepath.Rel(playerDir, filepath.Clean(absPath))
-	if err != nil || strings.HasPrefix(relPath, "..") {
-		return absPath
+	clean := filepath.Clean(absPath)
+
+	// Tentative 1 : capturesBase configuré dans les settings.
+	if capturesBase != "" {
+		playerDir := filepath.Join(capturesBase, slug)
+		relPath, err := filepath.Rel(playerDir, clean)
+		if err == nil && !strings.HasPrefix(relPath, "..") {
+			return "/api/v1/players/" + slug + "/media/files/" + filepath.ToSlash(relPath)
+		}
 	}
-	return "/api/v1/players/" + slug + "/media/files/" + filepath.ToSlash(relPath)
+
+	// Tentative 2 : chemin interne repo (data/titles/.../players/{slug}).
+	// PlayerCapturesDir retourne .../players/{slug}/captures — on remonte d'un niveau
+	// pour obtenir .../players/{slug} et calculer une URL relative correcte.
+	if h.repoRoot != "" {
+		pr := titlePkg.NewPathResolver(h.repoRoot)
+		internalCapturesDir := pr.PlayerCapturesDir(titlePkg.DefaultSlug, slug)
+		internalPlayerDir := filepath.Dir(internalCapturesDir)
+		relPath, err := filepath.Rel(internalPlayerDir, clean)
+		if err == nil && !strings.HasPrefix(relPath, "..") {
+			return "/api/v1/players/" + slug + "/media/files/" + filepath.ToSlash(relPath)
+		}
+	}
+
+	return absPath
 }
 
 // transformMediaURLs transforme les chemins absolus des items en URLs servables.
 func (h *MediaHandler) transformMediaURLs(slug string, items []domain.MediaItem) {
-	if h.settingsStore == nil {
-		return
+	capturesBase := ""
+	if h.settingsStore != nil {
+		if cfg, err := h.settingsStore.Load(); err == nil && cfg.MediaCapturesBaseDir != "" {
+			capturesBase = filepath.Clean(cfg.MediaCapturesBaseDir)
+		}
 	}
-	cfg, err := h.settingsStore.Load()
-	if err != nil {
-		return
-	}
-	capturesBase := cfg.MediaCapturesBaseDir
-	if capturesBase == "" {
-		return
-	}
-	capturesBase = filepath.Clean(capturesBase)
 	for i := range items {
 		items[i].FilePath = h.filePathToURL(slug, items[i].FilePath, capturesBase)
 		if items[i].ThumbnailPath != nil {
@@ -364,15 +382,11 @@ func (h *MediaHandler) transformMediaURLs(slug string, items []domain.MediaItem)
 }
 
 // ServeMediaFile sert un fichier depuis le répertoire captures du joueur.
+// Essaie d'abord capturesBase (settings), puis le chemin interne data/ du repo.
 // GET /api/v1/players/{player_slug}/media/files/*
 func (h *MediaHandler) ServeMediaFile(w http.ResponseWriter, r *http.Request) {
 	slug := chi.URLParam(r, "player_slug")
 	rpath := chi.URLParam(r, "*")
-
-	if h.settingsStore == nil {
-		http.Error(w, "file serving not configured", http.StatusServiceUnavailable)
-		return
-	}
 
 	// Nettoyer le chemin URL (gère les "..")
 	cleanURL := path.Clean("/" + rpath)
@@ -387,27 +401,43 @@ func (h *MediaHandler) ServeMediaFile(w http.ResponseWriter, r *http.Request) {
 	}
 
 	capturesBase := ""
-	if cfg, err := h.settingsStore.Load(); err == nil {
-		capturesBase = cfg.MediaCapturesBaseDir
+	if h.settingsStore != nil {
+		if cfg, err := h.settingsStore.Load(); err == nil {
+			capturesBase = cfg.MediaCapturesBaseDir
+		}
 	}
-	var playerDir string
+
+	// Construire la liste des répertoires candidates (settings puis chemin interne).
+	var playerDirs []string
 	if capturesBase != "" {
-		playerDir = filepath.Join(capturesBase, slug)
-	} else {
-		pr := titlePkg.NewPathResolver(h.repoRoot)
-		playerDir = pr.PlayerCapturesDir(titlePkg.DefaultSlug, slug)
+		playerDirs = append(playerDirs, filepath.Join(capturesBase, slug))
 	}
-
-	absPath := filepath.Join(playerDir, filepath.FromSlash(cleanURL))
-
-	// Anti-traversal : vérifier que le chemin résolu est dans playerDir
-	cleanPlayerDir := filepath.Clean(playerDir)
-	cleanAbsPath := filepath.Clean(absPath)
-	if cleanAbsPath != cleanPlayerDir &&
-		!strings.HasPrefix(cleanAbsPath, cleanPlayerDir+string(filepath.Separator)) {
-		http.Error(w, "forbidden", http.StatusForbidden)
+	if h.repoRoot != "" {
+		pr := titlePkg.NewPathResolver(h.repoRoot)
+		internalCapturesDir := pr.PlayerCapturesDir(titlePkg.DefaultSlug, slug)
+		playerDirs = append(playerDirs, filepath.Dir(internalCapturesDir))
+	}
+	if len(playerDirs) == 0 {
+		http.Error(w, "file serving not configured", http.StatusServiceUnavailable)
 		return
 	}
 
-	http.ServeFile(w, r, absPath)
+	for _, playerDir := range playerDirs {
+		absPath := filepath.Join(playerDir, filepath.FromSlash(cleanURL))
+
+		// Anti-traversal : vérifier que le chemin résolu est dans playerDir
+		cleanPlayerDir := filepath.Clean(playerDir)
+		cleanAbsPath := filepath.Clean(absPath)
+		if cleanAbsPath != cleanPlayerDir &&
+			!strings.HasPrefix(cleanAbsPath, cleanPlayerDir+string(filepath.Separator)) {
+			continue
+		}
+
+		if _, err := os.Stat(cleanAbsPath); err == nil {
+			http.ServeFile(w, r, cleanAbsPath)
+			return
+		}
+	}
+
+	http.Error(w, "not found", http.StatusNotFound)
 }

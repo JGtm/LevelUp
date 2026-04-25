@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react'
 import { Link } from '@tanstack/react-router'
 import { Badge } from '@/components/ui/badge'
+import { GifHoverThumbnail } from '@/components/ui/gif-hover-thumbnail'
 import type { MediaItemRow } from '@/lib/api/types'
 
 function formatMediaDate(value: string | null | undefined) {
@@ -8,9 +9,12 @@ function formatMediaDate(value: string | null | undefined) {
     return null
   }
   const d = new Date(value)
-  const datePart = d.toLocaleDateString('fr-FR', { day: 'numeric', month: 'short' })
+  if (Number.isNaN(d.getTime())) {
+    return null
+  }
+  const datePart = d.toLocaleDateString('fr-FR', { day: '2-digit', month: '2-digit', year: '2-digit' })
   const timePart = d.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' })
-  return `${datePart} à ${timePart}`
+  return `${timePart} ${datePart}`
 }
 
 function formatLightboxHeading(item: MediaItemRow, index: number, total: number) {
@@ -114,7 +118,7 @@ interface MediaThumbnailCardProps {
 
 export function MediaThumbnailCard({ item, onToggleLike, onOpen, likeDisabled = false }: MediaThumbnailCardProps) {
   const [isHovering, setIsHovering] = useState(false)
-  const dateStr = formatMediaDate(item.capture_end_utc)
+  const dateStr = formatMediaDate(item.capture_end_utc ?? item.match_start_time)
 
   return (
     <article
@@ -134,16 +138,13 @@ export function MediaThumbnailCard({ item, onToggleLike, onOpen, likeDisabled = 
       tabIndex={0}
     >
       <div className="relative aspect-video overflow-hidden bg-muted">
-        {isHovering && item.kind === 'clip' && item.thumbnail_path ? (
-          // GIF thumbnail animé au survol — key force le remontage pour redémarrer depuis la frame 1
-          <img
-            key="gif-active"
+        {item.kind === 'clip' && item.thumbnail_path ? (
+          <GifHoverThumbnail
             src={item.thumbnail_path}
-            alt=""
-            aria-hidden="true"
-            className="h-full w-full object-cover"
+            isActive={isHovering}
+            className="absolute inset-0 h-full w-full"
           />
-        ) : item.thumbnail_path && item.kind !== 'clip' ? (
+        ) : item.thumbnail_path ? (
           <img
             src={item.thumbnail_path}
             alt={item.basename}
@@ -170,13 +171,13 @@ export function MediaThumbnailCard({ item, onToggleLike, onOpen, likeDisabled = 
       </div>
 
       <div className="flex flex-col gap-1 p-2">
-        <div className="flex items-center gap-1">
-          <Badge variant={item.kind === 'clip' ? 'default' : 'secondary'} className="text-xs">
+        <div className="flex items-center gap-1 min-w-0">
+          <Badge variant={item.kind === 'clip' ? 'default' : 'secondary'} className="text-xs shrink-0">
             {item.kind}
           </Badge>
-          {item.map_name && <span className="truncate text-xs text-muted-foreground">{item.map_name}</span>}
+          {item.map_name && <span className="truncate text-xs text-muted-foreground min-w-0">{item.map_name}</span>}
+          {dateStr && <span className="ml-auto shrink-0 text-xs text-muted-foreground">{dateStr}</span>}
         </div>
-        {dateStr && <p className="text-xs text-muted-foreground">{dateStr}</p>}
         <LikersLine likers={item.likers} totalLikers={item.total_likers} />
       </div>
     </article>

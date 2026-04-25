@@ -182,7 +182,8 @@ type ReassociateRequest struct {
 	DBPath              string
 	SharedSocialDBPath  string
 	SharedMatchesDBPath string
-	BufferMin           int // 0 → défaut 2 min
+	CapturesDir         string // répertoire captures pour le backfill thumbnail_path
+	BufferMin           int    // 0 → défaut 2 min
 }
 
 // ReassociateResult résume le résultat de la ré-association.

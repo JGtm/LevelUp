@@ -17,10 +17,14 @@ interface RecentMediaRailProps {
 
 export function RecentMediaRail({ playerSlug }: RecentMediaRailProps) {
   const [mediaTab, setMediaTab] = useState<MediaTab>('recent')
-  const { data, isLoading, isError } = useRecentMediaRail(playerSlug, HOME_MEDIA_LIMIT, mediaTab === 'liked')
+  const recentQuery = useRecentMediaRail(playerSlug, HOME_MEDIA_LIMIT, false)
+  const likedQuery = useRecentMediaRail(playerSlug, HOME_MEDIA_LIMIT, true)
+  const { data, isLoading, isError } = mediaTab === 'liked' ? likedQuery : recentQuery
   const toggleMediaLike = useToggleMediaLike(playerSlug)
   const [lightboxIndex, setLightboxIndex] = useState<number | null>(null)
   const items = data?.items.items ?? []
+  const recentTotal = recentQuery.data?.items.pagination.total
+  const likedTotal = likedQuery.data?.items.pagination.total
 
   return (
     <Card>
@@ -50,7 +54,7 @@ export function RecentMediaRail({ playerSlug }: RecentMediaRailProps) {
                   : 'border-transparent text-muted-foreground hover:text-foreground'
               }`}
             >
-              Récents
+              Récents{recentTotal !== undefined && <span className="ml-1.5 opacity-70">({recentTotal})</span>}
             </Button>
             <Button
               variant="ghost"
@@ -62,7 +66,7 @@ export function RecentMediaRail({ playerSlug }: RecentMediaRailProps) {
                   : 'border-transparent text-muted-foreground hover:text-foreground'
               }`}
             >
-              Aimés
+              Aimés{likedTotal !== undefined && <span className="ml-1.5 opacity-70">({likedTotal})</span>}
             </Button>
           </div>
         </div>
