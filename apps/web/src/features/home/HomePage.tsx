@@ -392,7 +392,7 @@ function HomeSkillPeakCard({ label, peak, numberLocale, testIdPrefix, state, det
   return (
     <div
       data-testid={`${testIdPrefix}-card`}
-      className={`flex min-w-[11rem] items-center gap-3 rounded-2xl border px-4 py-3 shadow-[0_12px_30px_rgba(8,15,28,0.24)] backdrop-blur-sm ${hasValue ? 'border-cyan-100/12 bg-slate-950/35' : 'border-white/10 bg-slate-950/22'}`}
+      className={`flex h-full min-w-[11rem] items-center gap-3 rounded-2xl border px-4 py-3 shadow-[0_12px_30px_rgba(8,15,28,0.24)] backdrop-blur-sm ${hasValue ? 'border-cyan-100/12 bg-slate-950/35' : 'border-white/10 bg-slate-950/22'}`}
     >
       {peak?.badge_image_url ? (
         <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl border border-white/10 bg-slate-950/60 p-1.5">
@@ -585,7 +585,7 @@ export function HomePage() {
         <div>
           <div className="space-y-4">
             {spartanIdentity && (
-              <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_minmax(18rem,19.5rem)] lg:items-start">
+              <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_minmax(18rem,19.5rem)] lg:items-stretch">
                 <div className="overflow-hidden rounded-2xl border border-border bg-muted/60 shadow-sm">
                   <div
                     data-testid="home-spartan-identity-banner"
@@ -617,10 +617,10 @@ export function HomePage() {
                     )}
                     <div
                       data-testid="home-spartan-banner-shell"
-                      className="relative flex flex-col gap-6 pt-1 pb-5 pl-5 pr-28 text-white sm:pl-6 sm:pr-32 lg:flex-row lg:items-start lg:justify-between"
+                      className="relative flex flex-col gap-6 pt-1 pb-5 pl-5 pr-28 text-white sm:pl-6 sm:pr-32 lg:min-h-[9rem] lg:flex-row lg:items-start lg:justify-between"
                       style={{ textShadow: '0 1px 6px rgba(0,0,0,0.85)' }}
                     >
-                      <div className="flex min-w-0 items-center gap-4">
+                      <div className="flex min-w-0 items-center gap-4 lg:self-center">
                         <div className="flex h-20 w-20 shrink-0 items-center justify-center overflow-hidden rounded-full border-2 border-cyan-300/60 bg-slate-950/60 shadow-[0_0_0_4px_rgba(8,15,28,0.35)] sm:h-24 sm:w-24">
                           {spartanIdentity.emblem_image_url ? (
                             <img
@@ -657,25 +657,12 @@ export function HomePage() {
                       </div>
 
                       {careerRank && (
-                        <div className="flex items-center gap-4 self-start lg:self-center">
-                          <div className="min-w-0 rounded-xl bg-slate-950/50 px-3 py-2 text-right backdrop-blur-sm lg:max-w-[16rem]">
+                        <div className="flex items-center gap-4 self-start">
+                          <div className="min-w-0 rounded-xl bg-slate-950/15 px-3 py-2 text-right backdrop-blur-sm lg:max-w-[16rem]">
                             <p data-testid="home-career-rank-title" className="text-lg font-semibold text-white sm:text-xl">
                               {careerRank.rank_title}
                             </p>
                           </div>
-
-                          {careerRank.rank_image_url && (
-                            <div className="rounded-2xl border border-white/15 bg-slate-950/45 p-2 backdrop-blur-sm">
-                              <img
-                                data-testid="home-career-rank-image"
-                                src={careerRank.rank_image_url}
-                                alt={`${labels.careerRank} ${careerRank.rank_title}`}
-                                className="h-20 w-20 object-contain sm:h-24 sm:w-24"
-                                loading="lazy"
-                                decoding="async"
-                              />
-                            </div>
-                          )}
                         </div>
                       )}
                     </div>
@@ -725,7 +712,7 @@ export function HomePage() {
 
                 <div
                   data-testid="home-skill-peaks-panel"
-                  className="grid content-start gap-3 sm:grid-cols-2 lg:grid-cols-1"
+                  className="grid gap-3 sm:grid-cols-2 lg:grid-cols-1 lg:auto-rows-fr"
                 >
                   {!highestCSR && !highestLUSR && !hasAnySkillHistory ? (
                     <div

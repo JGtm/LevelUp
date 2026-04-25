@@ -15,7 +15,7 @@ interface SpartanIdentityTextDict {
     currentProgress: string
     rankPrefix: string
     maxRank: string
-    progressTowardsRank: (n: number) => string
+    progressTowardsRank: (name: string) => string
   }
   emptyPanel: {
     titleUnavailable: string
