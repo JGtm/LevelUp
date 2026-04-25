@@ -8,8 +8,14 @@ import type { PlotlyFigurePayload } from '@/lib/api/types'
 import { Spinner } from './spinner'
 
 // react-plotly.js est lourd — on le lazy charge
+// CJS→ESM interop Vite : m.default est l'objet exports CJS { __esModule, default: Component }
+// On doit détecter et déballer le double-default pour obtenir le vrai composant React.
 const Plot = lazy(() =>
-  import('react-plotly.js').then((m) => ({ default: m.default })),
+  import('react-plotly.js').then((m) => {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const mod = m.default as any
+    return { default: (mod?.__esModule ? mod.default : mod) as typeof m.default }
+  }),
 )
 
 interface PlotlyChartProps {
