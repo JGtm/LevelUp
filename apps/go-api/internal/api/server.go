@@ -94,8 +94,7 @@ func NewRouter(
 
 	// Phase B multi-titres : resolver des adapters par titre.
 	// Le resolver est exposé aux services produit qui veulent consommer la
-	// couche canonique. En Phase B, seul le SemanticAdapter HI est câblé
-	// (le DataAdapter HI sera registré endpoint par endpoint en Phase C).
+	// couche canonique.
 	titleResolver := games.NewStaticResolver(titlePkg.DefaultSlug)
 	if hiFields, ok := fieldMappingsRegistry.Get(titlePkg.DefaultSlug); ok {
 		if sem := halo_games.NewSemanticAdapter(hiFields); sem != nil {
@@ -106,7 +105,15 @@ func NewRouter(
 			)
 		}
 	}
-	_ = titleResolver // utilisé en Phase C par les services migrés
+	// Phase C : DataAdapter HI registré sans CareerSource player-scoped au boot.
+	// La capability career.progression sera "not_exposed" pour ce DataAdapter
+	// global ; les futurs handlers player-scoped instancieront leur propre
+	// DataAdapter avec le CareerRepo du joueur courant via un MiddleWare DI.
+	titleResolver.RegisterData(halo_games.NewDataAdapter(nil, slog.Default()))
+	slog.Info("title_data_adapter_registered_global",
+		"title_slug", titlePkg.DefaultSlug,
+		"note", "player-scoped CareerSource sera injectée endpoint par endpoint",
+	)
 
 	// Sprint 40 T1 : validation de contrat (dev mode, no-op si LEVELUP_CONTRACT_VALIDATE != 1).
 	r.Use(middleware.ContractValidate)
@@ -160,14 +167,21 @@ func NewRouter(
 		r.Get("/bootstrap", handlers.NewBootstrapHandler(bootSvc).ServeHTTP)
 		r.Get("/players", handlers.NewPlayersHandler(bootSvc).ServeHTTP)
 
-		// Phase A multi-titres : exposition des field mappings TOML.
-		// Endpoint enregistré uniquement si MULTI_TITLE_API_ENABLED=true.
+		// Phase A+C multi-titres : exposition des field mappings TOML +
+		// preview du pipeline canonique. Tout derrière MULTI_TITLE_API_ENABLED.
 		if handlers.MultiTitleAPIEnabled() {
 			fieldMappingsHandler := handlers.NewFieldMappingsHandler(fieldMappingsRegistry, slog.Default())
 			r.Get("/titles/{slug}/field-mappings", fieldMappingsHandler.ServeHTTP)
+
+			previewHandler := handlers.NewMultiTitlePreviewHandler(titleResolver, slog.Default())
+			r.Get("/titles/{slug}/preview/career", previewHandler.GetCareerPreview)
+
 			slog.Info("multi_title_api_enabled",
 				"slugs", fieldMappingsRegistry.Slugs(),
-				"endpoint", "/api/v1/titles/{slug}/field-mappings",
+				"endpoints", []string{
+					"/api/v1/titles/{slug}/field-mappings",
+					"/api/v1/titles/{slug}/preview/career",
+				},
 			)
 		}
 
