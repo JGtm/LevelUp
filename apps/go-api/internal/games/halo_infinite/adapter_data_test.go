@@ -15,12 +15,18 @@ import (
 
 // stubCareer implémente CareerSource pour tester sans toucher DuckDB.
 type stubCareer struct {
-	row *domain.CareerRankData
-	err error
+	row           *domain.CareerRankData
+	err           error
+	encounters    []domain.EncounterRawRow
+	encountersErr error
 }
 
 func (s *stubCareer) GetLatestRank(_ context.Context) (*domain.CareerRankData, error) {
 	return s.row, s.err
+}
+
+func (s *stubCareer) GetEncounters(_ context.Context) ([]domain.EncounterRawRow, error) {
+	return s.encounters, s.encountersErr
 }
 
 func newSilentAdapter(c CareerSource) *DataAdapter {

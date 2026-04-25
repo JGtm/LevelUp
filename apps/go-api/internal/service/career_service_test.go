@@ -2,11 +2,15 @@ package service
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
+	"io"
+	"log/slog"
 	"testing"
 	"time"
 
 	"levelup/go-api/internal/domain"
+	halo_games "levelup/go-api/internal/games/halo_infinite"
 )
 
 // --- mock ---
@@ -179,5 +183,74 @@ func TestCareerService_GetEncounters_Error(t *testing.T) {
 	_, err := svc.GetEncounters(context.Background())
 	if err == nil {
 		t.Error("expected error")
+	}
+}
+
+// TestCareerService_GetEncounters_DataAdapterParity prouve que la bascule
+// vers le TitleDataAdapter (Phase C+ multi-titres) produit STRICTEMENT le
+// même payload JSON que la version repo legacy, sur les mêmes données.
+// C'est la golden parity backend pour /api/v1/players/{slug}/pages/career/encounters.
+func TestCareerService_GetEncounters_DataAdapterParity(t *testing.T) {
+	t.Parallel()
+
+	avg1, avg2 := 1.42, 0.87
+	rows := []domain.EncounterRawRow{
+		{Gamertag: "Ally", XUID: "x1", MatchCount: 10, AsTeammate: 8, AsEnemy: 2, AvgKDA: &avg1},
+		{Gamertag: "Foe", XUID: "x2", MatchCount: 5, AsTeammate: 1, AsEnemy: 4, AvgKDA: &avg2},
+		{Gamertag: "Even", XUID: "x3", MatchCount: 6, AsTeammate: 3, AsEnemy: 3, AvgKDA: nil},
+	}
+
+	// Path 1 : repo direct (legacy).
+	repoLegacy := &mockCareerRepo{encRows: rows}
+	svcLegacy := NewCareerService(repoLegacy)
+	respLegacy, err := svcLegacy.GetEncounters(context.Background())
+	if err != nil {
+		t.Fatalf("legacy err: %v", err)
+	}
+
+	// Path 2 : DataAdapter HI (Phase C+).
+	repoAdapter := &mockCareerRepo{encRows: rows}
+	dataAdapter := halo_games.NewDataAdapter(repoAdapter, slog.New(slog.NewJSONHandler(io.Discard, nil)))
+	svcAdapter := NewCareerService(repoAdapter).WithDataAdapter(dataAdapter)
+	respAdapter, err := svcAdapter.GetEncounters(context.Background())
+	if err != nil {
+		t.Fatalf("adapter err: %v", err)
+	}
+
+	// Parité : les deux payloads doivent sérialiser à des JSON identiques.
+	jsonLegacy, err := json.Marshal(respLegacy)
+	if err != nil {
+		t.Fatalf("marshal legacy: %v", err)
+	}
+	jsonAdapter, err := json.Marshal(respAdapter)
+	if err != nil {
+		t.Fatalf("marshal adapter: %v", err)
+	}
+	if string(jsonLegacy) != string(jsonAdapter) {
+		t.Errorf("golden parity cassée :\nlegacy=  %s\nadapter= %s", jsonLegacy, jsonAdapter)
+	}
+}
+
+// TestCareerService_GetEncounters_AdapterFallbackOnUnsupported prouve que si
+// le DataAdapter retourne ErrCapabilityNotSupported, le service retombe sur
+// le repo sans propager l'erreur (dégradation gracieuse).
+func TestCareerService_GetEncounters_AdapterFallbackOnUnsupported(t *testing.T) {
+	t.Parallel()
+
+	rows := []domain.EncounterRawRow{
+		{Gamertag: "Ally", XUID: "x1", MatchCount: 1, AsTeammate: 1, AsEnemy: 0},
+	}
+	repo := &mockCareerRepo{encRows: rows}
+
+	// DataAdapter sans CareerSource → LoadEncounters retourne ErrCapabilityNotSupported.
+	dataAdapter := halo_games.NewDataAdapter(nil, slog.New(slog.NewJSONHandler(io.Discard, nil)))
+	svc := NewCareerService(repo).WithDataAdapter(dataAdapter)
+
+	resp, err := svc.GetEncounters(context.Background())
+	if err != nil {
+		t.Fatalf("fallback devrait être silencieux, got %v", err)
+	}
+	if resp.Total != 1 || len(resp.Teammates) != 1 {
+		t.Errorf("payload via fallback repo incorrect : %+v", resp)
 	}
 }

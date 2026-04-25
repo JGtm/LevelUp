@@ -102,13 +102,26 @@ func (r *ServiceRegistry) GetSessionNotifier(xuid string) port.SessionNotifier {
 // ---------------------------------------------------------------------------
 
 // Career retourne un CareerService pour le joueur identifié par slug.
+//
+// Phase C+ multi-titres : quand le titre courant est HI, un DataAdapter
+// player-scoped est injecté dans le service. GetEncounters passe alors par
+// games.TitleDataAdapter.LoadEncounters → projection canonique →
+// domain.EncounterDTO, avec parité de payload par construction. Si la
+// capability LoadEncounters retourne ErrCapabilityNotSupported, le service
+// retombe automatiquement sur s.repo.GetEncounters.
 func (r *ServiceRegistry) Career(ctx context.Context, slug string) (port.CareerService, error) {
 	pdb, err := r.resolve(ctx, slug)
 	if err != nil {
 		return nil, err
 	}
-	return service.NewCareerService(duckdb.NewCareerRepo(pdb)).
-		WithTitleSlug(pdb.TitleSlug), nil
+	careerRepo := duckdb.NewCareerRepo(pdb)
+	svc := service.NewCareerService(careerRepo).WithTitleSlug(pdb.TitleSlug)
+	if pdb.TitleSlug == title.DefaultSlug {
+		// CareerRepo implémente CareerSource (GetLatestRank + GetEncounters).
+		dataAdapter := halo_games.NewDataAdapter(careerRepo, slog.Default())
+		svc = svc.WithDataAdapter(dataAdapter)
+	}
+	return svc, nil
 }
 
 // TitleDataAdapter retourne un games.TitleDataAdapter player-scoped pour le

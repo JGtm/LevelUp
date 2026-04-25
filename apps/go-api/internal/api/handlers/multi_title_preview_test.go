@@ -59,6 +59,9 @@ func (f *fakeData) LoadPlayerStats(_ context.Context, _ string, _ canonical.Stat
 func (f *fakeData) LoadCareerSnapshot(_ context.Context, _ string, _ canonical.CareerOptions) (*canonical.CareerSnapshot, error) {
 	return f.snap, f.err
 }
+func (f *fakeData) LoadEncounters(_ context.Context, _ string) ([]canonical.EncounterRow, error) {
+	return nil, nil
+}
 func (f *fakeData) LoadTimeseries(_ context.Context, _ string, _ canonical.TimeseriesQuery) (*canonical.MetricSeries, error) {
 	return nil, nil
 }

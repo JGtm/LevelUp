@@ -80,6 +80,7 @@ type TitleDataAdapter interface {
 	LoadMatchDetail(ctx context.Context, matchID string) (*canonical.MatchDetail, error)
 	LoadPlayerStats(ctx context.Context, xuid string, scope canonical.StatsScope) (*canonical.PlayerStats, error)
 	LoadCareerSnapshot(ctx context.Context, xuid string, opts canonical.CareerOptions) (*canonical.CareerSnapshot, error)
+	LoadEncounters(ctx context.Context, xuid string) ([]canonical.EncounterRow, error)
 	LoadTimeseries(ctx context.Context, xuid string, query canonical.TimeseriesQuery) (*canonical.MetricSeries, error)
 }
 

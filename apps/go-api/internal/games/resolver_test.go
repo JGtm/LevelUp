@@ -26,6 +26,9 @@ func (s *stubData) LoadPlayerStats(_ context.Context, _ string, _ canonical.Stat
 func (s *stubData) LoadCareerSnapshot(_ context.Context, _ string, _ canonical.CareerOptions) (*canonical.CareerSnapshot, error) {
 	return nil, nil
 }
+func (s *stubData) LoadEncounters(_ context.Context, _ string) ([]canonical.EncounterRow, error) {
+	return nil, nil
+}
 func (s *stubData) LoadTimeseries(_ context.Context, _ string, _ canonical.TimeseriesQuery) (*canonical.MetricSeries, error) {
 	return nil, nil
 }
