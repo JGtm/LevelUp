@@ -2,7 +2,7 @@
  * MediaPage — Galerie de médias (Slice 8).
  * Types ref: MediaItemRow, MediaQueryRequest, MediaPageResponse
  */
-import { useState, useEffect, useRef } from 'react'
+import { useState, useEffect, useMemo, useRef } from 'react'
 import { useParams } from '@tanstack/react-router'
 import { Card, CardContent } from '@/components/ui/card'
 import type { LabelValue, MediaItemRow, MediaQueryRequest } from '@/lib/api/types'
@@ -10,12 +10,22 @@ import { useAppShellStore } from '@/stores/appShellStore'
 import { MediaLightbox, MediaThumbnailCard } from './MediaViewer'
 import { MediaToolbar } from './MediaToolbar'
 import { UploadButton } from './UploadButton'
-import { getMediaText } from './i18n'
+import { getMediaText, type MediaText } from './i18n'
 import { useMediaAuthors, useMediaPage, useToggleMediaLike, useFeedVersion } from './queries'
 import { useQueryClient } from '@tanstack/react-query'
 import { queryKeys } from '@/lib/query/keys'
 
 const PAGE_SIZE = 24
+
+// Une session = run de matchs séparés par ≤ 30 minutes (heuristique alignée
+// sur la définition session_id de stats.duckdb).
+const SESSION_GAP_MS = 30 * 60 * 1000
+
+interface MediaGroup {
+  key: string
+  label: string
+  items: MediaItemRow[]
+}
 
 function buildFallbackOptions(items: MediaItemRow[], key: 'map_name' | 'mode_name'): LabelValue[] {
   const labels = Array.from(new Set(
@@ -43,6 +53,104 @@ function extractErrorMessage(error: unknown): string {
     }
   }
   return String(error)
+}
+
+function itemTimestamp(item: MediaItemRow): number | null {
+  const raw = item.capture_end_utc ?? item.match_start_time
+  if (!raw) return null
+  const t = new Date(raw).getTime()
+  return Number.isNaN(t) ? null : t
+}
+
+function buildSessionGroups(items: MediaItemRow[], text: MediaText, locale: string): MediaGroup[] {
+  if (items.length === 0) return []
+  const formatter = new Intl.DateTimeFormat(locale === 'en' ? 'en-US' : 'fr-FR', {
+    day: '2-digit',
+    month: 'short',
+    year: 'numeric',
+    hour: '2-digit',
+    minute: '2-digit',
+  })
+
+  // Le backend trie déjà par DESC (groupBy=session = timeOrderExpr DESC).
+  // On regroupe les items contigus dont l'écart de timestamp est ≤ SESSION_GAP_MS.
+  const groups: MediaGroup[] = []
+  let currentGroup: MediaGroup | null = null
+  let lastTs: number | null = null
+
+  for (const item of items) {
+    const ts = itemTimestamp(item)
+    if (ts === null) {
+      // pas de timestamp → bucket "session inconnue", à part
+      const orphan = groups.find((g) => g.key === 'session:__none__')
+      if (orphan) {
+        orphan.items.push(item)
+      } else {
+        groups.push({ key: 'session:__none__', label: text.groupSection.unknownSession, items: [item] })
+      }
+      continue
+    }
+    const tooFar = lastTs === null || Math.abs(lastTs - ts) > SESSION_GAP_MS
+    if (!currentGroup || tooFar) {
+      currentGroup = {
+        key: `session:${ts}`,
+        label: `${text.groupSection.sessionOfPrefix} ${formatter.format(new Date(ts))}`,
+        items: [],
+      }
+      groups.push(currentGroup)
+    }
+    currentGroup.items.push(item)
+    lastTs = ts
+  }
+  return groups
+}
+
+function buildSimpleGroups(items: MediaItemRow[], groupBy: string, text: MediaText): MediaGroup[] {
+  if (items.length === 0) return []
+  const order: string[] = []
+  const map = new Map<string, MediaGroup>()
+  for (const item of items) {
+    let key: string
+    let label: string
+    switch (groupBy) {
+      case 'owner': {
+        const owner = item.owner_gamertag?.trim() || ''
+        key = owner ? `owner:${owner}` : 'owner:__none__'
+        label = owner || text.groupSection.unknownOwner
+        break
+      }
+      case 'map': {
+        const mapName = item.map_name?.trim() || ''
+        key = mapName ? `map:${mapName}` : 'map:__none__'
+        label = mapName || text.groupSection.unknownMap
+        break
+      }
+      case 'mode': {
+        const modeName = item.mode_name?.trim() || ''
+        key = modeName ? `mode:${modeName}` : 'mode:__none__'
+        label = modeName || text.groupSection.unknownMode
+        break
+      }
+      default:
+        return [{ key: '__all__', label: '', items }]
+    }
+    let group = map.get(key)
+    if (!group) {
+      group = { key, label, items: [] }
+      map.set(key, group)
+      order.push(key)
+    }
+    group.items.push(item)
+  }
+  return order.map((key) => map.get(key) as MediaGroup)
+}
+
+function buildGroups(items: MediaItemRow[], groupBy: string, text: MediaText, locale: string): MediaGroup[] {
+  if (!groupBy || items.length === 0) {
+    return [{ key: '__all__', label: '', items }]
+  }
+  if (groupBy === 'session') return buildSessionGroups(items, text, locale)
+  return buildSimpleGroups(items, groupBy, text)
 }
 
 export function MediaPage() {
@@ -94,6 +202,17 @@ export function MediaPage() {
   }, [feedVersion, playerSlug, queryClient])
   const pagination = data?.items?.pagination
   const totalPages = pagination ? Math.ceil(pagination.total / PAGE_SIZE) : 1
+
+  const groups = useMemo(
+    () => buildGroups(mediaItems, groupBy, text, locale),
+    [mediaItems, groupBy, text, locale],
+  )
+
+  const indexByPath = useMemo(() => {
+    const map = new Map<string, number>()
+    mediaItems.forEach((item, index) => map.set(item.file_path, index))
+    return map
+  }, [mediaItems])
 
   function handleKindChange(value: string) {
     setKindFilter(value)
@@ -180,20 +299,32 @@ export function MediaPage() {
         </Card>
       ) : (
         <>
-          <div className={`grid grid-cols-2 gap-4 transition-opacity sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 ${isFetching ? 'opacity-70' : 'opacity-100'}`}>
-            {mediaItems.map((item, index) => (
-              <MediaThumbnailCard
-                key={`${item.file_path}-${index}`}
-                item={item}
-                onToggleLike={(currentItem) => {
-                  toggleMediaLike.mutate({
-                    file_path: currentItem.file_path,
-                    liked: !currentItem.liked,
-                  })
-                }}
-                onOpen={() => setLightboxIdx(index)}
-                likeDisabled={toggleMediaLike.isPending}
-              />
+          <div className={`flex flex-col gap-6 transition-opacity ${isFetching ? 'opacity-70' : 'opacity-100'}`}>
+            {groups.map((group) => (
+              <section key={group.key} className="flex flex-col gap-3">
+                {group.label && (
+                  <h3 className="px-1 text-sm font-semibold text-muted-foreground">{group.label}</h3>
+                )}
+                <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6">
+                  {group.items.map((item) => {
+                    const flatIndex = indexByPath.get(item.file_path) ?? 0
+                    return (
+                      <MediaThumbnailCard
+                        key={item.file_path}
+                        item={item}
+                        onToggleLike={(currentItem) => {
+                          toggleMediaLike.mutate({
+                            file_path: currentItem.file_path,
+                            liked: !currentItem.liked,
+                          })
+                        }}
+                        onOpen={() => setLightboxIdx(flatIndex)}
+                        likeDisabled={toggleMediaLike.isPending}
+                      />
+                    )
+                  })}
+                </div>
+              </section>
             ))}
           </div>
 
