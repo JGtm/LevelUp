@@ -1,5 +1,33 @@
 # Thought Log
 
+## [2026-04-25] feat(home + ui): refonte banner spartan, next_rank_title, divers fixes UI
+
+**Statut** : Complété — 9 commits sur `feat/multi-title-adapters-and-mappings`
+
+**Contexte** : session de nettoyage cumulant plusieurs petits sujets en attente sur la home + fixes UI globaux. Demande utilisateur : « commit tout proprement par feature/thème ».
+
+**Décisions techniques principales** :
+
+1. **Chaîne `next_rank_title` (Go → web)** : `Q26dHomeCareerRankMeta` étendue avec `LEFT JOIN career_ranks ON nr.rank_id = cr.rank_id + 1` pour récupérer EN/FR du palier suivant. Ajout `NextRankTitleEN/FR` dans `HomeSpartanIdentityRow` + `NextRankTitle` (omitempty) dans `HomeCareerRankSummary`. Côté web : type miroir + i18n FR/EN `progressTowardsRank(name)`.
+2. **Banner spartan refondu** : suppression de la coquille interne arrondie + backdrop séparé. `banner_image_url` devient un `<img>` plein fond (`absolute inset-0 object-cover`) ; adornment ancré à droite plein hauteur. Le label de progression bascule entre `Progression vers <rang>` et `Rang max` selon `is_max_rank`. Ordre stat row passé à `wins / neutral / losses` (sémantique W-D-L).
+3. **HomeHeroBanner : vrai cross-fade** : double couche superposée `<div>` background-image (A=0, B=1) qui alternent ; couche inactive reçoit l'image suivante à `opacity:0`, puis double-rAF avant le toggle d'`activeIdx` pour que le navigateur ait peint avant la transition (900 ms ease). Élimine le ~600 ms de banner noir entre images de l'ancien fade-out/fade-in séquentiel. Refs srcs/activeIdx pour éviter stale closures dans `setInterval`.
+4. **Fix Plotly CJS→ESM** : `react-plotly.js` est CJS, Vite expose `{ default: { __esModule: true, default: Component } }`. Ajout d'un déballage runtime `m.default.__esModule ? m.default.default : m.default` dans le lazy import.
+5. **Bouton Aide** : déplacé à droite de la nav (après ThemeToggle, avant Settings) et passé en icône SVG question-mark + `aria-label='Aide'`. Menu dropdown ouvre vers la droite (right-0).
+6. **match-card : titre cliquable** : carte non interactive, `onClick` migré sur un `<button>` autour du titre avec icône `external-link` + `hover:underline`. Conteneur badges toujours rendu (`min-h-[1.625rem]`) → toutes les cartes alignent leur ligne stats au pixel près. Label `KDA` → `FDA` pour cohérence avec le reste du codebase (FDA partout ailleurs).
+7. **composite-progress-bar** : suppression du motif rayé répétitif (track + fill) au profit d'une track unie `bg-muted-foreground/25` + fill plein `bg-sky-500`, hauteur `h-3` → `h-2`, transition `all` 300 ms.
+8. **fix LabPage** : `Spinner` était utilisé sans être importé (lignes 614 et 716). Ajout à l'import nommé.
+9. **`.ai/V7/`** : 15 plans/audits v7 déplacés sous `.ai/V7/` + nouveau `PLAN_challenges_xp_system.md`. `.ai/` racine reste pour les documents en cours.
+
+**Choix rejetés** :
+- Garder le wrapper carte cliquable sur match-card : trop large comme zone d'action et contre-intuitif quand l'utilisateur veut juste sélectionner du texte. Le titre seul + icône suffit comme affordance.
+- Bundler banner_image + adornment dans un seul commit avec `next_rank_title` : séparé en 2 commits (chaîne API d'abord, puis refonte UI) pour isoler les changements de schéma JSON des changements visuels.
+
+**Résultats** : 9 commits, 16 fichiers modifiés (hors renames `.ai/V7/`), tree clean. Pre-commit hooks tous verts.
+
+**Conclusion / prochaine étape** : nouvelle baseline propre sur la branche multi-titres. La refonte du banner peut être validée visuellement en relançant `make web-dev` + checking `/home`. Si validation OK, prêt à être PR-isé séparément ou regroupé avec la suite multi-titres.
+
+---
+
 ## [2026-04-25] chore(air): aligner stop_timeout sur le shutdown gracieux Go
 
 **Statut** : Complété — Commit 4/4 du plan shutdown DuckDB
