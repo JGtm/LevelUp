@@ -131,6 +131,3 @@ func ContentHash(b []byte) string {
 	h := sha256.Sum256(b)
 	return hex.EncodeToString(h[:])
 }
-
-// contentHash est un alias interne (backward compat).
-func contentHash(b []byte) string { return ContentHash(b) }

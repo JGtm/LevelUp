@@ -46,32 +46,6 @@ type battlepassInventoryRewardRaw struct {
 	Amount            int    `json:"Amount"`
 }
 
-// battlepassItemDefinitionRaw représente le JSON d'un item inventaire depuis GameCMS.
-// Structure : GET /hi/Progression/file/{InventoryItemPath}
-type battlepassItemDefinitionRaw struct {
-	CommonData battlepassItemCommonDataRaw `json:"CommonData"`
-}
-
-type battlepassItemCommonDataRaw struct {
-	Title       any                          `json:"Title"`
-	Description any                          `json:"Description"`
-	Quality     string                       `json:"Quality"`
-	ItemType    string                       `json:"ItemType"`
-	DisplayPath battlepassItemDisplayPathRaw `json:"DisplayPath"`
-}
-
-type battlepassItemDisplayPathRaw struct {
-	Media battlepassItemMediaRaw `json:"Media"`
-}
-
-type battlepassItemMediaRaw struct {
-	MediaUrl battlepassItemMediaUrlRaw `json:"MediaUrl"`
-}
-
-type battlepassItemMediaUrlRaw struct {
-	Path string `json:"Path"`
-}
-
 // fetchRewardTrackDefinition charge la définition d'un track via le resolver unifié.
 // Retourne nil si le resolver n'est pas configuré ou en cas d'erreur.
 func (p *HaloProvider) fetchRewardTrackDefinition(

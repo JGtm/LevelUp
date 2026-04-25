@@ -10,7 +10,6 @@ import (
 )
 
 func ptr(s string) *string { return &s }
-func ptrInt(i int) *int    { return &i }
 
 func makeMatch(label string, kills, deaths int, outcome *int) domain.StatsMatchRow {
 	return domain.StatsMatchRow{

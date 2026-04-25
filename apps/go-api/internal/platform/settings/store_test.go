@@ -104,10 +104,6 @@ func TestStore_Save_RoundTrip(t *testing.T) {
 // Apply
 // ─────────────────────────────────────────────────────────────────────────────
 
-func strPtr(s string) *string { return &s }
-func boolPtr(b bool) *bool    { return &b }
-func intPtr(i int) *int       { return &i }
-
 func TestApply_UpdatesFields(t *testing.T) {
 	cfg := settings.Defaults()
 	lang := "fr"

@@ -234,6 +234,3 @@ func (r *DefaultResolver) entryToPayload(ref Ref, entry *IndexEntry) Payload {
 func readFileBytes(path string) ([]byte, error) {
 	return os.ReadFile(path)
 }
-
-// osReadFile est un alias pour les tests (peut être surchargé).
-var osReadFile = os.ReadFile
