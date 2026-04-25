@@ -226,6 +226,22 @@ func (s *MediaService) UploadMedia(ctx context.Context, req domain.UploadRequest
 		result.Errors = append(result.Errors, thumbErrs...)
 	}
 
+	// Lier les miniatures générées aux enregistrements DB (thumbnail_path NULL → chemin absolu).
+	targetPath := req.DBPath
+	if req.SharedSocialDBPath != "" {
+		targetPath = req.SharedSocialDBPath
+	}
+	if targetPath != "" {
+		if db, err := sql.Open("duckdb", targetPath); err == nil {
+			if backfilled, err := ops.BackfillThumbnailPaths(db, req.CapturesDir, thumbsDir); err != nil {
+				slog.WarnContext(ctx, "upload: backfill thumbnail_path échoué", "err", err)
+			} else {
+				result.Thumbnails += backfilled
+			}
+			db.Close() //nolint:errcheck
+		}
+	}
+
 	slog.InfoContext(ctx, "upload: terminé",
 		"saved", result.Saved,
 		"new_indexed", result.NewIndexed,
@@ -300,6 +316,16 @@ func (s *MediaService) ReassociateMedia(ctx context.Context, req domain.Reassoci
 		slog.ErrorContext(ctx, "ReassociateMedia: association échouée", "err", err)
 	}
 	result.NewAssoc = newAssoc
+
+	// 4 — Backfill thumbnail_path pour les GIFs existants dans thumbs/.
+	if req.CapturesDir != "" {
+		thumbsDir := filepath.Join(req.CapturesDir, "thumbs")
+		if n, backfillErr := ops.BackfillThumbnailPaths(db, req.CapturesDir, thumbsDir); backfillErr != nil {
+			slog.WarnContext(ctx, "ReassociateMedia: backfill thumbnail_path échoué", "err", backfillErr)
+		} else {
+			slog.InfoContext(ctx, "ReassociateMedia: thumbnail_path backfillé", "updated", n)
+		}
+	}
 
 	slog.InfoContext(ctx, "ReassociateMedia: terminé",
 		"backup_table", backupTable,

@@ -10,7 +10,6 @@
  */
 import { useState, useEffect, useRef } from 'react'
 import { useParams } from '@tanstack/react-router'
-import { PageHeader } from '@/components/shell/PageHeader'
 import { Card, CardContent } from '@/components/ui/card'
 import { Spinner } from '@/components/ui/spinner'
 import type { LabelValue, MediaItemRow, MediaQueryRequest } from '@/lib/api/types'
@@ -137,31 +136,28 @@ export function MediaPage() {
         />
       )}
 
-      <PageHeader
-        title={text.title}
-        subtitle={totalLabel}
-        actions={
-          <MediaToolbar
-            text={text}
-            kindFilter={kindFilter}
-            sectionFilter={sectionFilter}
-            mapFilter={mapFilter}
-            modeFilter={modeFilter}
-            groupBy={groupBy}
-            sortKey={sortKey}
-            likedOnly={likedOnly}
-            mapOptions={mapOptions}
-            modeOptions={modeOptions}
-            onKindChange={handleKindChange}
-            onSectionChange={handleSectionChange}
-            onMapChange={handleMapChange}
-            onModeChange={handleModeChange}
-            onSortChange={handleSortChange}
-            onGroupByChange={handleGroupByChange}
-            onLikedOnlyChange={handleLikedOnlyChange}
-          />
-        }
-      />
+      <div className="flex flex-col gap-3 px-6 pt-6 sm:flex-row sm:items-center sm:justify-between">
+        <p className="text-sm text-muted-foreground">{totalLabel}</p>
+        <MediaToolbar
+          text={text}
+          kindFilter={kindFilter}
+          sectionFilter={sectionFilter}
+          mapFilter={mapFilter}
+          modeFilter={modeFilter}
+          groupBy={groupBy}
+          sortKey={sortKey}
+          likedOnly={likedOnly}
+          mapOptions={mapOptions}
+          modeOptions={modeOptions}
+          onKindChange={handleKindChange}
+          onSectionChange={handleSectionChange}
+          onMapChange={handleMapChange}
+          onModeChange={handleModeChange}
+          onSortChange={handleSortChange}
+          onGroupByChange={handleGroupByChange}
+          onLikedOnlyChange={handleLikedOnlyChange}
+        />
+      </div>
 
       {/* Zone d'upload pleine largeur */}
       <UploadButton playerSlug={playerSlug} fullWidth />
