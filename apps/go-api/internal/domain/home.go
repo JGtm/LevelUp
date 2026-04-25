@@ -124,6 +124,8 @@ type HeroKPIs struct {
 	TotalPlaytimeSecs      int      `json:"total_playtime_secs"`
 	FavoriteWeaponName     string   `json:"favorite_weapon_name,omitempty"`
 	FavoriteWeaponKills    int      `json:"favorite_weapon_kills,omitempty"`
+	FavoritePlaylistName   string   `json:"favorite_playlist_name,omitempty"`
+	FavoritePlaylistCount  int      `json:"favorite_playlist_count,omitempty"`
 	AvgOffensiveConversion *float64 `json:"avg_offensive_conversion,omitempty"`
 	AvgDefensiveResistance *float64 `json:"avg_defensive_resistance,omitempty"`
 }

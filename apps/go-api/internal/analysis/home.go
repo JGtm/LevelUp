@@ -148,6 +148,8 @@ func ComputeKPIs(matches []domain.HomeMatchRow, totalMatches int) domain.HeroKPI
 	var totalPlaytime int
 	var offSum, offCount float64
 	var defSum, defCount float64
+	playlistCounts := make(map[string]int)
+	playlistNames := make(map[string]string)
 
 	for _, m := range matches {
 		switch m.Outcome {
@@ -186,6 +188,12 @@ func ComputeKPIs(matches []domain.HomeMatchRow, totalMatches int) domain.HeroKPI
 				defCount++
 			}
 		}
+		if m.PlaylistID != "" {
+			playlistCounts[m.PlaylistID]++
+			if _, seen := playlistNames[m.PlaylistID]; !seen {
+				playlistNames[m.PlaylistID] = m.PlaylistName
+			}
+		}
 	}
 
 	total := len(matches)
@@ -218,7 +226,22 @@ func ComputeKPIs(matches []domain.HomeMatchRow, totalMatches int) domain.HeroKPI
 		v := round2(defSum / defCount)
 		kpis.AvgDefensiveResistance = &v
 	}
+	if bestID, bestCount := dominantKey(playlistCounts); bestID != "" {
+		kpis.FavoritePlaylistName = playlistNames[bestID]
+		kpis.FavoritePlaylistCount = bestCount
+	}
 	return kpis
+}
+
+func dominantKey(counts map[string]int) (string, int) {
+	var bestID string
+	var bestCount int
+	for id, n := range counts {
+		if n > bestCount {
+			bestID, bestCount = id, n
+		}
+	}
+	return bestID, bestCount
 }
 
 // ---------------------------------------------------------------------------
