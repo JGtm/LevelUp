@@ -59,6 +59,17 @@ func TestIsKnownFieldKey(t *testing.T) {
 	}
 }
 
+// TestFieldKey_String vérifie la conversion FieldKey → string.
+func TestFieldKey_String(t *testing.T) {
+	t.Parallel()
+	if FieldKills.String() != "kills" {
+		t.Errorf("FieldKills.String() = %q", FieldKills.String())
+	}
+	if FieldKey("custom").String() != "custom" {
+		t.Errorf("FieldKey(custom).String() = %q", FieldKey("custom").String())
+	}
+}
+
 // TestFieldKeysGolden compare les FieldKey à un fichier golden pour détecter
 // tout renommage silencieux. Régénération volontaire :
 // `go test -run TestFieldKeysGolden -update` (env var TESTING_UPDATE_GOLDEN=1).
