@@ -25,6 +25,8 @@ import { kdScale, accuracyScale } from '@/lib/accessibility/scales'
 import { tokenCssVar } from '@/lib/accessibility'
 import type { HomeSkillPeakSummary, SessionSummaryItem, HighlightItem, HighlightSlide, HighlightValueColor } from '@/lib/api/types'
 import { getHighlightText, resolveTitle, resolveLabel, resolveDetail, resolveColSpan } from './highlights.i18n'
+import { getKPIText } from './kpi.i18n'
+import { getSpartanIdentityText } from './spartanIdentity.i18n'
 
 // Grille fine de 20 sous-unités sur lg+. On utilise arbitrary values Tailwind v4
 // pour autoriser un span > 12 (les classes col-span-N s'arrêtent à 12). Les classes
@@ -558,29 +560,16 @@ export function HomePage() {
     ? `${challengesCompleted} / ${challengesTotal} complétés`
     : null
   const numberLocale = locale === 'en' ? 'en-US' : 'fr-FR'
-  const labels = locale === 'en'
-    ? {
-      careerRank: 'Career rank',
-      highestCsr: 'Highest CSR',
-      highestLusr: 'Highest LUSR',
-      currentProgress: 'Current progress',
-      rankPrefix: 'Rank',
-      maxRank: 'Max rank',
-    }
-    : {
-      careerRank: 'Rang carrière',
-      highestCsr: 'Meilleur CSR',
-      highestLusr: 'Meilleur LUSR',
-      currentProgress: 'Progression actuelle',
-      rankPrefix: 'Rang',
-      maxRank: 'Rang max',
-    }
-  const emptySkillPanelTitle = data.privacy_warning?.level && data.privacy_warning.level !== 'none'
-    ? 'Classements indisponibles'
-    : 'Aucun classement disponible'
-  const emptySkillPanelDescription = data.privacy_warning?.level && data.privacy_warning.level !== 'none'
-    ? 'Les données compétitives de ce joueur sont partielles ou indisponibles.'
-    : 'Ce joueur n’a pas encore de classement CSR ni LUSR.'
+  const kpiText = getKPIText(locale)
+  const spartanText = getSpartanIdentityText(locale)
+  const labels = spartanText.labels
+  const hasPrivacyWarning = !!data.privacy_warning?.level && data.privacy_warning.level !== 'none'
+  const emptySkillPanelTitle = hasPrivacyWarning
+    ? spartanText.emptyPanel.titleUnavailable
+    : spartanText.emptyPanel.titleNone
+  const emptySkillPanelDescription = hasPrivacyWarning
+    ? spartanText.emptyPanel.descriptionUnavailable
+    : spartanText.emptyPanel.descriptionNone
 
   return (
     <div className="relative isolate flex flex-col">
@@ -787,7 +776,7 @@ export function HomePage() {
 
             <div className="kpi-stats-grid items-stretch">
               {/* 1 — Parties */}
-              <KPICard label={locale === 'en' ? 'Matches' : 'Parties'} value={hero.kpis.total_matches.toLocaleString(numberLocale)} compact />
+              <KPICard label={kpiText.labels.matches} value={hero.kpis.total_matches.toLocaleString(numberLocale)} compact />
 
               {/* 2 — KDA/FDA coloré comme les tuiles match */}
               {(() => {
@@ -795,7 +784,7 @@ export function HomePage() {
                 const kdaStyle = kda != null ? { color: tokenCssVar(kdScale(kda)) } : undefined
                 return (
                   <div className="flex h-full flex-col items-center justify-center rounded-lg border border-border bg-muted px-2 py-3 text-center">
-                    <p className="text-xs text-muted-foreground">{locale === 'en' ? 'KDA' : 'FDA'}</p>
+                    <p className="text-xs text-muted-foreground">{kpiText.labels.kda}</p>
                     <p className="text-xl font-bold text-muted-foreground" style={kdaStyle}>{kda != null ? kda.toFixed(2) : '—'}</p>
                   </div>
                 )
@@ -810,7 +799,7 @@ export function HomePage() {
                 const neutral = draws + dnfs
                 return (
                   <div className="flex h-full flex-col items-center justify-center rounded-lg border border-border bg-muted px-4 py-3 text-center">
-                    <p className="text-xs text-muted-foreground">{locale === 'en' ? 'Win rate' : 'Taux de victoire'}</p>
+                    <p className="text-xs text-muted-foreground">{kpiText.labels.winRate}</p>
                     <p className="text-xl font-bold text-primary">{`${(hero.kpis.win_rate * 100).toFixed(0)}%`}</p>
                     <div className="mt-2 w-full">
                       <OutcomeBar wins={wins} draws={draws} losses={losses} dnfs={dnfs} />
@@ -839,36 +828,36 @@ export function HomePage() {
                     const remDays = totalDays % 365
                     const months = Math.floor(remDays / 30)
                     const days = remDays % 30
-                    const parts = [locale === 'en' ? `${years}y` : `${years}a`]
-                    if (months > 0) parts.push(locale === 'en' ? `${months}mo` : `${months}m`)
-                    if (days > 0) parts.push(`${days}j`)
+                    const parts = [`${years}${kpiText.units.year}`]
+                    if (months > 0) parts.push(`${months}${kpiText.units.month}`)
+                    if (days > 0) parts.push(`${days}${kpiText.units.day}`)
                     formatted = parts.join(' ')
                   } else if (totalDays >= 30) {
                     const months = Math.floor(totalDays / 30)
                     const days = totalDays % 30
-                    const parts = [locale === 'en' ? `${months}mo` : `${months}m`]
-                    if (days > 0) parts.push(`${days}j`)
+                    const parts = [`${months}${kpiText.units.month}`]
+                    if (days > 0) parts.push(`${days}${kpiText.units.day}`)
                     formatted = parts.join(' ')
                   } else if (totalDays >= 1) {
                     const remH = h % 24
-                    formatted = remH > 0 ? `${totalDays}j ${remH}h` : `${totalDays}j`
+                    formatted = remH > 0 ? `${totalDays}${kpiText.units.day} ${remH}${kpiText.units.hour}` : `${totalDays}${kpiText.units.day}`
                   } else {
                     const m = totalMin % 60
-                    formatted = h === 0 ? `${m}min` : `${h}h${m > 0 ? String(m).padStart(2, '0') : ''}`
+                    formatted = h === 0 ? `${m}${kpiText.units.minute}` : `${h}${kpiText.units.hour}${m > 0 ? String(m).padStart(2, '0') : ''}`
                   }
                 }
-                return <KPICard label={locale === 'en' ? 'Total time' : 'Durée totale'} value={formatted} />
+                return <KPICard label={kpiText.labels.totalTime} value={formatted} />
               })()}
 
               {/* 5 — Playlist favorite */}
               <div className="flex h-full flex-col items-center justify-center rounded-lg border border-border bg-muted px-4 py-3 text-center">
-                <p className="text-xs text-muted-foreground">{locale === 'en' ? 'Favorite playlist' : 'Playlist favorite'}</p>
+                <p className="text-xs text-muted-foreground">{kpiText.labels.favoritePlaylist}</p>
                 <p className="w-full truncate text-sm font-bold text-primary leading-tight mt-1">
                   {hero.kpis.favorite_playlist_name || '—'}
                 </p>
                 {hero.kpis.favorite_playlist_count > 0 && (
                   <p className="text-xs text-muted-foreground mt-0.5">
-                    {hero.kpis.favorite_playlist_count.toLocaleString(numberLocale)} {locale === 'en' ? 'matches' : 'parties'}
+                    {hero.kpis.favorite_playlist_count.toLocaleString(numberLocale)} {kpiText.matches(hero.kpis.favorite_playlist_count)}
                   </p>
                 )}
               </div>
@@ -883,7 +872,7 @@ export function HomePage() {
                 const total = off + def
                 return (
                   <div className="flex h-full flex-col items-center justify-center rounded-lg border border-border bg-muted px-4 py-3 text-center">
-                    <p className="text-xs text-muted-foreground mb-1.5">{locale === 'en' ? 'Off. / Def.' : 'Rendement / Résist.'}</p>
+                    <p className="text-xs text-muted-foreground mb-1.5">{kpiText.labels.offDef}</p>
                     {hasData ? (
                       <div className="w-full">
                         <div className="h-2 w-full rounded-full overflow-hidden flex">
@@ -908,7 +897,7 @@ export function HomePage() {
                 const accStyle = acc != null ? { color: tokenCssVar(accuracyScale(acc)) } : undefined
                 return (
                   <div className="flex h-full flex-col items-center justify-center rounded-lg border border-border bg-muted px-2 py-3 text-center">
-                    <p className="text-xs text-muted-foreground">{locale === 'en' ? 'Accuracy' : 'Précision'}</p>
+                    <p className="text-xs text-muted-foreground">{kpiText.labels.accuracy}</p>
                     <p className="text-xl font-bold text-primary" style={accStyle}>{acc != null ? `${acc.toFixed(0)}%` : '—'}</p>
                   </div>
                 )
@@ -916,13 +905,13 @@ export function HomePage() {
 
               {/* 9 — Arme favorite */}
               <div className="flex h-full flex-col items-center justify-center rounded-lg border border-border bg-muted px-4 py-3 text-center">
-                <p className="text-xs text-muted-foreground">{locale === 'en' ? 'Fav. weapon' : 'Arme favorite'}</p>
+                <p className="text-xs text-muted-foreground">{kpiText.labels.favoriteWeapon}</p>
                 <p className="w-full truncate text-sm font-bold text-primary leading-tight mt-1">
                   {hero.kpis.favorite_weapon_name || '—'}
                 </p>
                 {hero.kpis.favorite_weapon_kills > 0 && (
                   <p className="text-xs text-muted-foreground mt-0.5">
-                    {hero.kpis.favorite_weapon_kills.toLocaleString(numberLocale)} {locale === 'en' ? 'kills' : 'kills'}
+                    {hero.kpis.favorite_weapon_kills.toLocaleString(numberLocale)} {kpiText.kills(hero.kpis.favorite_weapon_kills)}
                   </p>
                 )}
               </div>

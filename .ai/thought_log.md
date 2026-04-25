@@ -1,5 +1,20 @@
 # Thought Log
 
+## [2026-04-25] refactor(home): i18n complet de la home (barre KPI + bloc identité Spartan)
+
+**Statut** : Complété
+
+**Décision technique** : Extraction des chaînes hardcodées de `HomePage.tsx` (ternaires `locale === 'en' ? 'X' : 'Y'`) vers deux dictionnaires dédiés, suivant le pattern existant `highlights.i18n.ts` :
+
+- `kpi.i18n.ts` — barre de stats KPI : 8 labels de tuile, 5 unités de durée, fonctions de pluralisation `matches(n)` / `kills(n)`
+- `spartanIdentity.i18n.ts` — bloc identité (rang carrière, pics CSR/LUSR, panneau vide)
+
+Deux fichiers séparés plutôt qu'un seul : responsabilités UI distinctes.
+
+**Bonus** : 4 chaînes du panneau vide (`emptySkillPanelTitle/Description`) n'avaient aucune traduction EN dans la version d'origine — corrigé au passage.
+
+**Résultat** : il ne reste qu'un seul `locale === 'en'` dans `HomePage.tsx` (ligne 562, `numberLocale = 'en-US' | 'fr-FR'` pour `Intl`, non traduisible). TS compile sans erreur.
+
 ## [2026-04-25] feat(accessibility): Vérification finale + micro-fixes + rapport couverture
 
 **Statut** : Complété
