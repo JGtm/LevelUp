@@ -13,6 +13,7 @@ import { useSetMatchExclusion } from './queries'
 import { queryKeys } from '@/lib/query/keys'
 import { tokenCssVar } from '@/lib/accessibility'
 import { mmrDeltaScale } from '@/lib/accessibility/scales'
+import { useFieldMappings } from '@/lib/i18n/fieldMappings'
 
 interface Props {
   rows: MatchHistoryRow[]
@@ -76,11 +77,14 @@ export function MatchHistoryTable({
   const queryClient = useQueryClient()
   const [confirmingId, setConfirmingId] = useState<string | null>(null)
   const excludeMutation = useSetMatchExclusion(playerSlug)
+  const { data: fieldMappings } = useFieldMappings()
+  const labelOf = (key: string, fallback: string): string =>
+    fieldMappings?.fields[key]?.label ?? fallback
 
   const columns = [
     { key: 'start_time', label: 'Date' },
     { key: 'map_mode', label: 'Carte / Mode', sortable: false },
-    { key: 'outcome_label', label: 'Résultat', sortable: false },
+    { key: 'outcome_label', label: labelOf('outcome', 'Résultat'), sortable: false },
     { key: 'score_label', label: 'Score', sortable: false },
     { key: 'performance_score_relative', label: 'Perf.' },
     { key: 'delta_mmr', label: 'ΔMMR' },

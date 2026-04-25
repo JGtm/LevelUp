@@ -6,6 +6,7 @@ import { EmptyStateCard } from '@/components/ui/empty-state'
 import { PrivacyBanner } from '@/components/ui/privacy-banner'
 import { Spinner } from '@/components/ui/spinner'
 import type { CompareMetricRow, NormalizedPlayerStats } from '@/lib/api/types'
+import { useFieldMappings } from '@/lib/i18n/fieldMappings'
 import { useAppShellStore } from '@/stores/appShellStore'
 
 import { getCompareText, normalizeCompareLocale, type CompareText } from './i18n'
@@ -81,7 +82,8 @@ function MetricRowComp({ row, text }: { row: CompareMetricRow; text: CompareText
 
 export function CompareSurface({ playerSlug }: { playerSlug: string }) {
   const locale = normalizeCompareLocale(useAppShellStore((state) => state.locale))
-  const text = getCompareText(locale)
+  const { data: fieldMappings } = useFieldMappings()
+  const text = getCompareText(locale, fieldMappings)
   const [targetGamertag, setTargetGamertag] = useState('')
   const { mutate, data, isPending, isError, error, reset } = useCompare(playerSlug)
 

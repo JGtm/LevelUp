@@ -19,6 +19,7 @@ import { PageLoader } from '@/components/ui/spinner'
 import { GamertagCombobox } from '@/components/ui/GamertagCombobox'
 import { SessionScopeSelector } from './SessionScopeSelector'
 import { getSeriesColors } from '@/lib/accessibility'
+import { useFieldMappings } from '@/lib/i18n/fieldMappings'
 import type {
   TeammateRow,
   TeammateKPIs,
@@ -75,14 +76,18 @@ interface KPIBlockProps {
   color?: string
 }
 function KPIBlock({ title, kpis, color = 'text-muted-foreground' }: KPIBlockProps) {
+  const { data: fieldMappings } = useFieldMappings()
+  const labelOf = (key: string, fallback: string): string =>
+    fieldMappings?.fields[key]?.label ?? fallback
+  const kills = labelOf('kills', 'Kills')
   return (
     <div>
       <h3 className={`text-sm font-medium mb-2 ${color}`}>{title}</h3>
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-        <KPICard label="Matchs" value={kpis.match_count} />
-        <KPICard label="Taux de victoire" value={kpis.win_rate * 100} unit="%" />
-        <KPICard label="K/D" value={kpis.kd_ratio} />
-        <KPICard label="Kills / match" value={kpis.kills_per_game} />
+        <KPICard label={labelOf('total_matches_played', 'Matchs')} value={kpis.match_count} />
+        <KPICard label={labelOf('win_rate', 'Taux de victoire')} value={kpis.win_rate * 100} unit="%" />
+        <KPICard label={labelOf('kdr', 'K/D')} value={kpis.kd_ratio} />
+        <KPICard label={`${kills} / match`} value={kpis.kills_per_game} />
       </div>
     </div>
   )
