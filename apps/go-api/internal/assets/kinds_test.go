@@ -8,7 +8,7 @@ func TestKind_Valid_KnownKinds(t *testing.T) {
 		KindBPTrackImage, KindBPBackground,
 		KindSpartanEmblem, KindSpartanBanner, KindSpartanBackdrop, KindCareerRankImage,
 		KindMedalMetadata, KindChallengeDefinition,
-		KindRewardTrackDefinition, KindAssetTranslation,
+		KindRewardTrackDefinition, KindBPItemDefinition, KindAssetTranslation,
 	}
 	for _, k := range known {
 		if !k.Valid() {
@@ -43,7 +43,7 @@ func TestKind_IsBinary_ImageKinds(t *testing.T) {
 }
 
 func TestKind_IsBinary_JSONKinds(t *testing.T) {
-	json := []Kind{KindMedalMetadata, KindChallengeDefinition, KindRewardTrackDefinition, KindAssetTranslation}
+	json := []Kind{KindMedalMetadata, KindChallengeDefinition, KindRewardTrackDefinition, KindBPItemDefinition, KindAssetTranslation}
 	for _, k := range json {
 		if k.IsBinary() {
 			t.Errorf("Kind %q ne devrait pas être binaire", k)

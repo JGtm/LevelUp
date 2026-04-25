@@ -44,7 +44,7 @@ func (f *GameCMSFetcher) Supports(k Kind) bool {
 		KindSpartanBanner,
 		KindSpartanBackdrop,
 		KindCareerRankImage,
-		KindMedalMetadata, KindChallengeDefinition, KindRewardTrackDefinition:
+		KindMedalMetadata, KindChallengeDefinition, KindRewardTrackDefinition, KindBPItemDefinition:
 		return true
 	}
 	return false
@@ -65,6 +65,8 @@ func (f *GameCMSFetcher) Fetch(ctx context.Context, ref Ref) (Payload, error) {
 		return f.fetchChallengeDefinition(ctx, ref)
 	case KindRewardTrackDefinition:
 		return f.fetchRewardTrackDefinition(ctx, ref)
+	case KindBPItemDefinition:
+		return f.fetchBPItemDefinition(ctx, ref)
 	}
 	return nil, ErrUnsupportedKind
 }
@@ -255,6 +257,33 @@ func (f *GameCMSFetcher) fetchRewardTrackDefinition(ctx context.Context, ref Ref
 	}
 	if resp.StatusCode != http.StatusOK {
 		return nil, fmt.Errorf("%w: track definition status %d", ErrUpstreamUnavailable, resp.StatusCode)
+	}
+	data, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return nil, fmt.Errorf("%w: read body: %v", ErrUpstreamUnavailable, err)
+	}
+	return JSONPayload{RawJSON: data}, nil
+}
+
+// fetchBPItemDefinition récupère la définition JSON d'un item inventaire Battle Pass.
+// ref.ID contient l'InventoryItemPath (ex: "Inventory/Armor/Coatings/...").
+func (f *GameCMSFetcher) fetchBPItemDefinition(ctx context.Context, ref Ref) (Payload, error) {
+	tokens, err := f.resolveTokens(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("%w: tokens unavailable: %v", ErrUpstreamUnavailable, err)
+	}
+	itemPath := strings.TrimLeft(ref.ID, "/")
+	url := fmt.Sprintf("%s/hi/Progression/file/%s", f.baseURL, itemPath)
+	resp, err := f.doGet(ctx, url, tokens)
+	if err != nil {
+		return nil, fmt.Errorf("%w: bp item definition GET: %v", ErrUpstreamUnavailable, err)
+	}
+	defer resp.Body.Close()
+	if resp.StatusCode == http.StatusNotFound {
+		return nil, ErrNotFound
+	}
+	if resp.StatusCode != http.StatusOK {
+		return nil, fmt.Errorf("%w: bp item definition status %d", ErrUpstreamUnavailable, resp.StatusCode)
 	}
 	data, err := io.ReadAll(resp.Body)
 	if err != nil {
