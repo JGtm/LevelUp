@@ -42,6 +42,7 @@ type ServiceRegistry struct {
 	assetResolver assets.Resolver // nil si le resolver n'est pas configuré (mode legacy)
 	timezone      string          // IANA (ex: "Europe/Paris"), propagé aux services médias
 	notifiers     sync.Map        // xuid → port.SessionNotifier (HomeService par joueur)
+	titleResolver games.Resolver  // nil → services tournent sans semantic adapter (libellés via fallbacks)
 }
 
 // NewServiceRegistry crée un ServiceRegistry câblé avec config.ResolvePlayer.
@@ -63,6 +64,28 @@ func NewServiceRegistry(cfg *config.AppConfig, provider auth.TokenProvider) *Ser
 func (r *ServiceRegistry) WithAssetResolver(resolver assets.Resolver) *ServiceRegistry {
 	r.assetResolver = resolver
 	return r
+}
+
+// WithTitleResolver attache le resolver multi-titres (Phase B). Les services qui
+// ont besoin du SemanticAdapter (libellés rangs, fields) le récupèrent via
+// r.titleResolver.Semantic(slug).
+func (r *ServiceRegistry) WithTitleResolver(resolver games.Resolver) *ServiceRegistry {
+	r.titleResolver = resolver
+	return r
+}
+
+// semanticFor retourne le SemanticAdapter du titre slug, ou nil si le resolver
+// n'est pas câblé ou si le titre est inconnu (les consommateurs dégradent
+// gracieusement vers les fallbacks de libellés).
+func (r *ServiceRegistry) semanticFor(slug string) games.TitleSemanticAdapter {
+	if r.titleResolver == nil {
+		return nil
+	}
+	sem, err := r.titleResolver.Semantic(slug)
+	if err != nil {
+		return nil
+	}
+	return sem
 }
 
 // GetSessionNotifier retourne le SessionNotifier enregistré pour le xuid donné.
@@ -249,7 +272,8 @@ func (r *ServiceRegistry) HomeCtx(ctx context.Context, slug string) (port.HomeSe
 		return nil, "", "", err
 	}
 	svc := service.NewHomeService(duckdb.NewHomeRepo(pdb)).
-		WithSocial(duckdb.NewSocialRepo(pdb), slug)
+		WithSocial(duckdb.NewSocialRepo(pdb), slug).
+		WithSemanticAdapter(r.semanticFor(pdb.TitleSlug))
 	return svc, pdb.XUID, pdb.Gamertag, nil
 }
 
@@ -270,7 +294,8 @@ func (r *ServiceRegistry) HomeCtxWithAuth(ctx context.Context, slug string) (por
 		WithPersistSink(sink).
 		WithCacheRepo(homeRepo).
 		WithHaloProvider(haloProvider).
-		WithSocial(duckdb.NewSocialRepo(pdb), slug)
+		WithSocial(duckdb.NewSocialRepo(pdb), slug).
+		WithSemanticAdapter(r.semanticFor(pdb.TitleSlug))
 	r.notifiers.Store(pdb.XUID, port.SessionNotifier(svc))
 	enriched := r.enrichWithHaloTokens(ctx, pdb)
 	return svc, enriched, pdb.XUID, pdb.Gamertag, nil
@@ -290,7 +315,8 @@ func (r *ServiceRegistry) SeasonPassCtxWithAuth(ctx context.Context, slug string
 	homeSvc := service.NewHomeService(homeRepo).
 		WithPersistSink(sink).
 		WithCacheRepo(homeRepo).
-		WithHaloProvider(haloProvider)
+		WithHaloProvider(haloProvider).
+		WithSemanticAdapter(r.semanticFor(pdb.TitleSlug))
 	r.notifiers.Store(pdb.XUID, port.SessionNotifier(homeSvc))
 	spRepo := duckdb.NewSeasonPassRepo(pdb)
 	svc := service.NewSeasonPassService(spRepo, homeSvc, pdb.XUID, pdb.TitleSlug)

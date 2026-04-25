@@ -140,7 +140,9 @@ func NewRouter(
 	r.Use(errorTracker.Middleware)
 
 	// Sprint 37 : ServiceRegistry — câblage par injection de dépendances.
-	reg := NewServiceRegistry(cfg, tokenProvider)
+	// titleResolver est attaché pour que les services puissent résoudre les
+	// SemanticAdapter (libellés rangs etc.) selon le titre courant.
+	reg := NewServiceRegistry(cfg, tokenProvider).WithTitleResolver(titleResolver)
 	var gamertagSvc port.GamertagSearchService
 	if sharedDB, err := platform_duckdb.OpenReadOnly(config.SharedDBPath(cfg, "")); err != nil {
 		slog.Warn("shared DB unavailable for gamertag search", "err", err)
@@ -194,9 +196,16 @@ func NewRouter(
 			// Endpoint preview player-scoped : utilise un DataAdapter HI
 			// instancié par requête avec le CareerRepo du joueur courant.
 			// Capability career.progression réellement supportée ici.
+			//
+			// Adaptation : titleResolver.Semantic est synchrone (slug→adapter), alors
+			// que SemanticAdapterFactory accepte un context. La closure ignore le
+			// context — la résolution est in-memory, pas de risque d'annulation.
+			semanticFactory := func(_ context.Context, slug string) (games.TitleSemanticAdapter, error) {
+				return titleResolver.Semantic(slug)
+			}
 			playerPreviewHandler := handlers.NewMultiTitlePlayerPreviewHandler(
 				reg.TitleDataAdapter,
-				titleResolver.Semantic,
+				semanticFactory,
 				titlePkg.DefaultSlug,
 				slog.Default(),
 			)
