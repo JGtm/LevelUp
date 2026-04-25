@@ -62,7 +62,7 @@ func TestSessionHandler_PostContext_InvalidBody(t *testing.T) {
 
 func TestSessionHandler_PostContext_TitleSwitch(t *testing.T) {
 	r := newSessionContextRouter(t)
-	titleSlug := "halo_infinite"
+	titleSlug := testTitleSlug
 	body, _ := json.Marshal(domain.SessionContextRequest{
 		TitleSlug: &titleSlug,
 	})
@@ -80,7 +80,7 @@ func TestSessionHandler_PostContext_TitleSwitch(t *testing.T) {
 	if err := json.NewDecoder(w.Body).Decode(&resp); err != nil {
 		t.Fatalf("decode: %v", err)
 	}
-	if resp.CurrentTitleSlug != "halo_infinite" {
+	if resp.CurrentTitleSlug != testTitleSlug {
 		t.Errorf("expected title slug halo_infinite, got %q", resp.CurrentTitleSlug)
 	}
 }
@@ -107,7 +107,7 @@ func TestSessionHandler_PostContext_AvailableTitles(t *testing.T) {
 	}
 	found := false
 	for _, title := range resp.AvailableTitles {
-		if title.Slug == "halo_infinite" {
+		if title.Slug == testTitleSlug {
 			found = true
 			break
 		}
@@ -137,7 +137,7 @@ func TestSessionHandler_PostContext_TitleSwitchResetsPlayer(t *testing.T) {
 	_ = respCk1.Body.Close()
 
 	// Step 2: switch title → player should be reset
-	titleSlug := "halo_infinite"
+	titleSlug := testTitleSlug
 	body2, _ := json.Marshal(domain.SessionContextRequest{TitleSlug: &titleSlug})
 	req2 := httptest.NewRequest(http.MethodPost, "/session/context", bytes.NewReader(body2))
 	req2.Header.Set("Content-Type", "application/json")

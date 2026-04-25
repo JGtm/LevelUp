@@ -418,7 +418,13 @@ func RunPlayerMigrations(playerDBPath string) error {
 // startWatcherDaemon tente de démarrer le daemon de présence.
 // Retourne nil si watcher_presence_enabled est false ou si les prérequis ne sont pas remplis.
 // getNotifier est un getter lazy (xuid → SessionNotifier) injecté par main ; peut être nil.
-func startWatcherDaemon(ctx context.Context, cfg *config.AppConfig, settingsStore *settings.Store, getNotifier func(xuid string) port.SessionNotifier, tokenRefresher func(ctx context.Context, xuid string) (*domain.HaloTokens, error)) *watcher.Daemon {
+func startWatcherDaemon(
+	ctx context.Context,
+	cfg *config.AppConfig,
+	settingsStore *settings.Store,
+	getNotifier func(xuid string) port.SessionNotifier,
+	tokenRefresher func(ctx context.Context, xuid string) (*domain.HaloTokens, error),
+) *watcher.Daemon {
 	// Vérifier que le watcher est activé dans les settings
 	appSettings, err := settingsStore.Load()
 	if err != nil {
