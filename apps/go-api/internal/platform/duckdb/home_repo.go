@@ -110,6 +110,8 @@ func (r *HomeRepo) LoadHomeMatches(ctx context.Context) ([]domain.HomeMatchRow, 
 
 // LoadSpartanIdentity charge le bloc record compact depuis career_progression et metadata.
 // Dégrade silencieusement si la carrière n'est pas synchronisée pour le joueur.
+//
+//nolint:gocyclo // série de checks Valid sur 7 NullString + appels async (skill_peak_csr/lusr/identity)
 func (r *HomeRepo) LoadSpartanIdentity(ctx context.Context) (*domain.HomeSpartanIdentityRow, error) {
 	var row domain.HomeSpartanIdentityRow
 	var spartanID sql.NullString
@@ -465,6 +467,7 @@ func parseHomeSkillPeakSubTier(value string) int {
 	}
 }
 
+//nolint:gocyclo // 4 enrichments séquentiels (map/pair/playlist/variant) avec multiples Valid checks
 func (r *HomeRepo) enrichHomeMatchTranslations(ctx context.Context, matches []domain.HomeMatchRow) {
 	if len(matches) == 0 || r.pdb == nil || r.pdb.Metadata == nil {
 		return

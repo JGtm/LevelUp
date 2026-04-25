@@ -296,6 +296,8 @@ func getRepresentativeMatches(
 }
 
 // fetchAllLangs fetch les traductions pour toutes les langues en parallèle.
+//
+//nolint:funlen // orchestrateur i18n : 1 boucle externe + 1 sub-pipeline retry/fallback par lang
 func fetchAllLangs(
 	ctx context.Context,
 	provider *halo.HaloProvider,

@@ -204,7 +204,7 @@ func (r *SeasonPassRepo) LoadSeasonPassTracks(ctx context.Context, _, _ string) 
 	}
 	defer rows.Close()
 
-	var tracks []domain.SeasonPassTrackSummary
+	tracks := make([]domain.SeasonPassTrackSummary, 0)
 	itemPaths := map[string]struct{}{}
 	trackRows := make([]seasonPassTrackRow, 0)
 	for rows.Next() {
@@ -582,7 +582,7 @@ func buildFreeRewardSummaries(
 	bucket seasonPassRewardBucket,
 	itemMap map[string]seasonPassItemMeta,
 ) []domain.SeasonPassItemSummary {
-	var items []domain.SeasonPassItemSummary
+	items := make([]domain.SeasonPassItemSummary, 0, len(bucket.InventoryRewards))
 	for _, reward := range bucket.InventoryRewards {
 		path := strings.TrimSpace(reward.InventoryItemPath)
 		if path == "" {

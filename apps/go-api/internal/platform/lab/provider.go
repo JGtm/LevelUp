@@ -631,8 +631,8 @@ func compareOpenAPIRoutes(
 	faNorm := normalizeRoutes(fastapiRoutes)
 	goNorm := normalizeRoutes(goRoutes)
 
-	var missing []domain.LabRouteMethods
-	var extra []domain.LabRouteMethods
+	missing := make([]domain.LabRouteMethods, 0, len(faNorm))
+	extra := make([]domain.LabRouteMethods, 0, len(goNorm))
 	var mismatches []domain.LabMethodMismatch
 
 	for normalized, route := range faNorm {

@@ -241,7 +241,7 @@ func parseUploadedFiles(r *http.Request) ([]domain.UploadedFile, error) {
 		}
 	}
 
-	var out []domain.UploadedFile
+	out := make([]domain.UploadedFile, 0, len(headers))
 	for i, fh := range headers {
 		ext := strings.ToLower(filepath.Ext(fh.Filename))
 		if !allowedMediaExts[ext] {

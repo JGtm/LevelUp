@@ -282,6 +282,7 @@ func challengeLanguageCandidates(lang string) []string {
 	return []string{lang, short}
 }
 
+//nolint:gocyclo // construction de candidats de badge : N branches d'heuristiques sur path/category/difficulty
 func buildChallengeBadgeCandidates(challengePath, category, difficulty string) []string {
 	normalizedPath := strings.ToLower(strings.ReplaceAll(challengePath, `\`, "/"))
 	cat := slugifyChallengeToken(category)
