@@ -24,6 +24,7 @@ import type {
   SynthesisQueryRequest,
   TopWeekItem,
 } from '@/lib/api/types'
+import { resolveToken } from '@/lib/accessibility'
 
 const PERIOD_OPTIONS = [
   { value: 'all', label: 'Tout' },
@@ -52,13 +53,13 @@ function buildBipolaireChart(metrics: ComparisonMetricItem[]): PlotlyFigurePaylo
       {
         type: 'bar', name: 'Solo', orientation: 'h',
         x: soloVals, y: labels, text: soloTexts, textposition: 'outside',
-        marker: { color: '#06B6D4' },
+        marker: { color: resolveToken('perf-tier-2') },
         hovertemplate: '<b>Solo</b>: %{text}<extra></extra>',
       },
       {
         type: 'bar', name: 'Escouade', orientation: 'h',
         x: squadVals, y: labels, text: squadTexts, textposition: 'outside',
-        marker: { color: '#22C55E' },
+        marker: { color: resolveToken('divergent-pos') },
         hovertemplate: '<b>Escouade</b>: %{text}<extra></extra>',
       },
     ],

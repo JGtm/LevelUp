@@ -3,6 +3,7 @@
  */
 import type { SquadTimeseriesPoint, PlotlyFigurePayload } from '@/lib/api/types'
 import { getPerfColor } from '@/lib/perf-color'
+import { resolveToken } from '@/lib/accessibility'
 
 export function buildTimelineChart(
   points: SquadTimeseriesPoint[],
@@ -31,8 +32,8 @@ export function buildTimelineChart(
       name: 'Win rate (%)',
       x: labels,
       y: winrates,
-      line: { color: '#10B981', width: 2 },
-      marker: { color: '#10B981', size: 6 },
+      line: { color: resolveToken('divergent-pos'), width: 2 },
+      marker: { color: resolveToken('divergent-pos'), size: 6 },
       yaxis: 'y2',
     },
   ]
