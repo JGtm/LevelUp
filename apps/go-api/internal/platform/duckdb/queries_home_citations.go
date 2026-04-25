@@ -77,7 +77,8 @@ SELECT
     msr.playlist_group                                      AS skill_playlist_group,
     mp.rank                                                 AS rank_in_team,
     COALESCE(mp.headshot_kills, 0)                          AS headshot_kills,
-    COALESCE(perfect.perfect_kills, 0)                      AS perfect_kills
+    COALESCE(perfect.perfect_kills, 0)                      AS perfect_kills,
+    mp.max_killing_spree                                    AS max_killing_spree
 FROM shared.match_participants mp
 JOIN shared.match_registry r ON r.match_id = mp.match_id
 LEFT JOIN player_match_enrichment pme ON pme.match_id = mp.match_id

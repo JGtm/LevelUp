@@ -233,6 +233,7 @@ func TestComputeNormalizedMetrics_NoOptionalFields(t *testing.T) {
 
 func TestBuildHighlights_WithRatioAndTrend(t *testing.T) {
 	r := 2.5
+	kda := 2.1
 	now := time.Now()
 	matches := make([]domain.HomeMatchRow, 12)
 	for i := range matches {
@@ -245,6 +246,7 @@ func TestBuildHighlights_WithRatioAndTrend(t *testing.T) {
 			Kills:     10,
 			Deaths:    4,
 			Ratio:     &r,
+			KDA:       &kda,
 		}
 	}
 	got := BuildHighlights(matches)

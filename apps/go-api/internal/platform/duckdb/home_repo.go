@@ -85,6 +85,7 @@ func (r *HomeRepo) LoadHomeMatches(ctx context.Context) ([]domain.HomeMatchRow, 
 			&row.RankInTeam,
 			&row.HeadshotKills,
 			&row.PerfectKills,
+			&row.MaxKillingSpree,
 		); err != nil {
 			return nil, err
 		}

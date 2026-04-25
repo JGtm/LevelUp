@@ -383,74 +383,585 @@ func optionalStringValue(value *string) string {
 }
 
 // ---------------------------------------------------------------------------
-// BuildHighlights — faits saillants
+// selectHighlightWindow — fenêtre de sessions similaires
 // ---------------------------------------------------------------------------
 
-// BuildHighlights construit 3 faits saillants depuis les matchs récents.
+// selectHighlightWindow sélectionne les matchs de la dernière session et des
+// 4 sessions les plus récentes ayant la même composition (IsWithFriends) et
+// la même playlist dominante (SkillPlaylistGroup).
+// Fallback : si moins de 5 sessions similaires existent, toutes les sessions
+// disponibles sont retournées. Les matchs sans SessionLabel ne font pas partie
+// de la fenêtre calculée.
+func selectHighlightWindow(matches []domain.HomeMatchRow) []domain.HomeMatchRow {
+	if len(matches) == 0 {
+		return nil
+	}
+
+	type sessionEntry struct {
+		label         string
+		isWithFriends bool
+		playlistGroup string
+		indices       []int
+	}
+
+	sessionOrder := []string{}
+	sessionMap := map[string]*sessionEntry{}
+
+	for i, m := range matches {
+		if m.SessionLabel == nil {
+			continue
+		}
+		lbl := *m.SessionLabel
+		if _, exists := sessionMap[lbl]; !exists {
+			sessionMap[lbl] = &sessionEntry{
+				label:         lbl,
+				isWithFriends: m.IsWithFriends,
+			}
+			sessionOrder = append(sessionOrder, lbl)
+		}
+		sessionMap[lbl].indices = append(sessionMap[lbl].indices, i)
+	}
+
+	if len(sessionOrder) == 0 {
+		// Aucun match avec session_label : fallback sur les 50 premiers.
+		if len(matches) > 50 {
+			return matches[:50]
+		}
+		return matches
+	}
+
+	// Calculer la playlist dominante de chaque session.
+	for _, lbl := range sessionOrder {
+		entry := sessionMap[lbl]
+		freq := map[string]int{}
+		for _, idx := range entry.indices {
+			if matches[idx].SkillPlaylistGroup != nil && *matches[idx].SkillPlaylistGroup != "" {
+				freq[*matches[idx].SkillPlaylistGroup]++
+			}
+		}
+		best, bestCount := "", 0
+		for pg, cnt := range freq {
+			if cnt > bestCount {
+				bestCount = cnt
+				best = pg
+			}
+		}
+		entry.playlistGroup = best
+	}
+
+	// Session de référence = la plus récente (sessionOrder[0]).
+	ref := sessionMap[sessionOrder[0]]
+
+	// Collecter jusqu'à 5 sessions similaires (même composition + même playlist).
+	collected := []string{}
+	for _, lbl := range sessionOrder {
+		e := sessionMap[lbl]
+		if e.isWithFriends == ref.isWithFriends && e.playlistGroup == ref.playlistGroup {
+			collected = append(collected, lbl)
+			if len(collected) >= 5 {
+				break
+			}
+		}
+	}
+
+	labelSet := map[string]bool{}
+	for _, lbl := range collected {
+		labelSet[lbl] = true
+	}
+
+	var window []domain.HomeMatchRow
+	for _, m := range matches {
+		if m.SessionLabel != nil && labelSet[*m.SessionLabel] {
+			window = append(window, m)
+		}
+	}
+	return window
+}
+
+// ---------------------------------------------------------------------------
+// BuildHighlights — faits marquants
+// ---------------------------------------------------------------------------
+
+// highlightPerfColor retourne le niveau de couleur d'un score de performance.
+// Les seuils sont identiques à ceux de perf-color.ts côté frontend.
+func highlightPerfColor(perf float64) string {
+	switch {
+	case perf >= 80:
+		return "perf-excellent"
+	case perf >= 65:
+		return "perf-good"
+	case perf >= 50:
+		return "perf-ok"
+	case perf >= 35:
+		return "perf-low"
+	default:
+		return "perf-bad"
+	}
+}
+
+// highlightKDAColor retourne la couleur sémantique d'un FDA/KDA.
+func highlightKDAColor(kda float64) string {
+	switch {
+	case kda > 1:
+		return "positive"
+	case kda >= 0:
+		return "neutral"
+	default:
+		return "negative"
+	}
+}
+
+// bestKDAMatch retourne le match avec le KDA le plus élevé dans la slice.
+func bestKDAMatch(matches []domain.HomeMatchRow) *domain.HomeMatchRow {
+	var best *domain.HomeMatchRow
+	for i := range matches {
+		if matches[i].KDA == nil {
+			continue
+		}
+		if best == nil || *matches[i].KDA > *best.KDA {
+			best = &matches[i]
+		}
+	}
+	return best
+}
+
+// bestMMRUnderdogWin retourne le match victoire où le joueur avait le plus grand
+// désavantage MMR (enemy_mmr - team_mmr maximal).
+func bestMMRUnderdogWin(matches []domain.HomeMatchRow) *domain.HomeMatchRow {
+	var best *domain.HomeMatchRow
+	bestDelta := 0.0
+	for i := range matches {
+		m := &matches[i]
+		if m.Outcome != homeOutcomeWin || m.TeamMMR == nil || m.EnemyMMR == nil {
+			continue
+		}
+		delta := *m.EnemyMMR - *m.TeamMMR
+		if best == nil || delta > bestDelta {
+			bestDelta = delta
+			best = m
+		}
+	}
+	return best
+}
+
+// BuildHighlights construit les faits marquants depuis les matchs récents.
+// La fenêtre est déterminée par selectHighlightWindow (dernière session + 4 similaires).
 func BuildHighlights(matches []domain.HomeMatchRow) []domain.HighlightItem {
 	if len(matches) == 0 {
 		return nil
 	}
+
+	window := selectHighlightWindow(matches)
+	if len(window) == 0 {
+		return nil
+	}
+
 	var highlights []domain.HighlightItem
 
-	// Highlight 1 : pic KD sur les 8 derniers matchs.
-	window8 := matches
-	if len(window8) > 8 {
-		window8 = window8[:8]
-	}
-	best := bestRatioMatch(window8)
-	if best != nil && best.Ratio != nil {
-		highlights = append(highlights, domain.HighlightItem{
-			Title:  "Pic KD récent",
-			Value:  fmt.Sprintf("KD %.2f", *best.Ratio),
-			Detail: fmt.Sprintf("%s · %s", labelFR(best.MapNameFR, best.MapName), labelFR(best.PairNameFR, best.PairName)),
-		})
-	}
-
-	// Highlight 2 : tendance.
-	trend := ComputeTrend(matches, 5)
-	if trend != nil && trend.RatioDelta != nil {
-		sign := ""
-		if *trend.RatioDelta > 0 {
-			sign = "+"
-		}
-		wrSign := ""
-		wrVal := 0.0
-		if trend.WinRateDelta != nil {
-			wrVal = *trend.WinRateDelta * 100
-			if wrVal > 0 {
-				wrSign = "+"
+	// Highlight 1 : Performance moyenne.
+	{
+		var sum float64
+		var n int
+		for _, m := range window {
+			if m.PerformanceScore != nil {
+				sum += *m.PerformanceScore
+				n++
 			}
 		}
+		if n > 0 {
+			avg := sum / float64(n)
+			highlights = append(highlights, domain.HighlightItem{
+				TitleKey:   "highlight.title.perf_avg",
+				Value:      fmt.Sprintf("%.0f", avg),
+				ValueColor: highlightPerfColor(avg),
+			})
+		}
+	}
+
+	// Highlight 2 : Delta rang (LUSR ou CSR).
+	{
+		var deltaSum float64
+		var n int
+		csr, lusr := 0, 0
+		for _, m := range window {
+			if m.SkillRatingDelta != nil {
+				deltaSum += *m.SkillRatingDelta
+				n++
+			}
+			switch strings.ToUpper(m.SkillRatingType) {
+			case "CSR":
+				csr++
+			case "LUSR":
+				lusr++
+			}
+		}
+		if n > 0 {
+			titleKey := "highlight.title.skill_delta_lusr"
+			if csr > lusr {
+				titleKey = "highlight.title.skill_delta_csr"
+			}
+			sign := ""
+			if deltaSum > 0 {
+				sign = "+"
+			}
+			color := "neutral"
+			if deltaSum > 0 {
+				color = "positive"
+			} else if deltaSum < 0 {
+				color = "negative"
+			}
+			highlights = append(highlights, domain.HighlightItem{
+				TitleKey:   titleKey,
+				Value:      fmt.Sprintf("%s%.0fpts", sign, deltaSum),
+				ValueColor: color,
+			})
+		}
+	}
+
+	// Highlight 3 : Plus belle victoire (plus grand désavantage MMR surmonté).
+	{
+		best := bestMMRUnderdogWin(window)
+		if best != nil {
+			// delta négatif = désavantage pour le joueur (team_mmr < enemy_mmr)
+			delta := *best.TeamMMR - *best.EnemyMMR
+			sign := ""
+			if delta > 0 {
+				sign = "+"
+			}
+			// Couleur : négatif = rouge (désavantage), ≈ 0 = bleu (équilibré), positif = vert (avantage).
+			const mmrNeutralThreshold = 25.0
+			color := "neutral"
+			if delta > mmrNeutralThreshold {
+				color = "positive"
+			} else if delta < -mmrNeutralThreshold {
+				color = "negative"
+			}
+			highlights = append(highlights, domain.HighlightItem{
+				TitleKey:   "highlight.title.best_underdog_win",
+				Value:      fmt.Sprintf("%s%.0f MMR", sign, delta),
+				Detail:     fmt.Sprintf("%s · %s", labelFR(best.MapNameFR, best.MapName), labelFR(best.PairNameFR, best.PairName)),
+				ValueColor: color,
+			})
+		}
+	}
+
+	// Highlight 4 : Pic FDA récent (meilleur KDA sur toutes les sessions sélectionnées).
+	{
+		best := bestKDAMatch(window)
+		if best != nil && best.KDA != nil {
+			highlights = append(highlights, domain.HighlightItem{
+				TitleKey:   "highlight.title.kda_peak",
+				Value:      fmt.Sprintf("%.2f", *best.KDA),
+				Detail:     fmt.Sprintf("%s · %s", labelFR(best.MapNameFR, best.MapName), labelFR(best.PairNameFR, best.PairName)),
+				ValueColor: highlightKDAColor(*best.KDA),
+			})
+		}
+	}
+
+	// Highlight 5 : Maîtrise — tuile à défilement (tirs à la tête · frags parfaits · précision moyenne).
+	if maitrise := buildMaitriseHighlight(window); maitrise != nil {
+		highlights = append(highlights, *maitrise)
+	}
+
+	// Highlight 6 : Stats par min. — tuile à défilement (frags · morts · assistances par minute).
+	if perMin := buildPerMinuteHighlight(window); perMin != nil {
+		highlights = append(highlights, *perMin)
+	}
+
+	// Highlight 7 : Volume — nombre de parties et contexte FDA moyen / taux de victoire.
+	{
+		var kdaSum float64
+		var kdaN, wins int
+		for _, m := range window {
+			if m.KDA != nil {
+				kdaSum += *m.KDA
+				kdaN++
+			}
+			if m.Outcome == homeOutcomeWin {
+				wins++
+			}
+		}
+		wr := int(math.Round(float64(wins) / float64(len(window)) * 100))
+		params := map[string]any{"wr": wr}
+		detailKey := "highlight.detail.volume_wr"
+		if kdaN > 0 {
+			detailKey = "highlight.detail.volume_kda_wr"
+			params["kda"] = fmt.Sprintf("%.2f", kdaSum/float64(kdaN))
+		}
 		highlights = append(highlights, domain.HighlightItem{
-			Title:  "Tendance",
-			Value:  fmt.Sprintf("KD %s%.2f", sign, *trend.RatioDelta),
-			Detail: fmt.Sprintf("WR %s%.0f%%", wrSign, wrVal),
+			TitleKey:     "highlight.title.volume",
+			Value:        fmt.Sprintf("%d", len(window)),
+			DetailKey:    detailKey,
+			DetailParams: params,
 		})
 	}
 
-	// Highlight 3 : volume récent.
-	if len(highlights) < 3 {
-		sample := matches
-		if len(sample) > 10 {
-			sample = sample[:10]
-		}
-		kpis := ComputeKPIs(sample, len(sample))
-		ratioStr := "-"
-		if kpis.GlobalRatio != nil {
-			ratioStr = fmt.Sprintf("%.2f", *kpis.GlobalRatio)
-		}
-		highlights = append(highlights, domain.HighlightItem{
-			Title:  "Volume récent",
-			Value:  fmt.Sprintf("%d parties", len(sample)),
-			Detail: fmt.Sprintf("KD %s · WR %.0f%%", ratioStr, kpis.WinRate*100),
-		})
+	// Highlight 8 : Série — tuile à défilement (folie meurtrière max · victoires consécutives · carte fétiche).
+	if serie := buildSerieHighlight(window); serie != nil {
+		highlights = append(highlights, *serie)
 	}
 
-	if len(highlights) > 3 {
-		return highlights[:3]
-	}
 	return highlights
+}
+
+// buildMaitriseHighlight assemble la tuile « Maîtrise » (3 slides à défilement) :
+//  1. Tirs à la tête (somme) sur la fenêtre
+//  2. Frags parfaits (somme)
+//  3. Précision moyenne (moyenne arithmétique des matchs renseignés)
+//
+// Retourne nil si aucun slide exploitable.
+func buildMaitriseHighlight(window []domain.HomeMatchRow) *domain.HighlightItem {
+	var slides []domain.HighlightSlide
+
+	// Slide 1 : Tirs à la tête (somme).
+	var hsSum, perfSum int
+	for _, m := range window {
+		hsSum += m.HeadshotKills
+		perfSum += m.PerfectKills
+	}
+	hsColor := "neutral"
+	if hsSum > 0 {
+		hsColor = "positive"
+	}
+	slides = append(slides, domain.HighlightSlide{
+		LabelKey:   "highlight.slide.headshots",
+		Value:      fmt.Sprintf("%d", hsSum),
+		ValueColor: hsColor,
+	})
+
+	// Slide 2 : Frags parfaits (somme).
+	perfColor := "neutral"
+	if perfSum > 0 {
+		perfColor = "positive"
+	}
+	slides = append(slides, domain.HighlightSlide{
+		LabelKey:   "highlight.slide.perfect_kills",
+		Value:      fmt.Sprintf("%d", perfSum),
+		ValueColor: perfColor,
+	})
+
+	// Slide 3 : Précision moyenne.
+	var accSum float64
+	var accN int
+	for _, m := range window {
+		if m.Accuracy != nil {
+			accSum += *m.Accuracy
+			accN++
+		}
+	}
+	if accN > 0 {
+		avg := accSum / float64(accN)
+		// Seuils alignés sur Performance globale (HomePage.tsx) : > 55 vert, ≥ 40 ambre, sinon rouge.
+		color := "negative"
+		if avg > 55 {
+			color = "positive"
+		} else if avg >= 40 {
+			color = "warning"
+		}
+		slides = append(slides, domain.HighlightSlide{
+			LabelKey:   "highlight.slide.accuracy",
+			Value:      fmt.Sprintf("%.0f%%", avg),
+			ValueColor: color,
+		})
+	}
+
+	if len(slides) == 0 {
+		return nil
+	}
+	first := slides[0]
+	return &domain.HighlightItem{
+		TitleKey:   "highlight.title.mastery",
+		Value:      first.Value,
+		Detail:     first.Detail,
+		ValueColor: first.ValueColor,
+		Slides:     slides,
+	}
+}
+
+// buildPerMinuteHighlight assemble la tuile « Stats par min. » (3 slides à défilement) :
+//  1. Frags / min (kills cumulés / minutes jouées cumulées)
+//  2. Morts / min
+//  3. Assistances / min
+//
+// Seuls les matchs avec time_played_seconds > 0 sont comptés. Retourne nil si aucun match exploitable.
+func buildPerMinuteHighlight(window []domain.HomeMatchRow) *domain.HighlightItem {
+	var totalSecs float64
+	var kills, deaths, assists, n int
+	for _, m := range window {
+		if m.TimePlayedSecs == nil || *m.TimePlayedSecs <= 0 {
+			continue
+		}
+		totalSecs += float64(*m.TimePlayedSecs)
+		kills += m.Kills
+		deaths += m.Deaths
+		assists += m.Assists
+		n++
+	}
+	if n == 0 || totalSecs <= 0 {
+		return nil
+	}
+	minutes := totalSecs / 60.0
+	slides := []domain.HighlightSlide{
+		{LabelKey: "highlight.slide.kills", Value: fmt.Sprintf("%.2f", float64(kills)/minutes), ValueColor: "neutral"},
+		{LabelKey: "highlight.slide.deaths", Value: fmt.Sprintf("%.2f", float64(deaths)/minutes), ValueColor: "neutral"},
+		{LabelKey: "highlight.slide.assists", Value: fmt.Sprintf("%.2f", float64(assists)/minutes), ValueColor: "neutral"},
+	}
+	first := slides[0]
+	return &domain.HighlightItem{
+		TitleKey:   "highlight.title.per_minute",
+		Value:      first.Value,
+		Detail:     first.Detail,
+		ValueColor: first.ValueColor,
+		Slides:     slides,
+	}
+}
+
+// buildSerieHighlight assemble la tuile « Série » (3 slides à défilement) :
+//  1. Folie meurtrière (max) sur la fenêtre
+//  2. Victoires consécutives (plus longue séquence)
+//  3. Carte fétiche (meilleur taux de victoire, min 2 parties)
+//
+// Retourne nil si aucun slide n'a pu être calculé.
+func buildSerieHighlight(window []domain.HomeMatchRow) *domain.HighlightItem {
+	var slides []domain.HighlightSlide
+
+	// Slide 1 : Folie meurtrière max.
+	if s := sliceBestKillingSpree(window); s != nil {
+		slides = append(slides, *s)
+	}
+	// Slide 2 : Plus longue série de victoires.
+	if s := sliceBestWinStreak(window); s != nil {
+		slides = append(slides, *s)
+	}
+	// Slide 3 : Carte fétiche.
+	if s := sliceFavoriteMap(window); s != nil {
+		slides = append(slides, *s)
+	}
+
+	if len(slides) == 0 {
+		return nil
+	}
+	first := slides[0]
+	return &domain.HighlightItem{
+		TitleKey:   "highlight.title.serie",
+		Value:      first.Value,
+		Detail:     first.Detail,
+		ValueColor: first.ValueColor,
+		Slides:     slides,
+	}
+}
+
+func sliceBestKillingSpree(window []domain.HomeMatchRow) *domain.HighlightSlide {
+	var best *domain.HomeMatchRow
+	bestVal := 0
+	for i := range window {
+		m := &window[i]
+		if m.MaxKillingSpree == nil || *m.MaxKillingSpree <= 0 {
+			continue
+		}
+		if best == nil || *m.MaxKillingSpree > bestVal {
+			bestVal = *m.MaxKillingSpree
+			best = m
+		}
+	}
+	if best == nil {
+		return nil
+	}
+	return &domain.HighlightSlide{
+		LabelKey:   "highlight.slide.killing_spree_max",
+		Value:      fmt.Sprintf("%d", bestVal),
+		Detail:     fmt.Sprintf("%s · %s", labelFR(best.MapNameFR, best.MapName), labelFR(best.PairNameFR, best.PairName)),
+		ValueColor: "positive",
+	}
+}
+
+func sliceBestWinStreak(window []domain.HomeMatchRow) *domain.HighlightSlide {
+	if len(window) == 0 {
+		return nil
+	}
+	// window est triée start_time DESC : on parcourt en inverse pour ordre chronologique.
+	best, cur := 0, 0
+	for i := len(window) - 1; i >= 0; i-- {
+		if window[i].Outcome == homeOutcomeWin {
+			cur++
+			if cur > best {
+				best = cur
+			}
+		} else {
+			cur = 0
+		}
+	}
+	if best == 0 {
+		return nil
+	}
+	color := "neutral"
+	if best >= 3 {
+		color = "positive"
+	}
+	return &domain.HighlightSlide{
+		LabelKey:     "highlight.slide.win_streak",
+		Value:        fmt.Sprintf("%d", best),
+		DetailKey:    "highlight.detail.win_streak",
+		DetailParams: map[string]any{"count": best},
+		ValueColor:   color,
+	}
+}
+
+func sliceFavoriteMap(window []domain.HomeMatchRow) *domain.HighlightSlide {
+	type stat struct {
+		name   string
+		nameFR string
+		plays  int
+		wins   int
+	}
+	byMap := map[string]*stat{}
+	for _, m := range window {
+		if m.MapID == "" {
+			continue
+		}
+		s, ok := byMap[m.MapID]
+		if !ok {
+			s = &stat{name: m.MapName, nameFR: m.MapNameFR}
+			byMap[m.MapID] = s
+		}
+		s.plays++
+		if m.Outcome == homeOutcomeWin {
+			s.wins++
+		}
+	}
+	var best *stat
+	bestWR := -1.0
+	for _, s := range byMap {
+		if s.plays < 2 {
+			continue
+		}
+		wr := float64(s.wins) / float64(s.plays)
+		// Départage : WR, puis nombre de parties (plus = plus fiable).
+		if wr > bestWR || (wr == bestWR && best != nil && s.plays > best.plays) {
+			bestWR = wr
+			best = s
+		}
+	}
+	if best == nil {
+		return nil
+	}
+	color := "neutral"
+	if bestWR >= 0.6 {
+		color = "positive"
+	} else if bestWR < 0.4 {
+		color = "negative"
+	}
+	return &domain.HighlightSlide{
+		LabelKey:  "highlight.slide.favorite_map",
+		Value:     labelFR(best.nameFR, best.name),
+		DetailKey: "highlight.detail.favorite_map",
+		DetailParams: map[string]any{
+			"wins":   best.wins,
+			"losses": best.plays - best.wins,
+			"wr":     int(bestWR*100 + 0.5),
+		},
+		ValueColor: color,
+	}
 }
 
 // ---------------------------------------------------------------------------
