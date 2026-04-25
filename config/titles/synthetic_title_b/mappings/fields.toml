@@ -1,0 +1,44 @@
+# config/titles/synthetic_title_b/mappings/fields.toml
+#
+# Corpus synthétique de Phase E : démontre que la couche multi-titres
+# supporte des stockages divergents :
+#   - kills s'appelle "Eliminations" en EN dans ce titre fictif ;
+#   - duration_seconds est stockée en millisecondes côté DuckDB.
+#
+# Ce TOML n'est pas livré en prod ; il sert uniquement aux tests d'isolation.
+
+[meta]
+title_slug     = "synthetic_title_b"
+schema_version = 1
+
+[fields.kills]
+labels        = { en = "Eliminations", fr = "Frags" }
+storage_unit  = "count"
+display_unit  = "count"
+format        = "integer"
+display_order = 10
+group         = "combat"
+
+[fields.deaths]
+labels        = { en = "Casualties", fr = "Pertes" }
+storage_unit  = "count"
+display_unit  = "count"
+format        = "integer"
+display_order = 20
+group         = "combat"
+
+[fields.accuracy]
+labels        = { en = "Hit Rate", fr = "Taux de réussite" }
+storage_unit  = "ratio"
+display_unit  = "percent"
+format        = "percent_2"
+display_order = 30
+group         = "combat"
+
+[fields.duration_seconds]
+labels        = { en = "Match Length", fr = "Longueur du match" }
+storage_unit  = "milliseconds"
+display_unit  = "seconds"
+format        = "duration_hms"
+display_order = 5
+group         = "match"
