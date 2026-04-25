@@ -109,3 +109,9 @@ func NewSemanticAdapter(fields *mappings.FieldMappingSet) *SemanticAdapter {
 func (a *SemanticAdapter) TitleSlug() string                 { return TitleSlug }
 func (a *SemanticAdapter) SchemaVersion() int                { return a.fields.SchemaVersion() }
 func (a *SemanticAdapter) Fields() *mappings.FieldMappingSet { return a.fields }
+
+// Ranks retourne un catalog vide : ce titre synthétique n'a pas de progression
+// carrière. Les consommateurs dégradent gracieusement (ex: afficher rank_id).
+func (a *SemanticAdapter) Ranks() *mappings.RankCatalog {
+	return mappings.NewRankCatalog(TitleSlug, nil)
+}

@@ -32,6 +32,9 @@ jobs:
       - name: Lint (ESLint)
         run: npm run lint --if-present
 
+      - name: Lint multi-titres (no hardcoded FieldKey)
+        run: npm run lint:fields
+
       - name: Build (Vite)
         run: npm run build
 

@@ -43,6 +43,17 @@ repos:
         types: [go]
         pass_filenames: false
 
+      # Phase D plan multi-titres : interdiction des libellés FieldKey hardcodés
+      # côté React. Le script Node compare les littéraux à la source de vérité
+      # config/titles/halo_infinite/mappings/fields.toml et autorise les
+      # patterns de fallback (labelOf(key, 'X'), ?? 'X', === 'X').
+      - id: lint-no-hardcoded-fields
+        name: Lint multi-titres (no-hardcoded-fields)
+        entry: node tools/lint-no-hardcoded-fields.mjs
+        language: system
+        files: ^(apps/web/src/.*\.(ts|tsx)|config/titles/halo_infinite/mappings/fields\.toml|tools/lint-no-hardcoded-fields\.mjs)$
+        pass_filenames: false
+
   # Hooks génériques de pre-commit
   - repo: https://github.com/pre-commit/pre-commit-hooks
     rev: v4.6.0

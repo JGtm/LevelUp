@@ -7,6 +7,7 @@
 package api
 
 import (
+	"context"
 	"log/slog"
 	"net/http"
 	"os"
@@ -97,7 +98,21 @@ func NewRouter(
 	// couche canonique.
 	titleResolver := games.NewStaticResolver(titlePkg.DefaultSlug)
 	if hiFields, ok := fieldMappingsRegistry.Get(titlePkg.DefaultSlug); ok {
-		if sem := halo_games.NewSemanticAdapter(hiFields); sem != nil {
+		// Charger le catalog des rangs HI depuis metadata.duckdb (career_rank_translations).
+		// OpenReadWriteShared est cached par path → réutilise le pool existant ouvert dans cmd/server.
+		var hiRanks *mappings.RankCatalog
+		hiMetaPath := titlePkg.NewPathResolver(cfg.RepoRoot).MetadataDBPath(titlePkg.DefaultSlug)
+		if metaDB, err := platform_duckdb.OpenReadWriteShared(hiMetaPath); err == nil {
+			if catalog, err := halo_games.LoadRankCatalog(context.Background(), metaDB); err == nil {
+				hiRanks = catalog
+				slog.Info("rank_catalog_loaded", "title_slug", titlePkg.DefaultSlug, "ranks", catalog.Len())
+			} else {
+				slog.Warn("rank_catalog_load_failed", "err", err.Error())
+			}
+		} else {
+			slog.Warn("rank_catalog_meta_db_open_failed", "err", err.Error())
+		}
+		if sem := halo_games.NewSemanticAdapter(hiFields, hiRanks); sem != nil {
 			titleResolver.RegisterSemantic(sem)
 			slog.Info("title_semantic_adapter_registered",
 				"title_slug", sem.TitleSlug(),
@@ -176,11 +191,23 @@ func NewRouter(
 			previewHandler := handlers.NewMultiTitlePreviewHandler(titleResolver, slog.Default())
 			r.Get("/titles/{slug}/preview/career", previewHandler.GetCareerPreview)
 
+			// Endpoint preview player-scoped : utilise un DataAdapter HI
+			// instancié par requête avec le CareerRepo du joueur courant.
+			// Capability career.progression réellement supportée ici.
+			playerPreviewHandler := handlers.NewMultiTitlePlayerPreviewHandler(
+				reg.TitleDataAdapter,
+				titleResolver.Semantic,
+				titlePkg.DefaultSlug,
+				slog.Default(),
+			)
+			r.Get("/players/{player_slug}/preview/career-multi-title", playerPreviewHandler.GetCareerPreview)
+
 			slog.Info("multi_title_api_enabled",
 				"slugs", fieldMappingsRegistry.Slugs(),
 				"endpoints", []string{
 					"/api/v1/titles/{slug}/field-mappings",
 					"/api/v1/titles/{slug}/preview/career",
+					"/api/v1/players/{player_slug}/preview/career-multi-title",
 				},
 			)
 		}
