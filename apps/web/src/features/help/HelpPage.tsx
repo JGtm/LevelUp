@@ -1,5 +1,4 @@
 import { useNavigate, useRouterState } from '@tanstack/react-router'
-import { PageHeader } from '@/components/shell/PageHeader'
 import { useAppShellStore } from '@/stores/appShellStore'
 import { getHelpText, normalizeHelpLocale, type HelpTab } from './i18n'
 import { GlossaryTab } from './GlossaryTab'
@@ -28,8 +27,6 @@ export function HelpPage() {
 
   return (
     <div className="p-6 max-w-5xl mx-auto space-y-6">
-      <PageHeader title={text.page.title} subtitle={text.page.subtitle} inset={false} />
-
       {/* Onglets */}
       <div
         role="tablist"

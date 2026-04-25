@@ -156,25 +156,38 @@ func readmeRelPath(lang string) string {
 	return "README.md"
 }
 
-// buildFullReleaseHistory reconstruit l'historique complet des What's new
-// en parcourant tous les commits git qui ont modifié le README.
+// buildFullReleaseHistory reconstruit l'historique complet des What's new.
+//
+// Stratégie :
+//  1. Lire la version courante sur disque (working tree) — capte les modifs
+//     non encore committées et a la priorité sur les snapshots git.
+//  2. Compléter avec les snapshots git des commits passés pour les versions
+//     non présentes dans la version courante.
+//
+// Cette priorité garantit qu'une refonte du README (nouveau format, correctif
+// d'un bloc existant) prend effet immédiatement, sans attendre le commit.
 func buildFullReleaseHistory(repoRoot, lang string) (string, error) {
 	relPath := readmeRelPath(lang)
+	blocks := map[string]string{}
 
-	shas, err := gitLogSHAs(repoRoot, relPath)
-	if err != nil || len(shas) == 0 {
-		return buildFromDisk(repoRoot, lang)
+	// 1. Version disque (priorité maximale).
+	if data, err := os.ReadFile(filepath.Join(repoRoot, filepath.FromSlash(relPath))); err == nil {
+		for ver, block := range extractWhatsNewBlocks(string(data)) {
+			blocks[ver] = block
+		}
 	}
 
-	blocks := map[string]string{}
-	for _, sha := range shas {
-		raw, err := gitShowFile(repoRoot, sha, relPath)
-		if err != nil {
-			continue
-		}
-		for ver, block := range extractWhatsNewBlocks(raw) {
-			if _, exists := blocks[ver]; !exists {
-				blocks[ver] = block
+	// 2. Snapshots git pour enrichir les versions absentes.
+	if shas, err := gitLogSHAs(repoRoot, relPath); err == nil {
+		for _, sha := range shas {
+			raw, err := gitShowFile(repoRoot, sha, relPath)
+			if err != nil {
+				continue
+			}
+			for ver, block := range extractWhatsNewBlocks(raw) {
+				if _, exists := blocks[ver]; !exists {
+					blocks[ver] = block
+				}
 			}
 		}
 	}
@@ -217,9 +230,20 @@ func assembleBlocks(blocks map[string]string, lang string) string {
 	} else {
 		sb.WriteString("## What's new\n\n")
 	}
-	for _, k := range keys {
-		sb.WriteString(blocks[k])
-		sb.WriteString("\n\n")
+	for i, k := range keys {
+		block := blocks[k]
+		sb.WriteString(block)
+		if i < len(keys)-1 {
+			next := blocks[keys[i+1]]
+			// Cas legacy : si deux items sont des puces (`- **vX.Y...`), un seul
+			// \n suffit pour rester dans la même liste markdown. Sinon \n\n entre
+			// blocs (format heading + sous-liste).
+			if strings.HasPrefix(block, "- ") && strings.HasPrefix(next, "- ") {
+				sb.WriteString("\n")
+			} else {
+				sb.WriteString("\n\n")
+			}
+		}
 	}
 	return strings.TrimSpace(sb.String())
 }
@@ -306,7 +330,9 @@ func extractWhatsNewBlocks(content string) map[string]string {
 		}
 
 		if currentVer != "" {
-			currentLines = append(currentLines, stripped)
+			// Préserver la ligne d'origine (avec son indentation) pour conserver
+			// les sous-listes markdown (`  - item`).
+			currentLines = append(currentLines, line)
 		}
 	}
 	flushCurrent()
