@@ -354,6 +354,125 @@ const assetURL = useAssetURL()
 
 ---
 
+### Méthodologie de bascule sans casse — strangler-fig + flag + big bang atomique
+
+**Invariant fondamental** : à aucun moment de la séquence, les URLs émises côté code ne doivent diverger de la structure des fichiers sur le FS. Tout écart = images cassées en prod.
+
+**Alternatives rejetées et pourquoi** :
+
+| Approche | Pourquoi rejetée |
+|---|---|
+| Big bang en 1 PR (refactor + migration FS + UPDATE DB en même temps) | Pas de rollback granulaire, revue impossible, surface de bugs énorme |
+| Migration FS d'abord, refactor après | Dès le `git mv`, les URLs émises pointent vers `/static/maps/Aquarius.png` qui n'existe plus → 404 immédiat |
+| Refactor pointant vers nouveau path d'abord, migration après | Dès le merge du refactor, URLs émises pointent vers `/static/maps/halo_infinite/Aquarius.png` mais FS encore flat → 404 immédiat |
+| Symlinks transitionnels FS | Pas portable Windows, casse `git ls-files`, dette technique |
+| Dual-read FileServer custom (essaie nouveau puis ancien path) | Complexifie la couche 1 « inchangée », laisse une trace pendant N mois |
+
+**Approche retenue** : **strangler-fig** + **feature flag** + **commit big bang atomique**.
+
+```
+État initial               PR 0/1/2               État avant PR 3            PR 3 (1 commit)              État final
+─────────────              ──────────             ──────────────             ───────────────              ──────────
+                                                                                                          
+URLs émises :              URLs émises :          URLs émises :              git mv + UPDATE +            URLs émises :
+/static/maps/X.png    →    /static/maps/X.png     /static/maps/X.png    →    flag flip + fixtures   →    /static/maps/halo_infinite/X.png
+(hardcodé)                 (via couche 2,         (via adapter HI,            atomique
+                            flag OFF)              flag OFF)                                              FS :
+                                                                                                          static/maps/halo_infinite/X.png
+FS :                       FS :                   FS :                                                    
+static/maps/X.png          static/maps/X.png      static/maps/X.png                                       map_images_registry.local_path :
+                                                                                                          /static/maps/halo_infinite/X.png
+map_images_registry :      map_images_registry :  map_images_registry :                                   
+/static/maps/X.png         /static/maps/X.png     /static/maps/X.png                                      
+```
+
+**Mécanisme du flag** (couche 3 only, jamais en couche 2) :
+
+```go
+// internal/games/halo_infinite/adapter_asset_urls.go
+type AssetURLAdapter struct {
+    titleSlug    string
+    titleScoped  bool // lu depuis ENV au boot (STATIC_PATHS_TITLE_SCOPED)
+    mapPNGSet    map[string]struct{}
+}
+
+func NewAssetURLAdapter() *AssetURLAdapter {
+    return &AssetURLAdapter{
+        titleSlug:   "halo_infinite",
+        titleScoped: os.Getenv("STATIC_PATHS_TITLE_SCOPED") == "true",
+        mapPNGSet:   defaultMapPNGSet,
+    }
+}
+
+func (a *AssetURLAdapter) effectiveSlug() string {
+    if a.titleScoped { return a.titleSlug }
+    return "" // mode legacy : URL flat, identique à l'existant
+}
+
+func (a *AssetURLAdapter) MapImageURL(mapName string) string {
+    // … validation, encodage …
+    return static.URL(static.KindMap, a.effectiveSlug(), encoded, ext)
+}
+```
+
+**Couche 2 (`static.URL`)** accepte un `titleSlug` vide et produit alors l'URL flat — elle ne sait rien du flag, elle reste pure :
+
+```go
+func URL(k Kind, titleSlug, id, ext string) string {
+    if !k.Valid() || id == "" { return "" }
+    if titleSlug == "" {
+        // mode legacy/flat : compatibilité pendant la transition
+        return path.Join(MountPoint, Folder(k), id+ext)
+    }
+    return path.Join(MountPoint, Folder(k), titleSlug, id+ext)
+}
+```
+
+**Garanties par PR** :
+
+| PR | URLs émises | FS | DB | Tests | Rollback |
+|---|---|---|---|---|---|
+| 0 | inchangées (couche 2 non câblée) | inchangé | inchangé | tous verts | revert direct |
+| 1 | inchangées (adapter HI lit flag = OFF par défaut) | inchangé | inchangé | tous verts (fixtures inchangées) | revert direct |
+| 2 | inchangées (callers utilisent adapter, flag toujours OFF) | inchangé | inchangé | tous verts (fixtures inchangées) | revert direct |
+| 3 | basculées atomiquement | basculé atomiquement | basculé atomiquement | fixtures mises à jour, tous verts | revert du commit unique restaure tout |
+| 4 | nouveau titre ajouté | nouveau dossier | nouveaux records | nouveaux tests | revert direct |
+
+**Contenu exact du commit big bang (PR 3)** — ordre des hunks dans le commit :
+
+1. `git mv static/maps/*.{png,jpg} static/maps/halo_infinite/` (et idem medals/icons/, ranks/, weapons-assets/)
+2. `git mv static/commendations/h5g static/commendations/halo_5_guardians`
+3. `git mv static/commendations/hi static/commendations/halo_infinite`
+4. Script SQL `scripts/migrations/2026-XX-static-paths.sql` :
+   ```sql
+   UPDATE map_images_registry
+     SET local_path = REPLACE(local_path, '/static/maps/', '/static/maps/halo_infinite/')
+     WHERE title_id = 'halo_infinite' AND local_path LIKE '/static/maps/%';
+   UPDATE citation_mappings
+     SET image_path = REPLACE(image_path, 'static/commendations/h5g/', 'static/commendations/halo_5_guardians/')
+     WHERE image_path LIKE 'static/commendations/h5g/%';
+   UPDATE citation_mappings
+     SET image_path = REPLACE(image_path, 'static/commendations/hi/', 'static/commendations/halo_infinite/')
+     WHERE image_path LIKE 'static/commendations/hi/%';
+   ```
+   Idempotent (les `LIKE` ne matchent plus après application). Joué automatiquement au boot via le `MigrationRegistry` existant.
+5. Flag flip : passer le défaut `titleScoped: true` dans `NewAssetURLAdapter` (ou retirer le flag complètement)
+6. Mise à jour des fixtures de test (`HomePage.test.tsx`, `home_test.go`, `commendation_handler_test.go`, etc.)
+7. Suppression du shim `effectiveSlug()` (devient mort)
+
+**Garde-fous** :
+
+- **Test e2e dédié** ajouté dans PR 0, exercé dans toutes les PRs : démarre le serveur, fetch `/static/maps/<X>` (ou la version title-scopée selon le flag) → vérifie `200 OK` et `Content-Type: image/*`. Si la PR 3 oublie un caller, ce test casse.
+- **Script idempotent de réconciliation** dans `scripts/check_static_paths.go` (PR 0) : scanne le FS + la DB, vérifie la cohérence. Lancé en CI sur chaque PR, et localement pour valider la PR 3 avant merge.
+- **Pre-flight check au boot** (PR 1) : au démarrage du serveur, l'adapter HI vérifie l'existence d'un fichier sentinelle (`static/maps/<sentinel>` flat OU `static/maps/halo_infinite/<sentinel>` selon le flag). Si mismatch → `slog.Error` + refus de boot, plutôt qu'images cassées en prod.
+- **Rollback path** : si la PR 3 introduit un bug, `git revert <commit>` restaure code+fixtures, puis script SQL inverse rejoué + `git mv` inverse. Le revert d'un seul commit suffit pour tout rétablir.
+
+**Cas dev local entre `git pull` et restart serveur** :
+
+Quand un dev `git pull` après merge de PR 3, son FS local est à jour mais sa DB locale a encore les anciens `local_path`. Le `MigrationRegistry` joue le SQL au prochain boot du serveur — le pre-flight check valide la cohérence avant de servir. Aucune action manuelle requise.
+
+---
+
 ### Ordonnancement révisé (4+1 PRs)
 
 #### PR 0 — couche 2 Go + frontend (générique, neutre)
