@@ -216,7 +216,7 @@ export function NavL2() {
             aria-controls="filter-panel"
             className="shrink-0 rounded-md border border-input bg-background px-2.5 py-1 text-xs font-medium text-muted-foreground transition-colors hover:border-border hover:bg-muted"
           >
-            Filtres {panelOpen ? '▴' : '▾'}
+            {panelOpen ? 'Masquer les filtres' : 'Filtres'}
           </button>
 
           {/* Réinitialiser (seulement si filtres actifs) */}

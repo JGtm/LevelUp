@@ -1,24 +1,18 @@
 /**
  * FilterPanel — panneau de filtres inline (expandable sous NavL2).
  *
- * Évolution du précédent FilterDrawer (panneau latéral fixe à droite). Sur
- * demande explicite : zéro drawer, partout. Le panneau se déplie / se
- * replie dans le flux du DOM, sans backdrop, avec une transition de
- * `max-height` + `opacity`.
- *
  * Architecture des filtres :
  *  - Mode d'analyse : toggle Période / Sessions
- *    - Période : presets 7j/30j/90j/Toutes + Personnalisé (date pickers natifs)
- *    - Sessions : liste déroulante + navigation ◀/▶ pour parcourir
- *      séquentiellement les sessions (alignée sur les boutons NavL2)
- *  - Cascade (Playlists / Modes / Cartes / Types) : visibles dans les deux
- *    modes — orthogonaux au mode période/sessions, ils raffinent le scope
- *    quel qu'il soit.
+ *    - Période : date pickers Du/Au toujours visibles + presets raccourcis
+ *    - Sessions : liste déroulante (ordre plus-récent → plus-ancien) +
+ *      boutons précédent/suivant pour parcours séquentiel
+ *  - Cascade (Playlists / Modes / Cartes / Types) : 4 dropdowns multi-select
+ *    sur la même ligne, valeurs cochables. Visibles dans les deux modes.
  *
  * Les options disponibles proviennent du resolvedContext (globalFilterStore) —
  * aucune requête supplémentaire n'est émise.
  */
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { useGlobalFilterStore } from '@/stores/globalFilterStore'
 import type { CascadeInput, PeriodInput } from '@/lib/api/types'
 
@@ -262,11 +256,10 @@ export function FilterPanel({ open, onClose }: FilterPanelProps) {
                   type="button"
                   onClick={() => gotoSessionAt(currentSessionIdx + 1)}
                   disabled={!canGoPrev}
-                  className="flex h-8 w-8 shrink-0 items-center justify-center rounded-md border border-input text-sm text-muted-foreground transition-colors hover:bg-muted disabled:cursor-not-allowed disabled:opacity-30"
-                  title="Session précédente"
-                  aria-label="Session précédente"
+                  className="shrink-0 rounded-md border border-input bg-background px-3 py-1.5 text-xs font-medium text-muted-foreground transition-colors hover:bg-muted hover:text-foreground disabled:cursor-not-allowed disabled:opacity-30"
+                  title="Session plus ancienne"
                 >
-                  ◀
+                  Précédente
                 </button>
                 <select
                   value={currentSessionId}
@@ -279,6 +272,8 @@ export function FilterPanel({ open, onClose }: FilterPanelProps) {
                   className="min-w-0 flex-1 rounded-lg border border-input bg-background px-3 py-2 text-sm text-foreground transition focus:border-ring focus:outline-none focus:ring-2 focus:ring-ring"
                 >
                   <option value="">Toutes les sessions</option>
+                  {/* Ordre : plus récente en haut, plus ancienne en bas
+                      (all_sessions[0] = la plus récente côté backend). */}
                   {sessionOptions.map((s) => (
                     <option key={s.session_id} value={s.session_id}>
                       {s.label} — {s.match_count} matchs
@@ -290,11 +285,10 @@ export function FilterPanel({ open, onClose }: FilterPanelProps) {
                   type="button"
                   onClick={() => gotoSessionAt(currentSessionIdx - 1)}
                   disabled={!canGoNext}
-                  className="flex h-8 w-8 shrink-0 items-center justify-center rounded-md border border-input text-sm text-muted-foreground transition-colors hover:bg-muted disabled:cursor-not-allowed disabled:opacity-30"
-                  title="Session suivante (plus récente)"
-                  aria-label="Session suivante"
+                  className="shrink-0 rounded-md border border-input bg-background px-3 py-1.5 text-xs font-medium text-muted-foreground transition-colors hover:bg-muted hover:text-foreground disabled:cursor-not-allowed disabled:opacity-30"
+                  title="Session plus récente"
                 >
-                  ▶
+                  Suivante
                 </button>
                 <span className="text-xs text-muted-foreground">
                   {currentSessionIdx >= 0
@@ -306,39 +300,42 @@ export function FilterPanel({ open, onClose }: FilterPanelProps) {
           </section>
         )}
 
-        {/* ── Filtres avancés (cascade) ───────────────────────────────────────
-            Repliés par défaut : éviter le mur de pastilles quand il y a 50+
-            playlists/cartes/modes. Chaque <details> contient un <summary>
-            avec un compteur des valeurs sélectionnées.
-
-            Couvre toute la grille (col-span max) pour que chaque accordéon
-            occupe la pleine largeur quand ouvert. */}
+        {/* ── Filtres avancés (cascade) ───────────────────────────────────
+            4 dropdowns multi-select sur la même ligne. Chaque dropdown
+            affiche un trigger compact (titre + compteur si sélection) et
+            un popover à valeurs cochables qui ne pollue pas la mise en
+            page tant qu'il n'est pas ouvert. */}
         {available && (
           <section className="md:col-span-2 lg:col-span-3">
-            <CascadeAccordion
-              title="Playlists"
-              options={available.playlists}
-              selected={(cascade.playlists ?? []) as string[]}
-              onToggle={(v) => toggleCascadeValue('playlists', v)}
-            />
-            <CascadeAccordion
-              title="Modes de jeu"
-              options={available.modes}
-              selected={(cascade.modes ?? []) as string[]}
-              onToggle={(v) => toggleCascadeValue('modes', v)}
-            />
-            <CascadeAccordion
-              title="Cartes"
-              options={available.maps}
-              selected={(cascade.maps ?? []) as string[]}
-              onToggle={(v) => toggleCascadeValue('maps', v)}
-            />
-            <CascadeAccordion
-              title="Type d'expérience"
-              options={available.experience_types}
-              selected={(cascade.experience_types ?? []) as string[]}
-              onToggle={(v) => toggleCascadeValue('experience_types', v)}
-            />
+            <h3 className="mb-3 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+              Filtres avancés
+            </h3>
+            <div className="flex flex-wrap items-center gap-2">
+              <MultiSelectDropdown
+                title="Playlists"
+                options={available.playlists}
+                selected={(cascade.playlists ?? []) as string[]}
+                onToggle={(v) => toggleCascadeValue('playlists', v)}
+              />
+              <MultiSelectDropdown
+                title="Modes de jeu"
+                options={available.modes}
+                selected={(cascade.modes ?? []) as string[]}
+                onToggle={(v) => toggleCascadeValue('modes', v)}
+              />
+              <MultiSelectDropdown
+                title="Cartes"
+                options={available.maps}
+                selected={(cascade.maps ?? []) as string[]}
+                onToggle={(v) => toggleCascadeValue('maps', v)}
+              />
+              <MultiSelectDropdown
+                title="Type d'expérience"
+                options={available.experience_types}
+                selected={(cascade.experience_types ?? []) as string[]}
+                onToggle={(v) => toggleCascadeValue('experience_types', v)}
+              />
+            </div>
           </section>
         )}
       </div>
@@ -363,58 +360,92 @@ export function FilterPanel({ open, onClose }: FilterPanelProps) {
   )
 }
 
-// ─── Sous-composant : accordéon cascade ───────────────────────────────────────
+// ─── Sous-composant : dropdown multi-select ───────────────────────────────────
 //
-// Repliable par défaut. Le <summary> affiche le titre + un badge compteur
-// quand des valeurs sont sélectionnées. Évite le mur de pastilles quand
-// il y a beaucoup d'options (50+ cartes p. ex.). Native <details> = pas
-// de JS d'état pour l'open/close.
+// Bouton compact qui révèle un popover à valeurs cochables. 4 dropdowns
+// alignés sur la même ligne pour les filtres cascade (Playlists / Modes /
+// Cartes / Type d'expérience). Click outside pour fermer, Escape aussi.
 
-interface CascadeAccordionProps {
+interface MultiSelectDropdownProps {
   title: string
   options: { label: string; value: string }[]
   selected: string[]
   onToggle: (value: string) => void
 }
 
-function CascadeAccordion({ title, options, selected, onToggle }: CascadeAccordionProps) {
+function MultiSelectDropdown({
+  title,
+  options,
+  selected,
+  onToggle,
+}: MultiSelectDropdownProps) {
+  const [open, setOpen] = useState(false)
+  const ref = useRef<HTMLDivElement>(null)
+
+  // Fermeture click-outside + Escape.
+  useEffect(() => {
+    if (!open) return
+    function onDocClick(e: MouseEvent) {
+      if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false)
+    }
+    function onKey(e: KeyboardEvent) {
+      if (e.key === 'Escape') setOpen(false)
+    }
+    document.addEventListener('mousedown', onDocClick)
+    document.addEventListener('keydown', onKey)
+    return () => {
+      document.removeEventListener('mousedown', onDocClick)
+      document.removeEventListener('keydown', onKey)
+    }
+  }, [open])
+
   if (options.length === 0) return null
+
   return (
-    <details className="group border-b border-border/60 py-2 last:border-b-0">
-      <summary className="flex cursor-pointer list-none items-center justify-between gap-2 py-2 text-xs font-semibold uppercase tracking-wider text-muted-foreground transition-colors hover:text-foreground">
-        <span className="flex items-center gap-2">
-          <span className="inline-block transition-transform group-open:rotate-90" aria-hidden="true">
-            ▸
+    <div ref={ref} className="relative">
+      <button
+        type="button"
+        onClick={() => setOpen((v) => !v)}
+        aria-haspopup="listbox"
+        aria-expanded={open}
+        className={[
+          'flex items-center gap-2 rounded-md border border-input bg-background px-3 py-1.5 text-xs font-medium transition-colors hover:bg-muted',
+          selected.length > 0 ? 'text-foreground' : 'text-muted-foreground',
+        ].join(' ')}
+      >
+        <span>{title}</span>
+        {selected.length > 0 && (
+          <span className="rounded-full bg-primary px-1.5 py-0.5 text-[10px] text-primary-foreground">
+            {selected.length}
           </span>
-          {title}
-          {selected.length > 0 && (
-            <span className="rounded-full bg-primary px-2 py-0.5 text-[10px] text-primary-foreground">
-              {selected.length}
-            </span>
-          )}
-        </span>
-        <span className="text-[10px] text-muted-foreground/70">{options.length} options</span>
-      </summary>
-      <div className="mt-2 flex flex-wrap gap-2 pb-1">
-        {options.map((opt) => {
-          const active = selected.includes(opt.value)
-          return (
-            <button
-              key={opt.value}
-              type="button"
-              onClick={() => onToggle(opt.value)}
-              className={[
-                'rounded-full px-3 py-1 text-xs font-medium transition-colors',
-                active
-                  ? 'bg-primary text-primary-foreground shadow-sm'
-                  : 'bg-muted text-foreground hover:bg-accent',
-              ].join(' ')}
-            >
-              {opt.label}
-            </button>
-          )
-        })}
-      </div>
-    </details>
+        )}
+      </button>
+
+      {open && (
+        <div
+          role="listbox"
+          aria-label={title}
+          className="absolute left-0 top-full z-20 mt-1 max-h-64 w-64 overflow-y-auto rounded-md border border-border bg-background py-1 shadow-lg"
+        >
+          {options.map((opt) => {
+            const checked = selected.includes(opt.value)
+            return (
+              <label
+                key={opt.value}
+                className="flex cursor-pointer items-center gap-2 px-3 py-1.5 text-xs text-foreground transition-colors hover:bg-muted"
+              >
+                <input
+                  type="checkbox"
+                  checked={checked}
+                  onChange={() => onToggle(opt.value)}
+                  className="h-3.5 w-3.5 cursor-pointer rounded border-input text-primary focus:ring-1 focus:ring-ring"
+                />
+                <span className="flex-1 truncate">{opt.label}</span>
+              </label>
+            )
+          })}
+        </div>
+      )}
+    </div>
   )
 }

@@ -37,6 +37,30 @@ import { useComparePrefetch } from '@/features/compare/queries'
 const MAX_SELECTION = 3
 const CHART_COLORS = getSeriesColors(3, ['narrative-dominant', 'perf-tier-3', 'divergent-pos'])
 
+/**
+ * Formate proprement une erreur inconnue de TanStack Query (type `unknown`).
+ * Évite le piège `String(error)` qui produit "[object Object]" sur un
+ * objet brut au lieu d'un Error.
+ */
+function formatError(err: unknown): string {
+  if (err == null) return 'Erreur inconnue'
+  if (err instanceof Error) return err.message
+  if (typeof err === 'string') return err
+  if (typeof err === 'object') {
+    const e = err as { message?: unknown; status?: unknown; statusText?: unknown }
+    if (typeof e.message === 'string') return e.message
+    if (typeof e.statusText === 'string') {
+      return typeof e.status === 'number' ? `${e.status} ${e.statusText}` : e.statusText
+    }
+    try {
+      return JSON.stringify(err)
+    } catch {
+      return 'Erreur non sérialisable'
+    }
+  }
+  return String(err)
+}
+
 // ─── Helpers d'affichage ──────────────────────────────────────────────────────
 
 /**
@@ -279,10 +303,15 @@ export function SquadLayout() {
   }
 
   if (isLoading) return null
-  if (isError)
+  if (isError) {
+    // String(error) sur un Error donne "Error: <msg>" mais sur un objet
+    // brut (FetchError, JSON quelconque) ça produit "[object Object]".
+    // On extrait .message si disponible, sinon JSON, sinon fallback.
+    const errMsg = formatError(error)
     return (
-      <div className="p-6 text-center text-destructive">{t.errors.loadError(String(error))}</div>
+      <div className="p-6 text-center text-destructive">{t.errors.loadError(errMsg)}</div>
     )
+  }
   if (!data) {
     return (
       <div className="p-6">
