@@ -1,18 +1,34 @@
 // Package analysis — mode_category.go : portage Go de
 // `src.analysis.mode_categories` / `src.analysis.mode_display` (branche v7/cockpit Python).
 //
-// Concept : une `mode_category` custom regroupe plusieurs préfixes de pair_name :
+// =============================================================================
+// 2 NIVEAUX ORTHOGONAUX pour la sémantique des modes Halo Infinite :
+// =============================================================================
+//
+//  1. SOUS-MODE (label affiché individuellement) → cf. mode_label.go
+//     "Arena:Slayer on Bazaar" → "Slayer" (puis traduit "Assassin" via mode_name_tr)
+//     Implémenté par NormalizeModeLabel().
+//
+//  2. CATÉGORIE PARENTE (filtre Mode dans la galerie média, regroupements UI)
+//     "Arena:Slayer on Bazaar" → "Assassin" (catégorie qui regroupe Arena/Tactical/Assault/Community)
+//     Implémenté par InferModeCategoryFromPairName() ci-dessous.
+//
+// NE PAS DUPLIQUER : selon le besoin, choisir l'une ou l'autre fonction.
+// =============================================================================
+//
+// Une `mode_category` custom regroupe plusieurs préfixes de pair_name :
 //
 //	Assassin  : Arena, Tactical, Assault, Community
 //	Fiesta    : Fiesta, Super Fiesta, Husky Raid, Super Husky Raid, Castle Wars
 //	BTB       : BTB, BTB Heavies
 //	Ranked    : Ranked
 //	Firefight : Firefight, Gruntpocalypse
-//	Other     : tout le reste (Event, etc.)
+//	Other     : tout le reste (Event, et tout préfixe inconnu)
 //
-// Source : src/analysis/mode_display.go _PREFIX_RULES + src/analysis/mode_categories.PREFIX_TO_CATEGORY.
-// Le filtre "Mode" exposé à l'UI utilise ces 6 catégories — pas les sous-modes
-// (Slayer/CTF/KOTH/etc.) qui sont des spécialisations intra-catégorie.
+// Source de vérité Python (consulter en cas de doute) :
+//
+//	git show v7/cockpit:src/analysis/mode_display.py     (_PREFIX_RULES)
+//	git show v7/cockpit:src/analysis/mode_categories.py  (PREFIX_TO_CATEGORY)
 package analysis
 
 import (

@@ -3,6 +3,11 @@
 // Port Go de src.analysis.mode_display (branche Python v7/cockpit).
 // Logique unifiée utilisée par la home, l'historique de matchs et les filtres.
 // Aucun accès DB — function pure.
+//
+// COMPLÉMENTAIRE de mode_category.go : ce fichier extrait le SOUS-MODE
+// ("Arena:Slayer" → "Slayer"), tandis que mode_category.go infère la
+// CATÉGORIE PARENTE ("Arena:Slayer" → "Assassin"). Voir l'en-tête de
+// mode_category.go pour le détail des 2 niveaux orthogonaux.
 package analysis
 
 import (
