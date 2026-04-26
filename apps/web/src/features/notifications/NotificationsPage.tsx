@@ -2,9 +2,9 @@
  * Page dédiée — /players/$playerSlug/notifications
  *
  * Liste paginée (cursor before_id), filtres par catégorie, "non lues uniquement",
- * timeline groupée par jour. Bulk actions phase 2.
+ * timeline groupée par jour, bulk actions (sélection multiple + actions groupées).
  */
-import { useState } from 'react'
+import { useMemo, useState } from 'react'
 import { useParams } from '@tanstack/react-router'
 import { useAppShellStore } from '@/stores/appShellStore'
 import { getNotificationsText } from './i18n'
@@ -26,6 +26,7 @@ export function NotificationsPage() {
   const [category, setCategory] = useState<NotificationCategory | undefined>(undefined)
   const [pages, setPages] = useState<Notification[]>([])
   const [cursor, setCursor] = useState<number | undefined>(undefined)
+  const [selectedIds, setSelectedIds] = useState<Set<number>>(() => new Set())
 
   const { data, isLoading, isError, refetch } = useNotificationsList(
     playerSlug,
@@ -124,10 +125,60 @@ export function NotificationsPage() {
           items={items}
           playerSlug={playerSlug}
           t={t}
+          selectedIds={selectedIds}
+          onToggleSelect={(id) => {
+            setSelectedIds((prev) => {
+              const next = new Set(prev)
+              if (next.has(id)) next.delete(id)
+              else next.add(id)
+              return next
+            })
+          }}
           onMarkRead={(id) => markRead.mutate([id])}
           onMarkUnread={(id) => markUnread.mutate(id)}
           onDismiss={(id) => dismiss.mutate(id)}
         />
+      )}
+
+      {/* Bulk action bar — affichée seulement si au moins 1 sélection */}
+      {selectedIds.size > 0 && (
+        <div
+          role="region"
+          aria-label="Actions groupées"
+          className="sticky bottom-4 mt-4 flex flex-wrap items-center gap-2 rounded-md border border-border bg-popover p-3 shadow-lg"
+        >
+          <span className="text-sm text-popover-foreground">
+            {selectedIds.size} sélectionnée(s)
+          </span>
+          <button
+            type="button"
+            onClick={() => {
+              markRead.mutate(Array.from(selectedIds))
+              setSelectedIds(new Set())
+            }}
+            className="rounded-md border border-border bg-accent px-3 py-1 text-sm text-accent-foreground hover:bg-accent/80"
+          >
+            {t.pageBulkMarkRead.replace('{count}', String(selectedIds.size))}
+          </button>
+          <button
+            type="button"
+            onClick={() => {
+              for (const id of selectedIds) dismiss.mutate(id)
+              setSelectedIds(new Set())
+            }}
+            className="rounded-md border border-border bg-popover px-3 py-1 text-sm text-popover-foreground hover:bg-accent"
+          >
+            {t.pageBulkDismiss.replace('{count}', String(selectedIds.size))}
+          </button>
+          <button
+            type="button"
+            onClick={() => setSelectedIds(new Set())}
+            className="ml-auto text-xs text-muted-foreground hover:text-popover-foreground"
+            aria-label="Désélectionner tout"
+          >
+            ×
+          </button>
+        </div>
       )}
 
       {hasMore && (
@@ -149,11 +200,13 @@ function Timeline(props: {
   items: Notification[]
   playerSlug: string
   t: ReturnType<typeof getNotificationsText>
+  selectedIds: Set<number>
+  onToggleSelect: (id: number) => void
   onMarkRead: (id: number) => void
   onMarkUnread: (id: number) => void
   onDismiss: (id: number) => void
 }) {
-  const groups = groupByDay(props.items, props.t)
+  const groups = useMemo(() => groupByDay(props.items, props.t), [props.items, props.t])
   return (
     <div className="space-y-6">
       {groups.map((g) => (
@@ -161,16 +214,29 @@ function Timeline(props: {
           <h2 className="mb-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
             {g.label}
           </h2>
-          <div className="rounded-md border border-border bg-popover">
+          <div className="divide-y divide-border rounded-md border border-border bg-popover">
             {g.items.map((n) => (
-              <NotificationItem
-                key={n.id}
-                notif={n}
-                playerSlug={props.playerSlug}
-                onMarkRead={props.onMarkRead}
-                onMarkUnread={props.onMarkUnread}
-                onDismiss={props.onDismiss}
-              />
+              <div key={n.id} className="flex items-stretch">
+                <label
+                  className="flex shrink-0 items-center justify-center px-3 hover:bg-accent/30"
+                  aria-label={`Sélectionner ${n.id}`}
+                >
+                  <input
+                    type="checkbox"
+                    checked={props.selectedIds.has(n.id)}
+                    onChange={() => props.onToggleSelect(n.id)}
+                  />
+                </label>
+                <div className="min-w-0 flex-1">
+                  <NotificationItem
+                    notif={n}
+                    playerSlug={props.playerSlug}
+                    onMarkRead={props.onMarkRead}
+                    onMarkUnread={props.onMarkUnread}
+                    onDismiss={props.onDismiss}
+                  />
+                </div>
+              </div>
             ))}
           </div>
         </section>
