@@ -1,0 +1,146 @@
+# config/titles/halo_infinite/mappings/assets.toml
+#
+# Source de vérité des libellés et présentation des assets sémantiques d'Halo
+# Infinite : modes (catégories), tiers de médaille, tiers de défi Prestige,
+# cadences de défi, statuts de défi.
+#
+# Lue au boot par internal/games/mappings/loader_assets.go.
+#
+# Convention : sections [assets.{kind}.{id}].
+# Champs obligatoires : labels.en, labels.fr, display_order.
+# Champs optionnels : color_token, icon.
+#
+# Toute modification breaking incrémente schema_version (cf. tools/mappings/CHANGELOG.md).
+
+[meta]
+title_slug     = "halo_infinite"
+schema_version = 1
+
+# =============================================================================
+# Modes (regroupements UX, alignés sur analysis.ModeCategory*)
+# =============================================================================
+
+[assets.mode.assassin]
+labels = { en = "Slayer", fr = "Slayer" }
+display_order = 10
+
+[assets.mode.fiesta]
+labels = { en = "Fiesta", fr = "Fiesta" }
+display_order = 20
+
+[assets.mode.super_fiesta]
+labels = { en = "Super Fiesta", fr = "Super Fiesta" }
+display_order = 25
+
+[assets.mode.husky_raid]
+labels = { en = "Husky Raid", fr = "Husky Raid" }
+display_order = 30
+
+[assets.mode.btb]
+labels = { en = "Big Team Battle", fr = "Grande bataille en équipe" }
+display_order = 40
+
+[assets.mode.ranked]
+labels = { en = "Ranked", fr = "Classé" }
+display_order = 50
+
+[assets.mode.firefight]
+labels = { en = "Firefight", fr = "Baptême du feu" }
+display_order = 60
+
+[assets.mode.other]
+labels = { en = "Other", fr = "Autre" }
+display_order = 99
+
+# =============================================================================
+# Tiers de défi Prestige (alignés sur lib/prestige.ts Tier)
+# =============================================================================
+
+[assets.challenge_tier.normal]
+labels = { en = "Normal", fr = "Normal" }
+color_token = "challenge.normal"
+display_order = 10
+
+[assets.challenge_tier.heroic]
+labels = { en = "Heroic", fr = "Héroïque" }
+color_token = "challenge.heroic"
+display_order = 20
+
+[assets.challenge_tier.legendary]
+labels = { en = "Legendary", fr = "Légendaire" }
+color_token = "challenge.legendary"
+display_order = 30
+
+[assets.challenge_tier.mythic]
+labels = { en = "Mythic", fr = "Mythique" }
+color_token = "challenge.mythic"
+display_order = 40
+
+# =============================================================================
+# Cadences de défi (lib/prestige.ts Cadence)
+# =============================================================================
+
+[assets.cadence.daily]
+labels = { en = "Daily", fr = "Quotidien" }
+display_order = 10
+
+[assets.cadence.weekly]
+labels = { en = "Weekly", fr = "Hebdomadaire" }
+display_order = 20
+
+[assets.cadence.monthly]
+labels = { en = "Monthly", fr = "Mensuel" }
+display_order = 30
+
+[assets.cadence.free]
+labels = { en = "Free", fr = "Libre" }
+display_order = 40
+
+# =============================================================================
+# Statuts de défi (lib/prestige.ts ChallengeStatus)
+# =============================================================================
+
+[assets.challenge_status.draft]
+labels = { en = "Draft", fr = "Brouillon" }
+display_order = 10
+
+[assets.challenge_status.active]
+labels = { en = "Active", fr = "Actif" }
+display_order = 20
+
+[assets.challenge_status.completed]
+labels = { en = "Completed", fr = "Terminé" }
+display_order = 30
+
+[assets.challenge_status.expired]
+labels = { en = "Expired", fr = "Expiré" }
+display_order = 40
+
+[assets.challenge_status.abandoned]
+labels = { en = "Abandoned", fr = "Abandonné" }
+display_order = 50
+
+# =============================================================================
+# Tiers de médaille (regroupements UX, plan §6.7 — médailles individuelles
+# restent en DB metadata.medal_definitions)
+# =============================================================================
+
+[assets.medal_tier.bronze]
+labels = { en = "Bronze", fr = "Bronze" }
+color_token = "medal.bronze"
+display_order = 10
+
+[assets.medal_tier.silver]
+labels = { en = "Silver", fr = "Argent" }
+color_token = "medal.silver"
+display_order = 20
+
+[assets.medal_tier.gold]
+labels = { en = "Gold", fr = "Or" }
+color_token = "medal.gold"
+display_order = 30
+
+[assets.medal_tier.mythic]
+labels = { en = "Mythic", fr = "Mythique" }
+color_token = "medal.mythic"
+display_order = 40

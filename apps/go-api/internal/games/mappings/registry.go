@@ -1,69 +1,150 @@
 package mappings
 
 import (
+	"errors"
 	"fmt"
 	"log/slog"
+	"os"
 	"path/filepath"
 	"sync"
 )
 
-// Registry est le registre title-aware des FieldMappingSet chargés au boot.
+// Registry est le registre title-aware des mappings TOML chargés au boot.
 //
 // Construction : NewRegistry() puis LoadFromConfigDir(repoRoot, slugs...).
-// Lecture : Get(slug) → lookup atomique.
+// Lecture : Get(slug) → FieldMappingSet, GetAssets(slug) → AssetMappingSet,
+// GetOutcomes(slug) → OutcomeMappingSet.
 // Une erreur de chargement pour un titre n'invalide pas les autres.
 type Registry struct {
-	mu  sync.RWMutex
-	set map[string]*FieldMappingSet
+	mu       sync.RWMutex
+	fields   map[string]*FieldMappingSet
+	assets   map[string]*AssetMappingSet
+	outcomes map[string]*OutcomeMappingSet
 }
 
 // NewRegistry crée un registre vide.
 func NewRegistry() *Registry {
-	return &Registry{set: make(map[string]*FieldMappingSet)}
+	return &Registry{
+		fields:   make(map[string]*FieldMappingSet),
+		assets:   make(map[string]*AssetMappingSet),
+		outcomes: make(map[string]*OutcomeMappingSet),
+	}
 }
 
-// LoadFromConfigDir charge config/titles/{slug}/mappings/fields.toml pour
-// chaque slug fourni. Retourne la liste agrégée des erreurs (une par titre)
-// et nil si tout charge correctement.
+// LoadFromConfigDir charge tous les TOML mappings disponibles pour chaque slug
+// fourni. fields.toml est obligatoire ; assets.toml et outcomes.toml sont
+// optionnels (leur absence est silencieuse, leur présence est validée
+// strictement).
+//
+// Retourne la liste agrégée des erreurs (une par titre/fichier) et nil si
+// tout charge correctement.
 func (r *Registry) LoadFromConfigDir(repoRoot string, slugs []string, logger *slog.Logger) []error {
 	if logger == nil {
 		logger = slog.Default()
 	}
 	var errs []error
 	for _, slug := range slugs {
-		path := filepath.Join(repoRoot, "config", "titles", slug, "mappings", "fields.toml")
-		set, err := LoadFieldsFromFile(path)
+		mappingsDir := filepath.Join(repoRoot, "config", "titles", slug, "mappings")
+
+		// fields.toml — obligatoire
+		fieldsPath := filepath.Join(mappingsDir, "fields.toml")
+		fset, err := LoadFieldsFromFile(fieldsPath)
 		if err != nil {
-			logger.Error("mappings_load_failed", "title_slug", slug, "path", path, "err", err.Error())
-			errs = append(errs, fmt.Errorf("load %s: %w", slug, err))
+			logger.Error("mappings_load_failed", "title_slug", slug, "path", fieldsPath, "err", err.Error())
+			errs = append(errs, fmt.Errorf("load fields %s: %w", slug, err))
 			continue
 		}
 		r.mu.Lock()
-		r.set[slug] = set
+		r.fields[slug] = fset
 		r.mu.Unlock()
 		logger.Info("mappings_loaded",
 			"title_slug", slug,
-			"fields_count", len(set.All()),
-			"schema_version", set.SchemaVersion(),
+			"kind", "fields",
+			"fields_count", len(fset.All()),
+			"schema_version", fset.SchemaVersion(),
 		)
+
+		// assets.toml — optionnel
+		assetsPath := filepath.Join(mappingsDir, "assets.toml")
+		if aset, loadErr := loadAssetsIfExists(assetsPath); loadErr != nil {
+			logger.Error("mappings_load_failed", "title_slug", slug, "path", assetsPath, "err", loadErr.Error())
+			errs = append(errs, fmt.Errorf("load assets %s: %w", slug, loadErr))
+		} else if aset != nil {
+			r.mu.Lock()
+			r.assets[slug] = aset
+			r.mu.Unlock()
+			logger.Info("mappings_loaded",
+				"title_slug", slug,
+				"kind", "assets",
+				"kinds_count", len(aset.Kinds()),
+				"schema_version", aset.SchemaVersion(),
+			)
+		}
+
+		// outcomes.toml — optionnel
+		outcomesPath := filepath.Join(mappingsDir, "outcomes.toml")
+		if oset, loadErr := loadOutcomesIfExists(outcomesPath); loadErr != nil {
+			logger.Error("mappings_load_failed", "title_slug", slug, "path", outcomesPath, "err", loadErr.Error())
+			errs = append(errs, fmt.Errorf("load outcomes %s: %w", slug, loadErr))
+		} else if oset != nil {
+			r.mu.Lock()
+			r.outcomes[slug] = oset
+			r.mu.Unlock()
+			logger.Info("mappings_loaded",
+				"title_slug", slug,
+				"kind", "outcomes",
+				"outcomes_count", len(oset.All()),
+				"schema_version", oset.SchemaVersion(),
+			)
+		}
 	}
 	return errs
+}
+
+func loadAssetsIfExists(path string) (*AssetMappingSet, error) {
+	if _, err := os.Stat(path); errors.Is(err, os.ErrNotExist) {
+		return nil, nil
+	}
+	return LoadAssetsFromFile(path)
+}
+
+func loadOutcomesIfExists(path string) (*OutcomeMappingSet, error) {
+	if _, err := os.Stat(path); errors.Is(err, os.ErrNotExist) {
+		return nil, nil
+	}
+	return LoadOutcomesFromFile(path)
 }
 
 // Get retourne le FieldMappingSet d'un titre s'il a été chargé.
 func (r *Registry) Get(slug string) (*FieldMappingSet, bool) {
 	r.mu.RLock()
 	defer r.mu.RUnlock()
-	v, ok := r.set[slug]
+	v, ok := r.fields[slug]
 	return v, ok
 }
 
-// Slugs retourne la liste des slugs chargés avec succès.
+// GetAssets retourne l'AssetMappingSet d'un titre s'il existe.
+func (r *Registry) GetAssets(slug string) (*AssetMappingSet, bool) {
+	r.mu.RLock()
+	defer r.mu.RUnlock()
+	v, ok := r.assets[slug]
+	return v, ok
+}
+
+// GetOutcomes retourne l'OutcomeMappingSet d'un titre s'il existe.
+func (r *Registry) GetOutcomes(slug string) (*OutcomeMappingSet, bool) {
+	r.mu.RLock()
+	defer r.mu.RUnlock()
+	v, ok := r.outcomes[slug]
+	return v, ok
+}
+
+// Slugs retourne la liste des slugs avec un FieldMappingSet chargé.
 func (r *Registry) Slugs() []string {
 	r.mu.RLock()
 	defer r.mu.RUnlock()
-	out := make([]string, 0, len(r.set))
-	for s := range r.set {
+	out := make([]string, 0, len(r.fields))
+	for s := range r.fields {
 		out = append(out, s)
 	}
 	return out

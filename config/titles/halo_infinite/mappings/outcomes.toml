@@ -1,0 +1,29 @@
+# config/titles/halo_infinite/mappings/outcomes.toml
+#
+# Source de vérité des libellés et couleurs sémantiques des outcomes canoniques.
+# Lue au boot par internal/games/mappings/loader_outcomes.go.
+#
+# Clés admises : win | loss | tie | dnf (alignées sur canonical/enums.go Outcome).
+# Champs obligatoires : labels.en, labels.fr, color_token.
+#
+# Toute modification breaking incrémente schema_version (cf. tools/mappings/CHANGELOG.md).
+
+[meta]
+title_slug     = "halo_infinite"
+schema_version = 1
+
+[outcomes.win]
+labels = { en = "Win", fr = "Victoire" }
+color_token = "outcome.positive"
+
+[outcomes.loss]
+labels = { en = "Loss", fr = "Défaite" }
+color_token = "outcome.negative"
+
+[outcomes.tie]
+labels = { en = "Tie", fr = "Égalité" }
+color_token = "outcome.neutral"
+
+[outcomes.dnf]
+labels = { en = "DNF", fr = "Abandon" }
+color_token = "outcome.neutral"

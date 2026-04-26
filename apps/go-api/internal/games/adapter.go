@@ -90,11 +90,16 @@ type TitleDataAdapter interface {
 // un catalog vide (Len() == 0) si la table career_rank_translations n'a pas
 // encore été peuplée — les services consommateurs doivent alors dégrader
 // proprement (ex: afficher uniquement le rank_id).
+//
+// Assets() / Outcomes() peuvent retourner nil si les TOML correspondants ne
+// sont pas définis pour le titre. Les callers doivent dégrader gracieusement.
 type TitleSemanticAdapter interface {
 	TitleSlug() string
 	SchemaVersion() int
 	Fields() *mappings.FieldMappingSet
 	Ranks() *mappings.RankCatalog
+	Assets() *mappings.AssetMappingSet
+	Outcomes() *mappings.OutcomeMappingSet
 }
 
 // Resolver injecte les adapters d'un titre courant aux services produit.

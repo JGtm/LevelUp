@@ -36,10 +36,12 @@ func (s *stubData) LoadTimeseries(_ context.Context, _ string, _ canonical.Times
 // stubSemantic implémente TitleSemanticAdapter pour les tests.
 type stubSemantic struct{ slug string }
 
-func (s *stubSemantic) TitleSlug() string                 { return s.slug }
-func (s *stubSemantic) SchemaVersion() int                { return 1 }
-func (s *stubSemantic) Fields() *mappings.FieldMappingSet { return nil }
-func (s *stubSemantic) Ranks() *mappings.RankCatalog      { return mappings.NewRankCatalog(s.slug, nil) }
+func (s *stubSemantic) TitleSlug() string                     { return s.slug }
+func (s *stubSemantic) SchemaVersion() int                    { return 1 }
+func (s *stubSemantic) Fields() *mappings.FieldMappingSet     { return nil }
+func (s *stubSemantic) Ranks() *mappings.RankCatalog          { return mappings.NewRankCatalog(s.slug, nil) }
+func (s *stubSemantic) Assets() *mappings.AssetMappingSet     { return nil }
+func (s *stubSemantic) Outcomes() *mappings.OutcomeMappingSet { return nil }
 
 // hiSlug constante locale aux tests pour réutiliser le littéral du titre
 // par défaut sans déclencher goconst sur les multiples occurrences.

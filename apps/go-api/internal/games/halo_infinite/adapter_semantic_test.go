@@ -27,7 +27,7 @@ func TestSemanticAdapter_TitleSlug(t *testing.T) {
 	if err != nil {
 		t.Fatalf("load: %v", err)
 	}
-	a := NewSemanticAdapter(set, nil)
+	a := NewSemanticAdapter(set, nil, nil, nil)
 	if a == nil {
 		t.Fatal("nil adapter")
 	}
@@ -39,7 +39,7 @@ func TestSemanticAdapter_TitleSlug(t *testing.T) {
 func TestSemanticAdapter_SchemaVersion(t *testing.T) {
 	t.Parallel()
 	set, _ := mappings.LoadFieldsFromBytes("x.toml", []byte(minimalToml))
-	a := NewSemanticAdapter(set, nil)
+	a := NewSemanticAdapter(set, nil, nil, nil)
 	if got := a.SchemaVersion(); got != 7 {
 		t.Errorf("SchemaVersion = %d, want 7", got)
 	}
@@ -48,7 +48,7 @@ func TestSemanticAdapter_SchemaVersion(t *testing.T) {
 func TestSemanticAdapter_Fields_Exposes(t *testing.T) {
 	t.Parallel()
 	set, _ := mappings.LoadFieldsFromBytes("x.toml", []byte(minimalToml))
-	a := NewSemanticAdapter(set, nil)
+	a := NewSemanticAdapter(set, nil, nil, nil)
 	if _, ok := a.Fields().Get(canonical.FieldKills); !ok {
 		t.Errorf("FieldKills introuvable via SemanticAdapter")
 	}
@@ -56,15 +56,15 @@ func TestSemanticAdapter_Fields_Exposes(t *testing.T) {
 
 func TestSemanticAdapter_NilSet(t *testing.T) {
 	t.Parallel()
-	if a := NewSemanticAdapter(nil, nil); a != nil {
-		t.Errorf("NewSemanticAdapter(nil, nil) devrait retourner nil")
+	if a := NewSemanticAdapter(nil, nil, nil, nil); a != nil {
+		t.Errorf("NewSemanticAdapter(nil, nil, nil, nil) devrait retourner nil")
 	}
 }
 
 func TestSemanticAdapter_Ranks_NilDefault(t *testing.T) {
 	t.Parallel()
 	set, _ := mappings.LoadFieldsFromBytes("x.toml", []byte(minimalToml))
-	a := NewSemanticAdapter(set, nil)
+	a := NewSemanticAdapter(set, nil, nil, nil)
 	ranks := a.Ranks()
 	if ranks == nil {
 		t.Fatal("Ranks() ne doit jamais retourner nil (catalog vide attendu)")
@@ -80,7 +80,7 @@ func TestSemanticAdapter_Ranks_PassThrough(t *testing.T) {
 	custom := mappings.NewRankCatalog("halo_infinite", []mappings.RankEntry{
 		{ID: 1, Title: map[string]string{"en": "Bronze 1", "fr": "Bronze 1"}},
 	})
-	a := NewSemanticAdapter(set, custom)
+	a := NewSemanticAdapter(set, custom, nil, nil)
 	if a.Ranks() != custom {
 		t.Errorf("Ranks() doit pointer sur le catalog injecté")
 	}
