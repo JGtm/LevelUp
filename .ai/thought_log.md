@@ -1,5 +1,23 @@
 # Thought Log
 
+## [2026-04-25] test(prestige): couverture domain 64.6% → 87.0% + branchement final hook sync
+
+**Statut** : Complété.
+
+**Contexte** : User demande "vérification finale, bonne couverture logging et tests" après branchement du sync hook. Build vert mais coverage tests prestige domain à 64.6%, en dessous du seuil 80% spécifié dans IMPL_PRESTIGE.md.
+
+**Décision technique** : Ajout d'un fichier `service_coverage_test.go` qui complète les fakes existants par des stubs flexibles (Get qui retourne vraiment un challenge stocké) afin de couvrir les méthodes du Service qui dépendent d'un état persistant (AbandonChallenge, GetChallenge, ListActiveChallenges, GetUserPrestige, SuggestNext, recomputeTier via UpdateChallenge target). Le BaselineProvider devient `matchesProvider` paramétrable pour tester les paths EvaluateForUser (target reached → completed + PP, deadline expired → expired, fetch error → status unchanged). Pour catalog_loader.go et tuning.go, utilisation de `t.TempDir()` + WriteFile pour exercer LoadTemplatesFromTOML / LoadPresetArcsFromTOML / LoadTuning sur des fichiers réels (cas OK + missing + parse error + validation error + paliers non monotones).
+
+**Fichiers créés** :
+- `apps/go-api/internal/prestige/service_coverage_test.go` (44 nouveaux tests, ~720 L)
+
+**Résultats observés** :
+- `go test -coverprofile=/tmp/prestige.out ./internal/prestige/...` : **87.0%** (vs 64.6% avant).
+- Toutes les fonctions précédemment à 0% (AbandonChallenge, GetChallenge, ListActiveChallenges, GetUserPrestige, SuggestNext, ListArcs, GetArc, GetSquadChallenge, ListSquadChallenges, EvaluateForUser, evaluateOne, applyTransition, creditCompletion, recomputeTier, LoadTemplatesFromTOML, LoadPresetArcsFromTOML, validateTemplateEntry, CanAbandon, String() des enums) sont désormais ≥80% ou 100%.
+- Build complet `go build ./...` vert. `go test ./internal/prestige/... ./internal/api/handlers/...` vert.
+
+**Conclusion** : Le module Prestige est maintenant complet sur les 5 phases du plan : foundation, domain & service, API & sync hook (branché via SyncHandler.WithPrestigeHook + newEngine helper dans server.go), templates + nav, frontend. Couverture ≥80% atteinte. Logging structuré en place (37+ slog calls : InfoContext sur transitions, WarnContext sur erreurs non-bloquantes, EmitTransition pour télémétrie). Le système est prêt pour activation derrière le feature flag PRESTIGE_ENABLED.
+
 ## [2026-04-26] feat(web): TopProgressBar — remplacement des PageLoader par barre de progression globale
 
 **Statut** : Complété — tests 267/293 (26 échecs pré-existants, 0 régressions introduites).
