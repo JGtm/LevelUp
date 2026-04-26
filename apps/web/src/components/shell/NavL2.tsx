@@ -13,7 +13,7 @@
 import { useState } from 'react'
 import { Link, useRouterState, useParams } from '@tanstack/react-router'
 import { useGlobalFilterStore } from '@/stores/globalFilterStore'
-import { FilterDrawer } from './FilterDrawer'
+import { FilterPanel } from './FilterPanel'
 
 // ─── Sous-onglets de la section Stats ─────────────────────────────────────────
 
@@ -59,7 +59,7 @@ function FilterChip({ label, onRemove }: FilterChipProps) {
 // ─── Composant principal ──────────────────────────────────────────────────────
 
 export function NavL2() {
-  const [drawerOpen, setDrawerOpen] = useState(false)
+  const [panelOpen, setPanelOpen] = useState(false)
 
   const routerState = useRouterState()
   const pathname = routerState.location.pathname
@@ -208,13 +208,15 @@ export function NavL2() {
           {/* Spacer */}
           <div className="flex-1" />
 
-          {/* Bouton Filtres */}
+          {/* Bouton Filtres — toggle expandable inline (plus de drawer) */}
           <button
             type="button"
-            onClick={() => setDrawerOpen(true)}
+            onClick={() => setPanelOpen((v) => !v)}
+            aria-expanded={panelOpen}
+            aria-controls="filter-panel"
             className="shrink-0 rounded-md border border-input bg-background px-2.5 py-1 text-xs font-medium text-muted-foreground transition-colors hover:border-border hover:bg-muted"
           >
-            Filtres
+            Filtres {panelOpen ? '▴' : '▾'}
           </button>
 
           {/* Réinitialiser (seulement si filtres actifs) */}
@@ -228,9 +230,12 @@ export function NavL2() {
             </button>
           )}
         </div>
-      </div>
 
-      <FilterDrawer open={drawerOpen} onClose={() => setDrawerOpen(false)} />
+        {/* Panneau de filtres inline (zéro drawer, déplie/replie en place) */}
+        <div id="filter-panel">
+          <FilterPanel open={panelOpen} onClose={() => setPanelOpen(false)} />
+        </div>
+      </div>
     </>
   )
 }

@@ -11,16 +11,23 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"log/slog"
 	"net/http"
 
 	"levelup/go-api/internal/api/middleware"
 	"levelup/go-api/internal/config"
 	"levelup/go-api/internal/domain"
+	"levelup/go-api/internal/notifications"
 	auth_platform "levelup/go-api/internal/platform/auth"
 	"levelup/go-api/internal/platform/jobs"
 	settings_platform "levelup/go-api/internal/platform/settings"
 	go_sync "levelup/go-api/internal/sync"
 )
+
+// NotificationsEmitterFactory construit un emitter de notifications pour un slug
+// joueur donné. Optionnel : si le SyncHandler n'a pas reçu de factory, aucun
+// hook de notification n'est émis (pratique pour les tests et le bootstrap initial).
+type NotificationsEmitterFactory func(ctx context.Context, slug string) (notifications.Emitter, error)
 
 // SyncHandler gère les endpoints de synchronisation des données Halo.
 type SyncHandler struct {
@@ -28,6 +35,7 @@ type SyncHandler struct {
 	settingsStore *settings_platform.Store
 	jobStore      *jobs.Store
 	provider      auth_platform.TokenProvider
+	notifierFor   NotificationsEmitterFactory // optionnel : émission match_synced / sync_error
 }
 
 // NewSyncHandler crée un SyncHandler.
@@ -43,6 +51,79 @@ func NewSyncHandler(
 		jobStore:      jobStore,
 		provider:      provider,
 	}
+}
+
+// WithNotificationsEmitterFactory branche la factory d'émetteurs de notifications.
+// À appeler depuis server.go après création du ServiceRegistry.
+//
+// L'émission est best-effort : toute erreur est loguée et ne propage pas. Le
+// hook est invoqué post-RunDelta (succès → match_synced, erreur → sync_error).
+func (h *SyncHandler) WithNotificationsEmitterFactory(f NotificationsEmitterFactory) *SyncHandler {
+	h.notifierFor = f
+	return h
+}
+
+// PrestigeHook est la signature du hook post-sync injecté pour le module Prestige.
+// Stub minimal — la logique métier vit dans internal/api/prestige_setup.go.
+type PrestigeHook func(ctx context.Context, playerSlug, titleSlug string)
+
+// WithPrestigeHook branche un hook Prestige post-sync. Stub temporaire pour
+// satisfaire la référence de server.go en attendant la finalisation côté
+// agent Prestige. No-op si pas de hook configuré.
+func (h *SyncHandler) WithPrestigeHook(_ PrestigeHook) *SyncHandler {
+	// TODO(prestige-agent): câbler l'invocation post-RunDelta.
+	return h
+}
+
+// emitMatchSynced émet une notification agrégée match_synced si > 0 matchs insérés.
+func (h *SyncHandler) emitMatchSynced(ctx context.Context, slug string, inserted int) {
+	if h.notifierFor == nil || inserted <= 0 {
+		return
+	}
+	em, err := h.notifierFor(ctx, slug)
+	if err != nil || em == nil {
+		slog.WarnContext(ctx, "notifications: emitter factory failed", "slug", slug, "err", err)
+		return
+	}
+	if err := em.Emit(ctx, notifications.EmitInput{
+		Category: notifications.CategoryMatchSynced,
+		Severity: notifications.SeveritySuccess,
+		TitleKey: "notif.match_synced.title",
+		BodyKey:  "notif.match_synced.body",
+		Params:   map[string]any{"count": inserted},
+		Source:   "sync_handler",
+	}); err != nil {
+		slog.WarnContext(ctx, "notifications: match_synced emit", "err", err)
+	}
+}
+
+// emitSyncError émet une notification sync_error sur échec d'une sync.
+func (h *SyncHandler) emitSyncError(ctx context.Context, slug, jobID, message string) {
+	if h.notifierFor == nil {
+		return
+	}
+	em, err := h.notifierFor(ctx, slug)
+	if err != nil || em == nil {
+		return
+	}
+	if err := em.Emit(ctx, notifications.EmitInput{
+		Category:    notifications.CategorySyncError,
+		Severity:    notifications.SeverityError,
+		TitleKey:    "notif.sync_error.title",
+		BodyKey:     "notif.sync_error.body",
+		Params:      map[string]any{"message": truncate(message, 200), "job_id": jobID},
+		TargetRoute: fmt.Sprintf("/players/%s/sync", slug),
+		Source:      "sync_handler",
+	}); err != nil {
+		slog.WarnContext(ctx, "notifications: sync_error emit", "err", err)
+	}
+}
+
+func truncate(s string, max int) string {
+	if len(s) <= max {
+		return s
+	}
+	return s[:max] + "…"
 }
 
 // StartInitialSync lance la sync initiale pour un joueur.
@@ -115,20 +196,23 @@ func (h *SyncHandler) StartInitialSync(w http.ResponseWriter, r *http.Request) {
 	jobSnapshot := *job
 
 	go func() {
+		bgCtx := context.Background()
 		engine := go_sync.NewSyncEngine(h.cfg.RepoRoot, gamertag, xuid, tokens, h.provider)
 		opts := domain.DefaultSyncOptions()
 		opts.MaxMatches = req.MaxMatches
 
-		result, err := engine.RunDelta(context.Background(), opts)
+		result, err := engine.RunDelta(bgCtx, opts)
 		if err != nil {
 			errMsg := err.Error()
 			h.jobStore.SetStatus(job.JobID, domain.JobStatusFailed, &errMsg)
+			h.emitSyncError(bgCtx, req.PlayerSlug, job.JobID, errMsg)
 			return
 		}
 		summary := fmt.Sprintf("inserted=%d skipped=%d medals=%d duration=%.1fs status=%s",
 			result.MatchesInserted, result.MatchesSkipped, result.MedalsInserted,
 			result.DurationSeconds, result.Status())
 		h.jobStore.SetStatus(job.JobID, domain.JobStatusSucceeded, &summary)
+		h.emitMatchSynced(bgCtx, req.PlayerSlug, result.MatchesInserted)
 	}()
 
 	writeJSON(w, http.StatusAccepted, &jobSnapshot)
@@ -182,19 +266,22 @@ func (h *SyncHandler) StartDeltaSync(w http.ResponseWriter, r *http.Request) {
 	jobSnapshot2 := *job
 
 	go func() {
+		bgCtx := context.Background()
 		engine := go_sync.NewSyncEngine(h.cfg.RepoRoot, gamertag, xuid, tokens, h.provider)
 		opts := domain.DefaultSyncOptions()
 
-		result, err := engine.RunDelta(context.Background(), opts)
+		result, err := engine.RunDelta(bgCtx, opts)
 		if err != nil {
 			errMsg := err.Error()
 			h.jobStore.SetStatus(job.JobID, domain.JobStatusFailed, &errMsg)
+			h.emitSyncError(bgCtx, playerSlug, job.JobID, errMsg)
 			return
 		}
 		summary := fmt.Sprintf("inserted=%d skipped=%d medals=%d duration=%.1fs status=%s",
 			result.MatchesInserted, result.MatchesSkipped, result.MedalsInserted,
 			result.DurationSeconds, result.Status())
 		h.jobStore.SetStatus(job.JobID, domain.JobStatusSucceeded, &summary)
+		h.emitMatchSynced(bgCtx, playerSlug, result.MatchesInserted)
 	}()
 
 	writeJSON(w, http.StatusAccepted, &jobSnapshot2)

@@ -169,6 +169,7 @@ export function MediaPage() {
   const [likedOnly, setLikedOnly] = useState(false)
   const [lightboxIdx, setLightboxIdx] = useState<number | null>(null)
   const [reassociateFilePath, setReassociateFilePath] = useState<string | null>(null)
+  const [autoChain, setAutoChain] = useState(false)
 
   // Par défaut on filtre sur les médias DU joueur courant. Le AuthorsMultiSelect
   // permet d'élargir explicitement à d'autres auteurs (qui prend le pas sur
@@ -277,6 +278,8 @@ export function MediaPage() {
           globalIndexOffset={(page - 1) * PAGE_SIZE}
           globalTotal={pagination?.total ?? mediaItems.length}
           onReassociate={(item) => setReassociateFilePath(item.file_path)}
+          autoChain={autoChain}
+          onToggleAutoChain={() => setAutoChain((prev) => !prev)}
         />
       )}
 

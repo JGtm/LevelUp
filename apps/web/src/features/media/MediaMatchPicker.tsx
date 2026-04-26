@@ -16,7 +16,7 @@
 import { useState } from 'react'
 import { useMediaMatchCandidates, useAssociateMediaToMatch } from './queries'
 import type { MediaMatchCandidate } from '@/lib/api/types'
-import { useFieldMappings } from '@/lib/i18n/fieldMappings'
+import { useFieldMappings, useAssetLabel } from '@/lib/i18n/fieldMappings'
 import { OUTCOME_LABELS_FALLBACK_FR } from './fallback.i18n'
 
 const WINDOW_OPTIONS = [15, 60, 180] as const
@@ -68,6 +68,16 @@ const outcomeClassByCode: Record<number, string> = {
   3: 'bg-rose-500/15 text-rose-400 border-rose-500/40',
   1: 'bg-amber-500/15 text-amber-400 border-amber-500/40',
   4: 'bg-muted text-muted-foreground border-border',
+}
+
+// Localise map_name et mode_name via useAssetLabel ('map'/'mode' kinds dans assets.toml).
+// Fallback sur la valeur brute si l'asset n'est pas défini côté backend.
+function MapModeLabel({ mapName, modeName }: { mapName: string | null | undefined; modeName: string | null | undefined }) {
+  const localizedMap = useAssetLabel('map', mapName ?? '')
+  const localizedMode = useAssetLabel('mode', modeName ?? '')
+  const mapStr = mapName ? localizedMap : '?'
+  const modeStr = modeName ? localizedMode : '?'
+  return <>{mapStr} · {modeStr}</>
 }
 
 function LobbyTeams({ lobby }: { lobby: MediaMatchCandidate['lobby'] }) {
@@ -224,7 +234,7 @@ export function MediaMatchPicker({ playerSlug, filePath, onClose }: Props) {
                     <div className="flex min-w-0 flex-1 flex-col gap-1">
                       <div className="flex items-center justify-between gap-2 text-sm">
                         <span className="truncate font-medium">
-                          {c.map_name ?? '?'} · {c.mode_name ?? '?'}
+                          <MapModeLabel mapName={c.map_name} modeName={c.mode_name} />
                         </span>
                         <div className="flex shrink-0 items-center gap-2">
                           <span className={`rounded border px-1.5 py-0.5 text-[10px] font-semibold ${out.cls}`}>
@@ -256,7 +266,7 @@ export function MediaMatchPicker({ playerSlug, filePath, onClose }: Props) {
             <div>
               <p className="font-medium">Confirmer la réassociation ?</p>
               <p className="text-xs text-muted-foreground">
-                {pending.map_name ?? '?'} · {pending.mode_name ?? '?'} · {formatLocalTime(pending.start_time)}
+                <MapModeLabel mapName={pending.map_name} modeName={pending.mode_name} /> · {formatLocalTime(pending.start_time)}
               </p>
             </div>
             <div className="flex gap-2">
