@@ -313,6 +313,12 @@ func (n *noopMediaRepo) GetMediaLikers(_ context.Context, _ []string) (map[strin
 	return nil, nil
 }
 func (n *noopMediaRepo) CurrentPlayerSlug() string { return "" }
+func (n *noopMediaRepo) LoadMatchCandidatesForMedia(_ context.Context, _ string, _ int) (domain.MediaMatchCandidatesResponse, error) {
+	return domain.MediaMatchCandidatesResponse{}, nil
+}
+func (n *noopMediaRepo) SetMediaMatchAssociation(_ context.Context, _, _ string) (*string, *string, error) {
+	return nil, nil, nil
+}
 
 // noopSessionsRepo — impl nulle pour le check de compilation uniquement.
 type noopSessionsRepo struct{}
@@ -502,6 +508,15 @@ type MediaRepository interface {
 	// CurrentPlayerSlug retourne le slug du joueur dont on lit la galerie. Utilisé
 	// pour distinguer "mine" vs "teammate" dans la section affichée.
 	CurrentPlayerSlug() string
+
+	// LoadMatchCandidatesForMedia retourne les matchs du joueur courant proches
+	// temporellement du média (fenêtre ±windowMinutes). Utilisé pour la
+	// réassociation manuelle quand l'algo automatique a deviné le mauvais match.
+	LoadMatchCandidatesForMedia(ctx context.Context, filePath string, windowMinutes int) (domain.MediaMatchCandidatesResponse, error)
+
+	// SetMediaMatchAssociation force l'association d'un média à un match précis.
+	// Remplace l'association existante. Retourne (mapName, modeName) du nouveau match.
+	SetMediaMatchAssociation(ctx context.Context, filePath, matchID string) (mapName, modeName *string, err error)
 }
 
 // SocialRepository gère les données sociales (favoris) dans shared_social.duckdb.

@@ -64,6 +64,14 @@ func (m *mockMediaService) ReassociateMedia(_ context.Context, _ domain.Reassoci
 	return &domain.ReassociateResult{}, nil
 }
 
+func (m *mockMediaService) GetMatchCandidates(_ context.Context, _ string, _ int) (*domain.MediaMatchCandidatesResponse, error) {
+	return &domain.MediaMatchCandidatesResponse{}, nil
+}
+
+func (m *mockMediaService) AssociateMediaToMatch(_ context.Context, req domain.MediaAssociateRequest) (*domain.MediaAssociateResponse, error) {
+	return &domain.MediaAssociateResponse{FilePath: req.FilePath, MatchID: req.MatchID}, nil
+}
+
 func newMediaRouter(factory handlers.ServiceFactory[port.MediaService]) *chi.Mux {
 	r := chi.NewRouter()
 	h := handlers.NewMediaHandler(factory, nil, "")

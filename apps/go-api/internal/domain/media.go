@@ -226,6 +226,47 @@ type UploadResult struct {
 	Errors     []string `json:"errors,omitempty"` // erreurs non-bloquantes
 }
 
+// MediaMatchCandidate représente un match potentiel pour une réassociation manuelle.
+// Inclut les KPIs du joueur courant pour aider à reconnaître quel match correspond
+// au média (ex : "20 kills, victoire" vs "5 kills, défaite").
+type MediaMatchCandidate struct {
+	MatchID      string     `json:"match_id"`
+	StartTime    *time.Time `json:"start_time,omitempty"`
+	EndTime      *time.Time `json:"end_time,omitempty"`
+	MapName      *string    `json:"map_name,omitempty"`
+	ModeName     *string    `json:"mode_name,omitempty"`
+	PlaylistName *string    `json:"playlist_name,omitempty"`
+	IsCurrent    bool       `json:"is_current"`              // true si ce match est l'association actuelle
+	DeltaSeconds *int       `json:"delta_seconds,omitempty"` // écart capture vs start_time
+	// KPIs du joueur sur ce match (best-effort, peut être nul si non disponible)
+	Kills   *int `json:"kills,omitempty"`
+	Deaths  *int `json:"deaths,omitempty"`
+	Assists *int `json:"assists,omitempty"`
+	Outcome *int `json:"outcome,omitempty"` // 2=victoire 3=défaite 1=égalité 4=DNF
+}
+
+// MediaMatchCandidatesResponse regroupe les matchs candidats pour un média.
+type MediaMatchCandidatesResponse struct {
+	FilePath      string                `json:"file_path"`
+	CaptureUTC    *time.Time            `json:"capture_utc,omitempty"` // capture_start_utc utilisé pour la recherche
+	WindowMinutes int                   `json:"window_minutes"`        // fenêtre ±X min utilisée
+	Candidates    []MediaMatchCandidate `json:"candidates"`
+}
+
+// MediaAssociateRequest force l'association d'un média à un match précis.
+type MediaAssociateRequest struct {
+	FilePath string `json:"file_path"`
+	MatchID  string `json:"match_id"`
+}
+
+// MediaAssociateResponse confirme la nouvelle association.
+type MediaAssociateResponse struct {
+	FilePath string  `json:"file_path"`
+	MatchID  string  `json:"match_id"`
+	MapName  *string `json:"map_name,omitempty"`
+	ModeName *string `json:"mode_name,omitempty"`
+}
+
 // MatchFavoriteRequest représente une demande de bascule favori.
 type MatchFavoriteRequest struct {
 	PlayerSlug string `json:"player_slug"`
