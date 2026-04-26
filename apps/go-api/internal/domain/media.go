@@ -34,7 +34,7 @@ type MediaFilters struct {
 	SectionFilter string   // "" (toutes sources) | "mine" (player_slug courant) | "teammate" (autres)
 	AuthorSlugs   []string // whitelist explicite de player_slug (prend le pas sur SectionFilter si non vide)
 	MapFilter     string   // filtre ILIKE sur le libellé de carte exposé à l'UI
-	ModeFilter   string // filtre ILIKE sur le mode normalisé exposé à l'UI
+	ModeFilter    string   // filtre ILIKE sur le mode normalisé exposé à l'UI
 	// ModeFilterCandidates : si non vide, le repo a expansé ModeFilter (FR) en
 	// liste de raw EN via mode_name_tr → le SQL utilise un OR sur chaque variant.
 	ModeFilterCandidates []string
@@ -99,6 +99,9 @@ type MediaFileRow struct {
 	MapName        *string
 	ModeName       *string
 	MapID          *string
+	// PlayerSlug identifie le propriétaire du média (schéma shared_social uniquement, nil en legacy).
+	// Dans ce projet playerSlug == gamertag.
+	PlayerSlug *string
 }
 
 // MediaLikersInfo contient les likers d'un média (max 3 noms + total).

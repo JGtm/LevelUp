@@ -1,5 +1,24 @@
 # Thought Log
 
+## [2026-04-26] fix(media): owner_gamertag manquant — groupement "par auteur" cassé
+
+**Statut** : Complété
+
+**Contexte** : Signalement que "les fonctions de tri et de groupement ne fonctionnent pas correctement". Investigation : le groupement "par auteur" affichait "Unknown author" pour TOUS les médias car `OwnerGamertag` n'était jamais peuplé dans `buildMediaItems`.
+
+**Cause racine** : `buildQ37MediaQuery` ne sélectionnait pas `mf.player_slug` dans le SELECT. La colonne existe bien dans `media_files` (schéma shared_social), utilisée dans ORDER BY et WHERE, mais absente du résultat retourné. Résultat : `MediaFileRow.PlayerSlug = nil` partout -> `MediaItem.OwnerGamertag = nil` -> frontend voit `null` -> `buildSimpleGroups('owner')` place tout en `owner:__none__` / "Unknown author".
+
+**Decisions techniques** :
+- Ajout de `playerSlugExpr` conditionnel dans SELECT : `mf.player_slug` (shared_social) vs `NULL` (legacy)
+- Ajout de `PlayerSlug *string` a `MediaFileRow`
+- Ajout du scan correspondant dans `LoadMediaFiles`
+- `buildMediaItems` : `OwnerGamertag: r.PlayerSlug` (playerSlug == gamertag dans ce projet)
+- Test `TestBuildQ37MediaQuery_SharedSocialSchemaUsesPlayerScopedJoin` rendu plus precis : verifie l'absence de contrainte WHERE sur `player_slug`
+
+**Résultats observés** : 27 tests Q37 tous verts. Aucun nouveau warning lint.
+
+**Conclusion** : Le groupement "par auteur" devrait maintenant afficher les gamertags reels. La perception "retour a sans groupement ne change rien" etait probablement due a cette confusion visuelle (by owner = tout en "Unknown author" = meme apparence que sans groupement).
+
 ## [2026-04-26] fix(media): 4 bugs post-feature — auteurs vides, MIME, groupement, likers
 
 **Statut** : Complété

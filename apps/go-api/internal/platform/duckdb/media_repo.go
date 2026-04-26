@@ -58,6 +58,7 @@ func (r *MediaRepo) LoadMediaFiles(ctx context.Context, filters domain.MediaFilt
 			&row.MapName,
 			&row.ModeName,
 			&row.MapID,
+			&row.PlayerSlug,
 		); err != nil {
 			return nil, fmt.Errorf("LoadMediaFiles scan: %w", err)
 		}

@@ -356,6 +356,7 @@ func buildMediaItems(rows []domain.MediaFileRow) []domain.MediaItem {
 			MatchStartTime: r.MatchStartTime,
 			MapName:        r.MapName,
 			ModeName:       r.ModeName,
+			OwnerGamertag:  r.PlayerSlug,
 			Section:        "mine",
 			Liked:          r.Liked,
 			LikeCount:      boolToLikeCount(r.Liked),

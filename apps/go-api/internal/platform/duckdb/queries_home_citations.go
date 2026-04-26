@@ -618,6 +618,11 @@ func buildQ37MediaQuery(
 		orderBy = groupExpr + " " + groupDir + ", " + orderBy
 	}
 
+	playerSlugExpr := "NULL"
+	if queryCfg.useSharedSocialSchema() {
+		playerSlugExpr = "mf.player_slug"
+	}
+
 	q := `SELECT
     mf.file_path,
     mf.file_name,
@@ -629,7 +634,8 @@ func buildQ37MediaQuery(
     COALESCE(mf.liked, FALSE) AS liked,
     ` + q37MediaMapLabelExpr + ` AS map_name,
     ` + q37MediaModeLabelExpr + ` AS mode_name,
-    mr.map_id
+    mr.map_id,
+    ` + playerSlugExpr + ` AS player_slug
 ` + queryCfg.fromClause() + `
 ` + whereClause + `
 ORDER BY ` + orderBy + `
